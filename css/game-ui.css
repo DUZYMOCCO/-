@@ -372,29 +372,147 @@ canvas {
   color: #f87171;
 }
 
-/* 号令ボタン (出世で解禁) */
-.command-container {
+/* 画面下部バーチャルゲームパッド */
+.virtual-gamepad {
   position: absolute;
-  bottom: 25px;
-  right: 20px;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 160px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  padding: 0 16px max(14px, env(safe-area-inset-bottom, 12px));
+  pointer-events: none;
   z-index: 15;
 }
 
-.command-btn {
-  background: linear-gradient(135deg, #f59e0b, #d97706);
-  border: 2px solid #fde68a;
-  color: #0b0d14;
-  font-size: 13px;
-  font-weight: 900;
-  padding: 10px 16px;
-  border-radius: 20px;
-  box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4);
-  cursor: pointer;
+/* 左側：アナログジョイスティック */
+.pad-stick-zone {
+  width: 130px;
+  height: 130px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
 }
 
-.command-btn:active {
-  transform: scale(0.92);
+.dpad-base {
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(20, 24, 38, 0.75) 40%, rgba(10, 12, 18, 0.9) 100%);
+  border: 2px solid rgba(0, 240, 255, 0.4);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6), inset 0 0 15px rgba(0, 240, 255, 0.15);
+  position: relative;
+  touch-action: none;
 }
+
+/* スティック内部の十字ガイド */
+.dpad-base::before, .dpad-base::after {
+  content: '';
+  position: absolute;
+  background: rgba(0, 240, 255, 0.2);
+}
+.dpad-base::before {
+  top: 50%;
+  left: 15%;
+  right: 15%;
+  height: 1px;
+}
+.dpad-base::after {
+  left: 50%;
+  top: 15%;
+  bottom: 15%;
+  width: 1px;
+}
+
+.dpad-knob {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #1e2438, #0e121d);
+  border: 2px solid #00f0ff;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5), 0 0 12px rgba(0, 240, 255, 0.5);
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  transition: transform 0.05s ease-out;
+}
+
+/* 右側：アクションボタン群 */
+.pad-buttons-zone {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  pointer-events: auto;
+  margin-bottom: 6px;
+}
+
+.pad-btn {
+  border-radius: 50%;
+  border: 2px solid;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.08s, filter 0.1s;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.pad-btn:active {
+  transform: scale(0.9);
+  filter: brightness(1.2);
+}
+
+/* 攻撃ボタン (大型) */
+.pad-btn-attack {
+  width: 68px;
+  height: 68px;
+  background: linear-gradient(135deg, #ef4444, #b91c1c);
+  border-color: #fca5a5;
+  box-shadow: 0 4px 20px rgba(239, 68, 68, 0.5);
+}
+
+.pad-btn-attack .pad-btn-icon {
+  font-size: 26px;
+  line-height: 1;
+}
+
+.pad-btn-attack .pad-btn-label {
+  font-size: 9px;
+  font-weight: 900;
+  color: #fff;
+  letter-spacing: 0.5px;
+  margin-top: 2px;
+}
+
+/* 号令ボタン */
+.pad-btn-command {
+  width: 54px;
+  height: 54px;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  border-color: #fde68a;
+  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.5);
+}
+
+.pad-btn-command .pad-btn-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.pad-btn-command .pad-btn-label {
+  font-size: 9px;
+  font-weight: 900;
+  color: #0b0d14;
+  margin-top: 2px;
+}
+
 
 
 

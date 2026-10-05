@@ -159,15 +159,30 @@ export const IronSquadGame = {
           <!-- ドロップ獲得トースト -->
           <div id="drop-banner" class="drop-banner hidden"></div>
 
-          <!-- 号令ボタン (出世して伍長以上で解禁) -->
-          <div id="command-btn-container" class="command-container hidden">
-            <button id="btn-command-whistle" class="command-btn">📢 呼集の笛！</button>
+          <!-- 画面下部 バーチャルゲームパッド -->
+          <div id="virtual-gamepad" class="virtual-gamepad">
+            <div class="pad-stick-zone">
+              <div id="dpad-base" class="dpad-base">
+                <div id="dpad-knob" class="dpad-knob"></div>
+              </div>
+            </div>
+            <div class="pad-buttons-zone">
+              <button id="btn-pad-command" class="pad-btn pad-btn-command hidden" title="号令">
+                <span class="pad-btn-icon">📢</span>
+                <span class="pad-btn-label">呼集</span>
+              </button>
+              <button id="btn-pad-attack" class="pad-btn pad-btn-attack" title="手動攻撃">
+                <span class="pad-btn-icon">🗡️</span>
+                <span class="pad-btn-label">攻撃</span>
+              </button>
+            </div>
           </div>
 
           <!-- ミニマップレーダー -->
           <div class="minimap-container">
             <canvas id="minimap-canvas" width="70" height="70"></canvas>
           </div>
+
 
           <!-- スタート / 中断再開モーダル -->
           <div id="start-modal" class="game-overlay">
@@ -312,11 +327,27 @@ export const IronSquadGame = {
     });
 
     // 号令ボタン（伍長以上）
-    const cmdBtn = document.getElementById('btn-command-whistle');
-    cmdBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      this.triggerCommand();
-    });
+    const cmdBtn = document.getElementById('btn-pad-command');
+    if (cmdBtn) {
+      cmdBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.triggerCommand();
+      });
+    }
+
+    // 手動攻撃ボタン
+    const atkBtn = document.getElementById('btn-pad-attack');
+    if (atkBtn) {
+      const handleManualAttack = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        sound.unlock();
+        this.manualAttack();
+      };
+      atkBtn.addEventListener('mousedown', handleManualAttack);
+      atkBtn.addEventListener('touchstart', handleManualAttack, { passive: false });
+    }
+
 
     // タブ切り替え
     const tabSquad = document.getElementById('tab-strat-squad');
@@ -550,57 +581,126 @@ export const IronSquadGame = {
   },
 
   setupInput() {
-    let originX = 0;
-    let originY = 0;
     this.joystick = { active: false, x: 0, y: 0, dirX: 0, dirY: 0 };
 
-    const onStart = (e) => {
+    const stickBase = document.getElementById('dpad-base');
+    const stickKnob = document.getElementById('dpad-knob');
+
+    // 下部バーチャルアナログパッドのタッチハンドラ
+    if (stickBase && stickKnob) {
+      let touchId = null;
+
+      const handleStickStart = (e) => {
+        sound.unlock();
+        e.preventDefault();
+        e.stopPropagation();
+        const touch = e.touches ? e.touches[0] : e;
+        if (e.touches) touchId = touch.identifier;
+        updateStick(touch);
+      };
+
+      const handleStickMove = (e) => {
+        if (!this.joystick.active) return;
+        e.preventDefault();
+        e.stopPropagation();
+        let touch = e;
+        if (e.touches) {
+          for (let i = 0; i < e.touches.length; i++) {
+            if (e.touches[i].identifier === touchId) {
+              touch = e.touches[i];
+              break;
+            }
+          }
+        }
+        updateStick(touch);
+      };
+
+      const handleStickEnd = (e) => {
+        this.joystick.active = false;
+        this.joystick.dirX = 0;
+        this.joystick.dirY = 0;
+        touchId = null;
+        stickKnob.style.transform = 'translate(-50%, -50%)';
+      };
+
+      const updateStick = (pointer) => {
+        const rect = stickBase.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+        const dx = pointer.clientX - centerX;
+        const dy = pointer.clientY - centerY;
+        const dist = Math.hypot(dx, dy);
+        const maxRadius = rect.width * 0.42;
+
+        this.joystick.active = true;
+        if (dist > 0) {
+          this.joystick.dirX = dx / Math.max(dist, 1);
+          this.joystick.dirY = dy / Math.max(dist, 1);
+        } else {
+          this.joystick.dirX = 0;
+          this.joystick.dirY = 0;
+        }
+
+        const clampedDist = Math.min(dist, maxRadius);
+        const knobX = (dx / (dist || 1)) * clampedDist;
+        const knobY = (dy / (dist || 1)) * clampedDist;
+        stickKnob.style.transform = `translate(calc(-50% + ${knobX}px), calc(-50% + ${knobY}px))`;
+      };
+
+      stickBase.addEventListener('mousedown', handleStickStart);
+      window.addEventListener('mousemove', handleStickMove);
+      window.addEventListener('mouseup', handleStickEnd);
+
+      stickBase.addEventListener('touchstart', handleStickStart, { passive: false });
+      window.addEventListener('touchmove', handleStickMove, { passive: false });
+      window.addEventListener('touchend', handleStickEnd);
+      window.addEventListener('touchcancel', handleStickEnd);
+    }
+
+    // キャンバス上の直接スワイプも念のためサポート
+    let canvasDown = false;
+    let originX = 0, originY = 0;
+
+    const onCanvasStart = (e) => {
+      // コントローラー以外の場所を触った時
+      if (e.target.closest('#virtual-gamepad')) return;
       sound.unlock();
+      canvasDown = true;
       const pos = this.getEventPos(e);
-      this.joystick.active = true;
-      this.joystick.x = pos.x;
-      this.joystick.y = pos.y;
-      this.joystick.dirX = 0;
-      this.joystick.dirY = 0;
       originX = pos.x;
       originY = pos.y;
+      this.joystick.active = true;
     };
 
-    const onMove = (e) => {
-      if (!this.joystick.active) return;
+    const onCanvasMove = (e) => {
+      if (!canvasDown) return;
       const pos = this.getEventPos(e);
       const dx = pos.x - originX;
       const dy = pos.y - originY;
       const dist = Math.hypot(dx, dy);
-      const maxDist = 45;
-
-      if (dist > 0) {
-        this.joystick.dirX = dx / Math.max(dist, 1);
-        this.joystick.dirY = dy / Math.max(dist, 1);
-        const clampDist = Math.min(dist, maxDist);
-        this.joystick.x = originX + this.joystick.dirX * clampDist;
-        this.joystick.y = originY + this.joystick.dirY * clampDist;
+      if (dist > 5) {
+        this.joystick.dirX = dx / dist;
+        this.joystick.dirY = dy / dist;
       }
     };
 
-    const onEnd = () => {
-      this.joystick.active = false;
-      this.joystick.dirX = 0;
-      this.joystick.dirY = 0;
+    const onCanvasEnd = () => {
+      if (canvasDown) {
+        canvasDown = false;
+        this.joystick.active = false;
+        this.joystick.dirX = 0;
+        this.joystick.dirY = 0;
+      }
     };
 
-    this.boundDown = onStart;
-    this.boundMove = onMove;
-    this.boundUp = onEnd;
+    this.canvas.addEventListener('mousedown', onCanvasStart);
+    window.addEventListener('mousemove', onCanvasMove);
+    window.addEventListener('mouseup', onCanvasEnd);
 
-    this.canvas.addEventListener('mousedown', onStart);
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onEnd);
-
-    this.canvas.addEventListener('touchstart', onStart, { passive: false });
-    window.addEventListener('touchmove', onMove, { passive: false });
-    window.addEventListener('touchend', onEnd);
-    window.addEventListener('touchcancel', onEnd);
+    this.canvas.addEventListener('touchstart', onCanvasStart, { passive: false });
+    window.addEventListener('touchmove', onCanvasMove, { passive: false });
+    window.addEventListener('touchend', onCanvasEnd);
+    window.addEventListener('touchcancel', onCanvasEnd);
   },
 
   getEventPos(e) {
@@ -613,14 +713,31 @@ export const IronSquadGame = {
     };
   },
 
+  // 右手パッド手動攻撃
+  manualAttack() {
+    if (!this.inBattle) return;
+    this.player.slashAnim = 1;
+    const nearest = this.getNearestMonster(this.player.x, this.player.y);
+    if (nearest && Math.hypot(nearest.x - this.player.x, nearest.y - this.player.y) <= 110) {
+      this.player.slashAngle = Math.atan2(nearest.y - this.player.y, nearest.x - this.player.x);
+      this.performAttack(this.player, nearest, true);
+    } else {
+      sound.playSlash();
+      // 向いている方向へ素振り
+      if (this.joystick.dirX !== 0 || this.joystick.dirY !== 0) {
+        this.player.slashAngle = Math.atan2(this.joystick.dirY, this.joystick.dirX);
+      }
+    }
+  },
+
   // 伍長以上の号令発動（呼集の笛）
   triggerCommand() {
     const currentRank = RANKS[this.rankIndex];
     if (!currentRank.canCommand) return;
 
     sound.playLaunch();
-    this.commandActiveUntil = performance.now() + 6000; // 6秒間部隊を引き寄せる
-    this.showToast(`📢 笛を吹いた！「こちらへ集まれ！」`);
+    this.commandActiveUntil = performance.now() + 6000;
+    this.showToast(`📢 呼集の笛！「隊長だ！こちらへ集まれ！」`);
   },
 
   updateStatsUI() {
@@ -632,13 +749,16 @@ export const IronSquadGame = {
     document.getElementById('current-gold').textContent = `${this.gold}G`;
 
     // 号令ボタンの表示切替
-    const cmdContainer = document.getElementById('command-btn-container');
-    if (rank.canCommand) {
-      cmdContainer.classList.remove('hidden');
-    } else {
-      cmdContainer.classList.add('hidden');
+    const cmdBtn = document.getElementById('btn-pad-command');
+    if (cmdBtn) {
+      if (rank.canCommand) {
+        cmdBtn.classList.remove('hidden');
+      } else {
+        cmdBtn.classList.add('hidden');
+      }
     }
   },
+
 
   startNextWave() {
     this.wave++;
