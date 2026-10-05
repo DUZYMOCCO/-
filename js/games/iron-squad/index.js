@@ -2,13 +2,12 @@
  * ゲーム3: IRON SQUAD (アイアン・スクワッド: 雑兵立身出世録)
  * ローグライク・アクションRPG
  * 
- * [大型アップデート]
- *  - 兵士初期10名スタート！
- *  - 兵士は最初「名もなき雑兵」。生き残り強くなると二つ名と名前（叙勲）を授与！
- *  - 広い戦場マップ (1800x1800) ＆ カメラ追従スクロール ＆ ミニマップレーダー！
- *  - 自軍の拠点（砦・本陣キャンプ）：エリア内に入ると部隊全員がリジェネ治癒回復！
- *  - ウェーブ間の本格「戦略タイム」（野戦治療、装備配備、戦術陣形選択、叙勲）
- *  - 完全オートセーブ（いつでも中断・再開可能）
+ * [新リアリズム仕様]
+ *  - 主人公は最初ただの雑兵！部隊は主人公に付いてこず、独自の判断で自律進軍・迎撃する！
+ *  - 部隊と一緒に動かないと極めて危険（孤立死リスク＆部隊壊滅リスク）！
+ *  - ソロで遠くの宝箱を漁りに行くのも自由だが、部隊がモンスターに囲まれて全滅することも…
+ *  - 生き延びて「伍長」以上に立身出世して初めて【号令・指揮権】がアンロックされる！
+ *  - 名もなき兵士たちは生き残ると二つ名と名前が授与され、やがて主人公の頼もしい戦友に。
  */
 import { sound } from '../../audio.js';
 import { storage } from '../../storage.js';
@@ -17,23 +16,23 @@ const MAP_WIDTH = 1800;
 const MAP_HEIGHT = 1800;
 const BASE_CAMP = { x: 900, y: 900, radius: 150 };
 
-// 階級データ (大所帯スタート)
+// 階級データ (雑兵から始まり、出世で指揮権が解禁される！)
 const RANKS = [
-  { level: 1, title: '二等小隊長', reqExp: 0, maxSquad: 10, bonusHp: 0, bonusAtk: 0 },
-  { level: 2, title: '一等小隊長', reqExp: 80, maxSquad: 12, bonusHp: 40, bonusAtk: 10 },
-  { level: 3, title: '分隊司令官', reqExp: 200, maxSquad: 14, bonusHp: 90, bonusAtk: 22 },
-  { level: 4, title: '百人隊長', reqExp: 400, maxSquad: 16, bonusHp: 160, bonusAtk: 40 },
-  { level: 5, title: '大隊司令官', reqExp: 700, maxSquad: 18, bonusHp: 260, bonusAtk: 65 },
-  { level: 6, title: '千人将', reqExp: 1100, maxSquad: 20, bonusHp: 400, bonusAtk: 100 },
-  { level: 7, title: '近衛騎士団長', reqExp: 1700, maxSquad: 24, bonusHp: 600, bonusAtk: 150 },
-  { level: 8, title: '軍団総司令官', reqExp: 2500, maxSquad: 28, bonusHp: 900, bonusAtk: 220 },
-  { level: 9, title: '救国の英雄神将', reqExp: 3600, maxSquad: 32, bonusHp: 1300, bonusAtk: 320 }
+  { level: 1, title: '二等雑兵', reqExp: 0, canCommand: false, maxSquad: 10, bonusHp: 0, bonusAtk: 0, desc: '指揮権なし。部隊の背中についていく側。' },
+  { level: 2, title: '一等兵', reqExp: 90, canCommand: false, maxSquad: 10, bonusHp: 35, bonusAtk: 8, desc: '死線を潜った古参雑兵。まだ指揮権はない。' },
+  { level: 3, title: '伍長 (班長昇進)', reqExp: 220, canCommand: true, commandType: 'WHISTLE', maxSquad: 12, bonusHp: 80, bonusAtk: 20, desc: '【呼集笛】解禁！近くの兵士を自分に集められる。' },
+  { level: 4, title: '軍曹 (小隊長代理)', reqExp: 450, canCommand: true, commandType: 'RALLY', maxSquad: 15, bonusHp: 150, bonusAtk: 38, desc: '【突撃号令】解禁！部隊の士気を一斉高揚。' },
+  { level: 5, title: '百人隊長 (部隊司令)', reqExp: 800, canCommand: true, commandType: 'FULL', maxSquad: 18, bonusHp: 240, bonusAtk: 65, desc: '【完全指揮権】獲得！部隊が主人公に追従。' },
+  { level: 6, title: '千人将', reqExp: 1300, canCommand: true, commandType: 'FULL', maxSquad: 22, bonusHp: 380, bonusAtk: 100, desc: '大隊を率いる猛将。' },
+  { level: 7, title: '近衛騎士団長', reqExp: 2000, canCommand: true, commandType: 'FULL', maxSquad: 26, bonusHp: 580, bonusAtk: 150, desc: '国王直属の近衛騎士団長。' },
+  { level: 8, title: '軍団総司令官', reqExp: 3000, canCommand: true, commandType: 'FULL', maxSquad: 30, bonusHp: 850, bonusAtk: 220, desc: '全軍の指揮を執る最高司令官。' },
+  { level: 9, title: '救国の英雄神将', reqExp: 4500, canCommand: true, commandType: 'FULL', maxSquad: 35, bonusHp: 1200, bonusAtk: 300, desc: '神話に語られる伝説の英雄。' }
 ];
 
 const TITLES = ['不屈の', '疾風の', '鉄壁の', '歴戦の', '鬼神の', '紅蓮の', '隻眼の', '魔刃の', '金剛の', '閃光の'];
 const NAMES = ['ボブ', 'ガッツ', 'ルーク', 'ジーク', 'レオ', 'ジャック', 'トール', 'ハンス', 'マルコ', 'オットー', 'クルト', 'フィン', 'クラーク', 'エリック', 'ロイ', 'アル', 'レオン', 'ギル', 'セドリック', 'バルト', 'オスカー', 'アラン', 'ブルーノ', 'ダン'];
 
-// ランダムぶっ飛びドロップ生成
+// ランダムドロップ生成
 function generateRandomDrop(wave) {
   const rarities = [
     { name: 'コモン', color: '#a0aab8', weight: 45, mult: 1 },
@@ -106,15 +105,16 @@ export const IronSquadGame = {
   subtitle: '雑兵立身出世録',
   icon: '🛡️',
   color: '#ffaa00',
-  description: '名もなき10人の兵士と共に生き残れ！砦を拠点に広大な戦場を駆け巡り、叙勲と立身出世を掴み取れ。',
+  description: '自律行動する部隊と共に生き残れ！部隊と離れると危険だがソロ冒険も自由。伍長・隊長へ出世して初めて指揮権を掴み取れ。',
 
   init(container, onBackToHub) {
     this.container = container;
     this.onBackToHub = onBackToHub;
     this.highWave = storage.get('ironsquad_max_wave', 1);
-    this.gold = 50; // 野戦治療・補給用
-    this.formation = 'GUARD'; // 'GUARD', 'ASSAULT', 'WALL'
+    this.gold = 50;
+    this.formation = 'GUARD';
     this.camera = { x: BASE_CAMP.x, y: BASE_CAMP.y };
+    this.commandActiveUntil = 0; // 号令の有効期限
     this.setupUI();
     this.checkSavedGame();
   },
@@ -127,7 +127,7 @@ export const IronSquadGame = {
           <div class="game-stats" style="flex: 1; justify-content: space-around;">
             <div class="stat-box">
               <span class="stat-label">階級</span>
-              <span id="player-rank" class="stat-value" style="color: #ffaa00;">二等小隊長</span>
+              <span id="player-rank" class="stat-value" style="color: #ffaa00;">二等雑兵</span>
             </div>
             <div class="stat-box">
               <span class="stat-label">WAVE</span>
@@ -148,11 +148,21 @@ export const IronSquadGame = {
         <div class="canvas-container" id="canvas-container">
           <canvas id="game-canvas"></canvas>
 
+          <!-- 部隊距離インジケーター（画面左上） -->
+          <div id="squad-proximity-badge" class="proximity-badge proximity-close">
+            🟢 部隊と共闘中 (安全)
+          </div>
+
           <!-- 拠点治癒インジケータ -->
           <div id="base-heal-badge" class="base-badge hidden">💚 砦本陣で部隊治癒中</div>
 
           <!-- ドロップ獲得トースト -->
           <div id="drop-banner" class="drop-banner hidden"></div>
+
+          <!-- 号令ボタン (出世して伍長以上で解禁) -->
+          <div id="command-btn-container" class="command-container hidden">
+            <button id="btn-command-whistle" class="command-btn">📢 呼集の笛！</button>
+          </div>
 
           <!-- ミニマップレーダー -->
           <div class="minimap-container">
@@ -163,8 +173,15 @@ export const IronSquadGame = {
           <div id="start-modal" class="game-overlay">
             <div class="overlay-content" style="max-width: 320px;">
               <h2 style="color: #ffaa00; font-size: 22px; margin-bottom: 8px;">🛡️ IRON SQUAD</h2>
-              <p style="font-size: 12px; color: #aaa; margin-bottom: 16px;">名もなき10人の兵士から始まる立身出世と生存の叙事詩</p>
+              <p style="font-size: 12px; color: #aaa; margin-bottom: 14px;">雑兵から始まる過酷な生存と立身出世の記録</p>
               
+              <div style="background: rgba(255,255,255,0.03); border: 1px solid #334; border-radius: 8px; padding: 10px; margin-bottom: 14px; font-size: 11px; color: #cbd5e1; line-height: 1.5; text-align: left;">
+                ⚔️ <strong>戦場の心得</strong><br>
+                ・あなたは隊長ではなく<strong>一介の雑兵</strong>です。<br>
+                ・部隊は勝手に進軍・迎撃します。<strong>部隊の近くにいないと極めて危険</strong>ですが、単独行動（ソロ冒険）も自由。<br>
+                ・生き残り出世（伍長以上）することで、初めて<strong>部隊を呼ぶ指揮権</strong>を掴み取れます！
+              </div>
+
               <div id="resume-container" class="hidden" style="margin-bottom: 12px;">
                 <button id="btn-resume-game" class="action-btn" style="background: linear-gradient(135deg, #10b981, #059669);">
                   ▶ 続きから再開 (<span id="resume-info">WAVE 1</span>)
@@ -172,7 +189,7 @@ export const IronSquadGame = {
                 <p style="font-size: 11px; color: #10b981; margin-top: 4px;">※オートセーブデータから復帰</p>
               </div>
 
-              <button id="btn-new-game" class="action-btn">新小隊を率いて出撃</button>
+              <button id="btn-new-game" class="action-btn">雑兵として出撃</button>
               <button id="btn-title-back" class="action-btn secondary" style="margin-top: 8px;">工房へ戻る</button>
             </div>
           </div>
@@ -186,23 +203,13 @@ export const IronSquadGame = {
               </div>
               <p id="strat-report" style="font-size: 12px; color: #b0bacd; margin-bottom: 12px;"></p>
 
-              <!-- 戦略クイックアクション -->
+              <!-- 野戦治療 -->
               <div style="background: rgba(0,0,0,0.3); border: 1px solid var(--surface-border); border-radius: 10px; padding: 10px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
                 <div>
                   <div style="font-size: 12px; font-weight: bold; color: #34d399;">🏥 野戦治療 (部隊全員を全回復)</div>
                   <div style="font-size: 10px; color: #889;">費用: 30G</div>
                 </div>
                 <button id="btn-heal-all" class="mini-btn" style="background:#10b981; color:#fff;">治療する</button>
-              </div>
-
-              <!-- 戦術陣形選択 -->
-              <div style="margin-bottom: 12px;">
-                <div style="font-size: 11px; font-weight: bold; color: #889; margin-bottom: 6px;">【戦術陣形の選択】</div>
-                <div style="display: flex; gap: 6px;">
-                  <button class="formation-btn active" data-form="GUARD">🛡️ 護衛陣<br><span style="font-size:9px;">守り重視</span></button>
-                  <button class="formation-btn" data-form="ASSAULT">⚔️ 突撃陣<br><span style="font-size:9px;">ATK+25%</span></button>
-                  <button class="formation-btn" data-form="WALL">🧱 密集陣<br><span style="font-size:9px;">被ダメ-30%</span></button>
-                </div>
               </div>
 
               <!-- タブ切り替え -->
@@ -238,7 +245,7 @@ export const IronSquadGame = {
               <p class="overlay-score">到達WAVE: <span id="final-wave">1</span></p>
               <p style="font-size: 13px; color: #aaa; margin-bottom: 8px;">最終階級: <strong id="final-rank" style="color:#ffaa00;">-</strong></p>
               <p style="font-size: 11px; color: #ff5555; margin-bottom: 14px;">※過酷な戦場にて部隊は全滅しました</p>
-              <button id="btn-restart" class="action-btn">新小隊長として再入隊</button>
+              <button id="btn-restart" class="action-btn">新兵として再入隊</button>
               <button id="btn-overlay-back" class="action-btn secondary">工房へ戻る</button>
             </div>
           </div>
@@ -304,16 +311,11 @@ export const IronSquadGame = {
       this.healAllSquad();
     });
 
-    // 陣形ボタン
-    document.querySelectorAll('.formation-btn').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        sound.playTap();
-        document.querySelectorAll('.formation-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        this.formation = btn.dataset.form;
-        this.showToast(`陣形を【${btn.textContent.split('\n')[0]}】に変更！`);
-        this.saveGame();
-      });
+    // 号令ボタン（伍長以上）
+    const cmdBtn = document.getElementById('btn-command-whistle');
+    cmdBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.triggerCommand();
     });
 
     // タブ切り替え
@@ -340,7 +342,7 @@ export const IronSquadGame = {
   },
 
   checkSavedGame() {
-    const saved = storage.get('ironsquad_save_data_v2', null);
+    const saved = storage.get('ironsquad_save_data_v3', null);
     const resumeContainer = document.getElementById('resume-container');
     const resumeInfo = document.getElementById('resume-info');
 
@@ -392,18 +394,18 @@ export const IronSquadGame = {
   startFreshGame() {
     this.wave = 1;
     this.exp = 0;
-    this.gold = 60;
+    this.gold = 50;
     this.rankIndex = 0;
-    this.formation = 'GUARD';
     this.inBattle = true;
+    this.commandActiveUntil = 0;
 
-    // 主人公
+    // 主人公（一介の二等雑兵）
     this.player = {
-      x: BASE_CAMP.x,
-      y: BASE_CAMP.y,
-      hp: 150,
-      maxHp: 150,
-      atk: 28,
+      x: BASE_CAMP.x - 20,
+      y: BASE_CAMP.y - 20,
+      hp: 130,
+      maxHp: 130,
+      atk: 25,
       atkSpeed: 1.0,
       speed: 135,
       atkCooldown: 0,
@@ -422,7 +424,17 @@ export const IronSquadGame = {
 
     this.inventory = [];
 
-    // 初期兵士10名スタート！最初は全員名無し雑兵
+    // 部隊の自律行動リーダー位置（部隊の重心目標）
+    this.squadNav = {
+      x: BASE_CAMP.x,
+      y: BASE_CAMP.y,
+      vx: 0,
+      vy: 0,
+      targetEnemy: null,
+      state: 'DEFEND' // 'DEFEND', 'CHARGE', 'RETREAT'
+    };
+
+    // 初期兵士10名スタート！全員名もなき雑兵
     this.squad = [];
     for (let i = 0; i < 10; i++) {
       this.squad.push(this.createNewSoldier(i + 1));
@@ -434,7 +446,7 @@ export const IronSquadGame = {
   },
 
   resumeSavedGame() {
-    const saved = storage.get('ironsquad_save_data_v2', null);
+    const saved = storage.get('ironsquad_save_data_v3', null);
     if (!saved) {
       this.startFreshGame();
       return;
@@ -444,17 +456,16 @@ export const IronSquadGame = {
     this.exp = saved.exp || 0;
     this.gold = saved.gold || 50;
     this.rankIndex = saved.rankIndex || 0;
-    this.formation = saved.formation || 'GUARD';
     this.equipped = saved.equipped || { weapon: null, armor: null, amulet: null };
     this.inventory = saved.inventory || [];
     this.squad = saved.squad || [];
 
     this.player = {
-      x: BASE_CAMP.x,
-      y: BASE_CAMP.y,
-      hp: saved.player.hp || 150,
-      maxHp: saved.player.maxHp || 150,
-      atk: 28 + RANKS[this.rankIndex].bonusAtk + (this.equipped.weapon ? this.equipped.weapon.stats.atk || 0 : 0),
+      x: BASE_CAMP.x - 20,
+      y: BASE_CAMP.y - 20,
+      hp: saved.player.hp || 130,
+      maxHp: saved.player.maxHp || 130,
+      atk: 25 + RANKS[this.rankIndex].bonusAtk + (this.equipped.weapon ? this.equipped.weapon.stats.atk || 0 : 0),
       atkSpeed: 1.0 + (this.equipped.amulet ? (this.equipped.amulet.stats.atkSpeed || 0) * 0.01 : 0),
       speed: 135 + (this.equipped.amulet ? this.equipped.amulet.stats.speed || 0 : 0),
       atkCooldown: 0,
@@ -463,6 +474,15 @@ export const IronSquadGame = {
       lightning: (this.equipped.weapon ? this.equipped.weapon.stats.lightning : false) || false,
       slashAngle: 0,
       slashAnim: 0
+    };
+
+    this.squadNav = {
+      x: BASE_CAMP.x,
+      y: BASE_CAMP.y,
+      vx: 0,
+      vy: 0,
+      targetEnemy: null,
+      state: 'DEFEND'
     };
 
     this.initBattlefield();
@@ -477,7 +497,7 @@ export const IronSquadGame = {
     this.damageTexts = [];
     this.dropsOnField = [];
     this.spawnTimer = 0;
-    this.waveMonsterCount = 18 + this.wave * 6; // 大群
+    this.waveMonsterCount = 16 + this.wave * 6;
     this.spawnedInWave = 0;
     this.waveKills = 0;
   },
@@ -498,6 +518,8 @@ export const IronSquadGame = {
       atkCooldown: 0,
       x: BASE_CAMP.x + (Math.random() - 0.5) * 80,
       y: BASE_CAMP.y + (Math.random() - 0.5) * 80,
+      vx: 0,
+      vy: 0,
       dead: false
     };
   },
@@ -509,7 +531,6 @@ export const IronSquadGame = {
         exp: this.exp,
         gold: this.gold,
         rankIndex: this.rankIndex,
-        formation: this.formation,
         player: {
           hp: this.player.hp,
           maxHp: this.player.maxHp
@@ -518,14 +539,14 @@ export const IronSquadGame = {
         inventory: this.inventory,
         squad: this.squad.filter(s => !s.dead)
       };
-      storage.set('ironsquad_save_data_v2', data);
+      storage.set('ironsquad_save_data_v3', data);
     } catch (e) {
       console.warn('Save failed:', e);
     }
   },
 
   clearSavedGame() {
-    storage.set('ironsquad_save_data_v2', null);
+    storage.set('ironsquad_save_data_v3', null);
   },
 
   setupInput() {
@@ -592,6 +613,16 @@ export const IronSquadGame = {
     };
   },
 
+  // 伍長以上の号令発動（呼集の笛）
+  triggerCommand() {
+    const currentRank = RANKS[this.rankIndex];
+    if (!currentRank.canCommand) return;
+
+    sound.playLaunch();
+    this.commandActiveUntil = performance.now() + 6000; // 6秒間部隊を引き寄せる
+    this.showToast(`📢 笛を吹いた！「こちらへ集まれ！」`);
+  },
+
   updateStatsUI() {
     const rank = RANKS[this.rankIndex];
     document.getElementById('player-rank').textContent = rank.title;
@@ -599,6 +630,14 @@ export const IronSquadGame = {
     const aliveCount = this.squad.filter(s => !s.dead).length;
     document.getElementById('squad-alive').textContent = `${aliveCount}/${rank.maxSquad}`;
     document.getElementById('current-gold').textContent = `${this.gold}G`;
+
+    // 号令ボタンの表示切替
+    const cmdContainer = document.getElementById('command-btn-container');
+    if (rank.canCommand) {
+      cmdContainer.classList.remove('hidden');
+    } else {
+      cmdContainer.classList.add('hidden');
+    }
   },
 
   startNextWave() {
@@ -611,13 +650,11 @@ export const IronSquadGame = {
     this.inBattle = true;
     this.spawnedInWave = 0;
     this.waveKills = 0;
-    this.waveMonsterCount = 18 + this.wave * 6;
+    this.waveMonsterCount = 16 + this.wave * 6;
 
-    // プレイヤー回復
     this.player.hp = this.player.maxHp;
 
     const currentMax = RANKS[this.rankIndex].maxSquad;
-    // 生存兵士の成長
     this.squad.forEach((s) => {
       if (!s.dead) {
         s.survivedWaves++;
@@ -630,7 +667,6 @@ export const IronSquadGame = {
       }
     });
 
-    // 死亡枠に新兵を補充
     this.squad = this.squad.filter(s => !s.dead);
     let newCount = 1;
     while (this.squad.length < currentMax) {
@@ -643,7 +679,6 @@ export const IronSquadGame = {
   },
 
   spawnMonster() {
-    // マップ外縁から出現
     const side = Math.floor(Math.random() * 4);
     let x, y;
     if (side === 0) { x = Math.random() * MAP_WIDTH; y = 40; }
@@ -691,19 +726,15 @@ export const IronSquadGame = {
   update(dt) {
     if (!this.inBattle) return;
 
-    // プレイヤー移動
-    let speedMult = 1.0;
-    if (this.formation === 'ASSAULT') speedMult = 1.2;
-    if (this.formation === 'WALL') speedMult = 0.85;
-
+    // プレイヤー移動（ソロで自由にどこへでも行ける）
     if (this.joystick.active) {
-      this.player.x += this.joystick.dirX * this.player.speed * speedMult * dt;
-      this.player.y += this.joystick.dirY * this.player.speed * speedMult * dt;
+      this.player.x += this.joystick.dirX * this.player.speed * dt;
+      this.player.y += this.joystick.dirY * this.player.speed * dt;
       this.player.x = Math.max(30, Math.min(MAP_WIDTH - 30, this.player.x));
       this.player.y = Math.max(30, Math.min(MAP_HEIGHT - 30, this.player.y));
     }
 
-    // カメラのスムーズ追従
+    // カメラ追従
     this.camera.x += (this.player.x - this.width / 2 - this.camera.x) * 0.1;
     this.camera.y += (this.player.y - this.height / 2 - this.camera.y) * 0.1;
     this.camera.x = Math.max(0, Math.min(MAP_WIDTH - this.width, this.camera.x));
@@ -725,6 +756,91 @@ export const IronSquadGame = {
       healBadge.classList.add('hidden');
     }
 
+    // =========================================================================
+    // 部隊の自律行動AI（部隊は勝手に動き、主人公には従わない！）
+    // =========================================================================
+    const aliveSquad = this.squad.filter(s => !s.dead);
+    const now = performance.now();
+    const isCommandActive = now < this.commandActiveUntil;
+    const currentRank = RANKS[this.rankIndex];
+
+    // 部隊の重心を計算
+    let squadCenterX = BASE_CAMP.x;
+    let squadCenterY = BASE_CAMP.y;
+    if (aliveSquad.length > 0) {
+      squadCenterX = aliveSquad.reduce((sum, s) => sum + s.x, 0) / aliveSquad.length;
+      squadCenterY = aliveSquad.reduce((sum, s) => sum + s.y, 0) / aliveSquad.length;
+    }
+
+    // 主人公と部隊の距離チェック（近接共闘か単独行動か）
+    const distToSquad = Math.hypot(this.player.x - squadCenterX, this.player.y - squadCenterY);
+    const proxBadge = document.getElementById('squad-proximity-badge');
+    if (aliveSquad.length === 0) {
+      proxBadge.className = 'proximity-badge proximity-danger';
+      proxBadge.textContent = '☠️ 部隊全滅！完全孤立！';
+    } else if (distToSquad < 120) {
+      proxBadge.className = 'proximity-badge proximity-close';
+      proxBadge.textContent = '🟢 部隊と共闘中 (安全)';
+    } else {
+      proxBadge.className = 'proximity-badge proximity-far';
+      proxBadge.textContent = `⚠️ 単独行動中！(部隊まで ${Math.floor(distToSquad)}m)`;
+    }
+
+    // 部隊の目標決定
+    // 百人隊長(Rank 5)以上なら完全指揮で主人公に追従。
+    // それ未満なら、号令発動中のみ主人公へ、平常時は自律的に最も近い敵または本陣防衛へ！
+    let squadTargetX = BASE_CAMP.x;
+    let squadTargetY = BASE_CAMP.y;
+
+    if (currentRank.level >= 5) {
+      // 出世して百人隊長以上！完全指揮権
+      squadTargetX = this.player.x;
+      squadTargetY = this.player.y;
+    } else if (isCommandActive) {
+      // 伍長の呼集笛発動中！主人公の元へ駆けつける
+      squadTargetX = this.player.x;
+      squadTargetY = this.player.y;
+    } else {
+      // 雑兵の平常時：部隊は自律してモンスター迎撃へ進軍！
+      const nearestToSquad = this.getNearestMonster(squadCenterX, squadCenterY);
+      if (nearestToSquad) {
+        squadTargetX = nearestToSquad.x;
+        squadTargetY = nearestToSquad.y;
+      } else {
+        squadTargetX = BASE_CAMP.x;
+        squadTargetY = BASE_CAMP.y;
+      }
+    }
+
+    // 各兵士の自律移動と戦闘
+    aliveSquad.forEach((soldier, idx) => {
+      // 部隊重心を中心とした集団散開
+      const angle = (idx / aliveSquad.length) * Math.PI * 2 + (now * 0.0006);
+      const scatterDist = 32 + (idx % 3) * 12;
+      const myGoalX = squadTargetX + Math.cos(angle) * scatterDist;
+      const myGoalY = squadTargetY + Math.sin(angle) * scatterDist;
+
+      const dx = myGoalX - soldier.x;
+      const dy = myGoalY - soldier.y;
+      const d = Math.hypot(dx, dy);
+      if (d > 8) {
+        soldier.x += (dx / d) * Math.min(d * 3.5, 130) * dt;
+        soldier.y += (dy / d) * Math.min(d * 3.5, 130) * dt;
+      }
+
+      // 兵士のオート攻撃
+      soldier.atkCooldown = (soldier.atkCooldown || 0) - dt;
+      const enemy = this.getNearestMonster(soldier.x, soldier.y);
+      if (enemy && soldier.atkCooldown <= 0) {
+        const distE = Math.hypot(enemy.x - soldier.x, enemy.y - soldier.y);
+        if (distE <= 65) {
+          soldier.atkCooldown = 0.75;
+          const totalAtk = soldier.atk + (soldier.weapon ? soldier.weapon.stats.atk || 0 : 0);
+          this.performAttack({ ...soldier, atk: totalAtk }, enemy, false);
+        }
+      }
+    });
+
     // 主人公の自動攻撃
     this.player.atkCooldown -= dt;
     if (this.player.slashAnim > 0) this.player.slashAnim -= dt * 6;
@@ -740,56 +856,6 @@ export const IronSquadGame = {
       }
     }
 
-    // 仲間兵士たちの陣形追従と攻撃
-    const aliveSquad = this.squad.filter(s => !s.dead);
-    aliveSquad.forEach((soldier, idx) => {
-      // 陣形目標位置の計算
-      let targetX, targetY;
-      if (this.formation === 'GUARD') {
-        // 主人公を囲む円陣
-        const angle = (idx / aliveSquad.length) * Math.PI * 2 + (performance.now() * 0.0008);
-        const dist = 42;
-        targetX = this.player.x + Math.cos(angle) * dist;
-        targetY = this.player.y + Math.sin(angle) * dist;
-      } else if (this.formation === 'ASSAULT') {
-        // 前方楔形陣
-        const forwardAngle = this.player.slashAngle || 0;
-        const offsetDist = 30 + Math.floor(idx / 2) * 22;
-        const sideOffset = (idx % 2 === 0 ? 1 : -1) * (15 + (idx * 6));
-        targetX = this.player.x + Math.cos(forwardAngle) * offsetDist + Math.sin(forwardAngle) * sideOffset;
-        targetY = this.player.y + Math.sin(forwardAngle) * offsetDist - Math.cos(forwardAngle) * sideOffset;
-      } else {
-        // 密集陣 (WALL)
-        const row = Math.floor(idx / 5);
-        const col = (idx % 5) - 2;
-        targetX = this.player.x + col * 20;
-        targetY = this.player.y + (row + 1) * 24;
-      }
-
-      // 追従移動
-      const dx = targetX - soldier.x;
-      const dy = targetY - soldier.y;
-      const d = Math.hypot(dx, dy);
-      if (d > 6) {
-        soldier.x += (dx / d) * Math.min(d * 4, 160) * dt;
-        soldier.y += (dy / d) * Math.min(d * 4, 160) * dt;
-      }
-
-      // 攻撃
-      soldier.atkCooldown = (soldier.atkCooldown || 0) - dt;
-      const enemy = this.getNearestMonster(soldier.x, soldier.y);
-      if (enemy && soldier.atkCooldown <= 0) {
-        const distE = Math.hypot(enemy.x - soldier.x, enemy.y - soldier.y);
-        if (distE <= 70) {
-          soldier.atkCooldown = 0.72;
-          let atkBonus = 0;
-          if (this.formation === 'ASSAULT') atkBonus = soldier.atk * 0.25;
-          const totalAtk = soldier.atk + atkBonus + (soldier.weapon ? soldier.weapon.stats.atk || 0 : 0);
-          this.performAttack({ ...soldier, atk: totalAtk }, enemy, false);
-        }
-      }
-    });
-
     // モンスター生成
     if (this.spawnedInWave < this.waveMonsterCount) {
       this.spawnTimer += dt;
@@ -804,6 +870,7 @@ export const IronSquadGame = {
       const m = this.monsters[i];
       if (m.hitPulse > 0) m.hitPulse -= dt * 4;
 
+      // 最も近い獲物（主人公または仲間兵士）
       let target = this.player;
       let minDist = Math.hypot(this.player.x - m.x, this.player.y - m.y);
 
@@ -826,9 +893,7 @@ export const IronSquadGame = {
         m.atkTimer = (m.atkTimer || 0) - dt;
         if (m.atkTimer <= 0) {
           m.atkTimer = 1.0;
-          let incomingDmg = m.atk;
-          if (this.formation === 'WALL') incomingDmg = Math.floor(incomingDmg * 0.7); // 被ダメ30%減
-          this.damageTarget(target, incomingDmg);
+          this.damageTarget(target, m.atk);
         }
       }
     }
@@ -860,7 +925,7 @@ export const IronSquadGame = {
       if (p.life <= 0) this.particles.splice(i, 1);
     }
 
-    // ウェーブ完了判定
+    // ウェーブクリア判定
     if (this.spawnedInWave >= this.waveMonsterCount && this.monsters.length === 0) {
       this.completeWave();
     }
@@ -960,7 +1025,7 @@ export const IronSquadGame = {
       this.player.hp = this.player.maxHp;
       this.player.atk += nextRank.bonusAtk;
       sound.playHighScore();
-      this.showToast(`🎖️ 【立身出世】${nextRank.title}に昇進！最大部隊${nextRank.maxSquad}名`);
+      this.showToast(`🎖️ 【昇進】${nextRank.title}へ！${nextRank.canCommand ? '号令解禁！' : ''}`);
       this.saveGame();
       this.updateStatsUI();
     }
@@ -993,12 +1058,12 @@ export const IronSquadGame = {
   equipItem(item) {
     if (item.type === 'WEAPON') {
       this.equipped.weapon = item;
-      this.player.atk = 28 + RANKS[this.rankIndex].bonusAtk + (item.stats.atk || 0);
+      this.player.atk = 25 + RANKS[this.rankIndex].bonusAtk + (item.stats.atk || 0);
       this.player.crit = item.stats.crit || 10;
       this.player.lightning = !!item.stats.lightning;
     } else if (item.type === 'ARMOR') {
       this.equipped.armor = item;
-      this.player.maxHp = 150 + RANKS[this.rankIndex].bonusHp + (item.stats.hp || 0);
+      this.player.maxHp = 130 + RANKS[this.rankIndex].bonusHp + (item.stats.hp || 0);
       this.player.hp = Math.min(this.player.hp, this.player.maxHp);
     } else if (item.type === 'AMULET') {
       this.equipped.amulet = item;
@@ -1010,7 +1075,6 @@ export const IronSquadGame = {
     this.saveGame();
   },
 
-  // 兵士の叙勲（名前授与システム）
   grantSoldierHonor(soldierId) {
     const s = this.squad.find(s => s.id === soldierId);
     if (!s || s.isNamed) return;
@@ -1024,7 +1088,7 @@ export const IronSquadGame = {
     s.atk += 15;
 
     sound.playHighScore();
-    this.showToast(`✨ 【叙勲授与】${s.title}${s.name} が誕生した！`);
+    this.showToast(`✨ 【叙勲】${s.title}${s.name} が誕生した！`);
     this.saveGame();
     this.renderStrategyUI();
   },
@@ -1061,7 +1125,7 @@ export const IronSquadGame = {
   completeWave() {
     this.inBattle = false;
     sound.playHighScore();
-    this.gold += 30; // クリア報酬
+    this.gold += 30;
     this.saveGame();
     this.openStrategyModal(false);
   },
@@ -1075,7 +1139,7 @@ export const IronSquadGame = {
 
     if (isManualOpen) {
       titleEl.textContent = '⛺ 本陣戦略会議 (駐屯中)';
-      reportEl.textContent = '陣形の変更、叙勲の授与、武器の配備、傷ついた兵士の治療を行えます。';
+      reportEl.textContent = '叙勲の授与、武器の配備、傷ついた兵士の治療を行えます。';
       nextBtn.classList.add('hidden');
       closeBtn.classList.remove('hidden');
       this.inBattle = false;
@@ -1098,17 +1162,16 @@ export const IronSquadGame = {
   renderStrategyUI() {
     document.getElementById('strat-gold').textContent = this.gold;
 
-    // 装備UI
     const eq = this.equipped;
     const playerEquipBox = document.getElementById('player-equip-box');
     playerEquipBox.innerHTML = `
-      <div style="font-size: 11px; font-weight: bold; color: #ffaa00; margin-bottom: 6px;">【小隊長の装備】</div>
+      <div style="font-size: 11px; font-weight: bold; color: #ffaa00; margin-bottom: 6px;">【あなたの装備】</div>
       <div style="font-size: 12px; margin-bottom: 4px; color: ${eq.weapon ? eq.weapon.color : '#888'};">
-        🗡️ 武器: <strong>${eq.weapon ? eq.weapon.name : '標準の剣'}</strong>
+        🗡️ 武器: <strong>${eq.weapon ? eq.weapon.name : '支給の短剣'}</strong>
         ${eq.weapon ? `<span style="color:#aaa; font-size:11px;"> (+${eq.weapon.stats.atk} ATK)</span>` : ''}
       </div>
       <div style="font-size: 12px; margin-bottom: 4px; color: ${eq.armor ? eq.armor.color : '#888'};">
-        🛡️ 防具: <strong>${eq.armor ? eq.armor.name : '隊長の革鎧'}</strong>
+        🛡️ 防具: <strong>${eq.armor ? eq.armor.name : '雑兵の布服'}</strong>
         ${eq.armor ? `<span style="color:#aaa; font-size:11px;"> (+${eq.armor.stats.hp} HP)</span>` : ''}
       </div>
       <div style="font-size: 12px; color: ${eq.amulet ? eq.amulet.color : '#888'};">
@@ -1116,7 +1179,6 @@ export const IronSquadGame = {
       </div>
     `;
 
-    // インベントリ一覧
     const invList = document.getElementById('inventory-list');
     if (!this.inventory || this.inventory.length === 0) {
       invList.innerHTML = '<div style="font-size: 12px; color: #666; text-align: center; padding: 10px;">バッグは空です (敵討伐で宝箱ドロップ)</div>';
@@ -1151,7 +1213,6 @@ export const IronSquadGame = {
       });
     }
 
-    // 部隊名簿 ＆ 叙勲
     const squadList = document.getElementById('squad-roster-list');
     const alive = this.squad.filter(s => !s.dead);
     squadList.innerHTML = '';
@@ -1246,19 +1307,15 @@ export const IronSquadGame = {
     this.ctx.clearRect(0, 0, this.width, this.height);
 
     this.ctx.save();
-    // カメラオフセットを適用
     this.ctx.translate(-this.camera.x, -this.camera.y);
 
-    // 戦場マップ背景（荒野）
     this.ctx.fillStyle = '#0d1017';
     this.ctx.fillRect(0, 0, MAP_WIDTH, MAP_HEIGHT);
 
-    // 外枠境界線
     this.ctx.strokeStyle = '#ef4444';
     this.ctx.lineWidth = 4;
     this.ctx.strokeRect(0, 0, MAP_WIDTH, MAP_HEIGHT);
 
-    // グリッド線
     this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
     this.ctx.lineWidth = 1;
     for (let x = 0; x < MAP_WIDTH; x += 50) {
@@ -1274,9 +1331,8 @@ export const IronSquadGame = {
       this.ctx.stroke();
     }
 
-    // 自軍の拠点（BASE CAMP）の描画
+    // 自軍の拠点
     this.ctx.save();
-    // 結界サークル
     this.ctx.fillStyle = 'rgba(16, 185, 129, 0.08)';
     this.ctx.strokeStyle = '#10b981';
     this.ctx.lineWidth = 2;
@@ -1287,7 +1343,6 @@ export const IronSquadGame = {
     this.ctx.stroke();
     this.ctx.setLineDash([]);
 
-    // 砦の旗 ＆ 本陣テキスト
     this.ctx.fillStyle = '#34d399';
     this.ctx.font = 'bold 16px sans-serif';
     this.ctx.textAlign = 'center';
@@ -1320,7 +1375,6 @@ export const IronSquadGame = {
       this.ctx.arc(0, 0, m.radius, 0, Math.PI * 2);
       this.ctx.fill();
 
-      // HPバー
       const barW = m.radius * 2;
       this.ctx.fillStyle = 'rgba(0,0,0,0.5)';
       this.ctx.fillRect(-barW / 2, -m.radius - 8, barW, 4);
@@ -1329,39 +1383,35 @@ export const IronSquadGame = {
       this.ctx.restore();
     }
 
-    // 仲間兵士たちの描画
+    // 仲間兵士たち（自律行動）
     if (this.squad) {
       this.squad.forEach((s) => {
         if (s.dead) return;
         this.ctx.save();
         this.ctx.translate(s.x, s.y);
 
-        // 叙勲された英雄兵士は光るマント・オーラ
         if (s.isNamed) {
           this.ctx.shadowColor = '#ffe600';
           this.ctx.shadowBlur = 14;
-          this.ctx.fillStyle = '#fbbf24'; // 黄金カラー
+          this.ctx.fillStyle = '#fbbf24';
         } else if (s.survivedWaves >= 2) {
           this.ctx.shadowColor = '#00f0ff';
           this.ctx.shadowBlur = 8;
-          this.ctx.fillStyle = '#38bdf8'; // 銀・水色
+          this.ctx.fillStyle = '#38bdf8';
         } else {
-          this.ctx.fillStyle = '#10b981'; // 新兵グリーン
+          this.ctx.fillStyle = '#10b981';
         }
 
         this.ctx.beginPath();
         this.ctx.arc(0, 0, s.isNamed ? 11 : 9, 0, Math.PI * 2);
         this.ctx.fill();
 
-        // 名前表示 (叙勲兵は二つ名も)
         this.ctx.shadowBlur = 0;
         this.ctx.fillStyle = s.isNamed ? '#ffe600' : '#cbd5e1';
         this.ctx.font = s.isNamed ? 'bold 10px sans-serif' : '8px sans-serif';
         this.ctx.textAlign = 'center';
-        const displayName = s.isNamed ? s.name : s.name;
-        this.ctx.fillText(displayName, 0, -13);
+        this.ctx.fillText(s.name, 0, -13);
 
-        // HPバー
         this.ctx.fillStyle = 'rgba(0,0,0,0.5)';
         this.ctx.fillRect(-10, 11, 20, 3);
         this.ctx.fillStyle = s.isNamed ? '#fbbf24' : '#10b981';
@@ -1371,7 +1421,7 @@ export const IronSquadGame = {
       });
     }
 
-    // 主人公描画
+    // 主人公（一介の雑兵、青色）
     if (this.player) {
       this.ctx.save();
       this.ctx.translate(this.player.x, this.player.y);
@@ -1380,17 +1430,17 @@ export const IronSquadGame = {
       this.ctx.shadowBlur = 15;
 
       this.ctx.beginPath();
-      this.ctx.arc(0, 0, 13, 0, Math.PI * 2);
+      this.ctx.arc(0, 0, 12, 0, Math.PI * 2);
       this.ctx.fill();
 
-      // 小隊長の王冠
+      // 出世すると頭上マークが進化（雑兵は盾、伍長は星、将軍は王冠）
       this.ctx.fillStyle = '#fbbf24';
-      this.ctx.font = '11px sans-serif';
+      this.ctx.font = '10px sans-serif';
       this.ctx.textAlign = 'center';
       this.ctx.textBaseline = 'middle';
-      this.ctx.fillText('👑', 0, 0);
+      const mark = this.rankIndex >= 4 ? '👑' : (this.rankIndex >= 2 ? '⭐' : '🛡️');
+      this.ctx.fillText(mark, 0, 0);
 
-      // HPバー
       this.ctx.shadowBlur = 0;
       this.ctx.fillStyle = 'rgba(0,0,0,0.6)';
       this.ctx.fillRect(-16, -19, 32, 5);
@@ -1410,7 +1460,6 @@ export const IronSquadGame = {
       this.ctx.restore();
     }
 
-    // ダメージポップアップ
     for (const dtObj of this.damageTexts) {
       this.ctx.fillStyle = dtObj.color;
       this.ctx.font = 'bold 13px sans-serif';
@@ -1418,7 +1467,6 @@ export const IronSquadGame = {
       this.ctx.fillText(dtObj.text, dtObj.x, dtObj.y);
     }
 
-    // パーティクル
     for (const p of this.particles) {
       this.ctx.fillStyle = p.color;
       this.ctx.beginPath();
@@ -1428,7 +1476,7 @@ export const IronSquadGame = {
 
     this.ctx.restore(); // カメラ復元
 
-    // 画面固定UI: バーチャルジョイスティック
+    // ジョイスティック
     if (this.joystick && this.joystick.active) {
       this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
       this.ctx.lineWidth = 2;
@@ -1449,7 +1497,6 @@ export const IronSquadGame = {
     const mh = 70;
     mCtx.clearRect(0, 0, mw, mh);
 
-    // 背景
     mCtx.fillStyle = 'rgba(11, 13, 20, 0.75)';
     mCtx.fillRect(0, 0, mw, mh);
 
@@ -1462,7 +1509,7 @@ export const IronSquadGame = {
     mCtx.arc(BASE_CAMP.x * scaleX, BASE_CAMP.y * scaleY, BASE_CAMP.radius * scaleX, 0, Math.PI * 2);
     mCtx.fill();
 
-    // 敵モンスター (赤点)
+    // 敵 (赤点)
     mCtx.fillStyle = '#ef4444';
     for (const m of this.monsters) {
       mCtx.fillRect(m.x * scaleX - 1, m.y * scaleY - 1, 2, 2);
@@ -1474,7 +1521,7 @@ export const IronSquadGame = {
       if (!s.dead) mCtx.fillRect(s.x * scaleX - 1, s.y * scaleY - 1, 2, 2);
     }
 
-    // 主人公 (青・白点)
+    // 主人公 (青点)
     if (this.player) {
       mCtx.fillStyle = '#00f0ff';
       mCtx.beginPath();

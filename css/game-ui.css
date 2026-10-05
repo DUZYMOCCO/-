@@ -339,5 +339,63 @@ canvas {
   box-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
 }
 
+/* 部隊距離インジケーター */
+.proximity-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 5px 10px;
+  border-radius: 12px;
+  pointer-events: none;
+  z-index: 10;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.proximity-close {
+  background: rgba(16, 185, 129, 0.2);
+  border: 1px solid #10b981;
+  color: #34d399;
+}
+
+.proximity-far {
+  background: rgba(245, 158, 11, 0.25);
+  border: 1px solid #f59e0b;
+  color: #fbbf24;
+}
+
+.proximity-danger {
+  background: rgba(239, 68, 68, 0.3);
+  border: 1px solid #ef4444;
+  color: #f87171;
+}
+
+/* 号令ボタン (出世で解禁) */
+.command-container {
+  position: absolute;
+  bottom: 25px;
+  right: 20px;
+  z-index: 15;
+}
+
+.command-btn {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  border: 2px solid #fde68a;
+  color: #0b0d14;
+  font-size: 13px;
+  font-weight: 900;
+  padding: 10px 16px;
+  border-radius: 20px;
+  box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4);
+  cursor: pointer;
+}
+
+.command-btn:active {
+  transform: scale(0.92);
+}
+
+
 
 
