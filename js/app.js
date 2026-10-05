@@ -163,9 +163,9 @@ class GameStudioApp {
 
 // アプリ安全起動
 function startApp() {
-  if (!window.app) {
+  if (!window.gameStudioInstance) {
     try {
-      window.app = new GameStudioApp();
+      window.gameStudioInstance = new GameStudioApp();
     } catch (err) {
       console.error('App init error:', err);
       const rescue = document.getElementById('rescue-banner');
