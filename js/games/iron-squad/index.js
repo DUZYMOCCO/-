@@ -19,14 +19,14 @@ const BASE_CAMP = { x: 900, y: 900, radius: 150 };
 // 階級データ (雑兵から始まり、出世で指揮権が解禁される！)
 const RANKS = [
   { level: 1, title: '二等雑兵', reqExp: 0, canCommand: false, maxSquad: 10, bonusHp: 0, bonusAtk: 0, desc: '指揮権なし。部隊の背中についていく側。' },
-  { level: 2, title: '一等兵', reqExp: 90, canCommand: false, maxSquad: 10, bonusHp: 35, bonusAtk: 8, desc: '死線を潜った古参雑兵。まだ指揮権はない。' },
-  { level: 3, title: '伍長 (班長昇進)', reqExp: 220, canCommand: true, commandType: 'WHISTLE', maxSquad: 12, bonusHp: 80, bonusAtk: 20, desc: '【呼集笛】解禁！近くの兵士を自分に集められる。' },
-  { level: 4, title: '軍曹 (小隊長代理)', reqExp: 450, canCommand: true, commandType: 'RALLY', maxSquad: 15, bonusHp: 150, bonusAtk: 38, desc: '【突撃号令】解禁！部隊の士気を一斉高揚。' },
-  { level: 5, title: '百人隊長 (部隊司令)', reqExp: 800, canCommand: true, commandType: 'FULL', maxSquad: 18, bonusHp: 240, bonusAtk: 65, desc: '【完全指揮権】獲得！部隊が主人公に追従。' },
-  { level: 6, title: '千人将', reqExp: 1300, canCommand: true, commandType: 'FULL', maxSquad: 22, bonusHp: 380, bonusAtk: 100, desc: '大隊を率いる猛将。' },
-  { level: 7, title: '近衛騎士団長', reqExp: 2000, canCommand: true, commandType: 'FULL', maxSquad: 26, bonusHp: 580, bonusAtk: 150, desc: '国王直属の近衛騎士団長。' },
-  { level: 8, title: '軍団総司令官', reqExp: 3000, canCommand: true, commandType: 'FULL', maxSquad: 30, bonusHp: 850, bonusAtk: 220, desc: '全軍の指揮を執る最高司令官。' },
-  { level: 9, title: '救国の英雄神将', reqExp: 4500, canCommand: true, commandType: 'FULL', maxSquad: 35, bonusHp: 1200, bonusAtk: 300, desc: '神話に語られる伝説の英雄。' }
+  { level: 2, title: '一等兵', reqExp: 300, canCommand: false, maxSquad: 10, bonusHp: 35, bonusAtk: 8, desc: '死線を潜った古参雑兵。まだ指揮権はない。' },
+  { level: 3, title: '伍長 (班長昇進)', reqExp: 900, canCommand: true, commandType: 'WHISTLE', maxSquad: 12, bonusHp: 80, bonusAtk: 20, desc: '【呼集笛】解禁！近くの兵士を自分に集められる。' },
+  { level: 4, title: '軍曹 (小隊長代理)', reqExp: 2000, canCommand: true, commandType: 'RALLY', maxSquad: 15, bonusHp: 150, bonusAtk: 38, desc: '【突撃号令】解禁！部隊の士気を一斉高揚。' },
+  { level: 5, title: '百人隊長 (部隊司令)', reqExp: 3800, canCommand: true, commandType: 'FULL', maxSquad: 18, bonusHp: 240, bonusAtk: 65, desc: '【完全指揮権】獲得！部隊が主人公に追従。' },
+  { level: 6, title: '千人将', reqExp: 6500, canCommand: true, commandType: 'FULL', maxSquad: 22, bonusHp: 380, bonusAtk: 100, desc: '大隊を率いる猛将。' },
+  { level: 7, title: '近衛騎士団長', reqExp: 10000, canCommand: true, commandType: 'FULL', maxSquad: 26, bonusHp: 580, bonusAtk: 150, desc: '国王直属の近衛騎士団長。' },
+  { level: 8, title: '軍団総司令官', reqExp: 15000, canCommand: true, commandType: 'FULL', maxSquad: 30, bonusHp: 850, bonusAtk: 220, desc: '全軍の指揮を執る最高司令官。' },
+  { level: 9, title: '救国の英雄神将', reqExp: 22000, canCommand: true, commandType: 'FULL', maxSquad: 35, bonusHp: 1200, bonusAtk: 300, desc: '神話に語られる伝説の英雄。' }
 ];
 
 const TITLES = ['不屈の', '疾風の', '鉄壁の', '歴戦の', '鬼神の', '紅蓮の', '隻眼の', '魔刃の', '金剛の', '閃光の'];
@@ -514,7 +514,7 @@ export const IronSquadGame = {
     this.damageTexts = [];
     this.dropsOnField = [];
     this.spawnTimer = 0;
-    this.waveMonsterCount = 16 + this.wave * 6;
+    this.waveMonsterCount = 20 + this.wave * 8;
     this.spawnedInWave = 0;
     this.waveKills = 0;
   },
@@ -528,9 +528,9 @@ export const IronSquadGame = {
       survivedWaves: 0,
       level: 1,
       rankTitle: '無名新兵',
-      hp: 75,
-      maxHp: 75,
-      atk: 15,
+      hp: 70,
+      maxHp: 70,
+      atk: 11,
       weapon: null,
       atkCooldown: 0,
       role: index % 2 === 0 ? 'sword' : 'spear', // 剣兵または槍兵
@@ -759,7 +759,7 @@ export const IronSquadGame = {
     this.inBattle = true;
     this.spawnedInWave = 0;
     this.waveKills = 0;
-    this.waveMonsterCount = 16 + this.wave * 6;
+    this.waveMonsterCount = 20 + this.wave * 8;
 
     this.player.hp = this.player.maxHp;
 
@@ -768,8 +768,8 @@ export const IronSquadGame = {
       if (!s.dead) {
         s.survivedWaves++;
         s.level++;
-        s.maxHp += 20;
-        s.atk += 5;
+        s.maxHp += 12;
+        s.atk += 3;
         if (!s.isNamed) {
           s.rankTitle = s.survivedWaves >= 2 ? '叙勲候補' : '古参雑兵';
         }
@@ -787,36 +787,51 @@ export const IronSquadGame = {
     this.updateStatsUI();
   },
 
-  spawnMonster() {
+  spawnPack(size) {
+    const side = Math.floor(Math.random() * 4);
+    let cx, cy;
+    if (side === 0) { cx = 100 + Math.random() * (MAP_WIDTH - 200); cy = 60; }
+    else if (side === 1) { cx = MAP_WIDTH - 60; cy = 100 + Math.random() * (MAP_HEIGHT - 200); }
+    else if (side === 2) { cx = 100 + Math.random() * (MAP_WIDTH - 200); cy = MAP_HEIGHT - 60; }
+    else { cx = 60; cy = 100 + Math.random() * (MAP_HEIGHT - 200); }
+    for (let i = 0; i < size && this.spawnedInWave < this.waveMonsterCount; i++) {
+      this.spawnMonster(cx + (Math.random() - 0.5) * 90, cy + (Math.random() - 0.5) * 90);
+    }
+  },
+
+  spawnMonster(px, py) {
     const side = Math.floor(Math.random() * 4);
     let x, y;
-    if (side === 0) { x = Math.random() * MAP_WIDTH; y = 40; }
+    if (px !== undefined) { x = px; y = py; }
+    else if (side === 0) { x = Math.random() * MAP_WIDTH; y = 40; }
     else if (side === 1) { x = MAP_WIDTH - 40; y = Math.random() * MAP_HEIGHT; }
     else if (side === 2) { x = Math.random() * MAP_WIDTH; y = MAP_HEIGHT - 40; }
     else { x = 40; y = Math.random() * MAP_HEIGHT; }
+    x = Math.max(30, Math.min(MAP_WIDTH - 30, x));
+    y = Math.max(30, Math.min(MAP_HEIGHT - 30, y));
 
     const isBoss = (this.wave % 5 === 0) && (this.spawnedInWave === this.waveMonsterCount - 1);
-    const isElite = Math.random() < 0.16;
+    const isElite = Math.random() < Math.min(0.3, 0.12 + this.wave * 0.015);
 
     let type = 'goblin';
-    let hp = 35 + this.wave * 12;
-    let atk = 9 + this.wave * 3;
-    let speed = 65 + Math.random() * 20;
+    let hp = 55 + this.wave * 17;
+    let atk = 14 + this.wave * 4;
+    let speed = 76 + Math.random() * 20;
     let radius = 11;
     let color = '#34d399';
 
     if (isBoss) {
       type = 'dragon';
       hp = (220 + this.wave * 70) * 4;
-      atk = 24 + this.wave * 7;
-      speed = 46;
+      atk = 34 + this.wave * 8;
+      speed = 56;
       radius = 26;
       color = '#ef4444';
     } else if (isElite) {
       type = 'orc';
-      hp = (50 + this.wave * 22) * 2;
-      atk = 15 + this.wave * 4;
-      speed = 52;
+      hp = (60 + this.wave * 26) * 2;
+      atk = 24 + this.wave * 5;
+      speed = 64;
       radius = 16;
       color = '#f59e0b';
     }
@@ -902,10 +917,10 @@ export const IronSquadGame = {
 
     if (inBaseCamp) {
       healBadge.classList.remove('hidden');
-      const healAmt = 15 * dt;
+      const healAmt = 12 * dt;
       this.player.hp = Math.min(this.player.maxHp, this.player.hp + healAmt);
       this.squad.forEach((s) => {
-        if (!s.dead) s.hp = Math.min(s.maxHp, s.hp + healAmt);
+        if (!s.dead) s.hp = Math.min(s.maxHp, s.hp + healAmt * 0.6);
       });
     } else {
       healBadge.classList.add('hidden');
@@ -987,8 +1002,8 @@ export const IronSquadGame = {
       const enemy = this.getNearestMonster(soldier.x, soldier.y);
       if (enemy && soldier.atkCooldown <= 0) {
         const distE = Math.hypot(enemy.x - soldier.x, enemy.y - soldier.y);
-        if (distE <= 65) {
-          soldier.atkCooldown = 0.75;
+        if (distE <= 44) {
+          soldier.atkCooldown = 0.85;
           soldier.atkAnim = 1.0;
           soldier.facingAngle = Math.atan2(enemy.y - soldier.y, enemy.x - soldier.x);
           const totalAtk = soldier.atk + (soldier.weapon ? soldier.weapon.stats.atk || 0 : 0);
@@ -1015,9 +1030,9 @@ export const IronSquadGame = {
     // モンスター生成
     if (this.spawnedInWave < this.waveMonsterCount) {
       this.spawnTimer += dt;
-      if (this.spawnTimer >= Math.max(0.35, 1.2 - this.wave * 0.07)) {
+      if (this.spawnTimer >= Math.max(1.8, 3.6 - this.wave * 0.1)) {
         this.spawnTimer = 0;
-        this.spawnMonster();
+        this.spawnPack(Math.min(6, 2 + Math.floor(this.wave / 2)));
       }
     }
 
@@ -1153,7 +1168,8 @@ export const IronSquadGame = {
     if (idx !== -1) this.monsters.splice(idx, 1);
     this.waveKills++;
 
-    const expGain = monster.isBoss ? 60 : (monster.isElite ? 20 : 5);
+    const expBase = monster.isBoss ? 50 : (monster.isElite ? 12 : 3);
+    const expGain = Math.max(1, Math.round(expBase * (1 + this.wave * 0.08)));
     const goldGain = monster.isBoss ? 40 : (monster.isElite ? 15 : 3);
     this.gainExp(expGain);
     this.gold += goldGain;
