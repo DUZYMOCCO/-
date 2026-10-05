@@ -420,13 +420,14 @@ export const IronSquadGame = {
       maxHp: 130,
       atk: 25,
       atkSpeed: 1.0,
-      speed: 135,
+      speed: 165, // 部隊(105px/s)より快適に速く動ける基礎速度
       atkCooldown: 0,
       crit: 10,
       vampire: 0,
       lightning: false,
       slashAngle: 0,
-      slashAnim: 0
+      slashAnim: 0,
+      facingAngle: 0
     };
 
     this.equipped = {
@@ -481,13 +482,14 @@ export const IronSquadGame = {
       maxHp: saved.player.maxHp || 130,
       atk: 25 + RANKS[this.rankIndex].bonusAtk + (this.equipped.weapon ? this.equipped.weapon.stats.atk || 0 : 0),
       atkSpeed: 1.0 + (this.equipped.amulet ? (this.equipped.amulet.stats.atkSpeed || 0) * 0.01 : 0),
-      speed: 135 + (this.equipped.amulet ? this.equipped.amulet.stats.speed || 0 : 0),
+      speed: 165 + (this.equipped.amulet ? this.equipped.amulet.stats.speed || 0 : 0),
       atkCooldown: 0,
       crit: (this.equipped.weapon ? this.equipped.weapon.stats.crit : 10) || 10,
       vampire: (this.equipped.amulet ? this.equipped.amulet.stats.vampire : 0) || 0,
       lightning: (this.equipped.weapon ? this.equipped.weapon.stats.lightning : false) || false,
       slashAngle: 0,
-      slashAnim: 0
+      slashAnim: 0,
+      facingAngle: 0
     };
 
     this.squadNav = {
@@ -530,6 +532,9 @@ export const IronSquadGame = {
       atk: 15,
       weapon: null,
       atkCooldown: 0,
+      role: index % 2 === 0 ? 'sword' : 'spear', // 剣兵または槍兵
+      facingAngle: 0,
+      atkAnim: 0,
       x: BASE_CAMP.x + (Math.random() - 0.5) * 80,
       y: BASE_CAMP.y + (Math.random() - 0.5) * 80,
       vx: 0,
@@ -829,12 +834,58 @@ export const IronSquadGame = {
   update(dt) {
     if (!this.inBattle) return;
 
-    // プレイヤー移動（ソロで自由にどこへでも行ける）
+    const aliveSquad = this.squad.filter(s => !s.dead);
+    const now = performance.now();
+    const isCommandActive = now < this.commandActiveUntil;
+    const currentRank = RANKS[this.rankIndex];
+
+    // 部隊の重心を計算
+    let squadCenterX = BASE_CAMP.x;
+    let squadCenterY = BASE_CAMP.y;
+    if (aliveSquad.length > 0) {
+      squadCenterX = aliveSquad.reduce((sum, s) => sum + s.x, 0) / aliveSquad.length;
+      squadCenterY = aliveSquad.reduce((sum, s) => sum + s.y, 0) / aliveSquad.length;
+    }
+
+    // 主人公と部隊の距離チェック
+    const distToSquad = Math.hypot(this.player.x - squadCenterX, this.player.y - squadCenterY);
+
+    // プレイヤー移動（ソロで自由に動け、部隊方向へ向かう時はダッシュ追従ブースト！）
+    let playerMoveSpeed = this.player.speed;
+    let isCatchingUp = false;
+
     if (this.joystick.active) {
-      this.player.x += this.joystick.dirX * this.player.speed * dt;
-      this.player.y += this.joystick.dirY * this.player.speed * dt;
+      if (distToSquad > 80 && aliveSquad.length > 0) {
+        // 部隊重心への方向とスティック入力の内積
+        const toSquadX = (squadCenterX - this.player.x) / distToSquad;
+        const toSquadY = (squadCenterY - this.player.y) / distToSquad;
+        const dot = this.joystick.dirX * toSquadX + this.joystick.dirY * toSquadY;
+        if (dot > 0.25) {
+          // 部隊へ駆け寄っている時はダッシュブースト！（最大1.32倍 ≒ 218px/s）
+          playerMoveSpeed = this.player.speed * (1.18 + dot * 0.14);
+          isCatchingUp = true;
+          if (Math.random() < 0.22) {
+            this.particles.push({
+              x: this.player.x + (Math.random() - 0.5) * 6,
+              y: this.player.y + 8,
+              vx: -this.joystick.dirX * 20,
+              vy: -this.joystick.dirY * 20,
+              color: 'rgba(210, 200, 180, 0.45)',
+              size: 2.5,
+              life: 0.25
+            });
+          }
+        }
+      }
+
+      this.player.x += this.joystick.dirX * playerMoveSpeed * dt;
+      this.player.y += this.joystick.dirY * playerMoveSpeed * dt;
       this.player.x = Math.max(30, Math.min(MAP_WIDTH - 30, this.player.x));
       this.player.y = Math.max(30, Math.min(MAP_HEIGHT - 30, this.player.y));
+
+      if (Math.hypot(this.joystick.dirX, this.joystick.dirY) > 0.05) {
+        this.player.facingAngle = Math.atan2(this.joystick.dirY, this.joystick.dirX);
+      }
     }
 
     // カメラ追従
@@ -859,31 +910,17 @@ export const IronSquadGame = {
       healBadge.classList.add('hidden');
     }
 
-    // =========================================================================
-    // 部隊の自律行動AI（部隊は勝手に動き、主人公には従わない！）
-    // =========================================================================
-    const aliveSquad = this.squad.filter(s => !s.dead);
-    const now = performance.now();
-    const isCommandActive = now < this.commandActiveUntil;
-    const currentRank = RANKS[this.rankIndex];
-
-    // 部隊の重心を計算
-    let squadCenterX = BASE_CAMP.x;
-    let squadCenterY = BASE_CAMP.y;
-    if (aliveSquad.length > 0) {
-      squadCenterX = aliveSquad.reduce((sum, s) => sum + s.x, 0) / aliveSquad.length;
-      squadCenterY = aliveSquad.reduce((sum, s) => sum + s.y, 0) / aliveSquad.length;
-    }
-
-    // 主人公と部隊の距離チェック（近接共闘か単独行動か）
-    const distToSquad = Math.hypot(this.player.x - squadCenterX, this.player.y - squadCenterY);
+    // プロキシミティバッジ表示
     const proxBadge = document.getElementById('squad-proximity-badge');
     if (aliveSquad.length === 0) {
       proxBadge.className = 'proximity-badge proximity-danger';
       proxBadge.textContent = '☠️ 部隊全滅！完全孤立！';
-    } else if (distToSquad < 120) {
+    } else if (distToSquad < 110) {
       proxBadge.className = 'proximity-badge proximity-close';
       proxBadge.textContent = '🟢 部隊と共闘中 (安全)';
+    } else if (isCatchingUp) {
+      proxBadge.className = 'proximity-badge proximity-close';
+      proxBadge.textContent = `💨 部隊へ急行中！(残り ${Math.floor(distToSquad)}m)`;
     } else {
       proxBadge.className = 'proximity-badge proximity-far';
       proxBadge.textContent = `⚠️ 単独行動中！(部隊まで ${Math.floor(distToSquad)}m)`;
@@ -915,6 +952,14 @@ export const IronSquadGame = {
       }
     }
 
+    // 兵士の巡航速度（平常時105px/s。主人公が大幅に離れた時は殿警戒で80px/sに減速して待つ）
+    let soldierSpeedLimit = 105;
+    if (distToSquad > 210 && currentRank.level < 5 && !isCommandActive) {
+      soldierSpeedLimit = 80;
+    } else if (isCommandActive) {
+      soldierSpeedLimit = 135;
+    }
+
     // 各兵士の自律移動と戦闘
     aliveSquad.forEach((soldier, idx) => {
       // 部隊重心を中心とした集団散開
@@ -926,10 +971,15 @@ export const IronSquadGame = {
       const dx = myGoalX - soldier.x;
       const dy = myGoalY - soldier.y;
       const d = Math.hypot(dx, dy);
-      if (d > 8) {
-        soldier.x += (dx / d) * Math.min(d * 3.5, 130) * dt;
-        soldier.y += (dy / d) * Math.min(d * 3.5, 130) * dt;
+      if (d > 6) {
+        const moveStep = Math.min(d * 3.5, soldierSpeedLimit) * dt;
+        soldier.x += (dx / d) * moveStep;
+        soldier.y += (dy / d) * moveStep;
+        soldier.facingAngle = Math.atan2(dy, dx);
       }
+
+      // 兵士の攻撃アニメ減衰
+      if (soldier.atkAnim > 0) soldier.atkAnim -= dt * 5;
 
       // 兵士のオート攻撃
       soldier.atkCooldown = (soldier.atkCooldown || 0) - dt;
@@ -938,6 +988,8 @@ export const IronSquadGame = {
         const distE = Math.hypot(enemy.x - soldier.x, enemy.y - soldier.y);
         if (distE <= 65) {
           soldier.atkCooldown = 0.75;
+          soldier.atkAnim = 1.0;
+          soldier.facingAngle = Math.atan2(enemy.y - soldier.y, enemy.x - soldier.x);
           const totalAtk = soldier.atk + (soldier.weapon ? soldier.weapon.stats.atk || 0 : 0);
           this.performAttack({ ...soldier, atk: totalAtk }, enemy, false);
         }
@@ -1409,169 +1461,53 @@ export const IronSquadGame = {
   },
 
   render() {
+    const now = performance.now();
     this.ctx.clearRect(0, 0, this.width, this.height);
 
     this.ctx.save();
     this.ctx.translate(-this.camera.x, -this.camera.y);
 
-    this.ctx.fillStyle = '#0d1017';
-    this.ctx.fillRect(0, 0, MAP_WIDTH, MAP_HEIGHT);
+    // 1. 大地・戦場フィールド
+    this.drawBattlefield(this.ctx);
 
-    this.ctx.strokeStyle = '#ef4444';
-    this.ctx.lineWidth = 4;
-    this.ctx.strokeRect(0, 0, MAP_WIDTH, MAP_HEIGHT);
+    // 2. 自軍砦本陣 (治癒砦・城塞壁・風になびく王国旗)
+    this.drawBaseCamp(this.ctx, now);
 
-    this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
-    this.ctx.lineWidth = 1;
-    for (let x = 0; x < MAP_WIDTH; x += 50) {
-      this.ctx.beginPath();
-      this.ctx.moveTo(x, 0);
-      this.ctx.lineTo(x, MAP_HEIGHT);
-      this.ctx.stroke();
-    }
-    for (let y = 0; y < MAP_HEIGHT; y += 50) {
-      this.ctx.beginPath();
-      this.ctx.moveTo(0, y);
-      this.ctx.lineTo(MAP_WIDTH, y);
-      this.ctx.stroke();
-    }
-
-    // 自軍の拠点
-    this.ctx.save();
-    this.ctx.fillStyle = 'rgba(16, 185, 129, 0.08)';
-    this.ctx.strokeStyle = '#10b981';
-    this.ctx.lineWidth = 2;
-    this.ctx.setLineDash([8, 6]);
-    this.ctx.beginPath();
-    this.ctx.arc(BASE_CAMP.x, BASE_CAMP.y, BASE_CAMP.radius, 0, Math.PI * 2);
-    this.ctx.fill();
-    this.ctx.stroke();
-    this.ctx.setLineDash([]);
-
-    this.ctx.fillStyle = '#34d399';
-    this.ctx.font = 'bold 16px sans-serif';
-    this.ctx.textAlign = 'center';
-    this.ctx.fillText('🏰 自軍本陣 (治癒砦)', BASE_CAMP.x, BASE_CAMP.y - 12);
-    this.ctx.font = '11px sans-serif';
-    this.ctx.fillStyle = '#a7f3d0';
-    this.ctx.fillText('エリア内で部隊HP回復', BASE_CAMP.x, BASE_CAMP.y + 10);
-    this.ctx.restore();
-
-    // ドロップ宝箱
+    // 3. ドロップ宝箱
     for (const drop of this.dropsOnField) {
-      this.ctx.save();
-      this.ctx.translate(drop.x, drop.y);
-      this.ctx.fillStyle = drop.item.color;
-      this.ctx.shadowColor = drop.item.color;
-      this.ctx.shadowBlur = 12;
-      this.ctx.fillRect(-9, -9, 18, 18);
-      this.ctx.restore();
+      this.drawChest(this.ctx, drop, now);
     }
 
-    // モンスター描画
+    // 4. モンスターたち (ゴブリン・オーク・ドラゴン)
     for (const m of this.monsters) {
-      this.ctx.save();
-      this.ctx.translate(m.x, m.y);
-      this.ctx.fillStyle = m.color;
-      this.ctx.shadowColor = m.color;
-      this.ctx.shadowBlur = m.isBoss ? 16 : 6;
-
-      this.ctx.beginPath();
-      this.ctx.arc(0, 0, m.radius, 0, Math.PI * 2);
-      this.ctx.fill();
-
-      const barW = m.radius * 2;
-      this.ctx.fillStyle = 'rgba(0,0,0,0.5)';
-      this.ctx.fillRect(-barW / 2, -m.radius - 8, barW, 4);
-      this.ctx.fillStyle = '#ef4444';
-      this.ctx.fillRect(-barW / 2, -m.radius - 8, barW * (m.hp / m.maxHp), 4);
-      this.ctx.restore();
+      this.drawMonster(this.ctx, m, now);
     }
 
-    // 仲間兵士たち（自律行動）
+    // 5. 仲間兵士たち (槍兵・剣盾兵・叙勲エリート兵)
     if (this.squad) {
       this.squad.forEach((s) => {
-        if (s.dead) return;
-        this.ctx.save();
-        this.ctx.translate(s.x, s.y);
-
-        if (s.isNamed) {
-          this.ctx.shadowColor = '#ffe600';
-          this.ctx.shadowBlur = 14;
-          this.ctx.fillStyle = '#fbbf24';
-        } else if (s.survivedWaves >= 2) {
-          this.ctx.shadowColor = '#00f0ff';
-          this.ctx.shadowBlur = 8;
-          this.ctx.fillStyle = '#38bdf8';
-        } else {
-          this.ctx.fillStyle = '#10b981';
-        }
-
-        this.ctx.beginPath();
-        this.ctx.arc(0, 0, s.isNamed ? 11 : 9, 0, Math.PI * 2);
-        this.ctx.fill();
-
-        this.ctx.shadowBlur = 0;
-        this.ctx.fillStyle = s.isNamed ? '#ffe600' : '#cbd5e1';
-        this.ctx.font = s.isNamed ? 'bold 10px sans-serif' : '8px sans-serif';
-        this.ctx.textAlign = 'center';
-        this.ctx.fillText(s.name, 0, -13);
-
-        this.ctx.fillStyle = 'rgba(0,0,0,0.5)';
-        this.ctx.fillRect(-10, 11, 20, 3);
-        this.ctx.fillStyle = s.isNamed ? '#fbbf24' : '#10b981';
-        this.ctx.fillRect(-10, 11, 20 * (s.hp / s.maxHp), 3);
-
-        this.ctx.restore();
+        if (!s.dead) this.drawSoldier(this.ctx, s, now);
       });
     }
 
-    // 主人公（一介の雑兵、青色）
+    // 6. 主人公 (兜・甲冑・マント・剣・盾・斬撃エフェクト)
     if (this.player) {
-      this.ctx.save();
-      this.ctx.translate(this.player.x, this.player.y);
-      this.ctx.fillStyle = '#3b82f6';
-      this.ctx.shadowColor = '#3b82f6';
-      this.ctx.shadowBlur = 15;
-
-      this.ctx.beginPath();
-      this.ctx.arc(0, 0, 12, 0, Math.PI * 2);
-      this.ctx.fill();
-
-      // 出世すると頭上マークが進化（雑兵は盾、伍長は星、将軍は王冠）
-      this.ctx.fillStyle = '#fbbf24';
-      this.ctx.font = '10px sans-serif';
-      this.ctx.textAlign = 'center';
-      this.ctx.textBaseline = 'middle';
-      const mark = this.rankIndex >= 4 ? '👑' : (this.rankIndex >= 2 ? '⭐' : '🛡️');
-      this.ctx.fillText(mark, 0, 0);
-
-      this.ctx.shadowBlur = 0;
-      this.ctx.fillStyle = 'rgba(0,0,0,0.6)';
-      this.ctx.fillRect(-16, -19, 32, 5);
-      this.ctx.fillStyle = '#3b82f6';
-      this.ctx.fillRect(-16, -19, 32 * (this.player.hp / this.player.maxHp), 5);
-
-      if (this.player.slashAnim > 0) {
-        this.ctx.rotate(this.player.slashAngle);
-        this.ctx.strokeStyle = this.equipped && this.equipped.weapon ? this.equipped.weapon.color : '#60a5fa';
-        this.ctx.lineWidth = 4;
-        this.ctx.shadowColor = this.ctx.strokeStyle;
-        this.ctx.shadowBlur = 10;
-        this.ctx.beginPath();
-        this.ctx.arc(0, 0, 34, -0.6, 0.6);
-        this.ctx.stroke();
-      }
-      this.ctx.restore();
+      this.drawPlayer(this.ctx, this.player, now);
     }
 
+    // 7. ダメージポップアップ
     for (const dtObj of this.damageTexts) {
+      this.ctx.save();
       this.ctx.fillStyle = dtObj.color;
       this.ctx.font = 'bold 13px sans-serif';
       this.ctx.textAlign = 'center';
+      this.ctx.shadowColor = 'rgba(0,0,0,0.9)';
+      this.ctx.shadowBlur = 4;
       this.ctx.fillText(dtObj.text, dtObj.x, dtObj.y);
+      this.ctx.restore();
     }
 
+    // 8. パーティクル
     for (const p of this.particles) {
       this.ctx.fillStyle = p.color;
       this.ctx.beginPath();
@@ -1581,7 +1517,7 @@ export const IronSquadGame = {
 
     this.ctx.restore(); // カメラ復元
 
-    // ジョイスティック
+    // 9. ジョイスティックUI
     if (this.joystick && this.joystick.active) {
       this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
       this.ctx.lineWidth = 2;
@@ -1594,6 +1530,572 @@ export const IronSquadGame = {
       this.ctx.arc(this.joystick.x, this.joystick.y, 16, 0, Math.PI * 2);
       this.ctx.fill();
     }
+  },
+
+  // =========================================================================
+  // リッチ・プロシージャル描画システム
+  // =========================================================================
+
+  drawBattlefield(ctx) {
+    // ダークスレートの大地
+    ctx.fillStyle = '#0c1017';
+    ctx.fillRect(0, 0, MAP_WIDTH, MAP_HEIGHT);
+
+    // 境界線（血塗られた戦場の境界）
+    ctx.strokeStyle = '#ef4444';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(0, 0, MAP_WIDTH, MAP_HEIGHT);
+
+    // 薄い石畳グリッド
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.025)';
+    ctx.lineWidth = 1;
+    const startX = Math.max(0, Math.floor(this.camera.x / 60) * 60);
+    const endX = Math.min(MAP_WIDTH, startX + this.width + 120);
+    const startY = Math.max(0, Math.floor(this.camera.y / 60) * 60);
+    const endY = Math.min(MAP_HEIGHT, startY + this.height + 120);
+
+    for (let x = startX; x <= endX; x += 60) {
+      ctx.beginPath();
+      ctx.moveTo(x, startY);
+      ctx.lineTo(x, endY);
+      ctx.stroke();
+    }
+    for (let y = startY; y <= endY; y += 60) {
+      ctx.beginPath();
+      ctx.moveTo(startX, y);
+      ctx.lineTo(endX, y);
+      ctx.stroke();
+    }
+
+    // カメラ視界内の草むら・小石アクセント
+    for (let x = startX; x <= endX; x += 120) {
+      for (let y = startY; y <= endY; y += 120) {
+        const hash = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453;
+        const seed = hash - Math.floor(hash);
+        if (seed > 0.6) {
+          // 草むら
+          ctx.fillStyle = '#1e3a2b';
+          ctx.fillRect(x + 20, y + 20, 6, 4);
+          ctx.fillRect(x + 24, y + 17, 3, 7);
+          ctx.fillRect(x + 18, y + 19, 3, 5);
+        } else if (seed < 0.25) {
+          // 小石
+          ctx.fillStyle = '#1f2937';
+          ctx.beginPath();
+          ctx.ellipse(x + 40, y + 35, 4, 2.5, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    }
+  },
+
+  drawBaseCamp(ctx, now) {
+    ctx.save();
+    // 治癒エリアの優しい緑のオーラ
+    ctx.fillStyle = 'rgba(16, 185, 129, 0.06)';
+    ctx.beginPath();
+    ctx.arc(BASE_CAMP.x, BASE_CAMP.y, BASE_CAMP.radius, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 外周のルーン境界線
+    ctx.strokeStyle = '#10b981';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([8, 6]);
+    ctx.beginPath();
+    ctx.arc(BASE_CAMP.x, BASE_CAMP.y, BASE_CAMP.radius, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // 砦の石垣サークル（狭間マーク）
+    ctx.strokeStyle = 'rgba(52, 211, 153, 0.3)';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.arc(BASE_CAMP.x, BASE_CAMP.y, BASE_CAMP.radius * 0.5, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // 中央の石造り城塞（砦タワー）
+    ctx.translate(BASE_CAMP.x, BASE_CAMP.y);
+    
+    // 石積みの天守
+    ctx.fillStyle = '#1e293b';
+    ctx.strokeStyle = '#475569';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(-24, -20, 48, 40, 6);
+    ctx.fill();
+    ctx.stroke();
+
+    // 城塞の狭間（凸凹）
+    ctx.fillStyle = '#334155';
+    ctx.fillRect(-22, -26, 8, 6);
+    ctx.fillRect(-4, -26, 8, 6);
+    ctx.fillRect(14, -26, 8, 6);
+
+    // アーチ状の門
+    ctx.fillStyle = '#0f172a';
+    ctx.beginPath();
+    ctx.arc(0, 10, 8, Math.PI, 0);
+    ctx.lineTo(8, 20);
+    ctx.lineTo(-8, 20);
+    ctx.closePath();
+    ctx.fill();
+
+    // 風になびくエメラルド軍旗
+    const waveFlag = Math.sin(now * 0.008) * 3;
+    ctx.strokeStyle = '#94a3b8';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0, -26);
+    ctx.lineTo(0, -44);
+    ctx.stroke();
+
+    ctx.fillStyle = '#10b981';
+    ctx.beginPath();
+    ctx.moveTo(0, -44);
+    ctx.lineTo(16 + waveFlag, -38);
+    ctx.lineTo(0, -32);
+    ctx.closePath();
+    ctx.fill();
+
+    // ラベル
+    ctx.fillStyle = '#34d399';
+    ctx.font = 'bold 14px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.shadowColor = '#000';
+    ctx.shadowBlur = 4;
+    ctx.fillText('🏰 自軍本陣 (治癒砦)', 0, 36);
+    ctx.font = '10px sans-serif';
+    ctx.fillStyle = '#a7f3d0';
+    ctx.fillText('エリア内で部隊治癒', 0, 50);
+
+    ctx.restore();
+  },
+
+  drawChest(ctx, drop, now) {
+    ctx.save();
+    ctx.translate(drop.x, drop.y);
+
+    // 足元グロー光彩
+    ctx.shadowColor = drop.item.color;
+    ctx.shadowBlur = 12 + Math.sin(now * 0.008) * 4;
+
+    // 宝箱の木製本体
+    ctx.fillStyle = '#5c2c16';
+    ctx.fillRect(-10, -8, 20, 16);
+
+    // 金具フレーム（レアリティ色）
+    ctx.strokeStyle = drop.item.color;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(-10, -8, 20, 16);
+
+    // 宝箱の帯金具
+    ctx.fillStyle = drop.item.color;
+    ctx.fillRect(-10, -2, 20, 3);
+
+    // 鍵穴
+    ctx.fillStyle = '#ffe600';
+    ctx.beginPath();
+    ctx.arc(0, 2, 2, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  },
+
+  drawMonster(ctx, m, now) {
+    ctx.save();
+    ctx.translate(m.x, m.y);
+
+    // 1. 足元ソフトシャドウ
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    ctx.beginPath();
+    ctx.ellipse(0, m.radius * 0.7, m.radius * 0.9, m.radius * 0.35, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    const bob = Math.sin(now * 0.012 + (m.x % 10)) * 1.5;
+
+    if (m.type === 'goblin') {
+      // ===== ゴブリン (小型・緑の小鬼) =====
+      const bodyColor = m.hitPulse > 0 ? '#ffffff' : '#22c55e';
+      
+      // 尖った耳
+      ctx.fillStyle = bodyColor;
+      ctx.beginPath();
+      ctx.moveTo(-7, -4 + bob);
+      ctx.lineTo(-14, -8 + bob);
+      ctx.lineTo(-5, 0 + bob);
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.moveTo(7, -4 + bob);
+      ctx.lineTo(14, -8 + bob);
+      ctx.lineTo(5, 0 + bob);
+      ctx.fill();
+
+      // 頭部と胴体
+      ctx.fillStyle = bodyColor;
+      ctx.beginPath();
+      ctx.arc(0, -2 + bob, 8, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 赤い目
+      ctx.fillStyle = '#ef4444';
+      ctx.fillRect(-4, -4 + bob, 2.5, 2.5);
+      ctx.fillRect(2, -4 + bob, 2.5, 2.5);
+
+      // トゲ棍棒
+      ctx.strokeStyle = '#78350f';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(6, 2 + bob);
+      ctx.lineTo(12, -7 + bob);
+      ctx.stroke();
+      ctx.fillStyle = '#cbd5e1';
+      ctx.fillRect(11, -8 + bob, 2.5, 2.5);
+
+    } else if (m.type === 'orc') {
+      // ===== オーク (中型エリート・筋肉質な蛮族) =====
+      const bodyColor = m.hitPulse > 0 ? '#ffffff' : '#d97706';
+
+      // 胴体
+      ctx.fillStyle = bodyColor;
+      ctx.beginPath();
+      ctx.arc(0, 0 + bob, 12, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 角付き鉄兜
+      ctx.fillStyle = '#475569';
+      ctx.beginPath();
+      ctx.arc(0, -4 + bob, 9, Math.PI, 0);
+      ctx.fill();
+
+      // 兜の左右の白い角
+      ctx.fillStyle = '#f8fafc';
+      ctx.beginPath();
+      ctx.moveTo(-7, -5 + bob);
+      ctx.lineTo(-13, -13 + bob);
+      ctx.lineTo(-3, -7 + bob);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(7, -5 + bob);
+      ctx.lineTo(13, -13 + bob);
+      ctx.lineTo(3, -7 + bob);
+      ctx.fill();
+
+      // 光る赤い目と牙
+      ctx.fillStyle = '#ef4444';
+      ctx.fillRect(-4, -3 + bob, 3, 2);
+      ctx.fillRect(1, -3 + bob, 3, 2);
+
+      // バトルアックス（巨大斧）
+      ctx.strokeStyle = '#78350f';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(8, 6 + bob);
+      ctx.lineTo(15, -12 + bob);
+      ctx.stroke();
+
+      ctx.fillStyle = '#94a3b8';
+      ctx.beginPath();
+      ctx.arc(14, -10 + bob, 6, -Math.PI / 2, Math.PI / 2);
+      ctx.fill();
+
+    } else {
+      // ===== ドラゴン / ボス (巨大な羽ばたく魔獣) =====
+      const bodyColor = m.hitPulse > 0 ? '#ffffff' : '#b91c1c';
+
+      // 足元の禍々しい魔方陣オーラ
+      ctx.strokeStyle = 'rgba(239, 68, 68, 0.4)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(0, 10, 28, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // 羽ばたく竜の翼
+      const wingFlap = Math.sin(now * 0.007) * 8;
+      ctx.fillStyle = '#7f1d1d';
+      ctx.beginPath();
+      ctx.moveTo(-8, -4 + bob);
+      ctx.lineTo(-28, -20 + wingFlap + bob);
+      ctx.lineTo(-18, 4 + bob);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.moveTo(8, -4 + bob);
+      ctx.lineTo(28, -20 + wingFlap + bob);
+      ctx.lineTo(18, 4 + bob);
+      ctx.closePath();
+      ctx.fill();
+
+      // 巨体
+      ctx.fillStyle = bodyColor;
+      ctx.beginPath();
+      ctx.arc(0, 0 + bob, 18, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 鋭い角
+      ctx.fillStyle = '#1e293b';
+      ctx.beginPath();
+      ctx.moveTo(-8, -12 + bob);
+      ctx.lineTo(-14, -26 + bob);
+      ctx.lineTo(-3, -16 + bob);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(8, -12 + bob);
+      ctx.lineTo(14, -26 + bob);
+      ctx.lineTo(3, -16 + bob);
+      ctx.fill();
+
+      // 金色の猛獣眼
+      ctx.fillStyle = '#facc15';
+      ctx.fillRect(-6, -6 + bob, 4, 3);
+      ctx.fillRect(2, -6 + bob, 4, 3);
+    }
+
+    // HPバー
+    const barW = Math.max(22, m.radius * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(-barW / 2, -m.radius - 10, barW, 4);
+    ctx.fillStyle = m.isBoss ? '#ef4444' : '#f97316';
+    ctx.fillRect(-barW / 2, -m.radius - 10, barW * (m.hp / m.maxHp), 4);
+
+    ctx.restore();
+  },
+
+  drawSoldier(ctx, s, now) {
+    ctx.save();
+    ctx.translate(s.x, s.y);
+
+    // 足元シャドウ
+    ctx.fillStyle = s.isNamed ? 'rgba(251, 191, 36, 0.25)' : 'rgba(0,0,0,0.3)';
+    ctx.beginPath();
+    ctx.ellipse(0, 8, s.isNamed ? 11 : 9, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 叙勲エリート兵の足元オーラ
+    if (s.isNamed) {
+      ctx.strokeStyle = 'rgba(251, 191, 36, 0.4)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(0, 6, 13, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    // 向きと歩行ボビング
+    const bob = Math.sin(now * 0.012 + (s.animOffset || 0)) * 1.5;
+
+    ctx.save();
+    ctx.rotate(s.facingAngle || 0);
+
+    // マント (叙勲兵のみ青い肩マント)
+    if (s.isNamed) {
+      ctx.fillStyle = '#2563eb';
+      ctx.beginPath();
+      ctx.moveTo(-6, -6 + bob);
+      ctx.lineTo(-12, -2 + bob);
+      ctx.lineTo(-6, 6 + bob);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // 胴体 (新兵は革鎧、叙勲兵は銀甲冑)
+    ctx.fillStyle = s.isNamed ? '#94a3b8' : '#78350f';
+    ctx.beginPath();
+    ctx.arc(0, 0 + bob, s.isNamed ? 8 : 7, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 頭部・兜
+    ctx.fillStyle = s.isNamed ? '#cbd5e1' : '#475569';
+    ctx.beginPath();
+    ctx.arc(0, -3 + bob, 5.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // バイザースリット
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(1, -4 + bob, 3, 1.5);
+
+    // 武器描画 (槍兵 or 剣兵)
+    if (s.role === 'spear') {
+      // ===== 槍兵 =====
+      const thrust = (s.atkAnim || 0) * 14;
+      ctx.strokeStyle = '#92400e';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(0, 4 + bob);
+      ctx.lineTo(16 + thrust, 4 + bob);
+      ctx.stroke();
+
+      // 銀の槍穂
+      ctx.fillStyle = s.isNamed ? '#fbbf24' : '#cbd5e1';
+      ctx.beginPath();
+      ctx.moveTo(16 + thrust, 2 + bob);
+      ctx.lineTo(23 + thrust, 4 + bob);
+      ctx.lineTo(16 + thrust, 6 + bob);
+      ctx.closePath();
+      ctx.fill();
+    } else {
+      // ===== 剣盾兵 =====
+      // 左手の丸盾
+      ctx.fillStyle = s.isNamed ? '#1e3a8a' : '#78350f';
+      ctx.strokeStyle = '#cbd5e1';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(2, -6 + bob, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // 右手の短剣
+      ctx.strokeStyle = s.isNamed ? '#fbbf24' : '#cbd5e1';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(2, 4 + bob);
+      ctx.lineTo(14, 7 + bob);
+      ctx.stroke();
+    }
+
+    ctx.restore(); // 向き復元
+
+    // 頭上ネームプレート
+    ctx.textAlign = 'center';
+    if (s.isNamed) {
+      ctx.fillStyle = '#fbbf24';
+      ctx.font = 'bold 10px sans-serif';
+      ctx.shadowColor = '#000';
+      ctx.shadowBlur = 3;
+      ctx.fillText(`✨ ${s.title}${s.name}`, 0, -14);
+      ctx.shadowBlur = 0;
+    } else {
+      ctx.fillStyle = '#cbd5e1';
+      ctx.font = '8px sans-serif';
+      ctx.fillText(s.name, 0, -12);
+    }
+
+    // HPバー
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillRect(-10, 10, 20, 3);
+    ctx.fillStyle = s.isNamed ? '#fbbf24' : '#10b981';
+    ctx.fillRect(-10, 10, 20 * (s.hp / s.maxHp), 3);
+
+    ctx.restore();
+  },
+
+  drawPlayer(ctx, p, now) {
+    ctx.save();
+    ctx.translate(p.x, p.y);
+
+    // 足元シャドウ
+    ctx.fillStyle = 'rgba(0,0,0,0.45)';
+    ctx.beginPath();
+    ctx.ellipse(0, 9, 13, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    const isMoving = this.joystick && this.joystick.active;
+    const walkBob = isMoving ? Math.sin(now * 0.016) * 2 : 0;
+
+    ctx.save();
+    ctx.rotate(p.facingAngle || 0);
+
+    // 1. マント (伍長以上は青、隊長以上は紅)
+    const capeColor = this.rankIndex >= 4 ? '#b91c1c' : (this.rankIndex >= 2 ? '#1d4ed8' : '#334155');
+    const capeWave = Math.sin(now * 0.01) * 3;
+    ctx.fillStyle = capeColor;
+    ctx.beginPath();
+    ctx.moveTo(-6, -7 + walkBob);
+    ctx.lineTo(-16 + capeWave, 0 + walkBob);
+    ctx.lineTo(-6, 7 + walkBob);
+    ctx.closePath();
+    ctx.fill();
+
+    // 2. 胴体甲冑 (装備中の防具色を反映)
+    const armorColor = (this.equipped && this.equipped.armor) ? this.equipped.armor.color : '#3b82f6';
+    ctx.fillStyle = armorColor;
+    ctx.beginPath();
+    ctx.arc(0, 0 + walkBob, 9, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 胸当ての金属光沢ライン
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(0, 0 + walkBob, 6, -1, 1);
+    ctx.stroke();
+
+    // 3. 頭部 (兜・アイアンヘルム)
+    ctx.fillStyle = '#64748b';
+    ctx.beginPath();
+    ctx.arc(0, -3 + walkBob, 7, 0, Math.PI * 2);
+    ctx.fill();
+
+    // バイザースリット (光る目のスリット)
+    ctx.fillStyle = '#00f0ff';
+    ctx.fillRect(2, -4 + walkBob, 4, 2);
+
+    // 出世の兜飾り (伍長は青羽飾り、隊長は金の王冠)
+    if (this.rankIndex >= 4) {
+      // 金の王冠クレスト
+      ctx.fillStyle = '#fbbf24';
+      ctx.beginPath();
+      ctx.moveTo(-4, -10 + walkBob);
+      ctx.lineTo(0, -14 + walkBob);
+      ctx.lineTo(4, -10 + walkBob);
+      ctx.fill();
+    } else if (this.rankIndex >= 2) {
+      // 伍長プルーム (羽飾り)
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillRect(-2, -12 + walkBob, 4, 3);
+    }
+
+    // 4. 左手の盾 (カイトシールド)
+    ctx.fillStyle = armorColor;
+    ctx.strokeStyle = '#f8fafc';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(3, -7 + walkBob);
+    ctx.lineTo(9, -7 + walkBob);
+    ctx.lineTo(7, -13 + walkBob);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // 5. 右手の剣 (装備中の武器色を反映)
+    const weaponColor = (this.equipped && this.equipped.weapon) ? this.equipped.weapon.color : '#60a5fa';
+    ctx.strokeStyle = weaponColor;
+    ctx.lineWidth = 3;
+    ctx.shadowColor = weaponColor;
+    ctx.shadowBlur = 6;
+    ctx.beginPath();
+    ctx.moveTo(3, 5 + walkBob);
+    ctx.lineTo(17, 8 + walkBob);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // 攻撃スイング時の光刃エフェクト
+    if (p.slashAnim > 0) {
+      ctx.strokeStyle = weaponColor;
+      ctx.lineWidth = 5;
+      ctx.shadowColor = weaponColor;
+      ctx.shadowBlur = 14;
+      ctx.beginPath();
+      ctx.arc(0, 0, 36, -0.6, 0.6);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
+
+    ctx.restore(); // 向き復元
+
+    // 頭上階級マーク
+    ctx.font = '11px sans-serif';
+    ctx.textAlign = 'center';
+    const mark = this.rankIndex >= 4 ? '👑' : (this.rankIndex >= 2 ? '⭐' : '🛡️');
+    ctx.fillText(mark, 0, -18);
+
+    // HPバー
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(-16, -15, 32, 4);
+    ctx.fillStyle = '#3b82f6';
+    ctx.fillRect(-16, -15, 32 * (p.hp / p.maxHp), 4);
+
+    ctx.restore();
   },
 
   renderMinimap() {
