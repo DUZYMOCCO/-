@@ -136,7 +136,15 @@ export const IronSquadGame = {
     this.camera = { x: BASE_CAMP.x, y: BASE_CAMP.y };
     this.commandActiveUntil = 0; // 号令の有効期限
     this.setupUI();
-    this.checkSavedGame();
+    this.setupGame();
+
+    // 中断データがあれば自動再開、なければ新兵として即出撃
+    const saved = storage.get('ironsquad_save_data_v3', null);
+    if (saved && saved.wave && saved.player) {
+      this.resumeSavedGame();
+    } else {
+      this.startFreshGame();
+    }
   },
 
   setupUI() {
@@ -203,32 +211,6 @@ export const IronSquadGame = {
             <canvas id="minimap-canvas" width="70" height="70"></canvas>
           </div>
 
-
-          <!-- スタート / 中断再開モーダル -->
-          <div id="start-modal" class="game-overlay">
-            <div class="overlay-content" style="max-width: 320px;">
-              <h2 style="color: #ffaa00; font-size: 22px; margin-bottom: 8px;">🛡️ IRON SQUAD</h2>
-              <p style="font-size: 12px; color: #aaa; margin-bottom: 14px;">雑兵から始まる過酷な生存と立身出世の記録</p>
-              
-              <div style="background: rgba(255,255,255,0.03); border: 1px solid #334; border-radius: 8px; padding: 10px; margin-bottom: 14px; font-size: 11px; color: #cbd5e1; line-height: 1.5; text-align: left;">
-                ⚔️ <strong>戦場の心得</strong><br>
-                ・あなたは隊長ではなく<strong>一介の雑兵</strong>です。<br>
-                ・部隊は勝手に進軍・迎撃します。<strong>部隊の近くにいないと極めて危険</strong>ですが、単独行動（ソロ冒険）も自由。<br>
-                ・生き残り出世（伍長以上）することで、初めて<strong>部隊を呼ぶ指揮権</strong>を掴み取れます！
-              </div>
-
-              <div id="resume-container" class="hidden" style="margin-bottom: 12px;">
-                <button id="btn-resume-game" class="action-btn" style="background: linear-gradient(135deg, #10b981, #059669);">
-                  ▶ 続きから再開 (<span id="resume-info">WAVE 1</span>)
-                </button>
-                <p style="font-size: 11px; color: #10b981; margin-top: 4px;">※オートセーブデータから復帰</p>
-              </div>
-
-              <button id="btn-new-game" class="action-btn">雑兵として出撃</button>
-              <button id="btn-title-back" class="action-btn secondary" style="margin-top: 8px;">工房へ戻る</button>
-            </div>
-          </div>
-
           <!-- 戦略タイム（宿営地）モーダル -->
           <div id="strategy-modal" class="game-overlay hidden">
             <div class="overlay-content" style="max-width: 380px; max-height: 88vh; overflow-y: auto; text-align: left; padding: 18px;">
@@ -270,6 +252,7 @@ export const IronSquadGame = {
 
               <button id="btn-start-next-wave" class="action-btn" style="margin-top: 4px;">次の戦場へ出動！</button>
               <button id="btn-close-strat" class="action-btn secondary hidden" style="margin-top: 6px;">戦場に戻る</button>
+              <button id="btn-restart-from-strat" class="action-btn secondary" style="margin-top: 10px; border-color: rgba(239, 68, 68, 0.4); color: #f87171;">🔄 新兵として最初からやり直す</button>
             </div>
           </div>
 
@@ -295,28 +278,20 @@ export const IronSquadGame = {
       this.onBackToHub();
     });
 
-    document.getElementById('btn-title-back').addEventListener('click', () => {
-      sound.playTap();
-      this.destroy();
-      this.onBackToHub();
-    });
-
-    document.getElementById('btn-new-game').addEventListener('click', () => {
-      sound.playTap();
-      document.getElementById('start-modal').classList.add('hidden');
-      this.startFreshGame();
-    });
-
-    document.getElementById('btn-resume-game').addEventListener('click', () => {
-      sound.playTap();
-      document.getElementById('start-modal').classList.add('hidden');
-      this.resumeSavedGame();
-    });
-
     document.getElementById('btn-strategy').addEventListener('click', () => {
       sound.playTap();
       this.openStrategyModal(true);
     });
+
+    const restartStratBtn = document.getElementById('btn-restart-from-strat');
+    if (restartStratBtn) {
+      restartStratBtn.addEventListener('click', () => {
+        sound.playTap();
+        document.getElementById('strategy-modal').classList.add('hidden');
+        this.clearSavedGame();
+        this.startFreshGame();
+      });
+    }
 
     document.getElementById('btn-restart').addEventListener('click', () => {
       sound.playTap();
@@ -392,19 +367,6 @@ export const IronSquadGame = {
     });
   },
 
-  checkSavedGame() {
-    const saved = storage.get('ironsquad_save_data_v3', null);
-    const resumeContainer = document.getElementById('resume-container');
-    const resumeInfo = document.getElementById('resume-info');
-
-    if (saved && saved.wave && saved.player) {
-      resumeInfo.textContent = `WAVE ${saved.wave} - ${RANKS[saved.rankIndex || 0].title}`;
-      resumeContainer.classList.remove('hidden');
-    } else {
-      resumeContainer.classList.add('hidden');
-    }
-  },
-
   setupGame() {
     this.canvas = document.getElementById('game-canvas');
     this.ctx = this.canvas.getContext('2d');
@@ -414,10 +376,10 @@ export const IronSquadGame = {
     this.minimapCtx = this.minimapCanvas.getContext('2d');
 
     this.resizeCanvas = () => {
-      const rect = this.canvasContainer.getBoundingClientRect();
+      const rect = this.canvasContainer ? this.canvasContainer.getBoundingClientRect() : null;
       const dpr = Math.min(window.devicePixelRatio || 1, 3);
-      this.width = rect.width;
-      this.height = rect.height;
+      this.width = (rect && rect.width > 0) ? rect.width : (window.innerWidth || 390);
+      this.height = (rect && rect.height > 0) ? rect.height : (window.innerHeight - 80 || 600);
       this.canvas.width = this.width * dpr;
       this.canvas.height = this.height * dpr;
       this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -494,6 +456,7 @@ export const IronSquadGame = {
     this.initBattlefield();
     this.saveGame();
     this.updateStatsUI();
+    this.showToast('⚔️ 雑兵として戦場に出動！部隊と共闘せよ');
   },
 
   resumeSavedGame() {

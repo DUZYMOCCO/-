@@ -23,12 +23,36 @@ class GameStudioApp {
     sound.setMute(isMuted);
     this.updateSoundButtonUI();
 
-    this.soundToggleBtn.addEventListener('click', () => {
-      const muted = sound.toggleMute();
-      storage.setSoundMuted(muted);
-      this.updateSoundButtonUI();
-      if (!muted) sound.playTap();
-    });
+    if (this.soundToggleBtn) {
+      this.soundToggleBtn.addEventListener('click', () => {
+        const muted = sound.toggleMute();
+        storage.setSoundMuted(muted);
+        this.updateSoundButtonUI();
+        if (!muted) sound.playTap();
+      });
+    }
+
+    // 最新版強制リフレッシュボタン
+    const refreshBtn = document.getElementById('btn-force-refresh');
+    if (refreshBtn) {
+      refreshBtn.addEventListener('click', () => {
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then((registrations) => {
+            registrations.forEach((r) => r.unregister());
+            if ('caches' in window) {
+              caches.keys().then((keys) => {
+                keys.forEach((key) => caches.delete(key));
+                location.reload(true);
+              });
+            } else {
+              location.reload(true);
+            }
+          });
+        } else {
+          location.reload(true);
+        }
+      });
+    }
 
     // iPhone用オーディオアンロック (画面全体での初タップ検知)
     window.addEventListener('touchstart', () => sound.unlock(), { once: true, passive: true });
@@ -49,30 +73,32 @@ class GameStudioApp {
   }
 
   updateSoundButtonUI() {
+    if (!this.soundToggleBtn) return;
     this.soundToggleBtn.textContent = sound.isMuted ? '🔇' : '🔊';
     this.soundToggleBtn.setAttribute('title', sound.isMuted ? 'サウンドON' : 'サウンドOFF');
   }
 
   renderHub() {
+    if (!this.gamesGridEl) return;
     this.gamesGridEl.innerHTML = '';
 
     games.forEach((game) => {
       const highScore = storage.getHighScore(game.id);
+
       const card = document.createElement('div');
       card.className = 'game-card';
-      card.style.setProperty('--accent-color', game.color || '#00f0ff');
+      card.setAttribute('data-game-id', game.id);
+      card.style.setProperty('--card-accent', game.color || '#3b82f6');
 
       card.innerHTML = `
         <div class="game-card-icon">${game.icon}</div>
-        <div class="game-card-info">
-          <div class="game-card-header">
-            <h3 class="game-card-title">${game.title}</h3>
-            <span class="game-card-subtitle">${game.subtitle}</span>
-          </div>
-          <p class="game-card-desc">${game.description}</p>
-          <div class="game-card-footer">
-            <span class="badge-score">BEST: <strong>${highScore}</strong></span>
-            <button class="play-btn">PLAY ▶</button>
+        <div class="game-card-content">
+          <div class="game-card-title">${game.title}</div>
+          <div class="game-card-subtitle">${game.subtitle}</div>
+          <div class="game-card-desc">${game.description}</div>
+          <div class="game-card-score">
+            <span class="score-label">BEST SCORE</span>
+            <span class="score-value">${highScore}</span>
           </div>
         </div>
       `;
@@ -84,28 +110,6 @@ class GameStudioApp {
 
       this.gamesGridEl.appendChild(card);
     });
-
-    // 「+ 新しいゲームを作る」枠
-    const addCard = document.createElement('div');
-    addCard.className = 'game-card create-card';
-    addCard.innerHTML = `
-      <div class="game-card-icon">🛠️</div>
-      <div class="game-card-info">
-        <div class="game-card-header">
-          <h3 class="game-card-title">＋ 次のゲームを追加</h3>
-          <span class="game-card-subtitle">あなた専用の工房</span>
-        </div>
-        <p class="game-card-desc">AIに「こんなゲームを作って！」とリクエストするだけで、この工房に3作目、4作目がどんどん増えます。</p>
-        <div class="game-card-footer">
-          <span class="badge-score">工房で受付中</span>
-        </div>
-      </div>
-    `;
-    addCard.addEventListener('click', () => {
-      sound.playTap();
-      alert('「こんなゲームを作りたい！」とチャットで伝えてください。工房ですぐに開発して追加します！');
-    });
-    this.gamesGridEl.appendChild(addCard);
   }
 
   launchGame(gameId) {
@@ -116,11 +120,16 @@ class GameStudioApp {
     this.hubEl.classList.add('hidden');
     this.gameContainerEl.classList.remove('hidden');
 
-    // ゲームの初期化
     this.activeGame = game;
-    game.init(this.gameContainerEl, () => {
+    try {
+      game.init(this.gameContainerEl, () => {
+        this.backToHub();
+      });
+    } catch (err) {
+      console.error('Game launch error:', err);
+      alert('ゲーム起動エラー: ' + err.message);
       this.backToHub();
-    });
+    }
   }
 
   backToHub() {
@@ -141,15 +150,32 @@ class GameStudioApp {
     const pwaBanner = document.getElementById('pwa-install-banner');
     if (isIos && !isStandalone && pwaBanner) {
       pwaBanner.classList.remove('hidden');
-      document.getElementById('btn-close-pwa').addEventListener('click', (e) => {
-        e.stopPropagation();
-        pwaBanner.classList.add('hidden');
-      });
+      const closeBtn = document.getElementById('btn-close-pwa');
+      if (closeBtn) {
+        closeBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          pwaBanner.classList.add('hidden');
+        });
+      }
     }
   }
 }
 
-// アプリ起動
-window.addEventListener('DOMContentLoaded', () => {
-  window.app = new GameStudioApp();
-});
+// アプリ安全起動
+function startApp() {
+  if (!window.app) {
+    try {
+      window.app = new GameStudioApp();
+    } catch (err) {
+      console.error('App init error:', err);
+      const rescue = document.getElementById('rescue-banner');
+      if (rescue) rescue.style.display = 'block';
+    }
+  }
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', startApp);
+} else {
+  startApp();
+}
