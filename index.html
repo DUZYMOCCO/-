@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>スマホゲーム工房</title>
+
+  <!-- iOS / iPhone PWA 最適化メタタグ -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="ゲーム工房">
+  <meta name="theme-color" content="#0b0d14">
+  <meta name="format-detection" content="telephone=no">
+
+  <!-- アイコン設定 -->
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+  <link rel="icon" type="image/png" href="assets/icons/icon-192.png">
+  <link rel="manifest" href="manifest.json">
+
+  <!-- スタイルシート -->
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/game-ui.css">
+</head>
+<body>
+  <div id="app">
+    <!-- 工房ポータル (Hub) -->
+    <main id="studio-hub" class="studio-hub">
+      <header class="studio-header">
+        <div class="header-title-group">
+          <h1>スマホゲーム工房</h1>
+          <span class="header-subtitle">FOR MY iPHONE ONLY</span>
+        </div>
+        <div class="hub-controls">
+          <button id="btn-sound-toggle" class="control-btn" title="サウンド切り替え">🔊</button>
+        </div>
+      </header>
+
+      <!-- iPhone Safari向け PWAホーム画面追加案内 -->
+      <div id="pwa-install-banner" class="pwa-banner hidden">
+        <div class="pwa-banner-content">
+          <span class="pwa-banner-icon">📲</span>
+          <div class="pwa-banner-text">
+            <strong>ホーム画面に追加して全画面プレイ！</strong>
+            <p>下部の [共有 ⎋] ➔ [ホーム画面に追加 ＋] でアプリ化できます</p>
+          </div>
+        </div>
+        <button id="btn-close-pwa" class="banner-close-btn">✕</button>
+      </div>
+
+      <div class="hub-content">
+        <div class="section-label">SELECT GAME</div>
+        <div id="games-grid" class="games-grid">
+          <!-- JSで動的生成 -->
+        </div>
+      </div>
+
+      <footer class="hub-footer">
+        <p>📱 スマホゲーム工房 v1.0.0</p>
+        <p style="margin-top: 4px; opacity: 0.6;">Designed exclusively for iPhone</p>
+      </footer>
+    </main>
+
+    <!-- ゲーム実行画面コンテナ -->
+    <div id="game-container" class="game-container hidden"></div>
+  </div>
+
+  <!-- スクリプト -->
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

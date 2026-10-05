@@ -1,0 +1,302 @@
+/* スマホゲーム工房 メインスタイル (iOS最適化) */
+:root {
+  --bg-color: #0b0d14;
+  --surface-color: #141724;
+  --surface-border: #23273c;
+  --primary: #00f0ff;
+  --primary-glow: rgba(0, 240, 255, 0.35);
+  --accent: #ff007f;
+  --text-main: #f0f3fa;
+  --text-muted: #8c93ab;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--bg-color);
+  color: var(--text-main);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  overscroll-behavior: none;
+  -webkit-touch-callout: none;
+}
+
+#app {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 工房ポータル (Hub) */
+.studio-hub {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding-top: var(--safe-top);
+  padding-bottom: var(--safe-bottom);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.studio-header {
+  padding: 18px 20px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--surface-border);
+  background: rgba(11, 13, 20, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.header-title-group h1 {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  background: linear-gradient(135deg, #fff 30%, var(--primary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.header-subtitle {
+  font-size: 11px;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+}
+
+.hub-controls {
+  display: flex;
+  gap: 10px;
+}
+
+.control-btn {
+  background: var(--surface-color);
+  border: 1px solid var(--surface-border);
+  font-size: 18px;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.1s, background-color 0.2s;
+}
+
+.control-btn:active {
+  transform: scale(0.92);
+  background: #1d2235;
+}
+
+/* PWAインストール促進バナー (iOS Safari向け) */
+.pwa-banner {
+  margin: 12px 16px 4px;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, rgba(0, 240, 255, 0.12), rgba(255, 0, 127, 0.12));
+  border: 1px solid rgba(0, 240, 255, 0.3);
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  animation: fadeIn 0.4s ease;
+}
+
+.pwa-banner-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.pwa-banner-icon {
+  font-size: 24px;
+}
+
+.pwa-banner-text strong {
+  display: block;
+  font-size: 13px;
+  color: #fff;
+}
+
+.pwa-banner-text p {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.banner-close-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 16px;
+  padding: 6px;
+  cursor: pointer;
+}
+
+/* ゲームグリッド */
+.hub-content {
+  flex: 1;
+  padding: 16px;
+}
+
+.section-label {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  letter-spacing: 1px;
+  margin-bottom: 12px;
+  padding-left: 4px;
+}
+
+.games-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* ゲームカード */
+.game-card {
+  background: var(--surface-color);
+  border: 1px solid var(--surface-border);
+  border-radius: 18px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.15s, border-color 0.2s, box-shadow 0.2s;
+}
+
+.game-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: var(--accent-color, var(--primary));
+  box-shadow: 0 0 10px var(--accent-color, var(--primary));
+}
+
+.game-card:active {
+  transform: scale(0.98);
+  border-color: var(--accent-color, var(--primary));
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.game-card-icon {
+  font-size: 38px;
+  min-width: 56px;
+  height: 56px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.game-card-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.game-card-header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.game-card-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.game-card-subtitle {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.game-card-desc {
+  font-size: 12px;
+  color: #b3bacb;
+  line-height: 1.4;
+  margin-bottom: 10px;
+}
+
+.game-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.badge-score {
+  font-size: 12px;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 4px 10px;
+  border-radius: 8px;
+}
+
+.badge-score strong {
+  color: var(--accent-color, var(--primary));
+  font-size: 13px;
+  margin-left: 4px;
+}
+
+.play-btn {
+  background: var(--accent-color, var(--primary));
+  color: #0b0d14;
+  border: none;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 6px 14px;
+  border-radius: 10px;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* 追加カード */
+.game-card.create-card {
+  border-style: dashed;
+  opacity: 0.8;
+}
+
+.game-card.create-card::before {
+  display: none;
+}
+
+/* フッター */
+.hub-footer {
+  padding: 20px;
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.hidden {
+  display: none !important;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
