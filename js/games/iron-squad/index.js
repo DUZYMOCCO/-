@@ -390,9 +390,16 @@ export const IronSquadGame = {
 
     this.buildTerrain();
     this.setupInput();
+    this.startGameLoop();
+  },
 
-    this.lastTime = performance.now();
+  startGameLoop() {
+    if (this.animFrameId) {
+      cancelAnimationFrame(this.animFrameId);
+      this.animFrameId = null;
+    }
     this.running = true;
+    this.lastTime = performance.now();
     this.loop = (t) => {
       if (!this.running) return;
       const dt = Math.min((t - this.lastTime) / 1000, 0.1);
@@ -400,9 +407,17 @@ export const IronSquadGame = {
       this.update(dt);
       this.render();
       this.renderMinimap();
-      requestAnimationFrame(this.loop);
+      this.animFrameId = requestAnimationFrame(this.loop);
     };
-    requestAnimationFrame(this.loop);
+    this.animFrameId = requestAnimationFrame(this.loop);
+  },
+
+  stopGameLoop() {
+    this.running = false;
+    if (this.animFrameId) {
+      cancelAnimationFrame(this.animFrameId);
+      this.animFrameId = null;
+    }
   },
 
   startFreshGame() {
@@ -463,6 +478,16 @@ export const IronSquadGame = {
     this.initBattlefield();
     this.saveGame();
     this.updateStatsUI();
+    this.camera = { x: BASE_CAMP.x, y: BASE_CAMP.y };
+    if (this.joystick) {
+      this.joystick.active = false;
+      this.joystick.dirX = 0;
+      this.joystick.dirY = 0;
+    }
+    const stickKnob = document.getElementById('dpad-knob');
+    if (stickKnob) stickKnob.style.transform = 'translate(-50%, -50%)';
+
+    this.startGameLoop();
     this.showToast('⚔️ 20名の雑兵小隊として出動！部隊と共闘せよ');
   },
 
@@ -525,6 +550,8 @@ export const IronSquadGame = {
 
     this.initBattlefield();
     this.updateStatsUI();
+    this.camera = { x: BASE_CAMP.x, y: BASE_CAMP.y };
+    this.startGameLoop();
     this.showToast(`💾 WAVE ${this.wave} のデータから再開しました！`);
   },
 
@@ -3045,7 +3072,7 @@ export const IronSquadGame = {
   },
 
   gameOver() {
-    this.running = false;
+    this.stopGameLoop();
     sound.playGameOver();
     this.clearSavedGame();
 
@@ -3056,7 +3083,7 @@ export const IronSquadGame = {
   },
 
   destroy() {
-    this.running = false;
+    this.stopGameLoop();
     window.removeEventListener('resize', this.resizeCanvas);
     if (this.canvas) {
       this.canvas.removeEventListener('mousedown', this.boundDown);
