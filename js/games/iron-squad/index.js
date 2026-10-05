@@ -32,26 +32,124 @@ const RANKS = [
 const TITLES = ['不屈の', '疾風の', '鉄壁の', '歴戦の', '鬼神の', '紅蓮の', '隻眼の', '魔刃の', '金剛の', '閃光の'];
 const NAMES = ['ボブ', 'ガッツ', 'ルーク', 'ジーク', 'レオ', 'ジャック', 'トール', 'ハンス', 'マルコ', 'オットー', 'クルト', 'フィン', 'クラーク', 'エリック', 'ロイ', 'アル', 'レオン', 'ギル', 'セドリック', 'バルト', 'オスカー', 'アラン', 'ブルーノ', 'ダン'];
 
-// シンプルな素材・ティア制ドロップ生成
+// 防具スロット定義
+export const SLOT_INFO = {
+  WEAPON: { key: 'weapon', name: '武器', icon: '🗡️' },
+  SHIELD: { key: 'shield', name: '盾', icon: '🛡️' },
+  HELMET: { key: 'helmet', name: '兜', icon: '🪖' },
+  ARMOR:  { key: 'armor',  name: '鎧', icon: '🥋' },
+  GLOVES: { key: 'gloves', name: '手', icon: '🧤' },
+  LEGS:   { key: 'legs',   name: '脚', icon: '🥾' },
+  AMULET: { key: 'amulet', name: '装飾', icon: '📿' }
+};
+
+// 兵種（クラス）定義
+export const SOLDIER_CLASSES = {
+  HEAVY: {
+    id: 'HEAVY',
+    name: '重装歩兵',
+    icon: '🛡️',
+    color: '#38bdf8',
+    range: 38,
+    speed: 78,
+    atkCooldown: 0.95,
+    bonusHp: 65,
+    bonusDef: 22,
+    desc: '大盾と重甲冑で前線を支える鉄壁のタンク'
+  },
+  LIGHT: {
+    id: 'LIGHT',
+    name: '軽装遊撃兵',
+    icon: '🗡️',
+    color: '#f59e0b',
+    range: 44,
+    speed: 130,
+    atkCooldown: 0.52,
+    bonusCrit: 25,
+    bonusAtk: 4,
+    desc: '俊敏な身のこなしで敵陣側面を強襲'
+  },
+  ARCHER: {
+    id: 'ARCHER',
+    name: '弓兵',
+    icon: '🏹',
+    color: '#34d399',
+    range: 250,
+    speed: 102,
+    atkCooldown: 1.15,
+    bonusAtk: 3,
+    desc: '後方から矢を放ち安全に援護射撃'
+  },
+  MEDIC: {
+    id: 'MEDIC',
+    name: '衛生術士',
+    icon: '🌿',
+    color: '#10b981',
+    range: 160,
+    speed: 98,
+    atkCooldown: 1.25,
+    bonusHp: 35,
+    desc: '負傷兵の遠隔治癒＆倒れた兵士の最優先救助'
+  }
+};
+
+// 素材・ティア制ドロップ生成
 const TIERS = [
   { tier: 1, mat: '木/布', color: '#94a3b8', mult: 1.0,
-    weapon: '木の剣', armor: '布の服', amulet: '木彫りの指輪' },
+    weapon: '木の剣', shield: '木の丸盾', helmet: '布の帽子', armor: '布の服', gloves: '布の手袋', legs: '布のズボン', amulet: '木彫りの指輪' },
   { tier: 2, mat: '青銅/革', color: '#38bdf8', mult: 2.2,
-    weapon: '青銅の剣', armor: '革の鎧', amulet: '銅の指輪' },
+    weapon: '青銅の剣', shield: '青銅の盾', helmet: '革の兜', armor: '革の鎧', gloves: '革の手袋', legs: '革の脚絆', amulet: '銅の指輪' },
   { tier: 3, mat: '鉄', color: '#34d399', mult: 4.2,
-    weapon: '鉄の剣', armor: '鉄の鎧', amulet: '鉄の兜' },
+    weapon: '鉄の剣', shield: '鉄の盾', helmet: '鉄の兜', armor: '鉄の鎧', gloves: '鉄の籠手', legs: '鉄の脛当', amulet: '鉄の首飾り' },
   { tier: 4, mat: '鋼鉄', color: '#a855f7', mult: 8.0,
-    weapon: '鋼鉄の大剣', armor: '鋼鉄の甲冑', amulet: '鋼鉄の兜' },
+    weapon: '鋼鉄の大剣', shield: '鋼鉄の大盾', helmet: '鋼鉄の兜', armor: '鋼鉄の甲冑', gloves: '鋼鉄のガントレット', legs: '鋼鉄のグリーブ', amulet: '鋼鉄の紋章' },
   { tier: 5, mat: 'ミスリル', color: '#ffaa00', mult: 15.0,
-    weapon: 'ミスリルの剣', armor: 'ミスリル鎧', amulet: '黄金の首飾り' },
+    weapon: 'ミスリルの剣', shield: 'ミスリル盾', helmet: 'ミスリルの兜', armor: 'ミスリル鎧', gloves: 'ミスリルの籠手', legs: 'ミスリルの脚絆', amulet: '黄金の首飾り' },
   { tier: 6, mat: '竜鱗/黒金', color: '#ef4444', mult: 28.0,
-    weapon: '竜牙の大剣', armor: '竜鱗の鎧', amulet: '竜の護符' },
+    weapon: '竜牙の大剣', shield: '竜鱗の大盾', helmet: '竜鱗の兜', armor: '竜鱗の鎧', gloves: '竜鱗の籠手', legs: '竜鱗の脛当', amulet: '竜の護符' },
   { tier: 7, mat: '神話・オリハルコン', color: '#ff007f', mult: 55.0,
-    weapon: '神剣オリハルコン', armor: '神聖の鎧', amulet: '神々の紋章' }
+    weapon: '神剣オリハルコン', shield: '神聖のイージス', helmet: '神聖の宝冠', armor: '神聖の鎧', gloves: '神聖の小手', legs: '神聖の具足', amulet: '神々の紋章' }
 ];
 
+export function applyUpgradeStats(item, upgradeLevel) {
+  item.upgrade = upgradeLevel;
+  if (!item.baseName) item.baseName = item.name.replace(/\+\d+$/, '');
+  item.name = item.upgrade > 0 ? `${item.baseName}+${item.upgrade}` : item.baseName;
+  const chosenTier = TIERS.find(t => t.tier === item.tier) || TIERS[0];
+  const plusMult = 1 + item.upgrade * 0.25;
+  const baseValue = Math.floor(10 + chosenTier.tier * 5);
+  item.stats = item.stats || {};
+
+  if (item.type === 'WEAPON') {
+    item.stats.atk = Math.floor(baseValue * chosenTier.mult * plusMult);
+    if (chosenTier.tier >= 4) item.stats.crit = Math.min(80, chosenTier.tier * 10);
+    if (chosenTier.tier >= 6) item.stats.lightning = true;
+  } else if (item.type === 'SHIELD') {
+    item.stats.def = Math.floor(baseValue * 1.5 * chosenTier.mult * plusMult);
+    item.stats.hp = Math.floor(baseValue * 2.0 * chosenTier.mult * plusMult);
+    item.stats.blockChance = Math.min(45, 15 + chosenTier.tier * 5);
+  } else if (item.type === 'HELMET') {
+    item.stats.def = Math.floor(baseValue * 1.1 * chosenTier.mult * plusMult);
+    item.stats.hp = Math.floor(baseValue * 3.0 * chosenTier.mult * plusMult);
+  } else if (item.type === 'ARMOR') {
+    item.stats.def = Math.floor(baseValue * 2.2 * chosenTier.mult * plusMult);
+    item.stats.hp = Math.floor(baseValue * 4.5 * chosenTier.mult * plusMult);
+    if (chosenTier.tier >= 5) item.stats.regen = chosenTier.tier * 2;
+  } else if (item.type === 'GLOVES') {
+    item.stats.def = Math.floor(baseValue * 0.8 * chosenTier.mult * plusMult);
+    item.stats.atk = Math.floor(baseValue * 0.5 * chosenTier.mult * plusMult);
+    item.stats.atkSpeed = Math.floor(5 + chosenTier.tier * 3 + item.upgrade);
+  } else if (item.type === 'LEGS') {
+    item.stats.def = Math.floor(baseValue * 0.9 * chosenTier.mult * plusMult);
+    item.stats.speed = Math.floor(6 + chosenTier.tier * 3 + item.upgrade * 2);
+  } else if (item.type === 'AMULET') {
+    item.stats.speed = Math.floor(8 + chosenTier.tier * 2 + item.upgrade);
+    item.stats.atkSpeed = Math.floor(10 + chosenTier.tier * 5 + item.upgrade * 2);
+    if (chosenTier.tier >= 5) item.stats.vampire = 0.2;
+  }
+}
+
 function generateRandomDrop(wave) {
-  // ウェーブが進むと上位ティアの抽選率が上昇
   const waveBonus = Math.min(3, Math.floor(wave / 4));
   const weights = [
     Math.max(10, 45 - wave * 4),               // T1
@@ -74,48 +172,34 @@ function generateRandomDrop(wave) {
     rnd -= weights[i];
   }
 
-  const types = ['WEAPON', 'ARMOR', 'AMULET'];
+  // 兜、鎧、脚、手、盾、武器、装飾
+  const types = ['WEAPON', 'SHIELD', 'HELMET', 'ARMOR', 'GLOVES', 'LEGS', 'AMULET'];
   const type = types[Math.floor(Math.random() * types.length)];
 
   let rawName = '';
   if (type === 'WEAPON') rawName = chosenTier.weapon;
+  else if (type === 'SHIELD') rawName = chosenTier.shield;
+  else if (type === 'HELMET') rawName = chosenTier.helmet;
   else if (type === 'ARMOR') rawName = chosenTier.armor;
+  else if (type === 'GLOVES') rawName = chosenTier.gloves;
+  else if (type === 'LEGS') rawName = chosenTier.legs;
   else rawName = chosenTier.amulet;
 
-  // たまに「+1」「+2」の強化プラス値が付く
-  const plusVal = Math.random() < 0.25 ? (Math.random() < 0.3 ? 2 : 1) : 0;
-  const itemName = plusVal > 0 ? `${rawName}+${plusVal}` : rawName;
-
-  const plusMult = 1 + plusVal * 0.25;
-  const baseValue = Math.floor(10 + chosenTier.tier * 5);
-  const stats = {};
-
-  if (type === 'WEAPON') {
-    stats.atk = Math.floor(baseValue * chosenTier.mult * plusMult);
-    if (chosenTier.tier >= 4) stats.crit = Math.min(80, chosenTier.tier * 10);
-    if (chosenTier.tier >= 6) stats.lightning = true;
-  } else if (type === 'ARMOR') {
-    stats.hp = Math.floor(baseValue * 4 * chosenTier.mult * plusMult);
-    if (chosenTier.tier >= 4) stats.def = chosenTier.tier * 4;
-    if (chosenTier.tier >= 6) stats.regen = chosenTier.tier * 3;
-  } else {
-    stats.speed = Math.floor(8 + chosenTier.tier * 2);
-    stats.atkSpeed = Math.floor(10 + chosenTier.tier * 5);
-    if (chosenTier.tier >= 5) stats.vampire = 0.2;
-  }
-
-  return {
+  const plusVal = Math.random() < 0.28 ? (Math.random() < 0.35 ? 2 : 1) : 0;
+  const item = {
     id: Math.random().toString(36).substring(2, 9),
-    name: itemName,
+    name: rawName,
     baseName: rawName,
-    upgrade: plusVal,
+    upgrade: 0,
     type,
     tier: chosenTier.tier,
     mat: chosenTier.mat,
     color: chosenTier.color,
-    stats,
+    stats: {},
     isGod: chosenTier.tier >= 6
   };
+  applyUpgradeStats(item, plusVal);
+  return item;
 }
 
 
@@ -268,7 +352,7 @@ export const IronSquadGame = {
               <p style="font-size: 12px; color: #94a3b8; margin-bottom: 10px;">
                 討伐戦果: ⚔️ 雑魚 <strong id="final-minions" style="color:#fff;">0</strong>体 / 👑 ボス <strong id="final-bosses" style="color:#ffd700;">0</strong>体
               </p>
-              <p style="font-size: 11px; color: #ff5555; margin-bottom: 14px;">※過酷な戦場にて部隊は全滅しました</p>
+              <p id="overlay-veteran-note" style="font-size: 11px; color: #38bdf8; margin-bottom: 14px;">※生存兵士は次戦に先輩として引き継がれます</p>
               <button id="btn-restart" class="action-btn">新兵として再入隊</button>
               <button id="btn-overlay-back" class="action-btn secondary">工房へ戻る</button>
             </div>
@@ -447,6 +531,7 @@ export const IronSquadGame = {
       survivedWaves: 0,
       hp: 130,
       maxHp: 130,
+      def: 0,
       atk: 25,
       atkSpeed: 1.0,
       speed: 165, // 部隊(105px/s)より快適に速く動ける基礎速度
@@ -460,30 +545,50 @@ export const IronSquadGame = {
       facingAngle: 0
     };
 
+    // 兜、鎧、脚、手、盾、武器、装飾の7スロット
     this.equipped = {
       weapon: null,
+      shield: null,
+      helmet: null,
       armor: null,
+      gloves: null,
+      legs: null,
       amulet: null
     };
 
     this.inventory = [];
+    this.projectiles = []; // 弓矢・ヒール光弾
 
-    // 部隊の自律行動リーダー位置（部隊の重心目標）
-    this.squadNav = {
-      x: BASE_CAMP.x,
-      y: BASE_CAMP.y,
-      vx: 0,
-      vy: 0,
-      targetEnemy: null,
-      state: 'DEFEND' // 'DEFEND', 'CHARGE', 'RETREAT'
-    };
-
-    // 初期兵士20名の大軍団スタート！全員名もなき雑兵
+    // 先輩兵士引き継ぎチェック
+    const veterans = storage.get('ironsquad_veterans_backup', null);
     this.squad = [];
-    for (let i = 0; i < 20; i++) {
-      this.squad.push(this.createNewSoldier(i + 1));
+    let hasVeterans = false;
+
+    if (veterans && Array.isArray(veterans) && veterans.length > 0) {
+      hasVeterans = true;
+      veterans.forEach((vet) => {
+        vet.dead = false;
+        vet.isDown = false;
+        vet.downTimer = 0;
+        vet.rescueProgress = 0;
+        vet.isVeteran = true;
+        vet.x = BASE_CAMP.x + (Math.random() - 0.5) * 120;
+        vet.y = BASE_CAMP.y + (Math.random() - 0.5) * 120;
+        this.recalcSoldierStats(vet);
+        vet.hp = vet.maxHp;
+        this.squad.push(vet);
+      });
+      storage.set('ironsquad_veterans_backup', null); // 1回引き継いだらクリア
     }
 
+    // 定員（20名）まで新兵を補充
+    let fillIndex = 1;
+    while (this.squad.length < 20) {
+      this.squad.push(this.createNewSoldier(this.squad.length + fillIndex));
+      fillIndex++;
+    }
+
+    this.initPlatoons();
     this.recalcPlayerStats();
     this.initBattlefield();
     this.saveGame();
@@ -498,7 +603,19 @@ export const IronSquadGame = {
     if (stickKnob) stickKnob.style.transform = 'translate(-50%, -50%)';
 
     this.startGameLoop();
-    this.showToast('⚔️ 20名の雑兵小隊として出動！部隊と共闘せよ');
+    if (hasVeterans) {
+      this.showToast('🎖️ 【歴戦の先輩兵士が合流！】前線部隊の古参兵たちが新兵のあなたを援護します！');
+    } else {
+      this.showToast('⚔️ 20名の新兵混成小隊として出動！各小隊と共闘せよ');
+    }
+  },
+
+  initPlatoons() {
+    this.platoons = [
+      { id: 0, name: '第1小隊 (前衛突撃)', color: '#38bdf8', icon: '⚔️', x: BASE_CAMP.x + 80, y: BASE_CAMP.y - 60 },
+      { id: 1, name: '第2小隊 (機動遊撃)', color: '#f59e0b', icon: '🏹', x: BASE_CAMP.x - 80, y: BASE_CAMP.y + 60 },
+      { id: 2, name: '第3小隊 (本陣防衛)', color: '#34d399', icon: '🛡️', x: BASE_CAMP.x, y: BASE_CAMP.y }
+    ];
   },
 
   recalcPlayerStats() {
@@ -520,18 +637,37 @@ export const IronSquadGame = {
     const bossCrit = bossKills * 2;
     const bossReduction = Math.min(30, bossKills * 2); // 被ダメ軽減率(%)
 
-    // 装備ボーナス
-    const wAtk = this.equipped && this.equipped.weapon ? (this.equipped.weapon.stats.atk || 0) : 0;
-    const aHp = this.equipped && this.equipped.armor ? (this.equipped.armor.stats.hp || 0) : 0;
-    const mSpeed = this.equipped && this.equipped.amulet ? (this.equipped.amulet.stats.speed || 0) : 0;
-    const mAtkSpeed = this.equipped && this.equipped.amulet ? (this.equipped.amulet.stats.atkSpeed || 0) * 0.01 : 0;
-    const mVampire = this.equipped && this.equipped.amulet ? (this.equipped.amulet.stats.vampire || 0) : 0;
-    const wCrit = this.equipped && this.equipped.weapon ? (this.equipped.weapon.stats.crit || 10) : 10;
-    const wLightning = this.equipped && this.equipped.weapon ? !!this.equipped.weapon.stats.lightning : false;
+    // 全部位装備ボーナス (武器, 盾, 兜, 鎧, 手, 脚, 装飾)
+    let equipDef = 0;
+    let equipHp = 0;
+    let equipAtk = 0;
+    let equipSpeed = 0;
+    let equipAtkSpeed = 0;
+    let equipVampire = 0;
+    let equipCrit = 10;
+    let equipBlock = 0;
+    let equipLightning = false;
+
+    if (this.equipped) {
+      Object.keys(SLOT_INFO).forEach((slotKey) => {
+        const item = this.equipped[SLOT_INFO[slotKey].key];
+        if (item && item.stats) {
+          if (item.stats.def) equipDef += item.stats.def;
+          if (item.stats.hp) equipHp += item.stats.hp;
+          if (item.stats.atk) equipAtk += item.stats.atk;
+          if (item.stats.speed) equipSpeed += item.stats.speed;
+          if (item.stats.atkSpeed) equipAtkSpeed += item.stats.atkSpeed;
+          if (item.stats.vampire) equipVampire += item.stats.vampire;
+          if (item.stats.crit) equipCrit += item.stats.crit;
+          if (item.stats.blockChance) equipBlock += item.stats.blockChance;
+          if (item.stats.lightning) equipLightning = true;
+        }
+      });
+    }
 
     // 最大HPの更新
     const oldMaxHp = this.player.maxHp || 130;
-    const newMaxHp = 130 + rank.bonusHp + (lv - 1) * 16 + waves * 20 + minionHp + bossHp + aHp;
+    const newMaxHp = 130 + rank.bonusHp + (lv - 1) * 16 + waves * 20 + minionHp + bossHp + equipHp;
     this.player.maxHp = newMaxHp;
     if (this.player.hp > newMaxHp) {
       this.player.hp = newMaxHp;
@@ -539,13 +675,14 @@ export const IronSquadGame = {
       this.player.hp = Math.min(newMaxHp, this.player.hp + (newMaxHp - oldMaxHp));
     }
 
-    this.player.atk = 25 + rank.bonusAtk + (lv - 1) * 4 + waves * 4 + minionAtk + bossAtk + wAtk;
-    this.player.speed = 165 + minionSpeed + mSpeed;
-    this.player.atkSpeed = 1.0 + mAtkSpeed;
-    this.player.crit = wCrit + bossCrit;
-    this.player.vampire = mVampire;
-    this.player.lightning = wLightning;
-    this.player.dmgReduction = bossReduction;
+    this.player.def = equipDef;
+    this.player.atk = 25 + rank.bonusAtk + (lv - 1) * 4 + waves * 4 + minionAtk + bossAtk + equipAtk;
+    this.player.speed = 165 + minionSpeed + equipSpeed;
+    this.player.atkSpeed = 1.0 + equipAtkSpeed * 0.01;
+    this.player.crit = equipCrit + bossCrit;
+    this.player.vampire = equipVampire;
+    this.player.lightning = equipLightning;
+    this.player.dmgReduction = Math.min(45, bossReduction + Math.floor(equipBlock * 0.3));
     this.player.kills = minionKills + bossKills;
   },
 
@@ -555,6 +692,8 @@ export const IronSquadGame = {
     const waves = s.survivedWaves || 0;
     const minionKills = s.minionKills || 0;
     const bossKills = s.bossKills || 0;
+    const clsKey = s.soldierClass || 'HEAVY';
+    const cls = SOLDIER_CLASSES[clsKey] || SOLDIER_CLASSES.HEAVY;
 
     // 雑魚撃墜枠ボーナス
     const minionAtk = Math.floor(minionKills / 5) * 1;
@@ -568,12 +707,37 @@ export const IronSquadGame = {
     // 叙勲ボーナス
     const honorHp = s.isNamed ? 50 : 0;
     const honorAtk = s.isNamed ? 15 : 0;
+    const honorDef = s.isNamed ? 12 : 0;
 
-    // 武器ボーナス
-    const wAtk = s.weapon ? (s.weapon.stats.atk || 0) : 0;
+    // 先輩ボーナス
+    const vetHp = s.isVeteran ? 30 : 0;
+    const vetAtk = s.isVeteran ? 6 : 0;
+    const vetDef = s.isVeteran ? 8 : 0;
+
+    // 全部位装備ボーナス
+    let equipDef = 0;
+    let equipHp = 0;
+    let equipAtk = 0;
+    let equipSpeed = 0;
+    let equipBlock = 0;
+
+    if (!s.equipped) s.equipped = { weapon: s.weapon || null, shield: null, helmet: null, armor: null, gloves: null, legs: null, amulet: null };
+    if (s.weapon && !s.equipped.weapon) s.equipped.weapon = s.weapon;
+    if (s.equipped.weapon) s.weapon = s.equipped.weapon;
+
+    Object.keys(SLOT_INFO).forEach((slotKey) => {
+      const item = s.equipped[SLOT_INFO[slotKey].key];
+      if (item && item.stats) {
+        if (item.stats.def) equipDef += item.stats.def;
+        if (item.stats.hp) equipHp += item.stats.hp;
+        if (item.stats.atk) equipAtk += item.stats.atk;
+        if (item.stats.speed) equipSpeed += item.stats.speed;
+        if (item.stats.blockChance) equipBlock += item.stats.blockChance;
+      }
+    });
 
     const oldMaxHp = s.maxHp || 70;
-    const newMaxHp = 70 + (lv - 1) * 8 + waves * 14 + minionHp + bossHp + honorHp;
+    const newMaxHp = 70 + (cls.bonusHp || 0) + (lv - 1) * 8 + waves * 14 + minionHp + bossHp + honorHp + vetHp + equipHp;
     s.maxHp = newMaxHp;
     if (s.hp > newMaxHp) {
       s.hp = newMaxHp;
@@ -581,22 +745,24 @@ export const IronSquadGame = {
       s.hp = Math.min(newMaxHp, s.hp + (newMaxHp - oldMaxHp));
     }
 
-    s.atk = 11 + (lv - 1) * 2 + waves * 3 + minionAtk + bossAtk + honorAtk + wAtk;
-    s.dmgReduction = bossReduction;
+    s.def = (cls.bonusDef || 0) + honorDef + vetDef + equipDef;
+    s.atk = 11 + (cls.bonusAtk || 0) + (lv - 1) * 2 + waves * 3 + minionAtk + bossAtk + honorAtk + vetAtk + equipAtk;
+    s.speed = (cls.speed || 100) + equipSpeed;
+    s.dmgReduction = Math.min(45, bossReduction + Math.floor(equipBlock * 0.3));
+    s.crit = 10 + (cls.bonusCrit || 0);
     s.kills = minionKills + bossKills;
 
-    // 称号の動的更新（叙勲済みでなければ自動進化）
+    // 称号の動的更新
     if (!s.isNamed) {
+      const prefix = s.isVeteran ? '⭐歴戦' : '';
       if (bossKills > 0) {
-        s.rankTitle = `👑巨頭狩り (${bossKills}体)`;
+        s.rankTitle = `${prefix}👑巨頭狩り (${cls.name})`;
       } else if (minionKills >= 30) {
-        s.rankTitle = `⚔️百人斬り (${minionKills}体)`;
+        s.rankTitle = `${prefix}⚔️百人斬り (${cls.name})`;
       } else if (waves >= 2) {
-        s.rankTitle = '🎖️叙勲候補';
-      } else if (waves >= 1) {
-        s.rankTitle = '古参雑兵';
+        s.rankTitle = `${prefix}🎖️叙勲候補 (${cls.name})`;
       } else {
-        s.rankTitle = '無名新兵';
+        s.rankTitle = `${prefix}${cls.name}`;
       }
     }
   },
@@ -655,17 +821,9 @@ export const IronSquadGame = {
       facingAngle: 0
     };
 
+    this.initPlatoons();
     this.recalcPlayerStats();
     if (pSave.hp) this.player.hp = Math.min(this.player.maxHp, pSave.hp);
-
-    this.squadNav = {
-      x: BASE_CAMP.x,
-      y: BASE_CAMP.y,
-      vx: 0,
-      vy: 0,
-      targetEnemy: null,
-      state: 'DEFEND'
-    };
 
     this.initBattlefield();
     this.updateStatsUI();
@@ -680,18 +838,69 @@ export const IronSquadGame = {
     this.particles = [];
     this.damageTexts = [];
     this.dropsOnField = [];
+    this.projectiles = []; // 弓矢・ヒール光弾
     this.spawnTimer = 0;
-    this.waveMonsterCount = 45 + this.wave * 18;
+    // 敵の大増量！(従来の約2倍)
+    this.waveMonsterCount = 70 + this.wave * 35;
     this.spawnedInWave = 0;
     this.waveKills = 0;
   },
 
   createNewSoldier(index = 1) {
-    return {
+    const classKeys = ['HEAVY', 'LIGHT', 'ARCHER', 'MEDIC'];
+    const classKey = classKeys[(index - 1) % classKeys.length];
+    const soldierCls = SOLDIER_CLASSES[classKey];
+    const platoonId = (index - 1) % 3;
+
+    // クラスごとの初期武器・初期防具の支給
+    const initialEquip = {
+      weapon: {
+        id: Math.random().toString(36).substring(2, 9),
+        name: classKey === 'ARCHER' ? '木の短弓' : (classKey === 'MEDIC' ? '樫の杖' : '木の短剣'),
+        baseName: classKey === 'ARCHER' ? '木の短弓' : (classKey === 'MEDIC' ? '樫の杖' : '木の短剣'),
+        type: 'WEAPON',
+        tier: 1,
+        upgrade: 0,
+        mat: '木/布',
+        color: '#94a3b8',
+        stats: { atk: classKey === 'ARCHER' ? 12 : (classKey === 'LIGHT' ? 14 : (classKey === 'HEAVY' ? 10 : 8)) }
+      },
+      shield: classKey === 'HEAVY' ? {
+        id: Math.random().toString(36).substring(2, 9),
+        name: '木の丸盾',
+        baseName: '木の丸盾',
+        type: 'SHIELD',
+        tier: 1,
+        upgrade: 0,
+        mat: '木/布',
+        color: '#94a3b8',
+        stats: { def: 15, hp: 30, blockChance: 25 }
+      } : null,
+      helmet: null,
+      armor: {
+        id: Math.random().toString(36).substring(2, 9),
+        name: '布の服',
+        baseName: '布の服',
+        type: 'ARMOR',
+        tier: 1,
+        upgrade: 0,
+        mat: '木/布',
+        color: '#94a3b8',
+        stats: { def: 8, hp: 25 }
+      },
+      gloves: null,
+      legs: null,
+      amulet: null
+    };
+
+    const soldier = {
       id: Math.random().toString(36).substring(2, 9),
       isNamed: false,
+      isVeteran: false,
       title: '',
-      name: `雑兵#${index}`,
+      name: `兵士#${index}`,
+      soldierClass: classKey,
+      platoonId,
       survivedWaves: 0,
       level: 1,
       exp: 0,
@@ -699,24 +908,32 @@ export const IronSquadGame = {
       minionKills: 0,
       bossKills: 0,
       kills: 0,
-      gold: 15 + Math.floor(Math.random() * 15), // 各兵士の初期財布 15〜29G
+      gold: 18 + Math.floor(Math.random() * 18),
       medCooldown: 0,
-      rankTitle: '無名新兵',
-      hp: 70,
-      maxHp: 70,
-      atk: 11,
+      rankTitle: `${soldierCls.name}`,
+      hp: 75,
+      maxHp: 75,
+      def: 0,
+      atk: 12,
       dmgReduction: 0,
-      weapon: null,
+      equipped: initialEquip,
+      weapon: initialEquip.weapon,
       atkCooldown: 0,
-      role: index % 2 === 0 ? 'sword' : 'spear', // 剣兵または槍兵
       facingAngle: 0,
       atkAnim: 0,
       x: BASE_CAMP.x + (Math.random() - 0.5) * 120,
       y: BASE_CAMP.y + (Math.random() - 0.5) * 120,
       vx: 0,
       vy: 0,
+      isDown: false,
+      downTimer: 0,
+      rescueProgress: 0,
       dead: false
     };
+
+    this.recalcSoldierStats(soldier);
+    soldier.hp = soldier.maxHp;
+    return soldier;
   },
 
   saveGame() {
@@ -1113,121 +1330,271 @@ export const IronSquadGame = {
       proxBadge.textContent = `⚠️ 単独行動中！(部隊まで ${Math.floor(distToSquad)}m)`;
     }
 
-    // 部隊の目標決定
-    // 百人隊長(Rank 5)以上なら完全指揮で主人公に追従。
-    // それ未満なら、号令発動中のみ主人公へ、平常時は自律的に最も近い敵または本陣防衛へ！
-    let squadTargetX = BASE_CAMP.x;
-    let squadTargetY = BASE_CAMP.y;
+    // 小隊（Platoons）ナビゲーション重心の更新
+    if (!this.platoons) this.initPlatoons();
+    const nearestGlobalMonster = this.getNearestMonster(this.player.x, this.player.y);
 
-    if (currentRank.level >= 5) {
-      // 出世して百人隊長以上！完全指揮権
-      squadTargetX = this.player.x;
-      squadTargetY = this.player.y;
-    } else if (isCommandActive) {
-      // 伍長の呼集笛発動中！主人公の元へ駆けつける
-      squadTargetX = this.player.x;
-      squadTargetY = this.player.y;
-    } else {
-      // 雑兵の平常時：部隊は自律してモンスター迎撃へ進軍！
-      const nearestToSquad = this.getNearestMonster(squadCenterX, squadCenterY);
-      if (nearestToSquad) {
-        squadTargetX = nearestToSquad.x;
-        squadTargetY = nearestToSquad.y;
+    this.platoons.forEach((platoon) => {
+      if (currentRank.level >= 5 || isCommandActive) {
+        // 百人隊長以上、または号令発動中は全小隊が主人公の元へ集結！
+        platoon.x = this.player.x;
+        platoon.y = this.player.y;
       } else {
-        squadTargetX = BASE_CAMP.x;
-        squadTargetY = BASE_CAMP.y;
+        if (platoon.id === 0) {
+          // 第1小隊: 前衛突撃隊（ボス・エリート優先、または最近傍の敵）
+          const p0Boss = this.monsters.find(m => m.isBoss || m.isElite);
+          const pTarget = p0Boss || nearestGlobalMonster;
+          if (pTarget) {
+            platoon.x += (pTarget.x - platoon.x) * 1.5 * dt;
+            platoon.y += (pTarget.y - platoon.y) * 1.5 * dt;
+          } else {
+            platoon.x = BASE_CAMP.x + 90;
+            platoon.y = BASE_CAMP.y - 70;
+          }
+        } else if (platoon.id === 1) {
+          // 第2小隊: 機動遊撃隊（ドロップ宝箱、または側面散開敵へ）
+          const p1Drop = this.dropsOnField.length > 0 ? this.dropsOnField[0] : null;
+          if (p1Drop) {
+            platoon.x += (p1Drop.x - platoon.x) * 1.8 * dt;
+            platoon.y += (p1Drop.y - platoon.y) * 1.8 * dt;
+          } else if (nearestGlobalMonster) {
+            platoon.x += (nearestGlobalMonster.x - platoon.x) * 1.2 * dt;
+            platoon.y += (nearestGlobalMonster.y - platoon.y) * 1.2 * dt;
+          } else {
+            platoon.x = BASE_CAMP.x - 90;
+            platoon.y = BASE_CAMP.y + 70;
+          }
+        } else {
+          // 第3小隊: 本陣防衛隊（砦周辺260px内の敵を迎撃、いなければ哨戒）
+          const nearBaseEnemy = this.monsters.find(m => Math.hypot(m.x - BASE_CAMP.x, m.y - BASE_CAMP.y) < 280);
+          if (nearBaseEnemy) {
+            platoon.x += (nearBaseEnemy.x - platoon.x) * 2.0 * dt;
+            platoon.y += (nearBaseEnemy.y - platoon.y) * 2.0 * dt;
+          } else {
+            const patrolAngle = now * 0.0008;
+            platoon.x = BASE_CAMP.x + Math.cos(patrolAngle) * 75;
+            platoon.y = BASE_CAMP.y + Math.sin(patrolAngle) * 75;
+          }
+        }
       }
-    }
+    });
 
-    // 兵士の巡航速度（平常時105px/s。主人公が大幅に離れた時は殿警戒で80px/sに減速して待つ）
-    let soldierSpeedLimit = 105;
-    if (distToSquad > 210 && currentRank.level < 5 && !isCommandActive) {
-      soldierSpeedLimit = 80;
-    } else if (isCommandActive) {
-      soldierSpeedLimit = 135;
-    }
-
-    // 各兵士の自律移動と戦闘
+    // 各兵士の自律行動・兵種戦闘・救助
     aliveSquad.forEach((soldier, idx) => {
+      const clsKey = soldier.soldierClass || 'HEAVY';
+      const cls = SOLDIER_CLASSES[clsKey] || SOLDIER_CLASSES.HEAVY;
+      const platoon = this.platoons[soldier.platoonId % 3] || this.platoons[0];
+
+      // A. ダウン（戦闘不能）中の兵士の処理
+      if (soldier.isDown) {
+        soldier.downTimer -= dt;
+
+        // 主人公による救助（接近時に救助進行）
+        const distToPlayer = Math.hypot(this.player.x - soldier.x, this.player.y - soldier.y);
+        if (distToPlayer < 55) {
+          soldier.rescueProgress = (soldier.rescueProgress || 0) + dt * 0.85;
+          if (Math.random() < 0.22) {
+            this.spawnDamageText(soldier.x, soldier.y - 12, '💚救助中...', '#34d399');
+          }
+        }
+
+        // 救助成功判定
+        if (soldier.rescueProgress >= 1.0) {
+          soldier.isDown = false;
+          soldier.rescueProgress = 0;
+          soldier.hp = Math.floor(soldier.maxHp * 0.35); // 最低ライフで復帰
+          sound.playItem();
+          this.spawnDamageText(soldier.x, soldier.y - 24, '✨ 戦線復帰！', '#34d399');
+          this.showToast(`✨ 【${soldier.name}】が救助され戦線復帰した！`);
+        } else if (soldier.downTimer <= 0) {
+          // 救助間に合わず戦死
+          soldier.isDown = false;
+          soldier.dead = true;
+          this.spawnSparks(soldier.x, soldier.y, '#ffffff', 14);
+          this.showToast(`☠️ 【${soldier.name}】は力尽き戦死した…`);
+        }
+        return; // ダウン中は移動・攻撃スキップ
+      }
+
+      // 衛生兵（MEDIC）はダウン中の兵士がいると最優先で駆けつけて自動救助！
+      if (clsKey === 'MEDIC') {
+        const downedMate = aliveSquad.find(m => m.isDown && !m.dead);
+        if (downedMate) {
+          const mdx = downedMate.x - soldier.x;
+          const mdy = downedMate.y - soldier.y;
+          const mdist = Math.hypot(mdx, mdy);
+          if (mdist > 40) {
+            soldier.x += (mdx / mdist) * (soldier.speed * 1.3) * dt;
+            soldier.y += (mdy / mdist) * (soldier.speed * 1.3) * dt;
+            soldier.facingAngle = Math.atan2(mdy, mdx);
+          } else {
+            downedMate.rescueProgress = (downedMate.rescueProgress || 0) + dt * 1.1;
+          }
+          return;
+        }
+      }
+
       // 兵士同士のBoid反発 (団子化防止)
       for (let j = 0; j < aliveSquad.length; j++) {
         if (idx === j) continue;
         const other = aliveSquad[j];
+        if (other.isDown) continue;
         const odx = soldier.x - other.x;
         const ody = soldier.y - other.y;
         const odist = Math.hypot(odx, ody);
-        if (odist > 0 && odist < 24) {
-          const pushForce = (24 - odist) * 2.0 * dt;
+        if (odist > 0 && odist < 22) {
+          const pushForce = (22 - odist) * 2.2 * dt;
           soldier.x += (odx / odist) * pushForce;
           soldier.y += (ody / odist) * pushForce;
         }
       }
 
-      // 戦闘中の自己回復（携帯ポーション購入・応急手当）
+      // 携帯ポーション手当
       soldier.medCooldown = (soldier.medCooldown || 0) - dt;
       if (soldier.hp < soldier.maxHp * 0.45 && soldier.medCooldown <= 0) {
         if ((soldier.gold || 0) >= 8) {
           soldier.gold -= 8;
           soldier.medCooldown = 4.0;
-          const heal = Math.floor(soldier.maxHp * 0.38);
-          soldier.hp = Math.min(soldier.maxHp, soldier.hp + heal);
+          soldier.hp = Math.min(soldier.maxHp, soldier.hp + Math.floor(soldier.maxHp * 0.4));
           this.spawnDamageText(soldier.x, soldier.y - 24, '💚手当て! (-8G)', '#34d399');
           sound.playItem();
         }
       }
 
-      // ドロップへの関心（近くに非ボス宝箱があれば拾いに向かう）
-      let dropGoal = null;
-      let minDropDist = 110;
-      for (const drop of this.dropsOnField) {
-        if (drop.isBoss) continue; // ボスドロップは兵士は触らない！
-        const d = Math.hypot(drop.x - soldier.x, drop.y - soldier.y);
-        if (d < minDropDist) {
-          minDropDist = d;
-          dropGoal = drop;
+      // 衛生兵（MEDIC）の味方ヒール魔法
+      if (clsKey === 'MEDIC') {
+        soldier.atkCooldown = (soldier.atkCooldown || 0) - dt;
+        if (soldier.atkCooldown <= 0) {
+          let hurtTarget = this.player.hp < this.player.maxHp * 0.8 ? this.player : null;
+          for (const m of aliveSquad) {
+            if (!m.isDown && m.hp < m.maxHp * 0.7) {
+              if (!hurtTarget || (m.hp / m.maxHp) < (hurtTarget.hp / hurtTarget.maxHp)) {
+                hurtTarget = m;
+              }
+            }
+          }
+          if (hurtTarget && Math.hypot(hurtTarget.x - soldier.x, hurtTarget.y - soldier.y) <= 190) {
+            soldier.atkCooldown = cls.atkCooldown;
+            soldier.atkAnim = 1.0;
+            soldier.facingAngle = Math.atan2(hurtTarget.y - soldier.y, hurtTarget.x - soldier.x);
+            if (!this.projectiles) this.projectiles = [];
+            this.projectiles.push({
+              x: soldier.x, y: soldier.y,
+              target: hurtTarget,
+              type: 'HEAL',
+              amount: 22 + Math.floor((soldier.atk || 12) * 0.8),
+              speed: 240,
+              color: '#34d399'
+            });
+            sound.playItem();
+          }
         }
       }
 
-      // 部隊重心を中心とした集団散開
-      const angle = (idx / aliveSquad.length) * Math.PI * 2 + (now * 0.0006);
-      const scatterDist = 36 + (idx % 4) * 14;
-      let myGoalX = squadTargetX + Math.cos(angle) * scatterDist;
-      let myGoalY = squadTargetY + Math.sin(angle) * scatterDist;
+      // 自律移動目標（所属小隊のナビゲーション重心を中心とした散開）
+      const pAngle = (idx * 1.1) + (now * 0.0006);
+      const pDist = 28 + (idx % 5) * 12;
+      let targetX = platoon.x + Math.cos(pAngle) * pDist;
+      let targetY = platoon.y + Math.sin(pAngle) * pDist;
 
-      // 敵が近くにいない、または宝箱が至近ならドロップを優先回収
+      // 敵索敵
       const nearestEnemy = this.getNearestMonster(soldier.x, soldier.y);
       const enemyDist = nearestEnemy ? Math.hypot(nearestEnemy.x - soldier.x, nearestEnemy.y - soldier.y) : 9999;
-      if (dropGoal && (enemyDist > 65 || minDropDist < 45)) {
-        myGoalX = dropGoal.x;
-        myGoalY = dropGoal.y;
+
+      // 兵種ごとの交戦間合い
+      if (nearestEnemy && enemyDist < 260) {
+        if (clsKey === 'ARCHER') {
+          // 弓兵: 75px未満なら後退、75〜240pxならその場で射撃
+          if (enemyDist < 75) {
+            targetX = soldier.x - (nearestEnemy.x - soldier.x);
+            targetY = soldier.y - (nearestEnemy.y - soldier.y);
+          } else if (enemyDist < 240) {
+            targetX = soldier.x;
+            targetY = soldier.y;
+          }
+        } else if (clsKey === 'HEAVY') {
+          // 重装: 敵に真っ向から突進
+          targetX = nearestEnemy.x;
+          targetY = nearestEnemy.y;
+        } else if (clsKey === 'LIGHT') {
+          // 軽装: 敵の側面に回り込む
+          const sideAngle = Math.atan2(nearestEnemy.y - soldier.y, nearestEnemy.x - soldier.x) + 0.8;
+          targetX = nearestEnemy.x + Math.cos(sideAngle) * 35;
+          targetY = nearestEnemy.y + Math.sin(sideAngle) * 35;
+        }
       }
 
-      const dx = myGoalX - soldier.x;
-      const dy = myGoalY - soldier.y;
-      const d = Math.hypot(dx, dy);
-      if (d > 6) {
-        const moveStep = Math.min(d * 3.5, soldierSpeedLimit) * dt;
-        soldier.x += (dx / d) * moveStep;
-        soldier.y += (dy / d) * moveStep;
+      const dx = targetX - soldier.x;
+      const dy = targetY - soldier.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist > 6) {
+        const moveStep = Math.min(dist * 3.5, soldier.speed) * dt;
+        soldier.x += (dx / dist) * moveStep;
+        soldier.y += (dy / dist) * moveStep;
         soldier.facingAngle = Math.atan2(dy, dx);
       }
 
-      // 兵士の攻撃アニメ減衰
       if (soldier.atkAnim > 0) soldier.atkAnim -= dt * 5;
 
-      // 兵士のオート攻撃
+      // オート攻撃（弓兵は矢、近接は斬撃）
       soldier.atkCooldown = (soldier.atkCooldown || 0) - dt;
       if (nearestEnemy && soldier.atkCooldown <= 0) {
-        const distE = Math.hypot(nearestEnemy.x - soldier.x, nearestEnemy.y - soldier.y);
-        if (distE <= 44) {
-          soldier.atkCooldown = 0.85;
+        if (clsKey === 'ARCHER' && enemyDist <= cls.range) {
+          soldier.atkCooldown = cls.atkCooldown;
           soldier.atkAnim = 1.0;
           soldier.facingAngle = Math.atan2(nearestEnemy.y - soldier.y, nearestEnemy.x - soldier.x);
-          const totalAtk = soldier.atk + (soldier.weapon ? soldier.weapon.stats.atk || 0 : 0);
+          const arrowAtk = soldier.atk + (soldier.equipped && soldier.equipped.weapon ? soldier.equipped.weapon.stats.atk || 0 : (soldier.weapon ? soldier.weapon.stats.atk || 0 : 0));
+          if (!this.projectiles) this.projectiles = [];
+          this.projectiles.push({
+            x: soldier.x, y: soldier.y,
+            target: nearestEnemy,
+            attacker: soldier,
+            type: 'ARROW',
+            damage: arrowAtk,
+            speed: 360,
+            color: '#e2e8f0'
+          });
+          sound.playSlash();
+        } else if (clsKey !== 'ARCHER' && clsKey !== 'MEDIC' && enemyDist <= cls.range) {
+          soldier.atkCooldown = cls.atkCooldown;
+          soldier.atkAnim = 1.0;
+          soldier.facingAngle = Math.atan2(nearestEnemy.y - soldier.y, nearestEnemy.x - soldier.x);
+          const totalAtk = soldier.atk + (soldier.equipped && soldier.equipped.weapon ? soldier.equipped.weapon.stats.atk || 0 : (soldier.weapon ? soldier.weapon.stats.atk || 0 : 0));
           this.performAttack(soldier, nearestEnemy, false, totalAtk);
         }
       }
     });
+
+    // 弾丸・矢・ヒール光弾の更新
+    if (this.projectiles) {
+      for (let i = this.projectiles.length - 1; i >= 0; i--) {
+        const proj = this.projectiles[i];
+        const tgt = proj.target;
+        if (!tgt || (tgt.hp <= 0 && proj.type === 'ARROW')) {
+          this.projectiles.splice(i, 1);
+          continue;
+        }
+
+        const pdx = tgt.x - proj.x;
+        const pdy = tgt.y - proj.y;
+        const pdist = Math.hypot(pdx, pdy);
+
+        if (pdist < 18) {
+          this.projectiles.splice(i, 1);
+          if (proj.type === 'ARROW') {
+            this.performAttack(proj.attacker, tgt, false, proj.damage);
+            this.spawnSparks(tgt.x, tgt.y, '#e2e8f0', 5);
+          } else if (proj.type === 'HEAL') {
+            tgt.hp = Math.min(tgt.maxHp, tgt.hp + proj.amount);
+            this.spawnDamageText(tgt.x, tgt.y - 18, `+${proj.amount}HP`, '#34d399');
+            this.spawnSparks(tgt.x, tgt.y, '#34d399', 6);
+          }
+        } else {
+          proj.x += (pdx / pdist) * proj.speed * dt;
+          proj.y += (pdy / pdist) * proj.speed * dt;
+        }
+      }
+    }
 
     // 主人公の自動攻撃
     this.player.atkCooldown -= dt;
@@ -1244,12 +1611,12 @@ export const IronSquadGame = {
       }
     }
 
-    // モンスター生成 (大軍勢パック湧き)
+    // モンスター生成 (大軍勢パック湧き - 敵増量版)
     if (this.spawnedInWave < this.waveMonsterCount) {
       this.spawnTimer += dt;
-      if (this.spawnTimer >= Math.max(1.0, 2.2 - this.wave * 0.08)) {
+      if (this.spawnTimer >= Math.max(0.7, 1.6 - this.wave * 0.06)) {
         this.spawnTimer = 0;
-        this.spawnPack(Math.min(9, 4 + Math.floor(this.wave / 2)));
+        this.spawnPack(Math.min(14, 6 + Math.floor(this.wave * 1.1)));
       }
     }
 
@@ -1258,11 +1625,12 @@ export const IronSquadGame = {
       const m = this.monsters[i];
       if (m.hitPulse > 0) m.hitPulse -= dt * 4;
 
-      // 最も近い獲物（主人公または仲間兵士）
+      // 生存かつダウンしていない最も近い獲物を探索
       let target = this.player;
       let minDist = Math.hypot(this.player.x - m.x, this.player.y - m.y);
 
       for (const s of aliveSquad) {
+        if (s.isDown) continue; // ダウン中の兵士は追わない
         const d = Math.hypot(s.x - m.x, s.y - m.y);
         if (d < minDist) {
           minDist = d;
@@ -1286,23 +1654,40 @@ export const IronSquadGame = {
       }
     }
 
-    // ドロップ回収: 1. 兵士による回収 (ボス以外)
+    // ドロップ回収: 1. 兵士による回収 (上位装備なら自動着替え＆強化引き継ぎ！)
     for (let i = this.dropsOnField.length - 1; i >= 0; i--) {
       const drop = this.dropsOnField[i];
       if (drop.isBoss) continue; // ボスドロップは兵士は触らない！
 
       for (const s of aliveSquad) {
+        if (s.isDown) continue;
         const distS = Math.hypot(drop.x - s.x, drop.y - s.y);
-        if (distS < 24) {
+        if (distS < 26) {
           const item = drop.item;
           this.dropsOnField.splice(i, 1);
-          if (item.type === 'WEAPON' && (!s.weapon || (item.stats.atk || 0) > (s.weapon.stats.atk || 0))) {
-            s.weapon = item;
-            this.spawnDamageText(s.x, s.y - 20, `🗡️[${item.name}]装備!`, '#38bdf8');
-          } else {
-            const sellVal = Math.floor(8 + item.tier * 6 + (item.upgrade || 0) * 4);
-            s.gold = (s.gold || 0) + sellVal;
-            this.spawnDamageText(s.x, s.y - 20, `📦換金+${sellVal}G`, '#fbbf24');
+          const slotKey = SLOT_INFO[item.type] ? SLOT_INFO[item.type].key : null;
+
+          if (slotKey) {
+            if (!s.equipped) s.equipped = {};
+            const curItem = s.equipped[slotKey];
+            const isBetter = !curItem || item.tier > curItem.tier || (item.tier === curItem.tier && (item.upgrade || 0) > (curItem.upgrade || 0));
+
+            if (isBetter) {
+              // 上位装備に着替える！旧装備の強化値を新装備へ引き継ぐ！
+              const oldUp = curItem ? (curItem.upgrade || 0) : 0;
+              if (oldUp > 0) {
+                applyUpgradeStats(item, Math.max(item.upgrade || 0, oldUp));
+              }
+              s.equipped[slotKey] = item;
+              if (slotKey === 'weapon') s.weapon = item;
+              this.recalcSoldierStats(s);
+              this.spawnDamageText(s.x, s.y - 20, `🛡️[${item.name}]着用!`, '#38bdf8');
+            } else {
+              // 換金して兵士の財布へ
+              const sellVal = Math.floor(8 + item.tier * 6 + (item.upgrade || 0) * 4);
+              s.gold = (s.gold || 0) + sellVal;
+              this.spawnDamageText(s.x, s.y - 20, `📦換金+${sellVal}G`, '#fbbf24');
+            }
           }
           sound.playItem();
           break;
@@ -1389,21 +1774,29 @@ export const IronSquadGame = {
   },
 
   damageTarget(target, rawDmg) {
-    const reduction = target.dmgReduction ? Math.min(0.35, target.dmgReduction / 100) : 0;
-    const dmg = Math.max(1, Math.round(rawDmg * (1 - reduction)));
+    const defVal = target.def || 0;
+    const defFactor = 100 / (100 + defVal * 1.2);
+    const reduction = target.dmgReduction ? Math.min(0.40, target.dmgReduction / 100) : 0;
+    const dmg = Math.max(1, Math.round(rawDmg * defFactor * (1 - reduction)));
     target.hp -= dmg;
     this.spawnDamageText(target.x, target.y - 12, dmg, '#ff3344');
     sound.playBomb();
 
     if (target.hp <= 0) {
       if (target === this.player) {
+        this.player.hp = 0;
         this.gameOver();
       } else {
-        target.dead = true;
-        this.spawnSparks(target.x, target.y, '#ffffff', 14);
-        const nameDisp = target.isNamed ? `【${target.title}${target.name}】` : target.name;
-        this.showToast(`☠️ ${nameDisp}が戦死した…`);
-        this.updateStatsUI();
+        if (!target.isDown) {
+          target.hp = 0;
+          target.isDown = true;
+          target.downTimer = 14.0;
+          target.rescueProgress = 0;
+          sound.playHit(1);
+          this.spawnDamageText(target.x, target.y - 20, '🆘 行動不能！', '#f87171');
+          const nameDisp = target.isNamed ? `【${target.title}${target.name}】` : target.name;
+          this.showToast(`🆘 ${nameDisp}が倒れた！救助せよ！（猶予14秒）`);
+        }
       }
     }
   },
@@ -1529,13 +1922,8 @@ export const IronSquadGame = {
     this.inventory.push(item);
 
     let autoEquipped = false;
-    if (item.type === 'WEAPON' && !this.equipped.weapon) {
-      this.equipItem(item);
-      autoEquipped = true;
-    } else if (item.type === 'ARMOR' && !this.equipped.armor) {
-      this.equipItem(item);
-      autoEquipped = true;
-    } else if (item.type === 'AMULET' && !this.equipped.amulet) {
+    const slotKey = SLOT_INFO[item.type] ? SLOT_INFO[item.type].key : null;
+    if (slotKey && !this.equipped[slotKey]) {
       this.equipItem(item);
       autoEquipped = true;
     }
@@ -1550,19 +1938,40 @@ export const IronSquadGame = {
     this.saveGame();
   },
 
+  equipItem(item, inheritUpgradeFromCurrent = false) {
+    const slotKey = SLOT_INFO[item.type] ? SLOT_INFO[item.type].key : null;
+    if (!slotKey) return;
 
-  equipItem(item) {
-    if (item.type === 'WEAPON') {
-      this.equipped.weapon = item;
-    } else if (item.type === 'ARMOR') {
-      this.equipped.armor = item;
-    } else if (item.type === 'AMULET') {
-      this.equipped.amulet = item;
+    const curItem = this.equipped[slotKey];
+    if (inheritUpgradeFromCurrent && curItem && (curItem.upgrade || 0) > (item.upgrade || 0)) {
+      const inheritedVal = curItem.upgrade;
+      applyUpgradeStats(item, inheritedVal);
+      applyUpgradeStats(curItem, 0);
+      this.showToast(`✨ 旧装備の強化値(+${inheritedVal})を引き継いで「${item.name}」を装備！`);
     }
+
+    this.equipped[slotKey] = item;
     this.recalcPlayerStats();
     sound.playTap();
     this.saveGame();
     this.updateStatsUI();
+  },
+
+  inheritUpgrade(sourceItem, targetItem) {
+    if (!sourceItem || !targetItem) return;
+    const srcUp = sourceItem.upgrade || 0;
+    const tgtUp = targetItem.upgrade || 0;
+    if (srcUp <= tgtUp) {
+      alert('引き継ぎ元の強化値が対象より低いため引き継げません');
+      return;
+    }
+    applyUpgradeStats(targetItem, srcUp);
+    applyUpgradeStats(sourceItem, 0);
+    this.recalcPlayerStats();
+    sound.playHighScore();
+    this.showToast(`✨ 鍛冶屋の魔術！「${sourceItem.name}」の強化値を「${targetItem.name}」へ引き継ぎました！`);
+    this.saveGame();
+    this.renderStrategyUI();
   },
 
   grantSoldierHonor(soldierId) {
@@ -1595,48 +2004,33 @@ export const IronSquadGame = {
     }
     if (!isFree) this.gold -= cost;
 
-    item.upgrade = (item.upgrade || 0) + 1;
-    if (!item.baseName) {
-      item.baseName = item.name.replace(/\+\d+$/, '');
-    }
-    item.name = `${item.baseName}+${item.upgrade}`;
-
-    if (item.type === 'WEAPON') {
-      item.stats.atk = Math.round((item.stats.atk || 10) * 1.25 + 3);
-    } else if (item.type === 'ARMOR') {
-      item.stats.hp = Math.round((item.stats.hp || 30) * 1.25 + 15);
-    } else if (item.type === 'AMULET') {
-      if (item.stats.speed) item.stats.speed += 2;
-      if (item.stats.atkSpeed) item.stats.atkSpeed += 4;
-    }
+    const nextUp = (item.upgrade || 0) + 1;
+    applyUpgradeStats(item, nextUp);
 
     sound.playHighScore();
     this.showToast(`🔨 鍛冶完了！「${item.name}」に強化成功！`);
 
-    // 装備中ならプレイヤー反映
-    if (this.equipped.weapon && this.equipped.weapon.id === item.id) this.equipItem(this.equipped.weapon);
-    if (this.equipped.armor && this.equipped.armor.id === item.id) this.equipItem(this.equipped.armor);
-    if (this.equipped.amulet && this.equipped.amulet.id === item.id) this.equipItem(this.equipped.amulet);
-
+    this.recalcPlayerStats();
     this.saveGame();
     this.renderStrategyUI();
     this.updateStatsUI();
     return true;
   },
 
-  upgradeSoldierWeapon(soldierId) {
+  upgradeSoldierEquip(soldierId, slotKey = 'weapon') {
     const s = this.squad.find(sol => sol.id === soldierId);
-    if (!s || !s.weapon) return;
-    const cost = this.getUpgradeCost(s.weapon);
+    if (!s || !s.equipped || !s.equipped[slotKey]) return;
+    const item = s.equipped[slotKey];
+    const cost = this.getUpgradeCost(item);
     if ((s.gold || 0) < cost) {
       alert(`兵士の予算が足りません (兵士所持金: ${s.gold || 0}G / 必要: ${cost}G)`);
       return;
     }
     s.gold -= cost;
-    this.upgradeItem(s.weapon, true);
+    applyUpgradeStats(item, (item.upgrade || 0) + 1);
     this.recalcSoldierStats(s);
     sound.playHighScore();
-    this.showToast(`🔨 ${s.name}が自費で「${s.weapon.name}」を強化！`);
+    this.showToast(`🔨 ${s.name}が自費で「${item.name}」を強化！`);
     this.saveGame();
     this.renderStrategyUI();
   },
@@ -1658,15 +2052,19 @@ export const IronSquadGame = {
     this.updateStatsUI();
   },
 
-  giveWeaponToSoldier(soldierId, weaponItem) {
+  giveItemToSoldier(soldierId, item) {
     const soldier = this.squad.find(s => s.id === soldierId);
     if (!soldier) return;
+    const slotKey = SLOT_INFO[item.type] ? SLOT_INFO[item.type].key : null;
+    if (!slotKey) return;
 
-    soldier.weapon = weaponItem;
+    if (!soldier.equipped) soldier.equipped = {};
+    soldier.equipped[slotKey] = item;
+    if (slotKey === 'weapon') soldier.weapon = item;
     this.recalcSoldierStats(soldier);
-    this.inventory = this.inventory.filter(i => i.id !== weaponItem.id);
+    this.inventory = this.inventory.filter(i => i.id !== item.id);
     sound.playHighScore();
-    this.showToast(`⚔️ ${soldier.isNamed ? soldier.name : soldier.name}に「${weaponItem.name}」を支給！`);
+    this.showToast(`🛡️ ${soldier.isNamed ? soldier.name : soldier.name}に「${item.name}」を支給！`);
     this.saveGame();
     this.renderStrategyUI();
   },
@@ -1681,9 +2079,10 @@ export const IronSquadGame = {
     this.recalcPlayerStats();
     this.player.hp = Math.min(this.player.maxHp, this.player.hp + 45);
 
-    // 各兵士の自費治療 ＆ 生還ステータスアップ
+    // 各兵士の自費治療 ＆ 生還ステータスアップ ＆ 自費自動強化
     let fullHealedCount = 0;
     let brokeSoldiersCount = 0;
+    let autoUpgradedCount = 0;
 
     this.squad.forEach((s) => {
       if (!s.dead) {
@@ -1709,10 +2108,26 @@ export const IronSquadGame = {
         } else {
           fullHealedCount++;
         }
+
+        // 兵士の自費自動強化 (予備資金を残して装備を自動強化！)
+        if (s.equipped) {
+          Object.keys(s.equipped).forEach((k) => {
+            const eqItem = s.equipped[k];
+            if (eqItem) {
+              const upCost = this.getUpgradeCost(eqItem);
+              if ((s.gold || 0) >= upCost + 12) {
+                s.gold -= upCost;
+                applyUpgradeStats(eqItem, (eqItem.upgrade || 0) + 1);
+                autoUpgradedCount++;
+              }
+            }
+          });
+          this.recalcSoldierStats(s);
+        }
       }
     });
 
-    this.treatmentReport = { fullHealedCount, brokeSoldiersCount };
+    this.treatmentReport = { fullHealedCount, brokeSoldiersCount, autoUpgradedCount };
     this.saveGame();
     this.openStrategyModal(false);
   },
@@ -1726,7 +2141,7 @@ export const IronSquadGame = {
 
     if (isManualOpen) {
       titleEl.textContent = '⛺ 本陣戦略会議 (駐屯中)';
-      reportEl.textContent = '装備の強化鍛冶、武器の支給、兵士の叙勲や治療を行えます。';
+      reportEl.textContent = '装備の強化鍛冶、武器防具の支給、兵士の叙勲や治療を行えます。';
       nextBtn.classList.add('hidden');
       closeBtn.classList.remove('hidden');
       this.inBattle = false;
@@ -1734,11 +2149,12 @@ export const IronSquadGame = {
       titleEl.textContent = `⚔️ WAVE ${this.wave} 突破！本陣帰還`;
       const alive = this.squad.filter(s => !s.dead);
       const deadCount = this.squad.length - alive.length;
-      const rep = this.treatmentReport || { fullHealedCount: alive.length, brokeSoldiersCount: 0 };
+      const rep = this.treatmentReport || { fullHealedCount: alive.length, brokeSoldiersCount: 0, autoUpgradedCount: 0 };
       reportEl.innerHTML = `
         激戦を生き延びた！ 生存部隊: <strong style="color:#00ffaa;">${alive.length}名</strong> ${deadCount > 0 ? `<span style="color:#ff4444;">(${deadCount}名戦死 / 次戦新兵補充)</span>` : ''}<br>
         🛡️ <strong style="color:#38bdf8;">【生還ボーナス】</strong>全員のステータス向上！(あなた: HP+20, ATK+4 / 兵士: HP+14, ATK+3)<br>
-        🏥 <strong style="color:#34d399;">【宿営手当て】</strong>各自の予算で治療完了（自費全快: <strong>${rep.fullHealedCount}名</strong> / 資金不足残傷: <strong style="color:#f59e0b;">${rep.brokeSoldiersCount}名</strong>）
+        🏥 <strong style="color:#34d399;">【宿営手当て】</strong>各自の予算で治療完了（自費全快: <strong>${rep.fullHealedCount}名</strong> / 資金不足: <strong style="color:#f59e0b;">${rep.brokeSoldiersCount}名</strong>）<br>
+        🔨 <strong style="color:#fbbf24;">【自費強化】</strong>兵士たちが予算で装備を自発的に強化！（計 <strong>${rep.autoUpgradedCount}件</strong> 成功）
       `;
       nextBtn.classList.remove('hidden');
       closeBtn.classList.add('hidden');
@@ -1764,10 +2180,14 @@ export const IronSquadGame = {
 
       pRecordBox.innerHTML = `
         <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px;">
-          <strong style="color: #38bdf8; font-size: 12px;">🎖️ 隊長の武勲（撃墜数パワーアップ）</strong>
+          <strong style="color: #38bdf8; font-size: 12px;">🎖️ 隊長の総合武勲（撃墜数ボーナス＆防御力）</strong>
           <span style="color: #94a3b8; font-size: 10px;">総討伐: ${p.kills || 0}体</span>
         </div>
-        <div style="display: flex; flex-direction: column; gap: 3px; color: #cbd5e1;">
+        <div style="display: flex; flex-direction: column; gap: 3px; color: #cbd5e1; font-size: 11px;">
+          <div style="display: flex; justify-content: space-between;">
+            <span>🛡️ 防御力: <strong style="color: #38bdf8;">DEF ${p.def || 0}</strong> (軽減-${p.dmgReduction || 0}%)</span>
+            <span>❤️ HP: <strong style="color: #34d399;">${Math.floor(p.hp)}/${p.maxHp}</strong> | ⚔️ ATK: <strong style="color: #fff;">${p.atk}</strong></span>
+          </div>
           <div style="display: flex; justify-content: space-between;">
             <span>⚔️ 雑魚撃墜: <strong style="color: #fff;">${p.minionKills || 0}体</strong></span>
             <span style="color: #6ee7b7;">(+${minionAtk}攻 / +${minionHp}HP / +${minionSpd}速)</span>
@@ -1783,63 +2203,93 @@ export const IronSquadGame = {
     const eq = this.equipped;
     const playerEquipBox = document.getElementById('player-equip-box');
     
-    const renderEquipRow = (slotName, icon, item) => {
+    const slotsConfig = [
+      { key: 'weapon', label: '武器', icon: '🗡️' },
+      { key: 'shield', label: '盾', icon: '🛡️' },
+      { key: 'helmet', label: '兜', icon: '🪖' },
+      { key: 'armor', label: '鎧', icon: '🥋' },
+      { key: 'gloves', label: '手', icon: '🧤' },
+      { key: 'legs', label: '脚', icon: '🥾' },
+      { key: 'amulet', label: '装飾', icon: '📿' }
+    ];
+
+    const renderEquipRow = (slotDef) => {
+      const item = eq[slotDef.key];
       if (!item) {
         return `
-          <div style="font-size: 12px; margin-bottom: 6px; color: #888; display:flex; justify-content:space-between; align-items:center;">
-            <span>${icon} ${slotName}: <strong>支給品 (なし)</strong></span>
+          <div style="font-size: 11px; margin-bottom: 5px; color: #64748b; display:flex; justify-content:space-between; align-items:center;">
+            <span>${slotDef.icon} ${slotDef.label}: <em>(未装備)</em></span>
           </div>`;
       }
       const cost = this.getUpgradeCost(item);
-      const statText = item.type === 'WEAPON' ? `+${item.stats.atk} ATK` : (item.type === 'ARMOR' ? `+${item.stats.hp} HP` : `SPD+${item.stats.speed}`);
+      const st = item.stats || {};
+      let statParts = [];
+      if (st.atk) statParts.push(`+${st.atk}攻`);
+      if (st.def) statParts.push(`+${st.def}防`);
+      if (st.hp) statParts.push(`+${st.hp}HP`);
+      if (st.speed) statParts.push(`+${st.speed}速`);
+      if (st.blockChance) statParts.push(`盾防${st.blockChance}%`);
+      const statText = statParts.join(' ') || '装備品';
+
       return `
-        <div style="font-size: 12px; margin-bottom: 6px; display:flex; justify-content:space-between; align-items:center;">
+        <div style="font-size: 11px; margin-bottom: 5px; display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.02); padding: 2px 4px; border-radius:4px;">
           <div>
-            <span style="color:${item.color}; font-weight:bold;">${icon} [T${item.tier} ${item.mat}] ${item.name}</span>
-            <span style="color:#aaa; font-size:11px; margin-left:4px;">(${statText})</span>
+            <span style="color:${item.color}; font-weight:bold;">${slotDef.icon} [T${item.tier}] ${item.name}</span>
+            <span style="color:#94a3b8; font-size:10px; margin-left:4px;">(${statText})</span>
           </div>
-          <button class="mini-btn btn-up-equipped" data-slot="${item.type}" style="background:#f59e0b; color:#0b0d14;">🔨 強化 [${cost}G]</button>
+          <button class="mini-btn btn-up-equipped" data-slot="${slotDef.key}" style="background:#f59e0b; color:#0b0d14; font-size:10px; padding:2px 6px;">🔨 強化 [${cost}G]</button>
         </div>`;
     };
 
     playerEquipBox.innerHTML = `
-      <div style="font-size: 11px; font-weight: bold; color: #ffaa00; margin-bottom: 6px;">【あなたの装備】(鍛冶屋で強化可能)</div>
-      ${renderEquipRow('武器', '🗡️', eq.weapon)}
-      ${renderEquipRow('防具', '🛡️', eq.armor)}
-      ${renderEquipRow('装飾', '📿', eq.amulet)}
+      <div style="font-size: 11px; font-weight: bold; color: #ffaa00; margin-bottom: 6px;">【隊長装備（全7部位）】(鍛冶屋で強化可能)</div>
+      ${slotsConfig.map(s => renderEquipRow(s)).join('')}
     `;
 
     // 装備中アイテムの強化イベント
     playerEquipBox.querySelectorAll('.btn-up-equipped').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
-        const slot = btn.dataset.slot;
-        const item = slot === 'WEAPON' ? eq.weapon : (slot === 'ARMOR' ? eq.armor : eq.amulet);
+        const slotKey = btn.dataset.slot;
+        const item = eq[slotKey];
         if (item) this.upgradeItem(item);
       });
     });
 
     const invList = document.getElementById('inventory-list');
     if (!this.inventory || this.inventory.length === 0) {
-      invList.innerHTML = '<div style="font-size: 12px; color: #666; text-align: center; padding: 10px;">バッグは空です (敵討伐や横取り😈で宝箱入手)</div>';
+      invList.innerHTML = '<div style="font-size: 11px; color: #64748b; text-align: center; padding: 8px;">バッグは空です (敵討伐や横取り😈で装備入手)</div>';
     } else {
       invList.innerHTML = '';
       this.inventory.forEach((item) => {
         const itemRow = document.createElement('div');
-        itemRow.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 6px; border-bottom: 1px solid #23273c; font-size: 12px;';
+        itemRow.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 5px 6px; border-bottom: 1px solid #23273c; font-size: 11px;';
         
-        let statText = item.type === 'WEAPON' ? `ATK+${item.stats.atk}` : (item.type === 'ARMOR' ? `HP+${item.stats.hp}` : `装飾`);
-        const isEquipped = (eq.weapon && eq.weapon.id === item.id) || (eq.armor && eq.armor.id === item.id) || (eq.amulet && eq.amulet.id === item.id);
+        const slotKey = SLOT_INFO[item.type] ? SLOT_INFO[item.type].key : 'weapon';
+        const curEquipped = eq[slotKey];
+        const isEquipped = curEquipped && curEquipped.id === item.id;
+        const canInherit = curEquipped && !isEquipped && (curEquipped.upgrade || 0) > (item.upgrade || 0);
         const upCost = this.getUpgradeCost(item);
+
+        const st = item.stats || {};
+        let statParts = [];
+        if (st.atk) statParts.push(`+${st.atk}攻`);
+        if (st.def) statParts.push(`+${st.def}防`);
+        if (st.hp) statParts.push(`+${st.hp}HP`);
+        if (st.speed) statParts.push(`+${st.speed}速`);
+        const statText = statParts.join(' ');
 
         itemRow.innerHTML = `
           <div>
-            <span style="color: ${item.color}; font-weight: bold;">[T${item.tier} ${item.mat}] ${item.name}</span>
-            <span style="font-size: 11px; color: #aaa; margin-left: 4px;">(${statText})</span>
+            <span style="color: ${item.color}; font-weight: bold;">[T${item.tier}] ${item.name}</span>
+            <span style="font-size: 10px; color: #94a3b8; margin-left: 3px;">(${statText})</span>
           </div>
-          <div style="display:flex; gap:4px; align-items:center;">
-            <button class="mini-btn btn-up-inv" style="background:#f59e0b; color:#0b0d14;">🔨+1 [${upCost}G]</button>
-            ${isEquipped ? '<span style="color: #00ffaa; font-size: 11px;">装備中</span>' : `<button class="mini-btn equip-btn">装備</button>`}
+          <div style="display:flex; gap:3px; align-items:center;">
+            <button class="mini-btn btn-up-inv" style="background:#f59e0b; color:#0b0d14; font-size:10px; padding:2px 5px;">🔨 [${upCost}G]</button>
+            ${isEquipped ? '<span style="color: #00ffaa; font-size: 10px;">装備中</span>' : `
+              <button class="mini-btn equip-btn" style="font-size:10px; padding:2px 5px;">装備</button>
+              ${canInherit ? `<button class="mini-btn inherit-btn" style="background:#8b5cf6; color:#fff; font-size:10px; padding:2px 5px;" title="現在装備の強化値を引き継いで装備">✨+${curEquipped.upgrade}引継</button>` : ''}
+            `}
           </div>
         `;
 
@@ -1847,7 +2297,15 @@ export const IronSquadGame = {
         if (equipBtn) {
           equipBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            this.equipItem(item);
+            this.equipItem(item, false);
+            this.renderStrategyUI();
+          });
+        }
+        const inheritBtn = itemRow.querySelector('.inherit-btn');
+        if (inheritBtn) {
+          inheritBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.equipItem(item, true);
             this.renderStrategyUI();
           });
         }
@@ -1869,39 +2327,54 @@ export const IronSquadGame = {
     alive.forEach((s) => {
       const row = document.createElement('div');
       const isNamed = s.isNamed;
-      row.style.cssText = `background: ${isNamed ? 'rgba(255, 170, 0, 0.08)' : 'rgba(255, 255, 255, 0.02)'}; border-radius: 8px; padding: 8px; margin-bottom: 6px; border: 1px solid ${isNamed ? '#ffaa00' : '#23273c'};`;
+      const isDown = s.isDown;
+      const clsKey = s.soldierClass || 'HEAVY';
+      const cls = SOLDIER_CLASSES[clsKey] || SOLDIER_CLASSES.HEAVY;
+      const platoon = this.platoons ? this.platoons[s.platoonId % 3] : null;
+      const pColor = platoon ? platoon.color : '#38bdf8';
+      const pName = platoon ? platoon.name : '小隊';
 
-      const availableWeapons = (this.inventory || []).filter(i => i.type === 'WEAPON' && (!eq.weapon || eq.weapon.id !== i.id));
+      row.style.cssText = `background: ${isDown ? 'rgba(239, 68, 68, 0.1)' : (isNamed ? 'rgba(255, 170, 0, 0.08)' : 'rgba(255, 255, 255, 0.02)')}; border-radius: 8px; padding: 7px; margin-bottom: 6px; border: 1px solid ${isDown ? '#ef4444' : (isNamed ? '#ffaa00' : '#23273c')};`;
+
+      const availableItems = (this.inventory || []).filter(i => {
+        const sk = SLOT_INFO[i.type] ? SLOT_INFO[i.type].key : null;
+        return sk && (!eq[sk] || eq[sk].id !== i.id);
+      });
+
       const canHonor = !isNamed && s.survivedWaves >= 2;
-      const wUpCost = s.weapon ? this.getUpgradeCost(s.weapon) : 0;
-      const hasWUpBudget = s.weapon && (s.gold || 0) >= wUpCost;
+      const wItem = s.equipped && s.equipped.weapon ? s.equipped.weapon : s.weapon;
+      const wUpCost = wItem ? this.getUpgradeCost(wItem) : 0;
+      const hasWUpBudget = wItem && (s.gold || 0) >= wUpCost;
 
       row.innerHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: baseline; font-size: 12px; margin-bottom: 4px;">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; font-size: 11px; margin-bottom: 3px;">
           <span>
-            ${isNamed ? '👑' : (s.bossKills > 0 ? '⭐' : '🎖️')} 
+            ${isNamed ? '👑' : (s.bossKills > 0 ? '⭐' : cls.icon)} 
             <strong style="color: ${isNamed ? '#ffe600' : (s.bossKills > 0 ? '#38bdf8' : '#fff')};">${isNamed ? `${s.title}${s.name}` : s.name}</strong> 
-            <span style="color:#00f0ff; font-size: 11px;">[Lv.${s.level || 1} ${s.rankTitle}]</span>
+            <span style="color:${pColor}; font-size: 10px; margin-left: 2px;">[${pName.split(' ')[0]}]</span>
+            <span style="color:#00f0ff; font-size: 10px;">[Lv.${s.level || 1} ${cls.name}]</span>
+            ${s.isVeteran ? '<span style="color:#fbbf24; font-size:9px;">(先輩)</span>' : ''}
+            ${isDown ? '<span style="color:#ef4444; font-weight:bold;">[🆘負傷ダウン]</span>' : ''}
           </span>
-          <span style="font-size: 11px;">💰 <strong style="color:#ffe600;">${s.gold || 0}G</strong> | ⚔️ <strong>${s.minionKills || 0}</strong> | 👑 <strong>${s.bossKills || 0}</strong></span>
+          <span style="font-size: 10px;">💰 <strong style="color:#ffe600;">${s.gold || 0}G</strong> | ⚔️${s.minionKills || 0} 👑${s.bossKills || 0}</span>
         </div>
-        <div style="font-size: 11px; color: #889; margin-bottom: 4px; display: flex; justify-content: space-between; align-items:center;">
-          <span>HP: <strong style="color:${s.hp < s.maxHp ? '#f87171' : '#34d399'};">${Math.floor(s.hp)}</strong>/${s.maxHp} | ATK: ${s.atk} ${s.dmgReduction ? `<span style="color:#38bdf8;">(軽減-${s.dmgReduction}%)</span>` : ''} (生還:${s.survivedWaves}回)</span>
-          ${s.weapon ? `<span style="color:${s.weapon.color}; font-weight:bold;">[${s.weapon.name}]</span>` : '<span style="color:#666;">[支給短剣]</span>'}
+        <div style="font-size: 10px; color: #94a3b8; margin-bottom: 4px; display: flex; justify-content: space-between; align-items:center;">
+          <span>HP: <strong style="color:${s.hp < s.maxHp ? '#f87171' : '#34d399'};">${Math.floor(s.hp)}</strong>/${s.maxHp} | 🛡️ DEF: <strong style="color:#38bdf8;">${s.def || 0}</strong> | ATK: ${s.atk}</span>
+          ${wItem ? `<span style="color:${wItem.color}; font-weight:bold;">[${wItem.name}]</span>` : '<span style="color:#666;">[支給短剣]</span>'}
         </div>
-        <div style="display: flex; gap: 6px; align-items: center; margin-top: 4px; flex-wrap: wrap;">
-          ${canHonor ? `<button class="mini-btn btn-honor" style="background:#ffaa00; color:#0b0d14;">🎖️ 名前を叙勲授与！</button>` : ''}
-          ${s.weapon ? `
-            <button class="mini-btn btn-soldier-up" style="background:${hasWUpBudget ? '#10b981' : '#4b5563'}; color:#fff;" title="兵士が自費で武器を強化">
-              🔨 自費強化 (+1) [${wUpCost}G]
+        <div style="display: flex; gap: 4px; align-items: center; margin-top: 3px; flex-wrap: wrap;">
+          ${canHonor ? `<button class="mini-btn btn-honor" style="background:#ffaa00; color:#0b0d14; font-size:10px;">🎖️ 名前を叙勲！</button>` : ''}
+          ${wItem ? `
+            <button class="mini-btn btn-soldier-up" style="background:${hasWUpBudget ? '#10b981' : '#4b5563'}; color:#fff; font-size:10px;" title="兵士が自費で武器を強化">
+              🔨 武器自費強化 [${wUpCost}G]
             </button>
           ` : ''}
-          ${availableWeapons.length > 0 && !s.weapon ? `
-            <select class="mini-select select-weapon-${s.id}" style="font-size: 11px; background: #141724; color: #fff; border: 1px solid #444; border-radius: 4px; padding: 2px 4px; flex: 1;">
-              <option value="">武器支給...</option>
-              ${availableWeapons.map(w => `<option value="${w.id}">[T${w.tier} ${w.mat}] ${w.name} (+${w.stats.atk})</option>`).join('')}
+          ${availableItems.length > 0 ? `
+            <select class="mini-select select-item-${s.id}" style="font-size: 10px; background: #141724; color: #fff; border: 1px solid #444; border-radius: 4px; padding: 2px 4px; flex: 1; min-width: 110px;">
+              <option value="">装備を支給...</option>
+              ${availableItems.map(it => `<option value="${it.id}">[${SLOT_INFO[it.type].icon} T${it.tier}] ${it.name}</option>`).join('')}
             </select>
-            <button class="mini-btn btn-give-w">支給</button>
+            <button class="mini-btn btn-give-item" style="font-size:10px;">支給</button>
           ` : ''}
         </div>
       `;
@@ -1918,17 +2391,17 @@ export const IronSquadGame = {
       const sUpBtn = row.querySelector('.btn-soldier-up');
       if (sUpBtn) {
         sUpBtn.addEventListener('click', () => {
-          this.upgradeSoldierWeapon(s.id);
+          this.upgradeSoldierEquip(s.id, 'weapon');
         });
       }
 
-      const giveBtn = row.querySelector('.btn-give-w');
+      const giveBtn = row.querySelector('.btn-give-item');
       if (giveBtn) {
         giveBtn.addEventListener('click', () => {
-          const sel = row.querySelector(`.select-weapon-${s.id}`);
+          const sel = row.querySelector(`.select-item-${s.id}`);
           if (sel && sel.value) {
-            const w = availableWeapons.find(item => item.id === sel.value);
-            if (w) this.giveWeaponToSoldier(s.id, w);
+            const it = availableItems.find(item => item.id === sel.value);
+            if (it) this.giveItemToSoldier(s.id, it);
           }
         });
       }
@@ -1993,11 +2466,18 @@ export const IronSquadGame = {
       this.drawMonster(this.ctx, m, now);
     }
 
-    // 5. 仲間兵士たち (槍兵・剣盾兵・叙勲エリート兵)
+    // 5. 仲間兵士たち (重装・軽装・弓兵・衛生兵)
     if (this.squad) {
       this.squad.forEach((s) => {
         if (!s.dead) this.drawSoldier(this.ctx, s, now);
       });
+    }
+
+    // 5.5 矢（ARROW）＆ ヒール光弾（HEAL）
+    if (this.projectiles) {
+      for (const proj of this.projectiles) {
+        this.drawProjectile(this.ctx, proj, now);
+      }
     }
 
     // 6. 主人公 (兜・甲冑・マント・剣・盾・斬撃エフェクト)
@@ -2965,19 +3445,130 @@ export const IronSquadGame = {
     ctx.restore();
   },
 
+  drawProjectile(ctx, proj, now) {
+    ctx.save();
+    ctx.translate(proj.x, proj.y);
+
+    if (proj.type === 'ARROW') {
+      const tgt = proj.target;
+      const angle = tgt ? Math.atan2(tgt.y - proj.y, tgt.x - proj.x) : 0;
+      ctx.rotate(angle);
+
+      // 矢のシャフト
+      ctx.strokeStyle = '#92400e';
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.moveTo(-9, 0);
+      ctx.lineTo(8, 0);
+      ctx.stroke();
+
+      // 銀の矢尻
+      ctx.fillStyle = '#cbd5e1';
+      ctx.beginPath();
+      ctx.moveTo(9, 0);
+      ctx.lineTo(4, -3);
+      ctx.lineTo(4, 3);
+      ctx.closePath();
+      ctx.fill();
+
+      // 白い羽
+      ctx.fillStyle = '#f8fafc';
+      ctx.beginPath();
+      ctx.moveTo(-9, 0);
+      ctx.lineTo(-6, -2.5);
+      ctx.lineTo(-4, 0);
+      ctx.lineTo(-6, 2.5);
+      ctx.closePath();
+      ctx.fill();
+    } else if (proj.type === 'HEAL') {
+      // 脈動するエメラルド治癒光弾
+      const pulse = Math.sin(now * 0.015) * 1.5;
+      ctx.shadowColor = '#34d399';
+      ctx.shadowBlur = 10;
+      ctx.fillStyle = '#34d399';
+      ctx.beginPath();
+      ctx.arc(0, 0, 4.5 + pulse, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(0, 0, 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.restore();
+  },
+
   drawSoldier(ctx, s, now) {
     ctx.save();
     ctx.translate(s.x, s.y);
 
-    // 足元シャドウ
-    ctx.fillStyle = s.isNamed ? 'rgba(251, 191, 36, 0.25)' : 'rgba(0,0,0,0.3)';
+    const clsKey = s.soldierClass || 'HEAVY';
+    const cls = SOLDIER_CLASSES[clsKey] || SOLDIER_CLASSES.HEAVY;
+    const isNamed = s.isNamed;
+    const isDown = s.isDown;
+    const platoon = this.platoons ? this.platoons[s.platoonId % 3] : null;
+    const pColor = platoon ? platoon.color : '#38bdf8';
+
+    // 1. ダウン（行動不能・救助待ち）中の描画
+    if (isDown) {
+      // 倒れた身体（横たわり）
+      const flash = Math.sin(now * 0.015) > 0;
+      ctx.fillStyle = flash ? 'rgba(239, 68, 68, 0.4)' : 'rgba(0, 0, 0, 0.3)';
+      ctx.beginPath();
+      ctx.ellipse(0, 2, 12, 5, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 倒れた兵士の胴体
+      ctx.fillStyle = flash ? '#ef4444' : '#64748b';
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 8, 4.5, 0.2, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 倒れた兜
+      ctx.fillStyle = '#334155';
+      ctx.beginPath();
+      ctx.arc(-7, -1, 4, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 救助要請SOSラベル & カウントダウン
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 10px sans-serif';
+      ctx.fillStyle = '#f87171';
+      ctx.shadowColor = '#000';
+      ctx.shadowBlur = 4;
+      ctx.fillText(`🆘 救助! (${Math.ceil(s.downTimer)}s)`, 0, -16);
+      ctx.shadowBlur = 0;
+
+      // 救助進行度プログレスバー (14px幅)
+      const prog = Math.min(1.0, Math.max(0, s.rescueProgress || 0));
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+      ctx.fillRect(-12, -8, 24, 4);
+      ctx.fillStyle = '#34d399';
+      ctx.fillRect(-12, -8, 24 * prog, 4);
+      ctx.strokeStyle = '#f87171';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(-12, -8, 24, 4);
+
+      ctx.restore();
+      return;
+    }
+
+    // 2. 足元シャドウ & 所属小隊リング
+    ctx.fillStyle = isNamed ? 'rgba(251, 191, 36, 0.28)' : 'rgba(0,0,0,0.3)';
     ctx.beginPath();
-    ctx.ellipse(0, 8, s.isNamed ? 11 : 9, 4, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, 8, isNamed ? 11 : 9, 4, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // 叙勲エリート兵の足元オーラ
-    if (s.isNamed) {
-      ctx.strokeStyle = 'rgba(251, 191, 36, 0.4)';
+    // 小隊所属リング（ミニサークル）
+    ctx.strokeStyle = pColor;
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.ellipse(0, 8, 11, 4.5, 0, 0, Math.PI * 2);
+    ctx.stroke();
+
+    if (isNamed) {
+      ctx.strokeStyle = 'rgba(251, 191, 36, 0.5)';
       ctx.lineWidth = 1.5;
       ctx.beginPath();
       ctx.arc(0, 6, 13, 0, Math.PI * 2);
@@ -2990,9 +3581,9 @@ export const IronSquadGame = {
     ctx.save();
     ctx.rotate(s.facingAngle || 0);
 
-    // マント (叙勲兵のみ青い肩マント)
-    if (s.isNamed) {
-      ctx.fillStyle = '#2563eb';
+    // マント (叙勲兵は青、先輩兵は黄金)
+    if (isNamed || s.isVeteran) {
+      ctx.fillStyle = isNamed ? '#2563eb' : '#d97706';
       ctx.beginPath();
       ctx.moveTo(-6, -6 + bob);
       ctx.lineTo(-12, -2 + bob);
@@ -3001,59 +3592,131 @@ export const IronSquadGame = {
       ctx.fill();
     }
 
-    // 胴体 (新兵は革鎧、叙勲兵は銀甲冑)
-    ctx.fillStyle = s.isNamed ? '#94a3b8' : '#78350f';
-    ctx.beginPath();
-    ctx.arc(0, 0 + bob, s.isNamed ? 8 : 7, 0, Math.PI * 2);
-    ctx.fill();
-
-    // 頭部・兜
-    ctx.fillStyle = s.isNamed ? '#cbd5e1' : '#475569';
-    ctx.beginPath();
-    ctx.arc(0, -3 + bob, 5.5, 0, Math.PI * 2);
-    ctx.fill();
-
-    // バイザースリット
-    ctx.fillStyle = '#0f172a';
-    ctx.fillRect(1, -4 + bob, 3, 1.5);
-
-    // 武器描画 (槍兵 or 剣兵)
-    if (s.role === 'spear') {
-      // ===== 槍兵 =====
-      const thrust = (s.atkAnim || 0) * 14;
-      ctx.strokeStyle = '#92400e';
-      ctx.lineWidth = 2;
+    // 兵種別グラフィック
+    if (clsKey === 'HEAVY') {
+      // ===== 🛡️ 重装歩兵 =====
+      // 胴体 (漆黒・鋼鉄の大鎧)
+      ctx.fillStyle = isNamed ? '#cbd5e1' : '#334155';
       ctx.beginPath();
-      ctx.moveTo(0, 4 + bob);
-      ctx.lineTo(16 + thrust, 4 + bob);
-      ctx.stroke();
+      ctx.arc(0, 0 + bob, 8.5, 0, Math.PI * 2);
+      ctx.fill();
 
-      // 銀の槍穂
-      ctx.fillStyle = s.isNamed ? '#fbbf24' : '#cbd5e1';
+      // 頭部・フルフェイス兜
+      ctx.fillStyle = '#475569';
       ctx.beginPath();
-      ctx.moveTo(16 + thrust, 2 + bob);
-      ctx.lineTo(23 + thrust, 4 + bob);
-      ctx.lineTo(16 + thrust, 6 + bob);
+      ctx.arc(0, -3 + bob, 6.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(1, -4 + bob, 3.5, 2);
+
+      // 左手の大型カイトシールド (タワーシールド)
+      ctx.fillStyle = isNamed ? '#1e3a8a' : '#1e293b';
+      ctx.strokeStyle = '#f8fafc';
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.moveTo(3, -9 + bob);
+      ctx.lineTo(10, -9 + bob);
+      ctx.lineTo(8, -15 + bob);
       ctx.closePath();
       ctx.fill();
-    } else {
-      // ===== 剣盾兵 =====
-      // 左手の丸盾
-      ctx.fillStyle = s.isNamed ? '#1e3a8a' : '#78350f';
-      ctx.strokeStyle = '#cbd5e1';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.arc(2, -6 + bob, 5, 0, Math.PI * 2);
-      ctx.fill();
       ctx.stroke();
 
-      // 右手の短剣
-      ctx.strokeStyle = s.isNamed ? '#fbbf24' : '#cbd5e1';
-      ctx.lineWidth = 2.5;
+      // 右手のメイス/重剣
+      ctx.strokeStyle = '#94a3b8';
+      ctx.lineWidth = 3;
       ctx.beginPath();
       ctx.moveTo(2, 4 + bob);
-      ctx.lineTo(14, 7 + bob);
+      ctx.lineTo(13, 7 + bob);
       ctx.stroke();
+
+    } else if (clsKey === 'LIGHT') {
+      // ===== 🗡️ 軽装遊撃兵 =====
+      // 胴体 (身軽なスカウト革装)
+      ctx.fillStyle = isNamed ? '#10b981' : '#78350f';
+      ctx.beginPath();
+      ctx.arc(0, 0 + bob, 6.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 頭部・フード
+      ctx.fillStyle = '#22543d';
+      ctx.beginPath();
+      ctx.arc(0, -3 + bob, 5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 二刀流ダガー (左右の手に短剣)
+      ctx.strokeStyle = '#e2e8f0';
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.moveTo(1, -6 + bob);
+      ctx.lineTo(11, -8 + bob);
+      ctx.moveTo(1, 6 + bob);
+      ctx.lineTo(11, 8 + bob);
+      ctx.stroke();
+
+    } else if (clsKey === 'ARCHER') {
+      // ===== 🏹 弓兵 =====
+      // 胴体 (ハンター装束)
+      ctx.fillStyle = '#573a24';
+      ctx.beginPath();
+      ctx.arc(0, 0 + bob, 6.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 頭部・羽つき帽子
+      ctx.fillStyle = '#3f5135';
+      ctx.beginPath();
+      ctx.arc(0, -3 + bob, 5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 背中の矢筒
+      ctx.fillStyle = '#92400e';
+      ctx.fillRect(-8, -4 + bob, 4, 8);
+
+      // 手にした木製ロングボウ (湾曲)
+      const pull = (s.atkAnim || 0) * 4;
+      ctx.strokeStyle = '#b45309';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(6 - pull, 0 + bob, 10, -0.9, 0.9);
+      ctx.stroke();
+      // 弓弦
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(12 - pull, -8 + bob);
+      ctx.lineTo(2 - pull, 0 + bob);
+      ctx.lineTo(12 - pull, 8 + bob);
+      ctx.stroke();
+
+    } else if (clsKey === 'MEDIC') {
+      // ===== 🌿 衛生術士 =====
+      // 胴体 (神官ローブ)
+      ctx.fillStyle = '#f8fafc';
+      ctx.beginPath();
+      ctx.arc(0, 0 + bob, 7, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 頭部・シスターフード
+      ctx.fillStyle = '#10b981';
+      ctx.beginPath();
+      ctx.arc(0, -3 + bob, 5.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // エメラルドの杖
+      ctx.strokeStyle = '#78350f';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(2, 4 + bob);
+      ctx.lineTo(15, 6 + bob);
+      ctx.stroke();
+
+      // 杖先端の治癒オーブ
+      ctx.fillStyle = '#34d399';
+      ctx.shadowColor = '#34d399';
+      ctx.shadowBlur = 6;
+      ctx.beginPath();
+      ctx.arc(16, 6 + bob, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
     }
 
     ctx.restore(); // 向き復元
@@ -3061,7 +3724,7 @@ export const IronSquadGame = {
     // 頭上ネームプレート
     ctx.textAlign = 'center';
     const sLv = s.level || 1;
-    if (s.isNamed) {
+    if (isNamed) {
       ctx.fillStyle = '#fbbf24';
       ctx.font = 'bold 10px sans-serif';
       ctx.shadowColor = '#000';
@@ -3077,7 +3740,7 @@ export const IronSquadGame = {
     // HPバー
     ctx.fillStyle = 'rgba(0,0,0,0.5)';
     ctx.fillRect(-10, 10, 20, 3);
-    ctx.fillStyle = s.isNamed ? '#fbbf24' : '#10b981';
+    ctx.fillStyle = isNamed ? '#fbbf24' : '#10b981';
     ctx.fillRect(-10, 10, 20 * (s.hp / s.maxHp), 3);
 
     ctx.restore();
@@ -3125,7 +3788,8 @@ export const IronSquadGame = {
     ctx.stroke();
 
     // 3. 頭部 (兜・アイアンヘルム)
-    ctx.fillStyle = '#64748b';
+    const helmColor = (this.equipped && this.equipped.helmet) ? this.equipped.helmet.color : '#64748b';
+    ctx.fillStyle = helmColor;
     ctx.beginPath();
     ctx.arc(0, -3 + walkBob, 7, 0, Math.PI * 2);
     ctx.fill();
@@ -3150,7 +3814,8 @@ export const IronSquadGame = {
     }
 
     // 4. 左手の盾 (カイトシールド)
-    ctx.fillStyle = armorColor;
+    const shieldColor = (this.equipped && this.equipped.shield) ? this.equipped.shield.color : armorColor;
+    ctx.fillStyle = shieldColor;
     ctx.strokeStyle = '#f8fafc';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
@@ -3252,6 +3917,14 @@ export const IronSquadGame = {
     sound.playGameOver();
     this.clearSavedGame();
 
+    // 先輩兵士として引き継ぐ（生存かつダウンしていない兵士）
+    const aliveVeterans = this.squad ? this.squad.filter(s => !s.dead && !s.isDown) : [];
+    if (aliveVeterans.length > 0) {
+      storage.set('ironsquad_veterans_backup', aliveVeterans);
+    } else {
+      storage.set('ironsquad_veterans_backup', null);
+    }
+
     const overlay = document.getElementById('game-overlay');
     document.getElementById('final-wave').textContent = this.wave;
     document.getElementById('final-rank').textContent = RANKS[this.rankIndex].title;
@@ -3259,6 +3932,17 @@ export const IronSquadGame = {
     if (finalMinions) finalMinions.textContent = this.player ? (this.player.minionKills || 0) : 0;
     const finalBosses = document.getElementById('final-bosses');
     if (finalBosses) finalBosses.textContent = this.player ? (this.player.bossKills || 0) : 0;
+
+    const vetNote = document.getElementById('overlay-veteran-note');
+    if (vetNote) {
+      if (aliveVeterans.length > 0) {
+        vetNote.style.color = '#38bdf8';
+        vetNote.textContent = `🎖️ 生き残った精鋭【${aliveVeterans.length}名】が、新兵として再入隊するあなたの「先輩兵士」として次戦に参戦します！`;
+      } else {
+        vetNote.style.color = '#ff5555';
+        vetNote.textContent = '※生存者なし…過酷な戦場にて部隊は全滅しました';
+      }
+    }
     overlay.classList.remove('hidden');
   },
 
