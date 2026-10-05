@@ -32,72 +32,92 @@ const RANKS = [
 const TITLES = ['不屈の', '疾風の', '鉄壁の', '歴戦の', '鬼神の', '紅蓮の', '隻眼の', '魔刃の', '金剛の', '閃光の'];
 const NAMES = ['ボブ', 'ガッツ', 'ルーク', 'ジーク', 'レオ', 'ジャック', 'トール', 'ハンス', 'マルコ', 'オットー', 'クルト', 'フィン', 'クラーク', 'エリック', 'ロイ', 'アル', 'レオン', 'ギル', 'セドリック', 'バルト', 'オスカー', 'アラン', 'ブルーノ', 'ダン'];
 
-// ランダムドロップ生成
+// シンプルな素材・ティア制ドロップ生成
+const TIERS = [
+  { tier: 1, mat: '木/布', color: '#94a3b8', mult: 1.0,
+    weapon: '木の剣', armor: '布の服', amulet: '木彫りの指輪' },
+  { tier: 2, mat: '青銅/革', color: '#38bdf8', mult: 2.2,
+    weapon: '青銅の剣', armor: '革の鎧', amulet: '銅の指輪' },
+  { tier: 3, mat: '鉄', color: '#34d399', mult: 4.2,
+    weapon: '鉄の剣', armor: '鉄の鎧', amulet: '鉄の兜' },
+  { tier: 4, mat: '鋼鉄', color: '#a855f7', mult: 8.0,
+    weapon: '鋼鉄の大剣', armor: '鋼鉄の甲冑', amulet: '鋼鉄の兜' },
+  { tier: 5, mat: 'ミスリル', color: '#ffaa00', mult: 15.0,
+    weapon: 'ミスリルの剣', armor: 'ミスリル鎧', amulet: '黄金の首飾り' },
+  { tier: 6, mat: '竜鱗/黒金', color: '#ef4444', mult: 28.0,
+    weapon: '竜牙の大剣', armor: '竜鱗の鎧', amulet: '竜の護符' },
+  { tier: 7, mat: '神話・オリハルコン', color: '#ff007f', mult: 55.0,
+    weapon: '神剣オリハルコン', armor: '神聖の鎧', amulet: '神々の紋章' }
+];
+
 function generateRandomDrop(wave) {
-  const rarities = [
-    { name: 'コモン', color: '#a0aab8', weight: 45, mult: 1 },
-    { name: 'レア', color: '#00d0ff', weight: 30, mult: 2.2 },
-    { name: 'エピック', color: '#c040ff', weight: 16, mult: 4.5 },
-    { name: 'レジェンダリー', color: '#ffaa00', weight: 7, mult: 9 },
-    { name: '神話（GOD）', color: '#ff0055', weight: 2, mult: 22 }
+  // ウェーブが進むと上位ティアの抽選率が上昇
+  const waveBonus = Math.min(3, Math.floor(wave / 4));
+  const weights = [
+    Math.max(10, 45 - wave * 4),               // T1
+    Math.max(15, 30 - wave * 2),               // T2
+    20 + waveBonus * 3,                         // T3 (鉄)
+    8 + waveBonus * 4,                          // T4 (鋼鉄)
+    3 + waveBonus * 3,                          // T5 (ミスリル)
+    1 + waveBonus * 2,                          // T6 (竜鱗)
+    0.4 + waveBonus * 1                         // T7 (神話)
   ];
 
-  const totalWeight = rarities.reduce((a, b) => a + b.weight, 0);
+  const totalWeight = weights.reduce((a, b) => a + b, 0);
   let rnd = Math.random() * totalWeight;
-  let chosenRarity = rarities[0];
-  for (const r of rarities) {
-    if (rnd < r.weight) {
-      chosenRarity = r;
+  let chosenTier = TIERS[0];
+  for (let i = 0; i < TIERS.length; i++) {
+    if (rnd < weights[i]) {
+      chosenTier = TIERS[i];
       break;
     }
-    rnd -= r.weight;
+    rnd -= weights[i];
   }
 
   const types = ['WEAPON', 'ARMOR', 'AMULET'];
   const type = types[Math.floor(Math.random() * types.length)];
 
-  const weaponPrefixes = ['錆びた', '鍛えし', '灼熱の', '疾風の', '冥府の', '神聖なる', '絶望を裂く', '銀河の'];
-  const weaponNouns = ['短剣', '大剣', '戦斧', 'ハルバード', '魔導槍', '竜殺しの剣', '神殺しの刃'];
-  const armorNouns = ['皮の鎧', '鎖帷子', '鉄の重鎧', 'ミスリル甲冑', '覇王の大鎧', '竜鱗の神衣'];
-  const amuletNouns = ['幸運の指輪', '狂戦士の紋章', '死霊の魔石', '不死鳥の羽', '軍神の神核'];
-
   let itemName = '';
-  const prefix = weaponPrefixes[Math.min(chosenRarity.mult > 5 ? 6 : Math.floor(Math.random() * weaponPrefixes.length), weaponPrefixes.length - 1)];
+  if (type === 'WEAPON') itemName = chosenTier.weapon;
+  else if (type === 'ARMOR') itemName = chosenTier.armor;
+  else itemName = chosenTier.amulet;
 
-  if (type === 'WEAPON') {
-    itemName = `${prefix}${weaponNouns[Math.floor(Math.random() * weaponNouns.length)]}`;
-  } else if (type === 'ARMOR') {
-    itemName = `${prefix}${armorNouns[Math.floor(Math.random() * armorNouns.length)]}`;
-  } else {
-    itemName = `${prefix}${amuletNouns[Math.floor(Math.random() * amuletNouns.length)]}`;
+  // たまに「+1」「+2」の強化プラス値が付く
+  const plusVal = Math.random() < 0.25 ? (Math.random() < 0.3 ? 2 : 1) : 0;
+  if (plusVal > 0) {
+    itemName += `+${plusVal}`;
   }
 
-  const baseValue = Math.floor(12 + wave * 7);
+  const plusMult = 1 + plusVal * 0.25;
+  const baseValue = Math.floor(10 + chosenTier.tier * 5);
   const stats = {};
+
   if (type === 'WEAPON') {
-    stats.atk = Math.floor(baseValue * chosenRarity.mult * (0.8 + Math.random() * 0.5));
-    if (chosenRarity.mult >= 4) stats.crit = Math.min(80, Math.floor(15 * chosenRarity.mult * 0.3));
-    if (chosenRarity.mult >= 9) stats.lightning = true;
+    stats.atk = Math.floor(baseValue * chosenTier.mult * plusMult);
+    if (chosenTier.tier >= 4) stats.crit = Math.min(80, chosenTier.tier * 10);
+    if (chosenTier.tier >= 6) stats.lightning = true;
   } else if (type === 'ARMOR') {
-    stats.hp = Math.floor(baseValue * 4 * chosenRarity.mult * (0.8 + Math.random() * 0.5));
-    if (chosenRarity.mult >= 4) stats.def = Math.floor(5 * chosenRarity.mult);
-    if (chosenRarity.mult >= 9) stats.regen = Math.floor(5 * chosenRarity.mult);
+    stats.hp = Math.floor(baseValue * 4 * chosenTier.mult * plusMult);
+    if (chosenTier.tier >= 4) stats.def = chosenTier.tier * 4;
+    if (chosenTier.tier >= 6) stats.regen = chosenTier.tier * 3;
   } else {
-    stats.speed = Math.floor(10 * Math.min(3, chosenRarity.mult * 0.3));
-    stats.atkSpeed = Math.floor(15 * Math.min(4, chosenRarity.mult * 0.4));
-    if (chosenRarity.mult >= 9) stats.vampire = 0.25;
+    stats.speed = Math.floor(8 + chosenTier.tier * 2);
+    stats.atkSpeed = Math.floor(10 + chosenTier.tier * 5);
+    if (chosenTier.tier >= 5) stats.vampire = 0.2;
   }
 
   return {
     id: Math.random().toString(36).substring(2, 9),
     name: itemName,
     type,
-    rarity: chosenRarity.name,
-    color: chosenRarity.color,
+    tier: chosenTier.tier,
+    mat: chosenTier.mat,
+    color: chosenTier.color,
     stats,
-    isGod: chosenRarity.name.includes('神話')
+    isGod: chosenTier.tier >= 6
   };
 }
+
 
 export const IronSquadGame = {
   id: 'iron-squad',
@@ -1169,11 +1189,12 @@ export const IronSquadGame = {
     }
 
     const toastText = item.isGod
-      ? `🌟【神話DROP】${item.name}！(バッグに格納)`
-      : `💎 [${item.rarity}] ${item.name} を入手！${autoEquipped ? ' (即時装備)' : ''}`;
+      ? `🌟【神話】[T${item.tier} ${item.mat}] ${item.name}！`
+      : `💎 [T${item.tier} ${item.mat}] ${item.name} 入手！${autoEquipped ? ' (即時装備)' : ''}`;
     this.showToast(toastText);
     this.saveGame();
   },
+
 
   equipItem(item) {
     if (item.type === 'WEAPON') {
@@ -1313,7 +1334,7 @@ export const IronSquadGame = {
 
         itemRow.innerHTML = `
           <div>
-            <span style="color: ${item.color}; font-weight: bold;">[${item.rarity}] ${item.name}</span>
+            <span style="color: ${item.color}; font-weight: bold;">[T${item.tier} ${item.mat}] ${item.name}</span>
             <span style="font-size: 11px; color: #aaa; margin-left: 4px;">(${statText})</span>
           </div>
           <div>
@@ -1363,12 +1384,13 @@ export const IronSquadGame = {
           ${availableWeapons.length > 0 && !s.weapon ? `
             <select class="mini-select select-weapon-${s.id}" style="font-size: 11px; background: #141724; color: #fff; border: 1px solid #444; border-radius: 4px; padding: 2px 4px; flex: 1;">
               <option value="">武器支給...</option>
-              ${availableWeapons.map(w => `<option value="${w.id}">[${w.rarity}] ${w.name} (+${w.stats.atk})</option>`).join('')}
+              ${availableWeapons.map(w => `<option value="${w.id}">[T${w.tier} ${w.mat}] ${w.name} (+${w.stats.atk})</option>`).join('')}
             </select>
             <button class="mini-btn btn-give-w">支給</button>
           ` : ''}
         </div>
       `;
+
 
       squadList.appendChild(row);
 
