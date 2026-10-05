@@ -229,6 +229,9 @@ export const IronSquadGame = {
                 <button id="btn-heal-all" class="mini-btn" style="background:#10b981; color:#fff;">おごる (25G)</button>
               </div>
 
+              <!-- 隊長武勲（撃墜数ボーナス）ボックス -->
+              <div id="player-record-box" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 7px 10px; margin-bottom: 10px; font-size: 11px;"></div>
+
               <!-- タブ切り替え -->
               <div style="display: flex; gap: 6px; margin-bottom: 10px;">
                 <button id="tab-strat-squad" class="sub-tab-btn active">👥 部隊名簿＆サイフ</button>
@@ -261,7 +264,10 @@ export const IronSquadGame = {
             <div class="overlay-content">
               <h2 class="overlay-title">討死</h2>
               <p class="overlay-score">到達WAVE: <span id="final-wave">1</span></p>
-              <p style="font-size: 13px; color: #aaa; margin-bottom: 8px;">最終階級: <strong id="final-rank" style="color:#ffaa00;">-</strong></p>
+              <p style="font-size: 13px; color: #aaa; margin-bottom: 4px;">最終階級: <strong id="final-rank" style="color:#ffaa00;">-</strong></p>
+              <p style="font-size: 12px; color: #94a3b8; margin-bottom: 10px;">
+                討伐戦果: ⚔️ 雑魚 <strong id="final-minions" style="color:#fff;">0</strong>体 / 👑 ボス <strong id="final-bosses" style="color:#ffd700;">0</strong>体
+              </p>
               <p style="font-size: 11px; color: #ff5555; margin-bottom: 14px;">※過酷な戦場にて部隊は全滅しました</p>
               <button id="btn-restart" class="action-btn">新兵として再入隊</button>
               <button id="btn-overlay-back" class="action-btn secondary">工房へ戻る</button>
@@ -435,6 +441,8 @@ export const IronSquadGame = {
       level: 1,
       exp: 0,
       reqExp: 20,
+      minionKills: 0,
+      bossKills: 0,
       kills: 0,
       survivedWaves: 0,
       hp: 130,
@@ -446,6 +454,7 @@ export const IronSquadGame = {
       crit: 10,
       vampire: 0,
       lightning: false,
+      dmgReduction: 0,
       slashAngle: 0,
       slashAnim: 0,
       facingAngle: 0
@@ -475,6 +484,7 @@ export const IronSquadGame = {
       this.squad.push(this.createNewSoldier(i + 1));
     }
 
+    this.recalcPlayerStats();
     this.initBattlefield();
     this.saveGame();
     this.updateStatsUI();
@@ -489,6 +499,106 @@ export const IronSquadGame = {
 
     this.startGameLoop();
     this.showToast('⚔️ 20名の雑兵小隊として出動！部隊と共闘せよ');
+  },
+
+  recalcPlayerStats() {
+    if (!this.player) return;
+    const rank = RANKS[this.rankIndex] || RANKS[0];
+    const lv = this.player.level || 1;
+    const waves = this.player.survivedWaves || 0;
+    const minionKills = this.player.minionKills || 0;
+    const bossKills = this.player.bossKills || 0;
+
+    // 雑魚撃墜枠ボーナス (倒した数で地道に鍛錬)
+    const minionAtk = Math.floor(minionKills / 5) * 1;
+    const minionHp = Math.floor(minionKills / 15) * 10;
+    const minionSpeed = Math.min(25, Math.floor(minionKills / 30) * 2);
+
+    // ボス撃破枠ボーナス (討伐による英雄の覚醒)
+    const bossAtk = bossKills * 8;
+    const bossHp = bossKills * 50;
+    const bossCrit = bossKills * 2;
+    const bossReduction = Math.min(30, bossKills * 2); // 被ダメ軽減率(%)
+
+    // 装備ボーナス
+    const wAtk = this.equipped && this.equipped.weapon ? (this.equipped.weapon.stats.atk || 0) : 0;
+    const aHp = this.equipped && this.equipped.armor ? (this.equipped.armor.stats.hp || 0) : 0;
+    const mSpeed = this.equipped && this.equipped.amulet ? (this.equipped.amulet.stats.speed || 0) : 0;
+    const mAtkSpeed = this.equipped && this.equipped.amulet ? (this.equipped.amulet.stats.atkSpeed || 0) * 0.01 : 0;
+    const mVampire = this.equipped && this.equipped.amulet ? (this.equipped.amulet.stats.vampire || 0) : 0;
+    const wCrit = this.equipped && this.equipped.weapon ? (this.equipped.weapon.stats.crit || 10) : 10;
+    const wLightning = this.equipped && this.equipped.weapon ? !!this.equipped.weapon.stats.lightning : false;
+
+    // 最大HPの更新
+    const oldMaxHp = this.player.maxHp || 130;
+    const newMaxHp = 130 + rank.bonusHp + (lv - 1) * 16 + waves * 20 + minionHp + bossHp + aHp;
+    this.player.maxHp = newMaxHp;
+    if (this.player.hp > newMaxHp) {
+      this.player.hp = newMaxHp;
+    } else if (newMaxHp > oldMaxHp) {
+      this.player.hp = Math.min(newMaxHp, this.player.hp + (newMaxHp - oldMaxHp));
+    }
+
+    this.player.atk = 25 + rank.bonusAtk + (lv - 1) * 4 + waves * 4 + minionAtk + bossAtk + wAtk;
+    this.player.speed = 165 + minionSpeed + mSpeed;
+    this.player.atkSpeed = 1.0 + mAtkSpeed;
+    this.player.crit = wCrit + bossCrit;
+    this.player.vampire = mVampire;
+    this.player.lightning = wLightning;
+    this.player.dmgReduction = bossReduction;
+    this.player.kills = minionKills + bossKills;
+  },
+
+  recalcSoldierStats(s) {
+    if (!s) return;
+    const lv = s.level || 1;
+    const waves = s.survivedWaves || 0;
+    const minionKills = s.minionKills || 0;
+    const bossKills = s.bossKills || 0;
+
+    // 雑魚撃墜枠ボーナス
+    const minionAtk = Math.floor(minionKills / 5) * 1;
+    const minionHp = Math.floor(minionKills / 15) * 6;
+
+    // ボス撃破枠ボーナス (大金星ボーナス)
+    const bossAtk = bossKills * 8;
+    const bossHp = bossKills * 45;
+    const bossReduction = Math.min(30, bossKills * 3);
+
+    // 叙勲ボーナス
+    const honorHp = s.isNamed ? 50 : 0;
+    const honorAtk = s.isNamed ? 15 : 0;
+
+    // 武器ボーナス
+    const wAtk = s.weapon ? (s.weapon.stats.atk || 0) : 0;
+
+    const oldMaxHp = s.maxHp || 70;
+    const newMaxHp = 70 + (lv - 1) * 8 + waves * 14 + minionHp + bossHp + honorHp;
+    s.maxHp = newMaxHp;
+    if (s.hp > newMaxHp) {
+      s.hp = newMaxHp;
+    } else if (newMaxHp > oldMaxHp) {
+      s.hp = Math.min(newMaxHp, s.hp + (newMaxHp - oldMaxHp));
+    }
+
+    s.atk = 11 + (lv - 1) * 2 + waves * 3 + minionAtk + bossAtk + honorAtk + wAtk;
+    s.dmgReduction = bossReduction;
+    s.kills = minionKills + bossKills;
+
+    // 称号の動的更新（叙勲済みでなければ自動進化）
+    if (!s.isNamed) {
+      if (bossKills > 0) {
+        s.rankTitle = `👑巨頭狩り (${bossKills}体)`;
+      } else if (minionKills >= 30) {
+        s.rankTitle = `⚔️百人斬り (${minionKills}体)`;
+      } else if (waves >= 2) {
+        s.rankTitle = '🎖️叙勲候補';
+      } else if (waves >= 1) {
+        s.rankTitle = '古参雑兵';
+      } else {
+        s.rankTitle = '無名新兵';
+      }
+    }
   },
 
   resumeSavedGame() {
@@ -506,14 +616,17 @@ export const IronSquadGame = {
     this.inventory = saved.inventory || [];
     this.squad = saved.squad || [];
 
-    // 既存セーブの兵士データを補填（レベル・財布・キル数）
-    this.squad.forEach((s, idx) => {
+    // 既存セーブの兵士データを補填（レベル・財布・キル数・武勲）
+    this.squad.forEach((s) => {
       if (s.level === undefined) s.level = 1;
       if (s.exp === undefined) s.exp = 0;
       if (s.reqExp === undefined) s.reqExp = 14;
-      if (s.kills === undefined) s.kills = 0;
+      if (s.minionKills === undefined) s.minionKills = s.kills || 0;
+      if (s.bossKills === undefined) s.bossKills = 0;
+      if (s.kills === undefined) s.kills = (s.minionKills || 0) + (s.bossKills || 0);
       if (s.gold === undefined) s.gold = 15 + Math.floor(Math.random() * 15);
       if (s.medCooldown === undefined) s.medCooldown = 0;
+      this.recalcSoldierStats(s);
     });
 
     const pSave = saved.player || {};
@@ -523,21 +636,27 @@ export const IronSquadGame = {
       level: pSave.level || 1,
       exp: pSave.exp || 0,
       reqExp: pSave.reqExp || 20,
-      kills: pSave.kills || 0,
+      minionKills: pSave.minionKills !== undefined ? pSave.minionKills : (pSave.kills || 0),
+      bossKills: pSave.bossKills || 0,
+      kills: (pSave.minionKills !== undefined ? pSave.minionKills : (pSave.kills || 0)) + (pSave.bossKills || 0),
       survivedWaves: pSave.survivedWaves || 0,
       hp: pSave.hp || 130,
       maxHp: pSave.maxHp || 130,
-      atk: 25 + ((pSave.level || 1) - 1) * 4 + RANKS[this.rankIndex].bonusAtk + (this.equipped.weapon ? this.equipped.weapon.stats.atk || 0 : 0),
-      atkSpeed: 1.0 + (this.equipped.amulet ? (this.equipped.amulet.stats.atkSpeed || 0) * 0.01 : 0),
-      speed: 165 + (this.equipped.amulet ? this.equipped.amulet.stats.speed || 0 : 0),
+      atk: 25,
+      atkSpeed: 1.0,
+      speed: 165,
       atkCooldown: 0,
-      crit: (this.equipped.weapon ? this.equipped.weapon.stats.crit : 10) || 10,
-      vampire: (this.equipped.amulet ? this.equipped.amulet.stats.vampire : 0) || 0,
-      lightning: (this.equipped.weapon ? this.equipped.weapon.stats.lightning : false) || false,
+      crit: 10,
+      vampire: 0,
+      lightning: false,
+      dmgReduction: 0,
       slashAngle: 0,
       slashAnim: 0,
       facingAngle: 0
     };
+
+    this.recalcPlayerStats();
+    if (pSave.hp) this.player.hp = Math.min(this.player.maxHp, pSave.hp);
 
     this.squadNav = {
       x: BASE_CAMP.x,
@@ -577,6 +696,8 @@ export const IronSquadGame = {
       level: 1,
       exp: 0,
       reqExp: 14,
+      minionKills: 0,
+      bossKills: 0,
       kills: 0,
       gold: 15 + Math.floor(Math.random() * 15), // 各兵士の初期財布 15〜29G
       medCooldown: 0,
@@ -584,6 +705,7 @@ export const IronSquadGame = {
       hp: 70,
       maxHp: 70,
       atk: 11,
+      dmgReduction: 0,
       weapon: null,
       atkCooldown: 0,
       role: index % 2 === 0 ? 'sword' : 'spear', // 剣兵または槍兵
@@ -610,6 +732,8 @@ export const IronSquadGame = {
           level: this.player.level || 1,
           exp: this.player.exp || 0,
           reqExp: this.player.reqExp || 20,
+          minionKills: this.player.minionKills || 0,
+          bossKills: this.player.bossKills || 0,
           kills: this.player.kills || 0,
           survivedWaves: this.player.survivedWaves || 0
         },
@@ -1264,7 +1388,9 @@ export const IronSquadGame = {
     }
   },
 
-  damageTarget(target, dmg) {
+  damageTarget(target, rawDmg) {
+    const reduction = target.dmgReduction ? Math.min(0.35, target.dmgReduction / 100) : 0;
+    const dmg = Math.max(1, Math.round(rawDmg * (1 - reduction)));
     target.hp -= dmg;
     this.spawnDamageText(target.x, target.y - 12, dmg, '#ff3344');
     sound.playBomb();
@@ -1295,41 +1421,73 @@ export const IronSquadGame = {
     const goldGain = isBoss ? 70 : (isElite ? 18 : (4 + Math.floor(this.wave * 0.4)));
 
     // 軸1: 【敵を倒したらレベルアップ】＆【撃墜したキャラにお金が入る】
+    // 軸4: 【撃墜数パワーアップ（雑魚枠とボス枠で別）】
     if (isPlayer) {
       this.gold += goldGain;
-      this.player.kills = (this.player.kills || 0) + 1;
       this.player.exp = (this.player.exp || 0) + expGain;
       this.spawnDamageText(monster.x, monster.y - 16, `+${goldGain}G`, '#ffe600');
+
+      if (isBoss) {
+        this.player.bossKills = (this.player.bossKills || 0) + 1;
+        sound.playHighScore();
+        this.spawnDamageText(this.player.x, this.player.y - 36, '👑 巨頭討伐！ ATK+8/HP+50', '#ffd700');
+        this.showToast('👑【巨頭撃破ボーナス！】ボス討伐武勲！(ATK+8, MaxHP+50, 会心+2%, 被ダメ軽減+2%)');
+      } else {
+        this.player.minionKills = (this.player.minionKills || 0) + 1;
+        const mK = this.player.minionKills;
+        if (mK % 5 === 0) {
+          this.spawnDamageText(this.player.x, this.player.y - 20, `⚔️ 雑魚武勲! ATK+1`, '#60a5fa');
+        }
+        if (mK % 15 === 0) {
+          this.spawnDamageText(this.player.x, this.player.y - 32, `❤️ 体躯錬磨! HP+10`, '#34d399');
+        }
+      }
 
       // プレイヤーのレベルアップ判定
       while (this.player.exp >= (this.player.reqExp || 20)) {
         this.player.exp -= this.player.reqExp;
         this.player.level = (this.player.level || 1) + 1;
         this.player.reqExp = Math.floor(this.player.reqExp * 1.45 + 10);
-        this.player.maxHp += 16;
-        this.player.hp = Math.min(this.player.maxHp, this.player.hp + 45);
-        this.player.atk += 4;
         sound.playHighScore();
         this.spawnDamageText(this.player.x, this.player.y - 30, `⚡ Lv.${this.player.level} UP!`, '#34d399');
         this.showToast(`⚡ レベルアップ！ Lv.${this.player.level} に到達！ (HP+16, ATK+4)`);
       }
+
+      this.recalcPlayerStats();
     } else if (attacker && !attacker.dead) {
       // 兵士がトドメを刺した！
       attacker.gold = (attacker.gold || 0) + goldGain;
-      attacker.kills = (attacker.kills || 0) + 1;
       attacker.exp = (attacker.exp || 0) + expGain;
       this.spawnDamageText(monster.x, monster.y - 16, `+${goldGain}G`, '#ffd700');
+
+      if (isBoss) {
+        attacker.bossKills = (attacker.bossKills || 0) + 1;
+        attacker.gold = (attacker.gold || 0) + 50; // 討伐臨時ボーナス
+        if (!attacker.isNamed) {
+          attacker.isNamed = true;
+          attacker.title = '巨頭狩り';
+          attacker.name = attacker.name.includes('#') ? NAMES[Math.floor(Math.random() * NAMES.length)] : attacker.name;
+        }
+        sound.playHighScore();
+        this.spawnDamageText(attacker.x, attacker.y - 32, '👑 ボス討伐英雄！', '#ffd700');
+        this.showToast(`👑 大金星！兵士【${attacker.name}】がボスにトドメ！(ATK+8, HP+45, 50Gボーナス)`);
+      } else {
+        attacker.minionKills = (attacker.minionKills || 0) + 1;
+        const mK = attacker.minionKills;
+        if (mK % 5 === 0) {
+          this.spawnDamageText(attacker.x, attacker.y - 20, `⚔️ ATK+1!`, '#60a5fa');
+        }
+      }
 
       // 兵士のレベルアップ判定
       while (attacker.exp >= (attacker.reqExp || 14)) {
         attacker.exp -= attacker.reqExp;
         attacker.level = (attacker.level || 1) + 1;
         attacker.reqExp = Math.floor(attacker.reqExp * 1.5 + 8);
-        attacker.maxHp += 8;
-        attacker.hp = Math.min(attacker.maxHp, attacker.hp + 25);
-        attacker.atk += 2;
         this.spawnDamageText(attacker.x, attacker.y - 25, `⚡ Lv.${attacker.level}!`, '#00f0ff');
       }
+
+      this.recalcSoldierStats(attacker);
     }
 
     // 部隊全体の戦果として昇進EXPを加算
@@ -1356,9 +1514,8 @@ export const IronSquadGame = {
     while (this.rankIndex < RANKS.length - 1 && this.exp >= RANKS[this.rankIndex + 1].reqExp) {
       this.rankIndex++;
       const nextRank = RANKS[this.rankIndex];
-      this.player.maxHp += nextRank.bonusHp;
+      this.recalcPlayerStats();
       this.player.hp = this.player.maxHp;
-      this.player.atk += nextRank.bonusAtk;
       sound.playHighScore();
       this.showToast(`🎖️ 【昇進】${nextRank.title}へ！${nextRank.canCommand ? '号令解禁！' : ''}`);
       this.saveGame();
@@ -1397,21 +1554,15 @@ export const IronSquadGame = {
   equipItem(item) {
     if (item.type === 'WEAPON') {
       this.equipped.weapon = item;
-      this.player.atk = 25 + RANKS[this.rankIndex].bonusAtk + (item.stats.atk || 0);
-      this.player.crit = item.stats.crit || 10;
-      this.player.lightning = !!item.stats.lightning;
     } else if (item.type === 'ARMOR') {
       this.equipped.armor = item;
-      this.player.maxHp = 130 + RANKS[this.rankIndex].bonusHp + (item.stats.hp || 0);
-      this.player.hp = Math.min(this.player.hp, this.player.maxHp);
     } else if (item.type === 'AMULET') {
       this.equipped.amulet = item;
-      this.player.speed = 135 + (item.stats.speed || 0);
-      this.player.atkSpeed = 1.0 + (item.stats.atkSpeed || 0) * 0.01;
-      this.player.vampire = item.stats.vampire || 0;
     }
+    this.recalcPlayerStats();
     sound.playTap();
     this.saveGame();
+    this.updateStatsUI();
   },
 
   grantSoldierHonor(soldierId) {
@@ -1422,9 +1573,8 @@ export const IronSquadGame = {
     s.title = TITLES[Math.floor(Math.random() * TITLES.length)];
     s.name = NAMES[Math.floor(Math.random() * NAMES.length)];
     s.rankTitle = '叙勲勇士';
-    s.maxHp += 50;
+    this.recalcSoldierStats(s);
     s.hp = s.maxHp;
-    s.atk += 15;
 
     sound.playHighScore();
     this.showToast(`✨ 【叙勲】${s.title}${s.name} が誕生した！`);
@@ -1484,6 +1634,7 @@ export const IronSquadGame = {
     }
     s.gold -= cost;
     this.upgradeItem(s.weapon, true);
+    this.recalcSoldierStats(s);
     sound.playHighScore();
     this.showToast(`🔨 ${s.name}が自費で「${s.weapon.name}」を強化！`);
     this.saveGame();
@@ -1512,6 +1663,7 @@ export const IronSquadGame = {
     if (!soldier) return;
 
     soldier.weapon = weaponItem;
+    this.recalcSoldierStats(soldier);
     this.inventory = this.inventory.filter(i => i.id !== weaponItem.id);
     sound.playHighScore();
     this.showToast(`⚔️ ${soldier.isNamed ? soldier.name : soldier.name}に「${weaponItem.name}」を支給！`);
@@ -1526,9 +1678,8 @@ export const IronSquadGame = {
 
     // 軸2: 【ウェーブを生き抜いたらステータスアップ】
     this.player.survivedWaves = (this.player.survivedWaves || 0) + 1;
-    this.player.maxHp += 20;
+    this.recalcPlayerStats();
     this.player.hp = Math.min(this.player.maxHp, this.player.hp + 45);
-    this.player.atk += 4;
 
     // 各兵士の自費治療 ＆ 生還ステータスアップ
     let fullHealedCount = 0;
@@ -1538,11 +1689,7 @@ export const IronSquadGame = {
       if (!s.dead) {
         // 生還ステータスアップ
         s.survivedWaves = (s.survivedWaves || 0) + 1;
-        s.maxHp += 14;
-        s.atk += 3;
-        if (!s.isNamed) {
-          s.rankTitle = s.survivedWaves >= 2 ? '叙勲候補' : '古参雑兵';
-        }
+        this.recalcSoldierStats(s);
 
         // 自費治療 (HP欠損 10 あたり 2G)
         const missingHp = s.maxHp - s.hp;
@@ -1603,6 +1750,35 @@ export const IronSquadGame = {
 
   renderStrategyUI() {
     document.getElementById('strat-gold').textContent = this.gold;
+
+    const pRecordBox = document.getElementById('player-record-box');
+    if (pRecordBox && this.player) {
+      const p = this.player;
+      const minionAtk = Math.floor((p.minionKills || 0) / 5) * 1;
+      const minionHp = Math.floor((p.minionKills || 0) / 15) * 10;
+      const minionSpd = Math.min(25, Math.floor((p.minionKills || 0) / 30) * 2);
+      const bossAtk = (p.bossKills || 0) * 8;
+      const bossHp = (p.bossKills || 0) * 50;
+      const bossCrit = (p.bossKills || 0) * 2;
+      const bossRed = Math.min(30, (p.bossKills || 0) * 2);
+
+      pRecordBox.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px;">
+          <strong style="color: #38bdf8; font-size: 12px;">🎖️ 隊長の武勲（撃墜数パワーアップ）</strong>
+          <span style="color: #94a3b8; font-size: 10px;">総討伐: ${p.kills || 0}体</span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 3px; color: #cbd5e1;">
+          <div style="display: flex; justify-content: space-between;">
+            <span>⚔️ 雑魚撃墜: <strong style="color: #fff;">${p.minionKills || 0}体</strong></span>
+            <span style="color: #6ee7b7;">(+${minionAtk}攻 / +${minionHp}HP / +${minionSpd}速)</span>
+          </div>
+          <div style="display: flex; justify-content: space-between;">
+            <span>👑 ボス撃破: <strong style="color: #ffd700;">${p.bossKills || 0}体</strong></span>
+            <span style="color: #fde047;">(+${bossAtk}攻 / +${bossHp}HP / 会心+${bossCrit}% / 軽減-${bossRed}%)</span>
+          </div>
+        </div>
+      `;
+    }
 
     const eq = this.equipped;
     const playerEquipBox = document.getElementById('player-equip-box');
@@ -1703,14 +1879,14 @@ export const IronSquadGame = {
       row.innerHTML = `
         <div style="display: flex; justify-content: space-between; align-items: baseline; font-size: 12px; margin-bottom: 4px;">
           <span>
-            ${isNamed ? '👑' : '🎖️'} 
-            <strong style="color: ${isNamed ? '#ffe600' : '#fff'};">${isNamed ? `${s.title}${s.name}` : s.name}</strong> 
+            ${isNamed ? '👑' : (s.bossKills > 0 ? '⭐' : '🎖️')} 
+            <strong style="color: ${isNamed ? '#ffe600' : (s.bossKills > 0 ? '#38bdf8' : '#fff')};">${isNamed ? `${s.title}${s.name}` : s.name}</strong> 
             <span style="color:#00f0ff; font-size: 11px;">[Lv.${s.level || 1} ${s.rankTitle}]</span>
           </span>
-          <span style="font-size: 11px;">💰 <strong style="color:#ffe600;">${s.gold || 0}G</strong> | ⚔️ <strong>${s.kills || 0}</strong>キル</span>
+          <span style="font-size: 11px;">💰 <strong style="color:#ffe600;">${s.gold || 0}G</strong> | ⚔️ <strong>${s.minionKills || 0}</strong> | 👑 <strong>${s.bossKills || 0}</strong></span>
         </div>
         <div style="font-size: 11px; color: #889; margin-bottom: 4px; display: flex; justify-content: space-between; align-items:center;">
-          <span>HP: <strong style="color:${s.hp < s.maxHp ? '#f87171' : '#34d399'};">${Math.floor(s.hp)}</strong>/${s.maxHp} | ATK: ${s.atk + (s.weapon ? s.weapon.stats.atk || 0 : 0)} (生還:${s.survivedWaves}回)</span>
+          <span>HP: <strong style="color:${s.hp < s.maxHp ? '#f87171' : '#34d399'};">${Math.floor(s.hp)}</strong>/${s.maxHp} | ATK: ${s.atk} ${s.dmgReduction ? `<span style="color:#38bdf8;">(軽減-${s.dmgReduction}%)</span>` : ''} (生還:${s.survivedWaves}回)</span>
           ${s.weapon ? `<span style="color:${s.weapon.color}; font-weight:bold;">[${s.weapon.name}]</span>` : '<span style="color:#666;">[支給短剣]</span>'}
         </div>
         <div style="display: flex; gap: 6px; align-items: center; margin-top: 4px; flex-wrap: wrap;">
@@ -3079,6 +3255,10 @@ export const IronSquadGame = {
     const overlay = document.getElementById('game-overlay');
     document.getElementById('final-wave').textContent = this.wave;
     document.getElementById('final-rank').textContent = RANKS[this.rankIndex].title;
+    const finalMinions = document.getElementById('final-minions');
+    if (finalMinions) finalMinions.textContent = this.player ? (this.player.minionKills || 0) : 0;
+    const finalBosses = document.getElementById('final-bosses');
+    if (finalBosses) finalBosses.textContent = this.player ? (this.player.bossKills || 0) : 0;
     overlay.classList.remove('hidden');
   },
 
