@@ -4,11 +4,14 @@
  */
 import { NeonBounceGame } from './games/neon-bounce/index.js';
 import { CyberSlashGame } from './games/cyber-slash/index.js';
+import { IronSquadGame } from './games/iron-squad/index.js';
 
 export const games = [
   NeonBounceGame,
   CyberSlashGame,
+  IronSquadGame
 ];
+
 
 export function getGameById(id) {
   return games.find(g => g.id === id);

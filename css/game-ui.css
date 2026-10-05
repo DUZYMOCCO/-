@@ -208,3 +208,36 @@ canvas {
 .action-btn.secondary:active {
   background: rgba(255, 255, 255, 0.05);
 }
+
+/* ドロップ獲得トースト (IRON SQUAD) */
+.drop-banner {
+  position: absolute;
+  top: 15px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(20, 24, 38, 0.95);
+  border: 1px solid #ffaa00;
+  box-shadow: 0 4px 20px rgba(255, 170, 0, 0.4);
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 15;
+  animation: dropPop 0.3s ease;
+}
+
+@keyframes dropPop {
+  0% { transform: translate(-50%, -10px); opacity: 0; }
+  100% { transform: translate(-50%, 0); opacity: 1; }
+}
+
+.reward-box, .squad-list-box {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--surface-border);
+  border-radius: 12px;
+  padding: 10px;
+}
+

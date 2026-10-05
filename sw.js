@@ -1,5 +1,5 @@
 // スマホゲーム工房 Service Worker (オフライン完全対応版)
-const CACHE_NAME = 'mobile-game-studio-v2';
+const CACHE_NAME = 'mobile-game-studio-v3';
 
 const ASSETS_TO_CACHE = [
   './',
@@ -13,7 +13,9 @@ const ASSETS_TO_CACHE = [
   './js/games-registry.js',
   './js/games/neon-bounce/index.js',
   './js/games/cyber-slash/index.js',
+  './js/games/iron-squad/index.js',
   './assets/icons/icon-180.png',
+
   './assets/icons/icon-192.png',
   './assets/icons/icon-512.png',
   './assets/icons/apple-touch-icon.png'
