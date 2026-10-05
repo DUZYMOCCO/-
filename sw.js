@@ -1,5 +1,5 @@
 // スマホゲーム工房 Service Worker (オフライン完全対応版)
-const CACHE_NAME = 'mobile-game-studio-v3';
+const CACHE_NAME = 'mobile-game-studio-v4';
 
 const ASSETS_TO_CACHE = [
   './',

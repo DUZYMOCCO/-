@@ -241,3 +241,39 @@ canvas {
   padding: 10px;
 }
 
+/* サブタブボタン & ミニUI */
+.sub-tab-btn {
+  flex: 1;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--surface-border);
+  color: var(--text-muted);
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.sub-tab-btn.active {
+  background: #ffaa00;
+  color: #0b0d14;
+  border-color: #ffaa00;
+}
+
+.mini-btn {
+  background: #ffaa00;
+  color: #0b0d14;
+  border: none;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.mini-btn:active {
+  transform: scale(0.92);
+}
+
+
