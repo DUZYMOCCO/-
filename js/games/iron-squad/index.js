@@ -32,6 +32,142 @@ const RANKS = [
 const TITLES = ['不屈の', '疾風の', '鉄壁の', '歴戦の', '鬼神の', '紅蓮の', '隻眼の', '魔刃の', '金剛の', '閃光の'];
 const NAMES = ['ボブ', 'ガッツ', 'ルーク', 'ジーク', 'レオ', 'ジャック', 'トール', 'ハンス', 'マルコ', 'オットー', 'クルト', 'フィン', 'クラーク', 'エリック', 'ロイ', 'アル', 'レオン', 'ギル', 'セドリック', 'バルト', 'オスカー', 'アラン', 'ブルーノ', 'ダン'];
 
+// 新兵の才能定義（確率で決まる生まれつきの素質・大半は凡庸、稀に天才が紛れ込む！）
+export const TALENTS = {
+  INFERIOR: {
+    id: 'INFERIOR',
+    name: 'へっぽこ',
+    icon: '🍂',
+    color: '#a8a29e',
+    hpMult: 0.85,
+    atkMult: 0.88,
+    speedBonus: -6,
+    expMult: 0.85,
+    tag: '🍂へっぽこ',
+    desc: '足手まといの劣等生。だが生き延びれば大化けのロマンも…？'
+  },
+  AVERAGE: {
+    id: 'AVERAGE',
+    name: '凡庸',
+    icon: '👤',
+    color: '#94a3b8',
+    hpMult: 1.0,
+    atkMult: 1.0,
+    speedBonus: 0,
+    expMult: 1.0,
+    tag: '凡庸',
+    desc: '標準的な新兵。大半の新兵(約65%)はここから始まる。'
+  },
+  TALENTED: {
+    id: 'TALENTED',
+    name: '有望株',
+    icon: '✨',
+    color: '#38bdf8',
+    hpMult: 1.20,
+    atkMult: 1.22,
+    speedBonus: 8,
+    expMult: 1.25,
+    critBonus: 8,
+    tag: '✨有望',
+    desc: '筋の良い有望な新兵。全能力が高めで成長が早い。'
+  },
+  ELITE: {
+    id: 'ELITE',
+    name: '英才',
+    icon: '🔮',
+    color: '#c084fc',
+    hpMult: 1.40,
+    atkMult: 1.42,
+    speedBonus: 16,
+    expMult: 1.5,
+    critBonus: 18,
+    tag: '🔮英才',
+    desc: '一騎当千の素質を秘めた英才。圧倒的な戦闘力。'
+  },
+  GENIUS: {
+    id: 'GENIUS',
+    name: '稀代の天才',
+    icon: '🌟',
+    color: '#fbbf24',
+    hpMult: 1.70,
+    atkMult: 1.75,
+    speedBonus: 28,
+    expMult: 2.0,
+    critBonus: 30,
+    dodgeBonus: 20,
+    tag: '🌟天才',
+    desc: '万人に一人の神童！異次元の素質と回避・攻撃センスを誇る！'
+  }
+};
+
+// 死線覚醒スキル定義 (激戦・部隊高死亡率を生き延びた兵士が覚醒獲得する固有特性)
+export const DEATHLINE_SKILLS = {
+  SURVIVAL_INSTINCT: {
+    id: 'SURVIVAL_INSTINCT',
+    name: '不屈の生存本能',
+    icon: '❤️‍🔥',
+    color: '#f87171',
+    desc: 'ピンチを生き抜いた本能：HP35%以下で被ダメージ-45% ＆ 移動速度+25%',
+    bonusHp: 30,
+    dmgReduction: 12
+  },
+  BLOOD_RAGE: {
+    id: 'BLOOD_RAGE',
+    name: '修羅の闘志',
+    icon: '🔥',
+    color: '#ef4444',
+    desc: '戦友の屍を越えて宿った怒り：ATK +22%, クリティカル率 +15%',
+    bonusAtk: 16,
+    bonusCrit: 15
+  },
+  IRON_RESOLVE: {
+    id: 'IRON_RESOLVE',
+    name: '鋼鉄の不退転',
+    icon: '🛡️',
+    color: '#38bdf8',
+    desc: '死地で鍛え上げられた鉄壁：DEF +28, ブロック率 +15%, 最大HP +50',
+    bonusDef: 28,
+    bonusHp: 50
+  },
+  PHANTOM_STEP: {
+    id: 'PHANTOM_STEP',
+    name: '疾風の残影',
+    icon: '⚡',
+    color: '#fbbf24',
+    desc: '死線を潜り抜けた神速：移動速度 +22, 攻撃間隔 -15%',
+    bonusSpeed: 22,
+    bonusAtkSpeed: 15
+  },
+  DEADLY_FOCUS: {
+    id: 'DEADLY_FOCUS',
+    name: '極限の狙撃眼',
+    icon: '🎯',
+    color: '#34d399',
+    desc: '生死の狭間で研ぎ澄まされた集中：射程 +50px, ATK +20%',
+    bonusRange: 50,
+    bonusAtk: 14
+  },
+  MIRACLE_PRAYER: {
+    id: 'MIRACLE_PRAYER',
+    name: '奇跡の祈祷',
+    icon: '✨',
+    color: '#10b981',
+    desc: '死の淵から仲間を呼び戻す祈り：回復力 +40, 救助速度2倍',
+    bonusHeal: 40
+  },
+  VETERAN_GRIT: {
+    id: 'VETERAN_GRIT',
+    name: '死生の悟り',
+    icon: '💀',
+    color: '#e2e8f0',
+    desc: '死すら恐れぬ不滅の覚悟：毎秒HP自然治癒 +5, 全能力 +10%',
+    bonusHp: 35,
+    bonusAtk: 10,
+    bonusDef: 12,
+    regen: 5
+  }
+};
+
 // 防具スロット定義
 export const SLOT_INFO = {
   WEAPON: { key: 'weapon', name: '武器', icon: '🗡️' },
@@ -1102,8 +1238,36 @@ export const IronSquadGame = {
       }
     });
 
+    // 才能（Talent）補正
+    const talentKey = s.talent || 'AVERAGE';
+    const talent = TALENTS[talentKey] || TALENTS.AVERAGE;
+
+    // 死線覚醒スキル（Deathline Skills）の合算ボーナス
+    let deathlineHp = 0;
+    let deathlineAtk = 0;
+    let deathlineDef = 0;
+    let deathlineSpeed = 0;
+    let deathlineCrit = 0;
+    let deathlineDmgRed = 0;
+    let deathlineHeal = 0;
+    if (s.deathlineSkills && Array.isArray(s.deathlineSkills)) {
+      s.deathlineSkills.forEach((skId) => {
+        const sk = DEATHLINE_SKILLS[skId];
+        if (sk) {
+          if (sk.bonusHp) deathlineHp += sk.bonusHp;
+          if (sk.bonusAtk) deathlineAtk += sk.bonusAtk;
+          if (sk.bonusDef) deathlineDef += sk.bonusDef;
+          if (sk.bonusSpeed) deathlineSpeed += sk.bonusSpeed;
+          if (sk.bonusCrit) deathlineCrit += sk.bonusCrit;
+          if (sk.dmgReduction) deathlineDmgRed += sk.dmgReduction;
+          if (sk.bonusHeal) deathlineHeal += sk.bonusHeal;
+        }
+      });
+    }
+
     const oldMaxHp = s.maxHp || 70;
-    const newMaxHp = 70 + (cls.bonusHp || 0) + (lv - 1) * 8 + waves * 14 + minionHp + bossHp + honorHp + vetHp + equipHp;
+    const baseCalcHp = (70 + (cls.bonusHp || 0) + (lv - 1) * 8 + waves * 14 + minionHp + bossHp + honorHp + vetHp + equipHp + deathlineHp);
+    const newMaxHp = Math.floor(baseCalcHp * (talent.hpMult || 1.0));
     s.maxHp = newMaxHp;
     if (s.hp > newMaxHp) {
       s.hp = newMaxHp;
@@ -1111,32 +1275,22 @@ export const IronSquadGame = {
       s.hp = Math.min(newMaxHp, s.hp + (newMaxHp - oldMaxHp));
     }
 
-    s.def = (cls.bonusDef || 0) + honorDef + vetDef + equipDef;
-    s.atk = 11 + (cls.bonusAtk || 0) + (lv - 1) * 2 + waves * 3 + minionAtk + bossAtk + honorAtk + vetAtk + equipAtk;
-    s.speed = (cls.speed || 100) + equipSpeed;
-    s.dmgReduction = Math.min(45, bossReduction + Math.floor(equipBlock * 0.3));
-    s.crit = 10 + (cls.bonusCrit || 0);
+    s.def = (cls.bonusDef || 0) + honorDef + vetDef + equipDef + deathlineDef;
+    const baseCalcAtk = 11 + (cls.bonusAtk || 0) + (lv - 1) * 2 + waves * 3 + minionAtk + bossAtk + honorAtk + vetAtk + equipAtk + deathlineAtk;
+    s.atk = Math.floor(baseCalcAtk * (talent.atkMult || 1.0));
+    s.speed = Math.max(50, (cls.speed || 100) + equipSpeed + (talent.speedBonus || 0) + deathlineSpeed);
+    s.dmgReduction = Math.min(60, bossReduction + Math.floor(equipBlock * 0.3) + deathlineDmgRed);
+    s.crit = 10 + (cls.bonusCrit || 0) + (talent.critBonus || 0) + deathlineCrit;
     s.kills = minionKills + bossKills;
 
-    // 衛生兵（MEDIC）の回復力（Heal Power）計算：レベル・武器強化・上位ティアで超強化！
+    // 衛生兵（MEDIC）の回復力（Heal Power）計算：才能・レベル・武器強化・死線覚醒で超強化！
     if (clsKey === 'MEDIC') {
       const wItem = s.equipped ? s.equipped.weapon : null;
       const wAtk = wItem && wItem.stats ? (wItem.stats.atk || 0) : 0;
       const wUp = wItem ? (wItem.upgrade || 0) : 0;
       const wTier = wItem ? (wItem.tier || 1) : 1;
-      // 基礎回復26 + Lv上昇(+7/Lv) + 生存ウェーブ(+6/Wave) + ボス撃破(+18/Boss) + 杖ATK*1.6 + 強化値*12 + Tier*9
-      s.healPower = Math.floor(
-        26 +
-        (lv - 1) * 7 +
-        waves * 6 +
-        minionKills * 0.5 +
-        bossKills * 18 +
-        wAtk * 1.6 +
-        wUp * 12 +
-        (wTier - 1) * 9 +
-        (s.isNamed ? 30 : 0) +
-        (s.isVeteran ? 15 : 0)
-      );
+      const rawHeal = 26 + (lv - 1) * 7 + waves * 6 + minionKills * 0.5 + bossKills * 18 + wAtk * 1.6 + wUp * 12 + (wTier - 1) * 9 + (s.isNamed ? 30 : 0) + (s.isVeteran ? 15 : 0) + deathlineHeal;
+      s.healPower = Math.floor(rawHeal * (talent.atkMult || 1.0));
     }
 
     // 称号の動的更新
@@ -1179,6 +1333,9 @@ export const IronSquadGame = {
       if (s.kills === undefined) s.kills = (s.minionKills || 0) + (s.bossKills || 0);
       if (s.gold === undefined) s.gold = 15 + Math.floor(Math.random() * 15);
       if (s.medCooldown === undefined) s.medCooldown = 0;
+      if (s.talent === undefined) s.talent = 'AVERAGE';
+      if (s.survivedDeathlines === undefined) s.survivedDeathlines = 0;
+      if (!s.deathlineSkills || !Array.isArray(s.deathlineSkills)) s.deathlineSkills = [];
       this.recalcSoldierStats(s);
     });
 
@@ -1291,6 +1448,23 @@ export const IronSquadGame = {
       amulet: null
     };
 
+    // 才能（Talent）の抽選：大半は凡庸(65%)・へっぽこ(15%)、有望(14%)、英才(5%)、稀代の天才(1%)！
+    const roll = Math.random();
+    let talentKey = 'AVERAGE';
+    if (roll < 0.01) {
+      talentKey = 'GENIUS';
+      this.showToast(`🌟【奇跡の新兵！】稀代の天才【兵士#${index}】が入隊！(全能力+70%, 成長率2倍)`);
+      sound.playHighScore();
+    } else if (roll < 0.06) {
+      talentKey = 'ELITE';
+    } else if (roll < 0.20) {
+      talentKey = 'TALENTED';
+    } else if (roll < 0.35) {
+      talentKey = 'INFERIOR';
+    } else {
+      talentKey = 'AVERAGE';
+    }
+
     const soldier = {
       id: Math.random().toString(36).substring(2, 9),
       isNamed: false,
@@ -1299,6 +1473,9 @@ export const IronSquadGame = {
       name: `兵士#${index}`,
       soldierClass: classKey,
       platoonId,
+      talent: talentKey,
+      survivedDeathlines: 0,
+      deathlineSkills: [],
       survivedWaves: 0,
       level: 1,
       exp: 0,
@@ -1645,6 +1822,8 @@ export const IronSquadGame = {
       this.squad.push(this.createNewSoldier(this.squad.length + newCount));
       newCount++;
     }
+    // 死線突破判定用の出撃初期生存兵士数を記録
+    this.waveInitialSquadCount = this.squad.filter(s => !s.dead).length;
 
     this.saveGame();
     this.updateStatsUI();
@@ -2634,6 +2813,67 @@ export const IronSquadGame = {
     this.recalcPlayerStats();
     this.player.hp = Math.min(this.player.maxHp, this.player.hp + 45);
 
+    // 死線突破判定 (出撃時兵士数とクリア時生存兵士数から部隊損耗率を算出)
+    const initSquadCount = this.waveInitialSquadCount || this.squad.length;
+    const aliveSoldiers = this.squad.filter(s => !s.dead);
+    const deadInWave = Math.max(0, initSquadCount - aliveSoldiers.length);
+    const casualtyRate = initSquadCount > 0 ? (deadInWave / initSquadCount) : 0;
+    // 損耗率35%以上かつ2名以上死亡、または戦死者5名以上を「死線」と認定
+    const isDeathline = (initSquadCount >= 3 && casualtyRate >= 0.35 && deadInWave >= 2) || (deadInWave >= 5);
+
+    const awakenedList = [];
+    if (isDeathline) {
+      sound.playPowerUp();
+      const allDeathSkills = Object.keys(DEATHLINE_SKILLS);
+      aliveSoldiers.forEach((s) => {
+        s.survivedDeathlines = (s.survivedDeathlines || 0) + 1;
+        s.deathlineSkills = s.deathlineSkills || [];
+
+        // 最大4スキルまで習得可能
+        if (s.deathlineSkills.length < 4) {
+          // 兵種適性スキル
+          let preferredSkill = null;
+          if (s.soldierClass === 'HEAVY') preferredSkill = 'IRON_RESOLVE';
+          else if (s.soldierClass === 'LIGHT') preferredSkill = 'PHANTOM_STEP';
+          else if (s.soldierClass === 'ARCHER') preferredSkill = 'DEADLY_FOCUS';
+          else if (s.soldierClass === 'MEDIC') preferredSkill = 'MIRACLE_PRAYER';
+
+          let chosenSkillId = null;
+          if (preferredSkill && !s.deathlineSkills.includes(preferredSkill)) {
+            chosenSkillId = preferredSkill;
+          } else {
+            // 未所持のスキルからランダム抽選
+            const availableSkills = allDeathSkills.filter(skId => !s.deathlineSkills.includes(skId));
+            if (availableSkills.length > 0) {
+              chosenSkillId = availableSkills[Math.floor(Math.random() * availableSkills.length)];
+            }
+          }
+
+          if (chosenSkillId) {
+            s.deathlineSkills.push(chosenSkillId);
+            awakenedList.push({
+              soldier: s,
+              name: s.name,
+              talent: s.talent || 'AVERAGE',
+              skill: DEATHLINE_SKILLS[chosenSkillId]
+            });
+          }
+        }
+      });
+
+      this.deathlineReport = {
+        occurred: true,
+        initialCount: initSquadCount,
+        deadCount: deadInWave,
+        casualtyRatePct: Math.round(casualtyRate * 100),
+        survivorsCount: aliveSoldiers.length,
+        awakenedList
+      };
+      this.showToast(`🚨【死線突破！】部隊損耗率 ${Math.round(casualtyRate * 100)}% の激戦から生還！生存兵士が覚醒！`);
+    } else {
+      this.deathlineReport = null;
+    }
+
     // 各兵士の自費治療 ＆ 生還ステータスアップ ＆ 自費自動強化
     let fullHealedCount = 0;
     let brokeSoldiersCount = 0;
@@ -2708,7 +2948,36 @@ export const IronSquadGame = {
       const questStatusText = (this.currentQuest && this.currentQuest.completed)
         ? `<span style="color:#00ffaa;">達成！(+${this.currentQuest.rewardGold}G / 武勲+${this.currentQuest.rewardExp})</span>`
         : `<span style="color:#f59e0b;">未達 (次戦継続)</span>`;
+
+      const rep = this.treatmentReport || { fullHealedCount: 0, brokeSoldiersCount: 0, autoUpgradedCount: 0 };
+      const dl = this.deathlineReport;
+      let deathlineBannerHtml = '';
+      if (dl && dl.occurred) {
+        deathlineBannerHtml = `
+          <div style="background: linear-gradient(135deg, rgba(239,68,68,0.22), rgba(15,23,42,0.95)); border: 1.5px solid #ef4444; border-radius: 8px; padding: 9px 11px; margin-bottom: 8px; box-shadow: 0 0 14px rgba(239,68,68,0.35);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+              <strong style="color: #f87171; font-size: 12.5px;">🚨【死線突破・極限生還】 損耗率 ${dl.casualtyRatePct}% (${dl.deadCount}名戦死)</strong>
+              <span style="color: #fbbf24; font-size: 10.5px; font-weight: bold; background: rgba(251,191,36,0.15); border: 1px solid #fbbf24; border-radius: 4px; padding: 1px 5px;">🔥覚醒発動</span>
+            </div>
+            <div style="font-size: 10.5px; color: #fecaca; line-height: 1.4; margin-bottom: ${dl.awakenedList.length > 0 ? '6px' : '0'};">
+              極限の死線を潜り抜けた兵士たちが、生と死の狭間で新たな固有スキルと能力覚醒を獲得！
+            </div>
+            ${dl.awakenedList.length > 0 ? `
+              <div style="display:flex; flex-direction:column; gap:3px;">
+                ${dl.awakenedList.map(a => `
+                  <div style="background: rgba(0,0,0,0.45); border-left: 3px solid ${a.skill.color}; padding: 3px 6px; border-radius: 4px; font-size: 10.5px; display:flex; justify-content:space-between; align-items:center;">
+                    <span><strong>${a.name}</strong> <span style="color:#94a3b8; font-size:9.5px;">[${TALENTS[a.talent] ? TALENTS[a.talent].tag : ''}]</span></span>
+                    <span><strong style="color:${a.skill.color};">${a.skill.icon} ${a.skill.name}</strong> <span style="color:#cbd5e1; font-size:9.5px;">(${a.skill.desc})</span></span>
+                  </div>
+                `).join('')}
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }
+
       reportEl.innerHTML = `
+        ${deathlineBannerHtml}
         激戦を生き延びた！ 生存部隊: <strong style="color:#00ffaa;">${alive.length}名</strong> ${deadCount > 0 ? `<span style="color:#ff4444;">(${deadCount}名戦死 / 次戦新兵補充)</span>` : ''}<br>
         🗺️ <strong style="color:#ffd700;">【戦場制圧状況】</strong>拠点制圧: <strong style="color:#fff;">${clearedOps} / 4箇所</strong> | 📜 軍令: ${questStatusText}<br>
         🛡️ <strong style="color:#38bdf8;">【生還ボーナス】</strong>全員のステータス向上！(あなた: HP+20, ATK+4 / 兵士: HP+14, ATK+3)<br>
@@ -2895,6 +3164,12 @@ export const IronSquadGame = {
 
       row.style.cssText = `background: ${isDown ? 'rgba(239, 68, 68, 0.1)' : (isNamed ? 'rgba(255, 170, 0, 0.08)' : 'rgba(255, 255, 255, 0.02)')}; border-radius: 8px; padding: 7px; margin-bottom: 6px; border: 1px solid ${isDown ? '#ef4444' : (isNamed ? '#ffaa00' : '#23273c')};`;
 
+      const eq = s.equipped || {};
+      const talentKey = s.talent || 'AVERAGE';
+      const talent = TALENTS[talentKey] || TALENTS.AVERAGE;
+      const deathSkills = s.deathlineSkills || [];
+      const survivedDl = s.survivedDeathlines || 0;
+
       const availableItems = (this.inventory || []).filter(i => {
         const sk = SLOT_INFO[i.type] ? SLOT_INFO[i.type].key : null;
         return sk && (!eq[sk] || eq[sk].id !== i.id);
@@ -2910,18 +3185,29 @@ export const IronSquadGame = {
           <span>
             ${isNamed ? '👑' : (s.bossKills > 0 ? '⭐' : cls.icon)} 
             <strong style="color: ${isNamed ? '#ffe600' : (s.bossKills > 0 ? '#38bdf8' : '#fff')};">${isNamed ? `${s.title}${s.name}` : s.name}</strong> 
+            <span style="color:${talent.color}; font-size: 10px; font-weight: bold; margin-left: 2px; background: rgba(0,0,0,0.3); border-radius: 3px; padding: 0 3px;" title="${talent.desc}">[${talent.tag}]</span>
             <span style="color:${pColor}; font-size: 10px; margin-left: 2px;">[${pName.split(' ')[0]}]</span>
             <span style="color:#00f0ff; font-size: 10px;">[Lv.${s.level || 1} ${cls.name}]</span>
             ${s.isPersonalGuard ? '<span style="color:#fef08a; font-weight:bold; font-size:10px;">[⭐直属]</span>' : ''}
             ${s.isVeteran ? '<span style="color:#fbbf24; font-size:9px;">(先輩)</span>' : ''}
+            ${survivedDl > 0 ? `<span style="color:#f87171; font-size:9.5px; font-weight:bold;" title="死線生還数: ${survivedDl}回">[💀生還×${survivedDl}]</span>` : ''}
             ${isDown ? '<span style="color:#ef4444; font-weight:bold;">[🆘負傷ダウン]</span>' : ''}
           </span>
           <span style="font-size: 10px;">💰 <strong style="color:#ffe600;">${s.gold || 0}G</strong> | ⚔️${s.minionKills || 0} 👑${s.bossKills || 0}</span>
         </div>
-        <div style="font-size: 10px; color: #94a3b8; margin-bottom: 4px; display: flex; justify-content: space-between; align-items:center;">
+        <div style="font-size: 10px; color: #94a3b8; margin-bottom: 3px; display: flex; justify-content: space-between; align-items:center;">
           <span>HP: <strong style="color:${s.hp < s.maxHp ? '#f87171' : '#34d399'};">${Math.floor(s.hp)}</strong>/${s.maxHp} | 🛡️ DEF: <strong style="color:#38bdf8;">${s.def || 0}</strong> | ATK: ${s.atk} ${clsKey === 'MEDIC' ? `| 💚回復: <strong style="color:#34d399;">${s.healPower || 26}HP</strong>` : ''}</span>
           ${wItem ? `<span style="color:${wItem.color}; font-weight:bold;">[${wItem.name}]</span>` : '<span style="color:#666;">[支給短剣]</span>'}
         </div>
+        ${deathSkills.length > 0 ? `
+          <div style="margin-top: 2px; margin-bottom: 4px; font-size: 9.5px; display: flex; gap: 3px; flex-wrap: wrap; align-items: center;">
+            <span style="color: #f87171; font-weight: bold;">💀死線覚醒:</span>
+            ${deathSkills.map(skId => {
+              const sk = DEATHLINE_SKILLS[skId];
+              return sk ? `<span style="background: rgba(239,68,68,0.18); border: 1px solid ${sk.color}; color: ${sk.color}; border-radius: 3px; padding: 0 4px;" title="${sk.desc}">${sk.icon} ${sk.name}</span>` : '';
+            }).join('')}
+          </div>
+        ` : ''}
         <div style="display: flex; gap: 4px; align-items: center; margin-top: 3px; flex-wrap: wrap;">
           ${canHonor ? `<button class="mini-btn btn-honor" style="background:#ffaa00; color:#0b0d14; font-size:10px;">🎖️ 名前を叙勲！</button>` : ''}
           ${wItem ? `
@@ -4433,6 +4719,42 @@ export const IronSquadGame = {
       ctx.stroke();
     }
 
+    // 天才（🌟GENIUS）の黄金オーラリング
+    if (s.talent === 'GENIUS') {
+      ctx.strokeStyle = '#fbbf24';
+      ctx.lineWidth = 1.6;
+      ctx.shadowColor = '#fbbf24';
+      ctx.shadowBlur = 7;
+      ctx.beginPath();
+      ctx.ellipse(0, 1, 15, 6, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
+
+    // 英才（🔮ELITE）の紫オーラリング
+    if (s.talent === 'ELITE') {
+      ctx.strokeStyle = '#c084fc';
+      ctx.lineWidth = 1.4;
+      ctx.shadowColor = '#c084fc';
+      ctx.shadowBlur = 5;
+      ctx.beginPath();
+      ctx.ellipse(0, 1, 14.5, 5.8, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
+
+    // 死線生還者（💀）の不屈の赤オーラリング
+    if ((s.survivedDeathlines || 0) > 0) {
+      ctx.strokeStyle = 'rgba(239, 68, 68, 0.7)';
+      ctx.lineWidth = 1.3;
+      ctx.shadowColor = '#ef4444';
+      ctx.shadowBlur = 6;
+      ctx.beginPath();
+      ctx.ellipse(0, 1, 16, 6.4, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
+
     // 向き判定（左右反転＋上下傾き）
     const isLeft = Math.cos(s.facingAngle || 0) < -0.15;
     const isMoving = (s.vx && Math.abs(s.vx) > 0.05) || (s.vy && Math.abs(s.vy) > 0.05);
@@ -4658,19 +4980,24 @@ export const IronSquadGame = {
     ctx.textAlign = 'center';
     const sLv = s.level || 1;
     const guardBadge = s.isPersonalGuard ? '⭐直属 ' : '';
+    const tKey = s.talent || 'AVERAGE';
+    const talentBadge = tKey === 'GENIUS' ? '🌟' : (tKey === 'ELITE' ? '🔮' : (tKey === 'TALENTED' ? '✨' : (tKey === 'INFERIOR' ? '🍂' : '')));
+    const dlBadge = (s.survivedDeathlines || 0) > 0 ? `💀` : '';
+    const prefix = `${talentBadge}${dlBadge}${guardBadge}`;
+
     if (isNamed) {
       ctx.fillStyle = '#fbbf24';
       ctx.font = 'bold 10px sans-serif';
       ctx.shadowColor = '#000';
       ctx.shadowBlur = 4;
-      ctx.fillText(`${guardBadge}✨Lv.${sLv} ${s.title}${s.name}`, 0, -32);
+      ctx.fillText(`${prefix}Lv.${sLv} ${s.title}${s.name}`, 0, -32);
       ctx.shadowBlur = 0;
     } else {
-      ctx.fillStyle = s.isPersonalGuard ? '#fef08a' : '#cbd5e1';
-      ctx.font = s.isPersonalGuard ? 'bold 9.5px sans-serif' : '9px sans-serif';
+      ctx.fillStyle = (tKey === 'GENIUS') ? '#fbbf24' : (s.isPersonalGuard ? '#fef08a' : '#cbd5e1');
+      ctx.font = (s.isPersonalGuard || tKey === 'GENIUS') ? 'bold 9.5px sans-serif' : '9px sans-serif';
       ctx.shadowColor = '#000';
       ctx.shadowBlur = 3;
-      ctx.fillText(`${guardBadge}Lv.${sLv} ${s.name}`, 0, -30);
+      ctx.fillText(`${prefix}Lv.${sLv} ${s.name}`, 0, -30);
       ctx.shadowBlur = 0;
     }
 
