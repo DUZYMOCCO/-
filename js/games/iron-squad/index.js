@@ -16,6 +16,147 @@ const MAP_WIDTH = 1800;
 const MAP_HEIGHT = 1800;
 const BASE_CAMP = { x: 900, y: 900, radius: 150 };
 
+// フィールド危険度ゾーン定義（本陣からの距離に応じて敵の強さ・種類・ドロップが劇的にスケールアップ！）
+export const FIELD_ZONES = [
+  {
+    id: 'ZONE_PEACE',
+    name: '本陣防衛圏 (近郊平原)',
+    shortName: '本陣防衛圏',
+    icon: '🛡️',
+    minDist: 0,
+    maxDist: 340,
+    dangerLevel: 1,
+    dangerStars: '★☆☆☆☆',
+    color: '#34d399',
+    bgColor: 'rgba(52, 211, 153, 0.08)',
+    monsters: ['slime', 'goblin'],
+    hpMult: 0.70,
+    atkMult: 0.70,
+    speedMult: 0.90,
+    expMult: 0.75,
+    goldMult: 0.75,
+    tierRange: [1, 2],
+    desc: '安全な近郊。スライムや小鬼が徘徊。新兵の訓練に最適'
+  },
+  {
+    id: 'ZONE_WILD',
+    name: '警戒辺境 (昏き森林)',
+    shortName: '警戒辺境',
+    icon: '🌲',
+    minDist: 340,
+    maxDist: 660,
+    dangerLevel: 2,
+    dangerStars: '★★☆☆☆',
+    color: '#f59e0b',
+    bgColor: 'rgba(245, 158, 11, 0.08)',
+    monsters: ['goblin', 'orc', 'wolf'],
+    hpMult: 1.35,
+    atkMult: 1.25,
+    speedMult: 1.05,
+    expMult: 1.35,
+    goldMult: 1.30,
+    tierRange: [2, 4],
+    desc: '中型オークや俊敏な黒狼が徘徊する警戒区域'
+  },
+  {
+    id: 'ZONE_CHAOS',
+    name: '魔境深部 (死霊荒野)',
+    shortName: '魔境深部',
+    icon: '💀',
+    minDist: 660,
+    maxDist: 960,
+    dangerLevel: 3,
+    dangerStars: '★★★☆☆',
+    color: '#a855f7',
+    bgColor: 'rgba(168, 85, 247, 0.08)',
+    monsters: ['orc', 'wyvern'],
+    hpMult: 2.80,
+    atkMult: 2.30,
+    speedMult: 1.15,
+    expMult: 2.80,
+    goldMult: 2.60,
+    tierRange: [3, 6],
+    desc: '凶暴なワイバーンやエリートオークが跋扈する危険地帯'
+  },
+  {
+    id: 'ZONE_ABYSS',
+    name: '最果て (巨獣の巣窟・極限死地)',
+    shortName: '最果ての死地',
+    icon: '👑',
+    minDist: 960,
+    maxDist: 2500,
+    dangerLevel: 4,
+    dangerStars: '★★★★★',
+    color: '#ef4444',
+    bgColor: 'rgba(239, 68, 68, 0.12)',
+    monsters: ['wyvern', 'colossal_dragon', 'behemoth_king', 'colossal_titan'],
+    hpMult: 6.00,
+    atkMult: 4.00,
+    speedMult: 1.25,
+    expMult: 6.00,
+    goldMult: 5.50,
+    tierRange: [5, 7],
+    desc: '超巨大大ボスが君臨する最果ての死地！新兵は即死必至！'
+  }
+];
+
+export function getFieldZone(x, y) {
+  const dist = Math.hypot(x - BASE_CAMP.x, y - BASE_CAMP.y);
+  for (let i = FIELD_ZONES.length - 1; i >= 0; i--) {
+    if (dist >= FIELD_ZONES[i].minDist) {
+      return FIELD_ZONES[i];
+    }
+  }
+  return FIELD_ZONES[0];
+}
+
+// どでかい大ボス（COLOSSAL BOSS）定義（通常モンスターの4倍サイズ・専用スキル・確定至宝ドロップ）
+export const COLOSSAL_BOSS_DEFS = {
+  colossal_dragon: {
+    id: 'colossal_dragon',
+    name: '超巨大古竜エンシェントドラゴン',
+    title: '【原初の滅竜】',
+    icon: '🐉🔥',
+    color: '#ef4444',
+    radius: 56,
+    baseHp: 4200,
+    baseAtk: 76,
+    speed: 46,
+    skillCooldown: 4.5,
+    skillName: '超火炎ブレス',
+    desc: '画面を覆い尽くす巨躯を誇る伝説の古竜！扇状広角に灼熱の業火弾を連続放射！'
+  },
+  behemoth_king: {
+    id: 'behemoth_king',
+    name: '巨獣王ベヒーモスキング',
+    title: '【大地を揺るがす暴君】',
+    icon: '🦏⚡',
+    color: '#f59e0b',
+    radius: 62,
+    baseHp: 5200,
+    baseAtk: 92,
+    speed: 42,
+    skillCooldown: 5.0,
+    skillName: '大地粉砕（アースクエイク）',
+    desc: '巨大な四本角と無敵の毛皮装甲を持つ超巨獣！全方位衝撃波と激しい地響きで周囲を粉砕！'
+  },
+  colossal_titan: {
+    id: 'colossal_titan',
+    name: '古代巨神コロッサスタイタン',
+    title: '【神話の破壊巨兵】',
+    icon: '🗿✨',
+    color: '#06b6d4',
+    radius: 58,
+    baseHp: 5800,
+    baseAtk: 84,
+    speed: 38,
+    skillCooldown: 4.8,
+    skillName: '神話殲滅光線',
+    desc: '古代遺跡の守護神。発光する全身コアから全方位へ神聖レーザーを撃ち放つ！'
+  }
+};
+
+
 // 階級データ (雑兵から始まり、出世で直属小隊を率いる指揮権が解禁される！)
 const RANKS = [
   { level: 1, title: '二等雑兵', reqExp: 0, canCommand: false, personalGuards: 0, maxSquad: 20, bonusHp: 0, bonusAtk: 0, desc: '指揮権なし。本隊は大軍で勝手に行動。ソロで自由に戦え！' },
@@ -598,8 +739,12 @@ export const IronSquadGame = {
               <span id="player-rank" class="stat-value" style="color: #ffaa00;">二等雑兵</span>
             </div>
             <div class="stat-box">
-              <span class="stat-label">WAVE</span>
-              <span id="current-wave" class="stat-value">1</span>
+              <span class="stat-label">作戦期</span>
+              <span id="current-wave" class="stat-value" style="color: #00f0ff;">第1期</span>
+            </div>
+            <div class="stat-box">
+              <span class="stat-label">作戦残時</span>
+              <span id="phase-timer-display" class="stat-value" style="color: #fbbf24; font-family: monospace;">01:15</span>
             </div>
             <div class="stat-box">
               <span class="stat-label">生存部隊</span>
@@ -614,15 +759,26 @@ export const IronSquadGame = {
               <span id="current-orbs" class="stat-value" style="color: #fbbf24;">💎0</span>
             </div>
           </div>
-          <button id="btn-strategy" class="icon-btn" title="戦略タイム・本陣">⛺</button>
+          <button id="btn-strategy" class="icon-btn" title="戦略会議・本陣">⛺</button>
         </header>
 
         <div class="canvas-container" id="canvas-container">
           <canvas id="game-canvas"></canvas>
 
-          <!-- 部隊距離インジケーター（画面左上） -->
-          <div id="squad-proximity-badge" class="proximity-badge proximity-close">
+          <!-- 現在地危険度ゾーン表示（画面左上上部） -->
+          <div id="field-zone-badge" class="proximity-badge" style="top: 10px; left: 10px; background: rgba(15, 23, 42, 0.88); border: 1px solid #34d399; color: #34d399;">
+            🛡️ 本陣防衛圏 (★☆☆☆☆)
+          </div>
+
+          <!-- 部隊距離インジケーター（画面左上2段目） -->
+          <div id="squad-proximity-badge" class="proximity-badge proximity-close" style="top: 38px; left: 10px;">
             🟢 部隊と共闘中 (安全)
+          </div>
+
+          <!-- 作戦期完了・シームレス戦略会議案内バナー（画面中央上部） -->
+          <div id="phase-complete-banner" class="phase-banner hidden" style="position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 25; background: linear-gradient(135deg, rgba(16, 185, 129, 0.95), rgba(2, 132, 199, 0.95)); border: 1px solid #fbbf24; box-shadow: 0 4px 16px rgba(0,0,0,0.6); color: #fff; padding: 6px 14px; border-radius: 20px; font-size: 11px; font-weight: bold; display: flex; align-items: center; gap: 8px; cursor: pointer; transition: all 0.3s ease;">
+            <span id="phase-banner-text">🚨 作戦期完了！新兵補充＆死線覚醒！</span>
+            <button id="btn-banner-strat" style="background: #fbbf24; color: #000; border: none; padding: 2px 8px; border-radius: 8px; font-weight: bold; font-size: 10px; cursor: pointer;">⛺ 会議</button>
           </div>
 
           <!-- 軍令（作戦目標HUD・画面右上） -->
@@ -729,7 +885,7 @@ export const IronSquadGame = {
                 <div id="inventory-list" class="squad-list-box" style="margin-bottom: 12px; max-height: 140px; overflow-y: auto;"></div>
               </div>
 
-              <button id="btn-start-next-wave" class="action-btn" style="margin-top: 4px;">次の戦場へ出動！</button>
+              <button id="btn-start-next-wave" class="action-btn" style="margin-top: 4px;">⚔️ 戦場へ復帰する (会議終了)</button>
               <button id="btn-close-strat" class="action-btn secondary hidden" style="margin-top: 6px;">戦場に戻る</button>
               <button id="btn-restart-from-strat" class="action-btn secondary" style="margin-top: 10px; border-color: rgba(239, 68, 68, 0.4); color: #f87171;">🔄 新兵として最初からやり直す</button>
             </div>
@@ -739,7 +895,7 @@ export const IronSquadGame = {
           <div id="game-overlay" class="game-overlay hidden">
             <div class="overlay-content">
               <h2 class="overlay-title">討死</h2>
-              <p class="overlay-score">到達WAVE: <span id="final-wave">1</span></p>
+              <p class="overlay-score">到達作戦期: <span id="final-wave">第1期</span></p>
               <p style="font-size: 13px; color: #aaa; margin-bottom: 4px;">最終階級: <strong id="final-rank" style="color:#ffaa00;">-</strong></p>
               <p style="font-size: 12px; color: #94a3b8; margin-bottom: 10px;">
                 討伐戦果: ⚔️ 雑魚 <strong id="final-minions" style="color:#fff;">0</strong>体 / 👑 ボス <strong id="final-bosses" style="color:#ffd700;">0</strong>体
@@ -764,6 +920,24 @@ export const IronSquadGame = {
       sound.playTap();
       this.openStrategyModal(true);
     });
+
+    const bannerStratBtn = document.getElementById('btn-banner-strat');
+    if (bannerStratBtn) {
+      bannerStratBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        sound.playTap();
+        document.getElementById('phase-complete-banner').classList.add('hidden');
+        this.openStrategyModal(true);
+      });
+    }
+    const phaseBanner = document.getElementById('phase-complete-banner');
+    if (phaseBanner) {
+      phaseBanner.addEventListener('click', () => {
+        sound.playTap();
+        phaseBanner.classList.add('hidden');
+        this.openStrategyModal(true);
+      });
+    }
 
     const restartStratBtn = document.getElementById('btn-restart-from-strat');
     if (restartStratBtn) {
@@ -790,7 +964,7 @@ export const IronSquadGame = {
     document.getElementById('btn-start-next-wave').addEventListener('click', () => {
       sound.playTap();
       document.getElementById('strategy-modal').classList.add('hidden');
-      this.startNextWave();
+      this.inBattle = true;
     });
 
     document.getElementById('btn-close-strat').addEventListener('click', () => {
@@ -1502,7 +1676,11 @@ export const IronSquadGame = {
       return;
     }
 
-    this.wave = saved.wave || 1;
+    this.phase = saved.phase || saved.wave || 1;
+    this.wave = this.phase;
+    this.phaseDuration = 75;
+    this.phaseTimer = saved.phaseTimer !== undefined ? saved.phaseTimer : this.phaseDuration;
+    this.totalBattleTime = saved.totalBattleTime || 0;
     this.exp = saved.exp || 0;
     this.gold = saved.gold || 50;
     this.awakeningOrbs = saved.awakeningOrbs || 0;
@@ -1585,12 +1763,21 @@ export const IronSquadGame = {
     this.particles = [];
     this.damageTexts = [];
     this.dropsOnField = [];
-    this.projectiles = []; // 弓矢・ヒール光弾
+    this.projectiles = [];
     this.spawnTimer = 0;
-    // 敵の大増量！(従来の約2倍)
-    this.waveMonsterCount = 70 + this.wave * 35;
-    this.spawnedInWave = 0;
-    this.waveKills = 0;
+    this.screenShake = 0;
+
+    // シームレス時間区切り制パラメーター
+    this.phase = this.phase || this.wave || 1;
+    this.wave = this.phase;
+    this.phaseDuration = 75; // 1作戦期＝75秒
+    this.phaseTimer = this.phaseTimer || this.phaseDuration;
+    this.phaseCasualties = 0;
+    this.phaseInitialSquadCount = this.squad ? this.squad.filter(s => !s.dead).length : 20;
+    this.colossalBossRespawnTimer = 12.0; // ゲーム開始12秒後に最初の大ボス降臨
+
+    // 初期の戦場モンスターを各ゾーンに自然配置
+    this.seedInitialMonsters();
   },
 
   createNewSoldier(index = 1) {
@@ -1706,7 +1893,10 @@ export const IronSquadGame = {
   saveGame() {
     try {
       const data = {
-        wave: this.wave,
+        phase: this.phase || this.wave || 1,
+        phaseTimer: this.phaseTimer,
+        totalBattleTime: this.totalBattleTime || 0,
+        wave: this.phase || this.wave || 1,
         exp: this.exp,
         gold: this.gold,
         awakeningOrbs: this.awakeningOrbs || 0,
@@ -1969,7 +2159,26 @@ export const IronSquadGame = {
     const isWarlord = this.player && this.player.isAdvanced;
     const rankTitle = isWarlord ? `👑覇王 ${rank.title}` : rank.title;
     document.getElementById('player-rank').textContent = `${rankTitle} [Lv.${pLv}]`;
-    document.getElementById('current-wave').textContent = this.wave;
+    document.getElementById('current-wave').textContent = `第${this.phase || this.wave || 1}期`;
+
+    // 作戦残時タイマー表示
+    const timerEl = document.getElementById('phase-timer-display');
+    if (timerEl) {
+      const remSec = Math.max(0, Math.ceil(this.phaseTimer || 0));
+      const m = Math.floor(remSec / 60);
+      const s = remSec % 60;
+      timerEl.textContent = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    }
+
+    // 現在地危険度ゾーン表示
+    const zoneBadge = document.getElementById('field-zone-badge');
+    if (zoneBadge && this.player) {
+      const zone = getFieldZone(this.player.x, this.player.y);
+      zoneBadge.style.color = zone.color;
+      zoneBadge.style.borderColor = zone.color;
+      zoneBadge.textContent = `${zone.icon} ${zone.shortName} (${zone.dangerStars})`;
+    }
+
     const aliveCount = this.squad ? this.squad.filter(s => !s.dead).length : 0;
     document.getElementById('squad-alive').textContent = `${aliveCount}/${rank.maxSquad}`;
     document.getElementById('current-gold').textContent = `${(this.gold || 0).toLocaleString()}G`;
@@ -1988,110 +2197,413 @@ export const IronSquadGame = {
     }
   },
 
+  // 初期の戦場モンスターを各ゾーンに自然配置
+  seedInitialMonsters() {
+    // ゾーン1 (近郊平原): 6体 (スライム・ゴブリン)
+    for (let i = 0; i < 6; i++) {
+      const ang = Math.random() * Math.PI * 2;
+      const dist = 160 + Math.random() * 150;
+      this.spawnMonster(BASE_CAMP.x + Math.cos(ang) * dist, BASE_CAMP.y + Math.sin(ang) * dist);
+    }
+    // ゾーン2 (警戒森林): 16体 (ゴブリン・黒狼・オーク)
+    for (let i = 0; i < 16; i++) {
+      const ang = Math.random() * Math.PI * 2;
+      const dist = 360 + Math.random() * 260;
+      this.spawnMonster(BASE_CAMP.x + Math.cos(ang) * dist, BASE_CAMP.y + Math.sin(ang) * dist);
+    }
+    // ゾーン3 (魔境深部): 14体 (狂暴オーク・ワイバーン・エリート)
+    for (let i = 0; i < 14; i++) {
+      const ang = Math.random() * Math.PI * 2;
+      const dist = 680 + Math.random() * 240;
+      this.spawnMonster(BASE_CAMP.x + Math.cos(ang) * dist, BASE_CAMP.y + Math.sin(ang) * dist);
+    }
+    // ゾーン4 (最果ての死地): 6体 (ワイバーン)
+    for (let i = 0; i < 6; i++) {
+      const ang = Math.random() * Math.PI * 2;
+      const dist = 980 + Math.random() * 220;
+      this.spawnMonster(BASE_CAMP.x + Math.cos(ang) * dist, BASE_CAMP.y + Math.sin(ang) * dist);
+    }
+  },
+
+  // どでかい大ボス（COLOSSAL BOSS）を四隅の最果て地点に降臨召喚！
+  spawnColossalBoss(customBossId = null, px = undefined, py = undefined) {
+    const bossKeys = Object.keys(COLOSSAL_BOSS_DEFS);
+    const chosenKey = customBossId || bossKeys[Math.floor(Math.random() * bossKeys.length)];
+    const def = COLOSSAL_BOSS_DEFS[chosenKey] || COLOSSAL_BOSS_DEFS.colossal_dragon;
+
+    let x = px;
+    let y = py;
+    if (x === undefined || y === undefined) {
+      // 四隅の最果てのいずれかにスポーン
+      const corners = [
+        { x: 180, y: 180 },
+        { x: MAP_WIDTH - 180, y: 180 },
+        { x: MAP_WIDTH - 180, y: MAP_HEIGHT - 180 },
+        { x: 180, y: MAP_HEIGHT - 180 }
+      ];
+      const corner = corners[Math.floor(Math.random() * corners.length)];
+      x = corner.x + (Math.random() - 0.5) * 80;
+      y = corner.y + (Math.random() - 0.5) * 80;
+    }
+
+    const curPhase = Math.max(1, this.phase || this.wave || 1);
+    const pScale = 1.0 + (curPhase - 1) * 0.15;
+    const hp = Math.floor(def.baseHp * pScale);
+    const atk = Math.floor(def.baseAtk * pScale);
+
+    const colossalMonster = {
+      x, y,
+      hp, maxHp: hp,
+      atk, speed: def.speed,
+      radius: def.radius,
+      color: def.color,
+      type: def.id,
+      isBoss: true,
+      isColossal: true,
+      bossDef: def,
+      name: def.name,
+      title: def.title,
+      skillTimer: def.skillCooldown,
+      hitPulse: 0
+    };
+
+    this.monsters.push(colossalMonster);
+    sound.playLaunch();
+    this.screenShake = 0.4;
+    this.showToast(`🚨【超巨大魔獣出現！】${def.title}${def.name}が最果ての死地に姿を現した！`);
+    return colossalMonster;
+  },
+
+  // ゾーン制モンスター生成（本陣からの距離ゾーンに応じてステータス・種別が完全スケーリング）
+  spawnMonster(px, py, forceZone = null) {
+    let x = px;
+    let y = py;
+    if (x === undefined || y === undefined) {
+      const side = Math.floor(Math.random() * 4);
+      if (side === 0) { x = Math.random() * MAP_WIDTH; y = 40; }
+      else if (side === 1) { x = MAP_WIDTH - 40; y = Math.random() * MAP_HEIGHT; }
+      else if (side === 2) { x = Math.random() * MAP_WIDTH; y = MAP_HEIGHT - 40; }
+      else { x = 40; y = Math.random() * MAP_HEIGHT; }
+    }
+    x = Math.max(30, Math.min(MAP_WIDTH - 30, x));
+    y = Math.max(30, Math.min(MAP_HEIGHT - 30, y));
+
+    const zone = forceZone || getFieldZone(x, y);
+    const curPhase = Math.max(1, this.phase || this.wave || 1);
+    const phaseScale = 1.0 + (curPhase - 1) * 0.12;
+
+    let type = 'goblin';
+    let rawHp = 55;
+    let rawAtk = 13;
+    let speed = 76;
+    let radius = 11;
+    let color = '#10b981';
+    let isBoss = false;
+    let isElite = false;
+
+    if (zone.id === 'ZONE_PEACE') {
+      // 本陣防衛圏 (近郊): スライム(60%) or ゴブリン(40%)
+      if (Math.random() < 0.60) {
+        type = 'slime';
+        rawHp = 38;
+        rawAtk = 8;
+        speed = 65;
+        radius = 10;
+        color = '#34d399';
+      } else {
+        type = 'goblin';
+        rawHp = 52;
+        rawAtk = 12;
+        speed = 74;
+        radius = 11;
+        color = '#10b981';
+      }
+    } else if (zone.id === 'ZONE_WILD') {
+      // 警戒辺境: ゴブリン(30%) or 黒狼(35%) or オーク(35%)
+      const roll = Math.random();
+      if (roll < 0.30) {
+        type = 'goblin';
+        rawHp = 62;
+        rawAtk = 14;
+        speed = 78;
+        radius = 11;
+        color = '#10b981';
+      } else if (roll < 0.65) {
+        type = 'wolf';
+        rawHp = 68;
+        rawAtk = 18;
+        speed = 114;
+        radius = 12;
+        color = '#64748b';
+      } else {
+        type = 'orc';
+        rawHp = 100;
+        rawAtk = 20;
+        speed = 66;
+        radius = 15;
+        color = '#d97706';
+      }
+    } else if (zone.id === 'ZONE_CHAOS') {
+      // 魔境深部: オーク(35%) or ワイバーン(40%) or 中ボスドラゴン(25%)
+      const roll = Math.random();
+      if (roll < 0.35) {
+        type = 'orc';
+        rawHp = 120;
+        rawAtk = 24;
+        speed = 70;
+        radius = 15;
+        color = '#d97706';
+        isElite = true;
+      } else if (roll < 0.75) {
+        type = 'wyvern';
+        rawHp = 160;
+        rawAtk = 28;
+        speed = 84;
+        radius = 18;
+        color = '#a855f7';
+      } else {
+        type = 'dragon';
+        rawHp = 340;
+        rawAtk = 36;
+        speed = 58;
+        radius = 26;
+        color = '#ef4444';
+        isBoss = true;
+      }
+    } else {
+      // 最果ての死地: ワイバーン or エリート魔獣
+      type = 'wyvern';
+      rawHp = 220;
+      rawAtk = 34;
+      speed = 88;
+      radius = 19;
+      color = '#ef4444';
+      isElite = true;
+    }
+
+    const hp = Math.floor(rawHp * zone.hpMult * phaseScale);
+    const atk = Math.floor(rawAtk * zone.atkMult * phaseScale);
+
+    this.monsters.push({
+      x, y,
+      hp, maxHp: hp,
+      atk, speed: speed * (zone.speedMult || 1.0),
+      radius, color,
+      type, isBoss, isElite,
+      zoneId: zone.id,
+      hitPulse: 0
+    });
+  },
+
+  // シームレス自律リポップ制御（戦場全体で42〜48体を常時維持＋大ボス再臨管理）
+  updateSpawns(dt) {
+    // 1. 大ボス再臨チェック
+    const hasColossal = this.monsters.some(m => m.isColossal);
+    if (!hasColossal) {
+      this.colossalBossRespawnTimer = (this.colossalBossRespawnTimer || 0) - dt;
+      if (this.colossalBossRespawnTimer <= 0) {
+        this.spawnColossalBoss();
+        this.colossalBossRespawnTimer = 75.0; // 次の大ボスまで75秒
+      }
+    }
+
+    // 2. モンスター総数維持（目標45体）
+    if (this.monsters.length < 46) {
+      this.spawnTimer += dt;
+      if (this.spawnTimer >= 0.75) {
+        this.spawnTimer = 0;
+
+        let countPeace = 0, countWild = 0, countChaos = 0, countAbyss = 0;
+        for (const m of this.monsters) {
+          const z = getFieldZone(m.x, m.y);
+          if (z.id === 'ZONE_PEACE') countPeace++;
+          else if (z.id === 'ZONE_WILD') countWild++;
+          else if (z.id === 'ZONE_CHAOS') countChaos++;
+          else countAbyss++;
+        }
+
+        let targetZone = FIELD_ZONES[1];
+        if (countPeace < 6) targetZone = FIELD_ZONES[0];
+        else if (countWild < 16) targetZone = FIELD_ZONES[1];
+        else if (countChaos < 14) targetZone = FIELD_ZONES[2];
+        else if (countAbyss < 6) targetZone = FIELD_ZONES[3];
+
+        const ang = Math.random() * Math.PI * 2;
+        const dist = targetZone.minDist + Math.random() * (targetZone.maxDist - targetZone.minDist);
+        const sx = Math.max(40, Math.min(MAP_WIDTH - 40, BASE_CAMP.x + Math.cos(ang) * dist));
+        const sy = Math.max(40, Math.min(MAP_HEIGHT - 40, BASE_CAMP.y + Math.sin(ang) * dist));
+        this.spawnMonster(sx, sy, targetZone);
+      }
+    }
+  },
+
+  // 互換用メソッド
   startNextWave() {
-    this.wave++;
-    if (this.wave > this.highWave) {
-      this.highWave = this.wave;
+    this.completePhase();
+  },
+
+  spawnPack(size) {
+    for (let i = 0; i < size; i++) {
+      this.spawnMonster();
+    }
+  },
+
+  // 作戦期完了処理（時間区切り制・死線生還判定＆新兵合流＆作戦給与支給）
+  completePhase() {
+    this.phase = (this.phase || this.wave || 1) + 1;
+    this.wave = this.phase;
+    this.phaseTimer = this.phaseDuration;
+
+    if (this.phase > this.highWave) {
+      this.highWave = this.phase;
       storage.set('ironsquad_max_wave', this.highWave);
     }
 
-    this.inBattle = true;
-    this.spawnedInWave = 0;
-    this.waveKills = 0;
-    this.waveMonsterCount = 70 + this.wave * 35; // 敵大増量維持
+    // 作戦給与支給
+    const salary = 45 + this.phase * 10;
+    this.gold += salary;
+    this.player.survivedWaves = (this.player.survivedWaves || 0) + 1;
+    this.recalcPlayerStats();
+    this.player.hp = Math.min(this.player.maxHp, this.player.hp + 60);
 
-    this.player.hp = this.player.maxHp;
+    // 死線生還判定 (直前の作戦期中の部隊損耗率を算出)
+    const initSquadCount = this.phaseInitialSquadCount || this.squad.length;
+    const aliveSoldiers = this.squad.filter(s => !s.dead);
+    const deadInPhase = Math.max(0, this.phaseCasualties || 0);
+    const casualtyRate = initSquadCount > 0 ? (deadInPhase / initSquadCount) : 0;
+    const isDeathline = (initSquadCount >= 3 && casualtyRate >= 0.30 && deadInPhase >= 2) || (deadInPhase >= 4);
 
-    // 過去に制圧された拠点の再活性化（2 WAVE以上経過した拠点が再占拠されて復活！）
+    const awakenedList = [];
+    if (isDeathline) {
+      sound.playPowerUp();
+      const allDeathSkills = Object.keys(DEATHLINE_SKILLS);
+      aliveSoldiers.forEach((s) => {
+        s.survivedDeathlines = (s.survivedDeathlines || 0) + 1;
+        s.deathlineSkills = s.deathlineSkills || [];
+
+        if (s.deathlineSkills.length < 4) {
+          let preferredSkill = null;
+          if (s.soldierClass === 'HEAVY') preferredSkill = 'IRON_RESOLVE';
+          else if (s.soldierClass === 'LIGHT') preferredSkill = 'PHANTOM_STEP';
+          else if (s.soldierClass === 'ARCHER') preferredSkill = 'DEADLY_FOCUS';
+          else if (s.soldierClass === 'MEDIC') preferredSkill = 'MIRACLE_PRAYER';
+
+          let chosenSkillId = null;
+          if (preferredSkill && !s.deathlineSkills.includes(preferredSkill)) {
+            chosenSkillId = preferredSkill;
+          } else {
+            const availableSkills = allDeathSkills.filter(skId => !s.deathlineSkills.includes(skId));
+            if (availableSkills.length > 0) {
+              chosenSkillId = availableSkills[Math.floor(Math.random() * availableSkills.length)];
+            }
+          }
+
+          if (chosenSkillId) {
+            s.deathlineSkills.push(chosenSkillId);
+            awakenedList.push({ soldier: s, name: s.name, skill: DEATHLINE_SKILLS[chosenSkillId] });
+          }
+        }
+        this.recalcSoldierStats(s);
+      });
+
+      this.showToast(`🚨【死線生還！】作戦第${this.phase - 1}期完了：損耗率${Math.round(casualtyRate * 100)}%の死線を越え、生存兵士${awakenedList.length}名が覚醒！`);
+    } else {
+      this.showToast(`🚩【作戦第${this.phase - 1}期完了】基本給+${salary}G支給！戦線維持に成功！`);
+    }
+
+    // 兵士たちの自費治療＆自費装備自動強化
+    aliveSoldiers.forEach((s) => {
+      s.survivedWaves = (s.survivedWaves || 0) + 1;
+      const missingHp = s.maxHp - s.hp;
+      if (missingHp > 0) {
+        const treatCost = Math.ceil(missingHp / 10) * 2;
+        if ((s.gold || 0) >= treatCost) {
+          s.gold -= treatCost;
+          s.hp = s.maxHp;
+        } else {
+          const affordable = Math.floor((s.gold || 0) / 2) * 10;
+          s.hp = Math.min(s.maxHp, s.hp + affordable);
+          s.gold = (s.gold || 0) % 2;
+        }
+      }
+      if (s.equipped) {
+        Object.keys(s.equipped).forEach((k) => {
+          const eqItem = s.equipped[k];
+          if (eqItem) {
+            const upCost = this.getUpgradeCost(eqItem);
+            if ((s.gold || 0) >= upCost + 12) {
+              s.gold -= upCost;
+              applyUpgradeStats(eqItem, (eqItem.upgrade || 0) + 1);
+            }
+          }
+        });
+      }
+      this.recalcSoldierStats(s);
+    });
+
+    // 本陣新兵補充隊（部隊定員まで新兵を補充合流！）
+    const currentMax = RANKS[this.rankIndex].maxSquad;
+    this.squad = this.squad.filter(s => !s.dead);
+    let addedCount = 0;
+    while (this.squad.length < currentMax) {
+      const newSoldier = this.createNewSoldier(this.squad.length + 1);
+      newSoldier.x = BASE_CAMP.x + (Math.random() - 0.5) * 80;
+      newSoldier.y = BASE_CAMP.y + (Math.random() - 0.5) * 80;
+      this.squad.push(newSoldier);
+      addedCount++;
+    }
+    if (addedCount > 0) {
+      this.showToast(`👥 本陣より新兵補充部隊が合流しました！（+${addedCount}名着任）`);
+    }
+
+    // シームレス戦略会議バナー表示
+    const bannerEl = document.getElementById('phase-complete-banner');
+    const bannerText = document.getElementById('phase-banner-text');
+    if (bannerEl && bannerText) {
+      bannerText.textContent = isDeathline
+        ? `🚨 作戦第${this.phase - 1}期完了！死線覚醒発動＆新兵+${addedCount}名！`
+        : `🚩 作戦第${this.phase - 1}期完了！給与+${salary}G＆新兵+${addedCount}名！`;
+      bannerEl.classList.remove('hidden');
+      setTimeout(() => {
+        bannerEl.classList.add('hidden');
+      }, 7000);
+    }
+
+    // 拠点の再活性化（定期復活）
     if (this.outposts) {
       this.outposts.forEach(op => {
-        if (op.cleared && (this.wave - (op.clearedWave || 0)) >= 2) {
+        if (op.cleared && (this.phase - (op.clearedWave || 0)) >= 2) {
           op.cleared = false;
           op.hp = op.maxHp;
         }
       });
-    } else {
-      this.initOutposts();
     }
-    this.assignWaveQuest();
 
-    // 戦死者の補充（部隊定員まで新兵を補充）
-    const currentMax = RANKS[this.rankIndex].maxSquad;
-    this.squad = this.squad.filter(s => !s.dead);
-    let newCount = 1;
-    while (this.squad.length < currentMax) {
-      this.squad.push(this.createNewSoldier(this.squad.length + newCount));
-      newCount++;
-    }
-    // 死線突破判定用の出撃初期生存兵士数を記録
-    this.waveInitialSquadCount = this.squad.filter(s => !s.dead).length;
+    // 次期パラメーター初期化
+    this.phaseCasualties = 0;
+    this.phaseInitialSquadCount = this.squad.filter(s => !s.dead).length;
 
     this.saveGame();
     this.updateStatsUI();
   },
 
-  spawnPack(size) {
-    const side = Math.floor(Math.random() * 4);
-    let cx, cy;
-    if (side === 0) { cx = 100 + Math.random() * (MAP_WIDTH - 200); cy = 60; }
-    else if (side === 1) { cx = MAP_WIDTH - 60; cy = 100 + Math.random() * (MAP_HEIGHT - 200); }
-    else if (side === 2) { cx = 100 + Math.random() * (MAP_WIDTH - 200); cy = MAP_HEIGHT - 60; }
-    else { cx = 60; cy = 100 + Math.random() * (MAP_HEIGHT - 200); }
-    for (let i = 0; i < size && this.spawnedInWave < this.waveMonsterCount; i++) {
-      this.spawnMonster(cx + (Math.random() - 0.5) * 90, cy + (Math.random() - 0.5) * 90);
-    }
-  },
-
-  spawnMonster(px, py) {
-    const side = Math.floor(Math.random() * 4);
-    let x, y;
-    if (px !== undefined) { x = px; y = py; }
-    else if (side === 0) { x = Math.random() * MAP_WIDTH; y = 40; }
-    else if (side === 1) { x = MAP_WIDTH - 40; y = Math.random() * MAP_HEIGHT; }
-    else if (side === 2) { x = Math.random() * MAP_WIDTH; y = MAP_HEIGHT - 40; }
-    else { x = 40; y = Math.random() * MAP_HEIGHT; }
-    x = Math.max(30, Math.min(MAP_WIDTH - 30, x));
-    y = Math.max(30, Math.min(MAP_HEIGHT - 30, y));
-
-    const isBoss = (this.wave % 5 === 0) && (this.spawnedInWave === this.waveMonsterCount - 1);
-    const isElite = Math.random() < Math.min(0.3, 0.12 + this.wave * 0.015);
-
-    let type = 'goblin';
-    let hp = 55 + this.wave * 17;
-    let atk = 14 + this.wave * 4;
-    let speed = 76 + Math.random() * 20;
-    let radius = 11;
-    let color = '#34d399';
-
-    if (isBoss) {
-      type = 'dragon';
-      hp = (220 + this.wave * 70) * 4;
-      atk = 34 + this.wave * 8;
-      speed = 56;
-      radius = 26;
-      color = '#ef4444';
-    } else if (isElite) {
-      type = 'orc';
-      hp = (60 + this.wave * 26) * 2;
-      atk = 24 + this.wave * 5;
-      speed = 64;
-      radius = 16;
-      color = '#f59e0b';
-    }
-
-    this.monsters.push({
-      x, y,
-      hp, maxHp: hp,
-      atk, speed,
-      radius, color,
-      type, isBoss, isElite,
-      hitPulse: 0
-    });
-    this.spawnedInWave++;
-  },
-
   update(dt) {
     if (!this.inBattle) return;
+
+    // シームレス作戦期タイマー進行
+    this.totalBattleTime = (this.totalBattleTime || 0) + dt;
+    this.phaseTimer = (this.phaseTimer !== undefined ? this.phaseTimer : (this.phaseDuration || 75)) - dt;
+    if (this.phaseTimer <= 0) {
+      this.completePhase();
+    }
+
+    // 画面揺れ減衰
+    if (this.screenShake > 0) {
+      this.screenShake = Math.max(0, this.screenShake - dt * 2.5);
+    }
+
+    // シームレス自律リポップ更新
+    this.updateSpawns(dt);
 
     const aliveSquad = this.squad.filter(s => !s.dead);
     const now = performance.now();
@@ -2287,6 +2799,7 @@ export const IronSquadGame = {
           // 救助間に合わず戦死
           soldier.isDown = false;
           soldier.dead = true;
+          this.phaseCasualties = (this.phaseCasualties || 0) + 1;
           this.spawnSparks(soldier.x, soldier.y, '#ffffff', 14);
           this.showToast(`☠️ 【${soldier.name}】は力尽き戦死した…`);
         }
@@ -2673,7 +3186,60 @@ export const IronSquadGame = {
           continue;
         }
 
-        // 4. 通常矢（ARROW）またはヒール光弾（HEAL）
+        // 4. 敵大ボスの火炎ブレス弾（BREATH_FLAME）
+        if (proj.type === 'BREATH_FLAME') {
+          proj.x += proj.vx * dt;
+          proj.y += proj.vy * dt;
+          proj.life -= dt;
+          if (proj.life <= 0) {
+            this.projectiles.splice(i, 1);
+            continue;
+          }
+          // プレイヤーまたは生存兵士へのヒット判定
+          const hitTargets = [this.player, ...aliveSquad.filter(s => !s.isDown)];
+          let hitAny = false;
+          for (const ht of hitTargets) {
+            if (Math.hypot(ht.x - proj.x, ht.y - proj.y) <= (ht === this.player ? 22 : 16)) {
+              this.damageTarget(ht, proj.damage);
+              this.spawnSparks(ht.x, ht.y, '#ef4444', 8);
+              hitAny = true;
+              break;
+            }
+          }
+          if (hitAny) {
+            this.projectiles.splice(i, 1);
+            continue;
+          }
+          continue;
+        }
+
+        // 5. 敵大ボスの古代光線弾（TITAN_BEAM）
+        if (proj.type === 'TITAN_BEAM') {
+          proj.x += proj.vx * dt;
+          proj.y += proj.vy * dt;
+          proj.life -= dt;
+          if (proj.life <= 0) {
+            this.projectiles.splice(i, 1);
+            continue;
+          }
+          const hitTargets = [this.player, ...aliveSquad.filter(s => !s.isDown)];
+          let hitAny = false;
+          for (const ht of hitTargets) {
+            if (Math.hypot(ht.x - proj.x, ht.y - proj.y) <= (ht === this.player ? 22 : 16)) {
+              this.damageTarget(ht, proj.damage);
+              this.spawnSparks(ht.x, ht.y, '#06b6d4', 8);
+              hitAny = true;
+              break;
+            }
+          }
+          if (hitAny) {
+            this.projectiles.splice(i, 1);
+            continue;
+          }
+          continue;
+        }
+
+        // 6. 通常矢（ARROW）またはヒール光弾（HEAL）
         const tgt = proj.target;
         if (!tgt || (tgt.hp <= 0 && proj.type === 'ARROW')) {
           this.projectiles.splice(i, 1);
@@ -2744,16 +3310,7 @@ export const IronSquadGame = {
       }
     }
 
-    // モンスター生成 (大軍勢パック湧き - 敵増量版)
-    if (this.spawnedInWave < this.waveMonsterCount) {
-      this.spawnTimer += dt;
-      if (this.spawnTimer >= Math.max(0.7, 1.6 - this.wave * 0.06)) {
-        this.spawnTimer = 0;
-        this.spawnPack(Math.min(14, 6 + Math.floor(this.wave * 1.1)));
-      }
-    }
-
-    // モンスターの追跡＆攻撃
+    // モンスターの追跡＆攻撃＆大ボス固有スキル
     for (let i = this.monsters.length - 1; i >= 0; i--) {
       const m = this.monsters[i];
       if (m.hitPulse > 0) m.hitPulse -= dt * 4;
@@ -2771,11 +3328,74 @@ export const IronSquadGame = {
         }
       }
 
+      // 大ボスの固有スキルタイマー・発動処理
+      if (m.isColossal) {
+        m.skillTimer = (m.skillTimer || 5.0) - dt;
+        if (m.skillTimer <= 0) {
+          m.skillTimer = m.bossDef ? m.bossDef.skillCooldown : 5.0;
+
+          if (m.type === 'behemoth_king') {
+            // 巨獣王：大地粉砕（アースクエイク）！全方位衝撃波＋画面大揺れ
+            this.screenShake = 0.55;
+            const shockTargets = [this.player, ...aliveSquad.filter(s => !s.isDown)];
+            for (const tgt of shockTargets) {
+              const td = Math.hypot(tgt.x - m.x, tgt.y - m.y);
+              if (td <= 180) {
+                this.damageTarget(tgt, Math.round(m.atk * 0.9));
+                const knockAng = Math.atan2(tgt.y - m.y, tgt.x - m.x);
+                tgt.x += Math.cos(knockAng) * 35;
+                tgt.y += Math.sin(knockAng) * 35;
+              }
+            }
+            this.spawnDamageText(m.x, m.y - 45, '💥大地粉砕(アースクエイク)!', '#f59e0b');
+            this.spawnSparks(m.x, m.y, '#f59e0b', 28);
+            sound.playBomb();
+          } else if (m.type === 'colossal_dragon') {
+            // 超巨大古竜：超火炎ブレス！扇状広角に炎弾6発一斉放射
+            this.screenShake = 0.35;
+            const baseAng = Math.atan2(target.y - m.y, target.x - m.x);
+            if (!this.projectiles) this.projectiles = [];
+            for (let fi = -3; fi <= 3; fi++) {
+              const fAng = baseAng + fi * 0.16;
+              this.projectiles.push({
+                x: m.x, y: m.y,
+                vx: Math.cos(fAng) * 320,
+                vy: Math.sin(fAng) * 320,
+                damage: Math.round(m.atk * 0.85),
+                life: 0.9,
+                type: 'BREATH_FLAME',
+                color: '#ef4444'
+              });
+            }
+            this.spawnDamageText(m.x, m.y - 45, '🔥超火炎ブレス!', '#ef4444');
+            sound.playLaser();
+          } else if (m.type === 'colossal_titan') {
+            // 古代巨神：古代殲滅光線！8方位へレーザー光弾斉射
+            this.screenShake = 0.4;
+            if (!this.projectiles) this.projectiles = [];
+            for (let bi = 0; bi < 8; bi++) {
+              const bAng = (bi / 8) * Math.PI * 2;
+              this.projectiles.push({
+                x: m.x, y: m.y,
+                vx: Math.cos(bAng) * 300,
+                vy: Math.sin(bAng) * 300,
+                damage: Math.round(m.atk * 0.8),
+                life: 1.0,
+                type: 'TITAN_BEAM',
+                color: '#06b6d4'
+              });
+            }
+            this.spawnDamageText(m.x, m.y - 45, '✨神話殲滅光線!', '#06b6d4');
+            sound.playLaser();
+          }
+        }
+      }
+
       const dx = target.x - m.x;
       const dy = target.y - m.y;
       const dist = Math.hypot(dx, dy);
 
-      if (dist > 12) {
+      if (dist > (m.radius ? m.radius * 0.8 : 12)) {
         m.x += (dx / dist) * m.speed * dt;
         m.y += (dy / dist) * m.speed * dt;
       } else {
@@ -2857,10 +3477,6 @@ export const IronSquadGame = {
       if (p.life <= 0) this.particles.splice(i, 1);
     }
 
-    // ウェーブクリア判定
-    if (this.spawnedInWave >= this.waveMonsterCount && this.monsters.length === 0) {
-      this.completeWave();
-    }
   },
 
   getNearestMonster(x, y) {
@@ -3058,58 +3674,127 @@ export const IronSquadGame = {
     this.gainExp(expGain);
     this.updateStatsUI();
 
-    // ドロップアイテム生成
-    const dropRate = isBoss ? 1.0 : (isElite ? 0.75 : 0.16);
-    if (Math.random() < dropRate) {
-      const dropItem = generateRandomDrop(this.wave);
-      this.dropsOnField.push({
-        x: monster.x,
-        y: monster.y,
-        item: dropItem,
-        isBoss
-      });
+    // 👑 どでかい大ボス（COLOSSAL BOSS）撃破時の超豪華報酬！
+    if (monster.isColossal) {
+      sound.playHighScore();
+      this.screenShake = 0.8;
+
+      // 画面大爆発パーティクル
+      for (let bi = 0; bi < 32; bi++) {
+        const bAng = Math.random() * Math.PI * 2;
+        const bSpeed = 60 + Math.random() * 220;
+        this.particles.push({
+          x: monster.x,
+          y: monster.y,
+          vx: Math.cos(bAng) * bSpeed,
+          vy: Math.sin(bAng) * bSpeed,
+          color: bi % 2 === 0 ? '#fbbf24' : '#ef4444',
+          size: 4 + Math.random() * 4,
+          life: 0.8 + Math.random() * 0.5
+        });
+      }
+
+      // 1. 大量ゴールドボーナス
+      const colossalGold = 350 + Math.floor(Math.random() * 200) + (this.phase || 1) * 30;
+      if (isPlayer) {
+        this.gold += colossalGold;
+        this.spawnDamageText(this.player.x, this.player.y - 45, `👑超巨頭討滅! +${colossalGold}G`, '#ffd700');
+      } else if (attacker) {
+        attacker.gold = (attacker.gold || 0) + colossalGold;
+        this.spawnDamageText(attacker.x, attacker.y - 45, `👑超巨頭討滅! +${colossalGold}G`, '#ffd700');
+      }
+
+      // 2. 『覚醒の英雄宝珠』を 2〜3 個確定ドロップ！
+      const orbCount = 2 + (Math.random() < 0.4 ? 1 : 0);
+      for (let oi = 0; oi < orbCount; oi++) {
+        this.dropsOnField.push({
+          x: monster.x + (Math.random() - 0.5) * 60,
+          y: monster.y + (Math.random() - 0.5) * 60,
+          item: {
+            id: Math.random().toString(36).substring(2, 9),
+            name: '覚醒の英雄宝珠',
+            type: 'ORB',
+            tier: 5,
+            isOrb: true,
+            mat: '神聖秘宝',
+            color: '#fbbf24',
+            desc: '上位職（聖騎士・剣聖・神射手・大司教・覇王）へクラスアップするための至宝！'
+          },
+          isBoss: true,
+          isOrb: true
+        });
+      }
+
+      // 3. 神話・竜鱗（T6〜T7）超高ティア宝箱を 2〜3 個確定ドロップ！
+      for (let ci = 0; ci < 3; ci++) {
+        // T6 or T7確定
+        const highTierDrop = generateRandomDrop(Math.max(20, (this.phase || 1) * 4));
+        highTierDrop.tier = Math.max(6, highTierDrop.tier);
+        this.dropsOnField.push({
+          x: monster.x + (Math.random() - 0.5) * 80,
+          y: monster.y + (Math.random() - 0.5) * 80,
+          item: highTierDrop,
+          isBoss: true
+        });
+      }
+
+      this.showToast(`👑【超巨大巨頭討滅！】神話級大ボス『${monster.name || '大魔獣'}』の撃滅に成功！(覚醒宝珠×${orbCount}個＆神話宝箱大量獲得！)`);
+
+    } else {
+      // 通常モンスター・通常ボスのドロップ生成
+      const dropRate = isBoss ? 1.0 : (isElite ? 0.75 : 0.18);
+      if (Math.random() < dropRate) {
+        const curZone = getFieldZone(monster.x, monster.y);
+        const dropItem = generateRandomDrop(Math.max(this.wave, curZone.dangerLevel * 3));
+        this.dropsOnField.push({
+          x: monster.x,
+          y: monster.y,
+          item: dropItem,
+          isBoss
+        });
+      }
+
+      // 🔱 通常ボス確定ドロップ ＆ エリート確率ドロップ：『覚醒の英雄宝珠』
+      if (isBoss) {
+        const orbItem = {
+          id: Math.random().toString(36).substring(2, 9),
+          name: '覚醒の英雄宝珠',
+          type: 'ORB',
+          tier: 5,
+          isOrb: true,
+          mat: '神聖秘宝',
+          color: '#fbbf24',
+          desc: '上位職（聖騎士・剣聖・神射手・大司教・覇王）へクラスアップするための至宝！'
+        };
+        this.dropsOnField.push({
+          x: monster.x + (Math.random() - 0.5) * 30,
+          y: monster.y + (Math.random() - 0.5) * 30,
+          item: orbItem,
+          isBoss: true,
+          isOrb: true
+        });
+      } else if (isElite && Math.random() < 0.22) {
+        const orbItem = {
+          id: Math.random().toString(36).substring(2, 9),
+          name: '覚醒の英雄宝珠',
+          type: 'ORB',
+          tier: 5,
+          isOrb: true,
+          mat: '神聖秘宝',
+          color: '#fbbf24',
+          desc: '上位職へクラスアップするための至宝！'
+        };
+        this.dropsOnField.push({
+          x: monster.x + (Math.random() - 0.5) * 20,
+          y: monster.y + (Math.random() - 0.5) * 20,
+          item: orbItem,
+          isBoss: false,
+          isOrb: true
+        });
+      }
     }
 
-    // 🔱 ボス確定ドロップ ＆ エリート確率ドロップ：『覚醒の英雄宝珠』
-    if (isBoss) {
-      const orbItem = {
-        id: Math.random().toString(36).substring(2, 9),
-        name: '覚醒の英雄宝珠',
-        type: 'ORB',
-        tier: 5,
-        isOrb: true,
-        mat: '神聖秘宝',
-        color: '#fbbf24',
-        desc: '上位職（聖騎士・剣聖・神射手・大司教・覇王）へクラスアップするための至宝！'
-      };
-      this.dropsOnField.push({
-        x: monster.x + (Math.random() - 0.5) * 30,
-        y: monster.y + (Math.random() - 0.5) * 30,
-        item: orbItem,
-        isBoss: true,
-        isOrb: true
-      });
-    } else if (isElite && Math.random() < 0.18) {
-      const orbItem = {
-        id: Math.random().toString(36).substring(2, 9),
-        name: '覚醒の英雄宝珠',
-        type: 'ORB',
-        tier: 5,
-        isOrb: true,
-        mat: '神聖秘宝',
-        color: '#fbbf24',
-        desc: '上位職へクラスアップするための至宝！'
-      };
-      this.dropsOnField.push({
-        x: monster.x + (Math.random() - 0.5) * 20,
-        y: monster.y + (Math.random() - 0.5) * 20,
-        item: orbItem,
-        isBoss: false,
-        isOrb: true
-      });
-    }
-
-    this.spawnSparks(monster.x, monster.y, monster.color, 14);
+    this.spawnSparks(monster.x, monster.y, monster.color, monster.isColossal ? 30 : 14);
   },
 
   gainExp(amt) {
@@ -3641,13 +4326,14 @@ export const IronSquadGame = {
     const closeBtn = document.getElementById('btn-close-strat');
 
     if (isManualOpen) {
-      titleEl.textContent = '⛺ 本陣戦略会議 (駐屯中)';
+      titleEl.textContent = '⛺ 本陣戦略会議 (作戦中・駐屯)';
       reportEl.textContent = '装備の強化鍛冶、武器防具の支給、兵士の叙勲や治療を行えます。';
-      nextBtn.classList.add('hidden');
-      closeBtn.classList.remove('hidden');
+      nextBtn.textContent = '⚔️ 戦場へ復帰する (会議終了)';
+      nextBtn.classList.remove('hidden');
+      closeBtn.classList.add('hidden');
       this.inBattle = false;
     } else {
-      titleEl.textContent = `⚔️ WAVE ${this.wave} 突破！本陣帰還`;
+      titleEl.textContent = `⛺ 作戦第${this.phase || this.wave || 1}期 状況報告＆戦略会議`;
       const alive = this.squad.filter(s => !s.dead);
       const deadCount = this.squad.length - alive.length;
       const clearedOps = (this.outposts || []).filter(o => o.cleared).length;
@@ -4075,8 +4761,10 @@ export const IronSquadGame = {
     this.ctx.clearRect(0, 0, this.width, this.height);
 
     const z = this.zoom || 1.0;
+    const shakeX = this.screenShake > 0 ? (Math.random() - 0.5) * this.screenShake * 18 : 0;
+    const shakeY = this.screenShake > 0 ? (Math.random() - 0.5) * this.screenShake * 18 : 0;
     this.ctx.save();
-    this.ctx.translate(this.width / 2, this.height / 2);
+    this.ctx.translate(this.width / 2 + shakeX, this.height / 2 + shakeY);
     this.ctx.scale(z, z);
     this.ctx.translate(-this.camera.x, -this.camera.y);
 
@@ -4537,6 +5225,29 @@ export const IronSquadGame = {
         ctx.restore();
       }
     }
+
+    // ゾーン境界の淡い同心円リング（危険度ゾーンの可視化）
+    ctx.save();
+    FIELD_ZONES.forEach((z) => {
+      if (z.minDist > 0) {
+        ctx.strokeStyle = z.color;
+        ctx.lineWidth = 2.0;
+        ctx.globalAlpha = 0.35;
+        ctx.setLineDash([12, 10]);
+        ctx.beginPath();
+        ctx.arc(BASE_CAMP.x, BASE_CAMP.y, z.minDist, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // 境界ラベル
+        ctx.fillStyle = z.color;
+        ctx.font = 'bold 12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.globalAlpha = 0.65;
+        ctx.setLineDash([]);
+        ctx.fillText(`─── ${z.icon} ${z.name} 境界 ───`, BASE_CAMP.x, BASE_CAMP.y - z.minDist + 16);
+      }
+    });
+    ctx.restore();
   },
 
   drawWorldObjects(ctx, now, after, py) {
@@ -5161,19 +5872,42 @@ export const IronSquadGame = {
     ctx.translate(m.x, m.y);
 
     const isLeft = (m.vx !== undefined && m.vx < -0.1) || ((this.player && this.player.x < m.x) && (!m.vx || Math.abs(m.vx) < 0.1));
-    const bob = Math.sin(now * 0.014 + (m.x % 10)) * 1.6;
+    const bob = Math.sin(now * 0.014 + (m.x % 10)) * (m.isColossal ? 3.0 : 1.6);
 
     // 1. 足元接地ソフトシャドウ (斜め見下ろしの横長平楕円)
-    ctx.fillStyle = 'rgba(0,0,0,0.38)';
+    ctx.fillStyle = m.isColossal ? 'rgba(0,0,0,0.55)' : 'rgba(0,0,0,0.38)';
     ctx.beginPath();
-    ctx.ellipse(0, 2, m.radius * 0.95, m.radius * 0.38, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, m.isColossal ? 8 : 2, m.radius * (m.isColossal ? 1.1 : 0.95), m.radius * (m.isColossal ? 0.45 : 0.38), 0, 0, Math.PI * 2);
     ctx.fill();
 
     // 左右反転コンテキスト
     ctx.save();
     if (isLeft) ctx.scale(-1, 1);
 
-    if (m.type === 'goblin') {
+    if (m.type === 'slime') {
+      // ===== 🟢 スライム (近郊安全ゾーン・ぷるぷる揺れる半透明ゲル) =====
+      const bodyColor = m.hitPulse > 0 ? '#ffffff' : '#34d399';
+      const squish = Math.sin(now * 0.016 + m.x) * 1.5;
+
+      ctx.fillStyle = bodyColor;
+      ctx.beginPath();
+      ctx.ellipse(0, -6 + bob, 9 + squish, 7 - squish, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 頭部の光彩ハイライト
+      ctx.fillStyle = '#a7f3d0';
+      ctx.beginPath();
+      ctx.ellipse(-2, -9 + bob, 3, 2, -0.2, 0, Math.PI * 2);
+      ctx.fill();
+
+      // つぶらな黒い瞳
+      ctx.fillStyle = '#064e3b';
+      ctx.beginPath();
+      ctx.arc(2, -6 + bob, 1.4, 0, Math.PI * 2);
+      ctx.arc(6, -6 + bob, 1.4, 0, Math.PI * 2);
+      ctx.fill();
+
+    } else if (m.type === 'goblin') {
       // ===== 👺 ゴブリン (小型・緑の小鬼、前傾姿勢の立ち姿) =====
       const bodyColor = m.hitPulse > 0 ? '#ffffff' : '#22c55e';
       const darkColor = m.hitPulse > 0 ? '#ffffff' : '#15803d';
@@ -5223,11 +5957,58 @@ export const IronSquadGame = {
       ctx.moveTo(-2, 2);
       ctx.lineTo(10, -8);
       ctx.stroke();
-      // トゲ鋲
       ctx.fillStyle = '#cbd5e1';
       ctx.fillRect(8, -10, 3, 3);
       ctx.fillRect(5, -6, 2.5, 2.5);
       ctx.restore();
+
+    } else if (m.type === 'wolf') {
+      // ===== 🐺 黒狼 (中域・四足の俊敏な野獣) =====
+      const bodyColor = m.hitPulse > 0 ? '#ffffff' : '#475569';
+      const darkColor = m.hitPulse > 0 ? '#ffffff' : '#1e293b';
+
+      const runLeg = Math.sin(now * 0.024 + m.x) * 4;
+      ctx.fillStyle = darkColor;
+      ctx.fillRect(-7 + runLeg, -2, 3, 5);
+      ctx.fillRect(5 - runLeg, -2, 3, 5);
+      ctx.fillRect(-9 - runLeg, -2, 3, 5);
+      ctx.fillRect(7 + runLeg, -2, 3, 5);
+
+      // 胴体
+      ctx.fillStyle = bodyColor;
+      ctx.beginPath();
+      ctx.ellipse(0, -7 + bob, 11, 6, 0.1, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 首と頭
+      ctx.beginPath();
+      ctx.moveTo(4, -8 + bob);
+      ctx.lineTo(13, -14 + bob);
+      ctx.lineTo(15, -9 + bob);
+      ctx.lineTo(6, -4 + bob);
+      ctx.closePath();
+      ctx.fill();
+
+      // 尖った耳
+      ctx.fillStyle = darkColor;
+      ctx.beginPath();
+      ctx.moveTo(8, -13 + bob);
+      ctx.lineTo(10, -19 + bob);
+      ctx.lineTo(12, -13 + bob);
+      ctx.closePath();
+      ctx.fill();
+
+      // 赤い野生の眼
+      ctx.fillStyle = '#ef4444';
+      ctx.fillRect(11, -12 + bob, 2, 2);
+
+      // 尻尾
+      ctx.strokeStyle = bodyColor;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(-10, -8 + bob);
+      ctx.quadraticCurveTo(-16, -14 + Math.sin(now * 0.02) * 3 + bob, -18, -8 + bob);
+      ctx.stroke();
 
     } else if (m.type === 'orc') {
       // ===== 👹 オーク (中型エリート・筋肉質な蛮族ウォリアー) =====
@@ -5249,7 +6030,6 @@ export const IronSquadGame = {
       ctx.beginPath();
       ctx.ellipse(0, -14 + bob, 10, 8.5, 0.1, 0, Math.PI * 2);
       ctx.fill();
-      // 胸筋ライン
       ctx.strokeStyle = shadowColor;
       ctx.lineWidth = 1.2;
       ctx.beginPath();
@@ -5275,9 +6055,9 @@ export const IronSquadGame = {
       ctx.fillStyle = '#ef4444';
       ctx.fillRect(3, -23 + bob, 2.5, 2.2);
       ctx.fillStyle = '#f8fafc';
-      ctx.fillRect(4, -19 + bob, 1.8, 2.5); // 牙
+      ctx.fillRect(4, -19 + bob, 1.8, 2.5);
 
-      // 巨大バトルアックス (力強く構える)
+      // 巨大バトルアックス
       ctx.save();
       ctx.translate(6, -12 + bob);
       ctx.rotate(-0.2 + Math.sin(now * 0.012) * 0.2);
@@ -5287,7 +6067,6 @@ export const IronSquadGame = {
       ctx.moveTo(-3, 6);
       ctx.lineTo(12, -18);
       ctx.stroke();
-      // 巨大な鉄の斧刃
       ctx.fillStyle = '#94a3b8';
       ctx.strokeStyle = '#f8fafc';
       ctx.lineWidth = 1;
@@ -5297,12 +6076,223 @@ export const IronSquadGame = {
       ctx.stroke();
       ctx.restore();
 
+    } else if (m.type === 'wyvern') {
+      // ===== 🦅 ワイバーン (深部・俊敏な双翼飛竜) =====
+      const bodyColor = m.hitPulse > 0 ? '#ffffff' : '#7c3aed';
+      const wingColor = m.hitPulse > 0 ? '#ffffff' : '#5b21b6';
+      const flap = Math.sin(now * 0.01 + m.x) * 8;
+
+      ctx.fillStyle = wingColor;
+      ctx.beginPath();
+      ctx.moveTo(-2, -12 + bob);
+      ctx.lineTo(-18, -26 + flap + bob);
+      ctx.lineTo(-10, -8 + bob);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = bodyColor;
+      ctx.beginPath();
+      ctx.ellipse(0, -10 + bob, 11, 7, 0.2, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = wingColor;
+      ctx.beginPath();
+      ctx.moveTo(4, -12 + bob);
+      ctx.lineTo(20, -25 + flap + bob);
+      ctx.lineTo(12, -7 + bob);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = bodyColor;
+      ctx.beginPath();
+      ctx.arc(8, -16 + bob, 5.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#fbbf24';
+      ctx.fillRect(9, -17 + bob, 2, 2);
+
+    } else if (m.type === 'behemoth_king') {
+      // ===== 🦏👑 巨獣王ベヒーモスキング (どでかい大ボス・超重量級の大地暴君) =====
+      const bodyColor = m.hitPulse > 0 ? '#ffffff' : '#78350f';
+      const armorColor = m.hitPulse > 0 ? '#ffffff' : '#b45309';
+
+      // 足元の大地激震クラックオーラ
+      ctx.save();
+      ctx.strokeStyle = 'rgba(245, 158, 11, 0.55)';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.ellipse(0, 8, 48, 18, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+
+      // 4本の極太支柱脚
+      const bStep = Math.sin(now * 0.008 + m.x) * 4;
+      ctx.fillStyle = '#451a03';
+      ctx.fillRect(-22 + bStep, -10, 11, 18);
+      ctx.fillRect(-8 - bStep, -10, 11, 18);
+      ctx.fillRect(8 + bStep, -10, 11, 18);
+      ctx.fillRect(20 - bStep, -10, 11, 18);
+
+      // 超巨大装甲胴体
+      ctx.fillStyle = bodyColor;
+      ctx.beginPath();
+      ctx.ellipse(0, -24 + bob, 34, 26, 0.05, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 背中の毛皮装甲プレート
+      ctx.fillStyle = armorColor;
+      ctx.beginPath();
+      ctx.ellipse(0, -32 + bob, 28, 14, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 巨頭
+      ctx.fillStyle = bodyColor;
+      ctx.beginPath();
+      ctx.arc(24, -34 + bob, 18, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 長大な4本の大白角
+      ctx.fillStyle = '#f8fafc';
+      ctx.beginPath();
+      ctx.moveTo(26, -38 + bob);
+      ctx.lineTo(44, -58 + bob);
+      ctx.lineTo(34, -40 + bob);
+      ctx.closePath();
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(18, -36 + bob);
+      ctx.lineTo(32, -54 + bob);
+      ctx.lineTo(24, -38 + bob);
+      ctx.closePath();
+      ctx.fill();
+
+      // 怒号の赤光眼
+      ctx.fillStyle = '#ef4444';
+      ctx.fillRect(30, -38 + bob, 4.5, 4.5);
+
+      // 口元の鋭利な牙
+      ctx.fillStyle = '#f8fafc';
+      ctx.fillRect(34, -26 + bob, 3, 5);
+
+    } else if (m.type === 'colossal_titan') {
+      // ===== 🗿✨ 古代巨神コロッサスタイタン (どでかい大ボス・古代神話ゴーレム) =====
+      const bodyColor = m.hitPulse > 0 ? '#ffffff' : '#1e293b';
+      const runeColor = m.hitPulse > 0 ? '#ffffff' : '#06b6d4';
+
+      // 足元の古代ルーン輪
+      ctx.save();
+      ctx.strokeStyle = 'rgba(6, 182, 212, 0.55)';
+      ctx.lineWidth = 2.5;
+      ctx.setLineDash([8, 4]);
+      ctx.beginPath();
+      ctx.ellipse(0, 6, 44, 16, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+
+      // 巨岩の足柱
+      const tStep = Math.sin(now * 0.007 + m.x) * 3;
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(-16 + tStep, -12, 12, 20);
+      ctx.fillRect(8 - tStep, -12, 12, 20);
+
+      // 巨体胴体
+      ctx.fillStyle = bodyColor;
+      ctx.beginPath();
+      ctx.roundRect(-24, -46 + bob, 48, 38, 8);
+      ctx.fill();
+
+      // 胸の光るコア（脈動）
+      const corePulse = Math.sin(now * 0.01) * 3;
+      ctx.fillStyle = runeColor;
+      ctx.beginPath();
+      ctx.arc(0, -28 + bob, 9 + corePulse, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(0, -28 + bob, 4, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 角ばった頭部
+      ctx.fillStyle = '#334155';
+      ctx.fillRect(-12, -60 + bob, 24, 16);
+
+      // 青白く光る古代の眼
+      ctx.fillStyle = runeColor;
+      ctx.fillRect(-6, -54 + bob, 4, 3);
+      ctx.fillRect(4, -54 + bob, 4, 3);
+
+    } else if (m.type === 'colossal_dragon') {
+      // ===== 🐉🔥 超巨大古竜エンシェントドラゴン (どでかい大ボス・原初の滅竜) =====
+      const bodyColor = m.hitPulse > 0 ? '#ffffff' : '#991b1b';
+      const wingColor = m.hitPulse > 0 ? '#ffffff' : '#450a0a';
+      const flap = Math.sin(now * 0.005) * 16;
+
+      // 巨大紅蓮魔法陣オーラ (足元地面)
+      ctx.save();
+      ctx.strokeStyle = 'rgba(239, 68, 68, 0.65)';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.ellipse(0, 4, 46, 18, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+
+      // 奥側の広大な大翼
+      ctx.fillStyle = wingColor;
+      ctx.beginPath();
+      ctx.moveTo(-8, -32 + bob);
+      ctx.lineTo(-48, -65 + flap + bob);
+      ctx.lineTo(-32, -26 + bob);
+      ctx.closePath();
+      ctx.fill();
+
+      // 巨竜の足
+      ctx.fillStyle = '#450a0a';
+      ctx.fillRect(-14, -10, 10, 14);
+      ctx.fillRect(8, -10, 10, 14);
+
+      // 巨大胴体
+      ctx.fillStyle = bodyColor;
+      ctx.beginPath();
+      ctx.ellipse(0, -28 + bob, 26, 20, 0.15, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 手前側の広大な大翼
+      ctx.fillStyle = wingColor;
+      ctx.beginPath();
+      ctx.moveTo(10, -32 + bob);
+      ctx.lineTo(52, -62 + flap + bob);
+      ctx.lineTo(28, -24 + bob);
+      ctx.closePath();
+      ctx.fill();
+
+      // 巨大竜頭
+      ctx.fillStyle = bodyColor;
+      ctx.beginPath();
+      ctx.ellipse(18, -42 + bob, 15, 11, 0.25, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 黒曜石の長大な双角
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath();
+      ctx.moveTo(12, -48 + bob);
+      ctx.lineTo(24, -68 + bob);
+      ctx.lineTo(26, -50 + bob);
+      ctx.closePath();
+      ctx.fill();
+
+      // 燃え盛る黄金眼
+      ctx.fillStyle = '#fbbf24';
+      ctx.fillRect(20, -45 + bob, 4.5, 4);
+
+      // 牙
+      ctx.fillStyle = '#f8fafc';
+      ctx.fillRect(25, -38 + bob, 3, 4);
+
     } else {
-      // ===== 🐉 ドラゴン / ボス (巨大な羽ばたく魔獣) =====
+      // ===== 🐉 通常ドラゴン (中ボス) =====
       const bodyColor = m.hitPulse > 0 ? '#ffffff' : '#b91c1c';
       const wingColor = m.hitPulse > 0 ? '#ffffff' : '#7f1d1d';
+      const flap = Math.sin(now * 0.006) * 10;
 
-      // 禍々しい赤い魔方陣オーラ (足元地面)
       ctx.save();
       ctx.strokeStyle = 'rgba(239, 68, 68, 0.45)';
       ctx.lineWidth = 2;
@@ -5311,8 +6301,6 @@ export const IronSquadGame = {
       ctx.stroke();
       ctx.restore();
 
-      // 豪快に羽ばたく翼 (奥側の翼)
-      const flap = Math.sin(now * 0.006) * 10;
       ctx.fillStyle = wingColor;
       ctx.beginPath();
       ctx.moveTo(-4, -20 + bob);
@@ -5321,18 +6309,15 @@ export const IronSquadGame = {
       ctx.closePath();
       ctx.fill();
 
-      // 太い竜の足
       ctx.fillStyle = '#7f1d1d';
       ctx.fillRect(-8, -6, 6, 7);
       ctx.fillRect(4, -6, 6, 7);
 
-      // 巨大な竜の胴体 (鱗)
       ctx.fillStyle = bodyColor;
       ctx.beginPath();
       ctx.ellipse(0, -18 + bob, 15, 12, 0.15, 0, Math.PI * 2);
       ctx.fill();
 
-      // 手前側の翼 (大きく広がる)
       ctx.fillStyle = wingColor;
       ctx.beginPath();
       ctx.moveTo(6, -20 + bob);
@@ -5341,13 +6326,11 @@ export const IronSquadGame = {
       ctx.closePath();
       ctx.fill();
 
-      // 竜頭と鋭い角
       ctx.fillStyle = bodyColor;
       ctx.beginPath();
       ctx.ellipse(10, -26 + bob, 9, 7, 0.3, 0, Math.PI * 2);
       ctx.fill();
 
-      // 黒曜石の角
       ctx.fillStyle = '#0f172a';
       ctx.beginPath();
       ctx.moveTo(6, -29 + bob);
@@ -5356,7 +6339,6 @@ export const IronSquadGame = {
       ctx.closePath();
       ctx.fill();
 
-      // 黄金の猛獣眼と牙
       ctx.fillStyle = '#facc15';
       ctx.fillRect(12, -28 + bob, 3, 2.5);
       ctx.fillStyle = '#f8fafc';
@@ -5365,16 +6347,38 @@ export const IronSquadGame = {
 
     ctx.restore(); // 反転復元
 
-    // HPバー (頭上)
-    const barW = Math.max(22, m.radius * 2);
-    const headH = m.isBoss ? 46 : (m.type === 'orc' ? 34 : 24);
-    ctx.fillStyle = 'rgba(0,0,0,0.65)';
-    ctx.fillRect(-barW / 2, -headH, barW, 4);
-    ctx.fillStyle = m.isBoss ? '#ef4444' : '#f97316';
-    ctx.fillRect(-barW / 2, -headH, barW * (m.hp / m.maxHp), 4);
-    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
-    ctx.lineWidth = 0.6;
-    ctx.strokeRect(-barW / 2, -headH, barW, 4);
+    // HPバー & 頭上ボス名表示
+    if (m.isColossal) {
+      // 大ボス特大ゲージ
+      const barW = 100;
+      const headH = 75;
+      ctx.fillStyle = 'rgba(0,0,0,0.85)';
+      ctx.fillRect(-barW / 2 - 2, -headH - 2, barW + 4, 8);
+      ctx.fillStyle = '#ef4444';
+      ctx.fillRect(-barW / 2, -headH, barW * (m.hp / m.maxHp), 5);
+      ctx.strokeStyle = '#f59e0b';
+      ctx.lineWidth = 1.2;
+      ctx.strokeRect(-barW / 2 - 2, -headH - 2, barW + 4, 8);
+
+      // 頭上の金文字タイトル
+      ctx.font = 'bold 12px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#ffd700';
+      ctx.shadowColor = '#000';
+      ctx.shadowBlur = 4;
+      ctx.fillText(`${m.title || ''}${m.name || '超巨大ボス'}`, 0, -headH - 6);
+      ctx.shadowBlur = 0;
+    } else {
+      const barW = Math.max(22, m.radius * 2);
+      const headH = m.isBoss ? 46 : (m.type === 'orc' || m.type === 'wyvern' ? 34 : 24);
+      ctx.fillStyle = 'rgba(0,0,0,0.65)';
+      ctx.fillRect(-barW / 2, -headH, barW, 4);
+      ctx.fillStyle = m.isBoss ? '#ef4444' : (m.isElite ? '#f59e0b' : '#34d399');
+      ctx.fillRect(-barW / 2, -headH, barW * (m.hp / m.maxHp), 4);
+      ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+      ctx.lineWidth = 0.6;
+      ctx.strokeRect(-barW / 2, -headH, barW, 4);
+    }
 
     ctx.restore();
   },
@@ -5499,6 +6503,34 @@ export const IronSquadGame = {
       ctx.beginPath();
       ctx.arc(0, 0, isHigh ? 3.2 : 2.0, 0, Math.PI * 2);
       ctx.fill();
+      ctx.shadowBlur = 0;
+    } else if (proj.type === 'BREATH_FLAME') {
+      // 超火炎ブレスの業火弾 (燃え盛る炎球)
+      ctx.shadowColor = '#ef4444';
+      ctx.shadowBlur = 12;
+      const grad = ctx.createRadialGradient(0, 0, 1, 0, 0, 9);
+      grad.addColorStop(0, '#ffffff');
+      grad.addColorStop(0.3, '#fde047');
+      grad.addColorStop(0.7, '#f97316');
+      grad.addColorStop(1, '#ef4444');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(0, 0, 8.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    } else if (proj.type === 'TITAN_BEAM') {
+      // 古代巨神の神話光線弾 (古代青白のパルス光球)
+      ctx.shadowColor = '#06b6d4';
+      ctx.shadowBlur = 14;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(0, 0, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#06b6d4';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(0, 0, 8.5, 0, Math.PI * 2);
+      ctx.stroke();
       ctx.shadowBlur = 0;
     }
 
@@ -6555,16 +7587,46 @@ export const IronSquadGame = {
     const scaleX = mw / MAP_WIDTH;
     const scaleY = mh / MAP_HEIGHT;
 
+    // ゾーン境界サークル (ミニマップ)
+    FIELD_ZONES.forEach((z) => {
+      if (z.minDist > 0) {
+        mCtx.strokeStyle = z.color;
+        mCtx.lineWidth = 0.8;
+        mCtx.globalAlpha = 0.4;
+        mCtx.beginPath();
+        mCtx.arc(BASE_CAMP.x * scaleX, BASE_CAMP.y * scaleY, z.minDist * scaleX, 0, Math.PI * 2);
+        mCtx.stroke();
+      }
+    });
+    mCtx.globalAlpha = 1.0;
+
     // 自軍本陣
     mCtx.fillStyle = 'rgba(16, 185, 129, 0.4)';
     mCtx.beginPath();
     mCtx.arc(BASE_CAMP.x * scaleX, BASE_CAMP.y * scaleY, BASE_CAMP.radius * scaleX, 0, Math.PI * 2);
     mCtx.fill();
 
-    // 敵 (赤点)
-    mCtx.fillStyle = '#ef4444';
+    // 敵 (通常: 赤点 / 大ボス: 特大赤金ドクロ点)
     for (const m of this.monsters) {
-      mCtx.fillRect(m.x * scaleX - 1, m.y * scaleY - 1, 2, 2);
+      if (m.isColossal) {
+        const pulse = Math.sin(performance.now() * 0.015) * 1.5;
+        mCtx.fillStyle = '#f59e0b';
+        mCtx.beginPath();
+        mCtx.arc(m.x * scaleX, m.y * scaleY, 4.5 + pulse, 0, Math.PI * 2);
+        mCtx.fill();
+        mCtx.fillStyle = '#ef4444';
+        mCtx.beginPath();
+        mCtx.arc(m.x * scaleX, m.y * scaleY, 3, 0, Math.PI * 2);
+        mCtx.fill();
+      } else if (m.isBoss) {
+        mCtx.fillStyle = '#ef4444';
+        mCtx.beginPath();
+        mCtx.arc(m.x * scaleX, m.y * scaleY, 2.5, 0, Math.PI * 2);
+        mCtx.fill();
+      } else {
+        mCtx.fillStyle = m.isElite ? '#f59e0b' : '#ef4444';
+        mCtx.fillRect(m.x * scaleX - 1, m.y * scaleY - 1, 2, 2);
+      }
     }
 
     // 仲間兵士 (緑点)

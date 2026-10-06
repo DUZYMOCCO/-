@@ -607,6 +607,35 @@ canvas {
   margin-top: 1px;
 }
 
+/* フィールドゾーンバッジ & シームレス作戦期通知バナー */
+.zone-badge {
+  pointer-events: none;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  user-select: none;
+  -webkit-user-select: none;
+  z-index: 12;
+  transition: all 0.25s ease;
+}
+
+.phase-banner {
+  pointer-events: auto;
+  user-select: none;
+  -webkit-user-select: none;
+  animation: slideDownIn 0.35s ease-out;
+}
+
+@keyframes slideDownIn {
+  from {
+    transform: translate(-50%, -20px);
+    opacity: 0;
+  }
+  to {
+    transform: translate(-50%, 0);
+    opacity: 1;
+  }
+}
+
 
 
 
