@@ -203,6 +203,97 @@ function generateRandomDrop(wave) {
 }
 
 
+export const OUTPOST_DEFS = {
+  FORT: {
+    type: 'FORT',
+    name: '黒鬼の前線砦',
+    icon: '🏴',
+    color: '#ef4444',
+    maxHp: 340,
+    radius: 36,
+    x: 280,
+    y: 280,
+    desc: '大量ゴールド＆確定高ティア宝箱！'
+  },
+  CAGE: {
+    type: 'CAGE',
+    name: '捕虜収容所',
+    icon: '⛓️',
+    color: '#f59e0b',
+    maxHp: 190,
+    radius: 28,
+    x: 1520,
+    y: 1520,
+    desc: '囚われた友軍2名が即座に自軍へ加入！'
+  },
+  SHRINE: {
+    type: 'SHRINE',
+    name: '古代鍛冶の祭壇',
+    icon: '🏛️',
+    color: '#38bdf8',
+    maxHp: 240,
+    radius: 32,
+    x: 1520,
+    y: 280,
+    desc: '全兵士＆あなたの装備が一斉+1強化！'
+  },
+  SUPPLY: {
+    type: 'SUPPLY',
+    name: '補給物資集積所',
+    icon: '📦',
+    color: '#34d399',
+    maxHp: 160,
+    radius: 30,
+    x: 280,
+    y: 1520,
+    desc: '全員HP全快＆兵士に臨時給与支給！'
+  }
+};
+
+export const QUEST_TEMPLATES = [
+  {
+    type: 'FORT',
+    title: '🏴【強襲制圧】敵の前線砦を破壊せよ！',
+    targetType: 'FORT',
+    desc: '北西の砦を攻略し、オーク前哨部隊を叩け',
+    rewardGold: 110,
+    rewardExp: 40
+  },
+  {
+    type: 'CAGE',
+    title: '⛓️【友軍奪還】囚われた友軍を救出せよ！',
+    targetType: 'CAGE',
+    desc: '南東の牢獄を解放し、友軍兵士を救出せよ',
+    rewardGold: 80,
+    rewardExp: 35
+  },
+  {
+    type: 'SHRINE',
+    title: '🏛️【神託調査】古代鍛冶の祭壇を確保せよ！',
+    targetType: 'SHRINE',
+    desc: '北東の古代祭壇を制圧し、神聖鍛冶の祝福を受けよ',
+    rewardGold: 90,
+    rewardExp: 36
+  },
+  {
+    type: 'SUPPLY',
+    title: '📦【兵站奪還】強奪された物資を回収せよ！',
+    targetType: 'SUPPLY',
+    desc: '南西の補給庫を制圧し、部隊の物資を奪還せよ',
+    rewardGold: 95,
+    rewardExp: 32
+  },
+  {
+    type: 'MASSACRE',
+    title: '⚔️【掃討作戦】敵軍勢を35体以上撃滅せよ！',
+    targetType: null,
+    targetKills: 35,
+    desc: '迫り来る敵兵を掃討し、前線を押し上げよ',
+    rewardGold: 75,
+    rewardExp: 30
+  }
+];
+
 export const IronSquadGame = {
   id: 'iron-squad',
   title: 'IRON SQUAD',
@@ -263,6 +354,16 @@ export const IronSquadGame = {
           <!-- 部隊距離インジケーター（画面左上） -->
           <div id="squad-proximity-badge" class="proximity-badge proximity-close">
             🟢 部隊と共闘中 (安全)
+          </div>
+
+          <!-- 軍令（作戦目標HUD・画面右上） -->
+          <div id="quest-banner" class="quest-banner">
+            <div class="quest-banner-header">
+              <span class="quest-badge">📜 司令部軍令</span>
+              <span id="quest-status" class="quest-status">遂行中</span>
+            </div>
+            <div id="quest-title" class="quest-title">⚔️ 作戦待機中</div>
+            <div id="quest-desc" class="quest-desc">戦況を確認せよ</div>
           </div>
 
           <!-- 拠点治癒インジケータ -->
@@ -589,6 +690,8 @@ export const IronSquadGame = {
     }
 
     this.initPlatoons();
+    this.initOutposts();
+    this.assignWaveQuest();
     this.recalcPlayerStats();
     this.initBattlefield();
     this.saveGame();
@@ -616,6 +719,205 @@ export const IronSquadGame = {
       { id: 1, name: '第2小隊 (機動遊撃)', color: '#f59e0b', icon: '🏹', x: BASE_CAMP.x - 80, y: BASE_CAMP.y + 60 },
       { id: 2, name: '第3小隊 (本陣防衛)', color: '#34d399', icon: '🛡️', x: BASE_CAMP.x, y: BASE_CAMP.y }
     ];
+  },
+
+  initOutposts() {
+    this.outposts = [
+      {
+        id: 'outpost_fort',
+        type: 'FORT',
+        name: OUTPOST_DEFS.FORT.name,
+        icon: OUTPOST_DEFS.FORT.icon,
+        color: OUTPOST_DEFS.FORT.color,
+        x: OUTPOST_DEFS.FORT.x,
+        y: OUTPOST_DEFS.FORT.y,
+        hp: OUTPOST_DEFS.FORT.maxHp,
+        maxHp: OUTPOST_DEFS.FORT.maxHp,
+        radius: OUTPOST_DEFS.FORT.radius,
+        cleared: false,
+        clearedWave: 0
+      },
+      {
+        id: 'outpost_cage',
+        type: 'CAGE',
+        name: OUTPOST_DEFS.CAGE.name,
+        icon: OUTPOST_DEFS.CAGE.icon,
+        color: OUTPOST_DEFS.CAGE.color,
+        x: OUTPOST_DEFS.CAGE.x,
+        y: OUTPOST_DEFS.CAGE.y,
+        hp: OUTPOST_DEFS.CAGE.maxHp,
+        maxHp: OUTPOST_DEFS.CAGE.maxHp,
+        radius: OUTPOST_DEFS.CAGE.radius,
+        cleared: false,
+        clearedWave: 0
+      },
+      {
+        id: 'outpost_shrine',
+        type: 'SHRINE',
+        name: OUTPOST_DEFS.SHRINE.name,
+        icon: OUTPOST_DEFS.SHRINE.icon,
+        color: OUTPOST_DEFS.SHRINE.color,
+        x: OUTPOST_DEFS.SHRINE.x,
+        y: OUTPOST_DEFS.SHRINE.y,
+        hp: OUTPOST_DEFS.SHRINE.maxHp,
+        maxHp: OUTPOST_DEFS.SHRINE.maxHp,
+        radius: OUTPOST_DEFS.SHRINE.radius,
+        cleared: false,
+        clearedWave: 0
+      },
+      {
+        id: 'outpost_supply',
+        type: 'SUPPLY',
+        name: OUTPOST_DEFS.SUPPLY.name,
+        icon: OUTPOST_DEFS.SUPPLY.icon,
+        color: OUTPOST_DEFS.SUPPLY.color,
+        x: OUTPOST_DEFS.SUPPLY.x,
+        y: OUTPOST_DEFS.SUPPLY.y,
+        hp: OUTPOST_DEFS.SUPPLY.maxHp,
+        maxHp: OUTPOST_DEFS.SUPPLY.maxHp,
+        radius: OUTPOST_DEFS.SUPPLY.radius,
+        cleared: false,
+        clearedWave: 0
+      }
+    ];
+  },
+
+  assignWaveQuest() {
+    if (!this.outposts) this.initOutposts();
+    const unclearedOutposts = this.outposts.filter(o => !o.cleared);
+    let chosenTemplate = null;
+
+    if (unclearedOutposts.length > 0 && Math.random() < 0.8) {
+      const targetOp = unclearedOutposts[Math.floor(Math.random() * unclearedOutposts.length)];
+      chosenTemplate = QUEST_TEMPLATES.find(q => q.targetType === targetOp.type) || QUEST_TEMPLATES[0];
+    } else {
+      chosenTemplate = QUEST_TEMPLATES[QUEST_TEMPLATES.length - 1]; // 掃討作戦
+    }
+
+    this.currentQuest = {
+      ...chosenTemplate,
+      completed: false,
+      currentKills: 0
+    };
+
+    this.updateQuestUI();
+  },
+
+  updateQuestUI() {
+    const banner = document.getElementById('quest-banner');
+    const statusEl = document.getElementById('quest-status');
+    const titleEl = document.getElementById('quest-title');
+    const descEl = document.getElementById('quest-desc');
+    if (!banner || !this.currentQuest) return;
+
+    titleEl.textContent = this.currentQuest.title;
+
+    if (this.currentQuest.completed) {
+      statusEl.className = 'quest-status completed';
+      statusEl.textContent = '達成！';
+      descEl.textContent = `報奨金+${this.currentQuest.rewardGold}G / 武勲+${this.currentQuest.rewardExp}`;
+    } else {
+      statusEl.className = 'quest-status';
+      statusEl.textContent = '遂行中';
+      if (this.currentQuest.targetType) {
+        const op = this.outposts.find(o => o.type === this.currentQuest.targetType);
+        if (op) {
+          const px = this.player ? this.player.x : BASE_CAMP.x;
+          const py = this.player ? this.player.y : BASE_CAMP.y;
+          const dist = Math.floor(Math.hypot(op.x - px, op.y - py));
+          descEl.textContent = `${op.name}へ進軍！(残${Math.floor(op.hp)}HP / 距離${dist}m)`;
+        } else {
+          descEl.textContent = this.currentQuest.desc;
+        }
+      } else if (this.currentQuest.targetKills) {
+        descEl.textContent = `敵掃討: ${this.currentQuest.currentKills || 0} / ${this.currentQuest.targetKills}体`;
+      }
+    }
+  },
+
+  damageOutpost(outpost, rawDmg) {
+    if (!outpost || outpost.cleared) return;
+    outpost.hp -= rawDmg;
+    this.spawnDamageText(outpost.x, outpost.y - 15, Math.floor(rawDmg), '#ffd700');
+    sound.playHit(0);
+    this.spawnSparks(outpost.x, outpost.y, outpost.color, 4);
+
+    if (outpost.hp <= 0) {
+      outpost.hp = 0;
+      outpost.cleared = true;
+      outpost.clearedWave = this.wave;
+      this.clearOutpost(outpost);
+    }
+    this.updateQuestUI();
+  },
+
+  clearOutpost(outpost) {
+    sound.playHighScore();
+    this.spawnSparks(outpost.x, outpost.y, outpost.color, 24);
+
+    if (outpost.type === 'FORT') {
+      const bonusG = 95 + this.wave * 15;
+      this.gold += bonusG;
+      for (let k = 0; k < 3; k++) {
+        const dropItem = generateRandomDrop(Math.max(this.wave, 3));
+        this.dropsOnField.push({
+          x: outpost.x + (Math.random() - 0.5) * 60,
+          y: outpost.y + (Math.random() - 0.5) * 60,
+          item: dropItem,
+          isBoss: k === 0
+        });
+      }
+      this.showToast(`🏴【前線砦陥落！】+${bonusG}G獲得！レア武具宝箱を大量鹵獲！`);
+    } else if (outpost.type === 'CAGE') {
+      const newS1 = this.createNewSoldier(this.squad.length + 1);
+      const newS2 = this.createNewSoldier(this.squad.length + 2);
+      newS1.x = outpost.x - 15; newS1.y = outpost.y;
+      newS2.x = outpost.x + 15; newS2.y = outpost.y;
+      this.squad.push(newS1, newS2);
+      this.showToast(`⛓️【捕虜救出成功！】友軍兵士【${newS1.name}】【${newS2.name}】が即座に部隊合流！`);
+    } else if (outpost.type === 'SHRINE') {
+      if (this.equipped) {
+        Object.keys(this.equipped).forEach(k => {
+          if (this.equipped[k]) applyUpgradeStats(this.equipped[k], (this.equipped[k].upgrade || 0) + 1);
+        });
+      }
+      this.squad.forEach(s => {
+        if (!s.dead && s.equipped) {
+          Object.keys(s.equipped).forEach(k => {
+            if (s.equipped[k]) applyUpgradeStats(s.equipped[k], (s.equipped[k].upgrade || 0) + 1);
+          });
+          this.recalcSoldierStats(s);
+        }
+      });
+      this.recalcPlayerStats();
+      this.showToast(`🏛️【神聖鍛冶の奇跡！】古代祭壇の祝福により、全軍の全装備が一斉に+1強化！`);
+    } else if (outpost.type === 'SUPPLY') {
+      this.player.hp = this.player.maxHp;
+      this.squad.forEach(s => {
+        if (!s.dead) {
+          s.hp = s.maxHp;
+          s.gold = (s.gold || 0) + 18;
+        }
+      });
+      this.showToast(`📦【兵站奪還完了！】部隊全員のHPが全快！兵士各自に臨時給与+18G支給！`);
+    }
+
+    if (this.currentQuest && !this.currentQuest.completed && this.currentQuest.targetType === outpost.type) {
+      this.completeQuest();
+    }
+  },
+
+  completeQuest() {
+    if (!this.currentQuest || this.currentQuest.completed) return;
+    this.currentQuest.completed = true;
+    sound.playHighScore();
+    const gReward = this.currentQuest.rewardGold || 70;
+    const expReward = this.currentQuest.rewardExp || 30;
+    this.gold += gReward;
+    this.gainExp(expReward);
+    this.showToast(`🎉【軍令達成！】司令部より特別武勲金+${gReward}G＆功績EXP+${expReward}授与！`);
+    this.updateStatsUI();
+    this.updateQuestUI();
   },
 
   recalcPlayerStats() {
@@ -822,6 +1124,17 @@ export const IronSquadGame = {
     };
 
     this.initPlatoons();
+    if (saved.outposts) {
+      this.outposts = saved.outposts;
+    } else {
+      this.initOutposts();
+    }
+    if (saved.currentQuest) {
+      this.currentQuest = saved.currentQuest;
+      this.updateQuestUI();
+    } else {
+      this.assignWaveQuest();
+    }
     this.recalcPlayerStats();
     if (pSave.hp) this.player.hp = Math.min(this.player.maxHp, pSave.hp);
 
@@ -956,7 +1269,9 @@ export const IronSquadGame = {
         },
         equipped: this.equipped,
         inventory: this.inventory,
-        squad: this.squad.filter(s => !s.dead)
+        squad: this.squad.filter(s => !s.dead),
+        outposts: this.outposts,
+        currentQuest: this.currentQuest
       };
       storage.set('ironsquad_save_data_v3', data);
     } catch (e) {
@@ -1101,14 +1416,35 @@ export const IronSquadGame = {
     };
   },
 
+  getNearestUnclearedOutpost(x, y) {
+    if (!this.outposts) return null;
+    let nearest = null;
+    let minDist = 9999;
+    for (const op of this.outposts) {
+      if (op.cleared) continue;
+      const d = Math.hypot(op.x - x, op.y - y);
+      if (d < minDist) {
+        minDist = d;
+        nearest = op;
+      }
+    }
+    return nearest;
+  },
+
   // 右手パッド手動攻撃
   manualAttack() {
     if (!this.inBattle) return;
     this.player.slashAnim = 1;
     const nearest = this.getNearestMonster(this.player.x, this.player.y);
+    const nearestOp = this.getNearestUnclearedOutpost(this.player.x, this.player.y);
+
     if (nearest && Math.hypot(nearest.x - this.player.x, nearest.y - this.player.y) <= 110) {
       this.player.slashAngle = Math.atan2(nearest.y - this.player.y, nearest.x - this.player.x);
       this.performAttack(this.player, nearest, true);
+    } else if (nearestOp && Math.hypot(nearestOp.x - this.player.x, nearestOp.y - this.player.y) <= nearestOp.radius + 60) {
+      this.player.slashAngle = Math.atan2(nearestOp.y - this.player.y, nearestOp.x - this.player.x);
+      sound.playSlash();
+      this.damageOutpost(nearestOp, this.player.atk * 1.5);
     } else {
       sound.playSlash();
       // 向いている方向へ素振り
@@ -1158,9 +1494,22 @@ export const IronSquadGame = {
     this.inBattle = true;
     this.spawnedInWave = 0;
     this.waveKills = 0;
-    this.waveMonsterCount = 45 + this.wave * 18;
+    this.waveMonsterCount = 70 + this.wave * 35; // 敵大増量維持
 
     this.player.hp = this.player.maxHp;
+
+    // 過去に制圧された拠点の再活性化（2 WAVE以上経過した拠点が再占拠されて復活！）
+    if (this.outposts) {
+      this.outposts.forEach(op => {
+        if (op.cleared && (this.wave - (op.clearedWave || 0)) >= 2) {
+          op.cleared = false;
+          op.hp = op.maxHp;
+        }
+      });
+    } else {
+      this.initOutposts();
+    }
+    this.assignWaveQuest();
 
     // 戦死者の補充（部隊定員まで新兵を補充）
     const currentMax = RANKS[this.rankIndex].maxSquad;
@@ -1341,9 +1690,17 @@ export const IronSquadGame = {
         platoon.y = this.player.y;
       } else {
         if (platoon.id === 0) {
-          // 第1小隊: 前衛突撃隊（ボス・エリート優先、または最近傍の敵）
+          // 第1小隊: 前衛突撃隊（軍令目標・敵砦・ボスへ向かって進軍！）
+          let targetOutpost = null;
+          if (this.currentQuest && !this.currentQuest.completed && this.currentQuest.targetType) {
+            targetOutpost = (this.outposts || []).find(o => o.type === this.currentQuest.targetType && !o.cleared);
+          }
+          if (!targetOutpost) {
+            targetOutpost = (this.outposts || []).find(o => !o.cleared);
+          }
+
           const p0Boss = this.monsters.find(m => m.isBoss || m.isElite);
-          const pTarget = p0Boss || nearestGlobalMonster;
+          const pTarget = p0Boss || targetOutpost || nearestGlobalMonster;
           if (pTarget) {
             platoon.x += (pTarget.x - platoon.x) * 1.5 * dt;
             platoon.y += (pTarget.y - platoon.y) * 1.5 * dt;
@@ -1562,6 +1919,18 @@ export const IronSquadGame = {
           const totalAtk = soldier.atk + (soldier.equipped && soldier.equipped.weapon ? soldier.equipped.weapon.stats.atk || 0 : (soldier.weapon ? soldier.weapon.stats.atk || 0 : 0));
           this.performAttack(soldier, nearestEnemy, false, totalAtk);
         }
+
+        // 敵が近くにおらず、未制圧拠点の至近距離なら拠点を攻撃！
+        if (!nearestEnemy || enemyDist > 160) {
+          const nearOp = this.getNearestUnclearedOutpost(soldier.x, soldier.y);
+          if (nearOp && Math.hypot(nearOp.x - soldier.x, nearOp.y - soldier.y) <= nearOp.radius + 55 && soldier.atkCooldown <= 0) {
+            soldier.atkCooldown = cls.atkCooldown;
+            soldier.atkAnim = 1.0;
+            soldier.facingAngle = Math.atan2(nearOp.y - soldier.y, nearOp.x - soldier.x);
+            const totalAtk = soldier.atk + (soldier.equipped && soldier.equipped.weapon ? soldier.equipped.weapon.stats.atk || 0 : (soldier.weapon ? soldier.weapon.stats.atk || 0 : 0));
+            this.damageOutpost(nearOp, totalAtk);
+          }
+        }
       }
     });
 
@@ -1596,11 +1965,13 @@ export const IronSquadGame = {
       }
     }
 
-    // 主人公の自動攻撃
+    // 主人公の自動攻撃 (敵モンスター or 近くの未制圧拠点)
     this.player.atkCooldown -= dt;
     if (this.player.slashAnim > 0) this.player.slashAnim -= dt * 6;
 
     const nearestMonster = this.getNearestMonster(this.player.x, this.player.y);
+    const nearestOp = this.getNearestUnclearedOutpost(this.player.x, this.player.y);
+
     if (nearestMonster && this.player.atkCooldown <= 0) {
       const dist = Math.hypot(nearestMonster.x - this.player.x, nearestMonster.y - this.player.y);
       if (dist <= 85) {
@@ -1608,6 +1979,14 @@ export const IronSquadGame = {
         this.player.slashAngle = Math.atan2(nearestMonster.y - this.player.y, nearestMonster.x - this.player.x);
         this.player.slashAnim = 1;
         this.performAttack(this.player, nearestMonster, true);
+      }
+    } else if (nearestOp && this.player.atkCooldown <= 0) {
+      const distOp = Math.hypot(nearestOp.x - this.player.x, nearestOp.y - this.player.y);
+      if (distOp <= nearestOp.radius + 50) {
+        this.player.atkCooldown = 0.52 / (this.player.atkSpeed || 1);
+        this.player.slashAngle = Math.atan2(nearestOp.y - this.player.y, nearestOp.x - this.player.x);
+        this.player.slashAnim = 1;
+        this.damageOutpost(nearestOp, this.player.atk);
       }
     }
 
@@ -1805,6 +2184,16 @@ export const IronSquadGame = {
     const idx = this.monsters.indexOf(monster);
     if (idx !== -1) this.monsters.splice(idx, 1);
     this.waveKills++;
+
+    // 掃討軍令の進捗カウント
+    if (this.currentQuest && !this.currentQuest.completed && this.currentQuest.targetKills) {
+      this.currentQuest.currentKills = (this.currentQuest.currentKills || 0) + 1;
+      if (this.currentQuest.currentKills >= this.currentQuest.targetKills) {
+        this.completeQuest();
+      } else {
+        this.updateQuestUI();
+      }
+    }
 
     const isBoss = !!monster.isBoss;
     const isElite = !!monster.isElite;
@@ -2149,9 +2538,13 @@ export const IronSquadGame = {
       titleEl.textContent = `⚔️ WAVE ${this.wave} 突破！本陣帰還`;
       const alive = this.squad.filter(s => !s.dead);
       const deadCount = this.squad.length - alive.length;
-      const rep = this.treatmentReport || { fullHealedCount: alive.length, brokeSoldiersCount: 0, autoUpgradedCount: 0 };
+      const clearedOps = (this.outposts || []).filter(o => o.cleared).length;
+      const questStatusText = (this.currentQuest && this.currentQuest.completed)
+        ? `<span style="color:#00ffaa;">達成！(+${this.currentQuest.rewardGold}G / 武勲+${this.currentQuest.rewardExp})</span>`
+        : `<span style="color:#f59e0b;">未達 (次戦継続)</span>`;
       reportEl.innerHTML = `
         激戦を生き延びた！ 生存部隊: <strong style="color:#00ffaa;">${alive.length}名</strong> ${deadCount > 0 ? `<span style="color:#ff4444;">(${deadCount}名戦死 / 次戦新兵補充)</span>` : ''}<br>
+        🗺️ <strong style="color:#ffd700;">【戦場制圧状況】</strong>拠点制圧: <strong style="color:#fff;">${clearedOps} / 4箇所</strong> | 📜 軍令: ${questStatusText}<br>
         🛡️ <strong style="color:#38bdf8;">【生還ボーナス】</strong>全員のステータス向上！(あなた: HP+20, ATK+4 / 兵士: HP+14, ATK+3)<br>
         🏥 <strong style="color:#34d399;">【宿営手当て】</strong>各自の予算で治療完了（自費全快: <strong>${rep.fullHealedCount}名</strong> / 資金不足: <strong style="color:#f59e0b;">${rep.brokeSoldiersCount}名</strong>）<br>
         🔨 <strong style="color:#fbbf24;">【自費強化】</strong>兵士たちが予算で装備を自発的に強化！（計 <strong>${rep.autoUpgradedCount}件</strong> 成功）
@@ -2451,6 +2844,13 @@ export const IronSquadGame = {
 
     // 2. 自軍砦本陣 (治癒砦・城塞壁・風になびく王国旗)
     this.drawBaseCamp(this.ctx, now);
+
+    // 2.5 戦場の探索拠点 (敵前線砦・捕虜の檻・古代祭壇・補給集積所)
+    if (this.outposts) {
+      for (const op of this.outposts) {
+        this.drawOutpost(this.ctx, op, now);
+      }
+    }
 
     // 3. ドロップ宝箱
     for (const drop of this.dropsOnField) {
@@ -3228,6 +3628,183 @@ export const IronSquadGame = {
     ctx.restore();
   },
 
+  drawOutpost(ctx, op, now) {
+    ctx.save();
+    ctx.translate(op.x, op.y);
+
+    const isCleared = op.cleared;
+
+    if (op.type === 'FORT') {
+      // ===== 🏴 敵の前線砦 =====
+      ctx.fillStyle = isCleared ? 'rgba(30, 20, 20, 0.4)' : 'rgba(50, 20, 20, 0.6)';
+      ctx.beginPath();
+      ctx.arc(0, 0, op.radius, 0, Math.PI * 2);
+      ctx.fill();
+
+      // バリケード（木の柵）
+      ctx.strokeStyle = isCleared ? '#4b5563' : '#78350f';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(-26, -20, 52, 40);
+
+      // 砦本体
+      ctx.fillStyle = isCleared ? '#374151' : '#1f2937';
+      ctx.fillRect(-18, -14, 36, 28);
+
+      if (!isCleared) {
+        // オークの角付き頭蓋骨紋章
+        ctx.fillStyle = '#ef4444';
+        ctx.fillRect(-4, -6, 8, 8);
+
+        // かがり火（アニメーション炎）
+        const flame = Math.sin(now * 0.02) * 2;
+        ctx.fillStyle = '#f97316';
+        ctx.beginPath();
+        ctx.arc(-22, -18, 4 + flame, 0, Math.PI * 2);
+        ctx.arc(22, -18, 4 + flame, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 砦の軍旗
+        ctx.strokeStyle = '#4b5563';
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(0, -14); ctx.lineTo(0, -32); ctx.stroke();
+        ctx.fillStyle = '#b91c1c';
+        ctx.fillRect(0, -32, 14, 10);
+      } else {
+        // 制圧後の煙
+        ctx.fillStyle = 'rgba(150, 150, 150, 0.3)';
+        ctx.beginPath();
+        ctx.arc(0, -10 + Math.sin(now * 0.005) * 4, 10, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+    } else if (op.type === 'CAGE') {
+      // ===== ⛓️ 捕虜収容所 =====
+      ctx.fillStyle = 'rgba(40, 30, 20, 0.5)';
+      ctx.beginPath();
+      ctx.arc(0, 0, op.radius, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 檻の枠
+      ctx.strokeStyle = isCleared ? '#64748b' : '#334155';
+      ctx.lineWidth = isCleared ? 1.5 : 2.5;
+      ctx.strokeRect(-18, -16, 36, 32);
+
+      // 鉄格子バー
+      if (!isCleared) {
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 1.5;
+        for (let bx = -12; bx <= 12; bx += 6) {
+          ctx.beginPath();
+          ctx.moveTo(bx, -16);
+          ctx.lineTo(bx, 16);
+          ctx.stroke();
+        }
+
+        // 檻の中の囚われた友軍兵士
+        const bob = Math.sin(now * 0.008) * 1.5;
+        ctx.fillStyle = '#2563eb';
+        ctx.beginPath();
+        ctx.arc(0, bob, 6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#cbd5e1';
+        ctx.beginPath();
+        ctx.arc(0, -3 + bob, 4, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        // 扉が破壊されて開放
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(18, -16);
+        ctx.lineTo(28, -6);
+        ctx.stroke();
+      }
+
+    } else if (op.type === 'SHRINE') {
+      // ===== 🏛️ 古代鍛冶の祭壇 =====
+      ctx.strokeStyle = isCleared ? 'rgba(56, 189, 248, 0.3)' : 'rgba(56, 189, 248, 0.8)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(0, 0, op.radius, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // 4本の古代石柱
+      ctx.fillStyle = '#475569';
+      [[-20, -20], [20, -20], [-20, 20], [20, 20]].forEach(([cx, cy]) => {
+        ctx.beginPath();
+        ctx.arc(cx, cy, 5, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      // 中央祭壇座
+      ctx.fillStyle = '#334155';
+      ctx.fillRect(-12, -10, 24, 20);
+
+      // 浮遊する青き古代ルーン（パルス）
+      const floatY = Math.sin(now * 0.005) * 4;
+      ctx.shadowColor = '#38bdf8';
+      ctx.shadowBlur = 10;
+      ctx.fillStyle = isCleared ? '#94a3b8' : '#38bdf8';
+      ctx.beginPath();
+      ctx.arc(0, floatY, 6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+    } else if (op.type === 'SUPPLY') {
+      // ===== 📦 補給物資集積所 =====
+      ctx.fillStyle = 'rgba(30, 45, 30, 0.5)';
+      ctx.beginPath();
+      ctx.arc(0, 0, op.radius, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 積み上げられた木箱
+      ctx.fillStyle = isCleared ? '#4b5563' : '#78350f';
+      ctx.fillRect(-14, -6, 14, 14);
+      ctx.fillRect(2, -6, 14, 14);
+      ctx.fillRect(-6, -18, 14, 14);
+
+      // 樽
+      ctx.fillStyle = isCleared ? '#374151' : '#92400e';
+      ctx.beginPath();
+      ctx.arc(14, 10, 6, 0, Math.PI * 2);
+      ctx.arc(-14, 10, 6, 0, Math.PI * 2);
+      ctx.fill();
+
+      if (!isCleared) {
+        ctx.fillStyle = '#34d399';
+        ctx.font = 'bold 10px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('✚', 0, 16);
+      }
+    }
+
+    // 頭上ラベル ＆ HPバー
+    ctx.textAlign = 'center';
+    if (!isCleared) {
+      ctx.font = 'bold 11px sans-serif';
+      ctx.fillStyle = op.color;
+      ctx.shadowColor = '#000';
+      ctx.shadowBlur = 4;
+      ctx.fillText(`${op.icon} ${op.name}`, 0, -op.radius - 12);
+      ctx.shadowBlur = 0;
+
+      const barW = 44;
+      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+      ctx.fillRect(-barW / 2, -op.radius - 8, barW, 4);
+      ctx.fillStyle = op.color;
+      ctx.fillRect(-barW / 2, -op.radius - 8, barW * (op.hp / op.maxHp), 4);
+    } else {
+      ctx.font = '10px sans-serif';
+      ctx.fillStyle = '#34d399';
+      ctx.shadowColor = '#000';
+      ctx.shadowBlur = 3;
+      ctx.fillText(`✨ 制圧完了`, 0, -op.radius - 6);
+      ctx.shadowBlur = 0;
+    }
+
+    ctx.restore();
+  },
+
   drawChest(ctx, drop, now) {
     ctx.save();
     ctx.translate(drop.x, drop.y);
@@ -3901,6 +4478,25 @@ export const IronSquadGame = {
     mCtx.fillStyle = '#10b981';
     for (const s of this.squad) {
       if (!s.dead) mCtx.fillRect(s.x * scaleX - 1, s.y * scaleY - 1, 2, 2);
+    }
+
+    // 探索拠点 (🏴, ⛓️, 🏛️, 📦)
+    if (this.outposts) {
+      for (const op of this.outposts) {
+        const ox = op.x * scaleX;
+        const oy = op.y * scaleY;
+        if (op.cleared) {
+          mCtx.fillStyle = 'rgba(100, 116, 139, 0.45)';
+          mCtx.beginPath();
+          mCtx.arc(ox, oy, 2, 0, Math.PI * 2);
+          mCtx.fill();
+        } else {
+          mCtx.fillStyle = op.color;
+          mCtx.beginPath();
+          mCtx.arc(ox, oy, 3.2, 0, Math.PI * 2);
+          mCtx.fill();
+        }
+      }
     }
 
     // 主人公 (青点)
