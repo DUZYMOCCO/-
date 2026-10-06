@@ -780,8 +780,8 @@ export const IronSquadGame = {
             <button id="btn-banner-strat" style="background: #fbbf24; color: #000; border: none; padding: 2px 8px; border-radius: 8px; font-weight: bold; font-size: 10px; cursor: pointer;">⛺ 会議</button>
           </div>
 
-          <!-- 軍令（作戦目標HUD・画面右上） -->
-          <div id="quest-banner" class="quest-banner">
+          <!-- 軍令（作戦目標HUD・画面左上・タップで開閉） -->
+          <div id="quest-banner" class="quest-banner" title="タップで詳細を開閉">
             <div class="quest-banner-header">
               <span class="quest-badge">📜 司令部軍令</span>
               <span id="quest-status" class="quest-status">遂行中</span>
@@ -793,8 +793,11 @@ export const IronSquadGame = {
           <!-- 拠点治癒インジケータ -->
           <div id="base-heal-badge" class="base-badge hidden">💚 砦本陣で部隊治癒中</div>
 
-          <!-- ドロップ獲得トースト -->
-          <div id="drop-banner" class="drop-banner hidden"></div>
+          <!-- 下部戦闘・通知ログウィンドウ (視界を塞がないテロップエリア) -->
+          <div id="battle-log-window" class="battle-log-window">
+            <div id="battle-log-stream" class="battle-log-stream"></div>
+          </div>
+          <div id="drop-banner" class="drop-banner hidden" style="display:none !important;"></div>
 
           <!-- 画面下部 バーチャルゲームパッド -->
           <div id="virtual-gamepad" class="virtual-gamepad">
@@ -1479,15 +1482,29 @@ export const IronSquadGame = {
       currentKills: 0
     };
 
-    this.updateQuestUI();
+    this.updateQuestUI(true);
   },
 
-  updateQuestUI() {
+  updateQuestUI(isNewQuest = false) {
     const banner = document.getElementById('quest-banner');
     const statusEl = document.getElementById('quest-status');
     const titleEl = document.getElementById('quest-title');
     const descEl = document.getElementById('quest-desc');
     if (!banner || !this.currentQuest) return;
+
+    if (!banner._hasClickListener) {
+      banner._hasClickListener = true;
+      banner.addEventListener('click', () => {
+        sound.playTap();
+        banner.classList.toggle('collapsed');
+        clearTimeout(this.questCollapseTimer);
+        if (!banner.classList.contains('collapsed')) {
+          this.questCollapseTimer = setTimeout(() => {
+            banner.classList.add('collapsed');
+          }, 4500);
+        }
+      });
+    }
 
     titleEl.textContent = this.currentQuest.title;
 
@@ -1495,6 +1512,11 @@ export const IronSquadGame = {
       statusEl.className = 'quest-status completed';
       statusEl.textContent = '達成！';
       descEl.textContent = `報奨金+${this.currentQuest.rewardGold}G / 武勲+${this.currentQuest.rewardExp}`;
+      banner.classList.remove('collapsed');
+      clearTimeout(this.questCollapseTimer);
+      this.questCollapseTimer = setTimeout(() => {
+        banner.classList.add('collapsed');
+      }, 4000);
     } else {
       statusEl.className = 'quest-status';
       statusEl.textContent = '遂行中';
@@ -1511,6 +1533,14 @@ export const IronSquadGame = {
       } else if (this.currentQuest.targetKills) {
         descEl.textContent = `敵掃討: ${this.currentQuest.currentKills || 0} / ${this.currentQuest.targetKills}体`;
       }
+    }
+
+    if (isNewQuest) {
+      banner.classList.remove('collapsed');
+      clearTimeout(this.questCollapseTimer);
+      this.questCollapseTimer = setTimeout(() => {
+        banner.classList.add('collapsed');
+      }, 4000);
     }
   },
 
@@ -5196,15 +5226,38 @@ export const IronSquadGame = {
   },
 
   showToast(msg) {
-    const banner = document.getElementById('drop-banner');
-    if (banner) {
-      banner.textContent = msg;
-      banner.classList.remove('hidden');
-      clearTimeout(this.toastTimer);
-      this.toastTimer = setTimeout(() => {
-        banner.classList.add('hidden');
-      }, 2500);
+    if (!msg) return;
+    const stream = document.getElementById('battle-log-stream');
+    if (stream) {
+      const el = document.createElement('div');
+      el.className = 'battle-log-msg';
+      if (msg.includes('🚨') || msg.includes('超巨大') || msg.includes('大ボス') || msg.includes('巨頭')) {
+        el.classList.add('boss-alert');
+      } else if (msg.includes('横取り') || msg.includes('獲得') || msg.includes('ドロップ') || msg.includes('秘宝')) {
+        el.classList.add('item-alert');
+      } else if (msg.includes('レベルアップ') || msg.includes('昇進') || msg.includes('覚醒')) {
+        el.classList.add('levelup-alert');
+      }
+      el.textContent = msg;
+      stream.appendChild(el);
+
+      // 同時表示は最新2件まで（古いものは即座に退避）
+      while (stream.children.length > 2) {
+        stream.removeChild(stream.firstChild);
+      }
+
+      // 3.5秒後にフェードアウトして自然消去
+      setTimeout(() => {
+        el.style.opacity = '0';
+        el.style.transform = 'translateY(-6px)';
+        setTimeout(() => {
+          if (el.parentNode === stream) stream.removeChild(el);
+        }, 400);
+      }, 3500);
     }
+
+    const banner = document.getElementById('drop-banner');
+    if (banner) banner.textContent = msg;
   },
 
   render() {

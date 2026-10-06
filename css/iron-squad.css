@@ -60,8 +60,29 @@
 }
 .iron-squad .zoom-toggle-btn { top: 92px; right: 10px; min-height: 36px; color: #e2dac4; border-color: #7c8877; }
 .iron-squad .quest-banner {
-  top: 71px; left: 10px; right: auto; width: calc(100% - 110px); max-width: 260px;
+  top: 103px; left: 10px; right: auto; width: calc(100% - 110px); max-width: 260px;
   z-index: 10; background: rgba(25,36,36,.92); border-color: #8d8b66; box-shadow: none;
+  cursor: pointer; transition: all 0.25s ease; user-select: none; -webkit-user-select: none;
+}
+.iron-squad .quest-banner.collapsed {
+  padding: 4px 8px; max-width: 195px; background: rgba(20, 30, 28, 0.82);
+  border-color: #5c6c64; border-radius: 6px;
+}
+.iron-squad .quest-banner.collapsed .quest-banner-header {
+  margin-bottom: 0; display: flex; align-items: center; justify-content: space-between;
+}
+.iron-squad .quest-banner.collapsed .quest-badge {
+  font-size: 9px; padding: 1px 4px;
+}
+.iron-squad .quest-banner.collapsed .quest-title {
+  display: inline-block; font-size: 10px; margin: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 110px;
+}
+.iron-squad .quest-banner.collapsed .quest-desc {
+  display: none !important;
+}
+.iron-squad .quest-banner.collapsed .quest-status {
+  font-size: 9px; padding: 1px 4px;
 }
 .iron-squad #phase-complete-banner {
   top: 139px !important; width: calc(100% - 20px); max-width: 460px;
@@ -169,10 +190,43 @@
 
 .iron-squad #day-night-badge { top:71px; left:10px; max-width:calc(100% - 110px); padding:5px 7px; font-size:10px; color:#ead7a6; background:#303b30; border:1px solid #8f8d68; }
 .iron-squad #day-night-badge[data-period=night] { background:#273443; border-color:#8894af; color:#d4ddf0; }
-.iron-squad .quest-banner { top:103px; }
 .iron-squad #phase-complete-banner { top:173px !important; }
-.iron-squad .drop-banner { top:240px; }
+.iron-squad .drop-banner { display: none !important; }
 .dialog-open #day-night-badge { visibility:hidden; pointer-events:none; }
+
+/* 下部戦闘・通知ログウィンドウ（画面下部・キャラの視界を塞がないテロップエリア） */
+.battle-log-window {
+  position: absolute; bottom: 122px; left: 50%; transform: translateX(-50%);
+  width: min(340px, calc(100% - 24px)); pointer-events: none; z-index: 15;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+}
+.battle-log-stream {
+  display: flex; flex-direction: column; align-items: center; gap: 4px; width: 100%;
+}
+.battle-log-msg {
+  background: rgba(18, 26, 24, 0.92); border: 1px solid rgba(225, 207, 157, 0.5);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6); color: #f1f5f9;
+  font-size: 11px; font-weight: bold; line-height: 1.35;
+  padding: 5px 12px; border-radius: 8px; max-width: 100%;
+  text-align: center; white-space: normal; word-break: break-all;
+  animation: logSlideUp 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+.battle-log-msg.boss-alert {
+  border-color: #ef4444; background: rgba(45, 15, 15, 0.94); color: #fecaca;
+  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.45);
+}
+.battle-log-msg.item-alert {
+  border-color: #f59e0b; background: rgba(36, 28, 16, 0.94); color: #fef08a;
+}
+.battle-log-msg.levelup-alert {
+  border-color: #38bdf8; background: rgba(16, 32, 45, 0.94); color: #bae6fd;
+}
+@keyframes logSlideUp {
+  0% { opacity: 0; transform: translateY(8px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.dialog-open .battle-log-window { visibility: hidden; pointer-events: none; }
 
 .transport-badge { position:absolute;left:10px;bottom:196px;max-width:230px;z-index:14;background:#303c34;border:1px solid #b0a07c;color:#e5dcc4;border-radius:7px;padding:8px;font-size:12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center; }
 .transport-badge button { min-height:36px;background:#485248;border:1px solid #92957e;border-radius:4px;color:#efe4c8;padding:6px 10px; }
