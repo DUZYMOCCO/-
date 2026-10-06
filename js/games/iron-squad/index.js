@@ -16,7 +16,7 @@ import { saveSlots } from './save-slots.js';
 import { WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt } from './world.js';
 import { PHASE_DURATION, REST_DURATION, SOLDIER_SALARY, MIN_REINFORCEMENTS, emptyActivity, advancePhase, advanceRest, recordCombat, recordHealing, healByMedic, participated, finishExperience } from './phase-rules.js';
 
-import { EQUIPMENT_TYPES, saleValue, equippedIds, canSell, lowValueIds, chooseLootTier, distanceScaling, shrineUpgradeCap, compareEquipment } from './equipment-rules.js';
+import { EQUIPMENT_TYPES, saleValue, equippedIds, canSell, lowValueIds, chooseLootTier, distanceScaling, shrineUpgradeCap, compareEquipment, equipmentScore } from './equipment-rules.js';
 
 import { daylightAt, advanceWorldClock, periodEnemy, enemyAvailable, PERIOD_ENEMIES } from './day-night.js';
 
@@ -4458,45 +4458,150 @@ export const IronSquadGame = {
     this.showToast(`${sold.size}個を売却：+${value}G`);return {count:sold.size,value};
   },
 
-  renderSoldierEquipment(row,soldier) {
-    this.soldierSlotSelections ||= {};
-    const grid=document.createElement('div');grid.className='soldier-equipment';
-    const editor=document.createElement('div');editor.className='slot-transfer-editor';
-    const selectSlot=key=> {
-      this.soldierSlotSelections[soldier.id]=key;
-      grid.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.slot===key)));
-      editor.replaceChildren();
-      const info=Object.values(SLOT_INFO).find(i=>i.key===key),current=soldier.equipped?.[key];
-      const heading=document.createElement('strong');heading.textContent=`${info.name}への譲渡 · 現在：${current?.name || '空きスロット'}`;editor.append(heading);
-      const items=this.transferItems(key,soldier);
-      if(!items.length){const none=document.createElement('p');none.textContent='この部位の譲渡可能な装備はありません。';editor.append(none);return;}
-      const select=document.createElement('select');select.setAttribute('aria-label',`${soldier.name}の${info.name}候補`);
-      for(const item of items) {
-        const preview=structuredClone(item);if((current?.upgrade||0)>(preview.upgrade||0))applyUpgradeStats(preview,current.upgrade);
-        const comparison=compareEquipment(preview,current);
-        const option=document.createElement('option');option.value=item.id;
-        const hero=Object.values(this.equipped||{}).some(i=>i?.id===item.id);
-        option.textContent=`[T${item.tier}] ${item.name} · ${comparison.label}${hero?'（隊長装備中）':''}`;select.append(option);
-      }
-      const comparisonBox=document.createElement('div');
-      const button=document.createElement('button');button.className='mini-btn';button.textContent=`${info.name}を譲渡`;
-      const showComparison=()=> {
-        const item=items.find(i=>i.id===select.value),preview=structuredClone(item);
-        if((current?.upgrade||0)>(preview.upgrade||0))applyUpgradeStats(preview,current.upgrade);
-        const c=compareEquipment(preview,current);comparisonBox.className='equipment-comparison '+c.kind;
-        comparisonBox.textContent=`${c.label} · ${c.text}（旧装備の強化引継後・自費強化前）`;
-        if(Object.values(this.equipped||{}).some(i=>i?.id===item.id))comparisonBox.textContent+=' · 隊長から外れます';
-      };
-      select.onchange=showComparison;button.onclick=()=>this.giveItemToSoldier(soldier.id,items.find(i=>i.id===select.value));
-      editor.append(select,comparisonBox,button);showComparison();
-    };
-    for(const info of Object.values(SLOT_INFO)) {
-      const button=document.createElement('button');button.dataset.slot=info.key;button.type='button';
-      const equipped=soldier.equipped?.[info.key];
-      button.textContent=`${info.icon} ${info.name}：${equipped?.name||'空きスロット'}`;
-      button.onclick=()=>selectSlot(info.key);grid.append(button);
+  renderSoldierEquipment(row, soldier) {
+    const grid = document.createElement('div');
+    grid.className = 'soldier-equipment';
+    for (const info of Object.values(SLOT_INFO)) {
+      const button = document.createElement('button');
+      button.dataset.slot = info.key;
+      button.type = 'button';
+      button.className = 'soldier-equip-slot-btn';
+      const equipped = soldier.equipped?.[info.key];
+      const hasEq = !!equipped;
+      button.innerHTML = `
+        <span class="slot-header">${info.icon} ${info.name}</span>
+        <span class="slot-item-text" style="color:${hasEq ? (equipped.color || '#fef08a') : '#718096'};">
+          ${hasEq ? equipped.name : '（空き）'}
+        </span>
+      `;
+      button.onclick = () => this.openEquipmentTransferPopup(soldier, info.key);
+      grid.append(button);
     }
-    row.append(grid,editor);selectSlot(this.soldierSlotSelections[soldier.id] || 'weapon');
+    row.append(grid);
+  },
+
+  openEquipmentTransferPopup(soldier, slotKey = 'weapon') {
+    let popup = document.getElementById('equipment-transfer-popup');
+    if (!popup) {
+      popup = document.createElement('div');
+      popup.id = 'equipment-transfer-popup';
+      popup.className = 'transfer-popup-overlay';
+      const container = document.querySelector('.iron-squad') || document.body;
+      container.appendChild(popup);
+    }
+    popup.classList.remove('hidden');
+
+    const renderPopupContent = (activeSlot) => {
+      const info = Object.values(SLOT_INFO).find(i => i.key === activeSlot) || SLOT_INFO.WEAPON;
+      const current = soldier.equipped?.[activeSlot];
+      const items = this.transferItems(activeSlot, soldier);
+
+      // 強い順（旧装備の強化引き継ぎを考慮したプレビュースコア降順）にソート
+      items.sort((a, b) => {
+        const prevB = structuredClone(b);
+        if ((current?.upgrade || 0) > (prevB.upgrade || 0)) applyUpgradeStats(prevB, current.upgrade);
+        const prevA = structuredClone(a);
+        if ((current?.upgrade || 0) > (prevA.upgrade || 0)) applyUpgradeStats(prevA, current.upgrade);
+        return equipmentScore(prevB) - equipmentScore(prevA);
+      });
+
+      popup.innerHTML = `
+        <div class="transfer-popup-container">
+          <div class="transfer-popup-header">
+            <div>
+              <h3 class="transfer-popup-title">🎁 装備譲渡：${soldier.name}</h3>
+              <p class="transfer-popup-sub">${info.icon} ${info.name} · 現在：<strong style="color:${current?.color || '#e2e8de'};">${current ? current.name : '（空きスロット）'}</strong></p>
+            </div>
+            <button type="button" class="transfer-popup-close-btn" aria-label="閉じる">✕</button>
+          </div>
+
+          <div class="transfer-slot-tabs">
+            ${Object.values(SLOT_INFO).map(s => {
+              const sEq = soldier.equipped?.[s.key];
+              const isActive = s.key === activeSlot;
+              return `
+                <button type="button" class="transfer-slot-tab-btn ${isActive ? 'active' : ''}" data-slot="${s.key}">
+                  ${s.icon} ${s.name}${sEq ? '●' : ''}
+                </button>
+              `;
+            }).join('')}
+          </div>
+
+          <div class="transfer-popup-hint">
+            ⭐ 強い順に並んでいます。タップで即座に譲渡（旧装備の強化値は自動引き継ぎ）
+          </div>
+
+          <div class="transfer-item-list">
+            ${items.length === 0 ? `
+              <div class="transfer-empty-msg">
+                <p>この部位に譲渡可能な装備はありません。</p>
+                <span style="font-size:10px; color:#64748b;">（バッグまたは隊長装備に譲渡可能な${info.name}がありません）</span>
+              </div>
+            ` : items.map(item => {
+              const preview = structuredClone(item);
+              const inherited = (current?.upgrade || 0) > (preview.upgrade || 0);
+              if (inherited) applyUpgradeStats(preview, current.upgrade);
+              const comp = compareEquipment(preview, current);
+              const heroEquipped = Object.values(this.equipped || {}).some(i => i?.id === item.id);
+
+              return `
+                <div class="transfer-item-card ${heroEquipped ? 'is-hero-eq' : ''}" data-item-id="${item.id}">
+                  <div class="transfer-card-header">
+                    <span class="transfer-item-name" style="color:${item.color || '#e2e8de'};">
+                      [T${item.tier}] ${preview.name}
+                    </span>
+                    <span class="transfer-comp-badge ${comp.kind}">${comp.label}</span>
+                  </div>
+                  <div class="transfer-card-stats">
+                    ${comp.text}
+                  </div>
+                  <div class="transfer-card-meta">
+                    <span class="transfer-meta-note">
+                      ${heroEquipped ? '<span style="color:#f59e0b; font-weight:bold;">👑隊長装備中 (外れます)</span>' : '<span style="color:#94a3b8;">🎒バッグ内</span>'}
+                      ${inherited ? `<span style="color:#34d399; margin-left:4px;">(強化+${current.upgrade}引継)</span>` : ''}
+                    </span>
+                    <button type="button" class="transfer-tap-btn">タップして譲渡</button>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+
+          <div class="transfer-popup-footer">
+            <button type="button" class="action-btn secondary btn-close-transfer" style="min-height:36px; padding:6px; font-size:12px;">閉じる</button>
+          </div>
+        </div>
+      `;
+
+      popup.querySelector('.transfer-popup-close-btn')?.addEventListener('click', () => {
+        popup.classList.add('hidden');
+      });
+      popup.querySelector('.btn-close-transfer')?.addEventListener('click', () => {
+        popup.classList.add('hidden');
+      });
+      popup.onclick = (e) => {
+        if (e.target === popup) popup.classList.add('hidden');
+      };
+
+      popup.querySelectorAll('.transfer-slot-tab-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          renderPopupContent(e.currentTarget.dataset.slot);
+        });
+      });
+
+      popup.querySelectorAll('.transfer-item-card').forEach(card => {
+        card.addEventListener('click', () => {
+          const itemId = card.dataset.itemId;
+          const targetItem = items.find(i => i.id === itemId);
+          if (targetItem) {
+            this.giveItemToSoldier(soldier.id, targetItem);
+            renderPopupContent(activeSlot);
+          }
+        });
+      });
+    };
+
+    renderPopupContent(slotKey);
   },
 
   renderSaleToolbar(invList) {

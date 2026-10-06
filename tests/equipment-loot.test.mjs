@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {EQUIPMENT_TYPES,lowValueIds,chooseLootTier,distanceScaling,compareEquipment,shrineUpgradeCap} from '../js/games/iron-squad/equipment-rules.js';
+import {EQUIPMENT_TYPES,lowValueIds,chooseLootTier,distanceScaling,compareEquipment,shrineUpgradeCap,equipmentScore} from '../js/games/iron-squad/equipment-rules.js';
 globalThis.window={};globalThis.document={getElementById:()=>null};
 const {IronSquadGame,applyUpgradeStats,generateRandomDrop,SLOT_INFO}=await import('../js/games/iron-squad/index.js');
 const item=(id,type='WEAPON',tier=1,upgrade=0)=>{const i={id,type,tier,name:id,stats:{}};applyUpgradeStats(i,upgrade);return i;};
@@ -25,6 +25,8 @@ assert.deepEqual(lowValueIds([best],{},[{equipped:{helmet:item('soldierBest','HE
 assert.equal(compareEquipment(best,weak).label,'強くなる');assert.equal(compareEquipment(weak,best).label,'弱くなる');
 assert.equal(compareEquipment({stats:{atk:10,def:5}},{stats:{atk:5,def:10}}).label,'一長一短');
 assert.equal(compareEquipment(best,best).label,'同等');
+assert.ok(equipmentScore(best)>equipmentScore(weak),'stronger item has higher score');
+assert.ok(equipmentScore(enhanced)>equipmentScore(weak),'enhanced item has higher score than base');
 // Exhaust the random interval: local loot is capped regardless of enemy category.
 for(const distance of [0,600,1199,1200,2300,2699,2700,3800,4399,4400,5199,5200,6000,7400]) {
  for(const kind of ['normal','chest','elite','boss','colossal']) {

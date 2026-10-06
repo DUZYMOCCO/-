@@ -84,3 +84,21 @@ export function compareEquipment(candidate,current) {
   const text=changes.map(c=>`${c.label} ${c.delta>0?'+':''}${Math.round(c.delta*(c.key==='vampire'?100:1)*100)/100}${['crit','blockChance','atkSpeed','vampire'].includes(c.key)?'%':''}`).join(' / ') || '能力差なし';
   return {label,text,changes,kind:up&&down?'mixed':up?'better':down?'worse':'equal'};
 }
+
+export function equipmentScore(item) {
+  if (!item) return 0;
+  const s = item.stats || {};
+  let score = (item.tier || 1) * 1000 + (item.upgrade || 0) * 150;
+  score += (s.atk || 0) * 15;
+  score += (s.def || 0) * 15;
+  score += (s.hp || 0) * 3;
+  score += (s.crit || 0) * 25;
+  score += (s.blockChance || 0) * 25;
+  score += (s.atkSpeed || 0) * 20;
+  score += (s.speed || 0) * 15;
+  if (s.lightning) score += 800;
+  if (s.regen) score += s.regen * 100;
+  if (s.vampire) score += s.vampire * 1500;
+  return score;
+}
+

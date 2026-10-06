@@ -225,3 +225,116 @@
 .roster-category-desc {
   font-size:10px; color:#94a3b8; margin:0 0 8px 4px; line-height:1.4;
 }
+
+/* 兵士装備スロットボタン */
+.soldier-equip-slot-btn {
+  display:flex; flex-direction:column; align-items:flex-start; justify-content:center;
+  gap:2px; padding:6px 8px; min-height:40px; font-size:11px;
+  background:#192422; border:1px solid #4a5c54; border-radius:6px;
+  color:#e2e8de; text-align:left; cursor:pointer; transition:all 0.15s;
+}
+.soldier-equip-slot-btn:active {
+  background:#2b3a36; border-color:#b7a47c;
+}
+.soldier-equip-slot-btn .slot-header {
+  font-size:10px; color:#8fa398; font-weight:bold;
+}
+.soldier-equip-slot-btn .slot-item-text {
+  font-size:11px; font-weight:bold; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%;
+}
+
+/* 装備譲渡ポップアップ（強い順一覧からタップで譲渡） */
+.transfer-popup-overlay {
+  position:fixed; inset:0; z-index:120;
+  background:rgba(10, 15, 14, 0.82);
+  backdrop-filter:blur(2px); -webkit-backdrop-filter:blur(2px);
+  display:flex; align-items:center; justify-content:center;
+  padding:12px; box-sizing:border-box;
+}
+.transfer-popup-overlay.hidden { display:none !important; }
+.transfer-popup-container {
+  width:100%; max-width:440px; max-height:84vh;
+  display:flex; flex-direction:column;
+  background:#1a2523; border:1px solid #786c50; border-radius:12px;
+  box-shadow:0 10px 30px rgba(0,0,0,0.8); overflow:hidden;
+}
+.transfer-popup-header {
+  display:flex; justify-content:space-between; align-items:flex-start;
+  padding:10px 14px; border-bottom:1px solid #334440; background:#141f1d;
+}
+.transfer-popup-title {
+  margin:0; font-size:13px; font-weight:bold; color:#e1cf9d; font-family:var(--iron-heading-font);
+}
+.transfer-popup-sub {
+  margin:3px 0 0 0; font-size:10.5px; color:#9bb0a4;
+}
+.transfer-popup-close-btn {
+  background:#253430; color:#d1d5db; border:1px solid #54655b;
+  border-radius:6px; width:32px; height:32px; font-size:14px;
+  cursor:pointer; display:flex; align-items:center; justify-content:center;
+}
+.transfer-slot-tabs {
+  display:flex; gap:4px; overflow-x:auto; padding:7px 10px;
+  background:#111a18; border-bottom:1px solid #283632;
+  -webkit-overflow-scrolling:touch;
+}
+.transfer-slot-tabs::-webkit-scrollbar { display:none; }
+.transfer-slot-tab-btn {
+  padding:4px 8px; font-size:10.5px; border-radius:5px;
+  border:1px solid #445550; background:#1e2a28; color:#c0cec8;
+  white-space:nowrap; cursor:pointer; flex-shrink:0;
+}
+.transfer-slot-tab-btn.active {
+  background:#b7a47c; color:#182220; font-weight:bold; border-color:#e0d0a8;
+}
+.transfer-popup-hint {
+  padding:5px 12px; font-size:10px; color:#94a3b8; background:rgba(0,0,0,0.25);
+}
+.transfer-item-list {
+  flex:1; overflow-y:auto; padding:8px 10px; display:flex; flex-direction:column; gap:6px;
+  -webkit-overflow-scrolling:touch;
+}
+.transfer-empty-msg {
+  padding:24px 10px; text-align:center; color:#94a3b8; font-size:11.5px;
+}
+.transfer-item-card {
+  background:#222f2b; border:1px solid #475a52; border-radius:7px;
+  padding:8px 10px; cursor:pointer; display:flex; flex-direction:column; gap:3px;
+  transition:all 0.12s;
+}
+.transfer-item-card:active {
+  background:#2c3e39; border-color:#b7a47c; transform:scale(0.99);
+}
+.transfer-item-card.is-hero-eq {
+  border-color:#b45309; background:#262c26;
+}
+.transfer-card-header {
+  display:flex; justify-content:space-between; align-items:center;
+}
+.transfer-item-name {
+  font-size:11.5px; font-weight:bold;
+}
+.transfer-comp-badge {
+  font-size:9.5px; font-weight:bold; padding:1px 5px; border-radius:3px;
+}
+.transfer-comp-badge.better { background:rgba(52, 211, 153, 0.2); color:#34d399; border:1px solid #10b981; }
+.transfer-comp-badge.worse { background:rgba(248, 113, 113, 0.2); color:#f87171; border:1px solid #ef4444; }
+.transfer-comp-badge.mixed { background:rgba(245, 158, 11, 0.2); color:#fbbf24; border:1px solid #f59e0b; }
+.transfer-comp-badge.equal { background:rgba(148, 163, 184, 0.2); color:#cbd5e1; border:1px solid #64748b; }
+.transfer-card-stats {
+  font-size:10.5px; color:#d1d5db; line-height:1.4;
+}
+.transfer-card-meta {
+  display:flex; justify-content:space-between; align-items:center; margin-top:2px;
+}
+.transfer-meta-note {
+  font-size:10px;
+}
+.transfer-tap-btn {
+  font-size:10px; font-weight:bold; padding:2px 7px; border-radius:4px;
+  background:#0284c7; color:#fff; border:none; cursor:pointer;
+}
+.transfer-popup-footer {
+  padding:8px 12px; border-top:1px solid #334440; background:#141f1d;
+}
+
