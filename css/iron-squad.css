@@ -165,7 +165,7 @@
 .iron-squad button:focus-visible, .iron-squad select:focus-visible { outline: 2px solid #e3d5ac; outline-offset: 2px; }
 @media (max-height: 500px) and (orientation: landscape) {
   .iron-squad .game-header { min-height: 54px; }
-  .iron-squad .game-stats { grid-template-columns: repeat(6,minmax(0,1fr)); }
+  .iron-squad .game-stats { grid-template-columns: repeat(7,minmax(0,1fr)); }
   .iron-squad .virtual-gamepad { height: 110px; }
   .iron-squad .dpad-base { width: 80px; height: 80px; }
   .iron-squad .pad-stick-zone { width: 90px; height: 90px; }
@@ -404,3 +404,43 @@
   padding:8px 12px; border-top:1px solid #334440; background:#141f1d;
 }
 
+
+/* v1.23.0 国庫・投資・スカウト */
+.economy-manage-bar { margin-bottom: 8px; }
+.economy-tab-row { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
+.fiscal-report-box { font-variant-numeric: tabular-nums; }
+
+
+/* v1.23.0 兵士個人詳細（戦略会議内） */
+.soldier-detail-host {
+  position: absolute; inset: 0; z-index: 40;
+  background: rgba(8, 12, 18, 0.72);
+  display: flex; align-items: flex-end; justify-content: center;
+  padding: 10px;
+}
+.soldier-detail-host.hidden { display: none !important; }
+.soldier-detail-panel {
+  width: 100%; max-width: 360px; max-height: 78vh; overflow-y: auto;
+  background: #152028; border: 1px solid #3d5a5c; border-radius: 12px;
+  padding: 12px; box-shadow: 0 12px 40px rgba(0,0,0,0.45);
+}
+.soldier-detail-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 10px; }
+.soldier-detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.soldier-detail-block {
+  background: rgba(0,0,0,0.28); border: 1px solid #2a3a40; border-radius: 8px;
+  padding: 8px; font-size: 11px; line-height: 1.45; color: #cbd5e1;
+}
+.soldier-detail-span2 { grid-column: 1 / -1; }
+.soldier-detail-label { font-size: 10px; font-weight: bold; color: #67e8f9; margin-bottom: 4px; letter-spacing: 0.02em; }
+.soldier-detail-mastery-row { display: flex; justify-content: space-between; gap: 6px; font-size: 10.5px; padding: 1px 0; }
+.soldier-detail-chip {
+  display: inline-block; border: 1px solid; border-radius: 4px; padding: 1px 5px; font-size: 10px; background: rgba(0,0,0,0.35);
+}
+#strategy-modal .overlay-content { position: relative; }
+
+/* v1.23.1 隊長HP数値HUD */
+.iron-squad #player-hp {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  font-weight: 700;
+}

@@ -1,21 +1,49 @@
 /**
- * IRON SQUAD: ダンジョン・インスタンスシステム (dungeon.js)
- * 
- * - 広大な外界に点在する固有ダンジョンのロケーション
- * - 専用インスタンスフロア（閉鎖迷宮・石壁・トーチ照明・固有エネミー）
- * - 最奥に君臨する巨大ダンジョンボス
- * - ボス撃破で解錠される【豪華至宝箱 (Dungeon Vault)】と神話級レア武具・莫大な財宝
- * - 外界とのシームレス脱出・帰還ポータル
+ * IRON SQUAD: ダンジョン・宿場・廃墟のインスタンス
+ * 入口は石門。内部は敷石・土間・崩れ壁。霓虹の魔法陣は使わない。
+ * 脱出は常に x=180, y=height/2。至宝はボスか番兵を倒したあと、x=width-240。
  */
 
-import { WORLD_SIZE } from './world.js';
-import { chooseLootTier } from './equipment-rules.js';
+import { WORLD_SIZE, SETTLEMENTS } from './world.js';
 
 const CENTER = WORLD_SIZE / 2;
+
+function settlementToDef(s) {
+  const town = s.kind === 'town';
+  return {
+    id: s.id,
+    kind: s.kind,
+    name: s.name,
+    subtitle: s.subtitle,
+    icon: s.icon,
+    color: town ? '#c4b48a' : '#8d7b68',
+    accentColor: '#d7b56a',
+    theme: s.kind,
+    reqDef: s.reqDef,
+    reqLv: s.reqLv,
+    desc: s.desc,
+    entrance: { x: CENTER + s.entranceOx, y: CENTER + s.entranceOy, radius: 68 },
+    width: s.width,
+    height: s.height,
+    ambientColor: town ? '#241e16' : '#161310',
+    floorColor: town ? '#3a3428' : '#241f1a',
+    wallColor: '#14110e',
+    torchColor: '#c47a3a',
+    distance: Math.hypot(s.ox, s.oy),
+    boss: null,
+    guardian: s.guardian || null,
+    mobTypes: s.mobTypes || [],
+    mobCount: s.mobCount || 0,
+    eliteCount: s.eliteCount || 0,
+    reward: s.reward || null,
+    street: s.street
+  };
+}
 
 export const DUNGEON_DEFS = [
   {
     id: 'dungeon_goblin_mines',
+    kind: 'dungeon',
     name: 'ゴブリンの地下廃坑',
     subtitle: '【採掘王の封鎖坑道】',
     icon: '⛏️',
@@ -31,7 +59,7 @@ export const DUNGEON_DEFS = [
     ambientColor: '#1c150c',
     floorColor: '#2b2216',
     wallColor: '#15110b',
-    torchColor: '#f59e0b',
+    torchColor: '#c47a3a',
     distance: Math.hypot(2600, 2400),
     boss: {
       type: 'goblin_king',
@@ -50,15 +78,11 @@ export const DUNGEON_DEFS = [
     mobTypes: ['goblin', 'wolf'],
     mobCount: 14,
     eliteCount: 2,
-    reward: {
-      gold: 1400,
-      exp: 400,
-      itemCount: 3,
-      lootKind: 'dungeon_vault'
-    }
+    reward: { gold: 1400, exp: 400, itemCount: 3, lootKind: 'dungeon_vault' }
   },
   {
     id: 'dungeon_catacombs',
+    kind: 'dungeon',
     name: '古代死霊カタコンベ',
     subtitle: '【呪縛されし地下霊廟】',
     icon: '⚰️',
@@ -74,7 +98,7 @@ export const DUNGEON_DEFS = [
     ambientColor: '#120f1c',
     floorColor: '#1e1a2b',
     wallColor: '#0f0c18',
-    torchColor: '#a855f7',
+    torchColor: '#c4b48a',
     distance: Math.hypot(4600, 4400),
     boss: {
       type: 'lich_elder',
@@ -93,15 +117,11 @@ export const DUNGEON_DEFS = [
     mobTypes: ['orc', 'wyvern'],
     mobCount: 18,
     eliteCount: 3,
-    reward: {
-      gold: 4200,
-      exp: 1000,
-      itemCount: 4,
-      lootKind: 'dungeon_vault'
-    }
+    reward: { gold: 4200, exp: 1000, itemCount: 4, lootKind: 'dungeon_vault' }
   },
   {
     id: 'dungeon_dragon_cavern',
+    kind: 'dungeon',
     name: '紅蓮の竜巌窟',
     subtitle: '【太古の業火眠る竜の巣】',
     icon: '🌋',
@@ -117,7 +137,7 @@ export const DUNGEON_DEFS = [
     ambientColor: '#1e0c0c',
     floorColor: '#2d1414',
     wallColor: '#140606',
-    torchColor: '#ef4444',
+    torchColor: '#c47a3a',
     distance: Math.hypot(7200, 7000),
     boss: {
       type: 'hellflame_drake',
@@ -136,280 +156,321 @@ export const DUNGEON_DEFS = [
     mobTypes: ['wyvern', 'colossal_dragon'],
     mobCount: 22,
     eliteCount: 4,
-    reward: {
-      gold: 13500,
-      exp: 3000,
-      itemCount: 5,
-      lootKind: 'dungeon_vault'
-    }
-  }
+    reward: { gold: 13500, exp: 3000, itemCount: 5, lootKind: 'dungeon_vault' }
+  },
+  ...SETTLEMENTS.map(settlementToDef)
 ];
 
-/**
- * フィールド上のダンジョン入口ポータルを描画
- */
-export function drawDungeonEntrance(ctx, def, time, isNear = false) {
-  const { entrance, color, icon, name, reqDef, cleared } = def;
+function stoneHash(ix, iy) {
+  let n = Math.imul(ix + 13, 73856093) ^ Math.imul(iy + 29, 19349663);
+  n = Math.imul(n ^ (n >>> 16), 2246822519);
+  return ((n ^ (n >>> 13)) >>> 0) / 4294967296;
+}
+
+function plate(ctx, text, x, y, color, size = 12) {
+  ctx.font = `bold ${size}px sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'bottom';
+  const w = ctx.measureText(text).width;
+  ctx.fillStyle = 'rgba(16,14,12,0.78)';
+  ctx.fillRect(x - w / 2 - 5, y - size - 3, w + 10, size + 6);
+  ctx.fillStyle = color;
+  ctx.fillText(text, x, y);
+}
+
+function jamb(ctx, x, y, w, h, fill) {
+  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  ctx.beginPath();
+  ctx.ellipse(x + 3, y + 4, w * 0.7, 7, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = fill;
+  ctx.fillRect(x, y - h, w, h);
+  ctx.fillStyle = '#6e6a60';
+  ctx.fillRect(x, y - h, w, 3);
+}
+
+function drawExitArch(ctx, x, y, caption) {
+  ctx.fillStyle = 'rgba(0,0,0,0.28)';
+  ctx.beginPath();
+  ctx.ellipse(x, y + 16, 34, 10, 0, 0, Math.PI * 2);
+  ctx.fill();
+  jamb(ctx, x - 28, y + 16, 12, 48, '#3a342c');
+  jamb(ctx, x + 16, y + 16, 12, 48, '#3a342c');
+  ctx.fillStyle = '#4a4036';
+  ctx.fillRect(x - 32, y - 36, 64, 8);
+  ctx.fillStyle = '#1a1612';
+  ctx.beginPath();
+  ctx.moveTo(x - 16, y + 16);
+  ctx.lineTo(x - 16, y - 18);
+  ctx.quadraticCurveTo(x, y - 34, x + 16, y - 18);
+  ctx.lineTo(x + 16, y + 16);
+  ctx.closePath();
+  ctx.fill();
+  plate(ctx, caption, x, y - 48, '#e1cf9d', 11);
+}
+
+function drawWalls(ctx, w, h) {
+  const t = 52;
+  ctx.fillStyle = '#14110e';
+  ctx.fillRect(-t, -t, w + t * 2, t);
+  ctx.fillRect(-t, h, w + t * 2, t);
+  ctx.fillRect(-t, 0, t, h);
+  ctx.fillRect(w, 0, t, h);
+  ctx.fillStyle = '#5a5348';
+  ctx.fillRect(0, 0, w, 3);
+  ctx.fillRect(0, 0, 3, h);
+  ctx.fillStyle = '#0c0b09';
+  ctx.fillRect(0, h - 8, w, 8);
+  ctx.fillRect(w - 8, 0, 8, h);
+}
+
+function flame(ctx, x, y, time, hot) {
+  const fl = 0.75 + 0.25 * Math.sin(time * 7 + x);
+  ctx.fillStyle = '#3a342c';
+  ctx.fillRect(x - 2, y - 16, 4, 16);
+  ctx.fillStyle = '#5a4632';
+  ctx.fillRect(x - 5, y - 18, 10, 3);
+  ctx.fillStyle = hot;
+  ctx.beginPath();
+  ctx.moveTo(x - 4, y - 18);
+  ctx.quadraticCurveTo(x, y - 18 - 14 * fl, x + 4, y - 18);
+  ctx.fill();
+  ctx.fillStyle = '#e7d7a8';
+  ctx.beginPath();
+  ctx.moveTo(x - 2, y - 18);
+  ctx.quadraticCurveTo(x, y - 18 - 8 * fl, x + 2, y - 18);
+  ctx.fill();
+}
+
+export function drawDungeonEntrance(ctx, def, time) {
+  const { entrance, name, cleared, kind, icon } = def;
   const x = entrance.x;
   const y = entrance.y;
-  const t = time || performance.now() * 0.001;
-
+  const t = time || 0;
   ctx.save();
-
-  // 地面の魔法陣
-  const pulse = Math.sin(t * 2.5) * 4;
-  const r = entrance.radius + pulse;
-
-  // 外枠リング
-  ctx.strokeStyle = cleared ? '#10b981' : color;
-  ctx.lineWidth = 3;
+  ctx.fillStyle = 'rgba(0,0,0,0.38)';
   ctx.beginPath();
-  ctx.arc(x, y, r, 0, Math.PI * 2);
-  ctx.stroke();
-
-  // 内側光彩
-  const g = ctx.createRadialGradient(x, y, 5, x, y, r);
-  g.addColorStop(0, cleared ? 'rgba(16, 185, 129, 0.45)' : `${color}55`);
-  g.addColorStop(1, 'rgba(0, 0, 0, 0)');
-  ctx.fillStyle = g;
-  ctx.beginPath();
-  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.ellipse(x + 4, y + 10, kind === 'town' ? 46 : 38, 12, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // 門柱（巨石柱4本）
-  const posts = [
-    { dx: -r * 0.8, dy: -r * 0.5 },
-    { dx: r * 0.8, dy: -r * 0.5 },
-    { dx: -r * 0.8, dy: r * 0.5 },
-    { dx: r * 0.8, dy: r * 0.5 }
-  ];
-  ctx.fillStyle = '#475569';
-  ctx.strokeStyle = '#1e293b';
-  ctx.lineWidth = 1.5;
-  posts.forEach(p => {
+  if (kind === 'town') {
+    jamb(ctx, x - 34, y + 8, 12, 52, '#5a4632');
+    jamb(ctx, x + 22, y + 8, 12, 52, '#4a3828');
+    ctx.fillStyle = '#6a5038';
     ctx.beginPath();
-    ctx.roundRect(x + p.dx - 6, y + p.dy - 12, 12, 24, 3);
+    ctx.moveTo(x - 40, y - 40);
+    ctx.lineTo(x, y - 62);
+    ctx.lineTo(x + 40, y - 40);
+    ctx.closePath();
     ctx.fill();
-    ctx.stroke();
-
-    // 柱の上のオーブ光
-    ctx.fillStyle = cleared ? '#34d399' : color;
+    ctx.fillStyle = '#3a342c';
+    ctx.fillRect(x - 38, y - 44, 76, 8);
+    ctx.fillStyle = '#1a1612';
+    ctx.fillRect(x - 12, y - 28, 24, 36);
+  } else if (kind === 'ruin') {
+    ctx.fillStyle = '#3a3832';
     ctx.beginPath();
-    ctx.arc(x + p.dx, y + p.dy - 12, 3.5, 0, Math.PI * 2);
+    ctx.moveTo(x - 36, y + 8);
+    ctx.lineTo(x - 30, y - 46);
+    ctx.lineTo(x - 8, y - 38);
+    ctx.lineTo(x + 6, y - 22);
+    ctx.lineTo(x + 28, y - 40);
+    ctx.lineTo(x + 34, y + 8);
+    ctx.closePath();
     ctx.fill();
-  });
-
-  // 中央の回転ルーン文字
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.rotate(t * 0.8);
-  ctx.strokeStyle = cleared ? '#34d39988' : `${color}88`;
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  for (let i = 0; i < 4; i++) {
-    const a = (i * Math.PI) / 2;
-    ctx.moveTo(Math.cos(a) * (r * 0.6), Math.sin(a) * (r * 0.6));
-    ctx.lineTo(Math.cos(a + 0.8) * (r * 0.3), Math.sin(a + 0.8) * (r * 0.3));
+    ctx.fillStyle = '#6e6a60';
+    ctx.fillRect(x - 30, y - 46, 22, 3);
+    ctx.fillStyle = '#141210';
+    ctx.beginPath();
+    ctx.moveTo(x - 12, y + 8);
+    ctx.lineTo(x - 10, y - 24);
+    ctx.quadraticCurveTo(x, y - 30, x + 14, y - 16);
+    ctx.lineTo(x + 12, y + 8);
+    ctx.closePath();
+    ctx.fill();
+  } else {
+    jamb(ctx, x - 30, y + 6, 14, 44, '#3e403c');
+    jamb(ctx, x + 16, y + 6, 14, 44, '#343632');
+    ctx.fillStyle = '#4a4c48';
+    ctx.fillRect(x - 36, y - 42, 72, 10);
+    ctx.fillStyle = '#121614';
+    ctx.fillRect(x - 14, y - 30, 28, 36);
+    flame(ctx, x, y - 46, t, cleared ? '#c4b48a' : '#e0b15a');
   }
-  ctx.stroke();
-  ctx.restore();
 
-  // 頭上ラベル
-  ctx.font = 'bold 12px sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillStyle = '#ffffff';
-  ctx.shadowColor = '#000000';
-  ctx.shadowBlur = 4;
-  ctx.fillText(`${icon} ${name}`, x, y - r - 12);
-  ctx.font = '10px sans-serif';
-  ctx.fillStyle = cleared ? '#34d399' : '#f59e0b';
-  ctx.fillText(cleared ? '【踏破制圧済】' : `推奨DEF ${reqDef}+`, x, y - r);
-  ctx.shadowBlur = 0;
-
+  plate(ctx, `${icon || ''} ${name}`.trim(), x, y - (kind === 'town' ? 70 : 58), '#e1cf9d');
+  plate(ctx, cleared ? '踏破済' : (kind === 'town' ? '入れる' : (kind === 'ruin' ? '廃墟' : `推奨DEF ${def.reqDef}+`)), x, y - (kind === 'town' ? 52 : 40), '#d7c4a2', 10);
   ctx.restore();
 }
 
-/**
- * ダンジョン内の環境・石壁・トーチ・装飾を描画
- */
-export function drawDungeonEnvironment(ctx, dungeon, camera, viewW, viewH, zoom, time) {
-  const w = dungeon.width;
-  const h = dungeon.height;
-  const t = time || performance.now() * 0.001;
+function drawTownInterior(ctx, dungeon) {
+  const w = dungeon.width, h = dungeon.height;
+  ctx.fillStyle = '#2c261e';
+  ctx.fillRect(0, 0, w, h);
+  ctx.fillStyle = '#6a5b45';
+  ctx.fillRect(0, h / 2 - 36, w, 72);
+  ctx.fillStyle = '#5a4c38';
+  ctx.fillRect(w * 0.62, 90, 48, h - 180);
+  const houses = [
+    [70, 60, 130, 86], [240, 48, 150, 96], [430, 70, 140, 78],
+    [64, h - 190, 160, 96], [270, h - 176, 130, 84], [450, h - 200, 170, 108],
+    [w - 460, 56, 160, 92], [w - 250, 78, 140, 74],
+    [w - 430, h - 210, 170, 104], [w - 220, h - 186, 120, 82]
+  ];
+  for (const [x, y, hw, hh] of houses) {
+    ctx.fillStyle = 'rgba(0,0,0,0.28)';
+    ctx.fillRect(x + 8, y + hh, hw, 8);
+    ctx.fillStyle = '#4a4036';
+    ctx.fillRect(x, y, hw, hh);
+    ctx.fillStyle = '#2e2924';
+    ctx.fillRect(x + hw * 0.72, y, hw * 0.28, hh);
+    ctx.fillStyle = '#5c4632';
+    ctx.beginPath();
+    ctx.moveTo(x - 8, y + 6);
+    ctx.lineTo(x + hw / 2, y - 20);
+    ctx.lineTo(x + hw + 8, y + 6);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#1a1612';
+    ctx.fillRect(x + hw / 2 - 9, y + hh - 24, 18, 24);
+    ctx.fillStyle = '#8a8170';
+    ctx.fillRect(x + 14, y + 16, 12, 8);
+  }
+  ctx.fillStyle = '#5a564c';
+  ctx.beginPath();
+  ctx.ellipse(w * 0.42, h / 2 + 70, 22, 12, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#1a2426';
+  ctx.beginPath();
+  ctx.ellipse(w * 0.42, h / 2 + 70, 12, 6, 0, 0, Math.PI * 2);
+  ctx.fill();
+  drawWalls(ctx, w, h);
+  drawExitArch(ctx, 180, h / 2, '外へ');
+}
 
+function drawRuinInterior(ctx, dungeon, time) {
+  const w = dungeon.width, h = dungeon.height;
+  const t = time || 0;
+  ctx.fillStyle = '#241f1a';
+  ctx.fillRect(0, 0, w, h);
+  for (let y = 0; y < h; y += 36) {
+    for (let x = 0; x < w; x += 44) {
+      const n = stoneHash(x, y);
+      if (n > 0.86) continue;
+      ctx.fillStyle = n > 0.55 ? '#3a3832' : '#2a261f';
+      ctx.fillRect(x + 2, y + 2, 40, 30);
+    }
+  }
+  ctx.fillStyle = 'rgba(196,180,138,0.07)';
+  ctx.fillRect(w * 0.55, 0, 70, h);
+  const chunks = [[260, 80, 90, 36], [520, h - 160, 120, 28], [900, 100, 70, 48], [w - 520, h - 220, 140, 30]];
+  for (const [x, y, hw, hh] of chunks) {
+    ctx.fillStyle = '#3a3832';
+    ctx.beginPath();
+    ctx.moveTo(x, y + hh);
+    ctx.lineTo(x + 6, y);
+    ctx.lineTo(x + hw * 0.4, y + 8);
+    ctx.lineTo(x + hw * 0.7, y + hh * 0.45);
+    ctx.lineTo(x + hw, y + hh);
+    ctx.fill();
+    ctx.fillStyle = '#6e6a60';
+    ctx.fillRect(x + 6, y, hw * 0.28, 3);
+  }
   ctx.save();
+  ctx.translate(640, h / 2 + 40);
+  ctx.rotate(-0.5);
+  ctx.fillStyle = '#5a564e';
+  ctx.fillRect(0, 0, 70, 12);
+  ctx.restore();
+  ctx.fillStyle = '#6a655c';
+  ctx.fillRect(w - 480, h / 2 - 80, 16, 70);
+  ctx.fillRect(w - 488, h / 2 - 88, 32, 8);
+  ctx.fillStyle = '#3a342c';
+  ctx.beginPath();
+  ctx.ellipse(w - 350, h / 2, 70, 28, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#2a241c';
+  ctx.beginPath();
+  ctx.ellipse(w - 350, h / 2, 46, 16, 0, 0, Math.PI * 2);
+  ctx.fill();
+  flame(ctx, 300, h - 80, t, '#c47a3a');
+  flame(ctx, w - 560, 120, t, '#e0b15a');
+  drawWalls(ctx, w, h);
+  drawExitArch(ctx, 180, h / 2, '外へ');
+}
 
-  // 1. ダンジョン床（市松の敷石または粗い岩盤）
+function drawStoneDungeon(ctx, dungeon, time) {
+  const w = dungeon.width, h = dungeon.height;
+  const t = time || 0;
   ctx.fillStyle = dungeon.floorColor || '#1e1a2b';
   ctx.fillRect(0, 0, w, h);
-
-  // 石畳の目地
-  ctx.strokeStyle = dungeon.wallColor || '#0f0c18';
-  ctx.lineWidth = 1;
-  ctx.globalAlpha = 0.35;
-  for (let x = 0; x <= w; x += 64) {
-    ctx.beginPath();
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x, h);
-    ctx.stroke();
+  for (let y = 0; y < h; y += 48) {
+    for (let x = 0; x < w; x += 48) {
+      const n = stoneHash((x / 48) | 0, (y / 48) | 0);
+      const slip = (n - 0.5) * 6;
+      ctx.fillStyle = n > 0.72 ? '#2a2824' : '#34322c';
+      ctx.fillRect(x + 2 + slip, y + 2, 42, 42);
+      ctx.fillStyle = 'rgba(0,0,0,0.28)';
+      ctx.fillRect(x + 2 + slip, y + 40, 42, 4);
+    }
   }
-  for (let y = 0; y <= h; y += 64) {
-    ctx.beginPath();
-    ctx.moveTo(0, y);
-    ctx.lineTo(w, y);
-    ctx.stroke();
-  }
-  ctx.globalAlpha = 1.0;
-
-  // 2. 外周の重厚な壁（進入不可エリア）
-  const wallThick = 60;
-  ctx.fillStyle = dungeon.wallColor || '#0a0812';
-  // 上下左右の壁
-  ctx.fillRect(-wallThick, -wallThick, w + wallThick * 2, wallThick);
-  ctx.fillRect(-wallThick, h, w + wallThick * 2, wallThick);
-  ctx.fillRect(-wallThick, 0, wallThick, h);
-  ctx.fillRect(w, 0, wallThick, h);
-
-  // 壁境界のハイライト線
-  ctx.strokeStyle = '#334155';
-  ctx.lineWidth = 2;
-  ctx.strokeRect(0, 0, w, h);
-
-  // 3. 部屋をつなぐ柱列とトーチ
-  const pillars = [
-    { x: 450, y: 300 }, { x: 450, y: h - 300 },
-    { x: 950, y: 350 }, { x: 950, y: h - 350 },
-    { x: 1500, y: 250 }, { x: 1500, y: h - 250 },
-    { x: w - 500, y: 300 }, { x: w - 500, y: h - 300 }
+  const brackets = [
+    [360, 70], [360, h - 70], [780, 70], [780, h - 70],
+    [1200, 80], [1200, h - 80], [w - 420, 76], [w - 420, h - 76]
   ];
-
-  pillars.forEach(p => {
-    // 柱本体
-    ctx.fillStyle = '#334155';
-    ctx.strokeStyle = '#1e293b';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.roundRect(p.x - 16, p.y - 16, 32, 32, 4);
-    ctx.fill();
-    ctx.stroke();
-
-    // 松明/霊炎の光球
-    const flicker = Math.sin(t * 6 + p.x) * 3;
-    const flameR = 14 + flicker;
-    const g = ctx.createRadialGradient(p.x, p.y, 2, p.x, p.y, flameR * 2.5);
-    g.addColorStop(0, dungeon.torchColor || '#f59e0b');
-    g.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, flameR * 2.5, 0, Math.PI * 2);
-    ctx.fill();
-
-    // 芯の火
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
-    ctx.fill();
-  });
-
-  // 4. 入口/帰還ポータル (x: 180, y: h / 2)
-  const exitX = 180;
-  const exitY = h / 2;
-  const exitPulse = Math.sin(t * 3) * 3;
-  ctx.strokeStyle = '#38bdf8';
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.arc(exitX, exitY, 36 + exitPulse, 0, Math.PI * 2);
-  ctx.stroke();
-
-  const exitG = ctx.createRadialGradient(exitX, exitY, 4, exitX, exitY, 36 + exitPulse);
-  exitG.addColorStop(0, 'rgba(56, 189, 248, 0.55)');
-  exitG.addColorStop(1, 'rgba(56, 189, 248, 0)');
-  ctx.fillStyle = exitG;
-  ctx.beginPath();
-  ctx.arc(exitX, exitY, 36 + exitPulse, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.font = 'bold 12px sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillStyle = '#bae6fd';
-  ctx.fillText('🌀 外界への帰還門', exitX, exitY - 45);
-
-  // 5. 最奥の祭壇 (Boss Room: x: w - 350, y: h / 2)
-  const altarX = w - 350;
-  const altarY = h / 2;
-  ctx.strokeStyle = dungeon.accentColor || '#ef4444';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.arc(altarX, altarY, 180, 0, Math.PI * 2);
-  ctx.stroke();
-
-  // 祭壇の魔法陣
-  ctx.save();
-  ctx.translate(altarX, altarY);
-  ctx.rotate(-t * 0.5);
-  ctx.strokeStyle = `${dungeon.accentColor || '#ef4444'}55`;
-  ctx.lineWidth = 2;
-  for (let i = 0; i < 6; i++) {
-    const a = (i * Math.PI) / 3;
-    ctx.beginPath();
-    ctx.moveTo(Math.cos(a) * 160, Math.sin(a) * 160);
-    ctx.lineTo(Math.cos(a + 2) * 160, Math.sin(a + 2) * 160);
-    ctx.stroke();
+  for (const [x, y] of brackets) {
+    if (x > w - 40) continue;
+    ctx.fillStyle = '#3a3834';
+    ctx.fillRect(x - 8, y - 28, 16, 36);
+    flame(ctx, x, y - 10, t, dungeon.torchColor || '#c47a3a');
   }
-  ctx.restore();
+  ctx.fillStyle = '#3a342c';
+  ctx.beginPath();
+  ctx.ellipse(w - 350, h / 2, 120, 46, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#2a241c';
+  ctx.beginPath();
+  ctx.ellipse(w - 350, h / 2, 78, 26, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#5a5348';
+  ctx.beginPath();
+  ctx.ellipse(w - 350, h / 2 - 8, 78, 10, 0, 0, Math.PI * 2);
+  ctx.fill();
+  drawWalls(ctx, w, h);
+  drawExitArch(ctx, 180, h / 2, '外界への門');
+}
 
+export function drawDungeonEnvironment(ctx, dungeon, camera, viewW, viewH, zoom, time) {
+  ctx.save();
+  if (dungeon.kind === 'town') drawTownInterior(ctx, dungeon);
+  else if (dungeon.kind === 'ruin') drawRuinInterior(ctx, dungeon, time);
+  else drawStoneDungeon(ctx, dungeon, time);
   ctx.restore();
 }
 
-/**
- * 最奥の豪華至宝箱 (Dungeon Vault) を描画
- */
-export function drawDungeonVault(ctx, vault, time) {
+export function drawDungeonVault(ctx, vault) {
   if (!vault) return;
-  const { x, y, opened, name } = vault;
-  const t = time || performance.now() * 0.001;
-
+  const { x, y, opened, unlocked, name } = vault;
   ctx.save();
-
-  // 開封前の黄金発光パルス
-  if (!opened) {
-    const pulse = Math.sin(t * 3.5) * 6;
-    const g = ctx.createRadialGradient(x, y, 5, x, y, 40 + pulse);
-    g.addColorStop(0, 'rgba(251, 191, 36, 0.75)');
-    g.addColorStop(1, 'rgba(251, 191, 36, 0)');
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.arc(x, y, 40 + pulse, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  // 宝箱本体 (ゴージャスな金枠宝箱)
-  const w = 42;
-  const h = 30;
-  ctx.fillStyle = opened ? '#78350f' : '#b45309';
-  ctx.strokeStyle = '#fef08a';
-  ctx.lineWidth = 2.5;
+  ctx.fillStyle = 'rgba(0,0,0,0.35)';
   ctx.beginPath();
-  ctx.roundRect(x - w / 2, y - h / 2, w, h, 6);
+  ctx.ellipse(x + 2, y + 12, 24, 8, 0, 0, Math.PI * 2);
   ctx.fill();
-  ctx.stroke();
-
-  // 金色の装飾帯と鍵穴
-  ctx.fillStyle = '#facc15';
-  ctx.fillRect(x - 4, y - h / 2, 8, h);
-  ctx.fillStyle = '#1e293b';
+  const body = opened ? '#4a3828' : (unlocked ? '#6a5034' : '#3a342c');
+  ctx.fillStyle = body;
+  ctx.fillRect(x - 20, y - 12, 40, 24);
+  ctx.fillStyle = opened ? '#5a4636' : '#7a5a3c';
   ctx.beginPath();
-  ctx.arc(x, y, 3, 0, Math.PI * 2);
+  ctx.moveTo(x - 20, y - 12);
+  ctx.quadraticCurveTo(x, y - 26, x + 20, y - 12);
   ctx.fill();
-
-  // ラベル
-  ctx.font = 'bold 12px sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillStyle = opened ? '#94a3b8' : '#fde047';
-  ctx.shadowColor = '#000000';
-  ctx.shadowBlur = 4;
-  ctx.fillText(opened ? '✨【開封済】' : `👑 ${name}`, x, y - h / 2 - 8);
-  ctx.shadowBlur = 0;
-
+  ctx.fillStyle = '#2a241c';
+  ctx.fillRect(x - 20, y - 2, 40, 3);
+  ctx.fillRect(x - 2, y - 16, 4, 26);
+  ctx.fillStyle = unlocked && !opened ? '#d7b56a' : '#5a564c';
+  ctx.beginPath();
+  ctx.arc(x, y + 2, 2.4, 0, Math.PI * 2);
+  ctx.fill();
+  plate(ctx, opened ? '開いた' : (unlocked ? (name || '箱') : 'まだ開かない'), x, y - 30, '#e1cf9d', 11);
   ctx.restore();
 }

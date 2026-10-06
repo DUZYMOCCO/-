@@ -1,5 +1,6 @@
 export const PHASE_DURATION = 120;
 export const REST_DURATION = 10;
+/** 兵士1名あたりの定期給与（国庫から支払い） */
 export const SOLDIER_SALARY = 20;
 export const MIN_REINFORCEMENTS = 5;
 export const emptyActivity = () => ({combatActions: 0, healingDone: 0});

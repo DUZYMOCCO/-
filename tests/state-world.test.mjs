@@ -18,7 +18,7 @@ globalThis.document = {
 };
 const {storage} = await import('../js/storage.js');
 const {saveSlots} = await import('../js/games/iron-squad/save-slots.js');
-const {WorldTerrain,WORLD_SIZE,WORLD_VERSION} = await import('../js/games/iron-squad/world.js');
+const {WorldTerrain,WORLD_SIZE,WORLD_VERSION,reliefAt,SETTLEMENTS} = await import('../js/games/iron-squad/world.js');
 const {IronSquadGame,getFieldZone} = await import('../js/games/iron-squad/index.js');
 
 // Previous saves are retired with explicit user authorization; current saves remain.
@@ -63,13 +63,28 @@ assert.equal(game.phase,7);assert.equal(game.phaseTimer,31);
 assert.equal(game.phaseCasualties,2);assert.equal(game.phaseInitialSquadCount,22);
 assert.equal(saveSlots.get(first.id).data.phase,4);
 assert.ok(game.outposts.every(op=>op.x>0&&op.y>0&&op.x<WORLD_SIZE&&op.y<WORLD_SIZE));
-assert.equal(getFieldZone(5400,5400).id,'ZONE_PEACE');
-assert.equal(getFieldZone(5400+3000,5400).id,'ZONE_CHAOS');
+const center=WORLD_SIZE/2;
+assert.equal(WORLD_VERSION,4);
+assert.equal(WORLD_SIZE,158720);
+assert.equal(getFieldZone(center,center).id,'ZONE_PEACE');
+assert.equal(getFieldZone(center+6000,center).id,'ZONE_PEACE');
+assert.equal(getFieldZone(center+10000,center).id,'ZONE_WILD');
+assert.equal(getFieldZone(center+25000,center).id,'ZONE_CHAOS');
+assert.equal(getFieldZone(center+50000,center).id,'ZONE_ABYSS');
+assert.equal(game.dungeons.filter(d=>d.kind==='town').length,4);
+assert.equal(game.dungeons.filter(d=>d.kind==='ruin').length,4);
+assert.equal(game.dungeons.find(d=>d.kind==='town').boss,null);
+assert.ok(game.dungeons.every(d=>d.entrance.x>0&&d.entrance.y>0&&d.entrance.x<WORLD_SIZE&&d.entrance.y<WORLD_SIZE));
+assert.equal(reliefAt(center,center+5000),'#6e7264');
+assert.equal(reliefAt(center,center+5024),'#1a1e1c');
+const town=SETTLEMENTS.find(s=>s.id==='place_crossroads');
+assert.ok(reliefAt(center+town.ox,center+town.oy));
 
 const world=new WorldTerrain();
 const original=JSON.stringify(world.get(2,3).objects);
 for(let y=0;y<10;y++)for(let x=0;x<10;x++) world.get(x,y);
 assert.ok(world.tiles.size<=48,'terrain memory remains bounded while traversing the map');
 assert.equal(JSON.stringify(world.get(2,3).objects),original,'evicted terrain regenerates identically');
-assert.equal((WORLD_SIZE/1800)**2,36);
-console.log('PASS: old-save cleanup, save isolation, fresh reset, position restore, 12 outposts, bounded deterministic terrain');
+const townTile=world.get(Math.floor((center+town.ox)/512),Math.floor((center+town.oy)/512));
+assert.ok(townTile.objects.some(o=>o.type==='house'||o.type==='well'));
+console.log('PASS: old-save cleanup, save isolation, fresh reset, position restore, 12 outposts, bounded deterministic terrain, expanded world');

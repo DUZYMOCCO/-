@@ -165,14 +165,32 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor) {
   }
   c.fillStyle = '#302b28'; c.fillRect(2,-27,1.3,1);
   if (archer) {
-    // Quiver with visible fletching, curved bow and drawn string.
+    const rw = (eq.weapon && eq.weapon.weaponStyle) || 'bow';
+    // 矢筒は共通
     shape(c,[[-8,-24],[-12,-25],[-13,-10],[-9,-9]],'#6b503b');
     line(c,[[-11,-23],[-12,-31]],'#baa889');
     line(c,[[-10,-29],[-13,-31],[-11,-32]],'#c9c6ad',2);
-    c.strokeStyle = blade; c.lineWidth = 2;
-    c.beginPath(); c.moveTo(9,-28); c.quadraticCurveTo(22,-16,9,-3); c.stroke();
-    line(c,[[9,-28],[11,-15],[9,-3]],'#d6ccae',.7);
-    line(c,[[5,-16],[19,-16]],'#c5b790');
+    if (rw === 'cannon') {
+      // 小型火砲: 太い砲身＋口
+      c.save(); c.translate(8,-14); c.rotate(-0.15);
+      shape(c,[[0,-4],[18,-6],[19,2],[0,4]],blade);
+      shape(c,[[16,-7],[22,-5],[22,1],[16,3]],'#302b28');
+      ellipse(c,3,0,3,3,'#6a4c38');
+      c.restore();
+    } else if (rw === 'crossbow') {
+      // クロスボウ: 水平アーム＋太いストック
+      line(c,[[4,-16],[20,-16]],blade,2.4);
+      line(c,[[6,-22],[6,-10]],blade,2.2);
+      line(c,[[4,-22],[8,-22]],'#c5b790',1.5);
+      line(c,[[4,-10],[8,-10]],'#c5b790',1.5);
+      shape(c,[[8,-18],[14,-18],[15,-14],[8,-14]],'#6a4c38');
+    } else {
+      // 弓: カーブ＋弦
+      c.strokeStyle = blade; c.lineWidth = 2;
+      c.beginPath(); c.moveTo(9,-28); c.quadraticCurveTo(22,-16,9,-3); c.stroke();
+      line(c,[[9,-28],[11,-15],[9,-3]],'#d6ccae',.7);
+      line(c,[[5,-16],[19,-16]],'#c5b790');
+    }
   } else if (medic) {
     line(c,[[13,-2],[13,-30]],blade,2.5);
     ellipse(c,13,-31,3,3,advanced ? '#bba987' : '#abbfa4');
@@ -194,12 +212,57 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor) {
       }
     }
     const atk = Math.max(0, Math.min(1, s.atkAnim || 0));
-    slashArc(c, atk, !!s.isCommander, blade);
-    c.save(); c.translate(7,-14); c.rotate(s.isCommander ? (-.6 + atk * 1.6) : (-.12 - 0.43 * atk));
-    shape(c,[[0,1],[2,-15],[4,-18],[5,-15],[3,1]],blade);
-    line(c,[[3,-14],[2,0]],'#f1ead8', atk > 0.05 ? 1.35 : .7);
-    line(c,[[-2,1],[6,2]],'#aa9168',2); line(c,[[2,2],[1,6]],'#6a4c38',2.5);
-    c.restore();
+    const wStyle = (eq.weapon && eq.weapon.weaponStyle) || 'sword';
+    if (wStyle === 'spear') {
+      // 槍: 長い柄と穂先。突きモーション
+      c.save(); c.translate(8,-12); c.rotate(s.isCommander ? (-.35 + atk * 0.9) : (-.08 - 0.25 * atk));
+      line(c,[[2,6],[2,-34]],blade,2.2);
+      line(c,[[2,-10],[2,-34]],'#f1ead8', atk > 0.05 ? 1.1 : 0.55);
+      shape(c,[[0,-34],[2,-46],[4,-34]],blade);
+      line(c,[[-1,5],[5,6]],'#aa9168',2.2);
+      line(c,[[2,6],[1,10]],'#6a4c38',2.2);
+      if (atk > 0.08) {
+        c.globalAlpha = 0.55 * atk;
+        line(c,[[2,-20],[2,-52]],'#e7dcc4',1.4);
+        c.globalAlpha = 1;
+      }
+      c.restore();
+    } else if (wStyle === 'hammer') {
+      // 鎚: 短柄＋太い鎚頭。振り下ろしモーション（読みやすいシルエット）
+      c.save(); c.translate(8,-12); c.rotate(s.isCommander ? (-.55 + atk * 1.35) : (-.18 - 0.55 * atk));
+      line(c,[[2,8],[2,-18]],'#6a4c38',2.6);
+      line(c,[[2,8],[2,-18]],'#aa9168',1.2);
+      shape(c,[[-6,-18],[10,-18],[11,-8],[-7,-8]],blade);
+      shape(c,[[-4,-16],[8,-16],[8,-10],[-4,-10]],'#f1ead8');
+      line(c,[[-6,-13],[10,-13]],'#302b28',1.1);
+      if (atk > 0.08) {
+        c.globalAlpha = 0.5 * atk;
+        shape(c,[[-8,-22],[12,-22],[13,-6],[-9,-6]],'#e7dcc4');
+        c.globalAlpha = 1;
+      }
+      c.restore();
+    } else if (wStyle === 'bow') {
+      c.strokeStyle = blade; c.lineWidth = 2.2;
+      c.beginPath(); c.moveTo(8,-30); c.quadraticCurveTo(24,-16,8,-2); c.stroke();
+      line(c,[[8,-30],[10,-16],[8,-2]],'#d6ccae',.8);
+      line(c,[[4,-16],[20,-16]],'#c5b790');
+    } else if (wStyle === 'crossbow') {
+      line(c,[[4,-16],[22,-16]],blade,2.6);
+      line(c,[[7,-24],[7,-8]],blade,2.3);
+      shape(c,[[9,-18],[16,-18],[17,-13],[9,-13]],'#6a4c38');
+    } else if (wStyle === 'cannon') {
+      c.save(); c.translate(7,-14); c.rotate(-0.12);
+      shape(c,[[0,-5],[20,-7],[21,3],[0,5]],blade);
+      shape(c,[[17,-8],[24,-5],[24,2],[17,4]],'#302b28');
+      c.restore();
+    } else {
+      slashArc(c, atk, !!s.isCommander, blade);
+      c.save(); c.translate(7,-14); c.rotate(s.isCommander ? (-.6 + atk * 1.6) : (-.12 - 0.43 * atk));
+      shape(c,[[0,1],[2,-15],[4,-18],[5,-15],[3,1]],blade);
+      line(c,[[3,-14],[2,0]],'#f1ead8', atk > 0.05 ? 1.35 : .7);
+      line(c,[[-2,1],[6,2]],'#aa9168',2); line(c,[[2,2],[1,6]],'#6a4c38',2.5);
+      c.restore();
+    }
     if (key === 'BLADEMASTER') line(c,[[-13,-13],[-20,-24]],'#c3cbca',2);
   }
   c.restore();

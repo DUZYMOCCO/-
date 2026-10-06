@@ -3,7 +3,13 @@ import {WORLD_SIZE} from './world.js';
 
 export const RESCUE_TIMEOUT = 45; // 救助猶予時間（秒）広域マップ対応で45秒に延長
 export const isMedic=unit=>['MEDIC','HIGH_PRIEST'].includes(unit?.soldierClass);
-export const carryingCapacity=unit=>unit?.soldierClass==='PALADIN'?2:1;
+export const carryingCapacity=unit=>{
+  if(!unit) return 1;
+  // 隊長（紐で引っ張る仲間）デフォルト2名・聖騎士2名・他兵士1名
+  if(unit.isHero || unit.isPlayer) return 2;
+  if(unit.soldierClass==='PALADIN') return 2;
+  return 1;
+};
 export const carrierKey=(game,unit)=>unit===game.player?'player':unit?.id;
 export const carriedSoldiers=(game,unit)=>!unit?[]:(game.squad||[]).filter(s=>s.isDown&&!s.dead&&s.carrierId===carrierKey(game,unit));
 export const transportSpeedFactor=(game,unit)=>carriedSoldiers(game,unit).length>1?.55:carriedSoldiers(game,unit).length?.72:1;
@@ -106,6 +112,7 @@ export function grantRescueBonus(game,wounded,options={}) {
   const sGoldGain = isBase ? 60 : 40;
   wounded.exp = (wounded.exp || 0) + sExpGain;
   wounded.gold = (wounded.gold || 0) + sGoldGain;
+  wounded.timesRescued = (wounded.timesRescued || 0) + 1;
   wounded.shieldTimer = 3.0; // 3秒間被ダメージ半減シールド
 
   // 救助された兵士のレベルアップ判定
