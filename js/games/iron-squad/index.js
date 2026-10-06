@@ -2979,28 +2979,36 @@ export const IronSquadGame = {
     const pyDepth = this.player ? this.player.y : 0;
     this.drawWorldObjects(this.ctx, now, false, pyDepth);
 
-    // 4. モンスターたち (ゴブリン・オーク・ドラゴン)
-    for (const m of this.monsters) {
-      this.drawMonster(this.ctx, m, now);
+    // 4. キャラクター・モンスター統合 Yソート描画 (2.5D斜めアングルの前後奥行きを完全表現！)
+    const renderList = [];
+    if (this.monsters) {
+      for (let i = 0; i < this.monsters.length; i++) {
+        const m = this.monsters[i];
+        renderList.push({ y: m.y, draw: () => this.drawMonster(this.ctx, m, now) });
+      }
     }
-
-    // 5. 仲間兵士たち (重装・軽装・弓兵・衛生兵)
     if (this.squad) {
-      this.squad.forEach((s) => {
-        if (!s.dead) this.drawSoldier(this.ctx, s, now);
-      });
+      for (let i = 0; i < this.squad.length; i++) {
+        const s = this.squad[i];
+        if (!s.dead) {
+          renderList.push({ y: s.y, draw: () => this.drawSoldier(this.ctx, s, now) });
+        }
+      }
+    }
+    if (this.player) {
+      renderList.push({ y: this.player.y, draw: () => this.drawPlayer(this.ctx, this.player, now) });
     }
 
-    // 5.5 矢（ARROW）＆ ヒール光弾（HEAL）
+    renderList.sort((a, b) => a.y - b.y);
+    for (let i = 0; i < renderList.length; i++) {
+      renderList[i].draw();
+    }
+
+    // 5. 矢（ARROW）＆ ヒール光弾（HEAL）
     if (this.projectiles) {
       for (const proj of this.projectiles) {
         this.drawProjectile(this.ctx, proj, now);
       }
-    }
-
-    // 6. 主人公 (兜・甲冑・マント・剣・盾・斬撃エフェクト)
-    if (this.player) {
-      this.drawPlayer(this.ctx, this.player, now);
     }
 
     // 6.5 手前の樹木・岩（主人公より手前のもの。葉は半透明で視界確保）
@@ -3989,159 +3997,221 @@ export const IronSquadGame = {
     ctx.save();
     ctx.translate(m.x, m.y);
 
-    // 1. 足元ソフトシャドウ
-    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    const isLeft = (m.vx !== undefined && m.vx < -0.1) || ((this.player && this.player.x < m.x) && (!m.vx || Math.abs(m.vx) < 0.1));
+    const bob = Math.sin(now * 0.014 + (m.x % 10)) * 1.6;
+
+    // 1. 足元接地ソフトシャドウ (斜め見下ろしの横長平楕円)
+    ctx.fillStyle = 'rgba(0,0,0,0.38)';
     ctx.beginPath();
-    ctx.ellipse(0, m.radius * 0.7, m.radius * 0.9, m.radius * 0.35, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, 2, m.radius * 0.95, m.radius * 0.38, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    const bob = Math.sin(now * 0.012 + (m.x % 10)) * 1.5;
+    // 左右反転コンテキスト
+    ctx.save();
+    if (isLeft) ctx.scale(-1, 1);
 
     if (m.type === 'goblin') {
-      // ===== ゴブリン (小型・緑の小鬼) =====
+      // ===== 👺 ゴブリン (小型・緑の小鬼、前傾姿勢の立ち姿) =====
       const bodyColor = m.hitPulse > 0 ? '#ffffff' : '#22c55e';
-      
-      // 尖った耳
+      const darkColor = m.hitPulse > 0 ? '#ffffff' : '#15803d';
+
+      // 二本の足（小走りステップ）
+      const step = Math.sin(now * 0.02 + m.x) * 3;
+      ctx.fillStyle = darkColor;
+      ctx.fillRect(-4 + step, -3, 3, 4);
+      ctx.fillRect(2 - step, -3, 3, 4);
+
+      // 胴体 (猫背・前傾)
       ctx.fillStyle = bodyColor;
       ctx.beginPath();
-      ctx.moveTo(-7, -4 + bob);
-      ctx.lineTo(-14, -8 + bob);
-      ctx.lineTo(-5, 0 + bob);
+      ctx.ellipse(0, -9 + bob, 6.5, 6, 0.2, 0, Math.PI * 2);
       ctx.fill();
 
-      ctx.beginPath();
-      ctx.moveTo(7, -4 + bob);
-      ctx.lineTo(14, -8 + bob);
-      ctx.lineTo(5, 0 + bob);
-      ctx.fill();
+      // ボロ布の腰巻
+      ctx.fillStyle = '#78350f';
+      ctx.fillRect(-5, -6 + bob, 9, 3);
 
-      // 頭部と胴体
+      // 頭部
       ctx.fillStyle = bodyColor;
       ctx.beginPath();
-      ctx.arc(0, -2 + bob, 8, 0, Math.PI * 2);
+      ctx.arc(2, -15 + bob, 6, 0, Math.PI * 2);
       ctx.fill();
 
-      // 赤い目
+      // 尖った長いエルフ耳
+      ctx.fillStyle = bodyColor;
+      ctx.beginPath();
+      ctx.moveTo(-2, -15 + bob);
+      ctx.lineTo(-10, -19 + bob);
+      ctx.lineTo(-3, -12 + bob);
+      ctx.closePath();
+      ctx.fill();
+
+      // 赤い光る眼
       ctx.fillStyle = '#ef4444';
-      ctx.fillRect(-4, -4 + bob, 2.5, 2.5);
-      ctx.fillRect(2, -4 + bob, 2.5, 2.5);
+      ctx.fillRect(3, -16 + bob, 2.2, 2.2);
 
-      // トゲ棍棒
+      // トゲ棍棒 (斜め前方に構えて振り回す)
+      ctx.save();
+      ctx.translate(5, -9 + bob);
+      ctx.rotate(0.3 + Math.sin(now * 0.015) * 0.25);
       ctx.strokeStyle = '#78350f';
-      ctx.lineWidth = 3;
+      ctx.lineWidth = 3.2;
       ctx.beginPath();
-      ctx.moveTo(6, 2 + bob);
-      ctx.lineTo(12, -7 + bob);
+      ctx.moveTo(-2, 2);
+      ctx.lineTo(10, -8);
       ctx.stroke();
+      // トゲ鋲
       ctx.fillStyle = '#cbd5e1';
-      ctx.fillRect(11, -8 + bob, 2.5, 2.5);
+      ctx.fillRect(8, -10, 3, 3);
+      ctx.fillRect(5, -6, 2.5, 2.5);
+      ctx.restore();
 
     } else if (m.type === 'orc') {
-      // ===== オーク (中型エリート・筋肉質な蛮族) =====
+      // ===== 👹 オーク (中型エリート・筋肉質な蛮族ウォリアー) =====
       const bodyColor = m.hitPulse > 0 ? '#ffffff' : '#d97706';
+      const shadowColor = m.hitPulse > 0 ? '#ffffff' : '#b45309';
 
-      // 胴体
+      // 頑強なブーツ脚
+      const step = Math.sin(now * 0.016 + m.x) * 3.5;
+      ctx.fillStyle = '#451a03';
+      ctx.fillRect(-6 + step, -5, 4.5, 6);
+      ctx.fillRect(2 - step, -5, 4.5, 6);
+
+      // 毛皮の腰巻
+      ctx.fillStyle = '#78350f';
+      ctx.fillRect(-8, -9 + bob, 16, 5);
+
+      // 筋肉隆々の胴体 (厚い胸板)
       ctx.fillStyle = bodyColor;
       ctx.beginPath();
-      ctx.arc(0, 0 + bob, 12, 0, Math.PI * 2);
+      ctx.ellipse(0, -14 + bob, 10, 8.5, 0.1, 0, Math.PI * 2);
       ctx.fill();
-
-      // 角付き鉄兜
-      ctx.fillStyle = '#475569';
+      // 胸筋ライン
+      ctx.strokeStyle = shadowColor;
+      ctx.lineWidth = 1.2;
       ctx.beginPath();
-      ctx.arc(0, -4 + bob, 9, Math.PI, 0);
+      ctx.arc(0, -14 + bob, 5, 0.2, Math.PI - 0.2);
+      ctx.stroke();
+
+      // 角付き鉄兜＆頭部
+      ctx.fillStyle = '#334155';
+      ctx.beginPath();
+      ctx.arc(2, -22 + bob, 7.5, 0, Math.PI * 2);
       ctx.fill();
 
-      // 兜の左右の白い角
+      // 兜の白い大角
       ctx.fillStyle = '#f8fafc';
       ctx.beginPath();
-      ctx.moveTo(-7, -5 + bob);
-      ctx.lineTo(-13, -13 + bob);
-      ctx.lineTo(-3, -7 + bob);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.moveTo(7, -5 + bob);
-      ctx.lineTo(13, -13 + bob);
-      ctx.lineTo(3, -7 + bob);
+      ctx.moveTo(-2, -23 + bob);
+      ctx.lineTo(-9, -30 + bob);
+      ctx.lineTo(-1, -26 + bob);
+      ctx.closePath();
       ctx.fill();
 
-      // 光る赤い目と牙
+      // 獰猛な赤目と牙
       ctx.fillStyle = '#ef4444';
-      ctx.fillRect(-4, -3 + bob, 3, 2);
-      ctx.fillRect(1, -3 + bob, 3, 2);
+      ctx.fillRect(3, -23 + bob, 2.5, 2.2);
+      ctx.fillStyle = '#f8fafc';
+      ctx.fillRect(4, -19 + bob, 1.8, 2.5); // 牙
 
-      // バトルアックス（巨大斧）
+      // 巨大バトルアックス (力強く構える)
+      ctx.save();
+      ctx.translate(6, -12 + bob);
+      ctx.rotate(-0.2 + Math.sin(now * 0.012) * 0.2);
       ctx.strokeStyle = '#78350f';
-      ctx.lineWidth = 3;
+      ctx.lineWidth = 3.5;
       ctx.beginPath();
-      ctx.moveTo(8, 6 + bob);
-      ctx.lineTo(15, -12 + bob);
+      ctx.moveTo(-3, 6);
+      ctx.lineTo(12, -18);
       ctx.stroke();
-
+      // 巨大な鉄の斧刃
       ctx.fillStyle = '#94a3b8';
+      ctx.strokeStyle = '#f8fafc';
+      ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.arc(14, -10 + bob, 6, -Math.PI / 2, Math.PI / 2);
+      ctx.arc(10, -16, 8, -Math.PI * 0.7, Math.PI * 0.3);
       ctx.fill();
+      ctx.stroke();
+      ctx.restore();
 
     } else {
-      // ===== ドラゴン / ボス (巨大な羽ばたく魔獣) =====
+      // ===== 🐉 ドラゴン / ボス (巨大な羽ばたく魔獣) =====
       const bodyColor = m.hitPulse > 0 ? '#ffffff' : '#b91c1c';
+      const wingColor = m.hitPulse > 0 ? '#ffffff' : '#7f1d1d';
 
-      // 足元の禍々しい魔方陣オーラ
-      ctx.strokeStyle = 'rgba(239, 68, 68, 0.4)';
+      // 禍々しい赤い魔方陣オーラ (足元地面)
+      ctx.save();
+      ctx.strokeStyle = 'rgba(239, 68, 68, 0.45)';
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.arc(0, 10, 28, 0, Math.PI * 2);
+      ctx.ellipse(0, 0, 28, 12, 0, 0, Math.PI * 2);
       ctx.stroke();
+      ctx.restore();
 
-      // 羽ばたく竜の翼
-      const wingFlap = Math.sin(now * 0.007) * 8;
+      // 豪快に羽ばたく翼 (奥側の翼)
+      const flap = Math.sin(now * 0.006) * 10;
+      ctx.fillStyle = wingColor;
+      ctx.beginPath();
+      ctx.moveTo(-4, -20 + bob);
+      ctx.lineTo(-26, -38 + flap + bob);
+      ctx.lineTo(-18, -16 + bob);
+      ctx.closePath();
+      ctx.fill();
+
+      // 太い竜の足
       ctx.fillStyle = '#7f1d1d';
-      ctx.beginPath();
-      ctx.moveTo(-8, -4 + bob);
-      ctx.lineTo(-28, -20 + wingFlap + bob);
-      ctx.lineTo(-18, 4 + bob);
-      ctx.closePath();
-      ctx.fill();
+      ctx.fillRect(-8, -6, 6, 7);
+      ctx.fillRect(4, -6, 6, 7);
 
-      ctx.beginPath();
-      ctx.moveTo(8, -4 + bob);
-      ctx.lineTo(28, -20 + wingFlap + bob);
-      ctx.lineTo(18, 4 + bob);
-      ctx.closePath();
-      ctx.fill();
-
-      // 巨体
+      // 巨大な竜の胴体 (鱗)
       ctx.fillStyle = bodyColor;
       ctx.beginPath();
-      ctx.arc(0, 0 + bob, 18, 0, Math.PI * 2);
+      ctx.ellipse(0, -18 + bob, 15, 12, 0.15, 0, Math.PI * 2);
       ctx.fill();
 
-      // 鋭い角
-      ctx.fillStyle = '#1e293b';
+      // 手前側の翼 (大きく広がる)
+      ctx.fillStyle = wingColor;
       ctx.beginPath();
-      ctx.moveTo(-8, -12 + bob);
-      ctx.lineTo(-14, -26 + bob);
-      ctx.lineTo(-3, -16 + bob);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.moveTo(8, -12 + bob);
-      ctx.lineTo(14, -26 + bob);
-      ctx.lineTo(3, -16 + bob);
+      ctx.moveTo(6, -20 + bob);
+      ctx.lineTo(28, -36 + flap + bob);
+      ctx.lineTo(16, -14 + bob);
+      ctx.closePath();
       ctx.fill();
 
-      // 金色の猛獣眼
+      // 竜頭と鋭い角
+      ctx.fillStyle = bodyColor;
+      ctx.beginPath();
+      ctx.ellipse(10, -26 + bob, 9, 7, 0.3, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 黒曜石の角
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath();
+      ctx.moveTo(6, -29 + bob);
+      ctx.lineTo(12, -42 + bob);
+      ctx.lineTo(14, -30 + bob);
+      ctx.closePath();
+      ctx.fill();
+
+      // 黄金の猛獣眼と牙
       ctx.fillStyle = '#facc15';
-      ctx.fillRect(-6, -6 + bob, 4, 3);
-      ctx.fillRect(2, -6 + bob, 4, 3);
+      ctx.fillRect(12, -28 + bob, 3, 2.5);
+      ctx.fillStyle = '#f8fafc';
+      ctx.fillRect(15, -24 + bob, 2, 2.5);
     }
 
-    // HPバー
+    ctx.restore(); // 反転復元
+
+    // HPバー (頭上)
     const barW = Math.max(22, m.radius * 2);
-    ctx.fillStyle = 'rgba(0,0,0,0.6)';
-    ctx.fillRect(-barW / 2, -m.radius - 10, barW, 4);
+    const headH = m.isBoss ? 46 : (m.type === 'orc' ? 34 : 24);
+    ctx.fillStyle = 'rgba(0,0,0,0.65)';
+    ctx.fillRect(-barW / 2, -headH, barW, 4);
     ctx.fillStyle = m.isBoss ? '#ef4444' : '#f97316';
-    ctx.fillRect(-barW / 2, -m.radius - 10, barW * (m.hp / m.maxHp), 4);
+    ctx.fillRect(-barW / 2, -headH, barW * (m.hp / m.maxHp), 4);
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+    ctx.lineWidth = 0.6;
+    ctx.strokeRect(-barW / 2, -headH, barW, 4);
 
     ctx.restore();
   },
@@ -4223,23 +4293,23 @@ export const IronSquadGame = {
 
     // 1. ダウン（行動不能・救助待ち）中の描画
     if (isDown) {
-      // 倒れた身体（横たわり）
       const flash = Math.sin(now * 0.015) > 0;
+      // 倒れた身体（横たわり・斜め見下ろし接地）
       ctx.fillStyle = flash ? 'rgba(239, 68, 68, 0.45)' : 'rgba(0, 0, 0, 0.35)';
       ctx.beginPath();
-      ctx.ellipse(0, 3, 14, 6, 0, 0, Math.PI * 2);
+      ctx.ellipse(0, 2, 14, 6, 0, 0, Math.PI * 2);
       ctx.fill();
 
-      // 倒れた兵士の胴体（鎧色を反映）
+      // 倒れた胴体
       ctx.fillStyle = flash ? '#ef4444' : aEq.color;
       ctx.beginPath();
-      ctx.ellipse(0, 1, 9, 5, 0.2, 0, Math.PI * 2);
+      ctx.ellipse(2, 0, 9, 5, 0.15, 0, Math.PI * 2);
       ctx.fill();
 
-      // 倒れた兜
+      // 転がった兜
       ctx.fillStyle = hEq.color;
       ctx.beginPath();
-      ctx.arc(-8, 0, 5, 0, Math.PI * 2);
+      ctx.arc(-7, -1, 5.5, 0, Math.PI * 2);
       ctx.fill();
 
       // 救助要請SOSラベル & カウントダウン
@@ -4248,76 +4318,69 @@ export const IronSquadGame = {
       ctx.fillStyle = '#f87171';
       ctx.shadowColor = '#000';
       ctx.shadowBlur = 4;
-      ctx.fillText(`🆘 救助! (${Math.ceil(s.downTimer)}s)`, 0, -18);
+      ctx.fillText(`🆘 救助! (${Math.ceil(s.downTimer)}s)`, 0, -22);
       ctx.shadowBlur = 0;
 
       // 救助進行度プログレスバー
       const prog = Math.min(1.0, Math.max(0, s.rescueProgress || 0));
       ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
-      ctx.fillRect(-14, -9, 28, 4.5);
+      ctx.fillRect(-14, -13, 28, 4.5);
       ctx.fillStyle = '#34d399';
-      ctx.fillRect(-14, -9, 28 * prog, 4.5);
+      ctx.fillRect(-14, -13, 28 * prog, 4.5);
       ctx.strokeStyle = '#f87171';
       ctx.lineWidth = 1;
-      ctx.strokeRect(-14, -9, 28, 4.5);
+      ctx.strokeRect(-14, -13, 28, 4.5);
 
       ctx.restore();
       return;
     }
 
-    // 2. 足元シャドウ ＆ 所属小隊リング ＆ アミュレットオーラ
+    // 2. 足元ソフト接地シャドウ ＆ 所属小隊リング ＆ アミュレットオーラ
     ctx.fillStyle = isNamed ? 'rgba(251, 191, 36, 0.32)' : 'rgba(0,0,0,0.32)';
     ctx.beginPath();
-    ctx.ellipse(0, 10, isNamed ? 13 : 11, 5, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, 1, isNamed ? 13 : 11, 4.8, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // 小隊所属リング（ミニサークル）
+    // 小隊所属リング
     ctx.strokeStyle = pColor;
     ctx.lineWidth = 1.4;
     ctx.beginPath();
-    ctx.ellipse(0, 10, 13, 5.5, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, 1, 13, 5.2, 0, 0, Math.PI * 2);
     ctx.stroke();
 
     if (isNamed) {
       ctx.strokeStyle = 'rgba(251, 191, 36, 0.6)';
-      ctx.lineWidth = 1.8;
+      ctx.lineWidth = 1.6;
       ctx.beginPath();
-      ctx.arc(0, 8, 15, 0, Math.PI * 2);
+      ctx.ellipse(0, 1, 15, 6, 0, 0, Math.PI * 2);
       ctx.stroke();
     }
 
-    // アミュレットオーラ
     if (mEq && mEq.hasItem) {
       ctx.strokeStyle = mEq.color;
       ctx.lineWidth = 1.2;
       ctx.beginPath();
-      ctx.ellipse(0, 10, 16, 6.5, 0, 0, Math.PI * 2);
+      ctx.ellipse(0, 1, 17, 6.5, 0, 0, Math.PI * 2);
       ctx.stroke();
     }
 
-    // 向きと歩行ボビング＆脚スイング
-    const isMoving = s.vx || s.vy;
-    const walkCycle = now * 0.015 + (s.animOffset || 0);
-    const bob = Math.sin(walkCycle) * 1.8;
-    const legSwing = Math.sin(walkCycle) * 4;
+    // 向き判定（左右反転＋上下傾き）
+    const isLeft = Math.cos(s.facingAngle || 0) < -0.15;
+    const isMoving = (s.vx && Math.abs(s.vx) > 0.05) || (s.vy && Math.abs(s.vy) > 0.05);
+    const walkCycle = isMoving ? now * 0.018 + (s.animOffset || 0) : 0;
+    const bob = isMoving ? Math.sin(walkCycle * 2) * 1.5 : Math.sin(now * 0.003 + (s.animOffset || 0)) * 0.6;
+    const legSwing = isMoving ? Math.sin(walkCycle) * 3.5 : 0;
 
     ctx.save();
-    ctx.rotate(s.facingAngle || 0);
+    if (isLeft) ctx.scale(-1, 1);
 
-    // 脚部（ブーツ・LEGS）
-    ctx.fillStyle = lEq.color;
-    ctx.beginPath();
-    ctx.ellipse(-4 + legSwing, 4 + bob, 3.5, 2.5, 0, 0, Math.PI * 2);
-    ctx.ellipse(4 - legSwing, 4 + bob, 3.5, 2.5, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // マント (叙勲兵は青、先輩兵は黄金)
+    // マント (先輩兵は黄金、叙勲兵は王立青)
     if (isNamed || s.isVeteran) {
       ctx.fillStyle = isNamed ? '#2563eb' : '#d97706';
       ctx.beginPath();
-      ctx.moveTo(-7, -7 + bob);
-      ctx.lineTo(-15, -2 + bob);
-      ctx.lineTo(-7, 7 + bob);
+      ctx.moveTo(-4, -14 + bob);
+      ctx.quadraticCurveTo(-12, -4 + bob, -14, 0 + bob);
+      ctx.lineTo(-4, -4 + bob);
       ctx.closePath();
       ctx.fill();
       ctx.strokeStyle = '#fbbf24';
@@ -4325,80 +4388,86 @@ export const IronSquadGame = {
       ctx.stroke();
     }
 
-    // 兵種別グラフィック ＋ 装備ビジュアル反映！
+    // 脚甲＆ブーツ（LEGS）
+    ctx.fillStyle = lEq.color;
+    ctx.fillRect(-4 + legSwing, -6, 3.2, 7);
+    ctx.fillRect(1 - legSwing, -6, 3.2, 7);
+    // 靴底
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(-5 + legSwing, 0, 4.5, 2);
+    ctx.fillRect(0 - legSwing, 0, 4.5, 2);
+
+    // 兵種別 2.5D立ち姿グラフィック
     if (clsKey === 'HEAVY') {
       // ===== 🛡️ 重装歩兵 =====
-      // 胴体 (装備鎧 ARMOR の色を忠実反映！)
+      // 胴体 (フルプレートアーマー・ARMOR色忠実反映)
       ctx.fillStyle = aEq.color;
       ctx.strokeStyle = '#0f172a';
-      ctx.lineWidth = 1.2;
+      ctx.lineWidth = 1.1;
       ctx.beginPath();
-      ctx.arc(0, 0 + bob, 9.5, 0, Math.PI * 2);
+      ctx.ellipse(0, -12 + bob, 7, 6.5, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
 
-      // 肩当て（左右の重装ショルダーガード）
+      // 重装肩当て (ポールドロン)
       ctx.fillStyle = aEq.color;
-      ctx.beginPath();
-      ctx.ellipse(-1, -9 + bob, 4, 3, 0.4, 0, Math.PI * 2);
-      ctx.ellipse(-1, 9 + bob, 4, 3, -0.4, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.fillRect(-7, -16 + bob, 4, 4.5);
+      ctx.fillRect(3, -16 + bob, 4, 4.5);
 
-      // 頭部・フルフェイス兜（装備兜 HELMET の色を忠実反映！）
+      // フルフェイス兜 (HELMET色反映)
       ctx.fillStyle = hEq.color;
       ctx.beginPath();
-      ctx.arc(1, -2 + bob, 7.5, 0, Math.PI * 2);
+      ctx.arc(0, -20 + bob, 6.5, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
-      // バイザースリット
+      // バイザースリット (水色光)
       ctx.fillStyle = '#0f172a';
-      ctx.fillRect(4, -4 + bob, 3.5, 2.5);
+      ctx.fillRect(1, -21 + bob, 4, 2.5);
       ctx.fillStyle = '#38bdf8';
-      ctx.fillRect(5, -3.5 + bob, 2.5, 1.5);
+      ctx.fillRect(2, -20.5 + bob, 3, 1.5);
 
-      // 兜クレスト（T4以上で羽・角）
+      // 兜飾り (T4以上で羽・角)
       if (hEq.tier >= 4) {
         ctx.fillStyle = hEq.tier >= 5 ? '#fbbf24' : '#94a3b8';
-        ctx.fillRect(-1, -11 + bob, 3, 3);
+        ctx.fillRect(-1, -27 + bob, 2.5, 4);
       }
 
-      // 左手の大型盾 (装備盾 SHIELD の色とティア形状を忠実反映！)
+      // 左手の大型盾 (SHIELD色反映)
       ctx.save();
-      ctx.translate(5, -9 + bob);
+      ctx.translate(-5, -11 + bob);
       ctx.fillStyle = sEq.color;
       ctx.strokeStyle = '#f8fafc';
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = 1.2;
       if (sEq.tier <= 2) {
         ctx.beginPath();
-        ctx.arc(0, 0, 7, 0, Math.PI * 2);
+        ctx.arc(0, 0, 5.5, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
       } else {
-        // カイトシールド
         ctx.beginPath();
-        ctx.moveTo(-4, -7);
-        ctx.lineTo(5, -7);
-        ctx.lineTo(4, 3);
-        ctx.lineTo(0, 8);
-        ctx.lineTo(-4, 3);
+        ctx.moveTo(-4, -6);
+        ctx.lineTo(4, -6);
+        ctx.lineTo(3, 3);
+        ctx.lineTo(0, 7);
+        ctx.lineTo(-3, 3);
         ctx.closePath();
         ctx.fill();
         ctx.stroke();
       }
       ctx.restore();
 
-      // 右手の武器 (装備武器 WEAPON の色を忠実反映！)
+      // 右手のブロードソード (WEAPON色反映)
       ctx.save();
-      ctx.translate(4, 7 + bob);
+      ctx.translate(5, -10 + bob);
       ctx.fillStyle = wEq.color;
       ctx.strokeStyle = '#f8fafc';
       ctx.lineWidth = 1;
-      ctx.fillRect(0, -2, 14 + (wEq.tier >= 4 ? 3 : 0), 3.5);
-      ctx.strokeRect(0, -2, 14 + (wEq.tier >= 4 ? 3 : 0), 3.5);
+      ctx.fillRect(0, -2, 12 + (wEq.tier >= 4 ? 3 : 0), 3);
+      ctx.strokeRect(0, -2, 12 + (wEq.tier >= 4 ? 3 : 0), 3);
       if (wEq.tier >= 5 || wEq.upgrade >= 3) {
         ctx.shadowColor = wEq.color;
-        ctx.shadowBlur = 8;
-        ctx.strokeRect(0, -2, 14 + (wEq.tier >= 4 ? 3 : 0), 3.5);
+        ctx.shadowBlur = 6;
+        ctx.strokeRect(0, -2, 12 + (wEq.tier >= 4 ? 3 : 0), 3);
         ctx.shadowBlur = 0;
       }
       ctx.restore();
@@ -4408,30 +4477,30 @@ export const IronSquadGame = {
       // 胴体 (身軽なスカウト装束・ARMOR色反映)
       ctx.fillStyle = aEq.color;
       ctx.beginPath();
-      ctx.arc(0, 0 + bob, 7.5, 0, Math.PI * 2);
+      ctx.ellipse(0, -11 + bob, 5.5, 5.5, 0, 0, Math.PI * 2);
       ctx.fill();
 
       // 頭部・フード/軽兜 (HELMET色反映)
       ctx.fillStyle = hEq.color;
       ctx.beginPath();
-      ctx.arc(1, -2 + bob, 6, 0, Math.PI * 2);
+      ctx.arc(0, -18 + bob, 5.5, 0, Math.PI * 2);
       ctx.fill();
 
-      // 二刀流ダガー (装備武器 WEAPON の色を忠実反映！)
+      // 二刀流ダガー (WEAPON色反映)
       const dColor = wEq.color;
       ctx.strokeStyle = dColor;
-      ctx.lineWidth = 2.2;
+      ctx.lineWidth = 2;
       ctx.shadowColor = dColor;
-      ctx.shadowBlur = (wEq.tier >= 5) ? 6 : 0;
-      // 左ダガー
+      ctx.shadowBlur = (wEq.tier >= 5) ? 5 : 0;
+      // 奥ダガー
       ctx.beginPath();
-      ctx.moveTo(2, -7 + bob);
-      ctx.lineTo(13, -9 + bob);
+      ctx.moveTo(-3, -12 + bob);
+      ctx.lineTo(7, -15 + bob);
       ctx.stroke();
-      // 右ダガー
+      // 手前ダガー
       ctx.beginPath();
-      ctx.moveTo(2, 7 + bob);
-      ctx.lineTo(13, 9 + bob);
+      ctx.moveTo(3, -9 + bob);
+      ctx.lineTo(12, -6 + bob);
       ctx.stroke();
       ctx.shadowBlur = 0;
 
@@ -4440,61 +4509,65 @@ export const IronSquadGame = {
       // 胴体 (ハンター装束・ARMOR色反映)
       ctx.fillStyle = aEq.color;
       ctx.beginPath();
-      ctx.arc(0, 0 + bob, 7.5, 0, Math.PI * 2);
+      ctx.ellipse(0, -11 + bob, 5.5, 5.5, 0, 0, Math.PI * 2);
       ctx.fill();
-
-      // 頭部・羽つき帽子/兜 (HELMET色反映)
-      ctx.fillStyle = hEq.color;
-      ctx.beginPath();
-      ctx.arc(1, -2 + bob, 6, 0, Math.PI * 2);
-      ctx.fill();
-      // 羽飾り
-      ctx.fillStyle = '#34d399';
-      ctx.fillRect(-2, -9 + bob, 3, 3);
 
       // 背中の矢筒
-      ctx.fillStyle = '#92400e';
-      ctx.fillRect(-9, -5 + bob, 4.5, 9);
+      ctx.fillStyle = '#78350f';
+      ctx.fillRect(-7, -15 + bob, 3.5, 8);
 
-      // ロングボウ (装備武器 WEAPON の色を忠実反映！)
-      const pull = (s.atkAnim || 0) * 5;
-      ctx.strokeStyle = wEq.color;
-      ctx.lineWidth = 2.4;
-      ctx.shadowColor = wEq.color;
-      ctx.shadowBlur = (wEq.tier >= 5) ? 6 : 0;
+      // 頭部・羽根つき帽子/兜 (HELMET色反映)
+      ctx.fillStyle = hEq.color;
       ctx.beginPath();
-      ctx.arc(7 - pull, 0 + bob, 11, -0.9, 0.9);
+      ctx.arc(0, -18 + bob, 5.5, 0, Math.PI * 2);
+      ctx.fill();
+      // 緑の羽飾り
+      ctx.fillStyle = '#34d399';
+      ctx.fillRect(-3, -24 + bob, 2.5, 3.5);
+
+      // ロングボウ (WEAPON色反映)
+      const pull = (s.atkAnim || 0) * 4;
+      ctx.strokeStyle = wEq.color;
+      ctx.lineWidth = 2.2;
+      ctx.shadowColor = wEq.color;
+      ctx.shadowBlur = (wEq.tier >= 5) ? 5 : 0;
+      ctx.beginPath();
+      ctx.arc(6 - pull, -11 + bob, 9, -0.9, 0.9);
       ctx.stroke();
       ctx.shadowBlur = 0;
       // 弓弦
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
-      ctx.lineWidth = 1;
+      ctx.lineWidth = 0.8;
       ctx.beginPath();
-      ctx.moveTo(13 - pull, -9 + bob);
-      ctx.lineTo(3 - pull, 0 + bob);
-      ctx.lineTo(13 - pull, 9 + bob);
+      ctx.moveTo(11 - pull, -18 + bob);
+      ctx.lineTo(3 - pull, -11 + bob);
+      ctx.lineTo(11 - pull, -4 + bob);
       ctx.stroke();
 
     } else if (clsKey === 'MEDIC') {
       // ===== 🌿 衛生術士 =====
-      // 胴体 (神官ローブ・ARMOR色反映)
+      // 胴体 (神官ローブ・ふわりと広がる裾)
       ctx.fillStyle = aEq.color;
       ctx.beginPath();
-      ctx.arc(0, 0 + bob, 8, 0, Math.PI * 2);
+      ctx.moveTo(-5, -12 + bob);
+      ctx.lineTo(5, -12 + bob);
+      ctx.lineTo(7, -2);
+      ctx.lineTo(-7, -2);
+      ctx.closePath();
       ctx.fill();
 
       // 頭部・シスターフード/法冠 (HELMET色反映)
       ctx.fillStyle = hEq.color;
       ctx.beginPath();
-      ctx.arc(1, -2 + bob, 6.5, 0, Math.PI * 2);
+      ctx.arc(0, -18 + bob, 5.8, 0, Math.PI * 2);
       ctx.fill();
 
-      // 治癒の杖 (装備武器 WEAPON の色を忠実反映！)
+      // 治癒の杖 (WEAPON色反映)
       ctx.strokeStyle = wEq.color;
-      ctx.lineWidth = 2.4;
+      ctx.lineWidth = 2.2;
       ctx.beginPath();
-      ctx.moveTo(2, 5 + bob);
-      ctx.lineTo(16, 7 + bob);
+      ctx.moveTo(2, -4 + bob);
+      ctx.lineTo(10, -22 + bob);
       ctx.stroke();
 
       // 杖先端の治癒オーブ (脈動エフェクト)
@@ -4503,14 +4576,14 @@ export const IronSquadGame = {
       ctx.shadowColor = '#34d399';
       ctx.shadowBlur = 8 + orbPulse * 2;
       ctx.beginPath();
-      ctx.arc(18, 7 + bob, 4 + orbPulse * 0.5, 0, Math.PI * 2);
+      ctx.arc(11, -24 + bob, 3.8 + orbPulse * 0.4, 0, Math.PI * 2);
       ctx.fill();
       ctx.shadowBlur = 0;
     }
 
-    ctx.restore(); // 向き復元
+    ctx.restore(); // 反転復元
 
-    // 3. 頭上ネームプレート
+    // 3. 頭上ネームプレート (斜めアングルの頭上位置)
     ctx.textAlign = 'center';
     const sLv = s.level || 1;
     if (isNamed) {
@@ -4518,25 +4591,25 @@ export const IronSquadGame = {
       ctx.font = 'bold 10px sans-serif';
       ctx.shadowColor = '#000';
       ctx.shadowBlur = 4;
-      ctx.fillText(`✨ Lv.${sLv} ${s.title}${s.name}`, 0, -16);
+      ctx.fillText(`✨ Lv.${sLv} ${s.title}${s.name}`, 0, -32);
       ctx.shadowBlur = 0;
     } else {
       ctx.fillStyle = '#cbd5e1';
       ctx.font = '9px sans-serif';
       ctx.shadowColor = '#000';
       ctx.shadowBlur = 3;
-      ctx.fillText(`Lv.${sLv} ${s.name}`, 0, -14);
+      ctx.fillText(`Lv.${sLv} ${s.name}`, 0, -30);
       ctx.shadowBlur = 0;
     }
 
     // HPバー
     ctx.fillStyle = 'rgba(0,0,0,0.6)';
-    ctx.fillRect(-12, 12, 24, 3.5);
+    ctx.fillRect(-12, -25, 24, 3.5);
     ctx.fillStyle = isNamed ? '#fbbf24' : '#10b981';
-    ctx.fillRect(-12, 12, 24 * (s.hp / s.maxHp), 3.5);
+    ctx.fillRect(-12, -25, 24 * (s.hp / s.maxHp), 3.5);
     ctx.strokeStyle = 'rgba(255,255,255,0.3)';
     ctx.lineWidth = 0.6;
-    ctx.strokeRect(-12, 12, 24, 3.5);
+    ctx.strokeRect(-12, -25, 24, 3.5);
 
     ctx.restore();
   },
@@ -4547,8 +4620,8 @@ export const IronSquadGame = {
 
     const isMoving = this.joystick && this.joystick.active;
     const walkCycle = isMoving ? now * 0.018 : 0;
-    const walkBob = isMoving ? Math.sin(walkCycle * 2) * 2.2 : Math.sin(now * 0.003) * 0.8;
-    const legSwing = isMoving ? Math.sin(walkCycle) * 5.5 : 0;
+    const walkBob = isMoving ? Math.sin(walkCycle * 2) * 1.8 : Math.sin(now * 0.003) * 0.7;
+    const legSwing = isMoving ? Math.sin(walkCycle) * 4.2 : 0;
 
     // 装備情報取得
     const eq = this.equipped || {};
@@ -4560,35 +4633,35 @@ export const IronSquadGame = {
     const lEq = getEquipVisual(eq.legs, 1, '#334155');
     const mEq = eq.amulet ? getEquipVisual(eq.amulet, 1, '#fbbf24') : null;
 
-    // 0. 足元ソフトシャドウ（二重ぼかし）
+    // 0. 足元接地ソフトシャドウ (斜め見下ろしの横長二重ぼかし平楕円)
     ctx.fillStyle = 'rgba(0,0,0,0.42)';
     ctx.beginPath();
-    ctx.ellipse(0, 12, 17, 6, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, 1, 15, 5.5, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = 'rgba(0,0,0,0.2)';
     ctx.beginPath();
-    ctx.ellipse(0, 12, 22, 8, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, 1, 20, 7.5, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // 0.5 アミュレット（AMULET）オーラ光輪
+    // 0.5 アミュレット（AMULET）足元ルーン光輪
     if (mEq && mEq.hasItem) {
       const aRot = now * 0.002;
       const aPulse = 0.5 + 0.5 * Math.sin(now * 0.005);
       ctx.save();
-      ctx.translate(0, 12);
+      ctx.translate(0, 1);
       ctx.strokeStyle = mEq.color;
       ctx.lineWidth = 1.6;
       ctx.shadowColor = mEq.color;
       ctx.shadowBlur = 8;
       ctx.globalAlpha = 0.4 + aPulse * 0.4;
       ctx.beginPath();
-      ctx.ellipse(0, 0, 20 + aPulse * 3, 8 + aPulse * 1.5, 0, 0, Math.PI * 2);
+      ctx.ellipse(0, 0, 19 + aPulse * 3, 7.5 + aPulse * 1.5, 0, 0, Math.PI * 2);
       ctx.stroke();
       // ルーン光点
       for (let i = 0; i < 3; i++) {
         const ang = aRot + (i * Math.PI * 2) / 3;
-        const rx = Math.cos(ang) * (20 + aPulse * 3);
-        const ry = Math.sin(ang) * (8 + aPulse * 1.5);
+        const rx = Math.cos(ang) * (19 + aPulse * 3);
+        const ry = Math.sin(ang) * (7.5 + aPulse * 1.5);
         ctx.fillStyle = '#fff';
         ctx.beginPath();
         ctx.arc(rx, ry, 1.8, 0, Math.PI * 2);
@@ -4597,193 +4670,86 @@ export const IronSquadGame = {
       ctx.restore();
     }
 
+    // 向き判定（左右反転＋上下傾き）
+    const isLeft = Math.cos(p.facingAngle || 0) < -0.15;
     ctx.save();
-    ctx.rotate(p.facingAngle || 0);
+    if (isLeft) ctx.scale(-1, 1);
 
-    // 1. 脚甲（LEGS）＆ ブーツ・歩行アニメーション
-    const bootColor = lEq.color;
-    ctx.fillStyle = bootColor;
-    ctx.strokeStyle = '#0f172a';
-    ctx.lineWidth = 1;
-    // 左脚
-    ctx.save();
-    ctx.translate(-5 + legSwing, 5 + walkBob);
-    ctx.beginPath();
-    ctx.ellipse(0, 0, 4.5, 3.2, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-    ctx.restore();
-    // 右脚
-    ctx.save();
-    ctx.translate(5 - legSwing, 5 + walkBob);
-    ctx.beginPath();
-    ctx.ellipse(0, 0, 4.5, 3.2, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-    ctx.restore();
-
-    // 2. マント（CLOAK）
+    // 1. マント（CLOAK・背中から斜め後ろにたなびく）
     const capeColor = this.rankIndex >= 4 ? '#b91c1c' : (this.rankIndex >= 2 ? '#1d4ed8' : '#334155');
-    const capeWave = Math.sin(now * 0.012) * 3.5;
-    const capeSwing = isMoving ? Math.sin(walkCycle) * 3 : 0;
+    const capeWave = Math.sin(now * 0.012) * 3;
+    const capeSwing = isMoving ? Math.sin(walkCycle) * 2.5 : 0;
     ctx.fillStyle = capeColor;
     ctx.beginPath();
-    ctx.moveTo(-8, -8 + walkBob);
-    ctx.quadraticCurveTo(-14 + capeWave, -2 + walkBob + capeSwing, -20 + capeWave * 1.3, 0 + walkBob + capeSwing);
-    ctx.quadraticCurveTo(-14 + capeWave, 4 + walkBob + capeSwing, -8, 8 + walkBob);
+    ctx.moveTo(-5, -16 + walkBob);
+    ctx.quadraticCurveTo(-14 + capeWave, -6 + walkBob + capeSwing, -16 + capeWave * 1.2, 0 + walkBob + capeSwing);
+    ctx.lineTo(-5, -6 + walkBob);
     ctx.closePath();
     ctx.fill();
     // 伍長以上の金縁ステッチ
     if (this.rankIndex >= 2) {
       ctx.strokeStyle = '#fbbf24';
-      ctx.lineWidth = 1.2;
+      ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.moveTo(-8, -8 + walkBob);
-      ctx.quadraticCurveTo(-14 + capeWave, -2 + walkBob + capeSwing, -20 + capeWave * 1.3, 0 + walkBob + capeSwing);
-      ctx.quadraticCurveTo(-14 + capeWave, 4 + walkBob + capeSwing, -8, 8 + walkBob);
+      ctx.moveTo(-5, -16 + walkBob);
+      ctx.quadraticCurveTo(-14 + capeWave, -6 + walkBob + capeSwing, -16 + capeWave * 1.2, 0 + walkBob + capeSwing);
       ctx.stroke();
     }
 
-    // 3. 胴体甲冑（ARMOR）
+    // 2. 脚甲（LEGS）＆ ブーツ・歩行ステップアニメーション
+    const bootColor = lEq.color;
+    ctx.fillStyle = bootColor;
+    // 奥脚（左脚）
+    ctx.fillRect(-5 + legSwing, -7, 3.8, 8);
+    // 手前脚（右脚）
+    ctx.fillRect(1 - legSwing, -7, 3.8, 8);
+    // ブーツの靴底
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(-6 + legSwing, 0, 5.2, 2.2);
+    ctx.fillRect(0 - legSwing, 0, 5.2, 2.2);
+
+    // 3. 胴体甲冑（ARMOR・重厚な金属プレート）
     const armorColor = aEq.color;
     ctx.fillStyle = armorColor;
     ctx.strokeStyle = '#1e293b';
     ctx.lineWidth = 1.2;
     ctx.beginPath();
-    ctx.ellipse(0, 0 + walkBob, 11, 9.5, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, -13 + walkBob, 8, 7.5, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
 
-    // 胸当てのリッジ（稜線・金属プレート光沢）
+    // 胸当てのリッジ光沢（金属のハイライト反射）
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 1.8;
     ctx.beginPath();
-    ctx.arc(0, 0 + walkBob, 7.5, -0.9, 0.9);
+    ctx.arc(0, -13 + walkBob, 5.5, -0.8, 0.8);
     ctx.stroke();
 
-    // 4. 左右の立体肩当て（ポールドロン / ショルダーアーマー）
-    const shoulderColor = aEq.color;
-    // 上肩（左肩）
-    ctx.fillStyle = shoulderColor;
-    ctx.strokeStyle = '#f8fafc';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.ellipse(-1, -10 + walkBob, 4.5, 3.5, 0.4, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-    // 下肩（右肩）
-    ctx.beginPath();
-    ctx.ellipse(-1, 10 + walkBob, 4.5, 3.5, -0.4, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-    // 高ティア（T4鋼鉄以上）の肩装飾金鋲
-    if (aEq.tier >= 4) {
-      ctx.fillStyle = '#fbbf24';
-      ctx.beginPath();
-      ctx.arc(-1, -10 + walkBob, 1.5, 0, Math.PI * 2);
-      ctx.arc(-1, 10 + walkBob, 1.5, 0, Math.PI * 2);
-      ctx.fill();
-    }
+    // 腰ベルト ＆ バックル
+    ctx.fillStyle = '#451a03';
+    ctx.fillRect(-6, -8 + walkBob, 12, 2.5);
+    ctx.fillStyle = '#fbbf24';
+    ctx.fillRect(-1.5, -8.5 + walkBob, 3, 3.5);
 
-    // 5. 手甲（GLOVES）＆ 腕
-    const gloveColor = gEq.color;
-    ctx.fillStyle = gloveColor;
-    // 盾側の手（上側）
-    ctx.beginPath();
-    ctx.arc(6, -8 + walkBob, 3.8, 0, Math.PI * 2);
-    ctx.fill();
-    // 武器側の手（下側）
-    ctx.beginPath();
-    ctx.arc(5, 7 + walkBob, 3.8, 0, Math.PI * 2);
-    ctx.fill();
+    // 4. 左肩・奥側の肩当て ＆ 左手の盾（SHIELD）
+    ctx.fillStyle = armorColor;
+    ctx.fillRect(-7, -18 + walkBob, 4.5, 5);
 
-    // 6. 頭部・兜（HELMET）
-    const helmColor = hEq.color;
-    ctx.fillStyle = helmColor;
-    ctx.strokeStyle = '#0f172a';
-    ctx.lineWidth = 1.2;
-    ctx.beginPath();
-    ctx.arc(1, -2 + walkBob, 8.5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-
-    // 兜のバイザースリット ＆ 鋭い眼光
-    ctx.fillStyle = '#0f172a';
-    ctx.fillRect(4, -4 + walkBob, 4.5, 3.5);
-    ctx.fillStyle = hEq.isGod ? '#ff007f' : '#00f0ff';
-    ctx.shadowColor = ctx.fillStyle;
-    ctx.shadowBlur = 5;
-    ctx.fillRect(5.5, -3 + walkBob, 3, 1.8);
-    ctx.shadowBlur = 0;
-
-    // 兜飾り（ティア別クレスト）
-    if (hEq.tier >= 7) {
-      // 神聖ハロー光輪
-      ctx.strokeStyle = '#fbbf24';
-      ctx.lineWidth = 2;
-      ctx.shadowColor = '#fbbf24';
-      ctx.shadowBlur = 8;
-      ctx.beginPath();
-      ctx.arc(1, -2 + walkBob, 13, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.shadowBlur = 0;
-    } else if (hEq.tier >= 6) {
-      // 竜の黒金ホーン角
-      ctx.fillStyle = '#ef4444';
-      ctx.beginPath();
-      ctx.moveTo(-2, -9 + walkBob);
-      ctx.lineTo(-7, -17 + walkBob);
-      ctx.lineTo(2, -10 + walkBob);
-      ctx.fill();
-    } else if (hEq.tier >= 5) {
-      // ミスリルの黄金ウィング
-      ctx.fillStyle = '#fbbf24';
-      ctx.beginPath();
-      ctx.moveTo(-2, -10 + walkBob);
-      ctx.lineTo(3, -16 + walkBob);
-      ctx.lineTo(4, -10 + walkBob);
-      ctx.fill();
-    } else if (hEq.tier >= 3) {
-      // 鉄〜鋼鉄のクレスト
-      ctx.fillStyle = hEq.color;
-      ctx.fillRect(-1, -12 + walkBob, 3.5, 4);
-    }
-
-    // 出世の階級章（王冠/星羽飾り）
-    if (this.rankIndex >= 4) {
-      // 金の王冠クレスト
-      ctx.fillStyle = '#fbbf24';
-      ctx.beginPath();
-      ctx.moveTo(-5, -10 + walkBob);
-      ctx.lineTo(-2, -15 + walkBob);
-      ctx.lineTo(1, -11 + walkBob);
-      ctx.lineTo(4, -15 + walkBob);
-      ctx.lineTo(7, -10 + walkBob);
-      ctx.closePath();
-      ctx.fill();
-    } else if (this.rankIndex >= 2) {
-      // 伍長プルーム
-      ctx.fillStyle = '#38bdf8';
-      ctx.fillRect(-2, -13 + walkBob, 5, 3.5);
-    }
-
-    // 7. 左手の盾（SHIELD）
     const shieldColor = sEq.color;
     ctx.save();
-    ctx.translate(6, -9 + walkBob);
-    ctx.rotate(-0.15);
+    ctx.translate(-6, -12 + walkBob);
     ctx.fillStyle = shieldColor;
     ctx.strokeStyle = '#f8fafc';
-    ctx.lineWidth = 1.8;
+    ctx.lineWidth = 1.5;
     if (sEq.tier <= 2) {
       // ラウンドシールド（丸盾）
       ctx.beginPath();
-      ctx.arc(0, 0, 7.5, 0, Math.PI * 2);
+      ctx.arc(0, 0, 6.5, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
       ctx.fillStyle = '#475569';
       ctx.beginPath();
-      ctx.arc(0, 0, 2.5, 0, Math.PI * 2);
+      ctx.arc(0, 0, 2.2, 0, Math.PI * 2);
       ctx.fill();
     } else if (sEq.tier <= 4) {
       // ヒーターシールド（中世騎士盾）
@@ -4797,22 +4763,22 @@ export const IronSquadGame = {
       ctx.fill();
       ctx.stroke();
     } else {
-      // カイト/タワーシールド（大型盾 ＆ 光輝紋章）
+      // カイト/タワーシールド（大型盾 ＆ 黄金十字鷲の紋章）
       ctx.beginPath();
-      ctx.moveTo(-6, -9);
-      ctx.lineTo(6, -9);
-      ctx.lineTo(5, 5);
-      ctx.lineTo(0, 11);
-      ctx.lineTo(-5, 5);
+      ctx.moveTo(-5.5, -9);
+      ctx.lineTo(5.5, -9);
+      ctx.lineTo(4.5, 5);
+      ctx.lineTo(0, 10);
+      ctx.lineTo(-4.5, 5);
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
-      // 盾中央の黄金紋章（十字・鷲）
+      // 盾中央の黄金紋章
       ctx.strokeStyle = '#fbbf24';
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = 1.4;
       ctx.beginPath();
       ctx.moveTo(0, -6); ctx.lineTo(0, 4);
-      ctx.moveTo(-3, -2); ctx.lineTo(3, -2);
+      ctx.moveTo(-2.5, -2); ctx.lineTo(2.5, -2);
       ctx.stroke();
       if (sEq.tier >= 6) {
         ctx.shadowColor = sEq.color;
@@ -4823,27 +4789,112 @@ export const IronSquadGame = {
     }
     ctx.restore();
 
-    // 8. 右手の武器（WEAPON）
+    // 5. 頭部・兜（HELMET・精悍なフルフェイス兜）
+    const helmColor = hEq.color;
+    ctx.fillStyle = helmColor;
+    ctx.strokeStyle = '#0f172a';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.arc(0, -22 + walkBob, 7.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // 兜のバイザースリット ＆ 鋭い眼光
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(1, -23 + walkBob, 4.8, 3);
+    ctx.fillStyle = hEq.isGod ? '#ff007f' : '#00f0ff';
+    ctx.shadowColor = ctx.fillStyle;
+    ctx.shadowBlur = 5;
+    ctx.fillRect(2.5, -22.5 + walkBob, 3.2, 1.8);
+    ctx.shadowBlur = 0;
+
+    // 兜飾り（ティア別クレスト）
+    if (hEq.tier >= 7) {
+      // 神聖ハロー光輪
+      ctx.strokeStyle = '#fbbf24';
+      ctx.lineWidth = 2;
+      ctx.shadowColor = '#fbbf24';
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+      ctx.arc(0, -22 + walkBob, 12, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    } else if (hEq.tier >= 6) {
+      // 竜の黒金ホーン角
+      ctx.fillStyle = '#ef4444';
+      ctx.beginPath();
+      ctx.moveTo(-3, -28 + walkBob);
+      ctx.lineTo(-8, -36 + walkBob);
+      ctx.lineTo(1, -29 + walkBob);
+      ctx.fill();
+    } else if (hEq.tier >= 5) {
+      // ミスリルの黄金ウィング
+      ctx.fillStyle = '#fbbf24';
+      ctx.beginPath();
+      ctx.moveTo(-3, -28 + walkBob);
+      ctx.lineTo(2, -35 + walkBob);
+      ctx.lineTo(3, -28 + walkBob);
+      ctx.fill();
+    } else if (hEq.tier >= 3) {
+      // 鉄〜鋼鉄のクレスト
+      ctx.fillStyle = hEq.color;
+      ctx.fillRect(-1, -30 + walkBob, 3.5, 4.5);
+    }
+
+    // 出世の階級章（王冠/星羽飾り）
+    if (this.rankIndex >= 4) {
+      // 金の王冠クレスト
+      ctx.fillStyle = '#fbbf24';
+      ctx.beginPath();
+      ctx.moveTo(-4, -28 + walkBob);
+      ctx.lineTo(-2, -34 + walkBob);
+      ctx.lineTo(0, -30 + walkBob);
+      ctx.lineTo(2, -34 + walkBob);
+      ctx.lineTo(4, -28 + walkBob);
+      ctx.closePath();
+      ctx.fill();
+    } else if (this.rankIndex >= 2) {
+      // 伍長プルーム
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillRect(-2, -32 + walkBob, 4.5, 4);
+    }
+
+    // 6. 右肩・手前側の肩当て（ポールドロン）
+    ctx.fillStyle = armorColor;
+    ctx.strokeStyle = '#f8fafc';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.ellipse(3, -16 + walkBob, 4.5, 4, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    if (aEq.tier >= 4) {
+      ctx.fillStyle = '#fbbf24';
+      ctx.beginPath();
+      ctx.arc(3, -16 + walkBob, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // 7. 手甲（GLOVES）＆ 武器（WEAPON）
     const weaponColor = wEq.color;
     const isAtk = p.slashAnim > 0;
-    const wSwing = isAtk ? Math.sin(p.slashAnim * Math.PI) * 0.7 : 0;
+    const wSwing = isAtk ? Math.sin(p.slashAnim * Math.PI) * 1.2 : 0;
     ctx.save();
-    ctx.translate(6, 8 + walkBob);
-    ctx.rotate(wSwing);
+    ctx.translate(6, -11 + walkBob);
+    ctx.rotate(0.3 + wSwing);
     // 柄（グリップ）＆ 鍔（クロスガード）
     ctx.fillStyle = '#475569';
     ctx.fillRect(-2, -1.5, 4, 3);
     ctx.fillStyle = '#cbd5e1';
-    ctx.fillRect(2, -3.5, 2.5, 7);
+    ctx.fillRect(2, -4, 2.5, 8);
     // 刀身（ブレード）
     ctx.fillStyle = weaponColor;
     ctx.strokeStyle = '#f8fafc';
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(4, -2.5);
-    ctx.lineTo(19 + (wEq.tier >= 4 ? 4 : 0), -1);
-    ctx.lineTo(23 + (wEq.tier >= 4 ? 4 : 0), 0); // 切っ先
-    ctx.lineTo(19 + (wEq.tier >= 4 ? 4 : 0), 1);
+    ctx.lineTo(18 + (wEq.tier >= 4 ? 4 : 0), -1);
+    ctx.lineTo(22 + (wEq.tier >= 4 ? 4 : 0), 0); // 切っ先
+    ctx.lineTo(18 + (wEq.tier >= 4 ? 4 : 0), 1);
     ctx.lineTo(4, 2.5);
     ctx.closePath();
     ctx.fill();
@@ -4868,40 +4919,40 @@ export const IronSquadGame = {
       ctx.shadowColor = weaponColor;
       ctx.shadowBlur = 16;
       ctx.beginPath();
-      ctx.arc(0, 0, 42, -0.65, 0.65);
+      ctx.arc(0, -11 + walkBob, 38, -0.65, 0.65);
       ctx.stroke();
       // 内側の白い光
       ctx.strokeStyle = '#ffffff';
       ctx.lineWidth = 2.5;
       ctx.shadowBlur = 6;
       ctx.beginPath();
-      ctx.arc(0, 0, 42, -0.45, 0.45);
+      ctx.arc(0, -11 + walkBob, 38, -0.45, 0.45);
       ctx.stroke();
       ctx.restore();
     }
 
-    ctx.restore(); // 向き復元
+    ctx.restore(); // 反転復元
 
-    // 9. 頭上階級マーク ＆ レベル
+    // 8. 頭上階級マーク ＆ レベル ＆ HPバー (斜めアングルの頭上位置)
     ctx.font = '12px sans-serif';
     ctx.textAlign = 'center';
     const mark = this.rankIndex >= 4 ? '👑' : (this.rankIndex >= 2 ? '⭐' : '🛡️');
-    ctx.fillText(mark, 0, -25);
+    ctx.fillText(mark, 0, -42);
     ctx.font = 'bold 10px sans-serif';
     ctx.fillStyle = '#38bdf8';
     ctx.shadowColor = '#000';
     ctx.shadowBlur = 4;
-    ctx.fillText(`Lv.${p.level || 1} あなた`, 0, -14);
+    ctx.fillText(`Lv.${p.level || 1} あなた`, 0, -32);
     ctx.shadowBlur = 0;
 
     // HPバー
     ctx.fillStyle = 'rgba(0,0,0,0.65)';
-    ctx.fillRect(-18, -17, 36, 4.5);
+    ctx.fillRect(-18, -26, 36, 4.5);
     ctx.fillStyle = '#3b82f6';
-    ctx.fillRect(-18, -17, 36 * (p.hp / p.maxHp), 4.5);
+    ctx.fillRect(-18, -26, 36 * (p.hp / p.maxHp), 4.5);
     ctx.strokeStyle = 'rgba(255,255,255,0.4)';
     ctx.lineWidth = 0.8;
-    ctx.strokeRect(-18, -17, 36, 4.5);
+    ctx.strokeRect(-18, -26, 36, 4.5);
 
     ctx.restore();
   },
