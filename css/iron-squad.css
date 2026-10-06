@@ -141,3 +141,52 @@
 @media (prefers-reduced-motion: reduce) {
   .iron-squad * { animation: none !important; transition: none !important; }
 }
+
+.soldier-equipment { clear:both; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; margin-top:10px; }
+.soldier-equipment button, .slot-transfer-editor select, #equipment-sale-toolbar button, #equipment-sale-toolbar select, .sale-controls button { background:#202b28; color:#e2e8de; border:1px solid #647363; border-radius:5px; padding:8px; min-height:36px; font-size:12px; overflow-wrap:anywhere; }
+.soldier-equipment button { text-align:left; }
+.soldier-equipment button[aria-pressed=true] { border-color:#e3c488; background:#3c4030; }
+.slot-transfer-editor { clear:both; display:flex; flex-direction:column; gap:8px; margin-top:8px; padding:10px; background:#111b18; font-size:12px; }
+.slot-transfer-editor select { width:100%; min-width:0; }
+.slot-transfer-editor button { min-height:36px; }
+.equipment-comparison { font-size:12px; line-height:1.7; margin-top:4px; overflow-wrap:anywhere; }
+.equipment-comparison.better { color:#91dfa5; }
+.equipment-comparison.worse { color:#ffaaa4; }
+.equipment-comparison.mixed { color:#ebce88; }
+.equipment-comparison.equal { color:#bcc6c2; }
+#equipment-sale-toolbar { display:flex; flex-wrap:wrap; gap:8px; padding:12px; border:1px solid #647363; border-radius:7px; margin:12px 0; }
+#equipment-sale-toolbar strong, #equipment-sale-toolbar p { width:100%; margin:0; font-size:12px; line-height:1.7; }
+#equipment-sale-toolbar button:disabled { opacity:.45; }
+.sale-controls { width:100%; display:flex; align-items:center; gap:12px; font-size:12px; }
+.sale-controls label { display:flex; align-items:center; gap:8px; min-height:36px; }
+.sale-controls input { width:20px; height:20px; }
+
+.maintenance-summary { clear:both; padding:8px; color:#d2dec4; background:#25372e; font-size:12px; line-height:1.7; border-radius:5px; margin-top:8px; }
+
+.iron-squad #day-night-badge { top:71px; left:10px; max-width:calc(100% - 110px); padding:5px 7px; font-size:10px; color:#ead7a6; background:#303b30; border:1px solid #8f8d68; }
+.iron-squad #day-night-badge[data-period=night] { background:#273443; border-color:#8894af; color:#d4ddf0; }
+.iron-squad .quest-banner { top:103px; }
+.iron-squad #phase-complete-banner { top:173px !important; }
+.iron-squad .drop-banner { top:240px; }
+.dialog-open #day-night-badge { visibility:hidden; pointer-events:none; }
+
+.transport-badge { position:absolute;left:10px;bottom:196px;max-width:230px;z-index:14;background:#303c34;border:1px solid #b0a07c;color:#e5dcc4;border-radius:7px;padding:8px;font-size:12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center; }
+.transport-badge button { min-height:36px;background:#485248;border:1px solid #92957e;border-radius:4px;color:#efe4c8;padding:6px 10px; }
+.dialog-open .transport-badge { visibility:hidden;pointer-events:none; }
+
+/* Offline typography: Japanese field journal headings, clear controls, stable figures. */
+:root {
+  --iron-heading-font: "Palatino Linotype", "Georgia", "Hiragino Mincho ProN", "Yu Mincho", "YuMincho", "MS PMincho", serif;
+  --iron-body-font: "Hiragino Kaku Gothic ProN", "Yu Gothic", "YuGothic", "Meiryo", -apple-system, sans-serif;
+  --iron-number-font: "Georgia", "Palatino Linotype", "Hiragino Mincho ProN", "Yu Mincho", serif;
+}
+.iron-squad, .studio-hub { font-family:var(--iron-body-font); font-weight:500; letter-spacing:.025em; }
+.iron-squad button, .iron-squad select, .iron-squad input, .studio-hub button { font-family:var(--iron-body-font); font-weight:600; letter-spacing:.035em; }
+.iron-squad h2, .iron-squad h3, .iron-squad h4, .studio-hub h1, .game-card h2, .game-card-title,
+.soldier-card > div:first-of-type strong, .reserve-roster summary { font-family:var(--iron-heading-font); font-weight:700; letter-spacing:.07em; line-height:1.55; }
+.iron-squad .stat-value { font-family:var(--iron-heading-font); letter-spacing:.035em; }
+.iron-squad #phase-timer-display { font-family:var(--iron-number-font) !important; }
+.iron-squad .stat-value, #strat-gold, .sale-controls, .equipment-comparison { font-variant-numeric:tabular-nums lining-nums; }
+.iron-squad .stat-label, .save-eyebrow { letter-spacing:.12em; font-weight:600; }
+.iron-squad .dialog-tabs button { font-size:12px; letter-spacing:.06em; }
+.iron-squad .equipment-comparison, .iron-squad .maintenance-summary, .iron-squad .reinforcement-summary { line-height:1.8; }

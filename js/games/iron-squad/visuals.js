@@ -31,9 +31,13 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor) {
   c.save(); c.translate(s.x, s.y);
   ellipse(c, 3, 3, 12, 4, 'rgba(0,0,0,.35)');
   if (s.isDown) {
-    ellipse(c, 2, -1, 10, 5, cloth); ellipse(c, -9, -2, 5, 4, steel);
+    ellipse(c,2,3,16,4,'rgba(0,0,0,.28)');
+    shape(c,[[-4,-7],[8,-5],[10,2],[-4,4]],cloth);
+    ellipse(c,-10,-2,5,4,steel);c.fillStyle='#c4aa8b';c.fillRect(-13,-1,4,3);
+    line(c,[[7,-2],[15,-1],[19,2],[6,2],[13,5],[18,4]],'#41463c',3);
+    line(c,[[0,-5],[-4,0],[-1,3]],steel,2);
     c.fillStyle = '#efb3a2'; c.textAlign = 'center'; c.font = 'bold 10px sans-serif';
-    c.fillText(`救助 ${Math.ceil(s.downTimer || 0)}秒`, 0, -19);
+    c.fillText(s.carrierId?'搬送中':`救助 ${Math.ceil(s.downTimer || 0)}秒`, 0, -19);
     c.fillStyle = '#242c30'; c.fillRect(-13, -14, 26, 3);
     c.fillStyle = '#8ab99b'; c.fillRect(-13, -14, 26 * Math.min(1, Math.max(0, s.rescueProgress || 0)), 3);
     c.restore(); return;
@@ -194,7 +198,58 @@ export function drawFieldCommander(c,p,equipped,now,rankIndex,rankTitle,moving,p
   c.restore();
 }
 
+function drawPeriodMob(c,m,now) {
+  if(!['wild_boar','cave_bat','shade_wolf','bone_warrior','sun_bandit','sun_guard'].includes(m.type))return false;
+  const step=Math.sin(now*.014+m.x)*1.5;
+  c.save();
+  if(m.type==='wild_boar') {
+    line(c,[[-8,-7],[-10,2],[-3,-7],[-2,2],[6,-7],[7,2],[10,-6],[12,1]],'#453f35',3);
+    ellipse(c,0,-10,14,9,'#735f49');shape(c,[[-12,-12],[-21,-15],[-16,-7]],'#594f3d');
+    shape(c,[[-8,-16],[-2,-21],[7,-16],[10,-6]],'#8a7758');
+    ellipse(c,12,-10,8,7,'#927b5c');ellipse(c,18,-7,4,3,'#b29a7c');
+    shape(c,[[9,-16],[8,-23],[14,-18]],'#6b5b47');
+    shape(c,[[15,-7],[18,-2],[20,-7]],'#ded2ad');c.fillStyle='#282c26';c.fillRect(13,-13,2,2);
+  } else if(m.type==='cave_bat') {
+    const wing=Math.sin(now*.018+m.x)*3;
+    shape(c,[[-3,-11],[-18,-22-wing],[-23,-8],[-16,-11],[-11,-5]],'#666173');
+    shape(c,[[3,-11],[18,-22-wing],[23,-8],[16,-11],[11,-5]],'#767083');
+    ellipse(c,0,-9,4,7,'#43434f');shape(c,[[-4,-14],[-4,-21],[0,-17],[4,-21],[4,-14]],'#858093');
+    line(c,[[-19,-20-wing],[-13,-10],[-5,-10],[19,-20-wing],[13,-10],[5,-10]],'#a39aa4');
+    c.fillStyle='#d1bb80';c.fillRect(-2,-15,1,1);c.fillRect(1,-15,1,1);
+  } else if(m.type==='shade_wolf') {
+    drawFieldMob(c,{...m,type:'wolf'},now);
+    shape(c,[[-12,-12],[-8,-20],[-4,-16],[0,-21],[5,-14]],'#3e4554');
+    line(c,[[-12,-12],[-7,-14],[0,-15]],'#9494a1',1.5);
+  } else if(m.type==='bone_warrior') {
+    line(c,[[-4,-10],[-6+step,0],[3,-10],[5-step,0]],'#c7c0a8',3);
+    line(c,[[0,-26],[0,-9],[-7,-22],[-9,-11],[7,-22],[10,-12]],'#b9b7a5',2.5);
+    for(let y=-22;y<=-13;y+=3)line(c,[[-5,y],[0,y+2],[5,y]],'#d2ccb5',1.5);
+    ellipse(c,0,-31,6,6,'#d4ceb7');c.fillStyle='#343a3b';c.fillRect(-4,-33,3,2);c.fillRect(1,-33,3,2);c.fillRect(-1,-29,2,2);
+    shape(c,[[-7,-35],[-4,-40],[5,-39],[7,-35]],'#6a7473');
+    line(c,[[9,-12],[17,-32]],'#a5acaa',3);line(c,[[10,-16],[16,-14]],'#7b827c',2);
+    shape(c,[[-8,-21],[-15,-20],[-16,-10],[-10,-7],[-5,-14]],'#656756');
+  } else if(m.type==='sun_bandit'||m.type==='sun_guard') {
+    const guard=m.type==='sun_guard';
+    line(c,[[-4,-8],[-5+step,1],[4,-8],[5-step,1]],'#48463c',4);
+    shape(c,[[-7,-23],[6,-23],[9,-7],[-8,-7]],guard?'#8e917d':'#9d885d');
+    line(c,[[-5,-22],[5,-8]],'#c4b18b',2);ellipse(c,0,-30,6,6,'#c5ac87');
+    shape(c,[[-7,-33],[-5,-38],[4,-38],[8,-32]],guard?'#9b9b83':'#84704e');
+    c.fillStyle='#343a35';c.fillRect(1,-31,4,1.5);
+    if(guard) {
+      line(c,[[0,-38],[0,-45]],'#a78861',3);
+      shape(c,[[-9,-24],[-18,-22],[-17,-8],[-11,-3],[-5,-9]],'#9d9477');
+      line(c,[[8,-14],[13,-37]],'#c1c5b8',3);
+    } else {
+      c.fillStyle='#585a4b';c.fillRect(-5,-28,10,3);
+      line(c,[[8,-15],[19,-22]],'#c1c5b8',3);
+      shape(c,[[-8,-23],[-12,-22],[-15,-8],[-7,-12]],'#675f45');
+    }
+  } else {c.restore();return false;}
+  c.restore();return true;
+}
+
 export function drawFieldMob(c, m, now) {
+  if(drawPeriodMob(c,m,now))return true;
   if (!['slime','goblin','wolf','orc','wyvern'].includes(m.type) || m.isBoss) return false;
   const bob = Math.sin(now*.009 + m.x)*.65;
   const step = Math.sin(now*.017 + m.x)*2;

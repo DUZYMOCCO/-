@@ -51,7 +51,7 @@ game.activeSlotId=fresh.id;game.phase=99;game.phaseTimer=2;game.totalBattleTime=
 saveSlots.update(fresh.id,{veterans:[{id:'veteran',level:50}],state:'fallen'});
 game.startFreshGame(false);
 assert.equal(game.phase,1);assert.equal(game.phaseTimer,120);assert.equal(game.totalBattleTime,0);
-assert.equal(game.squad.length,20);assert.ok(game.squad.every(s=>!s.isVeteran));
+assert.equal(game.squad.length,30);assert.ok(game.squad.every(s=>!s.isVeteran));
 assert.equal(new Set(game.squad.map(s=>s.soldierClass)).size,4,'new games recruit all four base classes');
 assert.ok(game.outposts.every(op=>!op.cleared));
 game.player.x=8500;game.player.y=2300;game.gold=0;game.phase=7;game.phaseTimer=31;
