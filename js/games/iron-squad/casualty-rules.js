@@ -101,15 +101,26 @@ export function grantRescueBonus(game,wounded,options={}) {
     game.spawnDamageText?.(medic.x,medic.y-20,'💚 救命功績! +50G','#34d399');
   }
 
-  // 5. 救助された兵士へのボーナス（死線生還・スキル覚醒・シールド）
-  wounded.survivedDeathlines=(wounded.survivedDeathlines||0)+1;
-  wounded.gold=(wounded.gold||0)+25;
-  wounded.shieldTimer=3.0; // 3秒間被ダメージ半減シールド
+  // 5. 救助された兵士へのボーナス（経験値・軍資金・生還シールド）
+  const sExpGain = isBase ? 45 : 30;
+  const sGoldGain = isBase ? 60 : 40;
+  wounded.exp = (wounded.exp || 0) + sExpGain;
+  wounded.gold = (wounded.gold || 0) + sGoldGain;
+  wounded.shieldTimer = 3.0; // 3秒間被ダメージ半減シールド
 
-  // 死線スキル覚醒判定（40%の確率でスキル覚醒！）
-  let awakenedSkill=null;
-  if(typeof game.tryAwakenDeathlineSkill==='function') {
-    awakenedSkill=game.tryAwakenDeathlineSkill(wounded);
+  // 救助された兵士のレベルアップ判定
+  let sGuard = 0;
+  let didLevelUp = false;
+  while (wounded.exp >= (wounded.reqExp || 14) && sGuard++ < 30) {
+    const req = Math.max(8, wounded.reqExp || 14);
+    wounded.exp -= req;
+    wounded.level = (wounded.level || 1) + 1;
+    wounded.reqExp = Math.floor(req * 1.5 + 8);
+    didLevelUp = true;
+  }
+  if (didLevelUp) {
+    if (typeof game.recalcSoldierStats === 'function') game.recalcSoldierStats(wounded);
+    game.spawnDamageText?.(wounded.x, wounded.y - 45, `⚡ Lv.${wounded.level}!`, '#00f0ff');
   }
 
   // 6. 演出・サウンド・通知
@@ -118,14 +129,14 @@ export function grantRescueBonus(game,wounded,options={}) {
     game.spawnDamageText?.(wounded.x,wounded.y-30,`🚑 拠点救護成功! +${totalGold}G`,'#ffd700');
     const carrierName=carrier===game.player?'隊長':(carrier?carrier.name:null);
     const carrierTxt=carrierName?` (搬送: ${carrierName}に快足バフ)`:'';
-    const awkTxt=awakenedSkill?` ✨死線覚醒【${awakenedSkill.name}】！`:'';
-    game.showToast?.(`🚑 拠点救護成功！【${wounded.name}】が全快復帰！(+${totalGold}G, 昇進EXP+${expGain}${carrierTxt}${awkTxt})`);
+    const lvTxt = didLevelUp ? ` ⚡Lv.${wounded.level}UP!` : '';
+    game.showToast?.(`🚑 拠点救護成功！【${wounded.name}】が全快復帰！(+${totalGold}G, 昇進EXP+${expGain}, 兵士+${sExpGain}EXP/+${sGoldGain}G${carrierTxt}${lvTxt})`);
   } else {
     game.sound?.playItem?.();
     game.spawnDamageText?.(wounded.x,wounded.y-30,`💚 衛生兵救護成功! +${totalGold}G`,'#34d399');
     const carrierTxt=carrier===game.player?' (隊長に快足バフ)':'';
-    const awkTxt=awakenedSkill?` ✨死線覚醒【${awakenedSkill.name}】！`:'';
-    game.showToast?.(`💚 衛生救護！【${wounded.name}】が戦線復帰！(+${totalGold}G, 昇進EXP+${expGain}${carrierTxt}${awkTxt})`);
+    const lvTxt = didLevelUp ? ` ⚡Lv.${wounded.level}UP!` : '';
+    game.showToast?.(`💚 衛生救護！【${wounded.name}】が戦線復帰！(+${totalGold}G, 昇進EXP+${expGain}, 兵士+${sExpGain}EXP/+${sGoldGain}G${carrierTxt}${lvTxt})`);
   }
 
   game.updateStatsUI?.();

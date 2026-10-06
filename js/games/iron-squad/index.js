@@ -3970,12 +3970,14 @@ export const IronSquadGame = {
     const isBoss = !!monster.isBoss;
     const isElite = !!monster.isElite;
 
-    const expBase = isBoss ? 65 : (isElite ? 16 : 4);
+    const curPhase = this.phase || this.wave || 1;
+    const expBase = isBoss ? 80 : (isElite ? 24 : 6);
+    const goldBase = isBoss ? 120 : (isElite ? 36 : 8);
     const lootDistance=monster.lootDistance ?? Math.hypot(monster.x-BASE_CAMP.x,monster.y-BASE_CAMP.y);
     const orbCount=Math.random()<orbDropChance(monster,lootDistance)?1:0;
-    const rewards=distanceScaling(lootDistance);
+    const rewards=distanceScaling(lootDistance, curPhase);
     const expGain = Math.max(2,Math.round(expBase*rewards.exp));
-    const goldGain = Math.max(1,Math.round((isBoss?70:(isElite?18:4))*rewards.gold));
+    const goldGain = Math.max(1,Math.round(goldBase*rewards.gold));
 
     // 軸1: 【敵を倒したらレベルアップ】＆【撃墜したキャラにお金が入る】
     // 軸4: 【撃墜数パワーアップ（雑魚枠とボス枠で別）】
@@ -4021,13 +4023,14 @@ export const IronSquadGame = {
 
       if (isBoss) {
         attacker.bossKills = (attacker.bossKills || 0) + 1;
-        attacker.gold = (attacker.gold || 0) + 50; // 討伐臨時ボーナス
+        const bossBonusGold = Math.round(80 * rewards.gold);
+        attacker.gold = (attacker.gold || 0) + bossBonusGold; // 討伐臨時ボーナスも距離・難易度スケール！
         if (attacker.name && attacker.name.includes('#')) {
           attacker.name = NAMES[Math.floor(Math.random() * NAMES.length)];
         }
         sound.playHighScore();
         this.spawnDamageText(attacker.x, attacker.y - 32, '👑 ボス討伐英雄！', '#ffd700');
-        this.showToast(`👑 大金星！兵士【${attacker.name}】がボスにトドメ！(ボス討伐履歴+1, 50Gボーナス)`);
+        this.showToast(`👑 大金星！兵士【${attacker.name}】がボスにトドメ！(ボス討伐履歴+1, +${bossBonusGold}Gボーナス)`);
       } else {
         attacker.minionKills = (attacker.minionKills || 0) + 1;
         const mK = attacker.minionKills;
@@ -4074,7 +4077,7 @@ export const IronSquadGame = {
       }
 
       // 1. 大量ゴールドボーナス
-      const colossalGold = Math.round((350+Math.floor(Math.random()*200))*rewards.gold);
+      const colossalGold = Math.round((700+Math.floor(Math.random()*500))*rewards.gold);
       if (isPlayer) {
         this.gold += colossalGold;
         this.spawnDamageText(this.player.x, this.player.y - 45, `👑超巨頭討滅! +${colossalGold}G`, '#ffd700');
@@ -4100,7 +4103,7 @@ export const IronSquadGame = {
 
     } else {
       // 通常モンスター・通常ボスのドロップ生成
-      const dropRate = isBoss ? 1.0 : (isElite ? 0.55 : (0.12+Math.min(0.04,lootDistance/7400*0.04)));
+      const dropRate = isBoss ? 1.0 : (isElite ? 0.65 : (0.16+Math.min(0.08,lootDistance/7400*0.08)));
       if (Math.random() < dropRate) {
         const dropItem = generateRandomDrop(lootDistance,isBoss?'boss':(isElite?'elite':'normal'));
         this.dropsOnField.push({

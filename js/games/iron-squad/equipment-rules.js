@@ -1,6 +1,6 @@
 export const EQUIPMENT_TYPES = ['WEAPON','SHIELD','HELMET','ARMOR','GLOVES','LEGS','AMULET'];
 
-export const saleValue = item => Math.floor(8 + (item.tier || 1)*6 + (item.upgrade || 0)*4);
+export const saleValue = item => Math.floor(14 + Math.pow(item.tier || 1, 1.8)*12 + (item.upgrade || 0)*8);
 
 export function equippedIds(playerEquipment, soldiers = []) {
   return new Set([playerEquipment,...soldiers.map(s=>s.equipped || {})]
@@ -58,8 +58,8 @@ export function chooseLootTier(distance,kind='normal',random=Math.random) {
 }
 
 const KNOTS = [
-  [0,.65,.60,.75,.75], [600,.90,.85,.90,.90], [1200,1.35,1.20,1.10,1.10],
-  [2700,3.20,2.70,1.80,1.70], [4400,6.80,5.10,2.60,2.40], [7400,10,7.50,3.60,3.20]
+  [0,.65,.60,1.0,1.0], [600,.90,.85,1.25,1.35], [1200,1.35,1.20,1.65,1.85],
+  [2700,3.20,2.70,2.80,3.30], [4400,6.80,5.10,4.50,5.60], [7400,10,7.50,7.0,9.0]
 ];
 export function distanceScaling(distance,phase=1) {
   const d=Math.max(0,Math.min(7400,distance || 0));
@@ -68,7 +68,7 @@ export function distanceScaling(distance,phase=1) {
   const t=(d-a[0])/(b[0]-a[0]);
   const phaseBonus=1+Math.min(.6,Math.max(0,(phase || 1)-1)*.025);
   const lerp=index=>a[index]+(b[index]-a[index])*t;
-  return {hp:lerp(1)*phaseBonus,atk:lerp(2)*phaseBonus,exp:lerp(3),gold:lerp(4),phaseBonus};
+  return {hp:lerp(1)*phaseBonus,atk:lerp(2)*phaseBonus,exp:lerp(3)*phaseBonus,gold:lerp(4)*phaseBonus,phaseBonus};
 }
 
 export function shrineUpgradeCap(distance) {
