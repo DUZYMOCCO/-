@@ -1,7 +1,44 @@
-// Quiet, equipment-aware field illustrations. No particles or additional effects.
+// Live field illustrations. Equipment colors are read every frame.
+// Weapon light is a short arc on the blade, never a ring around the body.
 const ellipse = (c, x, y, rx, ry, color) => {
   c.fillStyle = color; c.beginPath(); c.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2); c.fill();
 };
+export function contactSpread(rx, ry, plant = 0) {
+  const spread = Math.max(0, Math.min(1, plant));
+  return { rx: rx * (1 + 0.46 * spread), ry: ry * (1 - 0.18 * spread) };
+}
+export function contactShadow(c, x, y, rx, ry, plant = 0) {
+  const spread = contactSpread(rx, ry, plant);
+  c.fillStyle = 'rgba(0,0,0,0.16)';
+  c.beginPath(); c.ellipse(x, y + 1.2, spread.rx * 1.28, spread.ry * 1.35, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = 'rgba(0,0,0,0.36)';
+  c.beginPath(); c.ellipse(x, y, spread.rx, Math.max(1.15, spread.ry * 0.62), 0, 0, Math.PI * 2); c.fill();
+}
+function slashArc(c, atk, commander, color) {
+  if (atk < 0.08) return;
+  const theta = commander ? (-0.6 + atk * 1.6) : (-0.12 - 0.43 * atk);
+  const tip = -Math.PI / 2 + theta;
+  const span = 0.55 + 0.35 * atk;
+  const end = tip + (commander ? -span : span);
+  const a0 = Math.min(tip, end), a1 = Math.max(tip, end);
+  c.save();
+  c.translate(7, -14);
+  c.globalAlpha = 0.5 * atk;
+  c.fillStyle = color;
+  c.beginPath();
+  c.arc(0, 0, 19, a0, a1);
+  c.arc(0, 0, 10, a1, a0, true);
+  c.closePath();
+  c.fill();
+  c.globalAlpha = 0.92 * atk;
+  c.strokeStyle = '#f7f3e8';
+  c.lineWidth = 1.5;
+  c.lineCap = 'round';
+  c.beginPath();
+  c.arc(0, 0, 18, a0, a1);
+  c.stroke();
+  c.restore();
+}
 const shape = (c, points, color, edge = '#20282a') => {
   c.fillStyle = color; c.strokeStyle = edge; c.lineWidth = 0.9;
   c.beginPath(); points.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y));
@@ -11,6 +48,14 @@ const line = (c, points, color, width = 1) => {
   c.strokeStyle = color; c.lineWidth = width; c.beginPath();
   points.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.stroke();
 };
+function fieldTone(hex, dust = 0.65) {
+  if (typeof hex !== 'string' || hex[0] !== '#' || hex.length < 7) return hex;
+  const n = Number.parseInt(hex.slice(1, 7), 16);
+  if (!Number.isFinite(n)) return hex;
+  const mix = Math.max(0, Math.min(1, dust));
+  const ch = (v, target) => Math.round(v * (1 - mix) + target * mix).toString(16).padStart(2, '0');
+  return `#${ch((n >> 16) & 255, 96)}${ch((n >> 8) & 255, 88)}${ch(n & 255, 74)}`;
+}
 const CLOTH = {
   HEAVY: '#687e91', LIGHT: '#a38b60', ARCHER: '#607b60', MEDIC: '#c2bda2',
   PALADIN: '#ccd0c3', BLADEMASTER: '#555c69', SNIPER: '#426557', HIGH_PRIEST: '#d1c5ab',
@@ -20,8 +65,12 @@ const CLOTH = {
 export function drawFieldSoldier(c, s, now, cls, platoonColor) {
   const key = s.soldierClass || 'HEAVY', eq = s.equipped || {};
   const advanced = !!cls.isAdvanced;
-  const cloth = eq.armor?.color || CLOTH[key] || CLOTH.HEAVY;
-  const steel = eq.helmet?.color || (advanced ? '#d1c4a3' : '#9daab0');
+  const cloth = fieldTone(eq.armor?.color || CLOTH[key] || CLOTH.HEAVY, 0.82);
+  const steel = fieldTone(eq.helmet?.color || (advanced ? '#d1c4a3' : '#9daab0'), 0.62);
+  const legs = fieldTone(eq.legs?.color || '#5c564c', 0.74);
+  const gloves = fieldTone(eq.gloves?.color || '#a09080', 0.7);
+  const board = fieldTone(eq.shield?.color || '#566b7c', 0.8);
+  const blade = fieldTone(eq.weapon?.color || '#c3cbca', 0.34);
   const moving = Math.hypot(s.vx || 0, s.vy || 0) > 0.05;
   const stride = moving ? Math.sin(now * 0.016 + (s.animOffset || 0)) * 2.8 : 0;
   const bob = moving ? Math.abs(stride) * 0.25 : 0;
@@ -29,17 +78,16 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor) {
   const medic = key === 'MEDIC' || key === 'HIGH_PRIEST';
   const light = key === 'LIGHT' || key === 'BLADEMASTER';
   c.save(); c.translate(s.x, s.y);
-  ellipse(c, 3, 3, 12, 4, 'rgba(0,0,0,.35)');
+  const plant = s.isDown ? 1 : (moving ? Math.abs(stride) / 2.8 : 0.22);
+  contactShadow(c, 2, 3, s.isDown ? 16 : 11, s.isDown ? 4.2 : 3.5, plant);
   if (s.isDown) {
-    ellipse(c,2,3,16,4,'rgba(0,0,0,.28)');
-    shape(c,[[-4,-7],[8,-5],[10,2],[-4,4]],cloth);
-    ellipse(c,-10,-2,5,4,steel);c.fillStyle='#c4aa8b';c.fillRect(-13,-1,4,3);
-    line(c,[[7,-2],[15,-1],[19,2],[6,2],[13,5],[18,4]],'#41463c',3);
-    line(c,[[0,-5],[-4,0],[-1,3]],steel,2);
-    c.fillStyle = '#efb3a2'; c.textAlign = 'center'; c.font = 'bold 10px sans-serif';
-    c.fillText(s.carrierId?'搬送中':`救助 ${Math.ceil(s.downTimer || 0)}秒`, 0, -19);
-    c.fillStyle = '#242c30'; c.fillRect(-13, -14, 26, 3);
-    c.fillStyle = '#8ab99b'; c.fillRect(-13, -14, 26 * Math.min(1, Math.max(0, s.rescueProgress || 0)), 3);
+    shape(c,[[-18,-3],[16,-7],[20,3],[-14,6]],cloth);
+    ellipse(c,-20,-1,6,4.5,steel);c.fillStyle='#c4aa8b';c.fillRect(-23,0,5,3);
+    line(c,[[10,-2],[22,2],[18,6]],'#3c4038',2.5);
+    c.fillStyle = '#e6d7b8'; c.textAlign = 'center'; c.font = 'bold 10px sans-serif';
+    c.fillText(s.carrierId?'搬送中':`救助 ${Math.ceil(s.downTimer || 0)}秒`, 0, -16);
+    c.fillStyle = '#242c30'; c.fillRect(-16, -12, 32, 3);
+    c.fillStyle = '#d7b56a'; c.fillRect(-16, -12, 32 * Math.min(1, Math.max(0, s.rescueProgress || 0)), 3);
     c.restore(); return;
   }
   c.save(); if (Math.cos(s.facingAngle || 0) < -0.15) c.scale(-1, 1);
@@ -49,7 +97,7 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor) {
     shape(c, [[-4,-23],[-11,-17],[-14,-1],[-5,-5],[4,-17]], s.isCommander ? (advanced?'#794e41':'#3e5863') : (archer ? '#3d5148' : '#795d51'));
     line(c, [[-7,-17],[-10,-4]], '#b59a72');
   }
-  c.fillStyle = eq.legs?.color || '#475159';
+  c.fillStyle = legs;
   c.fillRect(-5 + stride,-8,4,9); c.fillRect(2 - stride,-8,4,9);
   c.fillStyle = '#2a2624'; c.fillRect(-6 + stride,0,6,3); c.fillRect(1 - stride,0,6,3);
   shape(c, [[-6,-23],[5,-23],[8,-11],[5,-6],[-6,-7],[-8,-15]], cloth);
@@ -91,7 +139,7 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor) {
     }
   }
   // Hands, face and headwear, with a restrained highlight on the upper edge.
-  ellipse(c, 6,-15,2.3,3.5,eq.gloves?.color || '#a78b72');
+  ellipse(c, 6,-15,2.3,3.5,gloves);
   ellipse(c, 0,-27,5.1,5.3,'#c1a083');
   if (key === 'BLADEMASTER') {
     shape(c,[[-6,-24],[-6,-31],[-2,-35],[4,-33],[6,-28],[0,-30]],'#373c40');
@@ -121,12 +169,12 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor) {
     shape(c,[[-8,-24],[-12,-25],[-13,-10],[-9,-9]],'#6b503b');
     line(c,[[-11,-23],[-12,-31]],'#baa889');
     line(c,[[-10,-29],[-13,-31],[-11,-32]],'#c9c6ad',2);
-    c.strokeStyle = eq.weapon?.color || '#b19869'; c.lineWidth = 2;
+    c.strokeStyle = blade; c.lineWidth = 2;
     c.beginPath(); c.moveTo(9,-28); c.quadraticCurveTo(22,-16,9,-3); c.stroke();
     line(c,[[9,-28],[11,-15],[9,-3]],'#d6ccae',.7);
     line(c,[[5,-16],[19,-16]],'#c5b790');
   } else if (medic) {
-    line(c,[[13,-2],[13,-30]],eq.weapon?.color || '#a68c60',2.5);
+    line(c,[[13,-2],[13,-30]],blade,2.5);
     ellipse(c,13,-31,3,3,advanced ? '#bba987' : '#abbfa4');
     if (advanced) {
       c.strokeStyle='#c6b38a'; c.lineWidth=2;
@@ -137,7 +185,7 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor) {
     const heavy = key === 'HEAVY' || key === 'PALADIN';
     if (key !== 'BLADEMASTER') {
       const shieldBottom = key === 'PALADIN' ? 0 : (heavy ? -4 : -9);
-      shape(c,[[-12,-23],[-3,-22],[-3,-10],[-7,shieldBottom],[-13,-10]],eq.shield?.color || '#566b7c');
+      shape(c,[[-12,-23],[-3,-22],[-3,-10],[-7,shieldBottom],[-13,-10]],board);
       line(c,[[-9,-21],[-9,-9]],'#c3b48d',1.5); ellipse(c,-8,-14,1.8,1.8,'#b6aea0');
       if (key === 'PALADIN') {
         line(c,[[-8,-21],[-8,-6]],'#d4c39a',2); line(c,[[-11,-17],[-5,-17]],'#d4c39a',2);
@@ -145,9 +193,11 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor) {
         line(c,[[-11,-19],[-11,-12],[-5,-19],[-5,-12]],'#879797',.6);
       }
     }
-    c.save(); c.translate(7,-14); c.rotate(s.isCommander ? (-.6+Math.max(0,s.atkAnim || 0)*1.6) : (s.atkAnim > 0 ? -.55 : -.12));
-    shape(c,[[0,1],[2,-15],[4,-18],[5,-15],[3,1]],eq.weapon?.color || '#c3cbca');
-    line(c,[[3,-14],[2,0]],'#f1ead8',.7);
+    const atk = Math.max(0, Math.min(1, s.atkAnim || 0));
+    slashArc(c, atk, !!s.isCommander, blade);
+    c.save(); c.translate(7,-14); c.rotate(s.isCommander ? (-.6 + atk * 1.6) : (-.12 - 0.43 * atk));
+    shape(c,[[0,1],[2,-15],[4,-18],[5,-15],[3,1]],blade);
+    line(c,[[3,-14],[2,0]],'#f1ead8', atk > 0.05 ? 1.35 : .7);
     line(c,[[-2,1],[6,2]],'#aa9168',2); line(c,[[2,2],[1,6]],'#6a4c38',2.5);
     c.restore();
     if (key === 'BLADEMASTER') line(c,[[-13,-13],[-20,-24]],'#c3cbca',2);
@@ -160,6 +210,7 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor) {
   }
   if (!s.portrait) {
     const distinguished = s.isNamed || advanced || s.isPersonalGuard || s.talent === 'GENIUS';
+    const hurting = s.maxHp > 0 && s.hp < s.maxHp * 0.55;
     if (distinguished) {
       c.textAlign = 'center'; c.font = '9px sans-serif';
       const label = `${s.isPersonalGuard ? '◆ ' : ''}${s.name || cls.name} · ${s.level || 1}`;
@@ -168,9 +219,9 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor) {
       c.fillRect(-labelWidth/2,-53,labelWidth,12);
       c.fillStyle = s.isNamed ? '#dfc893' : '#e0e3db'; c.fillText(label,0,-44);
     }
-    if (distinguished || s.hp < s.maxHp) {
+    if (distinguished || hurting) {
       c.fillStyle = '#283132'; c.fillRect(-12,-39,24,3);
-      c.fillStyle = '#92b9a0'; c.fillRect(-12,-39,24*Math.max(0,Math.min(1,s.hp/s.maxHp)),3);
+      c.fillStyle = '#c4b48a'; c.fillRect(-12,-39,24*Math.max(0,Math.min(1,s.hp/s.maxHp)),3);
     }
   }
   c.restore();
@@ -208,7 +259,7 @@ function drawPeriodMob(c,m,now) {
     shape(c,[[-8,-16],[-2,-21],[7,-16],[10,-6]],'#8a7758');
     ellipse(c,12,-10,8,7,'#927b5c');ellipse(c,18,-7,4,3,'#b29a7c');
     shape(c,[[9,-16],[8,-23],[14,-18]],'#6b5b47');
-    shape(c,[[15,-7],[18,-2],[20,-7]],'#ded2ad');c.fillStyle='#282c26';c.fillRect(13,-13,2,2);
+    shape(c,[[15,-7],[18,-2],[20,-7]],'#ded2ad');c.fillStyle='#e0b15a';c.fillRect(13,-13,2,2);
   } else if(m.type==='cave_bat') {
     const wing=Math.sin(now*.018+m.x)*3;
     shape(c,[[-3,-11],[-18,-22-wing],[-23,-8],[-16,-11],[-11,-5]],'#666173');
@@ -234,7 +285,7 @@ function drawPeriodMob(c,m,now) {
     shape(c,[[-7,-23],[6,-23],[9,-7],[-8,-7]],guard?'#8e917d':'#9d885d');
     line(c,[[-5,-22],[5,-8]],'#c4b18b',2);ellipse(c,0,-30,6,6,'#c5ac87');
     shape(c,[[-7,-33],[-5,-38],[4,-38],[8,-32]],guard?'#9b9b83':'#84704e');
-    c.fillStyle='#343a35';c.fillRect(1,-31,4,1.5);
+    c.fillStyle='#e0b15a';c.fillRect(1,-31,4,1.5);
     if(guard) {
       line(c,[[0,-38],[0,-45]],'#a78861',3);
       shape(c,[[-9,-24],[-18,-22],[-17,-8],[-11,-3],[-5,-9]],'#9d9477');
@@ -258,7 +309,7 @@ export function drawFieldMob(c, m, now) {
     ellipse(c,0,-6,11,7,'#477c63');
     ellipse(c,-2,-8,8,5,m.hitPulse > 0 ? '#bac8b9' : '#739b7e');
     line(c,[[-7,-10],[-3,-12],[1,-11]],'#c2d4af',1.5);
-    ellipse(c,3,-7,1.3,1.8,'#253b32'); ellipse(c,7,-7,1.3,1.8,'#253b32');
+    ellipse(c,3,-7,1.3,1.8,'#e0b15a'); ellipse(c,7,-7,1.3,1.8,'#e0b15a');
     ellipse(c,-6,-4,2,1,'#45674f');
   } else if (m.type === 'wolf') {
     line(c,[[-8,-6],[-10+step,1],[-5,-5],[-3-step,2],[5,-6],[6+step,1],[10,-7],[12-step,1]],'#313b3c',3);
@@ -267,7 +318,7 @@ export function drawFieldMob(c, m, now) {
     shape(c,[[4,-14],[8,-21],[11,-16],[14,-20],[17,-12],[23,-9],[19,-5],[10,-7]],'#697578');
     line(c,[[-9,-13],[-5,-15],[0,-14],[4,-16]],'#9aaba4',1.5);
     c.fillStyle = '#c0ab75'; c.fillRect(15,-13,2,1.5);
-    c.fillStyle = '#292e2d'; c.fillRect(21,-9,3,2);
+    c.fillStyle = '#e0b15a'; c.fillRect(21,-9,3,2);
     shape(c,[[18,-6],[17,-3],[16,-6]],'#d7d1b6');
   } else if (m.type === 'wyvern') {
     shape(c,[[-5,-16],[-23,-34],[-26,-17],[-18,-20],[-13,-12]],'#77766b');
@@ -288,7 +339,7 @@ export function drawFieldMob(c, m, now) {
     line(c,[[-4,-19],[4,-10]],'#baa383',2);
     ellipse(c,1,-25,6.5,6,m.hitPulse > 0 ? '#b8c0a5' : (orc ? '#8a9470' : '#7e9972'));
     shape(c,[[-4,-27],[-12,-31],[-7,-23]],'#7c916b');
-    c.fillStyle = '#2e392d'; c.fillRect(2,-27,4,1.5);
+    c.fillStyle = '#e0b15a'; c.fillRect(2,-27,4,1.5);
     c.fillStyle = '#d6ceab'; c.fillRect(4,-22,1.5,3);
     line(c,[[7,-12],[16,-27]],'#785d40',3);
     if (orc) shape(c,[[12,-27],[20,-30],[23,-23],[16,-23]],'#9ba3a0');
@@ -296,4 +347,132 @@ export function drawFieldMob(c, m, now) {
     c.fillStyle = '#4b4235'; c.fillRect(-6,-9,13,3);
   }
   c.restore(); return true;
+}
+
+function drawAncientDragon(c, now, flash, scale) {
+  const flap = Math.sin(now * (scale < 1 ? 0.008 : 0.005)) * (scale < 1 ? 8 : 14);
+  const hide = flash ? '#d9d3cc' : '#7a342c';
+  const hideDark = flash ? '#c8c2ba' : '#4a241e';
+  const wing = flash ? '#b7b2aa' : '#3a2422';
+  const membrane = flash ? '#ddd8d0' : '#5c3a34';
+  const horn = flash ? '#2c3234' : '#1a1e22';
+  c.save();
+  c.scale(scale, scale);
+  shape(c, [[-6,-28],[-46,-58 + flap * 0.2],[-50,-36],[-28,-30],[-12,-18]], wing);
+  line(c, [[-8,-26],[-38,-50 + flap * 0.16],[-44,-38]], membrane, 1.2);
+  shape(c, [[-8,-16],[-30,-8],[-36,2],[-22,-2],[-6,-8]], hideDark);
+  shape(c, [[-16,-8],[-10,-8],[-13,6],[-20,6]], hideDark);
+  shape(c, [[6,-8],[13,-8],[15,6],[5,6]], hideDark);
+  shape(c, [[-20,4],[-11,4],[-12,8],[-22,7]], '#241c18');
+  shape(c, [[4,4],[15,4],[16,8],[3,7]], '#241c18');
+  shape(c, [[-18,-34],[8,-38],[22,-22],[16,-6],[-14,-8],[-22,-20]], hide);
+  shape(c, [[-14,-32],[2,-34],[6,-18],[-12,-16]], 'rgba(255,255,255,.13)', 'transparent');
+  shape(c, [[6,-34],[18,-28],[16,-12],[4,-14]], 'rgba(0,0,0,.22)', 'transparent');
+  line(c, [[-8,-28],[-6,-12]], '#c4a090', 1.2);
+  line(c, [[-2,-30],[0,-12]], '#c4a090', 1);
+  shape(c, [[4,-30],[48,-56 + flap], [52,-28],[28,-20],[8,-14]], wing);
+  shape(c, [[10,-28],[40,-48 + flap * 0.85],[44,-30],[16,-20]], membrane, wing);
+  line(c, [[12,-26],[34,-44 + flap * 0.7],[42,-32]], '#1a1412', 1.3);
+  line(c, [[14,-24],[30,-36]], '#cbb8a4', 0.9);
+  shape(c, [[10,-28],[24,-38],[28,-24],[14,-16]], hide);
+  shape(c, [[16,-40],[34,-46],[42,-32],[36,-22],[22,-24],[18,-34]], hide);
+  shape(c, [[24,-42],[34,-44],[36,-34],[26,-32]], 'rgba(255,255,255,.14)', 'transparent');
+  shape(c, [[18,-42],[12,-62],[22,-54],[26,-42]], horn, '#8d8478');
+  line(c, [[15,-56],[23,-44]], '#d9d0c2', 1.15);
+  shape(c, [[28,-44],[34,-60],[42,-50],[36,-40]], horn, '#8d8478');
+  line(c, [[33,-54],[37,-44]], '#d9d0c2', 1);
+  ellipse(c, 31, -35, 3.3, 2.5, '#1a120e');
+  ellipse(c, 31.5, -35.2, 1.8, 1.45, flash ? '#fff6e8' : '#e2b15a');
+  c.fillStyle = '#2a1c10'; c.fillRect(30.8, -36.3, 1.5, 2.3);
+  shape(c, [[36,-28],[41,-26],[39,-22],[34,-24]], '#e6e0d4', '#6a6258');
+  shape(c, [[32,-25],[36,-23],[34,-20],[31,-22]], '#e6e0d4', '#6a6258');
+  c.restore();
+}
+
+function drawBehemoth(c, now, flash) {
+  const step = Math.sin(now * 0.008) * 3.2;
+  const hide = flash ? '#d8d2c8' : '#6e5338';
+  const dark = flash ? '#c8c2b8' : '#3e2e22';
+  const plate = flash ? '#eee8de' : '#8a6844';
+  const horn = flash ? '#f4f1ea' : '#e4d8c2';
+  for (const [x, s] of [[-24, step], [-8, -step], [8, step], [22, -step]]) {
+    shape(c, [[x, -6],[x + 10, -8],[x + 11 + s * 0.15, 10],[x + 2, 10]], dark);
+    shape(c, [[x + 1, -4],[x + 6, -6],[x + 7, 2],[x + 2, 2]], hide);
+    shape(c, [[x + 1, 8],[x + 13, 8],[x + 14, 12],[x, 11]], '#241c16');
+  }
+  shape(c, [[-30,-18],[28,-22],[36,-4],[24,6],[-26,6],[-34,-4]], hide);
+  shape(c, [[-24,-16],[8,-18],[12,-4],[-22,-2]], 'rgba(255,255,255,.13)', 'transparent');
+  shape(c, [[8,-18],[30,-16],[28,0],[10,-2]], 'rgba(0,0,0,.22)', 'transparent');
+  shape(c, [[-18,-28],[-4,-36],[12,-30],[8,-16],[-16,-16]], plate);
+  shape(c, [[-4,-30],[12,-38],[26,-26],[16,-14],[0,-16]], dark);
+  line(c, [[-14,-26],[8,-33],[22,-24]], '#d9c7a4', 1.3);
+  shape(c, [[16,-16],[42,-22],[50,-6],[36,4],[18,2]], hide);
+  shape(c, [[28,-18],[44,-20],[46,-8],[30,-6]], 'rgba(255,255,255,.12)', 'transparent');
+  shape(c, [[22,-20],[14,-44],[26,-38],[30,-18]], horn, '#6a5c48');
+  line(c, [[18,-40],[27,-22]], '#f7f1e4', 1.2);
+  shape(c, [[30,-22],[32,-46],[42,-38],[38,-18]], horn, '#6a5c48');
+  line(c, [[34,-42],[38,-22]], '#f7f1e4', 1.1);
+  shape(c, [[20,-16],[12,-28],[20,-26],[24,-14]], '#d5cbb8', '#6a5c48');
+  shape(c, [[34,-16],[42,-30],[48,-24],[40,-14]], '#d5cbb8', '#6a5c48');
+  ellipse(c, 38, -11, 3.4, 2.6, '#1a120e');
+  ellipse(c, 38.6, -11.2, 1.7, 1.35, flash ? '#fff' : '#c4492e');
+  c.fillStyle = '#1a100c'; c.fillRect(38, -12.4, 1.45, 2.5);
+  shape(c, [[44,-4],[50,2],[47,8],[41,1]], '#f3efe4', '#6a6256');
+}
+
+function drawTitan(c, now, flash) {
+  const step = Math.sin(now * 0.007) * 2.6;
+  const stone = flash ? '#d5d8dc' : '#3d4a52';
+  const dark = flash ? '#c5c8cc' : '#232c32';
+  const lite = flash ? '#eef1f2' : '#7d8c94';
+  const core = flash ? '#ffffff' : '#7fd0d4';
+  shape(c, [[-18 + step, -8],[-6 + step, -10],[-4 + step, 12],[-20 + step, 12]], dark);
+  shape(c, [[-16 + step, -6],[-10 + step, -8],[-9 + step, 4],[-15 + step, 4]], stone);
+  shape(c, [[8 - step, -8],[20 - step, -10],[22 - step, 12],[6 - step, 12]], dark);
+  shape(c, [[10 - step, -6],[16 - step, -8],[17 - step, 4],[11 - step, 4]], stone);
+  shape(c, [[-26,-48],[22,-50],[28,-12],[-24,-10]], stone);
+  shape(c, [[-22,-46],[4,-48],[2,-16],[-20,-14]], lite, 'transparent');
+  shape(c, [[6,-46],[24,-44],[22,-14],[8,-16]], 'rgba(0,0,0,.28)', 'transparent');
+  line(c, [[-18,-40],[16,-42]], '#141c20', 1.5);
+  line(c, [[-16,-28],[18,-26]], '#141c20', 1.2);
+  shape(c, [[-30,-46],[-16,-52],[-10,-38],[-26,-34]], dark);
+  shape(c, [[16,-50],[30,-44],[26,-32],[12,-36]], lite);
+  shape(c, [[-8,-36],[0,-44],[8,-36],[0,-26]], dark);
+  shape(c, [[-5,-35],[0,-41],[5,-35],[0,-29]], core, '#16383c');
+  shape(c, [[-2,-37],[0,-40],[2,-34],[0,-32]], '#f4fffe', 'transparent');
+  line(c, [[-10,-24],[-2,-16],[6,-24],[12,-15]], core, 1.15);
+  shape(c, [[-14,-66],[14,-68],[16,-50],[-16,-48]], stone);
+  shape(c, [[-12,-64],[2,-66],[0,-52],[-12,-50]], lite, 'transparent');
+  shape(c, [[-16,-60],[-4,-70],[6,-64],[2,-56]], dark);
+  shape(c, [[-8,-60],[-2,-60],[-2,-55],[-8,-55]], '#12181c');
+  shape(c, [[3,-60],[9,-60],[9,-55],[3,-55]], '#12181c');
+  ellipse(c, -5, -57.6, 1.35, 1.05, core);
+  ellipse(c, 6, -57.6, 1.35, 1.05, core);
+}
+
+const BOSS_BODIES = new Set(['dragon', 'colossal_dragon', 'behemoth_king', 'colossal_titan']);
+
+export function drawFieldBoss(c, m, now) {
+  if (!BOSS_BODIES.has(m.type)) return false;
+  const flash = m.hitPulse > 0;
+  const bob = Math.sin(now * 0.014 + ((m.x || 0) % 10)) * (m.isColossal ? 2.2 : 1.2);
+  c.save();
+  c.translate(0, bob);
+  if (m.type === 'behemoth_king') drawBehemoth(c, now, flash);
+  else if (m.type === 'colossal_titan') drawTitan(c, now, flash);
+  else drawAncientDragon(c, now, flash, m.type === 'dragon' ? 0.58 : 1);
+  c.restore();
+  return true;
+}
+
+export function drawRemains(c, r) {
+  const life = Math.max(0, Math.min(1, r.life ?? 1));
+  c.save();
+  c.translate(r.x, r.y);
+  c.globalAlpha = life > 0.35 ? 0.92 : life / 0.35;
+  contactShadow(c, 1, 3, 16, 4.5, 1);
+  shape(c, [[-16,-2],[14,-6],[18,3],[-12,5]], fieldTone(r.cloth || '#6a6258', 0.82));
+  ellipse(c, -18, -1, 5, 4, fieldTone(r.steel || '#8d8680', 0.48));
+  line(c, [[8,0],[20,3],[16,6]], '#3a3834', 2);
+  c.restore();
 }

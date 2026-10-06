@@ -159,6 +159,7 @@ export function updateWounded(game,dt) {
     wounded.downTimer=Math.max(0,(wounded.downTimer??RESCUE_TIMEOUT)-dt);
     if(wounded.downTimer<=0) {
       wounded.dead=true;wounded.isDown=false;wounded.rescueProgress=0;
+      game.leaveRemains?.(wounded);
       game.phaseCasualties=(game.phaseCasualties||0)+1;
       game.showToast?.(`${wounded.name}は力尽きました`);
     }

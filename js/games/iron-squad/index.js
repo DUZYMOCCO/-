@@ -11,7 +11,7 @@
  */
 import { sound } from '../../audio.js';
 import { storage } from '../../storage.js';
-import { drawFieldSoldier, drawFieldMob, drawFieldCommander } from './visuals.js';
+import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow } from './visuals.js';
 import { saveSlots } from './save-slots.js';
 import { WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt } from './world.js';
 import { PHASE_DURATION, REST_DURATION, SOLDIER_SALARY, MIN_REINFORCEMENTS, emptyActivity, advancePhase, advanceRest, recordCombat, recordHealing, healByMedic, participated, finishExperience } from './phase-rules.js';
@@ -732,27 +732,27 @@ export const IronSquadGame = {
           <div class="game-stats" style="flex: 1; justify-content: space-around;">
             <div class="stat-box">
               <span class="stat-label">階級</span>
-              <span id="player-rank" class="stat-value" style="color: #ffaa00;">二等雑兵</span>
+              <span id="player-rank" class="stat-value" style="color: #e1cf9d;">二等雑兵</span>
             </div>
             <div class="stat-box">
               <span class="stat-label">作戦期</span>
-              <span id="current-wave" class="stat-value" style="color: #00f0ff;">第1期</span>
+              <span id="current-wave" class="stat-value" style="color: #d7d3c4;">第1期</span>
             </div>
             <div class="stat-box">
               <span class="stat-label">作戦残時</span>
-              <span id="phase-timer-display" class="stat-value" style="color: #fbbf24; font-family: monospace;">02:00</span>
+              <span id="phase-timer-display" class="stat-value" style="color: #e4d2a4; font-family: monospace;">02:00</span>
             </div>
             <div class="stat-box">
               <span class="stat-label">実戦 / 予備</span>
-              <span id="squad-alive" class="stat-value" style="color: #00ffaa;">30 / 0</span>
+              <span id="squad-alive" class="stat-value" style="color: #d7d3c4;">30 / 0</span>
             </div>
             <div class="stat-box">
               <span class="stat-label">軍資金</span>
-              <span id="current-gold" class="stat-value" style="color: #ffe600;">50G</span>
+              <span id="current-gold" class="stat-value" style="color: #e1cf9d;">50G</span>
             </div>
             <div class="stat-box">
               <span class="stat-label">秘宝</span>
-              <span id="current-orbs" class="stat-value" style="color: #fbbf24;">💎0</span>
+              <span id="current-orbs" class="stat-value" style="color: #e4d2a4;">💎0</span>
             </div>
           </div>
           <button id="btn-strategy" class="icon-btn" title="戦略会議・本陣">⛺</button>
@@ -762,7 +762,7 @@ export const IronSquadGame = {
           <canvas id="game-canvas"></canvas>
 
           <!-- 現在地危険度ゾーン表示（画面左上上部） -->
-          <div id="field-zone-badge" class="proximity-badge" style="top: 10px; left: 10px; background: rgba(15, 23, 42, 0.88); border: 1px solid #34d399; color: #34d399;">
+          <div id="field-zone-badge" class="proximity-badge" style="top: 10px; left: 10px;">
             🛡️ 本陣防衛圏 (★☆☆☆☆)
           </div>
 
@@ -2453,8 +2453,10 @@ export const IronSquadGame = {
     const zoneBadge = document.getElementById('field-zone-badge');
     if (zoneBadge && this.player) {
       const zone = getFieldZone(this.player.x, this.player.y);
-      zoneBadge.style.color = zone.color;
-      zoneBadge.style.borderColor = zone.color;
+      const tone = ['#d9d0b8', '#e4d2a8', '#e0b48a', '#e4c2b4'][(zone.dangerLevel || 1) - 1] || '#d9d0b8';
+      zoneBadge.style.color = tone;
+      zoneBadge.style.borderColor = '#6d6758';
+      zoneBadge.style.background = 'rgba(20,24,22,0.86)';
       zoneBadge.textContent = `${zone.icon} ${zone.shortName} (${zone.dangerStars})`;
     }
 
@@ -2725,6 +2727,23 @@ export const IronSquadGame = {
     }
   },
 
+  leaveRemains(soldier) {
+    this.remains ||= [];
+    this.remains.push({
+      x: soldier.x, y: soldier.y,
+      cloth: soldier.equipped?.armor?.color || '#6a6258',
+      steel: soldier.equipped?.helmet?.color || '#8d8680',
+      life: 1
+    });
+    if (this.remains.length > 56) this.remains.shift();
+  },
+
+  ageRemains(dt) {
+    if (!this.remains?.length || !(dt > 0)) return;
+    for (const remains of this.remains) remains.life -= dt / 26;
+    this.remains = this.remains.filter(remains => remains.life > 0);
+  },
+
   normalizeDeployment() {
     this.reserves ||= [];
     this.squad=this.squad.filter(s=>!s.dead);
@@ -2946,6 +2965,7 @@ export const IronSquadGame = {
 
   update(dt) {
     if (!this.inBattle) return;
+    this.ageRemains(dt);
     this.autoSaveClock = (this.autoSaveClock || 0) + dt;
     if (this.autoSaveClock >= 10) { this.autoSaveClock = 0; this.saveGame(); }
     this.reserveCheckTimer = (this.reserveCheckTimer || 0) + dt;
@@ -5392,6 +5412,9 @@ export const IronSquadGame = {
         if (visible(m)) renderList.push({ y: m.y, draw: () => this.drawMonster(this.ctx, m, now) });
       }
     }
+    for (const remains of this.remains || []) {
+      if (visible(remains)) renderList.push({ y: remains.y, draw: () => drawRemains(this.ctx, remains) });
+    }
     if (this.squad) {
       for (let i = 0; i < this.squad.length; i++) {
         const s = this.squad[i];
@@ -5589,25 +5612,17 @@ export const IronSquadGame = {
     this.worldObjs = this.worldTerrain.draw(ctx,this.camera,this.width,this.height,this.zoom || 1);
     this.worldObjs.push(...this.campObjects);
 
-    // ゾーン境界の淡い同心円リング（危険度ゾーンの可視化）
+    // 地帯の境は、地面に薄い筋だけ残す。名前は左上の札が持つ。
     ctx.save();
     FIELD_ZONES.forEach((z) => {
       if (z.minDist > 0) {
-        ctx.strokeStyle = z.color;
-        ctx.lineWidth = 2.0;
-        ctx.globalAlpha = 0.35;
-        ctx.setLineDash([12, 10]);
+        ctx.strokeStyle = '#8a8170';
+        ctx.lineWidth = 1;
+        ctx.globalAlpha = 0.14;
+        ctx.setLineDash([10, 18]);
         ctx.beginPath();
         ctx.arc(BASE_CAMP.x, BASE_CAMP.y, z.minDist, 0, Math.PI * 2);
         ctx.stroke();
-
-        // 境界ラベル
-        ctx.fillStyle = z.color;
-        ctx.font = 'bold 12px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.globalAlpha = 0.65;
-        ctx.setLineDash([]);
-        ctx.fillText(`─── ${z.icon} ${z.name} 境界 ───`, BASE_CAMP.x, BASE_CAMP.y - z.minDist + 16);
       }
     });
     ctx.restore();
@@ -6245,18 +6260,16 @@ export const IronSquadGame = {
     const isLeft = (m.vx !== undefined && m.vx < -0.1) || ((this.player && this.player.x < m.x) && (!m.vx || Math.abs(m.vx) < 0.1));
     const bob = Math.sin(now * 0.014 + (m.x % 10)) * (m.isColossal ? 3.0 : 1.6);
 
-    // 1. 足元接地ソフトシャドウ (斜め見下ろしの横長平楕円)
-    ctx.fillStyle = m.isColossal ? 'rgba(0,0,0,0.55)' : 'rgba(0,0,0,0.38)';
-    ctx.beginPath();
-    ctx.ellipse(0, m.isColossal ? 8 : 2, m.radius * (m.isColossal ? 1.1 : 0.95), m.radius * (m.isColossal ? 0.45 : 0.38), 0, 0, Math.PI * 2);
-    ctx.fill();
+    const plant = Math.abs(Math.sin(now * 0.017 + (m.x || 0)));
+    const big = !!m.isColossal;
+    contactShadow(ctx, big ? 2 : 1, big ? 8 : 2, m.radius * (big ? 1.02 : 0.92), m.radius * (big ? 0.34 : 0.3), plant);
 
     // 左右反転コンテキスト
     ctx.save();
     if (isLeft) ctx.scale(-1, 1);
 
-    if (drawFieldMob(ctx, m, now)) {
-      // Common creatures use the quiet field illustration; bosses keep their silhouettes.
+    if (drawFieldBoss(ctx, m, now) || drawFieldMob(ctx, m, now)) {
+      // Bosses and common creatures share the live field illustration.
     } else if (m.type === 'slime') {
       // ===== 🟢 スライム (近郊安全ゾーン・ぷるぷる揺れる半透明ゲル) =====
       const bodyColor = m.hitPulse > 0 ? '#ffffff' : '#34d399';
@@ -6483,239 +6496,6 @@ export const IronSquadGame = {
       ctx.fillStyle = '#fbbf24';
       ctx.fillRect(9, -17 + bob, 2, 2);
 
-    } else if (m.type === 'behemoth_king') {
-      // ===== 🦏👑 巨獣王ベヒーモスキング (どでかい大ボス・超重量級の大地暴君) =====
-      const bodyColor = m.hitPulse > 0 ? '#ffffff' : '#78350f';
-      const armorColor = m.hitPulse > 0 ? '#ffffff' : '#b45309';
-
-      // 足元の大地激震クラックオーラ
-      ctx.save();
-      ctx.strokeStyle = 'rgba(245, 158, 11, 0.55)';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.ellipse(0, 8, 48, 18, 0, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.restore();
-
-      // 4本の極太支柱脚
-      const bStep = Math.sin(now * 0.008 + m.x) * 4;
-      ctx.fillStyle = '#451a03';
-      ctx.fillRect(-22 + bStep, -10, 11, 18);
-      ctx.fillRect(-8 - bStep, -10, 11, 18);
-      ctx.fillRect(8 + bStep, -10, 11, 18);
-      ctx.fillRect(20 - bStep, -10, 11, 18);
-
-      // 超巨大装甲胴体
-      ctx.fillStyle = bodyColor;
-      ctx.beginPath();
-      ctx.ellipse(0, -24 + bob, 34, 26, 0.05, 0, Math.PI * 2);
-      ctx.fill();
-
-      // 背中の毛皮装甲プレート
-      ctx.fillStyle = armorColor;
-      ctx.beginPath();
-      ctx.ellipse(0, -32 + bob, 28, 14, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      // 巨頭
-      ctx.fillStyle = bodyColor;
-      ctx.beginPath();
-      ctx.arc(24, -34 + bob, 18, 0, Math.PI * 2);
-      ctx.fill();
-
-      // 長大な4本の大白角
-      ctx.fillStyle = '#f8fafc';
-      ctx.beginPath();
-      ctx.moveTo(26, -38 + bob);
-      ctx.lineTo(44, -58 + bob);
-      ctx.lineTo(34, -40 + bob);
-      ctx.closePath();
-      ctx.fill();
-      ctx.beginPath();
-      ctx.moveTo(18, -36 + bob);
-      ctx.lineTo(32, -54 + bob);
-      ctx.lineTo(24, -38 + bob);
-      ctx.closePath();
-      ctx.fill();
-
-      // 怒号の赤光眼
-      ctx.fillStyle = '#ef4444';
-      ctx.fillRect(30, -38 + bob, 4.5, 4.5);
-
-      // 口元の鋭利な牙
-      ctx.fillStyle = '#f8fafc';
-      ctx.fillRect(34, -26 + bob, 3, 5);
-
-    } else if (m.type === 'colossal_titan') {
-      // ===== 🗿✨ 古代巨神コロッサスタイタン (どでかい大ボス・古代神話ゴーレム) =====
-      const bodyColor = m.hitPulse > 0 ? '#ffffff' : '#1e293b';
-      const runeColor = m.hitPulse > 0 ? '#ffffff' : '#06b6d4';
-
-      // 足元の古代ルーン輪
-      ctx.save();
-      ctx.strokeStyle = 'rgba(6, 182, 212, 0.55)';
-      ctx.lineWidth = 2.5;
-      ctx.setLineDash([8, 4]);
-      ctx.beginPath();
-      ctx.ellipse(0, 6, 44, 16, 0, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.restore();
-
-      // 巨岩の足柱
-      const tStep = Math.sin(now * 0.007 + m.x) * 3;
-      ctx.fillStyle = '#0f172a';
-      ctx.fillRect(-16 + tStep, -12, 12, 20);
-      ctx.fillRect(8 - tStep, -12, 12, 20);
-
-      // 巨体胴体
-      ctx.fillStyle = bodyColor;
-      ctx.beginPath();
-      ctx.roundRect(-24, -46 + bob, 48, 38, 8);
-      ctx.fill();
-
-      // 胸の光るコア（脈動）
-      const corePulse = Math.sin(now * 0.01) * 3;
-      ctx.fillStyle = runeColor;
-      ctx.beginPath();
-      ctx.arc(0, -28 + bob, 9 + corePulse, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath();
-      ctx.arc(0, -28 + bob, 4, 0, Math.PI * 2);
-      ctx.fill();
-
-      // 角ばった頭部
-      ctx.fillStyle = '#334155';
-      ctx.fillRect(-12, -60 + bob, 24, 16);
-
-      // 青白く光る古代の眼
-      ctx.fillStyle = runeColor;
-      ctx.fillRect(-6, -54 + bob, 4, 3);
-      ctx.fillRect(4, -54 + bob, 4, 3);
-
-    } else if (m.type === 'colossal_dragon') {
-      // ===== 🐉🔥 超巨大古竜エンシェントドラゴン (どでかい大ボス・原初の滅竜) =====
-      const bodyColor = m.hitPulse > 0 ? '#ffffff' : '#991b1b';
-      const wingColor = m.hitPulse > 0 ? '#ffffff' : '#450a0a';
-      const flap = Math.sin(now * 0.005) * 16;
-
-      // 巨大紅蓮魔法陣オーラ (足元地面)
-      ctx.save();
-      ctx.strokeStyle = 'rgba(239, 68, 68, 0.65)';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.ellipse(0, 4, 46, 18, 0, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.restore();
-
-      // 奥側の広大な大翼
-      ctx.fillStyle = wingColor;
-      ctx.beginPath();
-      ctx.moveTo(-8, -32 + bob);
-      ctx.lineTo(-48, -65 + flap + bob);
-      ctx.lineTo(-32, -26 + bob);
-      ctx.closePath();
-      ctx.fill();
-
-      // 巨竜の足
-      ctx.fillStyle = '#450a0a';
-      ctx.fillRect(-14, -10, 10, 14);
-      ctx.fillRect(8, -10, 10, 14);
-
-      // 巨大胴体
-      ctx.fillStyle = bodyColor;
-      ctx.beginPath();
-      ctx.ellipse(0, -28 + bob, 26, 20, 0.15, 0, Math.PI * 2);
-      ctx.fill();
-
-      // 手前側の広大な大翼
-      ctx.fillStyle = wingColor;
-      ctx.beginPath();
-      ctx.moveTo(10, -32 + bob);
-      ctx.lineTo(52, -62 + flap + bob);
-      ctx.lineTo(28, -24 + bob);
-      ctx.closePath();
-      ctx.fill();
-
-      // 巨大竜頭
-      ctx.fillStyle = bodyColor;
-      ctx.beginPath();
-      ctx.ellipse(18, -42 + bob, 15, 11, 0.25, 0, Math.PI * 2);
-      ctx.fill();
-
-      // 黒曜石の長大な双角
-      ctx.fillStyle = '#0f172a';
-      ctx.beginPath();
-      ctx.moveTo(12, -48 + bob);
-      ctx.lineTo(24, -68 + bob);
-      ctx.lineTo(26, -50 + bob);
-      ctx.closePath();
-      ctx.fill();
-
-      // 燃え盛る黄金眼
-      ctx.fillStyle = '#fbbf24';
-      ctx.fillRect(20, -45 + bob, 4.5, 4);
-
-      // 牙
-      ctx.fillStyle = '#f8fafc';
-      ctx.fillRect(25, -38 + bob, 3, 4);
-
-    } else {
-      // ===== 🐉 通常ドラゴン (中ボス) =====
-      const bodyColor = m.hitPulse > 0 ? '#ffffff' : '#b91c1c';
-      const wingColor = m.hitPulse > 0 ? '#ffffff' : '#7f1d1d';
-      const flap = Math.sin(now * 0.006) * 10;
-
-      ctx.save();
-      ctx.strokeStyle = 'rgba(239, 68, 68, 0.45)';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.ellipse(0, 0, 28, 12, 0, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.restore();
-
-      ctx.fillStyle = wingColor;
-      ctx.beginPath();
-      ctx.moveTo(-4, -20 + bob);
-      ctx.lineTo(-26, -38 + flap + bob);
-      ctx.lineTo(-18, -16 + bob);
-      ctx.closePath();
-      ctx.fill();
-
-      ctx.fillStyle = '#7f1d1d';
-      ctx.fillRect(-8, -6, 6, 7);
-      ctx.fillRect(4, -6, 6, 7);
-
-      ctx.fillStyle = bodyColor;
-      ctx.beginPath();
-      ctx.ellipse(0, -18 + bob, 15, 12, 0.15, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.fillStyle = wingColor;
-      ctx.beginPath();
-      ctx.moveTo(6, -20 + bob);
-      ctx.lineTo(28, -36 + flap + bob);
-      ctx.lineTo(16, -14 + bob);
-      ctx.closePath();
-      ctx.fill();
-
-      ctx.fillStyle = bodyColor;
-      ctx.beginPath();
-      ctx.ellipse(10, -26 + bob, 9, 7, 0.3, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.fillStyle = '#0f172a';
-      ctx.beginPath();
-      ctx.moveTo(6, -29 + bob);
-      ctx.lineTo(12, -42 + bob);
-      ctx.lineTo(14, -30 + bob);
-      ctx.closePath();
-      ctx.fill();
-
-      ctx.fillStyle = '#facc15';
-      ctx.fillRect(12, -28 + bob, 3, 2.5);
-      ctx.fillStyle = '#f8fafc';
-      ctx.fillRect(15, -24 + bob, 2, 2.5);
     }
 
     ctx.restore(); // 反転復元

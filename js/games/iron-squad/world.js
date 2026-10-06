@@ -14,10 +14,10 @@ const ellipse = (c,x,y,rx,ry,color) => {
 };
 export const biomeAt = (x,y) => {
   const d=Math.hypot(x-CENTER,y-CENTER);
-  if(d<1200) return {name:'本陣近郊の草原',ground:'#2c4330',grass:'#597a49',tree:'oak'};
-  if(d<2700) return {name:'辺境の深い森',ground:'#263c31',grass:'#426b47',tree:'pine'};
-  if(d<4400) return {name:'遺跡と枯れ野',ground:'#494739',grass:'#7b7753',tree:'dead'};
-  return {name:'最果ての岩山',ground:'#3b4141',grass:'#646b60',tree:'dead'};
+  if(d<1200) return {name:'本陣近郊の草原',ground:'#17241c',grass:'#3a5536',tree:'oak'};
+  if(d<2700) return {name:'辺境の深い森',ground:'#121e1a',grass:'#2c4634',tree:'pine'};
+  if(d<4400) return {name:'遺跡と枯れ野',ground:'#26241c',grass:'#5a563c',tree:'dead'};
+  return {name:'最果ての岩山',ground:'#1a1e1e',grass:'#3c423e',tree:'dead'};
 };
 // Smooth roads are shared across tile boundaries, independent of generation order.
 const roadDist = (x,y) => Math.min(
@@ -61,7 +61,7 @@ export class WorldTerrain {
       const x=rnd()*TILE,y=rnd()*TILE,wx=x+x0,wy=y+y0;
       const d=roadDist(wx,wy),b=biomeAt(wx,wy);
       if(d<26) { c.fillStyle='#b2a17b55';c.fillRect(x,y,1+rnd()*2,1);continue; }
-      c.strokeStyle=b.grass;c.globalAlpha=.35+rnd()*.4;c.lineWidth=1;
+      c.strokeStyle=b.grass;c.globalAlpha=.14+rnd()*.16;c.lineWidth=1;
       c.beginPath();c.moveTo(x-2,y-4);c.lineTo(x,y);c.lineTo(x+2,y-5-rnd()*3);c.stroke();
     }
     c.globalAlpha=1;
