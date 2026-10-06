@@ -8,6 +8,38 @@
 #app { height: 100dvh; }
 .game-container, .game-wrapper, .canvas-container { min-height: 0; }
 .iron-squad { position: relative; }
+.world-map-toggle {
+  position: absolute; top: 134px; right: 10px; z-index: 12; min-width: 66px; min-height: 36px;
+  border: 1px solid #7c8877; border-radius: 8px; background: #263c35; color: #e2dac4;
+  font-size: 12px; cursor: pointer;
+}
+.dialog-open .world-map-toggle { visibility: hidden; pointer-events: none; }
+.iron-squad #phase-complete-banner {
+  left: 10px !important; transform: none !important; width: calc(100% - 110px); max-width: 260px;
+}
+.save-heading { padding: 18px; border-bottom: 1px solid #465252; flex-shrink: 0; }
+.save-heading h2 { color: #e1cf9d; font-size: 23px; margin: 4px 0 8px; }
+.save-heading p, .new-expedition p, .save-card p, .world-map-body p { font-size: 12px; color: #b5c0b4; line-height: 1.6; }
+.save-eyebrow { color: #a6b394; letter-spacing: 3px; font-size: 10px; }
+.new-expedition { padding: 14px; background: #2b3838; border: 1px solid #63745c; border-radius: 10px; }
+.new-expedition label { display: block; color: #dadac5; font-size: 12px; margin-bottom: 8px; }
+.save-name { width: 100%; height: 44px; margin-bottom: 10px; padding: 8px 10px; border: 1px solid #798773; border-radius: 6px; background: #192426; color: #e8e4d3; font-size: 16px; user-select: text; -webkit-user-select: text; }
+.save-section-title { font-size: 14px; color: #dbc99d; margin: 20px 0 10px; }
+.save-card { padding: 14px; border: 1px solid #54655b; border-radius: 10px; margin-bottom: 12px; background: #253232; }
+.save-card h4 { color: #e6dfc4; margin-bottom: 6px; font-size: 15px; overflow-wrap: anywhere; }
+.save-card .save-date { color: #9bac9c; font-size: 11px; margin-bottom: 10px; }
+.save-card .action-btn { font-size: 13px; margin: 0; }
+.reinforcement-summary { padding: 10px; margin-bottom: 8px; border: 1px solid #738574; border-radius: 8px; background: #30423a; color: #d2dec4; font-size: 12px; line-height: 1.6; }
+.reserve-roster { margin-bottom: 12px; padding: 8px 10px; border: 1px solid #56685e; border-radius: 8px; color: #c7d0b9; font-size: 12px; }
+.reserve-roster summary { min-height: 36px; line-height: 36px; cursor: pointer; }
+.reserve-row { padding: 8px 0; border-top: 1px solid #46584d; line-height: 1.6; }
+.commander-portrait { float: left; width: 56px; height: 64px; margin: 0 10px 8px 0; background: #172627; border: 1px solid #6e7f72; border-radius: 6px; }
+#player-record-box > div { flex-wrap: wrap; gap: 5px; line-height: 1.6; }
+.commander-experience { clear: both; padding-top: 8px; color: #c7d0b9; font-size: 11px; }
+.map-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 12px; border-bottom: 1px solid #465252; }
+.map-heading h2 { color: #ddcfa3; font-size: 17px; }
+.world-map-body canvas { width: 100%; height: auto; max-width: 600px; border: 1px solid #7b8772; }
+.world-map-body p { margin-top: 8px; }
 .iron-squad .game-header {
   height: auto; min-height: 82px; flex-shrink: 0; gap: 8px; padding: 8px;
   background: #192426; border-color: #68725e;
@@ -103,6 +135,8 @@
   .iron-squad .dialog-heading { padding: 6px 12px; }
   .iron-squad .dialog-tabs { padding: 4px 12px; }
   .iron-squad .dialog-footer { padding: 4px 12px; }
+  .save-heading { padding: 8px 12px; }
+  .save-heading h2 { font-size: 18px; margin: 2px 0; }
 }
 @media (prefers-reduced-motion: reduce) {
   .iron-squad * { animation: none !important; transition: none !important; }

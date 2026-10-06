@@ -24,6 +24,16 @@ export const storage = {
     }
   },
 
+  remove(key) {
+    try {
+      localStorage.removeItem(STORAGE_PREFIX + key);
+      return true;
+    } catch (error) {
+      console.warn('Storage remove error:', error);
+      return false;
+    }
+  },
+
   getHighScore(gameId) {
     return this.get(`highscore_${gameId}`, 0);
   },

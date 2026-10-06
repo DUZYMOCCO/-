@@ -11,11 +11,14 @@
  */
 import { sound } from '../../audio.js';
 import { storage } from '../../storage.js';
-import { drawFieldSoldier, drawFieldMob } from './visuals.js';
+import { drawFieldSoldier, drawFieldMob, drawFieldCommander } from './visuals.js';
+import { saveSlots } from './save-slots.js';
+import { WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt } from './world.js';
+import { PHASE_DURATION, MIN_REINFORCEMENTS, emptyActivity, advancePhase, recordCombat, recordHealing, healByMedic, participated, finishExperience } from './phase-rules.js';
 
-const MAP_WIDTH = 1800;
-const MAP_HEIGHT = 1800;
-const BASE_CAMP = { x: 900, y: 900, radius: 150 };
+const MAP_WIDTH = WORLD_SIZE;
+const MAP_HEIGHT = WORLD_SIZE;
+const BASE_CAMP = { x: WORLD_SIZE / 2, y: WORLD_SIZE / 2, radius: 150 };
 
 // フィールド危険度ゾーン定義（本陣からの距離に応じて敵の強さ・種類・ドロップが劇的にスケールアップ！）
 export const FIELD_ZONES = [
@@ -25,7 +28,7 @@ export const FIELD_ZONES = [
     shortName: '本陣防衛圏',
     icon: '🛡️',
     minDist: 0,
-    maxDist: 340,
+    maxDist: 1200,
     dangerLevel: 1,
     dangerStars: '★☆☆☆☆',
     color: '#34d399',
@@ -44,8 +47,8 @@ export const FIELD_ZONES = [
     name: '警戒辺境 (昏き森林)',
     shortName: '警戒辺境',
     icon: '🌲',
-    minDist: 340,
-    maxDist: 660,
+    minDist: 1200,
+    maxDist: 2700,
     dangerLevel: 2,
     dangerStars: '★★☆☆☆',
     color: '#f59e0b',
@@ -64,8 +67,8 @@ export const FIELD_ZONES = [
     name: '魔境深部 (死霊荒野)',
     shortName: '魔境深部',
     icon: '💀',
-    minDist: 660,
-    maxDist: 960,
+    minDist: 2700,
+    maxDist: 4400,
     dangerLevel: 3,
     dangerStars: '★★★☆☆',
     color: '#a855f7',
@@ -84,8 +87,8 @@ export const FIELD_ZONES = [
     name: '最果て (巨獣の巣窟・極限死地)',
     shortName: '最果ての死地',
     icon: '👑',
-    minDist: 960,
-    maxDist: 2500,
+    minDist: 4400,
+    maxDist: 8000,
     dangerLevel: 4,
     dangerStars: '★★★★★',
     color: '#ef4444',
@@ -717,16 +720,17 @@ export const IronSquadGame = {
     this.zoom = 1.0;
     this.zoomLevels = [1.0, 1.25, 1.5, 0.75];
     this.zoomIndex = 0;
+    this.player = null;
+    this.squad = [];
+    this.activeSlotId = null;
+    this.saveMenu = null;
+    this.worldMapModal = null;
+    this.autoSaveClock = 0;
+    this.inBattle = false;
     this.setupUI();
     this.setupGame();
 
-    // 中断データがあれば自動再開、なければ新兵として即出撃
-    const saved = storage.get('ironsquad_save_data_v3', null);
-    if (saved && saved.wave && saved.player) {
-      this.resumeSavedGame();
-    } else {
-      this.startFreshGame();
-    }
+    this.showSaveMenu();
   },
 
   setupUI() {
@@ -745,11 +749,11 @@ export const IronSquadGame = {
             </div>
             <div class="stat-box">
               <span class="stat-label">作戦残時</span>
-              <span id="phase-timer-display" class="stat-value" style="color: #fbbf24; font-family: monospace;">01:15</span>
+              <span id="phase-timer-display" class="stat-value" style="color: #fbbf24; font-family: monospace;">02:00</span>
             </div>
             <div class="stat-box">
-              <span class="stat-label">生存部隊</span>
-              <span id="squad-alive" class="stat-value" style="color: #00ffaa;">10/10</span>
+              <span class="stat-label">実戦 / 予備</span>
+              <span id="squad-alive" class="stat-value" style="color: #00ffaa;">20 / 0</span>
             </div>
             <div class="stat-box">
               <span class="stat-label">軍資金</span>
@@ -823,6 +827,7 @@ export const IronSquadGame = {
           </div>
           <!-- カメラ倍率切替ボタン -->
           <button id="btn-zoom-toggle" class="zoom-toggle-btn" title="カメラ倍率切替">🔍 1.0x</button>
+          <button id="btn-world-map" class="world-map-toggle" title="全体地図を開く">地図</button>
 
           <!-- 戦略タイム（宿営地）モーダル -->
           <div id="strategy-modal" class="game-overlay hidden">
@@ -853,6 +858,8 @@ export const IronSquadGame = {
 
               <!-- 部隊名簿 ＆ 叙勲タブ -->
               <div id="view-strat-squad">
+                <div id="reinforcement-summary" class="reinforcement-summary"></div>
+                <details id="reserve-roster" class="reserve-roster"><summary id="reserve-roster-title">本陣の予備兵</summary><div id="reserve-roster-list"></div></details>
                 <!-- 💰 資金援助の一括設定バー (インフレ・大量一括支給対応) -->
                 <div style="background: rgba(2, 132, 199, 0.15); border: 1px solid rgba(2, 132, 199, 0.4); border-radius: 6px; padding: 6px 10px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; font-size: 11px; flex-wrap: wrap; gap: 4px;">
                   <div style="display: flex; align-items: center; gap: 6px;">
@@ -874,7 +881,7 @@ export const IronSquadGame = {
                 </div>
 
                 <div style="font-size: 11px; color: #aaa; margin-bottom: 6px;">
-                  💡 2回以上生き残った兵士は「叙勲」で名前と二つ名が授与され大幅強化！
+                  攻撃・被攻撃・実回復を行った戦線だけ経験を記録。経験2戦線で叙勲可能。
                 </div>
                 <div id="squad-roster-list" class="squad-list-box" style="margin-bottom: 12px; max-height: 200px; overflow-y: auto;"></div>
               </div>
@@ -888,7 +895,7 @@ export const IronSquadGame = {
 
               <button id="btn-start-next-wave" class="action-btn" style="margin-top: 4px;">⚔️ 戦場へ復帰する (会議終了)</button>
               <button id="btn-close-strat" class="action-btn secondary hidden" style="margin-top: 6px;">戦場に戻る</button>
-              <button id="btn-restart-from-strat" class="action-btn secondary" style="margin-top: 10px; border-color: rgba(239, 68, 68, 0.4); color: #f87171;">🔄 新兵として最初からやり直す</button>
+              <button id="btn-restart-from-strat" class="action-btn secondary" style="margin-top: 10px; border-color: rgba(239, 68, 68, 0.4); color: #f87171;">ニューゲーム・セーブ選択</button>
             </div>
           </div>
 
@@ -903,6 +910,7 @@ export const IronSquadGame = {
               </p>
               <p id="overlay-veteran-note" style="font-size: 11px; color: #38bdf8; margin-bottom: 14px;">※生存兵士は次戦に先輩として引き継がれます</p>
               <button id="btn-restart" class="action-btn">新兵として再入隊</button>
+              <button id="btn-gameover-save-select" class="action-btn secondary">ニューゲーム・セーブ選択</button>
               <button id="btn-overlay-back" class="action-btn secondary">工房へ戻る</button>
             </div>
           </div>
@@ -911,6 +919,7 @@ export const IronSquadGame = {
     `;
 
     this.configureStrategyPanel();
+    document.getElementById('btn-world-map').addEventListener('click',()=>this.openWorldMap());
 
     document.getElementById('btn-back').addEventListener('click', () => {
       sound.playTap();
@@ -946,9 +955,8 @@ export const IronSquadGame = {
     if (restartStratBtn) {
       restartStratBtn.addEventListener('click', () => {
         sound.playTap();
-        this.closeStrategyModal();
-        this.clearSavedGame();
-        this.startFreshGame();
+        this.saveGame();
+        this.showSaveMenu();
       });
     }
 
@@ -958,6 +966,8 @@ export const IronSquadGame = {
       this.setDialogState(false);
       this.startFreshGame();
     });
+
+    document.getElementById('btn-gameover-save-select').addEventListener('click',()=>this.showSaveMenu());
 
     document.getElementById('btn-overlay-back').addEventListener('click', () => {
       sound.playTap();
@@ -1096,6 +1106,107 @@ export const IronSquadGame = {
     document.getElementById('btn-strategy')?.focus();
   },
 
+  showSaveMenu() {
+    this.stopGameLoop();
+    this.inBattle = false;
+    this.resetMovementInput();
+    document.getElementById('strategy-modal').classList.add('hidden');
+    document.getElementById('game-overlay').classList.add('hidden');
+    this.worldMapModal?.classList.add('hidden');
+    if (!this.saveMenu) {
+      this.saveMenu = document.createElement('div');
+      this.saveMenu.id = 'save-menu'; this.saveMenu.className = 'game-overlay';
+      this.saveMenu.setAttribute('role','dialog'); this.saveMenu.setAttribute('aria-modal','true');
+      this.saveMenu.setAttribute('aria-labelledby','save-menu-title');
+      this.container.querySelector('.game-wrapper').append(this.saveMenu);
+    }
+    this.saveMenu.innerHTML = `
+      <section class="strategy-panel save-panel">
+        <header class="save-heading"><span class="save-eyebrow">IRON SQUAD</span>
+          <h2 id="save-menu-title" tabindex="-1">遠征を選ぶ</h2><p>新しい部隊で出発するか、記録した遠征を続けます。</p></header>
+        <div class="dialog-body">
+          <form id="new-expedition-form" class="new-expedition">
+            <label for="expedition-name">新しい遠征の名前</label>
+            <input id="expedition-name" class="save-name" type="text" maxlength="40" placeholder="例：第一遠征隊" autocomplete="off">
+            <button class="action-btn" type="submit">ニューゲーム</button>
+            <p>第1期・新兵20名から開始。既存の遠征はそのまま残ります。</p>
+          </form>
+          <h3 class="save-section-title">保存した遠征</h3><div id="save-slot-list"></div>
+        </div>
+        <footer class="dialog-footer"><button id="btn-save-menu-back" class="action-btn secondary">工房へ戻る</button></footer>
+      </section>`;
+    const list=this.saveMenu.querySelector('#save-slot-list');
+    try {
+      const slots=saveSlots.list().sort((a,b)=>b.savedAt-a.savedAt);
+      if (!slots.length) list.textContent='まだ遠征の記録はありません。ニューゲームから出発できます。';
+      for(const slot of slots) {
+        const card=document.createElement('article');card.className='save-card';
+        const name=document.createElement('h4');name.textContent=slot.name;
+        const details=document.createElement('p');
+        const data=slot.data;
+        details.textContent=data ? `第${data.phase || data.wave || 1}期 · Lv.${data.player?.level || 1} · ${(data.gold || 0).toLocaleString()}G · 生存${data.squad?.length || 0}名` : '生存部隊の引き継ぎ記録';
+        const date=document.createElement('p');date.className='save-date';
+        date.textContent=`${slot.state==='fallen'?'討死 · ':''}${new Date(slot.savedAt).toLocaleString('ja-JP')}`;
+        const button=document.createElement('button');button.className='action-btn';button.dataset.slotId=slot.id;
+        button.textContent=slot.state==='fallen'?'先輩を引き継いで再入隊':'このセーブで続ける';
+        button.addEventListener('click',()=>this.selectSaveSlot(slot.id));
+        card.append(name,details,date,button);list.append(card);
+      }
+    } catch(error) { list.textContent=error.message; }
+    this.saveMenu.querySelector('#new-expedition-form').addEventListener('submit',e=>{
+      e.preventDefault();
+      try {
+        const slot=saveSlots.create(this.saveMenu.querySelector('#expedition-name').value);
+        this.activeSlotId=slot.id;this.beginSelectedExpedition();this.startFreshGame(false);
+      } catch(error) { list.textContent=error.message; }
+    });
+    this.saveMenu.querySelector('#btn-save-menu-back').addEventListener('click',()=>{
+      this.destroy();this.onBackToHub();
+    });
+    this.saveMenu.classList.remove('hidden');this.setDialogState(true);
+    this.saveMenu.querySelector('#save-menu-title').focus({preventScroll:true});
+  },
+
+  beginSelectedExpedition() {
+    this.saveMenu.classList.add('hidden');
+    this.setDialogState(false);this.resetMovementInput();
+    const slot=saveSlots.get(this.activeSlotId);
+    document.getElementById('btn-back').title=`${slot?.name || '遠征'}を保存して工房へ戻る`;
+  },
+
+  selectSaveSlot(id) {
+    const slot=saveSlots.get(id);
+    if(!slot) return;
+    this.activeSlotId=id;this.beginSelectedExpedition();
+    if(slot.state==='fallen' || !slot.data) this.startFreshGame(slot.state==='fallen');
+    else this.resumeSavedGame(slot.data);
+  },
+
+  openWorldMap() {
+    this.inBattle=false;this.resetMovementInput();
+    if(!this.worldMapModal) {
+      this.worldMapModal=document.createElement('div');
+      this.worldMapModal.id='world-map-modal';this.worldMapModal.className='game-overlay';
+      this.worldMapModal.setAttribute('role','dialog');this.worldMapModal.setAttribute('aria-modal','true');
+      this.worldMapModal.setAttribute('aria-labelledby','world-map-title');
+      this.worldMapModal.innerHTML=`<section class="strategy-panel">
+        <header class="map-heading"><h2 id="world-map-title">遠征地図</h2><button id="btn-world-map-close" class="dialog-close">閉じる ×</button></header>
+        <div class="dialog-body world-map-body"><canvas id="world-map-canvas" width="600" height="600" role="img" aria-label="本陣・12拠点・現在地を示す全体地図"></canvas>
+        <p>白：現在地　淡黄：本陣　橙：未制圧拠点　緑：制圧済み　赤：大ボス</p>
+        <p id="world-location"></p><p>草原 → 深い森 → 遺跡と枯れ野 → 最果ての岩山</p></div></section>`;
+      this.container.querySelector('.game-wrapper').append(this.worldMapModal);
+      const close=()=>{this.worldMapModal.classList.add('hidden');this.setDialogState(false);this.inBattle=true;};
+      this.worldMapModal.querySelector('#btn-world-map-close').addEventListener('click',close);
+      this.worldMapModal.addEventListener('keydown',e=>{if(e.key==='Escape')close();});
+    }
+    this.worldMapModal.classList.remove('hidden');this.setDialogState(true);
+    const canvas=this.worldMapModal.querySelector('canvas');
+    this.worldTerrain.drawOverview(canvas.getContext('2d'),canvas.width,this);
+    this.worldMapModal.querySelector('#world-location').textContent=
+      `${biomeAt(this.player.x,this.player.y).name} · 本陣から${Math.round(Math.hypot(this.player.x-BASE_CAMP.x,this.player.y-BASE_CAMP.y))}m · 制圧${this.outposts.filter(o=>o.cleared).length}/${this.outposts.length}`;
+    this.worldMapModal.querySelector('#btn-world-map-close').focus();
+  },
+
   toggleZoom() {
     this.zoomIndex = ((this.zoomIndex || 0) + 1) % this.zoomLevels.length;
     this.setZoom(this.zoomLevels[this.zoomIndex]);
@@ -1133,6 +1244,7 @@ export const IronSquadGame = {
 
     // 画面切り替え（タブ・別アプリ移動からの復帰）時のデルタタイム＆リサイズ安全化
     this.handleVisibility = () => {
+      if (document.hidden) this.saveGame();
       if (!document.hidden) {
         this.lastTime = performance.now();
         if (this.resizeCanvas) this.resizeCanvas();
@@ -1142,7 +1254,6 @@ export const IronSquadGame = {
 
     this.buildTerrain();
     this.setupInput();
-    this.startGameLoop();
   },
 
   startGameLoop() {
@@ -1176,7 +1287,16 @@ export const IronSquadGame = {
     }
   },
 
-  startFreshGame() {
+  startFreshGame(inheritVeterans = true) {
+    this.phase = 1;
+    this.phaseTimer = PHASE_DURATION;
+    this.totalBattleTime = 0;
+    this.treatmentReport = null;
+    this.deathlineReport = null;
+    this.autoSaveClock = 0;
+    this.recruitSequence = 0;
+    this.lastReinforcements = null;
+    this.reserveCheckTimer = 0;
     this.wave = 1;
     this.exp = 0;
     this.gold = 50;
@@ -1199,6 +1319,7 @@ export const IronSquadGame = {
       bossKills: 0,
       kills: 0,
       survivedWaves: 0,
+      phaseActivity: emptyActivity(),
       hp: 130,
       maxHp: 130,
       def: 0,
@@ -1230,7 +1351,9 @@ export const IronSquadGame = {
     this.projectiles = []; // 弓矢・ヒール光弾
 
     // 先輩兵士引き継ぎチェック
-    const veterans = storage.get('ironsquad_veterans_backup', null);
+    const inherited = inheritVeterans ? saveSlots.get(this.activeSlotId) : null;
+    const veterans = inherited?.veterans;
+    this.reserves = inherited?.reserveSurvivors || [];
     this.squad = [];
     let hasVeterans = false;
 
@@ -1242,27 +1365,28 @@ export const IronSquadGame = {
         vet.downTimer = 0;
         vet.rescueProgress = 0;
         vet.isVeteran = true;
+        vet.phaseActivity = emptyActivity();
         vet.x = BASE_CAMP.x + (Math.random() - 0.5) * 120;
         vet.y = BASE_CAMP.y + (Math.random() - 0.5) * 120;
         this.recalcSoldierStats(vet);
         vet.hp = vet.maxHp;
         this.squad.push(vet);
       });
-      storage.set('ironsquad_veterans_backup', null); // 1回引き継いだらクリア
+      // Veteran inheritance belongs to this expedition only.
     }
 
-    // 定員（20名）まで新兵を補充
-    let fillIndex = 1;
-    while (this.squad.length < 20) {
-      this.squad.push(this.createNewSoldier(this.squad.length + fillIndex));
-      fillIndex++;
-    }
+    this.recruitSequence=[...this.squad,...this.reserves].reduce((max,s)=>Math.max(max,Number(s.name?.match(/#(\d+)/)?.[1] || 0)),0);
+    this.normalizeDeployment();
+    this.deployReserves();
+    // Start a new commander with a full 20-person detachment.
+    while (this.squad.length < 20) this.squad.push(this.createNewSoldier());
 
     this.initPlatoons();
     this.initOutposts();
     this.assignWaveQuest();
     this.recalcPlayerStats();
     this.initBattlefield();
+    saveSlots.update(this.activeSlotId, {state:'active', veterans:[], reserveSurvivors:[]});
     this.saveGame();
     this.updateStatsUI();
     this.camera = { x: BASE_CAMP.x, y: BASE_CAMP.y };
@@ -1291,73 +1415,29 @@ export const IronSquadGame = {
   },
 
   initOutposts() {
-    this.outposts = [
-      {
-        id: 'outpost_fort',
-        type: 'FORT',
-        name: OUTPOST_DEFS.FORT.name,
-        icon: OUTPOST_DEFS.FORT.icon,
-        color: OUTPOST_DEFS.FORT.color,
-        x: OUTPOST_DEFS.FORT.x,
-        y: OUTPOST_DEFS.FORT.y,
-        hp: OUTPOST_DEFS.FORT.maxHp,
-        maxHp: OUTPOST_DEFS.FORT.maxHp,
-        radius: OUTPOST_DEFS.FORT.radius,
-        cleared: false,
-        clearedWave: 0
-      },
-      {
-        id: 'outpost_cage',
-        type: 'CAGE',
-        name: OUTPOST_DEFS.CAGE.name,
-        icon: OUTPOST_DEFS.CAGE.icon,
-        color: OUTPOST_DEFS.CAGE.color,
-        x: OUTPOST_DEFS.CAGE.x,
-        y: OUTPOST_DEFS.CAGE.y,
-        hp: OUTPOST_DEFS.CAGE.maxHp,
-        maxHp: OUTPOST_DEFS.CAGE.maxHp,
-        radius: OUTPOST_DEFS.CAGE.radius,
-        cleared: false,
-        clearedWave: 0
-      },
-      {
-        id: 'outpost_shrine',
-        type: 'SHRINE',
-        name: OUTPOST_DEFS.SHRINE.name,
-        icon: OUTPOST_DEFS.SHRINE.icon,
-        color: OUTPOST_DEFS.SHRINE.color,
-        x: OUTPOST_DEFS.SHRINE.x,
-        y: OUTPOST_DEFS.SHRINE.y,
-        hp: OUTPOST_DEFS.SHRINE.maxHp,
-        maxHp: OUTPOST_DEFS.SHRINE.maxHp,
-        radius: OUTPOST_DEFS.SHRINE.radius,
-        cleared: false,
-        clearedWave: 0
-      },
-      {
-        id: 'outpost_supply',
-        type: 'SUPPLY',
-        name: OUTPOST_DEFS.SUPPLY.name,
-        icon: OUTPOST_DEFS.SUPPLY.icon,
-        color: OUTPOST_DEFS.SUPPLY.color,
-        x: OUTPOST_DEFS.SUPPLY.x,
-        y: OUTPOST_DEFS.SUPPLY.y,
-        hp: OUTPOST_DEFS.SUPPLY.maxHp,
-        maxHp: OUTPOST_DEFS.SUPPLY.maxHp,
-        radius: OUTPOST_DEFS.SUPPLY.radius,
-        cleared: false,
-        clearedWave: 0
-      }
-    ];
+    const types=['FORT','CAGE','SHRINE','SUPPLY'];
+    this.outposts=[];
+    for(let ring=0;ring<3;ring++) for(let i=0;i<4;i++) {
+      const type=types[i],def=OUTPOST_DEFS[type],angle=(i*90+45+ring*22)*Math.PI/180;
+      const radius=[900,2200,3900][ring];
+      this.outposts.push({id:`outpost_${type.toLowerCase()}_${ring}`,type,
+        name:`${def.name} ${ring+1}`,icon:def.icon,color:def.color,
+        x:BASE_CAMP.x+Math.cos(angle)*radius,y:BASE_CAMP.y+Math.sin(angle)*radius,
+        hp:def.maxHp,maxHp:def.maxHp,radius:def.radius,cleared:false,clearedWave:0});
+    }
   },
 
   assignWaveQuest() {
     if (!this.outposts) this.initOutposts();
     const unclearedOutposts = this.outposts.filter(o => !o.cleared);
     let chosenTemplate = null;
+    let targetId = null;
 
     if (unclearedOutposts.length > 0 && Math.random() < 0.8) {
-      const targetOp = unclearedOutposts[Math.floor(Math.random() * unclearedOutposts.length)];
+      const origin=this.player || BASE_CAMP;
+      const nearby=unclearedOutposts.sort((a,b)=>Math.hypot(a.x-origin.x,a.y-origin.y)-Math.hypot(b.x-origin.x,b.y-origin.y)).slice(0,4);
+      const targetOp = nearby[Math.floor(Math.random() * nearby.length)];
+      targetId = targetOp.id;
       chosenTemplate = QUEST_TEMPLATES.find(q => q.targetType === targetOp.type) || QUEST_TEMPLATES[0];
     } else {
       chosenTemplate = QUEST_TEMPLATES[QUEST_TEMPLATES.length - 1]; // 掃討作戦
@@ -1365,6 +1445,7 @@ export const IronSquadGame = {
 
     this.currentQuest = {
       ...chosenTemplate,
+      targetId,
       completed: false,
       currentKills: 0
     };
@@ -1389,7 +1470,7 @@ export const IronSquadGame = {
       statusEl.className = 'quest-status';
       statusEl.textContent = '遂行中';
       if (this.currentQuest.targetType) {
-        const op = this.outposts.find(o => o.type === this.currentQuest.targetType);
+        const op = this.outposts.find(o => this.currentQuest.targetId ? o.id === this.currentQuest.targetId : o.type === this.currentQuest.targetType);
         if (op) {
           const px = this.player ? this.player.x : BASE_CAMP.x;
           const py = this.player ? this.player.y : BASE_CAMP.y;
@@ -1404,8 +1485,9 @@ export const IronSquadGame = {
     }
   },
 
-  damageOutpost(outpost, rawDmg) {
-    if (!outpost || outpost.cleared) return;
+  damageOutpost(outpost, rawDmg, attacker = this.player) {
+    if (!outpost || outpost.cleared || !(rawDmg > 0)) return;
+    recordCombat(attacker);
     outpost.hp -= rawDmg;
     this.spawnDamageText(outpost.x, outpost.y - 15, Math.floor(rawDmg), '#ffd700');
     sound.playHit(0);
@@ -1438,12 +1520,17 @@ export const IronSquadGame = {
       }
       this.showToast(`🏴【前線砦陥落！】+${bonusG}G獲得！レア武具宝箱を大量鹵獲！`);
     } else if (outpost.type === 'CAGE') {
-      const newS1 = this.createNewSoldier(this.squad.length + 1);
-      const newS2 = this.createNewSoldier(this.squad.length + 2);
+      const newS1 = this.createNewSoldier();
+      const newS2 = this.createNewSoldier();
       newS1.x = outpost.x - 15; newS1.y = outpost.y;
       newS2.x = outpost.x + 15; newS2.y = outpost.y;
-      this.squad.push(newS1, newS2);
-      this.showToast(`⛓️【捕虜救出成功！】友軍兵士【${newS1.name}】【${newS2.name}】が即座に部隊合流！`);
+      this.reserves ||= [];
+      let joined=0;
+      for(const soldier of [newS1,newS2]) {
+        if(this.squad.filter(s=>!s.dead).length<RANKS[this.rankIndex].maxSquad) {this.squad.push(soldier);joined++;}
+        else this.reserves.push(soldier);
+      }
+      this.showToast(`捕虜2名を救助・実戦へ${joined}名合流・予備へ${2-joined}名`);
     } else if (outpost.type === 'SHRINE') {
       if (this.equipped) {
         Object.keys(this.equipped).forEach(k => {
@@ -1471,7 +1558,7 @@ export const IronSquadGame = {
       this.showToast(`📦【兵站奪還完了！】部隊全員のHPが全快！兵士各自に臨時給与+18G支給！`);
     }
 
-    if (this.currentQuest && !this.currentQuest.completed && this.currentQuest.targetType === outpost.type) {
+    if (this.currentQuest && !this.currentQuest.completed && this.currentQuest.targetType === outpost.type && (!this.currentQuest.targetId || this.currentQuest.targetId === outpost.id)) {
       this.completeQuest();
     }
   },
@@ -1733,8 +1820,7 @@ export const IronSquadGame = {
     }
   },
 
-  resumeSavedGame() {
-    const saved = storage.get('ironsquad_save_data_v3', null);
+  resumeSavedGame(saved) {
     if (!saved) {
       this.startFreshGame();
       return;
@@ -1742,17 +1828,26 @@ export const IronSquadGame = {
 
     this.phase = saved.phase || saved.wave || 1;
     this.wave = this.phase;
-    this.phaseDuration = 75;
+    this.phaseDuration = PHASE_DURATION;
     this.phaseTimer = saved.phaseTimer !== undefined ? saved.phaseTimer : this.phaseDuration;
     this.totalBattleTime = saved.totalBattleTime || 0;
     this.exp = saved.exp || 0;
-    this.gold = saved.gold || 50;
+    this.gold = saved.gold ?? 50;
     this.awakeningOrbs = saved.awakeningOrbs || 0;
     this.globalFundAmount = saved.globalFundAmount || '10000';
     this.rankIndex = saved.rankIndex || 0;
     this.equipped = saved.equipped || { weapon: null, armor: null, amulet: null };
     this.inventory = saved.inventory || [];
     this.squad = saved.squad || [];
+    this.reserves = saved.reserves || [];
+    this.recruitSequence = saved.recruitSequence ?? [...this.squad,...this.reserves].reduce((max,s)=>Math.max(max,Number(s.name?.match(/#(\d+)/)?.[1] || 0)),0);
+    this.lastReinforcements = saved.lastReinforcements || null;
+    this.normalizeDeployment();
+    const legacyWorld = saved.worldVersion !== WORLD_VERSION;
+    if (legacyWorld) for (const soldier of this.squad) {
+      soldier.x = BASE_CAMP.x + ((soldier.x ?? 900)-900);
+      soldier.y = BASE_CAMP.y + ((soldier.y ?? 900)-900);
+    }
 
     // 既存セーブの兵士データを補填（レベル・財布・キル数・武勲）
     this.squad.forEach((s) => {
@@ -1772,8 +1867,8 @@ export const IronSquadGame = {
 
     const pSave = saved.player || {};
     this.player = {
-      x: BASE_CAMP.x - 20,
-      y: BASE_CAMP.y - 20,
+      x: legacyWorld ? BASE_CAMP.x-20 : (pSave.x ?? BASE_CAMP.x-20),
+      y: legacyWorld ? BASE_CAMP.y-20 : (pSave.y ?? BASE_CAMP.y-20),
       level: pSave.level || 1,
       isAdvanced: !!pSave.isAdvanced,
       advancedClass: pSave.advancedClass || null,
@@ -1783,6 +1878,7 @@ export const IronSquadGame = {
       bossKills: pSave.bossKills || 0,
       kills: (pSave.minionKills !== undefined ? pSave.minionKills : (pSave.kills || 0)) + (pSave.bossKills || 0),
       survivedWaves: pSave.survivedWaves || 0,
+      phaseActivity: pSave.phaseActivity || emptyActivity(),
       hp: pSave.hp || 130,
       maxHp: pSave.maxHp || 130,
       atk: 25,
@@ -1800,25 +1896,28 @@ export const IronSquadGame = {
     this.recalcPlayerStats();
 
     this.initPlatoons();
-    if (saved.outposts) {
-      this.outposts = saved.outposts;
-    } else {
-      this.initOutposts();
+    this.initOutposts();
+    if (!legacyWorld && saved.outposts) this.outposts = saved.outposts;
+    else if(saved.outposts) for(const old of saved.outposts) {
+      const op=this.outposts.find(o=>o.type===old.type);
+      if(op) Object.assign(op,{hp:old.hp,cleared:old.cleared,clearedWave:old.clearedWave});
     }
-    if (saved.currentQuest) {
-      this.currentQuest = saved.currentQuest;
-      this.updateQuestUI();
-    } else {
-      this.assignWaveQuest();
-    }
+    if (!legacyWorld && saved.currentQuest) {
+      this.currentQuest=saved.currentQuest; this.updateQuestUI();
+    } else this.assignWaveQuest();
     this.recalcPlayerStats();
     if (pSave.hp) this.player.hp = Math.min(this.player.maxHp, pSave.hp);
 
     this.initBattlefield();
+    this.phaseCasualties = saved.phaseCasualties ?? 0;
+    this.phaseInitialSquadCount = saved.phaseInitialSquadCount ?? this.squad.length;
     this.updateStatsUI();
     this.camera = { x: BASE_CAMP.x, y: BASE_CAMP.y };
     this.startGameLoop();
-    this.showToast(`💾 WAVE ${this.wave} のデータから再開しました！`);
+    this.camera = {x:this.player.x,y:this.player.y};
+    this.autoSaveClock = 0;
+    this.saveGame();
+    this.showToast(`第${this.wave}期から遠征を再開しました`);
   },
 
   initBattlefield() {
@@ -1834,7 +1933,7 @@ export const IronSquadGame = {
     // シームレス時間区切り制パラメーター
     this.phase = this.phase || this.wave || 1;
     this.wave = this.phase;
-    this.phaseDuration = 75; // 1作戦期＝75秒
+    this.phaseDuration = PHASE_DURATION; // 1作戦期＝120秒
     this.phaseTimer = this.phaseTimer || this.phaseDuration;
     this.phaseCasualties = 0;
     this.phaseInitialSquadCount = this.squad ? this.squad.filter(s => !s.dead).length : 20;
@@ -1844,7 +1943,9 @@ export const IronSquadGame = {
     this.seedInitialMonsters();
   },
 
-  createNewSoldier(index = 1) {
+  createNewSoldier(index = null) {
+    index ??= (this.recruitSequence || 0) + 1;
+    this.recruitSequence = Math.max(this.recruitSequence || 0, index);
     const classKeys = ['HEAVY', 'LIGHT', 'ARCHER', 'MEDIC'];
     const classKey = classKeys[(index - 1) % classKeys.length];
     const soldierCls = SOLDIER_CLASSES[classKey];
@@ -1920,6 +2021,7 @@ export const IronSquadGame = {
       survivedDeathlines: 0,
       deathlineSkills: [],
       survivedWaves: 0,
+      phaseActivity: emptyActivity(),
       level: 1,
       exp: 0,
       reqExp: 14,
@@ -1955,10 +2057,14 @@ export const IronSquadGame = {
   },
 
   saveGame() {
+    if (!this.activeSlotId || !this.player || this.player.hp <= 0) return;
     try {
       const data = {
+        worldVersion: WORLD_VERSION,
         phase: this.phase || this.wave || 1,
         phaseTimer: this.phaseTimer,
+        phaseCasualties: this.phaseCasualties || 0,
+        phaseInitialSquadCount: this.phaseInitialSquadCount,
         totalBattleTime: this.totalBattleTime || 0,
         wave: this.phase || this.wave || 1,
         exp: this.exp,
@@ -1967,6 +2073,7 @@ export const IronSquadGame = {
         globalFundAmount: this.globalFundAmount || '10000',
         rankIndex: this.rankIndex,
         player: {
+          x: this.player.x, y: this.player.y,
           hp: this.player.hp,
           maxHp: this.player.maxHp,
           level: this.player.level || 1,
@@ -1977,22 +2084,23 @@ export const IronSquadGame = {
           minionKills: this.player.minionKills || 0,
           bossKills: this.player.bossKills || 0,
           kills: this.player.kills || 0,
-          survivedWaves: this.player.survivedWaves || 0
+          survivedWaves: this.player.survivedWaves || 0,
+          phaseActivity: this.player.phaseActivity || emptyActivity()
         },
         equipped: this.equipped,
         inventory: this.inventory,
         squad: this.squad.filter(s => !s.dead),
+        reserves: this.reserves || [],
+        recruitSequence: this.recruitSequence || 0,
+        lastReinforcements: this.lastReinforcements,
         outposts: this.outposts,
         currentQuest: this.currentQuest
       };
-      storage.set('ironsquad_save_data_v3', data);
+      if (!saveSlots.update(this.activeSlotId, {data, state:'active'})) throw new Error('保存容量が不足しています');
     } catch (e) {
       console.warn('Save failed:', e);
+      this.showToast('保存に失敗しました。ブラウザの空き容量を確認してください');
     }
-  },
-
-  clearSavedGame() {
-    storage.set('ironsquad_save_data_v3', null);
   },
 
   setupInput() {
@@ -2248,7 +2356,9 @@ export const IronSquadGame = {
     }
 
     const aliveCount = this.squad ? this.squad.filter(s => !s.dead).length : 0;
-    document.getElementById('squad-alive').textContent = `${aliveCount}/${rank.maxSquad}`;
+    const squadCounter=document.getElementById('squad-alive');
+    squadCounter.textContent=`${aliveCount} / ${(this.reserves || []).length}`;
+    squadCounter.title=`実戦 ${aliveCount}/${rank.maxSquad}名・予備 ${(this.reserves || []).length}名`;
     document.getElementById('current-gold').textContent = `${(this.gold || 0).toLocaleString()}G`;
 
     const orbEl = document.getElementById('current-orbs');
@@ -2276,19 +2386,19 @@ export const IronSquadGame = {
     // ゾーン2 (警戒森林): 16体 (ゴブリン・黒狼・オーク)
     for (let i = 0; i < 16; i++) {
       const ang = Math.random() * Math.PI * 2;
-      const dist = 360 + Math.random() * 260;
+      const dist = 1250 + Math.random() * 900;
       this.spawnMonster(BASE_CAMP.x + Math.cos(ang) * dist, BASE_CAMP.y + Math.sin(ang) * dist);
     }
     // ゾーン3 (魔境深部): 14体 (狂暴オーク・ワイバーン・エリート)
     for (let i = 0; i < 14; i++) {
       const ang = Math.random() * Math.PI * 2;
-      const dist = 680 + Math.random() * 240;
+      const dist = 2800 + Math.random() * 1400;
       this.spawnMonster(BASE_CAMP.x + Math.cos(ang) * dist, BASE_CAMP.y + Math.sin(ang) * dist);
     }
     // ゾーン4 (最果ての死地): 6体 (ワイバーン)
     for (let i = 0; i < 6; i++) {
       const ang = Math.random() * Math.PI * 2;
-      const dist = 980 + Math.random() * 220;
+      const dist = 4500 + Math.random() * 500;
       this.spawnMonster(BASE_CAMP.x + Math.cos(ang) * dist, BASE_CAMP.y + Math.sin(ang) * dist);
     }
   },
@@ -2475,33 +2585,20 @@ export const IronSquadGame = {
       }
     }
 
-    // 2. モンスター総数維持（目標45体）
-    if (this.monsters.length < 46) {
-      this.spawnTimer += dt;
-      if (this.spawnTimer >= 0.75) {
-        this.spawnTimer = 0;
-
-        let countPeace = 0, countWild = 0, countChaos = 0, countAbyss = 0;
-        for (const m of this.monsters) {
-          const z = getFieldZone(m.x, m.y);
-          if (z.id === 'ZONE_PEACE') countPeace++;
-          else if (z.id === 'ZONE_WILD') countWild++;
-          else if (z.id === 'ZONE_CHAOS') countChaos++;
-          else countAbyss++;
-        }
-
-        let targetZone = FIELD_ZONES[1];
-        if (countPeace < 6) targetZone = FIELD_ZONES[0];
-        else if (countWild < 16) targetZone = FIELD_ZONES[1];
-        else if (countChaos < 14) targetZone = FIELD_ZONES[2];
-        else if (countAbyss < 6) targetZone = FIELD_ZONES[3];
-
-        const ang = Math.random() * Math.PI * 2;
-        const dist = targetZone.minDist + Math.random() * (targetZone.maxDist - targetZone.minDist);
-        const sx = Math.max(40, Math.min(MAP_WIDTH - 40, BASE_CAMP.x + Math.cos(ang) * dist));
-        const sy = Math.max(40, Math.min(MAP_HEIGHT - 40, BASE_CAMP.y + Math.sin(ang) * dist));
-        this.spawnMonster(sx, sy, targetZone);
-      }
+    // Keep local encounters populated without simulating the entire expanded world.
+    for(let i=this.monsters.length-1;i>=0;i--) {
+      const m=this.monsters[i];
+      if(m.isBoss || m.isColossal) continue;
+      if(Math.hypot(m.x-this.player.x,m.y-this.player.y)>1700 &&
+        !this.squad.some(s=>!s.dead && Math.hypot(m.x-s.x,m.y-s.y)<1100)) this.monsters.splice(i,1);
+    }
+    this.spawnTimer += dt;
+    if(this.spawnTimer>=.75 && this.monsters.length<46) {
+      this.spawnTimer=0;
+      const ang=Math.random()*Math.PI*2,dist=450+Math.random()*450;
+      const sx=Math.max(40,Math.min(MAP_WIDTH-40,this.player.x+Math.cos(ang)*dist));
+      const sy=Math.max(40,Math.min(MAP_HEIGHT-40,this.player.y+Math.sin(ang)*dist));
+      this.spawnMonster(sx,sy,getFieldZone(sx,sy));
     }
   },
 
@@ -2514,6 +2611,55 @@ export const IronSquadGame = {
     for (let i = 0; i < size; i++) {
       this.spawnMonster();
     }
+  },
+
+  normalizeDeployment() {
+    this.reserves ||= [];
+    this.squad=this.squad.filter(s=>!s.dead);
+    const capacity=RANKS[this.rankIndex].maxSquad;
+    while(this.squad.length>capacity) {
+      // Injured soldiers keep receiving rescue treatment in the field.
+      let index=this.squad.length-1;
+      while(index>=0 && this.squad[index].isDown) index--;
+      if(index<0) break;
+      const [soldier]=this.squad.splice(index,1);
+      soldier.x=BASE_CAMP.x;soldier.y=BASE_CAMP.y;
+      this.reserves.push(soldier);
+    }
+  },
+
+  deployReserves(announce = false) {
+    if (!this.reserves?.length) return 0;
+    const capacity = RANKS[this.rankIndex].maxSquad;
+    if (this.squad.filter(s=>!s.dead).length >= capacity) return 0;
+    this.squad=this.squad.filter(s=>!s.dead);
+    let deployed=0;
+    while(this.squad.length<capacity && this.reserves.length) {
+      const soldier=this.reserves.shift();
+      if(soldier.dead) continue;
+      Object.assign(soldier,{x:BASE_CAMP.x+(Math.random()-.5)*80,y:BASE_CAMP.y+(Math.random()-.5)*80,
+        isDown:false,downTimer:0,rescueProgress:0,phaseActivity:emptyActivity()});
+      this.squad.push(soldier);deployed++;
+    }
+    if(announce && deployed) {
+      this.showToast(`本陣の予備兵${deployed}名が実戦部隊へ合流・予備${this.reserves.length}名`);
+      this.updateStatsUI();
+    }
+    return deployed;
+  },
+
+  supplyReinforcements() {
+    this.normalizeDeployment();
+    this.reserves ||= [];
+    const capacity=RANKS[this.rankIndex].maxSquad;
+    const received=Math.max(MIN_REINFORCEMENTS,capacity-this.squad.length-this.reserves.length);
+    for(let i=0;i<received;i++) {
+      const soldier=this.createNewSoldier();soldier.recruitedPhase=this.phase;
+      this.reserves.push(soldier);
+    }
+    const deployed=this.deployReserves();
+    this.lastReinforcements={phase:this.phase,received,deployed,waiting:this.reserves.length};
+    return this.lastReinforcements;
   },
 
   // 作戦期完了処理（時間区切り制・死線生還判定＆新兵合流＆作戦給与支給）
@@ -2530,22 +2676,25 @@ export const IronSquadGame = {
     // 作戦給与支給
     const salary = 45 + this.phase * 10;
     this.gold += salary;
-    this.player.survivedWaves = (this.player.survivedWaves || 0) + 1;
+    finishExperience(this.player);
     this.recalcPlayerStats();
     this.player.hp = Math.min(this.player.maxHp, this.player.hp + 60);
 
     // 死線生還判定 (直前の作戦期中の部隊損耗率を算出)
     const initSquadCount = this.phaseInitialSquadCount || this.squad.length;
     const aliveSoldiers = this.squad.filter(s => !s.dead);
+    const reserveParticipants=(this.reserves || []).filter(participated);
+    const activeExperiencedCount=aliveSoldiers.filter(participated).length;
+    const experiencedCount=activeExperiencedCount+reserveParticipants.length;
     const deadInPhase = Math.max(0, this.phaseCasualties || 0);
     const casualtyRate = initSquadCount > 0 ? (deadInPhase / initSquadCount) : 0;
     const isDeathline = (initSquadCount >= 3 && casualtyRate >= 0.30 && deadInPhase >= 2) || (deadInPhase >= 4);
 
     const awakenedList = [];
     if (isDeathline) {
-      sound.playPowerUp();
+      sound.playHighScore();
       const allDeathSkills = Object.keys(DEATHLINE_SKILLS);
-      aliveSoldiers.forEach((s) => {
+      [...aliveSoldiers.filter(participated),...reserveParticipants].forEach((s) => {
         s.survivedDeathlines = (s.survivedDeathlines || 0) + 1;
         s.deathlineSkills = s.deathlineSkills || [];
 
@@ -2581,7 +2730,7 @@ export const IronSquadGame = {
 
     // 兵士たちの自費治療＆自費装備自動強化
     aliveSoldiers.forEach((s) => {
-      s.survivedWaves = (s.survivedWaves || 0) + 1;
+      finishExperience(s);
       const missingHp = s.maxHp - s.hp;
       if (missingHp > 0) {
         const treatCost = Math.ceil(missingHp / 10) * 2;
@@ -2609,28 +2758,17 @@ export const IronSquadGame = {
       this.recalcSoldierStats(s);
     });
 
-    // 本陣新兵補充隊（部隊定員まで新兵を補充合流！）
-    const currentMax = RANKS[this.rankIndex].maxSquad;
-    this.squad = this.squad.filter(s => !s.dead);
-    let addedCount = 0;
-    while (this.squad.length < currentMax) {
-      const newSoldier = this.createNewSoldier(this.squad.length + 1);
-      newSoldier.x = BASE_CAMP.x + (Math.random() - 0.5) * 80;
-      newSoldier.y = BASE_CAMP.y + (Math.random() - 0.5) * 80;
-      this.squad.push(newSoldier);
-      addedCount++;
-    }
-    if (addedCount > 0) {
-      this.showToast(`👥 本陣より新兵補充部隊が合流しました！（+${addedCount}名着任）`);
-    }
+    for(const soldier of reserveParticipants) {finishExperience(soldier);this.recalcSoldierStats(soldier);}
+    const supply=this.supplyReinforcements();
+    supply.experienced=experiencedCount;
+    supply.waited=aliveSoldiers.length-activeExperiencedCount;
+    this.showToast(`新兵${supply.received}名受領・実戦へ${supply.deployed}名配備・予備${supply.waiting}名`);
 
     // シームレス戦略会議バナー表示
     const bannerEl = document.getElementById('phase-complete-banner');
     const bannerText = document.getElementById('phase-banner-text');
     if (bannerEl && bannerText) {
-      bannerText.textContent = isDeathline
-        ? `🚨 作戦第${this.phase - 1}期完了！死線覚醒発動＆新兵+${addedCount}名！`
-        : `🚩 作戦第${this.phase - 1}期完了！給与+${salary}G＆新兵+${addedCount}名！`;
+      bannerText.textContent = `第${this.phase-1}期終了・経験${experiencedCount}名${isDeathline?'・死線突破':''}・新兵${supply.received}名・予備${supply.waiting}名`;
       bannerEl.classList.remove('hidden');
       setTimeout(() => {
         bannerEl.classList.add('hidden');
@@ -2657,13 +2795,14 @@ export const IronSquadGame = {
 
   update(dt) {
     if (!this.inBattle) return;
+    this.autoSaveClock = (this.autoSaveClock || 0) + dt;
+    if (this.autoSaveClock >= 10) { this.autoSaveClock = 0; this.saveGame(); }
+    this.reserveCheckTimer = (this.reserveCheckTimer || 0) + dt;
+    if(this.reserveCheckTimer>=1) { this.reserveCheckTimer=0; this.deployReserves(true); }
 
     // シームレス作戦期タイマー進行
     this.totalBattleTime = (this.totalBattleTime || 0) + dt;
-    this.phaseTimer = (this.phaseTimer !== undefined ? this.phaseTimer : (this.phaseDuration || 75)) - dt;
-    if (this.phaseTimer <= 0) {
-      this.completePhase();
-    }
+    advancePhase(this,dt);
 
     // 画面揺れ減衰
     if (this.screenShake > 0) {
@@ -2793,7 +2932,7 @@ export const IronSquadGame = {
           // 第1小隊: 前衛突撃隊（軍令目標・敵砦・ボスへ向かって進軍！）
           let targetOutpost = null;
           if (this.currentQuest && !this.currentQuest.completed && this.currentQuest.targetType) {
-            targetOutpost = (this.outposts || []).find(o => o.type === this.currentQuest.targetType && !o.cleared);
+            targetOutpost = (this.outposts || []).find(o => (this.currentQuest.targetId ? o.id === this.currentQuest.targetId : o.type === this.currentQuest.targetType) && !o.cleared);
           }
           if (!targetOutpost) {
             targetOutpost = (this.outposts || []).find(o => !o.cleared);
@@ -2850,6 +2989,7 @@ export const IronSquadGame = {
         const distToPlayer = Math.hypot(this.player.x - soldier.x, this.player.y - soldier.y);
         if (distToPlayer < 55) {
           soldier.rescueProgress = (soldier.rescueProgress || 0) + dt * 0.85;
+          if(soldier.rescueProgress>=1) soldier.rescueHealerId='player';
           if (Math.random() < 0.22) {
             this.spawnDamageText(soldier.x, soldier.y - 12, '💚救助中...', '#34d399');
           }
@@ -2860,6 +3000,9 @@ export const IronSquadGame = {
           soldier.isDown = false;
           soldier.rescueProgress = 0;
           soldier.hp = Math.floor(soldier.maxHp * 0.35); // 最低ライフで復帰
+          const rescuer=soldier.rescueHealerId==='player'?this.player:this.squad.find(s=>s.id===soldier.rescueHealerId);
+          recordHealing(rescuer,soldier.hp);
+          delete soldier.rescueHealerId;
           sound.playItem();
           this.spawnDamageText(soldier.x, soldier.y - 24, '✨ 戦線復帰！', '#34d399');
           this.showToast(`✨ 【${soldier.name}】が救助され戦線復帰した！`);
@@ -2890,6 +3033,7 @@ export const IronSquadGame = {
             // 大司教は超速救助（2.8倍速）！
             const rescueSpeed = clsKey === 'HIGH_PRIEST' ? 2.8 : 1.1;
             downedMate.rescueProgress = (downedMate.rescueProgress || 0) + dt * rescueSpeed;
+            if(downedMate.rescueProgress>=1) downedMate.rescueHealerId=soldier.id;
             if (Math.random() < 0.25) {
               this.spawnDamageText(downedMate.x, downedMate.y - 12, clsKey === 'HIGH_PRIEST' ? '✨奇跡の蘇生祈祷!' : '💚救助中...', '#34d399');
             }
@@ -2908,8 +3052,8 @@ export const IronSquadGame = {
           for (const ht of healTargets) {
             if (Math.hypot(ht.x - soldier.x, ht.y - soldier.y) <= 140) {
               const regAmt = Math.max(3, Math.floor(ht.maxHp * 0.015));
-              ht.hp = Math.min(ht.maxHp, ht.hp + regAmt);
-              this.spawnDamageText(ht.x, ht.y - 14, `+${regAmt}`, '#34d399');
+              const restored=healByMedic(soldier,ht,regAmt);
+              if(restored>0) this.spawnDamageText(ht.x, ht.y - 14, `+${Math.round(restored)}`, '#34d399');
             }
           }
         }
@@ -2970,6 +3114,7 @@ export const IronSquadGame = {
               x: soldier.x, y: soldier.y,
               target: hurtTarget,
               type: 'HEAL',
+              healer: soldier,
               amount: healAmt,
               speed: 280,
               color: clsKey === 'HIGH_PRIEST' ? '#f472b6' : (isHigh ? '#00f0ff' : '#34d399'),
@@ -3167,7 +3312,7 @@ export const IronSquadGame = {
             soldier.atkCooldown = cls.atkCooldown;
             soldier.atkAnim = 1.0;
             soldier.facingAngle = Math.atan2(nearOp.y - soldier.y, nearOp.x - soldier.x);
-            this.damageOutpost(nearOp, totalAtk);
+            this.damageOutpost(nearOp, totalAtk, soldier);
           }
         }
       }
@@ -3324,9 +3469,10 @@ export const IronSquadGame = {
             this.performAttack(proj.attacker, tgt, false, proj.damage);
             this.spawnSparks(tgt.x, tgt.y, '#e2e8f0', 5);
           } else if (proj.type === 'HEAL') {
-            tgt.hp = Math.min(tgt.maxHp, tgt.hp + proj.amount);
+            const restored=healByMedic(proj.healer,tgt,proj.amount);
+            if(restored<=0) continue;
             const isHigh = proj.isHighHeal || proj.amount >= 50;
-            const healText = isHigh ? `💚+${proj.amount}HP 大治癒!` : `+${proj.amount}HP`;
+            const healText = isHigh ? `💚+${Math.round(restored)}HP 大治癒!` : `+${Math.round(restored)}HP`;
             const healColor = proj.color || (isHigh ? '#00f0ff' : '#34d399');
             this.spawnDamageText(tgt.x, tgt.y - 18, healText, healColor);
             this.spawnSparks(tgt.x, tgt.y, healColor, isHigh ? 12 : 6);
@@ -3395,6 +3541,9 @@ export const IronSquadGame = {
           target = s;
         }
       }
+
+      // Distant regions sleep until a player or soldier approaches.
+      if (minDist > 1000) continue;
 
       // 大ボスの固有スキルタイマー・発動処理
       if (m.isColossal) {
@@ -3571,6 +3720,8 @@ export const IronSquadGame = {
       isCrit = true;
     }
 
+    if(!(dmg>0)) return;
+    recordCombat(attacker);
     monster.hp -= dmg;
     monster.hitPulse = 1;
 
@@ -3593,6 +3744,8 @@ export const IronSquadGame = {
   },
 
   damageTarget(target, rawDmg) {
+    if (!target || target.dead || target.isDown || target.hp <= 0 || !(rawDmg > 0)) return;
+    recordCombat(target);
     // 剣聖（BLADEMASTER）のパッシブ: 残影完全回避 (25%の確率でダメージ0で回避)
     if (target && target.soldierClass === 'BLADEMASTER' && Math.random() < 0.25) {
       this.spawnDamageText(target.x, target.y - 14, '⚡残影回避!', '#fbbf24');
@@ -3604,7 +3757,9 @@ export const IronSquadGame = {
     // 聖騎士（PALADIN）の聖域加護 (周囲140pxに生存中の聖騎士がいれば被ダメージ-30%カット)
     let paladinGuarded = false;
     if (this.squad) {
-      paladinGuarded = this.squad.some(s => !s.dead && !s.isDown && s.soldierClass === 'PALADIN' && Math.hypot(s.x - target.x, s.y - target.y) <= 140);
+      const guard=this.squad.find(s => !s.dead && !s.isDown && s.soldierClass === 'PALADIN' && Math.hypot(s.x - target.x, s.y - target.y) <= 140);
+      paladinGuarded=!!guard;
+      if(guard) recordCombat(guard);
     }
 
     const defVal = target.def || 0;
@@ -4262,129 +4417,7 @@ export const IronSquadGame = {
     this.renderStrategyUI();
   },
 
-  completeWave() {
-    this.inBattle = false;
-    sound.playHighScore();
-    this.gold += 35; // 隊長基本給
-
-    // 軸2: 【ウェーブを生き抜いたらステータスアップ】
-    this.player.survivedWaves = (this.player.survivedWaves || 0) + 1;
-    this.recalcPlayerStats();
-    this.player.hp = Math.min(this.player.maxHp, this.player.hp + 45);
-
-    // 死線突破判定 (出撃時兵士数とクリア時生存兵士数から部隊損耗率を算出)
-    const initSquadCount = this.waveInitialSquadCount || this.squad.length;
-    const aliveSoldiers = this.squad.filter(s => !s.dead);
-    const deadInWave = Math.max(0, initSquadCount - aliveSoldiers.length);
-    const casualtyRate = initSquadCount > 0 ? (deadInWave / initSquadCount) : 0;
-    // 損耗率35%以上かつ2名以上死亡、または戦死者5名以上を「死線」と認定
-    const isDeathline = (initSquadCount >= 3 && casualtyRate >= 0.35 && deadInWave >= 2) || (deadInWave >= 5);
-
-    const awakenedList = [];
-    if (isDeathline) {
-      sound.playPowerUp();
-      const allDeathSkills = Object.keys(DEATHLINE_SKILLS);
-      aliveSoldiers.forEach((s) => {
-        s.survivedDeathlines = (s.survivedDeathlines || 0) + 1;
-        s.deathlineSkills = s.deathlineSkills || [];
-
-        // 最大4スキルまで習得可能
-        if (s.deathlineSkills.length < 4) {
-          // 兵種適性スキル
-          let preferredSkill = null;
-          if (s.soldierClass === 'HEAVY') preferredSkill = 'IRON_RESOLVE';
-          else if (s.soldierClass === 'LIGHT') preferredSkill = 'PHANTOM_STEP';
-          else if (s.soldierClass === 'ARCHER') preferredSkill = 'DEADLY_FOCUS';
-          else if (s.soldierClass === 'MEDIC') preferredSkill = 'MIRACLE_PRAYER';
-
-          let chosenSkillId = null;
-          if (preferredSkill && !s.deathlineSkills.includes(preferredSkill)) {
-            chosenSkillId = preferredSkill;
-          } else {
-            // 未所持のスキルからランダム抽選
-            const availableSkills = allDeathSkills.filter(skId => !s.deathlineSkills.includes(skId));
-            if (availableSkills.length > 0) {
-              chosenSkillId = availableSkills[Math.floor(Math.random() * availableSkills.length)];
-            }
-          }
-
-          if (chosenSkillId) {
-            s.deathlineSkills.push(chosenSkillId);
-            awakenedList.push({
-              soldier: s,
-              name: s.name,
-              talent: s.talent || 'AVERAGE',
-              skill: DEATHLINE_SKILLS[chosenSkillId]
-            });
-          }
-        }
-      });
-
-      this.deathlineReport = {
-        occurred: true,
-        initialCount: initSquadCount,
-        deadCount: deadInWave,
-        casualtyRatePct: Math.round(casualtyRate * 100),
-        survivorsCount: aliveSoldiers.length,
-        awakenedList
-      };
-      this.showToast(`🚨【死線突破！】部隊損耗率 ${Math.round(casualtyRate * 100)}% の激戦から生還！生存兵士が覚醒！`);
-    } else {
-      this.deathlineReport = null;
-    }
-
-    // 各兵士の自費治療 ＆ 生還ステータスアップ ＆ 自費自動強化
-    let fullHealedCount = 0;
-    let brokeSoldiersCount = 0;
-    let autoUpgradedCount = 0;
-
-    this.squad.forEach((s) => {
-      if (!s.dead) {
-        // 生還ステータスアップ
-        s.survivedWaves = (s.survivedWaves || 0) + 1;
-        this.recalcSoldierStats(s);
-
-        // 自費治療 (HP欠損 10 あたり 2G)
-        const missingHp = s.maxHp - s.hp;
-        if (missingHp > 0) {
-          const treatCost = Math.ceil(missingHp / 10) * 2;
-          if ((s.gold || 0) >= treatCost) {
-            s.gold -= treatCost;
-            s.hp = s.maxHp;
-            fullHealedCount++;
-          } else {
-            // 払える分だけ手当て
-            const affordableHeal = Math.floor((s.gold || 0) / 2) * 10;
-            s.hp = Math.min(s.maxHp, s.hp + affordableHeal);
-            s.gold = (s.gold || 0) % 2;
-            brokeSoldiersCount++;
-          }
-        } else {
-          fullHealedCount++;
-        }
-
-        // 兵士の自費自動強化 (予備資金を残して装備を自動強化！)
-        if (s.equipped) {
-          Object.keys(s.equipped).forEach((k) => {
-            const eqItem = s.equipped[k];
-            if (eqItem) {
-              const upCost = this.getUpgradeCost(eqItem);
-              if ((s.gold || 0) >= upCost + 12) {
-                s.gold -= upCost;
-                applyUpgradeStats(eqItem, (eqItem.upgrade || 0) + 1);
-                autoUpgradedCount++;
-              }
-            }
-          });
-          this.recalcSoldierStats(s);
-        }
-      }
-    });
-
-    this.treatmentReport = { fullHealedCount, brokeSoldiersCount, autoUpgradedCount };
-    this.saveGame();
-    this.openStrategyModal(false);
-  },
+  completeWave() { this.completePhase(); },
 
   openStrategyModal(isManualOpen = false) {
     const modal = document.getElementById('strategy-modal');
@@ -4439,8 +4472,8 @@ export const IronSquadGame = {
       reportEl.innerHTML = `
         ${deathlineBannerHtml}
         激戦を生き延びた！ 生存部隊: <strong style="color:#00ffaa;">${alive.length}名</strong> ${deadCount > 0 ? `<span style="color:#ff4444;">(${deadCount}名戦死 / 次戦新兵補充)</span>` : ''}<br>
-        🗺️ <strong style="color:#ffd700;">【戦場制圧状況】</strong>拠点制圧: <strong style="color:#fff;">${clearedOps} / 4箇所</strong> | 📜 軍令: ${questStatusText}<br>
-        🛡️ <strong style="color:#38bdf8;">【生還ボーナス】</strong>全員のステータス向上！(あなた: HP+20, ATK+4 / 兵士: HP+14, ATK+3)<br>
+        🗺️ <strong style="color:#ffd700;">【戦場制圧状況】</strong>拠点制圧: <strong style="color:#fff;">${clearedOps} / ${(this.outposts || []).length}箇所</strong> | 📜 軍令: ${questStatusText}<br>
+        🛡️ <strong style="color:#38bdf8;">【生還ボーナス】</strong>交戦・回復に参加した兵士${this.lastReinforcements?.experienced || 0}名のみ戦線経験を獲得（待機者は対象外）<br>
         🏥 <strong style="color:#34d399;">【宿営手当て】</strong>各自の予算で治療完了（自費全快: <strong>${rep.fullHealedCount}名</strong> / 資金不足: <strong style="color:#f59e0b;">${rep.brokeSoldiersCount}名</strong>）<br>
         🔨 <strong style="color:#fbbf24;">【自費強化】</strong>兵士たちが予算で装備を自発的に強化！（計 <strong>${rep.autoUpgradedCount}件</strong> 成功）
       `;
@@ -4451,6 +4484,7 @@ export const IronSquadGame = {
     this.renderStrategyUI();
     this.inBattle = false;
     this.resetMovementInput();
+    this.saveGame();
     modal.classList.remove('hidden');
     this.setDialogState(true);
     document.getElementById('btn-dialog-close').focus();
@@ -4458,6 +4492,23 @@ export const IronSquadGame = {
 
   renderStrategyUI() {
     document.getElementById('strat-gold').textContent = (this.gold || 0).toLocaleString();
+    const reserveCount=(this.reserves || []).length;
+    const activeCount=this.squad.filter(s=>!s.dead).length;
+    const supply=this.lastReinforcements;
+    document.getElementById('reinforcement-summary').textContent=
+      `実戦 ${activeCount}/${RANKS[this.rankIndex].maxSquad}名 · 予備 ${reserveCount}名`+
+      (supply ? ` · 前回の新兵 ${supply.received}名（配備${supply.deployed}名）` : ` · 120秒ごとに最低${MIN_REINFORCEMENTS}名到着`);
+    document.getElementById('reserve-roster-title').textContent=`本陣の予備兵 ${reserveCount}名（欠員時に合流）`;
+    const reserveList=document.getElementById('reserve-roster-list');reserveList.replaceChildren();
+    for(const soldier of this.reserves || []) {
+      const row=document.createElement('div');row.className='reserve-row';
+      const cls=SOLDIER_CLASSES[soldier.soldierClass] || SOLDIER_CLASSES.HEAVY;
+      const talent=TALENTS[soldier.talent] || TALENTS.AVERAGE;
+      row.textContent=`${soldier.name} · ${cls.name} · ${talent.tag} · Lv.${soldier.level || 1} · 経験${soldier.survivedWaves || 0}戦線`;
+      reserveList.append(row);
+    }
+    if(!reserveCount) reserveList.textContent='現在、待機中の予備兵はいません。';
+
     const orbEl = document.getElementById('strat-orbs');
     if (orbEl) orbEl.textContent = this.awakeningOrbs || 0;
 
@@ -4502,6 +4553,15 @@ export const IronSquadGame = {
           </div>
         </div>
       `;
+
+      const portrait=document.createElement('canvas');portrait.className='commander-portrait';
+      portrait.width=112;portrait.height=128;portrait.setAttribute('role','img');portrait.setAttribute('aria-label','隊長の装備と姿');
+      const pc=portrait.getContext('2d');pc.translate(56,112);pc.scale(2,2);
+      drawFieldCommander(pc,{...p,x:0,y:0},this.equipped || {},0,this.rankIndex,RANKS[this.rankIndex].title,false,true);
+      pRecordBox.prepend(portrait);
+      const experience=document.createElement('p');experience.className='commander-experience';
+      experience.textContent=`戦線経験 ${p.survivedWaves || 0}回 · 今期 ${participated(p)?'参加':'未参加'}`;
+      pRecordBox.append(experience);
 
       const pPromoteBtn = pRecordBox.querySelector('#btn-promote-player');
       if (pPromoteBtn) {
@@ -4693,6 +4753,7 @@ export const IronSquadGame = {
             <span style="color:${talent.color}; font-size: 10px; font-weight: bold; margin-left: 2px; background: rgba(0,0,0,0.3); border-radius: 3px; padding: 0 3px;" title="${talent.desc}">[${talent.tag}]</span>
             <span style="color:${pColor}; font-size: 10px; margin-left: 2px;">[${pName.split(' ')[0]}]</span>
             <span style="color:#00f0ff; font-size: 10px;">[Lv.${s.level || 1} ${cls.name}]</span>
+            <span style="color:#b7c6a4; font-size:10px;">経験${s.survivedWaves || 0}戦線 / 今期${participated(s)?'参加':'未参加'}</span>
             ${s.isPersonalGuard ? '<span style="color:#fef08a; font-weight:bold; font-size:10px;">[⭐直属]</span>' : ''}
             ${s.isVeteran ? '<span style="color:#fbbf24; font-size:9px;">(先輩)</span>' : ''}
             ${survivedDl > 0 ? `<span style="color:#f87171; font-size:9.5px; font-weight:bold;" title="死線生還数: ${survivedDl}回">[💀生還×${survivedDl}]</span>` : ''}
@@ -4947,378 +5008,23 @@ export const IronSquadGame = {
 
   // ---- フィールド生成（起動時に1回だけ。地面は事前描画キャッシュ） ----
   buildTerrain() {
-    const W = MAP_WIDTH, H = MAP_HEIGHT;
-    let seed = 20261006;
-    const rnd = () => {
-      seed = (seed + 0x6D2B79F5) | 0;
-      let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
-      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-    };
-    const pick = (a) => a[Math.floor(rnd() * a.length)];
-    const bx = BASE_CAMP.x, by = BASE_CAMP.y;
-
-    // 街道（本陣から四方へ伸びる蛇行した土の道）
-    const bez = (p0, p1, p2, p3, t) => {
-      const u = 1 - t;
-      return {
-        x: u * u * u * p0[0] + 3 * u * u * t * p1[0] + 3 * u * t * t * p2[0] + t * t * t * p3[0],
-        y: u * u * u * p0[1] + 3 * u * u * t * p1[1] + 3 * u * t * t * p2[1] + t * t * t * p3[1]
-      };
-    };
-    const roads = [
-      [[bx, by], [bx + 120, by - 250], [bx - 200, by - 550], [860, -30]],
-      [[bx, by], [bx + 300, by + 80], [bx + 600, by - 160], [1830, 820]],
-      [[bx, by], [bx - 100, by + 260], [bx + 220, by + 560], [960, 1830]],
-      [[bx, by], [bx - 300, by - 60], [bx - 620, by + 170], [-30, 980]]
+    this.worldTerrain = new WorldTerrain();
+    const bx=BASE_CAMP.x,by=BASE_CAMP.y;
+    this.campObjects = [
+      {type:'tent',x:bx-100,y:by-55,s:1,color:'#7c2d12',ph:1},
+      {type:'tent',x:bx+100,y:by-55,s:1,color:'#1e3a8a',ph:2},
+      {type:'tent',x:bx-20,y:by+110,s:1,color:'#14532d',ph:3},
+      {type:'fire',x:bx+72,y:by+74,s:1,ph:1.3},
+      {type:'barrel',x:bx-82,y:by+92,s:1},
+      {type:'crate',x:bx+100,y:by-6,s:1}
     ];
-    const pathPts = [];
-    roads.forEach((r) => {
-      for (let t = 0; t <= 1.0001; t += 0.02) pathPts.push(bez(r[0], r[1], r[2], r[3], t));
-    });
-    const pathDist = (x, y) => {
-      let m = 1e9;
-      for (const p of pathPts) {
-        const d = Math.hypot(p.x - x, p.y - y);
-        if (d < m) m = d;
-      }
-      return m;
-    };
-
-    const ponds = [
-      { x: 380, y: 430, rx: 130, ry: 80 },
-      { x: 1430, y: 1330, rx: 150, ry: 95 },
-      { x: 1380, y: 330, rx: 90, ry: 60 },
-      { x: 330, y: 1400, rx: 100, ry: 70 }
-    ];
-    const inPond = (x, y, m = 0) => ponds.some((p) => {
-      const dx = (x - p.x) / (p.rx + m), dy = (y - p.y) / (p.ry + m);
-      return dx * dx + dy * dy < 1;
-    });
-    const ruins = [{ x: 560, y: 1180 }, { x: 1250, y: 620 }, { x: 700, y: 300 }, { x: 1500, y: 1000 }];
-
-    const cv = document.createElement('canvas');
-    cv.width = W;
-    cv.height = H;
-    const c = cv.getContext('2d');
-
-    // 1) 草原ベース + 色むら
-    c.fillStyle = '#1d3523';
-    c.fillRect(0, 0, W, H);
-    const greens = ['#27442a', '#193020', '#30522f', '#223c27', '#2d4a2a'];
-    for (let i = 0; i < 460; i++) {
-      const x = rnd() * W, y = rnd() * H, r = 50 + rnd() * 150, col = pick(greens);
-      const g = c.createRadialGradient(x, y, 0, x, y, r);
-      g.addColorStop(0, col + 'aa');
-      g.addColorStop(1, col + '00');
-      c.fillStyle = g;
-      c.fillRect(x - r, y - r, r * 2, r * 2);
-    }
-    for (let i = 0; i < 55; i++) { // 枯れ草の色むら
-      const x = rnd() * W, y = rnd() * H, r = 40 + rnd() * 80;
-      const g = c.createRadialGradient(x, y, 0, x, y, r);
-      g.addColorStop(0, '#5a5a2e66');
-      g.addColorStop(1, '#5a5a2e00');
-      c.fillStyle = g;
-      c.fillRect(x - r, y - r, r * 2, r * 2);
-    }
-
-    // 2) 本陣前の踏み固められた広場
-    let g = c.createRadialGradient(bx, by, 20, bx, by, 210);
-    g.addColorStop(0, '#6b5a40dd');
-    g.addColorStop(0.7, '#5a4a35aa');
-    g.addColorStop(1, '#5a4a3500');
-    c.fillStyle = g;
-    c.fillRect(bx - 215, by - 215, 430, 430);
-
-    // 3) 街道
-    c.lineCap = 'round';
-    c.lineJoin = 'round';
-    const widths = [[64, 'rgba(25,19,12,0.45)'], [50, '#53422d'], [38, '#6b5840']];
-    widths.forEach(([w, col]) => {
-      c.strokeStyle = col;
-      c.lineWidth = w;
-      roads.forEach((r) => {
-        c.beginPath();
-        c.moveTo(r[0][0], r[0][1]);
-        c.bezierCurveTo(r[1][0], r[1][1], r[2][0], r[2][1], r[3][0], r[3][1]);
-        c.stroke();
-      });
-    });
-    const pebCols = ['#8a7656', '#4d3f2c', '#9a8866', '#3a2f20'];
-    roads.forEach((r) => {
-      for (let t = 0; t <= 1; t += 0.006) {
-        const p = bez(r[0], r[1], r[2], r[3], t);
-        for (let k = 0; k < 3; k++) {
-          c.fillStyle = pick(pebCols);
-          c.fillRect(p.x + (rnd() - 0.5) * 44, p.y + (rnd() - 0.5) * 44, 1 + rnd() * 2, 1 + rnd() * 1.5);
-        }
-      }
-    });
-
-    // Weathered wheel ruts and embedded paving, baked into the ground cache.
-    roads.forEach(r => {
-      c.strokeStyle = 'rgba(35,28,20,.28)'; c.lineWidth = 2;
-      for (const offset of [-11, 11]) {
-        c.beginPath();
-        for (let t=0; t<=1.001; t+=.01) {
-          const p=bez(r[0],r[1],r[2],r[3],t);
-          if (t===0) c.moveTo(p.x+offset,p.y); else c.lineTo(p.x+offset,p.y);
-        }
-        c.stroke();
-      }
-    });
-    for (let row=-5; row<=5; row++) for (let col=-6; col<=6; col++) {
-      const x=bx+col*19+(row%2)*9, y=by+row*12;
-      if (Math.hypot(x-bx,y-by)>95 || rnd()<.15) continue;
-      c.fillStyle=pick(['#746d57','#68624f','#817963']);
-      c.fillRect(x,y,16,9);
-      c.fillStyle='rgba(224,209,166,.18)'; c.fillRect(x,y,16,1);
-      c.fillStyle='rgba(30,30,22,.25)'; c.fillRect(x,y+8,16,1);
-    }
-
-    // 4) 池
-    ponds.forEach((p) => {
-      c.fillStyle = '#2b2a1a';
-      c.beginPath(); c.ellipse(p.x, p.y, p.rx + 18, p.ry + 14, 0, 0, Math.PI * 2); c.fill();
-      c.fillStyle = '#3e3622';
-      c.beginPath(); c.ellipse(p.x, p.y, p.rx + 9, p.ry + 7, 0, 0, Math.PI * 2); c.fill();
-      const wg = c.createRadialGradient(p.x - p.rx * 0.2, p.y - p.ry * 0.2, 4, p.x, p.y, p.rx);
-      wg.addColorStop(0, '#1d5f7d');
-      wg.addColorStop(0.7, '#124a63');
-      wg.addColorStop(1, '#0b2d42');
-      c.fillStyle = wg;
-      c.beginPath(); c.ellipse(p.x, p.y, p.rx, p.ry, 0, 0, Math.PI * 2); c.fill();
-      c.strokeStyle = 'rgba(160,220,240,0.18)';
-      c.lineWidth = 2;
-      c.beginPath(); c.ellipse(p.x, p.y, p.rx - 4, p.ry - 3, 0, 0, Math.PI * 2); c.stroke();
-      // 葦
-      for (let i = 0; i < 26; i++) {
-        const a = rnd() * Math.PI * 2;
-        const rx = Math.cos(a) * (p.rx + 6 + rnd() * 10), ry = Math.sin(a) * (p.ry + 4 + rnd() * 8);
-        c.strokeStyle = pick(['#3f6b35', '#557a3a', '#2f5230']);
-        c.lineWidth = 1.5;
-        c.beginPath();
-        c.moveTo(p.x + rx, p.y + ry);
-        c.lineTo(p.x + rx + (rnd() - 0.5) * 5, p.y + ry - 8 - rnd() * 8);
-        c.stroke();
-      }
-    });
-
-    // 5) 草の房・花
-    const tuftCols = ['#3c6b36', '#2b5230', '#4d8240', '#5a9248', '#244a2b'];
-    for (let i = 0; i < 3400; i++) {
-      const x = rnd() * W, y = rnd() * H;
-      if (inPond(x, y, 10)) continue;
-      if (pathDist(x, y) < 30 && rnd() < 0.85) continue;
-      c.strokeStyle = pick(tuftCols);
-      c.lineWidth = 1.3;
-      const h = 4 + rnd() * 6;
-      c.beginPath();
-      c.moveTo(x, y); c.lineTo(x - 2, y - h);
-      c.moveTo(x, y); c.lineTo(x + 0.5, y - h - 2);
-      c.moveTo(x, y); c.lineTo(x + 2.5, y - h + 1);
-      c.stroke();
-    }
-    const flowerCols = ['#f472b6', '#facc15', '#e2e8f0', '#a78bfa', '#fb923c'];
-    for (let i = 0; i < 300; i++) {
-      const cx = rnd() * W, cy = rnd() * H;
-      if (inPond(cx, cy, 14) || pathDist(cx, cy) < 36) continue;
-      const col = pick(flowerCols);
-      for (let k = 0; k < 4; k++) {
-        c.fillStyle = col;
-        c.beginPath();
-        c.arc(cx + (rnd() - 0.5) * 22, cy + (rnd() - 0.5) * 16, 1.6, 0, Math.PI * 2);
-        c.fill();
-      }
-    }
-
-    // 6) 戦場の痕跡（焦げ跡・血痕・骨・折れた槍）
-    for (let i = 0; i < 40; i++) {
-      const x = rnd() * W, y = rnd() * H, r = 16 + rnd() * 30;
-      if (inPond(x, y, 20) || Math.hypot(x - bx, y - by) < 230) continue;
-      const sg = c.createRadialGradient(x, y, 2, x, y, r);
-      sg.addColorStop(0, 'rgba(8,8,8,0.7)');
-      sg.addColorStop(1, 'rgba(8,8,8,0)');
-      c.fillStyle = sg;
-      c.beginPath(); c.ellipse(x, y, r, r * 0.65, rnd() * 3, 0, Math.PI * 2); c.fill();
-    }
-    for (let i = 0; i < 55; i++) {
-      const x = rnd() * W, y = rnd() * H;
-      if (inPond(x, y, 10) || Math.hypot(x - bx, y - by) < 200) continue;
-      c.fillStyle = 'rgba(100,15,15,0.35)';
-      for (let k = 0; k < 4; k++) {
-        c.beginPath();
-        c.ellipse(x + (rnd() - 0.5) * 16, y + (rnd() - 0.5) * 12, 2 + rnd() * 5, 1.5 + rnd() * 3, rnd() * 3, 0, Math.PI * 2);
-        c.fill();
-      }
-    }
-    for (let i = 0; i < 46; i++) {
-      const x = rnd() * W, y = rnd() * H;
-      if (inPond(x, y, 10) || Math.hypot(x - bx, y - by) < 230) continue;
-      if (rnd() < 0.5) { // 骨
-        c.strokeStyle = '#cbd5c0'; c.lineWidth = 2; c.lineCap = 'round';
-        c.beginPath(); c.moveTo(x - 6, y - 2); c.lineTo(x + 6, y + 2); c.stroke();
-        c.beginPath(); c.moveTo(x - 4, y + 4); c.lineTo(x + 5, y - 3); c.stroke();
-        c.fillStyle = '#d7ddcf';
-        c.beginPath(); c.arc(x + 9, y - 1, 3.2, 0, Math.PI * 2); c.fill();
-        c.fillStyle = '#1a1a1a'; c.fillRect(x + 8, y - 2, 1.2, 1.4); c.fillRect(x + 10, y - 2, 1.2, 1.4);
-      } else { // 折れた槍
-        const a = rnd() * Math.PI;
-        c.strokeStyle = '#6b4a2a'; c.lineWidth = 2;
-        c.beginPath(); c.moveTo(x, y); c.lineTo(x + Math.cos(a) * 16, y + Math.sin(a) * 16); c.stroke();
-        c.fillStyle = '#9ca3af';
-        c.beginPath(); c.moveTo(x, y); c.lineTo(x - Math.cos(a) * 5 - 2, y - Math.sin(a) * 5); c.lineTo(x - Math.cos(a) * 5 + 2, y - Math.sin(a) * 5 + 1); c.fill();
-      }
-    }
-
-    // 7) 古代遺跡（石畳・折れた石柱・瓦礫）
-    ruins.forEach((r) => {
-      for (let i = 0; i < 14; i++) {
-        const sx = r.x + (rnd() - 0.5) * 120, sy = r.y + (rnd() - 0.5) * 90;
-        c.fillStyle = pick(['#3a404a', '#343a43', '#40464f']);
-        c.fillRect(sx, sy, 20 + rnd() * 16, 14 + rnd() * 10);
-        c.strokeStyle = 'rgba(0,0,0,0.35)';
-        c.lineWidth = 1;
-        c.strokeRect(sx, sy, 22, 15);
-      }
-      for (let i = 0; i < 4; i++) {
-        const px = r.x + (i - 1.5) * 34 + (rnd() - 0.5) * 8, py = r.y + (rnd() - 0.5) * 30;
-        const ph = 18 + rnd() * 26;
-        c.fillStyle = 'rgba(0,0,0,0.35)';
-        c.beginPath(); c.ellipse(px + 4, py + 2, 12, 4, 0, 0, Math.PI * 2); c.fill();
-        const pg = c.createLinearGradient(px - 7, 0, px + 7, 0);
-        pg.addColorStop(0, '#4b5563'); pg.addColorStop(0.5, '#9ca3af'); pg.addColorStop(1, '#4b5563');
-        c.fillStyle = pg;
-        c.fillRect(px - 7, py - ph, 14, ph);
-        c.fillStyle = '#6b7280';
-        c.beginPath(); c.ellipse(px, py - ph, 7, 3, 0, 0, Math.PI * 2); c.fill();
-        c.fillStyle = '#374151';
-        c.fillRect(px - 9, py - 3, 18, 4);
-        c.strokeStyle = 'rgba(0,0,0,0.4)';
-        c.beginPath(); c.moveTo(px - 3, py - ph); c.lineTo(px + 1, py - ph + 8); c.lineTo(px - 2, py - ph + 14); c.stroke();
-      }
-      for (let i = 0; i < 16; i++) {
-        c.fillStyle = pick(['#4b5563', '#374151', '#6b7280']);
-        c.beginPath();
-        c.arc(r.x + (rnd() - 0.5) * 130, r.y + (rnd() - 0.5) * 80 + 14, 2 + rnd() * 3, 0, Math.PI * 2);
-        c.fill();
-      }
-      const mg = c.createRadialGradient(r.x, r.y, 5, r.x, r.y, 80);
-      mg.addColorStop(0, 'rgba(70,120,60,0.22)');
-      mg.addColorStop(1, 'rgba(70,120,60,0)');
-      c.fillStyle = mg;
-      c.fillRect(r.x - 85, r.y - 85, 170, 170);
-    });
-
-    // 8) 外周の暗い森影（マップ端の閉塞感）
-    const edge = 190;
-    [[0, 0, edge, H, 0], [W - edge, 0, edge, H, 1], [0, 0, W, edge, 2], [0, H - edge, W, edge, 3]].forEach(([x, y, w, h, side]) => {
-      let lg;
-      if (side === 0) lg = c.createLinearGradient(0, 0, edge, 0);
-      else if (side === 1) lg = c.createLinearGradient(W, 0, W - edge, 0);
-      else if (side === 2) lg = c.createLinearGradient(0, 0, 0, edge);
-      else lg = c.createLinearGradient(0, H, 0, H - edge);
-      lg.addColorStop(0, 'rgba(3,6,8,0.92)');
-      lg.addColorStop(1, 'rgba(3,6,8,0)');
-      c.fillStyle = lg;
-      c.fillRect(x, y, w, h);
-    });
-
-    // ---- 立体オブジェクト（樹木・岩・茂み・野営設備）をY座標順に配置 ----
-    const objs = [];
-    const okSpot = (x, y, baseR, pathR, pondM) =>
-      Math.hypot(x - bx, y - by) > baseR && pathDist(x, y) > pathR && !inPond(x, y, pondM) &&
-      !ruins.some((r) => Math.hypot(x - r.x, y - r.y) < 105);
-    const addTree = (x, y, big = 1) => {
-      const r = rnd();
-      objs.push({
-        type: r < 0.56 ? 'oak' : (r < 0.9 ? 'pine' : 'dead'),
-        x, y, s: (0.8 + rnd() * 0.65) * big, ph: rnd() * 6.28, tone: Math.floor(rnd() * 4)
-      });
-    };
-    for (let gi = 0; gi < 10; gi++) { // 森の茂み
-      let cx, cy, tries = 0;
-      do { cx = 120 + rnd() * (W - 240); cy = 120 + rnd() * (H - 240); tries++; }
-      while (tries < 30 && !okSpot(cx, cy, 380, 70, 40));
-      for (let k = 0; k < 17; k++) {
-        const a = rnd() * Math.PI * 2, d = Math.sqrt(rnd()) * 150;
-        const x = cx + Math.cos(a) * d, y = cy + Math.sin(a) * d;
-        if (okSpot(x, y, 240, 50, 18)) addTree(x, y);
-      }
-    }
-    for (let i = 0; i < 110; i++) { // 散在する木
-      const x = 60 + rnd() * (W - 120), y = 60 + rnd() * (H - 120);
-      if (okSpot(x, y, 260, 55, 22)) addTree(x, y);
-    }
-    for (let i = 0; i < 190; i++) { // 外周の深い森
-      const side = Math.floor(rnd() * 4), t = rnd(), depth = rnd() * 110;
-      const x = side === 0 ? depth : (side === 1 ? W - depth : t * W);
-      const y = side === 2 ? depth : (side === 3 ? H - depth : t * H);
-      addTree(Math.max(10, Math.min(W - 10, x)), Math.max(10, Math.min(H - 10, y)), 1.25);
-    }
-    for (let i = 0; i < 80; i++) {
-      const x = 40 + rnd() * (W - 80), y = 40 + rnd() * (H - 80);
-      if (okSpot(x, y, 210, 32, 14)) objs.push({ type: 'rock', x, y, s: 0.6 + rnd() * 1.1, ph: rnd() * 6.28, tone: Math.floor(rnd() * 3) });
-    }
-    for (let i = 0; i < 100; i++) {
-      const x = 40 + rnd() * (W - 80), y = 40 + rnd() * (H - 80);
-      if (okSpot(x, y, 200, 34, 10)) objs.push({ type: 'bush', x, y, s: 0.7 + rnd() * 0.7, ph: rnd() * 6.28, tone: Math.floor(rnd() * 3) });
-    }
-    // 本陣の野営設備
-    [[-150, '#7c2d12'], [-30, '#1e3a8a'], [158, '#14532d']].forEach(([deg, color]) => {
-      const a = deg * Math.PI / 180;
-      objs.push({ type: 'tent', x: bx + Math.cos(a) * 118, y: by + Math.sin(a) * 100, s: 1, color, ph: rnd() * 6 });
-    });
-    objs.push({ type: 'fire', x: bx + 72, y: by + 74, s: 1, ph: 1.3 });
-    [45, 135, 225, 315].forEach((deg, i) => {
-      const a = deg * Math.PI / 180;
-      objs.push({ type: 'torch', x: bx + Math.cos(a) * 138, y: by + Math.sin(a) * 138, s: 1, ph: i * 1.7 });
-    });
-    objs.push({ type: 'barrel', x: bx - 82, y: by + 92, s: 1 });
-    objs.push({ type: 'barrel', x: bx - 64, y: by + 100, s: 0.9 });
-    objs.push({ type: 'crate', x: bx + 100, y: by - 6, s: 1 });
-    objs.push({ type: 'crate', x: bx + 118, y: by + 8, s: 0.8 });
-    objs.sort((a, b) => a.y - b.y);
-
-    // 蛍・落ち葉
-    const motes = [];
-    for (let i = 0; i < 140; i++) motes.push({ kind: 'fly', x: rnd() * W, y: rnd() * H, ph: rnd() * 6.28, sp: 0.6 + rnd() });
-    for (let i = 0; i < 55; i++) motes.push({ kind: 'leaf', x: rnd() * W, y: rnd() * H, ph: rnd() * 6.28, sp: 0.6 + rnd() });
-
-    this.terrainCache = cv;
-    this.ponds = ponds;
-    this.worldObjs = objs;
-    this.motes = motes;
+    this.worldObjs=[];this.motes=[];
   },
 
   drawBattlefield(ctx, now) {
-    if (!this.terrainCache) this.buildTerrain();
-    // オフスクリーン全体を安全描画（ブラウザGPUが可視範囲をハードウェアカリングするためIndexSizeErrorが絶対に起きない）
-    ctx.drawImage(this.terrainCache, 0, 0);
-
-    // 池の水面のきらめき
-    if (this.ponds) {
-      for (const p of this.ponds) {
-        if (!p || p.rx <= 2 || p.ry <= 2) continue;
-        ctx.save();
-        ctx.beginPath();
-        ctx.ellipse(p.x, p.y, p.rx - 2, p.ry - 2, 0, 0, Math.PI * 2);
-        ctx.clip();
-        for (let i = 0; i < 9; i++) {
-          const t = now * 0.0007 + i * 1.9 + p.x;
-          const px = p.x + Math.sin(t * 1.1) * p.rx * 0.7;
-          const py = p.y + Math.cos(t * 0.9) * p.ry * 0.6;
-          const a = 0.12 + 0.12 * Math.sin(t * 3);
-          ctx.strokeStyle = `rgba(190,235,255,${Math.max(0, a)})`;
-          ctx.lineWidth = 1.5;
-          ctx.beginPath();
-          ctx.ellipse(px, py, 10 + (i % 3) * 5, 3 + (i % 2) * 2, 0, 0, Math.PI * 2);
-          ctx.stroke();
-        }
-        ctx.restore();
-      }
-    }
+    if(!this.worldTerrain) this.buildTerrain();
+    this.worldObjs = this.worldTerrain.draw(ctx,this.camera,this.width,this.height,this.zoom || 1);
+    this.worldObjs.push(...this.campObjects);
 
     // ゾーン境界の淡い同心円リング（危険度ゾーンの可視化）
     ctx.save();
@@ -6645,396 +6351,8 @@ export const IronSquadGame = {
   },
 
   drawPlayer(ctx, p, now) {
-    ctx.save();
-    ctx.translate(p.x, p.y);
-
-    const isMoving = this.joystick && this.joystick.active;
-    const walkCycle = isMoving ? now * 0.018 : 0;
-    const walkBob = isMoving ? Math.sin(walkCycle * 2) * 1.8 : Math.sin(now * 0.003) * 0.7;
-    const legSwing = isMoving ? Math.sin(walkCycle) * 4.2 : 0;
-
-    // 装備情報取得
-    const eq = this.equipped || {};
-    const wEq = getEquipVisual(eq.weapon, 1, '#60a5fa');
-    const sEq = getEquipVisual(eq.shield, 1, '#3b82f6');
-    const hEq = getEquipVisual(eq.helmet, 1, '#64748b');
-    const aEq = getEquipVisual(eq.armor, 1, '#3b82f6');
-    const gEq = getEquipVisual(eq.gloves, 1, '#475569');
-    const lEq = getEquipVisual(eq.legs, 1, '#334155');
-    const mEq = eq.amulet ? getEquipVisual(eq.amulet, 1, '#fbbf24') : null;
-
-    // 0. 足元接地ソフトシャドウ (斜め見下ろしの横長二重ぼかし平楕円)
-    ctx.fillStyle = 'rgba(0,0,0,0.42)';
-    ctx.beginPath();
-    ctx.ellipse(0, 1, 15, 5.5, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = 'rgba(0,0,0,0.2)';
-    ctx.beginPath();
-    ctx.ellipse(0, 1, 20, 7.5, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // 0.5 アミュレット（AMULET）足元ルーン光輪
-    if (mEq && mEq.hasItem) {
-      const aRot = now * 0.002;
-      const aPulse = 0.5 + 0.5 * Math.sin(now * 0.005);
-      ctx.save();
-      ctx.translate(0, 1);
-      ctx.strokeStyle = mEq.color;
-      ctx.lineWidth = 1.6;
-      ctx.shadowColor = mEq.color;
-      ctx.shadowBlur = 8;
-      ctx.globalAlpha = 0.4 + aPulse * 0.4;
-      ctx.beginPath();
-      ctx.ellipse(0, 0, 19 + aPulse * 3, 7.5 + aPulse * 1.5, 0, 0, Math.PI * 2);
-      ctx.stroke();
-      // ルーン光点
-      for (let i = 0; i < 3; i++) {
-        const ang = aRot + (i * Math.PI * 2) / 3;
-        const rx = Math.cos(ang) * (19 + aPulse * 3);
-        const ry = Math.sin(ang) * (7.5 + aPulse * 1.5);
-        ctx.fillStyle = '#fff';
-        ctx.beginPath();
-        ctx.arc(rx, ry, 1.8, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      ctx.restore();
-    }
-
-    // 覇王ウォーロード（WARLORD）の紅蓮覇気オーラリング
-    if (p.isAdvanced) {
-      const wPulse = Math.sin(now * 0.008) * 3;
-      ctx.save();
-      ctx.translate(0, 1);
-      ctx.strokeStyle = '#f59e0b';
-      ctx.lineWidth = 2.4;
-      ctx.shadowColor = '#ef4444';
-      ctx.shadowBlur = 14 + wPulse;
-      ctx.beginPath();
-      ctx.ellipse(0, 0, 22 + wPulse, 9 + wPulse * 0.4, 0, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.shadowBlur = 0;
-      ctx.restore();
-    }
-
-    // 向き判定（左右反転＋上下傾き）
-    const isLeft = Math.cos(p.facingAngle || 0) < -0.15;
-    ctx.save();
-    if (isLeft) ctx.scale(-1, 1);
-
-    // 1. マント（CLOAK・背中から斜め後ろにたなびく）
-    const capeColor = p.isAdvanced ? '#991b1b' : (this.rankIndex >= 4 ? '#b91c1c' : (this.rankIndex >= 2 ? '#1d4ed8' : '#334155'));
-    const capeWave = Math.sin(now * 0.012) * 3;
-    const capeSwing = isMoving ? Math.sin(walkCycle) * 2.5 : 0;
-    ctx.fillStyle = capeColor;
-    ctx.beginPath();
-    ctx.moveTo(-5, -16 + walkBob);
-    ctx.quadraticCurveTo(-14 + capeWave, -6 + walkBob + capeSwing, -16 + capeWave * 1.2, 0 + walkBob + capeSwing);
-    ctx.lineTo(-5, -6 + walkBob);
-    ctx.closePath();
-    ctx.fill();
-    // 伍長以上または覇王の金縁ステッチ
-    if (this.rankIndex >= 2 || p.isAdvanced) {
-      ctx.strokeStyle = '#fbbf24';
-      ctx.lineWidth = p.isAdvanced ? 1.6 : 1;
-      ctx.beginPath();
-      ctx.moveTo(-5, -16 + walkBob);
-      ctx.quadraticCurveTo(-14 + capeWave, -6 + walkBob + capeSwing, -16 + capeWave * 1.2, 0 + walkBob + capeSwing);
-      ctx.stroke();
-    }
-
-    // 2. 脚甲（LEGS）＆ ブーツ・歩行ステップアニメーション
-    const bootColor = lEq.color;
-    ctx.fillStyle = bootColor;
-    // 奥脚（左脚）
-    ctx.fillRect(-5 + legSwing, -7, 3.8, 8);
-    // 手前脚（右脚）
-    ctx.fillRect(1 - legSwing, -7, 3.8, 8);
-    // ブーツの靴底
-    ctx.fillStyle = '#0f172a';
-    ctx.fillRect(-6 + legSwing, 0, 5.2, 2.2);
-    ctx.fillRect(0 - legSwing, 0, 5.2, 2.2);
-
-    // 3. 胴体甲冑（ARMOR・重厚な金属プレート）
-    const armorColor = aEq.color;
-    ctx.fillStyle = armorColor;
-    ctx.strokeStyle = '#1e293b';
-    ctx.lineWidth = 1.2;
-    ctx.beginPath();
-    ctx.ellipse(0, -13 + walkBob, 8, 7.5, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-
-    // 胸当てのリッジ光沢（金属のハイライト反射）
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
-    ctx.lineWidth = 1.8;
-    ctx.beginPath();
-    ctx.arc(0, -13 + walkBob, 5.5, -0.8, 0.8);
-    ctx.stroke();
-
-    // 腰ベルト ＆ バックル
-    ctx.fillStyle = '#451a03';
-    ctx.fillRect(-6, -8 + walkBob, 12, 2.5);
-    ctx.fillStyle = '#fbbf24';
-    ctx.fillRect(-1.5, -8.5 + walkBob, 3, 3.5);
-
-    // 4. 左肩・奥側の肩当て ＆ 左手の盾（SHIELD）
-    ctx.fillStyle = armorColor;
-    ctx.fillRect(-7, -18 + walkBob, 4.5, 5);
-
-    const shieldColor = sEq.color;
-    ctx.save();
-    ctx.translate(-6, -12 + walkBob);
-    ctx.fillStyle = shieldColor;
-    ctx.strokeStyle = '#f8fafc';
-    ctx.lineWidth = 1.5;
-    if (sEq.tier <= 2) {
-      // ラウンドシールド（丸盾）
-      ctx.beginPath();
-      ctx.arc(0, 0, 6.5, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-      ctx.fillStyle = '#475569';
-      ctx.beginPath();
-      ctx.arc(0, 0, 2.2, 0, Math.PI * 2);
-      ctx.fill();
-    } else if (sEq.tier <= 4) {
-      // ヒーターシールド（中世騎士盾）
-      ctx.beginPath();
-      ctx.moveTo(-5, -7);
-      ctx.lineTo(5, -7);
-      ctx.lineTo(4, 3);
-      ctx.lineTo(0, 8);
-      ctx.lineTo(-4, 3);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-    } else {
-      // カイト/タワーシールド（大型盾 ＆ 黄金十字鷲の紋章）
-      ctx.beginPath();
-      ctx.moveTo(-5.5, -9);
-      ctx.lineTo(5.5, -9);
-      ctx.lineTo(4.5, 5);
-      ctx.lineTo(0, 10);
-      ctx.lineTo(-4.5, 5);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-      // 盾中央の黄金紋章
-      ctx.strokeStyle = '#fbbf24';
-      ctx.lineWidth = 1.4;
-      ctx.beginPath();
-      ctx.moveTo(0, -6); ctx.lineTo(0, 4);
-      ctx.moveTo(-2.5, -2); ctx.lineTo(2.5, -2);
-      ctx.stroke();
-      if (sEq.tier >= 6) {
-        ctx.shadowColor = sEq.color;
-        ctx.shadowBlur = 8;
-        ctx.stroke();
-        ctx.shadowBlur = 0;
-      }
-    }
-    ctx.restore();
-
-    // 5. 頭部・兜（HELMET・精悍なフルフェイス兜）
-    const helmColor = hEq.color;
-    ctx.fillStyle = helmColor;
-    ctx.strokeStyle = '#0f172a';
-    ctx.lineWidth = 1.2;
-    ctx.beginPath();
-    ctx.arc(0, -22 + walkBob, 7.5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-
-    // 兜のバイザースリット ＆ 鋭い眼光
-    ctx.fillStyle = '#0f172a';
-    ctx.fillRect(1, -23 + walkBob, 4.8, 3);
-    ctx.fillStyle = hEq.isGod ? '#ff007f' : '#00f0ff';
-    ctx.shadowColor = ctx.fillStyle;
-    ctx.shadowBlur = 5;
-    ctx.fillRect(2.5, -22.5 + walkBob, 3.2, 1.8);
-    ctx.shadowBlur = 0;
-
-    // 兜飾り（ティア別クレスト）
-    if (hEq.tier >= 7) {
-      // 神聖ハロー光輪
-      ctx.strokeStyle = '#fbbf24';
-      ctx.lineWidth = 2;
-      ctx.shadowColor = '#fbbf24';
-      ctx.shadowBlur = 8;
-      ctx.beginPath();
-      ctx.arc(0, -22 + walkBob, 12, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.shadowBlur = 0;
-    } else if (hEq.tier >= 6) {
-      // 竜の黒金ホーン角
-      ctx.fillStyle = '#ef4444';
-      ctx.beginPath();
-      ctx.moveTo(-3, -28 + walkBob);
-      ctx.lineTo(-8, -36 + walkBob);
-      ctx.lineTo(1, -29 + walkBob);
-      ctx.fill();
-    } else if (hEq.tier >= 5) {
-      // ミスリルの黄金ウィング
-      ctx.fillStyle = '#fbbf24';
-      ctx.beginPath();
-      ctx.moveTo(-3, -28 + walkBob);
-      ctx.lineTo(2, -35 + walkBob);
-      ctx.lineTo(3, -28 + walkBob);
-      ctx.fill();
-    } else if (hEq.tier >= 3) {
-      // 鉄〜鋼鉄のクレスト
-      ctx.fillStyle = hEq.color;
-      ctx.fillRect(-1, -30 + walkBob, 3.5, 4.5);
-    }
-
-    // 出世の階級章（王冠/星羽飾り）
-    if (p.isAdvanced) {
-      // 覇王の黄金冠 ＆ 真紅の豪壮クレスト
-      ctx.fillStyle = '#fbbf24';
-      ctx.beginPath();
-      ctx.moveTo(-5, -28 + walkBob);
-      ctx.lineTo(-3, -37 + walkBob);
-      ctx.lineTo(0, -32 + walkBob);
-      ctx.lineTo(3, -37 + walkBob);
-      ctx.lineTo(5, -28 + walkBob);
-      ctx.closePath();
-      ctx.fill();
-      // 真紅の宝珠
-      ctx.fillStyle = '#ef4444';
-      ctx.beginPath();
-      ctx.arc(0, -30 + walkBob, 2, 0, Math.PI * 2);
-      ctx.fill();
-    } else if (this.rankIndex >= 4) {
-      // 金の王冠クレスト
-      ctx.fillStyle = '#fbbf24';
-      ctx.beginPath();
-      ctx.moveTo(-4, -28 + walkBob);
-      ctx.lineTo(-2, -34 + walkBob);
-      ctx.lineTo(0, -30 + walkBob);
-      ctx.lineTo(2, -34 + walkBob);
-      ctx.lineTo(4, -28 + walkBob);
-      ctx.closePath();
-      ctx.fill();
-    } else if (this.rankIndex >= 2) {
-      // 伍長プルーム
-      ctx.fillStyle = '#38bdf8';
-      ctx.fillRect(-2, -32 + walkBob, 4.5, 4);
-    }
-
-    // 6. 右肩・手前側の肩当て（ポールドロン）
-    ctx.fillStyle = armorColor;
-    ctx.strokeStyle = '#f8fafc';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.ellipse(3, -16 + walkBob, 4.5, 4, 0.2, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-    if (aEq.tier >= 4 || p.isAdvanced) {
-      ctx.fillStyle = '#fbbf24';
-      ctx.beginPath();
-      ctx.arc(3, -16 + walkBob, 1.5, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    // 7. 手甲（GLOVES）＆ 武器（WEAPON）
-    const weaponColor = p.isAdvanced ? '#f59e0b' : wEq.color;
-    const isAtk = p.slashAnim > 0;
-    const wSwing = isAtk ? Math.sin(p.slashAnim * Math.PI) * 1.2 : 0;
-    ctx.save();
-    ctx.translate(6, -11 + walkBob);
-    ctx.rotate(0.3 + wSwing);
-    // 柄（グリップ）＆ 鍔（クロスガード）
-    ctx.fillStyle = '#475569';
-    ctx.fillRect(-2, -1.5, 4, 3);
-    ctx.fillStyle = '#cbd5e1';
-    ctx.fillRect(2, -4, 2.5, 8);
-    // 刀身（ブレード）
-    ctx.fillStyle = weaponColor;
-    ctx.strokeStyle = '#f8fafc';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(4, -2.5);
-    ctx.lineTo(18 + (wEq.tier >= 4 ? 4 : 0), -1);
-    ctx.lineTo(22 + (wEq.tier >= 4 ? 4 : 0), 0); // 切っ先
-    ctx.lineTo(18 + (wEq.tier >= 4 ? 4 : 0), 1);
-    ctx.lineTo(4, 2.5);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-
-    // 武器オーラ（覇王または高ティア・高強化値）
-    if (p.isAdvanced || wEq.tier >= 5 || wEq.upgrade >= 3) {
-      ctx.strokeStyle = p.isAdvanced ? '#ef4444' : weaponColor;
-      ctx.lineWidth = 2.5;
-      ctx.shadowColor = p.isAdvanced ? '#f59e0b' : weaponColor;
-      ctx.shadowBlur = p.isAdvanced ? 14 : 10;
-      ctx.stroke();
-      ctx.shadowBlur = 0;
-    }
-    ctx.restore();
-
-    // 攻撃スイング時の光刃エフェクト
-    if (isAtk) {
-      ctx.save();
-      if (p.isAdvanced) {
-        // 覇王紅蓮絶刃: 全方位360度の大爆発円弧波！
-        ctx.strokeStyle = '#ef4444';
-        ctx.lineWidth = 8;
-        ctx.shadowColor = '#f59e0b';
-        ctx.shadowBlur = 24;
-        ctx.beginPath();
-        ctx.arc(0, -11 + walkBob, 46, 0, Math.PI * 2);
-        ctx.stroke();
-        // 内側の黄金光
-        ctx.strokeStyle = '#fef08a';
-        ctx.lineWidth = 3.5;
-        ctx.beginPath();
-        ctx.arc(0, -11 + walkBob, 46, 0, Math.PI * 2);
-        ctx.stroke();
-      } else {
-        ctx.strokeStyle = weaponColor;
-        ctx.lineWidth = 6;
-        ctx.shadowColor = weaponColor;
-        ctx.shadowBlur = 16;
-        ctx.beginPath();
-        ctx.arc(0, -11 + walkBob, 38, -0.65, 0.65);
-        ctx.stroke();
-        // 内側の白い光
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 2.5;
-        ctx.shadowBlur = 6;
-        ctx.beginPath();
-        ctx.arc(0, -11 + walkBob, 38, -0.45, 0.45);
-        ctx.stroke();
-      }
-      ctx.restore();
-    }
-
-    ctx.restore(); // 反転復元
-
-    // 8. 頭上階級マーク ＆ レベル ＆ HPバー (斜めアングルの頭上位置)
-    ctx.font = '12px sans-serif';
-    ctx.textAlign = 'center';
-    const mark = p.isAdvanced ? '👑🔥' : (this.rankIndex >= 4 ? '👑' : (this.rankIndex >= 2 ? '⭐' : '🛡️'));
-    ctx.fillText(mark, 0, -42);
-    ctx.font = 'bold 10px sans-serif';
-    ctx.fillStyle = p.isAdvanced ? '#f59e0b' : '#38bdf8';
-    ctx.shadowColor = '#000';
-    ctx.shadowBlur = 4;
-    const playerTitle = p.isAdvanced ? '【覇王】あなた' : 'あなた';
-    ctx.fillText(`Lv.${p.level || 1} ${playerTitle}`, 0, -32);
-    ctx.shadowBlur = 0;
-
-    // HPバー
-    ctx.fillStyle = 'rgba(0,0,0,0.65)';
-    ctx.fillRect(-18, -26, 36, 4.5);
-    ctx.fillStyle = p.isAdvanced ? '#f59e0b' : '#3b82f6';
-    ctx.fillRect(-18, -26, 36 * (p.hp / p.maxHp), 4.5);
-    ctx.strokeStyle = 'rgba(255,255,255,0.4)';
-    ctx.lineWidth = 0.8;
-    ctx.strokeRect(-18, -26, 36, 4.5);
-
-    ctx.restore();
+    drawFieldCommander(ctx,p,this.equipped || {},now,this.rankIndex,RANKS[this.rankIndex].title,
+      !!this.joystick?.active);
   },
 
   renderMinimap() {
@@ -7128,15 +6446,11 @@ export const IronSquadGame = {
   gameOver() {
     this.stopGameLoop();
     sound.playGameOver();
-    this.clearSavedGame();
+    this.inBattle = false;
 
     // 先輩兵士として引き継ぐ（生存かつダウンしていない兵士）
     const aliveVeterans = this.squad ? this.squad.filter(s => !s.dead && !s.isDown) : [];
-    if (aliveVeterans.length > 0) {
-      storage.set('ironsquad_veterans_backup', aliveVeterans);
-    } else {
-      storage.set('ironsquad_veterans_backup', null);
-    }
+    saveSlots.update(this.activeSlotId, {state:'fallen', veterans:aliveVeterans, reserveSurvivors:this.reserves || []});
 
     const overlay = document.getElementById('game-overlay');
     document.getElementById('final-wave').textContent = this.wave;
@@ -7163,6 +6477,7 @@ export const IronSquadGame = {
 
   destroy() {
     this.stopGameLoop();
+    this.worldTerrain = null;
     if (this.stickHandlers) {
       const {move,end} = this.stickHandlers;
       window.removeEventListener('mousemove',move);

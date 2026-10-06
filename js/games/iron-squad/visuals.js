@@ -13,7 +13,8 @@ const line = (c, points, color, width = 1) => {
 };
 const CLOTH = {
   HEAVY: '#687e91', LIGHT: '#a38b60', ARCHER: '#607b60', MEDIC: '#c2bda2',
-  PALADIN: '#ccd0c3', BLADEMASTER: '#555c69', SNIPER: '#426557', HIGH_PRIEST: '#d1c5ab'
+  PALADIN: '#ccd0c3', BLADEMASTER: '#555c69', SNIPER: '#426557', HIGH_PRIEST: '#d1c5ab',
+  COMMANDER: '#71858a', WARLORD: '#a29270'
 };
 
 export function drawFieldSoldier(c, s, now, cls, platoonColor) {
@@ -41,7 +42,7 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor) {
   c.translate(0, -bob);
   // Cloak, boots and an articulated torso give every class a distinct silhouette.
   if (advanced || s.isNamed || archer) {
-    shape(c, [[-4,-23],[-11,-17],[-14,-1],[-5,-5],[4,-17]], archer ? '#3d5148' : '#795d51');
+    shape(c, [[-4,-23],[-11,-17],[-14,-1],[-5,-5],[4,-17]], s.isCommander ? (advanced?'#794e41':'#3e5863') : (archer ? '#3d5148' : '#795d51'));
     line(c, [[-7,-17],[-10,-4]], '#b59a72');
   }
   c.fillStyle = eq.legs?.color || '#475159';
@@ -77,6 +78,13 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor) {
       shape(c,[[5,-24],[10,-21],[7,-18],[3,-21]],'#bfad7d');
       c.fillStyle='#d4c39a'; c.fillRect(-1,-22,2,9); c.fillRect(-3,-19,6,2);
     }
+    if(s.isCommander) {
+      // Officer sash, layered pauldrons and rank marks; metal stays matte.
+      line(c,[[-5,-22],[4,-10]],advanced?'#d2bb83':'#b7bda8',2.5);
+      shape(c,[[-9,-24],[-11,-19],[-6,-18],[-4,-22]],steel);
+      shape(c,[[6,-24],[10,-21],[8,-18],[4,-21]],steel);
+      for(let i=0;i<Math.min(3,s.rankIndex || 0);i++)line(c,[[-6,-16+i*2],[-4,-14+i*2],[-2,-16+i*2]],'#d5c296',.8);
+    }
   }
   // Hands, face and headwear, with a restrained highlight on the upper edge.
   ellipse(c, 6,-15,2.3,3.5,eq.gloves?.color || '#a78b72');
@@ -98,6 +106,10 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor) {
     c.fillStyle = '#c5d0cf'; c.fillRect(-3,-33,4,1);
     c.fillStyle = '#647077'; c.fillRect(-5,-28,2,5);
     if (advanced || s.isNamed) shape(c,[[-2,-34],[-3,-40],[1,-38],[2,-33]],'#ab765b');
+    if(key==='WARLORD') {
+      shape(c,[[-5,-33],[-5,-37],[-2,-35],[0,-39],[2,-35],[5,-37],[5,-33]],'#c9b481');
+      c.fillStyle='#708180';c.fillRect(-4,-32,8,1);
+    }
   }
   c.fillStyle = '#302b28'; c.fillRect(2,-27,1.3,1);
   if (archer) {
@@ -129,7 +141,7 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor) {
         line(c,[[-11,-19],[-11,-12],[-5,-19],[-5,-12]],'#879797',.6);
       }
     }
-    c.save(); c.translate(7,-14); c.rotate(s.atkAnim > 0 ? -.55 : -.12);
+    c.save(); c.translate(7,-14); c.rotate(s.isCommander ? (-.6+Math.max(0,s.atkAnim || 0)*1.6) : (s.atkAnim > 0 ? -.55 : -.12));
     shape(c,[[0,1],[2,-15],[4,-18],[5,-15],[3,1]],eq.weapon?.color || '#c3cbca');
     line(c,[[3,-14],[2,0]],'#f1ead8',.7);
     line(c,[[-2,1],[6,2]],'#aa9168',2); line(c,[[2,2],[1,6]],'#6a4c38',2.5);
@@ -156,6 +168,28 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor) {
       c.fillStyle = '#283132'; c.fillRect(-12,-39,24,3);
       c.fillStyle = '#92b9a0'; c.fillRect(-12,-39,24*Math.max(0,Math.min(1,s.hp/s.maxHp)),3);
     }
+  }
+  c.restore();
+}
+
+export function drawFieldCommander(c,p,equipped,now,rankIndex,rankTitle,moving,portrait=false) {
+  c.save();c.translate(p.x,p.y);c.scale(1.18,1.18);
+  drawFieldSoldier(c,{x:0,y:0,hp:p.hp,maxHp:p.maxHp,
+    soldierClass:p.isAdvanced?'WARLORD':'COMMANDER',isCommander:true,isNamed:true,rankIndex,
+    equipped,portrait:true,atkAnim:p.slashAnim || 0,
+    facingAngle:p.slashAnim>0?p.slashAngle:p.facingAngle,vx:moving?1:0,vy:0},now,
+    {isAdvanced:!!p.isAdvanced,name:'隊長'},'#b7c6b6');
+  if(!portrait) {
+    // A quiet ground pointer and a stable nameplate keep the player identifiable.
+    shape(c,[[0,8],[-3,12],[3,12]],'#d8ceb0');
+    c.textAlign='center';c.font='bold 9px sans-serif';
+    const name=`あなた · Lv.${p.level || 1}${p.isAdvanced?' 覇王':''}`;
+    const width=c.measureText(name).width+10;
+    c.fillStyle='rgba(17,27,28,.9)';c.fillRect(-width/2,-62,width,12);
+    c.fillStyle='#dfd8bb';c.fillText(name,0,-53);
+    c.fillStyle='#253337';c.fillRect(-16,-49,32,4);
+    c.fillStyle=p.isAdvanced?'#c4aa78':'#91b6bd';
+    c.fillRect(-16,-49,32*Math.max(0,Math.min(1,p.hp/p.maxHp)),4);
   }
   c.restore();
 }
