@@ -1324,6 +1324,7 @@ export const IronSquadGame = {
     this.worldTime=0;
     this.treatmentReport = null;
     this.deathlineReport = null;
+    this.rescueBuffTimer = 0;
     this.autoSaveClock = 0;
     this.recruitSequence = 0;
     this.lastReinforcements = null;
@@ -1893,6 +1894,7 @@ export const IronSquadGame = {
     this.restMonsters=this.restTimer>0?(saved.restMonsters || []):[];
     this.totalBattleTime = saved.totalBattleTime || 0;
     this.worldTime=Math.max(0,Number(saved.worldTime)||0);
+    this.rescueBuffTimer = 0;
     this.exp = saved.exp || 0;
     this.gold = saved.gold ?? 50;
     this.awakeningOrbs = saved.awakeningOrbs || 0;
@@ -2425,7 +2427,21 @@ export const IronSquadGame = {
     }
 
     const dragged=carriedSoldiers(this,this.player),transportBadge=document.getElementById('transport-badge');
-    if(transportBadge){transportBadge.classList.toggle('hidden',!dragged.length);document.getElementById('transport-status').textContent=`紐で搬送 ${dragged.length}/${carryingCapacity(this.player)}名 · 拠点へ`;}
+    if(transportBadge){
+      if(this.rescueBuffTimer > 0) {
+        transportBadge.classList.remove('hidden');
+        transportBadge.style.background = 'linear-gradient(135deg, rgba(56,189,248,0.25), rgba(14,165,233,0.35))';
+        transportBadge.style.borderColor = '#38bdf8';
+        const statusEl = document.getElementById('transport-status');
+        if(statusEl) statusEl.textContent = `✨ 救助の英雄加速中 (${Math.ceil(this.rescueBuffTimer)}秒)`;
+      } else {
+        transportBadge.classList.toggle('hidden',!dragged.length);
+        transportBadge.style.background = '';
+        transportBadge.style.borderColor = '';
+        const statusEl = document.getElementById('transport-status');
+        if(statusEl) statusEl.textContent = `紐で搬送 ${dragged.length}/${carryingCapacity(this.player)}名 · 拠点へ`;
+      }
+    }
     const clock=daylightAt(this.worldTime),timeBadge=document.getElementById('day-night-badge');
     if(timeBadge){timeBadge.textContent=`${clock.icon} ${clock.label} ${clock.clock} · ${clock.period==='day'?'夜':'昼'}まで${Math.ceil(clock.remaining)}秒`;timeBadge.dataset.period=clock.period;}
     const restBanner=document.getElementById('phase-complete-banner'),restText=document.getElementById('phase-banner-text');
@@ -2943,9 +2959,12 @@ export const IronSquadGame = {
     advancePhase(this,dt);
     if(this.restTimer>0) {updateWounded(this,0);this.updateStatsUI();return;}
 
-    // 画面揺れ減衰
+    // 画面揺れ減衰 & 救助快足バフ減衰
     if (this.screenShake > 0) {
       this.screenShake = Math.max(0, this.screenShake - dt * 2.5);
+    }
+    if (this.rescueBuffTimer > 0) {
+      this.rescueBuffTimer = Math.max(0, this.rescueBuffTimer - dt);
     }
 
     // シームレス自律リポップ更新
@@ -2992,6 +3011,21 @@ export const IronSquadGame = {
               life: 0.25
             });
           }
+        }
+      }
+
+      if (this.rescueBuffTimer > 0) {
+        playerMoveSpeed *= 1.35; // ✨ 救助の英雄 快足バフ (+35%ダッシュ)
+        if (Math.random() < 0.35) {
+          this.particles.push({
+            x: this.player.x + (Math.random() - 0.5) * 16,
+            y: this.player.y + 8,
+            vx: -this.joystick.dirX * 30 + (Math.random() - 0.5) * 15,
+            vy: -this.joystick.dirY * 30 + (Math.random() - 0.5) * 15,
+            color: 'rgba(56, 189, 248, 0.75)',
+            size: 3.2,
+            life: 0.3
+          });
         }
       }
 
@@ -3124,6 +3158,7 @@ export const IronSquadGame = {
       const cls = SOLDIER_CLASSES[clsKey] || SOLDIER_CLASSES.HEAVY;
       const platoon = this.platoons[soldier.platoonId % 3] || this.platoons[0];
 
+      if(soldier.shieldTimer > 0) soldier.shieldTimer = Math.max(0, soldier.shieldTimer - dt);
       if(soldier.dead||soldier.isDown)return;
       if(handleTransportAI(this,soldier,dt))return;
 
@@ -3885,6 +3920,13 @@ export const IronSquadGame = {
       }
     }
 
+    if (target.shieldTimer > 0) {
+      dmg = Math.max(1, Math.round(dmg * 0.50)); // 生還シールドで被ダメ50%カット
+      if (Math.random() < 0.45) {
+        this.spawnDamageText(target.x, target.y - 20, '🛡️生還シールド!', '#38bdf8');
+      }
+    }
+
     target.hp -= dmg;
     this.spawnDamageText(target.x, target.y - 12, dmg, '#ff3344');
     sound.playBomb();
@@ -4162,6 +4204,39 @@ export const IronSquadGame = {
     this.showToast(`✨ 鍛冶屋の魔術！「${sourceItem.name}」の強化値を「${targetItem.name}」へ引き継ぎました！`);
     this.saveGame();
     this.renderStrategyUI();
+  },
+
+  tryAwakenDeathlineSkill(soldier) {
+    if (!soldier || soldier.dead) return null;
+    soldier.deathlineSkills = soldier.deathlineSkills || [];
+    if (soldier.deathlineSkills.length >= 4) return null;
+    if (Math.random() >= 0.40) return null; // 40%の確率で救助生還時に覚醒
+
+    const allDeathSkills = Object.keys(DEATHLINE_SKILLS);
+    let preferredSkill = null;
+    if (soldier.soldierClass === 'HEAVY') preferredSkill = 'IRON_RESOLVE';
+    else if (soldier.soldierClass === 'LIGHT') preferredSkill = 'PHANTOM_STEP';
+    else if (soldier.soldierClass === 'ARCHER') preferredSkill = 'DEADLY_FOCUS';
+    else if (soldier.soldierClass === 'MEDIC') preferredSkill = 'MIRACLE_PRAYER';
+
+    let chosenSkillId = null;
+    if (preferredSkill && !soldier.deathlineSkills.includes(preferredSkill)) {
+      chosenSkillId = preferredSkill;
+    } else {
+      const availableSkills = allDeathSkills.filter(skId => !soldier.deathlineSkills.includes(skId));
+      if (availableSkills.length > 0) {
+        chosenSkillId = availableSkills[Math.floor(Math.random() * availableSkills.length)];
+      }
+    }
+
+    if (chosenSkillId) {
+      soldier.deathlineSkills.push(chosenSkillId);
+      this.recalcSoldierStats(soldier);
+      const skill = DEATHLINE_SKILLS[chosenSkillId];
+      this.spawnDamageText(soldier.x, soldier.y - 35, `✨死線覚醒: ${skill.name}!`, skill.color || '#f87171');
+      return skill;
+    }
+    return null;
   },
 
   grantSoldierHonor(soldierId) {

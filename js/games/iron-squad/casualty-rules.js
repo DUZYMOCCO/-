@@ -35,16 +35,106 @@ export function sanitizeCarriers(game) {
     else counts.set(wounded.carrierId,count+1);
   }
 }
-function revive(game,wounded,hp) {
+function revive(game,wounded,hp,options=null) {
+  const carrier=carrierOf(game,wounded);
   wounded.isDown=false;wounded.hp=Math.max(1,Math.floor(hp));wounded.rescueProgress=0;wounded.downTimer=0;
   delete wounded.carrierId;delete wounded.rescueHealerId;
-  game.showToast?.(`${wounded.name}が復活しました`);
+  if(options) {
+    grantRescueBonus(game,wounded,{...options,carrier});
+  } else {
+    game.showToast?.(`${wounded.name}が復活しました`);
+  }
+}
+export function grantRescueBonus(game,wounded,options={}) {
+  const {method='BASE',medic=null,carrier=null}=options;
+  if(!game||!wounded)return;
+
+  const isBase=method==='BASE';
+  const baseGold=isBase?200:100;
+  const carrierBonusGold=carrier===game.player?50:0;
+  const totalGold=baseGold+carrierBonusGold;
+
+  // 1. 部隊軍資金
+  game.gold=(game.gold||0)+totalGold;
+
+  // 2. 昇進EXP & プレイヤーEXP
+  const expGain=isBase?20:12;
+  const pExpGain=isBase?30:20;
+  if(typeof game.gainExp==='function') {
+    game.gainExp(expGain);
+  } else {
+    game.exp=(game.exp||0)+expGain;
+  }
+  if(game.player) {
+    game.player.exp=(game.player.exp||0)+pExpGain;
+    let pGuard=0;
+    while(game.player.exp>=(game.player.reqExp||20)&&pGuard++<30) {
+      const req=Math.max(10,game.player.reqExp||20);
+      game.player.exp-=req;
+      game.player.level=(game.player.level||1)+1;
+      game.player.reqExp=Math.floor(req*1.45+10);
+      game.sound?.playHighScore?.();
+      game.spawnDamageText?.(game.player.x,game.player.y-30,`⚡ Lv.${game.player.level} UP!`,'#34d399');
+      game.showToast?.(`⚡ 救助功績でレベルアップ！ Lv.${game.player.level} に到達！`);
+    }
+  }
+
+  // 3. 搬送者へのボーナス（快足ダッシュバフ・個人報酬）
+  if(carrier) {
+    if(carrier===game.player) {
+      game.player.rescues=(game.player.rescues||0)+1;
+      game.rescueBuffTimer=isBase?6.0:4.0;
+      game.spawnDamageText?.(game.player.x,game.player.y-25,'✨ 救助の英雄！(高速ダッシュ)','#38bdf8');
+    } else {
+      carrier.gold=(carrier.gold||0)+(isBase?80:50);
+      carrier.exp=(carrier.exp||0)+20;
+      carrier.rescues=(carrier.rescues||0)+1;
+      game.spawnDamageText?.(carrier.x,carrier.y-20,`🎖️ 搬送功績! +${isBase?80:50}G`,'#fbbf24');
+    }
+  }
+
+  // 4. 衛生兵へのボーナス
+  if(medic&&medic!==carrier) {
+    medic.gold=(medic.gold||0)+50;
+    medic.exp=(medic.exp||0)+20;
+    medic.rescues=(medic.rescues||0)+1;
+    game.spawnDamageText?.(medic.x,medic.y-20,'💚 救命功績! +50G','#34d399');
+  }
+
+  // 5. 救助された兵士へのボーナス（死線生還・スキル覚醒・シールド）
+  wounded.survivedDeathlines=(wounded.survivedDeathlines||0)+1;
+  wounded.gold=(wounded.gold||0)+25;
+  wounded.shieldTimer=3.0; // 3秒間被ダメージ半減シールド
+
+  // 死線スキル覚醒判定（40%の確率でスキル覚醒！）
+  let awakenedSkill=null;
+  if(typeof game.tryAwakenDeathlineSkill==='function') {
+    awakenedSkill=game.tryAwakenDeathlineSkill(wounded);
+  }
+
+  // 6. 演出・サウンド・通知
+  if(isBase) {
+    game.sound?.playHighScore?.();
+    game.spawnDamageText?.(wounded.x,wounded.y-30,`🚑 拠点救護成功! +${totalGold}G`,'#ffd700');
+    const carrierName=carrier===game.player?'隊長':(carrier?carrier.name:null);
+    const carrierTxt=carrierName?` (搬送: ${carrierName}に快足バフ)`:'';
+    const awkTxt=awakenedSkill?` ✨死線覚醒【${awakenedSkill.name}】！`:'';
+    game.showToast?.(`🚑 拠点救護成功！【${wounded.name}】が全快復帰！(+${totalGold}G, 昇進EXP+${expGain}${carrierTxt}${awkTxt})`);
+  } else {
+    game.sound?.playItem?.();
+    game.spawnDamageText?.(wounded.x,wounded.y-30,`💚 衛生兵救護成功! +${totalGold}G`,'#34d399');
+    const carrierTxt=carrier===game.player?' (隊長に快足バフ)':'';
+    const awkTxt=awakenedSkill?` ✨死線覚醒【${awakenedSkill.name}】！`:'';
+    game.showToast?.(`💚 衛生救護！【${wounded.name}】が戦線復帰！(+${totalGold}G, 昇進EXP+${expGain}${carrierTxt}${awkTxt})`);
+  }
+
+  game.updateStatsUI?.();
 }
 export function treatWounded(game,medic,wounded,dt) {
   if(!Number.isFinite(dt)||dt<=0||!isMedic(medic)||medic.dead||medic.isDown||medic.hp<=0||!wounded?.isDown||wounded.dead||Math.hypot(medic.x-wounded.x,medic.y-wounded.y)>40)return false;
   wounded.rescueProgress=(wounded.rescueProgress||0)+dt*(medic.soldierClass==='HIGH_PRIEST'?2.8:1.1);
   if(wounded.rescueProgress<1)return false;
-  revive(game,wounded,wounded.maxHp*.35);recordHealing(medic,wounded.hp);return true;
+  revive(game,wounded,wounded.maxHp*.35,{method:'MEDIC',medic});recordHealing(medic,wounded.hp);return true;
 }
 export function updateWounded(game,dt) {
   sanitizeCarriers(game);
@@ -53,7 +143,7 @@ export function updateWounded(game,dt) {
     if(!wounded.isDown||wounded.dead)continue;
     wounded.hp=0;
     const station=nearestAidStation(game,wounded);
-    if(Math.hypot(wounded.x-station.x,wounded.y-station.y)<=station.radius) {revive(game,wounded,wounded.maxHp);continue;}
+    if(Math.hypot(wounded.x-station.x,wounded.y-station.y)<=station.radius) {revive(game,wounded,wounded.maxHp,{method:'BASE'});continue;}
     if(wounded.carrierId)continue;
     wounded.downTimer=Math.max(0,(wounded.downTimer??RESCUE_TIMEOUT)-dt);
     if(wounded.downTimer<=0) {
