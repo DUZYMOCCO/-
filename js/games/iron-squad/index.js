@@ -11,6 +11,7 @@
  */
 import { sound } from '../../audio.js';
 import { storage } from '../../storage.js';
+import { drawFieldSoldier, drawFieldMob } from './visuals.js';
 
 const MAP_WIDTH = 1800;
 const MAP_HEIGHT = 1800;
@@ -730,7 +731,7 @@ export const IronSquadGame = {
 
   setupUI() {
     this.container.innerHTML = `
-      <div class="game-wrapper">
+      <div class="game-wrapper iron-squad">
         <header class="game-header">
           <button id="btn-back" class="icon-btn" title="工房へ戻る">🏠</button>
           <div class="game-stats" style="flex: 1; justify-content: space-around;">
@@ -909,6 +910,8 @@ export const IronSquadGame = {
       </div>
     `;
 
+    this.configureStrategyPanel();
+
     document.getElementById('btn-back').addEventListener('click', () => {
       sound.playTap();
       this.saveGame();
@@ -943,7 +946,7 @@ export const IronSquadGame = {
     if (restartStratBtn) {
       restartStratBtn.addEventListener('click', () => {
         sound.playTap();
-        document.getElementById('strategy-modal').classList.add('hidden');
+        this.closeStrategyModal();
         this.clearSavedGame();
         this.startFreshGame();
       });
@@ -952,6 +955,7 @@ export const IronSquadGame = {
     document.getElementById('btn-restart').addEventListener('click', () => {
       sound.playTap();
       document.getElementById('game-overlay').classList.add('hidden');
+      this.setDialogState(false);
       this.startFreshGame();
     });
 
@@ -963,13 +967,13 @@ export const IronSquadGame = {
 
     document.getElementById('btn-start-next-wave').addEventListener('click', () => {
       sound.playTap();
-      document.getElementById('strategy-modal').classList.add('hidden');
+      this.closeStrategyModal();
       this.inBattle = true;
     });
 
     document.getElementById('btn-close-strat').addEventListener('click', () => {
       sound.playTap();
-      document.getElementById('strategy-modal').classList.add('hidden');
+      this.closeStrategyModal();
       this.inBattle = true;
     });
 
@@ -1000,28 +1004,6 @@ export const IronSquadGame = {
     }
 
 
-    // タブ切り替え
-    const tabSquad = document.getElementById('tab-strat-squad');
-    const tabEquip = document.getElementById('tab-strat-equip');
-    const viewSquad = document.getElementById('view-strat-squad');
-    const viewEquip = document.getElementById('view-strat-equip');
-
-    tabSquad.addEventListener('click', () => {
-      sound.playTap();
-      tabSquad.classList.add('active');
-      tabEquip.classList.remove('active');
-      viewSquad.classList.remove('hidden');
-      viewEquip.classList.add('hidden');
-    });
-
-    tabEquip.addEventListener('click', () => {
-      sound.playTap();
-      tabEquip.classList.add('active');
-      tabSquad.classList.remove('active');
-      viewEquip.classList.remove('hidden');
-      viewSquad.classList.add('hidden');
-    });
-
     const zoomBtn = document.getElementById('btn-zoom-toggle');
     if (zoomBtn) {
       zoomBtn.addEventListener('click', (e) => {
@@ -1030,6 +1012,88 @@ export const IronSquadGame = {
         this.toggleZoom();
       });
     }
+  },
+
+  configureStrategyPanel() {
+    const modal = document.getElementById('strategy-modal');
+    const wrapper = this.container.querySelector('.game-wrapper');
+    wrapper.append(modal, document.getElementById('game-overlay'));
+    modal.setAttribute('role', 'dialog'); modal.setAttribute('aria-modal', 'true');
+    modal.setAttribute('aria-labelledby', 'strat-title');
+    const panel = modal.firstElementChild;
+    panel.classList.add('strategy-panel');
+    const heading = panel.firstElementChild; heading.classList.add('dialog-heading');
+    const close = document.createElement('button');
+    close.id='btn-dialog-close'; close.className='dialog-close'; close.textContent='閉じる ×';
+    close.addEventListener('click',()=>this.closeStrategyModal()); heading.append(close);
+    const nav=document.getElementById('tab-strat-squad').parentElement;
+    nav.classList.add('dialog-tabs');
+    const overview=document.createElement('div'); overview.id='view-strat-overview';
+    const body=document.createElement('div'); body.className='dialog-body';
+    body.tabIndex=0; body.setAttribute('aria-label','会議の内容');
+    let node=heading.nextElementSibling;
+    while(node && node.id!=='btn-start-next-wave') {
+      const next=node.nextElementSibling;
+      if(node!==nav) {
+        if(node.id==='view-strat-squad' || node.id==='view-strat-equip') body.append(node);
+        else overview.append(node);
+      }
+      node=next;
+    }
+    overview.append(document.getElementById('btn-restart-from-strat'));
+    body.prepend(overview);
+    const overviewTab=document.createElement('button');
+    overviewTab.id='tab-strat-overview'; overviewTab.className='sub-tab-btn'; overviewTab.textContent='状況';
+    nav.prepend(overviewTab);
+    document.getElementById('tab-strat-squad').textContent='兵士・援助';
+    document.getElementById('tab-strat-equip').textContent='装備・強化';
+    panel.insertBefore(nav,heading.nextSibling); panel.insertBefore(body,nav.nextSibling);
+    const footer=document.createElement('div'); footer.className='dialog-footer';
+    footer.append(document.getElementById('btn-start-next-wave'),document.getElementById('btn-close-strat'));
+    panel.append(footer);
+    const selectTab=(name)=>{
+      for(const key of ['overview','squad','equip']) {
+        document.getElementById(`view-strat-${key}`).classList.toggle('hidden',key!==name);
+        const tab=document.getElementById(`tab-strat-${key}`);
+        tab.classList.toggle('active',key===name); tab.setAttribute('aria-pressed',String(key===name));
+      }
+      body.scrollTop=0;
+    };
+    for(const key of ['overview','squad','equip']) {
+      document.getElementById(`tab-strat-${key}`).addEventListener('click',()=>selectTab(key));
+    }
+    selectTab('overview');
+    this.dialogKeyHandler=e=>{
+      if(modal.classList.contains('hidden')) return;
+      if(e.key==='Escape') { e.preventDefault(); this.closeStrategyModal(); }
+      if(e.key==='Tab') {
+        const buttons=[...modal.querySelectorAll('button,select,[tabindex="0"]')].filter(el=>el.getClientRects().length && !el.disabled);
+        const first=buttons[0],last=buttons[buttons.length-1];
+        if(e.shiftKey && document.activeElement===first) { e.preventDefault(); last?.focus(); }
+        else if(!e.shiftKey && document.activeElement===last) { e.preventDefault(); first?.focus(); }
+      }
+    };
+    modal.addEventListener('keydown',this.dialogKeyHandler);
+  },
+
+  setDialogState(open) {
+    this.container.classList.toggle('dialog-open', open);
+    this.container.querySelector('.game-header').inert = open;
+    document.getElementById('canvas-container').inert = open;
+  },
+
+  resetMovementInput() {
+    if(this.joystick) Object.assign(this.joystick,{active:false,dirX:0,dirY:0});
+    const knob=document.getElementById('dpad-knob');
+    if(knob) knob.style.transform='translate(-50%, -50%)';
+  },
+
+  closeStrategyModal(resume = true) {
+    document.getElementById('strategy-modal').classList.add('hidden');
+    this.setDialogState(false);
+    this.resetMovementInput();
+    if(resume) this.inBattle = true;
+    document.getElementById('btn-strategy')?.focus();
   },
 
   toggleZoom() {
@@ -1942,6 +2006,7 @@ export const IronSquadGame = {
       let touchId = null;
 
       const handleStickStart = (e) => {
+        if (!this.inBattle) return;
         sound.unlock();
         e.preventDefault();
         e.stopPropagation();
@@ -1951,7 +2016,7 @@ export const IronSquadGame = {
       };
 
       const handleStickMove = (e) => {
-        if (!this.joystick.active) return;
+        if (!this.inBattle || !this.joystick.active) return;
         e.preventDefault();
         e.stopPropagation();
         let touch = e;
@@ -1998,6 +2063,7 @@ export const IronSquadGame = {
         stickKnob.style.transform = `translate(calc(-50% + ${knobX}px), calc(-50% + ${knobY}px))`;
       };
 
+      this.stickHandlers = { start: handleStickStart, move: handleStickMove, end: handleStickEnd };
       stickBase.addEventListener('mousedown', handleStickStart);
       window.addEventListener('mousemove', handleStickMove);
       window.addEventListener('mouseup', handleStickEnd);
@@ -2015,6 +2081,7 @@ export const IronSquadGame = {
     let pinchStartZoom = 1.0;
 
     const onCanvasStart = (e) => {
+      if (!this.inBattle) return;
       // コントローラー以外の場所を触った時
       if (e.target.closest('#virtual-gamepad') || e.target.closest('#strategy-modal')) return;
       sound.unlock();
@@ -2037,6 +2104,7 @@ export const IronSquadGame = {
     };
 
     const onCanvasMove = (e) => {
+      if (!this.inBattle) { canvasDown = false; pinchStartDist = null; return; }
       if (e.touches && e.touches.length >= 2 && pinchStartDist) {
         if (e.cancelable) e.preventDefault();
         const t0 = e.touches[0], t1 = e.touches[1];
@@ -4381,7 +4449,11 @@ export const IronSquadGame = {
     }
 
     this.renderStrategyUI();
+    this.inBattle = false;
+    this.resetMovementInput();
     modal.classList.remove('hidden');
+    this.setDialogState(true);
+    document.getElementById('btn-dialog-close').focus();
   },
 
   renderStrategyUI() {
@@ -4680,6 +4752,12 @@ export const IronSquadGame = {
         </div>
       `;
 
+      const portrait = document.createElement('canvas');
+      portrait.className = 'soldier-portrait'; portrait.width = 88; portrait.height = 112;
+      portrait.setAttribute('aria-label', `${cls.name} ${s.name}`);
+      const pc = portrait.getContext('2d'); pc.translate(44, 96); pc.scale(2, 2);
+      drawFieldSoldier(pc, {...s,x:0,y:0,vx:0,vy:0,portrait:true}, 0, cls, pColor);
+      row.classList.add('soldier-card'); row.prepend(portrait);
       squadList.appendChild(row);
 
       const fundBtn = row.querySelector('.btn-fund');
@@ -4786,22 +4864,23 @@ export const IronSquadGame = {
       this.drawChest(this.ctx, drop, now);
     }
 
-    // 3.5 背後の樹木・岩・野営設備（主人公より奥のもの）
-    const pyDepth = this.player ? this.player.y : 0;
-    this.drawWorldObjects(this.ctx, now, false, pyDepth);
-
-    // 4. キャラクター・モンスター統合 Yソート描画 (2.5D斜めアングルの前後奥行きを完全表現！)
+    // One depth queue for scenery and units, with viewport culling.
     const renderList = [];
+    const margin = 150, halfW = this.width / (2*z), halfH = this.height / (2*z);
+    const visible = o => Math.abs(o.x-this.camera.x) < halfW+margin && Math.abs(o.y-this.camera.y) < halfH+margin;
+    for (const o of this.worldObjs || []) {
+      if (visible(o)) renderList.push({y:o.y, draw:()=>this.drawWorldObj(this.ctx,o,now,false)});
+    }
     if (this.monsters) {
       for (let i = 0; i < this.monsters.length; i++) {
         const m = this.monsters[i];
-        renderList.push({ y: m.y, draw: () => this.drawMonster(this.ctx, m, now) });
+        if (visible(m)) renderList.push({ y: m.y, draw: () => this.drawMonster(this.ctx, m, now) });
       }
     }
     if (this.squad) {
       for (let i = 0; i < this.squad.length; i++) {
         const s = this.squad[i];
-        if (!s.dead) {
+        if (!s.dead && visible(s)) {
           renderList.push({ y: s.y, draw: () => this.drawSoldier(this.ctx, s, now) });
         }
       }
@@ -4821,12 +4900,6 @@ export const IronSquadGame = {
         this.drawProjectile(this.ctx, proj, now);
       }
     }
-
-    // 6.5 手前の樹木・岩（主人公より手前のもの。葉は半透明で視界確保）
-    this.drawWorldObjects(this.ctx, now, true, pyDepth);
-
-    // 6.7 蛍・落ち葉
-    this.drawAmbientMotes(this.ctx, now);
 
     // 7. ダメージポップアップ
     for (const dtObj of this.damageTexts) {
@@ -4982,6 +5055,27 @@ export const IronSquadGame = {
         }
       }
     });
+
+    // Weathered wheel ruts and embedded paving, baked into the ground cache.
+    roads.forEach(r => {
+      c.strokeStyle = 'rgba(35,28,20,.28)'; c.lineWidth = 2;
+      for (const offset of [-11, 11]) {
+        c.beginPath();
+        for (let t=0; t<=1.001; t+=.01) {
+          const p=bez(r[0],r[1],r[2],r[3],t);
+          if (t===0) c.moveTo(p.x+offset,p.y); else c.lineTo(p.x+offset,p.y);
+        }
+        c.stroke();
+      }
+    });
+    for (let row=-5; row<=5; row++) for (let col=-6; col<=6; col++) {
+      const x=bx+col*19+(row%2)*9, y=by+row*12;
+      if (Math.hypot(x-bx,y-by)>95 || rnd()<.15) continue;
+      c.fillStyle=pick(['#746d57','#68624f','#817963']);
+      c.fillRect(x,y,16,9);
+      c.fillStyle='rgba(224,209,166,.18)'; c.fillRect(x,y,16,1);
+      c.fillStyle='rgba(30,30,22,.25)'; c.fillRect(x,y+8,16,1);
+    }
 
     // 4) 池
     ponds.forEach((p) => {
@@ -5264,6 +5358,11 @@ export const IronSquadGame = {
     }
   },
 
+  sceneryCoversUnit(o, scale) {
+    const covers = u => u && !u.dead && Math.abs(u.x-o.x)<30*scale && u.y<o.y+10 && u.y>o.y-65*scale;
+    return covers(this.player) || (this.squad || []).some(covers);
+  },
+
   drawWorldObj(ctx, o, now, after) {
     const s = o.s || 1;
     ctx.save();
@@ -5285,7 +5384,7 @@ export const IronSquadGame = {
       ctx.fill();
       ctx.fillStyle = '#35241a';
       ctx.fillRect(1 * s, -20 * s, 2.5 * s, 20 * s);
-      if (after) ctx.globalAlpha = 0.82;
+      if (this.sceneryCoversUnit(o, s)) ctx.globalAlpha = 0.32;
       const blobs = [
         [0, -30, 21, 0], [-11, -37, 16, 1], [11, -36, 15, 1], [0, -48, 15, 2], [-6, -52, 7, 3]
       ];
@@ -5300,7 +5399,7 @@ export const IronSquadGame = {
       ctx.beginPath(); ctx.ellipse(3 * s, 3, 18 * s, 6 * s, 0, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#3b2a1c';
       ctx.fillRect(-3 * s, -14 * s, 6 * s, 16 * s);
-      if (after) ctx.globalAlpha = 0.82;
+      if (this.sceneryCoversUnit(o, s)) ctx.globalAlpha = 0.32;
       const layers = [[-10, 24, '#12331f'], [-26, 20, '#17452a'], [-41, 15, '#1f5a35']];
       layers.forEach(([ly, hw, col], i) => {
         const sx = sway * (0.3 + i * 0.35);
@@ -5884,7 +5983,9 @@ export const IronSquadGame = {
     ctx.save();
     if (isLeft) ctx.scale(-1, 1);
 
-    if (m.type === 'slime') {
+    if (drawFieldMob(ctx, m, now)) {
+      // Common creatures use the quiet field illustration; bosses keep their silhouettes.
+    } else if (m.type === 'slime') {
       // ===== 🟢 スライム (近郊安全ゾーン・ぷるぷる揺れる半透明ゲル) =====
       const bodyColor = m.hitPulse > 0 ? '#ffffff' : '#34d399';
       const squish = Math.sin(now * 0.016 + m.x) * 1.5;
@@ -6370,7 +6471,7 @@ export const IronSquadGame = {
       ctx.shadowBlur = 0;
     } else {
       const barW = Math.max(22, m.radius * 2);
-      const headH = m.isBoss ? 46 : (m.type === 'orc' || m.type === 'wyvern' ? 34 : 24);
+      const headH = m.isBoss ? 46 : (m.type === 'orc' || m.type === 'wyvern' ? 44 : (m.type === 'goblin' ? 37 : 26));
       ctx.fillStyle = 'rgba(0,0,0,0.65)';
       ctx.fillRect(-barW / 2, -headH, barW, 4);
       ctx.fillStyle = m.isBoss ? '#ef4444' : (m.isElite ? '#f59e0b' : '#34d399');
@@ -6538,648 +6639,9 @@ export const IronSquadGame = {
   },
 
   drawSoldier(ctx, s, now) {
-    ctx.save();
-    ctx.translate(s.x, s.y);
-
-    const clsKey = s.soldierClass || 'HEAVY';
-    const cls = SOLDIER_CLASSES[clsKey] || SOLDIER_CLASSES.HEAVY;
-    const isNamed = s.isNamed;
-    const isDown = s.isDown;
-    const platoon = this.platoons ? this.platoons[s.platoonId % 3] : null;
-    const pColor = platoon ? platoon.color : '#38bdf8';
-
-    // 装備情報取得（兵士が拾ったり支給された装備を完全反映！）
-    const eq = s.equipped || {};
-    const wEq = getEquipVisual(eq.weapon || s.weapon, 1, cls.color);
-    const sEq = getEquipVisual(eq.shield, 1, '#475569');
-    const hEq = getEquipVisual(eq.helmet, 1, '#64748b');
-    const aEq = getEquipVisual(eq.armor, 1, cls.color);
-    const gEq = getEquipVisual(eq.gloves, 1, '#475569');
-    const lEq = getEquipVisual(eq.legs, 1, '#334155');
-    const mEq = eq.amulet ? getEquipVisual(eq.amulet, 1, '#fbbf24') : null;
-
-    // 1. ダウン（行動不能・救助待ち）中の描画
-    if (isDown) {
-      const flash = Math.sin(now * 0.015) > 0;
-      // 倒れた身体（横たわり・斜め見下ろし接地）
-      ctx.fillStyle = flash ? 'rgba(239, 68, 68, 0.45)' : 'rgba(0, 0, 0, 0.35)';
-      ctx.beginPath();
-      ctx.ellipse(0, 2, 14, 6, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      // 倒れた胴体
-      ctx.fillStyle = flash ? '#ef4444' : aEq.color;
-      ctx.beginPath();
-      ctx.ellipse(2, 0, 9, 5, 0.15, 0, Math.PI * 2);
-      ctx.fill();
-
-      // 転がった兜
-      ctx.fillStyle = hEq.color;
-      ctx.beginPath();
-      ctx.arc(-7, -1, 5.5, 0, Math.PI * 2);
-      ctx.fill();
-
-      // 救助要請SOSラベル & カウントダウン
-      ctx.textAlign = 'center';
-      ctx.font = 'bold 11px sans-serif';
-      ctx.fillStyle = '#f87171';
-      ctx.shadowColor = '#000';
-      ctx.shadowBlur = 4;
-      ctx.fillText(`🆘 救助! (${Math.ceil(s.downTimer)}s)`, 0, -22);
-      ctx.shadowBlur = 0;
-
-      // 救助進行度プログレスバー
-      const prog = Math.min(1.0, Math.max(0, s.rescueProgress || 0));
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
-      ctx.fillRect(-14, -13, 28, 4.5);
-      ctx.fillStyle = '#34d399';
-      ctx.fillRect(-14, -13, 28 * prog, 4.5);
-      ctx.strokeStyle = '#f87171';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(-14, -13, 28, 4.5);
-
-      ctx.restore();
-      return;
-    }
-
-    // 2. 足元ソフト接地シャドウ ＆ 所属小隊リング ＆ アミュレットオーラ
-    ctx.fillStyle = isNamed ? 'rgba(251, 191, 36, 0.32)' : 'rgba(0,0,0,0.32)';
-    ctx.beginPath();
-    ctx.ellipse(0, 1, isNamed ? 13 : 11, 4.8, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // 小隊所属リング
-    ctx.strokeStyle = pColor;
-    ctx.lineWidth = 1.4;
-    ctx.beginPath();
-    ctx.ellipse(0, 1, 13, 5.2, 0, 0, Math.PI * 2);
-    ctx.stroke();
-
-    // 直属小隊（Personal Guards）のゴールドオーラリング！
-    if (s.isPersonalGuard) {
-      ctx.strokeStyle = '#facc15';
-      ctx.lineWidth = 1.8;
-      ctx.shadowColor = '#facc15';
-      ctx.shadowBlur = 6;
-      ctx.beginPath();
-      ctx.ellipse(0, 1, 14.5, 5.8, 0, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.shadowBlur = 0;
-    }
-
-    if (isNamed) {
-      ctx.strokeStyle = 'rgba(251, 191, 36, 0.6)';
-      ctx.lineWidth = 1.6;
-      ctx.beginPath();
-      ctx.ellipse(0, 1, 15, 6, 0, 0, Math.PI * 2);
-      ctx.stroke();
-    }
-
-    if (mEq && mEq.hasItem) {
-      ctx.strokeStyle = mEq.color;
-      ctx.lineWidth = 1.2;
-      ctx.beginPath();
-      ctx.ellipse(0, 1, 17, 6.5, 0, 0, Math.PI * 2);
-      ctx.stroke();
-    }
-
-    // 天才（🌟GENIUS）の黄金オーラリング
-    if (s.talent === 'GENIUS') {
-      ctx.strokeStyle = '#fbbf24';
-      ctx.lineWidth = 1.6;
-      ctx.shadowColor = '#fbbf24';
-      ctx.shadowBlur = 7;
-      ctx.beginPath();
-      ctx.ellipse(0, 1, 15, 6, 0, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.shadowBlur = 0;
-    }
-
-    // 英才（🔮ELITE）の紫オーラリング
-    if (s.talent === 'ELITE') {
-      ctx.strokeStyle = '#c084fc';
-      ctx.lineWidth = 1.4;
-      ctx.shadowColor = '#c084fc';
-      ctx.shadowBlur = 5;
-      ctx.beginPath();
-      ctx.ellipse(0, 1, 14.5, 5.8, 0, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.shadowBlur = 0;
-    }
-
-    // 死線生還者（💀）の不屈の赤オーラリング
-    if ((s.survivedDeathlines || 0) > 0) {
-      ctx.strokeStyle = 'rgba(239, 68, 68, 0.7)';
-      ctx.lineWidth = 1.3;
-      ctx.shadowColor = '#ef4444';
-      ctx.shadowBlur = 6;
-      ctx.beginPath();
-      ctx.ellipse(0, 1, 16, 6.4, 0, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.shadowBlur = 0;
-    }
-
-    // 上位職（ADVANCED）の覚醒オーラリング
-    if (cls.isAdvanced) {
-      const advPulse = Math.sin(now * 0.007) * 2;
-      ctx.strokeStyle = cls.glowColor || '#fbbf24';
-      ctx.lineWidth = 2.2;
-      ctx.shadowColor = cls.glowColor || '#fbbf24';
-      ctx.shadowBlur = 10 + advPulse;
-      ctx.beginPath();
-      ctx.ellipse(0, 1, 17.5 + advPulse * 0.5, 7 + advPulse * 0.3, 0, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.shadowBlur = 0;
-    }
-
-    // 向き判定（左右反転＋上下傾き）
-    const isLeft = Math.cos(s.facingAngle || 0) < -0.15;
-    const isMoving = (s.vx && Math.abs(s.vx) > 0.05) || (s.vy && Math.abs(s.vy) > 0.05);
-    const walkCycle = isMoving ? now * 0.018 + (s.animOffset || 0) : 0;
-    const bob = isMoving ? Math.sin(walkCycle * 2) * 1.5 : Math.sin(now * 0.003 + (s.animOffset || 0)) * 0.6;
-    const legSwing = isMoving ? Math.sin(walkCycle) * 3.5 : 0;
-
-    ctx.save();
-    if (isLeft) ctx.scale(-1, 1);
-
-    // マント (上位職は神話級マント、叙勲兵は王立青、先輩兵は黄金)
-    if (cls.isAdvanced || isNamed || s.isVeteran) {
-      const advCapeColor = clsKey === 'PALADIN' ? '#0284c7' : (clsKey === 'BLADEMASTER' ? '#b45309' : (clsKey === 'SNIPER' ? '#047857' : '#be185d'));
-      ctx.fillStyle = cls.isAdvanced ? advCapeColor : (isNamed ? '#2563eb' : '#d97706');
-      ctx.beginPath();
-      ctx.moveTo(-4, -14 + bob);
-      ctx.quadraticCurveTo(-14, -4 + bob, -16, 1 + bob);
-      ctx.lineTo(-4, -4 + bob);
-      ctx.closePath();
-      ctx.fill();
-      ctx.strokeStyle = '#fbbf24';
-      ctx.lineWidth = cls.isAdvanced ? 1.5 : 1;
-      ctx.stroke();
-    }
-
-    // 脚甲＆ブーツ（LEGS）
-    ctx.fillStyle = lEq.color;
-    ctx.fillRect(-4 + legSwing, -6, 3.2, 7);
-    ctx.fillRect(1 - legSwing, -6, 3.2, 7);
-    // 靴底
-    ctx.fillStyle = '#0f172a';
-    ctx.fillRect(-5 + legSwing, 0, 4.5, 2);
-    ctx.fillRect(0 - legSwing, 0, 4.5, 2);
-
-    // 兵種別 2.5D立ち姿グラフィック
-    if (clsKey === 'PALADIN') {
-      // ===== 👑🛡️ 聖騎士 (PALADIN: 黄金と白銀の守護聖騎士) =====
-      // 胴体 (白銀＆黄金の神聖プレート)
-      ctx.fillStyle = '#f8fafc';
-      ctx.strokeStyle = '#fbbf24';
-      ctx.lineWidth = 1.4;
-      ctx.beginPath();
-      ctx.ellipse(0, -12 + bob, 7.5, 7, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-      // 胸の黄金十字
-      ctx.fillStyle = '#fbbf24';
-      ctx.fillRect(-1.2, -15 + bob, 2.4, 6);
-      ctx.fillRect(-3, -13.5 + bob, 6, 2.2);
-
-      // 黄金の聖肩当て
-      ctx.fillStyle = '#fbbf24';
-      ctx.fillRect(-8, -17 + bob, 4.5, 5);
-      ctx.fillRect(3.5, -17 + bob, 4.5, 5);
-
-      // 神聖光輪（ヘイロー・頭上に浮遊）
-      const haloBob = Math.sin(now * 0.008) * 1.5;
-      ctx.strokeStyle = '#fef08a';
-      ctx.lineWidth = 1.8;
-      ctx.shadowColor = '#fbbf24';
-      ctx.shadowBlur = 8;
-      ctx.beginPath();
-      ctx.ellipse(0, -29 + bob + haloBob, 8, 2.8, 0, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.shadowBlur = 0;
-
-      // 白銀騎士兜
-      ctx.fillStyle = '#e2e8f0';
-      ctx.strokeStyle = '#fbbf24';
-      ctx.lineWidth = 1.2;
-      ctx.beginPath();
-      ctx.arc(0, -20 + bob, 6.8, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-      // バイザースリット (神聖蒼光)
-      ctx.fillStyle = '#0f172a';
-      ctx.fillRect(1, -21 + bob, 4, 2.5);
-      ctx.fillStyle = '#38bdf8';
-      ctx.fillRect(2, -20.5 + bob, 3, 1.5);
-
-      // 左手の黄金十字タワーシールド
-      ctx.save();
-      ctx.translate(-6, -11 + bob);
-      ctx.fillStyle = '#0284c7';
-      ctx.strokeStyle = '#fbbf24';
-      ctx.lineWidth = 1.8;
-      ctx.beginPath();
-      ctx.moveTo(-5, -8);
-      ctx.lineTo(5, -8);
-      ctx.lineTo(4, 4);
-      ctx.lineTo(0, 9);
-      ctx.lineTo(-4, 4);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-      // 盾中央の光る黄金十字
-      ctx.fillStyle = '#fef08a';
-      ctx.fillRect(-1, -6, 2, 10);
-      ctx.fillRect(-3.5, -3, 7, 2);
-      ctx.restore();
-
-      // 右手の光輝聖剣
-      ctx.save();
-      ctx.translate(5, -10 + bob);
-      ctx.fillStyle = '#f8fafc';
-      ctx.strokeStyle = '#fbbf24';
-      ctx.lineWidth = 1.2;
-      ctx.fillRect(0, -2, 16, 3.5);
-      ctx.strokeRect(0, -2, 16, 3.5);
-      ctx.shadowColor = '#67e8f9';
-      ctx.shadowBlur = 8;
-      ctx.strokeRect(0, -2, 16, 3.5);
-      ctx.shadowBlur = 0;
-      ctx.restore();
-
-    } else if (clsKey === 'BLADEMASTER') {
-      // ===== ⚔️⚡ 剣聖 (BLADEMASTER: 神速二刀流の武人) =====
-      // 胴体 (漆黒＆黄金の身軽な剣客装束)
-      ctx.fillStyle = '#1e293b';
-      ctx.strokeStyle = '#fbbf24';
-      ctx.lineWidth = 1.2;
-      ctx.beginPath();
-      ctx.ellipse(0, -11 + bob, 6, 6, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-
-      // 頭部・鉢金となびく黒髪
-      ctx.fillStyle = '#0f172a';
-      ctx.beginPath();
-      ctx.arc(0, -18 + bob, 5.8, 0, Math.PI * 2);
-      ctx.fill();
-      // 黄金鉢金
-      ctx.fillStyle = '#fbbf24';
-      ctx.fillRect(-3, -20 + bob, 7, 2.5);
-      // 鋭い眼光
-      ctx.fillStyle = '#f59e0b';
-      ctx.fillRect(2, -18 + bob, 2.5, 1.5);
-      // 後ろになびくリボン
-      ctx.strokeStyle = '#f59e0b';
-      ctx.lineWidth = 1.8;
-      ctx.beginPath();
-      ctx.moveTo(-3, -19 + bob);
-      ctx.lineTo(-11, -17 + bob + Math.sin(now * 0.02) * 2);
-      ctx.stroke();
-
-      // 神速二刀流 (雷光を纏う名刀)
-      const swordGlow = '#fbbf24';
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 2.4;
-      ctx.shadowColor = swordGlow;
-      ctx.shadowBlur = 8;
-      // 奥刀
-      ctx.beginPath();
-      ctx.moveTo(-4, -13 + bob);
-      ctx.lineTo(8, -19 + bob);
-      ctx.stroke();
-      // 手前刀
-      ctx.beginPath();
-      ctx.moveTo(3, -9 + bob);
-      ctx.lineTo(16, -6 + bob);
-      ctx.stroke();
-      ctx.shadowBlur = 0;
-
-    } else if (clsKey === 'SNIPER') {
-      // ===== 🎯💫 神射手 (SNIPER: 星彩の天星長弓スナイパー) =====
-      // 胴体 (深緑＆エメラルドの星彩外套)
-      ctx.fillStyle = '#065f46';
-      ctx.strokeStyle = '#34d399';
-      ctx.lineWidth = 1.2;
-      ctx.beginPath();
-      ctx.ellipse(0, -11 + bob, 6, 6, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-
-      // 背中の天星矢筒 (光るクリスタル矢)
-      ctx.fillStyle = '#0f172a';
-      ctx.fillRect(-7, -16 + bob, 4, 9);
-      ctx.fillStyle = '#34d399';
-      ctx.fillRect(-6, -18 + bob, 2.5, 3);
-
-      // 頭部・星彩ティアラ
-      ctx.fillStyle = '#064e3b';
-      ctx.beginPath();
-      ctx.arc(0, -18 + bob, 5.8, 0, Math.PI * 2);
-      ctx.fill();
-      // 天星スコープサイト
-      ctx.fillStyle = '#34d399';
-      ctx.shadowColor = '#34d399';
-      ctx.shadowBlur = 6;
-      ctx.fillRect(2, -19 + bob, 2.5, 2.5);
-      ctx.shadowBlur = 0;
-
-      // 巨大な星彩ロングボウ
-      const pull = (s.atkAnim || 0) * 5;
-      ctx.strokeStyle = '#34d399';
-      ctx.lineWidth = 2.6;
-      ctx.shadowColor = '#34d399';
-      ctx.shadowBlur = 8;
-      ctx.beginPath();
-      ctx.arc(7 - pull, -11 + bob, 11, -1.0, 1.0);
-      ctx.stroke();
-      ctx.shadowBlur = 0;
-      // 光の弦
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(13 - pull, -19 + bob);
-      ctx.lineTo(3 - pull, -11 + bob);
-      ctx.lineTo(13 - pull, -3 + bob);
-      ctx.stroke();
-
-    } else if (clsKey === 'HIGH_PRIEST') {
-      // ===== 🕊️💖 大司教 (HIGH_PRIEST: 奇跡の純白法衣司教) =====
-      // 胴体 (純白＆薄桃色の神聖ローブ・裾広がり)
-      ctx.fillStyle = '#fdf2f8';
-      ctx.strokeStyle = '#f472b6';
-      ctx.lineWidth = 1.3;
-      ctx.beginPath();
-      ctx.moveTo(-6, -13 + bob);
-      ctx.lineTo(6, -13 + bob);
-      ctx.lineTo(8, -1);
-      ctx.lineTo(-8, -1);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-
-      // 頭部・大司教冠（ミトラ）
-      ctx.fillStyle = '#fdf2f8';
-      ctx.strokeStyle = '#f472b6';
-      ctx.lineWidth = 1.2;
-      ctx.beginPath();
-      ctx.moveTo(-4, -18 + bob);
-      ctx.lineTo(0, -26 + bob);
-      ctx.lineTo(4, -18 + bob);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-      // 冠中央のピンク神聖宝石
-      ctx.fillStyle = '#ec4899';
-      ctx.beginPath();
-      ctx.arc(0, -20 + bob, 2, 0, Math.PI * 2);
-      ctx.fill();
-
-      // 聖なる十字大錫杖
-      ctx.strokeStyle = '#fbbf24';
-      ctx.lineWidth = 2.5;
-      ctx.beginPath();
-      ctx.moveTo(2, -3 + bob);
-      ctx.lineTo(11, -24 + bob);
-      ctx.stroke();
-
-      // 杖先端の浮遊神聖オーブ
-      const orbPulse = Math.sin(now * 0.01) * 1.5;
-      ctx.fillStyle = '#f472b6';
-      ctx.shadowColor = '#f472b6';
-      ctx.shadowBlur = 14 + orbPulse * 3;
-      ctx.beginPath();
-      ctx.arc(12, -26 + bob, 5 + orbPulse * 0.5, 0, Math.PI * 2);
-      ctx.fill();
-      // オーブ内の白十字
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(11, -29 + bob, 2, 6);
-      ctx.fillRect(9, -27 + bob, 6, 2);
-      ctx.shadowBlur = 0;
-
-    } else if (clsKey === 'HEAVY') {
-      // ===== 🛡️ 重装歩兵 =====
-      // 胴体 (フルプレートアーマー・ARMOR色忠実反映)
-      ctx.fillStyle = aEq.color;
-      ctx.strokeStyle = '#0f172a';
-      ctx.lineWidth = 1.1;
-      ctx.beginPath();
-      ctx.ellipse(0, -12 + bob, 7, 6.5, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-
-      // 重装肩当て (ポールドロン)
-      ctx.fillStyle = aEq.color;
-      ctx.fillRect(-7, -16 + bob, 4, 4.5);
-      ctx.fillRect(3, -16 + bob, 4, 4.5);
-
-      // フルフェイス兜 (HELMET色反映)
-      ctx.fillStyle = hEq.color;
-      ctx.beginPath();
-      ctx.arc(0, -20 + bob, 6.5, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-      // バイザースリット (水色光)
-      ctx.fillStyle = '#0f172a';
-      ctx.fillRect(1, -21 + bob, 4, 2.5);
-      ctx.fillStyle = '#38bdf8';
-      ctx.fillRect(2, -20.5 + bob, 3, 1.5);
-
-      // 兜飾り (T4以上で羽・角)
-      if (hEq.tier >= 4) {
-        ctx.fillStyle = hEq.tier >= 5 ? '#fbbf24' : '#94a3b8';
-        ctx.fillRect(-1, -27 + bob, 2.5, 4);
-      }
-
-      // 左手の大型盾 (SHIELD色反映)
-      ctx.save();
-      ctx.translate(-5, -11 + bob);
-      ctx.fillStyle = sEq.color;
-      ctx.strokeStyle = '#f8fafc';
-      ctx.lineWidth = 1.2;
-      if (sEq.tier <= 2) {
-        ctx.beginPath();
-        ctx.arc(0, 0, 5.5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-      } else {
-        ctx.beginPath();
-        ctx.moveTo(-4, -6);
-        ctx.lineTo(4, -6);
-        ctx.lineTo(3, 3);
-        ctx.lineTo(0, 7);
-        ctx.lineTo(-3, 3);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-      }
-      ctx.restore();
-
-      // 右手のブロードソード (WEAPON色反映)
-      ctx.save();
-      ctx.translate(5, -10 + bob);
-      ctx.fillStyle = wEq.color;
-      ctx.strokeStyle = '#f8fafc';
-      ctx.lineWidth = 1;
-      ctx.fillRect(0, -2, 12 + (wEq.tier >= 4 ? 3 : 0), 3);
-      ctx.strokeRect(0, -2, 12 + (wEq.tier >= 4 ? 3 : 0), 3);
-      if (wEq.tier >= 5 || wEq.upgrade >= 3) {
-        ctx.shadowColor = wEq.color;
-        ctx.shadowBlur = 6;
-        ctx.strokeRect(0, -2, 12 + (wEq.tier >= 4 ? 3 : 0), 3);
-        ctx.shadowBlur = 0;
-      }
-      ctx.restore();
-
-    } else if (clsKey === 'LIGHT') {
-      // ===== 🗡️ 軽装遊撃兵 =====
-      // 胴体 (身軽なスカウト装束・ARMOR色反映)
-      ctx.fillStyle = aEq.color;
-      ctx.beginPath();
-      ctx.ellipse(0, -11 + bob, 5.5, 5.5, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      // 頭部・フード/軽兜 (HELMET色反映)
-      ctx.fillStyle = hEq.color;
-      ctx.beginPath();
-      ctx.arc(0, -18 + bob, 5.5, 0, Math.PI * 2);
-      ctx.fill();
-
-      // 二刀流ダガー (WEAPON色反映)
-      const dColor = wEq.color;
-      ctx.strokeStyle = dColor;
-      ctx.lineWidth = 2;
-      ctx.shadowColor = dColor;
-      ctx.shadowBlur = (wEq.tier >= 5) ? 5 : 0;
-      // 奥ダガー
-      ctx.beginPath();
-      ctx.moveTo(-3, -12 + bob);
-      ctx.lineTo(7, -15 + bob);
-      ctx.stroke();
-      // 手前ダガー
-      ctx.beginPath();
-      ctx.moveTo(3, -9 + bob);
-      ctx.lineTo(12, -6 + bob);
-      ctx.stroke();
-      ctx.shadowBlur = 0;
-
-    } else if (clsKey === 'ARCHER') {
-      // ===== 🏹 弓兵 =====
-      // 胴体 (ハンター装束・ARMOR色反映)
-      ctx.fillStyle = aEq.color;
-      ctx.beginPath();
-      ctx.ellipse(0, -11 + bob, 5.5, 5.5, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      // 背中の矢筒
-      ctx.fillStyle = '#78350f';
-      ctx.fillRect(-7, -15 + bob, 3.5, 8);
-
-      // 頭部・羽根つき帽子/兜 (HELMET色反映)
-      ctx.fillStyle = hEq.color;
-      ctx.beginPath();
-      ctx.arc(0, -18 + bob, 5.5, 0, Math.PI * 2);
-      ctx.fill();
-      // 緑の羽飾り
-      ctx.fillStyle = '#34d399';
-      ctx.fillRect(-3, -24 + bob, 2.5, 3.5);
-
-      // ロングボウ (WEAPON色反映)
-      const pull = (s.atkAnim || 0) * 4;
-      ctx.strokeStyle = wEq.color;
-      ctx.lineWidth = 2.2;
-      ctx.shadowColor = wEq.color;
-      ctx.shadowBlur = (wEq.tier >= 5) ? 5 : 0;
-      ctx.beginPath();
-      ctx.arc(6 - pull, -11 + bob, 9, -0.9, 0.9);
-      ctx.stroke();
-      ctx.shadowBlur = 0;
-      // 弓弦
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
-      ctx.lineWidth = 0.8;
-      ctx.beginPath();
-      ctx.moveTo(11 - pull, -18 + bob);
-      ctx.lineTo(3 - pull, -11 + bob);
-      ctx.lineTo(11 - pull, -4 + bob);
-      ctx.stroke();
-
-    } else if (clsKey === 'MEDIC') {
-      // ===== 🌿 衛生術士 =====
-      // 胴体 (神官ローブ・ふわりと広がる裾)
-      ctx.fillStyle = aEq.color;
-      ctx.beginPath();
-      ctx.moveTo(-5, -12 + bob);
-      ctx.lineTo(5, -12 + bob);
-      ctx.lineTo(7, -2);
-      ctx.lineTo(-7, -2);
-      ctx.closePath();
-      ctx.fill();
-
-      // 頭部・シスターフード/法冠 (HELMET色反映)
-      ctx.fillStyle = hEq.color;
-      ctx.beginPath();
-      ctx.arc(0, -18 + bob, 5.8, 0, Math.PI * 2);
-      ctx.fill();
-
-      // 治癒の杖 (WEAPON色反映)
-      ctx.strokeStyle = wEq.color;
-      ctx.lineWidth = 2.2;
-      ctx.beginPath();
-      ctx.moveTo(2, -4 + bob);
-      ctx.lineTo(10, -22 + bob);
-      ctx.stroke();
-
-      // 杖先端の治癒オーブ (回復力パワーアップで光彩・オーラ巨大化！)
-      const isHighPower = (s.healPower || 0) >= 50;
-      const orbPulse = Math.sin(now * 0.008) * 1.2;
-      const orbColor = isHighPower ? '#00f0ff' : '#34d399';
-      ctx.fillStyle = orbColor;
-      ctx.shadowColor = orbColor;
-      ctx.shadowBlur = (isHighPower ? 14 : 8) + orbPulse * 2;
-      ctx.beginPath();
-      ctx.arc(11, -24 + bob, (isHighPower ? 4.5 : 3.8) + orbPulse * 0.4, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.shadowBlur = 0;
-    }
-
-    ctx.restore(); // 反転復元
-
-    // 3. 頭上ネームプレート (斜めアングルの頭上位置)
-    ctx.textAlign = 'center';
-    const sLv = s.level || 1;
-    const guardBadge = s.isPersonalGuard ? '⭐直属 ' : '';
-    const classBadge = cls.isAdvanced ? `${cls.tag} ` : '';
-    const tKey = s.talent || 'AVERAGE';
-    const talentBadge = tKey === 'GENIUS' ? '🌟' : (tKey === 'ELITE' ? '🔮' : (tKey === 'TALENTED' ? '✨' : (tKey === 'INFERIOR' ? '🍂' : '')));
-    const dlBadge = (s.survivedDeathlines || 0) > 0 ? `💀` : '';
-    const prefix = `${classBadge}${talentBadge}${dlBadge}${guardBadge}`;
-
-    if (isNamed || cls.isAdvanced) {
-      ctx.fillStyle = cls.isAdvanced ? (cls.glowColor || '#fbbf24') : '#fbbf24';
-      ctx.font = 'bold 10px sans-serif';
-      ctx.shadowColor = '#000';
-      ctx.shadowBlur = 4;
-      ctx.fillText(`${prefix}Lv.${sLv} ${s.title || ''}${s.name}`, 0, -32);
-      ctx.shadowBlur = 0;
-    } else {
-      ctx.fillStyle = (tKey === 'GENIUS') ? '#fbbf24' : (s.isPersonalGuard ? '#fef08a' : '#cbd5e1');
-      ctx.font = (s.isPersonalGuard || tKey === 'GENIUS') ? 'bold 9.5px sans-serif' : '9px sans-serif';
-      ctx.shadowColor = '#000';
-      ctx.shadowBlur = 3;
-      ctx.fillText(`${prefix}Lv.${sLv} ${s.name}`, 0, -30);
-      ctx.shadowBlur = 0;
-    }
-
-    // HPバー
-    ctx.fillStyle = 'rgba(0,0,0,0.6)';
-    ctx.fillRect(-12, -25, 24, 3.5);
-    ctx.fillStyle = isNamed ? '#fbbf24' : '#10b981';
-    ctx.fillRect(-12, -25, 24 * (s.hp / s.maxHp), 3.5);
-    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
-    ctx.lineWidth = 0.6;
-    ctx.strokeRect(-12, -25, 24, 3.5);
-
-    ctx.restore();
+    const cls = SOLDIER_CLASSES[s.soldierClass || 'HEAVY'] || SOLDIER_CLASSES.HEAVY;
+    const platoon = this.platoons?.[s.platoonId % 3];
+    drawFieldSoldier(ctx, s, now, cls, platoon?.color || '#829cae');
   },
 
   drawPlayer(ctx, p, now) {
@@ -7694,11 +7156,22 @@ export const IronSquadGame = {
         vetNote.textContent = '※生存者なし…過酷な戦場にて部隊は全滅しました';
       }
     }
+    this.closeStrategyModal(false);
+    this.setDialogState(true);
     overlay.classList.remove('hidden');
   },
 
   destroy() {
     this.stopGameLoop();
+    if (this.stickHandlers) {
+      const {move,end} = this.stickHandlers;
+      window.removeEventListener('mousemove',move);
+      window.removeEventListener('touchmove',move);
+      window.removeEventListener('mouseup',end);
+      window.removeEventListener('touchend',end);
+      window.removeEventListener('touchcancel',end);
+      this.stickHandlers = null;
+    }
     window.removeEventListener('resize', this.resizeCanvas);
     if (this.handleVisibility) {
       document.removeEventListener('visibilitychange', this.handleVisibility);

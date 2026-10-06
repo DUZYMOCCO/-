@@ -1,9 +1,14 @@
 # 🛡️ スマホゲーム工房 / IRON SQUAD（アイアン・スクワッド）完全仕様書 & AI引き継ぎ資料
 **最終更新日**: 2026年10月6日  
-**プロジェクトバージョン**: v1.9.0 (Service Worker: `mobile-game-studio-v28`)  
+**プロジェクトバージョン**: v1.10.0 (Service Worker: `mobile-game-studio-v29`)
 **作成目的**: 開発者および他AI（Claude / ChatGPT / 他エージェント）への完全な現状共有、コード検査・レビュー、および今後の機能拡張の引き継ぎ。
 
 ---
+
+## 2026-10-06 ビジュアル・UI更新
+
+現在はIRON SQUADのみを収録。描画更新と会議UIの修正内容は [VISUAL_UI_UPDATE.md](VISUAL_UI_UPDATE.md) を参照。
+`visuals.js` と `css/iron-squad.css` が追加されています。以下の旧ファイル構成・行番号表はv1.9.0時点の参考資料であり、現行コードの検索は関数名で行ってください。
 
 ## 1. プロジェクト概要 & 技術スタック
 
