@@ -653,11 +653,15 @@ export const IronSquadGame = {
     this.lastTime = performance.now();
     this.loop = (t) => {
       if (!this.running) return;
-      const dt = Math.min((t - this.lastTime) / 1000, 0.1);
+      const dt = Math.max(0.001, Math.min((t - this.lastTime) / 1000, 0.1));
       this.lastTime = t;
-      this.update(dt);
-      this.render();
-      this.renderMinimap();
+      try {
+        this.update(dt);
+        this.render();
+        this.renderMinimap();
+      } catch (err) {
+        console.error('Frame loop exception caught and recovered:', err);
+      }
       this.animFrameId = requestAnimationFrame(this.loop);
     };
     this.animFrameId = requestAnimationFrame(this.loop);
@@ -2227,7 +2231,9 @@ export const IronSquadGame = {
   },
 
   performAttack(attacker, monster, isPlayer, customAtk) {
-    let dmg = customAtk !== undefined ? customAtk : attacker.atk;
+    if (!monster || monster.hp <= 0) return;
+    const baseAtk = customAtk !== undefined ? customAtk : (attacker ? (attacker.atk || 10) : 10);
+    let dmg = baseAtk;
     let isCrit = false;
 
     if (isPlayer && Math.random() * 100 < (this.player.crit || 10)) {
@@ -2329,11 +2335,13 @@ export const IronSquadGame = {
         }
       }
 
-      // プレイヤーのレベルアップ判定
-      while (this.player.exp >= (this.player.reqExp || 20)) {
-        this.player.exp -= this.player.reqExp;
+      // プレイヤーのレベルアップ判定 (無限ループ・NaN防止ガード)
+      let pGuard = 0;
+      while (this.player.exp >= (this.player.reqExp || 20) && pGuard++ < 30) {
+        const req = Math.max(10, this.player.reqExp || 20);
+        this.player.exp -= req;
         this.player.level = (this.player.level || 1) + 1;
-        this.player.reqExp = Math.floor(this.player.reqExp * 1.45 + 10);
+        this.player.reqExp = Math.floor(req * 1.45 + 10);
         sound.playHighScore();
         this.spawnDamageText(this.player.x, this.player.y - 30, `⚡ Lv.${this.player.level} UP!`, '#34d399');
         this.showToast(`⚡ レベルアップ！ Lv.${this.player.level} に到達！ (HP+16, ATK+4)`);
@@ -2365,11 +2373,13 @@ export const IronSquadGame = {
         }
       }
 
-      // 兵士のレベルアップ判定
-      while (attacker.exp >= (attacker.reqExp || 14)) {
-        attacker.exp -= attacker.reqExp;
+      // 兵士のレベルアップ判定 (無限ループ・NaN防止ガード)
+      let sGuard = 0;
+      while (attacker.exp >= (attacker.reqExp || 14) && sGuard++ < 30) {
+        const req = Math.max(8, attacker.reqExp || 14);
+        attacker.exp -= req;
         attacker.level = (attacker.level || 1) + 1;
-        attacker.reqExp = Math.floor(attacker.reqExp * 1.5 + 8);
+        attacker.reqExp = Math.floor(req * 1.5 + 8);
         this.spawnDamageText(attacker.x, attacker.y - 25, `⚡ Lv.${attacker.level}!`, '#00f0ff');
       }
 
@@ -2397,7 +2407,8 @@ export const IronSquadGame = {
 
   gainExp(amt) {
     this.exp += amt;
-    while (this.rankIndex < RANKS.length - 1 && this.exp >= RANKS[this.rankIndex + 1].reqExp) {
+    let rankGuard = 0;
+    while (this.rankIndex < RANKS.length - 1 && this.exp >= RANKS[this.rankIndex + 1].reqExp && rankGuard++ < 20) {
       this.rankIndex++;
       const nextRank = RANKS[this.rankIndex];
       this.recalcPlayerStats();
@@ -3370,33 +3381,30 @@ export const IronSquadGame = {
 
   drawBattlefield(ctx, now) {
     if (!this.terrainCache) this.buildTerrain();
-    const z = this.zoom || 1.0;
-    const pad = 40;
-    const sx = Math.max(0, Math.floor(this.camera.x - (this.width / 2) / z - pad));
-    const sy = Math.max(0, Math.floor(this.camera.y - (this.height / 2) / z - pad));
-    const sw = Math.min(MAP_WIDTH - sx, Math.ceil(this.width / z + pad * 2));
-    const sh = Math.min(MAP_HEIGHT - sy, Math.ceil(this.height / z + pad * 2));
-    ctx.drawImage(this.terrainCache, sx, sy, sw, sh, sx, sy, sw, sh);
+    // オフスクリーン全体を安全描画（ブラウザGPUが可視範囲をハードウェアカリングするためIndexSizeErrorが絶対に起きない）
+    ctx.drawImage(this.terrainCache, 0, 0);
 
     // 池の水面のきらめき
-    for (const p of this.ponds) {
-      if (p.x + p.rx < sx || p.x - p.rx > sx + sw || p.y + p.ry < sy || p.y - p.ry > sy + sh) continue;
-      ctx.save();
-      ctx.beginPath();
-      ctx.ellipse(p.x, p.y, p.rx - 2, p.ry - 2, 0, 0, Math.PI * 2);
-      ctx.clip();
-      for (let i = 0; i < 9; i++) {
-        const t = now * 0.0007 + i * 1.9 + p.x;
-        const px = p.x + Math.sin(t * 1.1) * p.rx * 0.7;
-        const py = p.y + Math.cos(t * 0.9) * p.ry * 0.6;
-        const a = 0.12 + 0.12 * Math.sin(t * 3);
-        ctx.strokeStyle = `rgba(190,235,255,${Math.max(0, a)})`;
-        ctx.lineWidth = 1.5;
+    if (this.ponds) {
+      for (const p of this.ponds) {
+        if (!p || p.rx <= 2 || p.ry <= 2) continue;
+        ctx.save();
         ctx.beginPath();
-        ctx.ellipse(px, py, 10 + (i % 3) * 5, 3 + (i % 2) * 2, 0, 0, Math.PI * 2);
-        ctx.stroke();
+        ctx.ellipse(p.x, p.y, p.rx - 2, p.ry - 2, 0, 0, Math.PI * 2);
+        ctx.clip();
+        for (let i = 0; i < 9; i++) {
+          const t = now * 0.0007 + i * 1.9 + p.x;
+          const px = p.x + Math.sin(t * 1.1) * p.rx * 0.7;
+          const py = p.y + Math.cos(t * 0.9) * p.ry * 0.6;
+          const a = 0.12 + 0.12 * Math.sin(t * 3);
+          ctx.strokeStyle = `rgba(190,235,255,${Math.max(0, a)})`;
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.ellipse(px, py, 10 + (i % 3) * 5, 3 + (i % 2) * 2, 0, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        ctx.restore();
       }
-      ctx.restore();
     }
   },
 

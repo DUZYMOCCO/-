@@ -1,5 +1,5 @@
 // スマホゲーム工房 Service Worker (最新コード最優先 Network-First & オフライン対応版)
-const CACHE_NAME = 'mobile-game-studio-v20';
+const CACHE_NAME = 'mobile-game-studio-v21';
 
 const ASSETS_TO_CACHE = [
   './',
