@@ -1143,10 +1143,35 @@ export const IronSquadGame = {
         details.textContent=data ? `第${data.phase || data.wave || 1}期 · Lv.${data.player?.level || 1} · ${(data.gold || 0).toLocaleString()}G · 生存${data.squad?.length || 0}名` : '生存部隊の引き継ぎ記録';
         const date=document.createElement('p');date.className='save-date';
         date.textContent=`${slot.state==='fallen'?'討死 · ':''}${new Date(slot.savedAt).toLocaleString('ja-JP')}`;
+        const btnGroup = document.createElement('div');
+        btnGroup.style.cssText = 'display:flex; gap:8px; align-items:center; margin-top:8px;';
         const button=document.createElement('button');button.className='action-btn';button.dataset.slotId=slot.id;
+        button.style.flex = '1';
         button.textContent=slot.state==='fallen'?'先輩を引き継いで再入隊':'このセーブで続ける';
         button.addEventListener('click',()=>this.selectSaveSlot(slot.id));
-        card.append(name,details,date,button);list.append(card);
+
+        const delButton = document.createElement('button');
+        delButton.className = 'action-btn secondary save-delete-btn';
+        delButton.type = 'button';
+        delButton.title = `「${slot.name}」を削除`;
+        delButton.style.cssText = 'min-width:74px; color:#f87171; border-color:#991b1b; padding:8px 10px; font-size:12px;';
+        delButton.textContent = '🗑️ 削除';
+        delButton.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const confirmed = window.confirm(`遠征「${slot.name}」を本当に削除しますか？\n\n※この操作は取り消せません。`);
+          if (confirmed) {
+            try {
+              saveSlots.delete(slot.id);
+              sound.playTap();
+              this.renderSaveSelection();
+            } catch (err) {
+              alert(err.message);
+            }
+          }
+        });
+
+        btnGroup.append(button, delButton);
+        card.append(name,details,date,btnGroup);list.append(card);
       }
     } catch(error) { list.textContent=error.message; }
     this.saveMenu.querySelector('#new-expedition-form').addEventListener('submit',e=>{
@@ -5102,6 +5127,9 @@ export const IronSquadGame = {
     // 8.5 大気（昼夜の色調・霧・ビネット）
     this.drawAtmosphere(this.ctx, now);
 
+    // 8.8 倒れた味方の画面端・方向インジケーター（矢印＆距離）
+    this.drawCasualtyIndicators(this.ctx, now);
+
     // 9. ジョイスティックUI
     if (this.joystick && this.joystick.active) {
       this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
@@ -5114,6 +5142,112 @@ export const IronSquadGame = {
       this.ctx.beginPath();
       this.ctx.arc(this.joystick.x, this.joystick.y, 16, 0, Math.PI * 2);
       this.ctx.fill();
+    }
+  },
+
+  drawCasualtyIndicators(ctx, now) {
+    if (!this.squad || !this.player) return;
+    const downedMates = this.squad.filter(s => s.isDown && !s.dead);
+    if (!downedMates.length) return;
+
+    const z = this.zoom || 1.0;
+    const cx = this.camera.x;
+    const cy = this.camera.y;
+    const w = this.width;
+    const h = this.height;
+
+    // 画面端の余白（HUD・ミニマップ・バーチャルパッドを避ける安全領域）
+    const padL = 36;
+    const padR = w - 36;
+    const padT = 95;
+    const padB = h - 65;
+
+    for (const s of downedMates) {
+      // 兵士のスクリーン座標
+      const sx = w / 2 + (s.x - cx) * z;
+      const sy = h / 2 + (s.y - cy) * z;
+
+      // 画面内に収まっているか判定
+      const onScreen = (sx >= padL && sx <= padR && sy >= padT && sy <= padB);
+      if (onScreen) continue; // 画面内なら兵士本体の頭上表示が見えるので矢印は不要
+
+      // 画面中心から負傷兵へのベクトル
+      const vX = sx - w / 2;
+      const vY = sy - h / 2;
+      const angle = Math.atan2(vY, vX);
+
+      // 境界矩形との交点（クランプ）
+      const halfBoxW = (padR - padL) / 2;
+      const halfBoxH = (padB - padT) / 2;
+      const centerBoxX = (padL + padR) / 2;
+      const centerBoxY = (padT + padB) / 2;
+
+      let edgeX, edgeY;
+      const tanA = Math.tan(angle);
+      if (Math.abs(vX) * halfBoxH > Math.abs(vY) * halfBoxW) {
+        // 左右の境界
+        edgeX = vX > 0 ? padR : padL;
+        edgeY = centerBoxY + (edgeX - centerBoxX) * tanA;
+        edgeY = Math.max(padT, Math.min(padB, edgeY));
+      } else {
+        // 上下の境界
+        edgeY = vY > 0 ? padB : padT;
+        edgeX = centerBoxX + (edgeY - centerBoxY) / tanA;
+        edgeX = Math.max(padL, Math.min(padR, edgeX));
+      }
+
+      // プレイヤーからの距離（メートル換算）
+      const distM = Math.round(Math.hypot(s.x - this.player.x, s.y - this.player.y));
+
+      // 搬送状況と緊急度
+      const isBeingCarried = !!s.carrierId;
+      const pulse = Math.sin(now * 0.014) > 0;
+      const bgColor = isBeingCarried ? 'rgba(30, 58, 44, 0.94)' : (pulse ? '#dc2626' : '#991b1b');
+      const borderColor = isBeingCarried ? '#34d399' : (pulse ? '#ffffff' : '#fca5a5');
+
+      ctx.save();
+      ctx.translate(edgeX, edgeY);
+
+      // 1. 方向を示す三角矢印 ▲
+      ctx.save();
+      ctx.rotate(angle);
+      ctx.fillStyle = borderColor;
+      ctx.beginPath();
+      ctx.moveTo(17, 0);       // 先端
+      ctx.lineTo(4, -8);
+      ctx.lineTo(7, 0);
+      ctx.lineTo(4, 8);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+
+      // 2. 丸型救護バッジ
+      ctx.fillStyle = bgColor;
+      ctx.strokeStyle = borderColor;
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.arc(0, 0, 14, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // 3. 救護十字マーク ✚
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(-7, -2.2, 14, 4.4);
+      ctx.fillRect(-2.2, -7, 4.4, 14);
+
+      // 4. 距離ラベル
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 11px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.shadowColor = 'rgba(0,0,0,0.9)';
+      ctx.shadowBlur = 4;
+      const textY = edgeY < h - 75 ? 21 : -21;
+      const labelText = isBeingCarried ? `搬送中 ${distM}m` : `${distM}m 救助!`;
+      ctx.fillText(labelText, 0, textY);
+      ctx.shadowBlur = 0;
+
+      ctx.restore();
     }
   },
 
@@ -6535,6 +6669,19 @@ export const IronSquadGame = {
         mCtx.strokeStyle = '#fef08a';
         mCtx.lineWidth = 0.8;
         mCtx.stroke();
+      }
+    }
+
+    // 4.5 倒れた味方（負傷兵：救護十字 ✚ 点滅）
+    const nowTime = performance.now();
+    for (const s of this.squad || []) {
+      if (s.isDown && !s.dead) {
+        const pulse = Math.sin(nowTime * 0.015) > 0;
+        const sx = s.x * scaleX;
+        const sy = s.y * scaleY;
+        mCtx.fillStyle = pulse ? '#ef4444' : '#ffffff';
+        mCtx.fillRect(sx - 3, sy - 1, 6, 2);
+        mCtx.fillRect(sx - 1, sy - 3, 2, 6);
       }
     }
 

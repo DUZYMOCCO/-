@@ -30,5 +30,9 @@ export const saveSlots = {
     if (!slot) return false;
     Object.assign(slot, values, {savedAt: Date.now()});
     return storage.set(KEY, slots);
+  },
+  delete(id) {
+    const slots = this.list().filter(item => item.id !== id);
+    return storage.set(KEY, slots);
   }
 };
