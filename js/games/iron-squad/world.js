@@ -3,7 +3,7 @@
 // 10800 was about 33s and 21600 about 65s. Both were still a short walk.
 export const WORLD_SIZE = 158720;
 export const WORLD_VERSION = 4;
-const TILE = 512, CACHE_LIMIT = 48;
+const TILE = 512, CACHE_LIMIT = 72; // was 48 — fewer regen thrash on 158720 world
 const CENTER = WORLD_SIZE / 2;
 const LIP = '#6e7264', FACE = '#1a1e1c', DROP = '#0e100e';
 const TAU = Math.PI * 2;
@@ -265,7 +265,7 @@ export class WorldTerrain {
     for(let y=0;y<TILE;y+=32) for(let x=0;x<TILE;x+=32) {
       c.fillStyle=biomeAt(x0+x+16,y0+y+16).ground; c.fillRect(x,y,32,32);
     }
-    for(let i=0;i<65;i++) {
+    for(let i=0;i<45;i++) {
       const x=rnd()*TILE,y=rnd()*TILE,r=15+rnd()*55;
       const g=c.createRadialGradient(x,y,0,x,y,r);
       g.addColorStop(0,i%2?'#81936920':'#101c1828');g.addColorStop(1,'#00000000');
@@ -284,7 +284,7 @@ export class WorldTerrain {
       if(d>30) continue;
       c.fillStyle=d>25?'#4d4636':(d>9 && d<13 ? '#5c503c':'#79654a');c.fillRect(x,y,4,4);
     }
-    for(let i=0;i<420;i++) {
+    for(let i=0;i<260;i++) {
       const x=rnd()*TILE,y=rnd()*TILE,wx=x+x0,wy=y+y0;
       const d=roadDist(wx,wy),b=biomeAt(wx,wy);
       if(d<26) { c.fillStyle='#b2a17b55';c.fillRect(x,y,1+rnd()*2,1);continue; }

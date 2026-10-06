@@ -1,7 +1,7 @@
 # 🛡️ IRON SQUAD（雑兵立身出世録）grok引き継ぎ書 & 現在地開発レポート
 
 **作成日時**: 2026年10月7日  
-**プロジェクトバージョン**: v1.23.3 (Service Worker: `mobile-game-studio-v59`)  
+**プロジェクトバージョン**: v1.23.4 (Service Worker: `mobile-game-studio-v60`)  
 **対象AI**: grok (xAI) および後続開発エージェント  
 **リポジトリ**: `main` ブランチ運用中
 
@@ -17,8 +17,8 @@
 ### 1.2 ファイル構成 & 役割一覧
 ```
 スマホゲーム工房/
-├── index.html              # PWAエントリ、メタタグ、キャッシュバスター管理 (v1.23.3 / ?v=59)
-├── sw.js                   # Service Worker (Network-First & キャッシュ管理: v59)
+├── index.html              # PWAエントリ、メタタグ、キャッシュバスター管理 (v1.23.4 / ?v=60)
+├── sw.js                   # Service Worker (Network-First & キャッシュ管理: v60)
 ├── manifest.json           # PWAマニフェスト (display: standalone, portrait)
 ├── serve.py                # ローカル開発用QRコード出力付きHTTPサーバー
 ├── start.bat               # サーバー起動ワンクリックバッチ
@@ -57,6 +57,16 @@
 ## 2. 直近の完了作業報告（現在地までの到達点）
 
 詳細な経過と未確認項目は `docs/WORK_REPORT_2026-10-07.md`。仕様の正は `docs/SPEC_AND_HANDOVER.md` の v1.21.0 節。
+
+### ⓪★ 16万px超広大世界向け パフォーマンス軽量化パッチ [v1.23.4]
+- **CACHE**: `mobile-game-studio-v60` / フッタ v1.23.4 / `?v=60`。
+- **背景**: 158,720pxの超広大世界導入に伴う、パーティクル増大・遠距離AI・UI更新による処理負荷の抑制。
+- **改善点**:
+  - `ENEMY_LIMIT = 60`（72→60）へソフトキャップ調整。
+  - `PARTICLE_CAP = 110` / `DAMAGE_TEXT_CAP = 36` で上限クランプ（GC発生を大幅抑制）。
+  - ミニマップ描画（`MINIMAP_INTERVAL_MS = 100ms`）およびStats UI（`STATS_UI_INTERVAL_MS = 250ms`）のスロットリング。
+  - 空間セル（`SPATIAL_CELL`）を活用した近傍索敵最適化、遠距離AIの間引き。
+  - `world.js`: タイル生成キャッシュ `CACHE_LIMIT = 72` 拡大 ＆ 描画ループ回数削減による再描画負荷軽減。
 
 ### ⓪″ 被弾HP成長・武器マスタリー・鎚/弓/クロスボウ/火砲 [v1.22.1]
 - **CACHE**: `mobile-game-studio-v55` / フッタ v1.22.1。
