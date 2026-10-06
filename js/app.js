@@ -166,6 +166,7 @@ function startApp() {
   if (!window.gameStudioInstance) {
     try {
       window.gameStudioInstance = new GameStudioApp();
+      window.__studio_loaded = true;
     } catch (err) {
       console.error('App init error:', err);
       const rescue = document.getElementById('rescue-banner');
@@ -173,6 +174,12 @@ function startApp() {
     }
   }
 }
+
+// 非同期Promiseエラーの安全な捕捉（iOSバックグラウンド復帰時のAudioContextレジューム例外等を安全に処理）
+window.addEventListener('unhandledrejection', (event) => {
+  console.warn('Unhandled promise rejection caught:', event.reason);
+  if (event.preventDefault) event.preventDefault();
+});
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', startApp);

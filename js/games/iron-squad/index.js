@@ -569,8 +569,8 @@ export const IronSquadGame = {
     this.resizeCanvas = () => {
       const rect = this.canvasContainer ? this.canvasContainer.getBoundingClientRect() : null;
       const dpr = Math.min(window.devicePixelRatio || 1, 3);
-      this.width = (rect && rect.width > 0) ? rect.width : (window.innerWidth || 390);
-      this.height = (rect && rect.height > 0) ? rect.height : (window.innerHeight - 80 || 600);
+      this.width = (rect && rect.width > 10) ? rect.width : (window.innerWidth > 10 ? window.innerWidth : 390);
+      this.height = (rect && rect.height > 10) ? rect.height : (window.innerHeight > 90 ? window.innerHeight - 80 : 600);
       this.canvas.width = this.width * dpr;
       this.canvas.height = this.height * dpr;
       this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -578,6 +578,15 @@ export const IronSquadGame = {
 
     this.resizeCanvas();
     window.addEventListener('resize', this.resizeCanvas);
+
+    // 画面切り替え（タブ・別アプリ移動からの復帰）時のデルタタイム＆リサイズ安全化
+    this.handleVisibility = () => {
+      if (!document.hidden) {
+        this.lastTime = performance.now();
+        if (this.resizeCanvas) this.resizeCanvas();
+      }
+    };
+    document.addEventListener('visibilitychange', this.handleVisibility);
 
     this.buildTerrain();
     this.setupInput();
@@ -3508,6 +3517,7 @@ export const IronSquadGame = {
 
   drawAtmosphere(ctx, now) {
     const W = this.width, H = this.height;
+    if (!W || !H || W < 10 || H < 10) return;
     // ゆっくり移ろう昼夜（夕暮れ〜夜の青み）
     const cyc = (Math.sin(now * 0.00004) + 1) / 2;
     ctx.fillStyle = `rgba(8,14,44,${0.08 + cyc * 0.2})`;
@@ -4545,6 +4555,9 @@ export const IronSquadGame = {
   destroy() {
     this.stopGameLoop();
     window.removeEventListener('resize', this.resizeCanvas);
+    if (this.handleVisibility) {
+      document.removeEventListener('visibilitychange', this.handleVisibility);
+    }
     if (this.canvas) {
       this.canvas.removeEventListener('mousedown', this.boundDown);
       window.removeEventListener('mousemove', this.boundMove);

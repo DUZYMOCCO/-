@@ -18,24 +18,32 @@
   <link rel="manifest" href="manifest.json">
 
   <!-- スタイルシート (キャッシュバスター付与) -->
-  <link rel="stylesheet" href="css/style.css?v=18">
-  <link rel="stylesheet" href="css/game-ui.css?v=18">
+  <link rel="stylesheet" href="css/style.css?v=19">
+  <link rel="stylesheet" href="css/game-ui.css?v=19">
 
-  <!-- グローバルエラートラップ（真っ暗な画面でのフリーズを絶対防止） -->
+  <!-- グローバルエラートラップ（初期ロード失敗時の画面真っ暗詰みのみ救済） -->
   <script>
+    window.__studio_loaded = false;
     window.addEventListener('error', function(e) {
       console.error('Global Error caught:', e);
+      // アプリ起動完了後はゲームプレイを妨げないようバナーは非表示（コンソール出力のみ）
+      if (window.__studio_loaded) return;
+      var msg = (e && e.message) ? e.message.toLowerCase() : '';
+      if (msg.includes('resizeobserver') || msg.includes('script error') || msg.includes('abort')) return;
       var rescue = document.getElementById('rescue-banner');
       if (rescue) rescue.style.display = 'block';
     });
   </script>
 </head>
 <body>
-  <!-- 緊急レスキューバナー (JSエラーやキャッシュ不整合時に表示) -->
-  <div id="rescue-banner" style="display:none; position:fixed; top:0; left:0; right:0; z-index:99999; background:#ef4444; color:#fff; padding:12px; font-size:12px; text-align:center;">
+  <!-- 緊急レスキューバナー (初期起動失敗時のみ表示・手動で閉じることも可能) -->
+  <div id="rescue-banner" style="display:none; position:fixed; top:0; left:0; right:0; z-index:99999; background:rgba(239, 68, 68, 0.95); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); color:#fff; padding:10px 14px; font-size:12px; text-align:center; box-shadow:0 4px 12px rgba(0,0,0,0.5);">
     ⚠️ 画面の読み込みで問題が発生しました。
-    <button onclick="if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(function(r){r.forEach(function(s){s.unregister();});caches.keys().then(function(k){k.forEach(function(c){caches.delete(c);});location.reload(true);});});}else{location.reload(true);}" style="margin-left:8px; padding:4px 10px; background:#fff; color:#ef4444; border:none; border-radius:4px; font-weight:bold;">
+    <button onclick="if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(function(r){r.forEach(function(s){s.unregister();});caches.keys().then(function(k){k.forEach(function(c){caches.delete(c);});location.reload(true);});});}else{location.reload(true);}" style="margin-left:8px; padding:4px 10px; background:#fff; color:#ef4444; border:none; border-radius:4px; font-weight:bold; cursor:pointer;">
       キャッシュを消して更新
+    </button>
+    <button onclick="document.getElementById('rescue-banner').style.display='none';" style="margin-left:8px; padding:4px 8px; background:rgba(0,0,0,0.3); color:#fff; border:none; border-radius:4px; cursor:pointer;" title="閉じる">
+      ✕
     </button>
   </div>
 
@@ -72,7 +80,7 @@
       </div>
 
       <footer class="hub-footer">
-        <p>📱 スマホゲーム工房 v1.7.0</p>
+        <p>📱 スマホゲーム工房 v1.7.1</p>
         <p style="margin-top: 6px;">
           <button id="btn-force-refresh" style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); color:#94a3b8; font-size:11px; padding:5px 12px; border-radius:12px; cursor:pointer;">
             🔄 最新データに更新
@@ -87,6 +95,6 @@
   </div>
 
   <!-- スクリプト (キャッシュバスター付与) -->
-  <script type="module" src="js/app.js?v=18"></script>
+  <script type="module" src="js/app.js?v=19"></script>
 </body>
 </html>
