@@ -297,6 +297,37 @@ canvas {
   display: block;
 }
 
+/* カメラ拡大縮小ズームボタン */
+.zoom-toggle-btn {
+  position: absolute;
+  top: 86px;
+  right: 10px;
+  background: rgba(15, 23, 42, 0.88);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(0, 240, 255, 0.45);
+  color: #38bdf8;
+  border-radius: 12px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  z-index: 12;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  transition: all 0.15s ease;
+}
+
+.zoom-toggle-btn:active {
+  transform: scale(0.92);
+  background: rgba(56, 189, 248, 0.3);
+  color: #fff;
+  border-color: #38bdf8;
+}
+
 /* 拠点治癒バッジ */
 .base-badge {
   position: absolute;
