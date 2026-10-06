@@ -914,6 +914,7 @@ export const IronSquadGame = {
 
     this.configureStrategyPanel();
     document.getElementById('btn-world-map').addEventListener('click',()=>this.openWorldMap());
+    document.querySelector('.minimap-container')?.addEventListener('click',()=>this.openWorldMap());
 
     document.getElementById('btn-back').addEventListener('click', () => {
       sound.playTap();
@@ -6475,89 +6476,115 @@ export const IronSquadGame = {
 
   renderMinimap() {
     const mCtx = this.minimapCtx;
+    if (!mCtx) return;
     const mw = 70;
     const mh = 70;
     mCtx.clearRect(0, 0, mw, mh);
 
-    mCtx.fillStyle = 'rgba(11, 13, 20, 0.75)';
+    // 1. 落ち着いた軍務マップ背景
+    mCtx.fillStyle = 'rgba(16, 24, 22, 0.88)';
     mCtx.fillRect(0, 0, mw, mh);
 
     const scaleX = mw / MAP_WIDTH;
     const scaleY = mh / MAP_HEIGHT;
+    const basePx = BASE_CAMP.x * scaleX;
+    const basePy = BASE_CAMP.y * scaleY;
 
-    // ゾーン境界サークル (ミニマップ)
-    FIELD_ZONES.forEach((z) => {
-      if (z.minDist > 0) {
-        mCtx.strokeStyle = z.color;
-        mCtx.lineWidth = 0.8;
-        mCtx.globalAlpha = 0.4;
-        mCtx.beginPath();
-        mCtx.arc(BASE_CAMP.x * scaleX, BASE_CAMP.y * scaleY, z.minDist * scaleX, 0, Math.PI * 2);
-        mCtx.stroke();
-      }
-    });
-    mCtx.globalAlpha = 1.0;
-
-    // 自軍本陣
-    mCtx.fillStyle = 'rgba(16, 185, 129, 0.4)';
+    // 2. 十字ガイドライン（中心が本陣であることを示す薄い線）
+    mCtx.strokeStyle = 'rgba(140, 160, 145, 0.22)';
+    mCtx.lineWidth = 1;
     mCtx.beginPath();
-    mCtx.arc(BASE_CAMP.x * scaleX, BASE_CAMP.y * scaleY, BASE_CAMP.radius * scaleX, 0, Math.PI * 2);
-    mCtx.fill();
+    mCtx.moveTo(basePx, 0); mCtx.lineTo(basePx, mh);
+    mCtx.moveTo(0, basePy); mCtx.lineTo(mw, basePy);
+    mCtx.stroke();
 
-    // 敵 (通常: 赤点 / 大ボス: 特大赤金ドクロ点)
-    for (const m of this.monsters) {
-      if (m.isColossal) {
-        const pulse = Math.sin(performance.now() * 0.015) * 1.5;
-        mCtx.fillStyle = '#f59e0b';
-        mCtx.beginPath();
-        mCtx.arc(m.x * scaleX, m.y * scaleY, 4.5 + pulse, 0, Math.PI * 2);
-        mCtx.fill();
-        mCtx.fillStyle = '#ef4444';
-        mCtx.beginPath();
-        mCtx.arc(m.x * scaleX, m.y * scaleY, 3, 0, Math.PI * 2);
-        mCtx.fill();
-      } else if (m.isBoss) {
-        mCtx.fillStyle = '#ef4444';
-        mCtx.beginPath();
-        mCtx.arc(m.x * scaleX, m.y * scaleY, 2.5, 0, Math.PI * 2);
-        mCtx.fill();
-      } else {
-        mCtx.fillStyle = m.isElite ? '#f59e0b' : '#ef4444';
-        mCtx.fillRect(m.x * scaleX - 1, m.y * scaleY - 1, 2, 2);
+    // 3. 最も近い未制圧拠点（目標ピン）だけをシンプルに表示（雑音を減らす）
+    let nearestOp = null;
+    let minOpDist = Infinity;
+    if (this.outposts && this.player) {
+      for (const op of this.outposts) {
+        if (!op.cleared) {
+          const d = Math.hypot(op.x - this.player.x, op.y - this.player.y);
+          if (d < minOpDist) {
+            minOpDist = d;
+            nearestOp = op;
+          }
+        }
       }
     }
-
-    // 仲間兵士 (緑点)
-    mCtx.fillStyle = '#10b981';
-    for (const s of this.squad) {
-      if (!s.dead) mCtx.fillRect(s.x * scaleX - 1, s.y * scaleY - 1, 2, 2);
-    }
-
-    // 探索拠点 (🏴, ⛓️, 🏛️, 📦)
     if (this.outposts) {
       for (const op of this.outposts) {
-        const ox = op.x * scaleX;
-        const oy = op.y * scaleY;
-        if (op.cleared) {
-          mCtx.fillStyle = 'rgba(100, 116, 139, 0.45)';
+        if (!op.cleared) {
+          const isTarget = op === nearestOp;
+          mCtx.fillStyle = isTarget ? '#fbbf24' : 'rgba(217, 119, 6, 0.35)';
           mCtx.beginPath();
-          mCtx.arc(ox, oy, 2, 0, Math.PI * 2);
-          mCtx.fill();
-        } else {
-          mCtx.fillStyle = op.color;
-          mCtx.beginPath();
-          mCtx.arc(ox, oy, 3.2, 0, Math.PI * 2);
+          mCtx.arc(op.x * scaleX, op.y * scaleY, isTarget ? 2.2 : 1.2, 0, Math.PI * 2);
           mCtx.fill();
         }
       }
     }
 
-    // 主人公 (青点)
+    // 4. 大ボス（COLOSSAL BOSS）のみ警告表示（雑魚モブの米粒ドットは描かない！）
+    for (const m of this.monsters) {
+      if (m.isColossal) {
+        const pulse = Math.sin(performance.now() * 0.01) * 0.8;
+        mCtx.fillStyle = '#ef4444';
+        mCtx.beginPath();
+        mCtx.arc(m.x * scaleX, m.y * scaleY, 3.2 + pulse, 0, Math.PI * 2);
+        mCtx.fill();
+        mCtx.strokeStyle = '#fef08a';
+        mCtx.lineWidth = 0.8;
+        mCtx.stroke();
+      }
+    }
+
+    // 5. 自軍本陣（緑の砦マーク ◆）
+    mCtx.fillStyle = '#34d399';
+    mCtx.beginPath();
+    mCtx.moveTo(basePx, basePy - 4.5);
+    mCtx.lineTo(basePx + 4.5, basePy);
+    mCtx.lineTo(basePx, basePy + 4.5);
+    mCtx.lineTo(basePx - 4.5, basePy);
+    mCtx.closePath();
+    mCtx.fill();
+    mCtx.strokeStyle = '#ffffff';
+    mCtx.lineWidth = 0.8;
+    mCtx.stroke();
+
+    // 6. 自軍部隊 / プレイヤー（進行方向を向くシャープな矢印 ▲）
     if (this.player) {
-      mCtx.fillStyle = '#00f0ff';
+      const px = this.player.x * scaleX;
+      const py = this.player.y * scaleY;
+      const angle = this.player.facingAngle || 0;
+
+      mCtx.save();
+      mCtx.translate(px, py);
+      mCtx.rotate(angle);
+
+      // 自軍マーカー：くっきり鮮やかなシアンブルーの矢印
+      mCtx.fillStyle = '#00f5ff';
       mCtx.beginPath();
-      mCtx.arc(this.player.x * scaleX, this.player.y * scaleY, 2.5, 0, Math.PI * 2);
+      mCtx.moveTo(5, 0);          // 先端
+      mCtx.lineTo(-3.5, -3.2);    // 左後
+      mCtx.lineTo(-1.8, 0);       // 中央くぼみ
+      mCtx.lineTo(-3.5, 3.2);     // 右後
+      mCtx.closePath();
       mCtx.fill();
+
+      mCtx.strokeStyle = '#ffffff';
+      mCtx.lineWidth = 0.8;
+      mCtx.stroke();
+
+      mCtx.restore();
+
+      // 7. 本陣距離テキスト（左下にすっきり表示）
+      const distToBase = Math.hypot(this.player.x - BASE_CAMP.x, this.player.y - BASE_CAMP.y);
+      mCtx.fillStyle = '#bbf7d0';
+      mCtx.font = '8px sans-serif';
+      mCtx.textAlign = 'left';
+      mCtx.textBaseline = 'bottom';
+      const distStr = distToBase < 200 ? '本陣' : `${Math.round(distToBase)}m`;
+      mCtx.fillText(distStr, 2.5, mh - 1.5);
     }
   },
 

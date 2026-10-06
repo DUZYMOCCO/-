@@ -52,8 +52,12 @@
 .iron-squad .stat-label { color: #b4beb0; font-size: 9px; }
 .iron-squad .icon-btn { flex-shrink: 0; width: 44px; height: 44px; background: #303c3c; }
 .iron-squad #field-zone-badge { max-width: calc(100% - 105px); font-size: 10px; padding: 5px 7px; }
-.iron-squad #squad-proximity-badge { top: 40px !important; max-width: calc(100% - 105px); font-size: 10px; padding: 4px 7px; }
-.iron-squad .minimap-container { top: 10px; right: 10px; width: 78px; height: 78px; border-color: #aaa884; border-radius: 6px; }
+.iron-squad .minimap-container {
+  top: 10px; right: 10px; width: 78px; height: 78px;
+  border: 1px solid #7c8877; border-radius: 8px;
+  background: rgba(16, 24, 22, 0.88); cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.45); pointer-events: auto;
+}
 .iron-squad .zoom-toggle-btn { top: 92px; right: 10px; min-height: 36px; color: #e2dac4; border-color: #7c8877; }
 .iron-squad .quest-banner {
   top: 71px; left: 10px; right: auto; width: calc(100% - 110px); max-width: 260px;
