@@ -883,7 +883,11 @@ export const IronSquadGame = {
               <!-- 装備タブ -->
               <div id="view-strat-equip" class="hidden">
                 <div id="player-equip-box" class="reward-box" style="margin-bottom: 10px;"></div>
-                <div style="font-size: 11px; font-weight: bold; color: #889; margin-bottom: 6px;">【所持品バッグ】(タップで装備)</div>
+                <div style="font-size: 11px; font-weight: bold; color: #889; margin-bottom: 4px;">【所持品バッグ】</div>
+                <div style="font-size: 10px; color: #94a3b8; margin-bottom: 8px; line-height: 1.45; background: rgba(0,0,0,0.25); padding: 5px 8px; border-radius: 6px; border: 1px solid #334155;">
+                  💡 <strong style="color:#e2e8f0;">[装備]</strong>: そのまま換装（旧装備はバッグに残ります）<br>
+                  ✨ <strong style="color:#c084fc;">[+X引継]</strong>: 旧装備の強化値(+X)を乗り換え（<strong style="color:#f87171;">※古い装備は消滅します</strong>）
+                </div>
                 <div id="inventory-list" class="squad-list-box" style="margin-bottom: 12px; max-height: 140px; overflow-y: auto;"></div>
               </div>
 
@@ -1162,8 +1166,9 @@ export const IronSquadGame = {
           if (confirmed) {
             try {
               saveSlots.delete(slot.id);
+              if (this.activeSlotId === slot.id) this.activeSlotId = null;
               sound.playTap();
-              this.renderSaveSelection();
+              this.showSaveMenu();
             } catch (err) {
               alert(err.message);
             }
@@ -4098,9 +4103,11 @@ export const IronSquadGame = {
     const curItem = this.equipped[slotKey];
     if (inheritUpgradeFromCurrent && curItem && (curItem.upgrade || 0) > (item.upgrade || 0)) {
       const inheritedVal = curItem.upgrade;
+      const oldName = curItem.name;
       applyUpgradeStats(item, inheritedVal);
-      applyUpgradeStats(curItem, 0);
-      this.showToast(`✨ 旧装備の強化値(+${inheritedVal})を引き継いで「${item.name}」を装備！`);
+      // 古い装備は強化抽出・乗り換えにより消滅（インベントリから破棄）
+      this.inventory = (this.inventory || []).filter(i => i.id !== curItem.id);
+      this.showToast(`✨「${oldName}」の強化値(+${inheritedVal})を引き継いで「${item.name}」を装備！（※古い装備は消滅）`);
     }
 
     this.equipped[slotKey] = item;
@@ -4892,8 +4899,8 @@ export const IronSquadGame = {
           <div style="display:flex; gap:3px; align-items:center;">
             <button class="mini-btn btn-up-inv" style="background:#f59e0b; color:#0b0d14; font-size:10px; padding:2px 5px;">🔨 [${upCost}G]</button>
             ${isEquipped ? '<span style="color: #00ffaa; font-size: 10px;">装備中</span>' : `
-              <button class="mini-btn equip-btn" style="font-size:10px; padding:2px 5px;">装備</button>
-              ${canInherit ? `<button class="mini-btn inherit-btn" style="background:#8b5cf6; color:#fff; font-size:10px; padding:2px 5px;" title="現在装備の強化値を引き継いで装備">✨+${curEquipped.upgrade}引継</button>` : ''}
+              <button class="mini-btn equip-btn" style="font-size:10px; padding:2px 5px;" title="現在の装備と交換（旧装備はバッグに残ります）">装備</button>
+              ${canInherit ? `<button class="mini-btn inherit-btn" style="background:linear-gradient(135deg, #7c3aed, #9333ea); color:#fff; font-size:10px; font-weight:bold; padding:2px 6px; border:1px solid #c084fc; border-radius:4px;" title="現在装備の強化値(+${curEquipped.upgrade})を引き継いで乗り換え（※古い装備は消滅します）">✨+${curEquipped.upgrade}引継(旧装備消滅)</button>` : ''}
             `}
           </div>
         `;
@@ -4910,6 +4917,13 @@ export const IronSquadGame = {
         if (inheritBtn) {
           inheritBtn.addEventListener('click', (e) => {
             e.stopPropagation();
+            const curName = curEquipped ? curEquipped.name : '現在装備';
+            const confirmed = window.confirm(
+              `【強化値引き継ぎ・装備乗り換え】\n\n` +
+              `現在装備「${curName}」の強化値(+${curEquipped.upgrade})を「${item.name}」へ引き継いで装備します。\n\n` +
+              `⚠️注意：引き継ぎ元の「${curName}」は消滅します。\n本当に乗り換えますか？`
+            );
+            if (!confirmed) return;
             this.equipItem(item, true);
             this.renderStrategyUI();
           });
@@ -4930,7 +4944,8 @@ export const IronSquadGame = {
             const preview=structuredClone(item);applyUpgradeStats(preview,curEquipped.upgrade);
             const inherited=compareEquipment(preview,curEquipped);
             const extra=document.createElement('div');extra.className='equipment-comparison '+inherited.kind;
-            extra.textContent=`引継後：${inherited.label} · ${inherited.text}`;itemRow.firstElementChild.append(extra);
+            extra.innerHTML=`<span style="color:#c084fc; font-weight:bold;">✨+${curEquipped.upgrade}引継後：</span>${inherited.label} · ${inherited.text} <span style="color:#f87171; font-size:9.5px; font-weight:bold;">(※古い装備は消滅)</span>`;
+            itemRow.firstElementChild.append(extra);
           }
           this.renderSaleControls(itemRow,item);
         }
