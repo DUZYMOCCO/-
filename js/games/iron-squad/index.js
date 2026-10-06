@@ -16,17 +16,17 @@ const MAP_WIDTH = 1800;
 const MAP_HEIGHT = 1800;
 const BASE_CAMP = { x: 900, y: 900, radius: 150 };
 
-// 階級データ (雑兵から始まり、出世で指揮権が解禁される！)
+// 階級データ (雑兵から始まり、出世で直属小隊を率いる指揮権が解禁される！)
 const RANKS = [
-  { level: 1, title: '二等雑兵', reqExp: 0, canCommand: false, maxSquad: 20, bonusHp: 0, bonusAtk: 0, desc: '指揮権なし。大部隊の背中についていく側。' },
-  { level: 2, title: '一等兵', reqExp: 300, canCommand: false, maxSquad: 20, bonusHp: 35, bonusAtk: 8, desc: '死線を潜った古参雑兵。まだ指揮権はない。' },
-  { level: 3, title: '伍長 (班長昇進)', reqExp: 900, canCommand: true, commandType: 'WHISTLE', maxSquad: 26, bonusHp: 80, bonusAtk: 20, desc: '【呼集笛】解禁！近くの兵士を自分に集められる。' },
-  { level: 4, title: '軍曹 (小隊長代理)', reqExp: 2000, canCommand: true, commandType: 'RALLY', maxSquad: 34, bonusHp: 150, bonusAtk: 38, desc: '【突撃号令】解禁！部隊の士気を一斉高揚。' },
-  { level: 5, title: '百人隊長 (部隊司令)', reqExp: 3800, canCommand: true, commandType: 'FULL', maxSquad: 45, bonusHp: 240, bonusAtk: 65, desc: '【完全指揮権】獲得！部隊が主人公に追従。' },
-  { level: 6, title: '千人将', reqExp: 6500, canCommand: true, commandType: 'FULL', maxSquad: 60, bonusHp: 380, bonusAtk: 100, desc: '大隊を率いる猛将。' },
-  { level: 7, title: '近衛騎士団長', reqExp: 10000, canCommand: true, commandType: 'FULL', maxSquad: 75, bonusHp: 580, bonusAtk: 150, desc: '国王直属の近衛騎士団長。' },
-  { level: 8, title: '軍団総司令官', reqExp: 15000, canCommand: true, commandType: 'FULL', maxSquad: 90, bonusHp: 850, bonusAtk: 220, desc: '全軍の指揮を執る最高司令官。' },
-  { level: 9, title: '救国の英雄神将', reqExp: 22000, canCommand: true, commandType: 'FULL', maxSquad: 120, bonusHp: 1200, bonusAtk: 300, desc: '神話に語られる伝説の英雄。' }
+  { level: 1, title: '二等雑兵', reqExp: 0, canCommand: false, personalGuards: 0, maxSquad: 20, bonusHp: 0, bonusAtk: 0, desc: '指揮権なし。本隊は大軍で勝手に行動。ソロで自由に戦え！' },
+  { level: 2, title: '一等兵', reqExp: 300, canCommand: false, personalGuards: 1, maxSquad: 20, bonusHp: 35, bonusAtk: 8, desc: '死線を潜った古参。戦友1名が直属随伴。本隊は勝手に行動。' },
+  { level: 3, title: '伍長 (班長昇進)', reqExp: 900, canCommand: true, personalGuards: 3, commandType: 'WHISTLE', maxSquad: 26, bonusHp: 80, bonusAtk: 20, desc: '【直属小隊(3名)】を率いる！本隊は独自に作戦行動。呼集笛解禁。' },
+  { level: 4, title: '軍曹 (小隊長代理)', reqExp: 2000, canCommand: true, personalGuards: 5, commandType: 'RALLY', maxSquad: 34, bonusHp: 150, bonusAtk: 38, desc: '【直属小隊(5名)】を指揮！本隊と連携進軍。突撃号令解禁。' },
+  { level: 5, title: '百人隊長 (部隊司令)', reqExp: 3800, canCommand: true, personalGuards: 7, commandType: 'FULL', maxSquad: 45, bonusHp: 240, bonusAtk: 65, desc: '【直属精鋭小隊(7名)】を率いる！本隊は大軍団で戦場を制圧。' },
+  { level: 6, title: '千人将', reqExp: 6500, canCommand: true, personalGuards: 8, commandType: 'FULL', maxSquad: 60, bonusHp: 380, bonusAtk: 100, desc: '【直属親衛小隊(8名)】を率いる大隊指揮官。' },
+  { level: 7, title: '近衛騎士団長', reqExp: 10000, canCommand: true, personalGuards: 9, commandType: 'FULL', maxSquad: 75, bonusHp: 580, bonusAtk: 150, desc: '【近衛直属小隊(9名)】を率いる王国近衛騎士団長。' },
+  { level: 8, title: '軍団総司令官', reqExp: 15000, canCommand: true, personalGuards: 10, commandType: 'FULL', maxSquad: 90, bonusHp: 850, bonusAtk: 220, desc: '【最高司令直属小隊(10名)】を率いる全軍の最高司令官。' },
+  { level: 9, title: '救国の英雄神将', reqExp: 22000, canCommand: true, personalGuards: 12, commandType: 'FULL', maxSquad: 120, bonusHp: 1200, bonusAtk: 300, desc: '【英雄直属神聖小隊(12名)】を率いる伝説の神将。' }
 ];
 
 const TITLES = ['不屈の', '疾風の', '鉄壁の', '歴戦の', '鬼神の', '紅蓮の', '隻眼の', '魔刃の', '金剛の', '閃光の'];
@@ -1118,6 +1118,27 @@ export const IronSquadGame = {
     s.crit = 10 + (cls.bonusCrit || 0);
     s.kills = minionKills + bossKills;
 
+    // 衛生兵（MEDIC）の回復力（Heal Power）計算：レベル・武器強化・上位ティアで超強化！
+    if (clsKey === 'MEDIC') {
+      const wItem = s.equipped ? s.equipped.weapon : null;
+      const wAtk = wItem && wItem.stats ? (wItem.stats.atk || 0) : 0;
+      const wUp = wItem ? (wItem.upgrade || 0) : 0;
+      const wTier = wItem ? (wItem.tier || 1) : 1;
+      // 基礎回復26 + Lv上昇(+7/Lv) + 生存ウェーブ(+6/Wave) + ボス撃破(+18/Boss) + 杖ATK*1.6 + 強化値*12 + Tier*9
+      s.healPower = Math.floor(
+        26 +
+        (lv - 1) * 7 +
+        waves * 6 +
+        minionKills * 0.5 +
+        bossKills * 18 +
+        wAtk * 1.6 +
+        wUp * 12 +
+        (wTier - 1) * 9 +
+        (s.isNamed ? 30 : 0) +
+        (s.isVeteran ? 15 : 0)
+      );
+    }
+
     // 称号の動的更新
     if (!s.isNamed) {
       const prefix = s.isVeteran ? '⭐歴戦' : '';
@@ -1771,31 +1792,42 @@ export const IronSquadGame = {
       healBadge.classList.add('hidden');
     }
 
+    // 直属小隊（Personal Guards）の割り当て：昇進で指揮できる人数が増加！本隊は勝手に行動！
+    const maxGuards = currentRank.personalGuards || 0;
+    const sortedSquad = [...aliveSquad].sort((a, b) => {
+      const scoreA = (a.isNamed ? 100 : 0) + (a.isVeteran ? 50 : 0) + (a.level || 1);
+      const scoreB = (b.isNamed ? 100 : 0) + (b.isVeteran ? 50 : 0) + (b.level || 1);
+      return scoreB - scoreA;
+    });
+    aliveSquad.forEach(s => { s.isPersonalGuard = false; });
+    for (let i = 0; i < Math.min(maxGuards, sortedSquad.length); i++) {
+      sortedSquad[i].isPersonalGuard = true;
+    }
+    const personalGuardCount = aliveSquad.filter(s => s.isPersonalGuard).length;
+    const mainBodyCount = aliveSquad.length - personalGuardCount;
+
     // プロキシミティバッジ表示
     const proxBadge = document.getElementById('squad-proximity-badge');
     if (aliveSquad.length === 0) {
       proxBadge.className = 'proximity-badge proximity-danger';
       proxBadge.textContent = '☠️ 部隊全滅！完全孤立！';
-    } else if (distToSquad < 110) {
+    } else if (personalGuardCount > 0) {
       proxBadge.className = 'proximity-badge proximity-close';
-      proxBadge.textContent = '🟢 部隊と共闘中 (安全)';
-    } else if (isCatchingUp) {
-      proxBadge.className = 'proximity-badge proximity-close';
-      proxBadge.textContent = `💨 部隊へ急行中！(残り ${Math.floor(distToSquad)}m)`;
+      proxBadge.textContent = `👑 直属小隊: ${personalGuardCount}名追従 | 🏰 本隊: ${mainBodyCount}名作戦中`;
     } else {
       proxBadge.className = 'proximity-badge proximity-far';
-      proxBadge.textContent = `⚠️ 単独行動中！(部隊まで ${Math.floor(distToSquad)}m)`;
+      proxBadge.textContent = `🗡️ 単独遊撃中 (雑兵) | 🏰 本隊: ${mainBodyCount}名作戦中`;
     }
 
-    // 小隊（Platoons）ナビゲーション重心の更新
+    // 小隊（Platoons）ナビゲーション重心の更新 (本隊は独自に戦場を作戦行動！)
     if (!this.platoons) this.initPlatoons();
     const nearestGlobalMonster = this.getNearestMonster(this.player.x, this.player.y);
 
     this.platoons.forEach((platoon) => {
-      if (currentRank.level >= 5 || isCommandActive) {
-        // 百人隊長以上、または号令発動中は全小隊が主人公の元へ集結！
-        platoon.x = this.player.x;
-        platoon.y = this.player.y;
+      if (isCommandActive) {
+        // 号令発動中のみ一時的に主人公へ駆け寄る
+        platoon.x += (this.player.x - platoon.x) * 2.2 * dt;
+        platoon.y += (this.player.y - platoon.y) * 2.2 * dt;
       } else {
         if (platoon.id === 0) {
           // 第1小隊: 前衛突撃隊（軍令目標・敵砦・ボスへ向かって進軍！）
@@ -1926,41 +1958,56 @@ export const IronSquadGame = {
         }
       }
 
-      // 衛生兵（MEDIC）の味方ヒール魔法
+      // 衛生兵（MEDIC）の味方ヒール魔法 (パワーアップで回復力大幅UP！)
       if (clsKey === 'MEDIC') {
         soldier.atkCooldown = (soldier.atkCooldown || 0) - dt;
         if (soldier.atkCooldown <= 0) {
-          let hurtTarget = this.player.hp < this.player.maxHp * 0.8 ? this.player : null;
+          // 治癒対象の選定（直属衛生兵はプレイヤーを最優先で手厚く保護！）
+          let hurtTarget = this.player.hp < this.player.maxHp * 0.85 ? this.player : null;
           for (const m of aliveSquad) {
-            if (!m.isDown && m.hp < m.maxHp * 0.7) {
+            if (!m.isDown && m.hp < m.maxHp * 0.75) {
               if (!hurtTarget || (m.hp / m.maxHp) < (hurtTarget.hp / hurtTarget.maxHp)) {
                 hurtTarget = m;
               }
             }
           }
-          if (hurtTarget && Math.hypot(hurtTarget.x - soldier.x, hurtTarget.y - soldier.y) <= 190) {
+          if (hurtTarget && Math.hypot(hurtTarget.x - soldier.x, hurtTarget.y - soldier.y) <= 220) {
             soldier.atkCooldown = cls.atkCooldown;
             soldier.atkAnim = 1.0;
             soldier.facingAngle = Math.atan2(hurtTarget.y - soldier.y, hurtTarget.x - soldier.x);
             if (!this.projectiles) this.projectiles = [];
+            const healAmt = soldier.healPower || (26 + Math.floor((soldier.atk || 12) * 1.5));
+            const isHigh = healAmt >= 50;
             this.projectiles.push({
               x: soldier.x, y: soldier.y,
               target: hurtTarget,
               type: 'HEAL',
-              amount: 22 + Math.floor((soldier.atk || 12) * 0.8),
-              speed: 240,
-              color: '#34d399'
+              amount: healAmt,
+              speed: 260,
+              color: isHigh ? '#00f0ff' : '#34d399',
+              isHighHeal: isHigh
             });
             sound.playItem();
           }
         }
       }
 
-      // 自律移動目標（所属小隊のナビゲーション重心を中心とした散開）
-      const pAngle = (idx * 1.1) + (now * 0.0006);
-      const pDist = 28 + (idx % 5) * 12;
-      let targetX = platoon.x + Math.cos(pAngle) * pDist;
-      let targetY = platoon.y + Math.sin(pAngle) * pDist;
+      // 自律移動目標の決定（直属小隊ならプレイヤーに追従！本隊なら小隊重心で勝手に作戦行動！）
+      let targetX, targetY;
+      if (soldier.isPersonalGuard) {
+        // 直属小隊: プレイヤー周囲の精鋭護衛フォーメーション
+        const guardIndex = aliveSquad.filter(s => s.isPersonalGuard).indexOf(soldier);
+        const guardAngle = (guardIndex * 1.25) + (now * 0.001);
+        const guardDist = 32 + (guardIndex % 4) * 10;
+        targetX = this.player.x + Math.cos(guardAngle) * guardDist;
+        targetY = this.player.y + Math.sin(guardAngle) * guardDist;
+      } else {
+        // 本隊: 所属小隊の作戦重心を中心とした独立散開
+        const pAngle = (idx * 1.1) + (now * 0.0006);
+        const pDist = 28 + (idx % 5) * 12;
+        targetX = platoon.x + Math.cos(pAngle) * pDist;
+        targetY = platoon.y + Math.sin(pAngle) * pDist;
+      }
 
       // 敵索敵
       const nearestEnemy = this.getNearestMonster(soldier.x, soldier.y);
@@ -2063,8 +2110,12 @@ export const IronSquadGame = {
             this.spawnSparks(tgt.x, tgt.y, '#e2e8f0', 5);
           } else if (proj.type === 'HEAL') {
             tgt.hp = Math.min(tgt.maxHp, tgt.hp + proj.amount);
-            this.spawnDamageText(tgt.x, tgt.y - 18, `+${proj.amount}HP`, '#34d399');
-            this.spawnSparks(tgt.x, tgt.y, '#34d399', 6);
+            const isHigh = proj.isHighHeal || proj.amount >= 50;
+            const healText = isHigh ? `💚+${proj.amount}HP 大治癒!` : `+${proj.amount}HP`;
+            const healColor = isHigh ? '#00f0ff' : '#34d399';
+            this.spawnDamageText(tgt.x, tgt.y - 18, healText, healColor);
+            this.spawnSparks(tgt.x, tgt.y, healColor, isHigh ? 12 : 6);
+            if (isHigh) sound.playHighScore();
           }
         } else {
           proj.x += (pdx / pdist) * proj.speed * dt;
@@ -2861,13 +2912,14 @@ export const IronSquadGame = {
             <strong style="color: ${isNamed ? '#ffe600' : (s.bossKills > 0 ? '#38bdf8' : '#fff')};">${isNamed ? `${s.title}${s.name}` : s.name}</strong> 
             <span style="color:${pColor}; font-size: 10px; margin-left: 2px;">[${pName.split(' ')[0]}]</span>
             <span style="color:#00f0ff; font-size: 10px;">[Lv.${s.level || 1} ${cls.name}]</span>
+            ${s.isPersonalGuard ? '<span style="color:#fef08a; font-weight:bold; font-size:10px;">[⭐直属]</span>' : ''}
             ${s.isVeteran ? '<span style="color:#fbbf24; font-size:9px;">(先輩)</span>' : ''}
             ${isDown ? '<span style="color:#ef4444; font-weight:bold;">[🆘負傷ダウン]</span>' : ''}
           </span>
           <span style="font-size: 10px;">💰 <strong style="color:#ffe600;">${s.gold || 0}G</strong> | ⚔️${s.minionKills || 0} 👑${s.bossKills || 0}</span>
         </div>
         <div style="font-size: 10px; color: #94a3b8; margin-bottom: 4px; display: flex; justify-content: space-between; align-items:center;">
-          <span>HP: <strong style="color:${s.hp < s.maxHp ? '#f87171' : '#34d399'};">${Math.floor(s.hp)}</strong>/${s.maxHp} | 🛡️ DEF: <strong style="color:#38bdf8;">${s.def || 0}</strong> | ATK: ${s.atk}</span>
+          <span>HP: <strong style="color:${s.hp < s.maxHp ? '#f87171' : '#34d399'};">${Math.floor(s.hp)}</strong>/${s.maxHp} | 🛡️ DEF: <strong style="color:#38bdf8;">${s.def || 0}</strong> | ATK: ${s.atk} ${clsKey === 'MEDIC' ? `| 💚回復: <strong style="color:#34d399;">${s.healPower || 26}HP</strong>` : ''}</span>
           ${wItem ? `<span style="color:${wItem.color}; font-weight:bold;">[${wItem.name}]</span>` : '<span style="color:#666;">[支給短剣]</span>'}
         </div>
         <div style="display: flex; gap: 4px; align-items: center; margin-top: 3px; flex-wrap: wrap;">
@@ -4252,19 +4304,24 @@ export const IronSquadGame = {
       ctx.closePath();
       ctx.fill();
     } else if (proj.type === 'HEAL') {
-      // 脈動するエメラルド治癒光弾
-      const pulse = Math.sin(now * 0.015) * 1.5;
-      ctx.shadowColor = '#34d399';
-      ctx.shadowBlur = 10;
-      ctx.fillStyle = '#34d399';
+      // 脈動する治癒光弾 (大回復弾は巨大オーラを纏う！)
+      const isHigh = proj.isHighHeal || proj.amount >= 50;
+      const baseR = isHigh ? 6.5 : 4.5;
+      const pulse = Math.sin(now * 0.018) * (isHigh ? 2.5 : 1.5);
+      const glowColor = isHigh ? '#00f0ff' : '#34d399';
+      ctx.shadowColor = glowColor;
+      ctx.shadowBlur = isHigh ? 16 : 10;
+      ctx.fillStyle = glowColor;
       ctx.beginPath();
-      ctx.arc(0, 0, 4.5 + pulse, 0, Math.PI * 2);
+      ctx.arc(0, 0, baseR + pulse, 0, Math.PI * 2);
       ctx.fill();
 
+      // 内側の白い神聖核
       ctx.fillStyle = '#ffffff';
       ctx.beginPath();
-      ctx.arc(0, 0, 2, 0, Math.PI * 2);
+      ctx.arc(0, 0, isHigh ? 3.2 : 2.0, 0, Math.PI * 2);
       ctx.fill();
+      ctx.shadowBlur = 0;
     }
 
     ctx.restore();
@@ -4347,6 +4404,18 @@ export const IronSquadGame = {
     ctx.beginPath();
     ctx.ellipse(0, 1, 13, 5.2, 0, 0, Math.PI * 2);
     ctx.stroke();
+
+    // 直属小隊（Personal Guards）のゴールドオーラリング！
+    if (s.isPersonalGuard) {
+      ctx.strokeStyle = '#facc15';
+      ctx.lineWidth = 1.8;
+      ctx.shadowColor = '#facc15';
+      ctx.shadowBlur = 6;
+      ctx.beginPath();
+      ctx.ellipse(0, 1, 14.5, 5.8, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
 
     if (isNamed) {
       ctx.strokeStyle = 'rgba(251, 191, 36, 0.6)';
@@ -4570,13 +4639,15 @@ export const IronSquadGame = {
       ctx.lineTo(10, -22 + bob);
       ctx.stroke();
 
-      // 杖先端の治癒オーブ (脈動エフェクト)
+      // 杖先端の治癒オーブ (回復力パワーアップで光彩・オーラ巨大化！)
+      const isHighPower = (s.healPower || 0) >= 50;
       const orbPulse = Math.sin(now * 0.008) * 1.2;
-      ctx.fillStyle = '#34d399';
-      ctx.shadowColor = '#34d399';
-      ctx.shadowBlur = 8 + orbPulse * 2;
+      const orbColor = isHighPower ? '#00f0ff' : '#34d399';
+      ctx.fillStyle = orbColor;
+      ctx.shadowColor = orbColor;
+      ctx.shadowBlur = (isHighPower ? 14 : 8) + orbPulse * 2;
       ctx.beginPath();
-      ctx.arc(11, -24 + bob, 3.8 + orbPulse * 0.4, 0, Math.PI * 2);
+      ctx.arc(11, -24 + bob, (isHighPower ? 4.5 : 3.8) + orbPulse * 0.4, 0, Math.PI * 2);
       ctx.fill();
       ctx.shadowBlur = 0;
     }
@@ -4586,19 +4657,20 @@ export const IronSquadGame = {
     // 3. 頭上ネームプレート (斜めアングルの頭上位置)
     ctx.textAlign = 'center';
     const sLv = s.level || 1;
+    const guardBadge = s.isPersonalGuard ? '⭐直属 ' : '';
     if (isNamed) {
       ctx.fillStyle = '#fbbf24';
       ctx.font = 'bold 10px sans-serif';
       ctx.shadowColor = '#000';
       ctx.shadowBlur = 4;
-      ctx.fillText(`✨ Lv.${sLv} ${s.title}${s.name}`, 0, -32);
+      ctx.fillText(`${guardBadge}✨Lv.${sLv} ${s.title}${s.name}`, 0, -32);
       ctx.shadowBlur = 0;
     } else {
-      ctx.fillStyle = '#cbd5e1';
-      ctx.font = '9px sans-serif';
+      ctx.fillStyle = s.isPersonalGuard ? '#fef08a' : '#cbd5e1';
+      ctx.font = s.isPersonalGuard ? 'bold 9.5px sans-serif' : '9px sans-serif';
       ctx.shadowColor = '#000';
       ctx.shadowBlur = 3;
-      ctx.fillText(`Lv.${sLv} ${s.name}`, 0, -30);
+      ctx.fillText(`${guardBadge}Lv.${sLv} ${s.name}`, 0, -30);
       ctx.shadowBlur = 0;
     }
 
