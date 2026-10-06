@@ -234,7 +234,7 @@ export const SOLDIER_CLASSES = {
     desc: '負傷兵の遠隔治癒＆倒れた兵士の最優先救助'
   },
 
-  // ===== 🔱 上位職（ADVANCED CLASSES - 世界が変わる覚醒強化） =====
+  // ===== 🔱 上位職（ADVANCED CLASSES - 世界が変わる覚醒強化・パーセンテージ乗算倍率！） =====
   PALADIN: {
     id: 'PALADIN',
     baseClassId: 'HEAVY',
@@ -249,8 +249,11 @@ export const SOLDIER_CLASSES = {
     bonusHp: 240,
     bonusDef: 60,
     bonusAtk: 24,
+    hpMultBonus: 0.55,   // 最大HP +55% (乗算スケール)
+    defMultBonus: 0.65,  // 防御力 +65% (乗算スケール)
+    atkMultBonus: 0.30,  // 攻撃力 +30% (乗算スケール)
     tag: '👑聖騎士',
-    desc: '世界が変わる守護神！聖なる衝撃波で敵群を吹き飛ばし、周囲の味方の被ダメージ-30%'
+    desc: '世界が変わる守護神！HP+55%, DEF+65%, 聖なる衝撃波で敵群ノックバック、周囲味方の被ダメージ-30%'
   },
   BLADEMASTER: {
     id: 'BLADEMASTER',
@@ -266,8 +269,11 @@ export const SOLDIER_CLASSES = {
     bonusCrit: 45,
     bonusAtk: 38,
     bonusHp: 130,
+    atkMultBonus: 0.55,  // 攻撃力 +55% (乗算スケール)
+    hpMultBonus: 0.30,   // 最大HP +30% (乗算スケール)
+    speedMultBonus: 0.30,// 移動速度 +30%
     tag: '⚔️剣聖',
-    desc: '世界が変わる神速連撃！鋭い真空刃を飛ばして遠敵を一刀両断、攻撃を幻惑完全回避'
+    desc: '世界が変わる神速連撃！ATK+55%, 速度+30%, 疾風真空刃を飛ばし遠敵を一刀両断、攻撃を25%残影完全回避'
   },
   SNIPER: {
     id: 'SNIPER',
@@ -283,8 +289,11 @@ export const SOLDIER_CLASSES = {
     bonusAtk: 46,
     bonusCrit: 40,
     bonusHp: 120,
+    atkMultBonus: 0.60,  // 攻撃力 +60% (乗算スケール)
+    hpMultBonus: 0.25,   // 最大HP +25% (乗算スケール)
+    rangeMultBonus: 0.40,// 射程 +40%
     tag: '🎯神射手',
-    desc: '世界が変わる超絶射程！3条の天星魔導光矢を一斉マルチ斉射し大群を爆砕'
+    desc: '世界が変わる超絶射程！ATK+60%, 射程360px, 3条の天星魔導光矢を一斉マルチ斉射し大群を爆砕'
   },
   HIGH_PRIEST: {
     id: 'HIGH_PRIEST',
@@ -299,8 +308,11 @@ export const SOLDIER_CLASSES = {
     atkCooldown: 1.05,
     bonusHp: 160,
     bonusDef: 26,
+    healMultBonus: 0.85, // 治癒力 +85% (乗算スケール)
+    hpMultBonus: 0.45,   // 最大HP +45% (乗算スケール)
+    defMultBonus: 0.50,  // 防御力 +50% (乗算スケール)
     tag: '🕊️大司教',
-    desc: '世界が変わる奇跡の使徒！味方全体リジェネ結界＆倒れた仲間を一瞬で即座に蘇生'
+    desc: '世界が変わる奇跡の使徒！治癒力+85%, HP+45%, DEF+50%, 味方全体リジェネ結界＆倒れた仲間を超速即座に蘇生'
   }
 };
 
@@ -313,7 +325,11 @@ export const PLAYER_ADVANCED_CLASS = {
   bonusHp: 280,
   bonusAtk: 50,
   bonusDef: 36,
-  desc: '戦場を支配する軍神！全方位に巨大覇気スラッシュを飛ばし、部隊全員の攻撃力+25%'
+  hpMultBonus: 0.45,   // 最大HP +45% (乗算スケール)
+  atkMultBonus: 0.50,  // 攻撃力 +50% (乗算スケール)
+  defMultBonus: 0.55,  // 防御力 +55% (乗算スケール)
+  squadAtkBonus: 0.25, // 率いる部隊全員ATK+25%オーラ
+  desc: '戦場を支配する軍神！HP+45%, ATK+50%, DEF+55%乗算、全方位覇気スラッシュ＆部隊全員ATK+25%'
 };
 
 // 素材・ティア制ドロップ生成
@@ -1282,15 +1298,19 @@ export const IronSquadGame = {
       });
     }
 
-    // 覇王ウォーロード (WARLORD) の世界が変わる覚醒ボーナス
+    // 覇王ウォーロード (WARLORD) の世界が変わる覚醒乗算倍率
     const isWarlord = !!this.player.isAdvanced;
-    const warlordHp = isWarlord ? (PLAYER_ADVANCED_CLASS.bonusHp || 280) : 0;
-    const warlordAtk = isWarlord ? (PLAYER_ADVANCED_CLASS.bonusAtk || 50) : 0;
-    const warlordDef = isWarlord ? (PLAYER_ADVANCED_CLASS.bonusDef || 36) : 0;
+    const warlordHpMult = isWarlord ? 1.45 : 1.0;
+    const warlordAtkMult = isWarlord ? 1.50 : 1.0;
+    const warlordDefMult = isWarlord ? 1.55 : 1.0;
 
-    // 最大HPの更新
+    // 階級による軍神乗算スケーリング (階級1ごとに+6%, 救国神将で+48%永続底上げ！)
+    const rankStatMult = 1.0 + (this.rankIndex * 0.06);
+
+    // 最大HPの更新 (基礎成長＋武勲＋装備に、階級倍率と覇王倍率が乗算で炸裂！)
     const oldMaxHp = this.player.maxHp || 130;
-    const newMaxHp = 130 + rank.bonusHp + (lv - 1) * 16 + waves * 20 + minionHp + bossHp + equipHp + warlordHp;
+    const baseRawHp = 130 + (rank.bonusHp || 0) + (lv - 1) * 16 + waves * 20 + minionHp + bossHp + equipHp + (isWarlord ? 150 : 0);
+    const newMaxHp = Math.floor(baseRawHp * rankStatMult * warlordHpMult);
     this.player.maxHp = newMaxHp;
     if (this.player.hp > newMaxHp) {
       this.player.hp = newMaxHp;
@@ -1298,11 +1318,14 @@ export const IronSquadGame = {
       this.player.hp = Math.min(newMaxHp, this.player.hp + (newMaxHp - oldMaxHp));
     }
 
-    this.player.def = equipDef + warlordDef;
-    this.player.atk = 25 + rank.bonusAtk + (lv - 1) * 4 + waves * 4 + minionAtk + bossAtk + equipAtk + warlordAtk;
-    this.player.speed = 165 + minionSpeed + equipSpeed + (isWarlord ? 20 : 0);
-    this.player.atkSpeed = 1.0 + equipAtkSpeed * 0.01 + (isWarlord ? 0.25 : 0);
-    this.player.crit = equipCrit + bossCrit + (isWarlord ? 25 : 0);
+    const baseRawDef = equipDef + (isWarlord ? 24 : 0);
+    this.player.def = Math.floor(baseRawDef * warlordDefMult);
+
+    const baseRawAtk = 25 + (rank.bonusAtk || 0) + (lv - 1) * 4 + waves * 4 + minionAtk + bossAtk + equipAtk + (isWarlord ? 25 : 0);
+    this.player.atk = Math.floor(baseRawAtk * rankStatMult * warlordAtkMult);
+    this.player.speed = 165 + minionSpeed + equipSpeed + (isWarlord ? 24 : 0);
+    this.player.atkSpeed = 1.0 + equipAtkSpeed * 0.01 + (isWarlord ? 0.30 : 0);
+    this.player.crit = equipCrit + bossCrit + (isWarlord ? 30 : 0);
     this.player.vampire = equipVampire + (isWarlord ? 5 : 0);
     this.player.lightning = equipLightning;
     this.player.dmgReduction = Math.min(55, bossReduction + Math.floor(equipBlock * 0.3) + (isWarlord ? 15 : 0));
@@ -1398,9 +1421,30 @@ export const IronSquadGame = {
       });
     }
 
+    // 上位職（Advanced Class）の世界が変わる覚醒乗算倍率
+    let classHpMult = 1.0;
+    let classAtkMult = 1.0;
+    let classDefMult = 1.0;
+    let classSpeedMult = 1.0;
+    let classHealMult = 1.0;
+
+    if (cls.isAdvanced) {
+      if (cls.hpMultBonus) classHpMult += cls.hpMultBonus;
+      if (cls.atkMultBonus) classAtkMult += cls.atkMultBonus;
+      if (cls.defMultBonus) classDefMult += cls.defMultBonus;
+      if (cls.speedMultBonus) classSpeedMult += cls.speedMultBonus;
+      if (cls.healMultBonus) classHealMult += cls.healMultBonus;
+    }
+
+    // 叙勲ボーナス（二つ名と名前を持つ英雄兵は全ステータス+30%乗算！）
+    const honorMult = s.isNamed ? 1.30 : 1.0;
+
+    // 先輩ボーナス（前戦を生き抜いた歴戦の古参兵は全ステータス+15%乗算！）
+    const vetMult = s.isVeteran ? 1.15 : 1.0;
+
     const oldMaxHp = s.maxHp || 70;
     const baseCalcHp = (70 + (cls.bonusHp || 0) + (lv - 1) * 8 + waves * 14 + minionHp + bossHp + honorHp + vetHp + equipHp);
-    const newMaxHp = Math.floor(baseCalcHp * (talent.hpMult || 1.0) * deathlineHpMult);
+    const newMaxHp = Math.floor(baseCalcHp * (talent.hpMult || 1.0) * deathlineHpMult * classHpMult * honorMult * vetMult);
     s.maxHp = newMaxHp;
     if (s.hp > newMaxHp) {
       s.hp = newMaxHp;
@@ -1409,30 +1453,29 @@ export const IronSquadGame = {
     }
 
     const baseCalcDef = (cls.bonusDef || 0) + honorDef + vetDef + equipDef;
-    s.def = Math.floor(baseCalcDef * deathlineDefMult);
+    s.def = Math.floor(baseCalcDef * deathlineDefMult * classDefMult * honorMult * vetMult);
 
     const baseCalcAtk = 11 + (cls.bonusAtk || 0) + (lv - 1) * 2 + waves * 3 + minionAtk + bossAtk + honorAtk + vetAtk + equipAtk;
-    s.atk = Math.floor(baseCalcAtk * (talent.atkMult || 1.0) * deathlineAtkMult);
+    s.atk = Math.floor(baseCalcAtk * (talent.atkMult || 1.0) * deathlineAtkMult * classAtkMult * honorMult * vetMult);
 
     const baseCalcSpeed = (cls.speed || 100) + equipSpeed + (talent.speedBonus || 0);
-    s.speed = Math.max(50, Math.floor(baseCalcSpeed * deathlineSpeedMult));
+    s.speed = Math.max(50, Math.floor(baseCalcSpeed * deathlineSpeedMult * classSpeedMult));
 
     s.dmgReduction = Math.min(65, bossReduction + Math.floor((equipBlock + deathlineBlock) * 0.3) + deathlineDmgRed);
     s.crit = 10 + (cls.bonusCrit || 0) + (talent.critBonus || 0) + deathlineCrit;
     s.dodge = (talent.dodgeBonus || 0) + deathlineDodge;
-    s.deathlineRangeMult = deathlineRangeMult;
-    s.deathlineHealMult = deathlineHealMult;
+    s.deathlineRangeMult = deathlineRangeMult * (cls.rangeMultBonus ? (1.0 + cls.rangeMultBonus) : 1.0);
+    s.deathlineHealMult = deathlineHealMult * classHealMult;
     s.kills = minionKills + bossKills;
 
-    // 衛生兵（MEDIC / HIGH_PRIEST）の回復力（Heal Power）計算：大司教は圧倒的治癒力！
+    // 衛生兵（MEDIC / HIGH_PRIEST）の回復力（Heal Power）計算：上位職・叙勲・死線スキルが全乗算で極限治癒！
     if (clsKey === 'MEDIC' || clsKey === 'HIGH_PRIEST') {
       const wItem = s.equipped ? s.equipped.weapon : null;
       const wAtk = wItem && wItem.stats ? (wItem.stats.atk || 0) : 0;
       const wUp = wItem ? (wItem.upgrade || 0) : 0;
       const wTier = wItem ? (wItem.tier || 1) : 1;
-      const advBonus = clsKey === 'HIGH_PRIEST' ? 75 : 0;
-      const rawHeal = 26 + (lv - 1) * 7 + waves * 6 + minionKills * 0.5 + bossKills * 18 + wAtk * 1.6 + wUp * 12 + (wTier - 1) * 9 + (s.isNamed ? 30 : 0) + (s.isVeteran ? 15 : 0) + advBonus;
-      s.healPower = Math.floor(rawHeal * (talent.atkMult || 1.0) * deathlineHealMult);
+      const rawHeal = 26 + (lv - 1) * 7 + waves * 6 + minionKills * 0.5 + bossKills * 18 + wAtk * 1.6 + wUp * 12 + (wTier - 1) * 9 + (s.isNamed ? 30 : 0) + (s.isVeteran ? 15 : 0) + (cls.isAdvanced ? 60 : 0);
+      s.healPower = Math.floor(rawHeal * (talent.atkMult || 1.0) * deathlineHealMult * classHealMult * honorMult * vetMult);
     }
 
     // 称号の動的更新
@@ -2338,7 +2381,9 @@ export const IronSquadGame = {
             soldier.facingAngle = Math.atan2(hurtTarget.y - soldier.y, hurtTarget.x - soldier.x);
             if (!this.projectiles) this.projectiles = [];
             let healAmt = soldier.healPower || (26 + Math.floor((soldier.atk || 12) * 1.5));
-            if (clsKey === 'HIGH_PRIEST') healAmt = Math.round(healAmt * 1.6);
+            // 仲間の最大HPに対する割合治癒を保証（衛生兵: 最低18%回復、大司教: 最低35%大回復！）
+            const minPctHeal = Math.floor(hurtTarget.maxHp * (clsKey === 'HIGH_PRIEST' ? 0.35 : 0.18));
+            healAmt = Math.max(healAmt, minPctHeal);
             const isHigh = healAmt >= 50;
             this.projectiles.push({
               x: soldier.x, y: soldier.y,
