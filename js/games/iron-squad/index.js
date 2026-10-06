@@ -179,14 +179,14 @@ export const COLOSSAL_BOSS_DEFS = {
 // 階級データ (雑兵から始まり、出世で直属小隊を率いる指揮権が解禁される！)
 export const RANKS = [
   { level: 1, title: '二等雑兵', reqExp: 0, canCommand: false, personalGuards: 0, maxSquad: DEPLOYMENT_CAPACITY, bonusHp: 0, bonusAtk: 0, desc: '指揮権なし。本隊は大軍(約70名)で勝手に行動。ソロで自由に戦え！' },
-  { level: 2, title: '一等兵', reqExp: 300, canCommand: false, personalGuards: 1, maxSquad: DEPLOYMENT_CAPACITY, bonusHp: 35, bonusAtk: 8, desc: '死線を潜った古参。戦友1名が直属随伴。本隊は大軍で作戦行動。' },
-  { level: 3, title: '伍長 (班長昇進)', reqExp: 900, canCommand: true, personalGuards: 3, commandType: 'WHISTLE', maxSquad: DEPLOYMENT_CAPACITY, bonusHp: 80, bonusAtk: 20, desc: '【直属小隊(3名)】を率いる！本隊(約68名)は防衛行動。呼集笛解禁。' },
-  { level: 4, title: '軍曹 (小隊長代理)', reqExp: 2000, canCommand: true, personalGuards: 5, commandType: 'RALLY', maxSquad: DEPLOYMENT_CAPACITY, bonusHp: 150, bonusAtk: 38, desc: '【直属小隊(5名)】を指揮！本隊と連携。突撃号令解禁。' },
-  { level: 5, title: '百人隊長 (部隊司令)', reqExp: 3800, canCommand: true, personalGuards: 7, commandType: 'FULL', maxSquad: DEPLOYMENT_CAPACITY, bonusHp: 240, bonusAtk: 65, desc: '【直属精鋭小隊(7名)】を率いる！本隊は大部隊(約64名)で本陣警戒。' },
-  { level: 6, title: '千人将', reqExp: 6500, canCommand: true, personalGuards: 8, commandType: 'FULL', maxSquad: DEPLOYMENT_CAPACITY, bonusHp: 380, bonusAtk: 100, desc: '【直属親衛小隊(8名)】を率いる大隊指揮官。' },
-  { level: 7, title: '近衛騎士団長', reqExp: 10000, canCommand: true, personalGuards: 9, commandType: 'FULL', maxSquad: DEPLOYMENT_CAPACITY, bonusHp: 580, bonusAtk: 150, desc: '【近衛直属小隊(9名)】を率いる王国近衛騎士団長。' },
-  { level: 8, title: '軍団総司令官', reqExp: 15000, canCommand: true, personalGuards: 10, commandType: 'FULL', maxSquad: DEPLOYMENT_CAPACITY, bonusHp: 850, bonusAtk: 220, desc: '【最高司令直属小隊(10名)】を率いる全軍の最高司令官。' },
-  { level: 9, title: '救国の英雄神将', reqExp: 22000, canCommand: true, personalGuards: 12, commandType: 'FULL', maxSquad: DEPLOYMENT_CAPACITY, bonusHp: 1200, bonusAtk: 300, desc: '【英雄直属神聖小隊(12名)】を率いる伝説の神将。本隊(約60名)が背後に控える！' }
+  { level: 2, title: '一等兵', reqExp: 1800, canCommand: false, personalGuards: 1, maxSquad: DEPLOYMENT_CAPACITY, bonusHp: 45, bonusAtk: 10, desc: '死線を潜った古参。戦友1名が直属随伴。本隊は大軍で作戦行動。' },
+  { level: 3, title: '伍長 (班長昇進)', reqExp: 5500, canCommand: true, personalGuards: 3, commandType: 'WHISTLE', maxSquad: DEPLOYMENT_CAPACITY, bonusHp: 120, bonusAtk: 25, desc: '【直属小隊(3名)】を率いる！本隊(約68名)は防衛行動。呼集笛解禁。' },
+  { level: 4, title: '軍曹 (小隊長代理)', reqExp: 13000, canCommand: true, personalGuards: 5, commandType: 'RALLY', maxSquad: DEPLOYMENT_CAPACITY, bonusHp: 250, bonusAtk: 55, desc: '【直属小隊(5名)】を指揮！本隊と連携。突撃号令解禁。' },
+  { level: 5, title: '百人隊長 (部隊司令)', reqExp: 26000, canCommand: true, personalGuards: 7, commandType: 'FULL', maxSquad: DEPLOYMENT_CAPACITY, bonusHp: 480, bonusAtk: 100, desc: '【直属精鋭小隊(7名)】を率いる！本隊は大部隊(約64名)で本陣警戒。' },
+  { level: 6, title: '千人将', reqExp: 46000, canCommand: true, personalGuards: 8, commandType: 'FULL', maxSquad: DEPLOYMENT_CAPACITY, bonusHp: 800, bonusAtk: 160, desc: '【直属親衛小隊(8名)】を率いる大隊指揮官。' },
+  { level: 7, title: '近衛騎士団長', reqExp: 72000, canCommand: true, personalGuards: 9, commandType: 'FULL', maxSquad: DEPLOYMENT_CAPACITY, bonusHp: 1300, bonusAtk: 250, desc: '【近衛直属小隊(9名)】を率いる王国近衛騎士団長。' },
+  { level: 8, title: '軍団総司令官', reqExp: 105000, canCommand: true, personalGuards: 10, commandType: 'FULL', maxSquad: DEPLOYMENT_CAPACITY, bonusHp: 2000, bonusAtk: 380, desc: '【最高司令直属小隊(10名)】を率いる全軍の最高司令官。' },
+  { level: 9, title: '救国の英雄神将', reqExp: 150000, canCommand: true, personalGuards: 12, commandType: 'FULL', maxSquad: DEPLOYMENT_CAPACITY, bonusHp: 3200, bonusAtk: 600, desc: '【英雄直属神聖小隊(12名)】を率いる伝説の神将。100戦錬磨の覇者！' }
 ];
 
 const TITLES = ['不屈の', '疾風の', '鉄壁の', '歴戦の', '鬼神の', '紅蓮の', '隻眼の', '魔刃の', '金剛の', '閃光の'];
@@ -748,8 +748,8 @@ export const IronSquadGame = {
               <span id="phase-timer-display" class="stat-value" style="color: #e4d2a4; font-family: monospace;">02:00</span>
             </div>
             <div class="stat-box">
-              <span class="stat-label">実戦 / 予備</span>
-              <span id="squad-alive" class="stat-value" style="color: #d7d3c4;">30 / 0</span>
+              <span class="stat-label">小隊 / 本隊</span>
+              <span id="squad-alive" class="stat-value" style="color: #d7d3c4;">0 / 72</span>
             </div>
             <div class="stat-box">
               <span class="stat-label">軍資金</span>
@@ -789,6 +789,12 @@ export const IronSquadGame = {
           <div id="dungeon-prompt-banner" class="phase-banner hidden" style="position: absolute; top: 48px; left: 50%; transform: translateX(-50%); z-index: 26; background: linear-gradient(135deg, rgba(168, 85, 247, 0.95), rgba(239, 68, 68, 0.95)); border: 1px solid #f43f5e; box-shadow: 0 4px 16px rgba(0,0,0,0.7); color: #fff; padding: 6px 14px; border-radius: 20px; font-size: 11px; font-weight: bold; display: flex; align-items: center; gap: 8px; transition: all 0.3s ease;">
             <span id="dungeon-banner-text">⛩️ ダンジョン入口接近！</span>
             <button id="btn-enter-dungeon" style="background: #fbbf24; color: #000; border: none; padding: 3px 10px; border-radius: 10px; font-weight: bold; font-size: 11px; cursor: pointer;">部隊突入 ⚔️</button>
+          </div>
+
+          <!-- 本陣強襲・防衛救援バナー (画面中央上部) -->
+          <div id="base-raid-banner" class="phase-banner hidden" style="position: absolute; top: 86px; left: 50%; transform: translateX(-50%); z-index: 27; background: linear-gradient(135deg, rgba(220, 38, 38, 0.96), rgba(153, 27, 27, 0.96)); border: 1px solid #f87171; box-shadow: 0 4px 18px rgba(220, 38, 38, 0.6); color: #fff; padding: 6px 14px; border-radius: 20px; font-size: 11px; font-weight: bold; display: flex; align-items: center; gap: 8px; transition: all 0.3s ease;">
+            <span id="base-raid-banner-text">🚨【本陣強襲！】魔境の強敵が本拠地へ殺到中！</span>
+            <button id="btn-raid-warp" style="background: #fbbf24; color: #000; border: none; padding: 3px 10px; border-radius: 10px; font-weight: bold; font-size: 11px; cursor: pointer;">本陣救援ワープ 🌀</button>
           </div>
 
           <!-- 軍令（作戦目標HUD・画面左上・タップで開閉） -->
@@ -982,6 +988,16 @@ export const IronSquadGame = {
         if (this.nearDungeon) {
           this.enterDungeon(this.nearDungeon);
         }
+      });
+    }
+
+    const raidWarpBtn = document.getElementById('btn-raid-warp');
+    if (raidWarpBtn) {
+      raidWarpBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        sound.playLaunch();
+        this.fastTravelTo(BASE_CAMP.x, BASE_CAMP.y, '本陣 (防衛救援)');
+        this.showToast('🌀 本陣へ緊急救援ワープ！部隊全員で本拠地を死守せよ！');
       });
     }
 
@@ -1773,7 +1789,7 @@ export const IronSquadGame = {
         }
       }
       this.squad.forEach(s=>this.recalcSoldierStats(s));this.recalcPlayerStats();
-      this.showToast(`祭壇の祝福：${count}部位を+1強化（この距離の無料強化上限 +${cap}）`);
+      this.showToast(`祭壇の祝福：${count}部位を+1強化！（無限強化解禁中！）`);
     } else if (outpost.type === 'SUPPLY') {
       this.player.hp = this.player.maxHp;
       this.squad.forEach(s => {
@@ -2628,35 +2644,24 @@ export const IronSquadGame = {
         if(statusEl) statusEl.textContent = `紐で搬送 ${dragged.length}/${carryingCapacity(this.player)}名 · 拠点へ`;
       }
     }
-    const clock=daylightAt(this.worldTime),timeBadge=document.getElementById('day-night-badge');
-    if(timeBadge){timeBadge.textContent=`${clock.icon} ${clock.label} ${clock.clock} · ${clock.period==='day'?'夜':'昼'}まで${Math.ceil(clock.remaining)}秒`;timeBadge.dataset.period=clock.period;}
+    const clock=daylightAt(this.worldTime);
+    const waveEl = document.getElementById('current-wave');
+    if (waveEl) waveEl.textContent = `第${this.phase || 1}期 ${clock.icon}${clock.clock}`;
+
     const restBanner=document.getElementById('phase-complete-banner'),restText=document.getElementById('phase-banner-text');
     if(restBanner && restText) {
       restBanner.classList.toggle('hidden',!(this.restTimer>0));
       restText.textContent=this.restTimer>0?`休息 ${Math.ceil(this.restTimer)}秒 · 敵は休止中 · 自己強化 ${this.restReport?.count||0}回（${this.restReport?.spent||0}G） · 会議を開く`:'';
     }
-    // 現在地危険度ゾーン表示
-    const zoneBadge = document.getElementById('field-zone-badge');
-    if (zoneBadge && this.player) {
-      if (this.currentDungeon) {
-        zoneBadge.style.color = '#c084fc';
-        zoneBadge.style.borderColor = '#a855f7';
-        zoneBadge.style.background = 'rgba(28, 18, 45, 0.92)';
-        zoneBadge.textContent = `${this.currentDungeon.icon} ${this.currentDungeon.name} (推奨DEF ${this.currentDungeon.reqDef}+)`;
-      } else {
-        const zone = getFieldZone(this.player.x, this.player.y);
-        const tone = ['#34d399', '#f59e0b', '#a855f7', '#ef4444'][(zone.dangerLevel || 1) - 1] || '#d9d0b8';
-        zoneBadge.style.color = tone;
-        zoneBadge.style.borderColor = '#475569';
-        zoneBadge.style.background = 'rgba(20,24,22,0.86)';
-        zoneBadge.textContent = `${zone.icon} ${zone.shortName} (${zone.dangerStars} 推奨DEF ${zone.reqDef}+)`;
-      }
-    }
 
-    const aliveCount = this.squad ? this.squad.filter(s => !s.dead).length : 0;
+    const aliveSquad = this.squad ? this.squad.filter(s => !s.dead) : [];
+    const guardCount = aliveSquad.filter(s => s.isPersonalGuard).length;
+    const armyCount = aliveSquad.length - guardCount;
     const squadCounter=document.getElementById('squad-alive');
-    squadCounter.textContent=`${aliveCount} / ${(this.reserves || []).length}`;
-    squadCounter.title=`実戦 ${aliveCount}/${rank.maxSquad}名・予備 ${(this.reserves || []).length}名`;
+    if (squadCounter) {
+      squadCounter.textContent=`${guardCount} / ${armyCount}`;
+      squadCounter.title=`直属小隊 ${guardCount}名 / 本隊 ${armyCount}名 (予備 ${(this.reserves || []).length}名)`;
+    }
     document.getElementById('current-gold').textContent = `${(this.gold || 0).toLocaleString()}G`;
 
     const orbEl = document.getElementById('current-orbs');
@@ -2906,7 +2911,7 @@ export const IronSquadGame = {
     // Keep local encounters populated without simulating the entire expanded world.
     for(let i=this.monsters.length-1;i>=0;i--) {
       const m=this.monsters[i];
-      if(m.isBoss || m.isColossal) continue;
+      if(m.isBoss || m.isColossal || m.isRaidMob) continue;
       if(Math.hypot(m.x-this.player.x,m.y-this.player.y)>1700 &&
         !this.squad.some(s=>!s.dead && Math.hypot(m.x-s.x,m.y-s.y)<1100)) this.monsters.splice(i,1);
     }
@@ -2917,6 +2922,182 @@ export const IronSquadGame = {
       const sx=Math.max(40,Math.min(MAP_WIDTH-40,this.player.x+Math.cos(ang)*dist));
       const sy=Math.max(40,Math.min(MAP_HEIGHT-40,this.player.y+Math.sin(ang)*dist));
       this.spawnMonster(sx,sy,getFieldZone(sx,sy));
+    }
+  },
+
+  // 🚨 本陣強襲イベント（Base Camp Raid）トリガー判定
+  checkBaseRaidTrigger() {
+    if (this.baseRaidActive || this.restTimer > 0 || this.currentDungeon) return;
+    const curPhase = this.phase || 1;
+    if (curPhase < 2) return; // 第1期はチュートリアル
+    if (this.baseRaidTriggeredPhase === curPhase) return; // 1作戦期あたり最大1回
+
+    // 作戦残り時間55%以下（約50秒経過）で強襲発生
+    if (this.phaseTimer <= (this.phaseDuration || 120) * 0.55) {
+      this.triggerBaseRaid();
+    }
+  },
+
+  // 本陣強襲イベントの発生
+  triggerBaseRaid() {
+    this.baseRaidActive = true;
+    this.baseRaidTriggeredPhase = this.phase || 1;
+    this.baseRaidTimer = 45.0; // 45秒の防衛猶予
+
+    this.zoneAlertFlash = 1.0;
+    this.screenShake = 0.55;
+    sound.playBomb();
+    this.showToast('🚨【緊急警報！】魔境の強襲軍団が本陣へ一斉侵攻！本隊が包囲されています！急ぎ本陣へ救援に向かえ！');
+
+    const raidBanner = document.getElementById('base-raid-banner');
+    if (raidBanner) raidBanner.classList.remove('hidden');
+
+    const raidCount = 14;
+    const curPhase = Math.max(1, this.phase || 1);
+    const scaling = distanceScaling(4500, curPhase); // 森林〜魔境クラスのステータス
+
+    for (let i = 0; i < raidCount; i++) {
+      const ang = (i / raidCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.25;
+      const dist = 750 + Math.random() * 200;
+      const rx = BASE_CAMP.x + Math.cos(ang) * dist;
+      const ry = BASE_CAMP.y + Math.sin(ang) * dist;
+
+      let type = 'orc';
+      let rawHp = 100;
+      let rawAtk = 18;
+      let speed = 72;
+      let radius = 15;
+      let color = '#ea580c';
+      let isBoss = false;
+      let isRaidBoss = false;
+      let name = '強襲オーク突撃兵';
+      let title = '【本陣侵攻兵】';
+
+      if (i === 0) {
+        // 本陣強襲隊長！特大ボス
+        type = 'orc';
+        rawHp = 450;
+        rawAtk = 36;
+        speed = 64;
+        radius = 28;
+        color = '#dc2626';
+        isBoss = true;
+        isRaidBoss = true;
+        name = '魔境強襲隊長・ブラッドオーク';
+        title = '【侵攻軍司令官】';
+      } else if (i % 3 === 0) {
+        type = 'wolf';
+        rawHp = 80;
+        rawAtk = 16;
+        speed = 115;
+        radius = 12;
+        color = '#78716c';
+        name = '強襲凶狼';
+        title = '【遊撃急襲牙】';
+      } else if (i % 5 === 0) {
+        type = 'wyvern';
+        rawHp = 140;
+        rawAtk = 22;
+        speed = 82;
+        radius = 18;
+        color = '#c084fc';
+        name = '魔境強襲飛竜';
+        title = '【急襲翼竜】';
+      }
+
+      const hp = Math.floor(rawHp * scaling.hp * 0.85);
+      const atk = Math.floor(rawAtk * scaling.atk * 0.85);
+
+      this.monsters.push({
+        x: rx, y: ry, homeX: rx, homeY: ry,
+        lootDistance: 4500,
+        hp, maxHp: hp,
+        atk, speed,
+        radius, color,
+        type,
+        name, title,
+        isBoss,
+        isRaidBoss,
+        isRaidMob: true,
+        atkTimer: 0,
+        hitPulse: 0
+      });
+    }
+  },
+
+  // 本陣強襲イベントの毎フレーム監視
+  updateBaseRaid(dt) {
+    if (!this.baseRaidActive) return;
+
+    this.baseRaidTimer = Math.max(0, (this.baseRaidTimer || 45) - dt);
+    const aliveRaidMobs = this.monsters.filter(m => m.isRaidMob && m.hp > 0);
+
+    const bannerText = document.getElementById('base-raid-banner-text');
+    if (bannerText) {
+      bannerText.textContent = `🚨【本陣強襲中！】残存強襲敵: ${aliveRaidMobs.length}体！本隊を守れ！(${Math.ceil(this.baseRaidTimer)}秒)`;
+    }
+
+    if (aliveRaidMobs.length === 0) {
+      this.completeBaseRaid(true);
+    } else if (this.baseRaidTimer <= 0) {
+      this.completeBaseRaid(false);
+    }
+  },
+
+  // 本陣強襲イベントの終了・解決
+  completeBaseRaid(isSuccess) {
+    if (!this.baseRaidActive) return;
+    this.baseRaidActive = false;
+    const raidBanner = document.getElementById('base-raid-banner');
+    if (raidBanner) raidBanner.classList.add('hidden');
+
+    if (isSuccess) {
+      const rewardGold = 650 + (this.phase || 1) * 45;
+      const rewardExp = 1200 + (this.phase || 1) * 70;
+      this.gold += rewardGold;
+      this.gainExp(rewardExp);
+
+      // 本陣中央に「本陣防衛の至宝箱」をドロップ！
+      const drops = [
+        generateRandomDrop(4500, 'boss'),
+        generateRandomDrop(4500, 'boss')
+      ];
+      for (const eq of drops) {
+        if (eq) {
+          this.dropsOnField.push({
+            x: BASE_CAMP.x + (Math.random() - 0.5) * 80,
+            y: BASE_CAMP.y + (Math.random() - 0.5) * 80,
+            isBoss: true,
+            item: eq
+          });
+        }
+      }
+
+      // 本隊全員の士気回復・手当て全快
+      if (this.squad) {
+        this.squad.forEach(s => {
+          if (!s.dead && !s.isDown) s.hp = s.maxHp;
+        });
+      }
+
+      sound.playHighScore();
+      this.showToast(`🏆【本陣死守成功！】強襲軍団を撃滅！防衛特別報奨金 +${rewardGold}G & EXP +${rewardExp} & 至宝装備獲得！`);
+    } else {
+      // 防衛失敗・放置：本陣の兵士が甚大な被害（ダウン）
+      let downCount = 0;
+      if (this.squad) {
+        for (const s of this.squad) {
+          if (!s.dead && !s.isDown && !s.isPersonalGuard && Math.random() < 0.35) {
+            s.hp = 0;
+            s.isDown = true;
+            s.downTimer = RESCUE_TIMEOUT;
+            s.rescueProgress = 0;
+            downCount++;
+          }
+        }
+      }
+      sound.playBomb();
+      this.showToast(`⚠️【本陣が甚大な損害！】救援が間に合わず、本隊の兵士${downCount}名が負傷・ダウンしました…！`);
     }
   },
 
@@ -3000,6 +3181,9 @@ export const IronSquadGame = {
   // 作戦期完了処理（時間区切り制・死線生還判定＆新兵合流＆作戦給与支給）
   completePhase() {
     if(this.restTimer>0)return;
+    if (this.baseRaidActive) {
+      this.completeBaseRaid(false);
+    }
     this.phase = (this.phase || this.wave || 1) + 1;
     this.wave = this.phase;
     this.phaseTimer = this.phaseDuration;
@@ -3144,10 +3328,10 @@ export const IronSquadGame = {
       const record=soldier.lastMaintenance ||= {phase:this.restReport.phase,count:0,spent:0,status:''};
       if(soldier.isDown) {record.status='負傷ダウン中';continue;}
       const equipment=[...new Map(Object.values(soldier.equipped||{}).filter(Boolean).map(i=>[i.id,i])).values()];
-      const candidates=equipment.filter(i=>(i.upgrade||0)<30 && !seen.has(i.id))
+      const candidates=equipment.filter(i=>!seen.has(i.id))
         .sort((a,b)=>(a.upgrade||0)-(b.upgrade||0)||this.getUpgradeCost(a)-this.getUpgradeCost(b));
       const chosen=candidates.find(i=>(soldier.gold||0)>=this.getUpgradeCost(i)+6);
-      if(!chosen){record.status=!equipment.length?'装備なし':!candidates.length?'強化上限+30':'資金不足（維持費6Gを確保）';continue;}
+      if(!chosen){record.status=!equipment.length?'装備なし':'資金不足（維持費6Gを確保）';continue;}
       const cost=this.getUpgradeCost(chosen);soldier.gold-=cost;
       applyUpgradeStats(chosen,(chosen.upgrade||0)+1);seen.add(chosen.id);
       record.count++;record.spent+=cost;record.status=`${chosen.name}を整備`;
@@ -3299,6 +3483,10 @@ export const IronSquadGame = {
     if (this.zoneAlertFlash > 0) {
       this.zoneAlertFlash = Math.max(0, this.zoneAlertFlash - dt * 1.2);
     }
+
+    // 本陣強襲イベントの判定・進行監視
+    this.checkBaseRaidTrigger();
+    this.updateBaseRaid(dt);
 
     // 拠点（BASE CAMP）でのリジェネ治癒判定
     const distToBase = Math.hypot(this.player.x - BASE_CAMP.x, this.player.y - BASE_CAMP.y);
@@ -3584,10 +3772,10 @@ export const IronSquadGame = {
         }
       }
 
-      // 敵索敵（直属小隊は自由索敵。本隊兵士は防衛圏内の敵のみ索敵して奥地迷い込みを完全防止）
+      // 敵索敵（直属小隊は自由索敵。本隊兵士は防衛圏内の敵＋本陣強襲モブを索敵して迎撃）
       const nearestEnemy = (soldier.isPersonalGuard || this.currentDungeon)
         ? this.getNearestMonster(soldier.x, soldier.y)
-        : this.getNearestMonster(soldier.x, soldier.y, (m) => Math.hypot(m.x - BASE_CAMP.x, m.y - BASE_CAMP.y) <= (BASE_TERRITORY_RADIUS + 250));
+        : this.getNearestMonster(soldier.x, soldier.y, (m) => m.isRaidMob || Math.hypot(m.x - BASE_CAMP.x, m.y - BASE_CAMP.y) <= (BASE_TERRITORY_RADIUS + 250));
       const enemyDist = nearestEnemy ? Math.hypot(nearestEnemy.x - soldier.x, nearestEnemy.y - soldier.y) : 9999;
 
       // 兵種ごとの交戦間合い
@@ -3959,21 +4147,46 @@ export const IronSquadGame = {
       let target = this.player;
       let minDist = Math.hypot(this.player.x - m.x, this.player.y - m.y);
 
-      for (const s of aliveSquad) {
-        if (s.isDown) continue; // ダウン中の兵士は追わない
-        const d = Math.hypot(s.x - m.x, s.y - m.y);
-        if (d < minDist) {
-          minDist = d;
-          target = s;
+      if (m.isRaidMob) {
+        // 本陣強襲モブ: 本陣近辺の兵士・プレイヤーを最優先で襲撃。周囲に誰もいなければ本陣中央へ直進
+        minDist = 999999;
+        target = null;
+        for (const s of aliveSquad) {
+          if (s.isDown) continue;
+          const d = Math.hypot(s.x - m.x, s.y - m.y);
+          if (d < minDist) {
+            minDist = d;
+            target = s;
+          }
+        }
+        const pDist = Math.hypot(this.player.x - m.x, this.player.y - m.y);
+        if (pDist < minDist) {
+          minDist = pDist;
+          target = this.player;
+        }
+        if (!target || minDist > 400) {
+          target = { x: BASE_CAMP.x, y: BASE_CAMP.y };
+          minDist = Math.hypot(BASE_CAMP.x - m.x, BASE_CAMP.y - m.y);
+        }
+      } else {
+        for (const s of aliveSquad) {
+          if (s.isDown) continue; // ダウン中の兵士は追わない
+          const d = Math.hypot(s.x - m.x, s.y - m.y);
+          if (d < minDist) {
+            minDist = d;
+            target = s;
+          }
         }
       }
 
       // Distant regions sleep until a player or soldier approaches.
-      if(m.homeX !== undefined && (m.returningHome || Math.hypot(m.x-m.homeX,m.y-m.homeY)>(m.isBoss?900:650))) {
-        const dx=m.homeX-m.x,dy=m.homeY-m.y,d=Math.hypot(dx,dy);m.returningHome=d>30;
-        if(d>30){const step=Math.min(d,m.speed*dt);m.x+=dx/d*step;m.y+=dy/d*step;}continue;
+      if (!m.isRaidMob) {
+        if (m.homeX !== undefined && (m.returningHome || Math.hypot(m.x-m.homeX,m.y-m.homeY)>(m.isBoss?900:650))) {
+          const dx=m.homeX-m.x,dy=m.homeY-m.y,d=Math.hypot(dx,dy);m.returningHome=d>30;
+          if(d>30){const step=Math.min(d,m.speed*dt);m.x+=dx/d*step;m.y+=dy/d*step;}continue;
+        }
+        if (minDist > 1000) continue;
       }
-      if (minDist > 1000) continue;
 
       // 大ボスの固有スキルタイマー・発動処理
       if (m.isColossal) {
@@ -4049,7 +4262,9 @@ export const IronSquadGame = {
         m.atkTimer = (m.atkTimer || 0) - dt;
         if (m.atkTimer <= 0) {
           m.atkTimer = 1.0;
-          this.damageTarget(target, m.atk);
+          if (target && target.hp !== undefined) {
+            this.damageTarget(target, m.atk);
+          }
         }
       }
     }
@@ -4818,7 +5033,8 @@ export const IronSquadGame = {
 
   getUpgradeCost(item) {
     const up = item.upgrade || 0;
-    return Math.floor(12 * Math.pow(1.5, up) * Math.max(1, item.tier * 0.75));
+    const tierFactor = Math.max(1, (item.tier || 1) * 0.8);
+    return Math.floor((20 + up * 18 + Math.pow(up, 1.4) * 6) * tierFactor);
   },
 
   upgradeItem(item, isFree = false) {
@@ -4972,7 +5188,7 @@ export const IronSquadGame = {
         // 強化可能な装備を抽出し、強化値が低い順に優先してバランスよく底上げ
         const candidates = slotKeys
           .map(k => s.equipped[k])
-          .filter(it => it && (it.upgrade || 0) < 30); // 最大+30まで強化可能
+          .filter(it => it); // 無限強化可能！
         
         candidates.sort((a, b) => (a.upgrade || 0) - (b.upgrade || 0));
 

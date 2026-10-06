@@ -51,11 +51,13 @@
 .iron-squad .stat-value { font-size: 12px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .iron-squad .stat-label { color: #b4beb0; font-size: 9px; }
 .iron-squad .icon-btn { flex-shrink: 0; width: 44px; height: 44px; background: #303c3c; }
-.iron-squad #field-zone-badge { max-width: calc(100% - 105px); font-size: 10px; padding: 5px 7px; }
-.iron-squad .proximity-badge { background: rgba(20, 24, 22, 0.86); border: 1px solid #6d6758; color: #d9d0b8; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
-.iron-squad .proximity-close { background: rgba(28, 32, 28, 0.88); border-color: #6d6758; color: #d9d0b8; }
-.iron-squad .proximity-far { background: rgba(36, 30, 22, 0.88); border-color: #8a7048; color: #e4d2a8; }
-.iron-squad .proximity-danger { background: rgba(42, 24, 22, 0.9); border-color: #8a5348; color: #e4c2b4; }
+.iron-squad #field-zone-badge,
+.iron-squad #squad-proximity-badge,
+.iron-squad #day-night-badge,
+.iron-squad .proximity-badge,
+.iron-squad .quest-banner {
+  display: none !important;
+}
 .iron-squad .minimap-container {
   top: 10px; right: 10px; width: 78px; height: 78px;
   border: 1px solid #7c8877; border-radius: 8px;
