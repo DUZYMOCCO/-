@@ -192,5 +192,36 @@
 .iron-squad #phase-timer-display { font-family:var(--iron-number-font) !important; }
 .iron-squad .stat-value, #strat-gold, .sale-controls, .equipment-comparison { font-variant-numeric:tabular-nums lining-nums; }
 .iron-squad .stat-label, .save-eyebrow { letter-spacing:.12em; font-weight:600; }
-.iron-squad .dialog-tabs button { font-size:12px; letter-spacing:.06em; }
 .iron-squad .equipment-comparison, .iron-squad .maintenance-summary, .iron-squad .reinforcement-summary { line-height:1.8; }
+
+/* 兵士名簿の小隊カテゴリー分け・フィルタータブ */
+.roster-filter-bar { display:flex; gap:6px; margin-bottom:10px; }
+.roster-filter-btn {
+  flex:1; min-height:36px; padding:6px 6px; font-size:11px;
+  border:1px solid #54655b; border-radius:6px;
+  background:#253232; color:#d5dec4; cursor:pointer;
+  white-space:nowrap; transition:all 0.15s;
+}
+.roster-filter-btn.active {
+  background:#b7a47c; color:#192426; border-color:#d6c59e; font-weight:bold;
+}
+.roster-category-header {
+  display:flex; justify-content:space-between; align-items:center;
+  padding:7px 10px; margin:12px 0 4px 0; border-radius:6px;
+  font-family:var(--iron-heading-font); font-size:12px; font-weight:bold;
+}
+.roster-category-header.my-squad {
+  background:linear-gradient(90deg, rgba(183,164,124,0.3), rgba(37,50,50,0.5));
+  border:1px solid #cbb88e; color:#fef08a;
+}
+.roster-category-header.other-squad {
+  background:linear-gradient(90deg, rgba(84,101,91,0.25), rgba(37,50,50,0.4));
+  border:1px solid #54655b; color:#d1d5db;
+}
+.roster-category-count {
+  font-size:10px; font-family:var(--iron-body-font); font-weight:normal;
+  padding:2px 6px; border-radius:8px; background:rgba(0,0,0,0.35); color:#ffffff;
+}
+.roster-category-desc {
+  font-size:10px; color:#94a3b8; margin:0 0 8px 4px; line-height:1.4;
+}

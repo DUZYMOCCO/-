@@ -20,7 +20,7 @@ import { EQUIPMENT_TYPES, saleValue, equippedIds, canSell, lowValueIds, chooseLo
 
 import { daylightAt, advanceWorldClock, periodEnemy, enemyAvailable, PERIOD_ENEMIES } from './day-night.js';
 
-import { carryingCapacity, carriedSoldiers, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, handleTransportAI, syncDragged, treatWounded, orbDropChance } from './casualty-rules.js';
+import { RESCUE_TIMEOUT, carryingCapacity, carriedSoldiers, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, handleTransportAI, syncDragged, treatWounded, orbDropChance } from './casualty-rules.js';
 
 export const DEPLOYMENT_CAPACITY=30;
 export const ENEMY_LIMIT=72;
@@ -3860,13 +3860,13 @@ export const IronSquadGame = {
         if (!target.isDown) {
           target.hp = 0;
           target.isDown = true;
-          target.downTimer = 14.0;
+          target.downTimer = RESCUE_TIMEOUT;
           target.rescueProgress = 0;
           releaseWounded(this,target);delete target.carrierId;
           sound.playHit(1);
           this.spawnDamageText(target.x, target.y - 20, '🆘 行動不能！', '#f87171');
           const nameDisp = target.isNamed ? `【${target.title}${target.name}】` : target.name;
-          this.showToast(`🆘 ${nameDisp}が倒れた！搬送か衛生兵の救助が必要！（未搬送の猶予14秒）`);
+          this.showToast(`🆘 ${nameDisp}が倒れた！搬送か衛生兵の救助が必要！（未搬送の猶予${RESCUE_TIMEOUT}秒）`);
         }
       }
     }
@@ -4858,7 +4858,31 @@ export const IronSquadGame = {
       };
     }
 
-    alive.forEach((s) => {
+    const currentRank = RANKS[this.rankIndex];
+    const maxGuards = currentRank ? (currentRank.personalGuards || 0) : 0;
+    const isMySquadSoldier = (s) => maxGuards > 0 ? !!s.isPersonalGuard : ((s.platoonId % 3) === 0);
+
+    const mySquad = alive.filter(s => isMySquadSoldier(s));
+    const otherSquad = alive.filter(s => !isMySquadSoldier(s));
+    const curFilter = this.rosterFilter || 'all';
+
+    // フィルタータブバー
+    const filterBar = document.createElement('div');
+    filterBar.className = 'roster-filter-bar';
+    filterBar.innerHTML = `
+      <button type="button" class="roster-filter-btn ${curFilter === 'all' ? 'active' : ''}" data-filter="all">すべて (${alive.length}名)</button>
+      <button type="button" class="roster-filter-btn ${curFilter === 'my' ? 'active' : ''}" data-filter="my">${maxGuards > 0 ? '👑 自小隊' : '⚔️ 自小隊'} (${mySquad.length}名)</button>
+      <button type="button" class="roster-filter-btn ${curFilter === 'other' ? 'active' : ''}" data-filter="other">他小隊 (${otherSquad.length}名)</button>
+    `;
+    filterBar.querySelectorAll('.roster-filter-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        this.rosterFilter = e.currentTarget.dataset.filter;
+        this.updateStrategyModal();
+      });
+    });
+    squadList.appendChild(filterBar);
+
+    const createSoldierCard = (s) => {
       const row = document.createElement('div');
       const isNamed = s.isNamed;
       const isDown = s.isDown;
@@ -4958,7 +4982,6 @@ export const IronSquadGame = {
       transportNote.textContent=s.isDown?(carrier?`搬送中：${carrier===this.player?'隊長':carrier.name} · 拠点到着で復活`:`負傷：救助猶予${Math.ceil(s.downTimer||0)}秒 · 搬送か衛生兵の処置が必要`):`搬送 ${cargo.length}/${carryingCapacity(s)}名${cargo.length?' · 拠点へ帰還中':''}`;
       row.append(transportNote);
       this.renderSoldierEquipment(row,s);
-      squadList.appendChild(row);
 
       const fundBtn = row.querySelector('.btn-fund');
       if (fundBtn) {
@@ -4990,7 +5013,46 @@ export const IronSquadGame = {
         });
       }
 
-    });
+      return row;
+    };
+
+    const appendCategorySection = (title, count, desc, soldiers, isMy) => {
+      const header = document.createElement('div');
+      header.className = `roster-category-header ${isMy ? 'my-squad' : 'other-squad'}`;
+      header.innerHTML = `<span>${title}</span><span class="roster-category-count">${count}名</span>`;
+      squadList.appendChild(header);
+
+      if (desc) {
+        const descEl = document.createElement('div');
+        descEl.className = 'roster-category-desc';
+        descEl.textContent = desc;
+        squadList.appendChild(descEl);
+      }
+
+      if (soldiers.length === 0) {
+        const emptyMsg = document.createElement('div');
+        emptyMsg.style.cssText = 'font-size: 11px; color: #64748b; padding: 10px; text-align: center; background: rgba(0,0,0,0.2); border-radius: 6px; margin-bottom: 8px;';
+        emptyMsg.textContent = '現在、該当する所属兵士はいません';
+        squadList.appendChild(emptyMsg);
+      } else {
+        soldiers.forEach(s => {
+          squadList.appendChild(createSoldierCard(s));
+        });
+      }
+    };
+
+    const myTitle = maxGuards > 0 ? '👑 隊長直属小隊（随伴親衛隊）' : '⚔️ 所属小隊（第1小隊 前衛突撃隊）';
+    const myDesc = maxGuards > 0 ? `隊長に付き従って最前線を切り拓く精鋭部隊（定員 ${maxGuards}名）` : 'プレイヤーが所属する最前線小隊（昇進すると隊長直属の親衛隊を率いられます）';
+
+    const otherTitle = maxGuards > 0 ? '🏰 本隊・広域作戦隊（第1〜第3小隊）' : '🛡️ それ以外の小隊（第2・第3小隊）';
+    const otherDesc = maxGuards > 0 ? '広域の拠点を制圧・防衛し独自に作戦行動を行う主力部隊' : '別方面の防衛・迎撃を担当する友軍小隊';
+
+    if (curFilter === 'all' || curFilter === 'my') {
+      appendCategorySection(myTitle, mySquad.length, myDesc, mySquad, true);
+    }
+    if (curFilter === 'all' || curFilter === 'other') {
+      appendCategorySection(otherTitle, otherSquad.length, otherDesc, otherSquad, false);
+    }
     if(scrollBody)scrollBody.scrollTop=scrollTop;
   },
 

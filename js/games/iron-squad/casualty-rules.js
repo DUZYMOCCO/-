@@ -1,6 +1,7 @@
 import {recordHealing} from './phase-rules.js';
 import {WORLD_SIZE} from './world.js';
 
+export const RESCUE_TIMEOUT = 45; // 救助猶予時間（秒）広域マップ対応で45秒に延長
 export const isMedic=unit=>['MEDIC','HIGH_PRIEST'].includes(unit?.soldierClass);
 export const carryingCapacity=unit=>unit?.soldierClass==='PALADIN'?2:1;
 export const carrierKey=(game,unit)=>unit===game.player?'player':unit?.id;
@@ -54,7 +55,7 @@ export function updateWounded(game,dt) {
     const station=nearestAidStation(game,wounded);
     if(Math.hypot(wounded.x-station.x,wounded.y-station.y)<=station.radius) {revive(game,wounded,wounded.maxHp);continue;}
     if(wounded.carrierId)continue;
-    wounded.downTimer=Math.max(0,(wounded.downTimer??14)-dt);
+    wounded.downTimer=Math.max(0,(wounded.downTimer??RESCUE_TIMEOUT)-dt);
     if(wounded.downTimer<=0) {
       wounded.dead=true;wounded.isDown=false;wounded.rescueProgress=0;
       game.phaseCasualties=(game.phaseCasualties||0)+1;
