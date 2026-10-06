@@ -30,20 +30,29 @@ export function lowValueIds(inventory, playerEquipment, soldiers, maxTier=2) {
 
 export function lootWeights(distance, kind='normal') {
   const d=Math.max(0,distance || 0);
-  let weights,maxTier,t;
-  if(d<1200) {
-    t=d/1200;weights=[96-22*t,4+22*t,0,0,0,0,0];maxTier=2;
-  } else if(d<2700) {
-    t=(d-1200)/1500;weights=[60-45*t,38+10*t,2+35*t,0,0,0,0];maxTier=3;
-  } else if(d<4400) {
-    t=(d-2700)/1700;weights=[0,45-35*t,45-15*t,10+50*t,0,0,0];maxTier=4;
-  } else {
-    t=Math.min(1,(d-4400)/3000);weights=[0,0,35-30*t,50-25*t,15+55*t,0,0];maxTier=5;
+  if(kind==='dungeon_vault') {
+    if(d<5000) return [0,0,65,35,0,0,0]; // 廃坑: Tier 3〜4確定
+    if(d<8500) return [0,0,0,15,65,20,0]; // カタコンベ: Tier 5〜6確定
+    return [0,0,0,0,0,45,55]; // 竜巌窟: Tier 6〜7神話級確定
   }
-  if(kind==='colossal' && d>=4400) return d>=6000 ? [0,0,0,0,0,80,20] : [0,0,0,0,20,80,0];
+  let weights,maxTier,t;
+  if(d<2400) {
+    t=d/2400;weights=[96-22*t,4+22*t,0,0,0,0,0];maxTier=2;
+  } else if(d<5500) {
+    t=(d-2400)/3100;weights=[60-45*t,38+10*t,2+35*t,0,0,0,0];maxTier=3;
+  } else if(d<9200) {
+    t=(d-5500)/3700;weights=[0,45-35*t,45-15*t,10+50*t,0,0,0];maxTier=4;
+  } else {
+    t=Math.min(1,(d-9200)/5000);weights=[0,0,35-30*t,50-25*t,15+55*t,0,0];maxTier=5;
+  }
+  if(kind==='colossal') {
+    if(d>=12000) return [0,0,0,0,0,60,40];
+    if(d>=9200) return [0,0,0,0,20,70,10];
+    return [0,0,0,30,60,10,0];
+  }
   if(kind==='chest' || kind==='boss') weights[maxTier-1]+=8;
   if(kind==='elite' || kind==='boss') {
-    const rareTier=d>=5200?6:(d>=3800?5:(d>=2300 && d<2700?4:0));
+    const rareTier=d>=10000?6:(d>=7500?5:(d>=4500 && d<5500?4:0));
     if(rareTier) {weights[rareTier-1]+=(kind==='boss'?5:1.5);maxTier=Math.max(maxTier,rareTier);}
   }
   return weights;
@@ -58,11 +67,11 @@ export function chooseLootTier(distance,kind='normal',random=Math.random) {
 }
 
 const KNOTS = [
-  [0,.65,.60,1.0,1.0], [600,.90,.85,1.25,1.35], [1200,1.35,1.20,1.65,1.85],
-  [2700,3.20,2.70,2.80,3.30], [4400,6.80,5.10,4.50,5.60], [7400,10,7.50,7.0,9.0]
+  [0,.65,.60,1.0,1.0], [1200,.90,.85,1.25,1.35], [2400,1.60,1.50,1.80,2.00],
+  [5500,4.50,3.50,3.80,4.50], [9200,10.0,7.50,7.50,9.50], [15000,18.0,13.0,13.0,18.0]
 ];
 export function distanceScaling(distance,phase=1) {
-  const d=Math.max(0,Math.min(7400,distance || 0));
+  const d=Math.max(0,Math.min(15000,distance || 0));
   let a=KNOTS[0],b=KNOTS[1];
   for(let i=1;i<KNOTS.length;i++){a=KNOTS[i-1];b=KNOTS[i];if(d<=b[0])break;}
   const t=(d-a[0])/(b[0]-a[0]);
@@ -72,7 +81,7 @@ export function distanceScaling(distance,phase=1) {
 }
 
 export function shrineUpgradeCap(distance) {
-  return distance<1200?2:(distance<2700?5:(distance<4400?8:12));
+  return distance<2400?2:(distance<5500?5:(distance<9200?8:12));
 }
 
 const STAT_LABELS={atk:'攻撃',def:'防御',hp:'HP',speed:'移動',atkSpeed:'攻速',crit:'会心',blockChance:'盾防',regen:'回復/秒',vampire:'吸血',lightning:'雷撃'};

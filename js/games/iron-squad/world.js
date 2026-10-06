@@ -1,6 +1,6 @@
 // A 36x larger world, generated in deterministic 512px tiles with a bounded cache.
-export const WORLD_SIZE = 10800;
-export const WORLD_VERSION = 2;
+export const WORLD_SIZE = 21600;
+export const WORLD_VERSION = 3;
 const TILE = 512, CACHE_LIMIT = 48;
 const CENTER = WORLD_SIZE / 2;
 const seeded = seed => () => {
@@ -14,9 +14,9 @@ const ellipse = (c,x,y,rx,ry,color) => {
 };
 export const biomeAt = (x,y) => {
   const d=Math.hypot(x-CENTER,y-CENTER);
-  if(d<1200) return {name:'本陣近郊の草原',ground:'#17241c',grass:'#3a5536',tree:'oak'};
-  if(d<2700) return {name:'辺境の深い森',ground:'#121e1a',grass:'#2c4634',tree:'pine'};
-  if(d<4400) return {name:'遺跡と枯れ野',ground:'#26241c',grass:'#5a563c',tree:'dead'};
+  if(d<2400) return {name:'本陣近郊の草原',ground:'#17241c',grass:'#3a5536',tree:'oak'};
+  if(d<5500) return {name:'辺境の深い森',ground:'#121e1a',grass:'#2c4634',tree:'pine'};
+  if(d<9200) return {name:'遺跡と枯れ野',ground:'#26241c',grass:'#5a563c',tree:'dead'};
   return {name:'最果ての岩山',ground:'#1a1e1e',grass:'#3c423e',tree:'dead'};
 };
 // Smooth roads are shared across tile boundaries, independent of generation order.
@@ -69,7 +69,7 @@ export class WorldTerrain {
     const feature=rnd(), fx=120+rnd()*270,fy=120+rnd()*270;
     const distance=Math.hypot(x0+fx-CENTER,y0+fy-CENTER);
     if(distance>360 && roadDist(x0+fx,y0+fy)>115) {
-      if(feature<.22 && distance<4000) {
+      if(feature<.22 && distance<8000) {
         ellipse(c,fx,fy,83,50,'#746c47');ellipse(c,fx,fy,77,45,'#314e54');
         ellipse(c,fx-9,fy-8,58,29,'#466b70');
         for(let i=0;i<18;i++) {
@@ -134,10 +134,11 @@ export class WorldTerrain {
       }c.stroke();
     }
     c.strokeStyle='#a7af8755';c.lineWidth=1;
-    for(const r of [1200,2700,4400]){c.beginPath();c.arc(size/2,size/2,r*scale,0,Math.PI*2);c.stroke();}
+    for(const r of [2400,5500,9200]){c.beginPath();c.arc(size/2,size/2,r*scale,0,Math.PI*2);c.stroke();}
     const mark=(x,y,color,r=3)=>ellipse(c,x*scale,y*scale,r,r,color);
     mark(CENTER,CENTER,'#c9c49b',5);
     for(const op of game.outposts||[])mark(op.x,op.y,op.cleared?'#95b69c':'#d7ae76');
+    for(const d of game.dungeons||[])mark(d.entrance.x,d.entrance.y,d.cleared?'#c084fc':'#f43f5e',4);
     for(const m of game.monsters||[])if(m.isColossal)mark(m.x,m.y,'#d5836c',5);
     if(game.player)mark(game.player.x,game.player.y,'#e8f2e1',5);
     c.strokeStyle='#e8f2e1';c.lineWidth=1;

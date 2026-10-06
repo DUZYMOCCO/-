@@ -21,6 +21,7 @@ import { EQUIPMENT_TYPES, saleValue, equippedIds, canSell, lowValueIds, chooseLo
 import { daylightAt, advanceWorldClock, periodEnemy, enemyAvailable, PERIOD_ENEMIES } from './day-night.js';
 
 import { RESCUE_TIMEOUT, carryingCapacity, carriedSoldiers, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, handleTransportAI, syncDragged, treatWounded, orbDropChance } from './casualty-rules.js';
+import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault } from './dungeon.js';
 
 export const DEPLOYMENT_CAPACITY=30;
 export const ENEMY_LIMIT=72;
@@ -38,14 +39,15 @@ export const FIELD_ZONES = [
     shortName: '本陣防衛圏',
     icon: '🛡️',
     minDist: 0,
-    maxDist: 1200,
+    maxDist: 2400,
+    reqDef: 0,
     dangerLevel: 1,
     dangerStars: '★☆☆☆☆',
     color: '#34d399',
     bgColor: 'rgba(52, 211, 153, 0.08)',
     monsters: ['slime', 'goblin'],
-    hpMult: 0.70,
-    atkMult: 0.70,
+    hpMult: 0.65,
+    atkMult: 0.60,
     speedMult: 0.90,
     expMult: 0.75,
     goldMult: 0.75,
@@ -57,60 +59,63 @@ export const FIELD_ZONES = [
     name: '警戒辺境 (昏き森林)',
     shortName: '警戒辺境',
     icon: '🌲',
-    minDist: 1200,
-    maxDist: 2700,
+    minDist: 2400,
+    maxDist: 5500,
+    reqDef: 25,
     dangerLevel: 2,
     dangerStars: '★★☆☆☆',
     color: '#f59e0b',
     bgColor: 'rgba(245, 158, 11, 0.08)',
     monsters: ['goblin', 'orc', 'wolf'],
-    hpMult: 1.35,
-    atkMult: 1.25,
+    hpMult: 1.60,
+    atkMult: 1.50,
     speedMult: 1.05,
-    expMult: 1.35,
-    goldMult: 1.30,
+    expMult: 1.60,
+    goldMult: 1.50,
     tierRange: [1, 4],
-    desc: '中型オークや俊敏な黒狼が徘徊する警戒区域'
+    desc: '中型オークや黒狼が徘徊する警戒区域。推奨DEF 25+'
   },
   {
     id: 'ZONE_CHAOS',
     name: '魔境深部 (死霊荒野)',
     shortName: '魔境深部',
     icon: '💀',
-    minDist: 2700,
-    maxDist: 4400,
+    minDist: 5500,
+    maxDist: 9200,
+    reqDef: 75,
     dangerLevel: 3,
     dangerStars: '★★★☆☆',
     color: '#a855f7',
     bgColor: 'rgba(168, 85, 247, 0.08)',
     monsters: ['orc', 'wyvern'],
-    hpMult: 2.80,
-    atkMult: 2.30,
+    hpMult: 4.50,
+    atkMult: 3.50,
     speedMult: 1.15,
-    expMult: 2.80,
-    goldMult: 2.60,
+    expMult: 4.20,
+    goldMult: 3.80,
     tierRange: [2, 5],
-    desc: '凶暴なワイバーンやエリートオークが跋扈する危険地帯'
+    desc: '凶暴なワイバーンが跋扈する危険地帯。推奨DEF 75+（無防備即死）'
   },
   {
     id: 'ZONE_ABYSS',
     name: '最果て (巨獣の巣窟・極限死地)',
     shortName: '最果ての死地',
     icon: '👑',
-    minDist: 4400,
-    maxDist: 8000,
+    minDist: 9200,
+    maxDist: 18000,
+    reqDef: 150,
     dangerLevel: 4,
     dangerStars: '★★★★★',
     color: '#ef4444',
     bgColor: 'rgba(239, 68, 68, 0.12)',
     monsters: ['wyvern', 'colossal_dragon', 'behemoth_king', 'colossal_titan'],
-    hpMult: 6.00,
-    atkMult: 4.00,
+    hpMult: 10.00,
+    atkMult: 7.50,
     speedMult: 1.25,
-    expMult: 6.00,
-    goldMult: 5.50,
+    expMult: 10.00,
+    goldMult: 8.50,
     tierRange: [3, 7],
-    desc: '超巨大大ボスが君臨する最果ての死地！新兵は即死必至！'
+    desc: '超巨大大ボスが君臨する最果ての死地！推奨DEF 150+（致命貫通で即死必至）'
   }
 ];
 
@@ -780,6 +785,12 @@ export const IronSquadGame = {
             <button id="btn-banner-strat" style="background: #fbbf24; color: #000; border: none; padding: 2px 8px; border-radius: 8px; font-weight: bold; font-size: 10px; cursor: pointer;">⛺ 会議</button>
           </div>
 
+          <!-- ダンジョン接近・突入案内バナー (画面中央上部) -->
+          <div id="dungeon-prompt-banner" class="phase-banner hidden" style="position: absolute; top: 48px; left: 50%; transform: translateX(-50%); z-index: 26; background: linear-gradient(135deg, rgba(168, 85, 247, 0.95), rgba(239, 68, 68, 0.95)); border: 1px solid #f43f5e; box-shadow: 0 4px 16px rgba(0,0,0,0.7); color: #fff; padding: 6px 14px; border-radius: 20px; font-size: 11px; font-weight: bold; display: flex; align-items: center; gap: 8px; transition: all 0.3s ease;">
+            <span id="dungeon-banner-text">⛩️ ダンジョン入口接近！</span>
+            <button id="btn-enter-dungeon" style="background: #fbbf24; color: #000; border: none; padding: 3px 10px; border-radius: 10px; font-weight: bold; font-size: 11px; cursor: pointer;">部隊突入 ⚔️</button>
+          </div>
+
           <!-- 軍令（作戦目標HUD・画面左上・タップで開閉） -->
           <div id="quest-banner" class="quest-banner" title="タップで詳細を開閉">
             <div class="quest-banner-header">
@@ -951,6 +962,26 @@ export const IronSquadGame = {
         sound.playTap();
         phaseBanner.classList.add('hidden');
         this.openStrategyModal(true);
+      });
+    }
+
+    const enterDungeonBtn = document.getElementById('btn-enter-dungeon');
+    if (enterDungeonBtn) {
+      enterDungeonBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        sound.playTap();
+        if (this.nearDungeon) {
+          this.enterDungeon(this.nearDungeon);
+        }
+      });
+    }
+    const dungeonBanner = document.getElementById('dungeon-prompt-banner');
+    if (dungeonBanner) {
+      dungeonBanner.addEventListener('click', () => {
+        sound.playTap();
+        if (this.nearDungeon) {
+          this.enterDungeon(this.nearDungeon);
+        }
       });
     }
 
@@ -1211,6 +1242,58 @@ export const IronSquadGame = {
     else this.resumeSavedGame(slot.data);
   },
 
+  fastTravelTo(targetX, targetY, targetName) {
+    if (this.currentDungeon) {
+      this.showToast('⚠️ ダンジョン内ではファストトラベルできません。外界への帰還門を使ってください');
+      return;
+    }
+    if (!this.player || this.player.hp <= 0) return;
+
+    // 隊長を指定座標へ転送
+    this.player.x = targetX;
+    this.player.y = targetY;
+
+    // 生存部隊も隊長周囲に一斉ワープ
+    if (this.squad) {
+      this.squad.forEach((s, idx) => {
+        if (!s.dead) {
+          const ang = (idx / Math.max(1, this.squad.length)) * Math.PI * 2;
+          const dist = 30 + (idx % 4) * 15;
+          s.x = targetX + Math.cos(ang) * dist;
+          s.y = targetY + Math.sin(ang) * dist;
+        }
+      });
+    }
+
+    // カメラ同期
+    this.camera = { x: targetX, y: targetY };
+
+    // 転送魔法陣パーティクル（青〜エメラルド光）
+    for (let i = 0; i < 40; i++) {
+      const pAng = Math.random() * Math.PI * 2;
+      const pDist = Math.random() * 65;
+      this.particles.push({
+        x: targetX + Math.cos(pAng) * pDist,
+        y: targetY + Math.sin(pAng) * pDist,
+        vx: (Math.random() - 0.5) * 80,
+        vy: -50 - Math.random() * 70,
+        color: i % 2 ? 'rgba(56, 189, 248, 0.9)' : 'rgba(167, 243, 208, 0.9)',
+        size: 3 + Math.random() * 3,
+        life: 0.65
+      });
+    }
+
+    sound.playLaunch();
+    this.showToast(`🌀【転送完了】「${targetName}」へ部隊を展開しました！`);
+
+    // モーダルが開いていれば閉じる
+    if (this.worldMapModal && !this.worldMapModal.classList.contains('hidden')) {
+      this.worldMapModal.classList.add('hidden');
+      this.setDialogState(false);
+      this.inBattle = true;
+    }
+  },
+
   openWorldMap() {
     this.inBattle=false;this.resetMovementInput();
     if(!this.worldMapModal) {
@@ -1219,20 +1302,95 @@ export const IronSquadGame = {
       this.worldMapModal.setAttribute('role','dialog');this.worldMapModal.setAttribute('aria-modal','true');
       this.worldMapModal.setAttribute('aria-labelledby','world-map-title');
       this.worldMapModal.innerHTML=`<section class="strategy-panel">
-        <header class="map-heading"><h2 id="world-map-title">遠征地図</h2><button id="btn-world-map-close" class="dialog-close">閉じる ×</button></header>
-        <div class="dialog-body world-map-body"><canvas id="world-map-canvas" width="600" height="600" role="img" aria-label="本陣・12拠点・現在地を示す全体地図"></canvas>
-        <p>白：現在地　淡黄：本陣　橙：未制圧拠点　緑：制圧済み　赤：大ボス</p>
-        <p id="world-location"></p><p>草原 → 深い森 → 遺跡と枯れ野 → 最果ての岩山</p></div></section>`;
+        <header class="map-heading"><h2 id="world-map-title">遠征地図・ファストトラベル</h2><button id="btn-world-map-close" class="dialog-close">閉じる ×</button></header>
+        <div class="dialog-body world-map-body">
+          <canvas id="world-map-canvas" width="600" height="600" role="img" aria-label="本陣・12拠点・現在地・ダンジョンを示す全体地図" style="touch-action:none; cursor:pointer; max-width:100%; border-radius:8px; border:1px solid #334155;"></canvas>
+          <p style="font-size:11px; color:#94a3b8; margin:4px 0;">白：現在地　淡黄：本陣　緑：制圧拠点　紫/桃：ダンジョン　赤：大ボス</p>
+          <p id="world-location" style="font-weight:bold; color:#f1f5f9;"></p>
+          <div id="fast-travel-container" style="margin-top:10px; border-top:1px solid #334155; padding-top:10px;">
+            <h4 style="margin:0 0 8px; color:#38bdf8; font-size:13px; display:flex; align-items:center; gap:6px;">
+              <span>🌀 転送ポータル (部隊一斉ファストトラベル)</span>
+            </h4>
+            <div id="fast-travel-list" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(130px, 1fr)); gap:6px;"></div>
+          </div>
+        </div></section>`;
       this.container.querySelector('.game-wrapper').append(this.worldMapModal);
       const close=()=>{this.worldMapModal.classList.add('hidden');this.setDialogState(false);this.inBattle=true;};
       this.worldMapModal.querySelector('#btn-world-map-close').addEventListener('click',close);
       this.worldMapModal.addEventListener('keydown',e=>{if(e.key==='Escape')close();});
+
+      // 地図キャンバスクリックでの直接転送
+      const canvas=this.worldMapModal.querySelector('canvas');
+      canvas.addEventListener('click', (e) => {
+        if (this.currentDungeon) return;
+        const rect = canvas.getBoundingClientRect();
+        const clickX = ((e.clientX - rect.left) / rect.width) * canvas.width;
+        const clickY = ((e.clientY - rect.top) / rect.height) * canvas.height;
+        const scale = canvas.width / WORLD_SIZE;
+        const worldX = clickX / scale;
+        const worldY = clickY / scale;
+
+        // 本陣クリック判定
+        if (Math.hypot(worldX - BASE_CAMP.x, worldY - BASE_CAMP.y) < 600) {
+          this.fastTravelTo(BASE_CAMP.x, BASE_CAMP.y, '本陣 (中央司令部)');
+          return;
+        }
+        // 制圧拠点クリック判定
+        for (const op of (this.outposts || [])) {
+          if (op.cleared && Math.hypot(worldX - op.x, worldY - op.y) < 600) {
+            this.fastTravelTo(op.x, op.y, op.name);
+            return;
+          }
+        }
+        // ダンジョンクリック判定
+        for (const d of (this.dungeons || [])) {
+          if ((d.cleared || d.discovered) && Math.hypot(worldX - d.entrance.x, worldY - d.entrance.y) < 700) {
+            this.fastTravelTo(d.entrance.x, d.entrance.y, `${d.name}入口`);
+            return;
+          }
+        }
+      });
     }
+
     this.worldMapModal.classList.remove('hidden');this.setDialogState(true);
     const canvas=this.worldMapModal.querySelector('canvas');
     this.worldTerrain.drawOverview(canvas.getContext('2d'),canvas.width,this);
     this.worldMapModal.querySelector('#world-location').textContent=
-      `${biomeAt(this.player.x,this.player.y).name} · 本陣から${Math.round(Math.hypot(this.player.x-BASE_CAMP.x,this.player.y-BASE_CAMP.y))}m · 制圧${this.outposts.filter(o=>o.cleared).length}/${this.outposts.length}`;
+      this.currentDungeon
+        ? `⛩️ 【ダンジョン内】${this.currentDungeon.name} · 最奥ボス討伐へ進撃中`
+        : `${biomeAt(this.player.x,this.player.y).name} · 本陣から${Math.round(Math.hypot(this.player.x-BASE_CAMP.x,this.player.y-BASE_CAMP.y))}m · 制圧${this.outposts.filter(o=>o.cleared).length}/${this.outposts.length}`;
+
+    // 転送先リスト生成
+    const travelList = this.worldMapModal.querySelector('#fast-travel-list');
+    travelList.innerHTML = '';
+
+    if (this.currentDungeon) {
+      travelList.innerHTML = '<p style="grid-column:1/-1; color:#f87171; font-size:12px; margin:4px 0;">※ダンジョン内では転送ポータルは遮断されています。西側の帰還門より外界へ脱出してください。</p>';
+    } else {
+      const destinations = [
+        { name: '本陣司令部', icon: '🛡️', x: BASE_CAMP.x, y: BASE_CAMP.y, desc: '回復・出撃拠点' }
+      ];
+
+      (this.outposts || []).filter(o => o.cleared).forEach(op => {
+        destinations.push({ name: op.name, icon: op.icon || '🚩', x: op.x, y: op.y, desc: '制圧前哨基地' });
+      });
+
+      (this.dungeons || []).filter(d => d.cleared || d.discovered).forEach(d => {
+        destinations.push({ name: d.name, icon: d.icon || '⛩️', x: d.entrance.x, y: d.entrance.y, desc: d.cleared ? '踏破済' : '発見済' });
+      });
+
+      destinations.forEach(dest => {
+        const btn = document.createElement('button');
+        btn.className = 'action-btn secondary';
+        btn.style.cssText = 'padding:6px 8px; font-size:11px; text-align:left; display:flex; flex-direction:column; gap:2px;';
+        btn.innerHTML = `<span style="font-weight:bold; color:#e2e8f0;">${dest.icon} ${dest.name}</span><span style="font-size:10px; color:#94a3b8;">${dest.desc}</span>`;
+        btn.addEventListener('click', () => {
+          this.fastTravelTo(dest.x, dest.y, dest.name);
+        });
+        travelList.appendChild(btn);
+      });
+    }
+
     this.worldMapModal.querySelector('#btn-world-map-close').focus();
   },
 
@@ -1416,6 +1574,7 @@ export const IronSquadGame = {
 
     this.initPlatoons();
     this.initOutposts();
+    this.initDungeons();
     this.assignWaveQuest();
     this.recalcPlayerStats();
     this.initBattlefield();
@@ -1452,12 +1611,26 @@ export const IronSquadGame = {
     this.outposts=[];
     for(let ring=0;ring<3;ring++) for(let i=0;i<4;i++) {
       const type=types[i],def=OUTPOST_DEFS[type],angle=(i*90+45+ring*22)*Math.PI/180;
-      const radius=[900,2200,3900][ring];
+      const radius=[1800,4500,7800][ring];
       this.outposts.push({id:`outpost_${type.toLowerCase()}_${ring}`,type,
         name:`${def.name} ${ring+1}`,icon:def.icon,color:def.color,
         x:BASE_CAMP.x+Math.cos(angle)*radius,y:BASE_CAMP.y+Math.sin(angle)*radius,
         hp:Math.round(def.maxHp*distanceScaling(radius).hp),maxHp:Math.round(def.maxHp*distanceScaling(radius).hp),radius:def.radius,cleared:false,clearedWave:0});
     }
+  },
+
+  initDungeons() {
+    this.dungeons = DUNGEON_DEFS.map(d => ({
+      ...d,
+      cleared: false,
+      discovered: false,
+      clearedWave: 0
+    }));
+    this.currentDungeon = null;
+    this.savedFieldPos = null;
+    this.savedFieldMonsters = null;
+    this.savedFieldDrops = null;
+    this.dungeonVault = null;
   },
 
   assignWaveQuest() {
@@ -1967,6 +2140,15 @@ export const IronSquadGame = {
 
     this.initPlatoons();
     this.initOutposts();
+    this.initDungeons();
+    if (!legacyWorld && saved.dungeons) {
+      this.dungeons = saved.dungeons;
+    } else if(saved.dungeons) {
+      for(const old of saved.dungeons) {
+        const d = this.dungeons.find(x => x.id === old.id);
+        if (d) Object.assign(d, { cleared: old.cleared, discovered: old.discovered, clearedWave: old.clearedWave });
+      }
+    }
     if (!legacyWorld && saved.outposts) this.outposts = saved.outposts;
     else if(saved.outposts) for(const old of saved.outposts) {
       const op=this.outposts.find(o=>o.type===old.type);
@@ -2174,6 +2356,7 @@ export const IronSquadGame = {
         recruitSequence: this.recruitSequence || 0,
         lastReinforcements: this.lastReinforcements,
         outposts: this.outposts,
+        dungeons: this.dungeons,
         currentQuest: this.currentQuest
       };
       if (!saveSlots.update(this.activeSlotId, {data, state:'active'})) throw new Error('保存容量が不足しています');
@@ -2452,12 +2635,19 @@ export const IronSquadGame = {
     // 現在地危険度ゾーン表示
     const zoneBadge = document.getElementById('field-zone-badge');
     if (zoneBadge && this.player) {
-      const zone = getFieldZone(this.player.x, this.player.y);
-      const tone = ['#d9d0b8', '#e4d2a8', '#e0b48a', '#e4c2b4'][(zone.dangerLevel || 1) - 1] || '#d9d0b8';
-      zoneBadge.style.color = tone;
-      zoneBadge.style.borderColor = '#6d6758';
-      zoneBadge.style.background = 'rgba(20,24,22,0.86)';
-      zoneBadge.textContent = `${zone.icon} ${zone.shortName} (${zone.dangerStars})`;
+      if (this.currentDungeon) {
+        zoneBadge.style.color = '#c084fc';
+        zoneBadge.style.borderColor = '#a855f7';
+        zoneBadge.style.background = 'rgba(28, 18, 45, 0.92)';
+        zoneBadge.textContent = `${this.currentDungeon.icon} ${this.currentDungeon.name} (推奨DEF ${this.currentDungeon.reqDef}+)`;
+      } else {
+        const zone = getFieldZone(this.player.x, this.player.y);
+        const tone = ['#d9d0b8', '#e4d2a8', '#e0b48a', '#e4c2b4'][(zone.dangerLevel || 1) - 1] || '#d9d0b8';
+        zoneBadge.style.color = tone;
+        zoneBadge.style.borderColor = '#6d6758';
+        zoneBadge.style.background = 'rgba(20,24,22,0.86)';
+        zoneBadge.textContent = `${zone.icon} ${zone.shortName} (${zone.dangerStars} 推奨DEF ${zone.reqDef}+)`;
+      }
     }
 
     const aliveCount = this.squad ? this.squad.filter(s => !s.dead).length : 0;
@@ -3052,8 +3242,10 @@ export const IronSquadGame = {
       playerMoveSpeed*=transportSpeedFactor(this,this.player);
       this.player.x += this.joystick.dirX * playerMoveSpeed * dt;
       this.player.y += this.joystick.dirY * playerMoveSpeed * dt;
-      this.player.x = Math.max(30, Math.min(MAP_WIDTH - 30, this.player.x));
-      this.player.y = Math.max(30, Math.min(MAP_HEIGHT - 30, this.player.y));
+      const boundW = this.currentDungeon ? this.currentDungeon.width : MAP_WIDTH;
+      const boundH = this.currentDungeon ? this.currentDungeon.height : MAP_HEIGHT;
+      this.player.x = Math.max(30, Math.min(boundW - 30, this.player.x));
+      this.player.y = Math.max(30, Math.min(boundH - 30, this.player.y));
 
       if (Math.hypot(this.joystick.dirX, this.joystick.dirY) > 0.05) {
         this.player.facingAngle = Math.atan2(this.joystick.dirY, this.joystick.dirX);
@@ -3064,14 +3256,39 @@ export const IronSquadGame = {
     const z = this.zoom || 1.0;
     this.camera.x += (this.player.x - this.camera.x) * 0.12;
     this.camera.y += (this.player.y - this.camera.y) * 0.12;
+    const boundW = this.currentDungeon ? this.currentDungeon.width : MAP_WIDTH;
+    const boundH = this.currentDungeon ? this.currentDungeon.height : MAP_HEIGHT;
     const halfW = (this.width / 2) / z;
     const halfH = (this.height / 2) / z;
-    this.camera.x = Math.max(halfW, Math.min(MAP_WIDTH - halfW, this.camera.x));
-    this.camera.y = Math.max(halfH, Math.min(MAP_HEIGHT - halfH, this.camera.y));
+    this.camera.x = Math.max(halfW, Math.min(boundW - halfW, this.camera.x));
+    this.camera.y = Math.max(halfH, Math.min(boundH - halfH, this.camera.y));
+
+    // ゾーン監視＆ダンジョン処理
+    if (!this.currentDungeon) {
+      this.checkZoneTransition();
+      this.checkDungeonProximity();
+    } else {
+      // ダンジョン内: 入口帰還ポータル (x: 180, y: h/2) 接触判定
+      const exitDist = Math.hypot(this.player.x - 180, this.player.y - (this.currentDungeon.height / 2));
+      if (exitDist < 42) {
+        this.exitDungeon();
+      }
+      // ダンジョン内: 最奥至宝箱 (x: w - 240, y: h/2) 接近判定
+      if (this.dungeonVault && !this.dungeonVault.opened && this.dungeonVault.unlocked) {
+        const vaultDist = Math.hypot(this.player.x - this.dungeonVault.x, this.player.y - this.dungeonVault.y);
+        if (vaultDist < 48) {
+          this.openDungeonVault();
+        }
+      }
+    }
+
+    if (this.zoneAlertFlash > 0) {
+      this.zoneAlertFlash = Math.max(0, this.zoneAlertFlash - dt * 1.2);
+    }
 
     // 拠点（BASE CAMP）でのリジェネ治癒判定
     const distToBase = Math.hypot(this.player.x - BASE_CAMP.x, this.player.y - BASE_CAMP.y);
-    const inBaseCamp = distToBase < BASE_CAMP.radius;
+    const inBaseCamp = !this.currentDungeon && distToBase < BASE_CAMP.radius;
     const healBadge = document.getElementById('base-heal-badge');
 
     if (inBaseCamp) {
@@ -3931,7 +4148,18 @@ export const IronSquadGame = {
     const defVal = target.def || 0;
     const defFactor = 100 / (100 + defVal * 1.2);
     let reduction = target.dmgReduction ? Math.min(0.40, target.dmgReduction / 100) : 0;
-    let dmg = Math.max(1, Math.round(rawDmg * defFactor * (1 - reduction)));
+
+    // ゾーン推奨DEFチェック＆致命貫通即死ペナルティ（防具なき者は即死必至！）
+    const activeZone = this.currentDungeon ? { reqDef: this.currentDungeon.reqDef } : getFieldZone(target.x, target.y);
+    let deadlyPenetration = false;
+    let penetrationMult = 1.0;
+    if (activeZone && activeZone.reqDef > 0 && defVal < activeZone.reqDef) {
+      const deficit = (activeZone.reqDef - defVal) / activeZone.reqDef;
+      penetrationMult = 1.0 + deficit * 1.5; // 最大2.5倍の即死級貫通ダメージ
+      deadlyPenetration = true;
+    }
+
+    let dmg = Math.max(1, Math.round(rawDmg * defFactor * (1 - reduction) * penetrationMult));
 
     if (paladinGuarded) {
       dmg = Math.max(1, Math.round(dmg * 0.70)); // 聖域加護で-30%
@@ -3945,6 +4173,10 @@ export const IronSquadGame = {
       if (Math.random() < 0.45) {
         this.spawnDamageText(target.x, target.y - 20, '🛡️生還シールド!', '#38bdf8');
       }
+    }
+
+    if (deadlyPenetration && Math.random() < 0.55) {
+      this.spawnDamageText(target.x, target.y - 28, '💀致命貫通!', '#ff1e38');
     }
 
     target.hp -= dmg;
@@ -3969,6 +4201,267 @@ export const IronSquadGame = {
         }
       }
     }
+  },
+
+  checkZoneTransition() {
+    if (this.currentDungeon || !this.player) return;
+    const curZone = getFieldZone(this.player.x, this.player.y);
+    if (!this.lastZoneId) {
+      this.lastZoneId = curZone.id;
+      return;
+    }
+    if (this.lastZoneId !== curZone.id) {
+      const oldZone = FIELD_ZONES.find(z => z.id === this.lastZoneId) || FIELD_ZONES[0];
+      this.lastZoneId = curZone.id;
+
+      // 危険度が上がった場合の強烈な警報演出（画面赤脈動・強シェイク・重低音・警告トースト）
+      if (curZone.dangerLevel > oldZone.dangerLevel) {
+        this.zoneAlertFlash = 1.0;
+        this.screenShake = 0.55;
+        sound.playBomb();
+        this.showToast(`🚨【危険地帯突入！】${curZone.name}（推奨DEF ${curZone.reqDef}+）！適正防具なき者は即死します！`);
+      } else {
+        this.showToast(`🏕️【安全エリアへ移動】${curZone.name}に入りました`);
+      }
+    }
+  },
+
+  checkDungeonProximity() {
+    const banner = document.getElementById('dungeon-prompt-banner');
+    const textEl = document.getElementById('dungeon-banner-text');
+    if (this.currentDungeon || !this.player) {
+      this.nearDungeon = null;
+      if (banner) banner.classList.add('hidden');
+      return;
+    }
+    let nearest = null;
+    let minD = 999999;
+    for (const d of (this.dungeons || [])) {
+      const dist = Math.hypot(this.player.x - d.entrance.x, this.player.y - d.entrance.y);
+      if (dist < (d.entrance.radius + 40)) {
+        d.discovered = true;
+        if (dist < minD) {
+          minD = dist;
+          nearest = d;
+        }
+      }
+    }
+    this.nearDungeon = nearest;
+    if (banner && textEl) {
+      if (nearest) {
+        banner.classList.remove('hidden');
+        textEl.textContent = `${nearest.icon} ${nearest.name} (推奨DEF ${nearest.reqDef}+ / Lv${nearest.reqLv}+)`;
+      } else {
+        banner.classList.add('hidden');
+      }
+    }
+  },
+
+  enterDungeon(dungeonDef) {
+    if (this.currentDungeon) return;
+    this.nearDungeon = null;
+    document.getElementById('dungeon-prompt-banner')?.classList.add('hidden');
+    this.savedFieldPos = { x: this.player.x, y: this.player.y };
+    this.savedFieldMonsters = [...this.monsters];
+    this.savedFieldDrops = [...this.dropsOnField];
+    this.currentDungeon = dungeonDef;
+
+    // ダンジョン内モンスター・ドロップ・パーティクル初期化
+    this.monsters = [];
+    this.dropsOnField = [];
+    this.particles = [];
+    this.damageTexts = [];
+
+    const w = dungeonDef.width;
+    const h = dungeonDef.height;
+
+    // プレイヤーおよび全部隊をダンジョン入口(x: 180, y: h/2)に配置
+    this.player.x = 180;
+    this.player.y = h / 2;
+    if (this.squad) {
+      this.squad.forEach((s, idx) => {
+        if (!s.dead) {
+          s.x = 180 + (Math.random() - 0.5) * 60;
+          s.y = h / 2 + (Math.random() - 0.5) * 60;
+        }
+      });
+    }
+    this.camera = { x: 180, y: h / 2 };
+
+    // 第1部屋: 雑魚モンスター群 (x: 500〜850)
+    for (let i = 0; i < dungeonDef.mobCount; i++) {
+      const mx = 500 + Math.random() * 400;
+      const my = 200 + Math.random() * (h - 400);
+      const mType = dungeonDef.mobTypes[i % dungeonDef.mobTypes.length];
+      const m = this.createDungeonMob(mType, mx, my, dungeonDef, false);
+      this.monsters.push(m);
+    }
+
+    // 第2部屋: 精鋭エリートモンスター (x: 1100〜1450)
+    for (let i = 0; i < dungeonDef.eliteCount; i++) {
+      const mx = 1100 + Math.random() * 350;
+      const my = 250 + Math.random() * (h - 500);
+      const mType = dungeonDef.mobTypes[dungeonDef.mobTypes.length - 1];
+      const m = this.createDungeonMob(mType, mx, my, dungeonDef, true);
+      this.monsters.push(m);
+    }
+
+    // 最奥のボス部屋 (x: w - 350, y: h / 2) にボス配置
+    const boss = this.createDungeonBoss(dungeonDef.boss, w - 350, h / 2, dungeonDef);
+    this.monsters.push(boss);
+
+    // 最奥の至宝箱 (Dungeon Vault) を配置
+    this.dungeonVault = {
+      x: w - 240,
+      y: h / 2,
+      name: `${dungeonDef.name}の至宝箱`,
+      opened: false,
+      unlocked: false,
+      dungeon: dungeonDef
+    };
+
+    sound.playLaunch();
+    this.showToast(`⛩️【ダンジョン突入】「${dungeonDef.name}」へ侵入！最奥のボスを討ち果たせ！`);
+  },
+
+  exitDungeon() {
+    if (!this.currentDungeon) return;
+    const returnPos = this.savedFieldPos || { x: BASE_CAMP.x, y: BASE_CAMP.y };
+    this.player.x = returnPos.x;
+    this.player.y = returnPos.y;
+
+    if (this.squad) {
+      this.squad.forEach((s) => {
+        if (!s.dead) {
+          s.x = returnPos.x + (Math.random() - 0.5) * 60;
+          s.y = returnPos.y + (Math.random() - 0.5) * 60;
+        }
+      });
+    }
+
+    this.camera = { x: returnPos.x, y: returnPos.y };
+    this.monsters = this.savedFieldMonsters || [];
+    this.dropsOnField = this.savedFieldDrops || [];
+    this.savedFieldMonsters = null;
+    this.savedFieldDrops = null;
+    this.currentDungeon = null;
+    this.dungeonVault = null;
+
+    sound.playLaunch();
+    this.showToast('🌀 外界へ無事帰還しました！');
+  },
+
+  createDungeonMob(type, x, y, dungeonDef, isElite = false) {
+    const scaling = distanceScaling(dungeonDef.distance, this.phase || 1);
+    let rawHp = isElite ? 180 : 80;
+    let rawAtk = isElite ? 32 : 16;
+    let speed = 72;
+    let radius = isElite ? 18 : 12;
+    let color = dungeonDef.color;
+
+    if (type === 'slime') { rawHp = 50; rawAtk = 10; radius = 11; color = '#34d399'; }
+    else if (type === 'wolf') { rawHp = 90; rawAtk = 22; speed = 108; radius = 13; color = '#64748b'; }
+    else if (type === 'orc') { rawHp = 160; rawAtk = 28; speed = 64; radius = 16; color = '#d97706'; }
+    else if (type === 'wyvern') { rawHp = 220; rawAtk = 36; speed = 82; radius = 20; color = '#a855f7'; }
+    else if (type === 'colossal_dragon') { rawHp = 450; rawAtk = 48; speed = 60; radius = 28; color = '#ef4444'; }
+
+    return {
+      type,
+      x,
+      y,
+      hp: Math.round(rawHp * scaling.hp * (isElite ? 1.6 : 1.0)),
+      maxHp: Math.round(rawHp * scaling.hp * (isElite ? 1.6 : 1.0)),
+      atk: Math.round(rawAtk * scaling.atk * (isElite ? 1.4 : 1.0)),
+      speed,
+      radius,
+      color,
+      isBoss: false,
+      isElite,
+      isDungeonMob: true,
+      lootDistance: dungeonDef.distance,
+      atkTimer: 0,
+      hitPulse: 0
+    };
+  },
+
+  createDungeonBoss(bossDef, x, y, dungeonDef) {
+    const scaling = distanceScaling(dungeonDef.distance, this.phase || 1);
+    return {
+      type: bossDef.type,
+      name: bossDef.name,
+      title: bossDef.title,
+      icon: bossDef.icon,
+      x,
+      y,
+      hp: Math.round(bossDef.hp * Math.max(1, scaling.hp * 0.75)),
+      maxHp: Math.round(bossDef.hp * Math.max(1, scaling.hp * 0.75)),
+      atk: Math.round(bossDef.atk * Math.max(1, scaling.atk * 0.75)),
+      speed: bossDef.speed,
+      radius: bossDef.radius,
+      color: bossDef.color,
+      isBoss: true,
+      isColossal: true,
+      isDungeonBoss: true,
+      skillCooldown: bossDef.skillCooldown,
+      skillTimer: bossDef.skillCooldown,
+      skillName: bossDef.skillName,
+      desc: bossDef.desc,
+      lootDistance: dungeonDef.distance,
+      atkTimer: 0,
+      hitPulse: 0
+    };
+  },
+
+  openDungeonVault() {
+    if (!this.dungeonVault || this.dungeonVault.opened || !this.dungeonVault.unlocked) return;
+    this.dungeonVault.opened = true;
+    sound.playHighScore();
+    this.screenShake = 0.8;
+
+    const def = this.dungeonVault.dungeon;
+    const reward = def.reward;
+
+    // 1. 大量ゴールド & EXP
+    this.gold += reward.gold;
+    this.gainExp(reward.exp);
+    this.spawnDamageText(this.player.x, this.player.y - 45, `👑至宝開錠! +${reward.gold}G / +${reward.exp}EXP`, '#ffd700');
+
+    // 2. 超高Tier確定アイテム（3〜5個）ドロップ
+    for (let i = 0; i < reward.itemCount; i++) {
+      const dropItem = generateRandomDrop(def.distance, reward.lootKind);
+      const ang = (i / reward.itemCount) * Math.PI * 2;
+      this.dropsOnField.push({
+        x: this.dungeonVault.x + Math.cos(ang) * 45,
+        y: this.dungeonVault.y + Math.sin(ang) * 45,
+        item: dropItem,
+        isBoss: true
+      });
+    }
+
+    // 3. 宝箱周囲の黄金花火パーティクル
+    for (let i = 0; i < 40; i++) {
+      const ang = Math.random() * Math.PI * 2;
+      const spd = 40 + Math.random() * 180;
+      this.particles.push({
+        x: this.dungeonVault.x,
+        y: this.dungeonVault.y,
+        vx: Math.cos(ang) * spd,
+        vy: Math.sin(ang) * spd,
+        color: i % 2 ? '#fbbf24' : '#f59e0b',
+        size: 3.5 + Math.random() * 3.5,
+        life: 0.7 + Math.random() * 0.4
+      });
+    }
+
+    // ダンジョン完全踏破記録
+    const dRecord = (this.dungeons || []).find(d => d.id === def.id);
+    if (dRecord) {
+      dRecord.cleared = true;
+      dRecord.clearedWave = this.wave || this.phase || 1;
+    }
+    def.cleared = true;
+
+    this.showToast(`🏆【${def.name} 完全踏破！】黄金+${reward.gold}G＆至宝武具を大量獲得！脱出門より外界へ帰還可能です！`);
   },
 
   killMonster(monster, attacker, isPlayer) {
@@ -4075,6 +4568,16 @@ export const IronSquadGame = {
     // 部隊全体の戦果として昇進EXPを加算
     this.gainExp(expGain);
     this.updateStatsUI();
+
+    // ⛩️ ダンジョンボス討伐時の至宝解錠判定
+    if (monster.isDungeonBoss) {
+      sound.playHighScore();
+      this.screenShake = 0.95;
+      if (this.dungeonVault) {
+        this.dungeonVault.unlocked = true;
+      }
+      this.showToast(`⛩️【ダンジョンボス討滅！】最奥の「${this.currentDungeon ? this.currentDungeon.name : ''}の至宝箱」の封印が解かれた！`);
+    }
 
     // 👑 どでかい大ボス（COLOSSAL BOSS）撃破時の超豪華報酬！
     if (monster.isColossal) {
@@ -5371,16 +5874,31 @@ export const IronSquadGame = {
     this.ctx.scale(z, z);
     this.ctx.translate(-this.camera.x, -this.camera.y);
 
-    // 1. 大地・戦場フィールド
-    this.drawBattlefield(this.ctx, now);
+    // 1. ダンジョンインスタンス描画、または通常フィールド描画
+    if (this.currentDungeon) {
+      drawDungeonEnvironment(this.ctx, this.currentDungeon, this.camera, this.width, this.height, z, now * 0.001);
+      if (this.dungeonVault) {
+        drawDungeonVault(this.ctx, this.dungeonVault, now * 0.001);
+      }
+    } else {
+      // 1. 大地・戦場フィールド
+      this.drawBattlefield(this.ctx, now);
 
-    // 2. 自軍砦本陣 (治癒砦・城塞壁・風になびく王国旗)
-    this.drawBaseCamp(this.ctx, now);
+      // 2. 自軍砦本陣 (治癒砦・城塞壁・風になびく王国旗)
+      this.drawBaseCamp(this.ctx, now);
 
-    // 2.5 戦場の探索拠点 (敵前線砦・捕虜の檻・古代祭壇・補給集積所)
-    if (this.outposts) {
-      for (const op of this.outposts) {
-        this.drawOutpost(this.ctx, op, now);
+      // 2.5 戦場の探索拠点 (敵前線砦・捕虜の檻・古代祭壇・補給集積所)
+      if (this.outposts) {
+        for (const op of this.outposts) {
+          this.drawOutpost(this.ctx, op, now);
+        }
+      }
+
+      // 2.8 フィールド上のダンジョン入口ポータル
+      if (this.dungeons) {
+        for (const d of this.dungeons) {
+          drawDungeonEntrance(this.ctx, d, now * 0.001, this.nearDungeon === d);
+        }
       }
     }
 
@@ -5463,6 +5981,17 @@ export const IronSquadGame = {
 
     // 8.5 大気（昼夜の色調・霧・ビネット）
     this.drawAtmosphere(this.ctx, now);
+
+    // 8.6 危険地帯突入・警戒赤フラッシュ (境界越えアラート演出)
+    if (this.zoneAlertFlash > 0) {
+      this.ctx.save();
+      const rGrad = this.ctx.createRadialGradient(this.width / 2, this.height / 2, this.width * 0.25, this.width / 2, this.height / 2, this.width * 0.72);
+      rGrad.addColorStop(0, 'rgba(239, 68, 68, 0)');
+      rGrad.addColorStop(1, `rgba(239, 68, 68, ${Math.min(0.72, this.zoneAlertFlash * 0.72)})`);
+      this.ctx.fillStyle = rGrad;
+      this.ctx.fillRect(0, 0, this.width, this.height);
+      this.ctx.restore();
+    }
 
     // 8.8 倒れた味方の画面端・方向インジケーター（矢印＆距離）
     this.drawCasualtyIndicators(this.ctx, now);
