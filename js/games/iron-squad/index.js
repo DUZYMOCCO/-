@@ -680,6 +680,26 @@ export const IronSquadGame = {
 
               <!-- 部隊名簿 ＆ 叙勲タブ -->
               <div id="view-strat-squad">
+                <!-- 💰 資金援助の一括設定バー (インフレ・大量一括支給対応) -->
+                <div style="background: rgba(2, 132, 199, 0.15); border: 1px solid rgba(2, 132, 199, 0.4); border-radius: 6px; padding: 6px 10px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; font-size: 11px; flex-wrap: wrap; gap: 4px;">
+                  <div style="display: flex; align-items: center; gap: 6px;">
+                    <span style="color: #38bdf8; font-weight: bold;">💰 援助額設定:</span>
+                    <select id="select-global-fund-amount" class="mini-select" style="background: #0f172a; color: #fde047; border: 1px solid #0284c7; border-radius: 4px; padding: 2px 6px; font-weight: bold; font-size: 11px;">
+                      <option value="100">100 G</option>
+                      <option value="1000">1,000 G (1千)</option>
+                      <option value="10000" selected>10,000 G (1万)</option>
+                      <option value="50000">50,000 G (5万)</option>
+                      <option value="100000">100,000 G (10万)</option>
+                      <option value="500000">500,000 G (50万)</option>
+                      <option value="1000000">1,000,000 G (100万)</option>
+                      <option value="max">所持全額 (MAX)</option>
+                    </select>
+                  </div>
+                  <button id="btn-fund-all-soldiers" class="mini-btn" style="background: linear-gradient(135deg, #0284c7, #06b6d4); color: #fff; font-size: 10px; font-weight: bold; padding: 3px 8px; border: none; border-radius: 4px;" title="生存中の全兵士にそれぞれ設定額の軍資金を一斉ボーナス支給！">
+                    👥 生存兵士全員に支給！
+                  </button>
+                </div>
+
                 <div style="font-size: 11px; color: #aaa; margin-bottom: 6px;">
                   💡 2回以上生き残った兵士は「叙勲」で名前と二つ名が授与され大幅強化！
                 </div>
@@ -910,6 +930,7 @@ export const IronSquadGame = {
     this.inBattle = true;
     this.commandActiveUntil = 0;
     this.awakeningOrbs = 0;
+    this.globalFundAmount = '10000';
 
     // 主人公（一介の二等雑兵）
     this.player = {
@@ -1442,6 +1463,7 @@ export const IronSquadGame = {
     this.exp = saved.exp || 0;
     this.gold = saved.gold || 50;
     this.awakeningOrbs = saved.awakeningOrbs || 0;
+    this.globalFundAmount = saved.globalFundAmount || '10000';
     this.rankIndex = saved.rankIndex || 0;
     this.equipped = saved.equipped || { weapon: null, armor: null, amulet: null };
     this.inventory = saved.inventory || [];
@@ -1645,6 +1667,7 @@ export const IronSquadGame = {
         exp: this.exp,
         gold: this.gold,
         awakeningOrbs: this.awakeningOrbs || 0,
+        globalFundAmount: this.globalFundAmount || '10000',
         rankIndex: this.rankIndex,
         player: {
           hp: this.player.hp,
@@ -1906,7 +1929,7 @@ export const IronSquadGame = {
     document.getElementById('current-wave').textContent = this.wave;
     const aliveCount = this.squad ? this.squad.filter(s => !s.dead).length : 0;
     document.getElementById('squad-alive').textContent = `${aliveCount}/${rank.maxSquad}`;
-    document.getElementById('current-gold').textContent = `${this.gold}G`;
+    document.getElementById('current-gold').textContent = `${(this.gold || 0).toLocaleString()}G`;
 
     const orbEl = document.getElementById('current-orbs');
     if (orbEl) orbEl.textContent = `💎${this.awakeningOrbs || 0}`;
@@ -3261,10 +3284,22 @@ export const IronSquadGame = {
     this.updateStatsUI();
   },
 
-  // 💰 任意の兵士への資金援助 (兵士は援助金で自発的に装備強化を行う！)
-  fundSoldier(soldierId, amount = 20) {
+  // 💰 任意の兵士への資金援助 (1万/10万単位・大金対応！兵士は援助金で連続自主装備強化を行う！)
+  fundSoldier(soldierId, amountInput = 10000) {
+    let amount = 0;
+    if (amountInput === 'max') {
+      amount = this.gold;
+    } else {
+      amount = parseInt(amountInput, 10) || 1000;
+    }
+
+    if (amount <= 0) {
+      this.showToast('⚠️ 渡す軍資金が0以下です');
+      return false;
+    }
+
     if (this.gold < amount) {
-      alert(`隊長の軍資金が足りません (所持金: ${this.gold}G / 必要: ${amount}G)`);
+      alert(`隊長の軍資金が足りません (所持金: ${this.gold.toLocaleString()}G / 必要: ${amount.toLocaleString()}G)`);
       return false;
     }
     const s = this.squad.find(sol => sol.id === soldierId);
@@ -3274,30 +3309,119 @@ export const IronSquadGame = {
     s.gold = (s.gold || 0) + amount;
     sound.playItem();
 
-    // 資金援助を受けた兵士が自主的に装備強化を判定！
-    let autoUpgradedMsg = '';
+    // 資金援助を受けた兵士が自主的に装備強化を判定！（大金があれば所持金の許す限り連続フル強化！）
+    let upgradedCount = 0;
+    const upgradedNames = [];
     if (s.equipped) {
-      const slotKeys = Object.keys(s.equipped);
-      for (const k of slotKeys) {
-        const eqItem = s.equipped[k];
-        if (eqItem) {
+      const slotKeys = ['weapon', 'armor', 'shield', 'helmet', 'legs', 'gloves', 'amulet'];
+      let canUpgradeMore = true;
+      let loopGuard = 0;
+      while (canUpgradeMore && loopGuard < 80) {
+        loopGuard++;
+        let anyUpgraded = false;
+        // 強化可能な装備を抽出し、強化値が低い順に優先してバランスよく底上げ
+        const candidates = slotKeys
+          .map(k => s.equipped[k])
+          .filter(it => it && (it.upgrade || 0) < 30); // 最大+30まで強化可能
+        
+        candidates.sort((a, b) => (a.upgrade || 0) - (b.upgrade || 0));
+
+        for (const eqItem of candidates) {
           const cost = this.getUpgradeCost(eqItem);
           if (s.gold >= cost) {
             s.gold -= cost;
-            applyUpgradeStats(eqItem, (eqItem.upgrade || 0) + 1);
-            autoUpgradedMsg = ` ➔ 兵士「隊長ありがとうございます！」援助金で【${eqItem.name}】を自主強化！`;
-            break;
+            const nextUp = (eqItem.upgrade || 0) + 1;
+            applyUpgradeStats(eqItem, nextUp);
+            upgradedCount++;
+            if (!upgradedNames.includes(eqItem.name)) upgradedNames.push(eqItem.name);
+            anyUpgraded = true;
+            break; // 1回強化したら再ソートして次へ
           }
         }
+        if (!anyUpgraded) canUpgradeMore = false;
       }
     }
 
-    this.showToast(`💰【資金援助】${s.name} に ${amount}G を渡した！(兵士財布: ${s.gold}G)${autoUpgradedMsg}`);
+    let autoUpgradedMsg = '';
+    if (upgradedCount > 0) {
+      autoUpgradedMsg = ` ➔ 兵士「隊長ッ、感謝します！」大金で装備を【計${upgradedCount}回】連続自主強化！(${upgradedNames.slice(0, 3).join(', ')}等)`;
+    } else {
+      autoUpgradedMsg = ` (兵士サイフ: ${s.gold.toLocaleString()}G)`;
+    }
+
+    this.showToast(`💰【資金援助】${s.name} に ${amount.toLocaleString()}G を渡した！${autoUpgradedMsg}`);
     this.recalcSoldierStats(s);
     this.saveGame();
     this.renderStrategyUI();
     this.updateStatsUI();
     return true;
+  },
+
+  // 👥 生存兵士全員に軍資金を一斉ボーナス支給！
+  fundAllSoldiers(amountInput = 10000) {
+    const alive = this.squad.filter(s => !s.dead);
+    if (alive.length === 0) {
+      alert('配下に生存兵士がいません');
+      return;
+    }
+
+    let perSoldier = 0;
+    if (amountInput === 'max') {
+      perSoldier = Math.floor(this.gold / alive.length);
+      if (perSoldier <= 0) {
+        alert('隊長の軍資金が足りません');
+        return;
+      }
+    } else {
+      perSoldier = parseInt(amountInput, 10) || 1000;
+    }
+
+    const totalNeeded = perSoldier * alive.length;
+    if (this.gold < totalNeeded) {
+      alert(`全軍支給に必要な軍資金が足りません\n(必要: ${totalNeeded.toLocaleString()}G [${perSoldier.toLocaleString()}G × ${alive.length}名] / 所持: ${this.gold.toLocaleString()}G)`);
+      return;
+    }
+
+    if (!confirm(`👥 生存兵士 ${alive.length}名 全員に\nそれぞれ ${perSoldier.toLocaleString()}G (合計 ${totalNeeded.toLocaleString()}G) を一斉支給しますか？`)) {
+      return;
+    }
+
+    let totalUpgrades = 0;
+    alive.forEach(s => {
+      this.gold -= perSoldier;
+      s.gold = (s.gold || 0) + perSoldier;
+
+      // 兵士ごとの自発装備強化
+      if (s.equipped) {
+        const slotKeys = ['weapon', 'armor', 'shield', 'helmet', 'legs', 'gloves', 'amulet'];
+        let canUp = true;
+        let guard = 0;
+        while (canUp && guard < 60) {
+          guard++;
+          let anyUp = false;
+          const candidates = slotKeys.map(k => s.equipped[k]).filter(it => it && (it.upgrade || 0) < 30);
+          candidates.sort((a, b) => (a.upgrade || 0) - (b.upgrade || 0));
+          for (const eqItem of candidates) {
+            const cost = this.getUpgradeCost(eqItem);
+            if (s.gold >= cost) {
+              s.gold -= cost;
+              applyUpgradeStats(eqItem, (eqItem.upgrade || 0) + 1);
+              totalUpgrades++;
+              anyUp = true;
+              break;
+            }
+          }
+          if (!anyUp) canUp = false;
+        }
+      }
+      this.recalcSoldierStats(s);
+    });
+
+    sound.playHighScore();
+    this.showToast(`🎉【全軍ボーナス支給】兵士${alive.length}名に各${perSoldier.toLocaleString()}Gを支給！(計${totalUpgrades}箇所の装備が自主強化！)`);
+    this.saveGame();
+    this.renderStrategyUI();
+    this.updateStatsUI();
   },
 
   // 🎁 任意の兵士への装備譲渡（旧装備はバッグへ返却＆強化引き継ぎ、さらに兵士自費強化も！）
@@ -3530,7 +3654,7 @@ export const IronSquadGame = {
   },
 
   renderStrategyUI() {
-    document.getElementById('strat-gold').textContent = this.gold;
+    document.getElementById('strat-gold').textContent = (this.gold || 0).toLocaleString();
     const orbEl = document.getElementById('strat-orbs');
     if (orbEl) orbEl.textContent = this.awakeningOrbs || 0;
 
@@ -3708,6 +3832,27 @@ export const IronSquadGame = {
     const alive = this.squad.filter(s => !s.dead);
     squadList.innerHTML = '';
 
+    // グローバル援助設定セレクターと全員支給ボタンの連動
+    const globalFundSelect = document.getElementById('select-global-fund-amount');
+    const curGlobalFund = this.globalFundAmount || '10000';
+    if (globalFundSelect) {
+      globalFundSelect.value = curGlobalFund;
+      globalFundSelect.onchange = (e) => {
+        this.globalFundAmount = e.target.value;
+        document.querySelectorAll('.select-soldier-fund').forEach(sel => {
+          sel.value = this.globalFundAmount;
+        });
+      };
+    }
+
+    const fundAllBtn = document.getElementById('btn-fund-all-soldiers');
+    if (fundAllBtn) {
+      fundAllBtn.onclick = () => {
+        const amt = globalFundSelect ? globalFundSelect.value : (this.globalFundAmount || '10000');
+        this.fundAllSoldiers(amt);
+      };
+    }
+
     alive.forEach((s) => {
       const row = document.createElement('div');
       const isNamed = s.isNamed;
@@ -3735,6 +3880,7 @@ export const IronSquadGame = {
       const wItem = s.equipped && s.equipped.weapon ? s.equipped.weapon : s.weapon;
       const wUpCost = wItem ? this.getUpgradeCost(wItem) : 0;
       const hasWUpBudget = wItem && (s.gold || 0) >= wUpCost;
+      const fundVal = this.globalFundAmount || '10000';
 
       row.innerHTML = `
         <div style="display: flex; justify-content: space-between; align-items: baseline; font-size: 11px; margin-bottom: 3px;">
@@ -3749,7 +3895,7 @@ export const IronSquadGame = {
             ${survivedDl > 0 ? `<span style="color:#f87171; font-size:9.5px; font-weight:bold;" title="死線生還数: ${survivedDl}回">[💀生還×${survivedDl}]</span>` : ''}
             ${isDown ? '<span style="color:#ef4444; font-weight:bold;">[🆘負傷ダウン]</span>' : ''}
           </span>
-          <span style="font-size: 10px;">💰 <strong style="color:#ffe600;">${s.gold || 0}G</strong> | ⚔️${s.minionKills || 0} 👑${s.bossKills || 0}</span>
+          <span style="font-size: 10px;">💰 <strong style="color:#ffe600;">${(s.gold || 0).toLocaleString()}G</strong> | ⚔️${s.minionKills || 0} 👑${s.bossKills || 0}</span>
         </div>
         <div style="font-size: 10px; color: #94a3b8; margin-bottom: 3px; display: flex; justify-content: space-between; align-items:center;">
           <span>HP: <strong style="color:${s.hp < s.maxHp ? '#f87171' : '#34d399'};">${Math.floor(s.hp)}</strong>/${s.maxHp} | 🛡️ DEF: <strong style="color:#38bdf8;">${s.def || 0}</strong> | ATK: ${s.atk} ${clsKey === 'MEDIC' ? `| 💚回復: <strong style="color:#34d399;">${s.healPower || 26}HP</strong>` : ''}</span>
@@ -3765,9 +3911,21 @@ export const IronSquadGame = {
           </div>
         ` : ''}
         <div style="display: flex; gap: 4px; align-items: center; margin-top: 4px; flex-wrap: wrap;">
-          <button class="mini-btn btn-fund" style="background:#0284c7; color:#fff; font-size:10px; font-weight:bold;" title="手持ちの軍資金から20Gを援助。兵士は援助金で自発的に装備強化を検討！">
-            💰 援助 (+20G)
-          </button>
+          <div style="display: flex; align-items: center; gap: 2px;">
+            <select class="mini-select select-soldier-fund select-fund-${s.id}" style="font-size: 10px; background: #0f172a; color: #fde047; border: 1px solid #0284c7; border-radius: 4px; padding: 2px 3px; font-weight: bold;">
+              <option value="100" ${fundVal === '100' ? 'selected' : ''}>100G</option>
+              <option value="1000" ${fundVal === '1000' ? 'selected' : ''}>1千G</option>
+              <option value="10000" ${fundVal === '10000' ? 'selected' : ''}>1万G</option>
+              <option value="50000" ${fundVal === '50000' ? 'selected' : ''}>5万G</option>
+              <option value="100000" ${fundVal === '100000' ? 'selected' : ''}>10万G</option>
+              <option value="500000" ${fundVal === '500000' ? 'selected' : ''}>50万G</option>
+              <option value="1000000" ${fundVal === '1000000' ? 'selected' : ''}>100万G</option>
+              <option value="max" ${fundVal === 'max' ? 'selected' : ''}>全額</option>
+            </select>
+            <button class="mini-btn btn-fund" style="background: #0284c7; color: #fff; font-size: 10px; font-weight: bold; padding: 3px 6px;" title="選択した軍資金を渡す（兵士は受け取ると装備を自主フル強化！）">
+              💰 渡す
+            </button>
+          </div>
           ${!cls.isAdvanced && cls.advancedClassId ? `
             <button class="mini-btn btn-class-up" style="background:linear-gradient(135deg, #f59e0b, #ec4899); color:#fff; font-size:10px; font-weight:bold; box-shadow:0 0 6px rgba(245,158,11,0.5);" title="ボス秘宝『覚醒の英雄宝珠』を消費して上位職【${SOLDIER_CLASSES[cls.advancedClassId].name}】へ覚醒昇格！">
               🔱 上位職【${SOLDIER_CLASSES[cls.advancedClassId].name}】へ覚醒！(💎1個)
@@ -3796,7 +3954,9 @@ export const IronSquadGame = {
       const fundBtn = row.querySelector('.btn-fund');
       if (fundBtn) {
         fundBtn.addEventListener('click', () => {
-          this.fundSoldier(s.id, 20);
+          const fundSel = row.querySelector(`.select-fund-${s.id}`);
+          const amt = fundSel ? fundSel.value : (this.globalFundAmount || '10000');
+          this.fundSoldier(s.id, amt);
         });
       }
 
