@@ -23,7 +23,7 @@ import { daylightAt, advanceWorldClock, periodEnemy, enemyAvailable, PERIOD_ENEM
 import { RESCUE_TIMEOUT, carryingCapacity, carriedSoldiers, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, handleTransportAI, syncDragged, treatWounded, orbDropChance } from './casualty-rules.js';
 import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault } from './dungeon.js';
 
-export const DEPLOYMENT_CAPACITY=30;
+export const DEPLOYMENT_CAPACITY=72;
 export const ENEMY_LIMIT=72;
 export const ENEMY_SPAWN_INTERVAL=.45;
 
@@ -46,13 +46,13 @@ export const FIELD_ZONES = [
     color: '#34d399',
     bgColor: 'rgba(52, 211, 153, 0.08)',
     monsters: ['slime', 'goblin'],
-    hpMult: 0.65,
-    atkMult: 0.60,
+    hpMult: 1.0,
+    atkMult: 1.0,
     speedMult: 0.90,
-    expMult: 0.75,
-    goldMult: 0.75,
+    expMult: 1.0,
+    goldMult: 1.0,
     tierRange: [1, 2],
-    desc: '安全な近郊。スライムや小鬼が徘徊。新兵の訓練に最適'
+    desc: '安全な近郊平原。スライムや小鬼が徘徊。新兵の訓練と本隊の防衛拠点'
   },
   {
     id: 'ZONE_WILD',
@@ -67,13 +67,13 @@ export const FIELD_ZONES = [
     color: '#f59e0b',
     bgColor: 'rgba(245, 158, 11, 0.08)',
     monsters: ['goblin', 'orc', 'wolf'],
-    hpMult: 1.60,
-    atkMult: 1.50,
+    hpMult: 6.0,
+    atkMult: 6.0,
     speedMult: 1.05,
-    expMult: 1.60,
-    goldMult: 1.50,
+    expMult: 2.8,
+    goldMult: 2.5,
     tierRange: [1, 4],
-    desc: '中型オークや黒狼が徘徊する警戒区域。推奨DEF 45+'
+    desc: '境界を越えると敵の強さが10倍近く跳ね上がる警戒森林。推奨DEF 45+'
   },
   {
     id: 'ZONE_CHAOS',
@@ -88,13 +88,13 @@ export const FIELD_ZONES = [
     color: '#a855f7',
     bgColor: 'rgba(168, 85, 247, 0.08)',
     monsters: ['orc', 'wyvern'],
-    hpMult: 4.50,
-    atkMult: 3.50,
+    hpMult: 35.0,
+    atkMult: 32.0,
     speedMult: 1.15,
-    expMult: 4.20,
-    goldMult: 3.80,
+    expMult: 7.5,
+    goldMult: 6.0,
     tierRange: [2, 5],
-    desc: '凶暴なワイバーンが跋扈する危険地帯。推奨DEF 140+（適正防具なき者は即死）'
+    desc: '凶暴なワイバーンや強力な魔獣が跋扈する危険地帯。推奨DEF 140+'
   },
   {
     id: 'ZONE_ABYSS',
@@ -109,13 +109,13 @@ export const FIELD_ZONES = [
     color: '#ef4444',
     bgColor: 'rgba(239, 68, 68, 0.12)',
     monsters: ['wyvern', 'colossal_dragon', 'behemoth_king', 'colossal_titan'],
-    hpMult: 10.00,
-    atkMult: 7.50,
+    hpMult: 180.0,
+    atkMult: 160.0,
     speedMult: 1.25,
-    expMult: 10.00,
-    goldMult: 8.50,
+    expMult: 16.0,
+    goldMult: 13.0,
     tierRange: [3, 7],
-    desc: '超巨大大ボスが君臨する最果ての死地！推奨DEF 320+（一撃即死・神話装甲必須）'
+    desc: '超巨大大ボスが君臨する最果ての死地！推奨DEF 320+'
   }
 ];
 
@@ -138,8 +138,8 @@ export const COLOSSAL_BOSS_DEFS = {
     icon: '🐉🔥',
     color: '#ef4444',
     radius: 56,
-    baseHp: 4200,
-    baseAtk: 76,
+    baseHp: 58000,
+    baseAtk: 1250,
     speed: 46,
     skillCooldown: 4.5,
     skillName: '超火炎ブレス',
@@ -152,8 +152,8 @@ export const COLOSSAL_BOSS_DEFS = {
     icon: '🦏⚡',
     color: '#f59e0b',
     radius: 62,
-    baseHp: 5200,
-    baseAtk: 92,
+    baseHp: 68000,
+    baseAtk: 1450,
     speed: 42,
     skillCooldown: 5.0,
     skillName: '大地粉砕（アースクエイク）',
@@ -166,8 +166,8 @@ export const COLOSSAL_BOSS_DEFS = {
     icon: '🗿✨',
     color: '#06b6d4',
     radius: 58,
-    baseHp: 5800,
-    baseAtk: 84,
+    baseHp: 75000,
+    baseAtk: 1380,
     speed: 38,
     skillCooldown: 4.8,
     skillName: '神話殲滅光線',
@@ -178,15 +178,15 @@ export const COLOSSAL_BOSS_DEFS = {
 
 // 階級データ (雑兵から始まり、出世で直属小隊を率いる指揮権が解禁される！)
 export const RANKS = [
-  { level: 1, title: '二等雑兵', reqExp: 0, canCommand: false, personalGuards: 0, maxSquad: DEPLOYMENT_CAPACITY, bonusHp: 0, bonusAtk: 0, desc: '指揮権なし。本隊は大軍で勝手に行動。ソロで自由に戦え！' },
-  { level: 2, title: '一等兵', reqExp: 300, canCommand: false, personalGuards: 1, maxSquad: DEPLOYMENT_CAPACITY, bonusHp: 35, bonusAtk: 8, desc: '死線を潜った古参。戦友1名が直属随伴。本隊は勝手に行動。' },
-  { level: 3, title: '伍長 (班長昇進)', reqExp: 900, canCommand: true, personalGuards: 3, commandType: 'WHISTLE', maxSquad: DEPLOYMENT_CAPACITY, bonusHp: 80, bonusAtk: 20, desc: '【直属小隊(3名)】を率いる！本隊は独自に作戦行動。呼集笛解禁。' },
-  { level: 4, title: '軍曹 (小隊長代理)', reqExp: 2000, canCommand: true, personalGuards: 5, commandType: 'RALLY', maxSquad: DEPLOYMENT_CAPACITY, bonusHp: 150, bonusAtk: 38, desc: '【直属小隊(5名)】を指揮！本隊と連携進軍。突撃号令解禁。' },
-  { level: 5, title: '百人隊長 (部隊司令)', reqExp: 3800, canCommand: true, personalGuards: 7, commandType: 'FULL', maxSquad: DEPLOYMENT_CAPACITY, bonusHp: 240, bonusAtk: 65, desc: '【直属精鋭小隊(7名)】を率いる！本隊は大軍団で戦場を制圧。' },
+  { level: 1, title: '二等雑兵', reqExp: 0, canCommand: false, personalGuards: 0, maxSquad: DEPLOYMENT_CAPACITY, bonusHp: 0, bonusAtk: 0, desc: '指揮権なし。本隊は大軍(約70名)で勝手に行動。ソロで自由に戦え！' },
+  { level: 2, title: '一等兵', reqExp: 300, canCommand: false, personalGuards: 1, maxSquad: DEPLOYMENT_CAPACITY, bonusHp: 35, bonusAtk: 8, desc: '死線を潜った古参。戦友1名が直属随伴。本隊は大軍で作戦行動。' },
+  { level: 3, title: '伍長 (班長昇進)', reqExp: 900, canCommand: true, personalGuards: 3, commandType: 'WHISTLE', maxSquad: DEPLOYMENT_CAPACITY, bonusHp: 80, bonusAtk: 20, desc: '【直属小隊(3名)】を率いる！本隊(約68名)は防衛行動。呼集笛解禁。' },
+  { level: 4, title: '軍曹 (小隊長代理)', reqExp: 2000, canCommand: true, personalGuards: 5, commandType: 'RALLY', maxSquad: DEPLOYMENT_CAPACITY, bonusHp: 150, bonusAtk: 38, desc: '【直属小隊(5名)】を指揮！本隊と連携。突撃号令解禁。' },
+  { level: 5, title: '百人隊長 (部隊司令)', reqExp: 3800, canCommand: true, personalGuards: 7, commandType: 'FULL', maxSquad: DEPLOYMENT_CAPACITY, bonusHp: 240, bonusAtk: 65, desc: '【直属精鋭小隊(7名)】を率いる！本隊は大部隊(約64名)で本陣警戒。' },
   { level: 6, title: '千人将', reqExp: 6500, canCommand: true, personalGuards: 8, commandType: 'FULL', maxSquad: DEPLOYMENT_CAPACITY, bonusHp: 380, bonusAtk: 100, desc: '【直属親衛小隊(8名)】を率いる大隊指揮官。' },
   { level: 7, title: '近衛騎士団長', reqExp: 10000, canCommand: true, personalGuards: 9, commandType: 'FULL', maxSquad: DEPLOYMENT_CAPACITY, bonusHp: 580, bonusAtk: 150, desc: '【近衛直属小隊(9名)】を率いる王国近衛騎士団長。' },
   { level: 8, title: '軍団総司令官', reqExp: 15000, canCommand: true, personalGuards: 10, commandType: 'FULL', maxSquad: DEPLOYMENT_CAPACITY, bonusHp: 850, bonusAtk: 220, desc: '【最高司令直属小隊(10名)】を率いる全軍の最高司令官。' },
-  { level: 9, title: '救国の英雄神将', reqExp: 22000, canCommand: true, personalGuards: 12, commandType: 'FULL', maxSquad: DEPLOYMENT_CAPACITY, bonusHp: 1200, bonusAtk: 300, desc: '【英雄直属神聖小隊(12名)】を率いる伝説の神将。' }
+  { level: 9, title: '救国の英雄神将', reqExp: 22000, canCommand: true, personalGuards: 12, commandType: 'FULL', maxSquad: DEPLOYMENT_CAPACITY, bonusHp: 1200, bonusAtk: 300, desc: '【英雄直属神聖小隊(12名)】を率いる伝説の神将。本隊(約60名)が背後に控える！' }
 ];
 
 const TITLES = ['不屈の', '疾風の', '鉄壁の', '歴戦の', '鬼神の', '紅蓮の', '隻眼の', '魔刃の', '金剛の', '閃光の'];
@@ -1594,7 +1594,7 @@ export const IronSquadGame = {
     if (hasVeterans) {
       this.showToast('🎖️ 【歴戦の先輩兵士が合流！】前線部隊の古参兵たちが新兵のあなたを援護します！');
     } else {
-      this.showToast('⚔️ 30名の新兵混成小隊として出動！各小隊と共闘せよ');
+      this.showToast('⚔️ 72名の大軍勢として出動！本隊と連携し、直属小隊を率いて戦え！');
     }
   },
 
@@ -2082,6 +2082,9 @@ export const IronSquadGame = {
     this.lastReinforcements = saved.lastReinforcements || null;
     this.normalizeDeployment();
     this.deployReserves();
+    while (this.squad.length < DEPLOYMENT_CAPACITY) {
+      this.squad.push(this.createNewSoldier());
+    }
     const legacyWorld = saved.worldVersion !== WORLD_VERSION;
     if (legacyWorld) for (const soldier of this.squad) {
       soldier.x = BASE_CAMP.x + ((soldier.x ?? 900)-900);
@@ -2636,26 +2639,17 @@ export const IronSquadGame = {
     const zoneBadge = document.getElementById('field-zone-badge');
     if (zoneBadge && this.player) {
       if (this.currentDungeon) {
-        const isDeficit = (this.player.def || 0) < this.currentDungeon.reqDef;
-        zoneBadge.style.color = isDeficit ? '#fca5a5' : '#c084fc';
-        zoneBadge.style.borderColor = isDeficit ? '#ef4444' : '#a855f7';
-        zoneBadge.style.background = isDeficit ? 'rgba(76, 12, 12, 0.95)' : 'rgba(28, 18, 45, 0.92)';
-        zoneBadge.textContent = `${this.currentDungeon.icon} ${this.currentDungeon.name} (${isDeficit ? '⚠️DEF不足即死' : '適正'} DEF${this.player.def || 0}/${this.currentDungeon.reqDef}+)`;
+        zoneBadge.style.color = '#c084fc';
+        zoneBadge.style.borderColor = '#a855f7';
+        zoneBadge.style.background = 'rgba(28, 18, 45, 0.92)';
+        zoneBadge.textContent = `${this.currentDungeon.icon} ${this.currentDungeon.name} (推奨DEF ${this.currentDungeon.reqDef}+)`;
       } else {
         const zone = getFieldZone(this.player.x, this.player.y);
-        const isDeficit = zone.reqDef > 0 && (this.player.def || 0) < zone.reqDef;
-        if (isDeficit) {
-          zoneBadge.style.color = '#fca5a5';
-          zoneBadge.style.borderColor = '#ef4444';
-          zoneBadge.style.background = 'rgba(76, 12, 12, 0.95)';
-          zoneBadge.textContent = `💀 ${zone.shortName} (⚠️DEF不足即死！ DEF${this.player.def || 0}/${zone.reqDef}+)`;
-        } else {
-          const tone = ['#d9d0b8', '#e4d2a8', '#e0b48a', '#e4c2b4'][(zone.dangerLevel || 1) - 1] || '#d9d0b8';
-          zoneBadge.style.color = tone;
-          zoneBadge.style.borderColor = '#6d6758';
-          zoneBadge.style.background = 'rgba(20,24,22,0.86)';
-          zoneBadge.textContent = `${zone.icon} ${zone.shortName} (${zone.dangerStars} 推奨DEF ${zone.reqDef}+)`;
-        }
+        const tone = ['#34d399', '#f59e0b', '#a855f7', '#ef4444'][(zone.dangerLevel || 1) - 1] || '#d9d0b8';
+        zoneBadge.style.color = tone;
+        zoneBadge.style.borderColor = '#475569';
+        zoneBadge.style.background = 'rgba(20,24,22,0.86)';
+        zoneBadge.textContent = `${zone.icon} ${zone.shortName} (${zone.dangerStars} 推奨DEF ${zone.reqDef}+)`;
       }
     }
 
@@ -2807,22 +2801,22 @@ export const IronSquadGame = {
       const roll = Math.random();
       if (roll < 0.30) {
         type = 'goblin';
-        rawHp = 90;
-        rawAtk = 22;
+        rawHp = 75;
+        rawAtk = 15;
         speed = 78;
         radius = 11;
         color = '#10b981';
       } else if (roll < 0.65) {
         type = 'wolf';
-        rawHp = 105;
-        rawAtk = 28;
+        rawHp = 90;
+        rawAtk = 18;
         speed = 114;
         radius = 12;
         color = '#64748b';
       } else {
         type = 'orc';
-        rawHp = 150;
-        rawAtk = 34;
+        rawHp = 120;
+        rawAtk = 22;
         speed = 66;
         radius = 15;
         color = '#d97706';
@@ -2832,23 +2826,23 @@ export const IronSquadGame = {
       const roll = Math.random();
       if (roll < 0.35) {
         type = 'orc';
-        rawHp = 220;
-        rawAtk = 48;
+        rawHp = 100;
+        rawAtk = 16;
         speed = 70;
         radius = 15;
         color = '#d97706';
         isElite = true;
       } else if (roll < 0.75) {
         type = 'wyvern';
-        rawHp = 300;
-        rawAtk = 65;
+        rawHp = 140;
+        rawAtk = 20;
         speed = 84;
         radius = 18;
         color = '#a855f7';
       } else {
         type = 'dragon';
-        rawHp = 680;
-        rawAtk = 95;
+        rawHp = 280;
+        rawAtk = 28;
         speed = 58;
         radius = 26;
         color = '#ef4444';
@@ -2859,16 +2853,16 @@ export const IronSquadGame = {
       const roll = Math.random();
       if (roll < 0.5) {
         type = 'wyvern';
-        rawHp = 520;
-        rawAtk = 130;
+        rawHp = 160;
+        rawAtk = 14;
         speed = 92;
         radius = 20;
         color = '#ef4444';
         isElite = true;
       } else {
         type = 'dragon';
-        rawHp = 780;
-        rawAtk = 180;
+        rawHp = 240;
+        rawAtk = 18;
         speed = 65;
         radius = 28;
         color = '#dc2626';
@@ -3349,59 +3343,82 @@ export const IronSquadGame = {
       proxBadge.textContent = `🗡️ 単独遊撃中 (雑兵) | 🏰 本隊: ${mainBodyCount}名作戦中`;
     }
 
-    // 小隊（Platoons）ナビゲーション重心の更新 (本隊は独自に戦場を作戦行動！)
+    // 小隊（Platoons）ナビゲーション重心の更新 (本隊約50〜60名は本陣防衛圏内をテリトリーとし、危険ゾーン奥地へ勝手に迷い込むのを完全防止！)
     if (!this.platoons) this.initPlatoons();
-    const nearestGlobalMonster = this.getNearestMonster(this.player.x, this.player.y);
+    const BASE_TERRITORY_RADIUS = 2200;
+    const nearBaseMonsters = this.monsters.filter(m => Math.hypot(m.x - BASE_CAMP.x, m.y - BASE_CAMP.y) <= BASE_TERRITORY_RADIUS);
+    const nearestNearBaseMonster = nearBaseMonsters.length > 0
+      ? nearBaseMonsters.reduce((closest, m) => {
+          const d = Math.hypot(m.x - BASE_CAMP.x, m.y - BASE_CAMP.y);
+          return (!closest || d < closest.d) ? { m, d } : closest;
+        }, null)?.m
+      : null;
 
     this.platoons.forEach((platoon) => {
+      if (this.currentDungeon) {
+        // ダンジョン内: ボスまたはプレイヤーに向かって全員進撃
+        const dTarget = this.monsters.find(m => m.isBoss) || this.player;
+        platoon.x += (dTarget.x - platoon.x) * 1.5 * dt;
+        platoon.y += (dTarget.y - platoon.y) * 1.5 * dt;
+        return;
+      }
+
       if (isCommandActive) {
         // 号令発動中のみ一時的に主人公へ駆け寄る
         platoon.x += (this.player.x - platoon.x) * 2.2 * dt;
         platoon.y += (this.player.y - platoon.y) * 2.2 * dt;
       } else {
         if (platoon.id === 0) {
-          // 第1小隊: 前衛突撃隊（軍令目標・敵砦・ボスへ向かって進軍！）
-          let targetOutpost = null;
-          if (this.currentQuest && !this.currentQuest.completed && this.currentQuest.targetType) {
-            targetOutpost = (this.outposts || []).find(o => (this.currentQuest.targetId ? o.id === this.currentQuest.targetId : o.type === this.currentQuest.targetType) && !o.cleared);
-          }
-          if (!targetOutpost) {
-            targetOutpost = (this.outposts || []).find(o => !o.cleared);
-          }
-
-          const p0Boss = this.monsters.find(m => m.isBoss || m.isElite);
-          const pTarget = p0Boss || targetOutpost || nearestGlobalMonster;
+          // 第1小隊: 前衛突撃隊（本陣防衛圏内の未制圧砦・近郊ボスへ向かって進軍）
+          let targetOutpost = (this.outposts || []).find(o => !o.cleared && Math.hypot(o.x - BASE_CAMP.x, o.y - BASE_CAMP.y) <= BASE_TERRITORY_RADIUS);
+          const p0Boss = nearBaseMonsters.find(m => m.isBoss || m.isElite);
+          const pTarget = p0Boss || targetOutpost || nearestNearBaseMonster;
           if (pTarget) {
             platoon.x += (pTarget.x - platoon.x) * 1.5 * dt;
             platoon.y += (pTarget.y - platoon.y) * 1.5 * dt;
           } else {
-            platoon.x = BASE_CAMP.x + 90;
-            platoon.y = BASE_CAMP.y - 70;
+            // 近郊に敵がいなければ本陣北東近郊で防衛哨戒
+            const homeX = BASE_CAMP.x + 180;
+            const homeY = BASE_CAMP.y - 140;
+            platoon.x += (homeX - platoon.x) * 1.2 * dt;
+            platoon.y += (homeY - platoon.y) * 1.2 * dt;
           }
         } else if (platoon.id === 1) {
-          // 第2小隊: 機動遊撃隊（ドロップ宝箱、または側面散開敵へ）
-          const p1Drop = this.dropsOnField.length > 0 ? this.dropsOnField[0] : null;
+          // 第2小隊: 機動遊撃隊（本陣防衛圏内のドロップ宝箱、または近郊モンスターへ）
+          const p1Drop = this.dropsOnField.find(d => Math.hypot(d.x - BASE_CAMP.x, d.y - BASE_CAMP.y) <= BASE_TERRITORY_RADIUS);
           if (p1Drop) {
             platoon.x += (p1Drop.x - platoon.x) * 1.8 * dt;
             platoon.y += (p1Drop.y - platoon.y) * 1.8 * dt;
-          } else if (nearestGlobalMonster) {
-            platoon.x += (nearestGlobalMonster.x - platoon.x) * 1.2 * dt;
-            platoon.y += (nearestGlobalMonster.y - platoon.y) * 1.2 * dt;
+          } else if (nearestNearBaseMonster) {
+            platoon.x += (nearestNearBaseMonster.x - platoon.x) * 1.2 * dt;
+            platoon.y += (nearestNearBaseMonster.y - platoon.y) * 1.2 * dt;
           } else {
-            platoon.x = BASE_CAMP.x - 90;
-            platoon.y = BASE_CAMP.y + 70;
+            // 近郊に敵がいなければ本陣南西近郊で防衛哨戒
+            const homeX = BASE_CAMP.x - 180;
+            const homeY = BASE_CAMP.y + 140;
+            platoon.x += (homeX - platoon.x) * 1.2 * dt;
+            platoon.y += (homeY - platoon.y) * 1.2 * dt;
           }
         } else {
-          // 第3小隊: 本陣防衛隊（砦周辺260px内の敵を迎撃、いなければ哨戒）
-          const nearBaseEnemy = this.monsters.find(m => Math.hypot(m.x - BASE_CAMP.x, m.y - BASE_CAMP.y) < 280);
+          // 第3小隊: 本陣防衛隊（本陣直近400px内の敵を迎撃、いなければ本陣周囲を旋回哨戒）
+          const nearBaseEnemy = nearBaseMonsters.find(m => Math.hypot(m.x - BASE_CAMP.x, m.y - BASE_CAMP.y) < 400);
           if (nearBaseEnemy) {
             platoon.x += (nearBaseEnemy.x - platoon.x) * 2.0 * dt;
             platoon.y += (nearBaseEnemy.y - platoon.y) * 2.0 * dt;
           } else {
             const patrolAngle = now * 0.0008;
-            platoon.x = BASE_CAMP.x + Math.cos(patrolAngle) * 75;
-            platoon.y = BASE_CAMP.y + Math.sin(patrolAngle) * 75;
+            platoon.x = BASE_CAMP.x + Math.cos(patrolAngle) * 90;
+            platoon.y = BASE_CAMP.y + Math.sin(patrolAngle) * 90;
           }
+        }
+      }
+
+      // 小隊重心が安全テリトリー外へ出ないようクランプ
+      if (!this.currentDungeon) {
+        const pDist = Math.hypot(platoon.x - BASE_CAMP.x, platoon.y - BASE_CAMP.y);
+        if (pDist > BASE_TERRITORY_RADIUS) {
+          platoon.x = BASE_CAMP.x + ((platoon.x - BASE_CAMP.x) / pDist) * BASE_TERRITORY_RADIUS;
+          platoon.y = BASE_CAMP.y + ((platoon.y - BASE_CAMP.y) / pDist) * BASE_TERRITORY_RADIUS;
         }
       }
     });
@@ -3541,10 +3558,10 @@ export const IronSquadGame = {
         }
       }
 
-      // 自律移動目標の決定（直属小隊ならプレイヤーに追従！本隊なら小隊重心で勝手に作戦行動！）
+      // 自律移動目標の決定（直属小隊ならプレイヤーに追従！本隊なら小隊重心で防衛圏内を作戦行動！）
       let targetX, targetY;
       if (soldier.isPersonalGuard) {
-        // 直属小隊: プレイヤー周囲の精鋭護衛フォーメーション
+        // 直属小隊: プレイヤー周囲の精鋭護衛フォーメーション（プレイヤーがどこへ行っても随行！）
         const guardIndex = aliveSquad.filter(s => s.isPersonalGuard).indexOf(soldier);
         const guardAngle = (guardIndex * 1.25) + (now * 0.001);
         const guardDist = 32 + (guardIndex % 4) * 10;
@@ -3553,13 +3570,24 @@ export const IronSquadGame = {
       } else {
         // 本隊: 所属小隊の作戦重心を中心とした独立散開
         const pAngle = (idx * 1.1) + (now * 0.0006);
-        const pDist = 28 + (idx % 5) * 12;
+        const pDist = 28 + (idx % 6) * 14;
         targetX = platoon.x + Math.cos(pAngle) * pDist;
         targetY = platoon.y + Math.sin(pAngle) * pDist;
+
+        // 本隊兵士が安全防衛圏から勝手に外へ飛び出さないようクランプ
+        if (!this.currentDungeon) {
+          const dBase = Math.hypot(targetX - BASE_CAMP.x, targetY - BASE_CAMP.y);
+          if (dBase > BASE_TERRITORY_RADIUS) {
+            targetX = BASE_CAMP.x + ((targetX - BASE_CAMP.x) / dBase) * BASE_TERRITORY_RADIUS;
+            targetY = BASE_CAMP.y + ((targetY - BASE_CAMP.y) / dBase) * BASE_TERRITORY_RADIUS;
+          }
+        }
       }
 
-      // 敵索敵
-      const nearestEnemy = this.getNearestMonster(soldier.x, soldier.y);
+      // 敵索敵（直属小隊は自由索敵。本隊兵士は防衛圏内の敵のみ索敵して奥地迷い込みを完全防止）
+      const nearestEnemy = (soldier.isPersonalGuard || this.currentDungeon)
+        ? this.getNearestMonster(soldier.x, soldier.y)
+        : this.getNearestMonster(soldier.x, soldier.y, (m) => Math.hypot(m.x - BASE_CAMP.x, m.y - BASE_CAMP.y) <= (BASE_TERRITORY_RADIUS + 250));
       const enemyDist = nearestEnemy ? Math.hypot(nearestEnemy.x - soldier.x, nearestEnemy.y - soldier.y) : 9999;
 
       // 兵種ごとの交戦間合い
@@ -4098,10 +4126,11 @@ export const IronSquadGame = {
 
   },
 
-  getNearestMonster(x, y) {
+  getNearestMonster(x, y, filterFn = null) {
     let nearest = null;
     let minDist = 9999;
     for (const m of this.monsters) {
+      if (filterFn && !filterFn(m)) continue;
       const d = Math.hypot(m.x - x, m.y - y);
       if (d < minDist) {
         minDist = d;
@@ -4166,25 +4195,9 @@ export const IronSquadGame = {
     }
 
     const defVal = target.def || 0;
-
-    // ゾーン推奨DEFチェック＆致命貫通即死ペナルティ（防具なき者は即死必至！）
-    const activeZone = this.currentDungeon ? { reqDef: this.currentDungeon.reqDef } : getFieldZone(target.x, target.y);
-    let deadlyPenetration = false;
-    let penetrationMult = 1.0;
-    let effectiveDef = defVal;
-
-    if (activeZone && activeZone.reqDef > 0 && defVal < activeZone.reqDef) {
-      const deficit = (activeZone.reqDef - defVal) / activeZone.reqDef; // 不足割合: 0.0〜1.0
-      deadlyPenetration = true;
-      // 防御無効化: 不足割合に応じてDEFが素通り
-      effectiveDef = Math.max(0, defVal * (1 - deficit * 0.9));
-      // 致命貫通倍率: 不足度に応じて1.6〜4.5倍！HPが数千あろうが一撃で消し飛ぶ！
-      penetrationMult = 1.6 + deficit * 2.9;
-    }
-
-    const defFactor = 100 / (100 + effectiveDef * 1.2);
+    const defFactor = 100 / (100 + defVal * 1.2);
     let reduction = target.dmgReduction ? Math.min(0.40, target.dmgReduction / 100) : 0;
-    let dmg = Math.max(1, Math.round(rawDmg * defFactor * (1 - reduction) * penetrationMult));
+    let dmg = Math.max(1, Math.round(rawDmg * defFactor * (1 - reduction)));
 
     if (paladinGuarded) {
       dmg = Math.max(1, Math.round(dmg * 0.70)); // 聖域加護で-30%
@@ -4198,10 +4211,6 @@ export const IronSquadGame = {
       if (Math.random() < 0.45) {
         this.spawnDamageText(target.x, target.y - 20, '🛡️生還シールド!', '#38bdf8');
       }
-    }
-
-    if (deadlyPenetration) {
-      this.spawnDamageText(target.x, target.y - 28, '💀致命貫通即死!', '#ff1133');
     }
 
     target.hp -= dmg;
@@ -4244,7 +4253,7 @@ export const IronSquadGame = {
         this.zoneAlertFlash = 1.0;
         this.screenShake = 0.55;
         sound.playBomb();
-        this.showToast(`🚨【危険地帯突入！】${curZone.name}（推奨DEF ${curZone.reqDef}+）！適正防具なき者は即死します！`);
+        this.showToast(`🚨【危険地帯突入！】${curZone.name}！敵の脅威が跳ね上がります！（推奨DEF ${curZone.reqDef}+）`);
       } else {
         this.showToast(`🏕️【安全エリアへ移動】${curZone.name}に入りました`);
       }
