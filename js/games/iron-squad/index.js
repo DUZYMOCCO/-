@@ -61,7 +61,7 @@ export const FIELD_ZONES = [
     icon: '🌲',
     minDist: 2400,
     maxDist: 5500,
-    reqDef: 25,
+    reqDef: 45,
     dangerLevel: 2,
     dangerStars: '★★☆☆☆',
     color: '#f59e0b',
@@ -73,7 +73,7 @@ export const FIELD_ZONES = [
     expMult: 1.60,
     goldMult: 1.50,
     tierRange: [1, 4],
-    desc: '中型オークや黒狼が徘徊する警戒区域。推奨DEF 25+'
+    desc: '中型オークや黒狼が徘徊する警戒区域。推奨DEF 45+'
   },
   {
     id: 'ZONE_CHAOS',
@@ -82,7 +82,7 @@ export const FIELD_ZONES = [
     icon: '💀',
     minDist: 5500,
     maxDist: 9200,
-    reqDef: 75,
+    reqDef: 140,
     dangerLevel: 3,
     dangerStars: '★★★☆☆',
     color: '#a855f7',
@@ -94,7 +94,7 @@ export const FIELD_ZONES = [
     expMult: 4.20,
     goldMult: 3.80,
     tierRange: [2, 5],
-    desc: '凶暴なワイバーンが跋扈する危険地帯。推奨DEF 75+（無防備即死）'
+    desc: '凶暴なワイバーンが跋扈する危険地帯。推奨DEF 140+（適正防具なき者は即死）'
   },
   {
     id: 'ZONE_ABYSS',
@@ -103,7 +103,7 @@ export const FIELD_ZONES = [
     icon: '👑',
     minDist: 9200,
     maxDist: 18000,
-    reqDef: 150,
+    reqDef: 320,
     dangerLevel: 4,
     dangerStars: '★★★★★',
     color: '#ef4444',
@@ -115,7 +115,7 @@ export const FIELD_ZONES = [
     expMult: 10.00,
     goldMult: 8.50,
     tierRange: [3, 7],
-    desc: '超巨大大ボスが君臨する最果ての死地！推奨DEF 150+（致命貫通で即死必至）'
+    desc: '超巨大大ボスが君臨する最果ての死地！推奨DEF 320+（一撃即死・神話装甲必須）'
   }
 ];
 
@@ -525,14 +525,14 @@ export function applyUpgradeStats(item, upgradeLevel) {
     if (chosenTier.tier >= 6) item.stats.lightning = true;
   } else if (item.type === 'SHIELD') {
     item.stats.def = Math.floor(baseValue * 1.5 * chosenTier.mult * plusMult);
-    item.stats.hp = Math.floor(baseValue * 2.0 * chosenTier.mult * plusMult);
+    item.stats.hp = Math.floor(baseValue * 1.5 * Math.pow(chosenTier.tier, 1.3) * plusMult);
     item.stats.blockChance = Math.min(45, 15 + chosenTier.tier * 5);
   } else if (item.type === 'HELMET') {
     item.stats.def = Math.floor(baseValue * 1.1 * chosenTier.mult * plusMult);
-    item.stats.hp = Math.floor(baseValue * 3.0 * chosenTier.mult * plusMult);
+    item.stats.hp = Math.floor(baseValue * 2.0 * Math.pow(chosenTier.tier, 1.3) * plusMult);
   } else if (item.type === 'ARMOR') {
     item.stats.def = Math.floor(baseValue * 2.2 * chosenTier.mult * plusMult);
-    item.stats.hp = Math.floor(baseValue * 4.5 * chosenTier.mult * plusMult);
+    item.stats.hp = Math.floor(baseValue * 3.0 * Math.pow(chosenTier.tier, 1.3) * plusMult);
     if (chosenTier.tier >= 5) item.stats.regen = chosenTier.tier * 2;
   } else if (item.type === 'GLOVES') {
     item.stats.def = Math.floor(baseValue * 0.8 * chosenTier.mult * plusMult);
@@ -2636,17 +2636,26 @@ export const IronSquadGame = {
     const zoneBadge = document.getElementById('field-zone-badge');
     if (zoneBadge && this.player) {
       if (this.currentDungeon) {
-        zoneBadge.style.color = '#c084fc';
-        zoneBadge.style.borderColor = '#a855f7';
-        zoneBadge.style.background = 'rgba(28, 18, 45, 0.92)';
-        zoneBadge.textContent = `${this.currentDungeon.icon} ${this.currentDungeon.name} (推奨DEF ${this.currentDungeon.reqDef}+)`;
+        const isDeficit = (this.player.def || 0) < this.currentDungeon.reqDef;
+        zoneBadge.style.color = isDeficit ? '#fca5a5' : '#c084fc';
+        zoneBadge.style.borderColor = isDeficit ? '#ef4444' : '#a855f7';
+        zoneBadge.style.background = isDeficit ? 'rgba(76, 12, 12, 0.95)' : 'rgba(28, 18, 45, 0.92)';
+        zoneBadge.textContent = `${this.currentDungeon.icon} ${this.currentDungeon.name} (${isDeficit ? '⚠️DEF不足即死' : '適正'} DEF${this.player.def || 0}/${this.currentDungeon.reqDef}+)`;
       } else {
         const zone = getFieldZone(this.player.x, this.player.y);
-        const tone = ['#d9d0b8', '#e4d2a8', '#e0b48a', '#e4c2b4'][(zone.dangerLevel || 1) - 1] || '#d9d0b8';
-        zoneBadge.style.color = tone;
-        zoneBadge.style.borderColor = '#6d6758';
-        zoneBadge.style.background = 'rgba(20,24,22,0.86)';
-        zoneBadge.textContent = `${zone.icon} ${zone.shortName} (${zone.dangerStars} 推奨DEF ${zone.reqDef}+)`;
+        const isDeficit = zone.reqDef > 0 && (this.player.def || 0) < zone.reqDef;
+        if (isDeficit) {
+          zoneBadge.style.color = '#fca5a5';
+          zoneBadge.style.borderColor = '#ef4444';
+          zoneBadge.style.background = 'rgba(76, 12, 12, 0.95)';
+          zoneBadge.textContent = `💀 ${zone.shortName} (⚠️DEF不足即死！ DEF${this.player.def || 0}/${zone.reqDef}+)`;
+        } else {
+          const tone = ['#d9d0b8', '#e4d2a8', '#e0b48a', '#e4c2b4'][(zone.dangerLevel || 1) - 1] || '#d9d0b8';
+          zoneBadge.style.color = tone;
+          zoneBadge.style.borderColor = '#6d6758';
+          zoneBadge.style.background = 'rgba(20,24,22,0.86)';
+          zoneBadge.textContent = `${zone.icon} ${zone.shortName} (${zone.dangerStars} 推奨DEF ${zone.reqDef}+)`;
+        }
       }
     }
 
@@ -2675,25 +2684,25 @@ export const IronSquadGame = {
     // ゾーン1 (近郊平原): 10体 (スライム・ゴブリン)
     for (let i = 0; i < 10; i++) {
       const ang = Math.random() * Math.PI * 2;
-      const dist = 160 + Math.random() * 150;
+      const dist = 300 + Math.random() * 1500;
       this.spawnMonster(BASE_CAMP.x + Math.cos(ang) * dist, BASE_CAMP.y + Math.sin(ang) * dist);
     }
     // ゾーン2 (警戒森林): 24体 (ゴブリン・黒狼・オーク)
     for (let i = 0; i < 24; i++) {
       const ang = Math.random() * Math.PI * 2;
-      const dist = 1250 + Math.random() * 900;
+      const dist = 2600 + Math.random() * 2400;
       this.spawnMonster(BASE_CAMP.x + Math.cos(ang) * dist, BASE_CAMP.y + Math.sin(ang) * dist);
     }
     // ゾーン3 (魔境深部): 24体 (狂暴オーク・ワイバーン・エリート)
     for (let i = 0; i < 24; i++) {
       const ang = Math.random() * Math.PI * 2;
-      const dist = 2800 + Math.random() * 1400;
+      const dist = 5800 + Math.random() * 3000;
       this.spawnMonster(BASE_CAMP.x + Math.cos(ang) * dist, BASE_CAMP.y + Math.sin(ang) * dist);
     }
     // ゾーン4 (最果ての死地): 12体 (ワイバーン)
     for (let i = 0; i < 12; i++) {
       const ang = Math.random() * Math.PI * 2;
-      const dist = 4500 + Math.random() * 500;
+      const dist = 9500 + Math.random() * 4500;
       this.spawnMonster(BASE_CAMP.x + Math.cos(ang) * dist, BASE_CAMP.y + Math.sin(ang) * dist);
     }
   },
@@ -2780,15 +2789,15 @@ export const IronSquadGame = {
       // 本陣防衛圏 (近郊): スライム(60%) or ゴブリン(40%)
       if (Math.random() < 0.60) {
         type = 'slime';
-        rawHp = 38;
-        rawAtk = 8;
+        rawHp = 45;
+        rawAtk = 10;
         speed = 65;
         radius = 10;
         color = '#34d399';
       } else {
         type = 'goblin';
-        rawHp = 52;
-        rawAtk = 12;
+        rawHp = 60;
+        rawAtk = 14;
         speed = 74;
         radius = 11;
         color = '#10b981';
@@ -2798,22 +2807,22 @@ export const IronSquadGame = {
       const roll = Math.random();
       if (roll < 0.30) {
         type = 'goblin';
-        rawHp = 62;
-        rawAtk = 14;
+        rawHp = 90;
+        rawAtk = 22;
         speed = 78;
         radius = 11;
         color = '#10b981';
       } else if (roll < 0.65) {
         type = 'wolf';
-        rawHp = 68;
-        rawAtk = 18;
+        rawHp = 105;
+        rawAtk = 28;
         speed = 114;
         radius = 12;
         color = '#64748b';
       } else {
         type = 'orc';
-        rawHp = 100;
-        rawAtk = 20;
+        rawHp = 150;
+        rawAtk = 34;
         speed = 66;
         radius = 15;
         color = '#d97706';
@@ -2823,37 +2832,48 @@ export const IronSquadGame = {
       const roll = Math.random();
       if (roll < 0.35) {
         type = 'orc';
-        rawHp = 120;
-        rawAtk = 24;
+        rawHp = 220;
+        rawAtk = 48;
         speed = 70;
         radius = 15;
         color = '#d97706';
         isElite = true;
       } else if (roll < 0.75) {
         type = 'wyvern';
-        rawHp = 160;
-        rawAtk = 28;
+        rawHp = 300;
+        rawAtk = 65;
         speed = 84;
         radius = 18;
         color = '#a855f7';
       } else {
         type = 'dragon';
-        rawHp = 340;
-        rawAtk = 36;
+        rawHp = 680;
+        rawAtk = 95;
         speed = 58;
         radius = 26;
         color = '#ef4444';
         isBoss = true;
       }
     } else {
-      // 最果ての死地: ワイバーン or エリート魔獣
-      type = 'wyvern';
-      rawHp = 220;
-      rawAtk = 34;
-      speed = 88;
-      radius = 19;
-      color = '#ef4444';
-      isElite = true;
+      // 最果ての死地: ワイバーン or ドラゴン魔獣 (超強力・一撃必殺級)
+      const roll = Math.random();
+      if (roll < 0.5) {
+        type = 'wyvern';
+        rawHp = 520;
+        rawAtk = 130;
+        speed = 92;
+        radius = 20;
+        color = '#ef4444';
+        isElite = true;
+      } else {
+        type = 'dragon';
+        rawHp = 780;
+        rawAtk = 180;
+        speed = 65;
+        radius = 28;
+        color = '#dc2626';
+        isElite = true;
+      }
     }
 
     const exclusive=periodEnemy(zone.id,this.worldTime);
@@ -4146,19 +4166,24 @@ export const IronSquadGame = {
     }
 
     const defVal = target.def || 0;
-    const defFactor = 100 / (100 + defVal * 1.2);
-    let reduction = target.dmgReduction ? Math.min(0.40, target.dmgReduction / 100) : 0;
 
     // ゾーン推奨DEFチェック＆致命貫通即死ペナルティ（防具なき者は即死必至！）
     const activeZone = this.currentDungeon ? { reqDef: this.currentDungeon.reqDef } : getFieldZone(target.x, target.y);
     let deadlyPenetration = false;
     let penetrationMult = 1.0;
+    let effectiveDef = defVal;
+
     if (activeZone && activeZone.reqDef > 0 && defVal < activeZone.reqDef) {
-      const deficit = (activeZone.reqDef - defVal) / activeZone.reqDef;
-      penetrationMult = 1.0 + deficit * 1.5; // 最大2.5倍の即死級貫通ダメージ
+      const deficit = (activeZone.reqDef - defVal) / activeZone.reqDef; // 不足割合: 0.0〜1.0
       deadlyPenetration = true;
+      // 防御無効化: 不足割合に応じてDEFが素通り
+      effectiveDef = Math.max(0, defVal * (1 - deficit * 0.9));
+      // 致命貫通倍率: 不足度に応じて1.6〜4.5倍！HPが数千あろうが一撃で消し飛ぶ！
+      penetrationMult = 1.6 + deficit * 2.9;
     }
 
+    const defFactor = 100 / (100 + effectiveDef * 1.2);
+    let reduction = target.dmgReduction ? Math.min(0.40, target.dmgReduction / 100) : 0;
     let dmg = Math.max(1, Math.round(rawDmg * defFactor * (1 - reduction) * penetrationMult));
 
     if (paladinGuarded) {
@@ -4175,8 +4200,8 @@ export const IronSquadGame = {
       }
     }
 
-    if (deadlyPenetration && Math.random() < 0.55) {
-      this.spawnDamageText(target.x, target.y - 28, '💀致命貫通!', '#ff1e38');
+    if (deadlyPenetration) {
+      this.spawnDamageText(target.x, target.y - 28, '💀致命貫通即死!', '#ff1133');
     }
 
     target.hp -= dmg;
