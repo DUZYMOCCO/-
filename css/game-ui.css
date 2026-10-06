@@ -477,7 +477,7 @@ canvas {
 .pad-buttons-zone {
   display: flex;
   align-items: flex-end;
-  gap: 12px;
+  gap: 9px;
   pointer-events: auto;
   margin-bottom: 6px;
 }
@@ -525,15 +525,15 @@ canvas {
 
 /* 号令ボタン */
 .pad-btn-command {
-  width: 54px;
-  height: 54px;
+  width: 52px;
+  height: 52px;
   background: linear-gradient(135deg, #f59e0b, #d97706);
   border-color: #fde68a;
   box-shadow: 0 4px 16px rgba(245, 158, 11, 0.5);
 }
 
 .pad-btn-command .pad-btn-icon {
-  font-size: 20px;
+  font-size: 19px;
   line-height: 1;
 }
 
@@ -542,6 +542,63 @@ canvas {
   font-weight: 900;
   color: #0b0d14;
   margin-top: 2px;
+}
+
+/* パワーアタックボタン (中型・強撃 💥) */
+.pad-btn-power {
+  position: relative;
+  width: 58px;
+  height: 58px;
+  background: linear-gradient(135deg, #ea580c, #9a3412);
+  border-color: #fdba74;
+  box-shadow: 0 4px 18px rgba(234, 88, 12, 0.45);
+  margin-bottom: 2px;
+  overflow: hidden;
+}
+
+.pad-btn-power .pad-btn-icon {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.pad-btn-power .pad-btn-label {
+  font-size: 9px;
+  font-weight: 900;
+  color: #fff;
+  letter-spacing: 0.5px;
+  margin-top: 2px;
+}
+
+.pad-btn-power.ready {
+  animation: powerPulse 1.8s infinite alternate;
+}
+
+@keyframes powerPulse {
+  0% { box-shadow: 0 4px 16px rgba(234, 88, 12, 0.45); }
+  100% { box-shadow: 0 0 20px rgba(253, 186, 116, 0.8); border-color: #fef08a; }
+}
+
+.pad-cd-overlay {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.82);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 5;
+  transition: opacity 0.15s ease;
+}
+
+.pad-cd-text {
+  font-size: 13px;
+  font-weight: 900;
+  color: #fde047;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.9);
 }
 
 /* 軍令HUD (作戦目標バッジ) */

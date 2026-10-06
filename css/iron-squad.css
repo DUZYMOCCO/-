@@ -155,6 +155,12 @@
 .iron-squad .dpad-knob { border-color: #c4c7ad; box-shadow: 0 2px 6px #0005; }
 .iron-squad .dpad-base::before, .iron-squad .dpad-base::after { background: #929e8750; }
 .iron-squad .pad-btn-attack { background: #80574b; border-color: #b7937c; box-shadow: 0 3px 10px #0005; }
+.iron-squad .pad-btn-power { background: linear-gradient(135deg, #a3472c, #702e1b); border-color: #e59f6d; box-shadow: 0 3px 12px #0005; }
+.iron-squad .pad-btn-power.ready { animation: ironPowerPulse 1.8s infinite alternate; }
+@keyframes ironPowerPulse {
+  0% { box-shadow: 0 3px 12px #0005; border-color: #e59f6d; }
+  100% { box-shadow: 0 0 16px rgba(245, 158, 11, 0.75); border-color: #fde047; }
+}
 .iron-squad .pad-btn-command { background: #8c7951; border-color: #c7b487; box-shadow: 0 3px 10px #0005; }
 .iron-squad button:focus-visible, .iron-squad select:focus-visible { outline: 2px solid #e3d5ac; outline-offset: 2px; }
 @media (max-height: 500px) and (orientation: landscape) {

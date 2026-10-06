@@ -828,6 +828,13 @@ export const IronSquadGame = {
                 <span class="pad-btn-icon">📢</span>
                 <span class="pad-btn-label">呼集</span>
               </button>
+              <button id="btn-pad-power" class="pad-btn pad-btn-power ready" title="渾身強撃 (パワーアタック)">
+                <span class="pad-btn-icon">💥</span>
+                <span class="pad-btn-label">強撃</span>
+                <div id="pad-power-cd-overlay" class="pad-cd-overlay hidden">
+                  <span id="pad-power-cd-text" class="pad-cd-text">0.0</span>
+                </div>
+              </button>
               <button id="btn-pad-attack" class="pad-btn pad-btn-attack" title="手動攻撃">
                 <span class="pad-btn-icon">🗡️</span>
                 <span class="pad-btn-label">攻撃</span>
@@ -1050,6 +1057,19 @@ export const IronSquadGame = {
       });
     }
 
+    // パワーアタック（渾身強撃 💥）ボタン
+    const powerBtn = document.getElementById('btn-pad-power');
+    if (powerBtn) {
+      const handlePowerAttack = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        sound.unlock();
+        this.triggerPowerAttack();
+      };
+      powerBtn.addEventListener('mousedown', handlePowerAttack);
+      powerBtn.addEventListener('touchstart', handlePowerAttack, { passive: false });
+    }
+
     // 手動攻撃ボタン
     const atkBtn = document.getElementById('btn-pad-attack');
     if (atkBtn) {
@@ -1062,6 +1082,19 @@ export const IronSquadGame = {
       atkBtn.addEventListener('mousedown', handleManualAttack);
       atkBtn.addEventListener('touchstart', handleManualAttack, { passive: false });
     }
+
+    // PCキーボードショートカット (Space/E/K: 強撃, J/F: 手動通常攻撃)
+    window.addEventListener('keydown', (e) => {
+      if (!this.inBattle || !this.player || this.player.hp <= 0) return;
+      if (document.querySelector('.dialog-open') || document.querySelector('#strategy-modal:not(.hidden)')) return;
+      if (e.code === 'Space' || e.code === 'KeyE' || e.code === 'KeyK') {
+        e.preventDefault();
+        this.triggerPowerAttack();
+      } else if (e.code === 'KeyJ' || e.code === 'KeyF') {
+        e.preventDefault();
+        this.manualAttack();
+      }
+    });
 
 
     const zoomBtn = document.getElementById('btn-zoom-toggle');
@@ -1533,6 +1566,8 @@ export const IronSquadGame = {
       atkSpeed: 1.0,
       speed: 165, // 部隊(105px/s)より快適に速く動ける基礎速度
       atkCooldown: 0,
+      powerAtkCooldown: 0,
+      powerAtkMaxCd: 8.0,
       crit: 10,
       vampire: 0,
       lightning: false,
@@ -2146,6 +2181,8 @@ export const IronSquadGame = {
       atkSpeed: 1.0,
       speed: 165,
       atkCooldown: 0,
+      powerAtkCooldown: 0,
+      powerAtkMaxCd: 8.0,
       crit: 10,
       vampire: 0,
       lightning: false,
@@ -2601,6 +2638,124 @@ export const IronSquadGame = {
     }
   },
 
+  // 右手パッド パワーアタック（渾身強撃 / 覇王烈風絶神斬 💥）
+  triggerPowerAttack() {
+    if (!this.inBattle || !this.player || this.player.hp <= 0) return;
+
+    // クールタイム中ガード
+    if ((this.player.powerAtkCooldown || 0) > 0) {
+      sound.playTap();
+      this.spawnDamageText(this.player.x, this.player.y - 24, `⏳CT中 (${this.player.powerAtkCooldown.toFixed(1)}s)`, '#fbbf24');
+      return;
+    }
+
+    // クールタイム開始 (8.0秒)
+    const isWarlord = !!this.player.isAdvanced;
+    this.player.powerAtkCooldown = 8.0;
+    this.updatePowerAtkButtonUI();
+
+    // モーション・画面演出
+    this.player.slashAnim = 1.6;
+    this.screenShake = isWarlord ? 0.75 : 0.55;
+
+    sound.playBomb();
+    sound.playSlash();
+
+    const radius = isWarlord ? 230 : 165;
+    const mult = isWarlord ? 5.2 : 3.8;
+    const dmg = Math.round((this.player.atk || 15) * mult);
+
+    // 1. 周囲の敵モンスター全員へ一斉薙ぎ払い ＆ ノックバック ＆ スタン
+    let hitCount = 0;
+    for (const m of this.monsters) {
+      if (m.hp <= 0) continue;
+      const dist = Math.hypot(m.x - this.player.x, m.y - this.player.y);
+      if (dist <= radius) {
+        hitCount++;
+        // 大ダメージ攻撃 (確定クリティカル演出)
+        this.performAttack(this.player, m, true, dmg);
+
+        // 強烈ノックバック
+        if (!m.isColossal) {
+          const knockAngle = Math.atan2(m.y - this.player.y, m.x - this.player.x);
+          const knockDist = isWarlord ? 95 : 65;
+          m.x += Math.cos(knockAngle) * knockDist;
+          m.y += Math.sin(knockAngle) * knockDist;
+        }
+        // スタン (攻撃タイマー延長)
+        m.atkTimer = Math.max(m.atkTimer || 0, isWarlord ? 1.6 : 1.0);
+      }
+    }
+
+    // 2. 近くの未制圧砦・拠点への特大打撃
+    const nearestOp = this.getNearestUnclearedOutpost(this.player.x, this.player.y);
+    if (nearestOp) {
+      const distOp = Math.hypot(nearestOp.x - this.player.x, nearestOp.y - this.player.y);
+      if (distOp <= nearestOp.radius + radius * 0.75) {
+        this.damageOutpost(nearestOp, Math.round(dmg * 0.85));
+        this.spawnSparks(nearestOp.x, nearestOp.y, '#f59e0b', 16);
+      }
+    }
+
+    // 3. 衝撃波ビジュアルリングの生成
+    if (!this.shockwaves) this.shockwaves = [];
+    this.shockwaves.push({
+      x: this.player.x,
+      y: this.player.y,
+      maxRadius: radius,
+      currentRadius: 20,
+      color: isWarlord ? '#f59e0b' : '#38bdf8',
+      subColor: isWarlord ? '#ef4444' : '#00f0ff',
+      life: 0.45,
+      maxLife: 0.45,
+      lineWidth: isWarlord ? 6 : 4
+    });
+
+    // 4. 金色・真紅・雷光の爆風パーティクル
+    const pCount = isWarlord ? 45 : 30;
+    for (let i = 0; i < pCount; i++) {
+      const pAng = Math.random() * Math.PI * 2;
+      const pSpeed = 90 + Math.random() * 260;
+      this.particles.push({
+        x: this.player.x,
+        y: this.player.y,
+        vx: Math.cos(pAng) * pSpeed,
+        vy: Math.sin(pAng) * pSpeed,
+        color: isWarlord ? (i % 2 === 0 ? '#f59e0b' : '#ef4444') : (i % 2 === 0 ? '#00f0ff' : '#fde047'),
+        size: 3.5 + Math.random() * 3.5,
+        life: 0.5 + Math.random() * 0.35
+      });
+    }
+
+    const skillName = isWarlord ? '⚡【覇王烈風絶神斬】' : '💥【渾身剛力波】';
+    this.spawnDamageText(this.player.x, this.player.y - 38, `${skillName} [${hitCount}体一閃!]`, isWarlord ? '#f59e0b' : '#00f0ff');
+  },
+
+  updatePowerAtkButtonUI() {
+    const btn = document.getElementById('btn-pad-power');
+    const overlay = document.getElementById('pad-power-cd-overlay');
+    const textEl = document.getElementById('pad-power-cd-text');
+    if (!btn || !overlay || !textEl) return;
+
+    const cd = this.player ? (this.player.powerAtkCooldown || 0) : 0;
+    if (cd > 0) {
+      if (overlay.classList.contains('hidden')) {
+        overlay.classList.remove('hidden');
+        btn.classList.remove('ready');
+      }
+      const formatted = cd.toFixed(1);
+      if (textEl.textContent !== formatted) {
+        textEl.textContent = formatted;
+      }
+    } else {
+      if (!overlay.classList.contains('hidden')) {
+        overlay.classList.add('hidden');
+        btn.classList.add('ready');
+        sound.playItem();
+      }
+    }
+  },
+
   // 伍長以上の号令発動（呼集の笛）
   triggerCommand() {
     const currentRank = RANKS[this.rankIndex];
@@ -2674,6 +2829,24 @@ export const IronSquadGame = {
         cmdBtn.classList.remove('hidden');
       } else {
         cmdBtn.classList.add('hidden');
+      }
+    }
+
+    // パワーアタックボタンの職種進化
+    const pwrBtn = document.getElementById('btn-pad-power');
+    if (pwrBtn) {
+      const iconEl = pwrBtn.querySelector('.pad-btn-icon');
+      const labelEl = pwrBtn.querySelector('.pad-btn-label');
+      if (iconEl && labelEl) {
+        if (isWarlord) {
+          iconEl.textContent = '⚡';
+          labelEl.textContent = '絶神斬';
+          pwrBtn.title = '覇王烈風絶神斬 (パワーアタック)';
+        } else {
+          iconEl.textContent = '💥';
+          labelEl.textContent = '強撃';
+          pwrBtn.title = '渾身剛力波 (パワーアタック)';
+        }
       }
     }
   },
@@ -4101,6 +4274,12 @@ export const IronSquadGame = {
     this.player.atkCooldown -= dt;
     if (this.player.slashAnim > 0) this.player.slashAnim -= dt * 6;
 
+    // パワーアタック（渾身強撃 💥）のクールタイム減算 ＆ UI更新
+    if ((this.player.powerAtkCooldown || 0) > 0) {
+      this.player.powerAtkCooldown = Math.max(0, this.player.powerAtkCooldown - dt);
+      this.updatePowerAtkButtonUI();
+    }
+
     const nearestMonster = this.getNearestMonster(this.player.x, this.player.y);
     const nearestOp = this.getNearestUnclearedOutpost(this.player.x, this.player.y);
 
@@ -4339,6 +4518,14 @@ export const IronSquadGame = {
       if (p.life <= 0) this.particles.splice(i, 1);
     }
 
+    // パワーアタック衝撃波（SHOCKWAVES）の寿命管理
+    if (this.shockwaves) {
+      for (let i = this.shockwaves.length - 1; i >= 0; i--) {
+        const sw = this.shockwaves[i];
+        sw.life -= dt;
+        if (sw.life <= 0) this.shockwaves.splice(i, 1);
+      }
+    }
   },
 
   getNearestMonster(x, y, filterFn = null) {
@@ -6217,6 +6404,31 @@ export const IronSquadGame = {
       this.ctx.shadowBlur = 4;
       this.ctx.fillText(dtObj.text, dtObj.x, dtObj.y);
       this.ctx.restore();
+    }
+
+    // 7.5 パワーアタック衝撃波（SHOCKWAVES）
+    if (this.shockwaves) {
+      for (const sw of this.shockwaves) {
+        const progress = Math.max(0, Math.min(1, 1 - (sw.life / sw.maxLife)));
+        const r = sw.currentRadius + (sw.maxRadius - sw.currentRadius) * progress;
+        const alpha = Math.max(0, sw.life / sw.maxLife);
+
+        this.ctx.save();
+        this.ctx.beginPath();
+        this.ctx.arc(sw.x, sw.y, r, 0, Math.PI * 2);
+        this.ctx.strokeStyle = sw.color;
+        this.ctx.globalAlpha = alpha * 0.9;
+        this.ctx.lineWidth = (sw.lineWidth || 4) * (1 - progress * 0.45);
+        this.ctx.stroke();
+
+        this.ctx.beginPath();
+        this.ctx.arc(sw.x, sw.y, r * 0.72, 0, Math.PI * 2);
+        this.ctx.strokeStyle = sw.subColor || '#ffffff';
+        this.ctx.globalAlpha = alpha * 0.6;
+        this.ctx.lineWidth = (sw.lineWidth || 4) * 0.55;
+        this.ctx.stroke();
+        this.ctx.restore();
+      }
     }
 
     // 8. パーティクル
