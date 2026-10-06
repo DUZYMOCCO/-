@@ -100,71 +100,73 @@ export const TALENTS = {
   }
 };
 
-// 死線覚醒スキル定義 (激戦・部隊高死亡率を生き延びた兵士が覚醒獲得する固有特性)
+// 死線覚醒スキル定義 (激戦・部隊高死亡率を生き延びた兵士が覚醒獲得する固有特性・完全パーセンテージ設計で終盤まで永続スケール！)
 export const DEATHLINE_SKILLS = {
   SURVIVAL_INSTINCT: {
     id: 'SURVIVAL_INSTINCT',
     name: '不屈の生存本能',
     icon: '❤️‍🔥',
     color: '#f87171',
-    desc: 'ピンチを生き抜いた本能：HP35%以下で被ダメージ-45% ＆ 移動速度+25%',
-    bonusHp: 30,
-    dmgReduction: 12
+    desc: 'ピンチを生き抜いた本能：最大HP +35%, 被ダメージ-15% (HP35%以下で被ダメ半減＆速+30%)',
+    hpMultBonus: 0.35,
+    dmgReduction: 15
   },
   BLOOD_RAGE: {
     id: 'BLOOD_RAGE',
     name: '修羅の闘志',
     icon: '🔥',
     color: '#ef4444',
-    desc: '戦友の屍を越えて宿った怒り：ATK +22%, クリティカル率 +15%',
-    bonusAtk: 16,
-    bonusCrit: 15
+    desc: '戦友の屍を越えて宿った怒り：ATK +40%, クリティカル率 +20%',
+    atkMultBonus: 0.40,
+    bonusCrit: 20
   },
   IRON_RESOLVE: {
     id: 'IRON_RESOLVE',
     name: '鋼鉄の不退転',
     icon: '🛡️',
     color: '#38bdf8',
-    desc: '死地で鍛え上げられた鉄壁：DEF +28, ブロック率 +15%, 最大HP +50',
-    bonusDef: 28,
-    bonusHp: 50
+    desc: '死地で鍛え上げられた鉄壁：DEF +50%, 最大HP +45%, ブロック率 +20%',
+    hpMultBonus: 0.45,
+    defMultBonus: 0.50,
+    bonusBlock: 20
   },
   PHANTOM_STEP: {
     id: 'PHANTOM_STEP',
     name: '疾風の残影',
     icon: '⚡',
     color: '#fbbf24',
-    desc: '死線を潜り抜けた神速：移動速度 +22, 攻撃間隔 -15%',
-    bonusSpeed: 22,
-    bonusAtkSpeed: 15
+    desc: '死線を潜り抜けた神速：移動速度 +30%, 攻撃速度 +25%, 完全回避率 +15%',
+    speedMultBonus: 0.30,
+    atkSpeedBonus: 25,
+    dodgeBonus: 15
   },
   DEADLY_FOCUS: {
     id: 'DEADLY_FOCUS',
     name: '極限の狙撃眼',
     icon: '🎯',
     color: '#34d399',
-    desc: '生死の狭間で研ぎ澄まされた集中：射程 +50px, ATK +20%',
-    bonusRange: 50,
-    bonusAtk: 14
+    desc: '生死の狭間で研ぎ澄まされた集中：ATK +35%, 射程 +30%, クリティカル率 +25%',
+    atkMultBonus: 0.35,
+    rangeMultBonus: 0.30,
+    bonusCrit: 25
   },
   MIRACLE_PRAYER: {
     id: 'MIRACLE_PRAYER',
     name: '奇跡の祈祷',
     icon: '✨',
     color: '#10b981',
-    desc: '死の淵から仲間を呼び戻す祈り：回復力 +40, 救助速度2倍',
-    bonusHeal: 40
+    desc: '死の淵から仲間を呼び戻す祈り：回復力 +60%, 救助速度 2.5倍',
+    healMultBonus: 0.60,
+    rescueSpeedMult: 2.5
   },
   VETERAN_GRIT: {
     id: 'VETERAN_GRIT',
     name: '死生の悟り',
     icon: '💀',
     color: '#e2e8f0',
-    desc: '死すら恐れぬ不滅の覚悟：毎秒HP自然治癒 +5, 全能力 +10%',
-    bonusHp: 35,
-    bonusAtk: 10,
-    bonusDef: 12,
-    regen: 5
+    desc: '死すら恐れぬ不滅の覚悟：HP・ATK・DEF +25%, 毎秒最大HPの2%自然治癒',
+    allStatsMultBonus: 0.25,
+    regenPct: 2
   }
 };
 
@@ -191,6 +193,7 @@ export const SOLDIER_CLASSES = {
     atkCooldown: 0.95,
     bonusHp: 65,
     bonusDef: 22,
+    advancedClassId: 'PALADIN',
     desc: '大盾と重甲冑で前線を支える鉄壁のタンク'
   },
   LIGHT: {
@@ -203,6 +206,7 @@ export const SOLDIER_CLASSES = {
     atkCooldown: 0.52,
     bonusCrit: 25,
     bonusAtk: 4,
+    advancedClassId: 'BLADEMASTER',
     desc: '俊敏な身のこなしで敵陣側面を強襲'
   },
   ARCHER: {
@@ -214,6 +218,7 @@ export const SOLDIER_CLASSES = {
     speed: 102,
     atkCooldown: 1.15,
     bonusAtk: 3,
+    advancedClassId: 'SNIPER',
     desc: '後方から矢を放ち安全に援護射撃'
   },
   MEDIC: {
@@ -225,8 +230,90 @@ export const SOLDIER_CLASSES = {
     speed: 98,
     atkCooldown: 1.25,
     bonusHp: 35,
+    advancedClassId: 'HIGH_PRIEST',
     desc: '負傷兵の遠隔治癒＆倒れた兵士の最優先救助'
+  },
+
+  // ===== 🔱 上位職（ADVANCED CLASSES - 世界が変わる覚醒強化） =====
+  PALADIN: {
+    id: 'PALADIN',
+    baseClassId: 'HEAVY',
+    isAdvanced: true,
+    name: '聖騎士',
+    icon: '👑🛡️',
+    color: '#38bdf8',
+    glowColor: '#67e8f9',
+    range: 48,
+    speed: 92,
+    atkCooldown: 0.82,
+    bonusHp: 240,
+    bonusDef: 60,
+    bonusAtk: 24,
+    tag: '👑聖騎士',
+    desc: '世界が変わる守護神！聖なる衝撃波で敵群を吹き飛ばし、周囲の味方の被ダメージ-30%'
+  },
+  BLADEMASTER: {
+    id: 'BLADEMASTER',
+    baseClassId: 'LIGHT',
+    isAdvanced: true,
+    name: '剣聖',
+    icon: '⚔️⚡',
+    color: '#f59e0b',
+    glowColor: '#fbbf24',
+    range: 54,
+    speed: 155,
+    atkCooldown: 0.35,
+    bonusCrit: 45,
+    bonusAtk: 38,
+    bonusHp: 130,
+    tag: '⚔️剣聖',
+    desc: '世界が変わる神速連撃！鋭い真空刃を飛ばして遠敵を一刀両断、攻撃を幻惑完全回避'
+  },
+  SNIPER: {
+    id: 'SNIPER',
+    baseClassId: 'ARCHER',
+    isAdvanced: true,
+    name: '神射手',
+    icon: '🎯💫',
+    color: '#10b981',
+    glowColor: '#34d399',
+    range: 360,
+    speed: 115,
+    atkCooldown: 1.0,
+    bonusAtk: 46,
+    bonusCrit: 40,
+    bonusHp: 120,
+    tag: '🎯神射手',
+    desc: '世界が変わる超絶射程！3条の天星魔導光矢を一斉マルチ斉射し大群を爆砕'
+  },
+  HIGH_PRIEST: {
+    id: 'HIGH_PRIEST',
+    baseClassId: 'MEDIC',
+    isAdvanced: true,
+    name: '大司教',
+    icon: '🕊️💖',
+    color: '#ec4899',
+    glowColor: '#f472b6',
+    range: 220,
+    speed: 110,
+    atkCooldown: 1.05,
+    bonusHp: 160,
+    bonusDef: 26,
+    tag: '🕊️大司教',
+    desc: '世界が変わる奇跡の使徒！味方全体リジェネ結界＆倒れた仲間を一瞬で即座に蘇生'
   }
+};
+
+// 隊長（主人公）の上位職
+export const PLAYER_ADVANCED_CLASS = {
+  id: 'WARLORD',
+  name: '覇王ウォーロード',
+  icon: '👑🔥',
+  color: '#f59e0b',
+  bonusHp: 280,
+  bonusAtk: 50,
+  bonusDef: 36,
+  desc: '戦場を支配する軍神！全方位に巨大覇気スラッシュを飛ばし、部隊全員の攻撃力+25%'
 };
 
 // 素材・ティア制ドロップ生成
@@ -506,6 +593,10 @@ export const IronSquadGame = {
               <span class="stat-label">軍資金</span>
               <span id="current-gold" class="stat-value" style="color: #ffe600;">50G</span>
             </div>
+            <div class="stat-box">
+              <span class="stat-label">秘宝</span>
+              <span id="current-orbs" class="stat-value" style="color: #fbbf24;">💎0</span>
+            </div>
           </div>
           <button id="btn-strategy" class="icon-btn" title="戦略タイム・本陣">⛺</button>
         </header>
@@ -565,7 +656,7 @@ export const IronSquadGame = {
             <div class="overlay-content" style="max-width: 380px; max-height: 88vh; overflow-y: auto; text-align: left; padding: 18px;">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                 <h3 id="strat-title" style="color: #ffaa00; font-size: 18px; margin: 0;">⛺ 本陣戦略会議</h3>
-                <span style="font-size: 11px; color: #ffe600;">所持金: <strong id="strat-gold">50</strong>G</span>
+                <span style="font-size: 11px; color: #ffe600;">💰<strong id="strat-gold">50</strong>G | 💎秘宝: <strong id="strat-orbs" style="color:#fbbf24;">0</strong>個</span>
               </div>
               <p id="strat-report" style="font-size: 12px; color: #b0bacd; margin-bottom: 12px;"></p>
 
@@ -818,12 +909,15 @@ export const IronSquadGame = {
     this.rankIndex = 0;
     this.inBattle = true;
     this.commandActiveUntil = 0;
+    this.awakeningOrbs = 0;
 
     // 主人公（一介の二等雑兵）
     this.player = {
       x: BASE_CAMP.x - 20,
       y: BASE_CAMP.y - 20,
       level: 1,
+      isAdvanced: false,
+      advancedClass: null,
       exp: 0,
       reqExp: 20,
       minionKills: 0,
@@ -1167,9 +1261,15 @@ export const IronSquadGame = {
       });
     }
 
+    // 覇王ウォーロード (WARLORD) の世界が変わる覚醒ボーナス
+    const isWarlord = !!this.player.isAdvanced;
+    const warlordHp = isWarlord ? (PLAYER_ADVANCED_CLASS.bonusHp || 280) : 0;
+    const warlordAtk = isWarlord ? (PLAYER_ADVANCED_CLASS.bonusAtk || 50) : 0;
+    const warlordDef = isWarlord ? (PLAYER_ADVANCED_CLASS.bonusDef || 36) : 0;
+
     // 最大HPの更新
     const oldMaxHp = this.player.maxHp || 130;
-    const newMaxHp = 130 + rank.bonusHp + (lv - 1) * 16 + waves * 20 + minionHp + bossHp + equipHp;
+    const newMaxHp = 130 + rank.bonusHp + (lv - 1) * 16 + waves * 20 + minionHp + bossHp + equipHp + warlordHp;
     this.player.maxHp = newMaxHp;
     if (this.player.hp > newMaxHp) {
       this.player.hp = newMaxHp;
@@ -1177,14 +1277,14 @@ export const IronSquadGame = {
       this.player.hp = Math.min(newMaxHp, this.player.hp + (newMaxHp - oldMaxHp));
     }
 
-    this.player.def = equipDef;
-    this.player.atk = 25 + rank.bonusAtk + (lv - 1) * 4 + waves * 4 + minionAtk + bossAtk + equipAtk;
-    this.player.speed = 165 + minionSpeed + equipSpeed;
-    this.player.atkSpeed = 1.0 + equipAtkSpeed * 0.01;
-    this.player.crit = equipCrit + bossCrit;
-    this.player.vampire = equipVampire;
+    this.player.def = equipDef + warlordDef;
+    this.player.atk = 25 + rank.bonusAtk + (lv - 1) * 4 + waves * 4 + minionAtk + bossAtk + equipAtk + warlordAtk;
+    this.player.speed = 165 + minionSpeed + equipSpeed + (isWarlord ? 20 : 0);
+    this.player.atkSpeed = 1.0 + equipAtkSpeed * 0.01 + (isWarlord ? 0.25 : 0);
+    this.player.crit = equipCrit + bossCrit + (isWarlord ? 25 : 0);
+    this.player.vampire = equipVampire + (isWarlord ? 5 : 0);
     this.player.lightning = equipLightning;
-    this.player.dmgReduction = Math.min(45, bossReduction + Math.floor(equipBlock * 0.3));
+    this.player.dmgReduction = Math.min(55, bossReduction + Math.floor(equipBlock * 0.3) + (isWarlord ? 15 : 0));
     this.player.kills = minionKills + bossKills;
   },
 
@@ -1242,32 +1342,44 @@ export const IronSquadGame = {
     const talentKey = s.talent || 'AVERAGE';
     const talent = TALENTS[talentKey] || TALENTS.AVERAGE;
 
-    // 死線覚醒スキル（Deathline Skills）の合算ボーナス
-    let deathlineHp = 0;
-    let deathlineAtk = 0;
-    let deathlineDef = 0;
-    let deathlineSpeed = 0;
+    // 死線覚醒スキル（Deathline Skills）の合算ボーナス（パーセンテージ割合設計で終盤まで永続スケール！）
+    let deathlineHpMult = 1.0;
+    let deathlineAtkMult = 1.0;
+    let deathlineDefMult = 1.0;
+    let deathlineSpeedMult = 1.0;
     let deathlineCrit = 0;
     let deathlineDmgRed = 0;
-    let deathlineHeal = 0;
+    let deathlineHealMult = 1.0;
+    let deathlineRangeMult = 1.0;
+    let deathlineBlock = 0;
+    let deathlineDodge = 0;
+
     if (s.deathlineSkills && Array.isArray(s.deathlineSkills)) {
       s.deathlineSkills.forEach((skId) => {
         const sk = DEATHLINE_SKILLS[skId];
         if (sk) {
-          if (sk.bonusHp) deathlineHp += sk.bonusHp;
-          if (sk.bonusAtk) deathlineAtk += sk.bonusAtk;
-          if (sk.bonusDef) deathlineDef += sk.bonusDef;
-          if (sk.bonusSpeed) deathlineSpeed += sk.bonusSpeed;
+          if (sk.hpMultBonus) deathlineHpMult += sk.hpMultBonus;
+          if (sk.atkMultBonus) deathlineAtkMult += sk.atkMultBonus;
+          if (sk.defMultBonus) deathlineDefMult += sk.defMultBonus;
+          if (sk.speedMultBonus) deathlineSpeedMult += sk.speedMultBonus;
+          if (sk.allStatsMultBonus) {
+            deathlineHpMult += sk.allStatsMultBonus;
+            deathlineAtkMult += sk.allStatsMultBonus;
+            deathlineDefMult += sk.allStatsMultBonus;
+          }
+          if (sk.healMultBonus) deathlineHealMult += sk.healMultBonus;
+          if (sk.rangeMultBonus) deathlineRangeMult += sk.rangeMultBonus;
           if (sk.bonusCrit) deathlineCrit += sk.bonusCrit;
           if (sk.dmgReduction) deathlineDmgRed += sk.dmgReduction;
-          if (sk.bonusHeal) deathlineHeal += sk.bonusHeal;
+          if (sk.bonusBlock) deathlineBlock += sk.bonusBlock;
+          if (sk.dodgeBonus) deathlineDodge += sk.dodgeBonus;
         }
       });
     }
 
     const oldMaxHp = s.maxHp || 70;
-    const baseCalcHp = (70 + (cls.bonusHp || 0) + (lv - 1) * 8 + waves * 14 + minionHp + bossHp + honorHp + vetHp + equipHp + deathlineHp);
-    const newMaxHp = Math.floor(baseCalcHp * (talent.hpMult || 1.0));
+    const baseCalcHp = (70 + (cls.bonusHp || 0) + (lv - 1) * 8 + waves * 14 + minionHp + bossHp + honorHp + vetHp + equipHp);
+    const newMaxHp = Math.floor(baseCalcHp * (talent.hpMult || 1.0) * deathlineHpMult);
     s.maxHp = newMaxHp;
     if (s.hp > newMaxHp) {
       s.hp = newMaxHp;
@@ -1275,28 +1387,39 @@ export const IronSquadGame = {
       s.hp = Math.min(newMaxHp, s.hp + (newMaxHp - oldMaxHp));
     }
 
-    s.def = (cls.bonusDef || 0) + honorDef + vetDef + equipDef + deathlineDef;
-    const baseCalcAtk = 11 + (cls.bonusAtk || 0) + (lv - 1) * 2 + waves * 3 + minionAtk + bossAtk + honorAtk + vetAtk + equipAtk + deathlineAtk;
-    s.atk = Math.floor(baseCalcAtk * (talent.atkMult || 1.0));
-    s.speed = Math.max(50, (cls.speed || 100) + equipSpeed + (talent.speedBonus || 0) + deathlineSpeed);
-    s.dmgReduction = Math.min(60, bossReduction + Math.floor(equipBlock * 0.3) + deathlineDmgRed);
+    const baseCalcDef = (cls.bonusDef || 0) + honorDef + vetDef + equipDef;
+    s.def = Math.floor(baseCalcDef * deathlineDefMult);
+
+    const baseCalcAtk = 11 + (cls.bonusAtk || 0) + (lv - 1) * 2 + waves * 3 + minionAtk + bossAtk + honorAtk + vetAtk + equipAtk;
+    s.atk = Math.floor(baseCalcAtk * (talent.atkMult || 1.0) * deathlineAtkMult);
+
+    const baseCalcSpeed = (cls.speed || 100) + equipSpeed + (talent.speedBonus || 0);
+    s.speed = Math.max(50, Math.floor(baseCalcSpeed * deathlineSpeedMult));
+
+    s.dmgReduction = Math.min(65, bossReduction + Math.floor((equipBlock + deathlineBlock) * 0.3) + deathlineDmgRed);
     s.crit = 10 + (cls.bonusCrit || 0) + (talent.critBonus || 0) + deathlineCrit;
+    s.dodge = (talent.dodgeBonus || 0) + deathlineDodge;
+    s.deathlineRangeMult = deathlineRangeMult;
+    s.deathlineHealMult = deathlineHealMult;
     s.kills = minionKills + bossKills;
 
-    // 衛生兵（MEDIC）の回復力（Heal Power）計算：才能・レベル・武器強化・死線覚醒で超強化！
-    if (clsKey === 'MEDIC') {
+    // 衛生兵（MEDIC / HIGH_PRIEST）の回復力（Heal Power）計算：大司教は圧倒的治癒力！
+    if (clsKey === 'MEDIC' || clsKey === 'HIGH_PRIEST') {
       const wItem = s.equipped ? s.equipped.weapon : null;
       const wAtk = wItem && wItem.stats ? (wItem.stats.atk || 0) : 0;
       const wUp = wItem ? (wItem.upgrade || 0) : 0;
       const wTier = wItem ? (wItem.tier || 1) : 1;
-      const rawHeal = 26 + (lv - 1) * 7 + waves * 6 + minionKills * 0.5 + bossKills * 18 + wAtk * 1.6 + wUp * 12 + (wTier - 1) * 9 + (s.isNamed ? 30 : 0) + (s.isVeteran ? 15 : 0) + deathlineHeal;
-      s.healPower = Math.floor(rawHeal * (talent.atkMult || 1.0));
+      const advBonus = clsKey === 'HIGH_PRIEST' ? 75 : 0;
+      const rawHeal = 26 + (lv - 1) * 7 + waves * 6 + minionKills * 0.5 + bossKills * 18 + wAtk * 1.6 + wUp * 12 + (wTier - 1) * 9 + (s.isNamed ? 30 : 0) + (s.isVeteran ? 15 : 0) + advBonus;
+      s.healPower = Math.floor(rawHeal * (talent.atkMult || 1.0) * deathlineHealMult);
     }
 
     // 称号の動的更新
     if (!s.isNamed) {
       const prefix = s.isVeteran ? '⭐歴戦' : '';
-      if (bossKills > 0) {
+      if (cls.isAdvanced) {
+        s.rankTitle = `${prefix}${cls.icon}${cls.name}`;
+      } else if (bossKills > 0) {
         s.rankTitle = `${prefix}👑巨頭狩り (${cls.name})`;
       } else if (minionKills >= 30) {
         s.rankTitle = `${prefix}⚔️百人斬り (${cls.name})`;
@@ -1318,6 +1441,7 @@ export const IronSquadGame = {
     this.wave = saved.wave || 1;
     this.exp = saved.exp || 0;
     this.gold = saved.gold || 50;
+    this.awakeningOrbs = saved.awakeningOrbs || 0;
     this.rankIndex = saved.rankIndex || 0;
     this.equipped = saved.equipped || { weapon: null, armor: null, amulet: null };
     this.inventory = saved.inventory || [];
@@ -1344,6 +1468,8 @@ export const IronSquadGame = {
       x: BASE_CAMP.x - 20,
       y: BASE_CAMP.y - 20,
       level: pSave.level || 1,
+      isAdvanced: !!pSave.isAdvanced,
+      advancedClass: pSave.advancedClass || null,
       exp: pSave.exp || 0,
       reqExp: pSave.reqExp || 20,
       minionKills: pSave.minionKills !== undefined ? pSave.minionKills : (pSave.kills || 0),
@@ -1364,6 +1490,7 @@ export const IronSquadGame = {
       slashAnim: 0,
       facingAngle: 0
     };
+    this.recalcPlayerStats();
 
     this.initPlatoons();
     if (saved.outposts) {
@@ -1517,11 +1644,14 @@ export const IronSquadGame = {
         wave: this.wave,
         exp: this.exp,
         gold: this.gold,
+        awakeningOrbs: this.awakeningOrbs || 0,
         rankIndex: this.rankIndex,
         player: {
           hp: this.player.hp,
           maxHp: this.player.maxHp,
           level: this.player.level || 1,
+          isAdvanced: !!this.player.isAdvanced,
+          advancedClass: this.player.advancedClass || null,
           exp: this.player.exp || 0,
           reqExp: this.player.reqExp || 20,
           minionKills: this.player.minionKills || 0,
@@ -1770,16 +1900,21 @@ export const IronSquadGame = {
   updateStatsUI() {
     const rank = RANKS[this.rankIndex];
     const pLv = this.player ? (this.player.level || 1) : 1;
-    document.getElementById('player-rank').textContent = `${rank.title} [Lv.${pLv}]`;
+    const isWarlord = this.player && this.player.isAdvanced;
+    const rankTitle = isWarlord ? `👑覇王 ${rank.title}` : rank.title;
+    document.getElementById('player-rank').textContent = `${rankTitle} [Lv.${pLv}]`;
     document.getElementById('current-wave').textContent = this.wave;
     const aliveCount = this.squad ? this.squad.filter(s => !s.dead).length : 0;
     document.getElementById('squad-alive').textContent = `${aliveCount}/${rank.maxSquad}`;
     document.getElementById('current-gold').textContent = `${this.gold}G`;
 
+    const orbEl = document.getElementById('current-orbs');
+    if (orbEl) orbEl.textContent = `💎${this.awakeningOrbs || 0}`;
+
     // 号令ボタンの表示切替
     const cmdBtn = document.getElementById('btn-pad-command');
     if (cmdBtn) {
-      if (rank.canCommand) {
+      if (rank.canCommand || isWarlord) {
         cmdBtn.classList.remove('hidden');
       } else {
         cmdBtn.classList.add('hidden');
@@ -2092,21 +2227,44 @@ export const IronSquadGame = {
         return; // ダウン中は移動・攻撃スキップ
       }
 
-      // 衛生兵（MEDIC）はダウン中の兵士がいると最優先で駆けつけて自動救助！
-      if (clsKey === 'MEDIC') {
+      // 衛生兵（MEDIC）および大司教（HIGH_PRIEST）の自動救助
+      if (clsKey === 'MEDIC' || clsKey === 'HIGH_PRIEST') {
         const downedMate = aliveSquad.find(m => m.isDown && !m.dead);
         if (downedMate) {
           const mdx = downedMate.x - soldier.x;
           const mdy = downedMate.y - soldier.y;
           const mdist = Math.hypot(mdx, mdy);
+          const moveSpeed = soldier.speed * (clsKey === 'HIGH_PRIEST' ? 1.45 : 1.3);
           if (mdist > 40) {
-            soldier.x += (mdx / mdist) * (soldier.speed * 1.3) * dt;
-            soldier.y += (mdy / mdist) * (soldier.speed * 1.3) * dt;
+            soldier.x += (mdx / mdist) * moveSpeed * dt;
+            soldier.y += (mdy / mdist) * moveSpeed * dt;
             soldier.facingAngle = Math.atan2(mdy, mdx);
           } else {
-            downedMate.rescueProgress = (downedMate.rescueProgress || 0) + dt * 1.1;
+            // 大司教は超速救助（2.8倍速）！
+            const rescueSpeed = clsKey === 'HIGH_PRIEST' ? 2.8 : 1.1;
+            downedMate.rescueProgress = (downedMate.rescueProgress || 0) + dt * rescueSpeed;
+            if (Math.random() < 0.25) {
+              this.spawnDamageText(downedMate.x, downedMate.y - 12, clsKey === 'HIGH_PRIEST' ? '✨奇跡の蘇生祈祷!' : '💚救助中...', '#34d399');
+            }
           }
           return;
+        }
+      }
+
+      // 大司教（HIGH_PRIEST）のパッシブ: 聖域リジェネ結界 (周囲140pxの味方に毎秒最大HP1.5%持続治癒)
+      if (clsKey === 'HIGH_PRIEST') {
+        soldier.regenTimer = (soldier.regenTimer || 0) + dt;
+        if (soldier.regenTimer >= 1.0) {
+          soldier.regenTimer = 0;
+          // 周囲の味方＆プレイヤー
+          const healTargets = [this.player, ...aliveSquad.filter(m => !m.isDown)];
+          for (const ht of healTargets) {
+            if (Math.hypot(ht.x - soldier.x, ht.y - soldier.y) <= 140) {
+              const regAmt = Math.max(3, Math.floor(ht.maxHp * 0.015));
+              ht.hp = Math.min(ht.maxHp, ht.hp + regAmt);
+              this.spawnDamageText(ht.x, ht.y - 14, `+${regAmt}`, '#34d399');
+            }
+          }
         }
       }
 
@@ -2137,11 +2295,11 @@ export const IronSquadGame = {
         }
       }
 
-      // 衛生兵（MEDIC）の味方ヒール魔法 (パワーアップで回復力大幅UP！)
-      if (clsKey === 'MEDIC') {
+      // 衛生兵（MEDIC）＆大司教（HIGH_PRIEST）の治癒魔法 ＆ 神聖浄化弾
+      if (clsKey === 'MEDIC' || clsKey === 'HIGH_PRIEST') {
         soldier.atkCooldown = (soldier.atkCooldown || 0) - dt;
         if (soldier.atkCooldown <= 0) {
-          // 治癒対象の選定（直属衛生兵はプレイヤーを最優先で手厚く保護！）
+          // 治癒対象の選定（プレイヤーまたはHP低下中の味方）
           let hurtTarget = this.player.hp < this.player.maxHp * 0.85 ? this.player : null;
           for (const m of aliveSquad) {
             if (!m.isDown && m.hp < m.maxHp * 0.75) {
@@ -2150,23 +2308,45 @@ export const IronSquadGame = {
               }
             }
           }
-          if (hurtTarget && Math.hypot(hurtTarget.x - soldier.x, hurtTarget.y - soldier.y) <= 220) {
+
+          if (hurtTarget && Math.hypot(hurtTarget.x - soldier.x, hurtTarget.y - soldier.y) <= (cls.range || 180)) {
             soldier.atkCooldown = cls.atkCooldown;
             soldier.atkAnim = 1.0;
             soldier.facingAngle = Math.atan2(hurtTarget.y - soldier.y, hurtTarget.x - soldier.x);
             if (!this.projectiles) this.projectiles = [];
-            const healAmt = soldier.healPower || (26 + Math.floor((soldier.atk || 12) * 1.5));
+            let healAmt = soldier.healPower || (26 + Math.floor((soldier.atk || 12) * 1.5));
+            if (clsKey === 'HIGH_PRIEST') healAmt = Math.round(healAmt * 1.6);
             const isHigh = healAmt >= 50;
             this.projectiles.push({
               x: soldier.x, y: soldier.y,
               target: hurtTarget,
               type: 'HEAL',
               amount: healAmt,
-              speed: 260,
-              color: isHigh ? '#00f0ff' : '#34d399',
+              speed: 280,
+              color: clsKey === 'HIGH_PRIEST' ? '#f472b6' : (isHigh ? '#00f0ff' : '#34d399'),
               isHighHeal: isHigh
             });
             sound.playItem();
+          } else if (clsKey === 'HIGH_PRIEST') {
+            // 大司教は全員が元気な場合、敵へ「神聖浄化弾 (SMITE)」を放ち攻撃に参加！
+            const nearestEnemyToHealer = this.getNearestMonster(soldier.x, soldier.y);
+            if (nearestEnemyToHealer && Math.hypot(nearestEnemyToHealer.x - soldier.x, nearestEnemyToHealer.y - soldier.y) <= cls.range) {
+              soldier.atkCooldown = cls.atkCooldown;
+              soldier.atkAnim = 1.0;
+              soldier.facingAngle = Math.atan2(nearestEnemyToHealer.y - soldier.y, nearestEnemyToHealer.x - soldier.x);
+              if (!this.projectiles) this.projectiles = [];
+              const smiteDmg = Math.round(soldier.atk * 1.6);
+              this.projectiles.push({
+                x: soldier.x, y: soldier.y,
+                target: nearestEnemyToHealer,
+                attacker: soldier,
+                type: 'SMITE',
+                damage: smiteDmg,
+                speed: 320,
+                color: '#f472b6'
+              });
+              sound.playLaser();
+            }
           }
         }
       }
@@ -2193,22 +2373,24 @@ export const IronSquadGame = {
       const enemyDist = nearestEnemy ? Math.hypot(nearestEnemy.x - soldier.x, nearestEnemy.y - soldier.y) : 9999;
 
       // 兵種ごとの交戦間合い
-      if (nearestEnemy && enemyDist < 260) {
-        if (clsKey === 'ARCHER') {
-          // 弓兵: 75px未満なら後退、75〜240pxならその場で射撃
-          if (enemyDist < 75) {
+      if (nearestEnemy && enemyDist < 360) {
+        if (clsKey === 'ARCHER' || clsKey === 'SNIPER') {
+          // 弓兵/神射手: 接近されすぎたら後退、射程内なら立ち止まって射撃
+          const safeDist = clsKey === 'SNIPER' ? 95 : 75;
+          const maxDist = clsKey === 'SNIPER' ? 340 : 230;
+          if (enemyDist < safeDist) {
             targetX = soldier.x - (nearestEnemy.x - soldier.x);
             targetY = soldier.y - (nearestEnemy.y - soldier.y);
-          } else if (enemyDist < 240) {
+          } else if (enemyDist < maxDist) {
             targetX = soldier.x;
             targetY = soldier.y;
           }
-        } else if (clsKey === 'HEAVY') {
-          // 重装: 敵に真っ向から突進
+        } else if (clsKey === 'HEAVY' || clsKey === 'PALADIN') {
+          // 重装/聖騎士: 敵に真っ向から突進
           targetX = nearestEnemy.x;
           targetY = nearestEnemy.y;
-        } else if (clsKey === 'LIGHT') {
-          // 軽装: 敵の側面に回り込む
+        } else if (clsKey === 'LIGHT' || clsKey === 'BLADEMASTER') {
+          // 軽装/剣聖: 敵の側面に回り込む（剣聖は素早く回り込み）
           const sideAngle = Math.atan2(nearestEnemy.y - soldier.y, nearestEnemy.x - soldier.x) + 0.8;
           targetX = nearestEnemy.x + Math.cos(sideAngle) * 35;
           targetY = nearestEnemy.y + Math.sin(sideAngle) * 35;
@@ -2227,30 +2409,105 @@ export const IronSquadGame = {
 
       if (soldier.atkAnim > 0) soldier.atkAnim -= dt * 5;
 
-      // オート攻撃（弓兵は矢、近接は斬撃）
+      // オート攻撃（兵種・上位職ごとの固有スキル）
       soldier.atkCooldown = (soldier.atkCooldown || 0) - dt;
       if (nearestEnemy && soldier.atkCooldown <= 0) {
+        // 主人公が覇王（WARLORD）なら部隊全員のATK+25%オーラ付与
+        const warlordMult = this.player.isAdvanced ? 1.25 : 1.0;
+        const equipAtk = soldier.equipped && soldier.equipped.weapon ? soldier.equipped.weapon.stats.atk || 0 : (soldier.weapon ? soldier.weapon.stats.atk || 0 : 0);
+        const totalAtk = Math.round((soldier.atk + equipAtk) * warlordMult);
+
         if (clsKey === 'ARCHER' && enemyDist <= cls.range) {
+          // 通常弓兵: 単発矢
           soldier.atkCooldown = cls.atkCooldown;
           soldier.atkAnim = 1.0;
           soldier.facingAngle = Math.atan2(nearestEnemy.y - soldier.y, nearestEnemy.x - soldier.x);
-          const arrowAtk = soldier.atk + (soldier.equipped && soldier.equipped.weapon ? soldier.equipped.weapon.stats.atk || 0 : (soldier.weapon ? soldier.weapon.stats.atk || 0 : 0));
           if (!this.projectiles) this.projectiles = [];
           this.projectiles.push({
             x: soldier.x, y: soldier.y,
             target: nearestEnemy,
             attacker: soldier,
             type: 'ARROW',
-            damage: arrowAtk,
+            damage: totalAtk,
             speed: 360,
             color: '#e2e8f0'
           });
           sound.playSlash();
-        } else if (clsKey !== 'ARCHER' && clsKey !== 'MEDIC' && enemyDist <= cls.range) {
+        } else if (clsKey === 'SNIPER' && enemyDist <= cls.range) {
+          // 神射手（SNIPER）: 天星三連魔導光矢！3条マルチ斉射＆爆発
           soldier.atkCooldown = cls.atkCooldown;
           soldier.atkAnim = 1.0;
           soldier.facingAngle = Math.atan2(nearestEnemy.y - soldier.y, nearestEnemy.x - soldier.x);
-          const totalAtk = soldier.atk + (soldier.equipped && soldier.equipped.weapon ? soldier.equipped.weapon.stats.atk || 0 : (soldier.weapon ? soldier.weapon.stats.atk || 0 : 0));
+          if (!this.projectiles) this.projectiles = [];
+          const baseAng = soldier.facingAngle;
+          // 3本の光矢
+          const angles = [-0.18, 0, 0.18];
+          for (let ai = 0; ai < angles.length; ai++) {
+            const shotAng = baseAng + angles[ai];
+            this.projectiles.push({
+              x: soldier.x, y: soldier.y,
+              vx: Math.cos(shotAng) * 440,
+              vy: Math.sin(shotAng) * 440,
+              target: nearestEnemy,
+              attacker: soldier,
+              type: 'STAR_ARROW',
+              damage: Math.round(totalAtk * 0.9),
+              life: 0.9,
+              color: '#34d399'
+            });
+          }
+          sound.playLaser();
+        } else if (clsKey === 'PALADIN' && enemyDist <= cls.range + 25) {
+          // 聖騎士（PALADIN）: 光輝の盾衝撃波（前方広角スプラッシュ＆ノックバック）
+          soldier.atkCooldown = cls.atkCooldown;
+          soldier.atkAnim = 1.0;
+          soldier.facingAngle = Math.atan2(nearestEnemy.y - soldier.y, nearestEnemy.x - soldier.x);
+          // 前方扇状範囲（100px以内、前方80度）の敵全員を一網打尽
+          const bashRange = 85;
+          let hitCount = 0;
+          for (const m of this.monsters) {
+            const mDist = Math.hypot(m.x - soldier.x, m.y - soldier.y);
+            if (mDist <= bashRange) {
+              const mAng = Math.atan2(m.y - soldier.y, m.x - soldier.x);
+              let diffAng = Math.abs(mAng - soldier.facingAngle);
+              if (diffAng > Math.PI) diffAng = Math.PI * 2 - diffAng;
+              if (diffAng <= 1.0) { // 角度約60度
+                this.performAttack(soldier, m, false, totalAtk);
+                // ノックバック
+                m.x += Math.cos(mAng) * 20;
+                m.y += Math.sin(mAng) * 20;
+                hitCount++;
+              }
+            }
+          }
+          this.spawnSparks(soldier.x, soldier.y, '#67e8f9', 12);
+          sound.playBomb();
+        } else if (clsKey === 'BLADEMASTER' && enemyDist <= cls.range + 40) {
+          // 剣聖（BLADEMASTER）: 神速二刀連撃 ＆ 疾風飛翔真空刃（SWORD_BEAM）射出
+          soldier.atkCooldown = cls.atkCooldown;
+          soldier.atkAnim = 1.0;
+          soldier.facingAngle = Math.atan2(nearestEnemy.y - soldier.y, nearestEnemy.x - soldier.x);
+          this.performAttack(soldier, nearestEnemy, false, totalAtk);
+
+          // 疾風真空刃を前方へ飛ばす（貫通弾）
+          if (!this.projectiles) this.projectiles = [];
+          this.projectiles.push({
+            x: soldier.x, y: soldier.y,
+            vx: Math.cos(soldier.facingAngle) * 380,
+            vy: Math.sin(soldier.facingAngle) * 380,
+            attacker: soldier,
+            type: 'SWORD_BEAM',
+            damage: Math.round(totalAtk * 0.85),
+            life: 0.55,
+            hitEnemies: [],
+            color: '#fbbf24'
+          });
+          sound.playSlash();
+        } else if (clsKey !== 'ARCHER' && clsKey !== 'MEDIC' && clsKey !== 'HIGH_PRIEST' && clsKey !== 'SNIPER' && enemyDist <= cls.range) {
+          // その他の近接通常攻撃
+          soldier.atkCooldown = cls.atkCooldown;
+          soldier.atkAnim = 1.0;
+          soldier.facingAngle = Math.atan2(nearestEnemy.y - soldier.y, nearestEnemy.x - soldier.x);
           this.performAttack(soldier, nearestEnemy, false, totalAtk);
         }
 
@@ -2261,17 +2518,94 @@ export const IronSquadGame = {
             soldier.atkCooldown = cls.atkCooldown;
             soldier.atkAnim = 1.0;
             soldier.facingAngle = Math.atan2(nearOp.y - soldier.y, nearOp.x - soldier.x);
-            const totalAtk = soldier.atk + (soldier.equipped && soldier.equipped.weapon ? soldier.equipped.weapon.stats.atk || 0 : (soldier.weapon ? soldier.weapon.stats.atk || 0 : 0));
             this.damageOutpost(nearOp, totalAtk);
           }
         }
       }
     });
 
-    // 弾丸・矢・ヒール光弾の更新
+    // 弾丸・矢・ヒール光弾・真空刃・魔導矢の更新
     if (this.projectiles) {
       for (let i = this.projectiles.length - 1; i >= 0; i--) {
         const proj = this.projectiles[i];
+
+        // 1. 直進貫通弾（SWORD_BEAM: 疾風真空刃）
+        if (proj.type === 'SWORD_BEAM') {
+          proj.x += proj.vx * dt;
+          proj.y += proj.vy * dt;
+          proj.life -= dt;
+          if (proj.life <= 0) {
+            this.projectiles.splice(i, 1);
+            continue;
+          }
+          // 触れた敵に貫通ヒット
+          for (const m of this.monsters) {
+            if (proj.hitEnemies.includes(m)) continue;
+            if (Math.hypot(m.x - proj.x, m.y - proj.y) <= 30) {
+              proj.hitEnemies.push(m);
+              this.performAttack(proj.attacker, m, false, proj.damage);
+              this.spawnSparks(m.x, m.y, '#fbbf24', 6);
+            }
+          }
+          continue;
+        }
+
+        // 2. 直進・誘導光矢（STAR_ARROW: 神射手の天星光矢）
+        if (proj.type === 'STAR_ARROW') {
+          proj.x += proj.vx * dt;
+          proj.y += proj.vy * dt;
+          proj.life -= dt;
+          let hit = false;
+          // 敵との衝突判定
+          for (const m of this.monsters) {
+            if (Math.hypot(m.x - proj.x, m.y - proj.y) <= 24) {
+              hit = true;
+              break;
+            }
+          }
+          if (hit || proj.life <= 0) {
+            this.projectiles.splice(i, 1);
+            // 星屑スプラッシュ爆発（周囲35pxの敵全員にダメージ）
+            for (const m of this.monsters) {
+              if (Math.hypot(m.x - proj.x, m.y - proj.y) <= 38) {
+                this.performAttack(proj.attacker, m, false, proj.damage);
+              }
+            }
+            this.spawnSparks(proj.x, proj.y, '#34d399', 10);
+            sound.playBomb();
+            continue;
+          }
+          continue;
+        }
+
+        // 3. 神聖浄化弾（SMITE: 大司教）
+        if (proj.type === 'SMITE') {
+          const tgt = proj.target;
+          if (!tgt || tgt.hp <= 0) {
+            this.projectiles.splice(i, 1);
+            continue;
+          }
+          const pdx = tgt.x - proj.x;
+          const pdy = tgt.y - proj.y;
+          const pdist = Math.hypot(pdx, pdy);
+          if (pdist < 20) {
+            this.projectiles.splice(i, 1);
+            // 十字爆発スプラッシュ
+            for (const m of this.monsters) {
+              if (Math.hypot(m.x - tgt.x, m.y - tgt.y) <= 42) {
+                this.performAttack(proj.attacker, m, false, proj.damage);
+              }
+            }
+            this.spawnSparks(tgt.x, tgt.y, '#f472b6', 12);
+            sound.playBomb();
+          } else {
+            proj.x += (pdx / pdist) * proj.speed * dt;
+            proj.y += (pdy / pdist) * proj.speed * dt;
+          }
+          continue;
+        }
+
+        // 4. 通常矢（ARROW）またはヒール光弾（HEAL）
         const tgt = proj.target;
         if (!tgt || (tgt.hp <= 0 && proj.type === 'ARROW')) {
           this.projectiles.splice(i, 1);
@@ -2291,7 +2625,7 @@ export const IronSquadGame = {
             tgt.hp = Math.min(tgt.maxHp, tgt.hp + proj.amount);
             const isHigh = proj.isHighHeal || proj.amount >= 50;
             const healText = isHigh ? `💚+${proj.amount}HP 大治癒!` : `+${proj.amount}HP`;
-            const healColor = isHigh ? '#00f0ff' : '#34d399';
+            const healColor = proj.color || (isHigh ? '#00f0ff' : '#34d399');
             this.spawnDamageText(tgt.x, tgt.y - 18, healText, healColor);
             this.spawnSparks(tgt.x, tgt.y, healColor, isHigh ? 12 : 6);
             if (isHigh) sound.playHighScore();
@@ -2312,11 +2646,25 @@ export const IronSquadGame = {
 
     if (nearestMonster && this.player.atkCooldown <= 0) {
       const dist = Math.hypot(nearestMonster.x - this.player.x, nearestMonster.y - this.player.y);
-      if (dist <= 85) {
-        this.player.atkCooldown = 0.52 / (this.player.atkSpeed || 1);
+      const isWarlord = this.player.isAdvanced;
+      const reach = isWarlord ? 110 : 85;
+
+      if (dist <= reach) {
+        this.player.atkCooldown = (isWarlord ? 0.42 : 0.52) / (this.player.atkSpeed || 1);
         this.player.slashAngle = Math.atan2(nearestMonster.y - this.player.y, nearestMonster.x - this.player.x);
         this.player.slashAnim = 1;
-        this.performAttack(this.player, nearestMonster, true);
+
+        if (isWarlord) {
+          // 覇王ウォーロード: 全方位360度「覇王紅蓮絶刃」！周囲の敵全員を切り裂く！
+          for (const m of this.monsters) {
+            if (Math.hypot(m.x - this.player.x, m.y - this.player.y) <= 115) {
+              this.performAttack(this.player, m, true, this.player.atk);
+            }
+          }
+          this.spawnSparks(this.player.x, this.player.y, '#f59e0b', 12);
+        } else {
+          this.performAttack(this.player, nearestMonster, true);
+        }
       }
     } else if (nearestOp && this.player.atkCooldown <= 0) {
       const distOp = Math.hypot(nearestOp.x - this.player.x, nearestOp.y - this.player.y);
@@ -2374,7 +2722,7 @@ export const IronSquadGame = {
     // ドロップ回収: 1. 兵士による回収 (上位装備なら自動着替え＆強化引き継ぎ！)
     for (let i = this.dropsOnField.length - 1; i >= 0; i--) {
       const drop = this.dropsOnField[i];
-      if (drop.isBoss) continue; // ボスドロップは兵士は触らない！
+      if (drop.isBoss || drop.isOrb) continue; // ボスドロップ・覚醒宝珠は兵士は触らない！
 
       for (const s of aliveSquad) {
         if (s.isDown) continue;
@@ -2493,10 +2841,32 @@ export const IronSquadGame = {
   },
 
   damageTarget(target, rawDmg) {
+    // 剣聖（BLADEMASTER）のパッシブ: 残影完全回避 (25%の確率でダメージ0で回避)
+    if (target && target.soldierClass === 'BLADEMASTER' && Math.random() < 0.25) {
+      this.spawnDamageText(target.x, target.y - 14, '⚡残影回避!', '#fbbf24');
+      this.spawnSparks(target.x, target.y, '#fbbf24', 5);
+      sound.playSlash();
+      return;
+    }
+
+    // 聖騎士（PALADIN）の聖域加護 (周囲140pxに生存中の聖騎士がいれば被ダメージ-30%カット)
+    let paladinGuarded = false;
+    if (this.squad) {
+      paladinGuarded = this.squad.some(s => !s.dead && !s.isDown && s.soldierClass === 'PALADIN' && Math.hypot(s.x - target.x, s.y - target.y) <= 140);
+    }
+
     const defVal = target.def || 0;
     const defFactor = 100 / (100 + defVal * 1.2);
-    const reduction = target.dmgReduction ? Math.min(0.40, target.dmgReduction / 100) : 0;
-    const dmg = Math.max(1, Math.round(rawDmg * defFactor * (1 - reduction)));
+    let reduction = target.dmgReduction ? Math.min(0.40, target.dmgReduction / 100) : 0;
+    let dmg = Math.max(1, Math.round(rawDmg * defFactor * (1 - reduction)));
+
+    if (paladinGuarded) {
+      dmg = Math.max(1, Math.round(dmg * 0.70)); // 聖域加護で-30%
+      if (Math.random() < 0.35) {
+        this.spawnDamageText(target.x, target.y - 20, '🛡️聖域加護!', '#67e8f9');
+      }
+    }
+
     target.hp -= dmg;
     this.spawnDamageText(target.x, target.y - 12, dmg, '#ff3344');
     sound.playBomb();
@@ -2632,6 +3002,45 @@ export const IronSquadGame = {
       });
     }
 
+    // 🔱 ボス確定ドロップ ＆ エリート確率ドロップ：『覚醒の英雄宝珠』
+    if (isBoss) {
+      const orbItem = {
+        id: Math.random().toString(36).substring(2, 9),
+        name: '覚醒の英雄宝珠',
+        type: 'ORB',
+        tier: 5,
+        isOrb: true,
+        mat: '神聖秘宝',
+        color: '#fbbf24',
+        desc: '上位職（聖騎士・剣聖・神射手・大司教・覇王）へクラスアップするための至宝！'
+      };
+      this.dropsOnField.push({
+        x: monster.x + (Math.random() - 0.5) * 30,
+        y: monster.y + (Math.random() - 0.5) * 30,
+        item: orbItem,
+        isBoss: true,
+        isOrb: true
+      });
+    } else if (isElite && Math.random() < 0.18) {
+      const orbItem = {
+        id: Math.random().toString(36).substring(2, 9),
+        name: '覚醒の英雄宝珠',
+        type: 'ORB',
+        tier: 5,
+        isOrb: true,
+        mat: '神聖秘宝',
+        color: '#fbbf24',
+        desc: '上位職へクラスアップするための至宝！'
+      };
+      this.dropsOnField.push({
+        x: monster.x + (Math.random() - 0.5) * 20,
+        y: monster.y + (Math.random() - 0.5) * 20,
+        item: orbItem,
+        isBoss: false,
+        isOrb: true
+      });
+    }
+
     this.spawnSparks(monster.x, monster.y, monster.color, 14);
   },
 
@@ -2651,6 +3060,15 @@ export const IronSquadGame = {
   },
 
   collectDrop(item, isBossDrop = false) {
+    if (item.type === 'ORB' || item.isOrb) {
+      this.awakeningOrbs = (this.awakeningOrbs || 0) + 1;
+      sound.playHighScore();
+      this.showToast(`🔱【ボス秘宝獲得！】『覚醒の英雄宝珠』を入手！(所持数: ${this.awakeningOrbs}個 / 上位クラスへ覚醒昇格可能！)`);
+      this.saveGame();
+      this.updateStatsUI();
+      return;
+    }
+
     sound.playItem();
     if (!this.inventory) this.inventory = [];
     this.inventory.push(item);
@@ -2769,6 +3187,63 @@ export const IronSquadGame = {
     this.renderStrategyUI();
   },
 
+  // 🔱 兵士の上位職への覚醒昇格（クラスアップ）
+  promoteSoldier(soldierId) {
+    if ((this.awakeningOrbs || 0) < 1) {
+      alert('クラスアップにはボスドロップの秘宝『覚醒の英雄宝珠』が1個必要です！\n(Wave5ごとのボスや強力なエリートがドロップ)');
+      return false;
+    }
+    const s = this.squad.find(sol => sol.id === soldierId);
+    if (!s) return false;
+
+    const curCls = SOLDIER_CLASSES[s.soldierClass] || SOLDIER_CLASSES.HEAVY;
+    if (curCls.isAdvanced) {
+      alert('この兵士は既に最高峰の上位職へ覚醒済みです！');
+      return false;
+    }
+
+    const advClsId = curCls.advancedClassId;
+    const advCls = SOLDIER_CLASSES[advClsId];
+    if (!advCls) return false;
+
+    this.awakeningOrbs--;
+    s.soldierClass = advClsId;
+    this.recalcSoldierStats(s);
+    s.hp = s.maxHp;
+
+    sound.playHighScore();
+    this.showToast(`🔱⚡【天命覚醒！】${s.name} が上位職【${advCls.name}】へ覚醒昇格！世界が変わる力を獲得！`);
+    this.saveGame();
+    this.renderStrategyUI();
+    this.updateStatsUI();
+    return true;
+  },
+
+  // 👑 隊長（主人公）の上位職【覇王ウォーロード】への覚醒昇格
+  promotePlayer() {
+    if ((this.awakeningOrbs || 0) < 1) {
+      alert('クラスアップにはボスドロップの秘宝『覚醒の英雄宝珠』が1個必要です！\n(Wave5ごとのボスや強力なエリートがドロップ)');
+      return false;
+    }
+    if (this.player.isAdvanced) {
+      alert('隊長は既に最高位【覇王ウォーロード】へ覚醒済みです！');
+      return false;
+    }
+
+    this.awakeningOrbs--;
+    this.player.isAdvanced = true;
+    this.player.advancedClass = 'WARLORD';
+    this.recalcPlayerStats();
+    this.player.hp = this.player.maxHp;
+
+    sound.playHighScore();
+    this.showToast(`👑🔥【覇王覚醒！】隊長が軍神【覇王ウォーロード】へ覚醒昇格！部隊攻撃力+25%＆全方位覇気スラッシュ解放！`);
+    this.saveGame();
+    this.renderStrategyUI();
+    this.updateStatsUI();
+    return true;
+  },
+
   healAllSquad() {
     if (this.gold < 25) {
       alert('軍資金が足りません (必要: 25G)');
@@ -2786,6 +3261,46 @@ export const IronSquadGame = {
     this.updateStatsUI();
   },
 
+  // 💰 任意の兵士への資金援助 (兵士は援助金で自発的に装備強化を行う！)
+  fundSoldier(soldierId, amount = 20) {
+    if (this.gold < amount) {
+      alert(`隊長の軍資金が足りません (所持金: ${this.gold}G / 必要: ${amount}G)`);
+      return false;
+    }
+    const s = this.squad.find(sol => sol.id === soldierId);
+    if (!s) return false;
+
+    this.gold -= amount;
+    s.gold = (s.gold || 0) + amount;
+    sound.playItem();
+
+    // 資金援助を受けた兵士が自主的に装備強化を判定！
+    let autoUpgradedMsg = '';
+    if (s.equipped) {
+      const slotKeys = Object.keys(s.equipped);
+      for (const k of slotKeys) {
+        const eqItem = s.equipped[k];
+        if (eqItem) {
+          const cost = this.getUpgradeCost(eqItem);
+          if (s.gold >= cost) {
+            s.gold -= cost;
+            applyUpgradeStats(eqItem, (eqItem.upgrade || 0) + 1);
+            autoUpgradedMsg = ` ➔ 兵士「隊長ありがとうございます！」援助金で【${eqItem.name}】を自主強化！`;
+            break;
+          }
+        }
+      }
+    }
+
+    this.showToast(`💰【資金援助】${s.name} に ${amount}G を渡した！(兵士財布: ${s.gold}G)${autoUpgradedMsg}`);
+    this.recalcSoldierStats(s);
+    this.saveGame();
+    this.renderStrategyUI();
+    this.updateStatsUI();
+    return true;
+  },
+
+  // 🎁 任意の兵士への装備譲渡（旧装備はバッグへ返却＆強化引き継ぎ、さらに兵士自費強化も！）
   giveItemToSoldier(soldierId, item) {
     const soldier = this.squad.find(s => s.id === soldierId);
     if (!soldier) return;
@@ -2793,12 +3308,34 @@ export const IronSquadGame = {
     if (!slotKey) return;
 
     if (!soldier.equipped) soldier.equipped = {};
+    const oldItem = soldier.equipped[slotKey];
+    if (oldItem) {
+      // 旧装備の強化値を新装備へ引き継ぐ！
+      const oldUp = oldItem.upgrade || 0;
+      if (oldUp > 0) {
+        applyUpgradeStats(item, Math.max(item.upgrade || 0, oldUp));
+      }
+      // 旧装備をプレイヤーのバッグに返却
+      if (!this.inventory) this.inventory = [];
+      this.inventory.push(oldItem);
+    }
+
     soldier.equipped[slotKey] = item;
     if (slotKey === 'weapon') soldier.weapon = item;
-    this.recalcSoldierStats(soldier);
     this.inventory = this.inventory.filter(i => i.id !== item.id);
+
+    // 装備をもらった兵士が興奮して手持ちのお金で自発強化を検討！
+    const upCost = this.getUpgradeCost(item);
+    if ((soldier.gold || 0) >= upCost + 10) {
+      soldier.gold -= upCost;
+      applyUpgradeStats(item, (item.upgrade || 0) + 1);
+      this.showToast(`🎁 ${soldier.name}に「${item.name}」を譲渡！兵士は自費でさらに自主強化(+${item.upgrade})！`);
+    } else {
+      this.showToast(`🎁 ${soldier.name}に「${item.name}」を譲渡！${oldItem ? '(旧装備はバッグへ返却)' : ''}`);
+    }
+
+    this.recalcSoldierStats(soldier);
     sound.playHighScore();
-    this.showToast(`🛡️ ${soldier.isNamed ? soldier.name : soldier.name}に「${item.name}」を支給！`);
     this.saveGame();
     this.renderStrategyUI();
   },
@@ -2994,6 +3531,8 @@ export const IronSquadGame = {
 
   renderStrategyUI() {
     document.getElementById('strat-gold').textContent = this.gold;
+    const orbEl = document.getElementById('strat-orbs');
+    if (orbEl) orbEl.textContent = this.awakeningOrbs || 0;
 
     const pRecordBox = document.getElementById('player-record-box');
     if (pRecordBox && this.player) {
@@ -3024,8 +3563,25 @@ export const IronSquadGame = {
             <span>👑 ボス撃破: <strong style="color: #ffd700;">${p.bossKills || 0}体</strong></span>
             <span style="color: #fde047;">(+${bossAtk}攻 / +${bossHp}HP / 会心+${bossCrit}% / 軽減-${bossRed}%)</span>
           </div>
+          <div style="margin-top: 5px; padding-top: 5px; border-top: 1px dashed rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center;">
+            ${p.isAdvanced ? `
+              <span style="color: #fbbf24; font-weight: bold; font-size: 10.5px;">👑【上位職・覇王ウォーロード】覚醒済 (全部隊ATK+25% / 覇気全方位スラッシュ)</span>
+            ` : `
+              <span style="color: #94a3b8; font-size: 10px;">上位職【覇王ウォーロード】(要: 💎宝珠1個)</span>
+              <button id="btn-promote-player" class="mini-btn" style="background: linear-gradient(135deg, #f59e0b, #ec4899); color: #fff; font-size: 10px; font-weight: bold; padding: 2px 8px; box-shadow: 0 0 8px rgba(245,158,11,0.5);">
+                🔱 覇王へ覚醒昇格！
+              </button>
+            `}
+          </div>
         </div>
       `;
+
+      const pPromoteBtn = pRecordBox.querySelector('#btn-promote-player');
+      if (pPromoteBtn) {
+        pPromoteBtn.addEventListener('click', () => {
+          this.promotePlayer();
+        });
+      }
     }
 
     const eq = this.equipped;
@@ -3208,24 +3764,48 @@ export const IronSquadGame = {
             }).join('')}
           </div>
         ` : ''}
-        <div style="display: flex; gap: 4px; align-items: center; margin-top: 3px; flex-wrap: wrap;">
-          ${canHonor ? `<button class="mini-btn btn-honor" style="background:#ffaa00; color:#0b0d14; font-size:10px;">🎖️ 名前を叙勲！</button>` : ''}
+        <div style="display: flex; gap: 4px; align-items: center; margin-top: 4px; flex-wrap: wrap;">
+          <button class="mini-btn btn-fund" style="background:#0284c7; color:#fff; font-size:10px; font-weight:bold;" title="手持ちの軍資金から20Gを援助。兵士は援助金で自発的に装備強化を検討！">
+            💰 援助 (+20G)
+          </button>
+          ${!cls.isAdvanced && cls.advancedClassId ? `
+            <button class="mini-btn btn-class-up" style="background:linear-gradient(135deg, #f59e0b, #ec4899); color:#fff; font-size:10px; font-weight:bold; box-shadow:0 0 6px rgba(245,158,11,0.5);" title="ボス秘宝『覚醒の英雄宝珠』を消費して上位職【${SOLDIER_CLASSES[cls.advancedClassId].name}】へ覚醒昇格！">
+              🔱 上位職【${SOLDIER_CLASSES[cls.advancedClassId].name}】へ覚醒！(💎1個)
+            </button>
+          ` : (cls.isAdvanced ? `
+            <span style="background:rgba(245,158,11,0.2); border:1px solid #f59e0b; color:#fbbf24; border-radius:3px; padding:1px 5px; font-size:9.5px; font-weight:bold;">👑【上位職・覚醒済】</span>
+          ` : '')}
+          ${canHonor ? `<button class="mini-btn btn-honor" style="background:#ffaa00; color:#0b0d14; font-size:10px;">🎖️ 叙勲！</button>` : ''}
           ${wItem ? `
             <button class="mini-btn btn-soldier-up" style="background:${hasWUpBudget ? '#10b981' : '#4b5563'}; color:#fff; font-size:10px;" title="兵士が自費で武器を強化">
               🔨 武器自費強化 [${wUpCost}G]
             </button>
           ` : ''}
           ${availableItems.length > 0 ? `
-            <select class="mini-select select-item-${s.id}" style="font-size: 10px; background: #141724; color: #fff; border: 1px solid #444; border-radius: 4px; padding: 2px 4px; flex: 1; min-width: 110px;">
-              <option value="">装備を支給...</option>
+            <select class="mini-select select-item-${s.id}" style="font-size: 10px; background: #141724; color: #fff; border: 1px solid #444; border-radius: 4px; padding: 2px 4px; flex: 1; min-width: 105px;">
+              <option value="">装備を譲渡...</option>
               ${availableItems.map(it => `<option value="${it.id}">[${SLOT_INFO[it.type].icon} T${it.tier}] ${it.name}</option>`).join('')}
             </select>
-            <button class="mini-btn btn-give-item" style="font-size:10px;">支給</button>
+            <button class="mini-btn btn-give-item" style="font-size:10px; background:#6366f1; color:#fff;">譲渡</button>
           ` : ''}
         </div>
       `;
 
       squadList.appendChild(row);
+
+      const fundBtn = row.querySelector('.btn-fund');
+      if (fundBtn) {
+        fundBtn.addEventListener('click', () => {
+          this.fundSoldier(s.id, 20);
+        });
+      }
+
+      const classUpBtn = row.querySelector('.btn-class-up');
+      if (classUpBtn) {
+        classUpBtn.addEventListener('click', () => {
+          this.promoteSoldier(s.id);
+        });
+      }
 
       const honorBtn = row.querySelector('.btn-honor');
       if (honorBtn) {
@@ -4279,6 +4859,46 @@ export const IronSquadGame = {
     ctx.save();
     ctx.translate(drop.x, drop.y);
 
+    if (drop.isOrb) {
+      // ===== 💎 覚醒の英雄宝珠（宙に浮遊・神聖秘宝の輝き） =====
+      const floatBob = Math.sin(now * 0.006) * 4;
+      const pulse = Math.sin(now * 0.014) * 3;
+
+      // 接地シャドウ
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+      ctx.beginPath();
+      ctx.ellipse(0, 8, 12, 4.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 外周の神聖オーラリング
+      ctx.strokeStyle = '#fbbf24';
+      ctx.lineWidth = 1.8;
+      ctx.shadowColor = '#f59e0b';
+      ctx.shadowBlur = 14 + pulse;
+      ctx.beginPath();
+      ctx.arc(0, floatBob, 13 + pulse, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // 宝珠本体（光彩グラデーション）
+      const grad = ctx.createRadialGradient(-3, floatBob - 3, 1, 0, floatBob, 9);
+      grad.addColorStop(0, '#ffffff');
+      grad.addColorStop(0.3, '#fef08a');
+      grad.addColorStop(0.7, '#f59e0b');
+      grad.addColorStop(1, '#b45309');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(0, floatBob, 8.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 宝珠上部の神聖アイコン
+      ctx.font = '12px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('🔱', 0, floatBob - 13);
+      ctx.shadowBlur = 0;
+      ctx.restore();
+      return;
+    }
+
     if (drop.isBoss) {
       // ===== ボス確定ドロップの神々しいオーラ =====
       const pulse = Math.sin(now * 0.008) * 5;
@@ -4589,12 +5209,79 @@ export const IronSquadGame = {
       ctx.lineTo(-6, 2.5);
       ctx.closePath();
       ctx.fill();
+    } else if (proj.type === 'STAR_ARROW') {
+      // 神射手の天星魔導光矢 (エメラルドと白金の彗星光)
+      const ang = Math.atan2(proj.vy || 0, proj.vx || 0);
+      ctx.rotate(ang);
+
+      ctx.shadowColor = '#34d399';
+      ctx.shadowBlur = 12;
+
+      // 尾を引く魔導光条
+      const grad = ctx.createLinearGradient(-16, 0, 10, 0);
+      grad.addColorStop(0, 'rgba(52, 211, 153, 0)');
+      grad.addColorStop(0.5, 'rgba(52, 211, 153, 0.7)');
+      grad.addColorStop(1, '#ffffff');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.moveTo(-16, 0);
+      ctx.lineTo(8, -2.5);
+      ctx.lineTo(12, 0);
+      ctx.lineTo(8, 2.5);
+      ctx.closePath();
+      ctx.fill();
+
+      // 先端の天星フラッシュ
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(10, 0, 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    } else if (proj.type === 'SWORD_BEAM') {
+      // 剣聖の疾風飛翔真空刃 (黄金の鋭利な三日月衝撃波)
+      const ang = Math.atan2(proj.vy || 0, proj.vx || 0);
+      ctx.rotate(ang);
+
+      ctx.shadowColor = '#fbbf24';
+      ctx.shadowBlur = 14;
+
+      // 外郭の黄金刃
+      ctx.strokeStyle = '#fbbf24';
+      ctx.lineWidth = 3.5;
+      ctx.beginPath();
+      ctx.arc(0, 0, 14, -Math.PI * 0.45, Math.PI * 0.45);
+      ctx.stroke();
+
+      // 内郭の白い電光
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.arc(0, 0, 14, -Math.PI * 0.35, Math.PI * 0.35);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    } else if (proj.type === 'SMITE') {
+      // 大司教の神聖浄化弾 (十字の光彩を放つ聖光球)
+      const rot = now * 0.015;
+      ctx.rotate(rot);
+
+      ctx.shadowColor = '#f472b6';
+      ctx.shadowBlur = 14;
+      ctx.fillStyle = '#f472b6';
+      ctx.beginPath();
+      ctx.arc(0, 0, 6, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 神聖十字光
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(-8, -1.8, 16, 3.6);
+      ctx.fillRect(-1.8, -8, 3.6, 16);
+      ctx.shadowBlur = 0;
     } else if (proj.type === 'HEAL') {
       // 脈動する治癒光弾 (大回復弾は巨大オーラを纏う！)
       const isHigh = proj.isHighHeal || proj.amount >= 50;
       const baseR = isHigh ? 6.5 : 4.5;
       const pulse = Math.sin(now * 0.018) * (isHigh ? 2.5 : 1.5);
-      const glowColor = isHigh ? '#00f0ff' : '#34d399';
+      const glowColor = proj.color || (isHigh ? '#00f0ff' : '#34d399');
       ctx.shadowColor = glowColor;
       ctx.shadowBlur = isHigh ? 16 : 10;
       ctx.fillStyle = glowColor;
@@ -4755,6 +5442,19 @@ export const IronSquadGame = {
       ctx.shadowBlur = 0;
     }
 
+    // 上位職（ADVANCED）の覚醒オーラリング
+    if (cls.isAdvanced) {
+      const advPulse = Math.sin(now * 0.007) * 2;
+      ctx.strokeStyle = cls.glowColor || '#fbbf24';
+      ctx.lineWidth = 2.2;
+      ctx.shadowColor = cls.glowColor || '#fbbf24';
+      ctx.shadowBlur = 10 + advPulse;
+      ctx.beginPath();
+      ctx.ellipse(0, 1, 17.5 + advPulse * 0.5, 7 + advPulse * 0.3, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
+
     // 向き判定（左右反転＋上下傾き）
     const isLeft = Math.cos(s.facingAngle || 0) < -0.15;
     const isMoving = (s.vx && Math.abs(s.vx) > 0.05) || (s.vy && Math.abs(s.vy) > 0.05);
@@ -4765,17 +5465,18 @@ export const IronSquadGame = {
     ctx.save();
     if (isLeft) ctx.scale(-1, 1);
 
-    // マント (先輩兵は黄金、叙勲兵は王立青)
-    if (isNamed || s.isVeteran) {
-      ctx.fillStyle = isNamed ? '#2563eb' : '#d97706';
+    // マント (上位職は神話級マント、叙勲兵は王立青、先輩兵は黄金)
+    if (cls.isAdvanced || isNamed || s.isVeteran) {
+      const advCapeColor = clsKey === 'PALADIN' ? '#0284c7' : (clsKey === 'BLADEMASTER' ? '#b45309' : (clsKey === 'SNIPER' ? '#047857' : '#be185d'));
+      ctx.fillStyle = cls.isAdvanced ? advCapeColor : (isNamed ? '#2563eb' : '#d97706');
       ctx.beginPath();
       ctx.moveTo(-4, -14 + bob);
-      ctx.quadraticCurveTo(-12, -4 + bob, -14, 0 + bob);
+      ctx.quadraticCurveTo(-14, -4 + bob, -16, 1 + bob);
       ctx.lineTo(-4, -4 + bob);
       ctx.closePath();
       ctx.fill();
       ctx.strokeStyle = '#fbbf24';
-      ctx.lineWidth = 1;
+      ctx.lineWidth = cls.isAdvanced ? 1.5 : 1;
       ctx.stroke();
     }
 
@@ -4789,7 +5490,237 @@ export const IronSquadGame = {
     ctx.fillRect(0 - legSwing, 0, 4.5, 2);
 
     // 兵種別 2.5D立ち姿グラフィック
-    if (clsKey === 'HEAVY') {
+    if (clsKey === 'PALADIN') {
+      // ===== 👑🛡️ 聖騎士 (PALADIN: 黄金と白銀の守護聖騎士) =====
+      // 胴体 (白銀＆黄金の神聖プレート)
+      ctx.fillStyle = '#f8fafc';
+      ctx.strokeStyle = '#fbbf24';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.ellipse(0, -12 + bob, 7.5, 7, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      // 胸の黄金十字
+      ctx.fillStyle = '#fbbf24';
+      ctx.fillRect(-1.2, -15 + bob, 2.4, 6);
+      ctx.fillRect(-3, -13.5 + bob, 6, 2.2);
+
+      // 黄金の聖肩当て
+      ctx.fillStyle = '#fbbf24';
+      ctx.fillRect(-8, -17 + bob, 4.5, 5);
+      ctx.fillRect(3.5, -17 + bob, 4.5, 5);
+
+      // 神聖光輪（ヘイロー・頭上に浮遊）
+      const haloBob = Math.sin(now * 0.008) * 1.5;
+      ctx.strokeStyle = '#fef08a';
+      ctx.lineWidth = 1.8;
+      ctx.shadowColor = '#fbbf24';
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+      ctx.ellipse(0, -29 + bob + haloBob, 8, 2.8, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      // 白銀騎士兜
+      ctx.fillStyle = '#e2e8f0';
+      ctx.strokeStyle = '#fbbf24';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.arc(0, -20 + bob, 6.8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      // バイザースリット (神聖蒼光)
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(1, -21 + bob, 4, 2.5);
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillRect(2, -20.5 + bob, 3, 1.5);
+
+      // 左手の黄金十字タワーシールド
+      ctx.save();
+      ctx.translate(-6, -11 + bob);
+      ctx.fillStyle = '#0284c7';
+      ctx.strokeStyle = '#fbbf24';
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.moveTo(-5, -8);
+      ctx.lineTo(5, -8);
+      ctx.lineTo(4, 4);
+      ctx.lineTo(0, 9);
+      ctx.lineTo(-4, 4);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      // 盾中央の光る黄金十字
+      ctx.fillStyle = '#fef08a';
+      ctx.fillRect(-1, -6, 2, 10);
+      ctx.fillRect(-3.5, -3, 7, 2);
+      ctx.restore();
+
+      // 右手の光輝聖剣
+      ctx.save();
+      ctx.translate(5, -10 + bob);
+      ctx.fillStyle = '#f8fafc';
+      ctx.strokeStyle = '#fbbf24';
+      ctx.lineWidth = 1.2;
+      ctx.fillRect(0, -2, 16, 3.5);
+      ctx.strokeRect(0, -2, 16, 3.5);
+      ctx.shadowColor = '#67e8f9';
+      ctx.shadowBlur = 8;
+      ctx.strokeRect(0, -2, 16, 3.5);
+      ctx.shadowBlur = 0;
+      ctx.restore();
+
+    } else if (clsKey === 'BLADEMASTER') {
+      // ===== ⚔️⚡ 剣聖 (BLADEMASTER: 神速二刀流の武人) =====
+      // 胴体 (漆黒＆黄金の身軽な剣客装束)
+      ctx.fillStyle = '#1e293b';
+      ctx.strokeStyle = '#fbbf24';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.ellipse(0, -11 + bob, 6, 6, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // 頭部・鉢金となびく黒髪
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath();
+      ctx.arc(0, -18 + bob, 5.8, 0, Math.PI * 2);
+      ctx.fill();
+      // 黄金鉢金
+      ctx.fillStyle = '#fbbf24';
+      ctx.fillRect(-3, -20 + bob, 7, 2.5);
+      // 鋭い眼光
+      ctx.fillStyle = '#f59e0b';
+      ctx.fillRect(2, -18 + bob, 2.5, 1.5);
+      // 後ろになびくリボン
+      ctx.strokeStyle = '#f59e0b';
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.moveTo(-3, -19 + bob);
+      ctx.lineTo(-11, -17 + bob + Math.sin(now * 0.02) * 2);
+      ctx.stroke();
+
+      // 神速二刀流 (雷光を纏う名刀)
+      const swordGlow = '#fbbf24';
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2.4;
+      ctx.shadowColor = swordGlow;
+      ctx.shadowBlur = 8;
+      // 奥刀
+      ctx.beginPath();
+      ctx.moveTo(-4, -13 + bob);
+      ctx.lineTo(8, -19 + bob);
+      ctx.stroke();
+      // 手前刀
+      ctx.beginPath();
+      ctx.moveTo(3, -9 + bob);
+      ctx.lineTo(16, -6 + bob);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+    } else if (clsKey === 'SNIPER') {
+      // ===== 🎯💫 神射手 (SNIPER: 星彩の天星長弓スナイパー) =====
+      // 胴体 (深緑＆エメラルドの星彩外套)
+      ctx.fillStyle = '#065f46';
+      ctx.strokeStyle = '#34d399';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.ellipse(0, -11 + bob, 6, 6, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // 背中の天星矢筒 (光るクリスタル矢)
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(-7, -16 + bob, 4, 9);
+      ctx.fillStyle = '#34d399';
+      ctx.fillRect(-6, -18 + bob, 2.5, 3);
+
+      // 頭部・星彩ティアラ
+      ctx.fillStyle = '#064e3b';
+      ctx.beginPath();
+      ctx.arc(0, -18 + bob, 5.8, 0, Math.PI * 2);
+      ctx.fill();
+      // 天星スコープサイト
+      ctx.fillStyle = '#34d399';
+      ctx.shadowColor = '#34d399';
+      ctx.shadowBlur = 6;
+      ctx.fillRect(2, -19 + bob, 2.5, 2.5);
+      ctx.shadowBlur = 0;
+
+      // 巨大な星彩ロングボウ
+      const pull = (s.atkAnim || 0) * 5;
+      ctx.strokeStyle = '#34d399';
+      ctx.lineWidth = 2.6;
+      ctx.shadowColor = '#34d399';
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+      ctx.arc(7 - pull, -11 + bob, 11, -1.0, 1.0);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      // 光の弦
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(13 - pull, -19 + bob);
+      ctx.lineTo(3 - pull, -11 + bob);
+      ctx.lineTo(13 - pull, -3 + bob);
+      ctx.stroke();
+
+    } else if (clsKey === 'HIGH_PRIEST') {
+      // ===== 🕊️💖 大司教 (HIGH_PRIEST: 奇跡の純白法衣司教) =====
+      // 胴体 (純白＆薄桃色の神聖ローブ・裾広がり)
+      ctx.fillStyle = '#fdf2f8';
+      ctx.strokeStyle = '#f472b6';
+      ctx.lineWidth = 1.3;
+      ctx.beginPath();
+      ctx.moveTo(-6, -13 + bob);
+      ctx.lineTo(6, -13 + bob);
+      ctx.lineTo(8, -1);
+      ctx.lineTo(-8, -1);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // 頭部・大司教冠（ミトラ）
+      ctx.fillStyle = '#fdf2f8';
+      ctx.strokeStyle = '#f472b6';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(-4, -18 + bob);
+      ctx.lineTo(0, -26 + bob);
+      ctx.lineTo(4, -18 + bob);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      // 冠中央のピンク神聖宝石
+      ctx.fillStyle = '#ec4899';
+      ctx.beginPath();
+      ctx.arc(0, -20 + bob, 2, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 聖なる十字大錫杖
+      ctx.strokeStyle = '#fbbf24';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(2, -3 + bob);
+      ctx.lineTo(11, -24 + bob);
+      ctx.stroke();
+
+      // 杖先端の浮遊神聖オーブ
+      const orbPulse = Math.sin(now * 0.01) * 1.5;
+      ctx.fillStyle = '#f472b6';
+      ctx.shadowColor = '#f472b6';
+      ctx.shadowBlur = 14 + orbPulse * 3;
+      ctx.beginPath();
+      ctx.arc(12, -26 + bob, 5 + orbPulse * 0.5, 0, Math.PI * 2);
+      ctx.fill();
+      // オーブ内の白十字
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(11, -29 + bob, 2, 6);
+      ctx.fillRect(9, -27 + bob, 6, 2);
+      ctx.shadowBlur = 0;
+
+    } else if (clsKey === 'HEAVY') {
       // ===== 🛡️ 重装歩兵 =====
       // 胴体 (フルプレートアーマー・ARMOR色忠実反映)
       ctx.fillStyle = aEq.color;
@@ -4980,17 +5911,18 @@ export const IronSquadGame = {
     ctx.textAlign = 'center';
     const sLv = s.level || 1;
     const guardBadge = s.isPersonalGuard ? '⭐直属 ' : '';
+    const classBadge = cls.isAdvanced ? `${cls.tag} ` : '';
     const tKey = s.talent || 'AVERAGE';
     const talentBadge = tKey === 'GENIUS' ? '🌟' : (tKey === 'ELITE' ? '🔮' : (tKey === 'TALENTED' ? '✨' : (tKey === 'INFERIOR' ? '🍂' : '')));
     const dlBadge = (s.survivedDeathlines || 0) > 0 ? `💀` : '';
-    const prefix = `${talentBadge}${dlBadge}${guardBadge}`;
+    const prefix = `${classBadge}${talentBadge}${dlBadge}${guardBadge}`;
 
-    if (isNamed) {
-      ctx.fillStyle = '#fbbf24';
+    if (isNamed || cls.isAdvanced) {
+      ctx.fillStyle = cls.isAdvanced ? (cls.glowColor || '#fbbf24') : '#fbbf24';
       ctx.font = 'bold 10px sans-serif';
       ctx.shadowColor = '#000';
       ctx.shadowBlur = 4;
-      ctx.fillText(`${prefix}Lv.${sLv} ${s.title}${s.name}`, 0, -32);
+      ctx.fillText(`${prefix}Lv.${sLv} ${s.title || ''}${s.name}`, 0, -32);
       ctx.shadowBlur = 0;
     } else {
       ctx.fillStyle = (tKey === 'GENIUS') ? '#fbbf24' : (s.isPersonalGuard ? '#fef08a' : '#cbd5e1');
@@ -5069,13 +6001,29 @@ export const IronSquadGame = {
       ctx.restore();
     }
 
+    // 覇王ウォーロード（WARLORD）の紅蓮覇気オーラリング
+    if (p.isAdvanced) {
+      const wPulse = Math.sin(now * 0.008) * 3;
+      ctx.save();
+      ctx.translate(0, 1);
+      ctx.strokeStyle = '#f59e0b';
+      ctx.lineWidth = 2.4;
+      ctx.shadowColor = '#ef4444';
+      ctx.shadowBlur = 14 + wPulse;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 22 + wPulse, 9 + wPulse * 0.4, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.restore();
+    }
+
     // 向き判定（左右反転＋上下傾き）
     const isLeft = Math.cos(p.facingAngle || 0) < -0.15;
     ctx.save();
     if (isLeft) ctx.scale(-1, 1);
 
     // 1. マント（CLOAK・背中から斜め後ろにたなびく）
-    const capeColor = this.rankIndex >= 4 ? '#b91c1c' : (this.rankIndex >= 2 ? '#1d4ed8' : '#334155');
+    const capeColor = p.isAdvanced ? '#991b1b' : (this.rankIndex >= 4 ? '#b91c1c' : (this.rankIndex >= 2 ? '#1d4ed8' : '#334155'));
     const capeWave = Math.sin(now * 0.012) * 3;
     const capeSwing = isMoving ? Math.sin(walkCycle) * 2.5 : 0;
     ctx.fillStyle = capeColor;
@@ -5085,10 +6033,10 @@ export const IronSquadGame = {
     ctx.lineTo(-5, -6 + walkBob);
     ctx.closePath();
     ctx.fill();
-    // 伍長以上の金縁ステッチ
-    if (this.rankIndex >= 2) {
+    // 伍長以上または覇王の金縁ステッチ
+    if (this.rankIndex >= 2 || p.isAdvanced) {
       ctx.strokeStyle = '#fbbf24';
-      ctx.lineWidth = 1;
+      ctx.lineWidth = p.isAdvanced ? 1.6 : 1;
       ctx.beginPath();
       ctx.moveTo(-5, -16 + walkBob);
       ctx.quadraticCurveTo(-14 + capeWave, -6 + walkBob + capeSwing, -16 + capeWave * 1.2, 0 + walkBob + capeSwing);
@@ -5241,7 +6189,23 @@ export const IronSquadGame = {
     }
 
     // 出世の階級章（王冠/星羽飾り）
-    if (this.rankIndex >= 4) {
+    if (p.isAdvanced) {
+      // 覇王の黄金冠 ＆ 真紅の豪壮クレスト
+      ctx.fillStyle = '#fbbf24';
+      ctx.beginPath();
+      ctx.moveTo(-5, -28 + walkBob);
+      ctx.lineTo(-3, -37 + walkBob);
+      ctx.lineTo(0, -32 + walkBob);
+      ctx.lineTo(3, -37 + walkBob);
+      ctx.lineTo(5, -28 + walkBob);
+      ctx.closePath();
+      ctx.fill();
+      // 真紅の宝珠
+      ctx.fillStyle = '#ef4444';
+      ctx.beginPath();
+      ctx.arc(0, -30 + walkBob, 2, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (this.rankIndex >= 4) {
       // 金の王冠クレスト
       ctx.fillStyle = '#fbbf24';
       ctx.beginPath();
@@ -5266,7 +6230,7 @@ export const IronSquadGame = {
     ctx.ellipse(3, -16 + walkBob, 4.5, 4, 0.2, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
-    if (aEq.tier >= 4) {
+    if (aEq.tier >= 4 || p.isAdvanced) {
       ctx.fillStyle = '#fbbf24';
       ctx.beginPath();
       ctx.arc(3, -16 + walkBob, 1.5, 0, Math.PI * 2);
@@ -5274,7 +6238,7 @@ export const IronSquadGame = {
     }
 
     // 7. 手甲（GLOVES）＆ 武器（WEAPON）
-    const weaponColor = wEq.color;
+    const weaponColor = p.isAdvanced ? '#f59e0b' : wEq.color;
     const isAtk = p.slashAnim > 0;
     const wSwing = isAtk ? Math.sin(p.slashAnim * Math.PI) * 1.2 : 0;
     ctx.save();
@@ -5299,34 +6263,51 @@ export const IronSquadGame = {
     ctx.fill();
     ctx.stroke();
 
-    // 武器オーラ（高ティア・高強化値）
-    if (wEq.tier >= 5 || wEq.upgrade >= 3) {
-      ctx.strokeStyle = weaponColor;
+    // 武器オーラ（覇王または高ティア・高強化値）
+    if (p.isAdvanced || wEq.tier >= 5 || wEq.upgrade >= 3) {
+      ctx.strokeStyle = p.isAdvanced ? '#ef4444' : weaponColor;
       ctx.lineWidth = 2.5;
-      ctx.shadowColor = weaponColor;
-      ctx.shadowBlur = 10;
+      ctx.shadowColor = p.isAdvanced ? '#f59e0b' : weaponColor;
+      ctx.shadowBlur = p.isAdvanced ? 14 : 10;
       ctx.stroke();
       ctx.shadowBlur = 0;
     }
     ctx.restore();
 
-    // 攻撃スイング時の三日月光刃エフェクト
+    // 攻撃スイング時の光刃エフェクト
     if (isAtk) {
       ctx.save();
-      ctx.strokeStyle = weaponColor;
-      ctx.lineWidth = 6;
-      ctx.shadowColor = weaponColor;
-      ctx.shadowBlur = 16;
-      ctx.beginPath();
-      ctx.arc(0, -11 + walkBob, 38, -0.65, 0.65);
-      ctx.stroke();
-      // 内側の白い光
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 2.5;
-      ctx.shadowBlur = 6;
-      ctx.beginPath();
-      ctx.arc(0, -11 + walkBob, 38, -0.45, 0.45);
-      ctx.stroke();
+      if (p.isAdvanced) {
+        // 覇王紅蓮絶刃: 全方位360度の大爆発円弧波！
+        ctx.strokeStyle = '#ef4444';
+        ctx.lineWidth = 8;
+        ctx.shadowColor = '#f59e0b';
+        ctx.shadowBlur = 24;
+        ctx.beginPath();
+        ctx.arc(0, -11 + walkBob, 46, 0, Math.PI * 2);
+        ctx.stroke();
+        // 内側の黄金光
+        ctx.strokeStyle = '#fef08a';
+        ctx.lineWidth = 3.5;
+        ctx.beginPath();
+        ctx.arc(0, -11 + walkBob, 46, 0, Math.PI * 2);
+        ctx.stroke();
+      } else {
+        ctx.strokeStyle = weaponColor;
+        ctx.lineWidth = 6;
+        ctx.shadowColor = weaponColor;
+        ctx.shadowBlur = 16;
+        ctx.beginPath();
+        ctx.arc(0, -11 + walkBob, 38, -0.65, 0.65);
+        ctx.stroke();
+        // 内側の白い光
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2.5;
+        ctx.shadowBlur = 6;
+        ctx.beginPath();
+        ctx.arc(0, -11 + walkBob, 38, -0.45, 0.45);
+        ctx.stroke();
+      }
       ctx.restore();
     }
 
@@ -5335,19 +6316,20 @@ export const IronSquadGame = {
     // 8. 頭上階級マーク ＆ レベル ＆ HPバー (斜めアングルの頭上位置)
     ctx.font = '12px sans-serif';
     ctx.textAlign = 'center';
-    const mark = this.rankIndex >= 4 ? '👑' : (this.rankIndex >= 2 ? '⭐' : '🛡️');
+    const mark = p.isAdvanced ? '👑🔥' : (this.rankIndex >= 4 ? '👑' : (this.rankIndex >= 2 ? '⭐' : '🛡️'));
     ctx.fillText(mark, 0, -42);
     ctx.font = 'bold 10px sans-serif';
-    ctx.fillStyle = '#38bdf8';
+    ctx.fillStyle = p.isAdvanced ? '#f59e0b' : '#38bdf8';
     ctx.shadowColor = '#000';
     ctx.shadowBlur = 4;
-    ctx.fillText(`Lv.${p.level || 1} あなた`, 0, -32);
+    const playerTitle = p.isAdvanced ? '【覇王】あなた' : 'あなた';
+    ctx.fillText(`Lv.${p.level || 1} ${playerTitle}`, 0, -32);
     ctx.shadowBlur = 0;
 
     // HPバー
     ctx.fillStyle = 'rgba(0,0,0,0.65)';
     ctx.fillRect(-18, -26, 36, 4.5);
-    ctx.fillStyle = '#3b82f6';
+    ctx.fillStyle = p.isAdvanced ? '#f59e0b' : '#3b82f6';
     ctx.fillRect(-18, -26, 36 * (p.hp / p.maxHp), 4.5);
     ctx.strokeStyle = 'rgba(255,255,255,0.4)';
     ctx.lineWidth = 0.8;
