@@ -1712,6 +1712,10 @@ export const IronSquadGame = {
 
   recalcSoldierStats(s) {
     if (!s) return;
+    if (s.title === '巨頭狩り') {
+      s.title = '';
+      s.isNamed = false;
+    }
     const lv = s.level || 1;
     const waves = s.survivedWaves || 0;
     const minionKills = s.minionKills || 0;
@@ -1863,8 +1867,6 @@ export const IronSquadGame = {
       const prefix = s.isVeteran ? '⭐歴戦' : '';
       if (cls.isAdvanced) {
         s.rankTitle = `${prefix}${cls.icon}${cls.name}`;
-      } else if (bossKills > 0) {
-        s.rankTitle = `${prefix}👑巨頭狩り (${cls.name})`;
       } else if (minionKills >= 30) {
         s.rankTitle = `${prefix}⚔️百人斬り (${cls.name})`;
       } else if (waves >= 2) {
@@ -3978,14 +3980,12 @@ export const IronSquadGame = {
       if (isBoss) {
         attacker.bossKills = (attacker.bossKills || 0) + 1;
         attacker.gold = (attacker.gold || 0) + 50; // 討伐臨時ボーナス
-        if (!attacker.isNamed) {
-          attacker.isNamed = true;
-          attacker.title = '巨頭狩り';
-          attacker.name = attacker.name.includes('#') ? NAMES[Math.floor(Math.random() * NAMES.length)] : attacker.name;
+        if (attacker.name && attacker.name.includes('#')) {
+          attacker.name = NAMES[Math.floor(Math.random() * NAMES.length)];
         }
         sound.playHighScore();
         this.spawnDamageText(attacker.x, attacker.y - 32, '👑 ボス討伐英雄！', '#ffd700');
-        this.showToast(`👑 大金星！兵士【${attacker.name}】がボスにトドメ！(ATK+8, HP+45, 50Gボーナス)`);
+        this.showToast(`👑 大金星！兵士【${attacker.name}】がボスにトドメ！(ボス討伐履歴+1, 50Gボーナス)`);
       } else {
         attacker.minionKills = (attacker.minionKills || 0) + 1;
         const mK = attacker.minionKills;
@@ -5067,10 +5067,11 @@ export const IronSquadGame = {
             <span style="color:#b7c6a4; font-size:10px;">経験${s.survivedWaves || 0}戦線 / 今期${participated(s)?'参加':'未参加'}</span>
             ${s.isPersonalGuard ? '<span style="color:#fef08a; font-weight:bold; font-size:10px;">[⭐直属]</span>' : ''}
             ${s.isVeteran ? '<span style="color:#fbbf24; font-size:9px;">(先輩)</span>' : ''}
+            ${(s.bossKills || 0) > 0 ? `<span style="color:#38bdf8; font-weight:bold; font-size:9.5px; background:rgba(56,189,248,0.15); border:1px solid rgba(56,189,248,0.4); border-radius:3px; padding:0 3px;" title="ボス討伐履歴: ${s.bossKills}体">[👑ボス討伐×${s.bossKills}]</span>` : ''}
             ${survivedDl > 0 ? `<span style="color:#f87171; font-size:9.5px; font-weight:bold;" title="死線生還数: ${survivedDl}回">[💀生還×${survivedDl}]</span>` : ''}
             ${isDown ? '<span style="color:#ef4444; font-weight:bold;">[🆘負傷ダウン]</span>' : ''}
           </span>
-          <span style="font-size: 10px;">💰 <strong style="color:#ffe600;">${(s.gold || 0).toLocaleString()}G</strong> | ⚔️${s.minionKills || 0} 👑${s.bossKills || 0}</span>
+          <span style="font-size: 10px;">💰 <strong style="color:#ffe600;">${(s.gold || 0).toLocaleString()}G</strong> | <span title="雑魚討伐数">⚔️${s.minionKills || 0}</span> <span title="ボス討伐履歴: ${s.bossKills || 0}体" style="color:${(s.bossKills || 0) > 0 ? '#38bdf8' : '#94a3b8'}; font-weight:${(s.bossKills || 0) > 0 ? 'bold' : 'normal'};">👑${s.bossKills || 0}</span></span>
         </div>
         <div style="font-size: 10px; color: #94a3b8; margin-bottom: 3px; display: flex; justify-content: space-between; align-items:center;">
           <span>HP: <strong style="color:${s.hp < s.maxHp ? '#f87171' : '#34d399'};">${Math.floor(s.hp)}</strong>/${s.maxHp} | 🛡️ DEF: <strong style="color:#38bdf8;">${s.def || 0}</strong> | ATK: ${s.atk} ${clsKey === 'MEDIC' ? `| 💚回復: <strong style="color:#34d399;">${s.healPower || 26}HP</strong>` : ''}</span>
