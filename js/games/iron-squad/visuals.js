@@ -62,7 +62,7 @@ const CLOTH = {
   COMMANDER: '#71858a', WARLORD: '#a29270'
 };
 
-export function drawFieldSoldier(c, s, now, cls, platoonColor) {
+export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod) {
   const key = s.soldierClass || 'HEAVY', eq = s.equipped || {};
   const advanced = !!cls.isAdvanced;
   const cloth = fieldTone(eq.armor?.color || CLOTH[key] || CLOTH.HEAVY, 0.82);
@@ -80,6 +80,19 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor) {
   c.save(); c.translate(s.x, s.y);
   const plant = s.isDown ? 1 : (moving ? Math.abs(stride) / 2.8 : 0.22);
   contactShadow(c, 2, 3, s.isDown ? 16 : 11, s.isDown ? 4.2 : 3.5, plant);
+  // Perf v1.24.2: far/edge soldiers = silhouette only (skip gear/weapon strokes).
+  if (simpleLod && !s.isDown) {
+    c.fillStyle = cloth;
+    c.beginPath(); c.ellipse(0, -12, 7.5, 13, 0, 0, Math.PI * 2); c.fill();
+    c.fillStyle = steel; c.beginPath(); c.arc(0, -26, 4.2, 0, Math.PI * 2); c.fill();
+    c.fillStyle = platoonColor; c.fillRect(-2, 4, 4, 2);
+    if (s.isPersonalGuard) { c.fillStyle = '#c8b278'; c.fillRect(4, 4, 3, 2); }
+    if (s.maxHp > 0 && s.hp < s.maxHp * 0.55) {
+      c.fillStyle = '#283132'; c.fillRect(-12, -39, 24, 3);
+      c.fillStyle = '#c4b48a'; c.fillRect(-12, -39, 24 * Math.max(0, Math.min(1, s.hp / s.maxHp)), 3);
+    }
+    c.restore(); return;
+  }
   if (s.isDown) {
     shape(c,[[-18,-3],[16,-7],[20,3],[-14,6]],cloth);
     ellipse(c,-20,-1,6,4.5,steel);c.fillStyle='#c4aa8b';c.fillRect(-23,0,5,3);

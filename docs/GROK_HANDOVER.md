@@ -1,7 +1,7 @@
 # 🛡️ IRON SQUAD（雑兵立身出世録）grok引き継ぎ書 & 現在地開発レポート
 
 **作成日時**: 2026年10月7日  
-**プロジェクトバージョン**: v1.23.4 (Service Worker: `mobile-game-studio-v60`)  
+**プロジェクトバージョン**: v1.24.0 (Service Worker: `mobile-game-studio-v61`)  
 **対象AI**: grok (xAI) および後続開発エージェント  
 **リポジトリ**: `main` ブランチ運用中
 
@@ -17,8 +17,8 @@
 ### 1.2 ファイル構成 & 役割一覧
 ```
 スマホゲーム工房/
-├── index.html              # PWAエントリ、メタタグ、キャッシュバスター管理 (v1.23.4 / ?v=60)
-├── sw.js                   # Service Worker (Network-First & キャッシュ管理: v60)
+├── index.html              # PWAエントリ、メタタグ、キャッシュバスター管理 (v1.24.0 / ?v=61)
+├── sw.js                   # Service Worker (Network-First & キャッシュ管理: v61)
 ├── manifest.json           # PWAマニフェスト (display: standalone, portrait)
 ├── serve.py                # ローカル開発用QRコード出力付きHTTPサーバー
 ├── start.bat               # サーバー起動ワンクリックバッチ
@@ -38,6 +38,7 @@
 │           ├── index.js    # メインロジック (約7,950行の大規模コアモジュール)
 │           ├── visuals.js  # ベクター描画・キャラクター・大ボス・装備ビジュアル
 │           ├── world.js    # 158,720px フィールド、崖、街道、宿場と廃墟の定義
+│           ├── fog.js      # 霧戦争/探索ビットグリッド (v1.24.0)
 │           ├── dungeon.js  # ダンジョン3 + 宿場4 + 廃墟4 のインスタンス
 │           ├── equipment-rules.js # 装備生成・Tier補正・無限強化コスト計算 (約120行)
 │           ├── casualty-rules.js  # 負傷ダウン・救助・搬送・死線判定 (約200行)
@@ -57,6 +58,19 @@
 ## 2. 直近の完了作業報告（現在地までの到達点）
 
 詳細な経過と未確認項目は `docs/WORK_REPORT_2026-10-07.md`。仕様の正は `docs/SPEC_AND_HANDOVER.md` の v1.21.0 節。
+
+
+### ⓪★★ 霧戦争（探索Fog）＆本隊50＆追加軽量化 [v1.24.0]
+- **CACHE**: `mobile-game-studio-v61` / フッタ v1.24.0 / `?v=61`。
+- **Fog of war / 探索**:
+  - 未探索=真っ黒、探索済み=通常ライティング（昼夜大気はそのまま）。
+  - 適用面: メインフィールド、ワールドマップ、ミニマップ。
+  - 保存: `fogExplored`（Uint8Array ビットグリッドの base64）。セル=512px、310×310≈12KB raw。
+  - 開示: プレイヤー周囲 `FOG_REVEAL_RADIUS≈980` を円スタンプ。移動がセルの~28%未満ならスキップ。本陣は初期 `FOG_CAMP_REVEAL≈1600` で開示。
+  - 描画: 可視フォグセルへの `fillRect` のみ（毎フレーム per-pixel 禁止）。ダンジョン内はフォグ無し。
+- **本隊キャップ**: `DEPLOYMENT_CAPACITY` 72→**50**（既存セーブ超過分は `normalizeDeployment` で予備兵へ）。
+- **追加軽量化**: `ENEMY_LIMIT` 60→48、スポーン間隔 0.55→0.72、`PARTICLE_CAP` 110→80、ダメージ文字 36→28、ミニマップ 100→150ms、StatsUI 250→320ms、遠距離兵士 LOD（カメラ外かつ隊長から遠い兵士は4フレに1回だけ重いAI）、大気霧レイヤ 2→1。
+- セーブ互換: 旧セーブはフォグ無し→本陣周辺をシード。WORLD_VERSION 変更なし。git push なし。
 
 ### ⓪★ 16万px超広大世界向け パフォーマンス軽量化パッチ [v1.23.4]
 - **CACHE**: `mobile-game-studio-v60` / フッタ v1.23.4 / `?v=60`。

@@ -14,6 +14,7 @@ import { storage } from '../../storage.js';
 import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow } from './visuals.js';
 import { saveSlots } from './save-slots.js';
 import { WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt } from './world.js';
+import { FogGrid, FOG_REVEAL_RADIUS } from './fog.js';
 import { PHASE_DURATION, REST_DURATION, SOLDIER_SALARY, MIN_REINFORCEMENTS, emptyActivity, advancePhase, advanceRest, recordCombat, recordHealing, healByMedic, participated, finishExperience } from './phase-rules.js';
 import {
   emptyFiscalLedger, calcTreasuryGrossIncome, calcCommanderStipend, calcBuyoutGold,
@@ -38,17 +39,18 @@ import { daylightAt, advanceWorldClock, periodEnemy, enemyAvailable, PERIOD_ENEM
 import { RESCUE_TIMEOUT, carryingCapacity, carriedSoldiers, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, handleTransportAI, syncDragged, treatWounded, orbDropChance } from './casualty-rules.js';
 import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault } from './dungeon.js';
 
-export const DEPLOYMENT_CAPACITY=72;
-export const ENEMY_LIMIT=60; // was 72 — soft load cap (gameplay intact near player)
-export const ENEMY_SPAWN_INTERVAL=.55; // was .45
+export const DEPLOYMENT_CAPACITY=48; // was 50/72 — 本隊 soft cap for iPhone (v1.24.2)
+export const PERSONAL_GUARD_MAX=12; // 直属小隊 ceiling (ranks ≤12; rope-tow default stays 2)
+export const ENEMY_LIMIT=40; // was 48/60/72 — aggressive soft load (v1.24.1)
+export const ENEMY_SPAWN_INTERVAL=.85; // was .72/.55 — fewer spawn spikes (v1.24.1)
 /** Field mid-bosses (ZONE_CHAOS dragons): rarer, capped, stronger. Excludes colossal/raid/dungeon. */
 export const FIELD_BOSS_CAP=2;
-/** Perf (v1.23.4): particle/UI/spatial caps after 158720 world lag. */
-export const PARTICLE_CAP=110;
-export const DAMAGE_TEXT_CAP=36;
+/** Perf (v1.24.2): army48, personal12, AI cheapen (retarget/spatial, main/pg throttle, boids far-skip). */
+export const PARTICLE_CAP=48; // was 80/110 (v1.24.1)
+export const DAMAGE_TEXT_CAP=16; // was 28/36 (v1.24.1)
 export const SPATIAL_CELL=420;
-export const MINIMAP_INTERVAL_MS=100;
-export const STATS_UI_INTERVAL_MS=250;
+export const MINIMAP_INTERVAL_MS=220; // was 150/100 (v1.24.1)
+export const STATS_UI_INTERVAL_MS=450; // was 320/250 (v1.24.1)
 export const GUARD_ASSIGN_INTERVAL=0.5;
 export const FIELD_BOSS_CHANCE=0.08; // was 0.25
 export const FIELD_BOSS_HP_MULT=2.5; // raw 280 → 700
@@ -58,7 +60,7 @@ export const COLOSSAL_FIRST_SPAWN=60; // was 12
 export const COLOSSAL_RESPAWN=210; // was 75
 // Colossal HP/ATK baked into COLOSSAL_BOSS_DEFS (×1.75 HP / ×1.6 ATK vs v1.23.1)
 /** Base-camp raid (本陣強襲): v1.23.3 — 本隊ほぼ壊滅・精鋭のみ辛うじて生存。プレイヤー帰還は倒せる範囲。 */
-/** Perf patch v1.23.4: spatialize nearest, throttle UI/minimap, particle caps, cull far AI, reduce GC. */
+/** Perf patch v1.24.2: army48, personal max12, AI cheapen, SW v63. (was v1.24.1 army50/SW v62) */
 export const RAID_SCALE_DIST=28000; // chaos-tier scale (was 4500)
 export const RAID_HP_MULT=2.85; // was 2.4 (v1.23.2) / 0.85 (old)
 export const RAID_ATK_MULT=1.95; // was 1.25 — melt 本隊 fodder; elites scrape through
@@ -840,7 +842,7 @@ export const IronSquadGame = {
             </div>
             <div class="stat-box">
               <span class="stat-label">小隊 / 本隊</span>
-              <span id="squad-alive" class="stat-value" style="color: #d7d3c4;">0 / 72</span>
+              <span id="squad-alive" class="stat-value" style="color: #d7d3c4;">0 / 48</span>
             </div>
             <div class="stat-box">
               <span class="stat-label">軍資金</span>
@@ -1511,7 +1513,9 @@ export const IronSquadGame = {
 
     this.worldMapModal.classList.remove('hidden');this.setDialogState(true);
     const canvas=this.worldMapModal.querySelector('canvas');
-    this.worldTerrain.drawOverview(canvas.getContext('2d'),canvas.width,this);
+    const wctx=canvas.getContext('2d');
+    this.worldTerrain.drawOverview(wctx,canvas.width,this);
+    this.ensureFog().drawMapOverlay(wctx,canvas.width,WORLD_SIZE);
     this.worldMapModal.querySelector('#world-location').textContent=
       this.currentDungeon
         ? `⛩️ 【ダンジョン内】${this.currentDungeon.name} · 最奥ボス討伐へ進撃中`
@@ -1576,7 +1580,7 @@ export const IronSquadGame = {
 
     this.resizeCanvas = () => {
       const rect = this.canvasContainer ? this.canvasContainer.getBoundingClientRect() : null;
-      const dpr = Math.min(window.devicePixelRatio || 1, 3);
+      const dpr = Math.min(window.devicePixelRatio || 1, 2); // v1.24.1: cap DPR (was 3)
       this.width = (rect && rect.width > 10) ? rect.width : (window.innerWidth > 10 ? window.innerWidth : 390);
       this.height = (rect && rect.height > 10) ? rect.height : (window.innerHeight > 90 ? window.innerHeight - 80 : 600);
       this.canvas.width = this.width * dpr;
@@ -1720,6 +1724,7 @@ export const IronSquadGame = {
     const veterans = inherited?.veterans;
     this.reserves = inherited?.reserveSurvivors || [];
     this.squad = [];
+    this.fog = new FogGrid();
     let hasVeterans = false;
 
     if (veterans && Array.isArray(veterans) && veterans.length > 0) {
@@ -1768,7 +1773,7 @@ export const IronSquadGame = {
     if (hasVeterans) {
       this.showToast('🎖️ 【歴戦の先輩兵士が合流！】前線部隊の古参兵たちが新兵のあなたを援護します！');
     } else {
-      this.showToast('⚔️ 72名の大軍勢として出動！本隊と連携し、直属小隊を率いて戦え！');
+      this.showToast('⚔️ 48名の本隊として出動！本隊と連携し、直属小隊を率いて戦え！');
     }
   },
 
@@ -2279,6 +2284,13 @@ export const IronSquadGame = {
     this.reserves = saved.reserves || [];
     this.recruitSequence = saved.recruitSequence ?? [...this.squad,...this.reserves].reduce((max,s)=>Math.max(max,Number(s.name?.match(/#(\d+)/)?.[1] || 0)),0);
     this.lastReinforcements = saved.lastReinforcements || null;
+    this.fog = new FogGrid();
+    if (saved.fogExplored) this.fog.deserialize(saved.fogExplored);
+    else {
+      this.fog.revealCamp(BASE_CAMP.x, BASE_CAMP.y);
+      this.fog._campSeeded = true;
+    }
+
     this.normalizeDeployment();
     this.deployReserves();
     while (this.squad.length < DEPLOYMENT_CAPACITY) {
@@ -2408,10 +2420,31 @@ export const IronSquadGame = {
     this.showToast(`第${this.wave}期から遠征を再開しました`);
   },
 
+  ensureFog() {
+    if (!this.fog) this.fog = new FogGrid();
+    return this.fog;
+  },
+
+  revealFogAroundPlayer(force = false) {
+    const fog = this.ensureFog();
+    if (!this.player || this.currentDungeon) return;
+    if (force) {
+      fog._lastX = NaN;
+      fog._lastY = NaN;
+    }
+    fog.revealAt(this.player.x, this.player.y, FOG_REVEAL_RADIUS);
+  },
+
   initBattlefield() {
     this.inBattle = true;
     this.monsters = [];
     this.particles = [];
+    const fog = this.ensureFog();
+    if (!fog._campSeeded) {
+      fog.revealCamp(BASE_CAMP.x, BASE_CAMP.y);
+      fog._campSeeded = true;
+    }
+    this.revealFogAroundPlayer(true);
     this.damageTexts = [];
     this.dropsOnField = [];
     this.projectiles = [];
@@ -2626,7 +2659,8 @@ export const IronSquadGame = {
         lastReinforcements: this.lastReinforcements,
         outposts: this.outposts,
         dungeons: this.dungeons,
-        currentQuest: this.currentQuest
+        currentQuest: this.currentQuest,
+        fogExplored: this.ensureFog().serialize()
       };
       if (!saveSlots.update(this.activeSlotId, {data, state:'active'})) throw new Error('保存容量が不足しています');
     } catch (e) {
@@ -3915,6 +3949,18 @@ export const IronSquadGame = {
     const isCommandActive = now < this.commandActiveUntil;
     const currentRank = RANKS[this.rankIndex];
     this.rebuildMonsterSpatial();
+    this.rebuildSquadSpatial(aliveSquad);
+    // Precompute base-territory threats once/frame (avoids O(squad*monsters) filter hypot).
+    const threatR = BASE_TERRITORY_RADIUS + 250;
+    const threatR2 = threatR * threatR;
+    const btx = BASE_CAMP.x, bty = BASE_CAMP.y;
+    const threatList = this._baseThreatList || (this._baseThreatList = []);
+    threatList.length = 0;
+    for (let ti = 0; ti < (this.monsters || []).length; ti++) {
+      const tm = this.monsters[ti];
+      if (tm.isRaidMob || this._distSq(tm.x, tm.y, btx, bty) <= threatR2) threatList.push(tm);
+    }
+    this.revealFogAroundPlayer();
 
     // 部隊の重心を計算
     let squadCenterX = BASE_CAMP.x;
@@ -4049,7 +4095,7 @@ export const IronSquadGame = {
     }
 
     // 直属小隊割り当て（毎フレーム sort を避け GUARD_ASSIGN_INTERVAL 秒ごと）
-    const maxGuards = currentRank.personalGuards || 0;
+    const maxGuards = Math.min(currentRank.personalGuards || 0, PERSONAL_GUARD_MAX);
     this._guardAssignClock = (this._guardAssignClock == null) ? GUARD_ASSIGN_INTERVAL : this._guardAssignClock + dt;
     if (this._guardAssignClock >= GUARD_ASSIGN_INTERVAL) {
       this._guardAssignClock = 0;
@@ -4058,9 +4104,13 @@ export const IronSquadGame = {
         const scoreB = (b.isNamed ? 100 : 0) + (b.isVeteran ? 50 : 0) + (b.level || 1);
         return scoreB - scoreA;
       });
-      for (let gi = 0; gi < aliveSquad.length; gi++) aliveSquad[gi].isPersonalGuard = false;
+      for (let gi = 0; gi < aliveSquad.length; gi++) {
+        aliveSquad[gi].isPersonalGuard = false;
+        aliveSquad[gi]._guardSlot = -1;
+      }
       for (let i = 0; i < Math.min(maxGuards, sortedSquad.length); i++) {
         sortedSquad[i].isPersonalGuard = true;
+        sortedSquad[i]._guardSlot = i;
       }
     }
     let personalGuardCount = 0;
@@ -4085,7 +4135,7 @@ export const IronSquadGame = {
       if (proxBadge.textContent !== proxTxt) proxBadge.textContent = proxTxt;
     }
 
-    // 小隊（Platoons）ナビゲーション重心の更新 (本隊約50〜60名は本陣防衛圏内をテリトリーとし、危険ゾーン奥地へ勝手に迷い込むのを完全防止！)
+    // 小隊（Platoons）ナビゲーション重心の更新 (本隊約48名は本陣防衛圏内をテリトリーとし、危険ゾーン奥地へ勝手に迷い込むのを完全防止！)
     if (!this.platoons) this.initPlatoons();
     const BASE_TERRITORY_RADIUS = 2200;
     const BASE_TERRITORY_R2 = BASE_TERRITORY_RADIUS * BASE_TERRITORY_RADIUS;
@@ -4190,6 +4240,43 @@ export const IronSquadGame = {
       if(soldier.dead||soldier.isDown)return;
       if(handleTransportAI(this,soldier,dt))return;
 
+      // Far LOD v1.24.2: keep 2200 + 7/8 skip; expose farCam for boids.
+      const lodR = 2200;
+      let farCam = false;
+      if (!soldier.isPersonalGuard && !this.currentDungeon && this.camera && this.player) {
+        farCam = Math.abs(soldier.x - this.camera.x) > lodR || Math.abs(soldier.y - this.camera.y) > lodR;
+        const farPl = Math.hypot(soldier.x - this.player.x, soldier.y - this.player.y) > lodR;
+        if (farCam && farPl) {
+          soldier._lodTick = (soldier._lodTick || 0) + 1;
+          if ((soldier._lodTick & 7) !== 0) {
+            const pdx = platoon.x - soldier.x, pdy = platoon.y - soldier.y;
+            const pd = Math.hypot(pdx, pdy) || 1;
+            if (pd > 48) {
+              const sp = (soldier.speed || 90) * 0.28 * dt;
+              soldier.x += (pdx / pd) * sp;
+              soldier.y += (pdy / pd) * sp;
+            }
+            return;
+          }
+        }
+      } else if (this.camera) {
+        farCam = Math.abs(soldier.x - this.camera.x) > lodR || Math.abs(soldier.y - this.camera.y) > lodR;
+      }
+
+      // Personal-squad AI throttle: heavy every 4th frame (orbit/move every frame).
+      soldier._pgTick = (soldier._pgTick || 0) + 1;
+      const pgLight = !!soldier.isPersonalGuard && ((soldier._pgTick % 4) !== 0);
+
+      // Main-body near-cam: light move every frame; nearest/attack every 3 frames unless in range of cache.
+      soldier._mbTick = (soldier._mbTick || 0) + 1;
+      let mbCombatLight = false;
+      if (!soldier.isPersonalGuard) {
+        const ce = soldier._cachedEnemy;
+        const inRange = ce && !ce.dead && (ce.hp || 0) > 0 && this._distSq(ce.x, ce.y, soldier.x, soldier.y) <= (200 * 200);
+        if (!inRange && (soldier._mbTick % 3) !== 0) mbCombatLight = true;
+      }
+      const aiLight = pgLight || mbCombatLight;
+
       // 衛生兵（MEDIC）および大司教（HIGH_PRIEST）の自動救助
       if (clsKey === 'MEDIC' || clsKey === 'HIGH_PRIEST') {
         const downedMate = aliveSquad.find(m => m.isDown && !m.dead);
@@ -4210,9 +4297,10 @@ export const IronSquadGame = {
       }
 
       // 大司教（HIGH_PRIEST）のパッシブ: 聖域リジェネ結界 (周囲140pxの味方に毎秒最大HP1.5%持続治癒)
+      // v1.24.2: timer every frame; skip O(squad) heal pulse on AI light frames
       if (clsKey === 'HIGH_PRIEST') {
         soldier.regenTimer = (soldier.regenTimer || 0) + dt;
-        if (soldier.regenTimer >= 1.0) {
+        if (!aiLight && soldier.regenTimer >= 1.0) {
           soldier.regenTimer = 0;
           // 周囲の味方＆プレイヤー
           const healTargets = [this.player, ...aliveSquad.filter(m => !m.isDown)];
@@ -4227,17 +4315,27 @@ export const IronSquadGame = {
       }
 
       // 兵士同士のBoid反発 (団子化防止)
-      for (let j = 0; j < aliveSquad.length; j++) {
-        if (idx === j) continue;
-        const other = aliveSquad[j];
-        if (other.isDown) continue;
-        const odx = soldier.x - other.x;
-        const ody = soldier.y - other.y;
-        const odist = Math.hypot(odx, ody);
-        if (odist > 0 && odist < 22) {
-          const pushForce = (22 - odist) * 2.2 * dt;
-          soldier.x += (odx / odist) * pushForce;
-          soldier.y += (ody / odist) * pushForce;
+      // Boid separation (v1.24.2: near-camera only; skip farCam/off-screen + light frames)
+      let offScreenBoid = false;
+      if (this.camera && this.width && this.height) {
+        const z = this.camera.zoom || 1;
+        const halfW = (this.width / 2) / z + 80;
+        const halfH = (this.height / 2) / z + 80;
+        offScreenBoid = Math.abs(soldier.x - this.camera.x) > halfW || Math.abs(soldier.y - this.camera.y) > halfH;
+      }
+      if (!aiLight && !farCam && !offScreenBoid && ((idx + (soldier._lodTick || 0)) & 1) === 0) {
+        for (let j = 0; j < aliveSquad.length; j++) {
+          if (idx === j) continue;
+          const other = aliveSquad[j];
+          if (other.isDown) continue;
+          const odx = soldier.x - other.x;
+          const ody = soldier.y - other.y;
+          const odist = Math.hypot(odx, ody);
+          if (odist > 0 && odist < 22) {
+            const pushForce = (22 - odist) * 2.2 * dt;
+            soldier.x += (odx / odist) * pushForce;
+            soldier.y += (ody / odist) * pushForce;
+          }
         }
       }
 
@@ -4254,7 +4352,8 @@ export const IronSquadGame = {
       }
 
       // 衛生兵（MEDIC）＆大司教（HIGH_PRIEST）の治癒魔法 ＆ 神聖浄化弾
-      if (clsKey === 'MEDIC' || clsKey === 'HIGH_PRIEST') {
+      // v1.24.2: skip O(squad) hurt find on AI light frames (downed rescue above stays every frame)
+      if ((clsKey === 'MEDIC' || clsKey === 'HIGH_PRIEST') && !aiLight) {
         soldier.atkCooldown = (soldier.atkCooldown || 0) - dt;
         if (soldier.atkCooldown <= 0) {
           // 治癒対象の選定（プレイヤーまたはHP低下中の味方）
@@ -4315,8 +4414,7 @@ export const IronSquadGame = {
       // 自律移動目標の決定（直属小隊ならプレイヤーに追従！本隊なら小隊重心で防衛圏内を作戦行動！）
       let targetX, targetY;
       if (soldier.isPersonalGuard) {
-        // 直属小隊: プレイヤー周囲の精鋭護衛フォーメーション（プレイヤーがどこへ行っても随行！）
-        const guardIndex = aliveSquad.filter(s => s.isPersonalGuard).indexOf(soldier);
+        const guardIndex = soldier._guardSlot != null ? soldier._guardSlot : 0;
         const guardAngle = (guardIndex * 1.25) + (now * 0.001);
         const guardDist = 32 + (guardIndex % 4) * 10;
         targetX = this.player.x + Math.cos(guardAngle) * guardDist;
@@ -4339,10 +4437,36 @@ export const IronSquadGame = {
       }
 
       // 敵索敵（直属小隊は自由索敵。本隊兵士は防衛圏内の敵＋本陣強襲モブを索敵して迎撃）
-      const nearestEnemy = (soldier.isPersonalGuard || this.currentDungeon)
-        ? this.getNearestMonster(soldier.x, soldier.y)
-        : this.getNearestMonster(soldier.x, soldier.y, (m) => m.isRaidMob || Math.hypot(m.x - BASE_CAMP.x, m.y - BASE_CAMP.y) <= (BASE_TERRITORY_RADIUS + 250));
+      let nearestEnemy;
+      if (soldier.isPersonalGuard || this.currentDungeon) {
+        if (aiLight && soldier._cachedEnemy && !soldier._cachedEnemy.dead && (soldier._cachedEnemy.hp || 0) > 0) {
+          nearestEnemy = soldier._cachedEnemy;
+        } else {
+          nearestEnemy = this.getNearestMonster(soldier.x, soldier.y);
+          soldier._cachedEnemy = nearestEnemy;
+        }
+      } else if (aiLight && soldier._cachedEnemy && !soldier._cachedEnemy.dead && (soldier._cachedEnemy.hp || 0) > 0) {
+        nearestEnemy = soldier._cachedEnemy;
+      } else {
+        nearestEnemy = this.getNearestFromList(soldier.x, soldier.y, this._baseThreatList);
+        soldier._cachedEnemy = nearestEnemy;
+      }
       const enemyDist = nearestEnemy ? Math.hypot(nearestEnemy.x - soldier.x, nearestEnemy.y - soldier.y) : 9999;
+
+      // AI light frame: orbit/move only, skip auto-attack & class skills this tick.
+      if (aiLight) {
+        const dxL = targetX - soldier.x, dyL = targetY - soldier.y;
+        const distL = Math.hypot(dxL, dyL);
+        if (distL > 6) {
+          const moveStep = Math.min(distL * 3.5, soldier.speed) * dt;
+          soldier.x += (dxL / distL) * moveStep;
+          soldier.y += (dyL / distL) * moveStep;
+          soldier.facingAngle = Math.atan2(dyL, dxL);
+        }
+        if (soldier.atkAnim > 0) soldier.atkAnim -= dt * 5;
+        soldier.atkCooldown = (soldier.atkCooldown || 0) - dt;
+        return;
+      }
 
       // 兵種ごとの交戦間合い
       if (nearestEnemy && enemyDist < 360) {
@@ -4801,9 +4925,9 @@ export const IronSquadGame = {
 
     // モンスターの追跡＆攻撃＆大ボス固有スキル
     // Perf: awaken by camera/player/platoon — skip O(squad) scans for sleeping far mobs
-    const awakenR2 = 1100 * 1100;
+    const awakenR2 = 900 * 900; // v1.24.1 was 1100
     const camAx = this.camera.x, camAy = this.camera.y;
-    const camWake = 1500;
+    const camWake = 1200; // v1.24.1 was 1500
     for (let i = this.monsters.length - 1; i >= 0; i--) {
       const m = this.monsters[i];
       if (m.hitPulse > 0) m.hitPulse -= dt * 4;
@@ -4817,7 +4941,7 @@ export const IronSquadGame = {
         if (!awake && this.platoons) {
           for (let pi = 0; pi < this.platoons.length; pi++) {
             const pl = this.platoons[pi];
-            if (this._distSq(pl.x, pl.y, m.x, m.y) <= 900 * 900) { awake = true; break; }
+            if (this._distSq(pl.x, pl.y, m.x, m.y) <= 700 * 700) { awake = true; break; }
           }
         }
         if (!awake) {
@@ -4845,14 +4969,33 @@ export const IronSquadGame = {
           minDist = Math.sqrt(this._distSq(BASE_CAMP.x, BASE_CAMP.y, m.x, m.y));
         }
       } else {
-        for (const s of aliveSquad) {
-          if (s.isDown) continue;
-          const dsq = this._distSq(s.x, s.y, m.x, m.y);
-          if (dsq < minDist * minDist) {
-            minDist = Math.sqrt(dsq);
-            target = s;
+        // v1.24.2: near=every frame; mid=every 2; far=every 4. Prefer spatial nearby-only when not near player.
+        m._aiTick = (m._aiTick || 0) + 1;
+        const nearPlayer = pDistSq <= (520 * 520);
+        const farPlayer = pDistSq > (900 * 900);
+        const retargetPeriod = nearPlayer ? 1 : (farPlayer ? 4 : 2);
+        if (nearPlayer || (m._aiTick % retargetPeriod) === 0) {
+          if (nearPlayer) {
+            for (const s of aliveSquad) {
+              if (s.isDown) continue;
+              const dsq = this._distSq(s.x, s.y, m.x, m.y);
+              if (dsq < minDist * minDist) {
+                minDist = Math.sqrt(dsq);
+                target = s;
+              }
+            }
+          } else {
+            const nearS = this.getNearestSquadInSpatial(m.x, m.y, minDist);
+            if (nearS) {
+              target = nearS.s;
+              minDist = nearS.dist;
+            }
           }
+        } else if (m._cachedTarget && !m._cachedTarget.dead && (m._cachedTarget.hp || 0) > 0 && !m._cachedTarget.isDown) {
+          target = m._cachedTarget;
+          minDist = Math.sqrt(this._distSq(target.x, target.y, m.x, m.y));
         }
+        m._cachedTarget = target;
       }
 
       if (!m.isRaidMob) {
@@ -4860,7 +5003,7 @@ export const IronSquadGame = {
           const dx=m.homeX-m.x,dy=m.homeY-m.y,d=Math.sqrt(dx*dx+dy*dy);m.returningHome=d>30;
           if(d>30){const step=Math.min(d,m.speed*dt);m.x+=dx/d*step;m.y+=dy/d*step;}continue;
         }
-        if (minDist > 1000) continue;
+        if (minDist > 800) continue;
       }
 
       // 大ボスの固有スキルタイマー・発動処理
@@ -5055,6 +5198,48 @@ export const IronSquadGame = {
     }
   },
 
+  /** v1.24.2: alive non-down soldiers spatial hash for cheap enemy retarget. */
+  rebuildSquadSpatial(aliveSquad) {
+    const cell = SPATIAL_CELL;
+    const grid = this._squadGrid || (this._squadGrid = new Map());
+    grid.clear();
+    const arr = aliveSquad || [];
+    for (let i = 0; i < arr.length; i++) {
+      const s = arr[i];
+      if (!s || s.isDown) continue;
+      const cx = Math.floor(s.x / cell);
+      const cy = Math.floor(s.y / cell);
+      const key = cx + ',' + cy;
+      let bucket = grid.get(key);
+      if (!bucket) { bucket = []; grid.set(key, bucket); }
+      bucket.push(s);
+    }
+  },
+
+  /** Nearby-only nearest soldier via squad spatial (3x3 cells). Returns {s, dist} or null. */
+  getNearestSquadInSpatial(x, y, maxDist) {
+    const cell = SPATIAL_CELL;
+    const grid = this._squadGrid;
+    if (!grid || !grid.size) return null;
+    const cx = Math.floor(x / cell);
+    const cy = Math.floor(y / cell);
+    let nearest = null;
+    let minDistSq = (maxDist != null ? maxDist : 9999) * (maxDist != null ? maxDist : 9999);
+    for (let oy = -1; oy <= 1; oy++) {
+      for (let ox = -1; ox <= 1; ox++) {
+        const bucket = grid.get((cx + ox) + ',' + (cy + oy));
+        if (!bucket) continue;
+        for (let i = 0; i < bucket.length; i++) {
+          const s = bucket[i];
+          if (!s || s.isDown || s.dead) continue;
+          const dsq = this._distSq(s.x, s.y, x, y);
+          if (dsq < minDistSq) { minDistSq = dsq; nearest = s; }
+        }
+      }
+    }
+    return nearest ? { s: nearest, dist: Math.sqrt(minDistSq) } : null;
+  },
+
   getNearestMonster(x, y, filterFn = null) {
     const cell = SPATIAL_CELL;
     const grid = this._monsterGrid;
@@ -5079,6 +5264,19 @@ export const IronSquadGame = {
     }
     for (const m of this.monsters || []) {
       if (filterFn && !filterFn(m)) continue;
+      const dsq = this._distSq(m.x, m.y, x, y);
+      if (dsq < minDistSq) { minDistSq = dsq; nearest = m; }
+    }
+    return nearest;
+  },
+
+  getNearestFromList(x, y, list) {
+    let nearest = null;
+    let minDistSq = 9999 * 9999;
+    const arr = list || [];
+    for (let i = 0; i < arr.length; i++) {
+      const m = arr[i];
+      if (!m || m.dead || (m.hp != null && m.hp <= 0)) continue;
       const dsq = this._distSq(m.x, m.y, x, y);
       if (dsq < minDistSq) { minDistSq = dsq; nearest = m; }
     }
@@ -6254,7 +6452,7 @@ export const IronSquadGame = {
   isPersonalSquadSoldier(s) {
     if (!s || s.dead) return false;
     const currentRank = RANKS[this.rankIndex] || RANKS[0];
-    const maxGuards = currentRank.personalGuards || 0;
+    const maxGuards = Math.min(currentRank.personalGuards || 0, PERSONAL_GUARD_MAX);
     if (maxGuards > 0) return !!s.isPersonalGuard;
     return ((s.platoonId || 0) % 3) === 0;
   },
@@ -6390,7 +6588,7 @@ export const IronSquadGame = {
       return false;
     }
     const currentRank = RANKS[this.rankIndex] || RANKS[0];
-    const maxGuards = currentRank.personalGuards || 0;
+    const maxGuards = Math.min(currentRank.personalGuards || 0, PERSONAL_GUARD_MAX);
     const guardCount = (this.squad || []).filter(s => !s.dead && s.isPersonalGuard).length;
 
     if (destination === 'personal') {
@@ -7169,7 +7367,7 @@ export const IronSquadGame = {
     }
 
     const currentRank = RANKS[this.rankIndex];
-    const maxGuards = currentRank ? (currentRank.personalGuards || 0) : 0;
+    const maxGuards = currentRank ? Math.min(currentRank.personalGuards || 0, PERSONAL_GUARD_MAX) : 0;
     const isMySquadSoldier = (s) => this.isPersonalSquadSoldier(s);
 
     const mySquad = alive.filter(s => isMySquadSoldier(s));
@@ -7408,7 +7606,8 @@ export const IronSquadGame = {
 
   spawnSparks(x, y, color, count) {
     const room = Math.max(0, PARTICLE_CAP - this.particles.length);
-    const n = Math.min(count, room > 0 ? room : Math.min(count, 8));
+    // v1.24.1: hard cap sparks per burst (was up to 8/room)
+    const n = Math.min(count | 0, 5, room > 0 ? room : 3);
     for (let i = 0; i < n; i++) {
       const ang = Math.random() * Math.PI * 2;
       const spd = Math.random() * 140 + 40;
@@ -7599,6 +7798,11 @@ export const IronSquadGame = {
       this.ctx.beginPath();
       this.ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
       this.ctx.fill();
+    }
+
+    // Fog of war (bit-grid fillRect; skip inside dungeons)
+    if (!this.currentDungeon && this.fog) {
+      this.fog.drawFieldOverlay(this.ctx, this.camera, this.width, this.height, this.zoom || 1);
     }
 
     this.ctx.restore(); // カメラ復元
@@ -7796,8 +8000,9 @@ export const IronSquadGame = {
   },
 
   sceneryCoversUnit(o, scale) {
-    const covers = u => u && !u.dead && Math.abs(u.x-o.x)<30*scale && u.y<o.y+10 && u.y>o.y-65*scale;
-    return covers(this.player) || (this.squad || []).some(covers);
+    // v1.24.1: player-only (was O(squad) per visible prop → hitchy)
+    const u = this.player;
+    return !!(u && !u.dead && Math.abs(u.x - o.x) < 30 * scale && u.y < o.y + 10 && u.y > o.y - 65 * scale);
   },
 
   drawWorldObj(ctx, o, now, after) {
@@ -7862,8 +8067,9 @@ export const IronSquadGame = {
       ctx.lineCap = 'round';
       ctx.lineWidth = 5 * s;
       ctx.beginPath(); ctx.moveTo(0, 2); ctx.lineTo(1 * s, -28 * s); ctx.stroke();
+      // v1.24.1: fewer branch strokes (was 4)
       ctx.lineWidth = 2.5 * s;
-      [[-1, -14, -16, -30], [1, -20, 15, -38], [0, -26, -8, -44], [1, -10, 12, -22]].forEach(([x1, y1, x2, y2]) => {
+      [[-1, -14, -16, -30], [1, -20, 15, -38]].forEach(([x1, y1, x2, y2]) => {
         ctx.beginPath(); ctx.moveTo(x1 * s, y1 * s); ctx.lineTo(x2 * s + sway * 0.3, y2 * s); ctx.stroke();
       });
     } else if (o.type === 'rock') {
@@ -7906,9 +8112,7 @@ export const IronSquadGame = {
       ctx.beginPath(); ctx.moveTo(0, -40); ctx.lineTo(32, 2); ctx.lineTo(0, 2); ctx.closePath(); ctx.fill();
       ctx.fillStyle = '#16100c';
       ctx.beginPath(); ctx.moveTo(-9, 2); ctx.lineTo(0, -22); ctx.lineTo(9, 2); ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = 'rgba(255,255,255,0.25)';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.moveTo(-32, 2); ctx.lineTo(0, -40); ctx.lineTo(32, 2); ctx.stroke();
+      // v1.24.1: drop white outline stroke; keep pole only
       ctx.strokeStyle = '#6b4a2a';
       ctx.lineWidth = 2;
       ctx.beginPath(); ctx.moveTo(0, -40); ctx.lineTo(0, -52); ctx.stroke();
@@ -7930,10 +8134,10 @@ export const IronSquadGame = {
       ctx.beginPath(); ctx.ellipse(2, 3, 13 * s, 4 * s, 0, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#7a5530';
       ctx.fillRect(-10 * s, -18 * s, 20 * s, 20 * s);
-      ctx.strokeStyle = '#4b3220';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(-10 * s, -18 * s, 20 * s, 20 * s);
-      ctx.beginPath(); ctx.moveTo(-10 * s, -18 * s); ctx.lineTo(10 * s, 2); ctx.moveTo(10 * s, -18 * s); ctx.lineTo(-10 * s, 2); ctx.stroke();
+      // v1.24.1: fill only (drop strokeRect + X)
+      ctx.fillStyle = '#4b3220';
+      ctx.fillRect(-10 * s, -18 * s, 20 * s, 1.5 * s);
+      ctx.fillRect(-10 * s, 0, 20 * s, 1.5 * s);
     } else if (o.type === 'torch' || o.type === 'fire') {
       const big = o.type === 'fire';
       const fl = 0.78 + 0.22 * Math.sin(now * 0.021 + o.ph) + 0.1 * Math.sin(now * 0.047 + o.ph * 2);
@@ -8089,7 +8293,7 @@ export const IronSquadGame = {
     }
 
     // 流れる霧 (2 layers — was 3; radial gradients are expensive)
-    for (let i = 0; i < 2; i++) {
+    for (let i = 0; i < 1; i++) {
       const x = ((now * 0.012 * (i + 1) + i * 330) % (W + 500)) - 250;
       const y = H * (0.28 + 0.32 * i);
       ctx.save();
@@ -8946,7 +9150,15 @@ export const IronSquadGame = {
   drawSoldier(ctx, s, now) {
     const cls = SOLDIER_CLASSES[s.soldierClass || 'HEAVY'] || SOLDIER_CLASSES.HEAVY;
     const platoon = this.platoons?.[s.platoonId % 3];
-    drawFieldSoldier(ctx, s, now, cls, platoon?.color || '#829cae');
+    // v1.24.1: edge-of-view / far soldiers skip gear+weapon detail strokes
+    let simple = false;
+    if (this.camera && !s.isDown && !s.isNamed && !s.isCommander) {
+      const z = this.zoom || 1;
+      const mx = (this.width / (2 * z)) * 0.68;
+      const my = (this.height / (2 * z)) * 0.68;
+      simple = Math.abs(s.x - this.camera.x) > mx || Math.abs(s.y - this.camera.y) > my;
+    }
+    drawFieldSoldier(ctx, s, now, cls, platoon?.color || '#829cae', simple);
   },
 
   drawPlayer(ctx, p, now) {
@@ -8987,34 +9199,40 @@ export const IronSquadGame = {
     const inside = (x, y) => x > originX - 30 && x < originX + span + 30 && y > originY - 30 && y < originY + span + 30;
 
     if (!dungeon) {
+      const fog = this.ensureFog();
       for (let gy = 0; gy < 8; gy++) for (let gx = 0; gx < 8; gx++) {
-        mCtx.fillStyle = biomeAt(originX + (gx + 0.5) * span / 8, originY + (gy + 0.5) * span / 8).ground;
-        mCtx.fillRect(gx * mw / 8, gy * mh / 8, mw / 8 + 1, mh / 8 + 1);
+        const wx = originX + (gx + 0.5) * span / 8;
+        const wy = originY + (gy + 0.5) * span / 8;
+        const sx = gx * mw / 8, sy = gy * mh / 8, sw = mw / 8 + 1, sh = mh / 8 + 1;
+        if (fog.shadeMinimapCell(mCtx, wx, wy, sx, sy, sw, sh)) continue;
+        mCtx.fillStyle = biomeAt(wx, wy).ground;
+        mCtx.fillRect(sx, sy, sw, sh);
       }
-      if (inside(BASE_CAMP.x, BASE_CAMP.y)) {
+      if (inside(BASE_CAMP.x, BASE_CAMP.y) && fog.isExploredWorld(BASE_CAMP.x, BASE_CAMP.y)) {
         mCtx.fillStyle = '#c4b48a';
         mCtx.fillRect(px(BASE_CAMP.x) - 2.4, py(BASE_CAMP.y) - 2.4, 4.8, 4.8);
       }
       let nearestOp = null, minOpDist = Infinity;
       for (const op of this.outposts || []) {
         if (op.cleared) continue;
+        if (!fog.isExploredWorld(op.x, op.y)) continue;
         const d = Math.hypot(op.x - this.player.x, op.y - this.player.y);
         if (d < minOpDist) { minOpDist = d; nearestOp = op; }
       }
       for (const op of this.outposts || []) {
-        if (!inside(op.x, op.y)) continue;
+        if (!inside(op.x, op.y) || !fog.isExploredWorld(op.x, op.y)) continue;
         mCtx.fillStyle = op.cleared ? '#8a9a84' : (op === nearestOp ? '#d7b56a' : 'rgba(215,181,106,0.45)');
         mCtx.beginPath();
         mCtx.arc(px(op.x), py(op.y), op === nearestOp ? 2.2 : 1.3, 0, Math.PI * 2);
         mCtx.fill();
       }
       for (const d of this.dungeons || []) {
-        if (!inside(d.entrance.x, d.entrance.y)) continue;
+        if (!inside(d.entrance.x, d.entrance.y) || !fog.isExploredWorld(d.entrance.x, d.entrance.y)) continue;
         mCtx.fillStyle = d.kind === 'town' ? '#e1cf9d' : d.kind === 'ruin' ? '#8d7b68' : '#d7b56a';
         mCtx.fillRect(px(d.entrance.x) - 1.6, py(d.entrance.y) - 1.6, 3.2, 3.2);
       }
       for (const m of this.monsters || []) {
-        if (!m.isColossal || !inside(m.x, m.y)) continue;
+        if (!m.isColossal || !inside(m.x, m.y) || !fog.isExploredWorld(m.x, m.y)) continue;
         mCtx.fillStyle = '#c45a4a';
         mCtx.beginPath();
         mCtx.arc(px(m.x), py(m.y), 2.4, 0, Math.PI * 2);
@@ -9118,6 +9336,7 @@ export const IronSquadGame = {
   destroy() {
     this.stopGameLoop();
     this.worldTerrain = null;
+    this.fog = null;
     if (this.stickHandlers) {
       const {move,end} = this.stickHandlers;
       window.removeEventListener('mousemove',move);
