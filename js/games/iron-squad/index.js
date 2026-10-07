@@ -11,14 +11,14 @@
  */
 import { sound } from '../../audio.js';
 import { storage } from '../../storage.js';
-import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow } from './visuals.js?v=89';
-import { drawMeleeRangeCue, meleeDrawReach, attackAnimationRate } from './weapon-motion.js?v=89';
+import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow } from './visuals.js?v=91';
+import { drawMeleeRangeCue, meleeDrawReach, attackAnimationRate } from './weapon-motion.js?v=91';
 import { saveSlots } from './save-slots.js';
-import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog } from './interface.js?v=89';
-import { ensureSoldierAppearance, drawSoldierPortrait, describeSoldierAppearance } from './soldier-appearance.js?v=89';
+import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog } from './interface.js?v=91';
+import { ensureSoldierAppearance, drawSoldierPortrait, describeSoldierAppearance } from './soldier-appearance.js?v=91';
 import { attachSurfaceEvents, detachSurfaceEvents, frameSurfaceReady, releaseSceneCaches, releaseCanvas, surfaceCanResume } from './canvas-surface.js?v=83';
 import { WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt } from './world.js?v=83';
-import { FogGrid, FOG_REVEAL_RADIUS, FOG_CAMP_REVEAL } from './fog.js?v=83';
+import { FogGrid, FOG_REVEAL_RADIUS, FOG_CAMP_REVEAL } from './fog.js?v=92';
 import {
   classTierOf, nextClassId, classUpCostForNext, canAffordClassUp, formatClassUpCostJa, classUpShortageJa,
   playerClassTier, nextPlayerStage, playerStageById, CLASS_TIER_LABELS, PLAYER_CLASS_STAGES
@@ -31,7 +31,7 @@ import {
   SHARED_BOX_MAX_TIER, SCOUT_COST_BY_TALENT, defaultDonateAmount, donatePresetAmounts
 } from './economy-rules.js';
 
-import { EQUIPMENT_TYPES, saleValue, equippedIds, canSell, lowValueIds, chooseLootTier, distanceScaling, shrineUpgradeCap, compareEquipment, equipmentScore, weaponCombatProfile, evaluateMeleeSweetSpot, isGodRollProtected, zoneRingPower, zoneRingLabelJa } from './equipment-rules.js?v=89';
+import { EQUIPMENT_TYPES, saleValue, equippedIds, canSell, lowValueIds, chooseLootTier, distanceScaling, shrineUpgradeCap, compareEquipment, equipmentScore, weaponCombatProfile, evaluateMeleeSweetSpot, isGodRollProtected, zoneRingPower, zoneRingLabelJa } from './equipment-rules.js?v=92';
 import {
   WEAPON_STYLES, WEAPON_STYLE_LABELS, WEAPON_STYLE_ICONS,
   MELEE_STYLES, RANGED_STYLES, HIT_GROWTH_SOFT_CAP,
@@ -45,7 +45,7 @@ import {
 
 import { daylightAt, advanceWorldClock, periodEnemy, enemyAvailable, PERIOD_ENEMIES } from './day-night.js';
 
-import { RESCUE_TIMEOUT, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, CIV_KINDS } from './casualty-rules.js';
+import { RESCUE_TIMEOUT, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, markSoldierDown, CIV_KINDS, isMedic, regenMedicStamina, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST } from './casualty-rules.js?v=92';
 import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault } from './dungeon.js';
 import {
   EXPEDITION_CHECK_INTERVAL, EXPEDITION_RETURN_HOME, EXPEDITION_ENGAGE_R,
@@ -86,6 +86,9 @@ export const COLOSSAL_RESPAWN=210; // was 75
 /** v1.25.7: platoon expedition -> nation hub / main-army pick / danger tier (live map) / return rewards + inferior bonus; SW v77. */
 /** v1.25.8: fog never full-black / multi-stage class-up / zone ring x10 softcap 1e6 / 魔王城~10M fixedStats; SW v78. */
 /** v1.25.11: fog player-cell fail-safe + viewport reseed + camp→player _lastX fix / module ?v=81; SW v81. */
+/** v1.27.8: HQ downs mortal (slow bleed, no farm) + medic stamina soft-cap; SW v92. */
+/** v1.27.7: HQ rescue-bonus once-per-down latch (no farm loop) + base raids from phase 4; SW v91. */
+/** v1.27.6: rescue XP/gold attribution to acting unit (not always captain); SW v90. */
 /** v1.27.4: melee swing sweet spots (sword wide / spear tip / hammer mid; ranged fixed); SW v88. */
 /** v1.26.0: command UI hierarchy / compact roster / bag filters / nested dialog focus / New Game and awakening UI fixes; SW v82. */
 /** v1.25.5: スカウト候補5枠 / 天才再募集確認 / 天才出現率低下(0.25%); SW v75. */
@@ -4297,7 +4300,7 @@ export const IronSquadGame = {
   checkBaseRaidTrigger() {
     if (this.baseRaidActive || this.restTimer > 0 || this.currentDungeon) return;
     const curPhase = this.phase || 1;
-    if (curPhase < 2) return; // 第1期はチュートリアル
+    if (curPhase < 4) return; // v1.27.7: no HQ/base raid until phase 4 (was phase 2+)
     if (this.baseRaidTriggeredPhase === curPhase) return; // 1作戦期あたり最大1回
 
     // 作戦残り時間55%以下（約50秒経過）で強襲発生
@@ -4462,12 +4465,7 @@ export const IronSquadGame = {
       if (this.squad) {
         for (const s of this.squad) {
           if (!s.dead && !s.isDown && !s.isPersonalGuard && Math.random() < 0.35) {
-            s.hp = 0;
-            s.isDown = true;
-            s.timesDown = (s.timesDown || 0) + 1;
-            s.downTimer = RESCUE_TIMEOUT;
-            s.rescueProgress = 0;
-            downCount++;
+            if (markSoldierDown(this, s)) downCount++;
           }
         }
       }
@@ -5163,6 +5161,7 @@ export const IronSquadGame = {
     updateWounded(this,dt);
     for(let i=aliveSquad.length-1;i>=0;i--)if(aliveSquad[i].dead)aliveSquad.splice(i,1);
     this._medicRescueAssign = buildMedicRescueAssign(aliveSquad);
+    for (const m of aliveSquad) { if (isMedic(m)) regenMedicStamina(m, dt); }
     if (!this.currentDungeon) {
       this._civSpawnClock = (this._civSpawnClock || 0) + dt;
       if (this._civSpawnClock >= 12) { this._civSpawnClock = 0; ensureCiviliansSpawned(this, { targetCount: 4 }); }
@@ -5241,14 +5240,17 @@ export const IronSquadGame = {
         soldier.regenTimer = (soldier.regenTimer || 0) + dt;
         if (!aiLight && soldier.regenTimer >= 1.0) {
           soldier.regenTimer = 0;
-          // 周囲の味方＆プレイヤー
-          const healTargets = [this.player, ...aliveSquad.filter(m => !m.isDown)];
-          for (const ht of healTargets) {
-            if (Math.hypot(ht.x - soldier.x, ht.y - soldier.y) <= 140) {
-              const regAmt = Math.max(3, Math.floor(ht.maxHp * 0.015));
-              const restored=healByMedic(soldier,ht,regAmt);
-              if(restored>0) this.spawnDamageText(ht.x, ht.y - 14, `+${Math.round(restored)}`, '#34d399');
+          if (medicHasStamina(soldier, MEDIC_AURA_COST)) {
+            const healTargets = [this.player, ...aliveSquad.filter(m => !m.isDown)];
+            let any = 0;
+            for (const ht of healTargets) {
+              if (Math.hypot(ht.x - soldier.x, ht.y - soldier.y) <= 140) {
+                const regAmt = Math.max(3, Math.floor(ht.maxHp * 0.015));
+                const restored=healByMedic(soldier,ht,regAmt);
+                if(restored>0) { any += restored; this.spawnDamageText(ht.x, ht.y - 14, `+${Math.round(restored)}`, '#34d399'); }
+              }
             }
+            if (any > 0) spendMedicStamina(soldier, MEDIC_AURA_COST);
           }
         }
       }
@@ -5306,6 +5308,8 @@ export const IronSquadGame = {
           }
 
           if (hurtTarget && Math.hypot(hurtTarget.x - soldier.x, hurtTarget.y - soldier.y) <= (cls.range || 180)) {
+            if (!medicHasStamina(soldier, MEDIC_HEAL_COST)) { soldier.atkCooldown = 0.4; }
+            else if (spendMedicStamina(soldier, MEDIC_HEAL_COST)) {
             soldier.atkCooldown = cls.atkCooldown;
             soldier.atkAnim = 1.0;
             soldier.facingAngle = Math.atan2(hurtTarget.y - soldier.y, hurtTarget.x - soldier.x);
@@ -5326,6 +5330,7 @@ export const IronSquadGame = {
               isHighHeal: isHigh
             });
             sound.playItem();
+            }
           } else if (clsKey === 'HIGH_PRIEST') {
             // 大司教は全員が元気な場合、敵へ「神聖浄化弾 (SMITE)」を放ち攻撃に参加！
             const nearestEnemyToHealer = this.getNearestMonster(soldier.x, soldier.y);
@@ -6475,12 +6480,8 @@ export const IronSquadGame = {
         this.gameOver();
       } else {
         if (!target.isDown) {
-          target.hp = 0;
-          target.isDown = true;
-          target.timesDown = (target.timesDown || 0) + 1;
-          target.downTimer = RESCUE_TIMEOUT;
-          target.rescueProgress = 0;
-          releaseWounded(this,target);delete target.carrierId;
+          releaseWounded(this,target);
+          markSoldierDown(this, target);
           sound.playHit(1);
           this.spawnDamageText(target.x, target.y - 20, '🆘 行動不能！', '#f87171');
           const nameDisp = target.isNamed ? `【${target.title}${target.name}】` : target.name;
