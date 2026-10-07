@@ -23,7 +23,7 @@ import {
   SHARED_BOX_MAX_TIER, SCOUT_COST_BY_TALENT
 } from './economy-rules.js';
 
-import { EQUIPMENT_TYPES, saleValue, equippedIds, canSell, lowValueIds, chooseLootTier, distanceScaling, shrineUpgradeCap, compareEquipment, equipmentScore, weaponCombatProfile } from './equipment-rules.js';
+import { EQUIPMENT_TYPES, saleValue, equippedIds, canSell, lowValueIds, chooseLootTier, distanceScaling, shrineUpgradeCap, compareEquipment, equipmentScore, weaponCombatProfile, isGodRollProtected } from './equipment-rules.js';
 import {
   WEAPON_STYLES, WEAPON_STYLE_LABELS, WEAPON_STYLE_ICONS,
   MELEE_STYLES, RANGED_STYLES, HIT_GROWTH_SOFT_CAP,
@@ -62,7 +62,7 @@ export const COLOSSAL_FIRST_SPAWN=60; // was 12
 export const COLOSSAL_RESPAWN=210; // was 75
 // Colossal HP/ATK baked into COLOSSAL_BOSS_DEFS (×1.75 HP / ×1.6 ATK vs v1.23.1)
 /** Base-camp raid (本陣強襲): v1.23.3 — 本隊ほぼ壊滅・精鋭のみ辛うじて生存。プレイヤー帰還は倒せる範囲。 */
-/** Perf patch v1.24.3: fog black-screen fix (seed+empty-grid guard), spatial safe, SW v65. (was v1.24.2 army48/SW v63) */
+/** Perf patch v1.24.7: 異質/神鍛 never auto-sell / never 国庫共有 deposit; SW v69. */
 export const RAID_SCALE_DIST=28000; // chaos-tier scale (was 4500)
 export const RAID_HP_MULT=2.85; // was 2.4 (v1.23.2) / 0.85 (old)
 export const RAID_ATK_MULT=1.95; // was 1.25 — melt 本隊 fodder; elites scrape through
@@ -568,20 +568,79 @@ const TIERS = [
     shield: '神聖のイージス', helmet: '神聖の宝冠', armor: '神聖の鎧', gloves: '神聖の小手', legs: '神聖の具足', amulet: '神々の紋章' }
 ];
 
+/** 同一ティア同一武器種でも個体差が出るよう、生成時に確定する倍率・異質タグを振る。再装備では再抽選しない。 */
+export function rollItemQuality(item, random = Math.random) {
+  if (!item) return item;
+  if (item.rollMult != null && Number.isFinite(Number(item.rollMult))) return item;
+
+  const tier = Math.max(1, Math.min(7, item.tier || 1));
+  const cur = TIERS.find(t => t.tier === tier) || TIERS[0];
+  const next = TIERS.find(t => t.tier === Math.min(7, tier + 1)) || cur;
+  const skip2 = TIERS.find(t => t.tier === Math.min(7, tier + 2)) || next;
+  const nextRatio = next.mult / cur.mult;
+  const skip2Ratio = skip2.mult / cur.mult;
+  const r = Math.min(0.999999999, Math.max(0, random()));
+
+  // 神鍛 ~0.3% / 異質 ~0.7%（合計~1%）/ 通常は ±12% 程度の個体差
+  if (r < 0.003) {
+    if (tier >= 7) {
+      item.rollMult = Math.round((1.55 + random() * 0.45) * 1000) / 1000;
+    } else {
+      const lo = nextRatio * 1.12;
+      const hi = skip2Ratio * 1.08;
+      item.rollMult = Math.round((lo + random() * Math.max(0.01, hi - lo)) * 1000) / 1000;
+    }
+    item.forgeTag = '神鍛';
+    item.powerSkip = 2;
+    item.isGodRoll = true;
+  } else if (r < 0.01) {
+    if (tier >= 7) {
+      item.rollMult = Math.round((1.25 + random() * 0.25) * 1000) / 1000;
+    } else {
+      item.rollMult = Math.round(nextRatio * (0.92 + random() * 0.26) * 1000) / 1000;
+    }
+    item.forgeTag = '異質';
+    item.powerSkip = 1;
+    item.isGodRoll = true;
+  } else {
+    // 武器は幅広め、防具は控えめな個体差
+    const isWeapon = item.type === 'WEAPON';
+    const lo = isWeapon ? 0.88 : 0.92;
+    const span = isWeapon ? 0.24 : 0.16;
+    item.rollMult = Math.round((lo + random() * span) * 1000) / 1000;
+    item.forgeTag = null;
+    item.powerSkip = 0;
+    item.isGodRoll = false;
+  }
+
+  if (item.forgeTag) {
+    const bare = String(item.baseName || item.name || '').replace(/【(?:異質|神鍛)】/g, '').replace(/\+\d+$/, '');
+    item.baseName = `${bare}【${item.forgeTag}】`;
+    item.name = item.upgrade > 0 ? `${item.baseName}+${item.upgrade}` : item.baseName;
+    item.color = item.forgeTag === '神鍛' ? '#ffd700' : '#e879f9';
+  }
+  return item;
+}
+
 export function applyUpgradeStats(item, upgradeLevel) {
   item.upgrade = upgradeLevel;
   if (!item.baseName) item.baseName = item.name.replace(/\+\d+$/, '');
+  // 異質/神鍛サフィックスを baseName に保持
   item.name = item.upgrade > 0 ? `${item.baseName}+${item.upgrade}` : item.baseName;
   const chosenTier = TIERS.find(t => t.tier === item.tier) || TIERS[0];
   const plusMult = 1 + item.upgrade * 0.25;
   const baseValue = Math.floor(10 + chosenTier.tier * 5);
+  const rm = (item.rollMult != null && Number.isFinite(Number(item.rollMult))) ? Number(item.rollMult) : 1;
+  // ぶっ飛び個体は付帯効果判定だけ上位ティア相当（ドロップ・ティア自体は変えない＝T7 vault制限維持）
+  const effTier = Math.min(7, chosenTier.tier + (item.powerSkip || 0));
   item.stats = item.stats || {};
 
   if (item.type === 'WEAPON') {
     const style = item.weaponStyle || 'sword';
     const profile = weaponCombatProfile(item);
     // 攻速低下分を攻撃力で補填。鎚/クロスボウ/火砲は実ヒット頻度低下前提で厚め。
-    item.stats.atk = Math.floor(baseValue * chosenTier.mult * plusMult * (profile.atkMult || 1));
+    item.stats.atk = Math.floor(baseValue * chosenTier.mult * plusMult * (profile.atkMult || 1) * rm);
+    // 攻速は武器種の個性として固定（個体倍率は攻撃力側に載せる）
     if (style === 'spear') {
       item.stats.atkSpeed = Math.floor(-18 - chosenTier.tier * 2);
       item.pierce = true;
@@ -601,30 +660,34 @@ export function applyUpgradeStats(item, upgradeLevel) {
       delete item.stats.atkSpeed;
       delete item.pierce;
     }
-    if (chosenTier.tier >= 4) item.stats.crit = Math.min(80, chosenTier.tier * 10);
-    if (chosenTier.tier >= 6) item.stats.lightning = true;
+    if (effTier >= 4) item.stats.crit = Math.min(80, Math.floor(effTier * 10 * Math.min(1.35, Math.max(0.85, rm))));
+    else delete item.stats.crit;
+    if (effTier >= 6) item.stats.lightning = true;
+    else delete item.stats.lightning;
   } else if (item.type === 'SHIELD') {
-    item.stats.def = Math.floor(baseValue * 1.5 * chosenTier.mult * plusMult);
-    item.stats.hp = Math.floor(baseValue * 1.5 * Math.pow(chosenTier.tier, 1.3) * plusMult);
-    item.stats.blockChance = Math.min(45, 15 + chosenTier.tier * 5);
+    item.stats.def = Math.floor(baseValue * 1.5 * chosenTier.mult * plusMult * rm);
+    item.stats.hp = Math.floor(baseValue * 1.5 * Math.pow(chosenTier.tier, 1.3) * plusMult * rm);
+    item.stats.blockChance = Math.min(45, 15 + effTier * 5);
   } else if (item.type === 'HELMET') {
-    item.stats.def = Math.floor(baseValue * 1.1 * chosenTier.mult * plusMult);
-    item.stats.hp = Math.floor(baseValue * 2.0 * Math.pow(chosenTier.tier, 1.3) * plusMult);
+    item.stats.def = Math.floor(baseValue * 1.1 * chosenTier.mult * plusMult * rm);
+    item.stats.hp = Math.floor(baseValue * 2.0 * Math.pow(chosenTier.tier, 1.3) * plusMult * rm);
   } else if (item.type === 'ARMOR') {
-    item.stats.def = Math.floor(baseValue * 2.2 * chosenTier.mult * plusMult);
-    item.stats.hp = Math.floor(baseValue * 3.0 * Math.pow(chosenTier.tier, 1.3) * plusMult);
-    if (chosenTier.tier >= 5) item.stats.regen = chosenTier.tier * 2;
+    item.stats.def = Math.floor(baseValue * 2.2 * chosenTier.mult * plusMult * rm);
+    item.stats.hp = Math.floor(baseValue * 3.0 * Math.pow(chosenTier.tier, 1.3) * plusMult * rm);
+    if (effTier >= 5) item.stats.regen = Math.floor(effTier * 2 * Math.min(1.4, Math.max(0.85, rm)));
+    else delete item.stats.regen;
   } else if (item.type === 'GLOVES') {
-    item.stats.def = Math.floor(baseValue * 0.8 * chosenTier.mult * plusMult);
-    item.stats.atk = Math.floor(baseValue * 0.5 * chosenTier.mult * plusMult);
-    item.stats.atkSpeed = Math.floor(5 + chosenTier.tier * 3 + item.upgrade);
+    item.stats.def = Math.floor(baseValue * 0.8 * chosenTier.mult * plusMult * rm);
+    item.stats.atk = Math.floor(baseValue * 0.5 * chosenTier.mult * plusMult * rm);
+    item.stats.atkSpeed = Math.floor((5 + chosenTier.tier * 3 + item.upgrade) * rm);
   } else if (item.type === 'LEGS') {
-    item.stats.def = Math.floor(baseValue * 0.9 * chosenTier.mult * plusMult);
-    item.stats.speed = Math.floor(6 + chosenTier.tier * 3 + item.upgrade * 2);
+    item.stats.def = Math.floor(baseValue * 0.9 * chosenTier.mult * plusMult * rm);
+    item.stats.speed = Math.floor((6 + chosenTier.tier * 3 + item.upgrade * 2) * rm);
   } else if (item.type === 'AMULET') {
-    item.stats.speed = Math.floor(8 + chosenTier.tier * 2 + item.upgrade);
-    item.stats.atkSpeed = Math.floor(10 + chosenTier.tier * 5 + item.upgrade * 2);
-    if (chosenTier.tier >= 5) item.stats.vampire = 0.2;
+    item.stats.speed = Math.floor((8 + chosenTier.tier * 2 + item.upgrade) * rm);
+    item.stats.atkSpeed = Math.floor((10 + chosenTier.tier * 5 + item.upgrade * 2) * rm);
+    if (effTier >= 5) item.stats.vampire = 0.2;
+    else delete item.stats.vampire;
   }
 }
 
@@ -646,7 +709,8 @@ export function getEquipVisual(item, defaultTier = 1, defaultColor = null) {
     color: item.color || '#64748b',
     mat: item.mat || '',
     upgrade: item.upgrade || 0,
-    isGod: (item.tier || 1) >= 6 || (item.upgrade || 0) >= 5,
+    isGod: (item.tier || 1) >= 6 || (item.upgrade || 0) >= 5 || !!item.isGodRoll,
+    forgeTag: item.forgeTag || null,
     hasItem: true
   };
 }
@@ -689,8 +753,13 @@ export function generateRandomDrop(distance, kind = 'normal') {
     mat: chosenTier.mat,
     color: chosenTier.color,
     stats: {},
-    isGod: chosenTier.tier >= 6
+    isGod: chosenTier.tier >= 6,
+    rollMult: null,
+    forgeTag: null,
+    powerSkip: 0,
+    isGodRoll: false
   };
+  rollItemQuality(item);
   applyUpgradeStats(item, plusVal);
   return item;
 }
@@ -868,7 +937,6 @@ export const IronSquadGame = {
             🛡️ 本陣防衛圏 (★☆☆☆☆)
           </div>
 
-          <div id="transport-badge" class="transport-badge hidden"><span id="transport-status"></span><button id="btn-release-wounded" type="button">紐を外す</button></div>
           <div id="day-night-badge" class="proximity-badge" aria-label="時間帯と時刻">☀ 昼 06:00</div>
 
           <!-- 部隊距離インジケーター（画面左上2段目） -->
@@ -920,22 +988,29 @@ export const IronSquadGame = {
                 <div id="dpad-knob" class="dpad-knob"></div>
               </div>
             </div>
-            <div class="pad-buttons-zone">
-              <button id="btn-pad-command" class="pad-btn pad-btn-command hidden" title="号令">
-                <span class="pad-btn-icon">📢</span>
-                <span class="pad-btn-label">呼集</span>
-              </button>
-              <button id="btn-pad-power" class="pad-btn pad-btn-power ready" title="渾身強撃 (パワーアタック)">
-                <span class="pad-btn-icon">💥</span>
-                <span class="pad-btn-label">強撃</span>
-                <div id="pad-power-cd-overlay" class="pad-cd-overlay hidden">
-                  <span id="pad-power-cd-text" class="pad-cd-text">0.0</span>
-                </div>
-              </button>
-              <button id="btn-pad-attack" class="pad-btn pad-btn-attack" title="手動攻撃">
-                <span class="pad-btn-icon">🗡️</span>
-                <span class="pad-btn-label">攻撃</span>
-              </button>
+            <div class="pad-buttons-column">
+              <!-- 搬送・救助ステータス（コントローラ右ボタン上部） -->
+              <div id="transport-badge" class="transport-badge hidden">
+                <span id="transport-status"></span>
+                <button id="btn-release-wounded" type="button">紐を外す</button>
+              </div>
+              <div class="pad-buttons-zone">
+                <button id="btn-pad-command" class="pad-btn pad-btn-command hidden" title="号令">
+                  <span class="pad-btn-icon">📢</span>
+                  <span class="pad-btn-label">呼集</span>
+                </button>
+                <button id="btn-pad-power" class="pad-btn pad-btn-power ready" title="渾身強撃 (パワーアタック)">
+                  <span class="pad-btn-icon">💥</span>
+                  <span class="pad-btn-label">強撃</span>
+                  <div id="pad-power-cd-overlay" class="pad-cd-overlay hidden">
+                    <span id="pad-power-cd-text" class="pad-cd-text">0.0</span>
+                  </div>
+                </button>
+                <button id="btn-pad-attack" class="pad-btn pad-btn-attack" title="手動攻撃">
+                  <span class="pad-btn-icon">🗡️</span>
+                  <span class="pad-btn-label">攻撃</span>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -3087,18 +3162,21 @@ export const IronSquadGame = {
 
     const dragged=carriedSoldiers(this,this.player),transportBadge=document.getElementById('transport-badge');
     if(transportBadge){
+      const releaseBtn = document.getElementById('btn-release-wounded');
       if(this.rescueBuffTimer > 0) {
         transportBadge.classList.remove('hidden');
         transportBadge.style.background = 'linear-gradient(135deg, rgba(56,189,248,0.25), rgba(14,165,233,0.35))';
         transportBadge.style.borderColor = '#38bdf8';
         const statusEl = document.getElementById('transport-status');
         if(statusEl) statusEl.textContent = `✨ 救助の英雄加速中 (${Math.ceil(this.rescueBuffTimer)}秒)`;
+        if(releaseBtn) releaseBtn.style.display = dragged.length > 0 ? '' : 'none';
       } else {
         transportBadge.classList.toggle('hidden',!dragged.length);
         transportBadge.style.background = '';
         transportBadge.style.borderColor = '';
         const statusEl = document.getElementById('transport-status');
         if(statusEl) statusEl.textContent = `紐で搬送 ${dragged.length}/${carryingCapacity(this.player)}名 · 拠点へ`;
+        if(releaseBtn) releaseBtn.style.display = '';
       }
     }
     const clock=daylightAt(this.worldTime);
@@ -6059,10 +6137,13 @@ export const IronSquadGame = {
     }
 
     let toastText = '';
+    const forgeNote = item.forgeTag === '神鍛'
+      ? '⚡神鍛ぶっ飛び！'
+      : (item.forgeTag === '異質' ? '✨異質個体！' : '');
     if (isBossDrop) {
-      toastText = `👑【ボス戦利品獲得！】[T${item.tier} ${item.mat}] ${item.name}！`;
+      toastText = `👑【ボス戦利品獲得！】${forgeNote}[T${item.tier} ${item.mat}] ${item.name}！`;
     } else {
-      toastText = `😈 [T${item.tier} ${item.mat}] ${item.name} を横取り！${autoEquipped ? ' (即装備)' : ''}`;
+      toastText = `😈 ${forgeNote}[T${item.tier} ${item.mat}] ${item.name} を横取り！${autoEquipped ? ' (即装備)' : ''}`;
     }
     this.showToast(toastText);
     this.saveGame();
@@ -6084,6 +6165,9 @@ export const IronSquadGame = {
       // 通常乗り換え: 外した装備は必ずバッグへ戻す（以前装備していても未保護なら売却可）
       if (!this.inventory) this.inventory = [];
       if (!this.inventory.some(i => i.id === curItem.id)) this.inventory.push(curItem);
+      const cmp = compareEquipment(item, curItem);
+      const tag = item.forgeTag ? `【${item.forgeTag}】` : '';
+      this.showToast(`着替え ${item.name}${tag}｜${cmp.label}｜${cmp.text}`);
     }
 
     this.equipped[slotKey] = item;
@@ -6393,10 +6477,19 @@ export const IronSquadGame = {
         }).join('')
       : '<span style="color:#64748b;">なし</span>';
     const eq = s.equipped || {};
+    const slotJa = {weapon:'武器',shield:'盾',helmet:'兜',armor:'鎧',gloves:'手',legs:'脚',amulet:'装飾'};
     const eqLines = ['weapon','shield','helmet','armor','gloves','legs','amulet'].map(k => {
       const it = eq[k];
-      if (!it) return `<div>${k}: <span style="color:#64748b;">未装備</span></div>`;
-      return `<div>${k}: <span style="color:${it.color || '#e2e8f0'};">[T${it.tier}] ${it.name}+${it.upgrade || 0}</span></div>`;
+      if (!it) return `<div>${slotJa[k]||k}: <span style="color:#64748b;">未装備</span></div>`;
+      const st = it.stats || {};
+      const bits = [];
+      if (st.atk) bits.push(`攻${st.atk}`);
+      if (st.def) bits.push(`防${st.def}`);
+      if (st.hp) bits.push(`HP${st.hp}`);
+      if (it.forgeTag) bits.push(it.forgeTag);
+      const bitTxt = bits.length ? ` (${bits.join(' ')})` : '';
+      const up = it.upgrade > 0 ? `+${it.upgrade}` : '';
+      return `<div>${slotJa[k]||k}: <span style="color:${it.color || '#e2e8f0'};">[T${it.tier}] ${it.name}${up}</span>${bitTxt}</div>`;
     }).join('');
     const role = s.isPersonalGuard ? '⭐ 自部隊（直属）' : '🏰 本隊';
     const hitPct = Math.round((s.hitGrowthPct || 0) * 1000) / 10;
@@ -6706,6 +6799,13 @@ export const IronSquadGame = {
     this.treasury = (this.treasury || 0) + settle.goldReturnToTreasury + settle.gearSellToTreasury;
     this.sharedEquipBox = this.sharedEquipBox || [];
     for (const it of settle.gearToBox) this.sharedEquipBox.push(it);
+    // 異質/神鍛 returned to personal inventory (never shared-box / auto-sell on dismiss)
+    if (settle.gearToPlayer && settle.gearToPlayer.length) {
+      this.inventory = this.inventory || [];
+      for (const it of settle.gearToPlayer) {
+        if (it && !this.inventory.some(i => i && i.id === it.id)) this.inventory.push(it);
+      }
+    }
     if (this.phaseFiscal) {
       this.phaseFiscal.dismissRefund = (this.phaseFiscal.dismissRefund || 0) + settle.refundToPlayer;
       this.phaseFiscal.surplusSales = (this.phaseFiscal.surplusSales || 0) + settle.gearSellToTreasury;
@@ -6727,6 +6827,17 @@ export const IronSquadGame = {
   /** 共有ボックス配布＋弱余剰の国庫換金 */
   processSharedEquipmentBox() {
     this.sharedEquipBox = this.sharedEquipBox || [];
+    // 異質/神鍛 that somehow landed in 国庫共有 → repatriate to personal inventory (never auto-sell/distribute as weak surplus)
+    const stay = [];
+    this.inventory = this.inventory || [];
+    for (const it of this.sharedEquipBox) {
+      if (isGodRollProtected(it)) {
+        if (it && !this.inventory.some(i => i && i.id === it.id)) this.inventory.push(it);
+      } else {
+        stay.push(it);
+      }
+    }
+    this.sharedEquipBox = stay;
     const soldiers = [...(this.squad || []), ...(this.reserves || [])];
     const dist = distributeSharedBoxToSoldiers(this.sharedEquipBox, soldiers, (s) => this.recalcSoldierStats(s));
     this.sharedEquipBox = dist.remaining;
@@ -6893,7 +7004,7 @@ export const IronSquadGame = {
                     <span class="transfer-comp-badge ${comp.kind}">${comp.label}</span>
                   </div>
                   <div class="transfer-card-stats">
-                    ${comp.text}
+                    <div class="stat-delta-block">${comp.html}</div>
                   </div>
                   <div class="transfer-card-meta">
                     <span class="transfer-meta-note">
@@ -7253,11 +7364,14 @@ export const IronSquadGame = {
         if (st.def) statParts.push(`+${st.def}防`);
         if (st.hp) statParts.push(`+${st.hp}HP`);
         if (st.speed) statParts.push(`+${st.speed}速`);
+        if (item.forgeTag) statParts.push(item.forgeTag);
+        else if (item.rollMult != null && Number(item.rollMult) !== 1) statParts.push(`個体×${Number(item.rollMult).toFixed(2)}`);
         const statText = statParts.join(' ');
+        const forgeClass = item.forgeTag === '神鍛' ? 'forge-tag-god' : (item.forgeTag === '異質' ? 'forge-tag-anomalous' : '');
 
         itemRow.innerHTML = `
           <div>
-            <span style="color: ${item.color}; font-weight: bold;">[T${item.tier}] ${item.name}</span>
+            <span class="${forgeClass}" style="color: ${item.color}; font-weight: bold;">[T${item.tier}] ${item.name}</span>
             <span style="font-size: 10px; color: #94a3b8; margin-left: 3px;">(${statText})</span>
           </div>
           <div style="display:flex; gap:3px; align-items:center;">
@@ -7302,13 +7416,17 @@ export const IronSquadGame = {
         if(SLOT_INFO[item.type]) {
           const comparison=compareEquipment(item,curEquipped);
           const note=document.createElement('div');note.className='equipment-comparison '+comparison.kind;
-          note.textContent=isEquipped?'隊長装備中':`隊長の現装備比：${comparison.label} · ${comparison.text}`;
+          if(isEquipped){
+            note.textContent='隊長装備中';
+          } else {
+            note.innerHTML=`<div class="equip-cmp-head">隊長の現装備比：<strong>${comparison.label}</strong></div><div class="stat-delta-block">${comparison.html}</div>`;
+          }
           itemRow.firstElementChild.append(note);
           if(canInherit) {
             const preview=structuredClone(item);applyUpgradeStats(preview,curEquipped.upgrade);
             const inherited=compareEquipment(preview,curEquipped);
             const extra=document.createElement('div');extra.className='equipment-comparison '+inherited.kind;
-            extra.innerHTML=`<span style="color:#c084fc; font-weight:bold;">✨+${curEquipped.upgrade}引継後：</span>${inherited.label} · ${inherited.text} <span style="color:#f87171; font-size:9.5px; font-weight:bold;">(※古い装備は消滅)</span>`;
+            extra.innerHTML=`<div class="equip-cmp-head"><span style="color:#c084fc; font-weight:bold;">✨+${curEquipped.upgrade}引継後：</span><strong>${inherited.label}</strong> <span style="color:#f87171; font-size:9.5px; font-weight:bold;">(※古い装備は消滅)</span></div><div class="stat-delta-block">${inherited.html}</div>`;
             itemRow.firstElementChild.append(extra);
           }
           this.renderSaleControls(itemRow,item);

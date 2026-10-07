@@ -3,7 +3,7 @@
  * 国庫・共有装備ボックス・スカウト費用・財政報告の公式を集約
  */
 
-import { saleValue, compareEquipment, equipmentScore } from './equipment-rules.js';
+import { saleValue, compareEquipment, equipmentScore, isGodRollProtected } from './equipment-rules.js';
 
 /** 作戦期ごとの国庫歳入（徴税・兵站） */
 export const TREASURY_INCOME_BASE = 80;
@@ -81,6 +81,7 @@ export function calcBuyoutGold(item) {
  */
 export function shouldAbsorbToSharedBox(item, playerEquipped, slotKey) {
   if (!item || item.type === 'ORB' || item.isOrb) return false;
+  if (isGodRollProtected(item)) return false; // 異質/神鍛: keep personal inventory, never shared-box buyout
   if ((item.tier || 1) > SHARED_BOX_MAX_TIER) return false;
   if (!slotKey) return false;
   const current = playerEquipped?.[slotKey] || null;
@@ -124,8 +125,14 @@ export function calcDismissSettlement(soldier, phase) {
   const goldReturn = Math.floor((soldier?.gold || 0) * DISMISS_GOLD_RETURN_RATE);
   let gearSell = 0;
   const gearToBox = [];
+  const gearToPlayer = [];
   for (const it of Object.values(soldier?.equipped || {})) {
     if (!it) continue;
+    // 異質/神鍛: never auto-sell or deposit to 国庫共有 — return to commander inventory
+    if (isGodRollProtected(it)) {
+      gearToPlayer.push(it);
+      continue;
+    }
     if ((it.tier || 1) <= SHARED_BOX_MAX_TIER) {
       gearToBox.push(it);
     } else {
@@ -137,7 +144,8 @@ export function calcDismissSettlement(soldier, phase) {
     refundToPlayer,
     goldReturnToTreasury: goldReturn,
     gearSellToTreasury: gearSell,
-    gearToBox
+    gearToBox,
+    gearToPlayer
   };
 }
 
@@ -248,6 +256,10 @@ export function sellWeakSurplusFromBox(box, soldiers, maxTier = 2) {
 
   for (const item of box || []) {
     if (!item) continue;
+    if (isGodRollProtected(item)) {
+      remaining.push(item); // 異質/神鍛: never auto-sell from shared box
+      continue;
+    }
     const tier = item.tier || 1;
     const sc = equipmentScore(item);
     const best = bestBySlot[item.type] || 0;

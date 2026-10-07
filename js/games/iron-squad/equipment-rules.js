@@ -2,6 +2,19 @@ export const EQUIPMENT_TYPES = ['WEAPON','SHIELD','HELMET','ARMOR','GLOVES','LEG
 
 export const saleValue = item => Math.floor(14 + Math.pow(item.tier || 1, 1.8)*12 + (item.upgrade || 0)*8);
 
+
+/** 異質/神鍛 (god-roll) — auto-sell / shared-box deposit must never touch these. Manual sell still OK via canSell. */
+export function isGodRollProtected(item) {
+  if (!item) return false;
+  if (item.isGodRoll) return true;
+  if ((item.powerSkip || 0) > 0) return true;
+  const tag = item.forgeTag;
+  if (tag === '異質' || tag === '神鍛') return true;
+  const name = String(item.baseName || item.name || '');
+  return /【(?:異質|神鍛)】/.test(name);
+}
+
+
 export function equippedIds(playerEquipment, soldiers = []) {
   return new Set([playerEquipment,...soldiers.map(s=>s.equipped || {})]
     .flatMap(equipment=>Object.values(equipment || {}).filter(Boolean).map(item=>item.id)));
@@ -30,6 +43,7 @@ export function lowValueIds(inventory, playerEquipment, soldiers, maxTier=2) {
   }
   return bag.filter((item, bagIndex) => {
     if (!canSell(item, protectedIds)) return false;
+    if (isGodRollProtected(item)) return false; // 異質/神鍛: never auto-select for bulk sell
     if ((item.tier || 1) > maxTier) return false;
     if (item.upgrade > 0) return false;
     return refs.some(other => {
@@ -114,13 +128,60 @@ export function shrineUpgradeCap(distance) {
 }
 
 const STAT_LABELS={atk:'攻撃',def:'防御',hp:'HP',speed:'移動',atkSpeed:'攻速',crit:'会心',blockChance:'盾防',regen:'回復/秒',vampire:'吸血',lightning:'雷撃'};
+const CRITICAL_STATS=new Set(['atk','def','hp']);
+const PCT_STATS=new Set(['crit','blockChance','atkSpeed','vampire']);
+const STAT_ORDER=['atk','def','hp','speed','atkSpeed','crit','blockChance','regen','vampire','lightning'];
+
+function formatStatDisplay(key, value) {
+  const n=Number(value)||0;
+  if(key==='lightning') return n?'あり':'なし';
+  if(key==='vampire') return `${Math.round(n*10000)/100}%`;
+  if(PCT_STATS.has(key)) return `${Math.round(n*100)/100}%`;
+  return `${Math.round(n)}`;
+}
+
+function formatDeltaDisplay(key, delta) {
+  if(key==='lightning') return delta>0?'+獲得':'−喪失';
+  const scale=key==='vampire'?100:1;
+  const v=Math.round(delta*scale*100)/100;
+  const suffix=PCT_STATS.has(key)?'%':'';
+  return `${v>0?'+':''}${v}${suffix}`;
+}
+
+/** 装備乗り換え時の性能差。label/kind は既存互換。text=プレーン、html=色付き↑↓ */
 export function compareEquipment(candidate,current) {
   const keys=new Set([...Object.keys(candidate?.stats||{}),...Object.keys(current?.stats||{})]);
-  const changes=[...keys].map(key=>({key,label:STAT_LABELS[key]||key,delta:Number(candidate?.stats?.[key]||0)-Number(current?.stats?.[key]||0)})).filter(c=>c.delta!==0);
-  const up=changes.some(c=>c.delta>0),down=changes.some(c=>c.delta<0);
+  const ordered=[...keys].sort((a,b)=>{
+    const ia=STAT_ORDER.indexOf(a), ib=STAT_ORDER.indexOf(b);
+    return (ia<0?99:ia)-(ib<0?99:ib);
+  });
+  const changes=ordered.map(key=>{
+    const before=Number(current?.stats?.[key]||0);
+    const after=Number(candidate?.stats?.[key]||0);
+    return {
+      key,
+      label:STAT_LABELS[key]||key,
+      delta:after-before,
+      before,
+      after,
+      critical:CRITICAL_STATS.has(key)
+    };
+  }).filter(c=>c.delta!==0);
+  const up=changes.some(c=>c.delta>0), down=changes.some(c=>c.delta<0);
   const label=up&&down?'一長一短':up?'強くなる':down?'弱くなる':'同等';
-  const text=changes.map(c=>`${c.label} ${c.delta>0?'+':''}${Math.round(c.delta*(c.key==='vampire'?100:1)*100)/100}${['crit','blockChance','atkSpeed','vampire'].includes(c.key)?'%':''}`).join(' / ') || '能力差なし';
-  return {label,text,changes,kind:up&&down?'mixed':up?'better':down?'worse':'equal'};
+  const text=changes.map(c=>{
+    const arrow=c.delta>0?'↑':'↓';
+    return `${c.label} ${arrow} ${formatDeltaDisplay(c.key,c.delta)} (${formatStatDisplay(c.key,c.before)}→${formatStatDisplay(c.key,c.after)})`;
+  }).join(' · ') || '能力差なし';
+  const html=changes.length
+    ? changes.map(c=>{
+        const cls=c.delta>0?'stat-delta-up':'stat-delta-down';
+        const arrow=c.delta>0?'↑':'↓';
+        const crit=c.critical?' stat-delta-crit':'';
+        return `<span class="stat-delta-line ${cls}${crit}">${c.label} ${arrow} <strong>${formatDeltaDisplay(c.key,c.delta)}</strong> <span class="stat-delta-range">(${formatStatDisplay(c.key,c.before)}→${formatStatDisplay(c.key,c.after)})</span></span>`;
+      }).join('')
+    : '<span class="stat-delta-equal">能力差なし</span>';
+  return {label,text,html,changes,kind:up&&down?'mixed':up?'better':down?'worse':'equal'};
 }
 
 export function equipmentScore(item) {

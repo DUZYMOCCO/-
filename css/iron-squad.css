@@ -187,6 +187,22 @@
 .slot-transfer-editor select { width:100%; min-width:0; }
 .slot-transfer-editor button { min-height:36px; }
 .equipment-comparison { font-size:12px; line-height:1.7; margin-top:4px; overflow-wrap:anywhere; }
+.equip-cmp-head { font-size:11px; margin-bottom:2px; }
+.stat-delta-block { display:flex; flex-direction:column; gap:1px; margin-top:2px; }
+.stat-delta-line { display:block; font-size:10.5px; line-height:1.4; font-variant-numeric:tabular-nums lining-nums; }
+.stat-delta-up { color:#34d399; }
+.stat-delta-down { color:#f87171; }
+.stat-delta-crit { font-weight:800; font-size:11.5px; }
+.stat-delta-range { opacity:0.88; font-weight:500; font-size:9.5px; }
+.stat-delta-equal { color:#94a3b8; font-size:10px; }
+.forge-tag-god { text-shadow:0 0 8px rgba(255,215,0,0.55); }
+.forge-tag-anomalous { text-shadow:0 0 8px rgba(232,121,249,0.45); }
+@media (max-width:430px) {
+  .stat-delta-line { font-size:10px; }
+  .stat-delta-crit { font-size:10.5px; }
+  .stat-delta-range { font-size:9px; }
+  .equip-cmp-head { font-size:10.5px; }
+}
 .equipment-comparison.better { color:#91dfa5; }
 .equipment-comparison.worse { color:#ffaaa4; }
 .equipment-comparison.mixed { color:#ebce88; }
@@ -240,9 +256,41 @@
 }
 .dialog-open .battle-log-window { visibility: hidden; pointer-events: none; }
 
-.transport-badge { position:absolute;left:10px;bottom:196px;max-width:230px;z-index:14;background:#303c34;border:1px solid #b0a07c;color:#e5dcc4;border-radius:7px;padding:8px;font-size:12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center; }
-.transport-badge button { min-height:36px;background:#485248;border:1px solid #92957e;border-radius:4px;color:#efe4c8;padding:6px 10px; }
-.dialog-open .transport-badge { visibility:hidden;pointer-events:none; }
+.transport-badge {
+  position: relative;
+  z-index: 16;
+  background: rgba(28, 36, 32, 0.94);
+  border: 1px solid rgba(176, 160, 124, 0.6);
+  color: #e5dcc4;
+  border-radius: 8px;
+  padding: 4px 8px 4px 10px;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.55);
+  pointer-events: auto;
+  white-space: nowrap;
+}
+.transport-badge button {
+  min-height: 28px;
+  background: #485248;
+  border: 1px solid #92957e;
+  border-radius: 5px;
+  color: #efe4c8;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.08s, background 0.1s;
+}
+.transport-badge button:active {
+  background: #5f6c5f;
+  transform: scale(0.95);
+}
+.dialog-open .transport-badge { visibility: hidden; pointer-events: none; }
 
 /* Offline typography: Japanese field journal headings, clear controls, stable figures. */
 :root {

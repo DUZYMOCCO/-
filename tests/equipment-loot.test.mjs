@@ -37,7 +37,7 @@ for(const distance of [0,600,1199,1200,2300,2699,2700,3800,4399,4400,5199,5200,6
 }
 for(const d of [600,1200,2700,4400])assert.ok(Math.abs(distanceScaling(d-.001).hp-distanceScaling(d+.001).hp)<.001);
 assert.ok(distanceScaling(5000).atk>distanceScaling(500).atk*5);
-for(let n=0;n<300;n++){const i=generateRandomDrop(400,'chest');assert.ok(i.tier<=2);const expected=item('expected',i.type,i.tier,i.upgrade);assert.deepEqual(i.stats,expected.stats);}
+for(let n=0;n<300;n++){const i=generateRandomDrop(400,'chest');assert.ok(i.tier<=2);assert.ok(i.rollMult!=null&&Number.isFinite(i.rollMult));const expected={id:'expected',type:i.type,tier:i.tier,name:i.baseName||i.name,baseName:i.baseName,weaponStyle:i.weaponStyle,rollMult:i.rollMult,powerSkip:i.powerSkip||0,forgeTag:i.forgeTag||null,stats:{}};applyUpgradeStats(expected,i.upgrade);assert.deepEqual(i.stats,expected.stats);const rm=i.rollMult;applyUpgradeStats(i,i.upgrade);assert.equal(i.rollMult,rm);}
 // Spawn difficulty is spatial even at a late phase; rewards retain habitat.
 game.monsters=[];game.phase=9999;game.spawnMonster(5800,5400);const near=game.monsters[0];assert.equal(near.lootDistance,400);assert.ok(near.atk<=20);
 game.initOutposts();assert.ok(game.outposts[8].maxHp>game.outposts[0].maxHp*3);

@@ -473,13 +473,21 @@ canvas {
   transition: transform 0.05s ease-out;
 }
 
-/* 右側：アクションボタン群 */
+/* 右側：アクションボタン群カラム（上部バッジ＆下部ボタン） */
+.pad-buttons-column {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  pointer-events: auto;
+  margin-bottom: 6px;
+}
+
 .pad-buttons-zone {
   display: flex;
   align-items: flex-end;
   gap: 9px;
   pointer-events: auto;
-  margin-bottom: 6px;
 }
 
 .pad-btn {

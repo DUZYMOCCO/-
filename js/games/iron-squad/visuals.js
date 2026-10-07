@@ -16,7 +16,8 @@ export function contactShadow(c, x, y, rx, ry, plant = 0) {
 }
 function slashArc(c, atk, commander, color) {
   if (atk < 0.08) return;
-  const theta = commander ? (-0.6 + atk * 1.6) : (-0.12 - 0.43 * atk);
+  // Match sword 大上段→振り下ろし rotate range
+  const theta = commander ? (-1.3 + atk * 2.0) : (-1.15 + atk * 1.85);
   const tip = -Math.PI / 2 + theta;
   const span = 0.55 + 0.35 * atk;
   const end = tip + (commander ? -span : span);
@@ -227,8 +228,8 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod) {
     const atk = Math.max(0, Math.min(1, s.atkAnim || 0));
     const wStyle = (eq.weapon && eq.weapon.weaponStyle) || 'sword';
     if (wStyle === 'spear') {
-      // 槍: 長い柄と穂先。突きモーション
-      c.save(); c.translate(8,-12); c.rotate(s.isCommander ? (-.35 + atk * 0.9) : (-.08 - 0.25 * atk));
+      // 槍: 長い柄と穂先。突きモーション（前進 translate + わずかな rotate）
+      c.save(); c.translate(8, -12 - 6 * atk); c.rotate(s.isCommander ? (-0.25 + atk * 0.12) : (-0.18 + atk * 0.08));
       line(c,[[2,6],[2,-34]],blade,2.2);
       line(c,[[2,-10],[2,-34]],'#f1ead8', atk > 0.05 ? 1.1 : 0.55);
       shape(c,[[0,-34],[2,-46],[4,-34]],blade);
@@ -241,8 +242,8 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod) {
       }
       c.restore();
     } else if (wStyle === 'hammer') {
-      // 鎚: 短柄＋太い鎚頭。振り下ろしモーション（読みやすいシルエット）
-      c.save(); c.translate(8,-12); c.rotate(s.isCommander ? (-.55 + atk * 1.35) : (-.18 - 0.55 * atk));
+      // 鎚: 大上段アイドル→振り下ろし（鎚頭を頭上に）
+      c.save(); c.translate(8, -15 - 2 * (1 - atk)); c.rotate(s.isCommander ? (-1.35 + atk * 2.15) : (-1.2 + atk * 1.95));
       line(c,[[2,8],[2,-18]],'#6a4c38',2.6);
       line(c,[[2,8],[2,-18]],'#aa9168',1.2);
       shape(c,[[-6,-18],[10,-18],[11,-8],[-7,-8]],blade);
@@ -270,7 +271,8 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod) {
       c.restore();
     } else {
       slashArc(c, atk, !!s.isCommander, blade);
-      c.save(); c.translate(7,-14); c.rotate(s.isCommander ? (-.6 + atk * 1.6) : (-.12 - 0.43 * atk));
+      // 剣: 大上段アイドル→振り下ろし
+      c.save(); c.translate(7, -15 - 1 * (1 - atk)); c.rotate(s.isCommander ? (-1.3 + atk * 2.0) : (-1.15 + atk * 1.85));
       shape(c,[[0,1],[2,-15],[4,-18],[5,-15],[3,1]],blade);
       line(c,[[3,-14],[2,0]],'#f1ead8', atk > 0.05 ? 1.35 : .7);
       line(c,[[-2,1],[6,2]],'#aa9168',2); line(c,[[2,2],[1,6]],'#6a4c38',2.5);
