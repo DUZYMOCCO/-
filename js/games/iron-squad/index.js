@@ -2638,7 +2638,12 @@ export const IronSquadGame = {
     const tankMult = hitGrowthMult(this.player);
     const oldMaxHp = this.player.maxHp || 130;
     const baseRawHp = 130 + (rank.bonusHp || 0) + (lv - 1) * 16 + waves * 20 + minionHp + bossHp + equipHp + (isWarlord ? 150 : 0);
-    const newMaxHp = Math.floor(baseRawHp * rankStatMult * warlordHpMult * tankMult)+rescue.hp;
+    const rescueHpMult = 1.0 + (rescue.hpPct || 0) * 0.01;
+    const rescueDefMult = 1.0 + (rescue.defPct || 0) * 0.01;
+    const rescueAtkMult = 1.0 + (rescue.atkPct || 0) * 0.01;
+    const rescueSpeedMult = 1.0 + (rescue.speedPct || 0) * 0.01;
+    const rescueAtkSpeedMult = 1.0 + (rescue.atkSpeedPct || 0) * 0.01;
+    const newMaxHp = Math.floor(baseRawHp * rankStatMult * warlordHpMult * tankMult * rescueHpMult);
     this.player.maxHp = newMaxHp;
     if (this.player.hp > newMaxHp) {
       this.player.hp = newMaxHp;
@@ -2647,15 +2652,15 @@ export const IronSquadGame = {
     }
 
     const baseRawDef = equipDef + (isWarlord ? 24 : 0);
-    this.player.def = Math.floor(baseRawDef * warlordDefMult)+rescue.def;
+    this.player.def = Math.floor(baseRawDef * warlordDefMult * rescueDefMult);
 
     const wpnStyle = weaponStyleOf(this.equipped && this.equipped.weapon);
     const masteryMult = masteryAtkMult(this.player.weaponMastery, wpnStyle);
     const baseRawAtk = 25 + (rank.bonusAtk || 0) + (lv - 1) * 4 + waves * 4 + minionAtk + bossAtk + equipAtk + (isWarlord ? 25 : 0);
-    this.player.atk = Math.floor(baseRawAtk * rankStatMult * warlordAtkMult * masteryMult)+rescue.atk;
+    this.player.atk = Math.floor(baseRawAtk * rankStatMult * warlordAtkMult * masteryMult * rescueAtkMult);
     this.player.weaponStyle = wpnStyle;
-    this.player.speed = 165 + minionSpeed + equipSpeed + (isWarlord ? 24 : 0)+rescue.speed;
-    this.player.atkSpeed = (1.0 + equipAtkSpeed * 0.01 + (isWarlord ? 0.30 : 0))*(1+rescue.atkSpeedPct/100);
+    this.player.speed = Math.floor((165 + minionSpeed + equipSpeed + (isWarlord ? 24 : 0)) * rescueSpeedMult);
+    this.player.atkSpeed = (1.0 + equipAtkSpeed * 0.01 + (isWarlord ? 0.30 : 0)) * rescueAtkSpeedMult;
     this.player.crit = equipCrit + bossCrit + (isWarlord ? 30 : 0);
     this.player.vampire = equipVampire + (isWarlord ? 5 : 0);
     this.player.lightning = equipLightning;

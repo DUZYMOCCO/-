@@ -16,14 +16,15 @@ const game=Object.create(IronSquadGame);game.container=document.getElementById('
 Object.assign(game,{width:390,height:664,zoom:1,ctx,camera:{x:79360,y:79360},selectedSaleIds:new Set(),commandActiveUntil:0});
 for(const key of ['startGameLoop','showToast','spawnSparks','spawnDamageText'])game[key]=noop;
 game.setupUI();game.activeSlotId=saveSlots.create('RESCUE GROWTH TEST ONLY').id;game.startFreshGame(false);
+game.equipped.armor={id:'def-gear',type:'ARMOR',stats:{def:100}};game.equipped.weapon={id:'atk-gear',type:'WEAPON',weaponStyle:'sword',stats:{atk:100}};game.recalcPlayerStats();
 const original={hp:game.player.maxHp,atk:game.player.atk,def:game.player.def,speed:game.player.speed,atkSpeed:game.player.atkSpeed};
 for(const [i,roll] of [.1,.4,.7,.9,.99].entries()) {
   const npc={id:`reward-test-${i}`,name:'検証NPC'};
   const reward=grantPermanentRescueReward(game,npc,()=>roll);assert.equal(reward.key,RESCUE_REWARDS[i].key);
   assert.equal(grantPermanentRescueReward(game,npc,()=>.99),null,'one person cannot grant a second permanent reward');
 }
-assert.equal(rollRescueReward(()=>.95).jackpot,true);assert.equal(rollRescueReward(()=>.949).jackpot,undefined);
-assert.equal(game.player.maxHp,original.hp+5);assert.equal(game.player.atk,original.atk+1);assert.equal(game.player.def,original.def+1);assert.equal(game.player.speed,original.speed+1);assert.equal(game.player.atkSpeed,original.atkSpeed*1.01);
+assert.equal(rollRescueReward(()=>.86).jackpot,true);assert.equal(rollRescueReward(()=>.84).jackpot,undefined);assert.equal(rollRescueReward(()=>.95).jackpot,true);
+assert.equal(game.player.maxHp,Math.floor(original.hp*1.01));assert.equal(game.player.atk,Math.floor(original.atk*1.01));assert.equal(game.player.def,Math.floor(original.def*1.01));assert.equal(game.player.speed,Math.floor(original.speed*1.01));assert.equal(game.player.atkSpeed,original.atkSpeed*1.01);
 const bonuses=structuredClone(game.rescueBonuses);game.recalcPlayerStats();game.recalcPlayerStats();assert.equal(game.player.atkSpeed,original.atkSpeed*1.01,'recalculation does not compound the reward');
 game.equipped.weapon={id:'speed-gear',type:'WEAPON',weaponStyle:'sword',stats:{atkSpeed:20}};game.recalcPlayerStats();assert.equal(game.player.atkSpeed,1.2*1.01);
 game.equipped.weapon=null;game.recalcPlayerStats();assert.equal(game.player.atkSpeed,1.01,'changing equipment preserves the permanent percentage');
