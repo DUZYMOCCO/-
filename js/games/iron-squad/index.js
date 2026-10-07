@@ -39,6 +39,16 @@ import { daylightAt, advanceWorldClock, periodEnemy, enemyAvailable, PERIOD_ENEM
 
 import { RESCUE_TIMEOUT, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, CIV_KINDS } from './casualty-rules.js';
 import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault } from './dungeon.js';
+import {
+  EXPEDITION_CHECK_INTERVAL, EXPEDITION_RETURN_HOME, EXPEDITION_ENGAGE_R,
+  EXPEDITION_DANGER_TIERS, EXPEDITION_MIN_MEMBERS,
+  getDangerTier, expeditionMembers, expeditionCombatReady, shouldAutoReturn, pickExpeditionTarget,
+  canStartExpedition, startExpeditionState, beginReturnState, clearExpeditionState,
+  isPlatoonAway, persistPlatoonMissions, restorePlatoonMissions, missionStatusJa,
+  computeExpeditionReturnRewards, isInferiorSurvivor, applyInferiorExpeditionGrit,
+  INFERIOR_EXPEDITION_EXTRA_XP, INFERIOR_DEATHLINE_LUCK,
+  expeditionHazardTakenMult, expeditionEngageRadius, isSoldierOnExpedition
+} from './expedition-rules.js';
 
 import { viewport, circleInView, strokeVisibleRing, persistentUnit } from './render-support.js';
 
@@ -65,6 +75,10 @@ export const COLOSSAL_RESPAWN=210; // was 75
 /** Base-camp raid (本陣強襲): v1.23.3 — 本隊ほぼ壊滅・精鋭のみ辛うじて生存。プレイヤー帰還は倒せる範囲。 */
 /** Perf patch v1.24.7: 異質/神鍛 never auto-sell / never 国庫共有 deposit; SW v69. */
 /** v1.25.0: donate-scale / 国家運営・部隊管理 hub / civilian rope rescue / medic triage; SW v70. */
+/** v1.25.7: platoon expedition -> nation hub / main-army pick / danger tier (live map) / return rewards + inferior bonus; SW v77. */
+/** v1.25.5: スカウト候補5枠 / 天才再募集確認 / 天才出現率低下(0.25%); SW v75. */
+/** v1.25.4: 作戦期切替待機 10s→8s / UI「休息」→「次のラウンド開始まで」; SW v74. */
+/** v1.25.3: 手動攻撃ボタンが atkCooldown を共有（連打で攻撃速度無視バグ修正）; SW v73. */
 /** v1.25.2: 剣/槍/鎚マスタリー=ATK+攻撃速度（弓と同じCD短縮カーブ）; SW v72. */
 /** v1.25.1: 本陣救援ワープ≠地図FT / 槍突き可視化 / 弓石弓熟練=ATK+リロード・火砲=爆発+リロード / 強撃武器別; SW v71. */
 export const RAID_SCALE_DIST=28000; // chaos-tier scale (was 4500)
@@ -1010,7 +1024,7 @@ export const IronSquadGame = {
                     <span id="pad-power-cd-text" class="pad-cd-text">0.0</span>
                   </div>
                 </button>
-                <button id="btn-pad-attack" class="pad-btn pad-btn-attack" title="手動攻撃">
+                <button id="btn-pad-attack" class="pad-btn pad-btn-attack" title="攻撃（自動と同CD）">
                   <span class="pad-btn-icon">🗡️</span>
                   <span class="pad-btn-label">攻撃</span>
                 </button>
@@ -1333,12 +1347,14 @@ export const IronSquadGame = {
     overview.append(document.getElementById('btn-restart-from-strat'));
     const nationIntro=document.createElement('div');
     nationIntro.className='hub-intro';
-    nationIntro.innerHTML='<div style="font-weight:bold;color:#67e8f9;margin-bottom:4px;">🏛 国家運営</div><div style="font-size:11px;color:#94a3b8;line-height:1.45;margin-bottom:8px;">国庫寄付・共有装備・大目標・財政報告など、国家まわりをここに集約しています。叙勲は部隊管理の名簿から。</div>';
+    nationIntro.innerHTML='<div style="font-weight:bold;color:#67e8f9;margin-bottom:4px;">🏛 国家運営</div><div style="font-size:11px;color:#94a3b8;line-height:1.45;margin-bottom:8px;">国庫寄付・共有装備・大目標・財政・本隊の小隊遠征をここに集約。叙勋は部隊管理の名簿から。直属は自分で魔境へ連れていけるため遠征対象外。</div>';
     nation.append(nationIntro);
     const nationQuest=document.createElement('div'); nationQuest.id='nation-quest-panel'; nationQuest.className='hub-section';
     nation.append(nationQuest);
     const nationFiscal=document.createElement('div'); nationFiscal.id='nation-fiscal-panel'; nationFiscal.className='hub-section';
     nation.append(nationFiscal);
+    const nationExpedition=document.createElement('div'); nationExpedition.id='nation-expedition-panel'; nationExpedition.className='hub-section';
+    nation.append(nationExpedition);
     const invest=document.getElementById('view-econ-invest');
     const box=document.getElementById('view-econ-box');
     if(invest){invest.classList.remove('hidden');nation.append(invest);}
@@ -1350,7 +1366,7 @@ export const IronSquadGame = {
     const formationBar=document.createElement('div');
     formationBar.id='formation-bar';
     formationBar.className='hub-section';
-    formationBar.innerHTML='<div style="font-size:11px;color:#cbd5e1;margin-bottom:6px;">🧭 編成：<strong style="color:#e1cf9d;">防衛陣形</strong>（直属は隊長追従／本隊は小隊任務） · 上限 本隊48 / 直属12</div>';
+    formationBar.innerHTML='<div style="font-size:11px;color:#cbd5e1;margin-bottom:6px;">🧭 編成：<strong style="color:#e1cf9d;">防衛陣形</strong>（直属は隊長追従／本隊は本陣防衛圏） · 上限 本隊48 / 直属12 · 遠征は国家運営</div>';
     troops.append(formationBar);
     const squadView=document.getElementById('view-strat-squad');
     const equipView=document.getElementById('view-strat-equip');
@@ -1910,6 +1926,7 @@ export const IronSquadGame = {
     while (this.squad.length < DEPLOYMENT_CAPACITY) this.squad.push(this.createNewSoldier());
 
     this.initPlatoons();
+    if (saved.platoonMissions) restorePlatoonMissions(this.platoons, saved.platoonMissions);
     this.initOutposts();
     this.initDungeons();
     ensureCiviliansSpawned(this, { targetCount: 4 });
@@ -1938,10 +1955,195 @@ export const IronSquadGame = {
 
   initPlatoons() {
     this.platoons = [
-      { id: 0, name: '第1小隊 (前衛突撃)', color: '#38bdf8', icon: '⚔️', x: BASE_CAMP.x + 80, y: BASE_CAMP.y - 60 },
-      { id: 1, name: '第2小隊 (機動遊撃)', color: '#f59e0b', icon: '🏹', x: BASE_CAMP.x - 80, y: BASE_CAMP.y + 60 },
-      { id: 2, name: '第3小隊 (本陣防衛)', color: '#34d399', icon: '🛡️', x: BASE_CAMP.x, y: BASE_CAMP.y }
+      { id: 0, name: '第1小隊 (前衛突撃)', color: '#38bdf8', icon: '⚔️', x: BASE_CAMP.x + 80, y: BASE_CAMP.y - 60, mission: 'idle', expeditionStartCount: 0 },
+      { id: 1, name: '第2小隊 (機動遊撃)', color: '#f59e0b', icon: '🏹', x: BASE_CAMP.x - 80, y: BASE_CAMP.y + 60, mission: 'idle', expeditionStartCount: 0 },
+      { id: 2, name: '第3小隊 (本陣防衛)', color: '#34d399', icon: '🛡️', x: BASE_CAMP.x, y: BASE_CAMP.y, mission: 'idle', expeditionStartCount: 0 }
     ];
+  },
+
+  startPlatoonExpedition(platoonId, tierId = null, pickedIds = null) {
+    if (!this.platoons) this.initPlatoons();
+    if (this.currentDungeon) { this.showToast('\u30c0\u30f3\u30b8\u30e7\u30f3\u5185\u3067\u306f\u5c0f\u968a\u9060\u5f81\u3067\u304d\u307e\u305b\u3093'); return false; }
+    const platoon = this.platoons[platoonId % 3];
+    if (!platoon) return false;
+    if (isPlatoonAway(platoon)) { this.showToast('\u305d\u306e\u5c0f\u968a\u306f\u3059\u3067\u306b\u9060\u5f81\uff0f\u5e30\u9084\u4e2d\u3067\u3059'); return false; }
+    const tier = getDangerTier(tierId != null ? tierId : (this.expeditionDangerTier || 2));
+    const picks = pickedIds || (this.expeditionPicks && this.expeditionPicks[platoonId]) || null;
+    if (!canStartExpedition(this, platoonId, picks)) {
+      this.showToast('\u9060\u5f81\u306b\u306f\u672c\u968a\u306e\u6226\u95d8\u53ef\u80fd3\u540d\u4ee5\u4e0a\u304c\u5fc5\u8981\u3067\u3059\uff08\u76f4\u5c5e\u306f\u5bfe\u8c61\u5916\uff09');
+      return false;
+    }
+    const target = pickExpeditionTarget(this, BASE_CAMP, 2200, tier.id);
+    const members = expeditionMembers(this, platoonId, picks);
+    const n = startExpeditionState(platoon, target, members, tier.id);
+    this.showToast(`${platoon.icon}${platoon.name.split(' ')[0]} \u9060\u5f81\u6d3e\u9063\uff08\u672c\u968a${n}\u540d\u30fb${tier.icon}${tier.label}\uff09\u2192 ${target.label}`);
+    this.saveGame();
+    return true;
+  },
+
+  recallPlatoonExpedition(platoonId, reason = 'manual') {
+    if (!this.platoons) return false;
+    const platoon = this.platoons[platoonId % 3];
+    if (!platoon || !isPlatoonAway(platoon)) { this.showToast('\u9060\u5f81\u4e2d\u306e\u5c0f\u968a\u3067\u306f\u3042\u308a\u307e\u305b\u3093'); return false; }
+    beginReturnState(platoon, reason);
+    const label = reason === 'manual' ? '\u53ec\u9084' : '\u81ea\u52d5\u5e30\u9084';
+    this.showToast(`${platoon.icon}${platoon.name.split(' ')[0]} ${label} \u2014 \u751f\u5b58\u8005\u306f\u672c\u9663\u3078`);
+    this.saveGame();
+    return true;
+  },
+
+  grantExpeditionReturnRewards(platoon, members) {
+    const phase = this.phase || this.wave || 1;
+    const rewards = computeExpeditionReturnRewards(platoon, members, phase);
+    const tier = rewards.tier || getDangerTier(platoon.expeditionDangerTier);
+    this.gold = (this.gold || 0) + rewards.gold;
+    this.gainExp(rewards.playerExp);
+    this.inventory = this.inventory || [];
+    const lootNames = [];
+    for (let i = 0; i < rewards.lootCount; i++) {
+      const item = generateRandomDrop(rewards.lootDistance, rewards.lootKind);
+      this.inventory.push(item);
+      lootNames.push(item.name);
+    }
+    const inferiorNotes = [];
+    for (const s of rewards.survivors) {
+      let xp = rewards.soldierExp;
+      if (isInferiorSurvivor(s)) {
+        xp = Math.round(xp * INFERIOR_EXPEDITION_EXTRA_XP);
+        const grit = applyInferiorExpeditionGrit(s);
+        // deathline luck roll (rarity spice only — combat was live map)
+        const luckChance = INFERIOR_DEATHLINE_LUCK + Math.min(0.35, (s.inferiorDeathlineLuck || 0) * 0.5);
+        let awoke = null;
+        if (Math.random() < luckChance) {
+          awoke = this.tryAwakenDeathlineSkill(s);
+        }
+        if (grit && grit.gained) {
+          inferiorNotes.push(`${s.name || '\u5175\u58eb'} grit${grit.grit}${awoke ? '/' + awoke.name : ''}`);
+        }
+      }
+      s.exp = (s.exp || 0) + xp;
+      let guard = 0;
+      while (s.exp >= (s.reqExp || 14) && guard++ < 30) {
+        const req = Math.max(8, s.reqExp || 14);
+        s.exp -= req;
+        s.level = (s.level || 1) + 1;
+        s.reqExp = Math.floor(req * 1.5 + 8);
+      }
+      this.recalcSoldierStats(s);
+    }
+    const lootTxt = lootNames.length ? ` / \u90e8\u54c1 ${lootNames.slice(0, 2).join('\u30fb')}${lootNames.length > 2 ? '\u4ed6' : ''}` : '';
+    const infTxt = inferiorNotes.length ? ` / \ud83c\udf42\u3078\u3063\u307d\u3053\u5927\u5316 ${inferiorNotes.length}\u540d` : '';
+    this.showToast(`${platoon.icon}\u5e30\u9084\u5831\u916c ${tier.icon}${tier.label}: +${rewards.gold}G / EXP${rewards.playerExp}${lootTxt}${infTxt}`);
+    if (inferiorNotes.length) {
+      this.showToast(`\ud83c\udf42\u3078\u3063\u307d\u3053\u9060\u5f81\u751f\u5b58\u88dc\u6b63\uff01 ${inferiorNotes.slice(0, 3).join(' / ')}`);
+    }
+    try { sound.playHighScore(); } catch (_) {}
+    return rewards;
+  },
+
+  completePlatoonExpeditionReturn(platoon) {
+    if (!platoon) return;
+    const members = expeditionMembers(this, platoon.id, platoon.expeditionMemberIds);
+    // Grant before clear so tier/startCount still available
+    this.grantExpeditionReturnRewards(platoon, members);
+    clearExpeditionState(platoon);
+    this.saveGame();
+  },
+
+  getExpeditionPicks(platoonId) {
+    if (!this.expeditionPicks) this.expeditionPicks = {};
+    const key = platoonId % 3;
+    if (!this.expeditionPicks[key]) {
+      // default: all combat-ready main-army members of the platoon
+      this.expeditionPicks[key] = expeditionCombatReady(expeditionMembers(this, key)).map((s) => s.id);
+    }
+    return this.expeditionPicks[key];
+  },
+
+  toggleExpeditionPick(platoonId, soldierId) {
+    const key = platoonId % 3;
+    const picks = this.getExpeditionPicks(key).map(String);
+    const sid = String(soldierId);
+    const idx = picks.indexOf(sid);
+    if (idx >= 0) picks.splice(idx, 1);
+    else picks.push(sid);
+    this.expeditionPicks[key] = picks;
+  },
+
+  renderExpeditionPanel() {
+    const host = document.getElementById('nation-expedition-panel');
+    if (!host) return;
+    if (!this.platoons) this.initPlatoons();
+    if (!this.expeditionDangerTier) this.expeditionDangerTier = 2;
+    const tier = getDangerTier(this.expeditionDangerTier);
+    const tierBtns = EXPEDITION_DANGER_TIERS.map((t) => {
+      const on = t.id === tier.id;
+      return `<button type="button" class="mini-btn btn-danger-tier" data-tier="${t.id}" style="background:${on ? t.color : '#334155'};color:${on ? '#0f172a' : '#e2e8f0'};font-size:10px;padding:3px 7px;font-weight:${on ? 'bold' : 'normal'};">${t.icon}${t.label}<span style="opacity:.8;font-size:9px;"> x${t.rewardMult}</span></button>`;
+    }).join('');
+    const rows = this.platoons.map((p) => {
+      const allMembers = expeditionMembers(this, p.id);
+      const picks = this.getExpeditionPicks(p.id);
+      const pickSet = new Set(picks.map(String));
+      const selected = allMembers.filter((s) => pickSet.has(String(s.id)));
+      const ready = expeditionCombatReady(selected);
+      const downed = selected.filter((s) => s.isDown).length;
+      const away = isPlatoonAway(p);
+      const status = missionStatusJa(p);
+      const statusColor = p.mission === 'expedition' ? '#f59e0b' : (p.mission === 'returning' ? '#f87171' : '#94a3b8');
+      const canGo = !away && ready.length >= EXPEDITION_MIN_MEMBERS && !this.currentDungeon;
+      const btn = away
+        ? `<button type="button" class="mini-btn btn-expedition-recall" data-pid="${p.id}" style="background:#7f1d1d;color:#fecaca;font-size:10px;padding:3px 8px;">\u21a9 \u53ec\u9084</button>`
+        : `<button type="button" class="mini-btn btn-expedition-send" data-pid="${p.id}" ${canGo ? '' : 'disabled'} style="background:${canGo ? '#a16207' : '#334155'};color:#fff;font-size:10px;padding:3px 8px;">\ud83d\udea9 \u9060\u5f81\u6d3e\u9063</button>`;
+      const memberChecks = allMembers.slice(0, 24).map((s) => {
+        const checked = pickSet.has(String(s.id)) ? 'checked' : '';
+        const talent = (s.talent === 'INFERIOR') ? ' \ud83c\udf42' : '';
+        const down = s.isDown ? '(\u8ca0\u50b7)' : '';
+        const label = `${s.name || '\u5175'}${talent}${down}`;
+        return `<label style="display:inline-flex;align-items:center;gap:2px;margin:1px 4px 1px 0;font-size:9.5px;color:#cbd5e1;"><input type="checkbox" class="expedition-pick" data-pid="${p.id}" data-sid="${s.id}" ${checked} ${away ? 'disabled' : ''}>${label}</label>`;
+      }).join('');
+      const more = allMembers.length > 24 ? `<span style="font-size:9px;color:#64748b;">\u2026\u4ed6${allMembers.length - 24}\u540d</span>` : '';
+      return `<div style="margin-bottom:8px;padding-bottom:6px;border-bottom:1px dashed rgba(148,163,184,0.2);">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;font-size:10.5px;">
+          <div style="min-width:0;flex:1;">
+            <span style="color:${p.color};font-weight:bold;">${p.icon}${p.name.split(' ')[0]}</span>
+            <span style="color:#64748b;"> \u672c\u968a\u9078\u629c${ready.length}/\u8ca0\u50b7${downed} (\u5728\u7c4d${allMembers.length})</span>
+            <div style="color:${statusColor};font-size:9.5px;">${status}</div>
+          </div>
+          ${btn}
+        </div>
+        <div style="margin-top:4px;line-height:1.55;">${memberChecks}${more}</div>
+      </div>`;
+    }).join('');
+    host.innerHTML = `
+      <div style="font-size:11px;color:#fde68a;font-weight:bold;margin-bottom:4px;">\ud83d\udea9 \u5c0f\u968a\u9060\u5f81\uff08\u56fd\u5bb6\u904b\u55b6\uff09</div>
+      <div style="font-size:9.5px;color:#94a3b8;line-height:1.4;margin-bottom:6px;">\u672c\u968a\u304b\u3089\u30e1\u30f3\u30d0\u30fc\u3092\u9078\u3073\u3001\u5371\u967a\u5ea6\u30c6\u30a3\u30a2\u306e\u5730\u57df\u3078\u5b9f\u30de\u30c3\u30d7\u6d3e\u9063\u3002\u9ad8\u30ea\u30b9\u30af\u307b\u3069\u5f37\u6575\u30fb\u640d\u8017\u30ea\u30b9\u30af\u5897\u3001\u5e30\u9084\u5831\u916c\u3082\u5897\u3002\u6b7b\u306b\u305d\u3046\u306a\u3089\u81ea\u52d5\u5e30\u9084\uff08\u76f4\u5c5e\u306f\u5bfe\u8c61\u5916\uff09\u3002</div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px;">${tierBtns}</div>
+      <div style="font-size:9.5px;color:${tier.color};margin-bottom:8px;">${tier.icon}<strong>${tier.label}</strong> \u2014 ${tier.desc} \u5831\u916cx${tier.rewardMult} / \u88ab\u30c0\u30e1x${tier.hazardTaken}</div>
+      ${rows}
+    `;
+    host.querySelectorAll('.btn-danger-tier').forEach((btn) => {
+      btn.onclick = () => {
+        this.expeditionDangerTier = Number(btn.dataset.tier) || 2;
+        this.renderExpeditionPanel();
+      };
+    });
+    host.querySelectorAll('.expedition-pick').forEach((box) => {
+      box.onchange = () => {
+        this.toggleExpeditionPick(Number(box.dataset.pid), box.dataset.sid);
+        this.renderExpeditionPanel();
+      };
+    });
+    host.querySelectorAll('.btn-expedition-send').forEach((btn) => {
+      btn.onclick = () => {
+        const pid = Number(btn.dataset.pid);
+        if (this.startPlatoonExpedition(pid, this.expeditionDangerTier, this.getExpeditionPicks(pid))) this.renderStrategyUI();
+      };
+    });
+    host.querySelectorAll('.btn-expedition-recall').forEach((btn) => {
+      btn.onclick = () => {
+        if (this.recallPlatoonExpedition(Number(btn.dataset.pid), 'manual')) this.renderStrategyUI();
+      };
+    });
   },
 
   initOutposts() {
@@ -2369,6 +2571,14 @@ export const IronSquadGame = {
     const masteryMult = masteryAtkMult(s.weaponMastery, wpnStyle);
     const baseCalcAtk = 11 + (cls.bonusAtk || 0) + (lv - 1) * 2 + waves * 3 + minionAtk + bossAtk + honorAtk + vetAtk + equipAtk;
     s.atk = Math.floor(baseCalcAtk * (talent.atkMult || 1.0) * deathlineAtkMult * classAtkMult * honorMult * vetMult * masteryMult);
+    // へっぽこ遠征生存グリット（永続の小補正）
+    const grit = Math.min(8, s.inferiorGrit || 0);
+    if (grit > 0) {
+      s.maxHp = Math.floor(s.maxHp + grit * 10);
+      if (!s.isDown) s.hp = Math.min(s.maxHp, (s.hp || 0) + grit * 2);
+      s.atk = Math.floor(s.atk + grit * 2);
+      s.def = Math.floor((s.def || 0) + grit);
+    }
     s.weaponStyle = wpnStyle;
 
     const baseCalcSpeed = (cls.speed || 100) + equipSpeed + (talent.speedBonus || 0);
@@ -2709,10 +2919,10 @@ export const IronSquadGame = {
       applyUpgradeStats(initialEquip.weapon, 0);
     }
 
-    // 才能（Talent）の抽選：大半は凡庸(65%)・へっぽこ(15%)、有望(14%)、英才(5%)、稀代の天才(1%)！
+    // 才能（Talent）の抽選：大半は凡庸(~65%)・へっぽこ(15%)、有望(14%)、英才(~5.75%)、稀代の天才(0.25%)！
     const roll = Math.random();
     let talentKey = 'AVERAGE';
-    if (roll < 0.01) {
+    if (roll < 0.0025) {
       talentKey = 'GENIUS';
       this.showToast(`🌟【奇跡の新兵！】稀代の天才【兵士#${index}】が入隊！(全能力+70%, 成長率2倍)`);
       sound.playHighScore();
@@ -2835,7 +3045,8 @@ export const IronSquadGame = {
         outposts: this.outposts,
         dungeons: this.dungeons,
         currentQuest: this.currentQuest,
-        fogExplored: this.ensureFog().serialize()
+        fogExplored: this.ensureFog().serialize(),
+        platoonMissions: persistPlatoonMissions(this.platoons)
       };
       if (!saveSlots.update(this.activeSlotId, {data, state:'active'})) throw new Error('保存容量が不足しています');
     } catch (e) {
@@ -3037,16 +3248,25 @@ export const IronSquadGame = {
     return nearest;
   },
 
-  // 右手パッド手動攻撃
+  // 右手パッド手動攻撃（自動攻撃と同一 atkCooldown を共有・タップ連打でCD無視しない）
   manualAttack() {
-    if (!this.inBattle) return;
-    this.player.slashAnim = 1;
+    if (!this.inBattle || !this.player || this.player.hp <= 0) return;
+    if ((this.player.atkCooldown || 0) > 0) return; // クール中は無視（自動攻撃と共有）
+
     const nearest = this.getNearestMonster(this.player.x, this.player.y);
     const nearestOp = this.getNearestUnclearedOutpost(this.player.x, this.player.y);
     const wProf = this.combatProfileFor(this.player, (this.equipped && this.equipped.weapon) || null, true);
-    const reach = this.player.isAdvanced ? wProf.reachWarlord : Math.max(110, wProf.reach);
+    const isWarlord = !!this.player.isAdvanced;
+    const reach = isWarlord ? wProf.reachWarlord : Math.max(110, wProf.reach);
+    const baseCd = isWarlord ? Math.min(0.42, wProf.baseCooldown * 0.8) : wProf.baseCooldown;
+    const applySharedCd = () => {
+      // 自動攻撃ループと同じ式（manual/auto で攻撃速度共有）
+      this.player.atkCooldown = baseCd / (this.player.atkSpeed || 1);
+      this.player.slashAnim = 1;
+    };
 
     if (nearest && Math.hypot(nearest.x - this.player.x, nearest.y - this.player.y) <= reach) {
+      applySharedCd();
       this.player.slashAngle = Math.atan2(nearest.y - this.player.y, nearest.x - this.player.x);
       if (wProf.ranged) {
         this.spawnRangedProjectile(this.player, nearest, this.player.atk, wProf, true);
@@ -3072,12 +3292,14 @@ export const IronSquadGame = {
         this.performAttack(this.player, nearest, true);
       }
     } else if (nearestOp && Math.hypot(nearestOp.x - this.player.x, nearestOp.y - this.player.y) <= nearestOp.radius + (wProf.ranged ? wProf.reach : 60)) {
+      applySharedCd();
       this.player.slashAngle = Math.atan2(nearestOp.y - this.player.y, nearestOp.x - this.player.x);
       sound.playSlash();
       this.damageOutpost(nearestOp, this.player.atk * 1.5);
     } else {
+      // 射程外の素振りはCD消費なし（ダメージなし）。連打ダメージは上のCDゲートで阻止済み。
       sound.playSlash();
-      // 向いている方向へ素振り
+      this.player.slashAnim = 1;
       if (this.joystick.dirX !== 0 || this.joystick.dirY !== 0) {
         this.player.slashAngle = Math.atan2(this.joystick.dirY, this.joystick.dirX);
       }
@@ -3468,7 +3690,7 @@ export const IronSquadGame = {
       const remSec = Math.max(0, Math.ceil(this.phaseTimer || 0));
       const m = Math.floor(remSec / 60);
       const s = remSec % 60;
-      timerEl.textContent = this.restTimer>0?`休息 ${Math.ceil(this.restTimer)}秒`:`${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+      timerEl.textContent = this.restTimer>0?`次のラウンド開始まで ${Math.ceil(this.restTimer)}秒`:`${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
     }
 
     const dragged=carriedSoldiers(this,this.player),civDrag=carriedCivilians(this,this.player),ropeCount=dragged.length+civDrag.length,transportBadge=document.getElementById('transport-badge');
@@ -3497,7 +3719,7 @@ export const IronSquadGame = {
     const restBanner=document.getElementById('phase-complete-banner'),restText=document.getElementById('phase-banner-text');
     if(restBanner && restText) {
       restBanner.classList.toggle('hidden',!(this.restTimer>0));
-      restText.textContent=this.restTimer>0?`休息 ${Math.ceil(this.restTimer)}秒 · 敵は休止中 · 自己強化 ${this.restReport?.count||0}回（${this.restReport?.spent||0}G） · 会議を開く`:'';
+      restText.textContent=this.restTimer>0?`次のラウンド開始まで ${Math.ceil(this.restTimer)}秒 · 敵は休止中 · 自己強化 ${this.restReport?.count||0}回（${this.restReport?.spent||0}G） · 会議を開く`:'';
     }
 
     const aliveSquad = this.squad ? this.squad.filter(s => !s.dead) : [];
@@ -4195,7 +4417,7 @@ export const IronSquadGame = {
         paid = need;
         for (const soldier of payroll) {
           soldier.gold = (soldier.gold || 0) + SOLDIER_SALARY;
-          soldier.lastMaintenance = { phase: this.phase - 1, count: 0, spent: 0, status: '休息中に整備予定' };
+          soldier.lastMaintenance = { phase: this.phase - 1, count: 0, spent: 0, status: '次ラウンド開始前に整備予定' };
         }
       } else {
         const avail = Math.max(0, this.treasury || 0);
@@ -4205,7 +4427,7 @@ export const IronSquadGame = {
         this.treasury = (this.treasury || 0) - paid;
         for (const soldier of payroll) {
           soldier.gold = (soldier.gold || 0) + per;
-          soldier.lastMaintenance = { phase: this.phase - 1, count: 0, spent: 0, status: per < SOLDIER_SALARY ? '給与不足・休息整備予定' : '休息中に整備予定' };
+          soldier.lastMaintenance = { phase: this.phase - 1, count: 0, spent: 0, status: per < SOLDIER_SALARY ? '給与不足・開始前整備予定' : '次ラウンド開始前に整備予定' };
         }
       }
       if (this.phaseFiscal) {
@@ -4294,8 +4516,8 @@ export const IronSquadGame = {
 
   maintenanceSummary() {
     const report=this.restReport;
-    if(!report)return '戦線120秒 → 休息10秒。休息中は敵と戦闘を休止し、兵士が自費で自己強化します（定期給与20G）。';
-    return `${this.restTimer>0?`休息中・残り${Math.ceil(this.restTimer)}秒`:`第${report.phase}期の整備結果`}：${report.trainedIds.length}名が計${report.count}回強化 / 自費${report.spent}G。定期給与は既存兵士に各${report.salary}G。会議中は休息時計も停止。`;
+    if(!report)return `戦線${PHASE_DURATION}秒 → 次のラウンド開始まで${REST_DURATION}秒。その間は敵と戦闘を休止し、兵士が自費で自己強化します（定期給与${SOLDIER_SALARY}G）。`;
+    return `${this.restTimer>0?`次のラウンド開始まで残り${Math.ceil(this.restTimer)}秒`:`第${report.phase}期の整備結果`}：${report.trainedIds.length}名が計${report.count}回強化 / 自費${report.spent}G。定期給与は既存兵士に各${report.salary}G。会議中は待機時計も停止。`;
   },
 
   processRestSecond() {
@@ -4573,6 +4795,20 @@ export const IronSquadGame = {
     const nearBaseMonsters = this._nearBaseMonsters;
     const nearestNearBaseMonster = this._nearestNearBaseMonster;
 
+    // 小隊遠征: 死線手前チェック（間引き）→ 自動帰還
+    this._expeditionCheckClock = (this._expeditionCheckClock || 0) + dt;
+    if (this._expeditionCheckClock >= EXPEDITION_CHECK_INTERVAL) {
+      this._expeditionCheckClock = 0;
+      for (const platoon of this.platoons) {
+        if (platoon.mission !== 'expedition') continue;
+        const members = expeditionMembers(this, platoon.id, platoon.expeditionMemberIds);
+        if (shouldAutoReturn(platoon, members)) {
+          beginReturnState(platoon, 'casualty');
+          this.showToast(`${platoon.icon}${platoon.name.split(' ')[0]} 死にそうなので帰還！生存者は本陣へ`);
+        }
+      }
+    }
+
     this.platoons.forEach((platoon) => {
       if (this.currentDungeon) {
         // ダンジョン内: ボスまたはプレイヤーに向かって全員進撃
@@ -4580,6 +4816,53 @@ export const IronSquadGame = {
         platoon.x += (dTarget.x - platoon.x) * 1.5 * dt;
         platoon.y += (dTarget.y - platoon.y) * 1.5 * dt;
         return;
+      }
+
+      // 小隊遠征 / 自動帰還（テリトリー外OK・LODは兵士側で既存）
+      if (platoon.mission === 'returning') {
+        const hx = BASE_CAMP.x, hy = BASE_CAMP.y;
+        platoon.x += (hx - platoon.x) * 1.6 * dt;
+        platoon.y += (hy - platoon.y) * 1.6 * dt;
+        if (Math.hypot(platoon.x - hx, platoon.y - hy) < EXPEDITION_RETURN_HOME) {
+          this.completePlatoonExpeditionReturn(platoon);
+        }
+        return;
+      }
+      if (platoon.mission === 'expedition') {
+        let tx = platoon.expeditionTargetX, ty = platoon.expeditionTargetY;
+        // Prefer nearby threat (throttled scan — LOD-friendly)
+        platoon._threatClock = (platoon._threatClock || 0) + dt;
+        if (platoon._threatClock >= 0.2 || !platoon._cachedThreat) {
+          platoon._threatClock = 0;
+          let nearThreat = null, nearD = expeditionEngageRadius(platoon);
+          for (let mi = 0; mi < this.monsters.length; mi++) {
+            const m = this.monsters[mi];
+            if (!m || (m.hp || 0) <= 0) continue;
+            const d = Math.hypot(m.x - platoon.x, m.y - platoon.y);
+            if (d < nearD) { nearD = d; nearThreat = m; }
+          }
+          platoon._cachedThreat = nearThreat;
+        }
+        const nearThreat = platoon._cachedThreat && (platoon._cachedThreat.hp || 0) > 0 ? platoon._cachedThreat : null;
+        if (!nearThreat) platoon._cachedThreat = null;
+        if (nearThreat) { tx = nearThreat.x; ty = nearThreat.y; }
+        else if (tx == null || ty == null) {
+          const retarget = pickExpeditionTarget(this, BASE_CAMP, BASE_TERRITORY_RADIUS, platoon.expeditionDangerTier);
+          platoon.expeditionTargetX = retarget.x;
+          platoon.expeditionTargetY = retarget.y;
+          platoon.expeditionLabel = retarget.label;
+          tx = retarget.x; ty = retarget.y;
+        }
+        platoon.x += (tx - platoon.x) * 1.35 * dt;
+        platoon.y += (ty - platoon.y) * 1.35 * dt;
+        // Arrived at objective with no fight: nudge further out
+        if (!nearThreat && Math.hypot((tx || 0) - platoon.x, (ty || 0) - platoon.y) < 80) {
+          const retarget = pickExpeditionTarget(this, BASE_CAMP, BASE_TERRITORY_RADIUS, platoon.expeditionDangerTier);
+          platoon.expeditionTargetX = retarget.x;
+          platoon.expeditionTargetY = retarget.y;
+          platoon.expeditionLabel = retarget.label;
+        }
+        return; // no territory clamp while away
       }
 
       if (isCommandActive) {
@@ -4632,7 +4915,7 @@ export const IronSquadGame = {
         }
       }
 
-      // 小隊重心が安全テリトリー外へ出ないようクランプ
+      // 小隊重心が安全テリトリー外へ出ないようクランプ（遠征中はスキップ済）
       if (!this.currentDungeon) {
         const pDist = Math.hypot(platoon.x - BASE_CAMP.x, platoon.y - BASE_CAMP.y);
         if (pDist > BASE_TERRITORY_RADIUS) {
@@ -4841,14 +5124,22 @@ export const IronSquadGame = {
         targetX = this.player.x + Math.cos(guardAngle) * guardDist;
         targetY = this.player.y + Math.sin(guardAngle) * guardDist;
       } else {
-        // 本隊: 所属小隊の作戦重心を中心とした独立散開
+        // 本隊: 遠征選抜メンバーのみ小隊重心に追随。未選抜は本陣防衛圏に残留。
+        const onExpedition = isSoldierOnExpedition(platoon, soldier);
         const pAngle = (idx * 1.1) + (now * 0.0006);
         const pDist = 28 + (idx % 6) * 14;
-        targetX = platoon.x + Math.cos(pAngle) * pDist;
-        targetY = platoon.y + Math.sin(pAngle) * pDist;
+        if (onExpedition) {
+          targetX = platoon.x + Math.cos(pAngle) * pDist;
+          targetY = platoon.y + Math.sin(pAngle) * pDist;
+        } else {
+          const homeX = BASE_CAMP.x + (platoon.id - 1) * 70;
+          const homeY = BASE_CAMP.y + (platoon.id === 1 ? 80 : -40);
+          targetX = homeX + Math.cos(pAngle) * pDist;
+          targetY = homeY + Math.sin(pAngle) * pDist;
+        }
 
-        // 本隊兵士が安全防衛圏から勝手に外へ飛び出さないようクランプ
-        if (!this.currentDungeon) {
+        // 本隊兵士が安全防衛圏から勝手に外へ飛び出さないようクランプ（遠征選抜のみ免除）
+        if (!this.currentDungeon && !onExpedition) {
           const dBase = Math.hypot(targetX - BASE_CAMP.x, targetY - BASE_CAMP.y);
           if (dBase > BASE_TERRITORY_RADIUS) {
             targetX = BASE_CAMP.x + ((targetX - BASE_CAMP.x) / dBase) * BASE_TERRITORY_RADIUS;
@@ -4857,9 +5148,10 @@ export const IronSquadGame = {
         }
       }
 
-      // 敵索敵（直属小隊は自由索敵。本隊兵士は防衛圏内の敵＋本陣強襲モブを索敵して迎撃）
+      // 敵索敵（直属／ダンジョン／遠征選抜は自由索敵。通常本隊は防衛圏内＋強襲）
       let nearestEnemy;
-      if (soldier.isPersonalGuard || this.currentDungeon) {
+      const platoonAwayFight = isSoldierOnExpedition(platoon, soldier);
+      if (soldier.isPersonalGuard || this.currentDungeon || platoonAwayFight) {
         if (aiLight && soldier._cachedEnemy && !soldier._cachedEnemy.dead && (soldier._cachedEnemy.hp || 0) > 0) {
           nearestEnemy = soldier._cachedEnemy;
         } else {
@@ -5876,6 +6168,15 @@ export const IronSquadGame = {
       dmg = Math.max(1, Math.round(dmg * 0.50)); // 生還シールドで被ダメ50%カット
       if (Math.random() < 0.45) {
         this.spawnDamageText(target.x, target.y - 20, '🛡️生還シールド!', '#38bdf8');
+      }
+    }
+
+    // 遠征選抜の本隊のみ危険度ティア被ダメ増（実マップ戦闘の難度）
+    if (target !== this.player && this.platoons && !target.isPersonalGuard) {
+      const ep = this.platoons[(target.platoonId || 0) % 3];
+      if (isSoldierOnExpedition(ep, target)) {
+        const haz = expeditionHazardTakenMult(ep);
+        if (haz > 1) dmg = Math.max(1, Math.round(dmg * haz));
       }
     }
 
@@ -7050,8 +7351,9 @@ export const IronSquadGame = {
   },
 
   rollScoutTalent() {
+    // 天才 0.25% / 英才 ~5.75% / 有望 14% / へっぽこ 15% / 凡庸 ~65%
     const roll = Math.random();
-    if (roll < 0.01) return 'GENIUS';
+    if (roll < 0.0025) return 'GENIUS';
     if (roll < 0.06) return 'ELITE';
     if (roll < 0.20) return 'TALENTED';
     if (roll < 0.35) return 'INFERIOR';
@@ -7061,7 +7363,7 @@ export const IronSquadGame = {
   refreshScoutCandidates() {
     const classKeys = ['HEAVY', 'LIGHT', 'ARCHER', 'MEDIC'];
     const phase = this.phase || 1;
-    this.scoutCandidates = [0, 1, 2].map((i) => {
+    this.scoutCandidates = [0, 1, 2, 3, 4].map((i) => {
       const talent = this.rollScoutTalent();
       const classKey = classKeys[Math.floor(Math.random() * classKeys.length)];
       const level = 1 + Math.floor(Math.random() * Math.min(5, 1 + Math.floor(phase / 8)));
@@ -7466,10 +7768,10 @@ export const IronSquadGame = {
     const closeBtn = document.getElementById('btn-close-strat');
 
     if (isManualOpen) {
-      titleEl.textContent = this.restTimer>0?'⛺ 休息・装備整備':'⛺ 本陣戦略会議 (作戦中・駐屯)';
+      titleEl.textContent = this.restTimer>0?'⛺ 次のラウンド開始まで・装備整備':'⛺ 本陣戦略会議 (作戦中・駐屯)';
       const fr = this.lastFiscalReport;
       reportEl.innerHTML = (fr ? formatFiscalReportHtml(fr) : '') + '<div style="font-size:12px;color:#b0bacd;">装備の強化鍛冶、武器防具の支給、兵士の叙勲・投資・スカウトを行えます。</div>';
-      nextBtn.textContent = this.restTimer>0?`休息へ戻る（残り${Math.ceil(this.restTimer)}秒）`:'⚔️ 戦場へ復帰する (会議終了)';
+      nextBtn.textContent = this.restTimer>0?`待機へ戻る（残り${Math.ceil(this.restTimer)}秒）`:'⚔️ 戦場へ復帰する (会議終了)';
       nextBtn.classList.remove('hidden');
       closeBtn.classList.add('hidden');
       this.inBattle = false;
@@ -7572,6 +7874,7 @@ export const IronSquadGame = {
 
     const orbEl = document.getElementById('strat-orbs');
     if (orbEl) orbEl.textContent = this.awakeningOrbs || 0;
+    if (typeof this.renderExpeditionPanel === 'function') this.renderExpeditionPanel();
 
     const pRecordBox = document.getElementById('player-record-box');
     if (pRecordBox && this.player) {
@@ -7891,7 +8194,15 @@ export const IronSquadGame = {
       });
     }
     const refreshScoutsBtn = document.getElementById('btn-refresh-scouts');
-    if (refreshScoutsBtn) refreshScoutsBtn.onclick = () => { this.refreshScoutCandidates(); this.renderStrategyUI(); };
+    if (refreshScoutsBtn) refreshScoutsBtn.onclick = () => {
+      const hasGenius = (this.scoutCandidates || []).some((c) => c.talent === 'GENIUS');
+      if (hasGenius) {
+        const ok = window.confirm('天才が募集してきてますが切り替えますか？');
+        if (!ok) return; // cancel: keep current roster
+      }
+      this.refreshScoutCandidates();
+      this.renderStrategyUI();
+    };
 
     // 共有ボックス一覧
     const boxList = document.getElementById('shared-box-list');
@@ -8031,7 +8342,7 @@ export const IronSquadGame = {
       row.classList.add('soldier-card'); row.prepend(portrait);
       const maintenanceNote=document.createElement('p');maintenanceNote.className='maintenance-summary';
       const m=s.lastMaintenance;
-      maintenanceNote.textContent=m?`第${m.phase}期の整備：強化${m.count}回 / ${m.spent}G · ${m.status}`:'次の休息中に所持金で自動整備（定期給与20G）';
+      maintenanceNote.textContent=m?`第${m.phase}期の整備：強化${m.count}回 / ${m.spent}G · ${m.status}`:'次のラウンド開始前に所持金で自動整備（定期給与20G）';
       row.append(maintenanceNote);
       const transportNote=document.createElement('p');transportNote.className='maintenance-summary';
       const cargo=carriedSoldiers(this,s),carrier=s.carrierId?carrierOf(this,s):null;

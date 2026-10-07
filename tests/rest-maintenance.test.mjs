@@ -41,4 +41,4 @@ assert.match(poor.lastMaintenance.status,/資金不足/);assert.equal(poor.gold,
 poor.isDown=true;game.processRestSecond();assert.match(poor.lastMaintenance.status,/負傷/);poor.isDown=false;
 for(const item of Object.values(poor.equipped))if(item)applyUpgradeStats(item,30);poor.gold=999999;game.processRestSecond();
 assert.match(poor.lastMaintenance.status,/上限/);assert.equal(poor.gold,999999);
-console.log('PASS: 10-second safe rest, regular soldier salary, staggered self-upgrades, combat pause, manual forge, save/resume, boss preservation, budget and cap reasons');
+console.log('PASS: 8-second safe rest, regular soldier salary, staggered self-upgrades, combat pause, manual forge, save/resume, boss preservation, budget and cap reasons');
