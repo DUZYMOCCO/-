@@ -35,21 +35,12 @@ class GameStudioApp {
     // 最新版強制リフレッシュボタン
     const refreshBtn = document.getElementById('btn-force-refresh');
     if (refreshBtn) {
-      refreshBtn.addEventListener('click', () => {
-        if ('serviceWorker' in navigator) {
-          navigator.serviceWorker.getRegistrations().then((registrations) => {
-            registrations.forEach((r) => r.unregister());
-            if ('caches' in window) {
-              caches.keys().then((keys) => {
-                keys.forEach((key) => caches.delete(key));
-                location.reload(true);
-              });
-            } else {
-              location.reload(true);
-            }
-          });
+      refreshBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (typeof window.forcePwaUpdate === 'function') {
+          window.forcePwaUpdate();
         } else {
-          location.reload(true);
+          location.reload();
         }
       });
     }
@@ -64,9 +55,9 @@ class GameStudioApp {
     // ゲーム一覧描画
     this.renderHub();
 
-    // サービスワーカー登録
+    // サービスワーカー登録 (クエリパラメータ付与でSafariのSWキャッシュを即時更新)
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('./sw.js').catch((err) => {
+      navigator.serviceWorker.register('./sw.js?v=80').catch((err) => {
         console.log('SW registration failed:', err);
       });
     }
