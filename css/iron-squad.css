@@ -164,11 +164,21 @@
 .iron-squad .pad-btn-command { background: #8c7951; border-color: #c7b487; box-shadow: 0 3px 10px #0005; }
 .iron-squad button:focus-visible, .iron-squad select:focus-visible { outline: 2px solid #e3d5ac; outline-offset: 2px; }
 @media (max-height: 500px) and (orientation: landscape) {
-  .iron-squad .game-header { min-height: 54px; }
+  .iron-squad .game-header { min-height: 48px; height: 48px; padding: 0 max(12px, env(safe-area-inset-right, 12px)) 0 max(12px, env(safe-area-inset-left, 12px)); }
+  .iron-squad .stat-label { font-size: 8px; }
+  .iron-squad .stat-value { font-size: 13px; }
   .iron-squad .game-stats { grid-template-columns: repeat(7,minmax(0,1fr)); }
-  .iron-squad .virtual-gamepad { height: 110px; }
+  .iron-squad .virtual-gamepad { height: 105px; padding: 0 max(16px, env(safe-area-inset-right, 16px)) max(8px, env(safe-area-inset-bottom, 8px)) max(16px, env(safe-area-inset-left, 16px)); }
   .iron-squad .dpad-base { width: 80px; height: 80px; }
   .iron-squad .pad-stick-zone { width: 90px; height: 90px; }
+  .iron-squad .dpad-knob { width: 38px; height: 38px; }
+  .iron-squad .pad-buttons-column { margin-bottom: 2px; gap: 4px; }
+  .iron-squad .pad-buttons-zone { gap: 8px; }
+  .iron-squad .pad-btn-attack { width: 54px; height: 54px; font-size: 12px; }
+  .iron-squad .pad-btn-power { width: 44px; height: 44px; font-size: 11px; }
+  .iron-squad .pad-btn-command { width: 42px; height: 42px; font-size: 11px; }
+  .iron-squad .minimap-container { width: 68px; height: 68px; top: 6px; right: max(8px, env(safe-area-inset-right, 8px)); }
+  .iron-squad .zoom-toggle-btn { top: 78px; right: max(8px, env(safe-area-inset-right, 8px)); min-height: 30px; font-size: 11px; padding: 4px 8px; }
   .iron-squad .dialog-heading { padding: 6px 12px; }
   .iron-squad .dialog-tabs { padding: 4px 12px; }
   .iron-squad .dialog-footer { padding: 4px 12px; }

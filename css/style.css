@@ -10,6 +10,8 @@
   --text-muted: #8c93ab;
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
 }
 
 * {
@@ -47,12 +49,14 @@ html, body {
   flex-direction: column;
   padding-top: var(--safe-top);
   padding-bottom: var(--safe-bottom);
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
 
 .studio-header {
-  padding: 18px 20px 12px;
+  padding: 18px max(20px, var(--safe-right)) 12px max(20px, var(--safe-left));
   display: flex;
   justify-content: space-between;
   align-items: center;

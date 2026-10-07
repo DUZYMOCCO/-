@@ -19,7 +19,7 @@ import { saveSlots } from './save-slots.js';
 import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog } from './interface.js?v=98';
 import { ensureSoldierAppearance, drawSoldierPortrait, describeSoldierAppearance } from './soldier-appearance.js?v=98';
 import { attachSurfaceEvents, detachSurfaceEvents, frameSurfaceReady, releaseSceneCaches, releaseCanvas, surfaceCanResume } from './canvas-surface.js?v=98';
-import { WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt } from './world.js?v=98';
+import { WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt, routeNameAt, eastWestRoadY, northSouthRoadX, riverCenterY } from './world.js?v=100';
 import { FogGrid, FOG_REVEAL_RADIUS, FOG_CAMP_REVEAL } from './fog.js?v=98';
 import {
   classTierOf, nextClassId, classUpCostForNext, canAffordClassUp, formatClassUpCostJa, classUpShortageJa,
@@ -1930,6 +1930,13 @@ export const IronSquadGame = {
       this.surfaceResizeObserver.observe(this.canvasContainer);
     }
     attachSurfaceEvents(this);
+    this.handleOrientation = () => {
+      this.resizeCanvas?.();
+      setTimeout(() => this.resizeCanvas?.(), 100);
+      setTimeout(() => this.resizeCanvas?.(), 300);
+    };
+    window.addEventListener('orientationchange', this.handleOrientation);
+    screen.orientation?.addEventListener?.('change', this.handleOrientation);
 
     // 画面切り替え（タブ・別アプリ移動からの復帰）時のデルタタイム＆リサイズ安全化
     this.handleVisibility = () => {
@@ -4002,7 +4009,9 @@ export const IronSquadGame = {
     if (zoneBadge && this.player) {
       const zone = getFieldZone(this.player.x, this.player.y);
       const unsafe = !this.currentDungeon && (this.player.def || 0) < zone.reqDef;
-      zoneBadge.textContent = this.currentDungeon ? `探索中：${this.currentDungeon.name || 'ダンジョン'}` : `${zone.icon} ${zone.shortName} ${zone.dangerStars}${unsafe ? ` · 防御不足 ${this.player.def || 0}/${zone.reqDef}` : ''}`;
+      const route = this.currentDungeon ? '' : routeNameAt(this.player.x, this.player.y);
+      const where = route || (this.currentDungeon ? '' : biomeAt(this.player.x, this.player.y).name);
+      zoneBadge.textContent = this.currentDungeon ? `探索中：${this.currentDungeon.name || 'ダンジョン'}` : `${zone.icon} ${zone.shortName}${where ? ` · ${where}` : ''} ${zone.dangerStars}${unsafe ? ` · 防御不足 ${this.player.def || 0}/${zone.reqDef}` : ''}`;
       zoneBadge.setAttribute('data-danger', String(unsafe));
     }
 
@@ -9892,24 +9901,81 @@ export const IronSquadGame = {
       ctx.fillStyle = '#6e6a60';
       ctx.fillRect(-w / 2 + 5, -h, w * 0.32, 3);
     } else if (o.type === 'column') {
+      const k = s;
       if (o.fallen) {
         ctx.fillStyle = 'rgba(0,0,0,0.28)';
-        ctx.beginPath(); ctx.ellipse(8, 4, 18, 6, -0.4, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(8 * k, 4, 18 * k, 6 * k, -0.4, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = '#5a564e';
         ctx.rotate(-0.45);
-        ctx.fillRect(-4, -6, 42, 12);
+        ctx.fillRect(-4 * k, -6 * k, 42 * k, 12 * k);
         ctx.fillStyle = '#6e6a60';
-        ctx.fillRect(-4, -6, 42, 3);
+        ctx.fillRect(-4 * k, -6 * k, 42 * k, 3 * k);
       } else {
         ctx.fillStyle = 'rgba(0,0,0,0.3)';
-        ctx.beginPath(); ctx.ellipse(2, 3, 9, 4, 0, 0, Math.PI * 2); ctx.fill();
-        if (this.sceneryCoversUnit(o, 0.7)) ctx.globalAlpha = 0.4;
+        ctx.beginPath(); ctx.ellipse(2 * k, 3, 9 * k, 4 * k, 0, 0, Math.PI * 2); ctx.fill();
+        if (this.sceneryCoversUnit(o, 0.7 * k)) ctx.globalAlpha = 0.4;
         ctx.fillStyle = '#6a655c';
-        ctx.fillRect(-6, -32, 12, 34);
-        ctx.fillRect(-8, -36, 16, 5);
+        ctx.fillRect(-6 * k, -32 * k, 12 * k, 34 * k);
+        ctx.fillRect(-8 * k, -36 * k, 16 * k, 5 * k);
         ctx.fillStyle = '#8a8478';
-        ctx.fillRect(-6, -32, 4, 34);
+        ctx.fillRect(-6 * k, -32 * k, 4 * k, 34 * k);
       }
+    } else if (o.type === 'waystone') {
+      ctx.fillStyle = 'rgba(0,0,0,0.32)';
+      ctx.beginPath(); ctx.ellipse(2, 4, 9, 4, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#5e5a52';
+      ctx.fillRect(-5, -24, 10, 28);
+      ctx.fillStyle = '#8a8478';
+      ctx.fillRect(-5, -24, 3, 28);
+      ctx.fillStyle = '#d7c4a2';
+      if (o.dir === 'e') ctx.fillRect(-7, -16, 4, 8);
+      else if (o.dir === 'w') ctx.fillRect(3, -16, 4, 8);
+      else if (o.dir === 'n') ctx.fillRect(-4, -4, 8, 4);
+      else ctx.fillRect(-4, -20, 8, 4);
+    } else if (o.type === 'gate') {
+      const verticalRoad = o.axis === 'v';
+      ctx.fillStyle = 'rgba(0,0,0,0.32)';
+      ctx.beginPath();
+      ctx.ellipse(0, 4, verticalRoad ? 16 : 36, verticalRoad ? 36 : 12, 0, 0, Math.PI * 2);
+      ctx.fill();
+      if (this.sceneryCoversUnit(o, 1.3)) ctx.globalAlpha = 0.4;
+      ctx.fillStyle = '#4a3828';
+      if (verticalRoad) {
+        ctx.fillRect(-40, -9, 16, 18);
+        ctx.fillRect(24, -9, 16, 18);
+        ctx.fillStyle = '#6a5038';
+        ctx.fillRect(-40, -12, 80, 6);
+      } else {
+        ctx.fillRect(-9, -40, 18, 16);
+        ctx.fillRect(-9, 24, 18, 16);
+        ctx.fillStyle = '#6a5038';
+        ctx.fillRect(-12, -40, 6, 80);
+      }
+      ctx.fillStyle = '#d7c4a2';
+      ctx.fillRect(-3, -3, 6, 6);
+    } else if (o.type === 'bridge') {
+      ctx.fillStyle = 'rgba(0,0,0,0.28)';
+      ctx.fillRect(-70, -6, 24, 12);
+      ctx.fillRect(46, -6, 24, 12);
+      ctx.fillStyle = '#5c584e';
+      ctx.fillRect(-68, -18, 20, 20);
+      ctx.fillRect(48, -18, 20, 20);
+      ctx.fillStyle = '#7a7568';
+      ctx.fillRect(-68, -18, 20, 4);
+      ctx.fillRect(48, -18, 20, 4);
+    } else if (o.type === 'cairn') {
+      ctx.fillStyle = 'rgba(0,0,0,0.32)';
+      ctx.beginPath(); ctx.ellipse(2, 4, 16, 5, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#3e4440';
+      ctx.beginPath();
+      ctx.moveTo(-16, 3); ctx.lineTo(-9, -8); ctx.lineTo(8, -6); ctx.lineTo(16, 3);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#6a7068';
+      ctx.beginPath();
+      ctx.moveTo(-8, -6); ctx.lineTo(-1, -18); ctx.lineTo(7, -15); ctx.lineTo(8, -5);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#9aa396';
+      ctx.fillRect(-3, -24, 7, 7);
     } else if (o.type === 'well') {
       ctx.fillStyle = 'rgba(0,0,0,0.3)';
       ctx.beginPath(); ctx.ellipse(0, 5, 16, 7, 0, 0, Math.PI * 2); ctx.fill();
@@ -10894,6 +10960,21 @@ export const IronSquadGame = {
         mCtx.fillStyle = biomeAt(wx, wy).ground;
         mCtx.fillRect(sx, sy, sw, sh);
       }
+      const roadDot = (x, y, color) => {
+        if (!fog.isExploredWorld(x, y)) return;
+        mCtx.fillStyle = color;
+        mCtx.fillRect(px(x) - 1.1, py(y) - 1.1, 2.2, 2.2);
+      };
+      for (let i = 0; i < 8; i++) {
+        const x = originX + (i + 0.5) * span / 8;
+        const y = originY + (i + 0.5) * span / 8;
+        const roadY = eastWestRoadY(x);
+        if (roadY > originY && roadY < originY + span) roadDot(x, roadY, x >= BASE_CAMP.x ? '#c4a574' : '#6a5344');
+        const roadX = northSouthRoadX(y);
+        if (roadX > originX && roadX < originX + span) roadDot(roadX, y, y < BASE_CAMP.y ? '#9aa396' : '#d2cbb4');
+        const waterY = riverCenterY(x);
+        if (waterY > originY && waterY < originY + span) roadDot(x, waterY, '#3d646c');
+      }
       if (inside(BASE_CAMP.x, BASE_CAMP.y) && fog.isExploredWorld(BASE_CAMP.x, BASE_CAMP.y)) {
         mCtx.fillStyle = '#c4b48a';
         mCtx.fillRect(px(BASE_CAMP.x) - 2.4, py(BASE_CAMP.y) - 2.4, 4.8, 4.8);
@@ -11036,6 +11117,11 @@ export const IronSquadGame = {
       this.stickHandlers = null;
     }
     window.removeEventListener('resize', this.resizeCanvas);
+    if (this.handleOrientation) {
+      window.removeEventListener('orientationchange', this.handleOrientation);
+      screen.orientation?.removeEventListener?.('change', this.handleOrientation);
+      this.handleOrientation = null;
+    }
     if (this.handleVisibility) {
       document.removeEventListener('visibilitychange', this.handleVisibility);
     }

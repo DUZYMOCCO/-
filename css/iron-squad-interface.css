@@ -251,11 +251,12 @@
   .iron-squad .soldier-face-portrait { width: 112px; height: 122px; }
 }
 @media (max-height: 500px) and (orientation: landscape) {
-  .iron-squad .game-header { min-height: 50px; }
+  .iron-squad .game-header { min-height: 48px; }
   .iron-squad .dialog-heading { padding: 6px 12px; }
   .iron-squad #strat-title { font-size: 14px !important; }
   .iron-squad .command-wallet .wallet-entry small { display: inline; margin-right: 4px; }
-  .iron-squad .dialog-tabs .sub-tab-btn { min-height: 40px; padding: 6px; }
+  .iron-squad .dialog-tabs .sub-tab-btn { min-height: 38px; padding: 4px 8px; font-size: 11px; }
   .iron-squad .dialog-footer { padding: 6px 12px; }
-  .iron-squad .dialog-footer .action-btn { min-height: 44px; }
+  .iron-squad .dialog-footer .action-btn { min-height: 40px; font-size: 13px; }
+  .iron-squad .strategy-panel { height: calc(100% - 16px); max-height: calc(100% - 16px) !important; }
 }

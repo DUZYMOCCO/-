@@ -31,22 +31,49 @@ function cellHash(ix, iy) {
   return ((n ^ (n >>> 13)) >>> 0) / 4294967296;
 }
 
-export const biomeAt = (x,y) => {
-  const d=Math.hypot(x-CENTER,y-CENTER);
-  // 戦闘ゾーン伸長に合わせた視覚帯（0/8k/22k/48k）
-  if(d<8000) return {name:'本陣近郊の草原',ground:'#17241c',grass:'#3a5536',tree:'oak'};
-  if(d<22000) return {name:'辺境の深い森',ground:'#121e1a',grass:'#2c4634',tree:'pine'};
-  if(d<48000) return {name:'遺跡と枯れ野',ground:'#26241c',grass:'#5a563c',tree:'dead'};
-  if(d<65000) return {name:'最果ての岩山',ground:'#1a1e1e',grass:'#3c423e',tree:'dead'};
-  if(d<78000) return {name:'灰の長征路',ground:'#1c1a17',grass:'#4a4638',tree:'dead'};
-  if(d<90000) return {name:'断崖の外縁',ground:'#16181c',grass:'#3a403c',tree:'dead'};
-  return {name:'世界の縁',ground:'#121416',grass:'#32362e',tree:'dead'};
+// Direction is color, not another distance ring. Combat rings stay where they are.
+// East is warm plain, north is mountain, west is marsh, south is salt. Farther land only darkens.
+const HOME_R = 3200;
+const BIOMES = {
+  east:  { name:'東の街道平原', grounds:['#2a2418','#201c12','#16120e'], grass:'#6a5830', tree:'oak' },
+  south: { name:'南の塩原',     grounds:['#343228','#28261e','#1c1a14'], grass:'#7a7460', tree:'dead' },
+  north: { name:'北の山地',     grounds:['#161c20','#12161a','#0e1214'], grass:'#3a4a46', tree:'pine' },
+  west:  { name:'西の湿地',     grounds:['#12201c','#0e1816','#0c1210'], grass:'#2a4034', tree:'dead' }
 };
-// Smooth roads are shared across tile boundaries, independent of generation order.
-const roadDist = (x,y) => Math.min(
-  Math.abs(x-CENTER-Math.sin((y-CENTER)/620)*115),
-  Math.abs(y-CENTER-Math.sin((x-CENTER)/710)*95)
+const HOME_BIOME = { name:'本陣近郊の草原', ground:'#17241c', grass:'#3a5536', tree:'oak' };
+export function eastWestRoadY(x) { return CENTER + Math.sin((x - CENTER) / 710) * 95; }
+export function northSouthRoadX(y) { return CENTER + Math.sin((y - CENTER) / 620) * 115; }
+export function riverCenterY(x) {
+  const cx = x - CENTER;
+  return CENTER - 6400 + cx * 0.48 + Math.sin(cx / 1700) * 420;
+}
+export const biomeAt = (x, y) => {
+  const dx = x - CENTER, dy = y - CENTER;
+  const d = Math.hypot(dx, dy);
+  if (d < HOME_R) return HOME_BIOME;
+  const ang = Math.atan2(dy, dx);
+  const band = ang > -0.785398 && ang < 0.785398 ? BIOMES.east
+    : ang >= 0.785398 && ang < 2.356195 ? BIOMES.south
+    : ang >= -2.356195 && ang <= -0.785398 ? BIOMES.north
+    : BIOMES.west;
+  const step = d < 22000 ? 0 : d < 48000 ? 1 : 2;
+  return { name: band.name, ground: band.grounds[step], grass: band.grass, tree: band.tree };
+};
+// The two old sine roads stay, so towns remain on them. Material changes by arm.
+const roadDist = (x, y) => Math.min(
+  Math.abs(x - northSouthRoadX(y)),
+  Math.abs(y - eastWestRoadY(x))
 );
+export function routeNameAt(x, y) {
+  const ew = Math.abs(y - eastWestRoadY(x));
+  const ns = Math.abs(x - northSouthRoadX(y));
+  const onEw = ew <= 52, onNs = ns <= 46;
+  if (onEw && onNs) return '街道の交差';
+  if (onEw) return x >= CENTER ? '東の街道' : '西の板道';
+  if (onNs) return y < CENTER ? '北の山道' : '南の塩道';
+  if (Math.abs(y - riverCenterY(x)) < 60) return '川筋';
+  return '';
+}
 
 const gateOffset = (ox, oy, padW, padH) => {
   if (Math.abs(ox) >= Math.abs(oy)) return { dx: ox >= 0 ? -padW / 2 + 18 : padW / 2 - 18, dy: 0 };
@@ -220,6 +247,160 @@ export function reliefAt(x, y) {
   return ravineAt(x, y) || ridgeAt(x, y);
 }
 
+function tileNearRoad(x0, y0) {
+  const yOverlap = y0 < CENTER + 170 && y0 + TILE > CENTER - 170;
+  const xOverlap = x0 < CENTER + 190 && x0 + TILE > CENTER - 190;
+  return yOverlap || xOverlap;
+}
+function tileNearRiver(x0, y0) {
+  const yA = riverCenterY(x0), yB = riverCenterY(x0 + TILE);
+  const lo = Math.min(yA, yB) - 100, hi = Math.max(yA, yB) + 100;
+  return y0 < hi && y0 + TILE > lo;
+}
+function paintRoadCell(c, x, y, wx, wy) {
+  const ew = wy - eastWestRoadY(wx);
+  const ns = wx - northSouthRoadX(wy);
+  const aew = Math.abs(ew), ans = Math.abs(ns);
+  const useEw = aew <= 52 && (ans > 46 || aew <= ans);
+  if (useEw) {
+    const east = wx >= CENTER;
+    const half = east ? 48 : 34;
+    if (aew > half) return false;
+    let col;
+    if (east) col = aew < 7 ? '#5a4632' : aew < 28 ? '#8a7048' : aew > 40 ? '#3e3628' : '#6a5840';
+    else {
+      const plank = ((Math.floor(wx / 18) ^ Math.floor(wy / 18)) & 1) === 0;
+      col = aew < 22 ? (plank ? '#5c4634' : '#3a2c22') : '#241c16';
+    }
+    c.fillStyle = col;
+    c.fillRect(x, y, 4, 4);
+    paintMile(c, x, y, wx, wy, true, east);
+    return true;
+  }
+  if (ans > 46) return false;
+  const north = wy < CENTER;
+  const half = north ? 34 : 46;
+  if (ans > half) return false;
+  let col;
+  if (north) {
+    col = ans < 6 ? '#8a9088' : ans < 18 ? '#6a7068' : '#3e4440';
+    if (ans > 24 && ((Math.floor(wy / 26) + Math.floor(wx / 19)) % 4) === 0) col = '#2e3330';
+  } else col = ans < 10 ? '#c2bba6' : ans < 28 ? '#8e8874' : '#5c584c';
+  c.fillStyle = col;
+  c.fillRect(x, y, 4, 4);
+  paintMile(c, x, y, wx, wy, false, north);
+  return true;
+}
+function paintMile(c, x, y, wx, wy, horizontal, light) {
+  const along = (horizontal ? wx : wy) - CENTER;
+  if (Math.abs(along) < 900) return;
+  const m = Math.abs(along % 1400);
+  if (m > 8 && m < 1392) return;
+  c.fillStyle = light ? '#d7c4a2' : '#3a3428';
+  c.fillRect(x, y, 4, 4);
+}
+function paintRiverCell(c, x, y, wx, wy) {
+  if (roadDist(wx, wy) <= 26) return;
+  const across = Math.abs(wy - riverCenterY(wx));
+  if (across > 58) return;
+  c.fillStyle = across < 20 ? '#1a3036' : across < 36 ? '#24383a' : '#2c3830';
+  c.fillRect(x, y, 4, 4);
+}
+function paintRoutes(c, x0, y0) {
+  const nearRoad = tileNearRoad(x0, y0);
+  const nearRiver = tileNearRiver(x0, y0);
+  if (!nearRoad && !nearRiver) return;
+  for (let y = 0; y < TILE; y += 4) for (let x = 0; x < TILE; x += 4) {
+    const wx = x0 + x + 2, wy = y0 + y + 2;
+    const deck = nearRoad && paintRoadCell(c, x, y, wx, wy);
+    if (nearRiver && !deck) paintRiverCell(c, x, y, wx, wy);
+  }
+}
+function findBridgeX() {
+  let lo = CENTER + 7000, hi = CENTER + 18000;
+  for (let i = 0; i < 24; i++) {
+    const mid = (lo + hi) / 2;
+    if (riverCenterY(mid) < eastWestRoadY(mid)) lo = mid; else hi = mid;
+  }
+  return (lo + hi) / 2;
+}
+function buildMarks() {
+  const marks = [];
+  const put = (x, y, type, extra) => marks.push({ x, y, type, s: 1, ...extra });
+  const bx = findBridgeX();
+  put(bx, eastWestRoadY(bx), 'bridge');
+  put(CENTER + 7200, eastWestRoadY(CENTER + 7200), 'gate', { axis: 'h' });
+  put(CENTER + 4600, eastWestRoadY(CENTER + 4600) - 210, 'oak', { s: 3.05, tone: 0, ph: 1.2 });
+  put(CENTER + 15200, eastWestRoadY(CENTER + 15200) + 6, 'crate', { s: 1.25 });
+  put(CENTER + 15236, eastWestRoadY(CENTER + 15236) + 16, 'barrel', { s: 1 });
+  const passY = CENTER - 8000;
+  const passX = northSouthRoadX(passY);
+  put(passX - 78, passY + 8, 'cairn');
+  put(passX + 86, passY + 24, 'cairn');
+  put(passX, passY - 70, 'gate', { axis: 'v' });
+  const saltY = CENTER + 9000;
+  const saltX = northSouthRoadX(saltY);
+  put(saltX + 70, saltY, 'column', { s: 1.7 });
+  put(saltX + 104, saltY + 34, 'column', { s: 1.15 });
+  put(saltX + 46, saltY + 52, 'column', { s: 1.4 });
+  const step = 2600;
+  for (let t = step; t < 76000; t += step) {
+    put(CENTER + t, eastWestRoadY(CENTER + t), 'waystone', { dir: 'e' });
+    put(CENTER - t, eastWestRoadY(CENTER - t), 'waystone', { dir: 'w' });
+    put(northSouthRoadX(CENTER - t), CENTER - t, 'waystone', { dir: 'n' });
+    put(northSouthRoadX(CENTER + t), CENTER + t, 'waystone', { dir: 's' });
+  }
+  return marks.filter(m => {
+    if (m.type !== 'waystone') return true;
+    if (Math.hypot(m.x - CENTER, m.y - CENTER) < 900) return false;
+    for (const s of SETTLEMENTS) {
+      if (Math.abs(m.x - CENTER - s.ox) < 520 && Math.abs(m.y - CENTER - s.oy) < 420) return false;
+    }
+    for (const other of marks) {
+      if (other.type === 'waystone') continue;
+      if (Math.hypot(m.x - other.x, m.y - other.y) < 460) return false;
+    }
+    return true;
+  });
+}
+const ROUTE_MARKS = buildMarks();
+const WEST_POOL = { x: CENTER - 9800, y: eastWestRoadY(CENTER - 9800) + 170 };
+function paintPictures(c, x0, y0) {
+  const lx = WEST_POOL.x - x0, ly = WEST_POOL.y - y0;
+  if (lx > -120 && ly > -80 && lx < TILE + 120 && ly < TILE + 80) {
+    ellipse(c, lx, ly, 86, 48, '#16302e');
+    ellipse(c, lx - 8, ly - 6, 52, 26, '#214240');
+    c.strokeStyle = '#5a6840';
+    c.lineWidth = 1.5;
+    for (let i = -3; i <= 3; i++) {
+      c.beginPath();
+      c.moveTo(lx + i * 18, ly + 34);
+      c.lineTo(lx + i * 18 + 3, ly - 10);
+      c.stroke();
+    }
+  }
+  const name = biomeAt(x0 + TILE / 2, y0 + TILE / 2).name;
+  if (name !== '南の塩原' && name !== '北の山地' && name !== '西の湿地') return;
+  const tx = Math.floor(x0 / TILE), ty = Math.floor(y0 / TILE);
+  for (let i = 0; i < 16; i++) {
+    const px = cellHash(tx * 19 + i, ty + 3) * TILE;
+    const py = cellHash(tx + 5, ty * 23 + i) * TILE;
+    if (roadDist(x0 + px, y0 + py) < 56) continue;
+    if (name === '南の塩原') {
+      c.fillStyle = i % 3 ? '#7a7568' : '#8e8878';
+      c.fillRect(px, py, 7, 3);
+    } else if (name === '北の山地') {
+      c.fillStyle = '#2a2e2c';
+      c.fillRect(px, py, 5, 4);
+    } else {
+      c.strokeStyle = '#4a5838';
+      c.beginPath();
+      c.moveTo(px, py + 8);
+      c.lineTo(px + 2, py - 6);
+      c.stroke();
+    }
+  }
+}
 function tileMayHaveRelief(x0, y0) {
   const cx = x0 + TILE / 2, cy = y0 + TILE / 2;
   const hitY = (y, pad) => cy > y - pad && cy < y + pad;
@@ -277,10 +458,12 @@ export class WorldTerrain {
     for(let y=0;y<TILE;y+=32) for(let x=0;x<TILE;x+=32) {
       c.fillStyle=biomeAt(x0+x+16,y0+y+16).ground; c.fillRect(x,y,32,32);
     }
+    const tileName = biomeAt(x0 + TILE / 2, y0 + TILE / 2).name;
+    const mote = tileName.startsWith('東') ? '#a0804024' : tileName.startsWith('南') ? '#b0a88828' : tileName.startsWith('北') ? '#60708024' : tileName.startsWith('西') ? '#40605028' : '#81936920';
     for(let i=0;i<45;i++) {
       const x=rnd()*TILE,y=rnd()*TILE,r=15+rnd()*55;
       const g=c.createRadialGradient(x,y,0,x,y,r);
-      g.addColorStop(0,i%2?'#81936920':'#101c1828');g.addColorStop(1,'#00000000');
+      g.addColorStop(0,i%2?mote:'#101c1828');g.addColorStop(1,'#00000000');
       c.fillStyle=g;c.fillRect(x-r,y-r,r*2,r*2);
     }
     // Cliff lip, face and shadow, then roads so a road reads as a cut through the face.
@@ -291,11 +474,7 @@ export class WorldTerrain {
         c.fillStyle=shade; c.fillRect(x,y,4,4);
       }
     }
-    for(let y=0;y<TILE;y+=4) for(let x=0;x<TILE;x+=4) {
-      const d=roadDist(x0+x+2,y0+y+2);
-      if(d>30) continue;
-      c.fillStyle=d>25?'#4d4636':(d>9 && d<13 ? '#5c503c':'#79654a');c.fillRect(x,y,4,4);
-    }
+    paintRoutes(c, x0, y0);
     for(let i=0;i<260;i++) {
       const x=rnd()*TILE,y=rnd()*TILE,wx=x+x0,wy=y+y0;
       const d=roadDist(wx,wy),b=biomeAt(wx,wy);
@@ -305,6 +484,7 @@ export class WorldTerrain {
       c.beginPath();c.moveTo(x-2,y-4);c.lineTo(x,y);c.lineTo(x+2,y-5-rnd()*3);c.stroke();
     }
     c.globalAlpha=1;
+    paintPictures(c, x0, y0);
     // Quiet ponds, ruined masonry and camps make each part of the world distinct.
     const feature=rnd(), fx=120+rnd()*270,fy=120+rnd()*270;
     const distance=Math.hypot(x0+fx-CENTER,y0+fy-CENTER);
@@ -354,6 +534,10 @@ export class WorldTerrain {
         objects.push({type:p.type,x,y,w:p.w,h:p.h,roof:p.roof,fallen:p.fallen,s:1});
       }
     }
+    for (const m of ROUTE_MARKS) {
+      if (m.x < x0 || m.x >= x1 || m.y < y0 || m.y >= y1) continue;
+      objects.push({ type: m.type, x: m.x, y: m.y, s: m.s, axis: m.axis, dir: m.dir, tone: m.tone || 0, ph: m.ph || 0 });
+    }
     this.generated++;
     return {canvas,context:c,objects,camps,x:x0,y:y0};
   }
@@ -376,16 +560,31 @@ export class WorldTerrain {
     for(let y=0;y<size;y+=6) for(let x=0;x<size;x+=6) {
       c.fillStyle=biomeAt(x/scale,y/scale).ground;c.fillRect(x,y,6,6);
     }
-    c.strokeStyle='#b9a37a';c.lineWidth=1.25;
-    const step=Math.max(80, WORLD_SIZE / size * 2);
-    for(const vertical of [true,false]) {
-      c.beginPath();
-      for(let d=0;d<=WORLD_SIZE;d+=step) {
-        const other=CENTER+Math.sin((d-CENTER)/(vertical?620:710))*(vertical?115:95);
-        const x=(vertical?other:d)*scale,y=(vertical?d:other)*scale;
-        if(d===0)c.moveTo(x,y);else c.lineTo(x,y);
-      }c.stroke();
+    const arm=(horizontal, sign, color)=>{
+      c.strokeStyle=color; c.lineWidth=1.7; c.beginPath();
+      const n=40;
+      for(let i=0;i<=n;i++){
+        const t=(i/n)*(WORLD_SIZE/2-800);
+        const x=horizontal?CENTER+sign*t:northSouthRoadX(CENTER+sign*t);
+        const y=horizontal?eastWestRoadY(CENTER+sign*t):CENTER+sign*t;
+        const sx=x*scale, sy=y*scale;
+        if(i)c.lineTo(sx,sy); else c.moveTo(sx,sy);
+      }
+      c.stroke();
+    };
+    arm(true, 1, '#c4a574');
+    arm(true, -1, '#6a5344');
+    arm(false, -1, '#9aa396');
+    arm(false, 1, '#d2cbb4');
+    c.strokeStyle='#3d646c'; c.lineWidth=1.35; c.beginPath();
+    let riverPen=false;
+    for(let i=0;i<=72;i++){
+      const x=WORLD_SIZE*i/72, y=riverCenterY(x);
+      if(y<0 || y>WORLD_SIZE){ riverPen=false; continue; }
+      const sx=x*scale, sy=y*scale;
+      if(!riverPen){ c.moveTo(sx,sy); riverPen=true; } else c.lineTo(sx,sy);
     }
+    c.stroke();
     c.strokeStyle='#6a6458';c.lineWidth=1.25;
     const line=(pts)=>{c.beginPath();pts.forEach((p,i)=>{const x=p[0]*scale,y=p[1]*scale;if(i)c.lineTo(x,y);else c.moveTo(x,y);});c.stroke();};
     const south=(base,amp,wave,span)=>{
