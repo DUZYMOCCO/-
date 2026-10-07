@@ -1,8 +1,8 @@
-import {recordHealing} from './phase-rules.js';
+﻿import {recordHealing} from './phase-rules.js';
 import {WORLD_SIZE} from './world.js';
 
 export const RESCUE_TIMEOUT = 45; // 救助猶予時間（秒）広域マップ対応で45秒に延長
-export const isMedic=unit=>['MEDIC','HIGH_PRIEST'].includes(unit?.soldierClass);
+export const isMedic=unit=>['MEDIC','HIGH_PRIEST','SAINT','ARCHANGEL'].includes(unit?.soldierClass);
 export const carryingCapacity=unit=>{
   if(!unit) return 1;
   // 隊長（紐で引っ張る仲間）デフォルト2名・聖騎士2名・他兵士1名

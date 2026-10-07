@@ -2,6 +2,8 @@
  * Fog of war / exploration (bit grid).
  * WORLD_SIZE 158720 / FOG_CELL 512 → 310×310 cells → ~12KB Uint8Array.
  * Reveal is circle-stamped on move; draw uses run-length fillRect batches (v1.24.3).
+ * v1.25.8: never full-black wipe — empty/invalid/viewport-unseeded skips overlay;
+ * camp+player always stampable; deserialize clears+validates.
  * iPhone-safe: no getImageData, no full-screen canvas rebuild every frame.
  */
 import { WORLD_SIZE } from './world.js';
@@ -24,6 +26,22 @@ export class FogGrid {
     this.dirty = true;
     this._lastX = NaN;
     this._lastY = NaN;
+    this._campSeeded = false;
+    this._exploredHint = false; // lazy cache for hasExploration
+  }
+
+  _expectedByteLength() {
+    return Math.ceil((this.cols * this.rows) / 8);
+  }
+
+  /** Grid usable for overlay (finite dims + matching buffer). */
+  isValid() {
+    if (!Number.isFinite(this.cols) || !Number.isFinite(this.rows)) return false;
+    if (this.cols <= 0 || this.rows <= 0) return false;
+    if (!Number.isFinite(this.cell) || this.cell <= 0) return false;
+    if (!this.bytes || !(this.bytes instanceof Uint8Array)) return false;
+    if (this.bytes.length !== this._expectedByteLength()) return false;
+    return true;
   }
 
   _bitIndex(gx, gy) {
@@ -37,6 +55,7 @@ export class FogGrid {
   }
 
   isExploredWorld(x, y) {
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return false;
     return this.isExplored(Math.floor(x / this.cell), Math.floor(y / this.cell));
   }
 
@@ -48,6 +67,7 @@ export class FogGrid {
     if ((this.bytes[bi] & mask) === 0) {
       this.bytes[bi] |= mask;
       this.dirty = true;
+      this._exploredHint = true;
       return true;
     }
     return false;
@@ -59,6 +79,7 @@ export class FogGrid {
    */
   revealAt(wx, wy, radius = FOG_REVEAL_RADIUS) {
     if (!Number.isFinite(wx) || !Number.isFinite(wy)) return false;
+    if (!this.isValid()) return false;
     if (Number.isFinite(this._lastX)) {
       const mdx = wx - this._lastX;
       const mdy = wy - this._lastY;
@@ -91,11 +112,14 @@ export class FogGrid {
   revealCamp(cx, cy) {
     this._lastX = NaN;
     this._lastY = NaN;
-    return this.revealAt(cx, cy, FOG_CAMP_REVEAL);
+    const ok = this.revealAt(cx, cy, FOG_CAMP_REVEAL);
+    this._campSeeded = true;
+    return ok;
   }
 
   /** Persist as base64 bitfield (~16KB text). */
   serialize() {
+    if (!this.isValid()) return '';
     const bytes = this.bytes;
     const chunk = 0x8000;
     let bin = '';
@@ -108,13 +132,26 @@ export class FogGrid {
 
   deserialize(b64) {
     if (!b64 || typeof b64 !== 'string') return false;
+    if (!this.isValid()) return false;
     try {
       const bin = atob(b64);
+      // Reject wildly wrong payloads (wrong world / corrupt) — leave grid empty for reseed.
+      if (bin.length === 0) return false;
+      if (bin.length > this.bytes.length * 2) return false;
+      // Always clear first so short/stale saves cannot leave ghost bits.
+      this.bytes.fill(0);
       const n = Math.min(bin.length, this.bytes.length);
-      for (let i = 0; i < n; i++) this.bytes[i] = bin.charCodeAt(i) & 255;
+      let any = false;
+      for (let i = 0; i < n; i++) {
+        const v = bin.charCodeAt(i) & 255;
+        this.bytes[i] = v;
+        if (v) any = true;
+      }
       this.dirty = true;
       this._lastX = NaN;
       this._lastY = NaN;
+      this._exploredHint = any;
+      this._campSeeded = false;
       return true;
     } catch (_) {
       return false;
@@ -123,21 +160,41 @@ export class FogGrid {
 
   /** True if any cell has been revealed (grid ready). */
   hasExploration() {
+    if (!this.isValid()) return false;
+    if (this._exploredHint) return true;
     const bytes = this.bytes;
-    if (!bytes || !bytes.length) return false;
-    for (let i = 0; i < bytes.length; i++) if (bytes[i]) return true;
+    for (let i = 0; i < bytes.length; i++) {
+      if (bytes[i]) {
+        this._exploredHint = true;
+        return true;
+      }
+    }
     return false;
+  }
+
+  /** Count explored cells inside inclusive gx/gy window (cheap early-out). */
+  _countExploredInView(gx0, gy0, gx1, gy1) {
+    let n = 0;
+    for (let gy = gy0; gy <= gy1; gy++) {
+      for (let gx = gx0; gx <= gx1; gx++) {
+        if (this.isExplored(gx, gy)) {
+          n++;
+          if (n >= 1) return n; // only need "any"
+        }
+      }
+    }
+    return n;
   }
 
   /**
    * Field overlay in world space (camera transform already applied).
    * O(visible fog cells) fillRect — typically a few dozen on iPhone.
-   * Safety (v1.24.3): never paint full-black when grid missing/empty/uninitialized.
+   * Safety (v1.24.3 / v1.25.8): never paint full-black when grid missing/empty/invalid,
+   * or when the *visible* viewport has zero explored cells (fail-open → world stays visible).
    */
   drawFieldOverlay(ctx, camera, width, height, zoom) {
     if (!ctx || !camera) return;
-    if (!Number.isFinite(this.cols) || !Number.isFinite(this.rows) || this.cols <= 0 || this.rows <= 0) return;
-    if (!this.bytes || !this.bytes.length) return;
+    if (!this.isValid()) return;
     if (!this.hasExploration()) return; // unseeded → leave world visible
     if (!Number.isFinite(camera.x) || !Number.isFinite(camera.y)) return;
     const z = (Number.isFinite(zoom) && zoom > 0) ? zoom : 1;
@@ -152,6 +209,8 @@ export class FogGrid {
     const gx1 = Math.min(this.cols - 1, Math.floor((camera.x + hw) / cell));
     const gy1 = Math.min(this.rows - 1, Math.floor((camera.y + hh) / cell));
     if (gx1 < gx0 || gy1 < gy0) return;
+    // v1.25.8: viewport fail-open — if nothing in view is explored, skip (never full-black wipe)
+    if (this._countExploredInView(gx0, gy0, gx1, gy1) < 1) return;
     // Perf v1.24.2: horizontal run-length batching — far fewer fillRect calls than per-cell.
     ctx.fillStyle = '#000000';
     for (let gy = gy0; gy <= gy1; gy++) {
@@ -177,7 +236,9 @@ export class FogGrid {
    */
   drawMapOverlay(ctx, size, worldSize = this.worldSize) {
     if (!ctx || !size) return;
-    const scale = size / worldSize;
+    if (!this.isValid() || !this.hasExploration()) return;
+    const ws = Number.isFinite(worldSize) && worldSize > 0 ? worldSize : this.worldSize;
+    const scale = size / ws;
     const cellPx = this.cell * scale;
     const step = Math.max(1, Math.ceil(2.5 / Math.max(0.01, cellPx)));
     ctx.fillStyle = '#000000';
@@ -203,6 +264,7 @@ export class FogGrid {
 
   /** Minimap: darken a screen rect if its world center is unexplored. */
   shadeMinimapCell(ctx, worldX, worldY, sx, sy, sw, sh) {
+    if (!this.isValid() || !this.hasExploration()) return false;
     if (!this.isExploredWorld(worldX, worldY)) {
       ctx.fillStyle = '#000000';
       ctx.fillRect(sx, sy, sw + 0.5, sh + 0.5);

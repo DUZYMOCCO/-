@@ -1,4 +1,4 @@
-/**
+﻿/**
  * IRON SQUAD: ダンジョン・宿場・廃墟のインスタンス
  * 入口は石門。内部は敷石・土間・崩れ壁。霓虹の魔法陣は使わない。
  * 脱出は常に x=180, y=height/2。至宝はボスか番兵を倒したあと、x=width-240。
@@ -157,6 +157,48 @@ export const DUNGEON_DEFS = [
     mobCount: 22,
     eliteCount: 4,
     reward: { gold: 13500, exp: 3000, itemCount: 5, lootKind: 'dungeon_vault' }
+  },
+
+  {
+    id: 'dungeon_demon_castle',
+    kind: 'dungeon',
+    name: '魔王城・深淵黒曜殿',
+    subtitle: '【終焉を統べる魔王の居城】',
+    icon: '🏰😈',
+    color: '#7f1d1d',
+    accentColor: '#fbbf24',
+    theme: 'demon',
+    reqDef: 800,
+    reqLv: 40,
+    desc: '最果ての外縁にそびえる魔王の居城。城主『深淵魔王ヴァルドール』の力は約1000万規模。伝説職級の挑戦者のみが挑め。',
+    entrance: { x: CENTER + 42000, y: CENTER + 42000, radius: 64 },
+    width: 3200,
+    height: 2000,
+    ambientColor: '#120808',
+    floorColor: '#1a0e0e',
+    wallColor: '#0a0505',
+    torchColor: '#a855f7',
+    distance: Math.hypot(42000, 42000),
+    boss: {
+      type: 'demon_king',
+      name: '深淵魔王ヴァルドール',
+      title: '【終焉の魔王】',
+      icon: '😈👑',
+      color: '#7f1d1d',
+      radius: 72,
+      // v1.25.8: fixed ~10,000,000 scale (createDungeonBoss respects fixedStats)
+      fixedStats: true,
+      hp: 10000000,
+      atk: 85000,
+      speed: 54,
+      skillCooldown: 3.2,
+      skillName: '深淵滅殺・黒炎天墜',
+      desc: '約1000万規模のHPと破格の攻撃力。黒炎の天墜で部隊を一掃する魔王！'
+    },
+    mobTypes: ['wyvern', 'colossal_dragon', 'orc'],
+    mobCount: 28,
+    eliteCount: 6,
+    reward: { gold: 250000, exp: 80000, itemCount: 7, lootKind: 'dungeon_vault', bonusOrbs: 3, bonusGems: 1 }
   },
   ...SETTLEMENTS.map(settlementToDef)
 ];

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ゲーム3: IRON SQUAD (アイアン・スクワッド: 雑兵立身出世録)
  * ローグライク・アクションRPG
  * 
@@ -14,7 +14,11 @@ import { storage } from '../../storage.js';
 import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow, drawSpearReachCue } from './visuals.js';
 import { saveSlots } from './save-slots.js';
 import { WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt } from './world.js';
-import { FogGrid, FOG_REVEAL_RADIUS } from './fog.js';
+import { FogGrid, FOG_REVEAL_RADIUS, FOG_CAMP_REVEAL } from './fog.js';
+import {
+  classTierOf, nextClassId, classUpCostForNext, canAffordClassUp, formatClassUpCostJa, classUpShortageJa,
+  playerClassTier, nextPlayerStage, playerStageById, CLASS_TIER_LABELS, PLAYER_CLASS_STAGES
+} from './class-up-rules.js';
 import { PHASE_DURATION, REST_DURATION, SOLDIER_SALARY, MIN_REINFORCEMENTS, emptyActivity, advancePhase, advanceRest, recordCombat, recordHealing, healByMedic, participated, finishExperience } from './phase-rules.js';
 import {
   emptyFiscalLedger, calcTreasuryGrossIncome, calcCommanderStipend, calcBuyoutGold,
@@ -23,7 +27,7 @@ import {
   SHARED_BOX_MAX_TIER, SCOUT_COST_BY_TALENT, defaultDonateAmount, donatePresetAmounts
 } from './economy-rules.js';
 
-import { EQUIPMENT_TYPES, saleValue, equippedIds, canSell, lowValueIds, chooseLootTier, distanceScaling, shrineUpgradeCap, compareEquipment, equipmentScore, weaponCombatProfile, isGodRollProtected } from './equipment-rules.js';
+import { EQUIPMENT_TYPES, saleValue, equippedIds, canSell, lowValueIds, chooseLootTier, distanceScaling, shrineUpgradeCap, compareEquipment, equipmentScore, weaponCombatProfile, isGodRollProtected, zoneRingPower, zoneRingLabelJa } from './equipment-rules.js';
 import {
   WEAPON_STYLES, WEAPON_STYLE_LABELS, WEAPON_STYLE_ICONS,
   MELEE_STYLES, RANGED_STYLES, HIT_GROWTH_SOFT_CAP,
@@ -76,6 +80,7 @@ export const COLOSSAL_RESPAWN=210; // was 75
 /** Perf patch v1.24.7: 異質/神鍛 never auto-sell / never 国庫共有 deposit; SW v69. */
 /** v1.25.0: donate-scale / 国家運営・部隊管理 hub / civilian rope rescue / medic triage; SW v70. */
 /** v1.25.7: platoon expedition -> nation hub / main-army pick / danger tier (live map) / return rewards + inferior bonus; SW v77. */
+/** v1.25.8: fog never full-black / multi-stage class-up / zone ring x10 softcap 1e6 / 魔王城~10M fixedStats; SW v78. */
 /** v1.25.5: スカウト候補5枠 / 天才再募集確認 / 天才出現率低下(0.25%); SW v75. */
 /** v1.25.4: 作戦期切替待機 10s→8s / UI「休息」→「次のラウンド開始まで」; SW v74. */
 /** v1.25.3: 手動攻撃ボタンが atkCooldown を共有（連打で攻撃速度無視バグ修正）; SW v73. */
@@ -135,7 +140,7 @@ export const FIELD_ZONES = [
     expMult: 2.8,
     goldMult: 2.5,
     tierRange: [1, 4],
-    desc: '境界を越えると敵の強さが10倍近く跳ね上がる警戒森林。推奨DEF 45+'
+    desc: '安全圏を出ると敵倍率がx10（リング1）。推奨DEF 45+'
   },
   {
     id: 'ZONE_CHAOS',
@@ -156,7 +161,7 @@ export const FIELD_ZONES = [
     expMult: 7.5,
     goldMult: 6.0,
     tierRange: [2, 5],
-    desc: '凶暴なワイバーンや強力な魔獣が跋扈する危険地帯。推奨DEF 140+'
+    desc: 'リング2：敵倍率x100。凶暴な魔獣地帯。推奨DEF 140+'
   },
   {
     id: 'ZONE_ABYSS',
@@ -177,7 +182,7 @@ export const FIELD_ZONES = [
     expMult: 16.0,
     goldMult: 13.0,
     tierRange: [3, 7],
-    desc: '超巨大大ボスが君臨する最果ての死地！推奨DEF 320+'
+    desc: 'リング3+：敵倍率x1000〜最大約100万倍（外縁ソフトキャップ）。推奨DEF 320+'
   }
 ];
 
@@ -407,6 +412,7 @@ export const SLOT_INFO = {
 export const SOLDIER_CLASSES = {
   HEAVY: {
     id: 'HEAVY',
+    classTier: 0,
     name: '重装歩兵',
     icon: '🛡️',
     color: '#38bdf8',
@@ -420,6 +426,7 @@ export const SOLDIER_CLASSES = {
   },
   LIGHT: {
     id: 'LIGHT',
+    classTier: 0,
     name: '軽装遊撃兵',
     icon: '🗡️',
     color: '#f59e0b',
@@ -433,6 +440,7 @@ export const SOLDIER_CLASSES = {
   },
   ARCHER: {
     id: 'ARCHER',
+    classTier: 0,
     name: '弓兵',
     icon: '🏹',
     color: '#34d399',
@@ -445,6 +453,7 @@ export const SOLDIER_CLASSES = {
   },
   MEDIC: {
     id: 'MEDIC',
+    classTier: 0,
     name: '衛生術士',
     icon: '🌿',
     color: '#10b981',
@@ -459,8 +468,10 @@ export const SOLDIER_CLASSES = {
   // ===== 🔱 上位職（ADVANCED CLASSES - 世界が変わる覚醒強化・パーセンテージ乗算倍率！） =====
   PALADIN: {
     id: 'PALADIN',
+    classTier: 1,
     baseClassId: 'HEAVY',
     isAdvanced: true,
+    advancedClassId: 'TEMPLAR',
     name: '聖騎士',
     icon: '👑🛡️',
     color: '#38bdf8',
@@ -479,8 +490,10 @@ export const SOLDIER_CLASSES = {
   },
   BLADEMASTER: {
     id: 'BLADEMASTER',
+    classTier: 1,
     baseClassId: 'LIGHT',
     isAdvanced: true,
+    advancedClassId: 'SWORD_EMPEROR',
     name: '剣聖',
     icon: '⚔️⚡',
     color: '#f59e0b',
@@ -499,8 +512,10 @@ export const SOLDIER_CLASSES = {
   },
   SNIPER: {
     id: 'SNIPER',
+    classTier: 1,
     baseClassId: 'ARCHER',
     isAdvanced: true,
+    advancedClassId: 'STORM_BOW',
     name: '神射手',
     icon: '🎯💫',
     color: '#10b981',
@@ -519,8 +534,10 @@ export const SOLDIER_CLASSES = {
   },
   HIGH_PRIEST: {
     id: 'HIGH_PRIEST',
+    classTier: 1,
     baseClassId: 'MEDIC',
     isAdvanced: true,
+    advancedClassId: 'SAINT',
     name: '大司教',
     icon: '🕊️💖',
     color: '#ec4899',
@@ -535,7 +552,88 @@ export const SOLDIER_CLASSES = {
     defMultBonus: 0.50,  // 防御力 +50% (乗算スケール)
     tag: '🕊️大司教',
     desc: '世界が変わる奇跡の使徒！治癒力+85%, HP+45%, DEF+50%, 味方全体リジェネ結界＆倒れた仲間を超速即座に蘇生'
+  },
+
+  // ===== 極職 (MASTER / Tier2) =====
+  TEMPLAR: {
+    id: 'TEMPLAR', classTier: 2, baseClassId: 'HEAVY', isAdvanced: true, isMaster: true,
+    advancedClassId: 'IMMORTAL_AEGIS',
+    name: '神殿騎士', icon: '🏛️🛡️', color: '#38bdf8', glowColor: '#a5f3fc',
+    range: 52, speed: 98, atkCooldown: 0.75,
+    bonusHp: 420, bonusDef: 95, bonusAtk: 48,
+    hpMultBonus: 0.90, defMultBonus: 1.05, atkMultBonus: 0.55,
+    tag: '⚜️神殿騎士',
+    desc: '極職タンク！HP+90% DEF+105%。聖域の盾で味方守護を強化'
+  },
+  SWORD_EMPEROR: {
+    id: 'SWORD_EMPEROR', classTier: 2, baseClassId: 'LIGHT', isAdvanced: true, isMaster: true,
+    advancedClassId: 'VOID_EDGE',
+    name: '剣帝', icon: '🗡️👑', color: '#f59e0b', glowColor: '#fde68a',
+    range: 58, speed: 170, atkCooldown: 0.28,
+    bonusCrit: 55, bonusAtk: 72, bonusHp: 220,
+    atkMultBonus: 0.95, hpMultBonus: 0.50, speedMultBonus: 0.45,
+    tag: '⚜️剣帝',
+    desc: '極職遊撃！ATK+95% 速度+45%。帝剣の連撃で戦線を切り裂く'
+  },
+  STORM_BOW: {
+    id: 'STORM_BOW', classTier: 2, baseClassId: 'ARCHER', isAdvanced: true, isMaster: true,
+    advancedClassId: 'STAR_HUNTER',
+    name: '嵐弓士', icon: '🌪️🏹', color: '#10b981', glowColor: '#6ee7b7',
+    range: 400, speed: 125, atkCooldown: 0.88,
+    bonusAtk: 80, bonusCrit: 50, bonusHp: 200,
+    atkMultBonus: 1.00, hpMultBonus: 0.40, rangeMultBonus: 0.55,
+    tag: '⚜️嵐弓士',
+    desc: '極職射手！ATK+100% 射程拡大。嵐矢の斉射で縦深を制圧'
+  },
+  SAINT: {
+    id: 'SAINT', classTier: 2, baseClassId: 'MEDIC', isAdvanced: true, isMaster: true,
+    advancedClassId: 'ARCHANGEL',
+    name: '聖女', icon: '✨🕊️', color: '#ec4899', glowColor: '#f9a8d4',
+    range: 250, speed: 118, atkCooldown: 0.95,
+    bonusHp: 280, bonusDef: 48,
+    healMultBonus: 1.25, hpMultBonus: 0.70, defMultBonus: 0.75,
+    tag: '⚜️聖女',
+    desc: '極職支援！治癒+125%。聖域リジェネと高速蘇生'
+  },
+
+  // ===== 伝説職 (LEGEND / Tier3) — 神話宝玉が必要 =====
+  IMMORTAL_AEGIS: {
+    id: 'IMMORTAL_AEGIS', classTier: 3, baseClassId: 'HEAVY', isAdvanced: true, isMaster: true, isLegendary: true,
+    name: '不滅の守護', icon: '🌌🛡️', color: '#67e8f9', glowColor: '#ecfeff',
+    range: 56, speed: 105, atkCooldown: 0.70,
+    bonusHp: 720, bonusDef: 150, bonusAtk: 80,
+    hpMultBonus: 1.45, defMultBonus: 1.60, atkMultBonus: 0.85,
+    tag: '🌌不滅守護',
+    desc: '伝説タンク！HP+145% DEF+160%。不滅の壁が戦場を支える'
+  },
+  VOID_EDGE: {
+    id: 'VOID_EDGE', classTier: 3, baseClassId: 'LIGHT', isAdvanced: true, isMaster: true, isLegendary: true,
+    name: '虚空剣', icon: '🌌⚔️', color: '#fbbf24', glowColor: '#fffbeb',
+    range: 62, speed: 185, atkCooldown: 0.22,
+    bonusCrit: 70, bonusAtk: 120, bonusHp: 360,
+    atkMultBonus: 1.50, hpMultBonus: 0.80, speedMultBonus: 0.65,
+    tag: '🌌虚空剣',
+    desc: '伝説遊撃！ATK+150%。虚空の一閃で敵将を斬る'
+  },
+  STAR_HUNTER: {
+    id: 'STAR_HUNTER', classTier: 3, baseClassId: 'ARCHER', isAdvanced: true, isMaster: true, isLegendary: true,
+    name: '星狩人', icon: '🌌🎯', color: '#34d399', glowColor: '#d1fae5',
+    range: 460, speed: 135, atkCooldown: 0.78,
+    bonusAtk: 130, bonusCrit: 65, bonusHp: 320,
+    atkMultBonus: 1.55, hpMultBonus: 0.65, rangeMultBonus: 0.75,
+    tag: '🌌星狩人',
+    desc: '伝説射手！ATK+155%。星屑の斉射が最果てを貫く'
+  },
+  ARCHANGEL: {
+    id: 'ARCHANGEL', classTier: 3, baseClassId: 'MEDIC', isAdvanced: true, isMaster: true, isLegendary: true,
+    name: '大天使', icon: '🌌👼', color: '#f472b6', glowColor: '#fce7f3',
+    range: 280, speed: 128, atkCooldown: 0.85,
+    bonusHp: 420, bonusDef: 72,
+    healMultBonus: 1.80, hpMultBonus: 1.10, defMultBonus: 1.10,
+    tag: '🌌大天使',
+    desc: '伝説支援！治癒+180%。大天使の光で部隊を蘇らせる'
   }
+
 };
 
 // 隊長（主人公）の上位職
@@ -1590,6 +1688,8 @@ export const IronSquadGame = {
 
     // カメラ同期
     this.camera = { x: targetX, y: targetY };
+    // v1.25.8: teleport must reveal destination (prevents full-black after FT)
+    this.revealFogAroundPlayer(true);
 
     // 転送魔法陣パーティクル（青〜エメラルド光）
     for (let i = 0; i < 40; i++) {
@@ -1830,6 +1930,7 @@ export const IronSquadGame = {
     this.inBattle = true;
     this.commandActiveUntil = 0;
     this.awakeningOrbs = 0;
+    this.awakeningGems = 0;
     this.globalFundAmount = String(defaultDonateAmount(50));
     this.treasury = 200;
     this.sharedEquipBox = [];
@@ -1899,6 +2000,8 @@ export const IronSquadGame = {
     this.reserves = inherited?.reserveSurvivors || [];
     this.squad = [];
     this.fog = new FogGrid();
+    this.fog.revealCamp(BASE_CAMP.x, BASE_CAMP.y);
+    this.fog._campSeeded = true;
     let hasVeterans = false;
 
     if (veterans && Array.isArray(veterans) && veterans.length > 0) {
@@ -2592,7 +2695,7 @@ export const IronSquadGame = {
     s.kills = minionKills + bossKills;
 
     // 衛生兵（MEDIC / HIGH_PRIEST）の回復力（Heal Power）計算：上位職・叙勲・死線スキルが全乗算で極限治癒！
-    if (clsKey === 'MEDIC' || clsKey === 'HIGH_PRIEST') {
+    if (clsKey === 'MEDIC' || clsKey === 'HIGH_PRIEST' || clsKey === 'SAINT' || clsKey === 'ARCHANGEL') {
       const wItem = s.equipped ? s.equipped.weapon : null;
       const wAtk = wItem && wItem.stats ? (wItem.stats.atk || 0) : 0;
       const wUp = wItem ? (wItem.upgrade || 0) : 0;
@@ -2636,6 +2739,7 @@ export const IronSquadGame = {
     this.exp = saved.exp || 0;
     this.gold = saved.gold ?? 50;
     this.awakeningOrbs = saved.awakeningOrbs || 0;
+    this.awakeningGems = saved.awakeningGems || 0;
     this.globalFundAmount = saved.globalFundAmount || String(defaultDonateAmount(saved.gold ?? 50));
     this.treasury = saved.treasury ?? 200;
     this.sharedEquipBox = Array.isArray(saved.sharedEquipBox) ? saved.sharedEquipBox : [];
@@ -2657,8 +2761,11 @@ export const IronSquadGame = {
     this.recruitSequence = saved.recruitSequence ?? [...this.squad,...this.reserves].reduce((max,s)=>Math.max(max,Number(s.name?.match(/#(\d+)/)?.[1] || 0)),0);
     this.lastReinforcements = saved.lastReinforcements || null;
     this.fog = new FogGrid();
-    if (saved.fogExplored) this.fog.deserialize(saved.fogExplored);
-    // v1.24.3: always (re)seed camp — stale/mismatched fogExplored must not leave start area pitch-black
+    if (saved.fogExplored) {
+      const ok = this.fog.deserialize(saved.fogExplored);
+      if (!ok) console.warn('[fog] deserialize rejected — reseeding camp');
+    }
+    // v1.24.3 / v1.25.8: always (re)seed camp+ensure valid exploration
     this.fog.revealCamp(BASE_CAMP.x, BASE_CAMP.y);
     this.fog._campSeeded = true;
     if (!(this.civilians || []).filter(c => c && !c.rescued).length) ensureCiviliansSpawned(this, { targetCount: 4 });
@@ -2801,8 +2908,10 @@ export const IronSquadGame = {
     const fog = this.ensureFog();
     if (!this.player || this.currentDungeon) return;
     if (!Number.isFinite(this.player.x) || !Number.isFinite(this.player.y)) return;
-    // v1.24.3: if fog never stamped anything, force camp+player reveal (prevents permanent black overlay)
-    if (force || !fog.hasExploration || !fog.hasExploration()) {
+    const empty = typeof fog.hasExploration === 'function' ? !fog.hasExploration() : true;
+    const invalid = typeof fog.isValid === 'function' && !fog.isValid();
+    // v1.24.3 / v1.25.8: empty/invalid → force camp+player; always stamp under player
+    if (force || empty || invalid || !fog._campSeeded) {
       fog._lastX = NaN;
       fog._lastY = NaN;
       fog.revealCamp(BASE_CAMP.x, BASE_CAMP.y);
@@ -2812,10 +2921,16 @@ export const IronSquadGame = {
       fog._lastY = NaN;
     }
     fog.revealAt(this.player.x, this.player.y, FOG_REVEAL_RADIUS);
-    // Guarantee the cell under the player is lit even if circle stamp edge-misses
     if (fog.mark) {
       const cell = fog.cell || 512;
       fog.mark(Math.floor(this.player.x / cell), Math.floor(this.player.y / cell));
+    }
+    // If still nothing under player, force one more camp+player stamp (never leave pitch-black)
+    if (typeof fog.isExploredWorld === 'function' && !fog.isExploredWorld(this.player.x, this.player.y)) {
+      fog._lastX = NaN; fog._lastY = NaN;
+      fog.revealCamp(BASE_CAMP.x, BASE_CAMP.y);
+      fog.revealAt(this.player.x, this.player.y, FOG_REVEAL_RADIUS || FOG_CAMP_REVEAL);
+      fog.mark(Math.floor(this.player.x / (fog.cell || 512)), Math.floor(this.player.y / (fog.cell || 512)));
     }
   },
 
@@ -3010,6 +3125,7 @@ export const IronSquadGame = {
         exp: this.exp,
         gold: this.gold,
         awakeningOrbs: this.awakeningOrbs || 0,
+        awakeningGems: this.awakeningGems || 0,
         globalFundAmount: this.globalFundAmount || String(defaultDonateAmount(this.gold || 0)),
         treasury: this.treasury || 0,
         sharedEquipBox: this.sharedEquipBox || [],
@@ -3736,7 +3852,10 @@ export const IronSquadGame = {
     if (treasEl) treasEl.textContent = `国庫${(this.treasury || 0).toLocaleString()}G`;
 
     const orbEl = document.getElementById('current-orbs');
-    if (orbEl) orbEl.textContent = `💎${this.awakeningOrbs || 0}`;
+    if (orbEl) {
+      const gems = this.awakeningGems || 0;
+      orbEl.textContent = gems > 0 ? `💎${this.awakeningOrbs || 0} 💠${gems}` : `💎${this.awakeningOrbs || 0}`;
+    }
 
     // 号令ボタンの表示切替
     const cmdBtn = document.getElementById('btn-pad-command');
@@ -4981,7 +5100,7 @@ export const IronSquadGame = {
       const aiLight = pgLight || mbCombatLight;
 
       // 衛生兵（MEDIC）および大司教（HIGH_PRIEST）の自動救助 — 負傷者へ分散割当
-      if (clsKey === 'MEDIC' || clsKey === 'HIGH_PRIEST') {
+      if (clsKey === 'MEDIC' || clsKey === 'HIGH_PRIEST' || clsKey === 'SAINT' || clsKey === 'ARCHANGEL') {
         if (!this._medicRescueAssign) this._medicRescueAssign = buildMedicRescueAssign(aliveSquad);
         const downedMate = this._medicRescueAssign.get(soldier.id) || null;
         if (downedMate && downedMate.isDown && !downedMate.dead) {
@@ -5057,7 +5176,7 @@ export const IronSquadGame = {
 
       // 衛生兵（MEDIC）＆大司教（HIGH_PRIEST）の治癒魔法 ＆ 神聖浄化弾
       // v1.24.2: skip O(squad) hurt find on AI light frames (downed rescue above stays every frame)
-      if ((clsKey === 'MEDIC' || clsKey === 'HIGH_PRIEST') && !aiLight) {
+      if ((clsKey === 'MEDIC' || clsKey === 'HIGH_PRIEST' || clsKey === 'SAINT' || clsKey === 'ARCHANGEL') && !aiLight) {
         soldier.atkCooldown = (soldier.atkCooldown || 0) - dt;
         if (soldier.atkCooldown <= 0) {
           // 治癒対象の選定（プレイヤーまたはHP低下中の味方）
@@ -5183,7 +5302,7 @@ export const IronSquadGame = {
 
       // 兵種ごとの交戦間合い
       if (nearestEnemy && enemyDist < 360) {
-        if (clsKey === 'ARCHER' || clsKey === 'SNIPER') {
+        if (clsKey === 'ARCHER' || clsKey === 'SNIPER' || clsKey === 'STORM_BOW' || clsKey === 'STAR_HUNTER') {
           // 弓兵/神射手: 接近されすぎたら後退、射程内なら立ち止まって射撃
           const rkWpn = (soldier.equipped && soldier.equipped.weapon) || soldier.weapon;
           const rkProf = weaponCombatProfile(rkWpn);
@@ -5197,11 +5316,11 @@ export const IronSquadGame = {
             targetX = soldier.x;
             targetY = soldier.y;
           }
-        } else if (clsKey === 'HEAVY' || clsKey === 'PALADIN') {
+        } else if (clsKey === 'HEAVY' || clsKey === 'PALADIN' || clsKey === 'TEMPLAR' || clsKey === 'IMMORTAL_AEGIS') {
           // 重装/聖騎士: 敵に真っ向から突進
           targetX = nearestEnemy.x;
           targetY = nearestEnemy.y;
-        } else if (clsKey === 'LIGHT' || clsKey === 'BLADEMASTER') {
+        } else if (clsKey === 'LIGHT' || clsKey === 'BLADEMASTER' || clsKey === 'SWORD_EMPEROR' || clsKey === 'VOID_EDGE') {
           // 軽装/剣聖: 敵の側面に回り込む（剣聖は素早く回り込み）
           const sideAngle = Math.atan2(nearestEnemy.y - soldier.y, nearestEnemy.x - soldier.x) + 0.8;
           targetX = nearestEnemy.x + Math.cos(sideAngle) * 35;
@@ -5229,7 +5348,7 @@ export const IronSquadGame = {
         const equipAtk = soldier.equipped && soldier.equipped.weapon ? soldier.equipped.weapon.stats.atk || 0 : (soldier.weapon ? soldier.weapon.stats.atk || 0 : 0);
         const totalAtk = Math.round((soldier.atk + equipAtk) * warlordMult);
 
-        if ((clsKey === 'ARCHER' || clsKey === 'SNIPER')) {
+        if ((clsKey === 'ARCHER' || clsKey === 'SNIPER' || clsKey === 'STORM_BOW' || clsKey === 'STAR_HUNTER')) {
           const rWpn = (soldier.equipped && soldier.equipped.weapon) || soldier.weapon || null;
           const rProf = this.combatProfileFor(soldier, rWpn, false);
           // 遠隔武器未装備時はクラス既定の弓扱い
@@ -6147,7 +6266,7 @@ export const IronSquadGame = {
     // 聖騎士（PALADIN）の聖域加護 (周囲140pxに生存中の聖騎士がいれば被ダメージ-30%カット)
     let paladinGuarded = false;
     if (this.squad) {
-      const guard=this.squad.find(s => !s.dead && !s.isDown && s.soldierClass === 'PALADIN' && Math.hypot(s.x - target.x, s.y - target.y) <= 140);
+      const guard=this.squad.find(s => !s.dead && !s.isDown && s.soldierClass === 'PALADIN' || s.soldierClass === 'TEMPLAR' || s.soldierClass === 'IMMORTAL_AEGIS' && Math.hypot(s.x - target.x, s.y - target.y) <= 140);
       paladinGuarded=!!guard;
       if(guard) recordCombat(guard);
     }
@@ -6239,7 +6358,8 @@ export const IronSquadGame = {
         this.zoneAlertFlash = 1.0;
         this.screenShake = 0.55;
         sound.playBomb();
-        this.showToast(`🚨【危険地帯突入！】${curZone.name}！敵の脅威が跳ね上がります！（推奨DEF ${curZone.reqDef}+）`);
+        const ring = zoneRingLabelJa(Math.hypot(this.player.x - BASE_CAMP.x, this.player.y - BASE_CAMP.y));
+        this.showToast(`🚨【危険地帯突入！】${curZone.name}！${ring.tip}（推奨DEF ${curZone.reqDef}+）`);
       } else {
         this.showToast(`🏕️【安全エリアへ移動】${curZone.name}に入りました`);
       }
@@ -6402,6 +6522,7 @@ export const IronSquadGame = {
     this.savedFieldDrops = null;
     this.currentDungeon = null;
     this.dungeonVault = null;
+    this.revealFogAroundPlayer(true);
 
     sound.playLaunch();
     this.showToast('🌀 外界へ無事帰還しました！');
@@ -6442,6 +6563,10 @@ export const IronSquadGame = {
 
   createDungeonBoss(bossDef, x, y, dungeonDef) {
     const scaling = distanceScaling(dungeonDef.distance, this.phase || 1);
+    // v1.25.8: fixedStats bosses (魔王など) keep authored ~10M scale — no distance/ring multiply
+    const useFixed = !!(bossDef && bossDef.fixedStats);
+    const hp = useFixed ? Math.round(bossDef.hp) : Math.round(bossDef.hp * Math.max(1, scaling.hp * 0.75));
+    const atk = useFixed ? Math.round(bossDef.atk) : Math.round(bossDef.atk * Math.max(1, scaling.atk * 0.75));
     return {
       type: bossDef.type,
       name: bossDef.name,
@@ -6449,15 +6574,17 @@ export const IronSquadGame = {
       icon: bossDef.icon,
       x,
       y,
-      hp: Math.round(bossDef.hp * Math.max(1, scaling.hp * 0.75)),
-      maxHp: Math.round(bossDef.hp * Math.max(1, scaling.hp * 0.75)),
-      atk: Math.round(bossDef.atk * Math.max(1, scaling.atk * 0.75)),
+      hp,
+      maxHp: hp,
+      atk,
+
       speed: bossDef.speed,
       radius: bossDef.radius,
       color: bossDef.color,
       isBoss: true,
       isColossal: true,
       isDungeonBoss: true,
+      isDemonKing: bossDef.type === 'demon_king',
       skillCooldown: bossDef.skillCooldown,
       skillTimer: bossDef.skillCooldown,
       skillName: bossDef.skillName,
@@ -6481,6 +6608,16 @@ export const IronSquadGame = {
     this.gold += reward.gold;
     this.gainExp(reward.exp);
     this.spawnDamageText(this.player.x, this.player.y - 45, `👑至宝開錠! +${reward.gold}G / +${reward.exp}EXP`, '#ffd700');
+
+    // v1.25.8: 魔王城などのボーナス宝珠・神話宝玉
+    if (reward.bonusOrbs) {
+      this.awakeningOrbs = (this.awakeningOrbs || 0) + reward.bonusOrbs;
+      this.showToast(`💎 覚醒宝珠 +${reward.bonusOrbs}（所持 ${this.awakeningOrbs}）`);
+    }
+    if (reward.bonusGems) {
+      this.awakeningGems = (this.awakeningGems || 0) + reward.bonusGems;
+      this.showToast(`💠 神話宝玉 +${reward.bonusGems}（所持 ${this.awakeningGems}）`);
+    }
 
     // 2. 超高Tier確定アイテム（3〜5個）ドロップ
     for (let i = 0; i < reward.itemCount; i++) {
@@ -6626,6 +6763,9 @@ export const IronSquadGame = {
     this.updateStatsUI();
 
     // ⛩️ ダンジョンボス討伐時の至宝解錠判定
+    if (monster.isDemonKing) {
+      this.showToast(😈👑【魔王討伐！！】『』を撃破！約1000万規模の脅威を打ち破った！);
+    }
     if (monster.isDungeonBoss) {
       sound.playHighScore();
       this.screenShake = 0.95;
@@ -6703,6 +6843,12 @@ export const IronSquadGame = {
         mat:'神聖秘宝',color:'#fbbf24',desc:'上位職への覚醒に使う希少な秘宝'
       }});
     }
+    // v1.25.8: 超巨頭撃破で低確率の神話宝玉（伝説職に必要）
+    if (monster.isColossal && Math.random() < 0.35) {
+      this.dropsOnField.push({x:monster.x + 12, y:monster.y + 8, isBoss:true, isOrb:true, item:{
+        id:Math.random().toString(36).substring(2,9), name:'神話の覚醒宝玉', type:'GEM', tier:7, isGem:true, isOrb:false
+      }});
+    }
 
     this.spawnSparks(monster.x, monster.y, monster.color, monster.isColossal ? 30 : 14);
   },
@@ -6723,6 +6869,13 @@ export const IronSquadGame = {
   },
 
   collectDrop(item, isBossDrop = false) {
+    if (item.type === 'GEM' || item.isGem) {
+      this.awakeningGems = (this.awakeningGems || 0) + 1;
+      sound.playHighScore();
+      this.showToast(`💠【神話秘宝！】『神話の覚醒宝玉』入手！(所持: ${this.awakeningGems}個 / 伝説職の覚醒に必要)`);
+      this.updateStatsUI();
+      return;
+    }
     if (item.type === 'ORB' || item.isOrb) {
       this.awakeningOrbs = (this.awakeningOrbs || 0) + 1;
       sound.playHighScore();
@@ -6915,64 +7068,68 @@ export const IronSquadGame = {
     this.renderStrategyUI();
   },
 
-  // 🔱 兵士の上位職への覚醒昇格（クラスアップ）
+  // 🔱 兵士の多段階クラスアップ（基本→上位→極→伝説）
   promoteSoldier(soldierId) {
-    if ((this.awakeningOrbs || 0) < 1) {
-      alert('クラスアップにはボスドロップの秘宝『覚醒の英雄宝珠』が1個必要です！\n(遠方のエリート・ボスから低確率で入手)');
-      return false;
-    }
     const s = this.squad.find(sol => sol.id === soldierId);
     if (!s) return false;
 
     const curCls = SOLDIER_CLASSES[s.soldierClass] || SOLDIER_CLASSES.HEAVY;
-    if (curCls.isAdvanced) {
-      alert('この兵士は既に最高峰の上位職へ覚醒済みです！');
+    const advClsId = nextClassId(curCls);
+    const advCls = advClsId ? SOLDIER_CLASSES[advClsId] : null;
+    if (!advCls) {
+      alert('この兵士は既に最高峰の伝説職へ覚醒済みです！');
+      return false;
+    }
+    const cost = classUpCostForNext(curCls);
+    if (!canAffordClassUp(this.awakeningOrbs, this.awakeningGems, cost)) {
+      alert(classUpShortageJa(this.awakeningOrbs, this.awakeningGems, cost));
       return false;
     }
 
-    const advClsId = curCls.advancedClassId;
-    const advCls = SOLDIER_CLASSES[advClsId];
-    if (!advCls) return false;
-
-    this.awakeningOrbs--;
+    this.awakeningOrbs -= cost.orbs || 0;
+    this.awakeningGems = Math.max(0, (this.awakeningGems || 0) - (cost.gems || 0));
     s.soldierClass = advClsId;
     this.recalcSoldierStats(s);
-    if(!s.isDown)s.hp=s.maxHp;
+    if (!s.isDown) s.hp = s.maxHp;
 
+    const tierName = CLASS_TIER_LABELS[classTierOf(advCls)] || '上位職';
     sound.playHighScore();
-    this.showToast(`🔱⚡【天命覚醒！】${s.name} が上位職【${advCls.name}】へ覚醒昇格！世界が変わる力を獲得！`);
+    this.showToast(`🔱⚡【天命覚醒！】${s.name} が${tierName}【${advCls.name}】へ昇格！（消費: ${formatClassUpCostJa(cost)}）`);
     this.saveGame();
     this.renderStrategyUI();
     this.updateStatsUI();
     return true;
   },
 
-  // 👑 隊長（主人公）の上位職【覇王ウォーロード】への覚醒昇格
+  // 👑 隊長  // 👑 隊長の多段階覚醒（隊長→覇王→帝皇→神話帝）
   promotePlayer() {
-    if ((this.awakeningOrbs || 0) < 1) {
-      alert('クラスアップにはボスドロップの秘宝『覚醒の英雄宝珠』が1個必要です！\n(遠方のエリート・ボスから低確率で入手)');
+    const next = nextPlayerStage(this.player);
+    if (!next || !next.id) {
+      alert('隊長は既に最高位【神話帝ミトラス】へ覚醒済みです！');
       return false;
     }
-    if (this.player.isAdvanced) {
-      alert('隊長は既に最高位【覇王ウォーロード】へ覚醒済みです！');
+    const cost = { 1: { orbs: 1, gems: 0 }, 2: { orbs: 3, gems: 0 }, 3: { orbs: 5, gems: 1 } }[next.tier];
+    if (!canAffordClassUp(this.awakeningOrbs, this.awakeningGems, cost)) {
+      alert(classUpShortageJa(this.awakeningOrbs, this.awakeningGems, cost));
       return false;
     }
 
-    this.awakeningOrbs--;
+    this.awakeningOrbs -= cost.orbs || 0;
+    this.awakeningGems = Math.max(0, (this.awakeningGems || 0) - (cost.gems || 0));
     this.player.isAdvanced = true;
-    this.player.advancedClass = 'WARLORD';
+    this.player.advancedClass = next.id;
     this.recalcPlayerStats();
     this.player.hp = this.player.maxHp;
 
     sound.playHighScore();
-    this.showToast(`👑🔥【覇王覚醒！】隊長が軍神【覇王ウォーロード】へ覚醒昇格！部隊攻撃力+25%＆全方位覇気スラッシュ解放！`);
+    this.showToast(`👑🔥【覚醒昇格！】隊長が【${next.name}】へ！（消費: ${formatClassUpCostJa(cost)}）`);
     this.saveGame();
     this.renderStrategyUI();
     this.updateStatsUI();
     return true;
   },
 
-  healAllSquad() {
+  healAllSquad  healAllSquad() {
     if (this.gold < 25) {
       alert('軍資金が足りません (必要: 25G)');
       return;
@@ -7873,7 +8030,10 @@ export const IronSquadGame = {
     if(!reserveCount) reserveList.textContent='現在、待機中の予備兵はいません。';
 
     const orbEl = document.getElementById('strat-orbs');
-    if (orbEl) orbEl.textContent = this.awakeningOrbs || 0;
+    if (orbEl) {
+      const g = this.awakeningGems || 0;
+      orbEl.textContent = g > 0 ? `${this.awakeningOrbs || 0}💎 / ${g}💠` : `${this.awakeningOrbs || 0}`;
+    }
     if (typeof this.renderExpeditionPanel === 'function') this.renderExpeditionPanel();
 
     const pRecordBox = document.getElementById('player-record-box');
@@ -8318,14 +8478,16 @@ export const IronSquadGame = {
           </div>` : `<span style="font-size:9.5px;color:#64748b;">本隊は国庫配分のみ</span>`}
           <button class="mini-btn btn-soldier-detail" style="background:#1e3a5f;color:#93c5fd;font-size:10px;padding:3px 6px;" title="個人詳細">📋 詳細</button>
           <button class="mini-btn btn-dismiss" style="background:#7f1d1d;color:#fecaca;font-size:10px;padding:3px 6px;" title="放逐（一部返還）">🚪 放逐</button>
-          ${!cls.isAdvanced && cls.advancedClassId ? `
-            <button class="mini-btn btn-class-up" style="background:linear-gradient(135deg, #f59e0b, #ec4899); color:#fff; font-size:10px; font-weight:bold; box-shadow:0 0 6px rgba(245,158,11,0.5);" title="ボス秘宝『覚醒の英雄宝珠』を消費して上位職【${SOLDIER_CLASSES[cls.advancedClassId].name}】へ覚醒昇格！">
-              🔱 上位職【${SOLDIER_CLASSES[cls.advancedClassId].name}】へ覚醒！(💎1個)
-            </button>
-          ` : (cls.isAdvanced ? `
-            <span style="background:rgba(245,158,11,0.2); border:1px solid #f59e0b; color:#fbbf24; border-radius:3px; padding:1px 5px; font-size:9.5px; font-weight:bold;">👑【上位職・覚醒済】</span>
-          ` : '')}
-          ${canHonor ? `<button class="mini-btn btn-honor" style="background:#ffaa00; color:#0b0d14; font-size:10px;">🎖️ 叙勲！</button>` : ''}
+          ${cls.advancedClassId && SOLDIER_CLASSES[cls.advancedClassId] ? (() => {
+            const next = SOLDIER_CLASSES[cls.advancedClassId];
+            const cost = classUpCostForNext(cls);
+            const costJa = formatClassUpCostJa(cost);
+            const tierJa = CLASS_TIER_LABELS[classTierOf(next)] || '上位職';
+            return `
+            <button class="mini-btn btn-class-up" style="background:linear-gradient(135deg, #f59e0b, #ec4899); color:#fff; font-size:10px; font-weight:bold; box-shadow:0 0 6px rgba(245,158,11,0.5);" title="${tierJa}【${next.name}】へ覚醒（${costJa}）">
+              🔱 ${tierJa}【${next.name}】へ！(${costJa})
+            </button>`;
+          })() : ''}
           ${wItem ? `
             <button class="mini-btn btn-soldier-up" style="background:${hasWUpBudget ? '#10b981' : '#4b5563'}; color:#fff; font-size:10px;" title="兵士が自費で武器を強化">
               🔨 武器自費強化 [${wUpCost}G]
@@ -8672,8 +8834,16 @@ export const IronSquadGame = {
     }
 
     // Fog of war (bit-grid fillRect; skip inside dungeons)
-    if (!this.currentDungeon && this.fog) {
-      this.fog.drawFieldOverlay(this.ctx, this.camera, this.width, this.height, this.zoom || 1);
+    // v1.25.8: ensure camp/player seed; overlay itself fail-opens if viewport unexplored
+    if (!this.currentDungeon) {
+      const fog = this.ensureFog();
+      if (fog && typeof fog.hasExploration === 'function' && !fog.hasExploration()) {
+        fog.revealCamp(BASE_CAMP.x, BASE_CAMP.y);
+        if (this.player && Number.isFinite(this.player.x)) {
+          fog.revealAt(this.player.x, this.player.y, FOG_REVEAL_RADIUS);
+        }
+      }
+      if (fog) fog.drawFieldOverlay(this.ctx, this.camera, this.width, this.height, this.zoom || 1);
     }
 
     this.ctx.restore(); // カメラ復元
