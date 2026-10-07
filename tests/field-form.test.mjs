@@ -37,12 +37,14 @@ drawFieldSoldier(context, { ...body, vx: 0, vy: 0, atkAnim: 0 }, 0, cls, '#829ca
 assert.equal(arcs, arcsAtRest, 'a still blade draws no arc');
 assert.equal(depth, 0);
 drawFieldSoldier(context, { ...body, vx: 1, vy: 0, atkAnim: 1 }, 200, cls, '#829cae');
-assert.equal(arcs, arcsAtRest + 3, 'a swing draws a crescent and a bright edge');
+assert.equal(arcs, arcsAtRest, 'preparation has no detached slash effect');
+drawFieldSoldier(context, { ...body, vx: 1, vy: 0, atkAnim: .57 }, 200, cls, '#829cae');
+assert.equal(arcs, arcsAtRest + 1, 'the striking blade draws only one narrow trace');
 assert.equal(depth, 0);
 drawFieldSoldier(context, { ...body, soldierClass: 'ARCHER', vx: 1, vy: 0, atkAnim: 1 }, 200, cls, '#829cae');
-assert.equal(arcs, arcsAtRest + 3, 'bows keep the arc off the string');
-drawFieldCommander(context, { x: 0, y: 0, hp: 20, maxHp: 20, level: 3, facingAngle: 0, slashAnim: 1 }, { weapon: { color: '#e6d7a8' } }, 200, 2, '軍曹', true, false);
-assert.equal(arcs, arcsAtRest + 6, 'the commander swing carries the same short arc');
+assert.equal(arcs, arcsAtRest + 1, 'bows keep the arc off the string');
+drawFieldCommander(context, { x: 0, y: 0, hp: 20, maxHp: 20, level: 3, facingAngle: 0, slashAnim: .57 }, { weapon: { color: '#e6d7a8' } }, 200, 2, '軍曹', true, false);
+assert.equal(arcs, arcsAtRest + 2, 'the commander carries the same restrained blade trace');
 assert.equal(depth, 0);
 
 console.log('PASS: boss bodies, planted contact shadow, blade-only slash arc');

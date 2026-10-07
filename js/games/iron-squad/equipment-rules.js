@@ -317,3 +317,69 @@ export function weaponCombatProfile(item) {
     projSpeed: 0, splash: 0, projType: null
   };
 }
+
+
+/** 近接スイングのスイートスポット（hitDist / reach の正規化距離帯）
+ * - sword: かなり広い（大半のリーチでボーナス）
+ * - spear: 先端寄り。近すぎると威力・クリ低下（突き感）
+ * - hammer: 中庸のピーク帯
+ * 飛び道具は evaluateMeleeSweetSpot が fixed(倍率1) を返す
+ */
+export const MELEE_SWEET_SPOT = {
+  sword: {
+    sweetMin: 0.14, sweetMax: 0.96, peak: 0.52,
+    sweetDmg: 1.16, outDmg: 0.84,
+    sweetCritBonus: 10, outCritBonus: -3
+  },
+  spear: {
+    nearMax: 0.36, nearDmg: 0.60, nearCritBonus: -12,
+    sweetMin: 0.50, sweetMax: 1.05, peak: 0.86,
+    sweetDmg: 1.24, outDmg: 0.78,
+    sweetCritBonus: 14, outCritBonus: -5
+  },
+  hammer: {
+    sweetMin: 0.28, sweetMax: 0.72, peak: 0.48,
+    sweetDmg: 1.20, outDmg: 0.76,
+    sweetCritBonus: 11, outCritBonus: -6
+  }
+};
+
+/**
+ * @param {string} style weaponStyle
+ * @param {number} hitDist 攻撃者〜対象の距離（槍は along でも可）
+ * @param {number} reach 武器リーチ
+ * @returns {{ dmgMult: number, critBonus: number, inSweet: boolean, band: string, t: number, quality: number }}
+ */
+export function evaluateMeleeSweetSpot(style, hitDist, reach) {
+  const t = Math.max(0, Number(hitDist) || 0) / Math.max(1, Number(reach) || 1);
+  const cfg = MELEE_SWEET_SPOT[style];
+  if (!cfg) {
+    return { dmgMult: 1, critBonus: 0, inSweet: false, band: 'fixed', t, quality: 0 };
+  }
+
+  // 槍: 近すぎ弱体帯
+  if (cfg.nearMax != null && t < cfg.nearMax) {
+    const u = t / Math.max(0.001, cfg.nearMax); // 0=密着 → 1=nearMax直前
+    const dmgMult = cfg.nearDmg + (cfg.outDmg - cfg.nearDmg) * u;
+    const critBonus = cfg.nearCritBonus + (cfg.outCritBonus - cfg.nearCritBonus) * u;
+    return { dmgMult, critBonus, inSweet: false, band: 'near', t, quality: 0 };
+  }
+
+  if (t >= cfg.sweetMin && t <= cfg.sweetMax) {
+    const halfW = Math.max(0.04, Math.max(cfg.peak - cfg.sweetMin, cfg.sweetMax - cfg.peak));
+    const quality = 1 - Math.min(1, Math.abs(t - cfg.peak) / halfW); // 1=ピーク
+    // エッジでもわずかにボーナス、ピークで sweetDmg
+    const dmgMult = 1 + (cfg.sweetDmg - 1) * (0.55 + 0.45 * quality);
+    const critBonus = cfg.sweetCritBonus * (0.45 + 0.55 * quality);
+    return { dmgMult, critBonus, inSweet: true, band: 'sweet', t, quality };
+  }
+
+  return {
+    dmgMult: cfg.outDmg,
+    critBonus: cfg.outCritBonus,
+    inSweet: false,
+    band: 'out',
+    t,
+    quality: 0
+  };
+}

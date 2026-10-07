@@ -11,10 +11,11 @@
  */
 import { sound } from '../../audio.js';
 import { storage } from '../../storage.js';
-import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow, drawSpearReachCue } from './visuals.js?v=87';
+import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow } from './visuals.js?v=89';
+import { drawMeleeRangeCue, meleeDrawReach, attackAnimationRate } from './weapon-motion.js?v=89';
 import { saveSlots } from './save-slots.js';
-import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog } from './interface.js?v=87';
-import { ensureSoldierAppearance, drawSoldierPortrait, describeSoldierAppearance } from './soldier-appearance.js?v=87';
+import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog } from './interface.js?v=89';
+import { ensureSoldierAppearance, drawSoldierPortrait, describeSoldierAppearance } from './soldier-appearance.js?v=89';
 import { attachSurfaceEvents, detachSurfaceEvents, frameSurfaceReady, releaseSceneCaches, releaseCanvas, surfaceCanResume } from './canvas-surface.js?v=83';
 import { WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt } from './world.js?v=83';
 import { FogGrid, FOG_REVEAL_RADIUS, FOG_CAMP_REVEAL } from './fog.js?v=83';
@@ -30,7 +31,7 @@ import {
   SHARED_BOX_MAX_TIER, SCOUT_COST_BY_TALENT, defaultDonateAmount, donatePresetAmounts
 } from './economy-rules.js';
 
-import { EQUIPMENT_TYPES, saleValue, equippedIds, canSell, lowValueIds, chooseLootTier, distanceScaling, shrineUpgradeCap, compareEquipment, equipmentScore, weaponCombatProfile, isGodRollProtected, zoneRingPower, zoneRingLabelJa } from './equipment-rules.js';
+import { EQUIPMENT_TYPES, saleValue, equippedIds, canSell, lowValueIds, chooseLootTier, distanceScaling, shrineUpgradeCap, compareEquipment, equipmentScore, weaponCombatProfile, evaluateMeleeSweetSpot, isGodRollProtected, zoneRingPower, zoneRingLabelJa } from './equipment-rules.js?v=89';
 import {
   WEAPON_STYLES, WEAPON_STYLE_LABELS, WEAPON_STYLE_ICONS,
   MELEE_STYLES, RANGED_STYLES, HIT_GROWTH_SOFT_CAP,
@@ -85,6 +86,7 @@ export const COLOSSAL_RESPAWN=210; // was 75
 /** v1.25.7: platoon expedition -> nation hub / main-army pick / danger tier (live map) / return rewards + inferior bonus; SW v77. */
 /** v1.25.8: fog never full-black / multi-stage class-up / zone ring x10 softcap 1e6 / 魔王城~10M fixedStats; SW v78. */
 /** v1.25.11: fog player-cell fail-safe + viewport reseed + camp→player _lastX fix / module ?v=81; SW v81. */
+/** v1.27.4: melee swing sweet spots (sword wide / spear tip / hammer mid; ranged fixed); SW v88. */
 /** v1.26.0: command UI hierarchy / compact roster / bag filters / nested dialog focus / New Game and awakening UI fixes; SW v82. */
 /** v1.25.5: スカウト候補5枠 / 天才再募集確認 / 天才出現率低下(0.25%); SW v75. */
 /** v1.25.4: 作戦期切替待機 10s→8s / UI「休息」→「次のラウンド開始まで」; SW v74. */
@@ -3500,7 +3502,7 @@ export const IronSquadGame = {
           if (along < -8 || along > reach) continue;
           const perp = Math.abs(-dy * cos + dx * sin);
           if (perp <= wProf.pierceHalfWidth + (m.radius || 12)) {
-            this.performAttack(this.player, m, true);
+            this.performAttack(this.player, m, true, undefined, along);
             hit = true;
           }
         }
@@ -5409,7 +5411,7 @@ export const IronSquadGame = {
           soldier.y += (dyL / distL) * moveStep;
           soldier.facingAngle = Math.atan2(dyL, dxL);
         }
-        if (soldier.atkAnim > 0) soldier.atkAnim -= dt * 5;
+        if (soldier.atkAnim > 0) soldier.atkAnim = Math.max(0,soldier.atkAnim-dt*attackAnimationRate(soldier.equipped?.weapon||soldier.weapon,soldier.atkSpeed));
         soldier.atkCooldown = (soldier.atkCooldown || 0) - dt;
         return;
       }
@@ -5452,7 +5454,7 @@ export const IronSquadGame = {
         soldier.facingAngle = Math.atan2(dy, dx);
       }
 
-      if (soldier.atkAnim > 0) soldier.atkAnim -= dt * 5;
+      if (soldier.atkAnim > 0) soldier.atkAnim = Math.max(0,soldier.atkAnim-dt*attackAnimationRate(soldier.equipped?.weapon||soldier.weapon,soldier.atkSpeed));
 
       // オート攻撃（兵種・上位職ごとの固有スキル）
       soldier.atkCooldown = (soldier.atkCooldown || 0) - dt;
@@ -5473,6 +5475,7 @@ export const IronSquadGame = {
             soldier.atkCooldown = clsKey === 'SNIPER' ? cd * 0.88 : cd;
             soldier.atkAnim = 1.0;
             soldier.facingAngle = Math.atan2(nearestEnemy.y - soldier.y, nearestEnemy.x - soldier.x);
+            soldier.attackAngle = soldier.facingAngle;
             if (!this.projectiles) this.projectiles = [];
             const dmg = Math.round(totalAtk * (rangedProf.atkMult ? 1 : 1)); // atk already includes weapon mult via stats
             if (clsKey === 'SNIPER' && rangedProf.style === 'bow') {
@@ -5500,6 +5503,7 @@ export const IronSquadGame = {
           soldier.atkCooldown = cls.atkCooldown;
           soldier.atkAnim = 1.0;
           soldier.facingAngle = Math.atan2(nearestEnemy.y - soldier.y, nearestEnemy.x - soldier.x);
+          soldier.attackAngle = soldier.facingAngle;
           // 前方扇状範囲（100px以内、前方80度）の敵全員を一網打尽
           const bashRange = 85;
           let hitCount = 0;
@@ -5525,6 +5529,7 @@ export const IronSquadGame = {
           soldier.atkCooldown = cls.atkCooldown;
           soldier.atkAnim = 1.0;
           soldier.facingAngle = Math.atan2(nearestEnemy.y - soldier.y, nearestEnemy.x - soldier.x);
+          soldier.attackAngle = soldier.facingAngle;
           this.performAttack(soldier, nearestEnemy, false, totalAtk);
 
           // 疾風真空刃を前方へ飛ばす（貫通弾）
@@ -5552,6 +5557,7 @@ export const IronSquadGame = {
             soldier.atkCooldown = cls.atkCooldown * cdMult * masteryCd;
             soldier.atkAnim = 1.0;
             soldier.facingAngle = Math.atan2(nearestEnemy.y - soldier.y, nearestEnemy.x - soldier.x);
+            soldier.attackAngle = soldier.facingAngle;
             if (sProf.pierce) {
               const ang = soldier.facingAngle;
               const cos = Math.cos(ang), sin = Math.sin(ang);
@@ -5562,7 +5568,7 @@ export const IronSquadGame = {
                 if (along < -6 || along > meleeReach) continue;
                 const perp = Math.abs(-dy * cos + dx * sin);
                 if (perp <= sProf.pierceHalfWidth + (m.radius || 12)) {
-                  this.performAttack(soldier, m, false, totalAtk);
+                  this.performAttack(soldier, m, false, totalAtk, along);
                 }
               }
             } else {
@@ -5603,7 +5609,7 @@ export const IronSquadGame = {
             if (proj.hitEnemies.includes(m)) continue;
             if (Math.hypot(m.x - proj.x, m.y - proj.y) <= 30) {
               proj.hitEnemies.push(m);
-              this.performAttack(proj.attacker, m, false, proj.damage);
+              this.performAttack(proj.attacker, m, false, proj.damage, false);
               this.spawnSparks(m.x, m.y, '#fbbf24', 6);
             }
           }
@@ -5628,7 +5634,7 @@ export const IronSquadGame = {
             // 星屑スプラッシュ爆発（周囲35pxの敵全員にダメージ）
             for (const m of this.monsters) {
               if (Math.hypot(m.x - proj.x, m.y - proj.y) <= 38) {
-                this.performAttack(proj.attacker, m, false, proj.damage);
+                this.performAttack(proj.attacker, m, false, proj.damage, false);
               }
             }
             this.spawnSparks(proj.x, proj.y, '#34d399', 10);
@@ -5653,7 +5659,7 @@ export const IronSquadGame = {
             // 十字爆発スプラッシュ
             for (const m of this.monsters) {
               if (Math.hypot(m.x - tgt.x, m.y - tgt.y) <= 42) {
-                this.performAttack(proj.attacker, m, false, proj.damage);
+                this.performAttack(proj.attacker, m, false, proj.damage, false);
               }
             }
             this.spawnSparks(tgt.x, tgt.y, '#f472b6', 12);
@@ -5736,7 +5742,7 @@ export const IronSquadGame = {
             for (const m of this.monsters) {
               if (!m || m.hp <= 0) continue;
               if (Math.hypot(m.x - ix, m.y - iy) <= rad) {
-                this.performAttack(proj.attacker, m, !!proj.isPlayer, proj.damage);
+                this.performAttack(proj.attacker, m, !!proj.isPlayer, proj.damage, false);
                 if ((proj.knockback || 0) > 0 && !m.isColossal) {
                   const ka = Math.atan2(m.y - iy, m.x - ix);
                   m.x += Math.cos(ka) * proj.knockback;
@@ -5764,7 +5770,7 @@ export const IronSquadGame = {
         if (pdist < 18) {
           this.projectiles.splice(i, 1);
           if (proj.type === 'ARROW' || proj.type === 'BOLT') {
-            this.performAttack(proj.attacker, tgt, !!proj.isPlayer, proj.damage);
+            this.performAttack(proj.attacker, tgt, !!proj.isPlayer, proj.damage, false);
             this.spawnSparks(tgt.x, tgt.y, proj.color || '#e2e8f0', proj.type === 'BOLT' ? 7 : 5);
             if ((proj.knockback || 0) > 0 && !tgt.isColossal) {
               const ka = Math.atan2(tgt.y - (proj.attacker?.y || tgt.y), tgt.x - (proj.attacker?.x || tgt.x));
@@ -5790,7 +5796,7 @@ export const IronSquadGame = {
 
     // 主人公の自動攻撃 (敵モンスター or 近くの未制圧拠点)
     this.player.atkCooldown -= dt;
-    if (this.player.slashAnim > 0) this.player.slashAnim -= dt * 6;
+    if (this.player.slashAnim > 0) this.player.slashAnim = Math.max(0,this.player.slashAnim-dt*attackAnimationRate(this.equipped?.weapon,this.player.atkSpeed));
 
     // パワーアタック（渾身強撃 💥）のクールタイム減算 ＆ UI更新
     if ((this.player.powerAtkCooldown || 0) > 0) {
@@ -5841,7 +5847,7 @@ export const IronSquadGame = {
             if (along < -8 || along > reach) continue;
             const perp = Math.abs(-dy * cos + dx * sin);
             if (perp <= wProf.pierceHalfWidth + (m.radius || 12)) {
-              this.performAttack(this.player, m, true);
+              this.performAttack(this.player, m, true, undefined, along);
               hitAny = true;
             }
           }
@@ -6283,16 +6289,44 @@ export const IronSquadGame = {
     });
   },
 
-  performAttack(attacker, monster, isPlayer, customAtk) {
+  performAttack(attacker, monster, isPlayer, customAtk, sweetOpt) {
     if(monster?.retreated || this.restTimer>0)return;
     if (!monster || monster.hp <= 0) return;
     const baseAtk = customAtk !== undefined ? customAtk : (attacker ? (attacker.atk || 10) : 10);
     let dmg = baseAtk;
     let isCrit = false;
 
-    if (isPlayer && Math.random() * 100 < (this.player.crit || 10)) {
-      dmg = Math.floor(dmg * 2.2);
-      isCrit = true;
+    // 近接スイートスポット: sweetOpt===false でスキップ（スキル弾など）
+    // sweetOpt が数値ならその距離を使用、未指定なら攻撃者〜対象のユークリッド距離
+    const wItemEarly = isPlayer
+      ? (this.equipped && this.equipped.weapon)
+      : ((attacker && attacker.equipped && attacker.equipped.weapon) || (attacker && attacker.weapon));
+    const wProfEarly = weaponCombatProfile(wItemEarly);
+    let sweet = { dmgMult: 1, critBonus: 0, inSweet: false, band: 'fixed' };
+    if (sweetOpt !== false && !wProfEarly.ranged) {
+      const ax = attacker?.x ?? this.player?.x ?? monster.x;
+      const ay = attacker?.y ?? this.player?.y ?? monster.y;
+      const hitDist = (typeof sweetOpt === 'number')
+        ? sweetOpt
+        : Math.hypot(monster.x - ax, monster.y - ay);
+      const isAdv = !!(isPlayer ? this.player?.isAdvanced : attacker?.isAdvanced);
+      const reach = isAdv ? (wProfEarly.reachWarlord || wProfEarly.reach) : wProfEarly.reach;
+      sweet = evaluateMeleeSweetSpot(wProfEarly.style, hitDist, reach);
+      dmg = Math.max(1, Math.round(dmg * sweet.dmgMult));
+    }
+
+    // クリ: プレイヤーは装備クリ＋スイート補正。兵士は既存どおり通常クリ無しだが、スイート内のみ補正分でクリ判定
+    if (isPlayer) {
+      const chance = (this.player.crit || 10) + (sweet.critBonus || 0);
+      if (Math.random() * 100 < chance) {
+        dmg = Math.floor(dmg * 2.2);
+        isCrit = true;
+      }
+    } else if (sweet.inSweet && (sweet.critBonus || 0) > 0) {
+      if (Math.random() * 100 < sweet.critBonus) {
+        dmg = Math.floor(dmg * 2.2);
+        isCrit = true;
+      }
     }
 
     if(!(dmg>0)) return;
@@ -10373,11 +10407,10 @@ export const IronSquadGame = {
   drawPlayer(ctx, p, now) {
     const eq = this.equipped || {};
     const wStyle = weaponStyleOf(eq.weapon);
-    if (wStyle === 'spear') {
-      const prof = this.combatProfileFor(this.player, eq.weapon, true);
-      const reach = (this.player && this.player.isAdvanced) ? prof.reachWarlord : prof.reach;
-      const ang = (p.slashAnim > 0 && Number.isFinite(p.slashAngle)) ? p.slashAngle : (p.facingAngle || 0);
-      drawSpearReachCue(ctx, p.x, p.y, ang, reach, p.slashAnim || 0, prof.pierceHalfWidth || 26);
+    if (['sword','spear','hammer'].includes(wStyle)) {
+      const reach = meleeDrawReach(eq.weapon, !!p.isAdvanced);
+      const ang = p.slashAnim > 0 && Number.isFinite(p.slashAngle) ? p.slashAngle : (p.facingAngle || 0);
+      drawMeleeRangeCue(ctx,p.x,p.y,ang,reach,wStyle,p.slashAnim || 0);
     }
     drawFieldCommander(ctx,p,eq,now,this.rankIndex,RANKS[this.rankIndex].title,
       !!this.joystick?.active);

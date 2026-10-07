@@ -1,7 +1,8 @@
+import { drawMeleeWeapon, drawMeleeRangeCue } from './weapon-motion.js?v=89';
 import { drawSoldierHead, isMedicAppearance, soldierAppearanceFamily } from './soldier-appearance.js?v=87';
 
 // Live field illustrations. Equipment colors are read every frame.
-// Weapon light is a short arc on the blade, never a ring around the body.
+// Hands and the weapon share one pose; only the striking edge gets a short trace.
 const ellipse = (c, x, y, rx, ry, color) => {
   c.fillStyle = color; c.beginPath(); c.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2); c.fill();
 };
@@ -16,72 +17,9 @@ export function contactShadow(c, x, y, rx, ry, plant = 0) {
   c.fillStyle = 'rgba(0,0,0,0.36)';
   c.beginPath(); c.ellipse(x, y, spread.rx, Math.max(1.15, spread.ry * 0.62), 0, 0, Math.PI * 2); c.fill();
 }
-function slashArc(c, atk, commander, color) {
-  if (atk < 0.08) return;
-  // Match sword 大上段→振り下ろし rotate range
-  const theta = commander ? (-1.3 + atk * 2.0) : (-1.15 + atk * 1.85);
-  const tip = -Math.PI / 2 + theta;
-  const span = 0.55 + 0.35 * atk;
-  const end = tip + (commander ? -span : span);
-  const a0 = Math.min(tip, end), a1 = Math.max(tip, end);
-  c.save();
-  c.translate(7, -14);
-  c.globalAlpha = 0.5 * atk;
-  c.fillStyle = color;
-  c.beginPath();
-  c.arc(0, 0, 19, a0, a1);
-  c.arc(0, 0, 10, a1, a0, true);
-  c.closePath();
-  c.fill();
-  c.globalAlpha = 0.92 * atk;
-  c.strokeStyle = '#f7f3e8';
-  c.lineWidth = 1.5;
-  c.lineCap = 'round';
-  c.beginPath();
-  c.arc(0, 0, 18, a0, a1);
-  c.stroke();
-  c.restore();
-}
-
-/** 槍の実リーチを示すワールド空間テレグラフ（突き線＋先端弧） */
-export function drawSpearReachCue(c, x, y, angle, reach, anim = 0, halfWidth = 26) {
-  if (!(reach > 0) || !c) return;
-  const a = Number.isFinite(angle) ? angle : 0;
-  const pulse = Math.max(0, Math.min(1, anim || 0));
-  const cos = Math.cos(a), sin = Math.sin(a);
-  const idle = pulse < 0.05;
-  c.save();
-  c.lineCap = 'round';
-  c.strokeStyle = '#e7dcc4';
-  c.globalAlpha = idle ? 0.18 : (0.28 + 0.55 * pulse);
-  c.lineWidth = idle ? 1.35 : 2.5;
-  c.beginPath();
-  c.moveTo(x + cos * 16, y + sin * 16);
-  c.lineTo(x + cos * reach, y + sin * reach);
-  c.stroke();
-  c.globalAlpha = idle ? 0.12 : (0.22 + 0.4 * pulse);
-  c.lineWidth = 1.3;
-  c.beginPath();
-  c.arc(x + cos * reach, y + sin * reach, Math.max(10, halfWidth * 0.55), a - 1.15, a + 1.15);
-  c.stroke();
-  if (pulse > 0.08) {
-    const nx = -sin, ny = cos;
-    c.globalAlpha = 0.28 * pulse;
-    c.lineWidth = 1.6;
-    for (const off of [-halfWidth * 0.38, halfWidth * 0.38]) {
-      c.beginPath();
-      c.moveTo(x + cos * 22 + nx * off, y + sin * 22 + ny * off);
-      c.lineTo(x + cos * reach * 0.94 + nx * off, y + sin * reach * 0.94 + ny * off);
-      c.stroke();
-    }
-    // 突き残像（短い平行ゴースト）
-    c.globalAlpha = 0.2 * pulse;
-    c.beginPath();
-    c.moveTo(x + cos * (28 + 18 * pulse), y + sin * (28 + 18 * pulse));
-    c.lineTo(x + cos * reach, y + sin * reach);
-    c.stroke();
-  }
-  c.restore();
+/** Compatibility entry for existing spear callers; the cue now shows its useful band. */
+export function drawSpearReachCue(c,x,y,angle,reach,anim=0) {
+  drawMeleeRangeCue(c,x,y,angle,reach,'spear',anim);
 }
 const shape = (c, points, color, edge = '#20282a') => {
   c.fillStyle = color; c.strokeStyle = edge; c.lineWidth = 0.9;
@@ -116,12 +54,15 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod) {
   const legs = fieldTone(eq.legs?.color || '#5c564c', 0.74);
   const gloves = fieldTone(eq.gloves?.color || '#a09080', 0.7);
   const board = fieldTone(eq.shield?.color || '#566b7c', 0.8);
-  const blade = fieldTone(eq.weapon?.color || '#c3cbca', 0.34);
+  const blade = fieldTone((eq.weapon || s.weapon)?.color || '#c3cbca', 0.34);
   const moving = Math.hypot(s.vx || 0, s.vy || 0) > 0.05;
   const stride = moving ? Math.sin(now * 0.016 + (s.animOffset || 0)) * 2.8 : 0;
   const bob = moving ? Math.abs(stride) * 0.25 : 0;
   const archer = family === 'ARCHER';
   const light = family === 'LIGHT';
+  const wStyle = (eq.weapon || s.weapon)?.weaponStyle || 'sword';
+  const melee = !archer && !medic && ['sword','spear','hammer'].includes(wStyle);
+  const weaponColors = {cloth,gloves,blade,board};
   c.save(); c.translate(s.x, s.y);
   const plant = s.isDown ? 1 : (moving ? Math.abs(stride) / 2.8 : 0.22);
   contactShadow(c, 2, 3, s.isDown ? 16 : 11, s.isDown ? 4.2 : 3.5, plant);
@@ -143,6 +84,7 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod) {
       c.fillStyle = '#283132'; c.fillRect(-12, healthY, 24, 3);
       c.fillStyle = '#c4b48a'; c.fillRect(-12, healthY, 24 * Math.max(0, Math.min(1, s.hp / s.maxHp)), 3);
     }
+    if (melee && s.atkAnim > 0) drawMeleeWeapon(c,s,wStyle,weaponColors,true);
     c.restore(); return;
   }
   if (s.isDown) {
@@ -157,7 +99,8 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod) {
     c.fillStyle = '#d7b56a'; c.fillRect(-16, -12, 32 * Math.min(1, Math.max(0, s.rescueProgress || 0)), 3);
     c.restore(); return;
   }
-  c.save(); if (Math.cos(s.facingAngle || 0) < -0.15) c.scale(-1, 1);
+  const bodyFacing=s.atkAnim>0&&Number.isFinite(s.attackAngle)?s.attackAngle:(s.facingAngle||0);
+  c.save(); if (Math.cos(bodyFacing) < -0.15) c.scale(-1, 1);
   c.translate(0, -bob);
   // Cloak, boots and an articulated torso give every class a distinct silhouette.
   if (advanced || s.isNamed || archer) {
@@ -206,7 +149,7 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod) {
     }
   }
   // Hands, face and headwear, with a restrained highlight on the upper edge.
-  ellipse(c, 6,-15,2.3,3.5,gloves);
+  if (!melee) ellipse(c, 6,-15,2.3,3.5,gloves);
   if (!s.isCommander) {
     drawSoldierHead(c,s,{y:-28,small:true,helmet:eq.helmet?steel:null,
       mitre:medic&&advanced,cap:medic&&!advanced});
@@ -272,59 +215,7 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod) {
     }
     shape(c,[[-9,-14],[-4,-13],[-5,-6],[-10,-7]],'#b2a386');
   } else {
-    const heavy = key === 'HEAVY' || key === 'PALADIN';
-    if (key !== 'BLADEMASTER') {
-      const shieldBottom = key === 'PALADIN' ? 0 : (heavy ? -4 : -9);
-      shape(c,[[-12,-23],[-3,-22],[-3,-10],[-7,shieldBottom],[-13,-10]],board);
-      line(c,[[-9,-21],[-9,-9]],'#c3b48d',1.5); ellipse(c,-8,-14,1.8,1.8,'#b6aea0');
-      if (key === 'PALADIN') {
-        line(c,[[-8,-21],[-8,-6]],'#d4c39a',2); line(c,[[-11,-17],[-5,-17]],'#d4c39a',2);
-      } else {
-        line(c,[[-11,-19],[-11,-12],[-5,-19],[-5,-12]],'#879797',.6);
-      }
-    }
-    const atk = Math.max(0, Math.min(1, s.atkAnim || 0));
-    const wStyle = (eq.weapon && eq.weapon.weaponStyle) || 'sword';
-    if (wStyle === 'spear') {
-      // 槍: 明確な前方突き + 残像ライン + リーチ弧
-      const poke = 5 + 24 * atk;
-      c.save();
-      c.translate(8 + poke * 0.22, -12 - poke);
-      c.rotate(s.isCommander ? (-0.22 + atk * 0.2) : (-0.15 + atk * 0.16));
-      line(c,[[2,8],[2,-40]],blade,2.45);
-      line(c,[[2,-8],[2,-40]],'#f1ead8', atk > 0.05 ? 1.35 : 0.6);
-      shape(c,[[0,-40],[2,-54],[4,-40]],blade);
-      line(c,[[-1,6],[5,7]],'#aa9168',2.2);
-      line(c,[[2,7],[1,12]],'#6a4c38',2.2);
-      // リーチ合図（スプライト内の弧）
-      c.globalAlpha = atk > 0.04 ? (0.35 + 0.4 * atk) : 0.2;
-      c.strokeStyle = '#e7dcc4'; c.lineWidth = 1.15; c.lineCap = 'round';
-      c.beginPath(); c.arc(2, -6, 34 + 10 * atk, -Math.PI * 0.78, -Math.PI * 0.22); c.stroke();
-      c.globalAlpha = 1;
-      if (atk > 0.05) {
-        c.globalAlpha = 0.7 * atk;
-        line(c,[[2,-14],[2,-62 - 16 * atk]],'#f7f3e8',2.1);
-        c.globalAlpha = 0.35 * atk;
-        line(c,[[-1,-10],[-4,-56 - 10 * atk]],'#e7dcc4',1.3);
-        line(c,[[5,-10],[8,-56 - 10 * atk]],'#e7dcc4',1.3);
-        c.globalAlpha = 1;
-      }
-      c.restore();
-    } else if (wStyle === 'hammer') {
-      // 鎚: 大上段アイドル→振り下ろし（鎚頭を頭上に）
-      c.save(); c.translate(8, -15 - 2 * (1 - atk)); c.rotate(s.isCommander ? (-1.35 + atk * 2.15) : (-1.2 + atk * 1.95));
-      line(c,[[2,8],[2,-18]],'#6a4c38',2.6);
-      line(c,[[2,8],[2,-18]],'#aa9168',1.2);
-      shape(c,[[-6,-18],[10,-18],[11,-8],[-7,-8]],blade);
-      shape(c,[[-4,-16],[8,-16],[8,-10],[-4,-10]],'#f1ead8');
-      line(c,[[-6,-13],[10,-13]],'#302b28',1.1);
-      if (atk > 0.08) {
-        c.globalAlpha = 0.5 * atk;
-        shape(c,[[-8,-22],[12,-22],[13,-6],[-9,-6]],'#e7dcc4');
-        c.globalAlpha = 1;
-      }
-      c.restore();
-    } else if (wStyle === 'bow') {
+    if (wStyle === 'bow') {
       c.strokeStyle = blade; c.lineWidth = 2.2;
       c.beginPath(); c.moveTo(8,-30); c.quadraticCurveTo(24,-16,8,-2); c.stroke();
       line(c,[[8,-30],[10,-16],[8,-2]],'#d6ccae',.8);
@@ -339,17 +230,14 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod) {
       shape(c,[[17,-8],[24,-5],[24,2],[17,4]],'#302b28');
       c.restore();
     } else {
-      slashArc(c, atk, !!s.isCommander, blade);
-      // 剣: 大上段アイドル→振り下ろし
-      c.save(); c.translate(7, -15 - 1 * (1 - atk)); c.rotate(s.isCommander ? (-1.3 + atk * 2.0) : (-1.15 + atk * 1.85));
-      shape(c,[[0,1],[2,-15],[4,-18],[5,-15],[3,1]],blade);
-      line(c,[[3,-14],[2,0]],'#f1ead8', atk > 0.05 ? 1.35 : .7);
-      line(c,[[-2,1],[6,2]],'#aa9168',2); line(c,[[2,2],[1,6]],'#6a4c38',2.5);
-      c.restore();
+      // Melee weapons are drawn outside the mirrored torso transform below.
     }
-    if (key === 'BLADEMASTER') line(c,[[-13,-13],[-20,-24]],'#c3cbca',2);
   }
   c.restore();
+  if (melee) {
+    c.save(); c.translate(0,-bob);
+    drawMeleeWeapon(c,s,wStyle,weaponColors); c.restore();
+  }
   // Compact labels and one squad marker instead of stacked luminous rings.
   c.fillStyle = platoonColor; c.fillRect(-2,4,4,2);
   if (s.isPersonalGuard || s.talent === 'GENIUS') {
@@ -380,7 +268,7 @@ export function drawFieldCommander(c,p,equipped,now,rankIndex,rankTitle,moving,p
   drawFieldSoldier(c,{x:0,y:0,hp:p.hp,maxHp:p.maxHp,
     soldierClass:p.isAdvanced?'WARLORD':'COMMANDER',isCommander:true,isNamed:true,rankIndex,
     equipped,portrait:true,atkAnim:p.slashAnim || 0,
-    facingAngle:p.slashAnim>0?p.slashAngle:p.facingAngle,vx:moving?1:0,vy:0},now,
+    facingAngle:p.facingAngle,attackAngle:p.slashAngle,vx:moving?1:0,vy:0},now,
     {isAdvanced:!!p.isAdvanced,name:'隊長'},'#b7c6b6');
   if(!portrait) {
     // A quiet ground pointer and a stable nameplate keep the player identifiable.
