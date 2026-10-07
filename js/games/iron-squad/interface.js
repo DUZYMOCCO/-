@@ -83,7 +83,7 @@ export function configureInterface(game) {
   search.addEventListener('input', () => filterRoster(root)); wounded.addEventListener('change', () => filterRoster(root));
   const empty = element('p', 'list-empty hidden', '条件に合う兵士はいません。'); empty.id = 'roster-empty'; get('squad-roster-list').after(empty);
   get('squad-roster-list').after(get('reserve-roster'));
-  const rulesNote = get('view-strat-squad').querySelector(':scope > p'); if (rulesNote) rulesNote.classList.add('command-note', 'roster-help');
+  const rulesNote = get('roster-experience-note'); rulesNote.classList.add('command-note', 'roster-help');
   // The active panel owns its help and roster. Hiring no longer repeats all soldiers.
   const originalSync = game._syncTroopsSubView;
   game._syncTroopsSubView = sub => {

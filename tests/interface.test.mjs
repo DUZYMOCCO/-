@@ -28,9 +28,49 @@ const old = item('old','WEAPON','atk',10), better = item('better','WEAPON','atk'
 game.equipped = {weapon:old}; game.inventory = [old,better,worse,helmet];
 game.openStrategyModal(true);
 const $ = id => document.getElementById(id);
+// A tab's descendants must belong to it; testing only .hidden on the wrapper
+// misses orphaned equipment that stays visible under every selected tab.
+assert.equal($('view-strat-squad').parentElement, $('view-strat-troops'), 'roster belongs to the troops panel');
+assert.equal($('view-strat-equip').parentElement, $('view-strat-troops'), 'bag belongs to the troops panel');
+assert.equal($('view-econ-invest').closest('#view-strat-nation'), $('view-strat-nation'), 'donation belongs to the nation panel');
+assert.equal($('view-econ-box').closest('#view-strat-nation'), $('view-strat-nation'), 'shared equipment belongs to the nation panel');
 const tick = () => new Promise(resolve => setTimeout(resolve, 5));
 const input = (id,value,type='input') => {$(id).value=value; $(id).dispatchEvent(new dom.window.Event(type,{bubbles:true}));};
 const entries = () => [...document.querySelectorAll('.roster-entry')];
+const shown = node => {
+  for (let current=node; current; current=current.parentElement) {
+    if (window.getComputedStyle(current).display === 'none') return false;
+    if (current.parentElement?.tagName === 'DETAILS' && !current.parentElement.open && current.tagName !== 'SUMMARY') return false;
+  }
+  return true;
+};
+const assertTab = (tab, sub=game.rosterManageTab) => {
+  assert.deepEqual([...document.querySelector('.dialog-body').children].map(node=>node.id), ['view-strat-overview','view-strat-nation','view-strat-troops'], 'the scrolling body contains only tab-owned panels');
+  for (const key of ['overview','troops','nation']) {
+    assert.equal(shown($(`view-strat-${key}`)), key===tab, `only ${tab} content is visible`);
+    assert.equal($(`tab-strat-${key}`).getAttribute('aria-pressed'), String(key===tab));
+  }
+  for (const id of ['nation-quest-panel','nation-expedition-panel','view-econ-invest','nation-finances','nation-shared-box']) {
+    assert.equal(shown($(id)), tab==='nation', `${id} follows the nation tab`);
+  }
+  for (const id of ['squad-roster-list','roster-tools','reserve-roster','roster-experience-note']) {
+    assert.equal(shown($(id)), tab==='troops' && sub==='roster', `${id} follows the roster subtab`);
+  }
+  assert.equal(shown($('view-econ-scout')), tab==='troops' && sub==='scout');
+  assert.equal(shown($('view-strat-equip')), tab==='troops' && sub==='equip');
+  assert.equal(shown($('commander-equipment')), tab==='troops' && sub==='equip');
+};
+// Reproduce the photo: retain each troops subtab while selecting nation, and
+// redraw as real actions do. Returning must restore the selected troops view.
+assertTab('overview');
+for (const sub of ['roster','scout','equip']) {
+  $('tab-strat-troops').click(); $(`tab-econ-${sub}`).click(); assertTab('troops',sub);
+  $('tab-strat-nation').click(); assertTab('nation');
+  game.renderStrategyUI(); assertTab('nation');
+  $('tab-strat-overview').click(); assertTab('overview');
+  $('tab-strat-troops').click(); assertTab('troops',sub);
+}
+$('tab-econ-roster').click();
 assert.equal(entries().length,48);
 assert.equal(entries().filter(e=>e.open).length,0,'roster initially gives an overview, not 48 full equipment sheets');
 const ids = [...document.querySelectorAll('[id]')].map(e=>e.id); assert.equal(new Set(ids).size,ids.length,'moving panels must not duplicate live update IDs');
@@ -80,12 +120,15 @@ assert.equal(document.querySelector('.dialog-body').inert,true);
 document.querySelector('.btn-close-soldier-detail').dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
 assert.equal(game.selectedSoldierDetailId,null); assert.equal(document.querySelector('.dialog-body').inert,false); assert.equal($('strategy-modal').classList.contains('hidden'),false);
 $('tab-strat-nation').click(); assert.equal($('view-strat-nation').classList.contains('hidden'),false);
+assertTab('nation');
 const members = document.querySelector('.expedition-members'); members.open=true;
 const pick = members.querySelector('.expedition-pick'); const pickedId=pick.dataset.sid, wasPicked=pick.checked; pick.click();
 assert.equal(document.querySelector('.expedition-members').open,true,'member picker stays open while selecting soldiers');
 assert.equal(game.getExpeditionPicks(Number(pick.dataset.pid)).map(String).includes(pickedId),!wasPicked);
+assertTab('nation');
 const nextTier = document.querySelector('.btn-danger-tier:not(.active)'); nextTier.click();
 assert.equal(document.querySelector('.btn-danger-tier.active').getAttribute('aria-pressed'),'true');
+assertTab('nation');
 let donations=0; game.donateToTreasury=()=>donations++; $('btn-donate-treasury').click(); assert.equal(donations,1,'donation keeps its action after reparenting');
 let heals=0; game.healAllSquad=()=>heals++; $('btn-heal-all').click(); assert.equal(heals,1);
 const reserve=game.createNewSoldier();game.reserves.push(reserve);game.renderStrategyUI();

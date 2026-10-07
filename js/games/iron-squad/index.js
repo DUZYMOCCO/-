@@ -11,10 +11,10 @@
  */
 import { sound } from '../../audio.js';
 import { storage } from '../../storage.js';
-import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow, drawSpearReachCue } from './visuals.js?v=86';
+import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow, drawSpearReachCue } from './visuals.js?v=87';
 import { saveSlots } from './save-slots.js';
-import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog } from './interface.js';
-import { ensureSoldierAppearance, drawSoldierPortrait, describeSoldierAppearance } from './soldier-appearance.js?v=86';
+import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog } from './interface.js?v=87';
+import { ensureSoldierAppearance, drawSoldierPortrait, describeSoldierAppearance } from './soldier-appearance.js?v=87';
 import { attachSurfaceEvents, detachSurfaceEvents, frameSurfaceReady, releaseSceneCaches, releaseCanvas, surfaceCanResume } from './canvas-surface.js?v=83';
 import { WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt } from './world.js?v=83';
 import { FogGrid, FOG_REVEAL_RADIUS, FOG_CAMP_REVEAL } from './fog.js?v=83';
@@ -1213,9 +1213,9 @@ export const IronSquadGame = {
                   </div>
                 </div>
 
-                <div style="font-size: 11px; color: #aaa; margin-bottom: 6px;">
+                <p id="roster-experience-note" style="font-size: 11px; color: #aaa; margin-bottom: 6px;">
                   攻撃・被攻撃・実回復を行った戦線だけ経験を記録。経験2戦線で叙勲可能。
-                </div>
+                </p>
                 <div id="squad-roster-list" class="squad-list-box" style="margin-bottom: 12px; max-height: 200px; overflow-y: auto;"></div>
               </div>
 
@@ -1439,6 +1439,12 @@ export const IronSquadGame = {
     const troops=document.createElement('div'); troops.id='view-strat-troops'; troops.className='hidden hub-panel hub-troops';
     const body=document.createElement('div'); body.className='dialog-body';
     body.tabIndex=0; body.setAttribute('aria-label','会議の内容');
+    // Retain live nodes before moving them into the detached body. Document ID
+    // lookup cannot find detached descendants while this dialog is assembled.
+    const squadView=document.getElementById('view-strat-squad');
+    const equipView=document.getElementById('view-strat-equip');
+    const invest=document.getElementById('view-econ-invest');
+    const box=document.getElementById('view-econ-box');
     let node=heading.nextElementSibling;
     while(node && node.id!=='btn-start-next-wave') {
       const next=node.nextElementSibling;
@@ -1459,8 +1465,6 @@ export const IronSquadGame = {
     nation.append(nationFiscal);
     const nationExpedition=document.createElement('div'); nationExpedition.id='nation-expedition-panel'; nationExpedition.className='hub-section';
     nation.append(nationExpedition);
-    const invest=document.getElementById('view-econ-invest');
-    const box=document.getElementById('view-econ-box');
     if(invest){invest.classList.remove('hidden');nation.append(invest);}
     if(box){box.classList.remove('hidden');nation.append(box);}
     const troopsIntro=document.createElement('div');
@@ -1472,8 +1476,6 @@ export const IronSquadGame = {
     formationBar.className='hub-section';
     formationBar.innerHTML='<div style="font-size:11px;color:#cbd5e1;margin-bottom:6px;">🧭 編成：<strong style="color:#e1cf9d;">防衛陣形</strong>（直属は隊長追従／本隊は本陣防衛圏） · 上限 本隊48 / 直属12 · 遠征は国家運営</div>';
     troops.append(formationBar);
-    const squadView=document.getElementById('view-strat-squad');
-    const equipView=document.getElementById('view-strat-equip');
     if(squadView){squadView.classList.remove('hidden');troops.append(squadView);}
     if(equipView){equipView.classList.add('hidden');troops.append(equipView);}
     body.prepend(overview);
@@ -1514,6 +1516,7 @@ export const IronSquadGame = {
       const showRoster=sub==='roster';
       const showScout=sub==='scout';
       const showEquip=sub==='equip';
+      squadView.classList.toggle('hidden',showEquip);
       if(rosterList) rosterList.style.display=(showRoster||showScout)?'':'none';
       if(scout) scout.classList.toggle('hidden',!showScout);
       if(equip) equip.classList.toggle('hidden',!showEquip);
