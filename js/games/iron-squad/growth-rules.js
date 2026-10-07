@@ -21,6 +21,26 @@ const HIT_GROWTH_BASE = 0.0052;
 export const MASTERY_SOFT_CAP = 0.35;
 const MASTERY_XP_SCALE = 48;
 export const MASTERY_GAIN_PER_HIT = 0.85;
+/**
+ * 武器別熟練度獲得倍率（攻撃速度差の補正）。
+ * 剣は速撃で溜まりやすいので抑えめ、火砲・石弓は遅射なので厚め。
+ * 効果（近接=ATK+攻撃速度 / 弓石弓=ATK+リロード / 火砲=爆発+リロード）は据え置き。
+ */
+export const MASTERY_GAIN_MULT = {
+  sword: 0.72,
+  spear: 1.15,
+  hammer: 1.35,
+  bow: 1.70,
+  crossbow: 2.35,
+  cannon: 3.10
+};
+
+/** スタイル別1ヒットあたりの熟練度XP */
+export function masteryGainForStyle(style, base = MASTERY_GAIN_PER_HIT) {
+  const mult = MASTERY_GAIN_MULT[style] ?? 1;
+  return (Number(base) || MASTERY_GAIN_PER_HIT) * mult;
+}
+
 
 export function emptyMastery() {
   return { sword: 0, spear: 0, hammer: 0, bow: 0, crossbow: 0, cannon: 0 };
@@ -119,12 +139,13 @@ export function masteryPctDisplay(masteryMap, style) {
 }
 
 /** @returns {number} 増加後のXP */
-export function gainWeaponMastery(unit, style, amount = MASTERY_GAIN_PER_HIT) {
+export function gainWeaponMastery(unit, style, amount = null) {
   if (!unit || !WEAPON_STYLES.includes(style)) return 0;
+  const add = amount == null ? masteryGainForStyle(style) : amount;
   if (!unit.weaponMastery) unit.weaponMastery = emptyMastery();
   else unit.weaponMastery = normalizeMastery(unit.weaponMastery);
   const before = unit.weaponMastery[style] || 0;
-  unit.weaponMastery[style] = before + amount;
+  unit.weaponMastery[style] = before + add;
   return unit.weaponMastery[style];
 }
 

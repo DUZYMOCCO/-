@@ -11,14 +11,14 @@
  */
 import { sound } from '../../audio.js';
 import { storage } from '../../storage.js';
-import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow } from './visuals.js?v=93';
-import { drawMeleeRangeCue, meleeDrawReach, attackAnimationRate } from './weapon-motion.js?v=93';
+import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow } from './visuals.js?v=95';
+import { drawMeleeRangeCue, meleeDrawReach, attackAnimationRate } from './weapon-motion.js?v=95';
 import { saveSlots } from './save-slots.js';
-import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog } from './interface.js?v=93';
-import { ensureSoldierAppearance, drawSoldierPortrait, describeSoldierAppearance } from './soldier-appearance.js?v=93';
-import { attachSurfaceEvents, detachSurfaceEvents, frameSurfaceReady, releaseSceneCaches, releaseCanvas, surfaceCanResume } from './canvas-surface.js?v=93';
-import { WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt } from './world.js?v=93';
-import { FogGrid, FOG_REVEAL_RADIUS, FOG_CAMP_REVEAL } from './fog.js?v=93';
+import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog } from './interface.js?v=95';
+import { ensureSoldierAppearance, drawSoldierPortrait, describeSoldierAppearance } from './soldier-appearance.js?v=95';
+import { attachSurfaceEvents, detachSurfaceEvents, frameSurfaceReady, releaseSceneCaches, releaseCanvas, surfaceCanResume } from './canvas-surface.js?v=95';
+import { WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt } from './world.js?v=95';
+import { FogGrid, FOG_REVEAL_RADIUS, FOG_CAMP_REVEAL } from './fog.js?v=95';
 import {
   classTierOf, nextClassId, classUpCostForNext, canAffordClassUp, formatClassUpCostJa, classUpShortageJa,
   playerClassTier, nextPlayerStage, playerStageById, CLASS_TIER_LABELS, PLAYER_CLASS_STAGES
@@ -31,22 +31,28 @@ import {
   SHARED_BOX_MAX_TIER, SCOUT_COST_BY_TALENT, defaultDonateAmount, donatePresetAmounts
 } from './economy-rules.js';
 
-import { EQUIPMENT_TYPES, saleValue, equippedIds, canSell, lowValueIds, chooseLootTier, distanceScaling, shrineUpgradeCap, compareEquipment, equipmentScore, weaponCombatProfile, evaluateMeleeSweetSpot, isGodRollProtected, zoneRingPower, zoneRingLabelJa } from './equipment-rules.js?v=93';
+import { EQUIPMENT_TYPES, saleValue, equippedIds, canSell, lowValueIds, chooseLootTier, distanceScaling, shrineUpgradeCap, compareEquipment, equipmentScore, weaponCombatProfile, evaluateMeleeSweetSpot, isGodRollProtected, zoneRingPower, zoneRingLabelJa } from './equipment-rules.js?v=95';
 import {
   WEAPON_STYLES, WEAPON_STYLE_LABELS, WEAPON_STYLE_ICONS,
   MELEE_STYLES, RANGED_STYLES, HIT_GROWTH_SOFT_CAP,
   emptyMastery, normalizeMastery, isRangedStyle, isMeleeStyle,
   hitGrowthMult, applyHitGrowth, masteryAtkMult, masteryPctDisplay,
   masteryReloadMult, masterySplashMult, applyMasteryToCombatProfile,
-  gainWeaponMastery, pickFavoriteWeapon, rollWeaponStyle,
+  gainWeaponMastery, masteryGainForStyle, pickFavoriteWeapon, rollWeaponStyle,
   weaponStyleOf, favoriteWeaponBias, MASTERY_GAIN_PER_HIT,
   migrateFavoriteForClass, migrateWeaponStyleFromName
-} from './growth-rules.js';
+} from './growth-rules.js?v=95';
+
+import {
+  initMerchants, ensureMerchants, updateMerchants, drawMerchants,
+  nearestLivingMerchant, refreshMerchantStock, merchantBuyPrice, merchantSellTier,
+  applyMerchantSave, serializeMerchants, MERCHANT_INTERACT_R
+} from './merchant-rules.js?v=95';
 
 import { daylightAt, advanceWorldClock, periodEnemy, enemyAvailable, PERIOD_ENEMIES } from './day-night.js';
 
-import { RESCUE_TIMEOUT, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, markSoldierDown, CIV_KINDS, isMedic, regenMedicStamina, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST } from './casualty-rules.js?v=93';
-import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault } from './dungeon.js';
+import { RESCUE_TIMEOUT, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, markSoldierDown, CIV_KINDS, isMedic, regenMedicStamina, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST } from './casualty-rules.js?v=95';
+import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault } from './dungeon.js?v=95';
 import {
   EXPEDITION_CHECK_INTERVAL, EXPEDITION_RETURN_HOME, EXPEDITION_ENGAGE_R,
   EXPEDITION_DANGER_TIERS, EXPEDITION_MIN_MEMBERS,
@@ -86,6 +92,8 @@ export const COLOSSAL_RESPAWN=210; // was 75
 /** v1.25.7: platoon expedition -> nation hub / main-army pick / danger tier (live map) / return rewards + inferior bonus; SW v77. */
 /** v1.25.8: fog never full-black / multi-stage class-up / zone ring x10 softcap 1e6 / 魔王城~10M fixedStats; SW v78. */
 /** v1.25.11: fog player-cell fail-safe + viewport reseed + camp→player _lastX fix / module ?v=81; SW v81. */
+/** v1.27.11: field merchants(inn+camp)+escort loot / mastery gain mult by weapon / raid withdraw+rarer; SW v95. */
+/** v1.27.10: town/inn entry only captain+personal guard; main platoons keep field doctrine; SW v94. */
 /** v1.27.9: manual 本隊→自部隊 pull + full-squad swap confirm; auto-guard no longer overwrites; SW v93. */
 /** v1.27.8: HQ downs mortal (slow bleed, no farm) + medic stamina soft-cap; SW v92. */
 /** v1.27.7: HQ rescue-bonus once-per-down latch (no farm loop) + base raids from phase 4; SW v91. */
@@ -104,6 +112,10 @@ export const RAID_GRUNT_DEF=72;
 export const RAID_GRUNT_DMG_RED=33;
 export const RAID_BOSS_DEF=108;
 export const RAID_BOSS_DMG_RED=42;
+/** v1.27.11: raids rarer after unlock — gap between raid phases + later mid-phase trigger. */
+export const RAID_MIN_PHASE=4;
+export const RAID_PHASE_GAP=3;
+export const RAID_TRIGGER_REMAIN_FRAC=0.28;
 
 const MAP_WIDTH = WORLD_SIZE;
 const MAP_HEIGHT = WORLD_SIZE;
@@ -1084,6 +1096,12 @@ export const IronSquadGame = {
             <button id="btn-enter-dungeon" style="background: #d7c4a2; color: #1c1610; border: none; padding: 3px 10px; border-radius: 8px; font-weight: bold; font-size: 11px; cursor: pointer;">入る</button>
           </div>
 
+
+          <!-- 行商人・交易バナー -->
+          <div id="merchant-prompt-banner" class="phase-banner hidden" style="position: absolute; top: 48px; left: 50%; transform: translateX(-50%); z-index: 26; background: rgba(36, 28, 18, 0.95); border: 1px solid #d7b56a; color: #fde68a; padding: 6px 14px; border-radius: 8px; font-size: 11px; font-weight: bold; display: flex; align-items: center; gap: 8px;">
+            <span id="merchant-banner-text">🏪 行商人</span>
+            <button id="btn-open-merchant" style="background: #d7b56a; color: #1c1610; border: none; padding: 3px 10px; border-radius: 8px; font-weight: bold; font-size: 11px; cursor: pointer;">品定め</button>
+          </div>
           <!-- 本陣強襲・防衛救援バナー (画面中央上部) -->
           <div id="base-raid-banner" class="phase-banner hidden" style="position: absolute; top: 86px; left: 50%; transform: translateX(-50%); z-index: 27; background: linear-gradient(135deg, rgba(220, 38, 38, 0.96), rgba(153, 27, 27, 0.96)); border: 1px solid #f87171; box-shadow: 0 4px 18px rgba(220, 38, 38, 0.6); color: #fff; padding: 6px 14px; border-radius: 20px; font-size: 11px; font-weight: bold; display: flex; align-items: center; gap: 8px; transition: all 0.3s ease;">
             <span id="base-raid-banner-text">🚨【本陣強襲！】魔境の強敵が本拠地へ殺到中！</span>
@@ -1297,6 +1315,15 @@ export const IronSquadGame = {
     }
 
     const enterDungeonBtn = document.getElementById('btn-enter-dungeon');
+    const openMerchantBtn = document.getElementById('btn-open-merchant');
+    if (openMerchantBtn) {
+      openMerchantBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.openMerchantShop();
+      });
+    }
+
     if (enterDungeonBtn) {
       enterDungeonBtn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -2120,6 +2147,7 @@ export const IronSquadGame = {
     this.initPlatoons();
     this.initOutposts();
     this.initDungeons();
+    initMerchants(this, generateRandomDrop, BASE_CAMP);
     ensureCiviliansSpawned(this, { targetCount: 4 });
     this.assignWaveQuest();
     this.recalcPlayerStats();
@@ -2958,6 +2986,8 @@ export const IronSquadGame = {
     if (saved.platoonMissions) restorePlatoonMissions(this.platoons, saved.platoonMissions);
     this.initOutposts();
     this.initDungeons();
+    initMerchants(this, generateRandomDrop, BASE_CAMP);
+    if (saved.merchants) applyMerchantSave(this, saved.merchants, generateRandomDrop, BASE_CAMP);
     if (!legacyWorld && saved.dungeons) {
       this.dungeons = saved.dungeons;
     } else if(saved.dungeons) {
@@ -3266,6 +3296,7 @@ export const IronSquadGame = {
         recruitSequence: this.recruitSequence || 0,
         lastReinforcements: this.lastReinforcements,
         outposts: this.outposts,
+        merchants: serializeMerchants(this.merchants),
         dungeons: this.dungeons,
         currentQuest: this.currentQuest,
         fogExplored: this.ensureFog().serialize(),
@@ -4301,11 +4332,11 @@ export const IronSquadGame = {
   checkBaseRaidTrigger() {
     if (this.baseRaidActive || this.restTimer > 0 || this.currentDungeon) return;
     const curPhase = this.phase || 1;
-    if (curPhase < 4) return; // v1.27.7: no HQ/base raid until phase 4 (was phase 2+)
-    if (this.baseRaidTriggeredPhase === curPhase) return; // 1作戦期あたり最大1回
-
-    // 作戦残り時間55%以下（約50秒経過）で強襲発生
-    if (this.phaseTimer <= (this.phaseDuration || 120) * 0.55) {
+    if (curPhase < RAID_MIN_PHASE) return;
+    const last = this.baseRaidTriggeredPhase || 0;
+    if (last > 0 && (curPhase - last) < RAID_PHASE_GAP) return;
+    if (last === curPhase) return;
+    if (this.phaseTimer <= (this.phaseDuration || 120) * RAID_TRIGGER_REMAIN_FRAC) {
       this.triggerBaseRaid();
     }
   },
@@ -4410,6 +4441,10 @@ export const IronSquadGame = {
     this.baseRaidTimer = Math.max(0, (this.baseRaidTimer || 40) - dt);
     const aliveRaidMobs = this.monsters.filter(m => m.isRaidMob && m.hp > 0);
 
+    const mainForce = (this.squad || []).filter(s => s && !s.isPersonalGuard && !s.dead);
+    const mainAllDown = mainForce.length > 0 && mainForce.every(s => s.isDown);
+    const mainWiped = mainForce.length === 0;
+
     const bannerText = document.getElementById('base-raid-banner-text');
     if (bannerText) {
       bannerText.textContent = `🚨【本陣強襲中！】残存強襲敵: ${aliveRaidMobs.length}体！本隊を守れ！(${Math.ceil(this.baseRaidTimer)}秒)`;
@@ -4417,9 +4452,24 @@ export const IronSquadGame = {
 
     if (aliveRaidMobs.length === 0) {
       this.completeBaseRaid(true);
+    } else if (mainAllDown || mainWiped) {
+      this.withdrawBaseRaid(mainWiped ? 'wiped' : 'downed');
     } else if (this.baseRaidTimer <= 0) {
       this.completeBaseRaid(false);
     }
+  },
+
+  withdrawBaseRaid(reason = 'downed') {
+    if (!this.baseRaidActive) return;
+    this.baseRaidActive = false;
+    this.monsters = (this.monsters || []).filter(m => !m.isRaidMob);
+    const raidBanner = document.getElementById('base-raid-banner');
+    if (raidBanner) raidBanner.classList.add('hidden');
+    sound.playBomb();
+    const tip = reason === 'wiped'
+      ? '本隊が戦場から姿を消したため、強襲軍は戦利を得たと判断し撤退した…'
+      : '本隊が全員ダウンしたため、強襲軍は本陣制圧完了と見て撤退した…';
+    this.showToast(`🏳️【強襲軍撤退】${tip}`);
   },
 
   // 本陣強襲イベントの終了・解決
@@ -4918,6 +4968,7 @@ export const IronSquadGame = {
       this.checkZoneTransition();
       this.checkDungeonProximity();
     } else {
+      if (this.currentDungeon.kind === 'town') this.checkMerchantProximity();
       // ダンジョン内: 入口帰還ポータル (x: 180, y: h/2) 接触判定
       const exitDist = Math.hypot(this.player.x - 180, this.player.y - (this.currentDungeon.height / 2));
       if (exitDist < 42) {
@@ -4940,6 +4991,25 @@ export const IronSquadGame = {
     this.checkBaseRaidTrigger();
     this.updateBaseRaid(dt);
 
+    if (!this.currentDungeon) {
+      ensureMerchants(this, generateRandomDrop, BASE_CAMP);
+      updateMerchants(this, dt, generateRandomDrop, {
+        damageMonster: (esc, mon, dmg) => {
+          if (!mon || mon.hp <= 0) return;
+          this.performAttack(esc, mon, false, dmg);
+        },
+        onMerchantDied: (m) => {
+          this.showToast(`☠️【行商人死亡】${m.placeName}の${m.name}がモンスターに襲われ命を落とした…しばらくすると後任が来る`);
+          if (this.nearMerchant && this.nearMerchant.id === m.id) this.nearMerchant = null;
+          this.updateMerchantBanner();
+        },
+        onMerchantRespawn: (m) => {
+          this.showToast(`🏪【行商人再訪】${m.placeName}に${m.name}が露店を開き直した`);
+        }
+      });
+      this.checkMerchantProximity();
+    }
+
     // 拠点（BASE CAMP）／宿場でのリジェネ治癒判定
     const distToBase = Math.hypot(this.player.x - BASE_CAMP.x, this.player.y - BASE_CAMP.y);
     const inBaseCamp = !this.currentDungeon && distToBase < BASE_CAMP.radius;
@@ -4956,8 +5026,14 @@ export const IronSquadGame = {
       this.player.hp = Math.min(this.player.maxHp, this.player.hp + healAmt);
       this.squad.forEach((s) => {
         if (s.dead || s.isDown) return;
-        if (inInn || Math.hypot(s.x-BASE_CAMP.x,s.y-BASE_CAMP.y)<BASE_CAMP.radius) {
-          s.hp = Math.min(s.maxHp, s.hp + healAmt * (inInn ? 0.75 : 0.6));
+        // 宿場回復は同行中の直属のみ。本隊は野外に残っているのでリモート回復しない。
+        if (inInn) {
+          if (!s.isPersonalGuard) return;
+          s.hp = Math.min(s.maxHp, s.hp + healAmt * 0.75);
+          return;
+        }
+        if (Math.hypot(s.x-BASE_CAMP.x,s.y-BASE_CAMP.y)<BASE_CAMP.radius) {
+          s.hp = Math.min(s.maxHp, s.hp + healAmt * 0.6);
         }
       });
     } else {
@@ -5033,7 +5109,9 @@ export const IronSquadGame = {
 
     this.platoons.forEach((platoon) => {
       if (this.currentDungeon) {
-        // ダンジョン内: ボスまたはプレイヤーに向かって全員進撃
+        // 宿場/町: 本隊小隊は野外に残す（重心をプレイヤーへ引きずらない）
+        if (this.currentDungeon.kind === 'town') return;
+        // 戦闘ダンジョン内: ボスまたはプレイヤーに向かって全員進撃
         const dTarget = this.monsters.find(m => m.isBoss) || this.player;
         platoon.x += (dTarget.x - platoon.x) * 1.5 * dt;
         platoon.y += (dTarget.y - platoon.y) * 1.5 * dt;
@@ -5164,6 +5242,11 @@ export const IronSquadGame = {
 
       if(soldier.shieldTimer > 0) soldier.shieldTimer = Math.max(0, soldier.shieldTimer - dt);
       if(soldier.dead||soldier.isDown)return;
+      // 宿場中の本隊: 野外座標のまま凍結（プレイヤー追従・小隊引きずり防止）
+      if (this.currentDungeon && this.currentDungeon.kind === 'town' && !soldier.isPersonalGuard) {
+        if (soldier.atkAnim > 0) soldier.atkAnim = Math.max(0, soldier.atkAnim - dt);
+        return;
+      }
       if(handleTransportAI(this,soldier,dt))return;
 
       // Far LOD v1.24.2: keep 2200 + 7/8 skip; expose farCam for boids.
@@ -6336,11 +6419,12 @@ export const IronSquadGame = {
 
     // 武器マスタリー成長（プレイヤー=装備武器、兵士=得意武器へ投資／装備一致時は多め）
     const atkUnit = isPlayer ? this.player : attacker;
-    if (atkUnit) {
+    // 行商護衛の攻撃は熟練度・兵士成長の対象外
+    if (atkUnit && !atkUnit.isMerchantEscort) {
       if (isPlayer) {
         const style = weaponStyleOf(this.equipped && this.equipped.weapon);
         const beforePct = masteryPctDisplay(this.player.weaponMastery, style);
-        gainWeaponMastery(this.player, style, MASTERY_GAIN_PER_HIT);
+        gainWeaponMastery(this.player, style);
         const afterPct = masteryPctDisplay(this.player.weaponMastery, style);
         if (Math.floor(afterPct) > Math.floor(beforePct) && Math.floor(afterPct) % 5 === 0) {
           this.recalcPlayerStats();
@@ -6351,7 +6435,7 @@ export const IronSquadGame = {
           ? atkUnit.favoriteWeapon
           : weaponStyleOf((atkUnit.equipped && atkUnit.equipped.weapon) || atkUnit.weapon);
         const held = weaponStyleOf((atkUnit.equipped && atkUnit.equipped.weapon) || atkUnit.weapon);
-        const gainAmt = (held === fav) ? MASTERY_GAIN_PER_HIT : MASTERY_GAIN_PER_HIT * 0.35;
+        const gainAmt = masteryGainForStyle(fav) * ((held === fav) ? 1 : 0.35);
         const beforePct = masteryPctDisplay(atkUnit.weaponMastery, fav);
         gainWeaponMastery(atkUnit, fav, gainAmt);
         const afterPct = masteryPctDisplay(atkUnit.weaponMastery, fav);
@@ -6504,6 +6588,111 @@ export const IronSquadGame = {
     }
   },
 
+  checkMerchantProximity() {
+    const banner = document.getElementById('merchant-prompt-banner');
+    const textEl = document.getElementById('merchant-banner-text');
+    if (this.nearDungeon && !this.currentDungeon) {
+      this.nearMerchant = null;
+      if (banner) banner.classList.add('hidden');
+      return;
+    }
+    const m = nearestLivingMerchant(this, this.player?.x || 0, this.player?.y || 0, MERCHANT_INTERACT_R);
+    this.nearMerchant = m;
+    if (banner && textEl) {
+      if (m) {
+        banner.classList.remove('hidden');
+        const tier = merchantSellTier(m.distance);
+        const escorts = (m.escorts || []).filter(e => e && !e.dead).length;
+        textEl.textContent = `${m.icon || '🏪'} ${m.name}（${m.placeName}）· 帯T${tier} · 護衛${escorts}`;
+      } else {
+        banner.classList.add('hidden');
+      }
+    }
+  },
+
+  updateMerchantBanner() {
+    this.checkMerchantProximity();
+  },
+
+  openMerchantShop(merchant = null) {
+    const m = merchant || this.nearMerchant || nearestLivingMerchant(this, this.player?.x || 0, this.player?.y || 0, MERCHANT_INTERACT_R + 40);
+    if (!m || m.dead) {
+      this.showToast('行商人は居ないか、すでに命を落としています');
+      return;
+    }
+    ensureMerchants(this, generateRandomDrop, BASE_CAMP);
+    if (!m.stock || !m.stock.length || (m.stockRefreshIn || 0) <= 0) {
+      refreshMerchantStock(m, generateRandomDrop, this.phase || 1);
+    }
+
+    let popup = document.getElementById('merchant-shop-popup');
+    if (!popup) {
+      popup = document.createElement('div');
+      popup.id = 'merchant-shop-popup';
+      popup.className = 'transfer-popup-overlay';
+      (document.querySelector('.iron-squad') || document.body).appendChild(popup);
+    }
+    const close = () => { popup.classList.add('hidden'); setSubDialog(this, popup, false); };
+    const render = () => {
+      const gold = this.gold || 0;
+      const rows = (m.stock || []).map((item, idx) => {
+        const price = item._merchantPrice || merchantBuyPrice(item);
+        const can = gold >= price;
+        return `<div class="transfer-item-card" data-idx="${idx}" style="opacity:${can ? 1 : 0.55};">
+          <div class="transfer-card-header">
+            <span class="transfer-item-name" style="color:${item.color || '#e2e8de'};">[T${item.tier}] ${item.name}</span>
+            <span class="transfer-comp-badge">${price.toLocaleString()}G</span>
+          </div>
+          <div class="transfer-card-meta">
+            <span style="font-size:10px;color:#94a3b8;">${item.mat || ''} · 相場の約3.2倍</span>
+            <button type="button" class="transfer-tap-btn" data-buy="${idx}" ${can ? '' : 'disabled'}>${can ? '購入する' : '所持金不足'}</button>
+          </div>
+        </div>`;
+      }).join('') || '<div class="transfer-empty-msg"><p>売り切れです。しばらくすると仕入れ直します。</p></div>';
+      popup.innerHTML = `
+        <div class="transfer-popup-container">
+          <div class="transfer-popup-header">
+            <div>
+              <h3 class="transfer-popup-title">🏪 ${m.name}</h3>
+              <p class="transfer-popup-sub">${m.title || ''} · ${m.placeName} · 所持金 <strong style="color:#fbbf24;">${gold.toLocaleString()}G</strong></p>
+            </div>
+            <button type="button" class="transfer-popup-close-btn" aria-label="閉じる">✕</button>
+          </div>
+          <div class="transfer-popup-hint">この土地より1ランク上の武具を高値で売っている。護衛が強い敵を狩ることもある — ドロップを掠め取れ。</div>
+          <div class="transfer-item-list">${rows}</div>
+          <div class="transfer-popup-footer">
+            <button type="button" class="action-btn secondary btn-close-merchant" style="min-height:36px;padding:6px;font-size:12px;">閉じる</button>
+          </div>
+        </div>`;
+      popup.classList.remove('hidden');
+      popup.querySelector('.transfer-popup-close-btn')?.addEventListener('click', close);
+      popup.querySelector('.btn-close-merchant')?.addEventListener('click', close);
+      popup.onclick = (e) => { if (e.target === popup) close(); };
+      popup.querySelectorAll('[data-buy]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const idx = Number(btn.getAttribute('data-buy'));
+          const item = m.stock?.[idx];
+          if (!item) return;
+          const price = item._merchantPrice || merchantBuyPrice(item);
+          if ((this.gold || 0) < price) {
+            this.showToast('所持金が足りない');
+            return;
+          }
+          this.gold -= price;
+          m.stock.splice(idx, 1);
+          this.collectDrop(item, false);
+          this.showToast(`🏪【購入】[T${item.tier}] ${item.name} を ${price.toLocaleString()}G で入手`);
+          this.saveGame();
+          this.updateStatsUI();
+          render();
+        });
+      });
+      setSubDialog(this, popup, true, close);
+    };
+    render();
+  },
+
   checkDungeonProximity() {
     const banner = document.getElementById('dungeon-prompt-banner');
     const textEl = document.getElementById('dungeon-banner-text');
@@ -6564,15 +6753,28 @@ export const IronSquadGame = {
     const w = dungeonDef.width;
     const h = dungeonDef.height;
 
-    // プレイヤーおよび全部隊をダンジョン入口(x: 180, y: h/2)に配置
+    // 戦闘ダンジョン: 部隊突入（全員）。宿場/町: 隊長＋直属のみ。本隊は野外の位置・作戦を維持。
+    const isTown = dungeonDef.kind === 'town';
+    this.savedFieldSquadPos = null;
+    this.savedFieldPlatoonPos = null;
+    if (isTown && this.squad) {
+      this.savedFieldSquadPos = this.squad.map((s) => ({
+        id: s.id, x: s.x, y: s.y, isPersonalGuard: !!s.isPersonalGuard
+      }));
+      if (this.platoons) {
+        this.savedFieldPlatoonPos = this.platoons.map((p) => ({
+          id: p.id, x: p.x, y: p.y, mission: p.mission || null
+        }));
+      }
+    }
     this.player.x = 180;
     this.player.y = h / 2;
     if (this.squad) {
-      this.squad.forEach((s, idx) => {
-        if (!s.dead) {
-          s.x = 180 + (Math.random() - 0.5) * 60;
-          s.y = h / 2 + (Math.random() - 0.5) * 60;
-        }
+      this.squad.forEach((s) => {
+        if (s.dead) return;
+        if (isTown && !s.isPersonalGuard) return; // 本隊は野外に残す
+        s.x = 180 + (Math.random() - 0.5) * 60;
+        s.y = h / 2 + (Math.random() - 0.5) * 60;
       });
     }
     this.camera = { x: 180, y: h / 2 };
@@ -6629,8 +6831,8 @@ export const IronSquadGame = {
           if (missing > 0) unit.hp = Math.min(unit.maxHp, unit.hp + Math.ceil(missing * 0.45));
         };
         comfort(this.player);
-        (this.squad || []).forEach(comfort);
-        this.showToast(`🛏️「${dungeonDef.name}」に入った。休息回復が始まる。西側の門から出られる。`);
+        (this.squad || []).forEach((s) => { if (s && s.isPersonalGuard) comfort(s); });
+        this.showToast(`🛏️「${dungeonDef.name}」に入った。直属のみ同行。本隊は野外で作戦継続。西側の門から出られる。`);
       } else {
         this.showToast(`「${dungeonDef.name}」へ入った。`);
       }
@@ -6640,18 +6842,40 @@ export const IronSquadGame = {
 
   exitDungeon() {
     if (!this.currentDungeon) return;
+    const wasTown = this.currentDungeon.kind === 'town';
     const returnPos = this.savedFieldPos || { x: BASE_CAMP.x, y: BASE_CAMP.y };
     this.player.x = returnPos.x;
     this.player.y = returnPos.y;
 
+    const savedPos = this.savedFieldSquadPos;
+    const byId = savedPos ? new Map(savedPos.map((p) => [p.id, p])) : null;
     if (this.squad) {
       this.squad.forEach((s) => {
-        if (!s.dead) {
-          s.x = returnPos.x + (Math.random() - 0.5) * 60;
-          s.y = returnPos.y + (Math.random() - 0.5) * 60;
+        if (s.dead) return;
+        if (wasTown && byId && byId.has(s.id) && !s.isPersonalGuard) {
+          const p = byId.get(s.id);
+          s.x = p.x;
+          s.y = p.y;
+          return;
         }
+        // 戦闘ダンジョン全員／宿場の直属: 隊長帰還点付近へ
+        s.x = returnPos.x + (Math.random() - 0.5) * 60;
+        s.y = returnPos.y + (Math.random() - 0.5) * 60;
       });
     }
+    if (wasTown && this.savedFieldPlatoonPos && this.platoons) {
+      const pmap = new Map(this.savedFieldPlatoonPos.map((p) => [p.id, p]));
+      for (const pl of this.platoons) {
+        const sp = pmap.get(pl.id);
+        if (!sp) continue;
+        // 遠征中は野外AIが進めていた座標を優先（保存時点へ巻き戻さない）
+        if (pl.mission === 'expedition' || pl.mission === 'returning') continue;
+        pl.x = sp.x;
+        pl.y = sp.y;
+      }
+    }
+    this.savedFieldSquadPos = null;
+    this.savedFieldPlatoonPos = null;
 
     this.camera = { x: returnPos.x, y: returnPos.y };
     this.monsters = this.savedFieldMonsters || [];
@@ -6663,7 +6887,7 @@ export const IronSquadGame = {
     this.revealFogAroundPlayer(true);
 
     sound.playLaunch();
-    this.showToast('🌀 外界へ無事帰還しました！');
+    this.showToast(wasTown ? '🚪 宿場を出た。本隊は野外のまま作戦継続中。' : '🌀 外界へ無事帰還しました！');
   },
 
   createDungeonMob(type, x, y, dungeonDef, isElite = false) {
@@ -6859,7 +7083,7 @@ export const IronSquadGame = {
       }
 
       this.recalcPlayerStats();
-    } else if (attacker && !attacker.dead) {
+    } else if (attacker && !attacker.dead && !attacker.isMerchantEscort) {
       // 兵士がトドメを刺した！
       attacker.gold = (attacker.gold || 0) + goldGain;
       attacker.exp = (attacker.exp || 0) + expGain;
@@ -9073,6 +9297,7 @@ export const IronSquadGame = {
           drawDungeonEntrance(this.ctx, d, now * 0.001, this.nearDungeon === d);
         }
       }
+      drawMerchants(this.ctx, this, this.camera, this.width, this.height, z);
     }
 
     // 搬送役と負傷者／民間人を結ぶ紐。
