@@ -11,14 +11,14 @@
  */
 import { sound } from '../../audio.js';
 import { storage } from '../../storage.js';
-import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow } from './visuals.js?v=91';
-import { drawMeleeRangeCue, meleeDrawReach, attackAnimationRate } from './weapon-motion.js?v=91';
+import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow } from './visuals.js?v=93';
+import { drawMeleeRangeCue, meleeDrawReach, attackAnimationRate } from './weapon-motion.js?v=93';
 import { saveSlots } from './save-slots.js';
-import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog } from './interface.js?v=91';
-import { ensureSoldierAppearance, drawSoldierPortrait, describeSoldierAppearance } from './soldier-appearance.js?v=91';
-import { attachSurfaceEvents, detachSurfaceEvents, frameSurfaceReady, releaseSceneCaches, releaseCanvas, surfaceCanResume } from './canvas-surface.js?v=83';
-import { WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt } from './world.js?v=83';
-import { FogGrid, FOG_REVEAL_RADIUS, FOG_CAMP_REVEAL } from './fog.js?v=92';
+import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog } from './interface.js?v=93';
+import { ensureSoldierAppearance, drawSoldierPortrait, describeSoldierAppearance } from './soldier-appearance.js?v=93';
+import { attachSurfaceEvents, detachSurfaceEvents, frameSurfaceReady, releaseSceneCaches, releaseCanvas, surfaceCanResume } from './canvas-surface.js?v=93';
+import { WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt } from './world.js?v=93';
+import { FogGrid, FOG_REVEAL_RADIUS, FOG_CAMP_REVEAL } from './fog.js?v=93';
 import {
   classTierOf, nextClassId, classUpCostForNext, canAffordClassUp, formatClassUpCostJa, classUpShortageJa,
   playerClassTier, nextPlayerStage, playerStageById, CLASS_TIER_LABELS, PLAYER_CLASS_STAGES
@@ -31,7 +31,7 @@ import {
   SHARED_BOX_MAX_TIER, SCOUT_COST_BY_TALENT, defaultDonateAmount, donatePresetAmounts
 } from './economy-rules.js';
 
-import { EQUIPMENT_TYPES, saleValue, equippedIds, canSell, lowValueIds, chooseLootTier, distanceScaling, shrineUpgradeCap, compareEquipment, equipmentScore, weaponCombatProfile, evaluateMeleeSweetSpot, isGodRollProtected, zoneRingPower, zoneRingLabelJa } from './equipment-rules.js?v=92';
+import { EQUIPMENT_TYPES, saleValue, equippedIds, canSell, lowValueIds, chooseLootTier, distanceScaling, shrineUpgradeCap, compareEquipment, equipmentScore, weaponCombatProfile, evaluateMeleeSweetSpot, isGodRollProtected, zoneRingPower, zoneRingLabelJa } from './equipment-rules.js?v=93';
 import {
   WEAPON_STYLES, WEAPON_STYLE_LABELS, WEAPON_STYLE_ICONS,
   MELEE_STYLES, RANGED_STYLES, HIT_GROWTH_SOFT_CAP,
@@ -45,7 +45,7 @@ import {
 
 import { daylightAt, advanceWorldClock, periodEnemy, enemyAvailable, PERIOD_ENEMIES } from './day-night.js';
 
-import { RESCUE_TIMEOUT, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, markSoldierDown, CIV_KINDS, isMedic, regenMedicStamina, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST } from './casualty-rules.js?v=92';
+import { RESCUE_TIMEOUT, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, markSoldierDown, CIV_KINDS, isMedic, regenMedicStamina, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST } from './casualty-rules.js?v=93';
 import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault } from './dungeon.js';
 import {
   EXPEDITION_CHECK_INTERVAL, EXPEDITION_RETURN_HOME, EXPEDITION_ENGAGE_R,
@@ -86,6 +86,7 @@ export const COLOSSAL_RESPAWN=210; // was 75
 /** v1.25.7: platoon expedition -> nation hub / main-army pick / danger tier (live map) / return rewards + inferior bonus; SW v77. */
 /** v1.25.8: fog never full-black / multi-stage class-up / zone ring x10 softcap 1e6 / 魔王城~10M fixedStats; SW v78. */
 /** v1.25.11: fog player-cell fail-safe + viewport reseed + camp→player _lastX fix / module ?v=81; SW v81. */
+/** v1.27.9: manual 本隊→自部隊 pull + full-squad swap confirm; auto-guard no longer overwrites; SW v93. */
 /** v1.27.8: HQ downs mortal (slow bleed, no farm) + medic stamina soft-cap; SW v92. */
 /** v1.27.7: HQ rescue-bonus once-per-down latch (no farm loop) + base raids from phase 4; SW v91. */
 /** v1.27.6: rescue XP/gold attribution to acting unit (not always captain); SW v90. */
@@ -4966,24 +4967,12 @@ export const IronSquadGame = {
       }
     }
 
-    // 直属小隊割り当て（毎フレーム sort を避け GUARD_ASSIGN_INTERVAL 秒ごと）
+    // 直属小隊: 手動引き抜きを尊重。空き枠のみ自動補充／定員超過時のみ弱い直属を降格（毎フレーム sort 回避）
     const maxGuards = Math.min(currentRank.personalGuards || 0, PERSONAL_GUARD_MAX);
     this._guardAssignClock = (this._guardAssignClock == null) ? GUARD_ASSIGN_INTERVAL : this._guardAssignClock + dt;
     if (this._guardAssignClock >= GUARD_ASSIGN_INTERVAL) {
       this._guardAssignClock = 0;
-      const sortedSquad = aliveSquad.slice().sort((a, b) => {
-        const scoreA = (a.isNamed ? 100 : 0) + (a.isVeteran ? 50 : 0) + (a.level || 1);
-        const scoreB = (b.isNamed ? 100 : 0) + (b.isVeteran ? 50 : 0) + (b.level || 1);
-        return scoreB - scoreA;
-      });
-      for (let gi = 0; gi < aliveSquad.length; gi++) {
-        aliveSquad[gi].isPersonalGuard = false;
-        aliveSquad[gi]._guardSlot = -1;
-      }
-      for (let i = 0; i < Math.min(maxGuards, sortedSquad.length); i++) {
-        sortedSquad[i].isPersonalGuard = true;
-        sortedSquad[i]._guardSlot = i;
-      }
+      this.syncPersonalGuardSlots(aliveSquad, maxGuards);
     }
     let personalGuardCount = 0;
     for (let gi = 0; gi < aliveSquad.length; gi++) if (aliveSquad[gi].isPersonalGuard) personalGuardCount++;
@@ -7697,6 +7686,168 @@ export const IronSquadGame = {
     return this.scoutCandidates;
   },
 
+  personalGuardScore(s) {
+    if (!s) return 0;
+    return (s.isNamed ? 100 : 0) + (s.isVeteran ? 50 : 0) + (s.level || 1) + ((s.bossKills || 0) * 3);
+  },
+
+  /** Keep _guardSlot indices; fill vacant personal slots; demote excess only (manual pull sticks). */
+  syncPersonalGuardSlots(aliveList, maxGuards) {
+    const alive = aliveList || (this.squad || []).filter(s => s && !s.dead);
+    const cap = Math.max(0, maxGuards | 0);
+    let guards = alive.filter(s => s.isPersonalGuard);
+    if (cap <= 0) {
+      for (const s of alive) {
+        s.isPersonalGuard = false;
+        s._guardSlot = -1;
+      }
+      return;
+    }
+    // Over capacity (rank drop): demote weakest guards first
+    if (guards.length > cap) {
+      guards.sort((a, b) => this.personalGuardScore(a) - this.personalGuardScore(b));
+      while (guards.length > cap) {
+        const drop = guards.shift();
+        drop.isPersonalGuard = false;
+        drop._guardSlot = -1;
+      }
+    }
+    // 空き枠は自動補充しない（引き抜き／スカウトのみで編入）。超過時の降格のみ自動化。
+    // Refresh slot indices for formation orbit
+    const finalGuards = alive.filter(s => s.isPersonalGuard);
+    for (const s of alive) s._guardSlot = -1;
+    finalGuards.forEach((s, i) => { s._guardSlot = i; });
+  },
+
+  listPersonalGuardsAlive() {
+    return (this.squad || []).filter(s => s && !s.dead && s.isPersonalGuard);
+  },
+
+  /** 本隊→自部隊。満員なら replaceId で入れ替え、未指定なら選択ダイアログ。 */
+  assignToPersonalSquad(soldierId, replaceId = null) {
+    const soldier = (this.squad || []).find(s => s && s.id === soldierId);
+    if (!soldier || soldier.dead) {
+      this.showToast?.('⚠️ 対象の兵士が見つかりません');
+      return false;
+    }
+    if ((this.reserves || []).includes(soldier)) {
+      this.showToast?.('⚠️ 予備兵は本隊合流後に引き抜いてください');
+      return false;
+    }
+    if (soldier.isPersonalGuard) {
+      this.showToast?.('すでに自部隊（直属）です');
+      return false;
+    }
+    const currentRank = RANKS[this.rankIndex] || RANKS[0];
+    const maxGuards = Math.min(currentRank.personalGuards || 0, PERSONAL_GUARD_MAX);
+    if (maxGuards <= 0) {
+      alert('直属小隊を編成できる階級ではありません。昇進してください');
+      return false;
+    }
+    const guards = this.listPersonalGuardsAlive();
+    if (guards.length >= maxGuards) {
+      if (replaceId == null) {
+        this.openPersonalSwapDialog(soldier);
+        return false;
+      }
+      const outgoing = guards.find(s => s.id === replaceId);
+      if (!outgoing) {
+        this.showToast?.('⚠️ 入れ替え対象が見つかりません');
+        return false;
+      }
+      outgoing.isPersonalGuard = false;
+      outgoing._guardSlot = -1;
+      soldier.isPersonalGuard = true;
+      this.syncPersonalGuardSlots(null, maxGuards);
+      this.showToast?.(`⭐【引き抜き】${soldier.name} を自部隊へ（代わりに ${outgoing.name} を本隊へ）`);
+      sound.playHighScore?.();
+      this.saveGame();
+      this.renderStrategyUI();
+      this.updateStatsUI();
+      return true;
+    }
+    soldier.isPersonalGuard = true;
+    this.syncPersonalGuardSlots(null, maxGuards);
+    this.showToast?.(`⭐【引き抜き】${soldier.name} を自部隊（直属）へ編入`);
+    sound.playHighScore?.();
+    this.saveGame();
+    this.renderStrategyUI();
+    this.updateStatsUI();
+    return true;
+  },
+
+  returnToMainForce(soldierId) {
+    const soldier = (this.squad || []).find(s => s && s.id === soldierId);
+    if (!soldier || soldier.dead) {
+      this.showToast?.('⚠️ 対象の兵士が見つかりません');
+      return false;
+    }
+    if (!soldier.isPersonalGuard) {
+      this.showToast?.('すでに本隊所属です');
+      return false;
+    }
+    soldier.isPersonalGuard = false;
+    soldier._guardSlot = -1;
+    const currentRank = RANKS[this.rankIndex] || RANKS[0];
+    const maxGuards = Math.min(currentRank.personalGuards || 0, PERSONAL_GUARD_MAX);
+    this.syncPersonalGuardSlots(null, maxGuards);
+    this.showToast?.(`🏰【編成変更】${soldier.name} を本隊へ戻した`);
+    this.saveGame();
+    this.renderStrategyUI();
+    this.updateStatsUI();
+    return true;
+  },
+
+  openPersonalSwapDialog(incoming) {
+    if (!incoming) return;
+    const currentRank = RANKS[this.rankIndex] || RANKS[0];
+    const maxGuards = Math.min(currentRank.personalGuards || 0, PERSONAL_GUARD_MAX);
+    const guards = this.listPersonalGuardsAlive();
+    const old = document.getElementById('personal-swap-popup');
+    if (old) old.remove();
+    const popup = document.createElement('div');
+    popup.id = 'personal-swap-popup';
+    popup.className = 'transfer-popup-overlay';
+    popup.style.cssText = 'position:fixed;inset:0;z-index:12000;background:rgba(2,6,23,0.72);display:flex;align-items:center;justify-content:center;padding:12px;';
+    const inCls = SOLDIER_CLASSES[incoming.soldierClass] || SOLDIER_CLASSES.HEAVY;
+    const inTalent = TALENTS[incoming.talent] || TALENTS.AVERAGE;
+    const rows = guards.map(g => {
+      const cls = SOLDIER_CLASSES[g.soldierClass] || SOLDIER_CLASSES.HEAVY;
+      const talent = TALENTS[g.talent] || TALENTS.AVERAGE;
+      return `<button type="button" class="personal-swap-pick" data-id="${g.id}" style="display:block;width:100%;text-align:left;margin:0 0 6px;padding:8px 10px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;cursor:pointer;">
+        <div style="font-size:12px;font-weight:bold;">${cls.icon || ''} ${g.name} <span style="color:${talent.color};font-size:10px;">[${talent.tag}]</span></div>
+        <div style="font-size:10px;color:#94a3b8;">Lv.${g.level || 1} ${cls.name} · HP ${Math.floor(g.hp||0)}/${g.maxHp||0} · 本隊へ戻す</div>
+      </button>`;
+    }).join('');
+    popup.innerHTML = `
+      <div style="width:min(420px,96vw);max-height:86vh;overflow:auto;background:#020617;border:1px solid #475569;border-radius:12px;padding:14px;box-shadow:0 12px 40px rgba(0,0,0,0.55);">
+        <div style="font-size:14px;font-weight:bold;color:#fde68a;margin-bottom:6px;">自部隊は定員一杯です</div>
+        <p style="font-size:11px;color:#cbd5e1;line-height:1.5;margin:0 0 10px;">
+          定員 ${guards.length}/${maxGuards}。本隊の
+          <strong style="color:#fff;">${inCls.icon || ''} ${incoming.name}</strong>
+          <span style="color:${inTalent.color};">[${inTalent.tag}]</span>
+          を引き抜くには、代わりに本隊へ戻す直属を選んでください。
+        </p>
+        <div>${rows || '<p style="color:#94a3b8;font-size:11px;">入れ替え可能な直属がいません</p>'}</div>
+        <button type="button" class="action-btn secondary btn-close-personal-swap" style="width:100%;margin-top:8px;min-height:36px;">キャンセル</button>
+      </div>`;
+    const close = () => {
+      popup.remove();
+      setSubDialog?.(this, popup, false);
+    };
+    popup.querySelector('.btn-close-personal-swap')?.addEventListener('click', close);
+    popup.addEventListener('click', (e) => { if (e.target === popup) close(); });
+    popup.querySelectorAll('.personal-swap-pick').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const rid = btn.getAttribute('data-id');
+        close();
+        this.assignToPersonalSquad(incoming.id, rid);
+      });
+    });
+    document.body.appendChild(popup);
+    setSubDialog?.(this, popup, true, close);
+  },
+
   scoutSoldier(candidateId, destination = 'main') {
     const cand = (this.scoutCandidates || []).find(c => c.id === candidateId);
     if (!cand) {
@@ -7718,7 +7869,8 @@ export const IronSquadGame = {
         return false;
       }
       if (guardCount >= maxGuards) {
-        alert(`自部隊は定員一杯です (${guardCount}/${maxGuards})。放逐して枠を空けてください`);
+        // 満員: 入れ替え対象を選んでから雇用を続行
+        this.openScoutPersonalSwapDialog(cand, cost);
         return false;
       }
     }
@@ -8650,6 +8802,11 @@ export const IronSquadGame = {
               💰 自部隊援助
             </button>
           </div>` : `<span style="font-size:9.5px;color:#64748b;">本隊は国庫配分のみ</span>`}
+          ${maxGuards > 0 && !(this.reserves || []).includes(s) ? (
+            s.isPersonalGuard
+              ? `<button type="button" class="mini-btn btn-return-main" style="background:#334155;color:#e2e8f0;font-size:10px;padding:3px 6px;" title="直属を解除して本隊へ">🏰 本隊へ戻す</button>`
+              : `<button type="button" class="mini-btn btn-pull-personal" style="background:#a16207;color:#fff;font-size:10px;padding:3px 6px;font-weight:bold;" title="本隊から自部隊（直属）へ引き抜く">⭐ 自部隊へ引き抜</button>`
+          ) : ''}
           <button class="mini-btn btn-soldier-detail" style="background:#1e3a5f;color:#93c5fd;font-size:10px;padding:3px 6px;" title="個人詳細">📋 詳細</button>
           <button class="mini-btn btn-dismiss" style="background:#7f1d1d;color:#fecaca;font-size:10px;padding:3px 6px;" title="放逐（一部返還）">🚪 放逐</button>
           ${cls.advancedClassId && SOLDIER_CLASSES[cls.advancedClassId] ? (() => {
@@ -8698,6 +8855,15 @@ export const IronSquadGame = {
       const dismissBtn = row.querySelector('.btn-dismiss');
       if (dismissBtn) {
         dismissBtn.addEventListener('click', () => this.dismissSoldier(s.id));
+      }
+
+      const pullBtn = row.querySelector('.btn-pull-personal');
+      if (pullBtn) {
+        pullBtn.addEventListener('click', () => this.assignToPersonalSquad(s.id));
+      }
+      const returnBtn = row.querySelector('.btn-return-main');
+      if (returnBtn) {
+        returnBtn.addEventListener('click', () => this.returnToMainForce(s.id));
       }
 
       const detailBtn = row.querySelector('.btn-soldier-detail');
