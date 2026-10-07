@@ -15,6 +15,16 @@
   font-variant-numeric: tabular-nums;
 }
 .iron-squad .hidden { display: none !important; }
+/* Size the surface from its container; exclude its intrinsic backing-store
+   dimensions from flex layout, including during Safari rotation/resizing. */
+.iron-squad #game-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.iron-squad .field-recovery { position: absolute; left: 12px; right: 12px; top: 90px; z-index: 95; max-width: 480px; margin: auto; padding: 14px; border: 1px solid #ba8873; border-radius: 10px; background: #192630f5; font-size: 13px; line-height: 1.65; }
+.iron-squad .field-recovery p { margin: 6px 0 12px; color: var(--ui-muted); }
+.iron-squad .field-recovery-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.iron-squad .field-recovery button { min-height: 44px; padding: 8px 12px; border: 1px solid #b39d72; border-radius: 7px; color: var(--ui-bg); background: var(--ui-gold); }
+.iron-squad .field-recovery summary { min-height: 40px; padding-top: 8px; cursor: pointer; color: var(--ui-muted); }
+.iron-squad .field-recovery pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 11px; user-select: text; -webkit-user-select: text; }
+.iron-squad .save-heading .save-start-error { color: var(--ui-danger); background: #38262b; border: 1px solid #b57b78; border-radius: 7px; padding: 10px; margin-top: 10px; overflow-wrap: anywhere; }
 .iron-squad .game-header { padding: 7px 10px; min-height: 70px; gap: 10px; background: var(--ui-bg); border-color: var(--ui-line); }
 .iron-squad .game-stats { grid-template-columns: repeat(2, minmax(0,1fr)); gap: 3px 10px; }
 .iron-squad .game-stats .hud-admin { display: none; }
@@ -200,6 +210,14 @@
 .iron-squad .soldier-detail-panel [style*="font-size"] { font-size: 12px !important; }
 .iron-squad .soldier-card [style*="color:#64748b"], .iron-squad .slot-item-text[style*="#718096"] { color: var(--ui-muted) !important; }
 .iron-squad .soldier-detail-label { font-size: 12px; color: var(--ui-gold); }
+.iron-squad .soldier-personal-profile { display: grid; grid-template-columns: 144px minmax(0,1fr); align-items: center; gap: 16px; padding: 12px; margin-bottom: 14px; background: var(--ui-panel); border: 1px solid var(--ui-line); border-radius: 10px; }
+.iron-squad .soldier-face-portrait { width: 144px; height: 156px; border: 1px solid #6c7c7b; border-radius: 8px; }
+.iron-squad .profile-eyebrow { font: 10px Georgia, serif; color: var(--ui-gold); letter-spacing: .14em; }
+.iron-squad .soldier-personal-profile h4 { margin: 5px 0 8px; font-size: 16px; }
+.iron-squad .soldier-look-description { font-size: 13px; line-height: 1.7; color: var(--ui-text); }
+.iron-squad .profile-note { margin-top: 10px; font-size: 11px; line-height: 1.6; color: var(--ui-muted); }
+.iron-squad .reserve-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.iron-squad .reserve-row > span { flex: 1 1 170px; }
 .iron-squad .soldier-detail-head { position: sticky; top: -12px; background: var(--ui-bg); padding: 12px 0; z-index: 2; border-bottom: 1px solid var(--ui-line); }
 .iron-squad .btn-close-soldier-detail { min-height: 44px; }
 .iron-squad .pad-btn-power.ready { animation: none; }
@@ -220,6 +238,10 @@
   .iron-squad .health-track { display: none; }
   .iron-squad .soldier-detail-grid { grid-template-columns: 1fr; }
   .iron-squad .soldier-detail-span2 { grid-column: auto; }
+}
+@media (max-width: 420px) {
+  .iron-squad .soldier-personal-profile { grid-template-columns: 112px minmax(0,1fr); gap: 10px; padding: 10px; }
+  .iron-squad .soldier-face-portrait { width: 112px; height: 122px; }
 }
 @media (max-height: 500px) and (orientation: landscape) {
   .iron-squad .game-header { min-height: 50px; }

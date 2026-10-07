@@ -246,13 +246,24 @@ function tileMayHaveRelief(x0, y0) {
 
 export class WorldTerrain {
   constructor() { this.tiles=new Map(); this.generated=0; }
+  clear() {
+    for (const tile of this.tiles.values()) { tile.canvas.width=1; tile.canvas.height=1; }
+    this.tiles.clear();
+  }
   get(tx,ty) {
     const key=`${tx},${ty}`;
     if(this.tiles.has(key)) {
-      const tile=this.tiles.get(key); this.tiles.delete(key); this.tiles.set(key,tile); return tile;
+      const tile=this.tiles.get(key); this.tiles.delete(key);
+      if (tile.context?.isContextLost?.() !== true) { this.tiles.set(key,tile); return tile; }
+      tile.canvas.width=1; tile.canvas.height=1;
+    }
+    // Release pixels before allocating: deleting a Map entry alone waits for GC,
+    // allowing iOS canvas memory to grow beyond the apparent cache limit.
+    while(this.tiles.size>=CACHE_LIMIT) {
+      const oldest=this.tiles.keys().next().value, retired=this.tiles.get(oldest);
+      retired.canvas.width=1; retired.canvas.height=1; this.tiles.delete(oldest);
     }
     const tile=this.generate(tx,ty); this.tiles.set(key,tile);
-    while(this.tiles.size>CACHE_LIMIT) this.tiles.delete(this.tiles.keys().next().value);
     return tile;
   }
   generate(tx,ty) {
@@ -260,6 +271,7 @@ export class WorldTerrain {
     const x0=tx*TILE,y0=ty*TILE;
     const canvas=document.createElement('canvas'); canvas.width=TILE; canvas.height=TILE;
     const c=canvas.getContext('2d'), objects=[];
+    if (!c) { canvas.width=1; canvas.height=1; throw new Error('地形のCanvasを確保できません'); }
     const may=tileMayHaveRelief(x0,y0);
     // Small cells follow world coordinates, so biome transitions align at tile edges.
     for(let y=0;y<TILE;y+=32) for(let x=0;x<TILE;x+=32) {
@@ -342,7 +354,7 @@ export class WorldTerrain {
       }
     }
     this.generated++;
-    return {canvas,objects,x:x0,y:y0};
+    return {canvas,context:c,objects,x:x0,y:y0};
   }
   draw(c,camera,width,height,zoom) {
     const margin=150,hw=width/(2*zoom)+margin,hh=height/(2*zoom)+margin;

@@ -70,6 +70,12 @@ document.querySelector('.transfer-popup-close-btn').dispatchEvent(new dom.window
 assert.equal($('equipment-transfer-popup').classList.contains('hidden'),true); assert.equal($('strategy-modal').inert,false);
 row.querySelector('.btn-soldier-detail').click();
 assert.equal(game.selectedSoldierDetailId,soldier.id);
+const faceBefore=JSON.stringify(soldier.appearance);
+assert.equal(document.querySelectorAll('#soldier-detail-host').length,1);
+assert.equal(document.querySelectorAll('#soldier-detail-host .soldier-face-portrait').length,1);
+assert.match(document.querySelector('.soldier-face-portrait').getAttribute('aria-label'),/素顔/);
+game.openSoldierDetail(game.squad[1].id); assert.equal(document.querySelectorAll('#soldier-detail-host').length,1,'individual soldier windows reuse one host');
+game.openSoldierDetail(soldier.id); assert.equal(JSON.stringify(soldier.appearance),faceBefore,'switching selected soldiers never rerolls the face');
 assert.equal(document.querySelector('.dialog-body').inert,true);
 document.querySelector('.btn-close-soldier-detail').dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
 assert.equal(game.selectedSoldierDetailId,null); assert.equal(document.querySelector('.dialog-body').inert,false); assert.equal($('strategy-modal').classList.contains('hidden'),false);
@@ -82,6 +88,9 @@ const nextTier = document.querySelector('.btn-danger-tier:not(.active)'); nextTi
 assert.equal(document.querySelector('.btn-danger-tier.active').getAttribute('aria-pressed'),'true');
 let donations=0; game.donateToTreasury=()=>donations++; $('btn-donate-treasury').click(); assert.equal(donations,1,'donation keeps its action after reparenting');
 let heals=0; game.healAllSquad=()=>heals++; $('btn-heal-all').click(); assert.equal(heals,1);
+const reserve=game.createNewSoldier();game.reserves.push(reserve);game.renderStrategyUI();
+document.querySelector('#reserve-roster-list .mini-btn').click();assert.equal(game.selectedSoldierDetailId,reserve.id);
+assert.match(document.querySelector('.soldier-detail-head').textContent,/予備兵/);game.closeSoldierDetail();
 game.player.isAdvanced=true; game.player.advancedClass='WARLORD'; game.renderStrategyUI();
 assert.match($('btn-promote-player').textContent,/帝皇/,'the existing second awakening stage must be reachable from the UI');
 game.player.advancedClass='EMPEROR'; game.awakeningGems=0; game.renderStrategyUI();
@@ -98,6 +107,8 @@ assert.equal(game.platoons[2].mission,'expedition','nation screen still dispatch
 game.saveGame(); const expeditionSave=saveSlots.get(game.activeSlotId).data;
 game.resumeSavedGame(expeditionSave); assert.equal(game.platoons[2].mission,'expedition','mission restoration belongs to saved-game loading, not New Game');
 game.openStrategyModal(true);
+const faceSave=saveSlots.get(game.activeSlotId).data;
+assert.ok(faceSave.squad.every(s=>s.appearance?.version===1));
 // Snapshot the actual generated DOM for static CSS review (not a browser screenshot).
 if (process.env.UI_REVIEW_DIR) {
   const folder = resolve(process.env.UI_REVIEW_DIR); mkdirSync(folder,{recursive:true});

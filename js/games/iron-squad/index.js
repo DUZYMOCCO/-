@@ -11,11 +11,13 @@
  */
 import { sound } from '../../audio.js';
 import { storage } from '../../storage.js';
-import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow, drawSpearReachCue } from './visuals.js';
+import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow, drawSpearReachCue } from './visuals.js?v=85';
 import { saveSlots } from './save-slots.js';
 import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog } from './interface.js';
-import { WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt } from './world.js';
-import { FogGrid, FOG_REVEAL_RADIUS, FOG_CAMP_REVEAL } from './fog.js?v=82';
+import { ensureSoldierAppearance, drawSoldierPortrait, describeSoldierAppearance } from './soldier-appearance.js?v=85';
+import { attachSurfaceEvents, detachSurfaceEvents, frameSurfaceReady, releaseSceneCaches, releaseCanvas, surfaceCanResume } from './canvas-surface.js?v=83';
+import { WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt } from './world.js?v=83';
+import { FogGrid, FOG_REVEAL_RADIUS, FOG_CAMP_REVEAL } from './fog.js?v=83';
 import {
   classTierOf, nextClassId, classUpCostForNext, canAffordClassUp, formatClassUpCostJa, classUpShortageJa,
   playerClassTier, nextPlayerStage, playerStageById, CLASS_TIER_LABELS, PLAYER_CLASS_STAGES
@@ -1001,6 +1003,7 @@ export const IronSquadGame = {
     this.saveMenu = null;
     this.worldMapModal = null;
     this.autoSaveClock = 0;
+    this._surfaceLost = false; this._renderProblem = null;
     this.inBattle = false;
     this.setupUI();
     this.setupGame();
@@ -1637,7 +1640,7 @@ export const IronSquadGame = {
       e.preventDefault();
       try {
         const slot=saveSlots.create(this.saveMenu.querySelector('#expedition-name').value);
-        this.activeSlotId=slot.id;this.beginSelectedExpedition();this.startFreshGame(false);
+        this.selectSaveSlot(slot.id);
       } catch(error) { list.textContent=error.message; }
     });
     this.saveMenu.querySelector('#btn-save-menu-back').addEventListener('click',()=>{
@@ -1648,6 +1651,7 @@ export const IronSquadGame = {
   },
 
   beginSelectedExpedition() {
+    this.clearRenderProblem();
     this.saveMenu.classList.add('hidden');
     this.setDialogState(false);this.resetMovementInput();
     const slot=saveSlots.get(this.activeSlotId);
@@ -1657,9 +1661,26 @@ export const IronSquadGame = {
   selectSaveSlot(id) {
     const slot=saveSlots.get(id);
     if(!slot) return;
-    this.activeSlotId=id;this.beginSelectedExpedition();
-    if(slot.state==='fallen' || !slot.data) this.startFreshGame(slot.state==='fallen');
-    else this.resumeSavedGame(slot.data);
+    this.activeSlotId=id;
+    try {
+      // Keep the menu until initialization succeeds. Previously a startup
+      // exception was written into the already-hidden menu, leaving only HUD.
+      if(slot.state==='fallen' || !slot.data) this.startFreshGame(slot.state==='fallen');
+      else this.resumeSavedGame(slot.data);
+      this.beginSelectedExpedition();
+      this.resizeCanvas?.();
+      this.render(); this._sceneDirty=false;
+      return true;
+    } catch (error) {
+      console.error('Expedition startup failed:', error);
+      this.inBattle=false; this.stopGameLoop(); this.resetMovementInput();
+      this.showSaveMenu();
+      const notice=document.createElement('p');notice.id='save-start-error';notice.className='save-start-error';notice.setAttribute('role','alert');
+      notice.textContent=`v1.26.1 · 開始できませんでした：${error.message || error}`;
+      this.saveMenu.querySelector('.save-heading').append(notice);
+      this.showRenderProblem('startup',error);
+      return false;
+    }
   },
 
   fastTravelTo(targetX, targetY, targetName, options = {}) {
@@ -1853,14 +1874,22 @@ export const IronSquadGame = {
       const dpr = Math.min(window.devicePixelRatio || 1, 2); // v1.24.1: cap DPR (was 3)
       this.width = (rect && rect.width > 10) ? rect.width : (window.innerWidth > 10 ? window.innerWidth : 390);
       this.height = (rect && rect.height > 10) ? rect.height : (window.innerHeight > 90 ? window.innerHeight - 80 : 600);
-      this.canvas.width = this.width * dpr;
-      this.canvas.height = this.height * dpr;
-      this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const pixelWidth = Math.max(1, Math.round(this.width * dpr));
+      const pixelHeight = Math.max(1, Math.round(this.height * dpr));
+      if (this.canvas.width !== pixelWidth) this.canvas.width = pixelWidth;
+      if (this.canvas.height !== pixelHeight) this.canvas.height = pixelHeight;
+      this.ctx?.setTransform(dpr, 0, 0, dpr, 0, 0);
       this._sceneDirty=true;
     };
 
     this.resizeCanvas();
     window.addEventListener('resize', this.resizeCanvas);
+    window.visualViewport?.addEventListener('resize', this.resizeCanvas);
+    if (typeof ResizeObserver !== 'undefined') {
+      this.surfaceResizeObserver = new ResizeObserver(this.resizeCanvas);
+      this.surfaceResizeObserver.observe(this.canvasContainer);
+    }
+    attachSurfaceEvents(this);
 
     // 画面切り替え（タブ・別アプリ移動からの復帰）時のデルタタイム＆リサイズ安全化
     this.handleVisibility = () => {
@@ -1889,8 +1918,13 @@ export const IronSquadGame = {
       if (!this.running) return;
       const dt = Math.max(0.001, Math.min((t - this.lastTime) / 1000, 0.1));
       this.lastTime = t;
+      let stage = 'render';
       try {
+        // Paint the initial/resized surface even if the following update fails.
+        if (this._sceneDirty && this.player) { this.render(); this._sceneDirty = false; }
+        stage = 'update';
         this.update(dt);
+        stage = 'render';
         const draw=this.inBattle || this._lastRenderBattle || this._sceneDirty;
         if(draw){this.render();this._sceneDirty=false;}
         this._lastRenderBattle=!!this.inBattle;
@@ -1900,8 +1934,13 @@ export const IronSquadGame = {
         }
       } catch (err) {
         console.error('Frame loop stopped:', err);
+        this._surfaceResumeBattle = !!this.inBattle;
+        if (stage === 'update' && this.player) {
+          try { this.render(); } catch (_) { /* retain the diagnostic below */ }
+        }
         this.inBattle=false;this.stopGameLoop();
-        this.showToast('戦闘処理でエラーが発生しました。工房へ戻り、遠征を再開してください。');
+        this.resetMovementInput();
+        this.showRenderProblem(stage, err);
         return;
       }
       this.animFrameId = requestAnimationFrame(this.loop);
@@ -1915,6 +1954,40 @@ export const IronSquadGame = {
       cancelAnimationFrame(this.animFrameId);
       this.animFrameId = null;
     }
+  },
+
+  showRenderProblem(stage, error) {
+    this._renderProblem = { stage, message: String(error?.message || error), at: Date.now() };
+    if (!this.container) return;
+    let notice = this.container.querySelector('#field-recovery');
+    if (!notice) {
+      notice = document.createElement('section'); notice.id = 'field-recovery'; notice.className = 'field-recovery';
+      notice.setAttribute('role', 'alert');
+      notice.innerHTML = '<strong>ゲーム画面の表示が停止しました</strong><p>部隊の進行を停止しています。表示の復旧を試せます。</p><div class="field-recovery-actions"><button type="button" id="btn-recover-field">表示を復旧</button><button type="button" id="btn-recovery-save-menu">セーブ選択</button></div><details><summary>不具合の情報</summary><pre></pre></details>';
+      this.container.querySelector('.game-wrapper').append(notice);
+      notice.querySelector('#btn-recover-field').onclick = () => this.recoverFieldSurface();
+      notice.querySelector('#btn-recovery-save-menu').onclick = () => { this.clearRenderProblem(); this.showSaveMenu(); };
+    }
+    notice.querySelector('pre').textContent = `v1.26.1 / ${stage}\n${this._renderProblem.message}\n画面 ${this.width}×${this.height} / Canvas ${this.canvas?.width}×${this.canvas?.height}`;
+    notice.classList.remove('hidden');
+  },
+
+  clearRenderProblem() {
+    this._renderProblem = null;
+    this.container?.querySelector('#field-recovery')?.classList.add('hidden');
+  },
+
+  recoverFieldSurface() {
+    try {
+      releaseSceneCaches(this);
+      const width = this.canvas.width, height = this.canvas.height;
+      releaseCanvas(this.canvas); this.canvas.width = width; this.canvas.height = height;
+      this.ctx = this.canvas.getContext('2d'); this._surfaceLost = false;
+      this.resizeCanvas(); this.render();
+      this.inBattle = surfaceCanResume(this);
+      this.clearRenderProblem(); this.startGameLoop();
+      return true;
+    } catch (error) { this.inBattle = false; this.stopGameLoop(); this.showRenderProblem('recovery', error); return false; }
   },
 
   startFreshGame(inheritVeterans = true) {
@@ -2545,6 +2618,7 @@ export const IronSquadGame = {
   },
 
   recalcSoldierStats(s) {
+    ensureSoldierAppearance(s);
     if (!s) return;
     if (s.title === '巨頭狩り') {
       s.title = '';
@@ -2817,6 +2891,7 @@ export const IronSquadGame = {
       this.recalcSoldierStats(s);
     });
     for (const s of (this.reserves || [])) {
+      ensureSoldierAppearance(s);
       if (s.hitGrowthPct == null) s.hitGrowthPct = 0;
       s.weaponMastery = normalizeMastery(s.weaponMastery);
       s.favoriteWeapon = migrateFavoriteForClass(s.soldierClass || 'HEAVY', s.favoriteWeapon);
@@ -7308,7 +7383,7 @@ export const IronSquadGame = {
       const up = it.upgrade > 0 ? `+${it.upgrade}` : '';
       return `<div>${slotJa[k]||k}: <span style="color:${it.color || '#e2e8f0'};">[T${it.tier}] ${it.name}${up}</span>${bitTxt}</div>`;
     }).join('');
-    const role = s.isPersonalGuard ? '⭐ 自部隊（直属）' : '🏰 本隊';
+    const role = (this.reserves || []).includes(s) ? '予備兵' : s.isPersonalGuard ? '⭐ 自部隊（直属）' : '🏰 本隊';
     const hitPct = Math.round((s.hitGrowthPct || 0) * 1000) / 10;
     return `
       <div class="soldier-detail-panel">
@@ -7319,6 +7394,7 @@ export const IronSquadGame = {
           </div>
           <button type="button" class="mini-btn btn-close-soldier-detail" style="background:#334155;color:#e2e8f0;font-size:11px;">閉じる</button>
         </div>
+        <section class="soldier-personal-profile"><canvas class="soldier-face-portrait" width="240" height="260" role="img"></canvas><div><span class="profile-eyebrow">PERSONNEL FILE</span><h4>素顔</h4><p class="soldier-look-description"></p><p class="profile-note">兜を外した姿。装備・能力はそのまま。</p></div></section>
         <div class="soldier-detail-grid">
           <div class="soldier-detail-block">
             <div class="soldier-detail-label">基本ステータス</div>
@@ -7381,7 +7457,13 @@ export const IronSquadGame = {
       else document.body.appendChild(host);
     }
     host.classList.remove('hidden');
+    for (const old of host.querySelectorAll('canvas')) releaseCanvas(old);
     host.innerHTML = this.buildSoldierDetailHtml(s);
+    const portrait=host.querySelector('.soldier-face-portrait');
+    portrait.setAttribute('aria-label', `${s.name}の素顔：${describeSoldierAppearance(s)}`);
+    const faceContext=portrait.getContext('2d');
+    if(faceContext)drawSoldierPortrait(faceContext,s,portrait.width,portrait.height);
+    host.querySelector('.soldier-look-description').textContent=describeSoldierAppearance(s);
     const closeBtn = host.querySelector('.btn-close-soldier-detail');
     if (closeBtn) closeBtn.onclick = () => this.closeSoldierDetail();
     host.onclick = (e) => { if (e.target === host) this.closeSoldierDetail(); };
@@ -7394,6 +7476,7 @@ export const IronSquadGame = {
     if (host) {
       host.classList.add('hidden');
       setSubDialog(this, host, false);
+      for (const canvas of host.querySelectorAll('canvas')) releaseCanvas(canvas);
       host.innerHTML = '';
     }
   },
@@ -8031,6 +8114,8 @@ export const IronSquadGame = {
   },
 
   renderStrategyUI() {
+    // UI rebuilds also retire native Canvas buffers; DOM removal alone waits for GC.
+    for (const canvas of this.container?.querySelectorAll('.soldier-portrait, .commander-portrait') || []) releaseCanvas(canvas);
     const scrollBody=this.container?.querySelector('#strategy-modal .dialog-body');
     const scrollTop=scrollBody?.scrollTop || 0;
     // 兵士詳細が開いていれば再描画後に維持
@@ -8063,6 +8148,10 @@ export const IronSquadGame = {
       const talent=TALENTS[soldier.talent] || TALENTS.AVERAGE;
       row.textContent=`${soldier.name} · ${cls.name} · ${talent.tag} · Lv.${soldier.level || 1} · 経験${soldier.survivedWaves || 0}戦線`;
       if(soldier.lastMaintenance)row.textContent+=` · 自己強化${soldier.lastMaintenance.count}回 / ${soldier.lastMaintenance.spent}G · ${soldier.lastMaintenance.status}`;
+      const info=document.createElement('span');info.textContent=row.textContent;
+      const detail=document.createElement('button');detail.type='button';detail.className='mini-btn';detail.textContent='個人詳細';
+      detail.setAttribute('aria-label',`${soldier.name}の個人詳細`);detail.onclick=()=>this.openSoldierDetail(soldier.id);
+      row.replaceChildren(info,detail);
       reserveList.append(row);
     }
     if(this.restReport) {const note=document.createElement('p');note.className='maintenance-summary';note.textContent=this.maintenanceSummary();reserveList.append(note);}
@@ -8539,8 +8628,8 @@ export const IronSquadGame = {
       const portrait = document.createElement('canvas');
       portrait.className = 'soldier-portrait'; portrait.width = 88; portrait.height = 112;
       portrait.setAttribute('aria-label', `${cls.name} ${s.name}`);
-      const pc = portrait.getContext('2d'); pc.translate(44, 96); pc.scale(2, 2);
-      drawFieldSoldier(pc, {...s,x:0,y:0,vx:0,vy:0,portrait:true}, 0, cls, pColor);
+      const pc = portrait.getContext('2d');
+      if(pc)drawSoldierPortrait(pc,s,portrait.width,portrait.height,{compact:true});
       row.classList.add('soldier-card'); row.prepend(portrait);
       const maintenanceNote=document.createElement('p');maintenanceNote.className='maintenance-summary';
       const m=s.lastMaintenance;
@@ -8711,6 +8800,25 @@ export const IronSquadGame = {
   },
 
   render() {
+    if (!frameSurfaceReady(this)) throw new Error('Canvasの描画面が利用できません');
+    if (!Number.isFinite(this.zoom) || this.zoom <= 0) this.zoom = 1;
+    const boundW = this.currentDungeon?.width || WORLD_SIZE, boundH = this.currentDungeon?.height || WORLD_SIZE;
+    if (this.player) {
+      if (!Number.isFinite(this.player.x)) this.player.x = this.currentDungeon ? 180 : BASE_CAMP.x - 20;
+      if (!Number.isFinite(this.player.y)) this.player.y = this.currentDungeon ? boundH / 2 : BASE_CAMP.y - 20;
+      this.player.x = Math.max(16, Math.min(boundW - 16, this.player.x));
+      this.player.y = Math.max(16, Math.min(boundH - 16, this.player.y));
+    }
+    if (!this.camera || !Number.isFinite(this.camera.x) || !Number.isFinite(this.camera.y)) {
+      this.camera = { x: this.player?.x ?? BASE_CAMP.x, y: this.player?.y ?? BASE_CAMP.y };
+    }
+    const halfW = this.width / (2 * this.zoom), halfH = this.height / (2 * this.zoom);
+    this.camera.x = Math.max(Math.min(halfW,boundW/2), Math.min(Math.max(boundW-halfW,boundW/2),this.camera.x));
+    this.camera.y = Math.max(Math.min(halfH,boundH/2), Math.min(Math.max(boundH-halfH,boundH/2),this.camera.y));
+    this.drawScene();
+  },
+
+  drawScene() {
     const now = performance.now();
     this.ctx.clearRect(0, 0, this.width, this.height);
 
@@ -8720,6 +8828,7 @@ export const IronSquadGame = {
     const shakeX = this.screenShake > 0 ? (Math.random() - 0.5) * this.screenShake * 18 : 0;
     const shakeY = this.screenShake > 0 ? (Math.random() - 0.5) * this.screenShake * 18 : 0;
     this.ctx.save();
+    try {
     this.ctx.translate(this.width / 2 + shakeX, this.height / 2 + shakeY);
     this.ctx.scale(z, z);
     this.ctx.translate(-this.camera.x, -this.camera.y);
@@ -8895,7 +9004,7 @@ export const IronSquadGame = {
       }
     }
 
-    this.ctx.restore(); // カメラ復元
+    } finally { this.ctx.restore(); } // カメラ復元（描画中の例外でも必ず戻す）
 
     // 8.5 大気（昼夜の色調・霧・ビネット）
     this.drawAtmosphere(this.ctx, now);
@@ -9396,11 +9505,13 @@ export const IronSquadGame = {
     }
 
     // ビネット（画面端を暗く＝没入感）
-    if (!this.vigCache || this.vigW !== W || this.vigH !== H) {
+    if (!this.vigCache || this.vigW !== W || this.vigH !== H || this.vigCache.getContext('2d')?.isContextLost?.() === true) {
+      releaseCanvas(this.vigCache);
       const vc = document.createElement('canvas');
       vc.width = Math.max(1, Math.floor(W));
       vc.height = Math.max(1, Math.floor(H));
       const vx = vc.getContext('2d');
+      if (!vx) { releaseCanvas(vc); throw new Error('画面の陰影Canvasを確保できません'); }
       const vg = vx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.32, W / 2, H / 2, Math.max(W, H) * 0.72);
       vg.addColorStop(0, 'rgba(0,0,0,0)');
       vg.addColorStop(1, 'rgba(0,0,0,0.62)');
@@ -10431,7 +10542,10 @@ export const IronSquadGame = {
 
   destroy() {
     this.stopGameLoop();
-    this.worldTerrain = null;
+    detachSurfaceEvents(this);
+    releaseSceneCaches(this);
+    this.surfaceResizeObserver?.disconnect(); this.surfaceResizeObserver = null;
+    window.visualViewport?.removeEventListener('resize', this.resizeCanvas);
     this.fog = null;
     if (this.stickHandlers) {
       const {move,end} = this.stickHandlers;
@@ -10456,5 +10570,6 @@ export const IronSquadGame = {
       window.removeEventListener('touchcancel', this.boundUp);
       if (this.boundWheel) this.canvas.removeEventListener('wheel', this.boundWheel);
     }
+    for (const canvas of this.container?.querySelectorAll('canvas') || []) releaseCanvas(canvas);
   }
 };

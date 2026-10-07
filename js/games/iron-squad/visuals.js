@@ -1,3 +1,5 @@
+import { drawSoldierHead, isMedicAppearance, soldierAppearanceFamily } from './soldier-appearance.js?v=85';
+
 // Live field illustrations. Equipment colors are read every frame.
 // Weapon light is a short arc on the blade, never a ring around the body.
 const ellipse = (c, x, y, rx, ry, color) => {
@@ -106,8 +108,10 @@ const CLOTH = {
 
 export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod) {
   const key = s.soldierClass || 'HEAVY', eq = s.equipped || {};
+  const medic = isMedicAppearance(key);
+  const family = cls.baseClassId || soldierAppearanceFamily(key);
   const advanced = !!cls.isAdvanced;
-  const cloth = fieldTone(eq.armor?.color || CLOTH[key] || CLOTH.HEAVY, 0.82);
+  const cloth = fieldTone(eq.armor?.color || CLOTH[key] || CLOTH[family] || CLOTH.HEAVY, 0.82);
   const steel = fieldTone(eq.helmet?.color || (advanced ? '#d1c4a3' : '#9daab0'), 0.62);
   const legs = fieldTone(eq.legs?.color || '#5c564c', 0.74);
   const gloves = fieldTone(eq.gloves?.color || '#a09080', 0.7);
@@ -116,28 +120,36 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod) {
   const moving = Math.hypot(s.vx || 0, s.vy || 0) > 0.05;
   const stride = moving ? Math.sin(now * 0.016 + (s.animOffset || 0)) * 2.8 : 0;
   const bob = moving ? Math.abs(stride) * 0.25 : 0;
-  const archer = key === 'ARCHER' || key === 'SNIPER';
-  const medic = key === 'MEDIC' || key === 'HIGH_PRIEST';
-  const light = key === 'LIGHT' || key === 'BLADEMASTER';
+  const archer = family === 'ARCHER';
+  const light = family === 'LIGHT';
   c.save(); c.translate(s.x, s.y);
   const plant = s.isDown ? 1 : (moving ? Math.abs(stride) / 2.8 : 0.22);
   contactShadow(c, 2, 3, s.isDown ? 16 : 11, s.isDown ? 4.2 : 3.5, plant);
   // Perf v1.24.2: far/edge soldiers = silhouette only (skip gear/weapon strokes).
   if (simpleLod && !s.isDown) {
     c.fillStyle = cloth;
-    c.beginPath(); c.ellipse(0, -12, 7.5, 13, 0, 0, Math.PI * 2); c.fill();
-    c.fillStyle = steel; c.beginPath(); c.arc(0, -26, 4.2, 0, Math.PI * 2); c.fill();
+    c.beginPath(); c.ellipse(0, -14, 6, 10, 0, 0, Math.PI * 2); c.fill();
+    c.fillRect(-8,-20,2.5,11);c.fillRect(5.5,-20,2.5,11);
+    c.fillStyle='#2a2624';c.fillRect(-5,-5,4,7);c.fillRect(2,-5,4,7);
+    drawSoldierHead(c,s,{y:-26,scale:.8,small:true,silhouette:true,helmet:eq.helmet?steel:null,mitre:medic&&advanced,cap:medic&&!advanced});
+    if(medic) {
+      c.fillStyle='#d2cfb9';c.fillRect(-2,-18,4,8);
+      c.fillStyle='#95574f';c.fillRect(-.5,-16,1,4);c.fillRect(-2,-14.5,4,1);
+    }
     c.fillStyle = platoonColor; c.fillRect(-2, 4, 4, 2);
     if (s.isPersonalGuard) { c.fillStyle = '#c8b278'; c.fillRect(4, 4, 3, 2); }
     if (s.maxHp > 0 && s.hp < s.maxHp * 0.55) {
-      c.fillStyle = '#283132'; c.fillRect(-12, -39, 24, 3);
-      c.fillStyle = '#c4b48a'; c.fillRect(-12, -39, 24 * Math.max(0, Math.min(1, s.hp / s.maxHp)), 3);
+      const healthY=medic&&advanced?-44:-39;
+      c.fillStyle = '#283132'; c.fillRect(-12, healthY, 24, 3);
+      c.fillStyle = '#c4b48a'; c.fillRect(-12, healthY, 24 * Math.max(0, Math.min(1, s.hp / s.maxHp)), 3);
     }
     c.restore(); return;
   }
   if (s.isDown) {
     shape(c,[[-18,-3],[16,-7],[20,3],[-14,6]],cloth);
-    ellipse(c,-20,-1,6,4.5,steel);c.fillStyle='#c4aa8b';c.fillRect(-23,0,5,3);
+    if(medic){c.fillStyle='#ded8be';c.fillRect(-2,-4,7,6);c.fillStyle='#95574f';c.fillRect(1,-3,1.2,4);c.fillRect(-.5,-1.5,4,1.2);}
+    c.save();c.translate(-20,-1);c.rotate(-Math.PI/2);
+    drawSoldierHead(c,s,{scale:.9,small:true,silhouette:true,helmet:eq.helmet?steel:null,mitre:medic&&advanced,cap:medic&&!advanced});c.restore();
     line(c,[[10,-2],[22,2],[18,6]],'#3c4038',2.5);
     c.fillStyle = '#e6d7b8'; c.textAlign = 'center'; c.font = 'bold 10px sans-serif';
     c.fillText(s.carrierId?'搬送中':`救助 ${Math.ceil(s.downTimer || 0)}秒`, 0, -16);
@@ -161,7 +173,7 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod) {
   c.fillStyle = '#64503c'; c.fillRect(-7,-10,14,2);
   c.fillStyle = '#d2b783'; c.fillRect(0,-10,2,2);
   c.fillStyle = platoonColor; c.fillRect(-6,-21,3,4);
-  if (key === 'HIGH_PRIEST') {
+  if (medic && advanced) {
     shape(c,[[-6,-17],[-9,1],[7,1],[5,-17]],'#c6bc9c');
     line(c,[[-3,-14],[-5,-1],[3,-14],[4,-1]],'#eee3c2',1.3);
     c.fillStyle='#a18765'; c.fillRect(-2,-19,3,19);
@@ -195,6 +207,10 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod) {
   }
   // Hands, face and headwear, with a restrained highlight on the upper edge.
   ellipse(c, 6,-15,2.3,3.5,gloves);
+  if (!s.isCommander) {
+    drawSoldierHead(c,s,{y:-28,small:true,helmet:eq.helmet?steel:null,
+      mitre:medic&&advanced,cap:medic&&!advanced});
+  } else {
   ellipse(c, 0,-27,5.1,5.3,'#c1a083');
   if (key === 'BLADEMASTER') {
     shape(c,[[-6,-24],[-6,-31],[-2,-35],[4,-33],[6,-28],[0,-30]],'#373c40');
@@ -219,6 +235,7 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod) {
     }
   }
   c.fillStyle = '#302b28'; c.fillRect(2,-27,1.3,1);
+  }
   if (archer) {
     const rw = (eq.weapon && eq.weapon.weaponStyle) || 'bow';
     // 矢筒は共通
@@ -339,6 +356,7 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod) {
     c.fillStyle = '#c8b278'; c.fillRect(4,4,3,2);
   }
   if (!s.portrait) {
+    const headClearance=medic&&advanced?8:0;
     const distinguished = s.isNamed || advanced || s.isPersonalGuard || s.talent === 'GENIUS';
     const hurting = s.maxHp > 0 && s.hp < s.maxHp * 0.55;
     if (distinguished) {
@@ -346,12 +364,12 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod) {
       const label = `${s.isPersonalGuard ? '◆ ' : ''}${s.name || cls.name} · ${s.level || 1}`;
       c.fillStyle = 'rgba(18,24,25,.82)';
       const labelWidth = c.measureText(label).width + 8;
-      c.fillRect(-labelWidth/2,-53,labelWidth,12);
-      c.fillStyle = s.isNamed ? '#dfc893' : '#e0e3db'; c.fillText(label,0,-44);
+      c.fillRect(-labelWidth/2,-53-headClearance,labelWidth,12);
+      c.fillStyle = s.isNamed ? '#dfc893' : '#e0e3db'; c.fillText(label,0,-44-headClearance);
     }
     if (distinguished || hurting) {
-      c.fillStyle = '#283132'; c.fillRect(-12,-39,24,3);
-      c.fillStyle = '#c4b48a'; c.fillRect(-12,-39,24*Math.max(0,Math.min(1,s.hp/s.maxHp)),3);
+      c.fillStyle = '#283132'; c.fillRect(-12,-39-headClearance,24,3);
+      c.fillStyle = '#c4b48a'; c.fillRect(-12,-39-headClearance,24*Math.max(0,Math.min(1,s.hp/s.maxHp)),3);
     }
   }
   c.restore();
