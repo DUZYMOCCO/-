@@ -17,7 +17,7 @@ export const WEAPON_STYLE_ICONS = {
 export const HIT_GROWTH_SOFT_CAP = 0.40;
 const HIT_GROWTH_BASE = 0.0052;
 
-/** 武器マスタリー: タイプ別ATK最大+35%。 */
+/** 武器マスタリー: ATK最大+35%。剣/槍/鎚=ATK+攻撃速度、弓/石弓=ATK+リロード、火砲=爆発半径+リロード。 */
 export const MASTERY_SOFT_CAP = 0.35;
 const MASTERY_XP_SCALE = 48;
 export const MASTERY_GAIN_PER_HIT = 0.85;
@@ -74,6 +74,44 @@ export function masteryAtkMult(masteryMap, style) {
   const key = WEAPON_STYLES.includes(style) ? style : 'sword';
   const xp = Math.max(0, Number(normalizeMastery(masteryMap)[key]) || 0);
   return 1 + MASTERY_SOFT_CAP * (1 - 1 / (1 + xp / MASTERY_XP_SCALE));
+}
+
+/** マスタリー進行度 0..MASTERY_SOFT_CAP（二次軸用） */
+export function masteryAxis(masteryMap, style) {
+  return Math.max(0, masteryAtkMult(masteryMap, style) - 1);
+}
+
+/**
+ * クールダウン短縮（攻撃速度／リロード倍率）。
+ * 剣/槍/鎚=攻撃速度、弓/クロスボウ/火砲=リロード。同ソフトカーブ。
+ * 熟練MAXで baseCooldown × (1 - SOFT_CAP) = ×0.65（約35%短縮）。下限0.55。
+ */
+export function masteryReloadMult(masteryMap, style) {
+  if (!WEAPON_STYLES.includes(style)) return 1;
+  return Math.max(0.55, 1 - masteryAxis(masteryMap, style));
+}
+
+/**
+ * 火砲: 爆発半径拡大。熟練MAXで splash × (1 + SOFT_CAP) = ×1.35。
+ */
+export function masterySplashMult(masteryMap, style) {
+  if (style !== 'cannon') return 1;
+  return 1 + masteryAxis(masteryMap, style);
+}
+
+/** 戦闘プロファイルへ攻撃速度・リロード/爆発半径マスタリーを適用（ATKは unit.atk 側）。 */
+export function applyMasteryToCombatProfile(profile, masteryMap) {
+  if (!profile) return profile;
+  const out = { ...profile };
+  const style = out.style || 'sword';
+  // 全スタイル: CD短縮（近接=攻撃速度、遠隔=リロード）。火砲は加えて splash。
+  if (WEAPON_STYLES.includes(style)) {
+    out.baseCooldown = (Number(out.baseCooldown) || 1) * masteryReloadMult(masteryMap, style);
+  }
+  if (style === 'cannon') {
+    out.splash = (Number(out.splash) || 52) * masterySplashMult(masteryMap, style);
+  }
+  return out;
 }
 
 export function masteryPctDisplay(masteryMap, style) {

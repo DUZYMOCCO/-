@@ -20,9 +20,18 @@ export const transportSpeedFactor=(game,unit)=>{
 };
 export const carrierOf=(game,wounded)=>wounded.carrierId==='player'?game.player:(game.squad||[]).find(s=>s.id===wounded.carrierId);
 export const hasActiveRopePull=game=>{
+  if(!game) return false;
+  // 壊れた carrierId を先に掃除（常時trueで転送封じを防ぐ）
+  sanitizeCarriers(game);
   const wounded=(game.squad||[]).some(s=>s&&s.isDown&&!s.dead&&s.carrierId);
   const civ=(game.civilians||[]).some(c=>c&&!c.rescued&&c.carrierId);
   return !!(wounded||civ);
+};
+/** 隊長本人が紐牽引中か（地図ファストトラベル判定用） */
+export const playerHasActiveRopePull=game=>{
+  if(!game?.player) return false;
+  sanitizeCarriers(game);
+  return carriedCount(game, game.player) > 0;
 };
 
 /** 子供・女性・老人の紐救出ボーナス定義 */

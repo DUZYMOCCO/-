@@ -11,7 +11,7 @@
  */
 import { sound } from '../../audio.js';
 import { storage } from '../../storage.js';
-import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow } from './visuals.js';
+import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow, drawSpearReachCue } from './visuals.js';
 import { saveSlots } from './save-slots.js';
 import { WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt } from './world.js';
 import { FogGrid, FOG_REVEAL_RADIUS } from './fog.js';
@@ -29,6 +29,7 @@ import {
   MELEE_STYLES, RANGED_STYLES, HIT_GROWTH_SOFT_CAP,
   emptyMastery, normalizeMastery, isRangedStyle, isMeleeStyle,
   hitGrowthMult, applyHitGrowth, masteryAtkMult, masteryPctDisplay,
+  masteryReloadMult, masterySplashMult, applyMasteryToCombatProfile,
   gainWeaponMastery, pickFavoriteWeapon, rollWeaponStyle,
   weaponStyleOf, favoriteWeaponBias, MASTERY_GAIN_PER_HIT,
   migrateFavoriteForClass, migrateWeaponStyleFromName
@@ -36,7 +37,7 @@ import {
 
 import { daylightAt, advanceWorldClock, periodEnemy, enemyAvailable, PERIOD_ENEMIES } from './day-night.js';
 
-import { RESCUE_TIMEOUT, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, CIV_KINDS } from './casualty-rules.js';
+import { RESCUE_TIMEOUT, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, CIV_KINDS } from './casualty-rules.js';
 import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault } from './dungeon.js';
 
 import { viewport, circleInView, strokeVisibleRing, persistentUnit } from './render-support.js';
@@ -64,6 +65,8 @@ export const COLOSSAL_RESPAWN=210; // was 75
 /** Base-camp raid (本陣強襲): v1.23.3 — 本隊ほぼ壊滅・精鋭のみ辛うじて生存。プレイヤー帰還は倒せる範囲。 */
 /** Perf patch v1.24.7: 異質/神鍛 never auto-sell / never 国庫共有 deposit; SW v69. */
 /** v1.25.0: donate-scale / 国家運営・部隊管理 hub / civilian rope rescue / medic triage; SW v70. */
+/** v1.25.2: 剣/槍/鎚マスタリー=ATK+攻撃速度（弓と同じCD短縮カーブ）; SW v72. */
+/** v1.25.1: 本陣救援ワープ≠地図FT / 槍突き可視化 / 弓石弓熟練=ATK+リロード・火砲=爆発+リロード / 強撃武器別; SW v71. */
 export const RAID_SCALE_DIST=28000; // chaos-tier scale (was 4500)
 export const RAID_HP_MULT=2.85; // was 2.4 (v1.23.2) / 0.85 (old)
 export const RAID_ATK_MULT=1.95; // was 1.25 — melt 本隊 fodder; elites scrape through
@@ -1194,7 +1197,8 @@ export const IronSquadGame = {
       raidWarpBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         sound.playLaunch();
-        this.fastTravelTo(BASE_CAMP.x, BASE_CAMP.y, '本陣 (防衛救援)');
+        // 本陣救援ワープは地図ファストトラベルと別扱い（紐牽引中でも本陣へ帰還可・搬送対象も追従）
+        this.fastTravelTo(BASE_CAMP.x, BASE_CAMP.y, '本陣 (防衛救援)', { rescueWarp: true });
         this.showToast('🌀 本陣へ緊急救援ワープ！部隊全員で本拠地を死守せよ！');
       });
     }
@@ -1537,13 +1541,17 @@ export const IronSquadGame = {
     else this.resumeSavedGame(slot.data);
   },
 
-  fastTravelTo(targetX, targetY, targetName) {
+  fastTravelTo(targetX, targetY, targetName, options = {}) {
+    const opts = options && typeof options === 'object' ? options : {};
+    const isRescueWarp = !!opts.rescueWarp;
     if (this.currentDungeon) {
       this.showToast('⚠️ ダンジョン内ではファストトラベルできません。外界への帰還門を使ってください');
       return;
     }
-    if (hasActiveRopePull(this)) {
-      this.showToast('⚠️ 紐で牽引中はファストトラベルできません。本陣・拠点・宿場へ送り届けてから転送してください');
+    // 本陣救援ワープは紐牽引ブロック対象外（搬送中も syncDragged で本陣へ同送）
+    // 地図ファストトラベルは隊長本人が牽引中のみ禁止（AI搬送はロックしない）。壊れたフラグは掃除済み。
+    if (!isRescueWarp && playerHasActiveRopePull(this)) {
+      this.showToast('⚠️ 隊長が紐で牽引中は地図転送できません。本陣救援ワープか、本陣・拠点・宿場へ送り届けてから転送してください');
       return;
     }
     if (!this.player || this.player.hp <= 0) return;
@@ -1583,7 +1591,11 @@ export const IronSquadGame = {
     }
 
     sound.playLaunch();
-    this.showToast(`🌀【転送完了】「${targetName}」へ部隊を展開しました！`);
+    if (isRescueWarp) {
+      this.showToast(`🌀【本陣救援】「${targetName}」へ緊急展開！死守せよ！`);
+    } else {
+      this.showToast(`🌀【転送完了】「${targetName}」へ部隊を展開しました！`);
+    }
 
     // モーダルが開いていれば閉じる
     if (this.worldMapModal && !this.worldMapModal.classList.contains('hidden')) {
@@ -3031,7 +3043,7 @@ export const IronSquadGame = {
     this.player.slashAnim = 1;
     const nearest = this.getNearestMonster(this.player.x, this.player.y);
     const nearestOp = this.getNearestUnclearedOutpost(this.player.x, this.player.y);
-    const wProf = weaponCombatProfile((this.equipped && this.equipped.weapon) || null);
+    const wProf = this.combatProfileFor(this.player, (this.equipped && this.equipped.weapon) || null, true);
     const reach = this.player.isAdvanced ? wProf.reachWarlord : Math.max(110, wProf.reach);
 
     if (nearest && Math.hypot(nearest.x - this.player.x, nearest.y - this.player.y) <= reach) {
@@ -3072,97 +3084,328 @@ export const IronSquadGame = {
     }
   },
 
-  // 右手パッド パワーアタック（渾身強撃 / 覇王烈風絶神斬 💥）
+  /** 装備とスタイルにマスタリー（攻撃速度・リロード/爆発）を乗せた戦闘プロファイル */
+  combatProfileFor(unit, item, isPlayer = false) {
+    const base = weaponCombatProfile(item || null);
+    const mastery = isPlayer
+      ? (this.player && this.player.weaponMastery)
+      : (unit && unit.weaponMastery);
+    return applyMasteryToCombatProfile(base, mastery);
+  },
+
+  pushShockwave(x, y, maxRadius, color, subColor, life = 0.45, lineWidth = 4) {
+    if (!this.shockwaves) this.shockwaves = [];
+    this.shockwaves.push({
+      x, y, maxRadius, currentRadius: Math.min(24, maxRadius * 0.12),
+      color, subColor, life, maxLife: life, lineWidth
+    });
+  },
+
+  powerFacingAngle() {
+    const p = this.player;
+    if (!p) return 0;
+    if (Number.isFinite(p.slashAngle) && (p.slashAnim || 0) > 0) return p.slashAngle;
+    if (this.joystick && (this.joystick.dirX || this.joystick.dirY)) {
+      return Math.atan2(this.joystick.dirY, this.joystick.dirX);
+    }
+    return Number.isFinite(p.facingAngle) ? p.facingAngle : 0;
+  },
+
+  powerKnockStun(m, knockDist, stunSec) {
+    if (!m || m.hp <= 0) return;
+    if (!m.isColossal && knockDist > 0) {
+      const knockAngle = Math.atan2(m.y - this.player.y, m.x - this.player.x);
+      m.x += Math.cos(knockAngle) * knockDist;
+      m.y += Math.sin(knockAngle) * knockDist;
+    }
+    m.atkTimer = Math.max(m.atkTimer || 0, stunSec);
+  },
+
+  powerHitOutpost(radius, dmg) {
+    const nearestOp = this.getNearestUnclearedOutpost(this.player.x, this.player.y);
+    if (!nearestOp) return;
+    const distOp = Math.hypot(nearestOp.x - this.player.x, nearestOp.y - this.player.y);
+    if (distOp <= nearestOp.radius + radius * 0.75) {
+      this.damageOutpost(nearestOp, Math.round(dmg * 0.85));
+      this.spawnSparks(nearestOp.x, nearestOp.y, '#f59e0b', 14);
+    }
+  },
+
+  updatePowerFx(dt) {
+    if (!this.powerFx || !this.powerFx.length) return;
+    const px = this.player ? this.player.x : 0;
+    const py = this.player ? this.player.y : 0;
+    for (let i = this.powerFx.length - 1; i >= 0; i--) {
+      const fx = this.powerFx[i];
+      fx.delay = (fx.delay || 0) - dt;
+      if (fx.delay > 0) continue;
+      if (fx.spent) { this.powerFx.splice(i, 1); continue; }
+      fx.spent = true;
+      if (fx.kind === 'sword_second') {
+        let n = 0;
+        for (const m of this.monsters || []) {
+          if (!m || m.hp <= 0) continue;
+          if (Math.hypot(m.x - (fx.x || px), m.y - (fx.y || py)) <= fx.radius) {
+            n++;
+            this.performAttack(this.player, m, true, fx.dmg);
+            this.powerKnockStun(m, 40, 0.55);
+          }
+        }
+        this.pushShockwave(fx.x || px, fx.y || py, fx.radius * 0.85, '#fde047', '#38bdf8', 0.28, 3);
+        if (n > 0) this.spawnDamageText(px, py - 50, `二連目 ×${n}`, '#fde047');
+      } else if (fx.kind === 'arrow_rain') {
+        let n = 0;
+        for (const m of this.monsters || []) {
+          if (!m || m.hp <= 0) continue;
+          if (Math.hypot(m.x - fx.x, m.y - fx.y) <= fx.radius) {
+            n++;
+            this.performAttack(this.player, m, true, fx.dmg);
+          }
+        }
+        for (let k = 0; k < 6; k++) {
+          const ang = Math.random() * Math.PI * 2;
+          const dist = Math.random() * fx.radius;
+          this.pushParticle({
+            x: fx.x + Math.cos(ang) * dist, y: fx.y + Math.sin(ang) * dist - 50,
+            vx: 0, vy: 160, color: '#bae6fd', size: 2, life: 0.35
+          });
+        }
+      } else if (fx.kind === 'cluster_blast') {
+        let n = 0;
+        for (const m of this.monsters || []) {
+          if (!m || m.hp <= 0) continue;
+          if (Math.hypot(m.x - fx.x, m.y - fx.y) <= fx.radius) {
+            n++;
+            this.performAttack(this.player, m, true, fx.dmg);
+            this.powerKnockStun(m, 42, 0.7);
+          }
+        }
+        this.pushShockwave(fx.x, fx.y, fx.radius, '#f59e0b', '#ef4444', 0.35, 4);
+        this.spawnSparks(fx.x, fx.y, '#fbbf24', 12);
+        sound.playBomb();
+      }
+      this.powerFx.splice(i, 1);
+    }
+  },
+
+  // 右手パッド パワーアタック（武器スタイル別強撃）
   triggerPowerAttack() {
     if (!this.inBattle || !this.player || this.player.hp <= 0) return;
 
-    // クールタイム中ガード
     if ((this.player.powerAtkCooldown || 0) > 0) {
       sound.playTap();
       this.spawnDamageText(this.player.x, this.player.y - 24, `⏳CT中 (${this.player.powerAtkCooldown.toFixed(1)}s)`, '#fbbf24');
       return;
     }
 
-    // クールタイム開始 (8.0秒)
     const isWarlord = !!this.player.isAdvanced;
-    this.player.powerAtkCooldown = 8.0;
+    const wpn = (this.equipped && this.equipped.weapon) || null;
+    const style = weaponStyleOf(wpn);
+    // CTは全スタイル概ね公平（8秒基準）
+    const cdByStyle = { sword: 7.5, spear: 8.0, hammer: 8.2, bow: 8.0, crossbow: 8.2, cannon: 8.6 };
+    this.player.powerAtkCooldown = cdByStyle[style] || 8.0;
     this.updatePowerAtkButtonUI();
 
-    // モーション・画面演出
     this.player.slashAnim = 1.6;
+    const face = this.powerFacingAngle();
+    this.player.slashAngle = face;
+    this.player.facingAngle = face;
     this.screenShake = isWarlord ? 0.75 : 0.55;
-
     sound.playBomb();
     sound.playSlash();
 
-    const radius = isWarlord ? 230 : 165;
-    const mult = isWarlord ? 5.2 : 3.8;
-    const dmg = Math.round((this.player.atk || 15) * mult);
-
-    // 1. 周囲の敵モンスター全員へ一斉薙ぎ払い ＆ ノックバック ＆ スタン
     let hitCount = 0;
-    for (const m of this.monsters) {
-      if (m.hp <= 0) continue;
-      const dist = Math.hypot(m.x - this.player.x, m.y - this.player.y);
-      if (dist <= radius) {
+    let skillName = '💥【渾身強撃】';
+    let skillColor = isWarlord ? '#f59e0b' : '#00f0ff';
+    const baseAtk = this.player.atk || 15;
+    const px = this.player.x, py = this.player.y;
+
+    if (style === 'spear') {
+      skillName = isWarlord ? '🔱【覇王穿衝扇】' : '🔱【烈槍扇穿】';
+      skillColor = '#a7f3d0';
+      const reach = isWarlord ? 290 : 230;
+      const halfAngle = isWarlord ? 0.72 : 0.58;
+      const dmg = Math.round(baseAtk * (isWarlord ? 4.6 : 3.5));
+      const cos = Math.cos(face), sin = Math.sin(face);
+      for (const m of this.monsters || []) {
+        if (!m || m.hp <= 0) continue;
+        const dx = m.x - px, dy = m.y - py;
+        const dist = Math.hypot(dx, dy);
+        if (dist > reach || dist < 1) continue;
+        const ang = Math.atan2(dy, dx);
+        let diff = ang - face;
+        while (diff > Math.PI) diff -= Math.PI * 2;
+        while (diff < -Math.PI) diff += Math.PI * 2;
+        if (Math.abs(diff) > halfAngle) continue;
         hitCount++;
-        // 大ダメージ攻撃 (確定クリティカル演出)
         this.performAttack(this.player, m, true, dmg);
-
-        // 強烈ノックバック
-        if (!m.isColossal) {
-          const knockAngle = Math.atan2(m.y - this.player.y, m.x - this.player.x);
-          const knockDist = isWarlord ? 95 : 65;
-          m.x += Math.cos(knockAngle) * knockDist;
-          m.y += Math.sin(knockAngle) * knockDist;
+        this.powerKnockStun(m, isWarlord ? 70 : 48, isWarlord ? 1.2 : 0.85);
+      }
+      this.powerHitOutpost(reach * 0.7, dmg);
+      for (let i = 0; i < 7; i++) {
+        const a = face - halfAngle + (halfAngle * 2 * i) / 6;
+        this.pushParticle({
+          x: px + Math.cos(a) * 30, y: py + Math.sin(a) * 30,
+          vx: Math.cos(a) * reach * 2.2, vy: Math.sin(a) * reach * 2.2,
+          color: i === 3 ? '#f7f3e8' : '#86efac', size: 2.5, life: 0.28
+        });
+      }
+      this.pushShockwave(px + cos * reach * 0.55, py + sin * reach * 0.55, 70, '#6ee7b7', '#ecfdf5', 0.35, 3);
+    } else if (style === 'hammer') {
+      skillName = isWarlord ? '🔨【覇王滅砕撃】' : '🔨【剛鎚滅殺】';
+      skillColor = '#fdba74';
+      const nearest = this.getNearestMonster(px, py);
+      const dmg = Math.round(baseAtk * (isWarlord ? 8.4 : 6.6));
+      if (nearest && Math.hypot(nearest.x - px, nearest.y - py) <= (isWarlord ? 150 : 120)) {
+        hitCount = 1;
+        this.player.slashAngle = Math.atan2(nearest.y - py, nearest.x - px);
+        this.performAttack(this.player, nearest, true, dmg);
+        this.powerKnockStun(nearest, isWarlord ? 130 : 100, isWarlord ? 2.0 : 1.4);
+        this.spawnSparks(nearest.x, nearest.y, '#f59e0b', 22);
+        this.pushShockwave(nearest.x, nearest.y, 90, '#f59e0b', '#ef4444', 0.4, 5);
+      } else {
+        this.powerHitOutpost(120, dmg);
+        this.pushShockwave(px, py, 80, '#f59e0b', '#fb923c', 0.35, 4);
+      }
+      this.screenShake = isWarlord ? 0.95 : 0.7;
+    } else if (style === 'bow') {
+      skillName = isWarlord ? '🏹【覇王星雨】' : '🏹【蒼穹箭雨】';
+      skillColor = '#7dd3fc';
+      const radius = isWarlord ? 210 : 160;
+      const ticks = isWarlord ? 6 : 4;
+      const tickDmg = Math.round(baseAtk * (isWarlord ? 0.95 : 0.78));
+      if (!this.powerFx) this.powerFx = [];
+      for (let t = 0; t < ticks; t++) {
+        this.powerFx.push({
+          kind: 'arrow_rain', delay: 0.06 + t * 0.08, radius, dmg: tickDmg,
+          x: px, y: py, spent: false
+        });
+      }
+      for (const m of this.monsters || []) {
+        if (!m || m.hp <= 0) continue;
+        if (Math.hypot(m.x - px, m.y - py) <= radius) {
+          hitCount++;
+          this.performAttack(this.player, m, true, tickDmg);
         }
-        // スタン (攻撃タイマー延長)
-        m.atkTimer = Math.max(m.atkTimer || 0, isWarlord ? 1.6 : 1.0);
       }
+      this.powerHitOutpost(radius, tickDmg * 2);
+      this.pushShockwave(px, py, radius, '#38bdf8', '#e0f2fe', 0.5, 3);
+      for (let i = 0; i < 16; i++) {
+        const ang = Math.random() * Math.PI * 2;
+        const dist = Math.random() * radius;
+        this.pushParticle({
+          x: px + Math.cos(ang) * dist, y: py + Math.sin(ang) * dist - 40,
+          vx: (Math.random() - 0.5) * 40, vy: 120 + Math.random() * 160,
+          color: '#bae6fd', size: 2.2, life: 0.45
+        });
+      }
+    } else if (style === 'crossbow') {
+      skillName = isWarlord ? '🎯【覇王穿貫筒】' : '🎯【剛矢貫筒】';
+      skillColor = '#c4b5fd';
+      const reach = isWarlord ? 420 : 340;
+      const halfW = isWarlord ? 34 : 26;
+      const dmg = Math.round(baseAtk * (isWarlord ? 5.0 : 3.9));
+      const cos = Math.cos(face), sin = Math.sin(face);
+      for (const m of this.monsters || []) {
+        if (!m || m.hp <= 0) continue;
+        const dx = m.x - px, dy = m.y - py;
+        const along = dx * cos + dy * sin;
+        if (along < -10 || along > reach) continue;
+        const perp = Math.abs(-dy * cos + dx * sin);
+        if (perp > halfW + (m.radius || 12)) continue;
+        hitCount++;
+        this.performAttack(this.player, m, true, dmg);
+        this.powerKnockStun(m, isWarlord ? 55 : 40, isWarlord ? 1.1 : 0.8);
+      }
+      this.powerHitOutpost(reach * 0.45, dmg);
+      for (let i = 0; i < 10; i++) {
+        const tt = (i + 1) / 10;
+        this.pushParticle({
+          x: px + cos * reach * tt, y: py + sin * reach * tt,
+          vx: cos * 40, vy: sin * 40,
+          color: i % 2 ? '#ddd6fe' : '#8b5cf6', size: 3.5, life: 0.35
+        });
+      }
+      this.pushShockwave(px + cos * reach * 0.7, py + sin * reach * 0.7, 55, '#a78bfa', '#ede9fe', 0.3, 3);
+      if (!this.projectiles) this.projectiles = [];
+      this.projectiles.push({
+        x: px, y: py, vx: cos * 620, vy: sin * 620,
+        attacker: this.player, isPlayer: true,
+        type: 'SWORD_BEAM', damage: Math.round(dmg * 0.35), life: 0.55,
+        hitEnemies: [], color: '#c4b5fd'
+      });
+    } else if (style === 'cannon') {
+      skillName = isWarlord ? '💣【覇王散華砲】' : '💣【榴散クラスター】';
+      skillColor = '#fbbf24';
+      const count = isWarlord ? 5 : 4;
+      const blastR = isWarlord ? 78 : 62;
+      const subDmg = Math.round(baseAtk * (isWarlord ? 2.1 : 1.65));
+      if (!this.powerFx) this.powerFx = [];
+      const aim = this.getNearestMonster(px, py);
+      const baseAng = aim ? Math.atan2(aim.y - py, aim.x - px) : face;
+      const baseDist = aim ? Math.min(220, Math.hypot(aim.x - px, aim.y - py)) : 140;
+      for (let i = 0; i < count; i++) {
+        const a = baseAng + (i - (count - 1) / 2) * 0.35;
+        const dist = baseDist + (i % 2 ? 25 : -10);
+        const bx = px + Math.cos(a) * dist;
+        const by = py + Math.sin(a) * dist;
+        this.powerFx.push({
+          kind: 'cluster_blast', delay: 0.08 + i * 0.1,
+          x: bx, y: by, radius: blastR, dmg: subDmg, spent: false
+        });
+        this.pushParticle({
+          x: px, y: py, vx: Math.cos(a) * dist * 2.5, vy: Math.sin(a) * dist * 2.5,
+          color: '#f59e0b', size: 4, life: 0.3
+        });
+      }
+      const ix = px + Math.cos(baseAng) * baseDist;
+      const iy = py + Math.sin(baseAng) * baseDist;
+      for (const m of this.monsters || []) {
+        if (!m || m.hp <= 0) continue;
+        if (Math.hypot(m.x - ix, m.y - iy) <= blastR) {
+          hitCount++;
+          this.performAttack(this.player, m, true, subDmg);
+          this.powerKnockStun(m, 50, 0.9);
+        }
+      }
+      this.pushShockwave(ix, iy, blastR, '#f59e0b', '#ef4444', 0.4, 5);
+      this.powerHitOutpost(150, subDmg * 2);
+    } else {
+      // sword default: 範囲二連撃
+      skillName = isWarlord ? '⚡【覇王烈風二閃】' : '⚔️【剛剣二連斬】';
+      skillColor = isWarlord ? '#f59e0b' : '#38bdf8';
+      const radius = isWarlord ? 200 : 150;
+      const dmg = Math.round(baseAtk * (isWarlord ? 2.55 : 2.0));
+      for (const m of this.monsters || []) {
+        if (!m || m.hp <= 0) continue;
+        if (Math.hypot(m.x - px, m.y - py) <= radius) {
+          hitCount++;
+          this.performAttack(this.player, m, true, dmg);
+          this.powerKnockStun(m, isWarlord ? 70 : 50, isWarlord ? 1.1 : 0.75);
+        }
+      }
+      if (!this.powerFx) this.powerFx = [];
+      this.powerFx.push({
+        kind: 'sword_second', delay: 0.18, radius, dmg, x: px, y: py, spent: false
+      });
+      this.powerHitOutpost(radius, dmg * 1.6);
+      this.pushShockwave(px, py, radius, skillColor, isWarlord ? '#ef4444' : '#00f0ff', 0.4, isWarlord ? 5 : 4);
+      this.pushShockwave(px, py, radius * 0.7, '#fde047', '#fff7ed', 0.25, 2);
     }
 
-    // 2. 近くの未制圧砦・拠点への特大打撃
-    const nearestOp = this.getNearestUnclearedOutpost(this.player.x, this.player.y);
-    if (nearestOp) {
-      const distOp = Math.hypot(nearestOp.x - this.player.x, nearestOp.y - this.player.y);
-      if (distOp <= nearestOp.radius + radius * 0.75) {
-        this.damageOutpost(nearestOp, Math.round(dmg * 0.85));
-        this.spawnSparks(nearestOp.x, nearestOp.y, '#f59e0b', 16);
-      }
-    }
-
-    // 3. 衝撃波ビジュアルリングの生成
-    if (!this.shockwaves) this.shockwaves = [];
-    this.shockwaves.push({
-      x: this.player.x,
-      y: this.player.y,
-      maxRadius: radius,
-      currentRadius: 20,
-      color: isWarlord ? '#f59e0b' : '#38bdf8',
-      subColor: isWarlord ? '#ef4444' : '#00f0ff',
-      life: 0.45,
-      maxLife: 0.45,
-      lineWidth: isWarlord ? 6 : 4
-    });
-
-    // 4. 金色・真紅・雷光の爆風パーティクル
-    const pCount = isWarlord ? 22 : 14;
+    const pCount = isWarlord ? 18 : 12;
     for (let i = 0; i < pCount; i++) {
       const pAng = Math.random() * Math.PI * 2;
-      const pSpeed = 90 + Math.random() * 260;
+      const pSpeed = 90 + Math.random() * 240;
       this.pushParticle({
-        x: this.player.x,
-        y: this.player.y,
-        vx: Math.cos(pAng) * pSpeed,
-        vy: Math.sin(pAng) * pSpeed,
-        color: isWarlord ? (i % 2 === 0 ? '#f59e0b' : '#ef4444') : (i % 2 === 0 ? '#00f0ff' : '#fde047'),
-        size: 3.5 + Math.random() * 3.5,
-        life: 0.5 + Math.random() * 0.35
+        x: px, y: py,
+        vx: Math.cos(pAng) * pSpeed, vy: Math.sin(pAng) * pSpeed,
+        color: skillColor, size: 3 + Math.random() * 3, life: 0.45 + Math.random() * 0.3
       });
     }
 
-    const skillName = isWarlord ? '⚡【覇王烈風絶神斬】' : '💥【渾身剛力波】';
-    this.spawnDamageText(this.player.x, this.player.y - 38, `${skillName} [${hitCount}体一閃!]`, isWarlord ? '#f59e0b' : '#00f0ff');
+    this.spawnDamageText(px, py - 38, `${skillName} [${hitCount}体!]`, skillColor);
+    this.showToast(`${skillName}`);
   },
 
   updatePowerAtkButtonUI() {
@@ -3243,7 +3486,7 @@ export const IronSquadGame = {
         transportBadge.style.background = '';
         transportBadge.style.borderColor = '';
         const statusEl = document.getElementById('transport-status');
-        if(statusEl) statusEl.textContent = `紐で搬送 兵${dragged.length}+民${civDrag.length}/${carryingCapacity(this.player)} · 拠点へ（牽引中は転送不可）`;
+        if(statusEl) statusEl.textContent = `紐で搬送 兵${dragged.length}+民${civDrag.length}/${carryingCapacity(this.player)} · 拠点へ（地図転送不可／本陣救援可）`;
         if(releaseBtn) releaseBtn.style.display = '';
       }
     }
@@ -3283,21 +3526,25 @@ export const IronSquadGame = {
       }
     }
 
-    // パワーアタックボタンの職種進化
+    // パワーアタックボタン：装備武器スタイル別ラベル
     const pwrBtn = document.getElementById('btn-pad-power');
     if (pwrBtn) {
       const iconEl = pwrBtn.querySelector('.pad-btn-icon');
       const labelEl = pwrBtn.querySelector('.pad-btn-label');
       if (iconEl && labelEl) {
-        if (isWarlord) {
-          iconEl.textContent = '⚡';
-          labelEl.textContent = '絶神斬';
-          pwrBtn.title = '覇王烈風絶神斬 (パワーアタック)';
-        } else {
-          iconEl.textContent = '💥';
-          labelEl.textContent = '強撃';
-          pwrBtn.title = '渾身剛力波 (パワーアタック)';
-        }
+        const st = weaponStyleOf(this.equipped && this.equipped.weapon);
+        const labels = {
+          sword:    { icon: isWarlord ? '⚡' : '⚔️', label: isWarlord ? '二閃' : '二連斬', title: isWarlord ? '覇王烈風二閃' : '剛剣二連斬' },
+          spear:    { icon: '🔱', label: isWarlord ? '穿衝扇' : '扇穿', title: isWarlord ? '覇王穿衝扇' : '烈槍扇穿' },
+          hammer:   { icon: '🔨', label: isWarlord ? '滅砕' : '滅殺', title: isWarlord ? '覇王滅砕撃' : '剛鎚滅殺' },
+          bow:      { icon: '🏹', label: isWarlord ? '星雨' : '箭雨', title: isWarlord ? '覇王星雨' : '蒼穹箭雨' },
+          crossbow: { icon: '🎯', label: '貫筒', title: isWarlord ? '覇王穿貫筒' : '剛矢貫筒' },
+          cannon:   { icon: '💣', label: isWarlord ? '散華' : '簇弾', title: isWarlord ? '覇王散華砲' : '榴散クラスター' }
+        };
+        const L = labels[st] || labels.sword;
+        iconEl.textContent = L.icon;
+        labelEl.textContent = L.label;
+        pwrBtn.title = `${L.title} (強撃)`;
       }
     }
   },
@@ -4692,9 +4939,9 @@ export const IronSquadGame = {
 
         if ((clsKey === 'ARCHER' || clsKey === 'SNIPER')) {
           const rWpn = (soldier.equipped && soldier.equipped.weapon) || soldier.weapon || null;
-          const rProf = weaponCombatProfile(rWpn);
+          const rProf = this.combatProfileFor(soldier, rWpn, false);
           // 遠隔武器未装備時はクラス既定の弓扱い
-          const rangedProf = rProf.ranged ? rProf : weaponCombatProfile({ weaponStyle: 'bow' });
+          const rangedProf = rProf.ranged ? rProf : this.combatProfileFor(soldier, { weaponStyle: 'bow' }, false);
           const shotRange = Math.max(cls.range, rangedProf.reach || cls.range);
           if (enemyDist <= shotRange) {
             const cd = Math.max(0.35, (rangedProf.baseCooldown || cls.atkCooldown) / Math.max(0.55, (soldier.atkSpeed || 1)));
@@ -4771,12 +5018,13 @@ export const IronSquadGame = {
           sound.playSlash();
         } else if (clsKey !== 'ARCHER' && clsKey !== 'MEDIC' && clsKey !== 'HIGH_PRIEST' && clsKey !== 'SNIPER') {
           const sWpn = (soldier.equipped && soldier.equipped.weapon) || soldier.weapon || null;
-          const sProf = weaponCombatProfile(sWpn);
+          const sProf = this.combatProfileFor(soldier, sWpn, false);
           const meleeReach = Math.max(cls.range, sProf.style === 'spear' ? Math.floor(sProf.reach * 0.55) : (sProf.style === 'hammer' ? Math.max(cls.range, 52) : cls.range));
           if (enemyDist <= meleeReach) {
-            // 近接通常攻撃（槍=貫通、鎚=高威力ノックバック、攻速は難あり）
+            // 近接通常攻撃（槍=貫通、鎚=高威力ノックバック）。マスタリーで攻撃速度↑（baseCooldown短縮と同カーブ）
             const cdMult = sProf.style === 'spear' ? 1.5 : (sProf.style === 'hammer' ? 1.85 : 1.0);
-            soldier.atkCooldown = cls.atkCooldown * cdMult;
+            const masteryCd = masteryReloadMult(soldier.weaponMastery, sProf.style);
+            soldier.atkCooldown = cls.atkCooldown * cdMult * masteryCd;
             soldier.atkAnim = 1.0;
             soldier.facingAngle = Math.atan2(nearestEnemy.y - soldier.y, nearestEnemy.x - soldier.x);
             if (sProf.pierce) {
@@ -5024,6 +5272,7 @@ export const IronSquadGame = {
       this.player.powerAtkCooldown = Math.max(0, this.player.powerAtkCooldown - dt);
       this.updatePowerAtkButtonUI();
     }
+    this.updatePowerFx(dt);
 
     const nearestMonster = this.getNearestMonster(this.player.x, this.player.y);
     const nearestOp = this.getNearestUnclearedOutpost(this.player.x, this.player.y);
@@ -5032,7 +5281,7 @@ export const IronSquadGame = {
       const dist = Math.hypot(nearestMonster.x - this.player.x, nearestMonster.y - this.player.y);
       const isWarlord = this.player.isAdvanced;
       const wpn = (this.equipped && this.equipped.weapon) || null;
-      const wProf = weaponCombatProfile(wpn);
+      const wProf = this.combatProfileFor(this.player, wpn, true);
       const reach = isWarlord ? wProf.reachWarlord : wProf.reach;
       const baseCd = isWarlord ? Math.min(0.42, wProf.baseCooldown * 0.8) : wProf.baseCooldown;
 
@@ -5083,7 +5332,7 @@ export const IronSquadGame = {
       }
     } else if (nearestOp && this.player.atkCooldown <= 0) {
       const distOp = Math.hypot(nearestOp.x - this.player.x, nearestOp.y - this.player.y);
-      const wProfOp = weaponCombatProfile((this.equipped && this.equipped.weapon) || null);
+      const wProfOp = this.combatProfileFor(this.player, (this.equipped && this.equipped.weapon) || null, true);
       const opReach = (wProfOp.ranged ? (wProfOp.reach || 250) : 50);
       if (distOp <= nearestOp.radius + opReach) {
         this.player.atkCooldown = wProfOp.baseCooldown / (this.player.atkSpeed || 1);
@@ -7449,7 +7698,8 @@ export const IronSquadGame = {
       <div style="font-size: 10px; color: #94a3b8; margin-bottom: 6px; line-height: 1.45;">
         💪被弾鍛錬 HP+${pTankPct}%（上限${Math.round(HIT_GROWTH_SOFT_CAP*100)}%）<br/>
         ⚔️近接熟練 ${meleeMast}<br/>
-        🏹遠隔熟練 ${rangedMast}
+        🏹遠隔熟練 ${rangedMast}<br/>
+        <span style="color:#67e8f9;">剣/槍/鎚熟練＝ATK+攻撃速度　弓/石弓熟練＝ATK+リロード短縮　火砲熟練＝爆発半径+リロード短縮</span>
       </div>
       ${slotsConfig.map(s => renderEquipRow(s)).join('')}
     `;
@@ -9470,7 +9720,15 @@ export const IronSquadGame = {
   },
 
   drawPlayer(ctx, p, now) {
-    drawFieldCommander(ctx,p,this.equipped || {},now,this.rankIndex,RANKS[this.rankIndex].title,
+    const eq = this.equipped || {};
+    const wStyle = weaponStyleOf(eq.weapon);
+    if (wStyle === 'spear') {
+      const prof = this.combatProfileFor(this.player, eq.weapon, true);
+      const reach = (this.player && this.player.isAdvanced) ? prof.reachWarlord : prof.reach;
+      const ang = (p.slashAnim > 0 && Number.isFinite(p.slashAngle)) ? p.slashAngle : (p.facingAngle || 0);
+      drawSpearReachCue(ctx, p.x, p.y, ang, reach, p.slashAnim || 0, prof.pierceHalfWidth || 26);
+    }
+    drawFieldCommander(ctx,p,eq,now,this.rankIndex,RANKS[this.rankIndex].title,
       !!this.joystick?.active);
   },
 

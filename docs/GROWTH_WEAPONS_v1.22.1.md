@@ -41,3 +41,10 @@
 | cannon | 3.15 | 2.15 | 310 | slowest, splash 52, KB 48 |
 
 Drops: ~70% melee / ~30% ranged pool.
+
+## v1.25.2 melee attack-speed mastery
+
+- sword / spear / hammer: same as bow — `atk *= 1+axis` (existing) and `baseCooldown *= max(0.55, 1-axis)`.
+- bow / crossbow: ATK + reload (unchanged).
+- cannon: splash + reload (unchanged).
+- `axis = MASTERY_SOFT_CAP * (1 - 1/(1 + xp/MASTERY_XP_SCALE))` with SOFT_CAP=0.35, XP_SCALE=48.

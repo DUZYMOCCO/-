@@ -40,6 +40,47 @@ function slashArc(c, atk, commander, color) {
   c.stroke();
   c.restore();
 }
+
+/** 槍の実リーチを示すワールド空間テレグラフ（突き線＋先端弧） */
+export function drawSpearReachCue(c, x, y, angle, reach, anim = 0, halfWidth = 26) {
+  if (!(reach > 0) || !c) return;
+  const a = Number.isFinite(angle) ? angle : 0;
+  const pulse = Math.max(0, Math.min(1, anim || 0));
+  const cos = Math.cos(a), sin = Math.sin(a);
+  const idle = pulse < 0.05;
+  c.save();
+  c.lineCap = 'round';
+  c.strokeStyle = '#e7dcc4';
+  c.globalAlpha = idle ? 0.18 : (0.28 + 0.55 * pulse);
+  c.lineWidth = idle ? 1.35 : 2.5;
+  c.beginPath();
+  c.moveTo(x + cos * 16, y + sin * 16);
+  c.lineTo(x + cos * reach, y + sin * reach);
+  c.stroke();
+  c.globalAlpha = idle ? 0.12 : (0.22 + 0.4 * pulse);
+  c.lineWidth = 1.3;
+  c.beginPath();
+  c.arc(x + cos * reach, y + sin * reach, Math.max(10, halfWidth * 0.55), a - 1.15, a + 1.15);
+  c.stroke();
+  if (pulse > 0.08) {
+    const nx = -sin, ny = cos;
+    c.globalAlpha = 0.28 * pulse;
+    c.lineWidth = 1.6;
+    for (const off of [-halfWidth * 0.38, halfWidth * 0.38]) {
+      c.beginPath();
+      c.moveTo(x + cos * 22 + nx * off, y + sin * 22 + ny * off);
+      c.lineTo(x + cos * reach * 0.94 + nx * off, y + sin * reach * 0.94 + ny * off);
+      c.stroke();
+    }
+    // 突き残像（短い平行ゴースト）
+    c.globalAlpha = 0.2 * pulse;
+    c.beginPath();
+    c.moveTo(x + cos * (28 + 18 * pulse), y + sin * (28 + 18 * pulse));
+    c.lineTo(x + cos * reach, y + sin * reach);
+    c.stroke();
+  }
+  c.restore();
+}
 const shape = (c, points, color, edge = '#20282a') => {
   c.fillStyle = color; c.strokeStyle = edge; c.lineWidth = 0.9;
   c.beginPath(); points.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y));
@@ -228,16 +269,27 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod) {
     const atk = Math.max(0, Math.min(1, s.atkAnim || 0));
     const wStyle = (eq.weapon && eq.weapon.weaponStyle) || 'sword';
     if (wStyle === 'spear') {
-      // 槍: 長い柄と穂先。突きモーション（前進 translate + わずかな rotate）
-      c.save(); c.translate(8, -12 - 6 * atk); c.rotate(s.isCommander ? (-0.25 + atk * 0.12) : (-0.18 + atk * 0.08));
-      line(c,[[2,6],[2,-34]],blade,2.2);
-      line(c,[[2,-10],[2,-34]],'#f1ead8', atk > 0.05 ? 1.1 : 0.55);
-      shape(c,[[0,-34],[2,-46],[4,-34]],blade);
-      line(c,[[-1,5],[5,6]],'#aa9168',2.2);
-      line(c,[[2,6],[1,10]],'#6a4c38',2.2);
-      if (atk > 0.08) {
-        c.globalAlpha = 0.55 * atk;
-        line(c,[[2,-20],[2,-52]],'#e7dcc4',1.4);
+      // 槍: 明確な前方突き + 残像ライン + リーチ弧
+      const poke = 5 + 24 * atk;
+      c.save();
+      c.translate(8 + poke * 0.22, -12 - poke);
+      c.rotate(s.isCommander ? (-0.22 + atk * 0.2) : (-0.15 + atk * 0.16));
+      line(c,[[2,8],[2,-40]],blade,2.45);
+      line(c,[[2,-8],[2,-40]],'#f1ead8', atk > 0.05 ? 1.35 : 0.6);
+      shape(c,[[0,-40],[2,-54],[4,-40]],blade);
+      line(c,[[-1,6],[5,7]],'#aa9168',2.2);
+      line(c,[[2,7],[1,12]],'#6a4c38',2.2);
+      // リーチ合図（スプライト内の弧）
+      c.globalAlpha = atk > 0.04 ? (0.35 + 0.4 * atk) : 0.2;
+      c.strokeStyle = '#e7dcc4'; c.lineWidth = 1.15; c.lineCap = 'round';
+      c.beginPath(); c.arc(2, -6, 34 + 10 * atk, -Math.PI * 0.78, -Math.PI * 0.22); c.stroke();
+      c.globalAlpha = 1;
+      if (atk > 0.05) {
+        c.globalAlpha = 0.7 * atk;
+        line(c,[[2,-14],[2,-62 - 16 * atk]],'#f7f3e8',2.1);
+        c.globalAlpha = 0.35 * atk;
+        line(c,[[-1,-10],[-4,-56 - 10 * atk]],'#e7dcc4',1.3);
+        line(c,[[5,-10],[8,-56 - 10 * atk]],'#e7dcc4',1.3);
         c.globalAlpha = 1;
       }
       c.restore();
