@@ -20,7 +20,7 @@ import {
   emptyFiscalLedger, calcTreasuryGrossIncome, calcCommanderStipend, calcBuyoutGold,
   shouldAbsorbToSharedBox, calcScoutCost, estimateSoldierScoutValue, calcDismissSettlement,
   formatFiscalReportJa, formatFiscalReportHtml, distributeSharedBoxToSoldiers, sellWeakSurplusFromBox,
-  SHARED_BOX_MAX_TIER, SCOUT_COST_BY_TALENT
+  SHARED_BOX_MAX_TIER, SCOUT_COST_BY_TALENT, defaultDonateAmount, donatePresetAmounts
 } from './economy-rules.js';
 
 import { EQUIPMENT_TYPES, saleValue, equippedIds, canSell, lowValueIds, chooseLootTier, distanceScaling, shrineUpgradeCap, compareEquipment, equipmentScore, weaponCombatProfile, isGodRollProtected } from './equipment-rules.js';
@@ -36,7 +36,7 @@ import {
 
 import { daylightAt, advanceWorldClock, periodEnemy, enemyAvailable, PERIOD_ENEMIES } from './day-night.js';
 
-import { RESCUE_TIMEOUT, carryingCapacity, carriedSoldiers, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, handleTransportAI, syncDragged, treatWounded, orbDropChance } from './casualty-rules.js';
+import { RESCUE_TIMEOUT, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, CIV_KINDS } from './casualty-rules.js';
 import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault } from './dungeon.js';
 
 import { viewport, circleInView, strokeVisibleRing, persistentUnit } from './render-support.js';
@@ -63,6 +63,7 @@ export const COLOSSAL_RESPAWN=210; // was 75
 // Colossal HP/ATK baked into COLOSSAL_BOSS_DEFS (×1.75 HP / ×1.6 ATK vs v1.23.1)
 /** Base-camp raid (本陣強襲): v1.23.3 — 本隊ほぼ壊滅・精鋭のみ辛うじて生存。プレイヤー帰還は倒せる範囲。 */
 /** Perf patch v1.24.7: 異質/神鍛 never auto-sell / never 国庫共有 deposit; SW v69. */
+/** v1.25.0: donate-scale / 国家運営・部隊管理 hub / civilian rope rescue / medic triage; SW v70. */
 export const RAID_SCALE_DIST=28000; // chaos-tier scale (was 4500)
 export const RAID_HP_MULT=2.85; // was 2.4 (v1.23.2) / 0.85 (old)
 export const RAID_ATK_MULT=1.95; // was 1.25 — melt 本隊 fodder; elites scrape through
@@ -1045,8 +1046,10 @@ export const IronSquadGame = {
 
               <!-- タブ切り替え -->
               <div style="display: flex; gap: 6px; margin-bottom: 10px;">
-                <button id="tab-strat-squad" class="sub-tab-btn active">👥 部隊名簿＆サイフ</button>
-                <button id="tab-strat-equip" class="sub-tab-btn">🎒 装備＆鍛冶屋</button>
+                <button id="tab-strat-nation" class="sub-tab-btn">🏛 国家運営</button>
+                <button id="tab-strat-troops" class="sub-tab-btn active">⚔ 部隊管理</button>
+                <button id="tab-strat-squad" class="sub-tab-btn hidden">👥 部隊名簿＆サイフ</button>
+                <button id="tab-strat-equip" class="sub-tab-btn hidden">🎒 装備＆鍛冶屋</button>
               </div>
 
               <!-- 部隊名簿 ＆ 叙勲タブ -->
@@ -1057,23 +1060,19 @@ export const IronSquadGame = {
                 <div id="economy-manage-bar" class="economy-manage-bar">
                   <div class="economy-tab-row">
                     <button type="button" id="tab-econ-roster" class="roster-filter-btn active" data-econ="roster">名簿</button>
-                    <button type="button" id="tab-econ-invest" class="roster-filter-btn" data-econ="invest">💰 投資</button>
                     <button type="button" id="tab-econ-scout" class="roster-filter-btn" data-econ="scout">🔍 スカウト</button>
-                    <button type="button" id="tab-econ-box" class="roster-filter-btn" data-econ="box">📦 共有箱</button>
+                    <button type="button" id="tab-econ-equip" class="roster-filter-btn" data-econ="equip">🎒 装備</button>
+                    <button type="button" id="tab-econ-invest" class="roster-filter-btn hidden" data-econ="invest">🏛 国庫</button>
+                    <button type="button" id="tab-econ-box" class="roster-filter-btn hidden" data-econ="box">📦 共有箱</button>
                   </div>
                   <div id="view-econ-invest" class="hidden" style="background:rgba(2,132,199,0.12);border:1px solid rgba(14,116,144,0.45);border-radius:6px;padding:8px;margin-bottom:8px;font-size:11px;">
-                    <div style="color:#67e8f9;font-weight:bold;margin-bottom:4px;">💰 投資メニュー（自部隊個別 / 国庫→全国均等配分）</div>
-                    <div style="color:#94a3b8;margin-bottom:6px;line-height:1.4;">全軍一括支給は廃止。国庫へ寄付すると全国の兵士へ均等配分されます。自部隊への個人援助は名簿の直属兵士からのみ。</div>
+                    <div style="color:#67e8f9;font-weight:bold;margin-bottom:4px;">🏛 国庫寄付（所持軍資金に応じた推奨額）</div>
+                    <div style="color:#94a3b8;margin-bottom:6px;line-height:1.4;">寄付すると全国兵士へ均等配分。既定額は所持金の約1割（最低100G）。クイック指定も所持金に合わせて変わります。</div>
+                    <div id="donate-quick-presets" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;"></div>
                     <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
                       <span style="color:#fde047;">額:</span>
                       <select id="select-global-fund-amount" class="mini-select" style="background:#0f172a;color:#fde047;border:1px solid #0284c7;border-radius:4px;padding:2px 6px;font-weight:bold;font-size:11px;">
                         <option value="100">100 G</option>
-                        <option value="1000">1,000 G</option>
-                        <option value="10000" selected>10,000 G</option>
-                        <option value="50000">50,000 G</option>
-                        <option value="100000">100,000 G</option>
-                        <option value="500000">500,000 G</option>
-                        <option value="1000000">1,000,000 G</option>
                         <option value="max">所持全額</option>
                       </select>
                       <button id="btn-donate-treasury" class="mini-btn" style="background:linear-gradient(135deg,#0e7490,#06b6d4);color:#fff;font-size:10px;font-weight:bold;padding:4px 8px;border:none;border-radius:4px;">🏛 国庫へ寄付→全国配分</button>
@@ -1311,9 +1310,11 @@ export const IronSquadGame = {
     const close = document.createElement('button');
     close.id='btn-dialog-close'; close.className='dialog-close'; close.textContent='閉じる ×';
     close.addEventListener('click',()=>this.closeStrategyModal()); heading.append(close);
-    const nav=document.getElementById('tab-strat-squad').parentElement;
+    const nav=document.getElementById('tab-strat-nation')?.parentElement || document.getElementById('tab-strat-squad').parentElement;
     nav.classList.add('dialog-tabs');
     const overview=document.createElement('div'); overview.id='view-strat-overview';
+    const nation=document.createElement('div'); nation.id='view-strat-nation'; nation.className='hidden hub-panel hub-nation';
+    const troops=document.createElement('div'); troops.id='view-strat-troops'; troops.className='hidden hub-panel hub-troops';
     const body=document.createElement('div'); body.className='dialog-body';
     body.tabIndex=0; body.setAttribute('aria-label','会議の内容');
     let node=heading.nextElementSibling;
@@ -1326,26 +1327,79 @@ export const IronSquadGame = {
       node=next;
     }
     overview.append(document.getElementById('btn-restart-from-strat'));
+    const nationIntro=document.createElement('div');
+    nationIntro.className='hub-intro';
+    nationIntro.innerHTML='<div style="font-weight:bold;color:#67e8f9;margin-bottom:4px;">🏛 国家運営</div><div style="font-size:11px;color:#94a3b8;line-height:1.45;margin-bottom:8px;">国庫寄付・共有装備・大目標・財政報告など、国家まわりをここに集約しています。叙勲は部隊管理の名簿から。</div>';
+    nation.append(nationIntro);
+    const nationQuest=document.createElement('div'); nationQuest.id='nation-quest-panel'; nationQuest.className='hub-section';
+    nation.append(nationQuest);
+    const nationFiscal=document.createElement('div'); nationFiscal.id='nation-fiscal-panel'; nationFiscal.className='hub-section';
+    nation.append(nationFiscal);
+    const invest=document.getElementById('view-econ-invest');
+    const box=document.getElementById('view-econ-box');
+    if(invest){invest.classList.remove('hidden');nation.append(invest);}
+    if(box){box.classList.remove('hidden');nation.append(box);}
+    const troopsIntro=document.createElement('div');
+    troopsIntro.className='hub-intro';
+    troopsIntro.innerHTML='<div style="font-weight:bold;color:#fde68a;margin-bottom:4px;">⚔ 部隊管理</div><div style="font-size:11px;color:#94a3b8;line-height:1.45;margin-bottom:6px;">兵士詳細・スカウト／放逐・編成・装備・直属をここに集約。下のタブで切替。</div>';
+    troops.append(troopsIntro);
+    const formationBar=document.createElement('div');
+    formationBar.id='formation-bar';
+    formationBar.className='hub-section';
+    formationBar.innerHTML='<div style="font-size:11px;color:#cbd5e1;margin-bottom:6px;">🧭 編成：<strong style="color:#e1cf9d;">防衛陣形</strong>（直属は隊長追従／本隊は小隊任務） · 上限 本隊48 / 直属12</div>';
+    troops.append(formationBar);
+    const squadView=document.getElementById('view-strat-squad');
+    const equipView=document.getElementById('view-strat-equip');
+    if(squadView){squadView.classList.remove('hidden');troops.append(squadView);}
+    if(equipView){equipView.classList.add('hidden');troops.append(equipView);}
     body.prepend(overview);
-    const overviewTab=document.createElement('button');
-    overviewTab.id='tab-strat-overview'; overviewTab.className='sub-tab-btn'; overviewTab.textContent='状況';
-    nav.prepend(overviewTab);
-    document.getElementById('tab-strat-squad').textContent='兵士・援助';
-    document.getElementById('tab-strat-equip').textContent='装備・強化';
+    body.append(nation, troops);
+    const legacySquad=document.getElementById('tab-strat-squad');
+    const legacyEquip=document.getElementById('tab-strat-equip');
+    if(legacySquad) legacySquad.classList.add('hidden');
+    if(legacyEquip) legacyEquip.classList.add('hidden');
+    let overviewTab=document.getElementById('tab-strat-overview');
+    if(!overviewTab){
+      overviewTab=document.createElement('button');
+      overviewTab.id='tab-strat-overview'; overviewTab.className='sub-tab-btn'; overviewTab.textContent='状況';
+      nav.prepend(overviewTab);
+    }
+    const nationTab=document.getElementById('tab-strat-nation');
+    const troopsTab=document.getElementById('tab-strat-troops');
+    if(nationTab) nationTab.textContent='🏛 国家運営';
+    if(troopsTab) troopsTab.textContent='⚔ 部隊管理';
     panel.insertBefore(nav,heading.nextSibling); panel.insertBefore(body,nav.nextSibling);
     const footer=document.createElement('div'); footer.className='dialog-footer';
     footer.append(document.getElementById('btn-start-next-wave'),document.getElementById('btn-close-strat'));
     panel.append(footer);
     const selectTab=(name)=>{
-      for(const key of ['overview','squad','equip']) {
-        document.getElementById(`view-strat-${key}`).classList.toggle('hidden',key!==name);
+      for(const key of ['overview','nation','troops']) {
+        const view=document.getElementById(`view-strat-${key}`);
+        if(view) view.classList.toggle('hidden',key!==name);
         const tab=document.getElementById(`tab-strat-${key}`);
-        tab.classList.toggle('active',key===name); tab.setAttribute('aria-pressed',String(key===name));
+        if(tab){ tab.classList.toggle('active',key===name); tab.setAttribute('aria-pressed',String(key===name)); }
       }
+      if(name==='troops' && typeof this._syncTroopsSubView==='function') this._syncTroopsSubView(this.rosterManageTab||'roster');
       body.scrollTop=0;
     };
-    for(const key of ['overview','squad','equip']) {
-      document.getElementById(`tab-strat-${key}`).addEventListener('click',()=>selectTab(key));
+    this._selectStratTab=selectTab;
+    this._syncTroopsSubView=(sub)=>{
+      const rosterList=document.getElementById('squad-roster-list');
+      const scout=document.getElementById('view-econ-scout');
+      const equip=document.getElementById('view-strat-equip');
+      const showRoster=sub==='roster';
+      const showScout=sub==='scout';
+      const showEquip=sub==='equip';
+      if(rosterList) rosterList.style.display=(showRoster||showScout)?'':'none';
+      if(scout) scout.classList.toggle('hidden',!showScout);
+      if(equip) equip.classList.toggle('hidden',!showEquip);
+      ['roster','scout','equip'].forEach(n=>{
+        const btn=document.getElementById(`tab-econ-${n}`);
+        if(btn) btn.classList.toggle('active',n===sub);
+      });
+    };
+    for(const key of ['overview','nation','troops']) {
+      document.getElementById(`tab-strat-${key}`)?.addEventListener('click',()=>selectTab(key));
     }
     selectTab('overview');
     this.dialogKeyHandler=e=>{
@@ -1486,6 +1540,10 @@ export const IronSquadGame = {
   fastTravelTo(targetX, targetY, targetName) {
     if (this.currentDungeon) {
       this.showToast('⚠️ ダンジョン内ではファストトラベルできません。外界への帰還門を使ってください');
+      return;
+    }
+    if (hasActiveRopePull(this)) {
+      this.showToast('⚠️ 紐で牽引中はファストトラベルできません。本陣・拠点・宿場へ送り届けてから転送してください');
       return;
     }
     if (!this.player || this.player.hp <= 0) return;
@@ -1744,7 +1802,7 @@ export const IronSquadGame = {
     this.inBattle = true;
     this.commandActiveUntil = 0;
     this.awakeningOrbs = 0;
-    this.globalFundAmount = '10000';
+    this.globalFundAmount = String(defaultDonateAmount(50));
     this.treasury = 200;
     this.sharedEquipBox = [];
     this.fiscalLedger = emptyFiscalLedger(1, 200);
@@ -1752,7 +1810,10 @@ export const IronSquadGame = {
     this.phaseFiscal = emptyFiscalLedger(1, 200);
     this.scoutCandidates = [];
     this.investTarget = 'personal'; // 'personal' | 'treasury'
-    this.rosterManageTab = 'roster'; // roster | invest | scout
+    this.rosterManageTab = 'roster'; // roster | scout | equip
+    this.civilians = [];
+    this.civilianRescues = 0;
+    this.moraleBonusTimer = 0;
 
     // 主人公（一介の二等雑兵）
     this.player = {
@@ -1839,6 +1900,7 @@ export const IronSquadGame = {
     this.initPlatoons();
     this.initOutposts();
     this.initDungeons();
+    ensureCiviliansSpawned(this, { targetCount: 4 });
     this.assignWaveQuest();
     this.recalcPlayerStats();
     this.initBattlefield();
@@ -2352,7 +2414,7 @@ export const IronSquadGame = {
     this.exp = saved.exp || 0;
     this.gold = saved.gold ?? 50;
     this.awakeningOrbs = saved.awakeningOrbs || 0;
-    this.globalFundAmount = saved.globalFundAmount || '10000';
+    this.globalFundAmount = saved.globalFundAmount || String(defaultDonateAmount(saved.gold ?? 50));
     this.treasury = saved.treasury ?? 200;
     this.sharedEquipBox = Array.isArray(saved.sharedEquipBox) ? saved.sharedEquipBox : [];
     this.lastFiscalReport = saved.lastFiscalReport || null;
@@ -2361,6 +2423,9 @@ export const IronSquadGame = {
     this.scoutCandidates = [];
     this.investTarget = saved.investTarget || 'personal';
     this.rosterManageTab = 'roster';
+    this.civilians = Array.isArray(saved.civilians) ? saved.civilians : [];
+    this.civilianRescues = saved.civilianRescues || 0;
+    this.moraleBonusTimer = 0;
     this.rankIndex = saved.rankIndex || 0;
     this.equipped = saved.equipped || { weapon: null, armor: null, amulet: null };
     this.inventory = saved.inventory || [];
@@ -2374,6 +2439,7 @@ export const IronSquadGame = {
     // v1.24.3: always (re)seed camp — stale/mismatched fogExplored must not leave start area pitch-black
     this.fog.revealCamp(BASE_CAMP.x, BASE_CAMP.y);
     this.fog._campSeeded = true;
+    if (!(this.civilians || []).filter(c => c && !c.rescued).length) ensureCiviliansSpawned(this, { targetCount: 4 });
 
     this.normalizeDeployment();
     this.deployReserves();
@@ -2722,9 +2788,11 @@ export const IronSquadGame = {
         exp: this.exp,
         gold: this.gold,
         awakeningOrbs: this.awakeningOrbs || 0,
-        globalFundAmount: this.globalFundAmount || '10000',
+        globalFundAmount: this.globalFundAmount || String(defaultDonateAmount(this.gold || 0)),
         treasury: this.treasury || 0,
         sharedEquipBox: this.sharedEquipBox || [],
+        civilians: (this.civilians || []).filter(c => c && !c.rescued).slice(0, 8),
+        civilianRescues: this.civilianRescues || 0,
         lastFiscalReport: this.lastFiscalReport || null,
         phaseFiscal: this.phaseFiscal || null,
         investTarget: this.investTarget || 'personal',
@@ -3160,7 +3228,7 @@ export const IronSquadGame = {
       timerEl.textContent = this.restTimer>0?`休息 ${Math.ceil(this.restTimer)}秒`:`${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
     }
 
-    const dragged=carriedSoldiers(this,this.player),transportBadge=document.getElementById('transport-badge');
+    const dragged=carriedSoldiers(this,this.player),civDrag=carriedCivilians(this,this.player),ropeCount=dragged.length+civDrag.length,transportBadge=document.getElementById('transport-badge');
     if(transportBadge){
       const releaseBtn = document.getElementById('btn-release-wounded');
       if(this.rescueBuffTimer > 0) {
@@ -3169,13 +3237,13 @@ export const IronSquadGame = {
         transportBadge.style.borderColor = '#38bdf8';
         const statusEl = document.getElementById('transport-status');
         if(statusEl) statusEl.textContent = `✨ 救助の英雄加速中 (${Math.ceil(this.rescueBuffTimer)}秒)`;
-        if(releaseBtn) releaseBtn.style.display = dragged.length > 0 ? '' : 'none';
+        if(releaseBtn) releaseBtn.style.display = ropeCount > 0 ? '' : 'none';
       } else {
-        transportBadge.classList.toggle('hidden',!dragged.length);
+        transportBadge.classList.toggle('hidden',!ropeCount);
         transportBadge.style.background = '';
         transportBadge.style.borderColor = '';
         const statusEl = document.getElementById('transport-status');
-        if(statusEl) statusEl.textContent = `紐で搬送 ${dragged.length}/${carryingCapacity(this.player)}名 · 拠点へ`;
+        if(statusEl) statusEl.textContent = `紐で搬送 兵${dragged.length}+民${civDrag.length}/${carryingCapacity(this.player)} · 拠点へ（牽引中は転送不可）`;
         if(releaseBtn) releaseBtn.style.display = '';
       }
     }
@@ -4329,6 +4397,11 @@ export const IronSquadGame = {
 
     updateWounded(this,dt);
     for(let i=aliveSquad.length-1;i>=0;i--)if(aliveSquad[i].dead)aliveSquad.splice(i,1);
+    this._medicRescueAssign = buildMedicRescueAssign(aliveSquad);
+    if (!this.currentDungeon) {
+      this._civSpawnClock = (this._civSpawnClock || 0) + dt;
+      if (this._civSpawnClock >= 12) { this._civSpawnClock = 0; ensureCiviliansSpawned(this, { targetCount: 4 }); }
+    }
 
     // 各兵士の自律行動・兵種戦闘・救助
     aliveSquad.forEach((soldier, idx) => {
@@ -4377,10 +4450,11 @@ export const IronSquadGame = {
       }
       const aiLight = pgLight || mbCombatLight;
 
-      // 衛生兵（MEDIC）および大司教（HIGH_PRIEST）の自動救助
+      // 衛生兵（MEDIC）および大司教（HIGH_PRIEST）の自動救助 — 負傷者へ分散割当
       if (clsKey === 'MEDIC' || clsKey === 'HIGH_PRIEST') {
-        const downedMate = aliveSquad.find(m => m.isDown && !m.dead);
-        if (downedMate) {
+        if (!this._medicRescueAssign) this._medicRescueAssign = buildMedicRescueAssign(aliveSquad);
+        const downedMate = this._medicRescueAssign.get(soldier.id) || null;
+        if (downedMate && downedMate.isDown && !downedMate.dead) {
           const mdx = downedMate.x - soldier.x;
           const mdy = downedMate.y - soldier.y;
           const mdist = Math.hypot(mdx, mdy);
@@ -6599,6 +6673,54 @@ export const IronSquadGame = {
     return this.lastFiscalReport;
   },
 
+  /** 寄付セレクト／クイックボタンを所持軍資金に合わせて再構築 */
+  refreshDonateAmountSelect() {
+    const gold = this.gold || 0;
+    const suggested = defaultDonateAmount(gold);
+    const sel = document.getElementById('select-global-fund-amount');
+    const presets = donatePresetAmounts(gold);
+    const prev = this._donateUserPicked ? (this.globalFundAmount || '') : '';
+    let chosen = prev;
+    if (!chosen || (chosen !== 'max' && parseInt(chosen, 10) > gold && gold > 0)) {
+      chosen = String(suggested);
+      this._donateUserPicked = false;
+    }
+    if (!chosen) chosen = String(suggested);
+    this.globalFundAmount = chosen;
+    if (sel) {
+      const opts = presets.filter(n => n <= Math.max(gold, suggested) || n === suggested).slice(0, 10);
+      // 大きめ固定段階も残す（所持以上でも選べる＝不足アラートで止められる）。既定だけ低額に。
+      const extra = [100, 1000, 10000, 50000, 100000, 500000, 1000000].filter(n => !opts.includes(n));
+      const all = [...opts, ...extra].filter((n, i, a) => a.indexOf(n) === i).sort((a, b) => a - b);
+      sel.innerHTML = all.map(n => `<option value="${n}">${n.toLocaleString()} G</option>`).join('')
+        + `<option value="max">所持全額 (${gold.toLocaleString()}G)</option>`;
+      const ok = [...sel.options].some(o => o.value === chosen);
+      sel.value = ok ? chosen : String(suggested);
+      this.globalFundAmount = sel.value;
+    }
+    const quick = document.getElementById('donate-quick-presets');
+    if (quick) {
+      const qvals = [suggested, Math.min(gold, Math.max(100, Math.round(gold * 0.25))), Math.min(gold, Math.max(100, Math.round(gold * 0.5))), gold]
+        .map(n => Math.max(0, Math.floor(n || 0)))
+        .filter((n, i, a) => n > 0 && a.indexOf(n) === i);
+      quick.innerHTML = qvals.map(n => `<button type="button" class="mini-btn donate-preset-btn" data-amt="${n}" style="font-size:10px;padding:3px 7px;background:#0e7490;color:#fff;border:none;border-radius:4px;">${n === gold ? '全額 ' : ''}${n.toLocaleString()}G</button>`).join('');
+      quick.querySelectorAll('.donate-preset-btn').forEach(btn => {
+        btn.onclick = () => {
+          const amt = btn.getAttribute('data-amt');
+          this.globalFundAmount = amt;
+          this._donateUserPicked = true;
+          if (sel) {
+            if (![...sel.options].some(o => o.value === amt)) {
+              const opt = document.createElement('option'); opt.value = amt; opt.textContent = `${Number(amt).toLocaleString()} G`;
+              sel.appendChild(opt);
+            }
+            sel.value = amt;
+          }
+        };
+      });
+    }
+  },
+
   /** 国庫へ寄付 → 全国兵士へ均等配分（余りは国庫残留） */
   donateToTreasury(amountInput = 10000) {
     const living = [...(this.squad || []), ...(this.reserves || [])].filter(s => s && !s.dead);
@@ -7439,48 +7561,60 @@ export const IronSquadGame = {
     const alive = this.squad.filter(s => !s.dead);
     squadList.innerHTML = '';
 
-    // 投資・国庫・スカウト UI
+    // 国庫寄付UI（所持金スケール）＋部隊管理サブタブ
+    this.refreshDonateAmountSelect?.();
     const globalFundSelect = document.getElementById('select-global-fund-amount');
-    const curGlobalFund = this.globalFundAmount || '10000';
     if (globalFundSelect) {
-      globalFundSelect.value = curGlobalFund;
       globalFundSelect.onchange = (e) => {
         this.globalFundAmount = e.target.value;
-        document.querySelectorAll('.select-soldier-fund').forEach(sel => {
-          sel.value = this.globalFundAmount;
-        });
+        this._donateUserPicked = true;
+        document.querySelectorAll('.select-soldier-fund').forEach(sel => { sel.value = this.globalFundAmount; });
       };
     }
-
     const donateBtn = document.getElementById('btn-donate-treasury');
     if (donateBtn) {
       donateBtn.onclick = () => {
-        const amt = globalFundSelect ? globalFundSelect.value : (this.globalFundAmount || '10000');
+        const amt = globalFundSelect ? globalFundSelect.value : (this.globalFundAmount || String(defaultDonateAmount(this.gold || 0)));
         this.donateToTreasury(amt);
       };
     }
-
     const treasLine = document.getElementById('treasury-status-line');
     if (treasLine) {
-      treasLine.textContent = `国庫残高: ${(this.treasury || 0).toLocaleString()}G · 共有箱 ${(this.sharedEquipBox || []).length}件 · 軍資金 ${(this.gold || 0).toLocaleString()}G`;
+      const sug = defaultDonateAmount(this.gold || 0);
+      treasLine.textContent = `国庫残高: ${(this.treasury || 0).toLocaleString()}G · 共有箱 ${(this.sharedEquipBox || []).length}件 · 軍資金 ${(this.gold || 0).toLocaleString()}G · 推奨寄付 ${sug.toLocaleString()}G`;
     }
     const stratTreas = document.getElementById('strat-treasury');
     if (stratTreas) stratTreas.textContent = `${(this.treasury || 0).toLocaleString()}`;
 
+    // 国家運営パネル：大目標・財政
+    const nq = document.getElementById('nation-quest-panel');
+    if (nq) {
+      const q = this.currentQuest;
+      if (q) {
+        nq.innerHTML = `<div style="font-size:11px;line-height:1.45;background:rgba(0,0,0,0.25);border:1px solid #334155;border-radius:8px;padding:8px;margin-bottom:8px;"><div style="color:#fde68a;font-weight:bold;margin-bottom:2px;">📜 大目標（司令部軍令）</div><div style="color:#e2e8f0;">${q.title || ''}</div><div style="color:#94a3b8;">${q.completed ? '達成済' : (q.desc || '')}</div><div style="color:#67e8f9;margin-top:2px;">報奨 ${q.rewardGold || 0}G / 武勲 ${q.rewardExp || 0}</div></div>`;
+      } else nq.innerHTML = '';
+    }
+    const nf = document.getElementById('nation-fiscal-panel');
+    if (nf) nf.innerHTML = formatFiscalReportHtml(this.lastFiscalReport) || '<div style="font-size:11px;color:#64748b;margin-bottom:8px;">財政報告は作戦期終了後に更新されます。</div>';
+
     const econTab = this.rosterManageTab || 'roster';
     const showEcon = (name) => {
       this.rosterManageTab = name;
-      ['roster', 'invest', 'scout', 'box'].forEach((n) => {
-        const btn = document.getElementById(`tab-econ-${n}`);
-        if (btn) btn.classList.toggle('active', n === name);
-        if (n === 'roster') return;
-        const view = document.getElementById(`view-econ-${n}`);
-        if (view) view.classList.toggle('hidden', n !== name);
-      });
-      const rosterList = document.getElementById('squad-roster-list');
-      if (rosterList) rosterList.style.display = name === 'roster' || name === 'invest' ? '' : (name === 'scout' || name === 'box' ? '' : '');
+      if (typeof this._syncTroopsSubView === 'function') this._syncTroopsSubView(name);
+      else {
+        ['roster', 'scout', 'equip', 'invest', 'box'].forEach((n) => {
+          const btn = document.getElementById(`tab-econ-${n}`);
+          if (btn) btn.classList.toggle('active', n === name);
+        });
+        const scout = document.getElementById('view-econ-scout');
+        const equip = document.getElementById('view-strat-equip');
+        if (scout) scout.classList.toggle('hidden', name !== 'scout');
+        if (equip) equip.classList.toggle('hidden', name !== 'equip');
+        const rosterList = document.getElementById('squad-roster-list');
+        if (rosterList) rosterList.style.display = (name === 'roster' || name === 'scout') ? '' : (name === 'equip' ? 'none' : '');
+      }
     };
-    ['roster', 'invest', 'scout', 'box'].forEach((n) => {
+    ['roster', 'scout', 'equip'].forEach((n) => {
       const btn = document.getElementById(`tab-econ-${n}`);
       if (btn) btn.onclick = () => { showEcon(n); if (n === 'scout' && !(this.scoutCandidates || []).length) { this.refreshScoutCandidates(); this.renderStrategyUI(); } };
     });
@@ -7567,7 +7701,7 @@ export const IronSquadGame = {
       const wItem = s.equipped && s.equipped.weapon ? s.equipped.weapon : s.weapon;
       const wUpCost = wItem ? this.getUpgradeCost(wItem) : 0;
       const hasWUpBudget = wItem && (s.gold || 0) >= wUpCost;
-      const fundVal = this.globalFundAmount || '10000';
+      const fundVal = this.globalFundAmount || String(defaultDonateAmount(this.gold || 0));
 
       row.innerHTML = `
         <div style="display: flex; justify-content: space-between; align-items: baseline; font-size: 11px; margin-bottom: 3px;">
@@ -7857,7 +7991,7 @@ export const IronSquadGame = {
       }
     }
 
-    // 搬送役と負傷者を結ぶ紐。
+    // 搬送役と負傷者／民間人を結ぶ紐。
     this.ctx.save();this.ctx.strokeStyle='#b0a07c';this.ctx.lineWidth=1.6;
     for(const wounded of this.squad||[]) {
       if(!wounded.isDown||wounded.dead||!wounded.carrierId)continue;
@@ -7865,7 +7999,26 @@ export const IronSquadGame = {
       this.ctx.beginPath();this.ctx.moveTo(carrier.x,carrier.y-4);
       this.ctx.quadraticCurveTo((carrier.x+wounded.x)/2,(carrier.y+wounded.y)/2+7,wounded.x,wounded.y-2);this.ctx.stroke();
     }
+    this.ctx.strokeStyle='#7dd3fc';this.ctx.lineWidth=1.4;
+    for(const civ of this.civilians||[]) {
+      if(!civ||civ.rescued||!civ.carrierId)continue;
+      const carrier=civ.carrierId==='player'?this.player:(this.squad||[]).find(s=>s.id===civ.carrierId);
+      if(!carrier||carrier.dead)continue;
+      this.ctx.beginPath();this.ctx.moveTo(carrier.x,carrier.y-4);
+      this.ctx.quadraticCurveTo((carrier.x+civ.x)/2,(carrier.y+civ.y)/2+6,civ.x,civ.y-2);this.ctx.stroke();
+    }
     this.ctx.restore();
+    // 民間人（軽量ドット）
+    for(const civ of this.civilians||[]) {
+      if(!civ||civ.rescued)continue;
+      if(Math.abs(civ.x-this.camera.x)>this.width/this.zoom+40||Math.abs(civ.y-this.camera.y)>this.height/this.zoom+40)continue;
+      const def=CIV_KINDS[civ.kind]||CIV_KINDS.child;
+      this.ctx.beginPath();
+      this.ctx.fillStyle=civ.kind==='child'?'#fde68a':(civ.kind==='woman'?'#f9a8d4':'#c4b5fd');
+      this.ctx.arc(civ.x,civ.y,civ.kind==='child'?7:9,0,Math.PI*2);this.ctx.fill();
+      this.ctx.fillStyle='#0f172a';this.ctx.font='9px sans-serif';this.ctx.textAlign='center';
+      this.ctx.fillText(def.icon,civ.x,civ.y-12);
+    }
 
     // 3. ドロップ宝箱
     for (const drop of this.dropsOnField) {

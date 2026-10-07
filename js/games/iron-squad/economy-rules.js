@@ -272,3 +272,25 @@ export function sellWeakSurplusFromBox(box, soldiers, maxTier = 2) {
   }
   return { remaining, soldGold, soldCount };
 }
+
+/** 国庫寄付の既定額：所持軍資金に応じてスケール（早期は少額） */
+export function defaultDonateAmount(gold) {
+  const g = Math.max(0, Math.floor(Number(gold) || 0));
+  if (g <= 0) return 100;
+  return Math.min(g, Math.max(100, Math.round(g * 0.1)));
+}
+
+/** 寄付UI用プリセット（所持金に応じた候補＋固定段階。max は呼び出し側で） */
+export function donatePresetAmounts(gold) {
+  const g = Math.max(0, Math.floor(Number(gold) || 0));
+  const suggested = defaultDonateAmount(g);
+  const fixed = [100, 500, 1000, 5000, 10000, 50000, 100000, 500000, 1000000];
+  const scaled = [suggested, Math.round(g * 0.25), Math.round(g * 0.5), g].map(n => Math.max(100, Math.floor(n || 0)));
+  const set = new Set();
+  for (const n of [...scaled, ...fixed]) {
+    if (!Number.isFinite(n) || n <= 0) continue;
+    set.add(n);
+  }
+  return [...set].sort((a, b) => a - b);
+}
+

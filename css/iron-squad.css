@@ -492,3 +492,16 @@
   letter-spacing: 0.02em;
   font-weight: 700;
 }
+
+
+/* v1.25.0 国家運営・部隊管理ハブ */
+.iron-squad .hub-panel { padding-bottom: 4px; }
+.iron-squad .hub-intro { margin-bottom: 6px; }
+.iron-squad .hub-section { margin-bottom: 8px; }
+.iron-squad .dialog-tabs { flex-wrap: wrap; }
+.iron-squad .dialog-tabs .sub-tab-btn { flex: 1 1 30%; min-width: 0; font-size: 11px; padding: 8px 4px; }
+.iron-squad #donate-quick-presets .mini-btn { min-height: 32px; }
+.iron-squad .hub-nation #view-econ-invest,
+.iron-squad .hub-nation #view-econ-box { display: block !important; }
+.iron-squad .hub-nation #view-econ-invest.hidden,
+.iron-squad .hub-nation #view-econ-box.hidden { display: block !important; }
