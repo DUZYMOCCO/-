@@ -1,0 +1,42 @@
+[
+  {
+    "test": "casualty-transport.test.mjs",
+    "baseline": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:",
+    "current": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:"
+  },
+  {
+    "test": "combat-phase.test.mjs",
+    "baseline": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:",
+    "current": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:"
+  },
+  {
+    "test": "day-night.test.mjs",
+    "baseline": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:",
+    "current": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:"
+  },
+  {
+    "test": "equipment-loot.test.mjs",
+    "baseline": "AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:",
+    "current": "AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:"
+  },
+  {
+    "test": "field-form.test.mjs",
+    "baseline": "PASS",
+    "current": "PASS"
+  },
+  {
+    "test": "population.test.mjs",
+    "baseline": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:",
+    "current": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:"
+  },
+  {
+    "test": "rest-maintenance.test.mjs",
+    "baseline": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:",
+    "current": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:"
+  },
+  {
+    "test": "state-world.test.mjs",
+    "baseline": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:",
+    "current": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:"
+  }
+]

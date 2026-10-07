@@ -1,0 +1,69 @@
+{
+  "version": "after",
+  "actors": [
+    48,
+    40
+  ],
+  "frames": 100,
+  "frame": {
+    "median": 11.934,
+    "p95": 12.841
+  },
+  "methods": [
+    {
+      "name": "render",
+      "msPerFrame": 11.4,
+      "p95": 12.221
+    },
+    {
+      "name": "drawSoldier",
+      "msPerFrame": 4.649,
+      "p95": 0.131
+    },
+    {
+      "name": "drawMonster",
+      "msPerFrame": 2.532,
+      "p95": 0.08
+    },
+    {
+      "name": "drawWorldObj",
+      "msPerFrame": 2.414,
+      "p95": 0.038
+    },
+    {
+      "name": "drawBattlefield",
+      "msPerFrame": 0.775,
+      "p95": 0.932
+    },
+    {
+      "name": "update",
+      "msPerFrame": 0.574,
+      "p95": 0.827
+    },
+    {
+      "name": "drawAtmosphere",
+      "msPerFrame": 0.206,
+      "p95": 0.251
+    },
+    {
+      "name": "drawBaseCamp",
+      "msPerFrame": 0.108,
+      "p95": 0.125
+    },
+    {
+      "name": "rebuildMonsterSpatial",
+      "msPerFrame": 0.009,
+      "p95": 0.014
+    },
+    {
+      "name": "rebuildSquadSpatial",
+      "msPerFrame": 0.007,
+      "p95": 0.014
+    },
+    {
+      "name": "getNearestMonster",
+      "msPerFrame": 0.004,
+      "p95": 0.006
+    }
+  ]
+}

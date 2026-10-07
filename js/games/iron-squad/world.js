@@ -3,7 +3,7 @@
 // 10800 was about 33s and 21600 about 65s. Both were still a short walk.
 export const WORLD_SIZE = 158720;
 export const WORLD_VERSION = 4;
-const TILE = 512, CACHE_LIMIT = 72; // was 48 — fewer regen thrash on 158720 world
+const TILE = 512, CACHE_LIMIT = 24; // ~24 MiB of tile pixels; view and world density are unchanged
 const CENTER = WORLD_SIZE / 2;
 const LIP = '#6e7264', FACE = '#1a1e1c', DROP = '#0e100e';
 const TAU = Math.PI * 2;

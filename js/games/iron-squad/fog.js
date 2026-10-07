@@ -1,7 +1,7 @@
 /**
  * Fog of war / exploration (bit grid).
  * WORLD_SIZE 158720 / FOG_CELL 512 → 310×310 cells → ~12KB Uint8Array.
- * Reveal is circle-stamped on move; draw uses run-length fillRect batches (v1.24.2).
+ * Reveal is circle-stamped on move; draw uses run-length fillRect batches (v1.24.3).
  * iPhone-safe: no getImageData, no full-screen canvas rebuild every frame.
  */
 import { WORLD_SIZE } from './world.js';
@@ -14,10 +14,12 @@ const REVEAL_MOVE_EPS = FOG_CELL * 0.28;
 
 export class FogGrid {
   constructor(worldSize = WORLD_SIZE, cell = FOG_CELL) {
-    this.cell = cell;
-    this.worldSize = worldSize;
-    this.cols = Math.ceil(worldSize / cell);
-    this.rows = Math.ceil(worldSize / cell);
+    const size = Number.isFinite(worldSize) && worldSize > 0 ? worldSize : WORLD_SIZE;
+    const c = Number.isFinite(cell) && cell > 0 ? cell : FOG_CELL;
+    this.cell = c;
+    this.worldSize = size;
+    this.cols = Math.max(1, Math.ceil(size / c));
+    this.rows = Math.max(1, Math.ceil(size / c));
     this.bytes = new Uint8Array(Math.ceil((this.cols * this.rows) / 8));
     this.dirty = true;
     this._lastX = NaN;
@@ -119,20 +121,37 @@ export class FogGrid {
     }
   }
 
+  /** True if any cell has been revealed (grid ready). */
+  hasExploration() {
+    const bytes = this.bytes;
+    if (!bytes || !bytes.length) return false;
+    for (let i = 0; i < bytes.length; i++) if (bytes[i]) return true;
+    return false;
+  }
+
   /**
    * Field overlay in world space (camera transform already applied).
    * O(visible fog cells) fillRect — typically a few dozen on iPhone.
+   * Safety (v1.24.3): never paint full-black when grid missing/empty/uninitialized.
    */
   drawFieldOverlay(ctx, camera, width, height, zoom) {
     if (!ctx || !camera) return;
-    const z = zoom || 1;
-    const hw = width / (2 * z);
-    const hh = height / (2 * z);
+    if (!Number.isFinite(this.cols) || !Number.isFinite(this.rows) || this.cols <= 0 || this.rows <= 0) return;
+    if (!this.bytes || !this.bytes.length) return;
+    if (!this.hasExploration()) return; // unseeded → leave world visible
+    if (!Number.isFinite(camera.x) || !Number.isFinite(camera.y)) return;
+    const z = (Number.isFinite(zoom) && zoom > 0) ? zoom : 1;
+    const w = Number.isFinite(width) ? width : 0;
+    const h = Number.isFinite(height) ? height : 0;
+    if (w < 8 || h < 8) return;
+    const hw = w / (2 * z);
+    const hh = h / (2 * z);
     const cell = this.cell;
     const gx0 = Math.max(0, Math.floor((camera.x - hw) / cell));
     const gy0 = Math.max(0, Math.floor((camera.y - hh) / cell));
     const gx1 = Math.min(this.cols - 1, Math.floor((camera.x + hw) / cell));
     const gy1 = Math.min(this.rows - 1, Math.floor((camera.y + hh) / cell));
+    if (gx1 < gx0 || gy1 < gy0) return;
     // Perf v1.24.2: horizontal run-length batching — far fewer fillRect calls than per-cell.
     ctx.fillStyle = '#000000';
     for (let gy = gy0; gy <= gy1; gy++) {
