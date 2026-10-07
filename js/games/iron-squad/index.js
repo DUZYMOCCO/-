@@ -11,10 +11,10 @@
  */
 import { sound } from '../../audio.js';
 import { storage } from '../../storage.js';
-import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow, drawSpearReachCue } from './visuals.js?v=85';
+import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow, drawSpearReachCue } from './visuals.js?v=86';
 import { saveSlots } from './save-slots.js';
 import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog } from './interface.js';
-import { ensureSoldierAppearance, drawSoldierPortrait, describeSoldierAppearance } from './soldier-appearance.js?v=85';
+import { ensureSoldierAppearance, drawSoldierPortrait, describeSoldierAppearance } from './soldier-appearance.js?v=86';
 import { attachSurfaceEvents, detachSurfaceEvents, frameSurfaceReady, releaseSceneCaches, releaseCanvas, surfaceCanResume } from './canvas-surface.js?v=83';
 import { WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt } from './world.js?v=83';
 import { FogGrid, FOG_REVEAL_RADIUS, FOG_CAMP_REVEAL } from './fog.js?v=83';
@@ -8553,13 +8553,20 @@ export const IronSquadGame = {
       const hasWUpBudget = wItem && (s.gold || 0) >= wUpCost;
       const fundVal = this.globalFundAmount || String(defaultDonateAmount(this.gold || 0));
 
+      const platoonMatch = String(pName || '').match(/^(.+?)\s*[（(]\s*(.+?)\s*[）)]/);
+      const platoonShort = platoonMatch ? platoonMatch[1].trim() : String(pName || '小隊').split(' ')[0];
+      const platoonDoctrine = platoonMatch ? platoonMatch[2].trim() : '';
+      const platoonLabelHtml = platoonDoctrine
+        ? `[${platoonShort}] <span style="color:#64748b;font-weight:normal;">小隊方針:${platoonDoctrine}</span>`
+        : `[${platoonShort}]`;
+
       row.innerHTML = `
         <div style="display: flex; justify-content: space-between; align-items: baseline; font-size: 11px; margin-bottom: 3px;">
           <span>
             ${isNamed ? '👑' : (s.bossKills > 0 ? '⭐' : cls.icon)} 
             <strong style="color: ${isNamed ? '#ffe600' : (s.bossKills > 0 ? '#38bdf8' : '#fff')};">${isNamed ? `${s.title}${s.name}` : s.name}</strong> 
             <span style="color:${talent.color}; font-size: 10px; font-weight: bold; margin-left: 2px; background: rgba(0,0,0,0.3); border-radius: 3px; padding: 0 3px;" title="${talent.desc}">[${talent.tag}]</span>
-            <span style="color:${pColor}; font-size: 10px; margin-left: 2px;">[${pName.split(' ')[0]}]</span>
+            <span style="color:${pColor}; font-size: 10px; margin-left: 2px;">${platoonLabelHtml}</span>
             <span style="color:#00f0ff; font-size: 10px;">[Lv.${s.level || 1} ${cls.name}]</span>
             <span style="color:#b7c6a4; font-size:10px;">経験${s.survivedWaves || 0}戦線 / 今期${participated(s)?'参加':'未参加'}</span>
             ${s.isPersonalGuard ? '<span style="color:#fef08a; font-weight:bold; font-size:10px;">[⭐直属]</span>' : ''}
@@ -8681,7 +8688,7 @@ export const IronSquadGame = {
         });
       }
 
-      return compactSoldierCard(this, row, s, cls, pName);
+      return compactSoldierCard(this, row, s, cls, pName, talent);
     };
 
     const appendCategorySection = (title, count, desc, soldiers, isMy) => {

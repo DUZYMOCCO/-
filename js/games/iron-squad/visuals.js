@@ -1,4 +1,4 @@
-import { drawSoldierHead, isMedicAppearance, soldierAppearanceFamily } from './soldier-appearance.js?v=85';
+import { drawSoldierHead, isMedicAppearance, soldierAppearanceFamily } from './soldier-appearance.js?v=86';
 
 // Live field illustrations. Equipment colors are read every frame.
 // Weapon light is a short arc on the blade, never a ring around the body.

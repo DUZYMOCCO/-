@@ -132,15 +132,51 @@ export function configureInterface(game) {
   }, true);
 }
 
-export function compactSoldierCard(game, row, soldier, cls, platoonName) {
+/** 小隊名「第1小隊 (前衛突撃)」→ 略称と小隊方針を分離（個人の役割と混同しない） */
+function parsePlatoonDoctrine(platoonName) {
+  const raw = String(platoonName || '小隊').trim();
+  const m = raw.match(/^(.+?)\s*[（(]\s*(.+?)\s*[）)]\s*$/);
+  if (m) return { shortName: m[1].trim(), doctrine: m[2].trim() };
+  return { shortName: raw, doctrine: '' };
+}
+
+/** 職種から個人の戦場ポジション（小隊方針とは別） */
+function classCombatRoleLabel(cls) {
+  const base = (cls && (cls.baseClassId || cls.id)) || '';
+  if (base === 'ARCHER') return '遠距離射撃';
+  if (base === 'MEDIC') return '後方支援';
+  if (base === 'LIGHT') return '遊撃強襲';
+  if (base === 'HEAVY') return '前衛防御';
+  if (cls && cls.range >= 200) return '遠距離射撃';
+  return '戦闘';
+}
+
+export function compactSoldierCard(game, row, soldier, cls, platoonName, talent) {
   const details = element('details', 'roster-entry'); details.dataset.soldierId = soldier.id;
-  details.dataset.search = `${soldier.name} ${soldier.title || ''} ${cls.name} ${platoonName}`.toLocaleLowerCase();
+  const { shortName, doctrine } = parsePlatoonDoctrine(platoonName);
+  const roleLabel = classCombatRoleLabel(cls);
+  const talentTag = (talent && talent.tag) || '';
+  const talentName = (talent && talent.name) || '';
+  const assignLabel = soldier.isPersonalGuard
+    ? '直属'
+    : (doctrine ? `${shortName} · 小隊方針:${doctrine}` : shortName);
+  details.dataset.search = `${soldier.name} ${soldier.title || ''} ${cls.name} ${shortName} ${doctrine} ${roleLabel} ${talentTag} ${talentName}`.toLocaleLowerCase();
   details.dataset.wounded = String(!!soldier.isDown || soldier.hp < soldier.maxHp);
   const summary = element('summary', 'roster-summary');
   const portrait = row.querySelector('.soldier-portrait'); summary.append(portrait);
   const identity = element('span', 'roster-identity');
   identity.append(element('strong', '', `${soldier.isNamed ? soldier.title || '' : ''}${soldier.name}`));
-  identity.append(element('small', '', `${cls.name} · Lv.${soldier.level || 1} · ${soldier.isPersonalGuard ? '直属' : platoonName}`));
+  const meta = element('small', 'roster-meta');
+  meta.append(document.createTextNode(`${cls.name} · Lv.${soldier.level || 1} · ${roleLabel}`));
+  if (talentTag) {
+    meta.append(document.createTextNode(' · '));
+    const tEl = element('span', 'roster-talent', talentTag);
+    if (talent && talent.color) tEl.style.color = talent.color;
+    if (talent && talent.desc) tEl.title = talent.desc;
+    meta.append(tEl);
+  }
+  identity.append(meta);
+  identity.append(element('small', 'roster-assign', assignLabel));
   const hp = element('span', 'roster-health');
   const hpText = element('span', '', `${Math.max(0, Math.floor(soldier.hp))} / ${soldier.maxHp} HP`);
   const hpBar = element('span', 'health-track'); const fill = element('span'); fill.style.width = `${Math.max(0, Math.min(100, soldier.hp / Math.max(1, soldier.maxHp) * 100))}%`; hpBar.append(fill);

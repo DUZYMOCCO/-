@@ -1,6 +1,6 @@
 # 兵士の外見バリエーション
 
-2026-10-07 / v1.27.1 / Service Worker v85
+2026-10-07 / v1.27.2 / Service Worker v85
 
 ## 外見
 
@@ -16,7 +16,7 @@
 
 見本は [previews/soldier-faces.png](previews/soldier-faces.png)。ゲームと同じ描画関数で生成したイラスト集で、実機のスクリーンショットではない。
 
-フィールド側の装備・距離・負傷に応じた見本は [previews/field-soldiers.png](previews/field-soldiers.png)。v1.27.1の追加変更は [FIELD_SOLDIER_LOOK.md](FIELD_SOLDIER_LOOK.md)。
+フィールド側の装備・距離・負傷に応じた見本は [previews/field-soldiers.png](previews/field-soldiers.png)。v1.27.2の追加変更は [FIELD_SOLDIER_LOOK.md](FIELD_SOLDIER_LOOK.md)。
 
 ## 表示する場所
 
