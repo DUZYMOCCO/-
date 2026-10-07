@@ -13,8 +13,9 @@ import { sound } from '../../audio.js';
 import { storage } from '../../storage.js';
 import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow, drawSpearReachCue } from './visuals.js';
 import { saveSlots } from './save-slots.js';
+import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog } from './interface.js';
 import { WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt } from './world.js';
-import { FogGrid, FOG_REVEAL_RADIUS, FOG_CAMP_REVEAL } from './fog.js';
+import { FogGrid, FOG_REVEAL_RADIUS, FOG_CAMP_REVEAL } from './fog.js?v=82';
 import {
   classTierOf, nextClassId, classUpCostForNext, canAffordClassUp, formatClassUpCostJa, classUpShortageJa,
   playerClassTier, nextPlayerStage, playerStageById, CLASS_TIER_LABELS, PLAYER_CLASS_STAGES
@@ -81,6 +82,8 @@ export const COLOSSAL_RESPAWN=210; // was 75
 /** v1.25.0: donate-scale / 国家運営・部隊管理 hub / civilian rope rescue / medic triage; SW v70. */
 /** v1.25.7: platoon expedition -> nation hub / main-army pick / danger tier (live map) / return rewards + inferior bonus; SW v77. */
 /** v1.25.8: fog never full-black / multi-stage class-up / zone ring x10 softcap 1e6 / 魔王城~10M fixedStats; SW v78. */
+/** v1.25.11: fog player-cell fail-safe + viewport reseed + camp→player _lastX fix / module ?v=81; SW v81. */
+/** v1.26.0: command UI hierarchy / compact roster / bag filters / nested dialog focus / New Game and awakening UI fixes; SW v82. */
 /** v1.25.5: スカウト候補5枠 / 天才再募集確認 / 天才出現率低下(0.25%); SW v75. */
 /** v1.25.4: 作戦期切替待機 10s→8s / UI「休息」→「次のラウンド開始まで」; SW v74. */
 /** v1.25.3: 手動攻撃ボタンが atkCooldown を共有（連打で攻撃速度無視バグ修正）; SW v73. */
@@ -1524,13 +1527,14 @@ export const IronSquadGame = {
       if(modal.classList.contains('hidden')) return;
       if(e.key==='Escape') { e.preventDefault(); this.closeStrategyModal(); }
       if(e.key==='Tab') {
-        const buttons=[...modal.querySelectorAll('button,select,[tabindex="0"]')].filter(el=>el.getClientRects().length && !el.disabled);
+        const buttons=[...modal.querySelectorAll('button,select,input,summary,[tabindex="0"]')].filter(el=>el.getClientRects().length && !el.disabled && !el.closest('[inert]'));
         const first=buttons[0],last=buttons[buttons.length-1];
         if(e.shiftKey && document.activeElement===first) { e.preventDefault(); last?.focus(); }
         else if(!e.shiftKey && document.activeElement===last) { e.preventDefault(); first?.focus(); }
       }
     };
     modal.addEventListener('keydown',this.dialogKeyHandler);
+    configureInterface(this);
   },
 
   setDialogState(open) {
@@ -1546,6 +1550,9 @@ export const IronSquadGame = {
   },
 
   closeStrategyModal(resume = true) {
+    this.closeSoldierDetail();
+    const transfer = document.getElementById('equipment-transfer-popup');
+    if (transfer) { transfer.classList.add('hidden'); setSubDialog(this, transfer, false); }
     document.getElementById('strategy-modal').classList.add('hidden');
     this.setDialogState(false);
     this.resetMovementInput();
@@ -2029,7 +2036,6 @@ export const IronSquadGame = {
     while (this.squad.length < DEPLOYMENT_CAPACITY) this.squad.push(this.createNewSoldier());
 
     this.initPlatoons();
-    if (saved.platoonMissions) restorePlatoonMissions(this.platoons, saved.platoonMissions);
     this.initOutposts();
     this.initDungeons();
     ensureCiviliansSpawned(this, { targetCount: 4 });
@@ -2176,12 +2182,13 @@ export const IronSquadGame = {
   renderExpeditionPanel() {
     const host = document.getElementById('nation-expedition-panel');
     if (!host) return;
+    const openMembers = new Set([...host.querySelectorAll('.expedition-members[open]')].map(node => Number(node.dataset.pid)));
     if (!this.platoons) this.initPlatoons();
     if (!this.expeditionDangerTier) this.expeditionDangerTier = 2;
     const tier = getDangerTier(this.expeditionDangerTier);
     const tierBtns = EXPEDITION_DANGER_TIERS.map((t) => {
       const on = t.id === tier.id;
-      return `<button type="button" class="mini-btn btn-danger-tier" data-tier="${t.id}" style="background:${on ? t.color : '#334155'};color:${on ? '#0f172a' : '#e2e8f0'};font-size:10px;padding:3px 7px;font-weight:${on ? 'bold' : 'normal'};">${t.icon}${t.label}<span style="opacity:.8;font-size:9px;"> x${t.rewardMult}</span></button>`;
+      return `<button type="button" class="mini-btn btn-danger-tier ${on ? 'active' : ''}" aria-pressed="${on}" data-tier="${t.id}" style="background:${on ? t.color : '#334155'};color:${on ? '#0f172a' : '#e2e8f0'};font-size:10px;padding:3px 7px;font-weight:${on ? 'bold' : 'normal'};">${t.icon}${t.label}<span style="opacity:.8;font-size:9px;"> x${t.rewardMult}</span></button>`;
     }).join('');
     const rows = this.platoons.map((p) => {
       const allMembers = expeditionMembers(this, p.id);
@@ -2205,7 +2212,7 @@ export const IronSquadGame = {
         return `<label style="display:inline-flex;align-items:center;gap:2px;margin:1px 4px 1px 0;font-size:9.5px;color:#cbd5e1;"><input type="checkbox" class="expedition-pick" data-pid="${p.id}" data-sid="${s.id}" ${checked} ${away ? 'disabled' : ''}>${label}</label>`;
       }).join('');
       const more = allMembers.length > 24 ? `<span style="font-size:9px;color:#64748b;">\u2026\u4ed6${allMembers.length - 24}\u540d</span>` : '';
-      return `<div style="margin-bottom:8px;padding-bottom:6px;border-bottom:1px dashed rgba(148,163,184,0.2);">
+      return `<div class="expedition-card" style="margin-bottom:8px;padding-bottom:6px;border-bottom:1px dashed rgba(148,163,184,0.2);">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;font-size:10.5px;">
           <div style="min-width:0;flex:1;">
             <span style="color:${p.color};font-weight:bold;">${p.icon}${p.name.split(' ')[0]}</span>
@@ -2214,11 +2221,14 @@ export const IronSquadGame = {
           </div>
           ${btn}
         </div>
-        <div style="margin-top:4px;line-height:1.55;">${memberChecks}${more}</div>
+        <details class="expedition-members" data-pid="${p.id}" ${openMembers.has(p.id) ? 'open' : ''}>
+          <summary>派遣兵士を選ぶ · 選抜 ${ready.length}名</summary>
+          <div class="expedition-member-grid">${memberChecks}${more}</div>
+        </details>
       </div>`;
     }).join('');
     host.innerHTML = `
-      <div style="font-size:11px;color:#fde68a;font-weight:bold;margin-bottom:4px;">\ud83d\udea9 \u5c0f\u968a\u9060\u5f81\uff08\u56fd\u5bb6\u904b\u55b6\uff09</div>
+      <div class="section-heading"><h4>本隊の小隊遠征</h4><p>危険度と参加兵士を確認して派遣します。</p></div>
       <div style="font-size:9.5px;color:#94a3b8;line-height:1.4;margin-bottom:6px;">\u672c\u968a\u304b\u3089\u30e1\u30f3\u30d0\u30fc\u3092\u9078\u3073\u3001\u5371\u967a\u5ea6\u30c6\u30a3\u30a2\u306e\u5730\u57df\u3078\u5b9f\u30de\u30c3\u30d7\u6d3e\u9063\u3002\u9ad8\u30ea\u30b9\u30af\u307b\u3069\u5f37\u6575\u30fb\u640d\u8017\u30ea\u30b9\u30af\u5897\u3001\u5e30\u9084\u5831\u916c\u3082\u5897\u3002\u6b7b\u306b\u305d\u3046\u306a\u3089\u81ea\u52d5\u5e30\u9084\uff08\u76f4\u5c5e\u306f\u5bfe\u8c61\u5916\uff09\u3002</div>
       <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px;">${tierBtns}</div>
       <div style="font-size:9.5px;color:${tier.color};margin-bottom:8px;">${tier.icon}<strong>${tier.label}</strong> \u2014 ${tier.desc} \u5831\u916cx${tier.rewardMult} / \u88ab\u30c0\u30e1x${tier.hazardTaken}</div>
@@ -2861,6 +2871,7 @@ export const IronSquadGame = {
     this.recalcPlayerStats();
 
     this.initPlatoons();
+    if (saved.platoonMissions) restorePlatoonMissions(this.platoons, saved.platoonMissions);
     this.initOutposts();
     this.initDungeons();
     if (!legacyWorld && saved.dungeons) {
@@ -2910,17 +2921,24 @@ export const IronSquadGame = {
     if (!Number.isFinite(this.player.x) || !Number.isFinite(this.player.y)) return;
     const empty = typeof fog.hasExploration === 'function' ? !fog.hasExploration() : true;
     const invalid = typeof fog.isValid === 'function' && !fog.isValid();
-    // v1.24.3 / v1.25.8: empty/invalid → force camp+player; always stamp under player
+    const playerDark = typeof fog.isExploredWorld === 'function' && !fog.isExploredWorld(this.player.x, this.player.y);
+    // v1.25.11: empty/invalid/force → camp seed; then ALWAYS clear _lastX before player stamp
+    // (revealCamp sets _lastX to camp, which made revealAt early-out via REVEAL_MOVE_EPS)
     if (force || empty || invalid || !fog._campSeeded) {
       fog._lastX = NaN;
       fog._lastY = NaN;
       fog.revealCamp(BASE_CAMP.x, BASE_CAMP.y);
       fog._campSeeded = true;
-    } else if (force) {
+    }
+    if (force || playerDark || empty || invalid) {
       fog._lastX = NaN;
       fog._lastY = NaN;
     }
-    fog.revealAt(this.player.x, this.player.y, FOG_REVEAL_RADIUS);
+    if (typeof fog.forceRevealAt === 'function' && (force || playerDark)) {
+      fog.forceRevealAt(this.player.x, this.player.y, FOG_REVEAL_RADIUS);
+    } else {
+      fog.revealAt(this.player.x, this.player.y, FOG_REVEAL_RADIUS);
+    }
     if (fog.mark) {
       const cell = fog.cell || 512;
       fog.mark(Math.floor(this.player.x / cell), Math.floor(this.player.y / cell));
@@ -2929,7 +2947,12 @@ export const IronSquadGame = {
     if (typeof fog.isExploredWorld === 'function' && !fog.isExploredWorld(this.player.x, this.player.y)) {
       fog._lastX = NaN; fog._lastY = NaN;
       fog.revealCamp(BASE_CAMP.x, BASE_CAMP.y);
-      fog.revealAt(this.player.x, this.player.y, FOG_REVEAL_RADIUS || FOG_CAMP_REVEAL);
+      if (typeof fog.forceRevealAt === 'function') {
+        fog.forceRevealAt(this.player.x, this.player.y, Math.max(FOG_REVEAL_RADIUS, FOG_CAMP_REVEAL));
+      } else {
+        fog._lastX = NaN; fog._lastY = NaN;
+        fog.revealAt(this.player.x, this.player.y, Math.max(FOG_REVEAL_RADIUS, FOG_CAMP_REVEAL));
+      }
       fog.mark(Math.floor(this.player.x / (fog.cell || 512)), Math.floor(this.player.y / (fog.cell || 512)));
     }
   },
@@ -3796,6 +3819,7 @@ export const IronSquadGame = {
       const mx = this.player ? Math.max(1, Math.floor(this.player.maxHp || 1)) : 1;
       hpEl.textContent = `${cur}/${mx}`;
       const ratio = mx > 0 ? cur / mx : 1;
+      hpEl.setAttribute('data-condition', ratio <= 0.25 ? 'critical' : ratio <= 0.55 ? 'hurt' : 'healthy');
       hpEl.style.color = ratio <= 0.25 ? '#f87171' : (ratio <= 0.55 ? '#fbbf24' : '#34d399');
     }
     document.getElementById('current-wave').textContent = `第${this.phase || this.wave || 1}期`;
@@ -3806,7 +3830,7 @@ export const IronSquadGame = {
       const remSec = Math.max(0, Math.ceil(this.phaseTimer || 0));
       const m = Math.floor(remSec / 60);
       const s = remSec % 60;
-      timerEl.textContent = this.restTimer>0?`次のラウンド開始まで ${Math.ceil(this.restTimer)}秒`:`${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+      timerEl.textContent = this.restTimer>0?`待機 ${Math.ceil(this.restTimer)}秒`:`${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
     }
 
     const dragged=carriedSoldiers(this,this.player),civDrag=carriedCivilians(this,this.player),ropeCount=dragged.length+civDrag.length,transportBadge=document.getElementById('transport-badge');
@@ -3830,7 +3854,19 @@ export const IronSquadGame = {
     }
     const clock=daylightAt(this.worldTime);
     const waveEl = document.getElementById('current-wave');
-    if (waveEl) waveEl.textContent = `第${this.phase || 1}期 ${clock.icon}${clock.clock}`;
+    if (waveEl) waveEl.textContent = `第${this.phase || 1}期`;
+    const clockBadge = document.getElementById('day-night-badge');
+    if (clockBadge) {
+      clockBadge.textContent = `${clock.icon} ${clock.label} ${clock.clock}`;
+      clockBadge.setAttribute('data-period', clock.period);
+    }
+    const zoneBadge = document.getElementById('field-zone-badge');
+    if (zoneBadge && this.player) {
+      const zone = getFieldZone(this.player.x, this.player.y);
+      const unsafe = !this.currentDungeon && (this.player.def || 0) < zone.reqDef;
+      zoneBadge.textContent = this.currentDungeon ? `探索中：${this.currentDungeon.name || 'ダンジョン'}` : `${zone.icon} ${zone.shortName} ${zone.dangerStars}${unsafe ? ` · 防御不足 ${this.player.def || 0}/${zone.reqDef}` : ''}`;
+      zoneBadge.setAttribute('data-danger', String(unsafe));
+    }
 
     const restBanner=document.getElementById('phase-complete-banner'),restText=document.getElementById('phase-banner-text');
     if(restBanner && restText) {
@@ -7349,6 +7385,7 @@ export const IronSquadGame = {
     const closeBtn = host.querySelector('.btn-close-soldier-detail');
     if (closeBtn) closeBtn.onclick = () => this.closeSoldierDetail();
     host.onclick = (e) => { if (e.target === host) this.closeSoldierDetail(); };
+    setSubDialog(this, host, true, () => this.closeSoldierDetail());
   },
 
   closeSoldierDetail() {
@@ -7356,6 +7393,7 @@ export const IronSquadGame = {
     const host = document.getElementById('soldier-detail-host');
     if (host) {
       host.classList.add('hidden');
+      setSubDialog(this, host, false);
       host.innerHTML = '';
     }
   },
@@ -7371,6 +7409,8 @@ export const IronSquadGame = {
   beginPhaseFiscal() {
     this.phaseFiscal = emptyFiscalLedger(this.phase || 1, this.treasury || 0);
     this.fiscalLedger = this.phaseFiscal;
+    // v1.25.11: phase boundary — keep camp/player explored before next draw
+    if (typeof this.revealFogAroundPlayer === 'function') this.revealFogAroundPlayer(true);
   },
 
   finalizePhaseFiscal() {
@@ -7771,6 +7811,7 @@ export const IronSquadGame = {
       container.appendChild(popup);
     }
     popup.classList.remove('hidden');
+    const closePopup = () => { popup.classList.add('hidden'); setSubDialog(this, popup, false); };
 
     const renderPopupContent = (activeSlot) => {
       const info = Object.values(SLOT_INFO).find(i => i.key === activeSlot) || SLOT_INFO.WEAPON;
@@ -7854,14 +7895,10 @@ export const IronSquadGame = {
         </div>
       `;
 
-      popup.querySelector('.transfer-popup-close-btn')?.addEventListener('click', () => {
-        popup.classList.add('hidden');
-      });
-      popup.querySelector('.btn-close-transfer')?.addEventListener('click', () => {
-        popup.classList.add('hidden');
-      });
+      popup.querySelector('.transfer-popup-close-btn')?.addEventListener('click', closePopup);
+      popup.querySelector('.btn-close-transfer')?.addEventListener('click', closePopup);
       popup.onclick = (e) => {
-        if (e.target === popup) popup.classList.add('hidden');
+        if (e.target === popup) closePopup();
       };
 
       popup.querySelectorAll('.transfer-slot-tab-btn').forEach(btn => {
@@ -7880,6 +7917,7 @@ export const IronSquadGame = {
           }
         });
       });
+      setSubDialog(this, popup, true, closePopup);
     };
 
     renderPopupContent(slotKey);
@@ -7892,7 +7930,7 @@ export const IronSquadGame = {
     const protectedIds=equippedIds(this.equipped,[...this.squad,...(this.reserves||[])]);
     const selected=[...new Map((this.inventory||[]).filter(i=>this.selectedSaleIds.has(i.id)&&canSell(i,protectedIds)).map(i=>[i.id,i])).values()];
     this.selectedSaleIds=new Set(selected.map(i=>i.id));
-    toolbar.innerHTML='<strong>バッグの一括売却</strong><p>いま装備中・☆保護のみ売却不可。以前装備していても未保護なら対象。弱い余剰は未強化の下位互換を選びます。</p>';
+    toolbar.innerHTML='<strong>余剰装備の一括売却</strong><p>装備中・保護中の品は対象外。「弱い余剰」は未強化の下位互換を選択します。選択数と売却額を確認してください。</p>';
     const tier=document.createElement('select');tier.setAttribute('aria-label','余剰選択のTier上限');
     for(let n=1;n<=4;n++){const option=document.createElement('option');option.value=n;option.textContent=`T${n}以下`;tier.append(option);}tier.value=this.saleMaxTier||2;
     tier.onchange=()=>{this.saleMaxTier=Number(tier.value);};
@@ -7900,6 +7938,7 @@ export const IronSquadGame = {
     choose.onclick=()=>{this.selectedSaleIds=new Set(lowValueIds(this.inventory||[],this.equipped,[...this.squad,...(this.reserves||[])],Number(tier.value)));this.renderStrategyUI();};
     const clear=document.createElement('button');clear.textContent='選択解除';clear.onclick=()=>{this.selectedSaleIds.clear();this.renderStrategyUI();};
     const sell=document.createElement('button');sell.textContent=`選択 ${selected.length}個を売却 · ${selected.reduce((sum,i)=>sum+saleValue(i),0)}G`;sell.disabled=!selected.length;
+    sell.className='sell-selected';
     sell.onclick=()=>this.sellInventoryItems(this.selectedSaleIds);
     toolbar.append(tier,choose,clear,sell);
   },
@@ -7925,15 +7964,15 @@ export const IronSquadGame = {
     const closeBtn = document.getElementById('btn-close-strat');
 
     if (isManualOpen) {
-      titleEl.textContent = this.restTimer>0?'⛺ 次のラウンド開始まで・装備整備':'⛺ 本陣戦略会議 (作戦中・駐屯)';
+      titleEl.textContent = `司令部 · 作戦第${this.phase || this.wave || 1}期`;
       const fr = this.lastFiscalReport;
       reportEl.innerHTML = (fr ? formatFiscalReportHtml(fr) : '') + '<div style="font-size:12px;color:#b0bacd;">装備の強化鍛冶、武器防具の支給、兵士の叙勲・投資・スカウトを行えます。</div>';
-      nextBtn.textContent = this.restTimer>0?`待機へ戻る（残り${Math.ceil(this.restTimer)}秒）`:'⚔️ 戦場へ復帰する (会議終了)';
+      nextBtn.textContent = this.restTimer>0?`待機へ戻る（残り${Math.ceil(this.restTimer)}秒）`:'戦場へ戻る';
       nextBtn.classList.remove('hidden');
       closeBtn.classList.add('hidden');
       this.inBattle = false;
     } else {
-      titleEl.textContent = `⛺ 作戦第${this.phase || this.wave || 1}期 状況報告＆戦略会議`;
+      titleEl.textContent = `司令部 · 作戦第${this.phase || this.wave || 1}期`;
       const alive = this.squad.filter(s => !s.dead);
       const deadCount = this.squad.length - alive.length;
       const clearedOps = (this.outposts || []).filter(o => o.cleared).length;
@@ -8032,7 +8071,7 @@ export const IronSquadGame = {
     const orbEl = document.getElementById('strat-orbs');
     if (orbEl) {
       const g = this.awakeningGems || 0;
-      orbEl.textContent = g > 0 ? `${this.awakeningOrbs || 0}💎 / ${g}💠` : `${this.awakeningOrbs || 0}`;
+      orbEl.textContent = `${this.awakeningOrbs || 0} / ${g}`;
     }
     if (typeof this.renderExpeditionPanel === 'function') this.renderExpeditionPanel();
 
@@ -8046,6 +8085,9 @@ export const IronSquadGame = {
       const bossHp = (p.bossKills || 0) * 50;
       const bossCrit = (p.bossKills || 0) * 2;
       const bossRed = Math.min(30, (p.bossKills || 0) * 2);
+      const stage = PLAYER_CLASS_STAGES[playerClassTier(p)];
+      const nextStage = nextPlayerStage(p);
+      const awakeningCost = classUpCostForNext({ classTier: playerClassTier(p) });
 
       pRecordBox.innerHTML = `
         <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px;">
@@ -8066,14 +8108,8 @@ export const IronSquadGame = {
             <span style="color: #fde047;">(+${bossAtk}攻 / +${bossHp}HP / 会心+${bossCrit}% / 軽減-${bossRed}%)</span>
           </div>
           <div style="margin-top: 5px; padding-top: 5px; border-top: 1px dashed rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center;">
-            ${p.isAdvanced ? `
-              <span style="color: #fbbf24; font-weight: bold; font-size: 10.5px;">👑【上位職・覇王ウォーロード】覚醒済 (全部隊ATK+25% / 覇気全方位スラッシュ)</span>
-            ` : `
-              <span style="color: #94a3b8; font-size: 10px;">上位職【覇王ウォーロード】(要: 💎宝珠1個)</span>
-              <button id="btn-promote-player" class="mini-btn" style="background: linear-gradient(135deg, #f59e0b, #ec4899); color: #fff; font-size: 10px; font-weight: bold; padding: 2px 8px; box-shadow: 0 0 8px rgba(245,158,11,0.5);">
-                🔱 覇王へ覚醒昇格！
-              </button>
-            `}
+            <span class="commander-stage">現在：${stage.name}${nextStage ? `<br>次：${nextStage.name} · ${formatClassUpCostJa(awakeningCost)}` : ' · 最高位へ覚醒済み'}</span>
+            ${nextStage ? `<button id="btn-promote-player" class="mini-btn" ${canAffordClassUp(this.awakeningOrbs,this.awakeningGems,awakeningCost) ? '' : 'disabled'}>${nextStage.name}へ覚醒</button>` : ''}
           </div>
         </div>
       `;
@@ -8185,10 +8221,13 @@ export const IronSquadGame = {
       invList.innerHTML = '';
       this.inventory.forEach((item) => {
         const itemRow = document.createElement('div');
+        itemRow.className = 'inventory-card';
         itemRow.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 5px 6px; border-bottom: 1px solid #23273c; font-size: 11px;';
         
         const slotKey = SLOT_INFO[item.type] ? SLOT_INFO[item.type].key : null;
         const curEquipped = eq[slotKey];
+        itemRow.dataset.slot = slotKey || '';
+        itemRow.dataset.improves = String(compareEquipment(item, curEquipped).changes.some(change => change.delta > 0));
         const isEquipped = curEquipped && curEquipped.id === item.id;
         const canInherit = curEquipped && !isEquipped && (curEquipped.upgrade || 0) > (item.upgrade || 0);
         const upCost = this.getUpgradeCost(item);
@@ -8260,6 +8299,7 @@ export const IronSquadGame = {
           if(canInherit) {
             const preview=structuredClone(item);applyUpgradeStats(preview,curEquipped.upgrade);
             const inherited=compareEquipment(preview,curEquipped);
+            if(inherited.changes.some(change => change.delta > 0)) itemRow.dataset.improves = 'true';
             const extra=document.createElement('div');extra.className='equipment-comparison '+inherited.kind;
             extra.innerHTML=`<div class="equip-cmp-head"><span style="color:#c084fc; font-weight:bold;">✨+${curEquipped.upgrade}引継後：</span><strong>${inherited.label}</strong> <span style="color:#f87171; font-size:9.5px; font-weight:bold;">(※古い装備は消滅)</span></div><div class="stat-delta-block">${inherited.html}</div>`;
             itemRow.firstElementChild.append(extra);
@@ -8552,7 +8592,7 @@ export const IronSquadGame = {
         });
       }
 
-      return row;
+      return compactSoldierCard(this, row, s, cls, pName);
     };
 
     const appendCategorySection = (title, count, desc, soldiers, isMy) => {
@@ -8592,6 +8632,7 @@ export const IronSquadGame = {
     if (curFilter === 'all' || curFilter === 'other') {
       appendCategorySection(otherTitle, otherSquad.length, otherDesc, otherSquad, false);
     }
+    refreshInterface(this, { rank: currentRank, time, zone });
     if(scrollBody)scrollBody.scrollTop=scrollTop;
     if (typeof keepDetailId !== 'undefined' && keepDetailId) {
       const still = [...(this.squad||[]),...(this.reserves||[])].some(x => x && x.id === keepDetailId);
@@ -8834,16 +8875,24 @@ export const IronSquadGame = {
     }
 
     // Fog of war (bit-grid fillRect; skip inside dungeons)
-    // v1.25.8: ensure camp/player seed; overlay itself fail-opens if viewport unexplored
+    // v1.25.11: camp seed + player-dark reseed; overlay gets player coords for fail-safe
     if (!this.currentDungeon) {
       const fog = this.ensureFog();
-      if (fog && typeof fog.hasExploration === 'function' && !fog.hasExploration()) {
-        fog.revealCamp(BASE_CAMP.x, BASE_CAMP.y);
-        if (this.player && Number.isFinite(this.player.x)) {
-          fog.revealAt(this.player.x, this.player.y, FOG_REVEAL_RADIUS);
+      if (fog) {
+        if (!fog._campSeeded || (typeof fog.hasExploration === 'function' && !fog.hasExploration())) {
+          fog.revealCamp(BASE_CAMP.x, BASE_CAMP.y);
+          fog._campSeeded = true;
         }
+        if (this.player && Number.isFinite(this.player.x) && Number.isFinite(this.player.y)) {
+          const dark = typeof fog.isExploredWorld === 'function' && !fog.isExploredWorld(this.player.x, this.player.y);
+          if (dark) this.revealFogAroundPlayer(true);
+        }
+        fog.drawFieldOverlay(
+          this.ctx, this.camera, this.width, this.height, this.zoom || 1,
+          this.player ? this.player.x : undefined,
+          this.player ? this.player.y : undefined
+        );
       }
-      if (fog) fog.drawFieldOverlay(this.ctx, this.camera, this.width, this.height, this.zoom || 1);
     }
 
     this.ctx.restore(); // カメラ復元
