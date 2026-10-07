@@ -1,4 +1,4 @@
-﻿/**
+/**
  * ゲーム3: IRON SQUAD (アイアン・スクワッド: 雑兵立身出世録)
  * ローグライク・アクションRPG
  * 
@@ -6764,7 +6764,7 @@ export const IronSquadGame = {
 
     // ⛩️ ダンジョンボス討伐時の至宝解錠判定
     if (monster.isDemonKing) {
-      this.showToast(😈👑【魔王討伐！！】『』を撃破！約1000万規模の脅威を打ち破った！);
+      this.showToast(`😈👑【魔王討伐！！】『${monster.name || '魔王'}』を撃破！約1000万規模の脅威を打ち破った！`);
     }
     if (monster.isDungeonBoss) {
       sound.playHighScore();
@@ -7129,7 +7129,7 @@ export const IronSquadGame = {
     return true;
   },
 
-  healAllSquad  healAllSquad() {
+  healAllSquad() {
     if (this.gold < 25) {
       alert('軍資金が足りません (必要: 25G)');
       return;
