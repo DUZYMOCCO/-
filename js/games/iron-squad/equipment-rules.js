@@ -293,7 +293,7 @@ export function weaponCombatProfile(item) {
     return {
       style: 'crossbow', ranged: true,
       reach: 285, reachWarlord: 320,
-      baseCooldown: 1.45, pierce: false, pierceHalfWidth: 0,
+      baseCooldown: 1.25, pierce: false, pierceHalfWidth: 0,
       // 弓より遅射・高威力（理論DPSは弓と同程度〜やや上、実戦は隙が目立つ）
       atkMult: 1.85, knockback: 12, knockbackWarlord: 18,
       projSpeed: 460, splash: 0, projType: 'BOLT', color: '#94a3b8'
@@ -303,7 +303,7 @@ export function weaponCombatProfile(item) {
     return {
       style: 'cannon', ranged: true,
       reach: 310, reachWarlord: 360,
-      baseCooldown: 2.15, pierce: false, pierceHalfWidth: 0,
+      baseCooldown: 1.85, pierce: false, pierceHalfWidth: 0,
       // 最遅・最大火力。スプラッシュで複数ヒット前提の厚め威力
       atkMult: 3.15, knockback: 48, knockbackWarlord: 60,
       projSpeed: 320, splash: 52, projType: 'CANNONBALL', color: '#f59e0b'

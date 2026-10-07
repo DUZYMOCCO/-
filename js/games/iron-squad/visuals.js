@@ -1,5 +1,5 @@
-import { drawMeleeWeapon, drawMeleeRangeCue } from './weapon-motion.js?v=98';
-import { drawSoldierHead, isMedicAppearance, soldierAppearanceFamily } from './soldier-appearance.js?v=98';
+import { drawMeleeWeapon, drawMeleeRangeCue } from './weapon-motion.js?v=101';
+import { drawSoldierHead, isMedicAppearance, soldierAppearanceFamily } from './soldier-appearance.js?v=101';
 
 // Live field illustrations. Equipment colors are read every frame.
 // Hands and the weapon share one pose; only the striking edge gets a short trace.

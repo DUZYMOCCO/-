@@ -11,16 +11,18 @@
  */
 import { sound } from '../../audio.js';
 import { storage } from '../../storage.js';
-import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow } from './visuals.js?v=98';
-import { drawMeleeRangeCue, meleeDrawReach, attackAnimationRate } from './weapon-motion.js?v=98';
-import {emptyRescueBonuses,normalizeRescueBonuses,rescueBonusSummary} from './rescue-rewards.js?v=98';
-import {drawFieldCivilian} from './civilian-visuals.js?v=98';
+import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow } from './visuals.js?v=101';
+import { drawMeleeRangeCue, meleeDrawReach, attackAnimationRate } from './weapon-motion.js?v=101';
+import {emptyRescueBonuses,normalizeRescueBonuses,rescueBonusSummary} from './rescue-rewards.js?v=101';
+import {drawFieldCivilian} from './civilian-visuals.js?v=101';
 import { saveSlots } from './save-slots.js';
-import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog } from './interface.js?v=98';
-import { ensureSoldierAppearance, drawSoldierPortrait, describeSoldierAppearance } from './soldier-appearance.js?v=98';
-import { attachSurfaceEvents, detachSurfaceEvents, frameSurfaceReady, releaseSceneCaches, releaseCanvas, surfaceCanResume } from './canvas-surface.js?v=98';
-import { WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt, routeNameAt, eastWestRoadY, northSouthRoadX, riverCenterY } from './world.js?v=100';
-import { FogGrid, FOG_REVEAL_RADIUS, FOG_CAMP_REVEAL } from './fog.js?v=98';
+import {strongEnemyReward} from './combat-rewards.js?v=101';
+import {supplyMethods, initializeSupplies, updateSupplies, takeRangedShot, ammoCombatProfile, isRangedUnit, distributeAmmo, preventLethalHit, normalizeFieldSave, SQUAD_POTION_COST, ensureAmmo, RANGED_DAMAGE_MULT} from './supply-rules.js?v=101';
+import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog } from './interface.js?v=101';
+import { ensureSoldierAppearance, drawSoldierPortrait, describeSoldierAppearance } from './soldier-appearance.js?v=101';
+import { attachSurfaceEvents, detachSurfaceEvents, frameSurfaceReady, releaseSceneCaches, releaseCanvas, surfaceCanResume } from './canvas-surface.js?v=101';
+import { WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt, routeNameAt, eastWestRoadY, northSouthRoadX, riverCenterY } from './world.js?v=101';
+import { FogGrid, FOG_REVEAL_RADIUS, FOG_CAMP_REVEAL } from './fog.js?v=101';
 import {
   classTierOf, nextClassId, classUpCostForNext, canAffordClassUp, formatClassUpCostJa, classUpShortageJa,
   playerClassTier, nextPlayerStage, playerStageById, CLASS_TIER_LABELS, PLAYER_CLASS_STAGES
@@ -33,7 +35,7 @@ import {
   SHARED_BOX_MAX_TIER, SCOUT_COST_BY_TALENT, defaultDonateAmount, donatePresetAmounts
 } from './economy-rules.js';
 
-import { EQUIPMENT_TYPES, saleValue, equippedIds, canSell, lowValueIds, chooseLootTier, distanceScaling, shrineUpgradeCap, compareEquipment, equipmentScore, weaponCombatProfile, evaluateMeleeSweetSpot, isGodRollProtected, zoneRingPower, zoneRingLabelJa } from './equipment-rules.js?v=98';
+import { EQUIPMENT_TYPES, saleValue, equippedIds, canSell, lowValueIds, chooseLootTier, distanceScaling, shrineUpgradeCap, compareEquipment, equipmentScore, weaponCombatProfile, evaluateMeleeSweetSpot, isGodRollProtected, zoneRingPower, zoneRingLabelJa } from './equipment-rules.js?v=101';
 import {
   WEAPON_STYLES, WEAPON_STYLE_LABELS, WEAPON_STYLE_ICONS,
   MELEE_STYLES, RANGED_STYLES, HIT_GROWTH_SOFT_CAP,
@@ -43,19 +45,19 @@ import {
   gainWeaponMastery, masteryGainForStyle, pickFavoriteWeapon, rollWeaponStyle,
   weaponStyleOf, favoriteWeaponBias, MASTERY_GAIN_PER_HIT,
   migrateFavoriteForClass, migrateWeaponStyleFromName
-} from './growth-rules.js?v=98';
+} from './growth-rules.js?v=101';
 
 import {
   initMerchants, ensureMerchants, updateMerchants, drawMerchantBody, drawMerchantEscort,
   nearestLivingMerchant, refreshMerchantStock, merchantBuyPrice, merchantSellTier,
   applyMerchantSave, serializeMerchants, MERCHANT_INTERACT_R,
   merchantHealingStatus, merchantHealWavesLeft, useMerchantHealing, MERCHANT_HEAL_COST, recalcEscortStats, finishEscortPhase
-} from './merchant-rules.js?v=98';
+} from './merchant-rules.js?v=101';
 
 import { daylightAt, advanceWorldClock, periodEnemy, enemyAvailable, PERIOD_ENEMIES } from './day-night.js';
 
-import { RESCUE_TIMEOUT, rescueUnits, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, markSoldierDown, CIV_KINDS, isMedic, regenMedicStamina, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST } from './casualty-rules.js?v=98';
-import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault } from './dungeon.js?v=98';
+import { RESCUE_TIMEOUT, rescueUnits, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, markSoldierDown, CIV_KINDS, isMedic, regenMedicStamina, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST } from './casualty-rules.js?v=101';
+import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault } from './dungeon.js?v=101';
 import {
   EXPEDITION_CHECK_INTERVAL, EXPEDITION_RETURN_HOME, EXPEDITION_ENGAGE_R,
   EXPEDITION_DANGER_TIERS, EXPEDITION_MIN_MEMBERS,
@@ -95,6 +97,7 @@ export const COLOSSAL_RESPAWN=210; // was 75
 /** v1.25.7: platoon expedition -> nation hub / main-army pick / danger tier (live map) / return rewards + inferior bonus; SW v77. */
 /** v1.25.8: fog never full-black / multi-stage class-up / zone ring x10 softcap 1e6 / 魔王城~10M fixedStats; SW v78. */
 /** v1.25.11: fog player-cell fail-safe + viewport reseed + camp→player _lastX fix / module ?v=81; SW v81. */
+/** v2.0.0: unified ammunition, squad potion, hero lethal-hit guard and independent checkpoints; SW v101. */
 /** v1.27.11: field merchants(inn+camp)+escort loot / mastery gain mult by weapon / raid withdraw+rarer; SW v95. */
 /** v1.27.10: town/inn entry only captain+personal guard; main platoons keep field doctrine; SW v94. */
 /** v1.27.9: manual 本隊→自部隊 pull + full-squad swap confirm; auto-guard no longer overwrites; SW v93. */
@@ -999,6 +1002,7 @@ export const QUEST_TEMPLATES = [
 ];
 
 export const IronSquadGame = {
+  ...supplyMethods,
   id: 'iron-squad',
   title: 'IRON SQUAD',
   subtitle: '雑兵立身出世録',
@@ -1144,6 +1148,7 @@ export const IronSquadGame = {
                 <button id="btn-release-wounded" type="button">紐を外す</button>
               </div>
               <div class="pad-buttons-zone">
+                <button type="button" id="btn-pad-potion" class="pad-btn pad-btn-potion" aria-label="部隊全体のHPと弾薬を回復">回復薬 1</button>
                 <button id="btn-pad-command" class="pad-btn pad-btn-command hidden" title="号令">
                   <span class="pad-btn-icon">📢</span>
                   <span class="pad-btn-label">呼集</span>
@@ -1577,6 +1582,7 @@ export const IronSquadGame = {
     };
     modal.addEventListener('keydown',this.dialogKeyHandler);
     configureInterface(this);
+    document.getElementById('btn-pad-potion').addEventListener('click',e=>{e.preventDefault();e.stopPropagation();this.useSquadPotion();});
   },
 
   setDialogState(open) {
@@ -1626,7 +1632,7 @@ export const IronSquadGame = {
             <label for="expedition-name">新しい遠征の名前</label>
             <input id="expedition-name" class="save-name" type="text" maxlength="40" placeholder="例：第一遠征隊" autocomplete="off">
             <button class="action-btn" type="submit">ニューゲーム</button>
-            <p>第1期・新兵30名から開始。既存の遠征はそのまま残ります。</p>
+            <p>第1期・新兵48名・部隊回復薬1個から開始。既存の遠征はそのまま残ります。</p>
           </form>
           <h3 class="save-section-title">保存した遠征</h3><div id="save-slot-list"></div>
         </div>
@@ -1673,7 +1679,13 @@ export const IronSquadGame = {
         });
 
         btnGroup.append(button, delButton);
-        card.append(name,details,date,btnGroup);list.append(card);
+        card.append(name,details,date,btnGroup);
+        if(slot.checkpoint?.data) {
+          const point=document.createElement('p');point.className='save-date';point.textContent=`地点記録：${slot.checkpoint.place} · 第${slot.checkpoint.data.phase}期 · ${new Date(slot.checkpoint.savedAt).toLocaleString('ja-JP')}`;
+          const restore=document.createElement('button');restore.type='button';restore.className='action-btn secondary save-checkpoint-button';restore.dataset.checkpointSlot=slot.id;restore.textContent='地点セーブから再開';
+          restore.addEventListener('click',()=>this.selectSaveSlot(slot.id,true));card.append(point,restore);
+        }
+        list.append(card);
       }
     } catch(error) { list.textContent=error.message; }
     this.saveMenu.querySelector('#new-expedition-form').addEventListener('submit',e=>{
@@ -1698,14 +1710,15 @@ export const IronSquadGame = {
     document.getElementById('btn-back').title=`${slot?.name || '遠征'}を保存して工房へ戻る`;
   },
 
-  selectSaveSlot(id) {
+  selectSaveSlot(id,fromCheckpoint=false) {
     const slot=saveSlots.get(id);
-    if(!slot) return;
+    if(!slot||fromCheckpoint&&!slot.checkpoint?.data) return false;
     this.activeSlotId=id;
     try {
       // Keep the menu until initialization succeeds. Previously a startup
       // exception was written into the already-hidden menu, leaving only HUD.
-      if(slot.state==='fallen' || !slot.data) this.startFreshGame(slot.state==='fallen');
+      if(fromCheckpoint)this.resumeSavedGame(JSON.parse(JSON.stringify(slot.checkpoint.data)));
+      else if(slot.state==='fallen' || !slot.data) this.startFreshGame(slot.state==='fallen');
       else this.resumeSavedGame(slot.data);
       this.beginSelectedExpedition();
       this.resizeCanvas?.();
@@ -1716,7 +1729,7 @@ export const IronSquadGame = {
       this.inBattle=false; this.stopGameLoop(); this.resetMovementInput();
       this.showSaveMenu();
       const notice=document.createElement('p');notice.id='save-start-error';notice.className='save-start-error';notice.setAttribute('role','alert');
-      notice.textContent=`v1.26.1 · 開始できませんでした：${error.message || error}`;
+      notice.textContent=`v2.0.0 · 開始できませんでした：${error.message || error}`;
       this.saveMenu.querySelector('.save-heading').append(notice);
       this.showRenderProblem('startup',error);
       return false;
@@ -2044,6 +2057,7 @@ export const IronSquadGame = {
     this.restTimer=0;this.restUpgradeClock=0;this.restReport=null;this.restMonsters=[];
     this.totalBattleTime = 0;
     this.worldTime=0;
+    this.lastStrongKill=null;
     this.treatmentReport = null;
     this.deathlineReport = null;
     this.rescueBuffTimer = 0;
@@ -2168,6 +2182,7 @@ export const IronSquadGame = {
     this.recalcPlayerStats();
     this.initBattlefield();
     saveSlots.update(this.activeSlotId, {state:'active', veterans:[], reserveSurvivors:[]});
+    initializeSupplies(this);
     this.saveGame();
     this.updateStatsUI();
     this.camera = { x: BASE_CAMP.x, y: BASE_CAMP.y };
@@ -2879,6 +2894,7 @@ export const IronSquadGame = {
     this.restMonsters=this.restTimer>0?(saved.restMonsters || []):[];
     this.totalBattleTime = saved.totalBattleTime || 0;
     this.worldTime=Math.max(0,Number(saved.worldTime)||0);
+    this.lastStrongKill=saved.lastStrongKill||null;
     this.rescueBuffTimer = 0;
     this.rescueBonuses=normalizeRescueBonuses(saved.rescueBonuses);
     this.rescueRewardIds=Array.isArray(saved.rescueRewardIds)?saved.rescueRewardIds.filter(id=>typeof id==='string'):[];
@@ -2988,6 +3004,7 @@ export const IronSquadGame = {
       phaseActivity: pSave.phaseActivity || emptyActivity(),
       hitGrowthPct: Math.max(0, Math.min(HIT_GROWTH_SOFT_CAP, Number(pSave.hitGrowthPct) || 0)),
       weaponMastery: normalizeMastery(pSave.weaponMastery),
+      ammo:pSave.ammo,
       hp: pSave.hp || 130,
       maxHp: pSave.maxHp || 130,
       atk: 25,
@@ -3042,6 +3059,7 @@ export const IronSquadGame = {
     this.initBattlefield();
     this.phaseCasualties = saved.phaseCasualties ?? 0;
     this.phaseInitialSquadCount = saved.phaseInitialSquadCount ?? this.squad.length;
+    initializeSupplies(this,saved);
     this.updateStatsUI();
     this.camera = { x: BASE_CAMP.x, y: BASE_CAMP.y };
     this.startGameLoop();
@@ -3271,9 +3289,11 @@ export const IronSquadGame = {
   },
 
   saveGame() {
-    if (!this.activeSlotId || !this.player || this.player.hp <= 0) return;
+    if (!this.activeSlotId || !this.player || this.player.hp <= 0) return null;
     try {
       const data = {
+        ammoReserve:this.ammoReserve||0,
+        squadPotion:this.squadPotion?1:0,
         worldVersion: WORLD_VERSION,
         phase: this.phase || this.wave || 1,
         phaseTimer: this.phaseTimer,
@@ -3285,6 +3305,7 @@ export const IronSquadGame = {
         phaseInitialSquadCount: this.phaseInitialSquadCount,
         totalBattleTime: this.totalBattleTime || 0,
         worldTime:this.worldTime || 0,
+        lastStrongKill:this.lastStrongKill||null,
         wave: this.phase || this.wave || 1,
         exp: this.exp,
         gold: this.gold,
@@ -3301,6 +3322,8 @@ export const IronSquadGame = {
         rankIndex: this.rankIndex,
         player: {
           x: this.player.x, y: this.player.y,
+          ammo:this.player.ammo,
+          invulnerableTimer:this.player.invulnerableTimer||0,
           hp: this.player.hp,
           maxHp: this.player.maxHp,
           level: this.player.level || 1,
@@ -3332,10 +3355,13 @@ export const IronSquadGame = {
         fogExplored: this.ensureFog().serialize(),
         platoonMissions: persistPlatoonMissions(this.platoons)
       };
+      normalizeFieldSave(this,data);
       if (!saveSlots.update(this.activeSlotId, {data, state:'active'})) throw new Error('保存容量が不足しています');
+      return data;
     } catch (e) {
       console.warn('Save failed:', e);
       this.showToast('保存に失敗しました。ブラウザの空き容量を確認してください');
+      return null;
     }
   },
 
@@ -3542,7 +3568,7 @@ export const IronSquadGame = {
     const wProf = this.combatProfileFor(this.player, (this.equipped && this.equipped.weapon) || null, true);
     const isWarlord = !!this.player.isAdvanced;
     const reach = isWarlord ? wProf.reachWarlord : Math.max(110, wProf.reach);
-    const baseCd = isWarlord ? Math.min(0.42, wProf.baseCooldown * 0.8) : wProf.baseCooldown;
+    const baseCd = isWarlord ? Math.min(0.42/(wProf.stone?.75:1), wProf.baseCooldown * 0.8) : wProf.baseCooldown;
     const applySharedCd = () => {
       // 自動攻撃ループと同じ式（manual/auto で攻撃速度共有）
       this.player.atkCooldown = baseCd / (this.player.atkSpeed || 1);
@@ -3554,7 +3580,7 @@ export const IronSquadGame = {
       this.player.slashAngle = Math.atan2(nearest.y - this.player.y, nearest.x - this.player.x);
       if (wProf.ranged) {
         this.spawnRangedProjectile(this.player, nearest, this.player.atk, wProf, true);
-        if (wProf.style === 'cannon') sound.playBomb();
+        if (wProf.style === 'cannon'&&!wProf.stone) sound.playBomb();
         else sound.playSlash();
       } else if (wProf.pierce) {
         const ang = this.player.slashAngle;
@@ -3579,7 +3605,7 @@ export const IronSquadGame = {
       applySharedCd();
       this.player.slashAngle = Math.atan2(nearestOp.y - this.player.y, nearestOp.x - this.player.x);
       sound.playSlash();
-      this.damageOutpost(nearestOp, this.player.atk * 1.5);
+      this.damageOutpost(nearestOp,wProf.ranged?takeRangedShot(this.player,this.player.atk*1.5).damage:this.player.atk*1.5);
     } else {
       // 射程外の素振りはCD消費なし（ダメージなし）。連打ダメージは上のCDゲートで阻止済み。
       sound.playSlash();
@@ -3596,7 +3622,7 @@ export const IronSquadGame = {
     const mastery = isPlayer
       ? (this.player && this.player.weaponMastery)
       : (unit && unit.weaponMastery);
-    return applyMasteryToCombatProfile(base, mastery);
+    return ammoCombatProfile(unit,applyMasteryToCombatProfile(base, mastery));
   },
 
   pushShockwave(x, y, maxRadius, color, subColor, life = 0.45, lineWidth = 4) {
@@ -3712,6 +3738,21 @@ export const IronSquadGame = {
     this.player.powerAtkCooldown = cdByStyle[style] || 8.0;
     this.updatePowerAtkButtonUI();
 
+    // A ranged strong attack uses one round per rain tick / cluster shell.
+    // With no rounds, throw a single stone without explosive or area effects.
+    let powerShots=0;
+    if(RANGED_STYLES.includes(style)) {
+      if(ensureAmmo(this.player)===0) {
+        const profile=this.combatProfileFor(this.player,wpn,true);
+        const target=this.getNearestMonster(this.player.x,this.player.y);
+        const factor=style==='cannon'?(isWarlord?2.1:1.65):style==='crossbow'?(isWarlord?5:3.9):(isWarlord?.95:.78);
+        if(target&&Math.hypot(target.x-this.player.x,target.y-this.player.y)<=profile.reach)this.spawnRangedProjectile(this.player,target,this.player.atk*factor,profile,true);
+        else {const op=this.getNearestUnclearedOutpost(this.player.x,this.player.y);if(op&&Math.hypot(op.x-this.player.x,op.y-this.player.y)<=op.radius+profile.reach)this.damageOutpost(op,takeRangedShot(this.player,this.player.atk*factor).damage);}
+        this.player.slashAnim=1;this.showToast('弾切れ：石投げ（75%）。補給地点へ戻ってください');return;
+      }
+      const requested=style==='bow'?(isWarlord?6:4):style==='cannon'?(isWarlord?5:4):1;
+      powerShots=Math.min(ensureAmmo(this.player),requested);this.player.ammo-=powerShots;
+    }
     this.player.slashAnim = 1.6;
     const face = this.powerFacingAngle();
     this.player.slashAngle = face;
@@ -3723,7 +3764,7 @@ export const IronSquadGame = {
     let hitCount = 0;
     let skillName = '💥【渾身強撃】';
     let skillColor = isWarlord ? '#f59e0b' : '#00f0ff';
-    const baseAtk = this.player.atk || 15;
+    const baseAtk = (this.player.atk || 15)*(RANGED_STYLES.includes(style)?RANGED_DAMAGE_MULT:1);
     const px = this.player.x, py = this.player.y;
 
     if (style === 'spear') {
@@ -3778,7 +3819,7 @@ export const IronSquadGame = {
       skillName = isWarlord ? '🏹【覇王星雨】' : '🏹【蒼穹箭雨】';
       skillColor = '#7dd3fc';
       const radius = isWarlord ? 210 : 160;
-      const ticks = isWarlord ? 6 : 4;
+      const ticks = powerShots;
       const tickDmg = Math.round(baseAtk * (isWarlord ? 0.95 : 0.78));
       if (!this.powerFx) this.powerFx = [];
       for (let t = 0; t < ticks; t++) {
@@ -3843,7 +3884,7 @@ export const IronSquadGame = {
     } else if (style === 'cannon') {
       skillName = isWarlord ? '💣【覇王散華砲】' : '💣【榴散クラスター】';
       skillColor = '#fbbf24';
-      const count = isWarlord ? 5 : 4;
+      const count = powerShots;
       const blastR = isWarlord ? 78 : 62;
       const subDmg = Math.round(baseAtk * (isWarlord ? 2.1 : 1.65));
       if (!this.powerFx) this.powerFx = [];
@@ -3953,6 +3994,7 @@ export const IronSquadGame = {
     const nowUi = performance.now();
     if (!force && this._lastStatsUiAt && (nowUi - this._lastStatsUiAt) < STATS_UI_INTERVAL_MS) return;
     this._lastStatsUiAt = nowUi;
+    this.refreshSupplyUI();
     const rank = RANKS[this.rankIndex];
     const pLv = this.player ? (this.player.level || 1) : 1;
     const isWarlord = this.player && this.player.isAdvanced;
@@ -4872,6 +4914,7 @@ export const IronSquadGame = {
 
   update(dt) {
     if (!this.inBattle) return;
+    updateSupplies(this,dt);
     this.ageRemains(dt);
     this.autoSaveClock = (this.autoSaveClock || 0) + dt;
     if (this.autoSaveClock >= 10) { this.autoSaveClock = 0; this.saveGame(); }
@@ -5530,19 +5573,22 @@ export const IronSquadGame = {
 
       // 兵種ごとの交戦間合い
       if (nearestEnemy && enemyDist < 360) {
-        if (clsKey === 'ARCHER' || clsKey === 'SNIPER' || clsKey === 'STORM_BOW' || clsKey === 'STAR_HUNTER') {
+        if (isRangedUnit(this,soldier)) {
           // 弓兵/神射手: 接近されすぎたら後退、射程内なら立ち止まって射撃
           const rkWpn = (soldier.equipped && soldier.equipped.weapon) || soldier.weapon;
-          const rkProf = weaponCombatProfile(rkWpn);
+          const rkBase = this.combatProfileFor(soldier,rkWpn,false);
+          const rkProf = rkBase.ranged?rkBase:this.combatProfileFor(soldier,{weaponStyle:'bow'},false);
           const reachHint = (rkProf.ranged ? rkProf.reach : 250) || 250;
           const safeDist = clsKey === 'SNIPER' ? 95 : (rkProf.style === 'cannon' ? 110 : 75);
-          const maxDist = Math.max(clsKey === 'SNIPER' ? 340 : 230, reachHint * 0.92);
+          const maxDist = rkProf.stone?Math.max(cls.range*.75,reachHint)*.92:Math.max(clsKey === 'SNIPER' ? 340 : 230, reachHint * 0.92);
           if (enemyDist < safeDist) {
             targetX = soldier.x - (nearestEnemy.x - soldier.x);
             targetY = soldier.y - (nearestEnemy.y - soldier.y);
           } else if (enemyDist < maxDist) {
             targetX = soldier.x;
             targetY = soldier.y;
+          } else if(rkProf.stone) {
+            targetX=nearestEnemy.x;targetY=nearestEnemy.y;
           }
         } else if (clsKey === 'HEAVY' || clsKey === 'PALADIN' || clsKey === 'TEMPLAR' || clsKey === 'IMMORTAL_AEGIS') {
           // 重装/聖騎士: 敵に真っ向から突進
@@ -5576,14 +5622,14 @@ export const IronSquadGame = {
         const equipAtk = soldier.equipped && soldier.equipped.weapon ? soldier.equipped.weapon.stats.atk || 0 : (soldier.weapon ? soldier.weapon.stats.atk || 0 : 0);
         const totalAtk = Math.round((soldier.atk + equipAtk) * warlordMult);
 
-        if ((clsKey === 'ARCHER' || clsKey === 'SNIPER' || clsKey === 'STORM_BOW' || clsKey === 'STAR_HUNTER')) {
+        if (isRangedUnit(this,soldier)) {
           const rWpn = (soldier.equipped && soldier.equipped.weapon) || soldier.weapon || null;
           const rProf = this.combatProfileFor(soldier, rWpn, false);
           // 遠隔武器未装備時はクラス既定の弓扱い
           const rangedProf = rProf.ranged ? rProf : this.combatProfileFor(soldier, { weaponStyle: 'bow' }, false);
-          const shotRange = Math.max(cls.range, rangedProf.reach || cls.range);
+          const shotRange = rangedProf.stone?Math.max(cls.range*.75,rangedProf.reach):Math.max(cls.range, rangedProf.reach || cls.range);
           if (enemyDist <= shotRange) {
-            const cd = Math.max(0.35, (rangedProf.baseCooldown || cls.atkCooldown) / Math.max(0.55, (soldier.atkSpeed || 1)));
+            const cd = Math.max(0.35/(rangedProf.stone?.75:1), (rangedProf.baseCooldown || cls.atkCooldown) / Math.max(0.55, (soldier.atkSpeed || 1)));
             soldier.atkCooldown = clsKey === 'SNIPER' ? cd * 0.88 : cd;
             soldier.atkAnim = 1.0;
             soldier.facingAngle = Math.atan2(nearestEnemy.y - soldier.y, nearestEnemy.x - soldier.x);
@@ -5591,22 +5637,11 @@ export const IronSquadGame = {
             if (!this.projectiles) this.projectiles = [];
             const dmg = Math.round(totalAtk * (rangedProf.atkMult ? 1 : 1)); // atk already includes weapon mult via stats
             if (clsKey === 'SNIPER' && rangedProf.style === 'bow') {
-              // 神射手＋弓: 天星三連
-              const baseAng = soldier.facingAngle;
-              for (const off of [-0.18, 0, 0.18]) {
-                const shotAng = baseAng + off;
-                this.projectiles.push({
-                  x: soldier.x, y: soldier.y,
-                  vx: Math.cos(shotAng) * (rangedProf.projSpeed || 440),
-                  vy: Math.sin(shotAng) * (rangedProf.projSpeed || 440),
-                  target: nearestEnemy, attacker: soldier,
-                  type: 'STAR_ARROW', damage: Math.round(dmg * 0.9), life: 0.9, color: '#34d399'
-                });
-              }
+              for (const off of [-0.18, 0, 0.18])this.spawnRangedProjectile(soldier,nearestEnemy,Math.round(dmg*.9),{...rangedProf,starOffset:off},false);
               sound.playLaser();
             } else {
               this.spawnRangedProjectile(soldier, nearestEnemy, dmg, rangedProf, false);
-              if (rangedProf.style === 'cannon') sound.playBomb();
+              if (rangedProf.style === 'cannon'&&!rangedProf.stone) sound.playBomb();
               else sound.playSlash();
             }
           }
@@ -5696,7 +5731,7 @@ export const IronSquadGame = {
             soldier.atkCooldown = cls.atkCooldown;
             soldier.atkAnim = 1.0;
             soldier.facingAngle = Math.atan2(nearOp.y - soldier.y, nearOp.x - soldier.x);
-            this.damageOutpost(nearOp, totalAtk, soldier);
+            this.damageOutpost(nearOp,isRangedUnit(this,soldier)?takeRangedShot(soldier,totalAtk).damage:totalAtk,soldier);
           }
         }
       }
@@ -5870,7 +5905,7 @@ export const IronSquadGame = {
 
         // 6. 通常矢（ARROW）/ ボルト（BOLT）/ ヒール光弾（HEAL）
         const tgt = proj.target;
-        if (!tgt || (tgt.hp <= 0 && (proj.type === 'ARROW' || proj.type === 'BOLT'))) {
+        if (!tgt || (tgt.hp <= 0 && ['ARROW','BOLT','STONE'].includes(proj.type))) {
           this.projectiles.splice(i, 1);
           continue;
         }
@@ -5881,9 +5916,9 @@ export const IronSquadGame = {
 
         if (pdist < 18) {
           this.projectiles.splice(i, 1);
-          if (proj.type === 'ARROW' || proj.type === 'BOLT') {
+          if (['ARROW','BOLT','STONE'].includes(proj.type)) {
             this.performAttack(proj.attacker, tgt, !!proj.isPlayer, proj.damage, false);
-            this.spawnSparks(tgt.x, tgt.y, proj.color || '#e2e8f0', proj.type === 'BOLT' ? 7 : 5);
+            if(proj.type!=='STONE')this.spawnSparks(tgt.x, tgt.y, proj.color || '#e2e8f0', proj.type === 'BOLT' ? 7 : 5);
             if ((proj.knockback || 0) > 0 && !tgt.isColossal) {
               const ka = Math.atan2(tgt.y - (proj.attacker?.y || tgt.y), tgt.x - (proj.attacker?.x || tgt.x));
               tgt.x += Math.cos(ka) * proj.knockback;
@@ -5926,7 +5961,7 @@ export const IronSquadGame = {
       const wpn = (this.equipped && this.equipped.weapon) || null;
       const wProf = this.combatProfileFor(this.player, wpn, true);
       const reach = isWarlord ? wProf.reachWarlord : wProf.reach;
-      const baseCd = isWarlord ? Math.min(0.42, wProf.baseCooldown * 0.8) : wProf.baseCooldown;
+      const baseCd = isWarlord ? Math.min(0.42/(wProf.stone?.75:1), wProf.baseCooldown * 0.8) : wProf.baseCooldown;
 
       if (dist <= reach) {
         this.player.atkCooldown = baseCd / (this.player.atkSpeed || 1);
@@ -5936,7 +5971,7 @@ export const IronSquadGame = {
         // 隊長は職制限なし。遠隔装備時は射撃、近接時は従来モーション。
         if (wProf.ranged) {
           this.spawnRangedProjectile(this.player, nearestMonster, this.player.atk, wProf, true);
-          if (wProf.style === 'cannon') sound.playBomb();
+          if (wProf.style === 'cannon'&&!wProf.stone) sound.playBomb();
           else sound.playSlash();
         } else if (isWarlord) {
           // 覇王ウォーロード: 全方位360度「覇王紅蓮絶刃」！周囲の敵全員を切り裂く！
@@ -5982,7 +6017,7 @@ export const IronSquadGame = {
         this.player.slashAngle = Math.atan2(nearestOp.y - this.player.y, nearestOp.x - this.player.x);
         this.player.slashAnim = 1;
         const opDmg = wProfOp.ranged ? Math.round(this.player.atk * 0.85) : this.player.atk;
-        this.damageOutpost(nearestOp, opDmg);
+        this.damageOutpost(nearestOp,wProfOp.ranged?takeRangedShot(this.player,opDmg).damage:opDmg);
         if (wProfOp.ranged) sound.playSlash();
       }
     }
@@ -6177,6 +6212,7 @@ export const IronSquadGame = {
         if (s.isDown) continue;
         const distS = Math.hypot(drop.x - s.x, drop.y - s.y);
         if (distS < 26) {
+          if(drop.isAmmo){this.dropsOnField.splice(i,1);distributeAmmo(this,drop.ammo);this.spawnDamageText(s.x,s.y-20,`弾薬 +${drop.ammo}`,'#d8cfb0');break;}
           const item = drop.item;
           this.dropsOnField.splice(i, 1);
           const slotKey = SLOT_INFO[item.type] ? SLOT_INFO[item.type].key : null;
@@ -6221,7 +6257,8 @@ export const IronSquadGame = {
         const item = drop.item;
         const isBossDrop = drop.isBoss;
         this.dropsOnField.splice(i, 1);
-        this.collectDrop(item, isBossDrop);
+        if(drop.isAmmo){distributeAmmo(this,drop.ammo);this.spawnDamageText(this.player.x,this.player.y-20,`弾薬 +${drop.ammo}`,'#d8cfb0');}
+        else this.collectDrop(item, isBossDrop);
       }
     }
 
@@ -6368,8 +6405,16 @@ export const IronSquadGame = {
   spawnRangedProjectile(attacker, target, damage, profile, isPlayer) {
     if (!attacker || !target) return;
     if (!this.projectiles) this.projectiles = [];
+    const shot=takeRangedShot(attacker,damage);damage=shot.damage;
     const style = profile?.style || 'bow';
-    const speed = profile?.projSpeed || 360;
+    const speed = (profile?.projSpeed || 360)*(shot.loaded||profile?.stone?1:.75);
+    if(!shot.loaded){
+      this.projectiles.push({x:attacker.x,y:attacker.y,target,attacker,isPlayer:!!isPlayer,type:'STONE',damage,speed,color:'#a8a29e',splash:0,knockback:0});return;
+    }
+    if(profile?.starOffset!=null){
+      const ang=Math.atan2(target.y-attacker.y,target.x-attacker.x)+profile.starOffset;
+      this.projectiles.push({x:attacker.x,y:attacker.y,vx:Math.cos(ang)*speed,vy:Math.sin(ang)*speed,target,attacker,isPlayer:!!isPlayer,type:'STAR_ARROW',damage,life:.9,color:'#34d399'});return;
+    }
     const color = profile?.color || '#e2e8f0';
     const splash = profile?.splash || 0;
     const knock = isPlayer && this.player?.isAdvanced
@@ -6515,6 +6560,7 @@ export const IronSquadGame = {
 
   damageTarget(target, rawDmg) {
     if (!target || target.dead || target.isDown || target.hp <= 0 || !(rawDmg > 0)) return;
+    if(target===this.player&&target.invulnerableTimer>0)return;
     recordCombat(target);
     // 剣聖（BLADEMASTER）のパッシブ: 残影完全回避 (25%の確率でダメージ0で回避)
     if (target && target.soldierClass === 'BLADEMASTER' && Math.random() < 0.25) {
@@ -6560,6 +6606,7 @@ export const IronSquadGame = {
       }
     }
 
+    if(preventLethalHit(this,target,dmg))return;
     target.hp -= dmg;
     this.spawnDamageText(target.x, target.y - 12, dmg, '#ff3344');
     sound.playBomb();
@@ -6703,6 +6750,11 @@ export const IronSquadGame = {
               <div><h4>隊長の回復サービス</h4><p>${MERCHANT_HEAL_COST}G · 利用後2ウェーブで再開</p><p class="merchant-heal-countdown">${healWaves?`再利用まで あと${healWaves}ウェーブ`:healStatus==='available'?'利用できます':healLabels[healStatus]}</p></div>
               <button type="button" class="transfer-tap-btn merchant-heal-button" ${healStatus==='available'?'':'disabled'}>${healLabels[healStatus]}</button>
             </section>
+            <section class="merchant-heal-service" aria-label="部隊ポーション">
+              <div><h4>部隊回復ポーション</h4><p>HP・弾薬を部隊全体で全回復 · 携帯1個</p><p>${this.squadPotion?'携帯中 1/1':`${SQUAD_POTION_COST}G · 本陣では無料補給`}</p></div>
+              <button type="button" class="transfer-tap-btn merchant-potion-button" ${this.squadPotion||gold<SQUAD_POTION_COST||m.dead||m.isDown||m.returningToBase?'disabled':''}>${this.squadPotion?'携帯中':`購入 · ${SQUAD_POTION_COST}G`}</button>
+            </section>
+            <div class="merchant-checkpoint"></div>
             ${rows}
           </div>
           <div class="transfer-popup-footer">
@@ -6713,6 +6765,8 @@ export const IronSquadGame = {
       popup.querySelector('.transfer-popup-close-btn')?.addEventListener('click', close);
       popup.querySelector('.btn-close-merchant')?.addEventListener('click', close);
       popup.onclick = (e) => { if (e.target === popup) close(); };
+      this.renderSupplyPanel(popup.querySelector('.merchant-checkpoint'));
+      popup.querySelector('.merchant-potion-button').addEventListener('click',()=>{this.replenishSquadPotion(m);render();});
       popup.querySelector('.merchant-heal-button').addEventListener('click',()=>{
         const result=useMerchantHealing(this,m);
         if(result.ok) {
@@ -7090,6 +7144,7 @@ export const IronSquadGame = {
       }
     }
 
+    if(Math.random()<.28)this.dropsOnField.push({x:monster.x+10,y:monster.y,isAmmo:true,ammo:2+Math.floor(Math.random()*5)});
     const isBoss = !!monster.isBoss;
     const isElite = !!monster.isElite;
 
@@ -7099,7 +7154,10 @@ export const IronSquadGame = {
     const lootDistance=monster.lootDistance ?? Math.hypot(monster.x-BASE_CAMP.x,monster.y-BASE_CAMP.y);
     const orbCount=Math.random()<orbDropChance(monster,lootDistance)?1:0;
     const rewards=distanceScaling(lootDistance, curPhase);
-    const expGain = Math.max(2,Math.round(expBase*rewards.exp));
+    const baseExpGain=Math.max(2,Math.round(expBase*rewards.exp));
+    const xpReward=strongEnemyReward(baseExpGain,monster,isPlayer?this.player:attacker);
+    const expGain=xpReward.exp;
+    if(xpReward.bonusExp>0)this.lastStrongKill={...xpReward,enemy:monster.name||'強敵',who:isPlayer?'隊長':attacker?.name||'兵士',phase:curPhase};
     const goldGain = Math.max(1,Math.round(goldBase*rewards.gold));
 
     // 軸1: 【敵を倒したらレベルアップ】＆【撃墜したキャラにお金が入る】
@@ -7267,6 +7325,7 @@ export const IronSquadGame = {
       }});
     }
 
+    if(xpReward.bonusExp>0)this.spawnDamageText(monster.x,monster.y-32,`格上討伐 +${expGain}EXP ×${xpReward.multiplier.toFixed(1)}`,'#d8d6a5');
     this.spawnSparks(monster.x, monster.y, monster.color, monster.isColossal ? 30 : 14);
   },
 
@@ -7708,6 +7767,7 @@ export const IronSquadGame = {
             <div>ATK <strong>${s.atk || 0}</strong> · DEF <strong style="color:#38bdf8;">${s.def || 0}</strong></div>
             <div>サイフ <strong style="color:#fde047;">${(s.gold || 0).toLocaleString()}G</strong></div>
             <div>経験 ${s.exp || 0} / 次${s.reqExp || 14}</div>
+            ${isRangedUnit(this,s)?`<div class="soldier-ammo-state">弾薬 ${ensureAmmo(s)}/30 ${s.ammo===0?'· 弾切れ／要補給（石投げ75%）':''}</div>`:''}
           </div>
           <div class="soldier-detail-block">
             <div class="soldier-detail-label">戦績・成長</div>
@@ -8590,9 +8650,14 @@ export const IronSquadGame = {
     // 兵士詳細が開いていれば再描画後に維持
     const keepDetailId = this.selectedSoldierDetailId;
     const overview=document.getElementById('view-strat-overview');
+    this.renderSupplyPanel();
     let maintenance=document.getElementById('maintenance-summary');
     if(!maintenance){maintenance=document.createElement('p');maintenance.id='maintenance-summary';maintenance.className='reinforcement-summary';overview.prepend(maintenance);}
     maintenance.textContent=this.maintenanceSummary();
+    let victory=document.getElementById('kill-xp-summary');
+    if(!victory){victory=document.createElement('p');victory.id='kill-xp-summary';victory.className='reinforcement-summary';maintenance.after(victory);}
+    const kill=this.lastStrongKill;victory.classList.toggle('hidden',!kill);
+    victory.textContent=kill?`直近の格上討伐：${kill.who} → ${kill.enemy} · +${kill.exp.toLocaleString()}EXP（通常${kill.baseExp} + 格上補正${kill.bonusExp} / ×${kill.multiplier.toFixed(1)}）`:'';
     let timeSummary=document.getElementById('day-night-summary');
     if(!timeSummary){timeSummary=document.createElement('p');timeSummary.id='day-night-summary';timeSummary.className='reinforcement-summary';maintenance.after(timeSummary);}
     const time=daylightAt(this.worldTime),zone=getFieldZone(this.player.x,this.player.y);
@@ -9422,6 +9487,7 @@ export const IronSquadGame = {
       else if(it.k===6)drawMerchantEscort(this.ctx,it.ref,now);
       else if(it.k===7)drawFieldCivilian(this.ctx,it.ref,now);
       else this.drawPlayer(this.ctx, it.ref, now);
+      if((it.k===3||it.k===4)&&!it.ref.isDown&&isRangedUnit(this,it.ref)&&ensureAmmo(it.ref)===0){this.ctx.save();this.ctx.font='bold 10px sans-serif';this.ctx.textAlign='center';this.ctx.fillStyle='#f5c278';this.ctx.fillText('要補給',it.ref.x,it.ref.y-45);this.ctx.restore();}
     }
 
     // 5. 矢（ARROW）＆ ヒール光弾（HEAL）
@@ -10331,6 +10397,7 @@ export const IronSquadGame = {
     ctx.save();
     ctx.translate(drop.x, drop.y);
 
+    if(drop.isAmmo){ctx.fillStyle='#857960';ctx.fillRect(-7,-6,14,12);ctx.strokeStyle='#d3c6a5';ctx.strokeRect(-7,-6,14,12);ctx.fillStyle='#e6ddc7';ctx.font='bold 9px sans-serif';ctx.textAlign='center';ctx.fillText(String(drop.ammo),0,3);ctx.restore();return;}
     if (drop.isOrb) {
       // ===== 💎 覚醒の英雄宝珠（宙に浮遊・神聖秘宝の輝き） =====
       const floatBob = Math.sin(now * 0.006) * 4;
@@ -10711,7 +10778,8 @@ export const IronSquadGame = {
     ctx.save();
     ctx.translate(proj.x, proj.y);
 
-    if (proj.type === 'ARROW') {
+    if(proj.type==='STONE'){ctx.fillStyle='#a8a29e';ctx.beginPath();ctx.ellipse(0,0,4,3,.3,0,Math.PI*2);ctx.fill();ctx.fillStyle='#d6d3d1';ctx.fillRect(-1,-2,2,1);}
+    else if (proj.type === 'ARROW') {
       const tgt = proj.target;
       const angle = tgt ? Math.atan2(tgt.y - proj.y, tgt.x - proj.x) : 0;
       ctx.rotate(angle);
