@@ -15,6 +15,11 @@
   font-variant-numeric: tabular-nums;
 }
 .iron-squad .hidden { display: none !important; }
+.iron-squad .merchant-heal-service { display:flex; flex-wrap:wrap; align-items:center; gap:10px; padding:12px; margin-bottom:14px; border:1px solid #738678; border-radius:9px; background:#23312d; }
+.iron-squad .merchant-heal-service > div { flex:1 1 150px; }
+.iron-squad .merchant-heal-service h4 { color:var(--ui-text); font-size:14px; margin:0 0 4px; }
+.iron-squad .merchant-heal-service p { color:var(--ui-muted); font-size:12px; margin:0; }
+.iron-squad .merchant-heal-button { min-height:44px; }
 /* Size the surface from its container; exclude its intrinsic backing-store
    dimensions from flex layout, including during Safari rotation/resizing. */
 .iron-squad #game-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }

@@ -245,10 +245,10 @@ function tileMayHaveRelief(x0, y0) {
 }
 
 export class WorldTerrain {
-  constructor() { this.tiles=new Map(); this.generated=0; }
+  constructor() { this.tiles=new Map(); this.generated=0; this.visibleCamps=[]; }
   clear() {
     for (const tile of this.tiles.values()) { tile.canvas.width=1; tile.canvas.height=1; }
-    this.tiles.clear();
+    this.tiles.clear(); this.visibleCamps=[];
   }
   get(tx,ty) {
     const key=`${tx},${ty}`;
@@ -270,7 +270,7 @@ export class WorldTerrain {
     const rnd=seeded(Math.imul(tx+31,73856093)^Math.imul(ty+31,19349663));
     const x0=tx*TILE,y0=ty*TILE;
     const canvas=document.createElement('canvas'); canvas.width=TILE; canvas.height=TILE;
-    const c=canvas.getContext('2d'), objects=[];
+    const c=canvas.getContext('2d'), objects=[], camps=[];
     if (!c) { canvas.width=1; canvas.height=1; throw new Error('地形のCanvasを確保できません'); }
     const may=tileMayHaveRelief(x0,y0);
     // Small cells follow world coordinates, so biome transitions align at tile edges.
@@ -325,6 +325,7 @@ export class WorldTerrain {
         objects.push({type:'rock',x:x0+fx-25,y:y0+fy,s:1.8,tone:2});
         objects.push({type:'crate',x:x0+fx+25,y:y0+fy+15,s:1});
       } else if(feature<.52) {
+        camps.push({id:`camp_${tx}_${ty}`,x:x0+fx,y:y0+fy});
         objects.push({type:'tent',x:x0+fx,y:y0+fy,s:1,color:'#75634b',ph:1});
         objects.push({type:'barrel',x:x0+fx+30,y:y0+fy+10,s:1});
       }
@@ -354,7 +355,7 @@ export class WorldTerrain {
       }
     }
     this.generated++;
-    return {canvas,context:c,objects,x:x0,y:y0};
+    return {canvas,context:c,objects,camps,x:x0,y:y0};
   }
   draw(c,camera,width,height,zoom) {
     const margin=150,hw=width/(2*zoom)+margin,hh=height/(2*zoom)+margin;
@@ -362,10 +363,11 @@ export class WorldTerrain {
     const maxX=Math.min(Math.ceil(WORLD_SIZE/TILE)-1,Math.floor((camera.x+hw)/TILE));
     const minY=Math.max(0,Math.floor((camera.y-hh)/TILE));
     const maxY=Math.min(Math.ceil(WORLD_SIZE/TILE)-1,Math.floor((camera.y+hh)/TILE));
-    const objects=[];
+    const objects=[], camps=[];
     for(let y=minY;y<=maxY;y++) for(let x=minX;x<=maxX;x++) {
-      const tile=this.get(x,y);c.drawImage(tile.canvas,tile.x,tile.y);objects.push(...tile.objects);
+      const tile=this.get(x,y);c.drawImage(tile.canvas,tile.x,tile.y);objects.push(...tile.objects);camps.push(...tile.camps);
     }
+    this.visibleCamps=camps;
     return objects;
   }
   drawOverview(c,size,game) {

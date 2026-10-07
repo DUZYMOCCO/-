@@ -1,5 +1,5 @@
-import { drawMeleeWeapon, drawMeleeRangeCue } from './weapon-motion.js?v=89';
-import { drawSoldierHead, isMedicAppearance, soldierAppearanceFamily } from './soldier-appearance.js?v=87';
+import { drawMeleeWeapon, drawMeleeRangeCue } from './weapon-motion.js?v=98';
+import { drawSoldierHead, isMedicAppearance, soldierAppearanceFamily } from './soldier-appearance.js?v=98';
 
 // Live field illustrations. Equipment colors are read every frame.
 // Hands and the weapon share one pose; only the striking edge gets a short trace.
@@ -44,8 +44,8 @@ const CLOTH = {
   COMMANDER: '#71858a', WARLORD: '#a29270'
 };
 
-export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod) {
-  const key = s.soldierClass || 'HEAVY', eq = s.equipped || {};
+export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod, displayEquipment=null) {
+  const key = s.soldierClass || 'HEAVY', eq = displayEquipment || s.equipped || {};
   const medic = isMedicAppearance(key);
   const family = cls.baseClassId || soldierAppearanceFamily(key);
   const advanced = !!cls.isAdvanced;
@@ -61,7 +61,7 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod) {
   const archer = family === 'ARCHER';
   const light = family === 'LIGHT';
   const wStyle = (eq.weapon || s.weapon)?.weaponStyle || 'sword';
-  const melee = !archer && !medic && ['sword','spear','hammer'].includes(wStyle);
+  const melee = !archer && !medic && ['sword','spear','hammer','axe'].includes(wStyle);
   const weaponColors = {cloth,gloves,blade,board};
   c.save(); c.translate(s.x, s.y);
   const plant = s.isDown ? 1 : (moving ? Math.abs(stride) / 2.8 : 0.22);
@@ -245,7 +245,7 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod) {
   }
   if (!s.portrait) {
     const headClearance=medic&&advanced?8:0;
-    const distinguished = s.isNamed || advanced || s.isPersonalGuard || s.talent === 'GENIUS';
+    const distinguished = !s.isMerchantEscort && (s.isNamed || advanced || s.isPersonalGuard || s.talent === 'GENIUS');
     const hurting = s.maxHp > 0 && s.hp < s.maxHp * 0.55;
     if (distinguished) {
       c.textAlign = 'center'; c.font = '9px sans-serif';

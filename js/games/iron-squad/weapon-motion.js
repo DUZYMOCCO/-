@@ -1,4 +1,4 @@
-import { MELEE_SWEET_SPOT, weaponCombatProfile } from './equipment-rules.js?v=89';
+import { MELEE_SWEET_SPOT, weaponCombatProfile } from './equipment-rules.js?v=98';
 
 const TAU = Math.PI * 2;
 const clamp = n => Math.max(0, Math.min(1, n));
@@ -28,7 +28,7 @@ const polygon = (c, points, fill) => {
 export function meleePose(style, anim=0, aim=0) {
   aim=Number.isFinite(aim)?aim:0;
   const active=anim>0, p=1-clamp(anim);
-  const spear=style==='spear', hammer=style==='hammer';
+  const spear=style==='spear', hammer=style==='hammer'||style==='axe';
   const rest=hammer?-1.02:spear?-.12:-.68;
   const offset=active ? keys(p, spear
     ? [[0,rest],[.18,-.18],[.43,0],[.64,.04],[1,rest]]
@@ -49,7 +49,7 @@ export function meleePose(style, anim=0, aim=0) {
 
 export function attackAnimationRate(item,attackSpeed=1) {
   const style=item?.weaponStyle||'sword';
-  const duration=style==='spear'?.30:style==='hammer'?.34:.24;
+  const duration=style==='spear'?.30:(style==='hammer'||style==='axe')?.34:.24;
   return Math.max(1, Math.min(2, Number(attackSpeed)||1))/duration;
 }
 
@@ -69,7 +69,7 @@ export function drawMeleeWeapon(c, actor, style, colors, simple=false) {
   const pose=meleePose(style,anim,aim), {grip,offGrip,side}=pose;
   const {cloth,gloves,blade,board}=colors;
   c.save(); c.lineCap='round'; c.lineJoin='round';
-  const twoHanded=style==='spear'||style==='hammer';
+  const twoHanded=style==='spear'||style==='hammer'||style==='axe';
   if(twoHanded||actor.soldierClass==='BLADEMASTER') arm(c,{x:-side*6,y:-21},offGrip,cloth,gloves,-side,simple);
   arm(c,{x:side*6,y:-21},grip,cloth,gloves,side,simple);
   if(!twoHanded&&actor.soldierClass!=='BLADEMASTER'&&!simple) {
@@ -92,12 +92,16 @@ export function drawMeleeWeapon(c, actor, style, colors, simple=false) {
   }
   if(simple) {
     segment(c,[[style==='spear'?-24:-5,0],[pose.length,0]],blade,1.8);
-    if(style==='hammer') segment(c,[[pose.length,-4],[pose.length,4]],blade,4);
+    if(style==='hammer'||style==='axe') segment(c,[[pose.length,-4],[pose.length,4]],blade,4);
   } else if(style==='spear') {
     segment(c,[[-30,0],[pose.length-10,0]],'#806747',2.4);
     segment(c,[[-29,-.4],[pose.length-12,-.4]],'#b6a582',.7);
     polygon(c,[[pose.length-12,-3],[pose.length,0],[pose.length-12,3],[pose.length-9,0]],blade);
     segment(c,[[pose.length-9,0],[pose.length-1,0]],'#e7e6da',.7);
+  } else if(style==='axe') {
+    segment(c,[[-7,0],[pose.length,0]],'#806747',3.1);
+    polygon(c,[[pose.length-6,-3],[pose.length+3,-7],[pose.length+7,-2],[pose.length+7,6],[pose.length+2,9],[pose.length-4,5]],blade);
+    segment(c,[[pose.length+6,-2],[pose.length+6,5],[pose.length+2,8]],'#e7e6da',1);
   } else if(style==='hammer') {
     segment(c,[[-7,0],[pose.length,0]],'#806747',3.3);
     polygon(c,[[pose.length-6,-6],[pose.length+4,-6],[pose.length+5,6],[pose.length-6,6]],blade);
