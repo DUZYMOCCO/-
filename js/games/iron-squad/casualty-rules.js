@@ -155,6 +155,8 @@ export function markSoldierDown(game, soldier, opts = {}) {
   delete soldier.carrierId;
   delete soldier.rescueHealerId;
   beginDownEvent(game, soldier);
+  const nearby = (game.squad || []).find(s => s !== soldier && !s.dead && !s.isDown && Math.hypot(s.x - soldier.x, s.y - soldier.y) < 320);
+  if (nearby) game.dialogue?.trigger(nearby, 'ALLY_DOWN');
   if(isMerchantCasualty(soldier)) {
     game._merchantWounded ||= [];
     if(!game._merchantWounded.includes(soldier))game._merchantWounded.push(soldier);
@@ -166,7 +168,10 @@ function revive(game,wounded,hp,options=null) {
   const carrier=carrierOf(game,wounded);
   wounded.isDown=false;wounded.hp=Math.max(1,Math.floor(hp));wounded.rescueProgress=0;wounded.downTimer=0;
   delete wounded.carrierId;delete wounded.rescueHealerId;delete wounded.rescueTargetId;
-  delete wounded.downedInAid;delete wounded.downId;
+  delete wounded.downedInAid;delete wounded.downId;delete wounded._medicCalled;
+  if(!isMerchantCasualty(wounded)) {
+    game.dialogue?.trigger(wounded, 'REVIVED', Date.now(), true);
+  }
   if(isMerchantCasualty(wounded)) {
     game._merchantWounded=(game._merchantWounded||[]).filter(unit=>unit!==wounded);
     if(!wounded.rescuedToBase) {
@@ -323,6 +328,10 @@ export function treatWounded(game,medic,wounded,dt) {
   if(!medicHasStamina(medic, MEDIC_TREAT_MIN)) return false;
   const drain = MEDIC_TREAT_DRAIN * dt;
   if(!spendMedicStamina(medic, Math.min(drain, ensureMedicStamina(medic)))) return false;
+  if (!wounded._medicCalled) {
+    wounded._medicCalled = true;
+    game.dialogue?.trigger(medic, 'MEDIC_APPROACH');
+  }
   wounded.rescueProgress=(wounded.rescueProgress||0)+dt*(medic.soldierClass==='HIGH_PRIEST'?2.8:1.1);
   wounded.rescueHealerId=medic.id;
   if(wounded.rescueProgress<1)return false;

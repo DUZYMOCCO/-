@@ -27,6 +27,7 @@ import { drawMeleeRangeCue, meleeDrawReach, attackAnimationRate } from './weapon
 import {emptyRescueBonuses,normalizeRescueBonuses,rescueBonusSummary} from './rescue-rewards.js?v=116';
 import {drawFieldCivilian} from './civilian-visuals.js?v=116';
 import { saveSlots } from './save-slots.js';
+import { soldierDialogue } from './soldier-dialogue.js?v=116';
 import {MAGIC_CLASSES,MAGIC_AFFINITIES,magicMethods,isMage,isMagicUser,ensureMana,initializeMagic,updateMagic,distributeMagicStones,castMedicBuff,updateMageAI,drawMagicBursts,spendMana} from './magic-rules.js?v=116';
 import {hazardMethods,updateHazards,drawHazards} from './hazard-fields.js?v=116';
 import {strongEnemyReward} from './combat-rewards.js?v=116';
@@ -1921,6 +1922,8 @@ export const IronSquadGame = {
   },
 
   setupGame() {
+    this.dialogue = soldierDialogue;
+    this.dialogue.reset();
     this.canvas = document.getElementById('game-canvas');
     this.ctx = this.canvas.getContext('2d');
     this.canvasContainer = document.getElementById('canvas-container');
@@ -2060,6 +2063,7 @@ export const IronSquadGame = {
 
   startFreshGame(inheritVeterans = true) {
     resetBattleLog(this);
+    this.dialogue?.reset();
     this._merchantShopClose?.();
     this.phase = 1;
     this.phaseTimer = PHASE_DURATION;
@@ -2899,6 +2903,7 @@ export const IronSquadGame = {
       this.startFreshGame();
       return;
     }
+    this.dialogue?.reset();
 
     this.phase = saved.phase || saved.wave || 1;
     this.wave = this.phase;
@@ -4901,6 +4906,10 @@ export const IronSquadGame = {
     this.projectiles=[];this.screenShake=0;
     if(this.joystick)this.resetMovementInput();
     for(const soldier of [...this.squad,...(this.reserves||[])]) {soldier.vx=0;soldier.vy=0;}
+    if (this.squad?.length) {
+      const nearSoldier = this.squad.find(s => !s.dead && !s.isDown && Math.hypot(s.x - (this.player?.x || 0), s.y - (this.player?.y || 0)) < 350) || this.squad[0];
+      if (nearSoldier) this.dialogue?.trigger(nearSoldier, 'REST_START', Date.now(), true);
+    }
 
     // 拠点の再活性化（定期復活）
     if (this.outposts) {
@@ -4973,8 +4982,40 @@ export const IronSquadGame = {
     this.saveGame();this.updateStatsUI();
   },
 
+  checkPeriodicDialogue(dt) {
+    if (!this.dialogue || this.restTimer > 0 || !this.squad?.length || !this.player) return;
+
+    // 1. 本陣帰還チェック（CAMP_RETURN）
+    const insideBase = !this.currentDungeon && Math.hypot(this.player.x - BASE_CAMP.x, this.player.y - BASE_CAMP.y) < BASE_CAMP.radius;
+    if (insideBase && !this._wasInsideBaseCamp) {
+      const nearSoldier = this.squad.find(s => !s.dead && !s.isDown && Math.hypot(s.x - this.player.x, s.y - this.player.y) < 300);
+      if (nearSoldier) this.dialogue.trigger(nearSoldier, 'CAMP_RETURN', Date.now(), true);
+    }
+    this._wasInsideBaseCamp = insideBase;
+
+    // 2. 周期的なパトロールつぶやき & ボス遭遇チェック（4.5秒ごと）
+    this._dialogueTimer = (this._dialogueTimer || 0) + dt;
+    if (this._dialogueTimer >= 4.5) {
+      this._dialogueTimer = 0;
+      const camX = this.camera ? this.camera.x : this.player.x;
+      const camY = this.camera ? this.camera.y : this.player.y;
+      const nearSoldiers = this.squad.filter(s => !s.dead && !s.isDown && Math.hypot(s.x - camX, s.y - camY) < 320);
+      if (nearSoldiers.length > 0) {
+        const lucky = nearSoldiers[Math.floor(Math.random() * nearSoldiers.length)];
+        const nearBoss = (this.monsters || []).find(m => (m.isBoss || m.isColossal) && m.hp > 0 && Math.hypot(m.x - lucky.x, m.y - lucky.y) < 280);
+        if (nearBoss) {
+          this.dialogue.trigger(lucky, 'BOSS_ENCOUNTER');
+        } else if (Math.random() < 0.40) {
+          this.dialogue.trigger(lucky, 'PATROL');
+        }
+      }
+    }
+  },
+
   update(dt) {
     if (!this.inBattle) return;
+    this.dialogue?.update(dt);
+    this.checkPeriodicDialogue(dt);
     updateMedicalPosts(this,dt);
     updateSupplies(this,dt);
     updateMagic(this,dt,supplyLocation);
@@ -6715,6 +6756,10 @@ export const IronSquadGame = {
       }
     }
 
+    if (target !== this.player && target.hp > 0 && !target.isDown && target.hp / target.maxHp <= 0.3) {
+      this.dialogue?.trigger(target, 'LOW_HP');
+    }
+
     if (target.hp <= 0) {
       if (target === this.player) {
         this.player.hp = 0;
@@ -7338,8 +7383,10 @@ export const IronSquadGame = {
         sound.playHighScore();
         this.spawnDamageText(attacker.x, attacker.y - 32, '👑 ボス討伐英雄！', '#ffd700');
         this.showToast(`👑 大金星！兵士【${attacker.name}】がボスにトドメ！(ボス討伐履歴+1, +${bossBonusGold}Gボーナス)`);
+        this.dialogue?.trigger(attacker, 'CRITICAL_KILL', Date.now(), true);
       } else {
         attacker.minionKills = (attacker.minionKills || 0) + 1;
+        if (Math.random() < 0.20) this.dialogue?.trigger(attacker, 'CRITICAL_KILL');
         const mK = attacker.minionKills;
         if (mK % 5 === 0) {
           this.spawnDamageText(attacker.x, attacker.y - 20, `⚔️ ATK+1!`, '#60a5fa');
@@ -8510,6 +8557,7 @@ export const IronSquadGame = {
     if(oldItem && !held.has(oldItem.id) && !this.inventory.some(i=>i.id===oldItem.id))this.inventory.push(oldItem);
     this.recalcPlayerStats();this.squad.forEach(s=>this.recalcSoldierStats(s));
     this.updateStatsUI();
+    this.dialogue?.trigger(soldier, 'GEAR_ACQUIRED', Date.now(), true);
 
     // 装備をもらった兵士が興奮して手持ちのお金で自発強化を検討！
     const upCost = this.getUpgradeCost(item);
@@ -9673,6 +9721,9 @@ export const IronSquadGame = {
       this.ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
       this.ctx.fill();
     }
+
+    // 8.2 兵士の一言フキダシ（操作を邪魔しない控えめな感情表現）
+    this.dialogue?.draw(this.ctx);
 
     // Fog of war (bit-grid fillRect; skip inside dungeons)
     // v1.25.11: camp seed + player-dark reseed; overlay gets player coords for fail-safe
