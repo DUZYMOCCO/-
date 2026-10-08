@@ -105,6 +105,8 @@ export function renderBattleLog(game, requestedCategory = null) {
 export function recordBattleLog(game, message) {
   if (!message) return;
   const text = String(message);
+  // 会心の一撃は頻発してログを埋め尽くすため記録しない
+  if (/会心の一撃|会心！|クリティカル|会心ヒット/.test(text) && !/ボーナス|武勲|ボス/.test(text)) return;
   const history = game.battleLogHistory ||= [];
   const category = categorizeLogMessage(text);
   game._battleLogSequence = (game._battleLogSequence || 0) + 1;

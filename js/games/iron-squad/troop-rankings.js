@@ -1,16 +1,21 @@
 /**
  * 兵士の武勲・ステータスランキングシステム
- * プレイヤーがニヤニヤしながら眺められる精鋭たちの功績・成長集計
- * 10位以内の兵士は誇り高き「ランカー」として認定・各所で専用バッジ表示！
+ * 各ステータス（総合・撃破・ボス・攻撃・防御・HP・回復・死線）を詳細にランキング化し、
+ * 上位3名（TOP 3: 🥇金 🥈銀 🥉銅）のみを誇り高き「ランカー」として認定・表彰！
  */
 
-export const TOP_RANK_LIMIT = 10;
+export const RANKER_CUTOFF = 3;   // 上位3名のみ真のランカーに認定！
+export const TOP_RANK_LIMIT = 10;  // ランキング一覧の閲覧上限（10位まで）
 
 export const RANKING_CATEGORIES = [
-  { id: 'kills',    label: '⚔️ 撃破王',   title: '最多討伐ランキング', desc: '敵軍を屠り続けた歴戦の討伐王（10位以内は部隊ランカー）', icon: '⚔️', color: '#f87171' },
-  { id: 'healing',  label: '💖 命の恩人', title: '救護・回復ランキング', desc: '仲間を死線から救い続けた守護神（10位以内は部隊ランカー）', icon: '💖', color: '#4ade80' },
-  { id: 'survivor', label: '💀 不屈の兵', title: '死線生還ランキング', desc: '幾度もの壊滅の危機を生き延びた猛者（10位以内は部隊ランカー）', icon: '💀', color: '#fca5a5' },
-  { id: 'power',    label: '⭐ 筆頭武官', title: '総合戦力ランキング', desc: '鍛え抜かれた能力と最高練度の精鋭（10位以内は部隊ランカー）', icon: '⭐', color: '#fbbf24' }
+  { id: 'overall',    label: '⭐ 総合戦力', shortName: '総合', desc: '鍛え抜かれた能力・練度の総合首位（上位3名がランカー）', icon: '⭐', color: '#fbbf24' },
+  { id: 'kills',      label: '⚔️ 撃墜数',   shortName: '撃破', desc: '敵軍を屠り続けた歴戦の討伐数（上位3名がランカー）', icon: '⚔️', color: '#f87171' },
+  { id: 'boss_kills', label: '👑 ボス撃破', shortName: 'ボス', desc: '巨魁・大物敵を単騎討ち取った武功（上位3名がランカー）', icon: '👑', color: '#38bdf8' },
+  { id: 'atk',        label: '🗡️ 攻撃力',   shortName: '攻撃', desc: '武器と鍛錬による最高破壊力（上位3名がランカー）', icon: '🗡️', color: '#fb923c' },
+  { id: 'def',        label: '🛡️ 防御力',   shortName: '防御', desc: '重装甲と堅牢なる防衛能力（上位3名がランカー）', icon: '🛡️', color: '#60a5fa' },
+  { id: 'max_hp',     label: '❤️ 最大HP',   shortName: '体力', desc: '死戦を耐え抜く強靭なる生命力（上位3名がランカー）', icon: '❤️', color: '#f43f5e' },
+  { id: 'healing',    label: '💖 救護・回復', shortName: '回復', desc: '仲間を死線から救い続けた守護神（上位3名がランカー）', icon: '💖', color: '#4ade80' },
+  { id: 'deathline',  label: '💀 死線生還', shortName: '死線', desc: '幾度もの壊滅から生還した不屈の記録（上位3名がランカー）', icon: '💀', color: '#c084fc' }
 ];
 
 export function collectAllSoldiers(game) {
@@ -40,12 +45,50 @@ export function computeRankings(soldiers, categoryId, limit = TOP_RANK_LIMIT) {
     let detailText = '';
 
     switch (categoryId) {
+      case 'overall': {
+        const lvl = s.level || 1;
+        const atk = s.atk || 0;
+        const hp = s.maxHp || 0;
+        const def = s.def || 0;
+        score = lvl * 30 + atk * 2 + Math.floor(hp / 10) + def;
+        metricText = `総合戦力 ${score}`;
+        detailText = `Lv.${lvl} · 攻${atk} · HP${hp} · 防${def}`;
+        break;
+      }
       case 'kills': {
         const minions = s.minionKills || 0;
         const bosses = s.bossKills || 0;
         score = minions + bosses * 5;
-        metricText = `討伐 ${minions + bosses}体`;
+        metricText = `総討伐 ${minions + bosses}体`;
         detailText = bosses > 0 ? `(雑魚 ${minions} / 👑ボス ${bosses})` : `(雑魚 ${minions}体)`;
+        break;
+      }
+      case 'boss_kills': {
+        const bosses = s.bossKills || 0;
+        score = bosses;
+        metricText = `👑 ボス撃破 ${bosses}体`;
+        detailText = bosses > 0 ? `大物討伐実績あり` : `ボス撃破なし`;
+        break;
+      }
+      case 'atk': {
+        const atk = s.atk || 0;
+        score = atk;
+        metricText = `⚔️ 攻撃力 ${atk}`;
+        detailText = `Lv.${s.level || 1} ${s.class || '兵士'}`;
+        break;
+      }
+      case 'def': {
+        const def = s.def || 0;
+        score = def;
+        metricText = `🛡️ 防御力 ${def}`;
+        detailText = `Lv.${s.level || 1} ${s.class || '兵士'}`;
+        break;
+      }
+      case 'max_hp': {
+        const hp = s.maxHp || 0;
+        score = hp;
+        metricText = `❤️ 最大HP ${hp.toLocaleString()}`;
+        detailText = `現HP: ${Math.floor(s.hp || 0)} / ${hp}`;
         break;
       }
       case 'healing': {
@@ -56,24 +99,14 @@ export function computeRankings(soldiers, categoryId, limit = TOP_RANK_LIMIT) {
         detailText = revExp > 0 ? `(蘇生功績 ${revExp} EXP)` : (healHp > 0 ? '通常・継続治療' : '未治療');
         break;
       }
-      case 'survivor': {
+      case 'deathline':
+      default: {
         const dl = s.survivedDeathlines || 0;
         const waves = s.survivedWaves || 0;
         const skills = s.deathlineSkills?.length || 0;
         score = dl * 20 + skills * 10 + waves;
         metricText = dl > 0 ? `死線生還 ${dl}回` : `生存 ${waves}期`;
         detailText = skills > 0 ? `[💀覚醒技×${skills}]` : (dl > 0 ? '死線覚醒歴あり' : `作戦${waves}期生還`);
-        break;
-      }
-      case 'power':
-      default: {
-        const lvl = s.level || 1;
-        const atk = s.atk || 0;
-        const hp = s.maxHp || 0;
-        const def = s.def || 0;
-        score = lvl * 30 + atk * 2 + Math.floor(hp / 10) + def;
-        metricText = `Lv.${lvl} (戦力 ${score})`;
-        detailText = `攻 ${atk} · HP ${hp} · 防 ${def}`;
         break;
       }
     }
@@ -89,11 +122,11 @@ export function computeRankings(soldiers, categoryId, limit = TOP_RANK_LIMIT) {
 
   // スコア降順、同点はレベル順
   evaluated.sort((a, b) => b.score - a.score || (b.soldier.level || 1) - (a.soldier.level || 1));
-  return evaluated.slice(0, limit); // 上位10名（ランカー）
+  return evaluated.slice(0, limit);
 }
 
 /**
- * 兵士が「10位以内のランカー」であるかどうか判定し、該当するランカー称号バッジを返す
+ * 兵士が「上位3名（TOP 3）のランカー」であるかどうか判定し、該当するランカー称号バッジを返す
  */
 export function getSoldierRankerBadges(game, soldierId) {
   if (!game || !soldierId) return [];
@@ -102,22 +135,119 @@ export function getSoldierRankerBadges(game, soldierId) {
 
   const badges = [];
   for (const cat of RANKING_CATEGORIES) {
-    const list = computeRankings(soldiers, cat.id, TOP_RANK_LIMIT);
+    const list = computeRankings(soldiers, cat.id, RANKER_CUTOFF); // TOP 3 のみ判定！
     const idx = list.findIndex(e => e.soldier.id === soldierId);
     if (idx !== -1 && list[idx].score > 0) {
       const rank = idx + 1;
-      const rankPrefix = rank === 1 ? '🥇1位' : rank === 2 ? '🥈2位' : rank === 3 ? '🥉3位' : `${rank}位`;
+      const rankIcon = rank === 1 ? '🥇' : rank === 2 ? '🥈' : '🥉';
       badges.push({
         catId: cat.id,
         catLabel: cat.label,
         rank,
-        title: `${cat.icon}ランカー (${cat.label.replace(/^.*?\s/, '')} ${rankPrefix})`,
-        shortLabel: `${cat.icon}${rankPrefix}`,
-        color: cat.color
+        title: `${cat.icon}ランカー (${cat.label} ${rank}位)`,
+        shortLabel: `${rankIcon}${cat.shortName}${rank}位`,
+        color: rank === 1 ? '#fde047' : rank === 2 ? '#e2e8f0' : '#f97316'
       });
     }
   }
-  return badges;
+  // 複数部門でランカーの場合、見やすさのため最大2件まで表示
+  return badges.slice(0, 2);
+}
+
+/**
+ * ランカー特別給与テーブル（上位3名への特別手当）
+ * 1位: 50G, 2位: 30G, 3位: 20G
+ */
+export const RANKER_BONUS_SALARY = {
+  1: 50,
+  2: 30,
+  3: 20
+};
+
+/**
+ * 兵士が実戦武勲を認可される資格があるか判定（未出撃・未行動の新兵は対象外）
+ */
+export function isEligibleForRankerBonus(soldier) {
+  if (!soldier || soldier.dead) return false;
+  const waves = soldier.survivedWaves || 0;
+  const kills = (soldier.minionKills || 0) + (soldier.bossKills || 0);
+  const heals = soldier.healingHp || 0;
+  const dl = soldier.survivedDeathlines || 0;
+  const participatedNow = (soldier.phaseActivity?.combatActions || 0) > 0 || (soldier.phaseActivity?.healingDone || 0) > 0;
+  return waves > 0 || kills > 0 || heals > 0 || dl > 0 || participatedNow;
+}
+
+/**
+ * 指定兵士のランカー特別給与（全部門のTOP3ボーナス合計）と内訳を算出
+ */
+export function calcSoldierRankerBonus(game, soldierId) {
+  if (!game || !soldierId) return { totalBonus: 0, breakdowns: [] };
+  const soldiers = collectAllSoldiers(game);
+  const targetEntry = soldiers.find(e => e.soldier.id === soldierId);
+  if (!targetEntry || !isEligibleForRankerBonus(targetEntry.soldier)) {
+    return { totalBonus: 0, breakdowns: [] };
+  }
+
+  let totalBonus = 0;
+  const breakdowns = [];
+
+  for (const cat of RANKING_CATEGORIES) {
+    const list = computeRankings(soldiers, cat.id, RANKER_CUTOFF);
+    const idx = list.findIndex(e => e.soldier.id === soldierId);
+    if (idx !== -1 && list[idx].score > 0) {
+      const rank = idx + 1;
+      const bonus = RANKER_BONUS_SALARY[rank] || 0;
+      if (bonus > 0) {
+        totalBonus += bonus;
+        breakdowns.push({
+          catId: cat.id,
+          catLabel: cat.label,
+          shortName: cat.shortName,
+          rank,
+          bonus
+        });
+      }
+    }
+  }
+
+  return { totalBonus, breakdowns };
+}
+
+/**
+ * 部隊全体の全ランカー特別給与を一括計算（作戦期完了時の配布用）
+ * @returns {Map<string, { totalBonus: number, breakdowns: Array, soldier: object }>}
+ */
+export function calcAllRankerBonuses(game) {
+  const result = new Map();
+  if (!game) return result;
+  const soldiers = collectAllSoldiers(game);
+  if (!soldiers.length) return result;
+
+  for (const cat of RANKING_CATEGORIES) {
+    const list = computeRankings(soldiers, cat.id, RANKER_CUTOFF);
+    list.forEach((entry, idx) => {
+      const s = entry.soldier;
+      if (!isEligibleForRankerBonus(s) || entry.score <= 0) return;
+      const rank = idx + 1;
+      const bonus = RANKER_BONUS_SALARY[rank] || 0;
+      if (bonus <= 0) return;
+
+      if (!result.has(s.id)) {
+        result.set(s.id, { totalBonus: 0, breakdowns: [], soldier: s });
+      }
+      const data = result.get(s.id);
+      data.totalBonus += bonus;
+      data.breakdowns.push({
+        catId: cat.id,
+        catLabel: cat.label,
+        shortName: cat.shortName,
+        rank,
+        bonus
+      });
+    });
+  }
+
+  return result;
 }
 
 export function renderTroopRankings(game) {
@@ -126,7 +256,7 @@ export function renderTroopRankings(game) {
   if (!section) return;
 
   if (!game._troopRankingCategory) {
-    game._troopRankingCategory = 'kills'; // デフォルトは撃破王！
+    game._troopRankingCategory = 'overall'; // デフォルトは総合戦力！
   }
   const currentCat = game._troopRankingCategory;
   const catDef = RANKING_CATEGORIES.find(c => c.id === currentCat) || RANKING_CATEGORIES[0];
@@ -137,7 +267,7 @@ export function renderTroopRankings(game) {
   section.innerHTML = `
     <div class="ranking-header">
       <div class="ranking-title-group">
-        <h4>🎖️ 部隊の武勲・功績ランキング <span class="ranker-indicator">TOP 10 ランカー殿堂</span></h4>
+        <h4>🎖️ 部隊ステータスランキング <span class="ranker-indicator">TOP 3 特別給与支給</span></h4>
         <span class="ranking-desc">${catDef.desc}</span>
       </div>
       <div class="ranking-tabs" role="tablist">
@@ -156,16 +286,19 @@ export function renderTroopRankings(game) {
           ${topList.map((entry, idx) => {
             const s = entry.soldier;
             const rank = idx + 1;
-            const medal = rank === 1 ? '🥇 1位' : rank === 2 ? '🥈 2位' : rank === 3 ? '🥉 3位' : `🎖️ ${rank}位`;
+            const isRanker = rank <= RANKER_CUTOFF;
+            const medal = rank === 1 ? '🥇 1位' : rank === 2 ? '🥈 2位' : rank === 3 ? '🥉 3位' : `${rank}位`;
+            const bonusAmount = RANKER_BONUS_SALARY[rank] || 0;
             const isNamed = !!s.title;
             const name = isNamed ? `${s.title}${s.name}` : s.name;
             const cls = s.class || s.classId || '兵士';
             const talentTag = s.talent ? `[${s.talent}]` : '';
             return `
-              <li class="ranking-item rank-${rank} ranker-slot">
+              <li class="ranking-item rank-${rank}${isRanker ? ' is-ranker' : ''}">
                 <div class="rank-pos">
                   <span class="rank-pos-badge rank-pos-${rank}">${medal}</span>
-                  ${rank <= 3 ? '<span class="rank-crown">👑</span>' : '<span class="ranker-tag">RANKER</span>'}
+                  ${rank === 1 ? '<span class="rank-crown">👑 首席</span>' : rank <= 3 ? '<span class="ranker-tag">RANKER</span>' : ''}
+                  ${bonusAmount > 0 ? `<span class="rank-bonus-chip" title="作戦完了時に特別給与支給">+${bonusAmount}G給与</span>` : ''}
                 </div>
                 <div class="rank-soldier-info">
                   <div class="rank-soldier-main">
