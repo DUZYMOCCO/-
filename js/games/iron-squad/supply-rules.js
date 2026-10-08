@@ -1,6 +1,6 @@
-import {isMagicUser,ensureMana} from './magic-rules.js?v=120';
-import {WORLD_SIZE} from './world.js?v=120';
-import {inCurrentInstance} from './instance-rules.js?v=120';
+import {isMagicUser,ensureMana} from './magic-rules.js?v=121';
+import {WORLD_SIZE} from './world.js?v=121';
+import {inCurrentInstance} from './instance-rules.js?v=121';
 import {saveSlots} from './save-slots.js';
 
 export const AMMO_CAPACITY=30;

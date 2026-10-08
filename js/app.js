@@ -1,8 +1,8 @@
 /**
  * スマホゲーム工房 メインアプリケーション
  */
-import { games, getGameById } from './games-registry.js?v=120';
-import { sound } from './audio.js?v=120';
+import { games, getGameById } from './games-registry.js?v=121';
+import { sound } from './audio.js?v=121';
 import { storage } from './storage.js';
 
 class GameStudioApp {

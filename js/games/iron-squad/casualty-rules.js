@@ -1,8 +1,8 @@
-import {ensureMana,regenerateMana,spendMana} from './magic-rules.js?v=120';
+import {ensureMana,regenerateMana,spendMana} from './magic-rules.js?v=121';
 import {recordHealing} from './phase-rules.js';
 import {WORLD_SIZE} from './world.js';
-import {inCurrentInstance} from './instance-rules.js?v=120';
-import {grantPermanentRescueReward} from './rescue-rewards.js?v=120';
+import {inCurrentInstance} from './instance-rules.js?v=121';
+import {grantPermanentRescueReward} from './rescue-rewards.js?v=121';
 import {grantPersonalExp,revivalExperience} from './experience-rules.js';
 
 export const RESCUE_TIMEOUT = 45; // 救助猶予時間（秒）広域マップ対応で45秒に延長

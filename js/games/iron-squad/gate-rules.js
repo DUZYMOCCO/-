@@ -1,8 +1,8 @@
-import {drawStoneFortification} from './fortification-visuals.js?v=120';
-import {WORLD_SIZE} from './world.js?v=120';
-import {inCurrentInstance} from './instance-rules.js?v=120';
-import {makeEscort,recalcEscortStats,updateEscortPatrol,npcSave,applyNpcSave} from './merchant-rules.js?v=120';
-import {rebuildMerchantCasualties,carrierOf,sanitizeCarriers} from './casualty-rules.js?v=120';
+import {drawStoneFortification} from './fortification-visuals.js?v=121';
+import {WORLD_SIZE} from './world.js?v=121';
+import {inCurrentInstance} from './instance-rules.js?v=121';
+import {makeEscort,recalcEscortStats,updateEscortPatrol,npcSave,applyNpcSave} from './merchant-rules.js?v=121';
+import {rebuildMerchantCasualties,carrierOf,sanitizeCarriers} from './casualty-rules.js?v=121';
 const center=WORLD_SIZE/2;
 export const GATE_HALF_WIDTH=80,HQ_WALL_HALF_SIZE=300;
 export function wallGeometry(game) {

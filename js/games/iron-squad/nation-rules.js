@@ -1,8 +1,8 @@
-import {normalizeArmament,ARMAMENT_POLICIES,advanceResearch,researchCost,standardEquipmentCost,RESERVE_ARMAMENT_COUNT,ARMAMENT_LIMITS} from './armament-rules.js?v=120';
-import {tierDescription,MAX_EQUIPMENT_TIER} from './equipment-tiers.js?v=120';
-import {WORLD_SIZE} from './world.js?v=120';
-import {saleValue,isGodRollProtected} from './equipment-rules.js?v=120';
-import {calcTreasuryGrossIncome,calcCommanderStipend,EQUIPMENT_SLOTS} from './economy-rules.js?v=120';
+import {normalizeArmament,ARMAMENT_POLICIES,advanceResearch,researchCost,standardEquipmentCost,RESERVE_ARMAMENT_COUNT,ARMAMENT_LIMITS} from './armament-rules.js?v=121';
+import {tierDescription,MAX_EQUIPMENT_TIER} from './equipment-tiers.js?v=121';
+import {WORLD_SIZE} from './world.js?v=121';
+import {saleValue,isGodRollProtected} from './equipment-rules.js?v=121';
+import {calcTreasuryGrossIncome,calcCommanderStipend,EQUIPMENT_SLOTS} from './economy-rules.js?v=121';
 
 export const DEVELOPMENT_STAGES=[
   {name:'野営本陣',cost:0}, {name:'城塞と宿場',cost:6000},
