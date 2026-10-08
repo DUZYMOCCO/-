@@ -1,4 +1,4 @@
-import {WORLD_SIZE} from './world.js?v=119';
+import {WORLD_SIZE} from './world.js?v=120';
 
 export const MEDICAL_CASTLE_EXCLUSION=32000;
 export const MEDICAL_DISCOVERY_RADIUS=650;
