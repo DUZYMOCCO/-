@@ -8,7 +8,7 @@ import {latestEquipmentTier,recordMerchantEquipment,ensureMerchantCatalog,refres
 import {initializeMedicalPosts,updateMedicalPosts,serializeMedicalPosts,nearestKnownMedicalPost,drawMedicalPost,drawMedicalMap,drawMedicalMarker,drawTownMedicalReception,drawRescueDirection} from './medical-posts.js?v=119';
 import {invasionMethods,initializeInvasions,serializeInvasions,shouldTriggerRandomRaid,makeEnemyRoom,drawInvasionRoute} from './invasion-rules.js?v=119';
 import {gateMethods,serializeGatePosts,replenishTownGateGuards,initializeGateGuards,ensureTownGuards,serializeGateGuards,updateGateGuards,gateGuardVisible,applyFortifications,drawFortification,exitGateTown,townExitReached,wallBlocksAttack} from './gate-rules.js?v=119';
-import {nationMethods,normalizeNation,nationalIncome,headquartersDamageMult,drawNationalDevelopment} from './nation-rules.js?v=119';
+import {nationMethods,normalizeNation,nationalIncome,headquartersDamageMult,drawNationalDevelopment,DEVELOPMENT_STAGES} from './nation-rules.js?v=119';
 /**
  * ゲーム3: IRON SQUAD (アイアン・スクワッド: 雑兵立身出世録)
  * ローグライク・アクションRPG
@@ -1282,8 +1282,11 @@ export const IronSquadGame = {
               <p style="font-size: 12px; color: #94a3b8; margin-bottom: 10px;">
                 討伐戦果: ⚔️ 雑魚 <strong id="final-minions" style="color:#fff;">0</strong>体 / 👑 ボス <strong id="final-bosses" style="color:#ffd700;">0</strong>体
               </p>
-              <p id="overlay-veteran-note" style="font-size: 11px; color: #38bdf8; margin-bottom: 14px;">※生存兵士は次戦に先輩として引き継がれます</p>
-              <button id="btn-restart" class="action-btn">新兵として再入隊</button>
+              <p id="overlay-veteran-note" style="font-size: 11px; color: #38bdf8; margin-bottom: 6px;">※生存兵士は次戦に先輩として引き継がれます</p>
+              <p id="overlay-nation-note" style="font-size: 11px; color: #d6c59e; margin-bottom: 14px;">国家の発展は、再入隊してもこの遠征に残ります。</p>
+              <button id="btn-continue-save" class="action-btn">セーブからやり直す</button>
+              <button id="btn-continue-checkpoint" class="action-btn secondary hidden">地点セーブからやり直す</button>
+              <button id="btn-restart" class="action-btn secondary">新兵として再入隊</button>
               <button id="btn-gameover-save-select" class="action-btn secondary">ニューゲーム・セーブ選択</button>
               <button id="btn-overlay-back" class="action-btn secondary">工房へ戻る</button>
             </div>
@@ -1376,6 +1379,14 @@ export const IronSquadGame = {
       });
     }
 
+    document.getElementById('btn-continue-save').addEventListener('click', () => {
+      sound.playTap();
+      this.continueFallenSave('autosave');
+    });
+    document.getElementById('btn-continue-checkpoint').addEventListener('click', () => {
+      sound.playTap();
+      this.continueFallenSave('checkpoint');
+    });
     document.getElementById('btn-restart').addEventListener('click', () => {
       sound.playTap();
       document.getElementById('game-overlay').classList.add('hidden');
@@ -2154,6 +2165,7 @@ export const IronSquadGame = {
 
     // 先輩兵士引き継ぎチェック
     const inherited = inheritVeterans ? saveSlots.get(this.activeSlotId) : null;
+    if (inheritVeterans) this.nation = normalizeNation(inherited?.nation || inherited?.data?.nation);
     this.merchantEquipmentTier=inheritVeterans?(inherited?.data?.merchantEquipmentTier||1):1;
     this.rescueBonuses=normalizeRescueBonuses(inheritVeterans?(inherited?.data?.rescueBonuses||this.rescueBonuses):null);
     this.rescueRewardIds=inheritVeterans?[...(inherited?.data?.rescueRewardIds||this.rescueRewardIds||[])]:[];
@@ -2218,6 +2230,10 @@ export const IronSquadGame = {
       this.showToast('🎖️ 【歴戦の先輩兵士が合流！】前線部隊の古参兵たちが新兵のあなたを援護します！');
     } else {
       this.showToast('⚔️ 48名の本隊として出動！本隊と連携し、直属小隊を率いて戦え！');
+    }
+    if (inheritVeterans && this.nation.investment > 0) {
+      const stage = DEVELOPMENT_STAGES[this.nation.level] || DEVELOPMENT_STAGES[0];
+      this.showToast(`🏯 国家の発展を引き継ぎました：${stage.name}（発展Lv${this.nation.level}）`);
     }
   },
 
@@ -11331,14 +11347,43 @@ export const IronSquadGame = {
     mCtx.fillText(dungeon ? '屋内' : (distToBase < 200 ? '本陣' : `${Math.round(distToBase)}m`), 2.5, mh - 1.5);
   },
 
+  continueFallenSave(kind) {
+    const slot = saveSlots.get(this.activeSlotId);
+    const snapshot = kind === 'checkpoint' ? slot?.checkpoint?.data : slot?.data;
+    if (!(snapshot?.player?.hp > 0)) {
+      this.showToast(kind === 'checkpoint' ? '地点セーブがありません' : 'やり直せるセーブがありません');
+      return false;
+    }
+    const overlay = document.getElementById('game-overlay');
+    overlay?.classList.add('hidden');
+    this.setDialogState(false);
+    this.resetMovementInput();
+    try {
+      this.resumeSavedGame(JSON.parse(JSON.stringify(snapshot)));
+      saveSlots.update(this.activeSlotId, {state:'active', veterans:[], reserveSurvivors:[]});
+      this.inBattle = true;
+      if (kind === 'checkpoint') this.showToast(`${slot.checkpoint.place}の地点セーブからやり直しました`);
+      return true;
+    } catch (error) {
+      console.error('Save resume failed:', error);
+      this.inBattle = false;
+      this.stopGameLoop();
+      overlay?.classList.remove('hidden');
+      this.setDialogState(true);
+      this.showToast('セーブを読み込めませんでした');
+      return false;
+    }
+  },
+
   gameOver() {
     this.stopGameLoop();
     sound.playGameOver();
     this.inBattle = false;
 
-    // 先輩兵士として引き継ぐ（生存かつダウンしていない兵士）
+    // 先輩兵士として引き継ぐ（生存かつダウンしていない兵士）。国家の発展は同じ遠征の再入隊へ残す。
     const aliveVeterans = this.squad ? this.squad.filter(s => !s.dead && !s.isDown) : [];
-    saveSlots.update(this.activeSlotId, {state:'fallen', veterans:aliveVeterans.map(persistentUnit), reserveSurvivors:(this.reserves || []).map(persistentUnit)});
+    const nation = normalizeNation(this.nation);
+    saveSlots.update(this.activeSlotId, {state:'fallen', nation, veterans:aliveVeterans.map(persistentUnit), reserveSurvivors:(this.reserves || []).map(persistentUnit)});
 
     const overlay = document.getElementById('game-overlay');
     document.getElementById('final-wave').textContent = this.wave;
@@ -11357,6 +11402,25 @@ export const IronSquadGame = {
         vetNote.style.color = '#ff5555';
         vetNote.textContent = '※生存者なし…過酷な戦場にて部隊は全滅しました';
       }
+    }
+    const slot = saveSlots.get(this.activeSlotId);
+    const saveBtn = document.getElementById('btn-continue-save');
+    const pointBtn = document.getElementById('btn-continue-checkpoint');
+    const livingSave = slot?.data?.player?.hp > 0;
+    if (saveBtn) {
+      saveBtn.classList.toggle('hidden', !livingSave);
+      const phase = slot?.data?.phase || slot?.data?.wave || 1;
+      saveBtn.textContent = livingSave ? `セーブからやり直す（第${phase}期）` : 'セーブからやり直す';
+    }
+    const checkpoint = slot?.checkpoint?.data?.player?.hp > 0 ? slot.checkpoint : null;
+    if (pointBtn) {
+      pointBtn.classList.toggle('hidden', !checkpoint);
+      if (checkpoint) pointBtn.textContent = `地点セーブからやり直す（${checkpoint.place}）`;
+    }
+    const nationNote = document.getElementById('overlay-nation-note');
+    if (nationNote) {
+      const stage = DEVELOPMENT_STAGES[nation.level] || DEVELOPMENT_STAGES[0];
+      nationNote.textContent = `再入隊しても国家の発展は残ります：${stage.name}（発展Lv${nation.level}）`;
     }
     this.closeStrategyModal(false);
     this.setDialogState(true);

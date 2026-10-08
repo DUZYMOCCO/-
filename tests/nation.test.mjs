@@ -49,4 +49,30 @@ game.renderStrategyUI();game._selectStratTab('nation');assert.ok(document.getEle
 // Render the real architecture into pixels at both early and late development levels.
 const {createCanvas}=createRequire(resolve('C:/Users/Yoshiyuki/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules','entry.cjs'))('@napi-rs/canvas');const canvas=createCanvas(640,640),c=canvas.getContext('2d');
 game.nation=normalizeNation({investment:180000});drawNationalDevelopment(c,game,320,320);assert.ok(c.getImageData(0,0,640,640).data.some((n,i)=>i%4===3&&n>0));drawNationalDevelopment(c,game,320,320,true);
-console.log('PASS: 12 real waves with payroll/reserves and reconciled ledgers, retained donations during rest, equipment priority/markup/protection/buyout/deposits, development/HQ damage, live nation UI, town smith/guild/casino cooldown, save migration and native architecture Canvas');dom.window.close();
+// Death keeps this expedition's nation and offers the last living save.
+game.nation=normalizeNation({investment:90000,armament:{...game.nation.armament,policy:'balanced',techTier:4}});
+game.gold=777;game.treasury=42000;game.player.hp=game.player.maxHp||130;game.saveGame();
+const livingGold=saveSlots.get(game.activeSlotId).data.gold;
+game.gold=1;game.treasury=99999;game.nation=normalizeNation({investment:180000,armament:{...game.nation.armament,policy:'military',techTier:6}});
+game.sharedEquipBox=[{id:'death-box'}];game.player.hp=0;game.gameOver();
+const fallen=saveSlots.get(game.activeSlotId);
+assert.equal(fallen.state,'fallen');assert.equal(fallen.nation.level,5);assert.equal(fallen.nation.armament.policy,'military');
+assert.equal(fallen.data.gold,livingGold);assert.equal(fallen.data.player.hp>0,true);
+assert.equal(document.getElementById('game-overlay').classList.contains('hidden'),false);
+assert.match(document.getElementById('btn-continue-save').textContent,/セーブからやり直す/);
+assert.match(document.getElementById('overlay-nation-note').textContent,/王都/);
+document.getElementById('btn-continue-save').click();
+assert.equal(game.gold,777);assert.equal(game.nation.level,4);assert.equal(saveSlots.get(game.activeSlotId).state,'active');assert.ok(game.player.hp>0);
+const resumed=structuredClone(saveSlots.get(game.activeSlotId).data);resumed.gold=321;resumed.player.hp=80;
+saveSlots.update(game.activeSlotId,{checkpoint:{place:'本陣',savedAt:Date.now(),data:resumed}});
+game.player.hp=0;game.gameOver();
+const point=document.getElementById('btn-continue-checkpoint');
+assert.equal(point.classList.contains('hidden'),false);assert.match(point.textContent,/本陣/);
+point.click();assert.equal(game.gold,321);assert.equal(game.player.hp>0,true);
+game.nation=normalizeNation({investment:180000,armament:{policy:'military',techTier:6}});game.treasury=99999;game.player.hp=0;game.gameOver();
+document.getElementById('btn-restart').click();
+assert.equal(game.phase,1);assert.equal(game.gold,50);assert.equal(game.treasury,6000);assert.deepEqual(game.sharedEquipBox,[]);
+assert.equal(game.nation.level,5);assert.equal(game.nation.investment,180000);assert.equal(game.nation.armament.policy,'military');assert.equal(game.nation.armament.techTier,6);
+const separate=saveSlots.create('別遠征');game.activeSlotId=separate.id;game.startFreshGame(false);
+assert.equal(game.nation.level,0);assert.equal(game.nation.investment,0);
+console.log('PASS: 12 real waves with payroll/reserves and reconciled ledgers, retained donations during rest, equipment priority/markup/protection/buyout/deposits, development/HQ damage, live nation UI, town smith/guild/casino cooldown, save migration and native architecture Canvas; death keeps nation development and can resume the living save or checkpoint');dom.window.close();

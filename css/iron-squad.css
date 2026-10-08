@@ -104,6 +104,13 @@
   touch-action: pan-y;
 }
 .iron-squad #game-overlay { z-index: 110; }
+.iron-squad #game-overlay .overlay-content {
+  max-height: 100%; overflow-y: auto; padding: 18px 16px;
+}
+.iron-squad #game-overlay .action-btn {
+  margin-bottom: 8px; white-space: normal; line-height: 1.35;
+}
+.iron-squad #game-overlay .action-btn:last-child { margin-bottom: 0; }
 .dialog-open .virtual-gamepad, .dialog-open .quest-banner, .dialog-open .phase-banner,
 .dialog-open .drop-banner, .dialog-open .zoom-toggle-btn { visibility: hidden; pointer-events: none; }
 .iron-squad .strategy-panel {
