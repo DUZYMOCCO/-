@@ -1486,6 +1486,15 @@ export const IronSquadGame = {
     const panel = modal.firstElementChild;
     panel.classList.add('strategy-panel');
     const heading = panel.firstElementChild; heading.classList.add('dialog-heading');
+    let ticker = document.getElementById('strat-log-ticker');
+    if (!ticker) {
+      ticker = document.createElement('div');
+      ticker.id = 'strat-log-ticker';
+      ticker.className = 'strat-log-ticker';
+      ticker.setAttribute('aria-live', 'polite');
+      ticker.innerHTML = '<span class="strat-ticker-tag">📜 戦況速報</span><span class="strat-ticker-msg">前線の戦況を記録中</span>';
+      panel.prepend(ticker);
+    }
     const close = document.createElement('button');
     close.id='btn-dialog-close'; close.className='dialog-close'; close.textContent='閉じる ×';
     close.addEventListener('click',()=>this.closeStrategyModal()); heading.append(close);
@@ -1615,6 +1624,7 @@ export const IronSquadGame = {
   },
 
   closeStrategyModal(resume = true) {
+    clearInterval(this._stratTickerInterval);
     this.closeSoldierDetail();
     const transfer = document.getElementById('equipment-transfer-popup');
     if (transfer) { transfer.classList.add('hidden'); setSubDialog(this, transfer, false); }
@@ -1623,6 +1633,31 @@ export const IronSquadGame = {
     this.resetMovementInput();
     if(resume) this.inBattle = true;
     document.getElementById('btn-strategy')?.focus();
+  },
+
+  startStratLogTicker() {
+    clearInterval(this._stratTickerInterval);
+    const history = this.battleLogHistory || [];
+    if (history.length <= 1 || typeof document?.querySelector !== 'function') return;
+    let idx = history.length - 1;
+    this._stratTickerInterval = setInterval(() => {
+      const modal = document.getElementById('strategy-modal');
+      if (!modal || modal.classList.contains('hidden')) {
+        clearInterval(this._stratTickerInterval);
+        return;
+      }
+      const tickerMsg = document.querySelector('#strat-log-ticker .strat-ticker-msg');
+      if (!tickerMsg) return;
+      idx--;
+      if (idx < Math.max(0, history.length - 6)) idx = history.length - 1;
+      tickerMsg.style.opacity = '0';
+      setTimeout(() => {
+        if (tickerMsg && history[idx]) {
+          tickerMsg.textContent = history[idx].text;
+          tickerMsg.style.opacity = '1';
+        }
+      }, 200);
+    }, 3800);
   },
 
   showSaveMenu() {
@@ -8864,6 +8899,18 @@ export const IronSquadGame = {
   renderStrategyUI() {
     // UI rebuilds also retire native Canvas buffers; DOM removal alone waits for GC.
     for (const canvas of this.container?.querySelectorAll('.soldier-portrait, .commander-portrait') || []) releaseCanvas(canvas);
+    if (typeof document?.querySelector === 'function') {
+      const tickerMsg = document.querySelector('#strat-log-ticker .strat-ticker-msg');
+      if (tickerMsg) {
+        const history = this.battleLogHistory || [];
+        if (history.length > 0) {
+          tickerMsg.textContent = history[history.length - 1].text;
+        } else {
+          tickerMsg.textContent = `第${this.phase || this.wave || 1}期 · 本隊の陣地を守り抜いている`;
+        }
+      }
+    }
+    this.startStratLogTicker?.();
     const scrollBody=this.container?.querySelector('#strategy-modal .dialog-body');
     const scrollTop=scrollBody?.scrollTop || 0;
     // 兵士詳細が開いていれば再描画後に維持

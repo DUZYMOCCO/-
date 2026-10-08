@@ -147,6 +147,44 @@
   box-shadow: 0 16px 50px #0007;
   border-radius: 16px;
   margin-top: 0;
+  overflow: hidden !important;
+}
+/* 司令部最上部の戦況ログティッカー（iPhoneノッチ直下のタップ不可エリアを有効活用） */
+.iron-squad .strat-log-ticker {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 8px 14px !important;
+  background: rgba(11, 19, 26, 0.96) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  font-size: 11px !important;
+  line-height: 1.4 !important;
+  color: #94a3b8 !important;
+  pointer-events: none !important; /* タップ無効：誤操作防止 */
+  user-select: none !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  flex-shrink: 0 !important;
+}
+.iron-squad .strat-ticker-tag {
+  color: var(--ui-gold) !important;
+  font-weight: bold !important;
+  font-size: 10px !important;
+  background: rgba(234, 179, 8, 0.15) !important;
+  padding: 2px 6px !important;
+  border-radius: 4px !important;
+  border: 1px solid rgba(234, 179, 8, 0.3) !important;
+  flex-shrink: 0 !important;
+  letter-spacing: 0.05em !important;
+}
+.iron-squad .strat-ticker-msg {
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  color: #e2e8f0 !important;
+  font-weight: 500 !important;
+  transition: opacity 0.2s ease;
 }
 /* 閉じるボタン専用の最上段行を確保。閉じるの高さエリアはオブジェクト配置禁止（左側スペースは空き） */
 .iron-squad .dialog-heading {

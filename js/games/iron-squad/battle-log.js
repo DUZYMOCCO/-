@@ -2,7 +2,10 @@ export const BATTLE_LOG_LIMIT=100;
 export function resetBattleLog(game) {
   clearTimeout(game._battleLogTimer);game._battleLogTimer=null;
   game.battleLogHistory=[];game._battleLogSequence=0;
-  document.getElementById('battle-log-stream')?.replaceChildren?.();
+  if (typeof document?.querySelector === 'function') {
+    const ticker = document.querySelector('#strat-log-ticker .strat-ticker-msg');
+    if(ticker) ticker.textContent = 'まだ記録はありません。';
+  }
 }
 export function renderBattleLog(game) {
   const list=game.container?.querySelector('#battle-log-history');if(!list)return;
@@ -31,6 +34,9 @@ export function recordBattleLog(game,message) {
     stream.replaceChildren(line);clearTimeout(game._battleLogTimer);
     game._battleLogTimer=setTimeout(()=>{if(line.parentNode===stream){line.style.opacity='0';line.style.transform='translateY(6px)';}},3000);
   }
-  if(game.container?.querySelector('#command-battle-log')?.open)renderBattleLog(game);
+  if (typeof document?.querySelector === 'function') {
+    const ticker = document.querySelector('#strat-log-ticker .strat-ticker-msg');
+    if (ticker) ticker.textContent = text;
+  }
   const banner=document.getElementById('drop-banner');if(banner)banner.textContent=text;
 }
