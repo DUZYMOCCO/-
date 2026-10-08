@@ -31,6 +31,9 @@ export function configureInterface(game) {
   get('squad-alive').previousElementSibling.textContent = '直属 / 本隊';
   get('phase-timer-display').previousElementSibling.textContent = '残り時間';
   const field = get('canvas-container');
+  // Share layout with the controls so log text clears their actual height,
+  // including the recovery button and the conditional transport badge.
+  get('virtual-gamepad').prepend(get('battle-log-window'));
   const fieldStatus = element('div', 'field-status');
   fieldStatus.append(get('field-zone-badge'), get('day-night-badge')); field.append(fieldStatus);
   const alerts = element('div', 'field-alerts');
@@ -145,6 +148,7 @@ function classCombatRoleLabel(cls) {
   const base = (cls && (cls.baseClassId || cls.id)) || '';
   if (base === 'ARCHER') return '遠距離射撃';
   if (base === 'MEDIC') return '後方支援';
+  if (base === 'MAGE') return '範囲魔法';
   if (base === 'LIGHT') return '遊撃強襲';
   if (base === 'HEAVY') return '前衛防御';
   if (cls && cls.range >= 200) return '遠距離射撃';
@@ -176,12 +180,13 @@ export function compactSoldierCard(game, row, soldier, cls, platoonName, talent)
     meta.append(tEl);
   }
   identity.append(meta);
+  const magic=game.magicUnitDescription?.(soldier);if(magic){identity.append(element('small','roster-mana',magic));details.dataset.search+=' '+magic;}
   identity.append(element('small', 'roster-assign', assignLabel));
   const hp = element('span', 'roster-health');
   const hpText = element('span', '', `${Math.max(0, Math.floor(soldier.hp))} / ${soldier.maxHp} HP`);
   const hpBar = element('span', 'health-track'); const fill = element('span'); fill.style.width = `${Math.max(0, Math.min(100, soldier.hp / Math.max(1, soldier.maxHp) * 100))}%`; hpBar.append(fill);
   hp.append(hpText, hpBar);
-  const status = element('span', `roster-state${soldier.isDown ? ' is-wounded' : ''}`, soldier.isDown ? '要救助' : soldier.hp < soldier.maxHp ? '負傷' : '健在');
+  const status = element('span', `roster-state${soldier.isDown ? ' is-wounded' : ''}`, soldier.isDown ? '要救助' : soldier.magicRecovering?'瞑想':soldier.maxMana>0&&soldier.mana<16?'魔力不足':soldier.hp < soldier.maxHp ? '負傷' : '健在');
   const arrow = element('span', 'roster-expand', '＋'); arrow.setAttribute('aria-hidden', 'true');
   summary.append(identity, hp, status, arrow);
   details.append(summary, row); details.open = game.uiExpandedSoldierId === soldier.id;

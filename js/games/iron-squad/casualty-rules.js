@@ -1,41 +1,22 @@
+import {ensureMana,regenerateMana,spendMana} from './magic-rules.js?v=103';
 import {recordHealing} from './phase-rules.js';
 import {WORLD_SIZE} from './world.js';
-import {grantPermanentRescueReward} from './rescue-rewards.js?v=101';
+import {grantPermanentRescueReward} from './rescue-rewards.js?v=103';
 
 export const RESCUE_TIMEOUT = 45; // 救助猶予時間（秒）広域マップ対応で45秒に延長
 export const isMedic=unit=>['MEDIC','HIGH_PRIEST','SAINT','ARCHANGEL'].includes(unit?.soldierClass);
-/** Medic fatigue: soft-cap so HQ combat cannot infinite-heal / infinite-revive forever. */
-export const MEDIC_STAMINA_MAX = 100;
-export const MEDIC_STAMINA_REGEN = 6.5; // ~15s full refill when idle
-export const MEDIC_HEAL_COST = 16;     // ranged heal bolt
-export const MEDIC_AURA_COST = 10;     // HIGH_PRIEST pulse (if anyone healed)
-export const MEDIC_TREAT_DRAIN = 28;   // stamina/sec while channeling revive
-export const MEDIC_TREAT_MIN = 8;      // need at least this to keep treating
-/** HQ down bleed slows to this fraction of normal (safer, still mortal). */
-export const AID_BLEED_RATE = 0.55;
-
-export function ensureMedicStamina(unit) {
-  if (!unit || !isMedic(unit)) return 0;
-  if (!Number.isFinite(unit.medicStamina)) unit.medicStamina = MEDIC_STAMINA_MAX;
-  unit.medicStamina = Math.max(0, Math.min(MEDIC_STAMINA_MAX, unit.medicStamina));
-  return unit.medicStamina;
-}
-export function regenMedicStamina(unit, dt) {
-  if (!unit || !isMedic(unit) || !Number.isFinite(dt) || dt <= 0 || unit.dead || unit.isDown) return 0;
-  ensureMedicStamina(unit);
-  unit.medicStamina = Math.min(MEDIC_STAMINA_MAX, unit.medicStamina + MEDIC_STAMINA_REGEN * dt);
-  return unit.medicStamina;
-}
-export function medicHasStamina(unit, cost) {
-  return ensureMedicStamina(unit) >= (cost || 0);
-}
-export function spendMedicStamina(unit, cost) {
-  if (!unit || !isMedic(unit) || !(cost > 0)) return false;
-  ensureMedicStamina(unit);
-  if (unit.medicStamina < cost) return false;
-  unit.medicStamina -= cost;
-  return true;
-}
+// Compatibility names for existing medical callers; the shared resource is mana.
+export const MEDIC_STAMINA_MAX=100;
+export const MEDIC_STAMINA_REGEN=.6;
+export const MEDIC_HEAL_COST=16;
+export const MEDIC_AURA_COST=10;
+export const MEDIC_TREAT_DRAIN=28;
+export const MEDIC_TREAT_MIN=8;
+export const AID_BLEED_RATE=.55;
+export const ensureMedicStamina=unit=>isMedic(unit)?ensureMana(unit):0;
+export const regenMedicStamina=(unit,dt)=>isMedic(unit)?regenerateMana(unit,dt):0;
+export const medicHasStamina=(unit,cost)=>ensureMedicStamina(unit)>=(cost||0);
+export const spendMedicStamina=(unit,cost)=>isMedic(unit)&&spendMana(unit,cost);
 export const carryingCapacity=unit=>{
   if(!unit) return 1;
   // 隊長（紐で引っ張る仲間）デフォルト2名・聖騎士2名・他兵士1名

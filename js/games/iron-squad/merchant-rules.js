@@ -4,12 +4,12 @@
  * - 強い護衛付き。放置するとモンスターに襲われ死亡しうる
  * - 護衛が倒した強敵のドロップを序盤から掠め取れるチャンス
  */
-import { saleValue, distanceScaling, weaponCombatProfile } from './equipment-rules.js?v=101';
-import { drawFieldSoldier } from './visuals.js?v=101';
-import { createSoldierAppearance, drawSoldierHead } from './soldier-appearance.js?v=101';
-import { attackAnimationRate } from './weapon-motion.js?v=101';
-import { markSoldierDown, rebuildMerchantCasualties, RESCUE_TIMEOUT } from './casualty-rules.js?v=101';
-import {emptyMastery,normalizeMastery,hitGrowthMult,applyHitGrowth,masteryAtkMult,masteryReloadMult} from './growth-rules.js?v=101';
+import { saleValue, distanceScaling, weaponCombatProfile } from './equipment-rules.js?v=103';
+import { drawFieldSoldier } from './visuals.js?v=103';
+import { createSoldierAppearance, drawSoldierHead } from './soldier-appearance.js?v=103';
+import { attackAnimationRate } from './weapon-motion.js?v=103';
+import { markSoldierDown, rebuildMerchantCasualties, RESCUE_TIMEOUT } from './casualty-rules.js?v=103';
+import {emptyMastery,normalizeMastery,hitGrowthMult,applyHitGrowth,masteryAtkMult,masteryReloadMult} from './growth-rules.js?v=103';
 import {recordCombat,finishExperience} from './phase-rules.js';
 
 export const MERCHANT_PRICE_MULT = 3.2; // 相場の約3.2倍（高め）

@@ -1,4 +1,5 @@
-import {WORLD_SIZE} from './world.js?v=101';
+import {isMagicUser,ensureMana} from './magic-rules.js?v=103';
+import {WORLD_SIZE} from './world.js?v=103';
 import {saveSlots} from './save-slots.js';
 
 export const AMMO_CAPACITY=30;
@@ -11,6 +12,7 @@ const RANGED=new Set(['bow','crossbow','cannon']);
 const usable=u=>u && !u.dead && !u.isDown && u.hp>0;
 const near=(u,p,r)=>Number.isFinite(p?.x)&&Number.isFinite(p?.y)&&(u.x-p.x)**2+(u.y-p.y)**2<=r*r;
 export function isRangedUnit(game,u) {
+  if(u!==game.player&&isMagicUser(u))return false;
   const item=u===game.player?game.equipped?.weapon:(u?.equipped?.weapon||u?.weapon);
   return RANGED.has(item?.weaponStyle)||ARCHERS.has(u?.soldierClass);
 }
@@ -56,7 +58,7 @@ export function distributeAmmo(game,amount=0) {
 export function supplyLocation(game,u=game.player) {
   if(!u)return null;
   if(game.currentDungeon) {
-    if(u===game.player||u.isPersonalGuard) return game.currentDungeon.kind==='town'?{kind:'town',name:game.currentDungeon.name||'町'}:null;
+    if(!game.reserves?.includes(u)&&(game.currentDungeon.kind!=='town'||u===game.player||u.isPersonalGuard)) return game.currentDungeon.kind==='town'?{kind:'town',name:game.currentDungeon.name||'町'}:null;
     // Main army and reserves stay in world coordinates while guards enter town.
   }
   if(near(u,BASE,BASE.radius))return {kind:'base',name:'本陣'};
@@ -65,6 +67,7 @@ export function supplyLocation(game,u=game.player) {
     if(!usable(m)||m.returningToBase)continue;
     if(near(u,m,110))return {kind:'merchant',name:m.placeName||'商人のキャンプ'};
   }
+  for(const tile of game.worldTerrain?.tiles?.values?.()||[])for(const camp of tile.camps||[])if(near(u,camp,110))return {kind:'camp',name:'野営キャンプ'};
   return null;
 }
 export function updateSupplies(game,dt) {
@@ -106,8 +109,8 @@ export const supplyMethods={
   useSquadPotion() {
     if(!this.inBattle||this.container?.classList.contains('dialog-open')||this._merchantShopClose||!usable(this.player)||!this.squadPotion)return false;
     this.squadPotion=0;
-    for(const u of squadUnits(this))if(usable(u)){u.hp=u.maxHp;u.ammo=AMMO_CAPACITY;}
-    this.showToast('部隊全体のHP・弾薬を全回復しました');this.saveGame();this.updateStatsUI();
+    for(const u of squadUnits(this))if(usable(u)){u.hp=u.maxHp;u.ammo=AMMO_CAPACITY;if(isMagicUser(u)){ensureMana(u);u.mana=u.maxMana;u.magicRecovering=false;}}
+    this.showToast('部隊全体のHP・弾薬・魔力を全回復しました');this.saveGame();this.updateStatsUI();
     return true;
   },
   replenishSquadPotion(merchant=null) {
@@ -140,13 +143,14 @@ export const supplyMethods={
   },
   refreshSupplyUI() {
     if(!this.player)return;
+    this.refreshMagicUI?.();this.refreshHazardUI?.();
     let badge=document.getElementById('supply-status-badge');
     const status=document.querySelector('.field-status');
     if(!badge&&status){badge=document.createElement('div');badge.id='supply-status-badge';badge.className='supply-status-badge';status.append(badge);}
     const ranged=squadUnits(this).filter(u=>usable(u)&&isRangedUnit(this,u));
     const empty=ranged.filter(u=>ensureAmmo(u)===0).length;
     const heroRanged=isRangedUnit(this,this.player);
-    if(badge){const previous=badge.textContent;badge.textContent=`${heroRanged?`弾薬 ${ensureAmmo(this.player)}/${AMMO_CAPACITY} · `:''}${empty?`要補給 ${empty}名（石75%）`:`射手の弾薬 ${ranged.reduce((n,u)=>n+ensureAmmo(u),0)}/${ranged.length*AMMO_CAPACITY}`} · 回復薬 ${this.squadPotion?1:0}/1`;badge.dataset.empty=String(empty>0);if(previous!==badge.textContent){const stack=document.querySelector('.field-alerts');if(stack&&status?.offsetHeight)stack.style.top=`${status.offsetHeight+20}px`;}}
+    if(badge){const previous=badge.textContent;badge.textContent=`${heroRanged?`弾薬 ${ensureAmmo(this.player)}/${AMMO_CAPACITY} · `:''}${empty?`要補給 ${empty}名（石75%）`:`射手の弾薬 ${ranged.reduce((n,u)=>n+ensureAmmo(u),0)}/${ranged.length*AMMO_CAPACITY}`} · 回復薬 ${this.squadPotion?1:0}/1`;badge.dataset.empty=String(empty>0);if(previous!==badge.textContent||this._magicStatusChanged){const stack=document.querySelector('.field-alerts');if(stack&&status?.offsetHeight)stack.style.top=`${status.offsetHeight+20}px`;}}
     const button=document.getElementById('btn-pad-potion');
     if(button){button.disabled=!this.squadPotion||!usable(this.player);button.textContent=`回復薬 ${this.squadPotion?1:0}`;}
     let warning=document.getElementById('retreat-warning');
@@ -160,7 +164,7 @@ export const supplyMethods={
     if(!panel){panel=document.createElement('section');panel.className='supply-panel hub-section';overview.prepend(panel);}
     const place=supplyLocation(this),cp=saveSlots.get(this.activeSlotId)?.checkpoint;
     const ranged=squadUnits(this).filter(u=>usable(u)&&isRangedUnit(this,u));
-    panel.innerHTML='<h4>補給・地点セーブ</h4><p class="supply-location"></p><p class="supply-counts"></p><div class="supply-actions"><button type="button" data-supply="potion">本陣で回復薬を補給</button><button type="button" data-supply="save">現在地をセーブ</button><button type="button" data-supply="load">地点セーブへ戻る</button></div><p class="checkpoint-summary"></p><p class="supply-help">弾薬は本陣・町・商人の近くで自動補給。回復薬は行動可能な部隊全員のHPと弾薬を全回復。ダウン中は搬送・衛生兵が必要です。地点セーブはオートセーブと別に保持し、読込時は記録時点へ戻ります。</p>';
+    panel.innerHTML='<h4>補給・地点セーブ</h4><p class="supply-location"></p><p class="supply-counts"></p><div class="supply-actions"><button type="button" data-supply="potion">本陣で回復薬を補給</button><button type="button" data-supply="save">現在地をセーブ</button><button type="button" data-supply="load">地点セーブへ戻る</button></div><p class="checkpoint-summary"></p><p class="supply-help">弾薬は本陣・町・商人の近くで自動補給。回復薬は行動可能な部隊全員のHP・弾薬・魔力を全回復。ダウン中は搬送・衛生兵が必要です。地点セーブはオートセーブと別に保持し、読込時は記録時点へ戻ります。</p>';
     panel.querySelector('.supply-location').textContent=place?`補給地点：${place.name}`:'野外：本陣・町・商人に近づくとセーブ／読込できます';
     panel.querySelector('.supply-counts').textContent=`回復薬 ${this.squadPotion?1:0}/1 · 射手の弾薬 ${ranged.reduce((n,u)=>n+ensureAmmo(u),0)}/${ranged.length*AMMO_CAPACITY} · 予備弾薬 ${this.ammoReserve||0}`;
     const potion=panel.querySelector('[data-supply="potion"]');potion.disabled=!!this.squadPotion||place?.kind!=='base';potion.onclick=()=>this.replenishSquadPotion();

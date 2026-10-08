@@ -1,5 +1,6 @@
-import { drawMeleeWeapon, drawMeleeRangeCue } from './weapon-motion.js?v=101';
-import { drawSoldierHead, isMedicAppearance, soldierAppearanceFamily } from './soldier-appearance.js?v=101';
+import {MAGIC_AFFINITIES,ensureMana} from './magic-rules.js?v=103';
+import { drawMeleeWeapon, drawMeleeRangeCue } from './weapon-motion.js?v=103';
+import { drawSoldierHead, isMedicAppearance, soldierAppearanceFamily } from './soldier-appearance.js?v=103';
 
 // Live field illustrations. Equipment colors are read every frame.
 // Hands and the weapon share one pose; only the striking edge gets a short trace.
@@ -39,7 +40,7 @@ function fieldTone(hex, dust = 0.65) {
   return `#${ch((n >> 16) & 255, 96)}${ch((n >> 8) & 255, 88)}${ch(n & 255, 74)}`;
 }
 const CLOTH = {
-  HEAVY: '#687e91', LIGHT: '#a38b60', ARCHER: '#607b60', MEDIC: '#c2bda2',
+  HEAVY: '#687e91', LIGHT: '#a38b60', ARCHER: '#607b60', MEDIC: '#c2bda2', MAGE:'#71627e',
   PALADIN: '#ccd0c3', BLADEMASTER: '#555c69', SNIPER: '#426557', HIGH_PRIEST: '#d1c5ab',
   COMMANDER: '#71858a', WARLORD: '#a29270'
 };
@@ -48,6 +49,8 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod, displa
   const key = s.soldierClass || 'HEAVY', eq = displayEquipment || s.equipped || {};
   const medic = isMedicAppearance(key);
   const family = cls.baseClassId || soldierAppearanceFamily(key);
+  const mage=family==='MAGE';if(mage)ensureMana(s);
+  const spellColor=mage?MAGIC_AFFINITIES[s.magicAffinity].color:null;
   const advanced = !!cls.isAdvanced;
   const cloth = fieldTone(eq.armor?.color || CLOTH[key] || CLOTH[family] || CLOTH.HEAVY, 0.82);
   const steel = fieldTone(eq.helmet?.color || (advanced ? '#d1c4a3' : '#9daab0'), 0.62);
@@ -61,7 +64,7 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod, displa
   const archer = family === 'ARCHER';
   const light = family === 'LIGHT';
   const wStyle = (eq.weapon || s.weapon)?.weaponStyle || 'sword';
-  const melee = !archer && !medic && ['sword','spear','hammer','axe'].includes(wStyle);
+  const melee = !archer && !medic && !mage && ['sword','spear','hammer','axe'].includes(wStyle);
   const weaponColors = {cloth,gloves,blade,board};
   c.save(); c.translate(s.x, s.y);
   const plant = s.isDown ? 1 : (moving ? Math.abs(stride) / 2.8 : 0.22);
@@ -77,6 +80,7 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod, displa
       c.fillStyle='#d2cfb9';c.fillRect(-2,-18,4,8);
       c.fillStyle='#95574f';c.fillRect(-.5,-16,1,4);c.fillRect(-2,-14.5,4,1);
     }
+    if(mage){shape(c,[[-6,-19],[-8,0],[7,0],[6,-19]],'#65566f');line(c,[[12,0],[12,-29]],'#857053',1.5);ellipse(c,12,-30,2,3,s.mana>0?spellColor:'#6d6674');shape(c,[[-7,-31],[1,-39],[7,-31]],'#5d5269');}
     c.fillStyle = platoonColor; c.fillRect(-2, 4, 4, 2);
     if (s.isPersonalGuard) { c.fillStyle = '#c8b278'; c.fillRect(4, 4, 3, 2); }
     if (s.maxHp > 0 && s.hp < s.maxHp * 0.55) {
@@ -121,6 +125,7 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod, displa
     line(c,[[-3,-14],[-5,-1],[3,-14],[4,-1]],'#eee3c2',1.3);
     c.fillStyle='#a18765'; c.fillRect(-2,-19,3,19);
   }
+  if(mage){shape(c,[[-6,-19],[-9,1],[8,1],[5,-19]],'#685875');line(c,[[-4,-18],[-5,-2],[5,-18],[6,-2]],spellColor,1.1);c.fillStyle='#b1a389';c.fillRect(-6,-10,12,2);}
   if (light) {
     line(c,[[-5,-21],[4,-9]],'#c8b797',2);
     line(c,[[-5,-19],[3,-10]],'#5c4633',.7);
@@ -129,7 +134,7 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod, displa
   if (medic) {
     c.fillStyle = '#e1d9bf'; c.fillRect(-3,-21,5,11);
     c.fillStyle = '#95574f'; c.fillRect(-1,-18,1.5,5); c.fillRect(-3,-16,5,1.5);
-  } else if (!archer && !light) {
+  } else if (!archer && !light && !mage) {
     line(c, [[-5,-18],[5,-18],[-4,-15],[5,-15]], '#adb7bb', .8);
     ellipse(c,-7,-21,3.5,2.5,steel); ellipse(c,6,-21,3.5,2.5,steel);
     for (const x of [-5,4]) {
@@ -179,7 +184,12 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod, displa
   }
   c.fillStyle = '#302b28'; c.fillRect(2,-27,1.3,1);
   }
-  if (archer) {
+  if(mage){
+    if(!eq.helmet){shape(c,[[-8,-32],[0,-44],[7,-32]],'#62536e');line(c,[[-9,-32],[9,-32]],'#9f8caa',2);}
+    const recovering=!!s.magicRecovering;line(c,[[13,-1],[13,recovering?-22:-34]],'#96805b',2.2);shape(c,[[13,recovering?-29:-41],[17,recovering?-24:-36],[13,recovering?-19:-31],[9,recovering?-24:-36]],s.mana>0?spellColor:'#747078');shape(c,[[-9,-16],[-4,-15],[-4,-7],[-10,-8]],'#a2957a');
+    c.fillStyle='#282535';c.fillRect(-13,-49,26,2);c.fillStyle=spellColor;c.fillRect(-13,-49,26*s.mana/s.maxMana,2);
+    if(recovering){c.fillStyle='#c1b6d1';c.font='10px sans-serif';c.textAlign='center';c.fillText('瞑想',0,-53);}
+  } else if (archer) {
     const rw = (eq.weapon && eq.weapon.weaponStyle) || 'bow';
     // 矢筒は共通
     shape(c,[[-8,-24],[-12,-25],[-13,-10],[-9,-9]],'#6b503b');
@@ -207,6 +217,7 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod, displa
       line(c,[[5,-16],[19,-16]],'#c5b790');
     }
   } else if (medic) {
+    ensureMana(s);if(s.mana<16){c.fillStyle='#c1b6d1';c.font='10px sans-serif';c.textAlign='center';c.fillText('MP不足',0,-48);}
     line(c,[[13,-2],[13,-30]],blade,2.5);
     ellipse(c,13,-31,3,3,advanced ? '#bba987' : '#abbfa4');
     if (advanced) {
