@@ -1,5 +1,5 @@
-import {configureAudioInterface} from './audio-interface.js?v=114';
-import {renderBattleLog} from './battle-log.js?v=114';
+import {configureAudioInterface} from './audio-interface.js?v=116';
+import {renderBattleLog} from './battle-log.js?v=116';
 /** Presentation only: keep game actions on their original DOM nodes. */
 const element = (tag, className, text) => {
   const node = document.createElement(tag);

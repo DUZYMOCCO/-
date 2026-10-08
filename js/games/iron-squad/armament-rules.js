@@ -1,6 +1,6 @@
-import {weaponCombatProfile,meleeSweetSpotFor} from './equipment-rules.js?v=114';
+import {weaponCombatProfile,meleeSweetSpotFor} from './equipment-rules.js?v=116';
 import {masteryReloadMult,applyMasteryToCombatProfile} from './growth-rules.js';
-import {MAX_EQUIPMENT_TIER,GENERATION_COUNT,tierNumber,powerRank,tierDescription} from './equipment-tiers.js?v=114';
+import {MAX_EQUIPMENT_TIER,GENERATION_COUNT,tierNumber,powerRank,tierDescription} from './equipment-tiers.js?v=116';
 
 export const ARMAMENT_POLICIES={
   balanced:{name:'均衡',research:.25,development:.25,budget:1500,perLevel:250},

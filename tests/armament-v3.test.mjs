@@ -11,9 +11,9 @@ Object.assign(globalThis,{document:dom.window.document,window:dom.window,localSt
 const noop=()=>{},ctx=new Proxy({measureText:()=>({width:40}),createLinearGradient:()=>({addColorStop:noop}),createRadialGradient:()=>({addColorStop:noop})},{get:(o,k)=>k in o?o[k]:noop});
 window.HTMLCanvasElement.prototype.getContext=()=>ctx;
 const {storage}=await import('../js/storage.js');
-storage.set('ironsquad_rules_version',2);storage.set('ironsquad_save_slots_v1',[{id:'old',rulesVersion:2,data:{player:{}}}]);storage.set('sound_muted',true);
+storage.set('ironsquad_rules_version',3);storage.set('ironsquad_save_slots_v1',[{id:'old',rulesVersion:3,data:{player:{}}}]);storage.set('sound_muted',true);
 const {saveSlots,RULES_VERSION}=await import('../js/games/iron-squad/save-slots.js');
-assert.equal(RULES_VERSION,3);assert.deepEqual(saveSlots.list(),[]);assert.equal(storage.get('sound_muted'),true);
+assert.equal(RULES_VERSION,4);assert.deepEqual(saveSlots.list(),[]);assert.equal(storage.get('sound_muted'),true);
 const {IronSquadGame,generateRandomDrop,applyUpgradeStats}=await import('../js/games/iron-squad/index.js');
 const game=Object.create(IronSquadGame);Object.assign(game,{container:document.getElementById('game'),width:390,height:664,zoom:1,ctx,camera:{x:79360,y:79360},selectedSaleIds:new Set(),commandActiveUntil:0});
 for(const method of ['startGameLoop','showToast','spawnSparks','spawnDamageText'])game[method]=noop;

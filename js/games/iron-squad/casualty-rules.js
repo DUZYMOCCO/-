@@ -1,8 +1,9 @@
-import {ensureMana,regenerateMana,spendMana} from './magic-rules.js?v=114';
+import {ensureMana,regenerateMana,spendMana} from './magic-rules.js?v=116';
 import {recordHealing} from './phase-rules.js';
 import {WORLD_SIZE} from './world.js';
-import {inCurrentInstance} from './instance-rules.js?v=114';
-import {grantPermanentRescueReward} from './rescue-rewards.js?v=114';
+import {inCurrentInstance} from './instance-rules.js?v=116';
+import {grantPermanentRescueReward} from './rescue-rewards.js?v=116';
+import {grantPersonalExp,revivalExperience} from './experience-rules.js';
 
 export const RESCUE_TIMEOUT = 45; // 救助猶予時間（秒）広域マップ対応で45秒に延長
 export const isMedic=unit=>['MEDIC','HIGH_PRIEST','SAINT','ARCHANGEL'].includes(unit?.soldierClass);
@@ -192,43 +193,6 @@ function revive(game,wounded,hp,options=null) {
   }
 }
 
-/** 個人EXP付与＋レベルアップ（隊長/兵士）。救助功績の帰属先用。 */
-function applyPersonalExp(game, unit, amount) {
-  if (!game || !unit || !(amount > 0)) return false;
-  const isPlayerUnit = unit === game.player || unit.isPlayer || unit.isHero;
-  let didLevelUp = false;
-  if (isPlayerUnit && game.player) {
-    game.player.exp = (game.player.exp || 0) + amount;
-    let pGuard = 0;
-    while (game.player.exp >= (game.player.reqExp || 20) && pGuard++ < 30) {
-      const req = Math.max(10, game.player.reqExp || 20);
-      game.player.exp -= req;
-      game.player.level = (game.player.level || 1) + 1;
-      game.player.reqExp = Math.floor(req * 1.45 + 10);
-      didLevelUp = true;
-      game.sound?.playHighScore?.();
-      game.spawnDamageText?.(game.player.x, game.player.y - 30, `⚡ Lv.${game.player.level} UP!`, '#34d399');
-      game.showToast?.(`⚡ 救助功績でレベルアップ！ Lv.${game.player.level} に到達！`);
-    }
-    if (didLevelUp) game.recalcPlayerStats?.();
-  } else {
-    unit.exp = (unit.exp || 0) + amount;
-    let sGuard = 0;
-    while (unit.exp >= (unit.reqExp || 14) && sGuard++ < 30) {
-      const req = Math.max(8, unit.reqExp || 14);
-      unit.exp -= req;
-      unit.level = (unit.level || 1) + 1;
-      unit.reqExp = Math.floor(req * 1.5 + 8);
-      didLevelUp = true;
-    }
-    if (didLevelUp) {
-      if (typeof game.recalcSoldierStats === 'function') game.recalcSoldierStats(unit);
-      game.spawnDamageText?.(unit.x, unit.y - 45, `⚡ Lv.${unit.level}!`, '#00f0ff');
-    }
-  }
-  return didLevelUp;
-}
-
 export function grantRescueBonus(game,wounded,options={}) {
   const {method='BASE',medic=null,carrier=null}=options;
   if(!game||!wounded)return;
@@ -263,32 +227,33 @@ export function grantRescueBonus(game,wounded,options={}) {
     game.exp=(game.exp||0)+rankExpGain;
   }
 
-  // 3. 個人救助EXP — 実際の救助者（搬送者優先、いなければ衛生兵）。隊長への固定付与バグ修正
-  const rescuerPersonalExp=isBase?30:20;
+  // 3. 搬送と蘇生の個人EXP。対象が自身の救護報酬で成長する前の最大HPを使う。
+  const medicExp=medic?(isBase?(carrier?20:30):revivalExperience(wounded)):0;
+  const rescuerPersonalExp=carrier===medic?medicExp:(isBase?30:20);
   const unitLabel=u=>!u?'':(u===game.player||u.isPlayer||u.isHero)?'隊長':(u.name||'兵士');
 
   if(carrier) {
     if(carrier===game.player) {
       game.player.rescues=(game.player.rescues||0)+1;
       game.rescueBuffTimer=isBase?6.0:4.0;
-      applyPersonalExp(game,game.player,rescuerPersonalExp);
+      grantPersonalExp(game,game.player,rescuerPersonalExp);
       game.spawnDamageText?.(game.player.x,game.player.y-25,'✨ 救助の英雄！(高速ダッシュ)','#38bdf8');
     } else {
       carrier.gold=(carrier.gold||0)+(isBase?80:50);
-      applyPersonalExp(game,carrier,rescuerPersonalExp);
+      grantPersonalExp(game,carrier,rescuerPersonalExp);
       carrier.rescues=(carrier.rescues||0)+1;
       game.spawnDamageText?.(carrier.x,carrier.y-20,`🎖️ ${unitLabel(carrier)} 搬送功績! +${isBase?80:50}G`,'#fbbf24');
     }
   }
 
-  // 4. 衛生兵へのボーナス（搬送なし＝主救助者でフル個人EXP／搬送あり＝補助で小さめ）
+  // 4. 衛生兵の蘇生EXPは最大HP×3。搬送者と同一なら上の経路で一度だけ付与する。
   if(medic&&medic!==carrier) {
     medic.gold=(medic.gold||0)+50;
-    const medicExp=carrier?20:rescuerPersonalExp;
-    applyPersonalExp(game,medic,medicExp);
+    grantPersonalExp(game,medic,medicExp);
     medic.rescues=(medic.rescues||0)+1;
-    game.spawnDamageText?.(medic.x,medic.y-20,`💚 ${unitLabel(medic)} 救命功績! +50G`,'#34d399');
+    game.spawnDamageText?.(medic.x,medic.y-20,`💚 ${unitLabel(medic)} 救命功績! +50G / +${medicExp.toLocaleString()}EXP`,'#34d399');
   }
+  if(medic&&!isBase)medic.revivalExp=(medic.revivalExp||0)+medicExp;
 
   // 5. 救助された兵士へのボーナス（経験値・軍資金・生還シールド）
   const sExpGain = isBase ? 45 : 30;
@@ -318,18 +283,18 @@ export function grantRescueBonus(game,wounded,options={}) {
   // 6. 演出・サウンド・通知（救助者名を表示）
   const primary=carrier||medic||null;
   const rescuerName=unitLabel(primary);
+  const rescuerExpText=[carrier?`${unitLabel(carrier)}+${rescuerPersonalExp.toLocaleString()}EXP`:'',medic&&medic!==carrier?`${unitLabel(medic)}+${medicExp.toLocaleString()}EXP`:''].filter(Boolean).join(', ');
   const lvTxt = didLevelUp ? ` ⚡Lv.${wounded.level}UP!` : '';
   if(isBase) {
     game.sound?.playHighScore?.();
     game.spawnDamageText?.(wounded.x,wounded.y-30,`🚑 拠点救護成功! +${totalGold}G`,'#ffd700');
     const carrierTxt=carrier===game.player?' (隊長に快足バフ)':(carrier?` (搬送: ${rescuerName})`:'');
-    game.showToast?.(`🚑 ${options.station?.name||'拠点'}救護成功！【${wounded.name}】${isMerchantCasualty(wounded)?'は本陣に留まります':'が全快復帰！'}(+${totalGold}G, 武勲+${rankExpGain}${rescuerName?`, ${rescuerName}+${rescuerPersonalExp}EXP`:''}${isMerchantCasualty(wounded)?'':`, 兵士+${sExpGain}EXP/+${sGoldGain}G`}${carrierTxt}${lvTxt})`);
+    game.showToast?.(`🚑 ${options.station?.name||'拠点'}救護成功！【${wounded.name}】${isMerchantCasualty(wounded)?'は本陣に留まります':'が全快復帰！'}(+${totalGold}G, 武勲+${rankExpGain}${rescuerExpText?`, ${rescuerExpText}`:''}${isMerchantCasualty(wounded)?'':`, 兵士+${sExpGain}EXP/+${sGoldGain}G`}${carrierTxt}${lvTxt})`);
   } else {
     game.sound?.playItem?.();
     game.spawnDamageText?.(wounded.x,wounded.y-30,`💚 衛生兵救護成功! +${totalGold}G`,'#34d399');
-    const who=rescuerName?`救助: ${rescuerName}`:'';
     const carrierTxt=carrier===game.player?' (隊長に快足バフ)':(carrier&&carrier!==medic?` (搬送: ${unitLabel(carrier)})`:'');
-    game.showToast?.(`💚 衛生救護！【${wounded.name}】${isMerchantCasualty(wounded)?'は本陣へ避難します':'が戦線復帰！'}(+${totalGold}G, 武勲+${rankExpGain}${who?`, ${who}+${rescuerPersonalExp}EXP`:''}${isMerchantCasualty(wounded)?'':`, 兵士+${sExpGain}EXP/+${sGoldGain}G`}${carrierTxt}${lvTxt})`);
+    game.showToast?.(`💚 衛生救護！【${wounded.name}】${isMerchantCasualty(wounded)?'は本陣へ避難します':'が戦線復帰！'}(+${totalGold}G, 武勲+${rankExpGain}${rescuerExpText?`, ${rescuerExpText}`:''}${isMerchantCasualty(wounded)?'':`, 兵士+${sExpGain}EXP/+${sGoldGain}G`}${carrierTxt}${lvTxt})`);
   }
 
   game.updateStatsUI?.();

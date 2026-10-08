@@ -1,7 +1,7 @@
 import { storage } from '../../storage.js';
 
 const KEY = 'ironsquad_save_slots_v1';
-export const RULES_VERSION = 3;
+export const RULES_VERSION = 4;
 export const saveSlots = {
   list() {
     const existing = storage.get(KEY, null);

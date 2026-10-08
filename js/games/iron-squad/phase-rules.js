@@ -1,3 +1,5 @@
+import {grantHealingExp} from './experience-rules.js';
+
 export const PHASE_DURATION = 120;
 export const REST_DURATION = 8;
 /** 兵士1名あたりの定期給与（国庫から支払い） */
@@ -38,11 +40,12 @@ export function recordHealing(healer, amount) {
   healer.phaseActivity.healingDone += amount;
 }
 
-export function healByMedic(healer, target, amount) {
+export function healByMedic(healer, target, amount, game = null) {
   if (!target || target.dead || target.isDown || target.hp <= 0 || !Number.isFinite(amount) || amount <= 0) return 0;
   const restored = Math.max(0, Math.min(target.maxHp - target.hp, amount));
   target.hp += restored;
   recordHealing(healer, restored);
+  grantHealingExp(game, healer, restored);
   return restored;
 }
 
