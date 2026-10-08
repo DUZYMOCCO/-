@@ -60,6 +60,7 @@
   flex-wrap: wrap; pointer-events: auto;
 }
 .iron-squad .field-alerts #base-raid-banner { border-color: #ba7975 !important; background: #40292ced !important; }
+.iron-squad .field-alerts #demon-invasion-banner { border-color:#ad8880 !important; background:#382d30ed !important; color:#ead6c3; pointer-events:none !important; }
 .iron-squad .field-alerts button { min-height: 36px; font-size: 12px !important; padding: 6px 10px !important; background: var(--ui-gold) !important; color: var(--ui-bg) !important; border-radius: 5px !important; }
 .iron-squad .dialog-open .field-status, .dialog-open .field-status { visibility: hidden; }
 .iron-squad .game-overlay { padding: 10px; background: #081019c7; }
@@ -321,5 +322,22 @@
 .iron-squad .audio-volume { display:grid; grid-template-columns:56px minmax(0,1fr) 44px; align-items:center; gap:10px; min-height:48px; color:#e0ded2; font-size:12px; }
 .iron-squad .audio-volume input { min-width:0; width:100%; min-height:36px; accent-color:#b5a378; touch-action:pan-y; }
 .iron-squad .audio-volume output { text-align:right; }
+.iron-squad .nation-status, .iron-squad .fiscal-report-box { background:#1a2b32; border:1px solid #455e67; border-radius:10px; padding:14px; margin:12px 0; color:#d2dbd9; font-size:12px; line-height:1.6; }
+.iron-squad .nation-status h4, .iron-squad .fiscal-report-box h4 { margin:0 0 10px; color:#e0cea0; font-size:14px; }
+.iron-squad .nation-metrics { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+.iron-squad .nation-metrics small { display:block; color:#a6babd; font-size:11px; }
+.iron-squad .nation-metrics strong { display:block; color:#e8e2cf; font-size:16px; font-variant-numeric:tabular-nums; }
+.iron-squad .nation-status progress { width:100%; accent-color:#bca775; }
+.iron-squad .nation-status button, .iron-squad #view-econ-box > button { min-height:44px; max-width:100%; padding:10px 12px; background:#304b54; color:#eee5cf; border:1px solid #778b8d; border-radius:7px; }
+.iron-squad .town-facility { border-top:1px solid #3c535c; padding:12px 0; }
+.iron-squad .fiscal-table { overflow-x:auto; }
+.iron-squad .fiscal-table table { width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums; }
+.iron-squad .fiscal-table th { text-align:left; font-weight:normal; }
+.iron-squad .fiscal-table td { text-align:right; white-space:nowrap; }
+.iron-squad .fiscal-table th, .iron-squad .fiscal-table td { padding:8px 4px; border-bottom:1px solid #3c535c; }
+.iron-squad .fiscal-total th, .iron-squad .fiscal-total td { font-weight:bold; }
+.iron-squad .fiscal-net { font-size:18px; font-weight:bold; margin-bottom:8px; }
+.iron-squad .positive { color:#a7d7b4; }
+.iron-squad .negative { color:#e6a49b; }
 /* Compact landscape uses the command-panel sound controls to keep the map and transport controls clear. */
 @media (orientation:landscape) and (max-height:500px) { .iron-squad .field-sound-toggle { display:none; } }

@@ -1,0 +1,100 @@
+import {WORLD_SIZE} from './world.js?v=106';
+import {saleValue,isGodRollProtected} from './equipment-rules.js?v=106';
+import {calcTreasuryGrossIncome,calcCommanderStipend} from './economy-rules.js?v=106';
+
+export const DEVELOPMENT_STAGES=[
+  {name:'野営本陣',cost:0}, {name:'城塞と宿場',cost:6000},
+  {name:'城下町',cost:18000}, {name:'交易都市',cost:45000},
+  {name:'大城下町',cost:90000}, {name:'王都',cost:180000}
+];
+const amount=n=>Math.max(0,Math.floor(Number(n)||0));
+const money=n=>amount(n).toLocaleString()+'G';
+const center=WORLD_SIZE/2;
+export function normalizeNation(data={}) {
+  const investment=amount(data?.investment);
+  return {investment,level:DEVELOPMENT_STAGES.filter(s=>investment>=s.cost).length-1,
+    totalExports:amount(data?.totalExports),totalDonations:amount(data?.totalDonations),
+    guild:data?.guild?{kills:Math.min(20,amount(data.guild.kills)),target:20,reward:amount(data.guild.reward)||800}:null,
+    guildPhase:amount(data?.guildPhase),casinoPhase:amount(data?.casinoPhase),smithPhase:amount(data?.smithPhase),lastCasino:String(data?.lastCasino||'')};
+}
+export function nationalPayroll(game) {return [...(game.squad||[]),...(game.reserves||[])].filter(s=>s&&!s.dead).length*20;}
+export function developmentBudget(game) {return Math.floor(Math.max(0,(game.treasury||0)-Math.max(6000,(nationalPayroll(game)+100)*2))*.25);}
+export function inHeadquarters(game,unit) {return !!unit&&!game.currentDungeon&&Math.hypot(unit.x-center,unit.y-center)<220;}
+export function headquartersDamageMult(game,unit) {return inHeadquarters(game,unit)?1-(game.nation?.level||0)*.06:1;}
+export function nationalIncome(game,phase,count) {return calcTreasuryGrossIncome(phase,count)+(game.nation?.level||0)*600;}
+export function fiscalTotals(l) {
+  const receipts=(l?.income||0)+(l?.donations||0)+(l?.surplusSales||0)+(l?.treasuryReturns||0)+(l?.facilityRevenue||0)+(l?.defenseRewards||0);
+  const expenses=(l?.salariesPaid||0)+(l?.commanderStipend||0)+(l?.distributed||0)+(l?.buyouts||0)+(l?.developmentSpent||0);
+  return {receipts,expenses,net:receipts-expenses};
+}
+export const nationMethods={
+  investNation() {
+    this.nation=normalizeNation(this.nation);const previous=this.nation.level;
+    const budget=Math.min(developmentBudget(this),DEVELOPMENT_STAGES.at(-1).cost-this.nation.investment);
+    if(budget<=0)return 0;
+    this.treasury-=budget;this.nation.investment+=budget;this.nation=normalizeNation(this.nation);
+    if(!this.phaseFiscal)this.beginPhaseFiscal();
+    this.phaseFiscal.developmentSpent=(this.phaseFiscal.developmentSpent||0)+budget;
+    if(this.nation.level>previous)this.showToast(`国家発展：${DEVELOPMENT_STAGES[this.nation.level].name}！本陣の防衛力と町の施設が向上しました`);
+    return budget;
+  },
+  depositNationalEquipment(ids) {
+    const held=new Set(Object.values(this.equipped||{}).filter(Boolean).map(i=>i.id));
+    for(const s of [...(this.squad||[]),...(this.reserves||[])])for(const i of Object.values(s.equipped||{}))if(i)held.add(i.id);
+    const wanted=new Set(ids),items=(this.inventory||[]).filter(i=>wanted.has(i.id)&&!held.has(i.id)&&!i.favorite&&!isGodRollProtected(i)&&saleValue(i)>0&&['WEAPON','ARMOR','HELMET','SHIELD','GLOVES','LEGS','AMULET'].includes(i.type));
+    if(!items.length){this.showToast('バッグで納入する装備を選択してください。装備中・保護中の品は納入できません');return false;}
+    const donated=new Set(items.map(i=>i.id));this.inventory=this.inventory.filter(i=>!donated.has(i.id));
+    this.sharedEquipBox.push(...items);this.showToast(`装備${items.length}件を納入。次ウェーブに兵士へ支給し、余剰を外販します`);
+    this.saveGame();this.renderStrategyUI();return true;
+  },
+  onNationKill() {if(this.nation?.guild)this.nation.guild.kills=Math.min(20,this.nation.guild.kills+1);},
+  useTownFacility(kind) {
+    this.nation=normalizeNation(this.nation);const n=this.nation,phase=this.phase||1;
+    if(this.currentDungeon?.kind!=='town')return false;
+    if(kind==='smith') {
+      const item=this.equipped?.weapon;if(n.level<1||n.smithPhase===phase||!item)return false;
+      const cost=Math.max(1,Math.floor(this.getUpgradeCost(item)*.8));if(this.gold<cost)return false;
+      this.gold-=cost;n.smithPhase=phase;
+      this.treasury=(this.treasury||0)+Math.floor(cost*.2);this.phaseFiscal.facilityRevenue=(this.phaseFiscal.facilityRevenue||0)+Math.floor(cost*.2);
+      this.upgradeItem(item,true);this.showToast(`鍛冶工房：隊長の武器を2割引で強化（${money(cost)}）。今ウェーブは利用済み`);
+    } else if(kind==='guild') {
+      if(n.level<2)return false;
+      if(n.guild) {if(n.guild.kills<20)return false;this.gold+=n.guild.reward;this.showToast(`組合依頼を達成！報酬${money(n.guild.reward)}`);n.guild=null;}
+      else {if(n.guildPhase===phase)return false;n.guildPhase=phase;n.guild={kills:0,target:20,reward:600+n.level*200};this.showToast('冒険者組合：部隊で敵20体を討伐し、町へ戻って報酬を受け取ろう');}
+    } else if(kind==='casino') {
+      if(n.level<4||n.casinoPhase===phase||this.gold<100)return false;
+      this.gold-=100;n.casinoPhase=phase;const roll=1+Math.floor(Math.random()*6),win=roll>=5,payout=win?250:0;this.gold+=payout;
+      // The house reserves winnings; do not turn individual bets into guaranteed national profit.
+      n.lastCasino=`出目${roll}：${win?'当たり +150G':'はずれ −100G'}`;this.showToast(`カジノ・一振り勝負：${n.lastCasino}`);
+    } else return false;
+    this.saveGame();this.updateStatsUI();this.renderStrategyUI();return true;
+  },
+  renderNationStatus() {
+    this.nation=normalizeNation(this.nation);const n=this.nation,payroll=nationalPayroll(this),count=payroll/20,gross=nationalIncome(this,this.phase||1,count),stipend=calcCommanderStipend(this.phase||1,gross);
+    const panel=this.container?.querySelector('#nation-status');if(!panel)return;
+    const next=DEVELOPMENT_STAGES[n.level+1],current=this.phaseFiscal||{},totals=fiscalTotals(current);
+    panel.innerHTML=`<h4>国家の財政状態</h4><p class="${(this.treasury||0)>=payroll?'positive':'negative'}">${(this.treasury||0)>=payroll?'給与原資を確保しています':'現在の給与原資が不足しています。次ウェーブの定期歳入で補充します'}</p><div class="nation-metrics"><div><small>国庫残高</small><strong>${money(this.treasury)}</strong></div><div><small>次ウェーブの定期歳入</small><strong>+${money(gross)}</strong></div><div><small>次の給与見込み · ${count}名</small><strong>−${money(payroll)}</strong></div><div><small>手当・給与支払後</small><strong>+${money(gross-stipend-payroll)}</strong></div></div><p>最低3,000G＋給与原資・指揮手当・発展税収を毎ウェーブ入金。</p><p>今ウェーブ：入金${money(totals.receipts)} / 支出${money(totals.expenses)}<br>寄付は国庫75%・兵士25%。余剰装備は通常売値の1.6倍で外販。</p><h4>${DEVELOPMENT_STAGES[n.level].name} · 発展Lv${n.level}</h4><progress max="${next?.cost||180000}" value="${n.investment}"></progress><p>累計開発${money(n.investment)}${next?` / 次は${next.name}（残り${money(next.cost-n.investment)}）`:' / 最大発展'}<br>本陣内の被ダメージ −${n.level*6}% · 回復 +${n.level*10}%<br>発展税収 +${money(n.level*600)} / ウェーブ</p><p>給与2回分または6,000Gを残し、余裕資金の25%をウェーブ終了時に自動投資。</p><button type="button" data-nation="invest" ${developmentBudget(this)<=0||!next?'disabled':''}>今すぐ開発へ ${money(Math.min(developmentBudget(this),Math.max(0,(next?180000:0)-n.investment)))}</button>`;
+    panel.querySelector('[data-nation="invest"]').onclick=()=>{this.investNation();this.saveGame();this.renderStrategyUI();this.updateStatsUI();};
+    const facilities=this.container.querySelector('#nation-facilities'),town=this.currentDungeon?.kind==='town';
+    const smith=this.equipped?.weapon,smithCost=smith?Math.max(1,Math.floor(this.getUpgradeCost(smith)*.8)):0;
+    facilities.innerHTML=`<h4>城下町の施設</h4><p>${town?'町に滞在中。施設を利用できます。':'本陣の南東に城下町入口があります。町に入ると施設を利用できます。'}</p><div class="town-facility"><strong>鍛冶工房 · Lv1</strong><p>隊長武器の強化が2割引。1ウェーブ1回。${smith?money(smithCost):'武器装備が必要'}${n.smithPhase===this.phase?' / 利用済み':''}</p><button data-facility="smith" ${!town||n.level<1||!smith||n.smithPhase===this.phase||this.gold<smithCost?'disabled':''}>工房で強化</button></div><div class="town-facility"><strong>冒険者組合 · Lv2</strong><p>${n.guild?`討伐 ${n.guild.kills}/20 · 報酬${money(n.guild.reward)}`:'部隊で20体を討伐する依頼。1ウェーブ1件。'}</p><button data-facility="guild" ${!town||n.level<2||(n.guild?n.guild.kills<20:n.guildPhase===this.phase)?'disabled':''}>${n.guild?'報酬を受け取る':'依頼を受ける'}</button></div><div class="town-facility"><strong>カジノ · Lv4</strong><p>100Gの一振り勝負。5・6で250G受取。1ウェーブ1回。${n.lastCasino}</p><button data-facility="casino" ${!town||n.level<4||n.casinoPhase===this.phase||this.gold<100?'disabled':''}>100Gで遊ぶ</button></div>`;
+    for(const b of facilities.querySelectorAll('[data-facility]'))b.onclick=()=>this.useTownFacility(b.dataset.facility);
+  }
+};
+
+/** Low-cost architecture layers; only called for the visible HQ or town. */
+export function drawNationalDevelopment(ctx,game,x,y,town=false) {
+  const level=game.nation?.level||0;if(!level)return;
+  ctx.save();ctx.translate(x,y);const count=3+level*2;
+  for(let i=0;i<count;i++) {
+    const angle=i/count*Math.PI*2,r=town?150:100+level*12,h=16+level*3,bx=Math.cos(angle)*r,by=Math.sin(angle)*r;
+    ctx.fillStyle='#17212588';ctx.fillRect(bx-18,by+h,42,6);ctx.fillStyle=level>=3?'#8a8270':'#625a49';ctx.fillRect(bx-18,by,36,h);
+    ctx.fillStyle=level>=4?'#446975':'#655343';ctx.beginPath();ctx.moveTo(bx-23,by);ctx.lineTo(bx,by-16);ctx.lineTo(bx+23,by);ctx.fill();
+    ctx.fillStyle='#d2bb80';ctx.fillRect(bx-10,by+6,6,6);ctx.fillStyle='#28302d';ctx.fillRect(bx+4,by+h-12,9,12);
+  }
+  if(!town){ctx.strokeStyle=level>=3?'#afa68e':'#817966';ctx.lineWidth=5+level;ctx.strokeRect(-70-level*8,-58-level*8,140+level*16,116+level*16);
+    for(const dx of [-1,1])for(const dy of [-1,1]){ctx.fillStyle='#686f68';ctx.fillRect(dx*(70+level*8)-12,dy*(58+level*8)-16,24,32);ctx.fillStyle='#abb4a0';ctx.fillRect(dx*(70+level*8)-14,dy*(58+level*8)-18,28,7);}
+  }
+  if(level>=3){ctx.fillStyle='#999882';ctx.beginPath();ctx.ellipse(0,town?0:86,18,10,0,0,Math.PI*2);ctx.fill();ctx.fillStyle='#466b73';ctx.beginPath();ctx.ellipse(0,town?0:86,12,6,0,0,Math.PI*2);ctx.fill();}
+  ctx.restore();
+}

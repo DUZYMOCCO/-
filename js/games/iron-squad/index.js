@@ -1,3 +1,6 @@
+import {invasionMethods,initializeInvasions,serializeInvasions,shouldTriggerRandomRaid,makeEnemyRoom,drawInvasionRoute} from './invasion-rules.js?v=106';
+import {initializeGateGuards,ensureTownGuards,serializeGateGuards,updateGateGuards,gateGuardVisible,applyFortifications,drawFortification,exitGateTown,townExitReached} from './gate-rules.js?v=106';
+import {nationMethods,normalizeNation,nationalIncome,headquartersDamageMult,drawNationalDevelopment} from './nation-rules.js?v=106';
 /**
  * ゲーム3: IRON SQUAD (アイアン・スクワッド: 雑兵立身出世録)
  * ローグライク・アクションRPG
@@ -9,22 +12,22 @@
  *  - 生き延びて「伍長」以上に立身出世して初めて【号令・指揮権】がアンロックされる！
  *  - 名もなき兵士たちは生き残ると二つ名と名前が授与され、やがて主人公の頼もしい戦友に。
  */
-import { sound } from '../../audio.js?v=104';
+import { sound } from '../../audio.js?v=106';
 import { storage } from '../../storage.js';
-import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow } from './visuals.js?v=104';
-import { drawMeleeRangeCue, meleeDrawReach, attackAnimationRate } from './weapon-motion.js?v=104';
-import {emptyRescueBonuses,normalizeRescueBonuses,rescueBonusSummary} from './rescue-rewards.js?v=104';
-import {drawFieldCivilian} from './civilian-visuals.js?v=104';
+import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow } from './visuals.js?v=106';
+import { drawMeleeRangeCue, meleeDrawReach, attackAnimationRate } from './weapon-motion.js?v=106';
+import {emptyRescueBonuses,normalizeRescueBonuses,rescueBonusSummary} from './rescue-rewards.js?v=106';
+import {drawFieldCivilian} from './civilian-visuals.js?v=106';
 import { saveSlots } from './save-slots.js';
-import {MAGIC_CLASSES,MAGIC_AFFINITIES,magicMethods,isMage,isMagicUser,ensureMana,initializeMagic,updateMagic,distributeMagicStones,castMedicBuff,updateMageAI,drawMagicBursts,spendMana} from './magic-rules.js?v=104';
-import {hazardMethods,updateHazards,drawHazards} from './hazard-fields.js?v=104';
-import {strongEnemyReward} from './combat-rewards.js?v=104';
-import {supplyMethods, initializeSupplies, updateSupplies, takeRangedShot, ammoCombatProfile, isRangedUnit, distributeAmmo, preventLethalHit, normalizeFieldSave, SQUAD_POTION_COST, ensureAmmo, RANGED_DAMAGE_MULT, supplyLocation} from './supply-rules.js?v=104';
-import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog } from './interface.js?v=104';
-import { ensureSoldierAppearance, drawSoldierPortrait, describeSoldierAppearance } from './soldier-appearance.js?v=104';
-import { attachSurfaceEvents, detachSurfaceEvents, frameSurfaceReady, releaseSceneCaches, releaseCanvas, surfaceCanResume } from './canvas-surface.js?v=104';
-import { WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt, routeNameAt, eastWestRoadY, northSouthRoadX, riverCenterY } from './world.js?v=104';
-import { FogGrid, FOG_REVEAL_RADIUS, FOG_CAMP_REVEAL } from './fog.js?v=104';
+import {MAGIC_CLASSES,MAGIC_AFFINITIES,magicMethods,isMage,isMagicUser,ensureMana,initializeMagic,updateMagic,distributeMagicStones,castMedicBuff,updateMageAI,drawMagicBursts,spendMana} from './magic-rules.js?v=106';
+import {hazardMethods,updateHazards,drawHazards} from './hazard-fields.js?v=106';
+import {strongEnemyReward} from './combat-rewards.js?v=106';
+import {supplyMethods, initializeSupplies, updateSupplies, takeRangedShot, ammoCombatProfile, isRangedUnit, distributeAmmo, preventLethalHit, normalizeFieldSave, SQUAD_POTION_COST, ensureAmmo, RANGED_DAMAGE_MULT, supplyLocation} from './supply-rules.js?v=106';
+import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog } from './interface.js?v=106';
+import { ensureSoldierAppearance, drawSoldierPortrait, describeSoldierAppearance } from './soldier-appearance.js?v=106';
+import { attachSurfaceEvents, detachSurfaceEvents, frameSurfaceReady, releaseSceneCaches, releaseCanvas, surfaceCanResume } from './canvas-surface.js?v=106';
+import { WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt, routeNameAt, eastWestRoadY, northSouthRoadX, riverCenterY } from './world.js?v=106';
+import { FogGrid, FOG_REVEAL_RADIUS, FOG_CAMP_REVEAL } from './fog.js?v=106';
 import {
   classTierOf, nextClassId, classUpCostForNext, canAffordClassUp, formatClassUpCostJa, classUpShortageJa,
   playerClassTier, nextPlayerStage, playerStageById, CLASS_TIER_LABELS, PLAYER_CLASS_STAGES
@@ -35,9 +38,9 @@ import {
   shouldAbsorbToSharedBox, calcScoutCost, estimateSoldierScoutValue, calcDismissSettlement,
   formatFiscalReportJa, formatFiscalReportHtml, distributeSharedBoxToSoldiers, sellWeakSurplusFromBox,
   SHARED_BOX_MAX_TIER, SCOUT_COST_BY_TALENT, defaultDonateAmount, donatePresetAmounts
-} from './economy-rules.js';
+} from './economy-rules.js?v=106';
 
-import { EQUIPMENT_TYPES, saleValue, equippedIds, canSell, lowValueIds, chooseLootTier, distanceScaling, shrineUpgradeCap, compareEquipment, equipmentScore, weaponCombatProfile, evaluateMeleeSweetSpot, isGodRollProtected, zoneRingPower, zoneRingLabelJa } from './equipment-rules.js?v=104';
+import { EQUIPMENT_TYPES, saleValue, equippedIds, canSell, lowValueIds, chooseLootTier, distanceScaling, shrineUpgradeCap, compareEquipment, equipmentScore, weaponCombatProfile, evaluateMeleeSweetSpot, isGodRollProtected, zoneRingPower, zoneRingLabelJa } from './equipment-rules.js?v=106';
 import {
   WEAPON_STYLES, WEAPON_STYLE_LABELS, WEAPON_STYLE_ICONS,
   MELEE_STYLES, RANGED_STYLES, HIT_GROWTH_SOFT_CAP,
@@ -47,19 +50,19 @@ import {
   gainWeaponMastery, masteryGainForStyle, pickFavoriteWeapon, rollWeaponStyle,
   weaponStyleOf, favoriteWeaponBias, MASTERY_GAIN_PER_HIT,
   migrateFavoriteForClass, migrateWeaponStyleFromName
-} from './growth-rules.js?v=104';
+} from './growth-rules.js?v=106';
 
 import {
   initMerchants, ensureMerchants, updateMerchants, drawMerchantBody, drawMerchantEscort,
   nearestLivingMerchant, refreshMerchantStock, merchantBuyPrice, merchantSellTier,
   applyMerchantSave, serializeMerchants, MERCHANT_INTERACT_R,
   merchantHealingStatus, merchantHealWavesLeft, useMerchantHealing, MERCHANT_HEAL_COST, recalcEscortStats, finishEscortPhase
-} from './merchant-rules.js?v=104';
+} from './merchant-rules.js?v=106';
 
 import { daylightAt, advanceWorldClock, periodEnemy, enemyAvailable, PERIOD_ENEMIES } from './day-night.js';
 
-import { RESCUE_TIMEOUT, rescueUnits, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, markSoldierDown, CIV_KINDS, isMedic, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST } from './casualty-rules.js?v=104';
-import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault } from './dungeon.js?v=104';
+import { RESCUE_TIMEOUT, rescueUnits, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, markSoldierDown, CIV_KINDS, isMedic, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST } from './casualty-rules.js?v=106';
+import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault } from './dungeon.js?v=106';
 import {
   EXPEDITION_CHECK_INTERVAL, EXPEDITION_RETURN_HOME, EXPEDITION_ENGAGE_R,
   EXPEDITION_DANGER_TIERS, EXPEDITION_MIN_MEMBERS,
@@ -121,8 +124,8 @@ export const RAID_GRUNT_DMG_RED=33;
 export const RAID_BOSS_DEF=108;
 export const RAID_BOSS_DMG_RED=42;
 /** v1.27.11: raids rarer after unlock — gap between raid phases + later mid-phase trigger. */
-export const RAID_MIN_PHASE=4;
-export const RAID_PHASE_GAP=3;
+export const RAID_MIN_PHASE=8;
+export const RAID_PHASE_GAP=8;
 export const RAID_TRIGGER_REMAIN_FRAC=0.28;
 
 const MAP_WIDTH = WORLD_SIZE;
@@ -1005,6 +1008,8 @@ export const QUEST_TEMPLATES = [
 ];
 
 export const IronSquadGame = {
+  ...invasionMethods,
+  ...nationMethods,
   ...supplyMethods,
   ...magicMethods,
   ...hazardMethods,
@@ -1226,7 +1231,7 @@ export const IronSquadGame = {
                   </div>
                   <div id="view-econ-invest" class="hidden" style="background:rgba(2,132,199,0.12);border:1px solid rgba(14,116,144,0.45);border-radius:6px;padding:8px;margin-bottom:8px;font-size:11px;">
                     <div style="color:#67e8f9;font-weight:bold;margin-bottom:4px;">🏛 国庫寄付（所持軍資金に応じた推奨額）</div>
-                    <div style="color:#94a3b8;margin-bottom:6px;line-height:1.4;">寄付すると全国兵士へ均等配分。既定額は所持金の約1割（最低100G）。クイック指定も所持金に合わせて変わります。</div>
+                    <div style="color:#94a3b8;margin-bottom:6px;line-height:1.4;">寄付の75%は国庫・開発に残し、25%を全国兵士へ均等配分。既定額は所持金の約1割（最低100G）。クイック指定も所持金に合わせて変わります。</div>
                     <div id="donate-quick-presets" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;"></div>
                     <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
                       <span style="color:#fde047;">額:</span>
@@ -1234,7 +1239,7 @@ export const IronSquadGame = {
                         <option value="100">100 G</option>
                         <option value="max">所持全額</option>
                       </select>
-                      <button id="btn-donate-treasury" class="mini-btn" style="background:linear-gradient(135deg,#0e7490,#06b6d4);color:#fff;font-size:10px;font-weight:bold;padding:4px 8px;border:none;border-radius:4px;">🏛 国庫へ寄付→全国配分</button>
+                      <button id="btn-donate-treasury" class="mini-btn" style="background:linear-gradient(135deg,#0e7490,#06b6d4);color:#fff;font-size:10px;font-weight:bold;padding:4px 8px;border:none;border-radius:4px;">🏛 国家へ寄付</button>
                     </div>
                     <div id="treasury-status-line" style="margin-top:6px;color:#a5f3fc;">国庫残高: —</div>
                   </div>
@@ -1246,7 +1251,7 @@ export const IronSquadGame = {
                   </div>
                   <div id="view-econ-box" class="hidden" style="background:rgba(56,189,248,0.08);border:1px solid rgba(56,189,248,0.3);border-radius:6px;padding:8px;margin-bottom:8px;font-size:11px;">
                     <div style="color:#38bdf8;font-weight:bold;margin-bottom:4px;">📦 国庫共有ボックス</div>
-                    <div style="color:#94a3b8;margin-bottom:4px;">T3以下かつ隊長装備より弱い拾得品は自動吸収（相当額で買い取り）。兵士が必要に応じて自動装備し、余剰は国庫へ換金。</div>
+                    <div style="color:#94a3b8;margin-bottom:4px;">T3以下かつ隊長装備より弱い拾得品は自動吸収（相当額で買い取り）。ウェーブ終了時に新兵・予備兵を含めて先に支給。誰にも不要な余剰は売値の1.6倍で外販。保護装備は対象外。</div>
                     <div id="shared-box-list" style="max-height:120px;overflow-y:auto;"></div>
                   </div>
                 </div>
@@ -1737,7 +1742,7 @@ export const IronSquadGame = {
       this.inBattle=false; this.stopGameLoop(); this.resetMovementInput();
       this.showSaveMenu();
       const notice=document.createElement('p');notice.id='save-start-error';notice.className='save-start-error';notice.setAttribute('role','alert');
-      notice.textContent=`v2.2.0 · 開始できませんでした：${error.message || error}`;
+      notice.textContent=`v2.4.0 · 開始できませんでした：${error.message || error}`;
       this.saveMenu.querySelector('.save-heading').append(notice);
       this.showRenderProblem('startup',error);
       return false;
@@ -2083,11 +2088,12 @@ export const IronSquadGame = {
     this.awakeningOrbs = 0;
     this.awakeningGems = 0;
     this.globalFundAmount = String(defaultDonateAmount(50));
-    this.treasury = 200;
+    this.treasury = 6000;
+    this.nation=normalizeNation();
     this.sharedEquipBox = [];
-    this.fiscalLedger = emptyFiscalLedger(1, 200);
+    this.fiscalLedger = emptyFiscalLedger(1, 6000);
     this.lastFiscalReport = null;
-    this.phaseFiscal = emptyFiscalLedger(1, 200);
+    this.phaseFiscal = emptyFiscalLedger(1, 6000);
     this.scoutCandidates = [];
     this.investTarget = 'personal'; // 'personal' | 'treasury'
     this.rosterManageTab = 'roster'; // roster | scout | equip
@@ -2190,6 +2196,7 @@ export const IronSquadGame = {
     this.assignWaveQuest();
     this.recalcPlayerStats();
     this.initBattlefield();
+    initializeGateGuards(this);initializeInvasions(this);
     saveSlots.update(this.activeSlotId, {state:'active', veterans:[], reserveSurvivors:[]});
     initializeSupplies(this);
     initializeMagic(this);this.damageFields=[];this._hazardClock=0;
@@ -2915,9 +2922,10 @@ export const IronSquadGame = {
     this.awakeningGems = saved.awakeningGems || 0;
     this.globalFundAmount = saved.globalFundAmount || String(defaultDonateAmount(saved.gold ?? 50));
     this.treasury = saved.treasury ?? 200;
+    this.nation=normalizeNation(saved.nation);
     this.sharedEquipBox = Array.isArray(saved.sharedEquipBox) ? saved.sharedEquipBox : [];
     this.lastFiscalReport = saved.lastFiscalReport || null;
-    this.phaseFiscal = saved.phaseFiscal || emptyFiscalLedger(this.phase || 1, this.treasury);
+    this.phaseFiscal = saved.phaseFiscal?.phase===this.phase?saved.phaseFiscal:emptyFiscalLedger(this.phase || 1, this.treasury);
     this.fiscalLedger = this.phaseFiscal;
     this.scoutCandidates = [];
     this.investTarget = saved.investTarget || 'personal';
@@ -3048,7 +3056,7 @@ export const IronSquadGame = {
     if (saved.merchants) applyMerchantSave(this, saved.merchants, generateRandomDrop, BASE_CAMP);
     sanitizeCarriers(this);
     if (!legacyWorld && saved.dungeons) {
-      this.dungeons = saved.dungeons;
+      this.dungeons = this.dungeons.map(d=>({...d,...saved.dungeons.find(old=>old.id===d.id)}));
     } else if(saved.dungeons) {
       for(const old of saved.dungeons) {
         const d = this.dungeons.find(x => x.id === old.id);
@@ -3074,6 +3082,7 @@ export const IronSquadGame = {
     this.initBattlefield();
     this.phaseCasualties = saved.phaseCasualties ?? 0;
     this.phaseInitialSquadCount = saved.phaseInitialSquadCount ?? this.squad.length;
+    initializeGateGuards(this,saved);initializeInvasions(this,saved);
     initializeSupplies(this,saved);
     initializeMagic(this,saved);this.damageFields=[];this._hazardClock=0;
     this.updateStatsUI();
@@ -3331,6 +3340,9 @@ export const IronSquadGame = {
         awakeningGems: this.awakeningGems || 0,
         globalFundAmount: this.globalFundAmount || String(defaultDonateAmount(this.gold || 0)),
         treasury: this.treasury || 0,
+        nation: normalizeNation(this.nation),
+        invasions:serializeInvasions(this),
+        gateGuards:serializeGateGuards(this),
         sharedEquipBox: this.sharedEquipBox || [],
         civilians: (this.civilians || []).filter(c => c && !c.rescued).slice(0, 8),
         civilianRescues: this.civilianRescues || 0,
@@ -4425,20 +4437,17 @@ export const IronSquadGame = {
 
   // 🚨 本陣強襲イベント（Base Camp Raid）トリガー判定
   checkBaseRaidTrigger() {
-    if (this.baseRaidActive || this.restTimer > 0 || this.currentDungeon) return;
-    const curPhase = this.phase || 1;
-    if (curPhase < RAID_MIN_PHASE) return;
-    const last = this.baseRaidTriggeredPhase || 0;
-    if (last > 0 && (curPhase - last) < RAID_PHASE_GAP) return;
-    if (last === curPhase) return;
-    if (this.phaseTimer <= (this.phaseDuration || 120) * RAID_TRIGGER_REMAIN_FRAC) {
-      this.triggerBaseRaid();
-    }
+    const oldRoll=this.invasions?.raidRollPhase;
+    const trigger=shouldTriggerRandomRaid(this);
+    if(this.invasions?.raidRollPhase!==oldRoll)this.saveGame();
+    if(trigger)this.triggerBaseRaid();
   },
 
   // 本陣強襲イベントの発生
   triggerBaseRaid() {
+    if(this.invasions?.stage!=='idle'||this.baseRaidActive||this.currentDungeon||this.restTimer>0)return;
     this.baseRaidActive = true;
+    this.invasions.raidLastPhase=this.phase||1;this.invasions.raidScheduledPhase=0;
     this.baseRaidTriggeredPhase = this.phase || 1;
     this.baseRaidTimer = 40.0; // 40秒の防衛猶予（ワープ帰還は間に合う／本隊は単独だと壊滅寄り）
 
@@ -4450,7 +4459,8 @@ export const IronSquadGame = {
     const raidBanner = document.getElementById('base-raid-banner');
     if (raidBanner) raidBanner.classList.remove('hidden');
 
-    const raidCount = 17;
+    makeEnemyRoom(this.monsters,17);
+    const raidCount = Math.min(17,40-this.monsters.length);
     const curPhase = Math.max(1, this.phase || 1);
     // v1.23.3: 本隊ほぼ壊滅・精鋭のみ生存。スケール距離28000維持、ATK/DEF/数を引き上げ（帰還プレイヤーは倒せる）
     const scaling = distanceScaling(RAID_SCALE_DIST, curPhase);
@@ -4522,7 +4532,7 @@ export const IronSquadGame = {
         name, title,
         isBoss,
         isRaidBoss,
-        isRaidMob: true,
+        id:`random_raid_${curPhase}_${i}`,isRaidMob: true,
         atkTimer: 0,
         hitPulse: 0
       });
@@ -4531,10 +4541,10 @@ export const IronSquadGame = {
 
   // 本陣強襲イベントの毎フレーム監視
   updateBaseRaid(dt) {
-    if (!this.baseRaidActive) return;
+    if (!this.baseRaidActive || this.currentDungeon || this.restTimer>0) return;
 
     this.baseRaidTimer = Math.max(0, (this.baseRaidTimer || 40) - dt);
-    const aliveRaidMobs = this.monsters.filter(m => m.isRaidMob && m.hp > 0);
+    const aliveRaidMobs = this.monsters.filter(m => m.isRaidMob && !m.isDemonInvasion && m.hp > 0);
 
     const mainForce = (this.squad || []).filter(s => s && !s.isPersonalGuard && !s.dead);
     const mainAllDown = mainForce.length > 0 && mainForce.every(s => s.isDown);
@@ -4557,7 +4567,7 @@ export const IronSquadGame = {
   withdrawBaseRaid(reason = 'downed') {
     if (!this.baseRaidActive) return;
     this.baseRaidActive = false;
-    this.monsters = (this.monsters || []).filter(m => !m.isRaidMob);
+    this.monsters = (this.monsters || []).filter(m => !m.isRaidMob || m.isDemonInvasion);
     const raidBanner = document.getElementById('base-raid-banner');
     if (raidBanner) raidBanner.classList.add('hidden');
     sound.playBomb();
@@ -4571,6 +4581,7 @@ export const IronSquadGame = {
   completeBaseRaid(isSuccess) {
     if (!this.baseRaidActive) return;
     this.baseRaidActive = false;
+    for(const key of ['monsters','savedFieldMonsters','restMonsters'])if(this[key])this[key]=this[key].filter(m=>!m.isRaidMob||m.isDemonInvasion);
     const raidBanner = document.getElementById('base-raid-banner');
     if (raidBanner) raidBanner.classList.add('hidden');
 
@@ -4725,12 +4736,12 @@ export const IronSquadGame = {
     if (this.phaseFiscal.startBalance == null) this.phaseFiscal.startBalance = (this.treasury || 0);
 
     const livingForPay = [...(this.squad || []).filter(s => !s.dead), ...(this.reserves || []).filter(s => !s.dead)];
-    const grossIncome = calcTreasuryGrossIncome(this.phase - 1, livingForPay.length);
+    const grossIncome = nationalIncome(this,this.phase - 1, livingForPay.length);
     const stipend = calcCommanderStipend(this.phase - 1, grossIncome);
     const netToTreasury = grossIncome - stipend;
     this.treasury = (this.treasury || 0) + netToTreasury;
     this.gold = (this.gold || 0) + stipend;
-    this.phaseFiscal.income = (this.phaseFiscal.income || 0) + netToTreasury;
+    this.phaseFiscal.income = (this.phaseFiscal.income || 0) + grossIncome;
     this.phaseFiscal.commanderStipend = (this.phaseFiscal.commanderStipend || 0) + stipend;
 
     finishEscortPhase(this);
@@ -4817,9 +4828,12 @@ export const IronSquadGame = {
       }
     }
 
-    // 共有ボックス自動配布＆余剰換金
+    // 新兵への支給を先に行い、真の余剰だけを外販。給与原資を残して町へ投資。
+    const supply=this.supplyReinforcements();
     this.processSharedEquipmentBox();
+    this.investNation();
     const fiscal = this.finalizePhaseFiscal();
+    this.beginPhaseFiscal();
     this.showToast(formatFiscalReportJa(fiscal));
     // 兵士たちの自費治療
     aliveSoldiers.forEach((s) => {
@@ -4852,7 +4866,6 @@ export const IronSquadGame = {
       }
       this.recalcSoldierStats(soldier);
     }
-    const supply=this.supplyReinforcements();
     supply.experienced=experiencedCount;
     supply.waited=aliveSoldiers.length-activeExperiencedCount;
     this.showToast(`新兵${supply.received}名受領・実戦へ${supply.deployed}名配備・予備${supply.waiting}名`);
@@ -4881,6 +4894,7 @@ export const IronSquadGame = {
     this._merchantShopRefresh?.();
     this.saveGame();
     this.updateStatsUI();
+    if(!this.container?.querySelector('#strategy-modal')?.classList.contains('hidden'))this.renderStrategyUI();
   },
 
   changeTimePeriod() {
@@ -4927,8 +4941,8 @@ export const IronSquadGame = {
     this.monsters=(this.restMonsters||[]).filter(m=>m.hp>0 && enemyAvailable(m,daylightAt(this.worldTime).period));this.restMonsters=[];
     if(!this.monsters.length && !this.currentDungeon)this.seedInitialMonsters();
     this.spawnTimer=0;
+    if(!this.phaseFiscal||this.phaseFiscal.phase!==this.phase)this.beginPhaseFiscal();
     this.processSharedEquipmentBox();
-    this.beginPhaseFiscal();
     this.showToast(`第${this.phase}期開始 · 自己強化${this.restReport?.count||0}回完了`);
     this.saveGame();this.updateStatsUI();
   },
@@ -4964,6 +4978,7 @@ export const IronSquadGame = {
     this.updateSpawns(dt);
 
     const aliveSquad = this.squad.filter(s => !s.dead);
+    const raidDefenders=aliveSquad.concat((this.gateGuards||[]).filter(g=>gateGuardVisible(this,g)&&!g.isDown&&g.hp>0));
     const now = performance.now();
     const isCommandActive = now < this.commandActiveUntil;
     const currentRank = RANKS[this.rankIndex];
@@ -5071,7 +5086,7 @@ export const IronSquadGame = {
       if (this.currentDungeon.kind === 'town') this.checkMerchantProximity();
       // ダンジョン内: 入口帰還ポータル (x: 180, y: h/2) 接触判定
       const exitDist = Math.hypot(this.player.x - 180, this.player.y - (this.currentDungeon.height / 2));
-      if (exitDist < 42) {
+      if (this.currentDungeon.kind==='town'?townExitReached(this):exitDist < 42) {
         this.exitDungeon();
       }
       // ダンジョン内: 最奥至宝箱 (x: w - 240, y: h/2) 接近判定
@@ -5087,7 +5102,9 @@ export const IronSquadGame = {
       this.zoneAlertFlash = Math.max(0, this.zoneAlertFlash - dt * 1.2);
     }
 
-    // 本陣強襲イベントの判定・進行監視
+    // 定期侵攻と低頻度のランダム強襲。休息・屋内は進行を待つ。
+    this.updateDemonInvasion(dt);
+    updateGateGuards(this,dt);
     this.checkBaseRaidTrigger();
     this.updateBaseRaid(dt);
 
@@ -5123,7 +5140,7 @@ export const IronSquadGame = {
         healBadge.textContent = inInn ? '🛏️ 宿場で休息回復中' : '💚 砦本陣で部隊治癒中';
       }
       // 宿場は長距離行軍の安全な休息所：本陣よりやや速い快適回復
-      const healAmt = (inInn ? 20 : 12) * dt;
+      const healAmt = (inInn ? 20 : 12)*(1+(this.nation?.level||0)*.1) * dt;
       this.player.hp = Math.min(this.player.maxHp, this.player.hp + healAmt);
       this.squad.forEach((s) => {
         if (s.dead || s.isDown) return;
@@ -6082,7 +6099,7 @@ export const IronSquadGame = {
       if (m.isRaidMob) {
         minDist = 999999;
         target = null;
-        for (const s of aliveSquad) {
+        for (const s of raidDefenders) {
           if (s.isDown) continue;
           const d = Math.sqrt(this._distSq(s.x, s.y, m.x, m.y));
           if (d < minDist) { minDist = d; target = s; }
@@ -6227,6 +6244,8 @@ export const IronSquadGame = {
         }
       }
     }
+
+    applyFortifications(this,dt);
 
     // ドロップ回収: 1. 兵士による回収 (上位装備なら自動着替え＆強化引き継ぎ！)
     for (let i = this.dropsOnField.length - 1; i >= 0; i--) {
@@ -6635,6 +6654,7 @@ export const IronSquadGame = {
       }
     }
 
+    if(!environmental)dmg=Math.max(1,Math.round(dmg*headquartersDamageMult(this,target)));
     if(target.magicWardTimer>0)dmg=Math.max(1,Math.round(dmg*(1-(target.magicWardBonus||0))));
     if(preventLethalHit(this,target,dmg))return;
     target.hp -= dmg;
@@ -6894,6 +6914,7 @@ export const IronSquadGame = {
 
     // 戦闘ダンジョン: 部隊突入（全員）。宿場/町: 隊長＋直属のみ。本隊は野外の位置・作戦を維持。
     const isTown = dungeonDef.kind === 'town';
+    if(isTown)ensureTownGuards(this,dungeonDef);
     this.savedFieldSquadPos = null;
     this.savedFieldPlatoonPos = null;
     if (isTown && this.squad) {
@@ -6906,7 +6927,7 @@ export const IronSquadGame = {
         }));
       }
     }
-    this.player.x = 180;
+    this.player.x = 240;
     this.player.y = h / 2;
     if (this.squad) {
       this.squad.forEach((s) => {
@@ -6971,16 +6992,18 @@ export const IronSquadGame = {
         };
         comfort(this.player);
         (this.squad || []).forEach((s) => { if (s && s.isPersonalGuard) comfort(s); });
-        this.showToast(`🛏️「${dungeonDef.name}」に入った。直属のみ同行。本隊は野外で作戦継続。西側の門から出られる。`);
+        this.showToast(`🛏️「${dungeonDef.name}」に入った。直属のみ同行。本隊は野外で作戦継続。施設は司令部の国家タブから。西側の門で退場。`);
       } else {
         this.showToast(`「${dungeonDef.name}」へ入った。`);
       }
     }
+    this.refreshInvasionUI();
     sound.playLaunch();
   },
 
   exitDungeon() {
     if (!this.currentDungeon) return;
+    const townId=this.currentDungeon.id;
     const wasTown = this.currentDungeon.kind === 'town';
     const returnPos = this.savedFieldPos || { x: BASE_CAMP.x, y: BASE_CAMP.y };
     this.player.x = returnPos.x;
@@ -7023,7 +7046,9 @@ export const IronSquadGame = {
     this.savedFieldDrops = null;
     this.currentDungeon = null;
     this.dungeonVault = null;
+    if(wasTown)exitGateTown(this,townId);
     this.revealFogAroundPlayer(true);
+    this.refreshInvasionUI();
 
     sound.playLaunch();
     this.showToast(wasTown ? '🚪 宿場を出た。本隊は野外のまま作戦継続中。' : '🌀 外界へ無事帰還しました！');
@@ -7163,6 +7188,7 @@ export const IronSquadGame = {
     const idx = this.monsters.indexOf(monster);
     if (idx !== -1) this.monsters.splice(idx, 1);
     this.waveKills++;
+    this.onNationKill();
 
     // 掃討軍令の進捗カウント
     if (this.currentQuest && !this.currentQuest.completed && this.currentQuest.targetKills) {
@@ -7396,11 +7422,12 @@ export const IronSquadGame = {
     const slotKey = SLOT_INFO[item.type] ? SLOT_INFO[item.type].key : null;
 
     // 国庫共有ボックス: T≤3 かつ隊長の同スロットより弱い装備は吸収＆相当額買い取り
-    if (slotKey && shouldAbsorbToSharedBox(item, this.equipped, slotKey)) {
+    if (slotKey && shouldAbsorbToSharedBox(item, this.equipped, slotKey) && (this.treasury||0)>=calcBuyoutGold(item)) {
       const buyout = calcBuyoutGold(item);
       this.sharedEquipBox = this.sharedEquipBox || [];
       this.sharedEquipBox.push(item);
       this.gold = (this.gold || 0) + buyout;
+      this.treasury-=buyout;
       if (this.phaseFiscal) {
         this.phaseFiscal.buyouts = (this.phaseFiscal.buyouts || 0) + buyout;
         this.phaseFiscal.buyoutCount = (this.phaseFiscal.buyoutCount || 0) + 1;
@@ -7952,10 +7979,6 @@ export const IronSquadGame = {
   /** 国庫へ寄付 → 全国兵士へ均等配分（余りは国庫残留） */
   donateToTreasury(amountInput = 10000) {
     const living = [...(this.squad || []), ...(this.reserves || [])].filter(s => s && !s.dead);
-    if (!living.length) {
-      alert('配下に生存兵士がいません');
-      return false;
-    }
     let amount = 0;
     if (amountInput === 'max') amount = this.gold || 0;
     else amount = parseInt(amountInput, 10) || 0;
@@ -7967,13 +7990,14 @@ export const IronSquadGame = {
       alert(`軍資金が足りません (所持: ${(this.gold || 0).toLocaleString()}G / 必要: ${amount.toLocaleString()}G)`);
       return false;
     }
-    if (!confirm(`🏛 国庫へ ${amount.toLocaleString()}G を寄付し、全国 ${living.length}名へ均等配分しますか？`)) return false;
+    if (!confirm(`🏛 国庫へ ${amount.toLocaleString()}G を寄付しますか？\n75%は国庫・開発へ、25%は生存兵士${living.length}名へ配分します。`)) return false;
 
     this.gold -= amount;
     this.treasury = (this.treasury || 0) + amount;
     if (this.phaseFiscal) this.phaseFiscal.donations = (this.phaseFiscal.donations || 0) + amount;
 
-    const per = Math.floor(amount / living.length);
+    this.nation=normalizeNation(this.nation);this.nation.totalDonations+=amount;
+    const per = living.length?Math.floor(amount*.25 / living.length):0;
     let distributed = 0;
     if (per > 0) {
       for (const s of living) {
@@ -8322,6 +8346,7 @@ export const IronSquadGame = {
     }
     if (this.phaseFiscal) {
       this.phaseFiscal.dismissRefund = (this.phaseFiscal.dismissRefund || 0) + settle.refundToPlayer;
+      this.phaseFiscal.treasuryReturns=(this.phaseFiscal.treasuryReturns||0)+settle.goldReturnToTreasury;
       this.phaseFiscal.surplusSales = (this.phaseFiscal.surplusSales || 0) + settle.gearSellToTreasury;
       this.phaseFiscal.endBalance = this.treasury;
     }
@@ -8355,8 +8380,9 @@ export const IronSquadGame = {
     const soldiers = [...(this.squad || []), ...(this.reserves || [])];
     const dist = distributeSharedBoxToSoldiers(this.sharedEquipBox, soldiers, (s) => this.recalcSoldierStats(s));
     this.sharedEquipBox = dist.remaining;
-    const sold = sellWeakSurplusFromBox(this.sharedEquipBox, soldiers, 2);
+    const sold = sellWeakSurplusFromBox(this.sharedEquipBox, soldiers);
     this.sharedEquipBox = sold.remaining;
+    this.nation=normalizeNation(this.nation);this.nation.totalExports+=sold.soldGold;
     if (sold.soldGold > 0) {
       this.treasury = (this.treasury || 0) + sold.soldGold;
       if (this.phaseFiscal) {
@@ -9007,6 +9033,7 @@ export const IronSquadGame = {
       } else nq.innerHTML = '';
     }
     const nf = document.getElementById('nation-fiscal-panel');
+    this.renderNationStatus();this.refreshInvasionUI();
     if (nf) nf.innerHTML = formatFiscalReportHtml(this.lastFiscalReport) || '<div style="font-size:11px;color:#64748b;margin-bottom:8px;">財政報告は作戦期終了後に更新されます。</div>';
 
     const econTab = this.rosterManageTab || 'roster';
@@ -9313,6 +9340,7 @@ export const IronSquadGame = {
       appendCategorySection(otherTitle, otherSquad.length, otherDesc, otherSquad, false);
     }
     refreshInterface(this, { rank: currentRank, time, zone });
+    this.refreshInvasionUI();
     if(scrollBody)scrollBody.scrollTop=scrollTop;
     if (typeof keepDetailId !== 'undefined' && keepDetailId) {
       const still = [...(this.squad||[]),...(this.reserves||[])].some(x => x && x.id === keepDetailId);
@@ -9428,6 +9456,7 @@ export const IronSquadGame = {
     if (this.currentDungeon) {
       this.worldObjs = [];
       drawDungeonEnvironment(this.ctx, this.currentDungeon, this.camera, this.width, this.height, z, now * 0.001);
+      if(this.currentDungeon.kind==='town'){drawNationalDevelopment(this.ctx,this,this.currentDungeon.width*.62,this.currentDungeon.height*.5,true);drawFortification(this.ctx,this);}
       if (this.dungeonVault) {
         drawDungeonVault(this.ctx, this.dungeonVault, now * 0.001);
       }
@@ -9437,7 +9466,7 @@ export const IronSquadGame = {
       drawHazards(this.ctx,this,view);
 
       // 2. 自軍砦本陣 (治癒砦・城塞壁・風になびく王国旗)
-      if(inView(BASE_CAMP,180))this.drawBaseCamp(this.ctx, now);
+      if(inView(BASE_CAMP,460)){drawFortification(this.ctx,this);this.drawBaseCamp(this.ctx, now);}
 
       // 2.5 戦場の探索拠点 (敵前線砦・捕虜の檻・古代祭壇・補給集積所)
       if (this.outposts) {
@@ -9509,6 +9538,7 @@ export const IronSquadGame = {
       if(!m.dead&&visible(m))renderList.push({y:m.y,k:5,ref:m});
       for(const esc of m.escorts||[])if(!esc.dead&&(esc.hp>0||esc.isDown)&&visible(esc))renderList.push({y:esc.y,k:6,ref:esc});
     }
+    for(const guard of this.gateGuards||[])if(gateGuardVisible(this,guard)&&visible(guard))renderList.push({y:guard.y,k:6,ref:guard});
     for(const civ of this.civilians||[])if(!civ.rescued&&visible(civ))renderList.push({y:civ.y,k:7,ref:civ});
     if (this.player) renderList.push({ y: this.player.y, k: 4, ref: this.player });
 
@@ -10173,6 +10203,7 @@ export const IronSquadGame = {
   },
 
   drawBaseCamp(ctx, now) {
+    drawNationalDevelopment(ctx,this,BASE_CAMP.x,BASE_CAMP.y);
     ctx.save();
     // 治癒エリアの優しい緑のオーラ
     ctx.fillStyle = 'rgba(16, 185, 129, 0.06)';
@@ -10542,7 +10573,7 @@ export const IronSquadGame = {
     ctx.save();
     if (isLeft) ctx.scale(-1, 1);
 
-    if (drawFieldBoss(ctx, m, now) || drawFieldMob(ctx, m, now)) {
+    if ((m.isDemonInvasion?drawFieldMob(ctx,{...m,isBoss:false},now):drawFieldBoss(ctx, m, now) || drawFieldMob(ctx, m, now))) {
       // Bosses and common creatures share the live field illustration.
     } else if (m.type === 'slime') {
       // ===== 🟢 スライム (近郊安全ゾーン・ぷるぷる揺れる半透明ゲル) =====
@@ -11103,6 +11134,7 @@ export const IronSquadGame = {
         mCtx.fillStyle = d.kind === 'town' ? '#e1cf9d' : d.kind === 'ruin' ? '#8d7b68' : '#d7b56a';
         mCtx.fillRect(px(d.entrance.x) - 1.6, py(d.entrance.y) - 1.6, 3.2, 3.2);
       }
+      drawInvasionRoute(mCtx,this,px,py,inside);
       for (const m of this.monsters || []) {
         if (!m.isColossal || !inside(m.x, m.y) || !fog.isExploredWorld(m.x, m.y)) continue;
         mCtx.fillStyle = '#c45a4a';

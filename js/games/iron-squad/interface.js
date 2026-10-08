@@ -1,4 +1,4 @@
-import {configureAudioInterface} from './audio-interface.js?v=104';
+import {configureAudioInterface} from './audio-interface.js?v=106';
 /** Presentation only: keep game actions on their original DOM nodes. */
 const element = (tag, className, text) => {
   const node = document.createElement(tag);
@@ -39,6 +39,7 @@ export function configureInterface(game) {
   fieldStatus.append(get('field-zone-badge'), get('day-night-badge')); field.append(fieldStatus);
   const alerts = element('div', 'field-alerts');
   alerts.append(get('base-raid-banner'), get('dungeon-prompt-banner'), get('phase-complete-banner')); field.append(alerts);
+  const invasionBanner=element('div','phase-banner hidden');invasionBanner.id='demon-invasion-banner';alerts.prepend(invasionBanner);
 
   const heading = root.querySelector('.dialog-heading');
   heading.querySelector('span').classList.add('command-wallet');
@@ -122,7 +123,12 @@ export function configureInterface(game) {
   title(nation.querySelector('.hub-intro'), '国家運営', '軍令の確認、国庫への寄付、本隊の遠征をまとめて管理。');
   const donate = get('view-econ-invest'); donate.classList.add('command-card'); get('nation-quest-panel').after(donate);
   title(get('nation-expedition-panel'), '本隊の小隊遠征', '出発先と参加兵士を確認して派遣します。');
-  fold(nation, 'nation-finances', '前回の財政報告', [get('nation-fiscal-panel')]);
+  const finances=fold(nation, 'nation-finances', '直近ウェーブの収支', [get('nation-fiscal-panel')]);finances.open=true;
+  const status=element('section','nation-status');status.id='nation-status';nation.querySelector('.hub-intro').after(status,finances);
+  const defense=element('section','nation-status');defense.id='nation-defense';nation.append(defense);
+  const facilities=element('section','nation-status');facilities.id='nation-facilities';finances.after(facilities);
+  const deposit=element('button','','バッグの売却選択装備を国家へ納入');deposit.type='button';deposit.onclick=()=>game.depositNationalEquipment([...(game.selectedSaleIds||[])]);get('view-econ-box').prepend(deposit);
+  get('view-econ-box').append(element('p','','バッグで装備を選択して納入できます。装備中・保護中・異質／神鍛は除外。'));
   fold(nation, 'nation-shared-box', '共有装備箱', [get('view-econ-box')]);
   // Details and hand-off popups close before the underlying dialog on Escape.
   const modal = get('strategy-modal');

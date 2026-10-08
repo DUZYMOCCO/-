@@ -41,6 +41,7 @@ function settlementToDef(s) {
 }
 
 export const DUNGEON_DEFS = [
+  {id:'royal_castle_town',kind:'town',name:'本陣城下町',subtitle:'国家とともに育つ町',icon:'🏘',color:'#c4b48a',accentColor:'#d7b56a',theme:'town',reqDef:0,reqLv:1,desc:'鍛冶工房・冒険者組合・大城下町のカジノ。施設は国家タブから利用。',entrance:{x:CENTER+320,y:CENTER+260,radius:68},width:1600,height:1000,ambientColor:'#241e16',floorColor:'#3a3428',wallColor:'#14110e',torchColor:'#c47a3a',distance:412,boss:null,guardian:null,mobTypes:[],mobCount:0,eliteCount:0},
   {
     id: 'dungeon_goblin_mines',
     kind: 'dungeon',
@@ -387,7 +388,7 @@ function drawTownInterior(ctx, dungeon) {
   ctx.ellipse(w * 0.42, h / 2 + 70, 12, 6, 0, 0, Math.PI * 2);
   ctx.fill();
   drawWalls(ctx, w, h);
-  drawExitArch(ctx, 180, h / 2, '外へ');
+  drawExitArch(ctx, 52, h / 2, '西門・外へ');
 }
 
 function drawRuinInterior(ctx, dungeon, time) {

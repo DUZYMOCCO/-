@@ -1,6 +1,6 @@
-import {MAGIC_AFFINITIES,ensureMana} from './magic-rules.js?v=104';
-import { drawMeleeWeapon, drawMeleeRangeCue } from './weapon-motion.js?v=104';
-import { drawSoldierHead, isMedicAppearance, soldierAppearanceFamily } from './soldier-appearance.js?v=104';
+import {MAGIC_AFFINITIES,ensureMana} from './magic-rules.js?v=106';
+import { drawMeleeWeapon, drawMeleeRangeCue } from './weapon-motion.js?v=106';
+import { drawSoldierHead, isMedicAppearance, soldierAppearanceFamily } from './soldier-appearance.js?v=106';
 
 // Live field illustrations. Equipment colors are read every frame.
 // Hands and the weapon share one pose; only the striking edge gets a short trace.
@@ -381,7 +381,8 @@ export function drawFieldMob(c, m, now) {
     const orc = m.type === 'orc', scale = orc ? 1.3 : 1;
     c.scale(scale,scale);
     c.fillStyle = '#3c3931'; c.fillRect(-5+step,-6,4,8); c.fillRect(2-step,-6,4,8);
-    shape(c,[[-7,-19],[5,-20],[8,-7],[-7,-6]],orc ? '#77735d' : '#797056');
+    shape(c,[[-7,-19],[5,-20],[8,-7],[-7,-6]],m.isDemonInvasion?'#3a3b3d':orc ? '#77735d' : '#797056');
+    if(m.isDemonInvasion){shape(c,[[-7,-20],[-1,-17],[-3,-6],[-8,-8]],'#7b4145');if(m.isInvasionCommander){line(c,[[-8,-18],[-9,-40]],'#bca587',1.5);shape(c,[[-9,-40],[3,-37],[-9,-32]],'#9d5454');}}
     shape(c,[[-8,-19],[-3,-22],[1,-19],[-4,-13],[-8,-14]],'#51595a');
     line(c,[[-4,-19],[4,-10]],'#baa383',2);
     ellipse(c,1,-25,6.5,6,m.hitPulse > 0 ? '#b8c0a5' : (orc ? '#8a9470' : '#7e9972'));

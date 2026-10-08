@@ -4,12 +4,12 @@
  * - 強い護衛付き。放置するとモンスターに襲われ死亡しうる
  * - 護衛が倒した強敵のドロップを序盤から掠め取れるチャンス
  */
-import { saleValue, distanceScaling, weaponCombatProfile } from './equipment-rules.js?v=104';
-import { drawFieldSoldier } from './visuals.js?v=104';
-import { createSoldierAppearance, drawSoldierHead } from './soldier-appearance.js?v=104';
-import { attackAnimationRate } from './weapon-motion.js?v=104';
-import { markSoldierDown, rebuildMerchantCasualties, RESCUE_TIMEOUT } from './casualty-rules.js?v=104';
-import {emptyMastery,normalizeMastery,hitGrowthMult,applyHitGrowth,masteryAtkMult,masteryReloadMult} from './growth-rules.js?v=104';
+import { saleValue, distanceScaling, weaponCombatProfile } from './equipment-rules.js?v=106';
+import { drawFieldSoldier } from './visuals.js?v=106';
+import { createSoldierAppearance, drawSoldierHead } from './soldier-appearance.js?v=106';
+import { attackAnimationRate } from './weapon-motion.js?v=106';
+import { markSoldierDown, rebuildMerchantCasualties, RESCUE_TIMEOUT } from './casualty-rules.js?v=106';
+import {emptyMastery,normalizeMastery,hitGrowthMult,applyHitGrowth,masteryAtkMult,masteryReloadMult} from './growth-rules.js?v=106';
 import {recordCombat,finishExperience} from './phase-rules.js';
 
 export const MERCHANT_PRICE_MULT = 3.2; // 相場の約3.2倍（高め）
@@ -71,7 +71,7 @@ function escortStats(distance, phase = 1) {
   return { hp, atk, speed: 78, radius: 15, def: 28, dmgReduction: 12 };
 }
 
-function makeEscort(merchant, index, phase = 1) {
+export function makeEscort(merchant, index, phase = 1) {
   const st = escortStats(merchant.distance, phase);
   const ang = (index / ESCORT_COUNT) * Math.PI * 2 + 0.4;
   return {
@@ -124,7 +124,7 @@ export function recalcEscortStats(esc) {
   esc.atkSpeed=1;
 }
 export function finishEscortPhase(game) {
-  for(const m of game.merchants||[])for(const esc of m.escorts||[])if(!esc.dead&&finishExperience(esc))recalcEscortStats(esc);
+  for(const esc of [...(game.merchants||[]).flatMap(m=>m.escorts||[]),...(game.gateGuards||[])])if(!esc.dead&&finishExperience(esc))recalcEscortStats(esc);
 }
 function damageEscortFallback(game,esc,raw) {
   const dmg=Math.max(1,Math.round(raw*100/(100+(esc.def||0)*1.2)*(1-Math.min(.4,(esc.dmgReduction||0)/100))));
@@ -311,37 +311,7 @@ export function refreshMerchantStock(merchant, generateRandomDrop, phase = 1) {
  * 護衛AI＋商人被弾・死亡・リスポーン。
  * @param {object} hooks { damageMonster(attacker, monster), onMerchantDied(m), onMerchantRespawn(m) }
  */
-export function updateMerchants(game, dt, generateRandomDrop, hooks = {}) {
-  const merchants = game.merchants || [];
-  if (!merchants.length || !(dt > 0)) return;
-  if (game.currentDungeon) {
-    // ダンジョン内はフィールド更新スキップ（会話のみ許可）
-    return;
-  }
-  const phase = game.phase || 1;
-  const monsters = game.monsters || [];
-
-  for (const m of merchants) {
-    if (m.dead) {
-      m.respawnIn = (m.respawnIn || MERCHANT_RESPAWN_SEC) - dt;
-      if (m.respawnIn <= 0) {
-        m.dead = false;
-        m.hp = m.maxHp;
-        m.stock = buildStock(generateRandomDrop, m.distance, phase);
-        m.escorts = Array.from({ length: ESCORT_COUNT }, (_, i) => m.escorts?.[i]&&!m.escorts[i].dead?m.escorts[i]:makeEscort(m,i,phase));
-        m.respawnIn = 0;
-        hooks.onMerchantRespawn?.(m);
-      }
-    }
-
-    m.stockRefreshIn = Math.max(0, (m.stockRefreshIn || 0) - dt);
-    if(m.returningToBase&&!m.isDown)returnToBase(m,dt);
-    // Discovered camps persist, but distant caravans do not run full escort AI.
-    const nearPlayer=game.player&&Math.hypot(m.x-game.player.x,m.y-game.player.y)<850;
-    const nearView=game.camera&&Math.hypot(m.x-game.camera.x,m.y-game.camera.y)<850;
-    const activeEscort=(m.escorts||[]).some(e=>!e.dead&&(e.returningToBase||(e.rescuedToBase&&game.player&&Math.hypot(e.x-game.player.x,e.y-game.player.y)<850)));
-    if(!nearPlayer&&!nearView&&!activeEscort&&!monsters.some(mon=>mon&&mon.hp>0&&Math.hypot(mon.x-m.x,mon.y-m.y)<MERCHANT_AGGRO_R+160))continue;
-
+export function updateEscortPatrol(game,m,dt,monsters,hooks={}) {
     // 護衛行動
     for (const esc of (m.escorts || [])) {
       if (!esc || esc.dead || esc.isDown) {
@@ -389,6 +359,41 @@ export function updateMerchants(game, dt, generateRandomDrop, hooks = {}) {
       }
     }
 
+}
+
+export function updateMerchants(game, dt, generateRandomDrop, hooks = {}) {
+  const merchants = game.merchants || [];
+  if (!merchants.length || !(dt > 0)) return;
+  if (game.currentDungeon) {
+    // ダンジョン内はフィールド更新スキップ（会話のみ許可）
+    return;
+  }
+  const phase = game.phase || 1;
+  const monsters = game.monsters || [];
+
+  for (const m of merchants) {
+    if (m.dead) {
+      m.respawnIn = (m.respawnIn || MERCHANT_RESPAWN_SEC) - dt;
+      if (m.respawnIn <= 0) {
+        m.dead = false;
+        m.hp = m.maxHp;
+        m.stock = buildStock(generateRandomDrop, m.distance, phase);
+        m.escorts = Array.from({ length: ESCORT_COUNT }, (_, i) => m.escorts?.[i]&&!m.escorts[i].dead?m.escorts[i]:makeEscort(m,i,phase));
+        m.respawnIn = 0;
+        hooks.onMerchantRespawn?.(m);
+      }
+    }
+
+    m.stockRefreshIn = Math.max(0, (m.stockRefreshIn || 0) - dt);
+    if(m.returningToBase&&!m.isDown)returnToBase(m,dt);
+    // Discovered camps persist, but distant caravans do not run full escort AI.
+    const nearPlayer=game.player&&Math.hypot(m.x-game.player.x,m.y-game.player.y)<850;
+    const nearView=game.camera&&Math.hypot(m.x-game.camera.x,m.y-game.camera.y)<850;
+    const activeEscort=(m.escorts||[]).some(e=>!e.dead&&(e.returningToBase||(e.rescuedToBase&&game.player&&Math.hypot(e.x-game.player.x,e.y-game.player.y)<850)));
+    if(!nearPlayer&&!nearView&&!activeEscort&&!monsters.some(mon=>mon&&mon.hp>0&&Math.hypot(mon.x-m.x,mon.y-m.y)<MERCHANT_AGGRO_R+160))continue;
+
+    updateEscortPatrol(game,m,dt,monsters,hooks);
+
     // 敵が商人に接触 → 護衛が少ないと商人も削られる
     const escortsAlive = livingEscorts(m).length;
     for (const mon of monsters) {
@@ -428,7 +433,7 @@ export function drawMerchantEscort(ctx,esc,now=0,simple=false) {
   if(!esc||esc.dead||(!esc.isDown&&esc.hp<=0))return;
   drawFieldSoldier(ctx,esc,now,ESCORT_CLASS,'#b69d72',simple,esc.displayEquipment);
   ctx.save();ctx.font='8px sans-serif';ctx.textAlign='center';
-  const label=`${esc.displayEquipment?.weapon.weaponStyle==='spear'?'護衛・槍':'護衛・斧'} Lv.${esc.level||1}`;
+  const label=`${esc.isGateGuard?'門番':esc.displayEquipment?.weapon.weaponStyle==='spear'?'護衛・槍':'護衛・斧'} Lv.${esc.level||1}`;
   const width=ctx.measureText(label).width+6;
   ctx.fillStyle='rgba(18,24,25,.82)';ctx.fillRect(esc.x-width/2,esc.y+8,width,11);
   ctx.fillStyle='#d4c5a2';ctx.fillText(label,esc.x,esc.y+16);ctx.restore();
@@ -557,12 +562,12 @@ export function applyMerchantSave(game, savedList, generateRandomDrop, BASE_CAMP
   rebuildMerchantCasualties(game);
 }
 
-function npcSave(unit) {
+export function npcSave(unit) {
   const result={};
   for(const key of ['x','y','hp','maxHp','isDown','dead','downTimer','carrierId','homeX','homeY','timesDown','timesRescued','rescuedThisDown','downedInAid','downId','rescuedToBase','returningToBase','rescueRewardGranted','rescueReward','level','exp','reqExp','minionKills','bossKills','survivedWaves','hitGrowthPct','hitGrowthEvents','weaponMastery','favoriteWeapon','phaseActivity','escortBaseStats'])if(unit[key]!==undefined)result[key]=unit[key];
   return result;
 }
-function applyNpcSave(unit,saved) {
+export function applyNpcSave(unit,saved) {
   for(const key of ['x','y','hp','maxHp','downTimer','homeX','homeY','timesDown','timesRescued','downId','atk','def','dmgReduction','level','exp','reqExp','minionKills','bossKills','survivedWaves','hitGrowthPct','hitGrowthEvents'])if(Number.isFinite(saved[key]))unit[key]=saved[key];
   if(saved.weaponMastery)unit.weaponMastery=normalizeMastery(saved.weaponMastery);
   if(saved.escortBaseStats)unit.escortBaseStats=saved.escortBaseStats;

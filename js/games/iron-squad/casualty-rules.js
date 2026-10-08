@@ -1,7 +1,7 @@
-import {ensureMana,regenerateMana,spendMana} from './magic-rules.js?v=104';
+import {ensureMana,regenerateMana,spendMana} from './magic-rules.js?v=106';
 import {recordHealing} from './phase-rules.js';
 import {WORLD_SIZE} from './world.js';
-import {grantPermanentRescueReward} from './rescue-rewards.js?v=104';
+import {grantPermanentRescueReward} from './rescue-rewards.js?v=106';
 
 export const RESCUE_TIMEOUT = 45; // 救助猶予時間（秒）広域マップ対応で45秒に延長
 export const isMedic=unit=>['MEDIC','HIGH_PRIEST','SAINT','ARCHANGEL'].includes(unit?.soldierClass);
@@ -28,7 +28,7 @@ export const carrierKey=(game,unit)=>unit===game.player?'player':unit?.id;
 export const isMerchantCasualty=unit=>!!(unit?.isMerchant||unit?.isMerchantEscort);
 export const rescueUnits=game=>game._merchantWounded?.length?[...(game.squad||[]),...game._merchantWounded]:(game.squad||[]);
 export function rebuildMerchantCasualties(game) {
-  game._merchantWounded=[];
+  game._merchantWounded=(game.gateGuards||[]).filter(g=>g.isDown&&!g.dead);
   for(const m of game.merchants||[])for(const unit of [m,...(m.escorts||[])])if(unit.isDown&&!unit.dead)game._merchantWounded.push(unit);
 }
 export const carriedSoldiers=(game,unit)=>!unit?[]:rescueUnits(game).filter(s=>s.isDown&&!s.dead&&s.carrierId===carrierKey(game,unit));
@@ -163,10 +163,12 @@ function revive(game,wounded,hp,options=null) {
       // Separate resting spots keep rescued traders individually approachable.
       let slot=0;
       for(const merchant of game.merchants||[])for(const unit of [merchant,...(merchant.escorts||[])])if(unit!==wounded&&unit.rescuedToBase)slot++;
+      slot+=(game.gateGuards||[]).filter(g=>g!==wounded&&g.rescuedToBase).length;
       const angle=slot*2.399963229728653,radius=Math.min(115,60+18*Math.sqrt(slot));
       wounded.homeX=WORLD_SIZE/2+Math.cos(angle)*radius;
       wounded.homeY=WORLD_SIZE/2+Math.sin(angle)*radius;
     }
+    if(wounded.isGateGuard){if(game.currentDungeon&&wounded.gateSpace===game.currentDungeon.id){wounded.x=game.currentDungeon.entrance.x;wounded.y=game.currentDungeon.entrance.y;}wounded.gateSpace='field';}
     wounded.rescuedToBase=true;
     wounded.returningToBase=Math.hypot(wounded.x-wounded.homeX,wounded.y-wounded.homeY)>4;
     if(wounded.isMerchant)wounded.placeName='本陣・救助した商人';

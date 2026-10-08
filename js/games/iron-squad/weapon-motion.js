@@ -1,4 +1,4 @@
-import { MELEE_SWEET_SPOT, weaponCombatProfile } from './equipment-rules.js?v=104';
+import { MELEE_SWEET_SPOT, weaponCombatProfile } from './equipment-rules.js?v=106';
 
 const TAU = Math.PI * 2;
 const clamp = n => Math.max(0, Math.min(1, n));

@@ -1,4 +1,4 @@
-import {WORLD_SIZE} from './world.js?v=104';
+import {WORLD_SIZE} from './world.js?v=106';
 const BASE=WORLD_SIZE/2,CELL=1024;
 export const HAZARD_TYPES={fire:{name:'灼熱地帯',color:'#b77a55',ground:'#683e2b'},poison:{name:'腐毒地帯',color:'#9da36b',ground:'#414a31'},storm:{name:'帯電地帯',color:'#aaa2bf',ground:'#4a4659'}};
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -35,7 +35,7 @@ export function updateHazards(game,dt) {
   const steps=Math.min(4,Math.floor(game._hazardClock/.5));game._hazardClock-=steps*.5;
   game.damageFields=currentFields(game);
   for(let tick=0;tick<steps;tick++){
-    for(const u of [game.player,...(game.squad||[]),...(game.merchants||[]).flatMap(m=>m.escorts||[])]){
+    for(const u of [game.player,...(game.squad||[]),...(game.merchants||[]).flatMap(m=>m.escorts||[]),...(game.gateGuards||[]).filter(g=>g.gateSpace==='field')]){
       if(!active(u))continue;
       if(game.damageFields.some(f=>distance(f,u)<=f.radius))game.damageTarget(u,(8+u.maxHp*.12)*.5,{environmental:true});
       if(!game.inBattle||game.player.hp<=0)return;

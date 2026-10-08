@@ -6,9 +6,9 @@
 import { saleValue, compareEquipment, equipmentScore, isGodRollProtected } from './equipment-rules.js';
 
 /** 作戦期ごとの国庫歳入（徴税・兵站） */
-export const TREASURY_INCOME_BASE = 80;
+export const TREASURY_INCOME_BASE = 3000;
 export const TREASURY_INCOME_PER_PHASE = 18;
-export const TREASURY_INCOME_PER_SOLDIER = 8;
+export const TREASURY_INCOME_PER_SOLDIER = 20;
 
 /** 隊長への指揮手当（歳入から先に支払い） */
 export const COMMANDER_STIPEND_BASE = 40;
@@ -48,6 +48,10 @@ export function emptyFiscalLedger(phase = 1, startBalance = 0) {
     buyoutCount: 0,
     surplusSales: 0,
     surplusCount: 0,
+    developmentSpent: 0,
+    defenseRewards: 0,
+    treasuryReturns: 0,
+    facilityRevenue: 0,
     commanderStipend: 0,
     scoutSpent: 0,
     dismissRefund: 0,
@@ -60,7 +64,7 @@ export function emptyFiscalLedger(phase = 1, startBalance = 0) {
 export function calcTreasuryGrossIncome(phase, livingCount) {
   const p = Math.max(1, phase || 1);
   const n = Math.max(0, livingCount || 0);
-  return Math.floor(TREASURY_INCOME_BASE + p * TREASURY_INCOME_PER_PHASE + n * TREASURY_INCOME_PER_SOLDIER);
+  return Math.floor(TREASURY_INCOME_BASE + p * TREASURY_INCOME_PER_PHASE + n * TREASURY_INCOME_PER_SOLDIER + COMMANDER_STIPEND_BASE + p * COMMANDER_STIPEND_PER_PHASE);
 }
 
 export function calcCommanderStipend(phase, grossIncome) {
@@ -81,7 +85,7 @@ export function calcBuyoutGold(item) {
  */
 export function shouldAbsorbToSharedBox(item, playerEquipped, slotKey) {
   if (!item || item.type === 'ORB' || item.isOrb) return false;
-  if (isGodRollProtected(item)) return false; // 異質/神鍛: keep personal inventory, never shared-box buyout
+  if (isGodRollProtected(item) || item.favorite) return false; // 異質/神鍛: keep personal inventory, never shared-box buyout
   if ((item.tier || 1) > SHARED_BOX_MAX_TIER) return false;
   if (!slotKey) return false;
   const current = playerEquipped?.[slotKey] || null;
@@ -159,118 +163,59 @@ export function formatFiscalReportJa(ledger) {
     `給与支払 −${(ledger.salariesPaid || 0).toLocaleString()}G（${ledger.salaryHeadcount || 0}名）${ledger.salaryShortfall ? ` / 不足${ledger.salaryShortfall.toLocaleString()}G` : ''}`,
     `寄付 ${(ledger.donations || 0).toLocaleString()}G → 全国配分 ${(ledger.distributed || 0).toLocaleString()}G（${ledger.distributeHeadcount || 0}名）`,
     `装備買取 −${(ledger.buyouts || 0).toLocaleString()}G（${ledger.buyoutCount || 0}件）`,
-    `余剰換金 +${(ledger.surplusSales || 0).toLocaleString()}G（${ledger.surplusCount || 0}件）`,
+    `外販 +${(ledger.surplusSales || 0).toLocaleString()}G（${ledger.surplusCount || 0}件）`,
+    `開発 −${(ledger.developmentSpent || 0).toLocaleString()}G`,
     `国庫残高 ${(ledger.startBalance || 0).toLocaleString()}G → ${(ledger.endBalance || 0).toLocaleString()}G`
   ];
   return lines.join(' · ');
 }
 
 export function formatFiscalReportHtml(ledger) {
-  if (!ledger) return '';
-  const short = ledger.salaryShortfall
-    ? ` <span style="color:#f59e0b;">(不足 ${(ledger.salaryShortfall || 0).toLocaleString()}G)</span>`
-    : '';
-  return `
-    <div class="fiscal-report-box" style="background:linear-gradient(135deg,rgba(14,116,144,0.22),rgba(15,23,42,0.95));border:1px solid #0e7490;border-radius:8px;padding:8px 10px;margin-bottom:8px;font-size:11px;line-height:1.55;color:#cbd5e1;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-        <strong style="color:#67e8f9;font-size:12px;">📜 国家の財政報告 · 第${ledger.phase}期</strong>
-        <span style="color:#fde047;font-weight:bold;">国庫 ${(ledger.endBalance || 0).toLocaleString()}G</span>
-      </div>
-      <div>歳入 <strong style="color:#86efac;">+${(ledger.income || 0).toLocaleString()}G</strong>
-        · 指揮手当 <strong style="color:#fde047;">${(ledger.commanderStipend || 0).toLocaleString()}G</strong></div>
-      <div>給与 <strong style="color:#fca5a5;">−${(ledger.salariesPaid || 0).toLocaleString()}G</strong>（${ledger.salaryHeadcount || 0}名）${short}</div>
-      <div>寄付 ${(ledger.donations || 0).toLocaleString()}G → 全国配分 ${(ledger.distributed || 0).toLocaleString()}G（${ledger.distributeHeadcount || 0}名）</div>
-      <div>装備買取 −${(ledger.buyouts || 0).toLocaleString()}G（${ledger.buyoutCount || 0}件）
-        · 余剰換金 <strong style="color:#86efac;">+${(ledger.surplusSales || 0).toLocaleString()}G</strong>（${ledger.surplusCount || 0}件）</div>
-      <div style="color:#94a3b8;margin-top:2px;">期首 ${(ledger.startBalance || 0).toLocaleString()}G → 期末 <strong style="color:#67e8f9;">${(ledger.endBalance || 0).toLocaleString()}G</strong></div>
-    </div>
-  `;
+  if(!ledger)return '<p>まだウェーブが完了していません。最初の収支は終了時に記録されます。</p>';
+  const rows=[['定期歳入・発展税収',ledger.income,0],['寄付',ledger.donations,0],['装備の外販',ledger.surplusSales,0],['兵士資金の還流',ledger.treasuryReturns,0],['施設納税',ledger.facilityRevenue,0],['魔王軍撃退報奨',ledger.defenseRewards,0],['兵士給与',0,ledger.salariesPaid],['隊長の指揮手当',0,ledger.commanderStipend],['寄付から兵士へ配分',0,ledger.distributed],['装備の買取',0,ledger.buyouts],['本陣・町の開発',0,ledger.developmentSpent]];
+  const receipts=rows.reduce((n,r)=>n+(r[1]||0),0),expenses=rows.reduce((n,r)=>n+(r[2]||0),0),balance=(ledger.endBalance||0)-(ledger.startBalance||0),calc=receipts-expenses;
+  const f=n=>Math.floor(n||0).toLocaleString()+'G';
+  return `<section class="fiscal-report-box"><h4>直近ウェーブの収支 · 第${ledger.phase}期</h4><div class="fiscal-net ${balance>=0?'positive':'negative'}">${balance>=0?'黒字 +':'赤字 '}${f(balance)}</div><div class="fiscal-table"><table><thead><tr><th>項目</th><th>収入</th><th>支出</th></tr></thead><tbody>${rows.map(r=>`<tr><th>${r[0]}</th><td>${r[1]?'+ '+f(r[1]):'—'}</td><td>${r[2]?'− '+f(r[2]):'—'}</td></tr>`).join('')}<tr class="fiscal-total"><th>合計</th><td>+ ${f(receipts)}</td><td>− ${f(expenses)}</td></tr></tbody></table></div><p>期首 ${f(ledger.startBalance)} → 期末 ${f(ledger.endBalance)}</p>${ledger.salaryShortfall?`<p class="negative">給与不足 ${f(ledger.salaryShortfall)}</p>`:''}${Math.abs(balance-calc)>1?'<p>旧版の記録は一部の取引内訳が不足しています。残高差を実際の収支として表示しています。</p>':''}</section>`;
 }
 
 /**
  * 共有ボックスから兵士へ自動装備（弱い余剰は呼び出し側で換金）
  * @returns {{ equippedCount: number, remaining: array }}
  */
+const sharedScore=item=>item?equipmentScore({...item,tier:1,upgrade:0})-1000:0;
+
 export function distributeSharedBoxToSoldiers(box, soldiers, recalcFn) {
-  const remaining = [...(box || [])];
-  let equippedCount = 0;
-  const slotKeys = ['weapon', 'armor', 'shield', 'helmet', 'legs', 'gloves', 'amulet'];
-  const typeToKey = {
-    WEAPON: 'weapon', SHIELD: 'shield', HELMET: 'helmet', ARMOR: 'armor',
-    GLOVES: 'gloves', LEGS: 'legs', AMULET: 'amulet'
-  };
-
-  const alive = (soldiers || []).filter(s => s && !s.dead && !s.isDown);
-  // 装備スコアが低い兵士から優先
-  alive.sort((a, b) => {
-    const sa = slotKeys.reduce((sum, k) => sum + equipmentScore(a.equipped?.[k]), 0);
-    const sb = slotKeys.reduce((sum, k) => sum + equipmentScore(b.equipped?.[k]), 0);
-    return sa - sb;
-  });
-
-  for (const soldier of alive) {
-    if (!soldier.equipped) soldier.equipped = {};
-    for (let i = remaining.length - 1; i >= 0; i--) {
-      const item = remaining[i];
-      const key = typeToKey[item?.type];
-      if (!key) continue;
-      const cur = soldier.equipped[key];
-      const fav = soldier.favoriteWeapon || 'sword';
-      // 簡易: equipmentScore のみ（好み補正は呼び出し側でも可）
-      const curScore = cur ? equipmentScore(cur) : 0;
-      const newScore = equipmentScore(item);
-      if (!cur || newScore > curScore + 5) {
-        soldier.equipped[key] = item;
-        if (key === 'weapon') soldier.weapon = item;
-        remaining.splice(i, 1);
-        equippedCount++;
-        if (typeof recalcFn === 'function') recalcFn(soldier);
-      }
+  const remaining=[...new Map((box||[]).filter(Boolean).map(i=>[i.id,i])).values()];let equippedCount=0;
+  const slots={WEAPON:'weapon',ARMOR:'armor',SHIELD:'shield',HELMET:'helmet',LEGS:'legs',GLOVES:'gloves',AMULET:'amulet'};
+  const alive=(soldiers||[]).filter(s=>s&&!s.dead&&!s.isDown).sort((a,b)=>Object.values(a.equipped||{}).reduce((n,i)=>n+sharedScore(i),0)-Object.values(b.equipped||{}).reduce((n,i)=>n+sharedScore(i),0));
+  for(const soldier of alive){soldier.equipped||={};let changed=false;
+    for(const [type,key] of Object.entries(slots)){
+      const cur=soldier.equipped[key],score=cur?sharedScore(cur):0;if(cur?.favorite)continue;
+      const candidates=remaining.filter(i=>i.type===type&&!i.favorite&&!isGodRollProtected(i)&&(!cur||sharedScore(i)>score)).sort((a,b)=>sharedScore(b)-sharedScore(a));
+      const item=candidates[0];if(!item)continue;
+      remaining.splice(remaining.indexOf(item),1);soldier.equipped[key]=item;if(key==='weapon')soldier.weapon=item;
+      if(cur&&!remaining.some(i=>i.id===cur.id))remaining.push(cur);equippedCount++;changed=true;
     }
+    if(changed&&typeof recalcFn==='function')recalcFn(soldier);
   }
-  return { equippedCount, remaining };
+  return {equippedCount,remaining};
 }
 
 /**
  * ボックス内の弱余剰を換金（国庫へ）
- * maxTier 以下かつ誰の現装備より明らかに弱い同等スロット品を売却
+ * 生存兵・ダウン者・予備兵の誰にも不要な装備を外販（通常売値の1.6倍）
  */
-export function sellWeakSurplusFromBox(box, soldiers, maxTier = 2) {
-  const remaining = [];
-  let soldGold = 0;
-  let soldCount = 0;
-  const typeToKey = {
-    WEAPON: 'weapon', SHIELD: 'shield', HELMET: 'helmet', ARMOR: 'armor',
-    GLOVES: 'gloves', LEGS: 'legs', AMULET: 'amulet'
-  };
-  const bestBySlot = {};
-  for (const s of soldiers || []) {
-    if (!s || s.dead) continue;
-    for (const [type, key] of Object.entries(typeToKey)) {
-      const it = s.equipped?.[key];
-      if (!it) continue;
-      const sc = equipmentScore(it);
-      if (!bestBySlot[type] || sc > bestBySlot[type]) bestBySlot[type] = sc;
-    }
+export function sellWeakSurplusFromBox(box, soldiers) {
+  const remaining=[];let soldGold=0,soldCount=0;
+  const slots={WEAPON:'weapon',ARMOR:'armor',SHIELD:'shield',HELMET:'helmet',LEGS:'legs',GLOVES:'gloves',AMULET:'amulet'};
+  const living=(soldiers||[]).filter(s=>s&&!s.dead),held=new Set(living.flatMap(s=>Object.values(s.equipped||{}).filter(Boolean).map(i=>i.id)));
+  for(const item of [...new Map((box||[]).filter(Boolean).map(i=>[i.id,i])).values()]){
+    const key=slots[item.type];
+    if(held.has(item.id))continue;
+    if(!key||item.favorite||isGodRollProtected(item)||!living.length||living.some(s=>!s.equipped?.[key]||sharedScore(item)>sharedScore(s.equipped[key]))){remaining.push(item);continue;}
+    soldGold+=Math.floor(saleValue(item)*1.6);soldCount++;
   }
-
-  for (const item of box || []) {
-    if (!item) continue;
-    if (isGodRollProtected(item)) {
-      remaining.push(item); // 異質/神鍛: never auto-sell from shared box
-      continue;
-    }
-    const tier = item.tier || 1;
-    const sc = equipmentScore(item);
-    const best = bestBySlot[item.type] || 0;
-    if (tier <= maxTier && sc + 40 < best) {
-      soldGold += saleValue(item);
-      soldCount++;
-    } else {
-      remaining.push(item);
-    }
-  }
-  return { remaining, soldGold, soldCount };
+  return {remaining,soldGold,soldCount};
 }
 
 /** 国庫寄付の既定額：所持軍資金に応じてスケール（早期は少額） */
