@@ -1,6 +1,6 @@
-import {sound} from '../../audio.js?v=113';
-import {WORLD_SIZE} from './world.js?v=113';
-import {inCurrentInstance} from './instance-rules.js?v=113';
+import {sound} from '../../audio.js?v=114';
+import {WORLD_SIZE} from './world.js?v=114';
+import {inCurrentInstance} from './instance-rules.js?v=114';
 import {recordCombat} from './phase-rules.js';
 import {isSoldierOnExpedition} from './expedition-rules.js';
 

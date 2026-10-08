@@ -382,3 +382,8 @@
 .iron-squad .merchant-services > summary { padding:12px 0; color:#d5d6c3; font-size:12px; cursor:pointer; min-height:44px; box-sizing:border-box; }
 .iron-squad #equipment-sale-toolbar > summary { cursor:pointer; min-height:44px; padding:10px 0; box-sizing:border-box; font-size:12px; font-weight:700; color:#dcd8bc; }
 @media (orientation:landscape) and (max-height:500px) { .iron-squad .field-sound-toggle { display:none; } }
+
+.armament-policies { display:flex; flex-wrap:wrap; gap:6px; margin:10px 0; }
+.armament-policies button { flex:1 1 85px; min-height:44px; padding:8px; }
+.armament-policies button[aria-pressed="true"] { border-color:#c7ad73; background:#384751; color:#f2dfb5; }
+#nation-status progress { max-width:100%; }

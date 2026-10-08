@@ -1,16 +1,16 @@
-import {catalogTier,catalogPrice,ensureMerchantCatalog} from './merchant-catalog.js?v=113';
+import {catalogTier,catalogPrice,ensureMerchantCatalog,MERCHANT_MAX_TIER,MERCHANT_CATALOG_VERSION} from './merchant-catalog.js?v=114';
 /**
  * IRON SQUAD: 宿場・本陣・各地のキャンプの行商人
  * - 最新入手Tier+1（最大T6）の厳選品を販売、毎ウェーブの目玉商品
  * - 強い護衛付き。放置するとモンスターに襲われ死亡しうる
  * - 護衛が倒した強敵のドロップを序盤から掠め取れるチャンス
  */
-import { saleValue, distanceScaling, weaponCombatProfile } from './equipment-rules.js?v=113';
-import { drawFieldSoldier } from './visuals.js?v=113';
-import { createSoldierAppearance, drawSoldierHead } from './soldier-appearance.js?v=113';
-import { attackAnimationRate } from './weapon-motion.js?v=113';
-import { markSoldierDown, rebuildMerchantCasualties, RESCUE_TIMEOUT } from './casualty-rules.js?v=113';
-import {emptyMastery,normalizeMastery,hitGrowthMult,applyHitGrowth,masteryAtkMult,masteryReloadMult} from './growth-rules.js?v=113';
+import { saleValue, distanceScaling, weaponCombatProfile } from './equipment-rules.js?v=114';
+import { drawFieldSoldier } from './visuals.js?v=114';
+import { createSoldierAppearance, drawSoldierHead } from './soldier-appearance.js?v=114';
+import { attackAnimationRate } from './weapon-motion.js?v=114';
+import { markSoldierDown, rebuildMerchantCasualties, RESCUE_TIMEOUT } from './casualty-rules.js?v=114';
+import {emptyMastery,normalizeMastery,hitGrowthMult,applyHitGrowth,masteryAtkMult,masteryReloadMult} from './growth-rules.js?v=114';
 import {recordCombat,finishExperience} from './phase-rules.js';
 
 export const MERCHANT_PRICE_MULT = 3.2; // 相場の約3.2倍（高め）
@@ -517,7 +517,7 @@ export function applyMerchantSave(game, savedList, generateRandomDrop, BASE_CAMP
     if (!m) continue;
     applyNpcSave(m,s);
     m.featuredSoldPhase=Math.max(0,Number(s.featuredSoldPhase)||0);
-    if(s.catalogVersion===1&&Array.isArray(s.stock)){m.stock=s.stock.filter(i=>i&&i.tier>=1&&i.tier<=6&&!i.dropOnly).map(i=>({...i,stats:{...i.stats}}));m.stockPhase=s.stockPhase;m.stockTier=s.stockTier;m.catalogVersion=1;}
+    if(s.catalogVersion===MERCHANT_CATALOG_VERSION&&Array.isArray(s.stock)){m.stock=s.stock.filter(i=>i&&i.tier>=1&&i.tier<=MERCHANT_MAX_TIER&&!i.dropOnly).map(i=>({...i,stats:{...i.stats}}));m.stockPhase=s.stockPhase;m.stockTier=s.stockTier;m.catalogVersion=MERCHANT_CATALOG_VERSION;}
     ensureMerchantCatalog(game,m,generateRandomDrop);
     if(Number.isFinite(s.distance))m.distance=s.distance;
     if(m.rescuedToBase)m.placeName='本陣・救助した商人';

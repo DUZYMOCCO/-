@@ -42,9 +42,10 @@ const capFor=(distance,kind)=>{
 };
 for(const distance of [0,400,7999,8000,13999,14000,21999,22000,35999,36000,47999,48000,51999,52000,70000]) {
  for(const kind of ['normal','chest','elite','boss','colossal','dungeon_vault']) {
-  const tiers=new Set();for(let n=0;n<1000;n++){const tier=chooseLootTier(distance,kind,()=>n/1000);assert.ok(tier<=capFor(distance,kind),`${distance} ${kind}`);tiers.add(tier);}
-  assert.ok(tiers.has(capFor(distance,kind)),`the top allowed tier is reachable at ${distance} ${kind}`);
-  if(kind!=='dungeon_vault')assert.ok(!tiers.has(7),'T7 is unavailable outside authored vaults');
+  const tiers=new Set();for(let n=0;n<1000;n++){const tier=chooseLootTier(distance,kind,()=>n/1000);assert.ok(tier<=capFor(distance,kind)*4,`${distance} ${kind}`);tiers.add(tier);}
+  tiers.add(chooseLootTier(distance,kind,()=>.999999999));
+  assert.ok(tiers.has(capFor(distance,kind)*4),`the top allowed tier is reachable at ${distance} ${kind}`);
+  if(kind!=='dungeon_vault')assert.ok([...tiers].every(t=>t<=24),'T25-28 are unavailable outside authored vaults');
  }
  const a=distanceScaling(distance,1),b=distanceScaling(distance,9999);assert.ok(b.hp<=a.hp*1.6+.00001);
 }
@@ -52,7 +53,7 @@ for(const d of [600,1200,2700,4400,12000,36000,60000])assert.ok(Math.abs(distanc
 for(const d of [8000,22000,48000]){const ratio=distanceScaling(d+.001).hp/distanceScaling(d-.001).hp;assert.ok(ratio>9.9&&ratio<10.1,'crossing a danger ring is an authored tenfold jump');}
 assert.ok(distanceScaling(12000).atk>distanceScaling(400).atk*5);
 for(let n=0;n<300;n++){
- const i=generateRandomDrop(400,'chest');assert.ok(i.tier<=2);assert.ok(i.rollMult!=null&&Number.isFinite(i.rollMult));
+ const i=generateRandomDrop(400,'chest');assert.ok(i.tier<=8);assert.ok(i.rollMult!=null&&Number.isFinite(i.rollMult));
  const expected={id:'expected',type:i.type,tier:i.tier,name:i.baseName||i.name,baseName:i.baseName,weaponStyle:i.weaponStyle,weaponTraits:i.weaponTraits,dropOnly:i.dropOnly,dropOnlyKey:i.dropOnlyKey,rollMult:i.rollMult,powerSkip:i.powerSkip||0,forgeTag:i.forgeTag||null,stats:{}};
  applyUpgradeStats(expected,i.upgrade);assert.deepEqual(i.stats,expected.stats);const rm=i.rollMult;applyUpgradeStats(i,i.upgrade);assert.equal(i.rollMult,rm);
 }
@@ -68,5 +69,5 @@ game.spawnSparks=()=>{};game.currentQuest=null;
 const shrine=game.outposts.find(o=>o.type==='SHRINE');const blessed=item('blessed');game.equipped={weapon:blessed};game.squad=[];
 for(let n=0;n<10;n++){shrine.cleared=false;shrine.hp=shrine.maxHp;game.clearOutpost(shrine);}assert.equal(blessed.upgrade,10);
 applyUpgradeStats(blessed,37);shrine.cleared=false;shrine.hp=shrine.maxHp;game.clearOutpost(shrine);assert.equal(blessed.upgrade,38,'stronger gear continues upgrading beyond the retired +30 cap');
-game.dropsOnField=[];game.wave=9999;game.clearOutpost(game.outposts[0]);assert.equal(game.dropsOnField.length,3);assert.ok(game.dropsOnField.every(drop=>drop.item.tier<=2),'late-phase local fort still drops beginner gear');
+game.dropsOnField=[];game.wave=9999;game.clearOutpost(game.outposts[0]);assert.equal(game.dropsOnField.length,3);assert.ok(game.dropsOnField.every(drop=>drop.item.tier<=8),'late-phase local fort still drops beginner gear');
 console.log('PASS: all 7 transfers, ownership, protected bulk sale, surplus retention, equipment comparisons, spatial loot caps, bounded difficulty');

@@ -1,8 +1,8 @@
-import {ensureMana,regenerateMana,spendMana} from './magic-rules.js?v=113';
+import {ensureMana,regenerateMana,spendMana} from './magic-rules.js?v=114';
 import {recordHealing} from './phase-rules.js';
 import {WORLD_SIZE} from './world.js';
-import {inCurrentInstance} from './instance-rules.js?v=113';
-import {grantPermanentRescueReward} from './rescue-rewards.js?v=113';
+import {inCurrentInstance} from './instance-rules.js?v=114';
+import {grantPermanentRescueReward} from './rescue-rewards.js?v=114';
 
 export const RESCUE_TIMEOUT = 45; // 救助猶予時間（秒）広域マップ対応で45秒に延長
 export const isMedic=unit=>['MEDIC','HIGH_PRIEST','SAINT','ARCHANGEL'].includes(unit?.soldierClass);

@@ -72,7 +72,7 @@ assert.equal(new Set([...game.squad,...game.reserves].map(s=>s.name)).size,DEPLO
 game.squad.push(game.createNewSoldier(),game.createNewSoldier());
 game.normalizeDeployment();
 assert.equal(game.squad.length,DEPLOYMENT_CAPACITY);assert.equal(game.reserves.length,10);
-assert.ok(storage.get('ironsquad_rules_version')===2);
+assert.ok(storage.get('ironsquad_rules_version')===3);
 const lonely={hp:100,survivedWaves:0,phaseActivity:emptyActivity()};
 assert.equal(finishExperience(lonely),false);recordCombat(lonely);
 assert.equal(finishExperience(lonely),true);assert.equal(finishExperience(lonely),false);

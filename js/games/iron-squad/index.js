@@ -1,12 +1,14 @@
-import {fieldAdaptiveScaling} from './field-scaling.js?v=113';
-import {activeSquad,inCurrentInstance} from './instance-rules.js?v=113';
-import {recordBattleLog,resetBattleLog} from './battle-log.js?v=113';
-import {rollDropExclusive,applyDropExclusive,dropExclusiveLabel} from './drop-exclusives.js?v=113';
-import {latestEquipmentTier,recordMerchantEquipment,ensureMerchantCatalog,refreshWaveCatalogs,markMerchantPurchase} from './merchant-catalog.js?v=113';
-import {initializeMedicalPosts,updateMedicalPosts,serializeMedicalPosts,nearestKnownMedicalPost,drawMedicalPost,drawMedicalMap,drawMedicalMarker,drawTownMedicalReception,drawRescueDirection} from './medical-posts.js?v=113';
-import {invasionMethods,initializeInvasions,serializeInvasions,shouldTriggerRandomRaid,makeEnemyRoom,drawInvasionRoute} from './invasion-rules.js?v=113';
-import {gateMethods,serializeGatePosts,replenishTownGateGuards,initializeGateGuards,ensureTownGuards,serializeGateGuards,updateGateGuards,gateGuardVisible,applyFortifications,drawFortification,exitGateTown,townExitReached,wallBlocksAttack} from './gate-rules.js?v=113';
-import {nationMethods,normalizeNation,nationalIncome,headquartersDamageMult,drawNationalDevelopment} from './nation-rules.js?v=113';
+import {soldierEquipmentValue,observeEquipment,standardEquipmentCost,RESERVE_ARMAMENT_COUNT} from './armament-rules.js?v=114';
+import {TIERS,MAX_EQUIPMENT_TIER,MAX_POWER_RANK,POWER_RANK_STEP,GENERATION_COUNT,TRADE_MAX_TIER,powerRank,tierDescription} from './equipment-tiers.js?v=114';
+import {fieldAdaptiveScaling} from './field-scaling.js?v=114';
+import {activeSquad,inCurrentInstance} from './instance-rules.js?v=114';
+import {recordBattleLog,resetBattleLog} from './battle-log.js?v=114';
+import {rollDropExclusive,applyDropExclusive,dropExclusiveLabel} from './drop-exclusives.js?v=114';
+import {latestEquipmentTier,recordMerchantEquipment,ensureMerchantCatalog,refreshWaveCatalogs,markMerchantPurchase} from './merchant-catalog.js?v=114';
+import {initializeMedicalPosts,updateMedicalPosts,serializeMedicalPosts,nearestKnownMedicalPost,drawMedicalPost,drawMedicalMap,drawMedicalMarker,drawTownMedicalReception,drawRescueDirection} from './medical-posts.js?v=114';
+import {invasionMethods,initializeInvasions,serializeInvasions,shouldTriggerRandomRaid,makeEnemyRoom,drawInvasionRoute} from './invasion-rules.js?v=114';
+import {gateMethods,serializeGatePosts,replenishTownGateGuards,initializeGateGuards,ensureTownGuards,serializeGateGuards,updateGateGuards,gateGuardVisible,applyFortifications,drawFortification,exitGateTown,townExitReached,wallBlocksAttack} from './gate-rules.js?v=114';
+import {nationMethods,normalizeNation,nationalIncome,headquartersDamageMult,drawNationalDevelopment} from './nation-rules.js?v=114';
 /**
  * ゲーム3: IRON SQUAD (アイアン・スクワッド: 雑兵立身出世録)
  * ローグライク・アクションRPG
@@ -18,22 +20,22 @@ import {nationMethods,normalizeNation,nationalIncome,headquartersDamageMult,draw
  *  - 生き延びて「伍長」以上に立身出世して初めて【号令・指揮権】がアンロックされる！
  *  - 名もなき兵士たちは生き残ると二つ名と名前が授与され、やがて主人公の頼もしい戦友に。
  */
-import { sound } from '../../audio.js?v=113';
+import { sound } from '../../audio.js?v=114';
 import { storage } from '../../storage.js';
-import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow } from './visuals.js?v=113';
-import { drawMeleeRangeCue, meleeDrawReach, attackAnimationRate } from './weapon-motion.js?v=113';
-import {emptyRescueBonuses,normalizeRescueBonuses,rescueBonusSummary} from './rescue-rewards.js?v=113';
-import {drawFieldCivilian} from './civilian-visuals.js?v=113';
+import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow } from './visuals.js?v=114';
+import { drawMeleeRangeCue, meleeDrawReach, attackAnimationRate } from './weapon-motion.js?v=114';
+import {emptyRescueBonuses,normalizeRescueBonuses,rescueBonusSummary} from './rescue-rewards.js?v=114';
+import {drawFieldCivilian} from './civilian-visuals.js?v=114';
 import { saveSlots } from './save-slots.js';
-import {MAGIC_CLASSES,MAGIC_AFFINITIES,magicMethods,isMage,isMagicUser,ensureMana,initializeMagic,updateMagic,distributeMagicStones,castMedicBuff,updateMageAI,drawMagicBursts,spendMana} from './magic-rules.js?v=113';
-import {hazardMethods,updateHazards,drawHazards} from './hazard-fields.js?v=113';
-import {strongEnemyReward} from './combat-rewards.js?v=113';
-import {supplyMethods, initializeSupplies, updateSupplies, takeRangedShot, ammoCombatProfile, isRangedUnit, distributeAmmo, preventLethalHit, normalizeFieldSave, SQUAD_POTION_COST, ensureAmmo, RANGED_DAMAGE_MULT, supplyLocation} from './supply-rules.js?v=113';
-import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog } from './interface.js?v=113';
-import { ensureSoldierAppearance, drawSoldierPortrait, describeSoldierAppearance } from './soldier-appearance.js?v=113';
-import { attachSurfaceEvents, detachSurfaceEvents, frameSurfaceReady, releaseSceneCaches, releaseCanvas, surfaceCanResume } from './canvas-surface.js?v=113';
-import { WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt, routeNameAt, eastWestRoadY, northSouthRoadX, riverCenterY } from './world.js?v=113';
-import { FogGrid, FOG_REVEAL_RADIUS, FOG_CAMP_REVEAL } from './fog.js?v=113';
+import {MAGIC_CLASSES,MAGIC_AFFINITIES,magicMethods,isMage,isMagicUser,ensureMana,initializeMagic,updateMagic,distributeMagicStones,castMedicBuff,updateMageAI,drawMagicBursts,spendMana} from './magic-rules.js?v=114';
+import {hazardMethods,updateHazards,drawHazards} from './hazard-fields.js?v=114';
+import {strongEnemyReward} from './combat-rewards.js?v=114';
+import {supplyMethods, initializeSupplies, updateSupplies, takeRangedShot, ammoCombatProfile, isRangedUnit, distributeAmmo, preventLethalHit, normalizeFieldSave, SQUAD_POTION_COST, ensureAmmo, RANGED_DAMAGE_MULT, supplyLocation} from './supply-rules.js?v=114';
+import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog } from './interface.js?v=114';
+import { ensureSoldierAppearance, drawSoldierPortrait, describeSoldierAppearance } from './soldier-appearance.js?v=114';
+import { attachSurfaceEvents, detachSurfaceEvents, frameSurfaceReady, releaseSceneCaches, releaseCanvas, surfaceCanResume } from './canvas-surface.js?v=114';
+import { WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt, routeNameAt, eastWestRoadY, northSouthRoadX, riverCenterY } from './world.js?v=114';
+import { FogGrid, FOG_REVEAL_RADIUS, FOG_CAMP_REVEAL } from './fog.js?v=114';
 import {
   classTierOf, nextClassId, classUpCostForNext, canAffordClassUp, formatClassUpCostJa, classUpShortageJa,
   playerClassTier, nextPlayerStage, playerStageById, CLASS_TIER_LABELS, PLAYER_CLASS_STAGES
@@ -44,9 +46,9 @@ import {
   shouldAbsorbToSharedBox, calcScoutCost, estimateSoldierScoutValue, calcDismissSettlement,
   formatFiscalReportJa, formatFiscalReportHtml, distributeSharedBoxToSoldiers, sellWeakSurplusFromBox,
   SHARED_BOX_MAX_TIER, SCOUT_COST_BY_TALENT, defaultDonateAmount, donatePresetAmounts
-} from './economy-rules.js?v=113';
+} from './economy-rules.js?v=114';
 
-import { EQUIPMENT_TYPES, saleValue, equippedIds, canSell, lowValueIds, chooseLootTier, distanceScaling, shrineUpgradeCap, compareEquipment, equipmentScore, compareEquipmentStrength, rollWeaponTraits, weaponCombatProfile, evaluateMeleeSweetSpot, isGodRollProtected, zoneRingPower, zoneRingLabelJa } from './equipment-rules.js?v=113';
+import { EQUIPMENT_TYPES, saleValue, equippedIds, canSell, lowValueIds, chooseLootTier, distanceScaling, shrineUpgradeCap, compareEquipment, equipmentScore, compareEquipmentStrength, rollWeaponTraits, weaponCombatProfile, evaluateMeleeSweetSpot, isGodRollProtected, zoneRingPower, zoneRingLabelJa } from './equipment-rules.js?v=114';
 import {
   WEAPON_STYLES, WEAPON_STYLE_LABELS, WEAPON_STYLE_ICONS,
   MELEE_STYLES, RANGED_STYLES, HIT_GROWTH_SOFT_CAP,
@@ -56,19 +58,19 @@ import {
   gainWeaponMastery, masteryGainForStyle, pickFavoriteWeapon, rollWeaponStyle,
   weaponStyleOf, favoriteWeaponBias, MASTERY_GAIN_PER_HIT,
   migrateFavoriteForClass, migrateWeaponStyleFromName
-} from './growth-rules.js?v=113';
+} from './growth-rules.js?v=114';
 
 import {
   initMerchants, ensureMerchants, updateMerchants, drawMerchantBody, drawMerchantEscort,
   nearestLivingMerchant, refreshMerchantStock, merchantBuyPrice, merchantSellTier,
   applyMerchantSave, serializeMerchants, MERCHANT_INTERACT_R,
   merchantHealingStatus, merchantHealWavesLeft, useMerchantHealing, MERCHANT_HEAL_COST, recalcEscortStats, finishEscortPhase
-} from './merchant-rules.js?v=113';
+} from './merchant-rules.js?v=114';
 
 import { daylightAt, advanceWorldClock, periodEnemy, enemyAvailable, PERIOD_ENEMIES } from './day-night.js';
 
-import { RESCUE_TIMEOUT, rescueUnits, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, receiveTownCargo, leaveCivilianSpace, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, markSoldierDown, CIV_KINDS, isMedic, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST } from './casualty-rules.js?v=113';
-import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault } from './dungeon.js?v=113';
+import { RESCUE_TIMEOUT, rescueUnits, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, receiveTownCargo, leaveCivilianSpace, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, markSoldierDown, CIV_KINDS, isMedic, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST } from './casualty-rules.js?v=114';
+import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault } from './dungeon.js?v=114';
 import {
   EXPEDITION_CHECK_INTERVAL, EXPEDITION_RETURN_HOME, EXPEDITION_ENGAGE_R,
   EXPEDITION_DANGER_TIERS, EXPEDITION_MIN_MEMBERS,
@@ -158,7 +160,7 @@ export const FIELD_ZONES = [
     speedMult: 0.90,
     expMult: 1.0,
     goldMult: 1.0,
-    tierRange: [1, 2],
+    tierRange: [1, 8],
     desc: '安全な近郊平原。スライムや小鬼が徘徊。新兵の訓練と本隊の防衛拠点'
   },
   {
@@ -179,7 +181,7 @@ export const FIELD_ZONES = [
     speedMult: 1.05,
     expMult: 2.8,
     goldMult: 2.5,
-    tierRange: [1, 4],
+    tierRange: [1, 16],
     desc: '安全圏を出ると敵倍率がx10（リング1）。推奨DEF 45+'
   },
   {
@@ -200,7 +202,7 @@ export const FIELD_ZONES = [
     speedMult: 1.15,
     expMult: 7.5,
     goldMult: 6.0,
-    tierRange: [2, 5],
+    tierRange: [5, 20],
     desc: 'リング2：敵倍率x100。凶暴な魔獣地帯。推奨DEF 140+'
   },
   {
@@ -221,7 +223,7 @@ export const FIELD_ZONES = [
     speedMult: 1.25,
     expMult: 16.0,
     goldMult: 13.0,
-    tierRange: [3, 7],
+    tierRange: [9, 28],
     desc: 'リング3+：敵倍率x1000〜最大約100万倍（外縁ソフトキャップ）。推奨DEF 320+'
   }
 ];
@@ -698,53 +700,24 @@ export const PLAYER_ADVANCED_CLASS = {
 };
 
 // 素材・ティア制ドロップ生成
-const TIERS = [
-  { tier: 1, mat: '木/布', color: '#94a3b8', mult: 1.0,
-    weapon: '木の剣', spear: '木の槍', hammer: '木の戦鎚',
-    bow: '木の短弓', crossbow: '木の石弓', cannon: '木造の手砲',
-    shield: '木の丸盾', helmet: '布の帽子', armor: '布の服', gloves: '布の手袋', legs: '布のズボン', amulet: '木彫りの指輪' },
-  { tier: 2, mat: '青銅/革', color: '#38bdf8', mult: 2.2,
-    weapon: '青銅の剣', spear: '青銅の槍', hammer: '青銅の戦鎚',
-    bow: '青銅の弓', crossbow: '青銅の石弓', cannon: '青銅の手砲',
-    shield: '青銅の盾', helmet: '革の兜', armor: '革の鎧', gloves: '革の手袋', legs: '革の脚絆', amulet: '銅の指輪' },
-  { tier: 3, mat: '鉄', color: '#34d399', mult: 4.2,
-    weapon: '鉄の剣', spear: '鉄の槍', hammer: '鉄の戦鎚',
-    bow: '鉄枠の長弓', crossbow: '鉄のクロスボウ', cannon: '鉄の軽砲',
-    shield: '鉄の盾', helmet: '鉄の兜', armor: '鉄の鎧', gloves: '鉄の籠手', legs: '鉄の脛当', amulet: '鉄の首飾り' },
-  { tier: 4, mat: '鋼鉄', color: '#a855f7', mult: 8.0,
-    weapon: '鋼鉄の大剣', spear: '鋼鉄の長槍', hammer: '鋼鉄の大鎚',
-    bow: '鋼鉄の戦弓', crossbow: '鋼鉄の弩', cannon: '鋼鉄の野戦砲',
-    shield: '鋼鉄の大盾', helmet: '鋼鉄の兜', armor: '鋼鉄の甲冑', gloves: '鋼鉄のガントレット', legs: '鋼鉄のグリーブ', amulet: '鋼鉄の紋章' },
-  { tier: 5, mat: 'ミスリル', color: '#ffaa00', mult: 15.0,
-    weapon: 'ミスリルの剣', spear: 'ミスリルの槍', hammer: 'ミスリルの戦鎚',
-    bow: 'ミスリルの霊弓', crossbow: 'ミスリルの弩', cannon: 'ミスリルの魔導砲',
-    shield: 'ミスリル盾', helmet: 'ミスリルの兜', armor: 'ミスリル鎧', gloves: 'ミスリルの籠手', legs: 'ミスリルの脚絆', amulet: '黄金の首飾り' },
-  { tier: 6, mat: '竜鱗/黒金', color: '#ef4444', mult: 28.0,
-    weapon: '竜牙の大剣', spear: '竜牙の長槍', hammer: '竜骨の戦鎚',
-    bow: '竜翼の長弓', crossbow: '竜骨の石弓', cannon: '竜息の破城砲',
-    shield: '竜鱗の大盾', helmet: '竜鱗の兜', armor: '竜鱗の鎧', gloves: '竜鱗の籠手', legs: '竜鱗の脛当', amulet: '竜の護符' },
-  { tier: 7, mat: '神話・オリハルコン', color: '#ff007f', mult: 55.0,
-    weapon: '神剣オリハルコン', spear: '神槍ゲイボルグ', hammer: '神鎚ミョルニル',
-    bow: '神弓アルテミス', crossbow: '神弩バリスタ', cannon: '神砲ラグナロク',
-    shield: '神聖のイージス', helmet: '神聖の宝冠', armor: '神聖の鎧', gloves: '神聖の小手', legs: '神聖の具足', amulet: '神々の紋章' }
-];
+
 
 /** 同一ティア同一武器種でも個体差が出るよう、生成時に確定する倍率・異質タグを振る。再装備では再抽選しない。 */
 export function rollItemQuality(item, random = Math.random) {
   if (!item) return item;
   if (item.rollMult != null && Number.isFinite(Number(item.rollMult))) return item;
 
-  const tier = Math.max(1, Math.min(7, item.tier || 1));
+  const tier = Math.max(1, Math.min(MAX_EQUIPMENT_TIER, item.tier || 1));
   const cur = TIERS.find(t => t.tier === tier) || TIERS[0];
-  const next = TIERS.find(t => t.tier === Math.min(7, tier + 1)) || cur;
-  const skip2 = TIERS.find(t => t.tier === Math.min(7, tier + 2)) || next;
+  const next = TIERS.find(t => t.tier === Math.min(MAX_EQUIPMENT_TIER, tier + 1)) || cur;
+  const skip2 = TIERS.find(t => t.tier === Math.min(MAX_EQUIPMENT_TIER, tier + 2)) || next;
   const nextRatio = next.mult / cur.mult;
   const skip2Ratio = skip2.mult / cur.mult;
   const r = Math.min(0.999999999, Math.max(0, random()));
 
   // 神鍛 ~0.3% / 異質 ~0.7%（合計~1%）/ 通常は ±12% 程度の個体差
   if (r < 0.003) {
-    if (tier >= 7) {
+    if (tier >= MAX_EQUIPMENT_TIER) {
       item.rollMult = Math.round((1.55 + random() * 0.45) * 1000) / 1000;
     } else {
       const lo = nextRatio * 1.12;
@@ -755,7 +728,7 @@ export function rollItemQuality(item, random = Math.random) {
     item.powerSkip = 2;
     item.isGodRoll = true;
   } else if (r < 0.01) {
-    if (tier >= 7) {
+    if (tier >= MAX_EQUIPMENT_TIER) {
       item.rollMult = Math.round((1.25 + random() * 0.25) * 1000) / 1000;
     } else {
       item.rollMult = Math.round(nextRatio * (0.92 + random() * 0.26) * 1000) / 1000;
@@ -788,10 +761,11 @@ export function applyUpgradeStats(item, upgradeLevel) {
   item.name = item.upgrade > 0 ? `${item.baseName}+${item.upgrade}` : item.baseName;
   const chosenTier = TIERS.find(t => t.tier === item.tier) || TIERS[0];
   const plusMult = 1 + item.upgrade * 0.25;
-  const baseValue = Math.floor(10 + chosenTier.tier * 5);
+  const rank=chosenTier.powerRank;
+  const baseValue = 10 + rank * 5;
   const rm = (item.rollMult != null && Number.isFinite(Number(item.rollMult))) ? Number(item.rollMult) : 1;
   // ぶっ飛び個体は付帯効果判定だけ上位ティア相当（ドロップ・ティア自体は変えない＝T7 vault制限維持）
-  const effTier = Math.min(7, chosenTier.tier + (item.powerSkip || 0));
+  const effTier = Math.min(MAX_POWER_RANK, powerRank(chosenTier.tier) + (item.powerSkip || 0)*POWER_RANK_STEP);
   item.stats = item.stats || {};
 
   if (item.type === 'WEAPON') {
@@ -801,19 +775,19 @@ export function applyUpgradeStats(item, upgradeLevel) {
     item.stats.atk = Math.floor(baseValue * chosenTier.mult * plusMult * (profile.atkMult || 1) * rm);
     // 攻速は武器種の個性として固定（個体倍率は攻撃力側に載せる）
     if (style === 'spear') {
-      item.stats.atkSpeed = Math.floor(-18 - chosenTier.tier * 2);
+      item.stats.atkSpeed = Math.floor(-18 - rank * 2);
       item.pierce = true;
     } else if (style === 'hammer') {
-      item.stats.atkSpeed = Math.floor(-24 - chosenTier.tier * 3);
+      item.stats.atkSpeed = Math.floor(-24 - rank * 3);
       delete item.pierce;
     } else if (style === 'bow') {
-      item.stats.atkSpeed = Math.floor(4 + chosenTier.tier);
+      item.stats.atkSpeed = Math.floor(4 + rank);
       delete item.pierce;
     } else if (style === 'crossbow') {
-      item.stats.atkSpeed = Math.floor(-20 - chosenTier.tier * 2);
+      item.stats.atkSpeed = Math.floor(-20 - rank * 2);
       delete item.pierce;
     } else if (style === 'cannon') {
-      item.stats.atkSpeed = Math.floor(-32 - chosenTier.tier * 3);
+      item.stats.atkSpeed = Math.floor(-32 - rank * 3);
       delete item.pierce;
     } else {
       delete item.stats.atkSpeed;
@@ -825,26 +799,26 @@ export function applyUpgradeStats(item, upgradeLevel) {
     else delete item.stats.lightning;
   } else if (item.type === 'SHIELD') {
     item.stats.def = Math.floor(baseValue * 1.5 * chosenTier.mult * plusMult * rm);
-    item.stats.hp = Math.floor(baseValue * 1.5 * Math.pow(chosenTier.tier, 1.3) * plusMult * rm);
-    item.stats.blockChance = Math.min(45, 15 + effTier * 5);
+    item.stats.hp = Math.floor(baseValue * 1.5 * Math.pow(rank, 1.3) * plusMult * rm);
+    item.stats.blockChance = Math.floor(Math.min(45, 15 + effTier * 5));
   } else if (item.type === 'HELMET') {
     item.stats.def = Math.floor(baseValue * 1.1 * chosenTier.mult * plusMult * rm);
-    item.stats.hp = Math.floor(baseValue * 2.0 * Math.pow(chosenTier.tier, 1.3) * plusMult * rm);
+    item.stats.hp = Math.floor(baseValue * 2.0 * Math.pow(rank, 1.3) * plusMult * rm);
   } else if (item.type === 'ARMOR') {
     item.stats.def = Math.floor(baseValue * 2.2 * chosenTier.mult * plusMult * rm);
-    item.stats.hp = Math.floor(baseValue * 3.0 * Math.pow(chosenTier.tier, 1.3) * plusMult * rm);
+    item.stats.hp = Math.floor(baseValue * 3.0 * Math.pow(rank, 1.3) * plusMult * rm);
     if (effTier >= 5) item.stats.regen = Math.floor(effTier * 2 * Math.min(1.4, Math.max(0.85, rm)));
     else delete item.stats.regen;
   } else if (item.type === 'GLOVES') {
     item.stats.def = Math.floor(baseValue * 0.8 * chosenTier.mult * plusMult * rm);
     item.stats.atk = Math.floor(baseValue * 0.5 * chosenTier.mult * plusMult * rm);
-    item.stats.atkSpeed = Math.floor((5 + chosenTier.tier * 3 + item.upgrade) * rm);
+    item.stats.atkSpeed = Math.floor((5 + rank * 3 + item.upgrade) * rm);
   } else if (item.type === 'LEGS') {
     item.stats.def = Math.floor(baseValue * 0.9 * chosenTier.mult * plusMult * rm);
-    item.stats.speed = Math.floor((6 + chosenTier.tier * 3 + item.upgrade * 2) * rm);
+    item.stats.speed = Math.floor((6 + rank * 3 + item.upgrade * 2) * rm);
   } else if (item.type === 'AMULET') {
-    item.stats.speed = Math.floor((8 + chosenTier.tier * 2 + item.upgrade) * rm);
-    item.stats.atkSpeed = Math.floor((10 + chosenTier.tier * 5 + item.upgrade * 2) * rm);
+    item.stats.speed = Math.floor((8 + rank * 2 + item.upgrade) * rm);
+    item.stats.atkSpeed = Math.floor((10 + rank * 5 + item.upgrade * 2) * rm);
     if (effTier >= 5) item.stats.vampire = 0.2;
     else delete item.stats.vampire;
   }
@@ -870,7 +844,7 @@ export function getEquipVisual(item, defaultTier = 1, defaultColor = null) {
     color: item.color || '#64748b',
     mat: item.mat || '',
     upgrade: item.upgrade || 0,
-    isGod: (item.tier || 1) >= 6 || (item.upgrade || 0) >= 5 || !!item.isGodRoll,
+    isGod: powerRank(item.tier) >= 6 || (item.upgrade || 0) >= 5 || !!item.isGodRoll,
     forgeTag: item.forgeTag || null,
     hasItem: true
   };
@@ -878,7 +852,7 @@ export function getEquipVisual(item, defaultTier = 1, defaultColor = null) {
 
 export function generateRandomDrop(distance, kind = 'normal', options = {}) {
   const random=options.random||Math.random;
-  const forcedTier=Number.isFinite(options.tier)?Math.max(1,Math.min(7,Math.floor(options.tier))):null;
+  const forcedTier=Number.isFinite(options.tier)?Math.max(1,Math.min(MAX_EQUIPMENT_TIER,Math.floor(options.tier))):null;
   const chosenTier = TIERS[(forcedTier||chooseLootTier(distance, kind))-1];
 
   // 兜、鎧、脚、手、盾、武器、装飾
@@ -916,7 +890,7 @@ export function generateRandomDrop(distance, kind = 'normal', options = {}) {
     mat: chosenTier.mat,
     color: chosenTier.color,
     stats: {},
-    isGod: chosenTier.tier >= 6,
+    isGod: chosenTier.powerRank >= 6,
     rollMult: null,
     forgeTag: null,
     powerSkip: 0,
@@ -2897,7 +2871,7 @@ export const IronSquadGame = {
       const wItem = s.equipped ? s.equipped.weapon : null;
       const wAtk = wItem && wItem.stats ? (wItem.stats.atk || 0) : 0;
       const wUp = wItem ? (wItem.upgrade || 0) : 0;
-      const wTier = wItem ? (wItem.tier || 1) : 1;
+      const wTier = wItem ? powerRank(wItem.tier) : 1;
       const rawHeal = 26 + (lv - 1) * 7 + waves * 6 + minionKills * 0.5 + bossKills * 18 + wAtk * 1.6 + wUp * 12 + (wTier - 1) * 9 + (s.isNamed ? 30 : 0) + (s.isVeteran ? 15 : 0) + (cls.isAdvanced ? 60 : 0);
       s.healPower = Math.floor(rawHeal * (talent.atkMult || 1.0) * deathlineHealMult * classHealMult * honorMult * vetMult);
     }
@@ -2959,7 +2933,7 @@ export const IronSquadGame = {
     this.rankIndex = saved.rankIndex || 0;
     this.equipped = saved.equipped || { weapon: null, armor: null, amulet: null };
     this.inventory = saved.inventory || [];
-    this.merchantEquipmentTier=Math.max(1,Math.min(7,Number(saved.merchantEquipmentTier)||1));
+    this.merchantEquipmentTier=Math.max(1,Math.min(MAX_EQUIPMENT_TIER,Number(saved.merchantEquipmentTier)||1));
     this.selectedSaleIds=new Set();this.soldierSlotSelections={};
     this.squad = saved.squad || [];
     this.reserves = saved.reserves || [];
@@ -3678,6 +3652,10 @@ export const IronSquadGame = {
   },
 
   /** 装備とスタイルにマスタリー（攻撃速度・リロード/爆発）を乗せた戦闘プロファイル */
+  applyEquipmentUpgrade(item,level) {applyUpgradeStats(item,level);},
+
+  equipmentValueFor(soldier,item,key) {return soldierEquipmentValue(this,soldier,item,key,SOLDIER_CLASSES);},
+
   combatProfileFor(unit, item, isPlayer = false) {
     const base = weaponCombatProfile(item || null);
     const mastery = isPlayer
@@ -4871,6 +4849,7 @@ export const IronSquadGame = {
     // 新兵への支給を先に行い、真の余剰だけを外販。給与原資を残して町へ投資。
     const supply=this.supplyReinforcements();
     this.processSharedEquipmentBox();
+    this.advanceArmamentResearch();
     this.supplyMissingEquipment();
     this.investNation();
     const fiscal = this.finalizePhaseFiscal();
@@ -6308,20 +6287,14 @@ export const IronSquadGame = {
             const curItem = s.equipped[slotKey];
             const fav = s.favoriteWeapon || 'sword';
             // 得意武器タイプを優先して自動装備（スコア+好み補正）
-            const curScore = (curItem ? equipmentScore(curItem) : 0) + favoriteWeaponBias(curItem, fav);
-            const newScore = equipmentScore(item) + favoriteWeaponBias(item, fav);
-            const isBetter = !curItem || newScore > curScore;
+            const curScore = curItem ? this.equipmentValueFor(s,curItem,slotKey) : 0;
+            const newScore = this.equipmentValueFor(s,item,slotKey);
+            const isBetter = Number.isFinite(newScore) && (!curItem || newScore > curScore+1e-6) && !curItem?.favorite && !isGodRollProtected(curItem) && !item.favorite && !isGodRollProtected(item);
 
             if (isBetter) {
-              // 上位装備に着替える！旧装備の強化値を新装備へ引き継ぐ！
-              const oldUp = curItem ? (curItem.upgrade || 0) : 0;
-              if (oldUp > 0) {
-                applyUpgradeStats(item, Math.max(item.upgrade || 0, oldUp));
-              }
               s.equipped[slotKey] = item;
               if (slotKey === 'weapon') s.weapon = item;
-              // Unenhanced replacements can still fill another soldier's empty slot.
-              if(curItem && oldUp===0)(this.sharedEquipBox ||= []).push(curItem);
+              if(curItem)(this.sharedEquipBox ||= []).push(curItem);
               this.recalcSoldierStats(s);
               this.spawnDamageText(s.x, s.y - 20, `🛡️[${item.name}]着用!`, '#38bdf8');
             } else {
@@ -6576,7 +6549,7 @@ export const IronSquadGame = {
 
     // クリ: プレイヤーは装備クリ＋スイート補正。兵士は既存どおり通常クリ無しだが、スイート内のみ補正分でクリ判定
     if (isPlayer) {
-      const chance = (this.player.crit || 10) + (sweet.critBonus || 0);
+      const chance = (this.player.crit ?? 10) + (sweet.critBonus || 0);
       if (Math.random() * 100 < chance) {
         dmg = Math.floor(dmg * 2.2);
         isCrit = true;
@@ -6866,7 +6839,7 @@ export const IronSquadGame = {
             </div>
             <button type="button" class="transfer-popup-close-btn" aria-label="閉じる">✕</button>
           </div>
-          <div class="transfer-popup-hint">入手済み最高T${rank} → 販売T${m.stockTier}（最高T7は非売）。高品質の厳選武具・第${phase}ウェーブの品揃え。次ウェーブまで${Math.ceil((this.phaseTimer||0)+(this.restTimer||0))}秒。目玉は商人ごとに1点。${m.featuredSoldPhase===phase?'今ウェーブの目玉は購入済みです。':'特選品には目玉の印が付いています。'}</div>
+          <div class="transfer-popup-hint">製造技術T${this.nation?.armament?.techTier||1} → 交易品T${m.stockTier}（最高素材世代T${TRADE_MAX_TIER+1}〜${MAX_EQUIPMENT_TIER}は非売）。高品質の厳選武具・第${phase}ウェーブの品揃え。次ウェーブまで${Math.ceil((this.phaseTimer||0)+(this.restTimer||0))}秒。目玉は商人ごとに1点。${m.featuredSoldPhase===phase?'今ウェーブの目玉は購入済みです。':'特選品には目玉の印が付いています。'}</div>
           <div class="transfer-item-list">
             <details class="merchant-services"><summary>回復・補給・セーブ ${healWaves?`· 回復はあと${healWaves}ウェーブ`:''}</summary>
             <section class="merchant-heal-service" aria-label="商人の回復サービス">
@@ -7651,7 +7624,7 @@ export const IronSquadGame = {
 
   getUpgradeCost(item) {
     const up = item.upgrade || 0;
-    const tierFactor = Math.max(1, (item.tier || 1) * 0.8);
+    const tierFactor = Math.max(1, powerRank(item.tier) * 0.8);
     return Math.floor((20 + up * 18 + Math.pow(up, 1.4) * 6) * tierFactor);
   },
 
@@ -8459,13 +8432,18 @@ export const IronSquadGame = {
   },
 
   /** 共有ボックス配布＋弱余剰の国庫換金 */
-  createSupplyEquipment(type,soldier) {
-    const item=generateRandomDrop(0,'normal',{type,tier:1,upgrade:0,quality:1,merchant:true,random:()=>.5,id:`issue-${soldier.id}-${this.phase}-${type}`});
+  createSupplyEquipment(type,soldier,tier=1) {
+    const item=generateRandomDrop(0,'normal',{type,tier,upgrade:0,quality:1,merchant:true,random:()=>.5,id:`issue-${soldier.id}-${this.phase}-${type}-t${tier}`});
     item.nationalIssue=true;item.qualityLabel='標準支給';delete item.weaponTraits;
     if(type==='WEAPON'){
       item.weaponStyle=soldier.favoriteWeapon||'sword';
+      const cls=SOLDIER_CLASSES[soldier.soldierClass]||SOLDIER_CLASSES.HEAVY,family=cls.baseClassId||soldier.soldierClass;
+      if(family==='MAGE'||family==='MEDIC')item.weaponStyle='sword';
+      else if(family==='ARCHER'&&!RANGED_STYLES.includes(item.weaponStyle))item.weaponStyle='bow';
+      else if(family!=='ARCHER'&&!MELEE_STYLES.includes(item.weaponStyle))item.weaponStyle='sword';
       const names={sword:'weapon',spear:'spear',hammer:'hammer',bow:'bow',crossbow:'crossbow',cannon:'cannon'};
-      item.baseName=TIERS[0][names[item.weaponStyle]||'weapon'];item.name=item.baseName;
+      item.baseName=TIERS[tier-1][names[item.weaponStyle]||'weapon'];
+      if(family==='MAGE'||family==='MEDIC')item.baseName=`${TIERS[tier-1].mat}の術杖・${TIERS[tier-1].generation}型`;item.name=item.baseName;
     }
     applyUpgradeStats(item,0);return item;
   },
@@ -8484,9 +8462,14 @@ export const IronSquadGame = {
     }
     this.sharedEquipBox = stay;
     const soldiers = [...(this.squad || []), ...(this.reserves || [])];
-    const dist = distributeSharedBoxToSoldiers(this.sharedEquipBox, soldiers, (s) => this.recalcSoldierStats(s));
+    const value=(unit,item,key)=>this.equipmentValueFor(unit,item,key);
+    const dist = distributeSharedBoxToSoldiers(this.sharedEquipBox, soldiers, (s) => this.recalcSoldierStats(s),value);
     this.sharedEquipBox = dist.remaining;
-    const sold = sellWeakSurplusFromBox(this.sharedEquipBox, soldiers);
+    if(this.phaseFiscal)this.phaseFiscal.sharedEquipmentIssued=(this.phaseFiscal.sharedEquipmentIssued||0)+dist.equippedCount;
+    const sample=soldiers.find(s=>!s.dead)||{id:'stock',soldierClass:'HEAVY'};
+    const strength=i=>equipmentScore({...i,tier:1,upgrade:0});
+    const minimum=new Map();
+    const sold = sellWeakSurplusFromBox(this.sharedEquipBox, soldiers,value,{perSlot:RESERVE_ARMAMENT_COUNT,keep:item=>{if(!minimum.has(item.type))minimum.set(item.type,strength(this.createSupplyEquipment(item.type,sample,1)));return strength(item)>minimum.get(item.type);}});
     this.sharedEquipBox = sold.remaining;
     this.nation=normalizeNation(this.nation);this.nation.totalExports+=sold.soldGold;
     if (sold.soldGold > 0) {
@@ -8708,7 +8691,7 @@ export const IronSquadGame = {
     this.selectedSaleIds=new Set(selected.map(i=>i.id));
     toolbar.innerHTML=`<summary>余剰装備の一括売却 · 選択${selected.length}個 / ${selected.reduce((n,i)=>n+saleValue(i),0)}G</summary><p>装備中・保護中の品は対象外。「弱い余剰」は未強化の下位互換を選択します。選択数と売却額を確認してください。</p>`;
     const tier=document.createElement('select');tier.setAttribute('aria-label','余剰選択のTier上限');
-    for(let n=1;n<=4;n++){const option=document.createElement('option');option.value=n;option.textContent=`T${n}以下`;tier.append(option);}tier.value=this.saleMaxTier||2;
+    for(let n=1;n<=GENERATION_COUNT*4;n++){const option=document.createElement('option');option.value=n;option.textContent=`T${n}以下`;tier.append(option);}tier.value=this.saleMaxTier||2;
     tier.onchange=()=>{this.saleMaxTier=Number(tier.value);};
     const choose=document.createElement('button');choose.textContent='弱い余剰を選択';
     choose.onclick=()=>{this.selectedSaleIds=new Set(lowValueIds(this.inventory||[],this.equipped,[...this.squad,...(this.reserves||[])],Number(tier.value)));this.renderStrategyUI();};

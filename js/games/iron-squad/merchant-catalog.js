@@ -1,17 +1,20 @@
-import {EQUIPMENT_TYPES,saleValue} from './equipment-rules.js?v=113';
-export const MERCHANT_MAX_TIER=6;
+import {observeEquipment} from './armament-rules.js?v=114';
+import {MAX_EQUIPMENT_TIER,TRADE_MAX_TIER} from './equipment-tiers.js?v=114';
+import {EQUIPMENT_TYPES,saleValue} from './equipment-rules.js?v=114';
+export const MERCHANT_MAX_TIER=TRADE_MAX_TIER;
 export const CATALOG_PRICE_MULT=3.2;
 export const catalogPrice=item=>Math.max(1,Math.floor(saleValue(item)*CATALOG_PRICE_MULT*Math.max(1,item.rollMult||1)*(item.merchantFeatured?1.15:1)));
-export const MERCHANT_CATALOG_VERSION=1;
+export const MERCHANT_CATALOG_VERSION=2;
 export function recordMerchantEquipment(game,item) {
-  if(item&&EQUIPMENT_TYPES.includes(item.type)&&Number.isFinite(item.tier))game.merchantEquipmentTier=Math.max(game.merchantEquipmentTier||1,Math.min(7,Math.floor(item.tier)));
+  if(EQUIPMENT_TYPES.includes(item?.type))observeEquipment(game,item);
+  if(item&&EQUIPMENT_TYPES.includes(item.type)&&Number.isFinite(item.tier))game.merchantEquipmentTier=Math.max(game.merchantEquipmentTier||1,Math.min(MAX_EQUIPMENT_TIER,Math.floor(item.tier)));
 }
 export function latestEquipmentTier(game) {
   for(const item of [...(game.inventory||[]),...Object.values(game.equipped||{}),...(game.sharedEquipBox||[])])recordMerchantEquipment(game,item);
   for(const u of [...(game.squad||[]),...(game.reserves||[])])for(const item of Object.values(u.equipped||{}))recordMerchantEquipment(game,item);
-  return Math.max(1,Math.min(7,game.merchantEquipmentTier||1));
+  return Math.max(1,Math.min(MAX_EQUIPMENT_TIER,game.merchantEquipmentTier||1));
 }
-export const catalogTier=game=>Math.min(MERCHANT_MAX_TIER,latestEquipmentTier(game)+1);
+export const catalogTier=game=>{latestEquipmentTier(game);return Math.min(MERCHANT_MAX_TIER,(game.nation?.armament?.techTier||1)+1);};
 const hash=value=>{let n=2166136261;for(const ch of String(value)){n^=ch.charCodeAt(0);n=Math.imul(n,16777619);}return n>>>0;};
 function randomFor(seed) {let n=seed>>>0;return ()=>{n=(Math.imul(n,1664525)+1013904223)>>>0;return n/4294967296;};}
 export function ensureMerchantCatalog(game,m,generate,force=false) {

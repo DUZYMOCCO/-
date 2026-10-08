@@ -1,6 +1,7 @@
+import {powerRank,MAX_EQUIPMENT_TIER,GENERATIONS} from './equipment-tiers.js?v=114';
 export const EQUIPMENT_TYPES = ['WEAPON','SHIELD','HELMET','ARMOR','GLOVES','LEGS','AMULET'];
 
-export const saleValue = item => Math.floor(14 + Math.pow(item.tier || 1, 1.8)*12 + (item.upgrade || 0)*8);
+export const saleValue = item => Math.floor(14 + Math.pow(powerRank(item.tier), 1.8)*12 + (item.upgrade || 0)*8);
 
 
 /** 異質/神鍛 (god-roll) — auto-sell / shared-box deposit must never touch these. Manual sell still OK via canSell. */
@@ -59,7 +60,7 @@ export function lowValueIds(inventory, playerEquipment, soldiers, maxTier=2) {
   }).map(item => item.id);
 }
 
-export function lootWeights(distance, kind='normal') {
+function materialLootWeights(distance, kind='normal') {
   const d=Math.max(0,distance || 0);
   // Tier 7（神話・オリハルコン）はダンジョン最奥宝箱 (dungeon_vault / 竜巌窟) のみ
   if(kind==='dungeon_vault') {
@@ -93,6 +94,12 @@ export function lootWeights(distance, kind='normal') {
   // ハードキャップ: 非 vault 経路では Tier 7 ウェイトを常に 0
   if(weights.length>=7) weights[6]=0;
   return weights;
+}
+
+export function lootWeights(distance,kind='normal') {
+ const families=materialLootWeights(distance,kind);
+ const generationWeights=GENERATIONS.map(g=>g.dropWeight);
+ return families.flatMap(weight=>generationWeights.map(part=>weight*part));
 }
 
 export function chooseLootTier(distance,kind='normal',random=Math.random) {

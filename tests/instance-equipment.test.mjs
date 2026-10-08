@@ -24,7 +24,7 @@ const initial=structuredClone(game.saveGame()),fresh=()=>{game._merchantShopClos
 const savePreview=name=>{
   if(!process.env.EQUIPMENT_REVIEW_DIR)return;
   mkdirSync(process.env.EQUIPMENT_REVIEW_DIR,{recursive:true});
-  const html=`<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>装備画面の表示確認</title>${['style','game-ui','iron-squad','iron-squad-interface'].map(n=>`<link rel="stylesheet" href="/css/${n}.css?v=113">`).join('')}</head><body>${game.container.outerHTML}</body></html>`;
+  const html=`<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>装備画面の表示確認</title>${['style','game-ui','iron-squad','iron-squad-interface'].map(n=>`<link rel="stylesheet" href="/css/${n}.css?v=114">`).join('')}</head><body>${game.container.outerHTML}</body></html>`;
   writeFileSync(resolve(process.env.EQUIPMENT_REVIEW_DIR,name+'.html'),html);
 };
 const gear=(id,type='WEAPON',tier=1,upgrade=0)=>generateRandomDrop(0,'normal',{id,type,tier,upgrade,quality:1,merchant:true,random:()=>.5});
@@ -92,24 +92,24 @@ collector.equipped.helmet=gear('collector-good','HELMET',3);mate.equipped.helmet
 const spare=gear('shared-helmet','HELMET');game.dropsOnField=[{x:collector.x,y:collector.y,item:spare}];game.update(.01);
 assert.ok(game.sharedEquipBox.some(i=>i.id===spare.id));game.processSharedEquipmentBox();assert.equal(mate.equipped.helmet.id,spare.id);
 
-// Live nine-wave supply fills all deployed slots without replacing upgrades or using payroll reserves.
+// Live thirty-wave supply fills all deployed slots without replacing upgrades or using payroll reserves.
 fresh();const downForSupply=game.squad[1];Object.assign(downForSupply,{hp:0,isDown:true});game.treasury=10000;game.supplyMissingEquipment();
 assert.ok(downForSupply.equipped.shield);assert.equal(downForSupply.hp,0);assert.equal(downForSupply.isDown,true,'actual procurement and stat recalculation do not revive casualties');
 fresh();const originalIds=game.squad.map(s=>s.id),upgraded=gear('retain-upgraded','ARMOR',3,25);game.squad[0].equipped.armor=upgraded;game.recalcSoldierStats(game.squad[0]);
-for(let i=0;i<9;i++){
+for(let i=0;i<30;i++){
   game.completePhase();const l=game.lastFiscalReport,t=fiscalTotals(l);
   assert.equal(l.salaryShortfall,0);assert.equal(l.endBalance-l.startBalance,t.net);assert.ok(game.treasury>=Math.max(6000,(game.squad.length+game.reserves.length)*40));game.finishRest();
 }
-assert.ok(game.squad.filter(s=>originalIds.includes(s.id)).every(s=>Object.values(SLOT_INFO).every(({key})=>s.equipped[key])),'all seven slots are filled after nine waves without loot');
+assert.ok(game.squad.filter(s=>originalIds.includes(s.id)).every(s=>Object.values(SLOT_INFO).every(({key})=>s.equipped[key])),'all seven slots are filled after thirty waves without loot');
 assert.equal(game.squad[0].equipped.armor.id,upgraded.id);assert.equal(upgraded.upgrade,25);assert.ok(game.lastFiscalReport.equipmentProcurement>0);
 game.saveGame();game.resumeSavedGame(saveSlots.get(game.activeSlotId).data);assert.equal(game.squad[0].equipped.armor.id,upgraded.id);
-game.treasury=0;game.squad[0].equipped.shield=null;assert.deepEqual(game.supplyMissingEquipment(),{phase:game.phase-1,issued:0,spent:0});assert.equal(game.treasury,0);assert.equal(game.squad[0].equipped.shield,null);
+game.phase++;game.treasury=0;game.squad[0].equipped.shield=null;assert.deepEqual(game.supplyMissingEquipment(),{phase:game.phase-1,issued:0,spent:0,updated:0,forged:0});assert.equal(game.treasury,0);assert.equal(game.squad[0].equipped.shield,null);
 
 // Sorted shop cards keep original stock indices; purchase replaces the correct slot and retains old gear.
 fresh();const merchant=game.merchants[0],old=gear('old-equipped','WEAPON',1,3);game.equipped.weapon=old;game.inventory=[old];game.gold=10000;
 const cheap=gear('cheap'),armor=gear('buy-armor','ARMOR',2),strong=gear('strong','WEAPON',1,20);
 for(const [item,price] of [[cheap,52],[armor,150],[strong,400]])item._merchantPrice=price;
-Object.assign(merchant,{stock:[cheap,armor,strong],catalogVersion:1,stockPhase:1,stockTier:2});game.openMerchantShop(merchant);
+Object.assign(merchant,{stock:[cheap,armor,strong],catalogVersion:2,stockPhase:1,stockTier:2});game.openMerchantShop(merchant);
 const popup=document.getElementById('merchant-shop-popup');assert.equal(popup.querySelector('.merchant-stock-card').dataset.idx,'2');assert.equal(popup.querySelectorAll('.merchant-stock-card').length,2);
 savePreview('merchant-weapons-v2.7.1');
 assert.match(popup.querySelector('[data-buy]').textContent,/購入して装備/);const gold=game.gold;popup.querySelector('[data-buy="2"]').click();
@@ -132,5 +132,5 @@ if(process.env.EQUIPMENT_REVIEW_DIR){
   const actualMerchant=game.merchants.find(m=>m.stock?.some(i=>i.type==='WEAPON'))||game.merchants[0];game.openMerchantShop(actualMerchant);savePreview('merchant-weapons-v2.7.1');
   document.querySelector('[data-shop-group="armor"]').click();savePreview('merchant-armor-v2.7.1');
 }
-console.log('PASS: dungeon/ruin/town personal-only combat/render/save/exit and carried casualties; shared empty-slot priority and field pickup; nine-wave seven-slot procurement/payroll/ledger/save; sorted separate shop/bag panels, correct stock purchase/immediate equip/old gear retention');
+console.log('PASS: dungeon/ruin/town personal-only combat/render/save/exit and carried casualties; shared empty-slot priority and field pickup; thirty-wave seven-slot procurement/payroll/ledger/save; sorted separate shop/bag panels, correct stock purchase/immediate equip/old gear retention');
 dom.window.close();
