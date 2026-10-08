@@ -1,7 +1,7 @@
-import {ensureMana,regenerateMana,spendMana} from './magic-rules.js?v=106';
+import {ensureMana,regenerateMana,spendMana} from './magic-rules.js?v=107';
 import {recordHealing} from './phase-rules.js';
 import {WORLD_SIZE} from './world.js';
-import {grantPermanentRescueReward} from './rescue-rewards.js?v=106';
+import {grantPermanentRescueReward} from './rescue-rewards.js?v=107';
 
 export const RESCUE_TIMEOUT = 45; // 救助猶予時間（秒）広域マップ対応で45秒に延長
 export const isMedic=unit=>['MEDIC','HIGH_PRIEST','SAINT','ARCHANGEL'].includes(unit?.soldierClass);
@@ -170,6 +170,7 @@ function revive(game,wounded,hp,options=null) {
     }
     if(wounded.isGateGuard){if(game.currentDungeon&&wounded.gateSpace===game.currentDungeon.id){wounded.x=game.currentDungeon.entrance.x;wounded.y=game.currentDungeon.entrance.y;}wounded.gateSpace='field';}
     wounded.rescuedToBase=true;
+    if(wounded.isGateGuard)game.onGateGuardRelocated?.(wounded);
     wounded.returningToBase=Math.hypot(wounded.x-wounded.homeX,wounded.y-wounded.homeY)>4;
     if(wounded.isMerchant)wounded.placeName='本陣・救助した商人';
   }
@@ -419,7 +420,7 @@ export function updateWounded(game,dt) {
     const bleedDt = wounded.downedInAid ? dt * AID_BLEED_RATE : dt;
     wounded.downTimer=Math.max(0,(wounded.downTimer??RESCUE_TIMEOUT)-bleedDt);
     if(wounded.downTimer<=0) {
-      wounded.dead=true;wounded.isDown=false;wounded.rescueProgress=0;
+      wounded.dead=true;if(wounded.isGateGuard)game.onGateGuardRelocated?.(wounded);wounded.isDown=false;wounded.rescueProgress=0;
       delete wounded.carrierId;delete wounded.downedInAid;delete wounded.downId;
       game.leaveRemains?.(wounded);
       if(isMerchantCasualty(wounded)) {

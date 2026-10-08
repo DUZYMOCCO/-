@@ -61,6 +61,7 @@
 }
 .iron-squad .field-alerts #base-raid-banner { border-color: #ba7975 !important; background: #40292ced !important; }
 .iron-squad .field-alerts #demon-invasion-banner { border-color:#ad8880 !important; background:#382d30ed !important; color:#ead6c3; pointer-events:none !important; }
+.iron-squad .field-alerts #demon-invasion-banner[data-major=true] { border-color:#d0a677 !important; background:#4a2b31ed !important; color:#f3d6b3; font-weight:bold; }
 .iron-squad .field-alerts button { min-height: 36px; font-size: 12px !important; padding: 6px 10px !important; background: var(--ui-gold) !important; color: var(--ui-bg) !important; border-radius: 5px !important; }
 .iron-squad .dialog-open .field-status, .dialog-open .field-status { visibility: hidden; }
 .iron-squad .game-overlay { padding: 10px; background: #081019c7; }

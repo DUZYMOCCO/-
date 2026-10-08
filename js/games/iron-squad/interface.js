@@ -1,4 +1,4 @@
-import {configureAudioInterface} from './audio-interface.js?v=106';
+import {configureAudioInterface} from './audio-interface.js?v=107';
 /** Presentation only: keep game actions on their original DOM nodes. */
 const element = (tag, className, text) => {
   const node = document.createElement(tag);

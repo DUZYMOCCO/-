@@ -1,6 +1,6 @@
-import {WORLD_SIZE} from './world.js?v=106';
-import {makeEscort,recalcEscortStats,updateEscortPatrol,npcSave,applyNpcSave} from './merchant-rules.js?v=106';
-import {rebuildMerchantCasualties,carrierOf,sanitizeCarriers} from './casualty-rules.js?v=106';
+import {WORLD_SIZE} from './world.js?v=107';
+import {makeEscort,recalcEscortStats,updateEscortPatrol,npcSave,applyNpcSave} from './merchant-rules.js?v=107';
+import {rebuildMerchantCasualties,carrierOf,sanitizeCarriers} from './casualty-rules.js?v=107';
 const center=WORLD_SIZE/2;
 export const GATE_HALF_WIDTH=80,HQ_WALL_HALF_SIZE=300;
 export function wallGeometry(game) {
@@ -28,6 +28,7 @@ function blockingCrossing(w,from,to,radius=10) {
   }
   return hits.sort((a,b)=>a.t-b.t)[0];
 }
+export function wallBlocksAttack(game,attacker,target) {const w=wallGeometry(game);return !!w&&!!blockingCrossing(w,attacker,target,1);}
 export function resolveWallMovement(game,actor,fromX,fromY,dt=1/60) {
   const w=wallGeometry(game);if(!w||actor.isDown||actor.carrierId)return false;
   const from={x:fromX,y:fromY},hit=blockingCrossing(w,from,actor,actor.radius||10);if(!hit)return false;
@@ -52,22 +53,64 @@ function buildGuard(game,id,name,x,y,space,distance=1200,index=0) {
   Object.assign(guard,{id,isGateGuard:true,name,title:'',gateSpace:space,gateOrigin:space,x,y,homeX:x,homeY:y});
   guard.escortBaseStats.hp=Math.round(guard.escortBaseStats.hp*1.3);guard.escortBaseStats.atk=Math.round(guard.escortBaseStats.atk*1.2);guard.hp=guard.maxHp=guard.escortBaseStats.hp;recalcEscortStats(guard);return guard;
 }
+export const GATE_REFILL_WAVES=2;
+function registerPost(game,def) {
+  const known=game.gatePosts.find(p=>p.id===def.id);if(known)return known;
+  const post={...def,serial:0,refillAtPhase:0};game.gatePosts.push(post);return post;
+}
+function townInteriorPosts(game,town) {
+  const w={left:52,right:town.width-52,top:52,bottom:town.height-52,cx:town.width/2,cy:town.height/2,town:true};
+  return gatePositions(w).map((g,i)=>registerPost(game,{id:`${town.id}_inner_guard_${i}`,name:`${town.name}・${['北','東','南','西'][i]}門番`,x:g.x+(g.side==='east'?-18:g.side==='west'?18:0),y:g.y+(g.side==='north'?18:g.side==='south'?-18:0),space:town.id,townId:town.id,distance:Math.min(22000,town.distance||1200),index:i}));
+}
+function guardAtPost(game,post) {
+  return game.gateGuards.some(g=>g.gatePostId===post.id&&!g.dead&&!g.rescuedToBase&&g.gateSpace===post.space);
+}
+function newGuardAtPost(game,post,id=null) {
+  id ||= post.serial?`${post.id}_replacement_${post.serial}`:post.id;
+  const guard=buildGuard(game,id,post.name,post.x,post.y,post.space,post.distance,post.index);
+  guard.gatePostId=post.id;guard.gateTownId=post.townId||null;game.gateGuards.push(guard);return guard;
+}
 export function initializeGateGuards(game,saved={}) {
-  game.gateGuards=[];const w={left:center-300,right:center+300,top:center-300,bottom:center+300,cx:center,cy:center,town:false};
-  for(const [i,g] of gatePositions(w).entries())game.gateGuards.push(buildGuard(game,`hq_gate_${i}`,`本陣門番・${['北門','東門','南門','西門','城下町門'][i]}`,g.x,g.y,'field',1200,i));
-  for(const d of game.dungeons||[])if(d.kind==='town')for(let i=0;i<2;i++)game.gateGuards.push(buildGuard(game,`${d.id}_outer_guard_${i}`,`${d.name}・門番`,d.entrance.x+(i?52:-52),d.entrance.y+24,'field',Math.min(22000,d.distance||1200),i));
-  for(const data of saved.gateGuards||[]){let guard=game.gateGuards.find(g=>g.id===data.id);
-    if(!guard&&data.gateOrigin&&data.gateOrigin!=='field'){const town=(game.dungeons||[]).find(d=>d.id===data.gateOrigin&&d.kind==='town');if(town){ensureTownGuards(game,town);guard=game.gateGuards.find(g=>g.id===data.id);}}
-    if(guard){applyNpcSave(guard,data);guard.gateSpace=data.gateSpace||guard.gateSpace;recalcEscortStats(guard);}
+  game.gateGuards=[];game.gatePosts=[];game._gateRefillPhase=0;
+  const w={left:center-300,right:center+300,top:center-300,bottom:center+300,cx:center,cy:center,town:false};
+  for(const [i,g] of gatePositions(w).entries())registerPost(game,{id:`hq_gate_${i}`,name:`本陣門番・${['北門','東門','南門','西門','城下町門'][i]}`,x:g.x,y:g.y,space:'field',townId:null,distance:1200,index:i});
+  for(const d of game.dungeons||[])if(d.kind==='town'){
+    for(let i=0;i<2;i++)registerPost(game,{id:`${d.id}_outer_guard_${i}`,name:`${d.name}・門番`,x:d.entrance.x+(i?52:-52),y:d.entrance.y+24,space:'field',townId:d.id,distance:Math.min(22000,d.distance||1200),index:i});
+    if((saved.gateGuards||[]).some(g=>g.gateOrigin===d.id)||(saved.gatePosts||[]).some(p=>p.space===d.id))townInteriorPosts(game,d);
   }
-  rebuildMerchantCasualties(game);sanitizeCarriers(game);applyFortifications(game,0);
+  for(const old of saved.gatePosts||[]){const post=game.gatePosts.find(p=>p.id===old.id);if(post){post.serial=Math.max(0,Math.floor(old.serial||0));post.refillAtPhase=Math.max(0,Math.floor(old.refillAtPhase||0));}}
+  for(const data of saved.gateGuards||[]){const post=game.gatePosts.find(p=>p.id===(data.gatePostId||data.id)||data.id?.startsWith(`${p.id}_replacement_`));if(!post)continue;
+    const guard=newGuardAtPost(game,post,data.id);applyNpcSave(guard,data);guard.gateSpace=data.gateSpace||guard.gateSpace;recalcEscortStats(guard);
+    const serial=Number(data.id?.split('_replacement_')[1])||0;post.serial=Math.max(post.serial,serial);
+  }
+  for(const post of game.gatePosts)if(!game.gateGuards.some(g=>g.gatePostId===post.id)&&!post.refillAtPhase)newGuardAtPost(game,post);
+  replenishTownGateGuards(game);rebuildMerchantCasualties(game);sanitizeCarriers(game);applyFortifications(game,0);
 }
 export function ensureTownGuards(game,town) {
-  const w={left:52,right:town.width-52,top:52,bottom:town.height-52,cx:town.width/2,cy:town.height/2,town:true};
-  for(const [i,g] of gatePositions(w).entries()){const id=`${town.id}_inner_guard_${i}`;if(!game.gateGuards.some(s=>s.id===id))game.gateGuards.push(buildGuard(game,id,`${town.name}・${['北','東','南','西'][i]}門番`,g.x+(g.side==='east'?-18:g.side==='west'?18:0),g.y+(g.side==='north'?18:g.side==='south'?-18:0),town.id,Math.min(22000,town.distance||1200),i));}
+  game.gatePosts ||= [];game.gateGuards ||= [];
+  for(const post of townInteriorPosts(game,town))if(!game.gateGuards.some(g=>g.gatePostId===post.id)&&!post.refillAtPhase)newGuardAtPost(game,post);
+  replenishTownGateGuards(game);
 }
+export function replenishTownGateGuards(game) {
+  const phase=game.phase||1;let count=0;
+  for(const post of game.gatePosts||[]){if(!post.townId)continue;
+    if(guardAtPost(game,post)){post.refillAtPhase=0;continue;}
+    if(!post.refillAtPhase){post.refillAtPhase=phase+GATE_REFILL_WAVES;continue;}
+    if(phase<post.refillAtPhase)continue;
+    post.serial++;newGuardAtPost(game,post);post.refillAtPhase=0;count++;
+  }
+  if(count)game.showToast?.(`町の門番${count}名が新任として着任。救助した門番は本陣に残ります`);
+  return count;
+}
+export const gateMethods={
+  onGateGuardRelocated(guard) {
+    const post=(this.gatePosts||[]).find(p=>p.id===guard?.gatePostId);
+    if(post?.townId&&!guardAtPost(this,post)&&!post.refillAtPhase)post.refillAtPhase=(this.phase||1)+GATE_REFILL_WAVES;
+  }
+};
+export const serializeGatePosts=game=>(game.gatePosts||[]).map(p=>({...p}));
 export function serializeGateGuards(game) {return (game.gateGuards||[]).map(g=>{
-  const data={id:g.id,gateSpace:g.gateSpace,gateOrigin:g.gateOrigin,...npcSave(g)};
+  const data={id:g.id,gateSpace:g.gateSpace,gateOrigin:g.gateOrigin,gatePostId:g.gatePostId,gateTownId:g.gateTownId,...npcSave(g)};
   if(game.currentDungeon&&g.gateSpace===game.currentDungeon.id&&g.carrierId&&game.savedFieldPos){data.gateSpace='field';data.x=game.savedFieldPos.x-12;data.y=game.savedFieldPos.y+10;data.homeX=center;data.homeY=center;}
   return data;
 });}
@@ -76,6 +119,7 @@ export function exitGateTown(game,townId) {
 }
 export function updateGateGuards(game,dt) {
   if(!(dt>0)||game.restTimer>0)return;
+  if(game._gateRefillPhase!==(game.phase||1)){game._gateRefillPhase=game.phase||1;replenishTownGateGuards(game);}
   const monsters=game.monsters||[];
   for(const guard of game.gateGuards||[]){if(!gateGuardVisible(game,guard)||guard.isDown)continue;
     const home={x:guard.homeX,y:guard.homeY,escorts:[guard]},near=game.player&&Math.hypot(guard.x-game.player.x,guard.y-game.player.y)<850;
