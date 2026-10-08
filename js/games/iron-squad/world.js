@@ -456,56 +456,58 @@ function nearSettlement(x, y, pad) {
   }
   return false;
 }
+function paintShoulder(c, wx, wy, x0, y0) {
+  if (Math.hypot(wx - CENTER, wy - CENTER) < ROAD_CORRIDOR_RADIUS) return;
+  if (nearSettlement(wx, wy, 180) || reliefAt(wx, wy)) return;
+  const h = cellHash(Math.floor(wx / 34), Math.floor(wy / 34));
+  if (h < 0.18) return;
+  const px = wx - x0, py = wy - y0;
+  const name = biomeAt(wx, wy).name;
+  if (name.startsWith('北')) {
+    c.fillStyle = '#2a241c';
+    c.fillRect(px - 2, py + 1, 4, 9);
+    c.fillStyle = h > 0.65 ? '#31483a' : '#24382c';
+    c.beginPath(); c.moveTo(px, py - 16); c.lineTo(px + 9, py + 3); c.lineTo(px - 9, py + 3); c.fill();
+    c.fillStyle = '#b7c3b4';
+    c.fillRect(px - 1, py - 15, 2, 3);
+  } else if (name.startsWith('南')) {
+    c.fillStyle = '#6e6858';
+    c.fillRect(px - 9, py - 2, 18, 6);
+    c.fillStyle = '#e4dcc4';
+    c.fillRect(px - 8, py - 5, 16, 3);
+  } else if (name.startsWith('西')) {
+    c.fillStyle = '#1a1612';
+    c.fillRect(px - 2, py - 13, 4, 16);
+    c.fillStyle = '#c3b39a';
+    c.fillRect(px - 7, py - 12, 14, 2);
+  } else {
+    c.fillStyle = '#2e2a24';
+    c.fillRect(px - 10, py - 7, 11, 8);
+    c.fillRect(px + 2, py - 3, 10, 7);
+    c.fillStyle = '#d9d0b8';
+    c.fillRect(px - 10, py - 9, 11, 2);
+    c.fillRect(px + 2, py - 5, 10, 2);
+  }
+}
 function paintCorridors(c, x0, y0) {
   if (!tileNearRoad(x0, y0)) return;
-  const far = (x, y) => Math.hypot(x - CENTER, y - CENTER) >= ROAD_CORRIDOR_RADIUS;
-  if (!far(x0, y0) && !far(x0 + TILE, y0) && !far(x0, y0 + TILE) && !far(x0 + TILE, y0 + TILE)) return;
-  for (let ly = 6; ly < TILE; ly += 46) {
-    for (let lx = 6; lx < TILE; lx += 46) {
-      const h = cellHash(Math.floor((x0 + lx) / 46), Math.floor((y0 + ly) / 46));
-      const wx = x0 + lx + (h - 0.5) * 16;
-      const wy = y0 + ly + (cellHash(Math.floor((y0 + ly) / 46), Math.floor((x0 + lx) / 23)) - 0.5) * 16;
-      if (!far(wx, wy) || nearSettlement(wx, wy, 180) || reliefAt(wx, wy)) continue;
-      const ew = wy - eastWestRoadY(wx);
-      const ns = wx - northSouthRoadX(wy);
-      const aew = Math.abs(ew), ans = Math.abs(ns);
-      if (Math.min(aew, ans) < 74) continue;
-      let lateral, along;
-      if (aew <= ans) {
-        if (aew > 122) continue;
-        lateral = ew; along = wx;
-      } else {
-        if (ans > 116) continue;
-        lateral = ns; along = wy;
-      }
-      if (cellHash(Math.floor(along / 92), Math.floor(lateral) + 5) < 0.38) continue;
-      const name = biomeAt(wx, wy).name;
-      const px = wx - x0, py = wy - y0;
-      if (name.startsWith('北')) {
-        c.fillStyle = '#3a3024';
-        c.fillRect(px - 1, py + 4, 3, 10);
-        c.fillStyle = h > 0.7 ? '#1a2e24' : '#24382c';
-        c.beginPath(); c.moveTo(px, py - 16); c.lineTo(px + 9, py + 6); c.lineTo(px - 9, py + 6); c.fill();
-        c.fillStyle = '#14241c';
-        c.beginPath(); c.moveTo(px, py - 8); c.lineTo(px + 6, py + 4); c.lineTo(px - 6, py + 4); c.fill();
-      } else if (name.startsWith('南')) {
-        c.fillStyle = '#9a947e';
-        c.beginPath(); c.ellipse(px, py, 8, 4, 0, 0, Math.PI * 2); c.fill();
-        c.fillStyle = '#d4cbb4';
-        c.fillRect(px - 5, py - 7, 10, 5);
-      } else if (name.startsWith('西')) {
-        c.fillStyle = '#2a2218';
-        c.fillRect(px - 2, py - 14, 4, 18);
-        c.fillStyle = '#3a4030';
-        c.fillRect(px - 7, py - 12, 14, 2);
-      } else {
-        c.fillStyle = '#2e2a24';
-        c.fillRect(px - 8, py - 2, 18, 8);
-        c.fillStyle = '#5c564c';
-        c.fillRect(px - 8, py - 4, 18, 2);
-        c.fillStyle = '#3a3630';
-        c.fillRect(px - 5, py - 12, 8, 10);
-      }
+  const x1 = x0 + TILE, y1 = y0 + TILE;
+  for (let wx = x0 + 12; wx < x1; wx += 36) {
+    const roadY = eastWestRoadY(wx);
+    for (const side of [-1, 1]) {
+      const wy = roadY + side * (96 + cellHash(Math.floor(wx / 36), side + 4) * 10);
+      if (wy < y0 - 16 || wy >= y1 + 16) continue;
+      if (Math.abs(wx - northSouthRoadX(wy)) < 100) continue;
+      paintShoulder(c, wx, wy, x0, y0);
+    }
+  }
+  for (let wy = y0 + 12; wy < y1; wy += 36) {
+    const roadX = northSouthRoadX(wy);
+    for (const side of [-1, 1]) {
+      const wx = roadX + side * (92 + cellHash(Math.floor(wy / 36), side + 8) * 10);
+      if (wx < x0 - 16 || wx >= x1 + 16) continue;
+      if (Math.abs(wy - eastWestRoadY(wx)) < 100) continue;
+      paintShoulder(c, wx, wy, x0, y0);
     }
   }
 }
