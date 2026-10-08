@@ -19,7 +19,7 @@ globalThis.document = {
 };
 const {storage} = await import('../js/storage.js');
 const {saveSlots} = await import('../js/games/iron-squad/save-slots.js');
-const {WorldTerrain,WORLD_SIZE,WORLD_VERSION,reliefAt,SETTLEMENTS} = await import('../js/games/iron-squad/world.js');
+const {WorldTerrain,WORLD_SIZE,WORLD_VERSION,reliefAt,SETTLEMENTS,HOME_SANCTUARY_RADIUS,depthFade} = await import('../js/games/iron-squad/world.js');
 const {IronSquadGame,getFieldZone,DEPLOYMENT_CAPACITY} = await import('../js/games/iron-squad/index.js');
 
 // Previous saves are retired with explicit user authorization; current saves remain.
@@ -79,6 +79,10 @@ assert.equal(game.dungeons.find(d=>d.kind==='town').boss,null);
 assert.ok(game.dungeons.every(d=>d.entrance.x>0&&d.entrance.y>0&&d.entrance.x<WORLD_SIZE&&d.entrance.y<WORLD_SIZE));
 assert.equal(reliefAt(center,center+5000),'#6e7264');
 assert.equal(reliefAt(center,center+5024),'#1a1e1c');
+assert.equal(HOME_SANCTUARY_RADIUS,3000);
+assert.equal(depthFade(center,center),0);
+assert.equal(depthFade(center+2999,center),0);
+assert.equal(depthFade(center+3900,center),1);
 const town=SETTLEMENTS.find(s=>s.id==='place_crossroads');
 assert.ok(reliefAt(center+town.ox,center+town.oy));
 

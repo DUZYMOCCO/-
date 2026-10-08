@@ -1,5 +1,5 @@
 // スマホゲーム工房 Service Worker (最新コード最優先 Network-First & オフライン対応版)
-const CACHE_NAME = 'mobile-game-studio-v118';
+const CACHE_NAME = 'mobile-game-studio-v119';
 
 const ASSETS_TO_CACHE = [
   './',
@@ -79,7 +79,9 @@ const ASSETS_TO_CACHE = [
   './assets/icons/icon-180.png',
   './assets/icons/icon-192.png',
   './assets/icons/icon-512.png',
-  './assets/icons/apple-touch-icon.png'
+  './assets/icons/apple-touch-icon.png',
+  './assets/land/horizon-mist.jpg',
+  './assets/land/horizon-ridges.jpg'
 ];
 
 // インストール時にキャッシュを事前構築

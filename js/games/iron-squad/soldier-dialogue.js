@@ -377,7 +377,7 @@ export class SoldierDialogueManager {
   }
 
   // Canvas描画（カメラ座標系）
-  draw(ctx, camera, zoom = 1.0) {
+  draw(ctx, camera = null, zoom = 1.0) {
     if (this.activeBubbles.length === 0) return;
 
     ctx.save();
@@ -388,9 +388,9 @@ export class SoldierDialogueManager {
     for (const b of this.activeBubbles) {
       if (b.opacity <= 0) continue;
 
-      // 画面内判定（カメラ座標変換）
-      const sx = (b.x - camera.x);
-      const sy = (b.y - camera.y);
+      // 描画座標（ctxはすでにワールド座標空間にあるためb.x, b.yをそのまま使用）
+      const sx = b.x;
+      const sy = b.y;
 
       // テキスト幅計測
       const metrics = ctx.measureText(b.text);
@@ -416,9 +416,13 @@ export class SoldierDialogueManager {
       const bx = -bw / 2;
       const by = -bh;
 
-      // 角丸四角形
+      // 角丸四角形（roundRectフォールバック対応）
       ctx.beginPath();
-      ctx.roundRect(bx, by, bw, bh, radius);
+      if (typeof ctx.roundRect === 'function') {
+        ctx.roundRect(bx, by, bw, bh, radius);
+      } else {
+        ctx.rect(bx, by, bw, bh);
+      }
       ctx.fill();
       ctx.stroke();
 

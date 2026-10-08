@@ -34,6 +34,9 @@ function cellHash(ix, iy) {
 // Direction is color, not another distance ring. Combat rings stay where they are.
 // East is warm plain, north is mountain, west is marsh, south is salt. Farther land only darkens.
 const HOME_R = 3200;
+// One threshold for the phase-1 depth pass. Inside it, ground, roads, and spawns stay as they are.
+export const HOME_SANCTUARY_RADIUS = 3000;
+const ROAD_CORRIDOR_RADIUS = 4000;
 const BIOMES = {
   east:  { name:'東の街道平原', grounds:['#2a2418','#201c12','#16120e'], grass:'#6a5830', tree:'oak' },
   south: { name:'南の塩原',     grounds:['#343228','#28261e','#1c1a14'], grass:'#7a7460', tree:'dead' },
@@ -401,6 +404,213 @@ function paintPictures(c, x0, y0) {
     }
   }
 }
+function outsideSanctuary(x, y) {
+  return Math.hypot(x - CENTER, y - CENTER) >= HOME_SANCTUARY_RADIUS;
+}
+function cellFullyOutside(x, y) {
+  return outsideSanctuary(x, y) && outsideSanctuary(x + 32, y)
+    && outsideSanctuary(x, y + 32) && outsideSanctuary(x + 32, y + 32);
+}
+// High ground is +1, the drop side is -1. Matches the existing ridges and does not change reliefAt.
+function cliffShelf(x, y) {
+  if (!outsideSanctuary(x, y)) return 0;
+  const horiz = (x0, x1, base, amp, wave, inwardFace) => {
+    if (x <= x0 || x >= x1) return 0;
+    const dy = y - (base + Math.sin((x - CENTER) / wave) * amp);
+    if (inwardFace) {
+      if (dy > 8 && dy < 96) return 1;
+      if (dy < -70 && dy > -160) return -1;
+      return 0;
+    }
+    if (dy < -18 && dy > -120) return 1;
+    if (dy > 68 && dy < 150) return -1;
+    return 0;
+  };
+  let shelf = horiz(CENTER - 16000, CENTER + 16000, CENTER + 5000, 110, 980, false);
+  if (shelf) return shelf;
+  shelf = horiz(CENTER - 18000, CENTER + 18000, CENTER - 8000, 90, 1100, false);
+  if (shelf) return shelf;
+  shelf = horiz(CENTER - 22000, CENTER + 22000, CENTER + 24000, 160, 1400, true);
+  if (shelf) return shelf;
+  if (y > CENTER - 14000 && y < CENTER + 14000) {
+    const ridge = CENTER - 6400 + Math.sin((y - CENTER) / 860) * 80;
+    const dx = x - ridge;
+    if (dx < -18 && dx > -110) return 1;
+    if (dx > 68 && dx < 140) return -1;
+  }
+  const d = Math.hypot(x - CENTER, y - CENTER);
+  if (d >= 15000 && d <= 66000) {
+    const ang = Math.atan2(y - CENTER, x - CENTER);
+    for (const arc of ARCS) {
+      if (!angleIn(ang, arc.a0, arc.a1)) continue;
+      const dy = d - arc.r;
+      if (dy > 8 && dy < 90) return 1;
+      if (dy < -70 && dy > -150) return -1;
+    }
+  }
+  return 0;
+}
+function nearSettlement(x, y, pad) {
+  for (const s of SETTLEMENTS) {
+    if (Math.abs(x - CENTER - s.ox) < s.padW / 2 + pad && Math.abs(y - CENTER - s.oy) < s.padH / 2 + pad) return true;
+  }
+  return false;
+}
+function paintCorridors(c, x0, y0) {
+  if (!tileNearRoad(x0, y0)) return;
+  const far = (x, y) => Math.hypot(x - CENTER, y - CENTER) >= ROAD_CORRIDOR_RADIUS;
+  if (!far(x0, y0) && !far(x0 + TILE, y0) && !far(x0, y0 + TILE) && !far(x0 + TILE, y0 + TILE)) return;
+  for (let ly = 6; ly < TILE; ly += 46) {
+    for (let lx = 6; lx < TILE; lx += 46) {
+      const h = cellHash(Math.floor((x0 + lx) / 46), Math.floor((y0 + ly) / 46));
+      const wx = x0 + lx + (h - 0.5) * 16;
+      const wy = y0 + ly + (cellHash(Math.floor((y0 + ly) / 46), Math.floor((x0 + lx) / 23)) - 0.5) * 16;
+      if (!far(wx, wy) || nearSettlement(wx, wy, 180) || reliefAt(wx, wy)) continue;
+      const ew = wy - eastWestRoadY(wx);
+      const ns = wx - northSouthRoadX(wy);
+      const aew = Math.abs(ew), ans = Math.abs(ns);
+      if (Math.min(aew, ans) < 74) continue;
+      let lateral, along;
+      if (aew <= ans) {
+        if (aew > 122) continue;
+        lateral = ew; along = wx;
+      } else {
+        if (ans > 116) continue;
+        lateral = ns; along = wy;
+      }
+      if (cellHash(Math.floor(along / 92), Math.floor(lateral) + 5) < 0.38) continue;
+      const name = biomeAt(wx, wy).name;
+      const px = wx - x0, py = wy - y0;
+      if (name.startsWith('北')) {
+        c.fillStyle = '#3a3024';
+        c.fillRect(px - 1, py + 4, 3, 10);
+        c.fillStyle = h > 0.7 ? '#1a2e24' : '#24382c';
+        c.beginPath(); c.moveTo(px, py - 16); c.lineTo(px + 9, py + 6); c.lineTo(px - 9, py + 6); c.fill();
+        c.fillStyle = '#14241c';
+        c.beginPath(); c.moveTo(px, py - 8); c.lineTo(px + 6, py + 4); c.lineTo(px - 6, py + 4); c.fill();
+      } else if (name.startsWith('南')) {
+        c.fillStyle = '#9a947e';
+        c.beginPath(); c.ellipse(px, py, 8, 4, 0, 0, Math.PI * 2); c.fill();
+        c.fillStyle = '#d4cbb4';
+        c.fillRect(px - 5, py - 7, 10, 5);
+      } else if (name.startsWith('西')) {
+        c.fillStyle = '#2a2218';
+        c.fillRect(px - 2, py - 14, 4, 18);
+        c.fillStyle = '#3a4030';
+        c.fillRect(px - 7, py - 12, 14, 2);
+      } else {
+        c.fillStyle = '#2e2a24';
+        c.fillRect(px - 8, py - 2, 18, 8);
+        c.fillStyle = '#5c564c';
+        c.fillRect(px - 8, py - 4, 18, 2);
+        c.fillStyle = '#3a3630';
+        c.fillRect(px - 5, py - 12, 8, 10);
+      }
+    }
+  }
+}
+
+export function depthFade(x, y) {
+  const d = Math.hypot(x - CENTER, y - CENTER);
+  if (d <= HOME_SANCTUARY_RADIUS) return 0;
+  return Math.min(1, (d - HOME_SANCTUARY_RADIUS) / 900);
+}
+let depthReady = false;
+const depthImg = {};
+function ensureDepthArt() {
+  if (depthReady || typeof Image === 'undefined') return;
+  depthReady = true;
+  for (const [key, file] of [['mist', 'horizon-mist.jpg'], ['ridges', 'horizon-ridges.jpg']]) {
+    const img = new Image();
+    img.decoding = 'async';
+    img.src = new URL(`../../../assets/land/${file}`, import.meta.url).href;
+    depthImg[key] = img;
+  }
+}
+let depthBuffer = null;
+function depthTarget(w, h) {
+  if (typeof document === 'undefined' || !document.createElement) return null;
+  const width = Math.max(1, Math.ceil(w)), height = Math.max(1, Math.ceil(h));
+  if (!depthBuffer) depthBuffer = document.createElement('canvas');
+  if (depthBuffer.width < width || depthBuffer.height < height) {
+    depthBuffer.width = Math.max(depthBuffer.width, width);
+    depthBuffer.height = Math.max(depthBuffer.height, height);
+  }
+  const b = depthBuffer.getContext('2d');
+  if (!b) return null;
+  b.setTransform(1, 0, 0, 1, 0, 0);
+  b.globalAlpha = 1;
+  b.globalCompositeOperation = 'source-over';
+  b.clearRect(0, 0, width, height);
+  return { b, width, height };
+}
+function triangleShift(scroll, span) {
+  if (span <= 1) return 0;
+  const cycle = span * 2;
+  const m = ((scroll % cycle) + cycle) % cycle;
+  return m <= span ? m : cycle - m;
+}
+function paintDepthSource(b, w, h, img, scroll) {
+  if (img && img.complete && img.naturalWidth) {
+    const dw = Math.max(w * 1.45, h * (img.naturalWidth / img.naturalHeight));
+    b.drawImage(img, -triangleShift(scroll, dw - w), 0, dw, h);
+    return;
+  }
+  b.fillStyle = '#24303a';
+  b.beginPath();
+  b.moveTo(0, h * 0.72);
+  for (let x = 0; x <= w; x += 36) {
+    const n = cellHash(Math.floor((x + scroll) / 36), 11);
+    b.lineTo(x, h * (0.38 + n * 0.28));
+  }
+  b.lineTo(w, h); b.lineTo(0, h); b.fill();
+}
+function blitDepthBand(ctx, left, top, viewW, bandH, scroll, alpha, img) {
+  if (bandH < 12 || alpha <= 0.01) return;
+  const layer = depthTarget(viewW, bandH);
+  if (!layer || !depthBuffer) return;
+  const { b, width, height } = layer;
+  paintDepthSource(b, width, height, img, scroll);
+  const g = b.createLinearGradient(0, height * 0.4, 0, height);
+  if (g && typeof g.addColorStop === 'function') {
+    g.addColorStop(0, 'rgba(0,0,0,0)');
+    g.addColorStop(1, 'rgba(0,0,0,1)');
+    b.globalCompositeOperation = 'destination-out';
+    b.fillStyle = g;
+    b.fillRect(0, 0, width, height);
+  }
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.drawImage(depthBuffer, 0, 0, width, height, left, top, viewW, bandH);
+  ctx.restore();
+}
+export function drawFieldDepth(ctx, camera, width, height, zoom) {
+  if (!ctx || !camera || !Number.isFinite(camera.x) || !Number.isFinite(camera.y)) return;
+  const fade = depthFade(camera.x, camera.y);
+  if (fade <= 0) return;
+  const z = zoom || 1;
+  const viewW = width / z, viewH = height / z;
+  if (!(viewW > 32) || !(viewH > 32) || viewW > 4200 || viewH > 4200) return;
+  ensureDepthArt();
+  const left = camera.x - viewW / 2;
+  const top = camera.y - viewH / 2;
+  const yShift = Math.max(-26, Math.min(26, -(camera.y - CENTER) * 0.01));
+  const mistH = Math.min(viewH * 0.1, 92 / z);
+  const ridgeH = Math.min(viewH * 0.15, 128 / z);
+  blitDepthBand(ctx, left, top + yShift * 0.35, viewW, mistH, camera.x * 0.05 + camera.y * 0.02, fade * 0.34, depthImg.mist);
+  blitDepthBand(ctx, left, top + 6 / z + yShift, viewW, ridgeH, camera.x * 0.13, fade * 0.58, depthImg.ridges);
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(left, top, viewW, ridgeH);
+  ctx.clip();
+  ctx.globalAlpha = fade * 0.16;
+  const drift = camera.x * 0.22;
+  for (let i = 0; i < 6; i++) {
+    ctx.fillStyle = i % 2 ? 'rgba(214,210,198,0.35)' : 'rgba(8,10,12,0.55)';
+    ctx.fillRect(left - 8, top + 3 / z + i * (ridgeH / 6) + ((drift + i * 5) % 5) / z, viewW + 16, 1 / z);
+  }
+  ctx.restore();
+}
 function tileMayHaveRelief(x0, y0) {
   const cx = x0 + TILE / 2, cy = y0 + TILE / 2;
   const hitY = (y, pad) => cy > y - pad && cy < y + pad;
@@ -426,7 +636,7 @@ function tileMayHaveRelief(x0, y0) {
 }
 
 export class WorldTerrain {
-  constructor() { this.tiles=new Map(); this.generated=0; this.visibleCamps=[]; }
+  constructor() { this.tiles=new Map(); this.generated=0; this.visibleCamps=[]; ensureDepthArt(); }
   clear() {
     for (const tile of this.tiles.values()) { tile.canvas.width=1; tile.canvas.height=1; }
     this.tiles.clear(); this.visibleCamps=[];
@@ -457,6 +667,13 @@ export class WorldTerrain {
     // Small cells follow world coordinates, so biome transitions align at tile edges.
     for(let y=0;y<TILE;y+=32) for(let x=0;x<TILE;x+=32) {
       c.fillStyle=biomeAt(x0+x+16,y0+y+16).ground; c.fillRect(x,y,32,32);
+      if (!cellFullyOutside(x0 + x, y0 + y)) continue;
+      const shelf = cliffShelf(x0 + x + 16, y0 + y + 16);
+      if (!shelf) continue;
+      c.globalAlpha = shelf > 0 ? 0.13 : 0.2;
+      c.fillStyle = shelf > 0 ? '#8a8070' : '#070a09';
+      c.fillRect(x, y, 32, 32);
+      c.globalAlpha = 1;
     }
     const tileName = biomeAt(x0 + TILE / 2, y0 + TILE / 2).name;
     const mote = tileName.startsWith('東') ? '#a0804024' : tileName.startsWith('南') ? '#b0a88828' : tileName.startsWith('北') ? '#60708024' : tileName.startsWith('西') ? '#40605028' : '#81936920';
@@ -469,9 +686,14 @@ export class WorldTerrain {
     // Cliff lip, face and shadow, then roads so a road reads as a cut through the face.
     if(may) {
       for(let y=0;y<TILE;y+=4) for(let x=0;x<TILE;x+=4) {
-        const shade=reliefAt(x0+x+2,y0+y+2);
+        const wx=x0+x+2, wy=y0+y+2;
+        const shade=reliefAt(wx,wy);
         if(!shade) continue;
         c.fillStyle=shade; c.fillRect(x,y,4,4);
+        if (shade === LIP && outsideSanctuary(wx, wy)) {
+          c.fillStyle = '#8e9286';
+          c.fillRect(x, y, 4, 2);
+        }
       }
     }
     paintRoutes(c, x0, y0);
@@ -485,6 +707,7 @@ export class WorldTerrain {
     }
     c.globalAlpha=1;
     paintPictures(c, x0, y0);
+    paintCorridors(c, x0, y0);
     // Quiet ponds, ruined masonry and camps make each part of the world distinct.
     const feature=rnd(), fx=120+rnd()*270,fy=120+rnd()*270;
     const distance=Math.hypot(x0+fx-CENTER,y0+fy-CENTER);
