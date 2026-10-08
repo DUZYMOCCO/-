@@ -625,3 +625,233 @@
 .armament-policies button { flex:1 1 85px; min-height:44px; padding:8px; }
 .armament-policies button[aria-pressed="true"] { border-color:#c7ad73; background:#384751; color:#f2dfb5; }
 #nation-status progress { max-width:100%; }
+
+/* 戦闘ログ カテゴリフィルター */
+.iron-squad .battle-log-categories {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 6px 0 10px;
+  border-bottom: 1px solid #2d3f45;
+  margin-bottom: 8px;
+  -webkit-overflow-scrolling: touch;
+}
+.iron-squad .log-cat-btn {
+  flex-shrink: 0;
+  min-height: 32px;
+  padding: 4px 10px;
+  border-radius: 16px;
+  border: 1px solid #4a6068;
+  background: #18282f;
+  color: #c2d1d4;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.iron-squad .log-cat-btn.active {
+  background: var(--ui-gold);
+  color: #12191c;
+  border-color: #fbbf24;
+  font-weight: bold;
+}
+.iron-squad .log-badge {
+  display: inline-block;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: bold;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+.iron-squad .log-badge-growth { background: rgba(34, 197, 94, 0.18); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.4); }
+.iron-squad .log-badge-combat { background: rgba(239, 68, 68, 0.18); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); }
+.iron-squad .log-badge-loot   { background: rgba(234, 179, 8, 0.18);  color: #fde047; border: 1px solid rgba(234, 179, 8, 0.4); }
+.iron-squad .log-badge-rescue { background: rgba(56, 189, 248, 0.18); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.4); }
+.iron-squad .log-entry-growth {
+  background: rgba(34, 197, 94, 0.05);
+  border-left: 3px solid #22c55e !important;
+  padding-left: 8px !important;
+}
+.iron-squad .log-entry-growth .log-text { color: #f0fdf4; font-weight: 500; }
+.iron-squad .log-empty { padding: 16px 8px; color: #829599; font-size: 11px; text-align: center; }
+
+/* 部隊武勲・功績ランキング（TOP 10 ランカー殿堂） */
+.iron-squad .command-troop-rankings {
+  background: #111e24;
+  border: 1px solid #455e67;
+  border-radius: 12px;
+  padding: 12px;
+  margin: 12px 0;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+}
+.iron-squad .ranking-header {
+  margin-bottom: 10px;
+}
+.iron-squad .ranking-title-group h4 {
+  margin: 0 0 4px;
+  color: #f3e5be;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.iron-squad .ranker-indicator {
+  font-size: 9.5px;
+  font-weight: bold;
+  color: #000;
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  padding: 1px 6px;
+  border-radius: 10px;
+  letter-spacing: 0.04em;
+}
+.iron-squad .ranking-desc {
+  display: block;
+  font-size: 10.5px;
+  color: #93a8ab;
+  margin-bottom: 8px;
+}
+.iron-squad .ranking-tabs {
+  display: flex;
+  gap: 5px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  -webkit-overflow-scrolling: touch;
+}
+.iron-squad .ranking-tab-btn {
+  flex-shrink: 0;
+  min-height: 30px;
+  padding: 3px 10px;
+  border-radius: 6px;
+  border: 1px solid #3d535b;
+  background: #192930;
+  color: #bfcece;
+  font-size: 11px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.iron-squad .ranking-tab-btn.active {
+  background: #2b454f;
+  color: #fde047;
+  border-color: #eab308;
+  font-weight: bold;
+  box-shadow: inset 0 -2px #eab308;
+}
+.iron-squad .ranking-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.iron-squad .ranking-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid #2a3c42;
+}
+.iron-squad .ranking-item.rank-1 {
+  background: rgba(234, 179, 8, 0.08);
+  border-color: rgba(234, 179, 8, 0.45);
+}
+.iron-squad .ranking-item.rank-2 {
+  background: rgba(203, 213, 225, 0.06);
+  border-color: rgba(203, 213, 225, 0.35);
+}
+.iron-squad .ranking-item.rank-3 {
+  background: rgba(217, 119, 6, 0.06);
+  border-color: rgba(217, 119, 6, 0.35);
+}
+.iron-squad .rank-pos {
+  flex-shrink: 0;
+  width: 58px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.iron-squad .rank-pos-badge {
+  font-size: 11px;
+  font-weight: bold;
+  white-space: nowrap;
+}
+.iron-squad .rank-pos-1 { color: #fde047; }
+.iron-squad .rank-pos-2 { color: #e2e8f0; }
+.iron-squad .rank-pos-3 { color: #f97316; }
+.iron-squad .ranker-tag {
+  font-size: 8px;
+  font-weight: 800;
+  color: #38bdf8;
+  letter-spacing: 0.05em;
+  opacity: 0.85;
+}
+.iron-squad .rank-crown { font-size: 10px; }
+.iron-squad .rank-soldier-info {
+  flex: 1;
+  min-width: 0;
+}
+.iron-squad .rank-soldier-main {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  flex-wrap: wrap;
+  font-size: 11px;
+}
+.iron-squad .rank-soldier-name {
+  color: #fff;
+  font-weight: bold;
+}
+.iron-squad .rank-1 .rank-soldier-name { color: #fde047; }
+.iron-squad .rank-badge {
+  font-size: 9px;
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: #1f333c;
+  color: #9fb3b6;
+}
+.iron-squad .rank-platoon-直属 { background: #3b2f15; color: #fde047; }
+.iron-squad .rank-class {
+  font-size: 10px;
+  color: #7dd3fc;
+}
+.iron-squad .rank-talent {
+  font-size: 9.5px;
+  font-weight: bold;
+  color: #fde047;
+}
+.iron-squad .rank-soldier-detail {
+  font-size: 10px;
+  color: #8da4a8;
+  margin-top: 1px;
+}
+.iron-squad .rank-score-pill {
+  flex-shrink: 0;
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid #4a636d;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  color: #e2e8f0;
+  text-align: right;
+  white-space: nowrap;
+}
+.iron-squad .rank-1 .rank-score-pill { border-color: #f59e0b; color: #fde047; }
+.iron-squad .ranking-empty {
+  color: #7d9396;
+  font-size: 11px;
+  text-align: center;
+  padding: 12px 0;
+}
+
+/* 兵士名簿のランカーバッジ */
+.iron-squad .badge-ranker {
+  display: inline-block;
+  vertical-align: middle;
+  letter-spacing: 0.02em;
+}

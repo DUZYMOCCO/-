@@ -1,5 +1,6 @@
-import {configureAudioInterface} from './audio-interface.js?v=122';
-import {renderBattleLog} from './battle-log.js?v=122';
+import {configureAudioInterface} from './audio-interface.js?v=124';
+import {renderBattleLog} from './battle-log.js?v=124';
+import {renderTroopRankings} from './troop-rankings.js?v=124';
 /** Presentation only: keep game actions on their original DOM nodes. */
 const element = (tag, className, text) => {
   const node = document.createElement(tag);
@@ -74,6 +75,10 @@ export function configureInterface(game) {
     links.append(button);
   }
   snapshot.after(heal, links);
+  const rankings = element('section', 'command-troop-rankings'); rankings.id = 'command-troop-rankings';
+  links.after(rankings);
+  renderTroopRankings(game);
+  game.renderTroopRankings = () => renderTroopRankings(game);
   const battleLog=fold(overview,'command-battle-log','戦闘ログ · 直近100件',[]),logList=element('ol','battle-log-history');logList.id='battle-log-history';battleLog.querySelector('.fold-content').append(logList);
   battleLog.addEventListener('toggle',()=>{if(battleLog.open)renderBattleLog(game);});
   historyButton.onclick=()=>{game.openStrategyModal(true);game._selectStratTab('overview');battleLog.open=true;renderBattleLog(game);battleLog.scrollIntoView?.({block:'nearest'});logList.scrollTop=logList.scrollHeight;};

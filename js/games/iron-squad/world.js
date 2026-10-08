@@ -250,6 +250,68 @@ export function reliefAt(x, y) {
   return ravineAt(x, y) || ridgeAt(x, y);
 }
 
+// Phase 2: painted cliff faces outside the sanctuary stop walking. Roads and the
+// approach to fixed landmarks stay open, so each face can be walked around.
+// Decorative shoulders do not collide, and there is no invisible hole in a face.
+const ROAD_GATE = 130;
+const DUNGEON_GATES = [[-2600, -2400], [4600, 4400], [7200, -7000], [42000, 42000]];
+function nearFixedLandmark(x, y) {
+  for (let ring = 0; ring < 3; ring++) for (let i = 0; i < 4; i++) {
+    const angle = (i * 90 + 45 + ring * 22) * Math.PI / 180;
+    const radius = [1800, 4500, 7800][ring];
+    const dx = x - (CENTER + Math.cos(angle) * radius);
+    const dy = y - (CENTER + Math.sin(angle) * radius);
+    if (dx * dx + dy * dy < 200 * 200) return true;
+  }
+  for (const [ox, oy] of DUNGEON_GATES) {
+    const dx = x - (CENTER + ox), dy = y - (CENTER + oy);
+    if (dx * dx + dy * dy < 240 * 240) return true;
+  }
+  for (const s of SETTLEMENTS) {
+    const dx = x - (CENTER + s.ox), dy = y - (CENTER + s.oy);
+    if (dx * dx + dy * dy < 280 * 280) return true;
+  }
+  return false;
+}
+export function fieldBlocks(x, y) {
+  const dx = x - CENTER, dy = y - CENTER;
+  if (dx * dx + dy * dy <= HOME_SANCTUARY_RADIUS * HOME_SANCTUARY_RADIUS) return false;
+  if (roadDist(x, y) <= ROAD_GATE) return false;
+  if (reliefAt(x, y) !== FACE) return false;
+  if (nearFixedLandmark(x, y)) return false;
+  return true;
+}
+export function settleUnit(unit, blocked) {
+  if (!unit || !Number.isFinite(unit.x) || !Number.isFinite(unit.y) || typeof blocked !== 'function') return false;
+  if (!blocked(unit.x, unit.y)) {
+    unit._openX = unit.x;
+    unit._openY = unit.y;
+    return false;
+  }
+  const ox = unit._openX, oy = unit._openY;
+  if (Number.isFinite(ox) && Number.isFinite(oy) && !blocked(ox, oy)) {
+    if (!blocked(unit.x, oy)) { unit.y = oy; unit._openX = unit.x; unit._openY = unit.y; return true; }
+    if (!blocked(ox, unit.y)) { unit.x = ox; unit._openX = unit.x; unit._openY = unit.y; return true; }
+    unit.x = ox;
+    unit.y = oy;
+    return true;
+  }
+  for (const dist of [18, 36, 54, 78, 108, 140]) {
+    for (let i = 0; i < 8; i++) {
+      const a = i * Math.PI / 4;
+      const nx = unit.x + Math.cos(a) * dist, ny = unit.y + Math.sin(a) * dist;
+      if (!blocked(nx, ny)) {
+        unit.x = nx;
+        unit.y = ny;
+        unit._openX = nx;
+        unit._openY = ny;
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 function tileNearRoad(x0, y0) {
   const yOverlap = y0 < CENTER + 170 && y0 + TILE > CENTER - 170;
   const xOverlap = x0 < CENTER + 190 && x0 + TILE > CENTER - 190;

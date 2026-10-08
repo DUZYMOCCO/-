@@ -442,6 +442,39 @@ function drawRuinInterior(ctx, dungeon, time) {
   drawExitArch(ctx, 180, h / 2, '外へ');
 }
 
+const solidCache = new WeakMap();
+export function dungeonSolids(dungeon) {
+  if (!dungeon || dungeon.kind !== 'dungeon') return [];
+  const cached = solidCache.get(dungeon);
+  if (cached) return cached;
+  const w = dungeon.width, h = dungeon.height, mid = h / 2, gap = 110, lip = 120;
+  const clip = (r) => {
+    const x = Math.max(0, r.x), y = Math.max(0, r.y);
+    const x2 = Math.min(w, r.x + r.w), y2 = Math.min(h, r.y + r.h);
+    if (x2 - x < 8 || y2 - y < 8) return null;
+    return {x, y, w: x2 - x, h: y2 - y};
+  };
+  const plug = (x0, x1) => [
+    clip({x: x0, y: 0, w: x1 - x0, h: mid - gap}),
+    clip({x: x0, y: mid + gap, w: x1 - x0, h: h - (mid + gap)})
+  ];
+  const solids = [
+    ...plug(300, 430),
+    clip({x: 430, y: 0, w: 1030, h: lip}),
+    clip({x: 430, y: h - lip, w: 1030, h: lip}),
+    ...plug(1460, 1600)
+  ].filter(Boolean);
+  solidCache.set(dungeon, solids);
+  return solids;
+}
+export function dungeonBlocks(dungeon, x, y) {
+  if (!dungeon || dungeon.kind !== 'dungeon') return false;
+  for (const r of dungeonSolids(dungeon)) {
+    if (x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h) return true;
+  }
+  return false;
+}
+
 function drawStoneDungeon(ctx, dungeon, time) {
   const w = dungeon.width, h = dungeon.height;
   const t = time || 0;
@@ -457,12 +490,16 @@ function drawStoneDungeon(ctx, dungeon, time) {
       ctx.fillRect(x + 2 + slip, y + 40, 42, 4);
     }
   }
+  ctx.fillStyle = dungeon.wallColor || '#14110e';
+  for (const r of dungeonSolids(dungeon)) ctx.fillRect(r.x, r.y, r.w, r.h);
+  ctx.fillStyle = '#5a5348';
+  for (const r of dungeonSolids(dungeon)) ctx.fillRect(r.x, r.y, r.w, 3);
   const brackets = [
     [360, 70], [360, h - 70], [780, 70], [780, h - 70],
     [1200, 80], [1200, h - 80], [w - 420, 76], [w - 420, h - 76]
   ];
   for (const [x, y] of brackets) {
-    if (x > w - 40) continue;
+    if (x > w - 40 || dungeonBlocks(dungeon, x, y)) continue;
     ctx.fillStyle = '#3a3834';
     ctx.fillRect(x - 8, y - 28, 16, 36);
     flame(ctx, x, y - 10, t, dungeon.torchColor || '#c47a3a');
