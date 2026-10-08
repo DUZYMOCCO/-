@@ -1,6 +1,6 @@
-import {WORLD_SIZE} from './world.js?v=107';
-import {saleValue,isGodRollProtected} from './equipment-rules.js?v=107';
-import {calcTreasuryGrossIncome,calcCommanderStipend} from './economy-rules.js?v=107';
+import {WORLD_SIZE} from './world.js?v=108';
+import {saleValue,isGodRollProtected} from './equipment-rules.js?v=108';
+import {calcTreasuryGrossIncome,calcCommanderStipend} from './economy-rules.js?v=108';
 
 export const DEVELOPMENT_STAGES=[
   {name:'野営本陣',cost:0}, {name:'城塞と宿場',cost:6000},

@@ -1,7 +1,7 @@
-import {ensureMana,regenerateMana,spendMana} from './magic-rules.js?v=107';
+import {ensureMana,regenerateMana,spendMana} from './magic-rules.js?v=108';
 import {recordHealing} from './phase-rules.js';
 import {WORLD_SIZE} from './world.js';
-import {grantPermanentRescueReward} from './rescue-rewards.js?v=107';
+import {grantPermanentRescueReward} from './rescue-rewards.js?v=108';
 
 export const RESCUE_TIMEOUT = 45; // 救助猶予時間（秒）広域マップ対応で45秒に延長
 export const isMedic=unit=>['MEDIC','HIGH_PRIEST','SAINT','ARCHANGEL'].includes(unit?.soldierClass);
@@ -66,28 +66,35 @@ const CIV_NAME_POOL={
   elder:['ジロウ','ハツ','ゲン','トメ','サダ','キク']
 };
 
-export function aidStations(game) {
-  return [{x:WORLD_SIZE/2,y:WORLD_SIZE/2,radius:150,name:'本陣'},...(game.outposts||[]).filter(o=>o.cleared).map(o=>({...o,radius:(o.radius||30)+24,name:o.name||'拠点'}))];
+// Town visitors, field armies and NPCs use distinct coordinate spaces.
+export function isLocalRescueUnit(game,unit) {
+  const d=game.currentDungeon;if(!d)return false;
+  if(unit===game.player)return true;
+  if(unit?.isGateGuard)return unit.gateSpace===d.id;
+  if(isMerchantCasualty(unit))return false;
+  return (game.squad||[]).includes(unit)&&(d.kind!=='town'||unit.isPersonalGuard);
 }
-/** 民間人救出先：本陣・制圧拠点・宿場入口 */
-export function civilianRescueStations(game) {
-  const list=aidStations(game).map(s=>({...s,kind:'camp'}));
-  for(const d of game.dungeons||[]) {
-    if(d.kind==='town'&&(d.discovered||d.cleared)&&d.entrance) {
-      list.push({x:d.entrance.x,y:d.entrance.y,radius:70,name:d.name||'宿場',kind:'town'});
-    }
-  }
-  return list;
+export function aidStations(game,unit=null) {
+  const d=game.currentDungeon;
+  if(unit&&isLocalRescueUnit(game,unit))return d.kind==='town'?[{id:`town-aid-${d.id}`,kind:'town',x:230,y:d.height/2,radius:120,intakeRadius:72,name:`${d.name}・救護受付`}]:[];
+  return [{id:'base',kind:'base',x:WORLD_SIZE/2,y:WORLD_SIZE/2,radius:150,name:'本陣'},
+    ...(game.medicalPosts||[]),
+    ...(game.dungeons||[]).filter(d=>d.kind==='town'&&d.entrance).map(d=>({id:`town-${d.id}`,kind:'town',x:d.entrance.x,y:d.entrance.y,radius:70,intakeRadius:40,name:d.name||'町'})),
+    ...(game.outposts||[]).filter(o=>o.cleared).map(o=>({...o,kind:'outpost',radius:(o.radius||30)+24,name:o.name||'拠点'}))];
 }
-export function nearestAidStation(game,unit) {
-  return aidStations(game).sort((a,b)=>Math.hypot(unit.x-a.x,unit.y-a.y)-Math.hypot(unit.x-b.x,unit.y-b.y))[0];
+export function casualtyStations(game,unit) {
+  const list=aidStations(game,unit);
+  return isMerchantCasualty(unit)?list.filter(p=>['base','medical','town'].includes(p.kind)):list;
 }
-export function nearestCivilianStation(game,unit) {
-  const stations=civilianRescueStations(game);
-  return stations.sort((a,b)=>Math.hypot(unit.x-a.x,unit.y-a.y)-Math.hypot(unit.x-b.x,unit.y-b.y))[0];
-}
+const nearest=(list,unit)=>list.reduce((a,b)=>!a||Math.hypot(unit.x-b.x,unit.y-b.y)<Math.hypot(unit.x-a.x,unit.y-a.y)?b:a,null);
+export const nearestCasualtyStation=(game,unit)=>nearest(casualtyStations(game,unit),unit);
+/** 民間人救出先：本陣・救護所・制圧拠点・町入口 */
+export function civilianRescueStations(game) {return aidStations(game).filter(p=>p.kind!=='town'||(game.dungeons||[]).some(d=>`town-${d.id}`===p.id&&(d.discovered||d.cleared)));}
+export function nearestAidStation(game,unit) {return nearest(aidStations(game,unit),unit);}
+export function nearestCivilianStation(game,unit) {return nearest(civilianRescueStations(game),unit);}
 export function attachWounded(game,carrier,wounded) {
   if(!carrier||carrier.dead||carrier.isDown||carrier.hp<=0||!wounded?.isDown||wounded.dead||wounded===carrier||wounded.carrierId)return false;
+  if(isLocalRescueUnit(game,carrier)!==isLocalRescueUnit(game,wounded))return false;
   const distance=Math.hypot(carrier.x-wounded.x,carrier.y-wounded.y);
   if(wounded.releasedBy===carrierKey(game,carrier)) {if(distance<=65)return false;delete wounded.releasedBy;}
   if(distance>45||carriedCount(game,carrier)>=carryingCapacity(carrier))return false;
@@ -97,11 +104,12 @@ export function attachWounded(game,carrier,wounded) {
 export function attachCivilian(game,carrier,civ) {
   if(!carrier||carrier.dead||carrier.isDown||carrier.hp<=0||!civ||civ.rescued||civ.carrierId)return false;
   if(carrier!==game.player&&!carrier.isHero)return false; // 民間人紐牽引は隊長のみ
+  if(game.currentDungeon)return false;
   const distance=Math.hypot(carrier.x-civ.x,carrier.y-civ.y);
   if(civ.releasedBy===carrierKey(game,carrier)) {if(distance<=65)return false;delete civ.releasedBy;}
   if(distance>48||carriedCount(game,carrier)>=carryingCapacity(carrier))return false;
   delete civ.releasedBy;civ.carrierId=carrierKey(game,carrier);
-  game.showToast?.(`${CIV_KINDS[civ.kind]?.icon||'🙏'} ${civ.name}を紐で牽引中 → 本陣・拠点・宿場へ`);
+  game.showToast?.(`${CIV_KINDS[civ.kind]?.icon||'🙏'} ${civ.name}を紐で牽引中 → 本陣・救護所・町・拠点へ`);
   return true;
 }
 export function releaseWounded(game,carrier) {
@@ -129,7 +137,7 @@ export function beginDownEvent(game, wounded) {
   if (!wounded) return;
   wounded.rescuedThisDown = false;
   wounded.downId = (wounded.timesDown || 0);
-  const station = isMerchantCasualty(wounded)?aidStations(game)[0]:nearestAidStation(game, wounded);
+  const station = nearestCasualtyStation(game,wounded);
   wounded.downedInAid = !!(station && Number.isFinite(wounded.x) && Number.isFinite(wounded.y)
     && Math.hypot(wounded.x - station.x, wounded.y - station.y) <= station.radius);
 }
@@ -171,11 +179,13 @@ function revive(game,wounded,hp,options=null) {
     if(wounded.isGateGuard){if(game.currentDungeon&&wounded.gateSpace===game.currentDungeon.id){wounded.x=game.currentDungeon.entrance.x;wounded.y=game.currentDungeon.entrance.y;}wounded.gateSpace='field';}
     wounded.rescuedToBase=true;
     if(wounded.isGateGuard)game.onGateGuardRelocated?.(wounded);
+    if(['medical','town'].includes(options?.station?.kind)){wounded.x=wounded.homeX;wounded.y=wounded.homeY;}
     wounded.returningToBase=Math.hypot(wounded.x-wounded.homeX,wounded.y-wounded.homeY)>4;
     if(wounded.isMerchant)wounded.placeName='本陣・救助した商人';
   }
   if(options) {
     grantRescueBonus(game,wounded,{...options,carrier});
+    if(options.method==='BASE')wounded.hp=Math.max(1,Math.floor(wounded.maxHp));
   } else {
     game.showToast?.(`${wounded.name}が復活しました`);
   }
@@ -235,6 +245,7 @@ export function grantRescueBonus(game,wounded,options={}) {
   }
 
 
+  if(options.suppressAidReward)return; // Moving an in-facility casualty to reception grants no farmable gold/XP.
   const isBase=method==='BASE';
   const baseGold=isBase?200:100;
   const carrierBonusGold=carrier===game.player?50:0;
@@ -311,7 +322,7 @@ export function grantRescueBonus(game,wounded,options={}) {
     game.sound?.playHighScore?.();
     game.spawnDamageText?.(wounded.x,wounded.y-30,`🚑 拠点救護成功! +${totalGold}G`,'#ffd700');
     const carrierTxt=carrier===game.player?' (隊長に快足バフ)':(carrier?` (搬送: ${rescuerName})`:'');
-    game.showToast?.(`🚑 拠点救護成功！【${wounded.name}】${isMerchantCasualty(wounded)?'は本陣に留まります':'が全快復帰！'}(+${totalGold}G, 武勲+${rankExpGain}${rescuerName?`, ${rescuerName}+${rescuerPersonalExp}EXP`:''}${isMerchantCasualty(wounded)?'':`, 兵士+${sExpGain}EXP/+${sGoldGain}G`}${carrierTxt}${lvTxt})`);
+    game.showToast?.(`🚑 ${options.station?.name||'拠点'}救護成功！【${wounded.name}】${isMerchantCasualty(wounded)?'は本陣に留まります':'が全快復帰！'}(+${totalGold}G, 武勲+${rankExpGain}${rescuerName?`, ${rescuerName}+${rescuerPersonalExp}EXP`:''}${isMerchantCasualty(wounded)?'':`, 兵士+${sExpGain}EXP/+${sGoldGain}G`}${carrierTxt}${lvTxt})`);
   } else {
     game.sound?.playItem?.();
     game.spawnDamageText?.(wounded.x,wounded.y-30,`💚 衛生兵救護成功! +${totalGold}G`,'#34d399');
@@ -329,7 +340,7 @@ export function grantCivilianRescueBonus(game,civ,station) {
   const def=CIV_KINDS[civ.kind]||CIV_KINDS.child;
   const carrierId=civ.carrierId;
   const carrier=carrierId==='player'?game.player:(game.squad||[]).find(s=>s&&s.id===carrierId);
-  civ.rescued=true;delete civ.carrierId;
+  civ.rescued=true;civ.rescueStationId=station?.id;delete civ.carrierId;
   game.civilianRescues=(game.civilianRescues||0)+1;
   if(carrier)carrier.rescues=(carrier.rescues||0)+1;
   grantPermanentRescueReward(game,civ);
@@ -411,10 +422,12 @@ export function updateWounded(game,dt) {
     wounded.hp=0;
     // Init once-per-down meta (also covers saves loaded while already down).
     if(wounded.downId==null) beginDownEvent(game,wounded);
-    const station=isMerchantCasualty(wounded)?aidStations(game)[0]:nearestAidStation(game,wounded);
+    const station=nearestCasualtyStation(game,wounded);
     // Carry-to-base bonus only if this down did NOT start already inside an aid station.
     // Downed-at-HQ: no farmable BASE bonus; bleed-out still applies (safer rate, still mortal).
-    if(!wounded.downedInAid&&!wounded.rescuedThisDown&&Math.hypot(wounded.x-station.x,wounded.y-station.y)<=station.radius) {revive(game,wounded,wounded.maxHp,{method:'BASE'});continue;}
+    const reception=station&&['medical','town'].includes(station.kind);
+    const delivered=station&&Math.hypot(wounded.x-station.x,wounded.y-station.y)<=(wounded.downedInAid?station.intakeRadius||station.radius:station.radius);
+    if(!wounded.rescuedThisDown&&delivered&&(!wounded.downedInAid||(reception&&wounded.carrierId))) {revive(game,wounded,wounded.maxHp,{method:'BASE',station,suppressAidReward:!!wounded.downedInAid});continue;}
     // Field carry can pause the timer; HQ/aid downs keep bleeding even while carried (no immortal freeze).
     if(wounded.carrierId && !wounded.downedInAid)continue;
     const bleedDt = wounded.downedInAid ? dt * AID_BLEED_RATE : dt;
@@ -505,10 +518,10 @@ export function handleTransportAI(game,soldier,dt) {
   const carried=carriedSoldiers(game,soldier);
   // Medics treat in place; everyone else collects nearby casualties and returns to aid.
   const candidate=!isMedic(soldier)&&carried.length<carryingCapacity(soldier)?rescueUnits(game)
-    .filter(s=>s!==soldier&&s.isDown&&!s.dead&&!s.carrierId&&!s.downedInAid&&Math.hypot(s.x-soldier.x,s.y-soldier.y)<(carried.length?160:240))
+    .filter(s=>s!==soldier&&s.isDown&&!s.dead&&!s.carrierId&&isLocalRescueUnit(game,s)===isLocalRescueUnit(game,soldier)&&(!s.downedInAid||['medical','town'].includes(nearestCasualtyStation(game,s)?.kind))&&Math.hypot(s.x-soldier.x,s.y-soldier.y)<(carried.length?160:240))
     .sort((a,b)=>Math.hypot(a.x-soldier.x,a.y-soldier.y)-Math.hypot(b.x-soldier.x,b.y-soldier.y))[0]:null;
   if(candidate&&attachWounded(game,soldier,candidate))return true;
-  const destination=candidate || (carried.length?(carried.some(isMerchantCasualty)?aidStations(game)[0]:nearestAidStation(game,soldier)):null);
+  const destination=candidate || (carried.length?nearest(casualtyStations(game,carried.some(isMerchantCasualty)?carried.find(isMerchantCasualty):soldier).filter(p=>p.kind!=='medical'||p.discovered),soldier):null);
   if(!destination)return false;
   const dx=destination.x-soldier.x,dy=destination.y-soldier.y,d=Math.hypot(dx,dy);
   if(d>1){const step=Math.min(d,(soldier.speed||80)*transportSpeedFactor(game,soldier)*dt);soldier.x+=dx/d*step;soldier.y+=dy/d*step;soldier.vx=dx/d;soldier.vy=dy/d;soldier.facingAngle=Math.atan2(dy,dx);}

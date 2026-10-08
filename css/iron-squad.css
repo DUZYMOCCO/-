@@ -301,6 +301,9 @@
   transform: scale(0.95);
 }
 .dialog-open .transport-badge { visibility: hidden; pointer-events: none; }
+.transport-badge { max-width: 100%; box-sizing: border-box; white-space: normal; }
+#transport-status { min-width: 0; flex: 1; line-height: 1.4; overflow-wrap: anywhere; }
+.transport-badge button { flex-shrink: 0; }
 
 /* Offline typography: Japanese field journal headings, clear controls, stable figures. */
 :root {

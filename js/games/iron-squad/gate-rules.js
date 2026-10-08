@@ -1,6 +1,6 @@
-import {WORLD_SIZE} from './world.js?v=107';
-import {makeEscort,recalcEscortStats,updateEscortPatrol,npcSave,applyNpcSave} from './merchant-rules.js?v=107';
-import {rebuildMerchantCasualties,carrierOf,sanitizeCarriers} from './casualty-rules.js?v=107';
+import {WORLD_SIZE} from './world.js?v=108';
+import {makeEscort,recalcEscortStats,updateEscortPatrol,npcSave,applyNpcSave} from './merchant-rules.js?v=108';
+import {rebuildMerchantCasualties,carrierOf,sanitizeCarriers} from './casualty-rules.js?v=108';
 const center=WORLD_SIZE/2;
 export const GATE_HALF_WIDTH=80,HQ_WALL_HALF_SIZE=300;
 export function wallGeometry(game) {

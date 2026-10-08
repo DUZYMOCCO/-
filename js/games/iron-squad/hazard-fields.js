@@ -1,4 +1,4 @@
-import {WORLD_SIZE} from './world.js?v=107';
+import {WORLD_SIZE} from './world.js?v=108';
 const BASE=WORLD_SIZE/2,CELL=1024;
 export const HAZARD_TYPES={fire:{name:'灼熱地帯',color:'#b77a55',ground:'#683e2b'},poison:{name:'腐毒地帯',color:'#9da36b',ground:'#414a31'},storm:{name:'帯電地帯',color:'#aaa2bf',ground:'#4a4659'}};
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -18,6 +18,7 @@ export function fieldsNear(x,y) {
   return result;
 }
 function safe(game,f) {
+  if((game.medicalPosts||[]).some(p=>distance(p,f)<f.radius+p.radius+40))return false;
   if((game.dungeons||[]).some(d=>d.kind==='town'&&distance(d.entrance||d,f)<f.radius+170))return false;
   if((game.merchants||[]).some(m=>!m.dead&&distance(m,f)<f.radius+130))return false;
   for(const tile of game.worldTerrain?.tiles?.values?.()||[])if((tile.camps||[]).some(c=>distance(c,f)<f.radius+130))return false;

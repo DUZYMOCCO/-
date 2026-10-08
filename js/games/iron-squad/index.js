@@ -1,6 +1,7 @@
-import {invasionMethods,initializeInvasions,serializeInvasions,shouldTriggerRandomRaid,makeEnemyRoom,drawInvasionRoute} from './invasion-rules.js?v=107';
-import {gateMethods,serializeGatePosts,replenishTownGateGuards,initializeGateGuards,ensureTownGuards,serializeGateGuards,updateGateGuards,gateGuardVisible,applyFortifications,drawFortification,exitGateTown,townExitReached,wallBlocksAttack} from './gate-rules.js?v=107';
-import {nationMethods,normalizeNation,nationalIncome,headquartersDamageMult,drawNationalDevelopment} from './nation-rules.js?v=107';
+import {initializeMedicalPosts,updateMedicalPosts,serializeMedicalPosts,nearestKnownMedicalPost,drawMedicalPost,drawMedicalMap,drawMedicalMarker,drawTownMedicalReception,drawRescueDirection} from './medical-posts.js?v=108';
+import {invasionMethods,initializeInvasions,serializeInvasions,shouldTriggerRandomRaid,makeEnemyRoom,drawInvasionRoute} from './invasion-rules.js?v=108';
+import {gateMethods,serializeGatePosts,replenishTownGateGuards,initializeGateGuards,ensureTownGuards,serializeGateGuards,updateGateGuards,gateGuardVisible,applyFortifications,drawFortification,exitGateTown,townExitReached,wallBlocksAttack} from './gate-rules.js?v=108';
+import {nationMethods,normalizeNation,nationalIncome,headquartersDamageMult,drawNationalDevelopment} from './nation-rules.js?v=108';
 /**
  * ゲーム3: IRON SQUAD (アイアン・スクワッド: 雑兵立身出世録)
  * ローグライク・アクションRPG
@@ -12,22 +13,22 @@ import {nationMethods,normalizeNation,nationalIncome,headquartersDamageMult,draw
  *  - 生き延びて「伍長」以上に立身出世して初めて【号令・指揮権】がアンロックされる！
  *  - 名もなき兵士たちは生き残ると二つ名と名前が授与され、やがて主人公の頼もしい戦友に。
  */
-import { sound } from '../../audio.js?v=107';
+import { sound } from '../../audio.js?v=108';
 import { storage } from '../../storage.js';
-import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow } from './visuals.js?v=107';
-import { drawMeleeRangeCue, meleeDrawReach, attackAnimationRate } from './weapon-motion.js?v=107';
-import {emptyRescueBonuses,normalizeRescueBonuses,rescueBonusSummary} from './rescue-rewards.js?v=107';
-import {drawFieldCivilian} from './civilian-visuals.js?v=107';
+import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow } from './visuals.js?v=108';
+import { drawMeleeRangeCue, meleeDrawReach, attackAnimationRate } from './weapon-motion.js?v=108';
+import {emptyRescueBonuses,normalizeRescueBonuses,rescueBonusSummary} from './rescue-rewards.js?v=108';
+import {drawFieldCivilian} from './civilian-visuals.js?v=108';
 import { saveSlots } from './save-slots.js';
-import {MAGIC_CLASSES,MAGIC_AFFINITIES,magicMethods,isMage,isMagicUser,ensureMana,initializeMagic,updateMagic,distributeMagicStones,castMedicBuff,updateMageAI,drawMagicBursts,spendMana} from './magic-rules.js?v=107';
-import {hazardMethods,updateHazards,drawHazards} from './hazard-fields.js?v=107';
-import {strongEnemyReward} from './combat-rewards.js?v=107';
-import {supplyMethods, initializeSupplies, updateSupplies, takeRangedShot, ammoCombatProfile, isRangedUnit, distributeAmmo, preventLethalHit, normalizeFieldSave, SQUAD_POTION_COST, ensureAmmo, RANGED_DAMAGE_MULT, supplyLocation} from './supply-rules.js?v=107';
-import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog } from './interface.js?v=107';
-import { ensureSoldierAppearance, drawSoldierPortrait, describeSoldierAppearance } from './soldier-appearance.js?v=107';
-import { attachSurfaceEvents, detachSurfaceEvents, frameSurfaceReady, releaseSceneCaches, releaseCanvas, surfaceCanResume } from './canvas-surface.js?v=107';
-import { WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt, routeNameAt, eastWestRoadY, northSouthRoadX, riverCenterY } from './world.js?v=107';
-import { FogGrid, FOG_REVEAL_RADIUS, FOG_CAMP_REVEAL } from './fog.js?v=107';
+import {MAGIC_CLASSES,MAGIC_AFFINITIES,magicMethods,isMage,isMagicUser,ensureMana,initializeMagic,updateMagic,distributeMagicStones,castMedicBuff,updateMageAI,drawMagicBursts,spendMana} from './magic-rules.js?v=108';
+import {hazardMethods,updateHazards,drawHazards} from './hazard-fields.js?v=108';
+import {strongEnemyReward} from './combat-rewards.js?v=108';
+import {supplyMethods, initializeSupplies, updateSupplies, takeRangedShot, ammoCombatProfile, isRangedUnit, distributeAmmo, preventLethalHit, normalizeFieldSave, SQUAD_POTION_COST, ensureAmmo, RANGED_DAMAGE_MULT, supplyLocation} from './supply-rules.js?v=108';
+import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog } from './interface.js?v=108';
+import { ensureSoldierAppearance, drawSoldierPortrait, describeSoldierAppearance } from './soldier-appearance.js?v=108';
+import { attachSurfaceEvents, detachSurfaceEvents, frameSurfaceReady, releaseSceneCaches, releaseCanvas, surfaceCanResume } from './canvas-surface.js?v=108';
+import { WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt, routeNameAt, eastWestRoadY, northSouthRoadX, riverCenterY } from './world.js?v=108';
+import { FogGrid, FOG_REVEAL_RADIUS, FOG_CAMP_REVEAL } from './fog.js?v=108';
 import {
   classTierOf, nextClassId, classUpCostForNext, canAffordClassUp, formatClassUpCostJa, classUpShortageJa,
   playerClassTier, nextPlayerStage, playerStageById, CLASS_TIER_LABELS, PLAYER_CLASS_STAGES
@@ -38,9 +39,9 @@ import {
   shouldAbsorbToSharedBox, calcScoutCost, estimateSoldierScoutValue, calcDismissSettlement,
   formatFiscalReportJa, formatFiscalReportHtml, distributeSharedBoxToSoldiers, sellWeakSurplusFromBox,
   SHARED_BOX_MAX_TIER, SCOUT_COST_BY_TALENT, defaultDonateAmount, donatePresetAmounts
-} from './economy-rules.js?v=107';
+} from './economy-rules.js?v=108';
 
-import { EQUIPMENT_TYPES, saleValue, equippedIds, canSell, lowValueIds, chooseLootTier, distanceScaling, shrineUpgradeCap, compareEquipment, equipmentScore, weaponCombatProfile, evaluateMeleeSweetSpot, isGodRollProtected, zoneRingPower, zoneRingLabelJa } from './equipment-rules.js?v=107';
+import { EQUIPMENT_TYPES, saleValue, equippedIds, canSell, lowValueIds, chooseLootTier, distanceScaling, shrineUpgradeCap, compareEquipment, equipmentScore, weaponCombatProfile, evaluateMeleeSweetSpot, isGodRollProtected, zoneRingPower, zoneRingLabelJa } from './equipment-rules.js?v=108';
 import {
   WEAPON_STYLES, WEAPON_STYLE_LABELS, WEAPON_STYLE_ICONS,
   MELEE_STYLES, RANGED_STYLES, HIT_GROWTH_SOFT_CAP,
@@ -50,19 +51,19 @@ import {
   gainWeaponMastery, masteryGainForStyle, pickFavoriteWeapon, rollWeaponStyle,
   weaponStyleOf, favoriteWeaponBias, MASTERY_GAIN_PER_HIT,
   migrateFavoriteForClass, migrateWeaponStyleFromName
-} from './growth-rules.js?v=107';
+} from './growth-rules.js?v=108';
 
 import {
   initMerchants, ensureMerchants, updateMerchants, drawMerchantBody, drawMerchantEscort,
   nearestLivingMerchant, refreshMerchantStock, merchantBuyPrice, merchantSellTier,
   applyMerchantSave, serializeMerchants, MERCHANT_INTERACT_R,
   merchantHealingStatus, merchantHealWavesLeft, useMerchantHealing, MERCHANT_HEAL_COST, recalcEscortStats, finishEscortPhase
-} from './merchant-rules.js?v=107';
+} from './merchant-rules.js?v=108';
 
 import { daylightAt, advanceWorldClock, periodEnemy, enemyAvailable, PERIOD_ENEMIES } from './day-night.js';
 
-import { RESCUE_TIMEOUT, rescueUnits, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, markSoldierDown, CIV_KINDS, isMedic, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST } from './casualty-rules.js?v=107';
-import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault } from './dungeon.js?v=107';
+import { RESCUE_TIMEOUT, rescueUnits, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, markSoldierDown, CIV_KINDS, isMedic, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST } from './casualty-rules.js?v=108';
+import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault } from './dungeon.js?v=108';
 import {
   EXPEDITION_CHECK_INTERVAL, EXPEDITION_RETURN_HOME, EXPEDITION_ENGAGE_R,
   EXPEDITION_DANGER_TIERS, EXPEDITION_MIN_MEMBERS,
@@ -1760,7 +1761,7 @@ export const IronSquadGame = {
     // 本陣救援ワープは紐牽引ブロック対象外（搬送中も syncDragged で本陣へ同送）
     // 地図ファストトラベルは隊長本人が牽引中のみ禁止（AI搬送はロックしない）。壊れたフラグは掃除済み。
     if (!isRescueWarp && playerHasActiveRopePull(this)) {
-      this.showToast('⚠️ 隊長が紐で牽引中は地図転送できません。本陣救援ワープか、本陣・拠点・宿場へ送り届けてから転送してください');
+      this.showToast('⚠️ 隊長が紐で牽引中は地図転送できません。本陣救援ワープか、本陣・救護所・町・拠点へ送り届けてから転送してください');
       return;
     }
     if (!this.player || this.player.hp <= 0) return;
@@ -1826,8 +1827,8 @@ export const IronSquadGame = {
       this.worldMapModal.innerHTML=`<section class="strategy-panel">
         <header class="map-heading"><h2 id="world-map-title">遠征地図・ファストトラベル</h2><button id="btn-world-map-close" class="dialog-close">閉じる ×</button></header>
         <div class="dialog-body world-map-body">
-          <canvas id="world-map-canvas" width="600" height="600" role="img" aria-label="本陣・12拠点・現在地・ダンジョンを示す全体地図" style="touch-action:none; cursor:pointer; max-width:100%; border-radius:8px; border:1px solid #334155;"></canvas>
-          <p style="font-size:11px; color:#94a3b8; margin:4px 0;">白：現在地　淡黄：本陣　黄土：ダンジョン　砂：宿場　灰：廃墟　赤：大ボス。近場はリストから入る。</p>
+          <canvas id="world-map-canvas" width="600" height="600" role="img" aria-label="本陣・拠点・発見済み救護所・現在地・ダンジョンを示す全体地図" style="touch-action:none; cursor:pointer; max-width:100%; border-radius:8px; border:1px solid #334155;"></canvas>
+          <p style="font-size:11px; color:#94a3b8; margin:4px 0;">白：現在地　淡黄：本陣　黄土：ダンジョン　砂：宿場　灰：廃墟　赤：大ボス　緑の十字：発見済み救護所（搬送で復活）。近場はリストから入る。</p>
           <p id="world-location" style="font-weight:bold; color:#f1f5f9;"></p>
           <div id="fast-travel-container" style="margin-top:10px; border-top:1px solid #334155; padding-top:10px;">
             <h4 style="margin:0 0 8px; color:#38bdf8; font-size:13px; display:flex; align-items:center; gap:6px;">
@@ -1852,7 +1853,7 @@ export const IronSquadGame = {
         const worldX = clickX / scale;
         const worldY = clickY / scale;
         const slop = 14 / scale;
-        const picks = [{ x: BASE_CAMP.x, y: BASE_CAMP.y, name: '本陣 (中央司令部)' }];
+        const picks = [{ x: BASE_CAMP.x, y: BASE_CAMP.y, name: '本陣 (中央司令部)' },...(this.medicalPosts||[]).filter(p=>p.discovered)];
         for (const op of (this.outposts || [])) {
           if (op.cleared) picks.push({ x: op.x, y: op.y, name: op.name });
         }
@@ -1874,6 +1875,7 @@ export const IronSquadGame = {
     const wctx=canvas.getContext('2d');
     this.worldTerrain.drawOverview(wctx,canvas.width,this);
     this.ensureFog().drawMapOverlay(wctx,canvas.width,WORLD_SIZE);
+    drawMedicalMap(wctx,this,x=>x*canvas.width/WORLD_SIZE,y=>y*canvas.height/WORLD_SIZE);
     this.worldMapModal.querySelector('#world-location').textContent=
       this.currentDungeon
         ? `⛩️ 【ダンジョン内】${this.currentDungeon.name} · 最奥ボス討伐へ進撃中`
@@ -1890,12 +1892,13 @@ export const IronSquadGame = {
         { name: '本陣司令部', icon: '🛡️', x: BASE_CAMP.x, y: BASE_CAMP.y, desc: '回復・出撃拠点' }
       ];
 
+      (this.medicalPosts||[]).filter(p=>p.discovered).forEach(p=>destinations.push({...p,icon:'✚',desc:'救出受付・搬送で復活'}));
       (this.outposts || []).filter(o => o.cleared).forEach(op => {
         destinations.push({ name: op.name, icon: op.icon || '🚩', x: op.x, y: op.y, desc: '制圧前哨基地' });
       });
 
       (this.dungeons || []).filter(d => d.cleared || d.discovered).forEach(d => {
-        const placeDesc = d.kind === 'town' ? '宿場' : d.kind === 'ruin' ? (d.cleared ? '探索済' : '発見済') : (d.cleared ? '踏破済' : '発見済');
+        const placeDesc = d.kind === 'town' ? '町・搬送で復活' : d.kind === 'ruin' ? (d.cleared ? '探索済' : '発見済') : (d.cleared ? '踏破済' : '発見済');
         destinations.push({ name: d.name, icon: d.icon || '⛩️', x: d.entrance.x, y: d.entrance.y, desc: placeDesc });
       });
 
@@ -2197,7 +2200,7 @@ export const IronSquadGame = {
     this.assignWaveQuest();
     this.recalcPlayerStats();
     this.initBattlefield();
-    initializeGateGuards(this);initializeInvasions(this);
+    initializeGateGuards(this);initializeInvasions(this);initializeMedicalPosts(this);
     saveSlots.update(this.activeSlotId, {state:'active', veterans:[], reserveSurvivors:[]});
     initializeSupplies(this);
     initializeMagic(this);this.damageFields=[];this._hazardClock=0;
@@ -3083,7 +3086,7 @@ export const IronSquadGame = {
     this.initBattlefield();
     this.phaseCasualties = saved.phaseCasualties ?? 0;
     this.phaseInitialSquadCount = saved.phaseInitialSquadCount ?? this.squad.length;
-    initializeGateGuards(this,saved);initializeInvasions(this,saved);
+    initializeGateGuards(this,saved);initializeInvasions(this,saved);initializeMedicalPosts(this,saved);
     initializeSupplies(this,saved);
     initializeMagic(this,saved);this.damageFields=[];this._hazardClock=0;
     this.updateStatsUI();
@@ -3345,6 +3348,7 @@ export const IronSquadGame = {
         invasions:serializeInvasions(this),
         gateGuards:serializeGateGuards(this),
         gatePosts:serializeGatePosts(this),
+        medicalPostIds:serializeMedicalPosts(this),
         sharedEquipBox: this.sharedEquipBox || [],
         civilians: (this.civilians || []).filter(c => c && !c.rescued).slice(0, 8),
         civilianRescues: this.civilianRescues || 0,
@@ -4058,7 +4062,7 @@ export const IronSquadGame = {
     const dragged=carriedSoldiers(this,this.player),civDrag=carriedCivilians(this,this.player),ropeCount=dragged.length+civDrag.length,transportBadge=document.getElementById('transport-badge');
     if(transportBadge){
       const releaseBtn = document.getElementById('btn-release-wounded');
-      if(this.rescueBuffTimer > 0) {
+      if(this.rescueBuffTimer > 0 && !ropeCount) {
         transportBadge.classList.remove('hidden');
         transportBadge.style.background = 'linear-gradient(135deg, rgba(56,189,248,0.25), rgba(14,165,233,0.35))';
         transportBadge.style.borderColor = '#38bdf8';
@@ -4070,7 +4074,14 @@ export const IronSquadGame = {
         transportBadge.style.background = '';
         transportBadge.style.borderColor = '';
         const statusEl = document.getElementById('transport-status');
-        if(statusEl) statusEl.textContent = `紐で搬送 負傷${dragged.length}+民${civDrag.length}/${carryingCapacity(this.player)} · 拠点へ（地図転送不可／本陣救援可）`;
+        if(statusEl) {
+          const post=nearestKnownMedicalPost(this);
+          const d=post?Math.round(Math.hypot(post.x-this.player.x,post.y-this.player.y)):0;
+          const directions=['→','↘','↓','↙','←','↖','↑','↗'];
+          const arrow=post?directions[(Math.round(Math.atan2(post.y-this.player.y,post.x-this.player.x)/(Math.PI/4))+8)%8]:'';
+          const guide=this.currentDungeon?(this.currentDungeon.kind==='town'?'町の救護受付へ':'出口から町・救護所へ'):post?`${arrow} ${post.name} ${d.toLocaleString()}m`:'救護所は未発見 · 本陣・町・拠点へ';
+          statusEl.textContent=`搬送 負傷${dragged.length}+民${civDrag.length}/${carryingCapacity(this.player)} · ${guide}`;
+        }
         if(releaseBtn) releaseBtn.style.display = '';
       }
     }
@@ -4952,6 +4963,7 @@ export const IronSquadGame = {
 
   update(dt) {
     if (!this.inBattle) return;
+    updateMedicalPosts(this,dt);
     updateSupplies(this,dt);
     updateMagic(this,dt,supplyLocation);
     this.ageRemains(dt);
@@ -6909,6 +6921,7 @@ export const IronSquadGame = {
     this.savedFieldPos = { x: this.player.x, y: this.player.y };
     this.savedFieldMonsters = [...this.monsters];
     this.savedFieldDrops = [...this.dropsOnField];
+    if(dungeonDef.kind==='town')updateWounded(this,0); // Receive rope cargo at the world entrance before changing coordinates.
     this.currentDungeon = dungeonDef;
 
     // ダンジョン内モンスター・ドロップ・パーティクル初期化
@@ -8732,7 +8745,7 @@ export const IronSquadGame = {
     const dayEnemy=PERIOD_ENEMIES.day[zone.id],nightEnemy=PERIOD_ENEMIES.night[zone.id];
     let casualtySummary=document.getElementById('casualty-summary');
     if(!casualtySummary){casualtySummary=document.createElement('p');casualtySummary.id='casualty-summary';casualtySummary.className='reinforcement-summary';timeSummary.after(casualtySummary);}
-    casualtySummary.textContent=`負傷${this.squad.filter(s=>s.isDown&&!s.dead).length}名。接近して紐で搬送：隊長2名・聖騎士2名・他兵士1名。本陣か制圧済み拠点へ運ぶと復活。現地で復活させられるのは衛生兵・大司教のみ。搬送中は死亡猶予停止。`;
+    casualtySummary.textContent=`負傷${this.squad.filter(s=>s.isDown&&!s.dead).length}名。接近して紐で搬送：隊長2名・聖騎士2名・他兵士1名。本陣・救護所・町・制圧済み拠点へ運ぶと復活。発見済み救護所へ矢印案内。施設外で復活させられるのは衛生兵・大司教のみ。搬送中は死亡猶予停止。`;
     timeSummary.textContent=`${time.day}日目 · ${time.icon} ${time.label} ${time.clock} / ${time.period==='day'?'夜':'昼'}まで${Math.ceil(time.remaining)}秒。現在地：昼は${dayEnemy.name}、夜は${nightEnemy.name}。昼夜各4分、会議中は時計停止。`;
     document.getElementById('strat-gold').textContent = (this.gold || 0).toLocaleString();
     const _st = document.getElementById('strat-treasury'); if (_st) _st.textContent = String(this.treasury || 0);
@@ -9254,7 +9267,7 @@ export const IronSquadGame = {
       row.append(maintenanceNote);
       const transportNote=document.createElement('p');transportNote.className='maintenance-summary';
       const cargo=carriedSoldiers(this,s),carrier=s.carrierId?carrierOf(this,s):null;
-      transportNote.textContent=s.isDown?(carrier?`搬送中：${carrier===this.player?'隊長':carrier.name} · 拠点到着で復活`:`負傷：救助猶予${Math.ceil(s.downTimer||0)}秒 · 搬送か衛生兵の処置が必要`):`搬送 ${cargo.length}/${carryingCapacity(s)}名${cargo.length?' · 拠点へ帰還中':''}`;
+      transportNote.textContent=s.isDown?(carrier?`搬送中：${carrier===this.player?'隊長':carrier.name} · 救護所・町・拠点到着で復活`:`負傷：救助猶予${Math.ceil(s.downTimer||0)}秒 · 搬送か衛生兵の処置が必要`):`搬送 ${cargo.length}/${carryingCapacity(s)}名${cargo.length?' · 拠点へ帰還中':''}`;
       row.append(transportNote);
       this.renderSoldierEquipment(row,s);
 
@@ -9464,7 +9477,7 @@ export const IronSquadGame = {
     if (this.currentDungeon) {
       this.worldObjs = [];
       drawDungeonEnvironment(this.ctx, this.currentDungeon, this.camera, this.width, this.height, z, now * 0.001);
-      if(this.currentDungeon.kind==='town'){drawNationalDevelopment(this.ctx,this,this.currentDungeon.width*.62,this.currentDungeon.height*.5,true);drawFortification(this.ctx,this);}
+      if(this.currentDungeon.kind==='town'){drawNationalDevelopment(this.ctx,this,this.currentDungeon.width*.62,this.currentDungeon.height*.5,true);drawTownMedicalReception(this.ctx,this.currentDungeon);drawFortification(this.ctx,this);}
       if (this.dungeonVault) {
         drawDungeonVault(this.ctx, this.dungeonVault, now * 0.001);
       }
@@ -9472,6 +9485,7 @@ export const IronSquadGame = {
       // 1. 大地・戦場フィールド
       this.drawBattlefield(this.ctx, now);
       drawHazards(this.ctx,this,view);
+      for(const post of this.medicalPosts||[])if(inView(post,160))drawMedicalPost(this.ctx,post);
 
       // 2. 自軍砦本陣 (治癒砦・城塞壁・風になびく王国旗)
       if(inView(BASE_CAMP,460)){drawFortification(this.ctx,this);this.drawBaseCamp(this.ctx, now);}
@@ -9495,6 +9509,7 @@ export const IronSquadGame = {
     }
 
     drawMagicBursts(this.ctx,this);
+    drawRescueDirection(this.ctx,this,rescueUnits(this).some(u=>u.isDown&&!u.dead&&u.carrierId)||(this.civilians||[]).some(u=>!u.rescued&&u.carrierId));
     // 搬送役と負傷者／民間人を結ぶ紐。
     this.ctx.save();this.ctx.strokeStyle='#b0a07c';this.ctx.lineWidth=1.6;
     for(const wounded of rescueUnits(this)) {
@@ -11142,6 +11157,7 @@ export const IronSquadGame = {
         mCtx.fillStyle = d.kind === 'town' ? '#e1cf9d' : d.kind === 'ruin' ? '#8d7b68' : '#d7b56a';
         mCtx.fillRect(px(d.entrance.x) - 1.6, py(d.entrance.y) - 1.6, 3.2, 3.2);
       }
+      drawMedicalMap(mCtx,this,px,py,inside);
       drawInvasionRoute(mCtx,this,px,py,inside);
       for (const m of this.monsters || []) {
         if (!m.isColossal || !inside(m.x, m.y) || !fog.isExploredWorld(m.x, m.y)) continue;
@@ -11153,6 +11169,7 @@ export const IronSquadGame = {
     } else {
       mCtx.strokeStyle = '#6a6458';
       mCtx.strokeRect(px(0), py(0), dungeon.width * scale, dungeon.height * scale);
+      if(dungeon.kind==='town')drawMedicalMarker(mCtx,px(230),py(dungeon.height/2),3);
       mCtx.fillStyle = '#8a9a84';
       mCtx.beginPath();
       mCtx.arc(px(180), py(dungeon.height / 2), 2, 0, Math.PI * 2);

@@ -1,5 +1,5 @@
-import {isMagicUser,ensureMana} from './magic-rules.js?v=107';
-import {WORLD_SIZE} from './world.js?v=107';
+import {isMagicUser,ensureMana} from './magic-rules.js?v=108';
+import {WORLD_SIZE} from './world.js?v=108';
 import {saveSlots} from './save-slots.js';
 
 export const AMMO_CAPACITY=30;
@@ -62,6 +62,7 @@ export function supplyLocation(game,u=game.player) {
     // Main army and reserves stay in world coordinates while guards enter town.
   }
   if(near(u,BASE,BASE.radius))return {kind:'base',name:'本陣'};
+  for(const p of game.medicalPosts||[])if(near(u,p,p.radius))return {kind:'medical',name:p.name};
   for(const d of game.dungeons||[])if(d.kind==='town'&&near(u,d.entrance||d,150))return {kind:'town',name:d.name||'町'};
   for(const m of game.merchants||[]) {
     if(!usable(m)||m.returningToBase)continue;
@@ -164,8 +165,8 @@ export const supplyMethods={
     if(!panel){panel=document.createElement('section');panel.className='supply-panel hub-section';overview.prepend(panel);}
     const place=supplyLocation(this),cp=saveSlots.get(this.activeSlotId)?.checkpoint;
     const ranged=squadUnits(this).filter(u=>usable(u)&&isRangedUnit(this,u));
-    panel.innerHTML='<h4>補給・地点セーブ</h4><p class="supply-location"></p><p class="supply-counts"></p><div class="supply-actions"><button type="button" data-supply="potion">本陣で回復薬を補給</button><button type="button" data-supply="save">現在地をセーブ</button><button type="button" data-supply="load">地点セーブへ戻る</button></div><p class="checkpoint-summary"></p><p class="supply-help">弾薬は本陣・町・商人の近くで自動補給。回復薬は行動可能な部隊全員のHP・弾薬・魔力を全回復。ダウン中は搬送・衛生兵が必要です。地点セーブはオートセーブと別に保持し、読込時は記録時点へ戻ります。</p>';
-    panel.querySelector('.supply-location').textContent=place?`補給地点：${place.name}`:'野外：本陣・町・商人に近づくとセーブ／読込できます';
+    panel.innerHTML='<h4>補給・地点セーブ</h4><p class="supply-location"></p><p class="supply-counts"></p><div class="supply-actions"><button type="button" data-supply="potion">本陣で回復薬を補給</button><button type="button" data-supply="save">現在地をセーブ</button><button type="button" data-supply="load">地点セーブへ戻る</button></div><p class="checkpoint-summary"></p><p class="supply-help">弾薬・魔力は本陣・救護所・町・商人・キャンプの近くで自動補給。回復薬は行動可能な部隊全員のHP・弾薬・魔力を全回復。ダウン中は搬送・衛生兵が必要です。地点セーブはオートセーブと別に保持し、読込時は記録時点へ戻ります。</p>';
+    panel.querySelector('.supply-location').textContent=place?`補給地点：${place.name}`:'野外：本陣・救護所・町・商人・キャンプに近づくとセーブ／読込できます';
     panel.querySelector('.supply-counts').textContent=`回復薬 ${this.squadPotion?1:0}/1 · 射手の弾薬 ${ranged.reduce((n,u)=>n+ensureAmmo(u),0)}/${ranged.length*AMMO_CAPACITY} · 予備弾薬 ${this.ammoReserve||0}`;
     const potion=panel.querySelector('[data-supply="potion"]');potion.disabled=!!this.squadPotion||place?.kind!=='base';potion.onclick=()=>this.replenishSquadPotion();
     const save=panel.querySelector('[data-supply="save"]');save.disabled=!place;save.onclick=()=>{this.saveCheckpoint();if(host)this.renderSupplyPanel(host);};
