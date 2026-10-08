@@ -1,5 +1,5 @@
 // スマホゲーム工房 Service Worker (最新コード最優先 Network-First & オフライン対応版)
-const CACHE_NAME = 'mobile-game-studio-v103';
+const CACHE_NAME = 'mobile-game-studio-v104';
 
 const ASSETS_TO_CACHE = [
   './',
@@ -11,6 +11,8 @@ const ASSETS_TO_CACHE = [
   './css/iron-squad-interface.css',
   './js/app.js',
   './js/audio.js',
+  './js/audio-engine.js',
+  './js/games/iron-squad/audio-interface.js',
   './js/storage.js',
   './js/games-registry.js',
   './js/games/iron-squad/index.js',
@@ -39,6 +41,26 @@ const ASSETS_TO_CACHE = [
   './js/games/iron-squad/dungeon.js',
   './js/games/iron-squad/expedition-rules.js',
   './js/games/iron-squad/class-up-rules.js',
+  './assets/audio/music.wav',
+  './assets/audio/tap.wav',
+  './assets/audio/hit.wav',
+  './assets/audio/metal.wav',
+  './assets/audio/slash.wav',
+  './assets/audio/hammer.wav',
+  './assets/audio/bow.wav',
+  './assets/audio/crossbow.wav',
+  './assets/audio/cannon.wav',
+  './assets/audio/stone.wav',
+  './assets/audio/heal.wav',
+  './assets/audio/coin.wav',
+  './assets/audio/fire.wav',
+  './assets/audio/ice.wav',
+  './assets/audio/lightning.wav',
+  './assets/audio/blast.wav',
+  './assets/audio/down.wav',
+  './assets/audio/reward.wav',
+  './assets/audio/defeat.wav',
+  './assets/audio/manifest.json',
   './assets/icons/icon-180.png',
   './assets/icons/icon-192.png',
   './assets/icons/icon-512.png',

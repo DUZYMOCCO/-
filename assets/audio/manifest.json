@@ -1,0 +1,158 @@
+{
+  "sampleRate": 22050,
+  "origin": "original procedural physical-style PCM",
+  "clips": {
+    "tap": {
+      "file": "tap.wav",
+      "seconds": 0.065,
+      "channels": 1,
+      "peak": 0.72,
+      "rms": 0.1754,
+      "sha256": "9d786d23424c21875308e268d745efd5ad65502fa611b93d7ebb0db2df89118c"
+    },
+    "hit": {
+      "file": "hit.wav",
+      "seconds": 0.24,
+      "channels": 1,
+      "peak": 0.72,
+      "rms": 0.1572,
+      "sha256": "db67b3ebce8631b30463cb62e970634d8736a89000051b17e925867653afe93f"
+    },
+    "metal": {
+      "file": "metal.wav",
+      "seconds": 0.38,
+      "channels": 1,
+      "peak": 0.72,
+      "rms": 0.1539,
+      "sha256": "5ecf46a3deda0d130effd3ef36f372b9de5fc5dc706dcbace69ac204f876ea42"
+    },
+    "slash": {
+      "file": "slash.wav",
+      "seconds": 0.24,
+      "channels": 1,
+      "peak": 0.72,
+      "rms": 0.1994,
+      "sha256": "2a289aec2616461916a611bf114dad5321398addfb0f98e5e655f92f8f7c4de0"
+    },
+    "hammer": {
+      "file": "hammer.wav",
+      "seconds": 0.45,
+      "channels": 1,
+      "peak": 0.72,
+      "rms": 0.1342,
+      "sha256": "24cf5d56c152e1c211f11028a890d826bb0b7a33b4eb1271db4ea2e1387f15fb"
+    },
+    "bow": {
+      "file": "bow.wav",
+      "seconds": 0.4,
+      "channels": 1,
+      "peak": 0.72,
+      "rms": 0.1377,
+      "sha256": "6e7a4eb791ff33a55eef8aca3fbe9efee50d78fb4fa9cd804fb8b93500a7196d"
+    },
+    "crossbow": {
+      "file": "crossbow.wav",
+      "seconds": 0.3,
+      "channels": 1,
+      "peak": 0.72,
+      "rms": 0.1123,
+      "sha256": "c398bd1ac640910ae443a812ca25b8c73c9f3ff8cd4cb58cfe20b622d7a11bbf"
+    },
+    "cannon": {
+      "file": "cannon.wav",
+      "seconds": 0.95,
+      "channels": 1,
+      "peak": 0.72,
+      "rms": 0.1528,
+      "sha256": "2d955d2321bceeb7c9736edb75bf70f98736faf0a4fd8163747424aaf88390e2"
+    },
+    "stone": {
+      "file": "stone.wav",
+      "seconds": 0.18,
+      "channels": 1,
+      "peak": 0.72,
+      "rms": 0.1726,
+      "sha256": "c49c2bf80851bbbcf862df3ca94766921d6415ad6defdd5851f766979f5de0a8"
+    },
+    "heal": {
+      "file": "heal.wav",
+      "seconds": 0.85,
+      "channels": 1,
+      "peak": 0.72,
+      "rms": 0.1621,
+      "sha256": "5903ed1acc0c44551e20ac5d680114c71281047e1f397488f4c187965625db0d"
+    },
+    "coin": {
+      "file": "coin.wav",
+      "seconds": 0.32,
+      "channels": 1,
+      "peak": 0.72,
+      "rms": 0.0896,
+      "sha256": "31b2cd9d86eea8af5d5caaf699fbf076f7e89ff8cadf666bfefe0d3968a146c5"
+    },
+    "fire": {
+      "file": "fire.wav",
+      "seconds": 0.65,
+      "channels": 1,
+      "peak": 0.72,
+      "rms": 0.1467,
+      "sha256": "4423cfac2ca560dcae237a1172b1da5ef715184d270c01c4d23b63ccdb44dcf6"
+    },
+    "ice": {
+      "file": "ice.wav",
+      "seconds": 0.65,
+      "channels": 1,
+      "peak": 0.72,
+      "rms": 0.0922,
+      "sha256": "3ebf1debeed83f361a06fd4ebbabedb9181ae00e593cb3d80df55bd625dd102b"
+    },
+    "lightning": {
+      "file": "lightning.wav",
+      "seconds": 0.68,
+      "channels": 1,
+      "peak": 0.72,
+      "rms": 0.1456,
+      "sha256": "a8f97d26051b7af03a7af22522ceca61d06eb58b02c24e5be012b7460a2d3b3d"
+    },
+    "blast": {
+      "file": "blast.wav",
+      "seconds": 1.15,
+      "channels": 1,
+      "peak": 0.72,
+      "rms": 0.1704,
+      "sha256": "5d781f157963f64f423b64c0ed83a45a0ccc82b164b143b12909adce25c0ca69"
+    },
+    "down": {
+      "file": "down.wav",
+      "seconds": 0.7,
+      "channels": 1,
+      "peak": 0.72,
+      "rms": 0.1095,
+      "sha256": "d84bfe16eb770cefafe4b9cbbeaa2477a1d5af7846fb70ab428a1ae84e30eee8"
+    },
+    "reward": {
+      "file": "reward.wav",
+      "seconds": 1.6,
+      "channels": 1,
+      "peak": 0.72,
+      "rms": 0.1457,
+      "sha256": "0c8f48fba14c7405208d17f1c9dfef7c9ec1af137a613e62a5578aaec85b550d"
+    },
+    "defeat": {
+      "file": "defeat.wav",
+      "seconds": 2.2,
+      "channels": 1,
+      "peak": 0.72,
+      "rms": 0.0903,
+      "sha256": "40141f834a09bb90e29d3116fafd3ad7bd5146f75e89f2119bdf5b08e720287f"
+    },
+    "music": {
+      "file": "music.wav",
+      "seconds": 26.667,
+      "channels": 2,
+      "peak": 0.66,
+      "rms": 0.1082,
+      "sha256": "6174a1dfc387df8a29d84a30cd970a4241bfc96560e735362421f46c1099eca4"
+    }
+  }
+}

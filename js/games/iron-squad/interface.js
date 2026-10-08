@@ -1,3 +1,4 @@
+import {configureAudioInterface} from './audio-interface.js?v=104';
 /** Presentation only: keep game actions on their original DOM nodes. */
 const element = (tag, className, text) => {
   const node = document.createElement(tag);
@@ -54,6 +55,7 @@ export function configureInterface(game) {
   // Everyday management next to the overview, followed by national operations.
   get('tab-strat-overview').after(get('tab-strat-troops'));
   const overview = get('view-strat-overview');
+  configureAudioInterface(game);
   const snapshot = element('section', 'command-snapshot'); snapshot.id = 'command-snapshot'; overview.prepend(snapshot);
   const heal = get('btn-heal-all').parentElement; heal.classList.add('command-heal');
   heal.firstElementChild.children[0].textContent = '部隊の一括治療';

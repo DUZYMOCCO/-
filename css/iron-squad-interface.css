@@ -312,3 +312,14 @@
   .iron-squad .battle-log-window { width: min(560px,100%); }
   .iron-squad .battle-log-msg { font-size: 10px; padding: 4px 8px; }
 }
+
+.iron-squad .field-sound-toggle { position:absolute; top:176px; right:10px; z-index:14; width:84px; min-height:36px; border:1px solid #74878c; border-radius:7px; background:#1b2c33eb; color:#e1d9c3; font-size:11px; pointer-events:auto; }
+.iron-squad.dialog-open .field-sound-toggle, .dialog-open .field-sound-toggle { visibility:hidden; pointer-events:none; }
+.iron-squad .audio-status, .iron-squad .audio-hint { margin:6px 0 10px; color:#bbc9c9; font-size:12px; line-height:1.6; }
+.iron-squad .audio-actions { display:flex; gap:8px; flex-wrap:wrap; }
+.iron-squad .audio-settings button { min-height:44px; border:1px solid #64777f; border-radius:7px; background:#294149; color:#ece7d7; padding:8px 12px; font-size:12px; }
+.iron-squad .audio-volume { display:grid; grid-template-columns:56px minmax(0,1fr) 44px; align-items:center; gap:10px; min-height:48px; color:#e0ded2; font-size:12px; }
+.iron-squad .audio-volume input { min-width:0; width:100%; min-height:36px; accent-color:#b5a378; touch-action:pan-y; }
+.iron-squad .audio-volume output { text-align:right; }
+/* Compact landscape uses the command-panel sound controls to keep the map and transport controls clear. */
+@media (orientation:landscape) and (max-height:500px) { .iron-squad .field-sound-toggle { display:none; } }

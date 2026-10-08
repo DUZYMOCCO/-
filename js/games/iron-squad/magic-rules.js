@@ -1,4 +1,5 @@
-import {WORLD_SIZE} from './world.js?v=103';
+import {sound} from '../../audio.js?v=104';
+import {WORLD_SIZE} from './world.js?v=104';
 import {recordCombat} from './phase-rules.js';
 import {isSoldierOnExpedition} from './expedition-rules.js';
 
@@ -71,12 +72,13 @@ export function castMedicBuff(game,medic) {
   if(!targets.some(u=>!(u.magicAttackTimer>2)))return false;
   if(!spendMana(medic,24))return false;
   const tier=magicTier(medic);for(const u of targets){u.magicAttackTimer=8+tier;u.magicAttackBonus=Math.max(u.magicAttackBonus||0,.1+tier*.05);u.magicWardTimer=8+tier;u.magicWardBonus=Math.max(u.magicWardBonus||0,.08+tier*.04);}
-  medic.magicBuffCooldown=18;recordCombat(medic);game.spawnDamageText?.(medic.x,medic.y-38,'攻撃・守護の加護','#c8c3a3');return true;
+  sound.playHeal(medic.x,medic.y);medic.magicBuffCooldown=18;recordCombat(medic);game.spawnDamageText?.(medic.x,medic.y-38,'攻撃・守護の加護','#c8c3a3');return true;
 }
 export function castMageSpell(game,mage,target) {
   if(!active(mage)||!active(target)||!isMage(mage))return false;
   ensureMana(mage);const spell=MAGIC_AFFINITIES[mage.magicAffinity];if(!spendMana(mage,spell.cost))return false;
   const tier=magicTier(mage),radius=spell.radius*(1+tier*.12),damage=Math.round(mage.atk*spell.damage);
+  sound.playMagic(mage.magicAffinity,mage.x,mage.y);
   const x=target.x,y=target.y;mage.atkCooldown=spell.cooldown/(1+tier*.1);mage.atkAnim=1;mage.attackAngle=mage.facingAngle=Math.atan2(y-mage.y,x-mage.x);
   // Sparse marks show the hit area without particles or screen flashes.
   game.magicBursts||=[];if(game.magicBursts.length>=12)game.magicBursts.shift();game.magicBursts.push({x,y,radius,color:spell.color,affinity:mage.magicAffinity,life:.3});

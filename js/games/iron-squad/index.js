@@ -9,22 +9,22 @@
  *  - 生き延びて「伍長」以上に立身出世して初めて【号令・指揮権】がアンロックされる！
  *  - 名もなき兵士たちは生き残ると二つ名と名前が授与され、やがて主人公の頼もしい戦友に。
  */
-import { sound } from '../../audio.js';
+import { sound } from '../../audio.js?v=104';
 import { storage } from '../../storage.js';
-import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow } from './visuals.js?v=103';
-import { drawMeleeRangeCue, meleeDrawReach, attackAnimationRate } from './weapon-motion.js?v=103';
-import {emptyRescueBonuses,normalizeRescueBonuses,rescueBonusSummary} from './rescue-rewards.js?v=103';
-import {drawFieldCivilian} from './civilian-visuals.js?v=103';
+import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow } from './visuals.js?v=104';
+import { drawMeleeRangeCue, meleeDrawReach, attackAnimationRate } from './weapon-motion.js?v=104';
+import {emptyRescueBonuses,normalizeRescueBonuses,rescueBonusSummary} from './rescue-rewards.js?v=104';
+import {drawFieldCivilian} from './civilian-visuals.js?v=104';
 import { saveSlots } from './save-slots.js';
-import {MAGIC_CLASSES,MAGIC_AFFINITIES,magicMethods,isMage,isMagicUser,ensureMana,initializeMagic,updateMagic,distributeMagicStones,castMedicBuff,updateMageAI,drawMagicBursts,spendMana} from './magic-rules.js?v=103';
-import {hazardMethods,updateHazards,drawHazards} from './hazard-fields.js?v=103';
-import {strongEnemyReward} from './combat-rewards.js?v=103';
-import {supplyMethods, initializeSupplies, updateSupplies, takeRangedShot, ammoCombatProfile, isRangedUnit, distributeAmmo, preventLethalHit, normalizeFieldSave, SQUAD_POTION_COST, ensureAmmo, RANGED_DAMAGE_MULT, supplyLocation} from './supply-rules.js?v=103';
-import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog } from './interface.js?v=103';
-import { ensureSoldierAppearance, drawSoldierPortrait, describeSoldierAppearance } from './soldier-appearance.js?v=103';
-import { attachSurfaceEvents, detachSurfaceEvents, frameSurfaceReady, releaseSceneCaches, releaseCanvas, surfaceCanResume } from './canvas-surface.js?v=103';
-import { WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt, routeNameAt, eastWestRoadY, northSouthRoadX, riverCenterY } from './world.js?v=103';
-import { FogGrid, FOG_REVEAL_RADIUS, FOG_CAMP_REVEAL } from './fog.js?v=103';
+import {MAGIC_CLASSES,MAGIC_AFFINITIES,magicMethods,isMage,isMagicUser,ensureMana,initializeMagic,updateMagic,distributeMagicStones,castMedicBuff,updateMageAI,drawMagicBursts,spendMana} from './magic-rules.js?v=104';
+import {hazardMethods,updateHazards,drawHazards} from './hazard-fields.js?v=104';
+import {strongEnemyReward} from './combat-rewards.js?v=104';
+import {supplyMethods, initializeSupplies, updateSupplies, takeRangedShot, ammoCombatProfile, isRangedUnit, distributeAmmo, preventLethalHit, normalizeFieldSave, SQUAD_POTION_COST, ensureAmmo, RANGED_DAMAGE_MULT, supplyLocation} from './supply-rules.js?v=104';
+import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog } from './interface.js?v=104';
+import { ensureSoldierAppearance, drawSoldierPortrait, describeSoldierAppearance } from './soldier-appearance.js?v=104';
+import { attachSurfaceEvents, detachSurfaceEvents, frameSurfaceReady, releaseSceneCaches, releaseCanvas, surfaceCanResume } from './canvas-surface.js?v=104';
+import { WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt, routeNameAt, eastWestRoadY, northSouthRoadX, riverCenterY } from './world.js?v=104';
+import { FogGrid, FOG_REVEAL_RADIUS, FOG_CAMP_REVEAL } from './fog.js?v=104';
 import {
   classTierOf, nextClassId, classUpCostForNext, canAffordClassUp, formatClassUpCostJa, classUpShortageJa,
   playerClassTier, nextPlayerStage, playerStageById, CLASS_TIER_LABELS, PLAYER_CLASS_STAGES
@@ -37,7 +37,7 @@ import {
   SHARED_BOX_MAX_TIER, SCOUT_COST_BY_TALENT, defaultDonateAmount, donatePresetAmounts
 } from './economy-rules.js';
 
-import { EQUIPMENT_TYPES, saleValue, equippedIds, canSell, lowValueIds, chooseLootTier, distanceScaling, shrineUpgradeCap, compareEquipment, equipmentScore, weaponCombatProfile, evaluateMeleeSweetSpot, isGodRollProtected, zoneRingPower, zoneRingLabelJa } from './equipment-rules.js?v=103';
+import { EQUIPMENT_TYPES, saleValue, equippedIds, canSell, lowValueIds, chooseLootTier, distanceScaling, shrineUpgradeCap, compareEquipment, equipmentScore, weaponCombatProfile, evaluateMeleeSweetSpot, isGodRollProtected, zoneRingPower, zoneRingLabelJa } from './equipment-rules.js?v=104';
 import {
   WEAPON_STYLES, WEAPON_STYLE_LABELS, WEAPON_STYLE_ICONS,
   MELEE_STYLES, RANGED_STYLES, HIT_GROWTH_SOFT_CAP,
@@ -47,19 +47,19 @@ import {
   gainWeaponMastery, masteryGainForStyle, pickFavoriteWeapon, rollWeaponStyle,
   weaponStyleOf, favoriteWeaponBias, MASTERY_GAIN_PER_HIT,
   migrateFavoriteForClass, migrateWeaponStyleFromName
-} from './growth-rules.js?v=103';
+} from './growth-rules.js?v=104';
 
 import {
   initMerchants, ensureMerchants, updateMerchants, drawMerchantBody, drawMerchantEscort,
   nearestLivingMerchant, refreshMerchantStock, merchantBuyPrice, merchantSellTier,
   applyMerchantSave, serializeMerchants, MERCHANT_INTERACT_R,
   merchantHealingStatus, merchantHealWavesLeft, useMerchantHealing, MERCHANT_HEAL_COST, recalcEscortStats, finishEscortPhase
-} from './merchant-rules.js?v=103';
+} from './merchant-rules.js?v=104';
 
 import { daylightAt, advanceWorldClock, periodEnemy, enemyAvailable, PERIOD_ENEMIES } from './day-night.js';
 
-import { RESCUE_TIMEOUT, rescueUnits, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, markSoldierDown, CIV_KINDS, isMedic, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST } from './casualty-rules.js?v=103';
-import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault } from './dungeon.js?v=103';
+import { RESCUE_TIMEOUT, rescueUnits, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, markSoldierDown, CIV_KINDS, isMedic, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST } from './casualty-rules.js?v=104';
+import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault } from './dungeon.js?v=104';
 import {
   EXPEDITION_CHECK_INTERVAL, EXPEDITION_RETURN_HOME, EXPEDITION_ENGAGE_R,
   EXPEDITION_DANGER_TIERS, EXPEDITION_MIN_MEMBERS,
@@ -1037,6 +1037,7 @@ export const IronSquadGame = {
     this.inBattle = false;
     this.setupUI();
     this.setupGame();
+    sound.setListener(()=>this.player);sound.startBGM();
 
     this.showSaveMenu();
   },
@@ -1591,6 +1592,7 @@ export const IronSquadGame = {
   },
 
   setDialogState(open) {
+    sound.setBGMMode(open?'quiet':daylightAt(this.worldTime||0).period);
     this.container.classList.toggle('dialog-open', open);
     this.container.querySelector('.game-header').inert = open;
     document.getElementById('canvas-container').inert = open;
@@ -1711,6 +1713,7 @@ export const IronSquadGame = {
     this.clearRenderProblem();
     this.saveMenu.classList.add('hidden');
     this.setDialogState(false);this.resetMovementInput();
+    sound.setListener(()=>this.player);sound.startBGM();
     const slot=saveSlots.get(this.activeSlotId);
     document.getElementById('btn-back').title=`${slot?.name || '遠征'}を保存して工房へ戻る`;
   },
@@ -1734,7 +1737,7 @@ export const IronSquadGame = {
       this.inBattle=false; this.stopGameLoop(); this.resetMovementInput();
       this.showSaveMenu();
       const notice=document.createElement('p');notice.id='save-start-error';notice.className='save-start-error';notice.setAttribute('role','alert');
-      notice.textContent=`v2.1.1 · 開始できませんでした：${error.message || error}`;
+      notice.textContent=`v2.2.0 · 開始できませんでした：${error.message || error}`;
       this.saveMenu.querySelector('.save-heading').append(notice);
       this.showRenderProblem('startup',error);
       return false;
@@ -1958,6 +1961,7 @@ export const IronSquadGame = {
 
     // 画面切り替え（タブ・別アプリ移動からの復帰）時のデルタタイム＆リサイズ安全化
     this.handleVisibility = () => {
+      sound.setPageHidden(document.hidden);
       if (document.hidden) this.saveGame();
       if (!document.hidden) {
         this.lastTime = performance.now();
@@ -3598,8 +3602,7 @@ export const IronSquadGame = {
       this.player.slashAngle = Math.atan2(nearest.y - this.player.y, nearest.x - this.player.x);
       if (wProf.ranged) {
         this.spawnRangedProjectile(this.player, nearest, this.player.atk, wProf, true);
-        if (wProf.style === 'cannon'&&!wProf.stone) sound.playBomb();
-        else sound.playSlash();
+
       } else if (wProf.pierce) {
         const ang = this.player.slashAngle;
         const cos = Math.cos(ang), sin = Math.sin(ang);
@@ -3776,8 +3779,7 @@ export const IronSquadGame = {
     this.player.slashAngle = face;
     this.player.facingAngle = face;
     this.screenShake = isWarlord ? 0.75 : 0.55;
-    sound.playBomb();
-    sound.playSlash();
+    sound.playWeapon(style,this.player.x,this.player.y);
 
     let hitCount = 0;
     let skillName = '💥【渾身強撃】';
@@ -4012,6 +4014,7 @@ export const IronSquadGame = {
     const nowUi = performance.now();
     if (!force && this._lastStatsUiAt && (nowUi - this._lastStatsUiAt) < STATS_UI_INTERVAL_MS) return;
     this._lastStatsUiAt = nowUi;
+    sound.setBGMMode(this.container?.classList.contains('dialog-open')?'quiet':daylightAt(this.worldTime||0).period);
     this.refreshSupplyUI();
     const rank = RANKS[this.rankIndex];
     const pLv = this.player ? (this.player.level || 1) : 1;
@@ -5502,7 +5505,7 @@ export const IronSquadGame = {
               color: clsKey === 'HIGH_PRIEST' ? '#f472b6' : (isHigh ? '#00f0ff' : '#34d399'),
               isHighHeal: isHigh
             });
-            sound.playItem();
+            sound.playHeal(soldier.x,soldier.y);
             }
           } else if (clsKey === 'HIGH_PRIEST') {
             // 大司教は全員が元気な場合、敵へ「神聖浄化弾 (SMITE)」を放ち攻撃に参加！
@@ -5522,7 +5525,7 @@ export const IronSquadGame = {
                 speed: 320,
                 color: '#f472b6'
               });
-              sound.playLaser();
+              sound.playMagic('lightning',soldier.x,soldier.y);
             }
           }
         }
@@ -5661,11 +5664,9 @@ export const IronSquadGame = {
             const dmg = Math.round(totalAtk * (rangedProf.atkMult ? 1 : 1)); // atk already includes weapon mult via stats
             if (clsKey === 'SNIPER' && rangedProf.style === 'bow') {
               for (const off of [-0.18, 0, 0.18])this.spawnRangedProjectile(soldier,nearestEnemy,Math.round(dmg*.9),{...rangedProf,starOffset:off},false);
-              sound.playLaser();
             } else {
               this.spawnRangedProjectile(soldier, nearestEnemy, dmg, rangedProf, false);
-              if (rangedProf.style === 'cannon'&&!rangedProf.stone) sound.playBomb();
-              else sound.playSlash();
+
             }
           }
         } else if (clsKey === 'PALADIN' && enemyDist <= cls.range + 25) {
@@ -5994,8 +5995,7 @@ export const IronSquadGame = {
         // 隊長は職制限なし。遠隔装備時は射撃、近接時は従来モーション。
         if (wProf.ranged) {
           this.spawnRangedProjectile(this.player, nearestMonster, this.player.atk, wProf, true);
-          if (wProf.style === 'cannon'&&!wProf.stone) sound.playBomb();
-          else sound.playSlash();
+
         } else if (isWarlord) {
           // 覇王ウォーロード: 全方位360度「覇王紅蓮絶刃」！周囲の敵全員を切り裂く！
           const warReach = Math.max(115, reach);
@@ -6433,6 +6433,7 @@ export const IronSquadGame = {
     if (!attacker || !target) return;
     if (!this.projectiles) this.projectiles = [];
     const shot=takeRangedShot(attacker,damage);damage=shot.damage;
+    sound.playWeapon(shot.loaded?(profile?.style||'bow'):'stone',attacker.x,attacker.y);
     const style = profile?.style || 'bow';
     const speed = (profile?.projSpeed || 360)*(shot.loaded||profile?.stone?1:.75);
     if(!shot.loaded){
@@ -6568,14 +6569,13 @@ export const IronSquadGame = {
       monster.atkTimer = Math.max(monster.atkTimer || 0, 0.45);
     }
 
+    const armored=['goblin','orc','skeleton','colossus_titan','colossal_titan'].includes(monster.type);
+    sound.playImpact(isMage(attacker)?'magic':armored?wProf.style:'flesh',monster.x,monster.y);
     if (isPlayer) {
-      sound.playSlash();
       if (this.player.vampire > 0) {
         const heal = Math.ceil(dmg * this.player.vampire);
         this.player.hp = Math.min(this.player.maxHp, this.player.hp + heal);
       }
-    } else {
-      sound.playHit(0);
     }
 
     this.spawnDamageText(monster.x, monster.y - 10, dmg, isCrit ? '#ffaa00' : '#ffffff');
@@ -6639,7 +6639,7 @@ export const IronSquadGame = {
     if(preventLethalHit(this,target,dmg))return;
     target.hp -= dmg;
     this.spawnDamageText(target.x, target.y - 12, dmg, '#ff3344');
-    sound.playBomb();
+    sound.playHurt(target.x,target.y);
 
     // 被弾によるHP成長（前線タンクほどタフに。大ダメージほど有利・ソフトキャップあり）
     const growth = applyHitGrowth(target, dmg);
@@ -6667,7 +6667,7 @@ export const IronSquadGame = {
         if (!target.isDown) {
           releaseWounded(this,target);
           markSoldierDown(this, target);
-          sound.playHit(1);
+          sound.playDown(target.x,target.y);
           this.spawnDamageText(target.x, target.y - 20, '🆘 行動不能！', '#f87171');
           const nameDisp = target.isNamed ? `【${target.title}${target.name}】` : target.name;
           this.showToast(`🆘 ${nameDisp}が倒れた！搬送か衛生兵の救助が必要！（未搬送の猶予${RESCUE_TIMEOUT}秒）`);
@@ -11206,6 +11206,8 @@ export const IronSquadGame = {
   },
 
   destroy() {
+    this.audioUIUnsubscribe?.();this.audioUIUnsubscribe=null;
+    sound.stopBGM();sound.setListener(null);
     this.stopGameLoop();
     detachSurfaceEvents(this);
     releaseSceneCaches(this);

@@ -1,8 +1,8 @@
 /**
  * スマホゲーム工房 メインアプリケーション
  */
-import { games, getGameById } from './games-registry.js?v=103';
-import { sound } from './audio.js';
+import { games, getGameById } from './games-registry.js?v=104';
+import { sound } from './audio.js?v=104';
 import { storage } from './storage.js';
 
 class GameStudioApp {
@@ -22,6 +22,7 @@ class GameStudioApp {
     const isMuted = storage.getSoundMuted();
     sound.setMute(isMuted);
     this.updateSoundButtonUI();
+    sound.subscribe(()=>this.updateSoundButtonUI());
 
     if (this.soundToggleBtn) {
       this.soundToggleBtn.addEventListener('click', () => {
@@ -46,8 +47,9 @@ class GameStudioApp {
     }
 
     // iPhone用オーディオアンロック (画面全体での初タップ検知)
-    window.addEventListener('touchstart', () => sound.unlock(), { once: true, passive: true });
-    window.addEventListener('click', () => sound.unlock(), { once: true, passive: true });
+    // Keep gesture recovery available after Safari interruption / app switching.
+    for(const event of ['pointerdown','touchstart','click','keydown'])window.addEventListener(event,()=>sound.unlock(),{capture:true,passive:true});
+    document.addEventListener('visibilitychange',()=>sound.setPageHidden(document.hidden));
 
     // PWA ホーム画面追加ガイド
     this.setupPwaGuide();
@@ -57,7 +59,7 @@ class GameStudioApp {
 
     // サービスワーカー登録 (クエリパラメータ付与でSafariのSWキャッシュを即時更新)
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('./sw.js?v=103').catch((err) => {
+      navigator.serviceWorker.register('./sw.js?v=104').catch((err) => {
         console.log('SW registration failed:', err);
       });
     }
@@ -67,6 +69,8 @@ class GameStudioApp {
     if (!this.soundToggleBtn) return;
     this.soundToggleBtn.textContent = sound.isMuted ? '🔇' : '🔊';
     this.soundToggleBtn.setAttribute('title', sound.isMuted ? 'サウンドON' : 'サウンドOFF');
+    this.soundToggleBtn.setAttribute('aria-label',sound.isMuted?'音をONにする':'音をOFFにする');
+    this.soundToggleBtn.setAttribute('aria-pressed',String(!sound.isMuted));
   }
 
   renderHub() {
