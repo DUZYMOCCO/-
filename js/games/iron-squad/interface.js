@@ -1,5 +1,5 @@
-import {configureAudioInterface} from './audio-interface.js?v=121';
-import {renderBattleLog} from './battle-log.js?v=121';
+import {configureAudioInterface} from './audio-interface.js?v=122';
+import {renderBattleLog} from './battle-log.js?v=122';
 /** Presentation only: keep game actions on their original DOM nodes. */
 const element = (tag, className, text) => {
   const node = document.createElement(tag);
@@ -36,7 +36,7 @@ export function configureInterface(game) {
   // Share layout with the controls so log text clears their actual height,
   // including the recovery button and the conditional transport badge.
   const fieldActions=element('div','field-interactions');
-  fieldActions.append(get('merchant-prompt-banner'));
+  fieldActions.append(get('merchant-prompt-banner'), get('dungeon-prompt-banner'), get('phase-complete-banner'));
   const gamepad=get('virtual-gamepad'),moveColumn=element('div','pad-move-column');
   moveColumn.append(gamepad.querySelector('.pad-stick-zone'),get('btn-pad-potion'));
   gamepad.prepend(fieldActions,moveColumn);gamepad.append(get('battle-log-window'));
@@ -44,7 +44,7 @@ export function configureInterface(game) {
   const fieldStatus = element('div', 'field-status');
   fieldStatus.append(get('field-zone-badge'), get('day-night-badge')); field.append(fieldStatus);
   const alerts = element('div', 'field-alerts');
-  alerts.append(get('base-raid-banner'), get('dungeon-prompt-banner'), get('phase-complete-banner')); field.append(alerts);
+  alerts.append(get('base-raid-banner')); field.append(alerts);
   const invasionBanner=element('div','phase-banner hidden');invasionBanner.id='demon-invasion-banner';alerts.prepend(invasionBanner);
 
   const heading = root.querySelector('.dialog-heading');
