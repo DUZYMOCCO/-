@@ -1,4 +1,4 @@
-import { MELEE_SWEET_SPOT, weaponCombatProfile } from './equipment-rules.js?v=108';
+import { MELEE_SWEET_SPOT, meleeSweetSpotFor, weaponCombatProfile } from './equipment-rules.js?v=110';
 
 const TAU = Math.PI * 2;
 const clamp = n => Math.max(0, Math.min(1, n));
@@ -50,7 +50,7 @@ export function meleePose(style, anim=0, aim=0) {
 export function attackAnimationRate(item,attackSpeed=1) {
   const style=item?.weaponStyle||'sword';
   const duration=style==='spear'?.30:(style==='hammer'||style==='axe')?.34:.24;
-  return Math.max(1, Math.min(2, Number(attackSpeed)||1))/duration;
+  return Math.max(1, Math.min(2, Number(attackSpeed)||1))*(weaponCombatProfile(item).swingSpeed||1)/duration;
 }
 
 function arm(c, shoulder, hand, cloth, glove, bend, simple) {
@@ -66,7 +66,7 @@ function arm(c, shoulder, hand, cloth, glove, bend, simple) {
 export function drawMeleeWeapon(c, actor, style, colors, simple=false) {
   const anim=actor.atkAnim||0;
   const aim=anim>0&&Number.isFinite(actor.attackAngle)?actor.attackAngle:(actor.facingAngle||0);
-  const pose=meleePose(style,anim,aim), {grip,offGrip,side}=pose;
+  const pose=meleePose(style,anim,aim), {grip,offGrip,side}=pose;pose.length*=actor.equipped?.weapon?.weaponTraits?.length||1;
   const {cloth,gloves,blade,board}=colors;
   c.save(); c.lineCap='round'; c.lineJoin='round';
   const twoHanded=style==='spear'||style==='hammer'||style==='axe';
@@ -131,8 +131,8 @@ export function drawMeleeWeapon(c, actor, style, colors, simple=false) {
  * Only the player gets these marks; crowds retain their weapon motion without
  * dozens of overlapping range circles. The sprite remains an illustration.
  */
-export function drawMeleeRangeCue(c,x,y,angle,reach,style,anim=0) {
-  const cfg=MELEE_SWEET_SPOT[style];
+export function drawMeleeRangeCue(c,x,y,angle,reach,style,anim=0,item=null) {
+  const cfg=meleeSweetSpotFor(item||style);
   if(!cfg||!(reach>0)||!(anim>0))return;
   const pose=meleePose(style,anim,angle), opacity=.16+.15*pose.trail;
   const dx=Math.cos(pose.aim),dy=Math.sin(pose.aim),nx=-dy,ny=dx;
@@ -146,5 +146,5 @@ export function drawMeleeRangeCue(c,x,y,angle,reach,style,anim=0) {
 
 export function meleeDrawReach(item,advanced=false) {
   const profile=weaponCombatProfile(item);
-  return advanced?profile.reachWarlord:profile.reach;
+  return advanced?profile.reachWarlord:profile.playerReach||profile.reach;
 }

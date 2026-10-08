@@ -1,10 +1,12 @@
-import {WORLD_SIZE} from './world.js?v=108';
-import {combatPower} from './combat-rewards.js?v=108';
-import {persistentUnit} from './render-support.js?v=108';
-import {sound} from '../../audio.js?v=108';
+import {WORLD_SIZE} from './world.js?v=110';
+import {combatPower} from './combat-rewards.js?v=110';
+import {persistentUnit} from './render-support.js?v=110';
+import {sound} from '../../audio.js?v=110';
 
 export const INVASION_FIRST_PHASE=3,INVASION_INTERVAL=4,INVASION_MARCH_SECONDS=25,INVASION_BATTLE_SECONDS=70;
 export const MAJOR_FIRST_PHASE=11,MAJOR_INTERVAL=8,MAJOR_MARCH_SECONDS=35,MAJOR_BATTLE_SECONDS=125;
+// v2.7 balance: idle/basic-captain defence must collapse with high probability across RNG seeds (verified 21 seeds: 24701,1..20; retuned 1.5/1.4 -> 2.0/1.6 after the soldier class balance pass); trained defence still wins.
+const MAJOR_HP_SCALE=2.0,MAJOR_ATK_SCALE=1.6;
 export const RANDOM_RAID_MIN_PHASE=8,RANDOM_RAID_GAP=8,RANDOM_RAID_CHANCE=.12;
 const center=WORLD_SIZE/2;
 const positive=(x,f=1)=>Number.isFinite(x)&&x>0?x:f;
@@ -66,9 +68,9 @@ export const invasionMethods={
     s.stage='battle';s.eta=0;
     for(let i=0;i<count;i++) {
       const major=s.kind==='major',commander=i===0,elite=major&&!commander&&i%6===0,flanker=!commander&&!elite&&i%4===0,offset=(i%5-2)*60,rank=Math.floor(i/5)*48;
-      const hp=Math.round(strength.hp*(major?(commander?90:elite?40:flanker?18:24):(commander?8:flanker?2.2:3))),def=Math.min(180,strength.def*(major?1.3:commander?.85:.55)+(major?(commander?100:elite?75:55):(commander?18:5)));
+      const HS=MAJOR_HP_SCALE,AS=MAJOR_ATK_SCALE;const hp=Math.round(strength.hp*(major?HS*(commander?90:elite?40:flanker?18:24):(commander?8:flanker?2.2:3))),def=Math.min(180,strength.def*(major?1.3:commander?.85:.55)+(major?(commander?100:elite?75:55):(commander?18:5)));
       const cap=strength.heroHp*.24*(1+strength.heroDef*.012);
-      const atk=Math.max(2,Math.round(major?strength.atk*(commander?14:elite?12:flanker?8:10):Math.min(strength.atk*(commander?1.15:flanker?.65:.8),cap)));
+      const atk=Math.max(2,Math.round(major?AS*strength.atk*(commander?14:elite?12:flanker?8:10):Math.min(strength.atk*(commander?1.15:flanker?.65:.8),cap)));
       this.monsters.push({id:`invasion_${s.sequence}_${i}`,x:center+520+offset,y:center+490+rank,homeX:center+520,homeY:center+490,
         type:flanker?'wolf':'orc',name:major?(commander?'魔王軍・征服将軍':elite?'魔王軍・攻城黒騎士':flanker?'魔王軍・上位魔獣':'魔王軍・精鋭黒鎧兵'):commander?'魔王軍・侵攻隊長':flanker?'魔王軍・魔獣騎兵':'魔王軍・黒鎧兵',title:major?'【本格侵攻】':'魔王城侵攻軍',
         hp,maxHp:hp,atk,def,dmgReduction:major?(commander?30:elite?25:20):commander?12:5,speed:major?(flanker?95:78):flanker?86:commander?64:70,radius:commander?23:flanker?13:16,

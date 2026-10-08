@@ -1,10 +1,12 @@
+// d99cea4 expanded the map around WORLD_SIZE/2 and moved region boundaries to 8k/22k/48k.
 import assert from 'node:assert/strict';
 import {daylightAt,advanceWorldClock,periodEnemy,PERIOD_ENEMIES,enemyAvailable} from '../js/games/iron-squad/day-night.js';
+import {WORLD_SIZE} from '../js/games/iron-squad/world.js';
 import {saveSlots} from '../js/games/iron-squad/save-slots.js';
 import {drawFieldMob} from '../js/games/iron-squad/visuals.js';
 const memory=new Map();globalThis.localStorage={getItem:k=>memory.get(k)??null,setItem:(k,v)=>memory.set(k,v),removeItem:k=>memory.delete(k)};
 globalThis.window={};globalThis.document={getElementById:()=>null};
-const {IronSquadGame}=await import('../js/games/iron-squad/index.js');
+const {IronSquadGame,getFieldZone}=await import('../js/games/iron-squad/index.js');
 assert.equal(daylightAt(0).clock,'06:00');assert.equal(daylightAt(239.99).period,'day');
 assert.equal(daylightAt(240).period,'night');assert.equal(daylightAt(240).clock,'18:00');
 assert.equal(daylightAt(480).period,'day');assert.equal(daylightAt(480).day,2);
@@ -23,8 +25,9 @@ try {
  Math.random=()=>.1;
  for(const period of ['day','night'])for(const [zoneId,def] of Object.entries(PERIOD_ENEMIES[period])) {
   game.worldTime=period==='day'?0:240;game.monsters=[];
-  const distance={ZONE_PEACE:400,ZONE_WILD:1500,ZONE_CHAOS:3000,ZONE_ABYSS:5000}[zoneId];
-  game.spawnMonster(5400+distance,5400);
+  const distance={ZONE_PEACE:400,ZONE_WILD:12000,ZONE_CHAOS:30000,ZONE_ABYSS:60000}[zoneId];
+  const center=WORLD_SIZE/2;assert.equal(getFieldZone(center+distance,center).id,zoneId);
+  game.spawnMonster(center+distance,center);
   assert.equal(game.monsters[0].type,def.type);assert.equal(game.monsters[0].activePeriod,period);
   assert.equal(game.monsters[0].lootDistance,distance);
   assert.ok(!enemyAvailable(game.monsters[0],period==='day'?'night':'day'));

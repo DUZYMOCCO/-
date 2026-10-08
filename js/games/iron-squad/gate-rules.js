@@ -1,6 +1,7 @@
-import {WORLD_SIZE} from './world.js?v=108';
-import {makeEscort,recalcEscortStats,updateEscortPatrol,npcSave,applyNpcSave} from './merchant-rules.js?v=108';
-import {rebuildMerchantCasualties,carrierOf,sanitizeCarriers} from './casualty-rules.js?v=108';
+import {drawStoneFortification} from './fortification-visuals.js?v=110';
+import {WORLD_SIZE} from './world.js?v=110';
+import {makeEscort,recalcEscortStats,updateEscortPatrol,npcSave,applyNpcSave} from './merchant-rules.js?v=110';
+import {rebuildMerchantCasualties,carrierOf,sanitizeCarriers} from './casualty-rules.js?v=110';
 const center=WORLD_SIZE/2;
 export const GATE_HALF_WIDTH=80,HQ_WALL_HALF_SIZE=300;
 export function wallGeometry(game) {
@@ -129,13 +130,6 @@ export function updateGateGuards(game,dt) {
   }
 }
 export function drawFortification(ctx,game) {
-  const w=wallGeometry(game);if(!w)return;const gates=gatePositions(w),level=game.nation?.level||0;
-  ctx.save();ctx.strokeStyle=level>=3?'#b2aa96':'#777d73';ctx.lineWidth=12;ctx.lineCap='butt';
-  for(const [side,start,end,fixed,vertical] of [['north',w.left,w.right,w.top,false],['south',w.left,w.right,w.bottom,false],['west',w.top,w.bottom,w.left,true],['east',w.top,w.bottom,w.right,true]]){
-    const openings=gates.filter(g=>g.side===side).map(g=>vertical?g.y:g.x).sort((a,b)=>a-b);let cursor=start;
-    for(const middle of [...openings,end+GATE_HALF_WIDTH]){ctx.beginPath();if(vertical){ctx.moveTo(fixed,cursor);ctx.lineTo(fixed,Math.min(end,middle-GATE_HALF_WIDTH));}else{ctx.moveTo(cursor,fixed);ctx.lineTo(Math.min(end,middle-GATE_HALF_WIDTH),fixed);}ctx.stroke();cursor=middle+GATE_HALF_WIDTH;}
-  }
-  ctx.fillStyle='#656e69';for(const x of [w.left,w.right])for(const y of [w.top,w.bottom]){ctx.fillRect(x-13,y-13,26,26);ctx.fillStyle='#aaa793';ctx.fillRect(x-15,y-15,30,6);ctx.fillStyle='#656e69';}
-  for(const g of gates){const vertical=g.side==='east'||g.side==='west';ctx.fillStyle='#9a917b';for(const sign of [-1,1])ctx.fillRect(g.x+(vertical?-10:sign*GATE_HALF_WIDTH-10),g.y+(vertical?sign*GATE_HALF_WIDTH-10:-10),20,20);if(w.town){ctx.font='10px sans-serif';ctx.textAlign='center';ctx.fillStyle='#e0d1ae';ctx.fillText('外へ',g.x,g.y-16);}}
-  ctx.restore();
+  const wall=wallGeometry(game);if(!wall)return;
+  drawStoneFortification(ctx,game,wall,gatePositions(wall),GATE_HALF_WIDTH);
 }

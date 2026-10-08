@@ -1,15 +1,16 @@
+import {catalogTier,catalogPrice,ensureMerchantCatalog} from './merchant-catalog.js?v=110';
 /**
  * IRON SQUAD: 宿場・本陣・各地のキャンプの行商人
- * - エリア最大Tier+1の品を高値で販売（日本語UI）
+ * - 最新入手Tier+1（最大T6）の厳選品を販売、毎ウェーブの目玉商品
  * - 強い護衛付き。放置するとモンスターに襲われ死亡しうる
  * - 護衛が倒した強敵のドロップを序盤から掠め取れるチャンス
  */
-import { saleValue, distanceScaling, weaponCombatProfile } from './equipment-rules.js?v=108';
-import { drawFieldSoldier } from './visuals.js?v=108';
-import { createSoldierAppearance, drawSoldierHead } from './soldier-appearance.js?v=108';
-import { attackAnimationRate } from './weapon-motion.js?v=108';
-import { markSoldierDown, rebuildMerchantCasualties, RESCUE_TIMEOUT } from './casualty-rules.js?v=108';
-import {emptyMastery,normalizeMastery,hitGrowthMult,applyHitGrowth,masteryAtkMult,masteryReloadMult} from './growth-rules.js?v=108';
+import { saleValue, distanceScaling, weaponCombatProfile } from './equipment-rules.js?v=110';
+import { drawFieldSoldier } from './visuals.js?v=110';
+import { createSoldierAppearance, drawSoldierHead } from './soldier-appearance.js?v=110';
+import { attackAnimationRate } from './weapon-motion.js?v=110';
+import { markSoldierDown, rebuildMerchantCasualties, RESCUE_TIMEOUT } from './casualty-rules.js?v=110';
+import {emptyMastery,normalizeMastery,hitGrowthMult,applyHitGrowth,masteryAtkMult,masteryReloadMult} from './growth-rules.js?v=110';
 import {recordCombat,finishExperience} from './phase-rules.js';
 
 export const MERCHANT_PRICE_MULT = 3.2; // 相場の約3.2倍（高め）
@@ -55,12 +56,10 @@ export function localAreaMaxTier(distance) {
   return 5;
 }
 
-export function merchantSellTier(distance) {
-  return Math.min(7, localAreaMaxTier(distance) + 1);
-}
+export function merchantSellTier(game) {return catalogTier(typeof game==='object'?game:{});}
 
 export function merchantBuyPrice(item) {
-  return Math.max(1, Math.floor(saleValue(item) * MERCHANT_PRICE_MULT));
+  return catalogPrice(item);
 }
 
 function escortStats(distance, phase = 1) {
@@ -133,33 +132,7 @@ function damageEscortFallback(game,esc,raw) {
   if(esc.hp<=0)markSoldierDown(game,esc);
 }
 
-function buildStock(generateRandomDrop, distance, phase = 1) {
-  const tierTarget = merchantSellTier(distance);
-  // lootDistance を少し盛って目標Tier帯へ寄せる
-  const lootDist = distance < 8000 ? 9000
-    : distance < 22000 ? 24000
-    : distance < 48000 ? 50000
-    : 62000;
-  const stock = [];
-  let guard = 0;
-  while (stock.length < MERCHANT_STOCK_SIZE && guard++ < 40) {
-    const kind = Math.random() < 0.22 ? 'elite' : 'normal';
-    const item = generateRandomDrop(lootDist, kind);
-    if (!item) continue;
-    // 目標Tier未満は弾いて、+1帯を優先
-    if ((item.tier || 1) < tierTarget && Math.random() < 0.7) continue;
-    if ((item.tier || 1) > tierTarget + 1) continue;
-    item._merchantPrice = merchantBuyPrice(item);
-    stock.push(item);
-  }
-  while (stock.length < MERCHANT_STOCK_SIZE) {
-    const item = generateRandomDrop(lootDist, 'elite');
-    if (!item) break;
-    item._merchantPrice = merchantBuyPrice(item);
-    stock.push(item);
-  }
-  return stock;
-}
+function buildStock(game,merchant,generate) {ensureMerchantCatalog(game,merchant,generate);return merchant.stock||[];}
 
 function makeCampMerchant(game,site,generateRandomDrop,BASE_CAMP) {
   const distance=Math.hypot(site.x-BASE_CAMP.x,site.y-BASE_CAMP.y);
@@ -169,7 +142,7 @@ function makeCampMerchant(game,site,generateRandomDrop,BASE_CAMP) {
   const m={id:`merchant_${site.id}`,placeKind:'field-camp',placeId:site.id,campX:site.x,campY:site.y,placeName:'野営キャンプ',
     icon:'🏕️',x:site.x+50,y:site.y+26,distance,hp,maxHp:hp,dead:false,respawnIn:0,
     stockRefreshIn:90,name,title:'【野営地の行商人】',healingUsed:false};
-  m.stock=buildStock(generateRandomDrop,distance,game.phase||1);
+  m.stock=buildStock(game,m,generateRandomDrop);
   m.escorts=Array.from({length:ESCORT_COUNT},(_,i)=>makeEscort(m,i,game.phase||1));
   return prepareMerchant(m);
 }
@@ -207,7 +180,7 @@ export function initMerchants(game, generateRandomDrop, BASE_CAMP) {
     name: '露天商・ガルド',
     title: '【本陣行商人】',healingUsed:false
   };
-  camp.stock = buildStock(generateRandomDrop, camp.distance, phase);
+  camp.stock = buildStock(game,camp,generateRandomDrop);
   camp.escorts = Array.from({ length: ESCORT_COUNT }, (_, i) => makeEscort(camp, i, phase));
   merchants.push(camp);
 
@@ -234,7 +207,7 @@ export function initMerchants(game, generateRandomDrop, BASE_CAMP) {
       title: '【宿場行商人】',healingUsed:false
     };
     m.maxHp = m.hp;
-    m.stock = buildStock(generateRandomDrop, m.distance, phase);
+    m.stock = buildStock(game,m,generateRandomDrop);
     m.escorts = Array.from({ length: ESCORT_COUNT }, (_, i) => makeEscort(m, i, phase));
     merchants.push(m);
   }
@@ -301,10 +274,10 @@ export function nearestLivingMerchant(game, x, y, maxR = MERCHANT_INTERACT_R) {
   return best;
 }
 
-export function refreshMerchantStock(merchant, generateRandomDrop, phase = 1) {
-  if (!merchant || merchant.dead) return;
-  merchant.stock = buildStock(generateRandomDrop, merchant.distance, phase);
-  merchant.stockRefreshIn = 90;
+export function refreshMerchantStock(merchant, generateRandomDrop, phase = 1, game=null) {
+  if(!merchant||merchant.dead)return;
+  const context=game||{phase,merchantEquipmentTier:Math.max(1,(merchant.stockTier||2)-1)};
+  merchant.stock=buildStock(context,merchant,generateRandomDrop);
 }
 
 /**
@@ -377,14 +350,14 @@ export function updateMerchants(game, dt, generateRandomDrop, hooks = {}) {
       if (m.respawnIn <= 0) {
         m.dead = false;
         m.hp = m.maxHp;
-        m.stock = buildStock(generateRandomDrop, m.distance, phase);
+        m.stock = buildStock(game,m,generateRandomDrop);
         m.escorts = Array.from({ length: ESCORT_COUNT }, (_, i) => m.escorts?.[i]&&!m.escorts[i].dead?m.escorts[i]:makeEscort(m,i,phase));
         m.respawnIn = 0;
         hooks.onMerchantRespawn?.(m);
       }
     }
 
-    m.stockRefreshIn = Math.max(0, (m.stockRefreshIn || 0) - dt);
+    if(!m.dead&&m.stockPhase!==phase)buildStock(game,m,generateRandomDrop);
     if(m.returningToBase&&!m.isDown)returnToBase(m,dt);
     // Discovered camps persist, but distant caravans do not run full escort AI.
     const nearPlayer=game.player&&Math.hypot(m.x-game.player.x,m.y-game.player.y)<850;
@@ -498,7 +471,7 @@ export function drawMerchantBody(ctx,m) {
     ctx.fillText(`${m.icon || '🏪'} ${m.name}`, m.x-18, m.y - 53);
     ctx.fillStyle = '#cbd5e1';
     ctx.font = '9px sans-serif';
-    ctx.fillText(`${m.placeName} · T${merchantSellTier(m.distance)}帯`, m.x-18, m.y - 41);
+    ctx.fillText(`${m.placeName} · T${m.stockTier||2}帯`, m.x-18, m.y - 41);
     const ratio = Math.max(0, m.hp / Math.max(1, m.maxHp));
     ctx.fillStyle = '#1e293b'; ctx.fillRect(m.x - 16, m.y + 16, 32, 3);
     ctx.fillStyle = '#f87171'; ctx.fillRect(m.x - 16, m.y + 16, 32 * ratio, 3);
@@ -527,7 +500,8 @@ export function serializeMerchants(merchants) {
     dead: !!m.dead,
     hp: m.hp,
     respawnIn: m.respawnIn || 0,
-    stockIds: (m.stock || []).map(i => i?.id).filter(Boolean)
+    stockIds: (m.stock || []).map(i => i?.id).filter(Boolean),
+    stock:(m.stock||[]).map(i=>({...i,stats:{...i.stats}})),stockPhase:m.stockPhase,stockTier:m.stockTier,catalogVersion:m.catalogVersion,featuredSoldPhase:m.featuredSoldPhase
   }));
 }
 
@@ -542,6 +516,9 @@ export function applyMerchantSave(game, savedList, generateRandomDrop, BASE_CAMP
     }
     if (!m) continue;
     applyNpcSave(m,s);
+    m.featuredSoldPhase=Math.max(0,Number(s.featuredSoldPhase)||0);
+    if(s.catalogVersion===1&&Array.isArray(s.stock)){m.stock=s.stock.filter(i=>i&&i.tier>=1&&i.tier<=6&&!i.dropOnly).map(i=>({...i,stats:{...i.stats}}));m.stockPhase=s.stockPhase;m.stockTier=s.stockTier;m.catalogVersion=1;}
+    ensureMerchantCatalog(game,m,generateRandomDrop);
     if(Number.isFinite(s.distance))m.distance=s.distance;
     if(m.rescuedToBase)m.placeName='本陣・救助した商人';
     for(const savedEscort of s.escorts||[]) {

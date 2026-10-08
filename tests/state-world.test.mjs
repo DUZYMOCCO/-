@@ -1,3 +1,4 @@
+// Current world contract: 48 soldiers, five base classes (v2.1), four regional towns plus the national castle town (v2.3).
 import assert from 'node:assert/strict';
 
 // Isolated browser storage: the tests never touch the user's actual saves.
@@ -19,7 +20,7 @@ globalThis.document = {
 const {storage} = await import('../js/storage.js');
 const {saveSlots} = await import('../js/games/iron-squad/save-slots.js');
 const {WorldTerrain,WORLD_SIZE,WORLD_VERSION,reliefAt,SETTLEMENTS} = await import('../js/games/iron-squad/world.js');
-const {IronSquadGame,getFieldZone} = await import('../js/games/iron-squad/index.js');
+const {IronSquadGame,getFieldZone,DEPLOYMENT_CAPACITY} = await import('../js/games/iron-squad/index.js');
 
 // Previous saves are retired with explicit user authorization; current saves remain.
 storage.set('ironsquad_save_data_v3',{player:{level:3}});
@@ -51,8 +52,8 @@ game.activeSlotId=fresh.id;game.phase=99;game.phaseTimer=2;game.totalBattleTime=
 saveSlots.update(fresh.id,{veterans:[{id:'veteran',level:50}],state:'fallen'});
 game.startFreshGame(false);
 assert.equal(game.phase,1);assert.equal(game.phaseTimer,120);assert.equal(game.totalBattleTime,0);
-assert.equal(game.squad.length,30);assert.ok(game.squad.every(s=>!s.isVeteran));
-assert.equal(new Set(game.squad.map(s=>s.soldierClass)).size,4,'new games recruit all four base classes');
+assert.equal(game.squad.length,DEPLOYMENT_CAPACITY);assert.ok(game.squad.every(s=>!s.isVeteran));
+assert.deepEqual(new Set(game.squad.map(s=>s.soldierClass)),new Set(['HEAVY','LIGHT','ARCHER','MEDIC','MAGE']),'new games include the five current base classes');
 assert.ok(game.outposts.every(op=>!op.cleared));
 game.player.x=8500;game.player.y=2300;game.gold=0;game.phase=7;game.phaseTimer=31;
 game.phaseCasualties=2;game.phaseInitialSquadCount=22;
@@ -71,7 +72,8 @@ assert.equal(getFieldZone(center+6000,center).id,'ZONE_PEACE');
 assert.equal(getFieldZone(center+10000,center).id,'ZONE_WILD');
 assert.equal(getFieldZone(center+25000,center).id,'ZONE_CHAOS');
 assert.equal(getFieldZone(center+50000,center).id,'ZONE_ABYSS');
-assert.equal(game.dungeons.filter(d=>d.kind==='town').length,4);
+assert.equal(game.dungeons.filter(d=>d.kind==='town').length,5,'four regional towns plus the national castle town');
+assert.equal(game.dungeons.find(d=>d.id==='royal_castle_town').kind,'town');
 assert.equal(game.dungeons.filter(d=>d.kind==='ruin').length,4);
 assert.equal(game.dungeons.find(d=>d.kind==='town').boss,null);
 assert.ok(game.dungeons.every(d=>d.entrance.x>0&&d.entrance.y>0&&d.entrance.x<WORLD_SIZE&&d.entrance.y<WORLD_SIZE));

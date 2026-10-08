@@ -1,7 +1,7 @@
-import {ensureMana,regenerateMana,spendMana} from './magic-rules.js?v=108';
+import {ensureMana,regenerateMana,spendMana} from './magic-rules.js?v=110';
 import {recordHealing} from './phase-rules.js';
 import {WORLD_SIZE} from './world.js';
-import {grantPermanentRescueReward} from './rescue-rewards.js?v=108';
+import {grantPermanentRescueReward} from './rescue-rewards.js?v=110';
 
 export const RESCUE_TIMEOUT = 45; // 救助猶予時間（秒）広域マップ対応で45秒に延長
 export const isMedic=unit=>['MEDIC','HIGH_PRIEST','SAINT','ARCHANGEL'].includes(unit?.soldierClass);
@@ -89,9 +89,13 @@ export function casualtyStations(game,unit) {
 const nearest=(list,unit)=>list.reduce((a,b)=>!a||Math.hypot(unit.x-b.x,unit.y-b.y)<Math.hypot(unit.x-a.x,unit.y-a.y)?b:a,null);
 export const nearestCasualtyStation=(game,unit)=>nearest(casualtyStations(game,unit),unit);
 /** 民間人救出先：本陣・救護所・制圧拠点・町入口 */
-export function civilianRescueStations(game) {return aidStations(game).filter(p=>p.kind!=='town'||(game.dungeons||[]).some(d=>`town-${d.id}`===p.id&&(d.discovered||d.cleared)));}
+export function civilianRescueStations(game,unit=null) {
+  const d=game.currentDungeon,carrier=unit?.carrierId==='player'?game.player:(game.squad||[]).find(s=>s.id===unit?.carrierId);
+  if(d&&(unit?.rescueSpace===d.id||(carrier&&isLocalRescueUnit(game,carrier))))return d.kind==='town'?aidStations(game,game.player):[];
+  return aidStations(game).filter(p=>p.kind!=='town'||(game.dungeons||[]).some(d=>`town-${d.id}`===p.id&&(d.discovered||d.cleared)));
+}
 export function nearestAidStation(game,unit) {return nearest(aidStations(game,unit),unit);}
-export function nearestCivilianStation(game,unit) {return nearest(civilianRescueStations(game),unit);}
+export function nearestCivilianStation(game,unit) {return nearest(civilianRescueStations(game,unit),unit);}
 export function attachWounded(game,carrier,wounded) {
   if(!carrier||carrier.dead||carrier.isDown||carrier.hp<=0||!wounded?.isDown||wounded.dead||wounded===carrier||wounded.carrierId)return false;
   if(isLocalRescueUnit(game,carrier)!==isLocalRescueUnit(game,wounded))return false;
@@ -104,7 +108,7 @@ export function attachWounded(game,carrier,wounded) {
 export function attachCivilian(game,carrier,civ) {
   if(!carrier||carrier.dead||carrier.isDown||carrier.hp<=0||!civ||civ.rescued||civ.carrierId)return false;
   if(carrier!==game.player&&!carrier.isHero)return false; // 民間人紐牽引は隊長のみ
-  if(game.currentDungeon)return false;
+  if(game.currentDungeon&&civ.rescueSpace!==game.currentDungeon.id)return false;
   const distance=Math.hypot(carrier.x-civ.x,carrier.y-civ.y);
   if(civ.releasedBy===carrierKey(game,carrier)) {if(distance<=65)return false;delete civ.releasedBy;}
   if(distance>48||carriedCount(game,carrier)>=carryingCapacity(carrier))return false;
@@ -446,6 +450,16 @@ export function updateWounded(game,dt) {
   updateCivilians(game,dt);
 }
 
+/** Town arrival is a valid delivery even when the trailing rope body is outside the field entrance radius. */
+export function receiveTownCargo(game,town) {
+  const station={id:`town-${town.id}`,kind:'town',name:town.name||'町'};
+  for(const wounded of carriedSoldiers(game,game.player))revive(game,wounded,wounded.maxHp,{method:'BASE',station,suppressAidReward:!!wounded.downedInAid});
+  for(const civ of carriedCivilians(game,game.player))grantCivilianRescueBonus(game,civ,station);
+}
+export function leaveCivilianSpace(game,space) {
+  for(const civ of game.civilians||[])if(!civ.rescued&&(civ.rescueSpace===space||civ.carrierId==='player')){civ.x=game.player.x-28;civ.y=game.player.y+12;delete civ.rescueSpace;}
+}
+
 export function updateCivilians(game,dt) {
   if(!Array.isArray(game.civilians))game.civilians=[];
   for(const civ of game.civilians) {
@@ -536,6 +550,7 @@ export function syncDragged(game,dt) {
       const x=carrier.x+Math.cos(angle)*38,y=carrier.y+Math.sin(angle)*38;
       const blend=Math.min(1,dt*8);
       unit.x+=(x-unit.x)*blend;unit.y+=(y-unit.y)*blend;unit.vx=0;unit.vy=0;
+      if((game.civilians||[]).includes(unit)){if(isLocalRescueUnit(game,carrier))unit.rescueSpace=game.currentDungeon.id;else delete unit.rescueSpace;}
     });
   }
 }

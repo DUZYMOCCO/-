@@ -1,4 +1,4 @@
-import {configureAudioInterface} from './audio-interface.js?v=108';
+import {configureAudioInterface} from './audio-interface.js?v=110';
 /** Presentation only: keep game actions on their original DOM nodes. */
 const element = (tag, className, text) => {
   const node = document.createElement(tag);
@@ -34,7 +34,9 @@ export function configureInterface(game) {
   const field = get('canvas-container');
   // Share layout with the controls so log text clears their actual height,
   // including the recovery button and the conditional transport badge.
-  get('virtual-gamepad').prepend(get('battle-log-window'));
+  const fieldActions=element('div','field-interactions');
+  fieldActions.append(get('merchant-prompt-banner'));
+  get('virtual-gamepad').prepend(get('battle-log-window'),fieldActions);
   const fieldStatus = element('div', 'field-status');
   fieldStatus.append(get('field-zone-badge'), get('day-night-badge')); field.append(fieldStatus);
   const alerts = element('div', 'field-alerts');

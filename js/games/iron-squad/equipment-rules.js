@@ -6,7 +6,7 @@ export const saleValue = item => Math.floor(14 + Math.pow(item.tier || 1, 1.8)*1
 /** 異質/神鍛 (god-roll) — auto-sell / shared-box deposit must never touch these. Manual sell still OK via canSell. */
 export function isGodRollProtected(item) {
   if (!item) return false;
-  if (item.isGodRoll) return true;
+  if (item.isGodRoll || item.dropOnly) return true;
   if ((item.powerSkip || 0) > 0) return true;
   const tag = item.forgeTag;
   if (tag === '異質' || tag === '神鍛') return true;
@@ -177,13 +177,15 @@ export function shrineUpgradeCap(distance) {
   return Infinity; // 無限強化解禁！
 }
 
-const STAT_LABELS={atk:'攻撃',def:'防御',hp:'HP',speed:'移動',atkSpeed:'攻速',crit:'会心',blockChance:'盾防',regen:'回復/秒',vampire:'吸血',lightning:'雷撃'};
+const STAT_LABELS={atk:'攻撃',def:'防御',hp:'HP',speed:'移動',atkSpeed:'攻速',crit:'会心',blockChance:'盾防',regen:'回復/秒',vampire:'吸血',lightning:'雷撃',reach:'長さ/射程',attackWidth:'攻撃幅',swingSpeed:'振り抜き',attackRate:'攻撃速度',sweetWidth:'スイート幅',sweetPower:'芯の威力補正'};
 const CRITICAL_STATS=new Set(['atk','def','hp']);
-const PCT_STATS=new Set(['crit','blockChance','atkSpeed','vampire']);
+const PCT_STATS=new Set(['crit','blockChance','atkSpeed','vampire','swingSpeed','sweetWidth','sweetPower']);
 const STAT_ORDER=['atk','def','hp','speed','atkSpeed','crit','blockChance','regen','vampire','lightning'];
 
 function formatStatDisplay(key, value) {
   const n=Number(value)||0;
+  if(['reach','attackWidth'].includes(key))return `${Math.round(n)}m`;
+  if(key==='attackRate')return `${n.toFixed(2)}回/秒`;
   if(key==='lightning') return n?'あり':'なし';
   if(key==='vampire') return `${Math.round(n*10000)/100}%`;
   if(PCT_STATS.has(key)) return `${Math.round(n*100)/100}%`;
@@ -194,20 +196,22 @@ function formatDeltaDisplay(key, delta) {
   if(key==='lightning') return delta>0?'+獲得':'−喪失';
   const scale=key==='vampire'?100:1;
   const v=Math.round(delta*scale*100)/100;
-  const suffix=PCT_STATS.has(key)?'%':'';
+  const suffix=PCT_STATS.has(key)?'%':['reach','attackWidth'].includes(key)?'m':key==='attackRate'?'回/秒':'';
   return `${v>0?'+':''}${v}${suffix}`;
 }
 
 /** 装備乗り換え時の性能差。label/kind は既存互換。text=プレーン、html=色付き↑↓ */
 export function compareEquipment(candidate,current) {
-  const keys=new Set([...Object.keys(candidate?.stats||{}),...Object.keys(current?.stats||{})]);
+  const axes=candidate?.type==='WEAPON'||current?.type==='WEAPON';
+  const afterStats={...(candidate?.stats||{}),...(axes?weaponAxisValues(candidate):{})},beforeStats={...(current?.stats||{}),...(axes?weaponAxisValues(current):{})};
+  const keys=new Set([...Object.keys(afterStats),...Object.keys(beforeStats)]);
   const ordered=[...keys].sort((a,b)=>{
     const ia=STAT_ORDER.indexOf(a), ib=STAT_ORDER.indexOf(b);
     return (ia<0?99:ia)-(ib<0?99:ib);
   });
   const changes=ordered.map(key=>{
-    const before=Number(current?.stats?.[key]||0);
-    const after=Number(candidate?.stats?.[key]||0);
+    const before=Number(beforeStats[key]||0);
+    const after=Number(afterStats[key]||0);
     return {
       key,
       label:STAT_LABELS[key]||key,
@@ -260,7 +264,7 @@ export function equipmentScore(item) {
  * 近接: 剣=基準DPS / 槍=中距離貫通 / 鎚=高威力ノックバック
  * 遠隔: 弓=連射低威力 / クロスボウ=中速高威力 / 火砲=最遅最大火力（スプラッシュ）
  */
-export function weaponCombatProfile(item) {
+function baseWeaponCombatProfile(item) {
   const style = item?.weaponStyle || 'sword';
   if (style === 'spear') {
     return {
@@ -319,6 +323,35 @@ export function weaponCombatProfile(item) {
 }
 
 
+export function rollWeaponTraits(item,random=Math.random) {
+  if(item?.type!=='WEAPON'||item.weaponTraits)return item;
+  const roll=(lo,span)=>Math.round((lo+random()*span)*1000)/1000;
+  item.weaponTraits={length:roll(.85,.35),attackTempo:roll(.85,.3),swingSpeed:roll(.85,.35),sweep:roll(.8,.4),sweetWidth:roll(.8,.4),sweetPower:roll(.85,.45),sweetShift:roll(-.06,.12),crit:Math.floor(random()*9)};
+  return item;
+}
+const trait=(item,key,fallback=1)=>Number.isFinite(item?.weaponTraits?.[key])?Math.max(.5,Math.min(1.5,item.weaponTraits[key])):fallback;
+export function weaponCombatProfile(item) {
+  const p=baseWeaponCombatProfile(item),length=trait(item,'length'),sweep=trait(item,'sweep');
+  return {...p,reach:p.reach*length,reachWarlord:p.reachWarlord*length,playerReach:Math.max(110,p.reach)*length,
+    baseCooldown:p.baseCooldown/trait(item,'attackTempo'),pierceHalfWidth:p.pierceHalfWidth*sweep,splash:p.splash*sweep,
+    sweepArc:!p.ranged&&!p.pierce&&item?.weaponTraits?(p.style==='hammer'?1.8:1.2)*sweep:0,
+    swingSpeed:trait(item,'swingSpeed')};
+}
+export function meleeSweetSpotFor(item) {
+  const style=typeof item==='string'?item:item?.weaponStyle||'sword',base=MELEE_SWEET_SPOT[style];if(!base)return null;
+  if(typeof item==='string'||!item?.weaponTraits)return base;
+  const peak=Math.max(.12,Math.min(.94,base.peak+(item.weaponTraits.sweetShift||0))),width=trait(item,'sweetWidth');
+  return {...base,peak,sweetMin:Math.max(.04,peak-(base.peak-base.sweetMin)*width),sweetMax:Math.min(1.05,peak+(base.sweetMax-base.peak)*width),sweetDmg:1+(base.sweetDmg-1)*trait(item,'sweetPower')};
+}
+export function weaponAxisValues(item) {
+  if(!item)return {reach:0,attackWidth:0,swingSpeed:0,attackRate:0,sweetWidth:0,sweetPower:0};
+  const p=weaponCombatProfile(item),sweet=p.ranged?null:meleeSweetSpotFor(item),arc=p.sweepArc||(p.style==='hammer'?1.8:1.2);
+  return {reach:p.ranged?p.reach:p.playerReach,attackWidth:p.pierce?p.pierceHalfWidth*2:p.ranged?p.splash*2:2*p.playerReach*Math.sin(arc/2),
+    swingSpeed:p.swingSpeed*100,attackRate:Math.max(.05,1+(item.stats?.atkSpeed||0)/100)/p.baseCooldown,
+    sweetWidth:sweet?(sweet.sweetMax-sweet.sweetMin)*100:0,sweetPower:sweet?(sweet.sweetDmg-1)*100:0};
+}
+
+
 /** 近接スイングのスイートスポット（hitDist / reach の正規化距離帯）
  * - sword: かなり広い（大半のリーチでボーナス）
  * - spear: 先端寄り。近すぎると威力・クリ低下（突き感）
@@ -352,7 +385,7 @@ export const MELEE_SWEET_SPOT = {
  */
 export function evaluateMeleeSweetSpot(style, hitDist, reach) {
   const t = Math.max(0, Number(hitDist) || 0) / Math.max(1, Number(reach) || 1);
-  const cfg = MELEE_SWEET_SPOT[style];
+  const cfg = meleeSweetSpotFor(style);
   if (!cfg) {
     return { dmgMult: 1, critBonus: 0, inSweet: false, band: 'fixed', t, quality: 0 };
   }

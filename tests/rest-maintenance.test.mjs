@@ -1,3 +1,4 @@
+// 29c4095 (v1.20.3) removed +30 and shrine limits; funds and the six-gold upkeep buffer still apply.
 import assert from 'node:assert/strict';
 import {saveSlots} from '../js/games/iron-squad/save-slots.js';
 import {REST_DURATION,SOLDIER_SALARY,advanceRest,advancePhase,participated} from '../js/games/iron-squad/phase-rules.js';
@@ -35,10 +36,19 @@ assert.equal(game.restMonsters[0].hp,1234);
 advanceRest(game,savedTimer);assert.equal(game.restTimer,0);assert.equal(game.phaseTimer,120);assert.equal(game.phase,phase);
 assert.equal(game.monsters[0].hp,1234,'unfinished boss retains damage across rest');
 advancePhase(game,1);assert.equal(game.phaseTimer,119);
-// Insufficient money, downed units and maximum enhancement produce explicit reasons.
+// Insufficient funds/downed soldiers still defer maintenance; v1.20.3 removed the +30 cap.
 const poor=game.squad[0];poor.gold=0;game.restReport={phase:phase,count:0,spent:0,trainedIds:[],salary:20};game.processRestSecond();
 assert.match(poor.lastMaintenance.status,/資金不足/);assert.equal(poor.gold,0);
 poor.isDown=true;game.processRestSecond();assert.match(poor.lastMaintenance.status,/負傷/);poor.isDown=false;
-for(const item of Object.values(poor.equipped))if(item)applyUpgradeStats(item,30);poor.gold=999999;game.processRestSecond();
-assert.match(poor.lastMaintenance.status,/上限/);assert.equal(poor.gold,999999);
-console.log('PASS: 8-second safe rest, regular soldier salary, staggered self-upgrades, combat pause, manual forge, save/resume, boss preservation, budget and cap reasons');
+const equipment=Object.values(poor.equipped).filter(Boolean);
+for(const item of equipment)applyUpgradeStats(item,30);
+poor.gold=999999;const initialUpgrades=new Map(equipment.map(i=>[i.id,i.upgrade])),oldCount=poor.lastMaintenance.count||0;
+game.processRestSecond();
+const enhanced=equipment.filter(i=>i.upgrade!==initialUpgrades.get(i.id));
+assert.equal(enhanced.length,1,'one affordable piece is maintained per second');assert.equal(enhanced[0].upgrade,31);
+assert.equal(poor.lastMaintenance.count,oldCount+1);assert.ok(poor.gold<999999&&poor.gold>=6);
+assert.match(poor.lastMaintenance.status,/整備/);
+for(const item of equipment)applyUpgradeStats(item,100);
+const quote=Math.min(...equipment.map(item=>game.getUpgradeCost(item)));
+poor.gold=quote+5;game.processRestSecond();assert.match(poor.lastMaintenance.status,/資金不足/);assert.ok(equipment.every(i=>i.upgrade===100),'six gold upkeep buffer still limits unlimited forging');
+console.log('PASS: 8-second safe rest, regular soldier salary, staggered self-upgrades, combat pause, manual forge, save/resume, boss preservation, budget reasons, +30→31 maintenance and upkeep buffer');

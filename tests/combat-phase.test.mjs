@@ -1,3 +1,4 @@
+// Pure phase simulation stubs strategy-panel rendering; interface.test.mjs independently exercises its real DOM.
 import assert from 'node:assert/strict';
 import {storage} from '../js/storage.js';
 import {saveSlots} from '../js/games/iron-squad/save-slots.js';
@@ -6,7 +7,7 @@ import {PHASE_DURATION,emptyActivity,advancePhase,advanceRest,recordCombat,healB
 const memory=new Map();
 globalThis.localStorage={getItem:k=>memory.get(k)??null,setItem:(k,v)=>memory.set(k,v),removeItem:k=>memory.delete(k)};
 globalThis.window={};globalThis.document={getElementById:()=>null};
-const {IronSquadGame}=await import('../js/games/iron-squad/index.js');
+const {IronSquadGame,DEPLOYMENT_CAPACITY}=await import('../js/games/iron-squad/index.js');
 const noop=()=>{};
 const clock={inBattle:true,phase:1,phaseTimer:120,completePhase(){this.phase++;this.phaseTimer=120;}};
 for(let i=0;i<750;i++)advancePhase(clock,.1);
@@ -15,7 +16,7 @@ for(let i=0;i<450;i++)advancePhase(clock,.1);
 assert.equal(clock.phase,2);assert.equal(clock.phaseTimer,120);
 clock.inBattle=false;advancePhase(clock,50);assert.equal(clock.phaseTimer,120);
 const game=Object.create(IronSquadGame);
-for(const name of ['recalcSoldierStats','recalcPlayerStats','updateStatsUI','updateQuestUI','startGameLoop','showToast','spawnSparks','spawnDamageText'])game[name]=noop;
+for(const name of ['recalcSoldierStats','recalcPlayerStats','updateStatsUI','updateQuestUI','startGameLoop','showToast','spawnSparks','spawnDamageText','renderStrategyUI'])game[name]=noop;
 game.activeSlotId=saveSlots.create('戦線検証').id;
 game.startFreshGame(false);
 assert.equal(PHASE_DURATION,120);assert.equal(game.phaseTimer,120);
@@ -36,7 +37,7 @@ assert.equal(idle.survivedWaves,0);assert.equal(waitingMedic.survivedWaves,0);
 assert.equal(game.player.survivedWaves,0);
 assert.equal(game.lastReinforcements.experienced,3);
 assert.equal(game.lastReinforcements.received,5);assert.equal(game.lastReinforcements.deployed,0);
-assert.equal(game.reserves.length,5);assert.equal(game.squad.length,30);
+assert.equal(game.reserves.length,5);assert.equal(game.squad.length,DEPLOYMENT_CAPACITY);
 assert.ok(game.reserves.every(s=>!participated(s)&&s.survivedWaves===0));
 assert.equal(game.phaseTimer,120);
 // An inactive following cycle cannot award the same experience twice.
@@ -44,15 +45,16 @@ advanceRest(game,10);game.completePhase();assert.equal(fighter.survivedWaves,1);
 assert.equal(game.lastReinforcements.experienced,0);
 // Reserves fill a confirmed casualty and cannot exceed active capacity.
 game.squad[19].dead=true;
-assert.equal(game.deployReserves(),1);assert.equal(game.squad.length,30);assert.equal(game.reserves.length,9);
-assert.equal(new Set([...game.squad,...game.reserves].map(s=>s.name)).size,39);
+assert.equal(game.deployReserves(),1);assert.equal(game.squad.length,DEPLOYMENT_CAPACITY);assert.equal(game.reserves.length,9);
+assert.equal(new Set([...game.squad,...game.reserves].map(s=>s.name)).size,DEPLOYMENT_CAPACITY+9);
 // Heavy losses only awaken survivors who actually participated.
 for(const unit of [fighter,defender,medic])recordCombat(unit);
 for(const soldier of game.squad.slice(-8))soldier.dead=true;
-game.phaseCasualties=8;game.phaseInitialSquadCount=30;
+game.phaseCasualties=8; // Eight actual losses meet the current absolute four-loss deathline condition.
+game.phaseInitialSquadCount=DEPLOYMENT_CAPACITY;
 advanceRest(game,10);game.completePhase();
 assert.equal(fighter.survivedDeathlines,1);assert.equal(idle.survivedDeathlines,0);
-assert.equal(game.squad.length,30);assert.equal(game.lastReinforcements.received,5);
+assert.equal(game.squad.length,DEPLOYMENT_CAPACITY);assert.equal(game.lastReinforcements.received,5);
 assert.equal(game.lastReinforcements.deployed,8);assert.equal(game.reserves.length,6);
 assert.ok(game.squad.every(s=>!participated(s)));
 // In-progress combat/healing and reserve pools survive saving and loading.
@@ -65,11 +67,11 @@ assert.equal(game.player.phaseActivity.combatActions,1);assert.equal(game.reserv
 assert.equal(game.squad.find(s=>s.id===medic.id).phaseActivity.healingDone,7);
 game.currentQuest=null;
 game.clearOutpost({type:'CAGE',x:5400,y:5400});
-assert.equal(game.squad.length,30);assert.equal(game.reserves.length,8);
-assert.equal(new Set([...game.squad,...game.reserves].map(s=>s.name)).size,38);
+assert.equal(game.squad.length,DEPLOYMENT_CAPACITY);assert.equal(game.reserves.length,8);
+assert.equal(new Set([...game.squad,...game.reserves].map(s=>s.name)).size,DEPLOYMENT_CAPACITY+8);
 game.squad.push(game.createNewSoldier(),game.createNewSoldier());
 game.normalizeDeployment();
-assert.equal(game.squad.length,30);assert.equal(game.reserves.length,10);
+assert.equal(game.squad.length,DEPLOYMENT_CAPACITY);assert.equal(game.reserves.length,10);
 assert.ok(storage.get('ironsquad_rules_version')===2);
 const lonely={hp:100,survivedWaves:0,phaseActivity:emptyActivity()};
 assert.equal(finishExperience(lonely),false);recordCombat(lonely);

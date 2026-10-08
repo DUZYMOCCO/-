@@ -1,5 +1,5 @@
-import {sound} from '../../audio.js?v=108';
-import {WORLD_SIZE} from './world.js?v=108';
+import {sound} from '../../audio.js?v=110';
+import {WORLD_SIZE} from './world.js?v=110';
 import {recordCombat} from './phase-rules.js';
 import {isSoldierOnExpedition} from './expedition-rules.js';
 
@@ -51,14 +51,22 @@ export function initializeMagic(game,saved=null) {
   game.magicReserve=Math.max(0,Math.floor(Number(saved?.magicReserve)||0));game.magicBursts=[];game._manaSupplyClock=0;
   for(const u of units(game))if(isMagicUser(u)){ensureMana(u);if(!saved){u.mana=u.maxMana;u.magicRecovering=false;}}
 }
+// 防衛戦（定期侵攻・本格侵攻の戦闘中、およびランダム強襲）の本陣での魔導兵の魔力回復量（毎秒）。
+export const HQ_DEFENSE_MANA_REGEN=3;
+export const isDefenseBattle=game=>game?.invasions?.stage==='battle'||!!game?.baseRaidActive;
 export function updateMagic(game,dt,supplyLocation) {
-  game._manaSupplyClock=(game._manaSupplyClock||0)+dt;const supplyDue=game._manaSupplyClock>=.25;if(supplyDue)game._manaSupplyClock=0;
+  game._manaSupplyClock=(game._manaSupplyClock||0)+dt;const supplyDue=game._manaSupplyClock>=.25,supplyElapsed=game._manaSupplyClock;if(supplyDue)game._manaSupplyClock=0;
+  const defending=isDefenseBattle(game);
   for(const u of units(game)){
     u.magicAttackTimer=Math.max(0,(u.magicAttackTimer||0)-dt);u.magicWardTimer=Math.max(0,(u.magicWardTimer||0)-dt);
     if(!u.magicAttackTimer)u.magicAttackBonus=0;if(!u.magicWardTimer)u.magicWardBonus=0;
     if(!isMagicUser(u)||!active(u))continue;
     regenerateMana(u,dt);u.magicBuffCooldown=Math.max(0,(u.magicBuffCooldown||0)-dt);
-    if(supplyDue&&supplyLocation(game,u)){u.mana=u.maxMana;u.magicRecovering=false;}
+    if(supplyDue){const place=supplyLocation(game,u);if(place){
+      // 防衛戦中の本陣では魔導兵だけ全回復せず強い自然回復に留める。それ以外（平時・衛生術師・町/救護所/野営）は従来どおり全回復
+      if(defending&&isMage(u)&&place.kind==='base'){u.mana=Math.min(u.maxMana,u.mana+HQ_DEFENSE_MANA_REGEN*supplyElapsed);}
+      else{u.mana=u.maxMana;u.magicRecovering=false;}
+    }}
   }
   for(const m of game.monsters||[]){m.magicSlowTimer=Math.max(0,(m.magicSlowTimer||0)-dt);m.magicStunTimer=Math.max(0,(m.magicStunTimer||0)-dt);}
   for(const b of game.magicBursts||[])b.life-=dt;

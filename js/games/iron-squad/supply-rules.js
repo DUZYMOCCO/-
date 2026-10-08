@@ -1,5 +1,5 @@
-import {isMagicUser,ensureMana} from './magic-rules.js?v=108';
-import {WORLD_SIZE} from './world.js?v=108';
+import {isMagicUser,ensureMana} from './magic-rules.js?v=110';
+import {WORLD_SIZE} from './world.js?v=110';
 import {saveSlots} from './save-slots.js';
 
 export const AMMO_CAPACITY=30;
@@ -98,6 +98,10 @@ export function normalizeFieldSave(game,data) {
     if(pos)return {...u,x:pos.x,y:pos.y};
     if(game.currentDungeon.kind==='town'&&!u.isPersonalGuard)return u;
     return {...u,x:game.savedFieldPos.x+(i%8-4)*18,y:game.savedFieldPos.y+Math.floor(i/8)*18};
+  });
+  data.civilians=(data.civilians||[]).map(c=>{
+    if(c.rescueSpace!==game.currentDungeon.id&&c.carrierId!=='player')return {...c};
+    const next={...c,x:game.savedFieldPos.x-28,y:game.savedFieldPos.y+12};delete next.rescueSpace;return next;
   });
   const platoonPositions=new Map((game.savedFieldPlatoonPos||[]).map(p=>[p.id,p]));
   for(const mission of data.platoonMissions||[]) {

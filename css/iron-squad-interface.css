@@ -20,6 +20,15 @@
 .iron-squad .merchant-heal-service h4 { color:var(--ui-text); font-size:14px; margin:0 0 4px; }
 .iron-squad .merchant-heal-service p { color:var(--ui-muted); font-size:12px; margin:0; }
 .iron-squad .merchant-heal-button { min-height:44px; }
+.iron-squad .merchant-stock-card { opacity: 1; }
+.iron-squad .merchant-stock-card .equipment-comparison { margin: 8px 0; padding: 9px 10px; }
+.iron-squad .merchant-stock-card .equipment-comparison small { display: block; color: var(--ui-muted); font-size: 11px; line-height: 1.6; overflow-wrap: anywhere; }
+.iron-squad .merchant-quality, .iron-squad .merchant-price-note { color: var(--ui-muted); font-size: 11px; line-height: 1.6; margin: 6px 0; }
+.iron-squad .merchant-featured { border: 1px solid #c9ad70; background: #302f28; }
+.iron-squad .merchant-featured-label { color: #eed599; font-size: 12px; font-weight: 700; padding: 0 0 8px; }
+.iron-squad .merchant-stock-card .transfer-card-meta { flex-wrap: wrap; gap: 8px; }
+.iron-squad .merchant-stock-card .transfer-card-meta > span { flex: 1 1 170px; }
+.iron-squad .merchant-stock-card [data-buy] { min-height: 44px; padding: 8px 14px; white-space: nowrap; }
 /* Size the surface from its container; exclude its intrinsic backing-store
    dimensions from flex layout, including during Safari rotation/resizing. */
 .iron-squad #game-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
@@ -309,6 +318,15 @@
 }
 .iron-squad .pad-stick-zone { grid-column: 1; grid-row: 2; justify-self: start; }
 .iron-squad .pad-buttons-column { grid-column: 2; grid-row: 2; justify-self: end; min-width: 0; }
+.iron-squad .virtual-gamepad { grid-template-rows: auto auto auto; }
+.iron-squad .field-interactions { grid-column: 1 / -1; grid-row: 2; min-width: 0; width: min(420px,100%); justify-self: center; }
+.iron-squad .field-interactions:has(> .hidden) { display: none; }
+.iron-squad .pad-stick-zone, .iron-squad .pad-buttons-column { grid-row: 3; }
+.iron-squad #merchant-prompt-banner { position: static !important; inset: auto !important; transform: none !important; width: 100%; box-sizing: border-box; padding: 5px 8px !important; border-radius: 7px !important; gap: 8px !important; pointer-events: auto; }
+.iron-squad #merchant-banner-text { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 11px; }
+.iron-squad #btn-open-merchant { flex: none; min-width: 66px; min-height: 36px; white-space: nowrap; }
+/* Town navigation clears the upper field; detailed supply figures remain in headquarters. */
+.iron-squad[data-location="town"] .field-status { display: none; }
 @media (orientation: landscape) and (max-height: 500px) {
   .iron-squad .virtual-gamepad { row-gap: 6px; }
   .iron-squad .battle-log-window { width: min(560px,100%); }
