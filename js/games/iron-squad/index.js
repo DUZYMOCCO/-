@@ -1112,10 +1112,10 @@ export const IronSquadGame = {
             <span id="merchant-banner-text">🏪 行商人</span>
             <button id="btn-open-merchant" style="background: #d7b56a; color: #1c1610; border: none; padding: 3px 10px; border-radius: 8px; font-weight: bold; font-size: 11px; cursor: pointer;">品定め</button>
           </div>
-          <!-- 本陣強襲・防衛救援バナー (画面中央上部) -->
-          <div id="base-raid-banner" class="phase-banner hidden" style="position: absolute; top: 86px; left: 50%; transform: translateX(-50%); z-index: 27; background: linear-gradient(135deg, rgba(220, 38, 38, 0.96), rgba(153, 27, 27, 0.96)); border: 1px solid #f87171; box-shadow: 0 4px 18px rgba(220, 38, 38, 0.6); color: #fff; padding: 6px 14px; border-radius: 20px; font-size: 11px; font-weight: bold; display: flex; align-items: center; gap: 8px; transition: all 0.3s ease;">
-            <span id="base-raid-banner-text">🚨【本陣強襲！】魔境の強敵が本拠地へ殺到中！</span>
-            <button id="btn-raid-warp" style="background: #fbbf24; color: #000; border: none; padding: 3px 10px; border-radius: 10px; font-weight: bold; font-size: 11px; cursor: pointer;">本陣救援ワープ 🌀</button>
+          <!-- 本陣強襲・防衛救援バナー (画面最上部スリムバー・中央視界を塞がない) -->
+          <div id="base-raid-banner" class="phase-banner hidden">
+            <span id="base-raid-banner-text">🚨 本陣強襲中！</span>
+            <button id="btn-raid-warp" type="button">救援 🌀</button>
           </div>
 
           <!-- 軍令（作戦目標HUD・画面左上・タップで開閉） -->
@@ -4597,7 +4597,7 @@ export const IronSquadGame = {
 
     const bannerText = document.getElementById('base-raid-banner-text');
     if (bannerText) {
-      bannerText.textContent = `🚨【本陣強襲中！】残存強襲敵: ${aliveRaidMobs.length}体！本隊を守れ！(${Math.ceil(this.baseRaidTimer)}秒)`;
+      bannerText.textContent = `🚨 本陣強襲！残${aliveRaidMobs.length}体 (${Math.ceil(this.baseRaidTimer)}s)`;
     }
 
     if (aliveRaidMobs.length === 0) {

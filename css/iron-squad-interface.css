@@ -61,31 +61,144 @@
 }
 .iron-squad #day-night-badge { color: var(--ui-gold); border: 0; background: #111a22c9; }
 .iron-squad #field-zone-badge[data-danger=true] { color: var(--ui-danger); border-color: #b17b76; background: #3a2024ed; }
-.iron-squad .field-alerts { position: absolute; top: 98px; left: 10px; width: calc(100% - 108px); max-width: 420px; display: flex; flex-direction: column; gap: 6px; z-index: 28; pointer-events: none; }
-.iron-squad .field-alerts .phase-banner {
-  position: static !important; transform: none !important; width: 100% !important; max-width: none !important;
-  border: 1px solid #8c805e !important; border-radius: 8px !important; background: #26342fec !important;
-  padding: 8px !important; box-shadow: none !important; animation: none; font-size: 12px !important;
-  flex-wrap: wrap; pointer-events: auto;
+/* 中央の視界エリア（自キャラ周辺・画面中央）を完全保護！上部ヘッダー直下にスリム配置 */
+.iron-squad .field-alerts {
+  position: absolute;
+  top: 48px !important;
+  left: 10px;
+  width: calc(100% - 108px);
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  z-index: 28;
+  pointer-events: none;
 }
-.iron-squad .field-alerts #base-raid-banner { border-color: #ba7975 !important; background: #40292ced !important; }
+.iron-squad .field-alerts .phase-banner {
+  position: static !important;
+  transform: none !important;
+  width: fit-content !important;
+  max-width: 100% !important;
+  border: 1px solid #8c805e !important;
+  border-radius: 6px !important;
+  background: #26342fec !important;
+  padding: 4px 8px !important;
+  box-shadow: none !important;
+  animation: none;
+  font-size: 11px !important;
+  flex-wrap: nowrap !important;
+  pointer-events: auto;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+}
+.iron-squad .field-alerts #base-raid-banner,
+.iron-squad #base-raid-banner {
+  border: 1px solid #ef4444 !important;
+  background: rgba(153, 27, 27, 0.94) !important;
+  border-radius: 14px !important;
+  padding: 3px 8px !important;
+  font-size: 11px !important;
+  font-weight: bold !important;
+  color: #fff !important;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.5) !important;
+  width: fit-content !important;
+  max-width: calc(100vw - 120px) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  white-space: nowrap !important;
+}
+.iron-squad .field-alerts #base-raid-banner.hidden,
+.iron-squad #base-raid-banner.hidden {
+  display: none !important;
+}
+.iron-squad .field-alerts #btn-raid-warp,
+.iron-squad #btn-raid-warp {
+  min-height: 24px !important;
+  font-size: 10px !important;
+  padding: 2px 8px !important;
+  background: #fbbf24 !important;
+  color: #000 !important;
+  border-radius: 10px !important;
+  font-weight: bold !important;
+  border: none !important;
+  cursor: pointer !important;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+}
 .iron-squad .field-alerts #demon-invasion-banner { border-color:#ad8880 !important; background:#382d30ed !important; color:#ead6c3; pointer-events:none !important; }
 .iron-squad .field-alerts #demon-invasion-banner[data-major=true] { border-color:#d0a677 !important; background:#4a2b31ed !important; color:#f3d6b3; font-weight:bold; }
-.iron-squad .field-alerts button { min-height: 36px; font-size: 12px !important; padding: 6px 10px !important; background: var(--ui-gold) !important; color: var(--ui-bg) !important; border-radius: 5px !important; }
+.iron-squad .field-alerts button { min-height: 28px; font-size: 11px !important; padding: 3px 8px !important; background: var(--ui-gold) !important; color: var(--ui-bg) !important; border-radius: 5px !important; }
 .iron-squad .dialog-open .field-status, .dialog-open .field-status { visibility: hidden; }
-.iron-squad .game-overlay { padding: 10px; background: #081019c7; }
-.iron-squad .strategy-panel {
-  max-width: 720px !important; height: min(100%,880px); background: var(--ui-bg); border: 1px solid #5e6b70;
-  box-shadow: 0 16px 50px #0007; border-radius: 16px;
+
+/* iPhone上部（Dynamic Island / ステータスバー）と被らないよう上部マージンを確保 */
+.iron-squad .game-overlay {
+  padding: 10px;
+  padding-top: max(56px, calc(env(safe-area-inset-top, 44px) + 16px)) !important;
+  background: #081019c7;
+  box-sizing: border-box;
 }
-.iron-squad .dialog-heading { padding: 14px 16px 12px; border-color: var(--ui-line); background: var(--ui-panel); gap: 10px; }
-.iron-squad #strat-title { font-size: 16px !important; line-height: 1.5; font-family: "Yu Mincho", "Hiragino Mincho ProN", Georgia, serif; color: var(--ui-gold) !important; letter-spacing: .04em; }
-.iron-squad .command-wallet { display: flex; flex-wrap: wrap; gap: 8px 16px; color: var(--ui-text) !important; font-size: 12px !important; }
-.iron-squad .dialog-heading > .command-wallet { grid-column: 1 / -1; grid-row: 2; }
+.iron-squad .strategy-panel {
+  max-width: 720px !important;
+  height: min(100%, 860px);
+  background: var(--ui-bg);
+  border: 1px solid #5e6b70;
+  box-shadow: 0 16px 50px #0007;
+  border-radius: 16px;
+  margin-top: 0;
+}
+/* 閉じるボタン専用の最上段行を確保。閉じるの高さエリアはオブジェクト配置禁止（左側スペースは空き） */
+.iron-squad .dialog-heading {
+  display: grid !important;
+  grid-template-columns: 1fr auto !important;
+  grid-template-rows: auto auto auto !important;
+  padding: 12px 16px 14px !important;
+  border-color: var(--ui-line);
+  background: var(--ui-panel);
+  gap: 8px 12px !important;
+}
+/* Row 1: 閉じるボタン単独配置。周囲・同一高さに他要素を一切置かない */
+.iron-squad .dialog-close {
+  grid-column: 2 !important;
+  grid-row: 1 !important;
+  justify-self: end !important;
+  border-color: var(--ui-line) !important;
+  color: var(--ui-text) !important;
+  background: var(--ui-raised) !important;
+  min-width: 80px !important;
+  min-height: 44px !important;
+  padding: 8px 16px !important;
+  font-size: 13px !important;
+  font-weight: bold !important;
+  border-radius: 8px !important;
+  margin: 0 !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3) !important;
+}
+/* Row 2: 司令部タイトル */
+.iron-squad #strat-title {
+  grid-column: 1 / -1 !important;
+  grid-row: 2 !important;
+  font-size: 16px !important;
+  line-height: 1.4 !important;
+  font-family: "Yu Mincho", "Hiragino Mincho ProN", Georgia, serif;
+  color: var(--ui-gold) !important;
+  letter-spacing: .04em;
+  margin: 0 !important;
+}
+/* Row 3: 軍資金・国庫ウォレット */
+.iron-squad .command-wallet {
+  grid-column: 1 / -1 !important;
+  grid-row: 3 !important;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  color: var(--ui-text) !important;
+  font-size: 12px !important;
+}
 .iron-squad .wallet-entry { white-space: nowrap; }
 .iron-squad .wallet-entry small { display: block; color: var(--ui-muted); font-size: 10px; margin-bottom: 1px; }
 .iron-squad .wallet-entry strong { color: var(--ui-text) !important; font-size: 13px; }
-.iron-squad .dialog-close { grid-row: 1; border-color: var(--ui-line); color: var(--ui-text); background: var(--ui-bg); min-width: 62px; }
 .iron-squad .dialog-tabs { display: flex; flex-wrap: nowrap; gap: 0; padding: 0 12px; background: var(--ui-panel); border-bottom: 1px solid var(--ui-line); }
 .iron-squad .dialog-tabs .sub-tab-btn {
   flex: 1; min-height: 48px; font-size: 13px; background: transparent; color: var(--ui-muted);
@@ -249,10 +362,16 @@
 .iron-squad .supply-status-badge { max-width: 100%; color: #dbdfce; background: #111a22e6; border-radius: 5px; padding: 4px 7px; font-size: 10px; line-height: 1.4; overflow-wrap: anywhere; }
 .iron-squad .supply-status-badge[data-empty=true] { color: #f5c278; border-left: 3px solid #ce9d5b; }
 .iron-squad #retreat-warning { padding: 8px 10px; color: #ffe3b2; background: #452c23f0; border: 1px solid #cb9670; border-radius: 7px; font-size: 12px; font-weight: bold; }
-.iron-squad .supply-panel { background: #17232a; border: 1px solid #495b62; border-radius: 10px; padding: 12px; }
+.iron-squad .supply-panel { background: #17232a; border: 1px solid #495b62; border-radius: 10px; padding: 12px; margin-bottom: 12px; }
 .iron-squad .supply-panel h4 { color: var(--ui-gold); font-size: 14px; margin: 0 0 8px; }
 .iron-squad .supply-panel p { margin: 7px 0; line-height: 1.6; font-size: 12px; color: #c7d1d0; }
-.iron-squad .supply-panel .supply-help { font-size: 11px; color: #aab8b9; }
+.iron-squad .supply-panel .supply-help,
+.iron-squad #kill-xp-summary,
+.iron-squad #magic-rules-note,
+.iron-squad #casualty-summary,
+.iron-squad #day-night-summary {
+  display: none !important;
+}
 .iron-squad .supply-actions { display: grid; gap: 7px; grid-template-columns: repeat(2,minmax(0,1fr)); }
 .iron-squad .supply-actions button { min-height: 44px; padding: 8px; border: 1px solid #64777b; border-radius: 7px; color: #eceddf; background: #30434b; font-size: 12px; white-space: normal; }
 .iron-squad .supply-actions [data-supply=potion] { grid-column: 1 / -1; background: #274439; }

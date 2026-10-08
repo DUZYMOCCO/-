@@ -165,7 +165,7 @@ export const supplyMethods={
     const ranged=squadUnits(this).filter(u=>usable(u)&&isRangedUnit(this,u));
     const empty=ranged.filter(u=>ensureAmmo(u)===0).length;
     const heroRanged=isRangedUnit(this,this.player);
-    if(badge){const previous=badge.textContent;badge.textContent=`${heroRanged?`弾薬 ${ensureAmmo(this.player)}/${AMMO_CAPACITY} · `:''}${empty?`要補給 ${empty}名（石75%）`:`射手の弾薬 ${ranged.reduce((n,u)=>n+ensureAmmo(u),0)}/${ranged.length*AMMO_CAPACITY}`} · 回復薬 ${this.squadPotion?1:0}/1`;badge.dataset.empty=String(empty>0);if(previous!==badge.textContent||this._magicStatusChanged){const stack=document.querySelector('.field-alerts');if(stack&&status?.offsetHeight)stack.style.top=`${status.offsetHeight+20}px`;}}
+    if(badge){const previous=badge.textContent;badge.textContent=`${heroRanged?`弾薬 ${ensureAmmo(this.player)}/${AMMO_CAPACITY} · `:''}${empty?`要補給 ${empty}名（石75%）`:`射手の弾薬 ${ranged.reduce((n,u)=>n+ensureAmmo(u),0)}/${ranged.length*AMMO_CAPACITY}`} · 回復薬 ${this.squadPotion?1:0}/1`;badge.dataset.empty=String(empty>0);}
     const button=document.getElementById('btn-pad-potion');
     if(button){button.disabled=!this.squadPotion||!usable(this.player);button.textContent=`回復薬 ${this.squadPotion?1:0}`;}
     let warning=document.getElementById('retreat-warning');
