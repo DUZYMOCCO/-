@@ -83,11 +83,15 @@ for(let y=0;y<6;y++)for(let x=0;x<6;x++)retired.push(terrain.get(x,y).canvas);
 assert.ok(retired.filter(canvas=>canvas.width===1&&canvas.height===1).length>=12,'evicted canvas pixels are released without waiting for GC');
 assert.ok(allocatedBytes()-beforeTiles<24*1024*1024+100000,'tile surfaces stay bounded even when GC is deferred');
 terrain.clear(); assert.ok(retired.every(canvas=>canvas.width===1&&canvas.height===1));
-// Corrupt/partially revealed grid on the live field never creates an opaque black wipe.
+// Unexplored cells are black again, while explored cells and the hero stay visible.
 const fog=new FogGrid(), canvas=createCanvas(1400,1400), context=canvas.getContext('2d');
 context.fillStyle='#a8b990'; context.fillRect(0,0,1400,1400); fog.mark(155,155);
 context.translate(700-79360,700-79360); fog.drawFieldOverlay(context,{x:79360,y:79360},1400,1400,1);
-const corner=context.getImageData(0,0,1,1).data; assert.ok(corner[0]+corner[1]+corner[2]>100,'unexplored edge remains shaded scenery');
+const corner=context.getImageData(0,0,1,1).data;assert.deepEqual([...corner],[0,0,0,255],'unexplored edge is truly hidden');
+const known=context.getImageData(900,900,1,1).data;assert.ok(known[0]+known[1]+known[2]>100,'explored terrain stays visible');
+const exploration=fog.serialize(),restoredFog=new FogGrid();assert.equal(restoredFog.deserialize(exploration),true);assert.equal(restoredFog.serialize(),exploration,'fog appearance does not alter saved exploration');
+context.resetTransform();context.fillStyle='#a8b990';context.fillRect(0,0,1400,1400);context.translate(700-90000,700-90000);
+restoredFog.drawFieldOverlay(context,{x:90000,y:90000},1400,1400,1,90000,90000);assert.equal(restoredFog.isExploredWorld(90000,90000),true);const heroPixel=context.getImageData(700,700,1,1).data;assert.ok(heroPixel[0]+heroPixel[1]+heroPixel[2]>100,'teleport/missing player reveal cannot hide the hero');
 if(process.env.CANVAS_REVIEW_DIR){mkdirSync(process.env.CANVAS_REVIEW_DIR,{recursive:true});writeFileSync(resolve(process.env.CANVAS_REVIEW_DIR,'field.png'),backing.get(game.canvas).toBuffer('image/png'));}
 // A startup error must never be written to an already-hidden save menu.
 game.showSaveMenu(); const fresh=game.startFreshGame;
@@ -96,5 +100,10 @@ document.querySelector('#new-expedition-form').dispatchEvent(new window.Event('s
 assert.equal(document.getElementById('save-menu').classList.contains('hidden'),false);
 assert.match(document.getElementById('save-start-error').textContent,/injected initialization failure/); assert.equal(game.running,false);
 game.startFreshGame=fresh; assert.equal(game.selectSaveSlot(game.activeSlotId),true); visibleField('retry initialized New Game'); frame();
+// Real wide field render also applies the mask without a full-screen blackout.
+view={width:1400,height:1400};Object.defineProperty(window,'devicePixelRatio',{value:1,configurable:true});game.resizeCanvas();game.zoom=.65;Object.assign(game.player,{x:95000,y:95000});game.camera={x:95000,y:95000};game.fog=new FogGrid();game.revealFogAroundPlayer(true);game.render();
+const fieldContext=backing.get(game.canvas).getContext('2d'),unknownPixel=fieldContext.getImageData(0,0,1,1).data,centerPixel=fieldContext.getImageData(700,700,1,1).data;
+assert.ok(unknownPixel[0]+unknownPixel[1]+unknownPixel[2]<24,'actual field hides unknown corners');assert.ok(centerPixel[0]+centerPixel[1]+centerPixel[2]>24,'actual field keeps the commander visible');assert.ok(visiblePixels()>.3,'fog must not cover the full field');
+if(process.env.CANVAS_REVIEW_DIR)writeFileSync(resolve(process.env.CANVAS_REVIEW_DIR,'fog-restored-v2.7.3.png'),backing.get(game.canvas).toBuffer('image/png'));
 game.destroy(); assert.equal(game.worldTerrain,null); assert.equal(game.vigCache,null); dom.window.close();
 console.log('PASS: real Canvas pixels for new/resumed games, dialogs, fog, day/night, rotation, state reset, failure-before-first-update, recovery, context events and released tile buffers');

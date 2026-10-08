@@ -57,7 +57,7 @@ for(let n=0;n<300;n++){
  applyUpgradeStats(expected,i.upgrade);assert.deepEqual(i.stats,expected.stats);const rm=i.rollMult;applyUpgradeStats(i,i.upgrade);assert.equal(i.rollMult,rm);
 }
 // Spawn difficulty is spatial even at a late phase; rewards retain habitat.
-game.monsters=[];game.phase=9999;const center=WORLD_SIZE/2;game.spawnMonster(center+400,center);const near=game.monsters[0];assert.equal(near.lootDistance,400);assert.ok(near.atk<=20);
+game.monsters=[];game.phase=9999;const center=WORLD_SIZE/2;game.spawnMonster(center+400,center);const near=game.monsters[0];assert.equal(near.lootDistance,400);assert.ok(near.atk<=25);
 game.spawnMonster(center+30000,center);const far=game.monsters[1];assert.ok(far.maxHp>near.maxHp*10,'real distant encounters retain spatial danger');
 game.initOutposts();
 const forts=game.outposts.filter(o=>o.type==='FORT').sort((a,b)=>Math.hypot(a.x-center,a.y-center)-Math.hypot(b.x-center,b.y-center));

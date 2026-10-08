@@ -1,5 +1,6 @@
-import {sound} from '../../audio.js?v=110';
-import {WORLD_SIZE} from './world.js?v=110';
+import {sound} from '../../audio.js?v=113';
+import {WORLD_SIZE} from './world.js?v=113';
+import {inCurrentInstance} from './instance-rules.js?v=113';
 import {recordCombat} from './phase-rules.js';
 import {isSoldierOnExpedition} from './expedition-rules.js';
 
@@ -76,7 +77,7 @@ export function updateMagic(game,dt,supplyLocation) {
 export function castMedicBuff(game,medic) {
   if(!active(medic)||!MEDIC_IDS.includes(medic.soldierClass)||magicTier(medic)<1||medic.magicBuffCooldown>0||ensureMana(medic)<40)return false;
   if(!(game.monsters||[]).some(m=>m.hp>0&&Math.hypot(m.x-medic.x,m.y-medic.y)<300))return false;
-  const targets=units(game).filter(u=>active(u)&&Math.hypot(u.x-medic.x,u.y-medic.y)<=170);
+  const targets=units(game).filter(u=>active(u)&&(!game.currentDungeon||inCurrentInstance(game,u))&&Math.hypot(u.x-medic.x,u.y-medic.y)<=170);
   if(!targets.some(u=>!(u.magicAttackTimer>2)))return false;
   if(!spendMana(medic,24))return false;
   const tier=magicTier(medic);for(const u of targets){u.magicAttackTimer=8+tier;u.magicAttackBonus=Math.max(u.magicAttackBonus||0,.1+tier*.05);u.magicWardTimer=8+tier;u.magicWardBonus=Math.max(u.magicWardBonus||0,.08+tier*.04);}

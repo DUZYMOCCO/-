@@ -1,4 +1,5 @@
-import {configureAudioInterface} from './audio-interface.js?v=110';
+import {configureAudioInterface} from './audio-interface.js?v=113';
+import {renderBattleLog} from './battle-log.js?v=113';
 /** Presentation only: keep game actions on their original DOM nodes. */
 const element = (tag, className, text) => {
   const node = document.createElement(tag);
@@ -36,7 +37,10 @@ export function configureInterface(game) {
   // including the recovery button and the conditional transport badge.
   const fieldActions=element('div','field-interactions');
   fieldActions.append(get('merchant-prompt-banner'));
-  get('virtual-gamepad').prepend(get('battle-log-window'),fieldActions);
+  const gamepad=get('virtual-gamepad'),moveColumn=element('div','pad-move-column');
+  moveColumn.append(get('btn-pad-potion'),gamepad.querySelector('.pad-stick-zone'));
+  gamepad.prepend(fieldActions,moveColumn);gamepad.append(get('battle-log-window'));
+  const historyButton=element('button','','履歴');historyButton.type='button';historyButton.id='btn-battle-log-history';historyButton.setAttribute('aria-label','戦闘ログの履歴を開く');get('battle-log-window').append(historyButton);
   const fieldStatus = element('div', 'field-status');
   fieldStatus.append(get('field-zone-badge'), get('day-night-badge')); field.append(fieldStatus);
   const alerts = element('div', 'field-alerts');
@@ -70,6 +74,9 @@ export function configureInterface(game) {
     links.append(button);
   }
   snapshot.after(heal, links);
+  const battleLog=fold(overview,'command-battle-log','戦闘ログ · 直近100件',[]),logList=element('ol','battle-log-history');logList.id='battle-log-history';battleLog.querySelector('.fold-content').append(logList);
+  battleLog.addEventListener('toggle',()=>{if(battleLog.open)renderBattleLog(game);});
+  historyButton.onclick=()=>{game.openStrategyModal(true);game._selectStratTab('overview');battleLog.open=true;renderBattleLog(game);battleLog.scrollIntoView?.({block:'nearest'});logList.scrollTop=logList.scrollHeight;};
   fold(overview, 'command-report', '前回の作戦報告', [get('strat-report')]);
   fold(overview, 'commander-record', '隊長の成長・覚醒', [get('player-record-box')]);
   const rules = fold(overview, 'command-rules', '整備・昼夜・救助のルール', []); rules.querySelector('.fold-content').id = 'command-rule-content';
@@ -109,6 +116,14 @@ export function configureInterface(game) {
   fold(equip, 'commander-equipment', '隊長の装備・強化（全7部位）', [worn]);
   equip.prepend(get('commander-equipment'));
   const inventoryTools = element('div', 'list-tools'); inventoryTools.id = 'inventory-tools';
+  inventoryTools.dataset.group='weapon';
+  const equipmentGroups=element('div','equipment-group-tabs');equipmentGroups.setAttribute('role','tablist');equipmentGroups.setAttribute('aria-label','バッグの装備分類');
+  for(const [group,label] of [['weapon','武器'],['armor','防具・装飾']]){
+    const button=element('button','',label);button.type='button';button.setAttribute('role','tab');button.dataset.inventoryGroup=group;
+    button.onclick=()=>{inventoryTools.dataset.group=group;if(slot.value&&(slot.value==='weapon')!==(group==='weapon'))slot.value='';filterInventory(root);};
+    equipmentGroups.append(button);
+  }
+  get('inventory-list').before(equipmentGroups);
   const slotLabel = element('label', '', '装備の部位'); const slot = element('select'); slot.id = 'inventory-slot-filter';
   for (const [key, label] of [['', '全ての部位'], ['weapon', '武器'], ['shield', '盾'], ['helmet', '兜'], ['armor', '鎧'], ['gloves', '手'], ['legs', '脚'], ['amulet', '装飾']]) {
     const option = element('option', '', label); option.value = key; slot.append(option);
@@ -117,7 +132,8 @@ export function configureInterface(game) {
   const betterLabel = element('label', 'check-filter'); const better = element('input'); better.type = 'checkbox'; better.id = 'inventory-better-only';
   betterLabel.append(better, document.createTextNode('上昇項目あり')); inventoryTools.append(slotLabel, betterLabel);
   get('inventory-list').before(inventoryTools);
-  slot.onchange = better.onchange = () => filterInventory(root);
+  slot.onchange=()=>{if(slot.value)inventoryTools.dataset.group=slot.value==='weapon'?'weapon':'armor';filterInventory(root);};
+  better.onchange=()=>filterInventory(root);
   const inventoryCount = element('p', 'list-count'); inventoryCount.id = 'inventory-visible-count'; inventoryTools.after(inventoryCount);
   const inventoryEmpty = element('p', 'list-empty hidden', '条件に合う装備はありません。'); inventoryEmpty.id = 'inventory-filter-empty'; get('inventory-list').after(inventoryEmpty);
 
@@ -235,15 +251,17 @@ export function filterRoster(root) {
 }
 
 export function filterInventory(root) {
+  const group=root.querySelector('#inventory-tools')?.dataset.group||'weapon';
   const slot = root.querySelector('#inventory-slot-filter')?.value;
   const better = root.querySelector('#inventory-better-only')?.checked;
   const rows = [...root.querySelectorAll('#inventory-list > .inventory-card')];
   let visible = 0;
   for (const row of rows) {
-    const show = (!slot || row.dataset.slot === slot) && (!better || row.dataset.improves === 'true');
+    const show = (group==='weapon'?row.dataset.slot==='weapon':row.dataset.slot!=='weapon') && (!slot || row.dataset.slot === slot) && (!better || row.dataset.improves === 'true');
     row.classList.toggle('hidden', !show); if (show) visible++;
   }
-  const count = root.querySelector('#inventory-visible-count'); if (count) count.textContent = `${visible} / ${rows.length} 件表示 · 上昇項目は引継後も含む。売却選択は絞り込み後も保持。`;
+  for(const button of root.querySelectorAll('[data-inventory-group]'))button.setAttribute('aria-selected',String(button.dataset.inventoryGroup===group));
+  const count = root.querySelector('#inventory-visible-count'); if (count) count.textContent = `${group==='weapon'?'武器':'防具・装飾'} ${visible}件表示 · 強い順（総合性能）。上昇項目は引継後も含む。売却選択は切り替え後も保持。`;
   root.querySelector('#inventory-filter-empty')?.classList.toggle('hidden', visible > 0 || rows.length === 0);
 }
 
@@ -287,7 +305,7 @@ export function setSubDialog(game, host, open, close = null) {
   if (open) {
     if (!host._uiReturnFocus) host._uiReturnFocus = document.activeElement;
     host.setAttribute('role', 'dialog'); host.setAttribute('aria-modal', 'true');
-    host.setAttribute('aria-label', nested ? '兵士の個人記録' : '兵士へ装備を譲渡');
+    host.setAttribute('aria-label', nested ? '兵士の個人記録' : host.id==='merchant-shop-popup'?'商人の販売と補給':'兵士へ装備を譲渡');
     host._uiClose = close;
     if (!host._uiKeyHandler) {
       host._uiKeyHandler = event => {

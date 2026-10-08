@@ -260,6 +260,12 @@ export function equipmentScore(item) {
   return score;
 }
 
+// Rank by actual bonuses: an enhanced low-tier item can outrank poor high-tier gear.
+export function compareEquipmentStrength(a,b) {
+  const strength=item=>equipmentScore({...item,tier:1,upgrade:0});
+  return strength(b)-strength(a)||(b.tier||1)-(a.tier||1)||(b.upgrade||0)-(a.upgrade||0)||String(a.name||'').localeCompare(String(b.name||''),'ja');
+}
+
 /** 武器スタイル戦闘プロファイル
  * 近接: 剣=基準DPS / 槍=中距離貫通 / 鎚=高威力ノックバック
  * 遠隔: 弓=連射低威力 / クロスボウ=中速高威力 / 火砲=最遅最大火力（スプラッシュ）

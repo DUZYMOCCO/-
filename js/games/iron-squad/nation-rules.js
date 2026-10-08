@@ -1,6 +1,6 @@
-import {WORLD_SIZE} from './world.js?v=110';
-import {saleValue,isGodRollProtected} from './equipment-rules.js?v=110';
-import {calcTreasuryGrossIncome,calcCommanderStipend} from './economy-rules.js?v=110';
+import {WORLD_SIZE} from './world.js?v=113';
+import {saleValue,isGodRollProtected} from './equipment-rules.js?v=113';
+import {calcTreasuryGrossIncome,calcCommanderStipend,EQUIPMENT_SLOTS} from './economy-rules.js?v=113';
 
 export const DEVELOPMENT_STAGES=[
   {name:'野営本陣',cost:0}, {name:'城塞と宿場',cost:6000},
@@ -24,10 +24,37 @@ export function headquartersDamageMult(game,unit) {return inHeadquarters(game,un
 export function nationalIncome(game,phase,count) {return calcTreasuryGrossIncome(phase,count)+(game.nation?.level||0)*600;}
 export function fiscalTotals(l) {
   const receipts=(l?.income||0)+(l?.donations||0)+(l?.surplusSales||0)+(l?.treasuryReturns||0)+(l?.facilityRevenue||0)+(l?.defenseRewards||0);
-  const expenses=(l?.salariesPaid||0)+(l?.commanderStipend||0)+(l?.distributed||0)+(l?.buyouts||0)+(l?.developmentSpent||0);
+  const expenses=(l?.salariesPaid||0)+(l?.commanderStipend||0)+(l?.distributed||0)+(l?.buyouts||0)+(l?.equipmentProcurement||0)+(l?.developmentSpent||0);
   return {receipts,expenses,net:receipts-expenses};
 }
 export const nationMethods={
+  supplyMissingEquipment() {
+    const available=Math.max(0,(this.treasury||0)-Math.max(6000,nationalPayroll(this)*2));
+    const budget=Math.min(available,1500+(this.nation?.level||0)*250),cost=52;
+    let spent=0,issued=0;
+    const slots=Object.entries(EQUIPMENT_SLOTS),missing=s=>slots.filter(([,key])=>!s.equipped?.[key]).length;
+    // Deployed soldiers come first; round-robin avoids fully arming only the first few.
+    for(const group of [this.squad||[],this.reserves||[]]) {
+      const recipients=group.filter(s=>s&&!s.dead&&missing(s)).sort((a,b)=>missing(b)-missing(a));
+      let progress=true;
+      while(progress&&spent+cost<=budget) {
+        progress=false;
+        for(const soldier of recipients) {
+          const next=slots.find(([,key])=>!soldier.equipped?.[key]);
+          if(!next||spent+cost>budget)continue;
+          const [type,key]=next,item=this.createSupplyEquipment(type,soldier);
+          soldier.equipped||={};soldier.equipped[key]=item;if(key==='weapon')soldier.weapon=item;
+          this.recalcSoldierStats(soldier);spent+=cost;issued++;progress=true;
+        }
+      }
+    }
+    this.treasury-=spent;
+    if(!this.phaseFiscal)this.beginPhaseFiscal();
+    this.phaseFiscal.equipmentProcurement=(this.phaseFiscal.equipmentProcurement||0)+spent;
+    this.phaseFiscal.equipmentIssued=(this.phaseFiscal.equipmentIssued||0)+issued;
+    this.lastEquipmentSupply={phase:this.phase-1,issued,spent};
+    return this.lastEquipmentSupply;
+  },
   investNation() {
     this.nation=normalizeNation(this.nation);const previous=this.nation.level;
     const budget=Math.min(developmentBudget(this),DEVELOPMENT_STAGES.at(-1).cost-this.nation.investment);
@@ -74,6 +101,9 @@ export const nationMethods={
     const panel=this.container?.querySelector('#nation-status');if(!panel)return;
     const next=DEVELOPMENT_STAGES[n.level+1],current=this.phaseFiscal||{},totals=fiscalTotals(current);
     panel.innerHTML=`<h4>国家の財政状態</h4><p class="${(this.treasury||0)>=payroll?'positive':'negative'}">${(this.treasury||0)>=payroll?'給与原資を確保しています':'現在の給与原資が不足しています。次ウェーブの定期歳入で補充します'}</p><div class="nation-metrics"><div><small>国庫残高</small><strong>${money(this.treasury)}</strong></div><div><small>次ウェーブの定期歳入</small><strong>+${money(gross)}</strong></div><div><small>次の給与見込み · ${count}名</small><strong>−${money(payroll)}</strong></div><div><small>手当・給与支払後</small><strong>+${money(gross-stipend-payroll)}</strong></div></div><p>最低3,000G＋給与原資・指揮手当・発展税収を毎ウェーブ入金。</p><p>今ウェーブ：入金${money(totals.receipts)} / 支出${money(totals.expenses)}<br>寄付は国庫75%・兵士25%。余剰装備は通常売値の1.6倍で外販。</p><h4>${DEVELOPMENT_STAGES[n.level].name} · 発展Lv${n.level}</h4><progress max="${next?.cost||180000}" value="${n.investment}"></progress><p>累計開発${money(n.investment)}${next?` / 次は${next.name}（残り${money(next.cost-n.investment)}）`:' / 最大発展'}<br>本陣内の被ダメージ −${n.level*6}% · 回復 +${n.level*10}%<br>発展税収 +${money(n.level*600)} / ウェーブ</p><p>給与2回分または6,000Gを残し、余裕資金の25%をウェーブ終了時に自動投資。</p><button type="button" data-nation="invest" ${developmentBudget(this)<=0||!next?'disabled':''}>今すぐ開発へ ${money(Math.min(developmentBudget(this),Math.max(0,(next?180000:0)-n.investment)))}</button>`;
+    const missing=units=>units.filter(s=>s&&!s.dead).reduce((n,s)=>n+Object.values(EQUIPMENT_SLOTS).filter(key=>!s.equipped?.[key]).length,0);
+    const last=this.lastFiscalReport||{};
+    panel.insertAdjacentHTML('beforeend',`<h4>兵士への装備補給</h4><p>空き部位：出撃兵 ${missing(this.squad||[])} / 予備兵 ${missing(this.reserves||[])}<br>直近：${last.equipmentIssued||0}部位を支給 / 国庫支出 ${money(last.equipmentProcurement)}</p><p>毎ウェーブ、共有品を空き部位へ優先配布。不足分は標準T1装備を1部位52Gで調達します。出撃兵を優先し、給与2回分または6,000Gを残す範囲で補給。装備済みの品は買い替えません。</p>`);
     panel.querySelector('[data-nation="invest"]').onclick=()=>{this.investNation();this.saveGame();this.renderStrategyUI();this.updateStatsUI();};
     const facilities=this.container.querySelector('#nation-facilities'),town=this.currentDungeon?.kind==='town';
     const smith=this.equipped?.weapon,smithCost=smith?Math.max(1,Math.floor(this.getUpgradeCost(smith)*.8)):0;

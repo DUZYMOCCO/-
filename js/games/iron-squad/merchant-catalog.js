@@ -1,4 +1,4 @@
-import {EQUIPMENT_TYPES,saleValue} from './equipment-rules.js?v=110';
+import {EQUIPMENT_TYPES,saleValue} from './equipment-rules.js?v=113';
 export const MERCHANT_MAX_TIER=6;
 export const CATALOG_PRICE_MULT=3.2;
 export const catalogPrice=item=>Math.max(1,Math.floor(saleValue(item)*CATALOG_PRICE_MULT*Math.max(1,item.rollMult||1)*(item.merchantFeatured?1.15:1)));

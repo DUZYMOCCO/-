@@ -1,4 +1,4 @@
-import {combatPower} from './combat-rewards.js?v=110';
+import {combatPower} from './combat-rewards.js?v=113';
 export const FIELD_ADAPT_HP_CAP=8,FIELD_ADAPT_ATK_CAP=3;
 export function fieldArmyStrength(game) {
   const army=(game.squad||[]).filter(s=>s&&!s.dead).map(combatPower).sort((a,b)=>a-b);

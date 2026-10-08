@@ -1,4 +1,4 @@
-import {createSoldierAppearance,drawSoldierHead} from './soldier-appearance.js?v=110';
+import {createSoldierAppearance,drawSoldierHead} from './soldier-appearance.js?v=113';
 const colors={child:['#a88959','#667f89','#8b6e71'],woman:['#987c7b','#687f74','#867654'],elder:['#777b60','#887660','#6b787d']};
 function identity(id) {let n=2166136261;for(const ch of String(id)){n^=ch.charCodeAt(0);n=Math.imul(n,16777619);}return n>>>0;}
 function look(civ) {

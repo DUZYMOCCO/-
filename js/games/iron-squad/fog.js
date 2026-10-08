@@ -246,9 +246,8 @@ export class FogGrid {
     if (hasPlayer && !this.isExploredWorld(playerX, playerY)) return;
 
     // Perf v1.24.2: horizontal run-length batching — far fewer fillRect calls than per-cell.
-    // Exploration state belongs to the map. In the live field, unrevealed edge
-    // cells shade scenery rather than replace it with opaque black rectangles.
-    ctx.fillStyle = 'rgba(8,12,16,0.48)';
+    // Hide unexplored cells again; the reveal guards above keep the hero visible.
+    ctx.fillStyle = '#000000';
     for (let gy = gy0; gy <= gy1; gy++) {
       let runStart = -1;
       for (let gx = gx0; gx <= gx1; gx++) {

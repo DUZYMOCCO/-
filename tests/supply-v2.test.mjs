@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {strongEnemyReward,combatPower} from '../js/games/iron-squad/combat-rewards.js';
 import {JSDOM} from '../__pycache__/ui-tools/node_modules/jsdom/lib/api.js';
-import {AMMO_CAPACITY,initializeSupplies,updateSupplies,distributeAmmo,supplyLocation,ammoCombatProfile} from '../js/games/iron-squad/supply-rules.js';
+import {AMMO_CAPACITY,LETHAL_GUARD_COOLDOWN,initializeSupplies,updateSupplies,distributeAmmo,supplyLocation,ammoCombatProfile} from '../js/games/iron-squad/supply-rules.js';
 import {weaponCombatProfile} from '../js/games/iron-squad/equipment-rules.js';
 import {masteryReloadMult} from '../js/games/iron-squad/growth-rules.js';
 const dom=new JSDOM('<div id="game" class="game-container"></div>',{url:'http://localhost/'});
@@ -71,15 +71,30 @@ archer.ammo=30;distributeAmmo(game,4);assert.equal(game.ammoReserve,4);archer.am
 // Enemy ammo drops are independent of equipment loot.
 field();const oldRandom=Math.random;try{Math.random=()=>.1;const mob=enemy();mob.hp=0;game.monsters=[mob];game.killMonster(mob,game.player,true);assert.ok(game.dropsOnField.some(d=>d.isAmmo&&d.ammo>=2&&d.ammo<=6));}finally{Math.random=oldRandom;}
 // One controller click consumes exactly one potion; no revival, no double-use.
-field();const alive={id:'alive',soldierClass:'ARCHER',x:81000,y:81000,hp:1,maxHp:100,ammo:0},down={id:'down',x:81000,y:81000,hp:0,maxHp:100,ammo:0,isDown:true},dead={id:'dead',hp:0,maxHp:100,dead:true};
-game.squad=[alive,down,dead];game.reserves=[{id:'reserve',hp:1,maxHp:50,ammo:0}];game.player.hp=1;game.player.ammo=0;
-document.getElementById('btn-pad-potion').click();assert.equal(game.squadPotion,0);assert.equal(game.player.hp,game.player.maxHp);assert.equal(game.player.ammo,30);assert.equal(alive.hp,100);assert.equal(alive.ammo,30);assert.equal(game.reserves[0].hp,50);assert.equal(down.hp,0);assert.equal(down.ammo,0);assert.equal(dead.hp,0);
+field();const alive={id:'alive',isPersonalGuard:true,soldierClass:'ARCHER',x:81000,y:81000,hp:1,maxHp:100,ammo:0},down={id:'down',isPersonalGuard:true,x:81000,y:81000,hp:0,maxHp:100,ammo:0,isDown:true},dead={id:'dead',isPersonalGuard:true,hp:0,maxHp:100,dead:true};
+const main={id:'main',soldierClass:'MAGE',x:81000,y:81000,hp:2,maxHp:100,ammo:2,mana:3,maxMana:100,magicAffinity:'fire',magicRecovering:true};
+const healer={id:'healer',isPersonalGuard:true,soldierClass:'MEDIC',x:81000,y:81000,hp:1,maxHp:100,ammo:0,mana:0};
+game.squad=[alive,healer,down,dead,main];game.reserves=[{id:'reserve',isPersonalGuard:true,soldierClass:'MAGE',hp:1,maxHp:50,ammo:1,mana:1,maxMana:100,magicAffinity:'ice',magicRecovering:true}];game.player.hp=1;game.player.ammo=0;
+const mainBefore=structuredClone(main),reserveBefore=structuredClone(game.reserves[0]);
+document.getElementById('btn-pad-potion').click();assert.equal(game.squadPotion,0);assert.equal(game.player.hp,game.player.maxHp);assert.equal(game.player.ammo,30);assert.equal(alive.hp,100);assert.equal(alive.ammo,30);assert.equal(healer.hp,100);assert.equal(healer.mana,100);assert.equal(down.hp,0);assert.equal(down.ammo,0);assert.equal(dead.hp,0);
+assert.deepEqual(main,mainBefore,'co-located main army receives no HP/ammo/mana from potion');assert.deepEqual(game.reserves[0],reserveBefore,'reserves stay excluded even with a stale personal-guard flag');
+for(const kind of ['dungeon','ruin','town']){game.currentDungeon={id:'potion-instance',kind};Object.assign(alive,{x:180,y:180,hp:1,ammo:0});healer.hp=1;healer.mana=0;game.squadPotion=1;assert.equal(game.useSquadPotion(),true);assert.equal(alive.hp,100);assert.equal(healer.mana,100);assert.deepEqual(main,mainBefore);assert.deepEqual(game.reserves[0],reserveBefore);}
+game.currentDungeon=null;
 alive.hp=1;assert.equal(game.useSquadPotion(),false);assert.equal(alive.hp,1);
 assert.equal(game.replenishSquadPotion(),false);Object.assign(game.player,{x:79360,y:79360});assert.equal(game.replenishSquadPotion(),true);assert.equal(game.replenishSquadPotion(),false);
 game.squadPotion=0;const merchant={id:'vendor',x:79360,y:79360,hp:10,maxHp:10};game.merchants=[merchant];game.gold=299;assert.equal(game.replenishSquadPotion(merchant),false);game.gold=500;assert.equal(game.replenishSquadPotion(merchant),true);assert.equal(game.gold,200);assert.equal(game.replenishSquadPotion(merchant),false);
 // Effective lethal damage, player only, exact HP 1 and a 2-second timer.
 field();Object.assign(game.player,{hp:100,maxHp:100,def:0,dmgReduction:0,invulnerableTimer:0});game.damageTarget(game.player,100);assert.equal(game.player.hp,1);assert.equal(game.player.invulnerableTimer,2);game.damageTarget(game.player,1000);assert.equal(game.player.hp,1);
+assert.equal(game.player.lethalGuardCooldown,LETHAL_GUARD_COOLDOWN);assert.match(document.getElementById('retreat-warning').textContent,/再発動まで120秒/);
 assert.equal(document.getElementById('retreat-warning').classList.contains('hidden'),false);updateSupplies(game,1.99);assert.ok(game.player.invulnerableTimer>0);updateSupplies(game,.011);assert.equal(game.player.invulnerableTimer,0);
+game.squadPotion=1;assert.equal(game.useSquadPotion(),true);assert.ok(game.player.lethalGuardCooldown>117,'full healing cannot reset the guard');
+const cooldownBefore=game.player.lethalGuardCooldown,guardSave=structuredClone(game.saveGame());assert.equal(guardSave.player.lethalGuardCooldown,cooldownBefore);
+game.resumeSavedGame(guardSave);assert.equal(game.player.lethalGuardCooldown,cooldownBefore,'save/resume retains the actual cooldown');
+game.renderStrategyUI();assert.match(document.querySelector('.lethal-guard-status').textContent,/再発動まで118秒/);
+Object.assign(game.player,{x:79360,y:79360});assert.equal(game.saveCheckpoint(),true);game.player.lethalGuardCooldown=0;assert.equal(game.loadCheckpoint(),true);assert.equal(game.player.lethalGuardCooldown,cooldownBefore,'checkpoint loads restore the recorded cooldown too');Object.assign(game.player,{x:81000,y:81000});
+game.openStrategyModal(true);game.update(10);assert.equal(game.player.lethalGuardCooldown,cooldownBefore,'paused dialogs do not advance the cooldown');game.closeStrategyModal();
+let cooldownDeath=false;const actualGameOver=game.gameOver;game.gameOver=()=>{cooldownDeath=true;};Object.assign(game.player,{hp:100,maxHp:100,def:0,dmgReduction:0,invulnerableTimer:0});game.damageTarget(game.player,1000);assert.equal(cooldownDeath,true,'a second large hit during cooldown really kills the player');assert.equal(game.player.hp,0);assert.equal(game.player.invulnerableTimer,0);
+Object.assign(game.player,{hp:100,maxHp:100,def:0,dmgReduction:0});updateSupplies(game,cooldownBefore-.01);assert.ok(game.player.lethalGuardCooldown>0);updateSupplies(game,.02);assert.equal(game.player.lethalGuardCooldown,0);game.damageTarget(game.player,1000);assert.equal(game.player.hp,1);assert.equal(game.player.invulnerableTimer,2);assert.equal(game.player.lethalGuardCooldown,120);game.gameOver=actualGameOver;
 const ordinary={id:'ordinary',hp:100,maxHp:100,def:0,soldierClass:'HEAVY'};game.damageTarget(ordinary,1000);assert.ok(ordinary.isDown);assert.equal(ordinary.invulnerableTimer,undefined);
 let lost=false;game.gameOver=()=>{lost=true;};Object.assign(game.player,{hp:10,maxHp:100,def:0,invulnerableTimer:0,hitGrowthPct:.4});game.damageTarget(game.player,20);assert.equal(lost,true,'small damage remains lethal at low HP');
 // Independent checkpoints, actual UI clicks, immutable snapshot, saved supply state and slot isolation.
@@ -96,6 +111,7 @@ assert.deepEqual(saveSlots.get(firstSlot).checkpoint,savedCp);
 game.resumeSavedGame(structuredClone(baseline));game.closeStrategyModal();const actualTown=game.dungeons.find(d=>d.kind==='town');Object.assign(game.player,actualTown.entrance);const entry={x:game.player.x,y:game.player.y};game.enterDungeon(actualTown);
 assert.equal(game.currentDungeon.kind,'town');assert.equal(game.saveCheckpoint(),true);cp=saveSlots.get(firstSlot).checkpoint;assert.deepEqual({x:cp.data.player.x,y:cp.data.player.y},entry);assert.equal(game.loadCheckpoint(),true);assert.equal(game.currentDungeon,null);assert.deepEqual({x:game.player.x,y:game.player.y},entry);
 const legacy=structuredClone(baseline);delete legacy.squadPotion;delete legacy.ammoReserve;delete legacy.player.ammo;for(const s of legacy.squad)delete s.ammo;game.resumeSavedGame(legacy);assert.equal(game.squadPotion,1);assert.equal(game.player.ammo,30);assert.ok(game.squad.every(s=>s.ammo===30));
+delete legacy.player.lethalGuardCooldown;legacy.player.invulnerableTimer=1;game.resumeSavedGame(legacy);assert.equal(game.player.lethalGuardCooldown,120,'legacy saves with active protection receive a cooldown');legacy.player.invulnerableTimer=0;game.resumeSavedGame(legacy);assert.equal(game.player.lethalGuardCooldown,0,'untriggered legacy protection is available');
 // A fallen expedition can explicitly resume its manual checkpoint from selection.
 Object.assign(game.player,{x:79360,y:79360});game.gold=654;game.saveCheckpoint();game.gold=0;saveSlots.update(game.activeSlotId,{state:'fallen'});
 game.resizeCanvas=noop;game.render=noop;game.showSaveMenu();const checkpointButton=document.querySelector(`[data-checkpoint-slot="${game.activeSlotId}"]`);assert.ok(checkpointButton);checkpointButton.click();assert.equal(game.gold,654);assert.equal(saveSlots.get(game.activeSlotId).state,'active');
@@ -119,5 +135,5 @@ game.saveGame();assert.equal(saveSlots.get(game.activeSlotId).data.lastStrongKil
 field();const strongSoldier=structuredClone(baseline.squad[0]);strongSoldier.reqExp=1e9;strongSoldier.exp=0;game.squad=[strongSoldier];
 const soldierThreat={...enemy(),hp:0,maxHp:strongSoldier.maxHp*2,atk:strongSoldier.atk*2,def:strongSoldier.def,dmgReduction:strongSoldier.dmgReduction,lootDistance:0};
 game.monsters=[soldierThreat];game.killMonster(soldierThreat,strongSoldier,false);assert.equal(strongSoldier.exp,30,'soldiers receive the same relative-strength bonus');
-console.log('PASS: v2 real manual/auto/SNIPER/strong/outpost shots, 20%/75%, single-target stones, supply locations, any-collector ammo, reserve, independent enemy drop, one-click potion/no revival/purchase, lethal-hit threshold/2s/player-only, immutable checkpoints/quota/slot isolation/town entry/legacy migration, unchanged population; relative-strength XP/5x/25x/player/soldier/save/display');
+console.log('PASS: v2 real manual/auto/SNIPER/strong/outpost shots, 20%/75%, single-target stones, supply locations, any-collector ammo, reserve, independent enemy drop; personal-only potion in field/dungeon/ruin/town, no revival/main/reserves; lethal-hit 2s immunity/120s cooldown/second-hit death/rearm/heal/save/checkpoint/pause/legacy; immutable checkpoints/quota/slot isolation/town entry/legacy migration, unchanged population; relative-strength XP/5x/25x/player/soldier/save/display');
 dom.window.close();

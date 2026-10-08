@@ -46,6 +46,8 @@ export function emptyFiscalLedger(phase = 1, startBalance = 0) {
     distributeHeadcount: 0,
     buyouts: 0,
     buyoutCount: 0,
+    equipmentProcurement: 0,
+    equipmentIssued: 0,
     surplusSales: 0,
     surplusCount: 0,
     developmentSpent: 0,
@@ -163,6 +165,7 @@ export function formatFiscalReportJa(ledger) {
     `給与支払 −${(ledger.salariesPaid || 0).toLocaleString()}G（${ledger.salaryHeadcount || 0}名）${ledger.salaryShortfall ? ` / 不足${ledger.salaryShortfall.toLocaleString()}G` : ''}`,
     `寄付 ${(ledger.donations || 0).toLocaleString()}G → 全国配分 ${(ledger.distributed || 0).toLocaleString()}G（${ledger.distributeHeadcount || 0}名）`,
     `装備買取 −${(ledger.buyouts || 0).toLocaleString()}G（${ledger.buyoutCount || 0}件）`,
+    `不足装備補給 −${(ledger.equipmentProcurement || 0).toLocaleString()}G（${ledger.equipmentIssued || 0}部位）`,
     `外販 +${(ledger.surplusSales || 0).toLocaleString()}G（${ledger.surplusCount || 0}件）`,
     `開発 −${(ledger.developmentSpent || 0).toLocaleString()}G`,
     `国庫残高 ${(ledger.startBalance || 0).toLocaleString()}G → ${(ledger.endBalance || 0).toLocaleString()}G`
@@ -172,7 +175,7 @@ export function formatFiscalReportJa(ledger) {
 
 export function formatFiscalReportHtml(ledger) {
   if(!ledger)return '<p>まだウェーブが完了していません。最初の収支は終了時に記録されます。</p>';
-  const rows=[['定期歳入・発展税収',ledger.income,0],['寄付',ledger.donations,0],['装備の外販',ledger.surplusSales,0],['兵士資金の還流',ledger.treasuryReturns,0],['施設納税',ledger.facilityRevenue,0],['魔王軍撃退報奨',ledger.defenseRewards,0],['兵士給与',0,ledger.salariesPaid],['隊長の指揮手当',0,ledger.commanderStipend],['寄付から兵士へ配分',0,ledger.distributed],['装備の買取',0,ledger.buyouts],['本陣・町の開発',0,ledger.developmentSpent]];
+  const rows=[['定期歳入・発展税収',ledger.income,0],['寄付',ledger.donations,0],['装備の外販',ledger.surplusSales,0],['兵士資金の還流',ledger.treasuryReturns,0],['施設納税',ledger.facilityRevenue,0],['魔王軍撃退報奨',ledger.defenseRewards,0],['兵士給与',0,ledger.salariesPaid],['隊長の指揮手当',0,ledger.commanderStipend],['寄付から兵士へ配分',0,ledger.distributed],['装備の買取',0,ledger.buyouts],['不足部位の装備補給',0,ledger.equipmentProcurement],['本陣・町の開発',0,ledger.developmentSpent]];
   const receipts=rows.reduce((n,r)=>n+(r[1]||0),0),expenses=rows.reduce((n,r)=>n+(r[2]||0),0),balance=(ledger.endBalance||0)-(ledger.startBalance||0),calc=receipts-expenses;
   const f=n=>Math.floor(n||0).toLocaleString()+'G';
   return `<section class="fiscal-report-box"><h4>直近ウェーブの収支 · 第${ledger.phase}期</h4><div class="fiscal-net ${balance>=0?'positive':'negative'}">${balance>=0?'黒字 +':'赤字 '}${f(balance)}</div><div class="fiscal-table"><table><thead><tr><th>項目</th><th>収入</th><th>支出</th></tr></thead><tbody>${rows.map(r=>`<tr><th>${r[0]}</th><td>${r[1]?'+ '+f(r[1]):'—'}</td><td>${r[2]?'− '+f(r[2]):'—'}</td></tr>`).join('')}<tr class="fiscal-total"><th>合計</th><td>+ ${f(receipts)}</td><td>− ${f(expenses)}</td></tr></tbody></table></div><p>期首 ${f(ledger.startBalance)} → 期末 ${f(ledger.endBalance)}</p>${ledger.salaryShortfall?`<p class="negative">給与不足 ${f(ledger.salaryShortfall)}</p>`:''}${Math.abs(balance-calc)>1?'<p>旧版の記録は一部の取引内訳が不足しています。残高差を実際の収支として表示しています。</p>':''}</section>`;
@@ -183,21 +186,24 @@ export function formatFiscalReportHtml(ledger) {
  * @returns {{ equippedCount: number, remaining: array }}
  */
 const sharedScore=item=>item?equipmentScore({...item,tier:1,upgrade:0})-1000:0;
+export const EQUIPMENT_SLOTS={WEAPON:'weapon',ARMOR:'armor',SHIELD:'shield',HELMET:'helmet',LEGS:'legs',GLOVES:'gloves',AMULET:'amulet'};
 
 export function distributeSharedBoxToSoldiers(box, soldiers, recalcFn) {
-  const remaining=[...new Map((box||[]).filter(Boolean).map(i=>[i.id,i])).values()];let equippedCount=0;
-  const slots={WEAPON:'weapon',ARMOR:'armor',SHIELD:'shield',HELMET:'helmet',LEGS:'legs',GLOVES:'gloves',AMULET:'amulet'};
-  const alive=(soldiers||[]).filter(s=>s&&!s.dead&&!s.isDown).sort((a,b)=>Object.values(a.equipped||{}).reduce((n,i)=>n+sharedScore(i),0)-Object.values(b.equipped||{}).reduce((n,i)=>n+sharedScore(i),0));
-  for(const soldier of alive){soldier.equipped||={};let changed=false;
-    for(const [type,key] of Object.entries(slots)){
+  const held=new Set((soldiers||[]).flatMap(s=>Object.values(s?.equipped||{}).filter(Boolean).map(i=>i.id)));
+  const remaining=[...new Map((box||[]).filter(i=>i&&!held.has(i.id)).map(i=>[i.id,i])).values()];let equippedCount=0;
+  const alive=(soldiers||[]).filter(s=>s&&!s.dead),changed=new Set();
+  for(const [type,key] of Object.entries(EQUIPMENT_SLOTS)){
+    // Fill empty slots before upgrading existing equipment, including wounded soldiers.
+    const recipients=[...alive].sort((a,b)=>Number(!!a.equipped?.[key])-Number(!!b.equipped?.[key])||sharedScore(a.equipped?.[key])-sharedScore(b.equipped?.[key]));
+    for(const soldier of recipients){soldier.equipped||={};
       const cur=soldier.equipped[key],score=cur?sharedScore(cur):0;if(cur?.favorite)continue;
       const candidates=remaining.filter(i=>i.type===type&&!i.favorite&&!isGodRollProtected(i)&&(!cur||sharedScore(i)>score)).sort((a,b)=>sharedScore(b)-sharedScore(a));
       const item=candidates[0];if(!item)continue;
       remaining.splice(remaining.indexOf(item),1);soldier.equipped[key]=item;if(key==='weapon')soldier.weapon=item;
-      if(cur&&!remaining.some(i=>i.id===cur.id))remaining.push(cur);equippedCount++;changed=true;
+      if(cur&&!remaining.some(i=>i.id===cur.id))remaining.push(cur);equippedCount++;changed.add(soldier);
     }
-    if(changed&&typeof recalcFn==='function')recalcFn(soldier);
   }
+  if(typeof recalcFn==='function')for(const soldier of changed)recalcFn(soldier);
   return {equippedCount,remaining};
 }
 

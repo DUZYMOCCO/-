@@ -1,0 +1,35 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {JSDOM} from '../__pycache__/ui-tools/node_modules/jsdom/lib/api.js';
+import {resetBattleLog,BATTLE_LOG_LIMIT} from '../js/games/iron-squad/battle-log.js';
+const css=['game-ui','iron-squad','iron-squad-interface'].map(n=>readFileSync(new URL(`../css/${n}.css`,import.meta.url),'utf8')).join('\n');
+const dom=new JSDOM(`<style>${css}</style><div id="game" class="game-container iron-squad"></div>`,{url:'http://localhost/'});
+Object.assign(globalThis,{window:dom.window,document:dom.window.document,localStorage:dom.window.localStorage,screen:{}});
+const noop=()=>{},ctx=new Proxy({measureText:()=>({width:40}),createLinearGradient:()=>({addColorStop:noop}),createRadialGradient:()=>({addColorStop:noop})},{get:(o,k)=>k in o?o[k]:noop});
+window.HTMLCanvasElement.prototype.getContext=()=>ctx;
+const {IronSquadGame}=await import('../js/games/iron-squad/index.js'),{saveSlots}=await import('../js/games/iron-squad/save-slots.js');
+const game=Object.create(IronSquadGame);Object.assign(game,{container:document.getElementById('game'),width:390,height:774,zoom:1,ctx,camera:{x:79360,y:79360},commandActiveUntil:0,selectedSaleIds:new Set(),joystick:{active:false,dirX:0,dirY:0}});
+for(const key of ['startGameLoop','spawnDamageText','spawnSparks'])game[key]=noop;
+game.setupUI();game.activeSlotId=saveSlots.create('LOG CONTROLS TEST ONLY').id;game.startFreshGame(false);const initial=structuredClone(game.saveGame());resetBattleLog(game);
+const stream=document.getElementById('battle-log-stream'),originalSet=globalThis.setTimeout,originalClear=globalThis.clearTimeout,pending=new Map();let sequence=0;
+try{
+  globalThis.setTimeout=fn=>{const id=++sequence;pending.set(id,fn);return id;};globalThis.clearTimeout=id=>pending.delete(id);
+  game.showToast('以前の通知');const previousFade=pending.get(game._battleLogTimer);
+  for(let i=0;i<130;i++)game.showToast(`衛生救護！兵士${i}が戦線復帰。報酬と武勲を含む長い通知。`.repeat(4));
+  assert.equal(stream.children.length,1,'bursts never create stacked panels');assert.match(stream.textContent,/兵士129/);
+  assert.equal(pending.size,1,'one timer regardless of the number of messages');assert.equal(game.battleLogHistory.length,BATTLE_LOG_LIMIT);
+  assert.match(game.battleLogHistory[0].text,/兵士30/);assert.equal(new Set(game.battleLogHistory.map(e=>e.id)).size,BATTLE_LOG_LIMIT);
+  previousFade();assert.notEqual(stream.firstElementChild.style.opacity,'0','an old notification cannot hide the latest message');
+  assert.equal(window.getComputedStyle(stream.firstElementChild).whiteSpace,'nowrap');assert.equal(window.getComputedStyle(stream.firstElementChild).textOverflow,'ellipsis');
+  assert.equal(window.getComputedStyle(document.getElementById('battle-log-window')).gridRow,'3');
+}finally{globalThis.setTimeout=originalSet;globalThis.clearTimeout=originalClear;game._battleLogTimer=null;}
+document.getElementById('btn-battle-log-history').click();
+assert.equal(document.getElementById('strategy-modal').classList.contains('hidden'),false);assert.equal(document.getElementById('command-battle-log').open,true);
+assert.equal(document.querySelectorAll('#battle-log-history > li').length,100);assert.match(document.getElementById('battle-log-history').lastElementChild.textContent,/兵士129/);
+assert.equal(game.inBattle,false,'history uses the existing paused headquarters');assert.equal(game.joystick.active,false);
+game.closeStrategyModal();const potion=document.getElementById('btn-pad-potion');
+assert.ok(potion.closest('.pad-move-column'));assert.equal(potion.closest('.pad-buttons-zone'),null,'potion is separated from attack controls');assert.equal(window.getComputedStyle(potion).height,'48px');
+game.player.hp=10;game.squadPotion=1;game.inBattle=true;potion.click();assert.equal(game.squadPotion,0);assert.equal(game.player.hp,game.player.maxHp);potion.click();assert.equal(game.squadPotion,0);
+game.resumeSavedGame(initial);assert.ok(!game.battleLogHistory.some(e=>e.text.includes('兵士129')),'history does not cross into a different resumed expedition');
+clearTimeout(game._battleLogTimer);dom.window.close();
+console.log('PASS: one bottom ticker, 100 full history entries, bounded timers and stale-timer protection, headquarters history/pause, separate 48px potion and one-click use, expedition reset');

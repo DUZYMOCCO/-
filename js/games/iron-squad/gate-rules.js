@@ -1,7 +1,8 @@
-import {drawStoneFortification} from './fortification-visuals.js?v=110';
-import {WORLD_SIZE} from './world.js?v=110';
-import {makeEscort,recalcEscortStats,updateEscortPatrol,npcSave,applyNpcSave} from './merchant-rules.js?v=110';
-import {rebuildMerchantCasualties,carrierOf,sanitizeCarriers} from './casualty-rules.js?v=110';
+import {drawStoneFortification} from './fortification-visuals.js?v=113';
+import {WORLD_SIZE} from './world.js?v=113';
+import {inCurrentInstance} from './instance-rules.js?v=113';
+import {makeEscort,recalcEscortStats,updateEscortPatrol,npcSave,applyNpcSave} from './merchant-rules.js?v=113';
+import {rebuildMerchantCasualties,carrierOf,sanitizeCarriers} from './casualty-rules.js?v=113';
 const center=WORLD_SIZE/2;
 export const GATE_HALF_WIDTH=80,HQ_WALL_HALF_SIZE=300;
 export function wallGeometry(game) {
@@ -48,7 +49,7 @@ export function applyFortifications(game,dt) {
     u._wallSpace=space;u._wallX=u.x;u._wallY=u.y;
   }
 }
-export const gateGuardVisible=(game,g)=>!g.dead&&(g.gateSpace==='field'?!game.currentDungeon:g.gateSpace===game.currentDungeon?.id);
+export const gateGuardVisible=(game,g)=>!g.dead&&(game.currentDungeon?inCurrentInstance(game,g):g.gateSpace==='field');
 function buildGuard(game,id,name,x,y,space,distance=1200,index=0) {
   const owner={id,x,y,distance};const guard=makeEscort(owner,index%2,1);
   Object.assign(guard,{id,isGateGuard:true,name,title:'',gateSpace:space,gateOrigin:space,x,y,homeX:x,homeY:y});
@@ -112,7 +113,7 @@ export const gateMethods={
 export const serializeGatePosts=game=>(game.gatePosts||[]).map(p=>({...p}));
 export function serializeGateGuards(game) {return (game.gateGuards||[]).map(g=>{
   const data={id:g.id,gateSpace:g.gateSpace,gateOrigin:g.gateOrigin,gatePostId:g.gatePostId,gateTownId:g.gateTownId,...npcSave(g)};
-  if(game.currentDungeon&&g.gateSpace===game.currentDungeon.id&&g.carrierId&&game.savedFieldPos){data.gateSpace='field';data.x=game.savedFieldPos.x-12;data.y=game.savedFieldPos.y+10;data.homeX=center;data.homeY=center;}
+  if(game.currentDungeon&&inCurrentInstance(game,g)&&g.carrierId&&game.savedFieldPos){data.gateSpace='field';data.x=game.savedFieldPos.x-12;data.y=game.savedFieldPos.y+10;data.homeX=center;data.homeY=center;}
   return data;
 });}
 export function exitGateTown(game,townId) {

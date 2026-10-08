@@ -1,7 +1,8 @@
-import {ensureMana,regenerateMana,spendMana} from './magic-rules.js?v=110';
+import {ensureMana,regenerateMana,spendMana} from './magic-rules.js?v=113';
 import {recordHealing} from './phase-rules.js';
 import {WORLD_SIZE} from './world.js';
-import {grantPermanentRescueReward} from './rescue-rewards.js?v=110';
+import {inCurrentInstance} from './instance-rules.js?v=113';
+import {grantPermanentRescueReward} from './rescue-rewards.js?v=113';
 
 export const RESCUE_TIMEOUT = 45; // 救助猶予時間（秒）広域マップ対応で45秒に延長
 export const isMedic=unit=>['MEDIC','HIGH_PRIEST','SAINT','ARCHANGEL'].includes(unit?.soldierClass);
@@ -68,11 +69,7 @@ const CIV_NAME_POOL={
 
 // Town visitors, field armies and NPCs use distinct coordinate spaces.
 export function isLocalRescueUnit(game,unit) {
-  const d=game.currentDungeon;if(!d)return false;
-  if(unit===game.player)return true;
-  if(unit?.isGateGuard)return unit.gateSpace===d.id;
-  if(isMerchantCasualty(unit))return false;
-  return (game.squad||[]).includes(unit)&&(d.kind!=='town'||unit.isPersonalGuard);
+  return inCurrentInstance(game,unit);
 }
 export function aidStations(game,unit=null) {
   const d=game.currentDungeon;
