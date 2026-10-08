@@ -1236,10 +1236,12 @@ export const IronSquadGame = {
                     <div id="treasury-status-line" style="margin-top:6px;color:#a5f3fc;">国庫残高: —</div>
                   </div>
                   <div id="view-econ-scout" class="hidden" style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.35);border-radius:6px;padding:8px;margin-bottom:8px;font-size:11px;">
-                    <div style="color:#fbbf24;font-weight:bold;margin-bottom:4px;">🔍 スカウト / 放逐</div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap;">
+                      <span style="color:#fbbf24;font-weight:bold;">🔍 スカウト / 放逐</span>
+                      <button id="btn-refresh-scouts" class="mini-btn" style="background:#92400e;color:#fff;font-size:10px;padding:3px 8px;border:none;border-radius:4px;cursor:pointer;flex-shrink:0;">🔄 候補を再募集 (無料)</button>
+                    </div>
                     <div style="color:#94a3b8;margin-bottom:6px;">本隊・自部隊ともに雇用可。強い候補ほど高額。名簿の各兵士から放逐できます。</div>
                     <div id="scout-candidates-list"></div>
-                    <button id="btn-refresh-scouts" class="mini-btn" style="margin-top:6px;background:#92400e;color:#fff;font-size:10px;">候補を再募集 (無料)</button>
                   </div>
                   <div id="view-econ-box" class="hidden" style="background:rgba(56,189,248,0.08);border:1px solid rgba(56,189,248,0.3);border-radius:6px;padding:8px;margin-bottom:8px;font-size:11px;">
                     <div style="color:#38bdf8;font-weight:bold;margin-bottom:4px;">📦 国庫共有ボックス</div>

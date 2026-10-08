@@ -318,9 +318,9 @@
   width:100%;min-width:0;height:44px;box-sizing:border-box;padding:0 8px;
   background:#101b22c9;border-top:1px solid #53696b;border-radius:0;pointer-events:none;
 }
-.iron-squad .pad-move-column { grid-column:1;grid-row:2;display:flex;flex-direction:column;align-items:flex-start;gap:24px;min-width:0; }
-.iron-squad .pad-move-column .pad-stick-zone { grid-column:auto;grid-row:auto; }
-.iron-squad .pad-move-column #btn-pad-potion { grid-column:auto;grid-row:auto;width:76px;height:48px;min-height:48px;align-self:center;font-size:12px;pointer-events:auto; }
+.iron-squad .pad-move-column { grid-column:1;grid-row:2;display:flex;flex-direction:row;align-items:flex-end;gap:8px;min-width:0; }
+.iron-squad .pad-move-column .pad-stick-zone { grid-column:auto;grid-row:auto;flex-shrink:0; }
+.iron-squad .pad-move-column #btn-pad-potion { grid-column:auto;grid-row:auto;width:64px;height:48px;min-height:48px;align-self:flex-end;font-size:11px;pointer-events:auto;margin-bottom:8px; }
 .iron-squad .battle-log-stream { min-width:0;overflow:hidden;display:block; }
 .iron-squad .battle-log-msg { background:transparent;border:0;box-shadow:none;color:#d5ddd3;font-size:11px;font-weight:normal;line-height:1.5;padding:0;text-align:left;white-space:nowrap;word-break:normal;overflow:hidden;text-overflow:ellipsis;animation:none; }
 .iron-squad .battle-log-msg.boss-alert, .iron-squad .battle-log-msg.item-alert, .iron-squad .battle-log-msg.levelup-alert { background:transparent;border:0;box-shadow:none; }
