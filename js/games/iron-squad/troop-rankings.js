@@ -1,7 +1,7 @@
-import {salaryQuote,salaryFundingContext} from './payroll-rules.js?v=138';
-import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=138';
-import {economicHonorBudget} from './regional-economy.js?v=138';
-import {talentTag as talentLabel} from './talent-labels.js?v=138';
+import {salaryQuote,salaryFundingContext} from './payroll-rules.js?v=143';
+import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=143';
+import {economicHonorBudget} from './regional-economy.js?v=143';
+import {talentTag as talentLabel} from './talent-labels.js?v=143';
 /**
  * 兵士の武勲・ステータスランキングシステム
  * 各ステータス（総合・撃破・ボス・攻撃・防御・HP・回復・死線）を詳細にランキング化し、

@@ -1,12 +1,13 @@
-import {WORLD_SIZE} from './world.js?v=138';
-import {combatPower} from './combat-rewards.js?v=138';
-import {persistentUnit} from './render-support.js?v=138';
-import {sound} from '../../audio.js?v=138';
+import {WORLD_SIZE} from './world.js?v=143';
+import {combatPower} from './combat-rewards.js?v=143';
+import {persistentUnit} from './render-support.js?v=143';
+import {sound} from '../../audio.js?v=143';
 
 export const INVASION_FIRST_PHASE=3,INVASION_INTERVAL=4,INVASION_MARCH_SECONDS=25,INVASION_BATTLE_SECONDS=70;
 export const MAJOR_FIRST_PHASE=11,MAJOR_INTERVAL=8,MAJOR_MARCH_SECONDS=35,MAJOR_BATTLE_SECONDS=125;
-// v2.7 balance: idle/basic-captain defence must collapse with high probability across RNG seeds (verified 21 seeds: 24701,1..20; retuned 1.5/1.4 -> 2.0/1.6 after the soldier class balance pass); trained defence still wins.
-const MAJOR_HP_SCALE=2.0,MAJOR_ATK_SCALE=1.6;
+// A bounded regular force gives equipment development a real hurdle to overcome.
+export const REGULAR_INVASION_RULES=Object.freeze({hpFloor:180,hpCeiling:360,atkFloor:36,atkCeiling:72,defFloor:18,defCeiling:50,count:28,hpScale:12,atkScale:16,attackReach:58,cleaveRadius:20});
+const MAJOR_HP_SCALE=2.25,MAJOR_ATK_SCALE=1.8;
 export const RANDOM_RAID_MIN_PHASE=8,RANDOM_RAID_GAP=8,RANDOM_RAID_CHANCE=.12;
 const center=WORLD_SIZE/2;
 const positive=(x,f=1)=>Number.isFinite(x)&&x>0?x:f;
@@ -20,6 +21,10 @@ export function invasionStrength(game) {
 export function majorInvasionStrength(reference,number=1) {
   const growth=1+Math.min(2,Math.max(0,number-1)*.12);
   return {...reference,hp:reference.hp*growth,atk:reference.atk*(1+Math.min(1,Math.max(0,number-1)*.06)),def:reference.def,count:36};
+}
+export function regularInvasionStrength(strength) {
+ const r=REGULAR_INVASION_RULES,clamp=(v,min,max)=>Math.max(min,Math.min(max,positive(v,min)));
+ return {...strength,hp:clamp(strength.hp,r.hpFloor,r.hpCeiling),atk:clamp(strength.atk,r.atkFloor,r.atkCeiling),def:clamp(strength.def,r.defFloor,r.defCeiling),count:r.count};
 }
 export function majorReference(strength) {
   return {...strength,hp:Math.max(120,Math.min(220,positive(strength?.hp,120))),atk:Math.max(24,Math.min(48,positive(strength?.atk,24))),def:Math.max(15,Math.min(50,positive(strength?.def,15))),count:36};
@@ -56,9 +61,9 @@ export const invasionMethods={
     const castle=(this.dungeons||[]).find(d=>d.id==='dungeon_demon_castle');if(castle?.cleared)return false;
     s.kind=(this.phase||1)>=s.nextMajorPhase?'major':'regular';s.stage='marching';s.marchDuration=s.kind==='major'?MAJOR_MARCH_SECONDS:INVASION_MARCH_SECONDS;s.eta=s.marchDuration;s.remaining=s.kind==='major'?MAJOR_BATTLE_SECONDS:INVASION_BATTLE_SECONDS;s.sequence++;
     const strength=invasionStrength(this);
-    if(s.kind==='major'){s.majorReference ||= majorReference(strength);s.majorCount++;s.nextMajorPhase=(this.phase||1)+MAJOR_INTERVAL;s.strength=majorInvasionStrength(s.majorReference,s.majorCount);}else s.strength=strength;
+    if(s.kind==='major'){s.majorReference ||= majorReference(strength);s.majorCount++;s.nextMajorPhase=(this.phase||1)+MAJOR_INTERVAL;s.strength=majorInvasionStrength(s.majorReference,s.majorCount);}else s.strength=regularInvasionStrength(strength);
     s.source={...(castle?.entrance||{x:center+42000,y:center+42000})};s.nextPhase=(this.phase||1)+INVASION_INTERVAL;
-    this.showToast(s.kind==='major'?`壊滅危険！魔王城の本格侵攻軍が出撃。${s.eta}秒後に到着。隊長の救援・育成兵・衛生兵で迎撃し、撤退も判断せよ`:`魔王城から第${s.sequence}侵攻軍が出撃！25秒後に本陣南東へ到着。門番・本隊と迎撃せよ`);sound.playBomb();this.refreshInvasionUI();this.saveGame();return true;
+    this.showToast(s.kind==='major'?`壊滅危険！魔王城の本格侵攻軍が出撃。${s.eta}秒後に到着。隊長の救援・育成兵・衛生兵で迎撃し、撤退も判断せよ`:`壊滅危険！魔王城から第${s.sequence}侵攻軍が出撃。25秒後に本陣の三方向へ展開。初期装備での迎撃は厳しい。救援・退避を判断せよ`);sound.playBomb();this.refreshInvasionUI();this.saveGame();return true;
   },
   arriveDemonInvasion() {
     const s=this.invasions;if(!s||s.stage!=='marching')return;
@@ -68,16 +73,17 @@ export const invasionMethods={
     s.stage='battle';s.eta=0;
     for(let i=0;i<count;i++) {
       const major=s.kind==='major',commander=i===0,elite=major&&!commander&&i%6===0,flanker=!commander&&!elite&&i%4===0,offset=(i%5-2)*60,rank=Math.floor(i/5)*48;
-      const HS=MAJOR_HP_SCALE,AS=MAJOR_ATK_SCALE;const hp=Math.round(strength.hp*(major?HS*(commander?90:elite?40:flanker?18:24):(commander?8:flanker?2.2:3))),def=Math.min(180,strength.def*(major?1.3:commander?.85:.55)+(major?(commander?100:elite?75:55):(commander?18:5)));
-      const cap=strength.heroHp*.24*(1+strength.heroDef*.012);
-      const atk=Math.max(2,Math.round(major?AS*strength.atk*(commander?14:elite?12:flanker?8:10):Math.min(strength.atk*(commander?1.15:flanker?.65:.8),cap)));
-      this.monsters.push({id:`invasion_${s.sequence}_${i}`,x:center+520+offset,y:center+490+rank,homeX:center+520,homeY:center+490,
+      const r=REGULAR_INVASION_RULES,HS=MAJOR_HP_SCALE,AS=MAJOR_ATK_SCALE;const hp=Math.round(strength.hp*(major?HS*(commander?90:elite?40:flanker?18:24):r.hpScale*(commander?8:flanker?2.2:3))),def=Math.min(180,strength.def*(major?1.3:commander?.85:.55)+(major?(commander?100:elite?75:55):(commander?18:5)));
+      const cap=Math.max(130,Math.min(260,strength.heroHp||130))*.24*(1+Math.max(0,Math.min(20,strength.heroDef||0))*.012);
+      const atk=Math.max(2,Math.round(major?AS*strength.atk*(commander?14:elite?12:flanker?8:10):r.atkScale*Math.min(strength.atk*(commander?1.15:flanker?.65:.8),cap)));
+      const angle=(i%3-1)*Math.PI/3+Math.PI/4,distance=650+Math.floor(i/3)*35,x=major?center+520+offset:center+Math.cos(angle)*distance,y=major?center+490+rank:center+Math.sin(angle)*distance;
+      this.monsters.push({id:`invasion_${s.sequence}_${i}`,x,y,homeX:x,homeY:y,
         type:flanker?'wolf':'orc',name:major?(commander?'魔王軍・征服将軍':elite?'魔王軍・攻城黒騎士':flanker?'魔王軍・上位魔獣':'魔王軍・精鋭黒鎧兵'):commander?'魔王軍・侵攻隊長':flanker?'魔王軍・魔獣騎兵':'魔王軍・黒鎧兵',title:major?'【本格侵攻】':'魔王城侵攻軍',
         hp,maxHp:hp,atk,def,dmgReduction:major?(commander?30:elite?25:20):commander?12:5,speed:major?(flanker?95:78):flanker?86:commander?64:70,radius:commander?23:flanker?13:16,
-        color:'#754851',isBoss:commander,isInvasionCommander:commander,isDemonInvasion:true,attackReach:major?(commander?100:elite?78:flanker?30:52):0,cleaveRadius:major?(commander?65:elite?45:0):0,isMajorInvasion:major,isMajorElite:elite,isRaidMob:true,attackInterval:major?.85:1,atkTimer:.3+(i%4)*.15,hitPulse:0,
+        color:'#754851',isBoss:commander,isInvasionCommander:commander,isDemonInvasion:true,attackReach:major?(commander?100:elite?78:flanker?30:52):r.attackReach,cleaveRadius:major?(commander?65:elite?45:0):commander?35:r.cleaveRadius,isMajorInvasion:major,isMajorElite:elite,isRaidMob:true,attackInterval:major?.85:1,atkTimer:.3+(i%4)*.15,hitPulse:0,
         lootDistance:Math.min(22000,1200+strength.level*180)});
     }
-    this.showToast(s.kind==='major'?'本格侵攻軍が到着！放置防衛は壊滅危険。隊長の強撃・育成兵・衛生兵を投入せよ':'魔王軍が本陣南東へ到着！門を守り、侵攻隊長を倒して全軍を撃退せよ');this.refreshInvasionUI();this.saveGame();
+    this.showToast(s.kind==='major'?'本格侵攻軍が到着！放置防衛は壊滅危険。隊長の強撃・育成兵・衛生兵を投入せよ':'魔王軍が本陣の三方向へ展開！初期軍は壊滅危険。隊長の救援・育成兵・衛生兵で門を守れ');this.refreshInvasionUI();this.saveGame();
   },
   finishDemonInvasion(outcome) {
     const s=this.invasions;if(!s||s.stage==='idle')return false;
@@ -110,10 +116,10 @@ export const invasionMethods={
   refreshInvasionUI() {
     const s=this.invasions;if(!s)return;const stopped=(this.dungeons||[]).some(d=>d.id==='dungeon_demon_castle'&&d.cleared);
     const count=(this.currentDungeon?this.savedFieldMonsters||[]:this.monsters||[]).filter(m=>m.isDemonInvasion&&m.hp>0).length;
-    const danger=s.kind==='major'?'本格侵攻・壊滅危険':'魔王軍';
+    const danger=s.kind==='major'?'本格侵攻・壊滅危険':'魔王軍・壊滅危険';
     const text=stopped?'魔王城制圧済み · 定期侵攻停止':s.stage==='marching'?`${danger}が南東から進軍中 · 到着まで${Math.ceil(s.eta)}秒`:s.stage==='battle'?`${danger}迎撃 · 残り${count}体 / ${Math.ceil(s.remaining)}秒`:`次の${s.nextPhase>=s.nextMajorPhase?'本格侵攻（壊滅危険）':'魔王軍侵攻'} · 第${s.nextPhase}ウェーブ`;
     const banner=this.container?.querySelector('#demon-invasion-banner');if(banner){banner.classList.toggle('hidden',s.stage==='idle'||!!this.currentDungeon);banner.textContent=text;banner.dataset.major=String(s.kind==='major'&&s.stage!=='idle');}
-    const panel=this.container?.querySelector('#nation-defense');if(panel){panel.replaceChildren();const heading=document.createElement('h4');heading.textContent='魔王軍と本陣防衛';const info=document.createElement('p');info.textContent=text+(this.currentDungeon&&s.stage!=='idle'?'（町・ダンジョン滞在中は進行待機）':'');const rules=document.createElement('p');rules.textContent='第3ウェーブから4ウェーブ間隔。25秒の出撃予告。敵の戦力は出撃時の現役部隊に合わせて固定。第11ウェーブから本格侵攻が8ウェーブ間隔で混ざる。本格侵攻は35秒前に予告し、放置防衛は壊滅危険。育成で対抗可能。既存の強襲は低頻度の抽選。';panel.append(heading,info,rules);const pending=(this.gatePosts||[]).filter(p=>p.townId&&p.refillAtPhase);if(pending.length){const relief=document.createElement('p');relief.textContent=`町の門番補充：${pending.length}か所 · 最短あと${Math.max(0,Math.min(...pending.map(p=>p.refillAtPhase))-(this.phase||1))}ウェーブ。救助者は本陣に残ります。`;panel.append(relief);}if(s.lastResult){const result=document.createElement('p');result.textContent=`直近：第${s.lastResult.phase}ウェーブ · ${({victory:'撃退成功',timeout:'敵軍撤退',overrun:'本隊制圧','castle-fallen':'魔王城制圧'})[s.lastResult.outcome]||'撤退'}`;panel.append(result);}}
+    const panel=this.container?.querySelector('#nation-defense');if(panel){panel.replaceChildren();const heading=document.createElement('h4');heading.textContent='魔王軍と本陣防衛';const info=document.createElement('p');info.textContent=text+(this.currentDungeon&&s.stage!=='idle'?'（町・ダンジョン滞在中は進行待機）':'');const rules=document.createElement('p');rules.textContent='第3ウェーブから4ウェーブ間隔。25秒の出撃予告。通常軍も初期装備では壊滅危険。28体が三方向へ展開し、戦力には下限と上限があるため育成で乗り越えられる。第11ウェーブから本格侵攻が8ウェーブ間隔で混ざる。本格侵攻は35秒前に予告し、放置防衛は壊滅危険。育成で対抗可能。既存の強襲は低頻度の抽選。';panel.append(heading,info,rules);const pending=(this.gatePosts||[]).filter(p=>p.townId&&p.refillAtPhase);if(pending.length){const relief=document.createElement('p');relief.textContent=`町の門番補充：${pending.length}か所 · 最短あと${Math.max(0,Math.min(...pending.map(p=>p.refillAtPhase))-(this.phase||1))}ウェーブ。救助者は本陣に残ります。`;panel.append(relief);}if(s.lastResult){const result=document.createElement('p');result.textContent=`直近：第${s.lastResult.phase}ウェーブ · ${({victory:'撃退成功',timeout:'敵軍撤退',overrun:'本隊制圧','castle-fallen':'魔王城制圧'})[s.lastResult.outcome]||'撤退'}`;panel.append(result);}}
   }
 };
 export function drawInvasionRoute(ctx,game,px,py,inside) {

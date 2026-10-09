@@ -1,5 +1,5 @@
-import {WORLD_SIZE,fieldBlocks} from './world.js?v=138';
-import {inCurrentInstance} from './instance-rules.js?v=138';
+import {WORLD_SIZE,fieldBlocks} from './world.js?v=143';
+import {inCurrentInstance} from './instance-rules.js?v=143';
 import {isSoldierOnExpedition} from './expedition-rules.js';
 export const LIMITED_CLASSES=Object.freeze({
  NINJA:{id:'NINJA',name:'忍者',icon:'🥷',baseClassId:'LIGHT',combatClass:'LIGHT',color:'#8e97ac',range:250,speed:136,atkCooldown:.75,bonusHp:5,bonusAtk:12,desc:'刀と手裏剣を間合いに応じて使い分ける。'},
@@ -19,7 +19,7 @@ export const LIMITED_SETTLEMENTS=locations.map(([id,name,limitedClass,ox,oy])=>{
 });
 const alive=u=>u&&!u.dead&&!u.isDown&&u.hp>0;
 export function initializeLimitedAllies(game,saved=null) {
- game.limitedAllies={version:1,encounters:Array.isArray(saved?.encounters)?saved.encounters.filter(e=>e?.id&&e.unit?.id&&LIMITED_CLASSES[e.unit.soldierClass]):[],joinedIds:[...new Set(saved?.joinedIds||[])]};
+ game.limitedAllies={version:1,encounters:Array.isArray(saved?.encounters)?saved.encounters.filter(e=>e?.id&&e.unit?.id&&LIMITED_CLASSES[e.unit.soldierClass]):[],joinedIds:[...new Set(saved?.joinedIds||[])],joinNoticeIds:Array.isArray(saved?.joinNoticeIds)?saved.joinNoticeIds.filter(id=>typeof id==='string').slice(-8):[]};
 }
 export function createLimitedAlly(game,classId,origin) {
  const def=LIMITED_CLASSES[classId];if(!def)return null;
@@ -61,7 +61,7 @@ export function joinLimitedEncounter(game,id) {
     &&(game.squad||[]).filter(u=>!u.dead).length<(game.limitedDeploymentLimit?.()??48);
   Object.assign(s,{isPersonalGuard:room,x:game.player.x+28,y:game.player.y+18,joinedFrom:e.kind==='cage'?'rescue':'settlement'});
   if(room)(game.squad||=[]).push(s);else {s.x=WORLD_SIZE/2;s.y=WORLD_SIZE/2;(game.reserves||=[]).push(s);}
-  game.showToast?.(`${s.name}が${room?'直属部隊':'予備部隊'}に加入しました`);
+  notifyLimitedJoin(game,[s]);
  }
  e.joined=true;game.limitedAllies.joinedIds.push(e.unit.id);game.saveGame?.();game.updateStatsUI?.();return true;
 }
@@ -69,7 +69,38 @@ export function serializeLimitedAllies(game) {
  const state=game.limitedAllies||{version:1,encounters:[],joinedIds:[]};
  return {...state,encounters:state.encounters.map(e=>e.joined?{...e,unit:{id:e.unit.id,soldierClass:e.unit.soldierClass}}:e)};
 }
+export function notifyLimitedJoin(game,units) {
+ game.limitedAllies||initializeLimitedAllies(game);
+ const limited=units.filter(u=>LIMITED_CLASSES[u.soldierClass]);if(!limited.length)return;
+ game.limitedAllies.joinNoticeIds=[...new Set([...(game.limitedAllies.joinNoticeIds||[]),...limited.map(u=>u.id)])].slice(-8);
+ for(const u of limited){const reserve=(game.reserves||[]).some(s=>s.id===u.id);game.showToast?.(reserve?`【予備兵に加入】${u.name}。本陣で待機し、出撃枠の欠員時に合流します。`:u.isPersonalGuard?`【直属部隊に加入】${u.name}が隊長に同行します。`:`【本隊に加入】${u.name}が出撃部隊に合流しました。`);}
+ renderLimitedJoinNotice(game);
+}
+function renderLimitedJoinNotice(game) {
+ const host=game.container?.querySelector('.field-alerts');if(!host)return;
+ let notice=host.querySelector('#limited-join-notice');
+ if(!notice){
+  notice=document.createElement('section');notice.id='limited-join-notice';notice.className='limited-join-notice hidden';notice.setAttribute('role','status');notice.setAttribute('aria-live','polite');
+  const title=document.createElement('strong');title.className='limited-join-title';const names=document.createElement('div');names.className='limited-join-names';const hint=document.createElement('p');hint.className='limited-join-hint';
+  const actions=document.createElement('div');actions.className='limited-join-actions';
+  const roster=document.createElement('button');roster.type='button';roster.textContent='加入兵の名簿';roster.id='btn-limited-join-roster';
+  roster.onclick=()=>{game.rosterManageTab='roster';game.openStrategyModal?.(true);game._selectStratTab?.('troops');const reserves=game.container.querySelector('#reserve-roster');if(reserves&&notice.dataset.hasReserves==='true'){reserves.open=true;reserves.scrollIntoView?.({block:'start'});reserves.querySelector('summary')?.focus({preventScroll:true});}};
+  const close=document.createElement('button');close.type='button';close.textContent='確認';close.id='btn-limited-join-dismiss';close.setAttribute('aria-label','加入通知を閉じる');
+  close.onclick=()=>{game.limitedAllies.joinNoticeIds=[];renderLimitedJoinNotice(game);game.saveGame?.();};
+  actions.append(roster,close);notice.append(title,names,hint,actions);host.append(notice);
+ }
+ const ids=new Set(game.limitedAllies?.joinNoticeIds||[]),reserves=game.reserves||[];
+ const units=[...(game.squad||[]),...reserves].filter(u=>ids.has(u.id)&&!u.dead);notice.classList.toggle('hidden',!units.length);
+ const badge=game.container.querySelector('.menu-join-count');if(badge){badge.textContent=String(units.length);badge.classList.toggle('hidden',!units.length);game.container.querySelector('#btn-strategy')?.setAttribute('aria-label',units.length?`メニューを開く（仲間の加入通知${units.length}件）`:'メニューを開く');}
+ if(!units.length)return;
+ const waiting=units.filter(u=>reserves.some(s=>s.id===u.id)),signature=units.map(u=>`${u.id}:${waiting.includes(u)?'reserve':u.isPersonalGuard?'personal':'army'}`).join('|');
+ if(notice.dataset.signature===signature)return;notice.dataset.signature=signature;notice.dataset.hasReserves=String(waiting.length>0);
+ notice.querySelector('.limited-join-title').textContent=waiting.length===units.length?'予備兵に加入しました':waiting.length?'仲間が加入しました':'部隊に加入しました';
+ const names=notice.querySelector('.limited-join-names');names.replaceChildren();for(const u of units){const row=document.createElement('div');row.textContent=`${waiting.includes(u)?'予備兵':u.isPersonalGuard?'直属部隊':'本隊'}：${u.name}`;names.append(row);}
+ notice.querySelector('.limited-join-hint').textContent=waiting.length?'予備兵は本陣で待機。出撃枠に欠員が出ると合流します。':'加入した仲間は出撃中です。';
+}
 export function updateLimitedAllies(game) {
+ renderLimitedJoinNotice(game);
  const root=game.container;if(!root)return;
  let button=root.querySelector('#btn-limited-ally');
  if(!button){const host=root.querySelector('.field-interactions');if(!host)return;button=document.createElement('button');button.id='btn-limited-ally';button.className='phase-btn';button.type='button';host.append(button);}

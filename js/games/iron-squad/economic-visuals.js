@@ -1,4 +1,4 @@
-import {ECONOMIC_REGIONS,PUBLIC_WORKS,ECONOMIC_RULES} from './regional-economy.js?v=138';
+import {ECONOMIC_REGIONS,PUBLIC_WORKS,ECONOMIC_RULES} from './regional-economy.js?v=143';
 const visible=(game,x,y,r=250)=>Math.abs(x-game.camera.x)<game.width/(2*(game.zoom||1))+r&&Math.abs(y-game.camera.y)<game.height/(2*(game.zoom||1))+r;
 const ellipse=(c,x,y,rx,ry,color)=>{c.fillStyle=color;c.beginPath();c.ellipse(x,y,rx,ry,0,0,Math.PI*2);c.fill();};
 function drawCivicKeep(ctx,level,urban) {

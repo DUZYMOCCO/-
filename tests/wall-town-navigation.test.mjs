@@ -4,8 +4,8 @@ import {resolve} from 'node:path';
 import {writeFileSync,mkdirSync,readFileSync} from 'node:fs';
 import {JSDOM} from '../__pycache__/ui-tools/node_modules/jsdom/lib/api.js';
 import {WORLD_SIZE} from '../js/games/iron-squad/world.js';
-import {drawFortification,wallGeometry,gatePositions,resolveWallMovement,townExitReached} from '../js/games/iron-squad/gate-rules.js?v=138';
-import {attachCivilian,updateCivilians,syncDragged,releaseWounded,markSoldierDown,attachWounded} from '../js/games/iron-squad/casualty-rules.js?v=138';
+import {drawFortification,wallGeometry,gatePositions,resolveWallMovement,townExitReached} from '../js/games/iron-squad/gate-rules.js?v=139';
+import {attachCivilian,updateCivilians,syncDragged,releaseWounded,markSoldierDown,attachWounded} from '../js/games/iron-squad/casualty-rules.js?v=139';
 const dom=new JSDOM('<div id="game"></div>',{url:'http://localhost/'});
 Object.assign(globalThis,{window:dom.window,document:dom.window.document,localStorage:dom.window.localStorage,confirm:()=>true,alert:()=>{}});
 const noop=()=>{},fakeCtx=new Proxy({measureText:()=>({width:40}),createLinearGradient:()=>({addColorStop:noop}),createRadialGradient:()=>({addColorStop:noop})},{get:(o,k)=>k in o?o[k]:noop});window.HTMLCanvasElement.prototype.getContext=()=>fakeCtx;
@@ -30,7 +30,7 @@ game.resumeSavedGame(save);assert.equal(game.civilians[0].carrierId,'player');as
 fresh();const soldier=game.squad[0];Object.assign(game.player,{x:town.entrance.x+110,y:town.entrance.y});Object.assign(soldier,{x:game.player.x+35,y:game.player.y});markSoldierDown(game,soldier);attachWounded(game,game.player,soldier);game.enterDungeon(town);assert.equal(soldier.isDown,false);assert.equal(soldier.hp,soldier.maxHp);assert.equal(soldier.carrierId,undefined);
 // HUD ticks in a quiet town instead of depending on a kill or an action to refresh.
 game.squad=[];game.monsters=[];game.gateGuards=[];game.currentQuest=null;game.phaseTimer=90;game.updateStatsUI();const oldTimer=document.getElementById('phase-timer-display').textContent;tick+=1000;game.update(1);assert.notEqual(document.getElementById('phase-timer-display').textContent,oldTimer);assert.equal(game.container.dataset.location,'town');
-assert.equal(document.getElementById('merchant-prompt-banner').parentElement.className,'field-interactions');assert.equal(document.querySelector('.field-interactions').parentElement.id,'virtual-gamepad');const style=document.createElement('style');style.textContent=readFileSync('css/iron-squad-interface.css','utf8');document.head.append(style);assert.equal(window.getComputedStyle(document.querySelector('.field-status')).display,'none','town mode clears status panels from the upper field');
+assert.equal(document.getElementById('merchant-prompt-banner').parentElement.className,'field-interactions');assert.equal(document.querySelector('.field-interactions').parentElement.id,'battle-menu-nearby');const style=document.createElement('style');style.textContent=readFileSync('css/iron-squad-interface.css','utf8');document.head.append(style);assert.equal(window.getComputedStyle(document.querySelector('.field-status')).display,'none','town mode clears status panels from the upper field');
 // Every opening still permits movement and every solid wall still blocks it.
 for(const mode of ['field','town']){
   const fixture={currentDungeon:mode==='town'?{kind:'town',width:1600,height:1000}:null},w=wallGeometry(fixture);

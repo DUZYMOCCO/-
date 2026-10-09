@@ -152,6 +152,42 @@
 }
 .iron-squad .field-alerts #demon-invasion-banner { border-color:#ad8880 !important; background:#382d30ed !important; color:#ead6c3; pointer-events:none !important; }
 .iron-squad .field-alerts #demon-invasion-banner[data-major=true] { border-color:#d0a677 !important; background:#4a2b31ed !important; color:#f3d6b3; font-weight:bold; }
+.iron-squad .limited-join-notice { pointer-events:auto; width:100%; box-sizing:border-box; padding:10px 12px; border:1px solid #968667; border-radius:8px; background:#1a2931f5; color:#e2d2ac; text-align:left; }
+.iron-squad .limited-join-title { display:block; font-size:16px; line-height:1.4; }
+.iron-squad .limited-join-names { margin-top:4px; font-size:13px; line-height:1.5; overflow-wrap:anywhere; max-height:4.5em; overflow:auto; }
+.iron-squad .limited-join-hint { margin:5px 0 8px; font-size:12px; line-height:1.5; color:#b9c5c9; }
+.iron-squad .limited-join-actions { display:flex; gap:8px; }
+.iron-squad .field-alerts .limited-join-actions button { flex:1; min-width:0; min-height:44px; border:1px solid #667b88; border-radius:6px; background:#283b47; color:#eee4cd; font-size:13px !important; cursor:pointer; touch-action:manipulation; }
+.iron-squad .limited-join-notice.hidden { display:none !important; }
+
+/* Quiet battlefield: live information and nearby actions belong to the menu. */
+.iron-squad.quiet-battlefield > .game-header { display:none !important; }
+.iron-squad.quiet-battlefield #canvas-container > #btn-strategy { position:absolute; top:max(12px,env(safe-area-inset-top)); right:max(12px,env(safe-area-inset-right)); z-index:35; width:60px; min-height:56px; height:auto; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; padding:7px; font-size:19px; background:#20313bea; border:1px solid #788b93; border-radius:9px; color:#e3d4aa; pointer-events:auto; touch-action:manipulation; }
+.iron-squad.quiet-battlefield #btn-strategy small { font-size:10px; }
+.iron-squad .menu-join-count { position:absolute; top:-5px; left:-5px; min-width:18px; height:18px; line-height:18px; border-radius:50%; background:#dbc691; color:#1e2e35; font-size:11px; }
+.iron-squad .menu-join-count.hidden, .iron-squad .menu-attention.hidden { display:none; }
+.iron-squad .menu-attention { position:absolute; right:-4px; bottom:-4px; width:10px; height:10px; border-radius:50%; background:#d27a55; }
+.iron-squad.quiet-battlefield .navigation-overlay { position:absolute; top:14%; left:50%; right:auto; transform:translateX(-50%); width:auto !important; height:auto !important; border:0 !important; border-radius:0; background:transparent !important; box-shadow:none !important; padding:0; z-index:8; pointer-events:none !important; }
+.iron-squad.quiet-battlefield .navigation-overlay canvas { display:block; max-width:90vw; }
+.iron-squad.quiet-battlefield .battle-log-window { display:none !important; }
+.iron-squad.quiet-battlefield #virtual-gamepad { grid-template-rows:auto; row-gap:0; padding-bottom:max(12px,env(safe-area-inset-bottom)); }
+.iron-squad.quiet-battlefield .pad-move-column, .iron-squad.quiet-battlefield .pad-buttons-column { grid-row:1; }
+.iron-squad .battlefield-menu { margin:0 0 14px; padding:12px; border:1px solid var(--ui-line); border-radius:8px; background:var(--ui-panel); }
+.iron-squad .battlefield-menu h4 { margin:0 0 8px; font-size:15px; color:var(--ui-gold); }
+.iron-squad .battlefield-menu .battle-menu-status { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px 12px; margin-bottom:12px; }
+.iron-squad .battlefield-menu .field-alerts { position:static; top:auto !important; left:auto !important; transform:none !important; width:100% !important; max-width:100% !important; align-items:stretch; pointer-events:auto; margin-bottom:12px; }
+.iron-squad .battlefield-menu .field-alerts .phase-banner { width:100% !important; box-sizing:border-box; padding:8px !important; white-space:normal; line-height:1.6; }
+.iron-squad .battlefield-menu .field-alerts #base-raid-banner { max-width:100% !important; white-space:normal !important; }
+.iron-squad .battlefield-menu .field-alerts #btn-raid-warp { min-height:44px !important; }
+.iron-squad .battle-menu-nearby > p, .iron-squad .navigation-legend { margin:6px 0 10px; font-size:12px; color:var(--ui-muted); line-height:1.6; }
+.iron-squad .battlefield-menu .field-interactions { width:100%; margin-bottom:10px; pointer-events:auto; }
+.iron-squad .battlefield-menu .field-interactions .phase-banner { width:100% !important; box-sizing:border-box; transform:none !important; flex-wrap:wrap !important; }
+.iron-squad .battlefield-menu #merchant-banner-text, .iron-squad .battlefield-menu #dungeon-banner-text { white-space:normal; }
+.iron-squad .battlefield-menu #btn-open-merchant, .iron-squad .battlefield-menu #btn-enter-dungeon { min-height:44px; }
+.iron-squad .battle-menu-info .field-status, .iron-squad .battle-menu-info .proximity-badge, .iron-squad .battle-menu-info .quest-banner, .iron-squad .battle-menu-info .base-badge, .iron-squad .battle-menu-info .transport-badge { position:static !important; transform:none !important; width:100%; max-width:100%; box-sizing:border-box; margin:5px 0; white-space:normal; }
+.iron-squad .battle-menu-info .field-status { display:flex; align-items:stretch; }
+.iron-squad .battle-menu-tools { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-top:10px; }
+.iron-squad .battle-menu-tools button { position:static !important; top:auto !important; right:auto !important; min-height:44px; width:100%; height:auto; box-sizing:border-box; padding:8px; border:1px solid var(--ui-line); background:var(--ui-panel-soft); color:var(--ui-text); border-radius:6px; font-size:12px; }
 .iron-squad .field-alerts button { min-height: 24px; font-size: 10px !important; padding: 2px 7px !important; background: var(--ui-gold) !important; color: var(--ui-bg) !important; border-radius: 5px !important; }
 
 /* 非表示要素は最優先でdisplay:noneを徹底 */

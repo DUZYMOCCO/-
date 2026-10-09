@@ -13,7 +13,7 @@ export function categorizeLogMessage(text) {
   if (/レベルアップ|Lv\.|昇進|昇格|覚醒|死線|マスター|習得|才能|成長|開花/.test(text)) return 'growth';
   if (/撃破|討伐|ボス|制圧|撃退|会心|大物|勝利|討ち取/.test(text)) return 'combat';
   if (/獲得|ドロップ|秘宝|宝珠|宝玉|入手|購入|支給|配備|鍛錬/.test(text)) return 'loot';
-  if (/倒れた|ダウン|搬送|救助|蘇生|治療|回復|救援|強襲|危険|🚨|重傷/.test(text)) return 'rescue';
+  if (/倒れた|ダウン|搬送|救助|加入|蘇生|治療|回復|救援|強襲|危険|🚨|重傷/.test(text)) return 'rescue';
   return 'other';
 }
 

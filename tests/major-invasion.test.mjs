@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import {JSDOM} from '../__pycache__/ui-tools/node_modules/jsdom/lib/api.js';
 import {WORLD_SIZE} from '../js/games/iron-squad/world.js';
-import {majorReference,majorInvasionStrength} from '../js/games/iron-squad/invasion-rules.js?v=138';
-import {replenishTownGateGuards,serializeGateGuards,serializeGatePosts} from '../js/games/iron-squad/gate-rules.js?v=138';
+import {majorReference,majorInvasionStrength} from '../js/games/iron-squad/invasion-rules.js?v=139';
+import {replenishTownGateGuards,serializeGateGuards,serializeGatePosts} from '../js/games/iron-squad/gate-rules.js?v=139';
 import {markSoldierDown,updateWounded,syncDragged} from '../js/games/iron-squad/casualty-rules.js';
 let simulationTime=0;const originalPerformance=globalThis.performance,originalDateNow=Date.now;Date.now=()=>1700000000000;Object.defineProperty(globalThis,'performance',{configurable:true,value:{now:()=>simulationTime}});
 let seed=24701;const originalRandom=Math.random;Math.random=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};

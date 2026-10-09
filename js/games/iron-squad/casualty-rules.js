@@ -1,8 +1,8 @@
-import {ensureMana,regenerateMana,spendMana} from './magic-rules.js?v=138';
+import {ensureMana,regenerateMana,spendMana} from './magic-rules.js?v=143';
 import {recordHealing,recordDown} from './phase-rules.js';
 import {WORLD_SIZE} from './world.js';
-import {inCurrentInstance} from './instance-rules.js?v=138';
-import {grantPermanentRescueReward} from './rescue-rewards.js?v=138';
+import {inCurrentInstance} from './instance-rules.js?v=143';
+import {grantPermanentRescueReward} from './rescue-rewards.js?v=143';
 import {grantPersonalExp,revivalExperience} from './experience-rules.js';
 import {attributeCarryCapacity} from './unit-attributes.js';
 

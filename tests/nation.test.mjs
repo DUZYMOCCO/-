@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
 import {resolve} from 'node:path';
 import {JSDOM} from '../__pycache__/ui-tools/node_modules/jsdom/lib/api.js';
-import {normalizeNation,DEVELOPMENT_STAGES,headquartersDamageMult,fiscalTotals,drawNationalDevelopment} from '../js/games/iron-squad/nation-rules.js?v=138';
+import {normalizeNation,DEVELOPMENT_STAGES,headquartersDamageMult,fiscalTotals,drawNationalDevelopment} from '../js/games/iron-squad/nation-rules.js?v=139';
 import {distributeSharedBoxToSoldiers,sellWeakSurplusFromBox,calcTreasuryGrossIncome,calcCommanderStipend} from '../js/games/iron-squad/economy-rules.js';
 import {saleValue} from '../js/games/iron-squad/equipment-rules.js';
 const dom=new JSDOM('<div id="game"></div>',{url:'http://localhost/'});
@@ -23,7 +23,7 @@ for(let wave=0;wave<12;wave++){
   assert.ok(game.treasury>=Math.max(6000,headcount*40),'investment keeps salary reserves');
   assert.equal(game.phaseFiscal.phase,game.phase);game.finishRest();
 }
-assert.ok(game.nation.economy.regions.hq.level>=1);assert.ok(game.nation.investment>=3500);assert.equal(game.squad.length,48);assert.ok(game.reserves.length>=60);
+assert.ok(game.nation.economy.regions.hq.level>=1);assert.ok(game.nation.investment>=3500);assert.equal(game.squad.length,48);assert.equal(game.reserves.length,48);
 // Donations during the safe interval stay in the next period's ledger.
 game.completePhase();game.gold=10000;game.donateToTreasury(1000);const restDonation=game.phaseFiscal.donations;game.finishRest();assert.equal(game.phaseFiscal.donations,restDonation);assert.ok(restDonation>=1000);
 const gear=(id,type,n,tier=1)=>({id,name:id,type,tier,upgrade:0,stats:{atk:n,def:n},baseStats:{atk:n,def:n},color:'#ddd'});

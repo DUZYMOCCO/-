@@ -1,8 +1,8 @@
 /**
  * スマホゲーム工房 メインアプリケーション
  */
-import { games, getGameById } from './games-registry.js?v=138';
-import { sound } from './audio.js?v=138';
+import { games, getGameById } from './games-registry.js?v=143';
+import { sound } from './audio.js?v=143';
 import { storage } from './storage.js';
 
 class GameStudioApp {
@@ -59,7 +59,7 @@ class GameStudioApp {
 
     // サービスワーカー登録 (クエリパラメータ付与でSafariのSWキャッシュを即時更新)
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('./sw.js?v=138').catch((err) => {
+      navigator.serviceWorker.register('./sw.js?v=143').catch((err) => {
         console.log('SW registration failed:', err);
       });
     }
