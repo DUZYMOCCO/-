@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
 import {JSDOM} from '../__pycache__/ui-tools/node_modules/jsdom/lib/api.js';
 import {WORLD_SIZE} from '../js/games/iron-squad/world.js';
-import {catalogTier,ensureMerchantCatalog,latestEquipmentTier,markMerchantPurchase} from '../js/games/iron-squad/merchant-catalog.js?v=129';
-import {serializeMerchants,merchantBuyPrice} from '../js/games/iron-squad/merchant-rules.js?v=129';
-import {fieldAdaptiveScaling} from '../js/games/iron-squad/field-scaling.js?v=129';
-import {DROP_EXCLUSIVES,rollDropExclusive} from '../js/games/iron-squad/drop-exclusives.js?v=129';
-import {isGodRollProtected,compareEquipment,distanceScaling} from '../js/games/iron-squad/equipment-rules.js?v=129';
+import {catalogTier,ensureMerchantCatalog,latestEquipmentTier,markMerchantPurchase} from '../js/games/iron-squad/merchant-catalog.js?v=132';
+import {serializeMerchants,merchantBuyPrice} from '../js/games/iron-squad/merchant-rules.js?v=132';
+import {fieldAdaptiveScaling} from '../js/games/iron-squad/field-scaling.js?v=132';
+import {DROP_EXCLUSIVES,rollDropExclusive} from '../js/games/iron-squad/drop-exclusives.js?v=132';
+import {isGodRollProtected,compareEquipment,distanceScaling} from '../js/games/iron-squad/equipment-rules.js?v=132';
 const dom=new JSDOM('<div id="game"></div>',{url:'http://localhost/'});
 Object.assign(globalThis,{window:dom.window,document:dom.window.document,localStorage:dom.window.localStorage,confirm:()=>true,alert:()=>{}});
 const noop=()=>{},ctx=new Proxy({measureText:()=>({width:40}),createLinearGradient:()=>({addColorStop:noop}),createRadialGradient:()=>({addColorStop:noop})},{get:(o,k)=>k in o?o[k]:noop});window.HTMLCanvasElement.prototype.getContext=()=>ctx;
@@ -26,14 +26,27 @@ for(let phase=1;phase<=40;phase++){game.phase=phase;ensureMerchantCatalog(game,n
 game.phase=40;const before=structuredClone(near.stock);assert.equal(ensureMerchantCatalog(game,near,generateRandomDrop),false);assert.deepEqual(near.stock,before);
 const featured=near.stock[0];markMerchantPurchase(near,featured,40);near.stock.shift();assert.equal(ensureMerchantCatalog(game,near,generateRandomDrop),false);assert.equal(near.stock.some(i=>i.merchantFeatured),false);near.stock=[];assert.equal(ensureMerchantCatalog(game,near,generateRandomDrop),false);assert.equal(near.stock.length,0);game.phase=41;ensureMerchantCatalog(game,near,generateRandomDrop);assert.equal(near.stock.length,6);assert.equal(near.stock[0].merchantFeatured,true);assert.notEqual(near.stock[0].id,featured.id);
 assert.notDeepEqual(near.stock.map(i=>[i.type,i.rollMult]),far.stock.map(i=>[i.type,i.rollMult]),'individual merchants have different featured goods');
-// Existing strong equipment and inherited upgrade preview appear before buying; buying weak gear keeps it in the bag.
+// Merchant comparisons use the actual purchased item; buying does not inherit upgrades.
 fresh();const m=game.merchants[0],current=generateRandomDrop(0,'normal',{tier:1,type:'SHIELD',quality:1,upgrade:20,id:'current-shield',merchant:true});game.equipped.shield=current;game.recalcPlayerStats();
 const item=generateRandomDrop(0,'normal',{tier:2,type:'SHIELD',quality:1.2,upgrade:0,id:'buy-shield',merchant:true});Object.assign(item,{merchantFeatured:true,merchantQuality:'特選'});item._merchantPrice=merchantBuyPrice(item);m.stock=[item];m.catalogVersion=2;m.stockPhase=1;m.stockTier=2;game.gold=0;game.player.x=m.x;game.player.y=m.y;game.openMerchantShop(m);
-const card=document.querySelector('.merchant-stock-card');assert.match(card.textContent,/一長一短/);assert.match(card.textContent,/引継後/);assert.match(card.textContent,/強くなる/);assert.match(card.textContent,/防御|HP/);assert.ok(card.querySelector('.stat-delta-down'));assert.equal(card.style.opacity,'');assert.equal(card.querySelector('[data-buy]').disabled,true);
-game.gold=100000;game._merchantShopRefresh();const gold=game.gold,treasury=game.treasury,techBeforePurchase=game.nation.armament.techTier;document.querySelector('[data-buy]').click();assert.equal(game.nation.armament.techTier,techBeforePurchase,'a purchase alone cannot advance manufacturing');assert.equal(game.gold,gold-item._merchantPrice);assert.equal(game.treasury,treasury);assert.ok(game.inventory.some(i=>i.id===item.id));assert.equal(game.sharedEquipBox.some(i=>i.id===item.id),false);assert.equal(m.featuredSoldPhase,1);assert.match(document.getElementById('merchant-shop-popup').textContent,/購入済み/);
+const card=document.querySelector('.merchant-stock-card');assert.match(card.textContent,/一長一短/);assert.doesNotMatch(card.textContent,/引継後/);assert.match(card.textContent,/防御|HP/);assert.ok(card.querySelector('.stat-delta-down'));assert.equal(card.style.opacity,'');assert.equal(card.querySelector('[data-buy]').disabled,true);
+game.gold=100000;game._merchantShopRefresh();const gold=game.gold,treasury=game.treasury,techBeforePurchase=game.nation.armament.techTier;document.querySelector('[data-buy]').click();assert.equal(game.nation.armament.techTier,techBeforePurchase,'a purchase alone cannot advance manufacturing');assert.equal(game.gold,gold-item._merchantPrice);assert.equal(game.treasury,treasury);assert.equal(item.upgrade,0);assert.equal(current.upgrade,20);assert.ok(game.inventory.some(i=>i.id===current.id));assert.ok(game.inventory.some(i=>i.id===item.id));assert.equal(game.sharedEquipBox.some(i=>i.id===item.id),false);assert.equal(m.featuredSoldPhase,1);assert.match(document.getElementById('merchant-shop-popup').textContent,/購入済み/);
 game._merchantShopClose();game.openMerchantShop(m);assert.equal(m.stock.some(x=>x.merchantFeatured),false,'rank advancement cannot restock the featured item in the same wave');assert.ok(m.stock.every(x=>x.tier===2));m.stock=[];game.openMerchantShop(m);assert.equal(m.stock.length,0,'same-rank sold-out catalog stays empty');game._merchantShopClose();
 game.saveGame();const saved=structuredClone(saveSlots.get(game.activeSlotId).data);game.resumeSavedGame(saved);const restored=game.merchants.find(x=>x.id===m.id);assert.equal(restored.stock.length,0);assert.equal(restored.featuredSoldPhase,1);assert.equal(game.merchantEquipmentTier,2);assert.deepEqual(serializeMerchants(game.merchants).find(x=>x.id===m.id).stock,[]);
 game.completePhase();assert.ok(restored.stock.length===6);assert.ok(restored.stock[0].merchantFeatured);assert.equal(restored.stockTier,Math.min(24,game.nation.armament.techTier+1),'the refreshed market follows actual manufacturing, including legitimate funded research');
+// A different weapon family must never advertise unperformed upgrade transfer.
+fresh();
+const weaponMerchant=game.merchants[0];
+const oldWeapon=generateRandomDrop(0,'normal',{tier:1,type:'WEAPON',weaponStyle:'sword',quality:1,upgrade:12,id:'old-sword',merchant:true});
+const boughtWeapon=generateRandomDrop(0,'normal',{tier:2,type:'WEAPON',weaponStyle:'bow',quality:1,upgrade:0,id:'bought-bow',merchant:true});
+game.equipped.weapon=oldWeapon;game.inventory=[oldWeapon];game.recalcPlayerStats();game.gold=100000;
+boughtWeapon._merchantPrice=52;Object.assign(weaponMerchant,{stock:[boughtWeapon],catalogVersion:2,stockPhase:1,stockTier:2});
+game.openMerchantShop(weaponMerchant);
+assert.notEqual(oldWeapon.weaponStyle,boughtWeapon.weaponStyle);
+assert.doesNotMatch(document.querySelector('.merchant-stock-card').textContent,/引継後/);
+const purchasedStats=structuredClone(boughtWeapon.stats);document.querySelector('[data-buy]').click();
+assert.equal(game.equipped.weapon.id,boughtWeapon.id);assert.equal(boughtWeapon.upgrade,0);assert.deepEqual(boughtWeapon.stats,purchasedStats);assert.equal(oldWeapon.upgrade,12);assert.ok(game.inventory.some(i=>i.id===oldWeapon.id));
+game._merchantShopClose();
 // Drop quality spans poor→normal→good→excellent, with original exceptional god rolls retained.
 const qualities=[];for(const r of [.1,.5,.9,.99,.001,.005]){const x={type:'ARMOR',tier:3,name:'鎧',baseName:'鎧',upgrade:0};let n=0;rollItemQuality(x,()=>n++===0?r:.5);qualities.push(x);}
 assert.ok(qualities[0].rollMult<.9);assert.equal(qualities[0].qualityLabel,'粗悪');assert.ok(qualities[1].rollMult>=.88&&qualities[1].rollMult<=1.12);assert.ok(qualities[2].rollMult>1.12);assert.ok(qualities[3].rollMult>=1.3);assert.equal(qualities[4].forgeTag,'神鍛');assert.equal(qualities[5].forgeTag,'異質');

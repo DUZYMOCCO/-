@@ -13,7 +13,7 @@ const sheet = document.createElement('style'); sheet.textContent=css; document.h
 const noop = () => {};
 const context = new Proxy({ measureText: () => ({width:40}), createLinearGradient: () => ({addColorStop:noop}), createRadialGradient: () => ({addColorStop:noop}) }, {get:(o,k)=>k in o?o[k]:noop});
 dom.window.HTMLCanvasElement.prototype.getContext = () => context;
-const { IronSquadGame, SLOT_INFO } = await import('../js/games/iron-squad/index.js');
+const { IronSquadGame, SLOT_INFO, generateRandomDrop } = await import('../js/games/iron-squad/index.js');
 const { saveSlots } = await import('../js/games/iron-squad/save-slots.js');
 const game = Object.create(IronSquadGame); game.container = document.getElementById('game');
 for (const method of ['startGameLoop', 'showToast']) game[method] = noop;
@@ -56,7 +56,8 @@ const assertTab = (tab, sub=game.rosterManageTab) => {
   for (const id of ['squad-roster-list','roster-tools','reserve-roster','roster-experience-note']) {
     assert.equal(shown($(id)), tab==='troops' && sub==='roster', `${id} follows the roster subtab`);
   }
-  assert.equal(shown($('view-econ-scout')), tab==='troops' && sub==='scout');
+  assert.equal(shown($('view-econ-scout')), tab==='troops' && sub==='scout' && !$('recruitment-dialog').classList.contains('hidden'));
+  assert.equal(shown($('recruitment-launcher')),tab==='troops' && sub==='scout');
   assert.equal(shown($('view-strat-equip')), tab==='troops' && sub==='equip');
   assert.equal(shown($('commander-equipment')), tab==='troops' && sub==='equip');
 };
@@ -95,11 +96,37 @@ assert.equal(document.querySelector('.inventory-card:not(.hidden)').querySelecto
 document.querySelector('.inventory-card:not(.hidden) .equip-btn').click(); assert.equal(game.equipped.weapon.id,'better','reorganized bag still equips through the real handler');
 $('inventory-better-only').checked=false; $('inventory-better-only').dispatchEvent(new dom.window.Event('change'));
 const weakCard = [...document.querySelectorAll('.inventory-card')].find(e=>e.textContent.includes('検証装備worse'));
-weakCard.querySelector('input[type=checkbox]').click(); assert.ok(game.selectedSaleIds.has('worse'));
+assert.equal(document.querySelectorAll('#inventory-list input[type=checkbox]').length,0,'sale selection is confined to the sale menu');
+$('equipment-sale-toolbar').open=true;
+const weakSale=()=>document.querySelector('#equipment-sale-toolbar [data-item-id="worse"] input');
+assert.ok(weakSale());assert.equal(document.querySelector('#equipment-sale-toolbar [data-item-id="better"] input'),null,'equipped gear is excluded from sale choices');
+weakSale().click(); assert.ok(game.selectedSaleIds.has('worse'));assert.equal($('equipment-sale-toolbar').open,true);assert.equal(document.activeElement,weakSale());
 input('inventory-slot-filter','helmet','change'); assert.ok(game.selectedSaleIds.has('worse'),'hidden selections stay selected and the sell button counts all selected items');
 const goldBefore = game.gold; document.querySelector('.sell-selected').click();
 assert.ok(!game.inventory.some(i=>i.id==='worse')); assert.ok(game.gold>goldBefore);
 input('inventory-slot-filter','','change');
+// The real upgrade click must keep its place when it overtakes a stronger item.
+document.querySelector('[data-inventory-group="weapon"]').click();
+const keptInventory=game.inventory,keptEquipment=game.equipped;
+const upgradeCandidate=generateRandomDrop(0,'normal',{id:'tap-upgrade',type:'WEAPON',tier:1,upgrade:0,quality:1,weaponStyle:'sword',merchant:true,random:()=>.5});
+const initialLeader=structuredClone(upgradeCandidate);initialLeader.id='initial-leader';initialLeader.name='初期の首位';initialLeader.stats.atk+=1;
+game.inventory=[initialLeader,upgradeCandidate];game.equipped={weapon:upgradeCandidate};game.renderStrategyUI();
+const bagOrder=()=>[...document.querySelectorAll('#inventory-list > .inventory-card')].map(row=>row.dataset.itemId);
+const upgradeButton=()=>document.querySelector('[data-item-id="tap-upgrade"] .btn-up-inv');
+assert.deepEqual(bagOrder(),['initial-leader','tap-upgrade']);
+const scrollBody=document.querySelector('.dialog-body');scrollBody.scrollTop=120;
+const upgradeFunds=game.gold;let upgradeSpent=0;
+for(let i=0;i<4;i++){
+  upgradeSpent+=game.getUpgradeCost(upgradeCandidate);upgradeButton().focus();upgradeButton().click();
+  assert.equal(upgradeCandidate.upgrade,i+1);assert.deepEqual(bagOrder(),['initial-leader','tap-upgrade']);
+  assert.equal(document.activeElement,upgradeButton(),'keyboard focus stays on the upgraded item');assert.equal(scrollBody.scrollTop,120);
+}
+assert.ok(upgradeCandidate.stats.atk>initialLeader.stats.atk,'strength really crosses the sorting boundary');assert.equal(initialLeader.upgrade,0);assert.equal(game.gold,upgradeFunds-upgradeSpent);
+game.renderStrategyUI();assert.deepEqual(bagOrder(),['initial-leader','tap-upgrade'],'other redraws do not interrupt the open upgrade session');
+// The equipped-item upgrade uses the same stable ordering.
+document.querySelector('.btn-up-equipped[data-slot="weapon"]').click();assert.equal(upgradeCandidate.upgrade,5);assert.deepEqual(bagOrder(),['initial-leader','tap-upgrade']);
+game.closeStrategyModal();game.openStrategyModal(true);assert.deepEqual(bagOrder(),['tap-upgrade','initial-leader'],'reopening refreshes the real strength order');
+game.inventory=keptInventory;game.equipped=keptEquipment;game.renderStrategyUI();
 $('tab-econ-roster').click(); input('roster-search',''); $('roster-wounded-only').checked=false; $('roster-wounded-only').dispatchEvent(new dom.window.Event('change'));
 const soldier = game.squad[0]; const row = entries().find(e=>e.dataset.soldierId===String(soldier.id));
 row.open=true; await tick(); row.querySelector('.soldier-equip-slot-btn').click();

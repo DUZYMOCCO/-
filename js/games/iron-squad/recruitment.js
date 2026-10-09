@@ -2,6 +2,7 @@ import {calcScoutCost} from './economy-rules.js';
 import {drawSoldierPortrait} from './soldier-appearance.js';
 import {ATTRIBUTE_KEYS,ATTRIBUTE_LABELS,attributeSpecialties,attributeCarryCapacity,aptitudeGrade} from './unit-attributes.js';
 import {weaponRequirementText} from './weapon-requirements.js';
+import {releaseCanvas} from './canvas-surface.js?v=132';
 
 export const RECRUIT_CLASSES=['HEAVY','LIGHT','ARCHER','MEDIC','MAGE'];
 export const RECRUITMENT_INTERVAL=1200;
@@ -20,7 +21,8 @@ export function stopAutomaticRecruitment(game,save=false) {
 }
 function recruitingVisible(game) {
   const root=game.container;
-  return root?.querySelector('#strategy-modal')&&!root.querySelector('#strategy-modal').classList.contains('hidden')&&!root.querySelector('#view-econ-scout')?.classList.contains('hidden')&&!root.querySelector('#view-strat-troops')?.classList.contains('hidden')&&!document.hidden;
+  const dialog=root?.querySelector('#recruitment-dialog');
+  return !!dialog&&!dialog.classList.contains('hidden')&&!root.querySelector('#strategy-modal')?.classList.contains('hidden')&&!document.hidden;
 }
 export function nextScoutCandidate(game,automatic=false) {
   if(!automatic)stopAutomaticRecruitment(game);
@@ -61,6 +63,8 @@ export function renderRecruitment(game,classes,talents) {
   const next=root.querySelector('#btn-refresh-scouts');if(next){next.textContent='次の候補（無料）';next.onclick=()=>nextScoutCandidate(game);}
   const auto=root.querySelector('#btn-auto-scouts');if(auto){auto.textContent=game._scoutAuto?'⏸ 自動募集を停止':'▶ 自動募集';auto.setAttribute('aria-pressed',String(!!game._scoutAuto));auto.onclick=()=>{if(game._scoutAuto){stopAutomaticRecruitment(game,true);game.renderScoutCandidates();}else startAutomaticRecruitment(game);};}
   const status=root.querySelector('#scout-roll-status');if(status)status.textContent=`確認した候補 ${number(game.scoutRollCount)}人 · ${game._scoutAuto?'1.2秒ごとに次の人へ／天才で停止':'候補を保持中／天才で自動停止'}`;
+  const wallet=root.querySelector('#recruitment-wallet');if(wallet)wallet.textContent=`軍資金 ${number(game.gold)}G`;
+  for(const canvas of list.querySelectorAll('canvas'))releaseCanvas(canvas);
   list.replaceChildren();
   for(const candidate of game.scoutCandidates||[]){
     const unit=candidate.soldier;if(!unit)continue;
@@ -68,12 +72,18 @@ export function renderRecruitment(game,classes,talents) {
     const profile=unit.attributeProfile;
     const row=document.createElement('article');row.className='scout-card recruitment-candidate';
     row.innerHTML=`<div class="recruit-person"><canvas class="recruit-portrait" width="120" height="130" aria-label="${cls.name}候補の素顔"></canvas><div><strong>${cls.icon} ${unit.name}</strong><div>${cls.name} · Lv.${candidate.level} <span style="color:${talent.color}">[${talent.tag}]</span></div><p class="recruit-specialties">${specialties.length?specialties.join('・'):'均整型'}</p><strong class="recruit-price">雇用費 ${number(candidate.cost)}G</strong></div></div>
-      <div class="recruit-stat-grid"><span>HP <b>${number(unit.maxHp)}</b></span><span>攻撃 <b>${number(unit.atk)}</b></span><span>防御 <b>${number(unit.def)}</b></span><span>筋力 <b>${number(unit.strength)}</b></span><span>魔力 <b>${number(unit.magicPower)}</b></span><span>魔法防御 <b>${number(unit.magicDef)}</b></span><span>速さ <b>${number(unit.quickness)}</b></span><span>回避 <b>${unit.evasion}</b>（${unit.dodge}%）</span><span>搬送 <b>${attributeCarryCapacity(unit)}人</b></span></div>
-      <div class="recruit-aptitudes">成長素質 ${ATTRIBUTE_KEYS.map(key=>`${ATTRIBUTE_LABELS[key]}<b>${aptitudeGrade(profile.aptitudes[key])}</b>`).join(' · ')}</div>
-      <div class="recruit-practice-note">${unit.healPower?`回復力 ${number(unit.healPower)} · `:''}${unit.magicAttack?`魔法攻撃 ${number(unit.magicAttack)} · `:''}移動 ${number(unit.speed)}m/秒</div>
-      <div class="recruit-practice-note">初期武器：${unit.equipped?.weapon?.name||'なし'} · ${weaponRequirementText(unit,unit.equipped?.weapon)}</div>
-      <div class="recruit-actions"><button type="button" class="mini-btn btn-scout-main">本隊へ雇用</button><button type="button" class="mini-btn btn-scout-personal">自部隊へ雇用</button></div>`;
-    row.querySelector('.btn-scout-main').onclick=()=>game.scoutSoldier(candidate.id,'main');row.querySelector('.btn-scout-personal').onclick=()=>game.scoutSoldier(candidate.id,'personal');
+      <div class="recruit-stat-grid">${[
+        ['HP',number(unit.maxHp)],['攻撃',number(unit.atk)],['防御',number(unit.def)],
+        ['筋力',number(unit.strength)],['魔力',number(unit.magicPower)],['魔法防御',number(unit.magicDef)],
+        ['速さ',number(unit.quickness)],['回避',`${unit.evasion} / ${unit.dodge}%`],['搬送',`${attributeCarryCapacity(unit)}人`],
+        ['魔法攻撃',number(unit.magicAttack)],['回復力',number(unit.healPower)],['移動',`${number(unit.speed)}m/秒`]
+      ].map(([label,value])=>`<span><small>${label}</small><b>${value}</b></span>`).join('')}</div>
+      <div class="recruit-aptitudes"><strong>成長素質</strong>${ATTRIBUTE_KEYS.map(key=>`<span>${ATTRIBUTE_LABELS[key]}<b>${aptitudeGrade(profile.aptitudes[key])}</b></span>`).join('')}</div>
+      <div class="recruit-practice-note">初期武器：${unit.equipped?.weapon?.name||'なし'}<br>${weaponRequirementText(unit,unit.equipped?.weapon)}</div>`;
+    for(const [className,destination] of [['btn-scout-main','main'],['btn-scout-personal','personal']]){
+      const button=root.querySelector(`#recruitment-dialog .${className}`);
+      if(button){button.disabled=(game.gold||0)<candidate.cost;button.onclick=()=>game.scoutSoldier(candidate.id,destination);}
+    }
     list.appendChild(row);
     const canvas=row.querySelector('canvas'),ctx=canvas.getContext('2d');if(ctx)drawSoldierPortrait(ctx,unit,canvas.width,canvas.height);
   }

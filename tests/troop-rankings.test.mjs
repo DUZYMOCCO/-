@@ -1,3 +1,4 @@
+import {rankerSalaryBonus} from '../js/games/iron-squad/troop-rankings.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
@@ -140,21 +141,21 @@ test('ranker bonus salary distribution for top 3 rankers', async () => {
   const killsBreakdown = ace1Bonus.breakdowns.find(b => b.catId === 'kills');
   assert.ok(killsBreakdown, 'Has kills breakdown');
   assert.equal(killsBreakdown.rank, 1);
-  assert.equal(killsBreakdown.bonus, 50);
+  assert.equal(killsBreakdown.bonus, rankerSalaryBonus(testGame,testGame.squad.find(s=>s.id==='s1'),1));
 
   // Ace2 is #2 in kills (30G)
   const ace2Bonus = calcSoldierRankerBonus(testGame, 's2');
   const ace2Kills = ace2Bonus.breakdowns.find(b => b.catId === 'kills');
   assert.ok(ace2Kills, 'Ace 2 has kills breakdown');
   assert.equal(ace2Kills.rank, 2);
-  assert.equal(ace2Kills.bonus, 30);
+  assert.equal(ace2Kills.bonus, rankerSalaryBonus(testGame,testGame.squad.find(s=>s.id==='s2'),2));
 
   // Ace3 is #3 in kills (20G)
   const ace3Bonus = calcSoldierRankerBonus(testGame, 's3');
   const ace3Kills = ace3Bonus.breakdowns.find(b => b.catId === 'kills');
   assert.ok(ace3Kills, 'Ace 3 has kills breakdown');
   assert.equal(ace3Kills.rank, 3);
-  assert.equal(ace3Kills.bonus, 20);
+  assert.equal(ace3Kills.bonus, rankerSalaryBonus(testGame,testGame.squad.find(s=>s.id==='s3'),3));
 
   // Batch calculation test
   const allBonuses = calcAllRankerBonuses(testGame);

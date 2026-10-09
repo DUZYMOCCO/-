@@ -1,4 +1,5 @@
-import {powerRank} from './equipment-tiers.js?v=129';
+import {powerRank} from './equipment-tiers.js?v=132';
+import {economicPayrollBudget} from './regional-economy.js?v=132';
 
 export const SOLDIER_SALARY=20;
 export const PAYROLL_RULES={perLevel:6,perClassGrade:40,perDevelopmentLevel:20,maintenanceRate:.6,weaponWeight:2,operatingMargin:.25,reserveCycles:2.5,commanderMaintenanceRate:.3};
@@ -10,8 +11,8 @@ export function equipmentUpgradeCost(item) {
   const up=amount(item?.upgrade),tierFactor=Math.max(1,powerRank(item?.tier)*.8);
   return Math.floor((20+up*18+Math.pow(up,1.4)*6)*tierFactor);
 }
-export function salaryQuote(soldier,game={}) {
-  const basic=SOLDIER_SALARY+Math.max(0,amount(soldier?.level||1)-1)*PAYROLL_RULES.perLevel
+export function salaryQuote(soldier,game={},context=null) {
+  const requestedBasic=SOLDIER_SALARY+Math.max(0,amount(soldier?.level||1)-1)*PAYROLL_RULES.perLevel
     +(GRADES[soldier?.soldierClass]||0)*PAYROLL_RULES.perClassGrade
     +amount(game.nation?.level)*PAYROLL_RULES.perDevelopmentLevel;
   const slots=Object.entries(soldier?.equipped||{});
@@ -23,18 +24,25 @@ export function salaryQuote(soldier,game={}) {
     weightedCost+=equipmentUpgradeCost(item)*w;weight+=w;
   }
   const benchmark=weight?weightedCost/weight:0;
-  const maintenance=Math.ceil(benchmark*PAYROLL_RULES.maintenanceRate);
-  return {basic,maintenance,total:basic+maintenance,benchmark};
+  const funding=context||salaryFundingContext(game);
+  const total=funding?Math.floor(funding.budget*salaryWeight(soldier)/funding.weight):requestedBasic;
+  const basic=Math.min(total,requestedBasic),maintenance=total-basic;
+  return {basic,maintenance,total,benchmark,requestedBasic};
+}
+const salaryWeight=s=>1+Math.sqrt(Math.max(0,(s?.level||1)-1))*.12+(GRADES[s?.soldierClass]||0)*.3;
+export function salaryFundingContext(game) {
+  const seen=new Set(),units=[...(game.squad||[]),...(game.reserves||[])].filter(s=>s&&!s.dead&&!seen.has(s.id||s)&&(seen.add(s.id||s),true));
+  if(!units.length)return null;
+  return {budget:economicPayrollBudget(game),weight:units.reduce((n,s)=>n+salaryWeight(s),0)};
 }
 export function commanderStipendQuote(game={},phase=1) {
-  const weapon=game.equipped?.weapon;
-  return 40+Math.max(1,amount(phase))*6+(weapon?Math.ceil(equipmentUpgradeCost(weapon)*PAYROLL_RULES.commanderMaintenanceRate):0);
+  return 40+amount(game.nation?.level)*12+amount(game.nation?.economy?.technology?.production?.level)*10;
 }
 export function createPayrollPlan(game,bonuses=new Map()) {
-  const seen=new Set(),entries=[];
+  const seen=new Set(),entries=[],funding=salaryFundingContext(game);
   for(const soldier of [...(game.squad||[]),...(game.reserves||[])]){
     if(!soldier||soldier.dead||seen.has(soldier.id||soldier))continue;seen.add(soldier.id||soldier);
-    const quote=salaryQuote(soldier,game),ranker=amount(bonuses.get(soldier.id)?.totalBonus);
+    const quote=salaryQuote(soldier,game,funding),ranker=amount(bonuses.get(soldier.id)?.totalBonus);
     entries.push({soldier,...quote,ranker,expected:quote.total+ranker});
   }
   return {entries,regular:entries.reduce((n,e)=>n+e.total,0),ranker:entries.reduce((n,e)=>n+e.ranker,0),total:entries.reduce((n,e)=>n+e.expected,0)};

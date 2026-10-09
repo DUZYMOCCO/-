@@ -346,14 +346,18 @@ export function drawDungeonEntrance(ctx, def, time) {
   ctx.restore();
 }
 
-function drawTownInterior(ctx, dungeon) {
+function drawTownInterior(ctx, dungeon, game) {
   const w = dungeon.width, h = dungeon.height;
-  ctx.fillStyle = '#2c261e';
+  const e=game?.nation?.economy,id=dungeon.id==='royal_castle_town'?'hq':dungeon.id;
+  const stage=Math.min(5,Math.max(e?.regions?.[id]?.level||0,id==='hq'?game?.nation?.level||0:0)+Math.floor((e?.technology?.urban?.level||0)/2));
+  const paved=stage>=2||(e?.technology?.transport?.level||0)>=2;
+  ctx.fillStyle = stage>=3?'#30392e':'#2c261e';
   ctx.fillRect(0, 0, w, h);
-  ctx.fillStyle = '#6a5b45';
+  ctx.fillStyle = paved?'#96937c':stage>=1?'#77725c':'#6a5b45';
   ctx.fillRect(0, h / 2 - 36, w, 72);
-  ctx.fillStyle = '#5a4c38';
+  ctx.fillStyle = paved?'#96937c':'#5a4c38';
   ctx.fillRect(w * 0.62, 90, 48, h - 180);
+  if(paved){ctx.strokeStyle='#767e70';ctx.lineWidth=1;for(let x=0;x<w;x+=38){ctx.beginPath();ctx.moveTo(x,h/2-36);ctx.lineTo(x,h/2+36);ctx.stroke();}}
   const houses = [
     [70, 60, 130, 86], [240, 48, 150, 96], [430, 70, 140, 78],
     [64, h - 190, 160, 96], [270, h - 176, 130, 84], [450, h - 200, 170, 108],
@@ -363,11 +367,11 @@ function drawTownInterior(ctx, dungeon) {
   for (const [x, y, hw, hh] of houses) {
     ctx.fillStyle = 'rgba(0,0,0,0.28)';
     ctx.fillRect(x + 8, y + hh, hw, 8);
-    ctx.fillStyle = '#4a4036';
+    ctx.fillStyle = stage>=2?'#a5a18a':'#4a4036';
     ctx.fillRect(x, y, hw, hh);
-    ctx.fillStyle = '#2e2924';
+    ctx.fillStyle = stage>=2?'#7a8170':'#2e2924';
     ctx.fillRect(x + hw * 0.72, y, hw * 0.28, hh);
-    ctx.fillStyle = '#5c4632';
+    ctx.fillStyle = stage>=3?'#4e7075':'#5c4632';
     ctx.beginPath();
     ctx.moveTo(x - 8, y + 6);
     ctx.lineTo(x + hw / 2, y - 20);
@@ -520,9 +524,9 @@ function drawStoneDungeon(ctx, dungeon, time) {
   drawExitArch(ctx, 180, h / 2, '外界への門');
 }
 
-export function drawDungeonEnvironment(ctx, dungeon, camera, viewW, viewH, zoom, time) {
+export function drawDungeonEnvironment(ctx, dungeon, camera, viewW, viewH, zoom, time, game) {
   ctx.save();
-  if (dungeon.kind === 'town') drawTownInterior(ctx, dungeon);
+  if (dungeon.kind === 'town') drawTownInterior(ctx, dungeon, game);
   else if (dungeon.kind === 'ruin') drawRuinInterior(ctx, dungeon, time);
   else drawStoneDungeon(ctx, dungeon, time);
   ctx.restore();

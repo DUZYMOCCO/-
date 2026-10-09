@@ -1,5 +1,6 @@
-import {GENERATION_COUNT} from './equipment-tiers.js?v=129';
-import {PAYROLL_RULES,commanderStipendQuote} from './payroll-rules.js?v=129';
+import {GENERATION_COUNT} from './equipment-tiers.js?v=132';
+import {PAYROLL_RULES,commanderStipendQuote} from './payroll-rules.js?v=132';
+import {recurringNationalIncome} from './regional-economy.js?v=132';
 /**
  * IRON SQUAD economy / roster reform (v1.23.0)
  * 国庫・共有装備ボックス・スカウト費用・財政報告の公式を集約
@@ -40,6 +41,8 @@ export function emptyFiscalLedger(phase = 1, startBalance = 0) {
   return {
     phase,
     income: 0,
+    tradeRevenue:0,
+    securityUpkeep:0,
     salariesPaid: 0,
     salaryHeadcount: 0,
     salaryShortfall: 0,
@@ -72,10 +75,8 @@ export function emptyFiscalLedger(phase = 1, startBalance = 0) {
 }
 
 /** 国庫歳入総額（指揮手当控除前） */
-export function calcTreasuryGrossIncome(phase, livingCount, payroll=livingCount*TREASURY_INCOME_PER_SOLDIER, stipend=commanderStipendQuote({},phase)) {
-  const p = Math.max(1, phase || 1);
-  const n = Math.max(0, livingCount || 0);
-  return Math.floor(TREASURY_INCOME_BASE+p*TREASURY_INCOME_PER_PHASE+Math.max(0,Number(payroll)||n*TREASURY_INCOME_PER_SOLDIER)*(1+PAYROLL_RULES.operatingMargin)+stipend);
+export function calcTreasuryGrossIncome(phase,livingCount,payroll,stipend,game={}) {
+  return recurringNationalIncome(game);
 }
 
 export function calcCommanderStipend(phase, grossIncome,game={}) {
@@ -184,7 +185,7 @@ export function formatFiscalReportJa(ledger) {
 
 export function formatFiscalReportHtml(ledger) {
   if(!ledger)return '<p>まだウェーブが完了していません。最初の収支は終了時に記録されます。</p>';
-  const rows=[['定期歳入・発展税収',ledger.income,0],['寄付',ledger.donations,0],['装備の外販',ledger.surplusSales,0],['兵士資金の還流',ledger.treasuryReturns,0],['施設納税',ledger.facilityRevenue,0],['魔王軍撃退報奨',ledger.defenseRewards,0],['兵士給与・整備手当',0,(ledger.salariesPaid||0)-(ledger.rankerBonusesPaid||0)],['ランカー栄誉手当',0,ledger.rankerBonusesPaid],['隊長の指揮手当',0,ledger.commanderStipend],['寄付から兵士へ配分',0,ledger.distributed],['装備の買取',0,ledger.buyouts],['軍備の調達・換装',0,ledger.equipmentProcurement],['公費の装備強化',0,ledger.publicForging],['製造技術の開発',0,ledger.armamentResearch],['本陣・町の開発',0,ledger.developmentSpent]];
+  const rows=[['交易税',ledger.tradeRevenue,0],['街道巡回の維持',0,ledger.securityUpkeep],['定期歳入・発展税収',ledger.income,0],['寄付',ledger.donations,0],['装備の外販',ledger.surplusSales,0],['兵士資金の還流',ledger.treasuryReturns,0],['施設納税',ledger.facilityRevenue,0],['防衛・地域任務の報奨',ledger.defenseRewards,0],['兵士給与・整備手当',0,(ledger.salariesPaid||0)-(ledger.rankerBonusesPaid||0)],['ランカー栄誉手当',0,ledger.rankerBonusesPaid],['隊長の指揮手当',0,ledger.commanderStipend],['寄付から兵士へ配分',0,ledger.distributed],['装備の買取',0,ledger.buyouts],['軍備の調達・換装',0,ledger.equipmentProcurement],['公費の装備強化',0,ledger.publicForging],['製造技術の開発',0,ledger.armamentResearch],['本陣・町の開発',0,ledger.developmentSpent]];
   const receipts=rows.reduce((n,r)=>n+(r[1]||0),0),expenses=rows.reduce((n,r)=>n+(r[2]||0),0),balance=(ledger.endBalance||0)-(ledger.startBalance||0),calc=receipts-expenses;
   const f=n=>Math.floor(n||0).toLocaleString()+'G';
   return `<section class="fiscal-report-box"><h4>直近ウェーブの収支 · 第${ledger.phase}期</h4><div class="fiscal-net ${balance>=0?'positive':'negative'}">${balance>=0?'黒字 +':'赤字 '}${f(balance)}</div><div class="fiscal-table"><table><thead><tr><th>項目</th><th>収入</th><th>支出</th></tr></thead><tbody>${rows.map(r=>`<tr><th>${r[0]}</th><td>${r[1]?'+ '+f(r[1]):'—'}</td><td>${r[2]?'− '+f(r[2]):'—'}</td></tr>`).join('')}<tr class="fiscal-total"><th>合計</th><td>+ ${f(receipts)}</td><td>− ${f(expenses)}</td></tr></tbody></table></div><p>期首 ${f(ledger.startBalance)} → 期末 ${f(ledger.endBalance)}</p>${ledger.salaryShortfall?`<p class="negative">給与不足 ${f(ledger.salaryShortfall)}</p>`:''}${Math.abs(balance-calc)>1?'<p>旧版の記録は一部の取引内訳が不足しています。残高差を実際の収支として表示しています。</p>':''}</section>`;

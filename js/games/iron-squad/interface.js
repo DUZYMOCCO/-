@@ -1,6 +1,6 @@
-import {configureAudioInterface} from './audio-interface.js?v=129';
-import {renderBattleLog} from './battle-log.js?v=129';
-import {renderTroopRankings} from './troop-rankings.js?v=129';
+import {configureAudioInterface} from './audio-interface.js?v=132';
+import {renderBattleLog} from './battle-log.js?v=132';
+import {renderTroopRankings} from './troop-rankings.js?v=132';
 /** Presentation only: keep game actions on their original DOM nodes. */
 const element = (tag, className, text) => {
   const node = document.createElement(tag);
@@ -105,8 +105,11 @@ export function configureInterface(game) {
   get('squad-roster-list').after(get('reserve-roster'));
   const rulesNote = get('roster-experience-note'); rulesNote.classList.add('command-note', 'roster-help');
   // The active panel owns its help and roster. Hiring no longer repeats all soldiers.
+  configureRecruitmentDialog(game);
   const originalSync = game._syncTroopsSubView;
   game._syncTroopsSubView = sub => {
+    if(sub !== 'scout') game.closeScoutDialog?.();
+    get('recruitment-launcher').classList.toggle('hidden',sub !== 'scout');
     originalSync(sub);
     get('squad-roster-list').style.display = sub === 'roster' ? '' : 'none';
     for (const node of [rosterTools, get('reserve-roster'), get('reinforcement-summary'), get('formation-bar'), rulesNote]) {
@@ -266,7 +269,7 @@ export function filterInventory(root) {
     row.classList.toggle('hidden', !show); if (show) visible++;
   }
   for(const button of root.querySelectorAll('[data-inventory-group]'))button.setAttribute('aria-selected',String(button.dataset.inventoryGroup===group));
-  const count = root.querySelector('#inventory-visible-count'); if (count) count.textContent = `${group==='weapon'?'武器':'防具・装飾'} ${visible}件表示 · 強い順（総合性能）。上昇項目は引継後も含む。売却選択は切り替え後も保持。`;
+  const count = root.querySelector('#inventory-visible-count'); if (count) count.textContent = `${group==='weapon'?'武器':'防具・装飾'} ${visible}件表示 · 強い順（総合性能）${root.querySelector('#inventory-list')?.dataset.upgradeOrder==='fixed'?'・強化中は並び順を維持':''}。上昇項目は引継後も含む。売却は売却メニューから。`;
   root.querySelector('#inventory-filter-empty')?.classList.toggle('hidden', visible > 0 || rows.length === 0);
 }
 
@@ -299,6 +302,38 @@ export function refreshInterface(game, { rank, time, zone }) {
   filterRoster(root); filterInventory(root);
 }
 
+/** Reuse recruitment controls so the next-candidate button never moves or loses focus. */
+function configureRecruitmentDialog(game) {
+  const root=game.container,get=id=>root.querySelector(`#${id}`),scout=get('view-econ-scout');
+  const host=element('div','recruitment-dialog hidden');host.id='recruitment-dialog';
+  const panel=element('section','recruitment-dialog-panel');
+  const header=element('header','recruitment-dialog-header');
+  const identity=element('div','recruitment-dialog-heading');identity.append(element('h3','','雇用候補'));
+  const wallet=element('p','recruitment-wallet');wallet.id='recruitment-wallet';identity.append(wallet);
+  const close=element('button','recruitment-dialog-close','閉じる ×');close.type='button';close.setAttribute('aria-label','雇用を閉じる');
+  const controls=get('scout-class').closest('.recruit-controls');
+  const auto=get('btn-auto-scouts'),next=get('btn-refresh-scouts'),status=get('scout-roll-status'),list=get('scout-candidates-list');
+  auto.remove();header.append(identity,controls,close,status);
+  const footer=element('footer','recruitment-dialog-footer'),rollActions=element('div','recruit-roll-actions');rollActions.append(next,auto);
+  const hireActions=element('div','recruit-actions');
+  for(const [cls,label] of [['btn-scout-main','本隊へ雇用'],['btn-scout-personal','自部隊へ雇用']]){const button=element('button',`mini-btn ${cls}`,label);button.type='button';hireActions.append(button);}
+  footer.append(rollActions,hireActions);
+  scout.replaceChildren(list);scout.removeAttribute('style');panel.append(header,scout,footer);host.append(panel);(root.querySelector('.iron-squad')||root).append(host);
+  const launcher=element('section','recruitment-launcher hidden');launcher.id='recruitment-launcher';
+  launcher.append(element('p','','募集する職種を選び、候補の能力・成長素質・雇用費を確認できます。'));
+  const launch=element('button','mini-btn','雇用候補を確認');launch.type='button';launcher.append(launch);get('view-strat-troops').append(launcher);
+  game.openScoutDialog=()=>{
+    if(!game.scoutCandidates?.length)game.refreshScoutCandidates();
+    game.renderScoutCandidates();scout.classList.remove('hidden');host.classList.remove('hidden');setSubDialog(game,host,true,game.closeScoutDialog);
+  };
+  game.closeScoutDialog=(save=true)=>{
+    if(host.classList.contains('hidden'))return;
+    game.stopScoutAuto(save);host.classList.add('hidden');setSubDialog(game,host,false);game.renderScoutCandidates();
+  };
+  close.onclick=()=>game.closeScoutDialog();launch.onclick=()=>game.openScoutDialog();
+  host.onclick=event=>{if(event.target===host)game.closeScoutDialog();};
+}
+
 /** A nested dialog must own keyboard focus and block controls behind it. */
 export function setSubDialog(game, host, open, close = null) {
   if (!host || !game.container) return;
@@ -306,11 +341,16 @@ export function setSubDialog(game, host, open, close = null) {
   const nested = !!host.closest('#strategy-modal');
   if (nested) {
     for (const sibling of modal.querySelector('.strategy-panel').children) if (sibling !== host) sibling.inert = open;
-  } else modal.inert = open;
+  } else {
+    const recruitment=game.container.querySelector('#recruitment-dialog');
+    const recruitmentOpen=recruitment && recruitment!==host && !recruitment.classList.contains('hidden');
+    modal.inert = !!(open || recruitmentOpen);
+    if(recruitmentOpen) recruitment.inert = open;
+  }
   if (open) {
     if (!host._uiReturnFocus) host._uiReturnFocus = document.activeElement;
     host.setAttribute('role', 'dialog'); host.setAttribute('aria-modal', 'true');
-    host.setAttribute('aria-label', nested ? '兵士の個人記録' : host.id==='merchant-shop-popup'?'商人の販売と補給':'兵士へ装備を譲渡');
+    host.setAttribute('aria-label', nested ? '兵士の個人記録' : host.id==='recruitment-dialog'?'雇用候補':host.id==='scout-personal-swap-popup'?'直属の入れ替え':host.id==='merchant-shop-popup'?'商人の販売と補給':'兵士へ装備を譲渡');
     host._uiClose = close;
     if (!host._uiKeyHandler) {
       host._uiKeyHandler = event => {

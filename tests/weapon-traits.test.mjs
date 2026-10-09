@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {JSDOM} from '../__pycache__/ui-tools/node_modules/jsdom/lib/api.js';
-import {weaponCombatProfile,meleeSweetSpotFor,evaluateMeleeSweetSpot,compareEquipment} from '../js/games/iron-squad/equipment-rules.js?v=129';
-import {attackAnimationRate} from '../js/games/iron-squad/weapon-motion.js?v=129';
+import {weaponCombatProfile,meleeSweetSpotFor,evaluateMeleeSweetSpot,compareEquipment} from '../js/games/iron-squad/equipment-rules.js?v=132';
+import {attackAnimationRate} from '../js/games/iron-squad/weapon-motion.js?v=132';
 const dom=new JSDOM('<div id="game"></div>',{url:'http://localhost/'});Object.assign(globalThis,{window:dom.window,document:dom.window.document,localStorage:dom.window.localStorage});
 const noop=()=>{},ctx=new Proxy({measureText:()=>({width:40}),createLinearGradient:()=>({addColorStop:noop}),createRadialGradient:()=>({addColorStop:noop})},{get:(o,k)=>k in o?o[k]:noop});window.HTMLCanvasElement.prototype.getContext=()=>ctx;
 const {IronSquadGame,applyUpgradeStats}=await import('../js/games/iron-squad/index.js');const {saveSlots}=await import('../js/games/iron-squad/save-slots.js');

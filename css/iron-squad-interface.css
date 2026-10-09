@@ -618,7 +618,13 @@
 .iron-squad .equipment-sort-note { color:#b5c5c5; font-size:11px; line-height:1.6; margin:8px 0 12px; }
 .iron-squad .merchant-services { border:1px solid #526b74; border-radius:8px; padding:0 12px; margin-bottom:10px; }
 .iron-squad .merchant-services > summary { padding:12px 0; color:#d5d6c3; font-size:12px; cursor:pointer; min-height:44px; box-sizing:border-box; }
-.iron-squad #equipment-sale-toolbar > summary { cursor:pointer; min-height:44px; padding:10px 0; box-sizing:border-box; font-size:12px; font-weight:700; color:#dcd8bc; }
+.iron-squad #equipment-sale-toolbar > summary { cursor:pointer; min-height:44px; padding:10px 0; box-sizing:border-box; font-size:16px; font-weight:700; color:#dcd8bc; }
+.iron-squad #equipment-sale-toolbar .sale-selection-total { font-size:12px; }
+.iron-squad #equipment-sale-toolbar .sale-item-selection { flex:1 1 100%; width:100%; max-height:280px; overflow-y:auto; overscroll-behavior:contain; }
+.iron-squad #equipment-sale-toolbar .sale-item-option { display:grid; grid-template-columns:22px minmax(0,1fr) auto; align-items:center; gap:8px; min-height:44px; padding:8px 4px; border-bottom:1px solid var(--ui-line); font-size:12px; box-sizing:border-box; cursor:pointer; }
+.iron-squad #equipment-sale-toolbar .sale-item-option > span { overflow-wrap:anywhere; }
+.iron-squad #equipment-sale-toolbar .sale-item-option input { margin:0; width:20px; height:20px; }
+.iron-squad #equipment-sale-toolbar .sale-item-price { color:var(--ui-muted); white-space:nowrap; }
 @media (orientation:landscape) and (max-height:500px) { .iron-squad .field-sound-toggle { display:none; } }
 
 .armament-policies { display:flex; flex-wrap:wrap; gap:6px; margin:10px 0; }
@@ -899,4 +905,94 @@
   .iron-squad #strategy-modal #strat-title{grid-column:1!important;grid-row:1!important}
   .iron-squad #strategy-modal .command-wallet{grid-column:1!important;grid-row:2!important;font-size:11px}
   .iron-squad #strategy-modal .dialog-close{grid-column:2;grid-row:1 / 3;align-self:center;min-height:44px}
+}
+
+/* 雇用候補：全能力を見渡せる専用ダイアログ */
+.iron-squad .recruitment-dialog { position:fixed; inset:0; z-index:1300; display:flex; align-items:center; justify-content:center; padding:max(10px,env(safe-area-inset-top,0px)) 10px max(10px,env(safe-area-inset-bottom,0px)); box-sizing:border-box; background:rgba(3,8,13,.86); }
+.iron-squad .recruitment-dialog-panel { display:flex; flex-direction:column; gap:8px; width:min(100%,560px); height:min(100%,760px); max-height:100%; padding:14px; box-sizing:border-box; border:1px solid var(--ui-line); border-radius:14px; background:var(--ui-panel); color:var(--ui-text); box-shadow:0 16px 56px #0009; }
+.iron-squad .recruitment-dialog-header { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:4px 10px; flex:none; }
+.iron-squad .recruitment-dialog-heading { grid-column:1; grid-row:1; }
+.iron-squad .recruitment-dialog-heading h3 { margin:0; color:var(--ui-gold); font-size:19px; }
+.iron-squad .recruitment-wallet { margin:3px 0 0; font-size:12px; color:var(--ui-muted); }
+.iron-squad .recruitment-dialog-close { grid-column:2; grid-row:1; align-self:start; min-height:44px; padding:8px 12px; font-size:12px; background:var(--ui-raised); color:var(--ui-text); border:1px solid var(--ui-line); border-radius:8px; }
+.iron-squad .recruitment-dialog .recruit-controls { grid-column:1 / -1; grid-row:2; display:grid; grid-template-columns:auto minmax(0,1fr); gap:8px; margin:4px 0 0; font-size:12px; }
+.iron-squad .recruitment-dialog .recruit-controls select { width:100%; margin:0; color:var(--ui-text); background:var(--ui-bg); border:1px solid var(--ui-line); border-radius:6px; }
+.iron-squad .recruitment-dialog .recruit-status { grid-column:1 / -1; grid-row:3; margin:2px 0 0; min-height:34px; font-size:11px; line-height:1.5; }
+.iron-squad .recruitment-dialog #view-econ-scout { min-height:0; flex:1; }
+.iron-squad .recruitment-dialog #scout-candidates-list { min-height:0; }
+.iron-squad .recruitment-dialog .recruitment-candidate { padding:0!important; margin:0!important; border:0!important; background:none!important; }
+.iron-squad .recruitment-dialog .recruitment-candidate > div + div { margin-top:8px; }
+.iron-squad .recruitment-dialog .recruit-person { gap:10px; min-height:84px; line-height:1.5; font-size:13px; }
+.iron-squad .recruitment-dialog .recruit-person > div { min-width:0; }
+.iron-squad .recruitment-dialog .recruit-specialties { margin:3px 0; min-height:18px; font-size:11px; }
+.iron-squad .recruitment-dialog .recruit-stat-grid { grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; margin:8px 0; }
+.iron-squad .recruitment-dialog .recruit-stat-grid span { display:flex; flex-direction:column; justify-content:center; min-height:44px; padding:5px 7px; box-sizing:border-box; gap:2px; }
+.iron-squad .recruitment-dialog .recruit-stat-grid small { font-size:10px; color:var(--ui-muted); }
+.iron-squad .recruitment-dialog .recruit-stat-grid b { font-size:14px; line-height:1.25; white-space:nowrap; }
+.iron-squad .recruitment-dialog .recruit-aptitudes { display:flex; flex-wrap:wrap; gap:3px 8px; min-height:34px; font-size:11px; line-height:1.4; }
+.iron-squad .recruitment-dialog .recruit-aptitudes > strong { flex-basis:100%; color:var(--ui-muted); font-size:10px; }
+.iron-squad .recruitment-dialog .recruit-practice-note { min-height:32px; font-size:11px; line-height:1.45; overflow-wrap:anywhere; }
+.iron-squad .recruitment-dialog-footer { display:grid; gap:8px; flex:none; padding-top:8px; border-top:1px solid var(--ui-line); }
+.iron-squad .recruit-roll-actions,.iron-squad .recruitment-dialog .recruit-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin:0; }
+.iron-squad .recruitment-dialog-footer button { min-height:44px!important; margin:0; padding:8px 6px!important; border:1px solid var(--ui-line)!important; border-radius:8px; background:var(--ui-raised)!important; color:var(--ui-text)!important; font-size:12px!important; }
+.iron-squad .recruitment-dialog-footer #btn-refresh-scouts { background:#6d4e24!important; }
+.iron-squad .recruitment-dialog-footer #btn-auto-scouts { background:var(--ui-raised); }
+.iron-squad .recruitment-dialog-footer button:disabled { opacity:.45; }
+.iron-squad .recruitment-launcher button { min-height:44px; padding:10px 18px; }
+@media (max-height:700px) and (orientation:portrait) {
+ .iron-squad .recruitment-dialog-panel { gap:6px; padding:10px; }
+ .iron-squad .recruitment-dialog .recruit-person { min-height:68px; font-size:12px; }
+ .iron-squad .recruitment-dialog .recruit-portrait { width:56px; height:61px; }
+ .iron-squad .recruitment-dialog .recruit-stat-grid { gap:4px; margin:6px 0; }
+ .iron-squad .recruitment-dialog .recruit-stat-grid span { min-height:36px; padding:3px 6px; }
+ .iron-squad .recruitment-dialog .recruitment-candidate > div + div { margin-top:6px; }
+}
+@media (max-height:500px) and (orientation:landscape) {
+ .iron-squad .recruitment-dialog-panel { width:min(100%,920px); gap:6px; padding:10px; }
+ .iron-squad .recruitment-dialog-header { grid-template-columns:minmax(130px,.8fr) minmax(200px,1.4fr) auto; }
+ .iron-squad .recruitment-dialog .recruit-controls { grid-column:2; grid-row:1; align-self:center; margin:0; }
+ .iron-squad .recruitment-dialog-close { grid-column:3; }
+ .iron-squad .recruitment-dialog .recruit-status { grid-row:2; min-height:17px; margin:0; }
+ .iron-squad .recruitment-dialog .recruitment-candidate { display:grid!important; grid-template-columns:minmax(185px,.85fr) minmax(0,1.4fr); gap:6px 12px; }
+ .iron-squad .recruitment-dialog .recruit-person { grid-column:1; grid-row:1; font-size:12px; min-height:70px; }
+ .iron-squad .recruitment-dialog .recruit-portrait { width:56px; height:61px; }
+ .iron-squad .recruitment-dialog .recruit-stat-grid { grid-column:2; grid-row:1 / 4; margin:0; gap:4px; }
+ .iron-squad .recruitment-dialog .recruit-stat-grid span { min-height:36px; padding:3px 6px; }
+ .iron-squad .recruitment-dialog .recruit-aptitudes { grid-column:1; grid-row:2; }
+ .iron-squad .recruitment-dialog .recruit-practice-note { grid-column:1; grid-row:3; }
+ .iron-squad .recruitment-dialog .recruitment-candidate > div + div { margin-top:0; }
+ .iron-squad .recruitment-dialog-footer { grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; padding-top:6px; }
+}
+
+.iron-squad .recruitment-dialog-footer .btn-scout-main { background:#285a6c!important; }
+.iron-squad .recruitment-dialog-footer .btn-scout-personal { background:#70551f!important; }
+@media (max-height:600px) and (orientation:portrait) {
+ .iron-squad .recruitment-dialog-panel { padding:8px; gap:4px; }
+ .iron-squad .recruitment-dialog-heading h3 { font-size:16px; }
+ .iron-squad .recruitment-dialog .recruit-person { min-height:60px; font-size:11px; }
+ .iron-squad .recruitment-dialog .recruit-portrait { width:48px; height:52px; }
+ .iron-squad .recruitment-dialog .recruit-specialties { margin:2px 0; font-size:10px; }
+ .iron-squad .recruitment-dialog .recruit-stat-grid span { min-height:30px; padding:2px 5px; gap:1px; }
+ .iron-squad .recruitment-dialog .recruit-stat-grid b { font-size:12px; }
+ .iron-squad .recruitment-dialog .recruit-aptitudes { min-height:28px; font-size:10px; }
+ .iron-squad .recruitment-dialog .recruit-practice-note { min-height:28px; font-size:10px; }
+}
+@media (max-height:500px) and (orientation:landscape) {
+ .iron-squad .recruitment-dialog-panel { height:min(100%,360px); }
+}
+
+.iron-squad .recruitment-dialog .recruit-stat-grid { gap:6px!important; }
+.iron-squad .recruitment-dialog .recruit-stat-grid small { line-height:1.2; }
+.iron-squad .recruitment-dialog .recruit-aptitudes { gap:3px 8px!important; }
+@media (max-height:700px) {
+ .iron-squad .recruitment-dialog .recruit-stat-grid { gap:4px!important; }
+}
+@media (max-height:600px) and (orientation:portrait) {
+ .iron-squad .recruitment-dialog .recruit-person { line-height:1.3; }
+ .iron-squad .recruitment-dialog .recruit-specialties { min-height:14px; line-height:1.3; }
+ .iron-squad .recruitment-dialog .recruit-status { min-height:28px; font-size:10px; line-height:1.4; }
+}
+
+@media (max-height:600px) and (orientation:portrait) {
+ .iron-squad .recruitment-dialog .recruitment-candidate > div + div { margin-top:4px!important; }
 }

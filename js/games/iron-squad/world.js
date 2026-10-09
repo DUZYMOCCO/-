@@ -273,7 +273,15 @@ function nearFixedLandmark(x, y) {
   }
   return false;
 }
-export function fieldBlocks(x, y) {
+export function fieldBlocks(x, y, works=[]) {
+  for(const p of works){
+    const dx=x-p.x,dy=y-p.y;
+    if(p.boundX!==undefined&&(Math.abs(dx)>p.boundX||Math.abs(dy)>p.boundY))continue;
+    const c=p.c??Math.cos(p.angle||0),s=p.s??Math.sin(p.angle||0);
+    if(Math.abs(dx*c+dy*s)>p.w/2||Math.abs(-dx*s+dy*c)>p.h/2)continue;
+    if(p.done)return false;
+    if(p.kind==='bridge'||p.kind==='landfill')return true;
+  }
   const dx = x - CENTER, dy = y - CENTER;
   if (dx * dx + dy * dy <= HOME_SANCTUARY_RADIUS * HOME_SANCTUARY_RADIUS) return false;
   if (roadDist(x, y) <= ROAD_GATE) return false;

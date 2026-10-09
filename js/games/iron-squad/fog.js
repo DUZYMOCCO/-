@@ -26,6 +26,7 @@ export class FogGrid {
     this.rows = Math.max(1, Math.ceil(size / c));
     this.bytes = new Uint8Array(Math.ceil((this.cols * this.rows) / 8));
     this.dirty = true;
+    this.revision = 0;
     this._lastX = NaN;
     this._lastY = NaN;
     this._campSeeded = false;
@@ -68,6 +69,7 @@ export class FogGrid {
     const bi = i >> 3;
     if ((this.bytes[bi] & mask) === 0) {
       this.bytes[bi] |= mask;
+      this.revision++;
       this.dirty = true;
       this._exploredHint = true;
       return true;
@@ -158,6 +160,7 @@ export class FogGrid {
       }
       this.dirty = true;
       this._lastX = NaN;
+      this.revision++;
       this._lastY = NaN;
       this._exploredHint = any;
       this._campSeeded = false;

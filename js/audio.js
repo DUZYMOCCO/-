@@ -1,4 +1,4 @@
 /** Shared sampled audio and acoustic BGM. */
-import {SoundEngine} from './audio-engine.js?v=129';
-export {SoundEngine} from './audio-engine.js?v=129';
+import {SoundEngine} from './audio-engine.js?v=132';
+export {SoundEngine} from './audio-engine.js?v=132';
 export const sound=new SoundEngine();
