@@ -1,4 +1,5 @@
-import {powerRank,MAX_EQUIPMENT_TIER,GENERATIONS} from './equipment-tiers.js?v=133';
+import {powerRank,MAX_EQUIPMENT_TIER,GENERATIONS} from './equipment-tiers.js?v=134';
+import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=134';
 export const EQUIPMENT_TYPES = ['WEAPON','SHIELD','HELMET','ARMOR','GLOVES','LEGS','AMULET'];
 
 export const saleValue = item => Math.floor(14 + Math.pow(powerRank(item.tier), 1.8)*12 + (item.upgrade || 0)*8);
@@ -191,7 +192,7 @@ const STAT_ORDER=['atk','def','hp','speed','atkSpeed','crit','blockChance','rege
 
 function formatStatDisplay(key, value) {
   const n=Number(value)||0;
-  if(['reach','attackWidth'].includes(key))return `${Math.round(n)}m`;
+  if(['reach','attackWidth'].includes(key))return formatLength(n);
   if(key==='attackRate')return `${n.toFixed(2)}回/秒`;
   if(key==='lightning') return n?'あり':'なし';
   if(key==='vampire') return `${Math.round(n*10000)/100}%`;
@@ -202,8 +203,9 @@ function formatStatDisplay(key, value) {
 function formatDeltaDisplay(key, delta) {
   if(key==='lightning') return delta>0?'+獲得':'−喪失';
   const scale=key==='vampire'?100:1;
+  if(['reach','attackWidth'].includes(key))return formatLengthDelta(delta);
   const v=Math.round(delta*scale*100)/100;
-  const suffix=PCT_STATS.has(key)?'%':['reach','attackWidth'].includes(key)?'m':key==='attackRate'?'回/秒':'';
+  const suffix=PCT_STATS.has(key)?'%':key==='attackRate'?'回/秒':'';
   return `${v>0?'+':''}${v}${suffix}`;
 }
 

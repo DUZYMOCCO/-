@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
 import {resolve} from 'node:path';
 import {JSDOM} from '../__pycache__/ui-tools/node_modules/jsdom/lib/api.js';
-import {normalizeNation,DEVELOPMENT_STAGES,headquartersDamageMult,fiscalTotals,drawNationalDevelopment} from '../js/games/iron-squad/nation-rules.js?v=133';
+import {normalizeNation,DEVELOPMENT_STAGES,headquartersDamageMult,fiscalTotals,drawNationalDevelopment} from '../js/games/iron-squad/nation-rules.js?v=134';
 import {distributeSharedBoxToSoldiers,sellWeakSurplusFromBox,calcTreasuryGrossIncome,calcCommanderStipend} from '../js/games/iron-squad/economy-rules.js';
 import {saleValue} from '../js/games/iron-squad/equipment-rules.js';
 const dom=new JSDOM('<div id="game"></div>',{url:'http://localhost/'});

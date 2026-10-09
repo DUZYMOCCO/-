@@ -1,5 +1,7 @@
-import {salaryQuote,salaryFundingContext} from './payroll-rules.js?v=133';
-import {economicHonorBudget} from './regional-economy.js?v=133';
+import {salaryQuote,salaryFundingContext} from './payroll-rules.js?v=134';
+import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=134';
+import {economicHonorBudget} from './regional-economy.js?v=134';
+import {talentTag as talentLabel} from './talent-labels.js?v=134';
 /**
  * 兵士の武勲・ステータスランキングシステム
  * 各ステータス（総合・撃破・ボス・攻撃・防御・HP・回復・死線）を詳細にランキング化し、
@@ -102,7 +104,7 @@ export function computeRankings(soldiers, categoryId, limit = TOP_RANK_LIMIT) {
       case 'strength':case 'magic':case 'magic_defense':case 'quickness':case 'evasion': {
         const definition={strength:['strength','筋力'],magic:['magicPower','魔力'],magic_defense:['magicDef','魔法防御'],quickness:['quickness','速さ'],evasion:['dodge','回避率']}[categoryId];
         score=s[definition[0]]||0;metricText=`${definition[1]} ${score}${categoryId==='evasion'?'%':''}`;
-        detailText=`Lv.${s.level||1} · ${s.rankTitle||s.class||'兵士'}${categoryId==='quickness'?` · 移動${s.speed||0}m/秒`:categoryId==='evasion'?` · 回避 ${s.evasion||0}`:''}`;
+        detailText=`Lv.${s.level||1} · ${s.rankTitle||s.class||'兵士'}${categoryId==='quickness'?` · 移動${formatSpeed(s.speed||0)}`:categoryId==='evasion'?` · 回避 ${s.evasion||0}`:''}`;
         break;
       }
       case 'healing': {
@@ -292,7 +294,7 @@ export function renderTroopRankings(game) {
             const isNamed = !!s.title;
             const name = isNamed ? `${s.title}${s.name}` : s.name;
             const cls = s.class || s.rankTitle || '兵士';
-            const talentTag = s.talent ? `[${s.talent}]` : '';
+            const talentTag = s.talent ? `[${talentLabel(s.talent)}]` : '';
             return `
               <li class="ranking-item rank-${rank}${isRanker ? ' is-ranker' : ''}">
                 <div class="rank-pos">

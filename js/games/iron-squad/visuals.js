@@ -1,8 +1,8 @@
-import {equipmentVisualProfile} from './equipment-tiers.js?v=133';
-import {drawBodyEquipment} from './equipment-art.js?v=133';
-import {MAGIC_AFFINITIES,ensureMana} from './magic-rules.js?v=133';
-import { drawMeleeWeapon, drawMeleeRangeCue } from './weapon-motion.js?v=133';
-import { drawSoldierHead, isMedicAppearance, soldierAppearanceFamily, soldierPhysique } from './soldier-appearance.js?v=133';
+import {equipmentVisualProfile} from './equipment-tiers.js?v=134';
+import {drawBodyEquipment} from './equipment-art.js?v=134';
+import {MAGIC_AFFINITIES,ensureMana} from './magic-rules.js?v=134';
+import { drawMeleeWeapon, drawMeleeRangeCue } from './weapon-motion.js?v=134';
+import { drawSoldierHead, isMedicAppearance, soldierAppearanceFamily, soldierPhysique } from './soldier-appearance.js?v=134';
 
 // Live field illustrations. Equipment colors are read every frame.
 // Hands and the weapon share one pose; only the striking edge gets a short trace.

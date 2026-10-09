@@ -1,8 +1,9 @@
 import {calcScoutCost} from './economy-rules.js';
+import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=134';
 import {drawSoldierPortrait} from './soldier-appearance.js';
 import {ATTRIBUTE_KEYS,ATTRIBUTE_LABELS,attributeSpecialties,attributeCarryCapacity,aptitudeGrade} from './unit-attributes.js';
 import {weaponRequirementText} from './weapon-requirements.js';
-import {releaseCanvas} from './canvas-surface.js?v=133';
+import {releaseCanvas} from './canvas-surface.js?v=134';
 
 export const RECRUIT_CLASSES=['HEAVY','LIGHT','ARCHER','MEDIC','MAGE'];
 export const RECRUITMENT_INTERVAL=1200;
@@ -76,7 +77,7 @@ export function renderRecruitment(game,classes,talents) {
         ['HP',number(unit.maxHp)],['攻撃',number(unit.atk)],['防御',number(unit.def)],
         ['筋力',number(unit.strength)],['魔力',number(unit.magicPower)],['魔法防御',number(unit.magicDef)],
         ['速さ',number(unit.quickness)],['回避',`${unit.evasion} / ${unit.dodge}%`],['搬送',`${attributeCarryCapacity(unit)}人`],
-        ['魔法攻撃',number(unit.magicAttack)],['回復力',number(unit.healPower)],['移動',`${number(unit.speed)}m/秒`]
+        ['魔法攻撃',number(unit.magicAttack)],['回復力',number(unit.healPower)],['移動',formatSpeed(unit.speed)]
       ].map(([label,value])=>`<span><small>${label}</small><b>${value}</b></span>`).join('')}</div>
       <div class="recruit-aptitudes"><strong>成長素質</strong>${ATTRIBUTE_KEYS.map(key=>`<span>${ATTRIBUTE_LABELS[key]}<b>${aptitudeGrade(profile.aptitudes[key])}</b></span>`).join('')}</div>
       <div class="recruit-practice-note">初期武器：${unit.equipped?.weapon?.name||'なし'}<br>${weaponRequirementText(unit,unit.equipped?.weapon)}</div>`;

@@ -1,19 +1,20 @@
-import {soldierEquipmentValue,observeEquipment,standardEquipmentCost,RESERVE_ARMAMENT_COUNT} from './armament-rules.js?v=133';
-import {TIERS,MAX_EQUIPMENT_TIER,MAX_POWER_RANK,POWER_RANK_STEP,GENERATION_COUNT,TRADE_MAX_TIER,powerRank,tierDescription} from './equipment-tiers.js?v=133';
-import {fieldAdaptiveScaling} from './field-scaling.js?v=133';
-import {activeSquad,inCurrentInstance} from './instance-rules.js?v=133';
-import {recordBattleLog,resetBattleLog} from './battle-log.js?v=133';
-import {rollDropExclusive,applyDropExclusive,dropExclusiveLabel} from './drop-exclusives.js?v=133';
-import {latestEquipmentTier,recordMerchantEquipment,ensureMerchantCatalog,refreshWaveCatalogs,markMerchantPurchase} from './merchant-catalog.js?v=133';
-import {initializeMedicalPosts,updateMedicalPosts,serializeMedicalPosts,nearestKnownMedicalPost,drawMedicalPost,drawMedicalMap,drawMedicalMarker,drawTownMedicalReception,drawRescueDirection} from './medical-posts.js?v=133';
-import {invasionMethods,initializeInvasions,serializeInvasions,shouldTriggerRandomRaid,makeEnemyRoom,drawInvasionRoute} from './invasion-rules.js?v=133';
-import {gateMethods,serializeGatePosts,replenishTownGateGuards,initializeGateGuards,ensureTownGuards,serializeGateGuards,updateGateGuards,gateGuardVisible,applyFortifications,drawFortification,exitGateTown,townExitReached,wallBlocksAttack} from './gate-rules.js?v=133';
-import {nationMethods,normalizeNation,nationalIncome,nationalPayrollPlan,headquartersDamageMult,drawNationalDevelopment,DEVELOPMENT_STAGES} from './nation-rules.js?v=133';
-import {equipmentUpgradeCost,salaryQuote,paySoldiers} from './payroll-rules.js?v=133';
-import {addFieldDrop,ageFieldDrops} from './field-drops.js?v=133';
-import {economicState,advanceRegionalEconomy,discoverEconomicRegions,recordEconomicKill,economicFieldBlocked} from './regional-economy.js?v=133';
-import {updateRegionalTraffic,nearestCommerceTarget,damageCommerce,persistTradeRaiders,restoreTradeRaiders} from './trade-routes.js?v=133';
-import {drawEconomicLandscape,drawCommerceActor,drawEconomicMinimap,drawCommerceWreck} from './economic-visuals.js?v=133';
+import {soldierEquipmentValue,observeEquipment,standardEquipmentCost,RESERVE_ARMAMENT_COUNT} from './armament-rules.js?v=134';
+import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=134';
+import {TIERS,MAX_EQUIPMENT_TIER,MAX_POWER_RANK,POWER_RANK_STEP,GENERATION_COUNT,TRADE_MAX_TIER,powerRank,tierDescription} from './equipment-tiers.js?v=134';
+import {fieldAdaptiveScaling} from './field-scaling.js?v=134';
+import {activeSquad,inCurrentInstance} from './instance-rules.js?v=134';
+import {recordBattleLog,resetBattleLog} from './battle-log.js?v=134';
+import {rollDropExclusive,applyDropExclusive,dropExclusiveLabel} from './drop-exclusives.js?v=134';
+import {latestEquipmentTier,recordMerchantEquipment,ensureMerchantCatalog,refreshWaveCatalogs,markMerchantPurchase} from './merchant-catalog.js?v=134';
+import {initializeMedicalPosts,updateMedicalPosts,serializeMedicalPosts,nearestKnownMedicalPost,drawMedicalPost,drawMedicalMap,drawMedicalMarker,drawTownMedicalReception,drawRescueDirection} from './medical-posts.js?v=134';
+import {invasionMethods,initializeInvasions,serializeInvasions,shouldTriggerRandomRaid,makeEnemyRoom,drawInvasionRoute} from './invasion-rules.js?v=134';
+import {gateMethods,serializeGatePosts,replenishTownGateGuards,initializeGateGuards,ensureTownGuards,serializeGateGuards,updateGateGuards,gateGuardVisible,applyFortifications,drawFortification,exitGateTown,townExitReached,wallBlocksAttack} from './gate-rules.js?v=134';
+import {nationMethods,normalizeNation,nationalIncome,nationalPayrollPlan,headquartersDamageMult,drawNationalDevelopment,DEVELOPMENT_STAGES} from './nation-rules.js?v=134';
+import {equipmentUpgradeCost,salaryQuote,paySoldiers} from './payroll-rules.js?v=134';
+import {addFieldDrop,ageFieldDrops} from './field-drops.js?v=134';
+import {economicState,advanceRegionalEconomy,discoverEconomicRegions,recordEconomicKill,economicFieldBlocked} from './regional-economy.js?v=134';
+import {updateRegionalTraffic,nearestCommerceTarget,damageCommerce,persistTradeRaiders,restoreTradeRaiders} from './trade-routes.js?v=134';
+import {drawEconomicLandscape,drawCommerceActor,drawEconomicMinimap,drawCommerceWreck} from './economic-visuals.js?v=134';
 /**
  * ゲーム3: IRON SQUAD (アイアン・スクワッド: 雑兵立身出世録)
  * ローグライク・アクションRPG
@@ -25,24 +26,24 @@ import {drawEconomicLandscape,drawCommerceActor,drawEconomicMinimap,drawCommerce
  *  - 生き延びて「伍長」以上に立身出世して初めて【号令・指揮権】がアンロックされる！
  *  - 名もなき兵士たちは生き残ると二つ名と名前が授与され、やがて主人公の頼もしい戦友に。
  */
-import { sound } from '../../audio.js?v=133';
+import { sound } from '../../audio.js?v=134';
 import { storage } from '../../storage.js';
-import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow } from './visuals.js?v=133';
-import { drawMeleeRangeCue, meleeDrawReach, attackAnimationRate } from './weapon-motion.js?v=133';
-import {emptyRescueBonuses,normalizeRescueBonuses,rescueBonusSummary} from './rescue-rewards.js?v=133';
-import {drawFieldCivilian} from './civilian-visuals.js?v=133';
+import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow } from './visuals.js?v=134';
+import { drawMeleeRangeCue, meleeDrawReach, attackAnimationRate } from './weapon-motion.js?v=134';
+import {emptyRescueBonuses,normalizeRescueBonuses,rescueBonusSummary} from './rescue-rewards.js?v=134';
+import {drawFieldCivilian} from './civilian-visuals.js?v=134';
 import { saveSlots } from './save-slots.js';
-import { soldierDialogue } from './soldier-dialogue.js?v=133';
-import {MAGIC_CLASSES,MAGIC_AFFINITIES,magicMethods,isMage,isMagicUser,ensureMana,initializeMagic,updateMagic,distributeMagicStones,castMedicBuff,castCasterStrength,updateMageAI,drawMagicBursts,spendMana,weaponMagicDamage} from './magic-rules.js?v=133';
-import {hazardMethods,updateHazards,drawHazards} from './hazard-fields.js?v=133';
-import {strongEnemyReward} from './combat-rewards.js?v=133';
-import {supplyMethods, initializeSupplies, updateSupplies, takeRangedShot, ammoCombatProfile, isRangedUnit, distributeAmmo, preventLethalHit, normalizeFieldSave, SQUAD_POTION_COST, ensureAmmo, RANGED_DAMAGE_MULT, supplyLocation} from './supply-rules.js?v=133';
-import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog } from './interface.js?v=133';
-import { renderTroopRankings, getSoldierRankerBadges, calcSoldierRankerBonus } from './troop-rankings.js?v=133';
-import { ensureSoldierAppearance, drawSoldierPortrait, describeSoldierAppearance } from './soldier-appearance.js?v=133';
-import { attachSurfaceEvents, detachSurfaceEvents, frameSurfaceReady, releaseSceneCaches, releaseCanvas, surfaceCanResume } from './canvas-surface.js?v=133';
-import { WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt, routeNameAt, eastWestRoadY, northSouthRoadX, riverCenterY, drawFieldDepth, fieldBlocks, settleUnit } from './world.js?v=133';
-import { FogGrid, FOG_REVEAL_RADIUS, FOG_CAMP_REVEAL } from './fog.js?v=133';
+import { soldierDialogue } from './soldier-dialogue.js?v=134';
+import {MAGIC_CLASSES,MAGIC_AFFINITIES,magicMethods,isMage,isMagicUser,ensureMana,initializeMagic,updateMagic,distributeMagicStones,castMedicBuff,castCasterStrength,updateMageAI,drawMagicBursts,spendMana,weaponMagicDamage} from './magic-rules.js?v=134';
+import {hazardMethods,updateHazards,drawHazards} from './hazard-fields.js?v=134';
+import {strongEnemyReward} from './combat-rewards.js?v=134';
+import {supplyMethods, initializeSupplies, updateSupplies, takeRangedShot, ammoCombatProfile, isRangedUnit, distributeAmmo, preventLethalHit, normalizeFieldSave, SQUAD_POTION_COST, ensureAmmo, RANGED_DAMAGE_MULT, supplyLocation} from './supply-rules.js?v=134';
+import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog } from './interface.js?v=134';
+import { renderTroopRankings, getSoldierRankerBadges, calcSoldierRankerBonus } from './troop-rankings.js?v=134';
+import { ensureSoldierAppearance, drawSoldierPortrait, describeSoldierAppearance } from './soldier-appearance.js?v=134';
+import { attachSurfaceEvents, detachSurfaceEvents, frameSurfaceReady, releaseSceneCaches, releaseCanvas, surfaceCanResume } from './canvas-surface.js?v=134';
+import { WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt, routeNameAt, eastWestRoadY, northSouthRoadX, riverCenterY, drawFieldDepth, fieldBlocks, settleUnit } from './world.js?v=134';
+import { FogGrid, FOG_REVEAL_RADIUS, FOG_CAMP_REVEAL } from './fog.js?v=134';
 import {
   classTierOf, nextClassId, classUpCostForNext, canAffordClassUp, formatClassUpCostJa, classUpShortageJa,
   playerClassTier, nextPlayerStage, playerStageById, CLASS_TIER_LABELS, PLAYER_CLASS_STAGES
@@ -57,9 +58,9 @@ import {
   shouldAbsorbToSharedBox, calcScoutCost, estimateSoldierScoutValue, calcDismissSettlement,
   formatFiscalReportJa, formatFiscalReportHtml, distributeSharedBoxToSoldiers, sellWeakSurplusFromBox,
   SHARED_BOX_MAX_TIER, SCOUT_COST_BY_TALENT, defaultDonateAmount, donatePresetAmounts
-} from './economy-rules.js?v=133';
+} from './economy-rules.js?v=134';
 
-import { EQUIPMENT_TYPES, saleValue, equippedIds, canSell, lowValueIds, chooseLootTier, distanceScaling, shrineUpgradeCap, compareEquipment, equipmentScore, compareEquipmentStrength, rollWeaponTraits, weaponCombatProfile, evaluateMeleeSweetSpot, isGodRollProtected, zoneRingPower, zoneRingLabelJa } from './equipment-rules.js?v=133';
+import { EQUIPMENT_TYPES, saleValue, equippedIds, canSell, lowValueIds, chooseLootTier, distanceScaling, shrineUpgradeCap, compareEquipment, equipmentScore, compareEquipmentStrength, rollWeaponTraits, weaponCombatProfile, evaluateMeleeSweetSpot, isGodRollProtected, zoneRingPower, zoneRingLabelJa } from './equipment-rules.js?v=134';
 import {
   WEAPON_STYLES, WEAPON_STYLE_LABELS, WEAPON_STYLE_ICONS,
   MELEE_STYLES, RANGED_STYLES, HIT_GROWTH_SOFT_CAP,
@@ -69,19 +70,19 @@ import {
   gainWeaponMastery, masteryGainForStyle, pickFavoriteWeapon, rollWeaponStyle,
   weaponStyleOf, favoriteWeaponBias, MASTERY_GAIN_PER_HIT,
   migrateFavoriteForClass, migrateWeaponStyleFromName
-} from './growth-rules.js?v=133';
+} from './growth-rules.js?v=134';
 
 import {
   initMerchants, ensureMerchants, updateMerchants, drawMerchantBody, drawMerchantEscort,
   nearestLivingMerchant, refreshMerchantStock, merchantBuyPrice, merchantSellTier,
   applyMerchantSave, serializeMerchants, MERCHANT_INTERACT_R,
   merchantHealingStatus, merchantHealWavesLeft, useMerchantHealing, MERCHANT_HEAL_COST, recalcEscortStats, finishEscortPhase
-} from './merchant-rules.js?v=133';
+} from './merchant-rules.js?v=134';
 
 import { daylightAt, advanceWorldClock, periodEnemy, enemyAvailable, PERIOD_ENEMIES } from './day-night.js';
 
-import { RESCUE_TIMEOUT, rescueUnits, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, receiveTownCargo, leaveCivilianSpace, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, markSoldierDown, CIV_KINDS, isMedic, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST } from './casualty-rules.js?v=133';
-import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault, dungeonBlocks, dungeonSolids } from './dungeon.js?v=133';
+import { RESCUE_TIMEOUT, rescueUnits, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, receiveTownCargo, leaveCivilianSpace, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, markSoldierDown, CIV_KINDS, isMedic, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST } from './casualty-rules.js?v=134';
+import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault, dungeonBlocks, dungeonSolids } from './dungeon.js?v=134';
 import {
   EXPEDITION_CHECK_INTERVAL, EXPEDITION_RETURN_HOME, EXPEDITION_ENGAGE_R,
   EXPEDITION_DANGER_TIERS, EXPEDITION_MIN_MEMBERS,
@@ -322,9 +323,8 @@ export const TALENTS = {
     hpMult: 0.85,
     atkMult: 0.88,
     speedBonus: -6,
-    expMult: 0.85,
     tag: '🍂へっぽこ',
-    desc: '足手まといの劣等生。だが生き延びれば大化けのロマンも…？'
+    desc: '足手まといの劣等生。だが生き延びれば化けるかも…？'
   },
   AVERAGE: {
     id: 'AVERAGE',
@@ -334,9 +334,8 @@ export const TALENTS = {
     hpMult: 1.0,
     atkMult: 1.0,
     speedBonus: 0,
-    expMult: 1.0,
     tag: '凡庸',
-    desc: '標準的な新兵。大半の新兵(約65%)はここから始まる。'
+    desc: '標準的な新兵。素質の当たり外れは小さく、場数を踏むほど伸びる叩き上げ。'
   },
   TALENTED: {
     id: 'TALENTED',
@@ -346,10 +345,9 @@ export const TALENTS = {
     hpMult: 1.20,
     atkMult: 1.22,
     speedBonus: 8,
-    expMult: 1.25,
     critBonus: 8,
     tag: '✨有望',
-    desc: '筋の良い有望な新兵。全能力が高めで成長が早い。'
+    desc: '筋の良い有望な新兵。出世が早く、上位職への道が近い。'
   },
   ELITE: {
     id: 'ELITE',
@@ -359,10 +357,9 @@ export const TALENTS = {
     hpMult: 1.40,
     atkMult: 1.42,
     speedBonus: 16,
-    expMult: 1.5,
     critBonus: 18,
     tag: '🔮英才',
-    desc: '一騎当千の素質を秘めた英才。圧倒的な戦闘力。'
+    desc: '一騎当千の素質を秘めた英才。鍛えるほど頭角を現す。'
   },
   GENIUS: {
     id: 'GENIUS',
@@ -372,11 +369,9 @@ export const TALENTS = {
     hpMult: 1.70,
     atkMult: 1.75,
     speedBonus: 28,
-    expMult: 2.0,
     critBonus: 30,
-    dodgeBonus: 20,
     tag: '🌟天才',
-    desc: '万人に一人の神童！異次元の素質と回避・攻撃センスを誇る！'
+    desc: '万人に一人の神童！異次元の素質を誇る！'
   }
 };
 
@@ -1935,7 +1930,7 @@ export const IronSquadGame = {
     this.worldMapModal.querySelector('#world-location').textContent=
       this.currentDungeon
         ? `⛩️ 【ダンジョン内】${this.currentDungeon.name} · 最奥ボス討伐へ進撃中`
-        : `${biomeAt(this.player.x,this.player.y).name} · 本陣から${Math.round(Math.hypot(this.player.x-BASE_CAMP.x,this.player.y-BASE_CAMP.y))}m · 制圧${this.outposts.filter(o=>o.cleared).length}/${this.outposts.length}`;
+        : `${biomeAt(this.player.x,this.player.y).name} · 本陣から${formatDistance(Math.hypot(this.player.x-BASE_CAMP.x,this.player.y-BASE_CAMP.y))} · 制圧${this.outposts.filter(o=>o.cleared).length}/${this.outposts.length}`;
 
     // 転送先リスト生成
     const travelList = this.worldMapModal.querySelector('#fast-travel-list');
@@ -2589,7 +2584,7 @@ export const IronSquadGame = {
           const px = this.player ? this.player.x : BASE_CAMP.x;
           const py = this.player ? this.player.y : BASE_CAMP.y;
           const dist = Math.floor(Math.hypot(op.x - px, op.y - py));
-          descEl.textContent = `${op.name}へ進軍！(残${Math.floor(op.hp)}HP / 距離${dist}m)`;
+          descEl.textContent = `${op.name}へ進軍！(残${Math.floor(op.hp)}HP / 距離${formatDistance(dist)})`;
         } else {
           descEl.textContent = this.currentQuest.desc;
         }
@@ -4192,7 +4187,7 @@ export const IronSquadGame = {
           const d=post?Math.round(Math.hypot(post.x-this.player.x,post.y-this.player.y)):0;
           const directions=['→','↘','↓','↙','←','↖','↑','↗'];
           const arrow=post?directions[(Math.round(Math.atan2(post.y-this.player.y,post.x-this.player.x)/(Math.PI/4))+8)%8]:'';
-          const guide=this.currentDungeon?(this.currentDungeon.kind==='town'?'町の救護受付へ':'出口から町・救護所へ'):post?`${arrow} ${post.name} ${d.toLocaleString()}m`:'救護所は未発見 · 本陣・町・拠点へ';
+          const guide=this.currentDungeon?(this.currentDungeon.kind==='town'?'町の救護受付へ':'出口から町・救護所へ'):post?`${arrow} ${post.name} ${formatDistance(d)}`:'救護所は未発見 · 本陣・町・拠点へ';
           statusEl.textContent=`搬送 負傷${dragged.length}+民${civDrag.length}/${carryingCapacity(this.player)} · ${guide}`;
         }
         if(releaseBtn) releaseBtn.style.display = '';
@@ -7877,7 +7872,7 @@ export const IronSquadGame = {
       alert('この兵士は既に最高峰の伝説職へ覚醒済みです！');
       return false;
     }
-    const cost = classUpCostForNext(curCls);
+    const cost = classUpCostForNext(curCls, s.talent);
     if (!canAffordClassUp(this.awakeningOrbs, this.awakeningGems, cost)) {
       alert(classUpShortageJa(this.awakeningOrbs, this.awakeningGems, cost));
       return false;
@@ -8094,7 +8089,7 @@ export const IronSquadGame = {
             <div>通常給与見込 <strong>${wage.total.toLocaleString()}G</strong>（基本${wage.basic.toLocaleString()}＋整備${wage.maintenance.toLocaleString()}）<br>栄誉手当 +${ranker.totalBonus.toLocaleString()}G／期</div>
             <div>経験 ${s.exp || 0} / 次${s.reqExp || 14}</div>
             <div class="soldier-attribute-grid"><span>筋力 <strong>${s.strength||0}</strong></span><span>魔力 <strong>${s.magicPower||0}</strong></span><span>魔法防御 <strong>${s.magicDef||0}</strong></span><span>速さ <strong>${s.quickness||0}</strong></span><span>回避 <strong>${s.evasion||0}</strong>（${s.dodge||0}%）</span><span>搬送 <strong>${attributeCarryCapacity(s)}人</strong></span></div>
-            <div>移動 ${s.speed||0}m/秒${isMagicUser(s)?` · 魔法攻撃 ${s.magicAttack||0}`:''}</div>
+            <div>移動 ${formatSpeed(s.speed||0)}${isMagicUser(s)?` · 魔法攻撃 ${s.magicAttack||0}`:''}</div>
             <div class="recruit-specialties">${attributeSpecialties(s).join('・')||'均整型'}</div>
             ${isMagicUser(s)?`<div class="soldier-mana-state">${this.magicUnitDescription(s)}</div>`:''}
             ${isRangedUnit(this,s)?`<div class="soldier-ammo-state">弾薬 ${ensureAmmo(s)}/30 ${s.ammo===0?'· 弾切れ／要補給（石投げ75%）':''}</div>`:''}
@@ -8105,7 +8100,7 @@ export const IronSquadGame = {
             <div>ボス討伐 👑 <strong style="color:#38bdf8;">${s.bossKills || 0}</strong></div>
             <div>総キル <strong>${s.kills || ((s.minionKills || 0) + (s.bossKills || 0))}</strong></div>
             <div>戦線経験 <strong>${s.survivedWaves || 0}</strong>期（記録${phases.length}件）</div>
-            <div>歩いた距離 ${(Math.floor(s.attributeProfile?.practice?.travel||0)).toLocaleString()}m · 回避成功 ${Math.floor(s.attributeProfile?.practice?.evasion||0)}回</div>
+            <div>歩いた距離 ${formatDistance(Math.floor(s.attributeProfile?.practice?.travel||0))} · 回避成功 ${Math.floor(s.attributeProfile?.practice?.evasion||0)}回</div>
             <div class="attribute-growth-hint">基礎能力は255まで。近接／射撃で筋力（杖・ワンドを除く）、術の使用で魔力、魔法・属性被弾で魔法防御、歩行で速さ、回避成功で回避が成長します。限界に近づくほど成長は緩やかになります。</div>
             ${isMedic(s) ? `<div>実回復 💚 <strong>${Math.floor(s.healingHp || 0).toLocaleString()}HP</strong> · 回復EXP <strong>${(s.healingExp || 0).toLocaleString()}</strong></div><div>蘇生EXP <strong>${(s.revivalExp || 0).toLocaleString()}</strong></div><div style="font-size:10px;color:#94a3b8;">実回復${HEALING_HP_PER_EXP}HPで1EXP（継続回復含む）。蘇生は対象の最大HPの${REVIVAL_EXP_PER_MAX_HP*100}%をEXPで獲得。</div>` : ''}
             <div>死線生還 💀 <strong style="color:#f87171;">${s.survivedDeathlines || 0}</strong></div>
@@ -9550,7 +9545,7 @@ export const IronSquadGame = {
           <button class="mini-btn btn-dismiss" style="background:#7f1d1d;color:#fecaca;font-size:10px;padding:3px 6px;" title="放逐（一部返還）">🚪 放逐</button>
           ${cls.advancedClassId && SOLDIER_CLASSES[cls.advancedClassId] ? (() => {
             const next = SOLDIER_CLASSES[cls.advancedClassId];
-            const cost = classUpCostForNext(cls);
+            const cost = classUpCostForNext(cls, s.talent);
             const costJa = formatClassUpCostJa(cost);
             const tierJa = CLASS_TIER_LABELS[classTierOf(next)] || '上位職';
             return `
@@ -10021,8 +10016,8 @@ export const IronSquadGame = {
         edgeX = Math.max(padL, Math.min(padR, edgeX));
       }
 
-      // プレイヤーからの距離（メートル換算）
-      const distM = Math.round(Math.hypot(s.x - this.player.x, s.y - this.player.y));
+      // プレイヤーからの距離（内部単位はcm。表示のみ formatDistance でメートルへ換算）
+      const distM = formatDistance(Math.hypot(s.x - this.player.x, s.y - this.player.y));
 
       // 搬送状況と緊急度
       const isBeingCarried = !!s.carrierId;
@@ -10068,7 +10063,7 @@ export const IronSquadGame = {
       ctx.shadowColor = 'rgba(0,0,0,0.9)';
       ctx.shadowBlur = 0;
       const textY = edgeY < h - 75 ? 21 : -21;
-      const labelText = isBeingCarried ? `搬送中 ${distM}m` : `${distM}m 救助!`;
+      const labelText = isBeingCarried ? `搬送中 ${distM}` : `${distM} 救助!`;
       ctx.fillText(labelText, 0, textY);
       ctx.shadowBlur = 0;
 
@@ -11485,7 +11480,7 @@ export const IronSquadGame = {
     mCtx.font = '8px sans-serif';
     mCtx.textAlign = 'left';
     mCtx.textBaseline = 'bottom';
-    mCtx.fillText(dungeon ? '屋内' : (distToBase < 200 ? '本陣' : `${Math.round(distToBase)}m`), 2.5, mh - 1.5);
+    mCtx.fillText(dungeon ? '屋内' : (distToBase < 200 ? '本陣' : formatDistance(distToBase)), 2.5, mh - 1.5);
   },
 
   continueFallenSave(kind) {

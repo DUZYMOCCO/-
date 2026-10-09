@@ -13,13 +13,19 @@ export const ATTRIBUTE_BASES = {
 const FAMILIES={PALADIN:'HEAVY',TEMPLAR:'HEAVY',IMMORTAL_AEGIS:'HEAVY',BLADEMASTER:'LIGHT',SWORD_EMPEROR:'LIGHT',SWORD_SAINT:'LIGHT',VOID_EDGE:'LIGHT',SNIPER:'ARCHER',STORM_BOW:'ARCHER',STORM_ARCHER:'ARCHER',STAR_HUNTER:'ARCHER',HIGH_PRIEST:'MEDIC',SAINT:'MEDIC',ARCHANGEL:'MEDIC',ARCHMAGE:'MAGE',ELEMENTAL_SAGE:'MAGE',ARCANE_SOVEREIGN:'MAGE'};
 const CLASS_STRENGTH={PALADIN:20,TEMPLAR:35,IMMORTAL_AEGIS:60};
 const TALENT_GROWTH={INFERIOR:.85,AVERAGE:1,TALENTED:1.16,ELITE:1.35,GENIUS:1.8};
+/** 凡庸＝叩き上げ：実戦で伸びる分（practice）だけに掛かる追加倍率。Lv成長には掛けない。有望株（1.16）とちょうど並ぶ値。 */
+export const TALENT_PRACTICE_BONUS={AVERAGE:TALENT_GROWTH.TALENTED};
+/** 素質の振れ幅。凡庸は当たり外れが小さい（他は従来の.65〜1.35）。 */
+export const APTITUDE_ROLL_RANGE={AVERAGE:{min:.8,span:.45}};
+const DEFAULT_APTITUDE_ROLL={min:.65,span:.7};
+export const practiceGrowth=unit=>(TALENT_GROWTH[unit?.talent]||1)*(TALENT_PRACTICE_BONUS[unit?.talent]||1);
 const positive=(value,fallback=0)=>Number.isFinite(Number(value))?Math.max(0,Number(value)):fallback;
 const clamp=(value,min,max)=>Math.max(min,Math.min(max,value));
 export const attributeFamily=unit=>unit?.isPlayer||unit?.isHero?'COMMANDER':FAMILIES[unit?.soldierClass]||(ATTRIBUTE_BASES[unit?.soldierClass]?unit.soldierClass:'HEAVY');
 export const emptyAttributePractice=()=>({strength:0,magic:0,magicDefense:0,travel:0,evasion:0});
 export function rollAttributeProfile(classKey='HEAVY',talent='AVERAGE',random=Math.random,balanced=false) {
-  const family=FAMILIES[classKey]||(ATTRIBUTE_BASES[classKey]?classKey:'HEAVY'),base=ATTRIBUTE_BASES[family],aptitudes={},innate={};
-  for(const key of ATTRIBUTE_KEYS)aptitudes[key]=balanced?1:.65+clamp(random(),0,.999999)*.7;
+  const family=FAMILIES[classKey]||(ATTRIBUTE_BASES[classKey]?classKey:'HEAVY'),base=ATTRIBUTE_BASES[family],aptitudes={},innate={},roll=APTITUDE_ROLL_RANGE[talent]||DEFAULT_APTITUDE_ROLL;
+  for(const key of ATTRIBUTE_KEYS)aptitudes[key]=balanced?1:roll.min+clamp(random(),0,.999999)*roll.span;
   if(!balanced){
     const type=random(),primary=ATTRIBUTE_KEYS[Math.floor(clamp(random(),0,.999999)*ATTRIBUTE_KEYS.length)];
     if(type<.45){aptitudes[primary]*=1.8;for(const key of ATTRIBUTE_KEYS)if(key!==primary)aptitudes[key]*=.82;}
@@ -57,7 +63,7 @@ function unassistedStrengthPotential(unit,profile) {
   const caster=['MEDIC','MAGE'].includes(attributeFamily(unit));
   const growth=profile.aptitudes.strength*(TALENT_GROWTH[unit.talent]||1);
   return profile.innate.strength+Math.max(0,(unit.level||1)-1)*(caster?ATTRIBUTE_RULES.casterLevelStrength:ATTRIBUTE_RULES.levelStrength)*growth
-    +trainingValue('strength',profile.practice.strength)*growth+(CLASS_STRENGTH[unit.soldierClass]||0);
+    +trainingValue('strength',profile.practice.strength)*profile.aptitudes.strength*practiceGrowth(unit)+(CLASS_STRENGTH[unit.soldierClass]||0);
 }
 /** The melee growth unlock also determines physique. Rendering only reads saved abilities. */
 export function isMuscleCaster(unit) {
@@ -75,7 +81,7 @@ export function cappedAttributeValue(potential,precision=1,min=0) {
 export const evasionChance=value=>Math.min(ATTRIBUTE_RULES.dodgeChanceMax,value*.36+7.2*Math.pow(value/ATTRIBUTE_RULES.cap,4));
 export function attributeValues(unit) {
   const p=ensureAttributeProfile(unit),lv=Math.max(0,(unit.level||1)-1),gift=TALENT_GROWTH[unit.talent]||1;
-  const trained=(key,levelGain,kind=key)=>p.innate[key]+lv*levelGain*p.aptitudes[key]*gift+trainingValue(kind,p.practice[kind])*p.aptitudes[key]*gift;
+  const trained=(key,levelGain,kind=key)=>p.innate[key]+lv*levelGain*p.aptitudes[key]*gift+trainingValue(kind,p.practice[kind])*p.aptitudes[key]*practiceGrowth(unit);
   const caster=['MEDIC','MAGE'].includes(attributeFamily(unit));
   let strengthPotential=unassistedStrengthPotential(unit,p);
   const weapon=unit.equipped?.weapon||unit.weapon;
@@ -109,7 +115,7 @@ export function practiceAttribute(unit,kind,amount=1) {
   if(!unit||unit.dead||unit.isDown||!(unit.hp>0)||!Number.isFinite(amount)||amount<=0)return false;
   const p=ensureAttributeProfile(unit);if(!(kind in p.practice))return false;
   const before=p.practice[kind],after=Math.min(Number.MAX_SAFE_INTEGER,before+amount);p.practice[kind]=after;
-  const key=kind==='travel'?'quickness':kind,gift=TALENT_GROWTH[unit.talent]||1,precision=kind==='evasion'?10:1;
+  const key=kind==='travel'?'quickness':kind,gift=practiceGrowth(unit),precision=kind==='evasion'?10:1;
   if(Math.floor(trainingValue(kind,before)*p.aptitudes[key]*gift*precision)!==Math.floor(trainingValue(kind,after)*p.aptitudes[key]*gift*precision))unit._attributesDirty=true;
   return true;
 }

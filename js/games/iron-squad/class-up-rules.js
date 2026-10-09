@@ -32,9 +32,14 @@ export function nextClassId(cls) {
   return cls?.advancedClassId || null;
 }
 
-export function classUpCostForNext(cls) {
+/** 有望株＝出世頭：宝珠の消費が約3割減（四捨五入・最低1個）。神話宝玉は変えない。 */
+export const TALENTED_ORB_DISCOUNT = 0.7;
+
+export function classUpCostForNext(cls, talent = null) {
   const nextTier = classTierOf(cls) + 1;
-  return CLASS_UP_COSTS[nextTier] || null;
+  const base = CLASS_UP_COSTS[nextTier] || null;
+  if (!base || talent !== 'TALENTED' || !(base.orbs > 0)) return base;
+  return { ...base, orbs: Math.max(1, Math.round(base.orbs * TALENTED_ORB_DISCOUNT)) };
 }
 
 export function canAffordClassUp(orbs, gems, cost) {
