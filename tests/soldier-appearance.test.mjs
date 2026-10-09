@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {createSoldierAppearance,ensureSoldierAppearance,describeSoldierAppearance,isMedicAppearance,drawSoldierHead,drawSoldierPortrait,HAIR_LABELS,GLASSES_LABELS} from '../js/games/iron-squad/soldier-appearance.js';
+import {createSoldierAppearance,ensureSoldierAppearance,describeSoldierAppearance,isMedicAppearance,drawSoldierHead,drawSoldierPortrait,HAIR_LABELS,GLASSES_LABELS,APPEARANCE_RULES} from '../js/games/iron-squad/soldier-appearance.js';
 import {persistentUnit} from '../js/games/iron-squad/render-support.js';
 
 const profile=createSoldierAppearance('stable-soldier');
@@ -17,9 +17,12 @@ ensureSoldierAppearance(oldUnit);
 for(const key of Object.keys(oldCopy))assert.deepEqual(oldUnit.appearance[key],oldCopy[key],'adding glasses preserves an already assigned face');
 assert.equal(oldUnit.appearance.glasses,profile.glasses);
 
-let handsome=0;const styles=new Set(),skins=new Set(),faces=new Set(),glasses=new Set();
-for(let i=0;i<10000;i++){const a=createSoldierAppearance(`recruit-${i}`);handsome+=Number(a.handsome);styles.add(a.hairStyle);skins.add(a.skin);faces.add(a.faceShape);glasses.add(a.glasses);assert.ok(a.handsome||a.hairStyle!=='swept');}
+let handsome=0,normalHair=0,beautiful=0;const styles=new Set(),skins=new Set(),faces=new Set(),glasses=new Set();
+for(let i=0;i<10000;i++){const a=createSoldierAppearance(`recruit-${i}`);handsome+=Number(a.handsome);normalHair+=Number(['short','parted','tousled','curly','tied','swept'].includes(a.hairStyle));beautiful+=Number(a.beautiful);styles.add(a.hairStyle);skins.add(a.skin);faces.add(a.faceShape);glasses.add(a.glasses);assert.ok(a.handsome||a.hairStyle!=='swept');}
 assert.ok(handsome>=400&&handsome<=800,`handsome faces are a small minority: ${handsome}/10000`);
+assert.ok(normalHair>=6500&&normalHair<=7500,`ordinary hairstyles form the majority: ${normalHair}/10000`);
+assert.ok(beautiful>=300&&beautiful<=600,`rare female looks remain rare: ${beautiful}/10000`);
+assert.equal(APPEARANCE_RULES.rareFemaleBeautyChance,.045);
 assert.equal(styles.size,Object.keys(HAIR_LABELS).length);assert.equal(skins.size,5);assert.equal(faces.size,4);
 assert.equal(glasses.size,Object.keys(GLASSES_LABELS).length);
 assert.equal(isMedicAppearance('HEAVY'),false);
@@ -28,6 +31,13 @@ for(const key of ['MEDIC','HIGH_PRIEST','SAINT','ARCHANGEL']){
  assert.equal(isMedicAppearance(key),true); assert.match(describeSoldierAppearance(soldier),/やわらかな表情/);
  assert.equal(ensureSoldierAppearance(soldier),appearanceRef,'all medical promotions use the same identity');
 }
+// Already saved bald people keep their existing appearance when the new pool expands.
+const legacy={...profile,hairStyle:'bald'};delete legacy.beautiful;delete legacy.eyeColor;
+const kept=structuredClone(legacy),oldBald={id:'existing-bald',soldierClass:'HEAVY',appearance:legacy};
+ensureSoldierAppearance(oldBald);for(const key of Object.keys(kept))assert.deepEqual(oldBald.appearance[key],kept[key]);
+assert.equal(oldBald.appearance.beautiful,false);
+const charm=Object.freeze({...profile,beautiful:true,medicHair:'long',glasses:'none'});
+for(const key of ['MEDIC','HIGH_PRIEST','SAINT','ARCHANGEL'])assert.match(describeSoldierAppearance({id:'rare-woman',soldierClass:key,appearance:{...charm}}),/華やかな顔立ち/);
 // Appearance rendering never consumes gameplay randomness or changes combat stats.
 let depth=0;const noop=()=>{};
 const context=new Proxy({save(){depth++;},restore(){depth--;},createRadialGradient:()=>({addColorStop:noop})},{get:(o,k)=>k in o?o[k]:noop});

@@ -1,7 +1,7 @@
-import {salaryQuote,salaryFundingContext} from './payroll-rules.js?v=134';
-import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=134';
-import {economicHonorBudget} from './regional-economy.js?v=134';
-import {talentTag as talentLabel} from './talent-labels.js?v=134';
+import {salaryQuote,salaryFundingContext} from './payroll-rules.js?v=138';
+import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=138';
+import {economicHonorBudget} from './regional-economy.js?v=138';
+import {talentTag as talentLabel} from './talent-labels.js?v=138';
 /**
  * 兵士の武勲・ステータスランキングシステム
  * 各ステータス（総合・撃破・ボス・攻撃・防御・HP・回復・死線）を詳細にランキング化し、
@@ -24,7 +24,7 @@ export const RANKING_CATEGORIES = [
   { id: 'evasion', label: '💨 回避率', shortName: '回避', desc: '実戦で磨いた身かわし（上位3名がランカー）', icon: '💨', color:'#d6ccb0' },
   { id: 'max_hp',     label: '❤️ 最大HP',   shortName: '体力', desc: '死戦を耐え抜く強靭なる生命力（上位3名がランカー）', icon: '❤️', color: '#f43f5e' },
   { id: 'healing',    label: '💖 救護・回復', shortName: '回復', desc: '仲間を死線から救い続けた守護神（上位3名がランカー）', icon: '💖', color: '#4ade80' },
-  { id: 'deathline',  label: '💀 死線生還', shortName: '死線', desc: '幾度もの壊滅から生還した不屈の記録（上位3名がランカー）', icon: '💀', color: '#c084fc' }
+  { id: 'deathline',  label: '💀 死線生還', shortName: '死線', desc: 'ダウンを重ねた危険な戦線から生還した不屈の記録（上位3名がランカー）', icon: '💀', color: '#c084fc' }
 ];
 
 export function collectAllSoldiers(game) {

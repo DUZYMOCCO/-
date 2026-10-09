@@ -2,10 +2,11 @@ import {grantHealingExp} from './experience-rules.js';
 
 export const PHASE_DURATION = 120;
 export const REST_DURATION = 8;
+export const DEATHLINE_DOWN_THRESHOLD = 10;
 /** Legacy name denotes the minimum basic pay; quotes include growth and maintenance. */
-export {SOLDIER_SALARY} from './payroll-rules.js?v=134';
+export {SOLDIER_SALARY} from './payroll-rules.js?v=138';
 export const MIN_REINFORCEMENTS = 5;
-export const emptyActivity = () => ({combatActions: 0, healingDone: 0});
+export const emptyActivity = () => ({combatActions: 0, healingDone: 0, downs:0});
 
 export function advancePhase(game, dt) {
   if (!game.inBattle || game.restTimer > 0 || !Number.isFinite(dt) || dt <= 0) return false;
@@ -25,6 +26,19 @@ export function advanceRest(game, dt) {
     game.processRestSecond();
   }
   if (game.restTimer <= 0.000001) game.finishRest();
+  return true;
+}
+
+export function personalDownCount(unit) {
+  const count=Number(unit?.phaseActivity?.downs);
+  return Number.isFinite(count)?Math.max(0,Math.floor(count)):0;
+}
+export const deathlineEligible = unit => !!unit && !unit.dead && personalDownCount(unit)>=DEATHLINE_DOWN_THRESHOLD;
+/** Only fresh down events of a deployed soldier count toward that person's wave. */
+export function recordDown(game, unit) {
+  if(!game || !unit || unit.dead || game.restTimer>0 || !game.squad?.includes(unit))return false;
+  unit.phaseActivity ||= emptyActivity();
+  unit.phaseActivity.downs=personalDownCount(unit)+1;
   return true;
 }
 

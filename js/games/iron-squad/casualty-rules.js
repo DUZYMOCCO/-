@@ -1,8 +1,8 @@
-import {ensureMana,regenerateMana,spendMana} from './magic-rules.js?v=134';
-import {recordHealing} from './phase-rules.js';
+import {ensureMana,regenerateMana,spendMana} from './magic-rules.js?v=138';
+import {recordHealing,recordDown} from './phase-rules.js';
 import {WORLD_SIZE} from './world.js';
-import {inCurrentInstance} from './instance-rules.js?v=134';
-import {grantPermanentRescueReward} from './rescue-rewards.js?v=134';
+import {inCurrentInstance} from './instance-rules.js?v=138';
+import {grantPermanentRescueReward} from './rescue-rewards.js?v=138';
 import {grantPersonalExp,revivalExperience} from './experience-rules.js';
 import {attributeCarryCapacity} from './unit-attributes.js';
 
@@ -145,6 +145,7 @@ export function markSoldierDown(game, soldier, opts = {}) {
   soldier.hp = 0;
   soldier.isDown = true;
   soldier.timesDown = (soldier.timesDown || 0) + 1;
+  recordDown(game,soldier);
   soldier.downTimer = opts.downTimer ?? RESCUE_TIMEOUT;
   soldier.rescueProgress = 0;
   delete soldier.carrierId;
@@ -222,7 +223,7 @@ export function grantRescueBonus(game,wounded,options={}) {
   // 2. 昇進EXP（指揮階級）— 誰が救助しても部隊武勲として加算
   const rankExpGain=isBase?20:12;
   if(typeof game.gainExp==='function') {
-    game.gainExp(rankExpGain);
+    game.gainExp(rankExpGain,{share:false});
   } else {
     game.exp=(game.exp||0)+rankExpGain;
   }

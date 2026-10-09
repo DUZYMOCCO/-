@@ -73,7 +73,7 @@ assert.equal(getFieldZone(center+6000,center).id,'ZONE_PEACE');
 assert.equal(getFieldZone(center+10000,center).id,'ZONE_WILD');
 assert.equal(getFieldZone(center+25000,center).id,'ZONE_CHAOS');
 assert.equal(getFieldZone(center+50000,center).id,'ZONE_ABYSS');
-assert.equal(game.dungeons.filter(d=>d.kind==='town').length,5,'four regional towns plus the national castle town');
+assert.equal(game.dungeons.filter(d=>d.kind==='town').length,11,'four regional towns plus castle town plus six ally settlements');
 assert.equal(game.dungeons.find(d=>d.id==='royal_castle_town').kind,'town');
 assert.equal(game.dungeons.filter(d=>d.kind==='ruin').length,4);
 assert.equal(game.dungeons.find(d=>d.kind==='town').boss,null);

@@ -10,24 +10,24 @@ const font='C:/Windows/Fonts/YuGothM.ttc'; if(existsSync(font))GlobalFonts.regis
 const canvas=createCanvas(1040,1588),c=canvas.getContext('2d');
 c.fillStyle='#101a22';c.fillRect(0,0,1040,1588);
 c.fillStyle='#deca99';c.font='bold 27px Review, sans-serif';c.fillText('IRON SQUAD  /  兵士の素顔',24,43);
-c.fillStyle='#bec7ca';c.font='14px Review, sans-serif';c.fillText('ハゲ系を主役に。端正な顔は少数、衛生兵は可愛い女性風。右下は戦場での姿。',24,73);
+c.fillStyle='#bec7ca';c.font='14px Review, sans-serif';c.fillText('普通の髪型を中心に、女性にはときどき華やかな顔立ち。右下は同じ個体の戦場での姿。',24,73);
 const variants=[
- ['バーコード','barcode','HEAVY',{facialHair:'none',faceShape:'long'}],
- ['丸ハゲ','bald','HEAVY',{facialHair:'stubble',faceShape:'square'}],
- ['モヒカン','mohawk','LIGHT',{facialHair:'chin',faceShape:'long'}],
- ['サイドハゲ','sidebald','ARCHER',{facialHair:'none',faceShape:'round'}],
- ['落ち武者ハゲ','horseshoe','HEAVY',{facialHair:'mustache',faceShape:'long'}],
- ['うっすら坊主','buzz','LIGHT',{facialHair:'stubble',faceShape:'square'}],
- ['バーコード / 白髪・口ひげ','barcode','ARCHER',{hairColor:'#85827b',facialHair:'mustache',faceShape:'round'}],
- ['少数派のイケメン','swept','LIGHT',{handsome:true,faceShape:'angular',facialHair:'none',scar:false,smile:true}],
- ['衛生兵 / ボブ','bald','MEDIC',{medicHair:'bob',medicHairColor:'#51372f',medicAccessory:'clip'}],
- ['衛生兵 / ポニーテール','bald','MEDIC',{medicHair:'ponytail',medicHairColor:'#795442',medicAccessory:'ribbon'}],
- ['衛生兵 / 編み髪','bald','MEDIC',{medicHair:'braid',medicHairColor:'#332e32',medicAccessory:'none'}],
- ['大司教 / ショート','bald','HIGH_PRIEST',{medicHair:'short',medicHairColor:'#a77951',medicAccessory:'clip'}],
- ['丸ハゲ × 丸メガネ','bald','HEAVY',{glasses:'round',facialHair:'mustache',faceShape:'round'}],
- ['バーコード × 角メガネ','barcode','ARCHER',{glasses:'square',facialHair:'none',hairColor:'#85827b'}],
- ['サイドハゲ × ハーフリム','sidebald','LIGHT',{glasses:'half',facialHair:'chin'}],
- ['衛生兵 × 丸メガネ','bald','MEDIC',{glasses:'round',medicHair:'bob',medicHairColor:'#51372f'}]
+ ['短髪','short','HEAVY',{facialHair:'none',faceShape:'square'}],
+ ['七三分け','parted','ARCHER',{facialHair:'none',glasses:'half'}],
+ ['ラフな前髪','tousled','LIGHT',{facialHair:'none',faceShape:'round'}],
+ ['くせ毛','curly','MAGE',{facialHair:'none',faceShape:'long'}],
+ ['結び髪','tied','LIGHT',{facialHair:'none',faceShape:'square'}],
+ ['少数派の端正な顔','swept','LIGHT',{handsome:true,faceShape:'angular',facialHair:'none',scar:false,smile:true}],
+ ['おなじみのバーコード','barcode','HEAVY',{facialHair:'mustache',faceShape:'long'}],
+ ['丸ハゲも残ります','bald','HEAVY',{facialHair:'stubble',faceShape:'square'}],
+ ['女性 / ボブ','short','MEDIC',{beautiful:false,medicHair:'bob',medicHairColor:'#51372f',medicAccessory:'clip'}],
+ ['女性 / ポニーテール','short','MEDIC',{beautiful:false,medicHair:'ponytail',medicHairColor:'#795442',medicAccessory:'ribbon'}],
+ ['女性 / ロング','short','MEDIC',{beautiful:false,medicHair:'long',medicHairColor:'#332e32',medicAccessory:'none'}],
+ ['女性 / ウェーブ','short','MEDIC',{beautiful:false,medicHair:'waves',medicHairColor:'#a77951',medicAccessory:'clip'}],
+ ['華やかな顔立ち / ボブ','short','MEDIC',{beautiful:true,eyeColor:'#476b64',medicHair:'bob',medicHairColor:'#51372f',medicAccessory:'clip'}],
+ ['華やかな顔立ち / ロング','short','MEDIC',{beautiful:true,eyeColor:'#567385',medicHair:'long',medicHairColor:'#332e32',medicAccessory:'none'}],
+ ['華やかな顔立ち / ウェーブ','short','MEDIC',{beautiful:true,eyeColor:'#665a83',medicHair:'waves',medicHairColor:'#a77951',medicAccessory:'ribbon'}],
+ ['華やかな顔立ち / ハーフアップ','short','MEDIC',{beautiful:true,eyeColor:'#735843',glasses:'round',medicHair:'halfup',medicHairColor:'#795442',medicAccessory:'none'}]
 ];
 for(let i=0;i<variants.length;i++) {
  const [name,hairStyle,soldierClass,overrides]=variants[i];

@@ -1,8 +1,9 @@
-import {equipmentVisualProfile} from './equipment-tiers.js?v=134';
-import {drawBodyEquipment} from './equipment-art.js?v=134';
-import {MAGIC_AFFINITIES,ensureMana} from './magic-rules.js?v=134';
-import { drawMeleeWeapon, drawMeleeRangeCue } from './weapon-motion.js?v=134';
-import { drawSoldierHead, isMedicAppearance, soldierAppearanceFamily, soldierPhysique } from './soldier-appearance.js?v=134';
+import {RANGED_ENEMIES} from './enemy-ranged.js?v=138';
+import {equipmentVisualProfile} from './equipment-tiers.js?v=138';
+import {drawBodyEquipment} from './equipment-art.js?v=138';
+import {MAGIC_AFFINITIES,ensureMana} from './magic-rules.js?v=138';
+import { drawMeleeWeapon, drawMeleeRangeCue } from './weapon-motion.js?v=138';
+import { drawSoldierHead, isMedicAppearance, soldierAppearanceFamily, soldierPhysique } from './soldier-appearance.js?v=138';
 
 // Live field illustrations. Equipment colors are read every frame.
 // Hands and the weapon share one pose; only the striking edge gets a short trace.
@@ -314,6 +315,14 @@ function drawPeriodMob(c,m,now) {
 }
 
 export function drawFieldMob(c, m, now) {
+  const ranged=RANGED_ENEMIES[m.type];
+  if(ranged){
+    drawFieldMob(c,{...m,type:ranged.base,isBoss:false},now);
+    c.save();c.strokeStyle=ranged.color;c.lineWidth=2;c.beginPath();
+    if(ranged.kind==='physical'){c.moveTo(10,-22);c.quadraticCurveTo(24,-12,10,-2);c.moveTo(10,-22);c.lineTo(10,-2);}
+    else{c.moveTo(13,0);c.lineTo(13,-28);c.moveTo(10,-28);c.lineTo(16,-28);}
+    c.stroke();if(ranged.kind!=='physical'){c.fillStyle=ranged.color;c.beginPath();c.arc(13,-31,3,0,Math.PI*2);c.fill();}c.restore();return true;
+  }
   if(drawPeriodMob(c,m,now))return true;
   if (!['slime','goblin','wolf','orc','wyvern'].includes(m.type) || m.isBoss) return false;
   const bob = Math.sin(now*.009 + m.x)*.65;

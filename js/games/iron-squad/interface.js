@@ -1,6 +1,6 @@
-import {configureAudioInterface} from './audio-interface.js?v=134';
-import {renderBattleLog} from './battle-log.js?v=134';
-import {renderTroopRankings} from './troop-rankings.js?v=134';
+import {configureAudioInterface} from './audio-interface.js?v=138';
+import {renderBattleLog} from './battle-log.js?v=138';
+import {renderTroopRankings} from './troop-rankings.js?v=138';
 /** Presentation only: keep game actions on their original DOM nodes. */
 const element = (tag, className, text) => {
   const node = document.createElement(tag);
@@ -83,7 +83,10 @@ export function configureInterface(game) {
   battleLog.addEventListener('toggle',()=>{if(battleLog.open)renderBattleLog(game);});
   historyButton.onclick=()=>{game.openStrategyModal(true);game._selectStratTab('overview');battleLog.open=true;renderBattleLog(game);battleLog.scrollIntoView?.({block:'nearest'});logList.scrollTop=logList.scrollHeight;};
   fold(overview, 'command-report', '前回の作戦報告', [get('strat-report')]);
-  fold(overview, 'commander-record', '隊長の成長・覚醒', [get('player-record-box')]);
+  const commanderRecord=fold(overview, 'commander-record', '隊長ステータス・成長・覚醒', [get('player-record-box')]);
+  const playerStatsButton=element('button','','隊長ステータス');playerStatsButton.type='button';playerStatsButton.id='btn-player-stats';
+  playerStatsButton.onclick=()=>{game._selectStratTab('overview');commanderRecord.open=true;commanderRecord.scrollIntoView?.({block:'start',behavior:'smooth'});};
+  links.prepend(playerStatsButton);
   const rules = fold(overview, 'command-rules', '整備・昼夜・救助のルール', []); rules.querySelector('.fold-content').id = 'command-rule-content';
   const restart = get('btn-restart-from-strat'); restart.textContent = 'セーブ選択へ戻る';
   fold(overview, 'command-session', 'セーブ・ゲーム管理', [restart]);

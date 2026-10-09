@@ -311,8 +311,10 @@
 .iron-squad .command-heal > div { flex: 1 1 170px; }
 .iron-squad .command-heal > div > div { color: var(--ui-text) !important; font-size: 13px !important; }
 .iron-squad .command-heal > div > div + div { color: var(--ui-muted) !important; font-size: 12px !important; margin-top: 4px; }
-.iron-squad .command-shortcuts { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 6px; margin-bottom: 16px; }
+.iron-squad .command-shortcuts { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 6px; margin-bottom: 16px; }
 .iron-squad .command-shortcuts button { min-height: 44px; color: var(--ui-gold); border: 1px solid var(--ui-line); border-radius: 7px; background: var(--ui-raised); font-size: 12px; }
+.iron-squad #btn-limited-ally { pointer-events: auto; touch-action: manipulation; min-height: 44px; width: 100%; border: 1px solid var(--ui-line); border-radius: 7px; background: var(--ui-panel); color: var(--ui-gold); font-size: 12px; padding: 8px; white-space: normal; overflow-wrap: anywhere; }
+.dialog-open #btn-limited-ally { visibility: hidden; pointer-events: none; }
 .iron-squad .command-fold { border: 1px solid var(--ui-line); border-radius: 9px; margin: 10px 0; background: var(--ui-panel); }
 .iron-squad .command-fold > summary { min-height: 48px; padding: 12px; font-size: 13px; color: var(--ui-text); cursor: pointer; }
 .iron-squad .command-fold[open] > summary { color: var(--ui-gold); border-bottom: 1px solid var(--ui-line); }
@@ -320,6 +322,14 @@
 .iron-squad .fold-content > :last-child { margin-bottom: 0 !important; }
 .iron-squad #strat-report { margin: 0 !important; font-size: 13px !important; }
 .iron-squad #strat-report [style*="font-size"], .iron-squad #player-record-box [style*="font-size"] { font-size: 12px !important; }
+.iron-squad .commander-stat-title { margin: 0 0 10px; color: var(--ui-gold); font-size: 16px; }
+.iron-squad .commander-stat-title small { color: var(--ui-muted); font-size: 12px; margin-left: 8px; }
+.iron-squad .commander-stat-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 6px; margin: 0 0 12px; }
+.iron-squad .commander-stat-grid > div { min-width: 0; padding: 8px; background: var(--ui-raised); border-radius: 6px; }
+.iron-squad .commander-stat-grid dt { color: var(--ui-muted); font-size: 11px; }
+.iron-squad .commander-stat-grid dd { margin: 3px 0 0; font-size: 14px; color: var(--ui-text); overflow-wrap: anywhere; }
+.iron-squad .commander-spell-choice { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--ui-muted); font-size: 12px; }
+.iron-squad .commander-spell-choice select { min-height: 44px; min-width: 120px; border: 1px solid var(--ui-line); border-radius: 6px; background: var(--ui-raised); color: var(--ui-text); font-size: 16px; padding: 8px; }
 .iron-squad #player-record-box { margin: 0 !important; padding: 0 !important; background: none !important; border: 0 !important; }
 .iron-squad .reinforcement-summary, .iron-squad .reserve-roster { border-color: var(--ui-line); background: var(--ui-panel); color: var(--ui-muted); font-size: 12px; }
 .iron-squad .section-heading { margin-bottom: 14px; }

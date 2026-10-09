@@ -1,14 +1,19 @@
-import {sound} from '../../audio.js?v=134';
-import {WORLD_SIZE} from './world.js?v=134';
-import {inCurrentInstance} from './instance-rules.js?v=134';
+import {sound} from '../../audio.js?v=138';
+import {WORLD_SIZE} from './world.js?v=138';
+import {inCurrentInstance} from './instance-rules.js?v=138';
 import {recordCombat} from './phase-rules.js';
 import {isSoldierOnExpedition} from './expedition-rules.js';
 import {practiceAttribute,prefersCasterMelee,attributeValues,canChannelWeaponMagic} from './unit-attributes.js';
+import {isMagicWeapon} from './weapon-requirements.js';
 
 export const MAGE_IDS=['MAGE','ARCHMAGE','ELEMENTAL_SAGE','ARCANE_SOVEREIGN'];
 const MEDIC_IDS=['MEDIC','HIGH_PRIEST','SAINT','ARCHANGEL'];
-export const isMage=u=>MAGE_IDS.includes(u?.soldierClass);
-export const isMagicUser=u=>isMage(u)||MEDIC_IDS.includes(u?.soldierClass);
+export const isMage=u=>MAGE_IDS.includes(u?.combatClass||u?.soldierClass);
+// The commander casts through the held weapon, without joining soldier job/AI rules.
+export const isPlayerCaster=u=>!!(u?.isHero||u?.isPlayer)&&isMagicWeapon(u.equipped?.weapon||u.weapon||{weaponStyle:u.weaponStyle});
+export const isSpellcaster=u=>isMage(u)||isPlayerCaster(u);
+export const isMagicUser=u=>isSpellcaster(u)||MEDIC_IDS.includes(u?.soldierClass);
+export const PLAYER_MAGIC_RULES=Object.freeze({mana:100,range:260,powerCost:36,powerCooldown:8,powerDamage:1.8,powerRadius:1.5});
 const active=u=>u&&!u.dead&&!u.isDown&&u.hp>0;
 export const MAGIC_AFFINITIES=Object.freeze({
   fire:{name:'炎',color:'#be8264',damage:3.6,radius:56,cost:18,cooldown:2.1},
@@ -22,15 +27,16 @@ export const MAGIC_CLASSES={
   ELEMENTAL_SAGE:{id:'ELEMENTAL_SAGE',classTier:2,baseClassId:'MAGE',isAdvanced:true,isMaster:true,name:'元素賢者',icon:'🔮',color:'#9b8aba',range:320,speed:102,atkCooldown:1.8,bonusHp:50,bonusAtk:65,atkMultBonus:.6,advancedClassId:'ARCANE_SOVEREIGN',tag:'元素賢者',desc:'得意属性を磨いた極職。魔力消耗と脆さは残る'},
   ARCANE_SOVEREIGN:{id:'ARCANE_SOVEREIGN',classTier:3,baseClassId:'MAGE',isAdvanced:true,isLegendary:true,name:'秘術王',icon:'🔮',color:'#b5a6d0',range:350,speed:108,atkCooldown:1.6,bonusHp:90,bonusAtk:100,atkMultBonus:.9,tag:'秘術王',desc:'広範囲を制圧する伝説の術者。MP切れでは無防備'}
 };
-export function magicTier(u) {return Math.max(0,isMage(u)?MAGE_IDS.indexOf(u.soldierClass):MEDIC_IDS.indexOf(u?.soldierClass));}
-export function manaCapacity(u) {return isMagicUser(u)?100+magicTier(u)*40:canChannelWeaponMagic(u)?60:0;}
+export function magicTier(u) {return Math.max(0,isMage(u)?MAGE_IDS.indexOf(u.combatClass||u.soldierClass):MEDIC_IDS.indexOf(u?.soldierClass));}
+export function manaCapacity(u) {return isPlayerCaster(u)?PLAYER_MAGIC_RULES.mana:isMagicUser(u)?100+magicTier(u)*40:canChannelWeaponMagic(u)?60:0;}
 export const weaponMagicDamage=u=>Math.max(1,Math.round((u.magicAttack||1)*.7));
 export function ensureMana(u) {
-  if(!manaCapacity(u))return 0;
+  if(!manaCapacity(u)){if(u)u.maxMana=0;return 0;}
   u.maxMana=manaCapacity(u);
   if(!Number.isFinite(u.mana))u.mana=Number.isFinite(u.medicStamina)?u.medicStamina:u.maxMana;
   delete u.medicStamina;
   u.mana=Math.max(0,Math.min(u.maxMana,u.mana));
+  if(isPlayerCaster(u)&&!MAGIC_AFFINITIES[u.magicAffinity])u.magicAffinity='fire';
   if(isMage(u)&&!MAGIC_AFFINITIES[u.magicAffinity]){
     let h=2166136261;for(const char of String(u.id||u.name||'mage'))h=Math.imul(h^char.charCodeAt(0),16777619);
     u.magicAffinity=Object.keys(MAGIC_AFFINITIES)[(h>>>0)%4];
@@ -70,8 +76,8 @@ export function updateMagic(game,dt,supplyLocation) {
     if(!manaCapacity(u)||!active(u))continue;
     regenerateMana(u,dt);u.magicBuffCooldown=Math.max(0,(u.magicBuffCooldown||0)-dt);
     if(supplyDue){const place=supplyLocation(game,u);if(place){
-      // 防衛戦中の本陣では魔導兵だけ全回復せず強い自然回復に留める。それ以外（平時・衛生術師・町/救護所/野営）は従来どおり全回復
-      if(defending&&isMage(u)&&place.kind==='base'){u.mana=Math.min(u.maxMana,u.mana+HQ_DEFENSE_MANA_REGEN*supplyElapsed);}
+      // 防衛戦の本陣では魔導兵と魔法装備の隊長は自然回復。他の補給地点は全回復。
+      if(defending&&isSpellcaster(u)&&place.kind==='base'){u.mana=Math.min(u.maxMana,u.mana+HQ_DEFENSE_MANA_REGEN*supplyElapsed);}
       else{u.mana=u.maxMana;u.magicRecovering=false;}
     }}
   }
@@ -96,20 +102,44 @@ export function castMedicBuff(game,medic) {
   const tier=magicTier(medic);for(const u of targets){u.magicAttackTimer=8+tier;u.magicAttackBonus=Math.max(u.magicAttackBonus||0,.1+tier*.05);u.magicWardTimer=8+tier;u.magicWardBonus=Math.max(u.magicWardBonus||0,.08+tier*.04);}
   sound.playHeal(medic.x,medic.y);medic.magicBuffCooldown=18;recordCombat(medic);game.spawnDamageText?.(medic.x,medic.y-38,'攻撃・守護の加護','#c8c3a3');return true;
 }
+function releaseSpell(game,caster,target,{power=false,outpost=null}={}) {
+  ensureMana(caster);const spell=MAGIC_AFFINITIES[caster.magicAffinity];
+  const isPlayer=caster===game.player,charged=isPlayer&&power;
+  if(!spendMana(caster,charged?PLAYER_MAGIC_RULES.powerCost:spell.cost))return false;
+  const tier=magicTier(caster),radius=spell.radius*(1+tier*.12)*(charged?PLAYER_MAGIC_RULES.powerRadius:1);
+  const damage=Math.round((caster.magicAttack||caster.atk)*spell.damage*(charged?PLAYER_MAGIC_RULES.powerDamage:1));
+  sound.playMagic(caster.magicAffinity,caster.x,caster.y);
+  const x=target.x,y=target.y,cd=spell.cooldown/(isPlayer?(caster.atkSpeed||1):1+tier*.1);
+  caster.atkCooldown=charged?Math.max(caster.atkCooldown||0,cd):cd;
+  caster.atkAnim=1;caster.attackAngle=caster.facingAngle=Math.atan2(y-caster.y,x-caster.x);
+  if(isPlayer){caster.slashAnim=charged?1.6:1;caster.slashAngle=caster.attackAngle;}
+  // Sparse marks show the hit area without particles or screen flashes.
+  game.magicBursts||=[];if(game.magicBursts.length>=12)game.magicBursts.shift();game.magicBursts.push({x,y,radius,color:spell.color,affinity:caster.magicAffinity,life:.3});
+  for(const m of [...(game.monsters||[])])if(active(m)&&!m.retreated&&Math.hypot(m.x-x,m.y-y)<=radius){
+    if(caster.magicAffinity==='ice')m.magicSlowTimer=3;
+    if(caster.magicAffinity==='lightning'&&!m.isColossal)m.magicStunTimer=.6;
+    game.performAttack(caster,m,isPlayer,damage,false,'magic');
+  }
+  if(outpost)game.damageOutpost(outpost,damage);
+  recordCombat(caster);return true;
+}
 export function castMageSpell(game,mage,target) {
   if(!active(mage)||!active(target)||!isMage(mage))return false;
-  ensureMana(mage);const spell=MAGIC_AFFINITIES[mage.magicAffinity];if(!spendMana(mage,spell.cost))return false;
-  const tier=magicTier(mage),radius=spell.radius*(1+tier*.12),damage=Math.round((mage.magicAttack||mage.atk)*spell.damage);
-  sound.playMagic(mage.magicAffinity,mage.x,mage.y);
-  const x=target.x,y=target.y;mage.atkCooldown=spell.cooldown/(1+tier*.1);mage.atkAnim=1;mage.attackAngle=mage.facingAngle=Math.atan2(y-mage.y,x-mage.x);
-  // Sparse marks show the hit area without particles or screen flashes.
-  game.magicBursts||=[];if(game.magicBursts.length>=12)game.magicBursts.shift();game.magicBursts.push({x,y,radius,color:spell.color,affinity:mage.magicAffinity,life:.3});
-  for(const m of [...(game.monsters||[])])if(active(m)&&Math.hypot(m.x-x,m.y-y)<=radius){
-    if(mage.magicAffinity==='ice')m.magicSlowTimer=3;
-    if(mage.magicAffinity==='lightning'&&!m.isColossal)m.magicStunTimer=.6;
-    game.performAttack(mage,m,false,damage,false,'magic');
-  }
-  recordCombat(mage);return true;
+  return releaseSpell(game,mage,target);
+}
+export function castPlayerSpell(game,{power=false,target,outpost}={}) {
+  const player=game.player;
+  if(!game.inBattle||game.restTimer>0||!active(player)||!isPlayerCaster(player))return false;
+  if((power?player.powerAtkCooldown:player.atkCooldown)>0)return false;
+  const range=PLAYER_MAGIC_RULES.range;
+  if(target===undefined)target=game.getNearestMonster(player.x,player.y);
+  if(outpost===undefined)outpost=game.getNearestUnclearedOutpost(player.x,player.y);
+  const inRange=active(target)&&!target.retreated&&Math.hypot(target.x-player.x,target.y-player.y)<=range;
+  const hitOutpost=!inRange&&outpost&&!outpost.cleared&&Math.hypot(outpost.x-player.x,outpost.y-player.y)<=range+(outpost.radius||0);
+  if(!inRange&&!hitOutpost)return false;
+  if(!releaseSpell(game,player,inRange?target:outpost,{power,outpost:hitOutpost?outpost:null}))return false;
+  if(power){player.powerAtkCooldown=PLAYER_MAGIC_RULES.powerCooldown;game.updatePowerAtkButtonUI();}
+  return true;
 }
 export function updateMageAI(game,mage,dt,platoon,cls) {
   ensureMana(mage);const spell=MAGIC_AFFINITIES[mage.magicAffinity];mage.atkCooldown=Math.max(0,(mage.atkCooldown||0)-dt);mage.atkAnim=Math.max(0,(mage.atkAnim||0)-dt*4);
@@ -134,12 +164,16 @@ export function drawMagicBursts(ctx,game) {
 export const magicMethods={
   refreshMagicUI() {
     if(!this.player)return;
-    const casters=units(this).filter(u=>active(u)&&isMagicUser(u));let badge=document.getElementById('magic-status-badge');const host=document.querySelector('.field-status');
+    const casters=units(this).filter(u=>u!==this.player&&active(u)&&isMagicUser(u));let badge=document.getElementById('magic-status-badge');const host=document.querySelector('.field-status');
+    let playerBadge=document.getElementById('player-magic-status');
+    if(!playerBadge&&host){playerBadge=document.createElement('div');playerBadge.id='player-magic-status';playerBadge.className='supply-status-badge magic-status-badge';host.prepend(playerBadge);}
+    if(playerBadge){playerBadge.classList.toggle('hidden',!isPlayerCaster(this.player));playerBadge.textContent=isPlayerCaster(this.player)?`隊長 ${this.magicUnitDescription(this.player)}`:'';}
     if(!badge&&host){badge=document.createElement('div');badge.id='magic-status-badge';badge.className='supply-status-badge magic-status-badge';host.append(badge);}
     if(badge){const text=`MP ${Math.floor(casters.reduce((n,u)=>n+ensureMana(u),0))}/${casters.reduce((n,u)=>n+u.maxMana,0)} · 不足${casters.filter(u=>u.mana<(isMage(u)?MAGIC_AFFINITIES[u.magicAffinity].cost:16)).length}名 / 瞑想${casters.filter(u=>u.magicRecovering).length}名 · 予備 ${Math.floor(this.magicReserve||0)}MP`;this._magicStatusChanged=badge.textContent!==text;badge.textContent=text;badge.classList.toggle('hidden',!casters.length);}
   },
   magicUnitDescription(u) {
     if(!isMagicUser(u))return '';ensureMana(u);
+    if(isPlayerCaster(u))return `MP ${Math.floor(u.mana)}/${u.maxMana} · ${MAGIC_AFFINITIES[u.magicAffinity].name}魔法${u.mana<MAGIC_AFFINITIES[u.magicAffinity].cost?' · MP不足（回復待ち）':''}`;
     const affinity=isMage(u)?` · 得意魔法：${MAGIC_AFFINITIES[u.magicAffinity].name}${u.magicRecovering?' · 瞑想中（移動不可）':''}`:(magicTier(u)>0?' · 攻撃・守護バフ使用可':' · クラスアップでバフ解放');
     return `MP ${Math.floor(u.mana)}/${u.maxMana}${affinity}${!isMage(u)&&u.mana<16?' · MP不足（回復待ち）':''}`;
   }

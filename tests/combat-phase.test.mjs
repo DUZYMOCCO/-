@@ -1,8 +1,9 @@
 // Pure phase simulation stubs strategy-panel rendering; interface.test.mjs independently exercises its real DOM.
 import assert from 'node:assert/strict';
 import {storage} from '../js/storage.js';
+import {markSoldierDown,treatWounded} from '../js/games/iron-squad/casualty-rules.js';
 import {saveSlots} from '../js/games/iron-squad/save-slots.js';
-import {PHASE_DURATION,emptyActivity,advancePhase,advanceRest,recordCombat,healByMedic,participated,finishExperience} from '../js/games/iron-squad/phase-rules.js';
+import {DEATHLINE_DOWN_THRESHOLD,personalDownCount,deathlineEligible,PHASE_DURATION,emptyActivity,advancePhase,advanceRest,recordCombat,healByMedic,participated,finishExperience} from '../js/games/iron-squad/phase-rules.js';
 
 const memory=new Map();
 globalThis.localStorage={getItem:k=>memory.get(k)??null,setItem:(k,v)=>memory.set(k,v),removeItem:k=>memory.delete(k)};
@@ -47,13 +48,16 @@ assert.equal(game.lastReinforcements.experienced,0);
 game.squad[19].dead=true;
 assert.equal(game.deployReserves(),1);assert.equal(game.squad.length,DEPLOYMENT_CAPACITY);assert.equal(game.reserves.length,9);
 assert.equal(new Set([...game.squad,...game.reserves].map(s=>s.name)).size,DEPLOYMENT_CAPACITY+9);
-// Heavy losses only awaken survivors who actually participated.
+// Ten downs spread across the army do not awaken anyone without ten personal downs.
+advanceRest(game,10);
 for(const unit of [fighter,defender,medic])recordCombat(unit);
-for(const soldier of game.squad.slice(-8))soldier.dead=true;
-game.phaseCasualties=8; // Eight actual losses meet the current absolute four-loss deathline condition.
+for(const soldier of game.squad.slice(-8)){markSoldierDown(game,soldier);soldier.dead=true;}
+for(let i=0;i<2;i++){markSoldierDown(game,fighter);fighter.isDown=false;fighter.hp=fighter.maxHp;}
+assert.equal(personalDownCount(fighter),2);
+game.phaseCasualties=8;
 game.phaseInitialSquadCount=DEPLOYMENT_CAPACITY;
-advanceRest(game,10);game.completePhase();
-assert.equal(fighter.survivedDeathlines,1);assert.equal(idle.survivedDeathlines,0);
+game.completePhase();
+assert.equal(fighter.survivedDeathlines,0);assert.equal(idle.survivedDeathlines,0);
 assert.equal(game.squad.length,DEPLOYMENT_CAPACITY);assert.equal(game.lastReinforcements.received,5);
 assert.equal(game.lastReinforcements.deployed,8);assert.equal(game.reserves.length,6);
 assert.ok(game.squad.every(s=>!participated(s)));
@@ -77,4 +81,43 @@ const lonely={hp:100,survivedWaves:0,phaseActivity:emptyActivity()};
 assert.equal(finishExperience(lonely),false);recordCombat(lonely);
 assert.equal(finishExperience(lonely),true);assert.equal(finishExperience(lonely),false);
 assert.equal(lonely.survivedWaves,1);
-console.log('PASS: 120-second cycle, actual combat/healing credit, idle exclusion, deathline eligibility, periodic reserves, casualty deployment, persistent participation');
+// The new trigger works with zero deaths and repeated real medic revivals.
+game.startFreshGame(false);assert.equal(DEATHLINE_DOWN_THRESHOLD,10);
+let target=game.squad[0],healer=game.squad.find(s=>s.soldierClass==='MEDIC');
+recordCombat(target);healer.x=target.x;healer.y=target.y;
+const knockAndRevive=()=>{
+ assert.equal(markSoldierDown(game,target),true);const n=personalDownCount(target);
+ assert.equal(markSoldierDown(game,target),false);assert.equal(personalDownCount(target),n,'a still-downed unit is counted once');
+ healer.mana=100;assert.equal(treatWounded(game,healer,target,1),true,'the production medic revival returns the same soldier to action');
+};
+for(let i=0;i<9;i++)knockAndRevive();
+assert.equal(personalDownCount(target),9);assert.equal(game.phaseCasualties,0);
+const beforeSave=structuredClone(game.saveGame());game.resumeSavedGame(beforeSave);assert.equal(personalDownCount(game.squad.find(s=>s.id===target.id)),9);
+target=game.squad.find(s=>s.id===target.id);healer=game.squad.find(s=>s.id===healer.id);healer.x=target.x;healer.y=target.y;
+knockAndRevive();assert.equal(personalDownCount(target),10);game.completePhase();
+assert.equal(target.survivedDeathlines,1);assert.equal(healer.survivedDeathlines,0);assert.equal(game.deathlineReport.qualifiedCount,1);assert.equal(game.deathlineReport.awakenedList[0].id,target.id);assert.equal(game.deathlineReport.awakenedList[0].downCount,10);assert.equal(game.deathlineReport.deadCount,0);assert.equal(personalDownCount(target),0);
+assert.ok(game.squad.filter(s=>s!==target&&s!==healer).every(s=>s.survivedDeathlines===0));
+const heldSkill=target.deathlineSkills.length;game.completePhase();assert.equal(target.deathlineSkills.length,heldSkill,'rest cannot duplicate the same wave awakening');
+const reportSave=structuredClone(game.saveGame());game.resumeSavedGame(reportSave);assert.equal(game.deathlineReport.awakenedList[0].downCount,10);assert.equal(personalDownCount(game.squad.find(s=>s.id===target.id)),0);
+advanceRest(game,10);game.completePhase();assert.equal(game.deathlineReport.occurred,false,'the next wave starts a fresh count');
+// Nine downs and many deaths cannot satisfy the new ten-down condition.
+game.startFreshGame(false);target=game.squad[0];healer=game.squad.find(s=>s.soldierClass==='MEDIC');healer.x=target.x;healer.y=target.y;recordCombat(target);
+for(let i=0;i<9;i++)knockAndRevive();game.phaseCasualties=8;game.completePhase();assert.equal(target.survivedDeathlines,0);assert.equal(game.deathlineReport.occurred,false);
+advanceRest(game,10);knockAndRevive();assert.equal(personalDownCount(target),1);game.completePhase();assert.equal(target.survivedDeathlines,0,'nine downs in one wave and one in the next are not ten');
+// Merchant and gate-guard downs are outside the army trigger; rest downs do not leak into the next wave.
+game.startFreshGame(false);const npc={id:'npc-down',name:'NPC',isGateGuard:true,x:0,y:0,hp:100,maxHp:100};markSoldierDown(game,npc);assert.equal(personalDownCount(npc),0);
+game.restTimer=8;markSoldierDown(game,game.squad[0]);assert.equal(personalDownCount(game.squad[0]),0);
+const legacy=structuredClone(game.saveGame());delete legacy.squad[0].phaseActivity.downs;legacy.squad[0].timesDown=999;game.resumeSavedGame(legacy);assert.equal(personalDownCount(game.squad[0]),0,'lifetime downs in old saves are not this-wave events');
+// Per-person counts cannot carry across waves or award other participating soldiers.
+assert.equal(deathlineEligible({dead:true,phaseActivity:{downs:10}}),false);
+assert.equal(deathlineEligible({dead:false,phaseActivity:{downs:9}}),false);
+assert.equal(deathlineEligible({dead:false,phaseActivity:{downs:10}}),true);
+// A weak soldier really changes strength after personally reaching the threshold.
+game.startFreshGame(false);game.recalcSoldierStats=IronSquadGame.recalcSoldierStats.bind(game);
+const inferior=game.squad.find(s=>s.soldierClass==='HEAVY');inferior.talent='INFERIOR';game.recalcSoldierStats(inferior);
+const hpBefore=inferior.maxHp,defBefore=inferior.def;inferior.phaseActivity={combatActions:1,healingDone:0,downs:10};game.completePhase();
+assert.equal(inferior.talent,'INFERIOR');assert.ok(inferior.deathlineSkills.includes('IRON_RESOLVE'));const awakenedHp=inferior.maxHp,awakenedDef=inferior.def,skills=inferior.deathlineSkills;
+inferior.deathlineSkills=[];game.recalcSoldierStats(inferior);assert.ok(awakenedHp>inferior.maxHp);assert.ok(awakenedDef>inferior.def);
+inferior.deathlineSkills=skills;game.recalcSoldierStats(inferior);
+assert.ok(game.squad.filter(s=>s!==inferior).every(s=>!s.deathlineSkills.length),'the support team does not receive his awakening');
+console.log('PASS: personal ten-down threshold, army-total rejection, repeated medic revivals, nine-down rejection, only recipient, zero deaths, NPC/rest exclusion, save/report roundtrip and no duplicate awakening');

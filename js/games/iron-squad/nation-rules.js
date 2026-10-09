@@ -1,13 +1,13 @@
-import {normalizeArmament,ARMAMENT_POLICIES,advanceResearch,researchCost,standardEquipmentCost,RESERVE_ARMAMENT_COUNT,ARMAMENT_LIMITS} from './armament-rules.js?v=134';
-import {tierDescription,MAX_EQUIPMENT_TIER} from './equipment-tiers.js?v=134';
-import {WORLD_SIZE} from './world.js?v=134';
-import {saleValue,isGodRollProtected} from './equipment-rules.js?v=134';
-import {calcTreasuryGrossIncome,calcCommanderStipend,EQUIPMENT_SLOTS} from './economy-rules.js?v=134';
-import {createPayrollPlan,commanderStipendQuote,PAYROLL_RULES} from './payroll-rules.js?v=134';
-import {calcAllRankerBonuses} from './troop-rankings.js?v=134';
-import {normalizeRegionalEconomy,recurringNationalIncome,economicState,advanceRegionalEconomy,automaticEconomicTarget,investEconomicProject} from './regional-economy.js?v=134';
-import {drawSettlementQuarter} from './economic-visuals.js?v=134';
-import {renderRegionalEconomy} from './economic-interface.js?v=134';
+import {normalizeArmament,ARMAMENT_POLICIES,advanceResearch,researchCost,standardEquipmentCost,RESERVE_ARMAMENT_COUNT,ARMAMENT_LIMITS} from './armament-rules.js?v=138';
+import {tierDescription,MAX_EQUIPMENT_TIER} from './equipment-tiers.js?v=138';
+import {WORLD_SIZE} from './world.js?v=138';
+import {saleValue,isGodRollProtected} from './equipment-rules.js?v=138';
+import {calcTreasuryGrossIncome,calcCommanderStipend,EQUIPMENT_SLOTS} from './economy-rules.js?v=138';
+import {createPayrollPlan,commanderStipendQuote,PAYROLL_RULES} from './payroll-rules.js?v=138';
+import {calcAllRankerBonuses} from './troop-rankings.js?v=138';
+import {normalizeRegionalEconomy,recurringNationalIncome,economicState,advanceRegionalEconomy,automaticEconomicTarget,investEconomicProject} from './regional-economy.js?v=138';
+import {drawSettlementQuarter} from './economic-visuals.js?v=138';
+import {renderRegionalEconomy} from './economic-interface.js?v=138';
 
 export const DEVELOPMENT_STAGES=[
   {name:'野営本陣',cost:0}, {name:'城塞と宿場',cost:6000},

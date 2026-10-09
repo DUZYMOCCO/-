@@ -4,6 +4,7 @@
  * 脱出は常に x=180, y=height/2。至宝はボスか番兵を倒したあと、x=width-240。
  */
 
+import {LIMITED_SETTLEMENTS,drawLimitedEntrance} from './limited-allies.js?v=138';
 import { WORLD_SIZE, SETTLEMENTS } from './world.js';
 
 const CENTER = WORLD_SIZE / 2;
@@ -41,6 +42,7 @@ function settlementToDef(s) {
 }
 
 export const DUNGEON_DEFS = [
+  ...LIMITED_SETTLEMENTS,
   {id:'royal_castle_town',kind:'town',name:'本陣城下町',subtitle:'国家とともに育つ町',icon:'🏘',color:'#c4b48a',accentColor:'#d7b56a',theme:'town',reqDef:0,reqLv:1,desc:'鍛冶工房・冒険者組合・大城下町のカジノ。施設は国家タブから利用。',entrance:{x:CENTER+320,y:CENTER+260,radius:68},width:1600,height:1000,ambientColor:'#241e16',floorColor:'#3a3428',wallColor:'#14110e',torchColor:'#c47a3a',distance:412,boss:null,guardian:null,mobTypes:[],mobCount:0,eliteCount:0},
   {
     id: 'dungeon_goblin_mines',
@@ -286,6 +288,7 @@ function flame(ctx, x, y, time, hot) {
 }
 
 export function drawDungeonEntrance(ctx, def, time) {
+  if(drawLimitedEntrance(ctx,def))return;
   const { entrance, name, cleared, kind, icon } = def;
   const x = entrance.x;
   const y = entrance.y;

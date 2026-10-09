@@ -21,7 +21,7 @@ const DEFAULT_APTITUDE_ROLL={min:.65,span:.7};
 export const practiceGrowth=unit=>(TALENT_GROWTH[unit?.talent]||1)*(TALENT_PRACTICE_BONUS[unit?.talent]||1);
 const positive=(value,fallback=0)=>Number.isFinite(Number(value))?Math.max(0,Number(value)):fallback;
 const clamp=(value,min,max)=>Math.max(min,Math.min(max,value));
-export const attributeFamily=unit=>unit?.isPlayer||unit?.isHero?'COMMANDER':FAMILIES[unit?.soldierClass]||(ATTRIBUTE_BASES[unit?.soldierClass]?unit.soldierClass:'HEAVY');
+export const attributeFamily=unit=>unit?.isPlayer||unit?.isHero?'COMMANDER':FAMILIES[unit?.soldierClass]||(ATTRIBUTE_BASES[unit?.combatClass]?unit.combatClass:ATTRIBUTE_BASES[unit?.soldierClass]?unit.soldierClass:'HEAVY');
 export const emptyAttributePractice=()=>({strength:0,magic:0,magicDefense:0,travel:0,evasion:0});
 export function rollAttributeProfile(classKey='HEAVY',talent='AVERAGE',random=Math.random,balanced=false) {
   const family=FAMILIES[classKey]||(ATTRIBUTE_BASES[classKey]?classKey:'HEAVY'),base=ATTRIBUTE_BASES[family],aptitudes={},innate={},roll=APTITUDE_ROLL_RANGE[talent]||DEFAULT_APTITUDE_ROLL;
