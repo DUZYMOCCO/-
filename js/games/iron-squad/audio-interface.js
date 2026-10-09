@@ -1,4 +1,4 @@
-import {sound} from '../../audio.js?v=128';
+import {sound} from '../../audio.js?v=129';
 
 export function configureAudioInterface(game) {
   game.audioUIUnsubscribe?.();

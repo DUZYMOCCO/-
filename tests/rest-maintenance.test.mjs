@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import {saveSlots} from '../js/games/iron-squad/save-slots.js';
 import {REST_DURATION,SOLDIER_SALARY,advanceRest,advancePhase,participated} from '../js/games/iron-squad/phase-rules.js';
+import {salaryQuote} from '../js/games/iron-squad/payroll-rules.js';
 const memory=new Map();globalThis.localStorage={getItem:k=>memory.get(k)??null,setItem:(k,v)=>memory.set(k,v),removeItem:k=>memory.delete(k)};
 globalThis.window={};globalThis.document={getElementById:()=>null};
 const {IronSquadGame,applyUpgradeStats}=await import('../js/games/iron-squad/index.js');
@@ -11,13 +12,14 @@ game.activeSlotId=saveSlots.create('休息検証').id;game.startFreshGame(false)
 const soldier=game.squad[0];soldier.gold=100;soldier.hp=soldier.maxHp;
 for(const item of Object.values(soldier.equipped))if(item)applyUpgradeStats(item,0);
 const beforeGold=soldier.gold;
+const expectedSalary=salaryQuote(soldier,game).total;
 const boss={id:'boss',x:7000,y:7000,hp:1234,maxHp:2000,isBoss:true};game.monsters=[boss];game.projectiles=[{hostile:true}];
 game.completePhase();const phase=game.phase,capacity=game.squad.length+game.reserves.length;
-assert.equal(game.restTimer,REST_DURATION);assert.equal(soldier.gold,beforeGold+SOLDIER_SALARY);
+assert.equal(game.restTimer,REST_DURATION);assert.equal(soldier.gold,beforeGold+expectedSalary);
 assert.equal(game.monsters.length,0);assert.equal(game.projectiles.length,0);assert.equal(game.restMonsters[0].hp,1234);
 assert.equal(game.phaseTimer,120);const time=game.totalBattleTime;
 game.updateSpawns(99);game.spawnMonster(5500,5400);game.spawnColossalBoss();assert.equal(game.monsters.length,0);
-game.completePhase();assert.equal(game.phase,phase);assert.equal(soldier.gold,beforeGold+SOLDIER_SALARY,'rest cannot trigger duplicate salary');
+game.completePhase();assert.equal(game.phase,phase);assert.equal(soldier.gold,beforeGold+expectedSalary,'rest cannot trigger duplicate salary');
 game.update(.5);assert.equal(game.restReport.count,0);
 game.update(.5);assert.ok(soldier.lastMaintenance.count>0);assert.ok(game.restReport.count>0);
 assert.equal(game.totalBattleTime,time);assert.equal(game.phaseTimer,120);assert.equal(participated(soldier),false);

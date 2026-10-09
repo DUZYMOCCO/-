@@ -68,7 +68,7 @@ fresh();let issuedCount=0,updatedCount=0,forgedCount=0;
 for(let wave=1;wave<=30;wave++){
  game.completePhase();const a=game.nation.armament,l=game.lastFiscalReport,totals=fiscalTotals(l);
  assert.equal(l.endBalance-l.startBalance,totals.net);assert.ok(game.treasury>=Math.max(6000,nationalPayroll(game)*2));
- assert.ok(a.last.spent<=1500+game.nation.level*250);issuedCount+=a.last.issued;updatedCount+=a.last.updated;forgedCount+=a.last.forged;
+ assert.ok(a.last.spent<=a.last.budget,'procurement stays inside its quoted budget including the growing operating allocation');issuedCount+=a.last.issued;updatedCount+=a.last.updated;forgedCount+=a.last.forged;
  const treasury=game.treasury;game.supplyMissingEquipment();assert.equal(game.treasury,treasury,'same-wave calls cannot buy or forge twice');
  game.finishRest();
  const owned=[...game.squad,...game.reserves].flatMap(s=>Object.values(s.equipped).filter(Boolean)).concat(game.sharedEquipBox);assert.equal(new Set(owned.map(i=>i.id)).size,owned.length,'an item has exactly one owner');

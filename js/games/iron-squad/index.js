@@ -1,14 +1,15 @@
-import {soldierEquipmentValue,observeEquipment,standardEquipmentCost,RESERVE_ARMAMENT_COUNT} from './armament-rules.js?v=128';
-import {TIERS,MAX_EQUIPMENT_TIER,MAX_POWER_RANK,POWER_RANK_STEP,GENERATION_COUNT,TRADE_MAX_TIER,powerRank,tierDescription} from './equipment-tiers.js?v=128';
-import {fieldAdaptiveScaling} from './field-scaling.js?v=128';
-import {activeSquad,inCurrentInstance} from './instance-rules.js?v=128';
-import {recordBattleLog,resetBattleLog} from './battle-log.js?v=128';
-import {rollDropExclusive,applyDropExclusive,dropExclusiveLabel} from './drop-exclusives.js?v=128';
-import {latestEquipmentTier,recordMerchantEquipment,ensureMerchantCatalog,refreshWaveCatalogs,markMerchantPurchase} from './merchant-catalog.js?v=128';
-import {initializeMedicalPosts,updateMedicalPosts,serializeMedicalPosts,nearestKnownMedicalPost,drawMedicalPost,drawMedicalMap,drawMedicalMarker,drawTownMedicalReception,drawRescueDirection} from './medical-posts.js?v=128';
-import {invasionMethods,initializeInvasions,serializeInvasions,shouldTriggerRandomRaid,makeEnemyRoom,drawInvasionRoute} from './invasion-rules.js?v=128';
-import {gateMethods,serializeGatePosts,replenishTownGateGuards,initializeGateGuards,ensureTownGuards,serializeGateGuards,updateGateGuards,gateGuardVisible,applyFortifications,drawFortification,exitGateTown,townExitReached,wallBlocksAttack} from './gate-rules.js?v=128';
-import {nationMethods,normalizeNation,nationalIncome,headquartersDamageMult,drawNationalDevelopment,DEVELOPMENT_STAGES} from './nation-rules.js?v=128';
+import {soldierEquipmentValue,observeEquipment,standardEquipmentCost,RESERVE_ARMAMENT_COUNT} from './armament-rules.js?v=129';
+import {TIERS,MAX_EQUIPMENT_TIER,MAX_POWER_RANK,POWER_RANK_STEP,GENERATION_COUNT,TRADE_MAX_TIER,powerRank,tierDescription} from './equipment-tiers.js?v=129';
+import {fieldAdaptiveScaling} from './field-scaling.js?v=129';
+import {activeSquad,inCurrentInstance} from './instance-rules.js?v=129';
+import {recordBattleLog,resetBattleLog} from './battle-log.js?v=129';
+import {rollDropExclusive,applyDropExclusive,dropExclusiveLabel} from './drop-exclusives.js?v=129';
+import {latestEquipmentTier,recordMerchantEquipment,ensureMerchantCatalog,refreshWaveCatalogs,markMerchantPurchase} from './merchant-catalog.js?v=129';
+import {initializeMedicalPosts,updateMedicalPosts,serializeMedicalPosts,nearestKnownMedicalPost,drawMedicalPost,drawMedicalMap,drawMedicalMarker,drawTownMedicalReception,drawRescueDirection} from './medical-posts.js?v=129';
+import {invasionMethods,initializeInvasions,serializeInvasions,shouldTriggerRandomRaid,makeEnemyRoom,drawInvasionRoute} from './invasion-rules.js?v=129';
+import {gateMethods,serializeGatePosts,replenishTownGateGuards,initializeGateGuards,ensureTownGuards,serializeGateGuards,updateGateGuards,gateGuardVisible,applyFortifications,drawFortification,exitGateTown,townExitReached,wallBlocksAttack} from './gate-rules.js?v=129';
+import {nationMethods,normalizeNation,nationalIncome,nationalPayrollPlan,headquartersDamageMult,drawNationalDevelopment,DEVELOPMENT_STAGES} from './nation-rules.js?v=129';
+import {equipmentUpgradeCost,salaryQuote,paySoldiers} from './payroll-rules.js?v=129';
 /**
  * ゲーム3: IRON SQUAD (アイアン・スクワッド: 雑兵立身出世録)
  * ローグライク・アクションRPG
@@ -20,24 +21,24 @@ import {nationMethods,normalizeNation,nationalIncome,headquartersDamageMult,draw
  *  - 生き延びて「伍長」以上に立身出世して初めて【号令・指揮権】がアンロックされる！
  *  - 名もなき兵士たちは生き残ると二つ名と名前が授与され、やがて主人公の頼もしい戦友に。
  */
-import { sound } from '../../audio.js?v=128';
+import { sound } from '../../audio.js?v=129';
 import { storage } from '../../storage.js';
-import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow } from './visuals.js?v=128';
-import { drawMeleeRangeCue, meleeDrawReach, attackAnimationRate } from './weapon-motion.js?v=128';
-import {emptyRescueBonuses,normalizeRescueBonuses,rescueBonusSummary} from './rescue-rewards.js?v=128';
-import {drawFieldCivilian} from './civilian-visuals.js?v=128';
+import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow } from './visuals.js?v=129';
+import { drawMeleeRangeCue, meleeDrawReach, attackAnimationRate } from './weapon-motion.js?v=129';
+import {emptyRescueBonuses,normalizeRescueBonuses,rescueBonusSummary} from './rescue-rewards.js?v=129';
+import {drawFieldCivilian} from './civilian-visuals.js?v=129';
 import { saveSlots } from './save-slots.js';
-import { soldierDialogue } from './soldier-dialogue.js?v=128';
-import {MAGIC_CLASSES,MAGIC_AFFINITIES,magicMethods,isMage,isMagicUser,ensureMana,initializeMagic,updateMagic,distributeMagicStones,castMedicBuff,castCasterStrength,updateMageAI,drawMagicBursts,spendMana,weaponMagicDamage} from './magic-rules.js?v=128';
-import {hazardMethods,updateHazards,drawHazards} from './hazard-fields.js?v=128';
-import {strongEnemyReward} from './combat-rewards.js?v=128';
-import {supplyMethods, initializeSupplies, updateSupplies, takeRangedShot, ammoCombatProfile, isRangedUnit, distributeAmmo, preventLethalHit, normalizeFieldSave, SQUAD_POTION_COST, ensureAmmo, RANGED_DAMAGE_MULT, supplyLocation} from './supply-rules.js?v=128';
-import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog } from './interface.js?v=128';
-import { renderTroopRankings, getSoldierRankerBadges, calcSoldierRankerBonus, calcAllRankerBonuses } from './troop-rankings.js?v=128';
-import { ensureSoldierAppearance, drawSoldierPortrait, describeSoldierAppearance } from './soldier-appearance.js?v=128';
-import { attachSurfaceEvents, detachSurfaceEvents, frameSurfaceReady, releaseSceneCaches, releaseCanvas, surfaceCanResume } from './canvas-surface.js?v=128';
-import { WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt, routeNameAt, eastWestRoadY, northSouthRoadX, riverCenterY, drawFieldDepth, fieldBlocks, settleUnit } from './world.js?v=128';
-import { FogGrid, FOG_REVEAL_RADIUS, FOG_CAMP_REVEAL } from './fog.js?v=128';
+import { soldierDialogue } from './soldier-dialogue.js?v=129';
+import {MAGIC_CLASSES,MAGIC_AFFINITIES,magicMethods,isMage,isMagicUser,ensureMana,initializeMagic,updateMagic,distributeMagicStones,castMedicBuff,castCasterStrength,updateMageAI,drawMagicBursts,spendMana,weaponMagicDamage} from './magic-rules.js?v=129';
+import {hazardMethods,updateHazards,drawHazards} from './hazard-fields.js?v=129';
+import {strongEnemyReward} from './combat-rewards.js?v=129';
+import {supplyMethods, initializeSupplies, updateSupplies, takeRangedShot, ammoCombatProfile, isRangedUnit, distributeAmmo, preventLethalHit, normalizeFieldSave, SQUAD_POTION_COST, ensureAmmo, RANGED_DAMAGE_MULT, supplyLocation} from './supply-rules.js?v=129';
+import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog } from './interface.js?v=129';
+import { renderTroopRankings, getSoldierRankerBadges, calcSoldierRankerBonus } from './troop-rankings.js?v=129';
+import { ensureSoldierAppearance, drawSoldierPortrait, describeSoldierAppearance } from './soldier-appearance.js?v=129';
+import { attachSurfaceEvents, detachSurfaceEvents, frameSurfaceReady, releaseSceneCaches, releaseCanvas, surfaceCanResume } from './canvas-surface.js?v=129';
+import { WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt, routeNameAt, eastWestRoadY, northSouthRoadX, riverCenterY, drawFieldDepth, fieldBlocks, settleUnit } from './world.js?v=129';
+import { FogGrid, FOG_REVEAL_RADIUS, FOG_CAMP_REVEAL } from './fog.js?v=129';
 import {
   classTierOf, nextClassId, classUpCostForNext, canAffordClassUp, formatClassUpCostJa, classUpShortageJa,
   playerClassTier, nextPlayerStage, playerStageById, CLASS_TIER_LABELS, PLAYER_CLASS_STAGES
@@ -48,13 +49,13 @@ import {rollAttributeProfile,applyAttributeStats,attributeValues,practiceAttribu
 import {rollScoutCandidate,renderRecruitment,nextScoutCandidate,startAutomaticRecruitment,stopAutomaticRecruitment,RECRUIT_CLASSES} from './recruitment.js';
 import {canUseWeapon,requiredWeaponStrength,weaponRequirementText,isMagicWeapon,MAGIC_WEAPON_STYLES,preferredWeaponStyle} from './weapon-requirements.js';
 import {
-  emptyFiscalLedger, calcTreasuryGrossIncome, calcCommanderStipend, calcBuyoutGold,
+  emptyFiscalLedger, calcCommanderStipend, calcBuyoutGold,
   shouldAbsorbToSharedBox, calcScoutCost, estimateSoldierScoutValue, calcDismissSettlement,
   formatFiscalReportJa, formatFiscalReportHtml, distributeSharedBoxToSoldiers, sellWeakSurplusFromBox,
   SHARED_BOX_MAX_TIER, SCOUT_COST_BY_TALENT, defaultDonateAmount, donatePresetAmounts
-} from './economy-rules.js?v=128';
+} from './economy-rules.js?v=129';
 
-import { EQUIPMENT_TYPES, saleValue, equippedIds, canSell, lowValueIds, chooseLootTier, distanceScaling, shrineUpgradeCap, compareEquipment, equipmentScore, compareEquipmentStrength, rollWeaponTraits, weaponCombatProfile, evaluateMeleeSweetSpot, isGodRollProtected, zoneRingPower, zoneRingLabelJa } from './equipment-rules.js?v=128';
+import { EQUIPMENT_TYPES, saleValue, equippedIds, canSell, lowValueIds, chooseLootTier, distanceScaling, shrineUpgradeCap, compareEquipment, equipmentScore, compareEquipmentStrength, rollWeaponTraits, weaponCombatProfile, evaluateMeleeSweetSpot, isGodRollProtected, zoneRingPower, zoneRingLabelJa } from './equipment-rules.js?v=129';
 import {
   WEAPON_STYLES, WEAPON_STYLE_LABELS, WEAPON_STYLE_ICONS,
   MELEE_STYLES, RANGED_STYLES, HIT_GROWTH_SOFT_CAP,
@@ -64,19 +65,19 @@ import {
   gainWeaponMastery, masteryGainForStyle, pickFavoriteWeapon, rollWeaponStyle,
   weaponStyleOf, favoriteWeaponBias, MASTERY_GAIN_PER_HIT,
   migrateFavoriteForClass, migrateWeaponStyleFromName
-} from './growth-rules.js?v=128';
+} from './growth-rules.js?v=129';
 
 import {
   initMerchants, ensureMerchants, updateMerchants, drawMerchantBody, drawMerchantEscort,
   nearestLivingMerchant, refreshMerchantStock, merchantBuyPrice, merchantSellTier,
   applyMerchantSave, serializeMerchants, MERCHANT_INTERACT_R,
   merchantHealingStatus, merchantHealWavesLeft, useMerchantHealing, MERCHANT_HEAL_COST, recalcEscortStats, finishEscortPhase
-} from './merchant-rules.js?v=128';
+} from './merchant-rules.js?v=129';
 
 import { daylightAt, advanceWorldClock, periodEnemy, enemyAvailable, PERIOD_ENEMIES } from './day-night.js';
 
-import { RESCUE_TIMEOUT, rescueUnits, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, receiveTownCargo, leaveCivilianSpace, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, markSoldierDown, CIV_KINDS, isMedic, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST } from './casualty-rules.js?v=128';
-import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault, dungeonBlocks, dungeonSolids } from './dungeon.js?v=128';
+import { RESCUE_TIMEOUT, rescueUnits, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, receiveTownCargo, leaveCivilianSpace, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, markSoldierDown, CIV_KINDS, isMedic, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST } from './casualty-rules.js?v=129';
+import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault, dungeonBlocks, dungeonSolids } from './dungeon.js?v=129';
 import {
   EXPEDITION_CHECK_INTERVAL, EXPEDITION_RETURN_HOME, EXPEDITION_ENGAGE_R,
   EXPEDITION_DANGER_TIERS, EXPEDITION_MIN_MEMBERS,
@@ -4844,15 +4845,6 @@ export const IronSquadGame = {
     this.phaseFiscal.phase = this.phase - 1;
     if (this.phaseFiscal.startBalance == null) this.phaseFiscal.startBalance = (this.treasury || 0);
 
-    const livingForPay = [...(this.squad || []).filter(s => !s.dead), ...(this.reserves || []).filter(s => !s.dead)];
-    const grossIncome = nationalIncome(this,this.phase - 1, livingForPay.length);
-    const stipend = calcCommanderStipend(this.phase - 1, grossIncome);
-    const netToTreasury = grossIncome - stipend;
-    this.treasury = (this.treasury || 0) + netToTreasury;
-    this.gold = (this.gold || 0) + stipend;
-    this.phaseFiscal.income = (this.phaseFiscal.income || 0) + grossIncome;
-    this.phaseFiscal.commanderStipend = (this.phaseFiscal.commanderStipend || 0) + stipend;
-
     replenishTownGateGuards(this);
     finishEscortPhase(this);
     finishExperience(this.player);
@@ -4903,58 +4895,26 @@ export const IronSquadGame = {
       });
 
       this.showToast(`🚨【死線生還！】作戦第${this.phase - 1}期完了：損耗率${Math.round(casualtyRate * 100)}%の死線を越え、生存兵士${awakenedList.length}名が覚醒！`);
-    } else {
-      this.showToast(`🚩【作戦第${this.phase - 1}期完了】国庫歳入+${netToTreasury}G / 指揮手当+${stipend}G`);
     }
-
-    // 給与を国庫から兵士サイフへ。治療を優先し、強化は休息中に進める。
-    {
-      const payroll = [...aliveSoldiers, ...(this.reserves || []).filter(s => !s.dead)];
-      const need = payroll.length * SOLDIER_SALARY;
-      let paid = 0;
-      let shortfall = 0;
-      if ((this.treasury || 0) >= need) {
-        this.treasury -= need;
-        paid = need;
-        for (const soldier of payroll) {
-          soldier.gold = (soldier.gold || 0) + SOLDIER_SALARY;
-          soldier.lastMaintenance = { phase: this.phase - 1, count: 0, spent: 0, status: '次ラウンド開始前に整備予定' };
-        }
-      } else {
-        const avail = Math.max(0, this.treasury || 0);
-        const per = payroll.length ? Math.floor(avail / payroll.length) : 0;
-        paid = per * payroll.length;
-        shortfall = need - paid;
-        this.treasury = (this.treasury || 0) - paid;
-        for (const soldier of payroll) {
-          soldier.gold = (soldier.gold || 0) + per;
-          soldier.lastMaintenance = { phase: this.phase - 1, count: 0, spent: 0, status: per < SOLDIER_SALARY ? '給与不足・開始前整備予定' : '次ラウンド開始前に整備予定' };
-        }
+    // This wave's service and promotions determine both wages and their funding.
+    for(const s of [...aliveSoldiers,...reserveParticipants]) {
+      if(finishExperience(s)) {
+        s.careerPhases ||= [];s.careerPhases.push(this.phase-1);
+        if(s.careerPhases.length>40)s.careerPhases=s.careerPhases.slice(-40);
       }
-      if (this.phaseFiscal) {
-        this.phaseFiscal.salariesPaid = (this.phaseFiscal.salariesPaid || 0) + paid;
-        this.phaseFiscal.salaryHeadcount = payroll.length;
-        this.phaseFiscal.salaryShortfall = (this.phaseFiscal.salaryShortfall || 0) + shortfall;
-      }
+      this.recalcSoldierStats(s);
     }
-
-    // 🎖️ ランカー特別給与の支給（各部門TOP3の武勲精鋭に栄誉手当を支給！）
-    const rankerBonuses = calcAllRankerBonuses(this);
-    let totalRankerBonusPaid = 0;
-    let rankerRecipientCount = 0;
-    for (const [soldierId, data] of rankerBonuses.entries()) {
-      if (data.totalBonus > 0 && data.soldier) {
-        data.soldier.gold = (data.soldier.gold || 0) + data.totalBonus;
-        totalRankerBonusPaid += data.totalBonus;
-        rankerRecipientCount++;
-        if (data.soldier.lastMaintenance) {
-          data.soldier.lastMaintenance.rankerBonus = data.totalBonus;
-        }
-      }
-    }
-    if (totalRankerBonusPaid > 0) {
+    const payrollPlan=nationalPayrollPlan(this);
+    const grossIncome=nationalIncome(this,this.phase-1,payrollPlan.entries.length,payrollPlan);
+    const stipend=calcCommanderStipend(this.phase-1,grossIncome,this),netToTreasury=grossIncome-stipend;
+    this.treasury=(this.treasury||0)+netToTreasury;this.gold=(this.gold||0)+stipend;
+    this.phaseFiscal.income=(this.phaseFiscal.income||0)+grossIncome;
+    this.phaseFiscal.commanderStipend=(this.phaseFiscal.commanderStipend||0)+stipend;
+    const paidPayroll=paySoldiers(this,payrollPlan,this.phase-1);
+    if(!isDeathline)this.showToast(`🚩【作戦第${this.phase-1}期完了】国庫歳入+${netToTreasury}G / 指揮手当+${stipend}G`);
+    if (paidPayroll.rankerPaid > 0) {
       this.recordBattleLog?.(
-        `🎖️【ランカー特別給与】武勲TOP3の精鋭兵士${rankerRecipientCount}名に栄誉手当（計+${totalRankerBonusPaid}G）を支給！`,
+        `🎖️【ランカー特別給与】武勲TOP3の精鋭兵士${paidPayroll.rankerCount}名に栄誉手当（計+${paidPayroll.rankerPaid}G）を国庫から支給！`,
         'growth'
       );
     }
@@ -4970,11 +4930,6 @@ export const IronSquadGame = {
     this.showToast(formatFiscalReportJa(fiscal));
     // 兵士たちの自費治療
     aliveSoldiers.forEach((s) => {
-      if (finishExperience(s)) {
-        s.careerPhases = s.careerPhases || [];
-        s.careerPhases.push(this.phase - 1);
-        if (s.careerPhases.length > 40) s.careerPhases = s.careerPhases.slice(-40);
-      }
       if(s.isDown){s.hp=0;return;}
       const missingHp = s.maxHp - s.hp;
       if (missingHp > 0) {
@@ -4991,20 +4946,12 @@ export const IronSquadGame = {
       this.recalcSoldierStats(s);
     });
 
-    for(const soldier of reserveParticipants) {
-      if (finishExperience(soldier)) {
-        soldier.careerPhases = soldier.careerPhases || [];
-        soldier.careerPhases.push(this.phase - 1);
-        if (soldier.careerPhases.length > 40) soldier.careerPhases = soldier.careerPhases.slice(-40);
-      }
-      this.recalcSoldierStats(soldier);
-    }
     supply.experienced=experiencedCount;
     supply.waited=aliveSoldiers.length-activeExperiencedCount;
     this.showToast(`新兵${supply.received}名受領・実戦へ${supply.deployed}名配備・予備${supply.waiting}名`);
 
     this.restTimer=REST_DURATION;this.restUpgradeClock=0;
-    this.restReport={phase:this.phase-1,count:0,spent:0,trainedIds:[],salary:SOLDIER_SALARY};
+    this.restReport={phase:this.phase-1,count:0,spent:0,trainedIds:[],salaryMin:paidPayroll.min,salaryMax:paidPayroll.max,salariesPaid:paidPayroll.paid,rankerPaid:paidPayroll.rankerPaid};
     this.restMonsters=this.monsters || [];this.monsters=[];
     this.projectiles=[];this.screenShake=0;
     if(this.joystick)this.resetMovementInput();
@@ -5049,8 +4996,9 @@ export const IronSquadGame = {
 
   maintenanceSummary() {
     const report=this.restReport;
-    if(!report)return `戦線${PHASE_DURATION}秒 → 次のラウンド開始まで${REST_DURATION}秒。その間は敵と戦闘を休止し、兵士が自費で自己強化します（定期給与${SOLDIER_SALARY}G）。`;
-    return `${this.restTimer>0?`次のラウンド開始まで残り${Math.ceil(this.restTimer)}秒`:`第${report.phase}期の整備結果`}：${report.trainedIds.length}名が計${report.count}回強化 / 自費${report.spent}G。定期給与は既存兵士に各${report.salary}G。会議中は待機時計も停止。`;
+    if(!report)return `戦線${PHASE_DURATION}秒 → 次のラウンド開始まで${REST_DURATION}秒。その間は兵士が自費で自己強化します。通常給与はLv・昇格・国家発展と装備の強化費で増え、ランカーには栄誉手当を加算します。`;
+    const min=report.salaryMin??report.salary??SOLDIER_SALARY,max=report.salaryMax??min;
+    return `${this.restTimer>0?`次のラウンド開始まで残り${Math.ceil(this.restTimer)}秒`:`第${report.phase}期の整備結果`}：${report.trainedIds.length}名が計${report.count}回強化 / 自費${report.spent}G。通常給与${min.toLocaleString()}〜${max.toLocaleString()}G／人・栄誉手当計${(report.rankerPaid||0).toLocaleString()}Gを国庫から支給。会議中は待機時計も停止。`;
   },
 
   processRestSecond() {
@@ -7837,9 +7785,7 @@ export const IronSquadGame = {
   },
 
   getUpgradeCost(item) {
-    const up = item.upgrade || 0;
-    const tierFactor = Math.max(1, powerRank(item.tier) * 0.8);
-    return Math.floor((20 + up * 18 + Math.pow(up, 1.4) * 6) * tierFactor);
+    return equipmentUpgradeCost(item);
   },
 
   upgradeItem(item, isFree = false) {
@@ -8089,6 +8035,7 @@ export const IronSquadGame = {
       return `<div>${slotJa[k]||k}: <span style="color:${it.color || '#e2e8f0'};">[T${it.tier}] ${it.name}${up}</span>${bitTxt}</div>`;
     }).join('');
     const role = (this.reserves || []).includes(s) ? '予備兵' : s.isPersonalGuard ? '⭐ 自部隊（直属）' : '🏰 本隊';
+    const wage=salaryQuote(s,this),ranker=calcSoldierRankerBonus(this,s.id);
     const hitPct = Math.round((s.hitGrowthPct || 0) * 1000) / 10;
     return `
       <div class="soldier-detail-panel">
@@ -8106,6 +8053,7 @@ export const IronSquadGame = {
             <div>HP <strong style="color:#34d399;">${Math.floor(s.hp || 0)}</strong> / ${s.maxHp || 0}</div>
             <div>ATK <strong>${s.atk || 0}</strong> · DEF <strong style="color:#38bdf8;">${s.def || 0}</strong></div>
             <div>サイフ <strong style="color:#fde047;">${(s.gold || 0).toLocaleString()}G</strong></div>
+            <div>通常給与見込 <strong>${wage.total.toLocaleString()}G</strong>（基本${wage.basic.toLocaleString()}＋整備${wage.maintenance.toLocaleString()}）<br>栄誉手当 +${ranker.totalBonus.toLocaleString()}G／期</div>
             <div>経験 ${s.exp || 0} / 次${s.reqExp || 14}</div>
             <div class="soldier-attribute-grid"><span>筋力 <strong>${s.strength||0}</strong></span><span>魔力 <strong>${s.magicPower||0}</strong></span><span>魔法防御 <strong>${s.magicDef||0}</strong></span><span>速さ <strong>${s.quickness||0}</strong></span><span>回避 <strong>${s.evasion||0}</strong>（${s.dodge||0}%）</span><span>搬送 <strong>${attributeCarryCapacity(s)}人</strong></span></div>
             <div>移動 ${s.speed||0}m/秒${isMagicUser(s)?` · 魔法攻撃 ${s.magicAttack||0}`:''}</div>
@@ -9056,7 +9004,7 @@ export const IronSquadGame = {
       const row=document.createElement('div');row.className='reserve-row';
       const cls=SOLDIER_CLASSES[soldier.soldierClass] || SOLDIER_CLASSES.HEAVY;
       const talent=TALENTS[soldier.talent] || TALENTS.AVERAGE;
-      row.textContent=`${soldier.name} · ${cls.name} · ${talent.tag} · Lv.${soldier.level || 1} · 経験${soldier.survivedWaves || 0}戦線`;
+      row.textContent=`${soldier.name} · ${cls.name} · ${talent.tag} · Lv.${soldier.level || 1} · 経験${soldier.survivedWaves || 0}戦線 · 通常給与見込${salaryQuote(soldier,this).total.toLocaleString()}G`;
       if(soldier.lastMaintenance)row.textContent+=` · 自己強化${soldier.lastMaintenance.count}回 / ${soldier.lastMaintenance.spent}G · ${soldier.lastMaintenance.status}`;
       const info=document.createElement('span');info.textContent=row.textContent;
       const detail=document.createElement('button');detail.type='button';detail.className='mini-btn';detail.textContent='個人詳細';
@@ -9551,7 +9499,9 @@ export const IronSquadGame = {
       row.classList.add('soldier-card'); row.prepend(portrait);
       const maintenanceNote=document.createElement('p');maintenanceNote.className='maintenance-summary';
       const m=s.lastMaintenance;
-      maintenanceNote.textContent=m?`第${m.phase}期の整備：強化${m.count}回 / ${m.spent}G · ${m.status}`:'次のラウンド開始前に所持金で自動整備（定期給与20G）';
+      const wage=salaryQuote(s,this);
+      maintenanceNote.textContent=`通常給与見込 ${wage.total.toLocaleString()}G（基本${wage.basic.toLocaleString()}＋整備${wage.maintenance.toLocaleString()}）`;
+      maintenanceNote.textContent+=m?` · 第${m.phase}期${m.salaryPaid!=null?`支給${m.salaryPaid.toLocaleString()}G · `:''}強化${m.count}回 / ${m.spent}G · ${m.status}`:' · 次のラウンド開始前に所持金で自動整備';
       row.append(maintenanceNote);
       const transportNote=document.createElement('p');transportNote.className='maintenance-summary';
       const cargo=carriedSoldiers(this,s),carrier=s.carrierId?carrierOf(this,s):null;

@@ -1,5 +1,5 @@
-import {drawEquipmentShield} from './equipment-art.js?v=128';
-import { MELEE_SWEET_SPOT, meleeSweetSpotFor, weaponCombatProfile } from './equipment-rules.js?v=128';
+import {drawEquipmentShield} from './equipment-art.js?v=129';
+import { MELEE_SWEET_SPOT, meleeSweetSpotFor, weaponCombatProfile } from './equipment-rules.js?v=129';
 
 const TAU = Math.PI * 2;
 const clamp = n => Math.max(0, Math.min(1, n));

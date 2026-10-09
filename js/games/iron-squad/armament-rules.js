@@ -1,13 +1,13 @@
-import {weaponCombatProfile,meleeSweetSpotFor} from './equipment-rules.js?v=128';
+import {weaponCombatProfile,meleeSweetSpotFor} from './equipment-rules.js?v=129';
 import {masteryReloadMult,applyMasteryToCombatProfile} from './growth-rules.js';
-import {MAX_EQUIPMENT_TIER,GENERATION_COUNT,tierNumber,powerRank,tierDescription} from './equipment-tiers.js?v=128';
+import {MAX_EQUIPMENT_TIER,GENERATION_COUNT,tierNumber,powerRank,tierDescription} from './equipment-tiers.js?v=129';
 import {canUseWeapon} from './weapon-requirements.js';
 import {prefersCasterMelee} from './unit-attributes.js';
 
 export const ARMAMENT_POLICIES={
-  balanced:{name:'均衡',research:.25,development:.25,budget:1500,perLevel:250},
-  military:{name:'軍備優先',research:.4,development:.15,budget:2200,perLevel:400},
-  development:{name:'発展優先',research:.15,development:.4,budget:850,perLevel:150}
+  balanced:{name:'均衡',research:.25,development:.25,budget:1500,perLevel:250,maintenanceShare:.3},
+  military:{name:'軍備優先',research:.4,development:.15,budget:2200,perLevel:400,maintenanceShare:.4},
+  development:{name:'発展優先',research:.15,development:.4,budget:850,perLevel:150,maintenanceShare:.15}
 };
 export const RESERVE_ARMAMENT_COUNT=8;
 export const ARMAMENT_LIMITS={improvementsPerWave:8,replacementMinGain:.08,forgeMinGain:.002,studyCreditPerTier:150};

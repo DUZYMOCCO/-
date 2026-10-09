@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
 import {resolve} from 'node:path';
 import {JSDOM} from '../__pycache__/ui-tools/node_modules/jsdom/lib/api.js';
-import {normalizeNation,DEVELOPMENT_STAGES,headquartersDamageMult,fiscalTotals,drawNationalDevelopment} from '../js/games/iron-squad/nation-rules.js?v=128';
+import {normalizeNation,DEVELOPMENT_STAGES,headquartersDamageMult,fiscalTotals,drawNationalDevelopment} from '../js/games/iron-squad/nation-rules.js?v=129';
 import {distributeSharedBoxToSoldiers,sellWeakSurplusFromBox,calcTreasuryGrossIncome,calcCommanderStipend} from '../js/games/iron-squad/economy-rules.js';
 import {saleValue} from '../js/games/iron-squad/equipment-rules.js';
 const dom=new JSDOM('<div id="game"></div>',{url:'http://localhost/'});
@@ -17,7 +17,7 @@ game.gold=100000;const before=game.treasury;assert.equal(game.donateToTreasury(1
 for(let wave=0;wave<12;wave++){
   const oldTreasury=game.phaseFiscal.startBalance,headcount=game.squad.filter(s=>!s.dead).length+game.reserves.filter(s=>!s.dead).length;
   game.completePhase();const l=game.lastFiscalReport,t=fiscalTotals(l);
-  assert.equal(l.salaryShortfall,0);assert.equal(l.salariesPaid,headcount*20);assert.equal(l.endBalance-oldTreasury,t.net,'every recorded receipt and expense reconciles to the actual treasury');
+  assert.equal(l.salaryShortfall,0);assert.ok(l.salariesPaid>=headcount*20);assert.equal(l.salariesPaid,l.basicSalariesPaid+l.maintenanceAllowancesPaid+l.rankerBonusesPaid,'all regular pay, maintenance and ranker honors are real treasury expenses');assert.equal(l.endBalance-oldTreasury,t.net,'every recorded receipt and expense reconciles to the actual treasury');
   assert.ok(game.treasury>=Math.max(6000,headcount*40),'investment keeps salary reserves');
   assert.equal(game.phaseFiscal.phase,game.phase);game.finishRest();
 }

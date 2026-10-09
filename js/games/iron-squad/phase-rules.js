@@ -2,8 +2,8 @@ import {grantHealingExp} from './experience-rules.js';
 
 export const PHASE_DURATION = 120;
 export const REST_DURATION = 8;
-/** 兵士1名あたりの定期給与（国庫から支払い） */
-export const SOLDIER_SALARY = 20;
+/** Legacy name denotes the minimum basic pay; quotes include growth and maintenance. */
+export {SOLDIER_SALARY} from './payroll-rules.js?v=129';
 export const MIN_REINFORCEMENTS = 5;
 export const emptyActivity = () => ({combatActions: 0, healingDone: 0});
 

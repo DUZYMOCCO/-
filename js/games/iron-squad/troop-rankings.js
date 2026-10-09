@@ -1,3 +1,4 @@
+import {salaryQuote} from './payroll-rules.js?v=129';
 /**
  * 兵士の武勲・ステータスランキングシステム
  * 各ステータス（総合・撃破・ボス・攻撃・防御・HP・回復・死線）を詳細にランキング化し、
@@ -168,13 +169,16 @@ export function getSoldierRankerBadges(game, soldierId) {
 
 /**
  * ランカー特別給与テーブル（上位3名への特別手当）
- * 1位: 50G, 2位: 30G, 3位: 20G
+ * Minimum 50/30/20G; growing regular pay grants 50/30/20% per department.
  */
 export const RANKER_BONUS_SALARY = {
   1: 50,
   2: 30,
   3: 20
 };
+export const RANKER_BONUS_RATE={1:.5,2:.3,3:.2};
+export const rankerSalaryBonus=(game,soldier,rank)=>RANKER_BONUS_RATE[rank]
+  ?Math.max(RANKER_BONUS_SALARY[rank],Math.ceil(salaryQuote(soldier,game).total*RANKER_BONUS_RATE[rank])):0;
 
 /**
  * 兵士が実戦武勲を認可される資格があるか判定（未出撃・未行動の新兵は対象外）
@@ -208,7 +212,7 @@ export function calcSoldierRankerBonus(game, soldierId) {
     const idx = list.findIndex(e => e.soldier.id === soldierId);
     if (idx !== -1 && list[idx].score > 0) {
       const rank = idx + 1;
-      const bonus = RANKER_BONUS_SALARY[rank] || 0;
+      const bonus = rankerSalaryBonus(game,targetEntry.soldier,rank);
       if (bonus > 0) {
         totalBonus += bonus;
         breakdowns.push({
@@ -233,7 +237,7 @@ export function calcAllRankerBonuses(game) {
   const result = new Map();
   if (!game) return result;
   const soldiers = collectAllSoldiers(game);
-  if (!soldiers.length) return result;
+  if (!soldiers.some(entry=>isEligibleForRankerBonus(entry.soldier))) return result;
 
   for (const cat of RANKING_CATEGORIES) {
     const list = computeRankings(soldiers, cat.id, RANKER_CUTOFF);
@@ -241,7 +245,7 @@ export function calcAllRankerBonuses(game) {
       const s = entry.soldier;
       if (!isEligibleForRankerBonus(s) || entry.score <= 0) return;
       const rank = idx + 1;
-      const bonus = RANKER_BONUS_SALARY[rank] || 0;
+      const bonus = rankerSalaryBonus(game,s,rank);
       if (bonus <= 0) return;
 
       if (!result.has(s.id)) {
@@ -300,7 +304,7 @@ export function renderTroopRankings(game) {
             const rank = idx + 1;
             const isRanker = rank <= RANKER_CUTOFF;
             const medal = rank === 1 ? '🥇 1位' : rank === 2 ? '🥈 2位' : rank === 3 ? '🥉 3位' : `${rank}位`;
-            const bonusAmount = isEligibleForRankerBonus(s)?(RANKER_BONUS_SALARY[rank] || 0):0;
+            const bonusAmount = isEligibleForRankerBonus(s)?rankerSalaryBonus(game,s,rank):0;
             const isNamed = !!s.title;
             const name = isNamed ? `${s.title}${s.name}` : s.name;
             const cls = s.class || s.rankTitle || '兵士';
