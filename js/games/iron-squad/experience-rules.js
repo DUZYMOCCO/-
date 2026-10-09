@@ -2,6 +2,15 @@
 export const HEALING_HP_PER_EXP = 5;
 export const REVIVAL_EXP_PER_MAX_HP = 3;
 export const COMMANDER_EXP_SHARE = .2;
+export const LEVEL_MARK_TIME = 2.2;
+export function raiseLevelMark(unit) { if (unit) unit._levelMark = LEVEL_MARK_TIME; }
+export function ageLevelMarks(game, dt) {
+  if (!game || !(dt > 0)) return;
+  const tick = unit => { if (unit?._levelMark > 0) unit._levelMark = Math.max(0, unit._levelMark - dt); };
+  tick(game.player);
+  for (const unit of game.squad || []) tick(unit);
+  for (const unit of game.reserves || []) tick(unit);
+}
 const nonnegative = value => Number.isFinite(value) ? Math.max(0, value) : 0;
 
 /** 蘇生対象の最大HPの300%を、そのまま個人EXPとして評価する。 */
@@ -22,15 +31,10 @@ export function grantPersonalExp(game, unit, amount) {
     unit.level = (unit.level || 1) + 1;
     unit.reqExp = Math.floor(cost * (isPlayer ? 1.45 : 1.5) + (isPlayer ? 10 : 8));
     leveled = true;
-    if (isPlayer) {
-      game?.sound?.playHighScore?.();
-      game?.spawnDamageText?.(unit.x, unit.y - 30, `⚡ Lv.${unit.level} UP!`, '#34d399');
-      game?.showToast?.(`⚡ 功績でレベルアップ！ Lv.${unit.level} に到達！`);
-    } else {
-      game?.spawnDamageText?.(unit.x, unit.y - 45, `⚡ Lv.${unit.level}!`, '#00f0ff');
-    }
+    if (isPlayer) game?.sound?.playHighScore?.();
   }
   if (leveled) {
+    raiseLevelMark(unit);
     if (isPlayer) game?.recalcPlayerStats?.();
     else game?.recalcSoldierStats?.(unit);
     if(unit.isDown)unit.hp=0;

@@ -9,12 +9,14 @@ assert.deepEqual(contactSpread(10, 4, 5).rx, planted.rx);
 
 let depth = 0;
 let arcs = 0;
+let marks = 0;
 const ellipses = [];
 const context = new Proxy({
   save() { depth++; },
   restore() { depth--; },
   ellipse(x, y, rx) { ellipses.push(rx); },
   arc() { arcs++; },
+  beginPath() { marks++; },
   measureText() { return { width: 40 }; }
 }, { get: (target, key) => (key in target ? target[key] : () => {}) });
 
@@ -45,6 +47,18 @@ drawFieldSoldier(context, { ...body, soldierClass: 'ARCHER', vx: 1, vy: 0, atkAn
 assert.equal(arcs, arcsAtRest + 1, 'bows keep the arc off the string');
 drawFieldCommander(context, { x: 0, y: 0, hp: 20, maxHp: 20, level: 3, facingAngle: 0, slashAnim: .57 }, { weapon: { color: '#e6d7a8' } }, 200, 2, '軍曹', true, false);
 assert.equal(arcs, arcsAtRest + 2, 'the commander carries the same restrained blade trace');
+assert.equal(depth, 0);
+const quietSoldier = marks;
+drawFieldSoldier(context, { ...body, vx: 0, vy: 0, atkAnim: 0 }, 0, cls, '#829cae');
+const soldierPaths = marks - quietSoldier;
+drawFieldSoldier(context, { ...body, vx: 0, vy: 0, atkAnim: 0, _levelMark: 2 }, 0, cls, '#829cae');
+assert.ok(marks - quietSoldier - soldierPaths > soldierPaths, 'a level-up mark is drawn above the soldier');
+const quietCommander = marks;
+drawFieldCommander(context, { x: 30, y: 40, hp: 20, maxHp: 20, level: 3, facingAngle: 0, slashAnim: 0 }, { weapon: { color: '#e6d7a8' } }, 0, 2, '軍曹', false, false);
+const commanderPaths = marks - quietCommander;
+drawFieldCommander(context, { x: 30, y: 40, hp: 20, maxHp: 20, level: 4, _levelMark: 2, facingAngle: 0, slashAnim: 0 }, { weapon: { color: '#e6d7a8' } }, 0, 2, '軍曹', false, false);
+assert.ok(marks - quietCommander - commanderPaths > commanderPaths, 'the commander carries the level-up mark');
+assert.equal(arcs, arcsAtRest + 2);
 assert.equal(depth, 0);
 
 console.log('PASS: boss bodies, planted contact shadow, blade-only slash arc');

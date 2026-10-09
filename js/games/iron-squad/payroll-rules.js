@@ -1,5 +1,5 @@
-import {powerRank} from './equipment-tiers.js?v=143';
-import {economicPayrollBudget} from './regional-economy.js?v=143';
+import {powerRank} from './equipment-tiers.js?v=146';
+import {economicPayrollBudget} from './regional-economy.js?v=146';
 
 export const SOLDIER_SALARY=20;
 export const PAYROLL_RULES={perLevel:6,perClassGrade:40,perDevelopmentLevel:20,maintenanceRate:.6,weaponWeight:2,operatingMargin:.25,reserveCycles:2.5,commanderMaintenanceRate:.3};

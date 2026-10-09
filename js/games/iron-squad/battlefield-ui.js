@@ -31,6 +31,9 @@ export function configureBattlefieldUI(game) {
  if(Observer){const watch=new Observer(refreshAttention);watch.observe(menu,{subtree:true,attributes:true,attributeFilter:['class']});}
  refreshAttention();
  const map=root.querySelector('.minimap-container');map.setAttribute('aria-hidden','true');map.classList.add('navigation-overlay');
+ const vitals=document.createElement('div');vitals.id='quiet-vitals';vitals.className='quiet-vitals';
+ vitals.innerHTML='<span class="qv-hp">HP 0/0</span><span class="qv-mp">MP —</span><span class="qv-gold">0G</span>';
+ field.append(vitals);
  // Only the main menu button receives pointer events; the navigation overlay is passive.
  menu.addEventListener('click',event=>{if(event.target.closest('#btn-world-map,#btn-enter-dungeon,#dungeon-prompt-banner,#btn-raid-warp'))game.closeStrategyModal?.();},true);
  // Reuse the event handler and all movement/attack controls. The header now has no field controls.

@@ -1,4 +1,7 @@
+import { AMMO_CAPACITY, isRangedUnit } from './supply-rules.js?v=146';
+
 export const BATTLE_LOG_LIMIT = 100;
+const FIELD_HALF = 0.5;
 
 export const LOG_CATEGORIES = [
   { id: 'growth', label: '🌱 成長・覚醒', icon: '🌱' },
@@ -20,6 +23,14 @@ export function categorizeLogMessage(text) {
 export function resetBattleLog(game) {
   clearTimeout(game._battleLogTimer); game._battleLogTimer = null;
   game.battleLogHistory = []; game._battleLogSequence = 0;
+  game._fieldNotesPrimed = false;
+  if (typeof document?.getElementById === 'function') {
+    const stream = document.getElementById('battle-log-stream');
+    if (stream) {
+      if (typeof stream.replaceChildren === 'function') stream.replaceChildren(); else stream.textContent = '';
+      stream.closest?.('.battle-log-window')?.classList?.remove?.('has-field-note');
+    }
+  }
   if (typeof document?.querySelector === 'function') {
     const ticker = document.querySelector('#strat-log-ticker .strat-ticker-msg');
     if (ticker) ticker.textContent = 'まだ記録はありません。';
@@ -102,7 +113,45 @@ export function renderBattleLog(game, requestedCategory = null) {
   if (bottom) list.scrollTop = list.scrollHeight;
 }
 
-export function recordBattleLog(game, message) {
+// 画面上の一行だけを絞る。履歴と司令部のティッカーは従来どおり残す。
+export function showsOnFieldLog(text, options) {
+  if (options?.field === false) return false;
+  if (options?.field === true) return true;
+  const line = String(text || '');
+  if (/横取り|戦利品|秘宝|宝珠|宝玉|国庫買取|ドロップ/.test(line)) return true;
+  if (/半分以下/.test(line) && /HP|MP|残り弾薬/.test(line)) return true;
+  if (/死亡まで残り/.test(line)) return true;
+  if (/力尽きました/.test(line)) return true;
+  return false;
+}
+
+function showFieldLine(game, text) {
+  const stream = document.getElementById('battle-log-stream');
+  if (!stream) return;
+  const line = document.createElement('div');
+  line.className = 'battle-log-msg';
+  line.textContent = text;
+  if (/死亡まで残り|力尽きました/.test(text)) line.classList.add('boss-alert');
+  else if (/獲得|ドロップ|秘宝|宝珠|宝玉|国庫買取|横取り/.test(text)) line.classList.add('item-alert');
+  if (typeof stream.replaceChildren === 'function') {
+    stream.replaceChildren(line);
+  } else {
+    stream.textContent = '';
+    stream.append?.(line);
+  }
+  const windowEl = stream.closest?.('.battle-log-window');
+  if (windowEl) windowEl.classList.add('has-field-note');
+  clearTimeout(game._battleLogTimer);
+  game._battleLogTimer = setTimeout(() => {
+    if (line.parentNode === stream) {
+      line.style.opacity = '0';
+      line.style.transform = 'translateY(6px)';
+      windowEl?.classList.remove('has-field-note');
+    }
+  }, 3000);
+}
+
+export function recordBattleLog(game, message, options) {
   if (!message) return;
   const text = String(message);
   // 会心の一撃は頻発してログを埋め尽くすため記録しない
@@ -118,24 +167,7 @@ export function recordBattleLog(game, message) {
     category
   });
   if (history.length > BATTLE_LOG_LIMIT) history.splice(0, history.length - BATTLE_LOG_LIMIT);
-
-  const stream = document.getElementById('battle-log-stream');
-  if (stream) {
-    const line = document.createElement('div');
-    line.className = 'battle-log-msg';
-    line.textContent = text;
-    if (/🚨|危険|倒れた/.test(text)) line.classList.add('boss-alert');
-    else if (/獲得|ドロップ|秘宝|横取り/.test(text)) line.classList.add('item-alert');
-    else if (/レベルアップ|昇進|覚醒/.test(text)) line.classList.add('levelup-alert');
-    stream.replaceChildren(line);
-    clearTimeout(game._battleLogTimer);
-    game._battleLogTimer = setTimeout(() => {
-      if (line.parentNode === stream) {
-        line.style.opacity = '0';
-        line.style.transform = 'translateY(6px)';
-      }
-    }, 3000);
-  }
+  if (showsOnFieldLog(text, options)) showFieldLine(game, text);
 
   if (typeof document?.querySelector === 'function') {
     const ticker = document.querySelector('#strat-log-ticker .strat-ticker-msg');
@@ -143,4 +175,43 @@ export function recordBattleLog(game, message) {
   }
   const banner = document.getElementById('drop-banner');
   if (banner) banner.textContent = text;
+}
+
+function rememberHalf(game, unit, key, low, message) {
+  const flag = `_fieldHalf_${key}`;
+  if (low) {
+    if (!unit[flag] && game._fieldNotesPrimed) game.showToast?.(message);
+    unit[flag] = true;
+  } else {
+    unit[flag] = false;
+  }
+}
+
+// 隊長と出撃中の味方だけ。半分を跨いだとき一度だけ。旗は _ 始まりなので保存しない。
+export function refreshCombatFieldNotes(game) {
+  if (!game?.player) return;
+  const units = [game.player, ...(game.squad || [])];
+  for (const unit of units) {
+    if (!unit || unit.dead || unit.isDown || !(unit.hp > 0)) continue;
+    const name = unit === game.player ? '隊長' : (unit.name || '兵士');
+    const hp = Math.max(0, Math.floor(unit.hp));
+    const maxHp = Math.max(1, Math.floor(unit.maxHp || 1));
+    rememberHalf(game, unit, 'hp', hp <= maxHp * FIELD_HALF, `${name}のHPが半分以下 · 残り${hp}/${maxHp}`);
+    const maxMana = Math.floor(unit.maxMana || 0);
+    if (maxMana > 0) {
+      const mana = Math.max(0, Math.floor(unit.mana || 0));
+      rememberHalf(game, unit, 'mp', mana <= maxMana * FIELD_HALF, `${name}のMPが半分以下 · 残り${mana}/${maxMana}`);
+    } else {
+      unit._fieldHalf_mp = false;
+    }
+    if (isRangedUnit(game, unit)) {
+      const ammo = unit.ammo == null || !Number.isFinite(Number(unit.ammo))
+        ? AMMO_CAPACITY
+        : Math.max(0, Math.min(AMMO_CAPACITY, Math.floor(Number(unit.ammo))));
+      rememberHalf(game, unit, 'ammo', ammo <= AMMO_CAPACITY * FIELD_HALF, `${name}の残り弾薬が半分以下 · ${ammo}/${AMMO_CAPACITY}`);
+    } else {
+      unit._fieldHalf_ammo = false;
+    }
+  }
+  game._fieldNotesPrimed = true;
 }

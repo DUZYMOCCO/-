@@ -1,9 +1,9 @@
 import {calcScoutCost} from './economy-rules.js';
-import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=143';
+import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=146';
 import {drawSoldierPortrait} from './soldier-appearance.js';
 import {ATTRIBUTE_KEYS,ATTRIBUTE_LABELS,attributeSpecialties,attributeCarryCapacity,aptitudeGrade} from './unit-attributes.js';
 import {weaponRequirementText} from './weapon-requirements.js';
-import {releaseCanvas} from './canvas-surface.js?v=143';
+import {releaseCanvas} from './canvas-surface.js?v=146';
 
 export const RECRUIT_CLASSES=['HEAVY','LIGHT','ARCHER','MEDIC','MAGE'];
 export const RECRUITMENT_INTERVAL=1200;

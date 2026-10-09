@@ -1,9 +1,9 @@
-import {RANGED_ENEMIES} from './enemy-ranged.js?v=143';
-import {equipmentVisualProfile} from './equipment-tiers.js?v=143';
-import {drawBodyEquipment} from './equipment-art.js?v=143';
-import {MAGIC_AFFINITIES,ensureMana} from './magic-rules.js?v=143';
-import { drawMeleeWeapon, drawMeleeRangeCue } from './weapon-motion.js?v=143';
-import { drawSoldierHead, isMedicAppearance, soldierAppearanceFamily, soldierPhysique } from './soldier-appearance.js?v=143';
+import {RANGED_ENEMIES} from './enemy-ranged.js?v=146';
+import {equipmentVisualProfile} from './equipment-tiers.js?v=146';
+import {drawBodyEquipment} from './equipment-art.js?v=146';
+import {MAGIC_AFFINITIES,ensureMana} from './magic-rules.js?v=146';
+import { drawMeleeWeapon, drawMeleeRangeCue } from './weapon-motion.js?v=146';
+import { drawSoldierHead, isMedicAppearance, soldierAppearanceFamily, soldierPhysique } from './soldier-appearance.js?v=146';
 
 // Live field illustrations. Equipment colors are read every frame.
 // Hands and the weapon share one pose; only the striking edge gets a short trace.
@@ -253,9 +253,36 @@ function drawFieldFarmer(c, s, now, cls, platoonColor, simpleLod, displayEquipme
   c.restore();
 }
 
+export function drawLevelMark(c, unit, now) {
+  if (!c || !unit || !(unit._levelMark > 0)) return;
+  const fade = unit._levelMark < 0.4 ? unit._levelMark / 0.4 : 1;
+  const bob = Math.sin((now || 0) * 0.007) * 1.4;
+  c.save();
+  c.translate(unit.x, unit.y - 50 + bob);
+  c.globalAlpha = fade;
+  c.fillStyle = '#d9c7a2';
+  c.strokeStyle = '#6e5844';
+  c.lineWidth = 1;
+  c.beginPath();
+  c.moveTo(0, -9);
+  c.lineTo(8, -1);
+  c.lineTo(0, 7);
+  c.lineTo(-8, -1);
+  c.closePath();
+  c.fill();
+  c.stroke();
+  c.beginPath();
+  c.moveTo(-3.1, 0.4);
+  c.lineTo(0, -2.8);
+  c.lineTo(3.1, 0.4);
+  c.stroke();
+  c.restore();
+}
+
 export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod, displayEquipment=null) {
   if (!s.isDown && (s.farmPose === 'hoe' || s.farmPose === 'basket' || s.farmPose === 'tend')) {
     drawFieldFarmer(c, s, now, cls, platoonColor, simpleLod, displayEquipment);
+    drawLevelMark(c, s, now);
     return;
   }
   const key = s.soldierClass || 'HEAVY', eq = displayEquipment || s.equipped || {};
@@ -284,6 +311,7 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod, displa
   if (!s.isDown && (s.campPose === 'sit' || s.campPose === 'drink' || s.campPose === 'eat')) {
     drawCampRest(c, s, now, s.campPose, { cloth, armorColor, legs, blade, steel, gloves, platoonColor, medic, advanced, mage, eq, physique }, simpleLod);
     c.restore();
+    drawLevelMark(c, s, now);
     return;
   }
   const plant = s.isDown ? 1 : (moving ? Math.abs(stride) / 2.8 : 0.22);
@@ -314,7 +342,9 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod, displa
       c.fillStyle = '#c4b48a'; c.fillRect(-12, healthY, 24 * Math.max(0, Math.min(1, s.hp / s.maxHp)), 3);
     }
     if (melee && (s.atkAnim > 0 || muscular)) drawMeleeWeapon(c,s,wStyle,weaponColors,true);
-    c.restore(); return;
+    c.restore();
+    drawLevelMark(c, s, now);
+    return;
   }
   if (s.isDown) {
     c.save();c.scale(1,physique.bodyWidth);
@@ -329,7 +359,9 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod, displa
     c.fillText(s.carrierId?'搬送中':`救助 ${Math.ceil(s.downTimer || 0)}秒`, 0, -16);
     c.fillStyle = '#242c30'; c.fillRect(-16, -12, 32, 3);
     c.fillStyle = '#d7b56a'; c.fillRect(-16, -12, 32 * Math.min(1, Math.max(0, s.rescueProgress || 0)), 3);
-    c.restore(); return;
+    c.restore();
+    drawLevelMark(c, s, now);
+    return;
   }
   const bodyFacing=s.atkAnim>0&&Number.isFinite(s.attackAngle)?s.attackAngle:(s.facingAngle||0);
   c.save(); if (Math.cos(bodyFacing) < -0.15) c.scale(-1, 1);
@@ -454,11 +486,12 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod, displa
     }
   }
   c.restore();
+  drawLevelMark(c, s, now);
 }
 
 export function drawFieldCommander(c,p,equipped,now,rankIndex,rankTitle,moving,portrait=false) {
   c.save();c.translate(p.x,p.y);c.scale(1.18,1.18);
-  drawFieldSoldier(c,{x:0,y:0,hp:p.hp,maxHp:p.maxHp,
+  drawFieldSoldier(c,{x:0,y:0,hp:p.hp,maxHp:p.maxHp,_levelMark:portrait?0:p._levelMark,level:p.level,
     soldierClass:p.isAdvanced?'WARLORD':'COMMANDER',isCommander:true,isNamed:true,rankIndex,
     equipped,portrait:true,atkAnim:p.slashAnim || 0,
     facingAngle:p.facingAngle,attackAngle:p.slashAngle,vx:moving?1:0,vy:0},now,

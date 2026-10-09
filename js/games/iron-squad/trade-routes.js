@@ -1,6 +1,7 @@
-import {WORLD_SIZE} from './world.js?v=143';
-import {wallBlocksAttack} from './gate-rules.js?v=143';
-import {ECONOMIC_REGIONS,PUBLIC_WORKS,ECONOMIC_RULES,economicState,discoverEconomicRegions,tickEconomicConstruction,economicFieldBlocked,localProduction,recordEconomicKill} from './regional-economy.js?v=143';
+import {WORLD_SIZE} from './world.js?v=146';
+import {wallBlocksAttack} from './gate-rules.js?v=146';
+import {ECONOMIC_REGIONS,PUBLIC_WORKS,ECONOMIC_RULES,economicState,discoverEconomicRegions,tickEconomicConstruction,economicFieldBlocked,localProduction,recordEconomicKill} from './regional-economy.js?v=146';
+import {peaceContainment} from './peace-zones.js?v=146';
 
 const C=WORLD_SIZE/2,STEP=256,MAX_SEARCH_NODES=400000,SEARCH_BATCH=96;
 const FIELD_WALL_CONTEXT={currentDungeon:null};
@@ -120,7 +121,7 @@ function deliver(game,a) {
 function roadEncounter(game,dt) {
   const e=economicState(game);if(game.restTimer>0)return;
   e.raidClock+=dt;if(e.raidClock<45)return;e.raidClock=0;
-  const candidates=e.traffic.filter(a=>a.role==='merchant'&&Math.hypot(a.x-C,a.y-C)>1800);
+  const candidates=e.traffic.filter(a=>a.role==='merchant'&&Math.hypot(a.x-C,a.y-C)>1800&&!peaceContainment(a.x,a.y));
   if(!candidates.length)return;
   const a=candidates[Math.floor(Math.random()*candidates.length)],r=e.regions[a.region];
   if(Math.random()<r.safety*.7||Math.random()<e.patrols*.08)return;

@@ -1,4 +1,4 @@
-import {inCurrentInstance} from './instance-rules.js?v=143';
+import {inCurrentInstance} from './instance-rules.js?v=146';
 import {recordCombat} from './phase-rules.js';
 
 export const RANGED_ENEMIES=Object.freeze({

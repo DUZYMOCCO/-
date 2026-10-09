@@ -167,9 +167,31 @@
 .iron-squad .menu-join-count { position:absolute; top:-5px; left:-5px; min-width:18px; height:18px; line-height:18px; border-radius:50%; background:#dbc691; color:#1e2e35; font-size:11px; }
 .iron-squad .menu-join-count.hidden, .iron-squad .menu-attention.hidden { display:none; }
 .iron-squad .menu-attention { position:absolute; right:-4px; bottom:-4px; width:10px; height:10px; border-radius:50%; background:#d27a55; }
-.iron-squad.quiet-battlefield .navigation-overlay { position:absolute; top:14%; left:50%; right:auto; transform:translateX(-50%); width:auto !important; height:auto !important; border:0 !important; border-radius:0; background:transparent !important; box-shadow:none !important; padding:0; z-index:8; pointer-events:none !important; }
-.iron-squad.quiet-battlefield .navigation-overlay canvas { display:block; max-width:90vw; }
+.iron-squad.quiet-battlefield .quiet-vitals { position:absolute; top:4px; top:max(4px, env(safe-area-inset-top)); left:8px; left:max(8px, env(safe-area-inset-left)); right:84px; z-index:20; display:flex; justify-content:center; gap:10px; margin:0; padding:0; font-size:11px; line-height:16px; letter-spacing:.02em; color:#efe6d0; text-shadow:0 1px 2px #12181acc; white-space:nowrap; overflow:hidden; pointer-events:none; }
+.iron-squad.quiet-battlefield .quiet-vitals .qv-hp { color:#8fd9b4; }
+.iron-squad.quiet-battlefield .quiet-vitals .qv-hp[data-condition="hurt"] { color:#fbbf24; }
+.iron-squad.quiet-battlefield .quiet-vitals .qv-hp[data-condition="critical"] { color:#f87171; }
+.iron-squad.quiet-battlefield .quiet-vitals .qv-mp { color:#c5cbe0; }
+.iron-squad.quiet-battlefield .quiet-vitals .qv-gold { color:#e1cf9d; }
+.dialog-open .quiet-vitals { visibility:hidden; }
+.iron-squad.quiet-battlefield .navigation-overlay { position:absolute; top:24px; top:max(24px, calc(env(safe-area-inset-top) + 18px)); left:8px; left:max(8px, env(safe-area-inset-left)); right:auto; transform:none; width:auto !important; height:auto !important; border:0 !important; border-radius:0; background:transparent !important; box-shadow:none !important; padding:0; z-index:8; opacity:.5; pointer-events:none !important; }
+.iron-squad.quiet-battlefield .navigation-overlay canvas { display:block; max-width:168px; }
 .iron-squad.quiet-battlefield .battle-log-window { display:none !important; }
+.iron-squad.quiet-battlefield .battle-log-window.has-field-note {
+  display:block !important; position:absolute; left:12px; right:12px; bottom:calc(100% + 6px);
+  width:auto; height:auto; min-height:0; margin:0; padding:0; grid-row:auto; transform:none;
+  background:transparent; border:0; box-shadow:none; z-index:18; pointer-events:none;
+}
+.iron-squad.quiet-battlefield .battle-log-window.has-field-note #btn-battle-log-history { display:none; }
+.iron-squad.quiet-battlefield .battle-log-window.has-field-note .battle-log-msg,
+.iron-squad.quiet-battlefield .battle-log-window.has-field-note .battle-log-msg.boss-alert,
+.iron-squad.quiet-battlefield .battle-log-window.has-field-note .battle-log-msg.item-alert,
+.iron-squad.quiet-battlefield .battle-log-window.has-field-note .battle-log-msg.levelup-alert {
+  background:#12181acc; border:1px solid #e1cf9d73; box-shadow:0 2px 8px #12181a88; color:#efe6d0;
+  border-radius:6px; padding:4px 10px; text-align:center; font-size:12px; line-height:1.4;
+}
+.iron-squad.quiet-battlefield .battle-log-window.has-field-note .battle-log-msg.item-alert { color:#f3e2a6; border-color:#d7b56a88; }
+.iron-squad.quiet-battlefield .battle-log-window.has-field-note .battle-log-msg.boss-alert { color:#f0c2b4; border-color:#c47a6a88; }
 .iron-squad.quiet-battlefield #virtual-gamepad { grid-template-rows:auto; row-gap:0; padding-bottom:max(12px,env(safe-area-inset-bottom)); }
 .iron-squad.quiet-battlefield .pad-move-column, .iron-squad.quiet-battlefield .pad-buttons-column { grid-row:1; }
 .iron-squad .battlefield-menu { margin:0 0 14px; padding:12px; border:1px solid var(--ui-line); border-radius:8px; background:var(--ui-panel); }
@@ -633,6 +655,9 @@
 
 .iron-squad .field-sound-toggle { position:absolute; top:176px; right:10px; z-index:14; width:84px; min-height:36px; border:1px solid #74878c; border-radius:7px; background:#1b2c33eb; color:#e1d9c3; font-size:11px; pointer-events:auto; }
 .iron-squad.dialog-open .field-sound-toggle, .dialog-open .field-sound-toggle { visibility:hidden; pointer-events:none; }
+.iron-squad .battle-menu-tools .world-map-toggle,
+.iron-squad .battle-menu-tools .zoom-toggle-btn,
+.iron-squad .battle-menu-tools .field-sound-toggle { visibility:visible; pointer-events:auto; display:inline-flex; align-items:center; justify-content:center; }
 .iron-squad .audio-status, .iron-squad .audio-hint { margin:6px 0 10px; color:#bbc9c9; font-size:12px; line-height:1.6; }
 .iron-squad .audio-actions { display:flex; gap:8px; flex-wrap:wrap; }
 .iron-squad .audio-settings button { min-height:44px; border:1px solid #64777f; border-radius:7px; background:#294149; color:#ece7d7; padding:8px 12px; font-size:12px; }

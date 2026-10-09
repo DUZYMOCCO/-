@@ -1,4 +1,4 @@
-import {equipmentVisualProfile} from './equipment-tiers.js?v=143';
+import {equipmentVisualProfile} from './equipment-tiers.js?v=146';
 const polygon=(c,points,color)=>{c.fillStyle=color;c.strokeStyle='#34332e';c.lineWidth=.7;c.beginPath();points.forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y));c.closePath();c.fill();c.stroke();};
 const line=(c,points,color,width=.7)=>{c.strokeStyle=color;c.lineWidth=width;c.beginPath();points.forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y));c.stroke();};
 

@@ -1,5 +1,5 @@
-import {WORLD_SIZE,fieldBlocks} from './world.js?v=143';
-import {inCurrentInstance} from './instance-rules.js?v=143';
+import {WORLD_SIZE,fieldBlocks} from './world.js?v=146';
+import {inCurrentInstance} from './instance-rules.js?v=146';
 import {isSoldierOnExpedition} from './expedition-rules.js';
 export const LIMITED_CLASSES=Object.freeze({
  NINJA:{id:'NINJA',name:'忍者',icon:'🥷',baseClassId:'LIGHT',combatClass:'LIGHT',color:'#8e97ac',range:250,speed:136,atkCooldown:.75,bonusHp:5,bonusAtk:12,desc:'刀と手裏剣を間合いに応じて使い分ける。'},

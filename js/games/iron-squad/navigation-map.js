@@ -1,9 +1,9 @@
-import {WORLD_SIZE,biomeAt,eastWestRoadY,northSouthRoadX,riverCenterY} from './world.js?v=143';
-import {dungeonSolids} from './dungeon.js?v=143';
-import {inCurrentInstance} from './instance-rules.js?v=143';
-import {ECONOMIC_REGIONS,economicState} from './regional-economy.js?v=143';
+import {WORLD_SIZE,biomeAt,eastWestRoadY,northSouthRoadX,riverCenterY} from './world.js?v=146';
+import {dungeonSolids} from './dungeon.js?v=146';
+import {inCurrentInstance} from './instance-rules.js?v=146';
+import {ECONOMIC_REGIONS,economicState} from './regional-economy.js?v=146';
 
-export const NAVIGATION_RULES=Object.freeze({fieldSpan:10000,maxSize:440,terrainAlpha:.1,roadAlpha:.4,iconAlpha:.82});
+export const NAVIGATION_RULES=Object.freeze({fieldSpan:10000,maxSize:168,terrainAlpha:.34,roadAlpha:.72,iconAlpha:1});
 const center=WORLD_SIZE/2;
 export function drawNavigationIcon(ctx,kind,x,y,label='',size=9) {
  ctx.save();ctx.translate(x,y);ctx.globalAlpha=NAVIGATION_RULES.iconAlpha;ctx.lineWidth=1.5;ctx.strokeStyle='#171f23';ctx.fillStyle=kind==='medical'?'#b9d6c4':kind==='cage'?'#c5b0cf':'#e0d3ad';
@@ -19,7 +19,7 @@ export function drawNavigationIcon(ctx,kind,x,y,label='',size=9) {
 }
 export function renderNavigationMap(game) {
  const canvas=game.minimapCanvas,ctx=game.minimapCtx;if(!canvas||!ctx||!game.player)return;
- const size=Math.max(180,Math.min(NAVIGATION_RULES.maxSize,(game.width||390)*.9,(game.height||664)*.55)),dpr=Math.min(2,window.devicePixelRatio||1);
+ const size=Math.max(112,Math.min(NAVIGATION_RULES.maxSize,(game.width||390)*.42,(game.height||664)*.28)),dpr=Math.min(2,window.devicePixelRatio||1);
  const pixels=Math.round(size*dpr);if(canvas.width!==pixels||canvas.height!==pixels){canvas.width=canvas.height=pixels;}canvas.style.width=canvas.style.height=`${size}px`;
  ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,size,size);
  const dungeon=game.currentDungeon,span=dungeon?Math.max(1000,dungeon.width,dungeon.height)*1.15:NAVIGATION_RULES.fieldSpan,cx=dungeon?dungeon.width/2:game.player.x,cy=dungeon?dungeon.height/2:game.player.y;

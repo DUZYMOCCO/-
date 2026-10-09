@@ -1,9 +1,9 @@
-import {ensureMana,regenerateMana,spendMana} from './magic-rules.js?v=143';
+import {ensureMana,regenerateMana,spendMana} from './magic-rules.js?v=146';
 import {recordHealing,recordDown} from './phase-rules.js';
 import {WORLD_SIZE} from './world.js';
-import {inCurrentInstance} from './instance-rules.js?v=143';
-import {grantPermanentRescueReward} from './rescue-rewards.js?v=143';
-import {grantPersonalExp,revivalExperience} from './experience-rules.js';
+import {inCurrentInstance} from './instance-rules.js?v=146';
+import {grantPermanentRescueReward} from './rescue-rewards.js?v=146';
+import {grantPersonalExp,revivalExperience,raiseLevelMark} from './experience-rules.js';
 import {attributeCarryCapacity} from './unit-attributes.js';
 
 export const RESCUE_TIMEOUT = 45; // 救助猶予時間（秒）広域マップ対応で45秒に延長
@@ -278,24 +278,23 @@ export function grantRescueBonus(game,wounded,options={}) {
   }
   if (didLevelUp) {
     if (typeof game.recalcSoldierStats === 'function') game.recalcSoldierStats(wounded);
-    game.spawnDamageText?.(wounded.x, wounded.y - 45, `⚡ Lv.${wounded.level}!`, '#00f0ff');
+    raiseLevelMark(wounded);
   }
 
   // 6. 演出・サウンド・通知（救助者名を表示）
   const primary=carrier||medic||null;
   const rescuerName=unitLabel(primary);
   const rescuerExpText=[carrier?`${unitLabel(carrier)}+${rescuerPersonalExp.toLocaleString()}EXP`:'',medic&&medic!==carrier?`${unitLabel(medic)}+${medicExp.toLocaleString()}EXP`:''].filter(Boolean).join(', ');
-  const lvTxt = didLevelUp ? ` ⚡Lv.${wounded.level}UP!` : '';
   if(isBase) {
     game.sound?.playHighScore?.();
     game.spawnDamageText?.(wounded.x,wounded.y-30,`🚑 拠点救護成功! +${totalGold}G`,'#ffd700');
     const carrierTxt=carrier===game.player?' (隊長に快足バフ)':(carrier?` (搬送: ${rescuerName})`:'');
-    game.showToast?.(`🚑 ${options.station?.name||'拠点'}救護成功！【${wounded.name}】${isMerchantCasualty(wounded)?'は本陣に留まります':'が全快復帰！'}(+${totalGold}G, 武勲+${rankExpGain}${rescuerExpText?`, ${rescuerExpText}`:''}${isMerchantCasualty(wounded)?'':`, 兵士+${sExpGain}EXP/+${sGoldGain}G`}${carrierTxt}${lvTxt})`);
+    game.showToast?.(`🚑 ${options.station?.name||'拠点'}救護成功！【${wounded.name}】${isMerchantCasualty(wounded)?'は本陣に留まります':'が全快復帰！'}(+${totalGold}G, 武勲+${rankExpGain}${rescuerExpText?`, ${rescuerExpText}`:''}${isMerchantCasualty(wounded)?'':`, 兵士+${sExpGain}EXP/+${sGoldGain}G`}${carrierTxt})`);
   } else {
     game.sound?.playItem?.();
     game.spawnDamageText?.(wounded.x,wounded.y-30,`💚 衛生兵救護成功! +${totalGold}G`,'#34d399');
     const carrierTxt=carrier===game.player?' (隊長に快足バフ)':(carrier&&carrier!==medic?` (搬送: ${unitLabel(carrier)})`:'');
-    game.showToast?.(`💚 衛生救護！【${wounded.name}】${isMerchantCasualty(wounded)?'は本陣へ避難します':'が戦線復帰！'}(+${totalGold}G, 武勲+${rankExpGain}${rescuerExpText?`, ${rescuerExpText}`:''}${isMerchantCasualty(wounded)?'':`, 兵士+${sExpGain}EXP/+${sGoldGain}G`}${carrierTxt}${lvTxt})`);
+    game.showToast?.(`💚 衛生救護！【${wounded.name}】${isMerchantCasualty(wounded)?'は本陣へ避難します':'が戦線復帰！'}(+${totalGold}G, 武勲+${rankExpGain}${rescuerExpText?`, ${rescuerExpText}`:''}${isMerchantCasualty(wounded)?'':`, 兵士+${sExpGain}EXP/+${sGoldGain}G`}${carrierTxt})`);
   }
 
   game.updateStatsUI?.();
@@ -402,7 +401,12 @@ export function updateWounded(game,dt) {
     // Field carry can pause the timer; HQ/aid downs keep bleeding even while carried (no immortal freeze).
     if(wounded.carrierId && !wounded.downedInAid)continue;
     const bleedDt = wounded.downedInAid ? dt * AID_BLEED_RATE : dt;
-    wounded.downTimer=Math.max(0,(wounded.downTimer??RESCUE_TIMEOUT)-bleedDt);
+    const before=wounded.downTimer??RESCUE_TIMEOUT;
+    wounded.downTimer=Math.max(0,before-bleedDt);
+    if(before>=15&&wounded.downTimer>0&&wounded.downTimer<15&&!isMerchantCasualty(wounded)&&wounded._fieldDeathWarnDownId!==wounded.downId){
+      wounded._fieldDeathWarnDownId=wounded.downId;
+      game.showToast?.(`${wounded.name}の死亡まで残り${Math.max(1,Math.floor(wounded.downTimer))}秒`);
+    }
     if(wounded.downTimer<=0) {
       wounded.dead=true;if(wounded.isGateGuard)game.onGateGuardRelocated?.(wounded);wounded.isDown=false;wounded.rescueProgress=0;
       delete wounded.carrierId;delete wounded.downedInAid;delete wounded.downId;
@@ -411,7 +415,7 @@ export function updateWounded(game,dt) {
         game._merchantWounded=(game._merchantWounded||[]).filter(unit=>unit!==wounded);
         if(wounded.isMerchant)wounded.respawnIn=wounded.respawnDelay||210;
       } else game.phaseCasualties=(game.phaseCasualties||0)+1;
-      game.showToast?.(`${wounded.name}は力尽きました`);
+      game.showToast?.(`${wounded.name}は力尽きました`,{field:!isMerchantCasualty(wounded)});
     }
   }
   updateCivilians(game,dt);

@@ -15,10 +15,9 @@ const {IronSquadGame} = await import('../js/games/iron-squad/index.js');
 const {saveSlots} = await import('../js/games/iron-squad/save-slots.js');
 const game = Object.create(IronSquadGame), center = WORLD_SIZE / 2, field = center + 3600;
 Object.assign(game, {container:document.getElementById('game'), width:390, height:664, zoom:1, ctx, camera:{x:center,y:center}, selectedSaleIds:new Set(), commandActiveUntil:0, joystick:{active:false,dirX:0,dirY:0}});
-const levelUps = [], toasts = [], revivalCases = [];
-for (const method of ['startGameLoop','spawnSparks']) game[method] = noop;
+const toasts = [], revivalCases = [];
+for (const method of ['startGameLoop','spawnSparks','spawnDamageText']) game[method] = noop;
 game.showToast = text => toasts.push(text);
-game.spawnDamageText = (x,y,text) => { if (text.includes('Lv.')) levelUps.push(text); };
 game.setupUI();
 game.activeSlotId = saveSlots.create('MEDIC GROWTH TEST ONLY').id;
 game.startFreshGame(false);
@@ -48,7 +47,7 @@ for (let i=0; i<3; i++) {
 }
 assert.equal(medic.healingHp,90); assert.equal(medic.healingExp,18);
 assert.equal(medic.level,2); assert.equal(medic.exp,4);
-assert.ok(medic.healPower > oldHealPower); assert.ok(levelUps.length > 0);
+assert.ok(medic.healPower > oldHealPower); assert.ok(medic._levelMark > 0, 'a heal that levels the medic raises the mark above them');
 assert.equal(patient.exp,0, 'the recipient does not get the caster\'s healing reward');
 
 // Overheal, full health, invalid amounts, and inactive casters must not inflate the reward.
@@ -189,6 +188,10 @@ assert.match(detail.textContent,/蘇生は対象の最大HPの300%をEXPで獲�
 const captain={isPlayer:true,level:1,exp:0,reqExp:20};
 assert.equal(grantPersonalExp(null,captain,30),true);
 assert.equal(captain.level,2); assert.equal(captain.exp,10); assert.equal(captain.reqExp,39);
+const levelNotes=[];
+const marked={player:captain,squad:[],showToast:text=>levelNotes.push(text),spawnDamageText:()=>levelNotes.push('float'),sound:{playHighScore(){}}};
+assert.equal(grantPersonalExp(marked,captain,100),true);
+assert.ok(captain._levelMark>2); assert.equal(levelNotes.length,0,'a level-up stays off the battle log');
 console.log(JSON.stringify({healingHp:480,healingExp:96,ordinaryKills:16,medicLevel:supporter.level,attackerLevel:attacker.level,revivalCases}));
 console.log('PASS: actual projectiles/aura, immediate medic growth, real-HP-only credit, fractions, all medic classes, max-HP revival scaling, distinct/shared carriers, once-per-down/potion separation, kill-growth parity, phase/save/reserve persistence and detail UI');
 dom.window.close();
