@@ -209,34 +209,54 @@ function ravineAt(x, y) {
   }
   return null;
 }
+const RIVER_CROSSING_PAD = 68;
+export function isNearRiverCrossing(x, y) {
+  return Math.abs(y - riverCenterY(x)) <= RIVER_CROSSING_PAD;
+}
+export function inPeriodicGap(val, period = 1800, gapWidth = 200, offset = 900) {
+  const m = (((val - offset) % period) + period) % period;
+  return m < gapWidth / 2 || m > period - gapWidth / 2;
+}
+
 function ridgeAt(x, y) {
+  if (isNearRiverCrossing(x, y)) return null;
+
   if (x > CENTER - 16000 && x < CENTER + 16000) {
-    const ridge = CENTER + 5000 + Math.sin((x - CENTER) / 980) * 110;
-    const shade = band(y - ridge, false);
-    if (shade) return shade;
+    if (!inPeriodicGap(x - CENTER, 1800, 200)) {
+      const ridge = CENTER + 5000 + Math.sin((x - CENTER) / 980) * 110;
+      const shade = band(y - ridge, false);
+      if (shade) return shade;
+    }
   }
   if (x > CENTER - 18000 && x < CENTER + 18000) {
-    const ridge = CENTER - 8000 + Math.sin((x - CENTER) / 1100) * 90;
-    const shade = band(y - ridge, false);
-    if (shade) return shade;
+    if (!inPeriodicGap(x - CENTER, 1800, 200)) {
+      const ridge = CENTER - 8000 + Math.sin((x - CENTER) / 1100) * 90;
+      const shade = band(y - ridge, false);
+      if (shade) return shade;
+    }
   }
   if (x > CENTER - 22000 && x < CENTER + 22000) {
-    const ridge = CENTER + 24000 + Math.sin((x - CENTER) / 1400) * 160;
-    const shade = band(y - ridge, true);
-    if (shade) return shade;
+    if (!inPeriodicGap(x - CENTER, 1800, 200)) {
+      const ridge = CENTER + 24000 + Math.sin((x - CENTER) / 1400) * 160;
+      const shade = band(y - ridge, true);
+      if (shade) return shade;
+    }
   }
   if (y > CENTER - 14000 && y < CENTER + 14000) {
-    const ridge = CENTER - 6400 + Math.sin((y - CENTER) / 860) * 80;
-    const dx = x - ridge;
-    if (dx > -16 && dx <= 0) return LIP;
-    if (dx > 0 && dx <= 46) return FACE;
-    if (dx > 46 && dx <= 64) return DROP;
+    if (!inPeriodicGap(y - CENTER, 1800, 200)) {
+      const ridge = CENTER - 6400 + Math.sin((y - CENTER) / 860) * 80;
+      const dx = x - ridge;
+      if (dx > -16 && dx <= 0) return LIP;
+      if (dx > 0 && dx <= 46) return FACE;
+      if (dx > 46 && dx <= 64) return DROP;
+    }
   }
   const d = Math.hypot(x - CENTER, y - CENTER);
   if (d < 15000 || d > 66000) return null;
   const ang = Math.atan2(y - CENTER, x - CENTER);
   for (const arc of ARCS) {
     if (!angleIn(ang, arc.a0, arc.a1)) continue;
+    if (inPeriodicGap(arc.r * ang, 2000, 220, 1000)) continue;
     const shade = band(d - arc.r, true);
     if (shade) return shade;
   }
@@ -285,6 +305,7 @@ export function fieldBlocks(x, y, works=[]) {
   const dx = x - CENTER, dy = y - CENTER;
   if (dx * dx + dy * dy <= HOME_SANCTUARY_RADIUS * HOME_SANCTUARY_RADIUS) return false;
   if (roadDist(x, y) <= ROAD_GATE) return false;
+  if (isNearRiverCrossing(x, y)) return false;
   if (reliefAt(x, y) !== FACE) return false;
   if (nearFixedLandmark(x, y)) return false;
   return true;
@@ -484,8 +505,10 @@ function cellFullyOutside(x, y) {
 // High ground is +1, the drop side is -1. Matches the existing ridges and does not change reliefAt.
 function cliffShelf(x, y) {
   if (!outsideSanctuary(x, y)) return 0;
+  if (isNearRiverCrossing(x, y)) return 0;
   const horiz = (x0, x1, base, amp, wave, inwardFace) => {
     if (x <= x0 || x >= x1) return 0;
+    if (inPeriodicGap(x - CENTER, 1800, 200)) return 0;
     const dy = y - (base + Math.sin((x - CENTER) / wave) * amp);
     if (inwardFace) {
       if (dy > 8 && dy < 96) return 1;
@@ -503,16 +526,19 @@ function cliffShelf(x, y) {
   shelf = horiz(CENTER - 22000, CENTER + 22000, CENTER + 24000, 160, 1400, true);
   if (shelf) return shelf;
   if (y > CENTER - 14000 && y < CENTER + 14000) {
-    const ridge = CENTER - 6400 + Math.sin((y - CENTER) / 860) * 80;
-    const dx = x - ridge;
-    if (dx < -18 && dx > -110) return 1;
-    if (dx > 68 && dx < 140) return -1;
+    if (!inPeriodicGap(y - CENTER, 1800, 200)) {
+      const ridge = CENTER - 6400 + Math.sin((y - CENTER) / 860) * 80;
+      const dx = x - ridge;
+      if (dx < -18 && dx > -110) return 1;
+      if (dx > 68 && dx < 140) return -1;
+    }
   }
   const d = Math.hypot(x - CENTER, y - CENTER);
   if (d >= 15000 && d <= 66000) {
     const ang = Math.atan2(y - CENTER, x - CENTER);
     for (const arc of ARCS) {
       if (!angleIn(ang, arc.a0, arc.a1)) continue;
+      if (inPeriodicGap(arc.r * ang, 2000, 220, 1000)) continue;
       const dy = d - arc.r;
       if (dy > 8 && dy < 90) return 1;
       if (dy < -70 && dy > -150) return -1;

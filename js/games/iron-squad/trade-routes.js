@@ -1,6 +1,6 @@
-import {WORLD_SIZE} from './world.js?v=132';
-import {wallBlocksAttack} from './gate-rules.js?v=132';
-import {ECONOMIC_REGIONS,PUBLIC_WORKS,ECONOMIC_RULES,economicState,discoverEconomicRegions,tickEconomicConstruction,economicFieldBlocked,localProduction,recordEconomicKill} from './regional-economy.js?v=132';
+import {WORLD_SIZE} from './world.js?v=133';
+import {wallBlocksAttack} from './gate-rules.js?v=133';
+import {ECONOMIC_REGIONS,PUBLIC_WORKS,ECONOMIC_RULES,economicState,discoverEconomicRegions,tickEconomicConstruction,economicFieldBlocked,localProduction,recordEconomicKill} from './regional-economy.js?v=133';
 
 const C=WORLD_SIZE/2,STEP=256,MAX_SEARCH_NODES=400000,SEARCH_BATCH=96;
 const FIELD_WALL_CONTEXT={currentDungeon:null};

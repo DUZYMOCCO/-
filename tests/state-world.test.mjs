@@ -19,7 +19,7 @@ globalThis.document = {
 };
 const {storage} = await import('../js/storage.js');
 const {saveSlots} = await import('../js/games/iron-squad/save-slots.js');
-const {WorldTerrain,WORLD_SIZE,WORLD_VERSION,reliefAt,SETTLEMENTS,HOME_SANCTUARY_RADIUS,depthFade,fieldBlocks,settleUnit,eastWestRoadY,northSouthRoadX} = await import('../js/games/iron-squad/world.js');
+const {WorldTerrain,WORLD_SIZE,WORLD_VERSION,reliefAt,SETTLEMENTS,HOME_SANCTUARY_RADIUS,depthFade,fieldBlocks,settleUnit,eastWestRoadY,northSouthRoadX,riverCenterY} = await import('../js/games/iron-squad/world.js');
 const {DUNGEON_DEFS,dungeonBlocks,dungeonSolids} = await import('../js/games/iron-squad/dungeon.js');
 const {IronSquadGame,getFieldZone,DEPLOYMENT_CAPACITY} = await import('../js/games/iron-squad/index.js');
 
@@ -120,6 +120,35 @@ walker._openX = walker.x; walker._openY = walker.y;
 walker.x = blocked.x; walker.y = blocked.y;
 settleUnit(walker, fieldBlocks);
 assert.equal(fieldBlocks(walker.x, walker.y), false, 'sliding back off a cliff does not trap the walker');
+
+// River crossing test: River cutting through the west ridge (x = center - 6400)
+const westRidgeX = center - 6400;
+const riverCrossY = riverCenterY(westRidgeX);
+assert.equal(reliefAt(westRidgeX, riverCrossY), null, 'river crossing cliff is cut open in relief');
+assert.equal(fieldBlocks(westRidgeX, riverCrossY), false, 'river crossing is open for passage');
+assert.equal(fieldBlocks(westRidgeX + 15, riverCrossY), false, 'river crossing face is walkable');
+assert.equal(fieldBlocks(westRidgeX - 15, riverCrossY), false, 'river crossing lip is walkable');
+
+// Periodic cliff passes: west long ridge has open passes every 1800px so players never get trapped
+let passesFound = 0;
+for (let y = center - 13000; y <= center + 13000; y += 100) {
+  const ridge = center - 6400 + Math.sin((y - center) / 860) * 80;
+  if (!fieldBlocks(ridge + 10, y)) passesFound++;
+}
+assert.ok(passesFound >= 12, `found ${passesFound} passable points along the 28km west ridge`);
+// Ensure maximum distance between consecutive open passes is bounded (no player is trapped)
+let maxGapBetweenPasses = 0, lastPassY = null;
+for (let y = center - 13000; y <= center + 13000; y += 20) {
+  const ridge = center - 6400 + Math.sin((y - center) / 860) * 80;
+  if (!fieldBlocks(ridge + 10, y)) {
+    if (lastPassY !== null) {
+      const gap = y - lastPassY;
+      if (gap > maxGapBetweenPasses) maxGapBetweenPasses = gap;
+    }
+    lastPassY = y;
+  }
+}
+assert.ok(maxGapBetweenPasses <= 1800, `maximum distance between cliff passes is ${maxGapBetweenPasses}px (<= 1800px)`);
 for (const d of DUNGEON_DEFS) {
   assert.equal(fieldBlocks(d.entrance.x, d.entrance.y), false, d.id);
   for (let a = 0; a < 8; a++) {

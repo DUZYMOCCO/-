@@ -1,6 +1,6 @@
-import {configureAudioInterface} from './audio-interface.js?v=132';
-import {renderBattleLog} from './battle-log.js?v=132';
-import {renderTroopRankings} from './troop-rankings.js?v=132';
+import {configureAudioInterface} from './audio-interface.js?v=133';
+import {renderBattleLog} from './battle-log.js?v=133';
+import {renderTroopRankings} from './troop-rankings.js?v=133';
 /** Presentation only: keep game actions on their original DOM nodes. */
 const element = (tag, className, text) => {
   const node = document.createElement(tag);

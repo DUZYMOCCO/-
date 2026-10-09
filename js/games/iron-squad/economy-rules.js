@@ -1,6 +1,6 @@
-import {GENERATION_COUNT} from './equipment-tiers.js?v=132';
-import {PAYROLL_RULES,commanderStipendQuote} from './payroll-rules.js?v=132';
-import {recurringNationalIncome} from './regional-economy.js?v=132';
+import {GENERATION_COUNT} from './equipment-tiers.js?v=133';
+import {PAYROLL_RULES,commanderStipendQuote} from './payroll-rules.js?v=133';
+import {recurringNationalIncome} from './regional-economy.js?v=133';
 /**
  * IRON SQUAD economy / roster reform (v1.23.0)
  * 国庫・共有装備ボックス・スカウト費用・財政報告の公式を集約

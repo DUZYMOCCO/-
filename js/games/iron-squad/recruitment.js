@@ -2,7 +2,7 @@ import {calcScoutCost} from './economy-rules.js';
 import {drawSoldierPortrait} from './soldier-appearance.js';
 import {ATTRIBUTE_KEYS,ATTRIBUTE_LABELS,attributeSpecialties,attributeCarryCapacity,aptitudeGrade} from './unit-attributes.js';
 import {weaponRequirementText} from './weapon-requirements.js';
-import {releaseCanvas} from './canvas-surface.js?v=132';
+import {releaseCanvas} from './canvas-surface.js?v=133';
 
 export const RECRUIT_CLASSES=['HEAVY','LIGHT','ARCHER','MEDIC','MAGE'];
 export const RECRUITMENT_INTERVAL=1200;
