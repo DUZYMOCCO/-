@@ -1,4 +1,5 @@
-import {equipmentVisualProfile} from './equipment-tiers.js?v=121';
+import {equipmentVisualProfile} from './equipment-tiers.js?v=128';
+import {isMuscleCaster} from './unit-attributes.js?v=128';
 /** Stable personal looks, independent of talent, battle RNG and equipment. */
 export const HAIR_LABELS = Object.freeze({
   barcode:'バーコード', bald:'丸ハゲ', mohawk:'モヒカン', sidebald:'サイドハゲ',
@@ -17,6 +18,9 @@ const LIGHTS=new Set(['LIGHT','BLADEMASTER','SWORD_EMPEROR','VOID_EDGE']);
 export const isMedicAppearance = key => MEDICS.has(key);
 const MAGES=new Set(['MAGE','ARCHMAGE','ELEMENTAL_SAGE','ARCANE_SOVEREIGN']);
 export const soldierAppearanceFamily = key => MAGES.has(key)?'MAGE':MEDICS.has(key)?'MEDIC':ARCHERS.has(key)?'ARCHER':LIGHTS.has(key)?'LIGHT':'HEAVY';
+const NORMAL_PHYSIQUE=Object.freeze({bodyWidth:1,armWidth:1,shadowWidth:1,portraitWidth:1});
+const MUSCLE_PHYSIQUE=Object.freeze({bodyWidth:1.45,armWidth:1.55,shadowWidth:1.18,portraitWidth:1.28});
+export const soldierPhysique = soldier => isMuscleCaster(soldier)?MUSCLE_PHYSIQUE:NORMAL_PHYSIQUE;
 
 function seededIdentity(identity) {
   let n=2166136261;
@@ -200,6 +204,7 @@ export function drawSoldierHead(c,soldier,{x=0,y=0,scale=1,small=false,silhouett
 /** Bust portrait, drawn only when constructing UI. Always shows the unhelmeted face. */
 export function drawSoldierPortrait(c,soldier,width=240,height=260,{compact=false}={}) {
   const a=ensureSoldierAppearance(soldier),medic=isMedicAppearance(soldier.soldierClass);
+  const physique=soldierPhysique(soldier),muscular=physique.bodyWidth>1;
   const key=soldier.soldierClass || 'HEAVY';
   const family=soldierAppearanceFamily(key);
   const uniform=medic?'#b8c1b4':family==='LIGHT'?'#8a785c':family==='ARCHER'?'#536d5e':'#697981';
@@ -210,7 +215,15 @@ export function drawSoldierPortrait(c,soldier,width=240,height=260,{compact=fals
   light.addColorStop(0,'#38484a');light.addColorStop(1,'#111b24');c.fillStyle=light;c.fillRect(0,0,width,height);
   c.translate(width/2,height*.42);const scale=width/(compact?21:25);c.scale(scale,scale);
   // Clothing stays practical: broad uniform shoulders, collar, medical bib.
-  polygon(c,[[-10,15],[-8,10],[-3.5,7],[3.5,7],[8,10],[10,15],[11,21],[-11,21]],uniform);
+  c.save();c.scale(physique.portraitWidth,1);
+  polygon(c,muscular?[[-11,15],[-9,9],[-5,7],[-2.5,6],[2.5,6],[5,7],[9,9],[11,15],[11,21],[-11,21]]
+    :[[-10,15],[-8,10],[-3.5,7],[3.5,7],[8,10],[10,15],[11,21],[-11,21]],uniform);
+  if(muscular) {
+    polygon(c,[[-8,10],[-3,9],[-1,13],[-2,16],[-8.5,15]],'rgba(255,255,255,.1)');
+    polygon(c,[[2,10],[8,10],[9,15],[2,16]],'rgba(0,0,0,.15)');
+    stroke(c,[[-9,10],[-7,14],[-7.5,18]],'rgba(30,40,42,.35)',.65);
+    stroke(c,[[9,10],[7,14],[7.5,18]],'rgba(30,40,42,.35)',.65);
+  }
   polygon(c,[[-2.2,5],[-2,9],[0,10],[2,9],[2.2,5]],a.skin);
   polygon(c,[[-5,8],[-2,9],[0,12],[-3,10]],'#b5b5a2');polygon(c,[[5,8],[2,9],[0,12],[3,10]],'#d0c7ab');
   if(medic) {
@@ -221,6 +234,7 @@ export function drawSoldierPortrait(c,soldier,width=240,height=260,{compact=fals
     polygon(c,[[9,10],[6,8],[4,11],[5,14],[10,13]],'#596872');
     stroke(c,[[-2,12],[3,20]],'#b1a080',1.2);c.fillStyle='#c2af86';c.fillRect(-6,12,1.2,2.7);
   }
+  c.restore();
   drawSoldierHead(c,soldier,{cap:medic});
   c.restore();
 }

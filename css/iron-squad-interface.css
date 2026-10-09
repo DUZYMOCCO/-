@@ -872,3 +872,31 @@
   margin-top: 2px;
   letter-spacing: 0.02em;
 }
+/* 個体の能力と一人ずつの募集 */
+.recruit-controls{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:8px 0}
+.recruit-controls select,.recruit-controls button,#btn-refresh-scouts{min-height:44px;padding:8px 12px!important;font-size:12px!important}
+.recruit-status,.recruit-hint,.recruit-practice-note,.recruit-aptitudes,.attribute-growth-hint{font-size:11px;line-height:1.6;color:#a7b6c6}
+.recruitment-candidate{padding:12px!important;border:1px solid #455566;background:#111d29!important}
+.recruit-person{display:flex;align-items:center;gap:12px;line-height:1.7}
+.recruit-portrait{width:72px;height:78px;flex:none;border-radius:8px;background:#26343e}
+.recruit-specialties{margin:4px 0;color:#c7dbaa;font-size:12px;line-height:1.5}
+.recruit-price{color:#fde68a}
+.recruit-stat-grid,.soldier-attribute-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:10px 0;font-size:12px}
+.recruit-stat-grid span,.soldier-attribute-grid span{background:#1d2c3a;padding:6px;border-radius:4px}
+.recruit-stat-grid b,.soldier-attribute-grid strong{color:#d7e9ee}
+.recruit-aptitudes b{color:#f0d693;margin-left:2px}
+.recruit-actions{display:flex;gap:8px;margin-top:12px}.recruit-actions button{flex:1;min-height:44px;background:#285a6c;color:#fff;font-size:12px}
+.recruit-actions .btn-scout-personal{background:#70551f}
+.iron-squad .recruit-controls :is(button,select),.iron-squad .recruit-actions button{min-height:44px!important}
+@media (max-width:640px){
+  .iron-squad .soldier-detail-grid{grid-template-columns:1fr}
+  .iron-squad .soldier-detail-span2{grid-column:auto}
+}
+@media (max-height:500px) and (orientation:landscape){
+  .iron-squad .game-overlay{padding-top:max(8px,env(safe-area-inset-top,0px))!important}
+  .iron-squad .strat-log-ticker{padding:4px 12px!important}
+  .iron-squad .dialog-heading{grid-template-rows:auto auto;gap:4px 12px}
+  .iron-squad #strategy-modal #strat-title{grid-column:1!important;grid-row:1!important}
+  .iron-squad #strategy-modal .command-wallet{grid-column:1!important;grid-row:2!important;font-size:11px}
+  .iron-squad #strategy-modal .dialog-close{grid-column:2;grid-row:1 / 3;align-self:center;min-height:44px}
+}

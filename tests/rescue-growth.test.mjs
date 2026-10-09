@@ -59,12 +59,15 @@ for(let i=0;i<12;i++) {
  game.performAttack(guard,monster,false,guard.atk,false);
 }
 assert.ok(guard.level>1,'real kills level up the guard');assert.ok(guard.minionKills>=12);assert.ok(guard.weaponMastery.spear>0);assert.ok(guard.atk>starting.atk);assert.ok(guard.maxHp>starting.hp);assert.ok(masteryReloadMult(guard.weaponMastery,'spear')<1);
+const hitRandom=Math.random;Math.random=()=>.99;
 const hpBeforeHits=guard.maxHp;for(let i=0;i<16;i++){guard.hp=guard.maxHp;game.damageTarget(guard,60);}
+Math.random=hitRandom;
 assert.ok(guard.hitGrowthPct>0);assert.equal(guard.hitGrowthEvents,16);assert.ok(guard.maxHp>hpBeforeHits,'real damage adds permanent tank growth');
 const phases=guard.survivedWaves;finishEscortPhase(game);assert.equal(guard.survivedWaves,phases+1);finishEscortPhase(game);assert.equal(guard.survivedWaves,phases+1,'an idle guard does not gain combat experience');
 game.saveGame();const guardSave=structuredClone(serializeMerchants(game.merchants)[0].escorts[0]);game.resumeSavedGame(saveSlots.get(game.activeSlotId).data);
 const guardAfter=game.merchants[0].escorts[0];for(const key of ['level','exp','maxHp','atk','hitGrowthPct','hitGrowthEvents','survivedWaves'])assert.equal(guardAfter[key],guardSave[key],`saved guard ${key}`);
 assert.deepEqual(guardAfter.weaponMastery,guardSave.weaponMastery);
+assert.deepEqual(guardAfter.attributeProfile,guardSave.attributeProfile,'escort aptitude and practice survive save/resume');
 const {createCanvas}=createRequire(resolve('C:/Users/Yoshiyuki/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules','entry.cjs'))('@napi-rs/canvas');
 const frames=[];for(const kind of ['child','woman','elder']) {
  const canvas=createCanvas(180,180),c=canvas.getContext('2d'),person={id:`visual-${kind}`,kind,x:90,y:125};drawFieldCivilian(c,person);

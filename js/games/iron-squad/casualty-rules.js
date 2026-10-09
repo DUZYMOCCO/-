@@ -1,9 +1,10 @@
-import {ensureMana,regenerateMana,spendMana} from './magic-rules.js?v=121';
+import {ensureMana,regenerateMana,spendMana} from './magic-rules.js?v=128';
 import {recordHealing} from './phase-rules.js';
 import {WORLD_SIZE} from './world.js';
-import {inCurrentInstance} from './instance-rules.js?v=121';
-import {grantPermanentRescueReward} from './rescue-rewards.js?v=121';
+import {inCurrentInstance} from './instance-rules.js?v=128';
+import {grantPermanentRescueReward} from './rescue-rewards.js?v=128';
 import {grantPersonalExp,revivalExperience} from './experience-rules.js';
+import {attributeCarryCapacity} from './unit-attributes.js';
 
 export const RESCUE_TIMEOUT = 45; // 救助猶予時間（秒）広域マップ対応で45秒に延長
 export const isMedic=unit=>['MEDIC','HIGH_PRIEST','SAINT','ARCHANGEL'].includes(unit?.soldierClass);
@@ -19,13 +20,7 @@ export const ensureMedicStamina=unit=>isMedic(unit)?ensureMana(unit):0;
 export const regenMedicStamina=(unit,dt)=>isMedic(unit)?regenerateMana(unit,dt):0;
 export const medicHasStamina=(unit,cost)=>ensureMedicStamina(unit)>=(cost||0);
 export const spendMedicStamina=(unit,cost)=>isMedic(unit)&&spendMana(unit,cost);
-export const carryingCapacity=unit=>{
-  if(!unit) return 1;
-  // 隊長（紐で引っ張る仲間）デフォルト2名・聖騎士2名・他兵士1名
-  if(unit.isHero || unit.isPlayer) return 2;
-  if(unit.soldierClass==='PALADIN') return 2;
-  return 1;
-};
+export const carryingCapacity=attributeCarryCapacity;
 export const carrierKey=(game,unit)=>unit===game.player?'player':unit?.id;
 export const isMerchantCasualty=unit=>!!(unit?.isMerchant||unit?.isMerchantEscort);
 export const rescueUnits=game=>game._merchantWounded?.length?[...(game.squad||[]),...game._merchantWounded]:(game.squad||[]);

@@ -50,6 +50,7 @@ assert.equal(researchGame.nation.armament.techTier,28,'research keeps progressin
 const market={nation:normalizeNation(),phase:1,merchantEquipmentTier:28};assert.equal(catalogTier(market),2);market.nation.armament.techTier=12;assert.equal(catalogTier(market),13);market.nation.armament.techTier=28;assert.equal(catalogTier(market),24);
 // Same actor, same actual stats: shared distribution and direct pickup cannot prefer a nominally high-tier weak item.
 fresh();const soldier=game.squad.find(s=>s.soldierClass==='LIGHT');
+soldier.attributeProfile.innate.strength=100;game.recalcSoldierStats(soldier);
 const weak={...gear(20),weaponStyle:'sword',stats:{atk:1},id:'nominal-high'},strong={...gear(4),weaponStyle:'sword',stats:{atk:20},id:'actual-strong'};
 delete weak.weaponTraits;delete strong.weaponTraits;
 soldier.equipped.weapon=weak;soldier.weapon=weak;game.recalcSoldierStats(soldier);

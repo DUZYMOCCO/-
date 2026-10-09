@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {JSDOM} from '../__pycache__/ui-tools/node_modules/jsdom/lib/api.js';
 import {healByMedic, finishExperience} from '../js/games/iron-squad/phase-rules.js';
+import {rollAttributeProfile} from '../js/games/iron-squad/unit-attributes.js';
 import {grantPersonalExp} from '../js/games/iron-squad/experience-rules.js';
 import {treatWounded,grantRescueBonus,markSoldierDown} from '../js/games/iron-squad/casualty-rules.js';
 import {WORLD_SIZE} from '../js/games/iron-squad/world.js';
@@ -25,7 +26,7 @@ const initial = structuredClone(game.saveGame());
 const template = key => structuredClone(initial.squad.find(s => s.soldierClass === key));
 function soldier(key, overrides = {}) {
   const unit = {...template(key === 'HIGH_PRIEST' ? 'MEDIC' : key), soldierClass:key, talent:'AVERAGE', x:field, y:field, speed:0, atkCooldown:1000, ...overrides};
-  game.recalcSoldierStats(unit); unit.hp = unit.maxHp; return unit;
+  unit.attributeProfile=rollAttributeProfile(key==='HIGH_PRIEST'?'MEDIC':key,'AVERAGE',()=>.5,true);unit._attributesNormalized=false;game.recalcSoldierStats(unit); unit.hp = unit.maxHp; return unit;
 }
 function freshField() {
   game.resumeSavedGame(structuredClone(initial)); game.closeStrategyModal();

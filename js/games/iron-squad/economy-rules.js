@@ -1,4 +1,4 @@
-import {GENERATION_COUNT} from './equipment-tiers.js?v=121';
+import {GENERATION_COUNT} from './equipment-tiers.js?v=128';
 /**
  * IRON SQUAD economy / roster reform (v1.23.0)
  * 国庫・共有装備ボックス・スカウト費用・財政報告の公式を集約

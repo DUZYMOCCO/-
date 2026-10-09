@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {rollAttributeProfile} from '../js/games/iron-squad/unit-attributes.js';
 import {createRequire} from 'node:module';
 import {resolve} from 'node:path';
 import {mkdirSync,writeFileSync} from 'node:fs';
@@ -24,7 +25,7 @@ const original=structuredClone(game.saveGame()),casterTemplate=original.squad.fi
 assert.ok(casterTemplate.maxHp<original.squad.find(s=>s.soldierClass==='HEAVY').maxHp,'new mages are fragile compared with infantry');
 function field(){game.resumeSavedGame(structuredClone(original));game.closeStrategyModal();Object.assign(game.player,{x:83000,y:83000,atkCooldown:100,speed:0});game.camera={x:83000,y:83000};game.squad=[];game.reserves=[];game.monsters=[];game.outposts=[];game.merchants=[];game.dungeons=[];game.civilians=[];game.projectiles=[];game.dropsOnField=[];game.magicBursts=[];game.magicReserve=0;game.updateSpawns=noop;game.currentQuest=null;game.restTimer=0;game.rankIndex=2;game.recalcPlayerStats();game.joystick={active:false,dirX:0,dirY:0};game._hazardClock=0;game.worldTerrain={tiles:new Map()};}
 const mob=(x=83140,y=83000)=>({type:'goblin',x,y,hp:10000,maxHp:10000,atk:1,radius:12,speed:0,atkTimer:100});
-const mage=affinity=>({...structuredClone(casterTemplate),x:83000,y:83000,isPersonalGuard:true,magicAffinity:affinity,mana:100,magicRecovering:false,atk:40,atkCooldown:0,reqExp:1e9});
+const mage=affinity=>({...structuredClone(casterTemplate),x:83000,y:83000,isPersonalGuard:true,magicAffinity:affinity,mana:100,magicRecovering:false,atk:40,magicAttack:40,attributeProfile:rollAttributeProfile('MAGE','AVERAGE',()=>.5,true),_attributesNormalized:false,atkCooldown:0,reqExp:1e9});
 const medic=()=>({...structuredClone(medicTemplate),x:83000,y:83000,isPersonalGuard:true,mana:100,atkCooldown:0,speed:0,_pgTick:3});
 // Old stamina saves migrate once; natural recovery is deliberately slow.
 const old={id:'old-medical',soldierClass:'MEDIC',hp:100,maxHp:100,medicStamina:23};assert.equal(ensureMana(old),23);assert.equal(old.medicStamina,undefined);assert.equal(medicHasStamina(old,24),false);regenerateMana(old,10);assert.ok(Math.abs(old.mana-29)<1e-8);assert.equal(spendMana(old,30),false);assert.equal(old.mana,29);
@@ -67,7 +68,7 @@ Object.assign(game.player,{x:hazard.x,y:hazard.y});game.restTimer=1;updateHazard
 const neutral=mob(hazard.x,hazard.y);neutral.hp=5;game.monsters=[neutral];const xp=game.exp;updateHazards(game,.5);assert.equal(game.monsters.length,0);assert.equal(game.exp,xp,'untouched creatures do not farm terrain XP');
 // Living soldier magic, personality, recovery and shared bank persist through actual saves.
 field();const retained=mage('explosion');retained.mana=7;retained.magicRecovering=true;game.squad=[retained];game.magicReserve=13;game.player.magicAttackTimer=4;game.player.magicAttackBonus=.15;game.saveGame();const saved=saveSlots.get(game.activeSlotId).data;game.resumeSavedGame(saved);const loaded=game.squad.find(s=>s.id===retained.id);assert.equal(loaded.mana,7);assert.equal(loaded.magicAffinity,'explosion');assert.equal(loaded.magicRecovering,true);assert.equal(game.magicReserve,13);assert.equal(game.player.magicAttackTimer,4);
-game.inventory.push({id:'roll-label',name:'補正検証装備',type:'SHIELD',tier:1,rollMult:1.04,stats:{def:2},color:'#cbd5e1'});game.renderStrategyUI();assert.match(document.getElementById('inventory-list').textContent,/ドロップランダム補正×1.04/);assert.doesNotMatch(document.getElementById('inventory-list').textContent,/個体×/);game.openSoldierDetail(loaded.id);assert.match(document.querySelector('.soldier-detail-panel').textContent,/魔力.*7\/100.*爆発/);
+game.inventory.push({id:'roll-label',name:'補正検証装備',type:'SHIELD',tier:1,rollMult:1.04,stats:{def:2},color:'#cbd5e1'});game.renderStrategyUI();assert.match(document.getElementById('inventory-list').textContent,/ドロップランダム補正×1.04/);assert.doesNotMatch(document.getElementById('inventory-list').textContent,/個体×/);game.openSoldierDetail(loaded.id);assert.match(document.querySelector('.soldier-detail-panel').textContent,/MP.*7\/100.*爆発/);
 game.closeSoldierDetail();game.startFreshGame(false);game.updateSpawns=noop;for(let i=0;i<30;i++)game.update(1/60);assert.equal(game.squad.length,DEPLOYMENT_CAPACITY);assert.ok(game.monsters.length<=ENEMY_LIMIT);assert.ok(game.squad.filter(isMagicUser).every(s=>Number.isFinite(s.mana)));
 // Native code visuals: distinct human mage silhouettes, all four attributes and terrain.
 const {createCanvas}=createRequire(resolve('C:/Users/Yoshiyuki/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules','entry.cjs'))('@napi-rs/canvas');

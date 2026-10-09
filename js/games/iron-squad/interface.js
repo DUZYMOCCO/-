@@ -1,6 +1,6 @@
-import {configureAudioInterface} from './audio-interface.js?v=126';
-import {renderBattleLog} from './battle-log.js?v=126';
-import {renderTroopRankings} from './troop-rankings.js?v=126';
+import {configureAudioInterface} from './audio-interface.js?v=128';
+import {renderBattleLog} from './battle-log.js?v=128';
+import {renderTroopRankings} from './troop-rankings.js?v=128';
 /** Presentation only: keep game actions on their original DOM nodes. */
 const element = (tag, className, text) => {
   const node = document.createElement(tag);
@@ -217,7 +217,7 @@ export function compactSoldierCard(game, row, soldier, cls, platoonName, talent)
   const hpText = element('span', '', `${Math.max(0, Math.floor(soldier.hp))} / ${soldier.maxHp} HP`);
   const hpBar = element('span', 'health-track'); const fill = element('span'); fill.style.width = `${Math.max(0, Math.min(100, soldier.hp / Math.max(1, soldier.maxHp) * 100))}%`; hpBar.append(fill);
   hp.append(hpText, hpBar);
-  const status = element('span', `roster-state${soldier.isDown ? ' is-wounded' : ''}`, soldier.isDown ? '要救助' : soldier.magicRecovering?'瞑想':soldier.maxMana>0&&soldier.mana<16?'魔力不足':soldier.hp < soldier.maxHp ? '負傷' : '健在');
+  const status = element('span', `roster-state${soldier.isDown ? ' is-wounded' : ''}`, soldier.isDown ? '要救助' : soldier.magicRecovering?'瞑想':soldier.maxMana>0&&soldier.mana<16?'MP不足':soldier.hp < soldier.maxHp ? '負傷' : '健在');
   const arrow = element('span', 'roster-expand', '＋'); arrow.setAttribute('aria-hidden', 'true');
   summary.append(identity, hp, status, arrow);
   details.append(summary, row); details.open = game.uiExpandedSoldierId === soldier.id;

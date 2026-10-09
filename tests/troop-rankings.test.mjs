@@ -49,7 +49,7 @@ test('battle-log categorization test', () => {
 
 test('troop-rankings granular status & top 3 ranker criteria', () => {
   assert.equal(RANKER_CUTOFF, 3, 'Only top 3 are recognized as rankers');
-  assert.equal(RANKING_CATEGORIES.length, 8, '8 granular categories (overall, kills, boss, atk, def, hp, heal, deathline)');
+  assert.equal(RANKING_CATEGORIES.length, 13, 'existing eight categories plus strength, magic, magic defence, quickness and evasion');
 
   const dummySoldiers = Array.from({ length: 15 }, (_, i) => ({
     soldier: {

@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
 import {JSDOM} from '../__pycache__/ui-tools/node_modules/jsdom/lib/api.js';
 import {WORLD_SIZE} from '../js/games/iron-squad/world.js';
-import {catalogTier,ensureMerchantCatalog,latestEquipmentTier,markMerchantPurchase} from '../js/games/iron-squad/merchant-catalog.js?v=114';
-import {serializeMerchants,merchantBuyPrice} from '../js/games/iron-squad/merchant-rules.js?v=114';
-import {fieldAdaptiveScaling} from '../js/games/iron-squad/field-scaling.js?v=114';
-import {DROP_EXCLUSIVES,rollDropExclusive} from '../js/games/iron-squad/drop-exclusives.js?v=114';
-import {isGodRollProtected,compareEquipment,distanceScaling} from '../js/games/iron-squad/equipment-rules.js?v=114';
+import {catalogTier,ensureMerchantCatalog,latestEquipmentTier,markMerchantPurchase} from '../js/games/iron-squad/merchant-catalog.js?v=128';
+import {serializeMerchants,merchantBuyPrice} from '../js/games/iron-squad/merchant-rules.js?v=128';
+import {fieldAdaptiveScaling} from '../js/games/iron-squad/field-scaling.js?v=128';
+import {DROP_EXCLUSIVES,rollDropExclusive} from '../js/games/iron-squad/drop-exclusives.js?v=128';
+import {isGodRollProtected,compareEquipment,distanceScaling} from '../js/games/iron-squad/equipment-rules.js?v=128';
 const dom=new JSDOM('<div id="game"></div>',{url:'http://localhost/'});
 Object.assign(globalThis,{window:dom.window,document:dom.window.document,localStorage:dom.window.localStorage,confirm:()=>true,alert:()=>{}});
 const noop=()=>{},ctx=new Proxy({measureText:()=>({width:40}),createLinearGradient:()=>({addColorStop:noop}),createRadialGradient:()=>({addColorStop:noop})},{get:(o,k)=>k in o?o[k]:noop});window.HTMLCanvasElement.prototype.getContext=()=>ctx;

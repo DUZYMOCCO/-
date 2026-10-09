@@ -1,4 +1,4 @@
-import {powerRank,MAX_EQUIPMENT_TIER,GENERATIONS} from './equipment-tiers.js?v=121';
+import {powerRank,MAX_EQUIPMENT_TIER,GENERATIONS} from './equipment-tiers.js?v=128';
 export const EQUIPMENT_TYPES = ['WEAPON','SHIELD','HELMET','ARMOR','GLOVES','LEGS','AMULET'];
 
 export const saleValue = item => Math.floor(14 + Math.pow(powerRank(item.tier), 1.8)*12 + (item.upgrade || 0)*8);
@@ -184,7 +184,7 @@ export function shrineUpgradeCap(distance) {
   return Infinity; // 無限強化解禁！
 }
 
-const STAT_LABELS={atk:'攻撃',def:'防御',hp:'HP',speed:'移動',atkSpeed:'攻速',crit:'会心',blockChance:'盾防',regen:'回復/秒',vampire:'吸血',lightning:'雷撃',reach:'長さ/射程',attackWidth:'攻撃幅',swingSpeed:'振り抜き',attackRate:'攻撃速度',sweetWidth:'スイート幅',sweetPower:'芯の威力補正'};
+const STAT_LABELS={atk:'攻撃',magicAttack:'魔法攻撃',def:'防御',hp:'HP',speed:'移動',atkSpeed:'攻速',crit:'会心',blockChance:'盾防',regen:'回復/秒',vampire:'吸血',lightning:'雷撃',reach:'長さ/射程',attackWidth:'攻撃幅',swingSpeed:'振り抜き',attackRate:'攻撃速度',sweetWidth:'スイート幅',sweetPower:'芯の威力補正'};
 const CRITICAL_STATS=new Set(['atk','def','hp']);
 const PCT_STATS=new Set(['crit','blockChance','atkSpeed','vampire','swingSpeed','sweetWidth','sweetPower']);
 const STAT_ORDER=['atk','def','hp','speed','atkSpeed','crit','blockChance','regen','vampire','lightning'];
@@ -255,6 +255,7 @@ export function equipmentScore(item) {
   score += (s.crit || 0) * 25;
   score += (s.blockChance || 0) * 25;
   score += (s.atkSpeed || 0) * 20;
+  score += (s.magicAttack || 0) * 30;
   score += (s.speed || 0) * 15;
   if (s.lightning) score += 800;
   if (s.regen) score += s.regen * 100;
@@ -279,6 +280,7 @@ export function compareEquipmentStrength(a,b) {
  */
 function baseWeaponCombatProfile(item) {
   const style = item?.weaponStyle || 'sword';
+  if(style==='staff'||style==='wand')return {style,ranged:false,magical:true,reach:style==='staff'?70:34,reachWarlord:style==='staff'?85:44,baseCooldown:style==='staff'?.95:.65,atkMult:style==='staff'?.35:.16,magicMult:style==='staff'?1.15:1.05,pierce:false,pierceHalfWidth:0,knockback:0,knockbackWarlord:0,projSpeed:0,splash:0,projType:null};
   if (style === 'spear') {
     return {
       style: 'spear', ranged: false,

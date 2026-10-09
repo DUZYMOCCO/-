@@ -1,16 +1,16 @@
 /** HP成長（被弾）と武器マスタリーの計算ヘルパー。毎フレーム割当なし。 */
 
-export const MELEE_STYLES = ['sword', 'spear', 'hammer'];
+export const MELEE_STYLES = ['sword', 'spear', 'hammer', 'staff', 'wand'];
 export const RANGED_STYLES = ['bow', 'crossbow', 'cannon'];
 export const WEAPON_STYLES = [...MELEE_STYLES, ...RANGED_STYLES];
 
 export const WEAPON_STYLE_LABELS = {
   sword: '剣', spear: '槍', hammer: '鎚',
-  bow: '弓', crossbow: 'クロスボウ', cannon: '火砲'
+  bow: '弓', crossbow: 'クロスボウ', cannon: '火砲',staff:'杖',wand:'ワンド'
 };
 export const WEAPON_STYLE_ICONS = {
   sword: '🗡️', spear: '🔱', hammer: '🔨',
-  bow: '🏹', crossbow: '🎯', cannon: '💣'
+  bow: '🏹', crossbow: '🎯', cannon: '💣',staff:'🪄',wand:'🔮'
 };
 
 /** 被弾HP成長: 最大+40%。重い一撃ほど伸びやすい。ソフト減衰。 */
@@ -32,7 +32,7 @@ export const MASTERY_GAIN_MULT = {
   hammer: 1.35,
   bow: 1.70,
   crossbow: 2.35,
-  cannon: 3.10
+  cannon: 3.10,staff:1,wand:1
 };
 
 /** スタイル別1ヒットあたりの熟練度XP */
@@ -43,7 +43,7 @@ export function masteryGainForStyle(style, base = MASTERY_GAIN_PER_HIT) {
 
 
 export function emptyMastery() {
-  return { sword: 0, spear: 0, hammer: 0, bow: 0, crossbow: 0, cannon: 0 };
+  return Object.fromEntries(WEAPON_STYLES.map(style=>[style,0]));
 }
 
 export function normalizeMastery(map) {
@@ -156,8 +156,9 @@ const FAVORITE_WEIGHTS = {
   BLADEMASTER: { sword: 68, spear: 22, hammer: 10 },
   ARCHER: { bow: 52, crossbow: 33, cannon: 15 },
   SNIPER: { bow: 28, crossbow: 47, cannon: 25 },
-  MEDIC: { sword: 34, spear: 46, hammer: 20 },
-  HIGH_PRIEST: { sword: 34, spear: 46, hammer: 20 },
+  MEDIC: { staff:65,wand:35 },HIGH_PRIEST: { staff:65,wand:35 },
+  SAINT:{staff:65,wand:35},ARCHANGEL:{staff:65,wand:35},
+  MAGE:{staff:35,wand:65},ARCHMAGE:{staff:35,wand:65},ELEMENTAL_SAGE:{staff:35,wand:65},ARCANE_SOVEREIGN:{staff:35,wand:65},
   COMMANDER: { sword: 34, spear: 22, hammer: 22, bow: 12, crossbow: 6, cannon: 4 },
   WARLORD: { sword: 30, spear: 20, hammer: 28, bow: 10, crossbow: 7, cannon: 5 }
 };
@@ -177,6 +178,7 @@ export function pickFavoriteWeapon(soldierClass, random = Math.random) {
 
 /** ドロップ用。kind: 'melee' | 'ranged' | 'any'（any=近接70%/遠隔30%） */
 export function rollWeaponStyle(kind = 'any', random = Math.random) {
+  if(kind==='magic')return random()<.5?'staff':'wand';
   let poolKind = kind;
   if (kind === 'any') poolKind = random() < 0.30 ? 'ranged' : 'melee';
   if (poolKind === 'ranged') {
@@ -186,8 +188,9 @@ export function rollWeaponStyle(kind = 'any', random = Math.random) {
     return 'bow';
   }
   const r = random();
-  if (r < 0.28) return 'hammer';
-  if (r < 0.64) return 'spear';
+  if (r < 0.12) return random()<.5?'staff':'wand';
+  if (r < 0.36) return 'hammer';
+  if (r < 0.68) return 'spear';
   return 'sword';
 }
 
@@ -221,10 +224,12 @@ export function migrateWeaponStyleFromName(item) {
   if (!item || item.type !== 'WEAPON') return item;
   const name = `${item.baseName || ''} ${item.name || ''}`;
   const style = item.weaponStyle;
-  if (style && WEAPON_STYLES.includes(style) && !(style === 'sword' && /弓|クロスボウ|石弓|火砲|大砲|砲/.test(name))) {
+  if (style && WEAPON_STYLES.includes(style) && !(style === 'sword' && /弓|クロスボウ|石弓|火砲|大砲|砲|杖|ワンド/.test(name))) {
     return item;
   }
-  if (/火砲|大砲|砲|カノン/.test(name)) item.weaponStyle = 'cannon';
+  if (/ワンド/.test(name)) item.weaponStyle='wand';
+  else if (/杖/.test(name))item.weaponStyle='staff';
+  else if (/火砲|大砲|砲|カノン/.test(name)) item.weaponStyle = 'cannon';
   else if (/クロスボウ|石弓/.test(name)) item.weaponStyle = 'crossbow';
   else if (/弓/.test(name)) item.weaponStyle = 'bow';
   else if (/槍|矛|鉾/.test(name)) item.weaponStyle = 'spear';

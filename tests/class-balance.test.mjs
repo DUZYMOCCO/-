@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {JSDOM} from '../__pycache__/ui-tools/node_modules/jsdom/lib/api.js';
 import {WORLD_SIZE} from '../js/games/iron-squad/world.js';
 import {updateMagic,HQ_DEFENSE_MANA_REGEN,isDefenseBattle} from '../js/games/iron-squad/magic-rules.js';
+import {rollAttributeProfile} from '../js/games/iron-squad/unit-attributes.js';
 import {supplyLocation} from '../js/games/iron-squad/supply-rules.js';
 const dom=new JSDOM('<div id="game" class="game-container"></div>',{url:'http://localhost/'});
 Object.assign(globalThis,{window:dom.window,document:dom.window.document,localStorage:dom.window.localStorage});
@@ -40,8 +41,8 @@ function hit(u){game.monsters=[dummy(F+25,F)];const m=game.monsters[0];game.perf
  const mageU={...tpl('MAGE'),x:F,y:F,crit:100};assert.equal(hit(mageU),100,'mage spells never gain soldier crit');
  const l=tpl('LIGHT'),h=tpl('HEAVY');l.talent=h.talent='AVERAGE';game.recalcSoldierStats(l);game.recalcSoldierStats(h);assert.equal(l.crit-h.crit,SOLDIER_CLASSES.LIGHT.bonusCrit,'class bonusCrit reaches s.crit');}
 // 4. Base medics: weak self-defence only when nobody needs healing, never at the cost of healing mana.
-function medicRun(setup){field();const m={...tpl('MEDIC'),x:F,y:F,isPersonalGuard:true,speed:0,atkCooldown:0,_pgTick:3};game.recalcSoldierStats(m);m.hp=m.maxHp;const allies=setup(m)||[];game.squad=[m,...allies];game.monsters=[dummy(m.x+60,m.y)];game.projectiles=[];game.update(.05);return {m,smite:game.projectiles.find(p=>p.type==='SMITE'),heal:game.projectiles.find(p=>p.type==='HEAL')};}
-{const {m,smite}=medicRun(m=>{m.mana=100;});assert.ok(smite,'idle medic fires a self-defence bolt');assert.equal(smite.damage,Math.round(m.atk*1.0));assert.equal(smite.noSplash,true);assert.equal(Math.round(m.mana),90);}
+function medicRun(setup){field();const m={...game.createNewSoldier(null,{classKey:'MEDIC',talent:'AVERAGE',attributeProfile:rollAttributeProfile('MEDIC','AVERAGE',()=>.5,true)}),x:F,y:F,isPersonalGuard:true,speed:0,atkCooldown:0,_pgTick:3};m.attributeProfile=rollAttributeProfile('MEDIC','AVERAGE',()=>.5,true);m._attributesNormalized=false;game.recalcSoldierStats(m);m.hp=m.maxHp;const allies=setup(m)||[];game.squad=[m,...allies];game.monsters=[dummy(m.x+60,m.y)];game.projectiles=[];game.update(.05);return {m,smite:game.projectiles.find(p=>p.type==='SMITE'),heal:game.projectiles.find(p=>p.type==='HEAL')};}
+{let castPower;const {m,smite}=medicRun(m=>{m.mana=100;castPower=m.magicAttack;});assert.ok(smite,'idle medic fires a self-defence bolt');assert.equal(smite.damage,castPower);assert.equal(smite.noSplash,true);assert.equal(Math.round(m.mana),90);}
 {const {smite,m}=medicRun(m=>{m.mana=30;});assert.ok(!smite&&m.mana>=30,'reserve mana kept for healing');}
 {const {smite,heal}=medicRun(m=>{m.mana=100;const ally={...tpl('HEAVY'),x:m.x+20,y:m.y,isPersonalGuard:true,speed:0,atkCooldown:100,_pgTick:3};game.recalcSoldierStats(ally);ally.hp=Math.floor(ally.maxHp*.3);return [ally];});assert.ok(heal&&!smite,'healing stays the priority');}
 // 5. HQ mana: full refill normally; reduced regen only during defence battles at HQ (regular + major invasions + random raids).

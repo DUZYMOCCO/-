@@ -1,6 +1,8 @@
-import {weaponCombatProfile,meleeSweetSpotFor} from './equipment-rules.js?v=121';
+import {weaponCombatProfile,meleeSweetSpotFor} from './equipment-rules.js?v=128';
 import {masteryReloadMult,applyMasteryToCombatProfile} from './growth-rules.js';
-import {MAX_EQUIPMENT_TIER,GENERATION_COUNT,tierNumber,powerRank,tierDescription} from './equipment-tiers.js?v=121';
+import {MAX_EQUIPMENT_TIER,GENERATION_COUNT,tierNumber,powerRank,tierDescription} from './equipment-tiers.js?v=128';
+import {canUseWeapon} from './weapon-requirements.js';
+import {prefersCasterMelee} from './unit-attributes.js';
 
 export const ARMAMENT_POLICIES={
   balanced:{name:'均衡',research:.25,development:.25,budget:1500,perLevel:250},
@@ -38,6 +40,7 @@ export function advanceResearch(game,available) {
 
 /** A pure trial of the real stat calculation. No HP, mana, appearance or caches on the actor are mutated. */
 export function soldierEquipmentValue(game,soldier,item,key,classes) {
+  if(key==='weapon'&&!canUseWeapon(soldier,item))return -Infinity;
   const cls=classes[soldier.soldierClass]||classes.HEAVY,family=cls.baseClassId||soldier.soldierClass;
   const archer=family==='ARCHER',medic=['MEDIC','HIGH_PRIEST','SAINT','ARCHANGEL'].includes(soldier.soldierClass),mage=family==='MAGE';
   if(key==='weapon'&&item&&!medic&&!mage){const ranged=weaponCombatProfile(item).ranged;if(archer!==ranged)return -Infinity;}
@@ -54,7 +57,7 @@ export function soldierEquipmentValue(game,soldier,item,key,classes) {
   const durability=Math.max(1,trial.maxHp||1)*(1+Math.max(0,trial.def||0)/120)/Math.max(.35,1-(trial.dmgReduction||0)/100);
   const stats=Object.values(trial.equipped).filter(Boolean).map(i=>i.stats||{});
   const recovery=stats.reduce((v,s)=>v+(s.regen||0)*.2+(s.vampire||0),0);
-  const attack=medic?Math.max(1,trial.healPower||1):mage?Math.max(1,trial.atk||1):dps;
+  const attack=medic?Math.max(1,trial.healPower||1,prefersCasterMelee(trial)?dps:0):mage?Math.max(1,trial.magicAttack||1,prefersCasterMelee(trial)?dps:0):dps;
   const attackWeight=family==='HEAVY'?.35:medic?.7:mage||archer?.75:.65;
   const reach=archer?Math.max(1,profile.reach||250):Math.max(1,profile.reach||45);
   return Math.exp(Math.log(attack)*attackWeight+Math.log(durability)*(1-attackWeight)+Math.log(Math.max(50,trial.speed||100)/100)*.12+Math.log(reach/(archer?250:45))*.08+Math.log(1+recovery)*.08);

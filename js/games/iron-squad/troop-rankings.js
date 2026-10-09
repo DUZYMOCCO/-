@@ -13,6 +13,11 @@ export const RANKING_CATEGORIES = [
   { id: 'boss_kills', label: '👑 ボス撃破', shortName: 'ボス', desc: '巨魁・大物敵を単騎討ち取った武功（上位3名がランカー）', icon: '👑', color: '#38bdf8' },
   { id: 'atk',        label: '🗡️ 攻撃力',   shortName: '攻撃', desc: '武器と鍛錬による最高破壊力（上位3名がランカー）', icon: '🗡️', color: '#fb923c' },
   { id: 'def',        label: '🛡️ 防御力',   shortName: '防御', desc: '重装甲と堅牢なる防衛能力（上位3名がランカー）', icon: '🛡️', color: '#60a5fa' },
+  { id: 'strength', label: '💪 筋力', shortName: '筋力', desc: '物理攻撃と搬送で頼れる剛力（上位3名がランカー）', icon: '💪', color:'#e9ae86' },
+  { id: 'magic', label: '🔮 魔力', shortName: '魔力', desc: '魔法・回復を支える術の才能と鍛錬（上位3名がランカー）', icon: '🔮', color:'#b7a5d5' },
+  { id: 'magic_defense', label: '✨ 魔法防御', shortName: '魔防', desc: '魔法・属性攻撃に耐える力（上位3名がランカー）', icon: '✨', color:'#93c4ce' },
+  { id: 'quickness', label: '👟 速さ', shortName: '速さ', desc: '歩いて鍛えた俊足（上位3名がランカー）', icon: '👟', color:'#b5ce94' },
+  { id: 'evasion', label: '💨 回避率', shortName: '回避', desc: '実戦で磨いた身かわし（上位3名がランカー）', icon: '💨', color:'#d6ccb0' },
   { id: 'max_hp',     label: '❤️ 最大HP',   shortName: '体力', desc: '死戦を耐え抜く強靭なる生命力（上位3名がランカー）', icon: '❤️', color: '#f43f5e' },
   { id: 'healing',    label: '💖 救護・回復', shortName: '回復', desc: '仲間を死線から救い続けた守護神（上位3名がランカー）', icon: '💖', color: '#4ade80' },
   { id: 'deathline',  label: '💀 死線生還', shortName: '死線', desc: '幾度もの壊滅から生還した不屈の記録（上位3名がランカー）', icon: '💀', color: '#c084fc' }
@@ -23,12 +28,13 @@ export function collectAllSoldiers(game) {
   const list = [];
   const seen = new Set();
   const add = (s, platoonName) => {
-    if (!s || !s.id || seen.has(s.id)) return;
+    if (!s || s.dead || !s.id || seen.has(s.id)) return;
     seen.add(s.id);
     list.push({ soldier: s, platoon: platoonName });
   };
 
-  for (const s of game.squad || []) add(s, '直属');
+  for (const s of game.squad || []) add(s, s.isPersonalGuard?'直属':game.platoons?.[(s.platoonId||0)%3]?.name||'本隊');
+  for (const s of game.reserves || []) add(s, '予備');
   for (const s of game.reserveSoldiers || []) add(s, '本隊');
   for (const p of game.platoons || []) {
     for (const s of p.members || []) add(s, p.name || '本隊');
@@ -47,12 +53,12 @@ export function computeRankings(soldiers, categoryId, limit = TOP_RANK_LIMIT) {
     switch (categoryId) {
       case 'overall': {
         const lvl = s.level || 1;
-        const atk = s.atk || 0;
+        const atk = Math.max(s.atk||0,s.magicAttack||0,(s.healPower||0)*.6);
         const hp = s.maxHp || 0;
         const def = s.def || 0;
-        score = lvl * 30 + atk * 2 + Math.floor(hp / 10) + def;
+        score = Math.round(lvl * 30 + atk * 2 + Math.floor(hp / 10) + def+(s.magicDef||0)+(s.quickness||0)+(s.dodge||0)*3);
         metricText = `総合戦力 ${score}`;
-        detailText = `Lv.${lvl} · 攻${atk} · HP${hp} · 防${def}`;
+        detailText = `Lv.${lvl} · 攻${s.atk||0} · HP${hp} · 防${def}`;
         break;
       }
       case 'kills': {
@@ -89,6 +95,12 @@ export function computeRankings(soldiers, categoryId, limit = TOP_RANK_LIMIT) {
         score = hp;
         metricText = `❤️ 最大HP ${hp.toLocaleString()}`;
         detailText = `現HP: ${Math.floor(s.hp || 0)} / ${hp}`;
+        break;
+      }
+      case 'strength':case 'magic':case 'magic_defense':case 'quickness':case 'evasion': {
+        const definition={strength:['strength','筋力'],magic:['magicPower','魔力'],magic_defense:['magicDef','魔法防御'],quickness:['quickness','速さ'],evasion:['dodge','回避率']}[categoryId];
+        score=s[definition[0]]||0;metricText=`${definition[1]} ${score}${categoryId==='evasion'?'%':''}`;
+        detailText=`Lv.${s.level||1} · ${s.rankTitle||s.class||'兵士'}${categoryId==='quickness'?` · 移動${s.speed||0}m/秒`:categoryId==='evasion'?` · 回避 ${s.evasion||0}`:''}`;
         break;
       }
       case 'healing': {
@@ -288,10 +300,10 @@ export function renderTroopRankings(game) {
             const rank = idx + 1;
             const isRanker = rank <= RANKER_CUTOFF;
             const medal = rank === 1 ? '🥇 1位' : rank === 2 ? '🥈 2位' : rank === 3 ? '🥉 3位' : `${rank}位`;
-            const bonusAmount = RANKER_BONUS_SALARY[rank] || 0;
+            const bonusAmount = isEligibleForRankerBonus(s)?(RANKER_BONUS_SALARY[rank] || 0):0;
             const isNamed = !!s.title;
             const name = isNamed ? `${s.title}${s.name}` : s.name;
-            const cls = s.class || s.classId || '兵士';
+            const cls = s.class || s.rankTitle || '兵士';
             const talentTag = s.talent ? `[${s.talent}]` : '';
             return `
               <li class="ranking-item rank-${rank}${isRanker ? ' is-ranker' : ''}">

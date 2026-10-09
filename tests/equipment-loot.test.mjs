@@ -2,12 +2,13 @@
 import assert from 'node:assert/strict';
 import {WORLD_SIZE} from '../js/games/iron-squad/world.js';
 import {EQUIPMENT_TYPES,lowValueIds,chooseLootTier,distanceScaling,compareEquipment,shrineUpgradeCap,equipmentScore,saleValue} from '../js/games/iron-squad/equipment-rules.js';
+import {rollAttributeProfile} from '../js/games/iron-squad/unit-attributes.js';
 globalThis.window={};globalThis.document={getElementById:()=>null};
 const {IronSquadGame,applyUpgradeStats,generateRandomDrop,SLOT_INFO}=await import('../js/games/iron-squad/index.js');
 const item=(id,type='WEAPON',tier=1,upgrade=0)=>{const i={id,type,tier,name:id,stats:{}};applyUpgradeStats(i,upgrade);return i;};
 const game=Object.create(IronSquadGame);
 for(const method of ['saveGame','renderStrategyUI','updateStatsUI','showToast','recalcPlayerStats','recalcSoldierStats'])game[method]=()=>{};
-game.equipped={};game.inventory=[];game.reserves=[];game.squad=[{id:'soldier',name:'兵士',gold:0,equipped:{}}];
+game.equipped={};game.inventory=[];game.reserves=[];game.squad=[{id:'soldier',name:'兵士',gold:0,equipped:{},attributeProfile:rollAttributeProfile('HEAVY','AVERAGE',()=>.5,true)}];
 // Every slot can be transferred, and the item stops belonging to the hero.
 for(const type of EQUIPMENT_TYPES){const i=item(type,type);const key=SLOT_INFO[type].key;game.equipped[key]=i;game.inventory.push(i);game.giveItemToSoldier('soldier',i);assert.equal(game.equipped[key],null);assert.equal(game.squad[0].equipped[key],i);assert.ok(!game.inventory.includes(i));}
 const old=game.squad[0].equipped.weapon;applyUpgradeStats(old,3);

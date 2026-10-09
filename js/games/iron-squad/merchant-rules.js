@@ -1,16 +1,17 @@
-import {catalogTier,catalogPrice,ensureMerchantCatalog,MERCHANT_MAX_TIER,MERCHANT_CATALOG_VERSION} from './merchant-catalog.js?v=121';
+import {catalogTier,catalogPrice,ensureMerchantCatalog,MERCHANT_MAX_TIER,MERCHANT_CATALOG_VERSION} from './merchant-catalog.js?v=128';
+import {applyAttributeStats} from './unit-attributes.js';
 /**
  * IRON SQUAD: 宿場・本陣・各地のキャンプの行商人
  * - 最新入手Tier+1（最大T6）の厳選品を販売、毎ウェーブの目玉商品
  * - 強い護衛付き。放置するとモンスターに襲われ死亡しうる
  * - 護衛が倒した強敵のドロップを序盤から掠め取れるチャンス
  */
-import { saleValue, distanceScaling, weaponCombatProfile } from './equipment-rules.js?v=121';
-import { drawFieldSoldier } from './visuals.js?v=121';
-import { createSoldierAppearance, drawSoldierHead } from './soldier-appearance.js?v=121';
-import { attackAnimationRate } from './weapon-motion.js?v=121';
-import { markSoldierDown, rebuildMerchantCasualties, RESCUE_TIMEOUT } from './casualty-rules.js?v=121';
-import {emptyMastery,normalizeMastery,hitGrowthMult,applyHitGrowth,masteryAtkMult,masteryReloadMult} from './growth-rules.js?v=121';
+import { saleValue, distanceScaling, weaponCombatProfile } from './equipment-rules.js?v=128';
+import { drawFieldSoldier } from './visuals.js?v=128';
+import { createSoldierAppearance, drawSoldierHead } from './soldier-appearance.js?v=128';
+import { attackAnimationRate } from './weapon-motion.js?v=128';
+import { markSoldierDown, rebuildMerchantCasualties, RESCUE_TIMEOUT } from './casualty-rules.js?v=128';
+import {emptyMastery,normalizeMastery,hitGrowthMult,applyHitGrowth,masteryAtkMult,masteryReloadMult} from './growth-rules.js?v=128';
 import {recordCombat,finishExperience} from './phase-rules.js';
 
 export const MERCHANT_PRICE_MULT = 3.2; // 相場の約3.2倍（高め）
@@ -121,6 +122,7 @@ export function recalcEscortStats(esc) {
   esc.def=base.def;esc.speed=base.speed;
   esc.dmgReduction=Math.min(65,base.dmgReduction+Math.min(30,bosses*3));
   esc.atkSpeed=1;
+  esc.dodge=0;applyAttributeStats(esc);
 }
 export function finishEscortPhase(game) {
   for(const esc of [...(game.merchants||[]).flatMap(m=>m.escorts||[]),...(game.gateGuards||[])])if(!esc.dead&&finishExperience(esc))recalcEscortStats(esc);
@@ -541,12 +543,13 @@ export function applyMerchantSave(game, savedList, generateRandomDrop, BASE_CAMP
 
 export function npcSave(unit) {
   const result={};
-  for(const key of ['x','y','hp','maxHp','isDown','dead','downTimer','carrierId','homeX','homeY','timesDown','timesRescued','rescuedThisDown','downedInAid','downId','rescuedToBase','returningToBase','rescueRewardGranted','rescueReward','level','exp','reqExp','minionKills','bossKills','survivedWaves','hitGrowthPct','hitGrowthEvents','weaponMastery','favoriteWeapon','phaseActivity','escortBaseStats'])if(unit[key]!==undefined)result[key]=unit[key];
+  for(const key of ['x','y','hp','maxHp','isDown','dead','downTimer','carrierId','homeX','homeY','timesDown','timesRescued','rescuedThisDown','downedInAid','downId','rescuedToBase','returningToBase','rescueRewardGranted','rescueReward','level','exp','reqExp','minionKills','bossKills','survivedWaves','hitGrowthPct','hitGrowthEvents','weaponMastery','favoriteWeapon','phaseActivity','escortBaseStats','attributeProfile'])if(unit[key]!==undefined)result[key]=unit[key];
   return result;
 }
 export function applyNpcSave(unit,saved) {
   for(const key of ['x','y','hp','maxHp','downTimer','homeX','homeY','timesDown','timesRescued','downId','atk','def','dmgReduction','level','exp','reqExp','minionKills','bossKills','survivedWaves','hitGrowthPct','hitGrowthEvents'])if(Number.isFinite(saved[key]))unit[key]=saved[key];
   if(saved.weaponMastery)unit.weaponMastery=normalizeMastery(saved.weaponMastery);
+  if(saved.attributeProfile){unit.attributeProfile=structuredClone(saved.attributeProfile);unit._attributesNormalized=false;}
   if(saved.escortBaseStats)unit.escortBaseStats=saved.escortBaseStats;
   else if(unit.isMerchantEscort&&Number.isFinite(saved.maxHp))unit.escortBaseStats={hp:saved.maxHp,atk:saved.atk||unit.atk,def:saved.def??unit.def,speed:unit.speed,dmgReduction:saved.dmgReduction??unit.dmgReduction};
   if(saved.phaseActivity)unit.phaseActivity=saved.phaseActivity;
