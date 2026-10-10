@@ -1,9 +1,9 @@
-import {RANGED_ENEMIES} from './enemy-ranged.js?v=148';
-import {equipmentVisualProfile} from './equipment-tiers.js?v=148';
-import {drawBodyEquipment} from './equipment-art.js?v=148';
-import {MAGIC_AFFINITIES,ensureMana} from './magic-rules.js?v=148';
-import { drawMeleeWeapon, drawMeleeRangeCue } from './weapon-motion.js?v=148';
-import { drawSoldierHead, isMedicAppearance, soldierAppearanceFamily, soldierPhysique } from './soldier-appearance.js?v=148';
+import {RANGED_ENEMIES} from './enemy-ranged.js?v=151';
+import {equipmentVisualProfile} from './equipment-tiers.js?v=151';
+import {drawBodyEquipment} from './equipment-art.js?v=151';
+import {MAGIC_AFFINITIES,ensureMana} from './magic-rules.js?v=151';
+import { drawMeleeWeapon, drawMeleeRangeCue } from './weapon-motion.js?v=151';
+import { drawSoldierHead, isMedicAppearance, soldierAppearanceFamily, soldierPhysique } from './soldier-appearance.js?v=151';
 
 // Live field illustrations. Equipment colors are read every frame.
 // Hands and the weapon share one pose; only the striking edge gets a short trace.

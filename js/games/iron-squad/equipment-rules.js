@@ -1,5 +1,5 @@
-import {powerRank,MAX_EQUIPMENT_TIER,GENERATIONS} from './equipment-tiers.js?v=148';
-import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=148';
+import {powerRank,MAX_EQUIPMENT_TIER,GENERATIONS} from './equipment-tiers.js?v=151';
+import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=151';
 export const EQUIPMENT_TYPES = ['WEAPON','SHIELD','HELMET','ARMOR','GLOVES','LEGS','AMULET'];
 
 export const saleValue = item => Math.floor(14 + Math.pow(powerRank(item.tier), 1.8)*12 + (item.upgrade || 0)*8);

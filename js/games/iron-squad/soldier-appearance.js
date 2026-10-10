@@ -1,5 +1,5 @@
-import {equipmentVisualProfile} from './equipment-tiers.js?v=148';
-import {isMuscleCaster} from './unit-attributes.js?v=148';
+import {equipmentVisualProfile} from './equipment-tiers.js?v=151';
+import {isMuscleCaster} from './unit-attributes.js?v=151';
 /** Stable personal looks, independent of talent, battle RNG and equipment. */
 export const HAIR_LABELS = Object.freeze({
   barcode:'バーコード', bald:'丸ハゲ', mohawk:'モヒカン', sidebald:'サイドハゲ',

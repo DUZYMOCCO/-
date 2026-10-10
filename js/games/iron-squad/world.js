@@ -1,6 +1,7 @@
 // 158720 = 310 tiles of 512. Half-width 79360.
 // Base walk is 165px/s, so camp to the nearest edge is 481s (8 min 1s).
 // 10800 was about 33s and 21600 about 65s. Both were still a short walk.
+import {drawNaturalPond,terrainSeed} from './terrain-shapes.js?v=151';
 export const WORLD_SIZE = 158720;
 export const WORLD_VERSION = 4;
 const TILE = 512, CACHE_LIMIT = 24; // ~24 MiB of tile pixels; view and world density are unchanged
@@ -427,47 +428,104 @@ function tileNearRiver(x0, y0) {
   const lo = Math.min(yA, yB) - 100, hi = Math.max(yA, yB) + 100;
   return y0 < hi && y0 + TILE > lo;
 }
-function paintRoadCell(c, x, y, wx, wy) {
-  const ew = wy - eastWestRoadY(wx);
-  const ns = wx - northSouthRoadX(wy);
-  const aew = Math.abs(ew), ans = Math.abs(ns);
-  const useEw = aew <= 52 && (ans > 46 || aew <= ans);
-  if (useEw) {
-    const east = wx >= CENTER;
-    const half = east ? 48 : 34;
-    if (aew > half) return false;
-    let col;
-    if (east) col = aew < 7 ? '#5a4632' : aew < 28 ? '#8a7048' : aew > 40 ? '#3e3628' : '#6a5840';
-    else {
-      const plank = ((Math.floor(wx / 18) ^ Math.floor(wy / 18)) & 1) === 0;
-      col = aew < 22 ? (plank ? '#5c4634' : '#3a2c22') : '#241c16';
-    }
-    c.fillStyle = col;
-    c.fillRect(x, y, 4, 4);
-    paintMile(c, x, y, wx, wy, true, east);
-    return true;
-  }
-  if (ans > 46) return false;
-  const north = wy < CENTER;
-  const half = north ? 34 : 46;
-  if (ans > half) return false;
-  let col;
-  if (north) {
-    col = ans < 6 ? '#8a9088' : ans < 18 ? '#6a7068' : '#3e4440';
-    if (ans > 24 && ((Math.floor(wy / 26) + Math.floor(wx / 19)) % 4) === 0) col = '#2e3330';
-  } else col = ans < 10 ? '#c2bba6' : ans < 28 ? '#8e8874' : '#5c584c';
-  c.fillStyle = col;
-  c.fillRect(x, y, 4, 4);
-  paintMile(c, x, y, wx, wy, false, north);
-  return true;
+// Road art is baked into the same tiles. All placement/clearance still uses
+// the original sine centerlines and roadDist; only the ground illustration changes.
+const ROAD_SURFACES={
+  north:{half:34,soil:'#636452',edge:'#454e3d',light:'#92917a',dark:'#404b3c',gravel:true},
+  east:{half:48,soil:'#786346',edge:'#4f4c35',light:'#a68d62',dark:'#514936'},
+  south:{half:46,soil:'#8a8168',edge:'#615f47',light:'#b5aa89',dark:'#625e49'},
+  west:{half:34,soil:'#514636',edge:'#323c2c',light:'#9c835e',dark:'#342e25',boards:true}
+};
+function roadNoise(t,period,seed){
+  const k=Math.floor(t/period),f=t/period-k,u=f*f*(3-2*f);
+  return (cellHash(k,seed)*(1-u)+cellHash(k+1,seed)*u)*2-1;
 }
-function paintMile(c, x, y, wx, wy, horizontal, light) {
-  const along = (horizontal ? wx : wy) - CENTER;
-  if (Math.abs(along) < 900) return;
-  const m = Math.abs(along % 1400);
-  if (m > 8 && m < 1392) return;
-  c.fillStyle = light ? '#d7c4a2' : '#3a3428';
-  c.fillRect(x, y, 4, 4);
+function roadEdge(t,side,half){
+  return half+roadNoise(t,73,side>0?109:211)*3+roadNoise(t,23,side>0?317:419)*1.1;
+}
+function roadPoint(along,across,horizontal){
+  return horizontal?[along,eastWestRoadY(along)+across]:[northSouthRoadX(along)+across,along];
+}
+function roadRibbon(c,x0,y0,horizontal,half,pad=0){
+  const start=(horizontal?x0:y0)-32,end=start+TILE+64;
+  c.beginPath();
+  for(let t=start;t<=end;t+=8){
+    const [wx,wy]=roadPoint(t,-roadEdge(t,-1,half)-pad,horizontal);
+    if(t===start)c.moveTo(wx-x0,wy-y0);else c.lineTo(wx-x0,wy-y0);
+  }
+  for(let t=end;t>=start;t-=8){
+    const [wx,wy]=roadPoint(t,roadEdge(t,1,half)+pad,horizontal);c.lineTo(wx-x0,wy-y0);
+  }
+  c.closePath();
+}
+function paintRoad(c,x0,y0,horizontal){
+  const along0=horizontal?x0:y0;
+  const kind=horizontal?(along0<CENTER?'west':'east'):(along0<CENTER?'north':'south');
+  const art=ROAD_SURFACES[kind],half=art.half;
+  let low=Infinity,high=-Infinity;
+  for(let t=along0-32;t<=along0+TILE+32;t+=32){const center=horizontal?eastWestRoadY(t):northSouthRoadX(t);low=Math.min(low,center);high=Math.max(high,center);}
+  const cross0=horizontal?y0:x0;
+  if(high+half+14<cross0||low-half-14>cross0+TILE)return;
+  c.save();
+  // Irregular, softly stepped soil shoulders, rather than parallel color bands.
+  for(const [pad,alpha] of [[8,.12],[4,.24],[1,.5]]){
+    c.globalAlpha=alpha;c.fillStyle=art.edge;roadRibbon(c,x0,y0,horizontal,half,pad);c.fill();
+  }
+  c.globalAlpha=1;c.fillStyle=art.soil;roadRibbon(c,x0,y0,horizontal,half,-2);c.fill();
+  const first=Math.floor((along0-24)/12)*12;
+  for(let t=first;t<along0+TILE+24;t+=12){
+    // Broken planks retain the west marsh's established boardwalk material.
+    if(art.boards){
+      const h=cellHash(t/12,631),offset=roadNoise(t,37,719)*1.8;
+      const [wx,wy]=roadPoint(t,offset,horizontal),x=wx-x0,y=wy-y0;
+      c.globalAlpha=.9;c.fillStyle=h>.5?'#70593f':'#5d4935';
+      c.beginPath();c.moveTo(x+1,y-half+2);c.lineTo(x+10,y-half+3+h*3);c.lineTo(x+11,y+half-3);c.lineTo(x,y+half-2-h*3);c.closePath();c.fill();
+      c.strokeStyle=art.light;c.lineWidth=.7;c.globalAlpha=.28;c.beginPath();c.moveTo(x+3,y-half+5);c.lineTo(x+4,y+half-5);c.moveTo(x+7,y-17);c.lineTo(x+8,y+20);c.stroke();
+      continue;
+    }
+    for(let across=-half;across<=half;across+=10){
+      const h=cellHash(t/12,Math.floor(across/10)+503),h2=cellHash(t/12+127,Math.floor(across/10)+887);
+      const a=t+(h-.5)*11,b=across+(h2-.5)*9;
+      if(Math.abs(b)>roadEdge(a,b<0?-1:1,half)-6)continue;
+      const [wx,wy]=roadPoint(a,b,horizontal),x=wx-x0,y=wy-y0;
+      if(x< -10||y< -10||x>TILE+10||y>TILE+10)continue;
+      if(h>.74){
+        c.globalAlpha=.1+h2*.12;c.fillStyle=h2>.5?art.light:art.dark;
+        c.beginPath();c.ellipse(x,y,4+h2*5,2+h*2,horizontal?0:Math.PI/2,0,TAU);c.fill();
+      }
+      if(art.gravel?h>.36:h>.71){
+        const w=1+h2*3.4,height=.8+h*1.9;
+        c.globalAlpha=art.gravel ? .5 : .38;c.fillStyle=h2>.5?art.light:art.dark;
+        c.beginPath();c.moveTo(x-w,y);c.lineTo(x-w*.5,y-height);c.lineTo(x+w*.55,y-height*.8);c.lineTo(x+w,y+.4);c.lineTo(x+w*.2,y+height*.5);c.closePath();c.fill();
+        c.globalAlpha=.25;c.fillStyle=art.light;c.fillRect(x-w*.4,y-height,w*.9,.55);
+      }else{c.globalAlpha=.24;c.fillStyle=art.light;c.fillRect(x,y,.6+h2, .6+h);}
+    }
+  }
+  if(!art.boards){
+    // Short, uneven wheel marks: never an uninterrupted bright center stripe.
+    const beginning=Math.floor((along0-64)/86)*86;
+    for(let t=beginning;t<along0+TILE+64;t+=86){
+      const h=cellHash(t/86,953);if(h<.24)continue;
+      for(const side of [-1,1]){
+        c.strokeStyle=art.dark;c.globalAlpha=.12+h*.1;c.lineWidth=1.2+h*1.3;c.beginPath();
+        for(let d=0;d<=36+h*24;d+=8){
+          const off=side*half*.31+roadNoise(t+d,29,side+1021)*1.6,[wx,wy]=roadPoint(t+d,off,horizontal);
+          if(d===0)c.moveTo(wx-x0,wy-y0);else c.lineTo(wx-x0,wy-y0);
+        }c.stroke();
+      }
+    }
+  }
+  // Grass and scattered pebbles break up the transition to untouched ground.
+  for(let t=Math.floor((along0-16)/14)*14;t<along0+TILE+16;t+=14){
+    for(const side of [-1,1]){
+      const h=cellHash(t/14,side+1153);if(h<.3)continue;
+      const off=side*(roadEdge(t,side,half)-1+h*4),[wx,wy]=roadPoint(t,off,horizontal),x=wx-x0,y=wy-y0;
+      if(x< -8||y< -8||x>TILE+8||y>TILE+8)continue;
+      c.globalAlpha=.38+h*.28;c.strokeStyle=biomeAt(wx,wy).grass;c.lineWidth=.8;
+      c.beginPath();c.moveTo(x-3,y+2);c.lineTo(x-4,y-3);c.moveTo(x,y+2);c.lineTo(x+1,y-5-h*3);c.moveTo(x+2,y+2);c.lineTo(x+4,y-2);c.stroke();
+    }
+  }
+  c.restore();
 }
 function paintRiverCell(c, x, y, wx, wy) {
   if (roadDist(wx, wy) <= 26) return;
@@ -477,14 +535,10 @@ function paintRiverCell(c, x, y, wx, wy) {
   c.fillRect(x, y, 4, 4);
 }
 function paintRoutes(c, x0, y0) {
-  const nearRoad = tileNearRoad(x0, y0);
-  const nearRiver = tileNearRiver(x0, y0);
-  if (!nearRoad && !nearRiver) return;
-  for (let y = 0; y < TILE; y += 4) for (let x = 0; x < TILE; x += 4) {
-    const wx = x0 + x + 2, wy = y0 + y + 2;
-    const deck = nearRoad && paintRoadCell(c, x, y, wx, wy);
-    if (nearRiver && !deck) paintRiverCell(c, x, y, wx, wy);
-  }
+  const nearRoad=tileNearRoad(x0,y0),nearRiver=tileNearRiver(x0,y0);
+  if(nearRiver)for(let y=0;y<TILE;y+=4)for(let x=0;x<TILE;x+=4)paintRiverCell(c,x,y,x0+x+2,y0+y+2);
+  if(!nearRoad)return;
+  paintRoad(c,x0,y0,true);paintRoad(c,x0,y0,false);
 }
 function findBridgeX() {
   let lo = CENTER + 7000, hi = CENTER + 18000;
@@ -899,12 +953,9 @@ export class WorldTerrain {
     const distance=Math.hypot(x0+fx-CENTER,y0+fy-CENTER);
     if(distance>360 && roadDist(x0+fx,y0+fy)>115 && !(may && reliefAt(x0+fx,y0+fy))) {
       if(feature<.22 && distance<8000) {
-        ellipse(c,fx,fy,83,50,'#746c47');ellipse(c,fx,fy,77,45,'#314e54');
-        ellipse(c,fx-9,fy-8,58,29,'#466b70');
-        for(let i=0;i<18;i++) {
-          const a=rnd()*Math.PI*2,x=fx+Math.cos(a)*82,y=fy+Math.sin(a)*49;
-          c.strokeStyle='#92915b';c.beginPath();c.moveTo(x,y);c.lineTo(x+2,y-8);c.stroke();
-        }
+        drawNaturalPond(c,fx,fy,terrainSeed(x0+fx,y0+fy));
+        // Retain the old reed draws so scenery/camp placement stays identical.
+        for(let i=0;i<18;i++)rnd();
       } else if(feature<.42) {
         for(let i=0;i<22;i++) {
           const x=fx+(rnd()-.5)*115,y=fy+(rnd()-.5)*75;

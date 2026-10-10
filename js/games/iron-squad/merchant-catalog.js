@@ -1,6 +1,6 @@
-import {observeEquipment} from './armament-rules.js?v=148';
-import {MAX_EQUIPMENT_TIER,TRADE_MAX_TIER} from './equipment-tiers.js?v=148';
-import {EQUIPMENT_TYPES,saleValue} from './equipment-rules.js?v=148';
+import {observeEquipment} from './armament-rules.js?v=151';
+import {MAX_EQUIPMENT_TIER,TRADE_MAX_TIER} from './equipment-tiers.js?v=151';
+import {EQUIPMENT_TYPES,saleValue} from './equipment-rules.js?v=151';
 export const MERCHANT_MAX_TIER=TRADE_MAX_TIER;
 export const CATALOG_PRICE_MULT=3.2;
 export const catalogPrice=item=>Math.max(1,Math.floor(saleValue(item)*CATALOG_PRICE_MULT*Math.max(1,item.rollMult||1)*(item.merchantFeatured?1.15:1)));

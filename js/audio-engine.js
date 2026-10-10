@@ -55,7 +55,7 @@ export class SoundEngine {
     if(!this.ctx)return Promise.resolve();if(this.loading)return this.loading;
     const missing=AUDIO_CLIPS.filter(name=>!this.buffers.has(name));if(!missing.length)return Promise.resolve();
     this.loading=Promise.allSettled(missing.map(async name=>{
-      try{const response=await fetch(new URL(`../assets/audio/${name}.wav?v=148`,import.meta.url));if(!response.ok)throw new Error(`HTTP ${response.status}`);const buffer=await this.decode(await response.arrayBuffer());this.buffers.set(name,buffer);this.failed.delete(name);if(name==='music')this.syncMusic();}
+      try{const response=await fetch(new URL(`../assets/audio/${name}.wav?v=151`,import.meta.url));if(!response.ok)throw new Error(`HTTP ${response.status}`);const buffer=await this.decode(await response.arrayBuffer());this.buffers.set(name,buffer);this.failed.delete(name);if(name==='music')this.syncMusic();}
       catch(error){this.failed.add(name);console.warn(`Audio asset unavailable: ${name}`,error);}
     })).then(()=>{this.loading=null;this.syncMusic();this.publish();});
     this.publish();return this.loading;

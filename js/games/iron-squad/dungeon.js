@@ -4,7 +4,7 @@
  * 脱出は常に x=180, y=height/2。至宝はボスか番兵を倒したあと、x=width-240。
  */
 
-import {LIMITED_SETTLEMENTS,drawLimitedEntrance} from './limited-allies.js?v=148';
+import {LIMITED_SETTLEMENTS,drawLimitedEntrance} from './limited-allies.js?v=151';
 import { WORLD_SIZE, SETTLEMENTS } from './world.js';
 
 const CENTER = WORLD_SIZE / 2;
