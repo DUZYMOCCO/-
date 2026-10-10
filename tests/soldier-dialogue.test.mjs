@@ -105,6 +105,75 @@ manager.draw(mockCtx, { x: 0, y: 0 }, 1.0);
 assert.ok(calls.includes('save'));
 assert.ok(calls.includes('restore'));
 assert.ok(calls.some(c => c.startsWith('fillText:')), 'Should have rendered text');
-console.log('PASS: Canvas draw routine executes cleanly without throwing');
+// 6. テキスト自動折り返し (wrapDialogueText) の検証
+import { wrapDialogueText } from '../js/games/iron-squad/soldier-dialogue.js';
+
+// 短いテキストは分割されない
+const shortCtx = { measureText: (t) => ({ width: t.length * 9 }) };
+const shortRes = wrapDialogueText(shortCtx, '油断するな！', 150);
+assert.equal(shortRes.length, 1);
+assert.equal(shortRes[0], '油断するな！');
+
+// 長文が区切り記号「！」で適切に2行に分割され、各行が maxW (140) 以内に収まる
+const longText = '威圧感に呑まれるな！足を止めなければ勝てる！';
+const longRes = wrapDialogueText(shortCtx, longText, 140);
+assert.equal(longRes.length, 2);
+assert.equal(longRes[0], '威圧感に呑まれるな！');
+assert.equal(longRes[1], '足を止めなければ勝てる！');
+assert.ok(shortCtx.measureText(longRes[0]).width <= 140);
+assert.ok(shortCtx.measureText(longRes[1]).width <= 140);
+
+// 区切り記号のない長文でもバランスよく2行に分割される
+const noDelimText = '宝箱を見つけたら声をかけてくれよな';
+const noDelimRes = wrapDialogueText(shortCtx, noDelimText, 100);
+assert.ok(noDelimRes.length >= 2);
+console.log('PASS: wrapDialogueText splits text appropriately for bounded width');
+
+// 7. 小画面・高倍率 (320px, zoom 1.8) および画面端クランプでの描画テスト
+const smallScreenCalls = [];
+const smallScreenCtx = {
+  canvas: { width: 320, height: 568 },
+  save: () => smallScreenCalls.push('save'),
+  restore: () => smallScreenCalls.push('restore'),
+  measureText: (t) => ({ width: t.length * 9 }),
+  beginPath: () => smallScreenCalls.push('beginPath'),
+  roundRect: () => smallScreenCalls.push('roundRect'),
+  rect: () => smallScreenCalls.push('rect'),
+  fill: () => smallScreenCalls.push('fill'),
+  stroke: () => smallScreenCalls.push('stroke'),
+  moveTo: () => smallScreenCalls.push('moveTo'),
+  lineTo: () => smallScreenCalls.push('lineTo'),
+  closePath: () => smallScreenCalls.push('closePath'),
+  fillText: (t, x, y) => smallScreenCalls.push({ text: t, x, y }),
+  translate: (x, y) => smallScreenCalls.push({ translate: [x, y] }),
+  scale: () => smallScreenCalls.push('scale')
+};
+
+manager.reset();
+// 画面端 (x: -80) の兵士で長文を発言
+const edgeSoldier = { id: 's-edge', x: -80, y: 100 };
+manager.trigger(edgeSoldier, 'BOSS_ENCOUNTER', now, true);
+manager.activeBubbles[0].text = longText;
+manager.update(0.3);
+
+// camera={x: 0, y: 100}, zoom=1.8 (画面半幅 = (320/2)/1.8 ≈ 88.89)
+manager.draw(smallScreenCtx, { x: 0, y: 100 }, 1.8);
+const renderedTexts = smallScreenCalls.filter(c => c.text);
+assert.equal(renderedTexts.length, 2, 'Long text should render in 2 lines on small screen with 1.8 zoom');
+assert.equal(renderedTexts[0].text, '威圧感に呑まれるな！');
+assert.equal(renderedTexts[1].text, '足を止めなければ勝てる！');
+console.log('PASS: Small-screen high-zoom dialogue renders wrapped lines and clamps cleanly');
+
+// 8. 新5場面（NIGHT_COMBAT, DUNGEON_EXPLORE, INVASION_DEFENSE, LEVEL_UP_REACTION, FARM_LEISURE）の発火検証
+const situations = ['NIGHT_COMBAT', 'DUNGEON_EXPLORE', 'INVASION_DEFENSE', 'LEVEL_UP_REACTION', 'FARM_LEISURE'];
+for (const sit of situations) {
+  manager.reset();
+  const ok = manager.trigger(s1, sit, now, true);
+  assert.ok(ok, `Trigger should succeed for situation: ${sit}`);
+  assert.equal(manager.activeBubbles.length, 1);
+  const bubbleText = manager.activeBubbles[0].text;
+  assert.ok(DIALOGUE_CATEGORIES[sit].includes(bubbleText), `Text '${bubbleText}' should belong to category ${sit}`);
+}
+console.log('PASS: All 5 newly connected situations (90 quotes) trigger and deliver category-specific quotes');
 
 console.log('ALL SOLDIER DIALOGUE TESTS PASSED!');

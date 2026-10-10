@@ -35,7 +35,7 @@ import { storage } from '../../storage.js';
 import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow } from './visuals.js?v=151';
 import { refreshCampQuiet, assignCampSeats, tryCampLeisure } from './camp-leisure.js?v=151';
 import { CAMP_PEACE_RADIUS, peaceContainment, pushOutsidePeace, relocatePeaceMonster } from './peace-zones.js?v=151';
-import { farmPosts, farmOverlaps, reinforcementCount, reserveRosterLine, reserveRosterTitle } from './reserve-farm.js?v=151';
+import { FARM_X, FARM_Y, farmPosts, farmOverlaps, reinforcementCount, reserveRosterLine, reserveRosterTitle } from './reserve-farm.js?v=151';
 import { drawMeleeRangeCue, meleeDrawReach, attackAnimationRate } from './weapon-motion.js?v=151';
 import {emptyRescueBonuses,normalizeRescueBonuses,rescueBonusSummary} from './rescue-rewards.js?v=151';
 import {drawFieldCivilian} from './civilian-visuals.js?v=151';
@@ -5175,7 +5175,29 @@ export const IronSquadGame = {
         if (nearBoss) {
           this.dialogue.trigger(lucky, 'BOSS_ENCOUNTER');
         } else if (Math.random() < 0.40) {
-          this.dialogue.trigger(lucky, 'PATROL');
+          let category = 'PATROL';
+          const isNight = daylightAt(this.worldTime)?.period === 'night';
+          const nearEnemy = (this.monsters || []).some(m => m.hp > 0 && Math.hypot(m.x - lucky.x, m.y - lucky.y) < 280);
+          const isDefense = Boolean((this.invasions?.stage && this.invasions.stage !== 'idle') || this.baseRaidActive || this.invasionActive);
+          const isDungeon = Boolean(this.currentDungeon);
+          const luckyInBase = !this.currentDungeon && Math.hypot(lucky.x - BASE_CAMP.x, lucky.y - BASE_CAMP.y) < BASE_CAMP.radius;
+          const isNearFarm = !this.currentDungeon && (
+            Math.hypot(lucky.x - (FARM_X + 250), lucky.y - (FARM_Y - 70)) < 400 ||
+            (this.reserves?.length && typeof farmOverlaps === 'function' && farmOverlaps(this.reserves.length, camX, camY, 200, 200))
+          );
+          const isLeisure = insideBase || luckyInBase || isNearFarm;
+
+          if (isDefense) {
+            category = 'INVASION_DEFENSE';
+          } else if (isDungeon) {
+            category = 'DUNGEON_EXPLORE';
+          } else if (isLeisure && !nearEnemy) {
+            category = 'FARM_LEISURE';
+          } else if (isNight && (nearEnemy || Math.random() < 0.50)) {
+            category = 'NIGHT_COMBAT';
+          }
+
+          this.dialogue.trigger(lucky, category);
         }
       }
     }
@@ -7674,7 +7696,10 @@ export const IronSquadGame = {
         attacker.reqExp = Math.floor(req * 1.5 + 8);
         leveled = true;
       }
-      if (leveled) raiseLevelMark(attacker);
+      if (leveled) {
+        raiseLevelMark(attacker);
+        this.dialogue?.trigger?.(attacker, 'LEVEL_UP_REACTION', Date.now(), true);
+      }
 
       this.recalcSoldierStats(attacker);
     }
@@ -7943,7 +7968,9 @@ export const IronSquadGame = {
 
     s.isNamed = true;
     s.title = TITLES[Math.floor(Math.random() * TITLES.length)];
-    s.name = NAMES[Math.floor(Math.random() * NAMES.length)];
+    if (!s.name || typeof s.name !== 'string' || !s.name.trim()) {
+      s.name = generateSoldierName(s);
+    }
     s.rankTitle = '叙勲勇士';
     this.recalcSoldierStats(s);
     if(!s.isDown)s.hp=s.maxHp;

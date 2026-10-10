@@ -35,8 +35,12 @@ export function grantPersonalExp(game, unit, amount) {
   }
   if (leveled) {
     raiseLevelMark(unit);
-    if (isPlayer) game?.recalcPlayerStats?.();
-    else game?.recalcSoldierStats?.(unit);
+    if (isPlayer) {
+      game?.recalcPlayerStats?.();
+    } else {
+      game?.recalcSoldierStats?.(unit);
+      game?.dialogue?.trigger?.(unit, 'LEVEL_UP_REACTION', Date.now(), true);
+    }
     if(unit.isDown)unit.hp=0;
   }
   return leveled;

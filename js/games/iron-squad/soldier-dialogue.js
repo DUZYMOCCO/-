@@ -556,6 +556,68 @@ function getClassCategory(soldier) {
   return null;
 }
 
+// テキストの自動折り返し処理（画面幅・高倍率対応）
+export function wrapDialogueText(ctx, text, maxW) {
+  if (!text) return [''];
+  if (!ctx || typeof ctx.measureText !== 'function') return [text];
+  const totalW = ctx.measureText(text).width;
+  if (totalW <= maxW) return [text];
+
+  // 区切り文字（！、？、…、！、？、など）による分割を優先探索
+  const splitDelims = ['！', '!', '？', '?', '…', '、', '。', ' '];
+  let bestSplit = -1;
+  let bestScore = Infinity;
+
+  for (let i = 1; i < text.length; i++) {
+    const ch = text[i - 1];
+    if (splitDelims.includes(ch)) {
+      const part1 = text.slice(0, i);
+      const part2 = text.slice(i);
+      const w1 = ctx.measureText(part1).width;
+      const w2 = ctx.measureText(part2).width;
+      const overflow = Math.max(0, w1 - maxW) + Math.max(0, w2 - maxW);
+      const balance = Math.abs(w1 - w2);
+      const score = overflow * 1000 + balance;
+      if (score < bestScore) {
+        bestScore = score;
+        bestSplit = i;
+      }
+    }
+  }
+
+  // 適切な区切り文字がないか、区切り文字でも overflow する場合、文字幅基準で中央付近を探す
+  if (bestSplit === -1 || bestScore >= 1000) {
+    let minDiff = Infinity;
+    for (let i = 1; i < text.length; i++) {
+      const part1 = text.slice(0, i);
+      const part2 = text.slice(i);
+      const w1 = ctx.measureText(part1).width;
+      const w2 = ctx.measureText(part2).width;
+      const overflow = Math.max(0, w1 - maxW) + Math.max(0, w2 - maxW);
+      const balance = Math.abs(w1 - w2);
+      const score = overflow * 1000 + balance;
+      if (score < minDiff) {
+        minDiff = score;
+        bestSplit = i;
+      }
+    }
+  }
+
+  if (bestSplit > 0 && bestSplit < text.length) {
+    const p1 = text.slice(0, bestSplit);
+    const p2 = text.slice(bestSplit);
+    const lines = [p1];
+    if (ctx.measureText(p2).width > maxW && p2.length > 4) {
+      lines.push(...wrapDialogueText(ctx, p2, maxW));
+    } else {
+      lines.push(p2);
+    }
+    return lines;
+  }
+
+  return [text];
+}
+
 export class SoldierDialogueManager {
   constructor() {
     this.resultNotice = null;
@@ -695,6 +757,11 @@ export class SoldierDialogueManager {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
+    const canvasWidth = ctx.canvas?.width || 320;
+    const currentZoom = Math.max(0.1, Number(zoom) || 1.0);
+    // 画面幅に対して、両端に余白を残したワールド空間での最大テキスト幅（最小80、最大175）
+    const maxTextW = Math.max(80, Math.min(175, (canvasWidth - 28) / currentZoom - 14));
+
     for (const b of this.activeBubbles) {
       if (b.opacity <= 0) continue;
 
@@ -702,14 +769,32 @@ export class SoldierDialogueManager {
       const sx = b.x;
       const sy = b.y;
 
-      // テキスト幅計測
-      const metrics = ctx.measureText(b.text);
-      const textW = Math.ceil(metrics.width);
+      // テキスト自動折り返し
+      const lines = wrapDialogueText(ctx, b.text, maxTextW);
+      let textW = 0;
+      for (const line of lines) {
+        const w = Math.ceil(ctx.measureText(line).width);
+        if (w > textW) textW = w;
+      }
+
       const padX = 7;
       const padY = 4;
       const bw = textW + padX * 2;
-      const bh = 14 + padY * 2;
+      const lineHeight = 11;
+      const bh = lines.length === 1 ? (14 + padY * 2) : (lines.length * lineHeight + padY * 2 + 2);
       const radius = 5;
+
+      // 画面内への水平位置クランプ
+      let offsetBoxX = 0;
+      if (camera && Number.isFinite(camera.x)) {
+        const halfVisW = (canvasWidth / 2) / currentZoom;
+        const minX = camera.x - halfVisW + bw / 2 + 6;
+        const maxX = camera.x + halfVisW - bw / 2 - 6;
+        if (minX <= maxX) {
+          const clampedX = Math.max(minX, Math.min(maxX, sx));
+          offsetBoxX = clampedX - sx;
+        }
+      }
 
       ctx.save();
       ctx.globalAlpha = Math.max(0, Math.min(1, b.opacity * 0.92));
@@ -723,7 +808,7 @@ export class SoldierDialogueManager {
       ctx.strokeStyle = 'rgba(148, 163, 184, 0.3)';
       ctx.lineWidth = 1;
 
-      const bx = -bw / 2;
+      const bx = -bw / 2 + offsetBoxX;
       const by = -bh;
 
       // 角丸四角形（roundRectフォールバック対応）
@@ -736,11 +821,13 @@ export class SoldierDialogueManager {
       ctx.fill();
       ctx.stroke();
 
-      // 下部の小さな三角ポインタ
+      // 下部の小さな三角ポインタ（しっぽは兵士頭上 x=0 を指す）
+      const tailX = Math.max(bx + 6, Math.min(bx + bw - 6, 0));
       ctx.beginPath();
-      ctx.moveTo(-3, by + bh);
-      ctx.lineTo(0, by + bh + 3);
-      ctx.lineTo(3, by + bh);
+      ctx.moveTo(tailX - 3, by + bh);
+      ctx.lineTo(tailX + (0 - tailX) * 0.4, by + bh + 3);
+      ctx.lineTo(tailX + 3, by + bh);
+      if (typeof ctx.closePath === 'function') ctx.closePath();
       ctx.fillStyle = 'rgba(15, 23, 42, 0.78)';
       ctx.fill();
 
@@ -748,7 +835,15 @@ export class SoldierDialogueManager {
       ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
       ctx.shadowBlur = 2;
       ctx.fillStyle = '#f8fafc';
-      ctx.fillText(b.text, 0, by + bh / 2 + 0.5);
+      const textCenterX = bx + bw / 2;
+      if (lines.length === 1) {
+        ctx.fillText(lines[0], textCenterX, by + bh / 2 + 0.5);
+      } else {
+        const startY = by + padY + 6;
+        for (let i = 0; i < lines.length; i++) {
+          ctx.fillText(lines[i], textCenterX, startY + i * lineHeight);
+        }
+      }
 
       ctx.restore();
     }
