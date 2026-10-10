@@ -1,5 +1,5 @@
 import {sound} from '../../audio.js?v=151';
-import {mountKanaPanel} from '../../kana-mode.js?v=171';
+import {mountKanaPanel} from '../../kana-mode.js?v=172';
 
 export function configureAudioInterface(game) {
   game.audioUIUnsubscribe?.();

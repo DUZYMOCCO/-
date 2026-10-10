@@ -1215,3 +1215,11 @@
 .iron-squad .commander-name { font-size: 13px; color: var(--ui-gold); overflow-wrap: anywhere; }
 .iron-squad .commander-groom-btn { min-height: 44px; min-width: 76px; }
 @media (max-height: 500px) and (orientation: landscape) { .iron-squad .ce-preview canvas { transform: scale(.8); transform-origin: top center; } }
+
+/* A bounded diary; only the enclosing command window scrolls. */
+.iron-squad .hero-diary { margin-top: 14px; border-top: 1px solid var(--ui-line); }
+.iron-squad .hero-diary > summary { min-height: 44px; padding: 10px 0; cursor: pointer; color: var(--ui-gold); line-height: 1.6; }
+.iron-squad .hero-diary-body { font-size: 12px; line-height: 1.7; overflow-wrap: anywhere; }
+.iron-squad .hero-diary canvas { display: block; width: 100%; max-width: 300px; height: auto; margin: 10px auto; border: 1px solid var(--ui-line); border-radius: 6px; }
+.iron-squad .hero-diary-events { margin: 12px 0 0; padding-left: 22px; }
+.iron-squad .hero-diary-events li { margin-bottom: 8px; }

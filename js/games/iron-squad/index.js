@@ -13,12 +13,12 @@ import {latestEquipmentTier,recordMerchantEquipment,ensureMerchantCatalog,refres
 import {initializeMedicalPosts,updateMedicalPosts,serializeMedicalPosts,nearestKnownMedicalPost,drawMedicalPost,drawMedicalMap,drawMedicalMarker,drawTownMedicalReception,drawRescueDirection} from './medical-posts.js?v=151';
 import {invasionMethods,initializeInvasions,serializeInvasions,shouldTriggerRandomRaid,makeEnemyRoom,drawInvasionRoute} from './invasion-rules.js?v=151';
 import {gateMethods,serializeGatePosts,replenishTownGateGuards,initializeGateGuards,ensureTownGuards,serializeGateGuards,updateGateGuards,gateGuardVisible,applyFortifications,drawFortification,exitGateTown,townExitReached,wallBlocksAttack,attackBlocked as coverBlocked} from './gate-rules.js?v=161';
-import {nationMethods,normalizeNation,nationalIncome,nationalPayrollPlan,headquartersDamageMult,drawNationalDevelopment,DEVELOPMENT_STAGES} from './nation-rules.js?v=171';
+import {nationMethods,normalizeNation,nationalIncome,nationalPayrollPlan,headquartersDamageMult,drawNationalDevelopment,DEVELOPMENT_STAGES} from './nation-rules.js?v=172';
 import {equipmentUpgradeCost,salaryQuote,paySoldiers} from './payroll-rules.js?v=151';
 import {addFieldDrop,ageFieldDrops} from './field-drops.js?v=151';
 import {economicState,advanceRegionalEconomy,discoverEconomicRegions,recordEconomicKill,economicFieldBlocked} from './regional-economy.js?v=151';
 import {updateRegionalTraffic,nearestCommerceTarget,damageCommerce,persistTradeRaiders,restoreTradeRaiders} from './trade-routes.js?v=151';
-import {drawEconomicLandscape,drawCommerceActor,drawEconomicMinimap,drawCommerceWreck,drawCampTent} from './economic-visuals.js?v=171';
+import {drawEconomicLandscape,drawCommerceActor,drawEconomicMinimap,drawCommerceWreck,drawCampTent} from './economic-visuals.js?v=172';
 /**
  * ゲーム3: IRON SQUAD (アイアン・スクワッド: 雑兵立身出世録)
  * ローグライク・アクションRPG
@@ -32,8 +32,8 @@ import {drawEconomicLandscape,drawCommerceActor,drawEconomicMinimap,drawCommerce
  */
 import { sound } from '../../audio.js?v=151';
 import { storage } from '../../storage.js';
-import { createStallRecorder, mountStallLog } from './stall-recorder.js?v=171';
-import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow } from './visuals.js?v=171';
+import { createStallRecorder, mountStallLog } from './stall-recorder.js?v=172';
+import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow } from './visuals.js?v=172';
 import { refreshCampQuiet, assignCampSeats, tryCampLeisure } from './camp-leisure.js?v=151';
 import { CAMP_PEACE_RADIUS, peaceContainment, pushOutsidePeace, relocatePeaceMonster } from './peace-zones.js?v=158';
 import { FARM_X, FARM_Y, farmPosts, farmOverlaps, reinforcementCount, reserveRosterLine, reserveRosterTitle } from './reserve-farm.js?v=151';
@@ -43,8 +43,8 @@ import {drawFieldCivilian} from './civilian-visuals.js?v=151';
 import { saveSlots } from './save-slots.js';
 import { soldierDialogue } from './soldier-dialogue.js?v=151';
 import { generateSoldierName, migrateSoldierName } from './soldier-names.js?v=151';
-import { openCommanderEditor } from './commander-editor.js?v=171';
-import { applyCommanderIdentity, normalizeCommanderIdentity, commanderFullName, GENDERS as COMMANDER_GENDERS } from './commander-identity.js?v=171';
+import { openCommanderEditor } from './commander-editor.js?v=172';
+import { applyCommanderIdentity, normalizeCommanderIdentity, commanderFullName, GENDERS as COMMANDER_GENDERS } from './commander-identity.js?v=172';
 import {MAGIC_CLASSES,MAGIC_AFFINITIES,magicMethods,isMage,isMagicUser,ensureMana,initializeMagic,updateMagic,distributeMagicStones,castMedicBuff,castCasterStrength,updateMageAI,drawMagicBursts,spendMana,weaponMagicDamage,isPlayerCaster,castPlayerSpell,PLAYER_MAGIC_RULES} from './magic-rules.js?v=151';
 import {hazardMethods,updateHazards,drawHazards} from './hazard-fields.js?v=151';
 import {strongEnemyReward} from './combat-rewards.js?v=151';
@@ -53,8 +53,8 @@ import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog 
 import { renderTroopRankings, getSoldierRankerBadges, calcSoldierRankerBonus } from './troop-rankings.js?v=151';
 import { ensureSoldierAppearance, drawSoldierPortrait, describeSoldierAppearance } from './soldier-appearance.js?v=151';
 import { attachSurfaceEvents, detachSurfaceEvents, frameSurfaceReady, releaseSceneCaches, releaseCanvas, surfaceCanResume } from './canvas-surface.js?v=151';
-import { SETTLEMENTS, WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt, routeNameAt, eastWestRoadY, northSouthRoadX, riverCenterY, drawFieldDepth, drawOakCrown, fieldBlocks, settleUnit } from './world.js?v=171';
-import { subscribeKana, kanaGrade, displayKana } from '../../kana-mode.js?v=171';
+import { SETTLEMENTS, WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt, routeNameAt, eastWestRoadY, northSouthRoadX, riverCenterY, drawFieldDepth, drawOakCrown, fieldBlocks, settleUnit } from './world.js?v=172';
+import { subscribeKana, kanaGrade, displayKana } from '../../kana-mode.js?v=172';
 import { FogGrid, FOG_REVEAL_RADIUS, FOG_CAMP_REVEAL } from './fog.js?v=151';
 import {
   classTierOf, nextClassId, classUpCostForNext, canAffordClassUp, formatClassUpCostJa, classUpShortageJa,
@@ -90,11 +90,15 @@ import {
   nearestLivingMerchant, refreshMerchantStock, merchantBuyPrice, merchantSellTier,
   applyMerchantSave, serializeMerchants, MERCHANT_INTERACT_R,
   merchantHealingStatus, merchantHealWavesLeft, useMerchantHealing, MERCHANT_HEAL_COST, recalcEscortStats, finishEscortPhase
-} from './merchant-rules.js?v=171';
+} from './merchant-rules.js?v=172';
 
 import { daylightAt, advanceWorldClock, periodEnemy, enemyAvailable, PERIOD_ENEMIES } from './day-night.js';
 
-import { clusterRescueMarkers } from './rescue-markers.js?v=171';
+import { clusterRescueMarkers } from './rescue-markers.js?v=172';
+import {visibleHeroMembers} from './hero-rules.js';
+import {updateHeroJournal} from './hero-journal.js';
+import {applyHeroEquipmentUpgrade} from './hero-equipment.js';
+import {initializeHeroJourney,rollHeroRevelation,serializeHeroJourney,updateHeroParty,updateHeroFollowing,awardHeroBattle,recordDemonKingDefeat,ensureHeroCastle,syncHeroCastle,renderHeroJourney,drawHeroMarks} from './hero-party.js';
 import { RESCUE_TIMEOUT, rescueUnits, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, receiveTownCargo, leaveCivilianSpace, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, markSoldierDown, downCommander, commanderDown, updateNpcRescue, CIV_KINDS, isMedic, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST } from './casualty-rules.js?v=151';
 import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault, dungeonBlocks, dungeonSolids } from './dungeon.js?v=151';
 import {
@@ -784,6 +788,7 @@ export function rollItemQuality(item, random = Math.random) {
 }
 
 export function applyUpgradeStats(item, upgradeLevel) {
+  if(applyHeroEquipmentUpgrade(item,upgradeLevel))return;
   item.upgrade = upgradeLevel;
   if (!item.baseName) item.baseName = item.name.replace(/\+\d+$/, '');
   // 異質/神鍛サフィックスを baseName に保持
@@ -2268,6 +2273,7 @@ export const IronSquadGame = {
     this.dialogue?.reset();
     this._merchantShopClose?.();
     this.phase = 1;
+    initializeHeroJourney(this);this.heroFollowing=false;
     this.phaseTimer = PHASE_DURATION;
     this.restTimer=0;this.restUpgradeClock=0;this.restReport=null;this.restMonsters=[];
     this.totalBattleTime = 0;
@@ -3345,6 +3351,7 @@ export const IronSquadGame = {
 
     this.initBattlefield();
     restoreTradeRaiders(this);
+    initializeHeroJourney(this,saved.heroJourney);this.heroFollowing=false;
     this.phaseCasualties = saved.phaseCasualties ?? 0;
     this.deathlineReport=saved.deathlineReport?.condition==='personal-downs'?saved.deathlineReport:null;
     this.phaseInitialSquadCount = saved.phaseInitialSquadCount ?? this.squad.length;
@@ -3604,6 +3611,7 @@ export const IronSquadGame = {
         totalBattleTime: this.totalBattleTime || 0,
         worldTime:this.worldTime || 0,
         lastStrongKill:this.lastStrongKill||null,
+        heroJourney:serializeHeroJourney(this),
         wave: this.phase || this.wave || 1,
         exp: this.exp,
         gold: this.gold,
@@ -4762,7 +4770,7 @@ export const IronSquadGame = {
         const m = this.monsters[i];
         if (!(m.isBoss && !m.isColossal && !m.isRaidMob && !m.isDungeonBoss)) continue;
         const d = Math.hypot(m.x - this.player.x, m.y - this.player.y);
-        if (d > 1600 && d > farDist) { farDist = d; farIdx = i; }
+        if (d > 1600 && d > farDist && !visibleHeroMembers(this).some(s=>this._distSq(m.x,m.y,s.x,s.y)<1100*1100)) { farDist = d; farIdx = i; }
       }
       if (farIdx >= 0) this.monsters.splice(farIdx, 1);
     }
@@ -4774,7 +4782,7 @@ export const IronSquadGame = {
       if (m.isBoss || m.isColossal || m.isRaidMob || m.isDemonWarband) continue;
       if (this._distSq(m.x, m.y, this.player.x, this.player.y) > cullR2) {
         let keep = false;
-        const sq = this.squad || [];
+        const sq = (this.squad || []).concat(visibleHeroMembers(this));
         for (let si = 0; si < sq.length; si++) {
           const s = sq[si];
           if (s.dead) continue;
@@ -5244,6 +5252,7 @@ export const IronSquadGame = {
     this.phaseCasualties = 0;
     this.phaseInitialSquadCount = this.squad.filter(s => !s.dead).length;
 
+    rollHeroRevelation(this);
     refreshWaveCatalogs(this,generateRandomDrop);
     this._merchantShopRefresh?.();
     this.saveGame();
@@ -5395,6 +5404,8 @@ export const IronSquadGame = {
 
     // シームレス自律リポップ更新
     if(!resting)this.updateSpawns(dt);
+    if(!resting)updateHeroParty(this,dt,SOLDIER_CLASSES);
+    if(!resting)updateHeroFollowing(this,dt);
 
     const aliveSquad = activeSquad(this);
     const raidDefenders=aliveSquad.concat((this.gateGuards||[]).filter(g=>gateGuardVisible(this,g)&&!g.isDown&&g.hp>0));
@@ -5774,6 +5785,7 @@ export const IronSquadGame = {
 
     // 各兵士の自律行動・兵種戦闘・救助
     aliveSquad.forEach((soldier, idx) => {
+      if(soldier.heroPartyId)return; // The independent party has its own movement and combat AI.
       const clsKey = soldier.combatClass || soldier.soldierClass || 'HEAVY';
       const cls = SOLDIER_CLASSES[clsKey] || SOLDIER_CLASSES.HEAVY;
       const platoon = this.platoons[soldier.platoonId % 3] || this.platoons[0];
@@ -6541,6 +6553,7 @@ export const IronSquadGame = {
 
       if (!m.isRaidMob && !m.isColossal) {
         let awake = (Math.abs(m.x - camAx) < camWake && Math.abs(m.y - camAy) < camWake) || pDistSq <= awakenR2;
+        if(!awake)awake=visibleHeroMembers(this).some(u=>!u.isDown&&this._distSq(u.x,u.y,m.x,m.y)<=awakenR2);
         if (!awake && this.platoons) {
           for (let pi = 0; pi < this.platoons.length; pi++) {
             const pl = this.platoons[pi];
@@ -6806,6 +6819,7 @@ export const IronSquadGame = {
     }
     this.settleTerrain();
     finishAttributeMovement(this,dt);
+    if(!resting)updateHeroJournal(this,this.heroJourney?.party,dt);
     refreshCombatFieldNotes(this);
     this.updateStatsUI(false); // Refresh HUD during quiet exploration, with the existing throttle.
   },
@@ -7579,6 +7593,7 @@ export const IronSquadGame = {
     }
     this.settleTerrain();
     updateLimitedAllies(this);
+    if(dungeonDef.id==='dungeon_demon_castle'&&this.heroJourney){const scene=ensureHeroCastle(this,dungeonDef);this.monsters=scene.monsters;this.dungeonVault=scene.vault;}
     this.refreshInvasionUI();
     this.updateStatsUI();
     if(encounter)this.saveGame();
@@ -7587,6 +7602,7 @@ export const IronSquadGame = {
 
   exitDungeon() {
     if (!this.currentDungeon) return;
+    syncHeroCastle(this);
     const townId=this.currentDungeon.id;
     const wasTown = this.currentDungeon.kind === 'town';
     const returnPos = this.savedFieldPos || { x: BASE_CAMP.x, y: BASE_CAMP.y };
@@ -7852,7 +7868,8 @@ export const IronSquadGame = {
     } else if (attacker && !attacker.dead) {
       // 兵士がトドメを刺した！
       attacker.gold = (attacker.gold || 0) + goldGain;
-      attacker.exp = (attacker.exp || 0) + expGain;
+      if(attacker.heroPartyId)awardHeroBattle(this,attacker,expGain);
+      else attacker.exp = (attacker.exp || 0) + expGain;
       this.spawnDamageText(monster.x, monster.y - 16, `+${goldGain}G`, '#ffd700');
 
       if (isBoss) {
@@ -7899,6 +7916,7 @@ export const IronSquadGame = {
 
     // ⛩️ ダンジョンボス討伐時の至宝解錠判定
     if (monster.isDemonKing) {
+      recordDemonKingDefeat(this,isPlayer?this.player:attacker);
       this.showToast(`😈👑【魔王討伐！！】『${monster.name || '魔王'}』を撃破！約1000万規模の脅威を打ち破った！`);
     }
     if (monster.isDungeonBoss) {
@@ -9453,6 +9471,7 @@ export const IronSquadGame = {
   },
 
   renderStrategyUI() {
+    renderHeroJourney(this,SOLDIER_CLASSES,TALENTS);
     // UI rebuilds also retire native Canvas buffers; DOM removal alone waits for GC.
     for (const canvas of this.container?.querySelectorAll('.soldier-portrait, .commander-portrait') || []) releaseCanvas(canvas);
     if (typeof document?.querySelector === 'function') {
@@ -10283,8 +10302,9 @@ export const IronSquadGame = {
       if (visible(remains)) renderList.push({ y: remains.y, k: 2, ref: remains });
     }
     if (this.squad) {
-      for (let i = 0; i < this.squad.length; i++) {
-        const s = this.squad[i];
+      const drawnSquad=this.squad.concat(visibleHeroMembers(this));
+      for (let i = 0; i < drawnSquad.length; i++) {
+        const s = drawnSquad[i];
         if (!s.dead && (!this.currentDungeon||inCurrentInstance(this,s)) && visible(s)) renderList.push({ y: s.y, k: 3, ref: s });
       }
     }
@@ -11804,6 +11824,7 @@ export const IronSquadGame = {
       simple = Math.abs(s.x - this.camera.x) > mx || Math.abs(s.y - this.camera.y) > my;
     }
     drawFieldSoldier(ctx, s, now, cls, platoon?.color || '#829cae', simple);
+    if(s.isChosenHero)drawHeroMarks(ctx,this);
   },
 
   drawFarmer(ctx, post, now) {

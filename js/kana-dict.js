@@ -1,6 +1,17 @@
 // Auto-assembled. [kanjiWord, hiraganaReading] pairs, longest keys first.
 // Every key contains >=1 kanji; every value is kana only.
 export const KANA_DICT = [
+  ["専用", "せんよう"],
+  ["旅日誌", "たびにっし"],
+  ["旅の時間", "たびのじかん"],
+  ["天啓", "てんけい"],
+  ["御子", "みこ"],
+  ["勇者", "ゆうしゃ"],
+  ["足跡", "あしあと"],
+  ["実戦練習", "じっせんれんしゅう"],
+  ["共闘", "きょうとう"],
+  ["放置", "ほうち"],
+  ["選べ", "えらべ"],
   ["次なる命", "つぎなるめい"],
   ["速さ", "はやさ"],
   ["英雄直属神聖小隊", "えいゆうちょくぞくしんせいしょうたい"],

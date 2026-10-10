@@ -36,6 +36,7 @@ function carrying(game, soldier) {
 }
 
 function canRest(game, soldier) {
+  if(soldier?.heroPartyId)return false;
   if (!soldier || soldier.dead || soldier.isDown || (soldier.hp != null && soldier.hp <= 0)) return false;
   if (Math.hypot(soldier.x - CAMP_X, soldier.y - CAMP_Y) > CAMP_QUIET_RADIUS + 200) return false;
   if (carrying(game, soldier)) return false;

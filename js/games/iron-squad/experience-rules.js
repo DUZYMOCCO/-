@@ -1,3 +1,4 @@
+import {heroGrowth,heroMembers} from './hero-rules.js';
 /** 実回復量からの個人EXP。小さな継続回復も、兵士ごとに端数を積み立てる。 */
 export const HEALING_HP_PER_EXP = 5;
 export const REVIVAL_EXP_PER_MAX_HP = 3;
@@ -10,6 +11,7 @@ export function ageLevelMarks(game, dt) {
   tick(game.player);
   for (const unit of game.squad || []) tick(unit);
   for (const unit of game.reserves || []) tick(unit);
+  for (const unit of heroMembers(game)) tick(unit);
 }
 const nonnegative = value => Number.isFinite(value) ? Math.max(0, value) : 0;
 
@@ -21,7 +23,7 @@ export function grantPersonalExp(game, unit, amount) {
   if (!unit || !Number.isFinite(amount) || amount <= 0) return false;
   const isPlayer = unit === game?.player || unit.isPlayer || unit.isHero;
   if(isPlayer&&game)shareCommanderExp(game,amount);
-  unit.exp = nonnegative(unit.exp) + amount;
+  unit.exp = nonnegative(unit.exp) + amount * heroGrowth(unit);
   let leveled = false;
   for (let guard = 0; guard < 30; guard++) {
     const required = nonnegative(unit.reqExp) || (isPlayer ? 20 : 14);

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {clusterRescueMarkers} from '../js/games/iron-squad/rescue-markers.js?v=171';
+import {clusterRescueMarkers} from '../js/games/iron-squad/rescue-markers.js?v=172';
 const P=(ex,ey,dist,carried=false)=>({ex,ey,angle:0,dist,carried});
 // Five downed allies stacked at the right edge fold into one marker pointing at the nearest.
 {

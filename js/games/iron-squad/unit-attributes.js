@@ -1,3 +1,4 @@
+import {heroGrowth} from './hero-rules.js';
 /** 個体の素質と、実際の行動から育つ能力。装備・職業・Lvの再計算では履歴を変更しない。 */
 export const ATTRIBUTE_KEYS = ['strength','magic','magicDefense','quickness','evasion'];
 export const ATTRIBUTE_LABELS = {strength:'筋力',magic:'魔力',magicDefense:'魔法防御',quickness:'速さ',evasion:'回避'};
@@ -101,7 +102,8 @@ export function attributeMultipliers(unit,values=attributeValues(unit)) {
 }
 export function applyAttributeStats(unit) {
   const values=attributeValues(unit),{physical,magic,movement}=attributeMultipliers(unit,values);
-  unit.strength=values.strength;unit.magicPower=values.magic;unit.magicDef=values.magicDefense;unit.quickness=values.quickness;unit.evasion=values.evasion;
+  const equipmentMagicDefense=Object.values(unit.equipped||{}).reduce((sum,item)=>sum+Math.max(0,Number(item?.stats?.magicDefense)||0),0);
+  unit.strength=values.strength;unit.magicPower=values.magic;unit.magicDef=values.magicDefense+equipmentMagicDefense;unit.quickness=values.quickness;unit.evasion=values.evasion;
   unit.magicAttack=Math.max(1,Math.floor((unit._magicBaseAttack??unit.atk??1)*magic));
   unit.atk=Math.max(1,Math.floor((unit.atk||1)*physical));
   if(unit.healPower>0)unit.healPower=Math.max(1,Math.floor(unit.healPower*magic));
@@ -114,7 +116,7 @@ export function applyAttributeStats(unit) {
 export function practiceAttribute(unit,kind,amount=1) {
   if(!unit||unit.dead||unit.isDown||!(unit.hp>0)||!Number.isFinite(amount)||amount<=0)return false;
   const p=ensureAttributeProfile(unit);if(!(kind in p.practice))return false;
-  const before=p.practice[kind],after=Math.min(Number.MAX_SAFE_INTEGER,before+amount);p.practice[kind]=after;
+  const before=p.practice[kind],after=Math.min(Number.MAX_SAFE_INTEGER,before+amount*heroGrowth(unit));p.practice[kind]=after;
   const key=kind==='travel'?'quickness':kind,gift=practiceGrowth(unit),precision=kind==='evasion'?10:1;
   if(Math.floor(trainingValue(kind,before)*p.aptitudes[key]*gift*precision)!==Math.floor(trainingValue(kind,after)*p.aptitudes[key]*gift*precision))unit._attributesDirty=true;
   return true;

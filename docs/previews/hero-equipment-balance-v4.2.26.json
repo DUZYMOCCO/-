@@ -1,0 +1,218 @@
+{
+  "results": [
+    {
+      "seed": 3,
+      "seconds": 1395.5,
+      "distance": 48364,
+      "status": "fallen",
+      "members": [
+        {
+          "class": "HERO",
+          "talent": "INFERIOR",
+          "level": 34,
+          "maxHp": 12396,
+          "atk": 33152,
+          "def": 10935,
+          "magicDef": 4146,
+          "dead": true
+        },
+        {
+          "class": "HEAVY",
+          "talent": "INFERIOR",
+          "level": 34,
+          "maxHp": 11418,
+          "atk": 16639,
+          "def": 10980,
+          "magicDef": 4116,
+          "dead": true
+        },
+        {
+          "class": "LIGHT",
+          "talent": "TALENTED",
+          "level": 34,
+          "maxHp": 14431,
+          "atk": 35322,
+          "def": 8400,
+          "magicDef": 4147,
+          "dead": true
+        },
+        {
+          "class": "ARCHER",
+          "talent": "AVERAGE",
+          "level": 34,
+          "maxHp": 9202,
+          "atk": 33043,
+          "def": 6200,
+          "magicDef": 4082,
+          "dead": true
+        },
+        {
+          "class": "MEDIC",
+          "talent": "AVERAGE",
+          "level": 34,
+          "maxHp": 10959,
+          "atk": 285,
+          "def": 6200,
+          "magicDef": 4082,
+          "dead": true
+        },
+        {
+          "class": "MAGE",
+          "talent": "AVERAGE",
+          "level": 34,
+          "maxHp": 9257,
+          "atk": 405,
+          "def": 6342,
+          "magicDef": 4102,
+          "dead": true
+        }
+      ],
+      "diaryBytes": 12730,
+      "monsters": 5,
+      "batchMs": 81
+    },
+    {
+      "seed": 11,
+      "seconds": 1500,
+      "distance": 48950,
+      "status": "fallen",
+      "members": [
+        {
+          "class": "HERO",
+          "talent": "INFERIOR",
+          "level": 31,
+          "maxHp": 13166,
+          "atk": 29456,
+          "def": 10935,
+          "magicDef": 4057,
+          "dead": true
+        },
+        {
+          "class": "HEAVY",
+          "talent": "AVERAGE",
+          "level": 31,
+          "maxHp": 13609,
+          "atk": 23105,
+          "def": 10980,
+          "magicDef": 4109,
+          "dead": true
+        },
+        {
+          "class": "LIGHT",
+          "talent": "AVERAGE",
+          "level": 31,
+          "maxHp": 11558,
+          "atk": 29087,
+          "def": 8400,
+          "magicDef": 4115,
+          "dead": true
+        },
+        {
+          "class": "ARCHER",
+          "talent": "AVERAGE",
+          "level": 31,
+          "maxHp": 9352,
+          "atk": 21456,
+          "def": 6200,
+          "magicDef": 4102,
+          "dead": true
+        },
+        {
+          "class": "MEDIC",
+          "talent": "AVERAGE",
+          "level": 30,
+          "maxHp": 10289,
+          "atk": 401,
+          "def": 6200,
+          "magicDef": 4077,
+          "dead": true
+        },
+        {
+          "class": "MAGE",
+          "talent": "AVERAGE",
+          "level": 31,
+          "maxHp": 8902,
+          "atk": 361,
+          "def": 6200,
+          "magicDef": 4078,
+          "dead": true
+        }
+      ],
+      "diaryBytes": 12739,
+      "monsters": 22,
+      "batchMs": 1239
+    },
+    {
+      "seed": 29,
+      "seconds": 706,
+      "distance": 50805,
+      "status": "fallen",
+      "members": [
+        {
+          "class": "HERO",
+          "talent": "INFERIOR",
+          "level": 30,
+          "maxHp": 12283,
+          "atk": 29778,
+          "def": 10935,
+          "magicDef": 4067,
+          "dead": true
+        },
+        {
+          "class": "HEAVY",
+          "talent": "AVERAGE",
+          "level": 30,
+          "maxHp": 13765,
+          "atk": 15876,
+          "def": 10980,
+          "magicDef": 4168,
+          "dead": true
+        },
+        {
+          "class": "LIGHT",
+          "talent": "AVERAGE",
+          "level": 30,
+          "maxHp": 12461,
+          "atk": 25419,
+          "def": 8400,
+          "magicDef": 4110,
+          "dead": true
+        },
+        {
+          "class": "ARCHER",
+          "talent": "AVERAGE",
+          "level": 30,
+          "maxHp": 8921,
+          "atk": 18942,
+          "def": 6200,
+          "magicDef": 4067,
+          "dead": true
+        },
+        {
+          "class": "MEDIC",
+          "talent": "AVERAGE",
+          "level": 29,
+          "maxHp": 10884,
+          "atk": 243,
+          "def": 6200,
+          "magicDef": 4133,
+          "dead": true
+        },
+        {
+          "class": "MAGE",
+          "talent": "AVERAGE",
+          "level": 30,
+          "maxHp": 8893,
+          "atk": 426,
+          "def": 6200,
+          "magicDef": 4099,
+          "dead": true
+        }
+      ],
+      "diaryBytes": 12908,
+      "monsters": 6,
+      "batchMs": 1061
+    }
+  ],
+  "errors": []
+}

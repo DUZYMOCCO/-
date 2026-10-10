@@ -1,5 +1,6 @@
 import {powerRank} from './equipment-tiers.js';
 import {attributeValues,attributeFamily,ATTRIBUTE_BASES} from './unit-attributes.js';
+import {heroEquipmentAllowed} from './hero-equipment.js';
 export const MAGIC_WEAPON_STYLES=['staff','wand'];
 export const WEAPON_STRENGTH_RULES={sword:{base:18,perRank:4},spear:{base:24,perRank:6},hammer:{base:32,perRank:10}};
 export const isMagicWeapon=item=>MAGIC_WEAPON_STYLES.includes(item?.weaponStyle);
@@ -9,7 +10,7 @@ export function requiredWeaponStrength(item) {
   const rule=WEAPON_STRENGTH_RULES[item.weaponStyle||'sword'];
   return rule?Math.ceil(rule.base+Math.max(0,powerRank(item.tier||1)-1)*rule.perRank):0;
 }
-export const canUseWeapon=(unit,item)=>!item||item.type!=='WEAPON'||attributeValues({...unit,equipped:{...unit?.equipped,weapon:item},weapon:item}).strength>=requiredWeaponStrength(item);
+export const canUseWeapon=(unit,item)=>heroEquipmentAllowed(unit,item)&&(!item||item.type!=='WEAPON'||attributeValues({...unit,equipped:{...unit?.equipped,weapon:item},weapon:item}).strength>=requiredWeaponStrength(item));
 export function preferredWeaponStyle(unit,tier=1,preferred=unit.favoriteWeapon) {
   const family=attributeFamily(unit),values=attributeValues(unit),base=ATTRIBUTE_BASES[family];
   const usable=style=>canUseWeapon(unit,{type:'WEAPON',weaponStyle:style,tier});
@@ -22,6 +23,7 @@ export function preferredWeaponStyle(unit,tier=1,preferred=unit.favoriteWeapon) 
   return 'staff';
 }
 export const weaponRequirementText=(unit,item)=>{
+  if(item?.heroOnly)return heroEquipmentAllowed(unit,item)?'勇者パーティ専用':'勇者パーティ専用（装備不可）';
   const required=requiredWeaponStrength(item);if(!required)return isMagicWeapon(item)?'必要筋力なし':'';
   const current=attributeValues(unit).strength;
   return `必要筋力${required} · ${canUseWeapon(unit,item)?'装備可':`筋力不足（現在${current}）`}`;

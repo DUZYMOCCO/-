@@ -1,3 +1,4 @@
+import {heroGrowth} from './hero-rules.js';
 /** HP成長（被弾）と武器マスタリーの計算ヘルパー。毎フレーム割当なし。 */
 
 export const MELEE_STYLES = ['sword', 'spear', 'hammer', 'staff', 'wand'];
@@ -80,7 +81,7 @@ export function applyHitGrowth(unit, dmg) {
   const absFactor = 0.62 + Math.min(2.0, dmg / 32) * 0.38;
   const before = Math.max(0, Math.min(HIT_GROWTH_SOFT_CAP, Number(unit.hitGrowthPct) || 0));
   const room = Math.max(0, 1 - before / HIT_GROWTH_SOFT_CAP);
-  const gain = HIT_GROWTH_BASE * severity * absFactor * room;
+  const gain = HIT_GROWTH_BASE * severity * absFactor * room * heroGrowth(unit);
   if (gain <= 0) return { gain: 0, crossed: null };
   const after = Math.min(HIT_GROWTH_SOFT_CAP, before + gain);
   unit.hitGrowthPct = after;
@@ -145,7 +146,7 @@ export function gainWeaponMastery(unit, style, amount = null) {
   if (!unit.weaponMastery) unit.weaponMastery = emptyMastery();
   else unit.weaponMastery = normalizeMastery(unit.weaponMastery);
   const before = unit.weaponMastery[style] || 0;
-  unit.weaponMastery[style] = before + add;
+  unit.weaponMastery[style] = before + add * heroGrowth(unit);
   return unit.weaponMastery[style];
 }
 

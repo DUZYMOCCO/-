@@ -6,6 +6,7 @@ import {grantPermanentRescueReward} from './rescue-rewards.js?v=151';
 import {grantPersonalExp,revivalExperience,raiseLevelMark} from './experience-rules.js';
 import {guardRescueLines} from './soldier-dialogue.js';
 import {attributeCarryCapacity} from './unit-attributes.js';
+import {visibleHeroMembers} from './hero-rules.js';
 
 export const RESCUE_TIMEOUT = 45; // 救助猶予時間（秒）広域マップ対応で45秒に延長
 export const isMedic=unit=>['MEDIC','HIGH_PRIEST','SAINT','ARCHANGEL'].includes(unit?.soldierClass);
@@ -27,7 +28,8 @@ export const isMerchantCasualty=unit=>!!(unit?.isMerchant||unit?.isMerchantEscor
 /** 隊長がダウン中のときだけ救助対象へ加える（兵士と同じ搬送・衛生処置ルールを共有）。 */
 export const commanderDown=game=>!!(game?.player?.isDown&&!game.player.dead);
 export const rescueUnits=game=>{
-  const base=game._merchantWounded?.length?[...(game.squad||[]),...game._merchantWounded]:(game.squad||[]);
+  const soldiers=[...(game.squad||[]),...visibleHeroMembers(game)];
+  const base=game._merchantWounded?.length?[...soldiers,...game._merchantWounded]:soldiers;
   return commanderDown(game)?[game.player,...base]:base;
 };
 /** 隊長を助けられる味方（同じ空間で健在な兵士）がいるか。 */
@@ -61,7 +63,7 @@ export const NPC_RESCUE_RADIUS=720;
 /** 門番・商人護衛など、部隊に属さない味方NPC（隊長救助のみ手伝う）。 */
 export const friendlyNpcs=game=>[...(game.gateGuards||[]),...(game.currentDungeon?[]:(game.merchants||[]).flatMap(m=>m.escorts||[]))].filter(u=>u&&u.id!=null);
 export const npcRescuers=game=>friendlyNpcs(game).filter(u=>!u.dead&&!u.isDown&&u.hp>0&&Number.isFinite(u.x)&&(u.isGateGuard?(game.currentDungeon?inCurrentInstance(game,u):u.gateSpace==='field'):(!game.currentDungeon&&!!(u.owesCommander||u.commanderFriend))));
-export const carrierOf=(game,wounded)=>wounded.carrierId==='player'?game.player:((game.squad||[]).find(s=>s.id===wounded.carrierId)||(wounded===game.player?friendlyNpcs(game).find(s=>s.id===wounded.carrierId):undefined));
+export const carrierOf=(game,wounded)=>wounded.carrierId==='player'?game.player:([...game.squad||[],...visibleHeroMembers(game)].find(s=>s.id===wounded.carrierId)||(wounded===game.player?friendlyNpcs(game).find(s=>s.id===wounded.carrierId):undefined));
 export const hasActiveRopePull=game=>{
   if(!game) return false;
   // 壊れた carrierId を先に掃除（常時trueで転送封じを防ぐ）
@@ -476,7 +478,7 @@ export function updateWounded(game,dt) {
       if(isMerchantCasualty(wounded)) {
         game._merchantWounded=(game._merchantWounded||[]).filter(unit=>unit!==wounded);
         if(wounded.isMerchant)wounded.respawnIn=wounded.respawnDelay||210;
-      } else game.phaseCasualties=(game.phaseCasualties||0)+1;
+      } else if(!wounded.heroPartyId)game.phaseCasualties=(game.phaseCasualties||0)+1;
       game.showToast?.(`${wounded.name}は力尽きました`,{field:!isMerchantCasualty(wounded)});
     }
   }

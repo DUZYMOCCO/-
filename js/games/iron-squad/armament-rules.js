@@ -40,7 +40,7 @@ export function advanceResearch(game,available) {
 
 /** A pure trial of the real stat calculation. No HP, mana, appearance or caches on the actor are mutated. */
 export function soldierEquipmentValue(game,soldier,item,key,classes) {
-  if(key==='weapon'&&!canUseWeapon(soldier,item))return -Infinity;
+  if(!canUseWeapon(soldier,item))return -Infinity;
   const cls=classes[soldier.soldierClass]||classes.HEAVY,family=cls.baseClassId||soldier.soldierClass;
   const archer=family==='ARCHER',medic=['MEDIC','HIGH_PRIEST','SAINT','ARCHANGEL'].includes(soldier.soldierClass),mage=family==='MAGE';
   if(key==='weapon'&&item&&!medic&&!mage){const ranged=weaponCombatProfile(item).ranged;if(archer!==ranged)return -Infinity;}

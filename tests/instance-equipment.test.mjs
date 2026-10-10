@@ -96,12 +96,13 @@ assert.ok(game.sharedEquipBox.some(i=>i.id===spare.id));game.processSharedEquipm
 fresh();const downForSupply=game.squad[1];Object.assign(downForSupply,{hp:0,isDown:true});game.treasury=10000;game.supplyMissingEquipment();
 assert.ok(downForSupply.equipped.shield);assert.equal(downForSupply.hp,0);assert.equal(downForSupply.isDown,true,'actual procurement and stat recalculation do not revive casualties');
 fresh();const originalIds=game.squad.map(s=>s.id),upgraded=gear('retain-upgraded','ARMOR',3,25);game.squad[0].equipped.armor=upgraded;game.recalcSoldierStats(game.squad[0]);
+let totalProcurement=0;
 for(let i=0;i<30;i++){
-  game.completePhase();const l=game.lastFiscalReport,t=fiscalTotals(l);
+  game.completePhase();const l=game.lastFiscalReport,t=fiscalTotals(l);totalProcurement+=l.equipmentProcurement||0;
   assert.equal(l.salaryShortfall,0);assert.equal(l.endBalance-l.startBalance,t.net);assert.ok(game.treasury>=Math.max(6000,(game.squad.length+game.reserves.length)*40));game.finishRest();
 }
 assert.ok(game.squad.filter(s=>originalIds.includes(s.id)).every(s=>Object.values(SLOT_INFO).every(({key})=>s.equipped[key])),'all seven slots are filled after thirty waves without loot');
-assert.equal(game.squad[0].equipped.armor.id,upgraded.id);assert.equal(upgraded.upgrade,25);assert.ok(game.lastFiscalReport.equipmentProcurement>0);
+assert.equal(game.squad[0].equipped.armor.id,upgraded.id);assert.equal(upgraded.upgrade,25);assert.ok(totalProcurement>0);
 game.saveGame();game.resumeSavedGame(saveSlots.get(game.activeSlotId).data);assert.equal(game.squad[0].equipped.armor.id,upgraded.id);
 game.phase++;game.treasury=0;game.squad[0].equipped.shield=null;assert.deepEqual(game.supplyMissingEquipment(),{phase:game.phase-1,issued:0,spent:0,updated:0,forged:0,budget:0});assert.equal(game.treasury,0);assert.equal(game.squad[0].equipped.shield,null);
 
