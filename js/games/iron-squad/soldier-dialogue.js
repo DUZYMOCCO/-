@@ -630,6 +630,7 @@ export class SoldierDialogueManager {
     this.globalCooldownMs = 3500; // 全体で3.5秒は空ける
     this.maxActiveBubbles = 2; // 同時に画面内に出るのは最大2個まで
     this.bubbleLifetime = 1.8; // フキダシ表示時間（1.8秒）
+    this._lastLevelUpTime = 0; // 同時レベルアップ発言抑制用
   }
 
   // リセット
@@ -639,6 +640,7 @@ export class SoldierDialogueManager {
     this.recentHistory = [];
     this.soldierCooldowns.clear();
     this.globalCooldownUntil = 0;
+    this._lastLevelUpTime = 0;
   }
 
   // 発言可能かチェック
@@ -675,7 +677,21 @@ export class SoldierDialogueManager {
 
   // フキダシをトリガー
   trigger(soldier, category, now = Date.now(), forced = false) {
-    if (!forced && !this.canTrigger(soldier, now)) return false;
+    if (!soldier || soldier.dead || soldier.isDown) return false;
+
+    if (forced) {
+      // 複数人同時レベルアップ時は代表1人のみ発言（重なり防止）
+      if (category === 'LEVEL_UP_REACTION') {
+        if (this._lastLevelUpTime && now - this._lastLevelUpTime < 1200) return false;
+        this._lastLevelUpTime = now;
+      }
+      // 強制発言時でも画面上の最大同時表示数 (maxActiveBubbles=2) を厳守
+      while (this.activeBubbles.length >= this.maxActiveBubbles) {
+        this.activeBubbles.shift();
+      }
+    } else {
+      if (!this.canTrigger(soldier, now)) return false;
+    }
 
     const candidates = this.getCandidates(category, soldier);
     if (candidates.length === 0) return false;
@@ -749,7 +765,7 @@ export class SoldierDialogueManager {
   }
 
   // Canvas描画（カメラ座標系）
-  draw(ctx, camera = null, zoom = 1.0) {
+  draw(ctx, camera = null, zoom = 1.0, logicalWidth = null) {
     if (this.activeBubbles.length === 0) return;
 
     ctx.save();
@@ -757,10 +773,19 @@ export class SoldierDialogueManager {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
-    const canvasWidth = ctx.canvas?.width || 320;
+    // 画面の論理幅（DPRに依存しないUI基準幅、例: 320）
+    let screenWidth = 320;
+    if (Number.isFinite(logicalWidth) && logicalWidth > 0) {
+      screenWidth = logicalWidth;
+    } else if (typeof window !== 'undefined' && window.devicePixelRatio > 1 && ctx.canvas?.width > 0) {
+      screenWidth = ctx.canvas.width / window.devicePixelRatio;
+    } else if (ctx.canvas?.width > 0) {
+      screenWidth = ctx.canvas.width;
+    }
+
     const currentZoom = Math.max(0.1, Number(zoom) || 1.0);
     // 画面幅に対して、両端に余白を残したワールド空間での最大テキスト幅（最小80、最大175）
-    const maxTextW = Math.max(80, Math.min(175, (canvasWidth - 28) / currentZoom - 14));
+    const maxTextW = Math.max(80, Math.min(175, (screenWidth - 28) / currentZoom - 14));
 
     for (const b of this.activeBubbles) {
       if (b.opacity <= 0) continue;
@@ -784,12 +809,12 @@ export class SoldierDialogueManager {
       const bh = lines.length === 1 ? (14 + padY * 2) : (lines.length * lineHeight + padY * 2 + 2);
       const radius = 5;
 
-      // 画面内への水平位置クランプ
+      // 画面内への水平位置クランプ（画面の論理幅基準）
       let offsetBoxX = 0;
       if (camera && Number.isFinite(camera.x)) {
-        const halfVisW = (canvasWidth / 2) / currentZoom;
-        const minX = camera.x - halfVisW + bw / 2 + 6;
-        const maxX = camera.x + halfVisW - bw / 2 - 6;
+        const halfVisW = (screenWidth / 2) / currentZoom;
+        const minX = camera.x - halfVisW + bw / 2 + 8;
+        const maxX = camera.x + halfVisW - bw / 2 - 8;
         if (minX <= maxX) {
           const clampedX = Math.max(minX, Math.min(maxX, sx));
           offsetBoxX = clampedX - sx;

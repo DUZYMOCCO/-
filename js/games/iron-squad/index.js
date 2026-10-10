@@ -5171,14 +5171,17 @@ export const IronSquadGame = {
       const nearSoldiers = this.squad.filter(s => !s.dead && !s.isDown && Math.hypot(s.x - camX, s.y - camY) < 320);
       if (nearSoldiers.length > 0) {
         const lucky = nearSoldiers[Math.floor(Math.random() * nearSoldiers.length)];
+        const isDefense = Boolean((this.invasions?.stage && this.invasions.stage !== 'idle') || this.baseRaidActive || this.invasionActive);
         const nearBoss = (this.monsters || []).find(m => (m.isBoss || m.isColossal) && m.hp > 0 && Math.hypot(m.x - lucky.x, m.y - lucky.y) < 280);
-        if (nearBoss) {
+
+        if (isDefense) {
+          this.dialogue.trigger(lucky, 'INVASION_DEFENSE');
+        } else if (nearBoss) {
           this.dialogue.trigger(lucky, 'BOSS_ENCOUNTER');
         } else if (Math.random() < 0.40) {
           let category = 'PATROL';
           const isNight = daylightAt(this.worldTime)?.period === 'night';
           const nearEnemy = (this.monsters || []).some(m => m.hp > 0 && Math.hypot(m.x - lucky.x, m.y - lucky.y) < 280);
-          const isDefense = Boolean((this.invasions?.stage && this.invasions.stage !== 'idle') || this.baseRaidActive || this.invasionActive);
           const isDungeon = Boolean(this.currentDungeon);
           const luckyInBase = !this.currentDungeon && Math.hypot(lucky.x - BASE_CAMP.x, lucky.y - BASE_CAMP.y) < BASE_CAMP.radius;
           const isNearFarm = !this.currentDungeon && (
@@ -5187,9 +5190,7 @@ export const IronSquadGame = {
           );
           const isLeisure = insideBase || luckyInBase || isNearFarm;
 
-          if (isDefense) {
-            category = 'INVASION_DEFENSE';
-          } else if (isDungeon) {
+          if (isDungeon) {
             category = 'DUNGEON_EXPLORE';
           } else if (isLeisure && !nearEnemy) {
             category = 'FARM_LEISURE';
@@ -10108,7 +10109,7 @@ export const IronSquadGame = {
     }
 
     // 8.2 兵士の一言フキダシ（操作を邪魔しない控えめな感情表現）
-    this.dialogue?.draw(this.ctx, this.camera, this.zoom);
+    this.dialogue?.draw(this.ctx, this.camera, this.zoom, this.width);
 
     // Fog of war (bit-grid fillRect; skip inside dungeons)
     // v1.25.11: camp seed + player-dark reseed; overlay gets player coords for fail-safe
