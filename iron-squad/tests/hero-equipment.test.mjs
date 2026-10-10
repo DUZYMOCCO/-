@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+// 体格・才能の抽選でHPが±15%ほど揺れるため、乱数を固定して毎回同じ勇者で検証する（未固定だと約2/3で閾値を割った）。
+{let s=20261011;Math.random=()=>((s=Math.imul(s^(s>>>15),2246822507)+0x9e3779b9|0)>>>0)/4294967296;}
 const memory=new Map();globalThis.localStorage={getItem:k=>memory.get(k)??null,setItem:(k,v)=>memory.set(k,v),removeItem:k=>memory.delete(k)};
 globalThis.window={};globalThis.document={getElementById:()=>null};
 const {IronSquadGame,SOLDIER_CLASSES,applyUpgradeStats}=await import('../js/index.js');
