@@ -217,8 +217,14 @@ export function grantRescueBonus(game,wounded,options={}) {
   const carrierBonusGold=carrier===game.player?50:0;
   const totalGold=baseGold+carrierBonusGold;
 
-  // 1. 部隊軍資金（共有経済）
-  game.gold=(game.gold||0)+totalGold;
+  // 1. 救助報奨金。隊長が搬送・蘇生したときだけ隊長の軍資金へ。
+  // 兵士だけの救助は隊長の功績ではないので国庫へ（搬送者・衛生兵の個人報酬は下で別途）。
+  if(carrier===game.player||medic===game.player) {
+    game.gold=(game.gold||0)+totalGold;
+  } else {
+    game.treasury=(game.treasury||0)+baseGold;
+    if(game.phaseFiscal)game.phaseFiscal.defenseRewards=(game.phaseFiscal.defenseRewards||0)+baseGold;
+  }
 
   // 2. 昇進EXP（指揮階級）— 誰が救助しても部隊武勲として加算
   const rankExpGain=isBase?20:12;

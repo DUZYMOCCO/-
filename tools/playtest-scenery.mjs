@@ -9,7 +9,7 @@ try{
   page.on('pageerror',e=>errors.push(e.message));
   await page.goto('http://localhost:8000/tools/canvas-quality-review.html');await page.waitForFunction(()=>window.qualityReady);
   const cases=await page.evaluate(async()=>{
-   const {SETTLEMENTS,WORLD_SIZE}=await import('/js/games/iron-squad/world.js?v=166'),C=WORLD_SIZE/2;
+   const {SETTLEMENTS,WORLD_SIZE}=await import('/js/games/iron-squad/world.js?v=168'),C=WORLD_SIZE/2;
    const g=qualityGame;g.stopGameLoop();g.monsters=[];g.updateSpawns=()=>{};
    const props=[];
    for(const [type,x,y] of [['oak',C,C],['pine',C,C-14000]]){

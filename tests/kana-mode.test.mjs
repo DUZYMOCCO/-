@@ -69,7 +69,7 @@ const originals=['fillText','strokeText','measureText'].map(n=>FakeContext.proto
 const memory=new Map();
 globalThis.localStorage={getItem:k=>memory.get(k)??null,setItem:(k,v)=>memory.set(k,v),removeItem:k=>memory.delete(k)};
 // same specifier as the game's imports so both share one module instance
-const mode=await import('../js/kana-mode.js?v=166');
+const mode=await import('../js/kana-mode.js?v=168');
 assert.equal(mode.isKanaMode(),false);
 assert.equal(mode.displayKana('敵軍'),'敵軍','OFF returns text untouched');
 const ctx=new FakeContext();ctx.fillText('敵軍',0,0);assert.deepEqual(calls.pop(),['fill','敵軍']);
@@ -91,3 +91,19 @@ assert.equal(mode.isKanaMode(),false);
 ctx.fillText('敵軍',0,0);assert.deepEqual(calls.pop(),['fill','敵軍']);
 assert.equal(wrapDialogueText(new FakeContext(),'敵軍',80).join(''),'敵軍');
 console.log(`kana-mode: ${fragments.size} Japanese fragments checked at grade 2`);
+
+// 5. main canvas context: no Proxy, toggling kana takes effect on the very same context object immediately
+{
+  const {quietBattlefieldContext}=await import('../js/games/iron-squad/battlefield-ui.js');
+  const main=new FakeContext();
+  const quiet=quietBattlefieldContext(main);
+  assert.equal(quiet,main,'the real context is returned (no Proxy)');
+  assert.equal(quiet.showBattleLabels,false,'nameplates stay off');
+  assert.equal(quietBattlefieldContext(quiet),quiet);assert.equal(quietBattlefieldContext(null),null);
+  quiet.fillText('敵軍',0,0);assert.deepEqual(calls.pop(),['fill','敵軍'],'OFF: unchanged');
+  mode.setKanaMode(true);
+  quiet.fillText('敵軍',0,0);assert.deepEqual(calls.pop(),['fill','てきぐん'],'ON applies at once on the already-wrapped context');
+  assert.equal(quiet.measureText('兵士').width,30);
+  mode.setKanaMode(false);
+  quiet.fillText('敵軍',0,0);assert.deepEqual(calls.pop(),['fill','敵軍'],'OFF reverts at once');
+}

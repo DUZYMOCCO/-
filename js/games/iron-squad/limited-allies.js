@@ -105,7 +105,8 @@ export function updateLimitedAllies(game) {
  renderLimitedJoinNotice(game);
  const root=game.container;if(!root)return;
  let button=root.querySelector('#btn-limited-ally');
- if(!button){const host=root.querySelector('.field-interactions');if(!host)return;button=document.createElement('button');button.id='btn-limited-ally';button.className='phase-btn';button.type='button';host.append(button);}
+ // 声かけボタンは戦場に出す（メニュー内だと気づけない）
+ if(!button){const host=root.querySelector('#virtual-gamepad')||root.querySelector('.field-interactions');if(!host)return;button=document.createElement('button');button.id='btn-limited-ally';button.className='phase-btn';button.type='button';host.prepend(button);}
  const e=game.limitedAllies?.encounters.find(e=>!e.joined&&e.dungeonId===game.currentDungeon?.id&&Math.hypot(game.player.x-e.x,game.player.y-e.y)<=100);
  button.classList.toggle('hidden',!e);if(e){button.textContent=e.kind==='cage'?`ケージを開けて${e.unit.name}を救助`:`${e.unit.name}に話しかける`;button.onclick=()=>joinLimitedEncounter(game,e.id);}
 }

@@ -173,8 +173,10 @@
 .iron-squad.quiet-battlefield .quiet-vitals .qv-hp[data-condition="critical"] { color:#f87171; }
 .iron-squad.quiet-battlefield .quiet-vitals .qv-mp { color:#c5cbe0; }
 .iron-squad.quiet-battlefield .quiet-vitals .qv-gold { color:#e1cf9d; }
+.iron-squad.quiet-battlefield .quiet-vitals { flex-wrap:wrap; row-gap:0; }
+.iron-squad.quiet-battlefield .quiet-vitals .qv-stats { flex:0 0 100%; text-align:center; font-size:10px; line-height:14px; color:#d9cfae; opacity:.72; background:none; pointer-events:none; }
 .dialog-open .quiet-vitals { visibility:hidden; }
-.iron-squad.quiet-battlefield .navigation-overlay { position:absolute; top:24px; top:max(24px, calc(env(safe-area-inset-top) + 18px)); left:8px; left:max(8px, env(safe-area-inset-left)); right:auto; transform:none; width:auto !important; height:auto !important; border:0 !important; border-radius:0; background:transparent !important; box-shadow:none !important; padding:0; z-index:8; opacity:.34; pointer-events:none !important; }
+.iron-squad.quiet-battlefield .navigation-overlay { position:absolute; top:38px; top:max(38px, calc(env(safe-area-inset-top) + 32px)); left:8px; left:max(8px, env(safe-area-inset-left)); right:auto; transform:none; width:auto !important; height:auto !important; border:0 !important; border-radius:0; background:transparent !important; box-shadow:none !important; padding:0; z-index:8; opacity:.34; pointer-events:none !important; }
 .iron-squad.quiet-battlefield .navigation-overlay canvas { display:block; max-width:168px; }
 .iron-squad.quiet-battlefield .battle-log-window { display:none !important; }
 .iron-squad.quiet-battlefield .battle-log-window.has-field-note {
@@ -1154,3 +1156,30 @@
   .iron-squad .transfer-popup-overlay:not([style]) .transfer-popup-close-btn, .iron-squad .sheet-bar-btn { height: 38px; min-height: 38px; }
 }
 .iron-squad .sheet-bar-title:focus { outline: none; }
+
+/* v4.2.20 動作ログ（止まった記録） */
+.iron-squad .stall-log-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 8px 0; }
+.iron-squad .stall-log-actions button { min-height: 44px; padding: 0 16px; border: 1px solid var(--ui-line); border-radius: 8px; background: var(--ui-panel); color: var(--ui-text); }
+.iron-squad .stall-log-status { font-size: 12px; color: var(--ui-muted); }
+.iron-squad .stall-log-list { list-style: none; margin: 0; padding: 0; }
+.iron-squad .stall-log-item { padding: 8px 0; border-top: 1px solid var(--ui-line); font-size: 12px; line-height: 1.6; color: var(--ui-muted); word-break: break-all; }
+.iron-squad .stall-log-item strong { color: var(--ui-gold); display: block; }
+.iron-squad .stall-log-json { width: 100%; box-sizing: border-box; font-size: 11px; }
+
+/* 待機カウントダウンは戦場に出す（v4.2.20）。長い文は折り返してバナー内に収める */
+.iron-squad #virtual-gamepad > #phase-complete-banner { width: calc(100% - 32px) !important; max-width: 420px; box-sizing: border-box; }
+.iron-squad #virtual-gamepad > #phase-complete-banner #phase-banner-text { white-space: normal; overflow: visible; }
+
+/* v4.2.20 戦況ウィンドウ上部の軍資金 */
+.iron-squad .strat-window-heading { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; line-height: 1.25; }
+.iron-squad .strat-window-heading .strat-window-title { flex: none; }
+.iron-squad .strat-window-gold { font-size: 11px; color: var(--ui-gold); opacity: .85; }
+/* 「入る」・仲間への声かけも商人バナーと同じ位置（操作エリアの上・中央）に出す */
+.iron-squad.quiet-battlefield #virtual-gamepad > #dungeon-prompt-banner,
+.iron-squad.quiet-battlefield #virtual-gamepad > #btn-limited-ally {
+  grid-column: 1 / -1; grid-row: 1; position: relative; left: auto !important; top: auto !important;
+  width: min(340px, 100%) !important; max-width: 100%; justify-self: center; margin: 0 0 6px;
+  z-index: 16; box-sizing: border-box; pointer-events: auto; transform: none !important; animation: none;
+}
+.iron-squad.quiet-battlefield #virtual-gamepad > #dungeon-prompt-banner:not(.hidden) { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 12px; border-radius: 8px; }
+.iron-squad.quiet-battlefield #virtual-gamepad > #btn-limited-ally { min-height: 40px; border-radius: 8px; font-weight: bold; }

@@ -1,0 +1,4766 @@
+{
+  "mode": "off",
+  "minutes": 10,
+  "errors": [
+    {
+      "t": 1791632007733,
+      "console": "Failed to load resource: the server responded with a status of 404 (File not found)"
+    },
+    {
+      "ui": "strategy",
+      "msg": "TimeoutError: page.click: Timeout 3000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('#btn-strategy')\u001b[22m\n\u001b[2m    - locator resolved to <button title=\"戦略会議・本陣\" class=\"icon-btn\" id=\"btn-strategy\" "
+    },
+    {
+      "ui": "strategy",
+      "msg": "TimeoutError: page.click: Timeout 3000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('#btn-strategy')\u001b[22m\n\u001b[2m    - locator resolved to <button title=\"戦略会議・本陣\" class=\"icon-btn\" id=\"btn-strategy\" "
+    },
+    {
+      "ui": "strategy",
+      "msg": "TimeoutError: page.click: Timeout 3000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('#btn-strategy')\u001b[22m\n\u001b[2m    - locator resolved to <button inert=\"\" title=\"戦略会議・本陣\" class=\"icon-btn\" id=\"btn-s"
+    },
+    {
+      "ui": "strategy",
+      "msg": "TimeoutError: page.click: Timeout 3000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('#btn-strategy')\u001b[22m\n\u001b[2m    - locator resolved to <button inert=\"\" title=\"戦略会議・本陣\" class=\"icon-btn\" id=\"btn-s"
+    },
+    {
+      "ui": "strategy",
+      "msg": "TimeoutError: page.click: Timeout 3000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('#btn-strategy')\u001b[22m\n\u001b[2m    - locator resolved to <button inert=\"\" title=\"戦略会議・本陣\" class=\"icon-btn\" id=\"btn-s"
+    },
+    {
+      "ui": "strategy",
+      "msg": "TimeoutError: page.click: Timeout 3000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('#btn-strategy')\u001b[22m\n\u001b[2m    - locator resolved to <button inert=\"\" title=\"戦略会議・本陣\" class=\"icon-btn\" id=\"btn-s"
+    },
+    {
+      "ui": "strategy",
+      "msg": "TimeoutError: page.click: Timeout 3000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('#btn-strategy')\u001b[22m\n\u001b[2m    - locator resolved to <button inert=\"\" title=\"戦略会議・本陣\" class=\"icon-btn\" id=\"btn-s"
+    }
+  ],
+  "pageErrs": [],
+  "renderProblem": false,
+  "samples": [
+    {
+      "t": 0,
+      "heap": 9.4,
+      "nodes": 1343,
+      "listeners": 114,
+      "docs": 4,
+      "label": "start",
+      "kana": false,
+      "inB": true,
+      "mons": 7,
+      "wave": 1,
+      "tiles": 4,
+      "moCalls": 9,
+      "moRecs": 25,
+      "gaps": 5,
+      "long": 10
+    },
+    {
+      "t": 1,
+      "heap": 10,
+      "nodes": 1393,
+      "listeners": 114,
+      "docs": 4,
+      "label": "oak",
+      "kana": false,
+      "inB": true,
+      "mons": 7,
+      "wave": 1,
+      "tiles": 24,
+      "moCalls": 12,
+      "moRecs": 32,
+      "gaps": 6,
+      "long": 12
+    },
+    {
+      "t": 6,
+      "heap": 10.1,
+      "nodes": 1354,
+      "listeners": 114,
+      "docs": 1,
+      "label": "oak",
+      "kana": false,
+      "inB": true,
+      "mons": 5,
+      "wave": 1,
+      "tiles": 24,
+      "moCalls": 171,
+      "moRecs": 360,
+      "gaps": 8,
+      "long": 19
+    },
+    {
+      "t": 11,
+      "heap": 10.7,
+      "nodes": 1574,
+      "listeners": 114,
+      "docs": 1,
+      "label": "rock",
+      "kana": false,
+      "inB": true,
+      "mons": 4,
+      "wave": 1,
+      "tiles": 24,
+      "moCalls": 394,
+      "moRecs": 817,
+      "gaps": 9,
+      "long": 19
+    },
+    {
+      "t": 23,
+      "heap": 21.1,
+      "nodes": 12715,
+      "listeners": 840,
+      "docs": 1,
+      "label": "rock",
+      "kana": false,
+      "inB": true,
+      "mons": 4,
+      "wave": 1,
+      "tiles": 24,
+      "moCalls": 652,
+      "moRecs": 1347,
+      "gaps": 15,
+      "long": 24
+    },
+    {
+      "t": 28,
+      "heap": 16.5,
+      "nodes": 12303,
+      "listeners": 827,
+      "docs": 1,
+      "label": "oak",
+      "kana": false,
+      "inB": true,
+      "mons": 4,
+      "wave": 1,
+      "tiles": 24,
+      "moCalls": 877,
+      "moRecs": 1809,
+      "gaps": 17,
+      "long": 24
+    },
+    {
+      "t": 33,
+      "heap": 13.9,
+      "nodes": 12477,
+      "listeners": 827,
+      "docs": 1,
+      "label": "rock",
+      "kana": false,
+      "inB": true,
+      "mons": 4,
+      "wave": 1,
+      "tiles": 24,
+      "moCalls": 1122,
+      "moRecs": 2310,
+      "gaps": 19,
+      "long": 25
+    },
+    {
+      "t": 38,
+      "heap": 12.6,
+      "nodes": 12361,
+      "listeners": 827,
+      "docs": 1,
+      "label": "rock",
+      "kana": false,
+      "inB": true,
+      "mons": 4,
+      "wave": 1,
+      "tiles": 24,
+      "moCalls": 1366,
+      "moRecs": 2809,
+      "gaps": 20,
+      "long": 25
+    },
+    {
+      "t": 44,
+      "heap": 16.3,
+      "nodes": 12033,
+      "listeners": 827,
+      "docs": 1,
+      "label": "oak",
+      "kana": false,
+      "inB": true,
+      "mons": 4,
+      "wave": 1,
+      "tiles": 24,
+      "moCalls": 1610,
+      "moRecs": 3309,
+      "gaps": 22,
+      "long": 25
+    },
+    {
+      "t": 49,
+      "heap": 15.5,
+      "nodes": 12189,
+      "listeners": 827,
+      "docs": 1,
+      "label": "oak",
+      "kana": false,
+      "inB": true,
+      "mons": 4,
+      "wave": 1,
+      "tiles": 24,
+      "moCalls": 1862,
+      "moRecs": 3824,
+      "gaps": 24,
+      "long": 25
+    },
+    {
+      "t": 54,
+      "heap": 15.8,
+      "nodes": 12251,
+      "listeners": 827,
+      "docs": 1,
+      "label": "free",
+      "kana": false,
+      "inB": true,
+      "mons": 4,
+      "wave": 1,
+      "tiles": 24,
+      "moCalls": 2116,
+      "moRecs": 4343,
+      "gaps": 25,
+      "long": 25
+    },
+    {
+      "t": 60,
+      "heap": 16.9,
+      "nodes": 12207,
+      "listeners": 831,
+      "docs": 1,
+      "label": "oak",
+      "kana": false,
+      "inB": true,
+      "mons": 4,
+      "wave": 1,
+      "tiles": 24,
+      "moCalls": 2296,
+      "moRecs": 4712,
+      "gaps": 26,
+      "long": 25
+    },
+    {
+      "t": 65,
+      "heap": 25.5,
+      "nodes": 12432,
+      "listeners": 829,
+      "docs": 1,
+      "label": "rock",
+      "kana": false,
+      "inB": true,
+      "mons": 4,
+      "wave": 1,
+      "tiles": 24,
+      "moCalls": 2569,
+      "moRecs": 5269,
+      "gaps": 26,
+      "long": 25
+    },
+    {
+      "t": 70,
+      "heap": 20.9,
+      "nodes": 12104,
+      "listeners": 829,
+      "docs": 1,
+      "label": "rock",
+      "kana": false,
+      "inB": true,
+      "mons": 5,
+      "wave": 1,
+      "tiles": 24,
+      "moCalls": 2824,
+      "moRecs": 5791,
+      "gaps": 28,
+      "long": 26
+    },
+    {
+      "t": 75,
+      "heap": 22.2,
+      "nodes": 12543,
+      "listeners": 829,
+      "docs": 1,
+      "label": "rock",
+      "kana": false,
+      "inB": true,
+      "mons": 6,
+      "wave": 1,
+      "tiles": 24,
+      "moCalls": 3095,
+      "moRecs": 6344,
+      "gaps": 30,
+      "long": 28
+    },
+    {
+      "t": 82,
+      "heap": 22.9,
+      "nodes": 12122,
+      "listeners": 829,
+      "docs": 1,
+      "label": "rock",
+      "kana": false,
+      "inB": true,
+      "mons": 12,
+      "wave": 1,
+      "tiles": 24,
+      "moCalls": 3484,
+      "moRecs": 7137,
+      "gaps": 30,
+      "long": 28
+    },
+    {
+      "t": 87,
+      "heap": 15.7,
+      "nodes": 12179,
+      "listeners": 829,
+      "docs": 1,
+      "label": "free",
+      "kana": false,
+      "inB": true,
+      "mons": 13,
+      "wave": 1,
+      "tiles": 24,
+      "moCalls": 3785,
+      "moRecs": 7750,
+      "gaps": 32,
+      "long": 28
+    },
+    {
+      "t": 92,
+      "heap": 23.9,
+      "nodes": 11978,
+      "listeners": 829,
+      "docs": 1,
+      "label": "free",
+      "kana": false,
+      "inB": true,
+      "mons": 13,
+      "wave": 1,
+      "tiles": 24,
+      "moCalls": 4086,
+      "moRecs": 8364,
+      "gaps": 32,
+      "long": 29
+    },
+    {
+      "t": 97,
+      "heap": 18.9,
+      "nodes": 12012,
+      "listeners": 829,
+      "docs": 1,
+      "label": "oak",
+      "kana": false,
+      "inB": true,
+      "mons": 14,
+      "wave": 1,
+      "tiles": 24,
+      "moCalls": 4377,
+      "moRecs": 8961,
+      "gaps": 32,
+      "long": 30
+    },
+    {
+      "t": 103,
+      "heap": 20,
+      "nodes": 12665,
+      "listeners": 829,
+      "docs": 1,
+      "label": "free",
+      "kana": false,
+      "inB": true,
+      "mons": 5,
+      "wave": 1,
+      "tiles": 24,
+      "moCalls": 4664,
+      "moRecs": 9547,
+      "gaps": 33,
+      "long": 31
+    },
+    {
+      "t": 108,
+      "heap": 21,
+      "nodes": 12340,
+      "listeners": 829,
+      "docs": 1,
+      "label": "oak",
+      "kana": false,
+      "inB": true,
+      "mons": 2,
+      "wave": 1,
+      "tiles": 24,
+      "moCalls": 4953,
+      "moRecs": 10136,
+      "gaps": 34,
+      "long": 31
+    },
+    {
+      "t": 113,
+      "heap": 14,
+      "nodes": 12552,
+      "listeners": 829,
+      "docs": 1,
+      "label": "oak",
+      "kana": false,
+      "inB": true,
+      "mons": 7,
+      "wave": 1,
+      "tiles": 24,
+      "moCalls": 5252,
+      "moRecs": 10746,
+      "gaps": 34,
+      "long": 31
+    },
+    {
+      "t": 120,
+      "heap": 15.4,
+      "nodes": 11972,
+      "listeners": 829,
+      "docs": 1,
+      "label": "oak",
+      "kana": false,
+      "inB": true,
+      "mons": 12,
+      "wave": 1,
+      "tiles": 24,
+      "moCalls": 5623,
+      "moRecs": 11504,
+      "gaps": 36,
+      "long": 32
+    },
+    {
+      "t": 125,
+      "heap": 19.2,
+      "nodes": 12397,
+      "listeners": 829,
+      "docs": 1,
+      "label": "rock",
+      "kana": false,
+      "inB": true,
+      "mons": 12,
+      "wave": 1,
+      "tiles": 24,
+      "moCalls": 5918,
+      "moRecs": 12109,
+      "gaps": 37,
+      "long": 32
+    },
+    {
+      "t": 131,
+      "heap": 19.8,
+      "nodes": 11993,
+      "listeners": 829,
+      "docs": 1,
+      "label": "free",
+      "kana": false,
+      "inB": true,
+      "mons": 0,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 6170,
+      "moRecs": 12621,
+      "gaps": 38,
+      "long": 33
+    },
+    {
+      "t": 136,
+      "heap": 15.8,
+      "nodes": 11982,
+      "listeners": 829,
+      "docs": 1,
+      "label": "oak",
+      "kana": false,
+      "inB": true,
+      "mons": 0,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 6182,
+      "moRecs": 12633,
+      "gaps": 40,
+      "long": 33
+    },
+    {
+      "t": 142,
+      "heap": 25.5,
+      "nodes": 12455,
+      "listeners": 833,
+      "docs": 1,
+      "label": "rock",
+      "kana": false,
+      "inB": true,
+      "mons": 16,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 6274,
+      "moRecs": 12816,
+      "gaps": 42,
+      "long": 34
+    },
+    {
+      "t": 147,
+      "heap": 27.2,
+      "nodes": 12233,
+      "listeners": 829,
+      "docs": 1,
+      "label": "rock",
+      "kana": false,
+      "inB": true,
+      "mons": 14,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 6571,
+      "moRecs": 13423,
+      "gaps": 42,
+      "long": 35
+    },
+    {
+      "t": 152,
+      "heap": 27.9,
+      "nodes": 12181,
+      "listeners": 829,
+      "docs": 1,
+      "label": "rock",
+      "kana": false,
+      "inB": true,
+      "mons": 5,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 6874,
+      "moRecs": 14041,
+      "gaps": 44,
+      "long": 35
+    },
+    {
+      "t": 158,
+      "heap": 28.1,
+      "nodes": 12557,
+      "listeners": 829,
+      "docs": 1,
+      "label": "rock",
+      "kana": false,
+      "inB": true,
+      "mons": 8,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 7173,
+      "moRecs": 14650,
+      "gaps": 45,
+      "long": 35
+    },
+    {
+      "t": 164,
+      "heap": 38.2,
+      "nodes": 12417,
+      "listeners": 829,
+      "docs": 1,
+      "label": "town:ruinwall",
+      "kana": false,
+      "inB": true,
+      "mons": 13,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 7559,
+      "moRecs": 15438,
+      "gaps": 46,
+      "long": 35
+    },
+    {
+      "t": 169,
+      "heap": 25.3,
+      "nodes": 12577,
+      "listeners": 829,
+      "docs": 1,
+      "label": "town:ruinwall",
+      "kana": false,
+      "inB": true,
+      "mons": 8,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 7843,
+      "moRecs": 16018,
+      "gaps": 47,
+      "long": 37
+    },
+    {
+      "t": 175,
+      "heap": 29.7,
+      "nodes": 11971,
+      "listeners": 829,
+      "docs": 1,
+      "label": "dead",
+      "kana": false,
+      "inB": true,
+      "mons": 18,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 8136,
+      "moRecs": 16615,
+      "gaps": 48,
+      "long": 38
+    },
+    {
+      "t": 180,
+      "heap": 29.9,
+      "nodes": 12211,
+      "listeners": 829,
+      "docs": 1,
+      "label": "dead",
+      "kana": false,
+      "inB": true,
+      "mons": 23,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 8437,
+      "moRecs": 17229,
+      "gaps": 49,
+      "long": 38
+    },
+    {
+      "t": 185,
+      "heap": 27.7,
+      "nodes": 11995,
+      "listeners": 829,
+      "docs": 1,
+      "label": "town:house",
+      "kana": false,
+      "inB": true,
+      "mons": 7,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 8730,
+      "moRecs": 17826,
+      "gaps": 50,
+      "long": 39
+    },
+    {
+      "t": 191,
+      "heap": 22,
+      "nodes": 12372,
+      "listeners": 829,
+      "docs": 1,
+      "label": "oak",
+      "kana": false,
+      "inB": true,
+      "mons": 7,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 9030,
+      "moRecs": 18438,
+      "gaps": 51,
+      "long": 39
+    },
+    {
+      "t": 196,
+      "heap": 38.4,
+      "nodes": 12469,
+      "listeners": 829,
+      "docs": 1,
+      "label": "free",
+      "kana": false,
+      "inB": true,
+      "mons": 8,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 9330,
+      "moRecs": 19049,
+      "gaps": 52,
+      "long": 39
+    },
+    {
+      "t": 202,
+      "heap": 19.2,
+      "nodes": 12350,
+      "listeners": 829,
+      "docs": 1,
+      "label": "town:ruinwall",
+      "kana": false,
+      "inB": true,
+      "mons": 11,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 9692,
+      "moRecs": 19787,
+      "gaps": 52,
+      "long": 41
+    },
+    {
+      "t": 207,
+      "heap": 31.9,
+      "nodes": 12189,
+      "listeners": 829,
+      "docs": 1,
+      "label": "dead",
+      "kana": false,
+      "inB": true,
+      "mons": 12,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 9982,
+      "moRecs": 20378,
+      "gaps": 53,
+      "long": 43
+    },
+    {
+      "t": 213,
+      "heap": 15.8,
+      "nodes": 12406,
+      "listeners": 829,
+      "docs": 1,
+      "label": "free",
+      "kana": false,
+      "inB": true,
+      "mons": 18,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 10287,
+      "moRecs": 20999,
+      "gaps": 54,
+      "long": 43
+    },
+    {
+      "t": 218,
+      "heap": 23.4,
+      "nodes": 11953,
+      "listeners": 829,
+      "docs": 1,
+      "label": "nobattle",
+      "kana": false,
+      "inB": false,
+      "mons": 19,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 10473,
+      "moRecs": 21379,
+      "gaps": 56,
+      "long": 44
+    },
+    {
+      "t": 224,
+      "heap": 40,
+      "nodes": 11999,
+      "listeners": 829,
+      "docs": 1,
+      "label": "nobattle",
+      "kana": false,
+      "inB": false,
+      "mons": 20,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 10546,
+      "moRecs": 21528,
+      "gaps": 56,
+      "long": 46
+    },
+    {
+      "t": 229,
+      "heap": 40.1,
+      "nodes": 11999,
+      "listeners": 829,
+      "docs": 1,
+      "label": "nobattle",
+      "kana": false,
+      "inB": false,
+      "mons": 20,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 10546,
+      "moRecs": 21528,
+      "gaps": 57,
+      "long": 46
+    },
+    {
+      "t": 235,
+      "heap": 40.1,
+      "nodes": 11999,
+      "listeners": 829,
+      "docs": 1,
+      "label": "nobattle",
+      "kana": false,
+      "inB": false,
+      "mons": 20,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 10546,
+      "moRecs": 21528,
+      "gaps": 57,
+      "long": 46
+    },
+    {
+      "t": 241,
+      "heap": 13.5,
+      "nodes": 11881,
+      "listeners": 829,
+      "docs": 1,
+      "label": "nobattle",
+      "kana": false,
+      "inB": false,
+      "mons": 20,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 10546,
+      "moRecs": 21528,
+      "gaps": 57,
+      "long": 46
+    },
+    {
+      "t": 246,
+      "heap": 16.3,
+      "nodes": 11977,
+      "listeners": 829,
+      "docs": 1,
+      "label": "nobattle",
+      "kana": false,
+      "inB": false,
+      "mons": 21,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 10564,
+      "moRecs": 21566,
+      "gaps": 58,
+      "long": 48
+    },
+    {
+      "t": 252,
+      "heap": 16.4,
+      "nodes": 11977,
+      "listeners": 829,
+      "docs": 1,
+      "label": "nobattle",
+      "kana": false,
+      "inB": false,
+      "mons": 21,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 10564,
+      "moRecs": 21566,
+      "gaps": 58,
+      "long": 48
+    },
+    {
+      "t": 257,
+      "heap": 13.1,
+      "nodes": 11881,
+      "listeners": 829,
+      "docs": 1,
+      "label": "nobattle",
+      "kana": false,
+      "inB": false,
+      "mons": 21,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 10564,
+      "moRecs": 21566,
+      "gaps": 58,
+      "long": 48
+    },
+    {
+      "t": 265,
+      "heap": 16,
+      "nodes": 11926,
+      "listeners": 829,
+      "docs": 1,
+      "label": "nobattle",
+      "kana": false,
+      "inB": false,
+      "mons": 21,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 10567,
+      "moRecs": 21573,
+      "gaps": 59,
+      "long": 50
+    },
+    {
+      "t": 271,
+      "heap": 16,
+      "nodes": 11926,
+      "listeners": 829,
+      "docs": 1,
+      "label": "nobattle",
+      "kana": false,
+      "inB": false,
+      "mons": 21,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 10567,
+      "moRecs": 21573,
+      "gaps": 59,
+      "long": 50
+    },
+    {
+      "t": 277,
+      "heap": 16.1,
+      "nodes": 11926,
+      "listeners": 829,
+      "docs": 1,
+      "label": "nobattle",
+      "kana": false,
+      "inB": false,
+      "mons": 21,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 10567,
+      "moRecs": 21573,
+      "gaps": 59,
+      "long": 50
+    },
+    {
+      "t": 283,
+      "heap": 14.3,
+      "nodes": 11913,
+      "listeners": 829,
+      "docs": 1,
+      "label": "nobattle",
+      "kana": false,
+      "inB": false,
+      "mons": 22,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 10586,
+      "moRecs": 21612,
+      "gaps": 60,
+      "long": 52
+    },
+    {
+      "t": 289,
+      "heap": 14.3,
+      "nodes": 11913,
+      "listeners": 829,
+      "docs": 1,
+      "label": "nobattle",
+      "kana": false,
+      "inB": false,
+      "mons": 22,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 10586,
+      "moRecs": 21612,
+      "gaps": 60,
+      "long": 52
+    },
+    {
+      "t": 295,
+      "heap": 14.4,
+      "nodes": 11913,
+      "listeners": 829,
+      "docs": 1,
+      "label": "nobattle",
+      "kana": false,
+      "inB": false,
+      "mons": 22,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 10586,
+      "moRecs": 21612,
+      "gaps": 60,
+      "long": 52
+    },
+    {
+      "t": 300,
+      "heap": 14.4,
+      "nodes": 11913,
+      "listeners": 829,
+      "docs": 1,
+      "label": "nobattle",
+      "kana": false,
+      "inB": false,
+      "mons": 22,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 10586,
+      "moRecs": 21612,
+      "gaps": 61,
+      "long": 52
+    },
+    {
+      "t": 305,
+      "heap": 13.1,
+      "nodes": 11886,
+      "listeners": 829,
+      "docs": 1,
+      "label": "nobattle",
+      "kana": false,
+      "inB": false,
+      "mons": 22,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 10603,
+      "moRecs": 21647,
+      "gaps": 61,
+      "long": 54
+    },
+    {
+      "t": 311,
+      "heap": 13.1,
+      "nodes": 11886,
+      "listeners": 829,
+      "docs": 1,
+      "label": "nobattle",
+      "kana": false,
+      "inB": false,
+      "mons": 22,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 10603,
+      "moRecs": 21647,
+      "gaps": 61,
+      "long": 54
+    },
+    {
+      "t": 316,
+      "heap": 13.2,
+      "nodes": 11886,
+      "listeners": 829,
+      "docs": 1,
+      "label": "nobattle",
+      "kana": false,
+      "inB": false,
+      "mons": 22,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 10603,
+      "moRecs": 21647,
+      "gaps": 62,
+      "long": 54
+    },
+    {
+      "t": 326,
+      "heap": 16.3,
+      "nodes": 11936,
+      "listeners": 829,
+      "docs": 1,
+      "label": "nobattle",
+      "kana": false,
+      "inB": false,
+      "mons": 22,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 10610,
+      "moRecs": 21662,
+      "gaps": 62,
+      "long": 56
+    },
+    {
+      "t": 332,
+      "heap": 16.4,
+      "nodes": 11936,
+      "listeners": 829,
+      "docs": 1,
+      "label": "nobattle",
+      "kana": false,
+      "inB": false,
+      "mons": 22,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 10610,
+      "moRecs": 21662,
+      "gaps": 63,
+      "long": 56
+    },
+    {
+      "t": 337,
+      "heap": 16.4,
+      "nodes": 11936,
+      "listeners": 829,
+      "docs": 1,
+      "label": "nobattle",
+      "kana": false,
+      "inB": false,
+      "mons": 22,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 10610,
+      "moRecs": 21662,
+      "gaps": 63,
+      "long": 56
+    },
+    {
+      "t": 346,
+      "heap": 13.3,
+      "nodes": 11893,
+      "listeners": 829,
+      "docs": 1,
+      "label": "nobattle",
+      "kana": false,
+      "inB": false,
+      "mons": 22,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 10614,
+      "moRecs": 21671,
+      "gaps": 64,
+      "long": 58
+    },
+    {
+      "t": 351,
+      "heap": 13.4,
+      "nodes": 11893,
+      "listeners": 829,
+      "docs": 1,
+      "label": "nobattle",
+      "kana": false,
+      "inB": false,
+      "mons": 22,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 10614,
+      "moRecs": 21671,
+      "gaps": 64,
+      "long": 58
+    },
+    {
+      "t": 357,
+      "heap": 13.4,
+      "nodes": 11893,
+      "listeners": 829,
+      "docs": 1,
+      "label": "nobattle",
+      "kana": false,
+      "inB": false,
+      "mons": 22,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 10614,
+      "moRecs": 21671,
+      "gaps": 64,
+      "long": 58
+    },
+    {
+      "t": 364,
+      "heap": 15.3,
+      "nodes": 11947,
+      "listeners": 829,
+      "docs": 1,
+      "label": "nobattle",
+      "kana": false,
+      "inB": false,
+      "mons": 23,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 10622,
+      "moRecs": 21688,
+      "gaps": 65,
+      "long": 60
+    },
+    {
+      "t": 369,
+      "heap": 15.3,
+      "nodes": 11947,
+      "listeners": 829,
+      "docs": 1,
+      "label": "nobattle",
+      "kana": false,
+      "inB": false,
+      "mons": 23,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 10622,
+      "moRecs": 21688,
+      "gaps": 65,
+      "long": 60
+    },
+    {
+      "t": 375,
+      "heap": 15.4,
+      "nodes": 11947,
+      "listeners": 829,
+      "docs": 1,
+      "label": "nobattle",
+      "kana": false,
+      "inB": false,
+      "mons": 23,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 10622,
+      "moRecs": 21688,
+      "gaps": 65,
+      "long": 60
+    },
+    {
+      "t": 380,
+      "heap": 15.4,
+      "nodes": 11947,
+      "listeners": 829,
+      "docs": 1,
+      "label": "nobattle",
+      "kana": false,
+      "inB": false,
+      "mons": 23,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 10622,
+      "moRecs": 21688,
+      "gaps": 66,
+      "long": 60
+    },
+    {
+      "t": 386,
+      "heap": 13.3,
+      "nodes": 11883,
+      "listeners": 829,
+      "docs": 1,
+      "label": "nobattle",
+      "kana": false,
+      "inB": false,
+      "mons": 23,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 10628,
+      "moRecs": 21701,
+      "gaps": 66,
+      "long": 62
+    },
+    {
+      "t": 391,
+      "heap": 13.3,
+      "nodes": 11883,
+      "listeners": 829,
+      "docs": 1,
+      "label": "nobattle",
+      "kana": false,
+      "inB": false,
+      "mons": 23,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 10628,
+      "moRecs": 21701,
+      "gaps": 66,
+      "long": 62
+    },
+    {
+      "t": 397,
+      "heap": 13.4,
+      "nodes": 11883,
+      "listeners": 829,
+      "docs": 1,
+      "label": "nobattle",
+      "kana": false,
+      "inB": false,
+      "mons": 23,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 10628,
+      "moRecs": 21701,
+      "gaps": 67,
+      "long": 62
+    },
+    {
+      "t": 407,
+      "heap": 16.5,
+      "nodes": 11953,
+      "listeners": 829,
+      "docs": 1,
+      "label": "nobattle",
+      "kana": false,
+      "inB": false,
+      "mons": 23,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 10645,
+      "moRecs": 21736,
+      "gaps": 67,
+      "long": 64
+    },
+    {
+      "t": 412,
+      "heap": 16.5,
+      "nodes": 11953,
+      "listeners": 829,
+      "docs": 1,
+      "label": "nobattle",
+      "kana": false,
+      "inB": false,
+      "mons": 23,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 10645,
+      "moRecs": 21736,
+      "gaps": 68,
+      "long": 64
+    },
+    {
+      "t": 418,
+      "heap": 16.5,
+      "nodes": 11953,
+      "listeners": 829,
+      "docs": 1,
+      "label": "nobattle",
+      "kana": false,
+      "inB": false,
+      "mons": 23,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 10645,
+      "moRecs": 21736,
+      "gaps": 68,
+      "long": 64
+    },
+    {
+      "t": 426,
+      "heap": 14.4,
+      "nodes": 11901,
+      "listeners": 829,
+      "docs": 1,
+      "label": "nobattle",
+      "kana": false,
+      "inB": false,
+      "mons": 23,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 10649,
+      "moRecs": 21745,
+      "gaps": 69,
+      "long": 66
+    },
+    {
+      "t": 432,
+      "heap": 14.5,
+      "nodes": 11901,
+      "listeners": 829,
+      "docs": 1,
+      "label": "nobattle",
+      "kana": false,
+      "inB": false,
+      "mons": 23,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 10649,
+      "moRecs": 21745,
+      "gaps": 69,
+      "long": 66
+    },
+    {
+      "t": 437,
+      "heap": 14.5,
+      "nodes": 11901,
+      "listeners": 829,
+      "docs": 1,
+      "label": "nobattle",
+      "kana": false,
+      "inB": false,
+      "mons": 23,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 10649,
+      "moRecs": 21745,
+      "gaps": 69,
+      "long": 66
+    },
+    {
+      "t": 444,
+      "heap": 16.4,
+      "nodes": 11949,
+      "listeners": 829,
+      "docs": 1,
+      "label": "nobattle",
+      "kana": false,
+      "inB": false,
+      "mons": 23,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 10654,
+      "moRecs": 21756,
+      "gaps": 70,
+      "long": 68
+    },
+    {
+      "t": 450,
+      "heap": 16.4,
+      "nodes": 11949,
+      "listeners": 829,
+      "docs": 1,
+      "label": "nobattle",
+      "kana": false,
+      "inB": false,
+      "mons": 23,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 10654,
+      "moRecs": 21756,
+      "gaps": 70,
+      "long": 68
+    },
+    {
+      "t": 455,
+      "heap": 16.4,
+      "nodes": 11949,
+      "listeners": 829,
+      "docs": 1,
+      "label": "nobattle",
+      "kana": false,
+      "inB": false,
+      "mons": 23,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 10654,
+      "moRecs": 21756,
+      "gaps": 70,
+      "long": 68
+    },
+    {
+      "t": 461,
+      "heap": 16.5,
+      "nodes": 11949,
+      "listeners": 829,
+      "docs": 1,
+      "label": "nobattle",
+      "kana": false,
+      "inB": false,
+      "mons": 23,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 10654,
+      "moRecs": 21756,
+      "gaps": 71,
+      "long": 68
+    },
+    {
+      "t": 466,
+      "heap": 15.7,
+      "nodes": 11899,
+      "listeners": 829,
+      "docs": 1,
+      "label": "nobattle",
+      "kana": false,
+      "inB": false,
+      "mons": 24,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 10662,
+      "moRecs": 21773,
+      "gaps": 71,
+      "long": 70
+    },
+    {
+      "t": 472,
+      "heap": 15.8,
+      "nodes": 11899,
+      "listeners": 829,
+      "docs": 1,
+      "label": "nobattle",
+      "kana": false,
+      "inB": false,
+      "mons": 24,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 10662,
+      "moRecs": 21773,
+      "gaps": 71,
+      "long": 70
+    },
+    {
+      "t": 477,
+      "heap": 15.8,
+      "nodes": 11899,
+      "listeners": 829,
+      "docs": 1,
+      "label": "nobattle",
+      "kana": false,
+      "inB": false,
+      "mons": 24,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 10662,
+      "moRecs": 21773,
+      "gaps": 72,
+      "long": 70
+    },
+    {
+      "t": 487,
+      "heap": 18.6,
+      "nodes": 11947,
+      "listeners": 829,
+      "docs": 1,
+      "label": "nobattle",
+      "kana": false,
+      "inB": false,
+      "mons": 24,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 10668,
+      "moRecs": 21786,
+      "gaps": 72,
+      "long": 72
+    },
+    {
+      "t": 492,
+      "heap": 18.7,
+      "nodes": 11947,
+      "listeners": 829,
+      "docs": 1,
+      "label": "nobattle",
+      "kana": false,
+      "inB": false,
+      "mons": 24,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 10668,
+      "moRecs": 21786,
+      "gaps": 73,
+      "long": 72
+    },
+    {
+      "t": 498,
+      "heap": 18.7,
+      "nodes": 11947,
+      "listeners": 829,
+      "docs": 1,
+      "label": "nobattle",
+      "kana": false,
+      "inB": false,
+      "mons": 24,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 10668,
+      "moRecs": 21786,
+      "gaps": 73,
+      "long": 72
+    },
+    {
+      "t": 507,
+      "heap": 15.5,
+      "nodes": 11963,
+      "listeners": 829,
+      "docs": 1,
+      "label": "nobattle",
+      "kana": false,
+      "inB": false,
+      "mons": 24,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 10677,
+      "moRecs": 21806,
+      "gaps": 75,
+      "long": 75
+    },
+    {
+      "t": 512,
+      "heap": 15.5,
+      "nodes": 11963,
+      "listeners": 829,
+      "docs": 1,
+      "label": "nobattle",
+      "kana": false,
+      "inB": false,
+      "mons": 24,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 10677,
+      "moRecs": 21806,
+      "gaps": 75,
+      "long": 75
+    },
+    {
+      "t": 518,
+      "heap": 15.5,
+      "nodes": 11963,
+      "listeners": 829,
+      "docs": 1,
+      "label": "nobattle",
+      "kana": false,
+      "inB": false,
+      "mons": 24,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 10677,
+      "moRecs": 21806,
+      "gaps": 75,
+      "long": 75
+    },
+    {
+      "t": 524,
+      "heap": 17.7,
+      "nodes": 12015,
+      "listeners": 829,
+      "docs": 1,
+      "label": "nobattle",
+      "kana": false,
+      "inB": false,
+      "mons": 25,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 10684,
+      "moRecs": 21821,
+      "gaps": 76,
+      "long": 77
+    },
+    {
+      "t": 530,
+      "heap": 17.7,
+      "nodes": 12015,
+      "listeners": 829,
+      "docs": 1,
+      "label": "nobattle",
+      "kana": false,
+      "inB": false,
+      "mons": 25,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 10684,
+      "moRecs": 21821,
+      "gaps": 76,
+      "long": 77
+    },
+    {
+      "t": 536,
+      "heap": 17.7,
+      "nodes": 12015,
+      "listeners": 829,
+      "docs": 1,
+      "label": "nobattle",
+      "kana": false,
+      "inB": false,
+      "mons": 25,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 10684,
+      "moRecs": 21821,
+      "gaps": 76,
+      "long": 77
+    },
+    {
+      "t": 541,
+      "heap": 17.8,
+      "nodes": 12015,
+      "listeners": 829,
+      "docs": 1,
+      "label": "nobattle",
+      "kana": false,
+      "inB": false,
+      "mons": 25,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 10684,
+      "moRecs": 21821,
+      "gaps": 77,
+      "long": 77
+    },
+    {
+      "t": 547,
+      "heap": 15.4,
+      "nodes": 11929,
+      "listeners": 829,
+      "docs": 1,
+      "label": "nobattle",
+      "kana": false,
+      "inB": false,
+      "mons": 25,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 10689,
+      "moRecs": 21832,
+      "gaps": 77,
+      "long": 79
+    },
+    {
+      "t": 552,
+      "heap": 15.4,
+      "nodes": 11929,
+      "listeners": 829,
+      "docs": 1,
+      "label": "nobattle",
+      "kana": false,
+      "inB": false,
+      "mons": 25,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 10689,
+      "moRecs": 21832,
+      "gaps": 77,
+      "long": 79
+    },
+    {
+      "t": 558,
+      "heap": 15.4,
+      "nodes": 11929,
+      "listeners": 829,
+      "docs": 1,
+      "label": "nobattle",
+      "kana": false,
+      "inB": false,
+      "mons": 25,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 10689,
+      "moRecs": 21832,
+      "gaps": 78,
+      "long": 79
+    },
+    {
+      "t": 568,
+      "heap": 13.3,
+      "nodes": 11883,
+      "listeners": 829,
+      "docs": 1,
+      "label": "nobattle",
+      "kana": false,
+      "inB": false,
+      "mons": 25,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 10696,
+      "moRecs": 21847,
+      "gaps": 78,
+      "long": 81
+    },
+    {
+      "t": 573,
+      "heap": 13.3,
+      "nodes": 11883,
+      "listeners": 829,
+      "docs": 1,
+      "label": "nobattle",
+      "kana": false,
+      "inB": false,
+      "mons": 25,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 10696,
+      "moRecs": 21847,
+      "gaps": 79,
+      "long": 81
+    },
+    {
+      "t": 579,
+      "heap": 13.3,
+      "nodes": 11883,
+      "listeners": 829,
+      "docs": 1,
+      "label": "nobattle",
+      "kana": false,
+      "inB": false,
+      "mons": 25,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 10696,
+      "moRecs": 21847,
+      "gaps": 79,
+      "long": 81
+    },
+    {
+      "t": 587,
+      "heap": 15.3,
+      "nodes": 11930,
+      "listeners": 829,
+      "docs": 1,
+      "label": "nobattle",
+      "kana": false,
+      "inB": false,
+      "mons": 25,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 10701,
+      "moRecs": 21858,
+      "gaps": 80,
+      "long": 83
+    },
+    {
+      "t": 593,
+      "heap": 15.3,
+      "nodes": 11930,
+      "listeners": 829,
+      "docs": 1,
+      "label": "nobattle",
+      "kana": false,
+      "inB": false,
+      "mons": 25,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 10701,
+      "moRecs": 21858,
+      "gaps": 80,
+      "long": 83
+    },
+    {
+      "t": 598,
+      "heap": 15.4,
+      "nodes": 11930,
+      "listeners": 829,
+      "docs": 1,
+      "label": "nobattle",
+      "kana": false,
+      "inB": false,
+      "mons": 25,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 10701,
+      "moRecs": 21858,
+      "gaps": 80,
+      "long": 83
+    },
+    {
+      "t": 601,
+      "heap": 15.4,
+      "nodes": 11930,
+      "listeners": 829,
+      "docs": 1,
+      "label": "end",
+      "kana": false,
+      "inB": false,
+      "mons": 25,
+      "wave": 2,
+      "tiles": 24,
+      "moCalls": 10701,
+      "moRecs": 21858,
+      "gaps": 80,
+      "long": 83
+    }
+  ],
+  "profiles": [
+    {
+      "at": 1,
+      "why": "stall>200ms"
+    },
+    {
+      "at": 22,
+      "why": "stall>200ms"
+    },
+    {
+      "at": 38,
+      "why": "stall>200ms"
+    },
+    {
+      "at": 54,
+      "why": "stall>200ms"
+    },
+    {
+      "at": 69,
+      "why": "stall>200ms"
+    },
+    {
+      "at": 85,
+      "why": "stall>200ms"
+    },
+    {
+      "at": 101,
+      "why": "stall>200ms"
+    },
+    {
+      "at": 117,
+      "why": "stall>200ms"
+    },
+    {
+      "at": 132,
+      "why": "stall>200ms"
+    },
+    {
+      "at": 148,
+      "why": "stall>200ms"
+    },
+    {
+      "at": 164,
+      "why": "stall>200ms"
+    },
+    {
+      "at": 179,
+      "why": "stall>200ms"
+    },
+    {
+      "at": 195,
+      "why": "stall>200ms"
+    },
+    {
+      "at": 211,
+      "why": "stall>200ms"
+    },
+    {
+      "at": 226,
+      "why": "stall>200ms"
+    },
+    {
+      "at": 245,
+      "why": "stall>200ms"
+    },
+    {
+      "at": 265,
+      "why": "stall>200ms"
+    },
+    {
+      "at": 345,
+      "why": "stall>200ms"
+    },
+    {
+      "at": 425,
+      "why": "stall>200ms"
+    },
+    {
+      "at": 488,
+      "why": "stall>200ms"
+    },
+    {
+      "at": 506,
+      "why": "stall>200ms"
+    },
+    {
+      "at": 522,
+      "why": "stall>200ms"
+    }
+  ],
+  "gaps": [
+    {
+      "t": 193,
+      "gap": 153,
+      "phase": "init",
+      "g": null
+    },
+    {
+      "t": 376,
+      "gap": 150,
+      "phase": "init",
+      "g": null
+    },
+    {
+      "t": 2276,
+      "gap": 1883,
+      "phase": "init",
+      "g": {
+        "inB": true,
+        "mons": 7,
+        "x": 79340,
+        "y": 79340,
+        "tiles": 4,
+        "gen": 4
+      }
+    },
+    {
+      "t": 2426,
+      "gap": 150,
+      "phase": "init",
+      "g": {
+        "inB": true,
+        "mons": 7,
+        "x": 79340,
+        "y": 79340,
+        "tiles": 4,
+        "gen": 4
+      }
+    },
+    {
+      "t": 2643,
+      "gap": 100,
+      "phase": "init",
+      "g": {
+        "inB": true,
+        "mons": 7,
+        "x": 79340,
+        "y": 79340,
+        "tiles": 4,
+        "gen": 4
+      }
+    },
+    {
+      "t": 3392,
+      "gap": 517,
+      "phase": "field",
+      "g": {
+        "inB": true,
+        "mons": 7,
+        "x": 79340,
+        "y": 79340,
+        "tiles": 24,
+        "gen": 25
+      }
+    },
+    {
+      "t": 3776,
+      "gap": 383,
+      "phase": "field",
+      "g": {
+        "inB": true,
+        "mons": 7,
+        "x": 79355,
+        "y": 79333,
+        "tiles": 24,
+        "gen": 25
+      }
+    },
+    {
+      "t": 3926,
+      "gap": 150,
+      "phase": "field",
+      "g": {
+        "inB": true,
+        "mons": 7,
+        "x": 79370,
+        "y": 79326,
+        "tiles": 24,
+        "gen": 25
+      }
+    },
+    {
+      "t": 11176,
+      "gap": 133,
+      "phase": "field",
+      "g": {
+        "inB": true,
+        "mons": 5,
+        "x": 79658,
+        "y": 79191,
+        "tiles": 24,
+        "gen": 30
+      }
+    },
+    {
+      "t": 19425,
+      "gap": 717,
+      "phase": "ui-strategy",
+      "g": {
+        "inB": false,
+        "mons": 4,
+        "x": 79524,
+        "y": 79060,
+        "tiles": 24,
+        "gen": 30
+      }
+    },
+    {
+      "t": 19542,
+      "gap": 100,
+      "phase": "ui-strategy",
+      "g": {
+        "inB": false,
+        "mons": 4,
+        "x": 79524,
+        "y": 79060,
+        "tiles": 24,
+        "gen": 30
+      }
+    },
+    {
+      "t": 20592,
+      "gap": 567,
+      "phase": "ui-strategy",
+      "g": {
+        "inB": false,
+        "mons": 4,
+        "x": 79524,
+        "y": 79060,
+        "tiles": 24,
+        "gen": 30
+      }
+    },
+    {
+      "t": 21775,
+      "gap": 267,
+      "phase": "ui-strategy",
+      "g": {
+        "inB": false,
+        "mons": 4,
+        "x": 79524,
+        "y": 79060,
+        "tiles": 24,
+        "gen": 30
+      }
+    },
+    {
+      "t": 23092,
+      "gap": 417,
+      "phase": "ui-strategy",
+      "g": {
+        "inB": false,
+        "mons": 4,
+        "x": 79524,
+        "y": 79060,
+        "tiles": 24,
+        "gen": 30
+      }
+    },
+    {
+      "t": 24492,
+      "gap": 267,
+      "phase": "field",
+      "g": {
+        "inB": true,
+        "mons": 4,
+        "x": 79524,
+        "y": 79060,
+        "tiles": 24,
+        "gen": 30
+      }
+    },
+    {
+      "t": 25375,
+      "gap": 200,
+      "phase": "field",
+      "g": {
+        "inB": true,
+        "mons": 4,
+        "x": 79524,
+        "y": 79060,
+        "tiles": 24,
+        "gen": 46
+      }
+    },
+    {
+      "t": 29992,
+      "gap": 267,
+      "phase": "field",
+      "g": {
+        "inB": true,
+        "mons": 4,
+        "x": 79524,
+        "y": 79060,
+        "tiles": 24,
+        "gen": 65
+      }
+    },
+    {
+      "t": 35209,
+      "gap": 250,
+      "phase": "field",
+      "g": {
+        "inB": true,
+        "mons": 4,
+        "x": 79524,
+        "y": 79060,
+        "tiles": 24,
+        "gen": 84
+      }
+    },
+    {
+      "t": 35325,
+      "gap": 117,
+      "phase": "field",
+      "g": {
+        "inB": true,
+        "mons": 4,
+        "x": 79524,
+        "y": 79060,
+        "tiles": 24,
+        "gen": 84
+      }
+    },
+    {
+      "t": 40442,
+      "gap": 217,
+      "phase": "field",
+      "g": {
+        "inB": true,
+        "mons": 4,
+        "x": 79524,
+        "y": 79060,
+        "tiles": 24,
+        "gen": 84
+      }
+    },
+    {
+      "t": 42125,
+      "gap": 250,
+      "phase": "field",
+      "g": {
+        "inB": true,
+        "mons": 4,
+        "x": 79524,
+        "y": 79060,
+        "tiles": 24,
+        "gen": 103
+      }
+    },
+    {
+      "t": 42259,
+      "gap": 134,
+      "phase": "field",
+      "g": {
+        "inB": true,
+        "mons": 4,
+        "x": 79524,
+        "y": 79060,
+        "tiles": 24,
+        "gen": 103
+      }
+    },
+    {
+      "t": 50275,
+      "gap": 250,
+      "phase": "field",
+      "g": {
+        "inB": true,
+        "mons": 4,
+        "x": 79524,
+        "y": 79060,
+        "tiles": 24,
+        "gen": 122
+      }
+    },
+    {
+      "t": 50408,
+      "gap": 117,
+      "phase": "field",
+      "g": {
+        "inB": true,
+        "mons": 4,
+        "x": 79524,
+        "y": 79060,
+        "tiles": 24,
+        "gen": 122
+      }
+    },
+    {
+      "t": 56408,
+      "gap": 283,
+      "phase": "field",
+      "g": {
+        "inB": true,
+        "mons": 4,
+        "x": 79524,
+        "y": 79060,
+        "tiles": 24,
+        "gen": 122
+      }
+    },
+    {
+      "t": 61558,
+      "gap": 200,
+      "phase": "field",
+      "g": {
+        "inB": true,
+        "mons": 4,
+        "x": 79524,
+        "y": 79060,
+        "tiles": 24,
+        "gen": 141
+      }
+    },
+    {
+      "t": 67491,
+      "gap": 217,
+      "phase": "field",
+      "g": {
+        "inB": true,
+        "mons": 4,
+        "x": 79524,
+        "y": 79060,
+        "tiles": 24,
+        "gen": 160
+      }
+    },
+    {
+      "t": 72208,
+      "gap": 250,
+      "phase": "field",
+      "g": {
+        "inB": true,
+        "mons": 5,
+        "x": 79524,
+        "y": 79060,
+        "tiles": 24,
+        "gen": 160
+      }
+    },
+    {
+      "t": 73925,
+      "gap": 267,
+      "phase": "field",
+      "g": {
+        "inB": true,
+        "mons": 1,
+        "x": 79212,
+        "y": 75808,
+        "tiles": 24,
+        "gen": 166
+      }
+    },
+    {
+      "t": 76691,
+      "gap": 167,
+      "phase": "field",
+      "g": {
+        "inB": true,
+        "mons": 5,
+        "x": 79420,
+        "y": 75812,
+        "tiles": 24,
+        "gen": 185
+      }
+    },
+    {
+      "t": 84724,
+      "gap": 117,
+      "phase": "field",
+      "g": {
+        "inB": true,
+        "mons": 12,
+        "x": 79765,
+        "y": 77537,
+        "tiles": 24,
+        "gen": 204
+      }
+    },
+    {
+      "t": 87874,
+      "gap": 217,
+      "phase": "field",
+      "g": {
+        "inB": true,
+        "mons": 15,
+        "x": 79986,
+        "y": 77485,
+        "tiles": 24,
+        "gen": 204
+      }
+    },
+    {
+      "t": 103641,
+      "gap": 267,
+      "phase": "field",
+      "g": {
+        "inB": true,
+        "mons": 8,
+        "x": 80314,
+        "y": 79222,
+        "tiles": 24,
+        "gen": 215
+      }
+    },
+    {
+      "t": 110241,
+      "gap": 133,
+      "phase": "field",
+      "g": {
+        "inB": true,
+        "mons": 1,
+        "x": 79974,
+        "y": 80399,
+        "tiles": 24,
+        "gen": 238
+      }
+    },
+    {
+      "t": 117507,
+      "gap": 133,
+      "phase": "field",
+      "g": {
+        "inB": true,
+        "mons": 7,
+        "x": 80237,
+        "y": 81675,
+        "tiles": 24,
+        "gen": 254
+      }
+    },
+    {
+      "t": 119274,
+      "gap": 267,
+      "phase": "field",
+      "g": {
+        "inB": true,
+        "mons": 8,
+        "x": 80436,
+        "y": 81372,
+        "tiles": 24,
+        "gen": 254
+      }
+    },
+    {
+      "t": 123724,
+      "gap": 283,
+      "phase": "field",
+      "g": {
+        "inB": true,
+        "mons": 11,
+        "x": 80908,
+        "y": 80653,
+        "tiles": 24,
+        "gen": 270
+      }
+    },
+    {
+      "t": 132807,
+      "gap": 633,
+      "phase": "field",
+      "g": {
+        "inB": true,
+        "mons": 0,
+        "x": 80869,
+        "y": 81864,
+        "tiles": 24,
+        "gen": 273
+      }
+    },
+    {
+      "t": 134657,
+      "gap": 350,
+      "phase": "field",
+      "g": {
+        "inB": true,
+        "mons": 0,
+        "x": 80869,
+        "y": 81864,
+        "tiles": 24,
+        "gen": 273
+      }
+    },
+    {
+      "t": 135557,
+      "gap": 183,
+      "phase": "field",
+      "g": {
+        "inB": true,
+        "mons": 0,
+        "x": 80869,
+        "y": 81864,
+        "tiles": 24,
+        "gen": 286
+      }
+    },
+    {
+      "t": 141340,
+      "gap": 283,
+      "phase": "field",
+      "g": {
+        "inB": true,
+        "mons": 16,
+        "x": 80869,
+        "y": 81864,
+        "tiles": 24,
+        "gen": 305
+      }
+    },
+    {
+      "t": 141590,
+      "gap": 250,
+      "phase": "ui-save",
+      "g": {
+        "inB": true,
+        "mons": 16,
+        "x": 80886,
+        "y": 81869,
+        "tiles": 24,
+        "gen": 305
+      }
+    },
+    {
+      "t": 149607,
+      "gap": 267,
+      "phase": "field",
+      "g": {
+        "inB": true,
+        "mons": 14,
+        "x": 81923,
+        "y": 82192,
+        "tiles": 24,
+        "gen": 322
+      }
+    },
+    {
+      "t": 150740,
+      "gap": 350,
+      "phase": "field",
+      "g": {
+        "inB": true,
+        "mons": 14,
+        "x": 82053,
+        "y": 82292,
+        "tiles": 24,
+        "gen": 322
+      }
+    },
+    {
+      "t": 157440,
+      "gap": 250,
+      "phase": "field",
+      "g": {
+        "inB": true,
+        "mons": 6,
+        "x": 83018,
+        "y": 83035,
+        "tiles": 24,
+        "gen": 338
+      }
+    },
+    {
+      "t": 166440,
+      "gap": 300,
+      "phase": "field",
+      "g": {
+        "inB": true,
+        "mons": 12,
+        "x": 84656,
+        "y": 83131,
+        "tiles": 24,
+        "gen": 341
+      }
+    },
+    {
+      "t": 167273,
+      "gap": 133,
+      "phase": "field",
+      "g": {
+        "inB": true,
+        "mons": 2,
+        "x": 42974,
+        "y": 79284,
+        "tiles": 24,
+        "gen": 350
+      }
+    },
+    {
+      "t": 173006,
+      "gap": 133,
+      "phase": "field",
+      "g": {
+        "inB": true,
+        "mons": 9,
+        "x": 43450,
+        "y": 79286,
+        "tiles": 24,
+        "gen": 369
+      }
+    },
+    {
+      "t": 182139,
+      "gap": 433,
+      "phase": "field",
+      "g": {
+        "inB": true,
+        "mons": 22,
+        "x": 44155,
+        "y": 79471,
+        "tiles": 24,
+        "gen": 385
+      }
+    },
+    {
+      "t": 186789,
+      "gap": 183,
+      "phase": "field",
+      "g": {
+        "inB": true,
+        "mons": 7,
+        "x": 114943,
+        "y": 79322,
+        "tiles": 24,
+        "gen": 398
+      }
+    },
+    {
+      "t": 192522,
+      "gap": 133,
+      "phase": "field",
+      "g": {
+        "inB": true,
+        "mons": 7,
+        "x": 115083,
+        "y": 79320,
+        "tiles": 24,
+        "gen": 414
+      }
+    },
+    {
+      "t": 197906,
+      "gap": 333,
+      "phase": "field",
+      "g": {
+        "inB": true,
+        "mons": 7,
+        "x": 115500,
+        "y": 78446,
+        "tiles": 24,
+        "gen": 414
+      }
+    },
+    {
+      "t": 208639,
+      "gap": 134,
+      "phase": "field",
+      "g": {
+        "inB": true,
+        "mons": 10,
+        "x": 79333,
+        "y": 101380,
+        "tiles": 24,
+        "gen": 456
+      }
+    },
+    {
+      "t": 213505,
+      "gap": 500,
+      "phase": "field",
+      "g": {
+        "inB": true,
+        "mons": 15,
+        "x": 79466,
+        "y": 100533,
+        "tiles": 24,
+        "gen": 459
+      }
+    },
+    {
+      "t": 217272,
+      "gap": 183,
+      "phase": "field",
+      "g": {
+        "inB": true,
+        "mons": 20,
+        "x": 78773,
+        "y": 100575,
+        "tiles": 24,
+        "gen": 476
+      }
+    },
+    {
+      "t": 219172,
+      "gap": 117,
+      "phase": "field",
+      "g": {
+        "inB": false,
+        "mons": 19,
+        "x": 79018,
+        "y": 100177,
+        "tiles": 24,
+        "gen": 476
+      }
+    },
+    {
+      "t": 229122,
+      "gap": 517,
+      "phase": "field",
+      "g": {
+        "inB": false,
+        "mons": 20,
+        "x": 78906,
+        "y": 100201,
+        "tiles": 24,
+        "gen": 485
+      }
+    },
+    {
+      "t": 248105,
+      "gap": 250,
+      "phase": "field",
+      "g": {
+        "inB": true,
+        "mons": 21,
+        "x": 78906,
+        "y": 100201,
+        "tiles": 24,
+        "gen": 485
+      }
+    },
+    {
+      "t": 267221,
+      "gap": 217,
+      "phase": "field",
+      "g": {
+        "inB": false,
+        "mons": 21,
+        "x": 78906,
+        "y": 100201,
+        "tiles": 24,
+        "gen": 485
+      }
+    },
+    {
+      "t": 283171,
+      "gap": 200,
+      "phase": "field",
+      "g": {
+        "inB": false,
+        "mons": 21,
+        "x": 78906,
+        "y": 100201,
+        "tiles": 24,
+        "gen": 485
+      }
+    },
+    {
+      "t": 298921,
+      "gap": 200,
+      "phase": "field",
+      "g": {
+        "inB": false,
+        "mons": 22,
+        "x": 78906,
+        "y": 100201,
+        "tiles": 24,
+        "gen": 485
+      }
+    },
+    {
+      "t": 314704,
+      "gap": 183,
+      "phase": "field",
+      "g": {
+        "inB": false,
+        "mons": 22,
+        "x": 78906,
+        "y": 100201,
+        "tiles": 24,
+        "gen": 485
+      }
+    },
+    {
+      "t": 330003,
+      "gap": 200,
+      "phase": "field",
+      "g": {
+        "inB": false,
+        "mons": 22,
+        "x": 78906,
+        "y": 100201,
+        "tiles": 24,
+        "gen": 485
+      }
+    },
+    {
+      "t": 347703,
+      "gap": 283,
+      "phase": "field",
+      "g": {
+        "inB": false,
+        "mons": 22,
+        "x": 78906,
+        "y": 100201,
+        "tiles": 24,
+        "gen": 485
+      }
+    },
+    {
+      "t": 363553,
+      "gap": 200,
+      "phase": "field",
+      "g": {
+        "inB": false,
+        "mons": 22,
+        "x": 78906,
+        "y": 100201,
+        "tiles": 24,
+        "gen": 485
+      }
+    },
+    {
+      "t": 379319,
+      "gap": 200,
+      "phase": "field",
+      "g": {
+        "inB": false,
+        "mons": 23,
+        "x": 78906,
+        "y": 100201,
+        "tiles": 24,
+        "gen": 485
+      }
+    },
+    {
+      "t": 395119,
+      "gap": 200,
+      "phase": "field",
+      "g": {
+        "inB": false,
+        "mons": 23,
+        "x": 78906,
+        "y": 100201,
+        "tiles": 24,
+        "gen": 485
+      }
+    },
+    {
+      "t": 410435,
+      "gap": 200,
+      "phase": "field",
+      "g": {
+        "inB": false,
+        "mons": 23,
+        "x": 78906,
+        "y": 100201,
+        "tiles": 24,
+        "gen": 485
+      }
+    },
+    {
+      "t": 428152,
+      "gap": 267,
+      "phase": "field",
+      "g": {
+        "inB": false,
+        "mons": 23,
+        "x": 78906,
+        "y": 100201,
+        "tiles": 24,
+        "gen": 485
+      }
+    },
+    {
+      "t": 444018,
+      "gap": 200,
+      "phase": "field",
+      "g": {
+        "inB": false,
+        "mons": 23,
+        "x": 78906,
+        "y": 100201,
+        "tiles": 24,
+        "gen": 485
+      }
+    },
+    {
+      "t": 459768,
+      "gap": 200,
+      "phase": "field",
+      "g": {
+        "inB": false,
+        "mons": 23,
+        "x": 78906,
+        "y": 100201,
+        "tiles": 24,
+        "gen": 485
+      }
+    },
+    {
+      "t": 475518,
+      "gap": 200,
+      "phase": "field",
+      "g": {
+        "inB": false,
+        "mons": 24,
+        "x": 78906,
+        "y": 100201,
+        "tiles": 24,
+        "gen": 485
+      }
+    },
+    {
+      "t": 490834,
+      "gap": 217,
+      "phase": "field",
+      "g": {
+        "inB": false,
+        "mons": 24,
+        "x": 78906,
+        "y": 100201,
+        "tiles": 24,
+        "gen": 485
+      }
+    },
+    {
+      "t": 508200,
+      "gap": 100,
+      "phase": "field",
+      "g": {
+        "inB": true,
+        "mons": 24,
+        "x": 78906,
+        "y": 100201,
+        "tiles": 24,
+        "gen": 485
+      }
+    },
+    {
+      "t": 508534,
+      "gap": 267,
+      "phase": "field",
+      "g": {
+        "inB": true,
+        "mons": 24,
+        "x": 78906,
+        "y": 100201,
+        "tiles": 24,
+        "gen": 485
+      }
+    },
+    {
+      "t": 524450,
+      "gap": 217,
+      "phase": "field",
+      "g": {
+        "inB": false,
+        "mons": 24,
+        "x": 78906,
+        "y": 100201,
+        "tiles": 24,
+        "gen": 485
+      }
+    },
+    {
+      "t": 540217,
+      "gap": 200,
+      "phase": "field",
+      "g": {
+        "inB": false,
+        "mons": 25,
+        "x": 78906,
+        "y": 100201,
+        "tiles": 24,
+        "gen": 485
+      }
+    },
+    {
+      "t": 555983,
+      "gap": 183,
+      "phase": "field",
+      "g": {
+        "inB": false,
+        "mons": 25,
+        "x": 78906,
+        "y": 100201,
+        "tiles": 24,
+        "gen": 485
+      }
+    },
+    {
+      "t": 571299,
+      "gap": 200,
+      "phase": "field",
+      "g": {
+        "inB": false,
+        "mons": 25,
+        "x": 78906,
+        "y": 100201,
+        "tiles": 24,
+        "gen": 485
+      }
+    },
+    {
+      "t": 588949,
+      "gap": 233,
+      "phase": "field",
+      "g": {
+        "inB": true,
+        "mons": 25,
+        "x": 78906,
+        "y": 100201,
+        "tiles": 24,
+        "gen": 485
+      }
+    }
+  ],
+  "long": [
+    {
+      "t": 381,
+      "d": 1594,
+      "phase": "init"
+    },
+    {
+      "t": 1975,
+      "d": 71,
+      "phase": "init"
+    },
+    {
+      "t": 2049,
+      "d": 230,
+      "phase": "init"
+    },
+    {
+      "t": 2296,
+      "d": 139,
+      "phase": "init"
+    },
+    {
+      "t": 2436,
+      "d": 62,
+      "phase": "init"
+    },
+    {
+      "t": 2500,
+      "d": 52,
+      "phase": "init"
+    },
+    {
+      "t": 2554,
+      "d": 103,
+      "phase": "init"
+    },
+    {
+      "t": 2658,
+      "d": 73,
+      "phase": "init"
+    },
+    {
+      "t": 2733,
+      "d": 50,
+      "phase": "field"
+    },
+    {
+      "t": 2785,
+      "d": 50,
+      "phase": "field"
+    },
+    {
+      "t": 3346,
+      "d": 58,
+      "phase": "field"
+    },
+    {
+      "t": 3677,
+      "d": 110,
+      "phase": "field"
+    },
+    {
+      "t": 3790,
+      "d": 70,
+      "phase": "field"
+    },
+    {
+      "t": 3978,
+      "d": 61,
+      "phase": "field"
+    },
+    {
+      "t": 4040,
+      "d": 52,
+      "phase": "field"
+    },
+    {
+      "t": 4187,
+      "d": 50,
+      "phase": "field"
+    },
+    {
+      "t": 4238,
+      "d": 65,
+      "phase": "field"
+    },
+    {
+      "t": 4304,
+      "d": 52,
+      "phase": "field"
+    },
+    {
+      "t": 4772,
+      "d": 52,
+      "phase": "field"
+    },
+    {
+      "t": 18723,
+      "d": 676,
+      "phase": "ui-strategy"
+    },
+    {
+      "t": 20014,
+      "d": 582,
+      "phase": "ui-strategy"
+    },
+    {
+      "t": 21497,
+      "d": 276,
+      "phase": "ui-strategy"
+    },
+    {
+      "t": 22665,
+      "d": 435,
+      "phase": "ui-strategy"
+    },
+    {
+      "t": 23982,
+      "d": 55,
+      "phase": "ui-strategy"
+    },
+    {
+      "t": 35169,
+      "d": 50,
+      "phase": "field"
+    },
+    {
+      "t": 71080,
+      "d": 51,
+      "phase": "field"
+    },
+    {
+      "t": 73668,
+      "d": 259,
+      "phase": "field"
+    },
+    {
+      "t": 73928,
+      "d": 52,
+      "phase": "field"
+    },
+    {
+      "t": 92178,
+      "d": 73,
+      "phase": "field"
+    },
+    {
+      "t": 96992,
+      "d": 85,
+      "phase": "field"
+    },
+    {
+      "t": 101860,
+      "d": 68,
+      "phase": "ui-strategy"
+    },
+    {
+      "t": 122157,
+      "d": 50,
+      "phase": "field"
+    },
+    {
+      "t": 132174,
+      "d": 649,
+      "phase": "field"
+    },
+    {
+      "t": 141057,
+      "d": 292,
+      "phase": "field"
+    },
+    {
+      "t": 147560,
+      "d": 70,
+      "phase": "field"
+    },
+    {
+      "t": 167140,
+      "d": 148,
+      "phase": "field"
+    },
+    {
+      "t": 168163,
+      "d": 86,
+      "phase": "field"
+    },
+    {
+      "t": 173990,
+      "d": 52,
+      "phase": "field"
+    },
+    {
+      "t": 186607,
+      "d": 187,
+      "phase": "field"
+    },
+    {
+      "t": 202213,
+      "d": 107,
+      "phase": "field"
+    },
+    {
+      "t": 202513,
+      "d": 84,
+      "phase": "field"
+    },
+    {
+      "t": 206339,
+      "d": 97,
+      "phase": "field"
+    },
+    {
+      "t": 206989,
+      "d": 80,
+      "phase": "field"
+    },
+    {
+      "t": 219060,
+      "d": 126,
+      "phase": "field"
+    },
+    {
+      "t": 224185,
+      "d": 54,
+      "phase": "field"
+    },
+    {
+      "t": 225522,
+      "d": 59,
+      "phase": "field"
+    },
+    {
+      "t": 247702,
+      "d": 56,
+      "phase": "field"
+    },
+    {
+      "t": 248358,
+      "d": 61,
+      "phase": "field"
+    },
+    {
+      "t": 266799,
+      "d": 57,
+      "phase": "field"
+    },
+    {
+      "t": 266951,
+      "d": 57,
+      "phase": "field"
+    },
+    {
+      "t": 285102,
+      "d": 50,
+      "phase": "field"
+    },
+    {
+      "t": 285502,
+      "d": 62,
+      "phase": "field"
+    },
+    {
+      "t": 305149,
+      "d": 55,
+      "phase": "field"
+    },
+    {
+      "t": 305480,
+      "d": 64,
+      "phase": "field"
+    },
+    {
+      "t": 328284,
+      "d": 56,
+      "phase": "field"
+    },
+    {
+      "t": 328467,
+      "d": 63,
+      "phase": "field"
+    },
+    {
+      "t": 347269,
+      "d": 55,
+      "phase": "field"
+    },
+    {
+      "t": 347640,
+      "d": 76,
+      "phase": "field"
+    },
+    {
+      "t": 365478,
+      "d": 53,
+      "phase": "field"
+    },
+    {
+      "t": 365676,
+      "d": 58,
+      "phase": "field"
+    },
+    {
+      "t": 385559,
+      "d": 55,
+      "phase": "field"
+    },
+    {
+      "t": 385716,
+      "d": 58,
+      "phase": "field"
+    },
+    {
+      "t": 408708,
+      "d": 56,
+      "phase": "field"
+    },
+    {
+      "t": 409064,
+      "d": 59,
+      "phase": "field"
+    },
+    {
+      "t": 427712,
+      "d": 55,
+      "phase": "field"
+    },
+    {
+      "t": 428102,
+      "d": 62,
+      "phase": "field"
+    },
+    {
+      "t": 445943,
+      "d": 53,
+      "phase": "field"
+    },
+    {
+      "t": 446091,
+      "d": 65,
+      "phase": "field"
+    },
+    {
+      "t": 465983,
+      "d": 53,
+      "phase": "field"
+    },
+    {
+      "t": 466182,
+      "d": 72,
+      "phase": "field"
+    },
+    {
+      "t": 489113,
+      "d": 54,
+      "phase": "field"
+    },
+    {
+      "t": 489271,
+      "d": 58,
+      "phase": "field"
+    },
+    {
+      "t": 508098,
+      "d": 57,
+      "phase": "field"
+    },
+    {
+      "t": 508156,
+      "d": 54,
+      "phase": "field"
+    },
+    {
+      "t": 508613,
+      "d": 62,
+      "phase": "field"
+    },
+    {
+      "t": 526377,
+      "d": 55,
+      "phase": "field"
+    },
+    {
+      "t": 526561,
+      "d": 63,
+      "phase": "field"
+    },
+    {
+      "t": 546440,
+      "d": 54,
+      "phase": "field"
+    },
+    {
+      "t": 546589,
+      "d": 61,
+      "phase": "field"
+    },
+    {
+      "t": 569580,
+      "d": 56,
+      "phase": "field"
+    },
+    {
+      "t": 569768,
+      "d": 58,
+      "phase": "field"
+    },
+    {
+      "t": 588570,
+      "d": 54,
+      "phase": "field"
+    },
+    {
+      "t": 588965,
+      "d": 64,
+      "phase": "field"
+    }
+  ],
+  "moCalls": 10701,
+  "moTypes": {
+    "attributes:class": 21858
+  },
+  "moTargets": {
+    "DIV#dungeon-prompt-banner.phase-banner": 10679,
+    "DIV#base-heal-badge.base-badge": 10679,
+    "BUTTON#btn-pad-command.pad-btn": 489,
+    "DIV#quest-banner.quest-banner": 2,
+    "DIV#retreat-warning.hidden": 2,
+    "DIV#phase-complete-banner.phase-banner": 2,
+    "SPAN#quest-status.quest-status": 1,
+    "DIV#player-magic-status.supply-status-badge": 1,
+    "DIV#hazard-warning.hazard-warning": 1,
+    "BUTTON#btn-limited-ally.phase-btn": 1,
+    "DIV#retreat-warning": 1
+  },
+  "mapClears": 0,
+  "moRecs": 21858,
+  "moSec": {
+    "1": {
+      "c": 1,
+      "r": 7,
+      "ms": 0.6000001430511475
+    },
+    "2": {
+      "c": 9,
+      "r": 20,
+      "ms": 2.6999998092651367
+    },
+    "3": {
+      "c": 5,
+      "r": 12,
+      "ms": 1.3999998569488525
+    },
+    "4": {
+      "c": 20,
+      "r": 42,
+      "ms": 4.899999618530273
+    },
+    "5": {
+      "c": 33,
+      "r": 67,
+      "ms": 7.5
+    },
+    "6": {
+      "c": 37,
+      "r": 76,
+      "ms": 10
+    },
+    "7": {
+      "c": 33,
+      "r": 68,
+      "ms": 9.100001335144043
+    },
+    "8": {
+      "c": 40,
+      "r": 82,
+      "ms": 9.499999046325684
+    },
+    "9": {
+      "c": 43,
+      "r": 89,
+      "ms": 10.700000047683716
+    },
+    "10": {
+      "c": 41,
+      "r": 84,
+      "ms": 9.100000858306885
+    },
+    "11": {
+      "c": 35,
+      "r": 72,
+      "ms": 9.199999809265137
+    },
+    "12": {
+      "c": 49,
+      "r": 100,
+      "ms": 11.700000762939453
+    },
+    "13": {
+      "c": 48,
+      "r": 98,
+      "ms": 11.799999952316284
+    },
+    "14": {
+      "c": 45,
+      "r": 92,
+      "ms": 11
+    },
+    "15": {
+      "c": 48,
+      "r": 99,
+      "ms": 12.299999713897705
+    },
+    "16": {
+      "c": 51,
+      "r": 104,
+      "ms": 12.199999570846558
+    },
+    "17": {
+      "c": 50,
+      "r": 102,
+      "ms": 10.499999284744263
+    },
+    "18": {
+      "c": 28,
+      "r": 58,
+      "ms": 7.199999094009399
+    },
+    "23": {
+      "c": 1,
+      "r": 3,
+      "ms": 0.7000000476837158
+    },
+    "24": {
+      "c": 27,
+      "r": 56,
+      "ms": 7
+    },
+    "25": {
+      "c": 32,
+      "r": 66,
+      "ms": 8.700000047683716
+    },
+    "26": {
+      "c": 46,
+      "r": 94,
+      "ms": 12.299999475479126
+    },
+    "27": {
+      "c": 43,
+      "r": 88,
+      "ms": 12.399999856948853
+    },
+    "28": {
+      "c": 47,
+      "r": 96,
+      "ms": 12.100000619888306
+    },
+    "29": {
+      "c": 37,
+      "r": 77,
+      "ms": 10.5
+    },
+    "30": {
+      "c": 46,
+      "r": 94,
+      "ms": 12.399999856948853
+    },
+    "31": {
+      "c": 46,
+      "r": 94,
+      "ms": 13.100000858306885
+    },
+    "32": {
+      "c": 51,
+      "r": 104,
+      "ms": 14.700000286102295
+    },
+    "33": {
+      "c": 51,
+      "r": 104,
+      "ms": 13.40000057220459
+    },
+    "34": {
+      "c": 48,
+      "r": 98,
+      "ms": 12.699999332427979
+    },
+    "35": {
+      "c": 37,
+      "r": 76,
+      "ms": 9.299998760223389
+    },
+    "36": {
+      "c": 47,
+      "r": 96,
+      "ms": 11.700000524520874
+    },
+    "37": {
+      "c": 44,
+      "r": 91,
+      "ms": 11.199999570846558
+    },
+    "38": {
+      "c": 50,
+      "r": 102,
+      "ms": 12.299999475479126
+    },
+    "39": {
+      "c": 51,
+      "r": 104,
+      "ms": 11.799999952316284
+    },
+    "40": {
+      "c": 39,
+      "r": 80,
+      "ms": 9.399999856948853
+    },
+    "41": {
+      "c": 38,
+      "r": 78,
+      "ms": 10.000000476837158
+    },
+    "42": {
+      "c": 42,
+      "r": 86,
+      "ms": 10.799999237060547
+    },
+    "43": {
+      "c": 52,
+      "r": 106,
+      "ms": 12.199999570846558
+    },
+    "44": {
+      "c": 52,
+      "r": 107,
+      "ms": 13.200000047683716
+    },
+    "45": {
+      "c": 47,
+      "r": 96,
+      "ms": 11.700000286102295
+    },
+    "46": {
+      "c": 51,
+      "r": 104,
+      "ms": 12.600000619888306
+    },
+    "47": {
+      "c": 52,
+      "r": 106,
+      "ms": 11.800000190734863
+    },
+    "48": {
+      "c": 52,
+      "r": 106,
+      "ms": 12.299999952316284
+    },
+    "49": {
+      "c": 48,
+      "r": 98,
+      "ms": 12.100000381469727
+    },
+    "50": {
+      "c": 35,
+      "r": 72,
+      "ms": 8.100000143051147
+    },
+    "51": {
+      "c": 51,
+      "r": 104,
+      "ms": 11.899999856948853
+    },
+    "52": {
+      "c": 50,
+      "r": 102,
+      "ms": 12.600000143051147
+    },
+    "53": {
+      "c": 50,
+      "r": 103,
+      "ms": 12.299999952316284
+    },
+    "54": {
+      "c": 47,
+      "r": 96,
+      "ms": 11.700000524520874
+    },
+    "55": {
+      "c": 51,
+      "r": 104,
+      "ms": 11.399999618530273
+    },
+    "56": {
+      "c": 34,
+      "r": 70,
+      "ms": 9.200000524520874
+    },
+    "57": {
+      "c": 50,
+      "r": 102,
+      "ms": 12.90000057220459
+    },
+    "58": {
+      "c": 52,
+      "r": 106,
+      "ms": 27.09999990463257
+    },
+    "59": {
+      "c": 12,
+      "r": 25,
+      "ms": 3.3000004291534424
+    },
+    "60": {
+      "c": 18,
+      "r": 37,
+      "ms": 4.200000047683716
+    },
+    "61": {
+      "c": 41,
+      "r": 84,
+      "ms": 9.399998426437378
+    },
+    "62": {
+      "c": 53,
+      "r": 109,
+      "ms": 13.29999852180481
+    },
+    "63": {
+      "c": 54,
+      "r": 110,
+      "ms": 12.000000476837158
+    },
+    "64": {
+      "c": 53,
+      "r": 108,
+      "ms": 13.900001049041748
+    },
+    "65": {
+      "c": 55,
+      "r": 112,
+      "ms": 14.700000524520874
+    },
+    "66": {
+      "c": 55,
+      "r": 112,
+      "ms": 13.100000381469727
+    },
+    "67": {
+      "c": 38,
+      "r": 78,
+      "ms": 9.299999952316284
+    },
+    "68": {
+      "c": 54,
+      "r": 111,
+      "ms": 13.199999570846558
+    },
+    "69": {
+      "c": 54,
+      "r": 110,
+      "ms": 12.299999952316284
+    },
+    "70": {
+      "c": 53,
+      "r": 108,
+      "ms": 13.299998998641968
+    },
+    "71": {
+      "c": 36,
+      "r": 74,
+      "ms": 8.500000715255737
+    },
+    "72": {
+      "c": 39,
+      "r": 80,
+      "ms": 9.300000667572021
+    },
+    "73": {
+      "c": 34,
+      "r": 70,
+      "ms": 8.000000953674316
+    },
+    "74": {
+      "c": 57,
+      "r": 117,
+      "ms": 15.499998807907104
+    },
+    "75": {
+      "c": 61,
+      "r": 124,
+      "ms": 14.000001192092896
+    },
+    "76": {
+      "c": 51,
+      "r": 104,
+      "ms": 13.299999713897705
+    },
+    "77": {
+      "c": 60,
+      "r": 122,
+      "ms": 17.799997568130493
+    },
+    "78": {
+      "c": 59,
+      "r": 120,
+      "ms": 15.500000953674316
+    },
+    "79": {
+      "c": 60,
+      "r": 122,
+      "ms": 13.499999284744263
+    },
+    "80": {
+      "c": 60,
+      "r": 123,
+      "ms": 15.90000057220459
+    },
+    "81": {
+      "c": 59,
+      "r": 120,
+      "ms": 14.299999237060547
+    },
+    "82": {
+      "c": 60,
+      "r": 122,
+      "ms": 13.800000190734863
+    },
+    "83": {
+      "c": 60,
+      "r": 122,
+      "ms": 13.999999523162842
+    },
+    "84": {
+      "c": 51,
+      "r": 104,
+      "ms": 11.100000619888306
+    },
+    "85": {
+      "c": 60,
+      "r": 122,
+      "ms": 14.499999761581421
+    },
+    "86": {
+      "c": 60,
+      "r": 123,
+      "ms": 14.800000190734863
+    },
+    "87": {
+      "c": 45,
+      "r": 92,
+      "ms": 10.500000476837158
+    },
+    "88": {
+      "c": 60,
+      "r": 122,
+      "ms": 13.300001859664917
+    },
+    "89": {
+      "c": 59,
+      "r": 120,
+      "ms": 14.600000619888306
+    },
+    "90": {
+      "c": 59,
+      "r": 121,
+      "ms": 13.699998617172241
+    },
+    "91": {
+      "c": 61,
+      "r": 124,
+      "ms": 16.700000524520874
+    },
+    "92": {
+      "c": 57,
+      "r": 116,
+      "ms": 13.300000667572021
+    },
+    "93": {
+      "c": 60,
+      "r": 122,
+      "ms": 13.999999761581421
+    },
+    "94": {
+      "c": 60,
+      "r": 123,
+      "ms": 13.499998807907104
+    },
+    "95": {
+      "c": 60,
+      "r": 122,
+      "ms": 14.999999284744263
+    },
+    "96": {
+      "c": 54,
+      "r": 112,
+      "ms": 12.700000047683716
+    },
+    "97": {
+      "c": 54,
+      "r": 111,
+      "ms": 12.600000381469727
+    },
+    "98": {
+      "c": 58,
+      "r": 119,
+      "ms": 15.999999761581421
+    },
+    "99": {
+      "c": 60,
+      "r": 122,
+      "ms": 13.199999570846558
+    },
+    "100": {
+      "c": 59,
+      "r": 121,
+      "ms": 13.399999856948853
+    },
+    "101": {
+      "c": 58,
+      "r": 118,
+      "ms": 14.100000381469727
+    },
+    "102": {
+      "c": 57,
+      "r": 116,
+      "ms": 12.600001573562622
+    },
+    "103": {
+      "c": 36,
+      "r": 74,
+      "ms": 7.499999761581421
+    },
+    "104": {
+      "c": 50,
+      "r": 102,
+      "ms": 11.699999570846558
+    },
+    "105": {
+      "c": 49,
+      "r": 101,
+      "ms": 12.8000009059906
+    },
+    "106": {
+      "c": 57,
+      "r": 116,
+      "ms": 13.999999761581421
+    },
+    "107": {
+      "c": 60,
+      "r": 122,
+      "ms": 14.100000143051147
+    },
+    "108": {
+      "c": 59,
+      "r": 120,
+      "ms": 14.399999856948853
+    },
+    "109": {
+      "c": 60,
+      "r": 122,
+      "ms": 13.899999618530273
+    },
+    "110": {
+      "c": 48,
+      "r": 98,
+      "ms": 10.499998807907104
+    },
+    "111": {
+      "c": 59,
+      "r": 120,
+      "ms": 13.399998903274536
+    },
+    "112": {
+      "c": 59,
+      "r": 121,
+      "ms": 13.599999904632568
+    },
+    "113": {
+      "c": 61,
+      "r": 124,
+      "ms": 13.100000381469727
+    },
+    "114": {
+      "c": 60,
+      "r": 122,
+      "ms": 13.699998378753662
+    },
+    "115": {
+      "c": 58,
+      "r": 119,
+      "ms": 16.899999618530273
+    },
+    "116": {
+      "c": 59,
+      "r": 121,
+      "ms": 13.399999856948853
+    },
+    "117": {
+      "c": 53,
+      "r": 108,
+      "ms": 10.600000143051147
+    },
+    "118": {
+      "c": 55,
+      "r": 113,
+      "ms": 12.900001049041748
+    },
+    "119": {
+      "c": 45,
+      "r": 92,
+      "ms": 10.90000033378601
+    },
+    "120": {
+      "c": 59,
+      "r": 120,
+      "ms": 13.90000033378601
+    },
+    "121": {
+      "c": 57,
+      "r": 117,
+      "ms": 14.099999904632568
+    },
+    "122": {
+      "c": 56,
+      "r": 115,
+      "ms": 13.400000095367432
+    },
+    "123": {
+      "c": 41,
+      "r": 84,
+      "ms": 8.899999380111694
+    },
+    "124": {
+      "c": 60,
+      "r": 122,
+      "ms": 13.400001049041748
+    },
+    "125": {
+      "c": 59,
+      "r": 120,
+      "ms": 13.399999618530273
+    },
+    "126": {
+      "c": 60,
+      "r": 124,
+      "ms": 13.90000057220459
+    },
+    "127": {
+      "c": 60,
+      "r": 123,
+      "ms": 13.900000095367432
+    },
+    "128": {
+      "c": 59,
+      "r": 120,
+      "ms": 12.799998998641968
+    },
+    "129": {
+      "c": 60,
+      "r": 122,
+      "ms": 13.700000047683716
+    },
+    "130": {
+      "c": 60,
+      "r": 123,
+      "ms": 13.799999952316284
+    },
+    "131": {
+      "c": 59,
+      "r": 120,
+      "ms": 13.800000667572021
+    },
+    "132": {
+      "c": 10,
+      "r": 20,
+      "ms": 2.5
+    },
+    "133": {
+      "c": 2,
+      "r": 2,
+      "ms": 0.40000009536743164
+    },
+    "134": {
+      "c": 2,
+      "r": 2,
+      "ms": 0.40000009536743164
+    },
+    "135": {
+      "c": 3,
+      "r": 3,
+      "ms": 0.799999475479126
+    },
+    "136": {
+      "c": 2,
+      "r": 2,
+      "ms": 0.39999985694885254
+    },
+    "137": {
+      "c": 2,
+      "r": 2,
+      "ms": 0.40000009536743164
+    },
+    "138": {
+      "c": 2,
+      "r": 2,
+      "ms": 0.5
+    },
+    "139": {
+      "c": 2,
+      "r": 2,
+      "ms": 0.39999985694885254
+    },
+    "140": {
+      "c": 3,
+      "r": 3,
+      "ms": 0.9000000953674316
+    },
+    "141": {
+      "c": 3,
+      "r": 6,
+      "ms": 0.8000001907348633
+    },
+    "142": {
+      "c": 9,
+      "r": 19,
+      "ms": 2.40000057220459
+    },
+    "143": {
+      "c": 60,
+      "r": 123,
+      "ms": 15.100001096725464
+    },
+    "144": {
+      "c": 56,
+      "r": 114,
+      "ms": 14
+    },
+    "145": {
+      "c": 61,
+      "r": 125,
+      "ms": 13.799999713897705
+    },
+    "146": {
+      "c": 60,
+      "r": 123,
+      "ms": 12.699999570846558
+    },
+    "147": {
+      "c": 56,
+      "r": 114,
+      "ms": 13.09999966621399
+    },
+    "148": {
+      "c": 60,
+      "r": 122,
+      "ms": 13.400000095367432
+    },
+    "149": {
+      "c": 44,
+      "r": 90,
+      "ms": 10.40000057220459
+    },
+    "150": {
+      "c": 38,
+      "r": 78,
+      "ms": 9.400000810623169
+    },
+    "151": {
+      "c": 60,
+      "r": 122,
+      "ms": 15.099999904632568
+    },
+    "152": {
+      "c": 60,
+      "r": 123,
+      "ms": 14.799998998641968
+    },
+    "153": {
+      "c": 60,
+      "r": 122,
+      "ms": 14.299999237060547
+    },
+    "154": {
+      "c": 60,
+      "r": 122,
+      "ms": 12.899999856948853
+    },
+    "155": {
+      "c": 60,
+      "r": 122,
+      "ms": 15.399999141693115
+    },
+    "156": {
+      "c": 60,
+      "r": 122,
+      "ms": 14.500000953674316
+    },
+    "157": {
+      "c": 46,
+      "r": 94,
+      "ms": 10.09999966621399
+    },
+    "158": {
+      "c": 59,
+      "r": 121,
+      "ms": 13.09999942779541
+    },
+    "159": {
+      "c": 59,
+      "r": 120,
+      "ms": 13.299999952316284
+    },
+    "160": {
+      "c": 60,
+      "r": 122,
+      "ms": 14.20000147819519
+    },
+    "161": {
+      "c": 60,
+      "r": 122,
+      "ms": 14.799999952316284
+    },
+    "162": {
+      "c": 60,
+      "r": 122,
+      "ms": 12.900000810623169
+    },
+    "163": {
+      "c": 57,
+      "r": 117,
+      "ms": 13.599998950958252
+    },
+    "164": {
+      "c": 59,
+      "r": 120,
+      "ms": 14.300000667572021
+    },
+    "165": {
+      "c": 59,
+      "r": 120,
+      "ms": 15.90000057220459
+    },
+    "166": {
+      "c": 40,
+      "r": 83,
+      "ms": 9.700000524520874
+    },
+    "167": {
+      "c": 50,
+      "r": 102,
+      "ms": 12.200000286102295
+    },
+    "168": {
+      "c": 54,
+      "r": 110,
+      "ms": 14.099999904632568
+    },
+    "169": {
+      "c": 60,
+      "r": 122,
+      "ms": 14.600000619888306
+    },
+    "170": {
+      "c": 60,
+      "r": 122,
+      "ms": 14.40000033378601
+    },
+    "171": {
+      "c": 59,
+      "r": 121,
+      "ms": 14.600000619888306
+    },
+    "172": {
+      "c": 52,
+      "r": 107,
+      "ms": 14.899999141693115
+    },
+    "173": {
+      "c": 56,
+      "r": 114,
+      "ms": 13.40000033378601
+    },
+    "174": {
+      "c": 59,
+      "r": 120,
+      "ms": 14.5
+    },
+    "175": {
+      "c": 60,
+      "r": 122,
+      "ms": 13.90000057220459
+    },
+    "176": {
+      "c": 59,
+      "r": 120,
+      "ms": 14.699999332427979
+    },
+    "177": {
+      "c": 56,
+      "r": 114,
+      "ms": 12.30000114440918
+    },
+    "178": {
+      "c": 58,
+      "r": 120,
+      "ms": 13.899999618530273
+    },
+    "179": {
+      "c": 60,
+      "r": 122,
+      "ms": 14.700000524520874
+    },
+    "180": {
+      "c": 59,
+      "r": 120,
+      "ms": 14.600000619888306
+    },
+    "181": {
+      "c": 38,
+      "r": 77,
+      "ms": 8.800000667572021
+    },
+    "182": {
+      "c": 53,
+      "r": 108,
+      "ms": 12.600000619888306
+    },
+    "183": {
+      "c": 58,
+      "r": 119,
+      "ms": 14.500000476837158
+    },
+    "184": {
+      "c": 61,
+      "r": 124,
+      "ms": 12.399999141693115
+    },
+    "185": {
+      "c": 60,
+      "r": 122,
+      "ms": 13.800000190734863
+    },
+    "186": {
+      "c": 48,
+      "r": 98,
+      "ms": 12.299999713897705
+    },
+    "187": {
+      "c": 56,
+      "r": 114,
+      "ms": 12.200000047683716
+    },
+    "188": {
+      "c": 60,
+      "r": 122,
+      "ms": 14.300000667572021
+    },
+    "189": {
+      "c": 59,
+      "r": 121,
+      "ms": 13.799999237060547
+    },
+    "190": {
+      "c": 57,
+      "r": 116,
+      "ms": 13.500000476837158
+    },
+    "191": {
+      "c": 61,
+      "r": 124,
+      "ms": 15.40000033378601
+    },
+    "192": {
+      "c": 52,
+      "r": 106,
+      "ms": 12.099999189376831
+    },
+    "193": {
+      "c": 60,
+      "r": 122,
+      "ms": 13.999999761581421
+    },
+    "194": {
+      "c": 58,
+      "r": 118,
+      "ms": 13.999999523162842
+    },
+    "195": {
+      "c": 61,
+      "r": 125,
+      "ms": 14.500000715255737
+    },
+    "196": {
+      "c": 60,
+      "r": 122,
+      "ms": 13.700000286102295
+    },
+    "197": {
+      "c": 39,
+      "r": 80,
+      "ms": 9.300000190734863
+    },
+    "198": {
+      "c": 57,
+      "r": 116,
+      "ms": 15.100000858306885
+    },
+    "199": {
+      "c": 61,
+      "r": 124,
+      "ms": 15.699999570846558
+    },
+    "200": {
+      "c": 60,
+      "r": 122,
+      "ms": 14.3000009059906
+    },
+    "201": {
+      "c": 59,
+      "r": 121,
+      "ms": 14.299998998641968
+    },
+    "202": {
+      "c": 48,
+      "r": 98,
+      "ms": 12.600000143051147
+    },
+    "203": {
+      "c": 60,
+      "r": 122,
+      "ms": 14.600000858306885
+    },
+    "204": {
+      "c": 59,
+      "r": 120,
+      "ms": 14.40000057220459
+    },
+    "205": {
+      "c": 60,
+      "r": 122,
+      "ms": 14.100000619888306
+    },
+    "206": {
+      "c": 51,
+      "r": 104,
+      "ms": 12.800000667572021
+    },
+    "207": {
+      "c": 59,
+      "r": 121,
+      "ms": 14.300000667572021
+    },
+    "208": {
+      "c": 52,
+      "r": 106,
+      "ms": 12.600000858306885
+    },
+    "209": {
+      "c": 60,
+      "r": 122,
+      "ms": 12.700000762939453
+    },
+    "210": {
+      "c": 60,
+      "r": 122,
+      "ms": 13.899998664855957
+    },
+    "211": {
+      "c": 60,
+      "r": 122,
+      "ms": 13.699999570846558
+    },
+    "212": {
+      "c": 55,
+      "r": 112,
+      "ms": 12.600000858306885
+    },
+    "213": {
+      "c": 33,
+      "r": 68,
+      "ms": 7.799999237060547
+    },
+    "214": {
+      "c": 59,
+      "r": 120,
+      "ms": 12.499998807907104
+    },
+    "215": {
+      "c": 60,
+      "r": 122,
+      "ms": 13
+    },
+    "216": {
+      "c": 59,
+      "r": 120,
+      "ms": 14.1999990940094
+    },
+    "217": {
+      "c": 46,
+      "r": 95,
+      "ms": 10.5
+    },
+    "218": {
+      "c": 56,
+      "r": 114,
+      "ms": 12.299999475479126
+    },
+    "219": {
+      "c": 3,
+      "r": 6,
+      "ms": 0.7999999523162842
+    },
+    "224": {
+      "c": 42,
+      "r": 86,
+      "ms": 9.700000047683716
+    },
+    "225": {
+      "c": 31,
+      "r": 63,
+      "ms": 6.899999380111694
+    },
+    "247": {
+      "c": 3,
+      "r": 7,
+      "ms": 0.6999998092651367
+    },
+    "248": {
+      "c": 15,
+      "r": 31,
+      "ms": 3.5999999046325684
+    },
+    "266": {
+      "c": 3,
+      "r": 7,
+      "ms": 0.6999998092651367
+    },
+    "285": {
+      "c": 19,
+      "r": 39,
+      "ms": 5.099999666213989
+    },
+    "305": {
+      "c": 17,
+      "r": 35,
+      "ms": 4.1000001430511475
+    },
+    "328": {
+      "c": 7,
+      "r": 15,
+      "ms": 1.6000001430511475
+    },
+    "347": {
+      "c": 4,
+      "r": 9,
+      "ms": 0.9000000953674316
+    },
+    "365": {
+      "c": 8,
+      "r": 17,
+      "ms": 2.299999952316284
+    },
+    "385": {
+      "c": 6,
+      "r": 13,
+      "ms": 1.2999999523162842
+    },
+    "408": {
+      "c": 14,
+      "r": 29,
+      "ms": 3.999999761581421
+    },
+    "409": {
+      "c": 3,
+      "r": 6,
+      "ms": 0.7000000476837158
+    },
+    "427": {
+      "c": 3,
+      "r": 7,
+      "ms": 0.6999998092651367
+    },
+    "428": {
+      "c": 1,
+      "r": 2,
+      "ms": 0.20000004768371582
+    },
+    "445": {
+      "c": 1,
+      "r": 3,
+      "ms": 0.20000004768371582
+    },
+    "446": {
+      "c": 4,
+      "r": 8,
+      "ms": 0.9000000953674316
+    },
+    "466": {
+      "c": 8,
+      "r": 17,
+      "ms": 1.999999761581421
+    },
+    "489": {
+      "c": 6,
+      "r": 13,
+      "ms": 1.3999996185302734
+    },
+    "508": {
+      "c": 9,
+      "r": 20,
+      "ms": 1.8000004291534424
+    },
+    "526": {
+      "c": 7,
+      "r": 15,
+      "ms": 1.6999998092651367
+    },
+    "546": {
+      "c": 5,
+      "r": 11,
+      "ms": 1.0999996662139893
+    },
+    "569": {
+      "c": 7,
+      "r": 15,
+      "ms": 1.499999761581421
+    },
+    "588": {
+      "c": 5,
+      "r": 11,
+      "ms": 1.2000000476837158
+    }
+  },
+  "log": [
+    {
+      "t": 16,
+      "after": "ui",
+      "inB": true,
+      "rp": false,
+      "run": true
+    },
+    {
+      "t": 36,
+      "after": "ui",
+      "inB": true,
+      "rp": false,
+      "run": true
+    },
+    {
+      "t": 57,
+      "after": "ui",
+      "inB": false,
+      "rp": false,
+      "run": true
+    },
+    {
+      "t": 77,
+      "after": "ui",
+      "inB": true,
+      "rp": false,
+      "run": true
+    },
+    {
+      "t": 97,
+      "after": "ui",
+      "inB": true,
+      "rp": false,
+      "run": true
+    },
+    {
+      "t": 118,
+      "after": "ui",
+      "inB": true,
+      "rp": false,
+      "run": true
+    },
+    {
+      "t": 139,
+      "after": "ui",
+      "inB": false,
+      "rp": false,
+      "run": true
+    },
+    {
+      "t": 159,
+      "after": "ui",
+      "inB": true,
+      "rp": false,
+      "run": true
+    },
+    {
+      "t": 180,
+      "after": "ui",
+      "inB": true,
+      "rp": false,
+      "run": true
+    },
+    {
+      "t": 200,
+      "after": "ui",
+      "inB": true,
+      "rp": false,
+      "run": true
+    },
+    {
+      "t": 220,
+      "after": "ui",
+      "inB": false,
+      "rp": false,
+      "run": true
+    },
+    {
+      "t": 241,
+      "after": "ui",
+      "inB": false,
+      "rp": false,
+      "run": true
+    },
+    {
+      "t": 261,
+      "after": "ui",
+      "inB": false,
+      "rp": false,
+      "run": true
+    },
+    {
+      "t": 281,
+      "after": "ui",
+      "inB": false,
+      "rp": false,
+      "run": true
+    },
+    {
+      "t": 301,
+      "after": "ui",
+      "inB": false,
+      "rp": false,
+      "run": true
+    },
+    {
+      "t": 321,
+      "after": "ui",
+      "inB": false,
+      "rp": false,
+      "run": true
+    },
+    {
+      "t": 342,
+      "after": "ui",
+      "inB": false,
+      "rp": false,
+      "run": true
+    },
+    {
+      "t": 362,
+      "after": "ui",
+      "inB": false,
+      "rp": false,
+      "run": true
+    },
+    {
+      "t": 382,
+      "after": "ui",
+      "inB": false,
+      "rp": false,
+      "run": true
+    },
+    {
+      "t": 402,
+      "after": "ui",
+      "inB": false,
+      "rp": false,
+      "run": true
+    },
+    {
+      "t": 422,
+      "after": "ui",
+      "inB": false,
+      "rp": false,
+      "run": true
+    },
+    {
+      "t": 442,
+      "after": "ui",
+      "inB": false,
+      "rp": false,
+      "run": true
+    },
+    {
+      "t": 462,
+      "after": "ui",
+      "inB": false,
+      "rp": false,
+      "run": true
+    },
+    {
+      "t": 482,
+      "after": "ui",
+      "inB": false,
+      "rp": false,
+      "run": true
+    },
+    {
+      "t": 502,
+      "after": "ui",
+      "inB": false,
+      "rp": false,
+      "run": true
+    },
+    {
+      "t": 522,
+      "after": "ui",
+      "inB": false,
+      "rp": false,
+      "run": true
+    },
+    {
+      "t": 542,
+      "after": "ui",
+      "inB": false,
+      "rp": false,
+      "run": true
+    },
+    {
+      "t": 563,
+      "after": "ui",
+      "inB": false,
+      "rp": false,
+      "run": true
+    },
+    {
+      "t": 583,
+      "after": "ui",
+      "inB": false,
+      "rp": false,
+      "run": true
+    }
+  ]
+}

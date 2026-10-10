@@ -13,12 +13,12 @@ import {latestEquipmentTier,recordMerchantEquipment,ensureMerchantCatalog,refres
 import {initializeMedicalPosts,updateMedicalPosts,serializeMedicalPosts,nearestKnownMedicalPost,drawMedicalPost,drawMedicalMap,drawMedicalMarker,drawTownMedicalReception,drawRescueDirection} from './medical-posts.js?v=151';
 import {invasionMethods,initializeInvasions,serializeInvasions,shouldTriggerRandomRaid,makeEnemyRoom,drawInvasionRoute} from './invasion-rules.js?v=151';
 import {gateMethods,serializeGatePosts,replenishTownGateGuards,initializeGateGuards,ensureTownGuards,serializeGateGuards,updateGateGuards,gateGuardVisible,applyFortifications,drawFortification,exitGateTown,townExitReached,wallBlocksAttack,attackBlocked as coverBlocked} from './gate-rules.js?v=161';
-import {nationMethods,normalizeNation,nationalIncome,nationalPayrollPlan,headquartersDamageMult,drawNationalDevelopment,DEVELOPMENT_STAGES} from './nation-rules.js?v=166';
+import {nationMethods,normalizeNation,nationalIncome,nationalPayrollPlan,headquartersDamageMult,drawNationalDevelopment,DEVELOPMENT_STAGES} from './nation-rules.js?v=168';
 import {equipmentUpgradeCost,salaryQuote,paySoldiers} from './payroll-rules.js?v=151';
 import {addFieldDrop,ageFieldDrops} from './field-drops.js?v=151';
 import {economicState,advanceRegionalEconomy,discoverEconomicRegions,recordEconomicKill,economicFieldBlocked} from './regional-economy.js?v=151';
 import {updateRegionalTraffic,nearestCommerceTarget,damageCommerce,persistTradeRaiders,restoreTradeRaiders} from './trade-routes.js?v=151';
-import {drawEconomicLandscape,drawCommerceActor,drawEconomicMinimap,drawCommerceWreck,drawCampTent} from './economic-visuals.js?v=166';
+import {drawEconomicLandscape,drawCommerceActor,drawEconomicMinimap,drawCommerceWreck,drawCampTent} from './economic-visuals.js?v=168';
 /**
  * ゲーム3: IRON SQUAD (アイアン・スクワッド: 雑兵立身出世録)
  * ローグライク・アクションRPG
@@ -32,7 +32,8 @@ import {drawEconomicLandscape,drawCommerceActor,drawEconomicMinimap,drawCommerce
  */
 import { sound } from '../../audio.js?v=151';
 import { storage } from '../../storage.js';
-import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow } from './visuals.js?v=166';
+import { createStallRecorder, mountStallLog } from './stall-recorder.js?v=168';
+import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow } from './visuals.js?v=168';
 import { refreshCampQuiet, assignCampSeats, tryCampLeisure } from './camp-leisure.js?v=151';
 import { CAMP_PEACE_RADIUS, peaceContainment, pushOutsidePeace, relocatePeaceMonster } from './peace-zones.js?v=158';
 import { FARM_X, FARM_Y, farmPosts, farmOverlaps, reinforcementCount, reserveRosterLine, reserveRosterTitle } from './reserve-farm.js?v=151';
@@ -50,8 +51,8 @@ import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog 
 import { renderTroopRankings, getSoldierRankerBadges, calcSoldierRankerBonus } from './troop-rankings.js?v=151';
 import { ensureSoldierAppearance, drawSoldierPortrait, describeSoldierAppearance } from './soldier-appearance.js?v=151';
 import { attachSurfaceEvents, detachSurfaceEvents, frameSurfaceReady, releaseSceneCaches, releaseCanvas, surfaceCanResume } from './canvas-surface.js?v=151';
-import { WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt, routeNameAt, eastWestRoadY, northSouthRoadX, riverCenterY, drawFieldDepth, drawOakCrown, fieldBlocks, settleUnit } from './world.js?v=166';
-import { subscribeKana } from '../../kana-mode.js?v=166';
+import { SETTLEMENTS, WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt, routeNameAt, eastWestRoadY, northSouthRoadX, riverCenterY, drawFieldDepth, drawOakCrown, fieldBlocks, settleUnit } from './world.js?v=168';
+import { subscribeKana, kanaGrade } from '../../kana-mode.js?v=168';
 import { FogGrid, FOG_REVEAL_RADIUS, FOG_CAMP_REVEAL } from './fog.js?v=151';
 import {
   classTierOf, nextClassId, classUpCostForNext, canAffordClassUp, formatClassUpCostJa, classUpShortageJa,
@@ -87,10 +88,11 @@ import {
   nearestLivingMerchant, refreshMerchantStock, merchantBuyPrice, merchantSellTier,
   applyMerchantSave, serializeMerchants, MERCHANT_INTERACT_R,
   merchantHealingStatus, merchantHealWavesLeft, useMerchantHealing, MERCHANT_HEAL_COST, recalcEscortStats, finishEscortPhase
-} from './merchant-rules.js?v=166';
+} from './merchant-rules.js?v=168';
 
 import { daylightAt, advanceWorldClock, periodEnemy, enemyAvailable, PERIOD_ENEMIES } from './day-night.js';
 
+import { clusterRescueMarkers } from './rescue-markers.js?v=168';
 import { RESCUE_TIMEOUT, rescueUnits, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, receiveTownCargo, leaveCivilianSpace, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, markSoldierDown, CIV_KINDS, isMedic, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST } from './casualty-rules.js?v=151';
 import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault, dungeonBlocks, dungeonSolids } from './dungeon.js?v=151';
 import {
@@ -1029,6 +1031,8 @@ export const QUEST_TEMPLATES = [
 ];
 
 export const IronSquadGame = {
+  get gold() { return this._gold === undefined ? 0 : this._gold; },
+  set gold(value) { this._gold = value; this.refreshWindowGold?.(); },
   ...gateMethods,
   ...invasionMethods,
   ...nationMethods,
@@ -1598,7 +1602,7 @@ export const IronSquadGame = {
     // Each tab is its own full-screen window; the panel is a launcher until one opens.
     const windowTitles={overview:'戦況',troops:'部隊・装備',nation:'国家'};
     const windowBar=document.createElement('div'); windowBar.className='strat-window-bar';
-    windowBar.innerHTML='<button type="button" id="btn-strat-window-back" class="strat-window-back">‹ 戻る</button><strong id="strat-window-title" class="strat-window-title"></strong><button type="button" id="btn-strat-window-close" class="strat-window-close">閉じる ×</button>';
+    windowBar.innerHTML='<button type="button" id="btn-strat-window-back" class="strat-window-back">‹ 戻る</button><div class="strat-window-heading"><strong id="strat-window-title" class="strat-window-title"></strong><small id="strat-window-gold" class="strat-window-gold"></small></div><button type="button" id="btn-strat-window-close" class="strat-window-close">閉じる ×</button>';
     panel.insertBefore(windowBar,body);
     const selectTab=(name,openWindow=true)=>{
       if(openWindow){
@@ -1658,6 +1662,7 @@ export const IronSquadGame = {
     modal.addEventListener('keydown',this.dialogKeyHandler);
     configureInterface(this);
     configureBattlefieldUI(this);
+    this.setupStallRecorder();
     document.getElementById('btn-pad-potion').addEventListener('click',e=>{e.preventDefault();e.stopPropagation();this.useSquadPotion();});
   },
 
@@ -2085,17 +2090,67 @@ export const IronSquadGame = {
     this.setupInput();
   },
 
+  /** 動作ログ（止まった記録）: フレーム間隔の監視と、戦況ウィンドウへの表示。 */
+  setupStallRecorder() {
+    if (!this.stallRecorder) {
+      const rec = this.stallRecorder = createStallRecorder({ getContext: () => this.stallContext() });
+      this._stallDetach = rec.attach(window, document);
+      const root = this.container, type = (e) => {
+        const t = e.target;
+        const el = t?.closest ? t.closest('button,[id],.pad-btn') : null;
+        const id = el?.id || '';
+        rec.action(/dpad|joystick/.test(id) ? 'joystick' : /strategy|menu/.test(id) ? 'menu' : id ? 'tap:' + id : 'tap');
+      };
+      root.addEventListener('pointerdown', type, true);
+      this._stallInput = () => root.removeEventListener('pointerdown', type, true);
+    }
+    mountStallLog(this.container.querySelector('#view-strat-overview'), this.stallRecorder, document);
+  },
+
+  stallContext() {
+    const p = this.player || {}, tt = this.worldTerrain, root = this.container, vv = window.visualViewport;
+    const x = Math.round(p.x || 0), y = Math.round(p.y || 0);
+    let biome = '', route = '', nearPlace = '';
+    try { if (!this.currentDungeon) { biome = biomeAt(p.x, p.y)?.name || ''; route = routeNameAt(p.x, p.y) || ''; } else nearPlace = this.currentDungeon.name || this.currentDungeon.id || ''; } catch (_) { /* optional */ }
+    try {
+      if (!nearPlace) {
+        const C = WORLD_SIZE / 2; let best = 1e18;
+        for (const st of SETTLEMENTS) { const d = (C + st.ox - p.x) ** 2 + (C + st.oy - p.y) ** 2; if (d < best) { best = d; nearPlace = st.name || st.id; } }
+        nearPlace += `（${Math.round(Math.sqrt(best))}離れ）`;
+      }
+    } catch (_) { /* optional */ }
+    const open = [];
+    for (const [id, name] of [['strategy-modal', '戦況'], ['merchant-modal', '商人'], ['save-menu', 'セーブ'], ['world-map-modal', '世界地図']]) {
+      const el = root?.querySelector('#' + id); if (el && !el.classList.contains('hidden')) open.push(name);
+    }
+    if (!open.length && this.saveMenu && !this.saveMenu.classList.contains('hidden')) open.push('セーブ');
+    if (!open.length && this.worldMapModal && !this.worldMapModal.classList.contains('hidden')) open.push('世界地図');
+    if (!open.length && root?.classList.contains('dialog-open')) open.push('ダイアログ');
+    return {
+      kanaGrade: kanaGrade(),
+      viewport: { w: window.innerWidth, h: window.innerHeight, canvasW: Math.round(this.width), canvasH: Math.round(this.height), dpr: window.devicePixelRatio || 1, zoom: this.zoom, pageScale: vv?.scale || 1 },
+      player: { x, y },
+      biome, route, nearPlace,
+      modal: open.join('+'),
+      inBattle: !!this.inBattle, wave: this.phase || this.wave || 0,
+      enemies: this.monsters?.length || 0, allies: this.squad?.length || 0,
+      terrain: { tiles: tt?.tiles?.size || 0, generatedTotal: tt?.generated || 0, rasterSize: tt?.rasterSize || 0 },
+    };
+  },
+
   startGameLoop() {
     if (this.animFrameId) {
       cancelAnimationFrame(this.animFrameId);
       this.animFrameId = null;
     }
     this.running = true;
+    this.stallRecorder?.reset();
     this.lastTime = performance.now();
     this._sceneDirty=true;
     this._lastRenderBattle=false;
     this.loop = (t) => {
       if (!this.running) return;
+      this.stallRecorder?.frame(t, this.worldTerrain?.generated);
       const dt = Math.max(0.001, Math.min((t - this.lastTime) / 1000, 0.1));
       this.lastTime = t;
       let stage = 'render';
@@ -2130,6 +2185,7 @@ export const IronSquadGame = {
 
   stopGameLoop() {
     this.running = false;
+    this.stallRecorder?.reset();
     if (this.animFrameId) {
       cancelAnimationFrame(this.animFrameId);
       this.animFrameId = null;
@@ -3484,6 +3540,7 @@ export const IronSquadGame = {
   },
 
   saveGame() {
+    this.stallRecorder?.mark('セーブ中');
     if (!this.activeSlotId || !this.player || this.player.hp <= 0) return null;
     try {
       persistTradeRaiders(this);
@@ -4231,7 +4288,16 @@ export const IronSquadGame = {
     this.showToast(`📢 呼集の笛！「隊長だ！こちらへ集まれ！」`);
   },
 
+  /** 戦況ウィンドウ上部の軍資金。金額が変わったときだけ書く。 */
+  refreshWindowGold() {
+    const gold = this.gold || 0;
+    if (this._windowGoldShown === gold) return;
+    const el = this.container?.querySelector?.('#strat-window-gold');
+    if (el) { el.textContent = `軍資金 ${gold.toLocaleString()}G`; this._windowGoldShown = gold; }
+  },
+
   updateStatsUI(force = true) {
+    this.refreshWindowGold();
     const nowUi = performance.now();
     if (!force && this._lastStatsUiAt && (nowUi - this._lastStatsUiAt) < STATS_UI_INTERVAL_MS) return;
     this._lastStatsUiAt = nowUi;
@@ -4344,6 +4410,12 @@ export const IronSquadGame = {
         mpNode.textContent = maxMana ? `MP ${Math.floor(this.player.mana)}/${maxMana}` : 'MP —';
       }
       if (goldNode) goldNode.textContent = `${(this.gold || 0).toLocaleString()}G`;
+      // 攻撃力・防御力は recalcPlayerStats が確定した戦闘用の値。変わったときだけDOMを書く
+      const statsNode = quietVitals.querySelector('.qv-stats');
+      if (statsNode && this.player) {
+        const statText = `攻撃力 ${Math.floor(this.player.atk || 0).toLocaleString()}  防御力 ${Math.floor(this.player.def || 0).toLocaleString()}`;
+        if (statsNode._text !== statText) { statsNode._text = statText; statsNode.textContent = statText; }
+      }
     }
     const treasEl = document.getElementById('current-treasury');
     if (treasEl) treasEl.textContent = `国庫${(this.treasury || 0).toLocaleString()}G`;
@@ -4960,6 +5032,7 @@ export const IronSquadGame = {
 
   // 作戦期完了処理（時間区切り制・死線生還判定＆新兵合流＆作戦給与支給）
   completePhase() {
+    this.stallRecorder?.mark('フェーズ切り替え');
     if(this.restTimer>0)return;
     if (this.baseRaidActive) {
       this.completeBaseRaid(false);
@@ -5253,13 +5326,17 @@ export const IronSquadGame = {
     // シームレス作戦期タイマー進行
     if(advanceWorldClock(this,dt))this.changeTimePeriod();
     if(this.restTimer>0)updateWounded(this,0);
-    if(advanceRest(this,dt)) {this.updateStatsUI(false);return;}
+    // 待機中も司令官と部隊は動ける。敵・出現・罠・期間タイマーだけが止まる（敵は restMonsters に退避済み）。
+    if(advanceRest(this,dt)) {this.updateStatsUI(false);if(!(this.restTimer>0))return;}
+    const resting=this.restTimer>0;if(!this.joystick)this.joystick={active:false,x:0,y:0,dirX:0,dirY:0};
     beginAttributeMovement(this);
+    if(!resting){
     this.totalBattleTime = (this.totalBattleTime || 0) + dt;
     advancePhase(this,dt);
-    if(this.restTimer>0) {updateWounded(this,0);this.updateStatsUI(false);return;}
+    }
+    if(this.restTimer>0&&!resting) {updateWounded(this,0);this.updateStatsUI(false);return;}
 
-    updateHazards(this,dt);if(!this.inBattle||this.player.hp<=0)return;
+    if(!resting){updateHazards(this,dt);if(!this.inBattle||this.player.hp<=0)return;}
     // 画面揺れ減衰 & 救助快足バフ減衰
     if (this.screenShake > 0) {
       this.screenShake = Math.max(0, this.screenShake - dt * 2.5);
@@ -5269,7 +5346,7 @@ export const IronSquadGame = {
     }
 
     // シームレス自律リポップ更新
-    this.updateSpawns(dt);
+    if(!resting)this.updateSpawns(dt);
 
     const aliveSquad = activeSquad(this);
     const raidDefenders=aliveSquad.concat((this.gateGuards||[]).filter(g=>gateGuardVisible(this,g)&&!g.isDown&&g.hp>0));
@@ -5375,7 +5452,7 @@ export const IronSquadGame = {
     // ゾーン監視＆ダンジョン処理
     if (!this.currentDungeon) {
       this.checkZoneTransition();
-      this.checkDungeonProximity();
+      if(resting){this.nearDungeon=null;document.getElementById('dungeon-prompt-banner')?.classList.add('hidden');}else this.checkDungeonProximity();
     } else {
       if (this.currentDungeon.kind === 'town') this.checkMerchantProximity();
       // ダンジョン内: 入口帰還ポータル (x: 180, y: h/2) 接触判定
@@ -7162,6 +7239,7 @@ export const IronSquadGame = {
   },
 
   openMerchantShop(merchant = null) {
+    this.stallRecorder?.mark('商人を開いた');
     const m = merchant || this.nearMerchant || nearestLivingMerchant(this, this.player?.x || 0, this.player?.y || 0, MERCHANT_INTERACT_R + 40);
     if (!m || m.dead || m.isDown || m.returningToBase) {
       this.showToast('行商人は居ないか、すでに命を落としています');
@@ -7190,7 +7268,13 @@ export const IronSquadGame = {
       const groups=[['weapon','武器',stock.filter(({item})=>item.type==='WEAPON')],['armor','防具・装飾',stock.filter(({item})=>item.type!=='WEAPON')]];
       const rows = groups.find(([id])=>id===shopGroup)[2].sort((a,b)=>compareEquipmentStrength(a.item,b.item)).map(({item,idx}) => {
         const slot=SLOT_INFO[item.type],current=slot?this.equipped?.[slot.key]:null,cmp=compareEquipment(item,current);
-        // Purchases equip the item's actual stats without transferring upgrades.
+        // Plain purchases keep the item's actual stats; a same-family weapon may instead carry the +X over.
+        const canInheritBuy=item.type==='WEAPON'&&current&&current.id!==item.id&&(current.upgrade||0)>(item.upgrade||0)&&weaponStyleOf(current)===weaponStyleOf(item)&&canUseWeapon(this.player,item);
+        let inheritBuy='';
+        if(canInheritBuy){
+          const preview=structuredClone(item);applyUpgradeStats(preview,current.upgrade);const after=compareEquipment(preview,current);
+          inheritBuy=`<div class="equipment-comparison ${after.kind}"><div class="equip-cmp-head"><span style="color:#c084fc;font-weight:bold;">✨+${current.upgrade}引継後：</span><strong>${after.label}</strong> <span style="color:#f87171;font-weight:bold;">(※旧装備は消滅)</span></div>${after.html}</div>`;
+        }
 
         const price = item._merchantPrice || merchantBuyPrice(item);
         const can = gold >= price && !m.dead && !m.isDown && !m.returningToBase;
@@ -7203,9 +7287,11 @@ export const IronSquadGame = {
           <p class="merchant-quality">${slot?.name||item.type} · ${item.merchantQuality||'厳選'} · 品質補正×${Number(item.rollMult||1).toFixed(2)} · 強化+${item.upgrade||0}</p>
           ${item.type==='WEAPON'?`<p class="weapon-requirement">${weaponRequirementText(this.player,item)}</p>`:''}
           <div class="equipment-comparison ${cmp.kind}"><div class="equip-cmp-head">隊長の現装備比：<strong>${cmp.label}</strong></div><small>現在：${current ? equipmentName(current) : '未装備'}</small>${cmp.html}</div>
+          ${inheritBuy}
           <div class="transfer-card-meta">
             <span class="merchant-price-note">${item.mat||''} · 基準売値の約${(price/Math.max(1,saleValue(item))).toFixed(1)}倍（品質込み）</span>
             <button type="button" class="transfer-tap-btn" data-buy="${idx}" ${can ? '' : 'disabled'}>${can ? canUseWeapon(this.player,item)?'購入して装備':'購入してバッグへ' : '所持金不足'}</button>
+            ${canInheritBuy?`<button type="button" class="transfer-tap-btn merchant-inherit-btn" data-buy="${idx}" data-inherit="1" ${can?'':'disabled'} title="現在装備の強化値(+${current.upgrade})を引き継いで購入・装備（旧装備は消滅します）">✨+${current.upgrade}引継で購入(旧装備消滅)</button>`:''}
           </div>
         </div>`;
       }).join('') || `<div class="transfer-empty-msg"><p>${stock.length?'この分類の装備はありません。もう一方のタブをご覧ください。':'今ウェーブは売り切れです。次のウェーブに仕入れ直します。'}</p></div>`;
@@ -7264,11 +7350,15 @@ export const IronSquadGame = {
             this.showToast('所持金が足りない');
             return;
           }
+          const wantInherit=btn.dataset.inherit==='1';
+          const cur=this.equipped?.weapon;
+          const inherit=wantInherit&&item.type==='WEAPON'&&cur&&(cur.upgrade||0)>(item.upgrade||0)&&weaponStyleOf(cur)===weaponStyleOf(item)&&canUseWeapon(this.player,item);
+          if(wantInherit&&!inherit){this.showToast('強化値を引き継げません');render();return;}
           this.gold -= price;
           markMerchantPurchase(m,item,this.phase||1);
           m.stock.splice(idx, 1);
-          this.collectDrop(item, false, {purchased:true});
-          this.showToast(`🏪【購入${canUseWeapon(this.player,item)?'・装備':'・バッグへ'}】[T${item.tier}] ${equipmentName(item)} · ${price.toLocaleString()}G`);
+          this.collectDrop(item, false, {purchased:true,inherit});
+          this.showToast(`🏪【購入${inherit?'・強化引継':canUseWeapon(this.player,item)?'・装備':'・バッグへ'}】[T${item.tier}] ${equipmentName(item)} · ${price.toLocaleString()}G`);
           this.saveGame();
           this.updateStatsUI();
           render();
@@ -7324,6 +7414,7 @@ export const IronSquadGame = {
 
   enterDungeon(dungeonDef) {
     if (this.currentDungeon) return;
+    if (this.restTimer > 0) { this.showToast('待機中は入れません。次のラウンドが始まってからにしましょう'); return; }
     this.nearDungeon = null;
     document.getElementById('dungeon-prompt-banner')?.classList.add('hidden');
     this.savedFieldPos = { x: this.player.x, y: this.player.y };
@@ -7926,7 +8017,7 @@ export const IronSquadGame = {
 
     let autoEquipped = false;
     if (slotKey && (options.purchased || !this.equipped[slotKey])) {
-      autoEquipped = this.equipItem(item)!==false;
+      autoEquipped = this.equipItem(item, !!options.inherit)!==false;
     }
 
     let toastText = '';
@@ -9188,6 +9279,7 @@ export const IronSquadGame = {
   completeWave() { this.completePhase(); },
 
   openStrategyModal(isManualOpen = false) {
+    this.stallRecorder?.mark('戦況ウィンドウを開いた');
     this._inventoryUpgradeOrder = null;
     const modal = document.getElementById('strategy-modal');
     const titleEl = document.getElementById('strat-title');
@@ -9304,6 +9396,8 @@ export const IronSquadGame = {
     casualtySummary.textContent=`負傷${this.squad.filter(s=>s.isDown&&!s.dead).length}名。接近して紐で搬送：隊長2名・聖騎士2名・他兵士1名。本陣・救護所・町・制圧済み拠点へ運ぶと復活。発見済み救護所へ矢印案内。施設外で復活させられるのは衛生兵・大司教のみ。搬送中は死亡猶予停止。`;
     timeSummary.textContent=`${time.day}日目 · ${time.icon} ${time.label} ${time.clock} / ${time.period==='day'?'夜':'昼'}まで${Math.ceil(time.remaining)}秒。現在地：昼は${dayEnemy.name}、夜は${nightEnemy.name}。昼夜各4分、会議中は時計停止。`;
     document.getElementById('strat-gold').textContent = (this.gold || 0).toLocaleString();
+    const windowGold = document.getElementById('strat-window-gold');
+    if (windowGold) windowGold.textContent = `軍資金 ${(this.gold || 0).toLocaleString()}G`;
     const _st = document.getElementById('strat-treasury'); if (_st) _st.textContent = String(this.treasury || 0);
     const reserveCount=(this.reserves || []).length;
     const reserveLiving=(this.reserves || []).filter(s=>s&&!s.dead).length;
@@ -10244,6 +10338,9 @@ export const IronSquadGame = {
     const padT = 95;
     const padB = h - 65;
 
+    const pts = this._rescuePts || (this._rescuePts = []);
+    const clusters = this._rescueClusters || (this._rescueClusters = []);
+    let np = 0;
     for (const s of downedMates) {
       // 兵士のスクリーン座標
       const sx = w / 2 + (s.x - cx) * z;
@@ -10278,12 +10375,23 @@ export const IronSquadGame = {
         edgeX = Math.max(padL, Math.min(padR, edgeX));
       }
 
-      // プレイヤーからの距離（内部単位はcm。表示のみ formatDistance でメートルへ換算）
-      const distM = formatDistance(Math.hypot(s.x - this.player.x, s.y - this.player.y));
+      let p = pts[np];
+      if (!p) p = pts[np] = { ex: 0, ey: 0, angle: 0, dist: 0, carried: false };
+      p.ex = edgeX; p.ey = edgeY; p.angle = angle;
+      p.dist = Math.hypot(s.x - this.player.x, s.y - this.player.y);
+      p.carried = !!s.carrierId;
+      np++;
+    }
+    if (!np) return;
 
-      // 搬送状況と緊急度
-      const isBeingCarried = !!s.carrierId;
-      const pulse = Math.sin(now * 0.014) > 0;
+    // 近接する端マーカーは1つに束ねる（最寄りの1体を代表にし、人数を添える）
+    const marks = clusterRescueMarkers(pts, np, clusters);
+    const pulse = Math.sin(now * 0.014) > 0;
+    for (const mk of marks) {
+      const edgeX = mk.ex, edgeY = mk.ey, angle = mk.angle;
+      // 内部単位はcm。表示のみ formatDistance でメートルへ換算
+      const distM = formatDistance(mk.dist);
+      const isBeingCarried = mk.carried; // 束の全員が搬送中のときだけ緑
       const bgColor = isBeingCarried ? 'rgba(30, 58, 44, 0.94)' : (pulse ? '#dc2626' : '#991b1b');
       const borderColor = isBeingCarried ? '#34d399' : (pulse ? '#ffffff' : '#fca5a5');
 
@@ -10317,7 +10425,7 @@ export const IronSquadGame = {
       ctx.fillRect(-7, -2.2, 14, 4.4);
       ctx.fillRect(-2.2, -7, 4.4, 14);
 
-      // 4. 距離ラベル
+      // 4. 距離ラベル（束ねたときは人数つき）。画面の左右にはみ出さないよう寄せる
       ctx.fillStyle = '#ffffff';
       ctx.font = 'bold 11px sans-serif';
       ctx.textAlign = 'center';
@@ -10325,8 +10433,11 @@ export const IronSquadGame = {
       ctx.shadowColor = 'rgba(0,0,0,0.9)';
       ctx.shadowBlur = 0;
       const textY = edgeY < h - 75 ? 21 : -21;
-      const labelText = isBeingCarried ? `搬送中 ${distM}` : `${distM} 救助!`;
-      ctx.fillText(labelText, 0, textY);
+      const labelText = mk.count > 1
+        ? (isBeingCarried ? `搬送中 ×${mk.count} · ${distM}` : `救助 ×${mk.count} · ${distM}`)
+        : (isBeingCarried ? `搬送中 ${distM}` : `${distM} 救助!`);
+      const textX = Math.max(44, Math.min(w - 44, edgeX)) - edgeX;
+      ctx.fillText(labelText, textX, textY);
       ctx.shadowBlur = 0;
 
       ctx.restore();
@@ -11707,6 +11818,7 @@ export const IronSquadGame = {
     this.kanaUnsubscribe?.();this.kanaUnsubscribe=null;
     sound.stopBGM();sound.setListener(null);
     this.stopGameLoop();
+    this._stallDetach?.();this._stallInput?.();this._stallDetach=this._stallInput=null;
     detachSurfaceEvents(this);
     releaseSceneCaches(this);
     this.surfaceResizeObserver?.disconnect(); this.surfaceResizeObserver = null;
