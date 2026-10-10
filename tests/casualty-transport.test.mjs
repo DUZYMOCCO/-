@@ -1,4 +1,5 @@
 // d99cea4: commander/paladin carry two, ordinary soldiers one. Aid coordinates use the expanded world center.
+import {healAmountFor} from '../js/games/iron-squad/phase-rules.js';
 import assert from 'node:assert/strict';
 import {WORLD_SIZE} from '../js/games/iron-squad/world.js';
 import {RESCUE_TIMEOUT,carryingCapacity,aidStations,carriedSoldiers,attachWounded,updateWounded,handleTransportAI,syncDragged,treatWounded,sanitizeCarriers,releaseWounded,orbDropChance} from '../js/games/iron-squad/casualty-rules.js';
@@ -31,7 +32,7 @@ a.x=center;a.y=center;updateWounded(game,.1);assert.equal(a.isDown,false);assert
 game.outposts=[{type:'FORT',id:'test-fort',hp:0,maxHp:100,cleared:true,x:center+1600,y:center,radius:30,name:'制圧砦'}];b.x=center+1600;updateWounded(game,.1);assert.equal(b.isDown,false);
 const c=wounded('c');game.squad=[c];game.player.x=center+1100;
 const medic={id:'medic',soldierClass:'MEDIC',hp:100,x:center+620,y:center};assert.equal(treatWounded(game,medic,c,.5),false);assert.equal(treatWounded(game,medic,c,.5),true);
-assert.equal(c.hp,35);assert.equal(participated(medic),true);
+assert.equal(c.hp,Math.floor(healAmountFor(medic,c)),'medic revival follows the healer formula (was flat 35%)');assert.equal(participated(medic),true);
 const expired=wounded('expired');expired.downTimer=.1;game.squad=[expired];const casualties=game.phaseCasualties||0;
 updateWounded(game,1);updateWounded(game,1);assert.equal(expired.dead,true);assert.equal(game.phaseCasualties,casualties+1);
 assert.equal(game.remains.length,1);assert.equal(game.remains[0].x,expired.x);game.ageRemains(26);assert.equal(game.remains.length,0);

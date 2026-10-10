@@ -54,6 +54,35 @@ export function recordHealing(healer, amount) {
   healer.phaseActivity.healingDone += amount;
 }
 
+/**
+ * Healer-dependent heal strength. One shared curve for medic heals, medic revival
+ * and commander on-the-spot revival (the target's max HP share restored).
+ * healPower already folds in level, waves, kills, weapon/upgrade/tier, class tier,
+ * talent, honors and the healer's magic (魔力) multiplier (index.js recalcSoldierStats).
+ *   fraction = clamp(HEAL_BASE_FRACTION * (healPower / HEAL_REF_POWER) ^ HEAL_EXPONENT, HEAL_MIN_FRACTION, HEAL_MAX_FRACTION)
+ *   healPower   50 (fresh level-1 medic, real value 53) -> 10%  | 15 (ポンコツ) -> ~4%
+ *   healPower  100 (mid)  -> ~17%  | 200 -> ~32%
+ *   healPower  300 (late) -> ~44%  | 400 -> ~56% | ~700+ (best) -> 65% cap
+ */
+export const HEAL_REF_POWER = 50;
+export const HEAL_BASE_FRACTION = 0.10;
+export const HEAL_EXPONENT = 0.8;
+export const HEAL_MIN_FRACTION = 0.02;
+export const HEAL_MAX_FRACTION = 0.65;
+export function healerPower(healer) {
+  const hp = Number(healer?.healPower);
+  if (hp > 0) return hp;
+  const atk = Number(healer?.atk);
+  return 26 + Math.floor((atk > 0 ? atk : 12) * 1.5);
+}
+export function healFraction(healer) {
+  const f = HEAL_BASE_FRACTION * Math.pow(healerPower(healer) / HEAL_REF_POWER, HEAL_EXPONENT);
+  return Math.max(HEAL_MIN_FRACTION, Math.min(HEAL_MAX_FRACTION, f));
+}
+export function healAmountFor(healer, target) {
+  return Math.max(1, Math.round((Number(target?.maxHp) || 0) * healFraction(healer)));
+}
+
 export function healByMedic(healer, target, amount, game = null) {
   if (!target || target.dead || target.isDown || target.hp <= 0 || !Number.isFinite(amount) || amount <= 0) return 0;
   const restored = Math.max(0, Math.min(target.maxHp - target.hp, amount));

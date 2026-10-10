@@ -1,3 +1,4 @@
+import {commanderFullName} from './commander-identity.js?v=171';
 import {configureAudioInterface} from './audio-interface.js?v=151';
 import {renderBattleLog} from './battle-log.js?v=151';
 import {renderTroopRankings} from './troop-rankings.js?v=151';
@@ -289,6 +290,8 @@ export function refreshInterface(game, { rank, time, zone }) {
   for (const [label, value, tone] of [['隊長 HP', `${Math.max(0, Math.floor(game.player.hp))} / ${game.player.maxHp}`, ''], ['実戦 / 予備', `${alive.length} / ${(game.reserves || []).length} 名`, ''], ['要救助', `${alive.filter(s => s.isDown).length} 名`, alive.some(s => s.isDown) ? 'danger-text' : ''], ['現在時刻', `${time.label} ${time.clock}`, '']]) {
     const metric = element('div', 'snapshot-metric'); metric.append(element('small', '', label), element('strong', tone, value)); metrics.append(metric);
   }
+  const commanderName = commanderFullName(game.player);
+  if (commanderName) snapshot.append(element('p', 'command-location', `隊長 ${commanderName}`));
   snapshot.append(metrics, element('p', 'command-location', `${zone.name || zone.label || '現在地'} · ${time.day}日目`));
   if (game.currentQuest) snapshot.append(element('p', 'command-objective', `軍令：${game.currentQuest.title} · ${game.currentQuest.completed ? '達成済み' : '遂行中'}`));
   for (const id of ['maintenance-summary', 'day-night-summary', 'casualty-summary']) if (get(id)) get('command-rule-content').append(get(id));

@@ -6,15 +6,17 @@ export const HAIR_LABELS = Object.freeze({
   horseshoe:'落ち武者ハゲ', buzz:'うっすら坊主', swept:'流し髪',
   short:'短髪', parted:'七三分け', tousled:'ラフな前髪', curly:'くせ毛', tied:'結び髪'
 });
-const SKINS=['#e0b899','#c99b79','#b88767','#d6aa88','#a87758'];
-const HAIRS=['#342e2b','#514137','#6a5140','#85827b','#473b35','#824d36'];
-const MEDIC_HAIRS=['#51372f','#332e32','#795442','#a77951','#6c5552'];
-const MEDIC_STYLES={bob:'ボブ', ponytail:'ポニーテール', braid:'編み髪', short:'ショート',long:'ロング',waves:'ゆるいウェーブ',halfup:'ハーフアップ'};
+export const SKINS=['#e0b899','#c99b79','#b88767','#d6aa88','#a87758'];
+export const HAIRS=['#342e2b','#514137','#6a5140','#85827b','#473b35','#824d36'];
+export const MEDIC_HAIRS=['#51372f','#332e32','#795442','#a77951','#6c5552'];
+export const MEDIC_STYLES={bob:'ボブ', ponytail:'ポニーテール', braid:'編み髪', short:'ショート',long:'ロング',waves:'ゆるいウェーブ',halfup:'ハーフアップ'};
+/** v4.2.24: 隊長の自作の髪色は兵士の髪色の両方の色見本から選ぶ。 */
+const ANY_HAIR=[...HAIRS,...MEDIC_HAIRS];
 export const APPEARANCE_RULES=Object.freeze({normalHairChance:.68,rareFemaleBeautyChance:.045});
 const NORMAL_HAIR_STYLES=['short','parted','tousled','curly','tied'];
-const EYE_COLORS=['#476b64','#665a83','#567385','#735843'];
+export const EYE_COLORS=['#476b64','#665a83','#567385','#735843'];
 export const GLASSES_LABELS=Object.freeze({none:'',round:'丸メガネ',square:'角メガネ',half:'ハーフリム'});
-const FRAME_COLORS=['#454344','#6d5544','#927c61'];
+export const FRAME_COLORS=['#454344','#6d5544','#927c61'];
 const FACES={round:'丸顔', square:'角張った顔', long:'面長', angular:'すっきりした輪郭'};
 const MEDICS=new Set(['MEDIC','HIGH_PRIEST','SAINT','ARCHANGEL']);
 const ARCHERS=new Set(['ARCHER','SNIPER','STORM_BOW','STAR_HUNTER']);
@@ -67,7 +69,7 @@ export function createSoldierAppearance(identity) {
 
 export function ensureSoldierAppearance(soldier) {
   const a=soldier.appearance;
-  if(a?.version===1 && HAIR_LABELS[a.hairStyle] && SKINS.includes(a.skin) && HAIRS.includes(a.hairColor) && MEDIC_STYLES[a.medicHair] && MEDIC_HAIRS.includes(a.medicHairColor)) {
+  if(a?.version===1 && HAIR_LABELS[a.hairStyle] && SKINS.includes(a.skin) && ANY_HAIR.includes(a.hairColor) && MEDIC_STYLES[a.medicHair] && ANY_HAIR.includes(a.medicHairColor)) {
     if(!(a.glasses in GLASSES_LABELS) || !FRAME_COLORS.includes(a.glassesColor))Object.assign(a,createEyewear(soldier.id || `${soldier.name || 'soldier'}:${soldier.platoonId || 0}`));
     // Already assigned people retain their face, hair and styling across updates.
     if(typeof a.beautiful!=='boolean')a.beautiful=false;
@@ -181,7 +183,7 @@ export function drawSoldierHead(c,soldier,options={}) {
   const {x=0,y=0,scale=1,small=false,silhouette=false,helmet=null,helmetTier=1,mitre=false,cap=false}=options;
   if(!small||silhouette||typeof c.canvas?.width!=='number'||(typeof document==='undefined'||typeof document.createElement!=='function'))return paintSoldierHead(c,soldier,options);
   const a=ensureSoldierAppearance(soldier);
-  const key=JSON.stringify([a,isMedicAppearance(soldier.soldierClass),soldier.species,soldier.soldierClass==='NINJA',helmet,helmetTier,mitre,cap]);
+  const key=JSON.stringify([a,isMedicAppearance(soldier.soldierClass)||!!a.feminine,soldier.species,soldier.soldierClass==='NINJA',helmet,helmetTier,mitre,cap]);
   let art=FIELD_HEADS.get(key);
   try{if(art?.getContext?.('2d')?.isContextLost?.()){art.width=art.height=1;FIELD_HEADS.delete(key);art=null;}}catch{art=null;}
   if(!art){
@@ -197,7 +199,7 @@ export function drawSoldierHead(c,soldier,options={}) {
 
 /** Head centered on (x,y); far silhouettes remain direct, cheap primitives. */
 function paintSoldierHead(c,soldier,{x=0,y=0,scale=1,small=false,silhouette=false,helmet=null,helmetTier=1,mitre=false,cap=false}={}) {
-  const a=ensureSoldierAppearance(soldier),medic=isMedicAppearance(soldier.soldierClass);
+  const a=ensureSoldierAppearance(soldier),medic=isMedicAppearance(soldier.soldierClass)||!!a.feminine;
   if(soldier.species||soldier.soldierClass==='NINJA'){
     c.save();c.translate(x,y);c.scale(scale,scale);
     const fur={wolf:'#899a9d',bear:'#8e7255',cat:'#b79b82',fox:'#c78d55',bird:'#99a99d'}[soldier.species]||'#333b4c';
@@ -335,6 +337,6 @@ export function drawSoldierPortrait(c,soldier,width=240,height=260,{compact=fals
     stroke(c,[[-2,12],[3,20]],'#b1a080',1.2);c.fillStyle='#c2af86';c.fillRect(-6,12,1.2,2.7);
   }
   c.restore();
-  drawSoldierHead(c,soldier,{cap:medic});
+  drawSoldierHead(c,soldier,{cap:isMedicAppearance(soldier.soldierClass)});
   c.restore();
 }

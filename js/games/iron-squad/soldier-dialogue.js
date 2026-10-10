@@ -1,4 +1,4 @@
-import { displayKana } from '../../kana-mode.js?v=169';
+import { displayKana } from '../../kana-mode.js?v=171';
 // 兵士の一言フキダシ（感情・戦況リアクション）システム
 // 操作を邪魔しない控えめなCanvas描画 ＆ 直近重複排除エンジン（Anti-Repetition）
 
@@ -31,6 +31,42 @@ export const DIALOGUE_CATEGORIES = {
     'ここで討ち取って、凱旋するぞ！'
   ],
 
+  DEBT_REPAID: [
+    'あの時の借りを今返すぜ！',
+    '隊長、あの時の恩はここで返します！',
+    '助けてもらった命だ、今度は俺の番だ！',
+    '借りは必ず返すさ、隊長！',
+    '待たせたな、あの時の礼をさせてくれ！',
+    'あんたに助けられた命だ、無駄にはしねえ！',
+    '約束どおり来たぜ、隊長！',
+    '今度は俺が運ぶ番だ、しっかりしてくれ！',
+    'あの時の礼だ、必ず本陣まで連れて行く！',
+    '恩人を見捨てるわけにはいかねえ！'
+  ],
+  DEBT_SETTLED: [
+    'これで貸し借りなしだ',
+    '借りは返したぜ、隊長',
+    'さあ、これでおあいこだな',
+    'これで胸のつかえが取れたよ',
+    '恩は返した、あとは自分の足で立ちな',
+    '貸しも借りもなし、それでいい',
+    'じゃあな、無理はするなよ',
+    'これでようやく肩の荷が下りた',
+    '礼は済んだ、達者でな',
+    'これで気が楽になった'
+  ],
+  FRIEND_FAREWELL: [
+    '友よ、またな',
+    'まずい時はまた呼んでくれ、友よ',
+    '俺たちはもう友だ、いつでも駆けつける',
+    '友の危機なら何度でも飛んでくるぜ',
+    'また会おう、友よ',
+    'あんたとは長い付き合いになりそうだ',
+    '友よ、次も頼ってくれ',
+    '背中は任せな、友よ',
+    '生きてまた会おうぜ、友よ',
+    '今日の借りはいつか俺が頼む、友よ'
+  ],
   ALLY_DOWN: [
     'おい！目を開けろ！',
     'くそっ、やられた！',
@@ -558,6 +594,17 @@ function getClassCategory(soldier) {
 }
 
 // テキストの自動折り返し処理（画面幅・高倍率対応）
+/**
+ * 門番が隊長を拾うときの台詞候補。
+ * repeat: 過去に隊長を救助済み / family: 隊長の姓（不明なら空）/ gender: 'male'|'female'|その他（不明なら家名の行は出さない）。
+ */
+export function guardRescueLines({repeat=false,family='',gender=''}={}) {
+  const lines=['大丈夫か？','めんどくせぇなぁ'];
+  if(repeat)lines.push('また転がってるのか');
+  const child=gender==='male'?'息子':gender==='female'?'娘':'';
+  if(family&&child)lines.push(`お前、${family}家の${child}か？`);
+  return lines;
+}
 export function wrapDialogueText(ctx, text, maxW) {
   if (!text) return [''];
   text = displayKana(text); // 変換後の文字列で幅を測り、語の途中で折り返さない
@@ -726,6 +773,15 @@ export class SoldierDialogueManager {
     };
 
     this.activeBubbles.push(bubble);
+    return true;
+  }
+
+  // 固定の台詞をそのまま吹き出しにする（門番の救助台詞など）
+  say(unit, text, now = Date.now()) {
+    if (!unit || !text) return false;
+    while (this.activeBubbles.length >= this.maxActiveBubbles) this.activeBubbles.shift();
+    this.soldierCooldowns.set(unit.id, now);
+    this.activeBubbles.push({id:Math.random().toString(36).slice(2,9),soldierId:unit.id,soldierRef:unit,text,x:unit.x,y:unit.y-24,life:this.bubbleLifetime,maxLife:this.bubbleLifetime,opacity:0,scale:0.8});
     return true;
   }
 

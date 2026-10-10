@@ -7,7 +7,7 @@ import {applyAttributeStats} from './unit-attributes.js';
  * - 護衛が倒した強敵のドロップを序盤から掠め取れるチャンス
  */
 import { saleValue, distanceScaling, weaponCombatProfile } from './equipment-rules.js?v=151';
-import { drawFieldSoldier } from './visuals.js?v=169';
+import { drawFieldSoldier } from './visuals.js?v=171';
 import { createSoldierAppearance, drawSoldierHead } from './soldier-appearance.js?v=151';
 import { attackAnimationRate } from './weapon-motion.js?v=151';
 import { markSoldierDown, rebuildMerchantCasualties, RESCUE_TIMEOUT } from './casualty-rules.js?v=151';
@@ -543,7 +543,7 @@ export function applyMerchantSave(game, savedList, generateRandomDrop, BASE_CAMP
 
 export function npcSave(unit) {
   const result={};
-  for(const key of ['x','y','hp','maxHp','isDown','dead','downTimer','carrierId','homeX','homeY','timesDown','timesRescued','rescuedThisDown','downedInAid','downId','rescuedToBase','returningToBase','rescueRewardGranted','rescueReward','level','exp','reqExp','minionKills','bossKills','survivedWaves','hitGrowthPct','hitGrowthEvents','weaponMastery','favoriteWeapon','phaseActivity','escortBaseStats','attributeProfile'])if(unit[key]!==undefined)result[key]=unit[key];
+  for(const key of ['x','y','hp','maxHp','isDown','dead','downTimer','carrierId','homeX','homeY','timesDown','timesRescued','rescuedThisDown','downedInAid','downId','rescuedToBase','returningToBase','rescueRewardGranted','rescueReward','owesCommander','commanderFriend','commanderRescues','level','exp','reqExp','minionKills','bossKills','survivedWaves','hitGrowthPct','hitGrowthEvents','weaponMastery','favoriteWeapon','phaseActivity','escortBaseStats','attributeProfile'])if(unit[key]!==undefined)result[key]=unit[key];
   return result;
 }
 export function applyNpcSave(unit,saved) {
@@ -555,6 +555,9 @@ export function applyNpcSave(unit,saved) {
   if(saved.phaseActivity)unit.phaseActivity=saved.phaseActivity;
   if(saved.favoriteWeapon)unit.favoriteWeapon=saved.favoriteWeapon;
   for(const key of ['isDown','dead','rescuedThisDown','downedInAid','rescuedToBase','returningToBase'])unit[key]=!!saved[key];
+  if(saved.owesCommander)unit.owesCommander=true;
+  if(saved.commanderFriend)unit.commanderFriend=true;
+  if(Number.isFinite(saved.commanderRescues))unit.commanderRescues=saved.commanderRescues;
   unit.rescueRewardGranted=saved.rescueRewardGranted===undefined?!!saved.rescuedToBase:!!saved.rescueRewardGranted;
   if(saved.rescueReward)unit.rescueReward=saved.rescueReward;
   if(typeof saved.carrierId==='string')unit.carrierId=saved.carrierId;

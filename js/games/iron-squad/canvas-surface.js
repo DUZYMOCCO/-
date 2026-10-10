@@ -50,7 +50,7 @@ export function attachSurfaceEvents(game) {
 }
 
 export function surfaceCanResume(game) {
-  return game.container ? !game.container.classList.contains('dialog-open') && !!game.player && game.player.hp > 0 : !!game._surfaceResumeBattle;
+  return game.container ? !game.container.classList.contains('dialog-open') && !!game.player && (game.player.hp > 0 || !!game.player.isDown) : !!game._surfaceResumeBattle;
 }
 
 export function detachSurfaceEvents(game) {

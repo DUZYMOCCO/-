@@ -130,3 +130,14 @@ export function migrateSoldierName(soldier, existingNames = null) {
     });
   }
 }
+
+/** v4.2.24: 隊長の名前づくり。名前の前半32個は男性名、後半32個は女性名（上の並びのまま）。 */
+export const MALE_GIVEN_NAMES = Object.freeze(FIRST_NAMES.slice(0, 32));
+export const FEMALE_GIVEN_NAMES = Object.freeze(FIRST_NAMES.slice(32));
+export function randomGivenName(gender = 'male', random = Math.random) {
+  const pool = gender === 'female' ? FEMALE_GIVEN_NAMES : MALE_GIVEN_NAMES;
+  return pool[Math.floor(random() * pool.length) % pool.length];
+}
+export function randomFamilyName(random = Math.random) {
+  return FAMILY_NAMES[Math.floor(random() * FAMILY_NAMES.length) % FAMILY_NAMES.length];
+}

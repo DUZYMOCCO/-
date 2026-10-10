@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {JSDOM} from '../__pycache__/ui-tools/node_modules/jsdom/lib/api.js';
-import {healByMedic, finishExperience} from '../js/games/iron-squad/phase-rules.js';
+import {healFraction, healByMedic, finishExperience} from '../js/games/iron-squad/phase-rules.js';
 import {rollAttributeProfile} from '../js/games/iron-squad/unit-attributes.js';
 import {grantPersonalExp} from '../js/games/iron-squad/experience-rules.js';
 import {treatWounded,grantRescueBonus,markSoldierDown} from '../js/games/iron-squad/casualty-rules.js';
@@ -99,7 +99,7 @@ const rescuer = soldier('MEDIC',{reqExp:1e9});
 const wounded = {...soldier('HEAVY',{id:'revive-patient',reqExp:1e9}),hp:0,maxHp:100,isDown:true,downTimer:45};
 game.squad=[rescuer,wounded];
 assert.equal(treatWounded(game,rescuer,wounded,1),true);
-assert.equal(wounded.hp,35); assert.equal(rescuer.exp,300); assert.equal(rescuer.revivalExp,300);
+assert.equal(wounded.hp,Math.round(100*healFraction(rescuer))); assert.ok(wounded.hp>=8&&wounded.hp<=12,"fresh medic revives ~10% of max HP (was flat 35%)"); assert.equal(rescuer.exp,300); assert.equal(rescuer.revivalExp,300);
 assert.equal(rescuer.healingExp,0); assert.equal(rescuer.healingHp,0);
 assert.equal(treatWounded(game,rescuer,wounded,1),false); assert.equal(rescuer.exp,300);
 grantRescueBonus(game,wounded,{method:'MEDIC',medic:rescuer}); assert.equal(rescuer.exp,300,'one reward per down event');
@@ -115,7 +115,7 @@ for (const maxHp of [1000,10000]) {
   assert.equal(treatWounded(game,medical,casualty,1),true);
   assert.equal(medical.exp,maxHp*3); assert.equal(medical.revivalExp,maxHp*3);
   revivalCases.push({maxHp,exp:medical.exp});
-  assert.equal(casualty.hp,maxHp*.35); assert.equal(casualty.exp,30,'recipient keeps their separate survival reward');
+  assert.equal(casualty.hp,Math.round(maxHp*healFraction(medical)),"revival HP follows the healer formula (was flat 35%)"); assert.ok(casualty.hp/maxHp<.15); assert.equal(casualty.exp,30,'recipient keeps their separate survival reward');
   assert.ok(toasts.at(-1).includes(`+${(maxHp*3).toLocaleString()}EXP`));
   markSoldierDown(game,casualty);
   assert.equal(treatWounded(game,medical,casualty,1),true);

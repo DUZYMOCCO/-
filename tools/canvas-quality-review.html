@@ -10,5 +10,6 @@ const memory=new Map();Object.defineProperty(window,'localStorage',{value:{getIt
 const {IronSquadGame}=await import('../js/games/iron-squad/index.js');
 const game=Object.create(IronSquadGame);game.init(document.getElementById('game'),()=>{});window.qualityGame=game;
 document.querySelector('#new-expedition-form').dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));
+document.querySelector('#btn-commander-confirm').click(); // v4.2.24: 隊長づくりは何も選ばずに出発
 window.qualityReady=true;
 </script></body></html>

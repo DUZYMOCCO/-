@@ -4,10 +4,11 @@ import {equipmentVisualProfile} from './equipment-tiers.js?v=151';
 import {drawBodyEquipment} from './equipment-art.js?v=151';
 import {MAGIC_AFFINITIES,ensureMana} from './magic-rules.js?v=151';
 import { drawMeleeWeapon, drawMeleeRangeCue } from './weapon-motion.js?v=162';
+import { defaultCommanderAppearance } from './commander-identity.js?v=171';
 import { createSoldierAppearance, drawSoldierHead, isMedicAppearance, soldierAppearanceFamily, soldierPhysique } from './soldier-appearance.js?v=151';
 
-// Keep the commander's established face, with short hair in both field and portrait.
-const commanderAppearance=Object.freeze({...createSoldierAppearance('soldier:0'),hairStyle:'short'});
+// Keep the commander's established face, with short hair in both field and portrait (v4.2.24: player.appearance overrides it).
+const commanderAppearance=Object.freeze(defaultCommanderAppearance());
 
 // Live field illustrations. Equipment colors are read every frame.
 // Hands and the weapon share one pose; only the striking edge gets a short trace.

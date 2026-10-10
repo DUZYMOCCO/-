@@ -1183,3 +1183,35 @@
 }
 .iron-squad.quiet-battlefield #virtual-gamepad > #dungeon-prompt-banner:not(.hidden) { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 12px; border-radius: 8px; }
 .iron-squad.quiet-battlefield #virtual-gamepad > #btn-limited-ally { min-height: 40px; border-radius: 8px; font-weight: bold; }
+
+/* v4.2.24 隊長づくり／身だしなみ: 全画面シート（細い固定バー＋1つのスクロール＋下固定の操作） */
+.iron-squad .commander-editor { position: fixed; inset: 0; z-index: 240; padding: 0; align-items: stretch; background: var(--ui-bg); display: flex; justify-content: center; }
+.iron-squad .commander-editor .ce-panel {
+  width: 100%; max-width: 820px !important; height: 100%; max-height: 100% !important; border-radius: 0; border-width: 0 1px; margin: 0 auto; display: block;
+  overflow-x: hidden !important; overflow-y: auto !important; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y;
+  padding-left: env(safe-area-inset-left) !important; padding-right: env(safe-area-inset-right) !important;
+}
+.iron-squad .ce-body { padding: 4px 16px 12px; }
+.iron-squad .ce-lead { margin: 8px 0; font-size: 13px; line-height: 1.6; color: var(--ui-muted); }
+.iron-squad .ce-preview { display: flex; justify-content: center; gap: 12px; padding: 8px 0 4px; }
+.iron-squad .ce-preview canvas { border: 1px solid #6e7f72; border-radius: 8px; background: #17242c; }
+.iron-squad .ce-fullname { text-align: center; margin: 4px 0 6px; font-size: 16px; font-weight: bold; color: var(--ui-gold); overflow-wrap: anywhere; }
+.iron-squad .ce-group { margin: 14px 0; }
+.iron-squad .ce-group[hidden] { display: none; }
+.iron-squad .ce-heading { margin: 0 0 6px; font-size: 14px; color: var(--ui-gold); }
+.iron-squad .ce-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.iron-squad .ce-chip { min-height: 44px; min-width: 64px; padding: 8px 12px; font-size: 14px; color: var(--ui-text); background: var(--ui-raised); border: 2px solid var(--ui-line); border-radius: 10px; cursor: pointer; }
+.iron-squad .ce-chip[aria-pressed="true"], .iron-squad .ce-chip[aria-checked="true"] { border-color: var(--ui-gold); background: #3a4a43; font-weight: bold; }
+.iron-squad #ce-gender .ce-chip { flex: 1; min-height: 52px; font-size: 18px; }
+.iron-squad .ce-swatch { width: 44px; height: 44px; border-radius: 50%; border: 3px solid #0e1519; box-shadow: 0 0 0 1px var(--ui-line); cursor: pointer; }
+.iron-squad .ce-swatch[aria-pressed="true"] { border-color: #fff; box-shadow: 0 0 0 3px var(--ui-gold); }
+.iron-squad .ce-name-row { display: grid; grid-template-columns: 3.4em 1fr auto; align-items: center; gap: 8px; margin-bottom: 8px; }
+.iron-squad .ce-name-label { margin: 0; font-size: 14px; color: var(--ui-text); }
+.iron-squad .ce-input { margin: 0; min-width: 0; }
+.iron-squad .ce-dice { width: auto; min-height: 44px; padding: 0 12px; font-size: 13px; margin: 0; }
+.iron-squad .ce-actions { position: sticky; bottom: 0; z-index: 3; display: flex; gap: 10px; padding: 8px 16px max(8px, env(safe-area-inset-bottom)); background: var(--ui-panel); border-top: 1px solid var(--ui-line); }
+.iron-squad .ce-actions .action-btn { flex: 1; min-height: 48px; margin: 0; font-size: 15px; }
+.iron-squad .commander-identity { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.iron-squad .commander-name { font-size: 13px; color: var(--ui-gold); overflow-wrap: anywhere; }
+.iron-squad .commander-groom-btn { min-height: 44px; min-width: 76px; }
+@media (max-height: 500px) and (orientation: landscape) { .iron-squad .ce-preview canvas { transform: scale(.8); transform-origin: top center; } }

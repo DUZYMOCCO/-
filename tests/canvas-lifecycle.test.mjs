@@ -41,7 +41,7 @@ const visiblePixels = () => {
   return visible / (pixels.length/4);
 };
 const visibleField = message => assert.ok(visiblePixels()>.75,`${message}: terrain must be visible, not just transparent/black pixels`);
-document.querySelector('#new-expedition-form').dispatchEvent(new window.Event('submit',{bubbles:true,cancelable:true}));
+document.querySelector('#new-expedition-form').dispatchEvent(new window.Event('submit',{bubbles:true,cancelable:true})); assert.ok(document.getElementById('commander-editor'),'v4.2.24: New Game opens commander creation'); document.querySelector('#btn-commander-confirm').click();
 visibleField('synchronous New Game first paint');
 frame(); visibleField('New Game'); assert.equal(game.running,true);
 game.showSaveMenu(); document.querySelector('[data-slot-id]').click(); frame(); visibleField('saved-game selection');
@@ -96,7 +96,7 @@ if(process.env.CANVAS_REVIEW_DIR){mkdirSync(process.env.CANVAS_REVIEW_DIR,{recur
 // A startup error must never be written to an already-hidden save menu.
 game.showSaveMenu(); const fresh=game.startFreshGame;
 game.startFreshGame=()=>{throw new Error('injected initialization failure');}; console.error=()=>{};
-document.querySelector('#new-expedition-form').dispatchEvent(new window.Event('submit',{bubbles:true,cancelable:true})); console.error=log;
+document.querySelector('#new-expedition-form').dispatchEvent(new window.Event('submit',{bubbles:true,cancelable:true})); assert.ok(document.getElementById('commander-editor'),'v4.2.24: New Game opens commander creation'); document.querySelector('#btn-commander-confirm').click(); console.error=log;
 assert.equal(document.getElementById('save-menu').classList.contains('hidden'),false);
 assert.ok(document.querySelector('#save-menu .sheet-bar #btn-save-menu-back'),'save sheet has a slim bar with back'); assert.equal(document.querySelectorAll('#save-menu .save-footer, #save-menu .dialog-footer').length,0);
 assert.match(document.getElementById('save-start-error').textContent,/injected initialization failure/); assert.equal(game.running,false);
