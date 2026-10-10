@@ -218,6 +218,8 @@ const nav=document.querySelector('.navigation-overlay');
 const navStyle=window.getComputedStyle(nav);
 assert.notEqual(navStyle.left, '50%');
 assert.equal(navStyle.transform, 'none');
+assert.equal(navStyle.backgroundColor, 'rgba(0, 0, 0, 0)');
+assert.equal(navStyle.pointerEvents, 'none');
 assert.ok(Number(navStyle.opacity) < 0.8, 'the field map is translucent');
 game.openStrategyModal(true);
 const mapBtn=$('btn-world-map');

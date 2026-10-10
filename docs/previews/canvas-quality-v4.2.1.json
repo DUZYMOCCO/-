@@ -1,0 +1,7 @@
+{
+  "scene": "48 soldiers + 40 normal enemies; native Canvas render only",
+  "samples": 100,
+  "medianMs": 18.417,
+  "p95Ms": 19.22,
+  "terrainCache": 9
+}

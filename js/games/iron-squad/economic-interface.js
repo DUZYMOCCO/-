@@ -1,4 +1,4 @@
-import {ECONOMIC_REGIONS,PUBLIC_WORKS,CIVIL_TECH,INDUSTRIES,economicState,regionalTaxQuote,localProduction,regionDevelopmentCost,civilTechCost,economicInvestmentQuote,investEconomicProject,automaticEconomicTarget,ECONOMIC_RULES} from './regional-economy.js?v=146';
+import {ECONOMIC_REGIONS,PUBLIC_WORKS,CIVIL_TECH,INDUSTRIES,economicState,regionalTaxQuote,localProduction,regionDevelopmentCost,civilTechCost,economicInvestmentQuote,investEconomicProject,automaticEconomicTarget,ECONOMIC_RULES} from './regional-economy.js?v=148';
 const gold=n=>Math.floor(Math.max(0,n||0)).toLocaleString()+'G';
 const escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export function renderRegionalEconomy(game,panel,reserveQuote) {

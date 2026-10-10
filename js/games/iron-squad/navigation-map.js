@@ -1,7 +1,7 @@
-import {WORLD_SIZE,biomeAt,eastWestRoadY,northSouthRoadX,riverCenterY} from './world.js?v=146';
-import {dungeonSolids} from './dungeon.js?v=146';
-import {inCurrentInstance} from './instance-rules.js?v=146';
-import {ECONOMIC_REGIONS,economicState} from './regional-economy.js?v=146';
+import {WORLD_SIZE,biomeAt,eastWestRoadY,northSouthRoadX,riverCenterY,blockingGuides} from './world.js?v=148';
+import {dungeonSolids} from './dungeon.js?v=148';
+import {inCurrentInstance} from './instance-rules.js?v=148';
+import {ECONOMIC_REGIONS,economicState,economicFieldBlocked} from './regional-economy.js?v=148';
 
 export const NAVIGATION_RULES=Object.freeze({fieldSpan:10000,maxSize:168,terrainAlpha:.34,roadAlpha:.72,iconAlpha:1});
 const center=WORLD_SIZE/2;
@@ -17,6 +17,45 @@ export function drawNavigationIcon(ctx,kind,x,y,label='',size=9) {
  if(label){ctx.font='11px "Yu Gothic",sans-serif';ctx.textAlign='center';ctx.textBaseline='top';ctx.strokeStyle='#142125';ctx.lineWidth=3;ctx.strokeText(label,0,size+4);ctx.fillStyle='#ece4cf';ctx.fillText(label,0,size+4);}
  ctx.restore();
 }
+function drawBlockingMarks(ctx, px, py, known, blocked, game) {
+  if (game.player) blocked(game.player.x, game.player.y);
+  ctx.save();
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  for (const line of blockingGuides()) {
+    let drawing = false, marked = false;
+    ctx.beginPath();
+    for (const [x, y] of line) {
+      if (!known(x, y) || !blocked(x, y)) { drawing = false; continue; }
+      const sx = px(x), sy = py(y);
+      if (!drawing) { ctx.moveTo(sx, sy); drawing = true; }
+      else { ctx.lineTo(sx, sy); marked = true; }
+    }
+    if (!marked) continue;
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = '#6e5844';
+    ctx.lineWidth = 3.2;
+    ctx.stroke();
+    ctx.strokeStyle = '#e6d3a8';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+  for (const work of game._economicWorks || []) {
+    if (work.done || (work.kind !== 'bridge' && work.kind !== 'landfill') || !known(work.x, work.y)) continue;
+    ctx.save();
+    ctx.translate(px(work.x), py(work.y));
+    ctx.rotate(work.angle || 0);
+    const w = Math.max(2, work.w * (px(work.x + 1) - px(work.x))), h = Math.max(2, work.h * (py(work.y + 1) - py(work.y)));
+    ctx.globalAlpha = .92;
+    ctx.fillStyle = '#e6d3a8';
+    ctx.strokeStyle = '#6e5844';
+    ctx.lineWidth = 1;
+    ctx.fillRect(-w / 2, -h / 2, w, h);
+    ctx.strokeRect(-w / 2, -h / 2, w, h);
+    ctx.restore();
+  }
+  ctx.restore();
+}
 export function renderNavigationMap(game) {
  const canvas=game.minimapCanvas,ctx=game.minimapCtx;if(!canvas||!ctx||!game.player)return;
  const size=Math.max(112,Math.min(NAVIGATION_RULES.maxSize,(game.width||390)*.42,(game.height||664)*.28)),dpr=Math.min(2,window.devicePixelRatio||1);
@@ -29,6 +68,7 @@ export function renderNavigationMap(game) {
   const fog=game.ensureFog(),known=(x,y)=>fog.isExploredWorld(x,y);
   ctx.globalAlpha=NAVIGATION_RULES.terrainAlpha;for(let y=0;y<24;y++)for(let x=0;x<24;x++){const wx=originX+(x+.5)*span/24,wy=originY+(y+.5)*span/24;if(!known(wx,wy))continue;ctx.fillStyle=biomeAt(wx,wy).ground;ctx.fillRect(x*size/24,y*size/24,size/24+1,size/24+1);}
   ctx.globalAlpha=NAVIGATION_RULES.roadAlpha;for(let i=0;i<80;i++){const x=originX+(i+.5)*span/80,y=originY+(i+.5)*span/80;for(const [wx,wy,color] of [[x,eastWestRoadY(x),'#d2c09c'],[northSouthRoadX(y),y,'#d2c09c'],[x,riverCenterY(x),'#82aeb9']]){if(!known(wx,wy))continue;ctx.fillStyle=color;ctx.fillRect(px(wx)-1.2,py(wy)-1.2,2.4,2.4);}}
+  drawBlockingMarks(ctx,px,py,known,(x,y)=>economicFieldBlocked(game,x,y),game);
   ctx.globalAlpha=1;
   if(inside(center,center)&&known(center,center))drawNavigationIcon(ctx,'base',px(center),py(center),'本陣',10);
   for(const d of game.dungeons||[]){const e=d.entrance;if(!e||!inside(e.x,e.y)||!known(e.x,e.y))continue;drawNavigationIcon(ctx,d.kind==='town'?'town':d.kind==='ruin'?'ruin':'dungeon',px(e.x),py(e.y),d.name,8);}
@@ -38,7 +78,10 @@ export function renderNavigationMap(game) {
   for(const p of game.outposts||[])if(inside(p.x,p.y)&&known(p.x,p.y))drawNavigationIcon(ctx,p.type==='CAGE'?'cage':p.type==='FORT'?'base':'ruin',px(p.x),py(p.y),p.type==='CAGE'?'捕虜':p.type==='FORT'?'砦':'',6);
   if(!inside(center,center)){const a=Math.atan2(center-cy,center-cx),r=size/2-20;drawNavigationIcon(ctx,'base',size/2+Math.cos(a)*r,size/2+Math.sin(a)*r,'本陣',7);}
  }else{
-  ctx.globalAlpha=.18;ctx.fillStyle='#b4c4c2';ctx.strokeStyle='#d0d9d4';ctx.lineWidth=1;ctx.strokeRect(px(0),py(0),dungeon.width*scale,dungeon.height*scale);for(const wall of dungeonSolids(dungeon))ctx.fillRect(px(wall.x),py(wall.y),Math.max(1,wall.w*scale),Math.max(1,wall.h*scale));ctx.globalAlpha=1;
+  ctx.globalAlpha=.22;ctx.fillStyle='#b4c4c2';ctx.strokeStyle='#d0d9d4';ctx.lineWidth=1;ctx.strokeRect(px(0),py(0),dungeon.width*scale,dungeon.height*scale);
+  ctx.globalAlpha=.92;ctx.fillStyle='#e6d3a8';ctx.strokeStyle='#6e5844';ctx.lineWidth=1;
+  for(const wall of dungeonSolids(dungeon)){const x=px(wall.x),y=py(wall.y),w=Math.max(2,wall.w*scale),h=Math.max(2,wall.h*scale);ctx.fillRect(x,y,w,h);ctx.strokeRect(x,y,w,h);}
+  ctx.globalAlpha=1;
   drawNavigationIcon(ctx,'dungeon',px(180),py(dungeon.height/2),'出口',8);if(dungeon.kind==='town')drawNavigationIcon(ctx,'medical',px(230),py(dungeon.height/2),'診療所',8);
   for(const e of game.limitedAllies?.encounters||[])if(e.dungeonId===dungeon.id&&!e.joined)drawNavigationIcon(ctx,e.kind==='cage'?'cage':'town',px(e.x),py(e.y),e.kind==='cage'?'救助':'志願者',8);
  }

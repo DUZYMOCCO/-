@@ -1,24 +1,24 @@
-import {configureBattlefieldUI,quietBattlefieldContext} from './battlefield-ui.js?v=146';
-import {renderNavigationMap} from './navigation-map.js?v=146';
-import {soldierEquipmentValue,observeEquipment,standardEquipmentCost,RESERVE_ARMAMENT_COUNT} from './armament-rules.js?v=146';
-import {configureRangedEnemy,updateRangedEnemy,updateDefenseWalls,interceptHostileShot,isHostileShot,updateHostileBolt,drawDefenseWalls} from './enemy-ranged.js?v=146';
-import {LIMITED_CLASSES,initializeLimitedAllies,prepareLimitedEncounter,createLimitedAlly,joinLimitedEncounter,updateLimitedAllies,updateNinja,updateShuriken,drawLimitedEncounter,serializeLimitedAllies,notifyLimitedJoin} from './limited-allies.js?v=146';
-import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=146';
-import {TIERS,MAX_EQUIPMENT_TIER,MAX_POWER_RANK,POWER_RANK_STEP,GENERATION_COUNT,TRADE_MAX_TIER,powerRank,tierDescription} from './equipment-tiers.js?v=146';
-import {fieldAdaptiveScaling} from './field-scaling.js?v=146';
-import {activeSquad,inCurrentInstance} from './instance-rules.js?v=146';
-import {recordBattleLog,resetBattleLog,refreshCombatFieldNotes} from './battle-log.js?v=146';
-import {rollDropExclusive,applyDropExclusive,dropExclusiveLabel} from './drop-exclusives.js?v=146';
-import {latestEquipmentTier,recordMerchantEquipment,ensureMerchantCatalog,refreshWaveCatalogs,markMerchantPurchase} from './merchant-catalog.js?v=146';
-import {initializeMedicalPosts,updateMedicalPosts,serializeMedicalPosts,nearestKnownMedicalPost,drawMedicalPost,drawMedicalMap,drawMedicalMarker,drawTownMedicalReception,drawRescueDirection} from './medical-posts.js?v=146';
-import {invasionMethods,initializeInvasions,serializeInvasions,shouldTriggerRandomRaid,makeEnemyRoom,drawInvasionRoute} from './invasion-rules.js?v=146';
-import {gateMethods,serializeGatePosts,replenishTownGateGuards,initializeGateGuards,ensureTownGuards,serializeGateGuards,updateGateGuards,gateGuardVisible,applyFortifications,drawFortification,exitGateTown,townExitReached,wallBlocksAttack} from './gate-rules.js?v=146';
-import {nationMethods,normalizeNation,nationalIncome,nationalPayrollPlan,headquartersDamageMult,drawNationalDevelopment,DEVELOPMENT_STAGES} from './nation-rules.js?v=146';
-import {equipmentUpgradeCost,salaryQuote,paySoldiers} from './payroll-rules.js?v=146';
-import {addFieldDrop,ageFieldDrops} from './field-drops.js?v=146';
-import {economicState,advanceRegionalEconomy,discoverEconomicRegions,recordEconomicKill,economicFieldBlocked} from './regional-economy.js?v=146';
-import {updateRegionalTraffic,nearestCommerceTarget,damageCommerce,persistTradeRaiders,restoreTradeRaiders} from './trade-routes.js?v=146';
-import {drawEconomicLandscape,drawCommerceActor,drawEconomicMinimap,drawCommerceWreck} from './economic-visuals.js?v=146';
+import {configureBattlefieldUI,quietBattlefieldContext} from './battlefield-ui.js?v=148';
+import {renderNavigationMap} from './navigation-map.js?v=148';
+import {soldierEquipmentValue,observeEquipment,standardEquipmentCost,RESERVE_ARMAMENT_COUNT} from './armament-rules.js?v=148';
+import {configureRangedEnemy,updateRangedEnemy,updateDefenseWalls,interceptHostileShot,isHostileShot,updateHostileBolt,drawDefenseWalls} from './enemy-ranged.js?v=148';
+import {LIMITED_CLASSES,initializeLimitedAllies,prepareLimitedEncounter,createLimitedAlly,joinLimitedEncounter,updateLimitedAllies,updateNinja,updateShuriken,drawLimitedEncounter,serializeLimitedAllies,notifyLimitedJoin} from './limited-allies.js?v=148';
+import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=148';
+import {TIERS,MAX_EQUIPMENT_TIER,MAX_POWER_RANK,POWER_RANK_STEP,GENERATION_COUNT,TRADE_MAX_TIER,powerRank,tierDescription} from './equipment-tiers.js?v=148';
+import {fieldAdaptiveScaling} from './field-scaling.js?v=148';
+import {activeSquad,inCurrentInstance} from './instance-rules.js?v=148';
+import {recordBattleLog,resetBattleLog,refreshCombatFieldNotes} from './battle-log.js?v=148';
+import {rollDropExclusive,applyDropExclusive,dropExclusiveLabel} from './drop-exclusives.js?v=148';
+import {latestEquipmentTier,recordMerchantEquipment,ensureMerchantCatalog,refreshWaveCatalogs,markMerchantPurchase} from './merchant-catalog.js?v=148';
+import {initializeMedicalPosts,updateMedicalPosts,serializeMedicalPosts,nearestKnownMedicalPost,drawMedicalPost,drawMedicalMap,drawMedicalMarker,drawTownMedicalReception,drawRescueDirection} from './medical-posts.js?v=148';
+import {invasionMethods,initializeInvasions,serializeInvasions,shouldTriggerRandomRaid,makeEnemyRoom,drawInvasionRoute} from './invasion-rules.js?v=148';
+import {gateMethods,serializeGatePosts,replenishTownGateGuards,initializeGateGuards,ensureTownGuards,serializeGateGuards,updateGateGuards,gateGuardVisible,applyFortifications,drawFortification,exitGateTown,townExitReached,wallBlocksAttack} from './gate-rules.js?v=148';
+import {nationMethods,normalizeNation,nationalIncome,nationalPayrollPlan,headquartersDamageMult,drawNationalDevelopment,DEVELOPMENT_STAGES} from './nation-rules.js?v=148';
+import {equipmentUpgradeCost,salaryQuote,paySoldiers} from './payroll-rules.js?v=148';
+import {addFieldDrop,ageFieldDrops} from './field-drops.js?v=148';
+import {economicState,advanceRegionalEconomy,discoverEconomicRegions,recordEconomicKill,economicFieldBlocked} from './regional-economy.js?v=148';
+import {updateRegionalTraffic,nearestCommerceTarget,damageCommerce,persistTradeRaiders,restoreTradeRaiders} from './trade-routes.js?v=148';
+import {drawEconomicLandscape,drawCommerceActor,drawEconomicMinimap,drawCommerceWreck} from './economic-visuals.js?v=148';
 /**
  * ゲーム3: IRON SQUAD (アイアン・スクワッド: 雑兵立身出世録)
  * ローグライク・アクションRPG
@@ -30,27 +30,27 @@ import {drawEconomicLandscape,drawCommerceActor,drawEconomicMinimap,drawCommerce
  *  - 生き延びて「伍長」以上に立身出世して初めて【号令・指揮権】がアンロックされる！
  *  - 名もなき兵士たちは生き残ると二つ名と名前が授与され、やがて主人公の頼もしい戦友に。
  */
-import { sound } from '../../audio.js?v=146';
+import { sound } from '../../audio.js?v=148';
 import { storage } from '../../storage.js';
-import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow } from './visuals.js?v=146';
-import { refreshCampQuiet, assignCampSeats, tryCampLeisure } from './camp-leisure.js?v=146';
-import { CAMP_PEACE_RADIUS, peaceContainment, pushOutsidePeace, relocatePeaceMonster } from './peace-zones.js?v=146';
-import { farmPosts, farmOverlaps, reinforcementCount, reserveRosterLine, reserveRosterTitle } from './reserve-farm.js?v=146';
-import { drawMeleeRangeCue, meleeDrawReach, attackAnimationRate } from './weapon-motion.js?v=146';
-import {emptyRescueBonuses,normalizeRescueBonuses,rescueBonusSummary} from './rescue-rewards.js?v=146';
-import {drawFieldCivilian} from './civilian-visuals.js?v=146';
+import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow } from './visuals.js?v=148';
+import { refreshCampQuiet, assignCampSeats, tryCampLeisure } from './camp-leisure.js?v=148';
+import { CAMP_PEACE_RADIUS, peaceContainment, pushOutsidePeace, relocatePeaceMonster } from './peace-zones.js?v=148';
+import { farmPosts, farmOverlaps, reinforcementCount, reserveRosterLine, reserveRosterTitle } from './reserve-farm.js?v=148';
+import { drawMeleeRangeCue, meleeDrawReach, attackAnimationRate } from './weapon-motion.js?v=148';
+import {emptyRescueBonuses,normalizeRescueBonuses,rescueBonusSummary} from './rescue-rewards.js?v=148';
+import {drawFieldCivilian} from './civilian-visuals.js?v=148';
 import { saveSlots } from './save-slots.js';
-import { soldierDialogue } from './soldier-dialogue.js?v=146';
-import {MAGIC_CLASSES,MAGIC_AFFINITIES,magicMethods,isMage,isMagicUser,ensureMana,initializeMagic,updateMagic,distributeMagicStones,castMedicBuff,castCasterStrength,updateMageAI,drawMagicBursts,spendMana,weaponMagicDamage,isPlayerCaster,castPlayerSpell,PLAYER_MAGIC_RULES} from './magic-rules.js?v=146';
-import {hazardMethods,updateHazards,drawHazards} from './hazard-fields.js?v=146';
-import {strongEnemyReward} from './combat-rewards.js?v=146';
-import {supplyMethods, initializeSupplies, updateSupplies, takeRangedShot, ammoCombatProfile, isRangedUnit, distributeAmmo, preventLethalHit, normalizeFieldSave, SQUAD_POTION_COST, ensureAmmo, RANGED_DAMAGE_MULT, supplyLocation} from './supply-rules.js?v=146';
-import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog } from './interface.js?v=146';
-import { renderTroopRankings, getSoldierRankerBadges, calcSoldierRankerBonus } from './troop-rankings.js?v=146';
-import { ensureSoldierAppearance, drawSoldierPortrait, describeSoldierAppearance } from './soldier-appearance.js?v=146';
-import { attachSurfaceEvents, detachSurfaceEvents, frameSurfaceReady, releaseSceneCaches, releaseCanvas, surfaceCanResume } from './canvas-surface.js?v=146';
-import { WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt, routeNameAt, eastWestRoadY, northSouthRoadX, riverCenterY, drawFieldDepth, fieldBlocks, settleUnit } from './world.js?v=146';
-import { FogGrid, FOG_REVEAL_RADIUS, FOG_CAMP_REVEAL } from './fog.js?v=146';
+import { soldierDialogue } from './soldier-dialogue.js?v=148';
+import {MAGIC_CLASSES,MAGIC_AFFINITIES,magicMethods,isMage,isMagicUser,ensureMana,initializeMagic,updateMagic,distributeMagicStones,castMedicBuff,castCasterStrength,updateMageAI,drawMagicBursts,spendMana,weaponMagicDamage,isPlayerCaster,castPlayerSpell,PLAYER_MAGIC_RULES} from './magic-rules.js?v=148';
+import {hazardMethods,updateHazards,drawHazards} from './hazard-fields.js?v=148';
+import {strongEnemyReward} from './combat-rewards.js?v=148';
+import {supplyMethods, initializeSupplies, updateSupplies, takeRangedShot, ammoCombatProfile, isRangedUnit, distributeAmmo, preventLethalHit, normalizeFieldSave, SQUAD_POTION_COST, ensureAmmo, RANGED_DAMAGE_MULT, supplyLocation} from './supply-rules.js?v=148';
+import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog } from './interface.js?v=148';
+import { renderTroopRankings, getSoldierRankerBadges, calcSoldierRankerBonus } from './troop-rankings.js?v=148';
+import { ensureSoldierAppearance, drawSoldierPortrait, describeSoldierAppearance } from './soldier-appearance.js?v=148';
+import { attachSurfaceEvents, detachSurfaceEvents, frameSurfaceReady, releaseSceneCaches, releaseCanvas, surfaceCanResume } from './canvas-surface.js?v=148';
+import { WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt, routeNameAt, eastWestRoadY, northSouthRoadX, riverCenterY, drawFieldDepth, drawOakCrown, fieldBlocks, settleUnit } from './world.js?v=148';
+import { FogGrid, FOG_REVEAL_RADIUS, FOG_CAMP_REVEAL } from './fog.js?v=148';
 import {
   classTierOf, nextClassId, classUpCostForNext, canAffordClassUp, formatClassUpCostJa, classUpShortageJa,
   playerClassTier, nextPlayerStage, playerStageById, CLASS_TIER_LABELS, PLAYER_CLASS_STAGES
@@ -65,9 +65,9 @@ import {
   shouldAbsorbToSharedBox, calcScoutCost, estimateSoldierScoutValue, calcDismissSettlement,
   formatFiscalReportJa, formatFiscalReportHtml, distributeSharedBoxToSoldiers, sellWeakSurplusFromBox,
   SHARED_BOX_MAX_TIER, SCOUT_COST_BY_TALENT, defaultDonateAmount, donatePresetAmounts
-} from './economy-rules.js?v=146';
+} from './economy-rules.js?v=148';
 
-import { EQUIPMENT_TYPES, saleValue, equippedIds, canSell, lowValueIds, chooseLootTier, distanceScaling, shrineUpgradeCap, compareEquipment, equipmentScore, compareEquipmentStrength, rollWeaponTraits, weaponCombatProfile, evaluateMeleeSweetSpot, isGodRollProtected, zoneRingPower, zoneRingLabelJa } from './equipment-rules.js?v=146';
+import { EQUIPMENT_TYPES, saleValue, equippedIds, canSell, lowValueIds, chooseLootTier, distanceScaling, shrineUpgradeCap, compareEquipment, equipmentScore, compareEquipmentStrength, rollWeaponTraits, weaponCombatProfile, evaluateMeleeSweetSpot, isGodRollProtected, zoneRingPower, zoneRingLabelJa } from './equipment-rules.js?v=148';
 import {
   WEAPON_STYLES, WEAPON_STYLE_LABELS, WEAPON_STYLE_ICONS,
   MELEE_STYLES, RANGED_STYLES, HIT_GROWTH_SOFT_CAP,
@@ -77,19 +77,19 @@ import {
   gainWeaponMastery, masteryGainForStyle, pickFavoriteWeapon, rollWeaponStyle,
   weaponStyleOf, favoriteWeaponBias, MASTERY_GAIN_PER_HIT,
   migrateFavoriteForClass, migrateWeaponStyleFromName
-} from './growth-rules.js?v=146';
+} from './growth-rules.js?v=148';
 
 import {
   initMerchants, ensureMerchants, updateMerchants, drawMerchantBody, drawMerchantEscort,
   nearestLivingMerchant, refreshMerchantStock, merchantBuyPrice, merchantSellTier,
   applyMerchantSave, serializeMerchants, MERCHANT_INTERACT_R,
   merchantHealingStatus, merchantHealWavesLeft, useMerchantHealing, MERCHANT_HEAL_COST, recalcEscortStats, finishEscortPhase
-} from './merchant-rules.js?v=146';
+} from './merchant-rules.js?v=148';
 
 import { daylightAt, advanceWorldClock, periodEnemy, enemyAvailable, PERIOD_ENEMIES } from './day-night.js';
 
-import { RESCUE_TIMEOUT, rescueUnits, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, receiveTownCargo, leaveCivilianSpace, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, markSoldierDown, CIV_KINDS, isMedic, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST } from './casualty-rules.js?v=146';
-import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault, dungeonBlocks, dungeonSolids } from './dungeon.js?v=146';
+import { RESCUE_TIMEOUT, rescueUnits, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, receiveTownCargo, leaveCivilianSpace, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, markSoldierDown, CIV_KINDS, isMedic, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST } from './casualty-rules.js?v=148';
+import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault, dungeonBlocks, dungeonSolids } from './dungeon.js?v=148';
 import {
   EXPEDITION_CHECK_INTERVAL, EXPEDITION_RETURN_HOME, EXPEDITION_ENGAGE_R,
   EXPEDITION_DANGER_TIERS, EXPEDITION_MIN_MEMBERS,
@@ -10289,10 +10289,10 @@ export const IronSquadGame = {
 
     if (o.type === 'oak') {
       const pals = [
-        ['#17361f', '#1f5a2b', '#2b7a38', '#4ba354'],
-        ['#1a3a22', '#26622f', '#35853f', '#5bb35c'],
-        ['#3a2a14', '#7a4a1a', '#b8661f', '#e08a35'],
-        ['#16302a', '#1d5546', '#2a7a63', '#47a88a']
+        ['#243b2c', '#36543a', '#527047', '#8b9c65'],
+        ['#283e2d', '#3e5d3e', '#63804c', '#a2ad71'],
+        ['#403826', '#705435', '#a07a45', '#c8a165'],
+        ['#253b34', '#37594a', '#527c60', '#8fa787']
       ][o.tone % 4];
       ctx.fillStyle = 'rgba(0,0,0,0.33)';
       ctx.beginPath(); ctx.ellipse(4 * s, 3, 24 * s, 8 * s, 0, 0, Math.PI * 2); ctx.fill();
@@ -10303,15 +10303,28 @@ export const IronSquadGame = {
       ctx.fillStyle = '#35241a';
       ctx.fillRect(1 * s, -20 * s, 2.5 * s, 20 * s);
       if (this.sceneryCoversUnit(o, s)) ctx.globalAlpha = 0.32;
+      if (!drawOakCrown(ctx,o.tone,pals,s,sway)) {
       const blobs = [
         [0, -30, 21, 0], [-11, -37, 16, 1], [11, -36, 15, 1], [0, -48, 15, 2], [-6, -52, 7, 3]
       ];
       blobs.forEach(([bx, by, r, ci]) => {
+        const cx=bx*s+sway*(0.4+(-by)/60),cy=by*s,rr=r*s;
         ctx.fillStyle = pals[ci];
         ctx.beginPath();
-        ctx.arc(bx * s + sway * (0.4 + (-by) / 60), by * s, r * s, 0, Math.PI * 2);
+        ctx.moveTo(cx-rr,cy+rr*.15);
+        ctx.bezierCurveTo(cx-rr*1.12,cy-rr*.24,cx-rr*.67,cy-rr*.75,cx-rr*.42,cy-rr*.67);
+        ctx.bezierCurveTo(cx-rr*.3,cy-rr*1.1,cx+rr*.38,cy-rr*1.03,cx+rr*.55,cy-rr*.68);
+        ctx.bezierCurveTo(cx+rr*1.07,cy-rr*.68,cx+rr*1.14,cy+rr*.14,cx+rr*.73,cy+rr*.4);
+        ctx.bezierCurveTo(cx+rr*.64,cy+rr*.93,cx-rr*.14,cy+rr*.94,cx-rr*.38,cy+rr*.65);
+        ctx.quadraticCurveTo(cx-rr*.9,cy+rr*.7,cx-rr,cy+rr*.15);
         ctx.fill();
       });
+      // Leaf groups follow the crown sway; one path supplies the lit edges.
+      ctx.strokeStyle=pals[3];ctx.lineWidth=1.3*s;ctx.beginPath();
+      for(const [lx,ly] of [[-18,-38],[-10,-45],[1,-50],[10,-41],[-4,-32],[14,-28]]){
+        const dx=sway*(.4-ly/60);ctx.moveTo(lx*s+dx,ly*s);ctx.quadraticCurveTo((lx+2)*s+dx,(ly-2)*s,(lx+5)*s+dx,(ly-1)*s);
+      }ctx.stroke();
+      }
     } else if (o.type === 'pine') {
       ctx.fillStyle = 'rgba(0,0,0,0.33)';
       ctx.beginPath(); ctx.ellipse(3 * s, 3, 18 * s, 6 * s, 0, 0, Math.PI * 2); ctx.fill();
@@ -10323,9 +10336,11 @@ export const IronSquadGame = {
         const sx = sway * (0.3 + i * 0.35);
         ctx.fillStyle = col;
         ctx.beginPath();
-        ctx.moveTo((-hw) * s, ly * s);
-        ctx.lineTo(sx, (ly - 26) * s);
-        ctx.lineTo(hw * s, ly * s);
+        ctx.moveTo(-hw*s,ly*s);ctx.lineTo((-hw*.54)*s,(ly-4)*s);
+        ctx.lineTo((-hw*.73)*s,(ly-10)*s);ctx.lineTo((-hw*.31)*s,(ly-11)*s);
+        ctx.lineTo((-hw*.43)*s,(ly-17)*s);ctx.lineTo(sx,(ly-26)*s);
+        ctx.lineTo(hw*.42*s,(ly-17)*s);ctx.lineTo(hw*.28*s,(ly-14)*s);
+        ctx.lineTo(hw*.74*s,(ly-9)*s);ctx.lineTo(hw*.5*s,(ly-6)*s);ctx.lineTo(hw*s,ly*s);
         ctx.closePath();
         ctx.fill();
         ctx.fillStyle = 'rgba(160,230,170,0.16)';
@@ -10362,7 +10377,8 @@ export const IronSquadGame = {
       ctx.moveTo(-10 * s, -9 * s); ctx.lineTo(-2 * s, -14 * s); ctx.lineTo(8 * s, -11 * s); ctx.lineTo(0, -5 * s);
       ctx.closePath(); ctx.fill();
       ctx.fillStyle = cols[2];
-      ctx.beginPath(); ctx.ellipse(-3 * s, -10 * s, 4 * s, 2 * s, -0.4, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath();ctx.moveTo(-10*s,-8*s);ctx.lineTo(-2*s,-13*s);ctx.lineTo(6*s,-11*s);ctx.lineTo(-1*s,-8*s);ctx.closePath();ctx.fill();
+      ctx.strokeStyle='#303b35';ctx.lineWidth=.75*s;ctx.beginPath();ctx.moveTo(1*s,-7*s);ctx.lineTo(5*s,-2*s);ctx.lineTo(11*s,-1*s);ctx.moveTo(-7*s,-6*s);ctx.lineTo(-5*s,-2*s);ctx.stroke();
       ctx.fillStyle = 'rgba(80,140,60,0.5)';
       ctx.beginPath(); ctx.ellipse(-8 * s, -1 * s, 4 * s, 2 * s, 0, 0, Math.PI * 2); ctx.fill();
     } else if (o.type === 'bush') {
@@ -10473,6 +10489,15 @@ export const IronSquadGame = {
       ctx.fillRect(-7, -18, 14, 18);
       ctx.fillStyle = '#8a8170';
       ctx.fillRect(-w * 0.28, -h + 10, 9, 7);
+      // Roof slopes, tile rows and timber frames give a small house real volume.
+      ctx.fillStyle='rgba(230,209,170,.15)';ctx.beginPath();ctx.moveTo(-w/2-3,-h+3);ctx.lineTo(0,-h-15);ctx.lineTo(-2,-h+3);ctx.closePath();ctx.fill();
+      ctx.fillStyle='rgba(12,19,17,.25)';ctx.beginPath();ctx.moveTo(0,-h-15);ctx.lineTo(w/2+4,-h+4);ctx.lineTo(0,-h+4);ctx.closePath();ctx.fill();
+      ctx.strokeStyle='rgba(218,187,146,.28)';ctx.lineWidth=.8;ctx.beginPath();
+      for(let row=1;row<=3;row++){const yy=-h-16+row*5.5,half=(w/2+5)*row*.26;ctx.moveTo(-half,yy);ctx.lineTo(half,yy);}
+      ctx.stroke();ctx.strokeStyle='#91836b';ctx.lineWidth=1.2;ctx.beginPath();
+      ctx.moveTo(-w/2+3,-h+7);ctx.lineTo(-w/2+3,-1);ctx.moveTo(w/2-w*.28,-h+7);ctx.lineTo(w/2-w*.28,-1);
+      ctx.moveTo(-w/2+2,-h+9);ctx.lineTo(-w/2+14,-8);ctx.moveTo(-w*.28+4.5,-h+10);ctx.lineTo(-w*.28+4.5,-h+17);ctx.stroke();
+      ctx.fillStyle='#aaa18a';ctx.fillRect(-9,-1,18,2);ctx.fillStyle='#c0b395';ctx.fillRect(-6,-16,1,12);
     } else if (o.type === 'ruinwall') {
       const w = o.w || 64, h = o.h || 30;
       ctx.fillStyle = 'rgba(0,0,0,0.32)';

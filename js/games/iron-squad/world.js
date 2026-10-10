@@ -17,6 +17,37 @@ const seeded = seed => () => {
 const ellipse = (c,x,y,rx,ry,color) => {
   c.fillStyle=color; c.beginPath(); c.ellipse(x,y,rx,ry,0,0,Math.PI*2); c.fill();
 };
+const OAK_CROWNS=new Map();
+/** Four small, reusable crowns. Detailed leaves cost one blit per tree/frame. */
+export function drawOakCrown(c,tone,palette,size,sway=0){
+  if(typeof c.canvas?.width!=='number'||(typeof document==='undefined'||typeof document.createElement!=='function'))return false;
+  const key=((tone||0)%4+4)%4;let art=OAK_CROWNS.get(key);
+  try{if(art?.getContext?.('2d')?.isContextLost?.()){art.width=art.height=1;OAK_CROWNS.delete(key);art=null;}}catch{art=null;}
+  if(!art){
+    art=document.createElement('canvas');art.width=128;art.height=144;const b=art.getContext('2d');
+    if(!b){art.width=art.height=1;return false;}
+    b.scale(2,2);b.translate(32,70);
+    const clusters=[[0,-30,21,0],[-11,-37,16,1],[11,-36,15,1],[0,-48,15,2],[-6,-52,7,3]];
+    for(const [x,y,r,ci] of clusters){
+      const g=b.createLinearGradient(x-r,y-r,x+r,y+r);g.addColorStop(0,palette[Math.min(3,ci+1)]);g.addColorStop(.45,palette[ci]);g.addColorStop(1,palette[0]);b.fillStyle=g;
+      b.beginPath();b.moveTo(x-r,y+r*.15);
+      b.bezierCurveTo(x-r*1.12,y-r*.24,x-r*.67,y-r*.75,x-r*.42,y-r*.67);
+      b.bezierCurveTo(x-r*.3,y-r*1.1,x+r*.38,y-r*1.03,x+r*.55,y-r*.68);
+      b.bezierCurveTo(x+r*1.07,y-r*.68,x+r*1.14,y+r*.14,x+r*.73,y+r*.4);
+      b.bezierCurveTo(x+r*.64,y+r*.93,x-r*.14,y+r*.94,x-r*.38,y+r*.65);
+      b.quadraticCurveTo(x-r*.9,y+r*.7,x-r,y+r*.15);b.fill();
+    }
+    const leaves=seeded(73856093+key*997);
+    for(let i=0;i<165;i++){
+      const [x,y,r,ci]=clusters[Math.floor(leaves()*clusters.length)],a=leaves()*TAU,d=Math.sqrt(leaves())*r*.8;
+      const px=x+Math.cos(a)*d,py=y+Math.sin(a)*d*.72;
+      b.fillStyle=palette[Math.min(3,ci+(Math.sin(a)<0?1:0))];b.globalAlpha=.35+leaves()*.4;
+      b.beginPath();b.ellipse(px,py,1.4+leaves()*1.8,.7+leaves()*.6,-.35,0,TAU);b.fill();
+    }
+    b.globalAlpha=1;OAK_CROWNS.set(key,art);
+  }
+  try{c.drawImage(art,-32*size+sway*.7,-70*size,64*size,72*size);return true;}catch{return false;}
+}
 const wrap = t => {
   const x = t % TAU;
   return x < 0 ? x + TAU : x;
@@ -309,6 +340,51 @@ export function fieldBlocks(x, y, works=[]) {
   if (reliefAt(x, y) !== FACE) return false;
   if (nearFixedLandmark(x, y)) return false;
   return true;
+}
+// Face centerlines for the field map. Roads, the sanctuary, and openings are
+// filtered by fieldBlocks at draw time. Lips, drops, and roadside rocks are omitted.
+let blockingGuideCache = null;
+export function blockingGuides(step = 60) {
+  if (blockingGuideCache?.step === step) return blockingGuideCache.lines;
+  const lines = [];
+  const push = run => { if (run.length > 1) lines.push(run); };
+  const walk = (n, at, keep) => {
+    let run = [];
+    for (let i = 0; i <= n; i++) {
+      const p = at(i);
+      if (!keep(p)) { push(run); run = []; continue; }
+      run.push(p);
+    }
+    push(run);
+  };
+  const horizontal = (x0, x1, ridgeAt, offset) => {
+    const n = Math.max(1, Math.ceil((x1 - x0) / step));
+    walk(n, i => {
+      const x = x0 + (x1 - x0) * (i / n);
+      return [x, ridgeAt(x) + offset];
+    }, ([x]) => !inPeriodicGap(x - CENTER, 1800, 200));
+  };
+  horizontal(CENTER - 16000, CENTER + 16000, x => CENTER + 5000 + Math.sin((x - CENTER) / 980) * 110, 23);
+  horizontal(CENTER - 18000, CENTER + 18000, x => CENTER - 8000 + Math.sin((x - CENTER) / 1100) * 90, 23);
+  horizontal(CENTER - 22000, CENTER + 22000, x => CENTER + 24000 + Math.sin((x - CENTER) / 1400) * 160, -30);
+  const y0 = CENTER - 14000, y1 = CENTER + 14000;
+  const nY = Math.max(1, Math.ceil((y1 - y0) / step));
+  walk(nY, i => {
+    const y = y0 + (y1 - y0) * (i / nY);
+    return [CENTER - 6400 + Math.sin((y - CENTER) / 860) * 80 + 23, y];
+  }, ([, y]) => !inPeriodicGap(y - CENTER, 1800, 200));
+  for (const arc of ARCS) {
+    const span = arc.a1 - arc.a0;
+    const n = Math.max(2, Math.ceil(arc.r * Math.abs(span) / step));
+    walk(n, i => {
+      const a = arc.a0 + span * (i / n);
+      const ang = Math.atan2(Math.sin(a), Math.cos(a));
+      const rad = arc.r - 30;
+      return [CENTER + Math.cos(ang) * rad, CENTER + Math.sin(ang) * rad];
+    }, ([x, y]) => !inPeriodicGap(arc.r * Math.atan2(y - CENTER, x - CENTER), 2000, 220, 1000));
+  }
+  blockingGuideCache = { step, lines };
+  return lines;
 }
 export function settleUnit(unit, blocked) {
   if (!unit || !Number.isFinite(unit.x) || !Number.isFinite(unit.y) || typeof blocked !== 'function') return false;
@@ -802,6 +878,18 @@ export class WorldTerrain {
       if(may && reliefAt(wx,wy)) continue;
       c.strokeStyle=b.grass;c.globalAlpha=.14+rnd()*.16;c.lineWidth=1;
       c.beginPath();c.moveTo(x-2,y-4);c.lineTo(x,y);c.lineTo(x+2,y-5-rnd()*3);c.stroke();
+    }
+    c.globalAlpha=1;
+    // Fine soil/grass detail is baked once into the existing 24-tile cache.
+    // Independent world hashes leave the scenery/spawn RNG stream untouched.
+    c.lineWidth=.7;
+    for(let gy=0;gy<TILE;gy+=16)for(let gx=0;gx<TILE;gx+=16){
+      const h=cellHash((x0+gx)/16,(y0+gy)/16),x=gx+3+h*9,y=gy+4+((h*17)%1)*8;
+      const wx=x0+x,wy=y0+y;
+      if(roadDist(wx,wy)<40||(may&&reliefAt(wx,wy)))continue;
+      c.globalAlpha=.18+h*.16;c.strokeStyle=biomeAt(wx,wy).grass;
+      c.beginPath();c.moveTo(x-3,y+2);c.lineTo(x-1,y-2);c.moveTo(x,y+2);c.lineTo(x+1,y-4);c.moveTo(x+2,y+2);c.lineTo(x+4,y-1);c.stroke();
+      if(h>.7){c.fillStyle='#c6b89c';c.globalAlpha=.12;c.fillRect(x+5,y+3,2.5,1);}
     }
     c.globalAlpha=1;
     paintPictures(c, x0, y0);

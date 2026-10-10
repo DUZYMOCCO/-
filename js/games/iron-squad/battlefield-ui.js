@@ -17,7 +17,7 @@ export function configureBattlefieldUI(game) {
  const tools=document.createElement('div');tools.className='battle-menu-tools';
  for(const id of ['btn-pad-command','btn-world-map','btn-zoom-toggle','btn-field-sound','btn-back']){const n=get(id);if(n)tools.append(n);}
  const back=tools.querySelector('#btn-back');back.textContent='工房へ戻る';back.setAttribute('aria-label','工房へ戻る');menu.append(tools);
- const legend=document.createElement('p');legend.className='navigation-legend';legend.textContent='透過地図：城＝本陣、家＝町・村、十字＝診療所、門＝ダンジョン、檻＝捕虜。未探索の拠点は表示されません。';menu.append(legend);overview.prepend(menu);
+ const legend=document.createElement('p');legend.className='navigation-legend';legend.textContent='透過地図：城＝本陣、家＝町・村、十字＝診療所、門＝ダンジョン、檻＝捕虜。淡い筋は崖と壁で、そこは進めません。未探索は出ません。';menu.append(legend);overview.prepend(menu);
  const button=get('btn-strategy');button.innerHTML='<span aria-hidden="true">☰</span><small>メニュー</small><b class="menu-join-count hidden"></b><b class="menu-attention hidden"></b>';button.setAttribute('aria-label','メニューを開く');field.append(button);
  const attention=button.querySelector('.menu-attention');
  const refreshAttention=()=>{

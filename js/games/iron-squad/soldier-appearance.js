@@ -1,5 +1,5 @@
-import {equipmentVisualProfile} from './equipment-tiers.js?v=146';
-import {isMuscleCaster} from './unit-attributes.js?v=146';
+import {equipmentVisualProfile} from './equipment-tiers.js?v=148';
+import {isMuscleCaster} from './unit-attributes.js?v=148';
 /** Stable personal looks, independent of talent, battle RNG and equipment. */
 export const HAIR_LABELS = Object.freeze({
   barcode:'バーコード', bald:'丸ハゲ', mohawk:'モヒカン', sidebald:'サイドハゲ',
@@ -173,8 +173,30 @@ function eyewear(c,a,y,small) {
   c.moveTo(-3.8,y);c.lineTo(-4.7,y-.4);c.moveTo(3.8,y);c.lineTo(4.7,y-.4);c.stroke();
 }
 
-/** Head centered on (x,y); field version intentionally has few small primitives. */
-export function drawSoldierHead(c,soldier,{x=0,y=0,scale=1,small=false,silhouette=false,helmet=null,helmetTier=1,mitre=false,cap=false}={}) {
+// Near-field heads are static art. A bounded cache avoids repeating their
+// hair, glasses, skin and helmet paths for every visible soldier, every frame.
+// 64 surfaces at 96x120 RGBA = at most 2.82 MiB; eviction releases pixels.
+const FIELD_HEADS=new Map();
+export function drawSoldierHead(c,soldier,options={}) {
+  const {x=0,y=0,scale=1,small=false,silhouette=false,helmet=null,helmetTier=1,mitre=false,cap=false}=options;
+  if(!small||silhouette||typeof c.canvas?.width!=='number'||(typeof document==='undefined'||typeof document.createElement!=='function'))return paintSoldierHead(c,soldier,options);
+  const a=ensureSoldierAppearance(soldier);
+  const key=JSON.stringify([a,isMedicAppearance(soldier.soldierClass),soldier.species,soldier.soldierClass==='NINJA',helmet,helmetTier,mitre,cap]);
+  let art=FIELD_HEADS.get(key);
+  try{if(art?.getContext?.('2d')?.isContextLost?.()){art.width=art.height=1;FIELD_HEADS.delete(key);art=null;}}catch{art=null;}
+  if(!art){
+    if(FIELD_HEADS.size>=64){const oldest=FIELD_HEADS.keys().next().value,retired=FIELD_HEADS.get(oldest);retired.width=retired.height=1;FIELD_HEADS.delete(oldest);}
+    art=document.createElement('canvas');art.width=96;art.height=120;const b=art.getContext('2d');
+    if(!b){art.width=art.height=1;return paintSoldierHead(c,soldier,options);}
+    b.scale(3,3);b.translate(16,20);paintSoldierHead(b,soldier,{small,helmet,helmetTier,mitre,cap});FIELD_HEADS.set(key,art);
+  }else{FIELD_HEADS.delete(key);FIELD_HEADS.set(key,art);}
+  c.save();c.translate(x,y);c.scale(scale,scale);
+  try{c.drawImage(art,-16,-20,32,40);}catch{c.restore();return paintSoldierHead(c,soldier,options);}
+  c.restore();
+}
+
+/** Head centered on (x,y); far silhouettes remain direct, cheap primitives. */
+function paintSoldierHead(c,soldier,{x=0,y=0,scale=1,small=false,silhouette=false,helmet=null,helmetTier=1,mitre=false,cap=false}={}) {
   const a=ensureSoldierAppearance(soldier),medic=isMedicAppearance(soldier.soldierClass);
   if(soldier.species||soldier.soldierClass==='NINJA'){
     c.save();c.translate(x,y);c.scale(scale,scale);
@@ -201,6 +223,12 @@ export function drawSoldierHead(c,soldier,{x=0,y=0,scale=1,small=false,silhouett
   else {
     ellipse(c,0,-2.5,5.1,3.8,a.skin);
     polygon(c,[[-5,-2],[5,-2],[4.5,3.2],[a.handsome?2.5:4,5.3],[0,6.2],[-(a.handsome?2.5:4),5.3],[-4.5,3.2]],a.skin);
+  }
+  if(!silhouette){
+    // The same fixed light direction for field heads and portrait faces.
+    polygon(c,[[2.8,-4.5],[4.5,-2],[4.5,2.8],[2.4,5.3],[1,5.8],[2.5,1]],'rgba(81,47,34,.18)');
+    ellipse(c,-2.1,-2.5,1.8,2.6,'rgba(255,241,213,.18)');
+    if(small)stroke(c,[[.2,1.5],[.7,2.8],[-.3,3]],'rgba(101,63,43,.5)',.45);
   }
   if(!small)ellipse(c,-1.5,-3.5,1.9,.65,'rgba(255,241,213,.28)');
   else if(a.hairStyle==='bald'&&!helmet&&!mitre){c.fillStyle='rgba(255,241,213,.28)';c.fillRect(-2,-4,2,.7);}
@@ -258,6 +286,7 @@ export function drawSoldierHead(c,soldier,{x=0,y=0,scale=1,small=false,silhouett
     const p=equipmentVisualProfile({tier:helmetTier});
     if(p.rough){polygon(c,[[-4,-3.8],[-3.2,-6],[-.5,-6.8],[3.4,-5.8],[4.5,-3]],helmet);stroke(c,[[-3,-4.4],[3.2,-3.8]],'#a99472',1);}
     else{polygon(c,[[-6,-2],[-5,-5],[-2,-7],[2,-7],[5,-5],[6,-2],[4,-1],[3,-3],[-3,-3],[-4,-1]],helmet);
+      if(!silhouette){polygon(c,[[0,-6.5],[4,-4.8],[5.5,-2.2],[3.8,-1.6],[2,-4.8]],'rgba(19,29,28,.28)');}
       stroke(c,[[-3,-5],[2,-6],[4,-4]],'#c4c5b5',.65);
       if(p.coverage>.55){polygon(c,[[-5,-1],[-3.7,0],[-3.5,3.4],[-5.5,2.5]],helmet);polygon(c,[[3.7,0],[5,-1],[5.5,2.5],[3.5,3.4]],helmet);}
       if(p.detail>=2){stroke(c,[[-5,-2],[5,-2]],'#d0bd92',.6);c.fillStyle='#c6b48e';c.fillRect(-.5,-6,1,1);}

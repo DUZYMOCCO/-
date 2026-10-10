@@ -1,6 +1,6 @@
 // Quiet camp. Off-duty soldiers keep one seat instead of orbiting a moving slot.
 // The pose comes from the soldier id and is not written into the save.
-import { WORLD_SIZE } from './world.js?v=146';
+import { WORLD_SIZE } from './world.js?v=148';
 import { isSoldierOnExpedition } from './expedition-rules.js';
 
 export const CAMP_X = WORLD_SIZE / 2;
