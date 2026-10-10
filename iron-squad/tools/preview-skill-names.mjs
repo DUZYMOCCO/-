@@ -8,7 +8,7 @@ try{
   await page.goto('http://localhost:8000/iron-squad/tools/canvas-quality-review.html');await page.waitForFunction(()=>window.qualityReady);
   await page.evaluate(async()=>{
     const g=qualityGame;g.stopGameLoop();g.currentDungeon=null;g.monsters=[];g.inBattle=true;g.restTimer=0;
-    const {DEATHLINE_SKILLS}=await import('/iron-squad/js/index.js?v=174');
+    const {DEATHLINE_SKILLS}=await import('/iron-squad/js/index.js?v=175');
     const panel=document.createElement('div');panel.style.cssText='position:fixed;left:0;right:0;top:0;z-index:99999;background:#0b0d14;padding:8px 16px;color:#e2e8f0;font:12px sans-serif;height:420px;overflow:hidden';
     panel.innerHTML='<div style="margin-bottom:6px">強撃ボタン（左=通常職 / 右=覇王）</div>';
     const rows=document.createElement('div');rows.style.cssText='display:grid;grid-template-columns:repeat(6,1fr);gap:0;justify-items:center;margin:0 -8px';panel.append(rows);

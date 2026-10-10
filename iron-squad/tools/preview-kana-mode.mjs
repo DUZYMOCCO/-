@@ -9,7 +9,7 @@ try{
   page.on('pageerror',e=>errors.push(e.message));
   await page.goto('http://localhost:8000/iron-squad/tools/canvas-quality-review.html');await page.waitForFunction(()=>window.qualityReady);
   await page.evaluate(async()=>{
-    const kana=await import('/js/kana-mode.js?v=174');kana.setKanaMode(true);
+    const kana=await import('/common/js/kana-mode.js?v=175');kana.setKanaMode(true);
     const g=qualityGame;g.stopGameLoop();g.currentDungeon=null;g.monsters=[];g.updateSpawns=()=>{};g.zoom=2;g.inBattle=true;g.restTimer=0;
     g.revealFogAroundPlayer(true);
     const cats=['BOSS_ENCOUNTER','LEVEL_UP_REACTION'];

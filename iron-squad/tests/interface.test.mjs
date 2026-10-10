@@ -8,7 +8,7 @@ const require = createRequire(resolve(process.argv[2] || '__pycache__/ui-tools',
 const { JSDOM } = require('jsdom');
 const dom = new JSDOM('<div id="game" class="game-container"></div>', { url: 'http://localhost/' });
 Object.assign(globalThis, { window: dom.window, document: dom.window.document, localStorage: dom.window.localStorage });
-const css = ['style','game-ui','iron-squad','iron-squad-interface'].map(name=>readFileSync(['style','game-ui'].includes(name)?`css/${name}.css`:`iron-squad/css/${name}.css`,'utf8')).join('\n');
+const css = ['style','game-ui','iron-squad','iron-squad-interface'].map(name=>readFileSync(['style','game-ui'].includes(name)?`common/css/${name}.css`:`iron-squad/css/${name}.css`,'utf8')).join('\n');
 const sheet = document.createElement('style'); sheet.textContent=css; document.head.append(sheet);
 const noop = () => {};
 const context = new Proxy({ measureText: () => ({width:40}), createLinearGradient: () => ({addColorStop:noop}), createRadialGradient: () => ({addColorStop:noop}) }, {get:(o,k)=>k in o?o[k]:noop});

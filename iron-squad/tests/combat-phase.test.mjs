@@ -1,6 +1,6 @@
 // Pure phase simulation stubs strategy-panel rendering; interface.test.mjs independently exercises its real DOM.
 import assert from 'node:assert/strict';
-import {storage} from '../../js/storage.js';
+import {storage} from '../../common/js/storage.js';
 import {markSoldierDown,treatWounded} from '../js/casualty-rules.js';
 import {saveSlots} from '../js/save-slots.js';
 import {DEATHLINE_DOWN_THRESHOLD,personalDownCount,deathlineEligible,PHASE_DURATION,emptyActivity,advancePhase,advanceRest,recordCombat,healByMedic,participated,finishExperience} from '../js/phase-rules.js';

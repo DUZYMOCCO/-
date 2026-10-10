@@ -3,7 +3,7 @@
  * 毎フレームの処理は数値の比較と代入のみ（配列・オブジェクトを作らない）。
  * 画面が隠れていた間・ゲームが停止していた間の間隔は記録しない。
  */
-import { storage } from '../../js/storage.js';
+import { storage } from '../../common/js/storage.js';
 
 export const GAME_VERSION = '4.2.23';
 export const STALL_MS = 1000;

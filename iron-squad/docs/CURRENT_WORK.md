@@ -7,6 +7,11 @@
 - 何も起きていない本陣では、出撃していない兵士が席に着き、座る・酒を飲む・食事をする。敵が本陣の近くにいるとき、呼集・強襲・侵攻のあいだは立ち上がる。直属兵は隊長が本陣のそばで止まっているときだけ座る。姿勢は保存しない。
 - 自動の新兵は、生きている予備兵が48名に達すると止まる。すでに48名を超えている予備はそのまま残る。雇い・捕虜救助・限定の仲間・定員あふれは48名を超えても入れる。生きている予備兵は川辺の農村で農作業をしている。位置と姿勢は保存しない。当たり判定はない。
 
+## 2026-10-11 共通部を common/ へ集約（SW v175）
+
+- ルートは `index.html` `sw.js` `manifest.json` `README.md` `.gitignore` `.nojekyll` + `common/` + `iron-squad/` のみ。共通 `js/` `css/` `assets/` は `common/js|css|assets/`、`serve.py` `start.bat` `generate_icons.py` `generate_audio.py` は `common/tools/` へ `git mv`。公開URLはルート基準のまま（serve.py/start.bat はリポジトリのルートを配信）。
+- import は `../../common/js/…`、テストの CSS/音源読込は `common/css/…` `common/assets/audio/…`、ツールの URL は `/common/js/…` に更新。SW は `CACHE_NAME` v175、`?v=` も 175。ゲーム版 v4.2.26 は据え置き、localStorage キーも変更なし。以下の過去の記録にある旧パス `js/` `css/` `assets/`（共通部）は `common/` 配下に読み替える。
+
 ## 2026-10-11 フォルダ再編（SW v174）
 
 - ゲームごとにルート直下のフォルダへ分離。IRON SQUAD は `iron-squad/`（`js/` `css/` `assets/land/` `tests/` `tools/` `docs/` `README.md`）へ `git mv` で移動（履歴保持）。ゲーム版は v4.2.26 のまま。

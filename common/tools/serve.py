@@ -58,8 +58,8 @@ class CustomHandler(http.server.SimpleHTTPRequestHandler):
             super().log_message(format, *args)
 
 def main():
-    # スクリプトのディレクトリに移動
-    os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    # common/tools の2つ上 = リポジトリのルート（公開URLと同じ構成で配信）
+    os.chdir(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
     
     local_ip = get_local_ip()
     url = f"http://{local_ip}:{PORT}"

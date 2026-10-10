@@ -1,5 +1,5 @@
 // Incremental A*: search physical land, independently of the commander's fog.
-import {WORLD_SIZE} from './world.js?v=174';
+import {WORLD_SIZE} from './world.js?v=175';
 import {economicFieldBlocked} from './regional-economy.js?v=151';
 import {wallBlocksAttack} from './gate-rules.js?v=151';
 const STEP=256, key=(x,y)=>`${x},${y}`, field={currentDungeon:null};

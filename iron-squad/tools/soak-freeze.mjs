@@ -28,9 +28,9 @@ await cdp.send('Performance.enable');
 await cdp.send('Profiler.enable');await cdp.send('Profiler.setSamplingInterval',{interval:1000});
 await page.goto('http://localhost:8000/iron-squad/tools/canvas-quality-review.html');await page.waitForFunction(()=>window.qualityReady);
 await page.evaluate(async(kanaOn)=>{
-  const kana=await import('/js/kana-mode.js?v=174');window.__kana=kana;if(kanaOn)kana.setKanaMode(true);
+  const kana=await import('/common/js/kana-mode.js?v=175');window.__kana=kana;if(kanaOn)kana.setKanaMode(true);
   const g=qualityGame;g.currentDungeon=null;g.startGameLoop();
-  const w=await import('/iron-squad/js/world.js?v=174');window.__w=w;
+  const w=await import('/iron-squad/js/world.js?v=175');window.__w=w;
   window.__steer={tx:0,ty:0,until:0};
 },kanaOn);
 const start=Date.now();

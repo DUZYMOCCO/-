@@ -1,4 +1,4 @@
-import { IronSquadGame } from '../iron-squad/js/index.js?v=174';
+import { IronSquadGame } from '../../iron-squad/js/index.js?v=175';
 
 export const games = [IronSquadGame];
 export function getGameById(id) { return games.find(game => game.id === id); }

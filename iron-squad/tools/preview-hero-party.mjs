@@ -23,7 +23,7 @@ try{
  const follow=await page.evaluate(()=>{const g=qualityGame;g.stopGameLoop();const x=g.player.x;for(let i=0;i<60;i++)g.update(.1);const followed=g.player.x>x;g.joystick.active=true;g.joystick.dirX=-1;g.update(.1);g.joystick.active=false;return {followed,manualCancels:!g.heroFollowing};});
  if(!follow.followed||!follow.manualCancels)throw Error('follow control failed');
  const soak=await page.evaluate(async()=>{
-   const {WORLD_SIZE}=await import('../js/world.js?v=174');const c=WORLD_SIZE/2;
+   const {WORLD_SIZE}=await import('../js/world.js?v=175');const c=WORLD_SIZE/2;
    const g=qualityGame;g.player.x=c;g.player.y=c;g.player.maxHp=g.player.hp=1e9;g.camera={x:c,y:c};
    let ticks=0;for(;ticks<30000&&g.heroJourney.party.status!=='fallen';ticks++)g.update(.1);
    const p=g.heroJourney.party;

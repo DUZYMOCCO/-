@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {clusterRescueMarkers} from '../js/rescue-markers.js?v=174';
+import {clusterRescueMarkers} from '../js/rescue-markers.js?v=175';
 const P=(ex,ey,dist,carried=false)=>({ex,ey,angle:0,dist,carried});
 // Five downed allies stacked at the right edge fold into one marker pointing at the nearest.
 {

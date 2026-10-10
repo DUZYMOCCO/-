@@ -1,8 +1,10 @@
 import os
+from pathlib import Path
 import math
 from PIL import Image, ImageDraw, ImageFont
 
-os.makedirs("assets/icons", exist_ok=True)
+os.chdir(Path(__file__).resolve().parents[2])  # リポジトリのルートで実行
+os.makedirs("common/assets/icons", exist_ok=True)
 
 def create_app_icon(size):
     img = Image.new("RGBA", (size, size), (15, 17, 26, 255))
@@ -88,10 +90,10 @@ def create_app_icon(size):
 
 for sz in [180, 192, 512]:
     icon = create_app_icon(sz)
-    icon.save(f"assets/icons/icon-{sz}.png")
-    print(f"Generated assets/icons/icon-{sz}.png")
+    icon.save(f"common/assets/icons/icon-{sz}.png")
+    print(f"Generated common/assets/icons/icon-{sz}.png")
 
 # Apple Touch Icon用 (180x180)
 icon_180 = create_app_icon(180)
-icon_180.save("assets/icons/apple-touch-icon.png")
-print("Generated assets/icons/apple-touch-icon.png")
+icon_180.save("common/assets/icons/apple-touch-icon.png")
+print("Generated common/assets/icons/apple-touch-icon.png")

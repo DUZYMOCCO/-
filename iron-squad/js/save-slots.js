@@ -1,4 +1,4 @@
-import { storage } from '../../js/storage.js';
+import { storage } from '../../common/js/storage.js';
 
 const KEY = 'ironsquad_save_slots_v1';
 export const RULES_VERSION = 4;

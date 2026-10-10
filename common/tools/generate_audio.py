@@ -1,13 +1,13 @@
 """Reproducible original PCM: modal impacts, noisy transients and plucked strings.
 No external recordings, network dependencies or licensed sample packs.
-python generate_audio.py
+python common/tools/generate_audio.py
 """
 from pathlib import Path
 import json, wave, hashlib
 import numpy as np
 
-ROOT=Path(__file__).resolve().parent
-OUT=ROOT/'assets'/'audio'
+ROOT=Path(__file__).resolve().parents[2]
+OUT=ROOT/'common'/'assets'/'audio'
 SR=22050
 RNG=np.random.default_rng(260108)
 def timeline(seconds):return np.arange(round(seconds*SR))/SR

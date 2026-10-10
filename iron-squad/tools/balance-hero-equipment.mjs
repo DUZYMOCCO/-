@@ -16,7 +16,7 @@ try{
   let result;
   for(let batch=0;batch<24;batch++){
    result=await page.evaluate(async()=>{
-    const {WORLD_SIZE}=await import('../js/world.js?v=174');const c=WORLD_SIZE/2,g=qualityGame,p=g.heroJourney.party,b=balanceState;
+    const {WORLD_SIZE}=await import('../js/world.js?v=175');const c=WORLD_SIZE/2,g=qualityGame,p=g.heroJourney.party,b=balanceState;
     const start=performance.now();for(let i=0;i<500&&p.status!=='fallen'&&!g.heroJourney.demonKingDefeat;i++){g.update(.25);b.ticks++;}
     return {seed:b.seed,seconds:b.ticks*.25,distance:Math.round(Math.hypot(p.x-c,p.y-c)),status:p.status,
      members:p.members.map(u=>({class:u.isChosenHero?'HERO':u.soldierClass,talent:u.talent,level:u.level,maxHp:u.maxHp,atk:u.atk,def:u.def,magicDef:u.magicDef,dead:u.dead})),

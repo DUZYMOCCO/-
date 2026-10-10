@@ -14,7 +14,7 @@ import {drawSoldierPortrait} from '../js/soldier-appearance.js';
 import {drawFieldMob,drawFieldSoldier} from '../js/visuals.js';
 const dom=new JSDOM('<div id="game" class="game-container"></div>',{url:'http://localhost/',pretendToBeVisual:true});
 Object.assign(globalThis,{window:dom.window,document:dom.window.document,localStorage:dom.window.localStorage});
-const css=document.createElement('style');css.textContent=['style','game-ui','iron-squad','iron-squad-interface'].map(name=>readFileSync(['style','game-ui'].includes(name)?`css/${name}.css`:`iron-squad/css/${name}.css`,'utf8')).join('\n');document.head.append(css);
+const css=document.createElement('style');css.textContent=['style','game-ui','iron-squad','iron-squad-interface'].map(name=>readFileSync(['style','game-ui'].includes(name)?`common/css/${name}.css`:`iron-squad/css/${name}.css`,'utf8')).join('\n');document.head.append(css);
 const noop=()=>{},ctx=new Proxy({measureText:()=>({width:40}),createLinearGradient:()=>({addColorStop:noop}),createRadialGradient:()=>({addColorStop:noop})},{get:(o,k)=>k in o?o[k]:noop});window.HTMLCanvasElement.prototype.getContext=()=>ctx;
 const {IronSquadGame,SOLDIER_CLASSES,SOLDIER_PHYS_DMG_MULT}=await import('../js/index.js');
 const {saveSlots}=await import('../js/save-slots.js');

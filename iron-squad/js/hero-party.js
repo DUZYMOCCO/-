@@ -1,6 +1,6 @@
 import {HERO_RULES,heroMembers,heroSharesSpace,visibleHeroMembers} from './hero-rules.js';
 import {advanceHeroRoute,heroSegmentOpen} from './hero-navigation.js';
-import {WORLD_SIZE,settleUnit} from './world.js?v=174';
+import {WORLD_SIZE,settleUnit} from './world.js?v=175';
 import {DUNGEON_DEFS,dungeonBlocks} from './dungeon.js?v=151';
 import {economicFieldBlocked} from './regional-economy.js?v=151';
 import {RECRUIT_CLASSES} from './recruitment.js?v=157';

@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import {readdirSync,readFileSync,statSync} from 'node:fs';
 import {join,relative} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {toKana,leftoverKanji} from '../../js/kana-text.js';
-import {gradeOf} from '../../js/kanji-grades.js';
+import {toKana,leftoverKanji} from '../../common/js/kana-text.js';
+import {gradeOf} from '../../common/js/kanji-grades.js';
 import {wrapDialogueText} from '../js/soldier-dialogue.js';
 
 // 1. grade 2 conversion examples
@@ -26,7 +26,7 @@ for(const text of ['兵士は戦場へ向かう','隊長、下がっててくだ
 // 3. every Japanese string in iron-squad/js and the shared studio js/ ends up with no kanji above grade 2
 const files=[];
 function walk(dir){for(const name of readdirSync(dir)){const path=join(dir,name);if(statSync(path).isDirectory())walk(path);else if(name.endsWith('.js'))files.push(path);}}
-['../js','../../js'].forEach(d=>walk(fileURLToPath(new URL(d,import.meta.url))));
+['../js','../../common/js'].forEach(d=>walk(fileURLToPath(new URL(d,import.meta.url))));
 const stripComments=src=>{
   let out='',i=0,quote='';
   while(i<src.length){
@@ -70,7 +70,7 @@ const originals=['fillText','strokeText','measureText'].map(n=>FakeContext.proto
 const memory=new Map();
 globalThis.localStorage={getItem:k=>memory.get(k)??null,setItem:(k,v)=>memory.set(k,v),removeItem:k=>memory.delete(k)};
 // same specifier as the game's imports so both share one module instance
-const mode=await import('../../js/kana-mode.js?v=174');
+const mode=await import('../../common/js/kana-mode.js?v=175');
 assert.equal(mode.isKanaMode(),false);
 assert.equal(mode.displayKana('敵軍'),'敵軍','OFF returns text untouched');
 const ctx=new FakeContext();ctx.fillText('敵軍',0,0);assert.deepEqual(calls.pop(),['fill','敵軍']);

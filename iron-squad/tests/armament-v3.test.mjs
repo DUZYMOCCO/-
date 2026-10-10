@@ -11,7 +11,7 @@ const dom=new JSDOM('<div id="game" class="game-container"></div>',{url:'http://
 Object.assign(globalThis,{document:dom.window.document,window:dom.window,localStorage:dom.window.localStorage});
 const noop=()=>{},ctx=new Proxy({measureText:()=>({width:40}),createLinearGradient:()=>({addColorStop:noop}),createRadialGradient:()=>({addColorStop:noop})},{get:(o,k)=>k in o?o[k]:noop});
 window.HTMLCanvasElement.prototype.getContext=()=>ctx;
-const {storage}=await import('../../js/storage.js');
+const {storage}=await import('../../common/js/storage.js');
 storage.set('ironsquad_rules_version',3);storage.set('ironsquad_save_slots_v1',[{id:'old',rulesVersion:3,data:{player:{}}}]);storage.set('sound_muted',true);
 const {saveSlots,RULES_VERSION}=await import('../js/save-slots.js');
 assert.equal(RULES_VERSION,4);assert.deepEqual(saveSlots.list(),[]);assert.equal(storage.get('sound_muted'),true);

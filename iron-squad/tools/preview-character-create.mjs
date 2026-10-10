@@ -9,7 +9,7 @@ try{
   await page.goto('http://localhost:8000/iron-squad/tools/canvas-quality-review.html');await page.waitForFunction(()=>window.qualityReady);
   await page.evaluate(async()=>{
     const g=qualityGame;g.stopGameLoop();
-    const {openCommanderEditor}=await import('/iron-squad/js/commander-editor.js?v=174');
+    const {openCommanderEditor}=await import('/iron-squad/js/commander-editor.js?v=175');
     window.__editor=openCommanderEditor({host:g.container.querySelector('.game-wrapper'),mode:'create',onConfirm:id=>{window.__made=id;}});
   });
   await page.screenshot({path:'iron-squad/docs/previews/character-create-v4.2.24.png'});
@@ -28,7 +28,7 @@ try{
   // 男の隊長も作る
   await page.evaluate(async()=>{
     const g=qualityGame;
-    const {openCommanderEditor}=await import('/iron-squad/js/commander-editor.js?v=174');
+    const {openCommanderEditor}=await import('/iron-squad/js/commander-editor.js?v=175');
     window.__editor=openCommanderEditor({host:g.container.querySelector('.game-wrapper'),mode:'create',onConfirm:id=>{window.__made2=id;}});
   });
   await page.fill('#ce-family','ブラント');await page.fill('#ce-given','オスカー');

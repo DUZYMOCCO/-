@@ -1,4 +1,4 @@
-import {sound} from '../../js/audio.js?v=151';
+import {sound} from '../../common/js/audio.js?v=151';
 import {WORLD_SIZE} from './world.js?v=151';
 import {inCurrentInstance} from './instance-rules.js?v=151';
 import {recordCombat} from './phase-rules.js';

@@ -17,7 +17,7 @@ globalThis.document = {
   getElementById: () => null,
   createElement: () => ({width:0,height:0,getContext:()=>context})
 };
-const {storage} = await import('../../js/storage.js');
+const {storage} = await import('../../common/js/storage.js');
 const {saveSlots} = await import('../js/save-slots.js');
 const {WorldTerrain,WORLD_SIZE,WORLD_VERSION,reliefAt,SETTLEMENTS,HOME_SANCTUARY_RADIUS,depthFade,fieldBlocks,settleUnit,eastWestRoadY,northSouthRoadX,riverCenterY} = await import('../js/world.js');
 const {DUNGEON_DEFS,dungeonBlocks,dungeonSolids} = await import('../js/dungeon.js');

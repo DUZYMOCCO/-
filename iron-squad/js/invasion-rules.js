@@ -1,7 +1,7 @@
 import {WORLD_SIZE} from './world.js?v=151';
 import {combatPower} from './combat-rewards.js?v=151';
 import {persistentUnit} from './render-support.js?v=151';
-import {sound} from '../../js/audio.js?v=151';
+import {sound} from '../../common/js/audio.js?v=151';
 
 export const INVASION_FIRST_PHASE=3,INVASION_INTERVAL=4,INVASION_MARCH_SECONDS=25,INVASION_BATTLE_SECONDS=70;
 export const MAJOR_FIRST_PHASE=11,MAJOR_INTERVAL=8,MAJOR_MARCH_SECONDS=35,MAJOR_BATTLE_SECONDS=125;
