@@ -1,7 +1,7 @@
 import {configureBattlefieldUI,quietBattlefieldContext} from './battlefield-ui.js?v=151';
-import {renderNavigationMap} from './navigation-map.js?v=151';
+import {renderNavigationMap} from './navigation-map.js?v=156';
 import {soldierEquipmentValue,observeEquipment,standardEquipmentCost,RESERVE_ARMAMENT_COUNT} from './armament-rules.js?v=151';
-import {configureRangedEnemy,updateRangedEnemy,updateDefenseWalls,interceptHostileShot,isHostileShot,updateHostileBolt,drawDefenseWalls} from './enemy-ranged.js?v=151';
+import {configureRangedEnemy,updateRangedEnemy,updateDefenseWalls,interceptHostileShot,isHostileShot,updateHostileBolt,drawDefenseWalls} from './enemy-ranged.js?v=158';
 import {LIMITED_CLASSES,initializeLimitedAllies,prepareLimitedEncounter,createLimitedAlly,joinLimitedEncounter,updateLimitedAllies,updateNinja,updateShuriken,drawLimitedEncounter,serializeLimitedAllies,notifyLimitedJoin} from './limited-allies.js?v=151';
 import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=151';
 import {TIERS,MAX_EQUIPMENT_TIER,MAX_POWER_RANK,POWER_RANK_STEP,GENERATION_COUNT,TRADE_MAX_TIER,powerRank,tierDescription} from './equipment-tiers.js?v=151';
@@ -32,9 +32,9 @@ import {drawEconomicLandscape,drawCommerceActor,drawEconomicMinimap,drawCommerce
  */
 import { sound } from '../../audio.js?v=151';
 import { storage } from '../../storage.js';
-import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow } from './visuals.js?v=151';
+import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow } from './visuals.js?v=158';
 import { refreshCampQuiet, assignCampSeats, tryCampLeisure } from './camp-leisure.js?v=151';
-import { CAMP_PEACE_RADIUS, peaceContainment, pushOutsidePeace, relocatePeaceMonster } from './peace-zones.js?v=151';
+import { CAMP_PEACE_RADIUS, peaceContainment, pushOutsidePeace, relocatePeaceMonster } from './peace-zones.js?v=158';
 import { FARM_X, FARM_Y, farmPosts, farmOverlaps, reinforcementCount, reserveRosterLine, reserveRosterTitle } from './reserve-farm.js?v=151';
 import { drawMeleeRangeCue, meleeDrawReach, attackAnimationRate } from './weapon-motion.js?v=151';
 import {emptyRescueBonuses,normalizeRescueBonuses,rescueBonusSummary} from './rescue-rewards.js?v=151';
@@ -59,7 +59,7 @@ import {
 import { PHASE_DURATION, REST_DURATION, DEATHLINE_DOWN_THRESHOLD, SOLDIER_SALARY, MIN_REINFORCEMENTS, emptyActivity, advancePhase, advanceRest, recordCombat, recordHealing, healByMedic, personalDownCount, deathlineEligible, participated, finishExperience } from './phase-rules.js';
 import {HEALING_HP_PER_EXP,REVIVAL_EXP_PER_MAX_HP,shareCommanderExp,raiseLevelMark,ageLevelMarks} from './experience-rules.js';
 import {rollAttributeProfile,applyAttributeStats,attributeValues,practiceAttribute,attributeCarryCapacity,attributeSpecialties,prefersCasterMelee,canChannelWeaponMagic,magicAbilityMultiplier,beginAttributeMovement,finishAttributeMovement,ATTRIBUTE_LABELS,ATTRIBUTE_KEYS,aptitudeGrade} from './unit-attributes.js';
-import {rollScoutCandidate,renderRecruitment,nextScoutCandidate,startAutomaticRecruitment,stopAutomaticRecruitment,RECRUIT_CLASSES} from './recruitment.js';
+import {rollScoutCandidate,renderRecruitment,nextScoutCandidate,startAutomaticRecruitment,stopAutomaticRecruitment,RECRUIT_CLASSES} from './recruitment.js?v=157';
 import {canUseWeapon,requiredWeaponStrength,weaponRequirementText,isMagicWeapon,MAGIC_WEAPON_STYLES,preferredWeaponStyle} from './weapon-requirements.js';
 import {
   emptyFiscalLedger, calcCommanderStipend, calcBuyoutGold,
@@ -68,7 +68,8 @@ import {
   SHARED_BOX_MAX_TIER, SCOUT_COST_BY_TALENT, defaultDonateAmount, donatePresetAmounts
 } from './economy-rules.js?v=151';
 
-import { EQUIPMENT_TYPES, saleValue, equippedIds, canSell, lowValueIds, chooseLootTier, distanceScaling, shrineUpgradeCap, compareEquipment, equipmentScore, compareEquipmentStrength, rollWeaponTraits, weaponCombatProfile, evaluateMeleeSweetSpot, isGodRollProtected, zoneRingPower, zoneRingLabelJa } from './equipment-rules.js?v=151';
+import { EQUIPMENT_TYPES, saleValue, equippedIds, canSell, lowValueIds, chooseLootTier, distanceScaling, shrineUpgradeCap, compareEquipment, equipmentScore, compareEquipmentStrength, rollWeaponTraits, weaponCombatProfile, evaluateMeleeSweetSpot, isGodRollProtected, zoneRingPower, zoneRingLabelJa, equipmentIcon, equipmentName } from './equipment-rules.js?v=158';
+import { rollFieldBrute, advanceDemonWarband, stepDemonWarbandGroup } from './field-hosts.js?v=159';
 import {
   WEAPON_STYLES, WEAPON_STYLE_LABELS, WEAPON_STYLE_ICONS,
   MELEE_STYLES, RANGED_STYLES, HIT_GROWTH_SOFT_CAP,
@@ -2376,7 +2377,7 @@ export const IronSquadGame = {
     for (let i = 0; i < rewards.lootCount; i++) {
       const item = generateRandomDrop(rewards.lootDistance, rewards.lootKind);
       this.inventory.push(item);
-      lootNames.push(item.name);
+      lootNames.push(equipmentName(item));
     }
     const inferiorNotes = [];
     for (const s of rewards.survivors) {
@@ -3786,7 +3787,8 @@ export const IronSquadGame = {
         const ang = this.player.slashAngle;
         const cos = Math.cos(ang), sin = Math.sin(ang);
         let hit = false;
-        for (const m of this.monsters || []) {
+        // A kill removes its target from monsters; keep this thrust's targets stable.
+        for (const m of [...(this.monsters || [])]) {
           if (!m || m.hp <= 0) continue;
           const dx = m.x - this.player.x, dy = m.y - this.player.y;
           const along = dx * cos + dy * sin;
@@ -3996,7 +3998,7 @@ export const IronSquadGame = {
       const halfAngle = isWarlord ? 0.72 : 0.58;
       const dmg = Math.round(baseAtk * (isWarlord ? 4.6 : 3.5));
       const cos = Math.cos(face), sin = Math.sin(face);
-      for (const m of this.monsters || []) {
+      for (const m of [...(this.monsters || [])]) {
         if (!m || m.hp <= 0) continue;
         const dx = m.x - px, dy = m.y - py;
         const dist = Math.hypot(dx, dy);
@@ -4575,6 +4577,11 @@ export const IronSquadGame = {
       type=exclusive.type;rawHp=exclusive.hp;rawAtk=exclusive.atk;speed=exclusive.speed;
       radius=exclusive.radius;color=exclusive.color;isElite=!!exclusive.elite;isBoss=false;
     }
+    const brute=!isBoss && rollFieldBrute(this.monsters, zone.id);
+    if(brute) {
+      type=brute.type;rawHp=brute.rawHp;rawAtk=brute.rawAtk;speed=brute.speed;
+      radius=brute.radius;color=brute.color;isElite=true;isBoss=false;
+    }
 
     const adaptive=fieldAdaptiveScaling(this,Math.hypot(x-BASE_CAMP.x,y-BASE_CAMP.y));
     const hp = Math.floor(rawHp * scaling.hp * adaptive.hp);
@@ -4585,10 +4592,12 @@ export const IronSquadGame = {
       hp, maxHp: hp,
       atk, speed: speed * (zone.speedMult || 1.0),
       radius, color,
-      type, isBoss, isElite, name:exclusive?.name,activePeriod:exclusive?daylightAt(this.worldTime).period:null,
+      type, isBoss, isElite, name:brute?brute.name:exclusive?.name,activePeriod:brute?null:(exclusive?daylightAt(this.worldTime).period:null),
+      fixedKind:!!brute, dropCount:brute?brute.dropCount:undefined, sureDrop:!!brute, lootKind:brute?brute.lootKind:undefined,
+      attackInterval:brute?brute.attackInterval:undefined, attackReach:brute?brute.attackReach:undefined,
       zoneId: zone.id, fieldAdaptive:{hp:adaptive.hp,atk:adaptive.atk,reward:adaptive.reward},
       hitPulse: 0
-    },{random:exclusive?()=>1:Math.random}));
+    },{random:(exclusive||brute)?()=>1:Math.random}));
   },
 
   // シームレス自律リポップ制御（戦場全体で最大72体を維持＋大ボス再臨管理）
@@ -4625,7 +4634,7 @@ export const IronSquadGame = {
     const cullR2 = 1700 * 1700, keepR2 = 1100 * 1100;
     for (let i = this.monsters.length - 1; i >= 0; i--) {
       const m = this.monsters[i];
-      if (m.isBoss || m.isColossal || m.isRaidMob) continue;
+      if (m.isBoss || m.isColossal || m.isRaidMob || m.isDemonWarband) continue;
       if (this._distSq(m.x, m.y, this.player.x, this.player.y) > cullR2) {
         let keep = false;
         const sq = this.squad || [];
@@ -4637,20 +4646,24 @@ export const IronSquadGame = {
         if (!keep) this.monsters.splice(i, 1);
       }
     }
+    advanceDemonWarband(this, dt, BASE_CAMP, ENEMY_LIMIT);
     for (let i = 0; i < this.monsters.length; i++) relocatePeaceMonster(this.monsters[i]);
     this.spawnTimer += dt;
     if(this.spawnTimer>=ENEMY_SPAWN_INTERVAL && this.monsters.length<ENEMY_LIMIT) {
       this.spawnTimer=0;
       // Standing in camp or a village/town does not grow a ring of ordinary enemies.
-      if (peaceContainment(this.player.x, this.player.y)) return;
-      const ang=Math.random()*Math.PI*2,dist=450+Math.random()*450;
-      let sx=Math.max(40,Math.min(MAP_WIDTH-40,this.player.x+Math.cos(ang)*dist));
-      let sy=Math.max(40,Math.min(MAP_HEIGHT-40,this.player.y+Math.sin(ang)*dist));
-      const next=pushOutsidePeace(sx, sy);
-      if (next.moved && Math.hypot(next.x - this.player.x, next.y - this.player.y) > 1600) return;
-      sx=Math.max(40,Math.min(MAP_WIDTH-40,next.x));
-      sy=Math.max(40,Math.min(MAP_HEIGHT-40,next.y));
-      if (!peaceContainment(sx, sy)) this.spawnMonster(sx,sy,getFieldZone(sx,sy));
+      // A demon march still advanced above; this return used to skip that whole frame.
+      if (!peaceContainment(this.player.x, this.player.y)) {
+        const ang=Math.random()*Math.PI*2,dist=450+Math.random()*450;
+        let sx=Math.max(40,Math.min(MAP_WIDTH-40,this.player.x+Math.cos(ang)*dist));
+        let sy=Math.max(40,Math.min(MAP_HEIGHT-40,this.player.y+Math.sin(ang)*dist));
+        const next=pushOutsidePeace(sx, sy);
+        if (!(next.moved && Math.hypot(next.x - this.player.x, next.y - this.player.y) > 1600)) {
+          sx=Math.max(40,Math.min(MAP_WIDTH-40,next.x));
+          sy=Math.max(40,Math.min(MAP_HEIGHT-40,next.y));
+          if (!peaceContainment(sx, sy)) this.spawnMonster(sx,sy,getFieldZone(sx,sy));
+        }
+      }
     }
   },
 
@@ -6039,7 +6052,7 @@ export const IronSquadGame = {
             if (sProf.pierce) {
               const ang = soldier.facingAngle;
               const cos = Math.cos(ang), sin = Math.sin(ang);
-              for (const m of this.monsters) {
+              for (const m of [...this.monsters]) {
                 if (!m || m.hp <= 0) continue;
                 const dx = m.x - soldier.x, dy = m.y - soldier.y;
                 const along = dx * cos + dy * sin;
@@ -6312,7 +6325,7 @@ export const IronSquadGame = {
         } else if (isWarlord) {
           // 覇王ウォーロード: 全方位360度「覇王紅蓮絶刃」！周囲の敵全員を切り裂く！
           const warReach = Math.max(115, reach);
-          for (const m of this.monsters) {
+          for (const m of [...this.monsters]) {
             if (Math.hypot(m.x - this.player.x, m.y - this.player.y) <= warReach) {
               this.performAttack(this.player, m, true, this.player.atk);
             }
@@ -6323,7 +6336,7 @@ export const IronSquadGame = {
           const ang = this.player.slashAngle;
           const cos = Math.cos(ang), sin = Math.sin(ang);
           let hitAny = false;
-          for (const m of this.monsters) {
+          for (const m of [...this.monsters]) {
             if (!m || m.hp <= 0) continue;
             const dx = m.x - this.player.x, dy = m.y - this.player.y;
             const along = dx * cos + dy * sin;
@@ -6360,6 +6373,9 @@ export const IronSquadGame = {
 
     syncDragged(this,dt);
 
+    // 魔族の列は睡眠と帰巣の前に進める。遠い行軍を消さない。
+    stepDemonWarbandGroup(this, dt, BASE_CAMP);
+
     // モンスターの追跡＆攻撃＆大ボス固有スキル
     // Perf: awaken by camera/player/platoon — skip O(squad) scans for sleeping far mobs
     const awakenR2 = 900 * 900; // v1.24.1 was 1100
@@ -6369,6 +6385,7 @@ export const IronSquadGame = {
       const m = this.monsters[i];
       if (m.hitPulse > 0) m.hitPulse -= dt * 4;
       if(m.magicStunTimer>0)continue;
+      if (m.isDemonWarband) continue;
 
       const pDistSq = this._distSq(this.player.x, this.player.y, m.x, m.y);
       let target = this.player;
@@ -6580,7 +6597,7 @@ export const IronSquadGame = {
               if (slotKey === 'weapon') s.weapon = item;
               if(curItem)(this.sharedEquipBox ||= []).push(curItem);
               this.recalcSoldierStats(s);
-              this.spawnDamageText(s.x, s.y - 20, `🛡️[${item.name}]着用!`, '#38bdf8');
+              this.spawnDamageText(s.x, s.y - 20, `${equipmentIcon(item)}[${item.name}]着用!`, '#38bdf8');
             } else {
               // 配布してから余剰を外販。拾った本人だけで不要と判断しない。
               (this.sharedEquipBox ||= []).push(item);
@@ -7152,12 +7169,12 @@ export const IronSquadGame = {
         return `<div class="transfer-item-card merchant-stock-card ${item.merchantFeatured?'merchant-featured':''}" data-idx="${idx}">
           ${item.merchantFeatured?`<div class="merchant-featured-label">今ウェーブの目玉 · 特選品（1点限り）</div>`:''}
           <div class="transfer-card-header">
-            <span class="transfer-item-name" style="color:${item.color || '#e2e8de'};">[T${item.tier}] ${item.name}</span>
+            <span class="transfer-item-name" style="color:${item.color || '#e2e8de'};">[T${item.tier}] ${equipmentName(item)}</span>
             <span class="transfer-comp-badge">${price.toLocaleString()}G</span>
           </div>
           <p class="merchant-quality">${slot?.name||item.type} · ${item.merchantQuality||'厳選'} · 品質補正×${Number(item.rollMult||1).toFixed(2)} · 強化+${item.upgrade||0}</p>
           ${item.type==='WEAPON'?`<p class="weapon-requirement">${weaponRequirementText(this.player,item)}</p>`:''}
-          <div class="equipment-comparison ${cmp.kind}"><div class="equip-cmp-head">隊長の現装備比：<strong>${cmp.label}</strong></div><small>現在：${current?.name||'未装備'}</small>${cmp.html}</div>
+          <div class="equipment-comparison ${cmp.kind}"><div class="equip-cmp-head">隊長の現装備比：<strong>${cmp.label}</strong></div><small>現在：${current ? equipmentName(current) : '未装備'}</small>${cmp.html}</div>
           <div class="transfer-card-meta">
             <span class="merchant-price-note">${item.mat||''} · 基準売値の約${(price/Math.max(1,saleValue(item))).toFixed(1)}倍（品質込み）</span>
             <button type="button" class="transfer-tap-btn" data-buy="${idx}" ${can ? '' : 'disabled'}>${can ? canUseWeapon(this.player,item)?'購入して装備':'購入してバッグへ' : '所持金不足'}</button>
@@ -7225,7 +7242,7 @@ export const IronSquadGame = {
           markMerchantPurchase(m,item,this.phase||1);
           m.stock.splice(idx, 1);
           this.collectDrop(item, false, {purchased:true});
-          this.showToast(`🏪【購入${canUseWeapon(this.player,item)?'・装備':'・バッグへ'}】[T${item.tier}] ${item.name} · ${price.toLocaleString()}G`);
+          this.showToast(`🏪【購入${canUseWeapon(this.player,item)?'・装備':'・バッグへ'}】[T${item.tier}] ${equipmentName(item)} · ${price.toLocaleString()}G`);
           this.saveGame();
           this.updateStatsUI();
           render();
@@ -7770,6 +7787,18 @@ export const IronSquadGame = {
 
       this.showToast(`👑【超巨大巨頭討滅！】神話級大ボス『${monster.name || '大魔獣'}』の撃滅に成功！${orbCount?'（覚醒宝珠1個）':''}`);
 
+    } else if (monster.sureDrop && monster.dropCount > 0) {
+      const kind = monster.lootKind || (isBoss ? 'boss' : (isElite ? 'elite' : 'normal'));
+      const n = Math.max(1, Math.min(6, monster.dropCount | 0));
+      for (let di = 0; di < n; di++) {
+        const dropItem = generateRandomDrop(lootDistance, kind);
+        addFieldDrop(this,{
+          x: monster.x + (di - (n - 1) / 2) * 16,
+          y: monster.y + (di % 2 ? 8 : -6),
+          item: dropItem,
+          isBoss: false
+        });
+      }
     } else {
       // 通常モンスター・通常ボスのドロップ生成
       const dropRate = isBoss ? 1.0 : (isElite ? 0.65 : (0.16+Math.min(0.08,lootDistance/7400*0.08)));
@@ -7854,7 +7883,7 @@ export const IronSquadGame = {
         this.phaseFiscal.buyouts = (this.phaseFiscal.buyouts || 0) + buyout;
         this.phaseFiscal.buyoutCount = (this.phaseFiscal.buyoutCount || 0) + 1;
       }
-      this.showToast(`📦【国庫買取】[T${item.tier}] ${item.name} を共有ボックスへ · 買い取り+${buyout}G`);
+      this.showToast(`📦【国庫買取】[T${item.tier}] ${equipmentName(item)} を共有ボックスへ · 買い取り+${buyout}G`);
       this.saveGame();
       this.updateStatsUI();
       return;
@@ -7873,9 +7902,9 @@ export const IronSquadGame = {
       ? '⚡神鍛ぶっ飛び！'
       : (item.forgeTag === '異質' ? '✨ドロップランダム補正（異質）！' : '');
     if (isBossDrop) {
-      toastText = `👑【ボス戦利品獲得！】${forgeNote}[T${item.tier} ${item.mat}] ${item.name}！`;
+      toastText = `👑【ボス戦利品獲得！】${forgeNote}[T${item.tier} ${item.mat}] ${equipmentName(item)}！`;
     } else {
-      toastText = `😈 ${forgeNote}[T${item.tier} ${item.mat}] ${item.name} を横取り！${autoEquipped ? ' (即装備)' : ''}`;
+      toastText = `😈 ${forgeNote}[T${item.tier} ${item.mat}] ${equipmentName(item)} を横取り！${autoEquipped ? ' (即装備)' : ''}`;
     }
     this.showToast(toastText);
     this.saveGame();
@@ -7889,18 +7918,18 @@ export const IronSquadGame = {
     const curItem = this.equipped[slotKey];
     if (inheritUpgradeFromCurrent && curItem && (curItem.upgrade || 0) > (item.upgrade || 0)) {
       const inheritedVal = curItem.upgrade;
-      const oldName = curItem.name;
+      const oldName = equipmentName(curItem);
       applyUpgradeStats(item, inheritedVal);
       // 古い装備は強化抽出・乗り換えにより消滅（インベントリから破棄）
       this.inventory = (this.inventory || []).filter(i => i.id !== curItem.id);
-      this.showToast(`✨「${oldName}」の強化値(+${inheritedVal})を引き継いで「${item.name}」を装備！（※古い装備は消滅）`);
+      this.showToast(`✨「${oldName}」の強化値(+${inheritedVal})を引き継いで「${equipmentName(item)}」を装備！（※古い装備は消滅）`);
     } else if (curItem && curItem.id !== item.id) {
       // 通常乗り換え: 外した装備は必ずバッグへ戻す（以前装備していても未保護なら売却可）
       if (!this.inventory) this.inventory = [];
       if (!this.inventory.some(i => i.id === curItem.id)) this.inventory.push(curItem);
       const cmp = compareEquipment(item, curItem);
       const tag = item.forgeTag ? `【${item.forgeTag}】` : '';
-      this.showToast(`着替え ${item.name}${tag}｜${cmp.label}｜${cmp.text}`);
+      this.showToast(`着替え ${equipmentName(item)}${tag}｜${cmp.label}｜${cmp.text}`);
     }
 
     this.equipped[slotKey] = item;
@@ -7925,7 +7954,7 @@ export const IronSquadGame = {
     applyUpgradeStats(sourceItem, 0);
     this.recalcPlayerStats();
     sound.playHighScore();
-    this.showToast(`✨ 鍛冶屋の魔術！「${sourceItem.name}」の強化値を「${targetItem.name}」へ引き継ぎました！`);
+    this.showToast(`✨ 鍛冶屋の魔術！「${equipmentName(sourceItem)}」の強化値を「${equipmentName(targetItem)}」へ引き継ぎました！`);
     this.saveGame();
     this.renderStrategyUI();
   },
@@ -8009,7 +8038,7 @@ export const IronSquadGame = {
     applyUpgradeStats(item, nextUp);
 
     sound.playHighScore();
-    this.showToast(`🔨 鍛冶完了！「${item.name}」に強化成功！`);
+    this.showToast(`🔨 鍛冶完了！「${equipmentName(item)}」に強化成功！`);
 
     this.recalcPlayerStats();
     this.saveGame();
@@ -8039,7 +8068,7 @@ export const IronSquadGame = {
     applyUpgradeStats(item, (item.upgrade || 0) + 1);
     this.recalcSoldierStats(s);
     sound.playHighScore();
-    this.showToast(`🔨 ${s.name}が自費で「${item.name}」を強化！`);
+    this.showToast(`🔨 ${s.name}が自費で「${equipmentName(item)}」を強化！`);
     this.saveGame();
     this.renderStrategyUI();
   },
@@ -8175,7 +8204,7 @@ export const IronSquadGame = {
             const nextUp = (eqItem.upgrade || 0) + 1;
             applyUpgradeStats(eqItem, nextUp);
             upgradedCount++;
-            if (!upgradedNames.includes(eqItem.name)) upgradedNames.push(eqItem.name);
+            if (!upgradedNames.includes(equipmentName(eqItem))) upgradedNames.push(equipmentName(eqItem));
             anyUpgraded = true;
             break; // 1回強化したら再ソートして次へ
           }
@@ -8248,8 +8277,8 @@ export const IronSquadGame = {
       if (st.hp) bits.push(`HP${st.hp}`);
       if (it.forgeTag) bits.push(it.forgeTag);
       const bitTxt = bits.length ? ` (${bits.join(' ')})` : '';
-      const up = it.upgrade > 0 ? `+${it.upgrade}` : '';
-      return `<div>${slotJa[k]||k}: <span style="color:${it.color || '#e2e8f0'};">[T${it.tier}] ${it.name}${up}</span>${bitTxt}</div>`;
+      const up = it.upgrade > 0 && !/\+\d+$/.test(String(it.name || '')) ? `+${it.upgrade}` : '';
+      return `<div>${slotJa[k]||k}: <span style="color:${it.color || '#e2e8f0'};">[T${it.tier}] ${equipmentName(it)}${up}</span>${bitTxt}</div>`;
     }).join('');
     const role = (this.reserves || []).includes(s) ? '予備兵' : s.isPersonalGuard ? '⭐ 自部隊（直属）' : '🏰 本隊';
     const wage=salaryQuote(s,this),ranker=calcSoldierRankerBonus(this,s.id);
@@ -8911,9 +8940,9 @@ export const IronSquadGame = {
     if ((soldier.gold || 0) >= upCost + 10) {
       soldier.gold -= upCost;
       applyUpgradeStats(item, (item.upgrade || 0) + 1);
-      this.showToast(`🎁 ${soldier.name}に「${item.name}」を譲渡！兵士は自費でさらに自主強化(+${item.upgrade})！`);
+      this.showToast(`🎁 ${soldier.name}に「${equipmentName(item)}」を譲渡！兵士は自費でさらに自主強化(+${item.upgrade})！`);
     } else {
-      this.showToast(`🎁 ${soldier.name}に「${item.name}」を譲渡！${oldItem ? '(旧装備はバッグへ返却)' : ''}`);
+      this.showToast(`🎁 ${soldier.name}に「${equipmentName(item)}」を譲渡！${oldItem ? '(旧装備はバッグへ返却)' : ''}`);
     }
 
     this.recalcSoldierStats(soldier);
@@ -8952,7 +8981,7 @@ export const IronSquadGame = {
       button.innerHTML = `
         <span class="slot-header">${info.icon} ${info.name}</span>
         <span class="slot-item-text" style="color:${hasEq ? (equipped.color || '#fef08a') : '#718096'};">
-          ${hasEq ? equipped.name : '（空き）'}
+          ${hasEq ? equipmentName(equipped) : '（空き）'}
         </span>
       `;
       button.onclick = () => this.openEquipmentTransferPopup(soldier, info.key);
@@ -8992,7 +9021,7 @@ export const IronSquadGame = {
           <div class="transfer-popup-header">
             <div>
               <h3 class="transfer-popup-title">🎁 装備譲渡：${soldier.name}</h3>
-              <p class="transfer-popup-sub">${info.icon} ${info.name} · 現在：<strong style="color:${current?.color || '#e2e8de'};">${current ? current.name : '（空きスロット）'}</strong></p>
+              <p class="transfer-popup-sub">${info.icon} ${info.name} · 現在：<strong style="color:${current?.color || '#e2e8de'};">${current ? equipmentName(current) : '（空きスロット）'}</strong></p>
             </div>
             <button type="button" class="transfer-popup-close-btn" aria-label="閉じる">✕</button>
           </div>
@@ -9030,7 +9059,7 @@ export const IronSquadGame = {
                 <div class="transfer-item-card ${heroEquipped ? 'is-hero-eq' : ''}" data-item-id="${item.id}">
                   <div class="transfer-card-header">
                     <span class="transfer-item-name" style="color:${item.color || '#e2e8de'};">
-                      [T${item.tier}] ${preview.name}
+                      [T${item.tier}] ${equipmentName(preview)}
                     </span>
                     <span class="transfer-comp-badge ${comp.kind}">${comp.label}</span>
                   </div>
@@ -9113,7 +9142,7 @@ export const IronSquadGame = {
         this.renderSaleToolbar(invList);
         [...toolbar.querySelectorAll('.sale-item-option')].find(row=>row.dataset.itemId===String(item.id))?.querySelector('input')?.focus({preventScroll:true});
       };
-      const name=document.createElement('span');name.textContent=`[T${item.tier}] ${item.name}`;
+      const name=document.createElement('span');name.textContent=`[T${item.tier}] ${equipmentName(item)}`;
       const price=document.createElement('span');price.className='sale-item-price';price.textContent=`売値 ${saleValue(item)}G`;
       label.append(checkbox,name,price);selection.append(label);
     }
@@ -9375,7 +9404,7 @@ export const IronSquadGame = {
       return `
         <div style="font-size: 11px; margin-bottom: 5px; display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.02); padding: 2px 4px; border-radius:4px;">
           <div>
-            <span style="color:${item.color}; font-weight:bold;">${slotDef.icon} [T${item.tier}] ${item.name}${item.type==='WEAPON' && item.weaponStyle ? ` (${WEAPON_STYLE_LABELS[item.weaponStyle]||''})` : ''}</span>
+            <span style="color:${item.color}; font-weight:bold;">[T${item.tier}] ${equipmentName(item)}</span>
             <span style="color:#94a3b8; font-size:10px; margin-left:4px;">(${statText})</span>
           </div>
           <button class="mini-btn btn-up-equipped" data-slot="${slotDef.key}" style="background:#f59e0b; color:#0b0d14; font-size:10px; padding:2px 6px;">🔨 強化 [${cost}G]</button>
@@ -9464,7 +9493,7 @@ export const IronSquadGame = {
 
         itemRow.innerHTML = `
           <div>
-            <span class="${forgeClass}" style="color: ${item.color}; font-weight: bold;">[T${item.tier}] ${item.name}</span>
+            <span class="${forgeClass}" style="color: ${item.color}; font-weight: bold;">[T${item.tier}] ${equipmentName(item)}</span>
             <span style="font-size: 10px; color: #94a3b8; margin-left: 3px;">(${statText})</span>
           </div>
           <div style="display:flex; gap:3px; align-items:center;">
@@ -9490,10 +9519,10 @@ export const IronSquadGame = {
           inheritBtn.disabled=!canUseWeapon(this.player,item);
           inheritBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            const curName = curEquipped ? curEquipped.name : '現在装備';
+            const curName = curEquipped ? equipmentName(curEquipped) : '現在装備';
             const confirmed = window.confirm(
               `【強化値引き継ぎ・装備乗り換え】\n\n` +
-              `現在装備「${curName}」の強化値(+${curEquipped.upgrade})を「${item.name}」へ引き継いで装備します。\n\n` +
+              `現在装備「${curName}」の強化値(+${curEquipped.upgrade})を「${equipmentName(item)}」へ引き継いで装備します。\n\n` +
               `⚠️注意：引き継ぎ元の「${curName}」は消滅します。\n本当に乗り換えますか？`
             );
             if (!confirmed) return;
@@ -9605,7 +9634,7 @@ export const IronSquadGame = {
       if (!box.length) boxList.innerHTML = '<div style="color:#64748b;text-align:center;padding:8px;">共有ボックスは空です</div>';
       else {
         boxList.innerHTML = box.slice(0, 40).map((it) =>
-          `<div style="font-size:10px;padding:3px 0;border-bottom:1px solid #1e293b;"><span style="color:${it.color || '#94a3b8'};">[T${it.tier}] ${it.name}</span> · 買取相当${calcBuyoutGold(it)}G</div>`
+          `<div style="font-size:10px;padding:3px 0;border-bottom:1px solid #1e293b;"><span style="color:${it.color || '#94a3b8'};">[T${it.tier}] ${equipmentName(it)}</span> · 買取相当${calcBuyoutGold(it)}G</div>`
         ).join('') + (box.length > 40 ? `<div style="color:#64748b;">…他${box.length - 40}件</div>` : '');
       }
     }
@@ -9696,7 +9725,7 @@ export const IronSquadGame = {
         </div>
         <div style="font-size: 10px; color: #94a3b8; margin-bottom: 3px; display: flex; justify-content: space-between; align-items:center;">
           <span>HP: <strong style="color:${s.hp < s.maxHp ? '#f87171' : '#34d399'};">${Math.floor(s.hp)}</strong>/${s.maxHp} | 🛡️ DEF: <strong style="color:#38bdf8;">${s.def || 0}</strong> | ATK: ${s.atk} ${clsKey === 'MEDIC' ? `| 💚回復: <strong style="color:#34d399;">${s.healPower || 26}HP</strong>` : ''}</span>
-          ${wItem ? `<span style="color:${wItem.color}; font-weight:bold;">[${wItem.name}]</span>` : '<span style="color:#666;">[支給短剣]</span>'}
+          ${wItem ? `<span style="color:${wItem.color}; font-weight:bold;">[${equipmentName(wItem)}]</span>` : '<span style="color:#666;">[🗡️ 支給短剣]</span>'}
         </div>
         <div style="font-size: 9.5px; color: #7c8a9a; margin-bottom: 3px;">
           ${WEAPON_STYLE_ICONS[s.favoriteWeapon] || '🗡️'}得意:${WEAPON_STYLE_LABELS[s.favoriteWeapon] || '剣'}
@@ -11321,7 +11350,7 @@ export const IronSquadGame = {
       ctx.shadowBlur = 0;
     } else {
       const barW = Math.max(22, m.radius * 2);
-      const headH = m.activePeriod ? 43 : m.isBoss ? 46 : (m.type === 'orc' || m.type === 'wyvern' ? 44 : (m.type === 'goblin' ? 37 : 26));
+      const headH = m.type === 'brute' ? 186 : (m.type === 'demon_front' || m.type === 'demon_rear' ? 52 : (m.activePeriod ? 43 : m.isBoss ? 46 : (m.type === 'orc' || m.type === 'wyvern' ? 44 : (m.type === 'goblin' ? 37 : 26))));
       ctx.fillStyle = 'rgba(0,0,0,0.65)';
       ctx.fillRect(-barW / 2, -headH, barW, 4);
       ctx.fillStyle = m.isBoss ? '#ef4444' : (m.isElite ? '#f59e0b' : '#34d399');

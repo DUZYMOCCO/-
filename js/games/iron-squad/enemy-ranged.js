@@ -15,7 +15,7 @@ const local=(game,u)=>u?.isGateGuard?(game.currentDungeon?inCurrentInstance(game
 export const isDefenseUnit=u=>['HEAVY','PALADIN','TEMPLAR','IMMORTAL_AEGIS'].includes(u?.combatClass||u?.soldierClass)&&!!u.equipped?.shield;
 export const isHostileShot=p=>p?.type==='ENEMY_BOLT'||p?.type==='BREATH_FLAME'||p?.type==='TITAN_BEAM';
 export function configureRangedEnemy(unit,{random=Math.random,forceType=null}={}) {
-  if(!unit||unit.isBoss||unit.isColossal||unit.isDungeonBoss)return unit;
+  if(!unit||unit.isBoss||unit.isColossal||unit.isDungeonBoss||unit.fixedKind)return unit;
   const kind=forceType||(random()<.28?Object.keys(RANGED_ENEMIES)[Math.min(5,Math.floor(random()*6))]:null);
   const def=RANGED_ENEMIES[kind];if(!def)return unit;
   unit.type=kind;unit.name=def.name;unit.color=def.color;unit.rangedKind=kind;

@@ -1,5 +1,5 @@
 // スマホゲーム工房 Service Worker (最新コード最優先 Network-First & オフライン対応版)
-const CACHE_NAME = 'mobile-game-studio-v154';
+const CACHE_NAME = 'mobile-game-studio-v159';
 
 const ASSETS_TO_CACHE = [
   './',
@@ -29,6 +29,7 @@ const ASSETS_TO_CACHE = [
   './js/games/iron-squad/trade-routes.js',
   './js/games/iron-squad/regional-economy.js',
   './js/games/iron-squad/field-drops.js',
+  './js/games/iron-squad/field-hosts.js',
   './js/games/iron-squad/recruitment.js',
   './js/games/iron-squad/weapon-requirements.js',
   './js/games/iron-squad/instance-rules.js',

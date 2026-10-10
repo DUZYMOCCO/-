@@ -3,6 +3,7 @@ import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './dista
 import {drawSoldierPortrait} from './soldier-appearance.js';
 import {ATTRIBUTE_KEYS,ATTRIBUTE_LABELS,attributeSpecialties,attributeCarryCapacity,aptitudeGrade} from './unit-attributes.js';
 import {weaponRequirementText} from './weapon-requirements.js';
+import {equipmentName} from './equipment-rules.js?v=157';
 import {releaseCanvas} from './canvas-surface.js?v=151';
 
 export const RECRUIT_CLASSES=['HEAVY','LIGHT','ARCHER','MEDIC','MAGE'];
@@ -80,7 +81,7 @@ export function renderRecruitment(game,classes,talents) {
         ['魔法攻撃',number(unit.magicAttack)],['回復力',number(unit.healPower)],['移動',formatSpeed(unit.speed)]
       ].map(([label,value])=>`<span><small>${label}</small><b>${value}</b></span>`).join('')}</div>
       <div class="recruit-aptitudes"><strong>成長素質</strong>${ATTRIBUTE_KEYS.map(key=>`<span>${ATTRIBUTE_LABELS[key]}<b>${aptitudeGrade(profile.aptitudes[key])}</b></span>`).join('')}</div>
-      <div class="recruit-practice-note">初期武器：${unit.equipped?.weapon?.name||'なし'}<br>${weaponRequirementText(unit,unit.equipped?.weapon)}</div>`;
+      <div class="recruit-practice-note">初期武器：${unit.equipped?.weapon ? equipmentName(unit.equipped.weapon) : 'なし'}<br>${weaponRequirementText(unit,unit.equipped?.weapon)}</div>`;
     for(const [className,destination] of [['btn-scout-main','main'],['btn-scout-personal','personal']]){
       const button=root.querySelector(`#recruitment-dialog .${className}`);
       if(button){button.disabled=(game.gold||0)<candidate.cost;button.onclick=()=>game.scoutSoldier(candidate.id,destination);}

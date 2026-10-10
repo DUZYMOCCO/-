@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { blockingGuides, fieldBlocks, HOME_SANCTUARY_RADIUS, WORLD_SIZE } from '../js/games/iron-squad/world.js';
+import { NAVIGATION_RULES } from '../js/games/iron-squad/navigation-map.js?v=156';
 
 const center = WORLD_SIZE / 2;
 const lines = blockingGuides();
@@ -16,4 +17,6 @@ for (const line of lines) {
 assert.equal(inside, 0, 'cliff guides stay outside the home sanctuary');
 assert.ok(blocked > 40, 'the guides follow ground that stops walking');
 assert.ok(open > 0, 'roads and landmark openings break the cliff lines');
-console.log(`PASS: blocking guides lines=${lines.length} blocked=${blocked} openings=${open}`);
+assert.equal(NAVIGATION_RULES.fieldSpan, 12000);
+assert.ok(NAVIGATION_RULES.terrainAlpha <= 0.2);
+console.log(`PASS: blocking guides lines=${lines.length} blocked=${blocked} openings=${open} span=${NAVIGATION_RULES.fieldSpan}`);

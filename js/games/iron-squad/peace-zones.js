@@ -58,7 +58,7 @@ export function ringMissesPeace(x, y, reach = 900) {
 }
 
 export function relocatePeaceMonster(monster) {
-  if (!monster || !(monster.hp > 0) || monster.isBoss || monster.isColossal || monster.isRaidMob || monster.isDungeonBoss || monster.isTradeRaider || monster.isDemonInvasion) return false;
+  if (!monster || !(monster.hp > 0) || monster.isBoss || monster.isColossal || monster.isRaidMob || monster.isDungeonBoss || monster.isTradeRaider || monster.isDemonInvasion || monster.isDemonWarband) return false;
   const next = pushOutsidePeace(monster.x, monster.y);
   if (!next.moved || peaceContainment(next.x, next.y)) return false;
   monster.x = next.x;

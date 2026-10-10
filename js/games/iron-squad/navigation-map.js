@@ -3,7 +3,7 @@ import {dungeonSolids} from './dungeon.js?v=151';
 import {inCurrentInstance} from './instance-rules.js?v=151';
 import {ECONOMIC_REGIONS,economicState,economicFieldBlocked} from './regional-economy.js?v=151';
 
-export const NAVIGATION_RULES=Object.freeze({fieldSpan:10000,maxSize:168,terrainAlpha:.34,roadAlpha:.72,iconAlpha:1});
+export const NAVIGATION_RULES=Object.freeze({fieldSpan:12000,maxSize:168,terrainAlpha:.2,roadAlpha:.48,iconAlpha:1});
 const center=WORLD_SIZE/2;
 export function drawNavigationIcon(ctx,kind,x,y,label='',size=9) {
  ctx.save();ctx.translate(x,y);ctx.globalAlpha=NAVIGATION_RULES.iconAlpha;ctx.lineWidth=1.5;ctx.strokeStyle='#171f23';ctx.fillStyle=kind==='medical'?'#b9d6c4':kind==='cage'?'#c5b0cf':'#e0d3ad';

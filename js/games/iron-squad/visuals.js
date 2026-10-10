@@ -1,4 +1,5 @@
 import {RANGED_ENEMIES} from './enemy-ranged.js?v=151';
+import {BRUTE_DRAW_SCALE} from './field-hosts.js?v=158';
 import {equipmentVisualProfile} from './equipment-tiers.js?v=151';
 import {drawBodyEquipment} from './equipment-art.js?v=151';
 import {MAGIC_AFFINITIES,ensureMana} from './magic-rules.js?v=151';
@@ -593,7 +594,57 @@ function drawPeriodMob(c,m,now) {
   c.restore();return true;
 }
 
+function drawBrute(c, m, now) {
+  const flash = m.hitPulse > 0;
+  const hide = flash ? '#d9d3cc' : '#6e5844';
+  const dark = flash ? '#c8c2ba' : '#3e342c';
+  const bone = flash ? '#f4f1ea' : '#d9c7a2';
+  const step = Math.sin(now * 0.01 + (m.x || 0)) * 1.4;
+  c.save();
+  c.scale(BRUTE_DRAW_SCALE, BRUTE_DRAW_SCALE);
+  shape(c, [[-8,-8],[-4 + step,-9],[-3 + step,2],[-9,2]], dark);
+  shape(c, [[2,-8],[7 - step,-9],[8 - step,2],[1,2]], dark);
+  shape(c, [[-11,-30],[9,-31],[13,-8],[-12,-7]], hide);
+  shape(c, [[-8,-27],[2,-28],[1,-12],[-8,-11]], 'rgba(255,255,255,.12)', 'transparent');
+  shape(c, [[2,-28],[11,-26],[10,-10],[3,-11]], 'rgba(0,0,0,.18)', 'transparent');
+  ellipse(c, 2, -38, 7.2, 6.4, hide);
+  shape(c, [[-5,-42],[-12,-54],[-2,-42]], bone, '#6e5844');
+  shape(c, [[4,-43],[13,-52],[7,-39]], bone, '#6e5844');
+  c.fillStyle = flash ? '#f4f1ea' : '#c4a574';
+  c.fillRect(4, -39, 3.2, 1.6);
+  line(c, [[9,-20],[22,-36]], dark, 3.4);
+  ellipse(c, 24, -38, 5.2, 4.4, dark);
+  c.restore();
+}
+
+function drawDemon(c, m, now) {
+  const rear = m.type === 'demon_rear';
+  const flash = m.hitPulse > 0;
+  const cloth = flash ? '#d9d3cc' : (rear ? '#5c4d5a' : '#6e403c');
+  const dark = flash ? '#c8c2ba' : '#3e342c';
+  const bone = flash ? '#f4f1ea' : '#d9c7a2';
+  const step = Math.sin(now * 0.014 + (m.x || 0)) * 1.6;
+  line(c, [[-4,-8],[-5 + step,1],[3,-8],[4 - step,1]], dark, 3);
+  shape(c, [[-8,-26],[7,-26],[9,-8],[-9,-7]], cloth);
+  shape(c, [[-6,-24],[-1,-25],[-1,-12],[-6,-11]], 'rgba(255,255,255,.12)', 'transparent');
+  ellipse(c, 1, -33, 5.4, 5, flash ? '#e6d3a8' : '#c4a574');
+  shape(c, [[-3,-36],[-8,-46],[-1,-36]], bone, '#6e5844');
+  shape(c, [[3,-36],[9,-45],[2,-34]], bone, '#6e5844');
+  c.fillStyle = dark;
+  c.fillRect(2, -34, 3, 1.5);
+  if (rear) {
+    line(c, [[7,-16],[16,-38]], bone, 2);
+    ellipse(c, 16, -40, 2.2, 2.2, '#7a3e3a');
+  } else {
+    line(c, [[8,-14],[20,-32]], bone, 2.4);
+    line(c, [[17,-34],[22,-28]], '#7a3e3a', 2);
+    shape(c, [[-9,-22],[-16,-20],[-15,-10],[-8,-12]], '#5c4038');
+  }
+}
+
 export function drawFieldMob(c, m, now) {
+  if (m.type === 'brute') { drawBrute(c, m, now); return true; }
+  if (m.type === 'demon_front' || m.type === 'demon_rear') { drawDemon(c, m, now); return true; }
   const ranged=RANGED_ENEMIES[m.type];
   if(ranged){
     drawFieldMob(c,{...m,type:ranged.base,isBoss:false},now);

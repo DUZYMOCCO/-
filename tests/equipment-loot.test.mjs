@@ -33,7 +33,7 @@ assert.ok(equipmentScore(best)>equipmentScore(weak),'stronger item has higher sc
 assert.ok(equipmentScore(enhanced)>equipmentScore(weak),'enhanced item has higher score than base');
 // Current 158,720m world: regular loot bands use 8k/22k/48k distances. T7 is vault-only.
 const capFor=(distance,kind)=>{
-  if(kind==='dungeon_vault')return distance<5000?4:distance<8500?6:7;
+  if(kind==='dungeon_vault')return distance<5000?3:distance<8500?5:7;
   if(kind==='colossal')return 6;
   const rare=kind==='boss'||kind==='elite';
   if(distance<8000)return 2;

@@ -1,6 +1,26 @@
 import {powerRank,MAX_EQUIPMENT_TIER,GENERATIONS} from './equipment-tiers.js?v=151';
 import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=151';
+import {WEAPON_STYLE_ICONS,weaponStyleOf} from './growth-rules.js?v=151';
 export const EQUIPMENT_TYPES = ['WEAPON','SHIELD','HELMET','ARMOR','GLOVES','LEGS','AMULET'];
+
+const GEAR_ICONS = {
+  SHIELD: '🛡️', HELMET: '🪖', ARMOR: '🥋',
+  GLOVES: '🧤', LEGS: '🥾', AMULET: '📿',
+};
+
+/** 画面表示だけ。保存される name は変えない。 */
+export function equipmentIcon(item) {
+  if (!item) return '';
+  if (item.type === 'WEAPON') return WEAPON_STYLE_ICONS[weaponStyleOf(item)] || WEAPON_STYLE_ICONS.sword;
+  return GEAR_ICONS[item.type] || '';
+}
+
+export function equipmentName(item) {
+  if (!item) return '';
+  const name = item.name || item.baseName || '装備';
+  const icon = equipmentIcon(item);
+  return icon ? `${icon} ${name}` : name;
+}
 
 export const saleValue = item => Math.floor(14 + Math.pow(powerRank(item.tier), 1.8)*12 + (item.upgrade || 0)*8);
 
@@ -65,9 +85,10 @@ function materialLootWeights(distance, kind='normal') {
   const d=Math.max(0,distance || 0);
   // Tier 7（神話・オリハルコン）はダンジョン最奥宝箱 (dungeon_vault / 竜巌窟) のみ
   if(kind==='dungeon_vault') {
-    if(d<5000) return [0,0,65,35,0,0,0]; // 廃坑: Tier 3〜4確定
-    if(d<8500) return [0,0,0,15,65,20,0]; // カタコンベ: Tier 5〜6確定
-    return [0,0,0,0,0,45,55]; // 竜巌窟最奥: Tier 6〜7神話級確定（T7唯一の正規入手）
+    // 配列は素材帯（木・青銅・鉄・鋼・ミスリル・竜鱗・神話）。表示ティアは帯×4。
+    if(d<5000) return [0,58,42,0,0,0,0]; // 廃坑: 青銅〜鉄（表示T5〜T12）
+    if(d<8500) return [0,0,34,56,10,0,0]; // カタコンベ: 鉄〜鋼、薄いミスリル（表示T9〜T20）
+    return [0,0,0,0,0,45,55]; // 竜巌窟・魔王城: 竜鱗〜神話（表示T21〜T28）
   }
   let weights,maxTier,t;
   // ゾーン距離を長距離マップ向けに伸長（0 / 8000 / 22000 / 48000）

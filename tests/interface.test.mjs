@@ -220,7 +220,7 @@ assert.notEqual(navStyle.left, '50%');
 assert.equal(navStyle.transform, 'none');
 assert.equal(navStyle.backgroundColor, 'rgba(0, 0, 0, 0)');
 assert.equal(navStyle.pointerEvents, 'none');
-assert.ok(Number(navStyle.opacity) < 0.8, 'the field map is translucent');
+assert.ok(Number(navStyle.opacity) < 0.4 && Number(navStyle.opacity) > 0.2, 'the field map is thinner and still visible');
 game.openStrategyModal(true);
 const mapBtn=$('btn-world-map');
 assert.equal(window.getComputedStyle(mapBtn).pointerEvents, 'auto');
