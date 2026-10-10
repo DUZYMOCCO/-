@@ -39,7 +39,10 @@ export function meleePose(style, anim=0, aim=0) {
   const extension=spear&&active?keys(p,[[0,0],[.18,-3],[.43,10],[.64,6],[1,0]]):0;
   const angle=aim+offset, dx=Math.cos(angle), dy=Math.sin(angle);
   const side=Math.cos(aim)<-.15?-1:1;
-  const grip={x:side*3+dx*(9+extension), y:-16+dy*(7+extension*.6)};
+  // Spears rest below the chin. When thrusting upwards, carry the shaft beside
+  // the head rather than through the face; both grips move with that same axis.
+  const headClearance=spear?clamp((-dy-.35)/.65)*6:0;
+  const grip={x:side*(3+headClearance)+dx*(9+extension), y:(spear?-14:-16)+dy*(7+extension*.6)};
   const offGrip=spear?{x:grip.x-dx*13,y:grip.y-dy*13}
     : hammer?{x:grip.x-dx*5,y:grip.y-dy*5}
     : {x:-side*8,y:-14};
@@ -54,11 +57,15 @@ export function attackAnimationRate(item,attackSpeed=1) {
   return Math.max(1, Math.min(2, Number(attackSpeed)||1))*(weaponCombatProfile(item).swingSpeed||1)/duration;
 }
 
-function arm(c, shoulder, hand, cloth, glove, bend, simple,coverage=0,skin='#c1a083',width=1) {
+function arm(c, shoulder, hand, cloth, glove, bend, simple,coverage=0,skin='#c1a083',width=1,lowElbow=false) {
   const dx=hand.x-shoulder.x,dy=hand.y-shoulder.y,d=Math.max(1,Math.hypot(dx,dy));
   const elbowLift=Math.sqrt(Math.max(3,Math.max(10,d*.54)**2-d*d*.25));
   const elbow={x:(hand.x+shoulder.x)*.5-dy/d*elbowLift*bend,
     y:(hand.y+shoulder.y)*.5+dx/d*elbowLift*bend};
+  if(lowElbow){
+    const other={x:(hand.x+shoulder.x)*.5+dy/d*elbowLift*bend,y:(hand.y+shoulder.y)*.5-dx/d*elbowLift*bend};
+    if(other.y>elbow.y){elbow.x=other.x;elbow.y=other.y;}
+  }
   // Thick arms carry a resting weapon from below, leaving the face visible.
   if(width>1&&hand.y>-26)elbow.y=Math.max(elbow.y,shoulder.y+3);
   segment(c,[[shoulder.x,shoulder.y],[elbow.x,elbow.y],[hand.x,hand.y]],'#283031',(simple?3:4.4)*width);
@@ -75,8 +82,8 @@ export function drawMeleeWeapon(c, actor, style, colors, simple=false) {
   const shoulder=6*(physique?.bodyWidth||1),armWidth=physique?.armWidth||1;
   c.save(); c.lineCap='round'; c.lineJoin='round';
   const twoHanded=style==='spear'||style==='hammer'||style==='axe'||style==='staff';
-  if(twoHanded||actor.soldierClass==='BLADEMASTER') arm(c,{x:-side*shoulder,y:-21},offGrip,cloth,gloves,-side,simple,gloveProfile?.coverage||0,hand,armWidth);
-  arm(c,{x:side*shoulder,y:-21},grip,cloth,gloves,side,simple,gloveProfile?.coverage||0,hand,armWidth);
+  if(twoHanded||actor.soldierClass==='BLADEMASTER') arm(c,{x:-side*shoulder,y:-21},offGrip,cloth,gloves,-side,simple,gloveProfile?.coverage||0,hand,armWidth,style==='spear');
+  arm(c,{x:side*shoulder,y:-21},grip,cloth,gloves,side,simple,gloveProfile?.coverage||0,hand,armWidth,style==='spear');
   if(!twoHanded&&actor.soldierClass!=='BLADEMASTER'&&!simple&&shieldProfile?.coverage) {
     // The shield follows the supporting hand rather than covering the weapon grip.
     const x=offGrip.x,y=offGrip.y;
@@ -127,8 +134,19 @@ export function drawMeleeWeapon(c, actor, style, colors, simple=false) {
   if(!simple&&weaponProfile){if(weaponProfile.rough){segment(c,[[-3,-1],[0,1],[2,-1]],'#ba9e72',1.2);segment(c,[[pose.length*.55,-1],[pose.length*.62,0]],'#62564a',.8);}else if(weaponProfile.detail>=1){segment(c,[[4,-3],[4,3]],'#d1c198',1.2);if(weaponProfile.detail>=2)segment(c,[[9,-.7],[pose.length-7,-.7]],'#dbd2b8',.6);}}
   // Paint the fingers over the shaft/hilt, never over the blade or guard.
   if(!simple) {
-    c.fillStyle=(gloveProfile?.coverage||0)>.5?gloves:(hand||gloves);c.fillRect(-2,-2,4,4);
-    if(twoHanded) c.fillRect(style==='spear'?-15:-7,-2,4,4);
+    const skin=(gloveProfile?.coverage||0)>.5?gloves:(hand||gloves);
+    if(style==='spear'){
+      // Curled fingers and a thumb wrap the shaft instead of square blocks.
+      for(const x of [0,-13]){
+        polygon(c,[[x-2,-1.6],[x-1.2,-2.6],[x+1,-2.5],[x+2.2,-1.3],[x+2,1.7],[x+.8,2.4],[x-1.5,1.9],[x-2.2,.5]],skin);
+        segment(c,[[x-1,-1.7],[x+.8,-1.7]],'#eee0c266',.6);
+        segment(c,[[x-.6,.5],[x+1.3,.5],[x+1.3,1.5]],'#3f473b80',.55);
+        segment(c,[[x+1.3,-1.1],[x-.6,-.3]],skin,1.5);
+      }
+    }else{
+      c.fillStyle=skin;c.fillRect(-2,-2,4,4);
+      if(twoHanded)c.fillRect(-7,-2,4,4);
+    }
   }
   c.restore();
   if(actor.soldierClass==='BLADEMASTER'&&style==='sword'&&!simple) {

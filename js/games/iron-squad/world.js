@@ -4,7 +4,7 @@
 import {drawNaturalPond,terrainSeed} from './terrain-shapes.js?v=151';
 export const WORLD_SIZE = 158720;
 export const WORLD_VERSION = 4;
-const TILE = 512, CACHE_LIMIT = 24; // ~24 MiB of tile pixels; view and world density are unchanged
+const TILE = 512, CACHE_LIMIT = 24, CACHE_PIXELS = CACHE_LIMIT*TILE*TILE;
 const CENTER = WORLD_SIZE / 2;
 const LIP = '#6e7264', FACE = '#1a1e1c', DROP = '#0e100e';
 const TAU = Math.PI * 2;
@@ -864,7 +864,7 @@ function tileMayHaveRelief(x0, y0) {
 }
 
 export class WorldTerrain {
-  constructor() { this.tiles=new Map(); this.generated=0; this.visibleCamps=[]; ensureDepthArt(); }
+  constructor() { this.tiles=new Map(); this.generated=0; this.visibleCamps=[]; this.rasterSize=TILE; ensureDepthArt(); }
   clear() {
     for (const tile of this.tiles.values()) { tile.canvas.width=1; tile.canvas.height=1; }
     this.tiles.clear(); this.visibleCamps=[];
@@ -876,21 +876,29 @@ export class WorldTerrain {
       if (tile.context?.isContextLost?.() !== true) { this.tiles.set(key,tile); return tile; }
       tile.canvas.width=1; tile.canvas.height=1;
     }
-    // Release pixels before allocating: deleting a Map entry alone waits for GC,
-    // allowing iOS canvas memory to grow beyond the apparent cache limit.
-    while(this.tiles.size>=CACHE_LIMIT) {
+    // Repaint an existing surface instead of resizing and allocating a canvas at
+    // every tile boundary. Pixel capacity stays bounded even when GC is deferred.
+    let reusable;
+    const limit=Math.floor(CACHE_PIXELS/(this.rasterSize*this.rasterSize));
+    while(this.tiles.size>=limit) {
       const oldest=this.tiles.keys().next().value, retired=this.tiles.get(oldest);
-      retired.canvas.width=1; retired.canvas.height=1; this.tiles.delete(oldest);
+      this.tiles.delete(oldest);
+      if(!reusable&&retired.context?.isContextLost?.()!==true)reusable=retired.canvas;
+      else {retired.canvas.width=1;retired.canvas.height=1;}
     }
-    const tile=this.generate(tx,ty); this.tiles.set(key,tile);
+    const tile=this.generate(tx,ty,reusable); this.tiles.set(key,tile);
     return tile;
   }
-  generate(tx,ty) {
+  generate(tx,ty,reusable) {
     const rnd=seeded(Math.imul(tx+31,73856093)^Math.imul(ty+31,19349663));
     const x0=tx*TILE,y0=ty*TILE;
-    const canvas=document.createElement('canvas'); canvas.width=TILE; canvas.height=TILE;
+    const canvas=reusable||document.createElement('canvas');
+    if(canvas.width!==this.rasterSize)canvas.width=this.rasterSize;
+    if(canvas.height!==this.rasterSize)canvas.height=this.rasterSize;
     const c=canvas.getContext('2d'), objects=[], camps=[];
     if (!c) { canvas.width=1; canvas.height=1; throw new Error('地形のCanvasを確保できません'); }
+    c.setTransform(this.rasterSize/TILE,0,0,this.rasterSize/TILE,0,0);
+    c.globalAlpha=1;c.globalCompositeOperation='source-over';c.clearRect(0,0,TILE,TILE);
     const may=tileMayHaveRelief(x0,y0);
     // Small cells follow world coordinates, so biome transitions align at tile edges.
     for(let y=0;y<TILE;y+=32) for(let x=0;x<TILE;x+=32) {
@@ -1007,9 +1015,16 @@ export class WorldTerrain {
     const maxX=Math.min(Math.ceil(WORLD_SIZE/TILE)-1,Math.floor((camera.x+hw)/TILE));
     const minY=Math.max(0,Math.floor((camera.y-hh)/TILE));
     const maxY=Math.min(Math.ceil(WORLD_SIZE/TILE)-1,Math.floor((camera.y+hh)/TILE));
+    // A wide/zoomed-out view can need more than 24 tiles. Fit that whole view
+    // into the same pixel budget, rather than evicting tiles still on screen.
+    // People and scenery keep their full resolution; only the ground is scaled.
+    const maxTiles=Math.ceil(WORLD_SIZE/TILE);
+    const visibleCount=Math.min(maxTiles,Math.ceil(hw*2/TILE)+1)*Math.min(maxTiles,Math.ceil(hh*2/TILE)+1);
+    const size=[512,384,256,192,128,96,64,32,16,8,4,2,1].find(n=>visibleCount*n*n<=CACHE_PIXELS);
+    if(size!==this.rasterSize){this.clear();this.rasterSize=size;}
     const objects=[], camps=[];
     for(let y=minY;y<=maxY;y++) for(let x=minX;x<=maxX;x++) {
-      const tile=this.get(x,y);c.drawImage(tile.canvas,tile.x,tile.y);objects.push(...tile.objects);camps.push(...tile.camps);
+      const tile=this.get(x,y);c.drawImage(tile.canvas,tile.x,tile.y,TILE,TILE);objects.push(...tile.objects);camps.push(...tile.camps);
     }
     this.visibleCamps=camps;
     return objects;

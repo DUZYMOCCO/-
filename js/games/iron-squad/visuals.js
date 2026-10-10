@@ -3,8 +3,11 @@ import {BRUTE_DRAW_SCALE} from './field-hosts.js?v=158';
 import {equipmentVisualProfile} from './equipment-tiers.js?v=151';
 import {drawBodyEquipment} from './equipment-art.js?v=151';
 import {MAGIC_AFFINITIES,ensureMana} from './magic-rules.js?v=151';
-import { drawMeleeWeapon, drawMeleeRangeCue } from './weapon-motion.js?v=151';
-import { drawSoldierHead, isMedicAppearance, soldierAppearanceFamily, soldierPhysique } from './soldier-appearance.js?v=151';
+import { drawMeleeWeapon, drawMeleeRangeCue } from './weapon-motion.js?v=162';
+import { createSoldierAppearance, drawSoldierHead, isMedicAppearance, soldierAppearanceFamily, soldierPhysique } from './soldier-appearance.js?v=151';
+
+// Keep the commander's established face, with short hair in both field and portrait.
+const commanderAppearance=Object.freeze({...createSoldierAppearance('soldier:0'),hairStyle:'short'});
 
 // Live field illustrations. Equipment colors are read every frame.
 // Hands and the weapon share one pose; only the striking edge gets a short trace.
@@ -522,7 +525,7 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod, displa
 
 export function drawFieldCommander(c,p,equipped,now,rankIndex,rankTitle,moving,portrait=false) {
   c.save();c.translate(p.x,p.y);c.scale(1.18,1.18);
-  drawFieldSoldier(c,{x:0,y:0,hp:p.hp,maxHp:p.maxHp,_levelMark:portrait?0:p._levelMark,level:p.level,
+  drawFieldSoldier(c,{id:'commander',appearance:p.appearance||commanderAppearance,x:0,y:0,hp:p.hp,maxHp:p.maxHp,_levelMark:portrait?0:p._levelMark,level:p.level,
     soldierClass:p.isAdvanced?'WARLORD':'COMMANDER',isCommander:true,isNamed:true,rankIndex,
     equipped,portrait:true,atkAnim:p.slashAnim || 0,
     facingAngle:p.facingAngle,attackAngle:p.slashAngle,vx:moving?1:0,vy:0},now,

@@ -1,4 +1,5 @@
 import {sound} from '../../audio.js?v=151';
+import {mountKanaPanel} from '../../kana-mode.js?v=164';
 
 export function configureAudioInterface(game) {
   game.audioUIUnsubscribe?.();
@@ -7,6 +8,7 @@ export function configureAudioInterface(game) {
   const panel=document.createElement('details');panel.className='command-fold audio-settings';panel.id='audio-settings';
   panel.innerHTML='<summary>音・BGMの設定</summary><div class="fold-content"><p class="audio-status" role="status"></p><div class="audio-actions"><button type="button" data-audio="toggle">音をONにする</button><button type="button" data-audio="resume">音を再開</button></div><label class="audio-volume"><span>BGM</span><input type="range" min="0" max="100" step="1" data-audio-volume="bgm" aria-label="BGM音量"><output></output></label><label class="audio-volume"><span>効果音</span><input type="range" min="0" max="100" step="1" data-audio-volume="effects" aria-label="効果音音量"><output></output></label><button type="button" class="audio-defaults">標準の音量に戻す</button><p class="audio-hint">BGMと効果音を別々に調整できます。音が止まった場合は「音を再開」を押してください。</p></div>';
   overview.append(panel);
+  game.kanaPanelCleanup?.();game.kanaPanelCleanup=mountKanaPanel(overview);
   const toggle=panel.querySelector('[data-audio="toggle"]'),resume=panel.querySelector('[data-audio="resume"]');
   fieldButton.onclick=()=>{const state=sound.state;if(state.muted){sound.setMute(false);sound.unlock();}else if(state.context!=='running'||!state.ready){sound.unlock();}else sound.setMute(true);};
   toggle.onclick=()=>{sound.toggleMute();if(!sound.isMuted)sound.unlock();};

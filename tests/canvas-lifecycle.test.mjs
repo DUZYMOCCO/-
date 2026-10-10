@@ -80,7 +80,7 @@ const terrain=new WorldTerrain(), retired=[];
 const allocatedBytes=()=>[...allocated].reduce((sum,canvas)=>sum+canvas.width*canvas.height*4,0);
 const beforeTiles=allocatedBytes();
 for(let y=0;y<6;y++)for(let x=0;x<6;x++)retired.push(terrain.get(x,y).canvas);
-assert.ok(retired.filter(canvas=>canvas.width===1&&canvas.height===1).length>=12,'evicted canvas pixels are released without waiting for GC');
+assert.equal(new Set(retired).size,24,'travel reuses 24 tile surfaces without allocating more while GC is deferred');
 assert.ok(allocatedBytes()-beforeTiles<24*1024*1024+100000,'tile surfaces stay bounded even when GC is deferred');
 terrain.clear(); assert.ok(retired.every(canvas=>canvas.width===1&&canvas.height===1));
 // Unexplored cells are black again, while explored cells and the hero stay visible.

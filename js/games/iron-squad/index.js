@@ -13,12 +13,12 @@ import {latestEquipmentTier,recordMerchantEquipment,ensureMerchantCatalog,refres
 import {initializeMedicalPosts,updateMedicalPosts,serializeMedicalPosts,nearestKnownMedicalPost,drawMedicalPost,drawMedicalMap,drawMedicalMarker,drawTownMedicalReception,drawRescueDirection} from './medical-posts.js?v=151';
 import {invasionMethods,initializeInvasions,serializeInvasions,shouldTriggerRandomRaid,makeEnemyRoom,drawInvasionRoute} from './invasion-rules.js?v=151';
 import {gateMethods,serializeGatePosts,replenishTownGateGuards,initializeGateGuards,ensureTownGuards,serializeGateGuards,updateGateGuards,gateGuardVisible,applyFortifications,drawFortification,exitGateTown,townExitReached,wallBlocksAttack,attackBlocked as coverBlocked} from './gate-rules.js?v=161';
-import {nationMethods,normalizeNation,nationalIncome,nationalPayrollPlan,headquartersDamageMult,drawNationalDevelopment,DEVELOPMENT_STAGES} from './nation-rules.js?v=151';
+import {nationMethods,normalizeNation,nationalIncome,nationalPayrollPlan,headquartersDamageMult,drawNationalDevelopment,DEVELOPMENT_STAGES} from './nation-rules.js?v=164';
 import {equipmentUpgradeCost,salaryQuote,paySoldiers} from './payroll-rules.js?v=151';
 import {addFieldDrop,ageFieldDrops} from './field-drops.js?v=151';
 import {economicState,advanceRegionalEconomy,discoverEconomicRegions,recordEconomicKill,economicFieldBlocked} from './regional-economy.js?v=151';
 import {updateRegionalTraffic,nearestCommerceTarget,damageCommerce,persistTradeRaiders,restoreTradeRaiders} from './trade-routes.js?v=151';
-import {drawEconomicLandscape,drawCommerceActor,drawEconomicMinimap,drawCommerceWreck} from './economic-visuals.js?v=151';
+import {drawEconomicLandscape,drawCommerceActor,drawEconomicMinimap,drawCommerceWreck,drawCampTent} from './economic-visuals.js?v=164';
 /**
  * ゲーム3: IRON SQUAD (アイアン・スクワッド: 雑兵立身出世録)
  * ローグライク・アクションRPG
@@ -32,11 +32,11 @@ import {drawEconomicLandscape,drawCommerceActor,drawEconomicMinimap,drawCommerce
  */
 import { sound } from '../../audio.js?v=151';
 import { storage } from '../../storage.js';
-import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow } from './visuals.js?v=158';
+import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow } from './visuals.js?v=164';
 import { refreshCampQuiet, assignCampSeats, tryCampLeisure } from './camp-leisure.js?v=151';
 import { CAMP_PEACE_RADIUS, peaceContainment, pushOutsidePeace, relocatePeaceMonster } from './peace-zones.js?v=158';
 import { FARM_X, FARM_Y, farmPosts, farmOverlaps, reinforcementCount, reserveRosterLine, reserveRosterTitle } from './reserve-farm.js?v=151';
-import { drawMeleeRangeCue, meleeDrawReach, attackAnimationRate } from './weapon-motion.js?v=151';
+import { drawMeleeRangeCue, meleeDrawReach, attackAnimationRate } from './weapon-motion.js?v=162';
 import {emptyRescueBonuses,normalizeRescueBonuses,rescueBonusSummary} from './rescue-rewards.js?v=151';
 import {drawFieldCivilian} from './civilian-visuals.js?v=151';
 import { saveSlots } from './save-slots.js';
@@ -50,7 +50,8 @@ import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog 
 import { renderTroopRankings, getSoldierRankerBadges, calcSoldierRankerBonus } from './troop-rankings.js?v=151';
 import { ensureSoldierAppearance, drawSoldierPortrait, describeSoldierAppearance } from './soldier-appearance.js?v=151';
 import { attachSurfaceEvents, detachSurfaceEvents, frameSurfaceReady, releaseSceneCaches, releaseCanvas, surfaceCanResume } from './canvas-surface.js?v=151';
-import { WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt, routeNameAt, eastWestRoadY, northSouthRoadX, riverCenterY, drawFieldDepth, drawOakCrown, fieldBlocks, settleUnit } from './world.js?v=151';
+import { WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt, routeNameAt, eastWestRoadY, northSouthRoadX, riverCenterY, drawFieldDepth, drawOakCrown, fieldBlocks, settleUnit } from './world.js?v=164';
+import { subscribeKana } from '../../kana-mode.js?v=164';
 import { FogGrid, FOG_REVEAL_RADIUS, FOG_CAMP_REVEAL } from './fog.js?v=151';
 import {
   classTierOf, nextClassId, classUpCostForNext, canAffordClassUp, formatClassUpCostJa, classUpShortageJa,
@@ -86,7 +87,7 @@ import {
   nearestLivingMerchant, refreshMerchantStock, merchantBuyPrice, merchantSellTier,
   applyMerchantSave, serializeMerchants, MERCHANT_INTERACT_R,
   merchantHealingStatus, merchantHealWavesLeft, useMerchantHealing, MERCHANT_HEAL_COST, recalcEscortStats, finishEscortPhase
-} from './merchant-rules.js?v=151';
+} from './merchant-rules.js?v=164';
 
 import { daylightAt, advanceWorldClock, periodEnemy, enemyAvailable, PERIOD_ENEMIES } from './day-night.js';
 
@@ -1553,7 +1554,7 @@ export const IronSquadGame = {
     overview.append(document.getElementById('btn-restart-from-strat'));
     const nationIntro=document.createElement('div');
     nationIntro.className='hub-intro';
-    nationIntro.innerHTML='<div style="font-weight:bold;color:#67e8f9;margin-bottom:4px;">🏛 国家運営</div><div style="font-size:11px;color:#94a3b8;line-height:1.45;margin-bottom:8px;">国庫寄付・共有装備・大目標・財政・本隊の小隊遠征をここに集約。叙勋は部隊管理の名簿から。直属は自分で魔境へ連れていけるため遠征対象外。</div>';
+    nationIntro.innerHTML='<div style="font-weight:bold;color:#67e8f9;margin-bottom:4px;">🏛 国家運営</div><div style="font-size:11px;color:#94a3b8;line-height:1.45;margin-bottom:8px;">国庫寄付・共有装備・大目標・財政・本隊の小隊遠征をここに集約。叙勲は部隊管理の名簿から。直属は自分で魔境へ連れていけるため遠征対象外。</div>';
     nation.append(nationIntro);
     const nationQuest=document.createElement('div'); nationQuest.id='nation-quest-panel'; nationQuest.className='hub-section';
     nation.append(nationQuest);
@@ -10326,6 +10327,7 @@ export const IronSquadGame = {
   // ---- フィールド生成（起動時に1回だけ。地面は事前描画キャッシュ） ----
   buildTerrain() {
     this.worldTerrain = new WorldTerrain();
+    this.kanaUnsubscribe?.();this.kanaUnsubscribe=subscribeKana(()=>{this.worldTerrain?.clear();this._sceneDirty=true;this._nextMinimapAt=0;try{this.renderMinimap?.();}catch{}});
     const bx=BASE_CAMP.x,by=BASE_CAMP.y;
     this.campObjects = [
       {type:'tent',x:bx-100,y:by-55,s:1,color:'#7c2d12',ph:1},
@@ -10342,7 +10344,8 @@ export const IronSquadGame = {
     if(!this.worldTerrain) this.buildTerrain();
     this.worldObjs = this.worldTerrain.draw(ctx,this.camera,this.width,this.height,this.zoom || 1);
     drawEconomicLandscape(ctx,this);
-    this.worldObjs.push(...this.campObjects);
+    const settled=Math.max(this.nation?.level||0,this.nation?.economy?.regions?.hq?.level||0)+Math.floor((this.nation?.economy?.technology?.urban?.level||0)/2)>0;
+    for(const prop of this.campObjects)if(prop.type!=='tent'||!settled)this.worldObjs.push(prop);
     drawFieldDepth(ctx, this.camera, this.width, this.height, this.zoom || 1);
 
     // 地帯の境は、地面に薄い筋だけ残す。名前は左上の札が持つ。
@@ -10494,21 +10497,7 @@ export const IronSquadGame = {
         });
       }
     } else if (o.type === 'tent') {
-      ctx.fillStyle = 'rgba(0,0,0,0.35)';
-      ctx.beginPath(); ctx.ellipse(4, 4, 36, 10, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = o.color;
-      ctx.beginPath(); ctx.moveTo(-32, 2); ctx.lineTo(0, -40); ctx.lineTo(32, 2); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = 'rgba(0,0,0,0.28)';
-      ctx.beginPath(); ctx.moveTo(0, -40); ctx.lineTo(32, 2); ctx.lineTo(0, 2); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = '#16100c';
-      ctx.beginPath(); ctx.moveTo(-9, 2); ctx.lineTo(0, -22); ctx.lineTo(9, 2); ctx.closePath(); ctx.fill();
-      // v1.24.1: drop white outline stroke; keep pole only
-      ctx.strokeStyle = '#6b4a2a';
-      ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.moveTo(0, -40); ctx.lineTo(0, -52); ctx.stroke();
-      ctx.fillStyle = '#f5d142';
-      const fw = Math.sin(now * 0.01 + o.ph) * 2;
-      ctx.beginPath(); ctx.moveTo(0, -52); ctx.lineTo(10 + fw, -49); ctx.lineTo(0, -46); ctx.closePath(); ctx.fill();
+      drawCampTent(ctx,o.color);
     } else if (o.type === 'barrel') {
       ctx.fillStyle = 'rgba(0,0,0,0.3)';
       ctx.beginPath(); ctx.ellipse(2, 3, 11 * s, 4 * s, 0, 0, Math.PI * 2); ctx.fill();
@@ -11702,6 +11691,7 @@ export const IronSquadGame = {
     this.stopScoutAuto();
     clearTimeout(this._battleLogTimer);
     this.audioUIUnsubscribe?.();this.audioUIUnsubscribe=null;
+    this.kanaUnsubscribe?.();this.kanaUnsubscribe=null;
     sound.stopBGM();sound.setListener(null);
     this.stopGameLoop();
     detachSurfaceEvents(this);

@@ -708,3 +708,6 @@ canvas {
 
 
 
+
+/* ひらがなモード: かなは漢字より長くなるので、回復薬ボタンは単語の途中で折り返さない */
+.kana-mode .pad-btn-potion { word-break: keep-all; font-size: 11px; letter-spacing: -0.04em; }

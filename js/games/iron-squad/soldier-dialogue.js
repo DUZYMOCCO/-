@@ -1,3 +1,4 @@
+import { displayKana } from '../../kana-mode.js?v=164';
 // 兵士の一言フキダシ（感情・戦況リアクション）システム
 // 操作を邪魔しない控えめなCanvas描画 ＆ 直近重複排除エンジン（Anti-Repetition）
 
@@ -559,6 +560,7 @@ function getClassCategory(soldier) {
 // テキストの自動折り返し処理（画面幅・高倍率対応）
 export function wrapDialogueText(ctx, text, maxW) {
   if (!text) return [''];
+  text = displayKana(text); // 変換後の文字列で幅を測り、語の途中で折り返さない
   if (!ctx || typeof ctx.measureText !== 'function') return [text];
   const totalW = ctx.measureText(text).width;
   if (totalW <= maxW) return [text];
@@ -891,8 +893,9 @@ export class SoldierDialogueManager {
     const ay=height/2+(notice.anchor.y-camera.y)*zoom;
     if(ax< -16||ax>width+16||ay< -16||ay>height+16)return;
     ctx.save();ctx.font='bold 13px sans-serif';ctx.textAlign='left';ctx.textBaseline='middle';
-    const bw=Math.min(width-24,Math.max(...notice.lines.map(line=>ctx.measureText(line).width))+28);
-    const bh=notice.lines.length*17+16;
+    const lines=notice.lines.map(displayKana);
+    const bw=Math.min(width-24,Math.max(...lines.map(line=>ctx.measureText(line).width))+28);
+    const bh=lines.length*17+16;
     const x=Math.max(12,Math.min(width-bw-12,ax-bw/2));
     const above=ay>(notice.anchor.radius||24)*zoom+bh+44;
     const wanted=above?ay-(notice.anchor.radius||24)*zoom-16-bh:ay+20;
@@ -902,9 +905,9 @@ export class SoldierDialogueManager {
     ctx.beginPath();if(typeof ctx.roundRect==='function')ctx.roundRect(x,y,bw,bh,7);else ctx.rect(x,y,bw,bh);ctx.fill();ctx.stroke();
     const tail=Math.max(x+12,Math.min(x+bw-12,ax)),baseY=above?y+bh:y;
     ctx.beginPath();ctx.moveTo(tail-5,baseY);ctx.lineTo(tail+(ax-tail)*.3,baseY+(above?8:-8));ctx.lineTo(tail+5,baseY);ctx.closePath();ctx.fill();
-    for(let i=0;i<notice.lines.length;i++){
+    for(let i=0;i<lines.length;i++){
       ctx.fillStyle=i===0?'#e4d09b':'#f0eee1';
-      ctx.fillText(notice.lines[i],x+14,y+16+i*17,bw-28);
+      ctx.fillText(lines[i],x+14,y+16+i*17,bw-28);
     }
     ctx.restore();
     return {x,y,width:bw,height:bh};

@@ -1,0 +1,7 @@
+{
+  "scene": "royal capital + maximum 24 commerce actors; native Canvas, no simulation",
+  "samples": 100,
+  "firstMs": 16.88,
+  "medianMs": 10.517,
+  "p95Ms": 11.16
+}

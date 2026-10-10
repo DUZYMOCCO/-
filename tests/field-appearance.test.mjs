@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
 import {resolve} from 'node:path';
 import {createSoldierAppearance,drawSoldierHead,drawSoldierPortrait,soldierAppearanceFamily} from '../js/games/iron-squad/soldier-appearance.js';
-import {drawFieldSoldier} from '../js/games/iron-squad/visuals.js';
+import {drawFieldSoldier,drawFieldCommander} from '../js/games/iron-squad/visuals.js';
 const packages=process.argv[2] || 'C:/Users/Yoshiyuki/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules';
 const {createCanvas}=createRequire(resolve(packages,'entry.cjs'))('@napi-rs/canvas');
 const base={id:'field-identity-test',soldierClass:'HEAVY',x:0,y:0,hp:100,maxHp:100,portrait:true,equipped:{},facingAngle:0,vx:0,vy:0};
@@ -44,4 +44,17 @@ const facePortrait=(beautiful,soldierClass='MEDIC')=>{
 };
 assert.notDeepEqual(facePortrait(false),facePortrait(true),'rare female face detail visibly differs at portrait size');
 assert.deepEqual(facePortrait(false,'HEAVY'),facePortrait(true,'HEAVY'),'the female cosmetic does not change male faces');
+// The commander shares one default face in the field and the inventory portrait.
+const commanderFrame=(appearance,portrait)=>{
+ const canvas=createCanvas(200,210),c=canvas.getContext('2d');c.translate(100,155);c.scale(2,2);
+ const p={x:0,y:0,hp:100,maxHp:100,level:1,facingAngle:0,appearance};
+ const before=JSON.stringify(p);drawFieldCommander(c,p,{},0,0,'隊長',false,portrait);
+ assert.equal(JSON.stringify(p),before,'drawing never assigns appearance to the live player');
+ return canvas.toBuffer('image/png');
+};
+const oldCommander=createSoldierAppearance('soldier:0');
+for(const portrait of [false,true]){
+ assert.deepEqual(commanderFrame(undefined,portrait),commanderFrame({...oldCommander,hairStyle:'short'},portrait),'default commander keeps the established face with short hair');
+ assert.notDeepEqual(commanderFrame(undefined,portrait),commanderFrame({...oldCommander,hairStyle:'bald'},portrait),'hair is visible in both commander surfaces');
+}
 console.log('PASS: field/far/down identity, glasses marker, helmet hides mohawk, promotion families, appearance unchanged and cheap LOD');
