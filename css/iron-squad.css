@@ -182,7 +182,9 @@
   .iron-squad .pad-buttons-column { margin-bottom: 2px; gap: 4px; }
   .iron-squad .pad-buttons-zone { gap: 8px; }
   .iron-squad .pad-btn-attack { width: 54px; height: 54px; font-size: 12px; }
-  .iron-squad .pad-btn-power { width: 44px; height: 44px; font-size: 11px; }
+  .iron-squad .pad-btn-power { width: 54px; height: 54px; font-size: 11px; }
+  .iron-squad .pad-btn-power .pad-btn-icon { font-size: 15px; }
+  .iron-squad .pad-btn-power .pad-btn-label { font-size: 9px; }
   .iron-squad .pad-btn-command { width: 42px; height: 42px; font-size: 11px; }
   .iron-squad .minimap-container { width: 68px; height: 68px; top: 6px; right: max(8px, env(safe-area-inset-right, 8px)); }
   .iron-squad .zoom-toggle-btn { top: 78px; right: max(8px, env(safe-area-inset-right, 8px)); min-height: 30px; font-size: 11px; padding: 4px 8px; }

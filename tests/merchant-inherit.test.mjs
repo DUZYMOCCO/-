@@ -46,6 +46,39 @@ const buyMarkup=(kind)=>{
   assert.equal(document.querySelector('.merchant-inherit-btn'),null,'different family offers no inherit');
   game._merchantShopClose();
 }
+{ // Other slots: shield and armor inherit too; mismatched slot / lower +X offer nothing.
+  const slotBuy=(type,eqUp,newUp)=>{
+    fresh();const m=game.merchants[0];
+    const old=generateRandomDrop(0,'normal',{tier:1,type,quality:1,upgrade:eqUp,id:'old-'+type,merchant:true});
+    const next=generateRandomDrop(0,'normal',{tier:2,type,quality:1,upgrade:newUp,id:'new-'+type,merchant:true});
+    game.equipped[old.type.toLowerCase()]=old;game.inventory=[old];game.player.str=9999;game.recalcPlayerStats();game.gold=100000;
+    next._merchantPrice=50;Object.assign(m,{stock:[next],catalogVersion:2,stockPhase:1,stockTier:2});
+    game.player.x=m.x;game.player.y=m.y;game.openMerchantShop(m);
+    return {old,next};
+  };
+  for(const type of ['SHIELD','ARMOR']){
+    const key=type.toLowerCase();
+    const {old,next}=slotBuy(type,9,0);
+    const btn=document.querySelector('.merchant-inherit-btn');
+    assert.ok(btn,type+' must offer the inherit purchase');
+    btn.click();
+    assert.equal(game.equipped[key].id,next.id);assert.equal(next.upgrade,9,type+' +X carried over');
+    assert.equal(game.inventory.some(i=>i.id===old.id),false,type+' old item destroyed');
+    game._merchantShopClose();
+    slotBuy(type,3,5);
+    assert.equal(document.querySelector('.merchant-inherit-btn'),null,type+' lower equipped +X offers no inherit');
+    game._merchantShopClose();
+  }
+  // Different slot: equipped armor must not make a shield inherit-eligible.
+  fresh();const m=game.merchants[0];
+  const arm=generateRandomDrop(0,'normal',{tier:1,type:'ARMOR',quality:1,upgrade:9,id:'eq-armor',merchant:true});
+  const sh=generateRandomDrop(0,'normal',{tier:2,type:'SHIELD',quality:1,upgrade:0,id:'st-shield',merchant:true});
+  game.equipped.armor=arm;game.equipped.shield=null;game.inventory=[arm];game.recalcPlayerStats();game.gold=100000;
+  sh._merchantPrice=50;Object.assign(m,{stock:[sh],catalogVersion:2,stockPhase:1,stockTier:2});
+  game.player.x=m.x;game.player.y=m.y;game.openMerchantShop(m);
+  assert.equal(document.querySelector('.merchant-inherit-btn'),null,'different slot offers no inherit');
+  game._merchantShopClose();
+}
 { // Bag [+X引継] still works.
   fresh();
   const cur=generateRandomDrop(0,'normal',{tier:1,type:'WEAPON',weaponStyle:'sword',quality:1,upgrade:7,id:'bag-cur',merchant:true});

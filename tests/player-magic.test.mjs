@@ -81,7 +81,7 @@ game.openStrategyModal(true);document.getElementById('btn-player-stats').click()
 const grid=document.querySelector('.commander-stat-grid');assert.equal(grid.querySelectorAll('dt').length,12);
 for(const label of ['HP','攻撃','防御','筋力','魔力','魔法防御','速さ','回避','魔法攻撃','移動','搬送','MP'])assert.ok([...grid.querySelectorAll('dt')].some(n=>n.textContent===label));
 const select=document.getElementById('player-magic-affinity');select.value='ice';select.dispatchEvent(new window.Event('change',{bubbles:true}));assert.equal(p().magicAffinity,'ice');assert.equal(saveSlots.get(game.activeSlotId).data.player.magicAffinity,'ice');
-assert.match(document.getElementById('player-magic-status').textContent,/隊長.*100\/100.*氷/);assert.match(document.getElementById('btn-pad-attack').textContent,/魔法/);assert.match(document.getElementById('btn-pad-power').textContent,/魔法強撃/);
+assert.match(document.getElementById('player-magic-status').textContent,/隊長.*100\/100.*氷/);assert.match(document.getElementById('btn-pad-attack').textContent,/魔法/);assert.match(document.getElementById('btn-pad-power').textContent.split(/\s+/).join(''),/マナバースト/);
 game.equipItem(weapon('sword'));assert.ok(document.getElementById('player-magic-status').classList.contains('hidden'));assert.doesNotMatch(document.getElementById('btn-pad-attack').textContent,/魔法/);
 // The five attributes cap at 255, while equipment and spell output keep growing.
 game.equipItem(weapon('staff',100));p().level=100000;game.recalcPlayerStats();const before=p().magicAttack;assert.ok(Object.values(attributeValues(p())).every(v=>v<=255));

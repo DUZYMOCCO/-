@@ -75,7 +75,7 @@ export const PLAYER_CLASS_STAGES = Object.freeze([
   { id: 'WARLORD', name: '覇王ウォーロード', tier: 1, icon: '👑🔥',
     bonusHp: 280, bonusAtk: 50, bonusDef: 36,
     hpMultBonus: 0.45, atkMultBonus: 0.50, defMultBonus: 0.55, squadAtkBonus: 0.25,
-    desc: '戦場を支配する軍神！HP+45%, ATK+50%, DEF+55%乗算、全方位覇気スラッシュ＆部隊全員ATK+25%' },
+    desc: '戦場を支配する軍神！HP+45%, ATK+50%, DEF+55%乗算、全方位オーラスラッシュ＆部隊全員ATK+25%' },
   { id: 'EMPEROR', name: '帝皇カイザー', tier: 2, icon: '⚜️👑',
     bonusHp: 520, bonusAtk: 95, bonusDef: 70,
     hpMultBonus: 0.75, atkMultBonus: 0.85, defMultBonus: 0.80, squadAtkBonus: 0.40,

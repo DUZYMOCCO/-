@@ -59,10 +59,11 @@ export function joinLimitedEncounter(game,id) {
  if(e.kind==='cage'&&(game.monsters||[]).some(m=>alive(m)&&Math.hypot(m.x-e.x,m.y-e.y)<190)){game.showToast?.('ケージの周りの敵を先に倒してください');return false;}
  const already=[...(game.squad||[]),...(game.reserves||[])].some(s=>s.id===e.unit.id);
  if(!already){
-  const s=e.unit;const room=(game.squad||[]).filter(u=>!u.dead&&u.isPersonalGuard).length<(game.limitedGuardLimit?.()??12)
-    &&(game.squad||[]).filter(u=>!u.dead).length<(game.limitedDeploymentLimit?.()??48);
-  Object.assign(s,{isPersonalGuard:room,x:game.player.x+28,y:game.player.y+18,joinedFrom:e.kind==='cage'?'rescue':'settlement'});
-  if(room)(game.squad||=[]).push(s);else {s.x=WORLD_SIZE/2;s.y=WORLD_SIZE/2;(game.reserves||=[]).push(s);}
+  const s=e.unit;
+  const room=(game.squad||[]).filter(u=>u&&!u.dead&&u.isPersonalGuard&&!u.overflowGuard).length<(game.limitedGuardLimit?.()??12);
+  // 常に直属としてその場で同行させる。直属定員が一杯なら「超過同行」(overflowGuard)とし、野外復帰後に入れ替え選択を出す。
+  Object.assign(s,{isPersonalGuard:true,overflowGuard:!room,x:game.player.x+28,y:game.player.y+18,joinedFrom:e.kind==='cage'?'rescue':'settlement'});
+  (game.squad||=[]).push(s);
   notifyLimitedJoin(game,[s]);
  }
  e.joined=true;game.limitedAllies.joinedIds.push(e.unit.id);game.saveGame?.();game.updateStatsUI?.();return true;
@@ -75,7 +76,7 @@ export function notifyLimitedJoin(game,units) {
  game.limitedAllies||initializeLimitedAllies(game);
  const limited=units.filter(u=>LIMITED_CLASSES[u.soldierClass]);if(!limited.length)return;
  game.limitedAllies.joinNoticeIds=[...new Set([...(game.limitedAllies.joinNoticeIds||[]),...limited.map(u=>u.id)])].slice(-8);
- for(const u of limited){const reserve=(game.reserves||[]).some(s=>s.id===u.id);game.showToast?.(reserve?`【予備兵に加入】${u.name}。本陣で待機し、出撃枠の欠員時に合流します。`:u.isPersonalGuard?`【直属部隊に加入】${u.name}が隊長に同行します。`:`【本隊に加入】${u.name}が出撃部隊に合流しました。`);}
+ for(const u of limited){const reserve=(game.reserves||[]).some(s=>s.id===u.id);game.showToast?.(reserve?`【予備兵に加入】${u.name}。本陣で待機し、出撃枠の欠員時に合流します。`:u.isPersonalGuard?`【直属部隊に加入】${u.name}が隊長に同行します。${u.overflowGuard?'（定員超過：野外で入れ替えを選べます）':''}`:`【本隊に加入】${u.name}が出撃部隊に合流しました。`);}
  renderLimitedJoinNotice(game);
 }
 function renderLimitedJoinNotice(game) {

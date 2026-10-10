@@ -75,7 +75,7 @@ export const DUNGEON_DEFS = [
       atk: 75,
       speed: 56,
       skillCooldown: 4.2,
-      skillName: '採掘ダイナマイト落石',
+      skillName: 'ダイナマイトフォール',
       desc: '巨大ツルハシで落石を誘発する坑道の支配者！'
     },
     mobTypes: ['goblin', 'wolf'],
@@ -114,7 +114,7 @@ export const DUNGEON_DEFS = [
       atk: 160,
       speed: 52,
       skillCooldown: 3.6,
-      skillName: '怨嗟の魂喰らい弾',
+      skillName: 'ソウルイーター',
       desc: '広範囲に誘導怨念球を放つ不死の霊王！'
     },
     mobTypes: ['orc', 'wyvern'],
@@ -195,7 +195,7 @@ export const DUNGEON_DEFS = [
       atk: 85000,
       speed: 54,
       skillCooldown: 3.2,
-      skillName: '深淵滅殺・黒炎天墜',
+      skillName: 'アビスメテオ',
       desc: '約1000万規模のHPと破格の攻撃力。黒炎の天墜で部隊を一掃する魔王！'
     },
     mobTypes: ['wyvern', 'colossal_dragon', 'orc'],

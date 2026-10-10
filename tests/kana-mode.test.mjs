@@ -69,7 +69,7 @@ const originals=['fillText','strokeText','measureText'].map(n=>FakeContext.proto
 const memory=new Map();
 globalThis.localStorage={getItem:k=>memory.get(k)??null,setItem:(k,v)=>memory.set(k,v),removeItem:k=>memory.delete(k)};
 // same specifier as the game's imports so both share one module instance
-const mode=await import('../js/kana-mode.js?v=168');
+const mode=await import('../js/kana-mode.js?v=169');
 assert.equal(mode.isKanaMode(),false);
 assert.equal(mode.displayKana('敵軍'),'敵軍','OFF returns text untouched');
 const ctx=new FakeContext();ctx.fillText('敵軍',0,0);assert.deepEqual(calls.pop(),['fill','敵軍']);

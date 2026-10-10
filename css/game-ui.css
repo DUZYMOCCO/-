@@ -579,6 +579,17 @@ canvas {
   margin-top: 2px;
 }
 
+.pad-btn-power .pad-btn-label {
+  white-space: pre-line;  /* 技名の改行文字で2行表示 */
+  text-align: center;
+  font-size: 9.5px;
+  line-height: 1.05;
+  letter-spacing: -0.4px;
+  margin-top: 1px;
+}
+
+.pad-btn-power .pad-btn-icon { font-size: 18px; }
+
 .pad-btn-power.ready {
   animation: powerPulse 1.8s infinite alternate;
 }

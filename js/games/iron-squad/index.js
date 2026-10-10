@@ -13,12 +13,12 @@ import {latestEquipmentTier,recordMerchantEquipment,ensureMerchantCatalog,refres
 import {initializeMedicalPosts,updateMedicalPosts,serializeMedicalPosts,nearestKnownMedicalPost,drawMedicalPost,drawMedicalMap,drawMedicalMarker,drawTownMedicalReception,drawRescueDirection} from './medical-posts.js?v=151';
 import {invasionMethods,initializeInvasions,serializeInvasions,shouldTriggerRandomRaid,makeEnemyRoom,drawInvasionRoute} from './invasion-rules.js?v=151';
 import {gateMethods,serializeGatePosts,replenishTownGateGuards,initializeGateGuards,ensureTownGuards,serializeGateGuards,updateGateGuards,gateGuardVisible,applyFortifications,drawFortification,exitGateTown,townExitReached,wallBlocksAttack,attackBlocked as coverBlocked} from './gate-rules.js?v=161';
-import {nationMethods,normalizeNation,nationalIncome,nationalPayrollPlan,headquartersDamageMult,drawNationalDevelopment,DEVELOPMENT_STAGES} from './nation-rules.js?v=168';
+import {nationMethods,normalizeNation,nationalIncome,nationalPayrollPlan,headquartersDamageMult,drawNationalDevelopment,DEVELOPMENT_STAGES} from './nation-rules.js?v=169';
 import {equipmentUpgradeCost,salaryQuote,paySoldiers} from './payroll-rules.js?v=151';
 import {addFieldDrop,ageFieldDrops} from './field-drops.js?v=151';
 import {economicState,advanceRegionalEconomy,discoverEconomicRegions,recordEconomicKill,economicFieldBlocked} from './regional-economy.js?v=151';
 import {updateRegionalTraffic,nearestCommerceTarget,damageCommerce,persistTradeRaiders,restoreTradeRaiders} from './trade-routes.js?v=151';
-import {drawEconomicLandscape,drawCommerceActor,drawEconomicMinimap,drawCommerceWreck,drawCampTent} from './economic-visuals.js?v=168';
+import {drawEconomicLandscape,drawCommerceActor,drawEconomicMinimap,drawCommerceWreck,drawCampTent} from './economic-visuals.js?v=169';
 /**
  * ゲーム3: IRON SQUAD (アイアン・スクワッド: 雑兵立身出世録)
  * ローグライク・アクションRPG
@@ -32,8 +32,8 @@ import {drawEconomicLandscape,drawCommerceActor,drawEconomicMinimap,drawCommerce
  */
 import { sound } from '../../audio.js?v=151';
 import { storage } from '../../storage.js';
-import { createStallRecorder, mountStallLog } from './stall-recorder.js?v=168';
-import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow } from './visuals.js?v=168';
+import { createStallRecorder, mountStallLog } from './stall-recorder.js?v=169';
+import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow } from './visuals.js?v=169';
 import { refreshCampQuiet, assignCampSeats, tryCampLeisure } from './camp-leisure.js?v=151';
 import { CAMP_PEACE_RADIUS, peaceContainment, pushOutsidePeace, relocatePeaceMonster } from './peace-zones.js?v=158';
 import { FARM_X, FARM_Y, farmPosts, farmOverlaps, reinforcementCount, reserveRosterLine, reserveRosterTitle } from './reserve-farm.js?v=151';
@@ -51,8 +51,8 @@ import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog 
 import { renderTroopRankings, getSoldierRankerBadges, calcSoldierRankerBonus } from './troop-rankings.js?v=151';
 import { ensureSoldierAppearance, drawSoldierPortrait, describeSoldierAppearance } from './soldier-appearance.js?v=151';
 import { attachSurfaceEvents, detachSurfaceEvents, frameSurfaceReady, releaseSceneCaches, releaseCanvas, surfaceCanResume } from './canvas-surface.js?v=151';
-import { SETTLEMENTS, WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt, routeNameAt, eastWestRoadY, northSouthRoadX, riverCenterY, drawFieldDepth, drawOakCrown, fieldBlocks, settleUnit } from './world.js?v=168';
-import { subscribeKana, kanaGrade } from '../../kana-mode.js?v=168';
+import { SETTLEMENTS, WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt, routeNameAt, eastWestRoadY, northSouthRoadX, riverCenterY, drawFieldDepth, drawOakCrown, fieldBlocks, settleUnit } from './world.js?v=169';
+import { subscribeKana, kanaGrade } from '../../kana-mode.js?v=169';
 import { FogGrid, FOG_REVEAL_RADIUS, FOG_CAMP_REVEAL } from './fog.js?v=151';
 import {
   classTierOf, nextClassId, classUpCostForNext, canAffordClassUp, formatClassUpCostJa, classUpShortageJa,
@@ -88,11 +88,11 @@ import {
   nearestLivingMerchant, refreshMerchantStock, merchantBuyPrice, merchantSellTier,
   applyMerchantSave, serializeMerchants, MERCHANT_INTERACT_R,
   merchantHealingStatus, merchantHealWavesLeft, useMerchantHealing, MERCHANT_HEAL_COST, recalcEscortStats, finishEscortPhase
-} from './merchant-rules.js?v=168';
+} from './merchant-rules.js?v=169';
 
 import { daylightAt, advanceWorldClock, periodEnemy, enemyAvailable, PERIOD_ENEMIES } from './day-night.js';
 
-import { clusterRescueMarkers } from './rescue-markers.js?v=168';
+import { clusterRescueMarkers } from './rescue-markers.js?v=169';
 import { RESCUE_TIMEOUT, rescueUnits, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, receiveTownCargo, leaveCivilianSpace, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, markSoldierDown, CIV_KINDS, isMedic, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST } from './casualty-rules.js?v=151';
 import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault, dungeonBlocks, dungeonSolids } from './dungeon.js?v=151';
 import {
@@ -275,7 +275,7 @@ export const COLOSSAL_BOSS_DEFS = {
     baseAtk: 2000,
     speed: 46,
     skillCooldown: 4.5,
-    skillName: '超火炎ブレス',
+    skillName: 'メガフレアブレス',
     desc: '画面を覆い尽くす巨躯を誇る伝説の古竜！扇状広角に灼熱の業火弾を連続放射！'
   },
   behemoth_king: {
@@ -289,7 +289,7 @@ export const COLOSSAL_BOSS_DEFS = {
     baseAtk: 2320,
     speed: 42,
     skillCooldown: 5.0,
-    skillName: '大地粉砕（アースクエイク）',
+    skillName: 'アースクエイク',
     desc: '巨大な四本角と無敵の毛皮装甲を持つ超巨獣！全方位衝撃波と激しい地響きで周囲を粉砕！'
   },
   colossal_titan: {
@@ -303,7 +303,7 @@ export const COLOSSAL_BOSS_DEFS = {
     baseAtk: 2208,
     speed: 38,
     skillCooldown: 4.8,
-    skillName: '神話殲滅光線',
+    skillName: 'ミシックレーザー',
     desc: '古代遺跡の守護神。発光する全身コアから全方位へ神聖レーザーを撃ち放つ！'
   }
 };
@@ -391,7 +391,7 @@ export const TALENTS = {
 export const DEATHLINE_SKILLS = {
   SURVIVAL_INSTINCT: {
     id: 'SURVIVAL_INSTINCT',
-    name: '不屈の生存本能',
+    name: 'サバイバルソウル',
     icon: '❤️‍🔥',
     color: '#f87171',
     desc: 'ピンチを生き抜いた本能：最大HP +35%, 被ダメージ-15% (HP35%以下で被ダメ半減＆速+30%)',
@@ -400,7 +400,7 @@ export const DEATHLINE_SKILLS = {
   },
   BLOOD_RAGE: {
     id: 'BLOOD_RAGE',
-    name: '修羅の闘志',
+    name: 'ブラッドレイジ',
     icon: '🔥',
     color: '#ef4444',
     desc: '戦友の屍を越えて宿った怒り：ATK +40%, クリティカル率 +20%',
@@ -409,7 +409,7 @@ export const DEATHLINE_SKILLS = {
   },
   IRON_RESOLVE: {
     id: 'IRON_RESOLVE',
-    name: '鋼鉄の不退転',
+    name: 'アイアンウォール',
     icon: '🛡️',
     color: '#38bdf8',
     desc: '死地で鍛え上げられた鉄壁：DEF +50%, 最大HP +45%, ブロック率 +20%',
@@ -419,7 +419,7 @@ export const DEATHLINE_SKILLS = {
   },
   PHANTOM_STEP: {
     id: 'PHANTOM_STEP',
-    name: '疾風の残影',
+    name: 'ファントムステップ',
     icon: '⚡',
     color: '#fbbf24',
     desc: '死線を潜り抜けた神速：移動速度 +30%, 攻撃速度 +25%, 完全回避率 +15%',
@@ -429,7 +429,7 @@ export const DEATHLINE_SKILLS = {
   },
   DEADLY_FOCUS: {
     id: 'DEADLY_FOCUS',
-    name: '極限の狙撃眼',
+    name: 'デッドアイ',
     icon: '🎯',
     color: '#34d399',
     desc: '生死の狭間で研ぎ澄まされた集中：ATK +35%, 射程 +30%, クリティカル率 +25%',
@@ -439,7 +439,7 @@ export const DEATHLINE_SKILLS = {
   },
   MIRACLE_PRAYER: {
     id: 'MIRACLE_PRAYER',
-    name: '奇跡の祈祷',
+    name: 'ミラクルグレイス',
     icon: '✨',
     color: '#10b981',
     desc: '死の淵から仲間を呼び戻す祈り：回復力 +60%, 救助速度 2.5倍',
@@ -448,7 +448,7 @@ export const DEATHLINE_SKILLS = {
   },
   VETERAN_GRIT: {
     id: 'VETERAN_GRIT',
-    name: '死生の悟り',
+    name: 'ラストグリット',
     icon: '💀',
     color: '#e2e8f0',
     desc: '死すら恐れぬ不滅の覚悟：HP・ATK・DEF +25%, 毎秒最大HPの2%自然治癒',
@@ -467,6 +467,14 @@ export const SLOT_INFO = {
   LEGS:   { key: 'legs',   name: '脚', icon: '🥾' },
   AMULET: { key: 'amulet', name: '装飾', icon: '📿' }
 };
+
+/** 商人購入の強化引継: 同スロットで装備中の+Xが高く、隊長が使える場合のみ（武器は同系統のみ）。 */
+function canMerchantInherit(current,item,player){
+  if(!current||!item||current.id===item.id||current.type!==item.type)return false;
+  if((current.upgrade||0)<=(item.upgrade||0))return false;
+  if(item.type==='WEAPON'&&weaponStyleOf(current)!==weaponStyleOf(item))return false;
+  return canUseWeapon(player,item);
+}
 
 export const MEDIC_SELF_DEFENSE_COST = 10, MEDIC_SELF_DEFENSE_MIN_MANA = 40;
 // v2.7クラスバランス: 武器ATK二重加算の解消(約-35〜50%)の補填＋非魔導兵の底上げ。兵士の通常攻撃（旧/新武器の両経路）にのみ掛かる
@@ -552,7 +560,7 @@ export const SOLDIER_CLASSES = {
     defMultBonus: 0.65,  // 防御力 +65% (乗算スケール)
     atkMultBonus: 0.30,  // 攻撃力 +30% (乗算スケール)
     tag: '👑聖騎士',
-    desc: '世界が変わる守護神！HP+55%, DEF+65%, 聖なる衝撃波で敵群ノックバック、周囲味方の被ダメージ-30%'
+    desc: '世界が変わる守護神！HP+55%, DEF+65%, ホーリーウェーブで敵群ノックバック、周囲味方の被ダメージ-30%'
   },
   BLADEMASTER: {
     id: 'BLADEMASTER',
@@ -574,7 +582,7 @@ export const SOLDIER_CLASSES = {
     hpMultBonus: 0.30,   // 最大HP +30% (乗算スケール)
     speedMultBonus: 0.30,// 移動速度 +30%
     tag: '⚔️剣聖',
-    desc: '世界が変わる神速連撃！ATK+55%, 速度+30%, 疾風真空刃を飛ばし遠敵を一刀両断、攻撃を25%残影完全回避'
+    desc: '世界が変わる神速連撃！ATK+55%, 速度+30%, ソニックブレードを飛ばし遠敵を一刀両断、攻撃を25%残影完全回避'
   },
   SNIPER: {
     id: 'SNIPER',
@@ -596,7 +604,7 @@ export const SOLDIER_CLASSES = {
     hpMultBonus: 0.25,   // 最大HP +25% (乗算スケール)
     rangeMultBonus: 0.40,// 射程 +40%
     tag: '🎯神射手',
-    desc: '世界が変わる超絶射程！ATK+60%, 射程360px, 3条の天星魔導光矢を一斉マルチ斉射し大群を爆砕'
+    desc: '世界が変わる超絶射程！ATK+60%, 射程360px, 3条のスターアローを一斉マルチ斉射し大群を爆砕'
   },
   HIGH_PRIEST: {
     id: 'HIGH_PRIEST',
@@ -617,7 +625,7 @@ export const SOLDIER_CLASSES = {
     hpMultBonus: 0.45,   // 最大HP +45% (乗算スケール)
     defMultBonus: 0.50,  // 防御力 +50% (乗算スケール)
     tag: '🕊️大司教',
-    desc: '世界が変わる奇跡の使徒！治癒力+85%, HP+45%, DEF+50%, 味方全体リジェネ結界＆倒れた仲間を超速即座に蘇生'
+    desc: '世界が変わる奇跡の使徒！治癒力+85%, HP+45%, DEF+50%, 味方全体ヒーリングフィールド＆倒れた仲間を超速即座に蘇生'
   },
 
   // ===== 極職 (MASTER / Tier2) =====
@@ -629,7 +637,7 @@ export const SOLDIER_CLASSES = {
     bonusHp: 420, bonusDef: 95, bonusAtk: 48,
     hpMultBonus: 0.90, defMultBonus: 1.05, atkMultBonus: 0.55,
     tag: '⚜️神殿騎士',
-    desc: '極職タンク！HP+90% DEF+105%。聖域の盾で味方守護を強化'
+    desc: '極職タンク！HP+90% DEF+105%。セイクリッドウォールで味方守護を強化'
   },
   SWORD_EMPEROR: {
     id: 'SWORD_EMPEROR', classTier: 2, baseClassId: 'LIGHT', isAdvanced: true, isMaster: true,
@@ -639,7 +647,7 @@ export const SOLDIER_CLASSES = {
     bonusCrit: 55, bonusAtk: 72, bonusHp: 220,
     atkMultBonus: 0.95, hpMultBonus: 0.50, speedMultBonus: 0.45,
     tag: '⚜️剣帝',
-    desc: '極職遊撃！ATK+95% 速度+45%。帝剣の連撃で戦線を切り裂く'
+    desc: '極職遊撃！ATK+95% 速度+45%。インペリアルコンボで戦線を切り裂く'
   },
   STORM_BOW: {
     id: 'STORM_BOW', classTier: 2, baseClassId: 'ARCHER', isAdvanced: true, isMaster: true,
@@ -649,7 +657,7 @@ export const SOLDIER_CLASSES = {
     bonusAtk: 80, bonusCrit: 50, bonusHp: 200,
     atkMultBonus: 1.00, hpMultBonus: 0.40, rangeMultBonus: 0.55,
     tag: '⚜️嵐弓士',
-    desc: '極職射手！ATK+100% 射程拡大。嵐矢の斉射で縦深を制圧'
+    desc: '極職射手！ATK+100% 射程拡大。ストームボレーで縦深を制圧'
   },
   SAINT: {
     id: 'SAINT', classTier: 2, baseClassId: 'MEDIC', isAdvanced: true, isMaster: true,
@@ -659,7 +667,7 @@ export const SOLDIER_CLASSES = {
     bonusHp: 280, bonusDef: 48,
     healMultBonus: 1.25, hpMultBonus: 0.70, defMultBonus: 0.75,
     tag: '⚜️聖女',
-    desc: '極職支援！治癒+125%。聖域リジェネと高速蘇生'
+    desc: '極職支援！治癒+125%。ヒーリングフィールドと高速蘇生'
   },
 
   // ===== 伝説職 (LEGEND / Tier3) — 神話宝玉が必要 =====
@@ -679,7 +687,7 @@ export const SOLDIER_CLASSES = {
     bonusCrit: 70, bonusAtk: 120, bonusHp: 360,
     atkMultBonus: 1.50, hpMultBonus: 0.80, speedMultBonus: 0.65,
     tag: '🌌虚空剣',
-    desc: '伝説遊撃！ATK+150%。虚空の一閃で敵将を斬る'
+    desc: '伝説遊撃！ATK+150%。ヴォイドスラッシュで敵将を斬る'
   },
   STAR_HUNTER: {
     id: 'STAR_HUNTER', classTier: 3, baseClassId: 'ARCHER', isAdvanced: true, isMaster: true, isLegendary: true,
@@ -688,7 +696,7 @@ export const SOLDIER_CLASSES = {
     bonusAtk: 130, bonusCrit: 65, bonusHp: 320,
     atkMultBonus: 1.55, hpMultBonus: 0.65, rangeMultBonus: 0.75,
     tag: '🌌星狩人',
-    desc: '伝説射手！ATK+155%。星屑の斉射が最果てを貫く'
+    desc: '伝説射手！ATK+155%。スターダストが最果てを貫く'
   },
   ARCHANGEL: {
     id: 'ARCHANGEL', classTier: 3, baseClassId: 'MEDIC', isAdvanced: true, isMaster: true, isLegendary: true,
@@ -715,7 +723,7 @@ export const PLAYER_ADVANCED_CLASS = {
   atkMultBonus: 0.50,  // 攻撃力 +50% (乗算スケール)
   defMultBonus: 0.55,  // 防御力 +55% (乗算スケール)
   squadAtkBonus: 0.25, // 率いる部隊全員ATK+25%オーラ
-  desc: '戦場を支配する軍神！HP+45%, ATK+50%, DEF+55%乗算、全方位覇気スラッシュ＆部隊全員ATK+25%'
+  desc: '戦場を支配する軍神！HP+45%, ATK+50%, DEF+55%乗算、全方位オーラスラッシュ＆部隊全員ATK+25%'
 };
 
 // 素材・ティア制ドロップ生成
@@ -1189,9 +1197,9 @@ export const IronSquadGame = {
                   <span class="pad-btn-icon">📢</span>
                   <span class="pad-btn-label">呼集</span>
                 </button>
-                <button id="btn-pad-power" class="pad-btn pad-btn-power ready" title="渾身強撃 (パワーアタック)">
+                <button id="btn-pad-power" class="pad-btn pad-btn-power ready" title="パワーストライク (パワーアタック)">
                   <span class="pad-btn-icon">💥</span>
-                  <span class="pad-btn-label">強撃</span>
+                  <span class="pad-btn-label">ストライク</span>
                   <div id="pad-power-cd-overlay" class="pad-cd-overlay hidden">
                     <span id="pad-power-cd-text" class="pad-cd-text">0.0</span>
                   </div>
@@ -3978,7 +3986,7 @@ export const IronSquadGame = {
           }
         }
         this.pushShockwave(fx.x || px, fx.y || py, fx.radius * 0.85, '#fde047', '#38bdf8', 0.28, 3);
-        if (n > 0) this.spawnDamageText(px, py - 50, `二連目 ×${n}`, '#fde047');
+        if (n > 0) this.spawnDamageText(px, py - 50, `ダブル ×${n}`, '#fde047');
       } else if (fx.kind === 'arrow_rain') {
         let n = 0;
         for (const m of this.monsters || []) {
@@ -4025,7 +4033,7 @@ export const IronSquadGame = {
     }
 
     if(isPlayerCaster(this.player)){
-      if(castPlayerSpell(this,{power:true}))this.showToast(`${MAGIC_AFFINITIES[this.player.magicAffinity].name}の魔法強撃`);
+      if(castPlayerSpell(this,{power:true}))this.showToast(`${MAGIC_AFFINITIES[this.player.magicAffinity].name}のマナバースト`);
       else if(ensureMana(this.player)<PLAYER_MAGIC_RULES.powerCost)this.spawnDamageText(this.player.x,this.player.y-24,'MP不足','#bcaed4');
       this.updateStatsUI();return;
     }
@@ -4060,13 +4068,13 @@ export const IronSquadGame = {
     sound.playWeapon(style,this.player.x,this.player.y);
 
     let hitCount = 0;
-    let skillName = '💥【渾身強撃】';
+    let skillName = '💥【パワーストライク】';
     let skillColor = isWarlord ? '#f59e0b' : '#00f0ff';
     const baseAtk = (this.player.atk || 15)*(RANGED_STYLES.includes(style)?RANGED_DAMAGE_MULT:1);
     const px = this.player.x, py = this.player.y;
 
     if (style === 'spear') {
-      skillName = isWarlord ? '🔱【覇王穿衝扇】' : '🔱【烈槍扇穿】';
+      skillName = isWarlord ? '🔱【グランドファン】' : '🔱【ファンスラスト】';
       skillColor = '#a7f3d0';
       const reach = isWarlord ? 290 : 230;
       const halfAngle = isWarlord ? 0.72 : 0.58;
@@ -4097,7 +4105,7 @@ export const IronSquadGame = {
       }
       this.pushShockwave(px + cos * reach * 0.55, py + sin * reach * 0.55, 70, '#6ee7b7', '#ecfdf5', 0.35, 3);
     } else if (style === 'hammer') {
-      skillName = isWarlord ? '🔨【覇王滅砕撃】' : '🔨【剛鎚滅殺】';
+      skillName = isWarlord ? '🔨【メガスマッシュ】' : '🔨【クラッシュブロー】';
       skillColor = '#fdba74';
       const nearest = this.getNearestMonster(px, py);
       const dmg = Math.round(baseAtk * (isWarlord ? 8.4 : 6.6));
@@ -4114,7 +4122,7 @@ export const IronSquadGame = {
       }
       this.screenShake = isWarlord ? 0.95 : 0.7;
     } else if (style === 'bow') {
-      skillName = isWarlord ? '🏹【覇王星雨】' : '🏹【蒼穹箭雨】';
+      skillName = isWarlord ? '🏹【スターフォール】' : '🏹【アローレイン】';
       skillColor = '#7dd3fc';
       const radius = isWarlord ? 210 : 160;
       const ticks = powerShots;
@@ -4145,7 +4153,7 @@ export const IronSquadGame = {
         });
       }
     } else if (style === 'crossbow') {
-      skillName = isWarlord ? '🎯【覇王穿貫筒】' : '🎯【剛矢貫筒】';
+      skillName = isWarlord ? '🎯【ロイヤルボルト】' : '🎯【ピアスボルト】';
       skillColor = '#c4b5fd';
       const reach = isWarlord ? 420 : 340;
       const halfW = isWarlord ? 34 : 26;
@@ -4180,7 +4188,7 @@ export const IronSquadGame = {
         hitEnemies: [], color: '#c4b5fd'
       });
     } else if (style === 'cannon') {
-      skillName = isWarlord ? '💣【覇王散華砲】' : '💣【榴散クラスター】';
+      skillName = isWarlord ? '💣【ブロッサムキャノン】' : '💣【クラスターシェル】';
       skillColor = '#fbbf24';
       const count = powerShots;
       const blastR = isWarlord ? 78 : 62;
@@ -4217,7 +4225,7 @@ export const IronSquadGame = {
       this.powerHitOutpost(150, subDmg * 2);
     } else {
       // sword default: 範囲二連撃
-      skillName = isWarlord ? '⚡【覇王烈風二閃】' : '⚔️【剛剣二連斬】';
+      skillName = isWarlord ? '⚡【ツインテンペスト】' : '⚔️【ダブルスラッシュ】';
       skillColor = isWarlord ? '#f59e0b' : '#38bdf8';
       const radius = isWarlord ? 200 : 150;
       const dmg = Math.round(baseAtk * (isWarlord ? 2.55 : 2.0));
@@ -4446,16 +4454,17 @@ export const IronSquadGame = {
       if (iconEl && labelEl) {
         const st = weaponStyleOf(this.equipped && this.equipped.weapon);
         const labels = {
-          sword:    { icon: isWarlord ? '⚡' : '⚔️', label: isWarlord ? '二閃' : '二連斬', title: isWarlord ? '覇王烈風二閃' : '剛剣二連斬' },
-          spear:    { icon: '🔱', label: isWarlord ? '穿衝扇' : '扇穿', title: isWarlord ? '覇王穿衝扇' : '烈槍扇穿' },
-          hammer:   { icon: '🔨', label: isWarlord ? '滅砕' : '滅殺', title: isWarlord ? '覇王滅砕撃' : '剛鎚滅殺' },
-          bow:      { icon: '🏹', label: isWarlord ? '星雨' : '箭雨', title: isWarlord ? '覇王星雨' : '蒼穹箭雨' },
-          crossbow: { icon: '🎯', label: '貫筒', title: isWarlord ? '覇王穿貫筒' : '剛矢貫筒' },
-          cannon:   { icon: '💣', label: isWarlord ? '散華' : '簇弾', title: isWarlord ? '覇王散華砲' : '榴散クラスター' }
+          sword:    { icon: isWarlord ? '⚡' : '⚔️', label: isWarlord ? 'テンペスト' : 'ダブル\nスラッシュ', title: isWarlord ? 'ツインテンペスト' : 'ダブルスラッシュ' },
+          spear:    { icon: '🔱', label: isWarlord ? 'グランド\nファン' : 'ファン\nスラスト', title: isWarlord ? 'グランドファン' : 'ファンスラスト' },
+          hammer:   { icon: '🔨', label: isWarlord ? 'メガ\nスマッシュ' : 'クラッシュ\nブロー', title: isWarlord ? 'メガスマッシュ' : 'クラッシュブロー' },
+          bow:      { icon: '🏹', label: isWarlord ? 'スター\nフォール' : 'アロー\nレイン', title: isWarlord ? 'スターフォール' : 'アローレイン' },
+          crossbow: { icon: '🎯', label: isWarlord ? 'ロイヤル\nボルト' : 'ピアス\nボルト', title: isWarlord ? 'ロイヤルボルト' : 'ピアスボルト' },
+          cannon:   { icon: '💣', label: isWarlord ? 'ブロッサム' : 'クラスター', title: isWarlord ? 'ブロッサムキャノン' : 'クラスターシェル' }
         };
-        const L = isPlayerCaster(this.player)?{icon:'🔮',label:'魔法強撃',title:`${MAGIC_AFFINITIES[this.player.magicAffinity].name}の魔法強撃 · ${PLAYER_MAGIC_RULES.powerCost}MP`}:labels[st] || labels.sword;
+        const L = isPlayerCaster(this.player)?{icon:'🔮',label:'マナ\nバースト',title:`${MAGIC_AFFINITIES[this.player.magicAffinity].name}のマナバースト · ${PLAYER_MAGIC_RULES.powerCost}MP`}:labels[st] || labels.sword;
         iconEl.textContent = L.icon;
         labelEl.textContent = L.label;
+        delete labelEl.dataset.len;
         pwrBtn.title = `${L.title} (強撃)`;
       }
     }
@@ -5811,7 +5820,7 @@ export const IronSquadGame = {
         }
       }
 
-      // 大司教（HIGH_PRIEST）のパッシブ: 聖域リジェネ結界 (周囲140pxの味方に毎秒最大HP1.5%持続治癒)
+      // 大司教（HIGH_PRIEST）のパッシブ: ヒーリングフィールド結界 (周囲140pxの味方に毎秒最大HP1.5%持続治癒)
       // v1.24.2: timer every frame; skip O(squad) heal pulse on AI light frames
       if (clsKey === 'HIGH_PRIEST') {
         soldier.regenTimer = (soldier.regenTimer || 0) + dt;
@@ -6107,14 +6116,14 @@ export const IronSquadGame = {
           this.spawnSparks(soldier.x, soldier.y, '#67e8f9', 12);
           sound.playBomb();
         } else if (clsKey === 'BLADEMASTER' && enemyDist <= cls.range + 40) {
-          // 剣聖（BLADEMASTER）: 神速二刀連撃 ＆ 疾風飛翔真空刃（SWORD_BEAM）射出
+          // 剣聖（BLADEMASTER）: 神速二刀連撃 ＆ ソニックブレード（SWORD_BEAM）射出
           soldier.atkCooldown = cls.atkCooldown;
           soldier.atkAnim = 1.0;
           soldier.facingAngle = Math.atan2(nearestEnemy.y - soldier.y, nearestEnemy.x - soldier.x);
           soldier.attackAngle = soldier.facingAngle;
           this.performAttack(soldier, nearestEnemy, false, totalAtk);
 
-          // 疾風真空刃を前方へ飛ばす（貫通弾）
+          // ソニックブレードを前方へ飛ばす（貫通弾）
           if (!this.projectiles) this.projectiles = [];
           this.projectiles.push({
             x: soldier.x, y: soldier.y,
@@ -6184,7 +6193,7 @@ export const IronSquadGame = {
         if(proj.type==='NINJA_SHURIKEN'){if(updateShuriken(this,proj,dt))this.projectiles.splice(i,1);continue;}
         if(isHostileShot(proj)&&interceptHostileShot(this,proj,{x:proj.x,y:proj.y},{x:proj.x+proj.vx*dt,y:proj.y+proj.vy*dt})){this.projectiles.splice(i,1);continue;}
 
-        // 1. 直進貫通弾（SWORD_BEAM: 疾風真空刃）
+        // 1. 直進貫通弾（SWORD_BEAM: ソニックブレード）
         if (proj.type === 'SWORD_BEAM') {
           const nx = proj.x + proj.vx * dt, ny = proj.y + proj.vy * dt;
           if (coverBlocked(this, proj, {x: nx, y: ny})) { this.projectiles.splice(i, 1); continue; }
@@ -6598,7 +6607,7 @@ export const IronSquadGame = {
                 tgt.y += Math.sin(knockAng) * 35;
               }
             }
-            this.spawnDamageText(m.x, m.y - 45, '💥大地粉砕(アースクエイク)!', '#f59e0b');
+            this.spawnDamageText(m.x, m.y - 45, '💥アースクエイク!', '#f59e0b');
             this.spawnSparks(m.x, m.y, '#f59e0b', 28);
             sound.playBomb();
           } else if (m.type === 'colossal_dragon') {
@@ -6618,7 +6627,7 @@ export const IronSquadGame = {
                 color: '#ef4444'
               });
             }
-            this.spawnDamageText(m.x, m.y - 45, '🔥超火炎ブレス!', '#ef4444');
+            this.spawnDamageText(m.x, m.y - 45, '🔥メガフレアブレス!', '#ef4444');
             sound.playLaser();
           } else if (m.type === 'colossal_titan') {
             // 古代巨神：古代殲滅光線！8方位へレーザー光弾斉射
@@ -6636,7 +6645,7 @@ export const IronSquadGame = {
                 color: '#06b6d4'
               });
             }
-            this.spawnDamageText(m.x, m.y - 45, '✨神話殲滅光線!', '#06b6d4');
+            this.spawnDamageText(m.x, m.y - 45, '✨ミシックレーザー!', '#06b6d4');
             sound.playLaser();
           }
         }
@@ -7109,7 +7118,7 @@ export const IronSquadGame = {
       return;
     }
 
-    // 聖騎士（PALADIN）の聖域加護 (周囲140pxに生存中の聖騎士がいれば被ダメージ-30%カット)
+    // 聖騎士（PALADIN）のサンクチュアリ (周囲140pxに生存中の聖騎士がいれば被ダメージ-30%カット)
     let paladinGuarded = false;
     if (!environmental && this.squad) {
       const guard=this.squad.find(s => !s.dead && !s.isDown && s.hp>0 && ['PALADIN','TEMPLAR','IMMORTAL_AEGIS'].includes(s.soldierClass) && (!this.currentDungeon||inCurrentInstance(this,s)) && Math.hypot(s.x-target.x,s.y-target.y)<=140);
@@ -7123,9 +7132,9 @@ export const IronSquadGame = {
     let dmg = Math.max(1, Math.round(rawDmg * defFactor * (1 - reduction)));
 
     if (paladinGuarded) {
-      dmg = Math.max(1, Math.round(dmg * 0.70)); // 聖域加護で-30%
+      dmg = Math.max(1, Math.round(dmg * 0.70)); // サンクチュアリで-30%
       if (Math.random() < 0.35) {
-        this.spawnDamageText(target.x, target.y - 20, '🛡️聖域加護!', '#67e8f9');
+        this.spawnDamageText(target.x, target.y - 20, '🛡️サンクチュアリ!', '#67e8f9');
       }
     }
 
@@ -7269,7 +7278,7 @@ export const IronSquadGame = {
       const rows = groups.find(([id])=>id===shopGroup)[2].sort((a,b)=>compareEquipmentStrength(a.item,b.item)).map(({item,idx}) => {
         const slot=SLOT_INFO[item.type],current=slot?this.equipped?.[slot.key]:null,cmp=compareEquipment(item,current);
         // Plain purchases keep the item's actual stats; a same-family weapon may instead carry the +X over.
-        const canInheritBuy=item.type==='WEAPON'&&current&&current.id!==item.id&&(current.upgrade||0)>(item.upgrade||0)&&weaponStyleOf(current)===weaponStyleOf(item)&&canUseWeapon(this.player,item);
+        const canInheritBuy=!!slot&&canMerchantInherit(current,item,this.player);
         let inheritBuy='';
         if(canInheritBuy){
           const preview=structuredClone(item);applyUpgradeStats(preview,current.upgrade);const after=compareEquipment(preview,current);
@@ -7351,8 +7360,8 @@ export const IronSquadGame = {
             return;
           }
           const wantInherit=btn.dataset.inherit==='1';
-          const cur=this.equipped?.weapon;
-          const inherit=wantInherit&&item.type==='WEAPON'&&cur&&(cur.upgrade||0)>(item.upgrade||0)&&weaponStyleOf(cur)===weaponStyleOf(item)&&canUseWeapon(this.player,item);
+          const cur=this.equipped?.[SLOT_INFO[item.type]?.key];
+          const inherit=wantInherit&&canMerchantInherit(cur,item,this.player);
           if(wantInherit&&!inherit){this.showToast('強化値を引き継げません');render();return;}
           this.gold -= price;
           markMerchantPurchase(m,item,this.phase||1);
@@ -7583,6 +7592,8 @@ export const IronSquadGame = {
     this.savedFieldDrops = null;
     this.currentDungeon = null;
     updateLimitedAllies(this);
+    const overflowAlly = (this.squad || []).find(s => s && !s.dead && s.overflowGuard && !s.overflowPrompted);
+    if (overflowAlly) { overflowAlly.overflowPrompted = true; setTimeout(() => { if (!this.currentDungeon && overflowAlly.overflowGuard) this.openPersonalSwapDialog(overflowAlly); }, 500); }
     this.dungeonVault = null;
     if(wasTown)exitGateTown(this,townId);
     leaveCivilianSpace(this,townId);
@@ -8415,6 +8426,7 @@ export const IronSquadGame = {
           </div>
           <button type="button" class="mini-btn btn-close-soldier-detail" style="background:#334155;color:#e2e8f0;font-size:11px;">閉じる</button>
         </div>
+        ${(() => { const sc = this.personalScoutState(s); return sc.show ? `<div class="soldier-detail-scout"><button type="button" class="mini-btn btn-scout-own-squad" ${sc.enabled ? '' : 'disabled'} style="background:${sc.enabled ? '#a16207' : '#475569'};color:#fff;font-size:12px;font-weight:bold;min-height:36px;width:100%;margin:6px 0;">⭐ 自分の小隊にスカウト</button>${sc.enabled ? '' : `<div class="soldier-scout-reason" style="font-size:10px;color:#fca5a5;">${sc.reason}</div>`}</div>` : ''; })()}
         <section class="soldier-personal-profile"><canvas class="soldier-face-portrait" width="240" height="260" role="img"></canvas><div><span class="profile-eyebrow">PERSONNEL FILE</span><h4>素顔</h4><p class="soldier-look-description"></p><p class="profile-note">兜を外した姿。装備・能力はそのまま。</p></div></section>
         <div class="soldier-detail-grid">
           <div class="soldier-detail-block">
@@ -8498,6 +8510,10 @@ export const IronSquadGame = {
     host.querySelector('.soldier-look-description').textContent=describeSoldierAppearance(s);
     const closeBtn = host.querySelector('.btn-close-soldier-detail');
     if (closeBtn) closeBtn.onclick = () => this.closeSoldierDetail();
+    const scoutBtn = host.querySelector('.btn-scout-own-squad');
+    if (scoutBtn && !scoutBtn.disabled) scoutBtn.onclick = () => {
+      this.assignToPersonalSquad(soldierId);
+    };
     host.onclick = (e) => { if (e.target === host) this.closeSoldierDetail(); };
     setSubDialog(this, host, true, () => this.closeSoldierDetail());
   },
@@ -8687,9 +8703,11 @@ export const IronSquadGame = {
   syncPersonalGuardSlots(aliveList, maxGuards) {
     const alive = aliveList || (this.squad || []).filter(s => s && !s.dead);
     const cap = Math.max(0, maxGuards | 0);
-    let guards = alive.filter(s => s.isPersonalGuard);
+    // 定員超過で同行中の限定仲間(overflowGuard)は定員計算の対象外（入れ替えを選ぶまで同行）
+    let guards = alive.filter(s => s.isPersonalGuard && !s.overflowGuard);
     if (cap <= 0) {
       for (const s of alive) {
+        if (s.overflowGuard) continue;
         s.isPersonalGuard = false;
         s._guardSlot = -1;
       }
@@ -8712,22 +8730,19 @@ export const IronSquadGame = {
   },
 
   listPersonalGuardsAlive() {
-    return (this.squad || []).filter(s => s && !s.dead && s.isPersonalGuard);
+    return (this.squad || []).filter(s => s && !s.dead && s.isPersonalGuard && !s.overflowGuard);
   },
 
   /** 本隊→自部隊。満員なら replaceId で入れ替え、未指定なら選択ダイアログ。 */
   assignToPersonalSquad(soldierId, replaceId = null) {
     if(this.currentDungeon){this.showToast('直属の編成変更は野外で行ってください');return false;}
-    const soldier = (this.squad || []).find(s => s && s.id === soldierId);
+    const fromReserve = (this.reserves || []).find(s => s && s.id === soldierId);
+    const soldier = fromReserve || (this.squad || []).find(s => s && s.id === soldierId);
     if (!soldier || soldier.dead) {
       this.showToast?.('⚠️ 対象の兵士が見つかりません');
       return false;
     }
-    if ((this.reserves || []).includes(soldier)) {
-      this.showToast?.('⚠️ 予備兵は本隊合流後に引き抜いてください');
-      return false;
-    }
-    if (soldier.isPersonalGuard) {
+    if (soldier.isPersonalGuard && !soldier.overflowGuard) {
       this.showToast?.('すでに自部隊（直属）です');
       return false;
     }
@@ -8737,6 +8752,13 @@ export const IronSquadGame = {
       alert('直属小隊を編成できる階級ではありません。昇進してください');
       return false;
     }
+    const cap = this.limitedDeploymentLimit?.() ?? DEPLOYMENT_CAPACITY;
+    const squadCount = (this.squad || []).filter(s => s && !s.dead).length;
+    const joinSquad = () => {
+      if (!fromReserve) return;
+      this.reserves = this.reserves.filter(s => s !== soldier);
+      (this.squad ||= []).push(soldier);
+    };
     const guards = this.listPersonalGuardsAlive();
     if (guards.length >= maxGuards) {
       if (replaceId == null) {
@@ -8750,15 +8772,29 @@ export const IronSquadGame = {
       }
       outgoing.isPersonalGuard = false;
       outgoing._guardSlot = -1;
+      soldier.overflowGuard = false;
+      joinSquad();
+      // 予備兵を加えて出撃枠を超える場合、入れ替わった元直属は予備へ下げる
+      if (fromReserve && squadCount + 1 > cap) {
+        this.squad = this.squad.filter(s => s !== outgoing);
+        (this.reserves ||= []).push(outgoing);
+      }
       soldier.isPersonalGuard = true;
       this.syncPersonalGuardSlots(null, maxGuards);
-      this.showToast?.(`⭐【引き抜き】${soldier.name} を自部隊へ（代わりに ${outgoing.name} を本隊へ）`);
+      this.showToast?.(`⭐【引き抜き】${soldier.name} を自部隊へ（代わりに ${outgoing.name} を${fromReserve && squadCount + 1 > cap ? '予備へ' : '本隊へ'}）`);
       sound.playHighScore?.();
       this.saveGame();
       this.renderStrategyUI();
       this.updateStatsUI();
+      if (this.selectedSoldierDetailId) this.openSoldierDetail(this.selectedSoldierDetailId);
       return true;
     }
+    if (fromReserve && squadCount >= cap) {
+      this.showToast?.('⚠️ 出撃枠が満員のため予備兵を編入できません');
+      return false;
+    }
+    joinSquad();
+    soldier.overflowGuard = false;
     soldier.isPersonalGuard = true;
     this.syncPersonalGuardSlots(null, maxGuards);
     this.showToast?.(`⭐【引き抜き】${soldier.name} を自部隊（直属）へ編入`);
@@ -8766,7 +8802,23 @@ export const IronSquadGame = {
     this.saveGame();
     this.renderStrategyUI();
     this.updateStatsUI();
+    if (this.selectedSoldierDetailId) this.openSoldierDetail(this.selectedSoldierDetailId);
     return true;
+  },
+
+  /** 兵士詳細用：自分の小隊へスカウトできるか。show=falseならボタン非表示。 */
+  personalScoutState(s) {
+    if (!s || s.dead || s.isPersonalGuard || s === this.player) return {show:false};
+    const rank = RANKS[this.rankIndex] || RANKS[0];
+    const maxGuards = Math.min(rank.personalGuards || 0, PERSONAL_GUARD_MAX);
+    if (maxGuards <= 0) return {show:true, enabled:false, reason:'この階級では直属小隊を編成できません'};
+    if (this.currentDungeon) return {show:true, enabled:false, reason:'直属の編成変更は野外で行ってください'};
+    const inReserve = (this.reserves || []).includes(s);
+    if (inReserve && this.listPersonalGuardsAlive().length < maxGuards
+      && (this.squad || []).filter(u => u && !u.dead).length >= (this.limitedDeploymentLimit?.() ?? DEPLOYMENT_CAPACITY)) {
+      return {show:true, enabled:false, reason:'出撃枠が満員のため予備兵を編入できません'};
+    }
+    return {show:true, enabled:true, reason:''};
   },
 
   returnToMainForce(soldierId) {
@@ -8781,6 +8833,7 @@ export const IronSquadGame = {
       return false;
     }
     soldier.isPersonalGuard = false;
+    soldier.overflowGuard = false;
     soldier._guardSlot = -1;
     const currentRank = RANKS[this.rankIndex] || RANKS[0];
     const maxGuards = Math.min(currentRank.personalGuards || 0, PERSONAL_GUARD_MAX);
@@ -9448,7 +9501,7 @@ export const IronSquadGame = {
         <h4 class="commander-stat-title">隊長ステータス <small>Lv.${p.level||1}</small></h4>
         <dl class="commander-stat-grid">${playerStats.map(([label,value])=>`<div><dt>${label}</dt><dd>${value}</dd></div>`).join('')}</dl>
         <label class="commander-spell-choice">使用する魔法<select id="player-magic-affinity">${Object.entries(MAGIC_AFFINITIES).map(([id,spell])=>`<option value="${id}" ${p.magicAffinity===id?'selected':''}>${spell.name}</option>`).join('')}</select></label>
-        <p class="command-note">${caster?`通常 ${MAGIC_AFFINITIES[p.magicAffinity].cost}MP · 強撃 ${PLAYER_MAGIC_RULES.powerCost}MP · 射程 ${formatDistance(PLAYER_MAGIC_RULES.range)}。補給地点・回復薬・魔法石でMPを補充。`:'ワンドか杖を装備すると魔法を使えます。'}</p>
+        <p class="command-note">${caster?`通常 ${MAGIC_AFFINITIES[p.magicAffinity].cost}MP · マナバースト ${PLAYER_MAGIC_RULES.powerCost}MP · 射程 ${formatDistance(PLAYER_MAGIC_RULES.range)}。補給地点・回復薬・魔法石でMPを補充。`:'ワンドか杖を装備すると魔法を使えます。'}</p>
         <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px;">
           <strong style="color: #38bdf8; font-size: 12px;">🎖️ 隊長の総合武勲（撃墜数ボーナス＆防御力）</strong>
           <span style="color: #94a3b8; font-size: 10px;">総討伐: ${p.kills || 0}体</span>
@@ -11569,7 +11622,7 @@ export const IronSquadGame = {
       ctx.arc(-4, 0, 3, 0, Math.PI * 2);
       ctx.fill();
     } else if (proj.type === 'STAR_ARROW') {
-      // 神射手の天星魔導光矢 (エメラルドと白金の彗星光)
+      // 神射手のスターアロー (エメラルドと白金の彗星光)
       const ang = Math.atan2(proj.vy || 0, proj.vx || 0);
       ctx.rotate(ang);
 
@@ -11597,7 +11650,7 @@ export const IronSquadGame = {
       ctx.fill();
       ctx.shadowBlur = 0;
     } else if (proj.type === 'SWORD_BEAM') {
-      // 剣聖の疾風飛翔真空刃 (黄金の鋭利な三日月衝撃波)
+      // 剣聖のソニックブレード (黄金の鋭利な三日月衝撃波)
       const ang = Math.atan2(proj.vy || 0, proj.vx || 0);
       ctx.rotate(ang);
 

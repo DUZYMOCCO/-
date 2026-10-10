@@ -5,7 +5,7 @@
  */
 import { storage } from '../../storage.js';
 
-export const GAME_VERSION = '4.2.21';
+export const GAME_VERSION = '4.2.22';
 export const STALL_MS = 1000;
 export const HITCH_MS = 300;
 export const MAX_RECORDS = 30;
