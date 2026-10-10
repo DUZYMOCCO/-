@@ -10,6 +10,8 @@ import {wrapDialogueText} from '../js/games/iron-squad/soldier-dialogue.js';
 assert.equal(toKana('兵士',2),'へいし');
 assert.equal(toKana('戦う',2),'たたかう');
 assert.equal(toKana('敵軍が来る',2),'てきぐんが来る','grade 1-2 kanji such as 来 stay');
+assert.equal(toKana('敵軍が来る！兵士は戦う',2),'てきぐんが来る！へいしは たたかう','a space precedes a rewritten word after a letter, not after punctuation');
+assert.equal(toKana('第1期',2),'だい1き','no space after digits');
 for(const text of ['人が山に行く','大きな田の中','学校の外で話す','上下左右、前後'])assert.equal(toKana(text,2),text,`${text} uses only grade 1-2 kanji`);
 assert.equal(toKana('かな only 123 ABC！',2),'かな only 123 ABC！');
 assert.equal(toKana('',2),'');assert.equal(toKana(12,2),12);
@@ -67,7 +69,7 @@ const originals=['fillText','strokeText','measureText'].map(n=>FakeContext.proto
 const memory=new Map();
 globalThis.localStorage={getItem:k=>memory.get(k)??null,setItem:(k,v)=>memory.set(k,v),removeItem:k=>memory.delete(k)};
 // same specifier as the game's imports so both share one module instance
-const mode=await import('../js/kana-mode.js?v=165');
+const mode=await import('../js/kana-mode.js?v=166');
 assert.equal(mode.isKanaMode(),false);
 assert.equal(mode.displayKana('敵軍'),'敵軍','OFF returns text untouched');
 const ctx=new FakeContext();ctx.fillText('敵軍',0,0);assert.deepEqual(calls.pop(),['fill','敵軍']);
@@ -81,7 +83,7 @@ assert.equal(ctx.measureText('兵士').width,30,'measured on the converted text'
 ctx.fillText(123,0,0);assert.deepEqual(calls.pop(),['fill',123],'non-strings pass through');
 // wrapping splits converted text, so a word is never cut mid-reading
 const lines=wrapDialogueText(new FakeContext(),'敵軍が来る！兵士は戦う',80);
-assert.equal(lines.join(''),'てきぐんが来る！へいしはたたかう');
+assert.deepEqual(lines,['てきぐんが来る！','へいしは','たたかう'],'breaks at punctuation or a word space, never mid-word, with no edge spaces');
 mode.setKanaMode(false);
 assert.equal(memory.has('game_studio_kana_grade'),false,'turning OFF clears the saved setting');
 assert.equal(mode.isKanaMode(),false);

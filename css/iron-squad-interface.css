@@ -591,7 +591,7 @@
 .iron-squad .battle-log-msg { background:transparent;border:0;box-shadow:none;color:#d5ddd3;font-size:11px;font-weight:normal;line-height:1.5;padding:0;text-align:left;white-space:nowrap;word-break:normal;overflow:hidden;text-overflow:ellipsis;animation:none; }
 .iron-squad .battle-log-msg.boss-alert, .iron-squad .battle-log-msg.item-alert, .iron-squad .battle-log-msg.levelup-alert { background:transparent;border:0;box-shadow:none; }
 .iron-squad #btn-battle-log-history { min-height:44px;width:52px;padding:0;border:0;background:transparent;color:#c5bd9b;font:inherit;font-size:11px;pointer-events:auto;touch-action:manipulation; }
-.iron-squad .battle-log-history { list-style:none;padding:0;margin:0;max-height:320px;overflow-y:auto;touch-action:pan-y; }
+.iron-squad .battle-log-history { list-style:none;padding:0;margin:0;touch-action:pan-y; }
 .iron-squad .battle-log-history li { display:block;padding:10px 0;border-bottom:1px solid #3a5159;font-size:12px;line-height:1.7;overflow-wrap:anywhere; }
 .iron-squad .battle-log-history small { display:block;color:#91aaae;font-size:10px; }
 .iron-squad .pad-buttons-column { grid-column: 2; grid-row: 2; justify-self: end; min-width: 0; }
@@ -697,7 +697,7 @@
 .iron-squad .merchant-services > summary { padding:12px 0; color:#d5d6c3; font-size:12px; cursor:pointer; min-height:44px; box-sizing:border-box; }
 .iron-squad #equipment-sale-toolbar > summary { cursor:pointer; min-height:44px; padding:10px 0; box-sizing:border-box; font-size:16px; font-weight:700; color:#dcd8bc; }
 .iron-squad #equipment-sale-toolbar .sale-selection-total { font-size:12px; }
-.iron-squad #equipment-sale-toolbar .sale-item-selection { flex:1 1 100%; width:100%; max-height:280px; overflow-y:auto; overscroll-behavior:contain; }
+.iron-squad #equipment-sale-toolbar .sale-item-selection { flex:1 1 100%; width:100%; }
 .iron-squad #equipment-sale-toolbar .sale-item-option { display:grid; grid-template-columns:22px minmax(0,1fr) auto; align-items:center; gap:8px; min-height:44px; padding:8px 4px; border-bottom:1px solid var(--ui-line); font-size:12px; box-sizing:border-box; cursor:pointer; }
 .iron-squad #equipment-sale-toolbar .sale-item-option > span { overflow-wrap:anywhere; }
 .iron-squad #equipment-sale-toolbar .sale-item-option input { margin:0; width:20px; height:20px; }
@@ -1112,3 +1112,45 @@
   .iron-squad #strategy-modal:not(.strat-window-open) .dialog-tabs { flex-direction: row; padding: 8px 12px; }
   .iron-squad #strategy-modal:not(.strat-window-open) .dialog-tabs .sub-tab-btn { min-height: 48px; font-size: 14px; }
 }
+
+/* v4.2.19 全画面シート: 細い固定バーだけ残し、残りは1つのスクロール領域（商人・装備譲渡・セーブ選択・兵士詳細） */
+.iron-squad .transfer-popup-overlay:not([style]) {
+  z-index: 210; padding: 0 env(safe-area-inset-right) 0 env(safe-area-inset-left); align-items: stretch; justify-content: center; background: var(--ui-bg);
+}
+.iron-squad .transfer-popup-overlay:not([style]) .transfer-popup-container {
+  display: block; width: 100%; max-width: 820px; height: 100%; max-height: 100%; border-radius: 0; border-width: 0 1px; box-shadow: none;
+  overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y;
+}
+.iron-squad .transfer-popup-overlay:not([style]) .transfer-popup-header,
+.iron-squad .sheet-bar {
+  display: flex; align-items: center; gap: 10px; position: sticky; top: 0; z-index: 3; flex-shrink: 0;
+  padding: max(6px, env(safe-area-inset-top)) 12px 6px; background: var(--ui-panel); border-bottom: 1px solid var(--ui-line);
+}
+.iron-squad .transfer-popup-overlay:not([style]) .transfer-popup-title,
+.iron-squad .sheet-bar-title { flex: 1; min-width: 0; margin: 0; font-family: "Yu Mincho", "Hiragino Mincho ProN", Georgia, serif; font-size: 16px; color: var(--ui-gold); letter-spacing: .04em; overflow-wrap: anywhere; }
+.iron-squad .transfer-popup-overlay:not([style]) .transfer-popup-close-btn { width: auto; min-width: 56px; height: 44px; padding: 0 14px; font-size: 15px; background: var(--ui-raised); border-color: var(--ui-line); color: var(--ui-text); }
+.iron-squad .sheet-bar-btn { min-height: 44px; min-width: 76px; padding: 8px 12px; font-size: 13px; font-weight: bold; white-space: nowrap; color: var(--ui-text); background: var(--ui-raised); border: 1px solid var(--ui-line); border-radius: 8px; cursor: pointer; }
+.iron-squad .transfer-popup-overlay:not([style]) .transfer-popup-sub { margin: 0; padding: 8px 14px 0; }
+.iron-squad .transfer-popup-overlay:not([style]) .transfer-item-list { flex: none; overflow: visible; }
+.iron-squad .transfer-popup-overlay:not([style]) .transfer-popup-footer { padding-bottom: max(8px, env(safe-area-inset-bottom)); }
+/* セーブ選択: パネル全体が唯一のスクロール領域 */
+.iron-squad #save-menu { padding: 0; align-items: stretch; background: var(--ui-bg); }
+.iron-squad #save-menu .save-panel {
+  width: 100%; max-width: 820px !important; height: 100%; max-height: 100% !important; border-radius: 0; border-width: 0 1px; margin: 0 auto;
+  display: block; overflow-x: hidden !important; overflow-y: auto !important; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y;
+  padding-left: env(safe-area-inset-left) !important; padding-right: env(safe-area-inset-right) !important; padding-bottom: env(safe-area-inset-bottom) !important;
+}
+.iron-squad #save-menu .save-heading { padding: 12px 16px 8px; border-bottom: 0; }
+.iron-squad #save-menu .dialog-body { overflow: visible; flex: none; }
+.iron-squad .save-card-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.iron-squad .save-card-actions .action-btn { width: 100%; min-height: 44px; }
+.iron-squad .save-card .save-delete-btn { color: #f87171; border-color: #991b1b; font-size: 13px; }
+/* 兵士詳細: ホスト自体がスクロールし、内側パネルは流す（二重スクロール解消） */
+.iron-squad .soldier-detail-host { overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y; align-items: flex-start; padding: 0; }
+.iron-squad .soldier-detail-panel { max-height: none; border-radius: 0; min-height: 100%; overflow: visible; margin: 0 auto; }
+.iron-squad .soldier-detail-head { top: 0; padding-top: max(12px, env(safe-area-inset-top)); }
+@media (max-height: 500px) and (orientation: landscape) {
+  .iron-squad .transfer-popup-overlay:not([style]) .transfer-popup-header, .iron-squad .sheet-bar { padding-top: max(3px, env(safe-area-inset-top)); padding-bottom: 3px; }
+  .iron-squad .transfer-popup-overlay:not([style]) .transfer-popup-close-btn, .iron-squad .sheet-bar-btn { height: 38px; min-height: 38px; }
+}
+.iron-squad .sheet-bar-title:focus { outline: none; }

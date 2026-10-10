@@ -98,6 +98,7 @@ game.showSaveMenu(); const fresh=game.startFreshGame;
 game.startFreshGame=()=>{throw new Error('injected initialization failure');}; console.error=()=>{};
 document.querySelector('#new-expedition-form').dispatchEvent(new window.Event('submit',{bubbles:true,cancelable:true})); console.error=log;
 assert.equal(document.getElementById('save-menu').classList.contains('hidden'),false);
+assert.ok(document.querySelector('#save-menu .sheet-bar #btn-save-menu-back'),'save sheet has a slim bar with back'); assert.equal(document.querySelectorAll('#save-menu .save-footer, #save-menu .dialog-footer').length,0);
 assert.match(document.getElementById('save-start-error').textContent,/injected initialization failure/); assert.equal(game.running,false);
 game.startFreshGame=fresh; assert.equal(game.selectSaveSlot(game.activeSlotId),true); visibleField('retry initialized New Game'); frame();
 // Real wide field render also applies the mask without a full-screen blackout.

@@ -9,7 +9,7 @@ try{
   page.on('pageerror',e=>errors.push(e.message));
   await page.goto('http://localhost:8000/tools/canvas-quality-review.html');await page.waitForFunction(()=>window.qualityReady);
   await page.evaluate(async()=>{
-    const kana=await import('/js/kana-mode.js?v=165');kana.setKanaMode(true);
+    const kana=await import('/js/kana-mode.js?v=166');kana.setKanaMode(true);
     const g=qualityGame;g.stopGameLoop();g.currentDungeon=null;g.monsters=[];g.updateSpawns=()=>{};g.zoom=2;g.inBattle=true;g.restTimer=0;
     g.revealFogAroundPlayer(true);
     const cats=['BOSS_ENCOUNTER','LEVEL_UP_REACTION'];

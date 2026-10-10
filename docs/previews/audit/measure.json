@@ -1,0 +1,1371 @@
+[
+ {
+  "vh": 844,
+  "vw": 390,
+  "docOverflowX": false,
+  "scrollers": [],
+  "fixed": [],
+  "vpName": "portrait",
+  "name": "base-field"
+ },
+ {
+  "vh": 844,
+  "vw": 390,
+  "docOverflowX": false,
+  "scrollers": [
+   {
+    "el": "div.overlay-content.strategy-panel",
+    "h": 489,
+    "pct": 58,
+    "scrollH": 487,
+    "overflowing": false,
+    "maxH": "100%",
+    "nested": false
+   }
+  ],
+  "fixed": [],
+  "vpName": "portrait",
+  "name": "launcher"
+ },
+ {
+  "vh": 844,
+  "vw": 390,
+  "docOverflowX": false,
+  "scrollers": [
+   {
+    "el": "div.dialog-body",
+    "h": 783,
+    "pct": 93,
+    "scrollH": 2878,
+    "overflowing": true,
+    "maxH": "none",
+    "nested": false
+   }
+  ],
+  "fixed": [
+   {
+    "el": "div#strategy-modal.game-overlay.strat-window-open",
+    "pos": "fixed",
+    "h": 844,
+    "w": 390
+   },
+   {
+    "el": "div.strat-window-bar",
+    "pos": "sticky",
+    "h": 61,
+    "w": 388
+   }
+  ],
+  "vpName": "portrait",
+  "name": "win-situation"
+ },
+ {
+  "vh": 844,
+  "vw": 390,
+  "docOverflowX": false,
+  "scrollers": [
+   {
+    "el": "div.dialog-body",
+    "h": 783,
+    "pct": 93,
+    "scrollH": 5873,
+    "overflowing": true,
+    "maxH": "none",
+    "nested": false
+   }
+  ],
+  "fixed": [
+   {
+    "el": "div#strategy-modal.game-overlay.strat-window-open",
+    "pos": "fixed",
+    "h": 844,
+    "w": 390
+   },
+   {
+    "el": "div.strat-window-bar",
+    "pos": "sticky",
+    "h": 61,
+    "w": 388
+   }
+  ],
+  "vpName": "portrait",
+  "name": "win-squad"
+ },
+ {
+  "vh": 844,
+  "vw": 390,
+  "docOverflowX": false,
+  "scrollers": [],
+  "fixed": [
+   {
+    "el": "div#strategy-modal.game-overlay.strat-window-open",
+    "pos": "fixed",
+    "h": 844,
+    "w": 390
+   },
+   {
+    "el": "div.strat-window-bar",
+    "pos": "sticky",
+    "h": 61,
+    "w": 388
+   },
+   {
+    "el": "div#recruitment-dialog.recruitment-dialog",
+    "pos": "fixed",
+    "h": 844,
+    "w": 390
+   }
+  ],
+  "vpName": "portrait",
+  "name": "troops-scout"
+ },
+ {
+  "vh": 844,
+  "vw": 390,
+  "docOverflowX": false,
+  "scrollers": [],
+  "fixed": [
+   {
+    "el": "div#strategy-modal.game-overlay.strat-window-open",
+    "pos": "fixed",
+    "h": 844,
+    "w": 390
+   },
+   {
+    "el": "div.strat-window-bar",
+    "pos": "sticky",
+    "h": 61,
+    "w": 388
+   }
+  ],
+  "vpName": "portrait",
+  "name": "troops-equip"
+ },
+ {
+  "vh": 844,
+  "vw": 390,
+  "docOverflowX": false,
+  "scrollers": [
+   {
+    "el": "div.dialog-body",
+    "h": 783,
+    "pct": 93,
+    "scrollH": 5873,
+    "overflowing": true,
+    "maxH": "none",
+    "nested": false
+   }
+  ],
+  "fixed": [
+   {
+    "el": "div#strategy-modal.game-overlay.strat-window-open",
+    "pos": "fixed",
+    "h": 844,
+    "w": 390
+   },
+   {
+    "el": "div.strat-window-bar",
+    "pos": "sticky",
+    "h": 61,
+    "w": 388
+   }
+  ],
+  "vpName": "portrait",
+  "name": "troops-roster"
+ },
+ {
+  "vh": 844,
+  "vw": 390,
+  "docOverflowX": false,
+  "scrollers": [
+   {
+    "el": "div.dialog-body",
+    "h": 783,
+    "pct": 93,
+    "scrollH": 5921,
+    "overflowing": true,
+    "maxH": "none",
+    "nested": false
+   }
+  ],
+  "fixed": [
+   {
+    "el": "div#strategy-modal.game-overlay.strat-window-open",
+    "pos": "fixed",
+    "h": 844,
+    "w": 390
+   },
+   {
+    "el": "div.strat-window-bar",
+    "pos": "sticky",
+    "h": 61,
+    "w": 388
+   }
+  ],
+  "vpName": "portrait",
+  "name": "troops-invest"
+ },
+ {
+  "vh": 844,
+  "vw": 390,
+  "docOverflowX": false,
+  "scrollers": [
+   {
+    "el": "div.dialog-body",
+    "h": 783,
+    "pct": 93,
+    "scrollH": 5921,
+    "overflowing": true,
+    "maxH": "none",
+    "nested": false
+   }
+  ],
+  "fixed": [
+   {
+    "el": "div#strategy-modal.game-overlay.strat-window-open",
+    "pos": "fixed",
+    "h": 844,
+    "w": 390
+   },
+   {
+    "el": "div.strat-window-bar",
+    "pos": "sticky",
+    "h": 61,
+    "w": 388
+   }
+  ],
+  "vpName": "portrait",
+  "name": "troops-box"
+ },
+ {
+  "vh": 844,
+  "vw": 390,
+  "docOverflowX": false,
+  "scrollers": [
+   {
+    "el": "div.dialog-body",
+    "h": 783,
+    "pct": 93,
+    "scrollH": 5921,
+    "overflowing": true,
+    "maxH": "none",
+    "nested": false
+   },
+   {
+    "el": "div.soldier-detail-panel",
+    "h": 824,
+    "pct": 98,
+    "scrollH": 1575,
+    "overflowing": true,
+    "maxH": "100%",
+    "nested": false
+   }
+  ],
+  "fixed": [
+   {
+    "el": "div#strategy-modal.game-overlay.strat-window-open",
+    "pos": "fixed",
+    "h": 844,
+    "w": 390
+   },
+   {
+    "el": "div.strat-window-bar",
+    "pos": "sticky",
+    "h": 61,
+    "w": 388
+   },
+   {
+    "el": "div.soldier-detail-head",
+    "pos": "sticky",
+    "h": 69,
+    "w": 342
+   }
+  ],
+  "vpName": "portrait",
+  "name": "soldier-detail"
+ },
+ {
+  "vh": 844,
+  "vw": 390,
+  "docOverflowX": false,
+  "scrollers": [
+   {
+    "el": "div.dialog-body",
+    "h": 783,
+    "pct": 93,
+    "scrollH": 5921,
+    "overflowing": true,
+    "maxH": "none",
+    "nested": false
+   }
+  ],
+  "fixed": [
+   {
+    "el": "div#strategy-modal.game-overlay.strat-window-open",
+    "pos": "fixed",
+    "h": 844,
+    "w": 390
+   },
+   {
+    "el": "div.strat-window-bar",
+    "pos": "sticky",
+    "h": 61,
+    "w": 388
+   },
+   {
+    "el": "div#equipment-transfer-popup.transfer-popup-overlay",
+    "pos": "fixed",
+    "h": 844,
+    "w": 390
+   }
+  ],
+  "vpName": "portrait",
+  "name": "transfer-popup"
+ },
+ {
+  "vh": 844,
+  "vw": 390,
+  "docOverflowX": false,
+  "scrollers": [
+   {
+    "el": "div.dialog-body",
+    "h": 783,
+    "pct": 93,
+    "scrollH": 4114,
+    "overflowing": true,
+    "maxH": "none",
+    "nested": false
+   }
+  ],
+  "fixed": [
+   {
+    "el": "div#strategy-modal.game-overlay.strat-window-open",
+    "pos": "fixed",
+    "h": 844,
+    "w": 390
+   },
+   {
+    "el": "div.strat-window-bar",
+    "pos": "sticky",
+    "h": 61,
+    "w": 388
+   }
+  ],
+  "vpName": "portrait",
+  "name": "win-nation"
+ },
+ {
+  "vh": 844,
+  "vw": 390,
+  "docOverflowX": false,
+  "scrollers": [
+   {
+    "el": "div.dialog-body",
+    "h": 573,
+    "pct": 68,
+    "scrollH": 633,
+    "overflowing": true,
+    "maxH": "none",
+    "nested": false
+   }
+  ],
+  "fixed": [],
+  "vpName": "portrait",
+  "name": "save-menu"
+ },
+ {
+  "vh": 844,
+  "vw": 390,
+  "docOverflowX": false,
+  "scrollers": [],
+  "fixed": [],
+  "vpName": "portrait",
+  "name": "world-map"
+ },
+ {
+  "vh": 844,
+  "vw": 390,
+  "docOverflowX": false,
+  "scrollers": [
+   {
+    "el": "div.transfer-item-list",
+    "h": 504,
+    "pct": 60,
+    "scrollH": 532,
+    "overflowing": true,
+    "maxH": "none",
+    "nested": false
+   }
+  ],
+  "fixed": [
+   {
+    "el": "div#merchant-shop-popup.transfer-popup-overlay",
+    "pos": "fixed",
+    "h": 844,
+    "w": 390
+   }
+  ],
+  "vpName": "portrait",
+  "name": "merchant"
+ },
+ {
+  "vh": 844,
+  "vw": 390,
+  "docOverflowX": false,
+  "scrollers": [
+   {
+    "el": "div.overlay-content",
+    "h": 516,
+    "pct": 61,
+    "scrollH": 514,
+    "overflowing": false,
+    "maxH": "100%",
+    "nested": false
+   }
+  ],
+  "fixed": [],
+  "vpName": "portrait",
+  "name": "gameover"
+ },
+ {
+  "vh": 844,
+  "vw": 390,
+  "docOverflowX": false,
+  "scrollers": [],
+  "fixed": [
+   {
+    "el": "div#strategy-modal.game-overlay.strat-window-open",
+    "pos": "fixed",
+    "h": 844,
+    "w": 390
+   },
+   {
+    "el": "div.strat-window-bar",
+    "pos": "sticky",
+    "h": 61,
+    "w": 388
+   },
+   {
+    "el": "div#recruitment-dialog.recruitment-dialog",
+    "pos": "fixed",
+    "h": 844,
+    "w": 390
+   }
+  ],
+  "vpName": "portrait",
+  "name": "recruit-dialog"
+ },
+ {
+  "vh": 844,
+  "vw": 390,
+  "docOverflowX": false,
+  "scrollers": [
+   {
+    "el": "div.dialog-body",
+    "h": 783,
+    "pct": 93,
+    "scrollH": 4638,
+    "overflowing": true,
+    "maxH": "none",
+    "nested": false
+   }
+  ],
+  "fixed": [
+   {
+    "el": "div#strategy-modal.game-overlay.strat-window-open",
+    "pos": "fixed",
+    "h": 844,
+    "w": 390
+   },
+   {
+    "el": "div.strat-window-bar",
+    "pos": "sticky",
+    "h": 61,
+    "w": 388
+   }
+  ],
+  "vpName": "portrait",
+  "name": "battle-log"
+ },
+ {
+  "vh": 844,
+  "vw": 390,
+  "docOverflowX": false,
+  "scrollers": [
+   {
+    "el": "div.dialog-body",
+    "h": 783,
+    "pct": 93,
+    "scrollH": 2335,
+    "overflowing": true,
+    "maxH": "none",
+    "nested": false
+   }
+  ],
+  "fixed": [
+   {
+    "el": "div#strategy-modal.game-overlay.strat-window-open",
+    "pos": "fixed",
+    "h": 844,
+    "w": 390
+   },
+   {
+    "el": "div.strat-window-bar",
+    "pos": "sticky",
+    "h": 61,
+    "w": 388
+   }
+  ],
+  "vpName": "portrait",
+  "name": "equip-bag-sale"
+ },
+ {
+  "vh": 844,
+  "vw": 390,
+  "docOverflowX": false,
+  "scrollers": [
+   {
+    "el": "div.dialog-body",
+    "h": 783,
+    "pct": 93,
+    "scrollH": 2335,
+    "overflowing": true,
+    "maxH": "none",
+    "nested": false
+   },
+   {
+    "el": "div.transfer-item-list",
+    "h": 435,
+    "pct": 52,
+    "scrollH": 573,
+    "overflowing": true,
+    "maxH": "none",
+    "nested": false
+   }
+  ],
+  "fixed": [
+   {
+    "el": "div#strategy-modal.game-overlay.strat-window-open",
+    "pos": "fixed",
+    "h": 844,
+    "w": 390
+   },
+   {
+    "el": "div.strat-window-bar",
+    "pos": "sticky",
+    "h": 61,
+    "w": 388
+   },
+   {
+    "el": "div#equipment-transfer-popup.transfer-popup-overlay",
+    "pos": "fixed",
+    "h": 844,
+    "w": 390
+   }
+  ],
+  "vpName": "portrait",
+  "name": "transfer-popup2"
+ },
+ {
+  "vh": 844,
+  "vw": 390,
+  "docOverflowX": false,
+  "scrollers": [
+   {
+    "el": "div.dialog-body",
+    "h": 783,
+    "pct": 93,
+    "scrollH": 2335,
+    "overflowing": true,
+    "maxH": "none",
+    "nested": false
+   },
+   {
+    "el": "div.transfer-item-list",
+    "h": 435,
+    "pct": 52,
+    "scrollH": 573,
+    "overflowing": true,
+    "maxH": "none",
+    "nested": false
+   },
+   {
+    "el": "div",
+    "h": 179,
+    "pct": 21,
+    "scrollH": 177,
+    "overflowing": false,
+    "maxH": "725.84px",
+    "nested": false
+   }
+  ],
+  "fixed": [
+   {
+    "el": "div#strategy-modal.game-overlay.strat-window-open",
+    "pos": "fixed",
+    "h": 844,
+    "w": 390
+   },
+   {
+    "el": "div.strat-window-bar",
+    "pos": "sticky",
+    "h": 61,
+    "w": 388
+   },
+   {
+    "el": "div#equipment-transfer-popup.transfer-popup-overlay",
+    "pos": "fixed",
+    "h": 844,
+    "w": 390
+   },
+   {
+    "el": "div#personal-swap-popup.transfer-popup-overlay",
+    "pos": "fixed",
+    "h": 844,
+    "w": 390
+   }
+  ],
+  "vpName": "portrait",
+  "name": "personal-swap"
+ },
+ {
+  "vh": 844,
+  "vw": 390,
+  "docOverflowX": false,
+  "scrollers": [
+   {
+    "el": "div.dialog-body",
+    "h": 783,
+    "pct": 93,
+    "scrollH": 4821,
+    "overflowing": true,
+    "maxH": "none",
+    "nested": false
+   },
+   {
+    "el": "ol#battle-log-history.battle-log-history",
+    "h": 320,
+    "pct": 38,
+    "scrollH": 1793,
+    "overflowing": true,
+    "maxH": "320px",
+    "nested": true
+   }
+  ],
+  "fixed": [
+   {
+    "el": "div#strategy-modal.game-overlay.strat-window-open",
+    "pos": "fixed",
+    "h": 844,
+    "w": 390
+   },
+   {
+    "el": "div.strat-window-bar",
+    "pos": "sticky",
+    "h": 61,
+    "w": 388
+   }
+  ],
+  "vpName": "portrait",
+  "name": "battle-log-filled"
+ },
+ {
+  "vh": 390,
+  "vw": 844,
+  "docOverflowX": false,
+  "scrollers": [],
+  "fixed": [],
+  "vpName": "landscape",
+  "name": "base-field"
+ },
+ {
+  "vh": 390,
+  "vw": 844,
+  "docOverflowX": false,
+  "scrollers": [
+   {
+    "el": "div.overlay-content.strategy-panel",
+    "h": 281,
+    "pct": 72,
+    "scrollH": 279,
+    "overflowing": false,
+    "maxH": "100%",
+    "nested": false
+   }
+  ],
+  "fixed": [],
+  "vpName": "landscape",
+  "name": "launcher"
+ },
+ {
+  "vh": 390,
+  "vw": 844,
+  "docOverflowX": false,
+  "scrollers": [
+   {
+    "el": "div.dialog-body",
+    "h": 342,
+    "pct": 88,
+    "scrollH": 2310,
+    "overflowing": true,
+    "maxH": "none",
+    "nested": false
+   }
+  ],
+  "fixed": [
+   {
+    "el": "div#strategy-modal.game-overlay.strat-window-open",
+    "pos": "fixed",
+    "h": 390,
+    "w": 844
+   },
+   {
+    "el": "div.strat-window-bar",
+    "pos": "sticky",
+    "h": 48,
+    "w": 818
+   }
+  ],
+  "vpName": "landscape",
+  "name": "win-situation"
+ },
+ {
+  "vh": 390,
+  "vw": 844,
+  "docOverflowX": false,
+  "scrollers": [
+   {
+    "el": "div.dialog-body",
+    "h": 342,
+    "pct": 88,
+    "scrollH": 4947,
+    "overflowing": true,
+    "maxH": "none",
+    "nested": false
+   }
+  ],
+  "fixed": [
+   {
+    "el": "div#strategy-modal.game-overlay.strat-window-open",
+    "pos": "fixed",
+    "h": 390,
+    "w": 844
+   },
+   {
+    "el": "div.strat-window-bar",
+    "pos": "sticky",
+    "h": 48,
+    "w": 818
+   }
+  ],
+  "vpName": "landscape",
+  "name": "win-squad"
+ },
+ {
+  "vh": 390,
+  "vw": 844,
+  "docOverflowX": false,
+  "scrollers": [],
+  "fixed": [
+   {
+    "el": "div#strategy-modal.game-overlay.strat-window-open",
+    "pos": "fixed",
+    "h": 390,
+    "w": 844
+   },
+   {
+    "el": "div.strat-window-bar",
+    "pos": "sticky",
+    "h": 48,
+    "w": 818
+   },
+   {
+    "el": "div#recruitment-dialog.recruitment-dialog",
+    "pos": "fixed",
+    "h": 390,
+    "w": 844
+   }
+  ],
+  "vpName": "landscape",
+  "name": "troops-scout"
+ },
+ {
+  "vh": 390,
+  "vw": 844,
+  "docOverflowX": false,
+  "scrollers": [
+   {
+    "el": "div.dialog-body",
+    "h": 342,
+    "pct": 88,
+    "scrollH": 597,
+    "overflowing": true,
+    "maxH": "none",
+    "nested": false
+   }
+  ],
+  "fixed": [
+   {
+    "el": "div#strategy-modal.game-overlay.strat-window-open",
+    "pos": "fixed",
+    "h": 390,
+    "w": 844
+   },
+   {
+    "el": "div.strat-window-bar",
+    "pos": "sticky",
+    "h": 48,
+    "w": 818
+   }
+  ],
+  "vpName": "landscape",
+  "name": "troops-equip"
+ },
+ {
+  "vh": 390,
+  "vw": 844,
+  "docOverflowX": false,
+  "scrollers": [
+   {
+    "el": "div.dialog-body",
+    "h": 342,
+    "pct": 88,
+    "scrollH": 4947,
+    "overflowing": true,
+    "maxH": "none",
+    "nested": false
+   }
+  ],
+  "fixed": [
+   {
+    "el": "div#strategy-modal.game-overlay.strat-window-open",
+    "pos": "fixed",
+    "h": 390,
+    "w": 844
+   },
+   {
+    "el": "div.strat-window-bar",
+    "pos": "sticky",
+    "h": 48,
+    "w": 818
+   }
+  ],
+  "vpName": "landscape",
+  "name": "troops-roster"
+ },
+ {
+  "vh": 390,
+  "vw": 844,
+  "docOverflowX": false,
+  "scrollers": [
+   {
+    "el": "div.dialog-body",
+    "h": 342,
+    "pct": 88,
+    "scrollH": 4995,
+    "overflowing": true,
+    "maxH": "none",
+    "nested": false
+   }
+  ],
+  "fixed": [
+   {
+    "el": "div#strategy-modal.game-overlay.strat-window-open",
+    "pos": "fixed",
+    "h": 390,
+    "w": 844
+   },
+   {
+    "el": "div.strat-window-bar",
+    "pos": "sticky",
+    "h": 48,
+    "w": 818
+   }
+  ],
+  "vpName": "landscape",
+  "name": "troops-invest"
+ },
+ {
+  "vh": 390,
+  "vw": 844,
+  "docOverflowX": false,
+  "scrollers": [
+   {
+    "el": "div.dialog-body",
+    "h": 342,
+    "pct": 88,
+    "scrollH": 4995,
+    "overflowing": true,
+    "maxH": "none",
+    "nested": false
+   }
+  ],
+  "fixed": [
+   {
+    "el": "div#strategy-modal.game-overlay.strat-window-open",
+    "pos": "fixed",
+    "h": 390,
+    "w": 844
+   },
+   {
+    "el": "div.strat-window-bar",
+    "pos": "sticky",
+    "h": 48,
+    "w": 818
+   }
+  ],
+  "vpName": "landscape",
+  "name": "troops-box"
+ },
+ {
+  "vh": 390,
+  "vw": 844,
+  "docOverflowX": false,
+  "scrollers": [
+   {
+    "el": "div.dialog-body",
+    "h": 342,
+    "pct": 88,
+    "scrollH": 4995,
+    "overflowing": true,
+    "maxH": "none",
+    "nested": false
+   },
+   {
+    "el": "div.soldier-detail-panel",
+    "h": 370,
+    "pct": 95,
+    "scrollH": 1187,
+    "overflowing": true,
+    "maxH": "100%",
+    "nested": false
+   }
+  ],
+  "fixed": [
+   {
+    "el": "div#strategy-modal.game-overlay.strat-window-open",
+    "pos": "fixed",
+    "h": 390,
+    "w": 844
+   },
+   {
+    "el": "div.strat-window-bar",
+    "pos": "sticky",
+    "h": 48,
+    "w": 818
+   },
+   {
+    "el": "div.soldier-detail-head",
+    "pos": "sticky",
+    "h": 69,
+    "w": 534
+   }
+  ],
+  "vpName": "landscape",
+  "name": "soldier-detail"
+ },
+ {
+  "vh": 390,
+  "vw": 844,
+  "docOverflowX": false,
+  "scrollers": [
+   {
+    "el": "div.dialog-body",
+    "h": 342,
+    "pct": 88,
+    "scrollH": 4995,
+    "overflowing": true,
+    "maxH": "none",
+    "nested": false
+   },
+   {
+    "el": "div.transfer-item-list",
+    "h": 73,
+    "pct": 19,
+    "scrollH": 100,
+    "overflowing": true,
+    "maxH": "none",
+    "nested": false
+   }
+  ],
+  "fixed": [
+   {
+    "el": "div#strategy-modal.game-overlay.strat-window-open",
+    "pos": "fixed",
+    "h": 390,
+    "w": 844
+   },
+   {
+    "el": "div.strat-window-bar",
+    "pos": "sticky",
+    "h": 48,
+    "w": 818
+   },
+   {
+    "el": "div#equipment-transfer-popup.transfer-popup-overlay",
+    "pos": "fixed",
+    "h": 390,
+    "w": 844
+   }
+  ],
+  "vpName": "landscape",
+  "name": "transfer-popup"
+ },
+ {
+  "vh": 390,
+  "vw": 844,
+  "docOverflowX": false,
+  "scrollers": [
+   {
+    "el": "div.dialog-body",
+    "h": 342,
+    "pct": 88,
+    "scrollH": 3324,
+    "overflowing": true,
+    "maxH": "none",
+    "nested": false
+   }
+  ],
+  "fixed": [
+   {
+    "el": "div#strategy-modal.game-overlay.strat-window-open",
+    "pos": "fixed",
+    "h": 390,
+    "w": 844
+   },
+   {
+    "el": "div.strat-window-bar",
+    "pos": "sticky",
+    "h": 48,
+    "w": 818
+   }
+  ],
+  "vpName": "landscape",
+  "name": "win-nation"
+ },
+ {
+  "vh": 390,
+  "vw": 844,
+  "docOverflowX": false,
+  "scrollers": [
+   {
+    "el": "div.dialog-body",
+    "h": 196,
+    "pct": 50,
+    "scrollH": 612,
+    "overflowing": true,
+    "maxH": "none",
+    "nested": false
+   }
+  ],
+  "fixed": [],
+  "vpName": "landscape",
+  "name": "save-menu"
+ },
+ {
+  "vh": 390,
+  "vw": 844,
+  "docOverflowX": false,
+  "scrollers": [
+   {
+    "el": "div.dialog-body.world-map-body",
+    "h": 289,
+    "pct": 74,
+    "scrollH": 888,
+    "overflowing": true,
+    "maxH": "none",
+    "nested": false
+   }
+  ],
+  "fixed": [],
+  "vpName": "landscape",
+  "name": "world-map"
+ },
+ {
+  "vh": 390,
+  "vw": 844,
+  "docOverflowX": false,
+  "scrollers": [
+   {
+    "el": "div.transfer-item-list",
+    "h": 161,
+    "pct": 41,
+    "scrollH": 561,
+    "overflowing": true,
+    "maxH": "none",
+    "nested": false
+   }
+  ],
+  "fixed": [
+   {
+    "el": "div#merchant-shop-popup.transfer-popup-overlay",
+    "pos": "fixed",
+    "h": 390,
+    "w": 844
+   }
+  ],
+  "vpName": "landscape",
+  "name": "merchant"
+ },
+ {
+  "vh": 390,
+  "vw": 844,
+  "docOverflowX": false,
+  "scrollers": [
+   {
+    "el": "div.overlay-content",
+    "h": 372,
+    "pct": 95,
+    "scrollH": 514,
+    "overflowing": true,
+    "maxH": "100%",
+    "nested": false
+   }
+  ],
+  "fixed": [],
+  "vpName": "landscape",
+  "name": "gameover"
+ },
+ {
+  "vh": 390,
+  "vw": 844,
+  "docOverflowX": false,
+  "scrollers": [],
+  "fixed": [
+   {
+    "el": "div#strategy-modal.game-overlay.strat-window-open",
+    "pos": "fixed",
+    "h": 390,
+    "w": 844
+   },
+   {
+    "el": "div.strat-window-bar",
+    "pos": "sticky",
+    "h": 48,
+    "w": 818
+   },
+   {
+    "el": "div#recruitment-dialog.recruitment-dialog",
+    "pos": "fixed",
+    "h": 390,
+    "w": 844
+   }
+  ],
+  "vpName": "landscape",
+  "name": "recruit-dialog"
+ },
+ {
+  "vh": 390,
+  "vw": 844,
+  "docOverflowX": false,
+  "scrollers": [
+   {
+    "el": "div.dialog-body",
+    "h": 342,
+    "pct": 88,
+    "scrollH": 3906,
+    "overflowing": true,
+    "maxH": "none",
+    "nested": false
+   }
+  ],
+  "fixed": [
+   {
+    "el": "div#strategy-modal.game-overlay.strat-window-open",
+    "pos": "fixed",
+    "h": 390,
+    "w": 844
+   },
+   {
+    "el": "div.strat-window-bar",
+    "pos": "sticky",
+    "h": 48,
+    "w": 818
+   }
+  ],
+  "vpName": "landscape",
+  "name": "battle-log"
+ },
+ {
+  "vh": 390,
+  "vw": 844,
+  "docOverflowX": false,
+  "scrollers": [
+   {
+    "el": "div.dialog-body",
+    "h": 342,
+    "pct": 88,
+    "scrollH": 2251,
+    "overflowing": true,
+    "maxH": "none",
+    "nested": false
+   }
+  ],
+  "fixed": [
+   {
+    "el": "div#strategy-modal.game-overlay.strat-window-open",
+    "pos": "fixed",
+    "h": 390,
+    "w": 844
+   },
+   {
+    "el": "div.strat-window-bar",
+    "pos": "sticky",
+    "h": 48,
+    "w": 818
+   }
+  ],
+  "vpName": "landscape",
+  "name": "equip-bag-sale"
+ },
+ {
+  "vh": 390,
+  "vw": 844,
+  "docOverflowX": false,
+  "scrollers": [
+   {
+    "el": "div.dialog-body",
+    "h": 342,
+    "pct": 88,
+    "scrollH": 2251,
+    "overflowing": true,
+    "maxH": "none",
+    "nested": false
+   },
+   {
+    "el": "div.transfer-item-list",
+    "h": 73,
+    "pct": 19,
+    "scrollH": 612,
+    "overflowing": true,
+    "maxH": "none",
+    "nested": false
+   }
+  ],
+  "fixed": [
+   {
+    "el": "div#strategy-modal.game-overlay.strat-window-open",
+    "pos": "fixed",
+    "h": 390,
+    "w": 844
+   },
+   {
+    "el": "div.strat-window-bar",
+    "pos": "sticky",
+    "h": 48,
+    "w": 818
+   },
+   {
+    "el": "div#equipment-transfer-popup.transfer-popup-overlay",
+    "pos": "fixed",
+    "h": 390,
+    "w": 844
+   }
+  ],
+  "vpName": "landscape",
+  "name": "transfer-popup2"
+ },
+ {
+  "vh": 390,
+  "vw": 844,
+  "docOverflowX": false,
+  "scrollers": [
+   {
+    "el": "div.dialog-body",
+    "h": 342,
+    "pct": 88,
+    "scrollH": 2251,
+    "overflowing": true,
+    "maxH": "none",
+    "nested": false
+   },
+   {
+    "el": "div.transfer-item-list",
+    "h": 73,
+    "pct": 19,
+    "scrollH": 612,
+    "overflowing": true,
+    "maxH": "none",
+    "nested": false
+   },
+   {
+    "el": "div",
+    "h": 179,
+    "pct": 46,
+    "scrollH": 177,
+    "overflowing": false,
+    "maxH": "335.4px",
+    "nested": false
+   }
+  ],
+  "fixed": [
+   {
+    "el": "div#strategy-modal.game-overlay.strat-window-open",
+    "pos": "fixed",
+    "h": 390,
+    "w": 844
+   },
+   {
+    "el": "div.strat-window-bar",
+    "pos": "sticky",
+    "h": 48,
+    "w": 818
+   },
+   {
+    "el": "div#equipment-transfer-popup.transfer-popup-overlay",
+    "pos": "fixed",
+    "h": 390,
+    "w": 844
+   },
+   {
+    "el": "div#personal-swap-popup.transfer-popup-overlay",
+    "pos": "fixed",
+    "h": 390,
+    "w": 844
+   }
+  ],
+  "vpName": "landscape",
+  "name": "personal-swap"
+ },
+ {
+  "vh": 390,
+  "vw": 844,
+  "docOverflowX": false,
+  "scrollers": [
+   {
+    "el": "div.dialog-body",
+    "h": 342,
+    "pct": 88,
+    "scrollH": 4109,
+    "overflowing": true,
+    "maxH": "none",
+    "nested": false
+   },
+   {
+    "el": "ol#battle-log-history.battle-log-history",
+    "h": 320,
+    "pct": 82,
+    "scrollH": 1772,
+    "overflowing": true,
+    "maxH": "320px",
+    "nested": true
+   }
+  ],
+  "fixed": [
+   {
+    "el": "div#strategy-modal.game-overlay.strat-window-open",
+    "pos": "fixed",
+    "h": 390,
+    "w": 844
+   },
+   {
+    "el": "div.strat-window-bar",
+    "pos": "sticky",
+    "h": 48,
+    "w": 818
+   }
+  ],
+  "vpName": "landscape",
+  "name": "battle-log-filled"
+ }
+]

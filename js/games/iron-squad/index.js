@@ -13,12 +13,12 @@ import {latestEquipmentTier,recordMerchantEquipment,ensureMerchantCatalog,refres
 import {initializeMedicalPosts,updateMedicalPosts,serializeMedicalPosts,nearestKnownMedicalPost,drawMedicalPost,drawMedicalMap,drawMedicalMarker,drawTownMedicalReception,drawRescueDirection} from './medical-posts.js?v=151';
 import {invasionMethods,initializeInvasions,serializeInvasions,shouldTriggerRandomRaid,makeEnemyRoom,drawInvasionRoute} from './invasion-rules.js?v=151';
 import {gateMethods,serializeGatePosts,replenishTownGateGuards,initializeGateGuards,ensureTownGuards,serializeGateGuards,updateGateGuards,gateGuardVisible,applyFortifications,drawFortification,exitGateTown,townExitReached,wallBlocksAttack,attackBlocked as coverBlocked} from './gate-rules.js?v=161';
-import {nationMethods,normalizeNation,nationalIncome,nationalPayrollPlan,headquartersDamageMult,drawNationalDevelopment,DEVELOPMENT_STAGES} from './nation-rules.js?v=165';
+import {nationMethods,normalizeNation,nationalIncome,nationalPayrollPlan,headquartersDamageMult,drawNationalDevelopment,DEVELOPMENT_STAGES} from './nation-rules.js?v=166';
 import {equipmentUpgradeCost,salaryQuote,paySoldiers} from './payroll-rules.js?v=151';
 import {addFieldDrop,ageFieldDrops} from './field-drops.js?v=151';
 import {economicState,advanceRegionalEconomy,discoverEconomicRegions,recordEconomicKill,economicFieldBlocked} from './regional-economy.js?v=151';
 import {updateRegionalTraffic,nearestCommerceTarget,damageCommerce,persistTradeRaiders,restoreTradeRaiders} from './trade-routes.js?v=151';
-import {drawEconomicLandscape,drawCommerceActor,drawEconomicMinimap,drawCommerceWreck,drawCampTent} from './economic-visuals.js?v=165';
+import {drawEconomicLandscape,drawCommerceActor,drawEconomicMinimap,drawCommerceWreck,drawCampTent} from './economic-visuals.js?v=166';
 /**
  * ゲーム3: IRON SQUAD (アイアン・スクワッド: 雑兵立身出世録)
  * ローグライク・アクションRPG
@@ -32,7 +32,7 @@ import {drawEconomicLandscape,drawCommerceActor,drawEconomicMinimap,drawCommerce
  */
 import { sound } from '../../audio.js?v=151';
 import { storage } from '../../storage.js';
-import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow } from './visuals.js?v=165';
+import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow } from './visuals.js?v=166';
 import { refreshCampQuiet, assignCampSeats, tryCampLeisure } from './camp-leisure.js?v=151';
 import { CAMP_PEACE_RADIUS, peaceContainment, pushOutsidePeace, relocatePeaceMonster } from './peace-zones.js?v=158';
 import { FARM_X, FARM_Y, farmPosts, farmOverlaps, reinforcementCount, reserveRosterLine, reserveRosterTitle } from './reserve-farm.js?v=151';
@@ -50,8 +50,8 @@ import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog 
 import { renderTroopRankings, getSoldierRankerBadges, calcSoldierRankerBonus } from './troop-rankings.js?v=151';
 import { ensureSoldierAppearance, drawSoldierPortrait, describeSoldierAppearance } from './soldier-appearance.js?v=151';
 import { attachSurfaceEvents, detachSurfaceEvents, frameSurfaceReady, releaseSceneCaches, releaseCanvas, surfaceCanResume } from './canvas-surface.js?v=151';
-import { WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt, routeNameAt, eastWestRoadY, northSouthRoadX, riverCenterY, drawFieldDepth, drawOakCrown, fieldBlocks, settleUnit } from './world.js?v=165';
-import { subscribeKana } from '../../kana-mode.js?v=165';
+import { WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt, routeNameAt, eastWestRoadY, northSouthRoadX, riverCenterY, drawFieldDepth, drawOakCrown, fieldBlocks, settleUnit } from './world.js?v=166';
+import { subscribeKana } from '../../kana-mode.js?v=166';
 import { FogGrid, FOG_REVEAL_RADIUS, FOG_CAMP_REVEAL } from './fog.js?v=151';
 import {
   classTierOf, nextClassId, classUpCostForNext, canAffordClassUp, formatClassUpCostJa, classUpShortageJa,
@@ -87,7 +87,7 @@ import {
   nearestLivingMerchant, refreshMerchantStock, merchantBuyPrice, merchantSellTier,
   applyMerchantSave, serializeMerchants, MERCHANT_INTERACT_R,
   merchantHealingStatus, merchantHealWavesLeft, useMerchantHealing, MERCHANT_HEAL_COST, recalcEscortStats, finishEscortPhase
-} from './merchant-rules.js?v=165';
+} from './merchant-rules.js?v=166';
 
 import { daylightAt, advanceWorldClock, periodEnemy, enemyAvailable, PERIOD_ENEMIES } from './day-night.js';
 
@@ -1740,8 +1740,9 @@ export const IronSquadGame = {
     }
     this.saveMenu.innerHTML = `
       <section class="strategy-panel save-panel">
+        <div class="sheet-bar"><strong id="save-menu-title" class="sheet-bar-title" tabindex="-1">遠征を選ぶ</strong><button id="btn-save-menu-back" type="button" class="sheet-bar-btn">‹ 工房へ戻る</button></div>
         <header class="save-heading"><span class="save-eyebrow">IRON SQUAD</span>
-          <h2 id="save-menu-title" tabindex="-1">遠征を選ぶ</h2><p>新しい部隊で出発するか、記録した遠征を続けます。</p></header>
+          <p>新しい部隊で出発するか、記録した遠征を続けます。</p></header>
         <div class="dialog-body">
           <form id="new-expedition-form" class="new-expedition">
             <label for="expedition-name">新しい遠征の名前</label>
@@ -1751,7 +1752,6 @@ export const IronSquadGame = {
           </form>
           <h3 class="save-section-title">保存した遠征</h3><div id="save-slot-list"></div>
         </div>
-        <footer class="dialog-footer"><button id="btn-save-menu-back" class="action-btn secondary">工房へ戻る</button></footer>
       </section>`;
     const list=this.saveMenu.querySelector('#save-slot-list');
     try {
@@ -1766,9 +1766,8 @@ export const IronSquadGame = {
         const date=document.createElement('p');date.className='save-date';
         date.textContent=`${slot.state==='fallen'?'討死 · ':''}${new Date(slot.savedAt).toLocaleString('ja-JP')}`;
         const btnGroup = document.createElement('div');
-        btnGroup.style.cssText = 'display:flex; gap:8px; align-items:center; margin-top:8px;';
+        btnGroup.className = 'save-card-actions';
         const button=document.createElement('button');button.className='action-btn';button.dataset.slotId=slot.id;
-        button.style.flex = '1';
         button.textContent=slot.state==='fallen'?'先輩を引き継いで再入隊':'このセーブで続ける';
         button.addEventListener('click',()=>this.selectSaveSlot(slot.id));
 
@@ -1776,8 +1775,7 @@ export const IronSquadGame = {
         delButton.className = 'action-btn secondary save-delete-btn';
         delButton.type = 'button';
         delButton.title = `「${slot.name}」を削除`;
-        delButton.style.cssText = 'min-width:74px; color:#f87171; border-color:#991b1b; padding:8px 10px; font-size:12px;';
-        delButton.textContent = '🗑️ 削除';
+                delButton.textContent = '🗑️ 削除';
         delButton.addEventListener('click', (e) => {
           e.stopPropagation();
           const confirmed = window.confirm(`遠征「${slot.name}」を本当に削除しますか？\n\n※この操作は取り消せません。`);
@@ -7214,12 +7212,10 @@ export const IronSquadGame = {
       popup.innerHTML = `
         <div class="transfer-popup-container">
           <div class="transfer-popup-header">
-            <div>
-              <h3 class="transfer-popup-title">🏪 ${m.name}</h3>
-              <p class="transfer-popup-sub">${m.title || ''} · ${m.placeName} · 所持金 <strong style="color:#fbbf24;">${gold.toLocaleString()}G</strong></p>
-            </div>
+            <h3 class="transfer-popup-title">🏪 ${m.name}</h3>
             <button type="button" class="transfer-popup-close-btn" aria-label="閉じる">✕</button>
           </div>
+          <p class="transfer-popup-sub">${m.title || ''} · ${m.placeName} · 所持金 <strong style="color:#fbbf24;">${gold.toLocaleString()}G</strong></p>
           <div class="transfer-popup-hint">製造技術T${this.nation?.armament?.techTier||1} → 交易品T${m.stockTier}（最高素材世代T${TRADE_MAX_TIER+1}〜${MAX_EQUIPMENT_TIER}は非売）。高品質の厳選武具・第${phase}ウェーブの品揃え。次ウェーブまで${Math.ceil((this.phaseTimer||0)+(this.restTimer||0))}秒。目玉は商人ごとに1点。${m.featuredSoldPhase===phase?'今ウェーブの目玉は購入済みです。':'特選品には目玉の印が付いています。'}</div>
           <div class="transfer-item-list">
             <details class="merchant-services"><summary>回復・補給・セーブ ${healWaves?`· 回復はあと${healWaves}ウェーブ`:''}</summary>
@@ -9055,12 +9051,10 @@ export const IronSquadGame = {
       popup.innerHTML = `
         <div class="transfer-popup-container">
           <div class="transfer-popup-header">
-            <div>
-              <h3 class="transfer-popup-title">🎁 装備譲渡：${soldier.name}</h3>
-              <p class="transfer-popup-sub">${info.icon} ${info.name} · 現在：<strong style="color:${current?.color || '#e2e8de'};">${current ? equipmentName(current) : '（空きスロット）'}</strong></p>
-            </div>
+            <h3 class="transfer-popup-title">🎁 装備譲渡：${soldier.name}</h3>
             <button type="button" class="transfer-popup-close-btn" aria-label="閉じる">✕</button>
           </div>
+          <p class="transfer-popup-sub">${info.icon} ${info.name} · 現在：<strong style="color:${current?.color || '#e2e8de'};">${current ? equipmentName(current) : '（空きスロット）'}</strong></p>
 
           <div class="transfer-slot-tabs">
             ${Object.values(SLOT_INFO).map(s => {

@@ -158,6 +158,8 @@ row.open=true; await tick(); row.querySelector('.soldier-equip-slot-btn').click(
 assert.equal($('equipment-transfer-popup').classList.contains('hidden'),false);
 assert.equal(document.querySelectorAll('.transfer-slot-tab-btn').length,7);
 assert.equal($('strategy-modal').inert,true,'transfer dialog blocks controls behind it');
+assert.equal(document.querySelector('.transfer-popup-header .transfer-popup-sub'),null,'v4.2.19 sheet: only title+close are in the sticky bar');
+assert.ok(document.querySelector('#equipment-transfer-popup .transfer-popup-container > .transfer-popup-sub'),'subtitle scrolls with the content');
 document.querySelector('.transfer-popup-close-btn').dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
 assert.equal($('equipment-transfer-popup').classList.contains('hidden'),true); assert.equal($('strategy-modal').inert,false);
 row.querySelector('.btn-soldier-detail').click();

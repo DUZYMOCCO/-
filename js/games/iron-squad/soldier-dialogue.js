@@ -1,4 +1,4 @@
-import { displayKana } from '../../kana-mode.js?v=165';
+import { displayKana } from '../../kana-mode.js?v=166';
 // 兵士の一言フキダシ（感情・戦況リアクション）システム
 // 操作を邪魔しない控えめなCanvas描画 ＆ 直近重複排除エンジン（Anti-Repetition）
 
@@ -606,8 +606,8 @@ export function wrapDialogueText(ctx, text, maxW) {
   }
 
   if (bestSplit > 0 && bestSplit < text.length) {
-    const p1 = text.slice(0, bestSplit);
-    const p2 = text.slice(bestSplit);
+    const p1 = text.slice(0, bestSplit).trimEnd(); // 分かち書きのスペースは行末・行頭に残さない
+    const p2 = text.slice(bestSplit).trimStart();
     const lines = [p1];
     if (ctx.measureText(p2).width > maxW && p2.length > 4) {
       lines.push(...wrapDialogueText(ctx, p2, maxW));

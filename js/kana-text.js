@@ -1,4 +1,5 @@
-// toKana(text, grade): rewrite words containing kanji above `grade` (1..6) entirely in hiragana.
+// toKana(text, grade): rewrite words containing kanji above `grade` (1..6) entirely in hiragana,
+// with a half-width space before each rewritten word (分かち書き風) when it follows a letter.
 // Kanji outside the 教育漢字 count as grade 7. grade falsy/>=7/'off' => text returned unchanged.
 // Pure + idempotent. One trie per grade, built lazily; per-grade result cache.
 import { KANA_DICT } from './kana-dict.js';
@@ -6,6 +7,7 @@ import { gradeOf } from './kanji-grades.js';
 
 const KANJI_TEST = /[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]/;
 const CACHE_LIMIT = 4000;
+const WORD_BEFORE = /[ぁ-ゖァ-ヺー㐀-䶿一-鿿豈-﫿々]/;
 
 const maxGradeOf = (key) => {
   let m = 0;
@@ -49,7 +51,11 @@ function convert(text, root) {
       if (j >= n) break;
       node = node.get(text[j]);
     }
-    if (best !== null) { out += best; i += bestLen; }
+    if (best !== null) {
+      // 分かち書き風: かなにした言葉の前に半角スペース（直前が文字のときだけ。数字・記号・文頭のあとは詰める）
+      if (WORD_BEFORE.test(out.slice(-1))) out += ' ';
+      out += best; i += bestLen;
+    }
     else { out += text[i]; i++; }
   }
   return out;
