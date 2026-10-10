@@ -1,0 +1,35 @@
+import assert from 'node:assert/strict';
+import {SoldierDialogueManager} from '../js/soldier-dialogue.js';
+globalThis.window={};globalThis.document={getElementById:()=>null};
+const {IronSquadGame,applyUpgradeStats}=await import('../js/index.js');
+const item=id=>{const gear={id,type:'WEAPON',tier:1,name:id,stats:{}};applyUpgradeStats(gear,0);return gear;};
+const a=item('hero'),b=item('shared'),c=item('live'),d=item('down'),e=item('dead'),f=item('reserve');
+const center=79360,game=Object.create(IronSquadGame),manager=new SoldierDialogueManager();
+Object.assign(game,{player:{x:center,y:center},camera:{x:center,y:center},width:320,height:568,zoom:.45,wave:1,dialogue:manager,equipped:{weapon:a,armor:b},squad:[{equipped:{weapon:c,shield:b}},{isDown:true,equipped:{weapon:d}},{dead:true,equipped:{weapon:e}}],reserves:[{equipped:{weapon:f}}],currentQuest:null});
+const logs=[];game.showToast=text=>logs.push(text);
+for(const method of ['spawnSparks','spawnDamageText','recalcSoldierStats','recalcPlayerStats','updateQuestUI'])game[method]=()=>{};
+manager.trigger({id:'speaker',x:center,y:center},'PATROL',1000,true);manager.trigger({id:'speaker2',x:center,y:center},'PATROL',1001,true);
+manager.globalCooldownUntil=Number.MAX_SAFE_INTEGER;
+const shrine={type:'SHRINE',x:center,y:center,radius:30,hp:1,maxHp:1,color:'#aabbee'};
+game.damageOutpost(shrine,1);
+assert.equal(shrine.cleared,true);assert.deepEqual([a,b,c,d].map(g=>g.upgrade),[1,1,1,1]);assert.deepEqual([e,f].map(g=>g.upgrade),[0,0]);
+assert.deepEqual(manager.resultNotice.lines,['祭壇の祝福','隊長・出撃兵の装備 ＋1','計4部位を強化']);
+assert.equal(manager.activeBubbles.length,2,'important result bypasses occupied chatter slots');
+assert.match(logs[0],/4部位/,'the full result remains in history');
+game.damageOutpost(shrine,1);assert.equal(a.upgrade,1,'a captured altar cannot grant the reward twice');
+game.inBattle=false;game.update(10);assert.equal(manager.resultNotice.life,3,'opening the menu pauses the result');
+let depth=0;const texts=[];
+const ctx=new Proxy({save(){depth++;},restore(){depth--;},measureText:t=>({width:[...t].length*13}),fillText:t=>texts.push(t)},{get:(o,k)=>k in o?o[k]:()=>{}});
+for(const zoom of [.45,2]){
+ const rect=manager.drawResult(ctx,game.camera,zoom,320,568);
+ assert.ok(rect.x>=12&&rect.x+rect.width<=308);assert.ok(rect.y>=36&&rect.y+rect.height<=438);
+ assert.equal(ctx.font,'bold 13px sans-serif');assert.equal(depth,0);
+}
+assert.ok(texts.includes('計4部位を強化'));manager.update(3.01);assert.equal(manager.resultNotice,null);
+manager.notifyResult(shrine,['祭壇の祝福','隊長・出撃兵の装備 ＋1','計4部位を強化']);
+const bottom=manager.drawResult(ctx,{x:center,y:center-600},.45,320,568);
+assert.ok(bottom.y+bottom.height<=408,'a result near the bottom stays above the controls');
+manager.reset();
+game.equipped={};game.squad=[];game.clearOutpost({...shrine});assert.deepEqual(manager.resultNotice.lines,['祭壇を確保','強化できる装備なし']);
+manager.reset();assert.equal(manager.resultNotice,null);game.clearOutpost({...shrine,x:center+40000});assert.equal(manager.resultNotice,null,'an offscreen capture must not interrupt a local result');
+console.log('PASS: real shrine reward/count, shared equipment once, dead/reserves excluded, chatter bypass, menu pause, zoom readability, expiry/reset, no-gear and offscreen cases');

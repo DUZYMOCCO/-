@@ -1,0 +1,844 @@
+import {RANGED_ENEMIES} from './enemy-ranged.js?v=151';
+import {BRUTE_DRAW_SCALE} from './field-hosts.js?v=158';
+import {equipmentVisualProfile} from './equipment-tiers.js?v=151';
+import {drawBodyEquipment} from './equipment-art.js?v=151';
+import {MAGIC_AFFINITIES,ensureMana} from './magic-rules.js?v=151';
+import { drawMeleeWeapon, drawMeleeRangeCue } from './weapon-motion.js?v=162';
+import { defaultCommanderAppearance } from './commander-identity.js?v=174';
+import { createSoldierAppearance, drawSoldierHead, isMedicAppearance, soldierAppearanceFamily, soldierPhysique } from './soldier-appearance.js?v=151';
+
+// Keep the commander's established face, with short hair in both field and portrait (v4.2.24: player.appearance overrides it).
+const commanderAppearance=Object.freeze(defaultCommanderAppearance());
+
+// Live field illustrations. Equipment colors are read every frame.
+// Hands and the weapon share one pose; only the striking edge gets a short trace.
+const ellipse = (c, x, y, rx, ry, color) => {
+  c.fillStyle = color; c.beginPath(); c.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2); c.fill();
+};
+export function contactSpread(rx, ry, plant = 0) {
+  const spread = Math.max(0, Math.min(1, plant));
+  return { rx: rx * (1 + 0.46 * spread), ry: ry * (1 - 0.18 * spread) };
+}
+export function contactShadow(c, x, y, rx, ry, plant = 0) {
+  const spread = contactSpread(rx, ry, plant);
+  c.fillStyle = 'rgba(0,0,0,0.16)';
+  c.beginPath(); c.ellipse(x, y + 1.2, spread.rx * 1.28, spread.ry * 1.35, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = 'rgba(0,0,0,0.36)';
+  c.beginPath(); c.ellipse(x, y, spread.rx, Math.max(1.15, spread.ry * 0.62), 0, 0, Math.PI * 2); c.fill();
+}
+/** Compatibility entry for existing spear callers; the cue now shows its useful band. */
+export function drawSpearReachCue(c,x,y,angle,reach,anim=0) {
+  drawMeleeRangeCue(c,x,y,angle,reach,'spear',anim);
+}
+const shape = (c, points, color, edge = '#20282a') => {
+  c.fillStyle = color; c.strokeStyle = edge; c.lineWidth = 0.9;
+  c.beginPath(); points.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y));
+  c.closePath(); c.fill(); if (edge !== 'transparent') c.stroke();
+};
+const line = (c, points, color, width = 1) => {
+  c.strokeStyle = color; c.lineWidth = width; c.beginPath();
+  points.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.stroke();
+};
+function paintUniform(c,cloth,platoonColor){
+  c.fillStyle=cloth;c.strokeStyle='#29302b';c.lineWidth=.8;c.beginPath();
+  c.moveTo(-3,-24);c.quadraticCurveTo(-7,-24,-8,-18);c.lineTo(-6,-8);
+  c.quadraticCurveTo(0,-5,6,-8);c.lineTo(7,-18);c.quadraticCurveTo(5,-24,2,-24);c.closePath();c.fill();c.stroke();
+  shape(c,[[-6,-22],[-2,-23],[-1,-12],[-5,-10]],'rgba(241,232,200,.19)','transparent');
+  shape(c,[[2,-23],[6,-20],[6,-9],[2,-8]],'rgba(13,22,21,.28)','transparent');
+  line(c,[[-4,-19],[-2,-17],[-3,-12],[1,-21],[2,-18]],'rgba(241,232,200,.22)',.7);
+  c.fillStyle='#64503c';c.fillRect(-7,-10,14,2);
+  c.fillStyle='#d2b783';c.fillRect(0,-10,2,2);
+  c.fillStyle=platoonColor;c.fillRect(-6,-21,3,4);
+}
+const UNIFORM_ART=new Map();
+function drawUniform(c,cloth,platoonColor){
+  if(typeof c.canvas?.width!=='number'||(typeof document==='undefined'||typeof document.createElement!=='function'))return paintUniform(c,cloth,platoonColor);
+  const key=`${cloth}|${platoonColor}`;let art=UNIFORM_ART.get(key);
+  try{if(art?.getContext?.('2d')?.isContextLost?.()){art.width=art.height=1;UNIFORM_ART.delete(key);art=null;}}catch{art=null;}
+  if(!art){
+    if(UNIFORM_ART.size>=32){const oldest=UNIFORM_ART.keys().next().value,retired=UNIFORM_ART.get(oldest);retired.width=retired.height=1;UNIFORM_ART.delete(oldest);}
+    art=document.createElement('canvas');art.width=64;art.height=64;const b=art.getContext('2d');
+    if(!b){art.width=art.height=1;return paintUniform(c,cloth,platoonColor);}
+    b.scale(2,2);b.translate(16,26);paintUniform(b,cloth,platoonColor);UNIFORM_ART.set(key,art);
+  }else{UNIFORM_ART.delete(key);UNIFORM_ART.set(key,art);}
+  try{c.drawImage(art,-16,-26,32,32);}catch{paintUniform(c,cloth,platoonColor);}
+}
+const FIELD_TONES = new Map();
+function fieldTone(hex, dust = 0.65) {
+  if (typeof hex !== 'string' || hex[0] !== '#' || hex.length < 7) return hex;
+  const key = `${hex}:${dust}`;
+  if (FIELD_TONES.has(key)) return FIELD_TONES.get(key);
+  const n = Number.parseInt(hex.slice(1, 7), 16);
+  if (!Number.isFinite(n)) return hex;
+  const mix = Math.max(0, Math.min(1, dust));
+  const ch = (v, target) => Math.round(v * (1 - mix) + target * mix).toString(16).padStart(2, '0');
+  const tone = `#${ch((n >> 16) & 255, 96)}${ch((n >> 8) & 255, 88)}${ch(n & 255, 74)}`;
+  if (FIELD_TONES.size >= 256) FIELD_TONES.clear();
+  FIELD_TONES.set(key, tone);
+  return tone;
+}
+const CLOTH = {
+  HEAVY: '#687e91', LIGHT: '#a38b60', ARCHER: '#607b60', MEDIC: '#c2bda2', MAGE:'#71627e',
+  PALADIN: '#ccd0c3', BLADEMASTER: '#555c69', SNIPER: '#426557', HIGH_PRIEST: '#d1c5ab',
+  COMMANDER: '#71858a', WARLORD: '#a29270'
+};
+
+function drawCampRest(c, s, now, pose, look, simple) {
+  const { cloth, armorColor, legs, blade, steel, gloves, platoonColor, medic, advanced, mage, eq, physique } = look;
+  const bob = Math.sin(now * 0.0035 + (s.animOffset || 0)) * 1.2;
+  const breath = Math.sin(now * 0.002 + (s.animOffset || 0)) * 0.35;
+  const head = { helmet: eq.helmet ? steel : null, helmetTier: eq.helmet?.tier || 1, mitre: medic && advanced, cap: medic && !advanced };
+  contactShadow(c, 0, 5, 14 * physique.shadowWidth, 4.4 * physique.shadowWidth, 0.82);
+  c.fillStyle = '#5a4638';
+  c.fillRect(-6, 2, 2, 5);
+  c.fillRect(4, 2, 2, 5);
+  c.fillStyle = '#6e5844';
+  c.beginPath();
+  c.ellipse(0, 2, 8, 2.5, 0, 0, Math.PI * 2);
+  c.fill();
+  line(c, [[-13, 6], [-5, 7]], blade, 2.2);
+  if (simple) {
+    c.save();
+    c.scale(physique.bodyWidth, 1);
+    c.fillStyle = legs;
+    c.fillRect(-1, -1, 9, 3);
+    c.fillStyle = cloth;
+    c.beginPath();
+    c.ellipse(0, -9 + breath, 6, 6.5, 0, 0, Math.PI * 2);
+    c.fill();
+    if (eq.armor) { c.fillStyle = armorColor; c.fillRect(-4, -12, 8, 6); }
+    c.restore();
+    drawSoldierHead(c, s, { y: -16 + breath, scale: 0.72, small: true, silhouette: true, ...head });
+    if (pose === 'drink') {
+      c.fillStyle = '#d9c7a2'; c.fillRect(2, -14, 4, 4);
+      c.fillStyle = '#7a3e3a'; c.fillRect(3, -13, 2, 2);
+    } else if (pose === 'eat') {
+      c.fillStyle = '#c4a574'; c.fillRect(1, -13, 5, 3);
+    }
+  } else {
+    c.save();
+    if (Math.cos(s.facingAngle || 0) < -0.15) c.scale(-1, 1);
+    c.save();
+    c.scale(physique.bodyWidth, 1);
+    shape(c, [[-2, -3], [8, -1], [9, 3], [-1, 2]], legs);
+    c.fillStyle = '#2a2624';
+    c.fillRect(6, 1, 5, 3);
+    shape(c, [[-6, -16 + breath], [5, -16 + breath], [6, -3], [-6, -2]], cloth);
+    if (eq.armor) shape(c, [[-5, -14 + breath], [4, -14 + breath], [4, -6], [-5, -5]], armorColor);
+    c.fillStyle = '#64503c';
+    c.fillRect(-6, -7, 12, 2);
+    c.fillStyle = platoonColor;
+    c.fillRect(-5, -15 + breath, 3, 3);
+    if (mage) shape(c, [[-6, -16 + breath], [-7, -3], [6, -3], [5, -16 + breath]], '#685875');
+    if (medic) {
+      c.fillStyle = '#e1d9bf';
+      c.fillRect(-2, -14 + breath, 4, 7);
+      c.fillStyle = '#95574f';
+      c.fillRect(-0.4, -12 + breath, 1.2, 3.5);
+    }
+    c.restore();
+    drawSoldierHead(c, s, { y: -20 + breath, small: true, ...head });
+    c.strokeStyle = gloves;
+    c.lineWidth = 2;
+    c.lineCap = 'round';
+    c.beginPath();
+    if (pose === 'drink') {
+      c.moveTo(2, -12 + breath);
+      c.lineTo(4, -12 + bob);
+    } else if (pose === 'eat') {
+      c.moveTo(2, -12 + breath);
+      c.lineTo(3, -13 + bob);
+    } else {
+      c.moveTo(-4, -11 + breath);
+      c.lineTo(-1, -4);
+      c.moveTo(3, -11 + breath);
+      c.lineTo(5, -3);
+    }
+    c.stroke();
+    if (pose === 'drink') {
+      ellipse(c, 4, -13 + bob, 2.8, 3.1, '#d9c7a2');
+      ellipse(c, 4, -13.5 + bob, 1.7, 1.45, '#7a3e3a');
+    } else if (pose === 'eat') {
+      ellipse(c, 3, -14 + bob, 3.1, 2, '#c4a574');
+      ellipse(c, 4.2, -14.5 + bob, 1, 0.8, '#8d6844');
+    }
+    c.restore();
+  }
+  if (c.showBattleLabels !== false && s.maxHp > 0 && s.hp < s.maxHp * 0.55) {
+    c.fillStyle = '#283132';
+    c.fillRect(-12, -34, 24, 3);
+    c.fillStyle = '#c4b48a';
+    c.fillRect(-12, -34, 24 * Math.max(0, Math.min(1, s.hp / s.maxHp)), 3);
+  }
+}
+
+function drawFarmProp(c, pose, swing) {
+  if (pose === 'basket') {
+    c.fillStyle = '#8d6844';
+    c.fillRect(7, -9, 9, 6);
+    c.fillStyle = '#6a5340';
+    c.fillRect(8, -11, 7, 2);
+    c.fillStyle = '#7f9661';
+    c.fillRect(8, -13, 3, 3);
+    c.fillStyle = '#b8a16b';
+    c.fillRect(12, -13, 3, 3);
+    return;
+  }
+  if (pose === 'hoe') {
+    c.fillStyle = '#6a5340';
+    c.fillRect(11 + swing, -20, 3, 22);
+    c.fillStyle = '#8a8478';
+    c.fillRect(8 + swing, 1, 11, 3);
+    return;
+  }
+  c.fillStyle = '#c4a574';
+  c.fillRect(7, 1, 3, 3);
+  c.fillRect(11, 2, 3, 3);
+}
+
+function drawFieldFarmer(c, s, now, cls, platoonColor, simpleLod, displayEquipment) {
+  const key = s.soldierClass || 'HEAVY', eq = displayEquipment || s.equipped || {};
+  const medic = isMedicAppearance(key);
+  const physique = soldierPhysique(s);
+  const family = cls?.baseClassId || soldierAppearanceFamily(key);
+  const advanced = !!cls?.isAdvanced;
+  const cloth = fieldTone(CLOTH[key] || CLOTH[family] || CLOTH.HEAVY, 0.34);
+  const armorColor = fieldTone(equipmentVisualProfile(eq.armor).color || cloth, 0.2);
+  const steel = fieldTone(equipmentVisualProfile(eq.helmet).color || (advanced ? '#d1c4a3' : '#9daab0'), 0.26);
+  const legs = fieldTone(equipmentVisualProfile(eq.legs).color || '#5c564c', 0.42);
+  const gloves = fieldTone(equipmentVisualProfile(eq.gloves).color || '#a09080', 0.4);
+  const pose = s.farmPose;
+  const breath = Math.sin(now * 0.002 + (s.animOffset || 0)) * 0.4;
+  const swing = Math.round(Math.sin(now * 0.003 + (s.animOffset || 0)));
+  const kneel = pose === 'tend';
+  const head = { helmet: eq.helmet ? steel : null, helmetTier: eq.helmet?.tier || 1, mitre: medic && advanced, cap: medic && !advanced };
+  c.save();
+  c.translate(s.x, s.y);
+  contactShadow(c, 0, 6, 13 * physique.shadowWidth, 4.2 * physique.shadowWidth, 0.74);
+  c.fillStyle = '#5c4e32';
+  c.fillRect(-18, 2, 36, 8);
+  c.fillStyle = '#7f9661';
+  for (let i = 0; i < 7; i++) c.fillRect(-16 + i * 5, 3, 2, 6);
+  if (simpleLod) {
+    c.save();
+    c.scale(physique.bodyWidth, 1);
+    c.fillStyle = cloth;
+    c.beginPath();
+    c.ellipse(0, kneel ? -8 : -12 + breath, 6, kneel ? 5 : 7, 0, 0, Math.PI * 2);
+    c.fill();
+    if (eq.armor) { c.fillStyle = armorColor; c.fillRect(-4, kneel ? -11 : -15, 8, 5); }
+    c.restore();
+    drawSoldierHead(c, s, { y: (kneel ? -16 : -22) + breath, scale: 0.72, small: true, silhouette: true, ...head });
+    drawFarmProp(c, pose, swing);
+  } else {
+    c.save();
+    if (Math.cos(s.facingAngle || 0) < -0.15) c.scale(-1, 1);
+    c.save();
+    c.scale(physique.bodyWidth, 1);
+    if (kneel) {
+      c.fillStyle = legs;
+      c.fillRect(-6, -3, 8, 4);
+      c.fillRect(2, -6, 4, 7);
+      c.fillStyle = '#2a2624';
+      c.fillRect(2, 0, 5, 3);
+      shape(c, [[-6, -14 + breath], [5, -14 + breath], [6, -4], [-6, -3]], cloth);
+      if (eq.armor) shape(c, [[-5, -13 + breath], [4, -13 + breath], [4, -6], [-5, -5]], armorColor);
+    } else {
+      c.fillStyle = legs;
+      c.fillRect(-5, -8, 4, 8);
+      c.fillRect(2, -8, 4, 8);
+      c.fillStyle = '#2a2624';
+      c.fillRect(-6, -1, 5, 3);
+      c.fillRect(2, -1, 5, 3);
+      shape(c, [[-6, -20 + breath], [5, -20 + breath], [6, -8], [-6, -7]], cloth);
+      if (eq.armor) shape(c, [[-5, -18 + breath], [4, -18 + breath], [4, -9], [-5, -8]], armorColor);
+    }
+    c.fillStyle = '#64503c';
+    c.fillRect(-6, kneel ? -6 : -10, 12, 2);
+    c.fillStyle = platoonColor;
+    c.fillRect(-5, (kneel ? -13 : -19) + breath, 3, 3);
+    c.restore();
+    drawSoldierHead(c, s, { y: (kneel ? -18 : -26) + breath, small: true, ...head });
+    c.strokeStyle = gloves;
+    c.lineWidth = 2;
+    c.lineCap = 'round';
+    c.beginPath();
+    if (pose === 'hoe') {
+      c.moveTo(3, -13 + breath);
+      c.lineTo(12 + swing, -8);
+    } else if (pose === 'basket') {
+      c.moveTo(3, -12 + breath);
+      c.lineTo(8, -7);
+    } else {
+      c.moveTo(4, -6 + breath);
+      c.lineTo(8, 1);
+      c.moveTo(6, -6 + breath);
+      c.lineTo(12, 2);
+    }
+    c.stroke();
+    drawFarmProp(c, pose, swing);
+    c.restore();
+  }
+  if (c.showBattleLabels !== false && s.maxHp > 0 && s.hp < s.maxHp * 0.55) {
+    c.fillStyle = '#283132';
+    c.fillRect(-12, -36, 24, 3);
+    c.fillStyle = '#c4b48a';
+    c.fillRect(-12, -36, 24 * Math.max(0, Math.min(1, s.hp / s.maxHp)), 3);
+  }
+  c.restore();
+}
+
+export function drawLevelMark(c, unit, now) {
+  if (!c || !unit || !(unit._levelMark > 0)) return;
+  const fade = unit._levelMark < 0.4 ? unit._levelMark / 0.4 : 1;
+  const bob = Math.sin((now || 0) * 0.007) * 1.4;
+  c.save();
+  c.translate(unit.x, unit.y - 50 + bob);
+  c.globalAlpha = fade;
+  c.fillStyle = '#d9c7a2';
+  c.strokeStyle = '#6e5844';
+  c.lineWidth = 1;
+  c.beginPath();
+  c.moveTo(0, -9);
+  c.lineTo(8, -1);
+  c.lineTo(0, 7);
+  c.lineTo(-8, -1);
+  c.closePath();
+  c.fill();
+  c.stroke();
+  c.beginPath();
+  c.moveTo(-3.1, 0.4);
+  c.lineTo(0, -2.8);
+  c.lineTo(3.1, 0.4);
+  c.stroke();
+  c.restore();
+}
+
+export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod, displayEquipment=null) {
+  if (!s.isDown && (s.farmPose === 'hoe' || s.farmPose === 'basket' || s.farmPose === 'tend')) {
+    drawFieldFarmer(c, s, now, cls, platoonColor, simpleLod, displayEquipment);
+    drawLevelMark(c, s, now);
+    return;
+  }
+  const key = s.soldierClass || 'HEAVY', eq = displayEquipment || s.equipped || {};
+  const medic = isMedicAppearance(key);
+  const physique=soldierPhysique(s),muscular=physique.bodyWidth>1;
+  const family = cls.baseClassId || soldierAppearanceFamily(key);
+  const mage=family==='MAGE';if(mage)ensureMana(s);
+  const spellColor=mage?MAGIC_AFFINITIES[s.magicAffinity].color:null;
+  const advanced = !!cls.isAdvanced;
+  const cloth = fieldTone(CLOTH[key] || CLOTH[family] || CLOTH.HEAVY, 0.34);
+  const armorColor=fieldTone(equipmentVisualProfile(eq.armor).color||cloth,.2);
+  const steel = fieldTone(equipmentVisualProfile(eq.helmet).color || (advanced ? '#d1c4a3' : '#9daab0'), 0.26);
+  const legs = fieldTone(equipmentVisualProfile(eq.legs).color || '#5c564c', 0.42);
+  const gloves = fieldTone(equipmentVisualProfile(eq.gloves).color || '#a09080', 0.4);
+  const board = fieldTone(equipmentVisualProfile(eq.shield).color || '#566b7c', 0.3);
+  const blade = fieldTone(equipmentVisualProfile(eq.weapon || s.weapon).color || '#c3cbca', 0.18);
+  const moving = Math.hypot(s.vx || 0, s.vy || 0) > 0.05;
+  const stride = moving ? Math.sin(now * 0.016 + (s.animOffset || 0)) * 2.8 : 0;
+  const bob = moving ? Math.abs(stride) * 0.25 : 0;
+  const archer = family === 'ARCHER';
+  const light = family === 'LIGHT';
+  const wStyle = (eq.weapon || s.weapon)?.weaponStyle || 'sword';
+  const melee = !archer && ['sword','spear','hammer','axe','staff','wand'].includes(wStyle);
+  const weaponColors = {cloth,gloves,blade,board,physique,hand:s.appearance?.skin||'#c1a083',gloveProfile:equipmentVisualProfile(eq.gloves),shieldProfile:equipmentVisualProfile(eq.shield),weaponProfile:equipmentVisualProfile(eq.weapon||s.weapon)};
+  c.save(); c.translate(s.x, s.y);
+  if (!s.isDown && (s.campPose === 'sit' || s.campPose === 'drink' || s.campPose === 'eat')) {
+    drawCampRest(c, s, now, s.campPose, { cloth, armorColor, legs, blade, steel, gloves, platoonColor, medic, advanced, mage, eq, physique }, simpleLod);
+    c.restore();
+    drawLevelMark(c, s, now);
+    return;
+  }
+  const plant = s.isDown ? 1 : (moving ? Math.abs(stride) / 2.8 : 0.22);
+  contactShadow(c, 2, 3, s.isDown ? 16 : 11*physique.shadowWidth, (s.isDown ? 4.2 : 3.5)*physique.shadowWidth, plant);
+  // Perf v1.24.2: far/edge soldiers = silhouette only (skip gear/weapon strokes).
+  if (simpleLod && !s.isDown) {
+    c.save();c.scale(physique.bodyWidth,1);
+    c.fillStyle = cloth;
+    c.beginPath(); c.ellipse(0, -14, 6, 10, 0, 0, Math.PI * 2); c.fill();
+    c.fillRect(-8,-20,2.5,11);c.fillRect(5.5,-20,2.5,11);
+    c.fillStyle='#2a2624';c.fillRect(-5,-5,4,7);c.fillRect(2,-5,4,7);
+    c.restore();
+    drawSoldierHead(c,s,{y:-26,scale:.8,small:true,silhouette:true,helmet:eq.helmet?steel:null,helmetTier:eq.helmet?.tier||1,mitre:medic&&advanced,cap:medic&&!advanced});
+    c.save();c.scale(physique.bodyWidth,1);
+    drawBodyEquipment(c,eq,{armorColor,legColor:legs,role:family,stride:0,simple:true});
+    if(medic) {
+      c.fillStyle='#d2cfb9';c.fillRect(-2,-18,4,8);
+      c.fillStyle='#95574f';c.fillRect(-.5,-16,1,4);c.fillRect(-2,-14.5,4,1);
+    }
+    if(mage)shape(c,[[-6,-19],[-8,0],[7,0],[6,-19]],'#65566f');
+    c.restore();
+    if(mage){if(!muscular){line(c,[[12,0],[12,-29]],'#857053',1.5);ellipse(c,12,-30,2,3,s.mana>0?spellColor:'#6d6674');}shape(c,[[-7,-31],[1,-39],[7,-31]],'#5d5269');}
+    c.fillStyle = platoonColor; c.fillRect(-2, 4, 4, 2);
+    if (s.isPersonalGuard) { c.fillStyle = '#c8b278'; c.fillRect(4, 4, 3, 2); }
+    if (c.showBattleLabels!==false && s.maxHp > 0 && s.hp < s.maxHp * 0.55) {
+      const healthY=medic&&advanced?-44:-39;
+      c.fillStyle = '#283132'; c.fillRect(-12, healthY, 24, 3);
+      c.fillStyle = '#c4b48a'; c.fillRect(-12, healthY, 24 * Math.max(0, Math.min(1, s.hp / s.maxHp)), 3);
+    }
+    if (melee && (s.atkAnim > 0 || muscular)) drawMeleeWeapon(c,s,wStyle,weaponColors,true);
+    c.restore();
+    drawLevelMark(c, s, now);
+    return;
+  }
+  if (s.isDown) {
+    c.save();c.scale(1,physique.bodyWidth);
+    shape(c,[[-18,-3],[16,-7],[20,3],[-14,6]],cloth);
+    c.save();c.translate(-12,-1);c.rotate(Math.PI/2);c.translate(0,15);drawBodyEquipment(c,eq,{armorColor,legColor:legs,role:family,simple:true});c.restore();
+    if(medic){c.fillStyle='#ded8be';c.fillRect(-2,-4,7,6);c.fillStyle='#95574f';c.fillRect(1,-3,1.2,4);c.fillRect(-.5,-1.5,4,1.2);}
+    c.restore();
+    c.save();c.translate(-20,-1);c.rotate(-Math.PI/2);
+    drawSoldierHead(c,s,{scale:.9,small:true,silhouette:true,helmet:eq.helmet?steel:null,helmetTier:eq.helmet?.tier||1,mitre:medic&&advanced,cap:medic&&!advanced});c.restore();
+    line(c,[[10,-2],[22,2],[18,6]],'#3c4038',2.5*physique.armWidth);
+    c.fillStyle = '#e6d7b8'; c.textAlign = 'center'; c.font = 'bold 10px sans-serif';
+    c.fillText(s.carrierId?'搬送中':`救助 ${Math.ceil(s.downTimer || 0)}秒`, 0, -16);
+    c.fillStyle = '#242c30'; c.fillRect(-16, -12, 32, 3);
+    c.fillStyle = '#d7b56a'; c.fillRect(-16, -12, 32 * Math.min(1, Math.max(0, s.rescueProgress || 0)), 3);
+    c.restore();
+    drawLevelMark(c, s, now);
+    return;
+  }
+  const bodyFacing=s.atkAnim>0&&Number.isFinite(s.attackAngle)?s.attackAngle:(s.facingAngle||0);
+  c.save(); if (Math.cos(bodyFacing) < -0.15) c.scale(-1, 1);
+  c.translate(0, -bob);
+  c.save();c.scale(physique.bodyWidth,1);
+  // Cloak, boots and an articulated torso give every class a distinct silhouette.
+  if (advanced || s.isNamed || archer) {
+    shape(c, [[-4,-23],[-11,-17],[-14,-1],[-5,-5],[4,-17]], s.isCommander ? (advanced?'#794e41':'#3e5863') : (archer ? '#3d5148' : '#795d51'));
+    line(c, [[-7,-17],[-10,-4]], '#b59a72');
+  }
+  c.fillStyle = legs;
+  c.beginPath();
+  c.moveTo(-5 + stride,-9);c.lineTo(-1 + stride,-9);c.lineTo(-1 + stride,1);c.lineTo(-5 + stride,1);
+  c.moveTo(2 - stride,-9);c.lineTo(6 - stride,-9);c.lineTo(6 - stride,1);c.lineTo(2 - stride,1);c.fill();
+  c.fillStyle = '#292a26';
+  c.beginPath();c.moveTo(-5+stride,-1);c.lineTo(-2+stride,-1);c.lineTo(1+stride,2);c.lineTo(1+stride,3);c.lineTo(-6+stride,3);
+  c.moveTo(2-stride,-1);c.lineTo(5-stride,-1);c.lineTo(8-stride,2);c.lineTo(8-stride,3);c.lineTo(1-stride,3);c.fill();
+  // Rounded shoulders and cloth folds are static; legs retain their stride.
+  drawUniform(c,cloth,platoonColor);
+  if (medic && advanced) {
+    shape(c,[[-6,-17],[-9,1],[7,1],[5,-17]],'#c6bc9c');
+    line(c,[[-3,-14],[-5,-1],[3,-14],[4,-1]],'#eee3c2',1.3);
+    c.fillStyle='#a18765'; c.fillRect(-2,-19,3,19);
+  }
+  if(mage){shape(c,[[-6,-19],[-9,1],[8,1],[5,-19]],'#685875');line(c,[[-4,-18],[-5,-2],[5,-18],[6,-2]],spellColor,1.1);c.fillStyle='#b1a389';c.fillRect(-6,-10,12,2);}
+  if (light) {
+    line(c,[[-5,-21],[4,-9]],'#c8b797',2);
+    line(c,[[-5,-19],[3,-10]],'#5c4633',.7);
+    c.fillStyle='#624d38'; c.fillRect(-7,-12,3,5);
+  }
+  if (medic) {
+    c.fillStyle = '#e1d9bf'; c.fillRect(-3,-21,5,11);
+    c.fillStyle = '#95574f'; c.fillRect(-1,-18,1.5,5); c.fillRect(-3,-16,5,1.5);
+  }
+  drawBodyEquipment(c,eq,{armorColor,legColor:legs,role:family,stride});
+  if(s.isCommander){line(c,[[-5,-22],[4,-10]],advanced?'#d2bb83':'#b7bda8',1.5);}
+  c.restore();
+  // Hands, face and headwear, with a restrained highlight on the upper edge.
+  if (!melee) {const g=equipmentVisualProfile(eq.gloves);ellipse(c,6,-15,2.3,3.5,weaponColors.hand);if(g.coverage){c.fillStyle=gloves;c.fillRect(4,-19,4,1+g.coverage*6);}}
+  drawSoldierHead(c,s,{y:-28,small:true,helmet:eq.helmet?steel:null,helmetTier:eq.helmet?.tier||1,
+    mitre:medic&&advanced,cap:medic&&!advanced});
+  if(mage){
+    if(!eq.helmet){shape(c,[[-8,-32],[0,-44],[7,-32]],'#62536e');line(c,[[-9,-32],[9,-32]],'#9f8caa',2);}
+    const recovering=!!s.magicRecovering;shape(c,[[-9,-16],[-4,-15],[-4,-7],[-10,-8]],'#a2957a');
+    if(!s.portrait && c.showBattleLabels!==false){c.fillStyle='#282535';c.fillRect(-13,-49,26,2);c.fillStyle=spellColor;c.fillRect(-13,-49,26*s.mana/s.maxMana,2);}
+    if(recovering){c.fillStyle='#c1b6d1';c.font='10px sans-serif';c.textAlign='center';c.fillText('瞑想',0,-53);}
+  } else if (archer) {
+    const rw = (eq.weapon && eq.weapon.weaponStyle) || 'bow';
+    // 矢筒は共通
+    shape(c,[[-8,-24],[-12,-25],[-13,-10],[-9,-9]],'#6b503b');
+    line(c,[[-11,-23],[-12,-31]],'#baa889');
+    line(c,[[-10,-29],[-13,-31],[-11,-32]],'#c9c6ad',2);
+    if (rw === 'cannon') {
+      // 小型火砲: 太い砲身＋口
+      c.save(); c.translate(8,-14); c.rotate(-0.15);
+      shape(c,[[0,-4],[18,-6],[19,2],[0,4]],blade);
+      shape(c,[[16,-7],[22,-5],[22,1],[16,3]],'#302b28');
+      ellipse(c,3,0,3,3,'#6a4c38');
+      c.restore();
+    } else if (rw === 'crossbow') {
+      // クロスボウ: 水平アーム＋太いストック
+      line(c,[[4,-16],[20,-16]],blade,2.4);
+      line(c,[[6,-22],[6,-10]],blade,2.2);
+      line(c,[[4,-22],[8,-22]],'#c5b790',1.5);
+      line(c,[[4,-10],[8,-10]],'#c5b790',1.5);
+      shape(c,[[8,-18],[14,-18],[15,-14],[8,-14]],'#6a4c38');
+    } else {
+      // 弓: カーブ＋弦
+      c.strokeStyle = blade; c.lineWidth = 2;
+      c.beginPath(); c.moveTo(9,-28); c.quadraticCurveTo(22,-16,9,-3); c.stroke();
+      line(c,[[9,-28],[11,-15],[9,-3]],'#d6ccae',.7);
+      line(c,[[5,-16],[19,-16]],'#c5b790');
+    }
+  } else if (medic) {
+    ensureMana(s);if(s.mana<16){c.fillStyle='#c1b6d1';c.font='10px sans-serif';c.textAlign='center';c.fillText('MP不足',0,-48);}
+    shape(c,[[-9,-14],[-4,-13],[-5,-6],[-10,-7]],'#b2a386');
+  } else {
+    if (wStyle === 'bow') {
+      c.strokeStyle = blade; c.lineWidth = 2.2;
+      c.beginPath(); c.moveTo(8,-30); c.quadraticCurveTo(24,-16,8,-2); c.stroke();
+      line(c,[[8,-30],[10,-16],[8,-2]],'#d6ccae',.8);
+      line(c,[[4,-16],[20,-16]],'#c5b790');
+    } else if (wStyle === 'crossbow') {
+      line(c,[[4,-16],[22,-16]],blade,2.6);
+      line(c,[[7,-24],[7,-8]],blade,2.3);
+      shape(c,[[9,-18],[16,-18],[17,-13],[9,-13]],'#6a4c38');
+    } else if (wStyle === 'cannon') {
+      c.save(); c.translate(7,-14); c.rotate(-0.12);
+      shape(c,[[0,-5],[20,-7],[21,3],[0,5]],blade);
+      shape(c,[[17,-8],[24,-5],[24,2],[17,4]],'#302b28');
+      c.restore();
+    } else {
+      // Melee weapons are drawn outside the mirrored torso transform below.
+    }
+  }
+  if(!melee&&eq.weapon){const p=equipmentVisualProfile(eq.weapon);if(p.rough){line(c,[[11,-22],[15,-21],[11,-20]],'#bca787',1.1);}else if(p.detail>=1){line(c,[[11,-22],[15,-22]],'#d0c19c',1.2);if(p.detail>=2){line(c,[[11,-18],[15,-18]],'#d0c19c',1.2);}}}
+  c.restore();
+  if (melee) {
+    c.save(); c.translate(0,-bob);
+    drawMeleeWeapon(c,s,wStyle,weaponColors); c.restore();
+  }
+  // Compact labels and one squad marker instead of stacked luminous rings.
+  c.fillStyle = platoonColor; c.fillRect(-2,4,4,2);
+  if (s.isPersonalGuard || s.talent === 'GENIUS') {
+    c.fillStyle = '#c8b278'; c.fillRect(4,4,3,2);
+  }
+  if (!s.portrait && c.showBattleLabels!==false) {
+    const headClearance=medic&&advanced?8:0;
+    const distinguished = !s.isMerchantEscort && (s.isNamed || advanced || s.isPersonalGuard || s.talent === 'GENIUS');
+    const hurting = s.maxHp > 0 && s.hp < s.maxHp * 0.55;
+    if (distinguished) {
+      c.textAlign = 'center'; c.font = '9px sans-serif';
+      const label = `${s.isPersonalGuard ? '◆ ' : ''}${s.name || cls.name} · ${s.level || 1}`;
+      c.fillStyle = 'rgba(18,24,25,.82)';
+      const labelWidth = c.measureText(label).width + 8;
+      c.fillRect(-labelWidth/2,-53-headClearance,labelWidth,12);
+      c.fillStyle = s.isNamed ? '#dfc893' : '#e0e3db'; c.fillText(label,0,-44-headClearance);
+    }
+    if (distinguished || hurting) {
+      c.fillStyle = '#283132'; c.fillRect(-12,-39-headClearance,24,3);
+      c.fillStyle = '#c4b48a'; c.fillRect(-12,-39-headClearance,24*Math.max(0,Math.min(1,s.hp/s.maxHp)),3);
+    }
+  }
+  c.restore();
+  drawLevelMark(c, s, now);
+}
+
+export function drawFieldCommander(c,p,equipped,now,rankIndex,rankTitle,moving,portrait=false) {
+  c.save();c.translate(p.x,p.y);c.scale(1.18,1.18);
+  drawFieldSoldier(c,{id:'commander',appearance:p.appearance||commanderAppearance,x:0,y:0,hp:p.hp,maxHp:p.maxHp,_levelMark:portrait?0:p._levelMark,level:p.level,
+    soldierClass:p.isAdvanced?'WARLORD':'COMMANDER',isCommander:true,isNamed:true,rankIndex,
+    equipped,portrait:true,atkAnim:p.slashAnim || 0,
+    facingAngle:p.facingAngle,attackAngle:p.slashAngle,vx:moving?1:0,vy:0},now,
+    {isAdvanced:!!p.isAdvanced,name:'隊長'},'#b7c6b6');
+  if(!portrait) {
+    // A quiet ground pointer and a stable nameplate keep the player identifiable.
+    shape(c,[[0,8],[-3,12],[3,12]],'#d8ceb0');
+    if(c.showBattleLabels!==false){
+    c.textAlign='center';c.font='bold 9px sans-serif';
+    const name=`あなた · Lv.${p.level || 1}${p.isAdvanced?' 覇王':''}`;
+    const width=c.measureText(name).width+10;
+    c.fillStyle='rgba(17,27,28,.9)';c.fillRect(-width/2,-62,width,12);
+    c.fillStyle='#dfd8bb';c.fillText(name,0,-53);
+    c.fillStyle='#253337';c.fillRect(-16,-49,32,4);
+    c.fillStyle=p.isAdvanced?'#c4aa78':'#91b6bd';
+    c.fillRect(-16,-49,32*Math.max(0,Math.min(1,p.hp/p.maxHp)),4);
+    }
+  }
+  c.restore();
+}
+
+function drawPeriodMob(c,m,now) {
+  if(!['wild_boar','cave_bat','shade_wolf','bone_warrior','sun_bandit','sun_guard'].includes(m.type))return false;
+  const step=Math.sin(now*.014+m.x)*1.5;
+  c.save();
+  if(m.type==='wild_boar') {
+    line(c,[[-8,-7],[-10,2],[-3,-7],[-2,2],[6,-7],[7,2],[10,-6],[12,1]],'#453f35',3);
+    ellipse(c,0,-10,14,9,'#735f49');shape(c,[[-12,-12],[-21,-15],[-16,-7]],'#594f3d');
+    shape(c,[[-8,-16],[-2,-21],[7,-16],[10,-6]],'#8a7758');
+    ellipse(c,12,-10,8,7,'#927b5c');ellipse(c,18,-7,4,3,'#b29a7c');
+    shape(c,[[9,-16],[8,-23],[14,-18]],'#6b5b47');
+    shape(c,[[15,-7],[18,-2],[20,-7]],'#ded2ad');c.fillStyle='#e0b15a';c.fillRect(13,-13,2,2);
+  } else if(m.type==='cave_bat') {
+    const wing=Math.sin(now*.018+m.x)*3;
+    shape(c,[[-3,-11],[-18,-22-wing],[-23,-8],[-16,-11],[-11,-5]],'#666173');
+    shape(c,[[3,-11],[18,-22-wing],[23,-8],[16,-11],[11,-5]],'#767083');
+    ellipse(c,0,-9,4,7,'#43434f');shape(c,[[-4,-14],[-4,-21],[0,-17],[4,-21],[4,-14]],'#858093');
+    line(c,[[-19,-20-wing],[-13,-10],[-5,-10],[19,-20-wing],[13,-10],[5,-10]],'#a39aa4');
+    c.fillStyle='#d1bb80';c.fillRect(-2,-15,1,1);c.fillRect(1,-15,1,1);
+  } else if(m.type==='shade_wolf') {
+    drawFieldMob(c,{...m,type:'wolf'},now);
+    shape(c,[[-12,-12],[-8,-20],[-4,-16],[0,-21],[5,-14]],'#3e4554');
+    line(c,[[-12,-12],[-7,-14],[0,-15]],'#9494a1',1.5);
+  } else if(m.type==='bone_warrior') {
+    line(c,[[-4,-10],[-6+step,0],[3,-10],[5-step,0]],'#c7c0a8',3);
+    line(c,[[0,-26],[0,-9],[-7,-22],[-9,-11],[7,-22],[10,-12]],'#b9b7a5',2.5);
+    for(let y=-22;y<=-13;y+=3)line(c,[[-5,y],[0,y+2],[5,y]],'#d2ccb5',1.5);
+    ellipse(c,0,-31,6,6,'#d4ceb7');c.fillStyle='#343a3b';c.fillRect(-4,-33,3,2);c.fillRect(1,-33,3,2);c.fillRect(-1,-29,2,2);
+    shape(c,[[-7,-35],[-4,-40],[5,-39],[7,-35]],'#6a7473');
+    line(c,[[9,-12],[17,-32]],'#a5acaa',3);line(c,[[10,-16],[16,-14]],'#7b827c',2);
+    shape(c,[[-8,-21],[-15,-20],[-16,-10],[-10,-7],[-5,-14]],'#656756');
+  } else if(m.type==='sun_bandit'||m.type==='sun_guard') {
+    const guard=m.type==='sun_guard';
+    line(c,[[-4,-8],[-5+step,1],[4,-8],[5-step,1]],'#48463c',4);
+    shape(c,[[-7,-23],[6,-23],[9,-7],[-8,-7]],guard?'#8e917d':'#9d885d');
+    line(c,[[-5,-22],[5,-8]],'#c4b18b',2);ellipse(c,0,-30,6,6,'#c5ac87');
+    shape(c,[[-7,-33],[-5,-38],[4,-38],[8,-32]],guard?'#9b9b83':'#84704e');
+    c.fillStyle='#e0b15a';c.fillRect(1,-31,4,1.5);
+    if(guard) {
+      line(c,[[0,-38],[0,-45]],'#a78861',3);
+      shape(c,[[-9,-24],[-18,-22],[-17,-8],[-11,-3],[-5,-9]],'#9d9477');
+      line(c,[[8,-14],[13,-37]],'#c1c5b8',3);
+    } else {
+      c.fillStyle='#585a4b';c.fillRect(-5,-28,10,3);
+      line(c,[[8,-15],[19,-22]],'#c1c5b8',3);
+      shape(c,[[-8,-23],[-12,-22],[-15,-8],[-7,-12]],'#675f45');
+    }
+  } else {c.restore();return false;}
+  c.restore();return true;
+}
+
+function drawBrute(c, m, now) {
+  const flash = m.hitPulse > 0;
+  const hide = flash ? '#d9d3cc' : '#6e5844';
+  const dark = flash ? '#c8c2ba' : '#3e342c';
+  const bone = flash ? '#f4f1ea' : '#d9c7a2';
+  const step = Math.sin(now * 0.01 + (m.x || 0)) * 1.4;
+  c.save();
+  c.scale(BRUTE_DRAW_SCALE, BRUTE_DRAW_SCALE);
+  shape(c, [[-8,-8],[-4 + step,-9],[-3 + step,2],[-9,2]], dark);
+  shape(c, [[2,-8],[7 - step,-9],[8 - step,2],[1,2]], dark);
+  shape(c, [[-11,-30],[9,-31],[13,-8],[-12,-7]], hide);
+  shape(c, [[-8,-27],[2,-28],[1,-12],[-8,-11]], 'rgba(255,255,255,.12)', 'transparent');
+  shape(c, [[2,-28],[11,-26],[10,-10],[3,-11]], 'rgba(0,0,0,.18)', 'transparent');
+  ellipse(c, 2, -38, 7.2, 6.4, hide);
+  shape(c, [[-5,-42],[-12,-54],[-2,-42]], bone, '#6e5844');
+  shape(c, [[4,-43],[13,-52],[7,-39]], bone, '#6e5844');
+  c.fillStyle = flash ? '#f4f1ea' : '#c4a574';
+  c.fillRect(4, -39, 3.2, 1.6);
+  line(c, [[9,-20],[22,-36]], dark, 3.4);
+  ellipse(c, 24, -38, 5.2, 4.4, dark);
+  c.restore();
+}
+
+function drawDemon(c, m, now) {
+  const rear = m.type === 'demon_rear';
+  const flash = m.hitPulse > 0;
+  const cloth = flash ? '#d9d3cc' : (rear ? '#5c4d5a' : '#6e403c');
+  const dark = flash ? '#c8c2ba' : '#3e342c';
+  const bone = flash ? '#f4f1ea' : '#d9c7a2';
+  const step = Math.sin(now * 0.014 + (m.x || 0)) * 1.6;
+  line(c, [[-4,-8],[-5 + step,1],[3,-8],[4 - step,1]], dark, 3);
+  shape(c, [[-8,-26],[7,-26],[9,-8],[-9,-7]], cloth);
+  shape(c, [[-6,-24],[-1,-25],[-1,-12],[-6,-11]], 'rgba(255,255,255,.12)', 'transparent');
+  ellipse(c, 1, -33, 5.4, 5, flash ? '#e6d3a8' : '#c4a574');
+  shape(c, [[-3,-36],[-8,-46],[-1,-36]], bone, '#6e5844');
+  shape(c, [[3,-36],[9,-45],[2,-34]], bone, '#6e5844');
+  c.fillStyle = dark;
+  c.fillRect(2, -34, 3, 1.5);
+  if (rear) {
+    line(c, [[7,-16],[16,-38]], bone, 2);
+    ellipse(c, 16, -40, 2.2, 2.2, '#7a3e3a');
+  } else {
+    line(c, [[8,-14],[20,-32]], bone, 2.4);
+    line(c, [[17,-34],[22,-28]], '#7a3e3a', 2);
+    shape(c, [[-9,-22],[-16,-20],[-15,-10],[-8,-12]], '#5c4038');
+  }
+}
+
+export function drawFieldMob(c, m, now) {
+  if (m.type === 'brute') { drawBrute(c, m, now); return true; }
+  if (m.type === 'demon_front' || m.type === 'demon_rear') { drawDemon(c, m, now); return true; }
+  const ranged=RANGED_ENEMIES[m.type];
+  if(ranged){
+    drawFieldMob(c,{...m,type:ranged.base,isBoss:false},now);
+    c.save();c.strokeStyle=ranged.color;c.lineWidth=2;c.beginPath();
+    if(ranged.kind==='physical'){c.moveTo(10,-22);c.quadraticCurveTo(24,-12,10,-2);c.moveTo(10,-22);c.lineTo(10,-2);}
+    else{c.moveTo(13,0);c.lineTo(13,-28);c.moveTo(10,-28);c.lineTo(16,-28);}
+    c.stroke();if(ranged.kind!=='physical'){c.fillStyle=ranged.color;c.beginPath();c.arc(13,-31,3,0,Math.PI*2);c.fill();}c.restore();return true;
+  }
+  if(drawPeriodMob(c,m,now))return true;
+  if (!['slime','goblin','wolf','orc','wyvern'].includes(m.type) || m.isBoss) return false;
+  const bob = Math.sin(now*.009 + m.x)*.65;
+  const step = Math.sin(now*.017 + m.x)*2;
+  c.save(); c.translate(0,bob);
+  if (m.type === 'slime') {
+    c.fillStyle='#355b49';c.beginPath();c.moveTo(-11,-3);c.bezierCurveTo(-12,-7,-7,-14,-2,-14);c.bezierCurveTo(6,-15,12,-7,11,-3);c.quadraticCurveTo(1,2,-11,-3);c.fill();
+    ellipse(c,-2,-8,8,5,m.hitPulse > 0 ? '#bac8b9' : '#799f7b');
+    ellipse(c,-4,-10,3,1.4,'#c6d8ac');
+    line(c,[[-7,-2],[0,-1],[8,-3]],'#94b78b',.9);
+    ellipse(c,3,-7,1.3,1.8,'#e0b15a'); ellipse(c,7,-7,1.3,1.8,'#e0b15a');
+    ellipse(c,-6,-4,2,1,'#45674f');
+  } else if (m.type === 'wolf') {
+    line(c,[[-8,-6],[-10+step,1],[-5,-5],[-3-step,2],[5,-6],[6+step,1],[10,-7],[12-step,1]],'#313b3c',3);
+    shape(c,[[-10,-10],[-22,-16],[-15,-6],[-8,-5]],'#4c5555');
+    ellipse(c,0,-11,13,7,m.hitPulse > 0 ? '#bbc4c0' : '#596566');
+    shape(c,[[4,-14],[8,-21],[11,-16],[14,-20],[17,-12],[23,-9],[19,-5],[10,-7]],'#697578');
+    line(c,[[-9,-13],[-5,-15],[0,-14],[4,-16]],'#9aaba4',1.5);
+    line(c,[[-7,-11],[-4,-9],[-2,-12],[1,-10],[5,-13],[7,-10],[11,-15]],'#a7b3a6',.65);
+    shape(c,[[7,-17],[8,-20],[10,-17],[14,-17],[14,-19],[16,-15]],'#343f40','transparent');
+    c.fillStyle = '#c0ab75'; c.fillRect(15,-13,2,1.5);
+    c.fillStyle = '#e0b15a'; c.fillRect(21,-9,3,2);
+    shape(c,[[18,-6],[17,-3],[16,-6]],'#d7d1b6');
+  } else if (m.type === 'wyvern') {
+    shape(c,[[-5,-16],[-23,-34],[-26,-17],[-18,-20],[-13,-12]],'#77766b');
+    shape(c,[[3,-15],[17,-33],[24,-15],[16,-19],[11,-8]],'#857b68');
+    line(c,[[-5,-16],[-23,-34],[-18,-20]],'#bbb099');
+    line(c,[[-23,-33],[-15,-15],[-23,-33],[-22,-18],[17,-32],[12,-13],[17,-32],[21,-16]],'#aaa18b',.7);
+    ellipse(c,1,-12,8,10,'#5e6a5d');
+    shape(c,[[2,-20],[6,-29],[13,-27],[17,-22],[10,-21],[9,-16]],'#82907b');
+    shape(c,[[-5,-7],[-14,0],[-24,-3],[-15,3],[0,-3]],'#5e6a5d');
+    c.fillStyle = '#d4ba77'; c.fillRect(10,-26,2,1.5);
+    line(c,[[2,-17],[3,-11],[1,-6]],'#b0b18e',2);
+    line(c,[[-3,-5],[-6,2],[3,-4],[7,2]],'#4a5147',2);
+  } else {
+    const orc = m.type === 'orc', scale = orc ? 1.3 : 1;
+    c.scale(scale,scale);
+    c.fillStyle = '#3c3931'; c.fillRect(-5+step,-6,4,8); c.fillRect(2-step,-6,4,8);
+    shape(c,[[-7,-19],[5,-20],[8,-7],[-7,-6]],m.isDemonInvasion?'#3a3b3d':orc ? '#77735d' : '#797056');
+    shape(c,[[-6,-18],[-1,-19],[-2,-8],[-6,-8]],'rgba(227,212,176,.22)','transparent');
+    shape(c,[[3,-19],[6,-16],[7,-8],[3,-7]],'rgba(14,25,18,.3)','transparent');
+    if(m.isDemonInvasion){shape(c,[[-7,-20],[-1,-17],[-3,-6],[-8,-8]],'#7b4145');if(m.isInvasionCommander){line(c,[[-8,-18],[-9,-40]],'#bca587',1.5);shape(c,[[-9,-40],[3,-37],[-9,-32]],'#9d5454');}}
+    shape(c,[[-8,-19],[-3,-22],[1,-19],[-4,-13],[-8,-14]],'#51595a');
+    line(c,[[-4,-19],[4,-10]],'#baa383',2);
+    ellipse(c,1,-25,6.5,6,m.hitPulse > 0 ? '#b8c0a5' : (orc ? '#8a9470' : '#7e9972'));
+    shape(c,[[4,-30],[7,-27],[6,-22],[2,-20],[3,-26]],'rgba(24,45,31,.28)','transparent');
+    line(c,[[-3,-28],[0,-29],[2,-28]],'#b6bf8b',.8);
+    shape(c,[[-4,-27],[-12,-31],[-7,-23]],'#7c916b');
+    c.fillStyle = '#e0b15a'; c.fillRect(2,-27,4,1.5);
+    c.fillStyle = '#d6ceab'; c.fillRect(4,-22,1.5,3);
+    line(c,[[7,-12],[16,-27]],'#785d40',3);
+    if (orc) shape(c,[[12,-27],[20,-30],[23,-23],[16,-23]],'#9ba3a0');
+    else { ellipse(c,16,-27,4,5,'#685c4b'); line(c,[[14,-30],[16,-33]],'#b8b5a1',2); }
+    c.fillStyle = '#4b4235'; c.fillRect(-6,-9,13,3);
+  }
+  c.restore(); return true;
+}
+
+function drawAncientDragon(c, now, flash, scale) {
+  const flap = Math.sin(now * (scale < 1 ? 0.008 : 0.005)) * (scale < 1 ? 8 : 14);
+  const hide = flash ? '#d9d3cc' : '#7a342c';
+  const hideDark = flash ? '#c8c2ba' : '#4a241e';
+  const wing = flash ? '#b7b2aa' : '#3a2422';
+  const membrane = flash ? '#ddd8d0' : '#5c3a34';
+  const horn = flash ? '#2c3234' : '#1a1e22';
+  c.save();
+  c.scale(scale, scale);
+  shape(c, [[-6,-28],[-46,-58 + flap * 0.2],[-50,-36],[-28,-30],[-12,-18]], wing);
+  line(c, [[-8,-26],[-38,-50 + flap * 0.16],[-44,-38]], membrane, 1.2);
+  shape(c, [[-8,-16],[-30,-8],[-36,2],[-22,-2],[-6,-8]], hideDark);
+  shape(c, [[-16,-8],[-10,-8],[-13,6],[-20,6]], hideDark);
+  shape(c, [[6,-8],[13,-8],[15,6],[5,6]], hideDark);
+  shape(c, [[-20,4],[-11,4],[-12,8],[-22,7]], '#241c18');
+  shape(c, [[4,4],[15,4],[16,8],[3,7]], '#241c18');
+  shape(c, [[-18,-34],[8,-38],[22,-22],[16,-6],[-14,-8],[-22,-20]], hide);
+  shape(c, [[-14,-32],[2,-34],[6,-18],[-12,-16]], 'rgba(255,255,255,.13)', 'transparent');
+  shape(c, [[6,-34],[18,-28],[16,-12],[4,-14]], 'rgba(0,0,0,.22)', 'transparent');
+  line(c, [[-8,-28],[-6,-12]], '#c4a090', 1.2);
+  line(c, [[-2,-30],[0,-12]], '#c4a090', 1);
+  shape(c, [[4,-30],[48,-56 + flap], [52,-28],[28,-20],[8,-14]], wing);
+  shape(c, [[10,-28],[40,-48 + flap * 0.85],[44,-30],[16,-20]], membrane, wing);
+  line(c, [[12,-26],[34,-44 + flap * 0.7],[42,-32]], '#1a1412', 1.3);
+  line(c, [[14,-24],[30,-36]], '#cbb8a4', 0.9);
+  shape(c, [[10,-28],[24,-38],[28,-24],[14,-16]], hide);
+  shape(c, [[16,-40],[34,-46],[42,-32],[36,-22],[22,-24],[18,-34]], hide);
+  shape(c, [[24,-42],[34,-44],[36,-34],[26,-32]], 'rgba(255,255,255,.14)', 'transparent');
+  shape(c, [[18,-42],[12,-62],[22,-54],[26,-42]], horn, '#8d8478');
+  line(c, [[15,-56],[23,-44]], '#d9d0c2', 1.15);
+  shape(c, [[28,-44],[34,-60],[42,-50],[36,-40]], horn, '#8d8478');
+  line(c, [[33,-54],[37,-44]], '#d9d0c2', 1);
+  ellipse(c, 31, -35, 3.3, 2.5, '#1a120e');
+  ellipse(c, 31.5, -35.2, 1.8, 1.45, flash ? '#fff6e8' : '#e2b15a');
+  c.fillStyle = '#2a1c10'; c.fillRect(30.8, -36.3, 1.5, 2.3);
+  shape(c, [[36,-28],[41,-26],[39,-22],[34,-24]], '#e6e0d4', '#6a6258');
+  shape(c, [[32,-25],[36,-23],[34,-20],[31,-22]], '#e6e0d4', '#6a6258');
+  c.restore();
+}
+
+function drawBehemoth(c, now, flash) {
+  const step = Math.sin(now * 0.008) * 3.2;
+  const hide = flash ? '#d8d2c8' : '#6e5338';
+  const dark = flash ? '#c8c2b8' : '#3e2e22';
+  const plate = flash ? '#eee8de' : '#8a6844';
+  const horn = flash ? '#f4f1ea' : '#e4d8c2';
+  for (const [x, s] of [[-24, step], [-8, -step], [8, step], [22, -step]]) {
+    shape(c, [[x, -6],[x + 10, -8],[x + 11 + s * 0.15, 10],[x + 2, 10]], dark);
+    shape(c, [[x + 1, -4],[x + 6, -6],[x + 7, 2],[x + 2, 2]], hide);
+    shape(c, [[x + 1, 8],[x + 13, 8],[x + 14, 12],[x, 11]], '#241c16');
+  }
+  shape(c, [[-30,-18],[28,-22],[36,-4],[24,6],[-26,6],[-34,-4]], hide);
+  shape(c, [[-24,-16],[8,-18],[12,-4],[-22,-2]], 'rgba(255,255,255,.13)', 'transparent');
+  shape(c, [[8,-18],[30,-16],[28,0],[10,-2]], 'rgba(0,0,0,.22)', 'transparent');
+  shape(c, [[-18,-28],[-4,-36],[12,-30],[8,-16],[-16,-16]], plate);
+  shape(c, [[-4,-30],[12,-38],[26,-26],[16,-14],[0,-16]], dark);
+  line(c, [[-14,-26],[8,-33],[22,-24]], '#d9c7a4', 1.3);
+  shape(c, [[16,-16],[42,-22],[50,-6],[36,4],[18,2]], hide);
+  shape(c, [[28,-18],[44,-20],[46,-8],[30,-6]], 'rgba(255,255,255,.12)', 'transparent');
+  shape(c, [[22,-20],[14,-44],[26,-38],[30,-18]], horn, '#6a5c48');
+  line(c, [[18,-40],[27,-22]], '#f7f1e4', 1.2);
+  shape(c, [[30,-22],[32,-46],[42,-38],[38,-18]], horn, '#6a5c48');
+  line(c, [[34,-42],[38,-22]], '#f7f1e4', 1.1);
+  shape(c, [[20,-16],[12,-28],[20,-26],[24,-14]], '#d5cbb8', '#6a5c48');
+  shape(c, [[34,-16],[42,-30],[48,-24],[40,-14]], '#d5cbb8', '#6a5c48');
+  ellipse(c, 38, -11, 3.4, 2.6, '#1a120e');
+  ellipse(c, 38.6, -11.2, 1.7, 1.35, flash ? '#fff' : '#c4492e');
+  c.fillStyle = '#1a100c'; c.fillRect(38, -12.4, 1.45, 2.5);
+  shape(c, [[44,-4],[50,2],[47,8],[41,1]], '#f3efe4', '#6a6256');
+}
+
+function drawTitan(c, now, flash) {
+  const step = Math.sin(now * 0.007) * 2.6;
+  const stone = flash ? '#d5d8dc' : '#3d4a52';
+  const dark = flash ? '#c5c8cc' : '#232c32';
+  const lite = flash ? '#eef1f2' : '#7d8c94';
+  const core = flash ? '#ffffff' : '#7fd0d4';
+  shape(c, [[-18 + step, -8],[-6 + step, -10],[-4 + step, 12],[-20 + step, 12]], dark);
+  shape(c, [[-16 + step, -6],[-10 + step, -8],[-9 + step, 4],[-15 + step, 4]], stone);
+  shape(c, [[8 - step, -8],[20 - step, -10],[22 - step, 12],[6 - step, 12]], dark);
+  shape(c, [[10 - step, -6],[16 - step, -8],[17 - step, 4],[11 - step, 4]], stone);
+  shape(c, [[-26,-48],[22,-50],[28,-12],[-24,-10]], stone);
+  shape(c, [[-22,-46],[4,-48],[2,-16],[-20,-14]], lite, 'transparent');
+  shape(c, [[6,-46],[24,-44],[22,-14],[8,-16]], 'rgba(0,0,0,.28)', 'transparent');
+  line(c, [[-18,-40],[16,-42]], '#141c20', 1.5);
+  line(c, [[-16,-28],[18,-26]], '#141c20', 1.2);
+  shape(c, [[-30,-46],[-16,-52],[-10,-38],[-26,-34]], dark);
+  shape(c, [[16,-50],[30,-44],[26,-32],[12,-36]], lite);
+  shape(c, [[-8,-36],[0,-44],[8,-36],[0,-26]], dark);
+  shape(c, [[-5,-35],[0,-41],[5,-35],[0,-29]], core, '#16383c');
+  shape(c, [[-2,-37],[0,-40],[2,-34],[0,-32]], '#f4fffe', 'transparent');
+  line(c, [[-10,-24],[-2,-16],[6,-24],[12,-15]], core, 1.15);
+  shape(c, [[-14,-66],[14,-68],[16,-50],[-16,-48]], stone);
+  shape(c, [[-12,-64],[2,-66],[0,-52],[-12,-50]], lite, 'transparent');
+  shape(c, [[-16,-60],[-4,-70],[6,-64],[2,-56]], dark);
+  shape(c, [[-8,-60],[-2,-60],[-2,-55],[-8,-55]], '#12181c');
+  shape(c, [[3,-60],[9,-60],[9,-55],[3,-55]], '#12181c');
+  ellipse(c, -5, -57.6, 1.35, 1.05, core);
+  ellipse(c, 6, -57.6, 1.35, 1.05, core);
+}
+
+const BOSS_BODIES = new Set(['dragon', 'colossal_dragon', 'behemoth_king', 'colossal_titan']);
+
+export function drawFieldBoss(c, m, now) {
+  if (!BOSS_BODIES.has(m.type)) return false;
+  const flash = m.hitPulse > 0;
+  const bob = Math.sin(now * 0.014 + ((m.x || 0) % 10)) * (m.isColossal ? 2.2 : 1.2);
+  c.save();
+  c.translate(0, bob);
+  if (m.type === 'behemoth_king') drawBehemoth(c, now, flash);
+  else if (m.type === 'colossal_titan') drawTitan(c, now, flash);
+  else drawAncientDragon(c, now, flash, m.type === 'dragon' ? 0.58 : 1);
+  c.restore();
+  return true;
+}
+
+export function drawRemains(c, r) {
+  const life = Math.max(0, Math.min(1, r.life ?? 1));
+  c.save();
+  c.translate(r.x, r.y);
+  c.globalAlpha = life > 0.35 ? 0.92 : life / 0.35;
+  contactShadow(c, 1, 3, 16, 4.5, 1);
+  shape(c, [[-16,-2],[14,-6],[18,3],[-12,5]], fieldTone(r.cloth || '#6a6258', 0.82));
+  ellipse(c, -18, -1, 5, 4, fieldTone(r.steel || '#8d8680', 0.48));
+  line(c, [[8,0],[20,3],[16,6]], '#3a3834', 2);
+  c.restore();
+}

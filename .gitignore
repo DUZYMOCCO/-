@@ -7,5 +7,5 @@ _bak*
 _patch*
 _*.txt
 _*.py
-/docs/previews/hero-server.log
-/docs/previews/hero-server-error.log
+/iron-squad/docs/previews/hero-server.log
+/iron-squad/docs/previews/hero-server-error.log

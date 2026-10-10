@@ -1,0 +1,12 @@
+import {createRequire} from 'node:module';
+const {chromium}=createRequire('C:/Users/Yoshiyuki/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/entry.cjs')('playwright');
+const browser=await chromium.launch({channel:'chrome',headless:true});
+const page=await (await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true})).newPage();
+await page.goto('http://localhost:8000/iron-squad/tools/canvas-quality-review.html');await page.waitForFunction(()=>window.qualityReady);
+await page.evaluate(()=>{const g=qualityGame;g.stopGameLoop();g.monsters=[];g.updateSpawns=()=>{};g.inBattle=true;g.gold=5000;const st=g.merchants[0].stock;g.inventory=[];for(let i=0;i<14;i++){const it=JSON.parse(JSON.stringify(st[i%st.length]));it.id='a'+i;g.inventory.push(it);}g.openStrategyModal(true);document.getElementById('tab-strat-troops').click();document.getElementById('tab-econ-equip').click();});
+await page.waitForTimeout(400);
+console.log('sale',await page.evaluate(()=>{const d=[...document.querySelectorAll('#view-strat-troops details')].find(d=>d.textContent.includes('売却メニュー'));d.open=true;d.scrollIntoView();const s=document.querySelector('.sale-item-selection');const r=s.getBoundingClientRect();return {h:r.height,sh:s.scrollHeight,ch:s.clientHeight};}));
+await page.waitForTimeout(300);await page.screenshot({path:'iron-squad/docs/previews/audit/portrait-sale-menu-nested.png'});
+console.log('transfer z',await page.evaluate(()=>{const g=qualityGame;g.openEquipmentTransferPopup(g.squad[0],'weapon');const p=document.getElementById('equipment-transfer-popup');const c=p.querySelector('.transfer-popup-container').getBoundingClientRect();const top=document.elementFromPoint(195,422);return {popupZ:getComputedStyle(p).zIndex,stratZ:getComputedStyle(document.getElementById('strategy-modal')).zIndex,topEl:top.className+'|'+top.id,inPopup:p.contains(top)};}));
+console.log('merchant z',await page.evaluate(()=>{const g=qualityGame;g.openMerchantShop(g.merchants[0]);const p=document.getElementById('merchant-shop-popup');const top=document.elementFromPoint(195,422);return {z:getComputedStyle(p).zIndex,inPopup:p.contains(top)};}));
+await browser.close();
