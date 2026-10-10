@@ -63,6 +63,31 @@ const assertTab = (tab, sub=game.rosterManageTab) => {
 };
 // Reproduce the photo: retain each troops subtab while selecting nation, and
 // redraw as real actions do. Returning must restore the selected troops view.
+// The menu opens as a launcher; each section is a full-screen window with its own back/close controls.
+const stratModal=$('strategy-modal');
+assert.equal(stratModal.classList.contains('strat-window-open'),false,'menu opens as a launcher');
+assert.equal(shown($('view-strat-overview')),false,'launcher hides section content');
+assert.equal(shown($('tab-strat-nation')),true,'launcher shows the section buttons');
+assert.equal(shown($('btn-start-next-wave')),true,'launcher keeps the return-to-battle button');
+for (const [tab,title] of [['overview','戦況'],['troops','部隊・装備'],['nation','国家']]) {
+  $(`tab-strat-${tab}`).click();
+  assert.equal(stratModal.classList.contains('strat-window-open'),true,`${tab} opens a window`);
+  assert.equal($('strat-window-title').textContent,title);
+  assert.equal(shown($('strat-window-title')),true);
+  assert.equal(shown($('tab-strat-nation')),false,'window hides the launcher buttons');
+  assert.equal(shown($('btn-start-next-wave')),false,'window hides the footer');
+  $('btn-strat-window-back').click();
+  assert.equal(stratModal.classList.contains('strat-window-open'),false,'back returns to the launcher');
+}
+$('tab-strat-nation').click();
+stratModal.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
+assert.equal(stratModal.classList.contains('strat-window-open'),false,'Escape closes the window to the launcher');
+assert.equal(stratModal.classList.contains('hidden'),false,'Escape in a window keeps the menu open');
+$('tab-strat-overview').click(); $('btn-strat-window-close').click();
+assert.equal(stratModal.classList.contains('hidden'),true,'window close returns to the battlefield');
+game.openStrategyModal(true);
+assert.equal(stratModal.classList.contains('strat-window-open'),false,'reopening starts at the launcher');
+$('tab-strat-overview').click();
 assertTab('overview');
 for (const sub of ['roster','scout','equip']) {
   $('tab-strat-troops').click(); $(`tab-econ-${sub}`).click(); assertTab('troops',sub);

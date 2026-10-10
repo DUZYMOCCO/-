@@ -13,12 +13,12 @@ import {latestEquipmentTier,recordMerchantEquipment,ensureMerchantCatalog,refres
 import {initializeMedicalPosts,updateMedicalPosts,serializeMedicalPosts,nearestKnownMedicalPost,drawMedicalPost,drawMedicalMap,drawMedicalMarker,drawTownMedicalReception,drawRescueDirection} from './medical-posts.js?v=151';
 import {invasionMethods,initializeInvasions,serializeInvasions,shouldTriggerRandomRaid,makeEnemyRoom,drawInvasionRoute} from './invasion-rules.js?v=151';
 import {gateMethods,serializeGatePosts,replenishTownGateGuards,initializeGateGuards,ensureTownGuards,serializeGateGuards,updateGateGuards,gateGuardVisible,applyFortifications,drawFortification,exitGateTown,townExitReached,wallBlocksAttack,attackBlocked as coverBlocked} from './gate-rules.js?v=161';
-import {nationMethods,normalizeNation,nationalIncome,nationalPayrollPlan,headquartersDamageMult,drawNationalDevelopment,DEVELOPMENT_STAGES} from './nation-rules.js?v=164';
+import {nationMethods,normalizeNation,nationalIncome,nationalPayrollPlan,headquartersDamageMult,drawNationalDevelopment,DEVELOPMENT_STAGES} from './nation-rules.js?v=165';
 import {equipmentUpgradeCost,salaryQuote,paySoldiers} from './payroll-rules.js?v=151';
 import {addFieldDrop,ageFieldDrops} from './field-drops.js?v=151';
 import {economicState,advanceRegionalEconomy,discoverEconomicRegions,recordEconomicKill,economicFieldBlocked} from './regional-economy.js?v=151';
 import {updateRegionalTraffic,nearestCommerceTarget,damageCommerce,persistTradeRaiders,restoreTradeRaiders} from './trade-routes.js?v=151';
-import {drawEconomicLandscape,drawCommerceActor,drawEconomicMinimap,drawCommerceWreck,drawCampTent} from './economic-visuals.js?v=164';
+import {drawEconomicLandscape,drawCommerceActor,drawEconomicMinimap,drawCommerceWreck,drawCampTent} from './economic-visuals.js?v=165';
 /**
  * ゲーム3: IRON SQUAD (アイアン・スクワッド: 雑兵立身出世録)
  * ローグライク・アクションRPG
@@ -32,7 +32,7 @@ import {drawEconomicLandscape,drawCommerceActor,drawEconomicMinimap,drawCommerce
  */
 import { sound } from '../../audio.js?v=151';
 import { storage } from '../../storage.js';
-import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow } from './visuals.js?v=164';
+import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow } from './visuals.js?v=165';
 import { refreshCampQuiet, assignCampSeats, tryCampLeisure } from './camp-leisure.js?v=151';
 import { CAMP_PEACE_RADIUS, peaceContainment, pushOutsidePeace, relocatePeaceMonster } from './peace-zones.js?v=158';
 import { FARM_X, FARM_Y, farmPosts, farmOverlaps, reinforcementCount, reserveRosterLine, reserveRosterTitle } from './reserve-farm.js?v=151';
@@ -50,8 +50,8 @@ import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog 
 import { renderTroopRankings, getSoldierRankerBadges, calcSoldierRankerBonus } from './troop-rankings.js?v=151';
 import { ensureSoldierAppearance, drawSoldierPortrait, describeSoldierAppearance } from './soldier-appearance.js?v=151';
 import { attachSurfaceEvents, detachSurfaceEvents, frameSurfaceReady, releaseSceneCaches, releaseCanvas, surfaceCanResume } from './canvas-surface.js?v=151';
-import { WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt, routeNameAt, eastWestRoadY, northSouthRoadX, riverCenterY, drawFieldDepth, drawOakCrown, fieldBlocks, settleUnit } from './world.js?v=164';
-import { subscribeKana } from '../../kana-mode.js?v=164';
+import { WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt, routeNameAt, eastWestRoadY, northSouthRoadX, riverCenterY, drawFieldDepth, drawOakCrown, fieldBlocks, settleUnit } from './world.js?v=165';
+import { subscribeKana } from '../../kana-mode.js?v=165';
 import { FogGrid, FOG_REVEAL_RADIUS, FOG_CAMP_REVEAL } from './fog.js?v=151';
 import {
   classTierOf, nextClassId, classUpCostForNext, canAffordClassUp, formatClassUpCostJa, classUpShortageJa,
@@ -87,7 +87,7 @@ import {
   nearestLivingMerchant, refreshMerchantStock, merchantBuyPrice, merchantSellTier,
   applyMerchantSave, serializeMerchants, MERCHANT_INTERACT_R,
   merchantHealingStatus, merchantHealWavesLeft, useMerchantHealing, MERCHANT_HEAL_COST, recalcEscortStats, finishEscortPhase
-} from './merchant-rules.js?v=164';
+} from './merchant-rules.js?v=165';
 
 import { daylightAt, advanceWorldClock, periodEnemy, enemyAvailable, PERIOD_ENEMIES } from './day-night.js';
 
@@ -1595,7 +1595,16 @@ export const IronSquadGame = {
     const footer=document.createElement('div'); footer.className='dialog-footer';
     footer.append(document.getElementById('btn-start-next-wave'),document.getElementById('btn-close-strat'));
     panel.append(footer);
-    const selectTab=(name)=>{
+    // Each tab is its own full-screen window; the panel is a launcher until one opens.
+    const windowTitles={overview:'戦況',troops:'部隊・装備',nation:'国家'};
+    const windowBar=document.createElement('div'); windowBar.className='strat-window-bar';
+    windowBar.innerHTML='<button type="button" id="btn-strat-window-back" class="strat-window-back">‹ 戻る</button><strong id="strat-window-title" class="strat-window-title"></strong><button type="button" id="btn-strat-window-close" class="strat-window-close">閉じる ×</button>';
+    panel.insertBefore(windowBar,body);
+    const selectTab=(name,openWindow=true)=>{
+      if(openWindow){
+        modal.classList.add('strat-window-open');
+        document.getElementById('strat-window-title').textContent=windowTitles[name]||'';
+      }
       if(name!=='troops')this.closeScoutDialog?.();
       for(const key of ['overview','nation','troops']) {
         const view=document.getElementById(`view-strat-${key}`);
@@ -1624,12 +1633,21 @@ export const IronSquadGame = {
       });
     };
     for(const key of ['overview','nation','troops']) {
-      document.getElementById(`tab-strat-${key}`)?.addEventListener('click',()=>selectTab(key));
+      document.getElementById(`tab-strat-${key}`)?.addEventListener('click',()=>{selectTab(key);document.getElementById('btn-strat-window-back').focus();});
     }
-    selectTab('overview');
+    selectTab('overview',false);
+    this._showStratLauncher=(focus=false)=>{
+      this.closeScoutDialog?.();
+      const wasOpen=modal.classList.contains('strat-window-open');
+      modal.classList.remove('strat-window-open');
+      body.scrollTop=0;
+      if(focus&&wasOpen){const tab=document.querySelector('#strategy-modal .dialog-tabs .sub-tab-btn.active')||document.getElementById('tab-strat-overview');tab?.focus();}
+    };
+    document.getElementById('btn-strat-window-back').addEventListener('click',()=>this._showStratLauncher(true));
+    document.getElementById('btn-strat-window-close').addEventListener('click',()=>this.closeStrategyModal());
     this.dialogKeyHandler=e=>{
       if(modal.classList.contains('hidden')) return;
-      if(e.key==='Escape') { e.preventDefault(); this.closeStrategyModal(); }
+      if(e.key==='Escape') { e.preventDefault(); if(modal.classList.contains('strat-window-open')) this._showStratLauncher(true); else this.closeStrategyModal(); }
       if(e.key==='Tab') {
         const buttons=[...modal.querySelectorAll('button,select,input,summary,[tabindex="0"]')].filter(el=>el.getClientRects().length && !el.disabled && !el.closest('[inert]'));
         const first=buttons[0],last=buttons[buttons.length-1];
@@ -9243,6 +9261,7 @@ export const IronSquadGame = {
     }
 
     this.renderStrategyUI();
+    this._showStratLauncher?.();
     this.inBattle = false;
     this.resetMovementInput();
     this.saveGame();

@@ -1,4 +1,4 @@
-import { displayKana } from '../../kana-mode.js?v=164';
+import { displayKana } from '../../kana-mode.js?v=165';
 // 兵士の一言フキダシ（感情・戦況リアクション）システム
 // 操作を邪魔しない控えめなCanvas描画 ＆ 直近重複排除エンジン（Anti-Repetition）
 
