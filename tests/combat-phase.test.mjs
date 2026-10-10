@@ -24,7 +24,7 @@ assert.equal(PHASE_DURATION,120);assert.equal(game.phaseTimer,120);
 const [fighter,defender,idle]=game.squad;
 const medic=game.squad.find(s=>s.soldierClass==='MEDIC');
 // Credit the attacker and the defended soldier, but not a heal's recipient.
-game.performAttack(fighter,{x:0,y:0,hp:100,color:'#fff'},false,1);
+game.performAttack(fighter,{x:fighter.x+10,y:fighter.y,hp:100,color:'#fff'},false,1);
 game.damageTarget(defender,1);
 idle.hp=30;
 assert.equal(healByMedic(medic,idle,20),20);

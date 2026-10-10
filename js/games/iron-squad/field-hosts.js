@@ -234,14 +234,14 @@ export function stepDemonWarbandGroup(game, dt, camp) {
     const d = Math.hypot(target.x - unit.x, target.y - unit.y);
     if (unit.formationRole === 'rear') {
       if (d <= (unit.attackReach || 22)) {
-        game.damageTarget?.(target, unit.atk);
+        game.damageTarget?.(target, unit.atk, {attacker: unit});
         unit.atkTimer = unit.attackInterval || 2.6;
       } else if (d <= (unit.range || 330)) {
         fireBolt(game, unit, target);
         unit.atkTimer = unit.attackInterval || 2.6;
       }
     } else if (d <= (unit.attackReach || 34)) {
-      game.damageTarget?.(target, unit.atk);
+      game.damageTarget?.(target, unit.atk, {attacker: unit});
       unit.atkTimer = unit.attackInterval || 1.4;
     }
   }

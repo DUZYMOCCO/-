@@ -6,8 +6,11 @@ export function configureBattlefieldUI(game) {
  const status=root.querySelector('.game-stats');status.classList.add('battle-menu-status');for(const n of status.querySelectorAll('.hud-admin'))n.classList.remove('hud-admin');menu.append(status);
  const alerts=root.querySelector('.field-alerts');menu.append(alerts);
  const surrounding=document.createElement('section');surrounding.className='battle-menu-nearby';surrounding.id='battle-menu-nearby';
- const nearbyTitle=document.createElement('h4');nearbyTitle.textContent='周辺の施設・仲間';const hint=document.createElement('p');hint.textContent='近くの施設への入場、商人との取引、仲間への声かけがここに表示されます。';
- surrounding.append(nearbyTitle,hint,root.querySelector('.field-interactions'));menu.append(surrounding);
+ const nearbyTitle=document.createElement('h4');nearbyTitle.textContent='周辺の施設・仲間';const hint=document.createElement('p');hint.textContent='近くの施設への入場と、仲間への声かけがここに表示されます。商人はそばに来ると、操作の上に出ます。';
+ const fieldHost=root.querySelector('.field-interactions');
+ const merchantBanner=get('merchant-prompt-banner'),pad=get('virtual-gamepad');
+ if(merchantBanner&&pad)pad.prepend(merchantBanner);
+ surrounding.append(nearbyTitle,hint,fieldHost);menu.append(surrounding);
  const current=document.createElement('details');current.className='command-fold';const currentTitle=document.createElement('summary');currentTitle.textContent='現在地・軍令・補給';const info=document.createElement('div');info.className='fold-content battle-menu-info';
  info.append(root.querySelector('.field-status'));
  for(const id of ['quest-banner','base-heal-badge','transport-badge']){const n=get(id);if(n)info.append(n);}

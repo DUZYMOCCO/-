@@ -193,7 +193,13 @@
 .iron-squad.quiet-battlefield .battle-log-window.has-field-note .battle-log-msg.item-alert { color:#f3e2a6; border-color:#d7b56a88; }
 .iron-squad.quiet-battlefield .battle-log-window.has-field-note .battle-log-msg.boss-alert { color:#f0c2b4; border-color:#c47a6a88; }
 .iron-squad.quiet-battlefield #virtual-gamepad { grid-template-rows:auto; row-gap:0; padding-bottom:max(12px,env(safe-area-inset-bottom)); }
-.iron-squad.quiet-battlefield .pad-move-column, .iron-squad.quiet-battlefield .pad-buttons-column { grid-row:1; }
+.iron-squad.quiet-battlefield #merchant-prompt-banner {
+  grid-column: 1 / -1; grid-row: 1; position: relative; width: min(340px, 100%); max-width: 100%;
+  justify-self: center; margin: 0 0 6px; z-index: 16; display: flex; align-items: center;
+  justify-content: space-between; gap: 8px; box-sizing: border-box; pointer-events: auto;
+  padding: 6px 12px; border-radius: 8px; animation: none; transform: none;
+}
+.iron-squad.quiet-battlefield .pad-move-column, .iron-squad.quiet-battlefield .pad-buttons-column { grid-row:2; }
 .iron-squad .battlefield-menu { margin:0 0 14px; padding:12px; border:1px solid var(--ui-line); border-radius:8px; background:var(--ui-panel); }
 .iron-squad .battlefield-menu h4 { margin:0 0 8px; font-size:15px; color:var(--ui-gold); }
 .iron-squad .battlefield-menu .battle-menu-status { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px 12px; margin-bottom:12px; }
@@ -623,7 +629,7 @@
   color: #fde68a !important;
 }
 .iron-squad #merchant-banner-text { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 11px; font-weight: bold; }
-.iron-squad #btn-open-merchant { flex: none; min-width: 66px; min-height: 34px; white-space: nowrap; background: #d7b56a !important; color: #1c1610 !important; font-weight: bold; font-size: 11px; border-radius: 6px; border: none; cursor: pointer; }
+.iron-squad #btn-open-merchant { flex: none; min-width: 92px; min-height: 34px; white-space: nowrap; background: #d7b56a !important; color: #1c1610 !important; font-weight: bold; font-size: 11px; border-radius: 6px; border: none; cursor: pointer; }
 
 .iron-squad #dungeon-prompt-banner {
   background: rgba(36, 32, 26, 0.95) !important;

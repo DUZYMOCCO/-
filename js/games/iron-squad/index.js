@@ -1,7 +1,7 @@
-import {configureBattlefieldUI,quietBattlefieldContext} from './battlefield-ui.js?v=151';
+import {configureBattlefieldUI,quietBattlefieldContext} from './battlefield-ui.js?v=160';
 import {renderNavigationMap} from './navigation-map.js?v=156';
 import {soldierEquipmentValue,observeEquipment,standardEquipmentCost,RESERVE_ARMAMENT_COUNT} from './armament-rules.js?v=151';
-import {configureRangedEnemy,updateRangedEnemy,updateDefenseWalls,interceptHostileShot,isHostileShot,updateHostileBolt,drawDefenseWalls} from './enemy-ranged.js?v=158';
+import {configureRangedEnemy,updateRangedEnemy,updateDefenseWalls,interceptHostileShot,isHostileShot,updateHostileBolt,drawDefenseWalls} from './enemy-ranged.js?v=160';
 import {LIMITED_CLASSES,initializeLimitedAllies,prepareLimitedEncounter,createLimitedAlly,joinLimitedEncounter,updateLimitedAllies,updateNinja,updateShuriken,drawLimitedEncounter,serializeLimitedAllies,notifyLimitedJoin} from './limited-allies.js?v=151';
 import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=151';
 import {TIERS,MAX_EQUIPMENT_TIER,MAX_POWER_RANK,POWER_RANK_STEP,GENERATION_COUNT,TRADE_MAX_TIER,powerRank,tierDescription} from './equipment-tiers.js?v=151';
@@ -12,7 +12,7 @@ import {rollDropExclusive,applyDropExclusive,dropExclusiveLabel} from './drop-ex
 import {latestEquipmentTier,recordMerchantEquipment,ensureMerchantCatalog,refreshWaveCatalogs,markMerchantPurchase} from './merchant-catalog.js?v=151';
 import {initializeMedicalPosts,updateMedicalPosts,serializeMedicalPosts,nearestKnownMedicalPost,drawMedicalPost,drawMedicalMap,drawMedicalMarker,drawTownMedicalReception,drawRescueDirection} from './medical-posts.js?v=151';
 import {invasionMethods,initializeInvasions,serializeInvasions,shouldTriggerRandomRaid,makeEnemyRoom,drawInvasionRoute} from './invasion-rules.js?v=151';
-import {gateMethods,serializeGatePosts,replenishTownGateGuards,initializeGateGuards,ensureTownGuards,serializeGateGuards,updateGateGuards,gateGuardVisible,applyFortifications,drawFortification,exitGateTown,townExitReached,wallBlocksAttack} from './gate-rules.js?v=151';
+import {gateMethods,serializeGatePosts,replenishTownGateGuards,initializeGateGuards,ensureTownGuards,serializeGateGuards,updateGateGuards,gateGuardVisible,applyFortifications,drawFortification,exitGateTown,townExitReached,wallBlocksAttack,attackBlocked as coverBlocked} from './gate-rules.js?v=161';
 import {nationMethods,normalizeNation,nationalIncome,nationalPayrollPlan,headquartersDamageMult,drawNationalDevelopment,DEVELOPMENT_STAGES} from './nation-rules.js?v=151';
 import {equipmentUpgradeCost,salaryQuote,paySoldiers} from './payroll-rules.js?v=151';
 import {addFieldDrop,ageFieldDrops} from './field-drops.js?v=151';
@@ -54,8 +54,8 @@ import { WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt, routeNameAt, eastWest
 import { FogGrid, FOG_REVEAL_RADIUS, FOG_CAMP_REVEAL } from './fog.js?v=151';
 import {
   classTierOf, nextClassId, classUpCostForNext, canAffordClassUp, formatClassUpCostJa, classUpShortageJa,
-  playerClassTier, nextPlayerStage, playerStageById, CLASS_TIER_LABELS, PLAYER_CLASS_STAGES
-} from './class-up-rules.js';
+  playerClassTier, nextPlayerStage, playerStageById, CLASS_TIER_LABELS, PLAYER_CLASS_STAGES, passesWalls as unitPassesWalls
+} from './class-up-rules.js?v=161';
 import { PHASE_DURATION, REST_DURATION, DEATHLINE_DOWN_THRESHOLD, SOLDIER_SALARY, MIN_REINFORCEMENTS, emptyActivity, advancePhase, advanceRest, recordCombat, recordHealing, healByMedic, personalDownCount, deathlineEligible, participated, finishExperience } from './phase-rules.js';
 import {HEALING_HP_PER_EXP,REVIVAL_EXP_PER_MAX_HP,shareCommanderExp,raiseLevelMark,ageLevelMarks} from './experience-rules.js';
 import {rollAttributeProfile,applyAttributeStats,attributeValues,practiceAttribute,attributeCarryCapacity,attributeSpecialties,prefersCasterMelee,canChannelWeaponMagic,magicAbilityMultiplier,beginAttributeMovement,finishAttributeMovement,ATTRIBUTE_LABELS,ATTRIBUTE_KEYS,aptitudeGrade} from './unit-attributes.js';
@@ -69,7 +69,7 @@ import {
 } from './economy-rules.js?v=151';
 
 import { EQUIPMENT_TYPES, saleValue, equippedIds, canSell, lowValueIds, chooseLootTier, distanceScaling, shrineUpgradeCap, compareEquipment, equipmentScore, compareEquipmentStrength, rollWeaponTraits, weaponCombatProfile, evaluateMeleeSweetSpot, isGodRollProtected, zoneRingPower, zoneRingLabelJa, equipmentIcon, equipmentName } from './equipment-rules.js?v=158';
-import { rollFieldBrute, advanceDemonWarband, stepDemonWarbandGroup } from './field-hosts.js?v=159';
+import { rollFieldBrute, advanceDemonWarband, stepDemonWarbandGroup } from './field-hosts.js?v=160';
 import {
   WEAPON_STYLES, WEAPON_STYLE_LABELS, WEAPON_STYLE_ICONS,
   MELEE_STYLES, RANGED_STYLES, HIT_GROWTH_SOFT_CAP,
@@ -1138,7 +1138,7 @@ export const IronSquadGame = {
           <!-- 行商人・交易バナー (操作パネル上部) -->
           <div id="merchant-prompt-banner" class="phase-banner hidden">
             <span id="merchant-banner-text">🏪 行商人</span>
-            <button id="btn-open-merchant" type="button">品定め</button>
+            <button id="btn-open-merchant" type="button">取引と回復</button>
           </div>
           <!-- 本陣強襲・防衛救援バナー (画面最上部スリムバー・中央視界を塞がない) -->
           <div id="base-raid-banner" class="phase-banner hidden">
@@ -3794,12 +3794,12 @@ export const IronSquadGame = {
           const along = dx * cos + dy * sin;
           if (along < -8 || along > reach) continue;
           const perp = Math.abs(-dy * cos + dx * sin);
-          if (perp <= wProf.pierceHalfWidth + (m.radius || 12)) {
+          if (perp <= wProf.pierceHalfWidth + (m.radius || 12) && !coverBlocked(this, this.player, m)) {
             this.performAttack(this.player, m, true, undefined, along);
             hit = true;
           }
         }
-        if (!hit) this.performAttack(this.player, nearest, true);
+        if (!hit && !coverBlocked(this, this.player, nearest)) this.performAttack(this.player, nearest, true);
       } else {
         this.performMeleeSweep(this.player,nearest,true,undefined,wProf,reach);
       }
@@ -3864,7 +3864,7 @@ export const IronSquadGame = {
   },
 
   powerKnockStun(m, knockDist, stunSec) {
-    if (!m || m.hp <= 0) return;
+    if (!m || m.hp <= 0 || coverBlocked(this, this.player, m)) return;
     if (!m.isColossal && knockDist > 0) {
       const knockAngle = Math.atan2(m.y - this.player.y, m.x - this.player.x);
       m.x += Math.cos(knockAngle) * knockDist;
@@ -6058,7 +6058,7 @@ export const IronSquadGame = {
                 const along = dx * cos + dy * sin;
                 if (along < -6 || along > meleeReach) continue;
                 const perp = Math.abs(-dy * cos + dx * sin);
-                if (perp <= sProf.pierceHalfWidth + (m.radius || 12)) {
+                if (perp <= sProf.pierceHalfWidth + (m.radius || 12) && !coverBlocked(this, soldier, m)) {
                   this.performAttack(soldier, m, false, meleeAtk, along);
                 }
               }
@@ -6092,8 +6092,9 @@ export const IronSquadGame = {
 
         // 1. 直進貫通弾（SWORD_BEAM: 疾風真空刃）
         if (proj.type === 'SWORD_BEAM') {
-          proj.x += proj.vx * dt;
-          proj.y += proj.vy * dt;
+          const nx = proj.x + proj.vx * dt, ny = proj.y + proj.vy * dt;
+          if (coverBlocked(this, proj, {x: nx, y: ny})) { this.projectiles.splice(i, 1); continue; }
+          proj.x = nx; proj.y = ny;
           proj.life -= dt;
           if (proj.life <= 0) {
             this.projectiles.splice(i, 1);
@@ -6113,8 +6114,9 @@ export const IronSquadGame = {
 
         // 2. 直進・誘導光矢（STAR_ARROW: 神射手の天星光矢）
         if (proj.type === 'STAR_ARROW') {
-          proj.x += proj.vx * dt;
-          proj.y += proj.vy * dt;
+          const nx = proj.x + proj.vx * dt, ny = proj.y + proj.vy * dt;
+          if (coverBlocked(this, proj, {x: nx, y: ny})) { this.projectiles.splice(i, 1); continue; }
+          proj.x = nx; proj.y = ny;
           proj.life -= dt;
           let hit = false;
           // 敵との衝突判定
@@ -6160,16 +6162,18 @@ export const IronSquadGame = {
             this.spawnSparks(tgt.x, tgt.y, '#f472b6', 12);
             sound.playBomb();
           } else {
-            proj.x += (pdx / pdist) * proj.speed * dt;
-            proj.y += (pdy / pdist) * proj.speed * dt;
+            const nx = proj.x + (pdx / pdist) * proj.speed * dt, ny = proj.y + (pdy / pdist) * proj.speed * dt;
+            if (coverBlocked(this, proj, {x: nx, y: ny})) { this.projectiles.splice(i, 1); continue; }
+            proj.x = nx; proj.y = ny;
           }
           continue;
         }
 
         // 4. 敵大ボスの火炎ブレス弾（BREATH_FLAME）
         if (proj.type === 'BREATH_FLAME') {
-          proj.x += proj.vx * dt;
-          proj.y += proj.vy * dt;
+          const nx = proj.x + proj.vx * dt, ny = proj.y + proj.vy * dt;
+          if (coverBlocked(this, proj.attacker || proj, {x: nx, y: ny})) { this.projectiles.splice(i, 1); continue; }
+          proj.x = nx; proj.y = ny;
           proj.life -= dt;
           if (proj.life <= 0) {
             this.projectiles.splice(i, 1);
@@ -6179,8 +6183,8 @@ export const IronSquadGame = {
           const hitTargets = [this.player, ...aliveSquad.filter(s => !s.isDown)];
           let hitAny = false;
           for (const ht of hitTargets) {
-            if (Math.hypot(ht.x - proj.x, ht.y - proj.y) <= (ht === this.player ? 22 : 16)) {
-              this.damageTarget(ht, proj.damage,{damageKind:'elemental',element:'fire'});
+            if (Math.hypot(ht.x - proj.x, ht.y - proj.y) <= (ht === this.player ? 22 : 16) && !coverBlocked(this, proj.attacker || proj, ht)) {
+              this.damageTarget(ht, proj.damage,{damageKind:'elemental',element:'fire',attacker:proj.attacker||proj});
               this.spawnSparks(ht.x, ht.y, '#ef4444', 8);
               hitAny = true;
               break;
@@ -6195,8 +6199,9 @@ export const IronSquadGame = {
 
         // 5. 敵大ボスの古代光線弾（TITAN_BEAM）
         if (proj.type === 'TITAN_BEAM') {
-          proj.x += proj.vx * dt;
-          proj.y += proj.vy * dt;
+          const nx = proj.x + proj.vx * dt, ny = proj.y + proj.vy * dt;
+          if (coverBlocked(this, proj.attacker || proj, {x: nx, y: ny})) { this.projectiles.splice(i, 1); continue; }
+          proj.x = nx; proj.y = ny;
           proj.life -= dt;
           if (proj.life <= 0) {
             this.projectiles.splice(i, 1);
@@ -6205,8 +6210,8 @@ export const IronSquadGame = {
           const hitTargets = [this.player, ...aliveSquad.filter(s => !s.isDown)];
           let hitAny = false;
           for (const ht of hitTargets) {
-            if (Math.hypot(ht.x - proj.x, ht.y - proj.y) <= (ht === this.player ? 22 : 16)) {
-              this.damageTarget(ht, proj.damage,{damageKind:'magic',element:'arcane'});
+            if (Math.hypot(ht.x - proj.x, ht.y - proj.y) <= (ht === this.player ? 22 : 16) && !coverBlocked(this, proj.attacker || proj, ht)) {
+              this.damageTarget(ht, proj.damage,{damageKind:'magic',element:'arcane',attacker:proj.attacker||proj});
               this.spawnSparks(ht.x, ht.y, '#06b6d4', 8);
               hitAny = true;
               break;
@@ -6221,8 +6226,9 @@ export const IronSquadGame = {
 
         // 6b. 火砲弾（直進・着弾スプラッシュ）
         if (proj.type === 'CANNONBALL') {
-          proj.x += proj.vx * dt;
-          proj.y += proj.vy * dt;
+          const nx = proj.x + proj.vx * dt, ny = proj.y + proj.vy * dt;
+          if (coverBlocked(this, proj, {x: nx, y: ny})) { this.projectiles.splice(i, 1); continue; }
+          proj.x = nx; proj.y = ny;
           proj.life -= dt;
           let impact = null;
           for (const m of this.monsters) {
@@ -6264,7 +6270,7 @@ export const IronSquadGame = {
 
         if (pdist < 18) {
           this.projectiles.splice(i, 1);
-          if (['ARROW','BOLT','STONE'].includes(proj.type)) {
+          if (['ARROW','BOLT','STONE'].includes(proj.type) && !coverBlocked(this, proj.attacker || proj, tgt)) {
             this.performAttack(proj.attacker, tgt, !!proj.isPlayer, proj.damage, false,null,proj.magicDamage||0);
             if(proj.type!=='STONE')this.spawnSparks(tgt.x, tgt.y, proj.color || '#e2e8f0', proj.type === 'BOLT' ? 7 : 5);
             if ((proj.knockback || 0) > 0 && !tgt.isColossal) {
@@ -6283,8 +6289,9 @@ export const IronSquadGame = {
             if (isHigh) sound.playHighScore();
           }
         } else {
-          proj.x += (pdx / pdist) * proj.speed * dt;
-          proj.y += (pdy / pdist) * proj.speed * dt;
+          const nx = proj.x + (pdx / pdist) * proj.speed * dt, ny = proj.y + (pdy / pdist) * proj.speed * dt;
+          if (proj.type !== 'HEAL' && coverBlocked(this, proj, {x: nx, y: ny})) { this.projectiles.splice(i, 1); continue; }
+          proj.x = nx; proj.y = ny;
         }
       }
     }
@@ -6342,12 +6349,12 @@ export const IronSquadGame = {
             const along = dx * cos + dy * sin;
             if (along < -8 || along > reach) continue;
             const perp = Math.abs(-dy * cos + dx * sin);
-            if (perp <= wProf.pierceHalfWidth + (m.radius || 12)) {
+            if (perp <= wProf.pierceHalfWidth + (m.radius || 12) && !coverBlocked(this, this.player, m)) {
               this.performAttack(this.player, m, true, undefined, along);
               hitAny = true;
             }
           }
-          if (!hitAny) this.performAttack(this.player, nearestMonster, true);
+          if (!hitAny && !coverBlocked(this, this.player, nearestMonster)) this.performAttack(this.player, nearestMonster, true);
           this.spawnSparks(
             this.player.x + cos * Math.min(reach * 0.55, dist),
             this.player.y + sin * Math.min(reach * 0.55, dist),
@@ -6490,8 +6497,8 @@ export const IronSquadGame = {
             const shockTargets = [this.player, ...aliveSquad.filter(s => !s.isDown)];
             for (const tgt of shockTargets) {
               const td = Math.hypot(tgt.x - m.x, tgt.y - m.y);
-              if (td <= 180) {
-                this.damageTarget(tgt, Math.round(m.atk * 0.9));
+              if (td <= 180 && !coverBlocked(this, m, tgt)) {
+                this.damageTarget(tgt, Math.round(m.atk * 0.9), {attacker:m});
                 const knockAng = Math.atan2(tgt.y - m.y, tgt.x - m.x);
                 tgt.x += Math.cos(knockAng) * 35;
                 tgt.y += Math.sin(knockAng) * 35;
@@ -6508,7 +6515,7 @@ export const IronSquadGame = {
             for (let fi = -3; fi <= 3; fi++) {
               const fAng = baseAng + fi * 0.16;
               this.projectiles.push({
-                x: m.x, y: m.y,
+                x: m.x, y: m.y, attacker: m,
                 vx: Math.cos(fAng) * 320,
                 vy: Math.sin(fAng) * 320,
                 damage: Math.round(m.atk * 0.85),
@@ -6526,7 +6533,7 @@ export const IronSquadGame = {
             for (let bi = 0; bi < 8; bi++) {
               const bAng = (bi / 8) * Math.PI * 2;
               this.projectiles.push({
-                x: m.x, y: m.y,
+                x: m.x, y: m.y, attacker: m,
                 vx: Math.cos(bAng) * 300,
                 vy: Math.sin(bAng) * 300,
                 damage: Math.round(m.atk * 0.8),
@@ -6546,8 +6553,9 @@ export const IronSquadGame = {
       const dy = target.y - m.y;
       const dist = Math.hypot(dx, dy);
 
-      const wallBlocked=m.isMajorInvasion&&wallBlocksAttack(this,m,target);
-      if (dist > (m.attackReach||(m.radius ? m.radius * 0.8 : 12)) || wallBlocked) {
+      const reach=m.attackReach||(m.radius ? m.radius * 0.8 : 12);
+      const wallBlocked=dist<=reach&&coverBlocked(this,m,target);
+      if (dist > reach || wallBlocked) {
         const slow=m.magicSlowTimer>0?.55:1;
         m.x += (dx / dist) * m.speed * slow * dt;
         m.y += (dy / dist) * m.speed * slow * dt;
@@ -6556,10 +6564,10 @@ export const IronSquadGame = {
         if (m.atkTimer <= 0) {
           m.atkTimer = m.attackInterval||1.0;
           if (target && target.hp !== undefined) {
-            this.damageTarget(target, m.atk);
+            this.damageTarget(target, m.atk, {attacker:m});
             if(m.cleaveRadius){let swept=0;for(const unit of [this.player,...raidDefenders]){
-              if(unit===target||unit.dead||unit.isDown||unit.hp<=0||Math.hypot(unit.x-target.x,unit.y-target.y)>m.cleaveRadius||Math.hypot(unit.x-m.x,unit.y-m.y)>m.attackReach+m.cleaveRadius||wallBlocksAttack(this,m,unit))continue;
-              this.damageTarget(unit,Math.round(m.atk*.65));if(++swept>=2)break;
+              if(unit===target||unit.dead||unit.isDown||unit.hp<=0||Math.hypot(unit.x-target.x,unit.y-target.y)>m.cleaveRadius||Math.hypot(unit.x-m.x,unit.y-m.y)>reach+m.cleaveRadius||coverBlocked(this,m,unit))continue;
+              this.damageTarget(unit,Math.round(m.atk*.65),{attacker:m});if(++swept>=2)break;
             }}
           }
         }
@@ -6665,7 +6673,13 @@ export const IronSquadGame = {
     const dungeon = this.currentDungeon;
     const apply = (unit, inside) => {
       if (!unit || !Number.isFinite(unit.x) || !Number.isFinite(unit.y)) return;
-      settleUnit(unit, (x, y) => inside ? dungeonBlocks(dungeon, x, y) : economicFieldBlocked(this,x,y));
+      const blocked = (x, y) => inside ? dungeonBlocks(dungeon, x, y) : economicFieldBlocked(this,x,y);
+      const carrier = unit.carrierId ? carrierOf(this, unit) : null;
+      if (this.passesWalls(unit) || this.passesWalls(carrier)) {
+        if (!blocked(unit.x, unit.y)) { unit._openX = unit.x; unit._openY = unit.y; }
+        return;
+      }
+      settleUnit(unit, blocked);
     };
     apply(this.player, !!dungeon);
     for (const s of this.squad || []) apply(s, !!(dungeon && inCurrentInstance(this, s)));
@@ -6863,6 +6877,7 @@ export const IronSquadGame = {
   performAttack(attacker, monster, isPlayer, customAtk, sweetOpt, attackKind = null, magicBonus = 0) {
     if(monster?.retreated || this.restTimer>0)return;
     if (!monster || monster.hp <= 0) return;
+    if (attacker && Number.isFinite(attacker.x) && Number.isFinite(monster.x) && coverBlocked(this, attacker, monster)) return;
     const baseAtk = customAtk !== undefined ? customAtk : (attacker ? (attacker.atk || 10) : 10);
     const magicalAttack=attackKind==='magic'||(attackKind==null&&isMage(attacker));
     let dmg = baseAtk*(attacker?.magicAttackTimer>0?1+(attacker.magicAttackBonus||0):1);
@@ -6987,6 +7002,7 @@ export const IronSquadGame = {
     const environmental=!!options.environmental;
     if (!target || target.dead || target.isDown || target.hp <= 0 || !(rawDmg > 0)) return;
     if(target===this.player&&target.invulnerableTimer>0)return;
+    if(!environmental && options.attacker && coverBlocked(this, options.attacker, target))return;
     if(!environmental)recordCombat(target);
     const magical=options.damageKind==='magic'||options.damageKind==='elemental'||!!options.element;
     const dodgeChance=target.dodge ?? (target.soldierClass==='BLADEMASTER'?25:0);
@@ -7109,11 +7125,6 @@ export const IronSquadGame = {
   checkMerchantProximity() {
     const banner = document.getElementById('merchant-prompt-banner');
     const textEl = document.getElementById('merchant-banner-text');
-    if (this.nearDungeon && !this.currentDungeon) {
-      this.nearMerchant = null;
-      if (banner) banner.classList.add('hidden');
-      return;
-    }
     const m = nearestLivingMerchant(this, this.player?.x || 0, this.player?.y || 0, MERCHANT_INTERACT_R);
     this.nearMerchant = m;
     if (banner && textEl) {
@@ -7832,7 +7843,13 @@ export const IronSquadGame = {
 
   limitedDeploymentLimit() {return Math.min(RANKS[this.rankIndex]?.maxSquad||DEPLOYMENT_CAPACITY,DEPLOYMENT_CAPACITY);},
   limitedGuardLimit() {return Math.min(RANKS[this.rankIndex]?.personalGuards||0,PERSONAL_GUARD_MAX);},
-  wallBlocksEnemyAttack(enemy,target) {return wallBlocksAttack(this,enemy,target);},
+  wallBlocksEnemyAttack(enemy,target) {return coverBlocked(this,enemy,target);},
+  attackBlocked(from,to) {return coverBlocked(this,from,to);},
+  passesWalls(unit) {
+    if (!unit) return false;
+    const cls = unit.soldierClass ? SOLDIER_CLASSES[unit.soldierClass] : null;
+    return unitPassesWalls(unit, cls);
+  },
 
   gainExp(amt,{share=true}={}) {
     if(!Number.isFinite(amt)||amt<=0)return;
@@ -8099,7 +8116,7 @@ export const IronSquadGame = {
 
     const tierName = CLASS_TIER_LABELS[classTierOf(advCls)] || '上位職';
     sound.playHighScore();
-    this.showToast(`🔱⚡【天命覚醒！】${s.name} が${tierName}【${advCls.name}】へ昇格！（消費: ${formatClassUpCostJa(cost)}）`);
+    this.showToast(`🔱⚡【天命覚醒！】${s.name} が${tierName}【${advCls.name}】へ昇格！壁を突き抜けて進み、攻撃も壁の向こうへ届きます（消費: ${formatClassUpCostJa(cost)}）`);
     this.saveGame();
     this.renderStrategyUI();
     this.updateStatsUI();
@@ -8127,7 +8144,7 @@ export const IronSquadGame = {
     this.player.hp = this.player.maxHp;
 
     sound.playHighScore();
-    this.showToast(`👑🔥【覚醒昇格！】隊長が【${next.name}】へ！（消費: ${formatClassUpCostJa(cost)}）`);
+    this.showToast(`👑🔥【覚醒昇格！】隊長が【${next.name}】へ！壁を突き抜けて進み、攻撃も壁の向こうへ届きます（消費: ${formatClassUpCostJa(cost)}）`);
     this.saveGame();
     this.renderStrategyUI();
     this.updateStatsUI();
@@ -9339,7 +9356,7 @@ export const IronSquadGame = {
             <span style="color: #fde047;">(+${bossAtk}攻 / +${bossHp}HP / 会心+${bossCrit}% / 軽減-${bossRed}%)</span>
           </div>
           <div style="margin-top: 5px; padding-top: 5px; border-top: 1px dashed rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center;">
-            <span class="commander-stage">現在：${stage.name}${nextStage ? `<br>次：${nextStage.name} · ${formatClassUpCostJa(awakeningCost)}` : ' · 最高位へ覚醒済み'}</span>
+            <span class="commander-stage">現在：${stage.name}${playerClassTier(p) >= 1 ? ' · 壁を突き抜ける' : ''}${nextStage ? `<br>次：${nextStage.name} · ${formatClassUpCostJa(awakeningCost)} · 壁を突き抜ける` : ' · 最高位へ覚醒済み'}</span>
             ${nextStage ? `<button id="btn-promote-player" class="mini-btn" ${canAffordClassUp(this.awakeningOrbs,this.awakeningGems,awakeningCost) ? '' : 'disabled'}>${nextStage.name}へ覚醒</button>` : ''}
           </div>
         </div>
@@ -9771,7 +9788,7 @@ export const IronSquadGame = {
             const costJa = formatClassUpCostJa(cost);
             const tierJa = CLASS_TIER_LABELS[classTierOf(next)] || '上位職';
             return `
-            <button class="mini-btn btn-class-up" style="background:linear-gradient(135deg, #f59e0b, #ec4899); color:#fff; font-size:10px; font-weight:bold; box-shadow:0 0 6px rgba(245,158,11,0.5);" title="${tierJa}【${next.name}】へ覚醒（${costJa}）">
+            <button class="mini-btn btn-class-up" style="background:linear-gradient(135deg, #f59e0b, #ec4899); color:#fff; font-size:10px; font-weight:bold; box-shadow:0 0 6px rgba(245,158,11,0.5);" title="${tierJa}【${next.name}】へ覚醒（${costJa}）。壁を突き抜けて進み、攻撃も壁の向こうへ届きます">
               🔱 ${tierJa}【${next.name}】へ！(${costJa})
             </button>`;
           })() : ''}

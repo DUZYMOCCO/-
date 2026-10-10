@@ -75,13 +75,18 @@ export function interceptHostileShot(game,shot,from,to) {
 const segmentDistance=(p,a,b)=>{const dx=b.x-a.x,dy=b.y-a.y,t=Math.max(0,Math.min(1,((p.x-a.x)*dx+(p.y-a.y)*dy)/(dx*dx+dy*dy||1)));return {t,d:Math.hypot(p.x-a.x-dx*t,p.y-a.y-dy*t)};};
 export function updateHostileBolt(game,shot,dt) {
   const from={x:shot.x,y:shot.y},to={x:shot.x+shot.vx*dt,y:shot.y+shot.vy*dt};shot.life-=dt;
+  if(game.attackBlocked?.(from,to))return true;
   const targets=[...new Set([game.player,...(game.squad||[]),...(game.gateGuards||[]),shot.target])].filter(u=>living(u)&&local(game,u));
   const hits=targets.map(u=>({u,...segmentDistance(u,from,to)})).filter(h=>h.d<=(h.u===game.player?22:16)).sort((a,b)=>a.t-b.t);
   const first=hits[0];const end=first?{x:from.x+(to.x-from.x)*first.t,y:from.y+(to.y-from.y)*first.t}:to;
   if(interceptHostileShot(game,shot,from,end))return true;
   if(first){
+    const origin=Number.isFinite(shot.sourceX)?{x:shot.sourceX,y:shot.sourceY}:from;
     const affected=shot.splash?targets.filter(u=>Math.hypot(u.x-end.x,u.y-end.y)<=shot.splash):[first.u];
-    for(const unit of affected)game.damageTarget(unit,shot.damage,{damageKind:shot.damageKind,element:shot.element,ranged:true});
+    for(const unit of affected){
+      if(game.attackBlocked?.(origin,unit))continue;
+      game.damageTarget(unit,shot.damage,{damageKind:shot.damageKind,element:shot.element,ranged:true,attacker:origin});
+    }
     return true;
   }
   shot.x=to.x;shot.y=to.y;return shot.life<=0;

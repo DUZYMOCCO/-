@@ -94,6 +94,14 @@ export function playerClassTier(player) {
   return 0;
 }
 
+/** 上位職以降の隊長・兵士は、歩行も攻撃も壁を突き抜ける。一般兵と敵は対象外。 */
+export function passesWalls(unit, classDef = null) {
+  if (!unit) return false;
+  if (classDef?.isAdvanced) return true;
+  if (unit.soldierClass) return false;
+  return playerClassTier(unit) >= 1;
+}
+
 export function nextPlayerStage(player) {
   const t = playerClassTier(player);
   return PLAYER_CLASS_STAGES[t + 1] || null;

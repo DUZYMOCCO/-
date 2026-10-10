@@ -1,5 +1,6 @@
 import {drawStoneFortification} from './fortification-visuals.js?v=151';
-import {WORLD_SIZE} from './world.js?v=151';
+import {WORLD_SIZE,fieldBlocks} from './world.js?v=151';
+import {dungeonBlocks} from './dungeon.js?v=151';
 import {inCurrentInstance} from './instance-rules.js?v=151';
 import {makeEscort,recalcEscortStats,updateEscortPatrol,npcSave,applyNpcSave} from './merchant-rules.js?v=151';
 import {rebuildMerchantCasualties,carrierOf,sanitizeCarriers} from './casualty-rules.js?v=151';
@@ -31,8 +32,29 @@ function blockingCrossing(w,from,to,radius=10) {
   return hits.sort((a,b)=>a.t-b.t)[0];
 }
 export function wallBlocksAttack(game,attacker,target) {const w=wallGeometry(game);return !!w&&!!blockingCrossing(w,attacker,target,1);}
+/** True when a hit segment crosses a wall the walker cannot pass. Same-side swings stay open. */
+export function attackBlocked(game,from,to) {
+  if(!from||!to)return false;
+  if(game?.passesWalls?.(from)||game?.passesWalls?.(from.attacker))return false;
+  const x0=from.x,y0=from.y,x1=to.x,y1=to.y;
+  if(![x0,y0,x1,y1].every(Number.isFinite))return false;
+  if(wallBlocksAttack(game,from,to))return true;
+  const dx=x1-x0,dy=y1-y0,dist=Math.hypot(dx,dy);
+  if(dist<1)return false;
+  const dungeon=game?.currentDungeon;
+  const blocks=dungeon
+    ?(dungeon.kind==='dungeon'?(x,y)=>dungeonBlocks(dungeon,x,y):()=>false)
+    :(x,y)=>fieldBlocks(x,y,game?._economicWorks||[]);
+  const n=Math.max(1,Math.ceil(dist/14));
+  for(let i=1;i<=n;i++){
+    const t=Math.min(0.98,i/n);
+    if(blocks(x0+dx*t,y0+dy*t))return true;
+  }
+  return false;
+}
 export function resolveWallMovement(game,actor,fromX,fromY,dt=1/60) {
   const w=wallGeometry(game);if(!w||actor.isDown||actor.carrierId)return false;
+  if(game?.passesWalls?.(actor))return false;
   const from={x:fromX,y:fromY},hit=blockingCrossing(w,from,actor,actor.radius||10);if(!hit)return false;
   if(actor===game.player){const fraction=Math.max(0,hit.t-.005);actor.x=fromX+(actor.x-fromX)*fraction;actor.y=fromY+(actor.y-fromY)*fraction;return true;}
   // AI takes a short detour to the nearest opening instead of piling up at a wall.
@@ -127,7 +149,7 @@ export function updateGateGuards(game,dt) {
     const home={x:guard.homeX,y:guard.homeY,escorts:[guard]},near=game.player&&Math.hypot(guard.x-game.player.x,guard.y-game.player.y)<850;
     if(!near&&!guard.returningToBase&&!monsters.some(m=>m.hp>0&&Math.hypot(m.x-home.x,m.y-home.y)<380))continue;
     updateEscortPatrol(game,home,dt,monsters,{damageMonster:(unit,m,damage)=>{if(m.hp>0)game.performAttack(unit,m,false,damage);}});
-    for(const m of monsters)if(m.hp>0&&Math.hypot(m.x-guard.x,m.y-guard.y)<(m.radius||14)+guard.radius){m._gateAtk=(m._gateAtk||0)-dt;if(m._gateAtk<=0){m._gateAtk=1;game.damageTarget(guard,m.atk||10);}}
+    for(const m of monsters)if(m.hp>0&&Math.hypot(m.x-guard.x,m.y-guard.y)<(m.radius||14)+guard.radius){m._gateAtk=(m._gateAtk||0)-dt;if(m._gateAtk<=0){m._gateAtk=1;game.damageTarget(guard,m.atk||10,{attacker:m});}}
   }
 }
 export function drawFortification(ctx,game) {
