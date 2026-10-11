@@ -44,7 +44,7 @@ test('pickWeighted never returns a zero-weight entry', () => {
 });
 
 test('upgrade choices are distinct, upgradable, and fall back when maxed', () => {
-  const picks = upgradeChoices({ kunai: 1 }, {});
+  const picks = upgradeChoices({ kunai: 1, gun: 1 }, {}, () => 0);
   assert.equal(picks.length, 3);
   assert.equal(new Set(picks.map(p => p.kind + p.id)).size, 3);
   const kunai = picks.find(p => p.id === 'kunai');
@@ -54,6 +54,33 @@ test('upgrade choices are distinct, upgradable, and fall back when maxed', () =>
   const maxP = Object.fromEntries(Object.keys(PASSIVES).map(k => [k, MAX_LEVEL]));
   const fallback = upgradeChoices(maxW, maxP);
   assert.deepEqual(fallback.map(p => p.kind), ['food', 'coin']);
+});
+
+test('guns are offered first, then evolve with the matching passive', () => {
+  assert.deepEqual(upgradeChoices({ kunai: 1 }, {}).map(p => p.id), ['gun', 'shotgun', 'bazooka']);
+  assert.equal(CHARACTERS.find(c => c.id === 'penguin').weapon, 'gun');
+  assert.equal(CHARACTERS.find(c => c.id === 'bear').weapon, 'shotgun');
+  assert.equal(CHARACTERS.find(c => c.id === 'dino').weapon, 'bazooka');
+  assert.deepEqual(WEAPONS.bazooka.count, [1, 1, 2, 2, 3]);
+  assert.equal(WEAPONS.shotgun.count[4], 12);
+  assert.ok(WEAPONS.gun.splash[4] > 0);
+  assert.equal(WEAPONS.dual.evolved && WEAPONS.gatling.evolved && WEAPONS.mega.evolved, true);
+
+  const owned = upgradeChoices({ gun: 1 }, {}, () => 0);
+  assert.ok(owned.every(p => p.id !== 'dual' && p.id !== 'gatling' && p.id !== 'mega'));
+  assert.notDeepEqual(owned.map(p => p.id), ['gun', 'shotgun', 'bazooka']);
+
+  assert.ok(upgradeChoices({ gun: MAX_LEVEL - 1 }, { ammo: MAX_LEVEL }).every(p => p.kind !== 'evolve'));
+  assert.ok(upgradeChoices({ gun: MAX_LEVEL, shotgun: MAX_LEVEL, bazooka: MAX_LEVEL }, {}).every(p => p.kind !== 'evolve'));
+  assert.equal(upgradeChoices({ gun: MAX_LEVEL }, { ammo: 1 }, () => 0)[0].id, 'dual');
+  assert.equal(upgradeChoices({ shotgun: MAX_LEVEL }, { ammo: 1 }, () => 0)[0].id, 'gatling');
+  assert.equal(upgradeChoices({ bazooka: MAX_LEVEL }, { blast: 1 }, () => 0)[0].id, 'mega');
+  assert.equal(upgradeChoices({ bazooka: MAX_LEVEL }, { blast: 1 }, () => 0)[0].from, 'bazooka');
+  assert.ok(upgradeChoices({ bazooka: MAX_LEVEL }, { ammo: MAX_LEVEL }).every(p => p.kind !== 'evolve'));
+
+  assert.equal(playerStats().boom, 1);
+  assert.equal(playerStats({ blast: 5 }).boom, 1.6);
+  assert.ok(playerStats({ ammo: 2 }).damage > playerStats().damage);
 });
 
 test('save data is normalized', () => {

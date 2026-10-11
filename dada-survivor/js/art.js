@@ -1,12 +1,12 @@
 /**
- * ダダサバイバーもどき トゥーン調SVGアート
- * 太い輪郭・2段セル塗り・大きな目。SVG文字列は起動時に一度だけ data URI 化し、
- * 以降は <div> の background-image として再利用する（毎フレームSVGを解釈させない）。
+ * ダダサバイバーもどき SVGアート
+ * 暗めの輪郭・セル塗り・細い目。絵本調のほほ紅や笑顔は使わない。
+ * SVG文字列は起動時に一度だけ data URI 化し、以降は background-image として再利用する。
  */
 
-const O = '#2a1a3a'; // 輪郭色
-const S = `stroke="${O}" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"`;
-const S2 = `stroke="${O}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"`;
+const O = '#121418'; // 輪郭色
+const S = `stroke="${O}" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"`;
+const S2 = `stroke="${O}" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"`;
 // 太さ指定つきの輪郭（S に stroke-width を足すと属性が重複して SVG が読めなくなる）
 const SW = w => `stroke="${O}" stroke-width="${w}" stroke-linejoin="round" stroke-linecap="round"`;
 
@@ -20,18 +20,14 @@ function shadedCircle(id, cx, cy, r, fill, shade) {
   return `<clipPath id="${id}"><circle cx="${cx}" cy="${cy}" r="${r}"/></clipPath>
     <circle cx="${cx}" cy="${cy}" r="${r}" fill="${shade}"/>
     <circle cx="${cx - r * 0.14}" cy="${cy - r * 0.16}" r="${r * 0.94}" fill="${fill}" clip-path="url(#${id})"/>
-    <ellipse cx="${cx - r * 0.42}" cy="${cy - r * 0.5}" rx="${r * 0.28}" ry="${r * 0.16}" fill="#fff" opacity=".45" transform="rotate(-30 ${cx - r * 0.42} ${cy - r * 0.5})"/>
+    <ellipse cx="${cx - r * 0.38}" cy="${cy - r * 0.46}" rx="${r * 0.22}" ry="${r * 0.1}" fill="#fff" opacity=".16" transform="rotate(-30 ${cx - r * 0.38} ${cy - r * 0.46})"/>
     <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" ${S}/>`;
 }
 
-const animeEye = (x, y, iris = O) => `
-  <ellipse cx="${x}" cy="${y}" rx="4.2" ry="5.6" fill="${iris}"/>
-  <ellipse cx="${x}" cy="${y + 2.2}" rx="3" ry="2.6" fill="#fff" opacity=".18"/>
-  <circle cx="${x + 1.3}" cy="${y - 2.2}" r="1.9" fill="#fff"/>
-  <circle cx="${x - 1.4}" cy="${y + 2}" r=".9" fill="#fff"/>`;
-
-const blush = `<ellipse cx="19.5" cy="35" rx="3.6" ry="2" fill="#fb7185" opacity=".55"/><ellipse cx="44.5" cy="35" rx="3.6" ry="2" fill="#fb7185" opacity=".55"/>`;
-const catMouth = `<path d="M28.5 36.5 Q30.3 38.6 32 36.5 Q33.7 38.6 35.5 36.5" fill="none" ${S2}/>`;
+const animeEye = (x, y, iris = '#d6d3d1') => `
+  <ellipse cx="${x}" cy="${y}" rx="3.6" ry="2.15" fill="#0c0e12"/>
+  <ellipse cx="${x}" cy="${y}" rx="1.35" ry="2.05" fill="${iris}"/>
+  <circle cx="${x + 0.45}" cy="${y - 0.55}" r=".65" fill="#fff"/>`;
 
 /* ---------- プレイヤー（ちびアニマル） ---------- */
 function hero({ fur, shade, inner, ear, muzzle, patches, belly, face = '', mouth, behind = '', extra = '' }) {
@@ -47,18 +43,20 @@ function hero({ fur, shade, inner, ear, muzzle, patches, belly, face = '', mouth
   if (ear === 'dog') front = `<ellipse cx="13.5" cy="27" rx="6" ry="11.5" fill="${inner}" ${S} transform="rotate(18 13.5 27)"/>
     <ellipse cx="50.5" cy="27" rx="6" ry="11.5" fill="${inner}" ${S} transform="rotate(-18 50.5 27)"/>`;
   const patch = patches ? `<ellipse cx="24" cy="30" rx="6.5" ry="7.5" fill="${O}" transform="rotate(20 24 30)"/><ellipse cx="40" cy="30" rx="6.5" ry="7.5" fill="${O}" transform="rotate(-20 40 30)"/>` : '';
-  const muz = mouth !== undefined ? mouth : muzzle ? `<ellipse cx="32" cy="37" rx="7.5" ry="5" fill="${muzzle}"/><path d="M30 33.5 L34 33.5 L32 35.8Z" fill="${O}" ${S2}/>` : `<path d="M30.6 33.6 L33.4 33.6 L32 35.2Z" fill="#f472b6" ${S2}/>`;
+  const muz = mouth !== undefined ? mouth : muzzle
+    ? `<ellipse cx="32" cy="36.2" rx="6.2" ry="3.8" fill="${muzzle}"/><path d="M30.4 35.2 H33.6 L32 37.1Z" fill="${O}"/><path d="M27.2 39.2 H36.8" fill="none" ${S2}/>`
+    : `<ellipse cx="32" cy="36.2" rx="2.1" ry="1.4" fill="#1c1917"/><path d="M27.2 39.2 H36.8" fill="none" ${S2}/>`;
   const eyes = patches
-    ? `${animeEye(24.5, 30.5, '#111')}${animeEye(39.5, 30.5, '#111')}`
-    : `${animeEye(24.5, 30)}${animeEye(39.5, 30)}`;
+    ? `${animeEye(24.5, 30.2, '#f5f5f4')}${animeEye(39.5, 30.2, '#f5f5f4')}`
+    : `${animeEye(24.5, 29.6)}${animeEye(39.5, 29.6)}`;
   return `${back}
     <ellipse cx="22" cy="60" rx="5" ry="3.2" fill="${shade}" ${S}/><ellipse cx="42" cy="60" rx="5" ry="3.2" fill="${shade}" ${S}/>
     <ellipse cx="32" cy="52" rx="13" ry="10" fill="${fur}" ${S}/>
     <ellipse cx="32" cy="54" rx="7" ry="5.5" fill="${belly || muzzle || inner}" opacity=".9"/>
-    <path d="M19 43 Q32 50 45 43 L45.5 47.5 Q32 54 18.5 47.5Z" fill="#ef4444" ${S2}/>
-    <path d="M40 47 L47 56 L42 55.5Z" fill="#dc2626" ${S2}/>
+    <path d="M19 43 Q32 49 45 43 L45.2 47.2 Q32 52 18.8 47.2Z" fill="#1c1917" ${S2}/>
+    <path d="M40 46.5 L46 55 L41 54Z" fill="#7f1d1d" ${S2}/>
     ${shadedCircle('hh', 32, 27, 19, fur, shade)}
-    ${face}${front}${patch}${eyes}${blush}${muz}${mouth !== undefined ? '' : catMouth}${extra}`;
+    ${face}${front}${patch}${eyes}${muz}${extra}`;
 }
 
 const whiskers = `<path d="M10 33 L18 34 M10 38 L18 37 M54 33 L46 34 M54 38 L46 37" ${S2} fill="none"/>`;
@@ -67,25 +65,25 @@ const whiskers = `<path d="M10 33 L18 34 M10 38 L18 37 M54 33 L46 34 M54 38 L46 
 const zombie = `
   <path d="M42 44 L58 40 M42 50 L58 47" stroke="${O}" stroke-width="7.5" stroke-linecap="round"/>
   <path d="M42 44 L58 40 M42 50 L58 47" stroke="#7bc96f" stroke-width="4" stroke-linecap="round"/>
-  <path d="M20 42 Q32 38 44 42 L46 60 L38 57 L33 61 L27 57 L18 60Z" fill="#8b5cf6" ${S}/>
-  <path d="M30 46 L34 52 L31 56" fill="none" stroke="#6d28d9" stroke-width="2"/>
-  ${shadedCircle('zh', 31, 25, 17, '#86d47a', '#5a9e50')}
+  <path d="M20 42 Q32 38 44 42 L46 60 L38 57 L33 61 L27 57 L18 60Z" fill="#3f3a32" ${S}/>
+  <path d="M30 46 L34 52 L31 56" fill="none" stroke="#292524" stroke-width="2"/>
+  ${shadedCircle('zh', 31, 25, 17, '#6d8a58', '#3f5234')}
   <path d="M18 18 Q24 10 31 13 Q38 9 44 16" fill="none" ${S2}/>
   <path d="M38 14 L46 22" stroke="#fde68a" stroke-width="4"/><path d="M40 13 L42 20 M43 15 L45 22" stroke="#d6a548" stroke-width="1.2"/>
-  <circle cx="24" cy="25" r="5.5" fill="#fff" ${S2}/><circle cx="25.5" cy="26" r="2.2" fill="${O}"/>
+  <ellipse cx="24" cy="26" rx="3.4" ry="2" fill="#0c0e12"/><ellipse cx="24.4" cy="26" rx="1.1" ry="1.8" fill="#d6d3d1"/>
   <path d="M34 22 L40 28 M40 22 L34 28" ${S} fill="none"/>
-  <path d="M22 34 L25 32 L28 35 L31 32 L34 35 L37 33" fill="none" ${S2}/>
+  <path d="M23 35 H36" fill="none" ${S2}/>
   <path d="M15 28 L19 30 M16 31 L19 33" stroke="#5a9e50" stroke-width="1.5"/>`;
 
 const bat = `
-  <path d="M22 30 Q12 16 2 24 Q8 28 6 34 Q12 30 14 38 Q18 32 24 38Z" fill="#6d28d9" ${S}/>
-  <path d="M42 30 Q52 16 62 24 Q56 28 58 34 Q52 30 50 38 Q46 32 40 38Z" fill="#6d28d9" ${S}/>
-  <path d="M22 20 L20 8 L28 16Z M42 20 L44 8 L36 16Z" fill="#7c3aed" ${S}/>
-  ${shadedCircle('bh', 32, 31, 14, '#8b5cf6', '#6d28d9')}
+  <path d="M22 30 Q12 16 2 24 Q8 28 6 34 Q12 30 14 38 Q18 32 24 38Z" fill="#312e81" ${S}/>
+  <path d="M42 30 Q52 16 62 24 Q56 28 58 34 Q52 30 50 38 Q46 32 40 38Z" fill="#312e81" ${S}/>
+  <path d="M22 20 L20 8 L28 16Z M42 20 L44 8 L36 16Z" fill="#1e1b4b" ${S}/>
+  ${shadedCircle('bh', 32, 31, 14, '#4338ca', '#312e81')}
   <path d="M23 27 L30 29 M41 27 L34 29" ${S2}/>
-  <ellipse cx="27" cy="31" rx="3" ry="3.4" fill="#fde047" ${S2}/><ellipse cx="37" cy="31" rx="3" ry="3.4" fill="#fde047" ${S2}/>
-  <circle cx="27" cy="31.5" r="1.3" fill="${O}"/><circle cx="37" cy="31.5" r="1.3" fill="${O}"/>
-  <path d="M27 37 Q32 40 37 37" fill="none" ${S2}/><path d="M28.5 37.8 L29.5 41 L30.5 38.4 M33.5 38.4 L34.5 41 L35.5 37.8" fill="#fff" stroke="${O}" stroke-width="1"/>`;
+  <ellipse cx="27" cy="31" rx="3.2" ry="1.7" fill="#0c0e12"/><ellipse cx="37" cy="31" rx="3.2" ry="1.7" fill="#0c0e12"/>
+  <ellipse cx="27.3" cy="31" rx="1" ry="1.5" fill="#e7e5e4"/><ellipse cx="37.3" cy="31" rx="1" ry="1.5" fill="#e7e5e4"/>
+  <path d="M28 38 H36" fill="none" ${S2}/>`;
 
 const ghost = `
   <clipPath id="gc"><path d="M14 32 A18 18 0 0 1 50 32 L50 54 Q46 50 42 55 Q38 60 34 55 Q30 50 26 55 Q22 60 18 55 Q16 52 14 54Z"/></clipPath>
@@ -95,8 +93,8 @@ const ghost = `
   <ellipse cx="21" cy="22" rx="4" ry="2.4" fill="#fff" transform="rotate(-30 21 22)"/>
   <ellipse cx="25" cy="32" rx="3.6" ry="5" fill="${O}"/><circle cx="26.2" cy="30" r="1.5" fill="#fff"/>
   <ellipse cx="39" cy="32" rx="3.6" ry="5" fill="${O}"/><circle cx="40.2" cy="30" r="1.5" fill="#fff"/>
-  <path d="M28 40 Q32 44 36 40" fill="#fb7185" ${S2}/>
-  <ellipse cx="19" cy="38" rx="3" ry="1.8" fill="#a5b4fc" opacity=".7"/><ellipse cx="45" cy="38" rx="3" ry="1.8" fill="#a5b4fc" opacity=".7"/>`;
+  <path d="M28 41 H36" fill="none" ${S2}/>
+  <ellipse cx="19" cy="38" rx="2.2" ry="1.2" fill="#64748b" opacity=".45"/><ellipse cx="45" cy="38" rx="2.2" ry="1.2" fill="#64748b" opacity=".45"/>`;
 
 const skull = `
   <path d="M26 44 L26 58 M38 44 L38 58 M22 50 L42 50 M22 55 L42 55" ${SW(5)}/>
@@ -140,9 +138,9 @@ const dragon = `
   <ellipse cx="32" cy="34" rx="10" ry="6.5" fill="#86efac" ${S2}/>
   <circle cx="28.5" cy="33.5" r="1.2" fill="${O}"/><circle cx="35.5" cy="33.5" r="1.2" fill="${O}"/>
   <path d="M19 21 L28 24 M45 21 L36 24" ${S}/>
-  <ellipse cx="24.5" cy="26" rx="4" ry="4.4" fill="#fde047" ${S2}/><ellipse cx="24.5" cy="26" rx="1.2" ry="3.4" fill="${O}"/>
-  <ellipse cx="39.5" cy="26" rx="4" ry="4.4" fill="#fde047" ${S2}/><ellipse cx="39.5" cy="26" rx="1.2" ry="3.4" fill="${O}"/>
-  <path d="M27 38.5 L28 41 L29.5 38.8 M34.5 38.8 L36 41 L37 38.5" fill="#fff" stroke="${O}" stroke-width="1.1"/>`;
+  <ellipse cx="25" cy="27" rx="3.4" ry="1.8" fill="#0c0e12"/><ellipse cx="25.3" cy="27" rx="1.1" ry="1.6" fill="#f59e0b"/>
+  <ellipse cx="39" cy="27" rx="3.4" ry="1.8" fill="#0c0e12"/><ellipse cx="39.3" cy="27" rx="1.1" ry="1.6" fill="#f59e0b"/>
+  <path d="M28 38 H36" fill="none" ${S2}/>`;
 
 /* ---------- ぶき・アイテム ---------- */
 const gem = (fill, shade) => `
@@ -177,16 +175,99 @@ const bomb = `
 const kunai = wrap(`
   <path d="M60 32 L34 23 L34 41Z" fill="#e2e8f0" ${S}/>
   <path d="M60 32 L34 27 L34 32Z" fill="#fff"/>
-  <rect x="14" y="28" width="20" height="8" rx="2" fill="#7c3aed" ${S2}/>
+  <rect x="14" y="28" width="20" height="8" rx="2" fill="#3f3f46" ${S2}/>
   <circle cx="10" cy="32" r="5" fill="none" ${S}/>`);
 
 const star = `
-  <path d="M32 4 L39.5 22 L59 23 L44 35.5 L49 55 L32 44.5 L15 55 L20 35.5 L5 23 L24.5 22Z" fill="#facc15" ${S}/>
-  <path d="M32 10 L37 23 L32 38 L22 26Z" fill="#fef08a"/>
-  <ellipse cx="27" cy="30" rx="2" ry="3" fill="${O}"/><ellipse cx="37" cy="30" rx="2" ry="3" fill="${O}"/>
-  <path d="M29 36 Q32 39 35 36" fill="none" ${S2}/>`;
+  <path d="M32 4 L38 24 L60 26 L42 38 L50 58 L32 46 L14 58 L22 38 L4 26 L26 24Z" fill="#a8a29e" ${S}/>
+  <path d="M32 12 L36 26 L32 42 L22 28Z" fill="#e7e5e4"/>
+  <path d="M32 4 L38 24 L32 20Z" fill="#f5f5f4"/>`;
 
 const bolt = wrap(`<path d="M22 0 L42 0 L30 34 L46 34 L14 100 L22 50 L8 50Z" fill="#fde047" ${S}/><path d="M24 4 L36 4 L26 30 L20 30Z" fill="#fff" opacity=".7"/>`, '0 0 54 100');
+
+/* ---------- じゅう・ショットガン・バズーカ（右向き。金属） ---------- */
+const bullet = wrap(`
+  <path d="M6 32 H16" stroke="#a8a29e" stroke-width="2" stroke-linecap="round"/>
+  <rect x="16" y="27" width="22" height="10" rx="1" fill="#d6a84a" ${S}/>
+  <rect x="18" y="29" width="14" height="3" fill="#f5e6b8"/>
+  <path d="M38 26 H52 L56 32 L52 38 H38Z" fill="#9ca3af" ${S}/>
+  <path d="M40 29 H48 L50 32 L48 35 H40Z" fill="#e5e7eb"/>`);
+
+const pellet = wrap(`
+  <ellipse cx="36" cy="32" rx="11" ry="6" fill="#6b7280" ${S}/>
+  <ellipse cx="34" cy="30.5" rx="6" ry="2.2" fill="#d1d5db" opacity=".7"/>
+  <path d="M46 32 L54 32" stroke="#4b5563" stroke-width="2" stroke-linecap="round"/>`);
+
+const gun = wrap(`
+  <path d="M20 36 L26 34 L30 56 L16 58Z" fill="#3f2a1d" ${S}/>
+  <path d="M21 42 H27 L29 52 H20Z" fill="#6b4423"/>
+  <path d="M10 24 H40 Q46 24 46 30 V34 Q46 40 40 40 H14 Q10 40 10 34Z" fill="#3f3f46" ${S}/>
+  <path d="M14 27 H32 V31 H14Z" fill="#6b7280"/>
+  <rect x="28" y="26" width="10" height="12" rx="1" fill="#27272a" ${S2}/>
+  <circle cx="31" cy="32" r="1.3" fill="#a1a1aa"/><circle cx="35" cy="32" r="1.3" fill="#a1a1aa"/>
+  <rect x="44" y="28" width="14" height="6" fill="#52525b" ${S2}/>
+  <rect x="56" y="29" width="4" height="4" fill="#18181b"/>`);
+
+const shotgun = wrap(`
+  <path d="M8 34 L18 30 L24 54 L10 56Z" fill="#3f2a1d" ${S}/>
+  <path d="M16 32 H36 V44 H18Z" fill="#44403c" ${S}/>
+  <rect x="20" y="35" width="12" height="3" fill="#78716c"/>
+  <rect x="34" y="26" width="22" height="5" fill="#27272a" ${S2}/>
+  <rect x="34" y="35" width="22" height="5" fill="#27272a" ${S2}/>
+  <path d="M34 31 H54" stroke="#a1a1aa" stroke-width="1"/>
+  <rect x="54" y="25" width="4" height="7" fill="#18181b"/>
+  <rect x="54" y="34" width="4" height="7" fill="#18181b"/>`);
+
+const bazooka = wrap(`
+  <path d="M22 44 H30 L32 56 H20Z" fill="#3f3f46" ${S2}/>
+  <rect x="6" y="26" width="42" height="14" rx="2" fill="#3f4a32" ${S}/>
+  <rect x="10" y="29" width="28" height="4" fill="#6b7a52"/>
+  <rect x="30" y="26" width="6" height="14" fill="#7f1d1d"/>
+  <path d="M46 22 H58 V44 H46Z" fill="#27272a" ${S}/>
+  <rect x="50" y="30" width="5" height="8" fill="#18181b"/>
+  <path d="M18 22 H28 V26 H18Z" fill="#1c1917" ${S2}/>`);
+
+const rocket = wrap(`
+  <path d="M14 32 L4 25 L9 32 L4 39Z" fill="#f97316" ${S2}/>
+  <path d="M16 32 L9 28 L13 32 L9 36Z" fill="#fde68a"/>
+  <rect x="14" y="26" width="24" height="12" fill="#4b5563" ${S}/>
+  <rect x="26" y="26" width="5" height="12" fill="#991b1b"/>
+  <path d="M38 24 L58 32 L38 40Z" fill="#d6d3d1" ${S}/>
+  <path d="M16 26 L8 16 L24 26Z" fill="#27272a" ${S2}/>
+  <path d="M16 38 L8 48 L24 38Z" fill="#27272a" ${S2}/>`);
+
+const mega = wrap(`
+  <path d="M16 32 L3 22 L10 32 L3 42Z" fill="#ea580c" ${S2}/>
+  <path d="M18 32 L8 26 L14 32 L8 38Z" fill="#fde68a"/>
+  <rect x="14" y="22" width="22" height="20" fill="#3f3f46" ${S}/>
+  <rect x="24" y="22" width="6" height="20" fill="#b45309"/>
+  <path d="M36 16 L60 32 L36 48Z" fill="#a8a29e" ${S}/>
+  <path d="M18 22 L6 6 L30 22Z" fill="#18181b" ${S2}/>
+  <path d="M18 42 L6 58 L30 42Z" fill="#18181b" ${S2}/>
+  <path d="M20 30 H30" stroke="#e5e7eb" stroke-width="1.4"/>`);
+
+const miniGun = (x, y) => `
+  <g transform="translate(${x} ${y})">
+    <path d="M6 12 L10 11 L12 24 L4 25Z" fill="#3f2a1d" ${S}/>
+    <path d="M4 5 H22 Q26 5 26 9 V12 Q26 16 22 16 H6 Q4 16 4 13Z" fill="#3f3f46" ${S}/>
+    <rect x="24" y="7" width="8" height="5" fill="#27272a" ${S2}/>
+  </g>`;
+const dual = wrap(`${miniGun(2, 4)}${miniGun(18, 30)}`);
+
+const gatling = wrap(`
+  <path d="M8 24 H34 V42 H12 Q8 42 8 38Z" fill="#3f3f46" ${S}/>
+  <rect x="14" y="28" width="12" height="8" fill="#27272a"/>
+  <rect x="32" y="20" width="26" height="4" fill="#18181b" ${S2}/>
+  <rect x="32" y="28" width="28" height="4" fill="#18181b" ${S2}/>
+  <rect x="32" y="36" width="26" height="4" fill="#18181b" ${S2}/>
+  <rect x="32" y="44" width="24" height="4" fill="#18181b" ${S2}/>
+  <circle cx="18" cy="33" r="5" fill="#52525b" ${S2}/>
+  <circle cx="18" cy="33" r="1.6" fill="#a1a1aa"/>`);
+
+const blast = wrap(`
+  <path d="M32 2 L37 20 L56 12 L42 28 L62 32 L42 38 L54 52 L36 42 L32 62 L26 42 L8 54 L22 36 L2 32 L22 26 L10 12 L28 20Z" fill="#c2410c" ${S}/>
+  <path d="M32 12 L35 24 L46 20 L38 30 L48 34 L36 36 L42 46 L32 40 L24 48 L28 36 L16 34 L26 28 L18 18 L30 24Z" fill="#f59e0b"/>
+  <circle cx="32" cy="32" r="6" fill="#fef3c7"/>`);
 
 /* ---------- あたらしい てき（みぎむき） ---------- */
 const scorpion = `
@@ -226,10 +307,9 @@ const snake = `
   ${shadedCircle('sn', 38, 17, 13, '#a3e635', '#65a30d')}
   <path d="M50 21 L60 21 M56 21 L62 18 M56 21 L62 24" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round"/>
   <path d="M32 9 L41 13 M47 11 L41 14" ${S}/>
-  <ellipse cx="37" cy="15" rx="3" ry="3.6" fill="#fde047" ${S2}/><ellipse cx="37" cy="15" rx="1" ry="2.8" fill="${O}"/>
-  <ellipse cx="45" cy="15" rx="2.6" ry="3.2" fill="#fde047" ${S2}/><ellipse cx="45" cy="15" rx=".9" ry="2.4" fill="${O}"/>
-  <path d="M40 22 Q46 26 51 21" fill="none" ${S2}/>
-  <path d="M43 23 L44 27 L45.5 23.5 M47.5 23 L48.5 26.5 L49.5 22.5" fill="#fff" stroke="${O}" stroke-width="1"/>`;
+  <ellipse cx="37" cy="15" rx="2.8" ry="1.6" fill="#0c0e12"/><ellipse cx="37.2" cy="15" rx=".8" ry="1.4" fill="#f59e0b"/>
+  <ellipse cx="45" cy="15" rx="2.4" ry="1.4" fill="#0c0e12"/><ellipse cx="45.2" cy="15" rx=".7" ry="1.2" fill="#f59e0b"/>
+  <path d="M40 22 H50" fill="none" ${S2}/>`;
 
 const snowman = `
   <path d="M18 38 L4 30 M8 33 L4 36 M46 38 L60 30 M56 33 L60 28" stroke="#78350f" stroke-width="3" stroke-linecap="round"/>
@@ -254,9 +334,9 @@ const wolf = `
   <path d="M38 30 Q52 28 56 34 Q52 40 40 39Z" fill="#f1f5f9" ${S}/>
   <ellipse cx="55" cy="33" rx="3" ry="2.4" fill="${O}"/>
   <path d="M26 21 L33 24 M38 21 L44 23" ${S}/>
-  <ellipse cx="30" cy="27" rx="3" ry="3.4" fill="#fde047" ${S2}/><circle cx="31" cy="27.4" r="1.4" fill="${O}"/>
-  <ellipse cx="41" cy="26.5" rx="2.6" ry="3" fill="#fde047" ${S2}/><circle cx="42" cy="27" r="1.2" fill="${O}"/>
-  <path d="M42 39 Q47 41 52 38" fill="none" ${S2}/><path d="M45 39.5 L46 42 L47 39.8" fill="#fff" stroke="${O}" stroke-width="1"/>`;
+  <ellipse cx="30" cy="27" rx="3" ry="1.6" fill="#0c0e12"/><ellipse cx="30.4" cy="27" rx=".9" ry="1.4" fill="#e7e5e4"/>
+  <ellipse cx="41" cy="26.5" rx="2.6" ry="1.4" fill="#0c0e12"/><ellipse cx="41.3" cy="26.5" rx=".8" ry="1.2" fill="#e7e5e4"/>
+  <path d="M44 39 H52" fill="none" ${S2}/>`;
 
 const icegiant = `
   <path d="M10 40 Q2 50 8 58 L18 56 Z M54 40 Q62 50 56 58 L46 56Z" fill="#7dd3fc" ${S}/>
@@ -292,9 +372,8 @@ const witch = `
   <path d="M18 24 Q32 18 46 24 L46 28 Q32 22 18 28Z" fill="#a855f7"/>
   <path d="M8 22 Q32 26 56 22 Q50 18 44 18 L36 -2 Q32 2 30 10 L22 18 Q14 18 8 22Z" fill="#6d28d9" ${S}/>
   <path d="M22 18 Q32 21 44 18 L45 14 Q32 17 23 14Z" fill="#facc15" ${S2}/>
-  ${animeEye(27, 31, '#7c3aed')}${animeEye(38, 31, '#7c3aed')}
-  <ellipse cx="22.5" cy="36" rx="2.6" ry="1.5" fill="#fb7185" opacity=".6"/><ellipse cx="42.5" cy="36" rx="2.6" ry="1.5" fill="#fb7185" opacity=".6"/>
-  <path d="M29 38 Q33 41 37 37" fill="none" ${S2}/>
+  ${animeEye(27, 31, '#c4b5fd')}${animeEye(38, 31, '#c4b5fd')}
+  <path d="M29 39 H37" fill="none" ${S2}/>
   <path d="M54 30 L60 24 M57 22 L60 24 L62 27" stroke="#facc15" stroke-width="2.5" stroke-linecap="round" fill="none"/>`;
 
 const maou = `
@@ -361,53 +440,52 @@ const blobs = (light, dark) => `
   <ellipse cx="40" cy="44" rx="34" ry="22" fill="${light}"/><ellipse cx="124" cy="118" rx="40" ry="24" fill="${light}"/>
   <ellipse cx="128" cy="30" rx="18" ry="10" fill="${dark}"/><ellipse cx="34" cy="128" rx="22" ry="12" fill="${dark}"/>`;
 const tile = body => wrap(body, '0 0 160 160');
-const cactus = (x, y) => `<g transform="translate(${x} ${y})"><path d="M-3 0 L-3 -18 Q0 -22 3 -18 L3 0Z M3 -10 L8 -10 L8 -15 M-3 -7 L-8 -7 L-8 -13" fill="#4ade80" stroke="#166534" stroke-width="2" stroke-linejoin="round"/></g>`;
+const cactus = (x, y) => `<g transform="translate(${x} ${y})"><path d="M-3 0 L-3 -18 Q0 -22 3 -18 L3 0Z M3 -10 L8 -10 L8 -15 M-3 -7 L-8 -7 L-8 -13" fill="#3f6212" stroke="#1a2e05" stroke-width="2" stroke-linejoin="round"/></g>`;
 const pine = (x, y) => `<g transform="translate(${x} ${y})"><path d="M0 -20 L9 -4 L-9 -4Z M0 -13 L11 2 L-11 2Z" fill="#15803d" stroke="#14532d" stroke-width="1.6" stroke-linejoin="round"/><path d="M0 -20 L4 -12 L-4 -12Z" fill="#fff"/><rect x="-2" y="2" width="4" height="4" fill="#78350f"/></g>`;
 const shroom = (x, y) => `<g transform="translate(${x} ${y})"><rect x="-2" y="-4" width="4" height="7" rx="1.5" fill="#fef3c7" stroke="#3b2a1a" stroke-width="1.2"/><path d="M-7 -4 Q0 -14 7 -4Z" fill="#dc2626" stroke="#3b2a1a" stroke-width="1.2"/><circle cx="-2" cy="-7" r="1.2" fill="#fff"/><circle cx="2.5" cy="-6" r="1" fill="#fff"/></g>`;
 
 const GROUNDS = {
-  grass: tile(`<rect width="160" height="160" fill="#7fd05e"/>${blobs('#8edc6b', '#72c352')}
-    ${tuft(20, 80)}${tuft(96, 60)}${tuft(140, 150)}${tuft(70, 140)}${tuft(150, 76)}
-    ${flower(60, 24, '#fff')}${flower(108, 96, '#fda4af')}${flower(24, 104, '#fff')}${flower(146, 46, '#c4b5fd')}${pebble(86, 22)}`),
-  desert: tile(`<rect width="160" height="160" fill="#f3d68c"/>${blobs('#f8e3a9', '#e6c06e')}
-    <path d="M0 96 Q40 86 80 96 T160 96" fill="none" stroke="#e2b85f" stroke-width="2.5"/>
-    ${cactus(30, 70)}${cactus(130, 150)}${pebble(100, 40, '#d6b27a', '#92643a')}${pebble(60, 132, '#d6b27a', '#92643a')}
-    <path d="M118 66 l6 -2 l2 4 l-5 2z" fill="#fff" opacity=".8"/>`),
-  snow: tile(`<rect width="160" height="160" fill="#e8f3ff"/>${blobs('#ffffff', '#d4e6f8')}
+  grass: tile(`<rect width="160" height="160" fill="#3c5134"/>${blobs('#465c3c', '#2c3d26')}
+    ${tuft(20, 80, '#24321e')}${tuft(96, 60, '#24321e')}${tuft(140, 150, '#1c2818')}${tuft(70, 140, '#24321e')}${tuft(150, 76, '#1c2818')}
+    ${pebble(86, 22, '#6b6458', '#3f3a34')}${pebble(40, 48, '#6b6458', '#3f3a34')}`),
+  desert: tile(`<rect width="160" height="160" fill="#b08958"/>${blobs('#c4a06a', '#8d6a3e')}
+    <path d="M0 96 Q40 86 80 96 T160 96" fill="none" stroke="#7a5a32" stroke-width="2.5"/>
+    ${cactus(30, 70)}${cactus(130, 150)}${pebble(100, 40, '#a48458', '#5c4128')}${pebble(60, 132, '#a48458', '#5c4128')}
+    <path d="M118 66 l6 -2 l2 4 l-5 2z" fill="#e7d3a8" opacity=".45"/>`),
+  snow: tile(`<rect width="160" height="160" fill="#c5d0da"/>${blobs('#d5dee6', '#a9b8c6')}
     ${pine(36, 80)}${pine(130, 146)}${pine(118, 50)}
-    <circle cx="70" cy="30" r="2" fill="#fff"/><circle cx="20" cy="140" r="2.5" fill="#fff"/><circle cx="96" cy="110" r="1.8" fill="#fff"/>
-    <path d="M60 120 l4 0 M62 118 l0 4" stroke="#93c5fd" stroke-width="1.5"/>`),
-  forest: tile(`<rect width="160" height="160" fill="#40593c"/>${blobs('#4a6845', '#344a31')}
-    ${tuft(20, 80, '#2b3d28')}${tuft(96, 60, '#2b3d28')}${tuft(140, 150, '#2b3d28')}
+    <circle cx="70" cy="30" r="1.6" fill="#f8fafc"/><circle cx="20" cy="140" r="2" fill="#f8fafc"/><circle cx="96" cy="110" r="1.4" fill="#f8fafc"/>
+    <path d="M60 120 l4 0 M62 118 l0 4" stroke="#7d92a8" stroke-width="1.5"/>`),
+  forest: tile(`<rect width="160" height="160" fill="#243028"/>${blobs('#2c3b30', '#182018')}
+    ${tuft(20, 80, '#121a14')}${tuft(96, 60, '#121a14')}${tuft(140, 150, '#121a14')}
     ${shroom(60, 30)}${shroom(120, 104)}${shroom(28, 120)}
-    ${flower(146, 46, '#a78bfa')}${flower(86, 140, '#a78bfa')}
-    <circle cx="100" cy="24" r="1.6" fill="#fde047" opacity=".8"/><circle cx="40" cy="60" r="1.4" fill="#fde047" opacity=".7"/>`),
-  castle: tile(`<rect width="160" height="160" fill="#5b5566"/>
-    <path d="M0 0 H80 V80 H0Z M80 80 H160 V160 H80Z" fill="#665f72"/>
-    <path d="M0 40 H160 M0 80 H160 M0 120 H160 M40 0 V40 M120 0 V40 M0 40 M80 40 V80 M40 80 V120 M120 80 V120 M80 120 V160" stroke="#3f3a48" stroke-width="3"/>
-    <path d="M18 100 L30 108 L26 116 L36 124" fill="none" stroke="#f97316" stroke-width="2.5" stroke-linecap="round"/>
-    <path d="M110 20 L120 28 L116 34" fill="none" stroke="#f97316" stroke-width="2.5" stroke-linecap="round"/>
-    <circle cx="140" cy="140" r="2" fill="#fbbf24" opacity=".8"/>`),
+    <circle cx="100" cy="24" r="1.2" fill="#d6d3d1" opacity=".35"/><circle cx="40" cy="60" r="1" fill="#d6d3d1" opacity=".3"/>`),
+  castle: tile(`<rect width="160" height="160" fill="#3a3842"/>
+    <path d="M0 0 H80 V80 H0Z M80 80 H160 V160 H80Z" fill="#2e2c36"/>
+    <path d="M0 40 H160 M0 80 H160 M0 120 H160 M40 0 V40 M120 0 V40 M0 40 M80 40 V80 M40 80 V120 M120 80 V120 M80 120 V160" stroke="#1c1a22" stroke-width="3"/>
+    <path d="M18 100 L30 108 L26 116 L36 124" fill="none" stroke="#9a3412" stroke-width="2.5" stroke-linecap="round"/>
+    <path d="M110 20 L120 28 L116 34" fill="none" stroke="#9a3412" stroke-width="2.5" stroke-linecap="round"/>
+    <circle cx="140" cy="140" r="1.4" fill="#a8a29e" opacity=".5"/>`),
 };
 
 const hero2 = {
-  rabbit:  hero({ fur: '#ffffff', shade: '#e9d5ff', inner: '#fda4af', ear: 'rabbit' }),
-  penguin: hero({ fur: '#334155', shade: '#1e293b', inner: '#ffffff', ear: 'none', belly: '#ffffff',
-    face: `<ellipse cx="32" cy="31" rx="14" ry="12.5" fill="#fff"/>`, mouth: `<path d="M27.5 34.5 L36.5 34.5 L32 39.5Z" fill="#fb923c" ${S2}/>` }),
-  bear:    hero({ fur: '#a16207', shade: '#713f12', inner: '#d6a26a', ear: 'bear', muzzle: '#f5deb3' }),
-  dino:    hero({ fur: '#4ade80', shade: '#16a34a', inner: '#bbf7d0', ear: 'none', belly: '#fef9c3',
-    behind: `<path d="M18 14 L20 3 L26 10 L32 0 L38 10 L44 3 L46 14Z" fill="#f97316" ${S}/>`,
-    mouth: `<path d="M26 36 Q32 42 38 36Z" fill="#fff" ${S2}/>` }),
-  unicorn: hero({ fur: '#fdf4ff', shade: '#e9d5ff', inner: '#f9a8d4', ear: 'cat',
-    behind: `<path d="M50 18 Q60 30 54 44 Q50 34 46 30Z" fill="#a78bfa" ${S2}/>`,
-    extra: `<path d="M16 24 Q12 10 26 8 Q22 14 25 19 Q19 18 16 24Z" fill="#f472b6" ${S2}/><path d="M28.5 11 L32 0 L35.5 11Z" fill="#fde047" ${S2}/><path d="M30 8 L34 6 M29.5 5 L33 3.5" stroke="#f59e0b" stroke-width="1.2"/>` }),
+  rabbit:  hero({ fur: '#e7e5e4', shade: '#a8a29e', inner: '#78716c', ear: 'rabbit' }),
+  penguin: hero({ fur: '#1e293b', shade: '#0f172a', inner: '#e7e5e4', ear: 'none', belly: '#d6d3d1',
+    face: `<ellipse cx="32" cy="31" rx="13" ry="11" fill="#d6d3d1"/>`, mouth: `<path d="M28 35 H36 L32 39Z" fill="#c2410c" ${S2}/>` }),
+  bear:    hero({ fur: '#7c4a12', shade: '#4a2c0a', inner: '#a16207', ear: 'bear', muzzle: '#d6d3d1' }),
+  dino:    hero({ fur: '#3f7d46', shade: '#1f4d28', inner: '#14532d', ear: 'none', belly: '#d6d3d1',
+    behind: `<path d="M18 14 L20 3 L26 10 L32 0 L38 10 L44 3 L46 14Z" fill="#9a3412" ${S}/>`,
+    mouth: `<path d="M26 37 H38" fill="none" ${S2}/>` }),
+  unicorn: hero({ fur: '#e7e5e4', shade: '#a8a29e', inner: '#78716c', ear: 'cat',
+    behind: `<path d="M50 18 Q60 30 54 44 Q50 34 46 30Z" fill="#57534e" ${S2}/>`,
+    extra: `<path d="M16 24 Q12 12 26 10 Q22 16 25 20 Q19 19 16 24Z" fill="#44403c" ${S2}/><path d="M28.5 12 L32 1 L35.5 12Z" fill="#d6d3d1" ${S2}/>` }),
 };
 
 const SOURCES = {
-  cat:   wrap(hero({ fur: '#fdba74', shade: '#f97316', inner: '#fda4af', ear: 'cat', extra: whiskers })),
-  dog:   wrap(hero({ fur: '#d6a26a', shade: '#a16207', inner: '#92400e', ear: 'dog', muzzle: '#fff7ed' })),
-  fox:   wrap(hero({ fur: '#fb923c', shade: '#c2410c', inner: '#fff7ed', ear: 'fox', muzzle: '#fff7ed', extra: whiskers })),
-  panda: wrap(hero({ fur: '#ffffff', shade: '#cbd5e1', inner: '#f1f5f9', ear: 'panda', muzzle: '#ffffff', patches: true })),
+  cat:   wrap(hero({ fur: '#c4844a', shade: '#7c3f12', inner: '#a16207', ear: 'cat', extra: whiskers })),
+  dog:   wrap(hero({ fur: '#a47848', shade: '#6b3e12', inner: '#5c3310', ear: 'dog', muzzle: '#d6d3d1' })),
+  fox:   wrap(hero({ fur: '#c2410c', shade: '#7c2d12', inner: '#e7e5e4', ear: 'fox', muzzle: '#e7e5e4', extra: whiskers })),
+  panda: wrap(hero({ fur: '#e7e5e4', shade: '#57534e', inner: '#a8a29e', ear: 'panda', muzzle: '#d6d3d1', patches: true })),
   ...Object.fromEntries(Object.entries(hero2).map(([k, v]) => [k, wrap(v)])),
   zombie: wrap(zombie), bat: wrap(bat), ghost: wrap(ghost), skull: wrap(skull), ogre: wrap(ogre), dragon: wrap(dragon),
   scorpion: wrap(scorpion), mummy: wrap(mummy), snake: wrap(snake), snowman: wrap(snowman), wolf: wrap(wolf),
@@ -415,6 +493,7 @@ const SOURCES = {
   gem1: wrap(gem('#60a5fa', '#2563eb')), gem2: wrap(gem('#4ade80', '#16a34a')), gem3: wrap(gem('#f472b6', '#db2777')),
   coin: wrap(coin), meat: wrap(meat), magnet: wrap(magnet), nuke: wrap(bomb), bomb: wrap(bomb),
   kunai, star: wrap(star), bolt,
+  gun, shotgun, bazooka, dual, gatling, rocket, mega, bullet, pellet, blast,
   sword: wrap(sword), armor: wrap(armor), shoes: wrap(shoes), charm: wrap(charm), chest: wrap(chest), chestOpen: wrap(chestOpen, '0 -4 64 68'),
   ...Object.fromEntries(Object.entries(GROUNDS).map(([k, v]) => [`ground-${k}`, v])),
 };

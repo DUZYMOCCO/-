@@ -6,7 +6,7 @@
   --ds-orange: #fb923c;
   --ds-font: "Hiragino Maru Gothic ProN", "Hiragino Maru Gothic Pro", "M PLUS Rounded 1c", "Rounded Mplus 1c", "BIZ UDPGothic", system-ui, sans-serif;
   position: absolute; inset: 0; overflow: hidden;
-  background: #7fd05e;
+  background: #2c3d26;
   font-family: var(--ds-font);
   color: var(--ds-ink);
   -webkit-user-select: none; user-select: none;
@@ -82,7 +82,7 @@
 .ds-xp-fill { position: absolute; inset: 0; background: linear-gradient(#7dd3fc, #3b82f6); transform: scaleX(0); transform-origin: 0 50%; }
 .ds-lv { position: absolute; inset: 0; text-align: center; font: 900 12px/12px var(--ds-font); color: #fff; -webkit-text-stroke: 2.5px var(--ds-ink); paint-order: stroke fill; }
 .ds-hud-row { display: flex; gap: 6px; margin-top: 6px; align-items: center; }
-.ds-chip { background: var(--ds-cream); border: 3px solid var(--ds-ink); border-radius: 12px; padding: 3px 8px; font-weight: 900; font-size: 14px; box-shadow: 0 3px 0 var(--ds-ink); white-space: nowrap; }
+.ds-chip { background: #1c1917; color: #f5f0e6; border: 3px solid #0a0a0a; border-radius: 12px; padding: 3px 8px; font-weight: 900; font-size: 14px; box-shadow: 0 3px 0 #0a0a0a; white-space: nowrap; }
 .ds-time { flex: 1; text-align: center; }
 .ds-pause { pointer-events: auto; width: 40px; height: 34px; margin-left: auto; border: 3px solid var(--ds-ink); border-radius: 12px; background: #fde047; font: 900 16px var(--ds-font); color: var(--ds-ink); box-shadow: 0 3px 0 var(--ds-ink); }
 .ds-pause:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ds-ink); }
@@ -90,6 +90,10 @@
 .ds-boss-name { display: inline-block; font: 900 14px var(--ds-font); color: #fff; -webkit-text-stroke: 3px var(--ds-ink); paint-order: stroke fill; }
 .ds-boss-bar { height: 14px; border: 3px solid var(--ds-ink); border-radius: 10px; background: #3b2a4a; overflow: hidden; margin-top: 2px; }
 .ds-boss-fill { height: 100%; background: linear-gradient(#fca5a5, #dc2626); transform-origin: 0 50%; }
+.ds-skills { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.ds-skill { display: inline-flex; align-items: center; gap: 1px; background: rgba(18, 16, 14, .9); color: #f5f0e6; border: 2px solid #0a0a0a; border-radius: 9px; padding: 1px 5px 1px 2px; }
+.ds-skill .ds-icon.sm { width: 26px; height: 26px; margin: 0; }
+.ds-skill i { font: 900 12px var(--ds-font); font-style: normal; }
 
 .ds-banner {
   position: absolute; left: 50%; top: 32%; transform: translateX(-50%);
@@ -144,7 +148,7 @@
   background: #fff; border: 3px solid var(--ds-ink); border-radius: 14px; box-shadow: 0 4px 0 var(--ds-ink);
   font: 900 13px var(--ds-font); color: var(--ds-ink); -webkit-tap-highlight-color: transparent;
 }
-.ds-char small { display: flex; align-items: center; font-size: 9px; font-weight: 700; white-space: nowrap; }
+.ds-char small { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; font-size: 9px; font-weight: 700; line-height: 1.15; text-align: center; }
 .ds-char.on { background: #fde047; transform: translateY(-3px); box-shadow: 0 7px 0 var(--ds-ink); }
 .ds-char-pic { width: 54px; height: 54px; background: no-repeat center / contain; }
 .ds-char.on .ds-char-pic { animation: ds-walk .32s ease-in-out infinite alternate; transform-origin: 50% 90%; }
@@ -163,6 +167,7 @@
   animation: ds-card .3s ease-out backwards;
 }
 .ds-card.new { background: linear-gradient(#fef9c3, #fde68a); }
+.ds-card.evo { background: linear-gradient(#ffedd5, #fdba74); }
 @keyframes ds-card { from { transform: translateY(20px) scale(.9); opacity: 0; } }
 .ds-card-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .ds-card-text b { font-size: 19px; }
@@ -195,10 +200,10 @@
 }
 
 /* ---------- ステージ・キャラ・そうび・たからばこ ---------- */
-.ds-root[data-ground="desert"] { background: #f3d68c; }
-.ds-root[data-ground="snow"] { background: #e8f3ff; }
-.ds-root[data-ground="forest"] { background: #40593c; }
-.ds-root[data-ground="castle"] { background: #5b5566; }
+.ds-root[data-ground="desert"] { background: #8a6840; }
+.ds-root[data-ground="snow"] { background: #8ea0ae; }
+.ds-root[data-ground="forest"] { background: #1a241c; }
+.ds-root[data-ground="castle"] { background: #24222c; }
 .ds-root[data-ground="forest"] .ds-hp, .ds-root[data-ground="castle"] .ds-hp { border-color: #fff; }
 
 .ds-thin { min-height: 40px; font-size: 14px; padding: 6px; }
@@ -206,11 +211,11 @@
 .ds-arrow { width: 42px; height: 60px; flex: none; border: 3px solid var(--ds-ink); border-radius: 14px; background: #fde047; box-shadow: 0 4px 0 var(--ds-ink); font: 900 18px var(--ds-font); color: var(--ds-ink); }
 .ds-arrow:disabled { background: #e5e7eb; opacity: .7; }
 .ds-arrow:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 1px 0 var(--ds-ink); }
-.ds-stage-card { flex: 1; display: flex; flex-direction: column; padding: 6px; border: 3px solid var(--ds-ink); border-radius: 16px; background: #8edc6b; }
-.ds-stage-card[data-ground="desert"] { background: #f8e3a9; }
-.ds-stage-card[data-ground="snow"] { background: #fff; }
-.ds-stage-card[data-ground="forest"] { background: #4a6845; color: #fff; }
-.ds-stage-card[data-ground="castle"] { background: #665f72; color: #fff; }
+.ds-stage-card { flex: 1; display: flex; flex-direction: column; padding: 6px; border: 3px solid var(--ds-ink); border-radius: 16px; background: #3c5134; color: #f5f0e6; }
+.ds-stage-card[data-ground="desert"] { background: #8a6840; color: #fff8e7; }
+.ds-stage-card[data-ground="snow"] { background: #8ea0ae; color: #0f172a; }
+.ds-stage-card[data-ground="forest"] { background: #243028; color: #f5f0e6; }
+.ds-stage-card[data-ground="castle"] { background: #3a3842; color: #f5f0e6; }
 .ds-stage-card small { font-size: 11px; font-weight: 700; }
 .ds-stage-card b { font-size: 20px; line-height: 1.2; }
 .ds-stage-card em { font-style: normal; font-size: 11px; font-weight: 700; opacity: .85; }

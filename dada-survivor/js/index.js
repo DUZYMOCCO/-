@@ -6,13 +6,13 @@ import { sound } from '../../common/js/audio.js?v=151';
 import { loadCss } from '../../common/js/load-css.js';
 import { storage } from '../../common/js/storage.js';
 import {
-  STAGE_SECONDS, MINI_BOSS_SECONDS, MAX_ENEMIES, MAX_GEMS, DIFFICULTIES, CHARACTERS, ENEMY_TYPES,
-  WEAPONS, PASSIVES, STAGES, weaponStat, xpToNext, playerStats, spawnPlan, pickWeighted, upgradeChoices,
+  STAGE_SECONDS, MINI_BOSS_SECONDS, MAX_ENEMIES, MAX_GEMS, MAX_LEVEL, DIFFICULTIES, CHARACTERS, ENEMY_TYPES,
+  WEAPONS, PASSIVES, STAGES, GUNS, weaponStat, xpToNext, playerStats, spawnPlan, pickWeighted, upgradeChoices,
   normalizeSave, stageById, bossType, bonusFor, clearRewards,
-} from './rules.js?v=177';
-import { preloadArt } from './art.js?v=177';
-import { Stage } from './stage.js?v=177';
-import { menuMethods, iconHtml } from './menus.js?v=177';
+} from './rules.js?v=179';
+import { preloadArt } from './art.js?v=179';
+import { Stage } from './stage.js?v=179';
+import { menuMethods, iconHtml } from './menus.js?v=179';
 
 const SAVE_KEY = 'dada_survivor_save';
 const TAU = Math.PI * 2;
@@ -27,11 +27,11 @@ export const DadaSurvivorGame = {
   icon: '🐱',
   color: '#22c55e',
   section: 'kids',
-  description: 'こうげきは じどう！ 5つの ステージで ボスを たおして、たからばこの そうびで つよくなろう！',
+  description: 'こうげきは じどう！ じゅう・ショットガン・バズーカを あつめて、ボスを たおそう！',
 
   // 起動時にこのゲームのCSSを自分で読み込む（?v= はこのフォルダ内で管理）。ハブが init 前に await する
   prepare() {
-    return loadCss(new URL('../css/dada-survivor.css?v=177', import.meta.url).href);
+    return loadCss(new URL('../css/dada-survivor.css?v=179', import.meta.url).href);
   },
 
   init(container, onBackToHub) {
@@ -76,6 +76,7 @@ export const DadaSurvivorGame = {
             <span class="ds-chip ds-coins">🪙 0</span>
             <button class="ds-pause" aria-label="ポーズ">Ⅱ</button>
           </div>
+          <div class="ds-skills"></div>
           <div class="ds-boss hidden"><span class="ds-boss-name"></span><div class="ds-boss-bar"><div class="ds-boss-fill"></div></div></div>
         </div>
         <div class="ds-banner hidden"></div>
@@ -92,6 +93,7 @@ export const DadaSurvivorGame = {
     this.el = {
       xpFill: $('.ds-xp-fill'), lv: $('.ds-lv'), time: $('.ds-time'), kills: $('.ds-kills'),
       coins: $('.ds-coins'), boss: $('.ds-boss'), bossName: $('.ds-boss-name'), bossFill: $('.ds-boss-fill'),
+      skills: $('.ds-skills'),
     };
     this.hudCache = {};
     $('.ds-pause').addEventListener('click', () => { sound.playTap(); this.showPause(); });
@@ -170,22 +172,27 @@ export const DadaSurvivorGame = {
     const r = this.run;
     this.paused = true; this.stick = null; this.stage.joystick(null);
     const choices = upgradeChoices(r.weapons, r.passives);
+    const gunMenu = choices.length === 3 && choices.every(c => c.kind === 'weapon' && c.level === 1 && GUNS.includes(c.id));
     const card = c => {
+      if (c.kind === 'evolve') {
+        const w = WEAPONS[c.id];
+        return [iconHtml(c.id, w.icon), w.name, 'しんか！', w.desc, 'evo'];
+      }
       if (c.kind === 'weapon') {
         const w = WEAPONS[c.id];
-        return [iconHtml(c.id, w.icon), w.name, c.level === 1 ? 'あたらしい！' : `Lv${c.level}`, w.desc, c.level === 1];
+        return [iconHtml(c.id, w.icon), w.name, c.level === 1 ? 'あたらしい！' : `Lv${c.level}`, w.desc, c.level === 1 ? 'new' : ''];
       }
-      if (c.kind === 'passive') { const p = PASSIVES[c.id]; return [iconHtml(c.id, p.icon), p.name, `Lv${c.level}`, p.desc, false]; }
-      if (c.kind === 'food') return [iconHtml('meat', '🍖'), 'おにく', '', 'たいりょく かいふく', false];
-      return [iconHtml('coin', '🪙'), 'コイン', '', 'コイン +20', false];
+      if (c.kind === 'passive') { const p = PASSIVES[c.id]; return [iconHtml(c.id, p.icon), p.name, `Lv${c.level}`, p.desc, '']; }
+      if (c.kind === 'food') return [iconHtml('meat', '🍖'), 'おにく', '', 'たいりょく かいふく', ''];
+      return [iconHtml('coin', '🪙'), 'コイン', '', 'コイン +20', ''];
     };
     sound.playHighScore();
     this.setOverlay(`
       <div class="ds-panel ds-levelup">
         <div class="ds-h ds-pop">レベルアップ！</div>
-        <div class="ds-sub">ひとつ えらんでね</div>
-        ${choices.map((c, i) => { const [icon, name, lv, desc, isNew] = card(c); return `
-          <button class="ds-card ${isNew ? 'new' : ''}" data-pick="${i}" style="animation-delay:${i * 70}ms">
+        <div class="ds-sub">${gunMenu ? 'どの ぶきにする？' : 'ひとつ えらんでね'}</div>
+        ${choices.map((c, i) => { const [icon, name, lv, desc, cls] = card(c); return `
+          <button class="ds-card ${cls}" data-pick="${i}" style="animation-delay:${i * 70}ms">
             ${icon}
             <span class="ds-card-text"><b>${name}</b>${lv ? `<em>${lv}</em>` : ''}<small>${desc}</small></span>
           </button>`; }).join('')}
@@ -205,7 +212,11 @@ export const DadaSurvivorGame = {
 
   applyChoice(c) {
     const r = this.run;
-    if (c.kind === 'weapon') r.weapons[c.id] = c.level;
+    if (c.kind === 'evolve') {
+      delete r.weapons[c.from];
+      r.weapons[c.id] = MAX_LEVEL;
+      this.showBanner(`${WEAPONS[c.id].name}に しんか！`);
+    } else if (c.kind === 'weapon') r.weapons[c.id] = c.level;
     else if (c.kind === 'passive') {
       r.passives[c.id] = c.level;
       const before = r.stats.maxHp;
@@ -213,6 +224,17 @@ export const DadaSurvivorGame = {
       if (c.id === 'heart') r.player.hp = Math.min(r.stats.maxHp, r.player.hp + (r.stats.maxHp - before) + 20);
     } else if (c.kind === 'food') r.player.hp = Math.min(r.stats.maxHp, r.player.hp + 50);
     else r.coins += 20;
+    this.refreshSkills();
+  },
+
+  refreshSkills() {
+    const r = this.run;
+    if (!r || !this.el?.skills) return;
+    const chip = (id, lv, table) => `<span class="ds-skill">${iconHtml(id, table[id].icon, 'ds-icon sm')}<i>${lv}</i></span>`;
+    this.el.skills.innerHTML = [
+      ...Object.entries(r.weapons).map(([id, lv]) => chip(id, lv, WEAPONS)),
+      ...Object.entries(r.passives).map(([id, lv]) => chip(id, lv, PASSIVES)),
+    ].join('');
   },
 
   showBanner(text, ms = 2200) {
@@ -248,6 +270,7 @@ export const DadaSurvivorGame = {
     this.setOverlay('');
     this.hud.classList.remove('hidden');
     this.el.boss.classList.add('hidden');
+    this.refreshSkills();
     this.resize();
     this.lastTime = performance.now();
     sound.startBGM();
@@ -368,6 +391,63 @@ export const DadaSurvivorGame = {
       .sort((a, b) => a[1] - b[1]).slice(0, n).map(([e]) => e);
   },
 
+  aimAngle() {
+    const p = this.run.player;
+    const t = this.nearestEnemies(1, 560)[0];
+    if (t) return Math.atan2(t.y - p.y, t.x - p.x);
+    if (p.mx || p.my) return Math.atan2(p.my, p.mx);
+    return p.face < 0 ? Math.PI : 0;
+  },
+
+  fireBullets(id, lv, dmg) {
+    const r = this.run, p = r.player, w = WEAPONS[id];
+    if (r.shots.length > 90) return;
+    const n = weaponStat(id, 'count', lv);
+    const base = this.aimAngle();
+    const pierce = weaponStat(id, 'pierce', lv);
+    const life = weaponStat(id, 'life', lv);
+    const splash = w.splash ? weaponStat(id, 'splash', lv) : 0;
+    const spread = w.spread || 0;
+    for (let i = 0; i < n; i++) {
+      const ang = base + (n <= 1 ? 0 : (i - (n - 1) / 2) * (spread / (n - 1)));
+      r.shots.push({
+        kind: 'bullet', art: w.shot, size: w.size,
+        x: p.x + Math.cos(ang) * 18, y: p.y + Math.sin(ang) * 18,
+        vx: Math.cos(ang) * w.speed, vy: Math.sin(ang) * w.speed,
+        ang, dmg, life, r: 8, pierce, splash, kb: w.kb || 0.1,
+      });
+    }
+    const face = Math.cos(base);
+    if (Math.abs(face) > 0.15) p.face = face > 0 ? 1 : -1;
+    if (w.fire === 'spread') sound.play('cannon', { volume: 0.4, gap: 0.16 });
+    else sound.play('crossbow', { volume: id === 'gatling' ? 0.2 : 0.34, gap: id === 'gatling' ? 0.09 : 0.07 });
+    if (id !== 'gatling') this.stage.fx('pop', p.x + Math.cos(base) * 24, p.y + Math.sin(base) * 24, w.fire === 'spread' ? 46 : 30);
+  },
+
+  fireRockets(id, lv, dmg) {
+    const r = this.run, p = r.player, w = WEAPONS[id];
+    if (r.shots.length > 90) return;
+    const n = weaponStat(id, 'count', lv);
+    const targets = this.nearestEnemies(n, 700);
+    const radius = weaponStat(id, 'radius', lv);
+    let faceAng = 0;
+    for (let i = 0; i < n; i++) {
+      const t = targets[i] || null;
+      const ang = t ? Math.atan2(t.y - p.y, t.x - p.x) : this.aimAngle() + (i - (n - 1) / 2) * 0.35;
+      if (i === 0) faceAng = ang;
+      r.shots.push({
+        kind: 'rocket', art: w.shot, size: w.size,
+        x: p.x + Math.cos(ang) * 20, y: p.y + Math.sin(ang) * 20,
+        ang, speed: w.speed, turn: w.turn, target: t,
+        dmg, radius, life: 1.8, arm: 0.1, r: 12,
+      });
+    }
+    const face = Math.cos(faceAng);
+    if (Math.abs(face) > 0.15) p.face = face > 0 ? 1 : -1;
+    sound.play('fire', { volume: 0.48, gap: 0.2 });
+    this.stage.fx('pop', p.x + Math.cos(faceAng) * 28, p.y + Math.sin(faceAng) * 28, w.size > 40 ? 52 : 40);
+  },
+
   orbitPositions() {
     const r = this.run, lv = r.weapons.orbit;
     if (!lv) return [];
@@ -387,7 +467,16 @@ export const DadaSurvivorGame = {
     const r = this.run, p = r.player, st = r.stats, T = r.timers;
     const ready = (id, cd) => { T[id] = (T[id] ?? 0) - dt; if (T[id] > 0) return false; T[id] = cd * st.cooldown; return true; };
     for (const [id, lv] of Object.entries(r.weapons)) {
+      const w = WEAPONS[id];
       const dmg = weaponStat(id, 'damage', lv) * st.damage;
+      if (w.fire === 'bullet' || w.fire === 'spread') {
+        if (ready(id, weaponStat(id, 'cooldown', lv))) this.fireBullets(id, lv, dmg);
+        continue;
+      }
+      if (w.fire === 'rocket') {
+        if (ready(id, weaponStat(id, 'cooldown', lv))) this.fireRockets(id, lv, dmg);
+        continue;
+      }
       if (id === 'kunai' && ready(id, weaponStat(id, 'cooldown', lv))) {
         const n = weaponStat(id, 'count', lv), targets = this.nearestEnemies(n);
         for (let i = 0; i < n; i++) {
@@ -440,13 +529,13 @@ export const DadaSurvivorGame = {
     }
   },
 
-  hitEnemy(e, dmg, fromX = null, fromY = null) {
+  hitEnemy(e, dmg, fromX = null, fromY = null, kbTime = 0.12) {
     if (e.hp <= 0) return;
     const d = Math.round(dmg * (0.9 + Math.random() * 0.2));
     e.hp -= d; e.flash = 0.1;
     if (fromX !== null && !e.T.boss) {
       const dx = e.x - fromX, dy = e.y - fromY, l = Math.hypot(dx, dy) || 1;
-      e.kx = dx / l; e.ky = dy / l; e.kb = 0.12;
+      e.kx = dx / l; e.ky = dy / l; e.kb = kbTime;
     }
     this.stage.text(e.x, e.y - e.T.r, d, d >= 40);
     sound.play('hit', { volume: 0.25, gap: 0.07 });
@@ -486,19 +575,55 @@ export const DadaSurvivorGame = {
   updateShots(dt) {
     const r = this.run;
     for (const s of r.shots) {
-      if (s.kind === 'kunai') {
+      if (s.kind === 'kunai' || s.kind === 'bullet') {
         s.x += s.vx * dt; s.y += s.vy * dt; s.life -= dt;
         for (const e of r.enemies) {
           if (e.hp <= 0 || (e.x - s.x) ** 2 + (e.y - s.y) ** 2 > (e.T.r + s.r) ** 2) continue;
-          this.hitEnemy(e, s.dmg, s.x - s.vx, s.y - s.vy);
+          this.hitEnemy(e, s.dmg, s.x - s.vx, s.y - s.vy, s.kb || 0.12);
+          if (s.splash) {
+            const rad = s.splash * (r.stats.boom || 1);
+            this.stage.fx('boom', s.x, s.y, rad * 2);
+            this.areaDamage(s.x, s.y, rad, s.dmg * 0.45);
+            s.splash = 0;
+          }
           if (--s.pierce <= 0) { s.life = 0; break; }
+        }
+      } else if (s.kind === 'rocket') {
+        s.arm -= dt;
+        let tgt = s.target && s.target.hp > 0 ? s.target : null;
+        if (!tgt) { tgt = this.nearestEnemies(1, 640)[0] || null; s.target = tgt; }
+        if (tgt) {
+          const want = Math.atan2(tgt.y - s.y, tgt.x - s.x);
+          let diff = want - s.ang;
+          while (diff > Math.PI) diff -= TAU;
+          while (diff < -Math.PI) diff += TAU;
+          const step = s.turn * dt;
+          s.ang += Math.max(-step, Math.min(step, diff));
+        }
+        s.x += Math.cos(s.ang) * s.speed * dt;
+        s.y += Math.sin(s.ang) * s.speed * dt;
+        s.life -= dt;
+        let hit = false;
+        if (s.arm <= 0) {
+          for (const e of r.enemies) {
+            if (e.hp > 0 && (e.x - s.x) ** 2 + (e.y - s.y) ** 2 <= (e.T.r + s.r) ** 2) { hit = true; break; }
+          }
+        }
+        if (hit || s.life <= 0) {
+          s.life = 0;
+          const rad = s.radius * (r.stats.boom || 1);
+          this.stage.fx('boom', s.x, s.y, rad * 2.1);
+          this.areaDamage(s.x, s.y, rad, s.dmg);
+          this.stage.shake(s.art === 'mega' ? 7 : 3);
+          sound.playBomb();
         }
       } else if (s.kind === 'bomb') {
         s.t += dt;
         if (s.t >= s.dur) {
           s.life = 0;
-          this.stage.fx('boom', s.tx, s.ty, s.radius * 2);
-          this.areaDamage(s.tx, s.ty, s.radius, s.dmg);
+          const rad = s.radius * (r.stats.boom || 1);
+          this.stage.fx('boom', s.tx, s.ty, rad * 2);
+          this.areaDamage(s.tx, s.ty, rad, s.dmg);
           sound.playBomb();
         }
       }

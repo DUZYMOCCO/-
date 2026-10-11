@@ -5,7 +5,7 @@
  * - 要素はプールで使い回し、生成/破棄でGCやレイアウトを揺らさない
  * - 一時エフェクトは Web Animations API（コンポジタで再生）
  */
-import { art } from './art.js?v=177';
+import { art } from './art.js?v=179';
 
 class Pool {
   constructor(layer, make) { this.layer = layer; this.make = make; this.free = []; this.active = new Set(); }
@@ -58,6 +58,8 @@ export class Stage {
     units.appendChild(this.player);
 
     this.kunai = new Pool(top, () => makeSprite('ds-kunai'));
+    this.bullets = new Pool(top, () => makeSprite('ds-bullet'));
+    this.rockets = new Pool(top, () => makeSprite('ds-rocket'));
     this.bombs = new Pool(top, () => makeSprite('ds-bomb'));
     this.stars = new Pool(top, () => makeSprite('ds-star'));
     this.fxPool = new Pool(fx, () => { const n = el('ds-ent'); n._img = el('ds-fx', n); return n; });
@@ -87,7 +89,7 @@ export class Stage {
   }
 
   reset() {
-    for (const p of [this.gems, this.items, this.enemies, this.kunai, this.bombs, this.stars, this.fxPool, this.textPool]) {
+    for (const p of [this.gems, this.items, this.enemies, this.kunai, this.bullets, this.rockets, this.bombs, this.stars, this.fxPool, this.textPool]) {
       for (const n of p.active) n._img.getAnimations?.().forEach(a => a.cancel());
       p.clear();
     }
@@ -165,6 +167,14 @@ export class Stage {
       Stage.place(n, e.x, e.y);
     });
     this.sync(this.kunai, r.shots.filter(s => s.kind === 'kunai'), (s, n) => { Stage.look(n, 'kunai', 30); Stage.place(n, s.x, s.y, Math.round(s.ang * 20) / 20); });
+    this.sync(this.bullets, r.shots.filter(s => s.kind === 'bullet'), (s, n) => {
+      Stage.look(n, s.art || 'bullet', s.size || 22);
+      Stage.place(n, s.x, s.y, Math.round(s.ang * 20) / 20);
+    });
+    this.sync(this.rockets, r.shots.filter(s => s.kind === 'rocket'), (s, n) => {
+      Stage.look(n, s.art || 'rocket', s.size || 36);
+      Stage.place(n, s.x, s.y, Math.round(s.ang * 20) / 20);
+    });
     this.sync(this.bombs, r.shots.filter(s => s.kind === 'bomb'), (s, n) => {
       const k = s.t / s.dur;
       Stage.look(n, 'bomb', 30);
@@ -206,6 +216,18 @@ export class Stage {
       { transform: 'translate(-50%,-34px) scale(1)', opacity: 0 },
     ], { duration: 650, easing: 'ease-out' });
     a.onfinish = a.oncancel = () => { this.texts--; this.textPool.put(n); };
+  }
+
+  shake(px) {
+    if (!this.view.animate) return;
+    for (const a of this.view.getAnimations?.() || []) if (a._shake) a.cancel();
+    const anim = this.view.animate([
+      { transform: 'translate(0,0)' },
+      { transform: `translate(${px}px, ${px * -0.5}px)`, offset: .25 },
+      { transform: `translate(${-px * 0.6}px, ${px * 0.35}px)`, offset: .6 },
+      { transform: 'translate(0,0)' },
+    ], { duration: 200, easing: 'ease-out' });
+    anim._shake = true;
   }
 
   flash() { this.flashEl.animate([{ opacity: .85 }, { opacity: 0 }], { duration: 500, easing: 'ease-out' }); }

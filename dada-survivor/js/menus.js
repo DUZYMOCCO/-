@@ -7,11 +7,15 @@ import {
   DIFFICULTIES, CHARACTERS, WEAPONS, SHOP_ITEMS, STAGES, RARITIES, GEAR_SLOTS, CHEST_COST,
   shopCost, stageById, stageUnlocked, charUnlocked, gearLabel, rollGear, addGear, equipGear,
   unequipGear, mergeGear, bonusFor,
-} from './rules.js?v=177';
-import { art } from './art.js?v=177';
+} from './rules.js?v=179';
+import { art } from './art.js?v=179';
 
 const GEAR_ART = { weapon: 'sword', armor: 'armor', boots: 'shoes', charm: 'charm' };
-const ICON_ART = { kunai: 'kunai', orbit: 'star', thunder: 'bolt', bomb: 'bomb', magnet: 'magnet', meat: 'meat', coin: 'coin' };
+const ICON_ART = {
+  kunai: 'kunai', orbit: 'star', thunder: 'bolt', bomb: 'bomb', magnet: 'magnet', meat: 'meat', coin: 'coin',
+  gun: 'gun', shotgun: 'shotgun', bazooka: 'bazooka', dual: 'dual', gatling: 'gatling', mega: 'mega',
+  ammo: 'bullet', blast: 'blast',
+};
 export const iconHtml = (id, fallback, cls = 'ds-icon') => ICON_ART[id]
   ? `<span class="${cls}" style='background-image:${art(ICON_ART[id])}'></span>`
   : `<span class="${cls} emoji">${fallback}</span>`;
@@ -54,6 +58,7 @@ export const menuMethods = {
         <div class="ds-diffs">
           ${Object.values(DIFFICULTIES).map(d => `<button class="ds-diff ${d.id === s.difficulty ? 'on' : ''}" data-diff="${d.id}">${d.label}</button>`).join('')}
         </div>
+        <div class="ds-label">レベルアップで じゅう・ショットガン・バズーカ</div>
         <button class="ds-btn ds-go" data-act="start">▶ スタート！</button>
         ${s.pendingChests ? `<button class="ds-btn ds-chest-btn" data-act="chests">${pic('chest', 'ds-icon sm')} たからばこを あける（${s.pendingChests}こ）</button>` : ''}
         <div class="ds-row">

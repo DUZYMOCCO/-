@@ -22,9 +22,9 @@ export const CHARACTERS = [
   { id: 'fox',     name: 'きつね',     weapon: 'thunder', perk: { dmg: 0.1 },              trait: 'つよい' },
   { id: 'panda',   name: 'パンダ',     weapon: 'bomb',    perk: { hp: 20, regen: 0.5 },    trait: 'かいふく' },
   { id: 'rabbit',  name: 'うさぎ',     weapon: 'aura',    perk: { spd: 0.2 },              trait: 'とっても はやい', unlock: 1 },
-  { id: 'penguin', name: 'ペンギン',   weapon: 'kunai',   perk: { pickup: 0.5, hp: 20 },   trait: 'ほうせき あつめ', unlock: 2 },
-  { id: 'bear',    name: 'くま',       weapon: 'orbit',   perk: { hp: 70 },                trait: 'すごく タフ', unlock: 3 },
-  { id: 'dino',    name: 'きょうりゅう', weapon: 'bomb',  perk: { dmg: 0.25 },             trait: 'すごく つよい', unlock: 4 },
+  { id: 'penguin', name: 'ペンギン',   weapon: 'gun',     perk: { pickup: 0.5, hp: 20 },   trait: 'ほうせき あつめ', unlock: 2 },
+  { id: 'bear',    name: 'くま',       weapon: 'shotgun', perk: { hp: 70 },                trait: 'すごく タフ', unlock: 3 },
+  { id: 'dino',    name: 'きょうりゅう', weapon: 'bazooka', perk: { dmg: 0.25 },           trait: 'すごく つよい', unlock: 4 },
   { id: 'unicorn', name: 'ユニコーン', weapon: 'thunder', perk: { dmg: 0.15, spd: 0.1, hp: 40, regen: 0.5 }, trait: 'ぜんぶ アップ', unlock: 5 },
 ];
 
@@ -163,6 +163,14 @@ export function clearRewards(save, stageId, difficultyId) {
 }
 
 // レベル1〜5の性能。index = level-1
+// fire: bullet=まっすぐ弾 / spread=ひろがる弾 / rocket=とんでばくはつ。evolved はしんか後で、ふつうの候補には出さない。
+export const GUNS = ['gun', 'shotgun', 'bazooka'];
+export const EVOLUTIONS = {
+  gun:     { need: 'ammo',  into: 'dual' },
+  shotgun: { need: 'ammo',  into: 'gatling' },
+  bazooka: { need: 'blast', into: 'mega' },
+};
+
 export const WEAPONS = {
   kunai: {
     name: 'クナイ', icon: '🗡️', desc: 'ちかくのてきに とんでいく',
@@ -184,6 +192,60 @@ export const WEAPONS = {
     name: 'バリア', icon: '🔵', desc: 'ちかよる てきに ダメージ',
     damage: [8, 10, 13, 16, 20], radius: [85, 95, 105, 115, 128],
   },
+  gun: {
+    name: 'じゅう', icon: '🔫', desc: 'まっすぐ たまを うつ',
+    fire: 'bullet', shot: 'bullet', size: 22, speed: 720, spread: 0, kb: 0.1,
+    cooldown: [0.85, 0.72, 0.6, 0.5, 0.42],
+    damage: [18, 26, 34, 44, 56],
+    count: [1, 1, 1, 1, 1],
+    pierce: [1, 1, 1, 1, 1],
+    life: [0.62, 0.62, 0.64, 0.66, 0.68],
+    splash: [0, 0, 0, 0, 40],
+  },
+  shotgun: {
+    name: 'ショットガン', icon: '🔫', desc: 'ひろがって とぶ たま',
+    fire: 'spread', shot: 'pellet', size: 16, speed: 520, spread: 1.05, kb: 0.22,
+    cooldown: [1.1, 1.0, 0.92, 0.84, 0.76],
+    damage: [7, 8, 8, 9, 10],
+    count: [4, 6, 8, 10, 12],
+    pierce: [1, 1, 1, 1, 6],
+    life: [0.28, 0.32, 0.4, 0.48, 0.58],
+  },
+  bazooka: {
+    name: 'バズーカ', icon: '🚀', desc: 'ロケットが とんで ばくはつ',
+    fire: 'rocket', shot: 'rocket', size: 36, speed: 250, turn: 3.4,
+    cooldown: [2.3, 2.1, 1.9, 1.75, 1.6],
+    damage: [34, 62, 62, 88, 88],
+    count: [1, 1, 2, 2, 3],
+    radius: [68, 74, 74, 88, 96],
+  },
+  dual: {
+    name: 'にちょう', icon: '🔫', desc: 'たまが ふたつ とんでいく',
+    evolved: true, fire: 'bullet', shot: 'bullet', size: 22, speed: 740, spread: 0.28, kb: 0.12,
+    cooldown: [0.34, 0.34, 0.34, 0.34, 0.34],
+    damage: [32, 32, 32, 32, 32],
+    count: [2, 2, 2, 2, 2],
+    pierce: [1, 1, 1, 1, 1],
+    life: [0.6, 0.6, 0.6, 0.6, 0.6],
+    splash: [34, 34, 34, 34, 34],
+  },
+  gatling: {
+    name: 'ガトリング', icon: '🔫', desc: 'まっすぐ どんどん うつ',
+    evolved: true, fire: 'bullet', shot: 'bullet', size: 18, speed: 820, spread: 0, kb: 0.08,
+    cooldown: [0.1, 0.1, 0.1, 0.1, 0.1],
+    damage: [15, 15, 15, 15, 15],
+    count: [1, 1, 1, 1, 1],
+    pierce: [10, 10, 10, 10, 10],
+    life: [0.75, 0.75, 0.75, 0.75, 0.75],
+  },
+  mega: {
+    name: 'でかロケット', icon: '🚀', desc: 'おおきな ロケットが ばくはつ',
+    evolved: true, fire: 'rocket', shot: 'mega', size: 52, speed: 230, turn: 2.8,
+    cooldown: [1.45, 1.45, 1.45, 1.45, 1.45],
+    damage: [120, 120, 120, 120, 120],
+    count: [2, 2, 2, 2, 2],
+    radius: [130, 130, 130, 130, 130],
+  },
 };
 
 export const PASSIVES = {
@@ -192,6 +254,8 @@ export const PASSIVES = {
   magnet: { name: 'じしゃく', icon: '🧲', desc: 'ほうせきを とおくから あつめる' },
   heart:  { name: 'ハート',   icon: '❤️', desc: 'たいりょく アップ ＆ かいふく' },
   clock:  { name: 'とけい',   icon: '⏰', desc: 'こうげきが はやくなる' },
+  ammo:   { name: 'つよいたま', icon: '🔶', desc: 'こうげきアップ。たまの ぶきが しんか' },
+  blast:  { name: 'ばくやく',   icon: '💥', desc: 'ばくはつアップ。バズーカが しんか' },
 };
 
 // ショップ（ずっと残る強化）
@@ -215,11 +279,12 @@ export function playerStats(passives = {}, shop = {}, bonus = {}) {
   const p = k => passives[k] || 0, s = k => shop[k] || 0, b = k => bonus[k] || 0;
   return {
     maxHp: 100 + p('heart') * 20 + s('hp') * 10 + b('hp'),
-    damage: (1 + p('power') * 0.15) * (1 + s('atk') * 0.05) * (1 + b('dmg')),
+    damage: (1 + p('power') * 0.15) * (1 + p('ammo') * 0.1) * (1 + s('atk') * 0.05) * (1 + b('dmg')),
     speed: Math.min(260, 150 * (1 + p('boots') * 0.1) * (1 + s('spd') * 0.04) * (1 + b('spd'))),
     pickup: 90 * (1 + p('magnet') * 0.3) * (1 + b('pickup')),
     cooldown: Math.max(0.5, 1 - p('clock') * 0.08),
     regen: b('regen'),
+    boom: 1 + p('blast') * 0.12,
   };
 }
 
@@ -243,10 +308,28 @@ export function pickWeighted(weights, rnd = Math.random) {
   return entries[entries.length - 1][0];
 }
 
-/** レベルアップ時の3択（まだ上げられるものから） */
+function choiceWeight(item, weapons) {
+  return item.kind === 'weapon' && !(weapons[item.id] > 0) ? 3 : 1;
+}
+
+/** レベルアップ時の3択。
+ *  じゅう系をまだ持っていない最初の1回は、じゅう・ショットガン・バズーカだけ出す。
+ *  進化できるときはそのカードを必ず1枚混ぜる。持っていない武器は出やすい。
+ */
 export function upgradeChoices(weapons, passives, rnd = Math.random, count = 3) {
+  const ownsGun = GUNS.some(id => weapons[id] > 0)
+    || Object.values(EVOLUTIONS).some(e => weapons[e.into] > 0);
+  if (!ownsGun) return GUNS.slice(0, count).map(id => ({ kind: 'weapon', id, level: 1 }));
+
+  const evos = [];
+  for (const [from, evo] of Object.entries(EVOLUTIONS)) {
+    if ((weapons[from] || 0) >= MAX_LEVEL && (passives[evo.need] || 0) >= 1 && !(weapons[evo.into] > 0)) {
+      evos.push({ kind: 'evolve', id: evo.into, from, level: MAX_LEVEL });
+    }
+  }
   const pool = [];
   for (const id of Object.keys(WEAPONS)) {
+    if (WEAPONS[id].evolved) continue;
     const lv = weapons[id] || 0;
     if (lv < MAX_LEVEL) pool.push({ kind: 'weapon', id, level: lv + 1 });
   }
@@ -254,11 +337,19 @@ export function upgradeChoices(weapons, passives, rnd = Math.random, count = 3) 
     const lv = passives[id] || 0;
     if (lv < MAX_LEVEL) pool.push({ kind: 'passive', id, level: lv + 1 });
   }
-  for (let i = pool.length - 1; i > 0; i--) {
-    const j = Math.floor(rnd() * (i + 1));
-    [pool[i], pool[j]] = [pool[j], pool[i]];
+
+  const picks = [];
+  if (evos.length) picks.push(evos[Math.floor(rnd() * evos.length)]);
+  const left = [...pool];
+  while (picks.length < count && left.length) {
+    const total = left.reduce((s, item) => s + choiceWeight(item, weapons), 0);
+    let r = rnd() * total, idx = left.length - 1;
+    for (let i = 0; i < left.length; i++) {
+      r -= choiceWeight(left[i], weapons);
+      if (r < 0) { idx = i; break; }
+    }
+    picks.push(left.splice(idx, 1)[0]);
   }
-  const picks = pool.slice(0, count);
   if (picks.length < count) picks.push({ kind: 'food', id: 'meat', level: 0 });
   if (picks.length < count) picks.push({ kind: 'coin', id: 'coin', level: 0 });
   return picks;

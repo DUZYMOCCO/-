@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { art, ART_NAMES } from '../js/art.js';
-import { CHARACTERS, ENEMY_TYPES, STAGES } from '../js/rules.js';
+import { CHARACTERS, ENEMY_TYPES, STAGES, WEAPONS } from '../js/rules.js';
 
 const svgOf = url => decodeURIComponent(url.slice(url.indexOf(',') + 1, -2));
 
@@ -10,8 +10,10 @@ test('every sprite the game asks for exists', () => {
     ...CHARACTERS.map(c => c.id), ...Object.keys(ENEMY_TYPES), ...STAGES.map(s => `ground-${s.ground}`),
     'gem1', 'gem2', 'gem3', 'coin', 'meat', 'magnet', 'nuke', 'bomb', 'kunai', 'star', 'bolt',
     'sword', 'armor', 'shoes', 'charm', 'chest', 'chestOpen',
+    'gun', 'shotgun', 'bazooka', 'dual', 'gatling', 'mega', 'rocket', 'bullet', 'pellet', 'blast',
   ];
   for (const n of needed) assert.ok(ART_NAMES.includes(n), n);
+  for (const w of Object.values(WEAPONS)) if (w.shot) assert.ok(ART_NAMES.includes(w.shot), w.shot);
 });
 
 // 同じタグに同じ属性が2回あると、ブラウザは SVG 全体を読めず 絵が消える
