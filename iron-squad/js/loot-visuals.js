@@ -1,5 +1,6 @@
 /** Field loot art — v177. Material and manufacturing stage come from the real equipment tier. */
 import { materialTier, generation, tierNumber } from './equipment-tiers.js?v=187';
+import {CRAFT_MATERIALS} from './crafting-rules.js?v=189';
 
 const PALETTES = [
   { body:'#795538', dark:'#463326', lid:'#a17c51', edge:'#392b24', trim:'#bb9871', light:'#d5b68b' },
@@ -191,6 +192,22 @@ function awakeningGem(c,now) {
 export function drawLootDrop(c,drop,now=0) {
   if(!c||!drop)return;
   const x=Number(drop.x)||0,y=Number(drop.y)||0,time=Number.isFinite(now)?now:0,item=drop.item;
+  if(item?.type==='MATERIAL'){
+    c.save();c.translate(x,y);c.shadowBlur=0;shadow(c,11);
+    // Tied salvage sack, cloth flap and exposed ore distinguish materials from equipment chests.
+    polygon(c,[[-10,5],[-10,-1],[-6,-6],[7,-6],[11,0],[9,6]],'#8c7c61','#41392d',.9);
+    polygon(c,[[-6,-6],[-4,-10],[3,-10],[7,-6],[2,-4]],'#b9a98a','#544733',.7);
+    line(c,[[-5,-6],[7,-6]],'#dacb9a',1.5);
+    const id=Object.keys(item.materials||{})[0],color=CRAFT_MATERIALS[id]?.color||item.color||'#a3b0b5';
+    if(id==='wood'){
+      polygon(c,[[-6,1],[-5,-5],[3,-4],[5,3],[-3,4]],'#a77f4e','#54432e',.7);
+      line(c,[[-3,-4],[-2,3]],'#d3b681',1.1);line(c,[[1,-3],[3,3]],'#6c512f',.8);
+    }else{
+      polygon(c,[[-4,2],[-6,-1],[-2,-5],[3,-4],[5,0],[2,4]],color,'#46525a',.7);
+      polygon(c,[[-6,-1],[-2,-5],[0,-1],[-2,2]],'#dde0cc');
+    }
+    line(c,[[6,0],[8,3],[5,5]],'#594d39',.7);c.restore();return;
+  }
   if(!drop.isMagicStone&&!drop.isAmmo&&!drop.isOrb&&!drop.isGem&&item?.type!=='GEM'&&!item?.isGem){
     drawTreasureChest(c,x,y,item?.tier||1,time,{boss:!!drop.isBoss});return;
   }

@@ -105,9 +105,9 @@ game.exitDungeon();assert.equal(game.dropsOnField.length,0);
 
 // Real producers stamp the lifetime immediately, before any update occurs.
 reset();game.clearOutpost(game.outposts.find(o=>o.type==='FORT'));
-assert.equal(game.dropsOnField.length,3);assert.ok(game.dropsOnField.every(d=>d.remainingLife===60));
+assert.equal(game.dropsOnField.filter(d=>d.item?.type==='MATERIAL').length,3);assert.ok(game.dropsOnField.every(d=>d.remainingLife===60));
 game.dropsOnField=[];game.baseRaidActive=true;game.completeBaseRaid(true);
-assert.equal(game.dropsOnField.length,2);assert.ok(game.dropsOnField.every(d=>d.remainingLife===60));
+assert.equal(game.dropsOnField.filter(d=>d.item?.type==='MATERIAL').length,2);assert.ok(game.dropsOnField.every(d=>d.remainingLife===60));
 reset();const random=Math.random;
 try{
   Math.random=()=>.1;

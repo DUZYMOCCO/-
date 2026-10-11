@@ -1,6 +1,6 @@
 import {configureBattlefieldUI,quietBattlefieldContext} from './battlefield-ui.js?v=182';
-import {renderNavigationMap} from './navigation-map.js?v=187';
-import {soldierEquipmentValue,observeEquipment,standardEquipmentCost,RESERVE_ARMAMENT_COUNT} from './armament-rules.js?v=187';
+import {renderNavigationMap} from './navigation-map.js?v=189';
+import {soldierEquipmentValue,observeEquipment,standardEquipmentCost,RESERVE_ARMAMENT_COUNT} from './armament-rules.js?v=189';
 import {configureRangedEnemy,updateRangedEnemy,updateDefenseWalls,interceptHostileShot,isHostileShot,updateHostileBolt,drawDefenseWalls} from './enemy-ranged.js?v=187';
 import {LIMITED_CLASSES,initializeLimitedAllies,prepareLimitedEncounter,createLimitedAlly,joinLimitedEncounter,updateLimitedAllies,updateNinja,updateShuriken,drawLimitedEncounter,serializeLimitedAllies,notifyLimitedJoin} from './limited-allies.js?v=185';
 import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=182';
@@ -9,20 +9,24 @@ import {fieldAdaptiveScaling} from './field-scaling.js?v=182';
 import {activeSquad,inCurrentInstance} from './instance-rules.js?v=182';
 import {recordBattleLog,resetBattleLog,refreshCombatFieldNotes} from './battle-log.js?v=187';
 import {rollDropExclusive,applyDropExclusive,dropExclusiveLabel} from './drop-exclusives.js?v=182';
-import {latestEquipmentTier,recordMerchantEquipment,ensureMerchantCatalog,refreshWaveCatalogs,markMerchantPurchase} from './merchant-catalog.js?v=187';
+import {normalizeMaterials,applyCraftExclusive,craftExclusiveLabel,equipmentDropChance,materialDropChance,rollMaterialDrop,rollTreasureLoot} from './crafting-rules.js?v=189';
+import {workshopMethods} from './workshop.js?v=189';
+import {casinoMethods} from './casino.js?v=189';
+import {normalizeCasino} from './casino-rules.js?v=189';
+import {latestEquipmentTier,recordMerchantEquipment,ensureMerchantCatalog,refreshWaveCatalogs,markMerchantPurchase} from './merchant-catalog.js?v=189';
 import {initializeMedicalPosts,updateMedicalPosts,serializeMedicalPosts,nearestKnownMedicalPost,drawMedicalPost,drawMedicalMap,drawMedicalMarker,drawTownMedicalReception,drawRescueDirection} from './medical-posts.js?v=182';
 import {invasionMethods,initializeInvasions,serializeInvasions,shouldTriggerRandomRaid,makeEnemyRoom,drawInvasionRoute} from './invasion-rules.js?v=182';
-import {gateMethods,serializeGatePosts,replenishTownGateGuards,initializeGateGuards,ensureTownGuards,serializeGateGuards,updateGateGuards,gateGuardVisible,applyFortifications,drawFortification,exitGateTown,townExitReached,wallBlocksAttack,attackBlocked as coverBlocked} from './gate-rules.js?v=188';
-import {nationMethods,normalizeNation,nationalIncome,nationalPayrollPlan,headquartersDamageMult,drawNationalDevelopment,DEVELOPMENT_STAGES} from './nation-rules.js?v=188';
+import {gateMethods,serializeGatePosts,replenishTownGateGuards,initializeGateGuards,ensureTownGuards,serializeGateGuards,updateGateGuards,gateGuardVisible,applyFortifications,drawFortification,exitGateTown,townExitReached,wallBlocksAttack,attackBlocked as coverBlocked} from './gate-rules.js?v=189';
+import {nationMethods,normalizeNation,nationalIncome,nationalPayrollPlan,headquartersDamageMult,drawNationalDevelopment,DEVELOPMENT_STAGES} from './nation-rules.js?v=189';
 import {equipmentUpgradeCost,salaryQuote,paySoldiers} from './payroll-rules.js?v=187';
 import {addFieldDrop,ageFieldDrops,attractFieldDrops,FIELD_DROP_PICKUP_RADIUS} from './field-drops.js?v=182';
-import {drawLootDrop,drawLootPullTrail} from './loot-visuals.js?v=187';
+import {drawLootDrop,drawLootPullTrail} from './loot-visuals.js?v=189';
 import {drawOwnSquadRing,isOwnSquad} from './own-squad-marker.js?v=182';
 import {queueSquadName,flushSquadNames} from './squad-names.js?v=182';
 import {syncGiveUpUI,resumeBGM} from './commander-giveup.js?v=182';
 import {economicState,advanceRegionalEconomy,discoverEconomicRegions,recordEconomicKill,economicFieldBlocked} from './regional-economy.js?v=182';
-import {updateRegionalTraffic,nearestCommerceTarget,damageCommerce,persistTradeRaiders,restoreTradeRaiders} from './trade-routes.js?v=188';
-import {drawEconomicLandscape,drawCommerceActor,drawEconomicMinimap,drawCommerceWreck,drawCampTent} from './economic-visuals.js?v=188';
+import {updateRegionalTraffic,nearestCommerceTarget,damageCommerce,persistTradeRaiders,restoreTradeRaiders} from './trade-routes.js?v=189';
+import {drawEconomicLandscape,drawCommerceActor,drawEconomicMinimap,drawCommerceWreck,drawCampTent} from './economic-visuals.js?v=189';
 /**
  * ゲーム3: IRON SQUAD (アイアン・スクワッド: 雑兵立身出世録)
  * ローグライク・アクションRPG
@@ -38,17 +42,17 @@ import { sound } from '../../common/js/audio.js?v=151';
 import { loadCss } from '../../common/js/load-css.js';
 import { storage } from '../../common/js/storage.js';
 import { createStallRecorder, mountStallLog } from './stall-recorder.js?v=182';
-import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow, isRuinKeeper, ruinKeeperScale } from './visuals.js?v=188';
+import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow, isRuinKeeper, ruinKeeperScale } from './visuals.js?v=189';
 import { refreshCampQuiet, assignCampSeats, tryCampLeisure } from './camp-leisure.js?v=182';
 import { CAMP_PEACE_RADIUS, peaceContainment, pushOutsidePeace, relocatePeaceMonster } from './peace-zones.js?v=182';
 import { FARM_X, FARM_Y, farmPosts, farmOverlaps, reinforcementCount, reserveRosterLine, reserveRosterTitle } from './reserve-farm.js?v=182';
-import { drawMeleeRangeCue, meleeDrawReach, attackAnimationRate } from './weapon-motion.js?v=188';
+import { drawMeleeRangeCue, meleeDrawReach, attackAnimationRate } from './weapon-motion.js?v=189';
 import {emptyRescueBonuses,normalizeRescueBonuses,rescueBonusSummary} from './rescue-rewards.js?v=182';
 import {drawFieldCivilian} from './civilian-visuals.js?v=188';
 import { saveSlots } from './save-slots.js';
 import { soldierDialogue } from './soldier-dialogue.js?v=182';
 import { generateSoldierName, migrateSoldierName, rollGenderByKey, isGenderId, ensureSoldierGender, genderLabel } from './soldier-names.js?v=185';
-import { openCommanderEditor } from './commander-editor.js?v=188';
+import { openCommanderEditor } from './commander-editor.js?v=189';
 import { applyCommanderIdentity, normalizeCommanderIdentity, commanderFullName, GENDERS as COMMANDER_GENDERS } from './commander-identity.js?v=188';
 import {MAGIC_CLASSES,MAGIC_AFFINITIES,magicMethods,isMage,isMagicUser,ensureMana,initializeMagic,updateMagic,distributeMagicStones,castMedicBuff,castCasterStrength,updateMageAI,drawMagicBursts,spendMana,weaponMagicDamage,isPlayerCaster,castPlayerSpell,PLAYER_MAGIC_RULES} from './magic-rules.js?v=187';
 import {hazardMethods,updateHazards,drawHazards} from './hazard-fields.js?v=182';
@@ -68,16 +72,16 @@ import {
 import { PHASE_DURATION, REST_DURATION, DEATHLINE_DOWN_THRESHOLD, SOLDIER_SALARY, MIN_REINFORCEMENTS, emptyActivity, advancePhase, advanceRest, recordCombat, recordHealing, healByMedic, healAmountFor, personalDownCount, deathlineEligible, participated, finishExperience } from './phase-rules.js?v=187';
 import {HEALING_HP_PER_EXP,REVIVAL_EXP_PER_MAX_HP,shareCommanderExp,raiseLevelMark,ageLevelMarks} from './experience-rules.js';
 import {rollAttributeProfile,applyAttributeStats,attributeValues,practiceAttribute,attributeCarryCapacity,attributeSpecialties,prefersCasterMelee,canChannelWeaponMagic,magicAbilityMultiplier,beginAttributeMovement,finishAttributeMovement,ATTRIBUTE_LABELS,ATTRIBUTE_KEYS,aptitudeGrade} from './unit-attributes.js?v=187';
-import {rollScoutCandidate,renderRecruitment,nextScoutCandidate,startAutomaticRecruitment,stopAutomaticRecruitment,RECRUIT_CLASSES} from './recruitment.js?v=188';
+import {rollScoutCandidate,renderRecruitment,nextScoutCandidate,startAutomaticRecruitment,stopAutomaticRecruitment,RECRUIT_CLASSES} from './recruitment.js?v=189';
 import {canUseWeapon,requiredWeaponStrength,weaponRequirementText,isMagicWeapon,MAGIC_WEAPON_STYLES,preferredWeaponStyle} from './weapon-requirements.js?v=187';
 import {
   emptyFiscalLedger, calcCommanderStipend, calcBuyoutGold,
   shouldAbsorbToSharedBox, calcScoutCost, estimateSoldierScoutValue, calcDismissSettlement,
   formatFiscalReportJa, formatFiscalReportHtml, distributeSharedBoxToSoldiers, sellWeakSurplusFromBox,
   SHARED_BOX_MAX_TIER, SCOUT_COST_BY_TALENT, defaultDonateAmount, donatePresetAmounts
-} from './economy-rules.js?v=187';
+} from './economy-rules.js?v=189';
 
-import { EQUIPMENT_TYPES, saleValue, equippedIds, canSell, lowValueIds, chooseLootTier, distanceScaling, shrineUpgradeCap, compareEquipment, equipmentScore, compareEquipmentStrength, rollWeaponTraits, weaponCombatProfile, evaluateMeleeSweetSpot, isGodRollProtected, zoneRingPower, zoneRingLabelJa, equipmentIcon, equipmentName } from './equipment-rules.js?v=187';
+import { EQUIPMENT_TYPES, saleValue, equippedIds, canSell, lowValueIds, chooseLootTier, distanceScaling, shrineUpgradeCap, compareEquipment, equipmentScore, compareEquipmentStrength, rollWeaponTraits, weaponCombatProfile, evaluateMeleeSweetSpot, isGodRollProtected, zoneRingPower, zoneRingLabelJa, equipmentIcon, equipmentName } from './equipment-rules.js?v=189';
 import { rollFieldBrute, advanceDemonWarband, stepDemonWarbandGroup } from './field-hosts.js?v=182';
 import {
   WEAPON_STYLES, MASTERY_STYLES, WEAPON_STYLE_LABELS, WEAPON_STYLE_ICONS, isHeavyWeaponStyle, heavyWeaponAttackMult, weaponCategoryOf,
@@ -95,19 +99,19 @@ import {
   nearestLivingMerchant, refreshMerchantStock, merchantBuyPrice, merchantSellTier,
   applyMerchantSave, serializeMerchants, MERCHANT_INTERACT_R,
   merchantHealingStatus, merchantHealWavesLeft, useMerchantHealing, MERCHANT_HEAL_COST, recalcEscortStats, finishEscortPhase
-} from './merchant-rules.js?v=188';
+} from './merchant-rules.js?v=189';
 
 import { daylightAt, advanceWorldClock, periodEnemy, enemyAvailable, PERIOD_ENEMIES } from './day-night.js';
 
 import { clusterRescueMarkers } from './rescue-markers.js?v=182';
 import {visibleHeroMembers} from './hero-rules.js';
-import {updateHeroJournal} from './hero-journal.js?v=187';
+import {updateHeroJournal} from './hero-journal.js?v=189';
 import {applyHeroEquipmentUpgrade} from './hero-equipment.js?v=187';
-import {initializeHeroJourney,rollHeroRevelation,serializeHeroJourney,updateHeroParty,updateHeroFollowing,awardHeroBattle,recordDemonKingDefeat,ensureHeroCastle,syncHeroCastle,renderHeroJourney,drawHeroMarks} from './hero-party.js?v=188';
+import {initializeHeroJourney,rollHeroRevelation,serializeHeroJourney,updateHeroParty,updateHeroFollowing,awardHeroBattle,recordDemonKingDefeat,ensureHeroCastle,syncHeroCastle,renderHeroJourney,drawHeroMarks} from './hero-party.js?v=189';
 import { RESCUE_TIMEOUT, rescueUnits, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, receiveTownCargo, leaveCivilianSpace, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, markSoldierDown, downCommander, commanderDown, updateNpcRescue, CIV_KINDS, isMedic, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST } from './casualty-rules.js?v=187';
-import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault, dungeonBlocks, dungeonSolids } from './dungeon.js?v=187';
+import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault, dungeonBlocks, dungeonSolids } from './dungeon.js?v=189';
 import {nearestDungeonFloor,dungeonSpawnPoint,dungeonSteeringTarget} from './dungeon-layout.js?v=182';
-import {normalizeDungeonExploration,updateDungeonSideChests,drawDungeonSideChests,updateDungeonRespawns,dungeonCoolingDown,recordDungeonClear,DUNGEON_RESET_PHASES} from './dungeon-exploration.js?v=187';
+import {normalizeDungeonExploration,updateDungeonSideChests,drawDungeonSideChests,updateDungeonRespawns,dungeonCoolingDown,recordDungeonClear,DUNGEON_RESET_PHASES} from './dungeon-exploration.js?v=189';
 import {
   EXPEDITION_CHECK_INTERVAL, EXPEDITION_RETURN_HOME, EXPEDITION_ENGAGE_R,
   EXPEDITION_DANGER_TIERS, EXPEDITION_MIN_MEMBERS,
@@ -869,6 +873,7 @@ export function applyUpgradeStats(item, upgradeLevel) {
   }
   if(item.type==='WEAPON'&&item.weaponTraits)item.stats.crit=(item.stats.crit||0)+Math.max(0,Math.min(8,item.weaponTraits.crit||0));
   applyDropExclusive(item);
+  applyCraftExclusive(item);
   if(item.type==='WEAPON'&&isHeavyWeaponStyle(item)){
     item.stats.atk*=heavyWeaponAttackMult(item);item.heavyAttackVersion=1;
   }
@@ -1075,6 +1080,8 @@ export const IronSquadGame = {
   ...gateMethods,
   ...invasionMethods,
   ...nationMethods,
+  ...workshopMethods,
+  ...casinoMethods,
   ...supplyMethods,
   ...magicMethods,
   ...hazardMethods,
@@ -1087,7 +1094,7 @@ export const IronSquadGame = {
 
   // 起動時にこのゲームのCSSを自分で読み込む（?v= はこのフォルダ内で管理）。ハブが init 前に await する
   prepare() {
-    return loadCss(['../css/iron-squad.css?v=175', '../css/iron-squad-interface.css?v=175'].map(p => new URL(p, import.meta.url).href));
+    return loadCss(['../css/iron-squad.css?v=175', '../css/iron-squad-interface.css?v=189'].map(p => new URL(p, import.meta.url).href));
   },
 
   init(container, onBackToHub) {
@@ -2324,6 +2331,8 @@ export const IronSquadGame = {
     this.commandActiveUntil = 0;
     this.awakeningOrbs = 0;
     this.awakeningGems = 0;
+    this.materials=normalizeMaterials();
+    this.workshopSelectedTier=null;this.workshopSupplyId=null;this.workshopCraftId=null;
     this.globalFundAmount = String(defaultDonateAmount(50));
     this.treasury = 6000;
     this.nation=normalizeNation();
@@ -2397,7 +2406,11 @@ export const IronSquadGame = {
     const inherited = inheritVeterans ? saveSlots.get(this.activeSlotId) : null;
     if(inherited?.data?.limitedAllies)initializeLimitedAllies(this,inherited.data.limitedAllies);
     if (inheritVeterans) this.nation = normalizeNation(inherited?.nation || inherited?.data?.nation);
-    if(inheritVeterans){this.nation.economy.lastPhase=0;this.nation.economy.phaseTrade=0;this.nation.armament.supplyPhase=0;this.nation.armament.researchPhase=0;this.nation.smithPhase=0;this.nation.guildPhase=0;this.nation.casinoPhase=0;}
+    if(inheritVeterans){
+      this.nation.economy.lastPhase=0;this.nation.economy.phaseTrade=0;this.nation.armament.supplyPhase=0;this.nation.armament.researchPhase=0;
+      this.nation.smithPhase=0;this.nation.guildPhase=0;this.nation.casinoPhase=0;
+      this.nation.casino=normalizeCasino({bet:this.nation.casino?.bet});
+    }
     this.merchantEquipmentTier=inheritVeterans?(inherited?.data?.merchantEquipmentTier||1):1;
     this.rescueBonuses=normalizeRescueBonuses(inheritVeterans?(inherited?.data?.rescueBonuses||this.rescueBonuses):null);
     this.rescueRewardIds=inheritVeterans?[...(inherited?.data?.rescueRewardIds||this.rescueRewardIds||[])]:[];
@@ -2521,9 +2534,11 @@ export const IronSquadGame = {
     this.inventory = this.inventory || [];
     const lootNames = [];
     for (let i = 0; i < rewards.lootCount; i++) {
-      const item = generateRandomDrop(rewards.lootDistance, rewards.lootKind);
-      this.inventory.push(item);
-      lootNames.push(equipmentName(item));
+      for(const item of rollTreasureLoot(rewards.lootDistance,rewards.lootKind,generateRandomDrop)){
+        if(item.type==='MATERIAL')this.collectCraftMaterials(item);
+        else this.inventory.push(item);
+        lootNames.push(item.type==='MATERIAL'?item.name:equipmentName(item));
+      }
     }
     const inferiorNotes = [];
     for (const s of rewards.survivors) {
@@ -2809,15 +2824,17 @@ export const IronSquadGame = {
       const bonusG = Math.round(95 * distanceScaling(Math.hypot(outpost.x-BASE_CAMP.x,outpost.y-BASE_CAMP.y)).gold);
       this.gold += bonusG;
       for (let k = 0; k < 3; k++) {
-        const dropItem = generateRandomDrop(Math.hypot(outpost.x-BASE_CAMP.x,outpost.y-BASE_CAMP.y), 'chest');
+        const loot=rollTreasureLoot(Math.hypot(outpost.x-BASE_CAMP.x,outpost.y-BASE_CAMP.y),'chest',generateRandomDrop);
+        for(const dropItem of loot){
         addFieldDrop(this,{
           x: outpost.x + (Math.random() - 0.5) * 60,
           y: outpost.y + (Math.random() - 0.5) * 60,
           item: dropItem,
           isBoss: k === 0
         });
+        }
       }
-      this.showToast(`🏴【前線砦陥落！】+${bonusG}G獲得！レア武具宝箱を大量鹵獲！`);
+      this.showToast(`🏴【前線砦陥落！】+${bonusG}G獲得！素材の宝箱3つを鹵獲、武具も低確率で入手！`);
     } else if (outpost.type === 'CAGE') {
       const newS1 = this.createNewSoldier();
       const beasts=Object.keys(LIMITED_CLASSES).filter(k=>k!=='NINJA');
@@ -3203,6 +3220,8 @@ export const IronSquadGame = {
     this.gold = saved.gold ?? 50;
     this.awakeningOrbs = saved.awakeningOrbs || 0;
     this.awakeningGems = saved.awakeningGems || 0;
+    this.materials=normalizeMaterials(saved.materials);
+    this.workshopSelectedTier=null;this.workshopSupplyId=null;this.workshopCraftId=null;
     this.globalFundAmount = saved.globalFundAmount || String(defaultDonateAmount(saved.gold ?? 50));
     this.treasury = saved.treasury ?? 200;
     this.nation=normalizeNation(saved.nation);
@@ -3659,6 +3678,7 @@ export const IronSquadGame = {
         gold: this.gold,
         awakeningOrbs: this.awakeningOrbs || 0,
         awakeningGems: this.awakeningGems || 0,
+        materials: normalizeMaterials(this.materials),
         dungeonExploration: normalizeDungeonExploration(this.dungeonExploration),
         globalFundAmount: this.globalFundAmount || String(defaultDonateAmount(this.gold || 0)),
         treasury: this.treasury || 0,
@@ -5013,10 +5033,7 @@ export const IronSquadGame = {
       this.gainExp(rewardExp);
 
       // 本陣中央に「本陣防衛の至宝箱」をドロップ！
-      const drops = [
-        generateRandomDrop(4500, 'boss'),
-        generateRandomDrop(4500, 'boss')
-      ];
+      const drops = rollTreasureLoot(4500,'boss',generateRandomDrop).concat(rollTreasureLoot(4500,'boss',generateRandomDrop));
       for (const eq of drops) {
         if (eq) {
           addFieldDrop(this,{
@@ -6793,6 +6810,7 @@ export const IronSquadGame = {
         if (distS < 26) {
           if(drop.isMagicStone){this.dropsOnField.splice(i,1);distributeMagicStones(this,drop.mana);this.spawnDamageText(s.x,s.y-20,`魔法石 +${drop.mana}MP`,'#bcaed4');break;}
           if(drop.isAmmo){this.dropsOnField.splice(i,1);distributeAmmo(this,drop.ammo);this.spawnDamageText(s.x,s.y-20,`弾薬 +${drop.ammo}`,'#d8cfb0');break;}
+          if(drop.item?.type==='MATERIAL'){this.dropsOnField.splice(i,1);this.collectCraftMaterials(drop.item);this.spawnDamageText(s.x,s.y-20,'素材を回収','#c4b69b');break;}
           const item = drop.item;recordMerchantEquipment(this,item);
           this.dropsOnField.splice(i, 1);
           const slotKey = SLOT_INFO[item.type] ? SLOT_INFO[item.type].key : null;
@@ -7830,16 +7848,18 @@ export const IronSquadGame = {
       this.showToast(`💠 神話宝玉 +${reward.bonusGems}（所持 ${this.awakeningGems}）`);
     }
 
-    // 2. 超高Tier確定アイテム（3〜5個）ドロップ
+    // 2. Every vault parcel contains materials and can also contain high-tier equipment.
     for (let i = 0; i < reward.itemCount; i++) {
-      const dropItem = generateRandomDrop(def.distance, reward.lootKind);
+      const loot=rollTreasureLoot(def.distance,reward.lootKind,generateRandomDrop);
       const ang = (i / reward.itemCount) * Math.PI * 2;
+      for(const dropItem of loot){
       addFieldDrop(this,{
         x: this.dungeonVault.x + Math.cos(ang) * 45,
         y: this.dungeonVault.y + Math.sin(ang) * 45,
         item: dropItem,
         isBoss: true
       });
+      }
     }
 
     // 3. 宝箱周囲の黄金花火パーティクル
@@ -8037,9 +8057,9 @@ export const IronSquadGame = {
         this.spawnDamageText(attacker.x, attacker.y - 45, `👑超巨頭討滅! +${colossalGold}G`, '#ffd700');
       }
 
-      // 3. 高ティア（T5〜T6）宝箱を 2〜3 個確定ドロップ（T7神話は最奥宝箱のみ）
-      for (let ci = 0; ci < 3; ci++) {
-        // T5〜T6（T7は dungeon_vault 専用）
+      // Two chances at rare equipment; the main treasure is crafting material.
+      for (let ci = 0; ci < 2; ci++) {
+        if(Math.random()>=equipmentDropChance(lootDistance,'colossal'))continue;
         const highTierDrop = generateRandomDrop(lootDistance, 'colossal');
 
         addFieldDrop(this,{
@@ -8056,6 +8076,7 @@ export const IronSquadGame = {
       const kind = monster.lootKind || (isBoss ? 'boss' : (isElite ? 'elite' : 'normal'));
       const n = Math.max(1, Math.min(6, monster.dropCount | 0));
       for (let di = 0; di < n; di++) {
+        if(Math.random()>=equipmentDropChance(lootDistance,kind))continue;
         const dropItem = generateRandomDrop(lootDistance, kind);
         addFieldDrop(this,{
           x: monster.x + (di - (n - 1) / 2) * 16,
@@ -8066,7 +8087,7 @@ export const IronSquadGame = {
       }
     } else {
       // 通常モンスター・通常ボスのドロップ生成
-      const dropRate = isBoss ? 1.0 : (isElite ? 0.65 : (0.16+Math.min(0.08,lootDistance/7400*0.08)));
+      const dropRate = equipmentDropChance(lootDistance,isBoss?'boss':isElite?'elite':'normal');
       if (Math.random() < dropRate) {
         const dropItem = generateRandomDrop(lootDistance,isBoss?'boss':(isElite?'elite':'normal'));
         addFieldDrop(this,{
@@ -8078,6 +8099,10 @@ export const IronSquadGame = {
       }
 
     }
+    const materialKind=monster.isColossal?'colossal':isBoss?'boss':isElite?'elite':monster.sureDrop?(monster.lootKind||'elite'):'normal';
+    if(Math.random()<materialDropChance(materialKind))addFieldDrop(this,{
+      x:monster.x+10,y:monster.y+10,item:rollMaterialDrop(lootDistance,materialKind),isBoss:false
+    });
     if(orbCount) {
       addFieldDrop(this,{x:monster.x,y:monster.y,isBoss:!!monster.isBoss,isOrb:true,item:{
         id:Math.random().toString(36).substring(2,9),name:'覚醒の英雄宝珠',type:'ORB',tier:5,isOrb:true,
@@ -8123,6 +8148,8 @@ export const IronSquadGame = {
   },
 
   collectDrop(item, isBossDrop = false, options = {}) {
+    if(!item)return false;
+    if(item.type==='MATERIAL')return this.collectCraftMaterials(item);
     recordMerchantEquipment(this,item);
     if (item.type === 'GEM' || item.isGem) {
       this.awakeningGems = (this.awakeningGems || 0) + 1;
@@ -9173,6 +9200,10 @@ export const IronSquadGame = {
   },
 
   /** 共有ボックス配布＋弱余剰の国庫換金 */
+  makeWorkshopItem(recipe,tier) {
+    const id=globalThis.crypto?.randomUUID?.()||`forge-${Date.now().toString(36)}-${(this.workshopItemSequence=(this.workshopItemSequence||0)+1)}`;
+    return generateRandomDrop(0,'normal',{type:recipe.type,weaponStyle:recipe.weaponStyle,tier,upgrade:0,quality:1,merchant:true,random:()=>.5,id});
+  },
   createSupplyEquipment(type,soldier,tier=1) {
     const item=generateRandomDrop(0,'normal',{type,tier,upgrade:0,quality:1,merchant:true,random:()=>.5,id:`issue-${soldier.id}-${this.phase}-${type}-t${tier}`});
     item.nationalIssue=true;item.qualityLabel='標準支給';delete item.weaponTraits;
@@ -9808,6 +9839,7 @@ export const IronSquadGame = {
         if (item.rollMult != null && Number(item.rollMult) !== 1) statParts.push(`ドロップランダム補正×${Number(item.rollMult).toFixed(2)}`);
         if(item.qualityLabel)statParts.push(item.qualityLabel);
         if(item.dropOnly)statParts.push(`🎖 ドロップ限定・非売品：${dropExclusiveLabel(item)}`);
+        if(item.craftOnly)statParts.push(`🔨 製作限定：${craftExclusiveLabel(item)}`);
         const statText = statParts.join(' ');
         const forgeClass = item.forgeTag === '神鍛' ? 'forge-tag-god' : (item.forgeTag === '異質' ? 'forge-tag-anomalous' : '');
 

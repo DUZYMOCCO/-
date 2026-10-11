@@ -22,7 +22,7 @@ let sequence=0;
 const createItem=()=>({id:`probe-loot-${++sequence}`,type:'HELMET',tier:1});
 function openSide(game,index=0) {
   const chest=dungeonSideChests(game)[index];
-  Object.assign(game.player,{x:chest.x,y:chest.y});updateDungeonSideChests(game,createItem);
+  Object.assign(game.player,{x:chest.x,y:chest.y});updateDungeonSideChests(game,createItem,()=>.99);
 }
 function restore(game) {
   const data=JSON.parse(JSON.stringify(game.saved));

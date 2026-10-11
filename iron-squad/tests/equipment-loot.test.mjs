@@ -70,5 +70,5 @@ game.spawnSparks=()=>{};game.currentQuest=null;
 const shrine=game.outposts.find(o=>o.type==='SHRINE');const blessed=item('blessed');game.equipped={weapon:blessed};game.squad=[];
 for(let n=0;n<10;n++){shrine.cleared=false;shrine.hp=shrine.maxHp;game.clearOutpost(shrine);}assert.equal(blessed.upgrade,10);
 applyUpgradeStats(blessed,37);shrine.cleared=false;shrine.hp=shrine.maxHp;game.clearOutpost(shrine);assert.equal(blessed.upgrade,38,'stronger gear continues upgrading beyond the retired +30 cap');
-game.dropsOnField=[];game.wave=9999;game.clearOutpost(game.outposts[0]);assert.equal(game.dropsOnField.length,3);assert.ok(game.dropsOnField.every(drop=>drop.item.tier<=8),'late-phase local fort still drops beginner gear');
+game.dropsOnField=[];game.wave=9999;game.clearOutpost(game.outposts[0]);assert.equal(game.dropsOnField.filter(drop=>drop.item.type==='MATERIAL').length,3);assert.ok(game.dropsOnField.every(drop=>drop.item.tier<=8),'late-phase local fort still drops beginner gear');
 console.log('PASS: all 7 transfers, ownership, protected bulk sale, surplus retention, equipment comparisons, spatial loot caps, bounded difficulty');

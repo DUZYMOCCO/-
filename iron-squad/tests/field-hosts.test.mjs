@@ -140,15 +140,16 @@ assert.equal(spawned.isBoss, false);
 assert.equal(spawned.activePeriod, null);
 assert.ok(spawned.maxHp > 4000, 'a wild brute keeps the same distance scaling as the orcs beside it');
 game.dropsOnField = [];
-game.killMonster(spawned, game.player, true);
-const gear = game.dropsOnField.filter(d => d.item && !d.isAmmo && !d.isMagicStone && !d.isOrb && d.item.type !== 'ORB' && d.item.type !== 'GEM');
-assert.equal(gear.length, 3);
+try{Math.random=()=>.99;game.killMonster(spawned, game.player, true);}finally{Math.random=random;}
+const gear = game.dropsOnField.filter(d => d.item && !d.isAmmo && !d.isMagicStone && !d.isOrb && d.item.type !== 'MATERIAL' && d.item.type !== 'ORB' && d.item.type !== 'GEM');
+assert.equal(gear.length, 0,'completed gear is now rare even on fixed special enemies');
+assert.ok(game.dropsOnField.some(d=>d.item?.type==='MATERIAL'));
 assert.ok(gear.every(d => d.item.tier <= 12 && !d.isBoss));
 const demon = makeDemonWarband({x:center, y:center}, 'drop')[0];
 game.monsters = [demon];
 game.dropsOnField = [];
-game.killMonster(demon, game.player, true);
-const demonGear = game.dropsOnField.filter(d => d.item && !d.isAmmo && !d.isMagicStone && !d.isOrb && d.item.type !== 'ORB');
+try{Math.random=()=>.01;game.killMonster(demon, game.player, true);}finally{Math.random=random;}
+const demonGear = game.dropsOnField.filter(d => d.item && !d.isAmmo && !d.isMagicStone && !d.isOrb && d.item.type !== 'MATERIAL' && d.item.type !== 'ORB');
 assert.equal(demonGear.length, 1);
 assert.ok(demonGear[0].item.tier <= 16);
 assert.ok(demonGear[0].item.tier <= 24);

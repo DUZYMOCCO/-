@@ -20,7 +20,7 @@ try{
   await page.waitForFunction(v=>document.querySelector('[data-version-for="iron-squad"]')?.textContent.includes(v),gameVersion);
   const cached=await page.evaluate(async cacheName=>{
     const cache=await caches.open(cacheName);
-    return Promise.all(['/common/js/load-css.js',...['dungeon-layout','dungeon-interior-visuals','dungeon-exploration','appearance-features'].map(name=>`/iron-squad/js/${name}.js`)].map(url=>cache.match(url,{ignoreSearch:true}).then(Boolean)));
+    return Promise.all(['/common/js/load-css.js',...['dungeon-layout','dungeon-interior-visuals','dungeon-exploration','appearance-features','crafting-rules','workshop','casino-rules','casino'].map(name=>`/iron-squad/js/${name}.js`)].map(url=>cache.match(url,{ignoreSearch:true}).then(Boolean)));
   },cacheName);
   assert.ok(cached.every(Boolean),'all exploration modules are precached');
   await context.setOffline(true);await page.reload();

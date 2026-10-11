@@ -42,7 +42,7 @@ game.inventory=[strong,protectedItem,gear('donate','ARMOR',30)];game.sharedEquip
 game.nation=normalizeNation({investment:90000});game.gold=10000;game.equipped.weapon=gear('smith','WEAPON',20);const town=game.dungeons.find(d=>d.id==='royal_castle_town');assert.ok(town);game.enterDungeon(town);
 const smithGold=game.gold,smithCost=Math.floor(game.getUpgradeCost(game.equipped.weapon)*.8);assert.equal(game.useTownFacility('smith'),true);assert.equal(game.gold,smithGold-smithCost);assert.equal(game.equipped.weapon.upgrade,1);assert.equal(game.useTownFacility('smith'),false);
 assert.equal(game.useTownFacility('guild'),true);for(let i=0;i<20;i++)game.onNationKill();const reward=game.nation.guild.reward,guildGold=game.gold;assert.equal(game.useTownFacility('guild'),true);assert.equal(game.gold,guildGold+reward);assert.equal(game.useTownFacility('guild'),false);
-const random=Math.random;Math.random=()=>.99;const casinoGold=game.gold;assert.equal(game.useTownFacility('casino'),true);assert.equal(game.gold,casinoGold+150);assert.equal(game.useTownFacility('casino'),false);Math.random=random;
+const random=Math.random;Math.random=()=>.99;const casinoGold=game.gold;assert.equal(game.startCasinoPoker(),true);assert.equal(game.gold,casinoGold-100);assert.equal(game.drawCasinoPoker(),true);const slotGold=game.gold;assert.equal(game.spinCasinoSlot(),true);assert.equal(game.gold,slotGold+19900);assert.equal(game.spinCasinoSlot(),false);Math.random=random;
 game.exitDungeon();const center=79360;game.player.x=center;game.player.y=center;
 const target={x:center,y:center,maxHp:10000,hp:10000,def:0};game.squad=[];game.nation=normalizeNation({investment:180000});assert.equal(headquartersDamageMult(game,target),.7);let displayedDamage;game.spawnDamageText=(x,y,value)=>{if(typeof value==='number')displayedDamage=value;};game.damageTarget(target,100);assert.equal(displayedDamage,70,'developed HQ reduces actual combat damage');game.spawnDamageText=noop;
 target.x+=1000;assert.equal(headquartersDamageMult(game,target),1);game.currentDungeon={kind:'town'};target.x=center;assert.equal(headquartersDamageMult(game,target),1,'local town coordinates never receive field defenses');game.currentDungeon=null;
@@ -74,7 +74,7 @@ point.click();assert.equal(game.gold,321);assert.equal(game.player.hp>0,true);
 game.nation=normalizeNation({investment:180000,armament:{policy:'military',techTier:6}});game.treasury=99999;game.player.hp=0;game.gameOver();
 document.getElementById('btn-restart').click();
 assert.equal(game.phase,1);assert.equal(game.gold,50);assert.equal(game.treasury,6000);assert.deepEqual(game.sharedEquipBox,[]);
-assert.equal(game.nation.level,5);assert.equal(game.nation.investment,180000);assert.equal(game.nation.armament.policy,'military');assert.equal(game.nation.armament.techTier,6);
+assert.equal(game.nation.level,5);assert.equal(game.nation.investment,180000);assert.equal(game.nation.armament.policy,'military');assert.equal(game.nation.armament.techTier,21);
 const separate=saveSlots.create('別遠征');game.activeSlotId=separate.id;game.startFreshGame(false);
 assert.equal(game.nation.level,0);assert.equal(game.nation.investment,0);
 console.log('PASS: 12 real waves with payroll/reserves and reconciled ledgers, retained donations during rest, equipment priority/markup/protection/buyout/deposits, development/HQ damage, live nation UI, town smith/guild/casino cooldown, save migration and native architecture Canvas; death keeps nation development and can resume the living save or checkpoint');dom.window.close();

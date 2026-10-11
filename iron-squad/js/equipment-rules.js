@@ -28,7 +28,7 @@ export const saleValue = item => Math.floor(14 + Math.pow(powerRank(item.tier), 
 /** 異質/神鍛 (god-roll) — auto-sell / shared-box deposit must never touch these. Manual sell still OK via canSell. */
 export function isGodRollProtected(item) {
   if (!item) return false;
-  if (item.isGodRoll || item.dropOnly) return true;
+  if (item.isGodRoll || item.dropOnly || item.craftOnly) return true;
   if ((item.powerSkip || 0) > 0) return true;
   const tag = item.forgeTag;
   if (tag === '異質' || tag === '神鍛') return true;

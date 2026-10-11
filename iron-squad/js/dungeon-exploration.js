@@ -1,6 +1,7 @@
 import {explorationLayout,dungeonSegmentOpen} from './dungeon-layout.js?v=182';
-import {chooseLootTier} from './equipment-rules.js?v=187';
-import {drawTreasureChest} from './loot-visuals.js?v=187';
+import {chooseLootTier} from './equipment-rules.js?v=189';
+import {drawTreasureChest} from './loot-visuals.js?v=189';
+import {rollTreasureLoot} from './crafting-rules.js?v=189';
 
 export const DUNGEON_RESET_PHASES=2;
 const DEMON_CASTLE_ID='dungeon_demon_castle';
@@ -60,7 +61,7 @@ export function dungeonSideChests(game,dungeon=game.currentDungeon) {
   const record=explorationRecord(game,dungeon.id);
   return l.branches.map(p=>({...p,opened:record.opened.includes(p.id),tier:chooseLootTier(dungeon.distance,'chest',()=>.5)}));
 }
-export function updateDungeonSideChests(game,createItem) {
+export function updateDungeonSideChests(game,createItem,random=Math.random) {
   const d=game.currentDungeon,p=game.player;
   if(!d||!p||p.dead||p.isDown||p.hp<=0)return;
   for(const chest of dungeonSideChests(game,d)){
@@ -69,7 +70,7 @@ export function updateDungeonSideChests(game,createItem) {
     // Mark first, then immediately deliver: saves cannot lose unopened floor loot.
     record.opened.push(chest.id);
     if(resettable(d)&&!integer(record.resetAt))record.resetAt=phaseOf(game)+DUNGEON_RESET_PHASES;
-    game.collectDrop(createItem(d.distance,'chest'));
+    for(const item of rollTreasureLoot(d.distance,'chest',createItem,random))game.collectDrop(item);
     game.spawnDamageText?.(chest.x,chest.y-25,'宝箱を開いた！','#e1cc8f');
     game.saveGame?.();
   }

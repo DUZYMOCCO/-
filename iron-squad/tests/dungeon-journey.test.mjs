@@ -82,24 +82,29 @@ test('five basic guards follow the commander down the main aisle and both treasu
 test('side-chest opening is saved by the real slot serializer and cannot reward a second time after resume and reentry',()=>{
  const game=fresh(),dungeon=enterQuiet(game),layout=explorationLayout(dungeon),received=[];
  const realCollect=game.collectDrop;
- game.collectDrop=function(item,...args){received.push(item.id);return realCollect.call(this,item,...args);};
+ game.collectDrop=function(item,...args){received.push(structuredClone(item));return realCollect.call(this,item,...args);};
  Object.assign(game.player,layout.branches[0]);tick(game);
- assert.equal(received.length,1,'one real update delivers the northern chest reward');
+ assert.equal(received.filter(i=>i.type==='MATERIAL').length,1,'one real update delivers the northern chest material reward');
+ const firstCount=received.length;assert.ok(firstCount>=1&&firstCount<=2);
  assert.equal(dungeonSideChests(game)[0].opened,true);
- tick(game);assert.equal(received.length,1);
+ tick(game);assert.equal(received.length,firstCount);
  const persisted=saveSlots.get(game.activeSlotId).data;
  assert.deepEqual(persisted.dungeonExploration[dungeon.id].opened,['north']);
- assert.ok(persisted.inventory.some(item=>item.id===received[0])||persisted.sharedEquipBox.some(item=>item.id===received[0]),'the actual reward is saved, not only its opened flag');
+ for(const item of received){
+   if(item.type==='MATERIAL')for(const [id,n]of Object.entries(item.materials))assert.ok(persisted.materials[id]>=n,'the actual material count is saved, not only its opened flag');
+   else assert.ok(persisted.inventory.some(i=>i.id===item.id)||persisted.sharedEquipBox.some(i=>i.id===item.id),'the optional equipment is also saved');
+ }
  const snapshot=JSON.parse(JSON.stringify(persisted));
  game.resumeSavedGame(snapshot);
  assert.equal(game.currentDungeon,null,'an instance save safely resumes outdoors');
  assert.deepEqual(game.dungeonExploration[dungeon.id].opened,['north']);
  enterQuiet(game);Object.assign(game.player,layout.branches[0]);tick(game);
- assert.equal(received.length,1,'the northern box cannot reroll or pay twice after a real reload');
+ assert.equal(received.length,firstCount,'the northern box cannot reroll or pay twice after a real reload');
  Object.assign(game.player,layout.branches[1]);tick(game);
- assert.equal(received.length,2,'the independent southern box remains available');
+ assert.equal(received.filter(i=>i.type==='MATERIAL').length,2,'the independent southern box remains available');
+ const bothCount=received.length;
  assert.deepEqual(new Set(game.dungeonExploration[dungeon.id].opened),new Set(['north','south']));
- tick(game);assert.equal(received.length,2);
+ tick(game);assert.equal(received.length,bothCount);
 });
 
 for(const kind of ['goblin','goblin_archer'])test(`${kind} follows a player in a side room through the actual enemy movement loop`,()=>{

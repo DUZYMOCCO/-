@@ -1,4 +1,4 @@
-import {weaponCombatProfile,meleeSweetSpotFor} from './equipment-rules.js?v=187';
+import {weaponCombatProfile,meleeSweetSpotFor} from './equipment-rules.js?v=189';
 import {masteryReloadMult,applyMasteryToCombatProfile,isHeavyWeaponStyle} from './growth-rules.js?v=187';
 import {MAX_EQUIPMENT_TIER,GENERATION_COUNT,tierNumber,powerRank,tierDescription} from './equipment-tiers.js?v=187';
 import {canUseWeapon} from './weapon-requirements.js?v=187';
@@ -20,7 +20,7 @@ export function normalizeArmament(data={}) {
     last:data.last?{...data.last}:null};
 }
 export function observeEquipment(game,item) {
-  if(!item||item.nationalIssue||!item.type||item.isOrb||item.isGem)return;
+  if(!item||item.nationalIssue||item.craftOnly||!item.type||item.isOrb||item.isGem)return;
   const n=game.nation;if(!n)return;
   n.armament=normalizeArmament(n.armament);
   // Studying a new generation happens once; selling/reloading it cannot repeat the credit.

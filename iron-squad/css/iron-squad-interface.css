@@ -680,6 +680,34 @@
 .iron-squad .nation-status progress { width:100%; accent-color:#bca775; }
 .iron-squad .nation-status button, .iron-squad #view-econ-box > button { min-height:44px; max-width:100%; padding:10px 12px; background:#304b54; color:#eee5cf; border:1px solid #778b8d; border-radius:7px; }
 .iron-squad .town-facility { border-top:1px solid #3c535c; padding:12px 0; }
+.iron-squad .town-facility h5 { margin:16px 0 8px; font-size:15px; color:var(--ui-gold); }
+.iron-squad .workshop-choice { display:grid; gap:6px; margin:12px 0; }
+.iron-squad .workshop-choice select { width:100%; min-width:0; min-height:44px; font:inherit; border:1px solid var(--ui-line); border-radius:6px; padding:6px 8px; color:var(--ui-text); background:var(--ui-raised); }
+.iron-squad .material-stock { margin:16px 0; padding:8px 10px; background:var(--ui-raised); border-radius:8px; }
+.iron-squad .material-stock summary, .iron-squad .casino-paytable summary { min-height:44px; display:flex; align-items:center; cursor:pointer; }
+.iron-squad .material-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px 14px; margin:8px 0; font-size:12px; }
+.iron-squad .material-grid span { display:flex; justify-content:space-between; gap:6px; }
+.iron-squad .recipe-materials { padding-left:20px; font-size:13px; line-height:1.7; }
+.iron-squad .facility-note { color:var(--ui-muted); font-size:12px; }
+.iron-squad .poker-hand { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:5px; margin:12px 0; }
+.iron-squad .casino-panel .poker-card { display:flex; flex-direction:column; align-items:center; justify-content:space-between; min-width:0; min-height:100px; margin:0; padding:6px 2px; border:2px solid #9b9f91; border-radius:7px; color:#222c32; background:#eee9d9; font-weight:700; }
+.iron-squad .casino-panel button.poker-card:disabled { opacity:1; }
+.iron-squad .casino-panel .poker-card.red { color:#a83f45; }
+.iron-squad .casino-panel .poker-card span { font-size:18px; line-height:1.2; }
+.iron-squad .casino-panel .poker-card b { font-size:25px; line-height:1.2; }
+.iron-squad .casino-panel .poker-card small { font-size:11px; line-height:1.4; }
+.iron-squad .casino-panel .poker-card[aria-pressed="true"] { border-color:var(--ui-gold); background:#fff6ce; box-shadow:0 0 0 1px var(--ui-gold); }
+.iron-squad .casino-panel .poker-card.card-back { justify-content:center; background:#344b51; color:#baad82; font-size:24px; }
+.iron-squad .slot-reels { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; border:2px solid #a99464; border-radius:10px; background:#25373d; padding:10px; }
+.iron-squad .slot-reel { display:flex; align-items:center; justify-content:center; min-height:68px; border-radius:7px; color:#a63b3e; background:#efe8d4; font-size:34px; font-weight:800; }
+.iron-squad .casino-result { min-height:2.8em; font-size:13px; line-height:1.6; color:var(--ui-gold); }
+.iron-squad .casino-paytable { margin:10px 0; font-size:12px; }
+.iron-squad .casino-paytable dl { margin:0 0 10px; }
+.iron-squad .casino-paytable dl div { display:flex; justify-content:space-between; gap:12px; padding:4px 0; }
+.iron-squad .casino-paytable dd { margin:0; }
+.iron-squad #casino-bet { min-width:0; width:100%; min-height:44px; box-sizing:border-box; font:inherit; border:1px solid var(--ui-line); border-radius:6px; padding:6px 8px; background:var(--ui-raised); color:var(--ui-text); }
+.iron-squad .casino-bet-actions { display:flex; gap:8px; }
+.iron-squad .casino-bet-actions button { flex:1; min-width:0; min-height:44px; }
 .iron-squad .fiscal-table { overflow-x:auto; }
 .iron-squad .fiscal-table table { width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums; }
 .iron-squad .fiscal-table th { text-align:left; font-weight:normal; }
