@@ -1,6 +1,6 @@
 import {HERO_RULES,heroMembers,heroSharesSpace,visibleHeroMembers} from './hero-rules.js';
-import {advanceHeroRoute,heroSegmentOpen} from './hero-navigation.js?v=191';
-import {WORLD_SIZE,settleUnit} from './world.js?v=196';
+import {advanceHeroRoute,heroSegmentOpen,heroRouteCurrent} from './hero-navigation.js?v=198';
+import {WORLD_SIZE,settleUnit} from './world.js?v=198';
 import {DUNGEON_DEFS,dungeonBlocks} from './dungeon.js?v=189';
 import {nearestDungeonFloor} from './dungeon-layout.js?v=182';
 import {economicFieldBlocked} from './regional-economy.js?v=182';
@@ -149,7 +149,7 @@ export function updateHeroParty(game,dt,classes) {
   }
   const danger=ctx.monsters.some(m=>ready(m)&&Math.hypot(m.x-p.x,m.y-p.y)<420&&!ctx.attackBlocked(p,m)),wounded=living.some(u=>u.isDown);
   if(!danger&&!wounded&&!j.demonKingDefeat){
-    if(p.space==='field'&&!p.route?.length)advanceHeroRoute(game,p);
+    if(p.space==='field'&&!heroRouteCurrent(game,p))advanceHeroRoute(game,p);
     const target=p.route?.[p.routeIndex||0];
     if(target){const dx=target.x-p.x,dy=target.y-p.y,d=Math.hypot(dx,dy),speed=Math.min(...fighters.map(u=>u.speed||100)),step=Math.min(d,speed*dt*.85);
       if(d>0){p.x+=dx/d*step;p.y+=dy/d*step;}if(d<=speed*dt+8){p.routeIndex=(p.routeIndex||0)+1;if(p.routeIndex>=p.route.length){p.route=[];p.routeIndex=0;if(p.space==='field'&&Math.hypot(p.x-p.destination.x,p.y-p.destination.y)<120)enterHeroCastle(game,p);}}}
@@ -209,7 +209,7 @@ export function updateHeroFollowing(game,dt) {
   if(Math.hypot(u.x-destination.x,u.y-destination.y)<100)return;
   if(!game._heroFollowPath){const nearCamp=Math.hypot(u.x-C,u.y-C)<250;game._heroFollowPath={x:u.x,y:u.y,destination:{x:destination.x,y:destination.y},route:nearCamp?[{x:C+512,y:C}]:[],routeIndex:0};}
   const path=game._heroFollowPath;
-  if(!path.route.length){path.x=u.x;path.y=u.y;advanceHeroRoute(game,path);}
+  if(!heroRouteCurrent(game,path)){path.x=u.x;path.y=u.y;advanceHeroRoute(game,path);}
   const target=path.route[path.routeIndex];if(!target)return;
   move(game,game,u,target,dt);
   if(Math.hypot(u.x-target.x,u.y-target.y)<12){path.routeIndex++;if(path.routeIndex>=path.route.length)delete game._heroFollowPath;}

@@ -1,5 +1,5 @@
 import {isMagicUser,ensureMana} from './magic-rules.js?v=187';
-import {WORLD_SIZE} from './world.js?v=196';
+import {WORLD_SIZE} from './world.js?v=198';
 import {inCurrentInstance} from './instance-rules.js?v=182';
 import {saveSlots} from './save-slots.js';
 

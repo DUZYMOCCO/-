@@ -64,6 +64,7 @@ function tower(ctx,x,y,palette,width=42) {
   ctx.fillStyle='#354338';ctx.fillRect(x-2,y-10,4,12);
 }
 function gate(ctx,g,halfWidth,palette,town,index) {
+  halfWidth=g.half||halfWidth;
   const vertical=g.side==='east'||g.side==='west',span=halfWidth*2-8;
   // Wide, low-contrast paving and two direction arrows keep the actual opening legible.
   ctx.fillStyle='#52684b';
@@ -80,7 +81,7 @@ function gate(ctx,g,halfWidth,palette,town,index) {
     ctx.save();ctx.translate(g.x+(vertical?sign*23:0),g.y+(vertical?0:sign*23));ctx.rotate(vertical?(sign>0?0:Math.PI):(sign>0?Math.PI/2:-Math.PI/2));
     ctx.fillStyle='#d5d2ac';ctx.beginPath();ctx.moveTo(5,0);ctx.lineTo(-3,-4);ctx.lineTo(-3,4);ctx.closePath();ctx.fill();ctx.restore();
   }
-  const side={north:'北門',east:'東門',south:'南門',west:'西門'}[g.side],label=`${index===4?'城下町門':side} · ${town?'外へ':'通路'}`;
+  const side={north:'北門',east:'東門',south:'南門',west:'西門'}[g.side],label=`${g.label||(index===4?'城下町門':side)} · ${town?'外へ':'通路'}`;
   ctx.font='600 10px sans-serif';ctx.textAlign='center';
   const labelWidth=ctx.measureText(label).width+14,ly=g.y+(town&&g.side==='north'?49:-49),lx=g.x+(town&&g.side==='west'?55:town&&g.side==='east'?-55:0);
   ctx.fillStyle='#182a24eb';ctx.fillRect(lx-labelWidth/2,ly-11,labelWidth,17);
@@ -91,10 +92,11 @@ export function drawStoneFortification(ctx,game,w,gates,halfWidth) {
   const view=viewOf(game),palette=(game.nation?.level||0)>=3?BRIGHT_STONE:STONE;
   ctx.save();
   for(const [side,start,end,fixed,vertical] of [['north',w.left,w.right,w.top,false],['south',w.left,w.right,w.bottom,false],['west',w.top,w.bottom,w.left,true],['east',w.top,w.bottom,w.right,true]]){
-    const openings=gates.filter(g=>g.side===side).map(g=>vertical?g.y:g.x).sort((a,b)=>a-b);let cursor=start;
-    for(const middle of [...openings,end+halfWidth]){wallRun(ctx,cursor,Math.min(end,middle-halfWidth),fixed,vertical,palette,view);cursor=middle+halfWidth;}
+    let cursor=start;
+    const openings=gates.filter(g=>g.side===side).sort((a,b)=>(vertical?a.y-b.y:a.x-b.x));
+    for(const g of [...openings,null]){const middle=g?(vertical?g.y:g.x):end+halfWidth,half=g?.half||halfWidth;wallRun(ctx,cursor,Math.min(end,middle-half),fixed,vertical,palette,view);cursor=middle+half;}
   }
   for(const x of [w.left,w.right])for(const y of [w.top,w.bottom])if(visible(view,x,y,55))tower(ctx,x,y,palette);
-  gates.forEach((g,i)=>{if(visible(view,g.x,g.y,halfWidth+65))gate(ctx,g,halfWidth,palette,w.town,i);});
+  gates.forEach((g,i)=>{if(visible(view,g.x,g.y,(g.half||halfWidth)+65))gate(ctx,g,halfWidth,palette,w.town,i);});
   ctx.restore();
 }

@@ -1,4 +1,4 @@
-import {WORLD_SIZE} from './world.js?v=196';
+import {WORLD_SIZE} from './world.js?v=198';
 import {combatPower} from './combat-rewards.js?v=182';
 import {persistentUnit} from './render-support.js?v=182';
 import {sound} from '../../common/js/audio.js?v=151';

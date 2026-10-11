@@ -3,7 +3,7 @@ import { createRequire } from 'node:module';
 import { resolve } from 'node:path';
 import { drawFieldSoldier } from '../js/visuals.js';
 import {
-  CAMP_X, CAMP_Y, CAMP_SEAT_GAP, CAMP_QUIET_RADIUS,
+  CAMP_X, CAMP_Y, CAMP_QUIET_RADIUS,
   refreshCampQuiet, assignCampSeats, tryCampLeisure, campPoseFor
 } from '../js/camp-leisure.js';
 
@@ -41,7 +41,10 @@ assert.equal(refreshCampQuiet(quiet, 0), true);
 const home = [soldier('a'), soldier('b'), soldier('c')];
 assignCampSeats(quiet, home);
 assert.equal(new Set(home.map(s => `${s._leisureSeat.x},${s._leisureSeat.y}`)).size, 3);
-assert.equal(Math.hypot(home[0]._leisureSeat.x - home[1]._leisureSeat.x, home[0]._leisureSeat.y - home[1]._leisureSeat.y), CAMP_SEAT_GAP);
+// Three soldiers share one round table: close together, facing its centre from different sides.
+const gap = Math.hypot(home[0]._leisureSeat.x - home[1]._leisureSeat.x, home[0]._leisureSeat.y - home[1]._leisureSeat.y);
+assert.ok(gap >= 20 && gap <= 90, `table mates sit close (${gap.toFixed(1)})`);
+assert.ok(new Set(home.map(s => Math.round(s._leisureSeat.facing * 10))).size === 3, 'each faces the table from a different side');
 assert.ok(['sit', 'drink', 'eat'].includes(home[0]._leisureSeat.pose));
 assert.equal(campPoseFor(home[0]), home[0]._leisureSeat.pose);
 

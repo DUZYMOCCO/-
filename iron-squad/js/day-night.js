@@ -11,9 +11,11 @@ export function daylightAt(seconds=0) {
   const clock=`${String(Math.floor(minutes/60)).padStart(2,'0')}:${String(minutes%60).padStart(2,'0')}`;
   const dusk=period==='day'?Math.max(0,1-remaining/20):0;
   const dawn=period==='night'?Math.max(0,1-remaining/20):0;
+  // Outdoor lamps light after sunset and fade out at dawn. Daytime stays unlit.
+  const nightLight=period==='night'?Math.min(1,(position-DAY_LENGTH)/6)*(1-dawn):0;
   return {period,clock,day:Math.floor(time/WORLD_DAY_LENGTH)+1,remaining,
     label:dusk>0?'夕暮れ':dawn>0?'夜明け':period==='day'?'昼':'夜',
-    icon:period==='day'?'☀':'☾',darkness:period==='day'?.03+.24*dusk:.27-.24*dawn};
+    icon:period==='day'?'☀':'☾',darkness:period==='day'?.03+.31*dusk:.34-.31*dawn,nightLight};
 }
 
 export function advanceWorldClock(game,dt) {

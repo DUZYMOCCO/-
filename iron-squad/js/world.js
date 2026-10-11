@@ -2,13 +2,16 @@
 // Base walk is 165px/s, so camp to the nearest edge is 481s (8 min 1s).
 // 10800 was about 33s and 21600 about 65s. Both were still a short walk.
 import {drawNaturalPond,terrainSeed} from './terrain-shapes.js?v=182';
+import {hqFacilityPlotContains} from './hq-facility-layout.js?v=198';
+import {outerWallLineNear} from './hq-outer-wall.js?v=198';
 export const WORLD_SIZE = 158720;
 export const WORLD_VERSION = 4;
 const TILE = 512, CACHE_LIMIT = 24, CACHE_PIXELS = CACHE_LIMIT*TILE*TILE;
 const CENTER = WORLD_SIZE / 2;
 // The field tavern south of HQ. Scenery is still rolled there (same RNG stream) but not placed on the building.
 export const TAVERN_SITE = Object.freeze({ x: CENTER - 200, y: CENTER + 640 });
-const inTavernSite = (x, y) => Math.abs(x - TAVERN_SITE.x) < 215 && y > TAVERN_SITE.y - 245 && y < TAVERN_SITE.y + 135;
+// Building, its yard and the beer garden in front (hq-outer-wall.js GARDEN_*).
+const inTavernSite = (x, y) => Math.abs(x - TAVERN_SITE.x) < 215 && y > TAVERN_SITE.y - 245 && y < TAVERN_SITE.y + 400;
 const LIP = '#6e7264', FACE = '#1a1e1c', DROP = '#0e100e';
 const TAU = Math.PI * 2;
 
@@ -123,7 +126,11 @@ const townProps = street => {
   return spots.map(([a,b],i) => ({
     type:'house', dx: horiz ? a : b, dy: horiz ? b : a,
     w: 42+(i%3)*8, h: 30+(i%2)*8, roof: i%2 ? '#5c4632' : '#4e4034'
-  })).concat([{ type:'well', dx: horiz ? 72 : -72, dy: 72 }]);
+  })).concat([
+    { type:'well', dx: horiz ? 72 : -72, dy: 72 },
+    { type:'torch', dx: horiz ? -165 : -58, dy: horiz ? -48 : -125 },
+    { type:'torch', dx: horiz ? 165 : 58, dy: horiz ? 48 : 125 }
+  ]);
 };
 const ruinProps = () => ([
   { type:'ruinwall', dx:-90, dy:-36, w:78, h:34 },
@@ -1010,7 +1017,10 @@ export class WorldTerrain {
       objects.push({ type: m.type, x: m.x, y: m.y, s: m.s, axis: m.axis, dir: m.dir, tone: m.tone || 0, ph: m.ph || 0 });
     }
     this.generated++;
-    return {canvas,context:c,objects:objects.filter(o=>!inTavernSite(o.x,o.y)),camps:camps.filter(o=>!inTavernSite(o.x,o.y)),x:x0,y:y0};
+    // The outer bailey line stays clear even before it is built (reserved land, stable tile cache).
+    // Inside the HQ walls (buildings, tables, tents) nothing grows wild.
+    const clear=(x,y)=>!inTavernSite(x,y)&&!(Math.abs(x-CENTER)<330&&Math.abs(y-CENTER)<330)&&!hqFacilityPlotContains(x-CENTER,y-CENTER,55)&&!outerWallLineNear(x-CENTER,y-CENTER,60);
+    return {canvas,context:c,objects:objects.filter(o=>clear(o.x,o.y)),camps:camps.filter(o=>clear(o.x,o.y)),x:x0,y:y0};
   }
   draw(c,camera,width,height,zoom) {
     const margin=150,hw=width/(2*zoom)+margin,hh=height/(2*zoom)+margin;

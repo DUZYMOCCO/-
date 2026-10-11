@@ -64,6 +64,10 @@ const soldiers=game.squad.slice(0,2);game.squad=soldiers;game.reserves=[];for(co
 const treasury=game.treasury;game.supplyMissingEquipment();assert.ok(soldiers.every(s=>s.equipped.weapon?.tier===9),'automatic military supply uses the developed workshop tier');
 assert.ok(game.treasury>=nationalSalaryReserve(game));assert.equal(game.treasury,treasury);assert.equal(soldiers.reduce((n,s)=>n+100000-s.gold,0),game.phaseFiscal.personalEquipmentProcurement+game.phaseFiscal.personalForging);
 const after=game.treasury;game.supplyMissingEquipment();assert.equal(game.treasury,after,'same phase cannot supply twice');
-game.renderStrategyUI();assert.equal(document.getElementById('workshop-tier').options.length,9);assert.ok(document.querySelector('.material-stock'));assert.equal(document.getElementById('workshop-craft').options.length,15);
+const smith=(await import('../js/hq-facilities.js')).HEADQUARTERS_FACILITIES.find(p=>p.id==='smith');
+game.currentDungeon=null;game.restTimer=0;Object.assign(game.player,{x:smith.x,y:smith.y+24});
+assert.equal(game.openHeadquartersFacility('smith'),true);
+assert.equal(document.getElementById('workshop-tier').options.length,9);assert.ok(document.querySelector('.material-stock'));assert.equal(document.getElementById('workshop-craft').options.length,15);
+game.closeHeadquartersFacility();
 console.log('PASS: reduced completed gear, guaranteed treasure materials, actual enemy/commander/soldier pickup, 6 development tiers, workshop purchases, 15 exclusive recipes, exact costs, guarded failures, unique ownership, nonstacking upgrades, save migration, automatic supply budget/phase/UI');
 dom.window.close();

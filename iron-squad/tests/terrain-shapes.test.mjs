@@ -24,7 +24,7 @@ for(const f of shapes.values()){
  assert.ok(safeInside>10&&dangerInside>10,'a visibly irregular footprint replaces the circular field');
 }
 // Stable across cache eviction/reload, with four distinct silhouettes.
-const first={x:80100,y:79780,radius:95},saved=JSON.stringify(hazardContour(first));
+const first={x:80360,y:79830,radius:95},saved=JSON.stringify(hazardContour(first));
 for(let i=0;i<200;i++)hazardContour({x:i*913,y:i*227,radius:95});
 assert.equal(JSON.stringify(hazardContour(first)),saved);
 const canvas=createCanvas(220,160),c=canvas.getContext('2d'),ponds=[];

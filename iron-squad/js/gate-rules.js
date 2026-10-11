@@ -1,9 +1,11 @@
-import {drawStoneFortification} from './fortification-visuals.js?v=182';
-import {WORLD_SIZE,fieldBlocks} from './world.js?v=196';
-import {dungeonBlocks} from './dungeon.js?v=189';
+import {drawStoneFortification} from './fortification-visuals.js?v=198';
+import {WORLD_SIZE,fieldBlocks} from './world.js?v=198';
+import {dungeonBlocks} from './dungeon.js?v=198';
 import {inCurrentInstance} from './instance-rules.js?v=182';
 import {makeEscort,recalcEscortStats,updateEscortPatrol,npcSave,applyNpcSave} from './merchant-rules.js?v=193';
 import {rebuildMerchantCasualties,carrierOf,sanitizeCarriers} from './casualty-rules.js?v=196';
+import {OUTER_WALL,OUTER_GATES,outerWallBuilt} from './hq-outer-wall.js?v=198';
+export {outerWallBuilt};
 const center=WORLD_SIZE/2;
 export const GATE_HALF_WIDTH=80,HQ_WALL_HALF_SIZE=300;
 export function wallGeometry(game) {
@@ -11,12 +13,22 @@ export function wallGeometry(game) {
   if(game.currentDungeon)return null;
   return {left:center-HQ_WALL_HALF_SIZE,right:center+HQ_WALL_HALF_SIZE,top:center-HQ_WALL_HALF_SIZE,bottom:center+HQ_WALL_HALF_SIZE,cx:center,cy:center,town:false};
 }
+const OUTER_GEOMETRY=Object.freeze({left:center+OUTER_WALL.left,right:center+OUTER_WALL.right,top:center+OUTER_WALL.top,bottom:center+OUTER_WALL.bottom,cx:center,cy:center,town:false,outer:true,
+  gates:Object.freeze(OUTER_GATES.map(g=>Object.freeze({...g,x:center+g.x,y:center+g.y})))});
+/** Field wall context for route planners that may run while the commander is inside an instance. */
+export const fieldWallContext=game=>game?(game._fieldWallContext||=Object.freeze({currentDungeon:null,get nation(){return game.nation;}})):{currentDungeon:null};
+/** Every wall in the current space: the HQ (or town) wall, plus the outer bailey once it is built. */
+export function fieldWalls(game) {
+  const inner=wallGeometry(game);if(!inner)return [];
+  return !inner.town&&outerWallBuilt(game)?[inner,OUTER_GEOMETRY]:[inner];
+}
 export function townExitReached(game) {
   if(game.currentDungeon?.kind!=='town')return false;
   const w=wallGeometry(game),u=game.player;
   return gatePositions(w).some(g=>g.side==='west'?u.x<w.left-4&&Math.abs(u.y-g.y)<GATE_HALF_WIDTH-10:g.side==='east'?u.x>w.right+4&&Math.abs(u.y-g.y)<GATE_HALF_WIDTH-10:g.side==='north'?u.y<w.top-4&&Math.abs(u.x-g.x)<GATE_HALF_WIDTH-10:u.y>w.bottom+4&&Math.abs(u.x-g.x)<GATE_HALF_WIDTH-10);
 }
 export function gatePositions(w) {
+  if(w.gates)return w.gates;
   return [{side:'north',x:w.cx,y:w.top},{side:'east',x:w.right,y:w.cy},{side:'south',x:w.cx,y:w.bottom},{side:'west',x:w.left,y:w.cy},...(!w.town?[{side:'east',x:w.right,y:w.cy+200}]:[])];
 }
 function blockingCrossing(w,from,to,radius=10) {
@@ -26,12 +38,12 @@ function blockingCrossing(w,from,to,radius=10) {
     const t=(value-a)/(b-a);if(t<0||t>1)continue;
     const along=(vertical?from.y:from.x)+((vertical?to.y:to.x)-(vertical?from.y:from.x))*t;
     const low=vertical?w.top:w.left,high=vertical?w.bottom:w.right;if(along<low||along>high)continue;
-    if(gatePositions(w).some(g=>g.side===side&&Math.abs(along-(vertical?g.y:g.x))<GATE_HALF_WIDTH-Math.min(24,radius)))continue;
+    if(gatePositions(w).some(g=>g.side===side&&Math.abs(along-(vertical?g.y:g.x))<(g.half||GATE_HALF_WIDTH)-Math.min(24,radius)))continue;
     hits.push({t,side,vertical,value,along});
   }
   return hits.sort((a,b)=>a.t-b.t)[0];
 }
-export function wallBlocksAttack(game,attacker,target) {const w=wallGeometry(game);return !!w&&!!blockingCrossing(w,attacker,target,1);}
+export function wallBlocksAttack(game,attacker,target) {return fieldWalls(game).some(w=>!!blockingCrossing(w,attacker,target,1));}
 /** True when a hit segment crosses a wall the walker cannot pass. Same-side swings stay open. */
 export function attackBlocked(game,from,to) {
   if(!from||!to)return false;
@@ -53,9 +65,11 @@ export function attackBlocked(game,from,to) {
   return false;
 }
 export function resolveWallMovement(game,actor,fromX,fromY,dt=1/60) {
-  const w=wallGeometry(game);if(!w||actor.isDown||actor.carrierId)return false;
+  const walls=fieldWalls(game);if(!walls.length||actor.isDown||actor.carrierId)return false;
   if(game?.passesWalls?.(actor))return false;
-  const from={x:fromX,y:fromY},hit=blockingCrossing(w,from,actor,actor.radius||10);if(!hit)return false;
+  const from={x:fromX,y:fromY};let hit=null,w=null;
+  for(const wall of walls){const h=blockingCrossing(wall,from,actor,actor.radius||10);if(h&&(!hit||h.t<hit.t)){hit=h;w=wall;}}
+  if(!hit)return false;
   if(actor===game.player){const fraction=Math.max(0,hit.t-.005);actor.x=fromX+(actor.x-fromX)*fraction;actor.y=fromY+(actor.y-fromY)*fraction;return true;}
   // AI takes a short detour to the nearest opening instead of piling up at a wall.
   const gates=gatePositions(w).filter(g=>g.side===hit.side).sort((a,b)=>Math.hypot(a.x-fromX,a.y-fromY)-Math.hypot(b.x-fromX,b.y-fromY));
@@ -94,10 +108,21 @@ function newGuardAtPost(game,post,id=null) {
   const guard=buildGuard(game,id,post.name,post.x,post.y,post.space,post.distance,post.index);
   guard.gatePostId=post.id;guard.gateTownId=post.townId||null;game.gateGuards.push(guard);return guard;
 }
+function outerPosts(game) {
+  return OUTER_GEOMETRY.gates.map((g,i)=>registerPost(game,{id:`hq_outer_gate_${i}`,name:`外郭門番・${g.label.slice(2)}`,x:g.x,y:g.y,space:'field',townId:null,distance:1200,index:i}));
+}
+/** Posts guards on the outer gates once, when the outer bailey is completed. */
+export function ensureOuterWallGuards(game) {
+  if(!outerWallBuilt(game)||(game.gatePosts||[]).some(p=>p.id==='hq_outer_gate_0'))return 0;
+  game.gatePosts ||= [];game.gateGuards ||= [];
+  const posts=outerPosts(game);for(const post of posts)newGuardAtPost(game,post);
+  game.showToast?.(`外郭が完成。外郭の門に門番${posts.length}名が着任`);return posts.length;
+}
 export function initializeGateGuards(game,saved={}) {
   game.gateGuards=[];game.gatePosts=[];game._gateRefillPhase=0;
   const w={left:center-300,right:center+300,top:center-300,bottom:center+300,cx:center,cy:center,town:false};
   for(const [i,g] of gatePositions(w).entries())registerPost(game,{id:`hq_gate_${i}`,name:`本陣門番・${['北門','東門','南門','西門','城下町門'][i]}`,x:g.x,y:g.y,space:'field',townId:null,distance:1200,index:i});
+  if(outerWallBuilt(game)||(saved.gatePosts||[]).some(p=>p.id?.startsWith('hq_outer_gate_')))outerPosts(game);
   for(const d of game.dungeons||[])if(d.kind==='town'){
     for(let i=0;i<2;i++)registerPost(game,{id:`${d.id}_outer_guard_${i}`,name:`${d.name}・門番`,x:d.entrance.x+(i?52:-52),y:d.entrance.y+24,space:'field',townId:d.id,distance:Math.min(22000,d.distance||1200),index:i});
     if((saved.gateGuards||[]).some(g=>g.gateOrigin===d.id)||(saved.gatePosts||[]).some(p=>p.space===d.id))townInteriorPosts(game,d);
@@ -115,21 +140,24 @@ export function ensureTownGuards(game,town) {
   for(const post of townInteriorPosts(game,town))if(!game.gateGuards.some(g=>g.gatePostId===post.id)&&!post.refillAtPhase)newGuardAtPost(game,post);
   replenishTownGateGuards(game);
 }
+/** Every gate post (towns, HQ and outer bailey) gets a new guard GATE_REFILL_WAVES phases after it is left empty. */
 export function replenishTownGateGuards(game) {
   const phase=game.phase||1;let count=0;
-  for(const post of game.gatePosts||[]){if(!post.townId)continue;
+  for(const post of game.gatePosts||[]){
     if(guardAtPost(game,post)){post.refillAtPhase=0;continue;}
     if(!post.refillAtPhase){post.refillAtPhase=phase+GATE_REFILL_WAVES;continue;}
     if(phase<post.refillAtPhase)continue;
+    // The fallen predecessor's record is dropped; a rescued one keeps living at the HQ.
+    for(let i=game.gateGuards.length-1;i>=0;i--)if(game.gateGuards[i].gatePostId===post.id&&game.gateGuards[i].dead)game.gateGuards.splice(i,1);
     post.serial++;newGuardAtPost(game,post);post.refillAtPhase=0;count++;
   }
-  if(count)game.showToast?.(`町の門番${count}名が新任として着任。救助した門番は本陣に残ります`);
+  if(count)game.showToast?.(`門番${count}名が新任として着任。救助した門番は本陣に残ります`);
   return count;
 }
 export const gateMethods={
   onGateGuardRelocated(guard) {
     const post=(this.gatePosts||[]).find(p=>p.id===guard?.gatePostId);
-    if(post?.townId&&!guardAtPost(this,post)&&!post.refillAtPhase)post.refillAtPhase=(this.phase||1)+GATE_REFILL_WAVES;
+    if(post&&!guardAtPost(this,post)&&!post.refillAtPhase)post.refillAtPhase=(this.phase||1)+GATE_REFILL_WAVES;
   }
 };
 export const serializeGatePosts=game=>(game.gatePosts||[]).map(p=>({...p}));
@@ -144,6 +172,7 @@ export function exitGateTown(game,townId) {
 export function updateGateGuards(game,dt) {
   if(!(dt>0)||game.restTimer>0)return;
   if(game._gateRefillPhase!==(game.phase||1)){game._gateRefillPhase=game.phase||1;replenishTownGateGuards(game);}
+  if(!game.currentDungeon)ensureOuterWallGuards(game);
   const monsters=game.monsters||[];
   for(const guard of game.gateGuards||[]){if(!gateGuardVisible(game,guard)||guard.isDown)continue;
     const home={x:guard.homeX,y:guard.homeY,escorts:[guard]},near=game.player&&Math.hypot(guard.x-game.player.x,guard.y-game.player.y)<850;
@@ -153,6 +182,5 @@ export function updateGateGuards(game,dt) {
   }
 }
 export function drawFortification(ctx,game) {
-  const wall=wallGeometry(game);if(!wall)return;
-  drawStoneFortification(ctx,game,wall,gatePositions(wall),GATE_HALF_WIDTH);
+  for(const wall of fieldWalls(game))drawStoneFortification(ctx,game,wall,gatePositions(wall),GATE_HALF_WIDTH);
 }

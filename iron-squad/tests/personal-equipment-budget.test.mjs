@@ -64,6 +64,8 @@ game.treasury=10000000;const caps=Object.fromEntries(['development','balanced','
 assert.ok(caps.development<caps.balanced&&caps.balanced<caps.military,'armament policy changes the treasury issue cap');
 for(const n of [0,-100,5,6,Infinity,NaN])assert.equal(personalEquipmentBudget({gold:n}),0);
 assert.equal(personalEquipmentBudget({gold:100}),94);
-assert.match(document.getElementById('nation-status').textContent,/各兵士の所持G/);assert.match(document.getElementById('nation-facilities').textContent,/購入には各自のGが必要/);
+assert.match(document.getElementById('nation-status').textContent,/各兵士の所持G/);
+const shop=document.createElement('div');game.renderWorkshop(shop);assert.match(shop.textContent,/購入には各自のGが必要/);
+assert.match(document.getElementById('nation-facilities').textContent,/建物の入口/);
 console.log('PASS: unlock without delivery, independent poor/limited/rich wallets, zero/rich public treasuries, exact personal charges and public reconciliation, retained old weapon, six-gold buffer, saved phase guard, later funded purchase, explicit UI');
 dom.window.close();

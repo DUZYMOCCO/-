@@ -1,5 +1,5 @@
 // A bounded travel diary. No video frames, battle replay or background rendering.
-import {WORLD_SIZE} from './world.js?v=196';
+import {WORLD_SIZE} from './world.js?v=198';
 import {formatDistance} from './distance-format.js';
 import {zoneRingLabelJa} from './equipment-rules.js?v=189';
 import {heroEquipmentSummary} from './hero-equipment.js?v=187';

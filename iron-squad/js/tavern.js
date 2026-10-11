@@ -4,7 +4,9 @@ import {persistentUnit} from './render-support.js';
 import {calcScoutCost} from './economy-rules.js?v=192';
 import {drawSoldierPortrait} from './soldier-appearance.js?v=195';
 import {setSubDialog} from './interface.js?v=195';
-import {WORLD_SIZE,TAVERN_SITE} from './world.js?v=196';
+import {WORLD_SIZE,TAVERN_SITE} from './world.js?v=198';
+import {daylightAt} from './day-night.js?v=197';
+import {GARDEN_TABLES,drawLeisureTable} from './camp-leisure.js?v=198';
 
 const classes=['HEAVY','LIGHT','ARCHER','MAGE','MEDIC'];
 const jobs={HEAVY:'重装兵',LIGHT:'軽装兵',ARCHER:'弓兵',MAGE:'魔法師',MEDIC:'衛生士'};
@@ -79,10 +81,16 @@ export function drawFieldTavern(c,game,drawPerson){
   c.fillStyle='#6f5640';c.beginPath();c.moveTo(-182,-150);c.lineTo(0,-212);c.lineTo(182,-150);c.closePath();c.fill();
   c.strokeStyle='#3d3024';c.lineWidth=3;c.stroke();
   c.fillStyle='#241e18';c.fillRect(-24,-70,48,70);c.fillStyle='#b6a06e';c.fillRect(-26,-74,52,5);
-  for(const wx of [-120,-75,95,130]){c.fillStyle='#e0b86a';c.fillRect(wx-12,-110,24,28);c.strokeStyle='#3b2f23';c.lineWidth=2;c.strokeRect(wx-12,-110,24,28);}
+  const lamp=daylightAt(game.worldTime).nightLight;
+  for(const wx of [-120,-75,95,130]) {
+    c.fillStyle='#70664e';c.fillRect(wx-12,-110,24,28);
+    if(lamp>0){c.fillStyle=`rgba(255,197,101,${lamp})`;c.fillRect(wx-12,-110,24,28);}
+    c.strokeStyle='#3b2f23';c.lineWidth=2;c.strokeRect(wx-12,-110,24,28);
+  }
   c.fillStyle='#3b2f23';c.fillRect(-70,-178,140,30);c.fillStyle='#ecd9aa';c.font='bold 18px sans-serif';c.textAlign='center';c.textBaseline='middle';c.fillText('大酒場',0,-163);
   c.fillStyle='#7a5a36';for(const bx of [-140,140]){c.beginPath();c.ellipse(bx,-12,13,16,0,0,Math.PI*2);c.fill();}
   c.restore();
+  for(const t of GARDEN_TABLES)drawLeisureTable(c,t);
   const visitors=people.filter(v=>!v.joined).map(v=>v.unit).concat(game.taverns?.waiting||[]).slice(0,12);
   for(const [i,s]of visitors.entries())drawPerson(s,x-150+(i%6)*60,y+40+Math.floor(i/6)*50);
 }

@@ -1,15 +1,14 @@
-import {WORLD_SIZE} from './world.js?v=196';
-import {wallBlocksAttack} from './gate-rules.js?v=191';
+import {WORLD_SIZE} from './world.js?v=198';
+import {wallBlocksAttack,fieldWallContext,outerWallBuilt} from './gate-rules.js?v=198';
 import {ECONOMIC_REGIONS,PUBLIC_WORKS,ECONOMIC_RULES,economicState,discoverEconomicRegions,tickEconomicConstruction,economicFieldBlocked,localProduction,recordEconomicKill} from './regional-economy.js?v=182';
 import {peaceContainment} from './peace-zones.js?v=182';
 
 const C=WORLD_SIZE/2,STEP=256,MAX_SEARCH_NODES=400000,SEARCH_BATCH=96;
-const FIELD_WALL_CONTEXT={currentDungeon:null};
 const key=(x,y)=>`${x},${y}`;
 const point=(x,y)=>[x*STEP,y*STEP];
 const usable=(game,x,y)=>game.fog?.isExploredWorld(x,y)&&!economicFieldBlocked(game,x,y);
 export function tradeSegmentOpen(game,a,b) {
-  if(wallBlocksAttack(FIELD_WALL_CONTEXT,{x:a[0],y:a[1]},{x:b[0],y:b[1]}))return false;
+  if(wallBlocksAttack(fieldWallContext(game),{x:a[0],y:a[1]},{x:b[0],y:b[1]}))return false;
   const length=Math.hypot(b[0]-a[0],b[1]-a[1]),steps=Math.max(1,Math.ceil(length/32));
   for(let i=0;i<=steps;i++)if(!usable(game,a[0]+(b[0]-a[0])*i/steps,a[1]+(b[1]-a[1])*i/steps))return false;
   return true;
@@ -40,7 +39,8 @@ function finishSearch(game,search) {
 }
 export function refreshTradeRoutes(game,budget=SEARCH_BATCH) {
   const e=economicState(game);if(!game.fog)return;
-  const revision=`${game.fog.revision||0}:${e.revision}`;
+  // Completing the outer bailey re-plans every route through its gates.
+  const revision=`${game.fog.revision||0}:${e.revision}:${outerWallBuilt(fieldWallContext(game))?1:0}`;
   if(!game._tradeSearch&&game._tradeRevision===revision)return;
   if(!game._tradeSearch){
     // Depart through the eastern approach, outside the headquarters walls.
@@ -139,7 +139,7 @@ function roadsideCombat(game,dt) {
     m._commerceRemote=true;
     let target=null,best=500;for(const a of e.traffic){if(a.hp<=0||a.dead)continue;const d=Math.hypot(a.x-m.x,a.y-m.y);if(d<best){best=d;target=a;}}
     if(!target)continue;
-    if(best>28){const step=Math.min(best-24,m.speed*dt),next={x:m.x+(target.x-m.x)/best*step,y:m.y+(target.y-m.y)/best*step};if(!economicFieldBlocked(game,next.x,next.y)&&!wallBlocksAttack(FIELD_WALL_CONTEXT,m,next)){m.x=next.x;m.y=next.y;}}
+    if(best>28){const step=Math.min(best-24,m.speed*dt),next={x:m.x+(target.x-m.x)/best*step,y:m.y+(target.y-m.y)/best*step};if(!economicFieldBlocked(game,next.x,next.y)&&!wallBlocksAttack(fieldWallContext(game),m,next)){m.x=next.x;m.y=next.y;}}
     m.atkTimer=(m.atkTimer||0)-dt;
     if(Math.hypot(m.x-target.x,m.y-target.y)<40&&m.atkTimer<=0){m.atkTimer=1.2;damageCommerce(game,target,m.atk);}
   }

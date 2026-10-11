@@ -1,6 +1,7 @@
 import {CASINO_BET,MAX_CASINO_BET,validCasinoBet,normalizeCasinoBet,POKER_PAYOUTS,SLOT_SYMBOLS,dealPoker,finishPoker,cardFace} from './casino-rules.js?v=189';
 import {rollSlots} from './casino-rules.js?v=189';
-const canPlay=game=>game.currentDungeon?.kind==='town'&&game.nation?.level>=4&&!game.player?.dead&&!game.player?.isDown;
+import {atFacility} from './hq-facilities.js?v=198';
+const canPlay=game=>atFacility(game,'casino',4);
 function persist(game) {game.saveGame?.();game.updateStatsUI?.(true);game.renderStrategyUI?.();}
 const money=n=>`${n.toLocaleString()}G`;
 const profit=(payout,bet)=>`${payout-bet>=0?'+':''}${money(payout-bet)}`;
@@ -44,7 +45,7 @@ export const casinoMethods={
     }).join(''):Array.from({length:5},()=>'<div class="poker-card card-back" aria-hidden="true">◆</div>').join('');
     const slots=(casino.slot?.reels||['bell','seven','cherry']).map(id=>{const symbol=SLOT_SYMBOLS.find(s=>s.id===id);return `<span class="slot-reel" aria-label="${symbol.name}">${symbol.icon}</span>`;}).join('');
     panel.insertAdjacentHTML('beforeend',`<div class="town-facility casino-panel"><strong>カジノ · 発展Lv4</strong><p>ポーカーとスロット。各1期に1回。掛け金は${CASINO_BET}G以上で自由に増やせます。表示の倍率は受取額です。</p>
-      ${open?'':'<p class="facility-note">本陣発展Lv4以上の町で遊べます。</p>'}
+      ${open?'':'<p class="facility-note">本陣発展Lv4以上で、本陣のカジノから遊べます。</p>'}
       <label class="workshop-choice">次の掛け金<input id="casino-bet" type="number" inputmode="numeric" min="${CASINO_BET}" max="${MAX_CASINO_BET}" step="1" value="${bet}"></label>
       <div class="casino-bet-actions"><button type="button" data-bet-add="100">＋100G</button><button type="button" data-bet-mult="2">2倍</button><button type="button" data-bet-mult="10">10倍</button></div>
       <p>所持金 ${money(this.gold||0)} · 次の掛け金 ${money(bet)}</p>

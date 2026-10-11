@@ -1,4 +1,5 @@
 import {ECONOMIC_REGIONS} from './regional-economy.js?v=182';
+import {hqFacilityPlotContains} from './hq-facility-layout.js?v=198';
 
 const ellipse=(c,x,y,rx,ry,color)=>{c.fillStyle=color;c.beginPath();c.ellipse(x,y,rx,ry,0,0,Math.PI*2);c.fill();};
 const shape=(c,p,color,edge=null)=>{c.fillStyle=color;c.beginPath();p.forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y));c.closePath();c.fill();if(edge){c.strokeStyle=edge;c.lineWidth=.8;c.stroke();}};
@@ -189,9 +190,9 @@ function paintQuarter(c,{stage,level,urban,production,kind,hq,interior,building}
   for(let i=0;i<count;i++){const a=i/count*Math.PI*2,rr=radius*(stage>=2?.9+(i%3)*.05:1);buildings.push({i,x:Math.cos(a)*rr,y:Math.sin(a)*rr});}
   if(stage>=4)for(const side of [-1,1])for(const row of [-1,1])buildings.push({i:20+side+row,x:side*radius*.6,y:row*radius*.39});
   buildings.sort((a,b)=>a.y-b.y);
-  for(const {i,x,y} of buildings){c.save();c.translate(x,y);if(stage===0&&hq)tent(c,36,24,i%2?'#8c9575':'#aa9f77');else house(c,stage>=3?46+i%3*4:36,24+stage*4+(stage>=3?i%3*4:0),stage,i,stage>=3&&i%4===1);c.restore();}
-  if(stage>=1)market(c,-radius*.6,radius*.7,stage);
-  workshop(c,radius*.75,-radius*.7,stage,production);industry(c,radius,kind,stage);
+  for(const {i,x,y} of buildings){if(hq&&!interior&&hqFacilityPlotContains(x,y,25))continue;c.save();c.translate(x,y);if(stage===0&&hq)tent(c,36,24,i%2?'#8c9575':'#aa9f77');else house(c,stage>=3?46+i%3*4:36,24+stage*4+(stage>=3?i%3*4:0),stage,i,stage>=3&&i%4===1);c.restore();}
+  if(stage>=1&&(!hq||interior||!hqFacilityPlotContains(-radius*.6,radius*.7,35)))market(c,-radius*.6,radius*.7,stage);
+  if(!hq||interior)workshop(c,radius*.75,-radius*.7,stage,production);industry(c,radius,kind,stage);
   if(stage>=3||urban>=3){
     const yy=radius*.65;ellipse(c,0,yy+3,24,12,'#526b59');ellipse(c,0,yy,23,11,'#bfc3a5');ellipse(c,0,yy-1,17,7,'#435f58');ellipse(c,0,yy-2,14,5,'#7b9b98');
     line(c,[[-11,yy-3],[-2,yy-4],[8,yy-3]],'#bfd0c255',.9);stonework(c,-3,yy-16,6,11,'#c7c7ab','#859783');ellipse(c,0,yy-16,8,3,'#bbc4ac');

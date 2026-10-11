@@ -10,26 +10,27 @@ import {activeSquad,inCurrentInstance} from './instance-rules.js?v=182';
 import {recordBattleLog,resetBattleLog,refreshCombatFieldNotes} from './battle-log.js?v=187';
 import {rollDropExclusive,applyDropExclusive,dropExclusiveLabel} from './drop-exclusives.js?v=182';
 import {normalizeMaterials,applyCraftExclusive,craftExclusiveLabel,equipmentDropChance,materialDropChance,rollMaterialDrop,rollTreasureLoot} from './crafting-rules.js?v=189';
-import {workshopMethods} from './workshop.js?v=191';
-import {casinoMethods} from './casino.js?v=189';
+import {workshopMethods} from './workshop.js?v=198';
+import {casinoMethods} from './casino.js?v=198';
 import {normalizeCasino} from './casino-rules.js?v=189';
 import {latestEquipmentTier,recordMerchantEquipment,ensureMerchantCatalog,refreshWaveCatalogs,markMerchantPurchase} from './merchant-catalog.js?v=191';
 import {initializeMedicalPosts,updateMedicalPosts,serializeMedicalPosts,nearestKnownMedicalPost,drawMedicalPost,drawMedicalMap,drawMedicalMarker,drawTownMedicalReception,drawRescueDirection} from './medical-posts.js?v=182';
 import {invasionMethods,initializeInvasions,serializeInvasions,shouldTriggerRandomRaid,makeEnemyRoom,drawInvasionRoute} from './invasion-rules.js?v=194';
-import {gateMethods,serializeGatePosts,replenishTownGateGuards,initializeGateGuards,ensureTownGuards,serializeGateGuards,updateGateGuards,gateGuardVisible,applyFortifications,drawFortification,exitGateTown,townExitReached,wallBlocksAttack,attackBlocked as coverBlocked} from './gate-rules.js?v=191';
-import {nationMethods,normalizeNation,nationalIncome,nationalPayrollPlan,headquartersDamageMult,drawNationalDevelopment,DEVELOPMENT_STAGES} from './nation-rules.js?v=192';
+import {gateMethods,serializeGatePosts,replenishTownGateGuards,initializeGateGuards,ensureTownGuards,serializeGateGuards,updateGateGuards,gateGuardVisible,applyFortifications,drawFortification,exitGateTown,townExitReached,wallBlocksAttack,attackBlocked as coverBlocked} from './gate-rules.js?v=198';
+import {nationMethods,normalizeNation,nationalIncome,nationalPayrollPlan,headquartersDamageMult,drawNationalDevelopment,DEVELOPMENT_STAGES} from './nation-rules.js?v=198';
 import {equipmentUpgradeCost,salaryQuote,paySoldiers} from './payroll-rules.js?v=195';
 import {addFieldDrop,ageFieldDrops,attractFieldDrops,FIELD_DROP_PICKUP_RADIUS} from './field-drops.js?v=182';
 import {drawLootDrop,drawLootPullTrail} from './loot-visuals.js?v=189';
 import {drawOwnSquadRing,isOwnSquad} from './own-squad-marker.js?v=182';
 import {CAREER_RULES,newCareer,normalizeCareer,isEnlisted,ownCompanionCount,rankForCareer,recordCareerContribution,enlistCareer,canPromoteCareer,careerSummary,restartCareerExpedition} from './career-rules.js?v=196';
-import {tavernMethods,initializeTaverns,serializeTaverns,settleTravelerCompanions,drawFieldTavern,updateTavernPrompt,FIELD_TAVERN} from './tavern.js?v=196';
+import {tavernMethods,initializeTaverns,serializeTaverns,settleTravelerCompanions,drawFieldTavern,updateTavernPrompt,FIELD_TAVERN} from './tavern.js?v=198';
+import {headquartersFacilityMethods,HEADQUARTERS_FACILITIES,updateHeadquartersFacilityPrompt,drawHeadquartersFacilityGround,drawHeadquartersFacility,headquartersBuildingBlocks} from './hq-facilities.js?v=198';
 import {queueSquadName,flushSquadNames} from './squad-names.js?v=182';
 import {syncGiveUpUI,resumeBGM} from './commander-giveup.js?v=182';
 import {bindFieldMusic,unbindFieldMusic,followFieldMusic} from './field-music.js?v=192';
 import {economicState,advanceRegionalEconomy,discoverEconomicRegions,recordEconomicKill,economicFieldBlocked} from './regional-economy.js?v=182';
-import {updateRegionalTraffic,nearestCommerceTarget,damageCommerce,persistTradeRaiders,restoreTradeRaiders} from './trade-routes.js?v=191';
-import {drawEconomicLandscape,drawCommerceActor,drawEconomicMinimap,drawCommerceWreck,drawCampTent} from './economic-visuals.js?v=193';
+import {updateRegionalTraffic,nearestCommerceTarget,damageCommerce,persistTradeRaiders,restoreTradeRaiders} from './trade-routes.js?v=198';
+import {drawEconomicLandscape,drawCommerceActor,drawEconomicMinimap,drawCommerceWreck,drawCampTent} from './economic-visuals.js?v=198';
 /**
  * ゲーム3: IRON SQUAD (アイアン・スクワッド: 雑兵立身出世録)
  * ローグライク・アクションRPG
@@ -46,7 +47,7 @@ import { loadCss } from '../../common/js/load-css.js';
 import { storage } from '../../common/js/storage.js';
 import { createStallRecorder, mountStallLog } from './stall-recorder.js?v=182';
 import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow, isRuinKeeper, ruinKeeperScale } from './visuals.js?v=195';
-import { refreshCampQuiet, assignCampSeats, tryCampLeisure } from './camp-leisure.js?v=182';
+import { refreshCampQuiet, assignCampSeats, tryCampLeisure, YARD_TABLES, drawLeisureTable } from './camp-leisure.js?v=198';
 import { CAMP_PEACE_RADIUS, peaceContainment, pushOutsidePeace, relocatePeaceMonster } from './peace-zones.js?v=182';
 import { FARM_X, FARM_Y, farmPosts, farmOverlaps, reinforcementCount, reserveRosterLine, reserveRosterTitle } from './reserve-farm.js?v=182';
 import { drawMeleeRangeCue, meleeDrawReach, attackAnimationRate } from './weapon-motion.js?v=189';
@@ -58,14 +59,14 @@ import { generateSoldierName, migrateSoldierName, rollGenderByKey, isGenderId, e
 import { openCommanderEditor } from './commander-editor.js?v=195';
 import { applyCommanderIdentity, normalizeCommanderIdentity, commanderFullName, GENDERS as COMMANDER_GENDERS } from './commander-identity.js?v=193';
 import {MAGIC_CLASSES,MAGIC_AFFINITIES,magicMethods,isMage,isMagicUser,ensureMana,initializeMagic,updateMagic,distributeMagicStones,castMedicBuff,castCasterStrength,updateMageAI,drawMagicBursts,spendMana,weaponMagicDamage,isPlayerCaster,castPlayerSpell,PLAYER_MAGIC_RULES} from './magic-rules.js?v=187';
-import {hazardMethods,updateHazards,drawHazards} from './hazard-fields.js?v=182';
+import {hazardMethods,updateHazards,drawHazards} from './hazard-fields.js?v=198';
 import {strongEnemyReward} from './combat-rewards.js?v=182';
 import {supplyMethods, initializeSupplies, updateSupplies, takeRangedShot, ammoCombatProfile, isRangedUnit, distributeAmmo, preventLethalHit, normalizeFieldSave, SQUAD_POTION_COST, ensureAmmo, RANGED_DAMAGE_MULT, supplyLocation} from './supply-rules.js?v=187';
 import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog } from './interface.js?v=195';
 import { renderTroopRankings, getSoldierRankerBadges, calcSoldierRankerBonus } from './troop-rankings.js?v=187';
 import { ensureSoldierAppearance, drawSoldierPortrait, describeSoldierAppearance } from './soldier-appearance.js?v=195';
 import { attachSurfaceEvents, detachSurfaceEvents, frameSurfaceReady, releaseSceneCaches, releaseCanvas, surfaceCanResume } from './canvas-surface.js?v=182';
-import { SETTLEMENTS, WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt, routeNameAt, eastWestRoadY, northSouthRoadX, riverCenterY, drawFieldDepth, drawOakCrown, fieldBlocks, settleUnit } from './world.js?v=196';
+import { SETTLEMENTS, WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt, routeNameAt, eastWestRoadY, northSouthRoadX, riverCenterY, drawFieldDepth, drawOakCrown, fieldBlocks, settleUnit } from './world.js?v=198';
 import { subscribeKana, kanaGrade, displayKana } from '../../common/js/kana-mode.js?v=175';
 import { FogGrid, FOG_REVEAL_RADIUS, FOG_CAMP_REVEAL } from './fog.js?v=182';
 import {
@@ -104,15 +105,15 @@ import {
   merchantHealingStatus, merchantHealWavesLeft, useMerchantHealing, MERCHANT_HEAL_COST, recalcEscortStats, finishEscortPhase
 } from './merchant-rules.js?v=193';
 
-import { daylightAt, advanceWorldClock, periodEnemy, enemyAvailable, PERIOD_ENEMIES } from './day-night.js';
+import { daylightAt, advanceWorldClock, periodEnemy, enemyAvailable, PERIOD_ENEMIES } from './day-night.js?v=197';
 
 import { clusterRescueMarkers } from './rescue-markers.js?v=182';
 import {visibleHeroMembers} from './hero-rules.js';
 import {updateHeroJournal} from './hero-journal.js?v=189';
 import {applyHeroEquipmentUpgrade} from './hero-equipment.js?v=187';
-import {initializeHeroJourney,rollHeroRevelation,serializeHeroJourney,updateHeroParty,updateHeroFollowing,awardHeroBattle,recordDemonKingDefeat,ensureHeroCastle,syncHeroCastle,renderHeroJourney,drawHeroMarks} from './hero-party.js?v=192';
+import {initializeHeroJourney,rollHeroRevelation,serializeHeroJourney,updateHeroParty,updateHeroFollowing,awardHeroBattle,recordDemonKingDefeat,ensureHeroCastle,syncHeroCastle,renderHeroJourney,drawHeroMarks} from './hero-party.js?v=198';
 import { RESCUE_TIMEOUT, rescueUnits, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, receiveTownCargo, leaveCivilianSpace, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, markSoldierDown, downCommander, commanderDown, updateNpcRescue, CIV_KINDS, isMedic, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST } from './casualty-rules.js?v=196';
-import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault, dungeonBlocks, dungeonSolids } from './dungeon.js?v=189';
+import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault, dungeonBlocks, dungeonSolids } from './dungeon.js?v=198';
 import {nearestDungeonFloor,dungeonSpawnPoint,dungeonSteeringTarget} from './dungeon-layout.js?v=182';
 import {normalizeDungeonExploration,updateDungeonSideChests,drawDungeonSideChests,updateDungeonRespawns,dungeonCoolingDown,recordDungeonClear,DUNGEON_RESET_PHASES} from './dungeon-exploration.js?v=189';
 import {
@@ -1084,6 +1085,7 @@ export const IronSquadGame = {
   ...invasionMethods,
   ...nationMethods,
   ...tavernMethods,
+  ...headquartersFacilityMethods,
   ...workshopMethods,
   ...casinoMethods,
   ...supplyMethods,
@@ -1098,7 +1100,7 @@ export const IronSquadGame = {
 
   // 起動時にこのゲームのCSSを自分で読み込む（?v= はこのフォルダ内で管理）。ハブが init 前に await する
   prepare() {
-    return loadCss(['../css/iron-squad.css?v=175', '../css/iron-squad-interface.css?v=195'].map(p => new URL(p, import.meta.url).href));
+    return loadCss(['../css/iron-squad.css?v=175', '../css/iron-squad-interface.css?v=198'].map(p => new URL(p, import.meta.url).href));
   },
 
   init(container, onBackToHub) {
@@ -2309,6 +2311,7 @@ export const IronSquadGame = {
   },
 
   startFreshGame(inheritVeterans = true) {
+    this.closeHeadquartersFacility(false);
     this.container?.querySelector('#tavern-dialog')?.remove();this.container?.querySelector('#career-invitation')?.remove();
     this.closeScoutDialog?.(false);
     this.stopScoutAuto();
@@ -3207,6 +3210,7 @@ export const IronSquadGame = {
   },
 
   resumeSavedGame(saved) {
+    this.closeHeadquartersFacility(false);
     this.closeScoutDialog?.(false);
     this.stopScoutAuto();
     resetBattleLog(this);
@@ -4455,6 +4459,7 @@ export const IronSquadGame = {
     updateLimitedAllies(this);
     this.updateCareerUI();
     updateTavernPrompt(this);
+    updateHeadquartersFacilityPrompt(this);
     const rank = this.currentRank();
     const pLv = this.player ? (this.player.level || 1) : 1;
     const isWarlord = this.player && this.player.isAdvanced;
@@ -5604,6 +5609,7 @@ export const IronSquadGame = {
     this.camera.x = Math.max(halfW, Math.min(boundW - halfW, this.camera.x));
     this.camera.y = Math.max(halfH, Math.min(boundH - halfH, this.camera.y));
 
+    updateHeadquartersFacilityPrompt(this);
     // ゾーン監視＆ダンジョン処理
     if (!this.currentDungeon) {
       this.checkZoneTransition();
@@ -6939,7 +6945,8 @@ export const IronSquadGame = {
     const dungeon = this.currentDungeon;
     const apply = (unit, inside) => {
       if (!unit || !Number.isFinite(unit.x) || !Number.isFinite(unit.y)) return;
-      const blocked = (x, y) => inside ? dungeonBlocks(dungeon, x, y) : economicFieldBlocked(this,x,y);
+      const blocked = (x, y) => inside ? dungeonBlocks(dungeon, x, y) :
+        economicFieldBlocked(this,x,y)||(unit===this.player&&headquartersBuildingBlocks(x,y));
       const carrier = unit.carrierId ? carrierOf(this, unit) : null;
       const space=inside?dungeon.id||'dungeon':'field';
       if(unit._terrainSpace!==space){
@@ -7711,7 +7718,7 @@ export const IronSquadGame = {
         };
         comfort(this.player);
         (this.squad || []).forEach((s) => { if (s && s.isPersonalGuard) comfort(s); });
-        this.showToast(`🛏️「${dungeonDef.name}」に入った。直属のみ同行。本隊は野外待機。施設は司令部の国家タブから。西側の門で退場。`);
+        this.showToast(`🛏️「${dungeonDef.name}」に入った。直属のみ同行。本隊は野外待機。鍛冶工房・組合・カジノは本陣内の建物へ。西側の門で退場。`);
       } else {
         this.showToast(`「${dungeonDef.name}」へ入った。`);
       }
@@ -10033,7 +10040,7 @@ export const IronSquadGame = {
       } else nq.innerHTML = '';
     }
     const nf = document.getElementById('nation-fiscal-panel');
-    this.renderNationStatus();this.refreshInvasionUI();
+    this.renderNationStatus();this.refreshInvasionUI();this.refreshHeadquartersFacility();
     if (nf) nf.innerHTML = formatFiscalReportHtml(this.lastFiscalReport) || '<div style="font-size:11px;color:#64748b;margin-bottom:8px;">財政報告は作戦期終了後に更新されます。</div>';
 
     const econTab = this.rosterManageTab || 'roster';
@@ -10416,6 +10423,18 @@ export const IronSquadGame = {
         drawDungeonVault(this.ctx, this.dungeonVault, now * 0.001);
       }
       drawDungeonSideChests(this.ctx,this,now);
+      if(this.currentDungeon.kind==='town') {
+        const d=this.currentDungeon;
+        // Small reusable prop list; torches stay beside the main street.
+        if(this._litTown!==d) {
+          this._litTown=d;
+          this._townTorches=[{type:'torch',x:210,y:d.height/2-52,ph:1},
+            {type:'torch',x:210,y:d.height/2+68,ph:2},
+            {type:'torch',x:d.width*.62+64,y:d.height/2-52,ph:3},
+            {type:'torch',x:d.width*.62+64,y:d.height/2+68,ph:4}];
+        }
+        this.worldObjs=this._townTorches;
+      }
     } else {
       // 1. 大地・戦場フィールド
       this.drawBattlefield(this.ctx, now);
@@ -10423,7 +10442,9 @@ export const IronSquadGame = {
       for(const post of this.medicalPosts||[])if(inView(post,160))drawMedicalPost(this.ctx,post);
 
       // 2. 自軍砦本陣 (治癒砦・城塞壁・風になびく王国旗)
-      if(inView(BASE_CAMP,460)){drawFortification(this.ctx,this);this.drawBaseCamp(this.ctx, now);}
+      // 城壁は画面内の区間だけ描く（外郭は本陣から離れていても見える）
+      drawFortification(this.ctx,this);
+      if(inView(BASE_CAMP,460))this.drawBaseCamp(this.ctx, now);
 
       // 2.5 戦場の探索拠点 (敵前線砦・捕虜の檻・古代祭壇・補給集積所)
       if (this.outposts) {
@@ -10442,7 +10463,7 @@ export const IronSquadGame = {
       }
 
       // 2.9 本陣の南の大酒場（旅の仲間との出会いと待ち合わせ）
-      if(inView(FIELD_TAVERN,320))drawFieldTavern(this.ctx,this,(s,x,y)=>drawFieldSoldier(this.ctx,{...s,x,y},now,SOLDIER_CLASSES[s.soldierClass],'#a59a76',false));
+      if(inView(FIELD_TAVERN,420))drawFieldTavern(this.ctx,this,(s,x,y)=>drawFieldSoldier(this.ctx,{...s,x,y},now,SOLDIER_CLASSES[s.soldierClass],'#a59a76',false));
 
     }
 
@@ -10580,6 +10601,17 @@ export const IronSquadGame = {
     // 8.2 兵士の一言フキダシ（操作を邪魔しない控えめな感情表現）
     this.dialogue?.draw(this.ctx, this.camera, this.zoom, this.width);
 
+    } finally { this.ctx.restore(); } // カメラ復元（描画中の例外でも必ず戻す）
+
+    // 大気で暗くした景色へ灯りを重ね、その上から未探索を隠す。
+    this.drawAtmosphere(this.ctx, now);
+    this.ctx.save();
+    try {
+    this.ctx.translate(this.width / 2 + shakeX, this.height / 2 + shakeY);
+    this.ctx.scale(z, z);
+    this.ctx.translate(-this.camera.x, -this.camera.y);
+    this.drawNightLights(this.ctx, now);
+
     // Fog of war (bit-grid fillRect; skip inside dungeons)
     // v1.25.11: camp seed + player-dark reseed; overlay gets player coords for fail-safe
     if (!this.currentDungeon) {
@@ -10602,9 +10634,6 @@ export const IronSquadGame = {
     }
 
     } finally { this.ctx.restore(); } // カメラ復元（描画中の例外でも必ず戻す）
-
-    // 8.5 大気（昼夜の色調・霧・ビネット）
-    this.drawAtmosphere(this.ctx, now);
 
     // 8.6 危険地帯突入・警戒赤フラッシュ (境界越えアラート演出)
     if (this.zoneAlertFlash > 0) {
@@ -10775,9 +10804,17 @@ export const IronSquadGame = {
       {type:'tent',x:bx+100,y:by-55,s:1,color:'#1e3a8a',ph:2},
       {type:'tent',x:bx-20,y:by+110,s:1,color:'#14532d',ph:3},
       {type:'fire',x:bx+72,y:by+74,s:1,ph:1.3},
+      {type:'torch',x:bx-55,y:by+185,s:1,ph:2},
+      {type:'torch',x:bx+55,y:by+185,s:1,ph:4},
+      {type:'torch',x:FIELD_TAVERN.x-45,y:FIELD_TAVERN.y+8,s:1,ph:1},
+      {type:'torch',x:FIELD_TAVERN.x+45,y:FIELD_TAVERN.y+8,s:1,ph:3},
       {type:'barrel',x:bx-82,y:by+92,s:1},
       {type:'crate',x:bx+100,y:by-6,s:1}
     ];
+    for(const facility of HEADQUARTERS_FACILITIES) {
+      this.campObjects.push(facility);
+      for(const side of [-1,1])this.campObjects.push({type:'torch',x:facility.x+side*33,y:facility.y+30,s:1,ph:side+facility.level});
+    }
     this.worldObjs=[];this.motes=[];
   },
 
@@ -10939,6 +10976,9 @@ export const IronSquadGame = {
       }
     } else if (o.type === 'tent') {
       drawCampTent(ctx,o.color);
+    } else if(o.type==='hq-facility') {
+      if(this.sceneryCoversUnit(o,2.7))ctx.globalAlpha=.4;
+      drawHeadquartersFacility(ctx,o,this,now);
     } else if (o.type === 'barrel') {
       ctx.fillStyle = 'rgba(0,0,0,0.3)';
       ctx.beginPath(); ctx.ellipse(2, 3, 11 * s, 4 * s, 0, 0, Math.PI * 2); ctx.fill();
@@ -10960,7 +11000,8 @@ export const IronSquadGame = {
       ctx.fillRect(-10 * s, 0, 20 * s, 1.5 * s);
     } else if (o.type === 'torch' || o.type === 'fire') {
       const big = o.type === 'fire';
-      const fl = 0.78 + 0.22 * Math.sin(now * 0.021 + o.ph) + 0.1 * Math.sin(now * 0.047 + o.ph * 2);
+      const ph=o.ph||0;
+      const fl = 0.88 + 0.08 * Math.sin(now * 0.008 + ph) + 0.04 * Math.sin(now * 0.019 + ph * 2);
       if (big) {
         ctx.fillStyle = 'rgba(0,0,0,0.3)';
         ctx.beginPath(); ctx.ellipse(0, 4, 16, 6, 0, 0, Math.PI * 2); ctx.fill();
@@ -10980,21 +11021,17 @@ export const IronSquadGame = {
       const fy = big ? -4 : -28;
       const fh = (big ? 20 : 13) * fl;
       const fw = big ? 9 : 5;
-      ctx.globalCompositeOperation = 'lighter';
-      const gr = (big ? 120 : 80) * fl;
-      const lg = ctx.createRadialGradient(0, fy, 2, 0, fy, gr);
-      lg.addColorStop(0, 'rgba(255,170,60,0.38)');
-      lg.addColorStop(1, 'rgba(255,120,30,0)');
-      ctx.fillStyle = lg;
-      ctx.fillRect(-gr, fy - gr, gr * 2, gr * 2);
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.fillStyle = '#f97316';
-      ctx.beginPath();
-      ctx.moveTo(-fw, fy); ctx.quadraticCurveTo(-fw * 0.6, fy - fh * 0.6, Math.sin(now * 0.02 + o.ph) * 2, fy - fh);
-      ctx.quadraticCurveTo(fw * 0.6, fy - fh * 0.6, fw, fy); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = '#fde047';
-      ctx.beginPath();
-      ctx.moveTo(-fw * 0.5, fy); ctx.quadraticCurveTo(0, fy - fh * 0.8, fw * 0.5, fy); ctx.closePath(); ctx.fill();
+      const flame=big?1:daylightAt(this.worldTime).nightLight;
+      if(flame>0) {
+        ctx.globalAlpha=flame;
+        ctx.fillStyle = '#f97316';
+        ctx.beginPath();
+        ctx.moveTo(-fw, fy); ctx.quadraticCurveTo(-fw * 0.6, fy - fh * 0.6, Math.sin(now * 0.008 + ph) * 2, fy - fh);
+        ctx.quadraticCurveTo(fw * 0.6, fy - fh * 0.6, fw, fy); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#fde047';
+        ctx.beginPath();
+        ctx.moveTo(-fw * 0.5, fy); ctx.quadraticCurveTo(0, fy - fh * 0.8, fw * 0.5, fy); ctx.closePath(); ctx.fill();
+      }
     } else if (o.type === 'house') {
       const w = o.w || 48, h = o.h || 34;
       ctx.fillStyle = 'rgba(0,0,0,0.35)';
@@ -11167,6 +11204,29 @@ export const IronSquadGame = {
     }
   },
 
+  drawNightLights(ctx, now) {
+    const strength=daylightAt(this.worldTime).nightLight;
+    if(strength<=0)return;
+    const view=viewport(this.camera,this.width,this.height,this.zoom||1,0);
+    ctx.save();
+    try {
+      ctx.globalCompositeOperation='screen';
+      for(const o of this.worldObjs||[]) {
+        if(o.type!=='torch'&&o.type!=='fire')continue;
+        const big=o.type==='fire',ph=o.ph||0;
+        const flicker=.96+.025*Math.sin(now*.008+ph)+.015*Math.sin(now*.019+ph*2);
+        const radius=(big?160:125)*(o.s||1),y=o.y+(big?-4:-28);
+        if(!circleInView(o.x,y,radius,view))continue;
+        const light=ctx.createRadialGradient(o.x,y,0,o.x,y,radius);
+        light.addColorStop(0,`rgba(255,190,100,${.34*strength*flicker})`);
+        light.addColorStop(.25,`rgba(239,157,66,${.19*strength*flicker})`);
+        light.addColorStop(.65,`rgba(208,119,45,${.065*strength*flicker})`);
+        light.addColorStop(1,'rgba(208,119,45,0)');
+        ctx.fillStyle=light;ctx.fillRect(o.x-radius,y-radius,radius*2,radius*2);
+      }
+    } finally {ctx.restore();}
+  },
+
   drawAtmosphere(ctx, now) {
     const W = this.width, H = this.height;
     if (!W || !H || W < 10 || H < 10) return;
@@ -11214,6 +11274,8 @@ export const IronSquadGame = {
   },
 
   drawBaseCamp(ctx, now) {
+    drawHeadquartersFacilityGround(ctx);
+    for(const t of YARD_TABLES)drawLeisureTable(ctx,t);
     drawNationalDevelopment(ctx,this,BASE_CAMP.x,BASE_CAMP.y);
     ctx.save();
     // 治癒エリアの優しい緑のオーラ
@@ -12072,6 +12134,7 @@ export const IronSquadGame = {
   },
 
   destroy() {
+    this.closeHeadquartersFacility(false);
     this.stopScoutAuto();
     clearTimeout(this._battleLogTimer);
     this.audioUIUnsubscribe?.();this.audioUIUnsubscribe=null;

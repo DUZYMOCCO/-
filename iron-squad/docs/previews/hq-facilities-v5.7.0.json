@@ -1,0 +1,47 @@
+{
+  "report": [
+    {
+      "width": 390,
+      "height": 844,
+      "supply": {
+        "gold": 199445,
+        "items": 1
+      },
+      "reward": 1400,
+      "ui": {
+        "overflow": false,
+        "sheetOverflow": false,
+        "workshopNodes": 0,
+        "casinoNodes": 1,
+        "time": 300
+      },
+      "collision": {
+        "y": 79257,
+        "front": 79257,
+        "recovery": false
+      }
+    },
+    {
+      "width": 844,
+      "height": 390,
+      "supply": {
+        "gold": 199445,
+        "items": 1
+      },
+      "reward": 1400,
+      "ui": {
+        "overflow": false,
+        "sheetOverflow": false,
+        "workshopNodes": 0,
+        "casinoNodes": 1,
+        "time": 300
+      },
+      "collision": {
+        "y": 79257,
+        "front": 79257,
+        "recovery": false
+      }
+    }
+  ],
+  "errors": []
+}

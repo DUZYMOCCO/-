@@ -1,5 +1,6 @@
-import {WORLD_SIZE} from './world.js?v=196';
+import {WORLD_SIZE} from './world.js?v=198';
 import {hazardContour,insideHazard,containsContour,traceContour,terrainSeed} from './terrain-shapes.js?v=182';
+import {insideOuterWall} from './hq-outer-wall.js?v=198';
 const BASE=WORLD_SIZE/2,CELL=1024;
 export const HAZARD_TYPES={fire:{name:'灼熱地帯',color:'#b77a55',ground:'#683e2b'},poison:{name:'腐毒地帯',color:'#9da36b',ground:'#414a31'},storm:{name:'帯電地帯',color:'#aaa2bf',ground:'#4a4659'}};
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -12,9 +13,11 @@ export function fieldsNear(x,y) {
     let h=(Math.imul(tx+43,73856093)^Math.imul(ty+71,19349663))>>>0;
     if(h%100>=18)continue;
     const f={id:`hazard-${tx}-${ty}`,x:tx*CELL+160+(h%650),y:ty*CELL+160+((h>>>11)%650),radius:75+(h%36),type:['fire','poison','storm'][(h>>>8)%3]};
-    if(Math.hypot(f.x-BASE,f.y-BASE)>600+f.radius)result.push(f);
+    // Hazards stay out of the HQ and the whole outer bailey (reserved for the town district).
+    if(Math.hypot(f.x-BASE,f.y-BASE)>600+f.radius&&!insideOuterWall(f.x-BASE,f.y-BASE,f.radius+60))result.push(f);
   }
-  const first={id:'hazard-borderland',x:BASE+740,y:BASE+420,radius:95,type:'fire'};
+  // First hazard the army meets, just outside the outer bailey's east gate.
+  const first={id:'hazard-borderland',x:BASE+1000,y:BASE+470,radius:95,type:'fire'};
   if(distance(first,{x,y})<CELL*1.6)result.push(first);
   return result;
 }

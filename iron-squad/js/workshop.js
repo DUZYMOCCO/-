@@ -3,12 +3,13 @@ import {CRAFT_MATERIALS,CRAFT_RECIPES,craftRecipe,normalizeMaterials,addMaterial
 import {standardEquipmentCost} from './armament-rules.js?v=191';
 import {tierDescription,tierNumber} from './equipment-tiers.js';
 import {equipmentName} from './equipment-rules.js?v=189';
+import {atFacility} from './hq-facilities.js?v=198';
 
 export const WORKSHOP_STOCK=CRAFT_RECIPES.map(recipe=>({...recipe,name:recipe.type==='WEAPON'?{
   sword:'剣',spear:'槍',hammer:'ハンマー',axe:'斧',bow:'弓',crossbow:'クロスボウ',cannon:'火砲',staff:'長杖',wand:'ワンド'
 }[recipe.weaponStyle]:{SHIELD:'盾',HELMET:'兜',ARMOR:'鎧',GLOVES:'籠手',LEGS:'脚具',AMULET:'装飾'}[recipe.type]}));
 const money=n=>`${Math.max(0,n||0).toLocaleString()}G`;
-const atWorkshop=game=>game.currentDungeon?.kind==='town'&&game.nation?.level>=1&&!game.player?.dead&&!game.player?.isDown;
+const atWorkshop=game=>atFacility(game,'smith',1);
 export const workshopPrice=(tier,crafted=false)=>Math.ceil(standardEquipmentCost({tier})*(crafted?3:1.4));
 function quote(game,id,tier,crafted) {
   const recipe=craftRecipe(id);if(!recipe)return null;
@@ -67,7 +68,7 @@ export const workshopMethods={
       <p class="craft-bonus">${craftExclusiveLabel({craftOnly:true,type:cq.recipe.type})}</p>
       <ul class="recipe-materials">${Object.entries(cq.materials).map(([id,n])=>`<li class="${stock[id]>=n?'positive':'negative'}">${CRAFT_MATERIALS[id].name} ${stock[id]} / ${n}</li>`).join('')}</ul>
       <button type="button" id="btn-workshop-craft" ${!town||this.gold<cq.cost||!canAffordMaterials(stock,cq.materials)?'disabled':''}>製作してバッグへ · ${money(cq.cost)}</button>
-      ${town?'':'<p class="facility-note">本陣発展Lv1以上の町で供給・製作できます。</p>'}</div>`);
+      ${town?'':'<p class="facility-note">本陣発展Lv1以上で、本陣の鍛冶工房から供給・製作できます。</p>'}</div>`);
     for(const [selector,key] of [['#workshop-tier','workshopSelectedTier'],['#workshop-supply','workshopSupplyId'],['#workshop-craft','workshopCraftId']]){
       panel.querySelector(selector).onchange=e=>{this[key]=key==='workshopSelectedTier'?Number(e.target.value):e.target.value;this.renderStrategyUI();};
     }

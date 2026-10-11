@@ -1,0 +1,345 @@
+{
+  "report": [
+    {
+      "width": 390,
+      "height": 844,
+      "period": "day",
+      "site": "hq",
+      "time": 120,
+      "lit": [
+        28,
+        39,
+        32,
+        255
+      ],
+      "unlit": [
+        28,
+        39,
+        32,
+        255
+      ],
+      "flamePixels": 0,
+      "canvas": [
+        390,
+        844
+      ],
+      "recovery": false
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "period": "night",
+      "site": "hq",
+      "time": 300,
+      "lit": [
+        72,
+        62,
+        45,
+        255
+      ],
+      "unlit": [
+        22,
+        31,
+        33,
+        255
+      ],
+      "flamePixels": 84,
+      "canvas": [
+        390,
+        844
+      ],
+      "recovery": false
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "period": "day",
+      "site": "tavern",
+      "time": 120,
+      "lit": [
+        35,
+        29,
+        24,
+        255
+      ],
+      "unlit": [
+        35,
+        29,
+        24,
+        255
+      ],
+      "flamePixels": 0,
+      "canvas": [
+        390,
+        844
+      ],
+      "recovery": false
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "period": "night",
+      "site": "tavern",
+      "time": 300,
+      "lit": [
+        82,
+        60,
+        42,
+        255
+      ],
+      "unlit": [
+        27,
+        25,
+        28,
+        255
+      ],
+      "flamePixels": 84,
+      "canvas": [
+        390,
+        844
+      ],
+      "recovery": false
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "period": "day",
+      "site": "town",
+      "time": 120,
+      "lit": [
+        43,
+        37,
+        30,
+        255
+      ],
+      "unlit": [
+        43,
+        37,
+        30,
+        255
+      ],
+      "flamePixels": 0,
+      "canvas": [
+        390,
+        844
+      ],
+      "recovery": false
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "period": "night",
+      "site": "town",
+      "time": 300,
+      "lit": [
+        68,
+        54,
+        41,
+        255
+      ],
+      "unlit": [
+        32,
+        30,
+        32,
+        255
+      ],
+      "flamePixels": 84,
+      "canvas": [
+        390,
+        844
+      ],
+      "recovery": false
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "validation": {
+        "fogPixel": [
+          0,
+          0,
+          0,
+          255
+        ],
+        "nearTorchPixel": [
+          0,
+          0,
+          0,
+          255
+        ],
+        "moved": 33,
+        "overflow": false
+      }
+    },
+    {
+      "width": 844,
+      "height": 390,
+      "period": "day",
+      "site": "hq",
+      "time": 120,
+      "lit": [
+        28,
+        39,
+        32,
+        255
+      ],
+      "unlit": [
+        28,
+        39,
+        32,
+        255
+      ],
+      "flamePixels": 0,
+      "canvas": [
+        844,
+        390
+      ],
+      "recovery": false
+    },
+    {
+      "width": 844,
+      "height": 390,
+      "period": "night",
+      "site": "hq",
+      "time": 300,
+      "lit": [
+        71,
+        60,
+        45,
+        255
+      ],
+      "unlit": [
+        22,
+        31,
+        33,
+        255
+      ],
+      "flamePixels": 84,
+      "canvas": [
+        844,
+        390
+      ],
+      "recovery": false
+    },
+    {
+      "width": 844,
+      "height": 390,
+      "period": "day",
+      "site": "tavern",
+      "time": 120,
+      "lit": [
+        35,
+        29,
+        24,
+        255
+      ],
+      "unlit": [
+        35,
+        29,
+        24,
+        255
+      ],
+      "flamePixels": 0,
+      "canvas": [
+        844,
+        390
+      ],
+      "recovery": false
+    },
+    {
+      "width": 844,
+      "height": 390,
+      "period": "night",
+      "site": "tavern",
+      "time": 300,
+      "lit": [
+        82,
+        60,
+        42,
+        255
+      ],
+      "unlit": [
+        27,
+        25,
+        28,
+        255
+      ],
+      "flamePixels": 84,
+      "canvas": [
+        844,
+        390
+      ],
+      "recovery": false
+    },
+    {
+      "width": 844,
+      "height": 390,
+      "period": "day",
+      "site": "town",
+      "time": 120,
+      "lit": [
+        37,
+        31,
+        26,
+        255
+      ],
+      "unlit": [
+        37,
+        31,
+        26,
+        255
+      ],
+      "flamePixels": 0,
+      "canvas": [
+        844,
+        390
+      ],
+      "recovery": false
+    },
+    {
+      "width": 844,
+      "height": 390,
+      "period": "night",
+      "site": "town",
+      "time": 300,
+      "lit": [
+        64,
+        50,
+        37,
+        255
+      ],
+      "unlit": [
+        27,
+        26,
+        27,
+        255
+      ],
+      "flamePixels": 84,
+      "canvas": [
+        844,
+        390
+      ],
+      "recovery": false
+    },
+    {
+      "width": 844,
+      "height": 390,
+      "validation": {
+        "fogPixel": [
+          0,
+          0,
+          0,
+          255
+        ],
+        "nearTorchPixel": [
+          0,
+          0,
+          0,
+          255
+        ],
+        "moved": 33,
+        "overflow": false
+      }
+    }
+  ],
+  "errors": []
+}

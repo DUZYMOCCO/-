@@ -1,4 +1,4 @@
-import {WORLD_SIZE,fieldBlocks} from './world.js?v=196';
+import {WORLD_SIZE,fieldBlocks} from './world.js?v=198';
 import {inCurrentInstance} from './instance-rules.js?v=182';
 import {isSoldierOnExpedition} from './expedition-rules.js';
 import {generateSoldierName} from './soldier-names.js?v=185';

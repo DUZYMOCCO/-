@@ -57,7 +57,9 @@ game.gold=100;game.setCasinoBet(1000);assert.equal(game.spinCasinoSlot(),false);
 game.gold=2000000;const random=Math.random;try{Math.random=()=>.99;assert.equal(game.spinCasinoSlot(),true);}finally{Math.random=random;}
 assert.equal(game.gold,2000000-1000+200000);assert.equal(game.nation.casino.slot.bet,1000);assert.equal(game.spinCasinoSlot(),false);
 game.phase++;assert.equal(game.startCasinoPoker(),true,'each game can be played again next phase');
-game.renderStrategyUI();assert.ok(document.querySelector('.poker-hand'));assert.equal(document.querySelectorAll('.slot-reel').length,3);
+game.exitDungeon();const casinoSite=(await import('../js/hq-facilities.js')).HEADQUARTERS_FACILITIES.find(p=>p.id==='casino');
+game.restTimer=0;Object.assign(game.player,{x:casinoSite.x,y:casinoSite.y+24});
+assert.equal(game.openHeadquartersFacility('casino'),true);assert.ok(document.querySelector('.poker-hand'));assert.equal(document.querySelectorAll('.slot-reel').length,3);
 const betInput=document.getElementById('casino-bet');betInput.value='20000';betInput.dispatchEvent(new window.Event('change'));assert.equal(game.nation.casino.bet,20000);
 document.querySelector('[data-bet-mult="10"]').click();assert.equal(game.nation.casino.bet,200000);
 assert.ok(!document.getElementById('nation-facilities').textContent.match(/ダイス|出目|一振り/));
