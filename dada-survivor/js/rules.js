@@ -17,10 +17,10 @@ export const DIFFICULTIES = {
 // perk: キャラの とくちょう（hp:さいだいHP, dmg:ダメージ倍率+, spd:いどう+, pickup:ひろう範囲+, regen:まいびょう かいふく）
 // unlock: そのステージを クリアすると なかまになる
 export const CHARACTERS = [
-  { id: 'cat',     name: 'ねこ',       weapon: 'kunai',   perk: { spd: 0.08 },             trait: 'すばやい' },
+  { id: 'cat',     name: 'にんじゃ',   weapon: 'kunai',   perk: { spd: 0.08 },             trait: 'すばやい' },
   { id: 'dog',     name: 'ソルジャー', weapon: 'laser',   perk: { hp: 10 },                trait: 'タフ' },
   { id: 'fox',     name: 'きつね',     weapon: 'thunder', perk: { dmg: 0.1 },              trait: 'つよい' },
-  { id: 'panda',   name: 'パンダ',     weapon: 'bomb',    perk: { hp: 20, regen: 0.5 },    trait: 'かいふく' },
+  { id: 'panda',   name: 'ボマー',     weapon: 'bomb',    perk: { hp: 20, regen: 0.5 },    trait: 'かいふく' },
   { id: 'rabbit',  name: 'まじゅつし', weapon: 'aura',    perk: { spd: 0.2 },              trait: 'とっても はやい', unlock: 1 },
   { id: 'penguin', name: 'ペンギン',   weapon: 'gun',     perk: { pickup: 0.5, hp: 20 },   trait: 'ほうせき あつめ', unlock: 2 },
   { id: 'bear',    name: 'くま',       weapon: 'shotgun', perk: { hp: 70 },                trait: 'すごく タフ', unlock: 3 },

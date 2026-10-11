@@ -108,3 +108,16 @@ test('rabbit slot is the good magician まじゅつし with a barrier and a magi
   assert.ok(!svg.includes('data-emblem="warumono"') && !svg.includes('#4c1d95'), 'てきの まじょ では ない');
   assert.ok(svgOf(art('magicCircle')).includes('<circle'));
 });
+
+// こどもの リクエスト：ねこ → にんじゃ、パンダ → ボマー（id は セーブ互換で cat／panda のまま）
+test('cat slot is the good ninja にんじゃ and panda slot is the good bomber ボマー', () => {
+  const cat = CHARACTERS.find(c => c.id === 'cat'), panda = CHARACTERS.find(c => c.id === 'panda');
+  assert.equal(cat.name, 'にんじゃ'); assert.equal(cat.weapon, 'kunai'); assert.deepEqual(cat.perk, { spd: 0.08 });
+  assert.equal(panda.name, 'ボマー'); assert.equal(panda.weapon, 'bomb'); assert.deepEqual(panda.perk, { hp: 20, regen: 0.5 });
+  const nj = svgOf(art('cat')), bm = svgOf(art('panda'));
+  assert.ok(nj.includes('#14b8a6') && !nj.includes('#4c1d95'), 'みどりあお。てきの かげのたいちょう（むらさき）では ない');
+  assert.ok(bm.includes('fill="#f5f5f4"') && bm.includes('fill="#dc2626"'), 'ボマーは にほんの はたの ワッペン');
+  assert.ok(bm.includes('#1e3a8a'), 'あおい ばくだん');
+  for (const s of [nj, bm]) assert.ok(!s.includes('data-emblem="warumono"'));
+  for (const n of ['mummy', 'thrower']) assert.notEqual(ENEMY_TYPES[n].name, panda.name);
+});
