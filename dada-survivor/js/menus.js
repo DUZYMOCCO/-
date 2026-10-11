@@ -7,8 +7,8 @@ import {
   DIFFICULTIES, CHARACTERS, WEAPONS, SHOP_ITEMS, STAGES, RARITIES, GEAR_SLOTS, CHEST_COST,
   shopCost, stageById, stageUnlocked, charUnlocked, gearLabel, rollGear, addGear, equipGear,
   unequipGear, mergeGear, bonusFor,
-} from './rules.js?v=195';
-import { art } from './art.js?v=195';
+} from './rules.js?v=196';
+import { art } from './art.js?v=196';
 
 const GEAR_ART = { weapon: 'sword', armor: 'armor', boots: 'shoes', charm: 'charm' };
 const ICON_ART = {
@@ -60,7 +60,7 @@ export const menuMethods = {
         <div class="ds-diffs">
           ${Object.values(DIFFICULTIES).map(d => `<button class="ds-diff ${d.id === s.difficulty ? 'on' : ''}" data-diff="${d.id}">${d.label}</button>`).join('')}
         </div>
-        <div class="ds-label">レベルアップで じゅう・ショットガン・バズーカ</div>
+        <div class="ds-label">${ch.weapon === 'laser' ? 'レーザーじゅうは レベルアップで つよく なる！ モードは あおい ボタン' : 'レベルアップで じゅう・ショットガン・バズーカ'}</div>
         <button class="ds-btn ds-go" data-act="start">▶ スタート！</button>
         ${s.pendingChests ? `<button class="ds-btn ds-chest-btn" data-act="chests">${pic('chest', 'ds-icon sm')} たからばこを あける（${s.pendingChests}こ）</button>` : ''}
         <div class="ds-row">

@@ -30,11 +30,12 @@ test('no SVG tag repeats an attribute', () => {
 });
 
 // こどもの リクエスト：いぬ → ゆうしゃ → じゅうを もった ソルジャー（id は セーブ互換で dog のまま）
-test('dog slot is the soldier ソルジャー with a gun', () => {
+test('dog slot is the soldier ソルジャー with the blue laser gun', () => {
   const c = CHARACTERS.find(c => c.id === 'dog');
   assert.equal(c.name, 'ソルジャー');
-  assert.equal(c.weapon, 'gun');
-  assert.deepEqual(c.perk, { hp: 30 });
+  assert.equal(c.weapon, 'laser');
+  assert.ok(svgOf(art('dog')).includes('#67e8f9') && !svgOf(art('ally')).includes('#67e8f9'), 'レーザーじゅうは じぶんだけ');
+  assert.deepEqual(c.perk, { hp: 10 }); // v1.11.0：レーザーじゅうで はじまるので HP ボーナスは 30→10
   const svg = svgOf(art('dog'));
   assert.ok(svg.includes('fill="#f5f5f4"') && svg.includes('fill="#dc2626"'), 'にほんの はたの ワッペン');
   for (const ch of CHARACTERS) assert.match(ch.name, /^[\u3041-\u309f\u30a0-\u30ff]+$/, ch.name);

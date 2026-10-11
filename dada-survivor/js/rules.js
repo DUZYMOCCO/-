@@ -18,7 +18,7 @@ export const DIFFICULTIES = {
 // unlock: そのステージを クリアすると なかまになる
 export const CHARACTERS = [
   { id: 'cat',     name: 'ねこ',       weapon: 'kunai',   perk: { spd: 0.08 },             trait: 'すばやい' },
-  { id: 'dog',     name: 'ソルジャー', weapon: 'gun',     perk: { hp: 30 },                trait: 'タフ' },
+  { id: 'dog',     name: 'ソルジャー', weapon: 'laser',   perk: { hp: 10 },                trait: 'タフ' },
   { id: 'fox',     name: 'きつね',     weapon: 'thunder', perk: { dmg: 0.1 },              trait: 'つよい' },
   { id: 'panda',   name: 'パンダ',     weapon: 'bomb',    perk: { hp: 20, regen: 0.5 },    trait: 'かいふく' },
   { id: 'rabbit',  name: 'うさぎ',     weapon: 'aura',    perk: { spd: 0.2 },              trait: 'とっても はやい', unlock: 1 },
@@ -265,25 +265,26 @@ export const WEAPONS = {
     count: [1, 1, 1, 1, 1],
     radius: [155, 155, 155, 155, 155],
   },
-  // あおい レーザーじゅう（ちかの ボスを たおすと もらえる）。modes の じゅんに ボタンで きりかえ。
-  // じっさいに うつのは いまの モードの ぶき（mode: true。もちものには ならない）。どの モードも あたると あおい ばくはつ
+  // あおい レーザーじゅう（ちかの ボスを たおすと さいだいレベルで もらえる。ソルジャーは Lv1 から もって はじまる）。
+  // modes の じゅんに ボタンで きりかえ。じっさいに うつのは いまの モードの ぶき（mode: true。もちものには ならない）。
+  // levelUp: gift だけど、もって いれば レベルアップの カードに でる（ソルジャーが Lv1→5 に そだてる）。どの モードも あたると あおい ばくはつ
   laser: {
     name: 'レーザーじゅう', icon: '🔫', desc: 'あおい レーザー。3つの モード',
-    gift: true, fire: 'laser', modes: ['laserMg', 'laserBeam', 'laserRk'],
-    cooldown: [0.55, 0.55, 0.55, 0.55, 0.55], damage: [78, 78, 78, 78, 78], // ひょうじよう（うつのは modes の ぶき）
+    gift: true, levelUp: true, fire: 'laser', modes: ['laserMg', 'laserBeam', 'laserRk'],
+    cooldown: [1.2, 1.05, 0.9, 0.72, 0.55], damage: [30, 35, 42, 52, 66], // ひょうじよう（うつのは modes の ぶき）
   },
   laserMg: {
     name: 'マシンガン', mode: true, gift: true, fire: 'bullet', shot: 'lbullet', size: 22, speed: 880, spread: 0, kb: 0.06, quiet: true, boomFx: 'bboom',
-    cooldown: [0.12, 0.12, 0.12, 0.12, 0.12], damage: [14, 14, 14, 14, 14], count: [1, 1, 1, 1, 1],
-    pierce: [2, 2, 2, 2, 2], life: [0.62, 0.62, 0.62, 0.62, 0.62], splash: [28, 28, 28, 28, 28],
+    cooldown: [0.3, 0.26, 0.22, 0.17, 0.12], damage: [5, 6, 8, 10, 14], count: [1, 1, 1, 1, 1],
+    pierce: [1, 1, 1, 2, 2], life: [0.62, 0.62, 0.62, 0.62, 0.62], splash: [10, 12, 16, 20, 28],
   },
   laserBeam: {
     name: 'レーザー', mode: true, gift: true, fire: 'beam', len: 560, width: 26, boomFx: 'bboom',
-    cooldown: [0.55, 0.55, 0.55, 0.55, 0.55], damage: [66, 66, 66, 66, 66], splash: [38, 38, 38, 38, 38],
+    cooldown: [1.2, 1.05, 0.9, 0.72, 0.55], damage: [30, 35, 42, 52, 66], splash: [28, 30, 32, 35, 38],
   },
   laserRk: {
     name: 'ロケットランチャー', mode: true, gift: true, fire: 'rocket', shot: 'lrocket', size: 40, speed: 300, turn: 4.2, boomFx: 'bboom',
-    cooldown: [1.1, 1.1, 1.1, 1.1, 1.1], damage: [140, 140, 140, 140, 140], count: [1, 1, 1, 1, 1], radius: [110, 110, 110, 110, 110],
+    cooldown: [2.2, 2.0, 1.75, 1.45, 1.1], damage: [60, 70, 85, 108, 140], count: [1, 1, 1, 1, 1], radius: [70, 80, 90, 100, 110],
   },
   mega: {
     name: 'でかロケット', icon: '🚀', desc: 'おおきな ロケットが ばくはつ',
@@ -372,7 +373,7 @@ function choiceWeight(item, weapons) {
  *  進化できるときはそのカードを必ず1枚混ぜる。持っていない武器は出やすい。
  */
 export function upgradeChoices(weapons, passives, rnd = Math.random, count = 3) {
-  const ownsGun = GUNS.some(id => weapons[id] > 0)
+  const ownsGun = GUNS.some(id => weapons[id] > 0) || weapons.laser > 0
     || Object.values(EVOLUTIONS).some(e => weapons[e.into] > 0);
   if (!ownsGun) return GUNS.slice(0, count).map(id => ({ kind: 'weapon', id, level: 1 }));
 
@@ -384,7 +385,7 @@ export function upgradeChoices(weapons, passives, rnd = Math.random, count = 3) 
   }
   const pool = [];
   for (const id of Object.keys(WEAPONS)) {
-    if (WEAPONS[id].evolved || WEAPONS[id].gift) continue;
+    if (WEAPONS[id].evolved || (WEAPONS[id].gift && !(WEAPONS[id].levelUp && weapons[id] > 0))) continue;
     const lv = weapons[id] || 0;
     if (lv < MAX_LEVEL) pool.push({ kind: 'weapon', id, level: lv + 1 });
   }

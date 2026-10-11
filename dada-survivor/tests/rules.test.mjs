@@ -137,11 +137,29 @@ test('stages and characters unlock by clearing, and old saves migrate', () => {
   assert.equal(fresh.pendingChests, 2);
 });
 
-test('soldier (dog) starts with gun: skips the gun 3-choice and can still evolve', () => {
+test('soldier (dog) starts with the laser gun Lv1: skips the gun 3-choice, laser levels up via cards', () => {
   const ch = CHARACTERS.find(c => c.id === 'dog');
+  assert.equal(ch.weapon, 'laser');
   const start = { [ch.weapon]: 1 };
   assert.notDeepEqual(upgradeChoices(start, {}, () => 0).map(p => p.id), ['gun', 'shotgun', 'bazooka']);
-  assert.equal(upgradeChoices({ [ch.weapon]: MAX_LEVEL }, { ammo: 1 }, () => 0)[0].id, 'dual');
+  // もって いる レーザーじゅうは カードに でる（Lv5 で でなくなる）。もって いない ひとには でない
+  const seen = new Set();
+  for (let i = 0; i < 400; i++) for (const c of upgradeChoices({ laser: 2 }, {})) seen.add(c.id + ':' + c.level);
+  assert.ok(seen.has('laser:3'));
+  for (let i = 0; i < 400; i++) {
+    for (const c of upgradeChoices({ laser: MAX_LEVEL }, {})) assert.notEqual(c.id, 'laser');
+    for (const c of upgradeChoices({ gun: 1 }, {})) assert.ok(!['laser', 'laserMg', 'laserBeam', 'laserRk', 'supermissile'].includes(c.id));
+  }
+  // ほかの じゅうを ひろって しんかも できる
+  assert.equal(upgradeChoices({ laser: 1, gun: MAX_LEVEL }, { ammo: 1 }, () => 0)[0].id, 'dual');
+});
+
+test('laser modes grow from a weaker Lv1 to the full Lv5 boss reward', () => {
+  for (const id of ['laserMg', 'laserBeam', 'laserRk']) {
+    const d = WEAPONS[id].damage, cd = WEAPONS[id].cooldown;
+    assert.ok(d[0] / cd[0] < d[MAX_LEVEL - 1] / cd[MAX_LEVEL - 1] * 0.5, id);
+    for (let i = 1; i < MAX_LEVEL; i++) assert.ok(d[i] >= d[i - 1] && cd[i] <= cd[i - 1], id);
+  }
 });
 
 // こどもの リクエスト：くさはらの けんきゅうしゃが いちばん つよい ミサイルを くれる

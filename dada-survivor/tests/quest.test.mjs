@@ -94,3 +94,11 @@ test('quest art exists; walls stretch; banners and HUD are kana only', () => {
   assert.ok(src.includes("r.time += r.zone === 'under' ? dt * QUEST.underTime : dt;"))
   assert.ok(QUEST.underTime > 0 && QUEST.underTime < 1, 'ちかでも タイマーは ゆっくり すすむ');
 });
+
+// v1.11.0：ソルジャーは レーザーじゅう Lv1 で はじまる。ちかの ボスの ごほうびは さいだいレベル（もう さいだいなら コイン）
+test('underground boss reward upgrades an owned laser gun instead of resetting it', () => {
+  const src = readFileSync(new URL('../js/index.js', import.meta.url), 'utf8');
+  assert.ok(src.includes('さいだいレベルに パワーアップ'));
+  assert.ok(src.includes("weaponStat(mid, 'damage', lv)"), 'モードは レーザーじゅうの レベルで うつ');
+  assert.ok(!src.includes("weaponStat(mid, 'damage', MAXLV)"));
+});

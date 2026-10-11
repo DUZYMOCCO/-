@@ -13,13 +13,13 @@ import {
   SQUAD, allyDamage, squadSlot, canWhistle, healAmount,
   QUEST, underHalfW, clampUnder, hutSpot, LASER_MODES, nextLaserMode, squadRoom, beamHits, MAX_LEVEL as MAXLV,
   enemyDmgMul,
-} from './rules.js?v=195';
-import { DecorField } from './decor.js?v=195';
-import { EnemyGrid, nearestN } from './grid.js?v=195';
-import { preloadArt, art } from './art.js?v=195';
-import { Stage } from './stage.js?v=195';
-import { menuMethods, iconHtml } from './menus.js?v=195';
-import { PopBGM, playWhistle } from './bgm.js?v=195';
+} from './rules.js?v=196';
+import { DecorField } from './decor.js?v=196';
+import { EnemyGrid, nearestN } from './grid.js?v=196';
+import { preloadArt, art } from './art.js?v=196';
+import { Stage } from './stage.js?v=196';
+import { menuMethods, iconHtml } from './menus.js?v=196';
+import { PopBGM, playWhistle } from './bgm.js?v=196';
 
 const SAVE_KEY = 'dada_survivor_save';
 const TAU = Math.PI * 2;
@@ -45,7 +45,7 @@ export const DadaSurvivorGame = {
 
   // 起動時にこのゲームのCSSを自分で読み込む（?v= はこのフォルダ内で管理）。ハブが init 前に await する
   prepare() {
-    return loadCss(new URL('../css/dada-survivor.css?v=195', import.meta.url).href);
+    return loadCss(new URL('../css/dada-survivor.css?v=196', import.meta.url).href);
   },
 
   init(container, onBackToHub) {
@@ -660,10 +660,15 @@ export const DadaSurvivorGame = {
   underBossDown() {
     const r = this.run, q = r.quest, id = r.stageDef.quest.gift;
     q.bossDead = true; q.exit.hidden = false; q.exit.mark = true;
-    r.weapons[id] = MAXLV; r.laserMode = 0;
+    const had = r.weapons[id] || 0;
+    r.weapons[id] = MAXLV;
+    if (!had) r.laserMode = 0;
     this.refreshSkills();
     this.stage.flash();
-    this.showBanner(`${WEAPONS[id].name}を てに いれた！ あおい ボタンで モードを かえられるよ！ でぐちから ちじょうへ`, 4200);
+    // もう もって いる（ソルジャー）ときは さいだいレベルに パワーアップ。もう さいだいなら ごほうびに コイン
+    if (had >= MAXLV) { r.coins += 30; this.showBanner(`${WEAPONS[id].name}は もう さいだい！ ごほうびに コイン 30まい！ でぐちから ちじょうへ`, 4200); }
+    else if (had) this.showBanner(`${WEAPONS[id].name}が さいだいレベルに パワーアップ！ でぐちから ちじょうへ`, 4200);
+    else this.showBanner(`${WEAPONS[id].name}を てに いれた！ あおい ボタンで モードを かえられるよ！ でぐちから ちじょうへ`, 4200);
   },
 
   /** レーザーじゅうの モードを かえる */
@@ -882,11 +887,12 @@ export const DadaSurvivorGame = {
       const w = WEAPONS[id];
       const dmg = weaponStat(id, 'damage', lv) * st.damage;
       if (w.fire === 'laser') {
-        const mid = LASER_MODES[r.laserMode] || LASER_MODES[0], mw = WEAPONS[mid], md = weaponStat(mid, 'damage', MAXLV) * st.damage;
-        if (!ready(id, weaponStat(mid, 'cooldown', MAXLV))) continue;
-        if (mw.fire === 'beam') this.fireBeam(mid, MAXLV, md);
-        else if (mw.fire === 'rocket') this.fireRockets(mid, MAXLV, md);
-        else this.fireBullets(mid, MAXLV, md);
+        // モードの ぶきは レーザーじゅうの レベルで うつ（ソルジャーは Lv1 から そだてる）
+        const mid = LASER_MODES[r.laserMode] || LASER_MODES[0], mw = WEAPONS[mid], md = weaponStat(mid, 'damage', lv) * st.damage;
+        if (!ready(id, weaponStat(mid, 'cooldown', lv))) continue;
+        if (mw.fire === 'beam') this.fireBeam(mid, lv, md);
+        else if (mw.fire === 'rocket') this.fireRockets(mid, lv, md);
+        else this.fireBullets(mid, lv, md);
         continue;
       }
       if (w.fire === 'bullet' || w.fire === 'spread') {

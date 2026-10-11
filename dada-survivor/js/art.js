@@ -88,6 +88,15 @@ const soldier = `
   <path d="M21 30 L28.5 31.2 M43 30 L35.5 31.2" fill="none" ${SW(2)}/>
   ${animeEye(24.5, 33.2, '#93c5fd')}${animeEye(39.5, 33.2, '#93c5fd')}`;
 
+// プレイヤーの ソルジャーは あおい レーザーじゅうを もつ（v1.11.0 こどもの リクエスト。なかま・ちりょうたいは soldier の まま）
+const laserSoldier = soldier
+  .replace('<path d="M6 59 L56 43" stroke="#26282d" stroke-width="3.6" stroke-linecap="round"/>',
+    '<path d="M6 59 L56 43" stroke="#2563eb" stroke-width="3.8" stroke-linecap="round"/><path d="M14 55.6 L52 43.4" stroke="#93c5fd" stroke-width="1.1" stroke-linecap="round"/>')
+  .replace('<path d="M4 60 L13 57 L15 62.5 L6 64Z" fill="#26282d"', '<path d="M4 60 L13 57 L15 62.5 L6 64Z" fill="#1e3a8a"')
+  .replace('<path d="M55 42 L61.5 40" stroke="#3f4249"', '<path d="M55 42 L61.5 40" stroke="#67e8f9"')
+  + `<rect x="44" y="45.2" width="5" height="3.2" rx="1" transform="rotate(-17.7 46.5 46.8)" fill="#22d3ee" stroke="#0c4a6e" stroke-width=".9"/>
+  <circle cx="62" cy="39.8" r="3" fill="#67e8f9" opacity=".75"/><circle cx="62" cy="39.8" r="1.4" fill="#fff"/>`;
+
 // ぶたいの なかま（じぶんと おなじ とくしゅぶたい。ヘルメットと ラインが あおい）
 const allySoldier = soldier
   .replace('<path d="M11 26 Q11 6 32 6 Q53 6 53 26 Q32 21 11 26Z" fill="#3a3d44"', '<path d="M11 26 Q11 6 32 6 Q53 6 53 26 Q32 21 11 26Z" fill="#2f4a73"')
@@ -925,7 +934,7 @@ const hero2 = {
 
 const SOURCES = {
   cat:   wrap(hero({ fur: '#c4844a', shade: '#7c3f12', inner: '#a16207', ear: 'cat', extra: whiskers })),
-  dog:   wrap(soldier), // id は セーブ互換のため dog のまま（絵と名前は にんげんの ソルジャー）
+  dog:   wrap(laserSoldier), // id は セーブ互換のため dog のまま（絵と名前は にんげんの ソルジャー・あおい レーザーじゅう）
   fox:   wrap(hero({ fur: '#c2410c', shade: '#7c2d12', inner: '#e7e5e4', ear: 'fox', muzzle: '#e7e5e4', extra: whiskers })),
   panda: wrap(hero({ fur: '#e7e5e4', shade: '#57534e', inner: '#a8a29e', ear: 'panda', muzzle: '#d6d3d1', patches: true })),
   ...Object.fromEntries(Object.entries(hero2).map(([k, v]) => [k, wrap(v)])),
