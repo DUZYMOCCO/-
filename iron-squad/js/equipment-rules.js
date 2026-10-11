@@ -1,6 +1,6 @@
-import {powerRank,MAX_EQUIPMENT_TIER,GENERATIONS} from './equipment-tiers.js?v=151';
-import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=151';
-import {WEAPON_STYLE_ICONS,weaponStyleOf} from './growth-rules.js?v=151';
+import {powerRank,MAX_EQUIPMENT_TIER,GENERATIONS} from './equipment-tiers.js?v=182';
+import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=182';
+import {WEAPON_STYLE_ICONS,weaponStyleOf} from './growth-rules.js?v=182';
 export const EQUIPMENT_TYPES = ['WEAPON','SHIELD','HELMET','ARMOR','GLOVES','LEGS','AMULET'];
 
 const GEAR_ICONS = {

@@ -2,7 +2,7 @@
 // ラベルは毎フレーム1回のパスでまとめて描く（フォントは1回だけ設定・幅はキャッシュ・配列は使い回し）。
 import {heroMembers} from './hero-rules.js';
 import {isOwnSquad} from './own-squad-marker.js';
-import {UNITS_PER_METER} from './distance-format.js?v=151';
+import {UNITS_PER_METER} from './distance-format.js?v=182';
 
 /** 本隊の名前は隊長からこの距離（1.6m＝画面の半分弱。6mだと画面全体が入るため）まで。最後の0.8mでふわっと消える。 */
 export const MAIN_NAME_RADIUS = 1.6 * UNITS_PER_METER;

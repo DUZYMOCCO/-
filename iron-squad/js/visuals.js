@@ -1,14 +1,14 @@
-import {givenName} from './squad-names.js?v=181';
-import {downLabel} from './casualty-rules.js?v=181';
-import {RANGED_ENEMIES} from './enemy-ranged.js?v=151';
-import {BRUTE_DRAW_SCALE} from './field-hosts.js?v=158';
-import {equipmentVisualProfile} from './equipment-tiers.js?v=151';
-import {drawBodyEquipment} from './equipment-art.js?v=151';
-import {MAGIC_AFFINITIES,ensureMana} from './magic-rules.js?v=151';
-import { drawMeleeWeapon, drawMeleeRangeCue } from './weapon-motion.js?v=162';
-import { defaultCommanderAppearance } from './commander-identity.js?v=175';
-import { createSoldierAppearance, drawSoldierHead, isMedicAppearance, soldierAppearanceFamily, soldierPhysique } from './soldier-appearance.js?v=151';
-import { classRegaliaFor, drawClassMantle, drawClassRegalia, drawClassHeadpiece } from './class-regalia.js?v=177';
+import {givenName} from './squad-names.js?v=182';
+import {downLabel} from './casualty-rules.js?v=182';
+import {RANGED_ENEMIES} from './enemy-ranged.js?v=182';
+import {BRUTE_DRAW_SCALE} from './field-hosts.js?v=182';
+import {equipmentVisualProfile} from './equipment-tiers.js?v=182';
+import {drawBodyEquipment} from './equipment-art.js?v=182';
+import {MAGIC_AFFINITIES,ensureMana} from './magic-rules.js?v=182';
+import { drawMeleeWeapon, drawMeleeRangeCue } from './weapon-motion.js?v=182';
+import { defaultCommanderAppearance } from './commander-identity.js?v=182';
+import { createSoldierAppearance, drawSoldierHead, isMedicAppearance, soldierAppearanceFamily, soldierPhysique } from './soldier-appearance.js?v=182';
+import { classRegaliaFor, drawClassMantle, drawClassRegalia, drawClassHeadpiece } from './class-regalia.js?v=182';
 
 // Keep the commander's established face, with short hair in both field and portrait (v4.2.24: player.appearance overrides it).
 const commanderAppearance=Object.freeze(defaultCommanderAppearance());

@@ -1,7 +1,7 @@
 // 158720 = 310 tiles of 512. Half-width 79360.
 // Base walk is 165px/s, so camp to the nearest edge is 481s (8 min 1s).
 // 10800 was about 33s and 21600 about 65s. Both were still a short walk.
-import {drawNaturalPond,terrainSeed} from './terrain-shapes.js?v=151';
+import {drawNaturalPond,terrainSeed} from './terrain-shapes.js?v=182';
 export const WORLD_SIZE = 158720;
 export const WORLD_VERSION = 4;
 const TILE = 512, CACHE_LIMIT = 24, CACHE_PIXELS = CACHE_LIMIT*TILE*TILE;

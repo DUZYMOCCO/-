@@ -1,15 +1,15 @@
-import {createSoldierAppearance,drawSoldierHead} from './soldier-appearance.js?v=151';
+import {createSoldierAppearance,drawSoldierHead} from './soldier-appearance.js?v=182';
 const colors={child:['#a88959','#667f89','#8b6e71'],woman:['#987c7b','#687f74','#867654'],elder:['#777b60','#887660','#6b787d']};
 function identity(id) {let n=2166136261;for(const ch of String(id)){n^=ch.charCodeAt(0);n=Math.imul(n,16777619);}return n>>>0;}
 function look(civ) {
   const n=identity(civ.id),female=civ.kind==='woman'||(civ.kind==='child'&&n%2===0);
   if(!civ.appearance) {
-    civ.appearance=createSoldierAppearance(`civilian:${civ.id}`);
+    civ.appearance=createSoldierAppearance(`civilian:${civ.id}`,female?'female':'male');
     Object.assign(civ.appearance,{scar:false,handsome:false,facialHair:'none'});
     if(civ.kind==='child')Object.assign(civ.appearance,{faceShape:'round',hairStyle:n%3?'swept':'buzz',glasses:'none'});
     if(civ.kind==='elder')Object.assign(civ.appearance,{hairStyle:n%2?'horseshoe':'bald',hairColor:'#85827b',facialHair:'chin',glasses:n%3?'round':'none'});
   }
-  return {n,female,face:{id:civ.id,appearance:civ.appearance,soldierClass:female?'MEDIC':'LIGHT'}};
+  return {n,female,face:{id:civ.id,gender:female?'female':'male',appearance:civ.appearance,soldierClass:female?'MEDIC':'LIGHT'}};
 }
 const shape=(c,p,color)=>{c.fillStyle=color;c.strokeStyle='#353931';c.lineWidth=.8;c.beginPath();p.forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y));c.closePath();c.fill();c.stroke();};
 const stroke=(c,p,color,width)=>{c.strokeStyle=color;c.lineWidth=width;c.lineCap='round';c.beginPath();p.forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y));c.stroke();};

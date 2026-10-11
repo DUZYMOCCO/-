@@ -1,5 +1,5 @@
 /** Field loot art — v177. Material and manufacturing stage come from the real equipment tier. */
-import { materialTier, generation, tierNumber } from './equipment-tiers.js?v=177';
+import { materialTier, generation, tierNumber } from './equipment-tiers.js?v=182';
 
 const PALETTES = [
   { body:'#795538', dark:'#463326', lid:'#a17c51', edge:'#392b24', trim:'#bb9871', light:'#d5b68b' },

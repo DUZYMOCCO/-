@@ -1,10 +1,10 @@
-import {ECONOMIC_REGIONS,PUBLIC_WORKS,ECONOMIC_RULES} from './regional-economy.js?v=151';
+import {ECONOMIC_REGIONS,PUBLIC_WORKS,ECONOMIC_RULES} from './regional-economy.js?v=182';
 const visible=(game,x,y,r=250)=>Math.abs(x-game.camera.x)<game.width/(2*(game.zoom||1))+r&&Math.abs(y-game.camera.y)<game.height/(2*(game.zoom||1))+r;
 const ellipse=(c,x,y,rx,ry,color)=>{c.fillStyle=color;c.beginPath();c.ellipse(x,y,rx,ry,0,0,Math.PI*2);c.fill();};
-import {drawSettlementQuarter} from './settlement-visuals.js?v=162';
+import {drawSettlementQuarter} from './settlement-visuals.js?v=182';
 export {drawSettlementQuarter};
-export {drawCampTent} from './settlement-visuals.js?v=162';
-export {drawCommerceActor,drawCommerceWreck} from './commerce-visuals.js?v=162';
+export {drawCampTent} from './settlement-visuals.js?v=182';
+export {drawCommerceActor,drawCommerceWreck} from './commerce-visuals.js?v=182';
 
 export function drawEconomicLandscape(ctx,game) {
   if(game.currentDungeon)return;

@@ -4,7 +4,7 @@ export const PHASE_DURATION = 120;
 export const REST_DURATION = 8;
 export const DEATHLINE_DOWN_THRESHOLD = 10;
 /** Legacy name denotes the minimum basic pay; quotes include growth and maintenance. */
-export {SOLDIER_SALARY} from './payroll-rules.js?v=151';
+export {SOLDIER_SALARY} from './payroll-rules.js?v=182';
 export const MIN_REINFORCEMENTS = 5;
 export const emptyActivity = () => ({combatActions: 0, healingDone: 0, downs:0});
 

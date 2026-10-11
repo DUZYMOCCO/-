@@ -1,7 +1,7 @@
-import {WORLD_SIZE,fieldBlocks} from './world.js?v=151';
-import {inCurrentInstance} from './instance-rules.js?v=151';
+import {WORLD_SIZE,fieldBlocks} from './world.js?v=182';
+import {inCurrentInstance} from './instance-rules.js?v=182';
 import {isSoldierOnExpedition} from './expedition-rules.js';
-import {generateSoldierName} from './soldier-names.js?v=151';
+import {generateSoldierName} from './soldier-names.js?v=182';
 export const LIMITED_CLASSES=Object.freeze({
  NINJA:{id:'NINJA',name:'忍者',icon:'🥷',baseClassId:'LIGHT',combatClass:'LIGHT',color:'#8e97ac',range:250,speed:136,atkCooldown:.75,bonusHp:5,bonusAtk:12,desc:'刀と手裏剣を間合いに応じて使い分ける。'},
  BEAST_WOLF:{id:'BEAST_WOLF',name:'狼獣人',icon:'🐺',species:'wolf',baseClassId:'LIGHT',combatClass:'LIGHT',color:'#9cabb0',range:65,speed:122,atkCooldown:.85,bonusHp:15,bonusAtk:15,desc:'近接戦と追跡に長けた獣人。'},
@@ -27,7 +27,7 @@ export function createLimitedAlly(game,classId,origin) {
  const s=game.createNewSoldier(null,{classKey:def.combatClass});
  s.soldierClass=classId;s.combatClass=def.combatClass;s.species=def.species||null;s.limitedOrigin=origin;s.isNamed=true;
  let nameSeed=0;for(const ch of s.id)nameSeed=(nameSeed*31+ch.charCodeAt(0))>>>0;
- s.name=generateSoldierName({soldierClass:classId,species:def.species||null,seed:nameSeed});
+ s.name=generateSoldierName({soldierClass:classId,species:def.species||null,seed:nameSeed,gender:s.gender});
  // Each people has a tendency; individual aptitude rolls and rare talents remain intact.
  const p=s.attributeProfile;if(classId==='NINJA'||classId==='BEAST_CAT')p.aptitudes.quickness=Math.min(3,p.aptitudes.quickness*1.35);
  if(classId==='NINJA'){

@@ -4,12 +4,12 @@
  * 脱出は常に x=180, y=height/2。至宝はボスか番兵を倒したあと、x=width-240。
  */
 
-import {LIMITED_SETTLEMENTS,drawLimitedEntrance} from './limited-allies.js?v=151';
+import {LIMITED_SETTLEMENTS,drawLimitedEntrance} from './limited-allies.js?v=182';
 import { WORLD_SIZE, SETTLEMENTS } from './world.js';
-import {chooseLootTier} from './equipment-rules.js?v=158';
-import {drawTreasureChest} from './loot-visuals.js?v=181';
-import {explorationLayout,explorationBlocks} from './dungeon-layout.js?v=179';
-import {drawExplorationInterior} from './dungeon-interior-visuals.js?v=179';
+import {chooseLootTier} from './equipment-rules.js?v=182';
+import {drawTreasureChest} from './loot-visuals.js?v=182';
+import {explorationLayout,explorationBlocks} from './dungeon-layout.js?v=182';
+import {drawExplorationInterior} from './dungeon-interior-visuals.js?v=182';
 
 const CENTER = WORLD_SIZE / 2;
 

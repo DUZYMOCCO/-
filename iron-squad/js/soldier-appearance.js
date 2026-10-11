@@ -1,6 +1,6 @@
-import {equipmentVisualProfile} from './equipment-tiers.js?v=151';
-import {isMuscleCaster} from './unit-attributes.js?v=151';
-import {classRegaliaFor,drawClassPortraitDress,drawClassHeadpiece} from './class-regalia.js?v=177';
+import {equipmentVisualProfile} from './equipment-tiers.js?v=182';
+import {isMuscleCaster} from './unit-attributes.js?v=182';
+import {classRegaliaFor,drawClassPortraitDress,drawClassHeadpiece} from './class-regalia.js?v=182';
 /** Stable personal looks, independent of talent, battle RNG and equipment. */
 export const HAIR_LABELS = Object.freeze({
   barcode:'バーコード', bald:'丸ハゲ', mohawk:'モヒカン', sidebald:'サイドハゲ',
@@ -23,6 +23,15 @@ const MEDICS=new Set(['MEDIC','HIGH_PRIEST','SAINT','ARCHANGEL']);
 const ARCHERS=new Set(['ARCHER','SNIPER','STORM_BOW','STAR_HUNTER']);
 const LIGHTS=new Set(['LIGHT','BLADEMASTER','SWORD_EMPEROR','VOID_EDGE']);
 export const isMedicAppearance = key => MEDICS.has(key);
+/** v5.0.1: 見た目の男女は兵士の gender（なければ appearance.feminine、非兵士の顔だけ衛生兵の兵種）から1か所で決める。 */
+/** 兵士の性別（gender が無い古いデータ・非兵士の顔は見た目から）。 */
+export const soldierGender=soldier=>isFeminineLook(soldier)?'female':'male';
+export function isFeminineLook(soldier,a=soldier?.appearance) {
+  if(soldier?.gender==='female')return true;
+  if(soldier?.gender==='male')return false;
+  if(typeof a?.feminine==='boolean')return a.feminine;
+  return isMedicAppearance(soldier?.soldierClass);
+}
 const MAGES=new Set(['MAGE','ARCHMAGE','ELEMENTAL_SAGE','ARCANE_SOVEREIGN']);
 const LIMITED_FAMILIES={NINJA:'LIGHT',BEAST_WOLF:'LIGHT',BEAST_CAT:'LIGHT',BEAST_BEAR:'HEAVY',BEAST_FOX:'MAGE',BEAST_BIRD:'ARCHER'};
 export const soldierAppearanceFamily = key => LIMITED_FAMILIES[key]||(MAGES.has(key)?'MAGE':MEDICS.has(key)?'MEDIC':ARCHERS.has(key)?'ARCHER':LIGHTS.has(key)?'LIGHT':'HEAVY');
@@ -52,11 +61,11 @@ function createFemaleBeauty(identity) {
   return {beautiful:random()<APPEARANCE_RULES.rareFemaleBeautyChance,eyeColor:EYE_COLORS[Math.floor(random()*EYE_COLORS.length)]};
 }
 
-export function createSoldierAppearance(identity) {
+export function createSoldierAppearance(identity,gender=null) {
   const random=seededIdentity(`iron-face-v1:${identity}`),pick=values=>values[Math.floor(random()*values.length)];
   const handsome=random()<.06;random(); // Preserve the v1 draw positions for the existing face and colors.
   const hairStyle=createHairStyle(identity,handsome);
-  return {
+  const look={
     version:1,handsome,hairStyle,skin:pick(SKINS),hairColor:pick(HAIRS),
     faceShape:handsome?'angular':pick(['round','square','long']),
     eyes:handsome?'sharp':pick(['flat','droopy','sharp']),brow:Math.floor(random()*3),
@@ -66,24 +75,28 @@ export function createSoldierAppearance(identity) {
     medicHairColor:pick(MEDIC_HAIRS),medicAccessory:pick(['clip','ribbon','none']),
     ...createEyewear(identity),...createFemaleBeauty(identity)
   };
+  if(gender==='female'||gender==='male')look.feminine=gender==='female';
+  if(look.feminine===true){look.facialHair='none';look.scar=false;}
+  else if(look.feminine===false){look.beautiful=false;}
+  return look;
 }
 
 export function ensureSoldierAppearance(soldier) {
   const a=soldier.appearance;
-  if(a?.version===1 && HAIR_LABELS[a.hairStyle] && SKINS.includes(a.skin) && ANY_HAIR.includes(a.hairColor) && MEDIC_STYLES[a.medicHair] && ANY_HAIR.includes(a.medicHairColor)) {
+  if(a?.version===1 && (typeof a.feminine!=='boolean'||!(soldier.gender==='male'||soldier.gender==='female')||a.feminine===(soldier.gender==='female')) && HAIR_LABELS[a.hairStyle] && SKINS.includes(a.skin) && ANY_HAIR.includes(a.hairColor) && MEDIC_STYLES[a.medicHair] && ANY_HAIR.includes(a.medicHairColor)) {
     if(!(a.glasses in GLASSES_LABELS) || !FRAME_COLORS.includes(a.glassesColor))Object.assign(a,createEyewear(soldier.id || `${soldier.name || 'soldier'}:${soldier.platoonId || 0}`));
     // Already assigned people retain their face, hair and styling across updates.
     if(typeof a.beautiful!=='boolean')a.beautiful=false;
     if(!EYE_COLORS.includes(a.eyeColor))a.eyeColor=EYE_COLORS[3];
     return a;
   }
-  soldier.appearance=createSoldierAppearance(soldier.id || `${soldier.name || 'soldier'}:${soldier.platoonId || 0}`);
+  soldier.appearance=createSoldierAppearance(soldier.id || `${soldier.name || 'soldier'}:${soldier.platoonId || 0}`,soldier.gender);
   return soldier.appearance;
 }
 
 export function describeSoldierAppearance(soldier) {
   const a=ensureSoldierAppearance(soldier);
-  if(isMedicAppearance(soldier.soldierClass))return [MEDIC_STYLES[a.medicHair],a.beautiful?'華やかな顔立ち':'やわらかな表情',GLASSES_LABELS[a.glasses]].filter(Boolean).join(' · ');
+  if(isFeminineLook(soldier,a))return [MEDIC_STYLES[a.medicHair],a.beautiful?'華やかな顔立ち':'やわらかな表情',GLASSES_LABELS[a.glasses]].filter(Boolean).join(' · ');
   const beard={none:'',stubble:'無精ひげ',mustache:'口ひげ',chin:'あごひげ'}[a.facialHair];
   return [HAIR_LABELS[a.hairStyle],a.handsome?'端正な顔立ち':FACES[a.faceShape],beard,GLASSES_LABELS[a.glasses]].filter(Boolean).join(' · ');
 }
@@ -184,7 +197,7 @@ export function drawSoldierHead(c,soldier,options={}) {
   const {x=0,y=0,scale=1,small=false,silhouette=false,helmet=null,helmetTier=1,mitre=false,cap=false}=options;
   if(!small||silhouette||typeof c.canvas?.width!=='number'||(typeof document==='undefined'||typeof document.createElement!=='function'))return paintSoldierHead(c,soldier,options);
   const a=ensureSoldierAppearance(soldier);
-  const key=JSON.stringify([a,isMedicAppearance(soldier.soldierClass)||!!a.feminine,soldier.species,soldier.soldierClass==='NINJA',helmet,helmetTier,mitre,cap]);
+  const key=JSON.stringify([a,isFeminineLook(soldier,a),soldier.species,soldier.soldierClass==='NINJA',helmet,helmetTier,mitre,cap]);
   let art=FIELD_HEADS.get(key);
   try{if(art?.getContext?.('2d')?.isContextLost?.()){art.width=art.height=1;FIELD_HEADS.delete(key);art=null;}}catch{art=null;}
   if(!art){
@@ -200,7 +213,7 @@ export function drawSoldierHead(c,soldier,options={}) {
 
 /** Head centered on (x,y); far silhouettes remain direct, cheap primitives. */
 function paintSoldierHead(c,soldier,{x=0,y=0,scale=1,small=false,silhouette=false,helmet=null,helmetTier=1,mitre=false,cap=false}={}) {
-  const a=ensureSoldierAppearance(soldier),medic=isMedicAppearance(soldier.soldierClass)||!!a.feminine;
+  const a=ensureSoldierAppearance(soldier),medic=isFeminineLook(soldier,a);
   if(soldier.species||soldier.soldierClass==='NINJA'){
     c.save();c.translate(x,y);c.scale(scale,scale);
     const fur={wolf:'#899a9d',bear:'#8e7255',cat:'#b79b82',fox:'#c78d55',bird:'#99a99d'}[soldier.species]||'#333b4c';
@@ -297,7 +310,7 @@ function paintSoldierHead(c,soldier,{x=0,y=0,scale=1,small=false,silhouette=fals
   } else if(mitre) {
     polygon(c,[[-5,-3],[-4,-10],[0,-15],[4,-10],[5,-3]],'#d8ceb4');
     stroke(c,[[0,-12],[0,-4]],'#aa8d62',.8);stroke(c,[[-3,-6],[3,-6]],'#aa8d62',.8);
-  } else if(cap&&medic) {
+  } else if(cap) {
     polygon(c,[[-4,-4],[-3.5,-6.5],[3.5,-6.5],[4,-4]],'#dedac9');
     c.fillStyle='#a4645c';c.fillRect(-.35,-6, .7,1.6);c.fillRect(-1,-5.5,2,.6);
   }

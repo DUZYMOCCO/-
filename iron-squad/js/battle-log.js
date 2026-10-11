@@ -1,4 +1,4 @@
-import { AMMO_CAPACITY, isRangedUnit } from './supply-rules.js?v=151';
+import { AMMO_CAPACITY, isRangedUnit } from './supply-rules.js?v=182';
 
 export const BATTLE_LOG_LIMIT = 100;
 const FIELD_HALF = 0.5;

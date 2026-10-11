@@ -1,5 +1,5 @@
-import {createSoldierAppearance,drawSoldierHead} from './soldier-appearance.js?v=151';
-import {drawFieldSoldier} from './visuals.js?v=181';
+import {createSoldierAppearance,drawSoldierHead} from './soldier-appearance.js?v=182';
+import {drawFieldSoldier} from './visuals.js?v=182';
 
 const looks=new WeakMap();
 const ellipse=(c,x,y,rx,ry,color)=>{c.fillStyle=color;c.beginPath();c.ellipse(x,y,rx,ry,0,0,Math.PI*2);c.fill();};
@@ -9,7 +9,7 @@ function identity(id){let n=2166136261;for(const ch of String(id)){n=Math.imul(n
 function appearance(actor){
   let look=looks.get(actor);if(look)return look;
   const n=identity(actor.id||`${actor.role}:${actor.name||''}`),female=actor.role==='traveler'&&n%3===0;
-  const face={id:`trade:${actor.id||actor.role}`,soldierClass:female?'MEDIC':'LIGHT',appearance:createSoldierAppearance(`trade:${actor.id||actor.role}`)};
+  const face={id:`trade:${actor.id||actor.role}`,soldierClass:female?'MEDIC':'LIGHT',appearance:createSoldierAppearance(`trade:${actor.id||actor.role}`,female?'female':'male'),gender:female?'female':'male'};
   const colors=['#8a7353','#637b71','#787184','#896956'];
   look={n,female,face,cloth:colors[n%colors.length],guard:{...face,soldierClass:'HEAVY',equipped:{
     weapon:{tier:9,weaponStyle:'spear'},helmet:{tier:9},armor:{tier:9},shield:{tier:9},legs:{tier:6},gloves:{tier:6}

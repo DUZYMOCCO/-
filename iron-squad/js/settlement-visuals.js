@@ -1,4 +1,4 @@
-import {ECONOMIC_REGIONS} from './regional-economy.js?v=151';
+import {ECONOMIC_REGIONS} from './regional-economy.js?v=182';
 
 const ellipse=(c,x,y,rx,ry,color)=>{c.fillStyle=color;c.beginPath();c.ellipse(x,y,rx,ry,0,0,Math.PI*2);c.fill();};
 const shape=(c,p,color,edge=null)=>{c.fillStyle=color;c.beginPath();p.forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y));c.closePath();c.fill();if(edge){c.strokeStyle=edge;c.lineWidth=.8;c.stroke();}};

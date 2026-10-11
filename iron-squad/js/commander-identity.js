@@ -1,6 +1,6 @@
 // v4.2.24: 隊長（主人公）の名前・性別・見た目。保存先は game.player.{familyName,givenName,gender,appearance}。
-import {createSoldierAppearance,HAIR_LABELS,MEDIC_STYLES,SKINS,HAIRS,MEDIC_HAIRS,EYE_COLORS,FRAME_COLORS} from './soldier-appearance.js?v=151';
-import {randomGivenName,randomFamilyName} from './soldier-names.js?v=151';
+import {createSoldierAppearance,HAIR_LABELS,MEDIC_STYLES,SKINS,HAIRS,MEDIC_HAIRS,EYE_COLORS,FRAME_COLORS} from './soldier-appearance.js?v=182';
+import {randomGivenName,randomFamilyName} from './soldier-names.js?v=182';
 
 export const GENDERS=Object.freeze({male:'男',female:'女'});
 export const NAME_MAX=12;

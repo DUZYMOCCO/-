@@ -1,4 +1,4 @@
-import {catalogTier,catalogPrice,ensureMerchantCatalog,MERCHANT_MAX_TIER,MERCHANT_CATALOG_VERSION} from './merchant-catalog.js?v=151';
+import {catalogTier,catalogPrice,ensureMerchantCatalog,MERCHANT_MAX_TIER,MERCHANT_CATALOG_VERSION} from './merchant-catalog.js?v=182';
 import {applyAttributeStats} from './unit-attributes.js';
 /**
  * IRON SQUAD: 宿場・本陣・各地のキャンプの行商人
@@ -6,12 +6,12 @@ import {applyAttributeStats} from './unit-attributes.js';
  * - 強い護衛付き。放置するとモンスターに襲われ死亡しうる
  * - 護衛が倒した強敵のドロップを序盤から掠め取れるチャンス
  */
-import { saleValue, distanceScaling, weaponCombatProfile } from './equipment-rules.js?v=151';
-import { drawFieldSoldier } from './visuals.js?v=181';
-import { createSoldierAppearance, drawSoldierHead } from './soldier-appearance.js?v=151';
-import { attackAnimationRate } from './weapon-motion.js?v=151';
-import { markSoldierDown, rebuildMerchantCasualties, RESCUE_TIMEOUT } from './casualty-rules.js?v=181';
-import {emptyMastery,normalizeMastery,hitGrowthMult,applyHitGrowth,masteryAtkMult,masteryReloadMult} from './growth-rules.js?v=151';
+import { saleValue, distanceScaling, weaponCombatProfile } from './equipment-rules.js?v=182';
+import { drawFieldSoldier } from './visuals.js?v=182';
+import { createSoldierAppearance, drawSoldierHead } from './soldier-appearance.js?v=182';
+import { attackAnimationRate } from './weapon-motion.js?v=182';
+import { markSoldierDown, rebuildMerchantCasualties, RESCUE_TIMEOUT } from './casualty-rules.js?v=182';
+import {emptyMastery,normalizeMastery,hitGrowthMult,applyHitGrowth,masteryAtkMult,masteryReloadMult} from './growth-rules.js?v=182';
 import {recordCombat,finishExperience} from './phase-rules.js';
 
 export const MERCHANT_PRICE_MULT = 3.2; // 相場の約3.2倍（高め）
@@ -34,11 +34,12 @@ export const campHasMerchant = (seed,id) => campRoll(seed,id)<CAMP_MERCHANT_CHAN
 
 function prepareMerchant(m) {
   m.isMerchant=true;m.soldierClass='MERCHANT';m.respawnDelay=MERCHANT_RESPAWN_SEC;
-  m.appearance ||= createSoldierAppearance(`${m.id}:merchant`);
+  const female=/ミレイ|ネラ/.test(m.name||'');
+  m.appearance ||= createSoldierAppearance(`${m.id}:merchant`,female?'female':'male');
   m.homeX ??= m.x;m.homeY ??= m.y;
   const colors=['#937650','#6a7861','#887063','#5c7780'];
   m.coatColor=colors[Math.floor(campRoll(0,`${m.id}:coat`)*colors.length)];
-  m._faceActor={id:m.id,appearance:m.appearance,soldierClass:/ミレイ|ネラ/.test(m.name)?'MEDIC':'LIGHT'};
+  m._faceActor={id:m.id,appearance:m.appearance,gender:female?'female':'male',soldierClass:female?'MEDIC':'LIGHT'};
   return m;
 }
 
@@ -96,7 +97,7 @@ export function makeEscort(merchant, index, phase = 1) {
     weaponMastery:emptyMastery(),favoriteWeapon:index===0?'spear':'hammer',atkSpeed:1,
     escortBaseStats:{hp:st.hp,atk:st.atk,def:st.def,speed:st.speed,dmgReduction:st.dmgReduction},
     equipped:{weapon:{id:`${merchant.id}_guard_weapon_${index}`,weaponStyle:index===0?'spear':'hammer',stats:{}}},
-    appearance: createSoldierAppearance(`${merchant.id}_escort_${index}`),
+    gender: 'male', appearance: createSoldierAppearance(`${merchant.id}_escort_${index}`,'male'),
     // Illustration equipment is separate from combat stats and loot rules.
     displayEquipment: {
       weapon:{weaponStyle:index===0?'spear':'axe',color:'#bdc5c2'},
