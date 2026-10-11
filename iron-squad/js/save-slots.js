@@ -1,13 +1,13 @@
 import { storage } from '../../common/js/storage.js';
 
 const KEY = 'ironsquad_save_slots_v1';
-export const RULES_VERSION = 4;
+export const RULES_VERSION = 5;
 export const saveSlots = {
   list() {
     const existing = storage.get(KEY, null);
     if (storage.get('ironsquad_rules_version', 0) === RULES_VERSION && Array.isArray(existing)
         && existing.every(slot=>slot.rulesVersion===RULES_VERSION)) return existing;
-    // The user authorized retiring all saves from the previous combat rules.
+    // The user authorized retiring all old saves for the traveler/tavern rules.
     const current = (Array.isArray(existing) ? existing : []).filter(slot => slot.rulesVersion === RULES_VERSION);
     if (!storage.set(KEY, current)) throw new Error('セーブ一覧を保存できません。ブラウザの空き容量を確認してください。');
     if (!storage.remove('ironsquad_save_data_v3') || !storage.remove('ironsquad_veterans_backup')) {

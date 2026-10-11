@@ -1,6 +1,6 @@
 // v4.2.24: 隊長づくり／身だしなみの全画面シート（細い固定バー＋1つのスクロール）。
-import {drawSoldierPortrait} from './soldier-appearance.js?v=193';
-import {drawFieldCommander} from './visuals.js?v=193';
+import {drawSoldierPortrait} from './soldier-appearance.js?v=195';
+import {drawFieldCommander} from './visuals.js?v=195';
 import {GENDERS,MALE_HAIR_STYLES,FEMALE_HAIR_STYLES,HAIR_CHOICE_LABELS,FEMALE_HAIR_LABELS,HAIR_COLORS,SKIN_COLORS,EYE_COLOR_CHOICES,BEARDS,GLASSES,
   NAME_MAX,cleanName,buildCommanderAppearance,choicesFromAppearance,normalizeCommanderIdentity,randomCommanderIdentity,
   FACE_OUTLINES,EYE_SHAPES,NOSE_TYPES,JAW_TYPES,ACCESSORY_LABELS} from './commander-identity.js?v=193';
@@ -14,6 +14,7 @@ const el=(tag,cls,text)=>{const e=document.createElement(tag);if(cls)e.className
  */
 export function openCommanderEditor({host,mode='create',initial=null,onConfirm,onCancel}) {
   const edit=mode==='edit';
+  const civilianOutfit=!edit||!!initial?.civilianOutfit;
   const start=edit&&initial?normalizeCommanderIdentity(initial):null;
   // 新規は男の子・今までの見た目・おまかせ名前から始める。既存隊長は今の設定から始める。
   const state=start?{familyName:start.familyName,givenName:start.givenName,gender:start.gender||'male',
@@ -75,13 +76,13 @@ export function openCommanderEditor({host,mode='create',initial=null,onConfirm,o
   function paint() {
     const a=current();
     const ratio=Math.min(3,window.devicePixelRatio||1);
-    const person={id:'commander',soldierClass:'COMMANDER',appearance:a};
+    const person={id:'commander',soldierClass:'COMMANDER',appearance:a,civilianOutfit};
     for(const [canvas,w,h] of [[bust,120,132],[full,112,128]]) {canvas.style.width=`${w}px`;canvas.style.height=`${h}px`;canvas.width=Math.round(w*ratio);canvas.height=Math.round(h*ratio);}
     const bc=bust.getContext('2d');
     if(bc){bc.setTransform(ratio,0,0,ratio,0,0);drawSoldierPortrait(bc,person,120,132,{compact:false});}
     const fc=full.getContext('2d');
     if(fc){fc.setTransform(ratio,0,0,ratio,0,0);fc.fillStyle='#17242c';fc.fillRect(0,0,112,128);fc.save();fc.translate(56,92);fc.scale(2,2);
-      drawFieldCommander(fc,{x:0,y:0,hp:1,maxHp:1,level:1,facingAngle:0,slashAngle:0,slashAnim:0,appearance:a},{},0,0,'',false,true);fc.restore();}
+      drawFieldCommander(fc,{x:0,y:0,hp:1,maxHp:1,level:1,facingAngle:0,slashAngle:0,slashAnim:0,appearance:a,civilianOutfit},{},0,0,'',false,true);fc.restore();}
     const n=state.givenName&&state.familyName?`${state.givenName}・${state.familyName}`:state.givenName||state.familyName||'名前はおまかせ';
     nameLabel.textContent=`${n}（${GENDERS[state.gender]}）`;
   }

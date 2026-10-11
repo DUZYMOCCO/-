@@ -1,4 +1,4 @@
-import {salaryQuote,salaryFundingContext} from './payroll-rules.js?v=187';
+import {salaryQuote,salaryFundingContext} from './payroll-rules.js?v=195';
 import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=182';
 import {economicHonorBudget} from './regional-economy.js?v=182';
 import {talentTag as talentLabel} from './talent-labels.js?v=182';

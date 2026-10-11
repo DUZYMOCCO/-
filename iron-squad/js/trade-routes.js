@@ -1,4 +1,4 @@
-import {WORLD_SIZE} from './world.js?v=182';
+import {WORLD_SIZE} from './world.js?v=196';
 import {wallBlocksAttack} from './gate-rules.js?v=191';
 import {ECONOMIC_REGIONS,PUBLIC_WORKS,ECONOMIC_RULES,economicState,discoverEconomicRegions,tickEconomicConstruction,economicFieldBlocked,localProduction,recordEconomicKill} from './regional-economy.js?v=182';
 import {peaceContainment} from './peace-zones.js?v=182';

@@ -1,5 +1,5 @@
 import {givenName} from './squad-names.js?v=182';
-import {downLabel} from './casualty-rules.js?v=187';
+import {downLabel} from './casualty-rules.js?v=196';
 import {RANGED_ENEMIES} from './enemy-ranged.js?v=187';
 import {BRUTE_DRAW_SCALE} from './field-hosts.js?v=182';
 import {equipmentVisualProfile} from './equipment-tiers.js?v=187';
@@ -7,7 +7,8 @@ import {drawBodyEquipment,drawEquipmentShield} from './equipment-art.js?v=188';
 import {MAGIC_AFFINITIES,ensureMana} from './magic-rules.js?v=187';
 import { drawMeleeWeapon, drawMeleeRangeCue, drawRangedWeapon, drawWeaponArms, meleePose, rangedPose } from './weapon-motion.js?v=189';
 import { defaultCommanderAppearance } from './commander-identity.js?v=193';
-import { createSoldierAppearance, drawSoldierHead, isMedicAppearance, soldierAppearanceFamily, soldierPhysique } from './soldier-appearance.js?v=193';
+import {travelerClothes,drawTravelerTunic} from './traveler-clothes.js?v=195';
+import { createSoldierAppearance, drawSoldierHead, isMedicAppearance, soldierAppearanceFamily, soldierPhysique } from './soldier-appearance.js?v=195';
 import { classRegaliaFor, drawClassMantle, drawClassRegalia, drawClassHeadpiece } from './class-regalia.js?v=185';
 
 // Keep the commander's established face, with short hair in both field and portrait (v4.2.24: player.appearance overrides it).
@@ -338,15 +339,17 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod, displa
     drawLevelMark(c, s, now);
     return;
   }
-  const key = s.soldierClass || 'HEAVY', eq = displayEquipment || s.equipped || {};
-  const medic = isMedicAppearance(key);
+  const key = s.soldierClass || 'HEAVY', civilian=!!s.civilianOutfit,ownedEquipment=displayEquipment||s.equipped||{};
+  const eq=civilian?{...ownedEquipment,helmet:null,armor:null,legs:null,gloves:null}:ownedEquipment;
+  const medic = !civilian&&isMedicAppearance(key);
   const physique=soldierPhysique(s),muscular=physique.bodyWidth>1;
   const family = cls.baseClassId || soldierAppearanceFamily(key);
   const mage=family==='MAGE';if(mage)ensureMana(s);
   const spellColor=mage?MAGIC_AFFINITIES[s.magicAffinity].color:null;
   const advanced = !!cls.isAdvanced;
-  const regalia=classRegaliaFor(s);
-  const cloth = fieldTone(regalia?.cloth || CLOTH[key] || CLOTH[family] || CLOTH.HEAVY, 0.34);
+  const regalia=civilian?null:classRegaliaFor(s);
+  const travelLook=civilian?travelerClothes(s.id):null;
+  const cloth = fieldTone(travelLook?.cloth || regalia?.cloth || CLOTH[key] || CLOTH[family] || CLOTH.HEAVY, 0.34);
   const armorColor=fieldTone(equipmentVisualProfile(eq.armor).color||cloth,.2);
   const steel = fieldTone(equipmentVisualProfile(eq.helmet).color || (advanced ? '#d1c4a3' : '#9daab0'), 0.26);
   const legs = fieldTone(equipmentVisualProfile(eq.legs).color || '#5c564c', 0.42);
@@ -445,14 +448,14 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod, displa
   c.beginPath();c.moveTo(-5+stride,-1);c.lineTo(-2+stride,-1);c.lineTo(1+stride,2);c.lineTo(1+stride,3);c.lineTo(-6+stride,3);
   c.moveTo(2-stride,-1);c.lineTo(5-stride,-1);c.lineTo(8-stride,2);c.lineTo(8-stride,3);c.lineTo(1-stride,3);c.fill();
   // Rounded shoulders and cloth folds are static; legs retain their stride.
-  drawUniform(c,cloth,platoonColor);
+  if(civilian)drawTravelerTunic(c,{...travelLook,cloth});else drawUniform(c,cloth,platoonColor);
   if (medic && advanced) {
     shape(c,[[-6,-17],[-9,1],[7,1],[5,-17]],'#c6bc9c');
     line(c,[[-3,-14],[-5,-1],[3,-14],[4,-1]],'#eee3c2',1.3);
     c.fillStyle='#a18765'; c.fillRect(-2,-19,3,19);
   }
-  if(mage){shape(c,[[-6,-19],[-9,1],[8,1],[5,-19]],'#685875');line(c,[[-4,-18],[-5,-2],[5,-18],[6,-2]],spellColor,1.1);c.fillStyle='#b1a389';c.fillRect(-6,-10,12,2);}
-  if (light) {
+  if(mage&&!civilian){shape(c,[[-6,-19],[-9,1],[8,1],[5,-19]],'#685875');line(c,[[-4,-18],[-5,-2],[5,-18],[6,-2]],spellColor,1.1);c.fillStyle='#b1a389';c.fillRect(-6,-10,12,2);}
+  if (light&&!civilian) {
     line(c,[[-5,-21],[4,-9]],'#c8b797',2);
     line(c,[[-5,-19],[3,-10]],'#5c4633',.7);
     c.fillStyle='#624d38'; c.fillRect(-7,-12,3,5);
@@ -463,7 +466,7 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod, displa
   }
   drawBodyEquipment(c,eq,{armorColor,legColor:legs,role:family,stride});
   drawClassRegalia(c,regalia);
-  if(s.isCommander){line(c,[[-5,-22],[4,-10]],advanced?'#d2bb83':'#b7bda8',1.5);}
+  if(s.isCommander&&!civilian){line(c,[[-5,-22],[4,-10]],advanced?'#d2bb83':'#b7bda8',1.5);}
   c.restore();
   // Hands, face and headwear, with a restrained highlight on the upper edge.
   if(heldPose){
@@ -479,7 +482,7 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod, displa
   drawSoldierHead(c,s,{y:-28,small:true,helmet:eq.helmet?steel:null,helmetTier:eq.helmet?.tier||1,
     mitre:medic&&advanced,cap:medic&&!advanced});
   if(mage){
-    if(!eq.helmet){shape(c,[[-8,-32],[0,-44],[7,-32]],'#62536e');line(c,[[-9,-32],[9,-32]],'#9f8caa',2);}
+    if(!civilian&&!eq.helmet){shape(c,[[-8,-32],[0,-44],[7,-32]],'#62536e');line(c,[[-9,-32],[9,-32]],'#9f8caa',2);}
     const recovering=!!s.magicRecovering;shape(c,[[-9,-16],[-4,-15],[-4,-7],[-10,-8]],'#a2957a');
     if(!s.portrait && c.showBattleLabels!==false){c.fillStyle='#282535';c.fillRect(-13,-49,26,2);c.fillStyle=spellColor;c.fillRect(-13,-49,26*s.mana/s.maxMana,2);}
     if(recovering){c.fillStyle='#c1b6d1';c.font='10px sans-serif';c.textAlign='center';c.fillText('瞑想',0,-53);}
@@ -530,7 +533,7 @@ export function drawFieldCommander(c,p,equipped,now,rankIndex,rankTitle,moving,p
   c.save();c.translate(p.x,p.y);c.scale(1.18,1.18);
   const commanderRegalia=classRegaliaFor(p,true);
   drawFieldSoldier(c,{id:'commander',appearance:p.appearance||commanderAppearance,x:0,y:0,hp:p.hp,maxHp:p.maxHp,_levelMark:portrait?0:p._levelMark,level:p.level,
-    soldierClass:commanderRegalia?.id||'COMMANDER',advancedClass:p.advancedClass,isAdvanced:!!commanderRegalia,isCommander:true,isNamed:true,rankIndex,
+    soldierClass:commanderRegalia?.id||'COMMANDER',advancedClass:p.advancedClass,isAdvanced:!!commanderRegalia,isCommander:true,isNamed:true,rankIndex,civilianOutfit:!!p.civilianOutfit,
     equipped,portrait:true,atkAnim:p.slashAnim || 0,
     facingAngle:p.facingAngle,attackAngle:p.slashAngle,vx:moving?1:0,vy:0},now,
     {isAdvanced:!!commanderRegalia,name:'隊長'},'#b7c6b6');

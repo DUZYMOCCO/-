@@ -1,4 +1,5 @@
 import {commanderFullName} from './commander-identity.js?v=193';
+import {isEnlisted} from './career-rules.js?v=196';
 import {configureAudioInterface} from './audio-interface.js?v=191';
 import {renderBattleLog} from './battle-log.js?v=187';
 import {renderTroopRankings} from './troop-rankings.js?v=187';
@@ -195,6 +196,9 @@ function classCombatRoleLabel(cls) {
 }
 
 export function compactSoldierCard(game, row, soldier, cls, platoonName, talent) {
+  if(!isEnlisted(game)){
+    for(const button of row.querySelectorAll('button'))if(!button.classList.contains('btn-soldier-detail')&&(!game.canManageSoldier(soldier)||button.classList.contains('btn-honor'))){button.disabled=true;button.title='本陣への加入後に解禁';}
+  }
   const details = element('details', 'roster-entry'); details.dataset.soldierId = soldier.id;
   const { shortName, doctrine } = parsePlatoonDoctrine(platoonName);
   const roleLabel = classCombatRoleLabel(cls);
@@ -286,6 +290,10 @@ export function refreshInterface(game, { rank, time, zone }) {
   const portrait = get('player-record-box').querySelector('.commander-portrait');
   if (portrait) heading.append(portrait);
   heading.append(element('span', 'command-eyebrow', 'FIELD COMMAND'), element('h4', '', `${rank.title} · 作戦第${game.phase || game.wave || 1}期`)); snapshot.append(heading);
+  const career=element('p','command-note',game.careerProgressText?.()||'');career.id='career-progress';snapshot.append(career);
+  if(game.career?.status==='invited'){
+    const invitation=element('button','action-btn','本陣のかんゆうを聞く');invitation.id='btn-career-menu';invitation.type='button';invitation.disabled=!game.atCareerHeadquarters();invitation.title=invitation.disabled?'本陣へ戻って話を聞きます':'';invitation.onclick=()=>game.openCareerInvitation();snapshot.append(invitation);
+  }
   const metrics = element('div', 'snapshot-metrics');
   const alive = (game.squad || []).filter(s => !s.dead);
   for (const [label, value, tone] of [['隊長 HP', `${Math.max(0, Math.floor(game.player.hp))} / ${game.player.maxHp}`, ''], ['実戦 / 予備', `${alive.length} / ${(game.reserves || []).length} 名`, ''], ['要救助', `${alive.filter(s => s.isDown).length} 名`, alive.some(s => s.isDown) ? 'danger-text' : ''], ['現在時刻', `${time.label} ${time.clock}`, '']]) {
@@ -297,7 +305,7 @@ export function refreshInterface(game, { rank, time, zone }) {
   if (game.currentQuest) snapshot.append(element('p', 'command-objective', `軍令：${game.currentQuest.title} · ${game.currentQuest.completed ? '達成済み' : '遂行中'}`));
   for (const id of ['maintenance-summary', 'day-night-summary', 'casualty-summary']) if (get(id)) get('command-rule-content').append(get(id));
   get('nation-shared-box').querySelector('summary').textContent = `共有装備箱 · ${(game.sharedEquipBox || []).length} 件`;
-  get('formation-bar').textContent = `防衛陣形 · 本隊は本陣防衛圏、直属は隊長に追従。遠征は「国家」から。`;
+  get('formation-bar').textContent = isEnlisted(game)?'防衛陣形 · 本隊は本陣防衛圏、直属は隊長に追従。遠征は「国家」から。':'旅の仲間は5人まで、主人公に同行します。本隊の編成・引き抜きは本陣への加入後に解禁。';
   // Formatting is local to the panel and does not alter economy or item rules.
   for (const btn of root.querySelectorAll('#inventory-list button, #player-equip-box button')) btn.type = 'button';
   for (const button of root.querySelectorAll('.btn-up-equipped, .btn-up-inv, .btn-soldier-up')) {
@@ -306,6 +314,10 @@ export function refreshInterface(game, { rank, time, zone }) {
   const scout = get('scout-candidates-list'); for (const row of scout.children) row.classList.add('scout-card');
   const expedition = get('nation-expedition-panel');
   if (!expedition.querySelector('.section-heading')) title(expedition, '本隊の小隊遠征', '出発先と参加兵士を確認して派遣します。');
+  if(!isEnlisted(game))for(const button of root.querySelectorAll('#nation-status button,.btn-expedition-send,.btn-expedition-recall')){
+    if(button.dataset.economicSource==='personal')continue; // travelers may support a town with their own money
+    button.disabled=true;button.title='本陣への加入後に解禁';
+  }
   filterRoster(root); filterInventory(root);
 }
 
@@ -330,6 +342,7 @@ function configureRecruitmentDialog(game) {
   launcher.append(element('p','','募集する職種を選び、候補の能力・成長素質・雇用費を確認できます。'));
   const launch=element('button','mini-btn','雇用候補を確認');launch.type='button';launcher.append(launch);get('view-strat-troops').append(launcher);
   game.openScoutDialog=()=>{
+    if(!isEnlisted(game))return game.openTavern();
     if(!game.scoutCandidates?.length)game.refreshScoutCandidates();
     game.renderScoutCandidates();scout.classList.remove('hidden');host.classList.remove('hidden');setSubDialog(game,host,true,game.closeScoutDialog);
   };

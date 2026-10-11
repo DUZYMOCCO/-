@@ -1,5 +1,5 @@
 import {GENERATION_COUNT} from './equipment-tiers.js?v=187';
-import {PAYROLL_RULES,commanderStipendQuote} from './payroll-rules.js?v=187';
+import {PAYROLL_RULES,commanderStipendQuote} from './payroll-rules.js?v=195';
 import {recurringNationalIncome} from './regional-economy.js?v=182';
 /**
  * IRON SQUAD economy / roster reform (v1.23.0)

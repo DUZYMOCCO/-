@@ -12,7 +12,7 @@ const {IronSquadGame,SOLDIER_CLASSES,SOLDIER_PHYS_DMG_MULT}=await import('../js/
 const {saveSlots}=await import('../js/save-slots.js');
 const game=Object.create(IronSquadGame);Object.assign(game,{container:document.getElementById('game'),width:390,height:664,zoom:1,ctx,camera:{x:79360,y:79360},selectedSaleIds:new Set(),commandActiveUntil:0});
 for(const name of ['startGameLoop','showToast','spawnSparks','spawnDamageText'])game[name]=noop;
-game.setupUI();game.activeSlotId=saveSlots.create('SCOUT OWN SQUAD TEST ONLY').id;game.startFreshGame(false);
+game.setupUI();game.activeSlotId=saveSlots.create('SCOUT OWN SQUAD TEST ONLY').id;game.startFreshGame(false);game.career.status='enlisted';
 const base=structuredClone(game.saveGame());
 function field(){game.resumeSavedGame(structuredClone(base));game.closeStrategyModal();Object.assign(game,{rankIndex:4,squad:[],reserves:[],monsters:[],outposts:[],merchants:[],civilians:[],projectiles:[],dropsOnField:[],currentQuest:null,restTimer:0,_monsterGrid:null,_hazardClock:0,updateSpawns:noop,worldTerrain:{tiles:new Map()}});Object.assign(game.player,{x:83000,y:83000,atkCooldown:100});game.recalcPlayerStats();game.player.hp=game.player.maxHp;game.player.dodge=game.player.crit=0;game.camera={x:83000,y:83000};game.joystick={active:false,dirX:0,dirY:0};}
 const village=game.dungeons.find(d=>d.id==='ninja_village');

@@ -13,7 +13,7 @@ const {saveSlots}=await import('../js/save-slots.js');
 const game=Object.create(IronSquadGame);
 Object.assign(game,{container:document.getElementById('game'),width:390,height:664,zoom:1,ctx,camera:{x:79360,y:79360},selectedSaleIds:new Set(),commandActiveUntil:0});
 for(const name of ['startGameLoop','showToast','spawnSparks','spawnDamageText'])game[name]=noop;
-game.setupUI();game.activeSlotId=saveSlots.create('PLAYER MAGIC TEST ONLY').id;game.startFreshGame(false);
+game.setupUI();game.activeSlotId=saveSlots.create('PLAYER MAGIC TEST ONLY').id;game.startFreshGame(false);game.career.status='enlisted';
 const baseline=structuredClone(game.saveGame());
 const weapon=(style,upgrade=0)=>generateRandomDrop(0,'normal',{type:'WEAPON',tier:1,weaponStyle:style,upgrade,quality:1,merchant:true,random:()=>.5,id:`player-${style}-${upgrade}`});
 function field(style='wand'){

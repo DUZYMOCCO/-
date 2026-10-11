@@ -7,7 +7,7 @@ const {isFeminineLook}=await import('../js/soldier-appearance.js');
 const {saveSlots}=await import('../js/save-slots.js');
 const game=Object.create(IronSquadGame);
 for(const key of ['updateStatsUI','updateQuestUI','startGameLoop','showToast','spawnDamageText','spawnSparks','renderStrategyUI','refreshSupplyUI'])game[key]=()=>{};
-game.activeSlotId=saveSlots.create('番号付き昇格').id;game.startFreshGame(false);
+game.activeSlotId=saveSlots.create('番号付き昇格').id;game.startFreshGame(false);game.career.status='enlisted';
 const promoted=[];
 for(const family of ['HEAVY','LIGHT','ARCHER','MEDIC','MAGE'])for(const gender of ['male','female']){
   const s=game.createNewSoldier(null,{classKey:family,gender,talent:'AVERAGE'});game.squad.push(s);

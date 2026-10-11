@@ -255,6 +255,7 @@ export function grantRescueBonus(game,wounded,options={}) {
     if(carrier===game.player||medic===game.player)wounded.owesCommander=true; // 隊長が直接助けた恩（一度だけ返す）
     const rescuer=carrier||medic;
     if(rescuer)rescuer.rescues=(rescuer.rescues||0)+1;
+    if(rescuer===game.player||rescuer?.isPersonalGuard)game.gainExp?.(20,{share:false,merit:20});
     grantPermanentRescueReward(game,wounded);
     game.updateStatsUI?.();
     return;
@@ -284,7 +285,7 @@ export function grantRescueBonus(game,wounded,options={}) {
   if(selfRescue) {
     // no command exp for rescuing oneself
   } else if(typeof game.gainExp==='function') {
-    game.gainExp(rankExpGain,{share:false});
+    game.gainExp(rankExpGain,{share:false,service:carrier===game.player||medic===game.player||!!carrier?.isPersonalGuard||!!medic?.isPersonalGuard,merit:wounded.isPersonalGuard||wounded.overflowGuard?0:20}); // 自分の仲間を助けても地域へのこうけんにはならない
   } else {
     game.exp=(game.exp||0)+rankExpGain;
   }
@@ -374,6 +375,7 @@ export function grantCivilianRescueBonus(game,civ,station) {
   civ.rescued=true;civ.rescueStationId=station?.id;delete civ.carrierId;
   game.civilianRescues=(game.civilianRescues||0)+1;
   if(carrier)carrier.rescues=(carrier.rescues||0)+1;
+  if(carrier===game.player||carrier?.isPersonalGuard)game.gainExp?.(40,{share:false,merit:40});
   grantPermanentRescueReward(game,civ);
   game.sound?.playHighScore?.();
   const popX=(carrier?.x??game.player?.x??civ.x);

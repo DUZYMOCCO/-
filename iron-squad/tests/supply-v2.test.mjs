@@ -13,7 +13,7 @@ const {saveSlots}=await import('../js/save-slots.js');
 const game=Object.create(IronSquadGame);game.container=document.getElementById('game');
 Object.assign(game,{width:390,height:664,zoom:1,ctx,camera:{x:79360,y:79360},selectedSaleIds:new Set(),commandActiveUntil:0});
 for(const key of ['startGameLoop','showToast','spawnSparks','spawnDamageText'])game[key]=noop;
-game.setupUI();game.activeSlotId=saveSlots.create('V2 TEST ONLY').id;game.startFreshGame(false);
+game.setupUI();game.activeSlotId=saveSlots.create('V2 TEST ONLY').id;game.startFreshGame(false);game.career.status='enlisted';
 assert.equal(game.squad.length,DEPLOYMENT_CAPACITY);assert.equal(game.monsters.length,ENEMY_LIMIT);
 assert.equal(game.squadPotion,1);assert.ok(game.squad.every(s=>s.ammo===30));assert.equal(saveSlots.get(game.activeSlotId).data.squadPotion,1,'initial auto-save records the issued potion');assert.equal(saveSlots.get(game.activeSlotId).data.player.ammo,30);
 const baseline=structuredClone(game.saveGame());

@@ -6,7 +6,7 @@ const noop=()=>{},ctx=new Proxy({measureText:()=>({width:40}),createLinearGradie
 const {IronSquadGame}=await import('../js/index.js');const {saveSlots}=await import('../js/save-slots.js');
 const game=Object.create(IronSquadGame);Object.assign(game,{container:document.getElementById('game'),width:390,height:664,zoom:1,ctx,camera:{x:79360,y:79360},selectedSaleIds:new Set(),commandActiveUntil:0,joystick:{active:false,dirX:0,dirY:0}});
 for(const method of ['startGameLoop','showToast','spawnSparks','spawnDamageText'])game[method]=noop;
-game.setupUI();game.activeSlotId=saveSlots.create('RECRUITMENT TEST ONLY').id;game.startFreshGame(false);
+game.setupUI();game.activeSlotId=saveSlots.create('RECRUITMENT TEST ONLY').id;game.startFreshGame(false);game.career.status='enlisted';
 game.openStrategyModal(true);document.getElementById('tab-strat-troops').click();document.getElementById('tab-econ-scout').click();
 const recruitmentDialog=document.getElementById('recruitment-dialog');
 assert.equal(recruitmentDialog.classList.contains('hidden'),false);assert.equal(recruitmentDialog.getAttribute('aria-label'),'雇用候補');assert.equal(document.getElementById('strategy-modal').inert,true);
@@ -28,13 +28,13 @@ for(let i=0;i<8;i++){
 
 // Full personal squads open a real swap dialog and return focus to recruitment.
 game.gold=1e6;game.rankIndex=2;
-for(const unit of game.squad.slice(0,3))unit.isPersonalGuard=true;
+for(const unit of game.squad.slice(0,game.limitedGuardLimit()))unit.isPersonalGuard=true;
 const swapCandidate=game.scoutCandidates[0],swapGold=game.gold,previousGuard=game.squad[0];
 assert.equal(game.scoutSoldier(swapCandidate.id,'personal'),false);
 assert.ok(document.getElementById('scout-personal-swap-popup'));assert.equal(recruitmentDialog.inert,true);
 document.querySelector('.btn-cancel-scout-swap').click();assert.equal(game.gold,swapGold);assert.equal(game.scoutCandidates[0].id,swapCandidate.id);assert.equal(recruitmentDialog.inert,false);assert.equal(document.getElementById('strategy-modal').inert,true);
 game.scoutSoldier(swapCandidate.id,'personal');document.querySelector('.scout-swap-pick').click();
-assert.equal(document.getElementById('scout-personal-swap-popup'),null);assert.equal(previousGuard.isPersonalGuard,false);assert.ok(game.squad.some(unit=>unit.id===swapCandidate.id&&unit.isPersonalGuard));assert.equal(game.gold,swapGold-swapCandidate.cost);assert.equal(game.listPersonalGuardsAlive().length,3);assert.equal(document.getElementById('strategy-modal').inert,true);
+assert.equal(document.getElementById('scout-personal-swap-popup'),null);assert.equal(previousGuard.isPersonalGuard,false);assert.ok(game.squad.some(unit=>unit.id===swapCandidate.id&&unit.isPersonalGuard));assert.equal(game.gold,swapGold-swapCandidate.cost);assert.equal(game.listPersonalGuardsAlive().length,5);assert.equal(document.getElementById('strategy-modal').inert,true);
 
 // Run the scheduled UI flow deterministically, without waiting or letting background timers run.
 const originalSet=globalThis.setTimeout,originalClear=globalThis.clearTimeout;let scheduled;

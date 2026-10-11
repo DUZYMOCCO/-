@@ -1,4 +1,4 @@
-import {WORLD_SIZE,fieldBlocks} from './world.js?v=182';
+import {WORLD_SIZE,fieldBlocks} from './world.js?v=196';
 import {inCurrentInstance} from './instance-rules.js?v=182';
 import {isSoldierOnExpedition} from './expedition-rules.js';
 import {generateSoldierName} from './soldier-names.js?v=185';
@@ -62,7 +62,7 @@ export function joinLimitedEncounter(game,id) {
   const s=e.unit;
   const room=(game.squad||[]).filter(u=>u&&!u.dead&&u.isPersonalGuard&&!u.overflowGuard).length<(game.limitedGuardLimit?.()??12);
   // 常に直属としてその場で同行させる。直属定員が一杯なら「超過同行」(overflowGuard)とし、野外復帰後に入れ替え選択を出す。
-  Object.assign(s,{isPersonalGuard:true,overflowGuard:!room,x:game.player.x+28,y:game.player.y+18,joinedFrom:e.kind==='cage'?'rescue':'settlement'});
+  Object.assign(s,{isPersonalGuard:true,overflowGuard:!room,civilianOutfit:game.isEnlisted?.()===false,x:game.player.x+28,y:game.player.y+18,joinedFrom:e.kind==='cage'?'rescue':'settlement'});
   (game.squad||=[]).push(s);
   notifyLimitedJoin(game,[s]);
  }

@@ -3,7 +3,7 @@
 // crossfades. The home defense ring keeps a single cue so the nearby biome
 // border does not retune the camp.
 import { sound } from '../../common/js/audio.js?v=151';
-import { biomeAt, WORLD_SIZE } from './world.js?v=182';
+import { biomeAt, WORLD_SIZE } from './world.js?v=196';
 import { zoneRingLabelJa } from './equipment-rules.js?v=189';
 
 const CENTER = WORLD_SIZE / 2;

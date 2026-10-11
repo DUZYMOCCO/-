@@ -6,7 +6,7 @@ import {rollAttributeProfile} from '../js/unit-attributes.js';
 globalThis.window={};globalThis.document={getElementById:()=>null};
 const {IronSquadGame,applyUpgradeStats,generateRandomDrop,SLOT_INFO}=await import('../js/index.js');
 const item=(id,type='WEAPON',tier=1,upgrade=0)=>{const i={id,type,tier,name:id,stats:{}};applyUpgradeStats(i,upgrade);return i;};
-const game=Object.create(IronSquadGame);
+const game=Object.create(IronSquadGame);game.career={status:'enlisted'};
 for(const method of ['saveGame','renderStrategyUI','updateStatsUI','showToast','recalcPlayerStats','recalcSoldierStats'])game[method]=()=>{};
 game.equipped={};game.inventory=[];game.reserves=[];game.squad=[{id:'soldier',name:'兵士',gold:0,equipped:{},attributeProfile:rollAttributeProfile('HEAVY','AVERAGE',()=>.5,true)}];
 // Every slot can be transferred, and the item stops belonging to the hero.

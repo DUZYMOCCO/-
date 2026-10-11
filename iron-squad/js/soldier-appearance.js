@@ -1,4 +1,5 @@
 import {equipmentVisualProfile} from './equipment-tiers.js?v=187';
+import {travelerClothes} from './traveler-clothes.js?v=195';
 import {isMuscleCaster} from './unit-attributes.js?v=187';
 import {genderOfSoldier} from './soldier-names.js?v=185';
 import {classRegaliaFor,drawClassPortraitDress,drawClassHeadpiece} from './class-regalia.js?v=185';
@@ -372,12 +373,12 @@ function paintSoldierHead(c,soldier,{x=0,y=0,scale=1,small=false,silhouette=fals
 
 /** Bust portrait, drawn only when constructing UI. Always shows the unhelmeted face. */
 export function drawSoldierPortrait(c,soldier,width=240,height=260,{compact=false}={}) {
-  const a=ensureSoldierAppearance(soldier),medic=isMedicAppearance(soldier.soldierClass);
+  const a=ensureSoldierAppearance(soldier),civilian=!!soldier.civilianOutfit,medic=!civilian&&isMedicAppearance(soldier.soldierClass);
   const physique=soldierPhysique(soldier),muscular=physique.bodyWidth>1;
   const key=soldier.soldierClass || 'HEAVY';
   const family=soldierAppearanceFamily(key);
-  const regalia=classRegaliaFor(soldier);
-  const uniform=regalia?.cloth||(medic?'#b8c1b4':family==='LIGHT'?'#8a785c':family==='ARCHER'?'#536d5e':'#697981');
+  const regalia=civilian?null:classRegaliaFor(soldier),travelLook=travelerClothes(soldier.id);
+  const uniform=civilian?travelLook.cloth:regalia?.cloth||(medic?'#b8c1b4':family==='LIGHT'?'#8a785c':family==='ARCHER'?'#536d5e':'#697981');
   c.save();c.clearRect(0,0,width,height);
   c.beginPath();c.rect(0,0,width,height);c.clip();
   c.fillStyle='#17242c';c.fillRect(0,0,width,height);
@@ -395,6 +396,11 @@ export function drawSoldierPortrait(c,soldier,width=240,height=260,{compact=fals
     stroke(c,[[9,10],[7,14],[7.5,18]],'rgba(30,40,42,.35)',.65);
   }
   polygon(c,[[-2.2,5],[-2,9],[0,10],[2,9],[2.2,5]],a.skin);
+  if(civilian){
+    polygon(c,[[-4,7],[-2,9],[0,12],[-2,12],[-4.5,8]],travelLook.linen);polygon(c,[[4,7],[2,9],[0,12],[2,12],[4.5,8]],travelLook.linen);
+    stroke(c,[[-1.1,11],[1.1,12],[-1.1,13],[1.1,14]],travelLook.leather,.5);
+    stroke(c,[[-6,8],[6,20]],travelLook.leather,1.3);polygon(c,[[4,15],[8,15],[8,21],[4,21]],travelLook.leather);
+  }else{
   polygon(c,[[-5,8],[-2,9],[0,12],[-3,10]],'#b5b5a2');polygon(c,[[5,8],[2,9],[0,12],[3,10]],'#d0c7ab');
   if(medic) {
     polygon(c,[[-4,9],[-3.7,20],[3.7,20],[4,9],[0,12]],'#e0dfcc');
@@ -403,6 +409,7 @@ export function drawSoldierPortrait(c,soldier,width=240,height=260,{compact=fals
     polygon(c,[[-9,10],[-6,8],[-4,11],[-5,14],[-10,13]],'#879399');
     polygon(c,[[9,10],[6,8],[4,11],[5,14],[10,13]],'#596872');
     stroke(c,[[-2,12],[3,20]],'#b1a080',1.2);c.fillStyle='#c2af86';c.fillRect(-6,12,1.2,2.7);
+  }
   }
   drawClassPortraitDress(c,regalia);
   c.restore();

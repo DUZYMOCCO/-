@@ -36,6 +36,7 @@ export function salaryFundingContext(game) {
   return {budget:economicPayrollBudget(game),weight:units.reduce((n,s)=>n+salaryWeight(s),0)};
 }
 export function commanderStipendQuote(game={},phase=1) {
+  if(game.career&&game.career.status!=='enlisted')return 0;
   return 40+amount(game.nation?.level)*12+amount(game.nation?.economy?.technology?.production?.level)*10;
 }
 export function createPayrollPlan(game,bonuses=new Map()) {

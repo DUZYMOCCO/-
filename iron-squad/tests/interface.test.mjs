@@ -18,7 +18,7 @@ const { saveSlots } = await import('../js/save-slots.js');
 const game = Object.create(IronSquadGame); game.container = document.getElementById('game');
 for (const method of ['startGameLoop', 'showToast']) game[method] = noop;
 Object.assign(game, { width:390, height:664, zoom:1, ctx:context, camera:{x:79360,y:79360}, selectedSaleIds:new Set(), commandActiveUntil:0 });
-game.setupUI(); game.activeSlotId = saveSlots.create('UI TEST ONLY').id; game.startFreshGame(false);
+game.setupUI(); game.activeSlotId = saveSlots.create('UI TEST ONLY').id; game.startFreshGame(false);game.career.status='enlisted';
 game.gold = 100000; game.treasury = 20000; game.awakeningOrbs = 5;
 game.rankIndex = 2; game.squad[0].isPersonalGuard = true;
 game.squad[0].name = 'テスト兵士'; game.squad[0].hp = Math.floor(game.squad[0].maxHp / 2);

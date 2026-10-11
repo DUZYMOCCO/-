@@ -6,6 +6,9 @@ export const WORLD_SIZE = 158720;
 export const WORLD_VERSION = 4;
 const TILE = 512, CACHE_LIMIT = 24, CACHE_PIXELS = CACHE_LIMIT*TILE*TILE;
 const CENTER = WORLD_SIZE / 2;
+// The field tavern south of HQ. Scenery is still rolled there (same RNG stream) but not placed on the building.
+export const TAVERN_SITE = Object.freeze({ x: CENTER - 200, y: CENTER + 640 });
+const inTavernSite = (x, y) => Math.abs(x - TAVERN_SITE.x) < 215 && y > TAVERN_SITE.y - 245 && y < TAVERN_SITE.y + 135;
 const LIP = '#6e7264', FACE = '#1a1e1c', DROP = '#0e100e';
 const TAU = Math.PI * 2;
 
@@ -1007,7 +1010,7 @@ export class WorldTerrain {
       objects.push({ type: m.type, x: m.x, y: m.y, s: m.s, axis: m.axis, dir: m.dir, tone: m.tone || 0, ph: m.ph || 0 });
     }
     this.generated++;
-    return {canvas,context:c,objects,camps,x:x0,y:y0};
+    return {canvas,context:c,objects:objects.filter(o=>!inTavernSite(o.x,o.y)),camps:camps.filter(o=>!inTavernSite(o.x,o.y)),x:x0,y:y0};
   }
   draw(c,camera,width,height,zoom) {
     const margin=150,hw=width/(2*zoom)+margin,hh=height/(2*zoom)+margin;
