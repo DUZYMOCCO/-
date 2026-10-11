@@ -9,7 +9,8 @@
 - ゲームの更新で `sw.js` / `index.html` / `common/js/games-registry.js` / `common/js/app.js` を触る必要はない。
 
 ## 2. ゲームのバージョンの上げ方（ゲーム側だけで完結）
-1. `<ゲーム>/sw-assets.js` の `version`（例 `v180` → `v181`）を上げる。ファイルを増減したら `files` も直す。
+1. `<ゲーム>/sw-assets.js` の `version`（キャッシュ用。例 `v180` → `v181`）を上げる。ファイルを増減したら `files` も直す。
+   あわせて同ファイルの `gameVersion`（例 `'5.0.1'`）も上げる。ハブのゲームカードの表示版はここを実行時に読む（ハブ側の編集は不要）。
 2. 変更したモジュールの内部 `?v=` を、そのゲームのフォルダ内だけで上げる（CSS の `?v=` は `<ゲーム>/js/index.js` の `prepare()`）。
 - キャッシュは `game-<id>-<version>` としてゲームごとに分かれ、他ゲームのキャッシュは消えない。
 - Service Worker は `sw-assets.js` の変更を検知して更新される（詳細は README.md「構成とキャッシュ」）。

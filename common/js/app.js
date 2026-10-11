@@ -1,7 +1,7 @@
 /**
  * スマホゲーム工房 メインアプリケーション
  */
-import { games, sections, getGameById } from './games-registry.js?v=180';
+import { games, sections, getGameById } from './games-registry.js?v=181';
 import { sound } from './audio.js?v=151';
 import { storage } from './storage.js';
 import { initKanaMode, bindKanaButton } from './kana-mode.js?v=175';
@@ -100,6 +100,22 @@ class GameStudioApp {
       this.gamesGridEl.append(label, grid);
       list.forEach(game => this.renderGameCard(game, grid));
     }
+    this.loadGameVersions();
+  }
+
+  // 各ゲームの <id>/sw-assets.js の gameVersion を読んでカードに表示する（版はゲーム側だけが持つ）。
+  // SWがネットワーク優先でキャッシュするため、オフラインでも直近の版が出る。
+  loadGameVersions() {
+    for (const game of games) {
+      fetch(`${game.id}/sw-assets.js`, { cache: 'no-cache' })
+        .then((res) => (res.ok ? res.text() : ''))
+        .then((text) => {
+          const m = /gameVersion\s*:\s*['"]([^'"]+)['"]/.exec(text);
+          const el = this.gamesGridEl.querySelector(`[data-version-for="${game.id}"]`);
+          if (m && el) el.textContent = 'v' + m[1];
+        })
+        .catch(() => {});
+    }
   }
 
   renderGameCard(game, grid) {
@@ -113,7 +129,7 @@ class GameStudioApp {
     card.innerHTML = `
       <div class="game-card-icon">${game.icon}</div>
       <div class="game-card-content">
-        <div class="game-card-title">${game.title}</div>
+        <div class="game-card-title">${game.title}<span class="game-card-version" data-version-for="${game.id}"></span></div>
         <div class="game-card-subtitle">${game.subtitle}</div>
         <div class="game-card-desc">${game.description}</div>
         <div class="game-card-score">

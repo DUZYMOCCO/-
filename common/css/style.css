@@ -314,3 +314,13 @@ html, body {
 .games-sections .section-label:not(:first-child) {
   margin-top: 22px;
 }
+
+.game-card-version {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  opacity: 0.85;
+  vertical-align: middle;
+}

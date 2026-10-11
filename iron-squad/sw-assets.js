@@ -4,6 +4,7 @@
 self.GAME_ASSETS = self.GAME_ASSETS || {};
 self.GAME_ASSETS['iron-squad'] = {
   version: 'v182',
+  gameVersion: '5.0.1', // ハブのカードに表示する版（キャッシュ用 version とは別。リリース時に上げる）
   files: [
     'css/iron-squad.css',
     'css/iron-squad-interface.css',
