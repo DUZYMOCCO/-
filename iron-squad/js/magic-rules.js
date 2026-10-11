@@ -1,10 +1,11 @@
 import {sound} from '../../common/js/audio.js?v=151';
 import {WORLD_SIZE} from './world.js?v=182';
 import {inCurrentInstance} from './instance-rules.js?v=182';
-import {recordCombat} from './phase-rules.js';
+import {recordCombat} from './phase-rules.js?v=187';
 import {isSoldierOnExpedition} from './expedition-rules.js';
-import {practiceAttribute,prefersCasterMelee,attributeValues,canChannelWeaponMagic} from './unit-attributes.js';
-import {isMagicWeapon} from './weapon-requirements.js';
+import {practiceAttribute,prefersCasterMelee,attributeValues,canChannelWeaponMagic} from './unit-attributes.js?v=187';
+import {isMagicWeapon} from './weapon-requirements.js?v=187';
+import {numberClassDefinitions} from './class-up-rules.js?v=185';
 
 export const MAGE_IDS=['MAGE','ARCHMAGE','ELEMENTAL_SAGE','ARCANE_SOVEREIGN'];
 const MEDIC_IDS=['MEDIC','HIGH_PRIEST','SAINT','ARCHANGEL'];
@@ -21,12 +22,12 @@ export const MAGIC_AFFINITIES=Object.freeze({
   lightning:{name:'雷',color:'#c6b575',damage:4.6,radius:48,cost:22,cooldown:2.3},
   explosion:{name:'爆発',color:'#ab8175',damage:4.2,radius:84,cost:26,cooldown:2.7}
 });
-export const MAGIC_CLASSES={
+export const MAGIC_CLASSES=numberClassDefinitions({
   MAGE:{id:'MAGE',classTier:0,name:'魔法使い',icon:'🔮',color:'#ab9ac5',range:260,speed:92,atkCooldown:2.1,bonusHp:-25,bonusAtk:18,advancedClassId:'ARCHMAGE',desc:'高威力の範囲魔法。脆く、MP不足時は動けず瞑想する。得意属性は各自異なる'},
   ARCHMAGE:{id:'ARCHMAGE',classTier:1,baseClassId:'MAGE',isAdvanced:true,name:'大魔導士',icon:'🔮',color:'#a592c5',range:290,speed:98,atkCooldown:1.9,bonusHp:10,bonusAtk:40,atkMultBonus:.35,advancedClassId:'ELEMENTAL_SAGE',tag:'大魔導士',desc:'魔力上限と魔法の威力・範囲が成長。装甲は薄い'},
   ELEMENTAL_SAGE:{id:'ELEMENTAL_SAGE',classTier:2,baseClassId:'MAGE',isAdvanced:true,isMaster:true,name:'元素賢者',icon:'🔮',color:'#9b8aba',range:320,speed:102,atkCooldown:1.8,bonusHp:50,bonusAtk:65,atkMultBonus:.6,advancedClassId:'ARCANE_SOVEREIGN',tag:'元素賢者',desc:'得意属性を磨いた極職。魔力消耗と脆さは残る'},
   ARCANE_SOVEREIGN:{id:'ARCANE_SOVEREIGN',classTier:3,baseClassId:'MAGE',isAdvanced:true,isLegendary:true,name:'秘術王',icon:'🔮',color:'#b5a6d0',range:350,speed:108,atkCooldown:1.6,bonusHp:90,bonusAtk:100,atkMultBonus:.9,tag:'秘術王',desc:'広範囲を制圧する伝説の術者。MP切れでは無防備'}
-};
+});
 export function magicTier(u) {return Math.max(0,isMage(u)?MAGE_IDS.indexOf(u.combatClass||u.soldierClass):MEDIC_IDS.indexOf(u?.soldierClass));}
 export function manaCapacity(u) {return isPlayerCaster(u)?PLAYER_MAGIC_RULES.mana:isMagicUser(u)?100+magicTier(u)*40:canChannelWeaponMagic(u)?60:0;}
 export const weaponMagicDamage=u=>Math.max(1,Math.round((u.magicAttack||1)*.7));

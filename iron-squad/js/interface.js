@@ -1,7 +1,8 @@
-import {commanderFullName} from './commander-identity.js?v=182';
+import {commanderFullName} from './commander-identity.js?v=187';
 import {configureAudioInterface} from './audio-interface.js?v=182';
-import {renderBattleLog} from './battle-log.js?v=182';
-import {renderTroopRankings} from './troop-rankings.js?v=182';
+import {renderBattleLog} from './battle-log.js?v=187';
+import {renderTroopRankings} from './troop-rankings.js?v=187';
+import {genderLabel} from './soldier-names.js?v=185';
 /** Presentation only: keep game actions on their original DOM nodes. */
 const element = (tag, className, text) => {
   const node = document.createElement(tag);
@@ -209,7 +210,7 @@ export function compactSoldierCard(game, row, soldier, cls, platoonName, talent)
   const identity = element('span', 'roster-identity');
   identity.append(element('strong', '', `${soldier.isNamed ? soldier.title || '' : ''}${soldier.name}`));
   const meta = element('small', 'roster-meta');
-  meta.append(document.createTextNode(`${cls.name} · Lv.${soldier.level || 1} · ${roleLabel}`));
+  meta.append(document.createTextNode(`${cls.name} · ${genderLabel(soldier)} · Lv.${soldier.level || 1} · ${roleLabel}`));
   if (talentTag) {
     meta.append(document.createTextNode(' · '));
     const tEl = element('span', 'roster-talent', talentTag);

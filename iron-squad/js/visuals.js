@@ -1,14 +1,14 @@
 import {givenName} from './squad-names.js?v=182';
-import {downLabel} from './casualty-rules.js?v=182';
-import {RANGED_ENEMIES} from './enemy-ranged.js?v=182';
+import {downLabel} from './casualty-rules.js?v=187';
+import {RANGED_ENEMIES} from './enemy-ranged.js?v=187';
 import {BRUTE_DRAW_SCALE} from './field-hosts.js?v=182';
-import {equipmentVisualProfile} from './equipment-tiers.js?v=182';
-import {drawBodyEquipment} from './equipment-art.js?v=182';
-import {MAGIC_AFFINITIES,ensureMana} from './magic-rules.js?v=182';
-import { drawMeleeWeapon, drawMeleeRangeCue } from './weapon-motion.js?v=182';
-import { defaultCommanderAppearance } from './commander-identity.js?v=182';
-import { createSoldierAppearance, drawSoldierHead, isMedicAppearance, soldierAppearanceFamily, soldierPhysique } from './soldier-appearance.js?v=182';
-import { classRegaliaFor, drawClassMantle, drawClassRegalia, drawClassHeadpiece } from './class-regalia.js?v=182';
+import {equipmentVisualProfile} from './equipment-tiers.js?v=187';
+import {drawBodyEquipment} from './equipment-art.js?v=187';
+import {MAGIC_AFFINITIES,ensureMana} from './magic-rules.js?v=187';
+import { drawMeleeWeapon, drawMeleeRangeCue, drawRangedWeapon, drawWeaponArms, meleePose, rangedPose } from './weapon-motion.js?v=187';
+import { defaultCommanderAppearance } from './commander-identity.js?v=187';
+import { createSoldierAppearance, drawSoldierHead, isMedicAppearance, soldierAppearanceFamily, soldierPhysique } from './soldier-appearance.js?v=187';
+import { classRegaliaFor, drawClassMantle, drawClassRegalia, drawClassHeadpiece } from './class-regalia.js?v=185';
 
 // Keep the commander's established face, with short hair in both field and portrait (v4.2.24: player.appearance overrides it).
 const commanderAppearance=Object.freeze(defaultCommanderAppearance());
@@ -355,8 +355,11 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod, displa
   const archer = family === 'ARCHER';
   const light = family === 'LIGHT';
   const wStyle = (eq.weapon || s.weapon)?.weaponStyle || 'sword';
-  const melee = !archer && ['sword','spear','hammer','axe','staff','wand'].includes(wStyle);
+  const melee = ['sword','spear','hammer','axe','staff','wand'].includes(wStyle);
+  const ranged = ['bow','crossbow','cannon'].includes(wStyle);
   const weaponColors = {cloth,gloves,blade,board,physique,hand:s.appearance?.skin||'#c1a083',gloveProfile:equipmentVisualProfile(eq.gloves),shieldProfile:equipmentVisualProfile(eq.shield),weaponProfile:equipmentVisualProfile(eq.weapon||s.weapon)};
+  const aim=s.atkAnim>0&&Number.isFinite(s.attackAngle)?s.attackAngle:(s.facingAngle||0);
+  const heldPose=melee?meleePose(wStyle,s.atkAnim||0,aim,physique):ranged?rangedPose(wStyle,s.atkAnim||0,aim,physique):null;
   c.save(); c.translate(s.x, s.y);
   if (!s.isDown && (s.campPose === 'sit' || s.campPose === 'drink' || s.campPose === 'eat')) {
     drawCampRest(c, s, now, s.campPose, { cloth, armorColor, legs, blade, steel, gloves, platoonColor, medic, advanced, mage, eq, physique, regalia }, simpleLod);
@@ -372,7 +375,8 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod, displa
     drawClassMantle(c,regalia,{simple:true});
     c.fillStyle = cloth;
     c.beginPath(); c.ellipse(0, -14, 6, 10, 0, 0, Math.PI * 2); c.fill();
-    c.fillRect(-8,-20,2.5,11);c.fillRect(5.5,-20,2.5,11);
+    const showHeld=heldPose&&(s.atkAnim>0||muscular);
+    if(!showHeld){c.fillRect(-8,-20,2.5,11);c.fillRect(5.5,-20,2.5,11);}
     c.fillStyle='#2a2624';c.fillRect(-5,-5,4,7);c.fillRect(2,-5,4,7);
     c.restore();
     drawSoldierHead(c,s,{y:-26,scale:.8,small:true,silhouette:true,helmet:eq.helmet?steel:null,helmetTier:eq.helmet?.tier||1,mitre:medic&&advanced,cap:medic&&!advanced});
@@ -385,7 +389,7 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod, displa
     if(mage)shape(c,[[-6,-19],[-8,0],[7,0],[6,-19]],'#65566f');
     drawClassRegalia(c,regalia,{simple:true});
     c.restore();
-    if(mage){if(!muscular){line(c,[[12,0],[12,-29]],'#857053',1.5);ellipse(c,12,-30,2,3,s.mana>0?spellColor:'#6d6674');}shape(c,[[-7,-31],[1,-39],[7,-31]],'#5d5269');}
+    if(mage){if(!muscular&&!showHeld){line(c,[[12,0],[12,-29]],'#857053',1.5);ellipse(c,12,-30,2,3,s.mana>0?spellColor:'#6d6674');}shape(c,[[-7,-31],[1,-39],[7,-31]],'#5d5269');}
     drawClassHeadpiece(c,regalia,{y:-26,scale:.8,simple:true,helmet:!!eq.helmet});
     c.fillStyle = platoonColor; c.fillRect(-2, 4, 4, 2);
     if (s.isPersonalGuard) { c.fillStyle = '#c8b278'; c.fillRect(4, 4, 3, 2); }
@@ -394,7 +398,7 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod, displa
       c.fillStyle = '#283132'; c.fillRect(-12, healthY, 24, 3);
       c.fillStyle = '#c4b48a'; c.fillRect(-12, healthY, 24 * Math.max(0, Math.min(1, s.hp / s.maxHp)), 3);
     }
-    if (melee && (s.atkAnim > 0 || muscular)) drawMeleeWeapon(c,s,wStyle,weaponColors,true);
+    if(showHeld){if(melee)drawMeleeWeapon(c,s,wStyle,weaponColors,true,true,heldPose);else drawRangedWeapon(c,s,wStyle,weaponColors,true,true,heldPose);}
     c.restore();
     drawLevelMark(c, s, now);
     return;
@@ -456,7 +460,16 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod, displa
   if(s.isCommander){line(c,[[-5,-22],[4,-10]],advanced?'#d2bb83':'#b7bda8',1.5);}
   c.restore();
   // Hands, face and headwear, with a restrained highlight on the upper edge.
-  if (!melee) {const g=equipmentVisualProfile(eq.gloves);ellipse(c,6,-15,2.3,3.5,weaponColors.hand);if(g.coverage){c.fillStyle=gloves;c.fillRect(4,-19,4,1+g.coverage*6);}}
+  if(heldPose){
+    c.save();if(Math.cos(bodyFacing)<-.15)c.scale(-1,1);
+    drawWeaponArms(c,s,heldPose,weaponColors);
+    // An upward aim places the weapon behind the head in this view.
+    if(Math.sin(heldPose.aim)<-.35){
+      if(melee)drawMeleeWeapon(c,s,wStyle,weaponColors,false,false,heldPose);
+      else drawRangedWeapon(c,s,wStyle,weaponColors,false,false,heldPose);
+    }
+    c.restore();
+  }
   drawSoldierHead(c,s,{y:-28,small:true,helmet:eq.helmet?steel:null,helmetTier:eq.helmet?.tier||1,
     mitre:medic&&advanced,cap:medic&&!advanced});
   if(mage){
@@ -465,60 +478,21 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod, displa
     if(!s.portrait && c.showBattleLabels!==false){c.fillStyle='#282535';c.fillRect(-13,-49,26,2);c.fillStyle=spellColor;c.fillRect(-13,-49,26*s.mana/s.maxMana,2);}
     if(recovering){c.fillStyle='#c1b6d1';c.font='10px sans-serif';c.textAlign='center';c.fillText('瞑想',0,-53);}
   } else if (archer) {
-    const rw = (eq.weapon && eq.weapon.weaponStyle) || 'bow';
-    // 矢筒は共通
+    // The quiver stays on the back; both shooting hands belong to the live pose.
     shape(c,[[-8,-24],[-12,-25],[-13,-10],[-9,-9]],'#6b503b');
     line(c,[[-11,-23],[-12,-31]],'#baa889');
     line(c,[[-10,-29],[-13,-31],[-11,-32]],'#c9c6ad',2);
-    if (rw === 'cannon') {
-      // 小型火砲: 太い砲身＋口
-      c.save(); c.translate(8,-14); c.rotate(-0.15);
-      shape(c,[[0,-4],[18,-6],[19,2],[0,4]],blade);
-      shape(c,[[16,-7],[22,-5],[22,1],[16,3]],'#302b28');
-      ellipse(c,3,0,3,3,'#6a4c38');
-      c.restore();
-    } else if (rw === 'crossbow') {
-      // クロスボウ: 水平アーム＋太いストック
-      line(c,[[4,-16],[20,-16]],blade,2.4);
-      line(c,[[6,-22],[6,-10]],blade,2.2);
-      line(c,[[4,-22],[8,-22]],'#c5b790',1.5);
-      line(c,[[4,-10],[8,-10]],'#c5b790',1.5);
-      shape(c,[[8,-18],[14,-18],[15,-14],[8,-14]],'#6a4c38');
-    } else {
-      // 弓: カーブ＋弦
-      c.strokeStyle = blade; c.lineWidth = 2;
-      c.beginPath(); c.moveTo(9,-28); c.quadraticCurveTo(22,-16,9,-3); c.stroke();
-      line(c,[[9,-28],[11,-15],[9,-3]],'#d6ccae',.7);
-      line(c,[[5,-16],[19,-16]],'#c5b790');
-    }
   } else if (medic) {
     ensureMana(s);if(s.mana<16){c.fillStyle='#c1b6d1';c.font='10px sans-serif';c.textAlign='center';c.fillText('MP不足',0,-48);}
     shape(c,[[-9,-14],[-4,-13],[-5,-6],[-10,-7]],'#b2a386');
-  } else {
-    if (wStyle === 'bow') {
-      c.strokeStyle = blade; c.lineWidth = 2.2;
-      c.beginPath(); c.moveTo(8,-30); c.quadraticCurveTo(24,-16,8,-2); c.stroke();
-      line(c,[[8,-30],[10,-16],[8,-2]],'#d6ccae',.8);
-      line(c,[[4,-16],[20,-16]],'#c5b790');
-    } else if (wStyle === 'crossbow') {
-      line(c,[[4,-16],[22,-16]],blade,2.6);
-      line(c,[[7,-24],[7,-8]],blade,2.3);
-      shape(c,[[9,-18],[16,-18],[17,-13],[9,-13]],'#6a4c38');
-    } else if (wStyle === 'cannon') {
-      c.save(); c.translate(7,-14); c.rotate(-0.12);
-      shape(c,[[0,-5],[20,-7],[21,3],[0,5]],blade);
-      shape(c,[[17,-8],[24,-5],[24,2],[17,4]],'#302b28');
-      c.restore();
-    } else {
-      // Melee weapons are drawn outside the mirrored torso transform below.
-    }
   }
   drawClassHeadpiece(c,regalia,{y:-28,helmet:!!eq.helmet});
-  if(!melee&&eq.weapon){const p=equipmentVisualProfile(eq.weapon);if(p.rough){line(c,[[11,-22],[15,-21],[11,-20]],'#bca787',1.1);}else if(p.detail>=1){line(c,[[11,-22],[15,-22]],'#d0c19c',1.2);if(p.detail>=2){line(c,[[11,-18],[15,-18]],'#d0c19c',1.2);}}}
   c.restore();
-  if (melee) {
-    c.save(); c.translate(0,-bob);
-    drawMeleeWeapon(c,s,wStyle,weaponColors); c.restore();
+  if(heldPose&&Math.sin(heldPose.aim)>=-.35){
+    c.save();c.translate(0,-bob);
+    if(melee)drawMeleeWeapon(c,s,wStyle,weaponColors,false,false,heldPose);
+    else drawRangedWeapon(c,s,wStyle,weaponColors,false,false,heldPose);
+    c.restore();
   }
   // Compact labels and one squad marker instead of stacked luminous rings.
   c.fillStyle = platoonColor; c.fillRect(-2,4,4,2);

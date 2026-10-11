@@ -6,8 +6,8 @@ import {createSoldierAppearance,drawSoldierHead,drawSoldierPortrait,soldierAppea
 import {drawFieldSoldier,drawFieldCommander} from '../js/visuals.js';
 const packages=process.argv[2] || 'C:/Users/Yoshiyuki/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules';
 const {createCanvas}=createRequire(resolve(packages,'entry.cjs'))('@napi-rs/canvas');
-const base={id:'field-identity-test',soldierClass:'HEAVY',x:0,y:0,hp:100,maxHp:100,portrait:true,equipped:{},facingAngle:0,vx:0,vy:0};
-const look={...createSoldierAppearance(base.id),glasses:'none',facialHair:'none',faceShape:'round'};
+const base={id:'field-identity-test',gender:'male',soldierClass:'HEAVY',x:0,y:0,hp:100,maxHp:100,portrait:true,equipped:{},facingAngle:0,vx:0,vy:0};
+const look={...createSoldierAppearance(base.id,'male'),glasses:'none',facialHair:'none',faceShape:'round'};
 const frame=(hairStyle,{far=false,down=false,glasses='none',helmet=false}={})=>{
  const canvas=createCanvas(160,180),c=canvas.getContext('2d');c.translate(80,140);c.scale(2,2);
  const actor={...base,appearance:{...look,hairStyle,glasses},isDown:down,downTimer:10,equipped:helmet?{helmet:{color:'#9daab0'}}:{}};
@@ -38,12 +38,12 @@ const countPaints=far=>{
 assert.ok(countPaints(true)<countPaints(false)*.6,'preserving identity still leaves the far rendering substantially cheaper');
 // Newly available hair is visible in the same close/far/down paths as old hair.
 for(const style of ['short','parted','tousled','curly','tied'])for(const mode of [{},{far:true},{down:true}])assert.notDeepEqual(frame(style,mode),frame('bald',mode),`${style} remains visible in each battle state`);
-const facePortrait=(beautiful,soldierClass='MEDIC')=>{
- const canvas=createCanvas(240,260),unit={...base,soldierClass,appearance:{...look,medicHair:'long',beautiful,eyeColor:'#476b64'}};
+const facePortrait=(beautiful,soldierClass='MEDIC',gender='female')=>{
+ const canvas=createCanvas(240,260),unit={...base,gender,soldierClass,appearance:{...look,feminine:gender==='female',medicHair:'long',beautiful,eyeColor:'#476b64'}};
  const before=JSON.stringify(unit);drawSoldierPortrait(canvas.getContext('2d'),unit);assert.equal(JSON.stringify(unit),before,'rare looks cannot change any stats or the held identity');return canvas.toBuffer('image/png');
 };
 assert.notDeepEqual(facePortrait(false),facePortrait(true),'rare female face detail visibly differs at portrait size');
-assert.deepEqual(facePortrait(false,'HEAVY'),facePortrait(true,'HEAVY'),'the female cosmetic does not change male faces');
+assert.deepEqual(facePortrait(false,'HEAVY','male'),facePortrait(true,'HEAVY','male'),'the female cosmetic does not change male faces');
 // The commander shares one default face in the field and the inventory portrait.
 const commanderFrame=(appearance,portrait)=>{
  const canvas=createCanvas(200,210),c=canvas.getContext('2d');c.translate(100,155);c.scale(2,2);

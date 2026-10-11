@@ -1,10 +1,11 @@
-import {calcScoutCost} from './economy-rules.js';
+import {calcScoutCost} from './economy-rules.js?v=187';
 import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=182';
-import {drawSoldierPortrait} from './soldier-appearance.js';
-import {ATTRIBUTE_KEYS,ATTRIBUTE_LABELS,attributeSpecialties,attributeCarryCapacity,aptitudeGrade} from './unit-attributes.js';
-import {weaponRequirementText} from './weapon-requirements.js';
-import {equipmentName} from './equipment-rules.js?v=182';
+import {drawSoldierPortrait} from './soldier-appearance.js?v=187';
+import {ATTRIBUTE_KEYS,ATTRIBUTE_LABELS,attributeSpecialties,attributeCarryCapacity,aptitudeGrade} from './unit-attributes.js?v=187';
+import {weaponRequirementText} from './weapon-requirements.js?v=187';
+import {equipmentName} from './equipment-rules.js?v=187';
 import {releaseCanvas} from './canvas-surface.js?v=182';
+import {genderLabel} from './soldier-names.js?v=185';
 
 export const RECRUIT_CLASSES=['HEAVY','LIGHT','ARCHER','MEDIC','MAGE'];
 export const RECRUITMENT_INTERVAL=1200;
@@ -73,7 +74,7 @@ export function renderRecruitment(game,classes,talents) {
     const cls=classes[candidate.classKey],talent=talents[candidate.talent],specialties=attributeSpecialties(unit);
     const profile=unit.attributeProfile;
     const row=document.createElement('article');row.className='scout-card recruitment-candidate';
-    row.innerHTML=`<div class="recruit-person"><canvas class="recruit-portrait" width="120" height="130" aria-label="${cls.name}候補の素顔"></canvas><div><strong>${cls.icon} ${unit.name}</strong><div>${cls.name} · Lv.${candidate.level} <span style="color:${talent.color}">[${talent.tag}]</span></div><p class="recruit-specialties">${specialties.length?specialties.join('・'):'均整型'}</p><strong class="recruit-price">雇用費 ${number(candidate.cost)}G</strong></div></div>
+    row.innerHTML=`<div class="recruit-person"><canvas class="recruit-portrait" width="120" height="130" aria-label="${cls.name}候補の素顔"></canvas><div><strong>${cls.icon} ${unit.name}</strong><div>${cls.name} · ${genderLabel(unit)} · Lv.${candidate.level} <span style="color:${talent.color}">[${talent.tag}]</span></div><p class="recruit-specialties">${specialties.length?specialties.join('・'):'均整型'}</p><strong class="recruit-price">雇用費 ${number(candidate.cost)}G</strong></div></div>
       <div class="recruit-stat-grid">${[
         ['HP',number(unit.maxHp)],['攻撃',number(unit.atk)],['防御',number(unit.def)],
         ['筋力',number(unit.strength)],['魔力',number(unit.magicPower)],['魔法防御',number(unit.magicDef)],

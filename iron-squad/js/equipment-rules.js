@@ -1,6 +1,6 @@
-import {powerRank,MAX_EQUIPMENT_TIER,GENERATIONS} from './equipment-tiers.js?v=182';
+import {powerRank,MAX_EQUIPMENT_TIER,GENERATIONS} from './equipment-tiers.js?v=187';
 import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=182';
-import {WEAPON_STYLE_ICONS,weaponStyleOf} from './growth-rules.js?v=182';
+import {WEAPON_STYLE_ICONS,weaponStyleOf,isHeavyWeaponStyle,weaponCategoryOf} from './growth-rules.js?v=187';
 export const EQUIPMENT_TYPES = ['WEAPON','SHIELD','HELMET','ARMOR','GLOVES','LEGS','AMULET'];
 
 const GEAR_ICONS = {
@@ -284,7 +284,7 @@ export function equipmentScore(item) {
   if (s.regen) score += s.regen * 100;
   if (s.vampire) score += s.vampire * 1500;
   if (item.weaponStyle === 'spear') score += 40;
-  if (item.weaponStyle === 'hammer') score += 55;
+  if (isHeavyWeaponStyle(item)) score += 55;
   if (item.weaponStyle === 'bow') score += 35;
   if (item.weaponStyle === 'crossbow') score += 50;
   if (item.weaponStyle === 'cannon') score += 70;
@@ -313,9 +313,9 @@ function baseWeaponCombatProfile(item) {
       projSpeed: 0, splash: 0, projType: null
     };
   }
-  if (style === 'hammer') {
+  if (isHeavyWeaponStyle(style)) {
     return {
-      style: 'hammer', ranged: false,
+      style, ranged: false,
       reach: 80, reachWarlord: 105,
       baseCooldown: 0.98, pierce: false, pierceHalfWidth: 0,
       atkMult: 2.45, knockback: 62, knockbackWarlord: 78,
@@ -372,18 +372,18 @@ export function weaponCombatProfile(item) {
   const p=baseWeaponCombatProfile(item),length=trait(item,'length'),sweep=trait(item,'sweep');
   return {...p,reach:p.reach*length,reachWarlord:p.reachWarlord*length,playerReach:Math.max(110,p.reach)*length,
     baseCooldown:p.baseCooldown/trait(item,'attackTempo'),pierceHalfWidth:p.pierceHalfWidth*sweep,splash:p.splash*sweep,
-    sweepArc:!p.ranged&&!p.pierce&&item?.weaponTraits?(p.style==='hammer'?1.8:1.2)*sweep:0,
+    sweepArc:!p.ranged&&!p.pierce&&item?.weaponTraits?(isHeavyWeaponStyle(p.style)?1.8:1.2)*sweep:0,
     swingSpeed:trait(item,'swingSpeed')};
 }
 export function meleeSweetSpotFor(item) {
-  const style=typeof item==='string'?item:item?.weaponStyle||'sword',base=MELEE_SWEET_SPOT[style];if(!base)return null;
+  const base=MELEE_SWEET_SPOT[weaponCategoryOf(item)];if(!base)return null;
   if(typeof item==='string'||!item?.weaponTraits)return base;
   const peak=Math.max(.12,Math.min(.94,base.peak+(item.weaponTraits.sweetShift||0))),width=trait(item,'sweetWidth');
   return {...base,peak,sweetMin:Math.max(.04,peak-(base.peak-base.sweetMin)*width),sweetMax:Math.min(1.05,peak+(base.sweetMax-base.peak)*width),sweetDmg:1+(base.sweetDmg-1)*trait(item,'sweetPower')};
 }
 export function weaponAxisValues(item) {
   if(!item)return {reach:0,attackWidth:0,swingSpeed:0,attackRate:0,sweetWidth:0,sweetPower:0};
-  const p=weaponCombatProfile(item),sweet=p.ranged?null:meleeSweetSpotFor(item),arc=p.sweepArc||(p.style==='hammer'?1.8:1.2);
+  const p=weaponCombatProfile(item),sweet=p.ranged?null:meleeSweetSpotFor(item),arc=p.sweepArc||(isHeavyWeaponStyle(p.style)?1.8:1.2);
   return {reach:p.ranged?p.reach:p.playerReach,attackWidth:p.pierce?p.pierceHalfWidth*2:p.ranged?p.splash*2:2*p.playerReach*Math.sin(arc/2),
     swingSpeed:p.swingSpeed*100,attackRate:Math.max(.05,1+(item.stats?.atkSpeed||0)/100)/p.baseCooldown,
     sweetWidth:sweet?(sweet.sweetMax-sweet.sweetMin)*100:0,sweetPower:sweet?(sweet.sweetDmg-1)*100:0};

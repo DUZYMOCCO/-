@@ -1,12 +1,12 @@
 // v4.2.24: 隊長づくり／身だしなみの全画面シート（細い固定バー＋1つのスクロール）。
-import {drawSoldierPortrait} from './soldier-appearance.js?v=182';
-import {drawFieldCommander} from './visuals.js?v=182';
+import {drawSoldierPortrait} from './soldier-appearance.js?v=187';
+import {drawFieldCommander} from './visuals.js?v=187';
 import {GENDERS,MALE_HAIR_STYLES,FEMALE_HAIR_STYLES,HAIR_CHOICE_LABELS,FEMALE_HAIR_LABELS,HAIR_COLORS,SKIN_COLORS,EYE_COLOR_CHOICES,BEARDS,GLASSES,
-  NAME_MAX,cleanName,buildCommanderAppearance,choicesFromAppearance,normalizeCommanderIdentity,randomCommanderIdentity} from './commander-identity.js?v=182';
-import {randomGivenName,randomFamilyName} from './soldier-names.js?v=182';
+  NAME_MAX,cleanName,buildCommanderAppearance,choicesFromAppearance,normalizeCommanderIdentity,randomCommanderIdentity,
+  FACE_OUTLINES,EYE_SHAPES,NOSE_TYPES,JAW_TYPES,ACCESSORY_LABELS} from './commander-identity.js?v=187';
+import {randomGivenName,randomFamilyName} from './soldier-names.js?v=185';
 
 const el=(tag,cls,text)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(text!=null)e.textContent=text;return e;};
-const ACCESSORIES={none:'なし',clip:'ヘアピン',ribbon:'リボン'};
 
 /**
  * mode 'create'：出発前。何も選ばなくても出発できる（名前は自動で入る）。
@@ -50,6 +50,7 @@ export function openCommanderEditor({host,mode='create',initial=null,onConfirm,o
   const givenInput=makeNameRow('名前','ce-given','givenName',()=>randomGivenName(state.gender));
   body.append(nameBox);
   const genderBox=group('性別','ce-gender');genderBox.setAttribute('role','radiogroup');genderBox.setAttribute('aria-label','性別');
+  const faceBox=group('りんかく','ce-face'),lookBox=group('目つき','ce-eye-shape'),noseBox=group('はな','ce-nose'),jawBox=group('あご','ce-jaw');
   const hairBox=group('髪型','ce-hair'),hairColorBox=group('髪の色','ce-hair-color'),skinBox=group('はだの色','ce-skin');
   const beardWrap=group('ひげ','ce-beard'),glassesBox=group('メガネ','ce-glasses'),eyeBox=group('目','ce-eyes'),eyeColorBox=group('目の色','ce-eye-color'),accessoryBox=group('かざり','ce-accessory');
   const actions=el('div','ce-actions');
@@ -85,19 +86,20 @@ export function openCommanderEditor({host,mode='create',initial=null,onConfirm,o
     nameLabel.textContent=`${n}（${GENDERS[state.gender]}）`;
   }
   function renderOptions() {
-    for(const box of [genderBox,hairBox,hairColorBox,skinBox,beardWrap,glassesBox,eyeBox,eyeColorBox,accessoryBox])box.replaceChildren();
+    for(const box of [genderBox,faceBox,lookBox,noseBox,jawBox,hairBox,hairColorBox,skinBox,beardWrap,glassesBox,eyeBox,eyeColorBox,accessoryBox])box.replaceChildren();
     const f=female(),c=state.choices;
     for(const g of Object.keys(GENDERS))chip(genderBox,GENDERS[g],state.gender===g,()=>setGender(g),{role:'radio'});
+    for(const [box,key,labels]of [[faceBox,'faceOutline',FACE_OUTLINES],[lookBox,'eyeShape',EYE_SHAPES],[noseBox,'nose',NOSE_TYPES],[jawBox,'jaw',JAW_TYPES]])for(const [value,label]of Object.entries(labels))chip(box,label,(c[key]||'standard')===value,()=>choose({[key]:value}));
     for(const key of f?FEMALE_HAIR_STYLES:MALE_HAIR_STYLES)chip(hairBox,(f?FEMALE_HAIR_LABELS:HAIR_CHOICE_LABELS)[key],c.hairStyle===key,()=>choose({hairStyle:key}));
     HAIR_COLORS.forEach((color,i)=>swatch(hairColorBox,color,`髪の色${i+1}`,c.hairColor===color,()=>choose({hairColor:color})));
     SKIN_COLORS.forEach((color,i)=>swatch(skinBox,color,`はだの色${i+1}`,c.skin===color,()=>choose({skin:color})));
     for(const [k,label] of Object.entries(GLASSES))chip(glassesBox,label,c.glasses===k,()=>choose({glasses:k}));
-    beardWrap.parentElement.hidden=f;eyeBox.parentElement.hidden=!f;eyeColorBox.parentElement.hidden=!f||!c.beautiful;accessoryBox.parentElement.hidden=!f;
+    beardWrap.parentElement.hidden=f;eyeBox.parentElement.hidden=!f;eyeColorBox.parentElement.hidden=!(f&&c.beautiful)&&(!c.eyeShape||c.eyeShape==='standard');
+    for(const [k,label]of Object.entries(ACCESSORY_LABELS))chip(accessoryBox,label,(c.accessory||'none')===k,()=>choose({accessory:k}));
+    EYE_COLOR_CHOICES.forEach((color,i)=>swatch(eyeColorBox,color,`目の色${i+1}`,c.eyeColor===color,()=>choose({eyeColor:color})));
     if(!f)for(const [k,label] of Object.entries(BEARDS))chip(beardWrap,label,c.facialHair===k,()=>choose({facialHair:k}));
     if(f) {
       chip(eyeBox,'ふつう',!c.beautiful,()=>choose({beautiful:false}));chip(eyeBox,'ぱっちり',!!c.beautiful,()=>choose({beautiful:true}));
-      EYE_COLOR_CHOICES.forEach((color,i)=>swatch(eyeColorBox,color,`目の色${i+1}`,c.eyeColor===color,()=>choose({eyeColor:color})));
-      for(const [k,label] of Object.entries(ACCESSORIES))chip(accessoryBox,label,(c.accessory||'ribbon')===k,()=>choose({accessory:k}));
     }
   }
   function repaint(){renderOptions();paint();}

@@ -14,9 +14,9 @@ try{
     const {DUNGEON_DEFS,drawDungeonEnvironment,drawDungeonVault}=await import('/iron-squad/js/dungeon.js?v=179');
     const {explorationLayout}=await import('/iron-squad/js/dungeon-layout.js?v=179');
     const {drawDungeonSideChests}=await import('/iron-squad/js/dungeon-exploration.js?v=179');
-    const {drawFieldCommander,drawFieldBoss}=await import('/iron-squad/js/visuals.js?v=177');
+    const {drawFieldCommander}=await import('/iron-squad/js/visuals.js?v=182');
     const style=document.createElement('style');style.textContent='html,body{height:auto;overflow:auto;background:#17221f;color:#ded8c3;font-family:"Yu Gothic",sans-serif}*{box-sizing:border-box}.preview{width:1100px;padding:24px}h1{font-size:23px;margin:0 0 8px}p{font-size:14px;color:#b0bdad;margin:0 0 20px}.row{display:grid;grid-template-columns:150px 1fr 1fr;gap:12px;margin:0 0 12px}.label{padding-top:95px;font-size:16px}.cell{background:#26332c;border:1px solid #475244;border-radius:6px;padding:7px}.caption{font-size:13px;margin-bottom:6px}canvas{display:block;width:100%;height:auto}';document.head.append(style);
-    const root=document.createElement('main');root.className='preview';root.innerHTML='<h1>IRON SQUAD — 通路を調べ、奥の財宝へ</h1><p>v4.2.28 / 実ゲームの描画。左は通路の端にある宝箱、右はボスを倒して開く最奥の財宝。</p>';
+    const root=document.createElement('main');root.className='preview';root.innerHTML='<h1>IRON SQUAD — 通路を調べ、奥の財宝へ</h1><p>v5.0.3 / 実ゲームの描画。左は通路の端にある宝箱、右はボスを倒して開く最奥の財宝。</p>';
     const defs=[...DUNGEON_DEFS.filter(d=>d.kind==='dungeon'),DUNGEON_DEFS.find(d=>d.kind==='ruin')];
     for(const d of defs){
       const layout=explorationLayout(d),row=document.createElement('div');row.className='row';
@@ -30,7 +30,8 @@ try{
         drawDungeonSideChests(c,{currentDungeon:d,dungeonExploration:{}},1000);
         if(mode==='boss'){
           drawDungeonVault(c,{x:d.width-240,y:d.height/2,dungeon:d,unlocked:false,opened:false,name:'財宝'},1);
-          const boss=d.boss?qualityGame.createDungeonBoss(d.boss,d.width-350,d.height/2,d):qualityGame.createDungeonMob('orc',d.width-350,d.height/2,d,true,false);
+          const boss=d.boss?qualityGame.createDungeonBoss(d.boss,d.width-350,d.height/2,d):qualityGame.createDungeonMob(d.guardian.type,d.width-350,d.height/2,d,true,false);
+          if(!d.boss){boss.isDungeonBoss=true;boss.isBoss=false;boss.radius=d.guardian.radius||18;}
           qualityGame.drawMonster(c,boss,1000);
         }
         drawFieldCommander(c,{x:camera.x-85,y:camera.y+42,level:1,hp:100,maxHp:100},{},1000,0,'隊長',false,true);
@@ -40,7 +41,7 @@ try{
     }
     document.body.append(root);
   });
-  await page.screenshot({path:`${output}/dungeon-interiors-v4.2.28.png`,fullPage:true});
+  await page.screenshot({path:`${output}/dungeon-interiors-v5.0.3.png`,fullPage:true});
   const field=await context.newPage();field.on('pageerror',e=>errors.push(e.message));await field.setViewportSize({width:375,height:667});
   await field.goto('http://localhost:8000/iron-squad/tools/canvas-quality-review.html');await field.waitForFunction(()=>window.qualityReady);
   const entry=await field.evaluate(async()=>{
@@ -51,7 +52,7 @@ try{
     window.__boss=g.monsters.find(m=>m.isDungeonBoss);g.monsters=[];
     g.camera={x:g.player.x+80,y:g.player.y};g.resizeCanvas();g.render();return {floorSpawns:inside,monsters:g.monsters.length,dungeon:d.id};
   });assert.ok(entry.floorSpawns);
-  await field.screenshot({path:`${output}/dungeon-entry-mobile-v4.2.28.png`});
+  await field.screenshot({path:`${output}/dungeon-entry-mobile-v5.0.3.png`});
   const journey=await field.evaluate(()=>{
     const g=qualityGame,d=g.currentDungeon,l=__layout.explorationLayout(d),visited=[];
     window.__walk=target=>{
@@ -67,13 +68,18 @@ try{
     for(const chest of l.branches){const before=g.inventory.length,steps=__walk(chest);visited.push({id:chest.id,steps,rewards:g.inventory.length-before});}
     g.camera={x:g.player.x,y:g.player.y-50};g.render();return {visited,opened:g.dungeonExploration[d.id].opened.slice()};
   });assert.deepEqual(journey.opened,['north','south']);assert.ok(journey.visited.every(v=>v.rewards===1));
-  await field.screenshot({path:`${output}/dungeon-side-chest-mobile-v4.2.28.png`});
-  await field.evaluate(()=>{const g=qualityGame;__walk({x:__boss.x-65,y:__boss.y});g.monsters=[__boss];g.rebuildMonsterSpatial();g.player.atk=1e8;g.player.atkCooldown=0;g.camera={x:g.player.x+70,y:g.player.y};g.render();});
+  await field.screenshot({path:`${output}/dungeon-side-chest-mobile-v5.0.3.png`});
+  await field.evaluate(()=>{const g=qualityGame;__walk({x:__boss.x-65,y:__boss.y});g.monsters=[__boss];g.rebuildMonsterSpatial();
+    // Side rewards can auto-equip a random wand/bow. Use the default melee
+    // weapon for this attack-button fixture so a projectile delay is irrelevant.
+    g.equipped.weapon=null;g.player.weapon=null;g.recalcPlayerStats();g.player.atk=1e8;g.player.atkCooldown=0;g.updateStatsUI();
+    g.camera={x:g.player.x+70,y:g.player.y};g.render();});
+  await field.screenshot({path:`${output}/dungeon-boss-mobile-v5.0.3.png`});
   await field.click('#btn-pad-attack');
   const killed=await field.evaluate(()=>({unlocked:qualityGame.dungeonVault.unlocked,bossAlive:qualityGame.monsters.some(m=>m.isDungeonBoss)}));
   assert.equal(killed.unlocked,true);assert.equal(killed.bossAlive,false);
   await field.evaluate(()=>{const g=qualityGame;__walk({x:g.dungeonVault.x,y:g.dungeonVault.y+25});for(let i=0;i<30;i++)g.update(1/60);g.camera={x:g.player.x-45,y:g.player.y};g.render();});
-  await field.screenshot({path:`${output}/dungeon-victory-mobile-v4.2.28.png`});
+  await field.screenshot({path:`${output}/dungeon-victory-mobile-v5.0.3.png`});
   const cycles=await field.evaluate(()=>{
     const g=qualityGame,d=g.currentDungeon,saved=g.saveGame(),opened=saved.dungeonExploration[d.id].opened.slice(),clearPhase=g.phase;
     const vaultOpened=g.dungeonVault.opened;g.exitDungeon();g.enterDungeon(d);
@@ -81,7 +87,7 @@ try{
     g.phase=clearPhase+2;g.wave=g.phase;g.enterDungeon(d);
     return {savedOpened:opened,vaultOpened,immediate,later:{monsters:g.monsters.length,opened:g.dungeonVault.opened,side:g.dungeonExploration[d.id].opened.length}};
   });assert.deepEqual(cycles.savedOpened,['north','south']);assert.equal(cycles.vaultOpened,true);assert.equal(cycles.immediate.monsters,0);assert.equal(cycles.immediate.opened,true);assert.ok(cycles.later.monsters>0);assert.equal(cycles.later.opened,false);assert.equal(cycles.later.side,0);
-  writeFileSync(`${output}/dungeon-playtest-v4.2.28.json`,JSON.stringify({entry,journey,killed,cycles,pageErrors:errors},null,2)+'\n');
+  writeFileSync(`${output}/dungeon-playtest-v5.0.3.json`,JSON.stringify({entry,journey,killed,cycles,pageErrors:errors},null,2)+'\n');
   assert.equal(errors.length,0);console.log(JSON.stringify({entry,journey,killed,cycles,pageErrors:errors}));
   await context.close();
 }finally{await browser.close();}

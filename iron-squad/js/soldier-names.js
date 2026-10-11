@@ -28,10 +28,9 @@ export function rollGenderByKey(soldierClass = '', key = '') {
   n = Math.imul(n ^ (n >>> 15), 2246822507); n = Math.imul(n ^ (n >>> 13), 3266489917);
   return rollGender(soldierClass, () => ((n ^ (n >>> 16)) >>> 0) / 4294967296);
 }
-/** 兵士の性別を決める。衛生兵は女性がやや多い。random は 0..1 を返す関数。 */
+/** Every profession uses the same chance; gender never affects abilities or physique. */
 export function rollGender(soldierClass = '', random = Math.random) {
-  const femaleChance = soldierClass === 'MEDIC' ? .65 : .35;
-  return random() < femaleChance ? 'female' : 'male';
+  return random() < .5 ? 'female' : 'male';
 }
 
 export const FAMILY_NAMES = Object.freeze([
@@ -76,6 +75,24 @@ export const BEAST_NAMES_BY_GENDER = Object.freeze({
   }
 });
 export const BEAST_NAMES = Object.freeze(Object.fromEntries(Object.entries(BEAST_NAMES_BY_GENDER).map(([k, v]) => [k, Object.freeze([...v.male, ...v.female])])));
+
+const NAME_GENDERS=new Map();
+for(const gender of GENDER_IDS)for(const name of [
+  ...(gender==='female'?FEMALE_GIVEN_NAMES:MALE_GIVEN_NAMES),...NINJA_NAMES_BY_GENDER[gender],
+  ...Object.values(BEAST_NAMES_BY_GENDER).flatMap(pool=>pool[gender])
+])NAME_GENDERS.set(name,gender);
+/** Read-only fallback for old units: stored identity, saved look, name, then an ID-based roll. */
+export function genderOfSoldier(soldier) {
+  if(isGenderId(soldier?.gender))return soldier.gender;
+  if(typeof soldier?.appearance?.feminine==='boolean')return soldier.appearance.feminine?'female':'male';
+  const named=NAME_GENDERS.get(String(soldier?.name||'').split('・')[0]);
+  return named||rollGenderByKey('',soldier?.id||soldier?.name||'soldier');
+}
+export function ensureSoldierGender(soldier) {
+  if(soldier&&!isGenderId(soldier.gender))soldier.gender=genderOfSoldier(soldier);
+  return soldier?.gender;
+}
+export const genderLabel=soldier=>genderOfSoldier(soldier)==='female'?'女':'男';
 
 /**
  * 兵種・種族に応じたランダムな名前を生成
@@ -146,6 +163,7 @@ function pickUnique(arr, seed = null, usedSet = null) {
  */
 export function migrateSoldierName(soldier, existingNames = null) {
   if (!soldier) return;
+  ensureSoldierGender(soldier);
   const currentName = soldier.name || '';
   if (/^兵士#\d+$/.test(currentName) || !currentName.trim()) {
     soldier.name = generateSoldierName({

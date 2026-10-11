@@ -1,16 +1,24 @@
 import {heroGrowth} from './hero-rules.js';
 /** HP成長（被弾）と武器マスタリーの計算ヘルパー。毎フレーム割当なし。 */
 
-export const MELEE_STYLES = ['sword', 'spear', 'hammer', 'staff', 'wand'];
+export const MELEE_STYLES = ['sword', 'spear', 'hammer', 'axe', 'staff', 'wand'];
 export const RANGED_STYLES = ['bow', 'crossbow', 'cannon'];
 export const WEAPON_STYLES = [...MELEE_STYLES, ...RANGED_STYLES];
+// Axes belong to the hammer category: one favourite, one mastery track.
+export const MASTERY_STYLES = WEAPON_STYLES.filter(style => style !== 'axe');
+export const weaponCategoryOf = value => {
+  const style = typeof value === 'string' ? value : value?.weaponStyle;
+  return style === 'axe' ? 'hammer' : style || 'sword';
+};
+export const isHeavyWeaponStyle = value => weaponCategoryOf(value) === 'hammer';
+export const heavyWeaponAttackMult = value => isHeavyWeaponStyle(value) ? 10 : 1;
 
 export const WEAPON_STYLE_LABELS = {
-  sword: '剣', spear: '槍', hammer: '鎚',
+  sword: '剣', spear: '槍', hammer: '鎚・斧', axe: '斧',
   bow: '弓', crossbow: 'クロスボウ', cannon: '火砲',staff:'杖',wand:'ワンド'
 };
 export const WEAPON_STYLE_ICONS = {
-  sword: '🗡️', spear: '🔱', hammer: '🔨',
+  sword: '🗡️', spear: '🔱', hammer: '🔨', axe: '🪓',
   bow: '🏹', crossbow: '🎯', cannon: '💣',staff:'🪄',wand:'🔮'
 };
 
@@ -38,22 +46,24 @@ export const MASTERY_GAIN_MULT = {
 
 /** スタイル別1ヒットあたりの熟練度XP */
 export function masteryGainForStyle(style, base = MASTERY_GAIN_PER_HIT) {
-  const mult = MASTERY_GAIN_MULT[style] ?? 1;
+  const mult = MASTERY_GAIN_MULT[weaponCategoryOf(style)] ?? 1;
   return (Number(base) || MASTERY_GAIN_PER_HIT) * mult;
 }
 
 
 export function emptyMastery() {
-  return Object.fromEntries(WEAPON_STYLES.map(style=>[style,0]));
+  return Object.fromEntries(MASTERY_STYLES.map(style=>[style,0]));
 }
 
 export function normalizeMastery(map) {
   const m = emptyMastery();
   if (!map || typeof map !== 'object') return m;
-  for (const style of WEAPON_STYLES) {
+  for (const style of MASTERY_STYLES) {
     const v = Number(map[style]);
     m[style] = Number.isFinite(v) && v > 0 ? v : 0;
   }
+  const axeXp=Number(map.axe);
+  if(Number.isFinite(axeXp)&&axeXp>0)m.hammer+=axeXp;
   return m;
 }
 
@@ -92,7 +102,7 @@ export function applyHitGrowth(unit, dmg) {
 }
 
 export function masteryAtkMult(masteryMap, style) {
-  const key = WEAPON_STYLES.includes(style) ? style : 'sword';
+  const key = WEAPON_STYLES.includes(style) ? weaponCategoryOf(style) : 'sword';
   const xp = Math.max(0, Number(normalizeMastery(masteryMap)[key]) || 0);
   return 1 + MASTERY_SOFT_CAP * (1 - 1 / (1 + xp / MASTERY_XP_SCALE));
 }
@@ -143,6 +153,7 @@ export function masteryPctDisplay(masteryMap, style) {
 export function gainWeaponMastery(unit, style, amount = null) {
   if (!unit || !WEAPON_STYLES.includes(style)) return 0;
   const add = amount == null ? masteryGainForStyle(style) : amount;
+  style=weaponCategoryOf(style);
   if (!unit.weaponMastery) unit.weaponMastery = emptyMastery();
   else unit.weaponMastery = normalizeMastery(unit.weaponMastery);
   const before = unit.weaponMastery[style] || 0;
@@ -190,7 +201,8 @@ export function rollWeaponStyle(kind = 'any', random = Math.random) {
   }
   const r = random();
   if (r < 0.12) return random()<.5?'staff':'wand';
-  if (r < 0.36) return 'hammer';
+  if (r < 0.24) return 'hammer';
+  if (r < 0.36) return 'axe';
   if (r < 0.68) return 'spear';
   return 'sword';
 }
@@ -203,7 +215,7 @@ export function weaponStyleOf(item) {
 /** 兵士の好み武器を優先した比較スコア補正 */
 export function favoriteWeaponBias(item, favorite) {
   if (!item || item.type !== 'WEAPON') return 0;
-  return weaponStyleOf(item) === favorite ? 120 : 0;
+  return weaponCategoryOf(item) === weaponCategoryOf(favorite) ? 120 : 0;
 }
 
 /** 旧セーブの弓兵が近接favoriteを持っていた場合の補正 */
@@ -225,7 +237,7 @@ export function migrateWeaponStyleFromName(item) {
   if (!item || item.type !== 'WEAPON') return item;
   const name = `${item.baseName || ''} ${item.name || ''}`;
   const style = item.weaponStyle;
-  if (style && WEAPON_STYLES.includes(style) && !(style === 'sword' && /弓|クロスボウ|石弓|火砲|大砲|砲|杖|ワンド/.test(name))) {
+  if (style && WEAPON_STYLES.includes(style) && !(style === 'sword' && /弓|クロスボウ|石弓|火砲|大砲|砲|杖|ワンド|斧/.test(name))) {
     return item;
   }
   if (/ワンド/.test(name)) item.weaponStyle='wand';
@@ -234,6 +246,7 @@ export function migrateWeaponStyleFromName(item) {
   else if (/クロスボウ|石弓/.test(name)) item.weaponStyle = 'crossbow';
   else if (/弓/.test(name)) item.weaponStyle = 'bow';
   else if (/槍|矛|鉾/.test(name)) item.weaponStyle = 'spear';
+  else if (/斧|アックス/.test(name)) item.weaponStyle = 'axe';
   else if (/鎚|ハンマー|戦鎚|大鎚/.test(name)) item.weaponStyle = 'hammer';
   else if (!style || !WEAPON_STYLES.includes(style)) item.weaponStyle = 'sword';
   return item;

@@ -1,11 +1,11 @@
-import {ensureMana,regenerateMana,spendMana} from './magic-rules.js?v=182';
-import {recordHealing,recordDown,healAmountFor} from './phase-rules.js';
+import {ensureMana,regenerateMana,spendMana} from './magic-rules.js?v=187';
+import {recordHealing,recordDown,healAmountFor} from './phase-rules.js?v=187';
 import {WORLD_SIZE} from './world.js';
 import {inCurrentInstance} from './instance-rules.js?v=182';
 import {grantPermanentRescueReward} from './rescue-rewards.js?v=182';
 import {grantPersonalExp,revivalExperience,raiseLevelMark} from './experience-rules.js';
 import {guardRescueLines} from './soldier-dialogue.js';
-import {attributeCarryCapacity} from './unit-attributes.js';
+import {attributeCarryCapacity} from './unit-attributes.js?v=187';
 import {visibleHeroMembers} from './hero-rules.js';
 
 export const RESCUE_TIMEOUT = 45; // 救助猶予時間（秒）広域マップ対応で45秒に延長

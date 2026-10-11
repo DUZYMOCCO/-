@@ -1,20 +1,23 @@
-import {equipmentVisualProfile} from './equipment-tiers.js?v=182';
-import {isMuscleCaster} from './unit-attributes.js?v=182';
-import {classRegaliaFor,drawClassPortraitDress,drawClassHeadpiece} from './class-regalia.js?v=182';
+import {equipmentVisualProfile} from './equipment-tiers.js?v=187';
+import {isMuscleCaster} from './unit-attributes.js?v=187';
+import {genderOfSoldier} from './soldier-names.js?v=185';
+import {classRegaliaFor,drawClassPortraitDress,drawClassHeadpiece} from './class-regalia.js?v=185';
+import {createAppearanceFeatures,normalizeAppearanceFeatures,FACE_OUTLINES,EYE_SHAPES,NOSE_TYPES,JAW_TYPES,ACCESSORY_LABELS,drawVariantFace,drawVariantEyes,drawVariantNose,drawPersonalAccessory} from './appearance-features.js?v=186';
 /** Stable personal looks, independent of talent, battle RNG and equipment. */
 export const HAIR_LABELS = Object.freeze({
   barcode:'バーコード', bald:'丸ハゲ', mohawk:'モヒカン', sidebald:'サイドハゲ',
   horseshoe:'落ち武者ハゲ', buzz:'うっすら坊主', swept:'流し髪',
-  short:'短髪', parted:'七三分け', tousled:'ラフな前髪', curly:'くせ毛', tied:'結び髪'
+  short:'短髪', parted:'七三分け', tousled:'ラフな前髪', curly:'くせ毛', tied:'結び髪',
+  crop:'クロップ',undercut:'かり上げ',slickback:'オールバック',centerpart:'センター分け',spiky:'ツンツン髪',wavy:'波打つ髪'
 });
 export const SKINS=['#e0b899','#c99b79','#b88767','#d6aa88','#a87758'];
 export const HAIRS=['#342e2b','#514137','#6a5140','#85827b','#473b35','#824d36'];
 export const MEDIC_HAIRS=['#51372f','#332e32','#795442','#a77951','#6c5552'];
-export const MEDIC_STYLES={bob:'ボブ', ponytail:'ポニーテール', braid:'編み髪', short:'ショート',long:'ロング',waves:'ゆるいウェーブ',halfup:'ハーフアップ'};
+export const MEDIC_STYLES={bob:'ボブ', ponytail:'ポニーテール', braid:'編み髪', short:'ショート',long:'ロング',waves:'ゆるいウェーブ',halfup:'ハーフアップ',pixie:'ピクシー',wolf:'ウルフ',sidetail:'サイドテール',twintails:'ツインテール',twinbraid:'二つ編み',bun:'お団子'};
 /** v4.2.24: 隊長の自作の髪色は兵士の髪色の両方の色見本から選ぶ。 */
 const ANY_HAIR=[...HAIRS,...MEDIC_HAIRS];
 export const APPEARANCE_RULES=Object.freeze({normalHairChance:.68,rareFemaleBeautyChance:.045});
-const NORMAL_HAIR_STYLES=['short','parted','tousled','curly','tied'];
+export const NORMAL_HAIR_STYLES=Object.freeze(['short','parted','tousled','curly','tied','crop','undercut','slickback','centerpart','spiky','wavy']);
 export const EYE_COLORS=['#476b64','#665a83','#567385','#735843'];
 export const GLASSES_LABELS=Object.freeze({none:'',round:'丸メガネ',square:'角メガネ',half:'ハーフリム'});
 export const FRAME_COLORS=['#454344','#6d5544','#927c61'];
@@ -23,14 +26,13 @@ const MEDICS=new Set(['MEDIC','HIGH_PRIEST','SAINT','ARCHANGEL']);
 const ARCHERS=new Set(['ARCHER','SNIPER','STORM_BOW','STAR_HUNTER']);
 const LIGHTS=new Set(['LIGHT','BLADEMASTER','SWORD_EMPEROR','VOID_EDGE']);
 export const isMedicAppearance = key => MEDICS.has(key);
-/** v5.0.1: 見た目の男女は兵士の gender（なければ appearance.feminine、非兵士の顔だけ衛生兵の兵種）から1か所で決める。 */
-/** 兵士の性別（gender が無い古いデータ・非兵士の顔は見た目から）。 */
+/** Gender comes from identity/appearance/name; professions never decide it. */
 export const soldierGender=soldier=>isFeminineLook(soldier)?'female':'male';
 export function isFeminineLook(soldier,a=soldier?.appearance) {
   if(soldier?.gender==='female')return true;
   if(soldier?.gender==='male')return false;
   if(typeof a?.feminine==='boolean')return a.feminine;
-  return isMedicAppearance(soldier?.soldierClass);
+  return genderOfSoldier(soldier)==='female';
 }
 const MAGES=new Set(['MAGE','ARCHMAGE','ELEMENTAL_SAGE','ARCANE_SOVEREIGN']);
 const LIMITED_FAMILIES={NINJA:'LIGHT',BEAST_WOLF:'LIGHT',BEAST_CAT:'LIGHT',BEAST_BEAR:'HEAVY',BEAST_FOX:'MAGE',BEAST_BIRD:'ARCHER'};
@@ -71,9 +73,9 @@ export function createSoldierAppearance(identity,gender=null) {
     eyes:handsome?'sharp':pick(['flat','droopy','sharp']),brow:Math.floor(random()*3),
     facialHair:handsome?'none':pick(['none','none','stubble','mustache','chin']),
     scar:!handsome&&random()<.22,smile:random()<.45,
-    medicHair:pick(['bob','ponytail','braid','short','long','waves','halfup']),
+    medicHair:pick(Object.keys(MEDIC_STYLES)),
     medicHairColor:pick(MEDIC_HAIRS),medicAccessory:pick(['clip','ribbon','none']),
-    ...createEyewear(identity),...createFemaleBeauty(identity)
+    ...createEyewear(identity),...createFemaleBeauty(identity),...createAppearanceFeatures(identity)
   };
   if(gender==='female'||gender==='male')look.feminine=gender==='female';
   if(look.feminine===true){look.facialHair='none';look.scar=false;}
@@ -83,11 +85,16 @@ export function createSoldierAppearance(identity,gender=null) {
 
 export function ensureSoldierAppearance(soldier) {
   const a=soldier.appearance;
-  if(a?.version===1 && (typeof a.feminine!=='boolean'||!(soldier.gender==='male'||soldier.gender==='female')||a.feminine===(soldier.gender==='female')) && HAIR_LABELS[a.hairStyle] && SKINS.includes(a.skin) && ANY_HAIR.includes(a.hairColor) && MEDIC_STYLES[a.medicHair] && ANY_HAIR.includes(a.medicHairColor)) {
+  if(a?.version===1 && HAIR_LABELS[a.hairStyle] && SKINS.includes(a.skin) && ANY_HAIR.includes(a.hairColor) && MEDIC_STYLES[a.medicHair] && ANY_HAIR.includes(a.medicHairColor)) {
+    if((soldier.gender==='male'||soldier.gender==='female')&&a.feminine!==(soldier.gender==='female')){
+      a.feminine=soldier.gender==='female';
+      if(a.feminine)a.facialHair='none';else a.beautiful=false;
+    }
     if(!(a.glasses in GLASSES_LABELS) || !FRAME_COLORS.includes(a.glassesColor))Object.assign(a,createEyewear(soldier.id || `${soldier.name || 'soldier'}:${soldier.platoonId || 0}`));
     // Already assigned people retain their face, hair and styling across updates.
     if(typeof a.beautiful!=='boolean')a.beautiful=false;
     if(!EYE_COLORS.includes(a.eyeColor))a.eyeColor=EYE_COLORS[3];
+    normalizeAppearanceFeatures(a,isFeminineLook(soldier,a));
     return a;
   }
   soldier.appearance=createSoldierAppearance(soldier.id || `${soldier.name || 'soldier'}:${soldier.platoonId || 0}`,soldier.gender);
@@ -96,9 +103,10 @@ export function ensureSoldierAppearance(soldier) {
 
 export function describeSoldierAppearance(soldier) {
   const a=ensureSoldierAppearance(soldier);
-  if(isFeminineLook(soldier,a))return [MEDIC_STYLES[a.medicHair],a.beautiful?'華やかな顔立ち':'やわらかな表情',GLASSES_LABELS[a.glasses]].filter(Boolean).join(' · ');
+  const features=[...[[a.faceOutline,FACE_OUTLINES],[a.eyeShape,EYE_SHAPES],[a.nose,NOSE_TYPES],[a.jaw,JAW_TYPES]].filter(([key])=>key!=='standard').map(([key,labels])=>labels[key]),a.accessory!=='none'?ACCESSORY_LABELS[a.accessory]:''];
+  if(isFeminineLook(soldier,a))return [MEDIC_STYLES[a.medicHair],a.beautiful?'華やかな顔立ち':'やわらかな表情',...features,GLASSES_LABELS[a.glasses]].filter(Boolean).join(' · ');
   const beard={none:'',stubble:'無精ひげ',mustache:'口ひげ',chin:'あごひげ'}[a.facialHair];
-  return [HAIR_LABELS[a.hairStyle],a.handsome?'端正な顔立ち':FACES[a.faceShape],beard,GLASSES_LABELS[a.glasses]].filter(Boolean).join(' · ');
+  return [HAIR_LABELS[a.hairStyle],a.handsome?'端正な顔立ち':FACES[a.faceShape],...features,beard,GLASSES_LABELS[a.glasses]].filter(Boolean).join(' · ');
 }
 
 const ellipse=(c,x,y,rx,ry,color)=>{c.fillStyle=color;c.beginPath();c.ellipse(x,y,rx,ry,0,0,Math.PI*2);c.fill();};
@@ -113,7 +121,20 @@ function medicBackHair(c,a) {
   } else if(a.medicHair==='braid') {
     for(let i=0;i<4;i++)ellipse(c,5.7+(i%2)*.4,2+i*1.8,1.1,1.35,hair);
   } else if(a.medicHair==='bob') {
-    polygon(c,[[-5,-4],[-6,1],[-6,6],[-3,7],[4,6],[6,5],[6,-2],[4,-5]],hair);
+    // A jaw-length bob leaves the center below the chin clear for the neck.
+    polygon(c,[[-5,-4],[-6,1],[-6,5.2],[-4.7,6.3],[-3.2,5.7],[-2.8,3.5],[2.8,3.5],[3.2,5.7],[4.7,6.3],[6,5.2],[6,-2],[4,-5]],hair);
+  } else if(a.medicHair==='bun') {
+    ellipse(c,0,-7.5,3.2,3.4,hair);stroke(c,[[-2,-9],[0,-10],[2,-8.7]],'rgba(220,184,144,.25)',.4);
+  } else if(a.medicHair==='twintails'||a.medicHair==='twinbraid') {
+    for(const side of [-1,1]){
+      if(a.medicHair==='twintails')polygon(c,[[side*4,-3],[side*7,-3],[side*8,2],[side*8.6,10],[side*6.5,12],[side*6,5],[side*4.8,1]],hair);
+      else for(let i=0;i<5;i++)ellipse(c,side*(6.1+(i%2)*.4),1+i*1.8,1.1,1.4,hair);
+      ellipse(c,side*6,-1,1.1,.65,'#a48668');
+    }
+  } else if(a.medicHair==='sidetail') {
+    polygon(c,[[-4,-4],[-7,-3],[-8.3,2],[-9,9],[-7.1,12],[-6.6,6],[-5.6,1],[-3.7,-1]],hair);ellipse(c,-6,-2,1,.7,'#a48668');
+  } else if(a.medicHair==='wolf') {
+    for(const side of [-1,1])polygon(c,[[side*4,-4],[side*6,-2],[side*5.8,3],[side*7,7],[side*5.5,6],[side*5.2,10],[side*3.5,8],[side*3.3,3]],hair);
   } else if(['long','waves','halfup'].includes(a.medicHair)) {
     polygon(c,[[-5,-5],[-6.1,-1],[-6.3,5],[-5.5,11],[-3.8,13],[-3.4,5],[3.4,5],[4.1,13],[6.1,10],[6.4,3],[5.8,-2],[3.5,-5]],hair);
     if(a.medicHair==='waves'){
@@ -127,18 +148,36 @@ function medicBackHair(c,a) {
 function scalpHair(c,a,medic,small) {
   const hair=medic?a.medicHairColor:a.hairColor;
   if(medic) {
-    if(['long','waves','halfup'].includes(a.medicHair)){
+    if(a.medicHair==='pixie'){
+      polygon(c,[[-5,1],[-5,-3.8],[-2.8,-6],[1,-6.7],[4.5,-4.8],[5.4,-2],[4.2,-1],[2.1,-3],[.3,-1.1],[-1.3,-3],[-3.2,-.3]],hair);
+    }else if(a.medicHair==='wolf'){
+      polygon(c,[[-5.3,2],[-5.4,-3.5],[-3,-6.3],[-1,-5.5],[1,-6.8],[4.5,-4.9],[5.4,-1.7],[4.8,2],[3.6,-1.8],[2,-.8],[.6,-3.1],[-1,-1.3],[-2.5,-3],[-3.6,.8]],hair);
+    }else if(['bun','twintails','twinbraid','sidetail'].includes(a.medicHair)){
+      polygon(c,[[-5,1],[-5.3,-3.3],[-3.1,-5.8],[0,-6.6],[3.5,-5.7],[5.4,-3],[5,1.7],[3.7,-2.1],[1.5,-1.4],[0,-3.2],[-2.2,-1.3],[-3.5,-2.2]],hair);
+      if(a.medicHair==='bun')stroke(c,[[-3.8,-4],[0,-5.4],[3.8,-4]],'rgba(220,184,144,.23)',.4);
+    }else if(['long','waves','halfup'].includes(a.medicHair)){
       polygon(c,[[-5.1,2],[-5.4,-3],[-3.8,-6],[0,-6.8],[3.7,-6],[5.5,-3],[5.1,3],[3.6,-1],[1.3,-3.4],[-1,-2.6],[-2.9,-1],[-4.3,3]],hair);
       if(!small)stroke(c,[[-3.8,-4],[0,-5.4],[3.2,-4]],'rgba(224,187,148,.28)',.45);
     } else polygon(c,[[-5,1],[-5,-4],[-3,-6],[2,-6],[5,-3],[5,2],[3,-1],[1,-3],[-1,-1],[-2,-3],[-4,0]],hair);
     if(a.beautiful&&!small){stroke(c,[[-3.5,-4.4],[-1.2,-5.2],[1,-5.4]],'rgba(244,215,181,.36)',.45);stroke(c,[[3.8,-2.5],[4.5,-.6]],'rgba(244,215,181,.23)',.35);}
-    if(a.medicAccessory==='clip')stroke(c,[[3,-2],[4.5,-1]],'#cbb78b',.7);
-    if(a.medicAccessory==='ribbon') {
-      polygon(c,[[5,-2],[7,-4],[7,-.4],[5,-1],[3,-3],[3,-.5]],'#a66c69');
-    }
     return;
   }
-  if(a.hairStyle==='short') {
+  if(a.hairStyle==='crop'){
+    polygon(c,[[-5,-1],[-5.2,-3.8],[-3.7,-6.1],[0,-7],[3.7,-6.1],[5.1,-3.6],[4.9,-1],[-4.9,-1]],hair);stroke(c,[[-4,-2],[4,-2]],'rgba(220,184,144,.2)',.4);
+  }else if(a.hairStyle==='undercut'){
+    polygon(c,[[-4.3,-3],[-4.5,-6],[.7,-7.6],[4.6,-6.4],[5.2,-3.2],[3,-2.9],[1,-4],[-1,-3.2]],hair);stroke(c,[[-3.4,-5.7],[.8,-6.7],[3.8,-5.5]],'rgba(220,184,144,.28)',.45);
+  }else if(a.hairStyle==='slickback'){
+    polygon(c,[[-5,.3],[-5.6,-4],[-3.8,-6.6],[0,-7.4],[4.3,-5.9],[5.2,-2],[4.7,.6],[3.8,-2.7],[-3.9,-2.7]],hair);
+    if(!small)for(const x of [-2,0,2])stroke(c,[[x,-2.9],[x-.7,-5],[x-.1,-6.6]],'rgba(220,184,144,.24)',.35);
+  }else if(a.hairStyle==='centerpart'){
+    polygon(c,[[-5.5,2],[-5.7,-3],[-3.9,-6],[0,-6.8],[3.9,-6],[5.7,-3],[5.5,2],[3.7,-.3],[1,-3.8],[0,-4.5],[-1,-3.8],[-3.7,-.3]],hair);stroke(c,[[0,-6.4],[0,-4.6]],'rgba(220,184,144,.6)',.5);
+  }else if(a.hairStyle==='spiky'){
+    polygon(c,[[-5.5,-1],[-6.2,-5],[-4.1,-4.5],[-4.5,-8],[-2.6,-6.5],[-1,-9.4],[.5,-6.9],[2.7,-8.8],[3.8,-5.8],[5.7,-6.4],[5.2,-2],[3.1,-.8],[1.5,-3.2],[-1,-1.4],[-2.9,-3.1]],hair);
+  }else if(a.hairStyle==='wavy'){
+    polygon(c,[[-5.5,1],[-5.4,-4],[-3.8,-6.7],[0,-7],[4.4,-5.7],[5.7,-2.5],[5,1.2],[3.1,-.8],[1.4,-2.4],[-.6,-1.2],[-2.5,-2.3],[-4.1,.5]],hair);
+    for(const [x,y]of [[-3.4,-5.4],[.3,-6.1],[3.7,-4.8]])ellipse(c,x,y,2,1.4,hair);
+    if(!small)stroke(c,[[-4.3,-4],[-2.3,-4.9],[0,-4.1],[2.2,-5],[4.2,-3.9]],'rgba(220,184,144,.28)',.4);
+  }else if(a.hairStyle==='short') {
     polygon(c,[[-5,-.6],[-5.3,-3.9],[-3.8,-6],[.2,-6.8],[4,-5.4],[5.1,-2.6],[4.5,.2],[3,-2.4],[1.5,-1.8],[0,-3],[-1.7,-1.8],[-3.6,-2.6]],hair);
   } else if(a.hairStyle==='parted') {
     polygon(c,[[-5.3,1],[-5.2,-4],[-2.8,-6.2],[1.2,-6.6],[4.7,-4.8],[5.1,.2],[3.8,-2],[2.5,-4],[.3,-3.3],[-3.4,-.6]],hair);
@@ -232,7 +271,8 @@ function paintSoldierHead(c,soldier,{x=0,y=0,scale=1,small=false,silhouette=fals
   if(medic)medicBackHair(c,a);
   else if(a.hairStyle==='tied'){ellipse(c,4.9,-4.2,2.2,2,hair);polygon(c,[[5.2,-3],[7.2,-1.5],[7,3.5],[5.5,1]],hair);}
   if(!small){ellipse(c,-5,1,1,1.7,a.skin);ellipse(c,5,1,1,1.7,a.skin);}
-  if(small)ellipse(c,0,0,a.faceShape==='long'?4.5:a.faceShape==='square'?5.5:5.1,medic?5.8:6,a.skin);
+  if(drawVariantFace(c,a,medic,small)){}
+  else if(small)ellipse(c,0,0,a.faceShape==='long'?4.5:a.faceShape==='square'?5.5:5.1,medic?5.8:6,a.skin);
   else if(medic&&a.beautiful){ellipse(c,0,-2.1,4.9,3.7,a.skin);polygon(c,[[-4.8,-2],[4.8,-2],[4.1,2.6],[2.4,5.1],[0,6],[-2.4,5.1],[-4.1,2.6]],a.skin);}
   else if(medic||a.faceShape==='round')ellipse(c,0,0,5.1,6,a.skin);
   else if(a.faceShape==='long')ellipse(c,0,0,4.5,6.7,a.skin);
@@ -244,7 +284,6 @@ function paintSoldierHead(c,soldier,{x=0,y=0,scale=1,small=false,silhouette=fals
     // The same fixed light direction for field heads and portrait faces.
     polygon(c,[[2.8,-4.5],[4.5,-2],[4.5,2.8],[2.4,5.3],[1,5.8],[2.5,1]],'rgba(81,47,34,.18)');
     ellipse(c,-2.1,-2.5,1.8,2.6,'rgba(255,241,213,.18)');
-    if(small)stroke(c,[[.2,1.5],[.7,2.8],[-.3,3]],'rgba(101,63,43,.5)',.45);
   }
   if(!small)ellipse(c,-1.5,-3.5,1.9,.65,'rgba(255,241,213,.28)');
   else if(a.hairStyle==='bald'&&!helmet&&!mitre){c.fillStyle='rgba(255,241,213,.28)';c.fillRect(-2,-4,2,.7);}
@@ -252,14 +291,14 @@ function paintSoldierHead(c,soldier,{x=0,y=0,scale=1,small=false,silhouette=fals
   else if(!medic&&a.hairStyle==='horseshoe') {
     c.fillStyle=hair;c.fillRect(-5,0,1.3,5);c.fillRect(3.7,0,1.3,5);
   }
-  const eyesY=a.eyes==='droopy'&&!medic?1.7:1;
+  const eyesY=a.eyes==='droopy'&&!medic?1.7:1,customEyes=a.eyeShape!=='standard';
   if(silhouette) {
     if(!medic&&a.facialHair!=='none') {c.fillStyle=hair;c.fillRect(-1.5,a.facialHair==='mustache'?3.5:5,3,.75);}
     if(a.glasses!=='none'){c.fillStyle=a.glassesColor;c.fillRect(-3.5,.65,7,.8);}
   } else if(small) {
-    c.fillStyle=medic&&a.beautiful?a.eyeColor:'#302a26';c.fillRect(-2.7,1,1,.8);c.fillRect(1.7,1,1,.8);
+    if(!customEyes){c.fillStyle=medic&&a.beautiful?a.eyeColor:'#302a26';c.fillRect(-2.7,1,1,.8);c.fillRect(1.7,1,1,.8);}
     if(!medic) {
-      c.fillStyle=hair;c.fillRect(-3.3,-.7,2,.6+a.brow*.15);c.fillRect(1.3,-.7,2,.6+a.brow*.15);
+      c.fillStyle=hair;if(!customEyes){c.fillRect(-3.3,-.7,2,.6+a.brow*.15);c.fillRect(1.3,-.7,2,.6+a.brow*.15);}
       if(a.facialHair==='mustache')c.fillRect(-2,3.5,4,.75);
       else if(a.facialHair==='chin')c.fillRect(-1,5.3,2,.8);
       else if(a.facialHair==='stubble'){c.fillStyle='rgba(52,44,36,.18)';c.fillRect(-2,4,4,1.7);}
@@ -267,6 +306,7 @@ function paintSoldierHead(c,soldier,{x=0,y=0,scale=1,small=false,silhouette=fals
     c.fillStyle=medic?'#995f56':'#825b48';c.fillRect(-.8,4,.9,.45);
   } else if(medic) {
     if(a.beautiful){
+      if(!customEyes){
       for(const x of [-2.2,2.2]){
         ellipse(c,x,eyesY,.95,1.08,'#f5ede5');ellipse(c,x,eyesY+.1,.63,.91,a.eyeColor);ellipse(c,x,eyesY+.2,.3,.68,'#29252d');
         ellipse(c,x-.23,eyesY-.35,.23,.27,'#fffdf4');ellipse(c,x+.2,eyesY+.65,.12,.13,'#e6eee5');
@@ -274,19 +314,24 @@ function paintSoldierHead(c,soldier,{x=0,y=0,scale=1,small=false,silhouette=fals
       stroke(c,[[-3.25,.65],[-2.8,.1],[-2.1,-.05],[-1.35,.4]],hair,.35);stroke(c,[[1.35,.4],[2.1,-.05],[2.8,.1],[3.25,.65]],hair,.35);
       stroke(c,[[-3.15,.3],[-3.6,-.2]],hair,.25);stroke(c,[[3.15,.3],[3.6,-.2]],hair,.25);
       stroke(c,[[-3.2,-1.4],[-2.3,-1.65],[-1.3,-1.4]],hair,.28);stroke(c,[[1.3,-1.4],[2.3,-1.65],[3.2,-1.4]],hair,.28);
+      }
       ellipse(c,-3.2,2.5,.85,.45,'rgba(199,112,116,.2)');ellipse(c,3.2,2.5,.85,.45,'rgba(199,112,116,.2)');
       stroke(c,[[-.85,4],[0,4.28],[.85,4]],'#a56365',.3);
     }else{
+      if(!customEyes){
       ellipse(c,-2.3,eyesY,.65,.9,'#3b2f2d');ellipse(c,2.3,eyesY,.65,.9,'#3b2f2d');
       ellipse(c,-2.5,.75,.18,.23,'#fff7e8');ellipse(c,2.1,.75,.18,.23,'#fff7e8');stroke(c,[[-3.2,.6],[-2.7,.3]],hair,.3);stroke(c,[[2.7,.3],[3.2,.6]],hair,.3);
+      }
       ellipse(c,-3.4,2.6,1,.5,'rgba(186,97,91,.28)');ellipse(c,3.4,2.6,1,.5,'rgba(186,97,91,.28)');
       stroke(c,[[-1,4],[0,4.4],[1,4]],'#995f56',.35);
     }
   } else {
     const browY=a.eyes==='sharp'?-.3:-.6,thick=a.handsome?.45:.55+a.brow*.18;
+    if(!customEyes){
     stroke(c,[[-3.3,browY],[a.eyes==='sharp'?-1.2:-1.4,a.eyes==='sharp'?.1:browY+.3]],hair,thick);
     stroke(c,[[1.4,a.eyes==='sharp'?.1:browY+.3],[3.3,browY]],hair,thick);
     ellipse(c,-2.2,eyesY,.5,.45,'#302a26');ellipse(c,2.2,eyesY,.5,.45,'#302a26');
+    }
     stroke(c,[[-1.2,4],[0,a.smile?4.6:4.1],[1.2,4]],'#825b48',.4);
     if(a.facialHair==='mustache')polygon(c,[[-2.1,3.6],[-.4,3.3],[0,3.7],[.4,3.3],[2.1,3.6],[1.4,4.2],[-1.4,4.2]],hair);
     if(a.facialHair==='chin')polygon(c,[[-1.8,5],[-1.4,6.1],[0,6.7],[1.4,6.1],[1.8,5]],hair);
@@ -296,8 +341,10 @@ function paintSoldierHead(c,soldier,{x=0,y=0,scale=1,small=false,silhouette=fals
     }
     if(a.scar&&!small)stroke(c,[[3,-.3],[3.6,2.4]],'#a07159',.3);
   }
-  if(!small)stroke(c,[[.2,1.6],[.6,2.8],[-.2,3]],'#a4775c',.35);
+  if(!silhouette)drawVariantEyes(c,a,medic,small);
+  if(!small||!silhouette)drawVariantNose(c,a,small);
   if(!silhouette)eyewear(c,a,small?1:eyesY,small);
+  drawPersonalAccessory(c,a,{small,hairCovered:!!(helmet||mitre||cap)});
   if(helmet) {
     const p=equipmentVisualProfile({tier:helmetTier});
     if(p.rough){polygon(c,[[-4,-3.8],[-3.2,-6],[-.5,-6.8],[3.4,-5.8],[4.5,-3]],helmet);stroke(c,[[-3,-4.4],[3.2,-3.8]],'#a99472',1);}

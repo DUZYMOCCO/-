@@ -1,7 +1,7 @@
 import {WORLD_SIZE,fieldBlocks} from './world.js?v=182';
 import {inCurrentInstance} from './instance-rules.js?v=182';
 import {isSoldierOnExpedition} from './expedition-rules.js';
-import {generateSoldierName} from './soldier-names.js?v=182';
+import {generateSoldierName} from './soldier-names.js?v=185';
 export const LIMITED_CLASSES=Object.freeze({
  NINJA:{id:'NINJA',name:'忍者',icon:'🥷',baseClassId:'LIGHT',combatClass:'LIGHT',color:'#8e97ac',range:250,speed:136,atkCooldown:.75,bonusHp:5,bonusAtk:12,desc:'刀と手裏剣を間合いに応じて使い分ける。'},
  BEAST_WOLF:{id:'BEAST_WOLF',name:'狼獣人',icon:'🐺',species:'wolf',baseClassId:'LIGHT',combatClass:'LIGHT',color:'#9cabb0',range:65,speed:122,atkCooldown:.85,bonusHp:15,bonusAtk:15,desc:'近接戦と追跡に長けた獣人。'},

@@ -22,7 +22,7 @@ const DEFAULT_APTITUDE_ROLL={min:.65,span:.7};
 export const practiceGrowth=unit=>(TALENT_GROWTH[unit?.talent]||1)*(TALENT_PRACTICE_BONUS[unit?.talent]||1);
 const positive=(value,fallback=0)=>Number.isFinite(Number(value))?Math.max(0,Number(value)):fallback;
 const clamp=(value,min,max)=>Math.max(min,Math.min(max,value));
-export const attributeFamily=unit=>unit?.isPlayer||unit?.isHero?'COMMANDER':FAMILIES[unit?.soldierClass]||(ATTRIBUTE_BASES[unit?.combatClass]?unit.combatClass:ATTRIBUTE_BASES[unit?.soldierClass]?unit.soldierClass:'HEAVY');
+export const attributeFamily=unit=>unit?.isPlayer||unit?.isHero?'COMMANDER':FAMILIES[unit?.soldierClass]||(ATTRIBUTE_BASES[unit?.combatClass]?unit.combatClass:ATTRIBUTE_BASES[unit?.baseClassId]?unit.baseClassId:ATTRIBUTE_BASES[unit?.soldierClass]?unit.soldierClass:'HEAVY');
 export const emptyAttributePractice=()=>({strength:0,magic:0,magicDefense:0,travel:0,evasion:0});
 export function rollAttributeProfile(classKey='HEAVY',talent='AVERAGE',random=Math.random,balanced=false) {
   const family=FAMILIES[classKey]||(ATTRIBUTE_BASES[classKey]?classKey:'HEAVY'),base=ATTRIBUTE_BASES[family],aptitudes={},innate={},roll=APTITUDE_ROLL_RANGE[talent]||DEFAULT_APTITUDE_ROLL;
@@ -86,7 +86,7 @@ export function attributeValues(unit) {
   const caster=['MEDIC','MAGE'].includes(attributeFamily(unit));
   let strengthPotential=unassistedStrengthPotential(unit,p);
   const weapon=unit.equipped?.weapon||unit.weapon;
-  if(caster&&isMuscleCaster(unit)&&['sword','spear','hammer'].includes(weapon?.weaponStyle))strengthPotential+=lv*(ATTRIBUTE_RULES.levelStrength-ATTRIBUTE_RULES.casterLevelStrength)*p.aptitudes.strength*gift;
+  if(caster&&isMuscleCaster(unit)&&['sword','spear','hammer','axe'].includes(weapon?.weaponStyle))strengthPotential+=lv*(ATTRIBUTE_RULES.levelStrength-ATTRIBUTE_RULES.casterLevelStrength)*p.aptitudes.strength*gift;
   const baseStrength=cappedAttributeValue(strengthPotential,1,1);
   const strength=Math.min(ATTRIBUTE_RULES.cap,baseStrength+(unit._casterStrengthTimer>0?unit._casterStrengthBonus||0:0));
   const magic=cappedAttributeValue(trained('magic',ATTRIBUTE_RULES.levelMagic),1,1);
@@ -130,9 +130,9 @@ export function attributeSpecialties(unit) {
   return ATTRIBUTE_KEYS.filter(key=>p.aptitudes[key]>=1.3).sort((a,b)=>p.aptitudes[b]-p.aptitudes[a]).slice(0,2).map(key=>`${ATTRIBUTE_LABELS[key]}特化`);
 }
 export const aptitudeGrade=value=>value>=1.7?'S':value>=1.3?'A':value>=1?'B':value>=.75?'C':'D';
-export const prefersCasterMelee=unit=>['MEDIC','MAGE'].includes(attributeFamily(unit))&&['sword','spear','hammer'].includes((unit.equipped?.weapon||unit.weapon)?.weaponStyle)&&(unit.atk||0)>(unit.magicAttack||unit.atk||1)*1.4;
+export const prefersCasterMelee=unit=>['MEDIC','MAGE'].includes(attributeFamily(unit))&&['sword','spear','hammer','axe'].includes((unit.equipped?.weapon||unit.weapon)?.weaponStyle)&&(unit.atk||0)>(unit.magicAttack||unit.atk||1)*1.4;
 export const magicAbilityMultiplier=unit=>attributeMultipliers(unit).magic;
-export const CHANNEL_WEAPON_STYLES=['sword','spear','hammer','bow'];
+export const CHANNEL_WEAPON_STYLES=['sword','spear','hammer','axe','bow'];
 export function canChannelWeaponMagic(unit) {
   if(!unit||!['HEAVY','LIGHT','ARCHER'].includes(attributeFamily(unit)))return false;
   if(!CHANNEL_WEAPON_STYLES.includes((unit.equipped?.weapon||unit.weapon)?.weaponStyle))return false;

@@ -2,6 +2,19 @@
 
 2026-10-11。「四角いだだっ広い内装に雰囲気と探索感を」「通路の端に宝箱、ボスを倒して財宝」の依頼に対応。
 
+## 仕上げ確認（v5.0.3 / ゲームキャッシュ v184）
+
+Claudeが取り込んだv5.0.2までの変更を保持した。ボスの冠・角・翼とHPバー・名前の重なりだけを調整し、廃墟の番兵も大型描画のまま見本に含めた。全87テスト合格。375×667の実移動・箱2つ・攻撃ボタンでの討伐・財宝回収・直後の空の部屋・2期後の復活を再確認し、ページ例外は0件。
+
+新しいキャッシュ構成では、未起動ゲームをオフラインで初めて開くと共通のCSS読み込み処理が不足していた。`sw-assets.js` の `files` に `../common/js/load-css.js` を含めて修正。ゲーム側の依存一覧だけで完結し、共有ファイルを編集していない。新しいChromeプロファイルで工房を読み込み、通信を切って新遠征→廃坑入場・ボス表示まで成功した。iPhone実機は未確認。
+
+- [現在の内装・ボス](previews/dungeon-interiors-v5.0.3.png)
+- [スマホ幅のボス](previews/dungeon-boss-mobile-v5.0.3.png)
+- [討伐後の財宝](previews/dungeon-victory-mobile-v5.0.3.png)
+- [実ブラウザ結果](previews/dungeon-playtest-v5.0.3.json)／[オフライン結果](previews/dungeon-offline-v5.0.3.json)
+
+再確認：`node iron-squad/tools/preview-dungeon-exploration.mjs` と `node iron-squad/tools/check-dungeon-offline.mjs`（:8000 が必要、いずれもユーザーのセーブを使用しない）。現在の仕上げ差分は未commit／未push。
+
 ## 遊ぶ流れ
 
 入口の部屋 → 広い主通路と2つの広間 → 南北の短い寄り道と宝箱 → ボスの広間 → 討伐で開く最奥の財宝 → 帰還。主通路は入口から奥まで直線でつながり、迷路にはしない。

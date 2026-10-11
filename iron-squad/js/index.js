@@ -1,28 +1,28 @@
 import {configureBattlefieldUI,quietBattlefieldContext} from './battlefield-ui.js?v=182';
-import {renderNavigationMap} from './navigation-map.js?v=182';
-import {soldierEquipmentValue,observeEquipment,standardEquipmentCost,RESERVE_ARMAMENT_COUNT} from './armament-rules.js?v=182';
-import {configureRangedEnemy,updateRangedEnemy,updateDefenseWalls,interceptHostileShot,isHostileShot,updateHostileBolt,drawDefenseWalls} from './enemy-ranged.js?v=182';
-import {LIMITED_CLASSES,initializeLimitedAllies,prepareLimitedEncounter,createLimitedAlly,joinLimitedEncounter,updateLimitedAllies,updateNinja,updateShuriken,drawLimitedEncounter,serializeLimitedAllies,notifyLimitedJoin} from './limited-allies.js?v=182';
+import {renderNavigationMap} from './navigation-map.js?v=187';
+import {soldierEquipmentValue,observeEquipment,standardEquipmentCost,RESERVE_ARMAMENT_COUNT} from './armament-rules.js?v=187';
+import {configureRangedEnemy,updateRangedEnemy,updateDefenseWalls,interceptHostileShot,isHostileShot,updateHostileBolt,drawDefenseWalls} from './enemy-ranged.js?v=187';
+import {LIMITED_CLASSES,initializeLimitedAllies,prepareLimitedEncounter,createLimitedAlly,joinLimitedEncounter,updateLimitedAllies,updateNinja,updateShuriken,drawLimitedEncounter,serializeLimitedAllies,notifyLimitedJoin} from './limited-allies.js?v=185';
 import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=182';
-import {TIERS,MAX_EQUIPMENT_TIER,MAX_POWER_RANK,POWER_RANK_STEP,GENERATION_COUNT,TRADE_MAX_TIER,powerRank,tierDescription} from './equipment-tiers.js?v=182';
+import {TIERS,MAX_EQUIPMENT_TIER,MAX_POWER_RANK,POWER_RANK_STEP,GENERATION_COUNT,TRADE_MAX_TIER,powerRank,tierDescription} from './equipment-tiers.js?v=187';
 import {fieldAdaptiveScaling} from './field-scaling.js?v=182';
 import {activeSquad,inCurrentInstance} from './instance-rules.js?v=182';
-import {recordBattleLog,resetBattleLog,refreshCombatFieldNotes} from './battle-log.js?v=182';
+import {recordBattleLog,resetBattleLog,refreshCombatFieldNotes} from './battle-log.js?v=187';
 import {rollDropExclusive,applyDropExclusive,dropExclusiveLabel} from './drop-exclusives.js?v=182';
-import {latestEquipmentTier,recordMerchantEquipment,ensureMerchantCatalog,refreshWaveCatalogs,markMerchantPurchase} from './merchant-catalog.js?v=182';
+import {latestEquipmentTier,recordMerchantEquipment,ensureMerchantCatalog,refreshWaveCatalogs,markMerchantPurchase} from './merchant-catalog.js?v=187';
 import {initializeMedicalPosts,updateMedicalPosts,serializeMedicalPosts,nearestKnownMedicalPost,drawMedicalPost,drawMedicalMap,drawMedicalMarker,drawTownMedicalReception,drawRescueDirection} from './medical-posts.js?v=182';
 import {invasionMethods,initializeInvasions,serializeInvasions,shouldTriggerRandomRaid,makeEnemyRoom,drawInvasionRoute} from './invasion-rules.js?v=182';
-import {gateMethods,serializeGatePosts,replenishTownGateGuards,initializeGateGuards,ensureTownGuards,serializeGateGuards,updateGateGuards,gateGuardVisible,applyFortifications,drawFortification,exitGateTown,townExitReached,wallBlocksAttack,attackBlocked as coverBlocked} from './gate-rules.js?v=182';
-import {nationMethods,normalizeNation,nationalIncome,nationalPayrollPlan,headquartersDamageMult,drawNationalDevelopment,DEVELOPMENT_STAGES} from './nation-rules.js?v=182';
-import {equipmentUpgradeCost,salaryQuote,paySoldiers} from './payroll-rules.js?v=182';
+import {gateMethods,serializeGatePosts,replenishTownGateGuards,initializeGateGuards,ensureTownGuards,serializeGateGuards,updateGateGuards,gateGuardVisible,applyFortifications,drawFortification,exitGateTown,townExitReached,wallBlocksAttack,attackBlocked as coverBlocked} from './gate-rules.js?v=187';
+import {nationMethods,normalizeNation,nationalIncome,nationalPayrollPlan,headquartersDamageMult,drawNationalDevelopment,DEVELOPMENT_STAGES} from './nation-rules.js?v=187';
+import {equipmentUpgradeCost,salaryQuote,paySoldiers} from './payroll-rules.js?v=187';
 import {addFieldDrop,ageFieldDrops,attractFieldDrops,FIELD_DROP_PICKUP_RADIUS} from './field-drops.js?v=182';
-import {drawLootDrop,drawLootPullTrail} from './loot-visuals.js?v=182';
+import {drawLootDrop,drawLootPullTrail} from './loot-visuals.js?v=187';
 import {drawOwnSquadRing,isOwnSquad} from './own-squad-marker.js?v=182';
 import {queueSquadName,flushSquadNames} from './squad-names.js?v=182';
 import {syncGiveUpUI,resumeBGM} from './commander-giveup.js?v=182';
 import {economicState,advanceRegionalEconomy,discoverEconomicRegions,recordEconomicKill,economicFieldBlocked} from './regional-economy.js?v=182';
-import {updateRegionalTraffic,nearestCommerceTarget,damageCommerce,persistTradeRaiders,restoreTradeRaiders} from './trade-routes.js?v=182';
-import {drawEconomicLandscape,drawCommerceActor,drawEconomicMinimap,drawCommerceWreck,drawCampTent} from './economic-visuals.js?v=182';
+import {updateRegionalTraffic,nearestCommerceTarget,damageCommerce,persistTradeRaiders,restoreTradeRaiders} from './trade-routes.js?v=187';
+import {drawEconomicLandscape,drawCommerceActor,drawEconomicMinimap,drawCommerceWreck,drawCampTent} from './economic-visuals.js?v=187';
 /**
  * ゲーム3: IRON SQUAD (アイアン・スクワッド: 雑兵立身出世録)
  * ローグライク・アクションRPG
@@ -38,49 +38,49 @@ import { sound } from '../../common/js/audio.js?v=151';
 import { loadCss } from '../../common/js/load-css.js';
 import { storage } from '../../common/js/storage.js';
 import { createStallRecorder, mountStallLog } from './stall-recorder.js?v=182';
-import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow, isRuinKeeper, ruinKeeperScale } from './visuals.js?v=182';
+import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow, isRuinKeeper, ruinKeeperScale } from './visuals.js?v=187';
 import { refreshCampQuiet, assignCampSeats, tryCampLeisure } from './camp-leisure.js?v=182';
 import { CAMP_PEACE_RADIUS, peaceContainment, pushOutsidePeace, relocatePeaceMonster } from './peace-zones.js?v=182';
 import { FARM_X, FARM_Y, farmPosts, farmOverlaps, reinforcementCount, reserveRosterLine, reserveRosterTitle } from './reserve-farm.js?v=182';
-import { drawMeleeRangeCue, meleeDrawReach, attackAnimationRate } from './weapon-motion.js?v=182';
+import { drawMeleeRangeCue, meleeDrawReach, attackAnimationRate } from './weapon-motion.js?v=187';
 import {emptyRescueBonuses,normalizeRescueBonuses,rescueBonusSummary} from './rescue-rewards.js?v=182';
-import {drawFieldCivilian} from './civilian-visuals.js?v=182';
+import {drawFieldCivilian} from './civilian-visuals.js?v=187';
 import { saveSlots } from './save-slots.js';
 import { soldierDialogue } from './soldier-dialogue.js?v=182';
-import { generateSoldierName, migrateSoldierName, rollGenderByKey, isGenderId } from './soldier-names.js?v=182';
-import { openCommanderEditor } from './commander-editor.js?v=182';
-import { applyCommanderIdentity, normalizeCommanderIdentity, commanderFullName, GENDERS as COMMANDER_GENDERS } from './commander-identity.js?v=182';
-import {MAGIC_CLASSES,MAGIC_AFFINITIES,magicMethods,isMage,isMagicUser,ensureMana,initializeMagic,updateMagic,distributeMagicStones,castMedicBuff,castCasterStrength,updateMageAI,drawMagicBursts,spendMana,weaponMagicDamage,isPlayerCaster,castPlayerSpell,PLAYER_MAGIC_RULES} from './magic-rules.js?v=182';
+import { generateSoldierName, migrateSoldierName, rollGenderByKey, isGenderId, ensureSoldierGender, genderLabel } from './soldier-names.js?v=185';
+import { openCommanderEditor } from './commander-editor.js?v=187';
+import { applyCommanderIdentity, normalizeCommanderIdentity, commanderFullName, GENDERS as COMMANDER_GENDERS } from './commander-identity.js?v=187';
+import {MAGIC_CLASSES,MAGIC_AFFINITIES,magicMethods,isMage,isMagicUser,ensureMana,initializeMagic,updateMagic,distributeMagicStones,castMedicBuff,castCasterStrength,updateMageAI,drawMagicBursts,spendMana,weaponMagicDamage,isPlayerCaster,castPlayerSpell,PLAYER_MAGIC_RULES} from './magic-rules.js?v=187';
 import {hazardMethods,updateHazards,drawHazards} from './hazard-fields.js?v=182';
 import {strongEnemyReward} from './combat-rewards.js?v=182';
-import {supplyMethods, initializeSupplies, updateSupplies, takeRangedShot, ammoCombatProfile, isRangedUnit, distributeAmmo, preventLethalHit, normalizeFieldSave, SQUAD_POTION_COST, ensureAmmo, RANGED_DAMAGE_MULT, supplyLocation} from './supply-rules.js?v=182';
-import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog } from './interface.js?v=182';
-import { renderTroopRankings, getSoldierRankerBadges, calcSoldierRankerBonus } from './troop-rankings.js?v=182';
-import { ensureSoldierAppearance, drawSoldierPortrait, describeSoldierAppearance } from './soldier-appearance.js?v=182';
+import {supplyMethods, initializeSupplies, updateSupplies, takeRangedShot, ammoCombatProfile, isRangedUnit, distributeAmmo, preventLethalHit, normalizeFieldSave, SQUAD_POTION_COST, ensureAmmo, RANGED_DAMAGE_MULT, supplyLocation} from './supply-rules.js?v=187';
+import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog } from './interface.js?v=187';
+import { renderTroopRankings, getSoldierRankerBadges, calcSoldierRankerBonus } from './troop-rankings.js?v=187';
+import { ensureSoldierAppearance, drawSoldierPortrait, describeSoldierAppearance } from './soldier-appearance.js?v=187';
 import { attachSurfaceEvents, detachSurfaceEvents, frameSurfaceReady, releaseSceneCaches, releaseCanvas, surfaceCanResume } from './canvas-surface.js?v=182';
 import { SETTLEMENTS, WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt, routeNameAt, eastWestRoadY, northSouthRoadX, riverCenterY, drawFieldDepth, drawOakCrown, fieldBlocks, settleUnit } from './world.js?v=182';
 import { subscribeKana, kanaGrade, displayKana } from '../../common/js/kana-mode.js?v=175';
 import { FogGrid, FOG_REVEAL_RADIUS, FOG_CAMP_REVEAL } from './fog.js?v=182';
 import {
   classTierOf, nextClassId, classUpCostForNext, canAffordClassUp, formatClassUpCostJa, classUpShortageJa,
-  playerClassTier, nextPlayerStage, playerStageById, CLASS_TIER_LABELS, PLAYER_CLASS_STAGES, passesWalls as unitPassesWalls
-} from './class-up-rules.js?v=182';
-import { PHASE_DURATION, REST_DURATION, DEATHLINE_DOWN_THRESHOLD, SOLDIER_SALARY, MIN_REINFORCEMENTS, emptyActivity, advancePhase, advanceRest, recordCombat, recordHealing, healByMedic, healAmountFor, personalDownCount, deathlineEligible, participated, finishExperience } from './phase-rules.js';
+  playerClassTier, nextPlayerStage, playerStageById, numberedClassName, numberClassDefinitions, passesWalls as unitPassesWalls
+} from './class-up-rules.js?v=185';
+import { PHASE_DURATION, REST_DURATION, DEATHLINE_DOWN_THRESHOLD, SOLDIER_SALARY, MIN_REINFORCEMENTS, emptyActivity, advancePhase, advanceRest, recordCombat, recordHealing, healByMedic, healAmountFor, personalDownCount, deathlineEligible, participated, finishExperience } from './phase-rules.js?v=187';
 import {HEALING_HP_PER_EXP,REVIVAL_EXP_PER_MAX_HP,shareCommanderExp,raiseLevelMark,ageLevelMarks} from './experience-rules.js';
-import {rollAttributeProfile,applyAttributeStats,attributeValues,practiceAttribute,attributeCarryCapacity,attributeSpecialties,prefersCasterMelee,canChannelWeaponMagic,magicAbilityMultiplier,beginAttributeMovement,finishAttributeMovement,ATTRIBUTE_LABELS,ATTRIBUTE_KEYS,aptitudeGrade} from './unit-attributes.js';
-import {rollScoutCandidate,renderRecruitment,nextScoutCandidate,startAutomaticRecruitment,stopAutomaticRecruitment,RECRUIT_CLASSES} from './recruitment.js?v=182';
-import {canUseWeapon,requiredWeaponStrength,weaponRequirementText,isMagicWeapon,MAGIC_WEAPON_STYLES,preferredWeaponStyle} from './weapon-requirements.js';
+import {rollAttributeProfile,applyAttributeStats,attributeValues,practiceAttribute,attributeCarryCapacity,attributeSpecialties,prefersCasterMelee,canChannelWeaponMagic,magicAbilityMultiplier,beginAttributeMovement,finishAttributeMovement,ATTRIBUTE_LABELS,ATTRIBUTE_KEYS,aptitudeGrade} from './unit-attributes.js?v=187';
+import {rollScoutCandidate,renderRecruitment,nextScoutCandidate,startAutomaticRecruitment,stopAutomaticRecruitment,RECRUIT_CLASSES} from './recruitment.js?v=187';
+import {canUseWeapon,requiredWeaponStrength,weaponRequirementText,isMagicWeapon,MAGIC_WEAPON_STYLES,preferredWeaponStyle} from './weapon-requirements.js?v=187';
 import {
   emptyFiscalLedger, calcCommanderStipend, calcBuyoutGold,
   shouldAbsorbToSharedBox, calcScoutCost, estimateSoldierScoutValue, calcDismissSettlement,
   formatFiscalReportJa, formatFiscalReportHtml, distributeSharedBoxToSoldiers, sellWeakSurplusFromBox,
   SHARED_BOX_MAX_TIER, SCOUT_COST_BY_TALENT, defaultDonateAmount, donatePresetAmounts
-} from './economy-rules.js?v=182';
+} from './economy-rules.js?v=187';
 
-import { EQUIPMENT_TYPES, saleValue, equippedIds, canSell, lowValueIds, chooseLootTier, distanceScaling, shrineUpgradeCap, compareEquipment, equipmentScore, compareEquipmentStrength, rollWeaponTraits, weaponCombatProfile, evaluateMeleeSweetSpot, isGodRollProtected, zoneRingPower, zoneRingLabelJa, equipmentIcon, equipmentName } from './equipment-rules.js?v=182';
+import { EQUIPMENT_TYPES, saleValue, equippedIds, canSell, lowValueIds, chooseLootTier, distanceScaling, shrineUpgradeCap, compareEquipment, equipmentScore, compareEquipmentStrength, rollWeaponTraits, weaponCombatProfile, evaluateMeleeSweetSpot, isGodRollProtected, zoneRingPower, zoneRingLabelJa, equipmentIcon, equipmentName } from './equipment-rules.js?v=187';
 import { rollFieldBrute, advanceDemonWarband, stepDemonWarbandGroup } from './field-hosts.js?v=182';
 import {
-  WEAPON_STYLES, WEAPON_STYLE_LABELS, WEAPON_STYLE_ICONS,
+  WEAPON_STYLES, MASTERY_STYLES, WEAPON_STYLE_LABELS, WEAPON_STYLE_ICONS, isHeavyWeaponStyle, heavyWeaponAttackMult, weaponCategoryOf,
   MELEE_STYLES, RANGED_STYLES, HIT_GROWTH_SOFT_CAP,
   emptyMastery, normalizeMastery, isRangedStyle, isMeleeStyle,
   hitGrowthMult, applyHitGrowth, masteryAtkMult, masteryPctDisplay,
@@ -88,26 +88,26 @@ import {
   gainWeaponMastery, masteryGainForStyle, pickFavoriteWeapon, rollWeaponStyle,
   weaponStyleOf, favoriteWeaponBias, MASTERY_GAIN_PER_HIT,
   migrateFavoriteForClass, migrateWeaponStyleFromName
-} from './growth-rules.js?v=182';
+} from './growth-rules.js?v=187';
 
 import {
   initMerchants, ensureMerchants, updateMerchants, drawMerchantBody, drawMerchantEscort,
   nearestLivingMerchant, refreshMerchantStock, merchantBuyPrice, merchantSellTier,
   applyMerchantSave, serializeMerchants, MERCHANT_INTERACT_R,
   merchantHealingStatus, merchantHealWavesLeft, useMerchantHealing, MERCHANT_HEAL_COST, recalcEscortStats, finishEscortPhase
-} from './merchant-rules.js?v=182';
+} from './merchant-rules.js?v=187';
 
 import { daylightAt, advanceWorldClock, periodEnemy, enemyAvailable, PERIOD_ENEMIES } from './day-night.js';
 
 import { clusterRescueMarkers } from './rescue-markers.js?v=182';
 import {visibleHeroMembers} from './hero-rules.js';
-import {updateHeroJournal} from './hero-journal.js';
-import {applyHeroEquipmentUpgrade} from './hero-equipment.js';
-import {initializeHeroJourney,rollHeroRevelation,serializeHeroJourney,updateHeroParty,updateHeroFollowing,awardHeroBattle,recordDemonKingDefeat,ensureHeroCastle,syncHeroCastle,renderHeroJourney,drawHeroMarks} from './hero-party.js?v=182';
-import { RESCUE_TIMEOUT, rescueUnits, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, receiveTownCargo, leaveCivilianSpace, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, markSoldierDown, downCommander, commanderDown, updateNpcRescue, CIV_KINDS, isMedic, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST } from './casualty-rules.js?v=182';
-import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault, dungeonBlocks, dungeonSolids } from './dungeon.js?v=182';
+import {updateHeroJournal} from './hero-journal.js?v=187';
+import {applyHeroEquipmentUpgrade} from './hero-equipment.js?v=187';
+import {initializeHeroJourney,rollHeroRevelation,serializeHeroJourney,updateHeroParty,updateHeroFollowing,awardHeroBattle,recordDemonKingDefeat,ensureHeroCastle,syncHeroCastle,renderHeroJourney,drawHeroMarks} from './hero-party.js?v=187';
+import { RESCUE_TIMEOUT, rescueUnits, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, receiveTownCargo, leaveCivilianSpace, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, markSoldierDown, downCommander, commanderDown, updateNpcRescue, CIV_KINDS, isMedic, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST } from './casualty-rules.js?v=187';
+import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault, dungeonBlocks, dungeonSolids } from './dungeon.js?v=187';
 import {nearestDungeonFloor,dungeonSpawnPoint,dungeonSteeringTarget} from './dungeon-layout.js?v=182';
-import {normalizeDungeonExploration,updateDungeonSideChests,drawDungeonSideChests,updateDungeonRespawns,dungeonCoolingDown,recordDungeonClear,DUNGEON_RESET_PHASES} from './dungeon-exploration.js?v=182';
+import {normalizeDungeonExploration,updateDungeonSideChests,drawDungeonSideChests,updateDungeonRespawns,dungeonCoolingDown,recordDungeonClear,DUNGEON_RESET_PHASES} from './dungeon-exploration.js?v=187';
 import {
   EXPEDITION_CHECK_INTERVAL, EXPEDITION_RETURN_HOME, EXPEDITION_ENGAGE_R,
   EXPEDITION_DANGER_TIERS, EXPEDITION_MIN_MEMBERS,
@@ -494,7 +494,7 @@ export const MEDIC_SELF_DEFENSE_COST = 10, MEDIC_SELF_DEFENSE_MIN_MANA = 40;
 export const SOLDIER_PHYS_DMG_MULT = 2.2;
 export const SOLDIER_SPEAR_DMG_MULT = 1.15, SOLDIER_HAMMER_DMG_MULT = 1.35;
 // 兵種（クラス）定義
-export const SOLDIER_CLASSES = {
+export const SOLDIER_CLASSES = numberClassDefinitions({
   ...MAGIC_CLASSES,
   ...LIMITED_CLASSES,
   HEAVY: {
@@ -675,11 +675,11 @@ export const SOLDIER_CLASSES = {
   SAINT: {
     id: 'SAINT', classTier: 2, baseClassId: 'MEDIC', isAdvanced: true, isMaster: true,
     advancedClassId: 'ARCHANGEL',
-    name: '聖女', icon: '✨🕊️', color: '#ec4899', glowColor: '#f9a8d4',
+    name: '衛生術師 クラス2', icon: '✨🕊️', color: '#ec4899', glowColor: '#f9a8d4',
     range: 250, speed: 118, atkCooldown: 0.95,
     bonusHp: 280, bonusDef: 48,
     healMultBonus: 1.25, hpMultBonus: 0.70, defMultBonus: 0.75,
-    tag: '⚜️聖女',
+    tag: 'クラス2',
     desc: '極職支援！治癒+125%。ヒーリングフィールドと高速蘇生'
   },
 
@@ -721,12 +721,12 @@ export const SOLDIER_CLASSES = {
     desc: '伝説支援！治癒+180%。大天使の光で部隊を蘇らせる'
   }
 
-};
+});
 
-// 隊長（主人公）の上位職
+// 隊長（主人公）のクラス1。旧IDは保存と戦闘の互換用。
 export const PLAYER_ADVANCED_CLASS = {
   id: 'WARLORD',
-  name: '覇王ウォーロード',
+  name: numberedClassName('COMMANDER',1),
   icon: '👑🔥',
   color: '#f59e0b',
   bonusHp: 280,
@@ -821,7 +821,7 @@ export function applyUpgradeStats(item, upgradeLevel) {
     if (style === 'spear') {
       item.stats.atkSpeed = Math.floor(-18 - rank * 2);
       item.pierce = true;
-    } else if (style === 'hammer') {
+    } else if (isHeavyWeaponStyle(style)) {
       item.stats.atkSpeed = Math.floor(-24 - rank * 3);
       delete item.pierce;
     } else if (style === 'bow') {
@@ -869,16 +869,22 @@ export function applyUpgradeStats(item, upgradeLevel) {
   }
   if(item.type==='WEAPON'&&item.weaponTraits)item.stats.crit=(item.stats.crit||0)+Math.max(0,Math.min(8,item.weaponTraits.crit||0));
   applyDropExclusive(item);
+  if(item.type==='WEAPON'&&isHeavyWeaponStyle(item)){
+    item.stats.atk*=heavyWeaponAttackMult(item);item.heavyAttackVersion=1;
+  }
 }
 
-/** Saved legs and amulets keep the speed they were forged with until this runs. */
-function refreshOwnedMovementUpgrades(game) {
+/** Refresh owned movement upgrades and migrate old heavy weapon attack once. */
+function refreshOwnedEquipmentUpgrades(game) {
   const piles = [Object.values(game.equipped || {}), game.inventory || [], game.sharedEquipBox || []];
   for (const soldier of [...(game.squad || []), ...(game.reserves || []), ...(game.scoutCandidates || []).map(entry => entry?.soldier).filter(Boolean)]) {
     piles.push(Object.values(soldier.equipped || {}), soldier.weapon ? [soldier.weapon] : []);
   }
   for (const merchant of game.merchants || []) piles.push(merchant.stock || []);
-  for (const pile of piles) for (const item of pile) if (item && (item.type === 'LEGS' || item.type === 'AMULET')) applyUpgradeStats(item, item.upgrade || 0);
+  for (const pile of piles) for (const item of pile) if(item){
+    migrateHeavyWeaponAttack(item);
+    if(item.type==='LEGS'||item.type==='AMULET')applyUpgradeStats(item,item.upgrade||0);
+  }
 }
 
 // 装備ビジュアル解析ヘルパー（武器・防具・装身具の見た目を解析）
@@ -921,6 +927,7 @@ export function generateRandomDrop(distance, kind = 'normal', options = {}) {
     weaponStyle = options.weaponStyle || rollWeaponStyle('any',random);
     if (weaponStyle === 'spear') rawName = chosenTier.spear || '木の槍';
     else if (weaponStyle === 'hammer') rawName = chosenTier.hammer || '木の戦鎚';
+    else if (weaponStyle === 'axe') rawName = chosenTier.axe || '石刃の戦斧';
     else if (weaponStyle === 'bow') rawName = chosenTier.bow || '木の短弓';
     else if (weaponStyle === 'crossbow') rawName = chosenTier.crossbow || '木の石弓';
     else if (weaponStyle === 'cannon') rawName = chosenTier.cannon || '木造の手砲';
@@ -957,6 +964,16 @@ export function generateRandomDrop(distance, kind = 'normal', options = {}) {
   if(Number.isFinite(options.quality)){item.rollMult=options.quality;item.qualityLabel=options.merchant?'商人厳選':'品質指定';}
   else rollItemQuality(item,random);
   applyUpgradeStats(item, plusVal);
+  return item;
+}
+
+/** Upgrade existing owned hammers/axes once, preserving quality, traits and IDs. */
+export function migrateHeavyWeaponAttack(item) {
+  migrateWeaponStyleFromName(item);
+  if(item?.type!=='WEAPON'||!isHeavyWeaponStyle(item)||item.heavyAttackVersion>=1)return item;
+  if(Number.isFinite(item.stats?.atk))item.stats.atk*=heavyWeaponAttackMult(item);
+  else applyUpgradeStats(item,item.upgrade||0);
+  item.heavyAttackVersion=1;
   return item;
 }
 
@@ -2860,6 +2877,7 @@ export const IronSquadGame = {
   },
 
   recalcPlayerStats() {
+    migrateHeavyWeaponAttack(this.equipped?.weapon);
     if (!this.player) return;
     const rank = RANKS[this.rankIndex] || RANKS[0];
     const lv = this.player.level || 1;
@@ -2960,9 +2978,11 @@ export const IronSquadGame = {
   },
 
   recalcSoldierStats(s) {
+    if (!s) return;
+    migrateHeavyWeaponAttack(s.equipped?.weapon || s.weapon);
+    ensureSoldierGender(s);
     if(s?.isMerchantEscort){recalcEscortStats(s);return;}
     ensureSoldierAppearance(s);
-    if (!s) return;
     if (s.title === '巨頭狩り') {
       s.title = '';
       s.isNamed = false;
@@ -2973,6 +2993,8 @@ export const IronSquadGame = {
     const bossKills = s.bossKills || 0;
     const clsKey = s.soldierClass || 'HEAVY';
     const cls = SOLDIER_CLASSES[clsKey] || SOLDIER_CLASSES.HEAVY;
+    s.classTier=classTierOf(cls);
+    s.baseClassId=cls.baseClassId||cls.id;
 
     // 雑魚撃墜枠ボーナス
     const minionAtk = Math.floor(minionKills / 5) * 1;
@@ -3204,7 +3226,7 @@ export const IronSquadGame = {
     this.selectedSaleIds=new Set();this.soldierSlotSelections={};
     this.squad = saved.squad || [];
     this.reserves = saved.reserves || [];
-    refreshOwnedMovementUpgrades(this);
+    refreshOwnedEquipmentUpgrades(this);
     this.recruitSequence = saved.recruitSequence ?? [...this.squad,...this.reserves].reduce((max,s)=>Math.max(max,Number(s.name?.match(/#(\d+)/)?.[1] || 0)),0);
     this.lastReinforcements = saved.lastReinforcements || null;
     this.fog = new FogGrid();
@@ -3255,8 +3277,8 @@ export const IronSquadGame = {
       if (!Array.isArray(s.careerPhases)) s.careerPhases = [];
       s.weaponMastery = normalizeMastery(s.weaponMastery);
       s.favoriteWeapon = migrateFavoriteForClass(s.soldierClass || 'HEAVY', s.favoriteWeapon);
-      if (s.equipped?.weapon) migrateWeaponStyleFromName(s.equipped.weapon);
-      if (s.weapon) migrateWeaponStyleFromName(s.weapon);
+      if (s.equipped?.weapon) migrateHeavyWeaponAttack(s.equipped.weapon);
+      if (s.weapon) migrateHeavyWeaponAttack(s.weapon);
       this.recalcSoldierStats(s);
     });
     for (const s of (this.reserves || [])) {
@@ -3266,15 +3288,15 @@ export const IronSquadGame = {
       if (s.hitGrowthPct == null) s.hitGrowthPct = 0;
       s.weaponMastery = normalizeMastery(s.weaponMastery);
       s.favoriteWeapon = migrateFavoriteForClass(s.soldierClass || 'HEAVY', s.favoriteWeapon);
-      if (s.equipped?.weapon) migrateWeaponStyleFromName(s.equipped.weapon);
-      if (s.weapon) migrateWeaponStyleFromName(s.weapon);
+      if (s.equipped?.weapon) migrateHeavyWeaponAttack(s.equipped.weapon);
+      if (s.weapon) migrateHeavyWeaponAttack(s.weapon);
     }
     // 隊長装備・バッグも名称プレースホルダを実スタイルへ（隊長は全種装備可・制限なし）
     for (const it of Object.values(this.equipped || {})) {
-      if (it) migrateWeaponStyleFromName(it);
+      if (it) migrateHeavyWeaponAttack(it);
     }
-    for (const it of (this.inventory || [])) {
-      if (it) migrateWeaponStyleFromName(it);
+    for (const it of [...(this.inventory || []),...(this.sharedEquipBox || [])]) {
+      if (it) migrateHeavyWeaponAttack(it);
     }
 
     for(const soldier of [...this.squad,...this.reserves]) {
@@ -3334,7 +3356,7 @@ export const IronSquadGame = {
     this.merchantCampSeed=Number.isInteger(saved.merchantCampSeed)?saved.merchantCampSeed:Math.floor(Math.random()*4294967296);
     initMerchants(this, generateRandomDrop, BASE_CAMP);
     if (saved.merchants) applyMerchantSave(this, saved.merchants, generateRandomDrop, BASE_CAMP);
-    refreshOwnedMovementUpgrades(this);
+    refreshOwnedEquipmentUpgrades(this);
     sanitizeCarriers(this);
     if (!legacyWorld && saved.dungeons) {
       this.dungeons = this.dungeons.map(d=>({...d,...saved.dungeons.find(old=>old.id===d.id)}));
@@ -3488,7 +3510,7 @@ export const IronSquadGame = {
     // クラスごとの初期武器・初期防具の支給
     const favoriteWeapon = pickFavoriteWeapon(classKey);
     const starterNameByStyle = {
-      sword: '木の短剣', spear: '木の槍', hammer: '木の戦鎚',
+      sword: '木の短剣', spear: '木の槍', hammer: '木の戦鎚', axe: '石刃の戦斧',
       bow: '木の短弓', crossbow: '木の石弓', cannon: '木造の手砲'
     };
     let starterStyle = preferredWeaponStyle({soldierClass:classKey,talent:talentKey,level:options.level||1,attributeProfile,favoriteWeapon},1);
@@ -4109,7 +4131,7 @@ export const IronSquadGame = {
     const wpn = (this.equipped && this.equipped.weapon) || null;
     const style = weaponStyleOf(wpn);
     // CTは全スタイル概ね公平（8秒基準）
-    const cdByStyle = { sword: 7.5, spear: 8.0, hammer: 8.2, bow: 8.0, crossbow: 8.2, cannon: 8.6 };
+    const cdByStyle = { sword: 7.5, spear: 8.0, hammer: 8.2, axe: 8.2, bow: 8.0, crossbow: 8.2, cannon: 8.6 };
     this.player.powerAtkCooldown = cdByStyle[style] || 8.0;
     this.updatePowerAtkButtonUI();
 
@@ -4172,7 +4194,7 @@ export const IronSquadGame = {
         });
       }
       this.pushShockwave(px + cos * reach * 0.55, py + sin * reach * 0.55, 70, '#6ee7b7', '#ecfdf5', 0.35, 3);
-    } else if (style === 'hammer') {
+    } else if (isHeavyWeaponStyle(style)) {
       skillName = isWarlord ? '🔨【メガスマッシュ】' : '🔨【クラッシュブロー】';
       skillColor = '#fdba74';
       const nearest = this.getNearestMonster(px, py);
@@ -4386,7 +4408,7 @@ export const IronSquadGame = {
     const rank = RANKS[this.rankIndex];
     const pLv = this.player ? (this.player.level || 1) : 1;
     const isWarlord = this.player && this.player.isAdvanced;
-    const rankTitle = isWarlord ? `👑覇王 ${rank.title}` : rank.title;
+    const rankTitle = isWarlord ? `${numberedClassName('COMMANDER',playerClassTier(this.player))} ${rank.title}` : rank.title;
     document.getElementById('player-rank').textContent = `${rankTitle} [Lv.${pLv}]`;
     const hpEl = document.getElementById('player-hp');
     if (hpEl) {
@@ -4525,6 +4547,7 @@ export const IronSquadGame = {
           sword:    { icon: isWarlord ? '⚡' : '⚔️', label: isWarlord ? 'テンペスト' : 'ダブル\nスラッシュ', title: isWarlord ? 'ツインテンペスト' : 'ダブルスラッシュ' },
           spear:    { icon: '🔱', label: isWarlord ? 'グランド\nファン' : 'ファン\nスラスト', title: isWarlord ? 'グランドファン' : 'ファンスラスト' },
           hammer:   { icon: '🔨', label: isWarlord ? 'メガ\nスマッシュ' : 'クラッシュ\nブロー', title: isWarlord ? 'メガスマッシュ' : 'クラッシュブロー' },
+          axe:      { icon: '🪓', label: isWarlord ? 'メガ\nスマッシュ' : 'クラッシュ\nブロー', title: isWarlord ? 'メガスマッシュ' : 'クラッシュブロー' },
           bow:      { icon: '🏹', label: isWarlord ? 'スター\nフォール' : 'アロー\nレイン', title: isWarlord ? 'スターフォール' : 'アローレイン' },
           crossbow: { icon: '🎯', label: isWarlord ? 'ロイヤル\nボルト' : 'ピアス\nボルト', title: isWarlord ? 'ロイヤルボルト' : 'ピアスボルト' },
           cannon:   { icon: '💣', label: isWarlord ? 'ブロッサム' : 'クラスター', title: isWarlord ? 'ブロッサムキャノン' : 'クラスターシェル' }
@@ -6217,12 +6240,12 @@ export const IronSquadGame = {
         } else if (clsKey !== 'ARCHER' && clsKey !== 'MEDIC' && clsKey !== 'HIGH_PRIEST' && clsKey !== 'SNIPER') {
           const sWpn = (soldier.equipped && soldier.equipped.weapon) || soldier.weapon || null;
           const sProf = this.combatProfileFor(soldier, sWpn, false);
-          const meleeReach = Math.max(cls.range, sProf.style === 'spear' ? Math.floor(sProf.reach * 0.55) : (sProf.style === 'hammer' ? Math.max(cls.range,52)*(sWpn?.weaponTraits?.length||1) : cls.range*(sWpn?.weaponTraits?.length||1)));
+          const meleeReach = Math.max(cls.range, sProf.style === 'spear' ? Math.floor(sProf.reach * 0.55) : (isHeavyWeaponStyle(sProf.style) ? Math.max(cls.range,52)*(sWpn?.weaponTraits?.length||1) : cls.range*(sWpn?.weaponTraits?.length||1)));
           if (enemyDist <= meleeReach) {
             // 近接通常攻撃（槍=貫通、鎚=高威力ノックバック）。マスタリーで攻撃速度↑（baseCooldown短縮と同カーブ）
-            const cdMult = sProf.style === 'spear' ? 1.5 : (sProf.style === 'hammer' ? 1.85 : 1.0);
+            const cdMult = sProf.style === 'spear' ? 1.5 : (isHeavyWeaponStyle(sProf.style) ? 1.85 : 1.0);
             // 遅い武器の火力補填（槍×1.15／鎚×1.35）。新旧武器どちらの兵士経路にも同じ式を適用
-            const styleDmgMult = sProf.style === 'spear' ? SOLDIER_SPEAR_DMG_MULT : (sProf.style === 'hammer' ? SOLDIER_HAMMER_DMG_MULT : 1);
+            const styleDmgMult = sProf.style === 'spear' ? SOLDIER_SPEAR_DMG_MULT : (isHeavyWeaponStyle(sProf.style) ? SOLDIER_HAMMER_DMG_MULT : 1);
             const meleeAtk = Math.max(1, Math.round(totalAtk * styleDmgMult));
             const masteryCd = masteryReloadMult(soldier.weaponMastery, sProf.style);
             soldier.atkCooldown = cls.atkCooldown * cdMult * masteryCd / Math.max(.55,sWpn?.weaponTraits?(soldier.atkSpeed||1)*(sWpn.weaponTraits.attackTempo||1):1);
@@ -7147,7 +7170,7 @@ export const IronSquadGame = {
           ? atkUnit.favoriteWeapon
           : weaponStyleOf((atkUnit.equipped && atkUnit.equipped.weapon) || atkUnit.weapon);
         const held = weaponStyleOf((atkUnit.equipped && atkUnit.equipped.weapon) || atkUnit.weapon);
-        const gainAmt = masteryGainForStyle(fav) * ((held === fav) ? 1 : 0.35);
+        const gainAmt = masteryGainForStyle(fav) * ((weaponCategoryOf(held) === weaponCategoryOf(fav)) ? 1 : 0.35);
         const beforePct = masteryPctDisplay(atkUnit.weaponMastery, fav);
         gainWeaponMastery(atkUnit, fav, gainAmt);
         const afterPct = masteryPctDisplay(atkUnit.weaponMastery, fav);
@@ -7162,7 +7185,7 @@ export const IronSquadGame = {
       ? (this.equipped && this.equipped.weapon)
       : ((attacker && attacker.equipped && attacker.equipped.weapon) || (attacker && attacker.weapon));
     const wProf = weaponCombatProfile(wItem);
-    if (!magicalAttack&&wProf.style === 'hammer' && !monster.isColossal) {
+    if (!magicalAttack&&isHeavyWeaponStyle(wProf.style) && !monster.isColossal) {
       const knock = isPlayer && this.player.isAdvanced
         ? (wProf.knockbackWarlord || 78)
         : (wProf.knockback || 62);
@@ -8104,7 +8127,7 @@ export const IronSquadGame = {
     if (item.type === 'GEM' || item.isGem) {
       this.awakeningGems = (this.awakeningGems || 0) + 1;
       sound.playHighScore();
-      this.showToast(`💠【神話秘宝！】『神話の覚醒宝玉』入手！(所持: ${this.awakeningGems}個 / 伝説職の覚醒に必要)`);
+      this.showToast(`💠【神話秘宝！】『神話の覚醒宝玉』入手！(所持: ${this.awakeningGems}個 / クラス3の昇格に必要)`);
       this.updateStatsUI();
       return;
     }
@@ -8330,7 +8353,7 @@ export const IronSquadGame = {
     const advClsId = nextClassId(curCls);
     const advCls = advClsId ? SOLDIER_CLASSES[advClsId] : null;
     if (!advCls) {
-      alert('この兵士は既に最高峰の伝説職へ覚醒済みです！');
+      alert('この兵士は現在用意されている最終クラスです。');
       return false;
     }
     const cost = classUpCostForNext(curCls, s.talent);
@@ -8345,9 +8368,8 @@ export const IronSquadGame = {
     this.recalcSoldierStats(s);
     if (!s.isDown) s.hp = s.maxHp;
 
-    const tierName = CLASS_TIER_LABELS[classTierOf(advCls)] || '上位職';
     sound.playHighScore();
-    this.showToast(`🔱⚡【天命覚醒！】${s.name} が${tierName}【${advCls.name}】へ昇格！壁を突き抜けて進み、攻撃も壁の向こうへ届きます（消費: ${formatClassUpCostJa(cost)}）`);
+    this.showToast(`🔱⚡【天命覚醒！】${s.name} が【${advCls.name}】へ昇格！壁を突き抜けて進み、攻撃も壁の向こうへ届きます（消費: ${formatClassUpCostJa(cost)}）`);
     this.saveGame();
     this.renderStrategyUI();
     this.updateStatsUI();
@@ -8358,10 +8380,10 @@ export const IronSquadGame = {
   promotePlayer() {
     const next = nextPlayerStage(this.player);
     if (!next || !next.id) {
-      alert('隊長は既に最高位【神話帝ミトラス】へ覚醒済みです！');
+      alert('隊長は現在用意されている最終クラスです。');
       return false;
     }
-    const cost = { 1: { orbs: 1, gems: 0 }, 2: { orbs: 3, gems: 0 }, 3: { orbs: 5, gems: 1 } }[next.tier];
+    const cost = classUpCostForNext({classTier:playerClassTier(this.player)});
     if (!canAffordClassUp(this.awakeningOrbs, this.awakeningGems, cost)) {
       alert(classUpShortageJa(this.awakeningOrbs, this.awakeningGems, cost));
       return false;
@@ -8499,7 +8521,7 @@ export const IronSquadGame = {
     const phaseText = recent.length
       ? recent.map(p => `第${p}期`).join(' · ') + (phases.length > 12 ? ` …他${phases.length - 12}期` : '')
       : 'まだ戦線経験の記録なし';
-    const masteryRows = WEAPON_STYLES.map(st => {
+    const masteryRows = MASTERY_STYLES.map(st => {
       const pct = masteryPctDisplay(s.weaponMastery, st);
       const fav = (s.favoriteWeapon || 'sword') === st ? ' ★' : '';
       return `<div class="soldier-detail-mastery-row"><span>${WEAPON_STYLE_ICONS[st] || ''}${WEAPON_STYLE_LABELS[st] || st}${fav}</span><strong>${pct}%</strong></div>`;
@@ -8536,7 +8558,7 @@ export const IronSquadGame = {
         <div class="soldier-detail-head">
           <div>
             <div style="font-size:13px;font-weight:bold;color:#fde68a;">${cls.icon} ${s.isNamed ? `${s.title || ''}${s.name}` : s.name}</div>
-            <div style="font-size:10px;color:#94a3b8;margin-top:2px;">Lv.${s.level || 1} ${cls.name} · <span style="color:${talent.color};">[${talent.tag}]</span> · ${role}</div>
+            <div style="font-size:10px;color:#94a3b8;margin-top:2px;">Lv.${s.level || 1} ${cls.name} · ${genderLabel(s)} · <span style="color:${talent.color};">[${talent.tag}]</span> · ${role}</div>
           </div>
           <button type="button" class="mini-btn btn-close-soldier-detail" style="background:#334155;color:#e2e8f0;font-size:11px;">閉じる</button>
         </div>
@@ -9156,7 +9178,7 @@ export const IronSquadGame = {
     item.nationalIssue=true;item.qualityLabel='標準支給';delete item.weaponTraits;
     if(type==='WEAPON'){
       item.weaponStyle=preferredWeaponStyle(soldier,tier);
-      const names={sword:'weapon',spear:'spear',hammer:'hammer',bow:'bow',crossbow:'crossbow',cannon:'cannon'};
+      const names={sword:'weapon',spear:'spear',hammer:'hammer',axe:'axe',bow:'bow',crossbow:'crossbow',cannon:'cannon'};
       item.baseName=MAGIC_WEAPON_STYLES.includes(item.weaponStyle)?`${TIERS[tier-1].mat}の${item.weaponStyle==='staff'?'長杖':'ワンド'}・${TIERS[tier-1].generation}型`:TIERS[tier-1][names[item.weaponStyle]||'weapon'];
       item.name=item.baseName;
     }
@@ -9558,7 +9580,7 @@ export const IronSquadGame = {
     const dayEnemy=PERIOD_ENEMIES.day[zone.id],nightEnemy=PERIOD_ENEMIES.night[zone.id];
     let casualtySummary=document.getElementById('casualty-summary');
     if(!casualtySummary){casualtySummary=document.createElement('p');casualtySummary.id='casualty-summary';casualtySummary.className='reinforcement-summary';timeSummary.after(casualtySummary);}
-    casualtySummary.textContent=`負傷${this.squad.filter(s=>s.isDown&&!s.dead).length}名。接近して紐で搬送：隊長2名・聖騎士2名・他兵士1名。本陣・救護所・町・制圧済み拠点へ運ぶと復活。発見済み救護所へ矢印案内。施設外で復活させられるのは衛生兵・大司教のみ。搬送中は死亡猶予停止。`;
+    casualtySummary.textContent=`負傷${this.squad.filter(s=>s.isDown&&!s.dead).length}名。接近して紐で搬送：隊長2名・昇格した重装歩兵2名・他兵士1名。本陣・救護所・町・制圧済み拠点へ運ぶと復活。発見済み救護所へ矢印案内。施設外で復活させられるのは衛生術師のみ。搬送中は死亡猶予停止。`;
     timeSummary.textContent=`${time.day}日目 · ${time.icon} ${time.label} ${time.clock} / ${time.period==='day'?'夜':'昼'}まで${Math.ceil(time.remaining)}秒。現在地：昼は${dayEnemy.name}、夜は${nightEnemy.name}。昼夜各4分、会議中は時計停止。`;
     document.getElementById('strat-gold').textContent = (this.gold || 0).toLocaleString();
     const windowGold = document.getElementById('strat-window-gold');
@@ -9575,7 +9597,7 @@ export const IronSquadGame = {
       const row=document.createElement('div');row.className='reserve-row';
       const cls=SOLDIER_CLASSES[soldier.soldierClass] || SOLDIER_CLASSES.HEAVY;
       const talent=TALENTS[soldier.talent] || TALENTS.AVERAGE;
-      row.textContent=`${soldier.name} · ${cls.name} · ${talent.tag} · Lv.${soldier.level || 1} · 経験${soldier.survivedWaves || 0}戦線 · 通常給与見込${salaryQuote(soldier,this).total.toLocaleString()}G`;
+      row.textContent=`${soldier.name} · ${cls.name} · ${genderLabel(soldier)} · ${talent.tag} · Lv.${soldier.level || 1} · 経験${soldier.survivedWaves || 0}戦線 · 通常給与見込${salaryQuote(soldier,this).total.toLocaleString()}G`;
       if(soldier.lastMaintenance)row.textContent+=` · 自己強化${soldier.lastMaintenance.count}回 / ${soldier.lastMaintenance.spent}G · ${soldier.lastMaintenance.status}`;
       const info=document.createElement('span');info.textContent=row.textContent;
       const detail=document.createElement('button');detail.type='button';detail.className='mini-btn';detail.textContent='個人詳細';
@@ -9603,7 +9625,7 @@ export const IronSquadGame = {
       const bossHp = (p.bossKills || 0) * 50;
       const bossCrit = (p.bossKills || 0) * 2;
       const bossRed = Math.min(30, (p.bossKills || 0) * 2);
-      const stage = PLAYER_CLASS_STAGES[playerClassTier(p)];
+      const stage = playerStageById(p.advancedClass||(p.isAdvanced?'WARLORD':null));
       const nextStage = nextPlayerStage(p);
       const awakeningCost = classUpCostForNext({ classTier: playerClassTier(p) });
 
@@ -9713,12 +9735,12 @@ export const IronSquadGame = {
     const pWpn = this.equipped && this.equipped.weapon;
     const pStyle = weaponStyleOf(pWpn);
     const pMast = masteryPctDisplay(this.player.weaponMastery, pStyle);
-    const mastBits = WEAPON_STYLES.map(st => {
+    const mastBits = MASTERY_STYLES.map(st => {
       const pct = masteryPctDisplay(this.player.weaponMastery, st);
       const mark = st === pStyle ? '●' : '';
       return `${WEAPON_STYLE_ICONS[st]}${WEAPON_STYLE_LABELS[st]}${mark}${pct}%`;
     }).join(' ');
-    const meleeMast = MELEE_STYLES.map(st => {
+    const meleeMast = MELEE_STYLES.filter(st => st !== 'axe').map(st => {
       const pct = masteryPctDisplay(this.player.weaponMastery, st);
       const mark = st === pStyle ? '●' : '';
       return `${WEAPON_STYLE_ICONS[st]}${WEAPON_STYLE_LABELS[st]}${mark}${pct}%`;
@@ -10028,7 +10050,7 @@ export const IronSquadGame = {
         <div style="font-size: 9.5px; color: #7c8a9a; margin-bottom: 3px;">
           ${WEAPON_STYLE_ICONS[s.favoriteWeapon] || '🗡️'}得意:${WEAPON_STYLE_LABELS[s.favoriteWeapon] || '剣'}
           · 💪被弾+${Math.round((s.hitGrowthPct || 0) * 1000) / 10}%HP
-          · ⚔️熟練 ${WEAPON_STYLES.map(st => `${WEAPON_STYLE_LABELS[st]}${masteryPctDisplay(s.weaponMastery, st)}%`).join('/')}
+          · ⚔️熟練 ${MASTERY_STYLES.map(st => `${WEAPON_STYLE_LABELS[st]}${masteryPctDisplay(s.weaponMastery, st)}%`).join('/')}
         </div>
         ${deathSkills.length > 0 ? `
           <div style="margin-top: 2px; margin-bottom: 4px; font-size: 9.5px; display: flex; gap: 3px; flex-wrap: wrap; align-items: center;">
@@ -10067,10 +10089,9 @@ export const IronSquadGame = {
             const next = SOLDIER_CLASSES[cls.advancedClassId];
             const cost = classUpCostForNext(cls, s.talent);
             const costJa = formatClassUpCostJa(cost);
-            const tierJa = CLASS_TIER_LABELS[classTierOf(next)] || '上位職';
             return `
-            <button class="mini-btn btn-class-up" style="background:linear-gradient(135deg, #f59e0b, #ec4899); color:#fff; font-size:10px; font-weight:bold; box-shadow:0 0 6px rgba(245,158,11,0.5);" title="${tierJa}【${next.name}】へ覚醒（${costJa}）。壁を突き抜けて進み、攻撃も壁の向こうへ届きます">
-              🔱 ${tierJa}【${next.name}】へ！(${costJa})
+            <button class="mini-btn btn-class-up" style="background:linear-gradient(135deg, #f59e0b, #ec4899); color:#fff; font-size:10px; font-weight:bold; box-shadow:0 0 6px rgba(245,158,11,0.5);" title="${next.name}へ覚醒（${costJa}）。壁を突き抜けて進み、攻撃も壁の向こうへ届きます">
+              🔱 ${next.name}へ！(${costJa})
             </button>`;
           })() : ''}
           ${wItem ? `
@@ -11546,7 +11567,8 @@ export const IronSquadGame = {
     if (m.isColossal) {
       // 大ボス特大ゲージ
       const barW = 100;
-      const headH = 75;
+      // Keep the gauge above each dungeon boss's crown, horns and wings.
+      const headH = ({goblin_king:90,lich_elder:100,hellflame_drake:94,demon_king:112})[m.type] || 75;
       ctx.fillStyle = 'rgba(0,0,0,0.85)';
       ctx.fillRect(-barW / 2 - 2, -headH - 2, barW + 4, 8);
       ctx.fillStyle = '#ef4444';
@@ -11808,7 +11830,7 @@ export const IronSquadGame = {
   drawPlayer(ctx, p, now) {
     const eq = this.equipped || {};
     const wStyle = weaponStyleOf(eq.weapon);
-    if (['sword','spear','hammer'].includes(wStyle)) {
+    if (['sword','spear','hammer','axe'].includes(wStyle)) {
       const reach = meleeDrawReach(eq.weapon, !!p.isAdvanced);
       const ang = p.slashAnim > 0 && Number.isFinite(p.slashAngle) ? p.slashAngle : (p.facingAngle || 0);
       drawMeleeRangeCue(ctx,p.x,p.y,ang,reach,wStyle,p.slashAnim || 0,eq.weapon);

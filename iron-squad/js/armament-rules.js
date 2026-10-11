@@ -1,8 +1,8 @@
-import {weaponCombatProfile,meleeSweetSpotFor} from './equipment-rules.js?v=182';
-import {masteryReloadMult,applyMasteryToCombatProfile} from './growth-rules.js';
-import {MAX_EQUIPMENT_TIER,GENERATION_COUNT,tierNumber,powerRank,tierDescription} from './equipment-tiers.js?v=182';
-import {canUseWeapon} from './weapon-requirements.js';
-import {prefersCasterMelee} from './unit-attributes.js';
+import {weaponCombatProfile,meleeSweetSpotFor} from './equipment-rules.js?v=187';
+import {masteryReloadMult,applyMasteryToCombatProfile,isHeavyWeaponStyle} from './growth-rules.js?v=187';
+import {MAX_EQUIPMENT_TIER,GENERATION_COUNT,tierNumber,powerRank,tierDescription} from './equipment-tiers.js?v=187';
+import {canUseWeapon} from './weapon-requirements.js?v=187';
+import {prefersCasterMelee} from './unit-attributes.js?v=187';
 
 export const ARMAMENT_POLICIES={
   balanced:{name:'均衡',research:.25,development:.25,budget:1500,perLevel:250,maintenanceShare:.3},
@@ -46,14 +46,17 @@ export function soldierEquipmentValue(game,soldier,item,key,classes) {
   if(key==='weapon'&&item&&!medic&&!mage){const ranged=weaponCombatProfile(item).ranged;if(archer!==ranged)return -Infinity;}
   const trial={...soldier,equipped:{...soldier.equipped,[key]:item},weapon:key==='weapon'?item:soldier.weapon,
     appearance:soldier.appearance?{...soldier.appearance}:undefined,weaponMastery:{...soldier.weaponMastery},deathlineSkills:[...(soldier.deathlineSkills||[])]};
+  const copyGear=gear=>gear?{...gear,stats:{...gear.stats},weaponTraits:gear.weaponTraits?{...gear.weaponTraits}:undefined}:gear;
+  trial.equipped=Object.fromEntries(Object.entries(trial.equipped).map(([slot,gear])=>[slot,copyGear(gear)]));
+  trial.weapon=key==='weapon'?trial.equipped.weapon:copyGear(soldier.weapon);
   game.recalcSoldierStats(trial);
   const weapon=trial.equipped.weapon,profile=applyMasteryToCombatProfile(weaponCombatProfile(weapon),trial.weaponMastery);
   const sweet=meleeSweetSpotFor(weapon);
-  let cooldown=archer?profile.baseCooldown:(cls.atkCooldown||1)*(profile.style==='spear'?1.5:profile.style==='hammer'?1.85:1)*masteryReloadMult(trial.weaponMastery,profile.style);
+  let cooldown=archer?profile.baseCooldown:(cls.atkCooldown||1)*(profile.style==='spear'?1.5:isHeavyWeaponStyle(profile.style)?1.85:1)*masteryReloadMult(trial.weaponMastery,profile.style);
   if(weapon?.weaponTraits)cooldown/=Math.max(.55,(trial.atkSpeed||1)*(weapon.weaponTraits.attackTempo||1));
   const crit=Math.max(0,Math.min(100,(trial.crit||0)+(weapon?.weaponTraits?(weapon.stats?.crit||0):0)))/100;
   let dps=Math.max(1,trial.atk||1)*(1+crit*1.2)/Math.max(.15,cooldown);
-  if(!archer&&!mage&&!medic){dps*=profile.style==='spear'?1.15:profile.style==='hammer'?1.35:1;if(weapon?.weaponTraits&&sweet)dps*=sweet.sweetDmg;}
+  if(!archer&&!mage&&!medic){dps*=profile.style==='spear'?1.15:isHeavyWeaponStyle(profile.style)?1.35:1;if(weapon?.weaponTraits&&sweet)dps*=sweet.sweetDmg;}
   const durability=Math.max(1,trial.maxHp||1)*(1+Math.max(0,trial.def||0)/120)/Math.max(.35,1-(trial.dmgReduction||0)/100);
   const stats=Object.values(trial.equipped).filter(Boolean).map(i=>i.stats||{});
   const recovery=stats.reduce((v,s)=>v+(s.regen||0)*.2+(s.vampire||0),0);

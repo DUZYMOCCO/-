@@ -1,0 +1,13 @@
+{
+  "gameVersion": "5.2.0",
+  "cache": "game-iron-squad-v186",
+  "newModulesCached": true,
+  "offlineNewExpedition": true,
+  "offlineDungeonEntryAndRender": true,
+  "result": {
+    "dungeon": "dungeon_goblin_mines",
+    "bossBody": true,
+    "canvasReady": true
+  },
+  "pageErrors": []
+}

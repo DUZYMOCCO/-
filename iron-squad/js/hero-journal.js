@@ -1,8 +1,8 @@
 // A bounded travel diary. No video frames, battle replay or background rendering.
 import {WORLD_SIZE} from './world.js?v=182';
 import {formatDistance} from './distance-format.js';
-import {zoneRingLabelJa} from './equipment-rules.js';
-import {heroEquipmentSummary} from './hero-equipment.js';
+import {zoneRingLabelJa} from './equipment-rules.js?v=187';
+import {heroEquipmentSummary} from './hero-equipment.js?v=187';
 const C=WORLD_SIZE/2;
 export const JOURNAL_LIMITS=Object.freeze({events:48,trail:48,history:8,checkSeconds:2,trailStep:1200});
 const timeLabel=s=>`${Math.floor(s/60)}分${Math.floor(s%60)}秒`;

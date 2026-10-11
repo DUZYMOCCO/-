@@ -1,5 +1,5 @@
 import {inCurrentInstance} from './instance-rules.js?v=182';
-import {recordCombat} from './phase-rules.js';
+import {recordCombat} from './phase-rules.js?v=187';
 
 export const RANGED_ENEMIES=Object.freeze({
   goblin_archer:{name:'ゴブリン弓兵',base:'goblin',kind:'physical',range:300,interval:2.2,speed:310,color:'#b5a078'},

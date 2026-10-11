@@ -189,9 +189,9 @@ const reserve=game.createNewSoldier();game.reserves.push(reserve);game.renderStr
 document.querySelector('#reserve-roster-list .mini-btn').click();assert.equal(game.selectedSoldierDetailId,reserve.id);
 assert.match(document.querySelector('.soldier-detail-head').textContent,/予備兵/);game.closeSoldierDetail();
 game.player.isAdvanced=true; game.player.advancedClass='WARLORD'; game.renderStrategyUI();
-assert.match($('btn-promote-player').textContent,/帝皇/,'the existing second awakening stage must be reachable from the UI');
+assert.match($('btn-promote-player').textContent,/クラス2/,'the second numbered stage must be reachable from the UI');
 game.player.advancedClass='EMPEROR'; game.awakeningGems=0; game.renderStrategyUI();
-assert.match($('btn-promote-player').textContent,/神話帝/); assert.equal($('btn-promote-player').disabled,true,'missing rare gems must be apparent before activating promotion');
+assert.match($('btn-promote-player').textContent,/クラス3/); assert.equal($('btn-promote-player').disabled,true,'missing rare gems must be apparent before activating promotion');
 game.awakeningGems=1; game.renderStrategyUI(); assert.equal($('btn-promote-player').disabled,false);
 game.player.advancedClass='MYTHIC_EMPEROR'; game.renderStrategyUI(); assert.equal($('btn-promote-player'),null,'the final stage shows completion');
 game.player.hp=1; game.restTimer=3; game.worldTime=300; game.updateStatsUI();

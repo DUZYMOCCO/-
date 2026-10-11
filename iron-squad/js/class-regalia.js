@@ -1,4 +1,5 @@
 /** Ceremonial class dress. Pure drawing data: no abilities, equipment or save changes. */
+import {numberedClassName} from './class-up-rules.js?v=185';
 const STAGES={
  HEAVY:['PALADIN','TEMPLAR','IMMORTAL_AEGIS'],
  LIGHT:['BLADEMASTER','SWORD_EMPEROR','VOID_EDGE'],
@@ -15,8 +16,7 @@ const PALETTES={
  MAGE:[['#7c6a90','#51435e'],['#72628e','#3d3b60'],['#9587af','#34365b']],
  COMMANDER:[['#a29374','#754b43'],['#c2b390','#6c3944'],['#dacdae','#51415b']]
 };
-const NAMES={WARLORD:'覇王',EMPEROR:'帝皇',MYTHIC_EMPEROR:'神話帝'};
-export const CLASS_REGALIA=Object.freeze(Object.fromEntries(Object.entries(STAGES).flatMap(([family,ids])=>ids.map((id,i)=>[id,Object.freeze({id,family,tier:i+1,cloth:PALETTES[family][i][0],mantle:PALETTES[family][i][1],metal:i?'#c6aa65':'#b8ad86',light:i===2?'#efe0ad':'#dbcfab',gem:{HEAVY:'#6b9dad',LIGHT:'#9b83ad',ARCHER:'#7aa088',MEDIC:'#c39da9',MAGE:'#aaa0c7',COMMANDER:'#b66b63'}[family],name:NAMES[id]||id})]))));
+export const CLASS_REGALIA=Object.freeze(Object.fromEntries(Object.entries(STAGES).flatMap(([family,ids])=>ids.map((id,i)=>[id,Object.freeze({id,family,tier:i+1,cloth:PALETTES[family][i][0],mantle:PALETTES[family][i][1],metal:i?'#c6aa65':'#b8ad86',light:i===2?'#efe0ad':'#dbcfab',gem:{HEAVY:'#6b9dad',LIGHT:'#9b83ad',ARCHER:'#7aa088',MEDIC:'#c39da9',MAGE:'#aaa0c7',COMMANDER:'#b66b63'}[family],name:numberedClassName(family,i+1)})]))));
 export function classRegaliaFor(unit,commander=false) {
  if(!unit)return null;
  const key=commander||unit.isCommander?unit.advancedClass|| (unit.isAdvanced?'WARLORD':null):unit.soldierClass;

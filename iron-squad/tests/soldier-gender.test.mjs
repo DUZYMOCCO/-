@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 const memory=new Map();globalThis.localStorage={getItem:k=>memory.get(k)??null,setItem:(k,v)=>memory.set(k,v),removeItem:k=>memory.delete(k)};
 globalThis.window={};globalThis.document={getElementById:()=>null};
-const {MALE_GIVEN_NAMES,FEMALE_GIVEN_NAMES,NINJA_NAMES_BY_GENDER,BEAST_NAMES_BY_GENDER,generateSoldierName,rollGenderByKey}=await import('../js/soldier-names.js');
+const {MALE_GIVEN_NAMES,FEMALE_GIVEN_NAMES,NINJA_NAMES_BY_GENDER,BEAST_NAMES_BY_GENDER,generateSoldierName,rollGenderByKey,rollGender,genderOfSoldier,ensureSoldierGender}=await import('../js/soldier-names.js');
 const {IronSquadGame}=await import('../js/index.js');
 const {saveSlots}=await import('../js/save-slots.js');
 const {createLimitedAlly}=await import('../js/limited-allies.js');
@@ -46,7 +46,11 @@ for(let i=0;i<2000;i++){
 }
 assert.ok(seen.male>500&&seen.female>500,'both sexes appear');
 assert.ok(medics.male>20,'male medics exist (and look male)');
-assert.ok(medics.female>medics.male,'medics lean female');
+assert.ok(Math.abs(medics.female-medics.male)<120,'medics follow the same even chance as every other profession');
+for(const job of [...classes,'NINJA','BEAST_BEAR','SAINT']){
+  assert.equal(rollGender(job,()=>.49),'female');assert.equal(rollGender(job,()=>.5),'male');
+  for(let i=0;i<200;i++)assert.equal(rollGenderByKey(job,`identity-${i}`),rollGenderByKey('HEAVY',`identity-${i}`),'the same identity roll is independent of profession');
+}
 
 for(let i=0;i<300;i++)assertConsistent(rollScoutCandidate(game).soldier,'recruitment');
 for(const id of ['NINJA','BEAST_WOLF','BEAST_BEAR','BEAST_CAT','BEAST_FOX','BEAST_BIRD'])for(let i=0;i<40;i++)assertConsistent(createLimitedAlly(game,id,{type:'test'}),`limited ${id}`);
@@ -63,7 +67,14 @@ for(let i=0;i<500;i++){
   assert.ok(BEAST_NAMES_BY_GENDER.fox[g].includes(generateSoldierName({species:'fox',gender:g})));
 }
 const f=rollGenderByKey('HEAVY','x');assert.equal(f,rollGenderByKey('HEAVY','x'),'keyed roll is deterministic');
-// Without a gender stored, the face still follows the old medic fallback instead of crashing.
-assert.equal(isFeminineLook({soldierClass:'MEDIC'}),true);
+// Old saves use their stored identity/name/ID, never their job. Assigned people keep it.
+for(const name of ['レオン・ミラー','レナ・ミラー'])for(const soldierClass of classes){
+  const old={id:'old-person',name,soldierClass};ensureSoldierGender(old);
+  assert.equal(old.gender,name.startsWith('レナ')?'female':'male');
+  assert.equal(isFeminineLook(old),old.gender==='female');
+}
+for(const soldierClass of classes)assert.equal(genderOfSoldier({id:'unknown-old',soldierClass}),genderOfSoldier({id:'unknown-old',soldierClass:'HEAVY'}));
+const kept={gender:'male',name:'レナ・ミラー',appearance:{feminine:true}};
+ensureSoldierGender(kept);assert.equal(kept.gender,'male','explicit saved identity remains authoritative');
 assert.equal(createSoldierAppearance('x','female').feminine,true);
 console.log('soldier gender ok');

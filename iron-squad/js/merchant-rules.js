@@ -1,18 +1,18 @@
-import {catalogTier,catalogPrice,ensureMerchantCatalog,MERCHANT_MAX_TIER,MERCHANT_CATALOG_VERSION} from './merchant-catalog.js?v=182';
-import {applyAttributeStats} from './unit-attributes.js';
+import {catalogTier,catalogPrice,ensureMerchantCatalog,MERCHANT_MAX_TIER,MERCHANT_CATALOG_VERSION} from './merchant-catalog.js?v=187';
+import {applyAttributeStats} from './unit-attributes.js?v=187';
 /**
  * IRON SQUAD: 宿場・本陣・各地のキャンプの行商人
  * - 最新入手Tier+1（最大T6）の厳選品を販売、毎ウェーブの目玉商品
  * - 強い護衛付き。放置するとモンスターに襲われ死亡しうる
  * - 護衛が倒した強敵のドロップを序盤から掠め取れるチャンス
  */
-import { saleValue, distanceScaling, weaponCombatProfile } from './equipment-rules.js?v=182';
-import { drawFieldSoldier } from './visuals.js?v=182';
-import { createSoldierAppearance, drawSoldierHead } from './soldier-appearance.js?v=182';
-import { attackAnimationRate } from './weapon-motion.js?v=182';
-import { markSoldierDown, rebuildMerchantCasualties, RESCUE_TIMEOUT } from './casualty-rules.js?v=182';
-import {emptyMastery,normalizeMastery,hitGrowthMult,applyHitGrowth,masteryAtkMult,masteryReloadMult} from './growth-rules.js?v=182';
-import {recordCombat,finishExperience} from './phase-rules.js';
+import { saleValue, distanceScaling, weaponCombatProfile } from './equipment-rules.js?v=187';
+import { drawFieldSoldier } from './visuals.js?v=187';
+import { createSoldierAppearance, drawSoldierHead } from './soldier-appearance.js?v=187';
+import { attackAnimationRate } from './weapon-motion.js?v=187';
+import { markSoldierDown, rebuildMerchantCasualties, RESCUE_TIMEOUT } from './casualty-rules.js?v=187';
+import {emptyMastery,normalizeMastery,hitGrowthMult,applyHitGrowth,masteryAtkMult,masteryReloadMult} from './growth-rules.js?v=187';
+import {recordCombat,finishExperience} from './phase-rules.js?v=187';
 
 export const MERCHANT_PRICE_MULT = 3.2; // 相場の約3.2倍（高め）
 export const MERCHANT_STOCK_SIZE = 6;
