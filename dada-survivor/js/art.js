@@ -97,94 +97,271 @@ const villainPatch = (x, y, k = 1) => `<g data-emblem="warumono" transform="tran
   <path d="M-4.1 3.4 L-2.6 2.1 M4.1 3.4 L2.6 2.1" stroke="#b91c1c" stroke-width="1.5" stroke-linecap="round"/>
   <circle cx="0" cy="-.3" r="1.85" fill="#f5f5f4" stroke="#2a0a0e" stroke-width=".5"/><rect x="-1.05" y="1" width="2.1" height="1.3" rx=".35" fill="#f5f5f4" stroke="#2a0a0e" stroke-width=".4"/>
   <circle cx="-.7" cy="-.4" r=".55" fill="#2a0a0e"/><circle cx=".7" cy="-.4" r=".55" fill="#2a0a0e"/></g>`;
-// てきごとの ワッペンの いち（むねの かた よりなど、あう ところ）
+// てきごとの ワッペンの いち（むねの かた より。プレイヤーの にほんの はたと おなじ がわ）
 const PATCH_AT = {
-  zombie: [25, 49], bat: [12, 28], ghost: [22, 46], skull: [32, 52], scorpion: [27, 41], mummy: [22, 49],
-  snowman: [26, 50], wolf: [31, 53], pumpkin: [21, 44],
-  ogre: [24, 47], dragon: [20, 52], snake: [19, 54], icegiant: [21, 48], witch: [25, 49], maou: [21, 51],
+  zombie: [21, 46], bat: [21, 46], ghost: [21, 46], skull: [16, 47], scorpion: [21, 46], mummy: [21, 46],
+  snowman: [21, 46], wolf: [26, 47], pumpkin: [21, 45.5],
+  ogre: [24, 48], dragon: [32, 31, 1.1], snake: [24, 45], icegiant: [21, 50], witch: [26, 47], maou: [22, 50],
 };
 const withPatch = (k, body) => body + villainPatch(...PATCH_AT[k]);
 
-/* ---------- てき ---------- */
-const zombie = `
-  <path d="M42 44 L58 40 M42 50 L58 47" stroke="${O}" stroke-width="7.5" stroke-linecap="round"/>
-  <path d="M42 44 L58 40 M42 50 L58 47" stroke="#7bc96f" stroke-width="4" stroke-linecap="round"/>
-  <path d="M20 42 Q32 38 44 42 L46 60 L38 57 L33 61 L27 57 L18 60Z" fill="#3f3a32" ${S}/>
-  <path d="M30 46 L34 52 L31 56" fill="none" stroke="#292524" stroke-width="2"/>
-  ${shadedCircle('zh', 31, 25, 17, '#6d8a58', '#3f5234')}
-  <path d="M18 18 Q24 10 31 13 Q38 9 44 16" fill="none" ${S2}/>
-  <path d="M38 14 L46 22" stroke="#fde68a" stroke-width="4"/><path d="M40 13 L42 20 M43 15 L45 22" stroke="#d6a548" stroke-width="1.2"/>
-  <ellipse cx="24" cy="26" rx="3.4" ry="2" fill="#0c0e12"/><ellipse cx="24.4" cy="26" rx="1.1" ry="1.8" fill="#d6d3d1"/>
-  <path d="M34 22 L40 28 M40 22 L34 28" ${S} fill="none"/>
-  <path d="M23 35 H36" fill="none" ${S2}/>
-  <path d="M15 28 L19 30 M16 31 L19 33" stroke="#5a9e50" stroke-width="1.5"/>`;
+/* ---------- わるものぐんだん（てき。ぜんいん にんげんの わるものへいたい／ぐんようけん。みぎむき） ---------- */
+// ザコ: zombie=ライフルへい bat=ていさつへい ghost=スナイパー skull=じゅうそうこうへい scorpion=ナイフへい
+//       mummy=ばくはへい snowman=ゆきのへい wolf=ぐんようけん pumpkin=かえんほうしゃへい
+// ボス: ogre=おおぐんそう dragon=せんしゃたいちょう snake=メカアーマー icegiant=ゆきやまたいちょう
+//       witch=かげの たいちょう maou=だいそうすい（わるものぐんだんの いちばん えらい ひと）
+// id・すうちは むかしの モンスターの まま（セーブと バランスを かえない）。プレイヤー（くろい そうび）と まちがえないよう、
+// ちゃいろ・あか・はいいろ の せいふくと あかい め。
+const VE = '#f87171'; // わるものの め
+const VSKIN = '#e3b48c', VSKIN2 = '#a9744f';
+const vglove = (x, y, c = '#2b2420') => `<circle cx="${x}" cy="${y}" r="3.3" fill="${c}" ${S2}/>`;
+const vRifle = ({ end = [56, 43], metal = '#3a3a3f', stock = '#5c3d24', glove = '#2b2420', scope = false }) => `
+  <path d="M6 59 L${end[0]} ${end[1]}" ${SW(6.5)}/><path d="M6 59 L${end[0]} ${end[1]}" stroke="${metal}" stroke-width="3.6" stroke-linecap="round"/>
+  <path d="M4 60 L13 57 L15 62.5 L6 64Z" fill="${stock}" ${S2}/>
+  <path d="M27 52 L33 50 L35.5 55.5 L29.5 57.5Z" fill="${metal}" ${S2}/>
+  ${scope ? `<path d="M28 47.6 L42 43.2 L43 46 L29 50.4Z" fill="#27272a" ${S2}/><circle cx="43" cy="44.6" r="1.7" fill="${VE}" ${SW(1)}/>` : ''}
+  ${vglove(21, 55, glove)}${vglove(45, 47.5, glove)}`;
+const vHelmet = (c, band = '#991b1b', hi = '#7a6a4c') => `
+  <path d="M11 26 Q11 6 32 6 Q53 6 53 26 Q32 21 11 26Z" fill="${c}" ${S}/>
+  <path d="M12 21.5 Q32 16 52 21.5 L52.4 24.6 Q32 19.4 11.6 24.6Z" fill="${band}"/>
+  <path d="M17 13 Q20 10 25 9" fill="none" stroke="${hi}" stroke-width="2" stroke-linecap="round"/>
+  <path d="M10 26.5 Q32 21 54 26.5 L53.5 29 Q32 24 10.5 29Z" fill="${c}" ${S2}/>`;
+const vVest = (c) => `<path d="M22 45 Q32 48.5 42 45 L42.5 58 Q32 61 21.5 58Z" fill="${c}" ${S2}/>`;
+// したの かおを かくす マスク（clip で あたまの まるに あわせる）
+const vMask = (id, c, top = 37.5) => `<clipPath id="${id}"><circle cx="32" cy="29" r="15.5"/></clipPath>
+  <path d="M10 ${top} Q32 ${top - 3.7} 54 ${top} V48 H10Z" fill="${c}" clip-path="url(#${id})"/>
+  <path d="M17 ${top + 0.4} Q32 ${top - 3.3} 47 ${top + 0.4}" fill="none" ${S2}/><circle cx="32" cy="29" r="15.5" fill="none" ${S}/>`;
 
-const bat = `
-  <path d="M22 30 Q12 16 2 24 Q8 28 6 34 Q12 30 14 38 Q18 32 24 38Z" fill="#312e81" ${S}/>
-  <path d="M42 30 Q52 16 62 24 Q56 28 58 34 Q52 30 50 38 Q46 32 40 38Z" fill="#312e81" ${S}/>
-  <path d="M22 20 L20 8 L28 16Z M42 20 L44 8 L36 16Z" fill="#1e1b4b" ${S}/>
-  ${shadedCircle('bh', 32, 31, 14, '#4338ca', '#312e81')}
-  <path d="M23 27 L30 29 M41 27 L34 29" ${S2}/>
-  <ellipse cx="27" cy="31" rx="3.2" ry="1.7" fill="#0c0e12"/><ellipse cx="37" cy="31" rx="3.2" ry="1.7" fill="#0c0e12"/>
-  <ellipse cx="27.3" cy="31" rx="1" ry="1.5" fill="#e7e5e4"/><ellipse cx="37.3" cy="31" rx="1" ry="1.5" fill="#e7e5e4"/>
-  <path d="M28 38 H36" fill="none" ${S2}/>`;
+function trooper({ uni, dark, back = '', vest = '', gun = '', hat = '', face, brows = true, eyes = true, extra = '', feet = '#1c1917', bodyR = 13 }) {
+  const mouth = face ?? `<path d="M28.6 40.6 Q32 38.9 35.4 40.6" fill="none" ${S2}/>`;
+  return `${back}
+  <ellipse cx="22" cy="60" rx="5" ry="3.2" fill="${feet}" ${S}/><ellipse cx="42" cy="60" rx="5" ry="3.2" fill="${feet}" ${S}/>
+  <ellipse cx="32" cy="52" rx="${bodyR}" ry="10" fill="${uni}" ${S}/>
+  <path d="M${33.5 - bodyR} 55.5 Q32 60.5 ${30.5 + bodyR} 55.5" fill="none" stroke="${dark}" stroke-width="2.4"/>
+  ${vest}${gun}
+  ${shadedCircle('vh', 32, 29, 15.5, VSKIN, VSKIN2)}
+  ${hat}
+  ${brows ? `<path d="M20.5 28.4 L28.6 31.6 M43.5 28.4 L35.4 31.6" fill="none" ${SW(2.2)}/>` : ''}
+  ${eyes ? animeEye(24.6, 33.6, VE) + animeEye(39.4, 33.6, VE) : ''}
+  ${mouth}${extra}`;
+}
 
-const ghost = `
-  <clipPath id="gc"><path d="M14 32 A18 18 0 0 1 50 32 L50 54 Q46 50 42 55 Q38 60 34 55 Q30 50 26 55 Q22 60 18 55 Q16 52 14 54Z"/></clipPath>
-  <path d="M14 32 A18 18 0 0 1 50 32 L50 54 Q46 50 42 55 Q38 60 34 55 Q30 50 26 55 Q22 60 18 55 Q16 52 14 54Z" fill="#c7d2fe"/>
-  <ellipse cx="29" cy="30" rx="18" ry="22" fill="#f8fafc" clip-path="url(#gc)"/>
-  <path d="M14 32 A18 18 0 0 1 50 32 L50 54 Q46 50 42 55 Q38 60 34 55 Q30 50 26 55 Q22 60 18 55 Q16 52 14 54Z" fill="none" ${S}/>
-  <ellipse cx="21" cy="22" rx="4" ry="2.4" fill="#fff" transform="rotate(-30 21 22)"/>
-  <ellipse cx="25" cy="32" rx="3.6" ry="5" fill="${O}"/><circle cx="26.2" cy="30" r="1.5" fill="#fff"/>
-  <ellipse cx="39" cy="32" rx="3.6" ry="5" fill="${O}"/><circle cx="40.2" cy="30" r="1.5" fill="#fff"/>
-  <path d="M28 41 H36" fill="none" ${S2}/>
-  <ellipse cx="19" cy="38" rx="2.2" ry="1.2" fill="#64748b" opacity=".45"/><ellipse cx="45" cy="38" rx="2.2" ry="1.2" fill="#64748b" opacity=".45"/>`;
+// ライフルへい（くさはら・まおうじょうの ふつうの へいたい）
+const zombie = trooper({ uni: '#5b4a32', dark: '#3b2f20', vest: vVest('#3f3524'),
+  gun: vRifle({ glove: '#3b2f25' }), hat: vHelmet('#5a4c34') });
 
-const skull = `
-  <path d="M26 44 L26 58 M38 44 L38 58 M22 50 L42 50 M22 55 L42 55" ${SW(5)}/>
-  <path d="M26 44 L26 58 M38 44 L38 58 M22 50 L42 50 M22 55 L42 55" stroke="#e2e8f0" stroke-width="2.5" stroke-linecap="round"/>
-  ${shadedCircle('sh', 32, 24, 17, '#f1f5f9', '#cbd5e1')}
-  <path d="M23 36 L41 36 L40 43 L24 43Z" fill="#e2e8f0" ${S}/>
-  <path d="M28 36 L28 43 M32 36 L32 43 M36 36 L36 43" stroke="${O}" stroke-width="1.6"/>
-  <path d="M19 24 Q24 18 30 24 Q26 31 19 24Z M45 24 Q40 18 34 24 Q38 31 45 24Z" fill="${O}"/>
-  <circle cx="25" cy="25" r="2.4" fill="#f87171"/><circle cx="39" cy="25" r="2.4" fill="#f87171"/>
-  <circle cx="25.6" cy="24.4" r=".9" fill="#fff"/><circle cx="39.6" cy="24.4" r=".9" fill="#fff"/>
-  <path d="M30 31 L32 28 L34 31Z" fill="${O}"/>`;
+// ていさつへい（はやい・ちいさい）
+const bat = trooper({ uni: '#6b5d45', dark: '#463b2a',
+  back: `<path d="M2 40 H9 M0 46 H7 M3 52 H9" stroke="#e7e5e4" stroke-width="1.6" stroke-linecap="round" opacity=".5"/>
+    <path d="M17 23 L8 18 L10 24Z M17 24.5 L8 28 L13 29.5Z" fill="#b91c1c" ${S2}/>`,
+  vest: `<path d="M22 43 Q32 47 42 43 L41 46.5 Q32 50.5 23 46.5Z" fill="#b91c1c" ${S2}/>`,
+  gun: `<path d="M30 53 L47 47.5" ${SW(6)}/><path d="M30 53 L47 47.5" stroke="#3a3a3f" stroke-width="3.2" stroke-linecap="round"/>
+    <path d="M35.5 51.5 L37.5 57.5 L40.5 56.5 L39 50.5Z" fill="#27272a" ${S2}/>${vglove(31, 53.5)}${vglove(44, 48.5)}`,
+  hat: `<path d="M16.5 26 Q15 10 32 10 Q49 10 47.5 26 L44 20 L40 24 L36 18 L32 23 L28 18 L24 24 L20 20Z" fill="#2a1d14" ${S}/>
+    <path d="M16.6 22 Q32 16 47.4 22 L47.6 26 Q32 20 16.4 26Z" fill="#b91c1c" ${S2}/>
+    <rect x="21" y="16.5" width="22" height="6" rx="3" fill="#27272a" ${S2}/>
+    <circle cx="27" cy="19.5" r="1.9" fill="#fbbf24" opacity=".85"/><circle cx="37" cy="19.5" r="1.9" fill="#fbbf24" opacity=".85"/>` });
 
+// スナイパー（ギリースーツ。もりに かくれる）
+const ghillie = '#4a5a3a';
+const ghost = trooper({ uni: '#3d4a35', dark: '#27301f',
+  back: `<path d="M12 30 Q8 50 14 60 L18 56 L21 61 L25 57 L29 62 L33 57 L37 62 L41 57 L45 61 L48 56 L52 60 Q58 50 52 30Z" fill="${ghillie}" ${S}/>`,
+  gun: vRifle({ end: [63, 40.8], metal: '#2f3a25', stock: '#3d4a35', glove: '#27301f', scope: true }),
+  hat: `<path d="M16 14 L12 10 M24 9 L22 4 M34 8 L35 3 M44 11 L48 7 M50 20 L55 18 M14 24 L9 23" ${SW(4.6)}/>
+    <path d="M16 14 L12 10 M24 9 L22 4 M34 8 L35 3 M44 11 L48 7 M50 20 L55 18 M14 24 L9 23" stroke="${ghillie}" stroke-width="2.4" stroke-linecap="round"/>
+    <path d="M14 34 Q10 8 32 8 Q54 8 50 34 L47 28 L46 22 Q32 17 18 22 L17 28Z" fill="${ghillie}" ${S}/>
+    <ellipse cx="24" cy="13" rx="3" ry="1.6" fill="#5f7046"/><ellipse cx="40" cy="12" rx="3.4" ry="1.6" fill="#2f3a25"/><ellipse cx="46" cy="19" rx="2.2" ry="1.3" fill="#5f7046"/>`,
+  extra: `<path d="M19 37.5 L25.5 36.5 M38.5 36.5 L45 37.5" stroke="#2f3a25" stroke-width="2.2" stroke-linecap="round"/>` });
+
+// じゅうそうこうへい（かたい。かおは バイザーで かくれる）
+const skull = trooper({ uni: '#4b4f57', dark: '#2c2f35', bodyR: 15, brows: false, eyes: false, face: '',
+  vest: `<path d="M19 45 Q32 49 45 45 L46 58 Q32 62 18 58Z" fill="#5f646d" ${S}/><path d="M22 51 H42 M22 55 H42" stroke="#3a3d44" stroke-width="1.6"/>
+    <ellipse cx="16" cy="47" rx="6" ry="5" fill="#5f646d" ${S}/><ellipse cx="48" cy="47" rx="6" ry="5" fill="#5f646d" ${S}/>`,
+  gun: `${vRifle({ metal: '#2c2c30', stock: '#3a3d44', glove: '#1f2125' })}<rect x="30" y="53" width="8" height="7" rx="1" fill="#3f3524" ${S2}/>`,
+  hat: `<path d="M15 33 Q13 9 32 9 Q51 9 49 33 Q49 44.5 32 45 Q15 44.5 15 33Z" fill="#5f646d" ${S}/>
+    <path d="M19 15 Q22 12 27 11" fill="none" stroke="#8a8f99" stroke-width="2" stroke-linecap="round"/>
+    <path d="M18 27 Q32 23 46 27 L45.5 35 Q32 32 18.5 35Z" fill="#111317" ${S2}/>
+    <path d="M21.5 30.4 Q32 27.6 42.5 30.4" stroke="#ef4444" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+    <path d="M27 39 H37 M28 41.6 H36" stroke="#2c2f35" stroke-width="1.5" stroke-linecap="round"/>` });
+
+// ナイフへい（さばく。すなよけの フードと あかい マスク）
+const scorpion = trooper({ uni: '#a8865a', dark: '#7a5f3c', face: vMask('km', '#7f1d1d'),
+  vest: `<path d="M24 44.5 L40 58 M40 44.5 L24 58" stroke="#6b5233" stroke-width="2.4"/>`,
+  gun: `<path d="M45 48.5 L58 40.5 L56.5 45 Z" fill="#e2e8f0" ${S2}/>${vglove(45, 49.5, '#4a3826')}
+    <path d="M20 57 L13 63 L17.5 62.5Z" fill="#e2e8f0" ${S2}/>${vglove(21, 55.5, '#4a3826')}`,
+  hat: `<path d="M14 32 Q11 9 32 9 Q53 9 50 32 L47 26 Q32 19 17 26Z" fill="#c9a874" ${S}/>
+    <path d="M16.5 21.5 Q32 15 47.5 21.5" fill="none" stroke="#a8865a" stroke-width="1.7"/>
+    <path d="M14 30 Q9 40 13 46 L16 38Z" fill="#c9a874" ${S2}/>` });
+
+// ばくはへい（ばくだん もち。ゆっくり）
+const mummy = trooper({ uni: '#6b6a4a', dark: '#45442f',
+  vest: `<path d="M42 44 L24 59" ${SW(5.5)}/><path d="M42 44 L24 59" stroke="#5c3d24" stroke-width="3" stroke-linecap="round"/>
+    <rect x="27" y="53" width="3" height="6" rx=".8" fill="#dc2626" ${SW(1)}/><rect x="31" y="53.5" width="3" height="6" rx=".8" fill="#dc2626" ${SW(1)}/><rect x="35" y="53" width="3" height="6" rx=".8" fill="#dc2626" ${SW(1)}/>`,
+  gun: `<rect x="40" y="44" width="9" height="7" rx="1.2" fill="#3a3a3f" ${S2}/><path d="M47 44 L49 38.5" fill="none" ${S2}/><circle cx="49.2" cy="38.2" r="1.4" fill="#ef4444"/>${vglove(41, 50.5)}
+    <circle cx="16" cy="55" r="4.8" fill="#27272a" ${S}/><rect x="14.6" y="48.4" width="2.8" height="2.4" fill="#57534e" ${SW(1)}/><circle cx="14.6" cy="53.4" r="1" fill="#fff" opacity=".35"/>`,
+  hat: `<path d="M15 26 Q14 9 32 9 Q50 9 49 26 Z" fill="#7f1d1d" ${S}/>
+    <path d="M14.5 22.5 Q32 18.5 49.5 22.5 L49.6 26.5 Q32 22.5 14.4 26.5Z" fill="#991b1b" ${S2}/>
+    <rect x="10.5" y="25" width="6" height="10" rx="2.6" fill="#ca8a04" ${S2}/><rect x="47.5" y="25" width="6" height="10" rx="2.6" fill="#ca8a04" ${S2}/>` });
+
+// ゆきのへい（ゆきやま。しろい パーカーと ゴーグル）
+const snowman = trooper({ uni: '#d4d4d8', dark: '#9ca3af', feet: '#3f3f46', bodyR: 14, brows: false, eyes: false,
+  back: `<circle cx="32" cy="28" r="19.5" fill="#d4d4d8" ${S}/>`,
+  vest: `${vVest('#a1a1aa')}<ellipse cx="27" cy="52" rx="2.6" ry="1.5" fill="#d4d4d8"/><ellipse cx="37" cy="56" rx="2.4" ry="1.4" fill="#71717a"/>`,
+  gun: vRifle({ metal: '#52525b', stock: '#71717a', glove: '#3f3f46' }),
+  hat: `<circle cx="32" cy="29" r="15.6" fill="none" stroke="#a8a29e" stroke-width="4.4"/><circle cx="32" cy="29" r="18" fill="none" ${S2}/>
+    <rect x="19" y="28.5" width="26" height="9" rx="4.5" fill="#1f2937" ${S2}/>
+    <ellipse cx="25.5" cy="33" rx="4" ry="2.7" fill="#ef4444"/><ellipse cx="38.5" cy="33" rx="4" ry="2.7" fill="#ef4444"/>
+    <path d="M23.5 31.8 L25.5 31 M36.5 31.8 L38.5 31" stroke="#fff" stroke-width="1" stroke-linecap="round"/>` });
+
+// ぐんようけん（はやい。ベストを きた いぬ）
+const wolf = `
+  <path d="M14 44 Q2 40 4 31 Q8 38 15 40" fill="#5b4632" ${S}/>
+  <path d="M18 54 L17 61 M26 55 L26 61 M38 55 L38 61 M46 54 L47 61" ${SW(5.4)}/>
+  <path d="M18 54 L17 61 M26 55 L26 61 M38 55 L38 61 M46 54 L47 61" stroke="#4a3a28" stroke-width="3" stroke-linecap="round"/>
+  <ellipse cx="32" cy="48" rx="17" ry="9.5" fill="#6b5338" ${S}/>
+  <ellipse cx="32" cy="53" rx="10" ry="3.6" fill="#a08566" opacity=".8"/>
+  <path d="M19 41 Q31 37 42 41 L43 55 Q31 58 19 55Z" fill="#7f1d1d" ${S2}/>
+  <path d="M27 40 Q30 34.5 33 39.5" fill="none" ${SW(2)}/>
+  <path d="M39 24 L38 11 L46.5 20.5Z M47 20 L52 9 L54.5 22.5Z" fill="#5b4632" ${S}/>
+  <path d="M40.5 21.5 L40 15 L44 19.5Z M48.5 19.5 L51.5 13.5 L52.5 20.5Z" fill="#3a2c1e"/>
+  ${shadedCircle('dh', 46, 31, 11, '#7a5f40', '#4a3a28')}
+  <path d="M50 29 Q60 29 62.5 34.5 Q60.5 40 51 39Z" fill="#a08566" ${S}/>
+  <ellipse cx="61.3" cy="33.6" rx="2" ry="1.6" fill="${O}"/>
+  <path d="M53 37.6 H58.5" fill="none" ${S2}/><path d="M55 37.6 L55.8 39.4 L56.6 37.6" fill="#fff" stroke="${O}" stroke-width=".8"/>
+  <path d="M41.5 25.6 L49.5 28.4" fill="none" ${SW(2.2)}/>
+  <ellipse cx="46.4" cy="30.6" rx="2.9" ry="1.8" fill="#0c0e12"/><ellipse cx="46.9" cy="30.6" rx="1.05" ry="1.6" fill="${VE}"/>
+  <path d="M37.5 36 Q43 42.5 50.5 39.5" fill="none" stroke="#111" stroke-width="3"/>
+  <circle cx="44" cy="41" r="1.4" fill="#d6a548" ${SW(.8)}/>`;
+
+// かえんほうしゃへい（ガスマスク。さきっぽに ちいさな ほのお）
+const pumpkin = trooper({ uni: '#4a3f35', dark: '#2f2822', brows: false, eyes: false,
+  back: `<rect x="11" y="34" width="8" height="19" rx="4" fill="#9a3412" ${S}/><rect x="45" y="34" width="8" height="19" rx="4" fill="#9a3412" ${S}/>
+    <path d="M13 37 V50" stroke="#c2410c" stroke-width="1.6" stroke-linecap="round"/>`,
+  vest: vVest('#352d26'),
+  gun: `<path d="M15 52 Q14 61 24 58.5" fill="none" ${SW(2.4)}/>
+    <path d="M22 57.5 L52 46.5" ${SW(5.6)}/><path d="M22 57.5 L52 46.5" stroke="#57534e" stroke-width="2.8" stroke-linecap="round"/>
+    <path d="M51.5 44.4 L55 43.2 L56 46.6 L52.5 47.8Z" fill="#27272a" ${S2}/>
+    <path d="M56.5 44.6 Q60 40.8 63 43.6 Q60 44.8 63 46.8 Q59.5 49 56.8 46.8Z" fill="#fb923c"/><path d="M57.2 45.2 Q59.5 43.8 61 45.4 Q59.5 46.5 57.2 46.4Z" fill="#fde68a"/>
+    ${vglove(25, 56.5)}${vglove(44, 49.5)}`,
+  hat: `${vHelmet('#3a332c', '#7f1d1d', '#5a5048')}
+    <path d="M19 30.5 Q32 26.5 45 30.5 L44 40 Q38 46.2 32 46.2 Q26 46.2 20 40Z" fill="#2a2724" ${S}/>
+    <circle cx="25.6" cy="34" r="3.7" fill="#fb923c" ${S2}/><circle cx="38.4" cy="34" r="3.7" fill="#fb923c" ${S2}/>
+    <path d="M24 32.6 L25.8 31.8 M36.8 32.6 L38.6 31.8" stroke="#fff" stroke-width="1" stroke-linecap="round"/>
+    <circle cx="32" cy="42.4" r="3.6" fill="#57534e" ${S2}/><path d="M30 42.4 H34 M32 40.4 V44.4" stroke="#2a2724" stroke-width=".9"/>`,
+  face: '' });
+
+/* ---------- わるものぐんだんの ボス ---------- */
+// おおぐんそう（ちからもち）
 const ogre = `
-  <path d="M50 18 L60 4 Q63 6 61 9 L54 24Z" fill="#a16207" ${S}/>
-  <circle cx="57" cy="9" r="1.5" fill="#fde68a"/><circle cx="55" cy="14" r="1.5" fill="#fde68a"/>
-  <path d="M51 30 Q56 26 58 20" stroke="${O}" stroke-width="7" stroke-linecap="round" fill="none"/>
-  <path d="M51 30 Q56 26 58 20" stroke="#ef4444" stroke-width="3.5" stroke-linecap="round" fill="none"/>
-  <path d="M16 44 Q32 38 48 44 L50 60 L14 60Z" fill="#ef4444" ${S}/>
-  <path d="M16 52 L48 52 L50 61 L14 61Z" fill="#facc15" ${S}/>
-  <path d="M20 52 L22 61 M28 52 L27 61 M36 52 L37 61 M44 52 L42 61" stroke="${O}" stroke-width="2.5"/>
-  <path d="M18 14 L13 1 L25 10Z M46 14 L51 1 L39 10Z" fill="#fde68a" ${S}/>
-  ${shadedCircle('oh', 32, 26, 18, '#f87171', '#dc2626')}
-  <path d="M15 20 Q20 6 32 9 Q44 6 49 20 Q42 14 32 15 Q22 14 15 20Z" fill="#1f2937" ${S2}/>
-  <path d="M20 22 L29 26 M44 22 L35 26" ${SW(3.5)}/>
-  <ellipse cx="25.5" cy="28.5" rx="3.6" ry="3.4" fill="#fff" ${S2}/><circle cx="26.5" cy="29" r="1.8" fill="${O}"/>
-  <ellipse cx="38.5" cy="28.5" rx="3.6" ry="3.4" fill="#fff" ${S2}/><circle cx="37.5" cy="29" r="1.8" fill="${O}"/>
-  <path d="M23 38 Q32 33 41 38 Q32 42 23 38Z" fill="#7f1d1d" ${S2}/>
-  <path d="M25 37.5 L26 33.5 L28 37 M39 37.5 L38 33.5 L36 37" fill="#fff" stroke="${O}" stroke-width="1.2"/>`;
+  <ellipse cx="20" cy="60.5" rx="7" ry="3.6" fill="#1c1917" ${S}/><ellipse cx="44" cy="60.5" rx="7" ry="3.6" fill="#1c1917" ${S}/>
+  <path d="M15 42 Q5 50 9 58 M49 42 Q59 50 55 58" fill="none" ${SW(10.5)}/>
+  <path d="M15 42 Q5 50 9 58 M49 42 Q59 50 55 58" fill="none" stroke="#c98d63" stroke-width="7.4" stroke-linecap="round"/>
+  <path d="M12 44 Q32 34 52 44 L50 62 L14 62Z" fill="#5b4a32" ${S}/>
+  <path d="M18 44 Q32 39 46 44 L45 61 L19 61Z" fill="#7f1d1d" ${S2}/>
+  <path d="M19 55 H45" stroke="#3b2f20" stroke-width="3"/><rect x="29" y="53" width="6" height="4.4" rx="1" fill="#d6a548" ${S2}/>
+  <path d="M28 40.5 L32 46.4 L36 40.5" fill="none" stroke="#a1a1aa" stroke-width="1"/><rect x="30.6" y="46.2" width="2.8" height="3.6" rx=".6" fill="#d4d4d8" ${SW(.8)}/>
+  <circle cx="9" cy="58.5" r="5" fill="#3b2f25" ${S}/><circle cx="55" cy="58.5" r="5" fill="#3b2f25" ${S}/>
+  ${shadedCircle('og', 32, 25, 15, '#d9a27a', '#a06b45')}
+  <path d="M20.5 32 Q32 42 43.5 32 Q42 38.6 32 40 Q22 38.6 20.5 32Z" fill="#7a5a40" opacity=".4"/>
+  <path d="M15 19.5 Q14 7 30 7 Q48 6 50.5 15 Q48.5 19 46 20.5 Q32 14.5 15 19.5Z" fill="#991b1b" ${S}/>
+  <circle cx="22" cy="14.4" r="2.1" fill="#d6a548" ${S2}/>
+  <path d="M18.5 21.6 L29 25.4 M45.5 21.6 L35 25.4" fill="none" ${SW(3.4)}/>
+  ${animeEye(24.5, 27.8, VE)}${animeEye(39.5, 27.8, VE)}
+  <path d="M26 33.4 H38 L37 36.8 H27Z" fill="#f5f5f4" ${S2}/><path d="M30 33.4 V36.8 M34 33.4 V36.8" stroke="${O}" stroke-width=".9"/>`;
 
+// せんしゃたいちょう（せんしゃに のった たいちょう）
 const dragon = `
-  <path d="M18 30 Q2 10 4 34 Q9 30 10 40 Q14 34 20 40Z" fill="#a855f7" ${S}/>
-  <path d="M46 30 Q62 10 60 34 Q55 30 54 40 Q50 34 44 40Z" fill="#a855f7" ${S}/>
-  <path d="M44 54 Q58 58 60 48 Q62 44 58 44" fill="none" stroke="${O}" stroke-width="7" stroke-linecap="round"/>
-  <path d="M44 54 Q58 58 60 48 Q62 44 58 44" fill="none" stroke="#34d399" stroke-width="3.5" stroke-linecap="round"/>
-  <ellipse cx="32" cy="50" rx="15" ry="11" fill="#34d399" ${S}/>
-  <ellipse cx="32" cy="52" rx="8.5" ry="7.5" fill="#fef3c7" ${S2}/>
-  <path d="M26 50 L38 50 M27 54 L37 54" stroke="#f59e0b" stroke-width="1.5"/>
-  <path d="M20 14 L16 0 L27 10Z M44 14 L48 0 L37 10Z" fill="#fde68a" ${S}/>
-  ${shadedCircle('dh', 32, 25, 17, '#4ade80', '#059669')}
-  <path d="M28 8 L32 3 L36 8" fill="#a855f7" ${S2}/>
-  <ellipse cx="32" cy="34" rx="10" ry="6.5" fill="#86efac" ${S2}/>
-  <circle cx="28.5" cy="33.5" r="1.2" fill="${O}"/><circle cx="35.5" cy="33.5" r="1.2" fill="${O}"/>
-  <path d="M19 21 L28 24 M45 21 L36 24" ${S}/>
-  <ellipse cx="25" cy="27" rx="3.4" ry="1.8" fill="#0c0e12"/><ellipse cx="25.3" cy="27" rx="1.1" ry="1.6" fill="#f59e0b"/>
-  <ellipse cx="39" cy="27" rx="3.4" ry="1.8" fill="#0c0e12"/><ellipse cx="39.3" cy="27" rx="1.1" ry="1.6" fill="#f59e0b"/>
-  <path d="M28 38 H36" fill="none" ${S2}/>`;
+  <rect x="4" y="46" width="56" height="14" rx="7" fill="#27272a" ${S}/>
+  ${[11, 21.5, 32, 42.5, 53].map(x => `<circle cx="${x}" cy="53" r="4" fill="#52525b" ${S2}/><circle cx="${x}" cy="53" r="1.3" fill="#27272a"/>`).join('')}
+  <path d="M6 46 L12 35.5 L54 35.5 L60 46Z" fill="#6b3a2e" ${S}/>
+  <path d="M8.5 43.5 H57.5" stroke="#4a261d" stroke-width="2.5"/>
+  <path d="M40 25 L44 6" stroke="${O}" stroke-width="1.4"/><circle cx="44" cy="6" r="1.4" fill="#ef4444"/>
+  <path d="M44 30 L62 26.8" ${SW(6.4)}/><path d="M44 30 L62 26.8" stroke="#52525b" stroke-width="3.4" stroke-linecap="round"/>
+  <path d="M18 36 Q18 24 32 24 Q46 24 46 36Z" fill="#7c4436" ${S}/>
+  <path d="M21 31 Q24 27 29 26" fill="none" stroke="#9a5a48" stroke-width="1.8" stroke-linecap="round"/>
+  ${shadedCircle('tk', 29, 16, 9, VSKIN, VSKIN2)}
+  <path d="M20 12.5 Q20.5 3 29.5 3 Q38.5 3 38.5 10.5Z" fill="#7f1d1d" ${S}/>
+  <path d="M19 12.6 L39.5 10.4 L40.4 13 L19.2 15Z" fill="#1c1917" ${S2}/>
+  <path d="M24 16.2 L28.6 17.6 M37.6 15.6 L33.4 17.4" fill="none" ${SW(1.8)}/>
+  <ellipse cx="27" cy="19.6" rx="2.4" ry="1.6" fill="#0c0e12"/><ellipse cx="27.3" cy="19.6" rx=".9" ry="1.5" fill="${VE}"/>
+  <ellipse cx="35" cy="19.4" rx="2.4" ry="1.6" fill="#0c0e12"/><ellipse cx="35.3" cy="19.4" rx=".9" ry="1.5" fill="${VE}"/>
+  <ellipse cx="29" cy="24.4" rx="10" ry="2.8" fill="#3f3f46" ${S2}/>`;
+
+// メカアーマー（さばくの ロボットスーツ。なかに パイロット）
+const snake = `
+  <path d="M22 50 L18 60 M42 50 L46 60" ${SW(8)}/><path d="M22 50 L18 60 M42 50 L46 60" stroke="#8a7350" stroke-width="5" stroke-linecap="round"/>
+  <rect x="10" y="58" width="14" height="5" rx="1.5" fill="#57534e" ${S2}/><rect x="40" y="58" width="14" height="5" rx="1.5" fill="#57534e" ${S2}/>
+  <rect x="17" y="12" width="6" height="10" rx="1" fill="#57534e" ${S2}/><rect x="41" y="12" width="6" height="10" rx="1" fill="#57534e" ${S2}/>
+  <path d="M10 27 L2 33 L4 46 L12 44Z" fill="#8a7350" ${S}/>
+  <path d="M14 21 L50 21 L54 34 L48 52 L16 52 L10 34Z" fill="#a08356" ${S}/>
+  <path d="M12 39 L52 39" stroke="#7f1d1d" stroke-width="3.2"/>
+  <clipPath id="mc"><path d="M21 25 L43 25 L45 36 L19 36Z"/></clipPath>
+  <path d="M21 25 L43 25 L45 36 L19 36Z" fill="#1e293b"/>
+  <g clip-path="url(#mc)"><circle cx="32" cy="33" r="6" fill="${VSKIN}"/><path d="M25.6 31 Q32 22 38.4 31Z" fill="#7f1d1d"/>
+    <circle cx="29.6" cy="32.6" r="1.1" fill="${VE}"/><circle cx="34.6" cy="32.6" r="1.1" fill="${VE}"/>
+    <path d="M21 25 L28 25 L22 36 L19 36Z" fill="#fff" opacity=".18"/></g>
+  <path d="M21 25 L43 25 L45 36 L19 36Z" fill="none" ${S2}/>
+  <circle cx="18" cy="45.5" r="1.4" fill="#ef4444"/><circle cx="46" cy="45.5" r="1.4" fill="#ef4444"/>
+  <rect x="47" y="29" width="15" height="9.5" rx="2" fill="#57534e" ${S}/>
+  <path d="M59.5 31 H64 M59.5 33.8 H64 M59.5 36.6 H64" stroke="${O}" stroke-width="1.7" stroke-linecap="round"/>`;
+
+// ゆきやまたいちょう（しろい コートの おおきな たいちょう。かたに ロケットランチャー）
+const icegiant = `
+  <circle cx="32" cy="26" r="20" fill="#e5e7eb" ${S}/>
+  <path d="M30 20 L60 9" ${SW(10)}/><path d="M30 20 L60 9" stroke="#4b5563" stroke-width="7" stroke-linecap="round"/>
+  <path d="M57 6.5 L62.5 4.5 L65 11.5 L59.5 13.5Z" fill="#374151" ${S2}/>
+  <ellipse cx="20" cy="61.5" rx="7" ry="3.5" fill="#374151" ${S}/><ellipse cx="44" cy="61.5" rx="7" ry="3.5" fill="#374151" ${S}/>
+  <ellipse cx="10.5" cy="52" rx="5.5" ry="8" fill="#e5e7eb" ${S}/><ellipse cx="53.5" cy="52" rx="5.5" ry="8" fill="#e5e7eb" ${S}/>
+  <path d="M10 44 Q32 34 54 44 L52 63 L12 63Z" fill="#e5e7eb" ${S}/>
+  <ellipse cx="40" cy="53" rx="3.4" ry="2" fill="#9ca3af"/><ellipse cx="24" cy="58" rx="3" ry="1.7" fill="#9ca3af"/>
+  <path d="M32 46 V63" stroke="#9ca3af" stroke-width="1.6"/><path d="M13 56 H51" stroke="#374151" stroke-width="3"/>
+  <path d="M16 42 Q32 50 48 42 Q46 47.5 32 51 Q18 47.5 16 42Z" fill="#a8a29e" ${S2}/>
+  <circle cx="10.5" cy="59" r="4" fill="#374151" ${S2}/><circle cx="53.5" cy="59" r="4" fill="#374151" ${S2}/>
+  ${shadedCircle('ig', 32, 26.5, 15, VSKIN, VSKIN2)}
+  <circle cx="32" cy="26.5" r="15.2" fill="none" stroke="#a8a29e" stroke-width="4.6"/><circle cx="32" cy="26.5" r="17.8" fill="none" ${S2}/>
+  <rect x="18" y="20.5" width="28" height="9.5" rx="4.7" fill="#1f2937" ${S2}/>
+  <ellipse cx="25" cy="25.2" rx="4.6" ry="3" fill="#ef4444"/><ellipse cx="39" cy="25.2" rx="4.6" ry="3" fill="#ef4444"/>
+  <path d="M22.6 24 L25 23 M36.6 24 L39 23" stroke="#fff" stroke-width="1.1" stroke-linecap="round"/>
+  <path d="M23.5 34 Q27.5 31 32 33.4 Q36.5 31 40.5 34 Q36.5 36.2 32 35.2 Q27.5 36.2 23.5 34Z" fill="#6b7280" ${S2}/>`;
+
+// かげの たいちょう（はやい。フードと マントと けん）
+const witch = `
+  <path d="M16 30 Q-2 40 -5 63 Q10 58 20 62 L34 40Z" fill="#4c1d95" ${S}/>
+  <path d="M14 36 Q2 46 0 60 Q8 56 14 58Z" fill="#2e1065"/>
+  <ellipse cx="22" cy="60.5" rx="5" ry="3.2" fill="#1c1917" ${S}/><ellipse cx="42" cy="60.5" rx="5" ry="3.2" fill="#1c1917" ${S}/>
+  <path d="M18 61 Q18 42 32 40 Q46 42 46 61Z" fill="#3b1d4a" ${S}/>
+  <path d="M19 52 Q32 56 45 52 L45 55 Q32 59 19 55Z" fill="#991b1b" ${S2}/>
+  <path d="M48.5 45.5 Q61 35 66 21 Q58.5 33.5 46.5 43.5Z" fill="#cbd5e1" ${S2}/>
+  <path d="M43.5 49.5 L50 43.6" ${SW(3.6)}/><path d="M43 44.5 L49.5 49" ${SW(2.4)}/>
+  ${vglove(46.5, 47, '#1c1917')}
+  <path d="M24 12 L32 1 L40 12Z" fill="#3b1d4a" ${S2}/>
+  ${shadedCircle('wh', 32, 27, 16, '#3b1d4a', '#2a1238')}
+  <ellipse cx="33" cy="30" rx="11" ry="10" fill="${VSKIN}" ${S2}/>
+  <path d="M22.2 33 Q33 30 43.8 33 Q43.6 40.4 33 40.6 Q22.4 40.4 22.2 33Z" fill="#1c1917" ${S2}/>
+  <path d="M23 24.6 L30 27.4 M43 24.6 L36 27.4" fill="none" ${SW(2)}/>
+  ${animeEye(27.6, 29.4, '#c084fc')}${animeEye(38.4, 29.4, '#c084fc')}`;
+
+// だいそうすい（わるものぐんだんの いちばん えらい ひと。ぼうしにも ワッペン）
+const maou = `
+  <path d="M8 26 Q2 48 6 64 L58 64 Q62 48 56 26 Q44 34 32 34 Q20 34 8 26Z" fill="#1c1917" ${S}/>
+  <path d="M10 30 Q6 46 9 62 L14 62 Q12 46 16 34Z" fill="#991b1b"/>
+  <path d="M16 42 Q32 35 48 42 L49 64 L15 64Z" fill="#7f1d1d" ${S}/>
+  <path d="M32 39 V64" stroke="#5c1414" stroke-width="1.6"/>
+  <circle cx="35" cy="47" r="1.3" fill="#facc15"/><circle cx="35" cy="52.5" r="1.3" fill="#facc15"/><circle cx="35" cy="58" r="1.3" fill="#facc15"/>
+  <path d="M46 42.5 L18 63" stroke="#facc15" stroke-width="2.4"/>
+  <path d="M40 45 H45 V48 H40Z" fill="#facc15" ${SW(.8)}/><path d="M40 49.5 H45 V52.5 H40Z" fill="#a1a1aa" ${SW(.8)}/>
+  <path d="M11 42 Q15 36.5 22 39.5 L21 44 Q16 43 11 46.5Z M53 42 Q49 36.5 42 39.5 L43 44 Q48 43 53 46.5Z" fill="#facc15" ${S2}/>
+  ${shadedCircle('mh', 32, 24, 14, '#d9b08c', '#9f7350')}
+  <path d="M11 14 Q13 0 32 -1 Q51 0 53 14 Q32 9 11 14Z" fill="#7f1d1d" ${S}/>
+  <path d="M14 12.6 Q32 8.6 50 12.6 L50 16.2 Q32 12.2 14 16.2Z" fill="#1c1917" ${S2}/>
+  <path d="M14.5 16.2 Q32 12 49.5 16.2 Q46.5 21.4 32 19.8 Q17.5 21.4 14.5 16.2Z" fill="#111" ${S2}/>
+  <path d="M16.5 15.6 Q32 12.2 47.5 15.6" stroke="#facc15" stroke-width="1.2" fill="none"/>
+  ${villainPatch(32, 5.5, 0.85)}
+  <path d="M20.5 21.8 L29 24.8 M43.5 21.8 L35 24.8" fill="none" ${SW(2.8)}/>
+  ${animeEye(25.5, 27, VE)}${animeEye(38.5, 27, VE)}
+  <circle cx="38.6" cy="27" r="4.5" fill="none" stroke="#facc15" stroke-width="1.2"/><path d="M42.6 29 Q45 33 43 37" fill="none" stroke="#facc15" stroke-width=".8"/>
+  <path d="M23 32.4 Q27 29.4 32 31.9 Q37 29.4 41 32.4 Q38 34.4 32 33.4 Q26 34.4 23 32.4Z" fill="#292524" ${S2}/>
+  <path d="M29 35.6 Q32 36.6 35 35.2" fill="none" ${S2}/>`;
 
 /* ---------- ぶき・アイテム ---------- */
 const gem = (fill, shade) => `
@@ -312,127 +489,6 @@ const blast = wrap(`
   <path d="M32 2 L37 20 L56 12 L42 28 L62 32 L42 38 L54 52 L36 42 L32 62 L26 42 L8 54 L22 36 L2 32 L22 26 L10 12 L28 20Z" fill="#c2410c" ${S}/>
   <path d="M32 12 L35 24 L46 20 L38 30 L48 34 L36 36 L42 46 L32 40 L24 48 L28 36 L16 34 L26 28 L18 18 L30 24Z" fill="#f59e0b"/>
   <circle cx="32" cy="32" r="6" fill="#fef3c7"/>`);
-
-/* ---------- あたらしい てき（みぎむき） ---------- */
-const scorpion = `
-  <path d="M16 44 Q4 32 10 20 Q16 10 27 13" fill="none" stroke="${O}" stroke-width="9" stroke-linecap="round"/>
-  <path d="M16 44 Q4 32 10 20 Q16 10 27 13" fill="none" stroke="#f59e0b" stroke-width="5" stroke-linecap="round"/>
-  <path d="M25 8 L35 13 L25 18Z" fill="#7c2d12" ${S2}/>
-  <path d="M22 52 L16 58 M28 54 L24 60 M36 54 L38 60 M42 52 L46 58" ${S}/>
-  <path d="M44 38 Q56 26 61 35 Q56 33 54 38 Q60 42 52 45Z" fill="#fbbf24" ${S2}/>
-  <path d="M44 48 Q58 50 60 58 Q55 55 52 56 Q52 60 46 56Z" fill="#fbbf24" ${S2}/>
-  <ellipse cx="32" cy="46" rx="16" ry="11" fill="#d97706" ${S}/>
-  <ellipse cx="30" cy="43" rx="12" ry="7" fill="#f59e0b"/>
-  <path d="M24 40 Q26 50 24 54 M32 38 Q34 50 32 56" fill="none" stroke="#b45309" stroke-width="1.6"/>
-  <ellipse cx="25" cy="40" rx="4" ry="2" fill="#fff" opacity=".45"/>
-  <circle cx="40" cy="41" r="3.2" fill="#fff" ${S2}/><circle cx="41" cy="41.5" r="1.4" fill="${O}"/>
-  <circle cx="46" cy="42" r="2.8" fill="#fff" ${S2}/><circle cx="46.8" cy="42.5" r="1.2" fill="${O}"/>`;
-
-const mummy = `
-  <path d="M42 44 L58 41 M42 50 L58 48" stroke="${O}" stroke-width="7.5" stroke-linecap="round"/>
-  <path d="M42 44 L58 41 M42 50 L58 48" stroke="#f5e6c8" stroke-width="4" stroke-linecap="round"/>
-  <path d="M20 42 Q32 38 44 42 L45 60 L19 60Z" fill="#f5e6c8" ${S}/>
-  <path d="M20 47 L44 51 M20 54 L45 50 M21 58 L44 56" stroke="#c9b38a" stroke-width="2"/>
-  ${shadedCircle('mu', 32, 25, 17, '#f5e6c8', '#d6c29a')}
-  <path d="M16 18 L48 22 M15 27 L49 24 M17 34 L47 37" stroke="#c9b38a" stroke-width="2.2"/>
-  <path d="M33 25 Q38 21 44 25 Q38 29 33 25Z" fill="${O}"/>
-  <circle cx="39" cy="25" r="2.2" fill="#fde047"/><circle cx="39.6" cy="24.4" r=".8" fill="#fff"/>
-  <path d="M46 34 L54 40" stroke="#f5e6c8" stroke-width="3" stroke-linecap="round"/>`;
-
-const snake = `
-  <ellipse cx="30" cy="52" rx="26" ry="10" fill="#65a30d" ${S}/>
-  <ellipse cx="28" cy="49" rx="20" ry="5" fill="#a3e635"/>
-  <ellipse cx="30" cy="42" rx="19" ry="8.5" fill="#65a30d" ${S}/>
-  <ellipse cx="28" cy="40" rx="14" ry="4" fill="#a3e635"/>
-  <circle cx="14" cy="51" r="2.5" fill="#7c3aed"/><circle cx="40" cy="54" r="2.5" fill="#7c3aed"/><circle cx="22" cy="42" r="2.2" fill="#7c3aed"/><circle cx="40" cy="41" r="2.2" fill="#7c3aed"/>
-  <path d="M28 38 Q20 26 30 18" fill="none" stroke="${O}" stroke-width="14" stroke-linecap="round"/>
-  <path d="M28 38 Q20 26 30 18" fill="none" stroke="#84cc16" stroke-width="9" stroke-linecap="round"/>
-  <path d="M27 36 Q23 28 28 22" fill="none" stroke="#fef9c3" stroke-width="3.5" stroke-linecap="round"/>
-  ${shadedCircle('sn', 38, 17, 13, '#a3e635', '#65a30d')}
-  <path d="M50 21 L60 21 M56 21 L62 18 M56 21 L62 24" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round"/>
-  <path d="M32 9 L41 13 M47 11 L41 14" ${S}/>
-  <ellipse cx="37" cy="15" rx="2.8" ry="1.6" fill="#0c0e12"/><ellipse cx="37.2" cy="15" rx=".8" ry="1.4" fill="#f59e0b"/>
-  <ellipse cx="45" cy="15" rx="2.4" ry="1.4" fill="#0c0e12"/><ellipse cx="45.2" cy="15" rx=".7" ry="1.2" fill="#f59e0b"/>
-  <path d="M40 22 H50" fill="none" ${S2}/>`;
-
-const snowman = `
-  <path d="M18 38 L4 30 M8 33 L4 36 M46 38 L60 30 M56 33 L60 28" stroke="#78350f" stroke-width="3" stroke-linecap="round"/>
-  ${shadedCircle('s1', 32, 47, 14, '#ffffff', '#bfdbfe')}
-  <circle cx="32" cy="43" r="1.8" fill="${O}"/><circle cx="32" cy="50" r="1.8" fill="${O}"/>
-  ${shadedCircle('s2', 32, 23, 12, '#ffffff', '#bfdbfe')}
-  <path d="M21 32 Q32 37 43 32 L43 36 Q32 41 21 36Z" fill="#ef4444" ${S2}/><path d="M38 36 L42 46 L37 45Z" fill="#dc2626" ${S2}/>
-  <path d="M22 13 L42 13 L40 2 L24 2Z" fill="#2563eb" ${S2}/><path d="M19 13 L45 13" ${SW(3.5)}/>
-  <circle cx="28" cy="21" r="2.2" fill="${O}"/><circle cx="37" cy="21" r="2.2" fill="${O}"/>
-  <circle cx="28.7" cy="20.3" r=".8" fill="#fff"/><circle cx="37.7" cy="20.3" r=".8" fill="#fff"/>
-  <path d="M33 25 L46 27 L33 28.5Z" fill="#fb923c" ${S2}/>
-  <path d="M27 30 Q32 32 37 30" fill="none" ${S2}/>`;
-
-const wolf = `
-  <path d="M14 48 Q2 46 4 36 Q10 42 18 42" fill="#94a3b8" ${S}/>
-  <ellipse cx="28" cy="50" rx="14" ry="9" fill="#94a3b8" ${S}/>
-  <ellipse cx="30" cy="53" rx="7" ry="4.5" fill="#e2e8f0"/>
-  <path d="M20 58 L20 61 M36 58 L36 61" ${SW(4)}/>
-  <path d="M22 16 L20 2 L32 11Z M40 14 L46 1 L48 16Z" fill="#94a3b8" ${S}/>
-  <path d="M23 13 L22 6 L28 11Z M42 12 L45 5 L46 13Z" fill="#fda4af"/>
-  ${shadedCircle('wf', 34, 27, 15, '#cbd5e1', '#64748b')}
-  <path d="M38 30 Q52 28 56 34 Q52 40 40 39Z" fill="#f1f5f9" ${S}/>
-  <ellipse cx="55" cy="33" rx="3" ry="2.4" fill="${O}"/>
-  <path d="M26 21 L33 24 M38 21 L44 23" ${S}/>
-  <ellipse cx="30" cy="27" rx="3" ry="1.6" fill="#0c0e12"/><ellipse cx="30.4" cy="27" rx=".9" ry="1.4" fill="#e7e5e4"/>
-  <ellipse cx="41" cy="26.5" rx="2.6" ry="1.4" fill="#0c0e12"/><ellipse cx="41.3" cy="26.5" rx=".8" ry="1.2" fill="#e7e5e4"/>
-  <path d="M44 39 H52" fill="none" ${S2}/>`;
-
-const icegiant = `
-  <path d="M10 40 Q2 50 8 58 L18 56 Z M54 40 Q62 50 56 58 L46 56Z" fill="#7dd3fc" ${S}/>
-  <path d="M14 38 Q32 30 50 38 L52 60 L12 60Z" fill="#38bdf8" ${S}/>
-  <path d="M24 42 L32 50 L40 42" fill="none" stroke="#e0f2fe" stroke-width="3" stroke-linecap="round"/>
-  ${shadedCircle('ig', 32, 24, 17, '#7dd3fc', '#0284c7')}
-  <path d="M18 14 L16 0 L24 10 L28 -2 L32 9 L36 -2 L40 10 L48 0 L46 14Z" fill="#e0f2fe" ${S2}/>
-  <path d="M20 20 L29 24 M44 20 L35 24" ${SW(3.5)}/>
-  <ellipse cx="26" cy="27" rx="3.6" ry="3" fill="#fff" ${S2}/><ellipse cx="38" cy="27" rx="3.6" ry="3" fill="#fff" ${S2}/>
-  <circle cx="26.8" cy="27.2" r="1.3" fill="#0ea5e9"/><circle cx="37.2" cy="27.2" r="1.3" fill="#0ea5e9"/>
-  <path d="M24 36 L27 33 L30 36 L33 33 L36 36 L39 33 L41 36" fill="none" ${S2}/>
-  <circle cx="14" cy="22" r="1.5" fill="#fff"/><circle cx="50" cy="30" r="1.5" fill="#fff"/>`;
-
-const pumpkin = `
-  <path d="M32 14 Q31 6 36 3" fill="none" stroke="${O}" stroke-width="6" stroke-linecap="round"/>
-  <path d="M32 14 Q31 6 36 3" fill="none" stroke="#16a34a" stroke-width="3" stroke-linecap="round"/>
-  <path d="M35 8 Q44 2 48 10 Q40 12 35 8Z" fill="#4ade80" ${S2}/>
-  <ellipse cx="32" cy="38" rx="25" ry="21" fill="#ea580c" ${S}/>
-  <ellipse cx="32" cy="38" rx="15" ry="21" fill="#f97316" ${S2}/>
-  <ellipse cx="32" cy="38" rx="6" ry="21" fill="#fb923c" ${S2}/>
-  <ellipse cx="20" cy="26" rx="4" ry="2.2" fill="#fff" opacity=".45" transform="rotate(-30 20 26)"/>
-  <path d="M19 34 L26 28 L28 36Z M45 34 L38 28 L36 36Z" fill="#fde047" ${S2}/>
-  <path d="M18 43 L22 47 L26 44 L30 48 L34 44 L38 48 L42 44 L46 43 Q40 54 32 54 Q24 54 18 43Z" fill="#fde047" ${S2}/>`;
-
-const witch = `
-  <path d="M4 52 L54 46" stroke="${O}" stroke-width="6" stroke-linecap="round"/>
-  <path d="M4 52 L54 46" stroke="#a16207" stroke-width="3" stroke-linecap="round"/>
-  <path d="M2 48 L-4 58 L10 56Z" fill="#fde047" ${S2}/>
-  <path d="M18 60 Q20 40 32 38 Q44 40 46 60Z" fill="#7c3aed" ${S}/>
-  <path d="M30 40 L32 58 M36 40 L37 58" stroke="#5b21b6" stroke-width="1.6"/>
-  <path d="M14 30 Q12 46 20 48 Q18 36 22 30Z M50 30 Q52 46 44 48 Q46 36 42 30Z" fill="#a855f7" ${S2}/>
-  ${shadedCircle('wh', 32, 30, 14, '#fde2c8', '#f5b98a')}
-  <path d="M18 24 Q32 18 46 24 L46 28 Q32 22 18 28Z" fill="#a855f7"/>
-  <path d="M8 22 Q32 26 56 22 Q50 18 44 18 L36 -2 Q32 2 30 10 L22 18 Q14 18 8 22Z" fill="#6d28d9" ${S}/>
-  <path d="M22 18 Q32 21 44 18 L45 14 Q32 17 23 14Z" fill="#facc15" ${S2}/>
-  ${animeEye(27, 31, '#c4b5fd')}${animeEye(38, 31, '#c4b5fd')}
-  <path d="M29 39 H37" fill="none" ${S2}/>
-  <path d="M54 30 L60 24 M57 22 L60 24 L62 27" stroke="#facc15" stroke-width="2.5" stroke-linecap="round" fill="none"/>`;
-
-const maou = `
-  <path d="M8 26 Q2 48 6 62 L58 62 Q62 48 56 26 Q44 34 32 34 Q20 34 8 26Z" fill="#b91c1c" ${S}/>
-  <path d="M10 30 Q6 46 9 60 L14 60 Q12 46 16 34Z" fill="#7f1d1d"/>
-  <path d="M18 42 Q32 36 46 42 L48 62 L16 62Z" fill="#1e1b4b" ${S}/>
-  <path d="M26 44 L32 54 L38 44" fill="#facc15" ${S2}/>
-  <path d="M18 18 Q4 10 6 -2 Q12 8 22 10Z M46 18 Q60 10 58 -2 Q52 8 42 10Z" fill="#fef3c7" ${S}/>
-  ${shadedCircle('mh', 32, 25, 16, '#7c3aed', '#4c1d95')}
-  <path d="M22 12 L24 4 L28 9 L32 2 L36 9 L40 4 L42 12Z" fill="#facc15" ${S2}/>
-  <circle cx="32" cy="8" r="1.8" fill="#ef4444"/>
-  <path d="M20 21 L29 25 M44 21 L35 25" ${SW(3.5)}/>
-  <path d="M22 27 L30 26 L28 30Z M42 27 L34 26 L36 30Z" fill="#ef4444" ${S2}/>
-  <path d="M24 35 Q32 31 40 35 Q32 39 24 35Z" fill="#1e1b4b" ${S2}/>
-  <path d="M27 34 L28 37.5 L29.5 34.3 M34.5 34.3 L36 37.5 L37 34" fill="#fff" stroke="${O}" stroke-width="1"/>`;
 
 /* ---------- そうび・たからばこ ---------- */
 const sword = `

@@ -28,6 +28,7 @@ export const CHARACTERS = [
   { id: 'unicorn', name: 'ユニコーン', weapon: 'thunder', perk: { dmg: 0.15, spd: 0.1, hp: 40, regen: 0.5 }, trait: 'ぜんぶ アップ', unlock: 5 },
 ];
 
+// てきは ぜんぶ「わるものぐんだん」の へいたい（id は むかしの モンスターめいの まま。どの へいたいかは js/art.js の コメント）
 export const ENEMY_TYPES = {
   zombie:   { hp: 10, speed: 42, dmg: 8,  xp: 1, r: 16, size: 34 },
   bat:      { hp: 6,  speed: 78, dmg: 5,  xp: 1, r: 13, size: 28 },
@@ -39,12 +40,12 @@ export const ENEMY_TYPES = {
   wolf:     { hp: 16, speed: 92, dmg: 10, xp: 1, r: 15, size: 36 },
   pumpkin:  { hp: 22, speed: 50, dmg: 10, xp: 2, r: 16, size: 34 },
   // ボス（hp は ステージがわで きめる）
-  ogre:     { speed: 40, dmg: 20, xp: 40, r: 38, size: 80,  name: 'おに' },
-  dragon:   { speed: 38, dmg: 25, xp: 40, r: 48, size: 104, name: 'ドラゴン' },
-  snake:    { speed: 46, dmg: 26, xp: 40, r: 46, size: 100, name: 'だいじゃ' },
-  icegiant: { speed: 36, dmg: 28, xp: 40, r: 50, size: 110, name: 'こおりの きょじん' },
-  witch:    { speed: 52, dmg: 28, xp: 40, r: 40, size: 96,  name: 'まじょ' },
-  maou:     { speed: 40, dmg: 32, xp: 40, r: 52, size: 116, name: 'まおう' },
+  ogre:     { speed: 40, dmg: 20, xp: 40, r: 38, size: 80,  name: 'おおぐんそう' },
+  dragon:   { speed: 38, dmg: 25, xp: 40, r: 48, size: 104, name: 'せんしゃたいちょう' },
+  snake:    { speed: 46, dmg: 26, xp: 40, r: 46, size: 100, name: 'メカアーマー' },
+  icegiant: { speed: 36, dmg: 28, xp: 40, r: 50, size: 110, name: 'ゆきやまたいちょう' },
+  witch:    { speed: 52, dmg: 28, xp: 40, r: 40, size: 96,  name: 'かげの たいちょう' },
+  maou:     { speed: 40, dmg: 32, xp: 40, r: 52, size: 116, name: 'だいそうすい' },
 };
 
 // enemies: [しゅるい, でてくる びょう, でやすさ]
@@ -54,13 +55,13 @@ export const STAGES = [
     mini: { type: 'ogre', hp: 900 }, boss: { type: 'dragon', hp: 3000 } },
   { id: 2, name: 'さばく', ground: 'desert', hpMul: 1.6, spawnMul: 1.1, dmgMul: 1.15,
     enemies: [['scorpion', 0, 10], ['bat', 30, 5], ['mummy', 90, 6], ['skull', 180, 4]],
-    mini: { type: 'mummy', hp: 1600, big: 2.4, name: 'でかミイラ' }, boss: { type: 'snake', hp: 5000 } },
+    mini: { type: 'mummy', hp: 1600, big: 2.4, name: 'でかばくはへい' }, boss: { type: 'snake', hp: 5000 } },
   { id: 3, name: 'ゆきやま', ground: 'snow', hpMul: 2.4, spawnMul: 1.2, dmgMul: 1.3,
     enemies: [['snowman', 0, 10], ['wolf', 30, 6], ['bat', 90, 4], ['skull', 180, 4]],
-    mini: { type: 'wolf', hp: 2600, big: 2.4, name: 'ボスオオカミ' }, boss: { type: 'icegiant', hp: 7500 } },
+    mini: { type: 'wolf', hp: 2600, big: 2.4, name: 'ボスぐんようけん' }, boss: { type: 'icegiant', hp: 7500 } },
   { id: 4, name: 'おばけのもり', ground: 'forest', hpMul: 3.4, spawnMul: 1.3, dmgMul: 1.45,
     enemies: [['pumpkin', 0, 10], ['ghost', 30, 7], ['bat', 90, 5], ['skull', 180, 5]],
-    mini: { type: 'pumpkin', hp: 3600, big: 2.6, name: 'でかかぼちゃ' }, boss: { type: 'witch', hp: 10500 } },
+    mini: { type: 'pumpkin', hp: 3600, big: 2.6, name: 'でかかえんへい' }, boss: { type: 'witch', hp: 10500 } },
   { id: 5, name: 'まおうじょう', ground: 'castle', hpMul: 4.6, spawnMul: 1.4, dmgMul: 1.6,
     enemies: [['zombie', 0, 8], ['skull', 0, 4], ['wolf', 30, 5], ['mummy', 60, 5], ['pumpkin', 120, 5], ['snowman', 180, 4]],
     mini: { type: 'dragon', hp: 6000 }, boss: { type: 'maou', hp: 15000 } },

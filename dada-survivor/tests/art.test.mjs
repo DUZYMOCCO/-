@@ -47,3 +47,15 @@ test('every enemy and boss wears the わるものぐんだん emblem', () => {
   }
   for (const c of CHARACTERS) assert.ok(!svgOf(art(c.id)).includes('data-emblem="warumono"'), c.id);
 });
+
+// こどもの リクエスト：てきは ぜんぶ わるものぐんだんの へいたい（ボスの なまえも かなだけ）
+test('enemies are わるものぐんだん soldiers with kana-only boss names', () => {
+  const kana = /^[\u3041-\u309f\u30a0-\u30ff ]+$/;
+  const bosses = Object.entries(ENEMY_TYPES).filter(([, t]) => t.name);
+  assert.equal(bosses.length, 6);
+  for (const [, t] of bosses) assert.match(t.name, kana, t.name);
+  for (const s of STAGES) if (s.mini.name) assert.match(s.mini.name, kana, s.mini.name);
+  assert.equal(ENEMY_TYPES.maou.name, 'だいそうすい');
+  // だいそうすいは むねと ぼうしの 2か所に ワッペン
+  assert.equal(svgOf(art('maou')).split('data-emblem="warumono"').length - 1, 2);
+});
