@@ -3,6 +3,7 @@
  * ゆびで うごかすだけ。こうげきは じどう。5ふん いきのこって ボスを たおそう！
  */
 import { sound } from '../../common/js/audio.js?v=151';
+import { loadCss } from '../../common/js/load-css.js';
 import { storage } from '../../common/js/storage.js';
 import {
   STAGE_SECONDS, MINI_BOSS_SECONDS, MAX_ENEMIES, MAX_GEMS, DIFFICULTIES, CHARACTERS, ENEMY_TYPES,
@@ -27,6 +28,11 @@ export const DadaSurvivorGame = {
   color: '#22c55e',
   section: 'kids',
   description: 'こうげきは じどう！ 5つの ステージで ボスを たおして、たからばこの そうびで つよくなろう！',
+
+  // 起動時にこのゲームのCSSを自分で読み込む（?v= はこのフォルダ内で管理）。ハブが init 前に await する
+  prepare() {
+    return loadCss(new URL('../css/dada-survivor.css?v=177', import.meta.url).href);
+  },
 
   init(container, onBackToHub) {
     this.container = container;
@@ -590,3 +596,5 @@ export const DadaSurvivorGame = {
     this.stage.joystick(this.stick, this.rect);
   },
 };
+
+export default DadaSurvivorGame;

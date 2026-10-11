@@ -32,6 +32,7 @@ import {drawEconomicLandscape,drawCommerceActor,drawEconomicMinimap,drawCommerce
  *  - 名もなき兵士たちは生き残ると二つ名と名前が授与され、やがて主人公の頼もしい戦友に。
  */
 import { sound } from '../../common/js/audio.js?v=151';
+import { loadCss } from '../../common/js/load-css.js';
 import { storage } from '../../common/js/storage.js';
 import { createStallRecorder, mountStallLog } from './stall-recorder.js?v=175';
 import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow, isRuinKeeper, ruinKeeperScale } from './visuals.js?v=179';
@@ -1063,6 +1064,11 @@ export const IronSquadGame = {
   icon: '🛡️',
   color: '#ffaa00',
   description: '自律行動する部隊と共に生き残れ！部隊と離れると危険だがソロ冒険も自由。伍長・隊長へ出世して初めて指揮権を掴み取れ。',
+
+  // 起動時にこのゲームのCSSを自分で読み込む（?v= はこのフォルダ内で管理）。ハブが init 前に await する
+  prepare() {
+    return loadCss(['../css/iron-squad.css?v=175', '../css/iron-squad-interface.css?v=175'].map(p => new URL(p, import.meta.url).href));
+  },
 
   init(container, onBackToHub) {
     this.container = container;
@@ -11956,3 +11962,5 @@ export const IronSquadGame = {
     for (const canvas of this.container?.querySelectorAll('canvas') || []) releaseCanvas(canvas);
   }
 };
+
+export default IronSquadGame;

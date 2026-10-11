@@ -32,18 +32,29 @@ Safariで開いた後：
 
 ---
 
+## 🧩 構成とキャッシュ（ゲーム別に独立して更新できる仕組み）
+
+- ゲームは `ゲーム/js/index.js`（default export: `init` と任意の `prepare`）を持ち、`games-registry.js` から **起動時に動的 import** される。CSS はゲーム自身が `prepare()` で読み込む（`index.html` にゲームのCSSは書かない）。
+- `ゲーム/sw-assets.js` が、そのゲームのキャッシュ対象ファイルとバージョンを持つ。ルートの `sw.js` はシェル一覧とゲームフォルダ名（`GAME_IDS`）だけを持ち、各ゲームの `sw-assets.js` を `importScripts` して `studio-shell-vN` / `game-<id>-vN` を別々のキャッシュにする。有効化時は同じ接頭辞の古いキャッシュだけを削除するので、片方のゲームを更新しても他方は消えない。
+- 更新検知: `sw.js` は `updateViaCache:'none'` で登録され、`importScripts` された `sw-assets.js` もブラウザの更新チェック（バイト比較）対象。保険として、ハブ起動時に SW へ `refresh-games` を送り、SW が各 `sw-assets.js` を `no-store` で取得して、バージョンが変わったゲームのキャッシュだけ作り直す（iOS Safari対策）。
+- モジュールのキャッシュバスター: 入口 `index.js` は `?v=` なしで import し、SW が再検証付きで取得する。ゲーム内部の import の `?v=` は各ゲームのフォルダ内で管理する。
+- 作業ルールは [CLAUDE.md](CLAUDE.md) / [AGENTS.md](AGENTS.md) を参照。
+
+---
+
 ## 📁 フォルダ構成
 
 ```text
 index.html / sw.js / manifest.json   スタジオ本体（ルート必須）
+CLAUDE.md / AGENTS.md                作業ルール（AIセッション向け）
 README.md / .gitignore / .nojekyll   説明・Git設定・GitHub Pages設定
 common/      共通データ（スタジオ全体で使う「必要な基本データ」）
   js/        共通モジュール（app, games-registry, storage, audio, kana-*）
   css/       共通スタイル（style.css, game-ui.css）
   assets/    共通アセット（audio/, icons/, QR）
   tools/     サーバー起動・アイコン/音源の生成（serve.py, start.bat, generate_*.py）
-iron-squad/  ゲーム本体（js/ css/ assets/ tests/ tools/ docs/ README.md）
-dada-survivor/ こどもゲーム（js/ css/ tests/ tools/ README.md）
+iron-squad/  ゲーム本体（sw-assets.js js/ css/ assets/ tests/ tools/ docs/ README.md）
+dada-survivor/ こどもゲーム（sw-assets.js js/ css/ tests/ tools/ README.md）
 <ゲーム名>/   新しいゲームもこの形でルート直下にフォルダを増やす
 ```
 
@@ -51,8 +62,8 @@ dada-survivor/ こどもゲーム（js/ css/ tests/ tools/ README.md）
 
 ## ➕ 新しいゲームを追加するには
 
-1. ルート直下に `<ゲーム名>/` を作り、`js/index.js` でゲームオブジェクト（`id`, `title`, `init` など）を export する。
-2. `common/js/games-registry.js` に import して `games` 配列へ追加する。ハブの見出しはゲームの `section`（`sections` の id、未指定は `main`）で決まる。
-3. ゲーム専用CSSがあれば `index.html` に `<link>` を追加する。
-4. `sw.js` の `ASSETS_TO_CACHE` に新ファイルを加え、`CACHE_NAME` と `?v=` を上げる。
+1. ルート直下に `<ゲーム名>/` を作り、`js/index.js` でゲームオブジェクト（`init(container, onBackToHub)` と任意の `prepare()`）を **default export** する。CSS は `prepare()` で `common/js/load-css.js` の `loadCss` を使って自分で読み込む。
+2. `common/js/games-registry.js` の `games` 配列へメタデータ（id/title/subtitle/icon/color/description/section と `load: () => import(...)`）を追加する。ハブの見出しは `section` で決まる。
+3. `<ゲーム名>/sw-assets.js` を作る（`self.GAME_ASSETS['<id>'] = { version, files }`）。
+4. `sw.js` の `GAME_IDS` に id を足し、`SHELL_VERSION` と `app.js` の `?v=` を上げる。
 5. テストは `node --test <ゲーム名>/tests/*.test.mjs` をリポジトリのルートから実行する。

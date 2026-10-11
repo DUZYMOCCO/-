@@ -1,7 +1,7 @@
 /**
  * スマホゲーム工房 メインアプリケーション
  */
-import { games, sections, getGameById } from './games-registry.js?v=179';
+import { games, sections, getGameById } from './games-registry.js?v=180';
 import { sound } from './audio.js?v=151';
 import { storage } from './storage.js';
 import { initKanaMode, bindKanaButton } from './kana-mode.js?v=175';
@@ -64,7 +64,14 @@ class GameStudioApp {
 
     // サービスワーカー登録 (クエリパラメータ付与でSafariのSWキャッシュを即時更新)
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('./sw.js?v=179').catch((err) => {
+      // updateViaCache:'none' … sw.js と importScripts される各ゲームの sw-assets.js を常にHTTPキャッシュ無視で更新確認
+      navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).then((reg) => {
+        reg.update().catch(() => {});
+        // 保険(iOS Safari対策): 各ゲームの sw-assets.js をSWに取り直させ、更新があればそのゲームのキャッシュだけ作り直す
+        navigator.serviceWorker.ready.then((r) => {
+          if (r.active) r.active.postMessage({ type: 'refresh-games' });
+        });
+      }).catch((err) => {
         console.log('SW registration failed:', err);
       });
     }
@@ -125,23 +132,32 @@ class GameStudioApp {
   }
 
   launchGame(gameId) {
-    const game = getGameById(gameId);
-    if (!game) return;
+    const meta = getGameById(gameId);
+    if (!meta || this.launching) return;
+    this.launching = true;
 
-    this.currentView = 'game';
-    this.hubEl.classList.add('hidden');
-    this.gameContainerEl.classList.remove('hidden');
-
-    this.activeGame = game;
-    try {
-      game.init(this.gameContainerEl, () => {
+    // ゲーム本体を動的 import → ゲーム自身が CSS を読み込む(prepare) → 初回描画
+    (async () => {
+      let game = null;
+      try {
+        const mod = await meta.load();
+        game = mod.default;
+        if (game.prepare) await game.prepare();
+        this.currentView = 'game';
+        this.hubEl.classList.add('hidden');
+        this.gameContainerEl.classList.remove('hidden');
+        this.activeGame = game;
+        game.init(this.gameContainerEl, () => {
+          this.backToHub();
+        });
+      } catch (err) {
+        console.error('Game launch error:', err);
+        alert('ゲーム起動エラー: ' + err.message);
         this.backToHub();
-      });
-    } catch (err) {
-      console.error('Game launch error:', err);
-      alert('ゲーム起動エラー: ' + err.message);
-      this.backToHub();
-    }
+      } finally {
+        this.launching = false;
+      }
+    })();
   }
 
   backToHub() {
