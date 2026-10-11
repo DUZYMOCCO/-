@@ -7,13 +7,13 @@ import {
   DIFFICULTIES, CHARACTERS, WEAPONS, SHOP_ITEMS, STAGES, RARITIES, GEAR_SLOTS, CHEST_COST,
   shopCost, stageById, stageUnlocked, charUnlocked, gearLabel, rollGear, addGear, equipGear,
   unequipGear, mergeGear, bonusFor,
-} from './rules.js?v=184';
-import { art } from './art.js?v=184';
+} from './rules.js?v=185';
+import { art } from './art.js?v=185';
 
 const GEAR_ART = { weapon: 'sword', armor: 'armor', boots: 'shoes', charm: 'charm' };
 const ICON_ART = {
   kunai: 'kunai', orbit: 'star', thunder: 'bolt', bomb: 'bomb', magnet: 'magnet', meat: 'meat', coin: 'coin',
-  gun: 'gun', shotgun: 'shotgun', bazooka: 'bazooka', dual: 'dual', gatling: 'gatling', mega: 'mega',
+  gun: 'gun', shotgun: 'shotgun', bazooka: 'bazooka', dual: 'dual', gatling: 'gatling', mega: 'mega', supermissile: 'smissile',
   ammo: 'bullet', blast: 'blast',
 };
 export const iconHtml = (id, fallback, cls = 'ds-icon') => ICON_ART[id]

@@ -5,7 +5,7 @@
  * - 要素はプールで使い回し、生成/破棄でGCやレイアウトを揺らさない
  * - 一時エフェクトは Web Animations API（コンポジタで再生）
  */
-import { art } from './art.js?v=184';
+import { art, groundTile } from './art.js?v=185';
 
 class Pool {
   constructor(layer, make) { this.layer = layer; this.make = make; this.free = []; this.active = new Set(); }
@@ -56,6 +56,12 @@ export class Stage {
     this.playerHp = el('ds-hp', this.player);
     this.playerHpFill = el('ds-hp-fill', this.playerHp);
     units.appendChild(this.player);
+    // けんきゅうしゃ（1にんだけ。あたまの うえに ！ マーク）
+    this.npc = makeSprite('ds-walk');
+    this.npcMark = el('ds-npc-mark', this.npc);
+    this.npcMark.textContent = '！';
+    this.npc.style.display = 'none';
+    units.appendChild(this.npc);
 
     this.kunai = new Pool(top, () => makeSprite('ds-kunai'));
     this.bullets = new Pool(top, () => makeSprite('ds-bullet'));
@@ -78,14 +84,19 @@ export class Stage {
   setGround(kind) {
     if (this.groundKind === kind) return;
     this.groundKind = kind;
+    this.tile = groundTile(kind);
     this.ground.style.backgroundImage = art(`ground-${kind}`);
+    this.ground.style.backgroundSize = `${this.tile}px ${this.tile}px`;
+    this.ground.style.setProperty('--ds-tile', `${this.tile}px`);
     this.root.dataset.ground = kind;
+    if (this.w) this.resize(this.w, this.h);
   }
 
   resize(w, h) {
     this.w = w; this.h = h;
-    this.ground.style.width = `${w + 320}px`;
-    this.ground.style.height = `${h + 320}px`;
+    const T = this.tile || 160;
+    this.ground.style.width = `${w + T * 2}px`;
+    this.ground.style.height = `${h + T * 2}px`;
   }
 
   reset() {
@@ -95,6 +106,7 @@ export class Stage {
     }
     this.texts = 0;
     this.aura.style.display = 'none';
+    this.npc.style.display = 'none';
   }
 
   /* ---------- 小さな差分更新ヘルパ ---------- */
@@ -133,7 +145,7 @@ export class Stage {
 
   /* ---------- まいフレーム ---------- */
   draw(r, look) {
-    const p = r.player, W = this.w, H = this.h, T = 160;
+    const p = r.player, W = this.w, H = this.h, T = this.tile || 160;
     const mx = ((p.x % T) + T) % T, my = ((p.y % T) + T) % T;
     this.ground.style.transform = `translate3d(${-T - mx}px,${-T - my}px,0)`;
     this.world.style.transform = `translate3d(${Math.round(W / 2 - p.x)}px,${Math.round(H / 2 - p.y)}px,0)`;
@@ -150,6 +162,15 @@ export class Stage {
       this.playerHpFill.style.transform = `scaleX(${hp})`;
       this.playerHpFill.style.background = hp > 0.5 ? '#22c55e' : hp > 0.25 ? '#facc15' : '#ef4444';
     }
+
+    // けんきゅうしゃ
+    const npc = r.npc;
+    if (npc) {
+      if (this.npc.style.display === 'none') this.npc.style.display = '';
+      Stage.look(this.npc, 'researcher', 50);
+      Stage.face(this.npc, npc.x > p.x);
+      Stage.place(this.npc, npc.x, npc.y);
+    } else if (this.npc.style.display !== 'none') this.npc.style.display = 'none';
 
     // バリア
     const aura = look.auraRadius;

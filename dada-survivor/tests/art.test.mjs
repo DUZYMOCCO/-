@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { art, ART_NAMES } from '../js/art.js';
+import { art, ART_NAMES, groundTile } from '../js/art.js';
 import { CHARACTERS, ENEMY_TYPES, STAGES, WEAPONS } from '../js/rules.js';
 
 const svgOf = url => decodeURIComponent(url.slice(url.indexOf(',') + 1, -2));
@@ -58,4 +58,15 @@ test('enemies are わるものぐんだん soldiers with kana-only boss names', 
   assert.equal(ENEMY_TYPES.maou.name, 'だいそうすい');
   // だいそうすいは むねと ぼうしの 2か所に ワッペン
   assert.equal(svgOf(art('maou')).split('data-emblem="warumono"').length - 1, 2);
+});
+
+// くさはらは わるものぐんだんに あらされた じめん（320px タイル）＋ けんきゅうしゃ と スーパーミサイル の 絵
+test('ruined meadow, researcher and super missile art', () => {
+  for (const n of ['researcher', 'smissile']) assert.ok(ART_NAMES.includes(n), n);
+  assert.equal(groundTile('grass'), 320);
+  for (const k of ['desert', 'snow', 'forest', 'castle']) assert.equal(groundTile(k), 160);
+  const g = svgOf(art('ground-grass'));
+  assert.ok(g.includes('viewBox="0 0 320 320"'));
+  assert.ok(g.length < 40000, `ground svg too big: ${g.length}`);
+  assert.ok(!svgOf(art('researcher')).includes('data-emblem'), 'けんきゅうしゃは みかた');
 });

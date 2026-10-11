@@ -52,7 +52,9 @@ export const ENEMY_TYPES = {
 export const STAGES = [
   { id: 1, name: 'くさはら', ground: 'grass', hpMul: 1.0, spawnMul: 1.0, dmgMul: 1.0,
     enemies: [['zombie', 0, 10], ['bat', 30, 6], ['ghost', 90, 5], ['skull', 180, 4]],
-    mini: { type: 'ogre', hp: 900 }, boss: { type: 'dragon', hp: 3000 } },
+    mini: { type: 'ogre', hp: 900 }, boss: { type: 'dragon', hp: 3000 },
+    // けんきゅうしゃ：at びょうで あらわれ、さわると gift の ぶきを くれる（いまは ステージ1だけ）
+    researcher: { at: 90, gift: 'supermissile' } },
   { id: 2, name: 'さばく', ground: 'desert', hpMul: 1.6, spawnMul: 1.1, dmgMul: 1.15,
     enemies: [['scorpion', 0, 10], ['bat', 30, 5], ['mummy', 90, 6], ['skull', 180, 4]],
     mini: { type: 'mummy', hp: 1600, big: 2.4, name: 'でかばくはへい' }, boss: { type: 'snake', hp: 5000 } },
@@ -164,7 +166,7 @@ export function clearRewards(save, stageId, difficultyId) {
 }
 
 // レベル1〜5の性能。index = level-1
-// fire: bullet=まっすぐ弾 / spread=ひろがる弾 / rocket=とんでばくはつ。evolved はしんか後で、ふつうの候補には出さない。
+// fire: bullet=まっすぐ弾 / spread=ひろがる弾 / rocket=とんでばくはつ。evolved はしんか後、gift は けんきゅうしゃの おくりもの。どちらも ふつうの候補には出さない。
 export const GUNS = ['gun', 'shotgun', 'bazooka'];
 export const EVOLUTIONS = {
   gun:     { need: 'ammo',  into: 'dual' },
@@ -238,6 +240,15 @@ export const WEAPONS = {
     count: [1, 1, 1, 1, 1],
     pierce: [10, 10, 10, 10, 10],
     life: [0.75, 0.75, 0.75, 0.75, 0.75],
+  },
+  // gift: レベルアップの カードには でない。けんきゅうしゃから もらう ぶき（もらったら さいだいレベル）
+  supermissile: {
+    name: 'スーパーミサイル', icon: '🚀', desc: 'けんきゅうしゃの いちばん つよい ミサイル',
+    gift: true, fire: 'rocket', shot: 'smissile', size: 64, speed: 210, turn: 3.6,
+    cooldown: [3.2, 3.2, 3.2, 3.2, 3.2],
+    damage: [380, 380, 380, 380, 380],
+    count: [1, 1, 1, 1, 1],
+    radius: [155, 155, 155, 155, 155],
   },
   mega: {
     name: 'でかロケット', icon: '🚀', desc: 'おおきな ロケットが ばくはつ',
@@ -330,7 +341,7 @@ export function upgradeChoices(weapons, passives, rnd = Math.random, count = 3) 
   }
   const pool = [];
   for (const id of Object.keys(WEAPONS)) {
-    if (WEAPONS[id].evolved) continue;
+    if (WEAPONS[id].evolved || WEAPONS[id].gift) continue;
     const lv = weapons[id] || 0;
     if (lv < MAX_LEVEL) pool.push({ kind: 'weapon', id, level: lv + 1 });
   }
@@ -392,4 +403,12 @@ export function normalizeSave(raw) {
   s.difficulty = DIFFICULTIES[raw.difficulty] ? raw.difficulty : base.difficulty;
   s.stage = STAGES.some(st => st.id === raw.stage) && stageUnlocked(s, raw.stage) ? raw.stage : 1;
   return s;
+}
+
+/** けんきゅうしゃに さわった とき：おくりものの ぶきを さいだいレベルで もらう。もらった ぶきの id を かえす */
+export function receiveGift(weapons, stageDef) {
+  const id = stageDef?.researcher?.gift;
+  if (!id || !WEAPONS[id]) return null;
+  weapons[id] = MAX_LEVEL;
+  return id;
 }

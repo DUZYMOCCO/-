@@ -4,7 +4,7 @@ import {
   WEAPONS, PASSIVES, CHARACTERS, DIFFICULTIES, MAX_LEVEL, weaponStat, xpToNext, playerStats,
   spawnPlan, pickWeighted, upgradeChoices, normalizeSave, shopCost, STAGES, ENEMY_TYPES, bossType,
   GEAR_SLOTS, RARITIES, rollGear, addGear, equipGear, unequipGear, mergeGear, bonusFor, defaultSave,
-  stageUnlocked, charUnlocked, clearRewards,
+  stageUnlocked, charUnlocked, clearRewards, receiveGift, MINI_BOSS_SECONDS, EVOLUTIONS,
 } from '../js/rules.js';
 
 test('every weapon stat table covers all levels', () => {
@@ -141,4 +141,36 @@ test('soldier (dog) starts with gun: skips the gun 3-choice and can still evolve
   const start = { [ch.weapon]: 1 };
   assert.notDeepEqual(upgradeChoices(start, {}, () => 0).map(p => p.id), ['gun', 'shotgun', 'bazooka']);
   assert.equal(upgradeChoices({ [ch.weapon]: MAX_LEVEL }, { ammo: 1 }, () => 0)[0].id, 'dual');
+});
+
+// こどもの リクエスト：くさはらの けんきゅうしゃが いちばん つよい ミサイルを くれる
+test('researcher in stage 1 gives スーパーミサイル at max level, mid-stage', () => {
+  const st1 = STAGES[0];
+  assert.equal(st1.researcher.gift, 'supermissile');
+  assert.ok(st1.researcher.at >= 60 && st1.researcher.at < MINI_BOSS_SECONDS);
+  for (const s of STAGES.slice(1)) assert.equal(s.researcher, undefined, `stage ${s.id}`);
+  const weapons = { gun: 1 };
+  assert.equal(receiveGift(weapons, st1), 'supermissile');
+  assert.equal(weapons.supermissile, MAX_LEVEL);
+  assert.equal(weapons.gun, 1);
+  assert.equal(receiveGift({}, STAGES[1]), null);
+});
+
+test('スーパーミサイル: strongest blast, slow reload, never a level-up card', () => {
+  const sm = WEAPONS.supermissile;
+  assert.equal(sm.name, 'スーパーミサイル');
+  assert.ok(sm.gift && sm.fire === 'rocket' && sm.shot === 'smissile');
+  for (const [id, w] of Object.entries(WEAPONS)) {
+    if (id === 'supermissile') continue;
+    assert.ok(weaponStat('supermissile', 'damage', MAX_LEVEL) > weaponStat(id, 'damage', MAX_LEVEL), id);
+    if (w.radius) assert.ok(weaponStat('supermissile', 'radius', MAX_LEVEL) > weaponStat(id, 'radius', MAX_LEVEL), id);
+  }
+  assert.ok(weaponStat('supermissile', 'cooldown', MAX_LEVEL) > WEAPONS.mega.cooldown[0]);
+  // でかロケットより つよいけど、ずるく ならないよう 1ぱつずつ
+  assert.equal(weaponStat('supermissile', 'count', MAX_LEVEL), 1);
+  assert.ok(!Object.values(EVOLUTIONS).some(e => e.into === 'supermissile'));
+  const states = [[{ kunai: 1 }, {}], [{ gun: 1 }, {}], [{ gun: MAX_LEVEL, supermissile: MAX_LEVEL }, { ammo: 1 }], [{ bazooka: 3 }, { blast: 2 }]];
+  for (const [w, p] of states) for (let i = 0; i < 40; i++) {
+    assert.ok(upgradeChoices(w, p).every(c => c.id !== 'supermissile'));
+  }
 });

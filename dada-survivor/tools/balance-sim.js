@@ -5,7 +5,7 @@
  *   sim.campaign({ difficulty: 'easy', bot: 'kid', runs: 5 });
  * セーブデータは上書きするので、終わったら sim.cleanup() で消す。
  */
-import * as rules from '../js/rules.js?v=179';
+import * as rules from '../js/rules.js?v=185';
 import { storage } from '../../common/js/storage.js';
 
 const SAVE_KEY = 'dada_survivor_save';
@@ -44,11 +44,13 @@ function drive(g, b) {
     if (d < R) { vx += dx / d * (R - d) / R * 3; vy += dy / d * (R - d) / R * 3; }
   }
   let best = null, bd = Infinity;
+  // けんきゅうしゃは がめんに おおきく でるので、kid も むかう（さわると スーパーミサイル）
   for (const t of b.items ? [...r.gems, ...r.items] : r.gems) {
     const d = (t.x - p.x) ** 2 + (t.y - p.y) ** 2;
     if (d < bd) { bd = d; best = t; }
   }
   if (best) { const d = Math.sqrt(bd) || 1; vx += (best.x - p.x) / d; vy += (best.y - p.y) / d; }
+  if (r.npc && !b.noNpc) { const d = Math.hypot(r.npc.x - p.x, r.npc.y - p.y) || 1; vx += (r.npc.x - p.x) / d * 2; vy += (r.npc.y - p.y) / d * 2; }
   vx += (Math.random() - 0.5) * b.noise; vy += (Math.random() - 0.5) * b.noise;
   const l = Math.hypot(vx, vy);
   g.stick = l > 0.05 ? { id: 1, ox: 0, oy: 0, x: vx / l * 50, y: vy / l * 50 } : null;

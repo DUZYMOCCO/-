@@ -363,6 +363,30 @@ const maou = `
   <path d="M23 32.4 Q27 29.4 32 31.9 Q37 29.4 41 32.4 Q38 34.4 32 33.4 Q26 34.4 23 32.4Z" fill="#292524" ${S2}/>
   <path d="M29 35.6 Q32 36.6 35 35.2" fill="none" ${S2}/>`;
 
+/* ---------- けんきゅうしゃ（みかたの NPC。しろい はくい・めがね・クリップボード） ---------- */
+const researcher = `
+  <ellipse cx="23" cy="60.5" rx="4.6" ry="3" fill="#44403c" ${S}/><ellipse cx="41" cy="60.5" rx="4.6" ry="3" fill="#44403c" ${S}/>
+  <path d="M18 61 Q17 44 32 41 Q47 44 46 61Z" fill="#f1f5f9" ${S}/>
+  <path d="M39 43.6 Q46 47 46 61 L40.5 61 Q41 50 39 43.6Z" fill="#cbd5e1"/>
+  <path d="M32 50 V61" stroke="#94a3b8" stroke-width="1.4"/>
+  <path d="M27.4 42 L32 50 L36.6 42Z" fill="#60a5fa" ${S2}/>
+  <rect x="37" y="48" width="5.4" height="4.4" rx=".6" fill="#e2e8f0" ${S2}/>
+  <path d="M38.6 48 V45.2 M40.8 48 V45.6" stroke-width="1.3" stroke-linecap="round" stroke="#ef4444"/>
+  <rect x="15.5" y="46" width="10" height="12.5" rx="1.2" fill="#a16207" ${S2}/><rect x="17" y="48.4" width="7" height="8.6" fill="#f8fafc"/>
+  <path d="M18.2 50.6 H22.8 M18.2 52.8 H22.8 M18.2 55 H21.4" stroke="#64748b" stroke-width=".9"/>
+  <rect x="18.6" y="45" width="3.8" height="2.2" rx=".6" fill="#71717a" ${SW(.8)}/>
+  <circle cx="24" cy="56.5" r="3" fill="#f0c7a0" ${S2}/>
+  ${shadedCircle('rs', 32, 27, 15, '#f0c7a0', '#c48a5e')}
+  <path d="M16.8 26 Q14 9 31 9.5 Q30 6.5 34 7.5 Q49 9 47.4 26 Q46 20 43 17.5 L41 21 L38 15.5 L34 19.5 L30 14.5 L26 19.5 L22.5 15.5 L20 21 Q18 22 16.8 26Z" fill="#78716c" ${S}/>
+  <path d="M21 13.5 Q25 11 30 11" fill="none" stroke="#a8a29e" stroke-width="1.6" stroke-linecap="round"/>
+  <path d="M20.6 25.2 Q24.4 23.4 28 25 M43.4 25.2 Q39.6 23.4 36 25" fill="none" ${SW(1.8)}/>
+  <circle cx="25" cy="30.4" r="4.6" fill="#e0f2fe" opacity=".55"/><circle cx="39" cy="30.4" r="4.6" fill="#e0f2fe" opacity=".55"/>
+  <ellipse cx="25" cy="30.6" rx="1.7" ry="2.1" fill="#0c0e12"/><ellipse cx="39" cy="30.6" rx="1.7" ry="2.1" fill="#0c0e12"/>
+  <circle cx="25.6" cy="29.8" r=".6" fill="#fff"/><circle cx="39.6" cy="29.8" r=".6" fill="#fff"/>
+  <circle cx="25" cy="30.4" r="4.6" fill="none" ${SW(1.5)}/><circle cx="39" cy="30.4" r="4.6" fill="none" ${SW(1.5)}/>
+  <path d="M29.6 30 Q32 28.8 34.4 30 M20.4 29.6 L17 28.4 M43.6 29.6 L47 28.4" fill="none" ${SW(1.3)}/>
+  <ellipse cx="32" cy="37.6" rx="1.8" ry="1.3" fill="#3f1d1d"/>`;
+
 /* ---------- ぶき・アイテム ---------- */
 const gem = (fill, shade) => `
   <path d="M32 8 L50 30 L32 56 L14 30Z" fill="${shade}"/>
@@ -467,6 +491,18 @@ const mega = wrap(`
   <path d="M18 42 L6 58 L30 42Z" fill="#18181b" ${S2}/>
   <path d="M20 30 H30" stroke="#e5e7eb" stroke-width="1.4"/>`);
 
+// スーパーミサイル（けんきゅうしゃの とっておき。しろ＋あおの からだ、きんいろの さき、あおい ほのお）
+const smissile = wrap(`
+  <path d="M13 32 L0 21 L6 32 L0 43Z" fill="#38bdf8" ${S2}/>
+  <path d="M15 32 L5 26.5 L10 32 L5 37.5Z" fill="#e0f2fe"/>
+  <path d="M15 23 L4 7 L27 23Z" fill="#1d4ed8" ${S2}/><path d="M15 41 L4 57 L27 41Z" fill="#1d4ed8" ${S2}/>
+  <rect x="12" y="22.5" width="31" height="19" rx="3" fill="#e5e7eb" ${S}/>
+  <path d="M14 37 H41" stroke="#a1a1aa" stroke-width="2"/>
+  <rect x="20" y="22.5" width="4.4" height="19" fill="#0ea5e9"/><rect x="27" y="22.5" width="2.2" height="19" fill="#0ea5e9"/>
+  <path d="M43 22.5 Q59 25 63.5 32 Q59 39 43 41.5Z" fill="#facc15" ${S}/>
+  <path d="M46 26 Q55 27.5 59 31" fill="none" stroke="#fef9c3" stroke-width="1.6" stroke-linecap="round"/>
+  <circle cx="36" cy="30" r="2.7" fill="#38bdf8" ${S2}/>`);
+
 const miniGun = (x, y) => `
   <g transform="translate(${x} ${y})">
     <path d="M6 12 L10 11 L12 24 L4 25Z" fill="#3f2a1d" ${S}/>
@@ -544,10 +580,49 @@ const cactus = (x, y) => `<g transform="translate(${x} ${y})"><path d="M-3 0 L-3
 const pine = (x, y) => `<g transform="translate(${x} ${y})"><path d="M0 -20 L9 -4 L-9 -4Z M0 -13 L11 2 L-11 2Z" fill="#15803d" stroke="#14532d" stroke-width="1.6" stroke-linejoin="round"/><path d="M0 -20 L4 -12 L-4 -12Z" fill="#fff"/><rect x="-2" y="2" width="4" height="4" fill="#78350f"/></g>`;
 const shroom = (x, y) => `<g transform="translate(${x} ${y})"><rect x="-2" y="-4" width="4" height="7" rx="1.5" fill="#fef3c7" stroke="#3b2a1a" stroke-width="1.2"/><path d="M-7 -4 Q0 -14 7 -4Z" fill="#dc2626" stroke="#3b2a1a" stroke-width="1.2"/><circle cx="-2" cy="-7" r="1.2" fill="#fff"/><circle cx="2.5" cy="-6" r="1" fill="#fff"/></g>`;
 
+// くさはら：わるものぐんだんに あらされた あと（クレーター・こげた くさ・こわれた さく・こわれた いえ・たおれた はた）。
+// 320px タイル（ほかの じめんは 160px）。てきや ほうせきが めだつよう、くらく ひくい コントラストに おさえる。
+const crater = (x, y, s = 1) => `<g transform="translate(${x} ${y}) scale(${s})">
+  <ellipse cx="0" cy="0" rx="26" ry="15" fill="#4a3f30"/><ellipse cx="0" cy="1.5" rx="19" ry="10" fill="#2a241c"/>
+  <ellipse cx="2" cy="3" rx="11" ry="5.5" fill="#1f1b15"/><path d="M-22 -6 Q-10 -15 8 -14" fill="none" stroke="#6b5a42" stroke-width="2.2" stroke-linecap="round"/>
+  <circle cx="24" cy="6" r="2.4" fill="#5a4c3a"/><circle cx="-25" cy="7" r="1.8" fill="#5a4c3a"/><circle cx="16" cy="-14" r="1.6" fill="#5a4c3a"/></g>`;
+const scorch = (x, y, s = 1, r = 0) => `<g transform="translate(${x} ${y}) rotate(${r}) scale(${s})">
+  <path d="M-30 0 Q-28 -14 -10 -16 Q4 -24 18 -14 Q34 -10 30 4 Q32 16 12 16 Q-2 22 -16 14 Q-34 12 -30 0Z" fill="#2b2a22" opacity=".85"/>
+  <path d="M-18 0 Q-14 -8 0 -8 Q14 -10 18 0 Q16 8 0 8 Q-16 8 -18 0Z" fill="#1d1c17" opacity=".8"/>
+  <circle cx="-6" cy="-2" r="1.3" fill="#9ca3af" opacity=".35"/><circle cx="8" cy="3" r="1" fill="#9ca3af" opacity=".35"/></g>`;
+const fence = (x, y, r = 0) => `<g transform="translate(${x} ${y}) rotate(${r})" stroke="#1a140e" stroke-width="1.6" stroke-linejoin="round">
+  <rect x="-1.8" y="-14" width="5" height="18" fill="#5c4127"/><rect x="26" y="-8" width="5" height="12" fill="#5c4127"/>
+  <path d="M2 -10 L27 -7 L27 -3.6 L2 -6.6Z M2 -2 L18 0 L16 3.4 L2 1.4Z" fill="#6b4a2a"/>
+  <path d="M34 2 L48 6 L47 9 L33 5Z" fill="#4a3420"/><rect x="50" y="-4" width="5" height="9" fill="#4a3420" transform="rotate(28 52 0)"/></g>`;
+const ruin = (x, y) => `<g transform="translate(${x} ${y})" stroke="#1a1716" stroke-width="1.8" stroke-linejoin="round">
+  <path d="M0 0 V-30 L8 -36 L14 -28 L22 -40 L30 -31 L38 -34 L44 -22 V0Z" fill="#57514b"/>
+  <path d="M0 -8 H44 M0 -16 H44 M0 -24 H40 M10 0 V-8 M24 0 V-8 M36 0 V-8 M16 -8 V-16 M30 -8 V-16 M6 -16 V-24 M22 -16 V-24 M34 -16 V-24" stroke="#45403b" stroke-width="1.1" fill="none"/>
+  <path d="M14 -6 V-20 Q20 -26 26 -20 V-6Z" fill="#1c1917"/>
+  <path d="M2 -30 Q16 -38 30 -31 L30 -22 Q14 -26 2 -20Z" fill="#1c1917" stroke="none" opacity=".55"/>
+  <path d="M44 0 L58 -10 L64 0Z" fill="#3a2a1c"/><path d="M48 -2 L60 -12 M52 0 L62 -6" stroke="#2b1f14" stroke-width="2.4"/></g>`;
+const smoke = (x, y, s = 1) => `<g transform="translate(${x} ${y}) scale(${s})" fill="#9ca3af" opacity=".16">
+  <circle cx="0" cy="0" r="7"/><circle cx="6" cy="-9" r="8"/><circle cx="1" cy="-20" r="9"/><circle cx="9" cy="-31" r="7"/></g>`;
+const debris = (x, y) => `<g transform="translate(${x} ${y})" stroke="#1a1716" stroke-width="1.1">
+  <path d="M0 0 L9 -2 L10 1 L1 3Z" fill="#5c4127"/><path d="M12 6 L16 3 L19 7 L14 9Z" fill="#6b6560"/><path d="M-6 6 L-2 4 L0 8 L-5 9Z" fill="#6b6560"/></g>`;
+const fallenFlag = (x, y) => `<g transform="translate(${x} ${y}) rotate(-18)">
+  <path d="M0 0 H46" stroke="#1a1716" stroke-width="4" stroke-linecap="round"/><path d="M0 0 H46" stroke="#6b7280" stroke-width="2" stroke-linecap="round"/>
+  <path d="M44 -2 Q52 -10 64 -4 Q72 0 80 -4 L78 14 Q70 18 62 14 Q52 10 44 16Z" fill="#5a1414" stroke="#1a1716" stroke-width="1.6" stroke-linejoin="round"/>
+  <path d="M50 2 L58 9 M58 2 L50 9" stroke="#a8a29e" stroke-width="1.4" stroke-linecap="round"/>
+  <circle cx="54" cy="4.6" r="2.6" fill="#a8a29e"/><circle cx="53" cy="4.4" r=".7" fill="#5a1414"/><circle cx="55" cy="4.4" r=".7" fill="#5a1414"/></g>`;
+const ruinedGrass = wrap(`<rect width="320" height="320" fill="#36472f"/>
+  <ellipse cx="60" cy="50" rx="50" ry="26" fill="#3d5034"/><ellipse cx="250" cy="230" rx="60" ry="30" fill="#3d5034"/>
+  <ellipse cx="240" cy="60" rx="40" ry="20" fill="#2e3d28"/><ellipse cx="70" cy="270" rx="46" ry="22" fill="#2e3d28"/>
+  ${scorch(210, 120, 1.3, 15)}${scorch(60, 190, 1, -20)}${scorch(290, 300, 0.8, 40)}
+  ${crater(110, 120)}${crater(250, 270, 0.8)}${crater(40, 40, 0.6)}
+  ${tuft(20, 80, '#24321e')}${tuft(150, 30, '#24321e')}${tuft(300, 160, '#1c2818')}${tuft(180, 300, '#24321e')}${tuft(90, 230, '#1c2818')}${tuft(280, 20, '#24321e')}
+  ${ruin(150, 220)}${fence(220, 180, -6)}${fence(10, 150, 12)}
+  ${fallenFlag(30, 300)}
+  ${debris(200, 60)}${debris(70, 100)}${debris(260, 200)}${debris(120, 290)}${debris(300, 110)}
+  ${pebble(170, 160, '#6b6458', '#3f3a34')}${pebble(40, 240, '#6b6458', '#3f3a34')}
+  ${smoke(176, 196, 1.2)}${smoke(118, 108, 0.8)}${smoke(232, 112, 0.9)}`, '0 0 320 320');
+
 const GROUNDS = {
-  grass: tile(`<rect width="160" height="160" fill="#3c5134"/>${blobs('#465c3c', '#2c3d26')}
-    ${tuft(20, 80, '#24321e')}${tuft(96, 60, '#24321e')}${tuft(140, 150, '#1c2818')}${tuft(70, 140, '#24321e')}${tuft(150, 76, '#1c2818')}
-    ${pebble(86, 22, '#6b6458', '#3f3a34')}${pebble(40, 48, '#6b6458', '#3f3a34')}`),
+  grass: ruinedGrass,
   desert: tile(`<rect width="160" height="160" fill="#b08958"/>${blobs('#c4a06a', '#8d6a3e')}
     <path d="M0 96 Q40 86 80 96 T160 96" fill="none" stroke="#7a5a32" stroke-width="2.5"/>
     ${cactus(30, 70)}${cactus(130, 150)}${pebble(100, 40, '#a48458', '#5c4128')}${pebble(60, 132, '#a48458', '#5c4128')}
@@ -595,7 +670,7 @@ const SOURCES = {
   witch: wrap(withPatch('witch', witch), '-6 -4 72 68'), maou: wrap(withPatch('maou', maou), '0 -4 64 68'),
   gem1: wrap(gem('#60a5fa', '#2563eb')), gem2: wrap(gem('#4ade80', '#16a34a')), gem3: wrap(gem('#f472b6', '#db2777')),
   coin: wrap(coin), meat: wrap(meat), magnet: wrap(magnet), nuke: wrap(bomb), bomb: wrap(bomb),
-  kunai, star: wrap(star), bolt,
+  kunai, star: wrap(star), bolt, smissile, researcher: wrap(researcher),
   gun, shotgun, bazooka, dual, gatling, rocket, mega, bullet, pellet, blast,
   sword: wrap(sword), armor: wrap(armor), shoes: wrap(shoes), charm: wrap(charm), chest: wrap(chest), chestOpen: wrap(chestOpen, '0 -4 64 68'),
   ...Object.fromEntries(Object.entries(GROUNDS).map(([k, v]) => [`ground-${k}`, v])),
@@ -629,3 +704,6 @@ export function preloadArt() {
 }
 
 export const ART_NAMES = Object.keys(SOURCES);
+
+/** じめんの タイルの おおきさ（px）。くさはらだけ 320（あらされた いえや さくが くりかえし めだたないように） */
+export const groundTile = kind => (kind === 'grass' ? 320 : 160);

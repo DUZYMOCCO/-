@@ -8,11 +8,11 @@ import { storage } from '../../common/js/storage.js';
 import {
   STAGE_SECONDS, MINI_BOSS_SECONDS, MAX_ENEMIES, MAX_GEMS, MAX_LEVEL, DIFFICULTIES, CHARACTERS, ENEMY_TYPES,
   WEAPONS, PASSIVES, STAGES, GUNS, weaponStat, xpToNext, playerStats, spawnPlan, pickWeighted, upgradeChoices,
-  normalizeSave, stageById, bossType, bonusFor, clearRewards,
-} from './rules.js?v=184';
-import { preloadArt } from './art.js?v=184';
-import { Stage } from './stage.js?v=184';
-import { menuMethods, iconHtml } from './menus.js?v=184';
+  normalizeSave, stageById, bossType, bonusFor, clearRewards, receiveGift,
+} from './rules.js?v=185';
+import { preloadArt } from './art.js?v=185';
+import { Stage } from './stage.js?v=185';
+import { menuMethods, iconHtml } from './menus.js?v=185';
 
 const SAVE_KEY = 'dada_survivor_save';
 const TAU = Math.PI * 2;
@@ -31,7 +31,7 @@ export const DadaSurvivorGame = {
 
   // 起動時にこのゲームのCSSを自分で読み込む（?v= はこのフォルダ内で管理）。ハブが init 前に await する
   prepare() {
-    return loadCss(new URL('../css/dada-survivor.css?v=184', import.meta.url).href);
+    return loadCss(new URL('../css/dada-survivor.css?v=185', import.meta.url).href);
   },
 
   init(container, onBackToHub) {
@@ -261,6 +261,7 @@ export const DadaSurvivorGame = {
       enemies: [], shots: [], gems: [], items: [],
       timers: {}, spawnClock: 0, orbitAngle: 0, auraClock: 0,
       miniBossDone: false, finalBossDone: false, boss: null, ended: false,
+      npc: null, researcherDone: false,
     };
     this.refreshStats();
     this.run.player.hp = this.run.stats.maxHp;
@@ -365,6 +366,8 @@ export const DadaSurvivorGame = {
       e.final = true;
       this.showBanner(`⚠ ${e.T.name}が きた！ たおせば クリア！`, 3000);
     }
+    const rs = st.researcher;
+    if (rs && !r.researcherDone && !r.npc && r.time >= rs.at) this.spawnResearcher();
     if (r.finalBossDone) return; // ボスせんは ザコ なし
     const plan = spawnPlan(r.time, r.diff, st);
     r.spawnClock -= dt;
@@ -372,6 +375,19 @@ export const DadaSurvivorGame = {
       r.spawnClock = plan.interval;
       for (let i = 0; i < plan.batch && r.enemies.length < MAX_ENEMIES; i++) this.spawnEnemy(pickWeighted(plan.weights), plan.hpScale);
     }
+  },
+
+  // けんきゅうしゃ：プレイヤーの すすむ さきの がめんの なかに でる
+  spawnResearcher() {
+    const r = this.run, p = r.player;
+    let a = Math.atan2(p.my, p.mx);
+    if (!(p.mx || p.my)) a = Math.random() * TAU;
+    a += (Math.random() - 0.5) * 1.2;
+    const dx = Math.max(-Math.min(140, this.w / 2 - 40), Math.min(Math.min(140, this.w / 2 - 40), Math.cos(a) * 170));
+    const dy = Math.max(-Math.min(220, this.h / 2 - 60), Math.min(Math.min(220, this.h / 2 - 60), Math.sin(a) * 170));
+    r.npc = { x: p.x + dx, y: p.y + dy };
+    sound.playItem();
+    this.showBanner('けんきゅうしゃが いる！ さわって たすけよう！', 3000);
   },
 
   spawnEnemy(type, hpScale, T = ENEMY_TYPES[type]) {
@@ -614,7 +630,7 @@ export const DadaSurvivorGame = {
           const rad = s.radius * (r.stats.boom || 1);
           this.stage.fx('boom', s.x, s.y, rad * 2.1);
           this.areaDamage(s.x, s.y, rad, s.dmg);
-          this.stage.shake(s.art === 'mega' ? 7 : 3);
+          this.stage.shake(s.art === 'smissile' ? 10 : s.art === 'mega' ? 7 : 3);
           sound.playBomb();
         }
       } else if (s.kind === 'bomb') {
@@ -698,6 +714,19 @@ export const DadaSurvivorGame = {
       }
     }
     r.items = r.items.filter(it => !it.got);
+    const npc = r.npc;
+    if (npc) {
+      const d2 = dist2(npc, p);
+      if (d2 < 34 * 34) {
+        const id = receiveGift(r.weapons, r.stageDef);
+        r.npc = null; r.researcherDone = true;
+        this.stage.fx('pop', npc.x, npc.y, 90);
+        sound.playHeal();
+        if (id) { this.refreshSkills(); this.showBanner(`けんきゅうしゃから ${WEAPONS[id].name}を もらった！`, 3200); }
+      } else if (d2 > (Math.hypot(this.w, this.h) * 0.9) ** 2) {
+        r.npc = null; // とおく はなれたら、すぐ ちかくに でなおす
+      }
+    }
   },
 
   // HUD は かわった ときだけ かきかえる
