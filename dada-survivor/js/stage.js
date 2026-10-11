@@ -8,7 +8,7 @@
  * - おもい ときは「かるい モード」（ds-lite）：ぴょこぴょこ／ほうせきの ゆれを とめ、エフェクトと すうじを へらす
  * - ここでは Math.random を つかわない（みための ばらつきは カウンタで。ゲームの らんすうと まざらない）
  */
-import { art, groundTile } from './art.js?v=194';
+import { art, groundTile } from './art.js?v=195';
 
 class Pool {
   constructor(layer, make) { this.layer = layer; this.make = make; this.free = []; this.active = new Set(); this.key = Symbol('node'); }
@@ -469,9 +469,9 @@ export class Stage {
   /** がめんの そとの コンテナを さす やじるし（がめん ざひょう sx,sy と むき ang。null で かくす） */
   arrow(at) {
     if (!this.arrowEl) {
-      this.arrowEl = el('ds-arrow', this.root);
-      el('ds-arrow-tip', this.arrowEl).textContent = '➤';
-      this.arrowLabel = el('ds-arrow-label', this.arrowEl);
+      this.arrowEl = el('ds-goal', this.root);
+      el('ds-goal-tip', this.arrowEl).textContent = '➤';
+      this.arrowLabel = el('ds-goal-label', this.arrowEl);
       this.arrowLabel.textContent = 'コンテナ';
       this.arrowEl.style.display = 'none';
     }
