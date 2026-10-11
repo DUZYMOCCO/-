@@ -8,7 +8,7 @@
  * - おもい ときは「かるい モード」（ds-lite）：ぴょこぴょこ／ほうせきの ゆれを とめ、エフェクトと すうじを へらす
  * - ここでは Math.random を つかわない（みための ばらつきは カウンタで。ゲームの らんすうと まざらない）
  */
-import { art, groundTile } from './art.js?v=192';
+import { art, groundTile } from './art.js?v=193';
 
 class Pool {
   constructor(layer, make) { this.layer = layer; this.make = make; this.free = []; this.active = new Set(); this.key = Symbol('node'); }
@@ -45,11 +45,13 @@ function makeSprite(extra = '') {
 const FX_FRAMES = {
   pop:  [{ transform: 'scale(.5)', opacity: 1 }, { transform: 'scale(1.5)', opacity: 0 }],
   boom: [{ transform: 'scale(.3)', opacity: 1 }, { transform: 'scale(1.1)', opacity: .9, offset: .4 }, { transform: 'scale(1.25)', opacity: 0 }],
+  bboom: null,
   shatter: [{ transform: 'scale(.4) rotate(0deg)', opacity: 1 }, { transform: 'scale(1.1) rotate(25deg)', opacity: .9, offset: .5 }, { transform: 'scale(1.35) rotate(40deg)', opacity: 0 }],
   heal: [{ transform: 'translateY(0) scale(.6)', opacity: 1 }, { transform: 'translateY(-26px) scale(1)', opacity: 1, offset: .5 }, { transform: 'translateY(-46px) scale(.9)', opacity: 0 }],
   bolt: [{ transform: 'scaleY(.2)', opacity: 1, transformOrigin: '50% 100%' }, { transform: 'scaleY(1)', opacity: 1, offset: .25, transformOrigin: '50% 100%' }, { transform: 'scaleY(1)', opacity: 0, transformOrigin: '50% 100%' }],
 };
-const FX_OPTS = { heal: { duration: 700, easing: 'ease-out' }, shatter: { duration: 520, easing: 'ease-out' }, pop: { duration: 300, easing: 'ease-out' }, boom: { duration: 420, easing: 'ease-out' }, bolt: { duration: 320, easing: 'ease-out' } };
+FX_FRAMES.bboom = FX_FRAMES.boom;
+const FX_OPTS = { bboom: { duration: 420, easing: 'ease-out' }, heal: { duration: 700, easing: 'ease-out' }, shatter: { duration: 520, easing: 'ease-out' }, pop: { duration: 300, easing: 'ease-out' }, boom: { duration: 420, easing: 'ease-out' }, bolt: { duration: 320, easing: 'ease-out' } };
 const TEXT_FRAMES = [
   { transform: 'translate(-50%,0) scale(.6)', opacity: 1 },
   { transform: 'translate(-50%,-14px) scale(1.15)', opacity: 1, offset: .25 },
@@ -122,6 +124,9 @@ export class Stage {
     this.helper.style.display = 'none';
     units.appendChild(this.helper);
     this.allies = new Pool(units, () => makeSprite('ds-walk ds-keep ds-ally'));
+    // たてもの・こや・とびら・ちかの かべ・ろうや（おおきさが いろいろ。いちばん したの そう）
+    this.props = new Pool(deco, () => { const n = el('ds-ent'); n._img = el('ds-img ds-prop', n); return n; });
+    this.propVis = [];
 
     this.kunai = new Pool(top, () => makeSprite('ds-kunai'));
     this.bullets = new Pool(top, () => makeSprite('ds-bullet'));
@@ -129,6 +134,7 @@ export class Stage {
     this.bombs = new Pool(top, () => makeSprite('ds-bomb'));
     this.ebombs = new Pool(top, () => makeSprite('ds-ebomb'));
     this.stars = new Pool(top, () => makeSprite('ds-star'));
+    this.beams = new Pool(top, () => { const n = el('ds-ent'); n._img = el('ds-beam', n); return n; });
     this.fxPool = new Pool(fx, () => { const n = el('ds-ent'); n._img = el('ds-fx', n); return n; });
     this.textPool = new Pool(fx, () => { const n = el('ds-ent'); n._img = el('ds-num', n); return n; });
 
@@ -146,7 +152,7 @@ export class Stage {
     this.lite = false;
     this.cull = { x0: -1e9, y0: -1e9, x1: 1e9, y1: 1e9 };
     // shots を しゅるいごとに わける はこ（まいフレーム つかいまわす）
-    this.bk = { kunai: [], bullet: [], rocket: [], bomb: [] };
+    this.bk = { kunai: [], bullet: [], rocket: [], bomb: [], beam: [] };
     this.resize(1, 1);
   }
 
@@ -186,7 +192,7 @@ export class Stage {
 
   reset() {
     this.gen = (this.gen || 0) + 1;
-    for (const p of [this.allies, this.decor, this.fires, this.marks, this.ebombs, this.gems, this.items, this.enemies, this.kunai, this.bullets, this.rockets, this.bombs, this.stars, this.fxPool, this.textPool]) {
+    for (const p of [this.props, this.beams, this.allies, this.decor, this.fires, this.marks, this.ebombs, this.gems, this.items, this.enemies, this.kunai, this.bullets, this.rockets, this.bombs, this.stars, this.fxPool, this.textPool]) {
       for (const n of p.active) n._img.getAnimations?.().forEach(a => a.cancel());
       p.clear();
     }
@@ -273,6 +279,30 @@ export class Stage {
       Stage.place(this.npc, npc.x, npc.y);
     } else if (this.npc.style.display !== 'none') this.npc.style.display = 'none';
 
+    // たてもの・かべ など（おおきいので じぶんで みえる ものだけ えらぶ）
+    if (r.props) {
+      const vis = this.propVis; vis.length = 0;
+      const vx0 = p.x - W / 2, vx1 = p.x + W / 2, vy0 = p.y - H / 2, vy1 = p.y + H / 2;
+      for (const pr of r.props) {
+        if (pr.hidden || pr.x + pr.w / 2 < vx0 || pr.x - pr.w / 2 > vx1 || pr.y + pr.h / 2 < vy0 || pr.y - pr.h / 2 > vy1) continue;
+        vis.push(pr);
+      }
+      this.sync(this.props, vis, (pr, n) => {
+        if (n._a !== pr.kind) { n._a = pr.kind; n._img.style.backgroundImage = art(pr.kind); }
+        if (n._w !== pr.w || n._h !== pr.h) {
+          n._w = pr.w; n._h = pr.h;
+          const st = n._img.style;
+          st.width = `${pr.w}px`; st.height = `${pr.h}px`; st.marginLeft = `${-pr.w / 2}px`; st.marginTop = `${-pr.h / 2}px`;
+        }
+        const mark = !!pr.mark;
+        if (n._m !== mark) {
+          n._m = mark;
+          if (mark && !n._mark) { n._mark = el('ds-npc-mark ds-prop-mark', n); n._mark.textContent = '！'; }
+          if (n._mark) n._mark.style.display = mark ? '' : 'none';
+        }
+        Stage.place(n, pr.x, pr.y);
+      }, false);
+    }
     // コンテナ・なかま
     const box = r.container;
     if (box) {
@@ -346,7 +376,7 @@ export class Stage {
       Stage.place(n, e.x, e.y);
     });
     const bk = this.bk;
-    bk.kunai.length = bk.bullet.length = bk.rocket.length = bk.bomb.length = 0;
+    bk.kunai.length = bk.bullet.length = bk.rocket.length = bk.bomb.length = bk.beam.length = 0;
     for (const s of r.shots) bk[s.kind]?.push(s);
     this.sync(this.kunai, bk.kunai, (s, n) => { Stage.look(n, 'kunai', 30); Stage.place(n, s.x, s.y, Math.round(s.ang * 20) / 20); });
     this.sync(this.bullets, bk.bullet, (s, n) => {
@@ -362,6 +392,14 @@ export class Stage {
       Stage.look(n, 'bomb', 30);
       Stage.place(n, s.sx + (s.tx - s.sx) * k, s.sy + (s.ty - s.sy) * k - Math.sin(k * Math.PI) * 70);
     }, false);
+    if (bk.beam.length || this.beams.active.size) this.sync(this.beams, bk.beam, (s, n) => {
+      const st = n._img.style, len = Math.round(s.len), w = s.w;
+      if (n._len !== len) { n._len = len; st.width = `${len}px`; }
+      if (n._w !== w) { n._w = w; st.height = `${w}px`; st.marginTop = `${-w / 2}px`; }
+      const o = Math.round(Math.max(0, s.life / s.max) * 10) / 10;
+      if (n._o !== o) { n._o = o; st.opacity = o; }
+      Stage.place(n, s.x, s.y, s.ang);
+    }, false);
     this.sync(this.stars, look.orbit, (o, n) => { Stage.look(n, 'star', 34); Stage.place(n, o.x, o.y); }, false);
   }
 
@@ -372,7 +410,7 @@ export class Stage {
     // がめんの そとの エフェクトは つくらない
     const c = this.cull, m = size / 2;
     if (x + m < c.x0 || x - m > c.x1 || y + m < c.y0 || y - (kind === 'bolt' ? 0 : m) > c.y1) return;
-    const boom = kind === 'boom';
+    const boom = kind === 'boom' || kind === 'bboom';
     if (boom) { if (this.booms >= (lite ? C.boomLite : C.boom)) return; this.booms++; }
     else if (kind === 'pop' && lite && active > 8) return; // かるい モードでは こまかい ポンを まびく
     const n = this.fxPool.get(), img = n._img;
@@ -433,12 +471,15 @@ export class Stage {
     if (!this.arrowEl) {
       this.arrowEl = el('ds-arrow', this.root);
       el('ds-arrow-tip', this.arrowEl).textContent = '➤';
-      el('ds-arrow-label', this.arrowEl).textContent = 'コンテナ';
+      this.arrowLabel = el('ds-arrow-label', this.arrowEl);
+      this.arrowLabel.textContent = 'コンテナ';
       this.arrowEl.style.display = 'none';
     }
     const n = this.arrowEl;
     if (!at) { if (n.style.display !== 'none') n.style.display = 'none'; return; }
     if (n.style.display === 'none') n.style.display = '';
+    const label = at.label || 'コンテナ';
+    if (this.arrowLabel.textContent !== label) this.arrowLabel.textContent = label;
     const x = Math.round(at.x), y = Math.round(at.y), a = Math.round(at.ang * 20) / 20;
     if (n._x !== x || n._y !== y) { n._x = x; n._y = y; n.style.transform = `translate3d(${x}px,${y}px,0)`; }
     if (n._a !== a) { n._a = a; n.firstChild.style.transform = `rotate(${a}rad)`; }

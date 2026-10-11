@@ -5,7 +5,7 @@
  *   sim.campaign({ difficulty: 'easy', bot: 'kid', runs: 5 });
  * セーブデータは上書きするので、終わったら sim.cleanup() で消す。
  */
-import * as rules from '../js/rules.js?v=192';
+import * as rules from '../js/rules.js?v=193';
 import { storage } from '../../common/js/storage.js';
 
 const SAVE_KEY = 'dada_survivor_save';
@@ -51,9 +51,10 @@ function drive(g, b) {
   }
   if (best) { const d = Math.sqrt(bd) || 1; vx += (best.x - p.x) / d; vy += (best.y - p.y) / d; }
   if (r.npc && !b.noNpc) { const d = Math.hypot(r.npc.x - p.x, r.npc.y - p.y) || 1; vx += (r.npc.x - p.x) / d * 2; vy += (r.npc.y - p.y) / d * 2; }
-  // コンテナは やじるしが でるので kid も むかう（ひらくと なかまと スーパーミサイル）
-  const box = r.container;
-  if (box && !box.open && !b.noNpc) { const d = Math.hypot(box.x - p.x, box.y - p.y) || 1; vx += (box.x - p.x) / d * 2; vy += (box.y - p.y) / d * 2; }
+  // コンテナは やじるしが でるので kid も むかう（ひらくと なかまと スーパーミサイル）。
+  // さばくの こや → とびら → ちかの ろうや → ボス → でぐち も おなじ（やじるしの ほう）
+  const box = b.noNpc ? null : g.questGoal();
+  if (box) { const d = Math.hypot(box.x - p.x, box.y - p.y) || 1; vx += (box.x - p.x) / d * 2; vy += (box.y - p.y) / d * 2; }
   // ふえ：HP が はんぶん（kid は 4わり）を きったら ふく
   if (!b.noWhistle && r.player.hp < r.stats.maxHp * b.whistleAt) g.whistle();
   vx += (Math.random() - 0.5) * b.noise; vy += (Math.random() - 0.5) * b.noise;
@@ -64,7 +65,7 @@ function drive(g, b) {
 export function playOnce(botName = 'kid') {
   const g = game(), b = BOTS[botName];
   g.startRun();
-  for (let i = 0; i < 60 * 480 && !g.run.ended; i++) {
+  for (let i = 0; i < 60 * 900 && !g.run.ended; i++) { // ちかでは タイマーが とまるので ながめ
     if (i % b.every === 0) drive(g, b);
     g.update(1 / 60);
     // 本番は ボス撃破の 0.9びょうご に setTimeout で おわる。シミュでは すぐ おわらせる

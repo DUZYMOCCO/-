@@ -134,7 +134,7 @@ const villainPatch = (x, y, k = 1) => `<g data-emblem="warumono" transform="tran
 // てきごとの ワッペンの いち（むねの かた より。プレイヤーの にほんの はたと おなじ がわ）
 const PATCH_AT = {
   zombie: [21, 46], bat: [21, 46], ghost: [21, 46], skull: [16, 47], scorpion: [21, 46], mummy: [21, 46],
-  snowman: [21, 46], wolf: [26, 47], pumpkin: [21, 45.5], thrower: [21, 46],
+  snowman: [21, 46], wolf: [26, 47], pumpkin: [21, 45.5], thrower: [21, 46], driller: [21, 46],
   ogre: [24, 48], dragon: [32, 31, 1.1], snake: [24, 45], icegiant: [21, 50], witch: [26, 47], maou: [22, 50],
 };
 const withPatch = (k, body) => body + villainPatch(...PATCH_AT[k]);
@@ -799,9 +799,97 @@ const alienFloat = wrap(`
   <circle cx="14" cy="20" r="1.3" fill="#e7f5ee"/><circle cx="34" cy="20" r="1.3" fill="#e7f5ee"/>
   <path d="M21 29 Q24 30.5 27 29" fill="none" stroke="#3d5a4b" stroke-width="1.2" stroke-linecap="round"/>`, '0 0 48 58');
 
+/* ---------- さばくの クエスト：けんきゅうじょの たてもの・こや・ちかの とびら・ちか ---------- */
+// さばくの けんきゅうじょ（みかたの たてもの。スタートの そば）
+const outpost = wrap(`
+  <ellipse cx="120" cy="178" rx="112" ry="10" fill="#000" opacity=".18"/>
+  <rect x="20" y="58" width="200" height="116" rx="8" fill="#eef2f7" ${SW(3)}/>
+  <path d="M14 62 L120 14 L226 62Z" fill="#93c5fd" ${SW(3)}/><path d="M40 54 L120 22 L200 54" fill="none" stroke="#dbeafe" stroke-width="4" stroke-linecap="round"/>
+  <path d="M176 36 V6 M176 6 l10 6 M176 6 l-10 6" fill="none" ${SW(2.4)}/><circle cx="176" cy="6" r="3" fill="#ef4444" ${SW(1.2)}/>
+  <rect x="20" y="96" width="200" height="10" fill="#3b82f6" ${SW(2)}/>
+  ${[36, 72, 160, 196].map(x => `<rect x="${x - 12}" y="112" width="24" height="22" rx="3" fill="#bfdbfe" ${SW(2)}/><path d="M${x - 8} 128 L${x - 2} 116" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/>`).join('')}
+  <rect x="100" y="114" width="40" height="60" rx="4" fill="#64748b" ${SW(2.6)}/><path d="M120 114 V174" ${SW(2)}/><circle cx="114" cy="146" r="2" fill="#facc15"/><circle cx="126" cy="146" r="2" fill="#facc15"/>
+  <g transform="translate(120 76) scale(.62)">${heroEmblem}</g>
+  <path d="M28 168 Q40 160 52 168 M188 170 Q200 160 214 170" fill="#c4a06a" stroke="#8d6a3e" stroke-width="2"/>`, '0 0 240 190');
+// わるものの こや（ドアに わるものぐんだんの マーク）
+const hut = wrap(`
+  <ellipse cx="80" cy="128" rx="76" ry="8" fill="#000" opacity=".2"/>
+  <rect x="14" y="46" width="132" height="80" rx="4" fill="#8b5a2b" ${SW(3)}/>
+  ${[30, 50, 70, 90, 110, 130].map(x => `<path d="M${x} 50 V124" stroke="#6b4220" stroke-width="2.4"/>`).join('')}
+  <path d="M4 52 L80 8 L156 52Z" fill="#5b3a1e" ${SW(3)}/><path d="M22 46 L80 14 L138 46" fill="none" stroke="#7c4f27" stroke-width="3"/>
+  <rect x="62" y="74" width="36" height="52" rx="3" fill="#3f2a17" ${SW(2.6)}/><circle cx="90" cy="102" r="2.4" fill="#facc15" ${SW(1)}/>
+  <rect x="24" y="66" width="24" height="20" rx="2" fill="#1f2937" ${SW(2)}/><path d="M36 66 V86 M24 76 H48" ${SW(1.6)}/>
+  <rect x="112" y="66" width="24" height="20" rx="2" fill="#1f2937" ${SW(2)}/><path d="M124 66 V86 M112 76 H136" ${SW(1.6)}/>
+  ${villainPatch(80, 62, 1.9)}
+  <path d="M120 36 V22 L132 26 L120 30" fill="#7f1d1d" ${SW(1.6)}/>`, '0 0 160 136');
+// ちか への とびら（しまって いる／ひらいた：したに かいだん）
+const hatch = open => wrap(`
+  <ellipse cx="40" cy="70" rx="36" ry="6" fill="#000" opacity=".2"/>
+  <rect x="6" y="10" width="68" height="56" rx="6" fill="#52525b" ${SW(2.6)}/>
+  ${open ? `<rect x="14" y="18" width="52" height="40" rx="3" fill="#0b0f14" ${SW(2)}/>
+    ${[24, 32, 40, 48].map((y, i) => `<rect x="${18 + i * 3}" y="${y}" width="${44 - i * 6}" height="5" rx="1" fill="#475569" opacity="${1 - i * 0.2}"/>`).join('')}
+    <path d="M30 16 L40 4 L50 16Z" fill="#22c55e" ${SW(1.6)}/>` : `
+    <rect x="14" y="18" width="52" height="40" rx="3" fill="#71717a" ${SW(2)}/>
+    <path d="M14 26 L22 18 M14 38 L34 18 M14 50 L46 18 M22 58 L58 18 M34 58 L66 26 M46 58 L66 38 M58 58 L66 50" stroke="#facc15" stroke-width="4"/>
+    <rect x="14" y="18" width="52" height="40" rx="3" fill="none" ${SW(2)}/><circle cx="40" cy="38" r="7" fill="#3f3f46" ${SW(2)}/><circle cx="40" cy="38" r="2.6" fill="#ef4444"/>`}`, '0 0 80 78');
+// ちかの ゆか（くらめ だけど よく みえる コンクリート）と かべ
+const bunkerFloor = wrap(`<rect width="160" height="160" fill="#4b5563"/>
+  <path d="M0 80 H160 M80 0 V160" stroke="#3f4753" stroke-width="3"/>
+  <rect x="6" y="6" width="68" height="68" rx="3" fill="#525c6b"/><rect x="86" y="86" width="68" height="68" rx="3" fill="#525c6b"/>
+  ${[[10, 10], [70, 10], [10, 70], [70, 70], [90, 90], [150, 90], [90, 150], [150, 150]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="2" fill="#6b7280"/>`).join('')}
+  <path d="M100 20 L112 32 L106 40" fill="none" stroke="#374151" stroke-width="1.6"/><path d="M24 110 h22" stroke="#facc15" stroke-width="3" opacity=".35"/>`, '0 0 160 160');
+const wallSide = left => wrap(`<rect width="400" height="160" fill="#1f2329"/>
+  ${[[60, 40], [180, 110], [300, 50], [120, 140]].map(([x, y]) => `<ellipse cx="${x}" cy="${y}" rx="34" ry="18" fill="#272c33"/>`).join('')}
+  <rect x="${left ? 376 : 0}" width="24" height="160" fill="#3b4250"/>
+  ${[0, 40, 80, 120].map(y => `<path d="M${left ? 376 : 0} ${y + 20} l24 -20 v14 l-24 20z" fill="#facc15" opacity=".8"/>`).join('')}
+  <path d="M${left ? 376 : 24} 0 V160" stroke="#0b0d10" stroke-width="4"/>`, '0 0 400 160');
+const wallEnd = top => wrap(`<rect width="1200" height="400" fill="#1f2329"/>
+  ${[[100, 120], [420, 260], [800, 140], [1050, 300]].map(([x, y]) => `<ellipse cx="${x}" cy="${y}" rx="60" ry="26" fill="#272c33"/>`).join('')}
+  <rect y="${top ? 376 : 0}" width="1200" height="24" fill="#3b4250"/>
+  <path d="M0 ${top ? 376 : 24} H1200" stroke="#0b0d10" stroke-width="4"/>`, '0 0 1200 400');
+// かべは ながさが いろいろ なので のびちぢみ させる
+const stretch = svg => svg.replace('<svg ', '<svg preserveAspectRatio="none" ');
+// ろうや（なかに つかまった なかま。まえに てつの ぼう）
+const PRISONER = { soldier: allySoldier, medic, researcher };
+const cell = (who, open = false) => wrap(`
+  <rect x="2" y="2" width="116" height="96" rx="6" fill="#2b3038" ${SW(3)}/>
+  <rect x="8" y="8" width="104" height="84" rx="3" fill="#566070"/><path d="M8 72 H112" stroke="#2b3038" stroke-width="2"/>
+  ${who.map((k, i) => `<g transform="translate(${who.length === 1 ? 30 : 8 + i * 50} 22) scale(${who.length === 1 ? 0.95 : 0.82})">${PRISONER[k]}</g>`).join('')}
+  ${open ? `<path d="M8 8 L-6 14 V96 L8 92Z" fill="#9ca3af" ${SW(2)}/>` : `
+    ${[12, 36, 60, 84, 108].map(x => `<rect x="${x - 2}" y="8" width="4" height="84" rx="2" fill="#cbd5e1" ${SW(1.2)}/>`).join('')}
+    <rect x="8" y="10" width="104" height="5" rx="2" fill="#cbd5e1" ${SW(1.2)}/><rect x="8" y="84" width="104" height="5" rx="2" fill="#cbd5e1" ${SW(1.2)}/><rect x="53" y="62" width="14" height="13" rx="3" fill="#facc15" ${SW(1.6)}/>`}`, '0 0 120 100');
+// でぐち（ちじょうへ もどる かいだん）
+const exitStairs = wrap(`
+  <rect x="4" y="4" width="72" height="72" rx="8" fill="#334155" ${SW(2.6)}/>
+  ${[0, 1, 2, 3, 4].map(i => `<rect x="${12 + i * 4}" y="${60 - i * 11}" width="${56 - i * 8}" height="9" rx="1.5" fill="#e2e8f0" opacity="${0.5 + i * 0.1}" ${SW(1.2)}/>`).join('')}
+  <path d="M28 20 L40 6 L52 20 H45 V30 H35 V20Z" fill="#22c55e" ${SW(1.8)}/>`, '0 0 80 80');
+// ちかの ボス：ドリルたいちょう（ドリルの うでと ヘルメットの ライト）
+const driller = trooper({ uni: '#7c2d12', dark: '#431407', bodyR: 15,
+  vest: `<path d="M19 45 Q32 49 45 45 L46 58 Q32 62 18 58Z" fill="#9a3412" ${S}/><path d="M22 51 H42" stroke="#facc15" stroke-width="2.4"/>`,
+  gun: `<path d="M38 50 L62 44 L38 38Z" fill="#cbd5e1" ${S}/><path d="M44 48.5 L50 39.5 M50 47 L55 41.5 M56 45.6 L58.5 43" stroke="#64748b" stroke-width="1.8"/>
+    <rect x="30" y="39" width="10" height="13" rx="2" fill="#57534e" ${S2}/>${vglove(14, 52, '#292524')}`,
+  hat: `<path d="M15 27 Q14 8 32 8 Q50 8 49 27Z" fill="#f59e0b" ${S}/><path d="M12 27 H52" ${SW(4)}/><path d="M12 27 H52" stroke="#d97706" stroke-width="2.4"/>
+    <rect x="26" y="9" width="12" height="9" rx="2" fill="#fef9c3" ${SW(1.6)}/><path d="M28 13 h8" stroke="#facc15" stroke-width="2"/>
+    <rect x="19" y="20" width="26" height="7" rx="3.4" fill="#1f2937" ${S2}/><circle cx="26" cy="23.5" r="2.2" fill="#fb923c"/><circle cx="38" cy="23.5" r="2.2" fill="#fb923c"/>` });
+
+/* ---------- あおい レーザーじゅう（3つの モード） ---------- */
+const laserGun = wrap(`
+  <path d="M8 34 H40 L46 28 H56 V40 H46 L42 44 H22 L18 54 H8 L12 42 H8Z" fill="#1e3a8a" ${S}/>
+  <rect x="20" y="30" width="18" height="6" rx="2" fill="#60a5fa" ${SW(1.4)}/>
+  <rect x="44" y="30" width="16" height="8" rx="3" fill="#93c5fd" ${SW(1.6)}/><circle cx="60" cy="34" r="3.2" fill="#e0f2fe" ${SW(1.2)}/>
+  <path d="M14 26 L18 18 M26 24 L28 14" stroke="#38bdf8" stroke-width="2.6" stroke-linecap="round"/>
+  <circle cx="14" cy="38" r="2" fill="#38bdf8"/>`);
+const lbullet = wrap(`<ellipse cx="32" cy="32" rx="24" ry="8" fill="#38bdf8" ${SW(2.4)}/><ellipse cx="38" cy="32" rx="12" ry="4" fill="#e0f2fe"/>`);
+const lrocket = wrap(`<path d="M10 26 L18 32 L10 38Z" fill="#1d4ed8" ${S2}/><path d="M14 26 H44 Q58 32 44 38 H14Z" fill="#3b82f6" ${S}/>
+  <path d="M30 26 V38" stroke="#e0f2fe" stroke-width="3"/><circle cx="48" cy="32" r="3" fill="#e0f2fe"/>
+  <path d="M10 32 H2" stroke="#7dd3fc" stroke-width="4" stroke-linecap="round"/>`);
+const modeMg = wrap(`${[18, 32, 46].map(y => `<ellipse cx="${y === 32 ? 36 : 28}" cy="${y}" rx="16" ry="5.4" fill="#38bdf8" ${SW(2)}/>`).join('')}`);
+const modeBeam = wrap(`<rect x="4" y="24" width="56" height="16" rx="8" fill="#38bdf8" ${SW(2.4)}/><rect x="8" y="29" width="48" height="6" rx="3" fill="#e0f2fe"/><circle cx="56" cy="32" r="7" fill="#e0f2fe" ${SW(1.6)}/>`);
+
 const GROUNDS = {
   lab: labFloor,
   grass: ruinedGrass, // むかしの くさはら（いまは つかって いない。もどしたい とき用）
+  bunker: bunkerFloor,
   desert: tile(`<rect width="160" height="160" fill="#b08958"/>${blobs('#c4a06a', '#8d6a3e')}
     <path d="M0 96 Q40 86 80 96 T160 96" fill="none" stroke="#7a5a32" stroke-width="2.5"/>
     ${cactus(30, 70)}${cactus(130, 150)}${pebble(100, 40, '#a48458', '#5c4128')}${pebble(60, 132, '#a48458', '#5c4128')}
@@ -853,11 +941,14 @@ const SOURCES = {
   capsule: capsule(false), capsuleBroken: capsule(true), alienFloat, labFlag, ebomb, fire, glassShards,
   thrower: wrap(withPatch('thrower', thrower)), alien: wrap(alienFoe),
   ally: wrap(allySoldier), medic: wrap(medic), container: crate(false), containerOpen: crate(true), whistle, healPlus,
+  outpost, hut, hatch: hatch(false), hatchOpen: hatch(true), wallL: stretch(wallSide(true)), wallR: stretch(wallSide(false)), wallT: stretch(wallEnd(true)), wallB: stretch(wallEnd(false)),
+  cellA: cell(['soldier', 'soldier']), cellB: cell(['researcher', 'medic']), cellC: cell(['soldier', 'researcher']), cellOpen: cell([], true), exitStairs,
+  driller: wrap(withPatch('driller', driller)), laserGun, lbullet, lrocket, modeMg, modeBeam, modeRk: lrocket,
   gun, shotgun, bazooka, dual, gatling, rocket, mega, bullet, pellet, blast,
   sword: wrap(sword), armor: wrap(armor), shoes: wrap(shoes), charm: wrap(charm), chest: wrap(chest), chestOpen: wrap(chestOpen, '0 -4 64 68'),
   ...Object.fromEntries(Object.entries(GROUNDS).map(([k, v]) => [`ground-${k}`, v])),
 };
-const FLASHABLE = ['zombie', 'bat', 'ghost', 'skull', 'ogre', 'dragon', 'scorpion', 'mummy', 'snake', 'snowman', 'wolf', 'icegiant', 'pumpkin', 'witch', 'maou', 'thrower', 'alien'];
+const FLASHABLE = ['zombie', 'bat', 'ghost', 'skull', 'ogre', 'dragon', 'scorpion', 'mummy', 'snake', 'snowman', 'wolf', 'icegiant', 'pumpkin', 'witch', 'maou', 'thrower', 'alien', 'driller'];
 
 const toUrl = svg => `url("data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}")`;
 

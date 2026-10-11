@@ -44,6 +44,8 @@ export const ENEMY_TYPES = {
   // ボトルから とびだす うちゅうじん（わるものぐんだん では ないので ワッペンなし）
   alien:    { hp: 14, speed: 74, dmg: 7,  xp: 4, r: 14, size: 34, noEmblem: true },
   // ボス（hp は ステージがわで きめる）
+  // ちかの ボス（ステージ2 さばくの ちか。たおすと レーザーじゅう）
+  driller:  { speed: 42, dmg: 18, xp: 40, r: 42, size: 100, name: 'ドリルたいちょう' },
   ogre:     { speed: 40, dmg: 20, xp: 40, r: 38, size: 80,  name: 'おおぐんそう' },
   dragon:   { speed: 38, dmg: 25, xp: 40, r: 48, size: 104, name: 'せんしゃたいちょう' },
   snake:    { speed: 46, dmg: 26, xp: 40, r: 46, size: 100, name: 'メカアーマー' },
@@ -64,7 +66,9 @@ export const STAGES = [
     researcher: { at: 90, gift: 'supermissile', container: true } },
   { id: 2, name: 'さばく', ground: 'desert', hpMul: 1.6, spawnMul: 1.1, dmgMul: 1.15,
     enemies: [['scorpion', 0, 10], ['bat', 30, 5], ['mummy', 90, 6], ['skull', 180, 4]],
-    mini: { type: 'mummy', hp: 1600, big: 2.4, name: 'でかばくはへい' }, boss: { type: 'snake', hp: 5000 } },
+    mini: { type: 'mummy', hp: 1600, big: 2.4, name: 'でかばくはへい' }, boss: { type: 'snake', hp: 5000 },
+    // quest: スタートに けんきゅうじょ → こやの みはりを たおす → ちか への とびら → ちかで なかまを たすけて ドリルたいちょう → gift（`QUEST`）
+    quest: { gift: 'laser' } },
   { id: 3, name: 'ゆきやま', ground: 'snow', hpMul: 2.4, spawnMul: 1.2, dmgMul: 1.3,
     enemies: [['snowman', 0, 10], ['wolf', 30, 6], ['bat', 90, 4], ['skull', 180, 4]],
     mini: { type: 'wolf', hp: 2600, big: 2.4, name: 'ボスぐんようけん' }, boss: { type: 'icegiant', hp: 7500 } },
@@ -256,6 +260,26 @@ export const WEAPONS = {
     damage: [380, 380, 380, 380, 380],
     count: [1, 1, 1, 1, 1],
     radius: [155, 155, 155, 155, 155],
+  },
+  // あおい レーザーじゅう（ちかの ボスを たおすと もらえる）。modes の じゅんに ボタンで きりかえ。
+  // じっさいに うつのは いまの モードの ぶき（mode: true。もちものには ならない）。どの モードも あたると あおい ばくはつ
+  laser: {
+    name: 'レーザーじゅう', icon: '🔫', desc: 'あおい レーザー。3つの モード',
+    gift: true, fire: 'laser', modes: ['laserMg', 'laserBeam', 'laserRk'],
+    cooldown: [0.55, 0.55, 0.55, 0.55, 0.55], damage: [78, 78, 78, 78, 78], // ひょうじよう（うつのは modes の ぶき）
+  },
+  laserMg: {
+    name: 'マシンガン', mode: true, gift: true, fire: 'bullet', shot: 'lbullet', size: 22, speed: 880, spread: 0, kb: 0.06, quiet: true, boomFx: 'bboom',
+    cooldown: [0.12, 0.12, 0.12, 0.12, 0.12], damage: [17, 17, 17, 17, 17], count: [1, 1, 1, 1, 1],
+    pierce: [2, 2, 2, 2, 2], life: [0.62, 0.62, 0.62, 0.62, 0.62], splash: [28, 28, 28, 28, 28],
+  },
+  laserBeam: {
+    name: 'レーザー', mode: true, gift: true, fire: 'beam', len: 560, width: 26, boomFx: 'bboom',
+    cooldown: [0.55, 0.55, 0.55, 0.55, 0.55], damage: [78, 78, 78, 78, 78], splash: [38, 38, 38, 38, 38],
+  },
+  laserRk: {
+    name: 'ロケットランチャー', mode: true, gift: true, fire: 'rocket', shot: 'lrocket', size: 40, speed: 300, turn: 4.2, boomFx: 'bboom',
+    cooldown: [1.1, 1.1, 1.1, 1.1, 1.1], damage: [165, 165, 165, 165, 165], count: [1, 1, 1, 1, 1], radius: [110, 110, 110, 110, 110],
   },
   mega: {
     name: 'でかロケット', icon: '🚀', desc: 'おおきな ロケットが ばくはつ',
@@ -523,3 +547,56 @@ export function squadSlot(i, heading, S = SQUAD) {
 export function canWhistle(medic, cd) { return !!medic && cd <= 0; }
 /** ちりょうの かいふくりょう（dt びょうぶん） */
 export function healAmount(maxHp, dt, S = SQUAD) { return maxHp * S.healPct / S.healTime * dt; }
+
+/* ---------- さばくの クエスト（ステージ2） ----------
+ * スタートの そばに みかたの けんきゅうじょ（かざり）。hutDist0〜1 はなれた ところに わるものの こや。
+ * at びょうに「こやに わるものが いる」→ こやに triggerR まで ちかづくと みはり（guards）が でる → ぜんぶ たおすと ちか への とびらが ひらく → さわると ちかへ。
+ * ちかは たての ろうか（はば ±halfW）と おくの ボスの へや（±roomHalfW、roomY より おく）。ちかに いる あいだは
+ * ステージの タイマーが とまる（ちじょうの てきも そのまま まつ）。ろうやに さわると なかまが はいる。
+ * おくの ドリルたいちょうを たおすと レーザーじゅう、でぐちから ちじょうの とびらの まえに もどる。 */
+export const QUEST = {
+  lab: { x: 0, y: -240 },
+  // at びょうから こやに わるものが いる（それまでは ちかづいても なにも おきない・やじるしも でない）
+  at: 60, hutDist0: 520, hutDist1: 760, triggerR: 260, doorR: 46, cellR: 72,
+  guards: ['scorpion', 'scorpion', 'scorpion', 'skull', 'mummy'], guardHp: 1.2,
+  under: {
+    halfW: 180, roomHalfW: 330, roomY: -1650, top: -2300, bottom: 140,
+    groups: [{ y: -260, n: 4 }, { y: -660, n: 5 }, { y: -1060, n: 5 }, { y: -1440, n: 6 }],
+    cells: [{ y: -480, side: -1, art: 'cellA', who: ['soldier', 'soldier'] },
+      { y: -880, side: 1, art: 'cellB', who: ['researcher', 'medic'] },
+      { y: -1280, side: -1, art: 'cellC', who: ['soldier', 'researcher'] }],
+    boss: { type: 'driller', hp: 1600 }, bossAt: { x: 0, y: -2020 }, bossTrigger: -1600, exit: { x: 0, y: -2200 },
+  },
+};
+/** ちかの ろうかの はば（y で かわる：おくは ボスの へや） */
+export function underHalfW(y, U = QUEST.under) { return y < U.roomY ? U.roomHalfW : U.halfW; }
+/** ちかの なかに おさめる（r は からだの はんけい） */
+export function clampUnder(o, r = 16, U = QUEST.under) {
+  o.y = Math.max(U.top + r, Math.min(U.bottom - r, o.y));
+  const w = underHalfW(o.y, U) - r;
+  o.x = Math.max(-w, Math.min(w, o.x));
+  return o;
+}
+/** こやの ばしょ（けんきゅうじょの うえがわ ±40° は さける） */
+export function hutSpot(rnd = Math.random, Q = QUEST) {
+  let a = rnd() * Math.PI * 2;
+  const up = -Math.PI / 2, gap = 40 * Math.PI / 180;
+  let d = Math.atan2(Math.sin(a - up), Math.cos(a - up));
+  if (Math.abs(d) < gap) a = up + Math.sign(d || 1) * gap;
+  const dist = Q.hutDist0 + rnd() * (Q.hutDist1 - Q.hutDist0);
+  return { x: Math.cos(a) * dist, y: Math.sin(a) * dist };
+}
+/** レーザーじゅうの つぎの モード */
+export const LASER_MODES = WEAPONS.laser.modes;
+export function nextLaserMode(i) { return ((i | 0) + 1) % LASER_MODES.length; }
+/** なかまを ふやす：へいたいは soldiers にん まで、ちりょうたいは 1にん（もう いれば ふやさない）。はいった かずを かえす */
+export function squadRoom(allies, medic, S = SQUAD) {
+  const soldiers = allies.filter(a => !a.medic).length;
+  return medic ? (allies.some(a => a.medic) ? 0 : 1) : Math.max(0, Math.min(1, S.soldiers - soldiers));
+}
+/** ビーム（x,y から ang むき・ながさ len・はば w）に e が かかって いるか */
+export function beamHits(x, y, ang, len, w, e) {
+  const dx = e.x - x, dy = e.y - y, c = Math.cos(ang), s = Math.sin(ang);
+  const along = dx * c + dy * s, side = Math.abs(-dx * s + dy * c);
+  return along > -e.T.r && along < len + e.T.r && side < w / 2 + e.T.r;
+}

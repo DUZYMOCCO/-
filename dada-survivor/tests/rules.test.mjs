@@ -11,7 +11,7 @@ import {
 test('every weapon stat table covers all levels', () => {
   for (const [id, w] of Object.entries(WEAPONS)) {
     for (const [key, list] of Object.entries(w)) {
-      if (Array.isArray(list)) assert.equal(list.length, MAX_LEVEL, `${id}.${key}`);
+      if (Array.isArray(list) && key !== 'modes') assert.equal(list.length, MAX_LEVEL, `${id}.${key}`);
     }
     assert.ok(weaponStat(id, 'damage', 1) > 0);
     assert.equal(weaponStat(id, 'damage', 99), w.damage[MAX_LEVEL - 1]);
