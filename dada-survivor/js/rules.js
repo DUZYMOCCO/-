@@ -69,9 +69,11 @@ export const STAGES = [
     mini: { type: 'mummy', hp: 1920, big: 2.4, name: 'でかばくはへい' }, boss: { type: 'snake', hp: 6000 },
     // quest: スタートに けんきゅうじょ → こやの みはりを たおす → ちか への とびら → ちかで なかまを たすけて ドリルたいちょう → gift（`QUEST`）
     quest: { gift: 'laser' } },
-  { id: 3, name: 'ゆきやま', ground: 'snow', hpMul: 1.8, spawnMul: 1.2, dmgMul: 0.95,
+  { id: 3, name: 'ゆきやま', ground: 'snow', hpMul: 2.2, spawnMul: 1.2, dmgMul: 1.13,
     enemies: [['snowman', 0, 10], ['wolf', 30, 6], ['bat', 90, 4], ['skull', 180, 4]],
-    mini: { type: 'wolf', hp: 3120, big: 2.4, name: 'ボスぐんようけん' }, boss: { type: 'icegiant', hp: 9000 } },
+    mini: { type: 'wolf', hp: 3120, big: 2.4, name: 'ボスぐんようけん' }, boss: { type: 'icegiant', hp: 9000 },
+    // camp: スタートの かまくら（へいたい 3にん・ちりょうたい・けんきゅうしゃ 2にん）。なかまは さいしょから いっしょ（`CAMP`）
+    camp: true },
   { id: 4, name: 'おばけのもり', ground: 'forest', hpMul: 3.0, spawnMul: 1.3, dmgMul: 1.25,
     enemies: [['pumpkin', 0, 10], ['ghost', 30, 7], ['bat', 90, 5], ['skull', 180, 5]],
     mini: { type: 'pumpkin', hp: 4320, big: 2.6, name: 'でかかえんへい' }, boss: { type: 'witch', hp: 12600 } },
@@ -567,6 +569,11 @@ export function healAmount(maxHp, dt, S = SQUAD) { return maxHp * S.healPct / S.
  * ちかは たての ろうか（はば ±halfW）と おくの ボスの へや（±roomHalfW、roomY より おく）。ちかに いる あいだは
  * ステージの タイマーが とまる（ちじょうの てきも そのまま まつ）。ろうやに さわると なかまが はいる。
  * おくの ドリルたいちょうを たおすと レーザーじゅう、でぐちから ちじょうの とびらの まえに もどる。 */
+/** ゆきやまの スタートキャンプ：かまくら 3つ（なかま／けんきゅうしゃ／ちりょうたいは スタートの ばしょ）。なかまは すぐ くる */
+export const CAMP = {
+  squadHut: { x: -112, y: 120 }, sciHut: { x: 112, y: 120 }, medicHut: { x: 0, y: -150 }, w: 120, h: 92,
+  medic: { x: 0, y: 40 }, researchers: 2,
+};
 export const QUEST = {
   lab: { x: 0, y: -240 },
   // at びょうから こやに わるものが いる（それまでは ちかづいても なにも おきない・やじるしも でない）

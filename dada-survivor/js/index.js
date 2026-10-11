@@ -11,15 +11,15 @@ import {
   normalizeSave, stageById, bossType, bonusFor, clearRewards, receiveGift, clampZoom, pinchZoom, wheelZoom,
   newQuality, adaptQuality, THROW, fireRadius, capType, gatherCount, BOTTLE, bottleOutcome,
   SQUAD, allyDamage, squadSlot, canWhistle, healAmount,
-  QUEST, underHalfW, clampUnder, hutSpot, LASER_MODES, nextLaserMode, squadRoom, beamHits, MAX_LEVEL as MAXLV,
+  QUEST, CAMP, underHalfW, clampUnder, hutSpot, LASER_MODES, nextLaserMode, squadRoom, beamHits, MAX_LEVEL as MAXLV,
   enemyDmgMul,
-} from './rules.js?v=196';
-import { DecorField } from './decor.js?v=196';
-import { EnemyGrid, nearestN } from './grid.js?v=196';
-import { preloadArt, art } from './art.js?v=196';
-import { Stage } from './stage.js?v=196';
-import { menuMethods, iconHtml } from './menus.js?v=196';
-import { PopBGM, playWhistle } from './bgm.js?v=196';
+} from './rules.js?v=197';
+import { DecorField } from './decor.js?v=197';
+import { EnemyGrid, nearestN } from './grid.js?v=197';
+import { preloadArt, art } from './art.js?v=197';
+import { Stage } from './stage.js?v=197';
+import { menuMethods, iconHtml } from './menus.js?v=197';
+import { PopBGM, playWhistle } from './bgm.js?v=197';
 
 const SAVE_KEY = 'dada_survivor_save';
 const TAU = Math.PI * 2;
@@ -45,7 +45,7 @@ export const DadaSurvivorGame = {
 
   // 起動時にこのゲームのCSSを自分で読み込む（?v= はこのフォルダ内で管理）。ハブが init 前に await する
   prepare() {
-    return loadCss(new URL('../css/dada-survivor.css?v=196', import.meta.url).href);
+    return loadCss(new URL('../css/dada-survivor.css?v=197', import.meta.url).href);
   },
 
   init(container, onBackToHub) {
@@ -354,6 +354,7 @@ export const DadaSurvivorGame = {
       zone: 'surface', clock: 0, props: null, quest: null, laserMode: 0,
     };
     if (st.quest) this.initQuest();
+    if (st.camp) this.initCamp();
     this.refreshStats();
     this.run.player.hp = this.run.stats.maxHp;
     this.paused = false;
@@ -420,6 +421,7 @@ export const DadaSurvivorGame = {
     const r = this.run, p = r.player;
     r.clock += dt;
     r.time += r.zone === 'under' ? dt * QUEST.underTime : dt; // ちかでは タイマーが ゆっくり（ボスは ちじょうに もどってから）
+    if (r.campMsg > 0 && (r.campMsg -= dt) <= 0) this.showBanner('かまくらの なかまが きてくれた！ ちりょうたいは ふえで よんでね', 3800);
 
     // いどう
     let mx = 0, my = 0;
@@ -525,6 +527,17 @@ export const DadaSurvivorGame = {
     r.allies.push(a);
     if (medic) r.medic = a;
     return true;
+  },
+
+  /* ---------- ゆきやまの スタートキャンプ（ステージ3） ---------- */
+  initCamp() {
+    const r = this.run, C = CAMP, hut = (at, mark) => ({ kind: 'kamakura', x: at.x, y: at.y, w: C.w, h: C.h, mark });
+    r.props = [hut(C.squadHut), hut(C.medicHut), hut(C.sciHut)];
+    // けんきゅうしゃは かまくらの まえに のこる（かざり。たたかわない）
+    for (let i = 0; i < C.researchers; i++) r.props.push({ kind: 'researcher', x: C.sciHut.x + (i - 0.5) * 40, y: C.sciHut.y + C.h / 2 + 14, w: 46, h: 46 });
+    for (let i = 0; i < SQUAD.soldiers; i++) this.addAlly(false, C.squadHut.x + (i - 1) * 22, C.squadHut.y + C.h / 2 + 10);
+    this.addAlly(true, C.medic.x, C.medic.y);
+    r.campMsg = 2.6; // 「ステージ3 ゆきやま」の あとに だす
   },
 
   /* ---------- さばくの クエスト（ステージ2） ---------- */

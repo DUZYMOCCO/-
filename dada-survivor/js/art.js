@@ -831,6 +831,17 @@ const hut = wrap(`
   <rect x="112" y="66" width="24" height="20" rx="2" fill="#1f2937" ${SW(2)}/><path d="M124 66 V86 M112 76 H136" ${SW(1.6)}/>
   ${villainPatch(80, 62, 1.9)}
   <path d="M120 36 V22 L132 26 L120 30" fill="#7f1d1d" ${SW(1.6)}/>`, '0 0 160 136');
+// かまくら（ゆきやまの スタート。ゆきの ドームに いりぐち、なかは あったかい あかり）
+const kamakura = wrap(`
+  <ellipse cx="60" cy="86" rx="56" ry="6" fill="#000" opacity=".18"/>
+  <path d="M6 84 Q6 10 60 10 Q114 10 114 84Z" fill="#f8fafc" ${SW(3)}/>
+  <path d="M16 80 Q18 26 58 18" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".9"/>
+  <path d="M96 80 Q98 40 80 24" fill="none" stroke="#cbd5e1" stroke-width="6" stroke-linecap="round" opacity=".8"/>
+  <path d="M14 58 Q60 50 106 58 M10 72 Q60 64 110 72 M24 40 Q60 32 96 40" fill="none" stroke="#cbd5e1" stroke-width="1.8"/>
+  <path d="M36 84 V62 Q36 40 60 40 Q84 40 84 62 V84Z" fill="#fb923c" ${SW(2.6)}/>
+  <path d="M42 84 V64 Q42 47 60 47 Q78 47 78 64 V84Z" fill="#fde68a"/>
+  <ellipse cx="60" cy="78" rx="12" ry="4" fill="#f97316" opacity=".7"/><path d="M56 78 Q60 66 64 78Z" fill="#ef4444"/><path d="M58 78 Q60 71 62 78Z" fill="#facc15"/>
+  <path d="M2 86 Q20 80 36 84 M84 84 Q100 80 118 86" fill="none" stroke="#e2e8f0" stroke-width="4" stroke-linecap="round"/>`, '0 0 120 92');
 // ちか への とびら（しまって いる／ひらいた：したに かいだん）
 const hatch = open => wrap(`
   <ellipse cx="40" cy="70" rx="36" ry="6" fill="#000" opacity=".2"/>
@@ -950,7 +961,7 @@ const SOURCES = {
   capsule: capsule(false), capsuleBroken: capsule(true), alienFloat, labFlag, ebomb, fire, glassShards,
   thrower: wrap(withPatch('thrower', thrower)), alien: wrap(alienFoe),
   ally: wrap(allySoldier), medic: wrap(medic), container: crate(false), containerOpen: crate(true), whistle, healPlus,
-  outpost, hut, hatch: hatch(false), hatchOpen: hatch(true), wallL: stretch(wallSide(true)), wallR: stretch(wallSide(false)), wallT: stretch(wallEnd(true)), wallB: stretch(wallEnd(false)),
+  outpost, hut, kamakura, hatch: hatch(false), hatchOpen: hatch(true), wallL: stretch(wallSide(true)), wallR: stretch(wallSide(false)), wallT: stretch(wallEnd(true)), wallB: stretch(wallEnd(false)),
   cellA: cell(['soldier', 'soldier']), cellB: cell(['researcher', 'medic']), cellC: cell(['soldier', 'researcher']), cellOpen: cell([], true), exitStairs,
   driller: wrap(withPatch('driller', driller)), laserGun, lbullet, lrocket, modeMg, modeBeam, modeRk: lrocket,
   gun, shotgun, bazooka, dual, gatling, rocket, mega, bullet, pellet, blast,
