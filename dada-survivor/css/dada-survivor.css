@@ -42,6 +42,9 @@
 .ds-bomb { animation: ds-spin .5s linear infinite; }
 @keyframes ds-spin { to { transform: rotate(360deg); } }
 
+/* かるい モード（おもい ときだけ）：ザコの ぴょこぴょこ・ほうせきの ゆれを とめる（じぶんと けんきゅうしゃは そのまま） */
+.ds-lite .ds-gem, .ds-lite .ds-item, .ds-lite .ds-walk:not(.ds-hero):not(.ds-keep) { animation: none; }
+
 .ds-blink { animation: ds-blink .1s steps(1) infinite; }
 @keyframes ds-blink { 50% { opacity: .25; } }
 

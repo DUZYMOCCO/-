@@ -430,3 +430,24 @@ export function receiveGift(weapons, stageDef) {
   weapons[id] = MAX_LEVEL;
   return id;
 }
+
+/* ---------- かるい モード（じどう がしつ） ----------
+ * 1フレームの じかん（ms）を なめらかに して、おもい（24ms こえ ≒ 40fps いか）が つづいたら lite に する。
+ * もどすのは かるい（19ms みまん）が hold びょう つづいた とき。もどって また おもく なったら hold を 2ばいに（いったり きたり しない）。
+ * 250ms いじょうの フレーム（タブを もどした とき など）は かぞえない。 */
+export const QUALITY = { enterMs: 24, exitMs: 19, hold: 3, maxHold: 24 };
+export function newQuality() { return { ema: 16.7, lite: false, calm: 0, hold: QUALITY.hold, enters: 0 }; }
+export function adaptQuality(q, ms) {
+  if (!(ms > 0) || ms > 250) return q;
+  q.ema += (ms - q.ema) * 0.1;
+  if (!q.lite) {
+    if (q.ema > QUALITY.enterMs) {
+      q.lite = true; q.calm = 0;
+      if (q.enters++ > 0) q.hold = Math.min(QUALITY.maxHold, q.hold * 2);
+    }
+  } else if (q.ema < QUALITY.exitMs) {
+    q.calm += ms / 1000;
+    if (q.calm >= q.hold) { q.lite = false; q.calm = 0; }
+  } else q.calm = 0;
+  return q;
+}

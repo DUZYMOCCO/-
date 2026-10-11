@@ -4,8 +4,11 @@
  * - 毎フレーム書き換えるのは transform だけ（レイアウト・ペイントを起こさない）
  * - 要素はプールで使い回し、生成/破棄でGCやレイアウトを揺らさない
  * - 一時エフェクトは Web Animations API（コンポジタで再生）
+ * - がめんの そとの ものは display:none（スタイル計算・アニメ・ペイントを しない）
+ * - おもい ときは「かるい モード」（ds-lite）：ぴょこぴょこ／ほうせきの ゆれを とめ、エフェクトと すうじを へらす
+ * - ここでは Math.random を つかわない（みための ばらつきは カウンタで。ゲームの らんすうと まざらない）
  */
-import { art, groundTile } from './art.js?v=187';
+import { art, groundTile } from './art.js?v=188';
 
 class Pool {
   constructor(layer, make) { this.layer = layer; this.make = make; this.free = []; this.active = new Set(); }
@@ -13,6 +16,7 @@ class Pool {
     let n = this.free.pop();
     if (!n) { n = this.make(); this.layer.appendChild(n); }
     else n.style.display = '';
+    n._hid = false;
     this.active.add(n);
     return n;
   }
@@ -28,13 +32,31 @@ function el(cls, parent) {
 }
 
 // 位置(外) > 向き(中) > 絵(内) の3段。内側は CSS アニメ（ぴょこぴょこ）専用
+let spriteSeq = 0;
 function makeSprite(extra = '') {
   const n = el('ds-ent');
   n._flip = el('ds-flip', n);
   n._img = el(`ds-img ${extra}`, n._flip);
-  n._img.style.animationDelay = `${-Math.random()}s`;
+  n._img.style.animationDelay = `${-((spriteSeq++ * 0.618) % 1).toFixed(3)}s`;
   return n;
 }
+
+// エフェクトの うごき（まいかい つくらない）
+const FX_FRAMES = {
+  pop:  [{ transform: 'scale(.5)', opacity: 1 }, { transform: 'scale(1.5)', opacity: 0 }],
+  boom: [{ transform: 'scale(.3)', opacity: 1 }, { transform: 'scale(1.1)', opacity: .9, offset: .4 }, { transform: 'scale(1.25)', opacity: 0 }],
+  bolt: [{ transform: 'scaleY(.2)', opacity: 1, transformOrigin: '50% 100%' }, { transform: 'scaleY(1)', opacity: 1, offset: .25, transformOrigin: '50% 100%' }, { transform: 'scaleY(1)', opacity: 0, transformOrigin: '50% 100%' }],
+};
+const FX_OPTS = { pop: { duration: 300, easing: 'ease-out' }, boom: { duration: 420, easing: 'ease-out' }, bolt: { duration: 320, easing: 'ease-out' } };
+const TEXT_FRAMES = [
+  { transform: 'translate(-50%,0) scale(.6)', opacity: 1 },
+  { transform: 'translate(-50%,-14px) scale(1.15)', opacity: 1, offset: .25 },
+  { transform: 'translate(-50%,-34px) scale(1)', opacity: 0 },
+];
+const TEXT_OPTS = { duration: 650, easing: 'ease-out' };
+
+// エフェクト・すうじの じょうげん（ふつう／かるい モード）
+export const FX_CAP = { fx: 40, fxLite: 16, boom: 12, boomLite: 6, text: 30, textLite: 10 };
 
 export class Stage {
   constructor(root) {
@@ -59,7 +81,7 @@ export class Stage {
     this.playerHpFill = el('ds-hp-fill', this.playerHp);
     units.appendChild(this.player);
     // けんきゅうしゃ（1にんだけ。あたまの うえに ！ マーク）
-    this.npc = makeSprite('ds-walk');
+    this.npc = makeSprite('ds-walk ds-keep');
     this.npcMark = el('ds-npc-mark', this.npc);
     this.npcMark.textContent = '！';
     this.npc.style.display = 'none';
@@ -80,6 +102,13 @@ export class Stage {
     this.joy.style.display = 'none';
     this.frame = 0;
     this.texts = 0;
+    this.booms = 0;
+    this.textSeq = 0;
+    this.gen = 0;
+    this.lite = false;
+    this.cull = { x0: -1e9, y0: -1e9, x1: 1e9, y1: 1e9 };
+    // shots を しゅるいごとに わける はこ（まいフレーム つかいまわす）
+    this.bk = { kunai: [], bullet: [], rocket: [], bomb: [] };
     this.resize(1, 1);
   }
 
@@ -104,12 +133,20 @@ export class Stage {
     this.ground.style.height = `${h + T * 2}px`;
   }
 
+  setLite(on) {
+    if (this.lite === on) return;
+    this.lite = on;
+    this.root.classList.toggle('ds-lite', on);
+  }
+
   reset() {
+    this.gen = (this.gen || 0) + 1;
     for (const p of [this.gems, this.items, this.enemies, this.kunai, this.bullets, this.rockets, this.bombs, this.stars, this.fxPool, this.textPool]) {
       for (const n of p.active) n._img.getAnimations?.().forEach(a => a.cancel());
       p.clear();
     }
     this.texts = 0;
+    this.booms = 0;
     this.aura.style.display = 'none';
     this.npc.style.display = 'none';
   }
@@ -137,12 +174,18 @@ export class Stage {
     n._flip.classList.toggle('left', left);
   }
 
-  sync(pool, items, apply) {
-    const f = ++this.frame;
+  // cull=true：がめんの そとの ものは かくして、apply も しない
+  sync(pool, items, apply, cull = true) {
+    const f = ++this.frame, c = this.cull;
     for (const it of items) {
       let n = it.node;
       if (!n || n._owner !== it) { n = it.node = pool.get(); n._owner = it; }
       n._seen = f;
+      if (cull && (it.x < c.x0 || it.x > c.x1 || it.y < c.y0 || it.y > c.y1)) {
+        if (!n._hid) { n._hid = true; n.style.display = 'none'; }
+        continue;
+      }
+      if (n._hid) { n._hid = false; n.style.display = ''; }
       apply(it, n);
     }
     for (const n of pool.active) if (n._seen !== f) { n._owner = null; pool.put(n); }
@@ -154,6 +197,9 @@ export class Stage {
     const mx = ((p.x % T) + T) % T, my = ((p.y % T) + T) % T;
     this.ground.style.transform = `translate3d(${-T - mx}px,${-T - my}px,0)`;
     this.world.style.transform = `translate3d(${Math.round(W / 2 - p.x)}px,${Math.round(H / 2 - p.y)}px,0)`;
+    // みえる はんい（いちばん おおきい ボスの はんぶん くらいの よゆう）
+    const M = 130, c = this.cull;
+    c.x0 = p.x - W / 2 - M; c.x1 = p.x + W / 2 + M; c.y0 = p.y - H / 2 - M; c.y1 = p.y + H / 2 + M;
 
     // じぶん
     Stage.place(this.player, p.x, p.y);
@@ -192,68 +238,83 @@ export class Stage {
       Stage.face(n, e.x > p.x);
       Stage.place(n, e.x, e.y);
     });
-    this.sync(this.kunai, r.shots.filter(s => s.kind === 'kunai'), (s, n) => { Stage.look(n, 'kunai', 30); Stage.place(n, s.x, s.y, Math.round(s.ang * 20) / 20); });
-    this.sync(this.bullets, r.shots.filter(s => s.kind === 'bullet'), (s, n) => {
+    const bk = this.bk;
+    bk.kunai.length = bk.bullet.length = bk.rocket.length = bk.bomb.length = 0;
+    for (const s of r.shots) bk[s.kind]?.push(s);
+    this.sync(this.kunai, bk.kunai, (s, n) => { Stage.look(n, 'kunai', 30); Stage.place(n, s.x, s.y, Math.round(s.ang * 20) / 20); });
+    this.sync(this.bullets, bk.bullet, (s, n) => {
       Stage.look(n, s.art || 'bullet', s.size || 22);
       Stage.place(n, s.x, s.y, Math.round(s.ang * 20) / 20);
     });
-    this.sync(this.rockets, r.shots.filter(s => s.kind === 'rocket'), (s, n) => {
+    this.sync(this.rockets, bk.rocket, (s, n) => {
       Stage.look(n, s.art || 'rocket', s.size || 36);
       Stage.place(n, s.x, s.y, Math.round(s.ang * 20) / 20);
     });
-    this.sync(this.bombs, r.shots.filter(s => s.kind === 'bomb'), (s, n) => {
+    this.sync(this.bombs, bk.bomb, (s, n) => {
       const k = s.t / s.dur;
       Stage.look(n, 'bomb', 30);
       Stage.place(n, s.sx + (s.tx - s.sx) * k, s.sy + (s.ty - s.sy) * k - Math.sin(k * Math.PI) * 70);
-    });
-    this.sync(this.stars, look.orbit, (o, n) => { Stage.look(n, 'star', 34); Stage.place(n, o.x, o.y); });
+    }, false);
+    this.sync(this.stars, look.orbit, (o, n) => { Stage.look(n, 'star', 34); Stage.place(n, o.x, o.y); }, false);
   }
 
   /* ---------- いっしゅんの エフェクト（WAAPI） ---------- */
   fx(kind, x, y, size = 40) {
-    if (this.fxPool.active.size > 40) return;
+    const C = FX_CAP, lite = this.lite, active = this.fxPool.active.size;
+    if (active > (lite ? C.fxLite : C.fx)) return;
+    // がめんの そとの エフェクトは つくらない
+    const c = this.cull, m = size / 2;
+    if (x + m < c.x0 || x - m > c.x1 || y + m < c.y0 || y - (kind === 'bolt' ? 0 : m) > c.y1) return;
+    const boom = kind === 'boom';
+    if (boom) { if (this.booms >= (lite ? C.boomLite : C.boom)) return; this.booms++; }
+    else if (kind === 'pop' && lite && active > 8) return; // かるい モードでは こまかい ポンを まびく
     const n = this.fxPool.get(), img = n._img;
-    img.className = `ds-fx ds-fx-${kind}`;
-    img.style.width = img.style.height = `${size}px`;
-    img.style.marginLeft = `${-size / 2}px`;
-    img.style.marginTop = kind === 'bolt' ? `${-size}px` : `${-size / 2}px`;
-    if (kind === 'bolt') { img.style.backgroundImage = art('bolt'); img.style.width = `${size * 0.54}px`; img.style.marginLeft = `${-size * 0.27}px`; }
-    else img.style.backgroundImage = '';
+    // おなじ しゅるい・おおきさ なら スタイルを かきかえない（レイアウトを おこさない）
+    const key = `${kind}${size}`;
+    if (n._k !== key) {
+      n._k = key;
+      img.className = `ds-fx ds-fx-${kind}`;
+      const st = img.style;
+      st.height = `${size}px`;
+      st.marginTop = kind === 'bolt' ? `${-size}px` : `${-size / 2}px`;
+      if (kind === 'bolt') { st.backgroundImage = art('bolt'); st.width = `${size * 0.54}px`; st.marginLeft = `${-size * 0.27}px`; }
+      else { st.backgroundImage = ''; st.width = `${size}px`; st.marginLeft = `${-size / 2}px`; }
+    }
     Stage.place(n, x, y);
-    const frames = {
-      pop:  [{ transform: 'scale(.5)', opacity: 1 }, { transform: 'scale(1.5)', opacity: 0 }],
-      boom: [{ transform: 'scale(.3)', opacity: 1 }, { transform: 'scale(1.1)', opacity: .9, offset: .4 }, { transform: 'scale(1.25)', opacity: 0 }],
-      bolt: [{ transform: 'scaleY(.2)', opacity: 1, transformOrigin: '50% 100%' }, { transform: 'scaleY(1)', opacity: 1, offset: .25, transformOrigin: '50% 100%' }, { transform: 'scaleY(1)', opacity: 0, transformOrigin: '50% 100%' }],
-    }[kind];
-    const a = img.animate(frames, { duration: kind === 'boom' ? 420 : kind === 'bolt' ? 320 : 300, easing: 'ease-out' });
-    a.onfinish = a.oncancel = () => this.fxPool.put(n);
+    const a = img.animate(FX_FRAMES[kind], FX_OPTS[kind]);
+    const gen = this.gen;
+    a.onfinish = a.oncancel = () => { if (gen !== this.gen) return; if (boom) this.booms--; this.fxPool.put(n); };
   }
 
   text(x, y, value, crit = false) {
-    if (this.texts >= 30) return;
+    if (this.texts >= (this.lite ? FX_CAP.textLite : FX_CAP.text)) return;
+    const c = this.cull;
+    if (x < c.x0 || x > c.x1 || y < c.y0 || y > c.y1) return;
     this.texts++;
     const n = this.textPool.get(), img = n._img;
     img.textContent = value;
-    img.classList.toggle('crit', crit);
-    Stage.place(n, x + (Math.random() - 0.5) * 14, y);
-    const a = img.animate([
-      { transform: 'translate(-50%,0) scale(.6)', opacity: 1 },
-      { transform: 'translate(-50%,-14px) scale(1.15)', opacity: 1, offset: .25 },
-      { transform: 'translate(-50%,-34px) scale(1)', opacity: 0 },
-    ], { duration: 650, easing: 'ease-out' });
-    a.onfinish = a.oncancel = () => { this.texts--; this.textPool.put(n); };
+    if (n._crit !== crit) { n._crit = crit; img.classList.toggle('crit', crit); }
+    Stage.place(n, x + ((this.textSeq++ * 5) % 15) - 7, y);
+    const a = img.animate(TEXT_FRAMES, TEXT_OPTS), gen = this.gen;
+    // reset() の あとに とどいた おわりの しらせは むし（プールに 2かい もどさない）
+    a.onfinish = a.oncancel = () => { if (gen !== this.gen) return; this.texts--; this.textPool.put(n); };
   }
 
   shake(px) {
     if (!this.view.animate) return;
-    for (const a of this.view.getAnimations?.() || []) if (a._shake) a.cancel();
+    // つづけて なんども ゆらさない（つよい ゆれは うわがき OK）
+    const now = performance.now();
+    if (this._shake && now - this._shakeAt < 120 && px <= this._shakePx) return;
+    this._shake?.cancel();
+    this._shakeAt = now; this._shakePx = px;
     const anim = this.view.animate([
       { transform: 'translate(0,0)' },
       { transform: `translate(${px}px, ${px * -0.5}px)`, offset: .25 },
       { transform: `translate(${-px * 0.6}px, ${px * 0.35}px)`, offset: .6 },
       { transform: 'translate(0,0)' },
     ], { duration: 200, easing: 'ease-out' });
-    anim._shake = true;
+    this._shake = anim;
+    anim.onfinish = () => { if (this._shake === anim) this._shake = null; };
   }
 
   flash() { this.flashEl.animate([{ opacity: .85 }, { opacity: 0 }], { duration: 500, easing: 'ease-out' }); }

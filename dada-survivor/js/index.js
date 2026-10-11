@@ -9,15 +9,24 @@ import {
   STAGE_SECONDS, MINI_BOSS_SECONDS, MAX_ENEMIES, MAX_GEMS, MAX_LEVEL, DIFFICULTIES, CHARACTERS, ENEMY_TYPES,
   WEAPONS, PASSIVES, STAGES, GUNS, weaponStat, xpToNext, playerStats, spawnPlan, pickWeighted, upgradeChoices,
   normalizeSave, stageById, bossType, bonusFor, clearRewards, receiveGift, clampZoom, pinchZoom, wheelZoom,
-} from './rules.js?v=187';
-import { preloadArt } from './art.js?v=187';
-import { Stage } from './stage.js?v=187';
-import { menuMethods, iconHtml } from './menus.js?v=187';
-import { PopBGM } from './bgm.js?v=187';
+  newQuality, adaptQuality,
+} from './rules.js?v=188';
+import { EnemyGrid, nearestN } from './grid.js?v=188';
+import { preloadArt } from './art.js?v=188';
+import { Stage } from './stage.js?v=188';
+import { menuMethods, iconHtml } from './menus.js?v=188';
+import { PopBGM } from './bgm.js?v=188';
 
 const SAVE_KEY = 'dada_survivor_save';
 const TAU = Math.PI * 2;
 const dist2 = (a, b) => (a.x - b.x) ** 2 + (a.y - b.y) ** 2;
+// はいれつを その場で つめる（filter と おなじ じゅんばん・あたらしい はいれつを つくらない）
+function compact(list, keep) {
+  let j = 0;
+  for (let i = 0; i < list.length; i++) { const v = list[i]; if (keep(v)) list[j++] = v; }
+  list.length = j;
+  return list;
+}
 const fmtTime = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 
 export const DadaSurvivorGame = {
@@ -32,7 +41,7 @@ export const DadaSurvivorGame = {
 
   // 起動時にこのゲームのCSSを自分で読み込む（?v= はこのフォルダ内で管理）。ハブが init 前に await する
   prepare() {
-    return loadCss(new URL('../css/dada-survivor.css?v=187', import.meta.url).href);
+    return loadCss(new URL('../css/dada-survivor.css?v=188', import.meta.url).href);
   },
 
   init(container, onBackToHub) {
@@ -366,9 +375,15 @@ export const DadaSurvivorGame = {
 
   loop(now) {
     this.frame = requestAnimationFrame(this.loop);
-    const dt = Math.min(0.05, (now - this.lastTime) / 1000);
+    const ms = now - this.lastTime, dt = Math.min(0.05, ms / 1000);
     this.lastTime = now;
-    if (this.run && !this.paused) this.update(dt);
+    if (this.run && !this.paused) {
+      // おもい ときは みための エフェクトを へらす（ゲームの うごきは かわらない）
+      const q = this.quality || (this.quality = newQuality());
+      adaptQuality(q, ms);
+      this.stage.setLite(q.lite);
+      this.update(dt);
+    }
     if (this.run) this.draw();
   },
 
@@ -459,10 +474,13 @@ export const DadaSurvivorGame = {
   nearestEnemies(n, maxD = 520) {
     // ズームアウトで みえる ところが ふえても、ねらえる きょりは ズーム1の がめんの そとがわ まで（ズームで つよく ならない）
     maxD = Math.min(maxD, this.battleR || maxD);
-    const p = this.run.player, lim = maxD * maxD;
-    return this.run.enemies
-      .map(e => [e, dist2(e, p)]).filter(([, d]) => d < lim)
-      .sort((a, b) => a[1] - b[1]).slice(0, n).map(([e]) => e);
+    return nearestN(this.run.enemies, this.run.player, n, maxD * maxD);
+  },
+
+  // (x, y) の まわりの てき（グリッドが つかえる あいだは ちかくだけ、もとの じゅんばん）
+  enemiesNear(x, y, rad) {
+    if (!this.gridOk) return this.run.enemies;
+    return this.grid.query(x, y, rad, this.nearBuf || (this.nearBuf = []));
   },
 
   aimAngle() {
@@ -539,6 +557,9 @@ export const DadaSurvivorGame = {
 
   updateWeapons(dt) {
     const r = this.run, p = r.player, st = r.stats, T = r.timers;
+    // ここから updateShots の おわりまで てきは うごかないので、1かい つくった グリッドを つかう
+    (this.grid || (this.grid = new EnemyGrid())).build(r.enemies);
+    this.gridOk = true;
     const ready = (id, cd) => { T[id] = (T[id] ?? 0) - dt; if (T[id] > 0) return false; T[id] = cd * st.cooldown; return true; };
     for (const [id, lv] of Object.entries(r.weapons)) {
       const w = WEAPONS[id];
@@ -587,7 +608,7 @@ export const DadaSurvivorGame = {
       r.orbitAngle += dt * 3.2;
       const dmg = weaponStat('orbit', 'damage', olv) * st.damage;
       for (const o of this.orbitPositions()) {
-        for (const e of r.enemies) {
+        for (const e of this.enemiesNear(o.x, o.y, 14)) {
           if (e.hp <= 0 || (e.x - o.x) ** 2 + (e.y - o.y) ** 2 > (e.T.r + 14) ** 2) continue;
           if (r.time - e.orbitHit < 0.45) continue;
           e.orbitHit = r.time;
@@ -598,7 +619,9 @@ export const DadaSurvivorGame = {
   },
 
   areaDamage(x, y, radius, dmg, knock = true) {
-    for (const e of this.run.enemies) {
+    // nearBuf を つかいまわすので、ここでは べつの はこに うつす（hitEnemy の なかで また よばれても こわれない）
+    const list = this.gridOk ? this.grid.query(x, y, radius, this.areaBuf || (this.areaBuf = [])) : this.run.enemies;
+    for (const e of list) {
       if ((e.x - x) ** 2 + (e.y - y) ** 2 <= (radius + e.T.r) ** 2) this.hitEnemy(e, dmg, knock ? x : null, y);
     }
   },
@@ -651,7 +674,7 @@ export const DadaSurvivorGame = {
     for (const s of r.shots) {
       if (s.kind === 'kunai' || s.kind === 'bullet') {
         s.x += s.vx * dt; s.y += s.vy * dt; s.life -= dt;
-        for (const e of r.enemies) {
+        for (const e of this.enemiesNear(s.x, s.y, s.r)) {
           if (e.hp <= 0 || (e.x - s.x) ** 2 + (e.y - s.y) ** 2 > (e.T.r + s.r) ** 2) continue;
           this.hitEnemy(e, s.dmg, s.x - s.vx, s.y - s.vy, s.kb || 0.12);
           if (s.splash) {
@@ -679,7 +702,7 @@ export const DadaSurvivorGame = {
         s.life -= dt;
         let hit = false;
         if (s.arm <= 0) {
-          for (const e of r.enemies) {
+          for (const e of this.enemiesNear(s.x, s.y, s.r)) {
             if (e.hp > 0 && (e.x - s.x) ** 2 + (e.y - s.y) ** 2 <= (e.T.r + s.r) ** 2) { hit = true; break; }
           }
         }
@@ -702,19 +725,16 @@ export const DadaSurvivorGame = {
         }
       }
     }
-    r.shots = r.shots.filter(s => s.life > 0);
-    r.enemies = r.enemies.filter(e => e.hp > 0);
+    this.gridOk = false;
+    compact(r.shots, s => s.life > 0);
+    compact(r.enemies, e => e.hp > 0);
   },
 
   updateEnemies(dt) {
     const r = this.run, p = r.player, far = (Math.hypot(this.w, this.h) * 0.9) ** 2;
     // かんたんな おしあい（グリッド）
-    const cell = 40, grid = new Map();
-    for (const e of r.enemies) {
-      const k = Math.floor(e.x / cell) * 73856093 ^ Math.floor(e.y / cell) * 19349663;
-      let list = grid.get(k); if (!list) grid.set(k, list = []);
-      list.push(e);
-    }
+    const cell = 40, sep = this.sepGrid || (this.sepGrid = new EnemyGrid(cell)), grid = sep.map;
+    sep.build(r.enemies);
     for (const e of r.enemies) {
       e.flash = Math.max(0, e.flash - dt);
       const dx = p.x - e.x, dy = p.y - e.y, d = Math.hypot(dx, dy) || 1;
@@ -724,7 +744,7 @@ export const DadaSurvivorGame = {
       if (e.kb > 0) { e.kb -= dt; vx = e.kx * 260; vy = e.ky * 260; }
       const cx = Math.floor(e.x / cell), cy = Math.floor(e.y / cell);
       for (let gx = cx - 1; gx <= cx + 1; gx++) for (let gy = cy - 1; gy <= cy + 1; gy++) {
-        const list = grid.get(gx * 73856093 ^ gy * 19349663); if (!list) continue;
+        const list = grid.get(EnemyGrid.key(gx, gy)); if (!list) continue;
         for (const o of list) {
           if (o === e) continue;
           const ox = e.x - o.x, oy = e.y - o.y, od = Math.hypot(ox, oy), min = e.T.r + o.T.r;
@@ -759,7 +779,7 @@ export const DadaSurvivorGame = {
         if (d < 18) { r.xp += g.v; g.got = true; sound.play('coin', { group: 'item', volume: 0.18, gap: 0.05 }); }
       }
     }
-    r.gems = r.gems.filter(g => !g.got);
+    compact(r.gems, g => !g.got);
     for (const it of r.items) {
       if (dist2(it, p) > 30 * 30) continue;
       it.got = true;
@@ -773,7 +793,7 @@ export const DadaSurvivorGame = {
         sound.playBomb(); this.showBanner('どっかーん！', 1200);
       }
     }
-    r.items = r.items.filter(it => !it.got);
+    compact(r.items, it => !it.got);
     const npc = r.npc;
     if (npc) {
       const d2 = dist2(npc, p);
