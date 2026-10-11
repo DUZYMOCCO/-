@@ -1,6 +1,6 @@
 import {CRAFT_MATERIALS,CRAFT_RECIPES,craftRecipe,normalizeMaterials,addMaterials,workshopTier,workshopLevel,
   recipeMaterials,canAffordMaterials,stampCraftedItem,craftExclusiveLabel} from './crafting-rules.js?v=189';
-import {standardEquipmentCost} from './armament-rules.js?v=189';
+import {standardEquipmentCost} from './armament-rules.js?v=191';
 import {tierDescription,tierNumber} from './equipment-tiers.js';
 import {equipmentName} from './equipment-rules.js?v=189';
 
@@ -56,11 +56,11 @@ export const workshopMethods={
     const makeOptions=(recipes,id)=>recipes.map(r=>`<option value="${r.id}" ${r.id===id?'selected':''}>${r.name}</option>`).join('');
     const cq=quote(this,craftId,selectedTier,true),stock=this.materials;
     panel.insertAdjacentHTML('beforeend',`<div class="town-facility workshop-panel"><strong>鍛冶工房 · Lv${level}</strong>
-      <p>供給上限：${tierDescription(maximum)}<br>本陣の発展で素材帯が上がり、軍備研究でさらに改良します。軍への不足補給・換装にもこのティアを使用。</p>
+      <p>製造可能ティア：${tierDescription(maximum)}<br>本陣の発展と軍備研究で作れる装備が増えます。隊長も兵士も購入には各自のGが必要。兵士は手持ちで買える範囲から順に整備します。</p>
       <label class="workshop-choice">製造ティア<select id="workshop-tier">${Array.from({length:maximum},(_,i)=>`<option value="${i+1}" ${i+1===selectedTier?'selected':''}>${tierDescription(i+1)}</option>`).join('')}</select></label>
       <h5>制式装備の供給</h5><p>必要な装備をGで購入。バッグへ届きます。</p>
       <label class="workshop-choice">装備<select id="workshop-supply">${makeOptions(WORKSHOP_STOCK,supplyId)}</select></label>
-      <button type="button" id="btn-workshop-buy" ${!town||this.gold<workshopPrice(selectedTier)?'disabled':''}>装備を受け取る · ${money(workshopPrice(selectedTier))}</button>
+      <button type="button" id="btn-workshop-buy" ${!town||this.gold<workshopPrice(selectedTier)?'disabled':''}>装備を購入 · ${money(workshopPrice(selectedTier))}</button>
       <details class="material-stock" open><summary>素材庫 · バッグの枠を使いません</summary><div class="material-grid">${Object.entries(CRAFT_MATERIALS).map(([id,m])=>`<span>${m.name}<b data-material="${id}">${stock[id].toLocaleString()}</b></span>`).join('')}</div></details>
       <h5>製作限定の装備</h5><p>敵・宝箱の素材から製作。品質120%と専用効果を持ち、完成品は保護してバッグへ届けます。</p>
       <label class="workshop-choice">製作する品<select id="workshop-craft">${makeOptions(CRAFT_RECIPES,craftId)}</select></label>

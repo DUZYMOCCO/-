@@ -59,6 +59,8 @@ export function emptyFiscalLedger(phase = 1, startBalance = 0) {
     equipmentUpdated:0,
     sharedEquipmentIssued:0,
     publicForging:0,
+    personalEquipmentProcurement:0,
+    personalForging:0,
     armamentResearch:0,
     surplusSales: 0,
     surplusCount: 0,
@@ -175,7 +177,8 @@ export function formatFiscalReportJa(ledger) {
     `給与支払 −${(ledger.salariesPaid || 0).toLocaleString()}G（${ledger.salaryHeadcount || 0}名・整備手当${(ledger.maintenanceAllowancesPaid||0).toLocaleString()}G・栄誉手当${(ledger.rankerBonusesPaid||0).toLocaleString()}G）${ledger.salaryShortfall ? ` / 不足${ledger.salaryShortfall.toLocaleString()}G` : ''}`,
     `寄付 ${(ledger.donations || 0).toLocaleString()}G → 全国配分 ${(ledger.distributed || 0).toLocaleString()}G（${ledger.distributeHeadcount || 0}名）`,
     `装備買取 −${(ledger.buyouts || 0).toLocaleString()}G（${ledger.buyoutCount || 0}件）`,
-    `不足装備補給 −${((ledger.equipmentProcurement || 0)+(ledger.publicForging||0)).toLocaleString()}G（${ledger.equipmentIssued || 0}部位）`,
+    `国庫の装備調達・強化 −${((ledger.equipmentProcurement || 0)+(ledger.publicForging||0)).toLocaleString()}G`,
+    `兵士の自費調達・強化 ${((ledger.personalEquipmentProcurement||0)+(ledger.personalForging||0)).toLocaleString()}G（${ledger.equipmentIssued || 0}部位）`,
     `外販 +${(ledger.surplusSales || 0).toLocaleString()}G（${ledger.surplusCount || 0}件）`,
     `開発 −${(ledger.developmentSpent || 0).toLocaleString()}G`,
     `国庫残高 ${(ledger.startBalance || 0).toLocaleString()}G → ${(ledger.endBalance || 0).toLocaleString()}G`
@@ -188,7 +191,8 @@ export function formatFiscalReportHtml(ledger) {
   const rows=[['交易税',ledger.tradeRevenue,0],['街道巡回の維持',0,ledger.securityUpkeep],['定期歳入・発展税収',ledger.income,0],['寄付',ledger.donations,0],['装備の外販',ledger.surplusSales,0],['兵士資金の還流',ledger.treasuryReturns,0],['施設納税',ledger.facilityRevenue,0],['防衛・地域任務の報奨',ledger.defenseRewards,0],['兵士給与・整備手当',0,(ledger.salariesPaid||0)-(ledger.rankerBonusesPaid||0)],['ランカー栄誉手当',0,ledger.rankerBonusesPaid],['隊長の指揮手当',0,ledger.commanderStipend],['寄付から兵士へ配分',0,ledger.distributed],['装備の買取',0,ledger.buyouts],['軍備の調達・換装',0,ledger.equipmentProcurement],['公費の装備強化',0,ledger.publicForging],['製造技術の開発',0,ledger.armamentResearch],['本陣・町の開発',0,ledger.developmentSpent]];
   const receipts=rows.reduce((n,r)=>n+(r[1]||0),0),expenses=rows.reduce((n,r)=>n+(r[2]||0),0),balance=(ledger.endBalance||0)-(ledger.startBalance||0),calc=receipts-expenses;
   const f=n=>Math.floor(n||0).toLocaleString()+'G';
-  return `<section class="fiscal-report-box"><h4>直近ウェーブの収支 · 第${ledger.phase}期</h4><div class="fiscal-net ${balance>=0?'positive':'negative'}">${balance>=0?'黒字 +':'赤字 '}${f(balance)}</div><div class="fiscal-table"><table><thead><tr><th>項目</th><th>収入</th><th>支出</th></tr></thead><tbody>${rows.map(r=>`<tr><th>${r[0]}</th><td>${r[1]?'+ '+f(r[1]):'—'}</td><td>${r[2]?'− '+f(r[2]):'—'}</td></tr>`).join('')}<tr class="fiscal-total"><th>合計</th><td>+ ${f(receipts)}</td><td>− ${f(expenses)}</td></tr></tbody></table></div><p>期首 ${f(ledger.startBalance)} → 期末 ${f(ledger.endBalance)}</p>${ledger.salaryShortfall?`<p class="negative">給与不足 ${f(ledger.salaryShortfall)}</p>`:''}${Math.abs(balance-calc)>1?'<p>旧版の記録は一部の取引内訳が不足しています。残高差を実際の収支として表示しています。</p>':''}</section>`;
+  const personal=ledger.personalEquipmentProcurement||ledger.personalForging?`<p>兵士の自費：装備調達 ${f(ledger.personalEquipmentProcurement)} / 強化 ${f(ledger.personalForging)}</p>`:'';
+  return `<section class="fiscal-report-box"><h4>直近ウェーブの収支 · 第${ledger.phase}期</h4><div class="fiscal-net ${balance>=0?'positive':'negative'}">${balance>=0?'黒字 +':'赤字 '}${f(balance)}</div><div class="fiscal-table"><table><thead><tr><th>項目</th><th>収入</th><th>支出</th></tr></thead><tbody>${rows.map(r=>`<tr><th>${r[0]}</th><td>${r[1]?'+ '+f(r[1]):'—'}</td><td>${r[2]?'− '+f(r[2]):'—'}</td></tr>`).join('')}<tr class="fiscal-total"><th>合計</th><td>+ ${f(receipts)}</td><td>− ${f(expenses)}</td></tr></tbody></table></div><p>期首 ${f(ledger.startBalance)} → 期末 ${f(ledger.endBalance)}</p>${personal}${ledger.salaryShortfall?`<p class="negative">給与不足 ${f(ledger.salaryShortfall)}</p>`:''}${Math.abs(balance-calc)>1?'<p>旧版の記録は一部の取引内訳が不足しています。残高差を実際の収支として表示しています。</p>':''}</section>`;
 }
 
 /**

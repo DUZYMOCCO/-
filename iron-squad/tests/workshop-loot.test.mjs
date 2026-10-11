@@ -60,9 +60,9 @@ assert.equal(new Set(owned.map(item=>item.id)).size,owned.length);assert.ok(game
 const craftedState=structuredClone(game.saveGame());game.resumeSavedGame(craftedState);assert.deepEqual(game.materials,craftedState.materials);assert.equal(game.inventory.filter(i=>i.craftOnly).length,15);
 const legacy={...initial};delete legacy.materials;game.resumeSavedGame(legacy);assert.deepEqual(game.materials,normalizeMaterials(),'old saves gain an empty material store');
 game.nation=normalizeNation({investment:18000});game.treasury=2000000;game.phase=2;game.phaseFiscal.startBalance=game.treasury;
-const soldiers=game.squad.slice(0,2);game.squad=soldiers;game.reserves=[];for(const s of soldiers){s.equipped={};s.weapon=null;game.recalcSoldierStats(s);}
+const soldiers=game.squad.slice(0,2);game.squad=soldiers;game.reserves=[];for(const s of soldiers){s.equipped={};s.weapon=null;s.gold=100000;game.recalcSoldierStats(s);}
 const treasury=game.treasury;game.supplyMissingEquipment();assert.ok(soldiers.every(s=>s.equipped.weapon?.tier===9),'automatic military supply uses the developed workshop tier');
-assert.ok(game.treasury>=nationalSalaryReserve(game));assert.equal(treasury-game.treasury,game.phaseFiscal.equipmentProcurement+game.phaseFiscal.publicForging);
+assert.ok(game.treasury>=nationalSalaryReserve(game));assert.equal(game.treasury,treasury);assert.equal(soldiers.reduce((n,s)=>n+100000-s.gold,0),game.phaseFiscal.personalEquipmentProcurement+game.phaseFiscal.personalForging);
 const after=game.treasury;game.supplyMissingEquipment();assert.equal(game.treasury,after,'same phase cannot supply twice');
 game.renderStrategyUI();assert.equal(document.getElementById('workshop-tier').options.length,9);assert.ok(document.querySelector('.material-stock'));assert.equal(document.getElementById('workshop-craft').options.length,15);
 console.log('PASS: reduced completed gear, guaranteed treasure materials, actual enemy/commander/soldier pickup, 6 development tiers, workshop purchases, 15 exclusive recipes, exact costs, guarded failures, unique ownership, nonstacking upgrades, save migration, automatic supply budget/phase/UI');

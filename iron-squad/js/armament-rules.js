@@ -13,6 +13,8 @@ export const RESERVE_ARMAMENT_COUNT=8;
 export const ARMAMENT_LIMITS={improvementsPerWave:8,replacementMinGain:.08,forgeMinGain:.002,studyCreditPerTier:150};
 export const researchCost=t=>Math.round(500+powerRank(t)*350+Math.pow(tierNumber(t)-1,1.5)*25);
 export const standardEquipmentCost=item=>Math.max(52,Math.ceil((14+Math.pow(powerRank(item.tier),1.8)*12)*2));
+/** Each soldier keeps the same six-gold buffer used by their own rest maintenance. */
+export const personalEquipmentBudget=soldier=>Number.isFinite(Number(soldier?.gold))?Math.max(0,Math.floor(Number(soldier.gold))-6):0;
 export function normalizeArmament(data={}) {
   return {techTier:tierNumber(data.techTier),research:Math.max(0,Math.floor(Number(data.research)||0)),
     observedTier:tierNumber(data.observedTier),policy:ARMAMENT_POLICIES[data.policy]?data.policy:'balanced',

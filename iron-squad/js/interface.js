@@ -1,5 +1,5 @@
 import {commanderFullName} from './commander-identity.js?v=188';
-import {configureAudioInterface} from './audio-interface.js?v=182';
+import {configureAudioInterface} from './audio-interface.js?v=191';
 import {renderBattleLog} from './battle-log.js?v=187';
 import {renderTroopRankings} from './troop-rankings.js?v=187';
 import {genderLabel} from './soldier-names.js?v=185';

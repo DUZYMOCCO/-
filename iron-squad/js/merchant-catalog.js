@@ -1,4 +1,4 @@
-import {observeEquipment} from './armament-rules.js?v=189';
+import {observeEquipment} from './armament-rules.js?v=191';
 import {MAX_EQUIPMENT_TIER,TRADE_MAX_TIER} from './equipment-tiers.js?v=187';
 import {EQUIPMENT_TYPES,saleValue} from './equipment-rules.js?v=189';
 export const MERCHANT_MAX_TIER=TRADE_MAX_TIER;

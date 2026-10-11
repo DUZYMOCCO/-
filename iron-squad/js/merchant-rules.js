@@ -1,4 +1,4 @@
-import {catalogTier,catalogPrice,ensureMerchantCatalog,MERCHANT_MAX_TIER,MERCHANT_CATALOG_VERSION} from './merchant-catalog.js?v=189';
+import {catalogTier,catalogPrice,ensureMerchantCatalog,MERCHANT_MAX_TIER,MERCHANT_CATALOG_VERSION} from './merchant-catalog.js?v=191';
 import {applyAttributeStats} from './unit-attributes.js?v=187';
 /**
  * IRON SQUAD: 宿場・本陣・各地のキャンプの行商人

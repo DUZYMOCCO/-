@@ -93,18 +93,18 @@ const spare=gear('shared-helmet','HELMET');game.dropsOnField=[{x:collector.x,y:c
 assert.ok(game.sharedEquipBox.some(i=>i.id===spare.id));game.processSharedEquipmentBox();assert.equal(mate.equipped.helmet.id,spare.id);
 
 // Live thirty-wave supply fills all deployed slots without replacing upgrades or using payroll reserves.
-fresh();const downForSupply=game.squad[1];Object.assign(downForSupply,{hp:0,isDown:true});game.treasury=10000;game.supplyMissingEquipment();
+fresh();const downForSupply=game.squad[1];Object.assign(downForSupply,{hp:0,isDown:true,gold:1000});game.treasury=10000;game.supplyMissingEquipment();
 assert.ok(downForSupply.equipped.shield);assert.equal(downForSupply.hp,0);assert.equal(downForSupply.isDown,true,'actual procurement and stat recalculation do not revive casualties');
 fresh();const originalIds=game.squad.map(s=>s.id),upgraded=gear('retain-upgraded','ARMOR',3,25);game.squad[0].equipped.armor=upgraded;game.recalcSoldierStats(game.squad[0]);
 let totalProcurement=0;
 for(let i=0;i<30;i++){
-  game.completePhase();const l=game.lastFiscalReport,t=fiscalTotals(l);totalProcurement+=l.equipmentProcurement||0;
+  game.completePhase();const l=game.lastFiscalReport,t=fiscalTotals(l);totalProcurement+=l.personalEquipmentProcurement||0;
   assert.equal(l.salaryShortfall,0);assert.equal(l.endBalance-l.startBalance,t.net);assert.ok(game.treasury>=Math.max(6000,(game.squad.length+game.reserves.length)*40));game.finishRest();
 }
-assert.ok(game.squad.filter(s=>originalIds.includes(s.id)).every(s=>Object.values(SLOT_INFO).every(({key})=>s.equipped[key])),'all seven slots are filled after thirty waves without loot');
+assert.ok(game.squad.filter(s=>originalIds.includes(s.id)).some(s=>Object.values(s.equipped).filter(Boolean).length>1),'funded soldiers gradually acquire equipment over thirty waves');
 assert.equal(game.squad[0].equipped.armor.id,upgraded.id);assert.equal(upgraded.upgrade,25);assert.ok(totalProcurement>0);
 game.saveGame();game.resumeSavedGame(saveSlots.get(game.activeSlotId).data);assert.equal(game.squad[0].equipped.armor.id,upgraded.id);
-game.phase++;game.treasury=0;game.squad[0].equipped.shield=null;assert.deepEqual(game.supplyMissingEquipment(),{phase:game.phase-1,issued:0,spent:0,updated:0,forged:0,budget:0});assert.equal(game.treasury,0);assert.equal(game.squad[0].equipped.shield,null);
+game.phase++;game.treasury=0;for(const s of [...game.squad,...game.reserves])s.gold=0;game.squad[0].equipped.shield=null;assert.deepEqual(game.supplyMissingEquipment(),{phase:game.phase-1,issued:0,spent:0,updated:0,forged:0,budget:0,funding:'personal'});assert.equal(game.treasury,0);assert.equal(game.squad[0].equipped.shield,null);
 
 // Sorted shop cards keep original stock indices; purchase replaces the correct slot and retains old gear.
 fresh();const merchant=game.merchants[0],old=gear('old-equipped','WEAPON',1,3);game.equipped.weapon=old;game.inventory=[old];game.gold=10000;
