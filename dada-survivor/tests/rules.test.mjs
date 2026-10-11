@@ -135,3 +135,10 @@ test('stages and characters unlock by clearing, and old saves migrate', () => {
   assert.equal(fresh.gear.equip.weapon, -1);
   assert.equal(fresh.pendingChests, 2);
 });
+
+test('soldier (dog) starts with gun: skips the gun 3-choice and can still evolve', () => {
+  const ch = CHARACTERS.find(c => c.id === 'dog');
+  const start = { [ch.weapon]: 1 };
+  assert.notDeepEqual(upgradeChoices(start, {}, () => 0).map(p => p.id), ['gun', 'shotgun', 'bazooka']);
+  assert.equal(upgradeChoices({ [ch.weapon]: MAX_LEVEL }, { ammo: 1 }, () => 0)[0].id, 'dual');
+});

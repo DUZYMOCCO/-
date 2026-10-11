@@ -29,7 +29,7 @@ const animeEye = (x, y, iris = '#d6d3d1') => `
   <ellipse cx="${x}" cy="${y}" rx="1.35" ry="2.05" fill="${iris}"/>
   <circle cx="${x + 0.45}" cy="${y - 0.55}" r=".65" fill="#fff"/>`;
 
-/* ---------- プレイヤー（ちびアニマル。にんげんの ゆうしゃ は下の human） ---------- */
+/* ---------- プレイヤー（ちびアニマル。にんげんの ソルジャー は下の soldier） ---------- */
 function hero({ fur, shade, inner, ear, muzzle, patches, belly, face = '', mouth, behind = '', extra = '' }) {
   let back = behind, front = '';
   if (ear === 'cat') back += `<path d="M15 20 L17 4 L29 13Z" fill="${fur}" ${S}/><path d="M18.5 16 L19.5 8.5 L25 13Z" fill="${inner}"/>
@@ -57,25 +57,32 @@ function hero({ fur, shade, inner, ear, muzzle, patches, belly, face = '', mouth
     ${face}${front}${patch}${eyes}${muz}${extra}`;
 }
 
-/* ---------- ゆうしゃ（にんげんの こども。いぬの わくを ひきつぐ） ---------- */
-const human = `
-  <path d="M40 18 L52 4" ${SW(5)}/><path d="M40 18 L52 4" stroke="#a16207" stroke-width="2.2" stroke-linecap="round"/>
-  <path d="M40 10 L48 17" ${SW(5)}/><path d="M40 10 L48 17" stroke="#d6a548" stroke-width="2.2" stroke-linecap="round"/>
-  <circle cx="53" cy="3.5" r="2.6" fill="#d6a548" ${S2}/>
-  <path d="M19 44 Q12 54 15 61 L49 61 Q52 54 45 44Z" fill="#7f1d1d" ${S}/>
-  <ellipse cx="22" cy="60" rx="5" ry="3.2" fill="#3b2414" ${S}/><ellipse cx="42" cy="60" rx="5" ry="3.2" fill="#3b2414" ${S}/>
-  <ellipse cx="32" cy="52" rx="12.5" ry="10" fill="#2f4f73" ${S}/>
-  <path d="M25 44 L32 52 L39 44" fill="none" stroke="#1e3450" stroke-width="2"/>
-  <path d="M20.5 54 Q32 58 43.5 54 L43 57.5 Q32 61.5 21 57.5Z" fill="#5c3310" ${S2}/>
-  <rect x="29.5" y="55" width="5" height="4.4" rx="1" fill="#d6a548" ${S2}/>
-  <path d="M14 22 Q11 36 17 42 L47 42 Q53 36 50 22Z" fill="#2a1a10" ${S}/>
-  ${shadedCircle('hu', 32, 28, 17, '#f0c7a0', '#c48a5e')}
-  <path d="M14.5 31 Q12 10 30 8 Q30 4 35 6 Q52 8 49.5 31 Q47 24 45 21 L42 25 L39 18 L34 23 L30 17 L26 23 L22 19 L19 26 Q17 27 14.5 31Z" fill="#3b2414" ${S}/>
-  <path d="M22 13 Q28 10 34 11" fill="none" stroke="#5c3a22" stroke-width="1.8" stroke-linecap="round"/>
-  <path d="M20.5 25.5 L28 27 M43.5 25.5 L36 27" fill="none" ${SW(2)}/>
-  ${animeEye(24.5, 30.6, '#7dd3fc')}${animeEye(39.5, 30.6, '#7dd3fc')}
-  <path d="M31.2 35 L32.6 35.6" fill="none" stroke="#a8673f" stroke-width="1.4" stroke-linecap="round"/>
-  <path d="M28.5 39 H35.5" fill="none" ${S2}/>`;
+/* ---------- ソルジャー（にんげんの へいたい。いぬの わくを ひきつぐ） ---------- */
+const soldier = `
+  <ellipse cx="22" cy="60" rx="5" ry="3.2" fill="#1c1917" ${S}/><ellipse cx="42" cy="60" rx="5" ry="3.2" fill="#1c1917" ${S}/>
+  <clipPath id="sb"><ellipse cx="32" cy="52" rx="13" ry="10"/></clipPath>
+  <ellipse cx="32" cy="52" rx="13" ry="10" fill="#4d5a35"/>
+  <g clip-path="url(#sb)" fill="#2f3a22"><ellipse cx="22" cy="48" rx="4" ry="2.4" transform="rotate(25 22 48)"/><ellipse cx="41" cy="57" rx="4.5" ry="2.2" transform="rotate(-20 41 57)"/><ellipse cx="24" cy="58" rx="3" ry="1.8"/></g>
+  <g clip-path="url(#sb)" fill="#6b5a3a"><ellipse cx="42" cy="47" rx="3" ry="1.6" transform="rotate(-30 42 47)"/><ellipse cx="30" cy="61" rx="3" ry="1.5"/></g>
+  <ellipse cx="32" cy="52" rx="13" ry="10" fill="none" ${S}/>
+  <path d="M23 45 Q32 49 41 45 L41.5 57 Q32 60 22.5 57Z" fill="#2c3320" ${S2}/>
+  <rect x="24.5" y="50" width="6" height="5" rx="1" fill="#3a4429" ${S2}/><rect x="33.5" y="50" width="6" height="5" rx="1" fill="#3a4429" ${S2}/>
+  <path d="M6 57 L56 41" ${SW(6.5)}/><path d="M6 57 L56 41" stroke="#3f3f46" stroke-width="3.6" stroke-linecap="round"/>
+  <path d="M4 58 L14 54.5 L16 60 L6 62Z" fill="#3f2a1d" ${S2}/>
+  <path d="M26 50 L33 47.8 L35 53 L28 55Z" fill="#27272a" ${S2}/>
+  <path d="M40 46 L42 52" ${SW(4)}/><path d="M40 46 L42 52" stroke="#27272a" stroke-width="1.8" stroke-linecap="round"/>
+  <path d="M55 40 L61 38.2" ${SW(3.4)}/><path d="M55 40 L61 38.2" stroke="#52525b" stroke-width="1.4" stroke-linecap="round"/>
+  <circle cx="21" cy="53" r="3.2" fill="#e6b88f" ${S2}/><circle cx="45" cy="45.5" r="3.2" fill="#e6b88f" ${S2}/>
+  ${shadedCircle('hu', 32, 29, 16, '#f0c7a0', '#c48a5e')}
+  <path d="M20 27 L19 37 M44 27 L45 37" fill="none" stroke="#3a3f2a" stroke-width="1.6" stroke-linecap="round"/>
+  <path d="M11 26 Q11 6 32 6 Q53 6 53 26 Q32 21 11 26Z" fill="#4d5a35" ${S}/>
+  <path d="M17 13 Q20 10 25 9" fill="none" stroke="#6b7a4a" stroke-width="2" stroke-linecap="round"/>
+  <ellipse cx="38" cy="13" rx="4" ry="2" fill="#2f3a22"/><ellipse cx="24" cy="18" rx="3.4" ry="1.6" fill="#2f3a22" transform="rotate(-12 24 18)"/><ellipse cx="45" cy="20" rx="2.6" ry="1.4" fill="#6b5a3a"/>
+  <path d="M8.5 26.5 Q32 20 55.5 26.5 L54.5 29.5 Q32 24 9.5 29.5Z" fill="#3a4429" ${S2}/>
+  <path d="M21 30 L28.5 31 M43 30 L35.5 31" fill="none" ${SW(2)}/>
+  ${animeEye(24.5, 34, '#a3b18a')}${animeEye(39.5, 34, '#a3b18a')}
+  <path d="M31.4 37.6 L32.6 38.1" fill="none" stroke="#a8673f" stroke-width="1.3" stroke-linecap="round"/>
+  <path d="M29 41 H35" fill="none" ${S2}/>`;
 
 const whiskers = `<path d="M10 33 L18 34 M10 38 L18 37 M54 33 L46 34 M54 38 L46 37" ${S2} fill="none"/>`;
 
@@ -501,7 +508,7 @@ const hero2 = {
 
 const SOURCES = {
   cat:   wrap(hero({ fur: '#c4844a', shade: '#7c3f12', inner: '#a16207', ear: 'cat', extra: whiskers })),
-  dog:   wrap(human), // id は セーブ互換のため dog のまま（絵と名前は にんげんの ゆうしゃ）
+  dog:   wrap(soldier), // id は セーブ互換のため dog のまま（絵と名前は にんげんの ソルジャー）
   fox:   wrap(hero({ fur: '#c2410c', shade: '#7c2d12', inner: '#e7e5e4', ear: 'fox', muzzle: '#e7e5e4', extra: whiskers })),
   panda: wrap(hero({ fur: '#e7e5e4', shade: '#57534e', inner: '#a8a29e', ear: 'panda', muzzle: '#d6d3d1', patches: true })),
   ...Object.fromEntries(Object.entries(hero2).map(([k, v]) => [k, wrap(v)])),

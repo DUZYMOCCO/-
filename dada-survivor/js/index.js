@@ -9,10 +9,10 @@ import {
   STAGE_SECONDS, MINI_BOSS_SECONDS, MAX_ENEMIES, MAX_GEMS, MAX_LEVEL, DIFFICULTIES, CHARACTERS, ENEMY_TYPES,
   WEAPONS, PASSIVES, STAGES, GUNS, weaponStat, xpToNext, playerStats, spawnPlan, pickWeighted, upgradeChoices,
   normalizeSave, stageById, bossType, bonusFor, clearRewards,
-} from './rules.js?v=180';
-import { preloadArt } from './art.js?v=180';
-import { Stage } from './stage.js?v=180';
-import { menuMethods, iconHtml } from './menus.js?v=180';
+} from './rules.js?v=181';
+import { preloadArt } from './art.js?v=181';
+import { Stage } from './stage.js?v=181';
+import { menuMethods, iconHtml } from './menus.js?v=181';
 
 const SAVE_KEY = 'dada_survivor_save';
 const TAU = Math.PI * 2;
@@ -31,7 +31,7 @@ export const DadaSurvivorGame = {
 
   // 起動時にこのゲームのCSSを自分で読み込む（?v= はこのフォルダ内で管理）。ハブが init 前に await する
   prepare() {
-    return loadCss(new URL('../css/dada-survivor.css?v=180', import.meta.url).href);
+    return loadCss(new URL('../css/dada-survivor.css?v=181', import.meta.url).href);
   },
 
   init(container, onBackToHub) {

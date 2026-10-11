@@ -18,7 +18,7 @@ export const DIFFICULTIES = {
 // unlock: そのステージを クリアすると なかまになる
 export const CHARACTERS = [
   { id: 'cat',     name: 'ねこ',       weapon: 'kunai',   perk: { spd: 0.08 },             trait: 'すばやい' },
-  { id: 'dog',     name: 'ゆうしゃ',   weapon: 'orbit',   perk: { hp: 30 },                trait: 'タフ' },
+  { id: 'dog',     name: 'ソルジャー', weapon: 'gun',     perk: { hp: 30 },                trait: 'タフ' },
   { id: 'fox',     name: 'きつね',     weapon: 'thunder', perk: { dmg: 0.1 },              trait: 'つよい' },
   { id: 'panda',   name: 'パンダ',     weapon: 'bomb',    perk: { hp: 20, regen: 0.5 },    trait: 'かいふく' },
   { id: 'rabbit',  name: 'うさぎ',     weapon: 'aura',    perk: { spd: 0.2 },              trait: 'とっても はやい', unlock: 1 },

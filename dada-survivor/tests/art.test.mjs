@@ -29,10 +29,11 @@ test('no SVG tag repeats an attribute', () => {
   }
 });
 
-// こどもの リクエスト：いぬ → にんげんの ゆうしゃ（id は セーブ互換で dog のまま）
-test('dog slot is the human hero ゆうしゃ', () => {
+// こどもの リクエスト：いぬ → ゆうしゃ → じゅうを もった ソルジャー（id は セーブ互換で dog のまま）
+test('dog slot is the soldier ソルジャー with a gun', () => {
   const c = CHARACTERS.find(c => c.id === 'dog');
-  assert.equal(c.name, 'ゆうしゃ');
-  assert.equal(c.weapon, 'orbit');
+  assert.equal(c.name, 'ソルジャー');
+  assert.equal(c.weapon, 'gun');
+  assert.deepEqual(c.perk, { hp: 30 });
   for (const ch of CHARACTERS) assert.match(ch.name, /^[\u3041-\u309f\u30a0-\u30ff]+$/, ch.name);
 });
