@@ -8,7 +8,8 @@
  * - おもい ときは「かるい モード」（ds-lite）：ぴょこぴょこ／ほうせきの ゆれを とめ、エフェクトと すうじを へらす
  * - ここでは Math.random を つかわない（みための ばらつきは カウンタで。ゲームの らんすうと まざらない）
  */
-import { art, groundTile } from './art.js?v=188';
+import { art, groundTile } from './art.js?v=189';
+import { DecorField } from './decor.js?v=189';
 
 class Pool {
   constructor(layer, make) { this.layer = layer; this.make = make; this.free = []; this.active = new Set(); }
@@ -65,11 +66,23 @@ export class Stage {
     // カメラ（ズームは ここに scale を 1かい かけるだけ。じめんと せかいは なかで「ズームご の はば」で うごく）
     this.cam = el('ds-cam', this.view);
     this.ground = el('ds-ground', this.cam);
-    this.setGround('grass');
+    this.setGround('lab');
     this.world = el('ds-world', this.cam);
+    const deco = el('ds-layer', this.world);
     const floor = el('ds-layer', this.world), units = el('ds-layer', this.world);
     const top = el('ds-layer', this.world), fx = el('ds-layer', this.world);
 
+    // ゆかの かざり（けんきゅうじょの ボトル）。いちばん したに かく
+    this.decor = new Pool(deco, () => {
+      const n = el('ds-ent');
+      n._img = el('ds-img ds-decor', n);
+      n._alien = el('ds-img ds-alien', n._img);
+      n._alien.style.backgroundImage = art('alien');
+      n._alien.style.animationDelay = `${-((spriteSeq++ * 0.618) % 1 * 2.4).toFixed(2)}s`;
+      return n;
+    });
+    this.decorField = new DecorField();
+    this.decorKind = null;
     this.aura = el('ds-aura', floor);
     this.aura.style.display = 'none';
     this.gems = new Pool(floor, () => makeSprite('ds-gem'));
@@ -133,6 +146,13 @@ export class Stage {
     this.ground.style.height = `${h + T * 2}px`;
   }
 
+  // ゆかの かざり（kind = 'lab' で ボトル。null で なし）。seed は ランごとに かえる
+  setDecor(kind, seed = 1) {
+    this.decorKind = kind || null;
+    this.decorField.setSeed(seed);
+    if (!kind) this.decor.clear();
+  }
+
   setLite(on) {
     if (this.lite === on) return;
     this.lite = on;
@@ -141,7 +161,7 @@ export class Stage {
 
   reset() {
     this.gen = (this.gen || 0) + 1;
-    for (const p of [this.gems, this.items, this.enemies, this.kunai, this.bullets, this.rockets, this.bombs, this.stars, this.fxPool, this.textPool]) {
+    for (const p of [this.decor, this.gems, this.items, this.enemies, this.kunai, this.bullets, this.rockets, this.bombs, this.stars, this.fxPool, this.textPool]) {
       for (const n of p.active) n._img.getAnimations?.().forEach(a => a.cancel());
       p.clear();
     }
@@ -231,6 +251,17 @@ export class Stage {
       Stage.place(this.aura, p.x, p.y);
     }
 
+    if (this.decorKind) {
+      const list = this.decorField.visible(c.x0, c.y0, c.x1, c.y1);
+      this.sync(this.decor, list, (d, n) => {
+        if (n._a !== d.kind) {
+          n._a = d.kind;
+          n._img.style.backgroundImage = art(d.kind === 'broken' ? 'capsuleBroken' : 'capsule');
+          n._alien.style.display = d.kind === 'alien' ? '' : 'none';
+        }
+        Stage.place(n, d.x, d.y);
+      });
+    }
     this.sync(this.gems, r.gems, (g, n) => { Stage.look(n, g.v >= 4 ? 'gem3' : g.v >= 2 ? 'gem2' : 'gem1', g.v >= 4 ? 22 : 16); Stage.place(n, g.x, g.y); });
     this.sync(this.items, r.items, (it, n) => { Stage.look(n, it.kind, 30); Stage.place(n, it.x, it.y); });
     this.sync(this.enemies, r.enemies, (e, n) => {

@@ -3,8 +3,8 @@
 // パスは「ゲームフォルダからの相対パス」。ルートの sw.js は触らない。
 self.GAME_ASSETS = self.GAME_ASSETS || {};
 self.GAME_ASSETS['dada-survivor'] = {
-  version: 'v188',
-  gameVersion: '1.5.1', // ハブのカードに表示する版（キャッシュ用 version とは別。リリース時に上げる）
+  version: 'v189',
+  gameVersion: '1.6.0', // ハブのカードに表示する版（キャッシュ用 version とは別。リリース時に上げる）
   files: [
     'css/dada-survivor.css',
     'js/index.js',
@@ -13,6 +13,7 @@ self.GAME_ASSETS['dada-survivor'] = {
     'js/stage.js',
     'js/menus.js',
     'js/bgm.js',
-    'js/grid.js'
+    'js/grid.js',
+    'js/decor.js'
   ]
 };

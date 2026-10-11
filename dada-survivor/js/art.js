@@ -621,8 +621,86 @@ const ruinedGrass = wrap(`<rect width="320" height="320" fill="#36472f"/>
   ${pebble(170, 160, '#6b6458', '#3f3a34')}${pebble(40, 240, '#6b6458', '#3f3a34')}
   ${smoke(176, 196, 1.2)}${smoke(118, 108, 0.8)}${smoke(232, 112, 0.9)}`, '0 0 320 320');
 
+// けんきゅうじょ：わるものぐんだんに あらされた じっけんしつ（ゆかの パネル・ケーブル・こわれた つくえ／きかい・ちらばった かみ・きけんの しましま・こげあと）。
+// 320px タイル。てきや ほうせきが めだつよう、くらい あおねずみいろで コントラストは ひくめ。
+const labPanels = () => {
+  let s = '';
+  for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) {
+    const x = i * 80, y = j * 80, alt = (i + j) % 2;
+    s += `<rect x="${x + 1.5}" y="${y + 1.5}" width="77" height="77" rx="3" fill="${alt ? '#2c343d' : '#303943'}"/>`;
+    s += `<circle cx="${x + 7}" cy="${y + 7}" r="1.5" fill="#46515d"/><circle cx="${x + 73}" cy="${y + 7}" r="1.5" fill="#46515d"/><circle cx="${x + 7}" cy="${y + 73}" r="1.5" fill="#46515d"/><circle cx="${x + 73}" cy="${y + 73}" r="1.5" fill="#46515d"/>`;
+  }
+  return s;
+};
+const hazard = (x, y, w, h, r = 0) => `<g transform="translate(${x} ${y}) rotate(${r})"><clipPath id="hz${x}${y}"><rect width="${w}" height="${h}"/></clipPath>
+  <rect width="${w}" height="${h}" fill="#6b5a1e"/><g clip-path="url(#hz${x}${y})" stroke="#1f2328" stroke-width="5">
+  ${Array.from({ length: Math.ceil((w + h) / 12) }, (_, k) => `<path d="M${k * 12 - h} ${h + 2} L${k * 12 + 2} -2"/>`).join('')}</g></g>`;
+const grate = (x, y) => `<g transform="translate(${x} ${y})"><rect width="44" height="30" rx="2" fill="#20262d" stroke="#151a1f" stroke-width="2"/>
+  <path d="M6 5 V25 M13 5 V25 M20 5 V25 M27 5 V25 M34 5 V25" stroke="#3a4450" stroke-width="2.6"/></g>`;
+const cable = (d, c = '#1b2027', hi = '#3b4552') => `<path d="${d}" fill="none" stroke="${c}" stroke-width="6" stroke-linecap="round"/><path d="${d}" fill="none" stroke="${hi}" stroke-width="2" stroke-linecap="round"/>`;
+const paper = (x, y, r) => `<g transform="translate(${x} ${y}) rotate(${r})"><rect x="-6" y="-8" width="12" height="16" fill="#8b949e" opacity=".55"/><path d="M-3.5 -4 H3.5 M-3.5 -1 H3.5 M-3.5 2 H1.5" stroke="#4b5563" stroke-width="1" opacity=".7"/></g>`;
+const desk = (x, y, r = 0) => `<g transform="translate(${x} ${y}) rotate(${r})" stroke="#14181d" stroke-width="1.8" stroke-linejoin="round">
+  <path d="M0 0 H52 L56 22 H-4Z" fill="#4b5560"/><path d="M-4 22 H56 V27 H-4Z" fill="#3a434d"/>
+  <path d="M30 0 L40 22" stroke="#20262d" stroke-width="1.4" fill="none"/>
+  <rect x="6" y="5" width="16" height="11" rx="1.5" fill="#1f2a2f"/><path d="M9 13 L13 9 L16 12 L19 7" stroke="#4d7c6f" stroke-width="1.3" fill="none"/>
+  <path d="M42 6 L50 4 L52 10 L44 12Z" fill="#8b949e" opacity=".6" stroke="none"/></g>`;
+const consoleBroken = (x, y) => `<g transform="translate(${x} ${y})" stroke="#14181d" stroke-width="1.8" stroke-linejoin="round">
+  <path d="M0 0 H40 V26 H0Z" fill="#3d4651"/><rect x="5" y="4" width="30" height="13" rx="1.5" fill="#151b1f"/>
+  <path d="M10 6 L17 12 L14 15 M22 5 L19 11 L26 15" stroke="#5b6672" stroke-width="1.1" fill="none"/>
+  <circle cx="9" cy="21.5" r="2" fill="#7f1d1d"/><circle cx="16" cy="21.5" r="2" fill="#4d5a3a"/><rect x="22" y="20" width="12" height="3" rx="1" fill="#2a3139"/>
+  <path d="M40 8 L52 4 L54 12 L44 14Z" fill="#323a44"/></g>`;
+const crack = (x, y, r = 0) => `<path transform="translate(${x} ${y}) rotate(${r})" d="M0 0 L10 4 L16 -2 L26 3 L32 0 M16 -2 L20 -10" fill="none" stroke="#161b20" stroke-width="2" stroke-linecap="round"/>`;
+const labFloor = wrap(`<rect width="320" height="320" fill="#1d2329"/>${labPanels()}
+  ${hazard(0, 152, 70, 14)}${hazard(250, 152, 70, 14)}
+  ${grate(206, 20)}${grate(28, 230)}
+  ${cable('M-4 104 Q40 96 70 116 T150 112 Q190 96 230 116 T324 104')}
+  ${cable('M120 -4 Q112 30 132 54 T126 110', '#1b2027', '#4a3c2a')}
+  ${scorch(240, 86, 1.1, 10)}${scorch(88, 288, 0.9, -30)}
+  ${desk(150, 190, 6)}${consoleBroken(250, 250)}
+  ${paper(130, 236, 20)}${paper(210, 232, -35)}${paper(110, 170, 60)}${paper(290, 212, -10)}${paper(36, 58, 15)}
+  ${crack(30, 40, 20)}${crack(260, 300, -15)}${crack(180, 70, 40)}
+  ${debris(60, 140)}${debris(280, 60)}${debris(170, 290)}
+  ${fallenFlag(14, 196)}
+  ${smoke(244, 80, 0.9)}${smoke(260, 246, 0.8)}`, '0 0 320 320');
+
+// とうめいな ボトル（ゆかの かざり）。みどりの えきたいと あわ。broken は わられて からっぽ
+const capsule = (broken = false) => wrap(`
+  <ellipse cx="28" cy="94" rx="22" ry="5" fill="#000" opacity=".3"/>
+  <path d="M6 84 H50 L47 94 H9Z" fill="#3a434d" ${SW(2)}/><rect x="8" y="78" width="40" height="8" rx="2" fill="#56616d" ${SW(2)}/>
+  <circle cx="16" cy="88.5" r="1.6" fill="${broken ? '#7f1d1d' : '#4ade80'}"/><circle cx="22" cy="88.5" r="1.6" fill="#64748b"/>
+  ${broken ? `
+  <path d="M11 78 V44 L15 36 L19 46 L24 30 L29 42 L35 28 L39 40 L45 34 V78Z" fill="#9fb3c2" opacity=".18"/>
+  <path d="M11 78 V44 L15 36 L19 46 L24 30 L29 42 L35 28 L39 40 L45 34 V78" fill="none" stroke="#b9c8d3" stroke-width="2" stroke-linejoin="round" opacity=".8"/>
+  <path d="M11 78 V44 L15 36 L19 46 L24 30 L29 42 L35 28 L39 40 L45 34 V78" fill="none" ${SW(1.2)} opacity=".6"/>
+  <ellipse cx="28" cy="77" rx="16" ry="2.5" fill="#22c55e" opacity=".5"/>
+  <path d="M50 92 L56 88 L58 93 Z M2 90 L7 86 L6 92Z" fill="#b9c8d3" opacity=".7"/>
+  <ellipse cx="60" cy="95" rx="9" ry="2.6" fill="#22c55e" opacity=".35"/>` : `
+  <rect x="11" y="14" width="34" height="64" rx="5" fill="#14532d" opacity=".55"/>
+  <rect x="11" y="24" width="34" height="54" rx="4" fill="#22c55e" opacity=".42"/>
+  <path d="M11 26 Q28 22 45 26" fill="none" stroke="#86efac" stroke-width="1.6" opacity=".7"/>
+  <circle cx="18" cy="66" r="2" fill="#bbf7d0" opacity=".7"/><circle cx="21" cy="52" r="1.4" fill="#bbf7d0" opacity=".7"/><circle cx="37" cy="60" r="2.4" fill="#bbf7d0" opacity=".6"/>
+  <circle cx="34" cy="40" r="1.6" fill="#bbf7d0" opacity=".7"/><circle cx="19" cy="34" r="1.2" fill="#bbf7d0" opacity=".7"/>
+  <rect x="11" y="14" width="34" height="64" rx="5" fill="none" stroke="#c7d6e0" stroke-width="2.4" opacity=".85"/>
+  <rect x="11" y="14" width="34" height="64" rx="5" fill="none" ${SW(1.2)} opacity=".55"/>
+  <path d="M15 20 V70" stroke="#fff" stroke-width="2.6" stroke-linecap="round" opacity=".35"/>`}
+  <rect x="8" y="${broken ? 16 : 6}" width="40" height="9" rx="2" fill="#56616d" ${SW(2)} ${broken ? 'transform="rotate(28 28 20) translate(18 52)" opacity=".9"' : ''}/>
+  <path d="M28 ${broken ? 16 : 6} V0" stroke="#1b2027" stroke-width="4" stroke-linecap="round" ${broken ? 'opacity="0"' : ''}/>`, '0 0 64 100');
+
+// ボトルの なかの うちゅうじん（かわいいけど ちょっと ぶきみ。みどりの えきの なかで ゆらゆら）
+const alien = wrap(`
+  <path d="M20 40 Q16 50 12 54 M28 40 Q32 50 36 54" fill="none" stroke="#5b8a73" stroke-width="3" stroke-linecap="round"/>
+  <path d="M17 38 Q24 50 31 38 Q30 32 24 32 Q18 32 17 38Z" fill="#a7c4b5" ${SW(1.6)}/>
+  <path d="M14 36 Q8 38 6 44 M34 36 Q40 38 42 44" fill="none" stroke="#5b8a73" stroke-width="2.6" stroke-linecap="round"/>
+  <path d="M24 4 Q40 4 41 18 Q41 30 24 34 Q7 30 7 18 Q8 4 24 4Z" fill="#b8d6c6" ${SW(1.8)}/>
+  <path d="M12 16 Q16 9 24 8" fill="none" stroke="#e7f5ee" stroke-width="1.8" stroke-linecap="round" opacity=".7"/>
+  <path d="M10 19 Q17 15 21 21 Q19 27 13 25 Q9 23 10 19Z" fill="#0b1210"/>
+  <path d="M38 19 Q31 15 27 21 Q29 27 35 25 Q39 23 38 19Z" fill="#0b1210"/>
+  <circle cx="14" cy="20" r="1.3" fill="#e7f5ee"/><circle cx="34" cy="20" r="1.3" fill="#e7f5ee"/>
+  <path d="M21 29 Q24 30.5 27 29" fill="none" stroke="#3d5a4b" stroke-width="1.2" stroke-linecap="round"/>`, '0 0 48 58');
+
 const GROUNDS = {
-  grass: ruinedGrass,
+  lab: labFloor,
+  grass: ruinedGrass, // むかしの くさはら（いまは つかって いない。もどしたい とき用）
   desert: tile(`<rect width="160" height="160" fill="#b08958"/>${blobs('#c4a06a', '#8d6a3e')}
     <path d="M0 96 Q40 86 80 96 T160 96" fill="none" stroke="#7a5a32" stroke-width="2.5"/>
     ${cactus(30, 70)}${cactus(130, 150)}${pebble(100, 40, '#a48458', '#5c4128')}${pebble(60, 132, '#a48458', '#5c4128')}
@@ -671,6 +749,7 @@ const SOURCES = {
   gem1: wrap(gem('#60a5fa', '#2563eb')), gem2: wrap(gem('#4ade80', '#16a34a')), gem3: wrap(gem('#f472b6', '#db2777')),
   coin: wrap(coin), meat: wrap(meat), magnet: wrap(magnet), nuke: wrap(bomb), bomb: wrap(bomb),
   kunai, star: wrap(star), bolt, smissile, researcher: wrap(researcher),
+  capsule: capsule(false), capsuleBroken: capsule(true), alien,
   gun, shotgun, bazooka, dual, gatling, rocket, mega, bullet, pellet, blast,
   sword: wrap(sword), armor: wrap(armor), shoes: wrap(shoes), charm: wrap(charm), chest: wrap(chest), chestOpen: wrap(chestOpen, '0 -4 64 68'),
   ...Object.fromEntries(Object.entries(GROUNDS).map(([k, v]) => [`ground-${k}`, v])),
@@ -705,5 +784,5 @@ export function preloadArt() {
 
 export const ART_NAMES = Object.keys(SOURCES);
 
-/** じめんの タイルの おおきさ（px）。くさはらだけ 320（あらされた いえや さくが くりかえし めだたないように） */
-export const groundTile = kind => (kind === 'grass' ? 320 : 160);
+/** じめんの タイルの おおきさ（px）。けんきゅうじょ（と むかしの くさはら）だけ 320（くりかえしが めだたないように） */
+export const groundTile = kind => (kind === 'lab' || kind === 'grass' ? 320 : 160);

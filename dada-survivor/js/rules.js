@@ -50,7 +50,7 @@ export const ENEMY_TYPES = {
 
 // enemies: [しゅるい, でてくる びょう, でやすさ]
 export const STAGES = [
-  { id: 1, name: 'くさはら', ground: 'grass', hpMul: 1.0, spawnMul: 1.0, dmgMul: 1.0,
+  { id: 1, name: 'けんきゅうじょ', ground: 'lab', decor: 'lab', hpMul: 1.0, spawnMul: 1.0, dmgMul: 1.0,
     enemies: [['zombie', 0, 10], ['bat', 30, 6], ['ghost', 90, 5], ['skull', 180, 4]],
     mini: { type: 'ogre', hp: 900 }, boss: { type: 'dragon', hp: 3000 },
     // けんきゅうしゃ：at びょうで あらわれ、さわると gift の ぶきを くれる（いまは ステージ1だけ）

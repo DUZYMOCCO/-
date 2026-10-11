@@ -1,0 +1,52 @@
+/**
+ * ゆかの かざり（ぶつからない・ゲームの うごきに かんけい なし。DOM なし・テストできる）
+ * けんきゅうじょ：360px の マスごとに、たね（seed）から きまる ばしょに ガラスの ボトルを おく。
+ * - だいたい 4マスに 1つ ボトルの れつ（1〜3ぼん）。6ぽんに 1ぽん くらい うちゅうじんが はいって いる。わられた ボトルも ある
+ * - おなじ たね・おなじ マスなら いつも おなじ（もどって きても かわらない）。タイルと ちがって くりかえし に みえない
+ */
+export const DECOR_CELL = 360;
+export const DECOR = { rowChance: 0.26, alienChance: 1 / 6, brokenChance: 0.2, gap: 62 };
+
+// マス (cx, cy) と たね から 0..1 の らんすうを つくる（ゲームの Math.random は つかわない）
+export function cellRand(cx, cy, seed, salt = 0) {
+  let h = Math.imul(cx | 0, 0x27d4eb2d) ^ Math.imul(cy | 0, 0x165667b1) ^ Math.imul((seed | 0) + salt, 0x9e3779b1);
+  h = Math.imul(h ^ (h >>> 15), 0x85ebca6b);
+  h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
+
+// 1マスぶんの かざり（[{ x, y, kind: 'capsule' | 'alien' | 'broken' }]）
+export function decorCell(cx, cy, seed) {
+  const out = [];
+  // スタート ちてん（0,0 の マス）は あける
+  if (cx === 0 && cy === 0) return out;
+  if (cellRand(cx, cy, seed, 1) >= DECOR.rowChance) return out;
+  const n = 1 + Math.floor(cellRand(cx, cy, seed, 2) * 3);
+  const C = DECOR_CELL, m = 70;
+  const x0 = cx * C + m + cellRand(cx, cy, seed, 3) * (C - 2 * m - (n - 1) * DECOR.gap);
+  const y0 = cy * C + m + cellRand(cx, cy, seed, 4) * (C - 2 * m);
+  for (let i = 0; i < n; i++) {
+    const r = cellRand(cx, cy, seed, 10 + i);
+    const kind = r < DECOR.alienChance ? 'alien' : r < DECOR.alienChance + DECOR.brokenChance ? 'broken' : 'capsule';
+    out.push({ x: Math.round(x0 + i * DECOR.gap), y: Math.round(y0), kind });
+  }
+  return out;
+}
+
+/** みえる はんいの かざりを あつめる（マスごとに キャッシュ。おなじ オブジェクトを かえすので DOM プールが つけかえを しない） */
+export class DecorField {
+  constructor(seed = 1) { this.seed = seed; this.cache = new Map(); this.list = []; }
+  setSeed(seed) { if (seed !== this.seed) { this.seed = seed; this.cache.clear(); } }
+  visible(x0, y0, x1, y1) {
+    const C = DECOR_CELL, out = this.list;
+    out.length = 0;
+    if (this.cache.size > 600) this.cache.clear();
+    for (let cx = Math.floor(x0 / C); cx <= Math.floor(x1 / C); cx++) for (let cy = Math.floor(y0 / C); cy <= Math.floor(y1 / C); cy++) {
+      const k = ((cx & 0xffff) << 16) | (cy & 0xffff);
+      let cell = this.cache.get(k);
+      if (!cell) { cell = decorCell(cx, cy, this.seed); this.cache.set(k, cell); }
+      for (const d of cell) out.push(d);
+    }
+    return out;
+  }
+}

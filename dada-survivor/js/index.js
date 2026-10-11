@@ -10,12 +10,12 @@ import {
   WEAPONS, PASSIVES, STAGES, GUNS, weaponStat, xpToNext, playerStats, spawnPlan, pickWeighted, upgradeChoices,
   normalizeSave, stageById, bossType, bonusFor, clearRewards, receiveGift, clampZoom, pinchZoom, wheelZoom,
   newQuality, adaptQuality,
-} from './rules.js?v=188';
-import { EnemyGrid, nearestN } from './grid.js?v=188';
-import { preloadArt } from './art.js?v=188';
-import { Stage } from './stage.js?v=188';
-import { menuMethods, iconHtml } from './menus.js?v=188';
-import { PopBGM } from './bgm.js?v=188';
+} from './rules.js?v=189';
+import { EnemyGrid, nearestN } from './grid.js?v=189';
+import { preloadArt } from './art.js?v=189';
+import { Stage } from './stage.js?v=189';
+import { menuMethods, iconHtml } from './menus.js?v=189';
+import { PopBGM } from './bgm.js?v=189';
 
 const SAVE_KEY = 'dada_survivor_save';
 const TAU = Math.PI * 2;
@@ -41,7 +41,7 @@ export const DadaSurvivorGame = {
 
   // 起動時にこのゲームのCSSを自分で読み込む（?v= はこのフォルダ内で管理）。ハブが init 前に await する
   prepare() {
-    return loadCss(new URL('../css/dada-survivor.css?v=188', import.meta.url).href);
+    return loadCss(new URL('../css/dada-survivor.css?v=189', import.meta.url).href);
   },
 
   init(container, onBackToHub) {
@@ -314,6 +314,7 @@ export const DadaSurvivorGame = {
     const st = stageById(this.save.stage);
     this.stage.reset();
     this.stage.setGround(st.ground);
+    this.stage.setDecor(st.decor, 1 + Math.floor(Math.random() * 1e6));
     this.touches.clear(); this.pinch = null;
     this.run = {
       diff: DIFFICULTIES[this.save.difficulty] || DIFFICULTIES.easy,

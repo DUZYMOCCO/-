@@ -7,8 +7,8 @@ import {
   DIFFICULTIES, CHARACTERS, WEAPONS, SHOP_ITEMS, STAGES, RARITIES, GEAR_SLOTS, CHEST_COST,
   shopCost, stageById, stageUnlocked, charUnlocked, gearLabel, rollGear, addGear, equipGear,
   unequipGear, mergeGear, bonusFor,
-} from './rules.js?v=188';
-import { art } from './art.js?v=188';
+} from './rules.js?v=189';
+import { art } from './art.js?v=189';
 
 const GEAR_ART = { weapon: 'sword', armor: 'armor', boots: 'shoes', charm: 'charm' };
 const ICON_ART = {
@@ -36,6 +36,7 @@ export const menuMethods = {
     sound.stopBGM();
     const s = this.save, st = stageById(s.stage);
     this.stage.setGround(st.ground);
+    this.stage.setDecor(null);
     const ch = CHARACTERS.find(c => c.id === s.character) || CHARACTERS[0];
     const clears = s.stageClears[st.id] || 0;
     const next = STAGES.find(x => x.id === st.id + 1);

@@ -63,10 +63,21 @@ test('enemies are わるものぐんだん soldiers with kana-only boss names', 
 // くさはらは わるものぐんだんに あらされた じめん（320px タイル）＋ けんきゅうしゃ と スーパーミサイル の 絵
 test('ruined meadow, researcher and super missile art', () => {
   for (const n of ['researcher', 'smissile']) assert.ok(ART_NAMES.includes(n), n);
-  assert.equal(groundTile('grass'), 320);
+  assert.equal(groundTile('lab'), 320);
   for (const k of ['desert', 'snow', 'forest', 'castle']) assert.equal(groundTile(k), 160);
-  const g = svgOf(art('ground-grass'));
+  const g = svgOf(art('ground-lab'));
   assert.ok(g.includes('viewBox="0 0 320 320"'));
   assert.ok(g.length < 40000, `ground svg too big: ${g.length}`);
   assert.ok(!svgOf(art('researcher')).includes('data-emblem'), 'けんきゅうしゃは みかた');
+});
+
+// こどもの リクエスト：ステージ1は けんきゅうじょ。ガラスの ボトルと、ときどき なかに うちゅうじん
+test('lab floor, specimen bottles and alien art', () => {
+  for (const n of ['ground-lab', 'capsule', 'capsuleBroken', 'alien']) assert.ok(ART_NAMES.includes(n), n);
+  for (const n of ['capsule', 'capsuleBroken', 'alien']) {
+    const s = svgOf(art(n));
+    assert.ok(!s.includes('data-emblem'), `${n} は てきの マークなし`);
+    assert.ok(s.length < 6000, `${n} too big`);
+  }
+  assert.ok(svgOf(art('capsule')).includes('#22c55e'), 'みどりの えきたい');
 });
