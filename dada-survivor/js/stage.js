@@ -8,8 +8,8 @@
  * - おもい ときは「かるい モード」（ds-lite）：ぴょこぴょこ／ほうせきの ゆれを とめ、エフェクトと すうじを へらす
  * - ここでは Math.random を つかわない（みための ばらつきは カウンタで。ゲームの らんすうと まざらない）
  */
-import { art, groundTile } from './art.js?v=189';
-import { DecorField } from './decor.js?v=189';
+import { art, groundTile } from './art.js?v=190';
+import { DecorField } from './decor.js?v=190';
 
 class Pool {
   constructor(layer, make) { this.layer = layer; this.make = make; this.free = []; this.active = new Set(); }
@@ -256,7 +256,8 @@ export class Stage {
       this.sync(this.decor, list, (d, n) => {
         if (n._a !== d.kind) {
           n._a = d.kind;
-          n._img.style.backgroundImage = art(d.kind === 'broken' ? 'capsuleBroken' : 'capsule');
+          n._img.style.backgroundImage = art(d.kind === 'flag' ? 'labFlag' : d.kind === 'broken' ? 'capsuleBroken' : 'capsule');
+          n._img.classList.toggle('ds-decor-flag', d.kind === 'flag');
           n._alien.style.display = d.kind === 'alien' ? '' : 'none';
         }
         Stage.place(n, d.x, d.y);

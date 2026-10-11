@@ -18,15 +18,20 @@ test('decorCell: おなじ たね・マスなら いつも おなじ、たねが
   let diff = 0;
   for (let cx = -20; cx < 20; cx++) for (let cy = -20; cy < 20; cy++) if (JSON.stringify(decorCell(cx, cy, 1)) !== JSON.stringify(decorCell(cx, cy, 2))) diff++;
   assert.ok(diff > 300, `seed で かわる ${diff}`);
-  assert.deepEqual(decorCell(0, 0, 1), [], 'スタートの まわりは あける');
+  assert.deepEqual(decorCell(0, 0, 1).map(d => d.kind), ['flag'], 'スタートの マスは みかたの はた だけ');
 });
 
 test('decorCell: ボトルは マスの なか、うちゅうじんは だいたい 6ぽんに 1ぽん、くりかえし に ならない', () => {
-  let n = 0, alien = 0, broken = 0, cells = 0, withBottle = 0;
+  let n = 0, alien = 0, broken = 0, cells = 0, withBottle = 0, flags = 0;
   for (let cx = -60; cx < 60; cx++) for (let cy = -60; cy < 60; cy++) {
-    const list = decorCell(cx, cy, 777);
+    const all = decorCell(cx, cy, 777), list = all.filter(d => d.kind !== 'flag');
     cells++; if (list.length) withBottle++;
-    assert.ok(list.length <= 3);
+    flags += all.length - list.length;
+    assert.ok(all.length <= 3);
+    assert.ok(!(list.length && all.length !== list.length), 'はたと ボトルは おなじ マスに ない');
+    for (const d of all) {
+      assert.ok(d.x >= cx * DECOR_CELL && d.x < (cx + 1) * DECOR_CELL && d.y >= cy * DECOR_CELL && d.y < (cy + 1) * DECOR_CELL, 'マスから はみださない');
+    }
     for (const d of list) {
       n++;
       if (d.kind === 'alien') alien++; else if (d.kind === 'broken') broken++; else assert.equal(d.kind, 'capsule');
@@ -37,6 +42,7 @@ test('decorCell: ボトルは マスの なか、うちゅうじんは だいた
   assert.ok(a > 0.13 && a < 0.2, `alien ${a}`);
   assert.ok(broken / n > 0.15 && broken / n < 0.25);
   assert.ok(Math.abs(withBottle / cells - DECOR.rowChance) < 0.03);
+  assert.ok(Math.abs(flags / cells - DECOR.flagChance) < 0.02, `flags ${flags / cells}`);
 });
 
 test('DecorField: みえる マスだけ、おなじ オブジェクトを かえす（DOM を つけかえない）', () => {

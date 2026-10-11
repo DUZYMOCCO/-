@@ -47,6 +47,7 @@
 
 /* けんきゅうじょの ボトル（ゆかの かざり。56×88 の なかに ボトル、うちゅうじんは ガラスの なかで ゆらゆら） */
 .ds-decor { width: 88px; height: 88px; margin: -70px 0 0 -44px; }
+.ds-decor-flag { width: 100px; height: 112px; margin: -104px 0 0 -18px; }
 .ds-alien { left: 27.5px; top: 30px; width: 26px; height: 31px; opacity: .88; animation: ds-alien 2.4s ease-in-out infinite alternate; }
 @keyframes ds-alien { from { transform: translateY(0) rotate(-4deg); } to { transform: translateY(6px) rotate(4deg); } }
 
@@ -209,12 +210,17 @@
 }
 
 /* ---------- ステージ・キャラ・そうび・たからばこ ---------- */
-.ds-root[data-ground="lab"] { background: #1d2329; }
+.ds-root[data-ground="lab"] { background: #dfe7ee; }
+/* しろい ゆかでは しろい わ・ジョイスティック・バリアが みえないので こい いろに */
+.ds-root[data-ground="lab"] .ds-fx-pop { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(15, 23, 42, .25); }
+.ds-root[data-ground="lab"] .ds-joy::before { background: rgba(30, 58, 138, .14); border-color: rgba(30, 58, 138, .45); }
+.ds-root[data-ground="lab"] .ds-aura { background: radial-gradient(circle, rgba(59, 130, 246, 0) 55%, rgba(59, 130, 246, .25) 85%, rgba(37, 99, 235, .45) 100%); }
+.ds-root[data-ground="lab"] .ds-aura::before { border-color: rgba(37, 99, 235, .6); }
 .ds-root[data-ground="desert"] { background: #8a6840; }
 .ds-root[data-ground="snow"] { background: #8ea0ae; }
 .ds-root[data-ground="forest"] { background: #1a241c; }
 .ds-root[data-ground="castle"] { background: #24222c; }
-.ds-root[data-ground="forest"] .ds-hp, .ds-root[data-ground="castle"] .ds-hp, .ds-root[data-ground="lab"] .ds-hp { border-color: #fff; }
+.ds-root[data-ground="forest"] .ds-hp, .ds-root[data-ground="castle"] .ds-hp { border-color: #fff; }
 
 .ds-thin { min-height: 40px; font-size: 14px; padding: 6px; }
 .ds-stage-pick { display: flex; align-items: center; gap: 6px; }
@@ -222,7 +228,7 @@
 .ds-arrow:disabled { background: #e5e7eb; opacity: .7; }
 .ds-arrow:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 1px 0 var(--ds-ink); }
 .ds-stage-card { flex: 1; display: flex; flex-direction: column; padding: 6px; border: 3px solid var(--ds-ink); border-radius: 16px; background: #3c5134; color: #f5f0e6; }
-.ds-stage-card[data-ground="lab"] { background: #2f3943; color: #e6f4ea; }
+.ds-stage-card[data-ground="lab"] { background: #e8eef3; color: #1e3a8a; }
 .ds-stage-card[data-ground="desert"] { background: #8a6840; color: #fff8e7; }
 .ds-stage-card[data-ground="snow"] { background: #8ea0ae; color: #0f172a; }
 .ds-stage-card[data-ground="forest"] { background: #243028; color: #f5f0e6; }

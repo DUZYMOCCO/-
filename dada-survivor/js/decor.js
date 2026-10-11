@@ -2,10 +2,11 @@
  * ゆかの かざり（ぶつからない・ゲームの うごきに かんけい なし。DOM なし・テストできる）
  * けんきゅうじょ：360px の マスごとに、たね（seed）から きまる ばしょに ガラスの ボトルを おく。
  * - だいたい 4マスに 1つ ボトルの れつ（1〜3ぼん）。6ぽんに 1ぽん くらい うちゅうじんが はいって いる。わられた ボトルも ある
+ * - みかたの はた：スタートの そばに 1ぽん、ほかは だいたい 12マスに 1ぽん（ボトルの ない マス）
  * - おなじ たね・おなじ マスなら いつも おなじ（もどって きても かわらない）。タイルと ちがって くりかえし に みえない
  */
 export const DECOR_CELL = 360;
-export const DECOR = { rowChance: 0.26, alienChance: 1 / 6, brokenChance: 0.2, gap: 62 };
+export const DECOR = { rowChance: 0.26, alienChance: 1 / 6, brokenChance: 0.2, gap: 62, flagChance: 0.08 };
 
 // マス (cx, cy) と たね から 0..1 の らんすうを つくる（ゲームの Math.random は つかわない）
 export function cellRand(cx, cy, seed, salt = 0) {
@@ -15,14 +16,19 @@ export function cellRand(cx, cy, seed, salt = 0) {
   return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
 }
 
-// 1マスぶんの かざり（[{ x, y, kind: 'capsule' | 'alien' | 'broken' }]）
+// 1マスぶんの かざり（[{ x, y, kind: 'capsule' | 'alien' | 'broken' | 'flag' }]）
 export function decorCell(cx, cy, seed) {
   const out = [];
-  // スタート ちてん（0,0 の マス）は あける
-  if (cx === 0 && cy === 0) return out;
-  if (cellRand(cx, cy, seed, 1) >= DECOR.rowChance) return out;
-  const n = 1 + Math.floor(cellRand(cx, cy, seed, 2) * 3);
+  // スタート ちてん（0,0 の マス）は ボトルを おかず、みかたの はたを 1ぽん（じぶんの すこし みぎした）
+  if (cx === 0 && cy === 0) { out.push({ x: 96, y: 60, kind: 'flag' }); return out; }
   const C = DECOR_CELL, m = 70;
+  if (cellRand(cx, cy, seed, 1) >= DECOR.rowChance) {
+    if (cellRand(cx, cy, seed, 5) < DECOR.flagChance / (1 - DECOR.rowChance)) {
+      out.push({ x: Math.round(cx * C + m + cellRand(cx, cy, seed, 6) * (C - 2 * m)), y: Math.round(cy * C + m + 40 + cellRand(cx, cy, seed, 7) * (C - 2 * m - 40)), kind: 'flag' });
+    }
+    return out;
+  }
+  const n = 1 + Math.floor(cellRand(cx, cy, seed, 2) * 3);
   const x0 = cx * C + m + cellRand(cx, cy, seed, 3) * (C - 2 * m - (n - 1) * DECOR.gap);
   const y0 = cy * C + m + cellRand(cx, cy, seed, 4) * (C - 2 * m);
   for (let i = 0; i < n; i++) {

@@ -81,3 +81,15 @@ test('lab floor, specimen bottles and alien art', () => {
   }
   assert.ok(svgOf(art('capsule')).includes('#22c55e'), 'みどりの えきたい');
 });
+
+// こどもの リクエスト：みかたの けんきゅうじょは しろく きれいに。はたは みかたの かっこいい はた
+test('white friendly lab floor and heroic lab flag', () => {
+  const g = svgOf(art('ground-lab'));
+  assert.ok(g.includes('#e8eef3'), 'まぶしすぎない オフホワイト');
+  assert.ok(!g.includes('#5a1414'), 'わるものの はたは もう ない');
+  assert.ok(!g.includes('data-emblem'));
+  const f = svgOf(art('labFlag'));
+  assert.ok(ART_NAMES.includes('labFlag'));
+  assert.ok(f.includes('#2563eb') && f.includes('#facc15'), 'あおい たて と ほし');
+  assert.ok(!f.includes('data-emblem') && !f.includes('#5a1414'), 'わるものの マークでは ない');
+});
