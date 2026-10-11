@@ -165,7 +165,7 @@ for (let ring = 0; ring < 3; ring++) for (let i = 0; i < 4; i++) {
   assert.equal(fieldBlocks(center + Math.cos(angle) * radius, center + Math.sin(angle) * radius), false, `outpost ${ring}-${i}`);
 }
 for (const dungeon of DUNGEON_DEFS) {
-  if (dungeon.kind !== 'dungeon') {
+  if (!['dungeon', 'ruin'].includes(dungeon.kind)) {
     assert.equal(dungeonSolids(dungeon).length, 0, dungeon.id);
     assert.equal(dungeonBlocks(dungeon, 180, dungeon.height / 2), false);
     continue;

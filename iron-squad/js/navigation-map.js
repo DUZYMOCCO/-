@@ -1,5 +1,5 @@
 import {WORLD_SIZE,biomeAt,eastWestRoadY,northSouthRoadX,riverCenterY,blockingGuides} from './world.js?v=151';
-import {dungeonSolids} from './dungeon.js?v=151';
+import {dungeonSolids} from './dungeon.js?v=179';
 import {inCurrentInstance} from './instance-rules.js?v=151';
 import {ECONOMIC_REGIONS,economicState,economicFieldBlocked} from './regional-economy.js?v=151';
 

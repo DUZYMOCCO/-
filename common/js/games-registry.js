@@ -1,5 +1,5 @@
-import { IronSquadGame } from '../../iron-squad/js/index.js?v=175';
-import { DadaSurvivorGame } from '../../dada-survivor/js/index.js?v=176';
+import { IronSquadGame } from '../../iron-squad/js/index.js?v=179';
+import { DadaSurvivorGame } from '../../dada-survivor/js/index.js?v=177';
 
 // ハブの見出し。ゲームは section で振り分ける（未指定は main）
 export const sections = [

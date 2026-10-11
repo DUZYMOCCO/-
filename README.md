@@ -28,7 +28,7 @@ Safariで開いた後：
 | ゲーム | フォルダ | 説明 |
 |---|---|---|
 | 🛡️ IRON SQUAD（雑兵立身出世録） | [iron-squad/](iron-squad/) | ローグライク・小隊育成アクションRPG。[README](iron-squad/README.md) / [最新の作業メモ](iron-squad/docs/CURRENT_WORK.md) / [仕様書](iron-squad/docs/SPEC_AND_HANDOVER.md) |
-| 🐱 ダダサバイバーもどき | [dada-survivor/](dada-survivor/) | 子ども向けオートアタック・サバイバル（canvas不使用・DOM＋SVGトゥーン描画）。[README](dada-survivor/README.md) |
+| 🐱 ダダサバイバーもどき | [dada-survivor/](dada-survivor/) | 子ども向けオートアタック・サバイバル。5ステージ・そうび・キャラ9人（canvas不使用・DOM＋SVGトゥーン描画）。[README](dada-survivor/README.md) |
 
 ---
 
@@ -43,7 +43,7 @@ common/      共通データ（スタジオ全体で使う「必要な基本デ�
   assets/    共通アセット（audio/, icons/, QR）
   tools/     サーバー起動・アイコン/音源の生成（serve.py, start.bat, generate_*.py）
 iron-squad/  ゲーム本体（js/ css/ assets/ tests/ tools/ docs/ README.md）
-dada-survivor/ こどもゲーム（js/ css/ tests/ README.md）
+dada-survivor/ こどもゲーム（js/ css/ tests/ tools/ README.md）
 <ゲーム名>/   新しいゲームもこの形でルート直下にフォルダを増やす
 ```
 

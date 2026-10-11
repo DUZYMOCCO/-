@@ -1,0 +1,74 @@
+{
+  "date": "2026-10-11",
+  "gameVersion": "4.2.26",
+  "conditions": "same identity / same weapon / no armor / fixed time / labels hidden / real browser Canvas",
+  "checks": [
+    {
+      "base": "HEAVY",
+      "stages": [
+        "HEAVY",
+        "PALADIN",
+        "TEMPLAR",
+        "IMMORTAL_AEGIS"
+      ],
+      "tier2EqualsTier3": true,
+      "tier1EqualsTier2": false
+    },
+    {
+      "base": "LIGHT",
+      "stages": [
+        "LIGHT",
+        "BLADEMASTER",
+        "SWORD_EMPEROR",
+        "VOID_EDGE"
+      ],
+      "tier2EqualsTier3": true,
+      "tier1EqualsTier2": false
+    },
+    {
+      "base": "ARCHER",
+      "stages": [
+        "ARCHER",
+        "SNIPER",
+        "STORM_BOW",
+        "STAR_HUNTER"
+      ],
+      "tier2EqualsTier3": true,
+      "tier1EqualsTier2": false
+    },
+    {
+      "base": "MEDIC",
+      "stages": [
+        "MEDIC",
+        "HIGH_PRIEST",
+        "SAINT",
+        "ARCHANGEL"
+      ],
+      "tier2EqualsTier3": true,
+      "tier1EqualsTier2": false
+    },
+    {
+      "base": "MAGE",
+      "stages": [
+        "MAGE",
+        "ARCHMAGE",
+        "ELEMENTAL_SAGE",
+        "ARCANE_SOVEREIGN"
+      ],
+      "tier2EqualsTier3": true,
+      "tier1EqualsTier2": true
+    },
+    {
+      "base": "COMMANDER",
+      "stages": [
+        "COMMANDER",
+        "WARLORD",
+        "EMPEROR",
+        "MYTHIC_EMPEROR"
+      ],
+      "tier2EqualsTier3": true,
+      "tier1EqualsTier2": true
+    }
+  ],
+  "pageErrors": []
+}

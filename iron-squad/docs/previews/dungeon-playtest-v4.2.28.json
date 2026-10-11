@@ -1,0 +1,47 @@
+{
+  "entry": {
+    "floorSpawns": true,
+    "monsters": 0,
+    "dungeon": "dungeon_goblin_mines"
+  },
+  "journey": {
+    "visited": [
+      {
+        "id": "north",
+        "steps": 83,
+        "rewards": 1
+      },
+      {
+        "id": "south",
+        "steps": 136,
+        "rewards": 1
+      }
+    ],
+    "opened": [
+      "north",
+      "south"
+    ]
+  },
+  "killed": {
+    "unlocked": true,
+    "bossAlive": false
+  },
+  "cycles": {
+    "savedOpened": [
+      "north",
+      "south"
+    ],
+    "vaultOpened": true,
+    "immediate": {
+      "monsters": 0,
+      "opened": true,
+      "side": 2
+    },
+    "later": {
+      "monsters": 17,
+      "opened": false,
+      "side": 0
+    }
+  },
+  "pageErrors": []
+}

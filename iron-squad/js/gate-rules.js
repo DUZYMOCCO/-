@@ -1,6 +1,6 @@
 import {drawStoneFortification} from './fortification-visuals.js?v=151';
 import {WORLD_SIZE,fieldBlocks} from './world.js?v=151';
-import {dungeonBlocks} from './dungeon.js?v=151';
+import {dungeonBlocks} from './dungeon.js?v=179';
 import {inCurrentInstance} from './instance-rules.js?v=151';
 import {makeEscort,recalcEscortStats,updateEscortPatrol,npcSave,applyNpcSave} from './merchant-rules.js?v=151';
 import {rebuildMerchantCasualties,carrierOf,sanitizeCarriers} from './casualty-rules.js?v=151';
@@ -43,7 +43,7 @@ export function attackBlocked(game,from,to) {
   if(dist<1)return false;
   const dungeon=game?.currentDungeon;
   const blocks=dungeon
-    ?(dungeon.kind==='dungeon'?(x,y)=>dungeonBlocks(dungeon,x,y):()=>false)
+    ?(['dungeon','ruin'].includes(dungeon.kind)?(x,y)=>dungeonBlocks(dungeon,x,y):()=>false)
     :(x,y)=>fieldBlocks(x,y,game?._economicWorks||[]);
   const n=Math.max(1,Math.ceil(dist/14));
   for(let i=1;i<=n;i++){

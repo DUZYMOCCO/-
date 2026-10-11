@@ -1,0 +1,24 @@
+{
+  "pickup": {
+    "beforeCount": 3,
+    "moving": [
+      true,
+      true,
+      true
+    ],
+    "remaining": 0,
+    "inventory": 1
+  },
+  "movement": {
+    "x": 80292.3,
+    "y": 80260,
+    "active": true
+  },
+  "pause": true,
+  "vault": {
+    "opened": true,
+    "rewards": 5,
+    "remainingDrops": 3
+  },
+  "pageErrors": []
+}

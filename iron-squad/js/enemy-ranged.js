@@ -26,7 +26,8 @@ export function updateRangedEnemy(game,unit,target,dt) {
   const dx=target.x-unit.x,dy=target.y-unit.y,d=Math.hypot(dx,dy)||1;
   unit.facingAngle=Math.atan2(dy,dx);unit.atkTimer=Math.max(0,(unit.atkTimer||0)-dt);
   if(d>def.range||game.wallBlocksEnemyAttack?.(unit,target)) {
-    const step=Math.min(d,unit.speed*(unit.magicSlowTimer>0?.55:1)*dt);unit.x+=dx/d*step;unit.y+=dy/d*step;
+    const goal=game.dungeonMoveTarget?.(unit,target)||target,mx=goal.x-unit.x,my=goal.y-unit.y,md=Math.hypot(mx,my)||1;
+    const step=Math.min(md,unit.speed*(unit.magicSlowTimer>0?.55:1)*dt);unit.x+=mx/md*step;unit.y+=my/md*step;
   } else if(unit.atkTimer<=0) {
     game.projectiles||=[];
     if(game.projectiles.filter(isHostileShot).length<DEFENSE_RULES.projectileCap){

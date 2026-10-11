@@ -6,31 +6,27 @@ import { sound } from '../../common/js/audio.js?v=151';
 import { storage } from '../../common/js/storage.js';
 import {
   STAGE_SECONDS, MINI_BOSS_SECONDS, MAX_ENEMIES, MAX_GEMS, DIFFICULTIES, CHARACTERS, ENEMY_TYPES,
-  WEAPONS, PASSIVES, SHOP_ITEMS, shopCost, weaponStat, xpToNext, playerStats, spawnPlan,
-  pickWeighted, upgradeChoices, normalizeSave,
-} from './rules.js?v=176';
-import { art, preloadArt } from './art.js?v=176';
-import { Stage } from './stage.js?v=176';
+  WEAPONS, PASSIVES, STAGES, weaponStat, xpToNext, playerStats, spawnPlan, pickWeighted, upgradeChoices,
+  normalizeSave, stageById, bossType, bonusFor, clearRewards,
+} from './rules.js?v=177';
+import { preloadArt } from './art.js?v=177';
+import { Stage } from './stage.js?v=177';
+import { menuMethods, iconHtml } from './menus.js?v=177';
 
 const SAVE_KEY = 'dada_survivor_save';
 const TAU = Math.PI * 2;
 const dist2 = (a, b) => (a.x - b.x) ** 2 + (a.y - b.y) ** 2;
 const fmtTime = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 
-// アイコン：トゥーン絵があればそれ、なければ絵文字
-const ICON_ART = { kunai: 'kunai', orbit: 'star', thunder: 'bolt', bomb: 'bomb', magnet: 'magnet', meat: 'meat', coin: 'coin' };
-const iconHtml = (id, fallback, cls = 'ds-icon') => ICON_ART[id]
-  ? `<span class="${cls}" style='background-image:${art(ICON_ART[id])}'></span>`
-  : `<span class="${cls} emoji">${fallback}</span>`;
-
 export const DadaSurvivorGame = {
+  ...menuMethods,
   id: 'dada-survivor',
   title: 'ダダサバイバーもどき',
   subtitle: 'ゆびで うごいて いきのこれ！',
   icon: '🐱',
   color: '#22c55e',
   section: 'kids',
-  description: 'こうげきは じどう！ ゾンビを たおして つよくなろう。5ふん いきのこって ボスを たおせ！',
+  description: 'こうげきは じどう！ 5つの ステージで ボスを たおして、たからばこの そうびで つよくなろう！',
 
   init(container, onBackToHub) {
     this.container = container;
@@ -135,72 +131,6 @@ export const DadaSurvivorGame = {
     this.overlay.classList.toggle('hidden', !html);
   },
 
-  showTitle() {
-    this.run = null; this.paused = false;
-    this.stick = null;
-    this.stage.reset();
-    this.stage.joystick(null);
-    this.hud.classList.add('hidden');
-    this.root.classList.add('ds-attract');
-    sound.stopBGM();
-    const s = this.save;
-    this.setOverlay(`
-      <div class="ds-panel ds-title">
-        <div class="ds-logo">ダダサバイバー<span>もどき</span></div>
-        <div class="ds-sub">🪙 ${s.coins}　🏆 クリア ${s.clears}かい</div>
-        <div class="ds-label">キャラを えらぼう</div>
-        <div class="ds-chars">
-          ${CHARACTERS.map(c => `<button class="ds-char ${c.id === s.character ? 'on' : ''}" data-char="${c.id}">
-            <span class="ds-char-pic" style='background-image:${art(c.id)}'></span><b>${c.name}</b>
-            <small>${iconHtml(c.weapon, WEAPONS[c.weapon].icon, 'ds-icon sm')}${WEAPONS[c.weapon].name}</small></button>`).join('')}
-        </div>
-        <div class="ds-label">むずかしさ</div>
-        <div class="ds-diffs">
-          ${Object.values(DIFFICULTIES).map(d => `<button class="ds-diff ${d.id === s.difficulty ? 'on' : ''}" data-diff="${d.id}">${d.label}</button>`).join('')}
-        </div>
-        <button class="ds-btn ds-go" data-act="start">▶ スタート！</button>
-        <div class="ds-row">
-          <button class="ds-btn ds-sub-btn" data-act="shop">🛒 おみせ</button>
-          <button class="ds-btn ds-sub-btn" data-act="hub">🏠 もどる</button>
-        </div>
-      </div>`);
-    this.overlay.onclick = e => {
-      const b = e.target.closest('button'); if (!b) return;
-      sound.playTap();
-      if (b.dataset.char) { s.character = b.dataset.char; this.persist(); this.showTitle(); }
-      else if (b.dataset.diff) { s.difficulty = b.dataset.diff; this.persist(); this.showTitle(); }
-      else if (b.dataset.act === 'start') this.startRun();
-      else if (b.dataset.act === 'shop') this.showShop();
-      else if (b.dataset.act === 'hub') { this.destroy(); this.onBackToHub(); }
-    };
-  },
-
-  showShop() {
-    const s = this.save;
-    this.setOverlay(`
-      <div class="ds-panel">
-        <div class="ds-h">🛒 おみせ</div>
-        <div class="ds-sub">もっている コイン：🪙 ${s.coins}</div>
-        ${Object.entries(SHOP_ITEMS).map(([id, it]) => {
-          const lv = s.shop[id] || 0, max = lv >= it.max, cost = shopCost(lv);
-          return `<div class="ds-shop-item">
-            <span class="ds-icon emoji">${it.icon}</span>
-            <div class="ds-shop-text"><b>${it.name} Lv${lv}</b><small>${it.desc}</small></div>
-            <button class="ds-btn ds-buy" data-buy="${id}" ${max || s.coins < cost ? 'disabled' : ''}>${max ? 'MAX' : `🪙${cost}`}</button>
-          </div>`;
-        }).join('')}
-        <button class="ds-btn ds-sub-btn" data-act="back">↩ もどる</button>
-      </div>`);
-    this.overlay.onclick = e => {
-      const b = e.target.closest('button'); if (!b || b.disabled) return;
-      if (b.dataset.buy) {
-        const id = b.dataset.buy, cost = shopCost(s.shop[id] || 0);
-        if (s.coins >= cost) { s.coins -= cost; s.shop[id] = (s.shop[id] || 0) + 1; this.persist(); sound.playItem(); }
-        this.showShop();
-      } else { sound.playTap(); this.showTitle(); }
-    };
-  },
-
   showPause() {
     if (!this.run || this.paused) return;
     this.paused = true; this.stick = null; this.stage.joystick(null);
@@ -279,30 +209,6 @@ export const DadaSurvivorGame = {
     else r.coins += 20;
   },
 
-  showResult(clear, best) {
-    const r = this.run;
-    this.hud.classList.add('hidden');
-    this.setOverlay(`
-      <div class="ds-panel ds-result ${clear ? 'clear' : ''}">
-        <div class="ds-result-pic" style='background-image:${art(r.char.id)}'></div>
-        <div class="ds-h">${clear ? 'クリア！ やったね！' : 'やられちゃった…'}</div>
-        <div class="ds-stats">
-          <div>⏱ いきのこった じかん<b>${fmtTime(r.time)}</b></div>
-          <div>💀 たおした かず<b>${r.kills}</b></div>
-          <div>⬆ レベル<b>${r.level}</b></div>
-          <div>🪙 もらった コイン<b>${r.earned}</b></div>
-        </div>
-        ${best ? '<div class="ds-best">🏆 じこベスト！</div>' : ''}
-        <button class="ds-btn ds-go" data-act="again">🔁 もういちど</button>
-        <button class="ds-btn ds-sub-btn" data-act="title">🏠 タイトルへ</button>
-      </div>`);
-    this.overlay.onclick = e => {
-      const b = e.target.closest('button'); if (!b) return;
-      sound.playTap();
-      if (b.dataset.act === 'again') this.startRun(); else this.showTitle();
-    };
-  },
-
   showBanner(text, ms = 2200) {
     this.banner.textContent = text;
     this.banner.classList.remove('hidden');
@@ -315,10 +221,12 @@ export const DadaSurvivorGame = {
   /* ================= ゲーム進行 ================= */
   startRun() {
     const ch = CHARACTERS.find(c => c.id === this.save.character) || CHARACTERS[0];
+    const st = stageById(this.save.stage);
     this.stage.reset();
+    this.stage.setGround(st.ground);
     this.run = {
       diff: DIFFICULTIES[this.save.difficulty] || DIFFICULTIES.easy,
-      char: ch,
+      char: ch, stageDef: st, chests: 0,
       time: 0, kills: 0, coins: 0, earned: 0, level: 1, xp: 0, pendingLevels: 0,
       weapons: { [ch.weapon]: 1 }, passives: {}, stats: null,
       player: { x: 0, y: 0, hp: 100, hurt: 0, face: 1, mx: 0, my: 1 },
@@ -337,25 +245,37 @@ export const DadaSurvivorGame = {
     this.resize();
     this.lastTime = performance.now();
     sound.startBGM();
-    this.showBanner('ゆびで うごかそう！', 2500);
+    this.showBanner(`ステージ${st.id} ${st.name}`, 2500);
   },
 
-  refreshStats() { this.run.stats = playerStats(this.run.passives, this.save.shop); },
+  refreshStats() { this.run.stats = playerStats(this.run.passives, this.save.shop, bonusFor(this.save, this.run.char.id)); },
 
   endRun(clear) {
     const r = this.run; if (!r || r.ended) return;
     r.ended = true; this.paused = true; this.stick = null; this.stage.joystick(null);
     r.earned = Math.round(r.coins * r.diff.coin) + (clear ? 50 : 0);
-    const s = this.save;
+    const s = this.save, st = r.stageDef;
     s.coins += r.earned;
-    if (clear) s.clears += 1;
+    const rewards = { chests: r.chests };
+    if (clear) {
+      const cr = clearRewards(s, st.id, r.diff.id);
+      rewards.chests += cr.chests;
+      if (cr.first) {
+        rewards.newStage = STAGES.find(x => x.id === st.id + 1);
+        rewards.newChar = CHARACTERS.find(c => c.unlock === st.id);
+      }
+      s.clears += 1;
+      s.stageClears[st.id] = (s.stageClears[st.id] || 0) + 1;
+      if (rewards.newStage) s.stage = rewards.newStage.id;
+    }
+    s.pendingChests = (s.pendingChests || 0) + rewards.chests;
     const best = r.kills > s.bestKills;
     s.bestKills = Math.max(s.bestKills, r.kills);
     this.persist();
     const score = r.kills + (clear ? 1000 : 0);
     if (score > storage.getHighScore(this.id)) storage.setHighScore(this.id, score);
     if (clear || best) sound.playHighScore(); else sound.playGameOver();
-    this.showResult(clear, best);
+    this.showResult(clear, best, rewards);
   },
 
   loop(now) {
@@ -387,6 +307,7 @@ export const DadaSurvivorGame = {
     p.y += my * r.stats.speed * dt;
     if (ml > 0.1) { p.mx = mx; p.my = my; if (Math.abs(mx) > 0.1) p.face = mx > 0 ? 1 : -1; }
     p.hurt = Math.max(0, p.hurt - dt);
+    if (r.stats.regen) p.hp = Math.min(r.stats.maxHp, p.hp + r.stats.regen * dt);
 
     this.updateSpawns(dt);
     this.updateWeapons(dt);
@@ -403,14 +324,20 @@ export const DadaSurvivorGame = {
 
   updateSpawns(dt) {
     const r = this.run;
+    const st = r.stageDef;
     if (!r.miniBossDone && r.time >= MINI_BOSS_SECONDS) {
-      r.miniBossDone = true; this.spawnEnemy('ogre', 1); this.showBanner('⚠ おにが きた！');
+      r.miniBossDone = true;
+      const e = this.spawnEnemy(st.mini.type, 1, bossType(st.mini, r.diff));
+      this.showBanner(`⚠ ${e.T.name}が きた！`);
     }
     if (!r.finalBossDone && r.time >= STAGE_SECONDS) {
-      r.finalBossDone = true; this.spawnEnemy('dragon', 1); this.showBanner('⚠ ドラゴンが きた！ たおせば クリア！', 3000);
+      r.finalBossDone = true;
+      const e = this.spawnEnemy(st.boss.type, 1, bossType(st.boss, r.diff));
+      e.final = true;
+      this.showBanner(`⚠ ${e.T.name}が きた！ たおせば クリア！`, 3000);
     }
     if (r.finalBossDone) return; // ボスせんは ザコ なし
-    const plan = spawnPlan(r.time, r.diff);
+    const plan = spawnPlan(r.time, r.diff, st);
     r.spawnClock -= dt;
     if (r.spawnClock <= 0) {
       r.spawnClock = plan.interval;
@@ -418,10 +345,10 @@ export const DadaSurvivorGame = {
     }
   },
 
-  spawnEnemy(type, hpScale) {
-    const r = this.run, T = ENEMY_TYPES[type], p = r.player;
+  spawnEnemy(type, hpScale, T = ENEMY_TYPES[type]) {
+    const r = this.run, p = r.player;
     const a = Math.random() * TAU, rad = Math.hypot(this.w, this.h) / 2 + 50;
-    const hp = T.boss ? T.hp * r.diff.enemyHp : T.hp * hpScale;
+    const hp = T.boss ? T.hp : T.hp * hpScale;
     const e = { type, T, x: p.x + Math.cos(a) * rad, y: p.y + Math.sin(a) * rad, hp, maxHp: hp, flash: 0, orbitHit: -1, kb: 0, kx: 0, ky: 0 };
     r.enemies.push(e);
     if (T.boss) { r.boss = e; this.el.bossName.textContent = T.name; this.el.boss.classList.remove('hidden'); }
@@ -534,11 +461,12 @@ export const DadaSurvivorGame = {
       sound.playBomb();
       this.stage.fx('boom', e.x, e.y, e.T.r * 5);
       if (r.boss === e) { r.boss = null; this.el.boss.classList.add('hidden'); }
-      if (e.T.final) { r.coins += 50; this.stage.flash(); setTimeout(() => this.run === r && this.endRun(true), 900); return; }
+      if (e.final) { r.coins += 50; this.stage.flash(); setTimeout(() => this.run === r && this.endRun(true), 900); return; }
       r.coins += 30;
+      r.chests++;
       for (let i = 0; i < 12; i++) this.dropGem(e.x + (Math.random() - 0.5) * 80, e.y + (Math.random() - 0.5) * 80, 4);
       r.items.push({ kind: 'meat', x: e.x, y: e.y });
-      this.showBanner('やったー！ おにを たおした！');
+      this.showBanner(`${e.T.name}を たおした！ たからばこ ゲット！`);
       return;
     }
     this.dropGem(e.x, e.y, e.T.xp);
@@ -599,8 +527,8 @@ export const DadaSurvivorGame = {
       e.x += vx * dt; e.y += vy * dt;
       // ぶつかったら ダメージ
       if (d < e.T.r + 14 && p.hurt <= 0) {
-        p.hp -= e.T.dmg * r.diff.enemyDmg;
-        p.hurt = 0.6;
+        p.hp -= e.T.dmg * r.diff.enemyDmg * (r.stageDef.dmgMul || 1);
+        p.hurt = 0.8;
         sound.playHurt();
         this.stage.hurt();
         if (navigator.vibrate) navigator.vibrate(30);

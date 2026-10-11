@@ -1,5 +1,5 @@
 // スマホゲーム工房 Service Worker (最新コード最優先 Network-First & オフライン対応版)
-const CACHE_NAME = 'mobile-game-studio-v176';
+const CACHE_NAME = 'mobile-game-studio-v179';
 
 const ASSETS_TO_CACHE = [
   './',
@@ -42,6 +42,7 @@ const ASSETS_TO_CACHE = [
   './iron-squad/js/trade-routes.js',
   './iron-squad/js/regional-economy.js',
   './iron-squad/js/field-drops.js',
+  './iron-squad/js/loot-visuals.js',
   './iron-squad/js/field-hosts.js',
   './iron-squad/js/recruitment.js',
   './iron-squad/js/weapon-requirements.js',
@@ -54,6 +55,7 @@ const ASSETS_TO_CACHE = [
   './iron-squad/js/interface.js',
   './iron-squad/js/canvas-surface.js',
   './iron-squad/js/visuals.js',
+  './iron-squad/js/class-regalia.js',
   './iron-squad/js/camp-leisure.js',
   './iron-squad/js/reserve-farm.js',
   './iron-squad/js/peace-zones.js',
@@ -91,6 +93,9 @@ const ASSETS_TO_CACHE = [
   './iron-squad/js/civilian-visuals.js',
   './iron-squad/js/rescue-rewards.js',
   './iron-squad/js/dungeon.js',
+  './iron-squad/js/dungeon-layout.js',
+  './iron-squad/js/dungeon-interior-visuals.js',
+  './iron-squad/js/dungeon-exploration.js',
   './iron-squad/js/expedition-rules.js',
   './iron-squad/js/class-up-rules.js',
   './common/assets/audio/music.wav',
@@ -123,7 +128,8 @@ const ASSETS_TO_CACHE = [
   './dada-survivor/js/index.js',
   './dada-survivor/js/rules.js',
   './dada-survivor/js/art.js',
-  './dada-survivor/js/stage.js'
+  './dada-survivor/js/stage.js',
+  './dada-survivor/js/menus.js'
 ];
 
 // インストール時にキャッシュを事前構築

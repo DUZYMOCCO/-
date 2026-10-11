@@ -1,5 +1,6 @@
 import {equipmentVisualProfile} from './equipment-tiers.js?v=151';
 import {isMuscleCaster} from './unit-attributes.js?v=151';
+import {classRegaliaFor,drawClassPortraitDress,drawClassHeadpiece} from './class-regalia.js?v=177';
 /** Stable personal looks, independent of talent, battle RNG and equipment. */
 export const HAIR_LABELS = Object.freeze({
   barcode:'バーコード', bald:'丸ハゲ', mohawk:'モヒカン', sidebald:'サイドハゲ',
@@ -309,7 +310,8 @@ export function drawSoldierPortrait(c,soldier,width=240,height=260,{compact=fals
   const physique=soldierPhysique(soldier),muscular=physique.bodyWidth>1;
   const key=soldier.soldierClass || 'HEAVY';
   const family=soldierAppearanceFamily(key);
-  const uniform=medic?'#b8c1b4':family==='LIGHT'?'#8a785c':family==='ARCHER'?'#536d5e':'#697981';
+  const regalia=classRegaliaFor(soldier);
+  const uniform=regalia?.cloth||(medic?'#b8c1b4':family==='LIGHT'?'#8a785c':family==='ARCHER'?'#536d5e':'#697981');
   c.save();c.clearRect(0,0,width,height);
   c.beginPath();c.rect(0,0,width,height);c.clip();
   c.fillStyle='#17242c';c.fillRect(0,0,width,height);
@@ -336,7 +338,11 @@ export function drawSoldierPortrait(c,soldier,width=240,height=260,{compact=fals
     polygon(c,[[9,10],[6,8],[4,11],[5,14],[10,13]],'#596872');
     stroke(c,[[-2,12],[3,20]],'#b1a080',1.2);c.fillStyle='#c2af86';c.fillRect(-6,12,1.2,2.7);
   }
+  drawClassPortraitDress(c,regalia);
   c.restore();
-  drawSoldierHead(c,soldier,{cap:isMedicAppearance(soldier.soldierClass)});
+  drawSoldierHead(c,soldier,{cap:medic&&!regalia});
+  // Keep the face at its established size; shorten tall ceremonial headwear
+  // to leave its tip inside both the compact roster and full portrait canvas.
+  if(regalia){c.save();c.translate(0,-1.5);c.scale(1,.55);drawClassHeadpiece(c,regalia);c.restore();}
   c.restore();
 }

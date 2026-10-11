@@ -1,7 +1,7 @@
 import {configureBattlefieldUI,quietBattlefieldContext} from './battlefield-ui.js?v=160';
-import {renderNavigationMap} from './navigation-map.js?v=156';
+import {renderNavigationMap} from './navigation-map.js?v=179';
 import {soldierEquipmentValue,observeEquipment,standardEquipmentCost,RESERVE_ARMAMENT_COUNT} from './armament-rules.js?v=151';
-import {configureRangedEnemy,updateRangedEnemy,updateDefenseWalls,interceptHostileShot,isHostileShot,updateHostileBolt,drawDefenseWalls} from './enemy-ranged.js?v=160';
+import {configureRangedEnemy,updateRangedEnemy,updateDefenseWalls,interceptHostileShot,isHostileShot,updateHostileBolt,drawDefenseWalls} from './enemy-ranged.js?v=179';
 import {LIMITED_CLASSES,initializeLimitedAllies,prepareLimitedEncounter,createLimitedAlly,joinLimitedEncounter,updateLimitedAllies,updateNinja,updateShuriken,drawLimitedEncounter,serializeLimitedAllies,notifyLimitedJoin} from './limited-allies.js?v=151';
 import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=151';
 import {TIERS,MAX_EQUIPMENT_TIER,MAX_POWER_RANK,POWER_RANK_STEP,GENERATION_COUNT,TRADE_MAX_TIER,powerRank,tierDescription} from './equipment-tiers.js?v=151';
@@ -12,10 +12,11 @@ import {rollDropExclusive,applyDropExclusive,dropExclusiveLabel} from './drop-ex
 import {latestEquipmentTier,recordMerchantEquipment,ensureMerchantCatalog,refreshWaveCatalogs,markMerchantPurchase} from './merchant-catalog.js?v=151';
 import {initializeMedicalPosts,updateMedicalPosts,serializeMedicalPosts,nearestKnownMedicalPost,drawMedicalPost,drawMedicalMap,drawMedicalMarker,drawTownMedicalReception,drawRescueDirection} from './medical-posts.js?v=151';
 import {invasionMethods,initializeInvasions,serializeInvasions,shouldTriggerRandomRaid,makeEnemyRoom,drawInvasionRoute} from './invasion-rules.js?v=151';
-import {gateMethods,serializeGatePosts,replenishTownGateGuards,initializeGateGuards,ensureTownGuards,serializeGateGuards,updateGateGuards,gateGuardVisible,applyFortifications,drawFortification,exitGateTown,townExitReached,wallBlocksAttack,attackBlocked as coverBlocked} from './gate-rules.js?v=161';
+import {gateMethods,serializeGatePosts,replenishTownGateGuards,initializeGateGuards,ensureTownGuards,serializeGateGuards,updateGateGuards,gateGuardVisible,applyFortifications,drawFortification,exitGateTown,townExitReached,wallBlocksAttack,attackBlocked as coverBlocked} from './gate-rules.js?v=179';
 import {nationMethods,normalizeNation,nationalIncome,nationalPayrollPlan,headquartersDamageMult,drawNationalDevelopment,DEVELOPMENT_STAGES} from './nation-rules.js?v=175';
 import {equipmentUpgradeCost,salaryQuote,paySoldiers} from './payroll-rules.js?v=151';
-import {addFieldDrop,ageFieldDrops} from './field-drops.js?v=151';
+import {addFieldDrop,ageFieldDrops,attractFieldDrops,FIELD_DROP_PICKUP_RADIUS} from './field-drops.js?v=177';
+import {drawLootDrop} from './loot-visuals.js?v=177';
 import {economicState,advanceRegionalEconomy,discoverEconomicRegions,recordEconomicKill,economicFieldBlocked} from './regional-economy.js?v=151';
 import {updateRegionalTraffic,nearestCommerceTarget,damageCommerce,persistTradeRaiders,restoreTradeRaiders} from './trade-routes.js?v=151';
 import {drawEconomicLandscape,drawCommerceActor,drawEconomicMinimap,drawCommerceWreck,drawCampTent} from './economic-visuals.js?v=175';
@@ -33,7 +34,7 @@ import {drawEconomicLandscape,drawCommerceActor,drawEconomicMinimap,drawCommerce
 import { sound } from '../../common/js/audio.js?v=151';
 import { storage } from '../../common/js/storage.js';
 import { createStallRecorder, mountStallLog } from './stall-recorder.js?v=175';
-import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow } from './visuals.js?v=175';
+import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow, isRuinKeeper, ruinKeeperScale } from './visuals.js?v=179';
 import { refreshCampQuiet, assignCampSeats, tryCampLeisure } from './camp-leisure.js?v=151';
 import { CAMP_PEACE_RADIUS, peaceContainment, pushOutsidePeace, relocatePeaceMonster } from './peace-zones.js?v=158';
 import { FARM_X, FARM_Y, farmPosts, farmOverlaps, reinforcementCount, reserveRosterLine, reserveRosterTitle } from './reserve-farm.js?v=151';
@@ -45,13 +46,13 @@ import { soldierDialogue } from './soldier-dialogue.js?v=151';
 import { generateSoldierName, migrateSoldierName } from './soldier-names.js?v=151';
 import { openCommanderEditor } from './commander-editor.js?v=175';
 import { applyCommanderIdentity, normalizeCommanderIdentity, commanderFullName, GENDERS as COMMANDER_GENDERS } from './commander-identity.js?v=175';
-import {MAGIC_CLASSES,MAGIC_AFFINITIES,magicMethods,isMage,isMagicUser,ensureMana,initializeMagic,updateMagic,distributeMagicStones,castMedicBuff,castCasterStrength,updateMageAI,drawMagicBursts,spendMana,weaponMagicDamage,isPlayerCaster,castPlayerSpell,PLAYER_MAGIC_RULES} from './magic-rules.js?v=151';
+import {MAGIC_CLASSES,MAGIC_AFFINITIES,magicMethods,isMage,isMagicUser,ensureMana,initializeMagic,updateMagic,distributeMagicStones,castMedicBuff,castCasterStrength,updateMageAI,drawMagicBursts,spendMana,weaponMagicDamage,isPlayerCaster,castPlayerSpell,PLAYER_MAGIC_RULES} from './magic-rules.js?v=179';
 import {hazardMethods,updateHazards,drawHazards} from './hazard-fields.js?v=151';
 import {strongEnemyReward} from './combat-rewards.js?v=151';
 import {supplyMethods, initializeSupplies, updateSupplies, takeRangedShot, ammoCombatProfile, isRangedUnit, distributeAmmo, preventLethalHit, normalizeFieldSave, SQUAD_POTION_COST, ensureAmmo, RANGED_DAMAGE_MULT, supplyLocation} from './supply-rules.js?v=151';
 import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog } from './interface.js?v=151';
 import { renderTroopRankings, getSoldierRankerBadges, calcSoldierRankerBonus } from './troop-rankings.js?v=151';
-import { ensureSoldierAppearance, drawSoldierPortrait, describeSoldierAppearance } from './soldier-appearance.js?v=151';
+import { ensureSoldierAppearance, drawSoldierPortrait, describeSoldierAppearance } from './soldier-appearance.js?v=177';
 import { attachSurfaceEvents, detachSurfaceEvents, frameSurfaceReady, releaseSceneCaches, releaseCanvas, surfaceCanResume } from './canvas-surface.js?v=151';
 import { SETTLEMENTS, WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt, routeNameAt, eastWestRoadY, northSouthRoadX, riverCenterY, drawFieldDepth, drawOakCrown, fieldBlocks, settleUnit } from './world.js?v=175';
 import { subscribeKana, kanaGrade, displayKana } from '../../common/js/kana-mode.js?v=175';
@@ -98,9 +99,11 @@ import { clusterRescueMarkers } from './rescue-markers.js?v=175';
 import {visibleHeroMembers} from './hero-rules.js';
 import {updateHeroJournal} from './hero-journal.js';
 import {applyHeroEquipmentUpgrade} from './hero-equipment.js';
-import {initializeHeroJourney,rollHeroRevelation,serializeHeroJourney,updateHeroParty,updateHeroFollowing,awardHeroBattle,recordDemonKingDefeat,ensureHeroCastle,syncHeroCastle,renderHeroJourney,drawHeroMarks} from './hero-party.js';
-import { RESCUE_TIMEOUT, rescueUnits, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, receiveTownCargo, leaveCivilianSpace, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, markSoldierDown, downCommander, commanderDown, updateNpcRescue, CIV_KINDS, isMedic, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST } from './casualty-rules.js?v=151';
-import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault, dungeonBlocks, dungeonSolids } from './dungeon.js?v=151';
+import {initializeHeroJourney,rollHeroRevelation,serializeHeroJourney,updateHeroParty,updateHeroFollowing,awardHeroBattle,recordDemonKingDefeat,ensureHeroCastle,syncHeroCastle,renderHeroJourney,drawHeroMarks} from './hero-party.js?v=179';
+import { RESCUE_TIMEOUT, rescueUnits, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, receiveTownCargo, leaveCivilianSpace, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, markSoldierDown, downCommander, commanderDown, updateNpcRescue, CIV_KINDS, isMedic, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST } from './casualty-rules.js?v=179';
+import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault, dungeonBlocks, dungeonSolids } from './dungeon.js?v=179';
+import {nearestDungeonFloor,dungeonSpawnPoint,dungeonSteeringTarget} from './dungeon-layout.js?v=179';
+import {normalizeDungeonExploration,updateDungeonSideChests,drawDungeonSideChests,updateDungeonRespawns,dungeonCoolingDown,recordDungeonClear,DUNGEON_RESET_PHASES} from './dungeon-exploration.js?v=179';
 import {
   EXPEDITION_CHECK_INTERVAL, EXPEDITION_RETURN_HOME, EXPEDITION_ENGAGE_R,
   EXPEDITION_DANGER_TIERS, EXPEDITION_MIN_MEMBERS,
@@ -2666,6 +2669,7 @@ export const IronSquadGame = {
     this.savedFieldMonsters = null;
     this.savedFieldDrops = null;
     this.dungeonVault = null;
+    this.dungeonExploration = {};
   },
 
   assignWaveQuest() {
@@ -3316,6 +3320,7 @@ export const IronSquadGame = {
     if (saved.platoonMissions) restorePlatoonMissions(this.platoons, saved.platoonMissions);
     this.initOutposts();
     this.initDungeons();
+    this.dungeonExploration = normalizeDungeonExploration(saved.dungeonExploration);
     this.merchantCampSeed=Number.isInteger(saved.merchantCampSeed)?saved.merchantCampSeed:Math.floor(Math.random()*4294967296);
     initMerchants(this, generateRandomDrop, BASE_CAMP);
     if (saved.merchants) applyMerchantSave(this, saved.merchants, generateRandomDrop, BASE_CAMP);
@@ -3617,6 +3622,7 @@ export const IronSquadGame = {
         gold: this.gold,
         awakeningOrbs: this.awakeningOrbs || 0,
         awakeningGems: this.awakeningGems || 0,
+        dungeonExploration: normalizeDungeonExploration(this.dungeonExploration),
         globalFundAmount: this.globalFundAmount || String(defaultDonateAmount(this.gold || 0)),
         treasury: this.treasury || 0,
         nation: normalizeNation(this.nation),
@@ -5249,6 +5255,7 @@ export const IronSquadGame = {
     }
 
     // 次期パラメーター初期化
+    updateDungeonRespawns(this);
     this.phaseCasualties = 0;
     this.phaseInitialSquadCount = this.squad.filter(s => !s.dead).length;
 
@@ -5526,6 +5533,7 @@ export const IronSquadGame = {
           this.openDungeonVault();
         }
       }
+      updateDungeonSideChests(this,generateRandomDrop);
     }
 
     if (this.zoneAlertFlash > 0) {
@@ -5857,13 +5865,15 @@ export const IronSquadGame = {
         if (!this._medicRescueAssign) this._medicRescueAssign = buildMedicRescueAssign(rescueUnits(this).filter(s=>!this.currentDungeon||inCurrentInstance(this,s)),this.player);
         const downedMate = this._medicRescueAssign.get(soldier.id) || null;
         if (downedMate && downedMate.isDown && !downedMate.dead) {
-          const mdx = downedMate.x - soldier.x;
-          const mdy = downedMate.y - soldier.y;
+          const rescueTarget=this.dungeonMoveTarget(soldier,downedMate);
+          const mdx = rescueTarget.x - soldier.x;
+          const mdy = rescueTarget.y - soldier.y;
           const mdist = Math.hypot(mdx, mdy);
           const moveSpeed = soldier.speed * (clsKey === 'HIGH_PRIEST' ? 1.45 : 1.3);
-          if (mdist > 40) {
-            soldier.x += (mdx / mdist) * moveSpeed * dt;
-            soldier.y += (mdy / mdist) * moveSpeed * dt;
+          const casualtyDistance=Math.hypot(downedMate.x-soldier.x,downedMate.y-soldier.y);
+          if (casualtyDistance > 40) {
+            const step=Math.min(mdist,moveSpeed*dt);
+            if(mdist>0){soldier.x += mdx/mdist*step;soldier.y += mdy/mdist*step;}
             soldier.facingAngle = Math.atan2(mdy, mdx);
           } else {
             treatWounded(this,soldier,downedMate,dt);
@@ -6050,7 +6060,8 @@ export const IronSquadGame = {
 
       // AI light frame: orbit/move only, skip auto-attack & class skills this tick.
       if (aiLight && enemyDist >= 360) {
-        const dxL = targetX - soldier.x, dyL = targetY - soldier.y;
+        const moveTarget=this.dungeonMoveTarget(soldier,{x:targetX,y:targetY});
+        const dxL = moveTarget.x - soldier.x, dyL = moveTarget.y - soldier.y;
         const distL = Math.hypot(dxL, dyL);
         if (distL > 6) {
           const moveStep = Math.min(distL * 3.5, soldier.speed) * dt;
@@ -6096,8 +6107,9 @@ export const IronSquadGame = {
         }
       }
 
-      const dx = targetX - soldier.x;
-      const dy = targetY - soldier.y;
+      const moveTarget=this.dungeonMoveTarget(soldier,{x:targetX,y:targetY});
+      const dx = moveTarget.x - soldier.x;
+      const dy = moveTarget.y - soldier.y;
       const dist = Math.hypot(dx, dy);
       if (dist > 6) {
         const moveStep = Math.min(dist * 3.5, soldier.speed) * dt;
@@ -6711,8 +6723,9 @@ export const IronSquadGame = {
       const wallBlocked=dist<=reach&&coverBlocked(this,m,target);
       if (dist > reach || wallBlocked) {
         const slow=m.magicSlowTimer>0?.55:1;
-        m.x += (dx / dist) * m.speed * slow * dt;
-        m.y += (dy / dist) * m.speed * slow * dt;
+        const goal=this.dungeonMoveTarget(m,target),mx=goal.x-m.x,my=goal.y-m.y,md=Math.hypot(mx,my)||1,step=Math.min(md,m.speed*slow*dt);
+        m.x += mx/md*step;
+        m.y += my/md*step;
       } else {
         m.atkTimer = (m.atkTimer || 0) - dt;
         if (m.atkTimer <= 0) {
@@ -6730,10 +6743,11 @@ export const IronSquadGame = {
 
     applyFortifications(this,dt);
 
+    attractFieldDrops(this,dt);
     // ドロップ回収: 1. 兵士による回収 (上位装備なら自動着替え＆強化引き継ぎ！)
     for (let i = this.dropsOnField.length - 1; i >= 0; i--) {
       const drop = this.dropsOnField[i];
-      if (drop.isBoss || drop.isOrb) continue; // ボスドロップ・覚醒宝珠は兵士は触らない！
+      if (drop.isBoss || drop.isOrb || drop._towardCommander) continue; // 宝珠・ボス報酬と隊長へ吸い寄せ中の品は隊長が回収。
 
       for (const s of aliveSquad) {
         if (s.isDown) continue;
@@ -6776,7 +6790,7 @@ export const IronSquadGame = {
     for (let i = this.dropsOnField.length - 1; i >= 0; i--) {
       const drop = this.dropsOnField[i];
       const distP = Math.hypot(drop.x - this.player.x, drop.y - this.player.y);
-      if (distP < 44) {
+      if (!this.player.isDown && !this.player.dead && this.player.hp > 0 && distP < FIELD_DROP_PICKUP_RADIUS) {
         const item = drop.item;
         const isBossDrop = drop.isBoss;
         this.dropsOnField.splice(i, 1);
@@ -6824,12 +6838,21 @@ export const IronSquadGame = {
     this.updateStatsUI(false); // Refresh HUD during quiet exploration, with the existing throttle.
   },
 
+  dungeonMoveTarget(unit,target) {
+    return this.currentDungeon&&!this.passesWalls(unit)?dungeonSteeringTarget(this.currentDungeon,unit,target):target;
+  },
+
   settleTerrain() {
     const dungeon = this.currentDungeon;
     const apply = (unit, inside) => {
       if (!unit || !Number.isFinite(unit.x) || !Number.isFinite(unit.y)) return;
       const blocked = (x, y) => inside ? dungeonBlocks(dungeon, x, y) : economicFieldBlocked(this,x,y);
       const carrier = unit.carrierId ? carrierOf(this, unit) : null;
+      const space=inside?dungeon.id||'dungeon':'field';
+      if(unit._terrainSpace!==space){
+        delete unit._openX;delete unit._openY;unit._terrainSpace=space;
+        if(inside&&!this.passesWalls(unit)&&!this.passesWalls(carrier)&&blocked(unit.x,unit.y))Object.assign(unit,nearestDungeonFloor(dungeon,unit));
+      }
       if (this.passesWalls(unit) || this.passesWalls(carrier)) {
         if (!blocked(unit.x, unit.y)) { unit._openX = unit.x; unit._openY = unit.y; }
         return;
@@ -7471,6 +7494,11 @@ export const IronSquadGame = {
           textEl.textContent = `${nearest.icon} ${nearest.name} (推奨DEF ${nearest.reqDef}+ / Lv${nearest.reqLv}+)`;
           if (enterBtn) enterBtn.textContent = '部隊突入';
         }
+        if(nearest.kind!=='town'&&dungeonCoolingDown(this,nearest)){
+          const readyPhase=(nearest.clearedPhase||nearest.clearedWave||1)+DUNGEON_RESET_PHASES;
+          textEl.textContent=`${nearest.icon} ${nearest.name} · 踏破済${nearest.id==='dungeon_demon_castle'?'':` · 第${readyPhase}期に復活`}`;
+          if(enterBtn)enterBtn.textContent='入る';
+        }
       } else {
         banner.classList.add('hidden');
         if (enterBtn) enterBtn.textContent = '入る';
@@ -7481,6 +7509,8 @@ export const IronSquadGame = {
   enterDungeon(dungeonDef) {
     if (this.currentDungeon) return;
     if (this.restTimer > 0) { this.showToast('待機中は入れません。次のラウンドが始まってからにしましょう'); return; }
+    updateDungeonRespawns(this);
+    const cooling=dungeonCoolingDown(this,dungeonDef);
     this.nearDungeon = null;
     document.getElementById('dungeon-prompt-banner')?.classList.add('hidden');
     this.savedFieldPos = { x: this.player.x, y: this.player.y };
@@ -7490,7 +7520,7 @@ export const IronSquadGame = {
     this.currentDungeon = dungeonDef;
     const encounter=prepareLimitedEncounter(this,dungeonDef);
     if(encounter&&!encounter.joined){
-      const point={x:encounter.x,y:encounter.y};settleUnit(point,(x,y)=>dungeonBlocks(dungeonDef,x,y));encounter.x=point.x;encounter.y=point.y;
+      const point=nearestDungeonFloor(dungeonDef,encounter);encounter.x=point.x;encounter.y=point.y;
     }
 
     // ダンジョン内モンスター・ドロップ・パーティクル初期化
@@ -7534,26 +7564,28 @@ export const IronSquadGame = {
     this.camera = { x: 180, y: h / 2 };
 
     const mobTypes = dungeonDef.mobTypes || [];
-    for (let i = 0; i < (dungeonDef.mobCount || 0); i++) {
-      const mx = 460 + Math.random() * Math.min(420, Math.max(80, w - 980));
-      const my = 180 + Math.random() * Math.max(80, h - 360);
+    for (let i = 0; i < (cooling?0:dungeonDef.mobCount || 0); i++) {
+      const spawn=dungeonSpawnPoint(dungeonDef,i,false);
+      const mx = spawn?.x ?? 460 + Math.random() * Math.min(420, Math.max(80, w - 980));
+      const my = spawn?.y ?? 180 + Math.random() * Math.max(80, h - 360);
       const mType = mobTypes[i % Math.max(1, mobTypes.length)] || 'goblin';
       this.monsters.push(this.createDungeonMob(mType, mx, my, dungeonDef, false));
     }
-    for (let i = 0; i < (dungeonDef.eliteCount || 0); i++) {
-      const mx = Math.min(w - 560, 1100) + Math.random() * Math.min(320, Math.max(40, w * 0.16));
-      const my = 220 + Math.random() * Math.max(80, h - 440);
+    for (let i = 0; i < (cooling?0:dungeonDef.eliteCount || 0); i++) {
+      const spawn=dungeonSpawnPoint(dungeonDef,i,true);
+      const mx = spawn?.x ?? Math.min(w - 560, 1100) + Math.random() * Math.min(320, Math.max(40, w * 0.16));
+      const my = spawn?.y ?? 220 + Math.random() * Math.max(80, h - 440);
       const mType = mobTypes[mobTypes.length - 1] || 'orc';
       this.monsters.push(this.createDungeonMob(mType, mx, my, dungeonDef, true));
     }
 
     if (dungeonDef.boss) {
-      this.monsters.push(this.createDungeonBoss(dungeonDef.boss, w - 350, h / 2, dungeonDef));
+      if(!cooling)this.monsters.push(this.createDungeonBoss(dungeonDef.boss, w - 350, h / 2, dungeonDef));
       this.dungeonVault = {
         x: w - 240, y: h / 2, name: `${dungeonDef.name}の至宝箱`,
-        opened: false, unlocked: false, dungeon: dungeonDef
+        opened: cooling, unlocked: cooling, dungeon: dungeonDef
       };
-      this.showToast(`⛩️【ダンジョン突入】「${dungeonDef.name}」へ侵入！最奥のボスを討ち果たせ！`);
+      this.showToast(cooling?`「${dungeonDef.name}」は踏破済み。復活まで奥の財宝は空です。`:`⛩️【ダンジョン突入】「${dungeonDef.name}」へ侵入！最奥のボスを討ち果たせ！`);
     } else if (dungeonDef.guardian) {
       const gDef = dungeonDef.guardian;
       const scaling = distanceScaling(dungeonDef.distance, this.phase || 1);
@@ -7569,12 +7601,12 @@ export const IronSquadGame = {
       g.isDungeonBoss = true;
       g.isBoss = false;
       g.isColossal = false;
-      this.monsters.push(g);
+      if(!cooling)this.monsters.push(g);
       this.dungeonVault = {
         x: w - 240, y: h / 2, name: `${dungeonDef.name}の残宝`,
-        opened: false, unlocked: false, dungeon: dungeonDef
+        opened: cooling, unlocked: cooling, dungeon: dungeonDef
       };
-      this.showToast(`🏚️「${dungeonDef.name}」へ踏み込んだ。番を倒すと奥の箱が開く。`);
+      this.showToast(cooling?`「${dungeonDef.name}」は探索済み。復活まで奥の箱は空です。`:`🏚️「${dungeonDef.name}」へ踏み込んだ。番を倒すと奥の箱が開く。`);
     } else {
       this.dungeonVault = null;
       if (dungeonDef.kind === 'town') {
@@ -7594,6 +7626,7 @@ export const IronSquadGame = {
     this.settleTerrain();
     updateLimitedAllies(this);
     if(dungeonDef.id==='dungeon_demon_castle'&&this.heroJourney){const scene=ensureHeroCastle(this,dungeonDef);this.monsters=scene.monsters;this.dungeonVault=scene.vault;}
+    this.settleTerrain();
     this.refreshInvasionUI();
     this.updateStatsUI();
     if(encounter)this.saveGame();
@@ -7650,6 +7683,7 @@ export const IronSquadGame = {
     this.savedFieldMonsters = null;
     this.savedFieldDrops = null;
     this.currentDungeon = null;
+    updateDungeonRespawns(this);
     updateLimitedAllies(this);
     const overflowAlly = (this.squad || []).find(s => s && !s.dead && s.overflowGuard && !s.overflowPrompted);
     if (overflowAlly) { overflowAlly.overflowPrompted = true; setTimeout(() => { if (!this.currentDungeon && overflowAlly.overflowGuard) this.openPersonalSwapDialog(overflowAlly); }, 500); }
@@ -7665,6 +7699,7 @@ export const IronSquadGame = {
   },
 
   createDungeonMob(type, x, y, dungeonDef, isElite = false, allowRanged = true) {
+    ({x,y}=nearestDungeonFloor(dungeonDef,{x,y}));
     const scaling = distanceScaling(dungeonDef.distance, this.phase || 1);
     let rawHp = isElite ? 180 : 80;
     let rawAtk = isElite ? 32 : 16;
@@ -7789,6 +7824,7 @@ export const IronSquadGame = {
       dRecord.clearedWave = this.wave || this.phase || 1;
     }
     def.cleared = true;
+    recordDungeonClear(this,def);
 
     this.showToast(`🏆【${def.name} 完全踏破！】黄金+${reward.gold}G＆至宝武具を大量獲得！脱出門より外界へ帰還可能です！`);
   },
@@ -10229,6 +10265,7 @@ export const IronSquadGame = {
       if (this.dungeonVault) {
         drawDungeonVault(this.ctx, this.dungeonVault, now * 0.001);
       }
+      drawDungeonSideChests(this.ctx,this,now);
     } else {
       // 1. 大地・戦場フィールド
       this.drawBattlefield(this.ctx, now);
@@ -11238,101 +11275,7 @@ export const IronSquadGame = {
   },
 
   drawChest(ctx, drop, now) {
-    ctx.save();
-    ctx.translate(drop.x, drop.y);
-
-    if(drop.isMagicStone){ctx.fillStyle='#9b88b7';ctx.strokeStyle='#ddd0ee';ctx.beginPath();ctx.moveTo(0,-9);ctx.lineTo(6,-2);ctx.lineTo(3,7);ctx.lineTo(-4,6);ctx.lineTo(-6,-2);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();return;}
-    if(drop.isAmmo){ctx.fillStyle='#857960';ctx.fillRect(-7,-6,14,12);ctx.strokeStyle='#d3c6a5';ctx.strokeRect(-7,-6,14,12);ctx.fillStyle='#e6ddc7';ctx.font='bold 9px sans-serif';ctx.textAlign='center';ctx.fillText(String(drop.ammo),0,3);ctx.restore();return;}
-    if (drop.isOrb) {
-      // ===== 💎 覚醒の英雄宝珠（宙に浮遊・神聖秘宝の輝き） =====
-      const floatBob = Math.sin(now * 0.006) * 4;
-      const pulse = Math.sin(now * 0.014) * 3;
-
-      // 接地シャドウ
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
-      ctx.beginPath();
-      ctx.ellipse(0, 8, 12, 4.5, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      // 外周の神聖オーラリング
-      ctx.strokeStyle = '#fbbf24';
-      ctx.lineWidth = 1.8;
-      ctx.shadowColor = '#f59e0b';
-      ctx.shadowBlur = 5 + pulse * 0.35;
-      ctx.beginPath();
-      ctx.arc(0, floatBob, 13 + pulse, 0, Math.PI * 2);
-      ctx.stroke();
-
-      // 宝珠本体（光彩グラデーション）
-      const grad = ctx.createRadialGradient(-3, floatBob - 3, 1, 0, floatBob, 9);
-      grad.addColorStop(0, '#ffffff');
-      grad.addColorStop(0.3, '#fef08a');
-      grad.addColorStop(0.7, '#f59e0b');
-      grad.addColorStop(1, '#b45309');
-      ctx.fillStyle = grad;
-      ctx.beginPath();
-      ctx.arc(0, floatBob, 8.5, 0, Math.PI * 2);
-      ctx.fill();
-
-      // 宝珠上部の神聖アイコン
-      ctx.font = '12px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('🔱', 0, floatBob - 13);
-      ctx.shadowBlur = 0;
-      ctx.restore();
-      return;
-    }
-
-    if (drop.isBoss) {
-      // ===== ボス確定ドロップの神々しいオーラ =====
-      const pulse = Math.sin(now * 0.008) * 5;
-      ctx.strokeStyle = 'rgba(255, 215, 0, 0.65)';
-      ctx.lineWidth = 2.5;
-      ctx.beginPath();
-      ctx.arc(0, 0, 20 + pulse, 0, Math.PI * 2);
-      ctx.stroke();
-
-      ctx.shadowColor = '#fbbf24';
-      ctx.shadowBlur = 6 + pulse * 0.35;
-
-      // 金の宝箱
-      ctx.fillStyle = '#b45309';
-      ctx.fillRect(-12, -9, 24, 18);
-
-      ctx.strokeStyle = '#fef08a';
-      ctx.lineWidth = 2.5;
-      ctx.strokeRect(-12, -9, 24, 18);
-
-      // 王冠マーク
-      ctx.font = '13px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('👑', 0, -15);
-    } else {
-      // 足元グロー光彩
-      ctx.shadowColor = drop.item.color;
-      ctx.shadowBlur = 12 + Math.sin(now * 0.008) * 4;
-
-      // 宝箱の木製本体
-      ctx.fillStyle = '#5c2c16';
-      ctx.fillRect(-10, -8, 20, 16);
-
-      // 金具フレーム（レアリティ色）
-      ctx.strokeStyle = drop.item.color;
-      ctx.lineWidth = 2;
-      ctx.strokeRect(-10, -8, 20, 16);
-
-      // 宝箱の帯金具
-      ctx.fillStyle = drop.item.color;
-      ctx.fillRect(-10, -2, 20, 3);
-
-      // 鍵穴
-      ctx.fillStyle = '#ffe600';
-      ctx.beginPath();
-      ctx.arc(0, 2, 2, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    ctx.restore();
+    drawLootDrop(ctx, drop, now);
   },
 
   drawMonster(ctx, m, now) {
@@ -11605,7 +11548,7 @@ export const IronSquadGame = {
       ctx.shadowBlur = 0;
     } else {
       const barW = Math.max(22, m.radius * 2);
-      const headH = m.type === 'brute' ? 186 : (m.type === 'demon_front' || m.type === 'demon_rear' ? 52 : (m.activePeriod ? 43 : m.isBoss ? 46 : (m.type === 'orc' || m.type === 'wyvern' ? 44 : (m.type === 'goblin' ? 37 : 26))));
+      const headH = isRuinKeeper(m) ? Math.round(46 * ruinKeeperScale(m) * (m.type === 'wyvern' ? .9 : 1)) : m.type === 'brute' ? 186 : (m.type === 'demon_front' || m.type === 'demon_rear' ? 52 : (m.activePeriod ? 43 : m.isBoss ? 46 : (m.type === 'orc' || m.type === 'wyvern' ? 44 : (m.type === 'goblin' ? 37 : 26))));
       ctx.fillStyle = 'rgba(0,0,0,0.65)';
       ctx.fillRect(-barW / 2, -headH, barW, 4);
       ctx.fillStyle = m.isBoss ? '#ef4444' : (m.isElite ? '#f59e0b' : '#34d399');

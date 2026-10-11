@@ -6,6 +6,7 @@ import {MAGIC_AFFINITIES,ensureMana} from './magic-rules.js?v=151';
 import { drawMeleeWeapon, drawMeleeRangeCue } from './weapon-motion.js?v=162';
 import { defaultCommanderAppearance } from './commander-identity.js?v=175';
 import { createSoldierAppearance, drawSoldierHead, isMedicAppearance, soldierAppearanceFamily, soldierPhysique } from './soldier-appearance.js?v=151';
+import { classRegaliaFor, drawClassMantle, drawClassRegalia, drawClassHeadpiece } from './class-regalia.js?v=177';
 
 // Keep the commander's established face, with short hair in both field and portrait (v4.2.24: player.appearance overrides it).
 const commanderAppearance=Object.freeze(defaultCommanderAppearance());
@@ -84,7 +85,7 @@ const CLOTH = {
 };
 
 function drawCampRest(c, s, now, pose, look, simple) {
-  const { cloth, armorColor, legs, blade, steel, gloves, platoonColor, medic, advanced, mage, eq, physique } = look;
+  const { cloth, armorColor, legs, blade, steel, gloves, platoonColor, medic, advanced, mage, eq, physique, regalia } = look;
   const bob = Math.sin(now * 0.0035 + (s.animOffset || 0)) * 1.2;
   const breath = Math.sin(now * 0.002 + (s.animOffset || 0)) * 0.35;
   const head = { helmet: eq.helmet ? steel : null, helmetTier: eq.helmet?.tier || 1, mitre: medic && advanced, cap: medic && !advanced };
@@ -97,6 +98,7 @@ function drawCampRest(c, s, now, pose, look, simple) {
   c.ellipse(0, 2, 8, 2.5, 0, 0, Math.PI * 2);
   c.fill();
   line(c, [[-13, 6], [-5, 7]], blade, 2.2);
+  if(regalia){c.save();c.translate(0,8+breath);c.scale(physique.bodyWidth,.7);drawClassMantle(c,regalia,{simple});c.restore();}
   if (simple) {
     c.save();
     c.scale(physique.bodyWidth, 1);
@@ -109,6 +111,7 @@ function drawCampRest(c, s, now, pose, look, simple) {
     if (eq.armor) { c.fillStyle = armorColor; c.fillRect(-4, -12, 8, 6); }
     c.restore();
     drawSoldierHead(c, s, { y: -16 + breath, scale: 0.72, small: true, silhouette: true, ...head });
+    if(regalia){c.save();c.translate(0,8+breath);c.scale(physique.bodyWidth,.7);drawClassRegalia(c,regalia,{simple:true});c.restore();drawClassHeadpiece(c,regalia,{y:-16+breath,scale:.72,simple:true,helmet:!!eq.helmet});}
     if (pose === 'drink') {
       c.fillStyle = '#d9c7a2'; c.fillRect(2, -14, 4, 4);
       c.fillStyle = '#7a3e3a'; c.fillRect(3, -13, 2, 2);
@@ -136,8 +139,10 @@ function drawCampRest(c, s, now, pose, look, simple) {
       c.fillStyle = '#95574f';
       c.fillRect(-0.4, -12 + breath, 1.2, 3.5);
     }
+    if(regalia){c.save();c.translate(0,8+breath);c.scale(1,.7);drawClassRegalia(c,regalia);c.restore();}
     c.restore();
     drawSoldierHead(c, s, { y: -20 + breath, small: true, ...head });
+    drawClassHeadpiece(c,regalia,{y:-20+breath,helmet:!!eq.helmet});
     c.strokeStyle = gloves;
     c.lineWidth = 2;
     c.lineCap = 'round';
@@ -165,10 +170,11 @@ function drawCampRest(c, s, now, pose, look, simple) {
     c.restore();
   }
   if (c.showBattleLabels !== false && s.maxHp > 0 && s.hp < s.maxHp * 0.55) {
+    const healthY=regalia?-44:-34;
     c.fillStyle = '#283132';
-    c.fillRect(-12, -34, 24, 3);
+    c.fillRect(-12, healthY, 24, 3);
     c.fillStyle = '#c4b48a';
-    c.fillRect(-12, -34, 24 * Math.max(0, Math.min(1, s.hp / s.maxHp)), 3);
+    c.fillRect(-12, healthY, 24 * Math.max(0, Math.min(1, s.hp / s.maxHp)), 3);
   }
 }
 
@@ -202,7 +208,8 @@ function drawFieldFarmer(c, s, now, cls, platoonColor, simpleLod, displayEquipme
   const physique = soldierPhysique(s);
   const family = cls?.baseClassId || soldierAppearanceFamily(key);
   const advanced = !!cls?.isAdvanced;
-  const cloth = fieldTone(CLOTH[key] || CLOTH[family] || CLOTH.HEAVY, 0.34);
+  const regalia=classRegaliaFor(s);
+  const cloth = fieldTone(regalia?.cloth || CLOTH[key] || CLOTH[family] || CLOTH.HEAVY, 0.34);
   const armorColor = fieldTone(equipmentVisualProfile(eq.armor).color || cloth, 0.2);
   const steel = fieldTone(equipmentVisualProfile(eq.helmet).color || (advanced ? '#d1c4a3' : '#9daab0'), 0.26);
   const legs = fieldTone(equipmentVisualProfile(eq.legs).color || '#5c564c', 0.42);
@@ -219,6 +226,7 @@ function drawFieldFarmer(c, s, now, cls, platoonColor, simpleLod, displayEquipme
   c.fillRect(-18, 2, 36, 8);
   c.fillStyle = '#7f9661';
   for (let i = 0; i < 7; i++) c.fillRect(-16 + i * 5, 3, 2, 6);
+  if(regalia){c.save();c.translate(0,kneel?12:5);c.scale(physique.bodyWidth,kneel?.55:.8);drawClassMantle(c,regalia,{simple:simpleLod});c.restore();}
   if (simpleLod) {
     c.save();
     c.scale(physique.bodyWidth, 1);
@@ -229,6 +237,7 @@ function drawFieldFarmer(c, s, now, cls, platoonColor, simpleLod, displayEquipme
     if (eq.armor) { c.fillStyle = armorColor; c.fillRect(-4, kneel ? -11 : -15, 8, 5); }
     c.restore();
     drawSoldierHead(c, s, { y: (kneel ? -16 : -22) + breath, scale: 0.72, small: true, silhouette: true, ...head });
+    if(regalia){c.save();c.translate(0,kneel?12:5);c.scale(physique.bodyWidth,kneel?.55:.8);drawClassRegalia(c,regalia,{simple:true});c.restore();drawClassHeadpiece(c,regalia,{y:(kneel?-16:-22)+breath,scale:.72,simple:true,helmet:!!eq.helmet});}
     drawFarmProp(c, pose, swing);
   } else {
     c.save();
@@ -257,8 +266,10 @@ function drawFieldFarmer(c, s, now, cls, platoonColor, simpleLod, displayEquipme
     c.fillRect(-6, kneel ? -6 : -10, 12, 2);
     c.fillStyle = platoonColor;
     c.fillRect(-5, (kneel ? -13 : -19) + breath, 3, 3);
+    if(regalia){c.save();c.translate(0,kneel?12:5);c.scale(1,kneel?.55:.8);drawClassRegalia(c,regalia);c.restore();}
     c.restore();
     drawSoldierHead(c, s, { y: (kneel ? -18 : -26) + breath, small: true, ...head });
+    drawClassHeadpiece(c,regalia,{y:(kneel?-18:-26)+breath,helmet:!!eq.helmet});
     c.strokeStyle = gloves;
     c.lineWidth = 2;
     c.lineCap = 'round';
@@ -280,10 +291,11 @@ function drawFieldFarmer(c, s, now, cls, platoonColor, simpleLod, displayEquipme
     c.restore();
   }
   if (c.showBattleLabels !== false && s.maxHp > 0 && s.hp < s.maxHp * 0.55) {
+    const healthY=regalia?-47:-36;
     c.fillStyle = '#283132';
-    c.fillRect(-12, -36, 24, 3);
+    c.fillRect(-12, healthY, 24, 3);
     c.fillStyle = '#c4b48a';
-    c.fillRect(-12, -36, 24 * Math.max(0, Math.min(1, s.hp / s.maxHp)), 3);
+    c.fillRect(-12, healthY, 24 * Math.max(0, Math.min(1, s.hp / s.maxHp)), 3);
   }
   c.restore();
 }
@@ -327,7 +339,8 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod, displa
   const mage=family==='MAGE';if(mage)ensureMana(s);
   const spellColor=mage?MAGIC_AFFINITIES[s.magicAffinity].color:null;
   const advanced = !!cls.isAdvanced;
-  const cloth = fieldTone(CLOTH[key] || CLOTH[family] || CLOTH.HEAVY, 0.34);
+  const regalia=classRegaliaFor(s);
+  const cloth = fieldTone(regalia?.cloth || CLOTH[key] || CLOTH[family] || CLOTH.HEAVY, 0.34);
   const armorColor=fieldTone(equipmentVisualProfile(eq.armor).color||cloth,.2);
   const steel = fieldTone(equipmentVisualProfile(eq.helmet).color || (advanced ? '#d1c4a3' : '#9daab0'), 0.26);
   const legs = fieldTone(equipmentVisualProfile(eq.legs).color || '#5c564c', 0.42);
@@ -344,7 +357,7 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod, displa
   const weaponColors = {cloth,gloves,blade,board,physique,hand:s.appearance?.skin||'#c1a083',gloveProfile:equipmentVisualProfile(eq.gloves),shieldProfile:equipmentVisualProfile(eq.shield),weaponProfile:equipmentVisualProfile(eq.weapon||s.weapon)};
   c.save(); c.translate(s.x, s.y);
   if (!s.isDown && (s.campPose === 'sit' || s.campPose === 'drink' || s.campPose === 'eat')) {
-    drawCampRest(c, s, now, s.campPose, { cloth, armorColor, legs, blade, steel, gloves, platoonColor, medic, advanced, mage, eq, physique }, simpleLod);
+    drawCampRest(c, s, now, s.campPose, { cloth, armorColor, legs, blade, steel, gloves, platoonColor, medic, advanced, mage, eq, physique, regalia }, simpleLod);
     c.restore();
     drawLevelMark(c, s, now);
     return;
@@ -354,6 +367,7 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod, displa
   // Perf v1.24.2: far/edge soldiers = silhouette only (skip gear/weapon strokes).
   if (simpleLod && !s.isDown) {
     c.save();c.scale(physique.bodyWidth,1);
+    drawClassMantle(c,regalia,{simple:true});
     c.fillStyle = cloth;
     c.beginPath(); c.ellipse(0, -14, 6, 10, 0, 0, Math.PI * 2); c.fill();
     c.fillRect(-8,-20,2.5,11);c.fillRect(5.5,-20,2.5,11);
@@ -367,12 +381,14 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod, displa
       c.fillStyle='#95574f';c.fillRect(-.5,-16,1,4);c.fillRect(-2,-14.5,4,1);
     }
     if(mage)shape(c,[[-6,-19],[-8,0],[7,0],[6,-19]],'#65566f');
+    drawClassRegalia(c,regalia,{simple:true});
     c.restore();
     if(mage){if(!muscular){line(c,[[12,0],[12,-29]],'#857053',1.5);ellipse(c,12,-30,2,3,s.mana>0?spellColor:'#6d6674');}shape(c,[[-7,-31],[1,-39],[7,-31]],'#5d5269');}
+    drawClassHeadpiece(c,regalia,{y:-26,scale:.8,simple:true,helmet:!!eq.helmet});
     c.fillStyle = platoonColor; c.fillRect(-2, 4, 4, 2);
     if (s.isPersonalGuard) { c.fillStyle = '#c8b278'; c.fillRect(4, 4, 3, 2); }
     if (c.showBattleLabels!==false && s.maxHp > 0 && s.hp < s.maxHp * 0.55) {
-      const healthY=medic&&advanced?-44:-39;
+      const healthY=regalia?-48:medic&&advanced?-44:-39;
       c.fillStyle = '#283132'; c.fillRect(-12, healthY, 24, 3);
       c.fillStyle = '#c4b48a'; c.fillRect(-12, healthY, 24 * Math.max(0, Math.min(1, s.hp / s.maxHp)), 3);
     }
@@ -385,10 +401,11 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod, displa
     c.save();c.scale(1,physique.bodyWidth);
     shape(c,[[-18,-3],[16,-7],[20,3],[-14,6]],cloth);
     c.save();c.translate(-12,-1);c.rotate(Math.PI/2);c.translate(0,15);drawBodyEquipment(c,eq,{armorColor,legColor:legs,role:family,simple:true});c.restore();
+    if(regalia){c.save();c.translate(-5,0);c.rotate(Math.PI/2);c.scale(.65,.6);drawClassRegalia(c,regalia,{simple:true});c.restore();}
     if(medic){c.fillStyle='#ded8be';c.fillRect(-2,-4,7,6);c.fillStyle='#95574f';c.fillRect(1,-3,1.2,4);c.fillRect(-.5,-1.5,4,1.2);}
     c.restore();
     c.save();c.translate(-20,-1);c.rotate(-Math.PI/2);
-    drawSoldierHead(c,s,{scale:.9,small:true,silhouette:true,helmet:eq.helmet?steel:null,helmetTier:eq.helmet?.tier||1,mitre:medic&&advanced,cap:medic&&!advanced});c.restore();
+    drawSoldierHead(c,s,{scale:.9,small:true,silhouette:true,helmet:eq.helmet?steel:null,helmetTier:eq.helmet?.tier||1,mitre:medic&&advanced,cap:medic&&!advanced});drawClassHeadpiece(c,regalia,{scale:.9,simple:true,helmet:!!eq.helmet});c.restore();
     line(c,[[10,-2],[22,2],[18,6]],'#3c4038',2.5*physique.armWidth);
     c.fillStyle = '#e6d7b8'; c.textAlign = 'center'; c.font = 'bold 10px sans-serif';
     c.fillText(s.carrierId?'搬送中':`救助 ${Math.ceil(s.downTimer || 0)}秒`, 0, -16);
@@ -403,7 +420,8 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod, displa
   c.translate(0, -bob);
   c.save();c.scale(physique.bodyWidth,1);
   // Cloak, boots and an articulated torso give every class a distinct silhouette.
-  if (advanced || s.isNamed || archer) {
+  if (regalia)drawClassMantle(c,regalia);
+  else if (advanced || s.isNamed || archer) {
     shape(c, [[-4,-23],[-11,-17],[-14,-1],[-5,-5],[4,-17]], s.isCommander ? (advanced?'#794e41':'#3e5863') : (archer ? '#3d5148' : '#795d51'));
     line(c, [[-7,-17],[-10,-4]], '#b59a72');
   }
@@ -432,6 +450,7 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod, displa
     c.fillStyle = '#95574f'; c.fillRect(-1,-18,1.5,5); c.fillRect(-3,-16,5,1.5);
   }
   drawBodyEquipment(c,eq,{armorColor,legColor:legs,role:family,stride});
+  drawClassRegalia(c,regalia);
   if(s.isCommander){line(c,[[-5,-22],[4,-10]],advanced?'#d2bb83':'#b7bda8',1.5);}
   c.restore();
   // Hands, face and headwear, with a restrained highlight on the upper edge.
@@ -492,6 +511,7 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod, displa
       // Melee weapons are drawn outside the mirrored torso transform below.
     }
   }
+  drawClassHeadpiece(c,regalia,{y:-28,helmet:!!eq.helmet});
   if(!melee&&eq.weapon){const p=equipmentVisualProfile(eq.weapon);if(p.rough){line(c,[[11,-22],[15,-21],[11,-20]],'#bca787',1.1);}else if(p.detail>=1){line(c,[[11,-22],[15,-22]],'#d0c19c',1.2);if(p.detail>=2){line(c,[[11,-18],[15,-18]],'#d0c19c',1.2);}}}
   c.restore();
   if (melee) {
@@ -504,7 +524,7 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod, displa
     c.fillStyle = '#c8b278'; c.fillRect(4,4,3,2);
   }
   if (!s.portrait && c.showBattleLabels!==false) {
-    const headClearance=medic&&advanced?8:0;
+    const headClearance=regalia?Math.max(mage?12:0,medic?12:8):medic&&advanced?8:0;
     const distinguished = !s.isMerchantEscort && (s.isNamed || advanced || s.isPersonalGuard || s.talent === 'GENIUS');
     const hurting = s.maxHp > 0 && s.hp < s.maxHp * 0.55;
     if (distinguished) {
@@ -526,23 +546,25 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod, displa
 
 export function drawFieldCommander(c,p,equipped,now,rankIndex,rankTitle,moving,portrait=false) {
   c.save();c.translate(p.x,p.y);c.scale(1.18,1.18);
+  const commanderRegalia=classRegaliaFor(p,true);
   drawFieldSoldier(c,{id:'commander',appearance:p.appearance||commanderAppearance,x:0,y:0,hp:p.hp,maxHp:p.maxHp,_levelMark:portrait?0:p._levelMark,level:p.level,
-    soldierClass:p.isAdvanced?'WARLORD':'COMMANDER',isCommander:true,isNamed:true,rankIndex,
+    soldierClass:commanderRegalia?.id||'COMMANDER',advancedClass:p.advancedClass,isAdvanced:!!commanderRegalia,isCommander:true,isNamed:true,rankIndex,
     equipped,portrait:true,atkAnim:p.slashAnim || 0,
     facingAngle:p.facingAngle,attackAngle:p.slashAngle,vx:moving?1:0,vy:0},now,
-    {isAdvanced:!!p.isAdvanced,name:'隊長'},'#b7c6b6');
+    {isAdvanced:!!commanderRegalia,name:'隊長'},'#b7c6b6');
   if(!portrait) {
     // A quiet ground pointer and a stable nameplate keep the player identifiable.
     shape(c,[[0,8],[-3,12],[3,12]],'#d8ceb0');
     if(c.showBattleLabels!==false){
     c.textAlign='center';c.font='bold 9px sans-serif';
-    const name=`あなた · Lv.${p.level || 1}${p.isAdvanced?' 覇王':''}`;
+    const name=`あなた · Lv.${p.level || 1}${commanderRegalia?' '+commanderRegalia.name:''}`;
     const width=c.measureText(name).width+10;
-    c.fillStyle='rgba(17,27,28,.9)';c.fillRect(-width/2,-62,width,12);
-    c.fillStyle='#dfd8bb';c.fillText(name,0,-53);
-    c.fillStyle='#253337';c.fillRect(-16,-49,32,4);
-    c.fillStyle=p.isAdvanced?'#c4aa78':'#91b6bd';
-    c.fillRect(-16,-49,32*Math.max(0,Math.min(1,p.hp/p.maxHp)),4);
+    const labelTop=commanderRegalia?-69:-62;
+    c.fillStyle='rgba(17,27,28,.9)';c.fillRect(-width/2,labelTop,width,12);
+    c.fillStyle='#dfd8bb';c.fillText(name,0,labelTop+9);
+    c.fillStyle='#253337';c.fillRect(-16,labelTop+13,32,4);
+    c.fillStyle=commanderRegalia?'#c4aa78':'#91b6bd';
+    c.fillRect(-16,labelTop+13,32*Math.max(0,Math.min(1,p.hp/p.maxHp)),4);
     }
   }
   c.restore();
@@ -715,12 +737,12 @@ export function drawFieldMob(c, m, now) {
   c.restore(); return true;
 }
 
-function drawAncientDragon(c, now, flash, scale) {
+function drawAncientDragon(c, now, flash, scale, infernal=false) {
   const flap = Math.sin(now * (scale < 1 ? 0.008 : 0.005)) * (scale < 1 ? 8 : 14);
-  const hide = flash ? '#d9d3cc' : '#7a342c';
-  const hideDark = flash ? '#c8c2ba' : '#4a241e';
-  const wing = flash ? '#b7b2aa' : '#3a2422';
-  const membrane = flash ? '#ddd8d0' : '#5c3a34';
+  const hide = flash ? '#d9d3cc' : (infernal?'#a65335':'#7a342c');
+  const hideDark = flash ? '#c8c2ba' : (infernal?'#5e3026':'#4a241e');
+  const wing = flash ? '#b7b2aa' : (infernal?'#572d29':'#3a2422');
+  const membrane = flash ? '#ddd8d0' : (infernal?'#965239':'#5c3a34');
   const horn = flash ? '#2c3234' : '#1a1e22';
   c.save();
   c.scale(scale, scale);
@@ -816,15 +838,106 @@ function drawTitan(c, now, flash) {
   ellipse(c, 6, -57.6, 1.35, 1.05, core);
 }
 
-const BOSS_BODIES = new Set(['dragon', 'colossal_dragon', 'behemoth_king', 'colossal_titan']);
+function drawMiningKing(c,m,now,flash) {
+  const scale=Math.max(1.4,Math.min(2.2,(m.radius||34)/18));
+  c.save();c.scale(scale,scale);
+  shape(c,[[-10,-23],[-14,-19],[-12,-1],[-5,-5],[5,-4],[12,-2],[10,-22]],flash?'#dfd8c9':'#72553e');
+  drawFieldMob(c,{...m,type:'goblin',isBoss:false},now);
+  shape(c,[[-5,-30],[-7,-36],[-3,-34],[0,-39],[3,-34],[6,-37],[7,-30]],flash?'#fff1c8':'#c4a361');
+  line(c,[[-5,-30],[6,-30]],'#e4cc86',1.3);ellipse(c,1,-32,1.1,1.2,'#95624b');
+  // The miner's pick shares the base goblin's grip and covers its small club.
+  line(c,[[8,-12],[18,-34]],'#a08052',3.2);
+  shape(c,[[8,-34],[16,-39],[24,-38],[29,-31],[21,-33],[17,-34],[10,-30]],flash?'#f0ece0':'#aaa99a');
+  line(c,[[12,-34],[18,-37],[24,-35]],'#d4ccae',1);
+  c.restore();
+}
+
+function drawLichElder(c,m,flash) {
+  const scale=Math.max(.85,Math.min(1.2,(m.radius||38)/38));
+  const robe=flash?'#cdc9cf':'#44424f',dark=flash?'#b6b4c2':'#272e38',bone=flash?'#f2eddd':'#d0c7ae';
+  c.save();c.scale(scale,scale);
+  shape(c,[[-10,-52],[-20,-44],[-28,1],[-15,-3],[-4,3],[6,-1],[23,3],[18,-45],[9,-53]],robe);
+  shape(c,[[-4,-48],[-12,-5],[1,-8],[9,0],[8,-49]],dark,'transparent');
+  line(c,[[-15,-42],[-21,-4],[-14,-1],[1,1],[16,-2],[18,-39]],'#a19776',2);
+  shape(c,[[-12,-49],[-20,-54],[-25,-39],[-11,-37]],'#5a5b68');
+  shape(c,[[11,-49],[20,-53],[25,-40],[11,-36]],'#5a5b68');
+  line(c,[[-13,-39],[-17,-23],[9,-40],[21,-23]],bone,3);
+  ellipse(c,-17,-23,4,4,bone);ellipse(c,22,-23,4,4,bone);
+  line(c,[[30,3],[30,-66]],'#8d846d',3.5);shape(c,[[24,-65],[30,-76],[36,-65],[30,-57]],'#869c99','#d1c9a7');
+  shape(c,[[-12,-62],[-10,-72],[0,-78],[11,-72],[13,-61]],dark);
+  ellipse(c,0,-63,9,10,bone);c.fillStyle='#30333b';c.fillRect(-6,-66,4,4);c.fillRect(2,-66,4,4);
+  shape(c,[[0,-63],[-2,-59],[2,-59]],'#4b4a46','transparent');
+  c.fillStyle='#7d7d6c';c.fillRect(-4,-56,8,2);for(const x of [-3,0,3]){c.fillStyle=bone;c.fillRect(x,-56,1,3);}
+  shape(c,[[-9,-71],[-10,-77],[-6,-75],[0,-81],[6,-75],[10,-77],[9,-71]],'#ac9971');
+  ellipse(c,0,-43,2.2,3,'#b3c3b4');
+  c.restore();
+}
+
+function drawDemonKing(c,m,flash) {
+  const scale=Math.max(.85,Math.min(1.2,(m.radius||72)/72));
+  const metal=flash?'#cdd0d6':'#515d6c',dark=flash?'#b9bdc8':'#293442',trim=flash?'#f3e3b8':'#b39a6c';
+  c.save();c.scale(scale,scale);
+  shape(c,[[-18,-59],[-37,-43],[-43,7],[-21,3],[-5,8],[13,2],[37,7],[32,-43],[15,-59]],flash?'#c9bdbd':'#633c46');
+  line(c,[[-35,-37],[-39,1],[-21,-2],[4,4],[33,2],[30,-36]],trim,2);
+  shape(c,[[-19,-14],[-6,-14],[-5,5],[-22,5]],dark);shape(c,[[7,-14],[20,-13],[23,5],[5,5]],dark);
+  shape(c,[[-24,-53],[22,-54],[27,-18],[17,-6],[-20,-6],[-28,-20]],metal);
+  shape(c,[[-18,-49],[-1,-52],[-5,-16],[-19,-12]],'#778290','transparent');
+  shape(c,[[2,-51],[20,-49],[23,-19],[9,-10]],dark,'transparent');
+  shape(c,[[-24,-52],[-36,-59],[-42,-46],[-35,-32],[-18,-39]],metal);
+  shape(c,[[22,-54],[35,-58],[42,-44],[34,-33],[17,-40]],metal);
+  line(c,[[-34,-53],[-25,-46],[-34,-37],[33,-52],[25,-46],[34,-37]],trim,2.5);
+  shape(c,[[-6,-43],[0,-49],[7,-43],[0,-32]],'#945859',trim);
+  line(c,[[-17,-23],[16,-23]],trim,2);line(c,[[-16,-14],[0,-9],[16,-15]],'#9c9d9b',1.5);
+  line(c,[[-31,-37],[-32,-20],[31,-38],[34,-22]],dark,8);
+  ellipse(c,-32,-20,5,6,metal);ellipse(c,34,-22,5,6,metal);
+  line(c,[[33,-18],[47,-64]],'#a6abb0',4);shape(c,[[41,-54],[46,-73],[53,-68],[49,-49]],'#b9c0c1');line(c,[[37,-35],[49,-31]],trim,3);
+  ellipse(c,0,-66,11,12,flash?'#e1d3c6':'#9c8175');
+  shape(c,[[-12,-70],[-9,-79],[7,-80],[13,-69],[6,-70],[0,-74],[-6,-70]],dark);
+  for(const side of [-1,1]){shape(c,[[side*7,-76],[side*15,-83],[side*20,-96],[side*25,-92],[side*21,-77],[side*11,-70]],'#c5bba0');line(c,[[side*13,-78],[side*20,-88]],'#e0d3b4',1);}
+  c.fillStyle=flash?'#faf0b4':'#dfa879';c.fillRect(-7,-68,5,2);c.fillRect(3,-68,5,2);
+  shape(c,[[-5,-61],[5,-61],[4,-56],[-3,-55]],dark);line(c,[[-4,-58],[3,-58]],'#cbb89b',1);
+  c.restore();
+}
+
+// Ruins keepers are ordinary orc/wyvern stat blocks flagged isDungeonBoss; draw them
+// as a larger armoured keeper so they read as the room's boss, not a stray grunt.
+export const isRuinKeeper=m=>!!m&&!!m.isDungeonBoss&&(m.type==='orc'||m.type==='wyvern')&&!m.isBoss;
+export const ruinKeeperScale=m=>Math.max(1.7,Math.min(2.6,(m.radius||18)/9));
+function drawRuinKeeper(c,m,now,flash){
+  const wyvern=m.type==='wyvern',k=ruinKeeperScale(m);
+  const iron=flash?'#e6e2da':'#4a4f55',dark=flash?'#cfcbc2':'#262b30',gold=flash?'#fff1c8':'#b9984f';
+  c.save();c.scale(k,k);
+  drawFieldMob(c,{...m,isBoss:false,isDungeonBoss:false},now);
+  if(wyvern){
+    // gilded crest and spiked collar over the wyvern's neck and shoulders
+    shape(c,[[4,-27],[7,-37],[10,-29],[14,-36],[15,-26]],gold,'#6f5a2a');
+    shape(c,[[-4,-21],[2,-23],[8,-19],[1,-14],[-5,-15]],iron,dark);
+    for(const x of [-2,2,6])shape(c,[[x,-21],[x+1.2,-26],[x+2.4,-21]],gold,'transparent');
+  }else{
+    // horned iron helm, pauldrons and a tattered war-cape
+    shape(c,[[-8,-22],[-14,-16],[-12,-4],[-6,-8]],dark);
+    shape(c,[[-9,-21],[-3,-24],[4,-21],[-2,-17]],iron,dark);shape(c,[[5,-21],[11,-19],[10,-14],[5,-16]],iron,dark);
+    shape(c,[[-4,-30],[-9,-38],[-2,-34]],'#d8cfb6','#6a5c48');shape(c,[[5,-30],[11,-38],[7,-33]],'#d8cfb6','#6a5c48');
+    shape(c,[[-5,-31],[7,-31],[6,-27],[-4,-27]],iron,dark);line(c,[[-4,-31],[6,-31]],gold,1);
+  }
+  c.restore();
+}
+
+const BOSS_BODIES = new Set(['dragon', 'colossal_dragon', 'behemoth_king', 'colossal_titan','goblin_king','lich_elder','hellflame_drake','demon_king']);
 
 export function drawFieldBoss(c, m, now) {
-  if (!BOSS_BODIES.has(m.type)) return false;
+  const keeper=isRuinKeeper(m);
+  if (!keeper&&!BOSS_BODIES.has(m.type)) return false;
   const flash = m.hitPulse > 0;
   const bob = Math.sin(now * 0.014 + ((m.x || 0) % 10)) * (m.isColossal ? 2.2 : 1.2);
   c.save();
   c.translate(0, bob);
-  if (m.type === 'behemoth_king') drawBehemoth(c, now, flash);
+  if (keeper) drawRuinKeeper(c,m,now,flash);
+  else if (m.type === 'goblin_king') drawMiningKing(c,m,now,flash);
+  else if (m.type === 'lich_elder') drawLichElder(c,m,flash);
+  else if (m.type === 'demon_king') drawDemonKing(c,m,flash);
+  else if (m.type === 'hellflame_drake') drawAncientDragon(c,now,flash,Math.max(.9,Math.min(1.3,(m.radius||58)/50)),true);
+  else if (m.type === 'behemoth_king') drawBehemoth(c, now, flash);
   else if (m.type === 'colossal_titan') drawTitan(c, now, flash);
   else drawAncientDragon(c, now, flash, m.type === 'dragon' ? 0.58 : 1);
   c.restore();

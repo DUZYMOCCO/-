@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {FIELD_DROP_LIFETIME,addFieldDrop,ageFieldDrops} from '../js/field-drops.js';
+import {FIELD_DROP_LIFETIME,FIELD_DROP_ATTRACT_RADIUS,addFieldDrop,ageFieldDrops,attractFieldDrops} from '../js/field-drops.js';
 import {WORLD_SIZE} from '../js/world.js';
 import {saveSlots} from '../js/save-slots.js';
 
@@ -31,6 +31,24 @@ state.savedFieldDrops=null;state.dropsOnField=Array.from({length:5000},(_,i)=>({
 const fresh=addFieldDrop(state,{item:gear('fresh')});const large=state.dropsOnField;
 ageFieldDrops(state,1);assert.equal(state.dropsOnField,large);assert.deepEqual(large,[fresh]);
 
+// Attraction has a finite radius, moves gradually, never overshoots, and only
+// touches the current scene. It does not award or remove loot by itself.
+const pull={player:{x:0,y:0,hp:100},dropsOnField:[],savedFieldDrops:[{x:80,y:0}]};
+const distant={x:FIELD_DROP_ATTRACT_RADIUS+1,y:0},boundary={x:FIELD_DROP_ATTRACT_RADIUS,y:0};
+pull.dropsOnField.push(distant,boundary,...kinds.map(kind=>({...kind,x:140,y:0})));
+attractFieldDrops(pull,1/60);
+assert.equal(distant.x,FIELD_DROP_ATTRACT_RADIUS+1);assert.equal(distant._towardCommander,false);
+assert.ok(boundary.x<FIELD_DROP_ATTRACT_RADIUS&&boundary.x>0);
+assert.ok(pull.dropsOnField.slice(2).every(d=>d.x<140&&d.x>44&&d._towardCommander));
+assert.equal(pull.savedFieldDrops[0].x,80);assert.equal(pull.dropsOnField.length,8);
+const snapshot=pull.dropsOnField.map(d=>d.x);
+for(const dt of [0,-1,NaN,Infinity])attractFieldDrops(pull,dt);
+assert.deepEqual(pull.dropsOnField.map(d=>d.x),snapshot);
+pull.player.isDown=true;attractFieldDrops(pull,1);
+assert.deepEqual(pull.dropsOnField.map(d=>d.x),snapshot);assert.ok(pull.dropsOnField.every(d=>!d._towardCommander));
+pull.player.isDown=false;attractFieldDrops(pull,1);
+assert.ok(pull.dropsOnField.slice(1).every(d=>d.x===0&&d.y===0));
+
 const game=Object.create(IronSquadGame);
 game.joystick={active:false,dirX:0,dirY:0};game.width=390;game.height=664;game.zoom=1;
 for(const method of ['updateStatsUI','updateQuestUI','startGameLoop','showToast','spawnSparks','spawnDamageText','renderStrategyUI'])game[method]=noop;
@@ -49,6 +67,26 @@ game.update(.25);assert.equal(game.dropsOnField.length,0);assert.equal(game.inve
 const collectible=gear('collectible');addFieldDrop(game,{x:game.player.x,y:game.player.y,item:collectible});
 game.update(.25);assert.ok(game.inventory.some(i=>i.id===collectible.id));assert.equal(game.dropsOnField.length,0);
 game.update(60);assert.ok(game.inventory.some(i=>i.id===collectible.id),'picked-up items do not expire');
+
+// Actual update attracts every loot kind and applies each reward once. The
+// commander has priority over a soldier standing on loot being pulled in.
+reset();game.treasury=0;game.player.ammo=0;game.ammoReserve=0;game.magicReserve=0;
+const near={x:game.player.x+140,y:game.player.y};
+game.squad=[game.createNewSoldier(null,{classKey:'HEAVY',talent:'AVERAGE'})];
+Object.assign(game.squad[0],near);game.squad[0].isPersonalGuard=true;
+const attractedItem=gear('attracted');
+for(const kind of [{item:attractedItem},{isBoss:true,item:gear('boss-attracted')},
+  {isOrb:true,item:{id:'attracted-orb',type:'ORB'}},{isOrb:true,item:{id:'attracted-gem',type:'GEM'}},
+  {isAmmo:true,ammo:5},{isMagicStone:true,mana:20}])addFieldDrop(game,{...near,...kind});
+game.update(1/60);assert.equal(game.dropsOnField.length,6);assert.ok(game.dropsOnField.every(d=>d.x<near.x));
+for(let i=0;i<30;i++)game.update(1/60);
+assert.equal(game.dropsOnField.length,0);assert.ok(game.inventory.some(i=>i.id===attractedItem.id));
+assert.ok(game.inventory.some(i=>i.id==='boss-attracted'));assert.equal(game.awakeningOrbs,1);assert.equal(game.awakeningGems,1);
+const rewards={orbs:game.awakeningOrbs,gems:game.awakeningGems,items:game.inventory.length};
+game.update(1/60);assert.deepEqual({orbs:game.awakeningOrbs,gems:game.awakeningGems,items:game.inventory.length},rewards);
+
+reset();const farDrop=addFieldDrop(game,{x:game.player.x+FIELD_DROP_ATTRACT_RADIUS+1,y:game.player.y,item:gear('beyond-attract')});
+game.update(.1);assert.equal(farDrop.x,game.player.x+FIELD_DROP_ATTRACT_RADIUS+1);
 
 // Pause freezes the timer; active rest advances it despite the early return.
 reset();const pauseDrop=addFieldDrop(game,{x:center+2000,y:center,item:gear('paused')});

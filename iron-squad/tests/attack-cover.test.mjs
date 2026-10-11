@@ -30,7 +30,7 @@ const indoors = {currentDungeon: dungeon};
 assert.equal(dungeonBlocks(dungeon, 360, 40), true);
 assert.equal(attackBlocked(indoors, {x: 200, y: 40}, {x: 500, y: 40}), true, 'dungeon wall stops the hit');
 assert.equal(attackBlocked(indoors, {x: 200, y: 450}, {x: 500, y: 450}), false, 'the corridor gap stays open');
-assert.equal(attackBlocked(indoors, {x: 220, y: 80}, {x: 250, y: 80}), false, 'both fighters on the near side');
+assert.equal(attackBlocked(indoors, {x: 220, y: 450}, {x: 250, y: 450}), false, 'both fighters on the near side');
 
 const hq = {currentDungeon: null};
 const w = wallGeometry(hq);

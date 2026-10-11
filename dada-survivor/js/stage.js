@@ -5,7 +5,7 @@
  * - 要素はプールで使い回し、生成/破棄でGCやレイアウトを揺らさない
  * - 一時エフェクトは Web Animations API（コンポジタで再生）
  */
-import { art } from './art.js?v=176';
+import { art } from './art.js?v=177';
 
 class Pool {
   constructor(layer, make) { this.layer = layer; this.make = make; this.free = []; this.active = new Set(); }
@@ -41,7 +41,7 @@ export class Stage {
     this.root = root;
     this.view = el('ds-view', root);
     this.ground = el('ds-ground', this.view);
-    this.ground.style.backgroundImage = art('ground');
+    this.setGround('grass');
     this.world = el('ds-world', this.view);
     const floor = el('ds-layer', this.world), units = el('ds-layer', this.world);
     const top = el('ds-layer', this.world), fx = el('ds-layer', this.world);
@@ -71,6 +71,13 @@ export class Stage {
     this.frame = 0;
     this.texts = 0;
     this.resize(1, 1);
+  }
+
+  setGround(kind) {
+    if (this.groundKind === kind) return;
+    this.groundKind = kind;
+    this.ground.style.backgroundImage = art(`ground-${kind}`);
+    this.root.dataset.ground = kind;
   }
 
   resize(w, h) {

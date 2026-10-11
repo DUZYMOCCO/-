@@ -154,7 +154,8 @@ export function updateMageAI(game,mage,dt,platoon,cls) {
   const anchor=mage.isPersonalGuard?game.player:(away?platoon:{x:WORLD_SIZE/2+(platoon.id-1)*70,y:WORLD_SIZE/2});
   const angle=(mage._guardSlot||0)*1.25+(mage.platoonId||0)*1.1;let tx=anchor.x+Math.cos(angle)*55,ty=anchor.y+Math.sin(angle)*55;
   if(target&&dist<400){if(melee){tx=target.x;ty=target.y;}else if(dist<100){tx=mage.x-(target.x-mage.x);ty=mage.y-(target.y-mage.y);}else if(dist<=cls.range){tx=mage.x;ty=mage.y;}}
-  const dx=tx-mage.x,dy=ty-mage.y,d=Math.hypot(dx,dy),step=Math.min(d,(mage.speed||90)*dt);mage.vx=d>4?dx/d:0;mage.vy=d>4?dy/d:0;
+  const goal=game.dungeonMoveTarget?.(mage,{x:tx,y:ty})||{x:tx,y:ty};
+  const dx=goal.x-mage.x,dy=goal.y-mage.y,d=Math.hypot(dx,dy),step=Math.min(d,(mage.speed||90)*dt);mage.vx=d>4?dx/d:0;mage.vy=d>4?dy/d:0;
   if(d>4){mage.x+=dx/d*step;mage.y+=dy/d*step;mage.facingAngle=Math.atan2(dy,dx);}
   if(target&&mage.atkCooldown<=0){if(melee)game.performCasterMelee(mage,target);else if(dist<=cls.range)castMageSpell(game,mage,target);}
 }

@@ -1,7 +1,8 @@
 import {HERO_RULES,heroMembers,heroSharesSpace,visibleHeroMembers} from './hero-rules.js';
 import {advanceHeroRoute,heroSegmentOpen} from './hero-navigation.js';
 import {WORLD_SIZE,settleUnit} from './world.js?v=175';
-import {DUNGEON_DEFS,dungeonBlocks} from './dungeon.js?v=151';
+import {DUNGEON_DEFS,dungeonBlocks} from './dungeon.js?v=179';
+import {nearestDungeonFloor} from './dungeon-layout.js?v=179';
 import {economicFieldBlocked} from './regional-economy.js?v=151';
 import {RECRUIT_CLASSES} from './recruitment.js?v=157';
 import {persistentUnit} from './render-support.js';
@@ -70,13 +71,16 @@ function enterHeroCastle(game,p) {
   game.showToast?.(`勇者【${p.name}】のパーティが魔王城へ突入した！`);
 }
 export function ensureHeroCastle(game,d=castle()) {
-  const j=game.heroJourney;if(j.castleScene)return j.castleScene;
+  const j=game.heroJourney;if(j.castleScene){
+    if(j.castleScene.layoutVersion!==1){for(const m of j.castleScene.monsters){Object.assign(m,nearestDungeonFloor(d,m));delete m._openX;delete m._openY;}j.castleScene.layoutVersion=1;}
+    return j.castleScene;
+  }
   const monsters=[];
   // The same authored enemies and boss used by the commander's castle visit.
   for(let i=0;i<d.mobCount;i++)monsters.push(game.createDungeonMob(d.mobTypes[i%d.mobTypes.length],460+(i%7)*62,260+Math.floor(i/7)*350,d,false));
   for(let i=0;i<d.eliteCount;i++)monsters.push(game.createDungeonMob(d.mobTypes.at(-1),1200+(i%3)*110,400+Math.floor(i/3)*900,d,true));
   if(!j.demonKingDefeat)monsters.push(game.createDungeonBoss(d.boss,d.width-350,d.height/2,d));
-  j.castleScene={monsters,vault:{x:d.width-240,y:d.height/2,name:`${d.name}の至宝箱`,opened:false,unlocked:!!j.demonKingDefeat,dungeon:d}};
+  j.castleScene={layoutVersion:1,monsters,vault:{x:d.width-240,y:d.height/2,name:`${d.name}の至宝箱`,opened:false,unlocked:!!j.demonKingDefeat,dungeon:d}};
   return j.castleScene;
 }
 function battleContext(game,p) {
@@ -103,7 +107,8 @@ export function awardHeroBattle(game,killer,amount) {
   for(const u of heroMembers(game))if(ready(u)&&Math.hypot(u.x-killer.x,u.y-killer.y)<600)grantPersonalExp(game,u,amount);
 }
 function move(game,ctx,u,target,dt) {
-  const dx=target.x-u.x,dy=target.y-u.y,d=Math.hypot(dx,dy);if(d<4){u.vx=u.vy=0;return;}
+  const goal=ctx.dungeonMoveTarget?.(u,target)||target;
+  const dx=goal.x-u.x,dy=goal.y-u.y,d=Math.hypot(dx,dy);if(d<4){u.vx=u.vy=0;return;}
   const step=Math.min(d,(u.speed||100)*dt),from={x:u.x,y:u.y},next={x:u.x+dx/d*step,y:u.y+dy/d*step};
   const blocked=ctx.currentDungeon?(x,y)=>dungeonBlocks(ctx.currentDungeon,x,y):(x,y)=>economicFieldBlocked(game,x,y);
   if(ctx.currentDungeon||heroSegmentOpen(game,from,next)){u.x=next.x;u.y=next.y;settleUnit(u,blocked);}

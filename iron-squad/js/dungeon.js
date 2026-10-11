@@ -6,6 +6,10 @@
 
 import {LIMITED_SETTLEMENTS,drawLimitedEntrance} from './limited-allies.js?v=151';
 import { WORLD_SIZE, SETTLEMENTS } from './world.js';
+import {chooseLootTier} from './equipment-rules.js?v=158';
+import {drawTreasureChest} from './loot-visuals.js?v=177';
+import {explorationLayout,explorationBlocks} from './dungeon-layout.js?v=179';
+import {drawExplorationInterior} from './dungeon-interior-visuals.js?v=179';
 
 const CENTER = WORLD_SIZE / 2;
 
@@ -398,166 +402,31 @@ function drawTownInterior(ctx, dungeon, game) {
   drawExitArch(ctx, 52, h / 2, '西門・外へ');
 }
 
-function drawRuinInterior(ctx, dungeon, time) {
-  const w = dungeon.width, h = dungeon.height;
-  const t = time || 0;
-  ctx.fillStyle = '#241f1a';
-  ctx.fillRect(0, 0, w, h);
-  for (let y = 0; y < h; y += 36) {
-    for (let x = 0; x < w; x += 44) {
-      const n = stoneHash(x, y);
-      if (n > 0.86) continue;
-      ctx.fillStyle = n > 0.55 ? '#3a3832' : '#2a261f';
-      ctx.fillRect(x + 2, y + 2, 40, 30);
-    }
-  }
-  ctx.fillStyle = 'rgba(196,180,138,0.07)';
-  ctx.fillRect(w * 0.55, 0, 70, h);
-  const chunks = [[260, 80, 90, 36], [520, h - 160, 120, 28], [900, 100, 70, 48], [w - 520, h - 220, 140, 30]];
-  for (const [x, y, hw, hh] of chunks) {
-    ctx.fillStyle = '#3a3832';
-    ctx.beginPath();
-    ctx.moveTo(x, y + hh);
-    ctx.lineTo(x + 6, y);
-    ctx.lineTo(x + hw * 0.4, y + 8);
-    ctx.lineTo(x + hw * 0.7, y + hh * 0.45);
-    ctx.lineTo(x + hw, y + hh);
-    ctx.fill();
-    ctx.fillStyle = '#6e6a60';
-    ctx.fillRect(x + 6, y, hw * 0.28, 3);
-  }
-  ctx.save();
-  ctx.translate(640, h / 2 + 40);
-  ctx.rotate(-0.5);
-  ctx.fillStyle = '#5a564e';
-  ctx.fillRect(0, 0, 70, 12);
-  ctx.restore();
-  ctx.fillStyle = '#6a655c';
-  ctx.fillRect(w - 480, h / 2 - 80, 16, 70);
-  ctx.fillRect(w - 488, h / 2 - 88, 32, 8);
-  ctx.fillStyle = '#3a342c';
-  ctx.beginPath();
-  ctx.ellipse(w - 350, h / 2, 70, 28, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = '#2a241c';
-  ctx.beginPath();
-  ctx.ellipse(w - 350, h / 2, 46, 16, 0, 0, Math.PI * 2);
-  ctx.fill();
-  flame(ctx, 300, h - 80, t, '#c47a3a');
-  flame(ctx, w - 560, 120, t, '#e0b15a');
-  drawWalls(ctx, w, h);
-  drawExitArch(ctx, 180, h / 2, '外へ');
-}
-
-const solidCache = new WeakMap();
-export function dungeonSolids(dungeon) {
-  if (!dungeon || dungeon.kind !== 'dungeon') return [];
-  const cached = solidCache.get(dungeon);
-  if (cached) return cached;
-  const w = dungeon.width, h = dungeon.height, mid = h / 2, gap = 110, lip = 120;
-  const clip = (r) => {
-    const x = Math.max(0, r.x), y = Math.max(0, r.y);
-    const x2 = Math.min(w, r.x + r.w), y2 = Math.min(h, r.y + r.h);
-    if (x2 - x < 8 || y2 - y < 8) return null;
-    return {x, y, w: x2 - x, h: y2 - y};
-  };
-  const plug = (x0, x1) => [
-    clip({x: x0, y: 0, w: x1 - x0, h: mid - gap}),
-    clip({x: x0, y: mid + gap, w: x1 - x0, h: h - (mid + gap)})
-  ];
-  const solids = [
-    ...plug(300, 430),
-    clip({x: 430, y: 0, w: 1030, h: lip}),
-    clip({x: 430, y: h - lip, w: 1030, h: lip}),
-    ...plug(1460, 1600)
-  ].filter(Boolean);
-  solidCache.set(dungeon, solids);
-  return solids;
-}
-export function dungeonBlocks(dungeon, x, y) {
-  if (!dungeon || dungeon.kind !== 'dungeon') return false;
-  for (const r of dungeonSolids(dungeon)) {
-    if (x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h) return true;
-  }
-  return false;
-}
-
-function drawStoneDungeon(ctx, dungeon, time) {
-  const w = dungeon.width, h = dungeon.height;
-  const t = time || 0;
-  ctx.fillStyle = dungeon.floorColor || '#1e1a2b';
-  ctx.fillRect(0, 0, w, h);
-  for (let y = 0; y < h; y += 48) {
-    for (let x = 0; x < w; x += 48) {
-      const n = stoneHash((x / 48) | 0, (y / 48) | 0);
-      const slip = (n - 0.5) * 6;
-      ctx.fillStyle = n > 0.72 ? '#2a2824' : '#34322c';
-      ctx.fillRect(x + 2 + slip, y + 2, 42, 42);
-      ctx.fillStyle = 'rgba(0,0,0,0.28)';
-      ctx.fillRect(x + 2 + slip, y + 40, 42, 4);
-    }
-  }
-  ctx.fillStyle = dungeon.wallColor || '#14110e';
-  for (const r of dungeonSolids(dungeon)) ctx.fillRect(r.x, r.y, r.w, r.h);
-  ctx.fillStyle = '#5a5348';
-  for (const r of dungeonSolids(dungeon)) ctx.fillRect(r.x, r.y, r.w, 3);
-  const brackets = [
-    [360, 70], [360, h - 70], [780, 70], [780, h - 70],
-    [1200, 80], [1200, h - 80], [w - 420, 76], [w - 420, h - 76]
-  ];
-  for (const [x, y] of brackets) {
-    if (x > w - 40 || dungeonBlocks(dungeon, x, y)) continue;
-    ctx.fillStyle = '#3a3834';
-    ctx.fillRect(x - 8, y - 28, 16, 36);
-    flame(ctx, x, y - 10, t, dungeon.torchColor || '#c47a3a');
-  }
-  ctx.fillStyle = '#3a342c';
-  ctx.beginPath();
-  ctx.ellipse(w - 350, h / 2, 120, 46, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = '#2a241c';
-  ctx.beginPath();
-  ctx.ellipse(w - 350, h / 2, 78, 26, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = '#5a5348';
-  ctx.beginPath();
-  ctx.ellipse(w - 350, h / 2 - 8, 78, 10, 0, 0, Math.PI * 2);
-  ctx.fill();
-  drawWalls(ctx, w, h);
-  drawExitArch(ctx, 180, h / 2, '外界への門');
-}
+export function dungeonSolids(dungeon) {return explorationLayout(dungeon)?.solids||[];}
+export function dungeonBlocks(dungeon,x,y) {return explorationBlocks(dungeon,x,y);}
 
 export function drawDungeonEnvironment(ctx, dungeon, camera, viewW, viewH, zoom, time, game) {
   ctx.save();
   if (dungeon.kind === 'town') drawTownInterior(ctx, dungeon, game);
-  else if (dungeon.kind === 'ruin') drawRuinInterior(ctx, dungeon, time);
-  else drawStoneDungeon(ctx, dungeon, time);
+  else {
+    const layout=explorationLayout(dungeon);
+    drawExplorationInterior(ctx,dungeon,layout,camera,viewW,viewH,zoom,time);
+    drawExitArch(ctx,180,dungeon.height/2,'外へ');
+  }
   ctx.restore();
 }
 
-export function drawDungeonVault(ctx, vault) {
+export function drawDungeonVault(ctx, vault, time = 0) {
   if (!vault) return;
   const { x, y, opened, unlocked, name } = vault;
+  // Representative reward tier without consuming the loot RNG or rerolling items.
+  const def = vault.dungeon || {};
+  const tier = vault.tier || chooseLootTier(def.distance, def.reward?.lootKind || 'chest', () => .5);
   ctx.save();
-  ctx.fillStyle = 'rgba(0,0,0,0.35)';
-  ctx.beginPath();
-  ctx.ellipse(x + 2, y + 12, 24, 8, 0, 0, Math.PI * 2);
-  ctx.fill();
-  const body = opened ? '#4a3828' : (unlocked ? '#6a5034' : '#3a342c');
-  ctx.fillStyle = body;
-  ctx.fillRect(x - 20, y - 12, 40, 24);
-  ctx.fillStyle = opened ? '#5a4636' : '#7a5a3c';
-  ctx.beginPath();
-  ctx.moveTo(x - 20, y - 12);
-  ctx.quadraticCurveTo(x, y - 26, x + 20, y - 12);
-  ctx.fill();
-  ctx.fillStyle = '#2a241c';
-  ctx.fillRect(x - 20, y - 2, 40, 3);
-  ctx.fillRect(x - 2, y - 16, 4, 26);
-  ctx.fillStyle = unlocked && !opened ? '#d7b56a' : '#5a564c';
-  ctx.beginPath();
-  ctx.arc(x, y + 2, 2.4, 0, Math.PI * 2);
-  ctx.fill();
-  plate(ctx, opened ? '開いた' : (unlocked ? (name || '箱') : 'まだ開かない'), x, y - 30, '#e1cf9d', 11);
+  ctx.translate(x, y);ctx.scale(1.45, 1.45);
+  drawTreasureChest(ctx, 0, 0, tier, time * 1000, {boss:true,opened,locked:!unlocked});
+  ctx.restore();
+  ctx.save();
+  plate(ctx, opened ? '開いた' : (unlocked ? (name || '箱') : 'まだ開かない'), x, y - 53, '#e1cf9d', 11);
   ctx.restore();
 }
