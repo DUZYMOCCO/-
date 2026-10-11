@@ -29,6 +29,7 @@
 | `js/rules.js` | 数値・ステージ・そうび・セーブ移行など描画に依存しないルール（テスト対象） |
 | `js/art.js` | 暗めのセル塗りSVGをコードで描画。起動時に1回だけ data URI 化。絵本調のほほ紅・笑顔は使わない |
 | `js/stage.js` | DOMステージ。1体=1 `<div>`、毎フレーム `transform` だけ更新、要素はプールで再利用、一時エフェクトは Web Animations API |
+| `js/bgm.js` | ダダサバイバー せんようの ポップ BGM（Web Audio で その場で つくる・音声ファイルなし）。工房きょうつうの `sound` の AudioContext／リミッターに つなぐので ミュート・BGM音量・ページかくし を そのまま まもる |
 | `js/menus.js` | タイトル・キャラ・そうび・おみせ・たからばこ・結果の画面 |
 | `js/index.js` | ゲーム進行・入力・HUD |
 | `css/dada-survivor.css` | トゥーンUI。iPhone SE2（375×667）基準 |
@@ -38,6 +39,7 @@
 - けんきゅうしゃは `run.npc`（1にんだけ）。`index.js` の `spawnResearcher` と `updatePickups`、おくりものは `rules.js` の `receiveGift`。ぶきの `gift: true` は レベルアップ候補から のぞく。
 - **ズーム**：`ds-view` の なかの `ds-cam` に `scale()` を 1かい かけるだけ（じめん・せかいは その なか）。`index.js` の `this.w/this.h` は「がめん ÷ ズーム」＝せかいで みえる はば で、てきの でばしょ・とおすぎる てきの だしなおし・けんきゅうしゃ・じめんタイルの おおきさは これで けいさん。ピンチは pointer の 2ほんめ で はじまり、のこりの ゆびを ぜんぶ はなすまで ジョイスティックに しない。iOS は `touch-action: none` ＋ `gesturestart/change/end` と 2ほんゆびの `touchmove` を preventDefault。
 - **ズームで つよく／よわく ならないように**：ねらえる きょりは `battleR`（ズーム1の がめんの はんたいかく÷2＋50）まで、`battleR` より そとの ザコは 2.5ばいの はやさで ちかづく（ズーム1 では どちらも なにも かわらない）。clamp などは `rules.js` の `clampZoom / pinchZoom / wheelZoom`。
+- **BGM**（v1.5.0〜）：ふつう 132 BPM・C の I–V–vi–IV（C G Am F）、8しょうせつで メロディ1しゅう（うしろ4しょうせつは アルペジオ つき）。ボスが いる あいだは 140 BPM・vi–IV–I–V（Am F C G）、16ぶ ハイハット・アルペジオ・4しょうせつめに スネアの フィル（4しょうせつの くぎりで きりかえ）。4つうち キック・2/4拍 クラップ・うらの ハイハット・オクターブで はねる ベース・うらはくの コードスタブ・スクエアの リード。50ms ごとに さきよみ よやく。おおきさは `BGM_LEVEL`（むかしの きょうつう BGM より 4dB くらい おおきめ、こうかおんの ピークと おなじ くらい）。工房きょうつうの サンプル BGM（`sound.startBGM`）は ダダサバイバーでは つかわない（`common/` は さわっていない）。
 - 同時数の上限：敵 150 / 宝石 150（超えた分は既存の宝石に経験値を合算）。
 - **SVGの注意**：輪郭の太さを変えるときは `${S} stroke-width="5"` ではなく `${SW(5)}` を使う。同じ属性が2つあると SVG 全体が読めずに絵が消える（`tests/art.test.mjs` で検出）。
 - **CSSの注意**：位置を `transform` で動かす要素に `transform` のCSSアニメを付けない（位置が上書きされる）。回転などは子要素か `::before` に付ける。

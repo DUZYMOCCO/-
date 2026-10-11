@@ -9,10 +9,11 @@ import {
   STAGE_SECONDS, MINI_BOSS_SECONDS, MAX_ENEMIES, MAX_GEMS, MAX_LEVEL, DIFFICULTIES, CHARACTERS, ENEMY_TYPES,
   WEAPONS, PASSIVES, STAGES, GUNS, weaponStat, xpToNext, playerStats, spawnPlan, pickWeighted, upgradeChoices,
   normalizeSave, stageById, bossType, bonusFor, clearRewards, receiveGift, clampZoom, pinchZoom, wheelZoom,
-} from './rules.js?v=186';
-import { preloadArt } from './art.js?v=186';
-import { Stage } from './stage.js?v=186';
-import { menuMethods, iconHtml } from './menus.js?v=186';
+} from './rules.js?v=187';
+import { preloadArt } from './art.js?v=187';
+import { Stage } from './stage.js?v=187';
+import { menuMethods, iconHtml } from './menus.js?v=187';
+import { PopBGM } from './bgm.js?v=187';
 
 const SAVE_KEY = 'dada_survivor_save';
 const TAU = Math.PI * 2;
@@ -31,7 +32,7 @@ export const DadaSurvivorGame = {
 
   // 起動時にこのゲームのCSSを自分で読み込む（?v= はこのフォルダ内で管理）。ハブが init 前に await する
   prepare() {
-    return loadCss(new URL('../css/dada-survivor.css?v=186', import.meta.url).href);
+    return loadCss(new URL('../css/dada-survivor.css?v=187', import.meta.url).href);
   },
 
   init(container, onBackToHub) {
@@ -43,6 +44,7 @@ export const DadaSurvivorGame = {
     this.keys = new Set();
     this.stick = null;
     this.zoom = this.save.zoom;
+    this.bgm = new PopBGM(sound); // ダダサバイバー せんようの ポップ BGM（工房の きょうつう BGM は つかわない）
     this.touches = new Map(); // いま さわっている ゆび（pointerId → いち）
     this.pinch = null;
     this.buildDom();
@@ -62,6 +64,7 @@ export const DadaSurvivorGame = {
     window.removeEventListener('keyup', this.onKeyUp);
     document.removeEventListener('visibilitychange', this.onVisibility);
     clearTimeout(this.zoomSaveTimer);
+    this.bgm.stop();
     sound.stopBGM();
     this.run = null;
   },
@@ -325,7 +328,7 @@ export const DadaSurvivorGame = {
     this.refreshSkills();
     this.resize();
     this.lastTime = performance.now();
-    sound.startBGM();
+    this.bgm.start();
     this.showBanner(`ステージ${st.id} ${st.name}`, 2500);
   },
 
@@ -355,6 +358,8 @@ export const DadaSurvivorGame = {
     this.persist();
     const score = r.kills + (clear ? 1000 : 0);
     if (score > storage.getHighScore(this.id)) storage.setHighScore(this.id, score);
+    if (!clear) this.bgm.stop();
+    else this.bgm.setBoss(false);
     if (clear || best) sound.playHighScore(); else sound.playGameOver();
     this.showResult(clear, best, rewards);
   },
@@ -447,7 +452,7 @@ export const DadaSurvivorGame = {
     const hp = T.boss ? T.hp : T.hp * hpScale;
     const e = { type, T, x: p.x + Math.cos(a) * rad, y: p.y + Math.sin(a) * rad, hp, maxHp: hp, flash: 0, orbitHit: -1, kb: 0, kx: 0, ky: 0 };
     r.enemies.push(e);
-    if (T.boss) { r.boss = e; this.el.bossName.textContent = T.name; this.el.boss.classList.remove('hidden'); }
+    if (T.boss) { r.boss = e; this.el.bossName.textContent = T.name; this.el.boss.classList.remove('hidden'); this.bgm.setBoss(true); }
     return e;
   },
 
@@ -624,7 +629,7 @@ export const DadaSurvivorGame = {
     if (e.T.boss) {
       sound.playBomb();
       this.stage.fx('boom', e.x, e.y, e.T.r * 5);
-      if (r.boss === e) { r.boss = null; this.el.boss.classList.add('hidden'); }
+      if (r.boss === e) { r.boss = null; this.el.boss.classList.add('hidden'); this.bgm.setBoss(false); }
       if (e.final) { r.coins += 50; this.stage.flash(); setTimeout(() => this.run === r && this.endRun(true), 900); return; }
       r.coins += 30;
       r.chests++;
