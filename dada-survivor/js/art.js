@@ -29,7 +29,7 @@ const animeEye = (x, y, iris = '#d6d3d1') => `
   <ellipse cx="${x}" cy="${y}" rx="1.35" ry="2.05" fill="${iris}"/>
   <circle cx="${x + 0.45}" cy="${y - 0.55}" r=".65" fill="#fff"/>`;
 
-/* ---------- プレイヤー（ちびアニマル） ---------- */
+/* ---------- プレイヤー（ちびアニマル。にんげんの ゆうしゃ は下の human） ---------- */
 function hero({ fur, shade, inner, ear, muzzle, patches, belly, face = '', mouth, behind = '', extra = '' }) {
   let back = behind, front = '';
   if (ear === 'cat') back += `<path d="M15 20 L17 4 L29 13Z" fill="${fur}" ${S}/><path d="M18.5 16 L19.5 8.5 L25 13Z" fill="${inner}"/>
@@ -40,8 +40,6 @@ function hero({ fur, shade, inner, ear, muzzle, patches, belly, face = '', mouth
     <ellipse cx="41" cy="7" rx="5.5" ry="14" fill="${fur}" ${S} transform="rotate(10 41 7)"/><ellipse cx="41" cy="8" rx="2.6" ry="10" fill="${inner}" transform="rotate(10 41 8)"/>`;
   if (ear === 'bear') back += `<circle cx="16" cy="12" r="7" fill="${fur}" ${S}/><circle cx="16" cy="12" r="3.5" fill="${inner}"/><circle cx="48" cy="12" r="7" fill="${fur}" ${S}/><circle cx="48" cy="12" r="3.5" fill="${inner}"/>`;
   if (ear === 'panda') back += `<circle cx="16" cy="13" r="6.5" fill="${O}"/><circle cx="48" cy="13" r="6.5" fill="${O}"/>`;
-  if (ear === 'dog') front = `<ellipse cx="13.5" cy="27" rx="6" ry="11.5" fill="${inner}" ${S} transform="rotate(18 13.5 27)"/>
-    <ellipse cx="50.5" cy="27" rx="6" ry="11.5" fill="${inner}" ${S} transform="rotate(-18 50.5 27)"/>`;
   const patch = patches ? `<ellipse cx="24" cy="30" rx="6.5" ry="7.5" fill="${O}" transform="rotate(20 24 30)"/><ellipse cx="40" cy="30" rx="6.5" ry="7.5" fill="${O}" transform="rotate(-20 40 30)"/>` : '';
   const muz = mouth !== undefined ? mouth : muzzle
     ? `<ellipse cx="32" cy="36.2" rx="6.2" ry="3.8" fill="${muzzle}"/><path d="M30.4 35.2 H33.6 L32 37.1Z" fill="${O}"/><path d="M27.2 39.2 H36.8" fill="none" ${S2}/>`
@@ -58,6 +56,26 @@ function hero({ fur, shade, inner, ear, muzzle, patches, belly, face = '', mouth
     ${shadedCircle('hh', 32, 27, 19, fur, shade)}
     ${face}${front}${patch}${eyes}${muz}${extra}`;
 }
+
+/* ---------- ゆうしゃ（にんげんの こども。いぬの わくを ひきつぐ） ---------- */
+const human = `
+  <path d="M40 18 L52 4" ${SW(5)}/><path d="M40 18 L52 4" stroke="#a16207" stroke-width="2.2" stroke-linecap="round"/>
+  <path d="M40 10 L48 17" ${SW(5)}/><path d="M40 10 L48 17" stroke="#d6a548" stroke-width="2.2" stroke-linecap="round"/>
+  <circle cx="53" cy="3.5" r="2.6" fill="#d6a548" ${S2}/>
+  <path d="M19 44 Q12 54 15 61 L49 61 Q52 54 45 44Z" fill="#7f1d1d" ${S}/>
+  <ellipse cx="22" cy="60" rx="5" ry="3.2" fill="#3b2414" ${S}/><ellipse cx="42" cy="60" rx="5" ry="3.2" fill="#3b2414" ${S}/>
+  <ellipse cx="32" cy="52" rx="12.5" ry="10" fill="#2f4f73" ${S}/>
+  <path d="M25 44 L32 52 L39 44" fill="none" stroke="#1e3450" stroke-width="2"/>
+  <path d="M20.5 54 Q32 58 43.5 54 L43 57.5 Q32 61.5 21 57.5Z" fill="#5c3310" ${S2}/>
+  <rect x="29.5" y="55" width="5" height="4.4" rx="1" fill="#d6a548" ${S2}/>
+  <path d="M14 22 Q11 36 17 42 L47 42 Q53 36 50 22Z" fill="#2a1a10" ${S}/>
+  ${shadedCircle('hu', 32, 28, 17, '#f0c7a0', '#c48a5e')}
+  <path d="M14.5 31 Q12 10 30 8 Q30 4 35 6 Q52 8 49.5 31 Q47 24 45 21 L42 25 L39 18 L34 23 L30 17 L26 23 L22 19 L19 26 Q17 27 14.5 31Z" fill="#3b2414" ${S}/>
+  <path d="M22 13 Q28 10 34 11" fill="none" stroke="#5c3a22" stroke-width="1.8" stroke-linecap="round"/>
+  <path d="M20.5 25.5 L28 27 M43.5 25.5 L36 27" fill="none" ${SW(2)}/>
+  ${animeEye(24.5, 30.6, '#7dd3fc')}${animeEye(39.5, 30.6, '#7dd3fc')}
+  <path d="M31.2 35 L32.6 35.6" fill="none" stroke="#a8673f" stroke-width="1.4" stroke-linecap="round"/>
+  <path d="M28.5 39 H35.5" fill="none" ${S2}/>`;
 
 const whiskers = `<path d="M10 33 L18 34 M10 38 L18 37 M54 33 L46 34 M54 38 L46 37" ${S2} fill="none"/>`;
 
@@ -483,7 +501,7 @@ const hero2 = {
 
 const SOURCES = {
   cat:   wrap(hero({ fur: '#c4844a', shade: '#7c3f12', inner: '#a16207', ear: 'cat', extra: whiskers })),
-  dog:   wrap(hero({ fur: '#a47848', shade: '#6b3e12', inner: '#5c3310', ear: 'dog', muzzle: '#d6d3d1' })),
+  dog:   wrap(human), // id は セーブ互換のため dog のまま（絵と名前は にんげんの ゆうしゃ）
   fox:   wrap(hero({ fur: '#c2410c', shade: '#7c2d12', inner: '#e7e5e4', ear: 'fox', muzzle: '#e7e5e4', extra: whiskers })),
   panda: wrap(hero({ fur: '#e7e5e4', shade: '#57534e', inner: '#a8a29e', ear: 'panda', muzzle: '#d6d3d1', patches: true })),
   ...Object.fromEntries(Object.entries(hero2).map(([k, v]) => [k, wrap(v)])),

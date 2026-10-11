@@ -28,3 +28,11 @@ test('no SVG tag repeats an attribute', () => {
     }
   }
 });
+
+// こどもの リクエスト：いぬ → にんげんの ゆうしゃ（id は セーブ互換で dog のまま）
+test('dog slot is the human hero ゆうしゃ', () => {
+  const c = CHARACTERS.find(c => c.id === 'dog');
+  assert.equal(c.name, 'ゆうしゃ');
+  assert.equal(c.weapon, 'orbit');
+  for (const ch of CHARACTERS) assert.match(ch.name, /^[\u3041-\u309f\u30a0-\u30ff]+$/, ch.name);
+});
