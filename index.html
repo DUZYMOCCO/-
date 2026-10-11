@@ -18,10 +18,11 @@
   <link rel="manifest" href="manifest.json">
 
   <!-- スタイルシート (キャッシュバスター付与) -->
-  <link rel="stylesheet" href="common/css/style.css?v=175">
-  <link rel="stylesheet" href="common/css/game-ui.css?v=175">
+  <link rel="stylesheet" href="common/css/style.css?v=176">
+  <link rel="stylesheet" href="common/css/game-ui.css?v=176">
   <link rel="stylesheet" href="iron-squad/css/iron-squad.css?v=175">
   <link rel="stylesheet" href="iron-squad/css/iron-squad-interface.css?v=175">
+  <link rel="stylesheet" href="dada-survivor/css/dada-survivor.css?v=176">
 
   <!-- グローバルエラートラップ（初期ロード失敗時の画面真っ暗詰みのみ救済） -->
   <script>
@@ -107,14 +108,13 @@
       </div>
 
       <div class="hub-content">
-        <div class="section-label">IRON SQUAD · 雑兵立身出世録</div>
-        <div id="games-grid" class="games-grid">
-          <!-- JSで動的生成 -->
+        <div id="games-grid" class="games-sections">
+          <!-- JSでセクションごとに動的生成（games-registry.js の sections） -->
         </div>
       </div>
 
       <footer class="hub-footer">
-        <p>📱 スマホゲーム工房 v4.2.26</p>
+        <p>📱 スマホゲーム工房 v4.3.0</p>
         <p style="margin-top: 6px;">
           <button id="btn-force-refresh" onclick="window.forcePwaUpdate()" style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); color:#94a3b8; font-size:11px; padding:6px 14px; border-radius:12px; cursor:pointer;">
             🔄 最新データに更新
@@ -129,6 +129,6 @@
   </div>
 
   <!-- スクリプト (キャッシュバスター付与) -->
-  <script type="module" src="common/js/app.js?v=175"></script>
+  <script type="module" src="common/js/app.js?v=176"></script>
 </body>
 </html>

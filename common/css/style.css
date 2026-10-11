@@ -310,3 +310,7 @@ html, body {
   from { opacity: 0; transform: translateY(-6px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+.games-sections .section-label:not(:first-child) {
+  margin-top: 22px;
+}

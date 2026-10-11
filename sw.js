@@ -1,5 +1,5 @@
 // スマホゲーム工房 Service Worker (最新コード最優先 Network-First & オフライン対応版)
-const CACHE_NAME = 'mobile-game-studio-v175';
+const CACHE_NAME = 'mobile-game-studio-v176';
 
 const ASSETS_TO_CACHE = [
   './',
@@ -118,7 +118,12 @@ const ASSETS_TO_CACHE = [
   './common/assets/icons/icon-512.png',
   './common/assets/icons/apple-touch-icon.png',
   './iron-squad/assets/land/horizon-mist.jpg',
-  './iron-squad/assets/land/horizon-ridges.jpg'
+  './iron-squad/assets/land/horizon-ridges.jpg',
+  './dada-survivor/css/dada-survivor.css',
+  './dada-survivor/js/index.js',
+  './dada-survivor/js/rules.js',
+  './dada-survivor/js/art.js',
+  './dada-survivor/js/stage.js'
 ];
 
 // インストール時にキャッシュを事前構築

@@ -28,6 +28,7 @@ Safariで開いた後：
 | ゲーム | フォルダ | 説明 |
 |---|---|---|
 | 🛡️ IRON SQUAD（雑兵立身出世録） | [iron-squad/](iron-squad/) | ローグライク・小隊育成アクションRPG。[README](iron-squad/README.md) / [最新の作業メモ](iron-squad/docs/CURRENT_WORK.md) / [仕様書](iron-squad/docs/SPEC_AND_HANDOVER.md) |
+| 🐱 ダダサバイバーもどき | [dada-survivor/](dada-survivor/) | 子ども向けオートアタック・サバイバル（canvas不使用・DOM＋SVGトゥーン描画）。[README](dada-survivor/README.md) |
 
 ---
 
@@ -42,6 +43,7 @@ common/      共通データ（スタジオ全体で使う「必要な基本デ�
   assets/    共通アセット（audio/, icons/, QR）
   tools/     サーバー起動・アイコン/音源の生成（serve.py, start.bat, generate_*.py）
 iron-squad/  ゲーム本体（js/ css/ assets/ tests/ tools/ docs/ README.md）
+dada-survivor/ こどもゲーム（js/ css/ tests/ README.md）
 <ゲーム名>/   新しいゲームもこの形でルート直下にフォルダを増やす
 ```
 
@@ -50,7 +52,7 @@ iron-squad/  ゲーム本体（js/ css/ assets/ tests/ tools/ docs/ README.md）
 ## ➕ 新しいゲームを追加するには
 
 1. ルート直下に `<ゲーム名>/` を作り、`js/index.js` でゲームオブジェクト（`id`, `title`, `init` など）を export する。
-2. `common/js/games-registry.js` に import して `games` 配列へ追加する。
+2. `common/js/games-registry.js` に import して `games` 配列へ追加する。ハブの見出しはゲームの `section`（`sections` の id、未指定は `main`）で決まる。
 3. ゲーム専用CSSがあれば `index.html` に `<link>` を追加する。
 4. `sw.js` の `ASSETS_TO_CACHE` に新ファイルを加え、`CACHE_NAME` と `?v=` を上げる。
 5. テストは `node --test <ゲーム名>/tests/*.test.mjs` をリポジトリのルートから実行する。

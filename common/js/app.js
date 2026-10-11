@@ -1,7 +1,7 @@
 /**
  * スマホゲーム工房 メインアプリケーション
  */
-import { games, getGameById } from './games-registry.js?v=175';
+import { games, sections, getGameById } from './games-registry.js?v=176';
 import { sound } from './audio.js?v=151';
 import { storage } from './storage.js';
 import { initKanaMode, bindKanaButton } from './kana-mode.js?v=175';
@@ -64,7 +64,7 @@ class GameStudioApp {
 
     // サービスワーカー登録 (クエリパラメータ付与でSafariのSWキャッシュを即時更新)
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('./sw.js?v=175').catch((err) => {
+      navigator.serviceWorker.register('./sw.js?v=176').catch((err) => {
         console.log('SW registration failed:', err);
       });
     }
@@ -82,34 +82,46 @@ class GameStudioApp {
     if (!this.gamesGridEl) return;
     this.gamesGridEl.innerHTML = '';
 
-    games.forEach((game) => {
-      const highScore = storage.getHighScore(game.id);
+    for (const section of sections) {
+      const list = games.filter(game => (game.section || 'main') === section.id);
+      if (!list.length) continue;
+      const label = document.createElement('div');
+      label.className = 'section-label';
+      label.textContent = section.label;
+      const grid = document.createElement('div');
+      grid.className = 'games-grid';
+      this.gamesGridEl.append(label, grid);
+      list.forEach(game => this.renderGameCard(game, grid));
+    }
+  }
 
-      const card = document.createElement('div');
-      card.className = 'game-card';
-      card.setAttribute('data-game-id', game.id);
-      card.style.setProperty('--card-accent', game.color || '#3b82f6');
+  renderGameCard(game, grid) {
+    const highScore = storage.getHighScore(game.id);
 
-      card.innerHTML = `
-        <div class="game-card-icon">${game.icon}</div>
-        <div class="game-card-content">
-          <div class="game-card-title">${game.title}</div>
-          <div class="game-card-subtitle">${game.subtitle}</div>
-          <div class="game-card-desc">${game.description}</div>
-          <div class="game-card-score">
-            <span class="score-label">BEST SCORE</span>
-            <span class="score-value">${highScore}</span>
-          </div>
+    const card = document.createElement('div');
+    card.className = 'game-card';
+    card.setAttribute('data-game-id', game.id);
+    card.style.setProperty('--card-accent', game.color || '#3b82f6');
+
+    card.innerHTML = `
+      <div class="game-card-icon">${game.icon}</div>
+      <div class="game-card-content">
+        <div class="game-card-title">${game.title}</div>
+        <div class="game-card-subtitle">${game.subtitle}</div>
+        <div class="game-card-desc">${game.description}</div>
+        <div class="game-card-score">
+          <span class="score-label">BEST SCORE</span>
+          <span class="score-value">${highScore}</span>
         </div>
-      `;
+      </div>
+    `;
 
-      card.addEventListener('click', () => {
-        sound.playTap();
-        this.launchGame(game.id);
-      });
-
-      this.gamesGridEl.appendChild(card);
+    card.addEventListener('click', () => {
+      sound.playTap();
+      this.launchGame(game.id);
     });
+
+    grid.appendChild(card);
   }
 
   launchGame(gameId) {
