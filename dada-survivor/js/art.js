@@ -100,7 +100,7 @@ const villainPatch = (x, y, k = 1) => `<g data-emblem="warumono" transform="tran
 // てきごとの ワッペンの いち（むねの かた より。プレイヤーの にほんの はたと おなじ がわ）
 const PATCH_AT = {
   zombie: [21, 46], bat: [21, 46], ghost: [21, 46], skull: [16, 47], scorpion: [21, 46], mummy: [21, 46],
-  snowman: [21, 46], wolf: [26, 47], pumpkin: [21, 45.5],
+  snowman: [21, 46], wolf: [26, 47], pumpkin: [21, 45.5], thrower: [21, 46],
   ogre: [24, 48], dragon: [32, 31, 1.1], snake: [24, 45], icegiant: [21, 50], witch: [26, 47], maou: [22, 50],
 };
 const withPatch = (k, body) => body + villainPatch(...PATCH_AT[k]);
@@ -202,6 +202,49 @@ const mummy = trooper({ uni: '#6b6a4a', dark: '#45442f',
   hat: `<path d="M15 26 Q14 9 32 9 Q50 9 49 26 Z" fill="#7f1d1d" ${S}/>
     <path d="M14.5 22.5 Q32 18.5 49.5 22.5 L49.6 26.5 Q32 22.5 14.4 26.5Z" fill="#991b1b" ${S2}/>
     <rect x="10.5" y="25" width="6" height="10" rx="2.6" fill="#ca8a04" ${S2}/><rect x="47.5" y="25" width="6" height="10" rx="2.6" fill="#ca8a04" ${S2}/>` });
+
+// ばくだんなげへい（けんきゅうじょ。あたまの うえに ばくだんを かかげて なげる。はいいろの せいふくと あかい ヘルメット）
+const thrower = trooper({ uni: '#5b5560', dark: '#3d3842',
+  vest: `${vVest('#45404a')}<rect x="26" y="52" width="3" height="6" rx=".8" fill="#dc2626" ${SW(1)}/><rect x="30.5" y="52.5" width="3" height="6" rx=".8" fill="#dc2626" ${SW(1)}/>`,
+  gun: `${vglove(21, 55.5)}
+    <path d="M45 46 L49 30" ${SW(5.4)}/><path d="M45 46 L49 30" stroke="#5b5560" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="51" cy="21" r="7.4" fill="#27272a" ${S}/><circle cx="48.6" cy="18.6" r="2" fill="#fff" opacity=".35"/>
+    <rect x="49" y="11.6" width="4.2" height="3.4" rx=".8" fill="#78716c" ${SW(1.1)}/>
+    <path d="M51 11.6 Q53 7 57 6.5" fill="none" stroke="#a16207" stroke-width="1.5" stroke-linecap="round"/>
+    <path d="M57 6.5 L59.5 3.2 L58.6 6.8 L62 6 L58.2 8.4Z" fill="#fde047" stroke="#ea580c" stroke-width=".8" stroke-linejoin="round"/>
+    ${vglove(49, 29)}`,
+  hat: vHelmet('#7f1d1d', '#450a0a', '#b45353') });
+
+// ボトルから でた うちゅうじん（てき。かわいいけど ちょっと ぶきみ。みどりの しずくを たらす。ワッペンなし）
+const alienFoe = `
+  <ellipse cx="32" cy="61" rx="13" ry="2.6" fill="#000" opacity=".22"/>
+  <path d="M25 50 Q22 57 19 61 M39 50 Q42 57 45 61" fill="none" ${SW(5)}/><path d="M25 50 Q22 57 19 61 M39 50 Q42 57 45 61" fill="none" stroke="#7fae96" stroke-width="2.8" stroke-linecap="round"/>
+  <path d="M22 44 Q12 40 8 30 M42 44 Q52 40 56 30" fill="none" ${SW(5)}/><path d="M22 44 Q12 40 8 30 M42 44 Q52 40 56 30" fill="none" stroke="#7fae96" stroke-width="2.8" stroke-linecap="round"/>
+  <path d="M6 28 L4 24 M8 27.5 L8.5 23 M10 29 L12 25.5 M58 28 L60 24 M56 27.5 L55.5 23 M54 29 L52 25.5" stroke="#5b8a73" stroke-width="1.8" stroke-linecap="round"/>
+  <path d="M22 44 Q32 58 42 44 Q41 37 32 37 Q23 37 22 44Z" fill="#a7c4b5" ${S}/>
+  <path d="M32 3 Q53 3 54 21 Q54 36 32 41 Q10 36 10 21 Q11 3 32 3Z" fill="#b8d6c6" ${S}/>
+  <path d="M17 15 Q22 7 32 6" fill="none" stroke="#e7f5ee" stroke-width="2.2" stroke-linecap="round" opacity=".75"/>
+  <path d="M13 21 Q22 16 28 24 Q25 31 17 29 Q12 27 13 21Z" fill="#0b1210"/>
+  <path d="M51 21 Q42 16 36 24 Q39 31 47 29 Q52 27 51 21Z" fill="#0b1210"/>
+  <circle cx="18" cy="22" r="1.7" fill="#bbf7d0"/><circle cx="46" cy="22" r="1.7" fill="#bbf7d0"/>
+  <path d="M28 35 Q32 37 36 35" fill="none" stroke="#3d5a4b" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M20 36 Q19 40 20.5 42 Q22 40 20 36Z M44 37 Q43 41 44.5 43 Q46 41 44 37Z" fill="#4ade80" stroke="#166534" stroke-width=".9"/>`;
+
+// てきの ばくだん（なげられて とぶ。あかい しるし つき）／ひ（ゆかで もえる まんがの ほのお）／ガラスの はへん
+const ebomb = wrap(`<circle cx="32" cy="36" r="16" fill="#27272a" ${S}/><circle cx="26" cy="30" r="4.5" fill="#fff" opacity=".3"/>
+  <path d="M24 36 H40 M32 28 V44" stroke="#dc2626" stroke-width="3.4" stroke-linecap="round"/>
+  <rect x="28" y="16" width="8" height="6" rx="1.4" fill="#78716c" ${SW(1.6)}/>
+  <path d="M32 16 Q34 9 40 8" fill="none" stroke="#a16207" stroke-width="2.2" stroke-linecap="round"/>
+  <path d="M40 8 L44 2 L43 8 L49 7 L43 11Z" fill="#fde047" stroke="#ea580c" stroke-width="1.2" stroke-linejoin="round"/>`);
+const flame = (x, y, s = 1) => `<g transform="translate(${x} ${y}) scale(${s})">
+  <path d="M0 0 Q-11 -2 -9 -14 Q-7 -22 -1 -30 Q0 -22 5 -19 Q4 -26 9 -30 Q14 -18 10 -6 Q8 0 0 0Z" fill="#f97316" stroke="#9a3412" stroke-width="1.6" stroke-linejoin="round"/>
+  <path d="M0 -2 Q-6 -3 -5 -11 Q-3 -16 0 -20 Q2 -14 5 -12 Q7 -6 4 -3 Q2 -1 0 -2Z" fill="#fde047"/></g>`;
+const fire = wrap(`<ellipse cx="50" cy="56" rx="46" ry="40" fill="#7c2d12" opacity=".22"/><ellipse cx="50" cy="56" rx="34" ry="28" fill="#ea580c" opacity=".22"/>
+  ${flame(30, 52, 0.9)}${flame(68, 50, 0.95)}${flame(48, 40, 1.1)}${flame(22, 74, 0.75)}${flame(76, 76, 0.8)}${flame(50, 82, 0.9)}${flame(50, 62, 1.15)}`, '0 0 100 100');
+const glassShards = wrap(`<g fill="#dbeafe" stroke="#60a5fa" stroke-width="1.6" stroke-linejoin="round">
+  <path d="M50 8 L56 20 L46 22Z"/><path d="M84 30 L92 38 L80 42Z"/><path d="M86 70 L78 84 L74 72Z"/><path d="M50 92 L42 80 L54 80Z"/>
+  <path d="M14 72 L24 76 L16 86Z"/><path d="M10 30 L22 34 L12 42Z"/><path d="M30 14 L36 24 L26 22Z"/><path d="M70 14 L74 26 L64 22Z"/></g>
+  <g fill="#86efac" opacity=".75"><circle cx="34" cy="56" r="5"/><circle cx="64" cy="60" r="6"/><circle cx="50" cy="44" r="4"/><circle cx="60" cy="38" r="3"/></g>`, '0 0 100 100');
 
 // ゆきのへい（ゆきやま。しろい パーカーと ゴーグル）
 const snowman = trooper({ uni: '#d4d4d8', dark: '#9ca3af', feet: '#3f3f46', bodyR: 14, brows: false, eyes: false,
@@ -711,7 +754,7 @@ const capsule = (broken = false) => wrap(`
   <path d="M28 ${broken ? 16 : 6} V0" stroke="#1b2027" stroke-width="4" stroke-linecap="round" ${broken ? 'opacity="0"' : ''}/>`, '0 0 64 100');
 
 // ボトルの なかの うちゅうじん（かわいいけど ちょっと ぶきみ。みどりの えきの なかで ゆらゆら）
-const alien = wrap(`
+const alienFloat = wrap(`
   <path d="M20 40 Q16 50 12 54 M28 40 Q32 50 36 54" fill="none" stroke="#5b8a73" stroke-width="3" stroke-linecap="round"/>
   <path d="M17 38 Q24 50 31 38 Q30 32 24 32 Q18 32 17 38Z" fill="#a7c4b5" ${SW(1.6)}/>
   <path d="M14 36 Q8 38 6 44 M34 36 Q40 38 42 44" fill="none" stroke="#5b8a73" stroke-width="2.6" stroke-linecap="round"/>
@@ -773,12 +816,13 @@ const SOURCES = {
   gem1: wrap(gem('#60a5fa', '#2563eb')), gem2: wrap(gem('#4ade80', '#16a34a')), gem3: wrap(gem('#f472b6', '#db2777')),
   coin: wrap(coin), meat: wrap(meat), magnet: wrap(magnet), nuke: wrap(bomb), bomb: wrap(bomb),
   kunai, star: wrap(star), bolt, smissile, researcher: wrap(researcher),
-  capsule: capsule(false), capsuleBroken: capsule(true), alien, labFlag,
+  capsule: capsule(false), capsuleBroken: capsule(true), alienFloat, labFlag, ebomb, fire, glassShards,
+  thrower: wrap(withPatch('thrower', thrower)), alien: wrap(alienFoe),
   gun, shotgun, bazooka, dual, gatling, rocket, mega, bullet, pellet, blast,
   sword: wrap(sword), armor: wrap(armor), shoes: wrap(shoes), charm: wrap(charm), chest: wrap(chest), chestOpen: wrap(chestOpen, '0 -4 64 68'),
   ...Object.fromEntries(Object.entries(GROUNDS).map(([k, v]) => [`ground-${k}`, v])),
 };
-const FLASHABLE = ['zombie', 'bat', 'ghost', 'skull', 'ogre', 'dragon', 'scorpion', 'mummy', 'snake', 'snowman', 'wolf', 'icegiant', 'pumpkin', 'witch', 'maou'];
+const FLASHABLE = ['zombie', 'bat', 'ghost', 'skull', 'ogre', 'dragon', 'scorpion', 'mummy', 'snake', 'snowman', 'wolf', 'icegiant', 'pumpkin', 'witch', 'maou', 'thrower', 'alien'];
 
 const toUrl = svg => `url("data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}")`;
 

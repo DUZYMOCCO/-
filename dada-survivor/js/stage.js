@@ -8,11 +8,10 @@
  * - おもい ときは「かるい モード」（ds-lite）：ぴょこぴょこ／ほうせきの ゆれを とめ、エフェクトと すうじを へらす
  * - ここでは Math.random を つかわない（みための ばらつきは カウンタで。ゲームの らんすうと まざらない）
  */
-import { art, groundTile } from './art.js?v=190';
-import { DecorField } from './decor.js?v=190';
+import { art, groundTile } from './art.js?v=191';
 
 class Pool {
-  constructor(layer, make) { this.layer = layer; this.make = make; this.free = []; this.active = new Set(); }
+  constructor(layer, make) { this.layer = layer; this.make = make; this.free = []; this.active = new Set(); this.key = Symbol('node'); }
   get() {
     let n = this.free.pop();
     if (!n) { n = this.make(); this.layer.appendChild(n); }
@@ -46,15 +45,25 @@ function makeSprite(extra = '') {
 const FX_FRAMES = {
   pop:  [{ transform: 'scale(.5)', opacity: 1 }, { transform: 'scale(1.5)', opacity: 0 }],
   boom: [{ transform: 'scale(.3)', opacity: 1 }, { transform: 'scale(1.1)', opacity: .9, offset: .4 }, { transform: 'scale(1.25)', opacity: 0 }],
+  shatter: [{ transform: 'scale(.4) rotate(0deg)', opacity: 1 }, { transform: 'scale(1.1) rotate(25deg)', opacity: .9, offset: .5 }, { transform: 'scale(1.35) rotate(40deg)', opacity: 0 }],
   bolt: [{ transform: 'scaleY(.2)', opacity: 1, transformOrigin: '50% 100%' }, { transform: 'scaleY(1)', opacity: 1, offset: .25, transformOrigin: '50% 100%' }, { transform: 'scaleY(1)', opacity: 0, transformOrigin: '50% 100%' }],
 };
-const FX_OPTS = { pop: { duration: 300, easing: 'ease-out' }, boom: { duration: 420, easing: 'ease-out' }, bolt: { duration: 320, easing: 'ease-out' } };
+const FX_OPTS = { shatter: { duration: 520, easing: 'ease-out' }, pop: { duration: 300, easing: 'ease-out' }, boom: { duration: 420, easing: 'ease-out' }, bolt: { duration: 320, easing: 'ease-out' } };
 const TEXT_FRAMES = [
   { transform: 'translate(-50%,0) scale(.6)', opacity: 1 },
   { transform: 'translate(-50%,-14px) scale(1.15)', opacity: 1, offset: .25 },
   { transform: 'translate(-50%,-34px) scale(1)', opacity: 0 },
 ];
 const TEXT_OPTS = { duration: 650, easing: 'ease-out' };
+
+// ゆかの ひ：THROW.fireLife（4.5びょう）と おなじ ながさ。rules の fireRadius と だいたい おなじ かたち
+const FIRE_MS = 4500;
+const FIRE_FRAMES = [
+  { transform: 'scale(.44)', opacity: .9 },
+  { transform: 'scale(.95)', opacity: 1, offset: .27 },
+  { transform: 'scale(1)', opacity: 1, offset: .86 },
+  { transform: 'scale(.6)', opacity: 0 },
+];
 
 // エフェクト・すうじの じょうげん（ふつう／かるい モード）
 export const FX_CAP = { fx: 40, fxLite: 16, boom: 12, boomLite: 6, text: 30, textLite: 10 };
@@ -68,7 +77,7 @@ export class Stage {
     this.ground = el('ds-ground', this.cam);
     this.setGround('lab');
     this.world = el('ds-world', this.cam);
-    const deco = el('ds-layer', this.world);
+    const deco = el('ds-layer', this.world), haz = el('ds-layer', this.world);
     const floor = el('ds-layer', this.world), units = el('ds-layer', this.world);
     const top = el('ds-layer', this.world), fx = el('ds-layer', this.world);
 
@@ -77,12 +86,15 @@ export class Stage {
       const n = el('ds-ent');
       n._img = el('ds-img ds-decor', n);
       n._alien = el('ds-img ds-alien', n._img);
-      n._alien.style.backgroundImage = art('alien');
+      n._alien.style.backgroundImage = art('alienFloat');
       n._alien.style.animationDelay = `${-((spriteSeq++ * 0.618) % 1 * 2.4).toFixed(2)}s`;
       return n;
     });
-    this.decorField = new DecorField();
+    this.decorField = null;
     this.decorKind = null;
+    // けんきゅうじょの ひ（ゆか）と、ばくだんの おちる しるし
+    this.fires = new Pool(haz, () => makeSprite('ds-fire'));
+    this.marks = new Pool(haz, () => { const n = el('ds-ent'); n._img = el('ds-mark', n); return n; });
     this.aura = el('ds-aura', floor);
     this.aura.style.display = 'none';
     this.gems = new Pool(floor, () => makeSprite('ds-gem'));
@@ -104,6 +116,7 @@ export class Stage {
     this.bullets = new Pool(top, () => makeSprite('ds-bullet'));
     this.rockets = new Pool(top, () => makeSprite('ds-rocket'));
     this.bombs = new Pool(top, () => makeSprite('ds-bomb'));
+    this.ebombs = new Pool(top, () => makeSprite('ds-ebomb'));
     this.stars = new Pool(top, () => makeSprite('ds-star'));
     this.fxPool = new Pool(fx, () => { const n = el('ds-ent'); n._img = el('ds-fx', n); return n; });
     this.textPool = new Pool(fx, () => { const n = el('ds-ent'); n._img = el('ds-num', n); return n; });
@@ -146,11 +159,11 @@ export class Stage {
     this.ground.style.height = `${h + T * 2}px`;
   }
 
-  // ゆかの かざり（kind = 'lab' で ボトル。null で なし）。seed は ランごとに かえる
-  setDecor(kind, seed = 1) {
-    this.decorKind = kind || null;
-    this.decorField.setSeed(seed);
-    if (!kind) this.decor.clear();
+  // ゆかの かざり（kind = 'lab' で ボトル。null で なし）。field（DecorField）は ゲームがわが もつ（ボトルは こわせる）
+  setDecor(kind, field = null) {
+    this.decorKind = kind && field ? kind : null;
+    this.decorField = field;
+    if (!this.decorKind) this.decor.clear();
   }
 
   setLite(on) {
@@ -161,7 +174,7 @@ export class Stage {
 
   reset() {
     this.gen = (this.gen || 0) + 1;
-    for (const p of [this.decor, this.gems, this.items, this.enemies, this.kunai, this.bullets, this.rockets, this.bombs, this.stars, this.fxPool, this.textPool]) {
+    for (const p of [this.decor, this.fires, this.marks, this.ebombs, this.gems, this.items, this.enemies, this.kunai, this.bullets, this.rockets, this.bombs, this.stars, this.fxPool, this.textPool]) {
       for (const n of p.active) n._img.getAnimations?.().forEach(a => a.cancel());
       p.clear();
     }
@@ -197,9 +210,11 @@ export class Stage {
   // cull=true：がめんの そとの ものは かくして、apply も しない
   sync(pool, items, apply, cull = true) {
     const f = ++this.frame, c = this.cull;
+    // おなじ もの（てきの ばくだん）を 2つの プールで かく ことが あるので、プールごとの かぎで ノードを おぼえる
+    const K = pool.key;
     for (const it of items) {
-      let n = it.node;
-      if (!n || n._owner !== it) { n = it.node = pool.get(); n._owner = it; }
+      let n = it[K];
+      if (!n || n._owner !== it) { n = it[K] = pool.get(); n._owner = it; }
       n._seen = f;
       if (cull && (it.x < c.x0 || it.x > c.x1 || it.y < c.y0 || it.y > c.y1)) {
         if (!n._hid) { n._hid = true; n.style.display = 'none'; }
@@ -253,15 +268,40 @@ export class Stage {
 
     if (this.decorKind) {
       const list = this.decorField.visible(c.x0, c.y0, c.x1, c.y1);
+      const states = look.bottles;
       this.sync(this.decor, list, (d, n) => {
-        if (n._a !== d.kind) {
-          n._a = d.kind;
-          n._img.style.backgroundImage = art(d.kind === 'flag' ? 'labFlag' : d.kind === 'broken' ? 'capsuleBroken' : 'capsule');
-          n._img.classList.toggle('ds-decor-flag', d.kind === 'flag');
-          n._alien.style.display = d.kind === 'alien' ? '' : 'none';
+        // こわされた ボトルは われた え（うちゅうじんも いない）
+        const kind = d.kind !== 'flag' && states?.get(d.id)?.broken ? 'broken' : d.kind;
+        if (n._a !== kind) {
+          n._a = kind;
+          n._img.style.backgroundImage = art(kind === 'flag' ? 'labFlag' : kind === 'broken' ? 'capsuleBroken' : 'capsule');
+          n._img.classList.toggle('ds-decor-flag', kind === 'flag');
+          n._alien.style.display = kind === 'alien' ? '' : 'none';
         }
         Stage.place(n, d.x, d.y);
       });
+    }
+    // ゆかの ひ：できた ときに 1かいだけ アニメ（ひろがって きえる）を つける。あとは いちを おくだけ
+    if (r.fires) this.sync(this.fires, r.fires, (f, n) => {
+      if (n._fid !== f.id) {
+        n._fid = f.id;
+        Stage.look(n, 'fire', 116);
+        const a = n._flip.animate(FIRE_FRAMES, { duration: FIRE_MS, fill: 'forwards' });
+        a.currentTime = f.age * 1000;
+      }
+      Stage.place(n, f.x, f.y);
+    });
+    if (r.ebombs) {
+      this.sync(this.marks, r.ebombs, (b, n) => {
+        const size = 96;
+        if (n._s !== size) { n._s = size; const st = n._img.style; st.width = st.height = `${size}px`; st.marginLeft = st.marginTop = `${-size / 2}px`; }
+        Stage.place(n, b.tx, b.ty);
+      });
+      this.sync(this.ebombs, r.ebombs, (b, n) => {
+        const k = Math.min(1, b.t / b.dur);
+        Stage.look(n, 'ebomb', 30);
+        Stage.place(n, b.sx + (b.tx - b.sx) * k, b.sy + (b.ty - b.sy) * k - Math.sin(k * Math.PI) * 110);
+      }, false);
     }
     this.sync(this.gems, r.gems, (g, n) => { Stage.look(n, g.v >= 4 ? 'gem3' : g.v >= 2 ? 'gem2' : 'gem1', g.v >= 4 ? 22 : 16); Stage.place(n, g.x, g.y); });
     this.sync(this.items, r.items, (it, n) => { Stage.look(n, it.kind, 30); Stage.place(n, it.x, it.y); });

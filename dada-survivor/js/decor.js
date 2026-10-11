@@ -16,7 +16,7 @@ export function cellRand(cx, cy, seed, salt = 0) {
   return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
 }
 
-// 1マスぶんの かざり（[{ x, y, kind: 'capsule' | 'alien' | 'broken' | 'flag' }]）
+// 1マスぶんの かざり（[{ x, y, kind: 'capsule' | 'alien' | 'broken' | 'flag', id? }]）。ボトルの id は こわれた じょうたいを ランの あいだ おぼえる ため
 export function decorCell(cx, cy, seed) {
   const out = [];
   // スタート ちてん（0,0 の マス）は ボトルを おかず、みかたの はたを 1ぽん（じぶんの すこし みぎした）
@@ -34,7 +34,7 @@ export function decorCell(cx, cy, seed) {
   for (let i = 0; i < n; i++) {
     const r = cellRand(cx, cy, seed, 10 + i);
     const kind = r < DECOR.alienChance ? 'alien' : r < DECOR.alienChance + DECOR.brokenChance ? 'broken' : 'capsule';
-    out.push({ x: Math.round(x0 + i * DECOR.gap), y: Math.round(y0), kind });
+    out.push({ x: Math.round(x0 + i * DECOR.gap), y: Math.round(y0), kind, id: `${cx},${cy},${i}` });
   }
   return out;
 }

@@ -42,7 +42,9 @@ test('dog slot is the soldier ソルジャー with a gun', () => {
 
 // こどもの リクエスト：てきは「わるものぐんだん」。ぜんいん ワッペンを つける（プレイヤーには つけない）
 test('every enemy and boss wears the わるものぐんだん emblem', () => {
-  for (const n of Object.keys(ENEMY_TYPES)) {
+  for (const [n, T] of Object.entries(ENEMY_TYPES)) {
+    // うちゅうじんは わるものぐんだん では ない（ボトルから でてくる）
+    if (T.noEmblem) { assert.ok(!svgOf(art(n)).includes('data-emblem'), n); continue; }
     for (const flash of [false, true]) assert.ok(svgOf(art(n, flash)).includes('data-emblem="warumono"'), `${n}${flash ? '!' : ''}`);
   }
   for (const c of CHARACTERS) assert.ok(!svgOf(art(c.id)).includes('data-emblem="warumono"'), c.id);

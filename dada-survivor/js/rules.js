@@ -39,6 +39,10 @@ export const ENEMY_TYPES = {
   snowman:  { hp: 30, speed: 34, dmg: 10, xp: 2, r: 17, size: 38 },
   wolf:     { hp: 16, speed: 92, dmg: 10, xp: 1, r: 15, size: 36 },
   pumpkin:  { hp: 22, speed: 50, dmg: 10, xp: 2, r: 16, size: 34 },
+  // けんきゅうじょ（ステージ1）だけ：ばくだんなげへい（はなれて とまり、ばくだんを なげる。いちどに cap にんまで）
+  thrower:  { hp: 16, speed: 48, dmg: 8,  xp: 2, r: 16, size: 36, ranged: true, cap: 4 },
+  // ボトルから とびだす うちゅうじん（わるものぐんだん では ないので ワッペンなし）
+  alien:    { hp: 14, speed: 74, dmg: 7,  xp: 4, r: 14, size: 34, noEmblem: true },
   // ボス（hp は ステージがわで きめる）
   ogre:     { speed: 40, dmg: 20, xp: 40, r: 38, size: 80,  name: 'おおぐんそう' },
   dragon:   { speed: 38, dmg: 25, xp: 40, r: 48, size: 104, name: 'せんしゃたいちょう' },
@@ -51,8 +55,10 @@ export const ENEMY_TYPES = {
 // enemies: [しゅるい, でてくる びょう, でやすさ]
 export const STAGES = [
   { id: 1, name: 'けんきゅうじょ', ground: 'lab', decor: 'lab', hpMul: 1.0, spawnMul: 1.0, dmgMul: 1.0,
-    enemies: [['zombie', 0, 10], ['bat', 30, 6], ['ghost', 90, 5], ['skull', 180, 4]],
+    enemies: [['zombie', 0, 10], ['bat', 30, 6], ['thrower', 45, 3], ['ghost', 90, 5], ['skull', 180, 4]],
     mini: { type: 'ogre', hp: 900 }, boss: { type: 'dragon', hp: 3000 },
+    // ばくだんの ひが ひろがった ところに ばくはへい（mummy）が あつまる・ボトルは こわせる
+    fire: true, bottles: true,
     // けんきゅうしゃ：at びょうで あらわれ、さわると gift の ぶきを くれる（いまは ステージ1だけ）
     researcher: { at: 90, gift: 'supermissile' } },
   { id: 2, name: 'さばく', ground: 'desert', hpMul: 1.6, spawnMul: 1.1, dmgMul: 1.15,
@@ -450,4 +456,44 @@ export function adaptQuality(q, ms) {
     if (q.calm >= q.hold) { q.lite = false; q.calm = 0; }
   } else q.calm = 0;
   return q;
+}
+
+/* ---------- けんきゅうじょの ばくだん と ひ ----------
+ * ばくだんなげへいは keep の きょりで とまり、range いないなら cd びょうごとに なげる（flight びょうで おちる。おちる ばしょに しるし）。
+ * ばくはつ（blast）に いたら dmg。おちた ところに ひ（life びょう）。ひは r0 → r1 に ひろがり、なかに いると まいびょう dps。
+ * ひが できると gatherChance で ばくはへいが gatherMin〜gatherMax にん あつまる（ひの あつまりで できた ばくはへいは gatherCap にんまで）。 */
+export const THROW = {
+  keep: 210, range: 330, cd: 4.2, firstCd: 2.2, flight: 1.15, blast: 44, dmg: 10,
+  fireLife: 4.5, fireR0: 24, fireR1: 54, fireGrow: 1.2, fireDps: 6, maxFires: 6, maxBombs: 6,
+  gatherChance: 0.45, gatherMin: 2, gatherMax: 3, gatherCap: 9, gatherType: 'mummy',
+};
+/** ひの おおきさ（age びょう めの はんけい。さいごの 0.6びょうで ちいさく なる） */
+export function fireRadius(age, T = THROW) {
+  if (age < 0 || age >= T.fireLife) return 0;
+  const grow = Math.min(1, age / T.fireGrow);
+  const r = T.fireR0 + (T.fireR1 - T.fireR0) * (1 - (1 - grow) ** 2);
+  const fade = Math.min(1, (T.fireLife - age) / 0.6);
+  return r * (0.6 + 0.4 * fade);
+}
+/** cap の ある てき（ばくだんなげへい）が もう いっぱい なら、ステージの さいしょの てきに かえる */
+export function capType(type, counts, stage = STAGES[0]) {
+  const cap = ENEMY_TYPES[type]?.cap;
+  if (!cap || (counts[type] || 0) < cap) return type;
+  return stage.enemies[0][0];
+}
+/** ひから あつまる ばくはへいの かず（いまの あつまり にんずう alive。cap を こえない） */
+export function gatherCount(alive, rnd = Math.random, T = THROW) {
+  if (rnd() >= T.gatherChance) return 0;
+  const n = T.gatherMin + Math.floor(rnd() * (T.gatherMax - T.gatherMin + 1));
+  return Math.max(0, Math.min(n, T.gatherCap - alive));
+}
+
+/* ---------- こわせる ボトル ----------
+ * hp かいで われる（たま・ばくはつ・ほし・バリア。てきの ばくだんでは われない）。
+ * うちゅうじん いりは alien が とびだす。からっぽは ほうせき（gem）。 */
+export const BOTTLE = { hp: 3, r: 20, cy: -30, emptyGem: 2, aimRange: 340, orbitGap: 0.45 };
+export function bottleOutcome(kind) {
+  if (kind === 'alien') return { alien: true, gem: 0 };
+  if (kind === 'capsule') return { alien: false, gem: BOTTLE.emptyGem };
+  return null; // わられた ボトル・はた は こわせない
 }

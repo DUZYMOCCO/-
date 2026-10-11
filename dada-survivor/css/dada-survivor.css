@@ -40,6 +40,12 @@
 @keyframes ds-item { from { transform: translateY(0) rotate(-6deg); } to { transform: translateY(-5px) rotate(6deg); } }
 .ds-star { animation: ds-spin .6s linear infinite; }
 .ds-bomb { animation: ds-spin .5s linear infinite; }
+.ds-ebomb { animation: ds-spin .6s linear infinite; }
+/* けんきゅうじょ：ゆかの ひ（ちらちら）と、てきの ばくだんが おちる しるし（あかい わ が ちぢむ） */
+.ds-fire { animation: ds-fire .22s ease-in-out infinite alternate; transform-origin: 50% 70%; }
+@keyframes ds-fire { from { transform: scale(1, 1); } to { transform: scale(1.04, .94); } }
+.ds-mark { position: absolute; left: 0; top: 0; border-radius: 50%; border: 4px dashed rgba(220, 38, 38, .85); background: rgba(239, 68, 68, .16); animation: ds-mark .5s ease-in-out infinite alternate; }
+@keyframes ds-mark { from { transform: scale(1); } to { transform: scale(.82); } }
 @keyframes ds-spin { to { transform: rotate(360deg); } }
 
 /* かるい モード（おもい ときだけ）：ザコの ぴょこぴょこ・ほうせきの ゆれを とめる（じぶんと けんきゅうしゃは そのまま） */

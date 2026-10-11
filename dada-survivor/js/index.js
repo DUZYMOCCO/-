@@ -9,13 +9,14 @@ import {
   STAGE_SECONDS, MINI_BOSS_SECONDS, MAX_ENEMIES, MAX_GEMS, MAX_LEVEL, DIFFICULTIES, CHARACTERS, ENEMY_TYPES,
   WEAPONS, PASSIVES, STAGES, GUNS, weaponStat, xpToNext, playerStats, spawnPlan, pickWeighted, upgradeChoices,
   normalizeSave, stageById, bossType, bonusFor, clearRewards, receiveGift, clampZoom, pinchZoom, wheelZoom,
-  newQuality, adaptQuality,
-} from './rules.js?v=190';
-import { EnemyGrid, nearestN } from './grid.js?v=190';
-import { preloadArt } from './art.js?v=190';
-import { Stage } from './stage.js?v=190';
-import { menuMethods, iconHtml } from './menus.js?v=190';
-import { PopBGM } from './bgm.js?v=190';
+  newQuality, adaptQuality, THROW, fireRadius, capType, gatherCount, BOTTLE, bottleOutcome,
+} from './rules.js?v=191';
+import { DecorField } from './decor.js?v=191';
+import { EnemyGrid, nearestN } from './grid.js?v=191';
+import { preloadArt } from './art.js?v=191';
+import { Stage } from './stage.js?v=191';
+import { menuMethods, iconHtml } from './menus.js?v=191';
+import { PopBGM } from './bgm.js?v=191';
 
 const SAVE_KEY = 'dada_survivor_save';
 const TAU = Math.PI * 2;
@@ -41,7 +42,7 @@ export const DadaSurvivorGame = {
 
   // 起動時にこのゲームのCSSを自分で読み込む（?v= はこのフォルダ内で管理）。ハブが init 前に await する
   prepare() {
-    return loadCss(new URL('../css/dada-survivor.css?v=190', import.meta.url).href);
+    return loadCss(new URL('../css/dada-survivor.css?v=191', import.meta.url).href);
   },
 
   init(container, onBackToHub) {
@@ -314,7 +315,10 @@ export const DadaSurvivorGame = {
     const st = stageById(this.save.stage);
     this.stage.reset();
     this.stage.setGround(st.ground);
-    this.stage.setDecor(st.decor, 1 + Math.floor(Math.random() * 1e6));
+    const seed = 1 + Math.floor(Math.random() * 1e6);
+    // ゆかの かざり（ボトル）は ゲームがわで もつ（こわせる ので）。ステージは おなじ ものを かく
+    this.decorField = st.decor ? new DecorField(seed) : null;
+    this.stage.setDecor(st.decor, this.decorField);
     this.touches.clear(); this.pinch = null;
     this.run = {
       diff: DIFFICULTIES[this.save.difficulty] || DIFFICULTIES.easy,
@@ -326,6 +330,8 @@ export const DadaSurvivorGame = {
       timers: {}, spawnClock: 0, orbitAngle: 0, auraClock: 0,
       miniBossDone: false, finalBossDone: false, boss: null, ended: false,
       npc: null, researcherDone: false,
+      // けんきゅうじょ：てきの ばくだん・ゆかの ひ・ボトルの じょうたい（id → { hp, broken, orbitHit }）
+      ebombs: [], fires: [], bottles: new Map(), nearBottles: [], fireSeq: 0, burnFx: 0, alienSeen: false,
     };
     this.refreshStats();
     this.run.player.hp = this.run.stats.maxHp;
@@ -412,9 +418,11 @@ export const DadaSurvivorGame = {
     if (r.stats.regen) p.hp = Math.min(r.stats.maxHp, p.hp + r.stats.regen * dt);
 
     this.updateSpawns(dt);
+    this.collectBottles();
     this.updateWeapons(dt);
     this.updateShots(dt);
     this.updateEnemies(dt);
+    this.updateHazards(dt);
     this.updatePickups(dt);
 
     // XP → レベルアップ
@@ -445,7 +453,16 @@ export const DadaSurvivorGame = {
     r.spawnClock -= dt;
     if (r.spawnClock <= 0) {
       r.spawnClock = plan.interval;
-      for (let i = 0; i < plan.batch && r.enemies.length < MAX_ENEMIES; i++) this.spawnEnemy(pickWeighted(plan.weights), plan.hpScale);
+      let counts = null;
+      for (let i = 0; i < plan.batch && r.enemies.length < MAX_ENEMIES; i++) {
+        let type = pickWeighted(plan.weights);
+        if (ENEMY_TYPES[type].cap) {
+          if (!counts) { counts = {}; for (const e of r.enemies) counts[e.type] = (counts[e.type] || 0) + 1; }
+          type = capType(type, counts, st);
+          counts[type] = (counts[type] || 0) + 1;
+        }
+        this.spawnEnemy(type, plan.hpScale);
+      }
     }
   },
 
@@ -462,11 +479,16 @@ export const DadaSurvivorGame = {
     this.showBanner('けんきゅうしゃが いる！ さわって たすけよう！', 3000);
   },
 
-  spawnEnemy(type, hpScale, T = ENEMY_TYPES[type]) {
+  spawnEnemy(type, hpScale, T = ENEMY_TYPES[type], at = null) {
     const r = this.run, p = r.player;
-    const a = Math.random() * TAU, rad = Math.hypot(this.w, this.h) / 2 + 50;
     const hp = T.boss ? T.hp : T.hp * hpScale;
-    const e = { type, T, x: p.x + Math.cos(a) * rad, y: p.y + Math.sin(a) * rad, hp, maxHp: hp, flash: 0, orbitHit: -1, kb: 0, kx: 0, ky: 0 };
+    let x, y;
+    if (at) { x = at.x; y = at.y; } else {
+      const a = Math.random() * TAU, rad = Math.hypot(this.w, this.h) / 2 + 50;
+      x = p.x + Math.cos(a) * rad; y = p.y + Math.sin(a) * rad;
+    }
+    const e = { type, T, x, y, hp, maxHp: hp, flash: 0, orbitHit: -1, kb: 0, kx: 0, ky: 0 };
+    if (T.ranged) e.cd = THROW.firstCd + Math.random();
     r.enemies.push(e);
     if (T.boss) { r.boss = e; this.el.bossName.textContent = T.name; this.el.boss.classList.remove('hidden'); this.bgm.setBoss(true); }
     return e;
@@ -488,6 +510,9 @@ export const DadaSurvivorGame = {
     const p = this.run.player;
     const t = this.nearestEnemies(1, 560)[0];
     if (t) return Math.atan2(t.y - p.y, t.x - p.x);
+    // ちかくに てきが いない ときだけ、こわせる ボトルを ねらう（てきが いれば てき が さき）
+    const b = this.nearestBottle(BOTTLE.aimRange);
+    if (b) return Math.atan2(b.y + BOTTLE.cy - p.y, b.x - p.x);
     if (p.mx || p.my) return Math.atan2(p.my, p.mx);
     return p.face < 0 ? Math.PI : 0;
   },
@@ -615,6 +640,12 @@ export const DadaSurvivorGame = {
           e.orbitHit = r.time;
           this.hitEnemy(e, dmg, o.x, o.y);
         }
+        for (const b of r.nearBottles) {
+          const s = this.bottleState(b);
+          if (s.broken || r.time - s.orbitHit < BOTTLE.orbitGap || !this.touchesBottle(b, o.x, o.y, 14)) continue;
+          s.orbitHit = r.time;
+          this.hitBottle(b);
+        }
       }
     }
   },
@@ -625,6 +656,9 @@ export const DadaSurvivorGame = {
     for (const e of list) {
       if ((e.x - x) ** 2 + (e.y - y) ** 2 <= (radius + e.T.r) ** 2) this.hitEnemy(e, dmg, knock ? x : null, y);
     }
+    // ばくはつ・バリアは ボトルも われる（いっかいで 1かい ぶん）
+    const nb = this.run.nearBottles;
+    for (let i = 0; i < nb.length; i++) if (this.touchesBottle(nb[i], x, y, radius)) this.hitBottle(nb[i]);
   },
 
   hitEnemy(e, dmg, fromX = null, fromY = null, kbTime = 0.12) {
@@ -686,6 +720,12 @@ export const DadaSurvivorGame = {
           }
           if (--s.pierce <= 0) { s.life = 0; break; }
         }
+        // とおりみちの ボトルにも あたる（たまは そこで へる）
+        if (s.life > 0) for (const b of r.nearBottles) {
+          if (this.bottleState(b).broken || !this.touchesBottle(b, s.x, s.y, s.r)) continue;
+          this.hitBottle(b);
+          if (--s.pierce <= 0) { s.life = 0; break; }
+        }
       } else if (s.kind === 'rocket') {
         s.arm -= dt;
         let tgt = s.target && s.target.hp > 0 ? s.target : null;
@@ -706,6 +746,7 @@ export const DadaSurvivorGame = {
           for (const e of this.enemiesNear(s.x, s.y, s.r)) {
             if (e.hp > 0 && (e.x - s.x) ** 2 + (e.y - s.y) ** 2 <= (e.T.r + s.r) ** 2) { hit = true; break; }
           }
+          if (!hit) for (const b of r.nearBottles) if (!this.bottleState(b).broken && this.touchesBottle(b, s.x, s.y, s.r)) { hit = true; break; }
         }
         if (hit || s.life <= 0) {
           s.life = 0;
@@ -742,6 +783,12 @@ export const DadaSurvivorGame = {
       // ズームアウトで とおくに でた てきは、ズーム1の でばしょ（battleR）まで いそいで くる（くる じかんを ズームで かえない）
       const sp = e.T.speed * (!e.T.boss && d > this.battleR ? 2.5 : 1);
       let vx = dx / d * sp, vy = dy / d * sp;
+      // ばくだんなげへい：keep の きょりで とまって、すこし さがる。じかんが きたら なげる
+      if (e.T.ranged) {
+        if (d < THROW.keep) { const back = d < THROW.keep - 50 ? -0.5 : 0; vx = dx / d * sp * back; vy = dy / d * sp * back; }
+        e.cd -= dt;
+        if (e.cd <= 0 && d < THROW.range) { e.cd = THROW.cd; this.throwBomb(e); }
+      }
       if (e.kb > 0) { e.kb -= dt; vx = e.kx * 260; vy = e.ky * 260; }
       const cx = Math.floor(e.x / cell), cy = Math.floor(e.y / cell);
       for (let gx = cx - 1; gx <= cx + 1; gx++) for (let gy = cy - 1; gy <= cy + 1; gy++) {
@@ -767,6 +814,113 @@ export const DadaSurvivorGame = {
         e.x = p.x + Math.cos(a) * rad; e.y = p.y + Math.sin(a) * rad;
       }
     }
+  },
+
+  /* ---------- けんきゅうじょ：てきの ばくだん と ゆかの ひ ---------- */
+  throwBomb(e) {
+    const r = this.run, p = r.player;
+    if (r.ebombs.length >= THROW.maxBombs) return;
+    const a = Math.random() * TAU, off = Math.random() * 24;
+    const tx = p.x + Math.cos(a) * off, ty = p.y + Math.sin(a) * off;
+    r.ebombs.push({ sx: e.x, sy: e.y - 16, tx, ty, x: tx, y: ty, t: 0, dur: THROW.flight });
+    sound.play('bow', { volume: 0.28, gap: 0.2 });
+  },
+
+  updateHazards(dt) {
+    const r = this.run, p = r.player, mul = r.diff.enemyDmg * (r.stageDef.dmgMul || 1);
+    if (!r.ebombs.length && !r.fires.length) return;
+    for (const b of r.ebombs) {
+      b.t += dt;
+      if (b.t < b.dur) continue;
+      b.done = true;
+      this.stage.fx('boom', b.tx, b.ty, THROW.blast * 2.2);
+      sound.play('cannon', { volume: 0.32, gap: 0.12 });
+      if (dist2(b, p) < (THROW.blast + 10) ** 2 && p.hurt <= 0) {
+        p.hp -= THROW.dmg * mul; p.hurt = 0.8;
+        sound.playHurt(); this.stage.hurt();
+        if (navigator.vibrate) navigator.vibrate(30);
+      }
+      this.addFire(b.tx, b.ty);
+    }
+    compact(r.ebombs, b => !b.done);
+    let burning = false;
+    for (const f of r.fires) {
+      f.age += dt;
+      const rad = fireRadius(f.age);
+      if (rad > 0 && dist2(f, p) < (rad - 4) ** 2) burning = true;
+    }
+    compact(r.fires, f => f.age < THROW.fireLife);
+    // ひの なか：まいびょう すこしずつ へる（むてきじかん なし。でれば とまる）
+    if (burning) {
+      p.hp -= THROW.fireDps * mul * dt;
+      r.burnFx -= dt;
+      if (r.burnFx <= 0) { r.burnFx = 0.6; this.stage.hurt(); sound.play('fire', { volume: 0.2, gap: 0.5 }); }
+    }
+  },
+
+  addFire(x, y) {
+    const r = this.run;
+    if (r.fires.length >= THROW.maxFires) r.fires.shift();
+    const f = { x, y, age: 0, id: ++r.fireSeq };
+    r.fires.push(f);
+    if (r.finalBossDone || r.enemies.length >= MAX_ENEMIES - 3) return;
+    // ひが ひろがった ところに ばくはへいが あつまる（プレイヤーと はんたいがわ）
+    let alive = 0;
+    for (const e of r.enemies) if (e.gather) alive++;
+    const n = gatherCount(alive);
+    if (!n) return;
+    const p = r.player, base = Math.atan2(y - p.y, x - p.x), hpScale = spawnPlan(r.time, r.diff, r.stageDef).hpScale;
+    for (let i = 0; i < n; i++) {
+      const a = base + (i - (n - 1) / 2) * 0.7, d = 70 + Math.random() * 30;
+      const e = this.spawnEnemy(THROW.gatherType, hpScale, undefined, { x: x + Math.cos(a) * d, y: y + Math.sin(a) * d });
+      e.gather = true;
+    }
+  },
+
+  /* ---------- けんきゅうじょ：こわせる ボトル ---------- */
+  // ちかくの まだ われて いない ボトル（まいフレーム。がめんの そとがわ すこし まで）
+  collectBottles() {
+    const r = this.run, out = r.nearBottles;
+    out.length = 0;
+    if (!this.decorField || !r.stageDef.bottles) return;
+    const p = r.player, W = this.w / 2 + 80, H = this.h / 2 + 120;
+    for (const d of this.decorField.visible(p.x - W, p.y - H, p.x + W, p.y + H)) {
+      if (!bottleOutcome(d.kind) || this.bottleState(d).broken) continue;
+      out.push(d);
+    }
+  },
+  bottleState(b) {
+    const m = this.run.bottles;
+    let s = m.get(b.id);
+    if (!s) { s = { hp: BOTTLE.hp, broken: false, orbitHit: -1 }; m.set(b.id, s); }
+    return s;
+  },
+  touchesBottle(b, x, y, rad) { return (b.x - x) ** 2 + (b.y + BOTTLE.cy - y) ** 2 <= (rad + BOTTLE.r) ** 2; },
+  nearestBottle(maxD) {
+    const p = this.run.player;
+    let best = null, bd = maxD * maxD;
+    for (const b of this.run.nearBottles) {
+      if (this.bottleState(b).broken) continue;
+      const d = (b.x - p.x) ** 2 + (b.y + BOTTLE.cy - p.y) ** 2;
+      if (d < bd) { bd = d; best = b; }
+    }
+    return best;
+  },
+  hitBottle(b) {
+    const r = this.run, s = this.bottleState(b);
+    if (s.broken) return;
+    s.hp--;
+    const cx = b.x, cy = b.y + BOTTLE.cy;
+    if (s.hp > 0) { this.stage.fx('pop', cx, cy, 34); sound.play('hit', { volume: 0.2, gap: 0.07 }); return; }
+    s.broken = true;
+    this.stage.fx('shatter', cx, cy, 96);
+    sound.play('cannon', { volume: 0.3, gap: 0.1 });
+    const out = bottleOutcome(b.kind);
+    if (out.alien) {
+      const e = this.spawnEnemy('alien', spawnPlan(r.time, r.diff, r.stageDef).hpScale, undefined, { x: cx, y: cy + 10 });
+      e.flash = 0.2;
+      if (!r.alienSeen) { r.alienSeen = true; this.showBanner('うちゅうじんが とびだした！', 1800); }
+    } else if (out.gem) this.dropGem(cx, cy + 16, out.gem);
   },
 
   updatePickups(dt) {
@@ -827,6 +981,7 @@ export const DadaSurvivorGame = {
     this.stage.draw(r, {
       auraRadius: r.weapons.aura ? weaponStat('aura', 'radius', r.weapons.aura) : 0,
       orbit: this.orbitPositions(),
+      bottles: r.bottles,
     });
     this.stage.joystick(this.stick, this.rect);
   },
