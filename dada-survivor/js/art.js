@@ -57,32 +57,36 @@ function hero({ fur, shade, inner, ear, muzzle, patches, belly, face = '', mouth
     ${face}${front}${patch}${eyes}${muz}${extra}`;
 }
 
-/* ---------- ソルジャー（にんげんの へいたい。いぬの わくを ひきつぐ） ---------- */
+/* ---------- ソルジャー（とくしゅぶたいの にんげん。いぬの わくを ひきつぐ） ---------- */
 const soldier = `
-  <ellipse cx="22" cy="60" rx="5" ry="3.2" fill="#1c1917" ${S}/><ellipse cx="42" cy="60" rx="5" ry="3.2" fill="#1c1917" ${S}/>
-  <clipPath id="sb"><ellipse cx="32" cy="52" rx="13" ry="10"/></clipPath>
-  <ellipse cx="32" cy="52" rx="13" ry="10" fill="#4d5a35"/>
-  <g clip-path="url(#sb)" fill="#2f3a22"><ellipse cx="22" cy="48" rx="4" ry="2.4" transform="rotate(25 22 48)"/><ellipse cx="41" cy="57" rx="4.5" ry="2.2" transform="rotate(-20 41 57)"/><ellipse cx="24" cy="58" rx="3" ry="1.8"/></g>
-  <g clip-path="url(#sb)" fill="#6b5a3a"><ellipse cx="42" cy="47" rx="3" ry="1.6" transform="rotate(-30 42 47)"/><ellipse cx="30" cy="61" rx="3" ry="1.5"/></g>
-  <ellipse cx="32" cy="52" rx="13" ry="10" fill="none" ${S}/>
-  <path d="M23 45 Q32 49 41 45 L41.5 57 Q32 60 22.5 57Z" fill="#2c3320" ${S2}/>
-  <rect x="24.5" y="50" width="6" height="5" rx="1" fill="#3a4429" ${S2}/><rect x="33.5" y="50" width="6" height="5" rx="1" fill="#3a4429" ${S2}/>
-  <path d="M6 57 L56 41" ${SW(6.5)}/><path d="M6 57 L56 41" stroke="#3f3f46" stroke-width="3.6" stroke-linecap="round"/>
-  <path d="M4 58 L14 54.5 L16 60 L6 62Z" fill="#3f2a1d" ${S2}/>
-  <path d="M26 50 L33 47.8 L35 53 L28 55Z" fill="#27272a" ${S2}/>
-  <path d="M40 46 L42 52" ${SW(4)}/><path d="M40 46 L42 52" stroke="#27272a" stroke-width="1.8" stroke-linecap="round"/>
-  <path d="M55 40 L61 38.2" ${SW(3.4)}/><path d="M55 40 L61 38.2" stroke="#52525b" stroke-width="1.4" stroke-linecap="round"/>
-  <circle cx="21" cy="53" r="3.2" fill="#e6b88f" ${S2}/><circle cx="45" cy="45.5" r="3.2" fill="#e6b88f" ${S2}/>
+  <ellipse cx="22" cy="60" rx="5" ry="3.2" fill="#18181b" ${S}/><ellipse cx="42" cy="60" rx="5" ry="3.2" fill="#18181b" ${S}/>
+  <ellipse cx="32" cy="52" rx="13" ry="10" fill="#2a2d33" ${S}/>
+  <path d="M22 45 Q32 48.5 42 45 L42.5 58 Q32 61 21.5 58Z" fill="#1b1d21" ${S2}/>
+  <rect x="25" y="52" width="4.6" height="5" rx=".8" fill="#2f3238" ${S2}/><rect x="30" y="52" width="4.6" height="5" rx=".8" fill="#2f3238" ${S2}/><rect x="35" y="52" width="4.6" height="5" rx=".8" fill="#2f3238" ${S2}/>
+  <rect x="17.6" y="43.6" width="7.6" height="5.2" rx=".6" fill="#f5f5f4" ${SW(1.4)}/><circle cx="21.4" cy="46.2" r="1.55" fill="#dc2626"/>
+  <path d="M6 59 L56 43" ${SW(6.5)}/><path d="M6 59 L56 43" stroke="#26282d" stroke-width="3.6" stroke-linecap="round"/>
+  <path d="M4 60 L13 57 L15 62.5 L6 64Z" fill="#26282d" ${S2}/>
+  <path d="M27 52 L33 50 L35.5 55.5 L29.5 57.5Z" fill="#1b1d21" ${S2}/>
+  <path d="M30 47.5 L40 44.3 L41 46.6 L31 49.8Z" fill="#3f4249" ${S2}/><circle cx="40.6" cy="44.8" r="1.1" fill="#ef4444"/>
+  <path d="M55 42 L61.5 40" ${SW(3.6)}/><path d="M55 42 L61.5 40" stroke="#3f4249" stroke-width="1.6" stroke-linecap="round"/>
+  <circle cx="21" cy="55" r="3.3" fill="#27272a" ${S2}/><circle cx="45" cy="47.5" r="3.3" fill="#27272a" ${S2}/>
   ${shadedCircle('hu', 32, 29, 16, '#f0c7a0', '#c48a5e')}
-  <path d="M20 27 L19 37 M44 27 L45 37" fill="none" stroke="#3a3f2a" stroke-width="1.6" stroke-linecap="round"/>
-  <path d="M11 26 Q11 6 32 6 Q53 6 53 26 Q32 21 11 26Z" fill="#4d5a35" ${S}/>
-  <path d="M17 13 Q20 10 25 9" fill="none" stroke="#6b7a4a" stroke-width="2" stroke-linecap="round"/>
-  <ellipse cx="38" cy="13" rx="4" ry="2" fill="#2f3a22"/><ellipse cx="24" cy="18" rx="3.4" ry="1.6" fill="#2f3a22" transform="rotate(-12 24 18)"/><ellipse cx="45" cy="20" rx="2.6" ry="1.4" fill="#6b5a3a"/>
-  <path d="M8.5 26.5 Q32 20 55.5 26.5 L54.5 29.5 Q32 24 9.5 29.5Z" fill="#3a4429" ${S2}/>
-  <path d="M21 30 L28.5 31 M43 30 L35.5 31" fill="none" ${SW(2)}/>
-  ${animeEye(24.5, 34, '#a3b18a')}${animeEye(39.5, 34, '#a3b18a')}
-  <path d="M31.4 37.6 L32.6 38.1" fill="none" stroke="#a8673f" stroke-width="1.3" stroke-linecap="round"/>
-  <path d="M29 41 H35" fill="none" ${S2}/>`;
+  <clipPath id="mk"><circle cx="32" cy="29" r="16"/></clipPath>
+  <path d="M10 36 Q32 31 54 36 L54 48 L10 48Z" fill="#2a2d33" clip-path="url(#mk)"/>
+  <path d="M16.5 36.6 Q32 31.6 47.5 36.6" fill="none" ${S2}/>
+  <path d="M21 40 H43" fill="none" stroke="#1b1d21" stroke-width="1.3"/>
+  <circle cx="32" cy="29" r="16" fill="none" ${S}/>
+  <path d="M11 26 Q11 6 32 6 Q53 6 53 26 Q32 21 11 26Z" fill="#3a3d44" ${S}/>
+  <path d="M17 13 Q20 10 25 9" fill="none" stroke="#5b5f68" stroke-width="2" stroke-linecap="round"/>
+  <path d="M15 16 Q32 12 49 16" fill="none" stroke="#2a2d33" stroke-width="1.6"/>
+  <rect x="27" y="6" width="10" height="5" rx="1.2" fill="#26282d" ${S2}/>
+  <rect x="21" y="9.5" width="22" height="7" rx="3.2" fill="#1b1d21" ${S2}/>
+  <circle cx="27" cy="13" r="2.3" fill="#3b82f6" opacity=".55"/><circle cx="37" cy="13" r="2.3" fill="#3b82f6" opacity=".55"/>
+  <path d="M10 26.5 Q32 21 54 26.5 L53.5 29 Q32 24 10.5 29Z" fill="#26282d" ${S2}/>
+  <rect x="9" y="25" width="6" height="10" rx="2.6" fill="#26282d" ${S2}/><rect x="49" y="25" width="6" height="10" rx="2.6" fill="#26282d" ${S2}/>
+  <path d="M51.5 34 Q49 40 42 40" fill="none" stroke="#3f4249" stroke-width="1.4" stroke-linecap="round"/>
+  <path d="M21 30 L28.5 31.2 M43 30 L35.5 31.2" fill="none" ${SW(2)}/>
+  ${animeEye(24.5, 33.2, '#93c5fd')}${animeEye(39.5, 33.2, '#93c5fd')}`;
 
 const whiskers = `<path d="M10 33 L18 34 M10 38 L18 37 M54 33 L46 34 M54 38 L46 37" ${S2} fill="none"/>`;
 

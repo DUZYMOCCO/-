@@ -35,5 +35,7 @@ test('dog slot is the soldier ソルジャー with a gun', () => {
   assert.equal(c.name, 'ソルジャー');
   assert.equal(c.weapon, 'gun');
   assert.deepEqual(c.perk, { hp: 30 });
+  const svg = svgOf(art('dog'));
+  assert.ok(svg.includes('fill="#f5f5f4"') && svg.includes('fill="#dc2626"'), 'にほんの はたの ワッペン');
   for (const ch of CHARACTERS) assert.match(ch.name, /^[\u3041-\u309f\u30a0-\u30ff]+$/, ch.name);
 });

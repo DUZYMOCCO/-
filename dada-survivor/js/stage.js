@@ -5,7 +5,7 @@
  * - 要素はプールで使い回し、生成/破棄でGCやレイアウトを揺らさない
  * - 一時エフェクトは Web Animations API（コンポジタで再生）
  */
-import { art } from './art.js?v=181';
+import { art } from './art.js?v=182';
 
 class Pool {
   constructor(layer, make) { this.layer = layer; this.make = make; this.free = []; this.active = new Set(); }
