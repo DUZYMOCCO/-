@@ -6,7 +6,7 @@ import {calcTreasuryGrossIncome,calcCommanderStipend,EQUIPMENT_SLOTS} from './ec
 import {createPayrollPlan,commanderStipendQuote,PAYROLL_RULES} from './payroll-rules.js?v=187';
 import {calcAllRankerBonuses} from './troop-rankings.js?v=187';
 import {normalizeRegionalEconomy,recurringNationalIncome,economicState,advanceRegionalEconomy,automaticEconomicTarget,investEconomicProject} from './regional-economy.js?v=182';
-import {drawSettlementQuarter} from './economic-visuals.js?v=187';
+import {drawSettlementQuarter} from './economic-visuals.js?v=188';
 import {renderRegionalEconomy} from './economic-interface.js?v=182';
 
 export const DEVELOPMENT_STAGES=[

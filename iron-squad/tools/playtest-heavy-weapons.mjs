@@ -18,15 +18,16 @@ try{
       const y=g.currentDungeon.height/2;
       Object.assign(g.player,{x:850,y,atkCooldown:0,powerAtkCooldown:0,crit:0,ammo:200,facingAngle:0,slashAngle:0,slashAnim:0});
       g.monsters=[{id:'weapon-check',type:'goblin',x:905,y,hp:1e8,maxHp:1e8,radius:12,atk:0,def:0,speed:0,atkTimer:100,color:'#719966'}];
-      g.projectiles=[];g.rebuildMonsterSpatial();g.camera={x:850,y:y-40};g.zoom=1.4;g.resizeCanvas();g.updateStatsUI();g.render();
+      g.projectiles=[];g.damageTexts=[];g.particles=[];g.shockwaves=[];g.rebuildMonsterSpatial();g.camera={x:850,y:y-40};g.zoom=1.4;g.resizeCanvas();g.updateStatsUI(true);g.render();
     },style);
     await page.click('#btn-pad-attack');
     const result=await page.evaluate(style=>{
       const g=qualityGame,p=g.player;g.render();
-      return {style,held:g.equipped.weapon.weaponStyle,weaponAttack:g.equipped.weapon.stats.atk,cooldown:p.atkCooldown,animation:p.slashAnim,damage:1e8-g.monsters[0].hp,projectiles:g.projectiles.length,powerLabel:document.querySelector('#btn-power-attack')?.textContent,
+      return {style,held:g.equipped.weapon.weaponStyle,weaponAttack:g.equipped.weapon.stats.atk,cooldown:p.atkCooldown,animation:p.slashAnim,damage:1e8-g.monsters[0].hp,projectiles:g.projectiles.length,powerLabel:document.querySelector('#btn-pad-power')?.textContent,powerIcon:document.querySelector('#btn-pad-power .pad-btn-icon')?.textContent,
         noOverflow:document.documentElement.scrollWidth<=innerWidth};
     },style);
     assert.equal(result.held,style);assert.ok(result.animation>0&&result.cooldown>0,JSON.stringify(result));assert.ok(result.damage>0||result.projectiles>0,JSON.stringify(result));assert.ok(result.noOverflow);reports.push(result);
+    if(style==='axe')assert.equal(result.powerIcon,'🪓');
     if(['axe','bow','cannon'].includes(style)){
       await page.evaluate(()=>{qualityGame.player.slashAnim=.55;qualityGame.render();});
       await page.screenshot({path:`${out}/${style}-mobile-v5.3.0.png`});

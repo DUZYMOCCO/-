@@ -1,4 +1,4 @@
-import {drawEquipmentShield} from './equipment-art.js?v=187';
+import {drawEquipmentShield} from './equipment-art.js?v=188';
 import { MELEE_SWEET_SPOT, meleeSweetSpotFor, weaponCombatProfile } from './equipment-rules.js?v=187';
 import {isHeavyWeaponStyle} from './growth-rules.js?v=187';
 
@@ -107,13 +107,23 @@ function gripHand(c,x,y,angle,colors,simple=false) {
     segment(c,[[1.2,-1.2],[-.7,-.3]],skin,1.5);
   }c.restore();
 }
+/** A shield is strapped to the supporting forearm when both hands are occupied. */
+export function shieldMountFor(actor,pose,physique=null) {
+  if(!pose.twoHanded&&actor.soldierClass!=='BLADEMASTER')return {x:pose.offGrip.x,y:pose.offGrip.y};
+  const shoulder={x:-pose.side*6*(physique?.bodyWidth||1),y:-21};
+  const {elbow}=solveWeaponArm(shoulder,pose.offGrip,physique);
+  return {x:(elbow.x+pose.offGrip.x)/2-pose.side*3,y:(elbow.y+pose.offGrip.y)/2+3.5};
+}
 export function drawWeaponArms(c,actor,pose,colors,simple=false) {
   const shoulder=6*(colors.physique?.bodyWidth||1),{grip,offGrip,side,twoHanded}=pose;
   c.save();c.lineCap='round';c.lineJoin='round';
+  if(colors.shieldProfile?.coverage){
+    const mount=shieldMountFor(actor,pose,colors.physique);
+    drawEquipmentShield(c,mount.x,mount.y,colors.board,colors.shieldProfile,simple);
+  }
   arm(c,{x:-side*shoulder,y:-21},offGrip,colors,simple);
   arm(c,{x:side*shoulder,y:-21},grip,colors,simple);
   if(!twoHanded){
-    if(actor.soldierClass!=='BLADEMASTER')drawEquipmentShield(c,offGrip.x,offGrip.y,colors.board,colors.shieldProfile,simple);
     gripHand(c,offGrip.x,offGrip.y,pose.angle,colors,simple);
   }
   c.restore();

@@ -3,11 +3,11 @@ import {downLabel} from './casualty-rules.js?v=187';
 import {RANGED_ENEMIES} from './enemy-ranged.js?v=187';
 import {BRUTE_DRAW_SCALE} from './field-hosts.js?v=182';
 import {equipmentVisualProfile} from './equipment-tiers.js?v=187';
-import {drawBodyEquipment} from './equipment-art.js?v=187';
+import {drawBodyEquipment,drawEquipmentShield} from './equipment-art.js?v=188';
 import {MAGIC_AFFINITIES,ensureMana} from './magic-rules.js?v=187';
-import { drawMeleeWeapon, drawMeleeRangeCue, drawRangedWeapon, drawWeaponArms, meleePose, rangedPose } from './weapon-motion.js?v=187';
-import { defaultCommanderAppearance } from './commander-identity.js?v=187';
-import { createSoldierAppearance, drawSoldierHead, isMedicAppearance, soldierAppearanceFamily, soldierPhysique } from './soldier-appearance.js?v=187';
+import { drawMeleeWeapon, drawMeleeRangeCue, drawRangedWeapon, drawWeaponArms, meleePose, rangedPose } from './weapon-motion.js?v=188';
+import { defaultCommanderAppearance } from './commander-identity.js?v=188';
+import { createSoldierAppearance, drawSoldierHead, isMedicAppearance, soldierAppearanceFamily, soldierPhysique } from './soldier-appearance.js?v=188';
 import { classRegaliaFor, drawClassMantle, drawClassRegalia, drawClassHeadpiece } from './class-regalia.js?v=185';
 
 // Keep the commander's established face, with short hair in both field and portrait (v4.2.24: player.appearance overrides it).
@@ -87,7 +87,7 @@ const CLOTH = {
 };
 
 function drawCampRest(c, s, now, pose, look, simple) {
-  const { cloth, armorColor, legs, blade, steel, gloves, platoonColor, medic, advanced, mage, eq, physique, regalia } = look;
+  const { cloth, armorColor, legs, blade, steel, gloves, board, platoonColor, medic, advanced, mage, eq, physique, regalia } = look;
   const bob = Math.sin(now * 0.0035 + (s.animOffset || 0)) * 1.2;
   const breath = Math.sin(now * 0.002 + (s.animOffset || 0)) * 0.35;
   const head = { helmet: eq.helmet ? steel : null, helmetTier: eq.helmet?.tier || 1, mitre: medic && advanced, cap: medic && !advanced };
@@ -170,6 +170,10 @@ function drawCampRest(c, s, now, pose, look, simple) {
       ellipse(c, 4.2, -14.5 + bob, 1, 0.8, '#8d6844');
     }
     c.restore();
+  }
+  if(eq.shield){
+    c.save();c.translate(-12*physique.bodyWidth,1);c.rotate(-.18);
+    drawEquipmentShield(c,0,0,board,equipmentVisualProfile(eq.shield),simple);c.restore();
   }
   if (c.showBattleLabels !== false && s.maxHp > 0 && s.hp < s.maxHp * 0.55) {
     const healthY=regalia?-44:-34;
@@ -362,7 +366,7 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod, displa
   const heldPose=melee?meleePose(wStyle,s.atkAnim||0,aim,physique):ranged?rangedPose(wStyle,s.atkAnim||0,aim,physique):null;
   c.save(); c.translate(s.x, s.y);
   if (!s.isDown && (s.campPose === 'sit' || s.campPose === 'drink' || s.campPose === 'eat')) {
-    drawCampRest(c, s, now, s.campPose, { cloth, armorColor, legs, blade, steel, gloves, platoonColor, medic, advanced, mage, eq, physique, regalia }, simpleLod);
+    drawCampRest(c, s, now, s.campPose, { cloth, armorColor, legs, blade, steel, gloves, board, platoonColor, medic, advanced, mage, eq, physique, regalia }, simpleLod);
     c.restore();
     drawLevelMark(c, s, now);
     return;
@@ -399,6 +403,7 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod, displa
       c.fillStyle = '#c4b48a'; c.fillRect(-12, healthY, 24 * Math.max(0, Math.min(1, s.hp / s.maxHp)), 3);
     }
     if(showHeld){if(melee)drawMeleeWeapon(c,s,wStyle,weaponColors,true,true,heldPose);else drawRangedWeapon(c,s,wStyle,weaponColors,true,true,heldPose);}
+    else if(eq.shield)drawEquipmentShield(c,-(heldPose?.side||1)*8.5*physique.bodyWidth,-12,board,weaponColors.shieldProfile,true);
     c.restore();
     drawLevelMark(c, s, now);
     return;
@@ -413,6 +418,7 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod, displa
     c.save();c.translate(-20,-1);c.rotate(-Math.PI/2);
     drawSoldierHead(c,s,{scale:.9,small:true,silhouette:true,helmet:eq.helmet?steel:null,helmetTier:eq.helmet?.tier||1,mitre:medic&&advanced,cap:medic&&!advanced});drawClassHeadpiece(c,regalia,{scale:.9,simple:true,helmet:!!eq.helmet});c.restore();
     line(c,[[10,-2],[22,2],[18,6]],'#3c4038',2.5*physique.armWidth);
+    if(eq.shield){c.save();c.translate(12,7);c.rotate(-.25);c.scale(1,.5);drawEquipmentShield(c,0,0,board,weaponColors.shieldProfile,simpleLod);c.restore();}
     c.fillStyle = '#e6d7b8'; c.textAlign = 'center'; c.font = 'bold 10px sans-serif';
     c.fillText(downLabel(s), 0, -16);
     c.fillStyle = '#242c30'; c.fillRect(-16, -12, 32, 3);

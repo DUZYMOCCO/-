@@ -58,12 +58,29 @@ export function drawBodyEquipment(c,eq,{armorColor,legColor,role='HEAVY',stride=
 
 export function drawEquipmentShield(c,x,y,color,profile,simple=false) {
  if(!profile?.coverage)return;
- const w=2.5+profile.coverage*4,h=4+profile.coverage*5;
- const points=profile.rough?[[x-w,y-h],[x+w-.7,y-h+1],[x+w,y+h-1],[x-w+.8,y+h]]:[[x-w,y-h],[x+w,y-h],[x+w,y+h*.5],[x,y+h+2],[x-w,y+h*.5]];
- polygon(c,points,color);
- if(simple)return;
- plane(c,[[x-w+.5,y-h+.8],[x,y-h+1],[x-1,y+h*.5],[x-w+.8,y+h*.3]],'rgba(235,228,196,.24)');
- plane(c,[[x+w-1,y-h+1],[x+w,y+h*.5],[x,y+h+1],[x+1,y]],'rgba(18,29,28,.27)');
- if(profile.rough){line(c,[[x-1,y-h],[x-1,y+h]],'#66543c',1);line(c,[[x-w,y-1],[x+w,y-.2]],'#b99f75',1.2);}
- else{line(c,[[x,y-h+2],[x,y+h]],'#c6b994',1.2);if(profile.detail>=2){line(c,[[x-w+1,y-h+1],[x+w-1,y-h+1]],'#ded4b8');c.fillStyle='#b8a174';c.fillRect(x-1.5,y-2,3,3);}}
+ const material=profile.material||1,round=material<=2,w=4+profile.coverage*3.5,h=round?w*1.04:6+profile.coverage*4.5;
+ const rim=material===1?'#b69a70':material>=5?'#d3bd86':'#c0c9bd';
+ c.save();c.translate(x,y);c.fillStyle=color;c.strokeStyle='#26312d';c.lineWidth=simple?.9:1.3;c.beginPath();
+ if(round)c.ellipse(0,0,w,h,0,0,Math.PI*2);
+ else{c.moveTo(-w,-h);c.lineTo(w,-h);c.lineTo(w,h*.28);c.quadraticCurveTo(w*.7,h*.65,0,h);c.quadraticCurveTo(-w*.7,h*.65,-w,h*.28);c.closePath();}
+ c.fill();c.stroke();
+ if(!simple){
+   c.save();c.clip();
+   plane(c,[[-w,-h],[0,-h],[0,h],[-w,h]],'rgba(235,228,196,.2)');
+   plane(c,[[w,-h],[w,h],[1,h],[1,-h]],'rgba(18,29,28,.22)');
+   if(material===1)for(const px of [-w*.45,0,w*.45])line(c,[[px,-h],[px,h]],'#5a4735',.65);
+   c.restore();
+   c.strokeStyle=rim;c.lineWidth=profile.detail>=2?1.15:.8;c.beginPath();
+   if(round)c.ellipse(0,0,w-.8,h-.8,0,0,Math.PI*2);
+   else{c.moveTo(-w+1,-h+1);c.lineTo(w-1,-h+1);c.lineTo(w-1,h*.25);c.quadraticCurveTo(w*.5,h*.6,0,h-1.2);c.quadraticCurveTo(-w*.5,h*.6,-w+1,h*.25);c.closePath();}
+   c.stroke();
+ }
+ // The central boss reads as a shield even at the first tier and distant size.
+ c.fillStyle=rim;c.beginPath();c.ellipse(0,0,simple?1.2:1.7,simple?1.2:1.7,0,0,Math.PI*2);c.fill();
+ if(!simple){
+   if(material>=3)line(c,[[0,-h+2.5],[0,h-2.5]],rim,.7);
+   if(profile.detail>=2){polygon(c,[[0,-4],[3,-1],[0,3],[-3,-1]],rim);polygon(c,[[0,-2.7],[1.5,-1],[0,1],[-1.5,-1]],material>=5?'#56796c':'#647b87');}
+   if(profile.detail>=3)for(const px of [-w+2,w-2]){c.fillStyle=rim;c.fillRect(px-.5,-h+2,.9,.9);c.fillRect(px-.5,1,.9,.9);}
+ }
+ c.restore();
 }

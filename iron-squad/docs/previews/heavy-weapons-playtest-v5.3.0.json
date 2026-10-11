@@ -6,8 +6,10 @@
       "weaponAttack": 86,
       "cooldown": 0.52,
       "animation": 1,
-      "damage": 814,
+      "damage": 370,
       "projectiles": 0,
+      "powerLabel": "\n                  ⚔️\n                  ダブル\nスラッシュ\n                  \n                    0.0\n                  \n                ",
+      "powerIcon": "⚔️",
       "noOverflow": true
     },
     {
@@ -18,6 +20,8 @@
       "animation": 1,
       "damage": 348,
       "projectiles": 0,
+      "powerLabel": "\n                  🔱\n                  ファン\nスラスト\n                  \n                    0.0\n                  \n                ",
+      "powerIcon": "🔱",
       "noOverflow": true
     },
     {
@@ -28,6 +32,8 @@
       "animation": 1,
       "damage": 7538,
       "projectiles": 0,
+      "powerLabel": "\n                  🔨\n                  クラッシュ\nブロー\n                  \n                    0.0\n                  \n                ",
+      "powerIcon": "🔨",
       "noOverflow": true
     },
     {
@@ -38,6 +44,8 @@
       "animation": 1,
       "damage": 7597,
       "projectiles": 0,
+      "powerLabel": "\n                  🪓\n                  クラッシュ\nブロー\n                  \n                    0.0\n                  \n                ",
+      "powerIcon": "🪓",
       "noOverflow": true
     },
     {
@@ -48,6 +56,8 @@
       "animation": 1,
       "damage": 25,
       "projectiles": 0,
+      "powerLabel": "\n                  🔮\n                  マナ\nバースト\n                  \n                    0.0\n                  \n                ",
+      "powerIcon": "🔮",
       "noOverflow": true
     },
     {
@@ -58,6 +68,8 @@
       "animation": 1,
       "damage": 68,
       "projectiles": 0,
+      "powerLabel": "\n                  🔮\n                  マナ\nバースト\n                  \n                    0.0\n                  \n                ",
+      "powerIcon": "🔮",
       "noOverflow": true
     },
     {
@@ -68,6 +80,8 @@
       "animation": 1,
       "damage": 0,
       "projectiles": 1,
+      "powerLabel": "\n                  🏹\n                  アロー\nレイン\n                  \n                    0.0\n                  \n                ",
+      "powerIcon": "🏹",
       "noOverflow": true
     },
     {
@@ -78,6 +92,8 @@
       "animation": 1,
       "damage": 0,
       "projectiles": 1,
+      "powerLabel": "\n                  🎯\n                  ピアス\nボルト\n                  \n                    0.0\n                  \n                ",
+      "powerIcon": "🎯",
       "noOverflow": true
     },
     {
@@ -88,6 +104,8 @@
       "animation": 1,
       "damage": 0,
       "projectiles": 1,
+      "powerLabel": "\n                  💣\n                  クラスター\n                  \n                    0.0\n                  \n                ",
+      "powerIcon": "💣",
       "noOverflow": true
     }
   ],

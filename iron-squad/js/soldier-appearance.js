@@ -2,7 +2,7 @@ import {equipmentVisualProfile} from './equipment-tiers.js?v=187';
 import {isMuscleCaster} from './unit-attributes.js?v=187';
 import {genderOfSoldier} from './soldier-names.js?v=185';
 import {classRegaliaFor,drawClassPortraitDress,drawClassHeadpiece} from './class-regalia.js?v=185';
-import {createAppearanceFeatures,normalizeAppearanceFeatures,FACE_OUTLINES,EYE_SHAPES,NOSE_TYPES,JAW_TYPES,ACCESSORY_LABELS,drawVariantFace,drawVariantEyes,drawVariantNose,drawPersonalAccessory} from './appearance-features.js?v=186';
+import {createAppearanceFeatures,normalizeAppearanceFeatures,FACE_OUTLINES,EYE_SHAPES,NOSE_TYPES,JAW_TYPES,ACCESSORY_LABELS,drawVariantFace,drawVariantEyes,drawVariantNose,drawPersonalAccessory} from './appearance-features.js?v=188';
 /** Stable personal looks, independent of talent, battle RNG and equipment. */
 export const HAIR_LABELS = Object.freeze({
   barcode:'バーコード', bald:'丸ハゲ', mohawk:'モヒカン', sidebald:'サイドハゲ',
@@ -278,11 +278,17 @@ function paintSoldierHead(c,soldier,{x=0,y=0,scale=1,small=false,silhouette=fals
   else if(a.faceShape==='long')ellipse(c,0,0,4.5,6.7,a.skin);
   else {
     ellipse(c,0,-2.5,5.1,3.8,a.skin);
-    polygon(c,[[-5,-2],[5,-2],[4.5,3.2],[a.handsome?2.5:4,5.3],[0,6.2],[-(a.handsome?2.5:4),5.3],[-4.5,3.2]],a.skin);
+    const jawWidth=a.handsome?2.5:4;
+    c.fillStyle=a.skin;c.beginPath();c.moveTo(-5,-2);c.lineTo(5,-2);
+    c.quadraticCurveTo(5,2.7,jawWidth,4.6);c.bezierCurveTo(jawWidth*.8,5.7,1.2,6.2,0,6.2);
+    c.bezierCurveTo(-1.2,6.2,-jawWidth*.8,5.7,-jawWidth,4.6);c.quadraticCurveTo(-5,2.7,-5,-2);c.closePath();c.fill();
   }
   if(!silhouette){
     // The same fixed light direction for field heads and portrait faces.
-    polygon(c,[[2.8,-4.5],[4.5,-2],[4.5,2.8],[2.4,5.3],[1,5.8],[2.5,1]],'rgba(81,47,34,.18)');
+    // Keep a soft cheek shadow inside even the narrow normal face.
+    c.fillStyle='rgba(81,47,34,.18)';c.beginPath();c.moveTo(3,-3.3);
+    c.bezierCurveTo(4.1,-1,4.1,1.2,3.5,2.7);c.quadraticCurveTo(2.9,4.5,1.4,5.2);
+    c.quadraticCurveTo(2.3,2.7,2.5,.5);c.quadraticCurveTo(2.7,-1.5,3,-3.3);c.closePath();c.fill();
     ellipse(c,-2.1,-2.5,1.8,2.6,'rgba(255,241,213,.18)');
   }
   if(!small)ellipse(c,-1.5,-3.5,1.9,.65,'rgba(255,241,213,.28)');

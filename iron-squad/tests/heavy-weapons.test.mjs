@@ -52,5 +52,10 @@ const random=Math.random;try{
     const legacy=structuredClone(w);delete legacy.heavyAttackVersion;legacy.stats.atk/=10;const untouched=JSON.stringify(legacy);soldierEquipmentValue(game,unit,legacy,'weapon',SOLDIER_CLASSES);assert.equal(JSON.stringify(legacy),untouched,'evaluation remains pure even for an old weapon');
   }
 }finally{Math.random=random;}
-const held=game.equipped.weapon;game.inventory=[old];game.sharedEquipBox=[structuredClone(old)];game.saveGame();const saved=structuredClone(saveSlots.get(game.activeSlotId).data);game.resumeSavedGame(saved);assert.equal(game.equipped.weapon.stats.atk,held.stats.atk);assert.equal(game.inventory.find(i=>i.id===old.id).stats.atk,expected);assert.equal(game.sharedEquipBox[0].stats.atk,expected);
+const held=game.equipped.weapon;game.inventory=[old];game.sharedEquipBox=[structuredClone(old)];game.saveGame();const saved=structuredClone(saveSlots.get(game.activeSlotId).data);
+for(const item of [saved.equipped.weapon,saved.inventory[0],saved.sharedEquipBox[0]]){item.stats.atk/=10;delete item.heavyAttackVersion;}
+for(let load=0;load<2;load++){
+  game.resumeSavedGame(load?structuredClone(game.saveGame()):saved);
+  assert.equal(game.equipped.weapon.stats.atk,held.stats.atk);assert.equal(game.inventory.find(i=>i.id===old.id).stats.atk,expected);assert.equal(game.sharedEquipBox[0].stats.atk,expected);
+}
 console.log('PASS: axes through T1-T28, exact x10 normal/unique/hero attack, shared mastery/requirements/skills, actual player/soldier damage, fast unboosted sword, pure evaluation, upgrades and save migration');dom.window.close();

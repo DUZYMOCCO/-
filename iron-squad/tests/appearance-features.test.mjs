@@ -49,4 +49,14 @@ try{
   }
 }finally{Math.random=gameplayRandom;}
 assert.equal(NORMAL_HAIR_STYLES.length,11);assert.equal(Object.keys(MEDIC_STYLES).length,13);
+// A normal jaw cannot acquire a flat polygon corner or an external cheek shadow.
+for(const small of [false,true]){
+  const a={...buildCommanderAppearance('male',{hairStyle:'bald',facialHair:'none',glasses:'none',accessory:'none'}),faceShape:small?'long':'square'};
+  const canvas=createCanvas(360,360),c=canvas.getContext('2d');c.translate(180,150);c.scale(25,25);
+  drawSoldierHead(c,{id:'normal-jaw-boundary',gender:'male',soldierClass:'HEAVY',appearance:a},{small});
+  const alpha=(x,y)=>canvas.getContext('2d').getImageData(Math.round(180+x*25),Math.round(150+y*25),1,1).data[3];
+  if(small){
+    for(const y of [2.8,3.2,3.6,4]){const edge=4.5*Math.sqrt(1-(y/6)**2);assert.equal(alpha(edge+.4,y),0,'normal cheek shading stays inside the curved face');}
+  }else assert.equal(alpha(3.6,5.35),0,'normal jaw keeps a curved lower corner instead of a square ledge');
+}
 console.log('PASS: independent face outlines/7 eye looks/6 noses/6 jaws/12 ornaments for both genders, close/field pixels, new hair, stable personal generation, legacy neutral migration, saved/editor choices, no RNG/stat/render mutation');

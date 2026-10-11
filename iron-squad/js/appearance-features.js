@@ -45,7 +45,15 @@ export function drawVariantFace(c,a,feminine,small){
   const bottom=a.jaw==='forward'?8.2:a.jaw==='pointed'?7.8:a.jaw==='broad'?7.1:a.jaw==='cleft'?7:Math.max(6.3,h);
   const chinWidth=a.jaw==='broad'?.82:a.jaw==='square'?.64:a.jaw==='forward'?.55:a.jaw==='pointed'?.15:.4;
   ellipse(c,0,-2.2,w,3.6,a.skin);
-  polygon(c,[[-w,-2],[w,-2],[w*.97,2.7],[w*.8,bottom-1.7],[w*chinWidth,bottom-.25],[0,bottom],[-w*chinWidth,bottom-.25],[-w*.8,bottom-1.7],[-w*.97,2.7]],a.skin);
+  if(a.jaw==='square')polygon(c,[[-w,-2],[w,-2],[w*.97,2.7],[w*.8,bottom-1.7],[w*chinWidth,bottom-.25],[0,bottom],[-w*chinWidth,bottom-.25],[-w*.8,bottom-1.7],[-w*.97,2.7]],a.skin);
+  else{
+    // A cheek shape must not silently turn a normal jaw into a polygon.
+    c.fillStyle=a.skin;c.beginPath();c.moveTo(-w,-2);c.lineTo(w,-2);
+    c.quadraticCurveTo(w,2.7,w*.8,bottom-1.7);
+    c.bezierCurveTo(w*.63,bottom-.3,w*chinWidth,bottom,0,bottom);
+    c.bezierCurveTo(-w*chinWidth,bottom,-w*.63,bottom-.3,-w*.8,bottom-1.7);
+    c.quadraticCurveTo(-w,2.7,-w,-2);c.closePath();c.fill();
+  }
   if(a.jaw==='forward'){
     polygon(c,[[-2,5.8],[1.3,5.5],[2.5,6.4],[1.7,7.2],[-1.4,7.4]],'rgba(255,241,213,.22)');
     line(c,[[-2.4,7.3],[0,7.8],[2.2,7.2]],'rgba(101,63,43,.3)',small?.38:.28);
