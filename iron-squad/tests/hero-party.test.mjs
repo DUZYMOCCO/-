@@ -55,7 +55,7 @@ const wallStart=p.x;updateHeroParty(game,.1,SOLDIER_CLASSES);assert.ok(p.x>wallS
 // Medic rescues fallen hero. Blood loss is real; it does not inflate main-army casualty counts.
 const medic=p.members.find(u=>u.soldierClass==='MEDIC'),w=p.members[0];w.x=medic.x;w.y=medic.y;markSoldierDown(game,w);medic.mana=medic.maxMana;
 for(let i=0;i<5&&w.isDown;i++)treatWounded(game,medic,w,.5);assert.equal(w.isDown,false);
-markSoldierDown(game,w);const casualties=game.phaseCasualties;updateWounded(game,46);assert.equal(w.dead,true);assert.equal(game.phaseCasualties,casualties);
+markSoldierDown(game,w);const casualties=game.phaseCasualties;updateWounded(game,46);updateWounded(game,2.1);assert.equal(w.dead,true);assert.equal(game.phaseCasualties,casualties);
 // Hidden field movement/combat when commander is in another instance.
 game.currentDungeon=DUNGEON_DEFS.find(d=>d.kind==='town');game.savedFieldMonsters=[];
 assert.equal(visibleHeroMembers(game).length,0);assert.ok(!rescueUnits(game).includes(medic));
@@ -83,6 +83,6 @@ game.phase=21;assert.equal(rollHeroRevelation(game,()=>0),false,'no revelation a
 // All down is a recoverable state; only bleed-out ends a party. New party may appear later.
 initializeHeroJourney(game);game.phase=30;rollHeroRevelation(game,()=>0);p=game.heroJourney.party;
 p.members.forEach(u=>{u.x=BASE_CAMP.x+1400;u.y=BASE_CAMP.y;markSoldierDown(game,u);});
-updateHeroParty(game,.1,SOLDIER_CLASSES);assert.equal(p.status,'down');updateWounded(game,46);updateHeroParty(game,.1,SOLDIER_CLASSES);assert.equal(p.status,'fallen');
+updateHeroParty(game,.1,SOLDIER_CLASSES);assert.equal(p.status,'down');updateWounded(game,46);updateWounded(game,2.1);updateHeroParty(game,.1,SOLDIER_CLASSES);assert.equal(p.status,'fallen');
 game.phase=31;assert.equal(rollHeroRevelation(game,()=>0),true);assert.equal(game.heroJourney.history.at(-1).result,'全滅');
 console.log('hero-party: revelation, 6 members, x20 growth, autonomous march/battle, rescue, castle scene, victory, saves and defeat passed');

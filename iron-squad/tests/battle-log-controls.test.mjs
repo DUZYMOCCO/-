@@ -77,9 +77,9 @@ try{
   const ally=game.squad[0];ally.x=1000;ally.y=1000;markSoldierDown(game,ally);ally.downTimer=16;
   updateWounded(game,2);assert.match(stream.textContent,/死亡まで残り/);
   updateWounded(game,.2);assert.equal(game.battleLogHistory.filter(e=>/死亡まで残り/.test(e.text)).length,1);
-  ally.downTimer=.4;updateWounded(game,1);assert.match(stream.textContent,new RegExp(`${ally.name}は力尽きました`));
+  ally.downTimer=.4;updateWounded(game,1);updateWounded(game,2.1);assert.match(stream.textContent,new RegExp(`${ally.name}は力尽きました`));
   const merchant={id:'merchant-field-log',name:'行商人',isMerchant:true,isDown:true,dead:false,hp:0,maxHp:40,downTimer:.3,x:1200,y:1200};
-  game._merchantWounded=[merchant];updateWounded(game,1);
+  game._merchantWounded=[merchant];updateWounded(game,1);updateWounded(game,2.1);
   assert.equal(merchant.dead,true);assert.doesNotMatch(stream.textContent,/行商人は力尽きました/);
   assert.ok(game.battleLogHistory.some(e=>e.text.includes('行商人は力尽きました')));
   pending.get(game._battleLogTimer)?.();assert.equal(logWindow.classList.contains('has-field-note'),false);

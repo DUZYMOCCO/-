@@ -27,11 +27,28 @@ export const carrierKey=(game,unit)=>unit===game.player?'player':unit?.id;
 export const isMerchantCasualty=unit=>!!(unit?.isMerchant||unit?.isMerchantEscort);
 /** 隊長がダウン中のときだけ救助対象へ加える（兵士と同じ搬送・衛生処置ルールを共有）。 */
 export const commanderDown=game=>!!(game?.player?.isDown&&!game.player.dead);
-export const rescueUnits=game=>{
+/** v5.0.0: 死亡表示（「死亡」を出している間）の秒数。この間は救助・搬送・治療の対象外。 */
+export const DYING_SECONDS=2;
+const downedPool=game=>{
   const soldiers=[...(game.squad||[]),...visibleHeroMembers(game)];
-  const base=game._merchantWounded?.length?[...soldiers,...game._merchantWounded]:soldiers;
+  return game._merchantWounded?.length?[...soldiers,...game._merchantWounded]:soldiers;
+};
+export const rescueUnits=game=>{
+  const base=downedPool(game).filter(u=>!u?.dying);
   return commanderDown(game)?[game.player,...base]:base;
 };
+/** ダウン中の頭上ラベル。0秒のまま居座らず、死亡 → 搬送中 → 救助N秒 の順に決める。 */
+export const downLabel=s=>s?.dying?'死亡':s?.carrierId?'搬送中':`救助 ${Math.max(1,Math.ceil(Number.isFinite(s?.downTimer)?s.downTimer:RESCUE_TIMEOUT))}秒`;
+function finalizeDeath(game,wounded) {
+  wounded.dead=true;if(wounded.isGateGuard)game.onGateGuardRelocated?.(wounded);wounded.isDown=false;wounded.rescueProgress=0;
+  delete wounded.carrierId;delete wounded.downedInAid;delete wounded.downId;delete wounded.dying;delete wounded.dyingT;
+  game.leaveRemains?.(wounded);
+  if(isMerchantCasualty(wounded)) {
+    game._merchantWounded=(game._merchantWounded||[]).filter(unit=>unit!==wounded);
+    if(wounded.isMerchant)wounded.respawnIn=wounded.respawnDelay||210;
+  } else if(!wounded.heroPartyId)game.phaseCasualties=(game.phaseCasualties||0)+1;
+  game.showToast?.(`${wounded.name}は力尽きました`,{field:!isMerchantCasualty(wounded)});
+}
 /** 隊長を助けられる味方（同じ空間で健在な兵士）がいるか。 */
 export const commanderHelpers=game=>(game.squad||[]).filter(s=>s&&!s.dead&&!s.isDown&&s.hp>0&&(!game.currentDungeon||inCurrentInstance(game,s)));
 /** 隊長が0HPになったとき：必ずダウンへ移行（助けがなければ猶予切れで従来の討ち死に）。 */
@@ -436,6 +453,8 @@ export function buildMedicRescueAssign(aliveSquad,commander=null) {
 
 export function updateWounded(game,dt) {
   sanitizeCarriers(game);
+  // v5.0.0: 「死亡」表示中の兵士は DYING_SECONDS 秒たってから従来の死亡処理へ。
+  for(const u of downedPool(game))if(u?.dying&&!u.dead){u.dyingT=(u.dyingT??DYING_SECONDS)-dt;if(u.dyingT<=0)finalizeDeath(game,u);}
   if(game.player?.hp>0) {
     for(const wounded of rescueUnits(game))attachWounded(game,game.player,wounded);
     for(const civ of game.civilians||[]) {
@@ -454,7 +473,8 @@ export function updateWounded(game,dt) {
     const delivered=station&&Math.hypot(wounded.x-station.x,wounded.y-station.y)<=(wounded.downedInAid?station.intakeRadius||station.radius:station.radius);
     if(!wounded.rescuedThisDown&&delivered&&(!wounded.downedInAid||(reception&&wounded.carrierId))) {revive(game,wounded,wounded.maxHp,{method:'BASE',station,suppressAidReward:!!wounded.downedInAid});continue;}
     // Field carry can pause the timer; HQ/aid downs keep bleeding even while carried (no immortal freeze).
-    if(wounded.carrierId && !wounded.downedInAid)continue;
+    if(!Number.isFinite(wounded.downTimer))wounded.downTimer=RESCUE_TIMEOUT; // 未設定のまま0秒表示になる不具合の防止
+    if(wounded.carrierId && !wounded.downedInAid && wounded.downTimer>0)continue; // 搬送中だけ一時停止。0なら止めない
     const bleedDt = wounded.downedInAid ? dt * AID_BLEED_RATE : dt;
     const before=wounded.downTimer??RESCUE_TIMEOUT;
     wounded.downTimer=Math.max(0,before-bleedDt);
@@ -472,14 +492,9 @@ export function updateWounded(game,dt) {
       continue;
     }
     if(wounded.downTimer<=0) {
-      wounded.dead=true;if(wounded.isGateGuard)game.onGateGuardRelocated?.(wounded);wounded.isDown=false;wounded.rescueProgress=0;
-      delete wounded.carrierId;delete wounded.downedInAid;delete wounded.downId;
-      game.leaveRemains?.(wounded);
-      if(isMerchantCasualty(wounded)) {
-        game._merchantWounded=(game._merchantWounded||[]).filter(unit=>unit!==wounded);
-        if(wounded.isMerchant)wounded.respawnIn=wounded.respawnDelay||210;
-      } else if(!wounded.heroPartyId)game.phaseCasualties=(game.phaseCasualties||0)+1;
-      game.showToast?.(`${wounded.name}は力尽きました`,{field:!isMerchantCasualty(wounded)});
+      // 0秒で止まらず「死亡」を2秒出してから死亡処理。搬送・治療は打ち切る。
+      wounded.dying=true;wounded.dyingT=DYING_SECONDS;wounded.downTimer=0;wounded.rescueProgress=0;
+      delete wounded.carrierId;delete wounded.rescueHealerId;delete wounded.rescueTargetId;
     }
   }
   updateCivilians(game,dt);

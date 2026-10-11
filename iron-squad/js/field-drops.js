@@ -4,25 +4,40 @@ export const FIELD_DROP_LIFETIME = 60;
 export const FIELD_DROP_ATTRACT_RADIUS = 180;
 export const FIELD_DROP_PICKUP_RADIUS = 44;
 
-/** Pull only the current scene's loot toward a conscious commander. */
+/** v5.0.0: seconds an item takes to fly the whole way in (ease-in, so it starts slow). */
+export const FIELD_DROP_PULL_SECONDS = 0.6;
+
+/** Eased progress 0..1 for the elapsed pull time. */
+export const pullProgress = seconds => { const u = Math.min(1, Math.max(0, seconds / FIELD_DROP_PULL_SECONDS)); return u * u; };
+
+/**
+ * Pull only the current scene's loot toward a conscious commander.
+ * The drop remembers where it entered the radius and eases from there to the
+ * commander's CURRENT position, so travel time depends on elapsed time only
+ * (frame-rate independent) and the item visibly flies in (~0.4-0.6 s).
+ */
 export function attractFieldDrops(game, dt) {
   if (!Number.isFinite(dt) || dt <= 0) return;
   const player = game.player;
   const active = player && !player.dead && !player.isDown && player.hp > 0;
   const radiusSq = FIELD_DROP_ATTRACT_RADIUS ** 2;
+  const dropSq = (FIELD_DROP_ATTRACT_RADIUS * 1.6) ** 2;
   for (const drop of game.dropsOnField || []) {
     // Ordinary squad collection remains available away from the commander.
     drop._towardCommander = false;
-    if (!active) continue;
+    if (!active) { drop._pullT = 0; drop._pullStart = null; continue; }
     const dx = player.x - drop.x, dy = player.y - drop.y;
     const distanceSq = dx * dx + dy * dy;
-    if (!Number.isFinite(distanceSq) || distanceSq > radiusSq) continue;
+    if (!Number.isFinite(distanceSq)) continue;
+    if (!drop._pullStart) {
+      if (distanceSq > radiusSq) continue;
+      drop._pullStart = { x: drop.x, y: drop.y }; drop._pullT = 0;
+    } else if (distanceSq > dropSq) { drop._pullStart = null; drop._pullT = 0; continue; }
     drop._towardCommander = true;
-    if (distanceSq === 0) continue;
-    const distance = Math.sqrt(distanceSq);
-    const step = Math.min(distance, (320 + distance * 5) * dt);
-    drop.x += dx / distance * step;
-    drop.y += dy / distance * step;
+    drop._pullT += dt;
+    const e = pullProgress(drop._pullT), start = drop._pullStart;
+    drop.x = start.x + (player.x - start.x) * e;
+    drop.y = start.y + (player.y - start.y) * e;
   }
 }
 

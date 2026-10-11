@@ -111,7 +111,7 @@ const housed=permanent.merchants.find(m=>m.id===trader.id);assert.equal(housed.r
 assert.ok(housed.escorts.every(e=>e.rescuedToBase));
 // Unattended casualties can still die after the normal rescue timeout.
 const doomed=permanent.merchants.find(m=>m.placeKind==='field-camp'&&m.id!==housed.id&&!m.isDown&&!m.dead);permanent.player.x=center;permanent.player.y=center;
-markSoldierDown(permanent,doomed,{downTimer:.1});updateWounded(permanent,1);assert.equal(doomed.dead,true);assert.ok(doomed.respawnIn>0);
+markSoldierDown(permanent,doomed,{downTimer:.1});updateWounded(permanent,1);updateWounded(permanent,2.1);assert.equal(doomed.dead,true);assert.ok(doomed.respawnIn>0);
 const person=createCanvas(220,210),personCtx=person.getContext('2d');personCtx.translate(110-trader.x,150-trader.y);drawMerchantBody(personCtx,trader);
 assert.ok(personCtx.getImageData(105,111,10,15).data.some((v,i)=>i%4===3&&v>0),'the merchant has a visible hat and face, not just a stall');
 // The actual expedition save/load path reconstructs NPC casualties and ropes.

@@ -7,7 +7,7 @@
 import {LIMITED_SETTLEMENTS,drawLimitedEntrance} from './limited-allies.js?v=151';
 import { WORLD_SIZE, SETTLEMENTS } from './world.js';
 import {chooseLootTier} from './equipment-rules.js?v=158';
-import {drawTreasureChest} from './loot-visuals.js?v=177';
+import {drawTreasureChest} from './loot-visuals.js?v=181';
 import {explorationLayout,explorationBlocks} from './dungeon-layout.js?v=179';
 import {drawExplorationInterior} from './dungeon-interior-visuals.js?v=179';
 

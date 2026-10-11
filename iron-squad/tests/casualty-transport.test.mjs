@@ -34,7 +34,7 @@ const c=wounded('c');game.squad=[c];game.player.x=center+1100;
 const medic={id:'medic',soldierClass:'MEDIC',hp:100,x:center+620,y:center};assert.equal(treatWounded(game,medic,c,.5),false);assert.equal(treatWounded(game,medic,c,.5),true);
 assert.equal(c.hp,Math.floor(healAmountFor(medic,c)),'medic revival follows the healer formula (was flat 35%)');assert.equal(participated(medic),true);
 const expired=wounded('expired');expired.downTimer=.1;game.squad=[expired];const casualties=game.phaseCasualties||0;
-updateWounded(game,1);updateWounded(game,1);assert.equal(expired.dead,true);assert.equal(game.phaseCasualties,casualties+1);
+updateWounded(game,1);updateWounded(game,1);updateWounded(game,2.1);assert.equal(expired.dead,true);assert.equal(game.phaseCasualties,casualties+1);
 assert.equal(game.remains.length,1);assert.equal(game.remains[0].x,expired.x);game.ageRemains(26);assert.equal(game.remains.length,0);
 const carried=wounded('saved');game.squad=[carried];game.player.x=center+600;assert.equal(attachWounded(game,game.player,carried),true);
 game.saveGame();game.resumeSavedGame(saveSlots.get(game.activeSlotId).data);assert.equal(game.squad[0].carrierId,'player');assert.equal(game.squad[0].hp,0);

@@ -79,7 +79,7 @@ for(const kind of [{item:attractedItem},{isBoss:true,item:gear('boss-attracted')
   {isOrb:true,item:{id:'attracted-orb',type:'ORB'}},{isOrb:true,item:{id:'attracted-gem',type:'GEM'}},
   {isAmmo:true,ammo:5},{isMagicStone:true,mana:20}])addFieldDrop(game,{...near,...kind});
 game.update(1/60);assert.equal(game.dropsOnField.length,6);assert.ok(game.dropsOnField.every(d=>d.x<near.x));
-for(let i=0;i<30;i++)game.update(1/60);
+for(let i=0;i<60;i++)game.update(1/60);
 assert.equal(game.dropsOnField.length,0);assert.ok(game.inventory.some(i=>i.id===attractedItem.id));
 assert.ok(game.inventory.some(i=>i.id==='boss-attracted'));assert.equal(game.awakeningOrbs,1);assert.equal(game.awakeningGems,1);
 const rewards={orbs:game.awakeningOrbs,gems:game.awakeningGems,items:game.inventory.length};

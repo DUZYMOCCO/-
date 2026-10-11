@@ -1,3 +1,5 @@
+import {givenName} from './squad-names.js?v=181';
+import {downLabel} from './casualty-rules.js?v=181';
 import {RANGED_ENEMIES} from './enemy-ranged.js?v=151';
 import {BRUTE_DRAW_SCALE} from './field-hosts.js?v=158';
 import {equipmentVisualProfile} from './equipment-tiers.js?v=151';
@@ -408,7 +410,7 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod, displa
     drawSoldierHead(c,s,{scale:.9,small:true,silhouette:true,helmet:eq.helmet?steel:null,helmetTier:eq.helmet?.tier||1,mitre:medic&&advanced,cap:medic&&!advanced});drawClassHeadpiece(c,regalia,{scale:.9,simple:true,helmet:!!eq.helmet});c.restore();
     line(c,[[10,-2],[22,2],[18,6]],'#3c4038',2.5*physique.armWidth);
     c.fillStyle = '#e6d7b8'; c.textAlign = 'center'; c.font = 'bold 10px sans-serif';
-    c.fillText(s.carrierId?'搬送中':`救助 ${Math.ceil(s.downTimer || 0)}秒`, 0, -16);
+    c.fillText(downLabel(s), 0, -16);
     c.fillStyle = '#242c30'; c.fillRect(-16, -12, 32, 3);
     c.fillStyle = '#d7b56a'; c.fillRect(-16, -12, 32 * Math.min(1, Math.max(0, s.rescueProgress || 0)), 3);
     c.restore();
@@ -529,7 +531,7 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod, displa
     const hurting = s.maxHp > 0 && s.hp < s.maxHp * 0.55;
     if (distinguished) {
       c.textAlign = 'center'; c.font = '9px sans-serif';
-      const label = `${s.isPersonalGuard ? '◆ ' : ''}${s.name || cls.name} · ${s.level || 1}`;
+      const label = s.isPersonalGuard ? `◆ Lv.${s.level || 1}` : `${givenName(s.name || cls.name)} · ${s.level || 1}`;
       c.fillStyle = 'rgba(18,24,25,.82)';
       const labelWidth = c.measureText(label).width + 8;
       c.fillRect(-labelWidth/2,-53-headClearance,labelWidth,12);

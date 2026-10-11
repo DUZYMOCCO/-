@@ -1,6 +1,6 @@
 import {explorationLayout,dungeonSegmentOpen} from './dungeon-layout.js?v=179';
 import {chooseLootTier} from './equipment-rules.js?v=158';
-import {drawTreasureChest} from './loot-visuals.js?v=177';
+import {drawTreasureChest} from './loot-visuals.js?v=181';
 
 export const DUNGEON_RESET_PHASES=2;
 const DEMON_CASTLE_ID='dungeon_demon_castle';

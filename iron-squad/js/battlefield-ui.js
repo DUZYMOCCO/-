@@ -9,13 +9,15 @@ export function configureBattlefieldUI(game) {
  const nearbyTitle=document.createElement('h4');nearbyTitle.textContent='周辺の施設・仲間';const hint=document.createElement('p');hint.textContent='商人・施設への入場・仲間への声かけは、そばに来ると戦場の操作の上に出ます。';
  const fieldHost=root.querySelector('.field-interactions');
  const merchantBanner=get('merchant-prompt-banner'),pad=get('virtual-gamepad');
- if(merchantBanner&&pad)pad.prepend(merchantBanner);
+ // 戦場に出す案内（商人・入る・待機・声かけ）は1つの縦並びの枠にまとめ、同時に出ても重ならないようにする
+ const prompts=document.createElement('div');prompts.className='field-prompts';if(pad)pad.prepend(prompts);
+ if(merchantBanner)prompts.append(merchantBanner);
  // 施設・集落・ダンジョンへの「入る」も、メニュー内だと気づけないので戦場に出す
  const enterBanner=get('dungeon-prompt-banner');
- if(enterBanner&&pad)pad.prepend(enterBanner);
+ if(enterBanner)prompts.append(enterBanner);
  // 次ラウンドまでの待機中は戦場が止まるため、カウントダウンはメニュー内ではなく戦場に出す（出さないと固まったように見える）
  const restBanner=get('phase-complete-banner');
- if(restBanner&&pad)pad.prepend(restBanner);
+ if(restBanner)prompts.append(restBanner);
  surrounding.append(nearbyTitle,hint,fieldHost);menu.append(surrounding);
  const current=document.createElement('details');current.className='command-fold';const currentTitle=document.createElement('summary');currentTitle.textContent='現在地・軍令・補給';const info=document.createElement('div');info.className='fold-content battle-menu-info';
  info.append(root.querySelector('.field-status'));

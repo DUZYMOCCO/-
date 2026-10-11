@@ -201,3 +201,17 @@ export function drawLootDrop(c,drop,now=0) {
   else awakeningOrb(c,time);
   c.restore();
 }
+
+/** v5.0.0: sparkle trail behind an item that is flying to the commander. */
+export function drawLootPullTrail(c,drop,now=0) {
+  const st=drop?._pullStart;if(!c||!st||!drop._towardCommander)return;
+  const dx=st.x-drop.x,dy=st.y-drop.y,len=Math.hypot(dx,dy);if(!(len>2))return;
+  const time=Number.isFinite(now)?now:0;
+  c.save();c.shadowBlur=0;
+  for(let i=1;i<=5;i++){
+    const k=i/5,r=Math.max(1,5*(1-k)+1);
+    c.globalAlpha=.7*(1-k);c.fillStyle=i%2?'#fde68a':'#ffffff';
+    c.beginPath();c.arc(drop.x+dx*k*.55+Math.sin(time*.03+i)*2,drop.y+dy*k*.55+Math.cos(time*.03+i)*2,r,0,Math.PI*2);c.fill();
+  }
+  c.restore();
+}

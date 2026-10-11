@@ -3,11 +3,14 @@
 // パスは「ゲームフォルダからの相対パス」。ルートの sw.js は触らない。
 self.GAME_ASSETS = self.GAME_ASSETS || {};
 self.GAME_ASSETS['iron-squad'] = {
-  version: 'v180',
+  version: 'v181',
   files: [
     'css/iron-squad.css',
     'css/iron-squad-interface.css',
     'js/audio-interface.js',
+    'js/commander-giveup.js',
+    'js/own-squad-marker.js',
+    'js/squad-names.js',
     'js/enemy-ranged.js',
     'js/limited-allies.js',
     'js/battlefield-ui.js',

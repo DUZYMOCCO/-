@@ -7,10 +7,10 @@ import {applyAttributeStats} from './unit-attributes.js';
  * - 護衛が倒した強敵のドロップを序盤から掠め取れるチャンス
  */
 import { saleValue, distanceScaling, weaponCombatProfile } from './equipment-rules.js?v=151';
-import { drawFieldSoldier } from './visuals.js?v=175';
+import { drawFieldSoldier } from './visuals.js?v=181';
 import { createSoldierAppearance, drawSoldierHead } from './soldier-appearance.js?v=151';
 import { attackAnimationRate } from './weapon-motion.js?v=151';
-import { markSoldierDown, rebuildMerchantCasualties, RESCUE_TIMEOUT } from './casualty-rules.js?v=151';
+import { markSoldierDown, rebuildMerchantCasualties, RESCUE_TIMEOUT } from './casualty-rules.js?v=181';
 import {emptyMastery,normalizeMastery,hitGrowthMult,applyHitGrowth,masteryAtkMult,masteryReloadMult} from './growth-rules.js?v=151';
 import {recordCombat,finishExperience} from './phase-rules.js';
 
@@ -438,7 +438,7 @@ function drawMerchantPerson(ctx,m) {
   ctx.restore();
   if(m.isDown) {
     ctx.save();ctx.textAlign='center';ctx.font='10px sans-serif';ctx.fillStyle='#e6d7b8';
-    ctx.fillText(m.carrierId?'商人・搬送中':`商人・救助 ${Math.ceil(m.downTimer||0)}秒`,m.x,m.y-18);ctx.restore();
+    ctx.fillText(m.dying?'商人・死亡':m.carrierId?'商人・搬送中':`商人・救助 ${Math.max(1,Math.ceil(m.downTimer||0))}秒`,m.x,m.y-18);ctx.restore();
   }
 }
 

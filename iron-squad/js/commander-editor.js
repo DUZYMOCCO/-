@@ -1,6 +1,6 @@
 // v4.2.24: 隊長づくり／身だしなみの全画面シート（細い固定バー＋1つのスクロール）。
 import {drawSoldierPortrait} from './soldier-appearance.js?v=151';
-import {drawFieldCommander} from './visuals.js?v=175';
+import {drawFieldCommander} from './visuals.js?v=181';
 import {GENDERS,MALE_HAIR_STYLES,FEMALE_HAIR_STYLES,HAIR_CHOICE_LABELS,FEMALE_HAIR_LABELS,HAIR_COLORS,SKIN_COLORS,EYE_COLOR_CHOICES,BEARDS,GLASSES,
   NAME_MAX,cleanName,buildCommanderAppearance,choicesFromAppearance,normalizeCommanderIdentity,randomCommanderIdentity} from './commander-identity.js?v=175';
 import {randomGivenName,randomFamilyName} from './soldier-names.js?v=151';

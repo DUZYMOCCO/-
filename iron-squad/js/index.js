@@ -15,8 +15,11 @@ import {invasionMethods,initializeInvasions,serializeInvasions,shouldTriggerRand
 import {gateMethods,serializeGatePosts,replenishTownGateGuards,initializeGateGuards,ensureTownGuards,serializeGateGuards,updateGateGuards,gateGuardVisible,applyFortifications,drawFortification,exitGateTown,townExitReached,wallBlocksAttack,attackBlocked as coverBlocked} from './gate-rules.js?v=179';
 import {nationMethods,normalizeNation,nationalIncome,nationalPayrollPlan,headquartersDamageMult,drawNationalDevelopment,DEVELOPMENT_STAGES} from './nation-rules.js?v=175';
 import {equipmentUpgradeCost,salaryQuote,paySoldiers} from './payroll-rules.js?v=151';
-import {addFieldDrop,ageFieldDrops,attractFieldDrops,FIELD_DROP_PICKUP_RADIUS} from './field-drops.js?v=177';
-import {drawLootDrop} from './loot-visuals.js?v=177';
+import {addFieldDrop,ageFieldDrops,attractFieldDrops,FIELD_DROP_PICKUP_RADIUS} from './field-drops.js?v=181';
+import {drawLootDrop,drawLootPullTrail} from './loot-visuals.js?v=181';
+import {drawOwnSquadRing} from './own-squad-marker.js?v=181';
+import {queueSquadName,flushSquadNames} from './squad-names.js?v=181';
+import {syncGiveUpUI,resumeBGM} from './commander-giveup.js?v=181';
 import {economicState,advanceRegionalEconomy,discoverEconomicRegions,recordEconomicKill,economicFieldBlocked} from './regional-economy.js?v=151';
 import {updateRegionalTraffic,nearestCommerceTarget,damageCommerce,persistTradeRaiders,restoreTradeRaiders} from './trade-routes.js?v=151';
 import {drawEconomicLandscape,drawCommerceActor,drawEconomicMinimap,drawCommerceWreck,drawCampTent} from './economic-visuals.js?v=175';
@@ -35,7 +38,7 @@ import { sound } from '../../common/js/audio.js?v=151';
 import { loadCss } from '../../common/js/load-css.js';
 import { storage } from '../../common/js/storage.js';
 import { createStallRecorder, mountStallLog } from './stall-recorder.js?v=175';
-import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow, isRuinKeeper, ruinKeeperScale } from './visuals.js?v=179';
+import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow, isRuinKeeper, ruinKeeperScale } from './visuals.js?v=181';
 import { refreshCampQuiet, assignCampSeats, tryCampLeisure } from './camp-leisure.js?v=151';
 import { CAMP_PEACE_RADIUS, peaceContainment, pushOutsidePeace, relocatePeaceMonster } from './peace-zones.js?v=158';
 import { FARM_X, FARM_Y, farmPosts, farmOverlaps, reinforcementCount, reserveRosterLine, reserveRosterTitle } from './reserve-farm.js?v=151';
@@ -92,7 +95,7 @@ import {
   nearestLivingMerchant, refreshMerchantStock, merchantBuyPrice, merchantSellTier,
   applyMerchantSave, serializeMerchants, MERCHANT_INTERACT_R,
   merchantHealingStatus, merchantHealWavesLeft, useMerchantHealing, MERCHANT_HEAL_COST, recalcEscortStats, finishEscortPhase
-} from './merchant-rules.js?v=175';
+} from './merchant-rules.js?v=181';
 
 import { daylightAt, advanceWorldClock, periodEnemy, enemyAvailable, PERIOD_ENEMIES } from './day-night.js';
 
@@ -101,7 +104,7 @@ import {visibleHeroMembers} from './hero-rules.js';
 import {updateHeroJournal} from './hero-journal.js';
 import {applyHeroEquipmentUpgrade} from './hero-equipment.js';
 import {initializeHeroJourney,rollHeroRevelation,serializeHeroJourney,updateHeroParty,updateHeroFollowing,awardHeroBattle,recordDemonKingDefeat,ensureHeroCastle,syncHeroCastle,renderHeroJourney,drawHeroMarks} from './hero-party.js?v=179';
-import { RESCUE_TIMEOUT, rescueUnits, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, receiveTownCargo, leaveCivilianSpace, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, markSoldierDown, downCommander, commanderDown, updateNpcRescue, CIV_KINDS, isMedic, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST } from './casualty-rules.js?v=179';
+import { RESCUE_TIMEOUT, rescueUnits, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, receiveTownCargo, leaveCivilianSpace, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, markSoldierDown, downCommander, commanderDown, updateNpcRescue, CIV_KINDS, isMedic, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST } from './casualty-rules.js?v=181';
 import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault, dungeonBlocks, dungeonSolids } from './dungeon.js?v=179';
 import {nearestDungeonFloor,dungeonSpawnPoint,dungeonSteeringTarget} from './dungeon-layout.js?v=179';
 import {normalizeDungeonExploration,updateDungeonSideChests,drawDungeonSideChests,updateDungeonRespawns,dungeonCoolingDown,recordDungeonClear,DUNGEON_RESET_PHASES} from './dungeon-exploration.js?v=179';
@@ -1451,6 +1454,7 @@ export const IronSquadGame = {
       document.getElementById('game-overlay').classList.add('hidden');
       this.setDialogState(false);
       this.startFreshGame();
+      resumeBGM(sound, this);
     });
 
     document.getElementById('btn-gameover-save-select').addEventListener('click',()=>this.showSaveMenu());
@@ -6800,6 +6804,8 @@ export const IronSquadGame = {
         const item = drop.item;
         const isBossDrop = drop.isBoss;
         this.dropsOnField.splice(i, 1);
+        this.spawnSparks(this.player.x, this.player.y, '#fde68a', 5); // v5.0.0: pickup pop
+        if (item?.name && !drop.isMagicStone && !drop.isAmmo) this.spawnDamageText(this.player.x, this.player.y - 20, `+${item.name}`, '#fde68a');
         if(drop.isMagicStone){distributeMagicStones(this,drop.mana);this.spawnDamageText(this.player.x,this.player.y-20,`魔法石 +${drop.mana}MP`,'#bcaed4');}
         else if(drop.isAmmo){distributeAmmo(this,drop.ammo);this.spawnDamageText(this.player.x,this.player.y-20,`弾薬 +${drop.ammo}`,'#d8cfb0');}
         else this.collectDrop(item, isBossDrop);
@@ -10380,6 +10386,7 @@ export const IronSquadGame = {
       else this.drawPlayer(this.ctx, it.ref, now);
       if((it.k===3||it.k===4)&&!it.ref.isDown&&isRangedUnit(this,it.ref)&&ensureAmmo(it.ref)===0){this.ctx.save();this.ctx.font='bold 10px sans-serif';this.ctx.textAlign='center';this.ctx.fillStyle='#f5c278';this.ctx.fillText('要補給',it.ref.x,it.ref.y-45);this.ctx.restore();}
     }
+    flushSquadNames(this.ctx, this);
 
     // 5. 矢（ARROW）＆ ヒール光弾（HEAL）
     if (this.projectiles) {
@@ -10472,6 +10479,7 @@ export const IronSquadGame = {
     // 8.8 倒れた味方の画面端・方向インジケーター（矢印＆距離）
     this.drawCasualtyIndicators(this.ctx, now);
     this.drawCommanderDownOverlay(this.ctx, now);
+    syncGiveUpUI(this);
     this.dialogue?.drawResult?.(this.ctx,this.camera,this.zoom,this.width,this.height);
 
     // 9. ジョイスティックUI
@@ -11281,6 +11289,7 @@ export const IronSquadGame = {
   },
 
   drawChest(ctx, drop, now) {
+    drawLootPullTrail(ctx, drop, now);
     drawLootDrop(ctx, drop, now);
   },
 
@@ -11772,7 +11781,9 @@ export const IronSquadGame = {
       const my = (this.height / (2 * z)) * 0.68;
       simple = Math.abs(s.x - this.camera.x) > mx || Math.abs(s.y - this.camera.y) > my;
     }
+    drawOwnSquadRing(ctx, s);
     drawFieldSoldier(ctx, s, now, cls, platoon?.color || '#829cae', simple);
+    if(!s.isCommander)queueSquadName(this,s);
     if(s.isChosenHero)drawHeroMarks(ctx,this);
   },
 
@@ -11852,6 +11863,7 @@ export const IronSquadGame = {
       this.resumeSavedGame(JSON.parse(JSON.stringify(snapshot)));
       saveSlots.update(this.activeSlotId, {state:'active', veterans:[], reserveSurvivors:[]});
       this.inBattle = true;
+      resumeBGM(sound, this); // v5.0.0: gameOver() の stopBGM 後に BGM が戻らなかった
       if (kind === 'checkpoint') this.showToast(`${slot.checkpoint.place}の地点セーブからやり直しました`);
       return true;
     } catch (error) {
