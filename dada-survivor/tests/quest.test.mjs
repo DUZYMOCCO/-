@@ -90,6 +90,7 @@ test('quest art exists; walls stretch; banners and HUD are kana only', () => {
   assert.ok(noKanji(src.match(/<button class="ds-mode[^\n]*/)[0]));
   assert.ok(/k === 'q' \|\| k === 'e'/.test(src), 'PC は Q／E で モード');
   assert.ok(src.includes("this.el.mode.addEventListener('pointerdown'"));
-  // ちかでは タイマーが とまる
-  assert.ok(src.includes("if (r.zone !== 'under') r.time += dt;"));
+  // ちかでは タイマーが ゆっくり
+  assert.ok(src.includes("r.time += r.zone === 'under' ? dt * QUEST.underTime : dt;"))
+  assert.ok(QUEST.underTime > 0 && QUEST.underTime < 1, 'ちかでも タイマーは ゆっくり すすむ');
 });

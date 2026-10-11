@@ -29,13 +29,13 @@ test('squad: 3 soldiers flank / behind the heading, medic further behind', () =>
   }
 });
 
-test('ally damage is moderate and grows slowly; whistle heals 40% over 2s with a cooldown', () => {
+test('ally damage is moderate and grows slowly; whistle heals 30% over 2s with a 35s cooldown', () => {
   assert.ok(allyDamage(0) > 0 && allyDamage(0) < 10);
   assert.ok(allyDamage(300) > allyDamage(0) && allyDamage(300) < 20);
   assert.equal(allyDamage(0, 1.5), allyDamage(0) * 1.5);
   let hp = 0; for (let i = 0; i < 120; i++) hp += healAmount(100, SQUAD.healTime / 120);
-  assert.ok(Math.abs(hp - 40) < 1e-6);
-  assert.ok(SQUAD.whistleCd >= 15);
+  assert.ok(Math.abs(hp - 30) < 1e-6);
+  assert.ok(SQUAD.whistleCd >= 30);
   assert.equal(canWhistle(null, 0), false);
   assert.equal(canWhistle({}, 3), false);
   assert.equal(canWhistle({}, 0), true);

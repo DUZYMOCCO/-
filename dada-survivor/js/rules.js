@@ -9,9 +9,9 @@ export const MAX_GEMS = 150;
 export const MAX_LEVEL = 5;
 
 export const DIFFICULTIES = {
-  easy:   { id: 'easy',   label: 'やさしい',   enemyHp: 0.6, enemyDmg: 0.5, spawn: 0.7, coin: 1 },
-  normal: { id: 'normal', label: 'ふつう',     enemyHp: 1.0, enemyDmg: 1.0, spawn: 1.0, coin: 1.5 },
-  hard:   { id: 'hard',   label: 'むずかしい', enemyHp: 1.5, enemyDmg: 1.4, spawn: 1.3, coin: 2 },
+  easy:   { id: 'easy',   label: 'やさしい',   enemyHp: 0.7, enemyDmg: 0.6, spawn: 0.8, coin: 1 },
+  normal: { id: 'normal', label: 'ふつう',     enemyHp: 1.35, enemyDmg: 1.35, spawn: 1.1, coin: 1.5 },
+  hard:   { id: 'hard',   label: 'むずかしい', enemyHp: 2.5, enemyDmg: 1.85, spawn: 1.7, lateHp: 0.3, coin: 2 },
 };
 
 // perk: キャラの とくちょう（hp:さいだいHP, dmg:ダメージ倍率+, spd:いどう+, pickup:ひろう範囲+, regen:まいびょう かいふく）
@@ -56,38 +56,42 @@ export const ENEMY_TYPES = {
 
 // enemies: [しゅるい, でてくる びょう, でやすさ]
 export const STAGES = [
-  { id: 1, name: 'けんきゅうじょ', ground: 'lab', decor: 'lab', hpMul: 1.0, spawnMul: 1.0, dmgMul: 1.0,
+  { id: 1, name: 'けんきゅうじょ', ground: 'lab', decor: 'lab', hpMul: 2.1, spawnMul: 1.25, dmgMul: 1.55,
     enemies: [['zombie', 0, 10], ['bat', 30, 6], ['thrower', 45, 3], ['ghost', 90, 5], ['skull', 180, 4]],
-    mini: { type: 'ogre', hp: 900 }, boss: { type: 'dragon', hp: 3000 },
+    mini: { type: 'ogre', hp: 1080 }, boss: { type: 'dragon', hp: 3600 },
     // ばくだんの ひが ひろがった ところに ばくはへい（mummy）が あつまる・ボトルは こわせる
     fire: true, bottles: true,
     // けんきゅうしゃ：at びょうで あらわれ、さわると gift の ぶきを くれる（いまは ステージ1だけ）
     // container: けんきゅうしゃは コンテナの なか（なかまと いっしょ）。at びょうで コンテナが みつかる
     researcher: { at: 90, gift: 'supermissile', container: true } },
-  { id: 2, name: 'さばく', ground: 'desert', hpMul: 1.6, spawnMul: 1.1, dmgMul: 1.15,
+  { id: 2, name: 'さばく', ground: 'desert', hpMul: 2.4, spawnMul: 1.1, dmgMul: 1.5,
     enemies: [['scorpion', 0, 10], ['bat', 30, 5], ['mummy', 90, 6], ['skull', 180, 4]],
-    mini: { type: 'mummy', hp: 1600, big: 2.4, name: 'でかばくはへい' }, boss: { type: 'snake', hp: 5000 },
+    mini: { type: 'mummy', hp: 1920, big: 2.4, name: 'でかばくはへい' }, boss: { type: 'snake', hp: 6000 },
     // quest: スタートに けんきゅうじょ → こやの みはりを たおす → ちか への とびら → ちかで なかまを たすけて ドリルたいちょう → gift（`QUEST`）
     quest: { gift: 'laser' } },
-  { id: 3, name: 'ゆきやま', ground: 'snow', hpMul: 2.4, spawnMul: 1.2, dmgMul: 1.3,
+  { id: 3, name: 'ゆきやま', ground: 'snow', hpMul: 1.8, spawnMul: 1.2, dmgMul: 0.95,
     enemies: [['snowman', 0, 10], ['wolf', 30, 6], ['bat', 90, 4], ['skull', 180, 4]],
-    mini: { type: 'wolf', hp: 2600, big: 2.4, name: 'ボスぐんようけん' }, boss: { type: 'icegiant', hp: 7500 } },
-  { id: 4, name: 'おばけのもり', ground: 'forest', hpMul: 3.4, spawnMul: 1.3, dmgMul: 1.45,
+    mini: { type: 'wolf', hp: 3120, big: 2.4, name: 'ボスぐんようけん' }, boss: { type: 'icegiant', hp: 9000 } },
+  { id: 4, name: 'おばけのもり', ground: 'forest', hpMul: 3.0, spawnMul: 1.3, dmgMul: 1.25,
     enemies: [['pumpkin', 0, 10], ['ghost', 30, 7], ['bat', 90, 5], ['skull', 180, 5]],
-    mini: { type: 'pumpkin', hp: 3600, big: 2.6, name: 'でかかえんへい' }, boss: { type: 'witch', hp: 10500 } },
-  { id: 5, name: 'まおうじょう', ground: 'castle', hpMul: 4.6, spawnMul: 1.4, dmgMul: 1.6,
+    mini: { type: 'pumpkin', hp: 4320, big: 2.6, name: 'でかかえんへい' }, boss: { type: 'witch', hp: 12600 } },
+  { id: 5, name: 'まおうじょう', ground: 'castle', hpMul: 2.8, spawnMul: 1.4, dmgMul: 1.05,
     enemies: [['zombie', 0, 8], ['skull', 0, 4], ['wolf', 30, 5], ['mummy', 60, 5], ['pumpkin', 120, 5], ['snowman', 180, 4]],
-    mini: { type: 'dragon', hp: 6000 }, boss: { type: 'maou', hp: 15000 } },
+    mini: { type: 'dragon', hp: 7200 }, boss: { type: 'maou', hp: 18000 } },
 ];
 
 export function stageById(id) { return STAGES.find(s => s.id === id) || STAGES[0]; }
 
 /** ステージの ボス／中ボスの データ（ENEMY_TYPES に ステージの うわがきを かさねる） */
-export function bossType(def, difficulty = DIFFICULTIES.normal) {
+/** lateHp: むずかしいだけ、あとの ステージほど てきが かたい（1ステージごとに +lateHp） */
+export function lateHpMul(difficulty = DIFFICULTIES.normal, stage = null) {
+  return 1 + (difficulty.lateHp || 0) * (((stage && stage.id) || 1) - 1);
+}
+export function bossType(def, difficulty = DIFFICULTIES.normal, stage = null) {
   const T = ENEMY_TYPES[def.type], big = def.big || 1;
   return {
     ...T, boss: true,
-    hp: def.hp * difficulty.enemyHp,
+    hp: def.hp * difficulty.enemyHp * lateHpMul(difficulty, stage),
     name: def.name || T.name,
     r: def.big ? T.r * big * 0.9 : T.r,
     size: T.size * big,
@@ -257,7 +261,7 @@ export const WEAPONS = {
     name: 'スーパーミサイル', icon: '🚀', desc: 'けんきゅうしゃの いちばん つよい ミサイル',
     gift: true, fire: 'rocket', shot: 'smissile', size: 64, speed: 210, turn: 3.6,
     cooldown: [3.2, 3.2, 3.2, 3.2, 3.2],
-    damage: [380, 380, 380, 380, 380],
+    damage: [320, 320, 320, 320, 320],
     count: [1, 1, 1, 1, 1],
     radius: [155, 155, 155, 155, 155],
   },
@@ -270,16 +274,16 @@ export const WEAPONS = {
   },
   laserMg: {
     name: 'マシンガン', mode: true, gift: true, fire: 'bullet', shot: 'lbullet', size: 22, speed: 880, spread: 0, kb: 0.06, quiet: true, boomFx: 'bboom',
-    cooldown: [0.12, 0.12, 0.12, 0.12, 0.12], damage: [17, 17, 17, 17, 17], count: [1, 1, 1, 1, 1],
+    cooldown: [0.12, 0.12, 0.12, 0.12, 0.12], damage: [14, 14, 14, 14, 14], count: [1, 1, 1, 1, 1],
     pierce: [2, 2, 2, 2, 2], life: [0.62, 0.62, 0.62, 0.62, 0.62], splash: [28, 28, 28, 28, 28],
   },
   laserBeam: {
     name: 'レーザー', mode: true, gift: true, fire: 'beam', len: 560, width: 26, boomFx: 'bboom',
-    cooldown: [0.55, 0.55, 0.55, 0.55, 0.55], damage: [78, 78, 78, 78, 78], splash: [38, 38, 38, 38, 38],
+    cooldown: [0.55, 0.55, 0.55, 0.55, 0.55], damage: [66, 66, 66, 66, 66], splash: [38, 38, 38, 38, 38],
   },
   laserRk: {
     name: 'ロケットランチャー', mode: true, gift: true, fire: 'rocket', shot: 'lrocket', size: 40, speed: 300, turn: 4.2, boomFx: 'bboom',
-    cooldown: [1.1, 1.1, 1.1, 1.1, 1.1], damage: [165, 165, 165, 165, 165], count: [1, 1, 1, 1, 1], radius: [110, 110, 110, 110, 110],
+    cooldown: [1.1, 1.1, 1.1, 1.1, 1.1], damage: [140, 140, 140, 140, 140], count: [1, 1, 1, 1, 1], radius: [110, 110, 110, 110, 110],
   },
   mega: {
     name: 'でかロケット', icon: '🚀', desc: 'おおきな ロケットが ばくはつ',
@@ -315,7 +319,15 @@ export function weaponStat(id, key, level) {
   return list[Math.max(0, Math.min(MAX_LEVEL, level) - 1)];
 }
 
-export function xpToNext(level) { return 4 + (level - 1) * 3; }
+/** バランスの つまみ（hpTime: てきの HP が 1ばい ふえる びょう／xp: レベルアップに いる ほうせき） */
+export const TUNE = { hpTime: 170, xpBase: 4, xpStep: 3.4, ramp0: 0.35, rampTime: 200 };
+/** 1より おおきい ばいりつは さいしょ ramp0 から rampTime びょうかけて ぜんぶに（いきなり やられない）。1いかは そのまま */
+export function rampMul(mul, t) { return mul > 1 ? 1 + (mul - 1) * Math.min(1, TUNE.ramp0 + t / TUNE.rampTime) : mul; }
+/** てきの こうげきの ばいりつ（むずかしさ × ステージ、じかんで じわじわ） */
+export function enemyDmgMul(t, difficulty = DIFFICULTIES.normal, stage = STAGES[0]) {
+  return rampMul(difficulty.enemyDmg, t) * rampMul(stage.dmgMul || 1, t);
+}
+export function xpToNext(level) { return Math.round(TUNE.xpBase + (level - 1) * TUNE.xpStep); }
 
 /** パッシブとショップ強化から最終ステータスを計算 */
 export function playerStats(passives = {}, shop = {}, bonus = {}) {
@@ -335,11 +347,11 @@ export function playerStats(passives = {}, shop = {}, bonus = {}) {
 export function spawnPlan(t, difficulty = DIFFICULTIES.normal, stage = STAGES[0]) {
   const weights = {};
   for (const [type, from, w] of stage.enemies) if (t >= from) weights[type] = (weights[type] || 0) + w;
-  const interval = Math.max(0.22, 1.0 - t * 0.0026) / difficulty.spawn / (stage.spawnMul || 1);
+  const interval = Math.max(0.22, 1.0 - t * 0.0026) / rampMul(difficulty.spawn, t) / (stage.spawnMul || 1);
   const batch = 1 + Math.floor(t / 100);
   // ステージの かたさは さいしょ 4わり → 2ふん24びょうで ぜんぶ（レベル1の じょばんで つまらないように）
   const stageHp = 1 + (stage.hpMul - 1) * Math.min(1, 0.4 + t / 240);
-  const hpScale = (1 + t / 200) * difficulty.enemyHp * stageHp;
+  const hpScale = (1 + t / TUNE.hpTime) * rampMul(difficulty.enemyHp, t) * stageHp * lateHpMul(difficulty, stage);
   return { weights, interval, batch, hpScale };
 }
 
@@ -531,8 +543,8 @@ export function bottleOutcome(kind) {
 export const SQUAD = {
   dist0: 650, dist1: 900, openR: 62,
   soldiers: 3, slotDist: 58, slotAngles: [125, -125, 180], medicDist: 104,
-  speed: 230, range: 340, cd: 0.9, dmg: 7, bulletSpeed: 520, life: 0.75,
-  medicRun: 340, healTime: 2, healPct: 0.4, whistleCd: 24,
+  speed: 230, range: 340, cd: 0.9, dmg: 5.5, bulletSpeed: 520, life: 0.75,
+  medicRun: 340, healTime: 2, healPct: 0.3, whistleCd: 35,
 };
 /** なかまの だんがんの ダメージ（じかんで すこし つよく。プレイヤーの こうげき ばいりつも のる） */
 export function allyDamage(t, playerDamage = 1, S = SQUAD) { return S.dmg * (1 + t / 240) * playerDamage; }
@@ -557,8 +569,10 @@ export function healAmount(maxHp, dt, S = SQUAD) { return maxHp * S.healPct / S.
 export const QUEST = {
   lab: { x: 0, y: -240 },
   // at びょうから こやに わるものが いる（それまでは ちかづいても なにも おきない・やじるしも でない）
-  at: 60, hutDist0: 520, hutDist1: 760, triggerR: 260, doorR: 46, cellR: 72,
-  guards: ['scorpion', 'scorpion', 'scorpion', 'skull', 'mummy'], guardHp: 1.2,
+  // underTime: ちかに いる あいだの タイマーの はやさ（0＝とまる）
+  underTime: 0.5,
+  at: 90, hutDist0: 520, hutDist1: 760, triggerR: 260, doorR: 46, cellR: 72,
+  guards: ['scorpion', 'scorpion', 'scorpion', 'scorpion', 'skull', 'mummy', 'mummy'], guardHp: 1.2,
   under: {
     halfW: 180, roomHalfW: 330, roomY: -1650, top: -2300, bottom: 140,
     groups: [{ y: -260, n: 4 }, { y: -660, n: 5 }, { y: -1060, n: 5 }, { y: -1440, n: 6 }],

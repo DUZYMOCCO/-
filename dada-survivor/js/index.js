@@ -12,13 +12,14 @@ import {
   newQuality, adaptQuality, THROW, fireRadius, capType, gatherCount, BOTTLE, bottleOutcome,
   SQUAD, allyDamage, squadSlot, canWhistle, healAmount,
   QUEST, underHalfW, clampUnder, hutSpot, LASER_MODES, nextLaserMode, squadRoom, beamHits, MAX_LEVEL as MAXLV,
-} from './rules.js?v=193';
-import { DecorField } from './decor.js?v=193';
-import { EnemyGrid, nearestN } from './grid.js?v=193';
-import { preloadArt, art } from './art.js?v=193';
-import { Stage } from './stage.js?v=193';
-import { menuMethods, iconHtml } from './menus.js?v=193';
-import { PopBGM, playWhistle } from './bgm.js?v=193';
+  enemyDmgMul,
+} from './rules.js?v=194';
+import { DecorField } from './decor.js?v=194';
+import { EnemyGrid, nearestN } from './grid.js?v=194';
+import { preloadArt, art } from './art.js?v=194';
+import { Stage } from './stage.js?v=194';
+import { menuMethods, iconHtml } from './menus.js?v=194';
+import { PopBGM, playWhistle } from './bgm.js?v=194';
 
 const SAVE_KEY = 'dada_survivor_save';
 const TAU = Math.PI * 2;
@@ -44,7 +45,7 @@ export const DadaSurvivorGame = {
 
   // 起動時にこのゲームのCSSを自分で読み込む（?v= はこのフォルダ内で管理）。ハブが init 前に await する
   prepare() {
-    return loadCss(new URL('../css/dada-survivor.css?v=193', import.meta.url).href);
+    return loadCss(new URL('../css/dada-survivor.css?v=194', import.meta.url).href);
   },
 
   init(container, onBackToHub) {
@@ -418,7 +419,7 @@ export const DadaSurvivorGame = {
   update(dt) {
     const r = this.run, p = r.player;
     r.clock += dt;
-    if (r.zone !== 'under') r.time += dt; // ちかでは ステージの タイマーが とまる
+    r.time += r.zone === 'under' ? dt * QUEST.underTime : dt; // ちかでは タイマーが ゆっくり（ボスは ちじょうに もどってから）
 
     // いどう
     let mx = 0, my = 0;
@@ -463,12 +464,12 @@ export const DadaSurvivorGame = {
     if (r.zone === 'under') return; // ちかでは じかんが とまる（ボスも こない）
     if (!r.miniBossDone && r.time >= MINI_BOSS_SECONDS) {
       r.miniBossDone = true;
-      const e = this.spawnEnemy(st.mini.type, 1, bossType(st.mini, r.diff));
+      const e = this.spawnEnemy(st.mini.type, 1, bossType(st.mini, r.diff, st));
       this.showBanner(`⚠ ${e.T.name}が きた！`);
     }
     if (!r.finalBossDone && r.time >= STAGE_SECONDS) {
       r.finalBossDone = true;
-      const e = this.spawnEnemy(st.boss.type, 1, bossType(st.boss, r.diff));
+      const e = this.spawnEnemy(st.boss.type, 1, bossType(st.boss, r.diff, st));
       e.final = true;
       this.showBanner(`⚠ ${e.T.name}が きた！ たおせば クリア！`, 3000);
     }
@@ -615,7 +616,7 @@ export const DadaSurvivorGame = {
     }
     if (!q.bossOut && p.y < U.bossTrigger) {
       q.bossOut = true;
-      const e = this.spawnEnemy(U.boss.type, 1, bossType(U.boss, r.diff), { ...U.bossAt });
+      const e = this.spawnEnemy(U.boss.type, 1, bossType(U.boss, r.diff, r.stageDef), { ...U.bossAt });
       e.under = true;
       this.showBanner(`⚠ ${e.T.name}が きた！ たおすと レーザーじゅう！`, 3000);
     }
@@ -1104,7 +1105,7 @@ export const DadaSurvivorGame = {
       e.x += vx * dt; e.y += vy * dt;
       // ぶつかったら ダメージ
       if (d < e.T.r + 14 && p.hurt <= 0) {
-        p.hp -= e.T.dmg * r.diff.enemyDmg * (r.stageDef.dmgMul || 1);
+        p.hp -= e.T.dmg * enemyDmgMul(r.time, r.diff, r.stageDef);
         p.hurt = 0.8;
         sound.playHurt();
         this.stage.hurt();
@@ -1130,7 +1131,7 @@ export const DadaSurvivorGame = {
   },
 
   updateHazards(dt) {
-    const r = this.run, p = r.player, mul = r.diff.enemyDmg * (r.stageDef.dmgMul || 1);
+    const r = this.run, p = r.player, mul = enemyDmgMul(r.time, r.diff, r.stageDef);
     if (!r.ebombs.length && !r.fires.length) return;
     for (const b of r.ebombs) {
       b.t += dt;
