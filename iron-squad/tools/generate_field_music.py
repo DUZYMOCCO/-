@@ -8,6 +8,9 @@ keep them from clicking or stepping forward. Run from anywhere:
 from pathlib import Path
 import hashlib
 import json
+import shutil
+import subprocess
+import tempfile
 import wave
 import numpy as np
 
@@ -173,15 +176,32 @@ def finalize(buf, target_rms=0.088, peak_cap=0.56):
     return x
 
 
+AAC_BITRATE = '64k'
+
+
+def ffmpeg_exe():
+    """ffmpeg on PATH, or the binary bundled with `pip install imageio-ffmpeg`."""
+    found = shutil.which('ffmpeg')
+    if found:
+        return found
+    import imageio_ffmpeg
+    return imageio_ffmpeg.get_ffmpeg_exe()
+
+
 def save(name, samples):
     pcm = np.clip(np.round(samples * 32767), -32767, 32767).astype('<i2')
     pcm[-1] = pcm[0]
-    path = OUT / f'{name}.wav'
-    with wave.open(str(path), 'wb') as handle:
-        handle.setnchannels(1)
-        handle.setsampwidth(2)
-        handle.setframerate(SR)
-        handle.writeframes(pcm.tobytes())
+    path = OUT / f'{name}.m4a'
+    # Ship AAC: about 190 KB per loop instead of a 1 MB WAV in the offline cache.
+    with tempfile.TemporaryDirectory() as tmp:
+        source = Path(tmp) / f'{name}.wav'
+        with wave.open(str(source), 'wb') as handle:
+            handle.setnchannels(1)
+            handle.setsampwidth(2)
+            handle.setframerate(SR)
+            handle.writeframes(pcm.tobytes())
+        subprocess.run([ffmpeg_exe(), '-hide_banner', '-loglevel', 'error', '-y', '-i', str(source),
+                        '-c:a', 'aac', '-b:a', AAC_BITRATE, '-movflags', '+faststart', str(path)], check=True)
     data = path.read_bytes()
     audio = pcm.astype(float) / 32768
     info = {
@@ -189,11 +209,12 @@ def save(name, samples):
         'seconds': round(len(pcm) / SR, 3),
         'channels': 1,
         'sampleRate': SR,
+        'bitrate': AAC_BITRATE,
         'peak': round(float(np.max(np.abs(audio))), 4),
         'rms': round(float(np.sqrt(np.mean(audio * audio))), 4),
         'sha256': hashlib.sha256(data).hexdigest(),
     }
-    print(f"{name:8} {info['seconds']:6.2f}s  peak {info['peak']:.3f}  rms {info['rms']:.3f}")
+    print(f"{name:8} {info['seconds']:6.2f}s  peak {info['peak']:.3f}  rms {info['rms']:.3f}  {len(data) / 1024:.0f} KiB")
     return info
 
 
@@ -310,7 +331,7 @@ def main():
         'clips': {name: save(name, audio) for name, audio in tracks.items()},
     }
     (OUT / 'manifest.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding='utf-8')
-    total = sum(path.stat().st_size for path in OUT.glob('*.wav'))
+    total = sum(path.stat().st_size for path in OUT.glob('*.m4a'))
     print(f'wrote {len(tracks)} loops, {total / 1024 / 1024:.2f} MiB')
 
 

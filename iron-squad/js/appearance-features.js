@@ -42,18 +42,29 @@ export function drawVariantFace(c,a,feminine,small){
     // Lengthen the lower face while keeping the scalp under the hairline.
     ellipse(c,0,outline==='long'?.65:.15,w,outline==='long'?6.4:outline==='broad'?5.6:6,a.skin);return true;
   }
-  const bottom=a.jaw==='forward'?8.2:a.jaw==='pointed'?7.8:a.jaw==='broad'?7.1:a.jaw==='cleft'?7:Math.max(6.3,h);
-  const chinWidth=a.jaw==='broad'?.82:a.jaw==='square'?.64:a.jaw==='forward'?.55:a.jaw==='pointed'?.15:.4;
-  ellipse(c,0,-2.2,w,3.6,a.skin);
-  if(a.jaw==='square')polygon(c,[[-w,-2],[w,-2],[w*.97,2.7],[w*.8,bottom-1.7],[w*chinWidth,bottom-.25],[0,bottom],[-w*chinWidth,bottom-.25],[-w*.8,bottom-1.7],[-w*.97,2.7]],a.skin);
-  else{
-    // A cheek shape must not silently turn a normal jaw into a polygon.
-    c.fillStyle=a.skin;c.beginPath();c.moveTo(-w,-2);c.lineTo(w,-2);
-    c.quadraticCurveTo(w,2.7,w*.8,bottom-1.7);
-    c.bezierCurveTo(w*.63,bottom-.3,w*chinWidth,bottom,0,bottom);
-    c.bezierCurveTo(-w*chinWidth,bottom,-w*.63,bottom-.3,-w*.8,bottom-1.7);
-    c.quadraticCurveTo(-w,2.7,-w,-2);c.closePath();c.fill();
+  // The outline owns the cheeks; a chosen jaw changes only the lower face.
+  // Previously all non-standard jaws shared almost vertical cheeks and a
+  // flat bottom, so even round/long/pointed combinations looked square.
+  const cheek={round:.83,square:.98,long:.82,angular:.68,broad:.92}[outline]||.83;
+  const cheekY=outline==='long'?3.5:outline==='broad'?2.6:3;
+  const bottom=h+(a.jaw==='forward'?2:a.jaw==='pointed'?1.6:a.jaw==='broad'?.9:a.jaw==='cleft'?.8:.1);
+  const chinWidth=w*(a.jaw==='broad'?.74:a.jaw==='square'?.58:a.jaw==='forward'?.4:outline==='square'?.46:outline==='angular'?.24:.32);
+  c.fillStyle=a.skin;c.beginPath();c.moveTo(0,-5.8);
+  c.bezierCurveTo(w*.7,-5.8,w,-4.2,w,-2);
+  c.bezierCurveTo(w,.3,w*(outline==='round'?1.04:1),1.4,w*cheek,cheekY);
+  if(a.jaw==='square'){
+    c.quadraticCurveTo(chinWidth*1.3,bottom-1.4,chinWidth,bottom);
+    c.lineTo(-chinWidth,bottom);
+    c.quadraticCurveTo(-chinWidth*1.3,bottom-1.4,-w*cheek,cheekY);
+  }else if(a.jaw==='pointed'){
+    c.bezierCurveTo(w*cheek*.8,cheekY+1.4,w*.2,bottom-.5,0,bottom);
+    c.bezierCurveTo(-w*.2,bottom-.5,-w*cheek*.8,cheekY+1.4,-w*cheek,cheekY);
+  }else{
+    c.bezierCurveTo(w*cheek*.88,bottom-1,chinWidth,bottom,0,bottom);
+    c.bezierCurveTo(-chinWidth,bottom,-w*cheek*.88,bottom-1,-w*cheek,cheekY);
   }
+  c.bezierCurveTo(-w*(outline==='round'?1.04:1),1.4,-w,.3,-w,-2);
+  c.bezierCurveTo(-w,-4.2,-w*.7,-5.8,0,-5.8);c.closePath();c.fill();
   if(a.jaw==='forward'){
     polygon(c,[[-2,5.8],[1.3,5.5],[2.5,6.4],[1.7,7.2],[-1.4,7.4]],'rgba(255,241,213,.22)');
     line(c,[[-2.4,7.3],[0,7.8],[2.2,7.2]],'rgba(101,63,43,.3)',small?.38:.28);

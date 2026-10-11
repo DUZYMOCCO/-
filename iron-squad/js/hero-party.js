@@ -4,7 +4,7 @@ import {WORLD_SIZE,settleUnit} from './world.js?v=182';
 import {DUNGEON_DEFS,dungeonBlocks} from './dungeon.js?v=189';
 import {nearestDungeonFloor} from './dungeon-layout.js?v=182';
 import {economicFieldBlocked} from './regional-economy.js?v=182';
-import {RECRUIT_CLASSES} from './recruitment.js?v=191';
+import {RECRUIT_CLASSES} from './recruitment.js?v=193';
 import {persistentUnit} from './render-support.js';
 import {grantPersonalExp} from './experience-rules.js';
 import {formatDistance} from './distance-format.js';

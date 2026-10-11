@@ -2,11 +2,11 @@ import {normalizeArmament,ARMAMENT_POLICIES,advanceResearch,researchCost,standar
 import {tierDescription,MAX_EQUIPMENT_TIER} from './equipment-tiers.js?v=187';
 import {WORLD_SIZE} from './world.js?v=182';
 import {saleValue,isGodRollProtected} from './equipment-rules.js?v=189';
-import {calcTreasuryGrossIncome,calcCommanderStipend,EQUIPMENT_SLOTS} from './economy-rules.js?v=191';
+import {calcTreasuryGrossIncome,calcCommanderStipend,EQUIPMENT_SLOTS} from './economy-rules.js?v=192';
 import {createPayrollPlan,commanderStipendQuote,PAYROLL_RULES} from './payroll-rules.js?v=187';
 import {calcAllRankerBonuses} from './troop-rankings.js?v=187';
 import {normalizeRegionalEconomy,recurringNationalIncome,economicState,advanceRegionalEconomy,automaticEconomicTarget,investEconomicProject} from './regional-economy.js?v=182';
-import {drawSettlementQuarter} from './economic-visuals.js?v=189';
+import {drawSettlementQuarter} from './economic-visuals.js?v=193';
 import {renderRegionalEconomy} from './economic-interface.js?v=182';
 import {workshopFloorTier} from './crafting-rules.js?v=189';
 import {normalizeCasino} from './casino-rules.js?v=189';
@@ -33,6 +33,10 @@ export function normalizeNation(data={}) {
 export const nationalPayrollPlan=game=>createPayrollPlan(game,calcAllRankerBonuses(game));
 export const nationalPayroll=game=>nationalPayrollPlan(game).total;
 export const nationalSalaryReserve=game=>Math.max(6000,Math.ceil((nationalPayroll(game)+commanderStipendQuote(game,game.phase||1)+(game.nation?.economy?.patrols||0)*18)*PAYROLL_RULES.reserveCycles));
+export function publicEquipmentCap(game) {
+  const nation=normalizeNation(game.nation),policy=ARMAMENT_POLICIES[nation.armament.policy];
+  return Math.min(Math.max(0,(game.treasury||0)-nationalSalaryReserve(game)),policy.budget+nation.level*policy.perLevel+Math.floor(nationalPayroll(game)*PAYROLL_RULES.operatingMargin*policy.maintenanceShare));
+}
 export function developmentBudget(game) {
   const nation=normalizeNation(game.nation),available=Math.max(0,(game.treasury||0)-nationalSalaryReserve(game));
   return Math.floor(available*(ARMAMENT_POLICIES[nation.armament.policy]?.development||.25));
@@ -57,7 +61,9 @@ export const nationMethods={
     this.nation=normalizeNation(this.nation);const a=this.nation.armament,phase=Math.max(1,this.phase-1);
     if(a.supplyPhase>=phase)return a.last||{issued:0,spent:0,updated:0,forged:0};
     a.supplyPhase=phase;
-    let spent=0,issued=0,updated=0,forged=0,forgeSpent=0;
+    let spent=0,issued=0,updated=0,forged=0,forgeSpent=0,publicSpent=0,publicIssued=0;
+    // The armament policy caps how much of the treasury may fill empty slots this wave.
+    const publicCap=publicEquipmentCap(this);
     const slots=Object.entries(EQUIPMENT_SLOTS),missing=s=>slots.filter(([,key])=>!s.equipped?.[key]).length;
     const deployed=(this.squad||[]).filter(s=>s&&!s.dead),reserves=(this.reserves||[]).filter(s=>s&&!s.dead).slice(0,RESERVE_ARMAMENT_COUNT);
     const buyers=[...deployed,...reserves],budget=buyers.reduce((sum,s)=>sum+personalEquipmentBudget(s),0);
@@ -68,16 +74,22 @@ export const nationMethods={
       while(progress){progress=false;
         for(const soldier of recipients){
           const next=slots.find(([,key])=>!soldier.equipped?.[key]);if(!next)continue;
-          const [type,key]=next;let cost,tier=a.techTier;
-          const available=personalEquipmentBudget(soldier);
-          if(available<standardEquipmentCost({tier:1}))continue;
-          for(;tier>=1;tier--){cost=standardEquipmentCost({tier});if(cost<=available)break;}
-          if(tier<1)continue;
-          const item=this.createSupplyEquipment(type,soldier,tier);
-          soldier.gold-=cost;item.selfFunded=true;item.qualityLabel='自費調達';
-          soldier.lastEquipmentPurchase.spent+=cost;soldier.lastEquipmentPurchase.issued++;
+          const [type,key]=next;let cost,tier=a.techTier,item;
+          const available=personalEquipmentBudget(soldier),lowCost=standardEquipmentCost({tier:1});
+          if(available>=lowCost){
+            for(;tier>=1;tier--){cost=standardEquipmentCost({tier});if(cost<=available)break;}
+            item=this.createSupplyEquipment(type,soldier,tier);
+            soldier.gold-=cost;item.selfFunded=true;
+            soldier.lastEquipmentPurchase.spent+=cost;soldier.lastEquipmentPurchase.issued++;
+            spent+=cost;issued++;
+          }else{
+            // A broke soldier still gets the cheapest piece for an empty slot, paid by the treasury above the payroll reserve.
+            if(publicSpent+lowCost>publicCap)continue;
+            item=this.createSupplyEquipment(type,soldier,1);item.publicIssue=true;
+            publicSpent+=lowCost;publicIssued++;
+          }
           soldier.equipped||={};soldier.equipped[key]=item;if(key==='weapon')soldier.weapon=item;
-          this.recalcSoldierStats(soldier);spent+=cost;issued++;progress=true;
+          this.recalcSoldierStats(soldier);progress=true;
         }
       }
     }
@@ -106,17 +118,20 @@ export const nationMethods={
       soldier.gold-=best.cost;
       soldier.lastEquipmentPurchase.spent+=best.cost;soldier.lastEquipmentPurchase[best.kind==='replace'?'updated':'forged']++;
       const old=soldier.equipped[best.key];
-      if(best.kind==='replace'){(this.sharedEquipBox||=[]).push(old);best.item.selfFunded=true;best.item.qualityLabel='自費調達';soldier.equipped[best.key]=best.item;updated++;}
+      if(best.kind==='replace'){(this.sharedEquipBox||=[]).push(old);best.item.selfFunded=true;soldier.equipped[best.key]=best.item;updated++;}
       else{this.applyEquipmentUpgrade(old,best.item.upgrade);forged++;forgeSpent+=best.cost;}
       if(best.key==='weapon')soldier.weapon=soldier.equipped.weapon;
       spent+=best.cost;this.recalcSoldierStats(soldier);
     }
+    this.treasury=(this.treasury||0)-publicSpent;
     if(!this.phaseFiscal)this.beginPhaseFiscal();
+    this.phaseFiscal.equipmentProcurement=(this.phaseFiscal.equipmentProcurement||0)+publicSpent;
+    this.phaseFiscal.publicEquipmentIssued=(this.phaseFiscal.publicEquipmentIssued||0)+publicIssued;
     this.phaseFiscal.personalEquipmentProcurement=(this.phaseFiscal.personalEquipmentProcurement||0)+spent-forgeSpent;
     this.phaseFiscal.personalForging=(this.phaseFiscal.personalForging||0)+forgeSpent;
     this.phaseFiscal.equipmentIssued=(this.phaseFiscal.equipmentIssued||0)+issued;
     this.phaseFiscal.equipmentUpdated=(this.phaseFiscal.equipmentUpdated||0)+updated;
-    this.lastEquipmentSupply=a.last={phase,issued,spent,updated,forged,budget,funding:'personal'};
+    this.lastEquipmentSupply=a.last={phase,issued,spent,updated,forged,budget,publicIssued,publicSpent,funding:'personal'};
     this.processSharedEquipmentBox();
     return a.last;
   },
@@ -164,7 +179,7 @@ export const nationMethods={
     const missing=units=>units.filter(s=>s&&!s.dead).reduce((n,s)=>n+Object.values(EQUIPMENT_SLOTS).filter(key=>!s.equipped?.[key]).length,0);
     const last=this.lastFiscalReport||{};
     const a=n.armament,armed=(this.squad||[]).filter(s=>!s.dead),equippedAtStandard=armed.filter(s=>(s.equipped?.weapon?.tier||0)>=a.techTier).length,nextCost=researchCost(a.techTier+1);
-    panel.insertAdjacentHTML('beforeend',`<h4>国家の軍備整備</h4><p><strong>製造技術：${tierDescription(a.techTier)}</strong><br>現行規格以上の主武器：${equippedAtStandard}/${armed.length}名（${armed.length?Math.round(equippedAtStandard/armed.length*100):0}%）<br>補充用の備蓄を含む共有箱：${this.sharedEquipBox?.length||0}件</p>${a.techTier<MAX_EQUIPMENT_TIER?`<progress max="${nextCost}" value="${Math.min(nextCost,a.research)}"></progress><p>次は${tierDescription(a.techTier+1)} · 開発${money(a.research)} / ${money(nextCost)}<br>街の発展と新しい戦利品で研究範囲が広がります。</p>`:'<p>全${MAX_EQUIPMENT_TIER}世代の製造技術を完成しました。</p>'}<div class="armament-policies">${Object.entries(ARMAMENT_POLICIES).map(([key,p])=>`<button type="button" data-armament-policy="${key}" aria-pressed="${a.policy===key}">${p.name}</button>`).join('')}</div><p>空き部位：出撃兵 ${missing(this.squad||[])} / 予備兵 ${missing(this.reserves||[])}<br>直近：共有支給${last.sharedEquipmentIssued||0}部位 / 不足補給${last.equipmentIssued||0}部位 / 換装${last.equipmentUpdated||0}名 / 自費強化${a.last?.forged||0}回<br>兵士の自費調達${money(last.personalEquipmentProcurement)} / 自費強化${money(last.personalForging)} / 国庫の技術開発${money(last.armamentResearch)}</p><p>工房レベルは製造可能ティアの解放条件です。装備の購入・換装・強化は各兵士の所持Gから支払い、6Gを残します。予算不足なら今の装備を維持。共有品は先に配ります。予備兵は次の補充${RESERVE_ARMAMENT_COUNT}名を優先整備。外した品は強化を保って共有箱へ戻します。</p>`);
+    panel.insertAdjacentHTML('beforeend',`<h4>国家の軍備整備</h4><p><strong>製造技術：${tierDescription(a.techTier)}</strong><br>現行規格以上の主武器：${equippedAtStandard}/${armed.length}名（${armed.length?Math.round(equippedAtStandard/armed.length*100):0}%）<br>補充用の備蓄を含む共有箱：${this.sharedEquipBox?.length||0}件</p>${a.techTier<MAX_EQUIPMENT_TIER?`<progress max="${nextCost}" value="${Math.min(nextCost,a.research)}"></progress><p>次は${tierDescription(a.techTier+1)} · 開発${money(a.research)} / ${money(nextCost)}<br>街の発展と新しい戦利品で研究範囲が広がります。</p>`:'<p>全${MAX_EQUIPMENT_TIER}世代の製造技術を完成しました。</p>'}<div class="armament-policies">${Object.entries(ARMAMENT_POLICIES).map(([key,p])=>`<button type="button" data-armament-policy="${key}" aria-pressed="${a.policy===key}">${p.name}</button>`).join('')}</div><p>空き部位：出撃兵 ${missing(this.squad||[])} / 予備兵 ${missing(this.reserves||[])}<br>直近：共有支給${last.sharedEquipmentIssued||0}部位 / 国庫の空き部位支給${last.publicEquipmentIssued||0}部位 / 自費購入${last.equipmentIssued||0}部位 / 換装${last.equipmentUpdated||0}名 / 自費強化${a.last?.forged||0}回<br>国庫の空き部位支給${money(last.equipmentProcurement)} / 兵士の自費調達${money(last.personalEquipmentProcurement)} / 自費強化${money(last.personalForging)} / 国庫の技術開発${money(last.armamentResearch)}</p><p>工房レベルは製造可能ティアの解放条件です。装備の購入・換装・強化は各兵士の所持Gから支払い、6Gを残します。空き部位を自分で買えない兵士には、給与の積立を残し、軍備方針の支給枠（今期${money(publicEquipmentCap(this))}）の範囲で国庫が最安の装備を支給します。換装・強化は予算不足なら今の装備を維持。共有品は先に配ります。予備兵は次の補充${RESERVE_ARMAMENT_COUNT}名を優先整備。外した品は強化を保って共有箱へ戻します。</p>`);
     for(const button of panel.querySelectorAll('[data-armament-policy]'))button.onclick=()=>{this.nation.armament.policy=button.dataset.armamentPolicy;this.saveGame();this.renderStrategyUI();};
     panel.querySelector('[data-nation="invest"]').onclick=()=>{this.investNation();this.saveGame();this.renderStrategyUI();this.updateStatsUI();};
     renderRegionalEconomy(this,panel,nationalSalaryReserve);

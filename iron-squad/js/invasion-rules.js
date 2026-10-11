@@ -6,7 +6,7 @@ import {sound} from '../../common/js/audio.js?v=151';
 export const INVASION_FIRST_PHASE=3,INVASION_INTERVAL=4,INVASION_MARCH_SECONDS=25,INVASION_BATTLE_SECONDS=70;
 export const MAJOR_FIRST_PHASE=11,MAJOR_INTERVAL=8,MAJOR_MARCH_SECONDS=35,MAJOR_BATTLE_SECONDS=125;
 // A bounded regular force gives equipment development a real hurdle to overcome.
-export const REGULAR_INVASION_RULES=Object.freeze({hpFloor:180,hpCeiling:360,atkFloor:36,atkCeiling:72,defFloor:18,defCeiling:50,count:28,hpScale:12,atkScale:16,attackReach:58,cleaveRadius:20});
+export const REGULAR_INVASION_RULES=Object.freeze({hpFloor:260,hpCeiling:360,atkFloor:50,atkCeiling:72,defFloor:18,defCeiling:50,count:28,hpScale:12,atkScale:16,attackReach:58,cleaveRadius:20});
 const MAJOR_HP_SCALE=2.25,MAJOR_ATK_SCALE=1.8;
 export const RANDOM_RAID_MIN_PHASE=8,RANDOM_RAID_GAP=8,RANDOM_RAID_CHANCE=.12;
 const center=WORLD_SIZE/2;

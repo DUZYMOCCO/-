@@ -2,7 +2,7 @@ import {drawStoneFortification} from './fortification-visuals.js?v=182';
 import {WORLD_SIZE,fieldBlocks} from './world.js?v=182';
 import {dungeonBlocks} from './dungeon.js?v=189';
 import {inCurrentInstance} from './instance-rules.js?v=182';
-import {makeEscort,recalcEscortStats,updateEscortPatrol,npcSave,applyNpcSave} from './merchant-rules.js?v=191';
+import {makeEscort,recalcEscortStats,updateEscortPatrol,npcSave,applyNpcSave} from './merchant-rules.js?v=193';
 import {rebuildMerchantCasualties,carrierOf,sanitizeCarriers} from './casualty-rules.js?v=187';
 const center=WORLD_SIZE/2;
 export const GATE_HALF_WIDTH=80,HQ_WALL_HALF_SIZE=300;

@@ -1,0 +1,19 @@
+{
+  "male": {
+    "distinctOutlines": 5,
+    "distinctFieldHeads": 5,
+    "restoredPixels": true
+  },
+  "female": {
+    "distinctOutlines": 5,
+    "distinctFieldHeads": 5,
+    "restoredPixels": true
+  },
+  "saved": {
+    "outline": "round",
+    "jaw": "pointed",
+    "statsUnchanged": true,
+    "overflow": false
+  },
+  "pageErrors": []
+}

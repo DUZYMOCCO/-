@@ -205,22 +205,16 @@ const manifest = JSON.parse(readFileSync(new URL('../assets/music/manifest.json'
 const hashes = new Set();
 for (const [id, file] of Object.entries(TRACK_FILES)) {
   const bytes = readFileSync(new URL(`../assets/music/${file}`, import.meta.url));
-  assert.equal(bytes.toString('ascii', 0, 4), 'RIFF', file);
-  assert.equal(bytes.readUInt16LE(22), 1, `${id} stays mono`);
-  assert.equal(bytes.readUInt32LE(24), 22050);
-  const pcm = new Int16Array(bytes.buffer, bytes.byteOffset + 44, (bytes.length - 44) / 2);
-  let energy = 0;
-  let peak = 0;
-  for (const sample of pcm) {
-    const unit = sample / 32768;
-    energy += unit * unit;
-    peak = Math.max(peak, Math.abs(unit));
-  }
-  const rms = Math.sqrt(energy / pcm.length);
-  assert.ok(rms > 0.04 && rms < 0.16, `${id} rms ${rms}`);
-  assert.ok(peak < 0.7, `${id} peak ${peak}`);
-  assert.ok(Math.abs(pcm[0] - pcm[pcm.length - 1]) <= 1, `${id} loop point`);
-  assert.ok(pcm.length / 22050 > 20 && pcm.length / 22050 < 28, id);
+  const clip = manifest.clips[id];
+  assert.match(file, /\.m4a$/, `${id} ships as AAC`);
+  assert.equal(bytes.toString('ascii', 4, 8), 'ftyp', file);
+  assert.ok(bytes.length < 300 * 1024, `${id} stays small (${bytes.length} bytes)`);
+  assert.equal(clip.file, file);
+  assert.equal(clip.channels, 1, `${id} stays mono`);
+  assert.equal(clip.sampleRate, 22050);
+  assert.ok(clip.rms > 0.04 && clip.rms < 0.16, `${id} rms ${clip.rms}`);
+  assert.ok(clip.peak < 0.7, `${id} peak ${clip.peak}`);
+  assert.ok(clip.seconds > 20 && clip.seconds < 28, id);
   const hash = createHash('sha256').update(bytes).digest('hex');
   assert.equal(hash, manifest.clips[id].sha256, id);
   hashes.add(hash);

@@ -7,18 +7,19 @@ import { biomeAt, WORLD_SIZE } from './world.js?v=182';
 import { zoneRingLabelJa } from './equipment-rules.js?v=189';
 
 const CENTER = WORLD_SIZE / 2;
-const ASSET_VERSION = 191;
+const ASSET_VERSION = 192;
+const LOOP_SECONDS = 24;
 export const CUE_HOLD_SECONDS = 8;
 export const SCENE_HOLD_SECONDS = 2.5;
 export const FIRST_HOLD_SECONDS = 2;
 export const FIELD_CROSSFADE_SECONDS = 3.8;
 export const TRACK_FILES = Object.freeze({
-  piano: 'piano.wav',
-  celtic: 'celtic.wav',
-  highland: 'highland.wav',
-  salt: 'salt.wav',
-  vesper: 'vesper.wav',
-  organ: 'organ.wav'
+  piano: 'piano.m4a',
+  celtic: 'celtic.m4a',
+  highland: 'highland.m4a',
+  salt: 'salt.m4a',
+  vesper: 'vesper.m4a',
+  organ: 'organ.m4a'
 });
 const BIOME_TRACK = Object.freeze({
   '東の街道平原': 'piano',
@@ -201,6 +202,8 @@ class FieldMusic {
     const startAt = duration > 0 ? Math.min(((offset % duration) + duration) % duration, Math.max(0, duration - 0.02)) : 0;
     source.buffer = buffer;
     source.loop = true;
+    // Trim any AAC end padding so the 24 s loop stays seamless.
+    if (duration > LOOP_SECONDS) { source.loopStart = 0; source.loopEnd = LOOP_SECONDS; }
     source.connect(gain);
     gain.connect(this.sound.music);
     const param = gain.gain;

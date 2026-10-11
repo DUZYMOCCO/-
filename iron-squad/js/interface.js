@@ -1,4 +1,4 @@
-import {commanderFullName} from './commander-identity.js?v=188';
+import {commanderFullName} from './commander-identity.js?v=193';
 import {configureAudioInterface} from './audio-interface.js?v=191';
 import {renderBattleLog} from './battle-log.js?v=187';
 import {renderTroopRankings} from './troop-rankings.js?v=187';

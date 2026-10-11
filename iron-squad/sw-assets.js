@@ -3,8 +3,8 @@
 // パスは「ゲームフォルダからの相対パス」。ルートの sw.js は触らない。
 self.GAME_ASSETS = self.GAME_ASSETS || {};
 self.GAME_ASSETS['iron-squad'] = {
-  version: 'v191',
-  gameVersion: '5.5.1', // ハブのカードに表示する版（キャッシュ用 version とは別。リリース時に上げる）
+  version: 'v194',
+  gameVersion: '5.5.4', // ハブのカードに表示する版（キャッシュ用 version とは別。リリース時に上げる）
   files: [
     // Shared read-only dependency needed before this game has ever launched.
     '../common/js/load-css.js',
@@ -12,12 +12,12 @@ self.GAME_ASSETS['iron-squad'] = {
     'css/iron-squad-interface.css',
     'js/audio-interface.js',
     'js/field-music.js',
-    'assets/music/piano.wav',
-    'assets/music/celtic.wav',
-    'assets/music/highland.wav',
-    'assets/music/salt.wav',
-    'assets/music/vesper.wav',
-    'assets/music/organ.wav',
+    'assets/music/piano.m4a',
+    'assets/music/celtic.m4a',
+    'assets/music/highland.m4a',
+    'assets/music/salt.m4a',
+    'assets/music/vesper.m4a',
+    'assets/music/organ.m4a',
     'assets/music/manifest.json',
     'js/commander-giveup.js',
     'js/own-squad-marker.js',

@@ -5,58 +5,64 @@
   "seconds": 24.0,
   "clips": {
     "piano": {
-      "file": "piano.wav",
+      "file": "piano.m4a",
       "seconds": 24.0,
       "channels": 1,
       "sampleRate": 22050,
+      "bitrate": "64k",
       "peak": 0.3946,
       "rms": 0.086,
-      "sha256": "0d627fb747f9ef589e0aec25bcf374e32ae701c4b40a7c8ca61d9eccf848c561"
+      "sha256": "3a58c2198ea4a9de6b9f5fbd2b44c545e8ab452478210aa8c969e38ee624af85"
     },
     "celtic": {
-      "file": "celtic.wav",
+      "file": "celtic.m4a",
       "seconds": 24.0,
       "channels": 1,
       "sampleRate": 22050,
+      "bitrate": "64k",
       "peak": 0.3646,
       "rms": 0.084,
-      "sha256": "022031a9f537fef20775ddb6115c991a59dca866ef055d1c43b2703a1974490d"
+      "sha256": "cacee776a404d811118e6a9d55394f19afb9229382dd54b8aae7e50666036423"
     },
     "highland": {
-      "file": "highland.wav",
+      "file": "highland.m4a",
       "seconds": 24.0,
       "channels": 1,
       "sampleRate": 22050,
+      "bitrate": "64k",
       "peak": 0.3481,
       "rms": 0.08,
-      "sha256": "a4ba1fecde1cb777761ef7f135b255df782d71800778e4dba3eaad2d49beb75c"
+      "sha256": "22166f514a7226ffb87164a0cb58e9ddac3205dc258729b3d77094e8e1ed63bb"
     },
     "salt": {
-      "file": "salt.wav",
+      "file": "salt.m4a",
       "seconds": 24.0,
       "channels": 1,
       "sampleRate": 22050,
+      "bitrate": "64k",
       "peak": 0.2489,
       "rms": 0.078,
-      "sha256": "a8a4cc0a4843f8d34f76e6fc8f95d0f395e64e06ddfc60f540c5caea0a181f24"
+      "sha256": "e1573a0b439cc1043d552565de5b57941f7e20b88136811aae308bd1e2fc5423"
     },
     "vesper": {
-      "file": "vesper.wav",
+      "file": "vesper.m4a",
       "seconds": 24.0,
       "channels": 1,
       "sampleRate": 22050,
+      "bitrate": "64k",
       "peak": 0.2982,
       "rms": 0.086,
-      "sha256": "1fd26ffe2ab8b47901fc1f9e1aea48286e89ece3fb8200752b2d6d01a5498444"
+      "sha256": "fda4e183217333dd4c84e6086ff38e0e0ec9d08403e9446a3a050ba8c0553149"
     },
     "organ": {
-      "file": "organ.wav",
+      "file": "organ.m4a",
       "seconds": 24.0,
       "channels": 1,
       "sampleRate": 22050,
+      "bitrate": "64k",
       "peak": 0.3439,
       "rms": 0.09,
-      "sha256": "976c4ee519a8b94470711e5310fd053da4e76836750e6a90ff9191cafe548779"
+      "sha256": "2f827ca78fdd77f9387d3fb69819b17368aa0b55e8cfa30b0e41343c21f45247"
     }
   }
 }
