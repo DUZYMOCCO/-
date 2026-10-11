@@ -17,7 +17,7 @@ import {nationMethods,normalizeNation,nationalIncome,nationalPayrollPlan,headqua
 import {equipmentUpgradeCost,salaryQuote,paySoldiers} from './payroll-rules.js?v=182';
 import {addFieldDrop,ageFieldDrops,attractFieldDrops,FIELD_DROP_PICKUP_RADIUS} from './field-drops.js?v=182';
 import {drawLootDrop,drawLootPullTrail} from './loot-visuals.js?v=182';
-import {drawOwnSquadRing} from './own-squad-marker.js?v=182';
+import {drawOwnSquadRing,isOwnSquad} from './own-squad-marker.js?v=182';
 import {queueSquadName,flushSquadNames} from './squad-names.js?v=182';
 import {syncGiveUpUI,resumeBGM} from './commander-giveup.js?v=182';
 import {economicState,advanceRegionalEconomy,discoverEconomicRegions,recordEconomicKill,economicFieldBlocked} from './regional-economy.js?v=182';
@@ -8643,12 +8643,9 @@ export const IronSquadGame = {
     }
   },
 
+  // 自小隊＝隊長自身の随伴（直属・定員あふれ・救助/雇用した仲間）。階級に依らず、第1小隊の所属とは別。
   isPersonalSquadSoldier(s) {
-    if (!s || s.dead) return false;
-    const currentRank = RANKS[this.rankIndex] || RANKS[0];
-    const maxGuards = Math.min(currentRank.personalGuards || 0, PERSONAL_GUARD_MAX);
-    if (maxGuards > 0) return !!s.isPersonalGuard;
-    return ((s.platoonId || 0) % 3) === 0;
+    return isOwnSquad(s);
   },
 
   beginPhaseFiscal() {
@@ -10179,11 +10176,11 @@ export const IronSquadGame = {
       }
     };
 
-    const myTitle = maxGuards > 0 ? '👑 隊長直属小隊（随伴親衛隊）' : '⚔️ 所属小隊（第1小隊 前衛突撃隊）';
-    const myDesc = maxGuards > 0 ? `隊長に付き従って最前線を切り拓く精鋭部隊（定員 ${maxGuards}名）` : 'プレイヤーが所属する最前線小隊（昇進すると隊長直属の親衛隊を率いられます）';
+    const myTitle = maxGuards > 0 ? '👑 自小隊（隊長直属の随伴親衛隊）' : '⚔️ 自小隊（隊長に付き従う仲間）';
+    const myDesc = maxGuards > 0 ? `隊長に付き従って最前線を切り拓く精鋭部隊（定員 ${maxGuards}名。救助・雇用した仲間を含む）` : '隊長に付き従う仲間だけ（救助・雇用した仲間）。第1小隊の所属とは別。昇進すると直属の親衛隊を率いられます';
 
-    const otherTitle = maxGuards > 0 ? '🏰 本隊・広域作戦隊（第1〜第3小隊）' : '🛡️ それ以外の小隊（第2・第3小隊）';
-    const otherDesc = maxGuards > 0 ? '広域の拠点を制圧・防衛し独自に作戦行動を行う主力部隊' : '別方面の防衛・迎撃を担当する友軍小隊';
+    const otherTitle = '🏰 本隊（第1〜第3小隊）';
+    const otherDesc = '自小隊以外の全員。第1小隊の兵もここ。広域の拠点を防衛し独自に作戦行動を行う';
 
     if (curFilter === 'all' || curFilter === 'my') {
       appendCategorySection(myTitle, mySquad.length, myDesc, mySquad, true);
