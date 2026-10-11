@@ -96,3 +96,15 @@ test('white friendly lab floor and heroic lab flag', () => {
   assert.ok(f.includes('#2563eb') && f.includes('#facc15'), 'あおい たて と ほし');
   assert.ok(!f.includes('data-emblem') && !f.includes('#5a1414'), 'わるものの マークでは ない');
 });
+
+// こどもの リクエスト：バリアで たたかう うさぎ → まじゅつし（id は セーブ互換で rabbit のまま）
+test('rabbit slot is the good magician まじゅつし with a barrier and a magic circle', () => {
+  const c = CHARACTERS.find(c => c.id === 'rabbit');
+  assert.equal(c.name, 'まじゅつし');
+  assert.equal(c.weapon, 'aura');
+  assert.deepEqual(c.perk, { spd: 0.2 });
+  const svg = svgOf(art('rabbit'));
+  assert.ok(svg.includes('#1e3a8a') && svg.includes('#facc15') && svg.includes('#22d3ee'), 'こん・きん・ひかる つえ');
+  assert.ok(!svg.includes('data-emblem="warumono"') && !svg.includes('#4c1d95'), 'てきの まじょ では ない');
+  assert.ok(svgOf(art('magicCircle')).includes('<circle'));
+});

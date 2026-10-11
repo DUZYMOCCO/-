@@ -8,7 +8,7 @@
  * - おもい ときは「かるい モード」（ds-lite）：ぴょこぴょこ／ほうせきの ゆれを とめ、エフェクトと すうじを へらす
  * - ここでは Math.random を つかわない（みための ばらつきは カウンタで。ゲームの らんすうと まざらない）
  */
-import { art, groundTile } from './art.js?v=197';
+import { art, groundTile } from './art.js?v=198';
 
 class Pool {
   constructor(layer, make) { this.layer = layer; this.make = make; this.free = []; this.active = new Set(); this.key = Symbol('node'); }
@@ -327,6 +327,12 @@ export class Stage {
     const aura = look.auraRadius;
     if (aura) {
       if (this.aura.style.display === 'none') this.aura.style.display = '';
+      const magic = !!look.auraMagic;
+      if (this.aura._m !== magic) {
+        this.aura._m = magic;
+        this.aura.classList.toggle('magic', magic);
+        if (magic && !this.aura._mc) { this.aura._mc = true; this.aura.style.setProperty('--ds-magic', art('magicCircle')); }
+      }
       if (this.aura._r !== aura) { this.aura._r = aura; this.aura.style.width = this.aura.style.height = `${aura * 2}px`; this.aura.style.marginLeft = this.aura.style.marginTop = `${-aura}px`; }
       Stage.place(this.aura, p.x, p.y);
     }

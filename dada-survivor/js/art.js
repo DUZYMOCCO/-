@@ -88,6 +88,40 @@ const soldier = `
   <path d="M21 30 L28.5 31.2 M43 30 L35.5 31.2" fill="none" ${SW(2)}/>
   ${animeEye(24.5, 33.2, '#93c5fd')}${animeEye(39.5, 33.2, '#93c5fd')}`;
 
+// まじゅつし（id は セーブ互換で rabbit のまま。バリアで たたかう いい まほうつかい）
+// こん＋みどりあお＋きん。てきの まじょ（むらさき＋あか）と まちがえない ように つばの ひろい ぼうしと ひかる つえ
+const magician = `
+  <path d="M51 61 L56 14" ${SW(3.6)}/><path d="M51 61 L56 14" stroke="#92400e" stroke-width="2" stroke-linecap="round"/>
+  <path d="M53.4 40 L54.6 30" stroke="#facc15" stroke-width="2.4" stroke-linecap="round"/>
+  <circle cx="56.4" cy="10" r="8.5" fill="#67e8f9" opacity=".35"/>
+  <path d="M51 15 Q56 19 61 15" fill="none" stroke="#facc15" stroke-width="2.2" stroke-linecap="round"/>
+  <circle cx="56.4" cy="10" r="5" fill="#22d3ee" ${SW(1.8)}/><circle cx="54.8" cy="8.4" r="1.7" fill="#fff"/>
+  <ellipse cx="22" cy="60.5" rx="5" ry="3.2" fill="#1e1b4b" ${S}/><ellipse cx="40" cy="60.5" rx="5" ry="3.2" fill="#1e1b4b" ${S}/>
+  <path d="M15 62 Q15 42 31 40 Q47 42 47 62Z" fill="#1e3a8a" ${S}/>
+  <path d="M31 41 V62" stroke="#0f766e" stroke-width="5"/><path d="M31 41 V62" fill="none" stroke="#facc15" stroke-width="1.2"/>
+  <path d="M16 56 Q31 60 46 56" fill="none" stroke="#facc15" stroke-width="2.2"/>
+  <path d="M17 50 Q31 54 45 50 L45 53 Q31 57 17 53Z" fill="#0f766e" ${S2}/><rect x="28.4" y="49.6" width="5.2" height="5" rx="1" fill="#facc15" ${SW(1.2)}/>
+  <path d="M20.5 46 L22.4 47.6 L24.8 46.8 L23.8 49 L25.4 50.8 L23 50.6 L21.8 52.8 L21.2 50.4 L18.8 49.8 L20.8 48.4Z" fill="#facc15" ${SW(.9)}/>
+  <circle cx="17" cy="54" r="3.3" fill="#f0c7a0" ${S2}/><circle cx="50.5" cy="44" r="3.3" fill="#f0c7a0" ${S2}/>
+  <path d="M45 45 Q48 43 51 44" fill="none" stroke="#1e3a8a" stroke-width="4" stroke-linecap="round"/>
+  ${shadedCircle('mg', 31, 30, 15, '#f0c7a0', '#c48a5e')}
+  <path d="M15.5 27 Q14 40 19 44 Q17 34 21 29Z M46.5 27 Q48 40 43 44 Q45 34 41 29Z" fill="#3b2a1e" ${S2}/>
+  <path d="M4 25 Q31 15 58 25 Q58 30 50 28 Q31 22 12 28 Q4 30 4 25Z" fill="#1e3a8a" ${S}/>
+  <path d="M15 24 Q24 -2 40 -4 Q35 2 39 8 L46 23 Q31 18 15 24Z" fill="#1e40af" ${S}/>
+  <path d="M15.5 22.4 Q31 17.4 46 21.6 L46.6 24 Q31 19.6 15 24.6Z" fill="#facc15" ${S2}/>
+  <path d="M30.5 9 L31.8 12.2 L35.2 12.4 L32.6 14.6 L33.4 18 L30.5 16.1 L27.6 18 L28.4 14.6 L25.8 12.4 L29.2 12.2Z" fill="#fde047" ${SW(1)}/>
+  <path d="M40 -4 Q44 -3 45 1" fill="none" stroke="#0f766e" stroke-width="2.2" stroke-linecap="round"/>
+  <path d="M21 30.5 Q24 28.6 27.5 30 M41 30.5 Q38 28.6 34.5 30" fill="none" ${SW(1.8)}/>
+  ${animeEye(24.5, 34, '#2dd4bf')}${animeEye(37.5, 34, '#2dd4bf')}
+  <path d="M28.5 40 Q31 41.6 33.5 40" fill="none" stroke="#7c2d12" stroke-width="1.3" stroke-linecap="round"/>`;
+// まほうじん（まじゅつしの バリア。きんの わと ほし）
+const magicCircle = wrap(`
+  <circle cx="50" cy="50" r="47" fill="none" stroke="#facc15" stroke-width="2.6" opacity=".9"/>
+  <circle cx="50" cy="50" r="40" fill="none" stroke="#22d3ee" stroke-width="1.6" stroke-dasharray="5 3" opacity=".9"/>
+  <path d="M50 12 L83 69 H17Z M50 88 L17 31 H83Z" fill="none" stroke="#facc15" stroke-width="1.8" opacity=".8"/>
+  <circle cx="50" cy="50" r="18" fill="none" stroke="#22d3ee" stroke-width="1.4" opacity=".8"/>
+  ${Array.from({ length: 12 }, (_, i) => { const a = i * Math.PI / 6; return `<circle cx="${(50 + Math.cos(a) * 43.5).toFixed(1)}" cy="${(50 + Math.sin(a) * 43.5).toFixed(1)}" r="1.6" fill="#fde047"/>`; }).join('')}`, '0 0 100 100');
+
 // プレイヤーの ソルジャーは あおい レーザーじゅうを もつ（v1.11.0 こどもの リクエスト。なかま・ちりょうたいは soldier の まま）
 const laserSoldier = soldier
   .replace('<path d="M6 59 L56 43" stroke="#26282d" stroke-width="3.6" stroke-linecap="round"/>',
@@ -931,7 +965,8 @@ const GROUNDS = {
 };
 
 const hero2 = {
-  rabbit:  hero({ fur: '#e7e5e4', shade: '#a8a29e', inner: '#78716c', ear: 'rabbit' }),
+  rabbit:  wrap(magician, '0 -6 64 70'), // id は セーブ互換のため rabbit のまま（絵と名前は まじゅつし）
+  magicCircle,
   penguin: hero({ fur: '#1e293b', shade: '#0f172a', inner: '#e7e5e4', ear: 'none', belly: '#d6d3d1',
     face: `<ellipse cx="32" cy="31" rx="13" ry="11" fill="#d6d3d1"/>`, mouth: `<path d="M28 35 H36 L32 39Z" fill="#c2410c" ${S2}/>` }),
   bear:    hero({ fur: '#7c4a12', shade: '#4a2c0a', inner: '#a16207', ear: 'bear', muzzle: '#d6d3d1' }),

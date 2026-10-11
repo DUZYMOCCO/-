@@ -70,6 +70,9 @@
 }
 /* 回転は内側だけ（外側の transform は位置合わせに使うので アニメで上書きしない） */
 .ds-aura::before { content: ''; position: absolute; inset: 0; border-radius: 50%; border: 3px dashed rgba(255, 255, 255, .75); animation: ds-spin 4s linear infinite; }
+/* まじゅつしの バリア：きんの まほうじん（え は art('magicCircle') を --ds-magic で もらう） */
+.ds-root .ds-aura.magic, .ds-root[data-ground] .ds-aura.magic { background: radial-gradient(circle, rgba(34, 211, 238, 0) 50%, rgba(45, 212, 191, .22) 82%, rgba(250, 204, 21, .32) 100%); }
+.ds-root .ds-aura.magic::before, .ds-root[data-ground] .ds-aura.magic::before { border: 0; background: var(--ds-magic) center / 100% 100% no-repeat; animation-duration: 6s; }
 
 /* エフェクト */
 .ds-fx { position: absolute; left: 0; top: 0; background: no-repeat center / contain; }
