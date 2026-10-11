@@ -90,6 +90,21 @@ const soldier = `
 
 const whiskers = `<path d="M10 33 L18 34 M10 38 L18 37 M54 33 L46 34 M54 38 L46 37" ${S2} fill="none"/>`;
 
+/* ---------- わるものぐんだんの ワッペン（オリジナル：ドクロ＋クロスした ナイフ。ちは なし） ---------- */
+const villainPatch = (x, y, k = 1) => `<g data-emblem="warumono" transform="translate(${x} ${y}) scale(${k})">
+  <rect x="-5.2" y="-4.2" width="10.4" height="8.4" rx="1.2" fill="#2a0a0e" ${SW(1.3)}/>
+  <path d="M-4 3.3 L-1.6 1.2 L3.9 -3.4 L1.2 -.8 Z M4 3.3 L1.6 1.2 L-3.9 -3.4 L-1.2 -.8 Z" fill="#e2e8f0" stroke="#e2e8f0" stroke-width=".5" stroke-linejoin="round"/>
+  <path d="M-4.1 3.4 L-2.6 2.1 M4.1 3.4 L2.6 2.1" stroke="#b91c1c" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="0" cy="-.3" r="1.85" fill="#f5f5f4" stroke="#2a0a0e" stroke-width=".5"/><rect x="-1.05" y="1" width="2.1" height="1.3" rx=".35" fill="#f5f5f4" stroke="#2a0a0e" stroke-width=".4"/>
+  <circle cx="-.7" cy="-.4" r=".55" fill="#2a0a0e"/><circle cx=".7" cy="-.4" r=".55" fill="#2a0a0e"/></g>`;
+// てきごとの ワッペンの いち（むねの かた よりなど、あう ところ）
+const PATCH_AT = {
+  zombie: [25, 49], bat: [12, 28], ghost: [22, 46], skull: [32, 52], scorpion: [27, 41], mummy: [22, 49],
+  snowman: [26, 50], wolf: [31, 53], pumpkin: [21, 44],
+  ogre: [24, 47], dragon: [20, 52], snake: [19, 54], icegiant: [21, 48], witch: [25, 49], maou: [21, 51],
+};
+const withPatch = (k, body) => body + villainPatch(...PATCH_AT[k]);
+
 /* ---------- てき ---------- */
 const zombie = `
   <path d="M42 44 L58 40 M42 50 L58 47" stroke="${O}" stroke-width="7.5" stroke-linecap="round"/>
@@ -516,9 +531,12 @@ const SOURCES = {
   fox:   wrap(hero({ fur: '#c2410c', shade: '#7c2d12', inner: '#e7e5e4', ear: 'fox', muzzle: '#e7e5e4', extra: whiskers })),
   panda: wrap(hero({ fur: '#e7e5e4', shade: '#57534e', inner: '#a8a29e', ear: 'panda', muzzle: '#d6d3d1', patches: true })),
   ...Object.fromEntries(Object.entries(hero2).map(([k, v]) => [k, wrap(v)])),
-  zombie: wrap(zombie), bat: wrap(bat), ghost: wrap(ghost), skull: wrap(skull), ogre: wrap(ogre), dragon: wrap(dragon),
-  scorpion: wrap(scorpion), mummy: wrap(mummy), snake: wrap(snake), snowman: wrap(snowman), wolf: wrap(wolf),
-  icegiant: wrap(icegiant, '0 -4 64 68'), pumpkin: wrap(pumpkin), witch: wrap(witch, '-6 -4 72 68'), maou: wrap(maou, '0 -4 64 68'),
+  zombie: wrap(withPatch('zombie', zombie)), bat: wrap(withPatch('bat', bat)), ghost: wrap(withPatch('ghost', ghost)),
+  skull: wrap(withPatch('skull', skull)), ogre: wrap(withPatch('ogre', ogre)), dragon: wrap(withPatch('dragon', dragon)),
+  scorpion: wrap(withPatch('scorpion', scorpion)), mummy: wrap(withPatch('mummy', mummy)), snake: wrap(withPatch('snake', snake)),
+  snowman: wrap(withPatch('snowman', snowman)), wolf: wrap(withPatch('wolf', wolf)),
+  icegiant: wrap(withPatch('icegiant', icegiant), '0 -4 64 68'), pumpkin: wrap(withPatch('pumpkin', pumpkin)),
+  witch: wrap(withPatch('witch', witch), '-6 -4 72 68'), maou: wrap(withPatch('maou', maou), '0 -4 64 68'),
   gem1: wrap(gem('#60a5fa', '#2563eb')), gem2: wrap(gem('#4ade80', '#16a34a')), gem3: wrap(gem('#f472b6', '#db2777')),
   coin: wrap(coin), meat: wrap(meat), magnet: wrap(magnet), nuke: wrap(bomb), bomb: wrap(bomb),
   kunai, star: wrap(star), bolt,
