@@ -8,11 +8,11 @@ import { storage } from '../../common/js/storage.js';
 import {
   STAGE_SECONDS, MINI_BOSS_SECONDS, MAX_ENEMIES, MAX_GEMS, MAX_LEVEL, DIFFICULTIES, CHARACTERS, ENEMY_TYPES,
   WEAPONS, PASSIVES, STAGES, GUNS, weaponStat, xpToNext, playerStats, spawnPlan, pickWeighted, upgradeChoices,
-  normalizeSave, stageById, bossType, bonusFor, clearRewards, receiveGift,
-} from './rules.js?v=185';
-import { preloadArt } from './art.js?v=185';
-import { Stage } from './stage.js?v=185';
-import { menuMethods, iconHtml } from './menus.js?v=185';
+  normalizeSave, stageById, bossType, bonusFor, clearRewards, receiveGift, clampZoom, pinchZoom, wheelZoom,
+} from './rules.js?v=186';
+import { preloadArt } from './art.js?v=186';
+import { Stage } from './stage.js?v=186';
+import { menuMethods, iconHtml } from './menus.js?v=186';
 
 const SAVE_KEY = 'dada_survivor_save';
 const TAU = Math.PI * 2;
@@ -31,7 +31,7 @@ export const DadaSurvivorGame = {
 
   // 起動時にこのゲームのCSSを自分で読み込む（?v= はこのフォルダ内で管理）。ハブが init 前に await する
   prepare() {
-    return loadCss(new URL('../css/dada-survivor.css?v=185', import.meta.url).href);
+    return loadCss(new URL('../css/dada-survivor.css?v=186', import.meta.url).href);
   },
 
   init(container, onBackToHub) {
@@ -42,6 +42,9 @@ export const DadaSurvivorGame = {
     this.paused = false;
     this.keys = new Set();
     this.stick = null;
+    this.zoom = this.save.zoom;
+    this.touches = new Map(); // いま さわっている ゆび（pointerId → いち）
+    this.pinch = null;
     this.buildDom();
     this.bindEvents();
     this.resize();
@@ -58,6 +61,7 @@ export const DadaSurvivorGame = {
     window.removeEventListener('keydown', this.onKeyDown);
     window.removeEventListener('keyup', this.onKeyUp);
     document.removeEventListener('visibilitychange', this.onVisibility);
+    clearTimeout(this.zoomSaveTimer);
     sound.stopBGM();
     this.run = null;
   },
@@ -102,7 +106,11 @@ export const DadaSurvivorGame = {
   bindEvents() {
     this.loop = this.loop.bind(this);
     this.resize = this.resize.bind(this);
-    this.onKeyDown = e => { this.keys.add(e.key.toLowerCase()); };
+    this.onKeyDown = e => {
+      const k = e.key.toLowerCase();
+      if (this.run && !this.paused && (k === '+' || k === '=' || k === '-')) { this.setZoom(this.zoom * (k === '-' ? 0.9 : 1 / 0.9)); return; }
+      this.keys.add(k);
+    };
     this.onKeyUp = e => { this.keys.delete(e.key.toLowerCase()); };
     this.onVisibility = () => { if (document.hidden && this.run && !this.paused) this.showPause(); };
     window.addEventListener('resize', this.resize);
@@ -110,27 +118,69 @@ export const DadaSurvivorGame = {
     window.addEventListener('keyup', this.onKeyUp);
     document.addEventListener('visibilitychange', this.onVisibility);
 
-    // どこを さわっても ジョイスティック
+    // どこを さわっても ジョイスティック。2ほんゆびは ピンチで ズーム（そのあいだ キャラは とまる）
     const v = this.stage.view;
+    const pinchDist = () => { const [a, b] = [...this.touches.values()]; return Math.hypot(a.x - b.x, a.y - b.y); };
     v.addEventListener('pointerdown', e => {
       if (!this.run || this.paused) return;
       v.setPointerCapture?.(e.pointerId);
+      this.touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (this.touches.size >= 2) {
+        this.stick = null;
+        if (this.touches.size === 2) this.pinch = { dist: pinchDist(), zoom: this.zoom };
+        return;
+      }
+      if (this.pinch) return; // ピンチの あと、ゆびを ぜんぶ はなすまで うごかさない
       this.stick = { id: e.pointerId, ox: e.clientX, oy: e.clientY, x: e.clientX, y: e.clientY };
     });
     v.addEventListener('pointermove', e => {
+      const t = this.touches.get(e.pointerId);
+      if (t) { t.x = e.clientX; t.y = e.clientY; }
+      if (this.pinch && !this.pinch.done && this.touches.size >= 2) { this.setZoom(pinchZoom(this.pinch.zoom, this.pinch.dist, pinchDist())); return; }
       if (this.stick && this.stick.id === e.pointerId) { this.stick.x = e.clientX; this.stick.y = e.clientY; }
     });
-    const end = e => { if (this.stick && this.stick.id === e.pointerId) this.stick = null; };
+    const end = e => {
+      this.touches.delete(e.pointerId);
+      if (this.stick && this.stick.id === e.pointerId) this.stick = null;
+      if (this.pinch && this.touches.size < 2) this.pinch.done = true; // のこった 1ぽんでは うごかさない
+      if (this.touches.size === 0) this.pinch = null;
+    };
     v.addEventListener('pointerup', end);
     v.addEventListener('pointercancel', end);
+    // PC：ホイール（トラックパッドの ピンチ＝ctrl+ホイール も おなじ）
+    v.addEventListener('wheel', e => {
+      e.preventDefault();
+      if (!this.run || this.paused) return;
+      this.setZoom(wheelZoom(this.zoom, e.deltaY * (e.ctrlKey ? 4 : 1)));
+    }, { passive: false });
+    // iOS Safari の ページズームを とめる（touch-action: none に くわえて）
+    const stop = e => e.preventDefault();
+    for (const ev of ['gesturestart', 'gesturechange', 'gestureend']) this.root.addEventListener(ev, stop, { passive: false });
+    this.root.addEventListener('touchmove', e => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
+  },
+
+  /** カメラの ズームを かえる（HUD は そのまま。セーブにも のこす） */
+  setZoom(z) {
+    z = clampZoom(z);
+    if (z === this.zoom) return;
+    this.zoom = z;
+    this.save.zoom = z;
+    this.resize();
+    clearTimeout(this.zoomSaveTimer);
+    this.zoomSaveTimer = setTimeout(() => this.persist(), 500);
   },
 
   resize() {
     const r = this.container.getBoundingClientRect();
     this.rect = r;
-    this.w = Math.max(1, r.width || window.innerWidth);
-    this.h = Math.max(1, r.height || window.innerHeight);
-    this.stage.resize(this.w, this.h);
+    // this.w / this.h は ズームを いれた「せかいで みえる はば」。てきの でる きょりや けんきゅうしゃの いちは これを つかう
+    this.sw = Math.max(1, r.width || window.innerWidth);
+    this.sh = Math.max(1, r.height || window.innerHeight);
+    const z = this.zoom || 1;
+    this.w = this.sw / z;
+    this.h = this.sh / z;
+    this.battleR = Math.hypot(this.sw, this.sh) / 2 + 50; // ズームに かんけいない「たたかいの はんい」
+    this.stage.resize(this.w, this.h, z);
   },
 
   /* ================= 画面 ================= */
@@ -252,6 +302,7 @@ export const DadaSurvivorGame = {
     const st = stageById(this.save.stage);
     this.stage.reset();
     this.stage.setGround(st.ground);
+    this.touches.clear(); this.pinch = null;
     this.run = {
       diff: DIFFICULTIES[this.save.difficulty] || DIFFICULTIES.easy,
       char: ch, stageDef: st, chests: 0,
@@ -401,6 +452,8 @@ export const DadaSurvivorGame = {
   },
 
   nearestEnemies(n, maxD = 520) {
+    // ズームアウトで みえる ところが ふえても、ねらえる きょりは ズーム1の がめんの そとがわ まで（ズームで つよく ならない）
+    maxD = Math.min(maxD, this.battleR || maxD);
     const p = this.run.player, lim = maxD * maxD;
     return this.run.enemies
       .map(e => [e, dist2(e, p)]).filter(([, d]) => d < lim)
@@ -660,7 +713,9 @@ export const DadaSurvivorGame = {
     for (const e of r.enemies) {
       e.flash = Math.max(0, e.flash - dt);
       const dx = p.x - e.x, dy = p.y - e.y, d = Math.hypot(dx, dy) || 1;
-      let vx = dx / d * e.T.speed, vy = dy / d * e.T.speed;
+      // ズームアウトで とおくに でた てきは、ズーム1の でばしょ（battleR）まで いそいで くる（くる じかんを ズームで かえない）
+      const sp = e.T.speed * (!e.T.boss && d > this.battleR ? 2.5 : 1);
+      let vx = dx / d * sp, vy = dy / d * sp;
       if (e.kb > 0) { e.kb -= dt; vx = e.kx * 260; vy = e.ky * 260; }
       const cx = Math.floor(e.x / cell), cy = Math.floor(e.y / cell);
       for (let gx = cx - 1; gx <= cx + 1; gx++) for (let gy = cy - 1; gy <= cy + 1; gy++) {

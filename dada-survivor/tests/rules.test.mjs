@@ -5,6 +5,7 @@ import {
   spawnPlan, pickWeighted, upgradeChoices, normalizeSave, shopCost, STAGES, ENEMY_TYPES, bossType,
   GEAR_SLOTS, RARITIES, rollGear, addGear, equipGear, unequipGear, mergeGear, bonusFor, defaultSave,
   stageUnlocked, charUnlocked, clearRewards, receiveGift, MINI_BOSS_SECONDS, EVOLUTIONS,
+  ZOOM_MIN, ZOOM_MAX, clampZoom, pinchZoom, wheelZoom,
 } from '../js/rules.js';
 
 test('every weapon stat table covers all levels', () => {
@@ -173,4 +174,28 @@ test('スーパーミサイル: strongest blast, slow reload, never a level-up c
   for (const [w, p] of states) for (let i = 0; i < 40; i++) {
     assert.ok(upgradeChoices(w, p).every(c => c.id !== 'supermissile'));
   }
+});
+
+// こどもの リクエスト：2ほんゆびで かくだい・しゅくしょう
+test('zoom is clamped to 0.6〜1.4 and remembered in the save', () => {
+  assert.equal(ZOOM_MIN, 0.6); assert.equal(ZOOM_MAX, 1.4);
+  assert.equal(clampZoom(1), 1);
+  assert.equal(clampZoom(0.1), 0.6); assert.equal(clampZoom(9), 1.4);
+  for (const bad of [NaN, undefined, null, 'x', -1, 0, Infinity]) assert.equal(clampZoom(bad), 1, String(bad));
+  assert.equal(clampZoom('0.8'), 0.8);
+  // ピンチ：ゆびが 2ばい ひらくと 2ばい（うえは 1.4 まで）、はんぶんに とじると はんぶん（したは 0.6 まで）
+  assert.equal(pinchZoom(1, 100, 120), 1.2);
+  assert.equal(pinchZoom(1, 100, 200), 1.4);
+  assert.equal(pinchZoom(1, 100, 80), 0.8);
+  assert.equal(pinchZoom(1, 100, 10), 0.6);
+  assert.equal(pinchZoom(0.9, 0, 50), 0.9);
+  // ホイール：した（+）で ひろく、うえ（-）で ちかく
+  assert.ok(wheelZoom(1, 100) < 1); assert.ok(wheelZoom(1, -100) > 1);
+  assert.equal(wheelZoom(0.6, 1000), 0.6); assert.equal(wheelZoom(1.4, -1000), 1.4);
+  assert.equal(wheelZoom(1, 0), 1);
+  assert.equal(normalizeSave(null).zoom, 1);
+  assert.equal(normalizeSave({ zoom: 0.7 }).zoom, 0.7);
+  assert.equal(normalizeSave({ zoom: 5 }).zoom, 1.4);
+  assert.equal(normalizeSave({ zoom: 'abc' }).zoom, 1);
+  assert.equal(normalizeSave({ coins: 3 }).zoom, 1);
 });

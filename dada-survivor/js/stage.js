@@ -5,7 +5,7 @@
  * - 要素はプールで使い回し、生成/破棄でGCやレイアウトを揺らさない
  * - 一時エフェクトは Web Animations API（コンポジタで再生）
  */
-import { art, groundTile } from './art.js?v=185';
+import { art, groundTile } from './art.js?v=186';
 
 class Pool {
   constructor(layer, make) { this.layer = layer; this.make = make; this.free = []; this.active = new Set(); }
@@ -40,9 +40,11 @@ export class Stage {
   constructor(root) {
     this.root = root;
     this.view = el('ds-view', root);
-    this.ground = el('ds-ground', this.view);
+    // カメラ（ズームは ここに scale を 1かい かけるだけ。じめんと せかいは なかで「ズームご の はば」で うごく）
+    this.cam = el('ds-cam', this.view);
+    this.ground = el('ds-ground', this.cam);
     this.setGround('grass');
-    this.world = el('ds-world', this.view);
+    this.world = el('ds-world', this.cam);
     const floor = el('ds-layer', this.world), units = el('ds-layer', this.world);
     const top = el('ds-layer', this.world), fx = el('ds-layer', this.world);
 
@@ -89,11 +91,14 @@ export class Stage {
     this.ground.style.backgroundSize = `${this.tile}px ${this.tile}px`;
     this.ground.style.setProperty('--ds-tile', `${this.tile}px`);
     this.root.dataset.ground = kind;
-    if (this.w) this.resize(this.w, this.h);
+    if (this.w) this.resize(this.w, this.h, this.zoom || 1);
   }
 
-  resize(w, h) {
+  // w, h は ズームご の せかいの はば（がめん ÷ zoom）
+  resize(w, h, zoom = 1) {
     this.w = w; this.h = h;
+    if (this.zoom !== zoom) { this.zoom = zoom; this.cam.style.transform = zoom === 1 ? '' : `scale(${zoom})`; }
+    this.cam.style.width = `${w}px`; this.cam.style.height = `${h}px`;
     const T = this.tile || 160;
     this.ground.style.width = `${w + T * 2}px`;
     this.ground.style.height = `${h + T * 2}px`;

@@ -372,10 +372,27 @@ const emptyGear = () => ({
   equip: Object.fromEntries(Object.keys(GEAR_SLOTS).map(k => [k, -1])),
 });
 
+// カメラの ズーム（2ほんゆびで ピンチ／PCは ホイール）。ちいさいほど ひろく みえる
+export const ZOOM_MIN = 0.6, ZOOM_MAX = 1.4;
+export function clampZoom(z) {
+  z = Number(z);
+  if (!Number.isFinite(z) || z <= 0) return 1;
+  return Math.round(Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, z)) * 1000) / 1000;
+}
+/** ピンチ：はじめの ズームに ゆびの きょりの ひを かける */
+export function pinchZoom(startZoom, startDist, dist) {
+  if (!(startDist > 0) || !(dist > 0)) return clampZoom(startZoom);
+  return clampZoom(startZoom * dist / startDist);
+}
+/** ホイール：したに まわすと ひろく（ズームアウト） */
+export function wheelZoom(z, deltaY) {
+  return clampZoom(clampZoom(z) * Math.exp(-(Number(deltaY) || 0) * 0.0015));
+}
+
 export function defaultSave() {
   return {
     coins: 0, shop: { hp: 0, atk: 0, spd: 0 }, character: 'cat', difficulty: 'easy', stage: 1,
-    bestKills: 0, clears: 0, stageClears: {}, pendingChests: 0, gear: emptyGear(),
+    bestKills: 0, clears: 0, stageClears: {}, pendingChests: 0, gear: emptyGear(), zoom: 1,
   };
 }
 
@@ -389,6 +406,7 @@ export function normalizeSave(raw) {
     shop: { ...base.shop, ...(raw.shop || {}) },
     stageClears: { ...(raw.stageClears || {}) },
     gear: emptyGear(),
+    zoom: clampZoom(raw.zoom ?? 1),
   };
   // まえの バージョン（ステージ1しか なかった）で クリアしていたら ステージ1 クリアあつかい
   if (!raw.stageClears && raw.clears > 0) s.stageClears[1] = raw.clears;

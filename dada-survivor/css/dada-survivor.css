@@ -16,6 +16,7 @@
 
 /* ---------- ステージ ---------- */
 .ds-view { position: absolute; inset: 0; overflow: hidden; touch-action: none; contain: strict; }
+.ds-cam { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
 .ds-ground { position: absolute; left: 0; top: 0; background-size: 160px 160px; will-change: transform; }
 .ds-attract .ds-ground { animation: ds-scroll 14s linear infinite; }
 @keyframes ds-scroll { from { transform: translate3d(calc(-1 * var(--ds-tile, 160px)), calc(-1 * var(--ds-tile, 160px)), 0); } to { transform: translate3d(0, 0, 0); } }
