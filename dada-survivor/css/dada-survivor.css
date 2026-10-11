@@ -297,3 +297,19 @@
 /* けんきゅうしゃの ！ マーク（いちを うごかす .ds-ent ではなく こどもに アニメ） */
 .ds-npc-mark { position: absolute; left: -12px; top: -58px; width: 24px; height: 24px; line-height: 22px; text-align: center; font: 900 16px/22px var(--ds-font, sans-serif); color: #121418; background: #fde047; border: 2px solid #121418; border-radius: 50%; animation: ds-npc-mark .6s ease-in-out infinite alternate; }
 @keyframes ds-npc-mark { from { transform: translateY(0); } to { transform: translateY(-5px); } }
+
+/* ---------- コンテナ・なかま・ふえ ---------- */
+.ds-crate-mark { top: -62px; }
+.ds-whistle { position: absolute; right: 12px; bottom: calc(env(safe-area-inset-bottom, 0px) + 16px); width: 78px; height: 78px; padding: 0; border: 4px solid var(--ds-ink, #121418); border-radius: 50%; background: #fde047; box-shadow: 0 4px 0 var(--ds-ink, #121418); pointer-events: auto; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; z-index: 3; overflow: hidden; }
+.ds-whistle.hidden, .ds-hud.hidden ~ .ds-whistle { display: none; }
+.ds-whistle:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--ds-ink, #121418); }
+.ds-whistle-ico { position: absolute; left: 12px; top: 6px; width: 46px; height: 46px; background: center/contain no-repeat; }
+.ds-whistle-txt { position: absolute; left: 0; right: 0; bottom: 6px; font: 900 15px/1 var(--ds-font, sans-serif); color: var(--ds-ink, #121418); text-align: center; }
+.ds-whistle-cd { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; font: 900 28px/1 var(--ds-font, sans-serif); font-style: normal; color: #fff; background: rgba(18, 20, 24, .55); text-shadow: 0 2px 0 #121418; }
+.ds-whistle.cool { background: #cbd5e1; box-shadow: 0 2px 0 var(--ds-ink, #121418); }
+.ds-whistle.cool .ds-whistle-cd { display: flex; }
+.ds-whistle.call { animation: ds-whistle-call .55s ease-in-out infinite alternate; }
+@keyframes ds-whistle-call { from { transform: scale(1); } to { transform: scale(1.1); } }
+.ds-arrow { position: absolute; left: 0; top: 0; width: 0; height: 0; pointer-events: none; z-index: 2; }
+.ds-arrow-tip { position: absolute; left: -20px; top: -20px; width: 40px; height: 40px; font: 900 34px/40px sans-serif; text-align: center; color: #2563eb; -webkit-text-stroke: 2px #fff; }
+.ds-arrow-label { position: absolute; left: -36px; top: 18px; width: 72px; font: 900 12px/1 var(--ds-font, sans-serif); text-align: center; color: #fff; background: #2563eb; border: 2px solid #121418; border-radius: 8px; padding: 3px 0; }

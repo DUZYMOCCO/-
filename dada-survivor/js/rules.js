@@ -60,7 +60,8 @@ export const STAGES = [
     // ばくだんの ひが ひろがった ところに ばくはへい（mummy）が あつまる・ボトルは こわせる
     fire: true, bottles: true,
     // けんきゅうしゃ：at びょうで あらわれ、さわると gift の ぶきを くれる（いまは ステージ1だけ）
-    researcher: { at: 90, gift: 'supermissile' } },
+    // container: けんきゅうしゃは コンテナの なか（なかまと いっしょ）。at びょうで コンテナが みつかる
+    researcher: { at: 90, gift: 'supermissile', container: true } },
   { id: 2, name: 'さばく', ground: 'desert', hpMul: 1.6, spawnMul: 1.1, dmgMul: 1.15,
     enemies: [['scorpion', 0, 10], ['bat', 30, 5], ['mummy', 90, 6], ['skull', 180, 4]],
     mini: { type: 'mummy', hp: 1600, big: 2.4, name: 'でかばくはへい' }, boss: { type: 'snake', hp: 5000 } },
@@ -497,3 +498,28 @@ export function bottleOutcome(kind) {
   if (kind === 'capsule') return { alien: false, gem: BOTTLE.emptyGem };
   return null; // わられた ボトル・はた は こわせない
 }
+
+/* ---------- けんきゅうじょの コンテナと なかま ----------
+ * コンテナ：at びょうで プレイヤーから dist0〜dist1 はなれた ところに 1つ。さわると ひらく（openR）。
+ * なかから けんきゅうしゃ（スーパーミサイルを くれて、コンテナの そばに のこる）・ちりょうたい 1・ぶたいの なかま 3。
+ * なかまは むてき（たおれない・てきを ふさがない）。じぶんの まわりに ならんで、ちかくの てきを うつ。
+ * ちりょうたいは うしろに ついて くる。ふえ（ボタン／F キー）で はしって きて、healTime びょうで さいだいHP の healPct かいふく。 */
+export const SQUAD = {
+  dist0: 650, dist1: 900, openR: 62,
+  soldiers: 3, slotDist: 58, slotAngles: [125, -125, 180], medicDist: 104,
+  speed: 230, range: 340, cd: 0.9, dmg: 7, bulletSpeed: 520, life: 0.75,
+  medicRun: 340, healTime: 2, healPct: 0.4, whistleCd: 24,
+};
+/** なかまの だんがんの ダメージ（じかんで すこし つよく。プレイヤーの こうげき ばいりつも のる） */
+export function allyDamage(t, playerDamage = 1, S = SQUAD) { return S.dmg * (1 + t / 240) * playerDamage; }
+/** ならぶ ばしょ（すすむ むき heading の うしろ に ひろがる）。i < soldiers は へいたい、i === soldiers は ちりょうたい */
+export function squadSlot(i, heading, S = SQUAD) {
+  const medic = i >= S.soldiers;
+  const a = heading + (medic ? Math.PI : S.slotAngles[i] * Math.PI / 180);
+  const d = medic ? S.medicDist : S.slotDist;
+  return { x: Math.cos(a) * d, y: Math.sin(a) * d };
+}
+/** ふえ：ちりょうたいが いて、クールダウンが おわって いれば ふける */
+export function canWhistle(medic, cd) { return !!medic && cd <= 0; }
+/** ちりょうの かいふくりょう（dt びょうぶん） */
+export function healAmount(maxHp, dt, S = SQUAD) { return maxHp * S.healPct / S.healTime * dt; }

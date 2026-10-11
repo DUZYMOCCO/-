@@ -182,3 +182,25 @@ export class PopBGM {
     }
   }
 }
+
+/** ふえの おと（ピッ・ピーッ）。こうかおんの おおきさ（sound.effectVolume）と ミュートを まもる */
+export function playWhistle(s) {
+  const ctx = s?.ctx;
+  if (!ctx || ctx.state !== 'running' || s.isMuted || s.pageHidden || !s.limiter) return false;
+  const vol = (s.effectVolume ?? 1) * 0.22;
+  if (vol <= 0) return false;
+  const t0 = ctx.currentTime + 0.01;
+  const g = ctx.createGain(); g.gain.value = 0; g.connect(s.limiter);
+  const o = ctx.createOscillator(); o.type = 'triangle';
+  const lfo = ctx.createOscillator(), lg = ctx.createGain(); lfo.frequency.value = 38; lg.gain.value = 70; // ころころ（ふえの なかの たま）
+  lfo.connect(lg).connect(o.frequency); o.connect(g);
+  o.frequency.setValueAtTime(2300, t0); o.frequency.setValueAtTime(2300, t0 + 0.1);
+  o.frequency.linearRampToValueAtTime(2750, t0 + 0.2);
+  for (const [a, b] of [[t0, t0 + 0.09], [t0 + 0.15, t0 + 0.5]]) {
+    g.gain.setValueAtTime(0, a); g.gain.linearRampToValueAtTime(vol, a + 0.015);
+    g.gain.setValueAtTime(vol, b - 0.03); g.gain.linearRampToValueAtTime(0, b);
+  }
+  o.start(t0); lfo.start(t0); o.stop(t0 + 0.55); lfo.stop(t0 + 0.55);
+  o.onended = () => { try { g.disconnect(); lg.disconnect(); } catch { /* もう きれている */ } };
+  return true;
+}

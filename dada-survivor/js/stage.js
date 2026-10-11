@@ -8,7 +8,7 @@
  * - おもい ときは「かるい モード」（ds-lite）：ぴょこぴょこ／ほうせきの ゆれを とめ、エフェクトと すうじを へらす
  * - ここでは Math.random を つかわない（みための ばらつきは カウンタで。ゲームの らんすうと まざらない）
  */
-import { art, groundTile } from './art.js?v=191';
+import { art, groundTile } from './art.js?v=192';
 
 class Pool {
   constructor(layer, make) { this.layer = layer; this.make = make; this.free = []; this.active = new Set(); this.key = Symbol('node'); }
@@ -46,9 +46,10 @@ const FX_FRAMES = {
   pop:  [{ transform: 'scale(.5)', opacity: 1 }, { transform: 'scale(1.5)', opacity: 0 }],
   boom: [{ transform: 'scale(.3)', opacity: 1 }, { transform: 'scale(1.1)', opacity: .9, offset: .4 }, { transform: 'scale(1.25)', opacity: 0 }],
   shatter: [{ transform: 'scale(.4) rotate(0deg)', opacity: 1 }, { transform: 'scale(1.1) rotate(25deg)', opacity: .9, offset: .5 }, { transform: 'scale(1.35) rotate(40deg)', opacity: 0 }],
+  heal: [{ transform: 'translateY(0) scale(.6)', opacity: 1 }, { transform: 'translateY(-26px) scale(1)', opacity: 1, offset: .5 }, { transform: 'translateY(-46px) scale(.9)', opacity: 0 }],
   bolt: [{ transform: 'scaleY(.2)', opacity: 1, transformOrigin: '50% 100%' }, { transform: 'scaleY(1)', opacity: 1, offset: .25, transformOrigin: '50% 100%' }, { transform: 'scaleY(1)', opacity: 0, transformOrigin: '50% 100%' }],
 };
-const FX_OPTS = { shatter: { duration: 520, easing: 'ease-out' }, pop: { duration: 300, easing: 'ease-out' }, boom: { duration: 420, easing: 'ease-out' }, bolt: { duration: 320, easing: 'ease-out' } };
+const FX_OPTS = { heal: { duration: 700, easing: 'ease-out' }, shatter: { duration: 520, easing: 'ease-out' }, pop: { duration: 300, easing: 'ease-out' }, boom: { duration: 420, easing: 'ease-out' }, bolt: { duration: 320, easing: 'ease-out' } };
 const TEXT_FRAMES = [
   { transform: 'translate(-50%,0) scale(.6)', opacity: 1 },
   { transform: 'translate(-50%,-14px) scale(1.15)', opacity: 1, offset: .25 },
@@ -111,6 +112,16 @@ export class Stage {
     this.npcMark.textContent = '！';
     this.npc.style.display = 'none';
     units.appendChild(this.npc);
+    // コンテナ（1こ。ゆかの かざりと おなじ そう）と、たすけた けんきゅうしゃ・なかま（さいだい 4にん）
+    this.crate = makeSprite('ds-crate');
+    this.crateMark = el('ds-npc-mark ds-crate-mark', this.crate);
+    this.crateMark.textContent = '！';
+    this.crate.style.display = 'none';
+    deco.appendChild(this.crate);
+    this.helper = makeSprite('ds-walk ds-keep');
+    this.helper.style.display = 'none';
+    units.appendChild(this.helper);
+    this.allies = new Pool(units, () => makeSprite('ds-walk ds-keep ds-ally'));
 
     this.kunai = new Pool(top, () => makeSprite('ds-kunai'));
     this.bullets = new Pool(top, () => makeSprite('ds-bullet'));
@@ -126,6 +137,7 @@ export class Stage {
     this.joy = el('ds-joy', root);
     this.joyKnob = el('ds-joy-knob', this.joy);
     this.joy.style.display = 'none';
+    this.arrow(null); // やじるしも HUD より したに つくっておく
     this.frame = 0;
     this.texts = 0;
     this.booms = 0;
@@ -174,7 +186,7 @@ export class Stage {
 
   reset() {
     this.gen = (this.gen || 0) + 1;
-    for (const p of [this.decor, this.fires, this.marks, this.ebombs, this.gems, this.items, this.enemies, this.kunai, this.bullets, this.rockets, this.bombs, this.stars, this.fxPool, this.textPool]) {
+    for (const p of [this.allies, this.decor, this.fires, this.marks, this.ebombs, this.gems, this.items, this.enemies, this.kunai, this.bullets, this.rockets, this.bombs, this.stars, this.fxPool, this.textPool]) {
       for (const n of p.active) n._img.getAnimations?.().forEach(a => a.cancel());
       p.clear();
     }
@@ -182,6 +194,9 @@ export class Stage {
     this.booms = 0;
     this.aura.style.display = 'none';
     this.npc.style.display = 'none';
+    this.crate.style.display = 'none';
+    this.helper.style.display = 'none';
+    this.arrow(null);
   }
 
   /* ---------- 小さな差分更新ヘルパ ---------- */
@@ -257,6 +272,26 @@ export class Stage {
       Stage.face(this.npc, npc.x > p.x);
       Stage.place(this.npc, npc.x, npc.y);
     } else if (this.npc.style.display !== 'none') this.npc.style.display = 'none';
+
+    // コンテナ・なかま
+    const box = r.container;
+    if (box) {
+      if (this.crate.style.display === 'none') this.crate.style.display = '';
+      Stage.look(this.crate, box.open ? 'containerOpen' : 'container', 124);
+      if (this.crateMark._open !== box.open) { this.crateMark._open = box.open; this.crateMark.style.display = box.open ? 'none' : ''; }
+      Stage.place(this.crate, box.x, box.y);
+      if (box.open) {
+        if (this.helper.style.display === 'none') this.helper.style.display = '';
+        Stage.look(this.helper, 'researcher', 46);
+        Stage.face(this.helper, box.x + 52 > p.x);
+        Stage.place(this.helper, box.x + 52, box.y + 34);
+      }
+    } else if (this.crate.style.display !== 'none') { this.crate.style.display = 'none'; this.helper.style.display = 'none'; }
+    if (r.allies?.length) this.sync(this.allies, r.allies, (a, n) => {
+      Stage.look(n, a.medic ? 'medic' : 'ally', a.medic ? 46 : 48);
+      Stage.face(n, a.face < 0);
+      Stage.place(n, a.x, a.y);
+    }, false);
 
     // バリア
     const aura = look.auraRadius;
@@ -350,7 +385,7 @@ export class Stage {
       st.height = `${size}px`;
       st.marginTop = kind === 'bolt' ? `${-size}px` : `${-size / 2}px`;
       if (kind === 'bolt') { st.backgroundImage = art('bolt'); st.width = `${size * 0.54}px`; st.marginLeft = `${-size * 0.27}px`; }
-      else { st.backgroundImage = ''; st.width = `${size}px`; st.marginLeft = `${-size / 2}px`; }
+      else { st.backgroundImage = kind === 'heal' ? art('healPlus') : ''; st.width = `${size}px`; st.marginLeft = `${-size / 2}px`; }
     }
     Stage.place(n, x, y);
     const a = img.animate(FX_FRAMES[kind], FX_OPTS[kind]);
@@ -393,6 +428,22 @@ export class Stage {
   hurt() { this.hurtEl.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 400, easing: 'ease-out' }); }
 
   /* ---------- ジョイスティック ---------- */
+  /** がめんの そとの コンテナを さす やじるし（がめん ざひょう sx,sy と むき ang。null で かくす） */
+  arrow(at) {
+    if (!this.arrowEl) {
+      this.arrowEl = el('ds-arrow', this.root);
+      el('ds-arrow-tip', this.arrowEl).textContent = '➤';
+      el('ds-arrow-label', this.arrowEl).textContent = 'コンテナ';
+      this.arrowEl.style.display = 'none';
+    }
+    const n = this.arrowEl;
+    if (!at) { if (n.style.display !== 'none') n.style.display = 'none'; return; }
+    if (n.style.display === 'none') n.style.display = '';
+    const x = Math.round(at.x), y = Math.round(at.y), a = Math.round(at.ang * 20) / 20;
+    if (n._x !== x || n._y !== y) { n._x = x; n._y = y; n.style.transform = `translate3d(${x}px,${y}px,0)`; }
+    if (n._a !== a) { n._a = a; n.firstChild.style.transform = `rotate(${a}rad)`; }
+  }
+
   joystick(stick, rect) {
     if (!stick) { if (this.joy.style.display !== 'none') this.joy.style.display = 'none'; return; }
     if (this.joy.style.display === 'none') this.joy.style.display = '';

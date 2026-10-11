@@ -5,7 +5,7 @@
  *   sim.campaign({ difficulty: 'easy', bot: 'kid', runs: 5 });
  * セーブデータは上書きするので、終わったら sim.cleanup() で消す。
  */
-import * as rules from '../js/rules.js?v=191';
+import * as rules from '../js/rules.js?v=192';
 import { storage } from '../../common/js/storage.js';
 
 const SAVE_KEY = 'dada_survivor_save';
@@ -31,8 +31,8 @@ function game() {
 
 // pro: うまい（宝石とアイテムを拾い、敵をよける） / kid: 反応がおそく、ふらつき、ときどき止まる
 const BOTS = {
-  pro: { every: 6, evade: 90, bossEvade: 200, idle: 0, noise: 0, items: true },
-  kid: { every: 24, evade: 45, bossEvade: 110, idle: 0.15, noise: 1.6, items: false },
+  pro: { every: 6, evade: 90, bossEvade: 200, idle: 0, noise: 0, items: true, whistleAt: 0.5 },
+  kid: { every: 24, evade: 45, bossEvade: 110, idle: 0.15, noise: 1.6, items: false, whistleAt: 0.4 },
 };
 
 function drive(g, b) {
@@ -51,6 +51,11 @@ function drive(g, b) {
   }
   if (best) { const d = Math.sqrt(bd) || 1; vx += (best.x - p.x) / d; vy += (best.y - p.y) / d; }
   if (r.npc && !b.noNpc) { const d = Math.hypot(r.npc.x - p.x, r.npc.y - p.y) || 1; vx += (r.npc.x - p.x) / d * 2; vy += (r.npc.y - p.y) / d * 2; }
+  // コンテナは やじるしが でるので kid も むかう（ひらくと なかまと スーパーミサイル）
+  const box = r.container;
+  if (box && !box.open && !b.noNpc) { const d = Math.hypot(box.x - p.x, box.y - p.y) || 1; vx += (box.x - p.x) / d * 2; vy += (box.y - p.y) / d * 2; }
+  // ふえ：HP が はんぶん（kid は 4わり）を きったら ふく
+  if (!b.noWhistle && r.player.hp < r.stats.maxHp * b.whistleAt) g.whistle();
   vx += (Math.random() - 0.5) * b.noise; vy += (Math.random() - 0.5) * b.noise;
   const l = Math.hypot(vx, vy);
   g.stick = l > 0.05 ? { id: 1, ox: 0, oy: 0, x: vx / l * 50, y: vy / l * 50 } : null;

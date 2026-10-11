@@ -88,6 +88,40 @@ const soldier = `
   <path d="M21 30 L28.5 31.2 M43 30 L35.5 31.2" fill="none" ${SW(2)}/>
   ${animeEye(24.5, 33.2, '#93c5fd')}${animeEye(39.5, 33.2, '#93c5fd')}`;
 
+// ぶたいの なかま（じぶんと おなじ とくしゅぶたい。ヘルメットと ラインが あおい）
+const allySoldier = soldier
+  .replace('<path d="M11 26 Q11 6 32 6 Q53 6 53 26 Q32 21 11 26Z" fill="#3a3d44"', '<path d="M11 26 Q11 6 32 6 Q53 6 53 26 Q32 21 11 26Z" fill="#2f4a73"')
+  .replace('<path d="M15 16 Q32 12 49 16" fill="none" stroke="#2a2d33" stroke-width="1.6"/>', '<path d="M15 16 Q32 12 49 16" fill="none" stroke="#60a5fa" stroke-width="2.4"/>')
+  + `<path d="M37 47 L43 45 L43.6 47.4 L37.6 49.4Z" fill="#3b82f6" ${SW(1)}/>`;
+// ちりょうたい（しろい ヘルメットと ベスト、みどりの じゅうじ ＋ ハート。ほんものの あかじゅうじ は つかわない）
+const greenPlus = (x, y, s = 1) => `<g transform="translate(${x} ${y}) scale(${s})"><path d="M-2 -5.5 H2 V-2 H5.5 V2 H2 V5.5 H-2 V2 H-5.5 V-2 H-2Z" fill="#22c55e" stroke="#14532d" stroke-width="1" stroke-linejoin="round"/></g>`;
+const medic = soldier.split('\n').filter(l => !/M6 59 L56 43|M4 60 L13 57|M27 52 L33 50|M30 47\.5 L40 44\.3|M55 42 L61\.5 40/.test(l)).join('\n')
+  .replace('<path d="M22 45 Q32 48.5 42 45 L42.5 58 Q32 61 21.5 58Z" fill="#1b1d21"', '<path d="M22 45 Q32 48.5 42 45 L42.5 58 Q32 61 21.5 58Z" fill="#e8eef3"')
+  .replace('<path d="M11 26 Q11 6 32 6 Q53 6 53 26 Q32 21 11 26Z" fill="#3a3d44"', '<path d="M11 26 Q11 6 32 6 Q53 6 53 26 Q32 21 11 26Z" fill="#e8eef3"')
+  + `${greenPlus(32, 52, 0.9)}${greenPlus(32, 15, 0.7)}
+  <rect x="43" y="47" width="14" height="11" rx="2" fill="#f8fafc" ${SW(1.6)}/><path d="M47 47 V45 H53 V47" fill="none" ${SW(1.4)}/>
+  <path d="M50 49.5 Q48 48 47 49.6 Q46 51.6 50 54.6 Q54 51.6 53 49.6 Q52 48 50 49.5Z" fill="#22c55e" stroke="#14532d" stroke-width=".9"/>`;
+// コンテナ（みかたの はたの マーク。しまって いる／ひらいた）
+const crate = open => wrap(`
+  <ellipse cx="60" cy="86" rx="56" ry="6" fill="#000" opacity=".2"/>
+  <rect x="6" y="14" width="108" height="70" rx="4" fill="#4f6f94" ${SW(2.6)}/>
+  ${Array.from({ length: 12 }, (_, i) => `<path d="M${14 + i * 8.6} 20 V78" stroke="#3f5c7d" stroke-width="2.6"/>`).join('')}
+  <rect x="6" y="14" width="108" height="8" rx="3" fill="#6b8bb0" ${SW(2)}/><rect x="6" y="76" width="108" height="8" rx="3" fill="#3f5c7d" ${SW(2)}/>
+  ${open ? `<rect x="30" y="24" width="60" height="52" fill="#141a22" ${SW(2)}/>
+    <path d="M30 24 L12 18 V82 L30 76Z" fill="#6b8bb0" ${SW(2)}/><path d="M90 24 L108 18 V82 L90 76Z" fill="#6b8bb0" ${SW(2)}/>
+    <path d="M36 70 H84" stroke="#2a3442" stroke-width="3"/>` : `
+    <rect x="30" y="24" width="60" height="52" fill="#58799e" ${SW(2)}/><path d="M60 24 V76" ${SW(2)}/>
+    <path d="M44 34 V66 M76 34 V66" stroke="#2d4157" stroke-width="3" stroke-linecap="round"/>
+    <rect x="55" y="45" width="10" height="10" rx="2" fill="#facc15" ${SW(1.4)}/>
+    <g transform="translate(60 33) scale(.42)">${heroEmblem}</g>`}
+  <circle cx="16" cy="18" r="2.4" fill="${open ? '#22c55e' : '#f59e0b'}" ${SW(1)}/>`, '0 0 120 92');
+// ふえ（HUD の ボタン）と、ちりょうの みどりの ＋
+const whistle = wrap(`<path d="M14 18 Q8 30 18 36" fill="none" stroke="#3b82f6" stroke-width="3" stroke-linecap="round"/>
+  <path d="M16 26 H44 Q56 26 56 38 Q56 50 44 50 Q32 50 32 40 V36 H16Z" fill="#facc15" ${S}/><rect x="10" y="22" width="12" height="10" rx="2" fill="#e5e7eb" ${S}/>
+  <circle cx="44" cy="38" r="5" fill="#a16207" ${SW(1.6)}/><path d="M24 30 H30" stroke="#a16207" stroke-width="2" stroke-linecap="round"/>
+  <path d="M50 14 L54 8 M57 20 L63 17 M42 12 L42 5" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/>`);
+const healPlus = wrap(`<circle cx="32" cy="32" r="22" fill="#fff" ${S}/>${greenPlus(32, 32, 2.6)}`);
+
 const whiskers = `<path d="M10 33 L18 34 M10 38 L18 37 M54 33 L46 34 M54 38 L46 37" ${S2} fill="none"/>`;
 
 /* ---------- わるものぐんだんの ワッペン（オリジナル：ドクロ＋クロスした ナイフ。ちは なし） ---------- */
@@ -818,6 +852,7 @@ const SOURCES = {
   kunai, star: wrap(star), bolt, smissile, researcher: wrap(researcher),
   capsule: capsule(false), capsuleBroken: capsule(true), alienFloat, labFlag, ebomb, fire, glassShards,
   thrower: wrap(withPatch('thrower', thrower)), alien: wrap(alienFoe),
+  ally: wrap(allySoldier), medic: wrap(medic), container: crate(false), containerOpen: crate(true), whistle, healPlus,
   gun, shotgun, bazooka, dual, gatling, rocket, mega, bullet, pellet, blast,
   sword: wrap(sword), armor: wrap(armor), shoes: wrap(shoes), charm: wrap(charm), chest: wrap(chest), chestOpen: wrap(chestOpen, '0 -4 64 68'),
   ...Object.fromEntries(Object.entries(GROUNDS).map(([k, v]) => [`ground-${k}`, v])),

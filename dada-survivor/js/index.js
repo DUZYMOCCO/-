@@ -10,13 +10,14 @@ import {
   WEAPONS, PASSIVES, STAGES, GUNS, weaponStat, xpToNext, playerStats, spawnPlan, pickWeighted, upgradeChoices,
   normalizeSave, stageById, bossType, bonusFor, clearRewards, receiveGift, clampZoom, pinchZoom, wheelZoom,
   newQuality, adaptQuality, THROW, fireRadius, capType, gatherCount, BOTTLE, bottleOutcome,
-} from './rules.js?v=191';
-import { DecorField } from './decor.js?v=191';
-import { EnemyGrid, nearestN } from './grid.js?v=191';
-import { preloadArt } from './art.js?v=191';
-import { Stage } from './stage.js?v=191';
-import { menuMethods, iconHtml } from './menus.js?v=191';
-import { PopBGM } from './bgm.js?v=191';
+  SQUAD, allyDamage, squadSlot, canWhistle, healAmount,
+} from './rules.js?v=192';
+import { DecorField } from './decor.js?v=192';
+import { EnemyGrid, nearestN } from './grid.js?v=192';
+import { preloadArt, art } from './art.js?v=192';
+import { Stage } from './stage.js?v=192';
+import { menuMethods, iconHtml } from './menus.js?v=192';
+import { PopBGM, playWhistle } from './bgm.js?v=192';
 
 const SAVE_KEY = 'dada_survivor_save';
 const TAU = Math.PI * 2;
@@ -42,7 +43,7 @@ export const DadaSurvivorGame = {
 
   // 起動時にこのゲームのCSSを自分で読み込む（?v= はこのフォルダ内で管理）。ハブが init 前に await する
   prepare() {
-    return loadCss(new URL('../css/dada-survivor.css?v=191', import.meta.url).href);
+    return loadCss(new URL('../css/dada-survivor.css?v=192', import.meta.url).href);
   },
 
   init(container, onBackToHub) {
@@ -96,6 +97,7 @@ export const DadaSurvivorGame = {
           <div class="ds-skills"></div>
           <div class="ds-boss hidden"><span class="ds-boss-name"></span><div class="ds-boss-bar"><div class="ds-boss-fill"></div></div></div>
         </div>
+        <button class="ds-whistle hidden" aria-label="ふえ"><span class="ds-whistle-ico"></span><b class="ds-whistle-txt">ふえ</b><i class="ds-whistle-cd"></i></button>
         <div class="ds-banner hidden"></div>
         <div class="ds-overlay hidden"></div>
       </div>`;
@@ -103,7 +105,7 @@ export const DadaSurvivorGame = {
     this.root = $('.ds-root');
     this.stage = new Stage(this.root);
     // HUD類はステージより手前に
-    for (const s of ['.ds-hud', '.ds-banner', '.ds-overlay']) this.root.appendChild($(s));
+    for (const s of ['.ds-hud', '.ds-whistle', '.ds-banner', '.ds-overlay']) this.root.appendChild($(s));
     this.hud = $('.ds-hud');
     this.overlay = $('.ds-overlay');
     this.banner = $('.ds-banner');
@@ -111,7 +113,12 @@ export const DadaSurvivorGame = {
       xpFill: $('.ds-xp-fill'), lv: $('.ds-lv'), time: $('.ds-time'), kills: $('.ds-kills'),
       coins: $('.ds-coins'), boss: $('.ds-boss'), bossName: $('.ds-boss-name'), bossFill: $('.ds-boss-fill'),
       skills: $('.ds-skills'),
+      whistle: $('.ds-whistle'), whistleTxt: $('.ds-whistle-txt'), whistleCd: $('.ds-whistle-cd'),
     };
+    this.el.whistle.querySelector('.ds-whistle-ico').style.backgroundImage = art('whistle');
+    // ふえ：pointerdown で すぐ ふく（ステージの そとの ボタンなので ジョイスティックや ピンチには かぞえない）
+    this.el.whistle.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); this.whistle(); });
+    this.el.whistle.addEventListener('click', e => e.preventDefault());
     this.hudCache = {};
     $('.ds-pause').addEventListener('click', () => { sound.playTap(); this.showPause(); });
   },
@@ -122,6 +129,7 @@ export const DadaSurvivorGame = {
     this.onKeyDown = e => {
       const k = e.key.toLowerCase();
       if (this.run && !this.paused && (k === '+' || k === '=' || k === '-')) { this.setZoom(this.zoom * (k === '-' ? 0.9 : 1 / 0.9)); return; }
+      if (k === 'f' && !e.repeat && this.run && !this.paused) { this.whistle(); return; }
       this.keys.add(k);
     };
     this.onKeyUp = e => { this.keys.delete(e.key.toLowerCase()); };
@@ -332,6 +340,8 @@ export const DadaSurvivorGame = {
       npc: null, researcherDone: false,
       // けんきゅうじょ：てきの ばくだん・ゆかの ひ・ボトルの じょうたい（id → { hp, broken, orbitHit }）
       ebombs: [], fires: [], bottles: new Map(), nearBottles: [], fireSeq: 0, burnFx: 0, alienSeen: false,
+      // コンテナと なかま（allies：へいたい 3 ＋ ちりょうたい。medic は その なかの ちりょうたい）
+      container: null, allies: [], medic: null, whistleCd: 0, heading: Math.PI / 2,
     };
     this.refreshStats();
     this.run.player.hp = this.run.stats.maxHp;
@@ -351,6 +361,7 @@ export const DadaSurvivorGame = {
   refreshStats() { this.run.stats = playerStats(this.run.passives, this.save.shop, bonusFor(this.save, this.run.char.id)); },
 
   endRun(clear) {
+    this.stage.arrow(null);
     const r = this.run; if (!r || r.ended) return;
     r.ended = true; this.paused = true; this.stick = null; this.stage.joystick(null);
     r.earned = Math.round(r.coins * r.diff.coin) + (clear ? 50 : 0);
@@ -420,6 +431,7 @@ export const DadaSurvivorGame = {
     this.updateSpawns(dt);
     this.collectBottles();
     this.updateWeapons(dt);
+    this.updateAllies(dt);
     this.updateShots(dt);
     this.updateEnemies(dt);
     this.updateHazards(dt);
@@ -447,7 +459,9 @@ export const DadaSurvivorGame = {
       this.showBanner(`⚠ ${e.T.name}が きた！ たおせば クリア！`, 3000);
     }
     const rs = st.researcher;
-    if (rs && !r.researcherDone && !r.npc && r.time >= rs.at) this.spawnResearcher();
+    if (rs && !r.researcherDone && !r.npc && !r.container && r.time >= rs.at) {
+      if (rs.container) this.spawnContainer(); else this.spawnResearcher();
+    }
     if (r.finalBossDone) return; // ボスせんは ザコ なし
     const plan = spawnPlan(r.time, r.diff, st);
     r.spawnClock -= dt;
@@ -463,6 +477,90 @@ export const DadaSurvivorGame = {
         }
         this.spawnEnemy(type, plan.hpScale);
       }
+    }
+  },
+
+  // コンテナ：プレイヤーから 650〜900 はなれた ところに 1つ（やじるしで おしえる）
+  spawnContainer() {
+    const r = this.run, p = r.player;
+    const a = Math.random() * TAU, d = SQUAD.dist0 + Math.random() * (SQUAD.dist1 - SQUAD.dist0);
+    r.container = { x: p.x + Math.cos(a) * d, y: p.y + Math.sin(a) * d, open: false };
+    sound.playItem();
+    this.showBanner('コンテナが みつかった！ やじるしの ほうへ いこう！', 3200);
+  },
+
+  // コンテナに さわると ひらく：けんきゅうしゃ（スーパーミサイル）・ちりょうたい・なかま 3にん
+  openContainer() {
+    const r = this.run, box = r.container;
+    box.open = true; r.researcherDone = true;
+    const id = receiveGift(r.weapons, r.stageDef);
+    for (let i = 0; i <= SQUAD.soldiers; i++) {
+      const medic = i === SQUAD.soldiers;
+      const a = { x: box.x + (i - 1.5) * 22, y: box.y + 18, slot: i, medic, face: 1, cd: 0.4 + i * 0.3, mode: 'follow', heal: 0, healFx: 0 };
+      r.allies.push(a);
+      if (medic) r.medic = a;
+    }
+    this.stage.fx('pop', box.x, box.y, 120);
+    sound.playHeal();
+    if (id) this.refreshSkills();
+    this.showBanner(id ? `なかまが でてきた！ ${WEAPONS[id].name}も もらった！` : 'なかまが でてきた！', 3400);
+  },
+
+  /** ふえ：ちりょうたいが はしって きて かいふく */
+  whistle() {
+    const r = this.run;
+    if (!r || !canWhistle(r.medic, r.whistleCd)) return false;
+    r.whistleCd = SQUAD.whistleCd;
+    r.medic.mode = 'run';
+    if (!playWhistle(sound)) sound.playTap?.();
+    this.showBanner('ピーッ！ ちりょうたい、きて！', 1400);
+    return true;
+  },
+
+  updateAllies(dt) {
+    const r = this.run, p = r.player, S = SQUAD;
+    if (r.whistleCd > 0) r.whistleCd = Math.max(0, r.whistleCd - dt);
+    if (!r.allies.length) return;
+    if (p.mx || p.my) r.heading = Math.atan2(p.my, p.mx);
+    const gun = WEAPONS.gun, lim2 = Math.min(S.range, this.battleR || S.range) ** 2;
+    for (const a of r.allies) {
+      let tx, ty, sp = S.speed;
+      if (a.medic && a.mode !== 'follow') {
+        // はしって きて、となりで かいふく
+        tx = p.x - 22 * (p.face || 1); ty = p.y + 6; sp = S.medicRun;
+        const close = (a.x - tx) ** 2 + (a.y - ty) ** 2 < 30 * 30;
+        if (a.mode === 'run' && close) { a.mode = 'heal'; a.heal = S.healTime; a.healFx = 0; sound.playHeal(); }
+        if (a.mode === 'heal') {
+          const step = Math.min(dt, a.heal);
+          p.hp = Math.min(r.stats.maxHp, p.hp + healAmount(r.stats.maxHp, step));
+          a.heal -= dt; a.healFx -= dt;
+          if (a.healFx <= 0) { a.healFx = 0.4; this.stage.fx('heal', p.x + (Math.random() - 0.5) * 30, p.y - 20, 30); }
+          if (a.heal <= 0) a.mode = 'follow';
+        }
+      } else {
+        const o = squadSlot(a.slot, r.heading);
+        tx = p.x + o.x; ty = p.y + o.y;
+      }
+      const dx = tx - a.x, dy = ty - a.y, d = Math.hypot(dx, dy);
+      if (d > 1) {
+        const v = Math.min(d * 6, sp + (d > 260 ? d : 0)); // はなれすぎたら いそいで おいつく
+        a.x += dx / d * v * dt; a.y += dy / d * v * dt;
+        if (Math.abs(dx) > 4) a.face = dx > 0 ? 1 : -1;
+      }
+      if (a.medic) continue;
+      a.cd -= dt;
+      if (a.cd > 0) continue;
+      a.cd = S.cd;
+      const t = nearestN(r.enemies, a, 1, lim2)[0];
+      if (!t || r.shots.length > 90) continue;
+      const ang = Math.atan2(t.y - a.y, t.x - a.x);
+      a.face = Math.cos(ang) >= 0 ? 1 : -1;
+      r.shots.push({
+        kind: 'bullet', art: gun.shot, size: gun.size, ally: true,
+        x: a.x + Math.cos(ang) * 16, y: a.y + Math.sin(ang) * 16,
+        vx: Math.cos(ang) * S.bulletSpeed, vy: Math.sin(ang) * S.bulletSpeed,
+        ang, dmg: allyDamage(r.time, r.stats.damage), life: S.life, r: 8, pierce: 1, splash: 0, kb: 0.08,
+      });
     }
   },
 
@@ -949,6 +1047,8 @@ export const DadaSurvivorGame = {
       }
     }
     compact(r.items, it => !it.got);
+    const box = r.container;
+    if (box && !box.open && dist2(box, p) < SQUAD.openR * SQUAD.openR) this.openContainer();
     const npc = r.npc;
     if (npc) {
       const d2 = dist2(npc, p);
@@ -973,7 +1073,29 @@ export const DadaSurvivorGame = {
     set('time', r.finalBossDone ? -1 : Math.ceil(Math.max(0, STAGE_SECONDS - r.time)), v => { this.el.time.textContent = v < 0 ? '⚠ ボス！' : `⏱ ${fmtTime(v)}`; });
     set('kills', r.kills, v => { this.el.kills.textContent = `💀 ${v}`; });
     set('coins', r.coins, v => { this.el.coins.textContent = `🪙 ${v}`; });
+    const wcd = r.medic ? Math.ceil(r.whistleCd) : -1;
+    set('whistle', wcd, v => {
+      const b = this.el.whistle;
+      b.classList.toggle('hidden', v < 0);
+      b.classList.toggle('cool', v > 0);
+      this.el.whistleCd.textContent = v > 0 ? String(v) : '';
+    });
+    set('whistleCall', !!r.medic && wcd === 0 && r.player.hp < r.stats.maxHp * 0.5, v => { this.el.whistle.classList.toggle('call', v); });
     if (r.boss) set('boss', Math.round(Math.max(0, r.boss.hp / r.boss.maxHp) * 100), v => { this.el.bossFill.style.transform = `scaleX(${v / 100})`; });
+  },
+
+  // コンテナが がめんの そとに ある ときの やじるし（がめんの はしに だす）
+  containerArrow() {
+    const r = this.run, box = r.container;
+    if (!box || box.open) return null;
+    const z = this.zoom || 1, p = r.player;
+    const dx = (box.x - p.x) * z, dy = (box.y - p.y) * z;
+    const hw = this.sw / 2, hh = this.sh / 2;
+    if (Math.abs(dx) < hw - 30 && Math.abs(dy) < hh - 30) return null;
+    const top = 96, m = 42; // うえは HUD の ぶん あける
+    const ang = Math.atan2(dy, dx);
+    const k = Math.min((hw - m) / Math.max(1e-6, Math.abs(dx)), (dy < 0 ? hh - top : hh - m - 40) / Math.max(1e-6, Math.abs(dy)));
+    return { x: hw + dx * k, y: hh + dy * k, ang };
   },
 
   draw() {
@@ -983,6 +1105,7 @@ export const DadaSurvivorGame = {
       orbit: this.orbitPositions(),
       bottles: r.bottles,
     });
+    this.stage.arrow(this.containerArrow());
     this.stage.joystick(this.stick, this.rect);
   },
 };
