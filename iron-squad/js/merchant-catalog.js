@@ -1,6 +1,6 @@
-import {observeEquipment} from './armament-rules.js?v=191';
-import {MAX_EQUIPMENT_TIER,TRADE_MAX_TIER} from './equipment-tiers.js?v=187';
-import {EQUIPMENT_TYPES,saleValue} from './equipment-rules.js?v=217';
+import {observeEquipment} from './armament-rules.js?v=231';
+import {MAX_EQUIPMENT_TIER,TRADE_MAX_TIER} from './equipment-tiers.js?v=231';
+import {EQUIPMENT_TYPES,saleValue} from './equipment-rules.js?v=231';
 export const MERCHANT_MAX_TIER=TRADE_MAX_TIER;
 // v6.3.0: x10 (was 3.2) - gold piles up quickly, so shop gear must be a real goal.
 export const CATALOG_PRICE_MULT=32;

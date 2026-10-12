@@ -5,6 +5,7 @@ import {standoutAptitude,rollAttributeProfile} from '../js/unit-attributes.js';
 // Off-type or extreme aptitudes: magic swordsman, muscle mage, any aptitude of 2.4+. Plain specialists are not flagged.
 const unit=(soldierClass,aptitudes)=>({soldierClass,attributeProfile:{version:1,family:soldierClass,innate:{strength:20,magic:20,magicDefense:8,quickness:15,evasion:2},aptitudes:{strength:1,magic:1,magicDefense:1,quickness:1,evasion:1,...aptitudes},practice:{strength:0,magic:0,magicDefense:0,travel:0,evasion:0}}});
 assert.match(standoutAptitude(unit('HEAVY',{magic:2.1,strength:.9})),/魔法剣士/);
+assert.match(standoutAptitude(unit('ARCHER',{magic:2.1,strength:.9})),/^マジックシューターの素質/,'archers are called magic shooters, not swordsmen');
 assert.match(standoutAptitude(unit('MAGE',{strength:1.8})),/筋肉魔術師/);
 assert.match(standoutAptitude(unit('LIGHT',{quickness:2.5})),/速さが突出/);
 assert.equal(standoutAptitude(unit('HEAVY',{strength:1.9})),null,'a strong fighter is normal');

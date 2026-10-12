@@ -1,6 +1,7 @@
 import {salaryQuote,salaryFundingContext,regularSalaryReserve} from './payroll-rules.js?v=226';
 import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=182';
 import {talentTag as talentLabel} from './talent-labels.js?v=182';
+import {ATTRIBUTE_BASES,attributeFamily} from './unit-attributes.js?v=231';
 /**
  * 兵士の武勲・ステータスランキングシステム
  * 各ステータス（総合・撃破・ボス・攻撃・防御・HP・回復・死線）を詳細にランキング化し、
@@ -25,6 +26,22 @@ export const RANKING_CATEGORIES = [
   { id: 'healing',    label: '💖 救護・回復', shortName: '回復', desc: '仲間を死線から救い続けた守護神（上位3名がランカー）', icon: '💖', color: '#4ade80' },
   { id: 'deathline',  label: '💀 死線生還', shortName: '死線', desc: 'ダウンを重ねた危険な戦線から生還した不屈の記録（上位3名がランカー）', icon: '💀', color: '#c084fc' }
 ];
+
+// 兵種フィルター：属性の系統（ATTRIBUTE_BASES の HEAVY/LIGHT/ARCHER/MEDIC/MAGE。上級職は系統に畳む）。表示名は index.js が SOLDIER_CLASSES から登録
+export const RANKING_FAMILIES = Object.keys(ATTRIBUTE_BASES).filter(k => k !== 'COMMANDER');
+let familyLabels = {};
+export const setRankingFamilyLabels = labels => { familyLabels = {...labels}; };
+export const rankingFamilyLabel = id => familyLabels[id]?.name || id;
+export const rankingFamilyIcon = id => familyLabels[id]?.icon || '';
+export const filterByFamily = (soldiers, familyId) => !familyId || familyId === 'all' ? soldiers : soldiers.filter(e => attributeFamily(e.soldier) === familyId);
+/** 現在いる兵だけの兵種一覧（人数つき） */
+export function rankingFamilies(soldiers) {
+  const counts = new Map();
+  for (const e of soldiers) { const f = attributeFamily(e.soldier); counts.set(f, (counts.get(f) || 0) + 1); }
+  return RANKING_FAMILIES.filter(f => counts.get(f)).map(f => ({id: f, name: rankingFamilyLabel(f), icon: rankingFamilyIcon(f), count: counts.get(f)}));
+}
+/** 個人記録を開ける兵士（自小隊・予備）。隊長や他小隊員は開けない */
+export const canOpenSoldierRecord = (game, id) => !!id && [...(game?.squad || []), ...(game?.reserves || [])].some(x => x && x.id === id && !x.dead);
 
 export function collectAllSoldiers(game) {
   if (!game) return [];
@@ -268,7 +285,13 @@ export function renderTroopRankings(game) {
   const catDef = RANKING_CATEGORIES.find(c => c.id === currentCat) || RANKING_CATEGORIES[0];
 
   const soldiers = collectAllSoldiers(game);
-  const topList = computeRankings(soldiers, currentCat, TOP_RANK_LIMIT);
+  const families = rankingFamilies(soldiers);
+  if (game._troopRankingClass && !families.some(f => f.id === game._troopRankingClass)) game._troopRankingClass = 'all'; // その兵種がいなくなったら全体へ
+  const currentFamily = game._troopRankingClass || 'all', familyDef = families.find(f => f.id === currentFamily);
+  const topList = computeRankings(filterByFamily(soldiers, currentFamily), currentCat, TOP_RANK_LIMIT);
+  // ランカー認定（バッジ・特別給与）は常に全体順位。兵種内の順位とは別
+  const overallRank = new Map(computeRankings(soldiers, currentCat, RANKER_CUTOFF).map((e, i) => [e.soldier.id, i + 1]));
+  const openIds = topList.filter(e => canOpenSoldierRecord(game, e.soldier.id)).map(e => e.soldier.id);
   const fundedBonuses=calcAllRankerBonuses(game);
   // Show when the treasury cannot cover the full 5,000 / 3,000 / 1,000G honors.
   const sumOf=map=>[...map.values()].reduce((n,r)=>n+r.totalBonus,0);
@@ -292,6 +315,12 @@ export function renderTroopRankings(game) {
           </button>
         `).join('')}
       </div>
+      <div class="ranking-class-tabs" role="group" aria-label="兵種で絞り込み">
+        ${[{id: 'all', name: 'すべて', icon: '', count: soldiers.length}, ...families].map(f => `
+          <button type="button" class="ranking-class-btn${f.id === currentFamily ? ' active' : ''}" data-class="${f.id}" aria-pressed="${f.id === currentFamily}">${f.icon}${f.name} ${f.count}</button>
+        `).join('')}
+      </div>
+      ${familyDef ? `<p class="ranking-class-note">${familyDef.name}の中での順位です。ランカーのしるしと特別給与は、全体の順位で決まります。</p>` : ''}
     </div>
     <div class="ranking-body">
       ${topList.length === 0 ? `
@@ -301,18 +330,23 @@ export function renderTroopRankings(game) {
           ${topList.map((entry, idx) => {
             const s = entry.soldier;
             const rank = idx + 1;
-            const isRanker = rank <= RANKER_CUTOFF;
-            const medal = rank === 1 ? '🥇 1位' : rank === 2 ? '🥈 2位' : rank === 3 ? '🥉 3位' : `${rank}位`;
+            const oRank = overallRank.get(s.id) || 0; // 全体順位でのランカー位(1〜3)。圏外は0
+            const isRanker = oRank > 0;
+            const inClass = currentFamily !== 'all';
+            const medal = inClass ? `兵種内${rank}位` : rank === 1 ? '🥇 1位' : rank === 2 ? '🥈 2位' : rank === 3 ? '🥉 3位' : `${rank}位`;
             const bonusAmount = fundedBonuses.get(s.id)?.breakdowns.find(b=>b.catId===currentCat)?.bonus||0;
             const isNamed = !!s.title;
             const name = isNamed ? `${s.title}${s.name}` : s.name;
             const cls = s.class || s.rankTitle || '兵士';
             const talentTag = s.talent ? `[${talentLabel(s.talent)}]` : '';
+            const posNo = inClass ? oRank : rank; // 色・称号は全体順位基準
+            const openable = canOpenSoldierRecord(game, s.id);
             return `
-              <li class="ranking-item rank-${rank}${isRanker ? ' is-ranker' : ''}">
+              <li class="ranking-item rank-${posNo || 'n'}${isRanker ? ' is-ranker' : ''}${openable ? ' is-openable' : ''}" data-soldier-id="${s.id}"${openable ? ` role="button" tabindex="0" aria-label="${name}の個人記録・戦歴を開く"` : ''}>
                 <div class="rank-pos">
-                  <span class="rank-pos-badge rank-pos-${rank}">${medal}</span>
-                  ${rank === 1 ? '<span class="rank-crown">👑 首席</span>' : rank <= 3 ? '<span class="ranker-tag">RANKER</span>' : ''}
+                  <span class="rank-pos-badge rank-pos-${posNo || 'n'}">${medal}</span>
+                  ${oRank === 1 ? '<span class="rank-crown">👑 首席</span>' : oRank ? '<span class="ranker-tag">RANKER</span>' : ''}
+                  ${inClass && oRank ? `<span class="ranker-tag">全体${oRank}位</span>` : ''}
                   ${bonusAmount > 0 ? `<span class="rank-bonus-chip" title="作戦完了時に特別給与支給">+${bonusAmount}G給与</span>` : ''}
                 </div>
                 <div class="rank-soldier-info">
@@ -327,6 +361,7 @@ export function renderTroopRankings(game) {
                 <div class="rank-score-pill">
                   <strong>${entry.metricText}</strong>
                 </div>
+                ${openable ? '<span class="rank-open-hint" aria-hidden="true">›</span>' : ''}
               </li>
             `;
           }).join('')}
@@ -346,5 +381,18 @@ export function renderTroopRankings(game) {
       game._troopRankingCategory = btn.dataset.cat;
       renderTroopRankings(game);
     };
+  }
+  for (const btn of section.querySelectorAll('.ranking-class-btn')) {
+    btn.onclick = () => {
+      game._troopRankingClass = btn.dataset.class;
+      renderTroopRankings(game);
+    };
+  }
+  // 行タップ／Enter・Space → 個人記録・戦歴。めくり順は今の表示順
+  const list = section.querySelector('.ranking-list');
+  const openRow = row => { const id = openIds.find(x => String(x) === row?.dataset.soldierId); if (id != null) game.openSoldierDetail?.(id, openIds); };
+  if (list) {
+    list.onclick = e => openRow(e.target.closest?.('.ranking-item.is-openable'));
+    list.onkeydown = e => { if (e.key !== 'Enter' && e.key !== ' ') return; const row = e.target.closest?.('.ranking-item.is-openable'); if (row) { e.preventDefault(); openRow(row); } };
   }
 }

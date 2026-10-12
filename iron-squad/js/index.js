@@ -3,24 +3,24 @@ import {guildMethods} from './guild-contracts.js?v=217';
 import {headquartersMoveTarget} from './hq-navigation.js?v=200';
 import {configureBattlefieldUI,quietBattlefieldContext} from './battlefield-ui.js?v=182';
 import {renderNavigationMap} from './navigation-map.js?v=189';
-import {soldierEquipmentValue,observeEquipment,standardEquipmentCost,RESERVE_ARMAMENT_COUNT} from './armament-rules.js?v=191';
+import {soldierEquipmentValue,observeEquipment,standardEquipmentCost,RESERVE_ARMAMENT_COUNT} from './armament-rules.js?v=231';
 import {configureRangedEnemy,updateRangedEnemy,updateDefenseWalls,interceptHostileShot,isHostileShot,updateHostileBolt,drawDefenseWalls} from './enemy-ranged.js?v=187';
 import {LIMITED_CLASSES,initializeLimitedAllies,prepareLimitedEncounter,createLimitedAlly,joinLimitedEncounter,updateLimitedAllies,updateNinja,updateShuriken,drawLimitedEncounter,serializeLimitedAllies,notifyLimitedJoin} from './limited-allies.js?v=211';
 import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=182';
-import {TIERS,MAX_EQUIPMENT_TIER,MAX_POWER_RANK,POWER_RANK_STEP,GENERATION_COUNT,TRADE_MAX_TIER,powerRank,tierDescription} from './equipment-tiers.js?v=187';
+import {TIERS,MAX_EQUIPMENT_TIER,MAX_POWER_RANK,POWER_RANK_STEP,GENERATION_COUNT,TRADE_MAX_TIER,powerRank,tierDescription} from './equipment-tiers.js?v=231';
 import {fieldAdaptiveScaling} from './field-scaling.js?v=182';
 import {activeSquad,inCurrentInstance} from './instance-rules.js?v=182';
 import {recordBattleLog,resetBattleLog,refreshCombatFieldNotes} from './battle-log.js?v=226';
 import {rollDropExclusive,applyDropExclusive,dropExclusiveLabel} from './drop-exclusives.js?v=182';
-import {normalizeMaterials,applyCraftExclusive,craftExclusiveLabel,equipmentDropChance,materialDropChance,rollMaterialDrop,rollTreasureLoot} from './crafting-rules.js?v=189';
-import {workshopMethods} from './workshop.js?v=221';
+import {normalizeMaterials,applyCraftExclusive,craftExclusiveLabel,equipmentDropChance,materialDropChance,rollMaterialDrop,rollTreasureLoot} from './crafting-rules.js?v=231';
+import {workshopMethods} from './workshop.js?v=231';
 import {casinoMethods} from './casino.js?v=201';
 import {normalizeCasino} from './casino-rules.js?v=201';
 import {latestEquipmentTier,recordMerchantEquipment,ensureMerchantCatalog,refreshWaveCatalogs,markMerchantPurchase} from './merchant-catalog.js?v=214';
 import {initializeMedicalPosts,updateMedicalPosts,serializeMedicalPosts,nearestKnownMedicalPost,drawMedicalPost,drawMedicalMap,drawMedicalMarker,drawTownMedicalReception,drawRescueDirection} from './medical-posts.js?v=182';
 import {invasionMethods,initializeInvasions,serializeInvasions,shouldTriggerRandomRaid,makeEnemyRoom,drawInvasionRoute} from './invasion-rules.js?v=211';
 import {gateMethods,serializeGatePosts,replenishTownGateGuards,initializeGateGuards,ensureTownGuards,serializeGateGuards,updateGateGuards,gateGuardVisible,applyFortifications,drawFortification,exitGateTown,townExitReached,wallBlocksAttack,attackBlocked as coverBlocked} from './gate-rules.js?v=215';
-import {nationMethods,normalizeNation,nationalIncome,nationalPayrollPlan,headquartersDamageMult,drawNationalDevelopment,DEVELOPMENT_STAGES} from './nation-rules.js?v=201';
+import {nationMethods,normalizeNation,nationalIncome,nationalPayrollPlan,headquartersDamageMult,drawNationalDevelopment,DEVELOPMENT_STAGES} from './nation-rules.js?v=231';
 import {equipmentUpgradeCost,salaryQuote,paySoldiers} from './payroll-rules.js?v=226';
 import {addFieldDrop,ageFieldDrops,attractFieldDrops,FIELD_DROP_PICKUP_RADIUS} from './field-drops.js?v=182';
 import {drawLootDrop,drawLootPullTrail} from './loot-visuals.js?v=189';
@@ -66,12 +66,12 @@ import { soldierDialogue } from './soldier-dialogue.js?v=205';
 import { generateSoldierName, migrateSoldierName, rollGenderByKey, isGenderId, ensureSoldierGender, genderLabel } from './soldier-names.js?v=210';
 import { openCommanderEditor } from './commander-editor.js?v=210';
 import { applyCommanderIdentity, normalizeCommanderIdentity, commanderFullName, GENDERS as COMMANDER_GENDERS } from './commander-identity.js?v=210';
-import {MAGIC_CLASSES,MAGIC_AFFINITIES,magicMethods,isMage,isMagicUser,ensureMana,initializeMagic,updateMagic,distributeMagicStones,castMedicBuff,castCasterStrength,updateMageAI,drawMagicBursts,spendMana,weaponMagicDamage,isPlayerCaster,castPlayerSpell,PLAYER_MAGIC_RULES} from './magic-rules.js?v=211';
+import {MAGIC_CLASSES,MAGIC_AFFINITIES,magicMethods,isMage,isMagicUser,ensureMana,initializeMagic,updateMagic,distributeMagicStones,castMedicBuff,castCasterStrength,updateMageAI,drawMagicBursts,spendMana,weaponMagicDamage,isPlayerCaster,castPlayerSpell,PLAYER_MAGIC_RULES} from './magic-rules.js?v=231';
 import {hazardMethods,updateHazards,drawHazards} from './hazard-fields.js?v=198';
 import {strongEnemyReward} from './combat-rewards.js?v=182';
 import {supplyMethods, initializeSupplies, updateSupplies, takeRangedShot, ammoCombatProfile, isRangedUnit, distributeAmmo, preventLethalHit, normalizeFieldSave, SQUAD_POTION_COST, REVIVAL_POTION_COST, ensureAmmo, RANGED_DAMAGE_MULT, supplyLocation} from './supply-rules.js?v=220';
-import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog } from './interface.js?v=226';
-import { renderTroopRankings, getSoldierRankerBadges, calcSoldierRankerBonus } from './troop-rankings.js?v=226';
+import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog } from './interface.js?v=230';
+import { renderTroopRankings, getSoldierRankerBadges, calcSoldierRankerBonus, setRankingFamilyLabels, RANKING_FAMILIES } from './troop-rankings.js?v=230';
 import { ensureSoldierAppearance, drawSoldierPortrait, describeSoldierAppearance } from './soldier-appearance.js?v=206';
 import { attachSurfaceEvents, detachSurfaceEvents, frameSurfaceReady, releaseSceneCaches, releaseCanvas, surfaceCanResume } from './canvas-surface.js?v=217';
 import { SETTLEMENTS, WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt, routeNameAt, eastWestRoadY, northSouthRoadX, riverCenterY, drawFieldDepth, drawOakCrown, fieldBlocks, settleUnit } from './world.js?v=198';
@@ -83,17 +83,18 @@ import {
 } from './class-up-rules.js?v=185';
 import { PHASE_DURATION, REST_DURATION, DEATHLINE_DOWN_THRESHOLD, DEATHLINE_WINDOW_PHASES, SOLDIER_SALARY, MIN_REINFORCEMENTS, emptyActivity, advancePhase, advanceRest, recordCombat, recordHealing, healByMedic, healAmountFor, personalDownCount, recentDownCount, normalizeDeathlineHistory, consumeDeathlineDowns, deathlineEligible, participated, finishExperience } from './phase-rules.js?v=218';
 import {HEALING_HP_PER_EXP,REVIVAL_EXP_PER_MAX_HP,shareCommanderExp,raiseLevelMark,ageLevelMarks} from './experience-rules.js';
-import {rollAttributeProfile,applyAttributeStats,attributeValues,practiceAttribute,attributeCarryCapacity,attributeSpecialties,prefersCasterMelee,canChannelWeaponMagic,magicAbilityMultiplier,beginAttributeMovement,finishAttributeMovement,ATTRIBUTE_LABELS,ATTRIBUTE_KEYS,aptitudeGrade} from './unit-attributes.js?v=187';
+import {attributeFamily,rollAttributeProfile,applyAttributeStats,attributeValues,practiceAttribute,attributeCarryCapacity,attributeSpecialties,prefersCasterMelee,canChannelWeaponMagic,magicAbilityMultiplier,CASTER_STRIKE_COST,casterStrikeMultiplier,beginAttributeMovement,finishAttributeMovement,ATTRIBUTE_LABELS,ATTRIBUTE_KEYS,aptitudeGrade} from './unit-attributes.js?v=231';
 import {rollScoutCandidate,renderRecruitment,nextScoutCandidate,startAutomaticRecruitment,stopAutomaticRecruitment,RECRUIT_CLASSES} from './recruitment.js?v=226';
-import {canUseWeapon,requiredWeaponStrength,weaponRequirementText,isMagicWeapon,MAGIC_WEAPON_STYLES,preferredWeaponStyle} from './weapon-requirements.js?v=187';
+import {canUseEquipment,requiredWeaponStrength,equipmentRequirementText,isMagicWeapon,MAGIC_WEAPON_STYLES,preferredWeaponStyle} from './weapon-requirements.js?v=231';
+import {CASTER_GEAR,DEFENSE_TYPES,casterGearName,applyDefenseEquipment,casterEquipmentSummary,absorbEquipmentBarrier} from './defense-equipment.js?v=231';
 import {
   emptyFiscalLedger, calcCommanderStipend, calcBuyoutGold,
   shouldAbsorbToSharedBox, calcScoutCost, estimateSoldierScoutValue, calcDismissSettlement,
   formatFiscalReportJa, formatFiscalReportHtml, distributeSharedBoxToSoldiers, sellWeakSurplusFromBox,
   SHARED_BOX_MAX_TIER, SCOUT_COST_BY_TALENT, defaultDonateAmount, donatePresetAmounts, EQUIPMENT_SLOTS
-} from './economy-rules.js?v=192';
+} from './economy-rules.js?v=231';
 
-import { EQUIPMENT_TYPES, saleValue, equippedIds, canSell, lowValueIds, chooseLootTier, distanceScaling, shrineUpgradeCap, compareEquipment, equipmentScore, compareEquipmentStrength, rollWeaponTraits, weaponCombatProfile, evaluateMeleeSweetSpot, isGodRollProtected, zoneRingPower, zoneRingLabelJa, equipmentIcon, equipmentName } from './equipment-rules.js?v=217';
+import { EQUIPMENT_TYPES, saleValue, equippedIds, canSell, lowValueIds, chooseLootTier, distanceScaling, shrineUpgradeCap, compareEquipment, equipmentScore, compareEquipmentStrength, rollWeaponTraits, weaponCombatProfile, evaluateMeleeSweetSpot, isGodRollProtected, zoneRingPower, zoneRingLabelJa, equipmentIcon, equipmentName } from './equipment-rules.js?v=231';
 import { rollFieldBrute, advanceDemonWarband, stepDemonWarbandGroup } from './field-hosts.js?v=182';
 import {
   WEAPON_STYLES, MASTERY_STYLES, WEAPON_STYLE_LABELS, WEAPON_STYLE_ICONS, isHeavyWeaponStyle, heavyWeaponAttackMult, HEAVY_ATTACK_VERSION, LEGACY_HEAVY_ATTACK_MULT, weaponCategoryOf, splitHeavyFavorite, FAVORITE_SPLIT_VERSION,
@@ -120,9 +121,9 @@ import {visibleHeroMembers} from './hero-rules.js';
 import {updateHeroJournal} from './hero-journal.js?v=189';
 import {applyHeroEquipmentUpgrade} from './hero-equipment.js?v=211';
 import {initializeHeroJourney,rollHeroRevelation,serializeHeroJourney,updateHeroParty,updateHeroFollowing,awardHeroBattle,recordDemonKingDefeat,ensureHeroCastle,syncHeroCastle,renderHeroJourney,drawHeroMarks} from './hero-party.js?v=226';
-import {updateSquadHpHud} from './squad-hp-hud.js?v=228';
+import {updateSquadHpHud} from './squad-hp-hud.js?v=229';
 import {addBattleReport,normalizeBattleReport,renderBattleReport} from './battle-report.js?v=226';
-import { RESCUE_TIMEOUT, REVIVAL_COOLDOWN, revivalSkillCooldownLeft, normalizeRevivalSkill, headquartersRevivalPaused, rescueUnits, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, receiveTownCargo, leaveCivilianSpace, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, markSoldierDown, downCommander, commanderDown, updateNpcRescue, CIV_KINDS, isMedic, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST } from './casualty-rules.js?v=223';
+import { RESCUE_TIMEOUT, REVIVAL_COOLDOWN, revivalSkillCooldownLeft, normalizeRevivalSkill, headquartersRevivalPaused, rescueUnits, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, receiveTownCargo, leaveCivilianSpace, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, markSoldierDown, downCommander, commanderDown, updateNpcRescue, CIV_KINDS, isMedic, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST, medicHoldsByCommander } from './casualty-rules.js?v=232';
 import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault, dungeonBlocks, dungeonSolids } from './dungeon.js?v=208';
 import {nearestDungeonFloor,dungeonSpawnPoint,dungeonSteeringTarget} from './dungeon-layout.js?v=182';
 import {normalizeDungeonExploration,updateDungeonSideChests,drawDungeonSideChests,updateDungeonRespawns,dungeonCoolingDown,recordDungeonClear,DUNGEON_RESET_PHASES} from './dungeon-exploration.js?v=200';
@@ -505,7 +506,7 @@ function canMerchantInherit(current,item,player){
   if(!current||!item||current.id===item.id||current.type!==item.type)return false;
   if((current.upgrade||0)<=(item.upgrade||0))return false;
   if(item.type==='WEAPON'&&weaponStyleOf(current)!==weaponStyleOf(item))return false;
-  return canUseWeapon(player,item);
+  return canUseEquipment(player,item);
 }
 
 export const MEDIC_SELF_DEFENSE_COST = 10, MEDIC_SELF_DEFENSE_MIN_MANA = 40;
@@ -746,6 +747,8 @@ export const SOLDIER_CLASSES = numberClassDefinitions({
   }
 
 });
+// ランキングの兵種フィルター表示名（系統の基本職の名前・アイコン）
+setRankingFamilyLabels(Object.fromEntries(RANKING_FAMILIES.map(k => [k, {name: SOLDIER_CLASSES[k]?.name || k, icon: SOLDIER_CLASSES[k]?.icon || ''}])));
 
 // 隊長（主人公）のクラス1。旧IDは保存と戦闘の互換用。
 export const PLAYER_ADVANCED_CLASS = {
@@ -892,6 +895,7 @@ export function applyUpgradeStats(item, upgradeLevel) {
     else delete item.stats.vampire;
   }
   if(item.type==='WEAPON'&&item.weaponTraits)item.stats.crit=(item.stats.crit||0)+Math.max(0,Math.min(8,item.weaponTraits.crit||0));
+  applyDefenseEquipment(item);
   applyDropExclusive(item);
   applyCraftExclusive(item);
   if(item.type==='WEAPON'&&isHeavyWeaponStyle(item)){
@@ -966,6 +970,7 @@ export function generateRandomDrop(distance, kind = 'normal', options = {}) {
   else if (type === 'LEGS') rawName = chosenTier.legs;
   else rawName = chosenTier.amulet;
 
+
   const plusVal = options.upgrade ?? (random() < 0.28 ? (random() < 0.35 ? 2 : 1) : 0);
   const item = {
     id: options.id || random().toString(36).substring(2, 9),
@@ -988,6 +993,8 @@ export function generateRandomDrop(distance, kind = 'normal', options = {}) {
   if(!options.merchant)rollDropExclusive(item,kind,random);
   if(Number.isFinite(options.quality)){item.rollMult=options.quality;item.qualityLabel=options.merchant?'商人厳選':'品質指定';}
   else rollItemQuality(item,random);
+  const armorStyle=!item.dropOnly&&DEFENSE_TYPES.includes(type)?(CASTER_GEAR[options.armorStyle]?options.armorStyle:options.armorStyle===null?undefined:random()<.35?Object.keys(CASTER_GEAR)[Math.min(2,Math.floor(random()*3))]:undefined):undefined;
+  if(armorStyle){item.armorStyle=armorStyle;if(!item.dropOnly){item.baseName=casterGearName(armorStyle,type,chosenTier.tier)+(item.forgeTag?`【${item.forgeTag}】`:``);item.name=item.baseName;}}
   applyUpgradeStats(item, plusVal);
   return item;
 }
@@ -1121,7 +1128,7 @@ export const IronSquadGame = {
 
   // 起動時にこのゲームのCSSを自分で読み込む（?v= はこのフォルダ内で管理）。ハブが init 前に await する
   prepare() {
-    return loadCss(['../css/iron-squad.css?v=175', '../css/iron-squad-interface.css?v=228'].map(p => new URL(p, import.meta.url).href));
+    return loadCss(['../css/iron-squad.css?v=175', '../css/iron-squad-interface.css?v=230'].map(p => new URL(p, import.meta.url).href));
   },
 
   init(container, onBackToHub) {
@@ -2951,6 +2958,8 @@ export const IronSquadGame = {
   recalcPlayerStats() {
     migrateHeavyWeaponAttack(this.equipped?.weapon);
     if (!this.player) return;
+    this.player.equipped=this.equipped;
+    this.returnUnusableDefense(this.player,this.equipped,this.inventory||=[]);
     this.player.civilianOutfit=!this.isEnlisted();
     const rank = this.currentRank() || RANKS[0];
     const lv = this.player.level || 1;
@@ -3053,6 +3062,7 @@ export const IronSquadGame = {
   recalcSoldierStats(s) {
     if(isOwnSquad(s)||s.joinedFrom==='tavern')s.civilianOutfit=!this.isEnlisted();
     if (!s) return;
+    if(!s._equipmentTrial)this.returnUnusableDefense(s,s.equipped,this.sharedEquipBox||=[]);
     migrateHeavyWeaponAttack(s.equipped?.weapon || s.weapon);
     ensureSoldierGender(s);
     if(s?.isMerchantEscort){recalcEscortStats(s);return;}
@@ -3403,6 +3413,8 @@ export const IronSquadGame = {
       attributeProfile:pSave.attributeProfile,
       mana:Number.isFinite(pSave.mana)?Math.max(0,pSave.mana):undefined,
       magicAffinity:MAGIC_AFFINITIES[pSave.magicAffinity]?pSave.magicAffinity:'fire',
+      equipmentBarrier:Number.isFinite(pSave.equipmentBarrier)?Math.max(0,pSave.equipmentBarrier):undefined,
+      equipmentBarrierDelay:Math.max(0,Number(pSave.equipmentBarrierDelay)||0),
       hitGrowthPct: Math.max(0, Math.min(HIT_GROWTH_SOFT_CAP, Number(pSave.hitGrowthPct) || 0)),
       weaponMastery: normalizeMastery(pSave.weaponMastery),
       magicAttackTimer:Math.max(0,Math.min(11,Number(pSave.magicAttackTimer)||0)),
@@ -3777,6 +3789,8 @@ export const IronSquadGame = {
           familyName:this.player.familyName||'',givenName:this.player.givenName||'',gender:this.player.gender||'',appearance:this.player.appearance,
           attributeProfile:this.player.attributeProfile,
           mana:this.player.mana,
+          equipmentBarrier:this.player.equipmentBarrier||0,
+          equipmentBarrierDelay:this.player.equipmentBarrierDelay||0,
           magicAffinity:this.player.magicAffinity,
           x: this.player.x, y: this.player.y,
           magicAttackTimer:this.player.magicAttackTimer||0,
@@ -4093,19 +4107,30 @@ export const IronSquadGame = {
   applyEquipmentUpgrade(item,level) {applyUpgradeStats(item,level);},
 
   equipmentValueFor(soldier,item,key) {return soldierEquipmentValue(this,soldier,item,key,SOLDIER_CLASSES);},
+  returnUnusableDefense(unit,equipment,bag) {
+    for(const [key,item] of Object.entries(equipment||{})){
+      if(!item||item.type==='WEAPON'||canUseEquipment(unit,item))continue;
+      equipment[key]=null;
+      if(!bag.some(old=>old.id===item.id))bag.push(item);
+      // 杖への持ち替えなどで筋力が下がって外れたときも、黙って消えたように見えないよう知らせる
+      this.recordBattleLog?.(`${unit===this.player?'隊長':unit.name||'兵士'}の${item.name}は筋力不足のため${unit===this.player?'バッグ':'共有箱'}へ戻しました`);
+    }
+  },
   enforceWeaponRequirements() {
-    if(this.equipped?.weapon&&!canUseWeapon(this.player,this.equipped.weapon)){
+    if(this.equipped?.weapon&&!canUseEquipment(this.player,this.equipped.weapon)){
       const item=this.equipped.weapon;this.equipped.weapon=null;this.inventory||=[];
       if(!this.inventory.some(old=>old.id===item.id))this.inventory.push(item);
       this.recalcPlayerStats();
     }
     for(const soldier of [...(this.squad||[]),...(this.reserves||[])]){
       const item=soldier.equipped?.weapon||soldier.weapon;
-      if(!item||canUseWeapon(soldier,item))continue;
+      if(!item||canUseEquipment(soldier,item))continue;
       soldier.equipped||={};soldier.equipped.weapon=null;soldier.weapon=null;this.sharedEquipBox||=[];
       if(!this.sharedEquipBox.some(old=>old.id===item.id))this.sharedEquipBox.push(item);
       this.recalcSoldierStats(soldier);
     }
+    this.recalcPlayerStats();
+    for(const soldier of [...(this.squad||[]),...(this.reserves||[])])this.recalcSoldierStats(soldier);
   },
 
   combatProfileFor(unit, item, isPlayer = false) {
@@ -4732,6 +4757,17 @@ export const IronSquadGame = {
       if (statsNode && this.player) {
         const statText = `攻撃力 ${Math.floor(this.player.atk || 0).toLocaleString()}  防御力 ${Math.floor(this.player.def || 0).toLocaleString()}`;
         if (statsNode._text !== statText) { statsNode._text = statText; statsNode.textContent = statText; }
+      }
+      // 戦場のポップアップと次ラウンド告知は隊長HPの行の直下（攻撃力・防御力の行に重ねる）。告知が出ていればその下にポップアップ
+      if (statsNode) {
+        const top = Math.round(statsNode.getBoundingClientRect().top), rest = document.getElementById('phase-complete-banner');
+        const restBottom = rest && !rest.classList.contains('hidden') ? Math.round(rest.getBoundingClientRect().bottom) : 0;
+        const anchor = `${top}|${restBottom}`, wrapper = quietVitals.closest('.iron-squad');
+        if (wrapper && quietVitals._noteAnchor !== anchor) {
+          quietVitals._noteAnchor = anchor;
+          wrapper.style.setProperty('--rest-note-top', `${top}px`);
+          wrapper.style.setProperty('--field-note-top', `${restBottom ? restBottom + 4 : top}px`);
+        }
       }
     }
     const treasEl = document.getElementById('current-treasury');
@@ -6343,7 +6379,7 @@ export const IronSquadGame = {
       }
 
       // 兵種ごとの交戦間合い
-      if (nearestEnemy && enemyDist < 360) {
+      if (nearestEnemy && enemyDist < 360 && !medicHoldsByCommander(this, soldier)) { // CT待ちの自部隊衛生職は隊長の周りで待つ
         if (isMedic(soldier)&&prefersCasterMelee(soldier)&&!soldier._casterCarePriority) {
           targetX=nearestEnemy.x;targetY=nearestEnemy.y;
         } else if (isRangedUnit(this,soldier)) {
@@ -7314,16 +7350,14 @@ export const IronSquadGame = {
   performCasterMelee(caster,target) {
     if(!target||target.hp<=0||caster.atkCooldown>0||wallBlocksAttack(this,caster,target))return false;
     const weapon=caster.equipped?.weapon||caster.weapon,profile=weaponCombatProfile(weapon);
-    if(!canUseWeapon(caster,weapon))return false;
+    if(!canUseEquipment(caster,weapon))return false;
     if(Math.hypot(target.x-caster.x,target.y-caster.y)>(profile.reach||45))return false;
     if(isMedic(caster))castCasterStrength(this,caster);
     caster.atkCooldown=Math.max(.35,(profile.baseCooldown||1)*masteryReloadMult(caster.weaponMastery,profile.style));
     caster.atkAnim=1;caster.facingAngle=Math.atan2(target.y-caster.y,target.x-caster.x);
-    this.performAttack(caster,target,false,Math.round((caster.atk||1)*SOLDIER_PHYS_DMG_MULT),undefined,'physical');
-    if(isMage(caster)&&target.hp>0&&spendMana(caster,6)){
-      const infused=Math.round((caster.strength*.6+(caster.magicAttack||1)*.5)*SOLDIER_PHYS_DMG_MULT);
-      this.performAttack(caster,target,false,infused,false,'magic');
-    }
+    // MPを込めた一撃だけ猛烈に強い。MP切れは普通の殴り
+    const strike=spendMana(caster,CASTER_STRIKE_COST)?casterStrikeMultiplier(caster):1;
+    this.performAttack(caster,target,false,Math.round((caster.atk||1)*SOLDIER_PHYS_DMG_MULT*strike),undefined,'physical');
     return true;
   },
 
@@ -7342,7 +7376,7 @@ export const IronSquadGame = {
       ? (this.equipped && this.equipped.weapon)
       : ((attacker && attacker.equipped && attacker.equipped.weapon) || (attacker && attacker.weapon));
     const wProfEarly = weaponCombatProfile(wItemEarly);
-    if(!magicalAttack&&!canUseWeapon(isPlayer?this.player:attacker,wItemEarly))return;
+    if(!magicalAttack&&!canUseEquipment(isPlayer?this.player:attacker,wItemEarly))return;
     let sweet = { dmgMult: 1, critBonus: 0, inSweet: false, band: 'fixed' };
     if (sweetOpt !== false && !wProfEarly.ranged) {
       const ax = attacker?.x ?? this.player?.x ?? monster.x;
@@ -7506,6 +7540,8 @@ export const IronSquadGame = {
 
     if(!environmental)dmg=Math.max(1,Math.round(dmg*headquartersDamageMult(this,target)));
     if(target.magicWardTimer>0)dmg=Math.max(1,Math.round(dmg*(1-(target.magicWardBonus||0))));
+    const barrier=absorbEquipmentBarrier(target,dmg);dmg=barrier.damage;
+    if(barrier.absorbed>0)this.spawnDamageText(target.x,target.y-26,`結界 −${Math.ceil(barrier.absorbed)}`,'#90b9c5');
     if(preventLethalHit(this,target,dmg))return;
     if(magical)practiceAttribute(target,'magicDefense',1+Math.min(4,rawDmg/Math.max(1,target.maxHp||1)));
     target.hp -= dmg;
@@ -7666,12 +7702,12 @@ export const IronSquadGame = {
             <strong class="merchant-purchase-price"><small>購入価格</small>${price.toLocaleString()}G</strong>
           </div>
           <p class="merchant-quality">${slot?.name||item.type} · ${item.merchantQuality||'厳選'} · 品質補正×${Number(item.rollMult||1).toFixed(2)} · 強化+${item.upgrade||0}</p>
-          ${item.type==='WEAPON'?`<p class="weapon-requirement">${weaponRequirementText(this.player,item)}</p>`:''}
+          <p class="weapon-requirement">${equipmentRequirementText(this.player,item)}</p>
           <div class="equipment-comparison ${cmp.kind}"><div class="equip-cmp-head">隊長の現装備比：<strong>${cmp.label}</strong></div><small>現在：${current ? equipmentName(current) : '未装備'}</small>${cmp.html}</div>
           ${inheritBuy}
           <div class="transfer-card-meta">
             <span class="merchant-price-note">${item.mat||''} · 基準売値の約${(price/Math.max(1,saleValue(item))).toFixed(1)}倍（品質込み）</span>
-            <button type="button" class="transfer-tap-btn" data-buy="${idx}" ${can ? '' : 'disabled'}>${can ? canUseWeapon(this.player,item)?'購入して装備':'購入してバッグへ' : available?'所持金不足':'現在は利用できません'}</button>
+            <button type="button" class="transfer-tap-btn" data-buy="${idx}" ${can ? '' : 'disabled'}>${can ? canUseEquipment(this.player,item)?'購入して装備':'購入してバッグへ' : available?'所持金不足':'現在は利用できません'}</button>
             ${canInheritBuy?`<button type="button" class="transfer-tap-btn merchant-inherit-btn" data-buy="${idx}" data-inherit="1" ${can?'':'disabled'} title="現在装備の強化値(+${current.upgrade})を引き継いで購入・装備（旧装備は消滅します）">✨+${current.upgrade}引継で購入(旧装備消滅)</button>`:''}
           </div>
         </div>`;
@@ -7744,7 +7780,7 @@ export const IronSquadGame = {
           markMerchantPurchase(m,item,this.phase||1);
           m.stock.splice(idx, 1);
           this.collectDrop(item, false, {purchased:true,inherit});
-          this.showToast(`🏪【購入${inherit?'・強化引継':canUseWeapon(this.player,item)?'・装備':'・バッグへ'}】[T${item.tier}] ${equipmentName(item)} · ${price.toLocaleString()}G`);
+          this.showToast(`🏪【購入${inherit?'・強化引継':canUseEquipment(this.player,item)?'・装備':'・バッグへ'}】[T${item.tier}] ${equipmentName(item)} · ${price.toLocaleString()}G`);
           this.saveGame();
           this.updateStatsUI();
           render();
@@ -8500,7 +8536,7 @@ export const IronSquadGame = {
   },
 
   equipItem(item, inheritUpgradeFromCurrent = false) {
-    if(!canUseWeapon(this.player,item)){this.showToast(`装備できません：${weaponRequirementText(this.player,item)}`);return false;}
+    if(!canUseEquipment(this.player,item)){this.showToast(`装備できません：${equipmentRequirementText(this.player,item)}`);return false;}
     const slotKey = SLOT_INFO[item.type] ? SLOT_INFO[item.type].key : null;
     if (!slotKey) return;
 
@@ -8860,7 +8896,8 @@ export const IronSquadGame = {
       const bits = [];
       if (st.atk) bits.push(`攻${st.atk}`);
       if(st.magicAttack)bits.push(`魔攻${st.magicAttack}`);
-      if(it.type==='WEAPON')bits.push(weaponRequirementText(s,it));
+      bits.push(equipmentRequirementText(s,it));
+      if(casterEquipmentSummary(it))bits.push(casterEquipmentSummary(it));
       if (st.def) bits.push(`防${st.def}`);
       if (st.hp) bits.push(`HP${st.hp}`);
       if (it.forgeTag) bits.push(it.forgeTag);
@@ -8891,7 +8928,8 @@ export const IronSquadGame = {
             <div>通常給与見込 <strong>${wage.total.toLocaleString()}G</strong>（基本${wage.basic.toLocaleString()}＋整備${wage.maintenance.toLocaleString()}）<br>栄誉手当 +${ranker.totalBonus.toLocaleString()}G／期</div>
             <div>経験 ${s.exp || 0} / 次${s.reqExp || 14}</div>
             <div class="soldier-attribute-grid"><span>筋力 <strong>${s.strength||0}</strong></span><span>魔力 <strong>${s.magicPower||0}</strong></span><span>魔法防御 <strong>${s.magicDef||0}</strong></span><span>速さ <strong>${s.quickness||0}</strong></span><span>回避 <strong>${s.evasion||0}</strong>（${s.dodge||0}%）</span><span>搬送 <strong>${attributeCarryCapacity(s)}人</strong></span></div>
-            <div>移動 ${formatSpeed(s.speed||0)}${isMagicUser(s)?` · 魔法攻撃 ${s.magicAttack||0}`:''}</div>
+            ${s.equipmentBarrierMax?`<div>バリア ${Math.floor(s.equipmentBarrier||0)} / ${s.equipmentBarrierMax} · 50%吸収（被弾後8秒で再生）</div>`:''}
+            <div>移動 ${formatSpeed(s.speed||0)}${isMagicUser(s)?` · 魔法攻撃 ${s.magicAttack||0}`:''}</div>${prefersCasterMelee(s)?`<div>魔力の一撃 ×${casterStrikeMultiplier(s)}（近接・MP${CASTER_STRIKE_COST}）</div>`:''}
             <div class="recruit-specialties">${attributeSpecialties(s).join('・')||'均整型'}</div>
             ${isMagicUser(s)?`<div class="soldier-mana-state">${this.magicUnitDescription(s)}</div>`:''}
             ${isRangedUnit(this,s)?`<div class="soldier-ammo-state">弾薬 ${ensureAmmo(s)}/30 ${s.ammo===0?'· 弾切れ／要補給（石投げ75%）':''}</div>`:''}
@@ -8939,12 +8977,17 @@ export const IronSquadGame = {
       </div>`;
   },
 
-  openSoldierDetail(soldierId) {
-    const s = [...(this.squad || []), ...(this.reserves || [])].find(x => x && x.id === soldierId);
+  /** order: 「前／次の兵士」でめくる id の並び（呼び出し元の一覧順）。省略時は直前の並びを維持（再描画用） */
+  openSoldierDetail(soldierId, order) {
+    const pool = [...(this.squad || []), ...(this.reserves || [])];
+    const s = pool.find(x => x && x.id === soldierId);
     if (!s) {
       this.showToast('⚠️ 兵士が見つかりません');
       return;
     }
+    if (Array.isArray(order)) this.soldierDetailOrder = order.slice();
+    let pages = (this.soldierDetailOrder || []).filter(id => pool.some(x => x && x.id === id && !x.dead));
+    if (!pages.includes(soldierId)) pages = pool.filter(x => x && !x.dead).map(x => x.id);
     this.selectedSoldierDetailId = soldierId;
     let host = document.getElementById('soldier-detail-host');
     if (!host) {
@@ -8969,12 +9012,40 @@ export const IronSquadGame = {
     if (scoutBtn && !scoutBtn.disabled) scoutBtn.onclick = () => {
       this.assignToPersonalSquad(soldierId);
     };
+    // 前／次の兵士（端でぐるっと一周）。2人以上のときだけ
+    const idx = pages.indexOf(soldierId);
+    if (pages.length > 1) {
+      const navHtml = `<div class="soldier-detail-pager" role="group" aria-label="兵士をめくる"><button type="button" class="mini-btn btn-soldier-prev">‹ 前の兵士</button><span class="soldier-detail-pos" aria-live="polite">${idx + 1} / ${pages.length}</span><button type="button" class="mini-btn btn-soldier-next">次の兵士 ›</button></div>`;
+      const panel = host.querySelector('.soldier-detail-panel');
+      panel.querySelector('.soldier-detail-head').insertAdjacentHTML('afterend', navHtml);
+      panel.insertAdjacentHTML('beforeend', navHtml);
+      const go = d => this.stepSoldierDetail(d, pages);
+      for (const b of host.querySelectorAll('.btn-soldier-prev')) b.onclick = () => go(-1);
+      for (const b of host.querySelectorAll('.btn-soldier-next')) b.onclick = () => go(1);
+      // 横スワイプでもめくれる（縦スクロールと区別するため横が大きいときだけ）
+      let sx = 0, sy = 0;
+      host.ontouchstart = e => { const t = e.touches?.[0]; if (t) { sx = t.clientX; sy = t.clientY; } };
+      host.ontouchend = e => { const t = e.changedTouches?.[0]; if (!t) return; const dx = t.clientX - sx, dy = t.clientY - sy; if (Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy) * 2) go(dx < 0 ? 1 : -1); };
+    } else { host.ontouchstart = host.ontouchend = null; }
     host.onclick = (e) => { if (e.target === host) this.closeSoldierDetail(); };
     setSubDialog(this, host, true, () => this.closeSoldierDetail());
   },
 
+  /** 個人記録を前(-1)／次(+1)の兵士へ。シートは閉じずに中身だけ入れ替え、先頭へ戻す */
+  stepSoldierDetail(dir, pages) {
+    pages = pages || this.soldierDetailOrder || [];
+    const cur = pages.indexOf(this.selectedSoldierDetailId);
+    if (cur < 0 || pages.length < 2) return false;
+    const next = pages[(cur + dir + pages.length) % pages.length];
+    this.openSoldierDetail(next);
+    const host = document.getElementById('soldier-detail-host');
+    if (host) host.scrollTop = 0;
+    return true;
+  },
+
   closeSoldierDetail() {
     this.selectedSoldierDetailId = null;
+    this.soldierDetailOrder = null;
     const host = document.getElementById('soldier-detail-host');
     if (host) {
       host.classList.add('hidden');
@@ -9500,10 +9571,15 @@ export const IronSquadGame = {
   /** 共有ボックス配布＋弱余剰の国庫換金 */
   makeWorkshopItem(recipe,tier,{preview=false}={}) {
     const id=preview?'workshop-preview':globalThis.crypto?.randomUUID?.()||`forge-${Date.now().toString(36)}-${(this.workshopItemSequence=(this.workshopItemSequence||0)+1)}`;
-    return generateRandomDrop(0,'normal',{type:recipe.type,weaponStyle:recipe.weaponStyle,tier,upgrade:0,quality:1,merchant:true,random:()=>.5,id});
+    return generateRandomDrop(0,'normal',{type:recipe.type,weaponStyle:recipe.weaponStyle,armorStyle:recipe.armorStyle||null,tier,upgrade:0,quality:1,merchant:true,random:()=>.5,id});
   },
   createSupplyEquipment(type,soldier,tier=1) {
-    const item=generateRandomDrop(0,'normal',{type,tier,upgrade:0,quality:1,merchant:true,random:()=>.5,id:`issue-${soldier.id}-${this.phase}-${type}-t${tier}`});
+    let armorStyle=null;
+    if(DEFENSE_TYPES.includes(type)){
+      const family=attributeFamily(soldier);
+      armorStyle=family==='MAGE'?'arcane':family==='MEDIC'?'healing':!canUseEquipment(soldier,{type,tier})?'ward':null;
+    }
+    const item=generateRandomDrop(0,'normal',{type,tier,armorStyle,upgrade:0,quality:1,merchant:true,random:()=>.5,id:`issue-${soldier.id}-${this.phase}-${type}-t${tier}`});
     item.nationalIssue=true;item.qualityLabel='標準支給';delete item.weaponTraits;
     if(type==='WEAPON'){
       item.weaponStyle=preferredWeaponStyle(soldier,tier);
@@ -9532,7 +9608,8 @@ export const IronSquadGame = {
     const dist = distributeSharedBoxToSoldiers(this.sharedEquipBox, soldiers, (s) => this.recalcSoldierStats(s),value);
     this.sharedEquipBox = dist.remaining;
     if(this.phaseFiscal)this.phaseFiscal.sharedEquipmentIssued=(this.phaseFiscal.sharedEquipmentIssued||0)+dist.equippedCount;
-    const sample=soldiers.find(s=>!s.dead)||{id:'stock',soldierClass:'HEAVY'};
+    // 売却基準は通常品で作る（先頭が術士だと魔導/治癒品が基準になり、低ティアの通常防具まで売ってしまう）
+    const sample=soldiers.find(s=>!s.dead&&!['MAGE','MEDIC'].includes(attributeFamily(s)))||{id:'stock',soldierClass:'HEAVY'};
     const strength=i=>equipmentScore({...i,tier:1,upgrade:0});
     const minimum=new Map();
     const sold = sellWeakSurplusFromBox(this.sharedEquipBox, soldiers,value,{perSlot:RESERVE_ARMAMENT_COUNT,keep:item=>{if(!minimum.has(item.type))minimum.set(item.type,strength(this.createSupplyEquipment(item.type,sample,1)));return strength(item)>minimum.get(item.type);}});
@@ -9555,7 +9632,7 @@ export const IronSquadGame = {
     if(!soldier || !this.canManageSoldier(soldier) || !slotKey)return false;
     const source=this.transferItems(slotKey,soldier).find(i=>i.id===item.id);
     if(!source)return false;item=source;
-    if(!canUseWeapon(soldier,item)){this.showToast(`装備できません：${weaponRequirementText(soldier,item)}`);return false;}
+    if(!canUseEquipment(soldier,item)){this.showToast(`装備できません：${equipmentRequirementText(soldier,item)}`);return false;}
     soldier.equipped ||= {};
     const oldItem=soldier.equipped[slotKey];
     for(const owner of [this,...this.squad,...(this.reserves || [])]) {
@@ -9701,14 +9778,14 @@ export const IronSquadGame = {
                   </div>
                   <div class="transfer-card-stats">
                     <div class="stat-delta-block">${comp.html}</div>
-                    <div class="weapon-requirement">${weaponRequirementText(soldier,item)}</div>
+                    <div class="weapon-requirement">${equipmentRequirementText(soldier,item)}</div>
                   </div>
                   <div class="transfer-card-meta">
                     <span class="transfer-meta-note">
                       ${heroEquipped ? '<span style="color:#f59e0b; font-weight:bold;">👑隊長装備中 (外れます)</span>' : '<span style="color:#94a3b8;">🎒バッグ内</span>'}
                       ${inherited ? `<span style="color:#34d399; margin-left:4px;">(強化+${current.upgrade}引継)</span>` : ''}
                     </span>
-                    <button type="button" class="transfer-tap-btn" ${canUseWeapon(soldier,item)?'':'disabled'}>タップして譲渡</button>
+                    <button type="button" class="transfer-tap-btn" ${canUseEquipment(soldier,item)?'':'disabled'}>タップして譲渡</button>
                   </div>
                 </div>
               `;
@@ -9931,7 +10008,7 @@ export const IronSquadGame = {
       if(soldier.lastMaintenance)row.textContent+=` · 自己強化${soldier.lastMaintenance.count}回 / ${soldier.lastMaintenance.spent}G · ${soldier.lastMaintenance.status}`;
       const info=document.createElement('span');info.textContent=row.textContent;
       const detail=document.createElement('button');detail.type='button';detail.className='mini-btn';detail.textContent='個人詳細';
-      detail.setAttribute('aria-label',`${soldier.name}の個人詳細`);detail.onclick=()=>this.openSoldierDetail(soldier.id);
+      detail.setAttribute('aria-label',`${soldier.name}の個人詳細`);detail.onclick=()=>this.openSoldierDetail(soldier.id,(this.reserves||[]).filter(x=>x&&!x.dead).map(x=>x.id));
       row.replaceChildren(info,detail);
       reserveList.append(row);
     }
@@ -9960,7 +10037,7 @@ export const IronSquadGame = {
       const awakeningCost = classUpCostForNext({ classTier: playerClassTier(p) });
 
       const caster=isPlayerCaster(p),values=attributeValues(p);
-      const playerStats=[['HP',`${Math.max(0,Math.floor(p.hp)).toLocaleString()} / ${p.maxHp.toLocaleString()}`],['攻撃',p.atk.toLocaleString()],['防御',(p.def||0).toLocaleString()],['筋力',values.strength],['魔力',values.magic],['魔法防御',values.magicDefense],['速さ',values.quickness],['回避',`${values.evasion} · ${p.dodge||0}%`],['魔法攻撃',(p.magicAttack||0).toLocaleString()],['移動',formatSpeed(p.speed||0)],['搬送',`${attributeCarryCapacity(p)}人`],['MP',caster?`${Math.floor(ensureMana(p))} / ${p.maxMana}`:'—']];
+      const playerStats=[['HP',`${Math.max(0,Math.floor(p.hp)).toLocaleString()} / ${p.maxHp.toLocaleString()}`],['攻撃',p.atk.toLocaleString()],['防御',(p.def||0).toLocaleString()],['筋力',values.strength],['魔力',values.magic],['魔法防御',values.magicDefense],['速さ',values.quickness],['回避',`${values.evasion} · ${p.dodge||0}%`],['魔法攻撃',(p.magicAttack||0).toLocaleString()],['移動',formatSpeed(p.speed||0)],['搬送',`${attributeCarryCapacity(p)}人`],['MP',caster?`${Math.floor(ensureMana(p))} / ${p.maxMana}`:'—'],['バリア',`${Math.floor(p.equipmentBarrier||0)} / ${p.equipmentBarrierMax||0}`]];
       pRecordBox.innerHTML = `
         <h4 class="commander-stat-title">隊長ステータス <small>Lv.${p.level||1}</small></h4>
         <dl class="commander-stat-grid">${playerStats.map(([label,value])=>`<div><dt>${label}</dt><dd>${value}</dd></div>`).join('')}</dl>
@@ -10044,7 +10121,8 @@ export const IronSquadGame = {
       let statParts = [];
       if (st.atk) statParts.push(`+${st.atk}攻`);
         if(st.magicAttack)statParts.push(`+${st.magicAttack}魔攻`);
-        if(item.type==='WEAPON')statParts.push(weaponRequirementText(this.player,item));
+        statParts.push(equipmentRequirementText(this.player,item));
+        if(casterEquipmentSummary(item))statParts.push(casterEquipmentSummary(item));
       if (st.def) statParts.push(`+${st.def}防`);
       if (st.hp) statParts.push(`+${st.hp}HP`);
       if (st.speed) statParts.push(`+${st.speed}速`);
@@ -10130,7 +10208,8 @@ export const IronSquadGame = {
         let statParts = [];
         if (st.atk) statParts.push(`+${st.atk}攻`);
         if(st.magicAttack)statParts.push(`+${st.magicAttack}魔攻`);
-        if(item.type==='WEAPON')statParts.push(weaponRequirementText(this.player,item));
+        statParts.push(equipmentRequirementText(this.player,item));
+        if(casterEquipmentSummary(item))statParts.push(casterEquipmentSummary(item));
         if (st.def) statParts.push(`+${st.def}防`);
         if (st.hp) statParts.push(`+${st.hp}HP`);
         if (st.speed) statParts.push(`+${st.speed}速`);
@@ -10158,7 +10237,7 @@ export const IronSquadGame = {
 
         const equipBtn = itemRow.querySelector('.equip-btn');
         if (equipBtn) {
-          equipBtn.disabled=!canUseWeapon(this.player,item);
+          equipBtn.disabled=!canUseEquipment(this.player,item);
           equipBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             this.equipItem(item, false);
@@ -10167,7 +10246,7 @@ export const IronSquadGame = {
         }
         const inheritBtn = itemRow.querySelector('.inherit-btn');
         if (inheritBtn) {
-          inheritBtn.disabled=!canUseWeapon(this.player,item);
+          inheritBtn.disabled=!canUseEquipment(this.player,item);
           inheritBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             const curName = curEquipped ? equipmentName(curEquipped) : '現在装備';
@@ -10314,6 +10393,8 @@ export const IronSquadGame = {
     });
     squadList.appendChild(filterBar);
 
+    // 個人記録の「次の兵士」順＝この名簿の表示順（自小隊→他小隊、絞り込み中は表示分だけ）
+    const detailOrder = [...(curFilter === 'other' ? [] : mySquad), ...(curFilter === 'my' ? [] : otherSquad)].map(x => x.id);
     const createSoldierCard = (s) => {
       const row = document.createElement('div');
       const isNamed = s.isNamed;
@@ -10476,7 +10557,7 @@ export const IronSquadGame = {
 
       const detailBtn = row.querySelector('.btn-soldier-detail');
       if (detailBtn) {
-        detailBtn.addEventListener('click', () => this.openSoldierDetail(s.id));
+        detailBtn.addEventListener('click', () => this.openSoldierDetail(s.id, detailOrder));
       }
 
       const classUpBtn = row.querySelector('.btn-class-up');

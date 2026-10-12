@@ -96,10 +96,11 @@ for (const soldierClass of ['MEDIC','HIGH_PRIEST','SAINT','ARCHANGEL']) {
 // Field resuscitation scales directly with the recipient's full HP, with no ordinary-heal conversion.
 freshField();
 const rescuer = soldier('MEDIC',{reqExp:1e9});
+rescuer.healPower=50; // Isolate the reference revival fraction from randomized starting equipment.
 const wounded = {...soldier('HEAVY',{id:'revive-patient',reqExp:1e9}),hp:0,maxHp:100,isDown:true,downTimer:45};
 game.squad=[rescuer,wounded];
 assert.equal(treatWounded(game,rescuer,wounded,1),true);
-assert.equal(wounded.hp,Math.round(100*healFraction(rescuer))); assert.ok(wounded.hp>=8&&wounded.hp<=12,"fresh medic revives ~10% of max HP (was flat 35%)"); assert.equal(rescuer.exp,300); assert.equal(rescuer.revivalExp,300);
+assert.equal(wounded.hp,Math.round(100*healFraction(rescuer))); assert.ok(wounded.hp>=8&&wounded.hp<=12,"reference medic revives ~10% of max HP (was flat 35%)"); assert.equal(rescuer.exp,300); assert.equal(rescuer.revivalExp,300);
 assert.equal(rescuer.healingExp,0); assert.equal(rescuer.healingHp,0);
 assert.equal(treatWounded(game,rescuer,wounded,1),false); assert.equal(rescuer.exp,300);
 grantRescueBonus(game,wounded,{method:'MEDIC',medic:rescuer}); assert.equal(rescuer.exp,300,'one reward per down event');

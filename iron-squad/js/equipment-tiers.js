@@ -59,4 +59,4 @@ const VISUAL_PROFILES=TIERS.map(({tier})=>{
  return Object.freeze({coverage:.18+progress*.82,detail:Math.min(3,Math.floor(progress*4)),generation:generation(tier),material:materialTier(tier),color:MATERIALS[materialTier(tier)-1].visualColor,rough:tier<=GENERATION_COUNT&&generation(tier)<3});
 });
 const HERO_VISUAL=Object.freeze({coverage:1,detail:3,generation:4,material:7,color:'#bfae78',rough:false});
-export const equipmentVisualProfile=item=>item?.heroOnly?HERO_VISUAL:item?VISUAL_PROFILES[tierNumber(item.tier)-1]:EMPTY_VISUAL;
+export const equipmentVisualProfile=item=>item?.heroOnly?HERO_VISUAL:item?(item.armorStyle?{...VISUAL_PROFILES[tierNumber(item.tier)-1],robe:true,color:{arcane:'#7f719b',healing:'#d2c9ab',ward:'#668d98'}[item.armorStyle]}:VISUAL_PROFILES[tierNumber(item.tier)-1]):EMPTY_VISUAL;

@@ -1,7 +1,7 @@
 import {toKana} from '../../common/js/kana-text.js';
 import {kanaGrade} from '../../common/js/kana-mode.js?v=175';
 // Game vocabulary absent from the studio dictionary; keep the shared files untouched.
-const words=[['貢献','こうけん',7]];
+const words=[['貢献','こうけん',7],['頭巾','ずきん',7],['脚衣','きゃくい',7],['結界','けっかい',7]];
 export function toGameKana(text,grade=2) {
   if(grade>0&&grade<7)for(const [word,reading,level]of words)if(grade<level)text=text.replaceAll(word,reading);
   return toKana(text,grade);

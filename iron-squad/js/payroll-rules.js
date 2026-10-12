@@ -1,4 +1,4 @@
-import {powerRank} from './equipment-tiers.js?v=187';
+import {powerRank} from './equipment-tiers.js?v=231';
 import {economicPayrollBudget} from './regional-economy.js?v=182';
 
 export const SOLDIER_SALARY=20;

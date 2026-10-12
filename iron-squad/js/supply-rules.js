@@ -1,8 +1,8 @@
-import {isMagicUser,ensureMana} from './magic-rules.js?v=211';
+import {isMagicUser,ensureMana} from './magic-rules.js?v=231';
 import {WORLD_SIZE} from './world.js?v=198';
 import {inCurrentInstance} from './instance-rules.js?v=182';
 import {saveSlots} from './save-slots.js';
-import {nearestRevivalPotionTarget,reviveByPotion,REVIVAL_POTION_RANGE} from './casualty-rules.js?v=223';
+import {nearestRevivalPotionTarget,reviveByPotion,REVIVAL_POTION_RANGE} from './casualty-rules.js?v=232';
 
 export const AMMO_CAPACITY=30;
 export const SQUAD_POTION_COST=300;

@@ -1,11 +1,12 @@
 import {guardTarget,guardSpeedMult} from './guard-leash.js?v=211';
+import {updateEquipmentBarrier} from './defense-equipment.js?v=231';
 import {sound} from '../../common/js/audio.js?v=151';
 import {WORLD_SIZE} from './world.js?v=198';
 import {inCurrentInstance} from './instance-rules.js?v=182';
 import {recordCombat} from './phase-rules.js?v=218';
 import {isSoldierOnExpedition} from './expedition-rules.js';
-import {practiceAttribute,prefersCasterMelee,attributeValues,canChannelWeaponMagic} from './unit-attributes.js?v=187';
-import {isMagicWeapon} from './weapon-requirements.js?v=187';
+import {practiceAttribute,prefersCasterMelee,attributeValues,canChannelWeaponMagic} from './unit-attributes.js?v=231';
+import {isMagicWeapon} from './weapon-requirements.js?v=231';
 import {numberClassDefinitions} from './class-up-rules.js?v=185';
 
 export const MAGE_IDS=['MAGE','ARCHMAGE','ELEMENTAL_SAGE','ARCANE_SOVEREIGN'];
@@ -69,6 +70,7 @@ export function updateMagic(game,dt,supplyLocation) {
   game._manaSupplyClock=(game._manaSupplyClock||0)+dt;const supplyDue=game._manaSupplyClock>=.25,supplyElapsed=game._manaSupplyClock;if(supplyDue)game._manaSupplyClock=0;
   const defending=isDefenseBattle(game);
   for(const u of units(game)){
+    updateEquipmentBarrier(u,dt);
     const strengthWasActive=u._casterStrengthTimer>0;
     u._casterStrengthTimer=Math.max(0,(u._casterStrengthTimer||0)-dt);
     u._casterStrengthCooldown=Math.max(0,(u._casterStrengthCooldown||0)-dt);

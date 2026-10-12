@@ -1,11 +1,11 @@
-import {ensureMana,regenerateMana,spendMana} from './magic-rules.js?v=211';
+import {ensureMana,regenerateMana,spendMana} from './magic-rules.js?v=231';
 import {recordHealing,recordDown,healAmountFor} from './phase-rules.js?v=218';
 import {WORLD_SIZE} from './world.js';
 import {inCurrentInstance} from './instance-rules.js?v=182';
 import {grantPermanentRescueReward} from './rescue-rewards.js?v=204';
 import {grantPersonalExp,revivalExperience,raiseLevelMark} from './experience-rules.js';
 import {guardRescueLines} from './soldier-dialogue.js';
-import {attributeCarryCapacity} from './unit-attributes.js?v=187';
+import {attributeCarryCapacity} from './unit-attributes.js?v=231';
 import {visibleHeroMembers} from './hero-rules.js';
 import {isOwnSquad} from './own-squad-marker.js?v=182';
 
@@ -123,6 +123,10 @@ const CIV_NAME_POOL={
 export function isLocalRescueUnit(game,unit) {
   return inCurrentInstance(game,unit);
 }
+/** 町の判明：入口を踏んだ(discovered)・制圧済み・ミニマップの霧が晴れている、のどれか。未判明の町へは搬送しない。 */
+export const townKnown=(game,d)=>!!(d&&(d.discovered||d.cleared||(d.entrance&&game.fog?.isExploredWorld?.(d.entrance.x,d.entrance.y))));
+/** 搬送先として使える拠点か：町は判明済みのものだけ（町内の救護受付・本陣・救護所・拠点は従来どおり）。 */
+export const stationKnown=(game,p)=>p.kind!=='town'||String(p.id).startsWith('town-aid-')||townKnown(game,(game.dungeons||[]).find(d=>`town-${d.id}`===p.id));
 export function aidStations(game,unit=null) {
   const d=game.currentDungeon;
   if(unit&&isLocalRescueUnit(game,unit))return d.kind==='town'?[{id:`town-aid-${d.id}`,kind:'town',x:230,y:d.height/2,radius:120,intakeRadius:72,name:`${d.name}・救護受付`}]:[];
@@ -141,7 +145,7 @@ export const nearestCasualtyStation=(game,unit)=>nearest(casualtyStations(game,u
 export function civilianRescueStations(game,unit=null) {
   const d=game.currentDungeon,carrier=unit?.carrierId==='player'?game.player:(game.squad||[]).find(s=>s.id===unit?.carrierId);
   if(d&&(unit?.rescueSpace===d.id||(carrier&&isLocalRescueUnit(game,carrier))))return d.kind==='town'?aidStations(game,game.player):[];
-  return aidStations(game).filter(p=>p.kind!=='town'||(game.dungeons||[]).some(d=>`town-${d.id}`===p.id&&(d.discovered||d.cleared)));
+  return aidStations(game).filter(p=>p.kind!=='town'||(game.dungeons||[]).some(d=>`town-${d.id}`===p.id&&townKnown(game,d)));
 }
 export function nearestAidStation(game,unit) {return nearest(aidStations(game,unit),unit);}
 export function nearestCivilianStation(game,unit) {return nearest(civilianRescueStations(game,unit),unit);}
@@ -627,6 +631,12 @@ export function ensureCiviliansSpawned(game, opts={}) {
   }
 }
 
+/** 隊長の自部隊に健在な衛生職がいるか（いれば直属の搬送者は町へ行かず隊長のそばでCT明けを待つ）。 */
+export const partyMedics=(game,unit)=>(game.squad||[]).filter(h=>h!==unit&&isOwnSquad(h)&&isMedic(h)&&!h.dead&&!h.isDown&&h.hp>0&&isLocalRescueUnit(game,h)===isLocalRescueUnit(game,unit));
+export const waitsForPartyMedic=(game,unit)=>!!(unit&&isOwnSquad(unit)&&game?.player&&!game.player.isDown&&!game.player.dead&&isLocalRescueUnit(game,unit)===isLocalRescueUnit(game,game.player)&&partyMedics(game,unit).length);
+export const PARTY_STAY_RADIUS=56;
+/** CT待ちの自部隊衛生職は、倒れた仲間がいる間は敵を追わず隊長の周りで待つ。 */
+export const medicHoldsByCommander=(game,medic)=>!!(medic&&isOwnSquad(medic)&&isMedic(medic)&&!medic.isDown&&game?.player&&!game.player.isDown&&revivalSkillCooldownLeft(game,medic)>.000001&&rescueUnits(game).some(u=>u!==medic&&u!==game.player&&u.isDown&&!u.dead&&isOwnSquad(u)));
 export function handleTransportAI(game,soldier,dt) {
   if(soldier.dead||soldier.isDown)return false;
   const carried=carriedSoldiers(game,soldier);
@@ -637,7 +647,13 @@ export function handleTransportAI(game,soldier,dt) {
   if(candidate&&attachWounded(game,soldier,candidate))return true;
   // 隊長を運ぶ場合：到達可能な衛生術士がいればその最寄りへ、いなければ町・本陣・救護所へ。
   const healer=!candidate&&carried.length&&(carried.includes(game.player)||headquartersRevivalPaused(game))?(game.squad||[]).filter(h=>h!==soldier&&isMedic(h)&&!h.dead&&!h.isDown&&h.hp>0&&revivalSkillCooldownLeft(game,h)<=.000001&&medicHasStamina(h,MEDIC_TREAT_MIN)&&isLocalRescueUnit(game,h)===isLocalRescueUnit(game,soldier)).sort((a,b)=>Math.hypot(a.x-soldier.x,a.y-soldier.y)-Math.hypot(b.x-soldier.x,b.y-soldier.y))[0]:null;
-  const destination=candidate || healer || (carried.length?nearest(casualtyStations(game,carried.some(isMerchantCasualty)?carried.find(isMerchantCasualty):soldier).filter(p=>(p.kind!=='medical'||p.discovered)&&(p.kind!=='base'||!headquartersRevivalPaused(game))),soldier):null);
+  // 自部隊に衛生職がいる間は搬送せず、牽引したまま隊長のそばで待つ（CT明けに衛生職が蘇生）。
+  if(!candidate&&!healer&&carried.length&&!carried.includes(game.player)&&waitsForPartyMedic(game,soldier)){
+    const p=game.player,dx=p.x-soldier.x,dy=p.y-soldier.y,d=Math.hypot(dx,dy);
+    if(d>PARTY_STAY_RADIUS){const step=Math.min(d-PARTY_STAY_RADIUS+4,(soldier.speed||80)*(d>140?1.6:transportSpeedFactor(game,soldier))*dt);soldier.x+=dx/d*step;soldier.y+=dy/d*step;soldier.vx=dx/d;soldier.vy=dy/d;soldier.facingAngle=Math.atan2(dy,dx);}
+    return true;
+  }
+  const destination=candidate || healer || (carried.length?nearest(casualtyStations(game,carried.some(isMerchantCasualty)?carried.find(isMerchantCasualty):soldier).filter(p=>(p.kind!=='medical'||p.discovered)&&stationKnown(game,p)&&(p.kind!=='base'||!headquartersRevivalPaused(game))),soldier):null);
   if(!destination)return false;
   const goal=game.dungeonMoveTarget?.(soldier,destination)||destination;
   const dx=goal.x-soldier.x,dy=goal.y-soldier.y,d=Math.hypot(dx,dy);
@@ -702,6 +718,6 @@ export function updateNpcRescue(game,dt) {
     }
     return;
   }
-  const dest=nearest(casualtyStations(game,p).filter(st=>(st.kind!=='medical'||st.discovered)&&(st.kind!=='base'||!headquartersRevivalPaused(game))),carrier);
+  const dest=nearest(casualtyStations(game,p).filter(st=>(st.kind!=='medical'||st.discovered)&&stationKnown(game,st)&&(st.kind!=='base'||!headquartersRevivalPaused(game))),carrier);
   if(dest)go(dest,speed*transportSpeedFactor(game,carrier));
 }

@@ -1,5 +1,5 @@
-import {drawEquipmentShield} from './equipment-art.js?v=188';
-import { MELEE_SWEET_SPOT, meleeSweetSpotFor, weaponCombatProfile } from './equipment-rules.js?v=217';
+import {drawEquipmentShield} from './equipment-art.js?v=231';
+import { MELEE_SWEET_SPOT, meleeSweetSpotFor, weaponCombatProfile } from './equipment-rules.js?v=231';
 import {isHeavyWeaponStyle} from './growth-rules.js?v=213';
 
 const TAU = Math.PI * 2;

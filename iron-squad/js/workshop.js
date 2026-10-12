@@ -1,13 +1,13 @@
 import {CRAFT_MATERIALS,CRAFT_RECIPES,craftRecipe,normalizeMaterials,addMaterials,workshopTier,workshopLevel,
-  recipeMaterials,canAffordMaterials,stampCraftedItem,craftExclusiveLabel} from './crafting-rules.js?v=189';
-import {standardEquipmentCost} from './armament-rules.js?v=191';
-import {tierDescription,tierNumber} from './equipment-tiers.js';
-import {equipmentName,compareEquipment} from './equipment-rules.js?v=217';
-import {weaponRequirementText} from './weapon-requirements.js?v=187';
+  recipeMaterials,canAffordMaterials,stampCraftedItem,craftExclusiveLabel} from './crafting-rules.js?v=231';
+import {standardEquipmentCost} from './armament-rules.js?v=231';
+import {tierDescription,tierNumber} from './equipment-tiers.js?v=231';
+import {equipmentName,compareEquipment} from './equipment-rules.js?v=231';
+import {equipmentRequirementText} from './weapon-requirements.js?v=231';
 import {atFacility} from './hq-facilities.js?v=201';
 import {sound} from '../../common/js/audio.js?v=151';
 
-export const WORKSHOP_STOCK=CRAFT_RECIPES.map(recipe=>({...recipe,name:recipe.type==='WEAPON'?{
+export const WORKSHOP_STOCK=CRAFT_RECIPES.map(recipe=>({...recipe,name:recipe.armorStyle?recipe.name:recipe.type==='WEAPON'?{
   sword:'剣',spear:'槍',hammer:'ハンマー',axe:'斧',bow:'弓',crossbow:'クロスボウ',cannon:'火砲',staff:'長杖',wand:'ワンド'
 }[recipe.weaponStyle]:{SHIELD:'盾',HELMET:'兜',ARMOR:'鎧',GLOVES:'籠手',LEGS:'脚具',AMULET:'装飾'}[recipe.type]}));
 const money=n=>`${Math.max(0,n||0).toLocaleString()}G`;
@@ -20,7 +20,7 @@ export function workshopPreview(game,recipe,tier,crafted=false) {
 }
 function comparison(game,item) {
   const current=game.equipped?.[slots[item.type]],cmp=compareEquipment(item,current);
-  return `<div class="equipment-comparison ${cmp.kind}"><div class="equip-cmp-head">今の装備とくらべる：<strong>${cmp.label}</strong></div><small>現在：${current?equipmentName(current):'未装備'}</small>${cmp.html}</div>${item.type==='WEAPON'?`<p class="weapon-requirement">${weaponRequirementText(game.player,item)}</p>`:''}`;
+  return `<div class="equipment-comparison ${cmp.kind}"><div class="equip-cmp-head">今の装備とくらべる：<strong>${cmp.label}</strong></div><small>現在：${current?equipmentName(current):'未装備'}</small>${cmp.html}</div><p class="weapon-requirement">${equipmentRequirementText(game.player,item)}</p>`;
 }
 // v6.3.0: x10 (was x1.4 bought / x3 crafted), in line with merchant prices.
 export const WORKSHOP_PRICE_MULT={bought:14,crafted:30};
@@ -88,6 +88,7 @@ export const workshopMethods={
     const buyReason=reason(sq),craftReason=reason(cq);
     panel.insertAdjacentHTML('beforeend',`<div class="town-facility workshop-panel"><strong>鍛冶工房 · Lv${level}</strong>
       <p>製造可能ティア：${tierDescription(maximum)}<br>本陣の発展と軍備研究で作れる装備が増えます。隊長も兵士も購入には各自のGが必要。兵士は手持ちで買える範囲から順に整備します。</p>
+      <p>重装には筋力が必要です。魔導・治癒・結界の防具は低筋力で使えます。物理防御は低め。バリアは被ダメージの50%を吸収し、被弾が8秒止まると再生します。</p>
       <label class="workshop-choice">製造ティア<select id="workshop-tier">${Array.from({length:maximum},(_,i)=>`<option value="${i+1}" ${i+1===selectedTier?'selected':''}>${tierDescription(i+1)}</option>`).join('')}</select></label>
       <label class="workshop-choice">購入する品<select id="workshop-supply">${makeOptions(WORKSHOP_STOCK,supplyId)}</select></label>
       <div class="workshop-purchase-preview">${comparison(this,supply)}</div>

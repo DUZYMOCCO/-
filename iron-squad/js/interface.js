@@ -2,7 +2,7 @@ import {commanderFullName} from './commander-identity.js?v=210';
 import {isEnlisted} from './career-rules.js?v=200';
 import {configureAudioInterface} from './audio-interface.js?v=220';
 import {renderBattleLog} from './battle-log.js?v=226';
-import {renderTroopRankings} from './troop-rankings.js?v=226';
+import {renderTroopRankings} from './troop-rankings.js?v=230';
 import {genderLabel} from './soldier-names.js?v=210';
 /** Presentation only: keep game actions on their original DOM nodes. */
 const element = (tag, className, text) => {

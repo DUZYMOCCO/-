@@ -59,8 +59,8 @@ for(const recipe of CRAFT_RECIPES){
  const ordinary={...item,craftOnly:false,stats:{}};applyUpgradeStats(ordinary,4);assert.ok(Object.keys(stats).some(key=>typeof stats[key]==='number'&&stats[key]>(ordinary.stats[key]||0)));
  owned.push(item);
 }
-assert.equal(new Set(owned.map(item=>item.id)).size,owned.length);assert.ok(game.inventory.filter(i=>i.craftOnly).length===15);
-const craftedState=structuredClone(game.saveGame());game.resumeSavedGame(craftedState);assert.deepEqual(game.materials,craftedState.materials);assert.equal(game.inventory.filter(i=>i.craftOnly).length,15);
+assert.equal(new Set(owned.map(item=>item.id)).size,owned.length);assert.ok(game.inventory.filter(i=>i.craftOnly).length===CRAFT_RECIPES.length);
+const craftedState=structuredClone(game.saveGame());game.resumeSavedGame(craftedState);assert.deepEqual(game.materials,craftedState.materials);assert.equal(game.inventory.filter(i=>i.craftOnly).length,CRAFT_RECIPES.length);
 const legacy={...initial};delete legacy.materials;game.resumeSavedGame(legacy);assert.deepEqual(game.materials,normalizeMaterials(),'old saves gain an empty material store');
 game.nation=normalizeNation({investment:18000});game.treasury=2000000;game.phase=2;game.phaseFiscal.startBalance=game.treasury;
 const soldiers=game.squad.slice(0,2);game.squad=soldiers;game.reserves=[];for(const s of soldiers){s.equipped={};s.weapon=null;s.gold=100000;game.recalcSoldierStats(s);}
@@ -70,7 +70,7 @@ const after=game.treasury;game.supplyMissingEquipment();assert.equal(game.treasu
 const smith=(await import('../js/hq-facilities.js')).HEADQUARTERS_FACILITIES.find(p=>p.id==='smith');
 game.currentDungeon=null;game.restTimer=0;Object.assign(game.player,{x:smith.x,y:smith.y+24});
 assert.equal(game.openHeadquartersFacility('smith'),true);
-assert.equal(document.getElementById('workshop-tier').options.length,9);assert.ok(document.querySelector('.material-stock'));assert.equal(document.getElementById('workshop-craft').options.length,15);
+assert.equal(document.getElementById('workshop-tier').options.length,9);assert.ok(document.querySelector('.material-stock'));assert.equal(document.getElementById('workshop-craft').options.length,CRAFT_RECIPES.length);
 assert.ok(document.querySelector('.workshop-craft-preview').textContent.includes('今の装備とくらべる'));
 assert.ok(!document.querySelector('.workshop-panel').textContent.includes('バッグの枠を使いません'));
 game.gold=0;game.refreshHeadquartersFacility();assert.equal(document.getElementById('btn-workshop-buy').disabled,true);assert.ok(document.getElementById('workshop-buy-reason').textContent.includes('あと'));
@@ -87,5 +87,5 @@ try{
 game.equipped.armor=owned.find(i=>i.type==='ARMOR');game.workshopCraftId='armor';game.workshopSelectedTier=1;game.refreshHeadquartersFacility();
 const weaker=document.querySelector('.workshop-craft-preview').textContent;assert.ok(weaker.includes(game.equipped.armor.name));assert.ok(weaker.includes('弱くなる'),'a low-tier craft is compared against the equipped upgraded armor');
 game.closeHeadquartersFacility();
-console.log('PASS: reduced completed gear, guaranteed treasure materials, actual enemy/commander/soldier pickup, 6 development tiers, workshop purchases, 15 exclusive recipes, exact costs, guarded failures, unique ownership, nonstacking upgrades, save migration, automatic supply budget/phase/UI');
+console.log('PASS: reduced completed gear, guaranteed treasure materials, actual enemy/commander/soldier pickup, 6 development tiers, workshop purchases, 33 exclusive recipes, exact costs, guarded failures, unique ownership, nonstacking upgrades, save migration, automatic supply budget/phase/UI');
 dom.window.close();

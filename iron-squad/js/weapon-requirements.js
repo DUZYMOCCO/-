@@ -1,6 +1,7 @@
-import {powerRank} from './equipment-tiers.js?v=187';
-import {attributeValues,attributeFamily,ATTRIBUTE_BASES} from './unit-attributes.js?v=187';
+import {powerRank} from './equipment-tiers.js?v=231';
+import {attributeValues,attributeFamily,ATTRIBUTE_BASES} from './unit-attributes.js?v=231';
 import {heroEquipmentAllowed} from './hero-equipment.js?v=211';
+import {requiredDefenseStrength,DEFENSE_TYPES} from './defense-equipment.js?v=231';
 export const MAGIC_WEAPON_STYLES=['staff','wand'];
 export const WEAPON_STRENGTH_RULES={sword:{base:18,perRank:4},spear:{base:24,perRank:6},hammer:{base:32,perRank:10},axe:{base:32,perRank:10}};
 export const isMagicWeapon=item=>MAGIC_WEAPON_STYLES.includes(item?.weaponStyle);
@@ -11,6 +12,13 @@ export function requiredWeaponStrength(item) {
   return rule?Math.ceil(rule.base+Math.max(0,powerRank(item.tier||1)-1)*rule.perRank):0;
 }
 export const canUseWeapon=(unit,item)=>heroEquipmentAllowed(unit,item)&&(!item||item.type!=='WEAPON'||attributeValues({...unit,equipped:{...unit?.equipped,weapon:item},weapon:item}).strength>=requiredWeaponStrength(item));
+export const canUseEquipment=(unit,item)=>canUseWeapon(unit,item)&&(!DEFENSE_TYPES.includes(item?.type)||attributeValues({...unit,_casterStrengthTimer:0,_casterStrengthBonus:0}).strength>=requiredDefenseStrength(item));
+export function equipmentRequirementText(unit,item) {
+  if(item?.type==='WEAPON'||item?.heroOnly)return weaponRequirementText(unit,item);
+  const required=requiredDefenseStrength(item);
+  const current=attributeValues({...unit,_casterStrengthTimer:0,_casterStrengthBonus:0}).strength;
+  return `必要筋力${required} · ${canUseEquipment(unit,item)?'装備可':`筋力不足（現在${current}）`}`;
+}
 export function preferredWeaponStyle(unit,tier=1,preferred=unit.favoriteWeapon) {
   const family=attributeFamily(unit),values=attributeValues(unit),base=ATTRIBUTE_BASES[family];
   const usable=style=>canUseWeapon(unit,{type:'WEAPON',weaponStyle:style,tier});

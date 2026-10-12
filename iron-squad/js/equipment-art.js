@@ -1,18 +1,19 @@
-import {equipmentVisualProfile} from './equipment-tiers.js?v=187';
+import {equipmentVisualProfile} from './equipment-tiers.js?v=231';
 const polygon=(c,points,color)=>{c.fillStyle=color;c.strokeStyle='#34332e';c.lineWidth=.7;c.beginPath();points.forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y));c.closePath();c.fill();c.stroke();};
 const line=(c,points,color,width=.7)=>{c.strokeStyle=color;c.lineWidth=width;c.beginPath();points.forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y));c.stroke();};
 const plane=(c,points,color)=>{c.fillStyle=color;c.beginPath();points.forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y));c.closePath();c.fill();};
 
 /** Clothing remains underneath every piece. Coverage and workmanship belong to the item. */
 function paintArmor(c,armor,{armorColor,role='HEAVY',simple=false}) {
- const caster=role==='MEDIC'||role==='MAGE',light=role==='LIGHT'||role==='ARCHER';
+ const caster=!!armor.robe||role==='MEDIC'||role==='MAGE',light=!armor.robe&&(role==='LIGHT'||role==='ARCHER');
  if(armor.coverage){
    const cover=armor.coverage,w=3+cover*(light?3:caster?2:5),top=-20-cover*4,bottom=-16+cover*(caster?17:11);
    c.fillStyle=armorColor;c.strokeStyle='#34332e';c.lineWidth=.7;c.beginPath();
    c.moveTo(-w,top+1);c.quadraticCurveTo(-w*.4,top-1,0,top+.7);c.quadraticCurveTo(w*.4,top-1,w,top+1);
    c.lineTo(w+.5,bottom-1);c.quadraticCurveTo(0,bottom+2,-w,bottom);c.closePath();c.fill();c.stroke();
-   if(cover>.4){const shoulder=light?1.2:caster?1.5:2.8;c.fillStyle=armorColor;c.fillRect(-w-shoulder,top,shoulder+1,2+cover*3);c.fillRect(w-.7,top,shoulder+1,2+cover*3);}
+   if(cover>.4&&!armor.robe){const shoulder=light?1.2:caster?1.5:2.8;c.fillStyle=armorColor;c.fillRect(-w-shoulder,top,shoulder+1,2+cover*3);c.fillRect(w-.7,top,shoulder+1,2+cover*3);}
    if(cover>.72&&!light&&!caster){polygon(c,[[-7,-10],[-10,-3],[-4,-4],[-3,-10]],armorColor);polygon(c,[[4,-10],[9,-9],[10,-3],[4,-4]],armorColor);}
+   if(armor.robe){line(c,[[-w*.5,top+3],[-w*.6,bottom-1]],'rgba(237,235,218,.35)');line(c,[[w*.5,top+3],[w*.7,bottom-1]],'rgba(18,29,28,.32)');line(c,[[-w,-13],[w,-13]],'#bba773',1);}
    if(!simple){
      // Broad light planes stay readable at phone size, without per-frame gradients.
      plane(c,[[-w+.6,top+1],[-.7,top+1.2],[-w*.25,bottom-.8],[-w+.8,bottom-1]],armor.rough?'rgba(235,214,164,.16)':'rgba(237,245,235,.28)');

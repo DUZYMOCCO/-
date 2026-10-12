@@ -1,5 +1,5 @@
-import {CRAFT_MATERIALS} from './crafting-rules.js?v=189';
-import {equipmentName} from './equipment-rules.js?v=217';
+import {CRAFT_MATERIALS} from './crafting-rules.js?v=231';
+import {equipmentName} from './equipment-rules.js?v=231';
 
 /** Report the actual destination after pickup, including treasury buyouts and material caps. */
 export function receiveTreasure(game,loot) {

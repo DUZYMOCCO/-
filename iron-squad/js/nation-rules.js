@@ -1,15 +1,16 @@
-import {normalizeArmament,ARMAMENT_POLICIES,advanceResearch,researchCost,standardEquipmentCost,personalEquipmentBudget,RESERVE_ARMAMENT_COUNT,ARMAMENT_LIMITS} from './armament-rules.js?v=191';
-import {tierDescription,MAX_EQUIPMENT_TIER} from './equipment-tiers.js?v=187';
+import {canUseEquipment} from './weapon-requirements.js?v=231';
+import {normalizeArmament,ARMAMENT_POLICIES,advanceResearch,researchCost,standardEquipmentCost,personalEquipmentBudget,RESERVE_ARMAMENT_COUNT,ARMAMENT_LIMITS} from './armament-rules.js?v=231';
+import {tierDescription,MAX_EQUIPMENT_TIER} from './equipment-tiers.js?v=231';
 import {WORLD_SIZE} from './world.js?v=198';
-import {saleValue,isGodRollProtected} from './equipment-rules.js?v=217';
-import {calcTreasuryGrossIncome,calcCommanderStipend,EQUIPMENT_SLOTS} from './economy-rules.js?v=192';
+import {saleValue,isGodRollProtected} from './equipment-rules.js?v=231';
+import {calcTreasuryGrossIncome,calcCommanderStipend,EQUIPMENT_SLOTS} from './economy-rules.js?v=231';
 import {createPayrollPlan,commanderStipendQuote,PAYROLL_RULES,regularSalaryReserve} from './payroll-rules.js?v=226';
-import {calcAllRankerBonuses} from './troop-rankings.js?v=226';
+import {calcAllRankerBonuses} from './troop-rankings.js?v=230';
 import {normalizeRegionalEconomy,recurringNationalIncome,economicState,advanceRegionalEconomy,automaticEconomicTarget,investEconomicProject} from './regional-economy.js?v=182';
 import {drawSettlementQuarter} from './economic-visuals.js?v=198';
 import {atFacility,HEADQUARTERS_FACILITIES} from './hq-facilities.js?v=201';
 import {renderRegionalEconomy} from './economic-interface.js?v=220';
-import {workshopFloorTier} from './crafting-rules.js?v=189';
+import {workshopFloorTier} from './crafting-rules.js?v=231';
 import {normalizeCasino} from './casino-rules.js?v=201';
 import {normalizeGuild,advanceGuildContracts} from './guild-contracts.js?v=217';
 
@@ -83,6 +84,7 @@ export const nationMethods={
           if(available>=lowCost){
             for(;tier>=1;tier--){cost=standardEquipmentCost({tier});if(cost<=available)break;}
             item=this.createSupplyEquipment(type,soldier,tier);
+            if(!canUseEquipment(soldier,item))continue;
             soldier.gold-=cost;item.selfFunded=true;
             soldier.lastEquipmentPurchase.spent+=cost;soldier.lastEquipmentPurchase.issued++;
             spent+=cost;issued++;
@@ -90,6 +92,7 @@ export const nationMethods={
             // A broke soldier still gets the cheapest piece for an empty slot, paid by the treasury above the payroll reserve.
             if(publicSpent+lowCost>publicCap)continue;
             item=this.createSupplyEquipment(type,soldier,1);item.publicIssue=true;
+            if(!canUseEquipment(soldier,item))continue;
             publicSpent+=lowCost;publicIssued++;
           }
           soldier.equipped||={};soldier.equipped[key]=item;if(key==='weapon')soldier.weapon=item;

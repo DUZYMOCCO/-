@@ -55,7 +55,7 @@ for(const d of [8000,22000,48000]){const ratio=distanceScaling(d+.001).hp/distan
 assert.ok(distanceScaling(12000).atk>distanceScaling(400).atk*5);
 for(let n=0;n<300;n++){
  const i=generateRandomDrop(400,'chest');assert.ok(i.tier<=8);assert.ok(i.rollMult!=null&&Number.isFinite(i.rollMult));
- const expected={id:'expected',type:i.type,tier:i.tier,name:i.baseName||i.name,baseName:i.baseName,weaponStyle:i.weaponStyle,weaponTraits:i.weaponTraits,dropOnly:i.dropOnly,dropOnlyKey:i.dropOnlyKey,rollMult:i.rollMult,powerSkip:i.powerSkip||0,forgeTag:i.forgeTag||null,stats:{}};
+ const expected={id:'expected',type:i.type,tier:i.tier,name:i.baseName||i.name,baseName:i.baseName,weaponStyle:i.weaponStyle,armorStyle:i.armorStyle,weaponTraits:i.weaponTraits,dropOnly:i.dropOnly,dropOnlyKey:i.dropOnlyKey,rollMult:i.rollMult,powerSkip:i.powerSkip||0,forgeTag:i.forgeTag||null,stats:{}};
  applyUpgradeStats(expected,i.upgrade);assert.deepEqual(i.stats,expected.stats);const rm=i.rollMult;applyUpgradeStats(i,i.upgrade);assert.equal(i.rollMult,rm);
 }
 // Spawn difficulty is spatial even at a late phase; rewards retain habitat.

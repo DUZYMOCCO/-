@@ -1,4 +1,5 @@
 import {heroGrowth} from './hero-rules.js';
+import {syncEquipmentBarrier} from './defense-equipment.js?v=231';
 /** 個体の素質と、実際の行動から育つ能力。装備・職業・Lvの再計算では履歴を変更しない。 */
 export const ATTRIBUTE_KEYS = ['strength','magic','magicDefense','quickness','evasion'];
 export const ATTRIBUTE_LABELS = {strength:'筋力',magic:'魔力',magicDefense:'魔法防御',quickness:'速さ',evasion:'回避'};
@@ -97,16 +98,22 @@ export function attributeValues(unit) {
 }
 /** 再計算済みの装備・職業の実能力へ適用。毎回、元の計算結果を渡す。 */
 export function attributeMultipliers(unit,values=attributeValues(unit)) {
-  const base=ATTRIBUTE_BASES[attributeFamily(unit)];
-  return {physical:Math.max(.1,values.strength/base.strength),magic:Math.max(.03,values.magic/base.magic),movement:.8+.2*values.quickness/base.quickness};
+  const family=attributeFamily(unit),base=ATTRIBUTE_BASES[family];
+  // 術士の筋力は基準を超えた分を戦士と同じ割合で効かせる（基準10で割ると戦士の約2倍になっていた）。猛烈な一撃はMPを使う瞬間だけ
+  const physical=['MEDIC','MAGE'].includes(family)&&values.strength>base.strength?1+(values.strength-base.strength)/CASTER_STRENGTH_SCALE:values.strength/base.strength;
+  return {physical:Math.max(.1,physical),magic:Math.max(.03,values.magic/base.magic),movement:.8+.2*values.quickness/base.quickness};
 }
 export function applyAttributeStats(unit) {
   const values=attributeValues(unit),{physical,magic,movement}=attributeMultipliers(unit,values);
   const equipmentMagicDefense=Object.values(unit.equipped||{}).reduce((sum,item)=>sum+Math.max(0,Number(item?.stats?.magicDefense)||0),0);
+  const equipment=Object.values(unit.equipped||{}).filter(Boolean);
+  const bonus=key=>equipment.reduce((sum,item)=>sum+Math.max(0,Number(item.stats?.[key])||0),0);
+  unit.equipmentMagicBonus=bonus('magicBonus');unit.equipmentHealBonus=bonus('healBonus');
   unit.strength=values.strength;unit.magicPower=values.magic;unit.magicDef=values.magicDefense+equipmentMagicDefense;unit.quickness=values.quickness;unit.evasion=values.evasion;
-  unit.magicAttack=Math.max(1,Math.floor((unit._magicBaseAttack??unit.atk??1)*magic));
+  unit.magicAttack=Math.max(1,Math.floor((unit._magicBaseAttack??unit.atk??1)*magic*(1+unit.equipmentMagicBonus/100)));
   unit.atk=Math.max(1,Math.floor((unit.atk||1)*physical));
-  if(unit.healPower>0)unit.healPower=Math.max(1,Math.floor(unit.healPower*magic));
+  if(unit.healPower>0)unit.healPower=Math.max(1,Math.floor(unit.healPower*magic*(1+unit.equipmentHealBonus/100)));
+  syncEquipmentBarrier(unit,bonus('barrier'));
   unit.speed=Math.max(40,Math.floor((unit.speed||100)*movement));
   const legacyDodge=clamp((unit.dodge||0)+(unit.soldierClass==='BLADEMASTER'?25:0),0,ATTRIBUTE_RULES.dodgeChanceMax);
   unit.dodge=Math.round((legacyDodge+(ATTRIBUTE_RULES.dodgeChanceMax-legacyDodge)*evasionChance(values.evasion)/ATTRIBUTE_RULES.dodgeChanceMax)*10)/10;
@@ -129,11 +136,12 @@ export function attributeSpecialties(unit) {
   const p=ensureAttributeProfile(unit);
   return ATTRIBUTE_KEYS.filter(key=>p.aptitudes[key]>=1.3).sort((a,b)=>p.aptitudes[b]-p.aptitudes[a]).slice(0,2).map(key=>`${ATTRIBUTE_LABELS[key]}特化`);
 }
-/** Off-type or extreme aptitudes worth a second look in recruitment (magic swordsman, muscle mage...).
+/** Off-type or extreme aptitudes worth a second look in recruitment (magic swordsman / magic shooter for archers, muscle mage...).
  *  Rare by design: about 3% of fighters, 0.2% of casters, plus aptitudes of 2.4 or more. */
 export function standoutAptitude(unit) {
   const p=ensureAttributeProfile(unit),a=p.aptitudes;
-  if(['HEAVY','LIGHT','ARCHER'].includes(p.family)&&a.magic>=2&&a.magic>=a.strength*2)return '魔法剣士の素質（魔力が突出）';
+  // 弓兵は剣でなく魔法の矢を撃つので「マジックシューター」と呼ぶ
+  if(['HEAVY','LIGHT','ARCHER'].includes(p.family)&&a.magic>=2&&a.magic>=a.strength*2)return `${p.family==='ARCHER'?'マジックシューター':'魔法剣士'}の素質（魔力が突出）`;
   if(['MAGE','MEDIC'].includes(p.family)&&a.strength>=1.6)return '筋肉魔術師の素質（筋力が突出）';
   const top=ATTRIBUTE_KEYS.reduce((best,key)=>a[key]>a[best]?key:best,ATTRIBUTE_KEYS[0]);
   return a[top]>=2.4?`${ATTRIBUTE_LABELS[top]}が突出`:null;
@@ -141,6 +149,10 @@ export function standoutAptitude(unit) {
 export const aptitudeGrade=value=>value>=1.7?'S':value>=1.3?'A':value>=1?'B':value>=.75?'C':'D';
 export const prefersCasterMelee=unit=>['MEDIC','MAGE'].includes(attributeFamily(unit))&&['sword','spear','hammer','axe'].includes((unit.equipped?.weapon||unit.weapon)?.weaponStyle)&&(unit.atk||0)>(unit.magicAttack||unit.atk||1)*1.4;
 export const magicAbilityMultiplier=unit=>attributeMultipliers(unit).magic;
+const CASTER_STRENGTH_SCALE=20;
+/** ムキムキ術士の近接：MPを使った一撃だけ強化。倍率は2倍から筋力＋魔力で伸び、上限5倍 */
+export const CASTER_STRIKE_COST=10;
+export const casterStrikeMultiplier=unit=>{const v=attributeValues(unit);return Math.min(5,Math.round((2+(v.strength+v.magic)/120)*10)/10);};
 export const CHANNEL_WEAPON_STYLES=['sword','spear','hammer','axe','bow'];
 export function canChannelWeaponMagic(unit) {
   if(!unit||!['HEAVY','LIGHT','ARCHER'].includes(attributeFamily(unit)))return false;

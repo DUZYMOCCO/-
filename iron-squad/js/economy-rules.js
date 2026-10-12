@@ -1,4 +1,5 @@
-import {GENERATION_COUNT} from './equipment-tiers.js?v=187';
+import {canUseEquipment} from './weapon-requirements.js?v=231';
+import {GENERATION_COUNT} from './equipment-tiers.js?v=231';
 import {PAYROLL_RULES,commanderStipendQuote} from './payroll-rules.js?v=226';
 import {recurringNationalIncome} from './regional-economy.js?v=182';
 /**
@@ -6,7 +7,7 @@ import {recurringNationalIncome} from './regional-economy.js?v=182';
  * 国庫・共有装備ボックス・スカウト費用・財政報告の公式を集約
  */
 
-import { saleValue, compareEquipment, equipmentScore, isGodRollProtected } from './equipment-rules.js?v=217';
+import { saleValue, compareEquipment, equipmentScore, isGodRollProtected } from './equipment-rules.js?v=231';
 
 /** 作戦期ごとの国庫歳入（徴税・兵站） */
 export const TREASURY_INCOME_BASE = 3000;
@@ -212,7 +213,7 @@ export function distributeSharedBoxToSoldiers(box, soldiers, recalcFn, valueFor=
     const recipients=[...alive].sort((a,b)=>Number(!!a.equipped?.[key])-Number(!!b.equipped?.[key])||valueFor(a,a.equipped?.[key],key)-valueFor(b,b.equipped?.[key],key));
     for(const soldier of recipients){soldier.equipped||={};
       const cur=soldier.equipped[key],score=cur?valueFor(soldier,cur,key):0;if(cur?.favorite||isGodRollProtected(cur))continue;
-      const candidates=remaining.filter(i=>i.type===type&&!i.favorite&&!isGodRollProtected(i)&&Number.isFinite(valueFor(soldier,i,key))&&(!cur||valueFor(soldier,i,key)>score+1e-6)).sort((a,b)=>valueFor(soldier,b,key)-valueFor(soldier,a,key));
+      const candidates=remaining.filter(i=>i.type===type&&!i.favorite&&!isGodRollProtected(i)&&canUseEquipment(soldier,i)&&Number.isFinite(valueFor(soldier,i,key))&&(!cur||valueFor(soldier,i,key)>score+1e-6)).sort((a,b)=>valueFor(soldier,b,key)-valueFor(soldier,a,key));
       const item=candidates[0];if(!item)continue;
       remaining.splice(remaining.indexOf(item),1);soldier.equipped[key]=item;if(key==='weapon')soldier.weapon=item;
       if(cur&&!remaining.some(i=>i.id===cur.id))remaining.push(cur);equippedCount++;changed.add(soldier);

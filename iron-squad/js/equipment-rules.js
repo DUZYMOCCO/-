@@ -1,4 +1,5 @@
-import {powerRank,MAX_EQUIPMENT_TIER,GENERATIONS} from './equipment-tiers.js?v=187';
+import {requiredDefenseStrength} from './defense-equipment.js?v=231';
+import {powerRank,MAX_EQUIPMENT_TIER,GENERATIONS} from './equipment-tiers.js?v=231';
 import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=182';
 import {WEAPON_STYLE_ICONS,weaponStyleOf,isHeavyWeaponStyle,combatFamilyOf} from './growth-rules.js?v=213';
 export const EQUIPMENT_TYPES = ['WEAPON','SHIELD','HELMET','ARMOR','GLOVES','LEGS','AMULET'];
@@ -47,6 +48,7 @@ export function canSell(item, protectedIds) {
 }
 
 const atLeastAsGood = (better, worse) => {
+  if(requiredDefenseStrength(better)>requiredDefenseStrength(worse))return false;
   const keys=new Set([...Object.keys(better.stats || {}),...Object.keys(worse.stats || {})]);
   return [...keys].every(key=>Number(better.stats?.[key] || 0)>=Number(worse.stats?.[key] || 0));
 };
@@ -211,9 +213,9 @@ export function shrineUpgradeCap(distance) {
   return Infinity; // 無限強化解禁！
 }
 
-const STAT_LABELS={atk:'攻撃',magicAttack:'魔法攻撃',magicDefense:'魔法防御',def:'防御',hp:'HP',speed:'移動',atkSpeed:'攻速',crit:'会心',blockChance:'盾防',regen:'回復/秒',vampire:'吸血',lightning:'雷撃',reach:'長さ/射程',attackWidth:'攻撃幅',swingSpeed:'振り抜き',attackRate:'攻撃速度',sweetWidth:'スイート幅',sweetPower:'芯の威力補正'};
+const STAT_LABELS={atk:'攻撃',magicAttack:'魔法攻撃',magicDefense:'魔法防御',magicBonus:'魔力補正',healBonus:'回復補正',barrier:'バリア',def:'防御',hp:'HP',speed:'移動',atkSpeed:'攻速',crit:'会心',blockChance:'盾防',regen:'回復/秒',vampire:'吸血',lightning:'雷撃',reach:'長さ/射程',attackWidth:'攻撃幅',swingSpeed:'振り抜き',attackRate:'攻撃速度',sweetWidth:'スイート幅',sweetPower:'芯の威力補正'};
 const CRITICAL_STATS=new Set(['atk','def','hp']);
-const PCT_STATS=new Set(['crit','blockChance','atkSpeed','vampire','swingSpeed','sweetWidth','sweetPower']);
+const PCT_STATS=new Set(['crit','blockChance','atkSpeed','vampire','swingSpeed','sweetWidth','sweetPower','magicBonus','healBonus']);
 const STAT_ORDER=['atk','def','hp','speed','atkSpeed','crit','blockChance','regen','vampire','lightning'];
 
 function formatStatDisplay(key, value) {
@@ -286,6 +288,7 @@ export function equipmentScore(item) {
   score += (s.magicAttack || 0) * 30;
   score += (s.speed || 0) * 15;
   if (s.lightning) score += 800;
+  score += (s.magicBonus||0)*100+(s.healBonus||0)*100+(s.barrier||0)*4+(s.magicDefense||0)*6;
   if (s.regen) score += s.regen * 100;
   if (s.vampire) score += s.vampire * 1500;
   if (item.weaponStyle === 'spear') score += 40;

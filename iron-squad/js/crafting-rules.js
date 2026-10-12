@@ -1,5 +1,6 @@
-import {TIERS,GENERATION_COUNT,MAX_EQUIPMENT_TIER,tierNumber,materialTier,generation} from './equipment-tiers.js';
-import {chooseLootTier} from './equipment-rules.js?v=217';
+import {TIERS,GENERATION_COUNT,MAX_EQUIPMENT_TIER,tierNumber,materialTier,generation} from './equipment-tiers.js?v=231';
+import {chooseLootTier} from './equipment-rules.js?v=231';
+import {CASTER_GEAR,DEFENSE_TYPES} from './defense-equipment.js?v=231';
 
 export const CRAFT_MATERIALS={
   wood:{name:'堅木材',color:'#b19165'},bronze:{name:'青銅片',color:'#ba9261'},
@@ -52,12 +53,14 @@ export const CRAFT_RECIPES=[
   ...Object.entries(weaponNames).map(([weaponStyle,name])=>({id:`weapon-${weaponStyle}`,type:'WEAPON',weaponStyle,name})),
   {id:'shield',type:'SHIELD',name:'誓約の大盾'},{id:'helmet',type:'HELMET',name:'不屈の匠兜'},
   {id:'armor',type:'ARMOR',name:'守護騎士の鎧'},{id:'gloves',type:'GLOVES',name:'名工の籠手'},
-  {id:'legs',type:'LEGS',name:'踏破の脚具'},{id:'amulet',type:'AMULET',name:'導きの護符'}
+  {id:'legs',type:'LEGS',name:'踏破の脚具'},{id:'amulet',type:'AMULET',name:'導きの護符'},
+  ...Object.keys(CASTER_GEAR).flatMap(armorStyle=>DEFENSE_TYPES.map(type=>({id:`${armorStyle}-${type.toLowerCase()}`,type,armorStyle,
+    name:`${CASTER_GEAR[armorStyle].name}の${{SHIELD:'護符盾',HELMET:'頭巾',ARMOR:'ローブ',GLOVES:'手袋',LEGS:'脚衣',AMULET:'護符'}[type]}`})))
 ];
 export const craftRecipe=id=>CRAFT_RECIPES.find(recipe=>recipe.id===id);
 export function recipeMaterials(recipe,tier) {
   if(!recipe)return {};
-  const t=tierNumber(tier),family=materialTier(t),g=generation(t),magic=['AMULET'].includes(recipe.type)||['staff','wand'].includes(recipe.weaponStyle);
+  const t=tierNumber(tier),family=materialTier(t),g=generation(t),magic=!!recipe.armorStyle||['AMULET'].includes(recipe.type)||['staff','wand'].includes(recipe.weaponStyle);
   const materials={[TIER_MATERIALS[family-1]]:8+g*2,essence:magic?6+g:2+g};
   if(recipe.type!=='WEAPON'||['bow','crossbow','staff','wand'].includes(recipe.weaponStyle))materials.fabric=4+g;
   if(family>=3)materials.core=Math.ceil((family-2)/2);

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {JSDOM} from '../../__pycache__/ui-tools/node_modules/jsdom/lib/api.js';
-import {rollAttributeProfile,attributeValues,attributeCarryCapacity,attributeSpecialties,prefersCasterMelee,cappedAttributeValue,ATTRIBUTE_KEYS,canChannelWeaponMagic,attributeFamily} from '../js/unit-attributes.js';
+import {rollAttributeProfile,attributeValues,attributeCarryCapacity,attributeSpecialties,prefersCasterMelee,cappedAttributeValue,ATTRIBUTE_KEYS,canChannelWeaponMagic,attributeFamily,attributeMultipliers,casterStrikeMultiplier,CASTER_STRIKE_COST} from '../js/unit-attributes.js';
 import {spendMana,updateMagic} from '../js/magic-rules.js';
 import {collectAllSoldiers,computeRankings} from '../js/troop-rankings.js';
 const dom=new JSDOM('<div id="game"></div>',{url:'http://localhost/',pretendToBeVisual:true});
@@ -71,7 +71,11 @@ try {
  // A melee weapon compensates the caster's level growth; switching to a wand removes only that equipment bonus.
  brawler.level=30;game.recalcSoldierStats(brawler);const meleeStrength=brawler.strength;brawler.equipped.weapon.weaponStyle='wand';game.recalcSoldierStats(brawler);assert.ok(meleeStrength>brawler.strength+30);brawler.equipped.weapon.weaponStyle='hammer';game.recalcSoldierStats(brawler);
  // Hidden melee magic actually spends MP and trains magic. A healer's strength buff expires without compounding.
- field();brawler.atkCooldown=0;brawler.mana=100;brawler.hp=brawler.maxHp;game.squad=[brawler];const infusedEnemy=dummy();assert.equal(game.performCasterMelee(brawler,infusedEnemy),true);assert.equal(brawler.mana,94);assert.ok(brawler.attributeProfile.practice.magic>0);
+ field();brawler.atkCooldown=0;brawler.mana=100;brawler.hp=brawler.maxHp;game.squad=[brawler];const infusedEnemy=dummy();assert.equal(game.performCasterMelee(brawler,infusedEnemy),true);assert.equal(brawler.mana,100-CASTER_STRIKE_COST);assert.ok(brawler.attributeProfile.practice.magic>0);
+ // v6.3.17 筋力の効き方は戦士と同じ（基準を超えた分を÷20）。猛烈なのはMPを込めた一撃だけ（×2〜5）、MP切れは普通の殴り
+ {const v=attributeValues(brawler);assert.equal(attributeMultipliers(brawler).physical,1+(v.strength-10)/20,'muscle caster strength scales like a fighter');
+ const strike=casterStrikeMultiplier(brawler);assert.ok(strike>=2&&strike<=5);const hit=mana=>{field();brawler.atkCooldown=0;brawler.mana=mana;game.squad=[brawler];const e=dummy();game.performCasterMelee(brawler,e);return e.maxHp-e.hp;};
+ const plain=hit(0),charged=hit(100);assert.ok(plain>0);assert.ok(charged>plain*(strike-.5),'only the MP-charged blow is strong');}
  field();cleric.atkCooldown=0;cleric.mana=100;game.squad=[cleric];const naturalStrength=cleric.strength;assert.equal(game.performCasterMelee(cleric,dummy()),true);assert.ok(cleric.strength>naturalStrength);game.recalcSoldierStats(cleric);const boosted=cleric.strength;for(let i=0;i<3;i++)game.recalcSoldierStats(cleric);assert.equal(cleric.strength,boosted);updateMagic(game,9,()=>null);assert.ok(cleric.strength<=naturalStrength+2);assert.equal(cleric._casterStrengthTimer,0);
  // Rare magical warriors and archers infuse their ordinary weapons without changing profession.
  field();const spellBlade=unit('LIGHT');spellBlade.attributeProfile.innate.magic=100;spellBlade.attributeProfile.innate.strength=25;game.recalcSoldierStats(spellBlade);spellBlade.mana=60;assert.ok(canChannelWeaponMagic(spellBlade));const bladeEnemy=dummy();game.performAttack(spellBlade,bladeEnemy,false,1,false);assert.equal(spellBlade.mana,54);assert.ok(spellBlade.attributeProfile.practice.magic>0);assert.ok(bladeEnemy.maxHp-bladeEnemy.hp>1);
