@@ -7,8 +7,8 @@ import {
   DIFFICULTIES, CHARACTERS, WEAPONS, SHOP_ITEMS, STAGES, RARITIES, GEAR_SLOTS, CHEST_COST,
   shopCost, stageById, stageUnlocked, charUnlocked, gearLabel, rollGear, addGear, equipGear,
   unequipGear, mergeGear, bonusFor,
-} from './rules.js?v=210';
-import { art } from './art.js?v=210';
+} from './rules.js?v=211';
+import { art } from './art.js?v=211';
 
 const GEAR_ART = { weapon: 'sword', armor: 'armor', boots: 'shoes', charm: 'charm' };
 const ICON_ART = {
@@ -17,7 +17,7 @@ const ICON_ART = {
   ammo: 'bullet', blast: 'blast',
 };
 // キャラの さいしょの ぶき（ゴッドロボは 2つ：レーザーじゅう＋かみなり）
-const weaponLabel = c => [c.weapon, ...(c.extra || [])].map(id => `${iconHtml(id, WEAPONS[id].icon, 'ds-icon sm')}${WEAPONS[id].name}`).join('＋');
+const weaponLabel = c => { const ws = [c.weapon, ...(c.extra || [])]; return ws.length > 2 ? ws.map(id => iconHtml(id, WEAPONS[id].icon, 'ds-icon sm')).join('') : ws.map(id => `${iconHtml(id, WEAPONS[id].icon, 'ds-icon sm')}${WEAPONS[id].name}`).join('＋'); }; // 3つ いじょうは アイコン だけ
 
 export const iconHtml = (id, fallback, cls = 'ds-icon') => ICON_ART[id]
   ? `<span class="${cls}" style='background-image:${art(ICON_ART[id])}'></span>`
@@ -98,7 +98,7 @@ export const menuMethods = {
             const open = charUnlocked(s, c);
             return `<button class="ds-char ${c.id === s.character ? 'on' : ''} ${open ? '' : 'locked'}" data-char="${c.id}" ${open ? '' : 'disabled'}>
               ${pic(c.id, 'ds-char-pic')}<b>${open ? c.name : '？？？'}</b>
-              <small>${open ? weaponLabel(c) : `ステージ${c.unlock}<br>クリアで なかま`}</small>
+              <small>${open ? weaponLabel(c) : (c.unlockClears > 1 ? `ステージ${c.unlock}を<br>${c.unlockClears}かい クリア` : `ステージ${c.unlock}<br>クリアで なかま`)}</small>
               ${open ? `<i>${c.trait}</i>` : ''}
             </button>`;
           }).join('')}

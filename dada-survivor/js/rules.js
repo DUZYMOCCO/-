@@ -31,6 +31,9 @@ export const CHARACTERS = [
   // ステージ6 クリアで なかま（ゴッドロボより さき）。バズーカ（Lv1）と ショットガン（Lv1）で はじまる。かなり つよい（ゴッドロボと だいたい おなじ くらい。はやさ アップは なし）
   { id: 'robo',    name: 'バトルロボ', weapon: 'bazooka', extra: ['shotgun'], perk: { dmg: 0.18, hp: 30, regen: 0.25 }, trait: 'つよい ロボ', unlock: 6 },
   // v1.15.0：9にんが がったいした ゴッドロボ。ステージ7 クリアで なかま。レーザーじゅう（Lv1）と かみなり（Lv1）の 2つで はじまる（extra）
+  // v1.18.0：さいきょうの ソルジャーの クローン。ソルジャー・ボマー・まじゅつし・けいさつかん・ロケットへい・バトルロボ・ゴッドロボの ちからを ぜんぶ。
+  // レーザーじゅう＋ばくだん＋バリア＋バズーカ＋ショットガン＋かみなり（ぜんぶ Lv1。じゅうは レーザーと かぶるので なし）。ステージ7 を 2かい クリアで なかま
+  { id: 'clone',   name: 'さいきょうソルジャー', weapon: 'laser', extra: ['bomb', 'aura', 'bazooka', 'shotgun', 'thunder'], perk: { dmg: 0.2, hp: 50, regen: 0.5, spd: 0.15, pickup: 0.5 }, trait: 'さいきょう', unlock: 7, unlockClears: 2 },
   { id: 'godrobo', name: 'ゴッドロボ', weapon: 'laser', extra: ['thunder'], perk: { dmg: 0.1, spd: 0.06, hp: 30, regen: 0.3 }, trait: 'さいきょう', unlock: 7 },
 ];
 
@@ -200,7 +203,7 @@ export function bonusFor(save, charId) {
 
 /* ---------- すすみぐあい ---------- */
 export function stageUnlocked(save, id) { return id === 1 || (save.stageClears[id - 1] || 0) > 0; }
-export function charUnlocked(save, ch) { return !ch.unlock || (save.stageClears[ch.unlock] || 0) > 0; }
+export function charUnlocked(save, ch) { return !ch.unlock || (save.stageClears[ch.unlock] || 0) >= (ch.unlockClears || 1); }
 
 /** クリア ほうしゅう：はじめては たからばこ 2こ、2かいめからは 1こ（むずかしいは +1） */
 export function clearRewards(save, stageId, difficultyId) {

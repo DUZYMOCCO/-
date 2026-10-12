@@ -237,6 +237,12 @@ const laserSoldier = soldier
   + `<rect x="44" y="45.2" width="5" height="3.2" rx="1" transform="rotate(-17.7 46.5 46.8)" fill="#22d3ee" stroke="#0c4a6e" stroke-width=".9"/>
   <circle cx="62" cy="39.8" r="3" fill="#67e8f9" opacity=".75"/><circle cx="62" cy="39.8" r="1.4" fill="#fff"/>`;
 
+// さいきょうソルジャー（v1.18.0。id は clone）：ソルジャーの クローン。おなじ くろい とくしゅぶたいに、きんいろに ひかる め・きんの オーラの わ・ヘルメットの きんの ほし
+const cloneSoldier = `<circle cx="32" cy="35" r="30" fill="#fde047" opacity=".18"/><circle cx="32" cy="35" r="28.5" fill="none" stroke="#f59e0b" stroke-width="2" stroke-dasharray="5 4" opacity=".85"/>
+  ${laserSoldier.replace(animeEye(24.5, 33.2, '#93c5fd'), animeEye(24.5, 33.2, '#f59e0b')).replace(animeEye(39.5, 33.2, '#93c5fd'), animeEye(39.5, 33.2, '#f59e0b'))}
+  <path d="M32 9.5 L33.6 13 L37.4 13.3 L34.5 15.7 L35.4 19.4 L32 17.4 L28.6 19.4 L29.5 15.7 L26.6 13.3 L30.4 13Z" fill="#fde047" ${SW(1.1)}/>
+  <circle cx="24.5" cy="33.2" r="5.6" fill="#ef4444" opacity=".22"/><circle cx="39.5" cy="33.2" r="5.6" fill="#ef4444" opacity=".22"/>`;
+
 // ロケットへい（id は セーブ互換で dino のまま。みかたの とくしゅぶたい・にほんの ワッペン・かたに おおきな ロケットランチャー）
 // ソルジャー（くろ・あおい レーザーじゅう）と ちがう ように、ヘルメットは オリーブいろに オレンジの ライン。
 // てきの ゆきやまたいちょう（しろい そうび・あかい め・ドクロ）とも ちがう。
@@ -1457,6 +1463,7 @@ const hero2 = {
   bear:    cowboy, // id は セーブ互換のため bear のまま（絵と名前は カウボーイ）
   dino:    rocketSoldier, // id は セーブ互換のため dino のまま（絵と名前は ロケットへい）
   unicorn: deity,         // id は セーブ互換のため unicorn のまま（絵と名前は かみさま）
+  clone: cloneSoldier, // v1.18.0 さいきょうソルジャー
   robo: roboHei, // v1.16.0 2たいめの ロボ バトルロボ
   godrobo: `<g transform="translate(32 33) scale(.9) translate(-32 -33)">${godRobo}</g>`, // v1.15.0 9にんが がったいした ゴッドロボ
 };

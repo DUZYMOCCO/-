@@ -185,8 +185,8 @@ test('godrobo is the combined god robot ゴッドロボ (laser + thunder, unlock
 test('robo is the 2nd robot バトルロボ (bazooka + shotgun, unlock after stage 6, distinct from ゴッドロボ)', async () => {
   const { startWeapons, normalizeSave, charUnlocked } = await import('../js/rules.js');
   const c = CHARACTERS.find(c => c.id === 'robo'), g = CHARACTERS.find(c => c.id === 'godrobo');
-  assert.equal(CHARACTERS.length, 11);
-  assert.equal(new Set(CHARACTERS.map(c => c.id)).size, 11);
+  assert.ok(CHARACTERS.length >= 11);
+  assert.equal(new Set(CHARACTERS.map(c => c.id)).size, CHARACTERS.length);
   assert.equal(c.name, 'バトルロボ'); assert.equal(c.unlock, 6);
   assert.ok(c.unlock < g.unlock, 'ゴッドロボより さきに なかま');
   assert.deepEqual(startWeapons(c), { bazooka: 1, shotgun: 1 });
@@ -202,6 +202,27 @@ test('robo is the 2nd robot バトルロボ (bazooka + shotgun, unlock after sta
   for (const col of ['#9ca3af', '#6b7280', '#f97316', '#38bdf8', '#dc2626', '#fde047', '#2563eb', '#3d4f3a', '#c2873a', '#facc15']) assert.ok(svg.includes(col), col);
   assert.ok(!svg.includes('#f8fafc'), 'ゴッドロボの しろい からだ では ない');
   assert.notEqual(svg, gsvg);
+  assert.ok(!svg.includes('data-emblem="warumono"'));
+  assert.equal((svg.match(/<svg/g) || []).length, 1);
+});
+
+// v1.18.0：さいきょうソルジャー（ソルジャーの クローン。id clone。ステージ7 を 2かい クリアで なかま）
+test('clone is さいきょうソルジャー (6 weapons Lv1, all perks, unlock = clear stage 7 twice)', async () => {
+  const { startWeapons, normalizeSave, charUnlocked } = await import('../js/rules.js');
+  const c = CHARACTERS.find(c => c.id === 'clone');
+  assert.equal(CHARACTERS.length, 12);
+  assert.equal(c.name, 'さいきょうソルジャー'); assert.ok(/^[ぁ-んァ-ンー\s]+$/.test(c.name + c.trait));
+  assert.deepEqual(startWeapons(c), { laser: 1, bomb: 1, aura: 1, bazooka: 1, shotgun: 1, thunder: 1 });
+  for (const k of ['dmg', 'hp', 'regen', 'spd', 'pickup']) assert.ok(c.perk[k] > 0, k);
+  assert.ok(!charUnlocked(normalizeSave({ stageClears: { 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1 } }), c), '1かい では まだ');
+  assert.ok(charUnlocked(normalizeSave({ stageClears: { 7: 2 } }), c));
+  assert.ok(charUnlocked(normalizeSave({ stageClears: { 7: 1 } }), CHARACTERS.find(x => x.id === 'godrobo')), 'ゴッドロボは 1かいで いい');
+  assert.equal(normalizeSave({ character: 'clone', stageClears: { 7: 1 } }).character, CHARACTERS[0].id);
+  assert.equal(normalizeSave({ character: 'clone', stageClears: { 7: 3 } }).character, 'clone');
+  const svg = svgOf(art('clone')), dog = svgOf(art('dog'));
+  assert.notEqual(svg, dog);
+  assert.ok(svg.includes('#f59e0b') && svg.includes('#fde047'), 'きんの め・オーラ');
+  assert.ok(svg.includes('#2563eb'), 'ソルジャーと おなじ あおい レーザーじゅう');
   assert.ok(!svg.includes('data-emblem="warumono"'));
   assert.equal((svg.match(/<svg/g) || []).length, 1);
 });
