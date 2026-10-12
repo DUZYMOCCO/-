@@ -1,7 +1,7 @@
 import {calcScoutCost} from './economy-rules.js?v=192';
 import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=182';
 import {drawSoldierPortrait} from './soldier-appearance.js?v=206';
-import {ATTRIBUTE_KEYS,ATTRIBUTE_LABELS,attributeSpecialties,attributeCarryCapacity,aptitudeGrade} from './unit-attributes.js?v=187';
+import {ATTRIBUTE_KEYS,ATTRIBUTE_LABELS,attributeSpecialties,attributeCarryCapacity,aptitudeGrade,standoutAptitude} from './unit-attributes.js?v=187';
 import {weaponRequirementText} from './weapon-requirements.js?v=187';
 import {equipmentName} from './equipment-rules.js?v=217';
 import {releaseCanvas} from './canvas-surface.js?v=217';
@@ -27,21 +27,36 @@ function recruitingVisible(game) {
   const dialog=root?.querySelector('#recruitment-dialog');
   return !!dialog&&!dialog.classList.contains('hidden')&&!root.querySelector('#strategy-modal')?.classList.contains('hidden')&&!document.hidden;
 }
+const isGenius=c=>c?.talent==='GENIUS';
+export const candidateStandout=c=>c?.soldier?standoutAptitude(c.soldier):null;
+/** Confirmation text before passing on the current candidates, or null when nobody is worth keeping. */
+const PASS_ACTIONS={next:['次の候補へ進みますか？','次の候補へ進んでも大丈夫ですか？'],job:['募集する職種を変えますか？','募集する職種を変えても大丈夫ですか？']};
+export function passOverWarning(game,action='next') {
+  const list=game.scoutCandidates||[],[plain,careful]=PASS_ACTIONS[action]||PASS_ACTIONS.next;
+  if(list.some(isGenius))return `天才候補を見送って、${plain}`;
+  const standout=list.map(candidateStandout).find(Boolean);
+  return standout?`突出した技能（${standout}）を持っていますが、${careful}`:null;
+}
 export function nextScoutCandidate(game,automatic=false) {
   if(!automatic)stopAutomaticRecruitment(game);
-  if((game.scoutCandidates||[]).some(c=>c.talent==='GENIUS')){
-    if(automatic||!window.confirm('天才候補を見送って、次の候補へ進みますか？')){game.renderScoutCandidates();return false;}
-  }
+  const warning=passOverWarning(game);
+  if(warning&&(automatic||!window.confirm(warning))){game.renderScoutCandidates();return false;}
   game.refreshScoutCandidates();
-  if(game.scoutCandidates[0]?.talent==='GENIUS'){
+  const first=game.scoutCandidates[0];
+  if(isGenius(first)){
     stopAutomaticRecruitment(game);
     game.showToast?.('🌟 天才候補が現れました。自動募集を停止して、この人を保持します。');
+    game.saveGame?.();
+  } else if(candidateStandout(first)){
+    stopAutomaticRecruitment(game);
+    game.showToast?.(`✨ 突出した技能の候補（${candidateStandout(first)}）が現れました。自動募集を停止して保持します。`);
     game.saveGame?.();
   } else if(!automatic)game.saveGame?.();
   game.renderScoutCandidates();return true;
 }
 export function startAutomaticRecruitment(game) {
-  if(game.scoutCandidates?.some(c=>c.talent==='GENIUS')){game.showToast?.('🌟 天才候補を確認してください。次の候補へ進むまで自動募集は停止します。');return false;}
+  if(game.scoutCandidates?.some(isGenius)){game.showToast?.('🌟 天才候補を確認してください。次の候補へ進むまで自動募集は停止します。');return false;}
+  if(game.scoutCandidates?.some(candidateStandout)){game.showToast?.('✨ 突出した技能の候補を確認してください。次の候補へ進むまで自動募集は停止します。');return false;}
   stopAutomaticRecruitment(game);game._scoutAuto=true;
   const tick=()=>{
     if(!game._scoutAuto)return;
@@ -59,13 +74,14 @@ export function renderRecruitment(game,classes,talents) {
     job.innerHTML=RECRUIT_CLASSES.map(key=>`<option value="${key}">${classes[key].icon} ${classes[key].name}</option>`).join('');job.value=game.scoutClass||'HEAVY';
     job.onchange=()=>{
       const selected=job.value,previous=game.scoutClass||'HEAVY';
-      if(game.scoutCandidates?.some(c=>c.talent==='GENIUS')&&!window.confirm('天才候補を見送って、募集する職種を変えますか？')){job.value=previous;return;}
+      const warning=passOverWarning(game,'job');
+      if(warning&&!window.confirm(warning)){job.value=previous;return;}
       stopAutomaticRecruitment(game);game.scoutClass=selected;game.refreshScoutCandidates();game.saveGame();game.renderScoutCandidates();
     };
   }
   const next=root.querySelector('#btn-refresh-scouts');if(next){next.textContent='次の候補（無料）';next.onclick=()=>nextScoutCandidate(game);}
   const auto=root.querySelector('#btn-auto-scouts');if(auto){auto.textContent=game._scoutAuto?'⏸ 自動募集を停止':'▶ 自動募集';auto.setAttribute('aria-pressed',String(!!game._scoutAuto));auto.onclick=()=>{if(game._scoutAuto){stopAutomaticRecruitment(game,true);game.renderScoutCandidates();}else startAutomaticRecruitment(game);};}
-  const status=root.querySelector('#scout-roll-status');if(status)status.textContent=`確認した候補 ${number(game.scoutRollCount)}人 · ${game._scoutAuto?'1.2秒ごとに次の人へ／天才で停止':'候補を保持中／天才で自動停止'}`;
+  const status=root.querySelector('#scout-roll-status');if(status)status.textContent=`確認した候補 ${number(game.scoutRollCount)}人 · ${game._scoutAuto?'1.2秒ごとに次の人へ／天才・突出で停止':'候補を保持中／天才・突出で自動停止'}`;
   const wallet=root.querySelector('#recruitment-wallet');if(wallet)wallet.textContent=`軍資金 ${number(game.gold)}G`;
   for(const canvas of list.querySelectorAll('canvas'))releaseCanvas(canvas);
   list.replaceChildren();
@@ -74,7 +90,7 @@ export function renderRecruitment(game,classes,talents) {
     const cls=classes[candidate.classKey],talent=talents[candidate.talent],specialties=attributeSpecialties(unit);
     const profile=unit.attributeProfile;
     const row=document.createElement('article');row.className='scout-card recruitment-candidate';
-    row.innerHTML=`<div class="recruit-person"><canvas class="recruit-portrait" width="120" height="130" aria-label="${cls.name}候補の素顔"></canvas><div><strong>${cls.icon} ${unit.name}</strong><div>${cls.name} · ${genderLabel(unit)} · Lv.${candidate.level} <span style="color:${talent.color}">[${talent.tag}]</span></div><p class="recruit-specialties">${specialties.length?specialties.join('・'):'均整型'}</p><strong class="recruit-price">雇用費 ${number(candidate.cost)}G</strong></div></div>
+    row.innerHTML=`<div class="recruit-person"><canvas class="recruit-portrait" width="120" height="130" aria-label="${cls.name}候補の素顔"></canvas><div><strong>${cls.icon} ${unit.name}</strong><div>${cls.name} · ${genderLabel(unit)} · Lv.${candidate.level} <span style="color:${talent.color}">[${talent.tag}]</span></div><p class="recruit-specialties">${specialties.length?specialties.join('・'):'均整型'}</p>${candidateStandout(candidate)?`<p class="recruit-standout">✨ ${candidateStandout(candidate)}</p>`:''}<strong class="recruit-price">雇用費 ${number(candidate.cost)}G</strong></div></div>
       <div class="recruit-stat-grid">${[
         ['HP',number(unit.maxHp)],['攻撃',number(unit.atk)],['防御',number(unit.def)],
         ['筋力',number(unit.strength)],['魔力',number(unit.magicPower)],['魔法防御',number(unit.magicDef)],

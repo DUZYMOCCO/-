@@ -108,9 +108,9 @@ test('ranker bonus salary distribution for top 3 rankers', async () => {
     isEligibleForRankerBonus
   } = await import('../js/troop-rankings.js');
 
-  assert.equal(RANKER_BONUS_SALARY[1], 50, '1st place bonus is 50G');
-  assert.equal(RANKER_BONUS_SALARY[2], 30, '2nd place bonus is 30G');
-  assert.equal(RANKER_BONUS_SALARY[3], 20, '3rd place bonus is 20G');
+  assert.equal(RANKER_BONUS_SALARY[1], 5000, '1st place bonus is 5,000G');
+  assert.equal(RANKER_BONUS_SALARY[2], 3000, '2nd place bonus is 3,000G');
+  assert.equal(RANKER_BONUS_SALARY[3], 1000, '3rd place bonus is 1,000G');
 
   // Test soldiers with battle records
   const ace1 = { id: 's1', name: 'エース1', level: 10, minionKills: 100, bossKills: 5, atk: 50, maxHp: 500, def: 20, survivedWaves: 5, gold: 10 };

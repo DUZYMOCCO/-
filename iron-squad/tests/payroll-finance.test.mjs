@@ -17,7 +17,7 @@ for(const upgrade of [0,10,100,1000,10000]){
 assert.ok(prices.every((cost,i)=>i===0||cost>prices[i-1]));assert.ok(prices.at(-1)>10000000);
 const plan=nationalPayrollPlan(game);assert.equal(plan.entries.length,2);
 assert.equal(plan.ranker,calcSoldierRankerBonus(game,ace.id).totalBonus);assert.equal(nationalPayroll(game),plan.total);
-assert.ok(plan.regular<=economicPayrollBudget(game));assert.ok(plan.ranker<=economicHonorBudget(game));
+assert.ok(plan.regular<=economicPayrollBudget(game));assert.ok(plan.ranker<=Math.max(0,game.treasury-plan.regular),'honors never exceed what the treasury holds after regular pay');
 const stipend=calcCommanderStipend(1,baseIncome,game);game.treasury=baseIncome-stipend;
 const before=game.treasury,result=paySoldiers(game,plan,1);
 assert.equal(result.shortfall,0);assert.equal(before-game.treasury,result.paid);assert.equal(ace.gold+regular.gold,result.paid);

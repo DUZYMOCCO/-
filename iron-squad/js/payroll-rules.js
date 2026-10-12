@@ -48,6 +48,9 @@ export function createPayrollPlan(game,bonuses=new Map()) {
   }
   return {entries,regular:entries.reduce((n,e)=>n+e.total,0),ranker:entries.reduce((n,e)=>n+e.ranker,0),total:entries.reduce((n,e)=>n+e.expected,0)};
 }
+/** Treasury kept back for regular pay: the coming periods' wages, commander stipend and patrols.
+ *  Ranker honors are not part of it; they are paid from the surplus above it. */
+export const regularSalaryReserve=game=>Math.max(6000,Math.ceil((createPayrollPlan(game).regular+commanderStipendQuote(game,game.phase||1)+(game.nation?.economy?.patrols||0)*18)*PAYROLL_RULES.reserveCycles));
 // Proportional shortages, including the final single gold, are deterministic.
 function allocate(entries,key,budget) {
   const needed=entries.reduce((n,e)=>n+e[key],0);

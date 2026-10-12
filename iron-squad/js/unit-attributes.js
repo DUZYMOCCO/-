@@ -129,6 +129,15 @@ export function attributeSpecialties(unit) {
   const p=ensureAttributeProfile(unit);
   return ATTRIBUTE_KEYS.filter(key=>p.aptitudes[key]>=1.3).sort((a,b)=>p.aptitudes[b]-p.aptitudes[a]).slice(0,2).map(key=>`${ATTRIBUTE_LABELS[key]}特化`);
 }
+/** Off-type or extreme aptitudes worth a second look in recruitment (magic swordsman, muscle mage...).
+ *  Rare by design: about 3% of fighters, 0.2% of casters, plus aptitudes of 2.4 or more. */
+export function standoutAptitude(unit) {
+  const p=ensureAttributeProfile(unit),a=p.aptitudes;
+  if(['HEAVY','LIGHT','ARCHER'].includes(p.family)&&a.magic>=2&&a.magic>=a.strength*2)return '魔法剣士の素質（魔力が突出）';
+  if(['MAGE','MEDIC'].includes(p.family)&&a.strength>=1.6)return '筋肉魔術師の素質（筋力が突出）';
+  const top=ATTRIBUTE_KEYS.reduce((best,key)=>a[key]>a[best]?key:best,ATTRIBUTE_KEYS[0]);
+  return a[top]>=2.4?`${ATTRIBUTE_LABELS[top]}が突出`:null;
+}
 export const aptitudeGrade=value=>value>=1.7?'S':value>=1.3?'A':value>=1?'B':value>=.75?'C':'D';
 export const prefersCasterMelee=unit=>['MEDIC','MAGE'].includes(attributeFamily(unit))&&['sword','spear','hammer','axe'].includes((unit.equipped?.weapon||unit.weapon)?.weaponStyle)&&(unit.atk||0)>(unit.magicAttack||unit.atk||1)*1.4;
 export const magicAbilityMultiplier=unit=>attributeMultipliers(unit).magic;

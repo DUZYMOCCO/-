@@ -1,4 +1,6 @@
 import {heroGrowth,heroMembers} from './hero-rules.js';
+import {isOwnSquad} from './own-squad-marker.js?v=182';
+import {addBattleReport} from './battle-report.js?v=226';
 /** 実回復量からの個人EXP。小さな継続回復も、兵士ごとに端数を積み立てる。 */
 export const HEALING_HP_PER_EXP = 5;
 export const REVIVAL_EXP_PER_MAX_HP = 3;
@@ -7,6 +9,12 @@ export const LEVEL_MARK_TIME = 2.2;
 export function raiseLevelMark(unit) { if (unit) unit._levelMark = LEVEL_MARK_TIME; }
 export function ageLevelMarks(game, dt) {
   if (!game || !(dt > 0)) return;
+  // A fresh mark means a level-up since the last frame: the commander's and own squad's go to the battle report.
+  for (const unit of [game.player, ...(game.squad || [])]) {
+    if (!(unit?._levelMark >= LEVEL_MARK_TIME) || !(unit === game.player || isOwnSquad(unit)) || unit._reportedLevel === unit.level) continue;
+    unit._reportedLevel = unit.level;
+    addBattleReport(game, 'growth', unit === game.player ? `隊長がLv.${unit.level}に成長` : `${unit.name}（自部隊）がLv.${unit.level}に成長`);
+  }
   const tick = unit => { if (unit?._levelMark > 0) unit._levelMark = Math.max(0, unit._levelMark - dt); };
   tick(game.player);
   for (const unit of game.squad || []) tick(unit);

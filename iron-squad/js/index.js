@@ -10,7 +10,7 @@ import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './dista
 import {TIERS,MAX_EQUIPMENT_TIER,MAX_POWER_RANK,POWER_RANK_STEP,GENERATION_COUNT,TRADE_MAX_TIER,powerRank,tierDescription} from './equipment-tiers.js?v=187';
 import {fieldAdaptiveScaling} from './field-scaling.js?v=182';
 import {activeSquad,inCurrentInstance} from './instance-rules.js?v=182';
-import {recordBattleLog,resetBattleLog,refreshCombatFieldNotes} from './battle-log.js?v=217';
+import {recordBattleLog,resetBattleLog,refreshCombatFieldNotes} from './battle-log.js?v=226';
 import {rollDropExclusive,applyDropExclusive,dropExclusiveLabel} from './drop-exclusives.js?v=182';
 import {normalizeMaterials,applyCraftExclusive,craftExclusiveLabel,equipmentDropChance,materialDropChance,rollMaterialDrop,rollTreasureLoot} from './crafting-rules.js?v=189';
 import {workshopMethods} from './workshop.js?v=221';
@@ -21,7 +21,7 @@ import {initializeMedicalPosts,updateMedicalPosts,serializeMedicalPosts,nearestK
 import {invasionMethods,initializeInvasions,serializeInvasions,shouldTriggerRandomRaid,makeEnemyRoom,drawInvasionRoute} from './invasion-rules.js?v=211';
 import {gateMethods,serializeGatePosts,replenishTownGateGuards,initializeGateGuards,ensureTownGuards,serializeGateGuards,updateGateGuards,gateGuardVisible,applyFortifications,drawFortification,exitGateTown,townExitReached,wallBlocksAttack,attackBlocked as coverBlocked} from './gate-rules.js?v=215';
 import {nationMethods,normalizeNation,nationalIncome,nationalPayrollPlan,headquartersDamageMult,drawNationalDevelopment,DEVELOPMENT_STAGES} from './nation-rules.js?v=201';
-import {equipmentUpgradeCost,salaryQuote,paySoldiers} from './payroll-rules.js?v=195';
+import {equipmentUpgradeCost,salaryQuote,paySoldiers} from './payroll-rules.js?v=226';
 import {addFieldDrop,ageFieldDrops,attractFieldDrops,FIELD_DROP_PICKUP_RADIUS} from './field-drops.js?v=182';
 import {drawLootDrop,drawLootPullTrail} from './loot-visuals.js?v=189';
 import {drawOwnSquadRing,isOwnSquad} from './own-squad-marker.js?v=182';
@@ -70,8 +70,8 @@ import {MAGIC_CLASSES,MAGIC_AFFINITIES,magicMethods,isMage,isMagicUser,ensureMan
 import {hazardMethods,updateHazards,drawHazards} from './hazard-fields.js?v=198';
 import {strongEnemyReward} from './combat-rewards.js?v=182';
 import {supplyMethods, initializeSupplies, updateSupplies, takeRangedShot, ammoCombatProfile, isRangedUnit, distributeAmmo, preventLethalHit, normalizeFieldSave, SQUAD_POTION_COST, REVIVAL_POTION_COST, ensureAmmo, RANGED_DAMAGE_MULT, supplyLocation} from './supply-rules.js?v=220';
-import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog } from './interface.js?v=220';
-import { renderTroopRankings, getSoldierRankerBadges, calcSoldierRankerBonus } from './troop-rankings.js?v=187';
+import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog } from './interface.js?v=226';
+import { renderTroopRankings, getSoldierRankerBadges, calcSoldierRankerBonus } from './troop-rankings.js?v=226';
 import { ensureSoldierAppearance, drawSoldierPortrait, describeSoldierAppearance } from './soldier-appearance.js?v=206';
 import { attachSurfaceEvents, detachSurfaceEvents, frameSurfaceReady, releaseSceneCaches, releaseCanvas, surfaceCanResume } from './canvas-surface.js?v=217';
 import { SETTLEMENTS, WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt, routeNameAt, eastWestRoadY, northSouthRoadX, riverCenterY, drawFieldDepth, drawOakCrown, fieldBlocks, settleUnit } from './world.js?v=198';
@@ -84,7 +84,7 @@ import {
 import { PHASE_DURATION, REST_DURATION, DEATHLINE_DOWN_THRESHOLD, DEATHLINE_WINDOW_PHASES, SOLDIER_SALARY, MIN_REINFORCEMENTS, emptyActivity, advancePhase, advanceRest, recordCombat, recordHealing, healByMedic, healAmountFor, personalDownCount, recentDownCount, normalizeDeathlineHistory, consumeDeathlineDowns, deathlineEligible, participated, finishExperience } from './phase-rules.js?v=218';
 import {HEALING_HP_PER_EXP,REVIVAL_EXP_PER_MAX_HP,shareCommanderExp,raiseLevelMark,ageLevelMarks} from './experience-rules.js';
 import {rollAttributeProfile,applyAttributeStats,attributeValues,practiceAttribute,attributeCarryCapacity,attributeSpecialties,prefersCasterMelee,canChannelWeaponMagic,magicAbilityMultiplier,beginAttributeMovement,finishAttributeMovement,ATTRIBUTE_LABELS,ATTRIBUTE_KEYS,aptitudeGrade} from './unit-attributes.js?v=187';
-import {rollScoutCandidate,renderRecruitment,nextScoutCandidate,startAutomaticRecruitment,stopAutomaticRecruitment,RECRUIT_CLASSES} from './recruitment.js?v=196';
+import {rollScoutCandidate,renderRecruitment,nextScoutCandidate,startAutomaticRecruitment,stopAutomaticRecruitment,RECRUIT_CLASSES} from './recruitment.js?v=226';
 import {canUseWeapon,requiredWeaponStrength,weaponRequirementText,isMagicWeapon,MAGIC_WEAPON_STYLES,preferredWeaponStyle} from './weapon-requirements.js?v=187';
 import {
   emptyFiscalLedger, calcCommanderStipend, calcBuyoutGold,
@@ -119,8 +119,9 @@ import { clusterRescueMarkers } from './rescue-markers.js?v=182';
 import {visibleHeroMembers} from './hero-rules.js';
 import {updateHeroJournal} from './hero-journal.js?v=189';
 import {applyHeroEquipmentUpgrade} from './hero-equipment.js?v=211';
-import {initializeHeroJourney,rollHeroRevelation,serializeHeroJourney,updateHeroParty,updateHeroFollowing,awardHeroBattle,recordDemonKingDefeat,ensureHeroCastle,syncHeroCastle,renderHeroJourney,drawHeroMarks} from './hero-party.js?v=219';
+import {initializeHeroJourney,rollHeroRevelation,serializeHeroJourney,updateHeroParty,updateHeroFollowing,awardHeroBattle,recordDemonKingDefeat,ensureHeroCastle,syncHeroCastle,renderHeroJourney,drawHeroMarks} from './hero-party.js?v=226';
 import {updateSquadHpHud} from './squad-hp-hud.js?v=223';
+import {addBattleReport,normalizeBattleReport,renderBattleReport} from './battle-report.js?v=226';
 import { RESCUE_TIMEOUT, REVIVAL_COOLDOWN, revivalSkillCooldownLeft, normalizeRevivalSkill, headquartersRevivalPaused, rescueUnits, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, receiveTownCargo, leaveCivilianSpace, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, markSoldierDown, downCommander, commanderDown, updateNpcRescue, CIV_KINDS, isMedic, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST } from './casualty-rules.js?v=223';
 import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault, dungeonBlocks, dungeonSolids } from './dungeon.js?v=208';
 import {nearestDungeonFloor,dungeonSpawnPoint,dungeonSteeringTarget} from './dungeon-layout.js?v=182';
@@ -139,6 +140,7 @@ import {
 import { viewport, circleInView, strokeVisibleRing, persistentUnit } from './render-support.js';
 
 export const DEPLOYMENT_CAPACITY=48; // was 50/72 — 本隊 soft cap for iPhone (v1.24.2)
+const STRAT_WINDOWS=['overview','nation','troops','rankings','report','hero'];
 export const PERSONAL_GUARD_MAX=12; // 直属小隊 ceiling (ranks ≤12; rope-tow default stays 2)
 export const ENEMY_LIMIT=40; // was 48/60/72 — aggressive soft load (v1.24.1)
 export const ENEMY_SPAWN_INTERVAL=.85; // was .72/.55 — fewer spawn spikes (v1.24.1)
@@ -1119,7 +1121,7 @@ export const IronSquadGame = {
 
   // 起動時にこのゲームのCSSを自分で読み込む（?v= はこのフォルダ内で管理）。ハブが init 前に await する
   prepare() {
-    return loadCss(['../css/iron-squad.css?v=175', '../css/iron-squad-interface.css?v=223'].map(p => new URL(p, import.meta.url).href));
+    return loadCss(['../css/iron-squad.css?v=175', '../css/iron-squad-interface.css?v=227'].map(p => new URL(p, import.meta.url).href));
   },
 
   init(container, onBackToHub) {
@@ -1617,6 +1619,9 @@ export const IronSquadGame = {
     const overview=document.createElement('div'); overview.id='view-strat-overview';
     const nation=document.createElement('div'); nation.id='view-strat-nation'; nation.className='hidden hub-panel hub-nation';
     const troops=document.createElement('div'); troops.id='view-strat-troops'; troops.className='hidden hub-panel hub-troops';
+    const rankings=document.createElement('div'); rankings.id='view-strat-rankings'; rankings.className='hidden hub-panel hub-rankings';
+    const report=document.createElement('div'); report.id='view-strat-report'; report.className='hidden hub-panel hub-report';
+    const heroView=document.createElement('div'); heroView.id='view-strat-hero'; heroView.className='hidden hub-panel hub-hero';
     const body=document.createElement('div'); body.className='dialog-body';
     body.tabIndex=0; body.setAttribute('aria-label','会議の内容');
     // Retain live nodes before moving them into the detached body. Document ID
@@ -1659,7 +1664,7 @@ export const IronSquadGame = {
     if(squadView){squadView.classList.remove('hidden');troops.append(squadView);}
     if(equipView){equipView.classList.add('hidden');troops.append(equipView);}
     body.prepend(overview);
-    body.append(nation, troops);
+    body.append(nation, troops, rankings, report, heroView);
     const legacySquad=document.getElementById('tab-strat-squad');
     const legacyEquip=document.getElementById('tab-strat-equip');
     if(legacySquad) legacySquad.classList.add('hidden');
@@ -1670,6 +1675,13 @@ export const IronSquadGame = {
       overviewTab.id='tab-strat-overview'; overviewTab.className='sub-tab-btn'; overviewTab.textContent='状況';
       nav.prepend(overviewTab);
     }
+    // Top-level windows after 戦況・部隊・装備・国家. The hero record stays hidden until a hero appears.
+    for(const [key,label,hidden] of [['rankings','ランキング'],['report','戦闘報告書'],['hero','勇者の記録',true]]){
+      if(document.getElementById(`tab-strat-${key}`))continue;
+      const tab=document.createElement('button');
+      tab.id=`tab-strat-${key}`; tab.className=`sub-tab-btn${hidden?' hidden':''}`; tab.textContent=label;
+      nav.append(tab);
+    }
     const nationTab=document.getElementById('tab-strat-nation');
     const troopsTab=document.getElementById('tab-strat-troops');
     if(nationTab) nationTab.textContent='🏛 国家運営';
@@ -1679,7 +1691,7 @@ export const IronSquadGame = {
     footer.append(document.getElementById('btn-start-next-wave'),document.getElementById('btn-close-strat'));
     panel.append(footer);
     // Each tab is its own full-screen window; the panel is a launcher until one opens.
-    const windowTitles={overview:'戦況',troops:'部隊・装備',nation:'国家'};
+    const windowTitles={overview:'戦況',troops:'部隊・装備',nation:'国家',rankings:'ランキング',report:'戦闘報告書',hero:'勇者の記録'};
     const windowBar=document.createElement('div'); windowBar.className='strat-window-bar';
     windowBar.innerHTML='<button type="button" id="btn-strat-window-back" class="strat-window-back">‹ 戻る</button><div class="strat-window-heading"><strong id="strat-window-title" class="strat-window-title"></strong><small id="strat-window-gold" class="strat-window-gold"></small></div><button type="button" id="btn-strat-window-close" class="strat-window-close">閉じる ×</button>';
     panel.insertBefore(windowBar,body);
@@ -1689,13 +1701,14 @@ export const IronSquadGame = {
         document.getElementById('strat-window-title').textContent=windowTitles[name]||'';
       }
       if(name!=='troops')this.closeScoutDialog?.();
-      for(const key of ['overview','nation','troops']) {
+      for(const key of STRAT_WINDOWS) {
         const view=document.getElementById(`view-strat-${key}`);
         if(view) view.classList.toggle('hidden',key!==name);
         const tab=document.getElementById(`tab-strat-${key}`);
         if(tab){ tab.classList.toggle('active',key===name); tab.setAttribute('aria-pressed',String(key===name)); }
       }
       if(name==='troops' && typeof this._syncTroopsSubView==='function') this._syncTroopsSubView(this.rosterManageTab||'roster');
+      if(name==='report') renderBattleReport(this);
       body.scrollTop=0;
     };
     this._selectStratTab=selectTab;
@@ -1715,7 +1728,7 @@ export const IronSquadGame = {
         if(btn) btn.classList.toggle('active',n===sub);
       });
     };
-    for(const key of ['overview','nation','troops']) {
+    for(const key of STRAT_WINDOWS) {
       document.getElementById(`tab-strat-${key}`)?.addEventListener('click',()=>{selectTab(key);document.getElementById('btn-strat-window-back').focus();});
     }
     selectTab('overview',false);
@@ -2341,7 +2354,7 @@ export const IronSquadGame = {
     this.dialogue?.reset();
     this._merchantShopClose?.();
     this.phase = 1;
-    initializeHeroJourney(this);this.heroFollowing=false;
+    initializeHeroJourney(this);this.heroFollowing=false;this.battleReport=[];
     this.phaseTimer = PHASE_DURATION;
     this.restTimer=0;this.restUpgradeClock=0;this.restReport=null;this.restMonsters=[];
     this.totalBattleTime = 0;
@@ -3458,7 +3471,7 @@ export const IronSquadGame = {
 
     this.initBattlefield();
     restoreTradeRaiders(this);
-    initializeHeroJourney(this,saved.heroJourney);this.heroFollowing=false;
+    initializeHeroJourney(this,saved.heroJourney);this.heroFollowing=false;this.battleReport=normalizeBattleReport(saved.battleReport);
     this.phaseCasualties = saved.phaseCasualties ?? 0;
     this.deathlineReport=saved.deathlineReport?.condition==='personal-downs'?saved.deathlineReport:null;
     this.phaseInitialSquadCount = saved.phaseInitialSquadCount ?? this.squad.length;
@@ -3734,6 +3747,7 @@ export const IronSquadGame = {
         worldTime:this.worldTime || 0,
         lastStrongKill:this.lastStrongKill||null,
         heroJourney:serializeHeroJourney(this),
+        battleReport:this.battleReport||[],
         wave: this.phase || this.wave || 1,
         exp: this.exp,
         gold: this.gold,
@@ -8149,6 +8163,7 @@ export const IronSquadGame = {
     if(Math.random()<.22)addFieldDrop(this,{x:monster.x-10,y:monster.y+5,isMagicStone:true,mana:18+Math.floor(Math.random()*13)});
     const isBoss = !!monster.isBoss;
     const isElite = !!monster.isElite;
+    if(isBoss)addBattleReport(this,'boss',`${monster.isDemonKing?'魔王':'ボス'}『${monster.name||'強敵'}』を撃破（トドメ：${isPlayer?'隊長':attacker?.name||'味方'}）`);
 
     const curPhase = this.phase || this.wave || 1;
     const expBase = isBoss ? 80 : (isElite ? 24 : 6);
@@ -9858,6 +9873,7 @@ export const IronSquadGame = {
 
   renderStrategyUI() {
     renderHeroJourney(this,SOLDIER_CLASSES,TALENTS);
+    renderBattleReport(this);
     // UI rebuilds also retire native Canvas buffers; DOM removal alone waits for GC.
     for (const canvas of this.container?.querySelectorAll('.soldier-portrait, .commander-portrait') || []) releaseCanvas(canvas);
     if (typeof document?.querySelector === 'function') {
@@ -12349,7 +12365,7 @@ export const IronSquadGame = {
     this.closeHeadquartersFacility(false);
     this.stopScoutAuto();
     clearTimeout(this._treasureReceiptTimer);this.container?.querySelector('.treasure-receipt')?.remove();
-    clearTimeout(this._battleLogTimer);
+    clearTimeout(this._battleLogTimer);clearInterval(this._stratTickerInterval);
     this.audioUIUnsubscribe?.();this.audioUIUnsubscribe=null;
     this.kanaUnsubscribe?.();this.kanaUnsubscribe=null;
     unbindFieldMusic(sound);

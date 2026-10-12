@@ -4,7 +4,7 @@ import {WORLD_SIZE,settleUnit} from './world.js?v=198';
 import {DUNGEON_DEFS,dungeonBlocks} from './dungeon.js?v=189';
 import {nearestDungeonFloor} from './dungeon-layout.js?v=182';
 import {economicFieldBlocked} from './regional-economy.js?v=182';
-import {RECRUIT_CLASSES} from './recruitment.js?v=196';
+import {RECRUIT_CLASSES} from './recruitment.js?v=226';
 import {persistentUnit} from './render-support.js';
 import {grantPersonalExp} from './experience-rules.js';
 import {formatDistance} from './distance-format.js';
@@ -179,10 +179,13 @@ export function updateHeroParty(game,dt,classes) {
   if(!shared)stepHiddenEnemies(ctx,p,dt);
 }
 export function renderHeroJourney(game,classes,talents) {
-  const host=game.container?.querySelector('#view-strat-overview');if(!host)return;
-  let panel=host.querySelector('#hero-journey');if(!panel){panel=document.createElement('details');panel.id='hero-journey';panel.className='command-fold';host.append(panel);}
-  const j=game.heroJourney,p=j?.party;
-  panel.replaceChildren();const summary=document.createElement('summary');summary.textContent='勇者パーティ';panel.append(summary);
+  // Its own top-level window「勇者の記録」, shown only once a hero has been born.
+  const host=game.container?.querySelector('#view-strat-hero');if(!host)return;
+  const j=game.heroJourney,p=j?.party,born=!!(p||j?.history?.length);
+  game.container.querySelector('#tab-strat-hero')?.classList.toggle('hidden',!born);
+  if(!born){host.replaceChildren();if(!host.classList.contains('hidden'))game._showStratLauncher?.();return;}
+  let panel=host.querySelector('#hero-journey');if(!panel){panel=document.createElement('section');panel.id='hero-journey';panel.className='hero-record';host.append(panel);}
+  panel.replaceChildren();const summary=document.createElement('h4');summary.textContent='勇者パーティ';panel.append(summary);
   const info=document.createElement('p');
   info.textContent=p?`第${p.phase}期に天啓 · ${p.name} · ${p.status==='fallen'?'全滅':p.status==='down'?'全員ダウン':p.status==='victorious'?'魔王討伐後':p.space==='field'?`魔王城へ進軍中 · 本陣から${formatDistance(Math.hypot(p.x-C,p.y-C))}`:'魔王城で交戦中'}`:`第10期から各期2%で、救いの御子が天啓を受け勇者となります。`;
   const body=document.createElement('div');body.className='fold-content';panel.append(body);

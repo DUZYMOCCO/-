@@ -1,6 +1,5 @@
-import {salaryQuote,salaryFundingContext} from './payroll-rules.js?v=195';
+import {salaryQuote,salaryFundingContext,regularSalaryReserve} from './payroll-rules.js?v=226';
 import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=182';
-import {economicHonorBudget} from './regional-economy.js?v=182';
 import {talentTag as talentLabel} from './talent-labels.js?v=182';
 /**
  * 兵士の武勲・ステータスランキングシステム
@@ -171,17 +170,23 @@ export function getSoldierRankerBadges(game, soldierId) {
 }
 
 /**
- * ランカー特別給与テーブル（上位3名への特別手当）
- * Minimum 50/30/20G; growing regular pay grants 50/30/20% per department.
+ * ランカー特別給与テーブル（各部門の上位3名への特別手当・作戦期ごと）
+ * v6.3.13: fixed 5,000 / 3,000 / 1,000G per department. When the treasury cannot cover them after
+ * regular pay, every honor is scaled down proportionally (see calcAllRankerBonuses / paySoldiers).
  */
 export const RANKER_BONUS_SALARY = {
-  1: 50,
-  2: 30,
-  3: 20
+  1: 5000,
+  2: 3000,
+  3: 1000
 };
-export const RANKER_BONUS_RATE={1:.5,2:.3,3:.2};
-export const rankerSalaryBonus=(game,soldier,rank,funding)=>RANKER_BONUS_RATE[rank]
-  ?Math.max(RANKER_BONUS_SALARY[rank],Math.ceil(salaryQuote(soldier,game,funding).total*RANKER_BONUS_RATE[rank])):0;
+export const rankerSalaryBonus=(game,soldier,rank)=>RANKER_BONUS_SALARY[rank]||0;
+/** Treasury left for honors: after this period's regular pay, keeping the regular salary reserve
+ *  (next periods' pay, commander stipend and patrols) untouched. */
+export function rankerHonorBudget(game) {
+  const funding=salaryFundingContext(game),seen=new Set();let regular=0;
+  for(const s of [...(game.squad||[]),...(game.reserves||[])]){if(!s||s.dead||seen.has(s.id||s))continue;seen.add(s.id||s);regular+=salaryQuote(s,game,funding).total;}
+  return Math.max(0,Math.floor(Number(game.treasury)||0)-regular-regularSalaryReserve(game));
+}
 
 /**
  * 兵士が実戦武勲を認可される資格があるか判定（未出撃・未行動の新兵は対象外）
@@ -208,7 +213,7 @@ export function calcSoldierRankerBonus(game, soldierId) {
  * 部隊全体の全ランカー特別給与を一括計算（作戦期完了時の配布用）
  * @returns {Map<string, { totalBonus: number, breakdowns: Array, soldier: object }>}
  */
-export function calcAllRankerBonuses(game) {
+export function calcAllRankerBonuses(game, budgetOverride = null) {
   const result = new Map();
   if (!game) return result;
   const soldiers = collectAllSoldiers(game), funding=salaryFundingContext(game);
@@ -239,7 +244,7 @@ export function calcAllRankerBonuses(game) {
   }
 
   const needed=[...result.values()].reduce((n,r)=>n+r.totalBonus,0);
-  const budget=game.nation?economicHonorBudget(game):needed;
+  const budget=budgetOverride!=null?Math.max(0,Math.floor(budgetOverride)):game.nation?rankerHonorBudget(game):needed;
   if(needed>budget){
     const awards=[...result.values()].flatMap(data=>data.breakdowns.map(b=>({data,b,fraction:b.bonus*budget/needed%1})));
     for(const a of awards)a.b.bonus=Math.floor(a.b.bonus*budget/needed);
@@ -265,12 +270,20 @@ export function renderTroopRankings(game) {
   const soldiers = collectAllSoldiers(game);
   const topList = computeRankings(soldiers, currentCat, TOP_RANK_LIMIT);
   const fundedBonuses=calcAllRankerBonuses(game);
+  // Show when the treasury cannot cover the full 5,000 / 3,000 / 1,000G honors.
+  const sumOf=map=>[...map.values()].reduce((n,r)=>n+r.totalBonus,0);
+  const nominal=sumOf(calcAllRankerBonuses(game,Infinity)),funded=sumOf(fundedBonuses);
+  const fundingNote=nominal>0&&funded<nominal?`<p class="ranking-funding-note">国庫が足りないため、特別給与は全額の${Math.floor(funded/nominal*100)}%に減額見込み（作戦完了時の国庫で確定）</p>`:'';
 
+  // Keep the tab strip where the player scrolled it; re-rendering would snap it back to the first tab.
+  const oldTabs = section.querySelector('.ranking-tabs');
+  if (oldTabs) game._troopRankingTabScroll = oldTabs.scrollLeft;
   section.innerHTML = `
     <div class="ranking-header">
       <div class="ranking-title-group">
         <h4>🎖️ 部隊ステータスランキング <span class="ranker-indicator">TOP 3 特別給与支給</span></h4>
         <span class="ranking-desc">${catDef.desc}</span>
+        ${fundingNote}
       </div>
       <div class="ranking-tabs" role="tablist">
         ${RANKING_CATEGORIES.map(c => `
@@ -321,6 +334,10 @@ export function renderTroopRankings(game) {
       `}
     </div>
   `;
+
+  const tabs = section.querySelector('.ranking-tabs');
+  if (tabs && game._troopRankingTabScroll) tabs.scrollLeft = game._troopRankingTabScroll;
+  if (tabs) tabs.addEventListener('scroll', () => { game._troopRankingTabScroll = tabs.scrollLeft; }, {passive: true});
 
   // イベント登録
   const buttons = section.querySelectorAll('.ranking-tab-btn');

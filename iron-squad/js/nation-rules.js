@@ -3,8 +3,8 @@ import {tierDescription,MAX_EQUIPMENT_TIER} from './equipment-tiers.js?v=187';
 import {WORLD_SIZE} from './world.js?v=198';
 import {saleValue,isGodRollProtected} from './equipment-rules.js?v=217';
 import {calcTreasuryGrossIncome,calcCommanderStipend,EQUIPMENT_SLOTS} from './economy-rules.js?v=192';
-import {createPayrollPlan,commanderStipendQuote,PAYROLL_RULES} from './payroll-rules.js?v=195';
-import {calcAllRankerBonuses} from './troop-rankings.js?v=187';
+import {createPayrollPlan,commanderStipendQuote,PAYROLL_RULES,regularSalaryReserve} from './payroll-rules.js?v=226';
+import {calcAllRankerBonuses} from './troop-rankings.js?v=226';
 import {normalizeRegionalEconomy,recurringNationalIncome,economicState,advanceRegionalEconomy,automaticEconomicTarget,investEconomicProject} from './regional-economy.js?v=182';
 import {drawSettlementQuarter} from './economic-visuals.js?v=198';
 import {atFacility,HEADQUARTERS_FACILITIES} from './hq-facilities.js?v=201';
@@ -34,7 +34,9 @@ export function normalizeNation(data={}) {
 }
 export const nationalPayrollPlan=game=>createPayrollPlan(game,calcAllRankerBonuses(game));
 export const nationalPayroll=game=>nationalPayrollPlan(game).total;
-export const nationalSalaryReserve=game=>Math.max(6000,Math.ceil((nationalPayroll(game)+commanderStipendQuote(game,game.phase||1)+(game.nation?.economy?.patrols||0)*18)*PAYROLL_RULES.reserveCycles));
+// The reserve protects regular pay only. Ranker honors are paid from the surplus above it and
+// scale down proportionally when the treasury cannot cover them (troop-rankings rankerHonorBudget).
+export const nationalSalaryReserve=regularSalaryReserve;
 export function publicEquipmentCap(game) {
   const nation=normalizeNation(game.nation),policy=ARMAMENT_POLICIES[nation.armament.policy];
   return Math.min(Math.max(0,(game.treasury||0)-nationalSalaryReserve(game)),policy.budget+nation.level*policy.perLevel+Math.floor(nationalPayroll(game)*PAYROLL_RULES.operatingMargin*policy.maintenanceShare));

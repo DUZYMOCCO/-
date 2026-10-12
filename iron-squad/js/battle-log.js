@@ -1,5 +1,6 @@
 import { AMMO_CAPACITY, isRangedUnit } from './supply-rules.js?v=220';
 import {isOwnSquad} from './own-squad-marker.js?v=182';
+import {noteBattleReport} from './battle-report.js?v=226';
 
 export const BATTLE_LOG_LIMIT = 100;
 export const FIELD_NOTICE_SECONDS=3;
@@ -192,6 +193,7 @@ export function recordBattleLog(game, message, options) {
     category
   });
   if (history.length > BATTLE_LOG_LIMIT) history.splice(0, history.length - BATTLE_LOG_LIMIT);
+  noteBattleReport(game, text, options);
   if (showsOnFieldLog(text, options)) showFieldLine(game, text, options);
 
   if (typeof document?.querySelector === 'function') {

@@ -45,8 +45,8 @@ const shown = node => {
   return true;
 };
 const assertTab = (tab, sub=game.rosterManageTab) => {
-  assert.deepEqual([...document.querySelector('.dialog-body').children].map(node=>node.id), ['view-strat-overview','view-strat-nation','view-strat-troops'], 'the scrolling body contains only tab-owned panels');
-  for (const key of ['overview','troops','nation']) {
+  assert.deepEqual([...document.querySelector('.dialog-body').children].map(node=>node.id), ['view-strat-overview','view-strat-nation','view-strat-troops','view-strat-rankings','view-strat-report','view-strat-hero'], 'the scrolling body contains only tab-owned panels');
+  for (const key of ['overview','troops','nation','rankings','report','hero']) {
     assert.equal(shown($(`view-strat-${key}`)), key===tab, `only ${tab} content is visible`);
     assert.equal($(`tab-strat-${key}`).getAttribute('aria-pressed'), String(key===tab));
   }
@@ -69,7 +69,11 @@ assert.equal(stratModal.classList.contains('strat-window-open'),false,'menu open
 assert.equal(shown($('view-strat-overview')),false,'launcher hides section content');
 assert.equal(shown($('tab-strat-nation')),true,'launcher shows the section buttons');
 assert.equal(shown($('btn-start-next-wave')),true,'launcher keeps the return-to-battle button');
-for (const [tab,title] of [['overview','戦況'],['troops','部隊・装備'],['nation','国家']]) {
+// v6.3.12: rankings is its own top-level window, in the order 戦況・部隊・装備・国家・ランキング.
+assert.deepEqual([...document.querySelectorAll('#strategy-modal .dialog-tabs .sub-tab-btn')].filter(b=>!b.classList.contains('hidden')).map(b=>b.textContent),['戦況','部隊・装備','国家','ランキング','戦闘報告書'],'hero record stays hidden until a hero appears');
+assert.ok($('view-strat-rankings').contains($('command-troop-rankings')),'rankings moved out of the overview');
+assert.ok(!$('view-strat-overview').contains($('command-troop-rankings')));
+for (const [tab,title] of [['overview','戦況'],['troops','部隊・装備'],['nation','国家'],['rankings','ランキング'],['report','戦闘報告書']]) {
   $(`tab-strat-${tab}`).click();
   assert.equal(stratModal.classList.contains('strat-window-open'),true,`${tab} opens a window`);
   assert.equal($('strat-window-title').textContent,title);

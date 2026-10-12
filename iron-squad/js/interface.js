@@ -1,8 +1,8 @@
 import {commanderFullName} from './commander-identity.js?v=210';
 import {isEnlisted} from './career-rules.js?v=200';
 import {configureAudioInterface} from './audio-interface.js?v=220';
-import {renderBattleLog} from './battle-log.js?v=217';
-import {renderTroopRankings} from './troop-rankings.js?v=187';
+import {renderBattleLog} from './battle-log.js?v=226';
+import {renderTroopRankings} from './troop-rankings.js?v=226';
 import {genderLabel} from './soldier-names.js?v=210';
 /** Presentation only: keep game actions on their original DOM nodes. */
 const element = (tag, className, text) => {
@@ -66,6 +66,7 @@ export function configureInterface(game) {
   get('tab-strat-nation').textContent = '国家';
   // Everyday management next to the overview, followed by national operations.
   get('tab-strat-overview').after(get('tab-strat-troops'));
+  get('tab-strat-nation').after(get('tab-strat-rankings'), get('tab-strat-report'), get('tab-strat-hero'));
   const overview = get('view-strat-overview');
   configureAudioInterface(game);
   const snapshot = element('section', 'command-snapshot'); snapshot.id = 'command-snapshot'; overview.prepend(snapshot);
@@ -80,7 +81,7 @@ export function configureInterface(game) {
   }
   snapshot.after(heal, links);
   const rankings = element('section', 'command-troop-rankings'); rankings.id = 'command-troop-rankings';
-  links.after(rankings);
+  get('view-strat-rankings').append(rankings); // its own top-level window: 戦況・部隊・装備・国家・ランキング
   renderTroopRankings(game);
   game.renderTroopRankings = () => renderTroopRankings(game);
   const battleLog=fold(overview,'command-battle-log','戦闘ログ · 直近100件',[]),logList=element('ol','battle-log-history');logList.id='battle-log-history';battleLog.querySelector('.fold-content').append(logList);

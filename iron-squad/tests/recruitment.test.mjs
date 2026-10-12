@@ -15,6 +15,7 @@ const job=document.getElementById('scout-class');job.value='MAGE';job.dispatchEv
 assert.equal(game.scoutClass,'MAGE');assert.equal(game.scoutCandidates.length,1);assert.equal(game.scoutCandidates[0].classKey,'MAGE');
 const list=document.getElementById('scout-candidates-list');assert.equal(list.children.length,1);
 for(const text of ['筋力','魔力','魔法防御','速さ','回避','搬送','成長素質','雇用費'])assert.ok(list.textContent.includes(text),text);
+window.confirm=()=>true; // a rare standout candidate must not block the free rolls below
 const first=game.scoutCandidates[0],firstGold=game.gold;document.getElementById('btn-refresh-scouts').click();
 assert.notEqual(game.scoutCandidates[0].id,first.id);assert.equal(game.gold,firstGold,'rolling is still free');
 assert.equal(game.scoutCandidates[0].classKey,'MAGE');
