@@ -7,8 +7,8 @@ import {
   DIFFICULTIES, CHARACTERS, WEAPONS, SHOP_ITEMS, STAGES, RARITIES, GEAR_SLOTS, CHEST_COST,
   shopCost, stageById, stageUnlocked, charUnlocked, gearLabel, rollGear, addGear, equipGear,
   unequipGear, mergeGear, bonusFor,
-} from './rules.js?v=220';
-import { art } from './art.js?v=220';
+} from './rules.js?v=221';
+import { art } from './art.js?v=221';
 
 const GEAR_ART = { weapon: 'sword', armor: 'armor', boots: 'shoes', charm: 'charm' };
 const ICON_ART = {
@@ -185,10 +185,10 @@ export const menuMethods = {
           <button class="ds-btn ds-buy" data-chest="1" ${s.coins < CHEST_COST ? 'disabled' : ''}>🪙${CHEST_COST}</button>
         </div>
         ${Object.entries(SHOP_ITEMS).map(([id, it]) => {
-          const lv = s.shop[id] || 0, max = lv >= it.max, cost = shopCost(lv);
-          return `<div class="ds-shop-item">
+          const lv = s.shop[id] || 0, max = lv >= it.max, cost = shopCost(lv, id);
+          return `<div class="ds-shop-item${it.base ? ' ds-shop-new' : ''}">
             <span class="ds-icon emoji">${it.icon}</span>
-            <div class="ds-shop-text"><b>${it.name} Lv${lv}</b><small>${it.desc}</small></div>
+            <div class="ds-shop-text"><b>${it.name} Lv${lv}/${it.max}</b><small>${it.desc}</small></div>
             <button class="ds-btn ds-buy" data-buy="${id}" ${max || s.coins < cost ? 'disabled' : ''}>${max ? 'MAX' : `🪙${cost}`}</button>
           </div>`;
         }).join('')}
@@ -202,8 +202,8 @@ export const menuMethods = {
         sound.playItem();
         this.showChests(() => this.showShop(), 1);
       } else if (b.dataset.buy) {
-        const id = b.dataset.buy, cost = shopCost(s.shop[id] || 0);
-        if (s.coins >= cost) { s.coins -= cost; s.shop[id] = (s.shop[id] || 0) + 1; this.persist(); sound.playItem(); }
+        const id = b.dataset.buy, cost = shopCost(s.shop[id] || 0, id);
+        if (s.coins >= cost && (s.shop[id] || 0) < SHOP_ITEMS[id].max) { s.coins -= cost; s.shop[id] = (s.shop[id] || 0) + 1; this.persist(); sound.playItem(); }
         this.showShop();
       } else { sound.playTap(); this.showTitle(); }
     };

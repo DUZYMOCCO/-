@@ -89,7 +89,7 @@ test('save data is normalized', () => {
   assert.equal(s.coins, 12);
   assert.equal(s.character, 'cat');
   assert.equal(s.difficulty, 'hard');
-  assert.deepEqual(s.shop, { hp: 2, atk: 0, spd: 0 });
+  assert.deepEqual({ hp: s.shop.hp, atk: s.shop.atk, spd: s.shop.spd, zap: s.shop.zap }, { hp: 2, atk: 0, spd: 0, zap: 0 });
   assert.equal(normalizeSave(null).difficulty, 'easy');
   assert.ok(shopCost(1) > shopCost(0));
 });

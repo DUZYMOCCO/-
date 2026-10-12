@@ -301,6 +301,9 @@
 .ds-merge { flex: none; padding: 10px 8px; border: 3px solid var(--ds-ink); border-radius: 12px; background: linear-gradient(#f0abfc, #c084fc); box-shadow: 0 3px 0 var(--ds-ink); font: 900 13px var(--ds-font); color: var(--ds-ink); animation: ds-pulse .7s ease-in-out infinite alternate; }
 
 .ds-shop-chest { background: #fef3c7; }
+.ds-shop-new { background: #ecfeff; padding: 5px 8px; }
+.ds-shop-new .ds-icon { width: 34px; height: 34px; font-size: 26px; }
+.ds-shop-item .ds-buy { min-width: 74px; }
 .ds-chest { margin: 4px auto; background: none; border: 0; padding: 0; }
 .ds-chest-pic { display: block; width: 150px; height: 150px; background: no-repeat center / contain; animation: ds-item 1s ease-in-out infinite alternate; }
 .ds-chest.shake .ds-chest-pic { animation: ds-shake .1s linear infinite; }

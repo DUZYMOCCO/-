@@ -378,9 +378,23 @@ export const SHOP_ITEMS = {
   hp:  { name: 'たいりょく', icon: '❤️', desc: 'さいだいHP +10', max: 10 },
   atk: { name: 'こうげき',   icon: '⚔️', desc: 'ダメージ +5%',   max: 10 },
   spd: { name: 'はやさ',     icon: '👟', desc: 'いどう +4%',     max: 10 },
+  // v1.24.0 あたらしい おみせ（base が たかいほど たかい。レベルごとに ぐんぐん あがる）
+  zap:    { name: 'かみなり',     icon: '⚡', desc: '3びょうごとに かみなり +15', max: 5, base: 300 },
+  guard:  { name: 'ガード',       icon: '🛡️', desc: 'うける ダメージ -4%',  max: 5, base: 250 },
+  rate:   { name: 'じゅうの はやさ', icon: '🔫', desc: 'うつのが はやく -3%', max: 5, base: 300 },
+  multi:  { name: 'たまの かず',   icon: '🔶', desc: 'まっすぐ うつ たま +1', max: 2, base: 2000 },
+  reach:  { name: 'ひろい',       icon: '🧲', desc: 'ほうせきを ひろう はんい +10%', max: 5, base: 150 },
+  heal:   { name: 'かいふく',     icon: '💚', desc: 'まいびょう かいふく +0.2', max: 5, base: 250 },
+  crit:   { name: 'クリティカル', icon: '💥', desc: '4%で ダメージ 2ばい',  max: 5, base: 300 },
+  bonus:  { name: 'コイン ボーナス', icon: '🪙', desc: 'もらえる コイン +10%', max: 5, base: 200 },
 };
 
-export function shopCost(level) { return 30 * (level + 1); }
+/** ねだん：むかしの 3つは 30×(Lv+1)。あたらしいのは base×(Lv+1)^1.6（10まいずつ） */
+export function shopCost(level, id) {
+  const base = SHOP_ITEMS[id]?.base;
+  if (!base) return 30 * (level + 1);
+  return Math.round(base * (level + 1) ** 1.6 / 10) * 10;
+}
 
 export function weaponStat(id, key, level) {
   const list = WEAPONS[id][key];
@@ -404,10 +418,15 @@ export function playerStats(passives = {}, shop = {}, bonus = {}) {
     maxHp: 100 + p('heart') * 20 + s('hp') * 10 + b('hp'),
     damage: (1 + p('power') * 0.15) * (1 + p('ammo') * 0.1) * (1 + s('atk') * 0.05) * (1 + b('dmg')),
     speed: Math.min(260, 150 * (1 + p('boots') * 0.1) * (1 + s('spd') * 0.04) * (1 + b('spd'))),
-    pickup: 90 * (1 + p('magnet') * 0.3) * (1 + b('pickup')),
-    cooldown: Math.max(0.5, 1 - p('clock') * 0.08),
-    regen: b('regen'),
+    pickup: 90 * (1 + p('magnet') * 0.3) * (1 + b('pickup')) * (1 + s('reach') * 0.1),
+    cooldown: Math.max(0.5, 1 - p('clock') * 0.08) * (1 - s('rate') * 0.03),
+    regen: b('regen') + s('heal') * 0.2,
     boom: 1 + p('blast') * 0.12,
+    guard: 1 - s('guard') * 0.04,
+    multi: s('multi'),
+    crit: s('crit') * 0.04,
+    coinMul: 1 + s('bonus') * 0.1,
+    zap: s('zap') ? 15 + s('zap') * 15 : 0,
   };
 }
 
@@ -521,7 +540,7 @@ export function wheelZoom(z, deltaY) {
 
 export function defaultSave() {
   return {
-    coins: 0, shop: { hp: 0, atk: 0, spd: 0 }, character: 'cat', difficulty: 'easy', stage: 1,
+    coins: 0, shop: Object.fromEntries(Object.keys(SHOP_ITEMS).map(k => [k, 0])), character: 'cat', difficulty: 'easy', stage: 1,
     bestKills: 0, clears: 0, stageClears: {}, pendingChests: 0, gear: emptyGear(), zoom: 1,
   };
 }
@@ -533,7 +552,7 @@ export function normalizeSave(raw) {
     ...base, ...raw,
     coins: Math.max(0, Math.floor(Number(raw.coins) || 0)),
     pendingChests: Math.max(0, Math.floor(Number(raw.pendingChests) || 0)),
-    shop: { ...base.shop, ...(raw.shop || {}) },
+    shop: Object.fromEntries(Object.keys(SHOP_ITEMS).map(k => [k, Math.max(0, Math.min(SHOP_ITEMS[k].max, Math.floor(Number(raw.shop?.[k]) || 0)))])),
     stageClears: { ...(raw.stageClears || {}) },
     gear: emptyGear(),
     zoom: clampZoom(raw.zoom ?? 1),

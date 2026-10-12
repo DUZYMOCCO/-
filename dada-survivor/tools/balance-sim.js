@@ -5,7 +5,7 @@
  *   sim.campaign({ difficulty: 'easy', bot: 'kid', runs: 5 });
  * セーブデータは上書きするので、終わったら sim.cleanup() で消す。
  */
-import * as rules from '../js/rules.js?v=220';
+import * as rules from '../js/rules.js?v=221';
 import { storage } from '../../common/js/storage.js';
 
 const SAVE_KEY = 'dada_survivor_save';
@@ -87,8 +87,8 @@ function spend(s) {
   for (let bought = true; bought;) {
     bought = false;
     for (const id of ['atk', 'hp', 'spd']) {
-      const c = rules.shopCost(s.shop[id]);
-      if (s.shop[id] < 10 && s.coins >= c + rules.CHEST_COST) { s.coins -= c; s.shop[id]++; bought = true; }
+      const c = rules.shopCost(s.shop[id], id);
+      if (s.shop[id] < rules.SHOP_ITEMS[id].max && s.coins >= c + rules.CHEST_COST) { s.coins -= c; s.shop[id]++; bought = true; }
     }
   }
 }

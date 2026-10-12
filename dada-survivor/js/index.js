@@ -14,13 +14,13 @@ import {
   QUEST, CAMP, underHalfW, clampUnder, hutSpot, LASER_MODES, nextLaserMode, squadRoom, beamHits, MAX_LEVEL as MAXLV,
   enemyDmgMul, startWeapons, CITY_FIRE, burnSites, TOWER, MANSION, FORTRESS, TEMPLE, THRONE, sawPaths, spikeState, fortressBossScale, trailSteps, missileTargets, towerSpot, rollHeli, heliDamage, floorName,
   SPECIAL,
-} from './rules.js?v=220';
-import { DecorField } from './decor.js?v=220';
-import { EnemyGrid, nearestN } from './grid.js?v=220';
-import { preloadArt, art } from './art.js?v=220';
-import { Stage } from './stage.js?v=220';
-import { menuMethods, iconHtml } from './menus.js?v=220';
-import { PopBGM, playWhistle } from './bgm.js?v=220';
+} from './rules.js?v=221';
+import { DecorField } from './decor.js?v=221';
+import { EnemyGrid, nearestN } from './grid.js?v=221';
+import { preloadArt, art } from './art.js?v=221';
+import { Stage } from './stage.js?v=221';
+import { menuMethods, iconHtml } from './menus.js?v=221';
+import { PopBGM, playWhistle } from './bgm.js?v=221';
 
 const SAVE_KEY = 'dada_survivor_save';
 const TAU = Math.PI * 2;
@@ -46,7 +46,7 @@ export const DadaSurvivorGame = {
 
   // 起動時にこのゲームのCSSを自分で読み込む（?v= はこのフォルダ内で管理）。ハブが init 前に await する
   prepare() {
-    return loadCss(new URL('../css/dada-survivor.css?v=220', import.meta.url).href);
+    return loadCss(new URL('../css/dada-survivor.css?v=221', import.meta.url).href);
   },
 
   init(container, onBackToHub) {
@@ -385,7 +385,7 @@ export const DadaSurvivorGame = {
     this.stage.arrow(null);
     const r = this.run; if (!r || r.ended) return;
     r.ended = true; this.paused = true; this.stick = null; this.stage.joystick(null);
-    r.earned = Math.round(r.coins * r.diff.coin) + (clear ? 50 : 0);
+    r.earned = Math.round(r.coins * r.diff.coin * (r.stats?.coinMul || 1)) + (clear ? 50 : 0);
     const s = this.save, st = r.stageDef;
     s.coins += r.earned;
     const rewards = { chests: r.chests };
@@ -792,7 +792,7 @@ export const DadaSurvivorGame = {
       s.saw.x = s.sx + Math.cos(s.ang) * k; s.saw.y = s.sy + Math.sin(s.ang) * k; s.saw.rot = s.t * 14;
       if (dist2(p, s.saw) < (S.r + 16) ** 2) hurt = true;
     }
-    if (hurt && p.hurt <= 0) { p.hp -= S.dmg * r.diff.enemyDmg; p.hurt = 1.0; sound.playHurt(); this.stage.hurt(); }
+    if (hurt && p.hurt <= 0) { p.hp -= S.dmg * r.diff.enemyDmg * r.stats.guard; p.hurt = 1.0; sound.playHurt(); this.stage.hurt(); }
     const done = q.saws.filter(s => s.t >= S.warn + S.life);
     if (done.length) { const gone = new Set(done.flatMap(s => [s.warn, s.saw])); r.props = r.props.filter(pr => !gone.has(pr)); q.saws = q.saws.filter(s => s.t < S.warn + S.life); }
   },
@@ -843,7 +843,7 @@ export const DadaSurvivorGame = {
       }
     }
     if (hurt && p.hurt <= 0) {
-      p.hp -= T.trapDmg * r.diff.enemyDmg; p.hurt = 1.0;
+      p.hp -= T.trapDmg * r.diff.enemyDmg * r.stats.guard; p.hurt = 1.0;
       sound.playHurt(); this.stage.hurt();
     }
     if (q.rocks) {
@@ -1285,12 +1285,12 @@ export const DadaSurvivorGame = {
   fireBullets(id, lv, dmg) {
     const r = this.run, p = r.player, w = WEAPONS[id];
     if (r.shots.length > 90) return;
-    const n = weaponStat(id, 'count', lv);
+    const n = weaponStat(id, 'count', lv) + (w.fire === 'bullet' ? r.stats.multi || 0 : 0);
     const base = this.aimAngle();
     const pierce = weaponStat(id, 'pierce', lv);
     const life = weaponStat(id, 'life', lv);
     const splash = w.splash ? weaponStat(id, 'splash', lv) : 0;
-    const spread = w.spread || 0;
+    const spread = w.spread || (n > 1 ? 0.12 * (n - 1) : 0);
     for (let i = 0; i < n; i++) {
       const ang = base + (n <= 1 ? 0 : (i - (n - 1) / 2) * (spread / (n - 1)));
       r.shots.push({
@@ -1465,6 +1465,11 @@ export const DadaSurvivorGame = {
         if (r.auraClock <= 0) { r.auraClock = 0.5; this.areaDamage(p.x, p.y, weaponStat(id, 'radius', lv), dmg, false); }
       }
     }
+    // v1.24.0 おみせの かみなり：3びょう ごとに ちかくの てき 1たいに
+    if (st.zap && ready('shopZap', 3)) {
+      const t = this.nearestEnemies(1, 380)[0];
+      if (t) { this.stage.fx('bolt', t.x, t.y, 120); this.areaDamage(t.x, t.y, 36, st.zap * st.damage); sound.playLaser(); }
+    }
     // まわるほし
     const olv = r.weapons.orbit;
     if (olv) {
@@ -1510,13 +1515,14 @@ export const DadaSurvivorGame = {
       if (e.hp <= 0) this.killEnemy(e);
       return;
     }
-    const d = Math.round(dmg * (0.9 + Math.random() * 0.2));
+    const sc = this.run.stats?.crit, crit = sc > 0 && Math.random() < sc;
+    const d = Math.round(dmg * (0.9 + Math.random() * 0.2) * (crit ? 2 : 1));
     e.hp -= d; e.flash = 0.1;
     if (fromX !== null && !e.T.boss) {
       const dx = e.x - fromX, dy = e.y - fromY, l = Math.hypot(dx, dy) || 1;
       e.kx = dx / l; e.ky = dy / l; e.kb = kbTime;
     }
-    this.stage.text(e.x, e.y - e.T.r, d, d >= 40);
+    this.stage.text(e.x, e.y - e.T.r, d, crit || d >= 40);
     sound.play('hit', { volume: 0.25, gap: 0.07 });
     if (e.hp <= 0) this.killEnemy(e);
   },
@@ -1704,7 +1710,7 @@ export const DadaSurvivorGame = {
       e.x += vx * dt; e.y += vy * dt;
       // ぶつかったら ダメージ
       if (d < e.T.r + 14 && p.hurt <= 0 && e.T.dmg) {
-        p.hp -= e.T.dmg * enemyDmgMul(r.time, r.diff, r.stageDef);
+        p.hp -= e.T.dmg * enemyDmgMul(r.time, r.diff, r.stageDef) * r.stats.guard;
         p.hurt = 0.8;
         sound.playHurt();
         this.stage.hurt();
@@ -1730,7 +1736,7 @@ export const DadaSurvivorGame = {
   },
 
   updateHazards(dt) {
-    const r = this.run, p = r.player, mul = enemyDmgMul(r.time, r.diff, r.stageDef);
+    const r = this.run, p = r.player, mul = enemyDmgMul(r.time, r.diff, r.stageDef) * r.stats.guard;
     if (!r.ebombs.length && !r.fires.length) return;
     for (const b of r.ebombs) {
       b.t += dt;
