@@ -458,6 +458,31 @@ const coinbox = `<ellipse cx="32" cy="60" rx="26" ry="3.5" fill="#000" opacity="
   <rect x="24" y="30" width="16" height="16" rx="3" fill="#fbbf24" ${S2}/><path d="M27 30 V25 Q32 19 37 25 V30" fill="none" stroke="${O}" stroke-width="2.4"/>
   <circle cx="32" cy="37" r="2.2" fill="${O}"/><path d="M32 38 V42" stroke="${O}" stroke-width="2"/>
   <circle cx="32" cy="52" r="4" fill="#fde047" ${SW(1.2)}/>`;
+// v1.21.0 ジャングルの いしの ようさい（こけの はえた だんだんの いしの おてら・つた・にこにこ かおの いしぼり）
+const temple = wrap(`<ellipse cx="190" cy="292" rx="186" ry="8" fill="#000" opacity=".25"/>
+  <path d="M10 290 L370 290 L350 230 L30 230Z" fill="#78716c" ${SW(4)}/>
+  <path d="M40 230 L340 230 L320 170 L60 170Z" fill="#8a837c" ${SW(4)}/>
+  <path d="M70 170 L310 170 L290 110 L90 110Z" fill="#a8a29e" ${SW(4)}/>
+  <path d="M110 110 L270 110 L255 56 L125 56Z" fill="#b8b2ab" ${SW(4)}/>
+  <path d="M150 56 L230 56 L222 24 L158 24Z" fill="#c7c1ba" ${SW(3)}/>
+  ${[[30, 260], [330, 255], [70, 200], [300, 195], [100, 140], [270, 135]].map(([x, y]) => `<path d="M${x - 14} ${y} q14 -12 28 0" fill="none" stroke="#4d7c0f" stroke-width="6" stroke-linecap="round"/>`).join('')}
+  <path d="M60 170 q-10 30 4 60 M320 170 q12 34 -4 60 M125 56 q-12 26 0 54" fill="none" stroke="#3f6212" stroke-width="4"/>
+  <circle cx="175" cy="80" r="5" fill="#1c1917"/><circle cx="205" cy="80" r="5" fill="#1c1917"/><path d="M174 92 Q190 102 206 92" fill="none" stroke="#1c1917" stroke-width="3.5" stroke-linecap="round"/>
+  <path d="M150 290 L150 196 Q190 176 230 196 L230 290Z" fill="#292524" ${SW(3)}/>
+  <circle cx="60" cy="282" r="9" fill="#65a30d"/><circle cx="320" cy="282" r="10" fill="#65a30d"/>`, '0 0 380 300');
+const templeDoor = open => wrap(`<path d="M8 76 L8 22 Q40 2 72 22 L72 76Z" fill="#78716c" ${SW(3)}/>
+  ${open ? `<path d="M16 76 L16 26 Q40 12 64 26 L64 76Z" fill="#1c1917"/><path d="M28 60 Q40 44 52 60" fill="none" stroke="#fde68a" stroke-width="2" opacity=".6"/>`
+    : `<path d="M16 76 L16 26 Q40 12 64 26 L64 76Z" fill="#a8a29e" ${SW(2)}/><path d="M16 44 H64 M16 60 H64 M40 26 V76" stroke="#57534e" stroke-width="2"/>`}`, '0 0 80 80');
+// とげの ゆか（0 ひっこみ・W あかく ひかる しるし・1 でてる）。ちは なし
+const spikeBase = `<rect x="4" y="4" width="56" height="56" rx="4" fill="#57534e" ${SW(2)}/>`;
+const spikeHoles = [16, 32, 48].flatMap(x => [16, 32, 48].map(y => [x, y]));
+const spikes0 = wrap(spikeBase + spikeHoles.map(([x, y]) => `<circle cx="${x}" cy="${y}" r="3" fill="#292524"/>`).join(''));
+const spikesW = wrap(spikeBase + `<rect x="4" y="4" width="56" height="56" rx="4" fill="#ef4444" opacity=".5"/>` + spikeHoles.map(([x, y]) => `<circle cx="${x}" cy="${y}" r="3.4" fill="#fecaca"/>`).join(''));
+const spikes1 = wrap(spikeBase + spikeHoles.map(([x, y]) => `<path d="M${x - 5} ${y + 5} L${x} ${y - 9} L${x + 5} ${y + 5}Z" fill="#e7e5e4" ${SW(1.4)}/>`).join(''));
+const rowWarn = wrap(`<rect x="0" y="6" width="200" height="28" fill="#ef4444" opacity=".32"/><path d="M0 6 H200 M0 34 H200" stroke="#ef4444" stroke-width="2.4" stroke-dasharray="10 6"/>`, '0 0 200 40');
+const boulder = wrap(`<circle cx="32" cy="32" r="28" fill="#a8a29e" ${S}/><path d="M14 22 Q24 14 34 18 M22 44 Q32 50 44 40 M40 14 Q50 22 50 32" fill="none" stroke="#78716c" stroke-width="3" stroke-linecap="round"/><path d="M12 40 q6 -4 10 2" stroke="#4d7c0f" stroke-width="4" fill="none" stroke-linecap="round"/>`);
+const rock = wrap(`<path d="M10 40 L18 18 L36 10 L54 22 L56 44 L34 56 L14 52Z" fill="#a8a29e" ${S}/><path d="M22 26 L34 22 M30 44 L44 38" stroke="#78716c" stroke-width="3" stroke-linecap="round"/>`);
+
 /* ---------- わるものぐんだんの ワッペン（オリジナル：ドクロ＋クロスした ナイフ。ちは なし） ---------- */
 const villainPatch = (x, y, k = 1) => `<g data-emblem="warumono" transform="translate(${x} ${y}) scale(${k})">
   <rect x="-5.2" y="-4.2" width="10.4" height="8.4" rx="1.2" fill="#2a0a0e" ${SW(1.3)}/>
@@ -1519,6 +1544,7 @@ const SOURCES = {
   outpost, hut, kamakura, hatch: hatch(false), hatchOpen: hatch(true), wallL: stretch(wallSide(true)), wallR: stretch(wallSide(false)), wallT: stretch(wallEnd(true)), wallB: stretch(wallEnd(false)),
   cellA: cell(['soldier', 'soldier']), cellB: cell(['researcher', 'medic']), cellC: cell(['soldier', 'researcher']), cellOpen: cell([], true), exitStairs,
   blackrobo: wrap(withPatch('blackrobo', blackRobo)), supreme: wrap(withPatch('supreme', supreme), '0 -4 64 68'), coinbox: wrap(withPatch('coinbox', coinbox)), fortress,
+  temple, templeDoor: templeDoor(false), templeDoorOpen: templeDoor(true), spikes0, spikesW, spikes1, rowWarn, boulder, rock,
   megavault: vault(false).replace(/<\/svg>$/, `${villainPatch(18, 108, 1.6)}<text x="65" y="117" text-anchor="middle" font-size="11" font-weight="900" fill="#fde047" stroke="#1c1917" stroke-width=".8">10000</text></svg>`), bmissile, mansion, mansionDoor: mansionDoor(false), mansionDoorOpen: mansionDoor(true), vault: vault(false), vaultOpen: vault(true),
   driller: wrap(withPatch('driller', driller)), jungler: wrap(withPatch('jungler', jungler)), walker: wrap(withPatch('walker', walker), '-8 0 80 66'),
   urban: wrap(withPatch('urban', urban)), truck: wrap(withPatch('truck', truck)), gunship: wrap(withPatch('gunship', gunship), '-10 0 84 68'),

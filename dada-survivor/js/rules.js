@@ -109,7 +109,8 @@ export const STAGES = [
   // v1.13.0：まおうじょうの あと（ステージ5 クリアで ひらく）。わるものぐんだんの ジャングルの きち
   { id: 6, name: 'ジャングル', ground: 'jungle', hpMul: 3.1, spawnMul: 1.45, dmgMul: 1.15, bgm: 'jungle',
     enemies: [['jungler', 0, 10], ['bat', 30, 5], ['wolf', 60, 5], ['ghost', 90, 5], ['skull', 150, 5]],
-    mini: { type: 'jungler', hp: 8000, big: 2.5, name: 'でかジャングルへい' }, boss: { type: 'walker', hp: 20000 } },
+    mini: { type: 'jungler', hp: 8000, big: 2.5, name: 'でかジャングルへい' }, boss: { type: 'walker', hp: 20000 },
+    temple: true }, // v1.21.0 いしの ようさい（`TEMPLE`）
   // v1.14.0：ジャングルの あと（ステージ6 クリアで ひらく）。こわれた まち。たかい ビルに はいって 4かいの なかまを たすけ、おくじょうへ（`TOWER`）
   { id: 7, name: 'こわれた まち', ground: 'city', decor: 'city', hpMul: 4.0, spawnMul: 1.5, dmgMul: 1.35, bgm: 'city',
     enemies: [['urban', 0, 10], ['bat', 30, 5], ['ghost', 60, 4], ['skull', 120, 5], ['wolf', 150, 4]],
@@ -689,6 +690,25 @@ export const FORTRESS = {
   boss: { type: 'supreme', hp: 33000, at: { x: 0, y: -620 }, levelRef: 31, minHp: 0.75 },
   bossMissile: { n: 5, spread: 120, flight: 1.5, blast: 56, dmg: 12, range: 700, cd: 3.2, firstCd: 2.8 },
 };
+/**
+ * v1.21.0 ジャングルの いしの ようさい（スタートから あしあとで いける。やじるしは ださない）。
+ * なかは じかん はんぶん。1 とげの ゆか → 2 ころがる いし → 3 おちて くる いわ（＋とげ）→ 4 おたからの へや。
+ * おたからを とると その へやで だいぐん 200たい（いちどに cap たい まで）。はしごは おたからの あと すぐ でる（にげても OK）
+ */
+export const TEMPLE = {
+  temple: true, door: 'templeDoor', noArrow: true, at: 3, dist0: 520, dist1: 720, doorR: 54, stairsR: 50, cellR: 72, heliR: 80, vaultR: 70,
+  floors: 4, foes: [0, 0, 0, 0], foeHp: 1, names: ['とげの へや', 'ころがる いしの へや', 'おちる いわの へや', 'おたからの へや'],
+  room: { halfW: 380, roomHalfW: 380, roomY: -1e9, top: -900, bottom: 140 },
+  stairs: { x: 0, y: -820 }, cells: [], pad: TOWER.pad, roofExit: { x: -260, y: 40 }, heli: TOWER.heli,
+  trapDmg: 9, // わなの ダメージ（× むずかしさの enemyDmg）。あたると すこし むてき
+  spike: { size: 96, period: 3.4, down: 1.6, warn: 0.8 },
+  lane: { period: 3.6, warn: 1.0, speed: 480, r: 42, ys: [-250, -450, -650] },
+  rock: { cd: 1.7, n: 3, spread: 130, flight: 1.1, blast: 48 },
+  vault: { x: 0, y: -520 }, reward: { coins: 400, chests: 2, levelUp: 1 },
+  horde: { total: 200, cap: 16, batch: 4, hp: 0.8, types: ['mummy', 'zombie', 'bat', 'scorpion', 'jungler'] },
+};
+/** とげの ゆかの じょうたい（0 ひっこみ・1 あぶない しるし・2 でてる） */
+export function spikeState(t, S = TEMPLE.spike) { const k = ((t % S.period) + S.period) % S.period; return k < S.down ? 0 : k < S.down + S.warn ? 1 : 2; }
 /** v1.19.1 そうすいメカの HP の ばいりつ（プレイヤーの レベル / levelRef。minHp〜1） */
 export function fortressBossScale(level, T = FORTRESS) { return Math.max(T.boss.minHp, Math.min(1, level / T.boss.levelRef)); }
 /** v1.17.1 みちの あしあとの ばしょ（スタートから d までの きょり。はじめと おわりは あける） */

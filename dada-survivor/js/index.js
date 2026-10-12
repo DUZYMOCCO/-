@@ -12,14 +12,14 @@ import {
   newQuality, adaptQuality, THROW, fireRadius, capType, gatherCount, BOTTLE, bottleOutcome,
   SQUAD, allyDamage, squadSlot, canWhistle, healAmount,
   QUEST, CAMP, underHalfW, clampUnder, hutSpot, LASER_MODES, nextLaserMode, squadRoom, beamHits, MAX_LEVEL as MAXLV,
-  enemyDmgMul, startWeapons, CITY_FIRE, burnSites, TOWER, MANSION, FORTRESS, fortressBossScale, trailSteps, missileTargets, towerSpot, rollHeli, heliDamage, floorName,
-} from './rules.js?v=216';
-import { DecorField } from './decor.js?v=216';
-import { EnemyGrid, nearestN } from './grid.js?v=216';
-import { preloadArt, art } from './art.js?v=216';
-import { Stage } from './stage.js?v=216';
-import { menuMethods, iconHtml } from './menus.js?v=216';
-import { PopBGM, playWhistle } from './bgm.js?v=216';
+  enemyDmgMul, startWeapons, CITY_FIRE, burnSites, TOWER, MANSION, FORTRESS, TEMPLE, spikeState, fortressBossScale, trailSteps, missileTargets, towerSpot, rollHeli, heliDamage, floorName,
+} from './rules.js?v=217';
+import { DecorField } from './decor.js?v=217';
+import { EnemyGrid, nearestN } from './grid.js?v=217';
+import { preloadArt, art } from './art.js?v=217';
+import { Stage } from './stage.js?v=217';
+import { menuMethods, iconHtml } from './menus.js?v=217';
+import { PopBGM, playWhistle } from './bgm.js?v=217';
 
 const SAVE_KEY = 'dada_survivor_save';
 const TAU = Math.PI * 2;
@@ -45,7 +45,7 @@ export const DadaSurvivorGame = {
 
   // 起動時にこのゲームのCSSを自分で読み込む（?v= はこのフォルダ内で管理）。ハブが init 前に await する
   prepare() {
-    return loadCss(new URL('../css/dada-survivor.css?v=216', import.meta.url).href);
+    return loadCss(new URL('../css/dada-survivor.css?v=217', import.meta.url).href);
   },
 
   init(container, onBackToHub) {
@@ -359,6 +359,7 @@ export const DadaSurvivorGame = {
     if (st.tower) this.initTower();
     if (st.mansion) this.initTower(MANSION);
     if (st.fortress) this.initTower(FORTRESS);
+    if (st.temple) this.initTower(TEMPLE);
     if (st.burning) this.run.burnSites = burnSites(this.run.quest?.building);
     if (st.camp) this.initCamp();
     this.refreshStats();
@@ -565,21 +566,21 @@ export const DadaSurvivorGame = {
   zoneU() { return this.run.quest?.U || QUEST.under; },
 
   initTower(T = TOWER) {
-    const r = this.run, at = towerSpot(Math.random, T), M = !!T.mansion, F = !!T.fortress;
-    const door = M ? { kind: 'mansionDoor', x: at.x, y: at.y + 100, w: 80, h: 80 } : { kind: 'towerDoor', x: at.x, y: at.y + (F ? 122 : 112), w: 80, h: 80 };
-    r.props = [M ? { kind: 'mansion', x: at.x, y: at.y, w: 320, h: 270 } : F ? { kind: 'fortress', x: at.x, y: at.y, w: 400, h: 316 } : { kind: 'tower', x: at.x, y: at.y, w: 240, h: 304 }, door];
+    const r = this.run, at = towerSpot(Math.random, T), M = !!T.mansion, F = !!T.fortress, Tp = !!T.temple;
+    const door = Tp ? { kind: 'templeDoor', x: at.x, y: at.y + 112, w: 80, h: 80 } : M ? { kind: 'mansionDoor', x: at.x, y: at.y + 100, w: 80, h: 80 } : { kind: 'towerDoor', x: at.x, y: at.y + (F ? 122 : 112), w: 80, h: 80 };
+    r.props = [Tp ? { kind: 'temple', x: at.x, y: at.y, w: 380, h: 300 } : M ? { kind: 'mansion', x: at.x, y: at.y, w: 320, h: 270 } : F ? { kind: 'fortress', x: at.x, y: at.y, w: 400, h: 316 } : { kind: 'tower', x: at.x, y: at.y, w: 240, h: 304 }, door];
     r.quest = { tower: true, T, U: T.room, stage: 'wait', door, building: at, floor: 0, left: 0, stairs: null, cells: [],
-      heli: M || F ? false : rollHeli(), pending: 0, heliTaken: false, heliProp: null, exit: null, surface: null, vault: null, foe: null };
-    this.addTrail(door, F ? 'やじるしの さきに わるものの ようさいが あるよ！ みちを たどって いこう' : M ? 'やじるしの さきに おおきな こやが あるよ！ みちを たどって いこう' : 'やじるしの さきに たかい ビルが あるよ！ みちを たどって いこう');
+      heli: M || F || Tp ? false : rollHeli(), pending: 0, heliTaken: false, heliProp: null, exit: null, surface: null, vault: null, foe: null };
+    this.addTrail(door, Tp ? 'あしあとを たどって いくと いしの ようさいが あるよ！' : F ? 'やじるしの さきに わるものの ようさいが あるよ！ みちを たどって いこう' : M ? 'やじるしの さきに おおきな こやが あるよ！ みちを たどって いこう' : 'やじるしの さきに たかい ビルが あるよ！ みちを たどって いこう');
   },
 
   updateTower() {
     const r = this.run, q = r.quest, p = r.player, T = q.T || TOWER;
     if (r.zone === 'surface') {
       if (q.stage === 'wait' && r.time >= T.at) {
-        q.stage = 'door'; q.door.kind = T.mansion ? 'mansionDoorOpen' : 'towerDoorOpen'; q.door.mark = true;
+        q.stage = 'door'; q.door.kind = T.door ? `${T.door}Open` : T.mansion ? 'mansionDoorOpen' : 'towerDoorOpen'; q.door.mark = true;
         sound.playItem();
-        this.showBanner(T.fortress ? 'ようさいの いりぐちが ひらいた！ なかの めいれいしつに ボスが いるよ！' : T.mansion ? 'おおきな こやの とびらが ひらいた！ やじるしの ほうへ いこう！' : 'たかい ビルの いりぐちが ひらいた！ やじるしの ほうへ いこう！', 3200);
+        if (T.temple) this.showBanner('いしの ようさいの とびらが あいた！ あしあとを たどって いこう！', 3000); else this.showBanner(T.fortress ? 'ようさいの いりぐちが ひらいた！ なかの めいれいしつに ボスが いるよ！' : T.mansion ? 'おおきな こやの とびらが ひらいた！ やじるしの ほうへ いこう！' : 'たかい ビルの いりぐちが ひらいた！ やじるしの ほうへ いこう！', 3200);
       }
       if (q.stage === 'door' && dist2(p, q.door) < T.doorR ** 2) this.enterTower();
       return;
@@ -587,11 +588,12 @@ export const DadaSurvivorGame = {
     // ビルの なか
     // たからべや：ブラックロボを たおすと ひらく。さわると おたから
     if (q.vault && q.vault.open && !q.vault.taken && dist2(p, q.vault) < T.vaultR ** 2) this.takeVault();
-    if (T.fortress) this.updateFortress();
+    if (T.fortress || T.temple) this.updateFortress();
+    if (T.temple) this.updateTraps();
     if (q.stairs && q.stairs.hidden && q.left <= 0 && !(q.pending > 0) && !(q.foe && q.foe.hp > 0) && q.floor <= T.floors && !(q.vault && !q.vault.taken)) {
       q.stairs.hidden = false; q.stairs.mark = true;
       sound.playHeal();
-      if (T.fortress && q.floor === 5) this.showBanner('そうすいメカを たおした！ クリア！ でぐちで おわる？ かいだんの うえには きょだいきんこ！', 4200);
+      if (T.temple) { /* わなの へやは さいしょから かいだんが みえる（バナーは へやの せつめいを のこす） */ } else if (T.fortress && q.floor === 5) this.showBanner('そうすいメカを たおした！ クリア！ でぐちで おわる？ かいだんの うえには きょだいきんこ！', 4200);
       else this.showBanner(q.floor === T.floors && q.cells.some(c => !c.open) ? 'かいだんが でた！ でも さきに ろうやの なかまを たすけよう！' : 'かいだんが でた！ うえへ いこう！', 2600);
     }
     if (q.stairs && !q.stairs.hidden && dist2(p, q.stairs) < T.stairsR ** 2) { this.goFloor(q.floor + 1); return; }
@@ -637,8 +639,9 @@ export const DadaSurvivorGame = {
       { kind: w[0], x: -hw - 450, y: cy, w: 900, h }, { kind: w[1], x: hw + 450, y: cy, w: 900, h },
       { kind: w[2], x: 0, y: U.top - 200, w: 2400, h: 400 }, { kind: w[3], x: 0, y: U.bottom + 200, w: 2400, h: 400 },
     ];
-    const F = !!T.fortress;
-    if (!roof && !(F && f === T.floors)) {
+    const F = !!T.fortress, Tp = !!T.temple;
+    q.traps = []; q.rockCd = 0; q.horde = 0; q.hordeDone = false;
+    if (!roof && !((F || Tp) && f === T.floors)) {
       q.stairs = { kind: 'stairsUp', ...T.stairs, w: 100, h: 80, hidden: true };
       props.push(q.stairs);
     }
@@ -653,10 +656,11 @@ export const DadaSurvivorGame = {
     r.props = props;
     p.x = 0; p.y = U.bottom - 70; p.hurt = Math.max(p.hurt, 0.8);
     r.allies.forEach((a, i) => { a.x = (i - 1.5) * 26; a.y = p.y + 30; if (a.mode !== 'heal') a.mode = 'follow'; });
-    this.stage.setGround(roof ? 'roof' : M || (F && f >= 4) ? 'castle' : 'office');
+    this.stage.setGround(roof ? 'roof' : M || Tp || (F && f >= 4) ? 'castle' : 'office');
     this.stage.fx('pop', p.x, p.y, 100);
     sound.playItem();
     if (F && f >= 3) { this.fortressRoom(f); return; }
+    if (Tp) { this.templeRoom(f); return; }
     if (M && (roof || f === T.vaultFloor)) {
       // ボス：3かいは ブラックロボ（たからべやの まえ）、おくじょうは てきの こうげきヘリ
       const spec = roof ? T.heliBoss : T.robo;
@@ -730,6 +734,71 @@ export const DadaSurvivorGame = {
     this.showBanner(`めいれいしつ！ ⚠ ${e.T.name}！ たおせば クリア！ あかい しるしに ミサイルが おちるよ！`, 3800);
   },
 
+  /** v1.21.0 いしの ようさいの へや（わな／おたから） */
+  templeRoom(f) {
+    const r = this.run, q = r.quest, T = q.T, U = T.room, S = T.spike;
+    const spikes = (rows, cols, step) => {
+      for (const [ri, y] of rows.entries()) for (let c = 0; c < cols; c++) {
+        const x = (c - (cols - 1) / 2) * step;
+        const pr = { kind: 'spikes0', x, y, w: S.size, h: S.size };
+        r.props.push(pr); q.traps.push({ type: 'spike', x, y, ph: (ri * 1.1 + c * 0.55) % S.period, pr });
+      }
+    };
+    if (f === 1) { spikes([-200, -330, -460, -590, -720], 6, 118); this.showBanner('いしの ようさいに はいった！ とげの ゆか！ あかく なったら でて くるよ（なかでは じかんが ゆっくり）', 3800); return; }
+    if (f === 2) {
+      T.lane.ys.forEach((y, i) => {
+        const warn = { kind: 'rowWarn', x: 0, y, w: U.halfW * 2, h: 84, hidden: true }, rock = { kind: 'boulder', x: 0, y, w: 92, h: 92, hidden: true };
+        r.props.push(warn, rock); q.traps.push({ type: 'lane', y, ph: i * 1.2, dir: i % 2 ? -1 : 1, warn, rock });
+      });
+      this.showBanner('ころがる いしの へや！ あかい みちに いしが ころがって くるよ！', 3400);
+      return;
+    }
+    if (f === 3) { spikes([-380, -620], 4, 170); q.rocks = true; this.showBanner('おちる いわの へや！ あかい まるから にげて！', 3200); return; }
+    q.vault = { kind: 'vaultOpen', ...T.vault, w: 130, h: 120, open: true, taken: false, mark: true }; r.props.push(q.vault);
+    this.showBanner('おたからの へやに ついた！ すごい おたからが ある！', 3200);
+  },
+
+  /** わなを うごかす（ダメージは すこし・あたると むてき じかん） */
+  updateTraps() {
+    const r = this.run, q = r.quest, T = q.T, p = r.player, U = T.room, t = r.clock;
+    const dt = Math.min(0.1, t - (q.lc ?? t)); q.lc = t;
+    let hurt = false;
+    for (const tr of q.traps) {
+      if (tr.type === 'spike') {
+        const s = spikeState(t + tr.ph, T.spike), kind = ['spikes0', 'spikesW', 'spikes1'][s];
+        if (tr.pr.kind !== kind) tr.pr.kind = kind;
+        if (s === 2 && Math.abs(p.x - tr.x) < T.spike.size / 2 - 6 && Math.abs(p.y - tr.y) < T.spike.size / 2 - 6) hurt = true;
+      } else {
+        const L = T.lane, k = ((t + tr.ph) % L.period + L.period) % L.period, travel = (U.halfW * 2 + 160) / L.speed;
+        tr.warn.hidden = !(k < L.warn + travel);
+        tr.rock.hidden = !(k >= L.warn && k < L.warn + travel);
+        if (!tr.rock.hidden) {
+          tr.rock.x = tr.dir * (-U.halfW - 80 + (k - L.warn) * L.speed);
+          tr.rock.rot = tr.dir * (k - L.warn) * 6;
+          if (Math.hypot(p.x - tr.rock.x, p.y - tr.y) < L.r + 16) hurt = true;
+        }
+      }
+    }
+    if (hurt && p.hurt <= 0) {
+      p.hp -= T.trapDmg * r.diff.enemyDmg; p.hurt = 1.0;
+      sound.playHurt(); this.stage.hurt();
+    }
+    if (q.rocks) {
+      q.rockCd -= dt;
+      if (q.rockCd <= 0) {
+        const R = T.rock; q.rockCd = R.cd;
+        for (let i = 0; i < R.n; i++) {
+          const a = Math.random() * TAU, d = i ? R.spread * (0.5 + Math.random() * 0.5) : 0;
+          const tx = Math.max(-U.halfW + 30, Math.min(U.halfW - 30, p.x + Math.cos(a) * d)), ty = p.y + Math.sin(a) * d;
+          r.ebombs.push({ sx: tx, sy: ty - 260, tx, ty, x: tx, y: ty, t: 0, dur: R.flight, blast: R.blast, dmg: T.trapDmg, noFire: true, rock: true });
+        }
+      }
+    }
+    if (q.hordeStarted && !q.hordeDone && q.horde <= 0 && !r.enemies.some(e => e.horde)) {
+      q.hordeDone = true; this.showBanner('だいぐんを ぜんぶ やっつけた！ すごい！ はしごで そとへ もどろう', 3600);
+    }
+  },
+
   /** v1.20.0 ようさいの でぐち（さわると ステージクリア） */
   addFortressExit() {
     const r = this.run, q = r.quest;
@@ -755,7 +824,7 @@ export const DadaSurvivorGame = {
       const r = this.run, H = q.T.horde, U = q.T.room;
       let alive = 0; for (const e of r.enemies) if (e.horde) alive++;
       if (alive <= H.cap - H.batch) {
-        const types = r.stageDef.enemies.map(e => e[0]), hp = spawnPlan(r.time, r.diff, r.stageDef).hpScale * H.hp;
+        const types = H.types || r.stageDef.enemies.map(e => e[0]), hp = spawnPlan(r.time, r.diff, r.stageDef).hpScale * H.hp;
         for (let i = 0; i < H.batch && q.horde > 0; i++, q.horde--) {
           const side = Math.random() < 0.5 ? -1 : 1, e = this.spawnEnemy(types[Math.floor(Math.random() * types.length)], hp, undefined,
             { x: side * (U.halfW - 40 - Math.random() * 120), y: U.top + 80 + Math.random() * 500 });
@@ -783,7 +852,7 @@ export const DadaSurvivorGame = {
     r.enemies = s.enemies; r.gems = s.gems; r.items = s.items; r.props = s.props;
     r.shots.length = 0;
     r.zone = 'surface'; q.stage = 'done'; q.surface = null; q.stairs = null; q.cells = []; q.exit = null; q.heliProp = null;
-    q.door.kind = q.T?.mansion ? 'mansionDoor' : 'towerDoor'; q.door.mark = false;
+    q.door.kind = q.T?.door || (q.T?.mansion ? 'mansionDoor' : 'towerDoor'); q.door.mark = false;
     p.x = q.door.x; p.y = q.door.y + 80; p.hurt = 1;
     r.allies.forEach((a, i) => { a.x = p.x + (i - 1.5) * 26; a.y = p.y + 40; });
     if (r.heli) { r.heli.x = p.x; r.heli.y = p.y - 200; }
@@ -818,6 +887,13 @@ export const DadaSurvivorGame = {
     this.stage.flash();
     this.stage.fx('pop', v.x, v.y, 140);
     sound.playHeal();
+    if (q.T?.temple) {
+      // おたからの あとは だいぐん（この へやで）。はしごは すぐ でる
+      q.horde = q.T.horde.total; q.hordeStarted = true;
+      q.exit = { kind: 'roofExit', ...q.T.roofExit, w: 80, h: 80, mark: true }; r.props.push(q.exit);
+      this.showBanner(`すごい おたから！ コイン ${R.coins}まい・たからばこ ${R.chests}こ・ぶき レベルアップ！ …⚠ だいぐんが くるよ！`, 4400);
+      return;
+    }
     this.showBanner(`たからべや！ コイン ${R.coins}まい・たからばこ・ぶきが ぜんぶ レベルアップ！`, 3800);
   },
 
@@ -1698,7 +1774,7 @@ export const DadaSurvivorGame = {
     if (!q) return r.container && !r.container.open ? { x: r.container.x, y: r.container.y, label: 'コンテナ' } : null;
     if (q.tower) {
       if (r.zone === 'surface') {
-        const name = q.T?.fortress ? 'ようさい' : q.T?.mansion ? 'こや' : 'ビル';
+        const name = q.T?.temple ? 'いしの ようさい' : q.T?.fortress ? 'ようさい' : q.T?.mansion ? 'こや' : 'ビル';
         if (q.stage === 'door') return { x: q.door.x, y: q.door.y, label: name };
         return q.stage === 'wait' ? { x: q.door.x, y: q.door.y, label: `${name}（まだ しまってる）`, locked: true } : null;
       }
@@ -1727,6 +1803,7 @@ export const DadaSurvivorGame = {
 
   containerArrow() {
     const r = this.run, box = this.questGoal();
+    if (r.quest?.T?.noArrow) return null; // v1.21.0 いしの ようさいは あしあと だけ
     if (!box || (r.zone === 'under' && box.label === 'ボス')) return null;
     const label = box.label;
 
