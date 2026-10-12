@@ -8,7 +8,7 @@
  * - おもい ときは「かるい モード」（ds-lite）：ぴょこぴょこ／ほうせきの ゆれを とめ、エフェクトと すうじを へらす
  * - ここでは Math.random を つかわない（みための ばらつきは カウンタで。ゲームの らんすうと まざらない）
  */
-import { art, groundTile } from './art.js?v=209';
+import { art, groundTile } from './art.js?v=210';
 
 class Pool {
   constructor(layer, make) { this.layer = layer; this.make = make; this.free = []; this.active = new Set(); this.key = Symbol('node'); }
@@ -298,6 +298,8 @@ export class Stage {
       }
       this.sync(this.props, vis, (pr, n) => {
         if (n._a !== pr.kind) { n._a = pr.kind; n._img.style.backgroundImage = art(pr.kind); }
+        const rot = pr.rot || 0;
+        if (n._r !== rot) { n._r = rot; n._img.style.transform = rot ? `rotate(${rot.toFixed(3)}rad)` : ''; }
         if (n._w !== pr.w || n._h !== pr.h) {
           n._w = pr.w; n._h = pr.h;
           const st = n._img.style;
@@ -507,8 +509,13 @@ export class Stage {
     const n = this.arrowEl;
     if (!at) { if (n.style.display !== 'none') n.style.display = 'none'; return; }
     if (n.style.display === 'none') n.style.display = '';
-    const label = at.label || 'コンテナ';
+    const label = (at.locked ? '🔒 ' : '') + (at.label || 'コンテナ');
     if (this.arrowLabel.textContent !== label) this.arrowLabel.textContent = label;
+    const st = at.locked ? 'locked' : 'open';
+    if (n._st !== st) { n._st = st; n.classList.toggle('locked', !!at.locked); n.classList.toggle('open', !at.locked); }
+    // がめんの はしでは なまえが はみでないように よせる
+    const W = this.root.clientWidth || 375, edge = at.x > W - 90 ? 'R' : at.x < 90 ? 'L' : '';
+    if (n._e !== edge) { n._e = edge; n.classList.toggle('edgeR', edge === 'R'); n.classList.toggle('edgeL', edge === 'L'); }
     const x = Math.round(at.x), y = Math.round(at.y), a = Math.round(at.ang * 20) / 20;
     if (n._x !== x || n._y !== y) { n._x = x; n._y = y; n.style.transform = `translate3d(${x}px,${y}px,0)`; }
     if (n._a !== a) { n._a = a; n.firstChild.style.transform = `rotate(${a}rad)`; }

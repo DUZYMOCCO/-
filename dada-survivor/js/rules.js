@@ -653,6 +653,12 @@ export const MANSION = {
   vault: { x: -185, y: -470 }, reward: { coins: 50, chests: 1, levelUp: 1 },
   heliBoss: { type: 'gunship', hp: 2000, dmg: 20, at: { x: 0, y: -420 } },
 };
+/** v1.17.1 みちの あしあとの ばしょ（スタートから d までの きょり。はじめと おわりは あける） */
+export function trailSteps(d, step = 100, start = 110, end = 90) {
+  const out = [];
+  for (let s = start; s <= d - end; s += step) out.push(s);
+  return out;
+}
 /** ブラックロボの ミサイルの おちる ばしょ（プレイヤーの いる ところ ＋ まわり。n こ） */
 export function missileTargets(px, py, rnd = Math.random, R = MANSION.robo) {
   const out = [{ x: px, y: py }];

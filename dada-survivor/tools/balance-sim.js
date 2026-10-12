@@ -5,7 +5,7 @@
  *   sim.campaign({ difficulty: 'easy', bot: 'kid', runs: 5 });
  * セーブデータは上書きするので、終わったら sim.cleanup() で消す。
  */
-import * as rules from '../js/rules.js?v=209';
+import * as rules from '../js/rules.js?v=210';
 import { storage } from '../../common/js/storage.js';
 
 const SAVE_KEY = 'dada_survivor_save';
@@ -53,7 +53,7 @@ function drive(g, b) {
   if (r.npc && !b.noNpc) { const d = Math.hypot(r.npc.x - p.x, r.npc.y - p.y) || 1; vx += (r.npc.x - p.x) / d * 2; vy += (r.npc.y - p.y) / d * 2; }
   // コンテナは やじるしが でるので kid も むかう（ひらくと なかまと スーパーミサイル）。
   // さばくの こや → とびら → ちかの ろうや → ボス → でぐち も おなじ（やじるしの ほう）
-  const box = b.noNpc ? null : g.questGoal();
+  const goal = b.noNpc ? null : g.questGoal(), box = goal && !goal.locked ? goal : null; // v1.17.1 しまってる ところへは いかない（まえと おなじ）
   if (box) { const d = Math.hypot(box.x - p.x, box.y - p.y) || 1; vx += (box.x - p.x) / d * 2; vy += (box.y - p.y) / d * 2; }
   // ふえ：HP が はんぶん（kid は 4わり）を きったら ふく
   if (!b.noWhistle && r.player.hp < r.stats.maxHp * b.whistleAt) g.whistle();

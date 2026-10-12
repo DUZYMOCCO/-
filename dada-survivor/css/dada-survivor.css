@@ -333,7 +333,14 @@
 @keyframes ds-whistle-call { from { transform: scale(1); } to { transform: scale(1.1); } }
 .ds-goal { position: absolute; left: 0; top: 0; width: 0; height: 0; pointer-events: none; z-index: 2; }
 .ds-goal-tip { position: absolute; left: -20px; top: -20px; width: 40px; height: 40px; font: 900 34px/40px sans-serif; text-align: center; color: #2563eb; -webkit-text-stroke: 2px #fff; }
-.ds-goal-label { position: absolute; left: -36px; top: 18px; width: 72px; font: 900 12px/1 var(--ds-font, sans-serif); text-align: center; color: #fff; background: #2563eb; border: 2px solid #121418; border-radius: 8px; padding: 3px 0; }
+.ds-goal-label { position: absolute; left: 0; top: 18px; transform: translateX(-50%); white-space: nowrap; font: 900 12px/1 var(--ds-font, sans-serif); text-align: center; color: #fff; background: #2563eb; border: 2px solid #121418; border-radius: 8px; padding: 3px 6px; }
+/* v1.17.1：まだ しまってる ときは はいいろ・ひらいたら ぴかぴか */
+.ds-goal.locked .ds-goal-tip { color: #64748b; }
+.ds-goal.edgeR .ds-goal-label { transform: translateX(calc(-100% + 18px)); }
+.ds-goal.edgeL .ds-goal-label { transform: translateX(-18px); }
+.ds-goal.locked .ds-goal-label { background: #475569; }
+.ds-goal.open .ds-goal-tip { animation: ds-goal-pulse .55s ease-in-out infinite alternate; }
+@keyframes ds-goal-pulse { to { color: #f59e0b; text-shadow: 0 0 8px #fde047; } }
 
 /* ---------- さばくの クエスト・ちか・レーザー ---------- */
 .ds-prop { background: no-repeat center / 100% 100%; }

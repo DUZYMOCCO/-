@@ -615,6 +615,10 @@ const BLAZE = [
   [[52, 90, 1.1], [96, 94, 1.0], [126, 102, 0.7], [72, 106, 0.85]],
   [[30, 100, 0.75], [62, 88, 1.0], [90, 80, 1.3], [122, 94, 0.9], [80, 108, 0.7], [46, 108, 0.65]],
 ];
+// v1.17.1 めあてへの みち（つちの みちに きいろい やじるしと あしあと。みぎむき：rot で まわす）
+const trail = wrap(`<ellipse cx="32" cy="32" rx="30" ry="20" fill="#a16207" opacity=".45"/><ellipse cx="32" cy="32" rx="24" ry="15" fill="#d6b07a" opacity=".55"/>
+  <path d="M12 26 H34 V18 L52 32 L34 46 V38 H12Z" fill="#fde047" stroke="#1c1917" stroke-width="2.6" stroke-linejoin="round"/>
+  <ellipse cx="18" cy="14" rx="3" ry="4.4" fill="#78350f" opacity=".55"/><ellipse cx="26" cy="51" rx="3" ry="4.4" fill="#78350f" opacity=".55"/>`, '0 0 64 64');
 const glassShards = wrap(`<g fill="#dbeafe" stroke="#60a5fa" stroke-width="1.6" stroke-linejoin="round">
   <path d="M50 8 L56 20 L46 22Z"/><path d="M84 30 L92 38 L80 42Z"/><path d="M86 70 L78 84 L74 72Z"/><path d="M50 92 L42 80 L54 80Z"/>
   <path d="M14 72 L24 76 L16 86Z"/><path d="M10 30 L22 34 L12 42Z"/><path d="M30 14 L36 24 L26 22Z"/><path d="M70 14 L74 26 L64 22Z"/></g>
@@ -1458,6 +1462,7 @@ const hero2 = {
 };
 
 const SOURCES = {
+  trail, // v1.17.1 めあてへの みち
   blaze1: blazeArt(BLAZE[0]), blaze2: blazeArt(BLAZE[1]), blaze3: blazeArt(BLAZE[2]), // v1.16.1 まちの ひ（かざり）
   cat:   wrap(ninja), // id は セーブ互換のため cat のまま（絵と名前は にんじゃ）
   dog:   wrap(laserSoldier), // id は セーブ互換のため dog のまま（絵と名前は にんげんの ソルジャー・あおい レーザーじゅう）

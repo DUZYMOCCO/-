@@ -48,3 +48,17 @@ test('v1.17.0：ブラックロボ：つよい わるもの ロボ（ミサイ�
   for (const k of ['bmissile', 'mansion', 'mansionDoor', 'mansionDoorOpen', 'vault', 'vaultOpen']) assert.ok(art(k), k);
   assert.ok(art('blackrobo', true) !== art('blackrobo'), 'あたると しろく ひかる');
 });
+
+test('v1.17.1：めあてへの みち・しまってる ときも やじるし', async () => {
+  const { trailSteps } = await import('../js/rules.js');
+  assert.deepEqual(trailSteps(100), []);
+  const s = trailSteps(520);
+  assert.equal(s[0], 110); assert.ok(s.at(-1) <= 430);
+  for (let i = 1; i < s.length; i++) assert.equal(s[i] - s[i - 1], 100);
+  assert.ok(art('trail'));
+  const src = (await import('node:fs')).readFileSync(new URL('../js/index.js', import.meta.url), 'utf8');
+  assert.ok(src.includes("（まだ しまってる）`, locked: true"), 'ビル／こやは しまってる ときも やじるし');
+  assert.ok(src.includes("label: 'こや（まだ しまってる）', locked: true"), 'さばくの こやも');
+  const sim = (await import('node:fs')).readFileSync(new URL('../tools/balance-sim.js', import.meta.url), 'utf8');
+  assert.ok(sim.includes('!goal.locked'), 'bot は しまってる ところへ いかない（バランス そのまま）');
+});
