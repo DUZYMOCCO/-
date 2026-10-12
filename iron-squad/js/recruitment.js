@@ -3,7 +3,7 @@ import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './dista
 import {drawSoldierPortrait} from './soldier-appearance.js?v=206';
 import {ATTRIBUTE_KEYS,ATTRIBUTE_LABELS,attributeSpecialties,attributeCarryCapacity,aptitudeGrade} from './unit-attributes.js?v=187';
 import {weaponRequirementText} from './weapon-requirements.js?v=187';
-import {equipmentName} from './equipment-rules.js?v=189';
+import {equipmentName} from './equipment-rules.js?v=211';
 import {releaseCanvas} from './canvas-surface.js?v=182';
 import {genderLabel} from './soldier-names.js?v=210';
 

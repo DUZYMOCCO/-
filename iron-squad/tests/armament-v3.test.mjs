@@ -40,7 +40,7 @@ for(const distance of [0,8000,22000,48000,70000])for(const kind of ['normal','el
  assert.equal(lootWeights(distance,kind).length,28);
  for(const r of [0,.2,.5,.9,.999999])assert.ok(chooseLootTier(distance,kind,()=>r)<=24,'mythic materials remain vault rewards');
 }
-assert.equal(chooseLootTier(10000,'dungeon_vault',()=>.999999),28);
+assert.equal(chooseLootTier(60000,'dungeon_vault',()=>.999999),28);assert.equal(chooseLootTier(10000,'dungeon_vault',()=>.999999),20,'the near dragon cave no longer drops endgame gear');
 // Study credit happens once; national procurement cannot unlock itself.
 const researchGame={nation:normalizeNation({investment:180000}),phase:2,showToast:noop};
 observeEquipment(researchGame,gear(28));const credit=researchGame.nation.armament.research;observeEquipment(researchGame,gear(28));assert.equal(researchGame.nation.armament.research,credit);

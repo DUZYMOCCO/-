@@ -1,6 +1,6 @@
 import {drawEquipmentShield} from './equipment-art.js?v=188';
-import { MELEE_SWEET_SPOT, meleeSweetSpotFor, weaponCombatProfile } from './equipment-rules.js?v=189';
-import {isHeavyWeaponStyle} from './growth-rules.js?v=187';
+import { MELEE_SWEET_SPOT, meleeSweetSpotFor, weaponCombatProfile } from './equipment-rules.js?v=211';
+import {isHeavyWeaponStyle} from './growth-rules.js?v=211';
 
 const TAU = Math.PI * 2;
 const clamp = n => Math.max(0, Math.min(1, n));
@@ -27,6 +27,9 @@ const polygon = (c, points, fill) => {
  * Screen/world aim is retained in all eight directions, independent of body mirroring.
  * Returning to the resting pose is continuous; no weapon snaps at anim=0.
  */
+/** Weapons are carried to the body's left or right, never along the stick direction. */
+export const weaponRestAim = actor => Math.cos(actor?.facingAngle||0) < -.15 ? Math.PI : 0;
+export const weaponAim = actor => (actor?.atkAnim||0)>0&&Number.isFinite(actor.attackAngle)?actor.attackAngle:weaponRestAim(actor);
 const armLength = physique => 8.5*(1+((physique?.bodyWidth||1)-1)*.35);
 /** Move a rigid pair of grips into the reach of both shoulders. */
 function fitGrips(pose,physique) {
@@ -48,14 +51,15 @@ export function meleePose(style, anim=0, aim=0, physique=null) {
   const active=anim>0, p=1-clamp(anim);
   const spear=style==='spear', hammer=isHeavyWeaponStyle(style),staff=style==='staff';
   const rest=hammer?-1.02:spear?-.12:-.68;
-  const offset=active ? keys(p, spear
+  // Facing left mirrors the swing: right-facing swings clockwise, left-facing counter-clockwise.
+  const side=Math.cos(aim)<-.15?-1:1;
+  const offset=side*(active ? keys(p, spear
     ? [[0,rest],[.18,-.18],[.43,0],[.64,.04],[1,rest]]
     : hammer
       ? [[0,rest],[.2,-1.48],[.46,0],[.68,.65],[1,rest]]
-      : [[0,rest],[.18,-1.08],[.43,0],[.66,.88],[1,rest]]) : rest;
+      : [[0,rest],[.18,-1.08],[.43,0],[.66,.88],[1,rest]]) : rest);
   const extension=spear&&active?keys(p,[[0,0],[.18,-3],[.43,10],[.64,6],[1,0]]):0;
   const angle=aim+offset, dx=Math.cos(angle), dy=Math.sin(angle);
-  const side=Math.cos(aim)<-.15?-1:1;
   // Spears rest below the chin. When thrusting upwards, carry the shaft beside
   // the head rather than through the face; both grips move with that same axis.
   const shoulder=6*(physique?.bodyWidth||1),spacing=spear?13:6;
@@ -73,7 +77,7 @@ export function meleePose(style, anim=0, aim=0, physique=null) {
 
 export function attackAnimationRate(item,attackSpeed=1) {
   const style=item?.weaponStyle||'sword';
-  const duration=style==='spear'?.30:(style==='hammer'||style==='axe')?.34:.24;
+  const duration=style==='spear'?.30:(style==='hammer'||style==='axe')?.44:style==='sword'?.18:.24;
   return Math.max(1, Math.min(2, Number(attackSpeed)||1))*(weaponCombatProfile(item).swingSpeed||1)/duration;
 }
 
@@ -131,7 +135,7 @@ export function drawWeaponArms(c,actor,pose,colors,simple=false) {
 
 export function drawMeleeWeapon(c, actor, style, colors, simple=false,withArms=true,heldPose=null) {
   const anim=actor.atkAnim||0;
-  const aim=anim>0&&Number.isFinite(actor.attackAngle)?actor.attackAngle:(actor.facingAngle||0);
+  const aim=weaponAim(actor);
   const pose={...(heldPose||meleePose(style,anim,aim,colors.physique))}, {grip,offGrip}=pose;
   pose.length*=actor.equipped?.weapon?.weaponTraits?.length||1;
   const {cloth,gloves,blade,board,gloveProfile,shieldProfile,weaponProfile,hand,physique}=colors;
@@ -139,6 +143,8 @@ export function drawMeleeWeapon(c, actor, style, colors, simple=false,withArms=t
   const twoHanded=pose.twoHanded;
   if(withArms)drawWeaponArms(c,actor,pose,colors,simple);
   c.translate(grip.x,grip.y); c.rotate(pose.angle);
+  // The leading edge (axe blade, swing trace) faces the swing direction on both sides.
+  if(pose.side<0)c.scale(1,-1);
   if(pose.trail>.01&&!simple) {
     // A narrow trace follows the striking edge. No filled wedge or glowing ring.
     c.globalAlpha=.24*pose.trail;
@@ -219,7 +225,7 @@ export function rangedPose(style,anim=0,aim=0,physique=null) {
   return fitGrips({active,progress:p,angle:aim,aim,side,grip,offGrip,twoHanded:true,draw,recoil},physique);
 }
 export function drawRangedWeapon(c,actor,style,colors,simple=false,withArms=true,heldPose=null) {
-  const anim=actor.atkAnim||0,aim=anim>0&&Number.isFinite(actor.attackAngle)?actor.attackAngle:(actor.facingAngle||0);
+  const anim=actor.atkAnim||0,aim=weaponAim(actor);
   const pose=heldPose||rangedPose(style,anim,aim,colors.physique),{grip,offGrip}=pose,{blade,weaponProfile}=colors;
   c.save();c.lineCap='round';c.lineJoin='round';
   if(withArms)drawWeaponArms(c,actor,pose,colors,simple);

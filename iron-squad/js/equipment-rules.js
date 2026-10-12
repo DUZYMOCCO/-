@@ -1,6 +1,6 @@
 import {powerRank,MAX_EQUIPMENT_TIER,GENERATIONS} from './equipment-tiers.js?v=187';
 import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=182';
-import {WEAPON_STYLE_ICONS,weaponStyleOf,isHeavyWeaponStyle,weaponCategoryOf} from './growth-rules.js?v=187';
+import {WEAPON_STYLE_ICONS,weaponStyleOf,isHeavyWeaponStyle,weaponCategoryOf} from './growth-rules.js?v=211';
 export const EQUIPMENT_TYPES = ['WEAPON','SHIELD','HELMET','ARMOR','GLOVES','LEGS','AMULET'];
 
 const GEAR_ICONS = {
@@ -83,12 +83,15 @@ export function lowValueIds(inventory, playerEquipment, soldiers, maxTier=2) {
 
 function materialLootWeights(distance, kind='normal') {
   const d=Math.max(0,distance || 0);
-  // Tier 7（神話・オリハルコン）はダンジョン最奥宝箱 (dungeon_vault / 竜巌窟) のみ
+  // Tier 7（神話・オリハルコン）は遠方のダンジョン最奥宝箱 (魔王城) のみ
   if(kind==='dungeon_vault') {
     // 配列は素材帯（木・青銅・鉄・鋼・ミスリル・竜鱗・神話）。表示ティアは帯×4。
+    // v6.2.0: 近場の宝箱は「その地域の通常ドロップ＋1〜2帯」まで（竜巌窟でT21〜28が出ていた）。
     if(d<5000) return [0,58,42,0,0,0,0]; // 廃坑: 青銅〜鉄（表示T5〜T12）
-    if(d<8500) return [0,0,34,56,10,0,0]; // カタコンベ: 鉄〜鋼、薄いミスリル（表示T9〜T20）
-    return [0,0,0,0,0,45,55]; // 竜巌窟・魔王城: 竜鱗〜神話（表示T21〜T28）
+    if(d<8500) return [0,30,55,15,0,0,0]; // カタコンベ: 青銅〜鋼（表示T5〜T16）
+    if(d<22000) return [0,0,30,55,15,0,0]; // 竜巌窟: 鉄〜ミスリル（表示T9〜T20）
+    if(d<48000) return [0,0,0,30,50,20,0]; // 遠方: 鋼〜竜鱗（表示T13〜T24）
+    return [0,0,0,0,0,45,55]; // 魔王城: 竜鱗〜神話（表示T21〜T28）
   }
   let weights,maxTier,t;
   // ゾーン距離を長距離マップ向けに伸長（0 / 8000 / 22000 / 48000）
@@ -102,10 +105,12 @@ function materialLootWeights(distance, kind='normal') {
     t=Math.min(1,(d-48000)/22000);weights=[0,0,35-30*t,50-25*t,15+55*t,0,0];maxTier=5;
   }
   if(kind==='colossal') {
-    // 超巨頭: 高Tierは T5〜T6 まで（T7は最奥宝箱専用）
+    // 超巨頭: その地域の通常ドロップ＋1〜2帯。高Tierは T6 まで（T7は最奥宝箱専用）
     if(d>=60000) return [0,0,0,0,25,75,0];
     if(d>=48000) return [0,0,0,10,40,50,0];
-    return [0,0,0,30,60,10,0];
+    if(d>=22000) return [0,0,0,30,60,10,0];
+    if(d>=8000) return [0,0,30,50,20,0,0]; // 表示T9〜T20
+    return [0,30,50,20,0,0,0]; // 本陣防衛圏: 表示T5〜T16
   }
   if(kind==='chest' || kind==='boss') weights[maxTier-1]+=8;
   if(kind==='elite' || kind==='boss') {
@@ -317,8 +322,9 @@ function baseWeaponCombatProfile(item) {
     return {
       style, ranged: false,
       reach: 80, reachWarlord: 105,
-      baseCooldown: 0.98, pierce: false, pierceHalfWidth: 0,
-      atkMult: 2.45, knockback: 62, knockbackWarlord: 78,
+      // v6.2.0: slower swings and a big, visible launch on every hit.
+      baseCooldown: 1.22, pierce: false, pierceHalfWidth: 0,
+      atkMult: 2.45, knockback: 170, knockbackWarlord: 230,
       projSpeed: 0, splash: 0, projType: null
     };
   }
@@ -353,8 +359,9 @@ function baseWeaponCombatProfile(item) {
   }
   return {
     style: 'sword', ranged: false,
+    // v6.2.0: quicker sword (was .52).
     reach: 85, reachWarlord: 110,
-    baseCooldown: 0.52, pierce: false, pierceHalfWidth: 0,
+    baseCooldown: 0.40, pierce: false, pierceHalfWidth: 0,
     atkMult: 1.0, knockback: 0, knockbackWarlord: 0,
     projSpeed: 0, splash: 0, projType: null
   };

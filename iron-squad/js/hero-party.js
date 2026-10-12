@@ -11,13 +11,13 @@ import {formatDistance} from './distance-format.js';
 import {practiceAttribute} from './unit-attributes.js?v=187';
 import {isMedic,treatWounded,updateWounded} from './casualty-rules.js?v=196';
 import {healByMedic,healAmountFor} from './phase-rules.js?v=187';
-import {ensureMana,regenerateMana,spendMana,isMage} from './magic-rules.js?v=187';
+import {ensureMana,regenerateMana,spendMana,isMage} from './magic-rules.js?v=211';
 import {takeRangedShot,supplyLocation} from './supply-rules.js?v=187';
-import {distanceScaling} from './equipment-rules.js?v=189';
+import {distanceScaling} from './equipment-rules.js?v=211';
 import {strongEnemyReward} from './combat-rewards.js?v=182';
 import {RANGED_ENEMIES} from './enemy-ranged.js?v=187';
 import {startHeroJournal,archiveHeroJournal,appendHeroDiary,recordHeroEquipmentGrant} from './hero-journal.js?v=189';
-import {grantHeroEquipment} from './hero-equipment.js?v=187';
+import {grantHeroEquipment} from './hero-equipment.js?v=211';
 const C=WORLD_SIZE/2,castle=()=>DUNGEON_DEFS.find(d=>d.id==='dungeon_demon_castle');
 const ready=u=>u&&!u.dead&&!u.isDown&&u.hp>0;
 export function initializeHeroJourney(game,saved=null) {

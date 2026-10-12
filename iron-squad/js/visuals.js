@@ -4,8 +4,8 @@ import {RANGED_ENEMIES} from './enemy-ranged.js?v=187';
 import {BRUTE_DRAW_SCALE} from './field-hosts.js?v=182';
 import {equipmentVisualProfile} from './equipment-tiers.js?v=187';
 import {drawBodyEquipment,drawEquipmentShield} from './equipment-art.js?v=188';
-import {MAGIC_AFFINITIES,ensureMana} from './magic-rules.js?v=187';
-import { drawMeleeWeapon, drawMeleeRangeCue, drawRangedWeapon, drawWeaponArms, meleePose, rangedPose } from './weapon-motion.js?v=189';
+import {MAGIC_AFFINITIES,ensureMana} from './magic-rules.js?v=211';
+import { drawMeleeWeapon, drawMeleeRangeCue, drawRangedWeapon, drawWeaponArms, meleePose, rangedPose, weaponAim } from './weapon-motion.js?v=211';
 import { defaultCommanderAppearance } from './commander-identity.js?v=210';
 import {travelerClothes,drawTravelerTunic} from './traveler-clothes.js?v=195';
 import { createSoldierAppearance, drawSoldierHead, isMedicAppearance, soldierAppearanceFamily, soldierPhysique } from './soldier-appearance.js?v=206';
@@ -365,7 +365,7 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod, displa
   const melee = ['sword','spear','hammer','axe','staff','wand'].includes(wStyle);
   const ranged = ['bow','crossbow','cannon'].includes(wStyle);
   const weaponColors = {cloth,gloves,blade,board,physique,hand:s.appearance?.skin||'#c1a083',gloveProfile:equipmentVisualProfile(eq.gloves),shieldProfile:equipmentVisualProfile(eq.shield),weaponProfile:equipmentVisualProfile(eq.weapon||s.weapon)};
-  const aim=s.atkAnim>0&&Number.isFinite(s.attackAngle)?s.attackAngle:(s.facingAngle||0);
+  const aim=weaponAim(s);
   const heldPose=melee?meleePose(wStyle,s.atkAnim||0,aim,physique):ranged?rangedPose(wStyle,s.atkAnim||0,aim,physique):null;
   c.save(); c.translate(s.x, s.y);
   if (!s.isDown && (s.campPose === 'sit' || s.campPose === 'drink' || s.campPose === 'eat')) {

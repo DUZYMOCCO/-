@@ -5,7 +5,7 @@ import {configureBattlefieldUI,quietBattlefieldContext} from './battlefield-ui.j
 import {renderNavigationMap} from './navigation-map.js?v=189';
 import {soldierEquipmentValue,observeEquipment,standardEquipmentCost,RESERVE_ARMAMENT_COUNT} from './armament-rules.js?v=191';
 import {configureRangedEnemy,updateRangedEnemy,updateDefenseWalls,interceptHostileShot,isHostileShot,updateHostileBolt,drawDefenseWalls} from './enemy-ranged.js?v=187';
-import {LIMITED_CLASSES,initializeLimitedAllies,prepareLimitedEncounter,createLimitedAlly,joinLimitedEncounter,updateLimitedAllies,updateNinja,updateShuriken,drawLimitedEncounter,serializeLimitedAllies,notifyLimitedJoin} from './limited-allies.js?v=203';
+import {LIMITED_CLASSES,initializeLimitedAllies,prepareLimitedEncounter,createLimitedAlly,joinLimitedEncounter,updateLimitedAllies,updateNinja,updateShuriken,drawLimitedEncounter,serializeLimitedAllies,notifyLimitedJoin} from './limited-allies.js?v=211';
 import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=182';
 import {TIERS,MAX_EQUIPMENT_TIER,MAX_POWER_RANK,POWER_RANK_STEP,GENERATION_COUNT,TRADE_MAX_TIER,powerRank,tierDescription} from './equipment-tiers.js?v=187';
 import {fieldAdaptiveScaling} from './field-scaling.js?v=182';
@@ -18,7 +18,7 @@ import {casinoMethods} from './casino.js?v=201';
 import {normalizeCasino} from './casino-rules.js?v=201';
 import {latestEquipmentTier,recordMerchantEquipment,ensureMerchantCatalog,refreshWaveCatalogs,markMerchantPurchase} from './merchant-catalog.js?v=191';
 import {initializeMedicalPosts,updateMedicalPosts,serializeMedicalPosts,nearestKnownMedicalPost,drawMedicalPost,drawMedicalMap,drawMedicalMarker,drawTownMedicalReception,drawRescueDirection} from './medical-posts.js?v=182';
-import {invasionMethods,initializeInvasions,serializeInvasions,shouldTriggerRandomRaid,makeEnemyRoom,drawInvasionRoute} from './invasion-rules.js?v=194';
+import {invasionMethods,initializeInvasions,serializeInvasions,shouldTriggerRandomRaid,makeEnemyRoom,drawInvasionRoute} from './invasion-rules.js?v=211';
 import {gateMethods,serializeGatePosts,replenishTownGateGuards,initializeGateGuards,ensureTownGuards,serializeGateGuards,updateGateGuards,gateGuardVisible,applyFortifications,drawFortification,exitGateTown,townExitReached,wallBlocksAttack,attackBlocked as coverBlocked} from './gate-rules.js?v=198';
 import {nationMethods,normalizeNation,nationalIncome,nationalPayrollPlan,headquartersDamageMult,drawNationalDevelopment,DEVELOPMENT_STAGES} from './nation-rules.js?v=201';
 import {equipmentUpgradeCost,salaryQuote,paySoldiers} from './payroll-rules.js?v=195';
@@ -51,11 +51,14 @@ import { sound } from '../../common/js/audio.js?v=151';
 import { loadCss } from '../../common/js/load-css.js';
 import { storage } from '../../common/js/storage.js';
 import { createStallRecorder, mountStallLog } from './stall-recorder.js?v=182';
-import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow, isRuinKeeper, ruinKeeperScale } from './visuals.js?v=195';
+import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow, isRuinKeeper, ruinKeeperScale } from './visuals.js?v=211';
 import { refreshCampQuiet, assignCampSeats, tryCampLeisure, YARD_TABLES, drawLeisureTable } from './camp-leisure.js?v=202';
 import { CAMP_PEACE_RADIUS, peaceContainment, pushOutsidePeace, relocatePeaceMonster } from './peace-zones.js?v=182';
 import { FARM_X, FARM_Y, farmPosts, farmOverlaps, reinforcementCount, reserveRosterLine, reserveRosterTitle } from './reserve-farm.js?v=182';
-import { drawMeleeRangeCue, meleeDrawReach, attackAnimationRate } from './weapon-motion.js?v=189';
+import { drawMeleeRangeCue, meleeDrawReach, attackAnimationRate } from './weapon-motion.js?v=211';
+import { guardRegrouping, guardTarget, guardSpeedMult } from './guard-leash.js?v=211';
+import { KNOCK_RULES, knockbackDistance, knockFlight, slamDamage } from './knockback-rules.js?v=211';
+import { MELEE_SOUND_STYLES, playMeleeSound } from './weapon-sounds.js?v=211';
 import {emptyRescueBonuses,normalizeRescueBonuses,rescueBonusSummary} from './rescue-rewards.js?v=204';
 import {drawFieldCivilian} from './civilian-visuals.js?v=193';
 import { saveSlots } from './save-slots.js';
@@ -63,7 +66,7 @@ import { soldierDialogue } from './soldier-dialogue.js?v=205';
 import { generateSoldierName, migrateSoldierName, rollGenderByKey, isGenderId, ensureSoldierGender, genderLabel } from './soldier-names.js?v=210';
 import { openCommanderEditor } from './commander-editor.js?v=210';
 import { applyCommanderIdentity, normalizeCommanderIdentity, commanderFullName, GENDERS as COMMANDER_GENDERS } from './commander-identity.js?v=210';
-import {MAGIC_CLASSES,MAGIC_AFFINITIES,magicMethods,isMage,isMagicUser,ensureMana,initializeMagic,updateMagic,distributeMagicStones,castMedicBuff,castCasterStrength,updateMageAI,drawMagicBursts,spendMana,weaponMagicDamage,isPlayerCaster,castPlayerSpell,PLAYER_MAGIC_RULES} from './magic-rules.js?v=187';
+import {MAGIC_CLASSES,MAGIC_AFFINITIES,magicMethods,isMage,isMagicUser,ensureMana,initializeMagic,updateMagic,distributeMagicStones,castMedicBuff,castCasterStrength,updateMageAI,drawMagicBursts,spendMana,weaponMagicDamage,isPlayerCaster,castPlayerSpell,PLAYER_MAGIC_RULES} from './magic-rules.js?v=211';
 import {hazardMethods,updateHazards,drawHazards} from './hazard-fields.js?v=198';
 import {strongEnemyReward} from './combat-rewards.js?v=182';
 import {supplyMethods, initializeSupplies, updateSupplies, takeRangedShot, ammoCombatProfile, isRangedUnit, distributeAmmo, preventLethalHit, normalizeFieldSave, SQUAD_POTION_COST, ensureAmmo, RANGED_DAMAGE_MULT, supplyLocation} from './supply-rules.js?v=187';
@@ -90,10 +93,10 @@ import {
   SHARED_BOX_MAX_TIER, SCOUT_COST_BY_TALENT, defaultDonateAmount, donatePresetAmounts, EQUIPMENT_SLOTS
 } from './economy-rules.js?v=192';
 
-import { EQUIPMENT_TYPES, saleValue, equippedIds, canSell, lowValueIds, chooseLootTier, distanceScaling, shrineUpgradeCap, compareEquipment, equipmentScore, compareEquipmentStrength, rollWeaponTraits, weaponCombatProfile, evaluateMeleeSweetSpot, isGodRollProtected, zoneRingPower, zoneRingLabelJa, equipmentIcon, equipmentName } from './equipment-rules.js?v=189';
+import { EQUIPMENT_TYPES, saleValue, equippedIds, canSell, lowValueIds, chooseLootTier, distanceScaling, shrineUpgradeCap, compareEquipment, equipmentScore, compareEquipmentStrength, rollWeaponTraits, weaponCombatProfile, evaluateMeleeSweetSpot, isGodRollProtected, zoneRingPower, zoneRingLabelJa, equipmentIcon, equipmentName } from './equipment-rules.js?v=211';
 import { rollFieldBrute, advanceDemonWarband, stepDemonWarbandGroup } from './field-hosts.js?v=182';
 import {
-  WEAPON_STYLES, MASTERY_STYLES, WEAPON_STYLE_LABELS, WEAPON_STYLE_ICONS, isHeavyWeaponStyle, heavyWeaponAttackMult, weaponCategoryOf,
+  WEAPON_STYLES, MASTERY_STYLES, WEAPON_STYLE_LABELS, WEAPON_STYLE_ICONS, isHeavyWeaponStyle, heavyWeaponAttackMult, HEAVY_ATTACK_VERSION, LEGACY_HEAVY_ATTACK_MULT, weaponCategoryOf,
   MELEE_STYLES, RANGED_STYLES, HIT_GROWTH_SOFT_CAP,
   emptyMastery, normalizeMastery, isRangedStyle, isMeleeStyle,
   hitGrowthMult, applyHitGrowth, masteryAtkMult, masteryPctDisplay,
@@ -101,7 +104,7 @@ import {
   gainWeaponMastery, masteryGainForStyle, pickFavoriteWeapon, rollWeaponStyle,
   weaponStyleOf, favoriteWeaponBias, MASTERY_GAIN_PER_HIT,
   migrateFavoriteForClass, migrateWeaponStyleFromName
-} from './growth-rules.js?v=187';
+} from './growth-rules.js?v=211';
 
 import {
   initMerchants, ensureMerchants, updateMerchants, drawMerchantBody, drawMerchantEscort,
@@ -115,7 +118,7 @@ import { daylightAt, advanceWorldClock, periodEnemy, enemyAvailable, PERIOD_ENEM
 import { clusterRescueMarkers } from './rescue-markers.js?v=182';
 import {visibleHeroMembers} from './hero-rules.js';
 import {updateHeroJournal} from './hero-journal.js?v=189';
-import {applyHeroEquipmentUpgrade} from './hero-equipment.js?v=187';
+import {applyHeroEquipmentUpgrade} from './hero-equipment.js?v=211';
 import {initializeHeroJourney,rollHeroRevelation,serializeHeroJourney,updateHeroParty,updateHeroFollowing,awardHeroBattle,recordDemonKingDefeat,ensureHeroCastle,syncHeroCastle,renderHeroJourney,drawHeroMarks} from './hero-party.js?v=198';
 import { RESCUE_TIMEOUT, rescueUnits, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, receiveTownCargo, leaveCivilianSpace, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, markSoldierDown, downCommander, commanderDown, updateNpcRescue, CIV_KINDS, isMedic, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST } from './casualty-rules.js?v=204';
 import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault, dungeonBlocks, dungeonSolids } from './dungeon.js?v=208';
@@ -505,6 +508,8 @@ function canMerchantInherit(current,item,player){
 export const MEDIC_SELF_DEFENSE_COST = 10, MEDIC_SELF_DEFENSE_MIN_MANA = 40;
 // v2.7クラスバランス: 武器ATK二重加算の解消(約-35〜50%)の補填＋非魔導兵の底上げ。兵士の通常攻撃（旧/新武器の両経路）にのみ掛かる
 export const SOLDIER_PHYS_DMG_MULT = 2.2;
+/** Axe spin skill duration; soldiers' base heavy-weapon knockback (before strength/size/footing). */
+export const AXE_SPIN_TIME = 0.42, SOLDIER_HEAVY_KNOCKBACK = 62;
 export const SOLDIER_SPEAR_DMG_MULT = 1.15, SOLDIER_HAMMER_DMG_MULT = 1.35;
 // 兵種（クラス）定義
 export const SOLDIER_CLASSES = numberClassDefinitions({
@@ -884,7 +889,7 @@ export function applyUpgradeStats(item, upgradeLevel) {
   applyDropExclusive(item);
   applyCraftExclusive(item);
   if(item.type==='WEAPON'&&isHeavyWeaponStyle(item)){
-    item.stats.atk*=heavyWeaponAttackMult(item);item.heavyAttackVersion=1;
+    item.stats.atk*=heavyWeaponAttackMult(item);item.heavyAttackVersion=HEAVY_ATTACK_VERSION;
   }
 }
 
@@ -981,13 +986,17 @@ export function generateRandomDrop(distance, kind = 'normal', options = {}) {
   return item;
 }
 
-/** Upgrade existing owned hammers/axes once, preserving quality, traits and IDs. */
+/** Bring owned hammers/axes to the current multiplier once, preserving quality, traits and IDs.
+ * Version 1 items carry the old x10; unversioned items carry none. */
 export function migrateHeavyWeaponAttack(item) {
   migrateWeaponStyleFromName(item);
-  if(item?.type!=='WEAPON'||!isHeavyWeaponStyle(item)||item.heavyAttackVersion>=1)return item;
-  if(Number.isFinite(item.stats?.atk))item.stats.atk*=heavyWeaponAttackMult(item);
+  if(item?.type!=='WEAPON'||!isHeavyWeaponStyle(item)||item.heavyAttackVersion>=HEAVY_ATTACK_VERSION)return item;
+  if(Number.isFinite(item.stats?.atk)){
+    const mult=heavyWeaponAttackMult(item);
+    item.stats.atk=item.heavyAttackVersion===1?Math.round(item.stats.atk/LEGACY_HEAVY_ATTACK_MULT*mult):item.stats.atk*mult;
+  }
   else applyUpgradeStats(item,item.upgrade||0);
-  item.heavyAttackVersion=1;
+  item.heavyAttackVersion=HEAVY_ATTACK_VERSION;
   return item;
 }
 
@@ -4097,12 +4106,66 @@ export const IronSquadGame = {
 
   powerKnockStun(m, knockDist, stunSec) {
     if (!m || m.hp <= 0 || coverBlocked(this, this.player, m)) return;
-    if (!m.isColossal && knockDist > 0) {
-      const knockAngle = Math.atan2(m.y - this.player.y, m.x - this.player.x);
-      m.x += Math.cos(knockAngle) * knockDist;
-      m.y += Math.sin(knockAngle) * knockDist;
-    }
+    this.launchMonster(m, this.player, true, knockDist, this.player.atk || 0);
     m.atkTimer = Math.max(m.atkTimer || 0, stunSec);
+  },
+
+  /** Knockback: base distance x attacker strength / (target size-weight x footing), then a flight.
+   * Colossal enemies are not moved. The flight is advanced in updateMonsterKnock. */
+  launchMonster(m, attacker, isPlayer, base, slamAttack = 0) {
+    const unit = isPlayer ? this.player : attacker;
+    const fromX = unit?.x ?? this.player.x, fromY = unit?.y ?? this.player.y;
+    const dist = knockbackDistance(base, {
+      strength: unit?.strength, attack: unit?.atk,
+      strengthRef: isPlayer ? KNOCK_RULES.playerStrengthRef : KNOCK_RULES.soldierStrengthRef
+    }, m);
+    if (!(dist > 0)) return 0;
+    const ang = Math.atan2(m.y - fromY, m.x - fromX);
+    if (dist < KNOCK_RULES.minFlight) { m.x += Math.cos(ang) * dist; m.y += Math.sin(ang) * dist; return dist; }
+    const {time, decay} = knockFlight(dist), v = dist * decay;
+    Object.assign(m, {
+      knockVx: Math.cos(ang) * v, knockVy: Math.sin(ang) * v, knockV0: v, knockDecay: decay,
+      knockFly: time, knockTime: time, knockSpin: Math.cos(ang) >= 0 ? 1 : -1,
+      knockSlam: slamAttack * KNOCK_RULES.slamShare, knockBy: unit, knockByPlayer: !!isPlayer
+    });
+    return dist;
+  },
+
+  /** Returns true while the monster is airborne (it does not act during the flight).
+   * Hitting a wall, cliff, building or the world edge stops the flight and deals impact damage. */
+  updateMonsterKnock(m, dt) {
+    if (!(m.knockFly > 0)) return false;
+    const decay = m.knockDecay || 7, f = Math.exp(-decay * dt), k = (1 - f) / decay;
+    const from = {x: m.x, y: m.y}, to = {x: m.x + m.knockVx * k, y: m.y + m.knockVy * k};
+    const r = m.radius || 12;
+    const blocked = to.x < r || to.y < r || to.x > WORLD_SIZE - r || to.y > WORLD_SIZE - r
+      || coverBlocked(this, from, to) || (!this.currentDungeon && headquartersBuildingBlocks(to.x, to.y));
+    if (blocked) { this.slamMonster(m); return false; }
+    m.x = to.x; m.y = to.y;
+    m.knockVx *= f; m.knockVy *= f; m.knockFly -= dt;
+    if (m.knockFly <= 0) { this.endMonsterKnock(m); return false; }
+    return true;
+  },
+
+  endMonsterKnock(m) {
+    m.knockFly = 0; m.knockVx = 0; m.knockVy = 0; m.knockSlam = 0; m.knockBy = null;
+  },
+
+  /** Thrown into an obstacle: damage from the speed left at impact (defence applies). */
+  slamMonster(m) {
+    const ratio = Math.hypot(m.knockVx, m.knockVy) / Math.max(1, m.knockV0 || 1);
+    let dmg = slamDamage(m.knockSlam, ratio);
+    const by = m.knockBy, byPlayer = m.knockByPlayer;
+    this.endMonsterKnock(m);
+    if (!(dmg > 0) || m.hp <= 0) return;
+    if ((m.def || 0) > 0) dmg = Math.max(1, Math.round(dmg * 100 / (100 + m.def * 1.2)));
+    m.hp -= dmg; m.hitPulse = 1;
+    m.atkTimer = Math.max(m.atkTimer || 0, .35);
+    this.screenShake = Math.max(this.screenShake || 0, .25);
+    this.spawnDamageText(m.x, m.y - 18, `💥${dmg}`, '#fb923c');
+    this.spawnSparks(m.x, m.y, '#d6c7a1', 10);
+    playMeleeSound('hammer', m.x, m.y, {strong: true});
+    if (m.hp <= 0) this.killMonster(m, by, byPlayer);
   },
 
   powerHitOutpost(radius, dmg) {
@@ -4215,7 +4278,8 @@ export const IronSquadGame = {
     this.player.slashAngle = face;
     this.player.facingAngle = face;
     this.screenShake = isWarlord ? 0.75 : 0.55;
-    sound.playWeapon(style,this.player.x,this.player.y);
+    if (MELEE_SOUND_STYLES.includes(style)) playMeleeSound(style, this.player.x, this.player.y, {strong: true});
+    else sound.playWeapon(style,this.player.x,this.player.y);
 
     let hitCount = 0;
     let skillName = '💥【パワーストライク】';
@@ -4254,6 +4318,33 @@ export const IronSquadGame = {
         });
       }
       this.pushShockwave(px + cos * reach * 0.55, py + sin * reach * 0.55, 70, '#6ee7b7', '#ecfdf5', 0.35, 3);
+    } else if (style === 'axe') {
+      // 回転撃：自分の周囲すべてを薙ぎ払い、外へ吹き飛ばす範囲攻撃。
+      skillName = isWarlord ? '🪓【サイクロンアックス】' : '🪓【スピンアタック】';
+      skillColor = '#fdba74';
+      const radius = isWarlord ? 150 : 120;
+      const dmg = Math.round(baseAtk * (isWarlord ? 4.4 : 3.4));
+      for (const m of [...(this.monsters || [])]) {
+        if (!m || m.hp <= 0) continue;
+        if (Math.hypot(m.x - px, m.y - py) > radius + (m.radius || 12)) continue;
+        hitCount++;
+        this.performAttack(this.player, m, true, dmg);
+        this.powerKnockStun(m, isWarlord ? 260 : 210, isWarlord ? 1.2 : 0.9);
+      }
+      this.powerHitOutpost(radius, dmg);
+      this.player.spinAnim = AXE_SPIN_TIME;
+      this.player.spinDir = Math.cos(face) < -.15 ? -1 : 1;
+      this.pushShockwave(px, py, radius, '#f59e0b', '#fde68a', 0.4, 4);
+      for (let i = 0; i < 12; i++) {
+        const a = (i / 12) * Math.PI * 2;
+        this.pushParticle({
+          x: px + Math.cos(a) * 24, y: py + Math.sin(a) * 24,
+          vx: Math.cos(a) * radius * 2.4 - Math.sin(a) * 120 * this.player.spinDir,
+          vy: Math.sin(a) * radius * 2.4 + Math.cos(a) * 120 * this.player.spinDir,
+          color: i % 3 ? '#fde68a' : '#f7f3e8', size: 2.6, life: 0.3
+        });
+      }
+      this.screenShake = isWarlord ? 0.85 : 0.6;
     } else if (isHeavyWeaponStyle(style)) {
       skillName = isWarlord ? '🔨【メガスマッシュ】' : '🔨【クラッシュブロー】';
       skillColor = '#fdba74';
@@ -4263,7 +4354,7 @@ export const IronSquadGame = {
         hitCount = 1;
         this.player.slashAngle = Math.atan2(nearest.y - py, nearest.x - px);
         this.performAttack(this.player, nearest, true, dmg);
-        this.powerKnockStun(nearest, isWarlord ? 130 : 100, isWarlord ? 2.0 : 1.4);
+        this.powerKnockStun(nearest, isWarlord ? 400 : 320, isWarlord ? 2.0 : 1.4);
         this.spawnSparks(nearest.x, nearest.y, '#f59e0b', 22);
         this.pushShockwave(nearest.x, nearest.y, 90, '#f59e0b', '#ef4444', 0.4, 5);
       } else {
@@ -4610,7 +4701,7 @@ export const IronSquadGame = {
           sword:    { icon: isWarlord ? '⚡' : '⚔️', label: isWarlord ? 'テンペスト' : 'ダブル\nスラッシュ', title: isWarlord ? 'ツインテンペスト' : 'ダブルスラッシュ' },
           spear:    { icon: '🔱', label: isWarlord ? 'グランド\nファン' : 'ファン\nスラスト', title: isWarlord ? 'グランドファン' : 'ファンスラスト' },
           hammer:   { icon: '🔨', label: isWarlord ? 'メガ\nスマッシュ' : 'クラッシュ\nブロー', title: isWarlord ? 'メガスマッシュ' : 'クラッシュブロー' },
-          axe:      { icon: '🪓', label: isWarlord ? 'メガ\nスマッシュ' : 'クラッシュ\nブロー', title: isWarlord ? 'メガスマッシュ' : 'クラッシュブロー' },
+          axe:      { icon: '🪓', label: isWarlord ? 'サイクロン\nアックス' : 'スピン\nアタック', title: isWarlord ? 'サイクロンアックス' : 'スピンアタック' },
           bow:      { icon: '🏹', label: isWarlord ? 'スター\nフォール' : 'アロー\nレイン', title: isWarlord ? 'スターフォール' : 'アローレイン' },
           crossbow: { icon: '🎯', label: isWarlord ? 'ロイヤル\nボルト' : 'ピアス\nボルト', title: isWarlord ? 'ロイヤルボルト' : 'ピアスボルト' },
           cannon:   { icon: '💣', label: isWarlord ? 'ブロッサム' : 'クラスター', title: isWarlord ? 'ブロッサムキャノン' : 'クラスターシェル' }
@@ -6160,6 +6251,10 @@ export const IronSquadGame = {
         nearestEnemy = this.getNearestFromList(soldier.x, soldier.y, this._baseThreatList);
         soldier._cachedEnemy = nearestEnemy;
       }
+      // 直属は隊長の近くの敵だけと戦い、離れすぎたら戦闘をやめてダッシュで戻る。
+      guardRegrouping(this, soldier);
+      nearestEnemy = guardTarget(this, soldier, nearestEnemy);
+      const guardSpeed = soldier.speed * guardSpeedMult(soldier);
       const enemyDist = nearestEnemy ? Math.hypot(nearestEnemy.x - soldier.x, nearestEnemy.y - soldier.y) : 9999;
 
       // AI light frame: orbit/move only, skip auto-attack & class skills this tick.
@@ -6168,7 +6263,7 @@ export const IronSquadGame = {
         const dxL = moveTarget.x - soldier.x, dyL = moveTarget.y - soldier.y;
         const distL = Math.hypot(dxL, dyL);
         if (distL > 6) {
-          const moveStep = Math.min(distL * 3.5, soldier.speed) * dt;
+          const moveStep = Math.min(distL * 3.5, guardSpeed) * dt;
           soldier.x += (dxL / distL) * moveStep;
           soldier.y += (dyL / distL) * moveStep;
           soldier.facingAngle = Math.atan2(dyL, dxL);
@@ -6216,7 +6311,7 @@ export const IronSquadGame = {
       const dy = moveTarget.y - soldier.y;
       const dist = Math.hypot(dx, dy);
       if (dist > 6) {
-        const moveStep = Math.min(dist * 3.5, soldier.speed) * dt;
+        const moveStep = Math.min(dist * 3.5, guardSpeed) * dt;
         soldier.x += (dx / dist) * moveStep;
         soldier.y += (dy / dist) * moveStep;
         soldier.facingAngle = Math.atan2(dy, dx);
@@ -6309,7 +6404,7 @@ export const IronSquadGame = {
           const meleeReach = Math.max(cls.range, sProf.style === 'spear' ? Math.floor(sProf.reach * 0.55) : (isHeavyWeaponStyle(sProf.style) ? Math.max(cls.range,52)*(sWpn?.weaponTraits?.length||1) : cls.range*(sWpn?.weaponTraits?.length||1)));
           if (enemyDist <= meleeReach) {
             // 近接通常攻撃（槍=貫通、鎚=高威力ノックバック）。マスタリーで攻撃速度↑（baseCooldown短縮と同カーブ）
-            const cdMult = sProf.style === 'spear' ? 1.5 : (isHeavyWeaponStyle(sProf.style) ? 1.85 : 1.0);
+            const cdMult = sProf.style === 'spear' ? 1.5 : (isHeavyWeaponStyle(sProf.style) ? 2.25 : sProf.style === 'sword' ? .8 : 1.0);
             // 遅い武器の火力補填（槍×1.15／鎚×1.35）。新旧武器どちらの兵士経路にも同じ式を適用
             const styleDmgMult = sProf.style === 'spear' ? SOLDIER_SPEAR_DMG_MULT : (isHeavyWeaponStyle(sProf.style) ? SOLDIER_HAMMER_DMG_MULT : 1);
             const meleeAtk = Math.max(1, Math.round(totalAtk * styleDmgMult));
@@ -6567,6 +6662,7 @@ export const IronSquadGame = {
 
     // 主人公の自動攻撃 (敵モンスター or 近くの未制圧拠点)
     this.player.atkCooldown -= dt;
+    if (this.player.spinAnim > 0) this.player.spinAnim = Math.max(0, this.player.spinAnim - dt);
     if (this.player.slashAnim > 0) this.player.slashAnim = Math.max(0,this.player.slashAnim-dt*attackAnimationRate(this.equipped?.weapon,this.player.atkSpeed));
 
     // パワーアタック（渾身強撃 💥）のクールタイム減算 ＆ UI更新
@@ -6660,6 +6756,7 @@ export const IronSquadGame = {
     for (let i = this.monsters.length - 1; i >= 0; i--) {
       const m = this.monsters[i];
       if (m.hitPulse > 0) m.hitPulse -= dt * 4;
+      if (this.updateMonsterKnock(m, dt) || m.hp <= 0) continue;
       if(m.magicStunTimer>0)continue;
       if (m.isDemonWarband) continue;
 
@@ -7255,17 +7352,17 @@ export const IronSquadGame = {
       : ((attacker && attacker.equipped && attacker.equipped.weapon) || (attacker && attacker.weapon));
     const wProf = weaponCombatProfile(wItem);
     if (!magicalAttack&&isHeavyWeaponStyle(wProf.style) && !monster.isColossal) {
-      const knock = isPlayer && this.player.isAdvanced
-        ? (wProf.knockbackWarlord || 78)
-        : (wProf.knockback || 62);
-      const ang = Math.atan2(monster.y - (attacker?.y ?? this.player.y), monster.x - (attacker?.x ?? this.player.x));
-      monster.x += Math.cos(ang) * knock;
-      monster.y += Math.sin(ang) * knock;
-      monster.atkTimer = Math.max(monster.atkTimer || 0, 0.45);
+      // Base distance: the commander's weapon profile, soldiers a shorter push (HQ-defence balance).
+      // Strength, enemy size/weight and footing then scale it in launchMonster.
+      const knock = !isPlayer ? SOLDIER_HEAVY_KNOCKBACK
+        : this.player.isAdvanced ? (wProf.knockbackWarlord || 230) : (wProf.knockback || 170);
+      // A braced enemy neither moves nor flinches; only a real launch interrupts its attack.
+      if (this.launchMonster(monster, attacker, isPlayer, knock, baseAtk) > 0) monster.atkTimer = Math.max(monster.atkTimer || 0, 0.45);
     }
 
     const armored=['goblin','orc','skeleton','colossus_titan','colossal_titan'].includes(monster.type);
-    sound.playImpact(magicalAttack?'magic':armored?wProf.style:'flesh',monster.x,monster.y);
+    if (!magicalAttack && !wProf.ranged && MELEE_SOUND_STYLES.includes(wProf.style)) playMeleeSound(wProf.style, monster.x, monster.y);
+    else sound.playImpact(magicalAttack?'magic':armored?wProf.style:'flesh',monster.x,monster.y);
     if (isPlayer) {
       if (this.player.vampire > 0) {
         const heal = Math.ceil(dmg * this.player.vampire);
@@ -11520,6 +11617,12 @@ export const IronSquadGame = {
     const plant = Math.abs(Math.sin(now * 0.017 + (m.x || 0)));
     const big = !!m.isColossal;
     contactShadow(ctx, big ? 2 : 1, big ? 8 : 2, m.radius * (big ? 1.02 : 0.92), m.radius * (big ? 0.34 : 0.3), plant);
+    if (m.knockFly > 0) {
+      // Airborne arc with a tumble in the flight direction; the shadow stays on the ground.
+      const t = 1 - m.knockFly / (m.knockTime || .45);
+      ctx.translate(0, -Math.sin(t * Math.PI) * Math.min(26, 10 + (m.radius || 12)));
+      ctx.rotate((m.knockSpin || 1) * t * Math.PI * (m.isBoss ? .25 : 1.2));
+    }
 
     // 左右反転コンテキスト
     ctx.save();
@@ -12036,6 +12139,11 @@ export const IronSquadGame = {
       ctx.beginPath(); ctx.arc(p.x, p.y, 26 + 3 * Math.sin(now * 0.006), 0, Math.PI * 2); ctx.stroke();
       ctx.restore();
       ctx.save(); ctx.globalAlpha = 0.62;
+    }
+    if (p.spinAnim > 0) {
+      // Axe spin: hold the contact pose and carry the blade one full turn around the body.
+      const t = 1 - p.spinAnim / AXE_SPIN_TIME, start = (p.spinDir || 1) < 0 ? Math.PI : 0;
+      p = { ...p, slashAnim: .54, slashAngle: start + (p.spinDir || 1) * t * Math.PI * 2 };
     }
     drawFieldCommander(ctx,p,eq,now,this.rankIndex,this.currentRank().title,
       !!this.joystick?.active);

@@ -24,7 +24,7 @@ assert.equal(game.squad.length,DEPLOYMENT_CAPACITY);assert.equal(game.monsters.l
 const center=WORLD_SIZE/2,soldier=game.squad[0];game.squad=[soldier];game.rankIndex=2;
 // v1.27.9 made guard selection manual; this movement fixture is a chosen guard.
 Object.assign(soldier,{x:center,y:center,hp:10000,maxHp:10000,isNamed:true,isPersonalGuard:true,_pgTick:0});
-game.player.x=center+300;game.player.y=center;game._guardAssignClock=1;
+game.player.x=center+150;game.player.y=center;game._guardAssignClock=1;
 const monster={x:center-90,y:center,hp:1e9,maxHp:1e9,type:'goblin',radius:11,speed:0,atk:1};game.monsters=[monster];game.updateSpawns=noop;
 assert.doesNotThrow(()=>game.update(1/60),'full update must not hit the BASE_TERRITORY_RADIUS TDZ');
 assert.ok(soldier.isPersonalGuard,'manual guard selection persists');assert.ok(soldier.x<center,'even light AI frames approach a nearby enemy rather than orbit in the opposite direction');

@@ -11,7 +11,12 @@ export const weaponCategoryOf = value => {
   return style === 'axe' ? 'hammer' : style || 'sword';
 };
 export const isHeavyWeaponStyle = value => weaponCategoryOf(value) === 'hammer';
-export const heavyWeaponAttackMult = value => isHeavyWeaponStyle(value) ? 10 : 1;
+// v6.2.0: axe x3 (spinning area skill), hammer x7 (single heavy blow); was x10 for both.
+export const HEAVY_ATTACK_VERSION = 2, LEGACY_HEAVY_ATTACK_MULT = 10;
+export const heavyWeaponAttackMult = value => {
+  const style = typeof value === 'string' ? value : value?.weaponStyle;
+  return style === 'axe' ? 3 : style === 'hammer' ? 7 : 1;
+};
 
 export const WEAPON_STYLE_LABELS = {
   sword: '剣', spear: '槍', hammer: '鎚・斧', axe: '斧',
