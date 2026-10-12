@@ -47,6 +47,8 @@ export const ENEMY_TYPES = {
   mummy:    { hp: 26, speed: 40, dmg: 11, xp: 2, r: 16, size: 36 },
   snowman:  { hp: 30, speed: 34, dmg: 10, xp: 2, r: 17, size: 38 },
   wolf:     { hp: 16, speed: 92, dmg: 10, xp: 1, r: 15, size: 36 },
+  // v1.22.0 ぎょくざのまの まわりの スケルトン（まおうの けらい。わらった がいこつ・ドクロの ワッペン）
+  skeleton: { hp: 22, speed: 54, dmg: 10, xp: 2, r: 16, size: 38 },
   pumpkin:  { hp: 22, speed: 50, dmg: 10, xp: 2, r: 16, size: 34 },
   // けんきゅうじょ（ステージ1）だけ：ばくだんなげへい（はなれて とまり、ばくだんを なげる。いちどに cap にんまで）
   thrower:  { hp: 16, speed: 48, dmg: 8,  xp: 2, r: 16, size: 36, ranged: true, cap: 4 },
@@ -105,7 +107,8 @@ export const STAGES = [
     mini: { type: 'pumpkin', hp: 4320, big: 2.6, name: 'でかかえんへい' }, boss: { type: 'witch', hp: 12600 }, mansion: true },
   { id: 5, name: 'まおうじょう', ground: 'castle', hpMul: 2.8, spawnMul: 1.4, dmgMul: 1.05,
     enemies: [['zombie', 0, 8], ['skull', 0, 4], ['wolf', 30, 5], ['mummy', 60, 5], ['pumpkin', 120, 5], ['snowman', 180, 4]],
-    mini: { type: 'dragon', hp: 7200 }, boss: { type: 'maou', hp: 18000 } },
+    mini: { type: 'dragon', hp: 7200 }, boss: { type: 'maou', hp: 18000 },
+    decor: 'castle', throne: true }, // v1.22.0 まおうじょうの かざり と ぎょくざのま（`THRONE`）
   // v1.13.0：まおうじょうの あと（ステージ5 クリアで ひらく）。わるものぐんだんの ジャングルの きち
   { id: 6, name: 'ジャングル', ground: 'jungle', hpMul: 3.1, spawnMul: 1.45, dmgMul: 1.15, bgm: 'jungle',
     enemies: [['jungler', 0, 10], ['bat', 30, 5], ['wolf', 60, 5], ['ghost', 90, 5], ['skull', 150, 5]],
@@ -690,6 +693,26 @@ export const FORTRESS = {
   boss: { type: 'supreme', hp: 33000, at: { x: 0, y: -620 }, levelRef: 31, minHp: 0.75 },
   bossMissile: { n: 5, spread: 120, flight: 1.5, blast: 56, dmg: 12, range: 700, cd: 3.2, firstCd: 2.8 },
 };
+/**
+ * v1.22.0 まおうじょうの ぎょくざのま（みち＋やじるし）。とびらの まえに ほのおの はしら。
+ * ちかづくと わな：まるのこが すごい はやさで とんで くる（0.8びょう まえに あかい せん と「にげろ！」）。
+ * なかには だいそうすい（ステージ5 の ボス）が ぎょくざに いる。たおすと クリア（はいらなければ 5:00 に そとに くる）
+ */
+export const THRONE = {
+  throne: true, door: 'throneDoor', at: 200, dist0: 700, dist1: 900, doorR: 54, stairsR: 50, cellR: 72, heliR: 80,
+  floors: 1, foes: [0], foeHp: 1, names: ['ぎょくざのま'],
+  room: { halfW: 460, roomHalfW: 460, roomY: -1e9, top: -820, bottom: 140 },
+  stairs: { x: 0, y: -700 }, cells: [], pad: TOWER.pad, roofExit: TOWER.roofExit, heli: TOWER.heli,
+  saw: { trigger: 420, cd: 5.5, warn: 0.8, speed: 600, n: 3, dist: 640, r: 34, dmg: 14, life: 2.4 },
+  skeletons: { near: 480, every: 2.6, n: 3, max: 14, ring: 260, inside: 6 }, // ちかくに くると スケルトンが わいて くる
+  throneAt: { x: 0, y: -700 }, boss: { at: { x: 0, y: -560 }, hpMul: 0.85, levelRef: 40, minHp: 0.65 },
+};
+/** まるのこの とんで くる ところ（プレイヤーの まわり dist から プレイヤーへ。n こ） */
+export function sawPaths(px, py, rnd = Math.random, S = THRONE.saw) {
+  const a0 = rnd() * Math.PI * 2;
+  return Array.from({ length: S.n }, (_, i) => { const a = a0 + i * Math.PI * 2 / S.n + (rnd() - 0.5) * 0.5; return { sx: px + Math.cos(a) * S.dist, sy: py + Math.sin(a) * S.dist, ang: a + Math.PI }; });
+}
+
 /**
  * v1.21.0 ジャングルの いしの ようさい（スタートから あしあとで いける。やじるしは ださない）。
  * なかは じかん はんぶん。1 とげの ゆか → 2 ころがる いし → 3 おちて くる いわ（＋とげ）→ 4 おたからの へや。

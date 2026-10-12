@@ -12,14 +12,14 @@ import {
   newQuality, adaptQuality, THROW, fireRadius, capType, gatherCount, BOTTLE, bottleOutcome,
   SQUAD, allyDamage, squadSlot, canWhistle, healAmount,
   QUEST, CAMP, underHalfW, clampUnder, hutSpot, LASER_MODES, nextLaserMode, squadRoom, beamHits, MAX_LEVEL as MAXLV,
-  enemyDmgMul, startWeapons, CITY_FIRE, burnSites, TOWER, MANSION, FORTRESS, TEMPLE, spikeState, fortressBossScale, trailSteps, missileTargets, towerSpot, rollHeli, heliDamage, floorName,
-} from './rules.js?v=218';
-import { DecorField } from './decor.js?v=218';
-import { EnemyGrid, nearestN } from './grid.js?v=218';
-import { preloadArt, art } from './art.js?v=218';
-import { Stage } from './stage.js?v=218';
-import { menuMethods, iconHtml } from './menus.js?v=218';
-import { PopBGM, playWhistle } from './bgm.js?v=218';
+  enemyDmgMul, startWeapons, CITY_FIRE, burnSites, TOWER, MANSION, FORTRESS, TEMPLE, THRONE, sawPaths, spikeState, fortressBossScale, trailSteps, missileTargets, towerSpot, rollHeli, heliDamage, floorName,
+} from './rules.js?v=219';
+import { DecorField } from './decor.js?v=219';
+import { EnemyGrid, nearestN } from './grid.js?v=219';
+import { preloadArt, art } from './art.js?v=219';
+import { Stage } from './stage.js?v=219';
+import { menuMethods, iconHtml } from './menus.js?v=219';
+import { PopBGM, playWhistle } from './bgm.js?v=219';
 
 const SAVE_KEY = 'dada_survivor_save';
 const TAU = Math.PI * 2;
@@ -45,7 +45,7 @@ export const DadaSurvivorGame = {
 
   // 起動時にこのゲームのCSSを自分で読み込む（?v= はこのフォルダ内で管理）。ハブが init 前に await する
   prepare() {
-    return loadCss(new URL('../css/dada-survivor.css?v=218', import.meta.url).href);
+    return loadCss(new URL('../css/dada-survivor.css?v=219', import.meta.url).href);
   },
 
   init(container, onBackToHub) {
@@ -360,6 +360,7 @@ export const DadaSurvivorGame = {
     if (st.mansion) this.initTower(MANSION);
     if (st.fortress) this.initTower(FORTRESS);
     if (st.temple) this.initTower(TEMPLE);
+    if (st.throne) this.initTower(THRONE);
     if (st.burning) this.run.burnSites = burnSites(this.run.quest?.building);
     if (st.camp) this.initCamp();
     this.refreshStats();
@@ -566,12 +567,13 @@ export const DadaSurvivorGame = {
   zoneU() { return this.run.quest?.U || QUEST.under; },
 
   initTower(T = TOWER) {
-    const r = this.run, at = towerSpot(Math.random, T), M = !!T.mansion, F = !!T.fortress, Tp = !!T.temple;
-    const door = Tp ? { kind: 'templeDoor', x: at.x, y: at.y + 112, w: 80, h: 80 } : M ? { kind: 'mansionDoor', x: at.x, y: at.y + 100, w: 80, h: 80 } : { kind: 'towerDoor', x: at.x, y: at.y + (F ? 122 : 112), w: 80, h: 80 };
-    r.props = [Tp ? { kind: 'temple', x: at.x, y: at.y, w: 380, h: 300 } : M ? { kind: 'mansion', x: at.x, y: at.y, w: 320, h: 270 } : F ? { kind: 'fortress', x: at.x, y: at.y, w: 400, h: 316 } : { kind: 'tower', x: at.x, y: at.y, w: 240, h: 304 }, door];
+    const r = this.run, at = towerSpot(Math.random, T), M = !!T.mansion, F = !!T.fortress, Tp = !!T.temple, Th = !!T.throne;
+    const door = Th ? { kind: 'throneDoor', x: at.x, y: at.y + 130, w: 90, h: 90 } : Tp ? { kind: 'templeDoor', x: at.x, y: at.y + 112, w: 80, h: 80 } : M ? { kind: 'mansionDoor', x: at.x, y: at.y + 100, w: 80, h: 80 } : { kind: 'towerDoor', x: at.x, y: at.y + (F ? 122 : 112), w: 80, h: 80 };
+    r.props = [Th ? { kind: 'throneKeep', x: at.x, y: at.y, w: 420, h: 340 } : Tp ? { kind: 'temple', x: at.x, y: at.y, w: 380, h: 300 } : M ? { kind: 'mansion', x: at.x, y: at.y, w: 320, h: 270 } : F ? { kind: 'fortress', x: at.x, y: at.y, w: 400, h: 316 } : { kind: 'tower', x: at.x, y: at.y, w: 240, h: 304 }, door];
     r.quest = { tower: true, T, U: T.room, stage: 'wait', door, building: at, floor: 0, left: 0, stairs: null, cells: [],
-      heli: M || F || Tp ? false : rollHeli(), pending: 0, heliTaken: false, heliProp: null, exit: null, surface: null, vault: null, foe: null };
-    this.addTrail(door, Tp ? 'あしあとを たどって いくと いしの ようさいが あるよ！ とおいけど がんばろう！' : F ? 'やじるしの さきに わるものの ようさいが あるよ！ みちを たどって いこう' : M ? 'やじるしの さきに おおきな こやが あるよ！ みちを たどって いこう' : 'やじるしの さきに たかい ビルが あるよ！ みちを たどって いこう', T.trailStart);
+      heli: M || F || Tp || Th ? false : rollHeli(), saws: [], sawCd: 0, pending: 0, heliTaken: false, heliProp: null, exit: null, surface: null, vault: null, foe: null };
+    if (Th) for (const [dx, dy] of [[-90, 70], [90, 70], [-90, 170], [90, 170], [-90, 270], [90, 270]]) r.props.push({ kind: 'brazier', x: door.x + dx, y: door.y + dy, w: 56, h: 84 });
+    this.addTrail(door, Th ? 'やじるしと みちの さきに まおうの ぎょくざのまが あるよ！' : Tp ? 'あしあとを たどって いくと いしの ようさいが あるよ！ とおいけど がんばろう！' : F ? 'やじるしの さきに わるものの ようさいが あるよ！ みちを たどって いこう' : M ? 'やじるしの さきに おおきな こやが あるよ！ みちを たどって いこう' : 'やじるしの さきに たかい ビルが あるよ！ みちを たどって いこう', T.trailStart);
   },
 
   updateTower() {
@@ -580,8 +582,9 @@ export const DadaSurvivorGame = {
       if (q.stage === 'wait' && r.time >= T.at) {
         q.stage = 'door'; q.door.kind = T.door ? `${T.door}Open` : T.mansion ? 'mansionDoorOpen' : 'towerDoorOpen'; q.door.mark = true;
         sound.playItem();
-        if (T.temple) this.showBanner('いしの ようさいの とびらが あいた！ あしあとを たどって いこう！', 3000); else this.showBanner(T.fortress ? 'ようさいの いりぐちが ひらいた！ なかの めいれいしつに ボスが いるよ！' : T.mansion ? 'おおきな こやの とびらが ひらいた！ やじるしの ほうへ いこう！' : 'たかい ビルの いりぐちが ひらいた！ やじるしの ほうへ いこう！', 3200);
+        if (T.throne) this.showBanner('ぎょくざのまの とびらが ひらいた！ だいそうすいが まって いる…！', 3200); else if (T.temple) this.showBanner('いしの ようさいの とびらが あいた！ あしあとを たどって いこう！', 3000); else this.showBanner(T.fortress ? 'ようさいの いりぐちが ひらいた！ なかの めいれいしつに ボスが いるよ！' : T.mansion ? 'おおきな こやの とびらが ひらいた！ やじるしの ほうへ いこう！' : 'たかい ビルの いりぐちが ひらいた！ やじるしの ほうへ いこう！', 3200);
       }
+      if (T.throne) { this.updateSaws(); this.throneSkeletons(); }
       if (q.stage === 'door' && dist2(p, q.door) < T.doorR ** 2) this.enterTower();
       return;
     }
@@ -639,9 +642,9 @@ export const DadaSurvivorGame = {
       { kind: w[0], x: -hw - 450, y: cy, w: 900, h }, { kind: w[1], x: hw + 450, y: cy, w: 900, h },
       { kind: w[2], x: 0, y: U.top - 200, w: 2400, h: 400 }, { kind: w[3], x: 0, y: U.bottom + 200, w: 2400, h: 400 },
     ];
-    const F = !!T.fortress, Tp = !!T.temple;
+    const F = !!T.fortress, Tp = !!T.temple, Th = !!T.throne;
     q.traps = []; q.rockCd = 0; q.horde = 0; q.hordeDone = false;
-    if (!roof && !((F || Tp) && f === T.floors)) {
+    if (!roof && !((F || Tp || Th) && f === T.floors)) {
       q.stairs = { kind: 'stairsUp', ...T.stairs, w: 100, h: 80, hidden: true };
       props.push(q.stairs);
     }
@@ -656,11 +659,12 @@ export const DadaSurvivorGame = {
     r.props = props;
     p.x = 0; p.y = U.bottom - 70; p.hurt = Math.max(p.hurt, 0.8);
     r.allies.forEach((a, i) => { a.x = (i - 1.5) * 26; a.y = p.y + 30; if (a.mode !== 'heal') a.mode = 'follow'; });
-    this.stage.setGround(roof ? 'roof' : M || Tp || (F && f >= 4) ? 'castle' : 'office');
+    this.stage.setGround(roof ? 'roof' : M || Tp || Th || (F && f >= 4) ? 'castle' : 'office');
     this.stage.fx('pop', p.x, p.y, 100);
     sound.playItem();
     if (F && f >= 3) { this.fortressRoom(f); return; }
     if (Tp) { this.templeRoom(f); return; }
+    if (Th) { this.throneRoom(); return; }
     if (M && (roof || f === T.vaultFloor)) {
       // ボス：3かいは ブラックロボ（たからべやの まえ）、おくじょうは てきの こうげきヘリ
       const spec = roof ? T.heliBoss : T.robo;
@@ -732,6 +736,64 @@ export const DadaSurvivorGame = {
     e.fBoss = true; e.mR = T.bossMissile; e.cd = T.bossMissile.firstCd; q.foe = e;
     for (const sx of [-1, 1]) r.items.push({ kind: 'meat', x: sx * (U.halfW - 50), y: U.bottom - 60 });
     this.showBanner(`めいれいしつ！ ⚠ ${e.T.name}！ たおせば クリア！ あかい しるしに ミサイルが おちるよ！`, 3800);
+  },
+
+  /** v1.22.0 ぎょくざのま：だいそうすいが ぎょくざに いる。たおすと クリア */
+  throneRoom() {
+    const r = this.run, q = r.quest, T = q.T, st = r.stageDef;
+    r.props.push({ kind: 'throne', ...T.throneAt, w: 170, h: 170 });
+    for (const sx of [-1, 1]) for (const y of [-640, -360, -80]) r.props.push({ kind: 'brazier', x: sx * (T.room.halfW - 70), y, w: 56, h: 84 });
+    const bt = bossType(st.boss, r.diff, st); bt.hp *= T.boss.hpMul * Math.max(T.boss.minHp, Math.min(1, r.level / T.boss.levelRef)); // はやく くると すこし よわい
+    const e = this.spawnEnemy(st.boss.type, 1, bt, { ...T.boss.at });
+    e.final = true; r.finalBossDone = true; q.foe = e;
+    const hp = spawnPlan(r.time, r.diff, st).hpScale;
+    for (let i = 0; i < T.skeletons.inside; i++) this.spawnEnemy('skeleton', hp, undefined, { x: (i / (T.skeletons.inside - 1) - 0.5) * 2 * (T.room.halfW - 80), y: -420 + (i % 2) * 80 });
+    this.showBanner(`ぎょくざのま！ ⚠ ${e.T.name}が ぎょくざから たちあがった！ たおせば クリア！`, 3800);
+  },
+
+  /** ぎょくざのまの ちかく（near）では スケルトンが まわりから わいて くる（max まで） */
+  throneSkeletons() {
+    const r = this.run, q = r.quest, K = q.T.skeletons, p = r.player;
+    if (q.stage === 'inside' || dist2(p, q.door) > K.near ** 2) return;
+    q.skCd = (q.skCd ?? 0) - 1 / 60;
+    if (q.skCd > 0) return;
+    q.skCd = K.every;
+    let n = 0; for (const e of r.enemies) if (e.type === 'skeleton') n++;
+    const hp = spawnPlan(r.time, r.diff, r.stageDef).hpScale;
+    for (let i = 0; i < K.n && n < K.max && r.enemies.length < MAX_ENEMIES; i++, n++) {
+      const a = Math.random() * TAU;
+      this.spawnEnemy('skeleton', hp, undefined, { x: q.door.x + Math.cos(a) * K.ring, y: q.door.y + 60 + Math.sin(a) * K.ring * 0.6 });
+    }
+  },
+
+  /** まるのこの わな：ぎょくざのまの ちかくに くると あかい せん（warn びょう）→ まるのこが とんで くる */
+  updateSaws() {
+    const r = this.run, q = r.quest, S = q.T.saw, p = r.player, t = r.clock;
+    const dt = Math.min(0.1, t - (q.slc ?? t)); q.slc = t;
+    q.sawCd -= dt;
+    if (q.sawCd <= 0 && q.stage !== 'inside' && dist2(p, q.door) < S.trigger ** 2) {
+      q.sawCd = S.cd;
+      for (const s of sawPaths(p.x, p.y)) {
+        const len = S.dist + 260, mx = s.sx + Math.cos(s.ang) * len / 2, my = s.sy + Math.sin(s.ang) * len / 2;
+        const warn = { kind: 'rowWarn', x: mx, y: my, w: len, h: 34, rot: s.ang }, saw = { kind: 'saw', x: s.sx, y: s.sy, w: 80, h: 80, hidden: true };
+        r.props.push(warn, saw); q.saws.push({ ...s, t: 0, warn, saw });
+      }
+      sound.play('cannon', { volume: 0.3, gap: 0.2 });
+      this.showBanner('にげろ！ まるのこが くるよ！', 1600);
+    }
+    if (!q.saws.length) return;
+    let hurt = false;
+    for (const s of q.saws) {
+      s.t += dt;
+      if (s.t < S.warn) continue;
+      s.warn.hidden = true; s.saw.hidden = false;
+      const k = (s.t - S.warn) * S.speed;
+      s.saw.x = s.sx + Math.cos(s.ang) * k; s.saw.y = s.sy + Math.sin(s.ang) * k; s.saw.rot = s.t * 14;
+      if (dist2(p, s.saw) < (S.r + 16) ** 2) hurt = true;
+    }
+    if (hurt && p.hurt <= 0) { p.hp -= S.dmg * r.diff.enemyDmg; p.hurt = 1.0; sound.playHurt(); this.stage.hurt(); }
+    const done = q.saws.filter(s => s.t >= S.warn + S.life);
+    if (done.length) { const gone = new Set(done.flatMap(s => [s.warn, s.saw])); r.props = r.props.filter(pr => !gone.has(pr)); q.saws = q.saws.filter(s => s.t < S.warn + S.life); }
   },
 
   /** v1.21.0 いしの ようさいの へや（わな／おたから） */
@@ -1774,7 +1836,7 @@ export const DadaSurvivorGame = {
     if (!q) return r.container && !r.container.open ? { x: r.container.x, y: r.container.y, label: 'コンテナ' } : null;
     if (q.tower) {
       if (r.zone === 'surface') {
-        const name = q.T?.temple ? 'いしの ようさい' : q.T?.fortress ? 'ようさい' : q.T?.mansion ? 'こや' : 'ビル';
+        const name = q.T?.throne ? 'ぎょくざのま' : q.T?.temple ? 'いしの ようさい' : q.T?.fortress ? 'ようさい' : q.T?.mansion ? 'こや' : 'ビル';
         if (q.stage === 'door') return { x: q.door.x, y: q.door.y, label: name };
         return q.stage === 'wait' ? { x: q.door.x, y: q.door.y, label: `${name}（まだ しまってる）`, locked: true } : null;
       }

@@ -483,6 +483,60 @@ const rowWarn = wrap(`<rect x="0" y="6" width="200" height="28" fill="#ef4444" o
 const boulder = wrap(`<circle cx="32" cy="32" r="28" fill="#a8a29e" ${S}/><path d="M14 22 Q24 14 34 18 M22 44 Q32 50 44 40 M40 14 Q50 22 50 32" fill="none" stroke="#78716c" stroke-width="3" stroke-linecap="round"/><path d="M12 40 q6 -4 10 2" stroke="#4d7c0f" stroke-width="4" fill="none" stroke-linecap="round"/>`);
 const rock = wrap(`<path d="M10 40 L18 18 L36 10 L54 22 L56 44 L34 56 L14 52Z" fill="#a8a29e" ${S}/><path d="M22 26 L34 22 M30 44 L44 38" stroke="#78716c" stroke-width="3" stroke-linecap="round"/>`);
 
+// v1.22.0 まおうじょう ----------------------------------------------------------
+// スケルトン（まおうの けらい。まるい あたまの わらった がいこつ・ボロの マント・けん。ちは なし）
+const skeleton = `<ellipse cx="32" cy="61" rx="14" ry="2.6" fill="#000" opacity=".3"/>
+  <path d="M24 60 L26 46 M40 60 L38 46" stroke="#e7e5e4" stroke-width="4" stroke-linecap="round"/><path d="M24 60 L26 46 M40 60 L38 46" stroke="${O}" stroke-width="1.2" fill="none" opacity=".5"/>
+  <path d="M18 34 Q32 28 46 34 L44 50 L20 50Z" fill="#3b0764" ${S}/>
+  <path d="M26 35 V48 M32 34 V49 M38 35 V48" stroke="#e7e5e4" stroke-width="2.6" stroke-linecap="round"/>
+  <path d="M46 38 L58 22" stroke="#cbd5e1" stroke-width="3.2" stroke-linecap="round"/><path d="M44 40 L50 36" stroke="#78350f" stroke-width="3" stroke-linecap="round"/>
+  <path d="M20 38 L12 46" stroke="#e7e5e4" stroke-width="3.4" stroke-linecap="round"/>
+  <circle cx="32" cy="20" r="13" fill="#f5f5f4" ${S}/><path d="M24 30 L40 30 L38 35 L26 35Z" fill="#f5f5f4" ${S2}/>
+  <ellipse cx="27" cy="19" rx="3.6" ry="4.2" fill="#1c1917"/><ellipse cx="37" cy="19" rx="3.6" ry="4.2" fill="#1c1917"/>
+  <circle cx="27.6" cy="18" r="1.3" fill="#a3e635"/><circle cx="37.6" cy="18" r="1.3" fill="#a3e635"/>
+  <path d="M30 24.5 L32 22.5 L34 24.5Z" fill="#1c1917"/><path d="M27 31 V34 M30 31 V34.5 M34 31 V34.5 M37 31 V34" stroke="${O}" stroke-width="1"/>`;
+// くろい おしろの とう（かざり）
+const ctower = v => wrap(`<ellipse cx="50" cy="124" rx="44" ry="5" fill="#000" opacity=".3"/>
+  <path d="M22 124 L22 ${v ? 40 : 52} L78 ${v ? 40 : 52} L78 124Z" fill="#292524" ${SW(3)}/>
+  <path d="M16 ${v ? 40 : 52} L50 ${v ? 4 : 14} L84 ${v ? 40 : 52}Z" fill="#4c1d95" ${SW(3)}/>
+  ${[0, 1, 2].map(i => `<rect x="${30 + i * 16}" y="${v ? 34 : 46}" width="9" height="8" fill="#292524" ${SW(1.6)}/>`).join('')}
+  <rect x="43" y="${v ? 58 : 70}" width="14" height="20" rx="7" fill="#f97316" ${SW(2)}/><rect x="43" y="${v ? 90 : 96}" width="14" height="16" rx="7" fill="#fbbf24" opacity=".8" ${SW(2)}/>
+  <path d="M50 ${v ? 4 : 14} V${v ? -6 : 4}" stroke="${O}" stroke-width="2"/><path d="M50 ${v ? -6 : 4} L64 ${v ? -2 : 8} L50 ${v ? 2 : 12}Z" fill="#7f1d1d"/>`, '0 -8 100 136');
+// わるものの はた（オリジナル：むらさきの はたに ドクロ＋ナイフの マーク）
+const cbanner = wrap(`<path d="M18 104 V8" stroke="${O}" stroke-width="4"/><circle cx="18" cy="7" r="4" fill="#fbbf24" ${SW(1.6)}/>
+  <path d="M20 12 L84 12 L84 74 L52 64 L20 74Z" fill="#4c1d95" ${SW(3)}/><path d="M20 20 H84" stroke="#fbbf24" stroke-width="3"/>
+  ${'<g transform="translate(52 42) scale(2.6)">PATCH</g>'}`, '0 0 100 112');
+// ほのおの だい（いしの はしらの うえで もえる）
+const brazier = wrap(`<ellipse cx="32" cy="92" rx="16" ry="3.5" fill="#000" opacity=".3"/>
+  <path d="M22 92 L24 44 L40 44 L42 92Z" fill="#57534e" ${SW(2.6)}/><path d="M24 60 H40 M23 76 H41" stroke="#44403c" stroke-width="2"/>
+  <path d="M14 44 L50 44 L44 34 L20 34Z" fill="#292524" ${SW(2.6)}/>
+  <path d="M18 34 Q14 18 24 8 Q24 20 30 18 Q30 4 38 0 Q38 14 44 16 Q50 24 46 34Z" fill="#f97316" ${SW(2)}/>
+  <path d="M24 34 Q22 24 28 18 Q30 26 34 24 Q36 16 40 14 Q44 24 40 34Z" fill="#fde047"/>`, '0 -4 64 100');
+// ぎょくざのまの たてもの（くろい おしろ・むらさきの やね・あかい まど・ドクロの はた）
+const throneKeep = wrap(`<ellipse cx="210" cy="332" rx="206" ry="8" fill="#000" opacity=".3"/>
+  <path d="M30 330 L30 120 L390 120 L390 330Z" fill="#292524" ${SW(4)}/>
+  ${[30, 150, 270].map(x => `<path d="M${x} 120 L${x} 96 L${x + 120} 96 L${x + 120} 120" fill="#292524" ${SW(3)}/>`).join('')}
+  <path d="M0 120 L0 60 L60 60 L60 330 L0 330Z M360 120 L360 60 L420 60 L420 330 L360 330Z" fill="#1c1917" ${SW(3)}/>
+  <path d="M-6 62 L30 8 L66 62Z M354 62 L390 8 L426 62Z M140 98 L210 20 L280 98Z" fill="#4c1d95" ${SW(3)}/>
+  ${[[18, 130], [378, 130], [18, 220], [378, 220], [100, 160], [300, 160]].map(([x, y]) => `<rect x="${x - 10}" y="${y}" width="20" height="30" rx="10" fill="#ef4444" ${SW(2.2)}/>`).join('')}
+  <path d="M160 330 L160 230 Q210 196 260 230 L260 330Z" fill="#0c0a09" ${SW(3)}/>
+  <path d="M210 20 V0" stroke="${O}" stroke-width="3"/><path d="M210 0 L240 8 L210 18Z" fill="#7f1d1d"/>
+  ${'<g transform="translate(210 150) scale(3.2)">PATCH</g>'}`, '0 -4 420 340');
+const throneDoor = open => wrap(`<path d="M8 86 L8 26 Q45 0 82 26 L82 86Z" fill="#4c1d95" ${SW(3)}/>
+  ${open ? `<path d="M18 86 L18 30 Q45 12 72 30 L72 86Z" fill="#0c0a09"/><path d="M30 70 Q45 52 60 70" fill="none" stroke="#ef4444" stroke-width="2.4" opacity=".7"/>`
+    : `<path d="M18 86 L18 30 Q45 12 72 30 L72 86Z" fill="#7f1d1d" ${SW(2)}/><path d="M45 18 V86" stroke="${O}" stroke-width="2.4"/><circle cx="38" cy="56" r="3" fill="#fbbf24"/><circle cx="52" cy="56" r="3" fill="#fbbf24"/>`}`, '0 0 90 90');
+// まるのこ（ぐるぐる まわる まるい のこぎり。ギザギザ だけ。ちは なし）
+const saw = wrap(`${Array.from({ length: 14 }, (_, i) => { const a = i / 14 * Math.PI * 2, b = a + 0.22; return `<path d="M${32 + Math.cos(a) * 22} ${32 + Math.sin(a) * 22} L${32 + Math.cos(a + 0.1) * 31} ${32 + Math.sin(a + 0.1) * 31} L${32 + Math.cos(b) * 22} ${32 + Math.sin(b) * 22}Z" fill="#cbd5e1" ${SW(1.4)}/>`; }).join('')}
+  <circle cx="32" cy="32" r="23" fill="#94a3b8" ${S}/><circle cx="32" cy="32" r="15" fill="#cbd5e1" ${SW(1.6)}/><circle cx="32" cy="32" r="5" fill="#ef4444" ${SW(1.6)}/>
+  <path d="M32 14 V20 M32 44 V50 M14 32 H20 M44 32 H50" stroke="#64748b" stroke-width="2.4" stroke-linecap="round"/>`);
+// まおうの ぎょくざ（むらさきの クッション・きんの かざり・ドクロ）
+const throne = wrap(`<ellipse cx="50" cy="96" rx="44" ry="5" fill="#000" opacity=".3"/>
+  <path d="M14 96 L14 18 Q14 4 26 8 L50 0 L74 8 Q86 4 86 18 L86 96Z" fill="#78350f" ${SW(3)}/>
+  <path d="M24 90 L24 22 L50 14 L76 22 L76 90Z" fill="#6d28d9" ${SW(2.4)}/>
+  <path d="M8 64 L92 64 L92 96 L8 96Z" fill="#a16207" ${SW(3)}/><path d="M20 64 L80 64 L80 74 L20 74Z" fill="#7c3aed" ${SW(2)}/>
+  <circle cx="26" cy="8" r="4" fill="#fde047" ${SW(1.4)}/><circle cx="74" cy="8" r="4" fill="#fde047" ${SW(1.4)}/>
+  ${'<g transform="translate(50 38) scale(2.2)">PATCH</g>'}`, '0 -4 100 104');
+
 /* ---------- わるものぐんだんの ワッペン（オリジナル：ドクロ＋クロスした ナイフ。ちは なし） ---------- */
 const villainPatch = (x, y, k = 1) => `<g data-emblem="warumono" transform="translate(${x} ${y}) scale(${k})">
   <rect x="-5.2" y="-4.2" width="10.4" height="8.4" rx="1.2" fill="#2a0a0e" ${SW(1.3)}/>
@@ -493,10 +547,11 @@ const villainPatch = (x, y, k = 1) => `<g data-emblem="warumono" transform="tran
 // てきごとの ワッペンの いち（むねの かた より。プレイヤーの にほんの はたと おなじ がわ）
 const PATCH_AT = {
   zombie: [21, 46], bat: [21, 46], ghost: [21, 46], skull: [16, 47], scorpion: [21, 46], mummy: [21, 46],
-  snowman: [21, 46], wolf: [26, 47], pumpkin: [21, 45.5], thrower: [21, 46], driller: [21, 46], jungler: [21, 46], walker: [32, 33, 1.3], urban: [21, 46], truck: [12, 40, 1.1], gunship: [36, 28, 1.1], blackrobo: [21, 40], supreme: [21, 40], coinbox: [12, 46],
+  snowman: [21, 46], wolf: [26, 47], pumpkin: [21, 45.5], thrower: [21, 46], driller: [21, 46], jungler: [21, 46], walker: [32, 33, 1.3], urban: [21, 46], truck: [12, 40, 1.1], gunship: [36, 28, 1.1], blackrobo: [21, 40], supreme: [21, 40], skeleton: [26, 44], coinbox: [12, 46],
   ogre: [24, 48], dragon: [32, 31, 1.1], snake: [24, 45], icegiant: [21, 50], witch: [26, 47], maou: [22, 50],
 };
 const withPatch = (k, body) => body + villainPatch(...PATCH_AT[k]);
+const fixPatch = svg => svg.replace(/<g transform="translate\(([\d.]+) ([\d.]+)\) scale\(([\d.]+)\)">PATCH<\/g>/, (_, x, y, k) => villainPatch(+x, +y, +k));
 // わるものの ようさい（ステージ8 の たてもの。くろっぽい コンクリ・あかい ライト・ドクロの はた・アンテナ）
 const fortress = wrap(`<ellipse cx="200" cy="308" rx="196" ry="8" fill="#000" opacity=".28"/>
   <path d="M20 110 L80 70 L320 70 L380 110 L380 304 L20 304Z" fill="#374151" ${SW(4)}/>
@@ -1544,6 +1599,7 @@ const SOURCES = {
   outpost, hut, kamakura, hatch: hatch(false), hatchOpen: hatch(true), wallL: stretch(wallSide(true)), wallR: stretch(wallSide(false)), wallT: stretch(wallEnd(true)), wallB: stretch(wallEnd(false)),
   cellA: cell(['soldier', 'soldier']), cellB: cell(['researcher', 'medic']), cellC: cell(['soldier', 'researcher']), cellOpen: cell([], true), exitStairs,
   blackrobo: wrap(withPatch('blackrobo', blackRobo)), supreme: wrap(withPatch('supreme', supreme), '0 -4 64 68'), coinbox: wrap(withPatch('coinbox', coinbox)), fortress,
+  skeleton: wrap(withPatch('skeleton', skeleton)), ctower1: ctower(0), ctower2: ctower(1), cbanner: fixPatch(cbanner), brazier, throneKeep: fixPatch(throneKeep), throneDoor: throneDoor(false), throneDoorOpen: throneDoor(true), saw, throne: fixPatch(throne),
   temple, templeDoor: templeDoor(false), templeDoorOpen: templeDoor(true), spikes0, spikesW, spikes1, rowWarn, boulder, rock,
   megavault: vault(false).replace(/<\/svg>$/, `${villainPatch(18, 108, 1.6)}<text x="65" y="117" text-anchor="middle" font-size="11" font-weight="900" fill="#fde047" stroke="#1c1917" stroke-width=".8">10000</text></svg>`), bmissile, mansion, mansionDoor: mansionDoor(false), mansionDoorOpen: mansionDoor(true), vault: vault(false), vaultOpen: vault(true),
   driller: wrap(withPatch('driller', driller)), jungler: wrap(withPatch('jungler', jungler)), walker: wrap(withPatch('walker', walker), '-8 0 80 66'),
@@ -1554,7 +1610,7 @@ const SOURCES = {
   sword: wrap(sword), armor: wrap(armor), shoes: wrap(shoes), charm: wrap(charm), chest: wrap(chest), chestOpen: wrap(chestOpen, '0 -4 64 68'),
   ...Object.fromEntries(Object.entries(GROUNDS).map(([k, v]) => [`ground-${k}`, v])),
 };
-const FLASHABLE = ['zombie', 'bat', 'ghost', 'skull', 'ogre', 'dragon', 'scorpion', 'mummy', 'snake', 'snowman', 'wolf', 'icegiant', 'pumpkin', 'witch', 'maou', 'thrower', 'alien', 'driller', 'jungler', 'walker', 'urban', 'truck', 'gunship', 'supreme', 'blackrobo'];
+const FLASHABLE = ['zombie', 'bat', 'ghost', 'skull', 'ogre', 'dragon', 'scorpion', 'mummy', 'snake', 'snowman', 'wolf', 'icegiant', 'pumpkin', 'witch', 'maou', 'thrower', 'alien', 'driller', 'jungler', 'walker', 'urban', 'truck', 'gunship', 'supreme', 'skeleton', 'blackrobo'];
 
 const toUrl = svg => `url("data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}")`;
 

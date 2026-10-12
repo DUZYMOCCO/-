@@ -61,6 +61,8 @@
 .ds-decor-blaze { width: 170px; height: 132px; margin: -112px 0 0 -85px; transform-origin: 50% 85%; animation: ds-blaze .5s ease-in-out infinite alternate; }
 @keyframes ds-blaze { to { transform: scale(1.05, .93); } }
 .ds-lite .ds-decor-blaze { animation: none; }
+/* v1.22.0 まおうじょうの ほのおの だい */
+.ds-decor-brazier { width: 64px; height: 96px; margin: -88px 0 0 -32px; }
 .ds-heli { animation: ds-heli-bob 1.6s ease-in-out infinite alternate; }
 @keyframes ds-heli-bob { from { translate: 0 -3px; } to { translate: 0 4px; } }
 .ds-root.ds-lite .ds-heli { animation: none; }

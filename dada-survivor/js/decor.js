@@ -19,6 +19,7 @@ export function cellRand(cx, cy, seed, salt = 0) {
 // 1マスぶんの かざり（[{ x, y, kind: 'capsule' | 'alien' | 'broken' | 'flag', id? }]）。ボトルの id は こわれた じょうたいを ランの あいだ おぼえる ため
 export function decorCell(cx, cy, seed, kind = 'lab') {
   if (kind === 'city') return cityCell(cx, cy, seed);
+  if (kind === 'castle') return castleCell(cx, cy, seed);
   const out = [];
   // スタート ちてん（0,0 の マス）は ボトルを おかず、みかたの はたを 1ぽん（じぶんの すこし みぎした）
   if (cx === 0 && cy === 0) { out.push({ x: 96, y: 60, kind: 'flag' }); return out; }
@@ -72,6 +73,19 @@ function cityCell0(cx, cy, seed) {
 }
 
 /** みえる はんいの かざりを あつめる（マスごとに キャッシュ。おなじ オブジェクトを かえすので DOM プールが つけかえを しない） */
+/** v1.22.0 まおうじょうの かざり：くろい とう・わるものの はた・ほのお（blaze）・ほのおの だい。スタートの そばは あける */
+export const CASTLE_DECOR = { tower: 0.32, towerFree: 700, banner: 0.3, blaze: 0.7, brazier: 0.35, free: 240 };
+export function castleCell(cx, cy, seed) {
+  const C = DECOR_CELL, out = [], D = CASTLE_DECOR;
+  const at = (s1, s2, m = 60) => ({ x: Math.round(cx * C + m + cellRand(cx, cy, seed, s1) * (C - 2 * m)), y: Math.round(cy * C + m + cellRand(cx, cy, seed, s2) * (C - 2 * m)) });
+  const far = (p, d) => Math.hypot(p.x, p.y) > d;
+  if (Math.hypot((cx + 0.5) * C, (cy + 0.5) * C) > D.towerFree && cellRand(cx, cy, seed, 61) < D.tower) { const p = at(62, 63, 110); out.push({ ...p, kind: cellRand(cx, cy, seed, 64) < 0.5 ? 'ctower1' : 'ctower2' }); }
+  if (cellRand(cx, cy, seed, 65) < D.banner) { const p = at(66, 67); if (far(p, D.free)) out.push({ ...p, kind: 'cbanner' }); }
+  if (cellRand(cx, cy, seed, 68) < D.blaze) { const p = at(69, 70); if (far(p, D.free)) out.unshift({ ...p, kind: `blaze${1 + Math.floor(cellRand(cx, cy, seed, 71) * 3)}` }); }
+  if (cellRand(cx, cy, seed, 72) < D.brazier) { const p = at(73, 74); if (far(p, D.free)) out.push({ ...p, kind: 'brazier' }); }
+  return out;
+}
+
 export class DecorField {
   constructor(seed = 1, kind = 'lab') { this.seed = seed; this.kind = kind; this.cache = new Map(); this.list = []; }
   setSeed(seed) { if (seed !== this.seed) { this.seed = seed; this.cache.clear(); } }
