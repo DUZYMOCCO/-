@@ -72,6 +72,10 @@ export const ENEMY_TYPES = {
   gunship:  { speed: 50, dmg: 32, xp: 40, r: 50, size: 120, name: 'こうげきヘリ' },
   // v1.17.0 おばけのもりの おおきな こやの たからべやを まもる わるもの ロボ（くろ×あかい め・ドクロの ワッペン）。でかい ミサイル（MANSION.robo）
   blackrobo: { speed: 46, dmg: 18, xp: 40, r: 40, size: 106, name: 'ブラックロボ', missiles: true },
+  // v1.19.0 ステージ8：わるものぐんだんの いちばん えらい ひとが のる さいごの メカ（むらさき×きん・かんむり・ドクロ）。でかい ミサイル
+  supreme:  { speed: 44, dmg: 34, xp: 40, r: 56, size: 136, name: 'そうすいメカ', missiles: true },
+  // v1.19.0 きんこの コインばこ（うごかない・いたく ない。うって あける）
+  coinbox:  { hp: 1, speed: 0, dmg: 0, xp: 0, r: 34, size: 84, name: 'コインばこ' },
 };
 
 // enemies: [しゅるい, でてくる びょう, でやすさ]
@@ -109,6 +113,12 @@ export const STAGES = [
     enemies: [['urban', 0, 10], ['bat', 30, 5], ['ghost', 60, 4], ['skull', 120, 5], ['wolf', 150, 4]],
     mini: { type: 'truck', hp: 10000 }, boss: { type: 'gunship', hp: 26000 },
     tower: true, burning: true },
+  // v1.19.0：さいごの ステージ（ステージ7 クリアで ひらく）。こわれた まちの さきの わるものぐんだんの ようさいに はいって、
+  // ろうか → ぶきこ → ブラックロボ 20たい → きんこ（コインばこ）→ めいれいしつの そうすいメカ（たおすと クリア。`FORTRESS`）
+  { id: 8, name: 'わるものの ようさい', ground: 'city', decor: 'city', hpMul: 4.6, spawnMul: 1.6, dmgMul: 1.45, bgm: 'city',
+    enemies: [['urban', 0, 10], ['bat', 20, 5], ['ghost', 45, 4], ['skull', 90, 5], ['wolf', 120, 4]],
+    mini: { type: 'blackrobo', hp: 12000, big: 1.3, name: 'でかブラックロボ' }, boss: { type: 'supreme', hp: 42000 },
+    fortress: true, burning: true },
 ];
 
 export function stageById(id) { return STAGES.find(s => s.id === id) || STAGES[0]; }
@@ -656,6 +666,22 @@ export const MANSION = {
   vault: { x: -185, y: -470 }, reward: { coins: 50, chests: 1, levelUp: 1 },
   heliBoss: { type: 'gunship', hp: 2000, dmg: 20, at: { x: 0, y: -420 } },
 };
+/**
+ * v1.19.0 ステージ8 わるものの ようさい（なかは へやが 5つ。じかんは はんぶんの はやさ）。
+ * 1 ろうか（ザコ いっぱい）→ 2 ぶきこ（20たい）→ 3 ブラックロボ 20たい（wave たいずつ。のこりが 2 より すくなく なったら つぎ）
+ * → 4 きんこ（コインばこ 2こ：70まい と 120まい。うって あける）→ 5 めいれいしつ（そうすいメカ＝たおすと クリア）。
+ * ようさいに はいらずに 5:00 に なったら、そうすいメカが そとに でて くる（たおせば クリア）
+ */
+export const FORTRESS = {
+  fortress: true, at: 150, dist0: 560, dist1: 780, doorR: 54, stairsR: 50, cellR: 72, heliR: 80,
+  floors: 5, foes: [14, 20, 0, 0, 0], foeHp: 1.4, names: ['ろうか', 'ぶきこ', 'きんこの まえ', 'きんこ', 'めいれいしつ'],
+  room: { halfW: 340, roomHalfW: 340, roomY: -1e9, top: -680, bottom: 140 },
+  stairs: { x: 0, y: -600 }, cells: [], pad: TOWER.pad, roofExit: TOWER.roofExit, heli: TOWER.heli,
+  robo: { total: 20, wave: 4, hp: 420, cd: 6.5, firstCd: 2.5 },
+  boxes: [{ x: -120, y: -320, coins: 70, hp: 1400 }, { x: 120, y: -320, coins: 120, hp: 2200 }],
+  boss: { type: 'supreme', hp: 33000, at: { x: 0, y: -460 } },
+  bossMissile: { n: 5, spread: 120, flight: 1.5, blast: 56, dmg: 12, range: 700, cd: 3.2, firstCd: 2.8 },
+};
 /** v1.17.1 みちの あしあとの ばしょ（スタートから d までの きょり。はじめと おわりは あける） */
 export function trailSteps(d, step = 100, start = 110, end = 90) {
   const out = [];
@@ -695,7 +721,7 @@ export function rollHeli(rnd = Math.random, T = TOWER) { return rnd() < T.heliCh
 /** みかたの ヘリの たまの ダメージ */
 export function heliDamage(t, playerDamage = 1, T = TOWER) { return allyDamage(t, playerDamage) * T.heli.dmgMul; }
 /** かいの なまえ（1〜4 は「Nかい」、そのうえは おくじょう） */
-export function floorName(f, T = TOWER) { return f > T.floors ? 'おくじょう' : `${f}かい`; }
+export function floorName(f, T = TOWER) { return T.names ? T.names[f - 1] || '' : f > T.floors ? 'おくじょう' : `${f}かい`; }
 
 /** ちかの ろうかの はば（y で かわる：おくは ボスの へや） */
 export function underHalfW(y, U = QUEST.under) { return y < U.roomY ? U.roomHalfW : U.halfW; }

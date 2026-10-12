@@ -5,7 +5,7 @@
  *   sim.campaign({ difficulty: 'easy', bot: 'kid', runs: 5 });
  * セーブデータは上書きするので、終わったら sim.cleanup() で消す。
  */
-import * as rules from '../js/rules.js?v=211';
+import * as rules from '../js/rules.js?v=212';
 import { storage } from '../../common/js/storage.js';
 
 const SAVE_KEY = 'dada_survivor_save';
@@ -69,7 +69,7 @@ export function playOnce(botName = 'kid') {
     if (i % b.every === 0) drive(g, b);
     g.update(1 / 60);
     // 本番は ボス撃破の 0.9びょうご に setTimeout で おわる。シミュでは すぐ おわらせる
-    if (g.run.finalBossDone && !g.run.boss && !g.run.ended) g.endRun(true);
+    if (((g.run.finalBossDone && !g.run.boss) || g.run.won) && !g.run.ended) g.endRun(true);
   }
   const r = g.run;
   return { clear: r.ended && r.player.hp > 0, t: Math.round(r.time), lv: r.level, kills: r.kills, hp: Math.round(r.player.hp) };

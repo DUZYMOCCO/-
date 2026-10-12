@@ -10,7 +10,7 @@ const kana = /^[\u3041-\u309f\u30a0-\u30ff ]+$/;
 const city = STAGES.find(s => s.ground === 'city');
 
 test('こわれた まち は ジャングルの あとの ステージ7（ステージ6 クリアで ひらく）', () => {
-  assert.deepEqual(STAGES.map(s => s.id), [1, 2, 3, 4, 5, 6, 7]);
+  assert.deepEqual(STAGES.map(s => s.id), [1, 2, 3, 4, 5, 6, 7, 8]);
   assert.equal(city.id, 7);
   assert.match(city.name, kana);
   assert.equal(stageUnlocked(normalizeSave({ stageClears: { 1: 1, 2: 1, 3: 1, 4: 1, 5: 1 } }), 7), false);
@@ -109,7 +109,7 @@ test('v1.15.1：もえて いる ところ は スタートと はいれる ビ�
   }
   assert.ok(CITY_FIRE.maxFires >= CITY_FIRE.flames && CITY_FIRE.group <= 9);
   assert.equal(STAGES.find(x => x.id === 7).burning, true);
-  assert.ok(!STAGES.filter(x => x.id !== 7).some(x => x.burning));
+  assert.ok(!STAGES.filter(x => x.id !== 7 && x.id !== 8).some(x => x.burning));
 });
 
 test('v1.16.1：まちじゅうに もえて いる かざり（3しゅるい・スタートの まわりは なし）', async () => {

@@ -446,6 +446,18 @@ const vault = open => wrap(`<rect x="6" y="6" width="118" height="108" rx="8" fi
     <path d="M65 44 V80 M47 62 H83 M52 49 L78 75 M78 49 L52 75" stroke="${O}" stroke-width="3" stroke-linecap="round"/><circle cx="65" cy="62" r="6" fill="#ca8a04" ${SW(2)}/>`}
   <path d="M50 2 L56 12 L65 6 L74 12 L80 2 L82 16 L48 16Z" fill="#fde047" ${SW(2)}/>`, '0 0 130 120');
 
+// v1.19.0 そうすいメカ（ステージ8 さいごの ボス）：ブラックロボより おおきい むらさき×きんの メカに、かんむり・あかい マント。
+const supreme = `<path d="M6 30 Q0 50 4 64 L60 64 Q64 50 58 30Z" fill="#991b1b" opacity=".9" ${S2}/>`
+  + blackRobo.split('#111827').join('#2e1065').split('#1f2937').join('#4c1d95').split('#7f1d1d').join('#ca8a04')
+  + `<path d="M21 4 L24 -2 L28 4 L32 -4 L36 4 L40 -2 L43 4 L43 9 L21 9Z" fill="#fde047" transform="translate(0 3)" ${SW(1.4)}/>
+  <circle cx="32" cy="7" r="1.8" fill="#ef4444"/>`;
+// きんこの コインばこ（てつの はこ・きんの ふち・おおきな じょうまえ・コインの しるし）
+const coinbox = `<ellipse cx="32" cy="60" rx="26" ry="3.5" fill="#000" opacity=".3"/>
+  <rect x="6" y="20" width="52" height="38" rx="5" fill="#475569" ${S}/><path d="M6 20 Q6 8 32 8 Q58 8 58 20Z" fill="#334155" ${S}/>
+  <path d="M6 30 H58 M14 9.5 V58 M50 9.5 V58" stroke="#fbbf24" stroke-width="3"/>
+  <rect x="24" y="30" width="16" height="16" rx="3" fill="#fbbf24" ${S2}/><path d="M27 30 V25 Q32 19 37 25 V30" fill="none" stroke="${O}" stroke-width="2.4"/>
+  <circle cx="32" cy="37" r="2.2" fill="${O}"/><path d="M32 38 V42" stroke="${O}" stroke-width="2"/>
+  <circle cx="32" cy="52" r="4" fill="#fde047" ${SW(1.2)}/>`;
 /* ---------- わるものぐんだんの ワッペン（オリジナル：ドクロ＋クロスした ナイフ。ちは なし） ---------- */
 const villainPatch = (x, y, k = 1) => `<g data-emblem="warumono" transform="translate(${x} ${y}) scale(${k})">
   <rect x="-5.2" y="-4.2" width="10.4" height="8.4" rx="1.2" fill="#2a0a0e" ${SW(1.3)}/>
@@ -456,10 +468,24 @@ const villainPatch = (x, y, k = 1) => `<g data-emblem="warumono" transform="tran
 // てきごとの ワッペンの いち（むねの かた より。プレイヤーの にほんの はたと おなじ がわ）
 const PATCH_AT = {
   zombie: [21, 46], bat: [21, 46], ghost: [21, 46], skull: [16, 47], scorpion: [21, 46], mummy: [21, 46],
-  snowman: [21, 46], wolf: [26, 47], pumpkin: [21, 45.5], thrower: [21, 46], driller: [21, 46], jungler: [21, 46], walker: [32, 33, 1.3], urban: [21, 46], truck: [12, 40, 1.1], gunship: [36, 28, 1.1], blackrobo: [21, 40],
+  snowman: [21, 46], wolf: [26, 47], pumpkin: [21, 45.5], thrower: [21, 46], driller: [21, 46], jungler: [21, 46], walker: [32, 33, 1.3], urban: [21, 46], truck: [12, 40, 1.1], gunship: [36, 28, 1.1], blackrobo: [21, 40], supreme: [21, 40], coinbox: [12, 46],
   ogre: [24, 48], dragon: [32, 31, 1.1], snake: [24, 45], icegiant: [21, 50], witch: [26, 47], maou: [22, 50],
 };
 const withPatch = (k, body) => body + villainPatch(...PATCH_AT[k]);
+// わるものの ようさい（ステージ8 の たてもの。くろっぽい コンクリ・あかい ライト・ドクロの はた・アンテナ）
+const fortress = wrap(`<ellipse cx="200" cy="308" rx="196" ry="8" fill="#000" opacity=".28"/>
+  <path d="M20 110 L80 70 L320 70 L380 110 L380 304 L20 304Z" fill="#374151" ${SW(4)}/>
+  <path d="M20 110 H380" stroke="#7f1d1d" stroke-width="6"/><path d="M20 140 H380" stroke="#111827" stroke-width="2"/>
+  <path d="M30 304 L30 150 L80 150 L80 304Z M320 304 L320 150 L370 150 L370 304Z" fill="#1f2937" ${SW(3)}/>
+  ${[[100, 160], [160, 160], [220, 160], [270, 160], [100, 220], [270, 220]].map(([x, y]) => `<rect x="${x}" y="${y}" width="34" height="24" rx="3" fill="#ef4444" opacity=".85" ${SW(2.4)}/>`).join('')}
+  <path d="M150 304 L150 220 Q200 196 250 220 L250 304Z" fill="#111827" ${SW(3)}/>
+  <path d="M60 70 L60 20" stroke="${O}" stroke-width="4"/><path d="M60 20 L104 30 L60 44Z" fill="#7f1d1d" ${SW(2)}/>
+  <g transform="translate(76 31) scale(.9)"><circle r="7" fill="#e7e5e4"/><circle cx="-2.6" cy="-1" r="1.8" fill="#1c1917"/><circle cx="2.6" cy="-1" r="1.8" fill="#1c1917"/></g>
+  <path d="M320 70 L320 28 M306 40 Q320 20 334 40" fill="none" stroke="${O}" stroke-width="4"/><circle cx="320" cy="24" r="6" fill="#ef4444" ${SW(2)}/>
+  <path d="M120 70 L130 46 L270 46 L280 70Z" fill="#1f2937" ${SW(3)}/>
+  ${villainPatch(200, 92, 3)}
+  <path d="M40 300 L52 282 L70 292 L76 304Z M330 304 L338 286 L356 296 L360 304Z" fill="#57534e" ${SW(2)}/>`, '0 0 400 316');
+
 
 /* ---------- わるものぐんだん（てき。ぜんいん にんげんの わるものへいたい／ぐんようけん。みぎむき） ---------- */
 // ザコ: zombie=ライフルへい bat=ていさつへい ghost=スナイパー skull=じゅうそうこうへい scorpion=ナイフへい
@@ -1492,7 +1518,7 @@ const SOURCES = {
   ally: wrap(allySoldier), medic: wrap(medic), container: crate(false), containerOpen: crate(true), whistle, healPlus,
   outpost, hut, kamakura, hatch: hatch(false), hatchOpen: hatch(true), wallL: stretch(wallSide(true)), wallR: stretch(wallSide(false)), wallT: stretch(wallEnd(true)), wallB: stretch(wallEnd(false)),
   cellA: cell(['soldier', 'soldier']), cellB: cell(['researcher', 'medic']), cellC: cell(['soldier', 'researcher']), cellOpen: cell([], true), exitStairs,
-  blackrobo: wrap(withPatch('blackrobo', blackRobo)), bmissile, mansion, mansionDoor: mansionDoor(false), mansionDoorOpen: mansionDoor(true), vault: vault(false), vaultOpen: vault(true),
+  blackrobo: wrap(withPatch('blackrobo', blackRobo)), supreme: wrap(withPatch('supreme', supreme), '0 -4 64 68'), coinbox: wrap(withPatch('coinbox', coinbox)), fortress, bmissile, mansion, mansionDoor: mansionDoor(false), mansionDoorOpen: mansionDoor(true), vault: vault(false), vaultOpen: vault(true),
   driller: wrap(withPatch('driller', driller)), jungler: wrap(withPatch('jungler', jungler)), walker: wrap(withPatch('walker', walker), '-8 0 80 66'),
   urban: wrap(withPatch('urban', urban)), truck: wrap(withPatch('truck', truck)), gunship: wrap(withPatch('gunship', gunship), '-10 0 84 68'),
   heliFriend, heliFly, tower, ...Object.fromEntries([1, 2, 3, 4, 5, 6, 7].map(v => [`bldg${v}`, towerArt(v)])), towerDoor: towerDoor(false), towerDoorOpen: towerDoor(true), stairsUp, helipad, roofExit, wreckCar, ruinPile,
@@ -1501,7 +1527,7 @@ const SOURCES = {
   sword: wrap(sword), armor: wrap(armor), shoes: wrap(shoes), charm: wrap(charm), chest: wrap(chest), chestOpen: wrap(chestOpen, '0 -4 64 68'),
   ...Object.fromEntries(Object.entries(GROUNDS).map(([k, v]) => [`ground-${k}`, v])),
 };
-const FLASHABLE = ['zombie', 'bat', 'ghost', 'skull', 'ogre', 'dragon', 'scorpion', 'mummy', 'snake', 'snowman', 'wolf', 'icegiant', 'pumpkin', 'witch', 'maou', 'thrower', 'alien', 'driller', 'jungler', 'walker', 'urban', 'truck', 'gunship', 'blackrobo'];
+const FLASHABLE = ['zombie', 'bat', 'ghost', 'skull', 'ogre', 'dragon', 'scorpion', 'mummy', 'snake', 'snowman', 'wolf', 'icegiant', 'pumpkin', 'witch', 'maou', 'thrower', 'alien', 'driller', 'jungler', 'walker', 'urban', 'truck', 'gunship', 'supreme', 'blackrobo'];
 
 const toUrl = svg => `url("data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}")`;
 
