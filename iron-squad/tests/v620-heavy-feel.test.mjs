@@ -69,3 +69,10 @@ const zc=d=>{let n=0;for(let i=1;i<d.length;i++)if((d[i-1]<0)!==(d[i]<0))n++;ret
 assert.ok(zc(pcm.sword)>zc(pcm.axe)&&zc(pcm.axe)>zc(pcm.hammer),'sword brightest, hammer deepest');
 assert.equal(playMeleeSound('hammer'),false,'silent without an unlocked audio context');
 console.log('PASS: weapon sounds');
+// v6.3.0 shop prices x10: merchant = sale value x32 (was x3.2), workshop = standard cost x14 / x30 (was x1.4 / x3).
+const {CATALOG_PRICE_MULT,catalogPrice}=await import('../js/merchant-catalog.js');const {workshopPrice,WORKSHOP_PRICE_MULT}=await import('../js/workshop.js');
+const {saleValue}=await import('../js/equipment-rules.js');const {standardEquipmentCost}=await import('../js/armament-rules.js');
+assert.equal(CATALOG_PRICE_MULT,32);assert.deepEqual(WORKSHOP_PRICE_MULT,{bought:14,crafted:30});
+const shopItem={type:'WEAPON',tier:5,stats:{atk:100},upgrade:0,rollMult:1};assert.equal(catalogPrice(shopItem),Math.max(1,Math.floor(saleValue(shopItem)*32)));
+assert.equal(workshopPrice(5),Math.ceil(standardEquipmentCost({tier:5})*14));assert.equal(workshopPrice(5,true),Math.ceil(standardEquipmentCost({tier:5})*30));
+console.log('PASS: shop prices x10');

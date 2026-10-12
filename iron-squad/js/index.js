@@ -13,10 +13,10 @@ import {activeSquad,inCurrentInstance} from './instance-rules.js?v=182';
 import {recordBattleLog,resetBattleLog,refreshCombatFieldNotes} from './battle-log.js?v=205';
 import {rollDropExclusive,applyDropExclusive,dropExclusiveLabel} from './drop-exclusives.js?v=182';
 import {normalizeMaterials,applyCraftExclusive,craftExclusiveLabel,equipmentDropChance,materialDropChance,rollMaterialDrop,rollTreasureLoot} from './crafting-rules.js?v=189';
-import {workshopMethods} from './workshop.js?v=200';
+import {workshopMethods} from './workshop.js?v=214';
 import {casinoMethods} from './casino.js?v=201';
 import {normalizeCasino} from './casino-rules.js?v=201';
-import {latestEquipmentTier,recordMerchantEquipment,ensureMerchantCatalog,refreshWaveCatalogs,markMerchantPurchase} from './merchant-catalog.js?v=191';
+import {latestEquipmentTier,recordMerchantEquipment,ensureMerchantCatalog,refreshWaveCatalogs,markMerchantPurchase} from './merchant-catalog.js?v=214';
 import {initializeMedicalPosts,updateMedicalPosts,serializeMedicalPosts,nearestKnownMedicalPost,drawMedicalPost,drawMedicalMap,drawMedicalMarker,drawTownMedicalReception,drawRescueDirection} from './medical-posts.js?v=182';
 import {invasionMethods,initializeInvasions,serializeInvasions,shouldTriggerRandomRaid,makeEnemyRoom,drawInvasionRoute} from './invasion-rules.js?v=211';
 import {gateMethods,serializeGatePosts,replenishTownGateGuards,initializeGateGuards,ensureTownGuards,serializeGateGuards,updateGateGuards,gateGuardVisible,applyFortifications,drawFortification,exitGateTown,townExitReached,wallBlocksAttack,attackBlocked as coverBlocked} from './gate-rules.js?v=198';
@@ -111,7 +111,7 @@ import {
   nearestLivingMerchant, refreshMerchantStock, merchantBuyPrice, merchantSellTier,
   applyMerchantSave, serializeMerchants, MERCHANT_INTERACT_R,
   merchantHealingStatus, merchantHealWavesLeft, useMerchantHealing, MERCHANT_HEAL_COST, recalcEscortStats, finishEscortPhase
-} from './merchant-rules.js?v=193';
+} from './merchant-rules.js?v=214';
 
 import { daylightAt, advanceWorldClock, periodEnemy, enemyAvailable, PERIOD_ENEMIES } from './day-night.js?v=208';
 
@@ -2740,6 +2740,8 @@ export const IronSquadGame = {
     this.instanceCargoIds = [];
     this.savedFieldPos = null;
     this.savedFieldMonsters = null;
+    // A restart from a save after dying inside a dungeon must not keep the old field snapshot.
+    this.savedFieldSquadPos = null;this.savedFieldPlatoonPos = null;this.savedFieldDrops = null;
     this.savedFieldDrops = null;
     this.dungeonVault = null;
     this.dungeonExploration = {};
@@ -4541,7 +4543,8 @@ export const IronSquadGame = {
     const btn = document.getElementById('btn-pad-power');
     const overlay = document.getElementById('pad-power-cd-overlay');
     const textEl = document.getElementById('pad-power-cd-text');
-    if (!btn || !overlay || !textEl) return;
+    // Called every frame from update(): never let a missing/partial element stop the game update.
+    if (typeof btn?.classList?.contains !== 'function' || typeof overlay?.classList?.contains !== 'function' || !textEl) return;
 
     const cd = this.player ? (this.player.powerAtkCooldown || 0) : 0;
     if (cd > 0) {
@@ -6701,10 +6704,10 @@ export const IronSquadGame = {
     if (this.player.slashAnim > 0) this.player.slashAnim = Math.max(0,this.player.slashAnim-dt*attackAnimationRate(this.equipped?.weapon,this.player.atkSpeed));
 
     // パワーアタック（渾身強撃 💥）のクールタイム減算 ＆ UI更新
-    if ((this.player.powerAtkCooldown || 0) > 0) {
-      this.player.powerAtkCooldown = Math.max(0, this.player.powerAtkCooldown - dt);
-      this.updatePowerAtkButtonUI();
-    }
+    if ((this.player.powerAtkCooldown || 0) > 0) this.player.powerAtkCooldown = Math.max(0, this.player.powerAtkCooldown - dt);
+    // Sync every frame (writes only on change): a restart from a save replaces the commander with
+    // cooldown 0, and the overlay must not stay frozen on the last countdown.
+    this.updatePowerAtkButtonUI();
     this.updatePowerFx(dt);
 
     const nearestMonster = this.player.isDown ? null : this.getNearestMonster(this.player.x, this.player.y);

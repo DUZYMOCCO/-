@@ -21,7 +21,9 @@ function comparison(game,item) {
   const current=game.equipped?.[slots[item.type]],cmp=compareEquipment(item,current);
   return `<div class="equipment-comparison ${cmp.kind}"><div class="equip-cmp-head">今の装備とくらべる：<strong>${cmp.label}</strong></div><small>現在：${current?equipmentName(current):'未装備'}</small>${cmp.html}</div>${item.type==='WEAPON'?`<p class="weapon-requirement">${weaponRequirementText(game.player,item)}</p>`:''}`;
 }
-export const workshopPrice=(tier,crafted=false)=>Math.ceil(standardEquipmentCost({tier})*(crafted?3:1.4));
+// v6.3.0: x10 (was x1.4 bought / x3 crafted), in line with merchant prices.
+export const WORKSHOP_PRICE_MULT={bought:14,crafted:30};
+export const workshopPrice=(tier,crafted=false)=>Math.ceil(standardEquipmentCost({tier})*(crafted?WORKSHOP_PRICE_MULT.crafted:WORKSHOP_PRICE_MULT.bought));
 function quote(game,id,tier,crafted) {
   const recipe=craftRecipe(id);if(!recipe)return null;
   const t=Number(tier);

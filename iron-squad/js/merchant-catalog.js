@@ -2,9 +2,10 @@ import {observeEquipment} from './armament-rules.js?v=191';
 import {MAX_EQUIPMENT_TIER,TRADE_MAX_TIER} from './equipment-tiers.js?v=187';
 import {EQUIPMENT_TYPES,saleValue} from './equipment-rules.js?v=211';
 export const MERCHANT_MAX_TIER=TRADE_MAX_TIER;
-export const CATALOG_PRICE_MULT=3.2;
+// v6.3.0: x10 (was 3.2) - gold piles up quickly, so shop gear must be a real goal.
+export const CATALOG_PRICE_MULT=32;
 export const catalogPrice=item=>Math.max(1,Math.floor(saleValue(item)*CATALOG_PRICE_MULT*Math.max(1,item.rollMult||1)*(item.merchantFeatured?1.15:1)));
-export const MERCHANT_CATALOG_VERSION=2;
+export const MERCHANT_CATALOG_VERSION=3; // v3: restock at the x10 prices
 export function recordMerchantEquipment(game,item) {
   if(EQUIPMENT_TYPES.includes(item?.type))observeEquipment(game,item);
   if(item&&EQUIPMENT_TYPES.includes(item.type)&&Number.isFinite(item.tier))game.merchantEquipmentTier=Math.max(game.merchantEquipmentTier||1,Math.min(MAX_EQUIPMENT_TIER,Math.floor(item.tier)));
