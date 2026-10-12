@@ -13,13 +13,13 @@ import {
   SQUAD, allyDamage, squadSlot, canWhistle, healAmount,
   QUEST, CAMP, underHalfW, clampUnder, hutSpot, LASER_MODES, nextLaserMode, squadRoom, beamHits, MAX_LEVEL as MAXLV,
   enemyDmgMul,
-} from './rules.js?v=201';
-import { DecorField } from './decor.js?v=201';
-import { EnemyGrid, nearestN } from './grid.js?v=201';
-import { preloadArt, art } from './art.js?v=201';
-import { Stage } from './stage.js?v=201';
-import { menuMethods, iconHtml } from './menus.js?v=201';
-import { PopBGM, playWhistle } from './bgm.js?v=201';
+} from './rules.js?v=202';
+import { DecorField } from './decor.js?v=202';
+import { EnemyGrid, nearestN } from './grid.js?v=202';
+import { preloadArt, art } from './art.js?v=202';
+import { Stage } from './stage.js?v=202';
+import { menuMethods, iconHtml } from './menus.js?v=202';
+import { PopBGM, playWhistle } from './bgm.js?v=202';
 
 const SAVE_KEY = 'dada_survivor_save';
 const TAU = Math.PI * 2;
@@ -45,7 +45,7 @@ export const DadaSurvivorGame = {
 
   // 起動時にこのゲームのCSSを自分で読み込む（?v= はこのフォルダ内で管理）。ハブが init 前に await する
   prepare() {
-    return loadCss(new URL('../css/dada-survivor.css?v=201', import.meta.url).href);
+    return loadCss(new URL('../css/dada-survivor.css?v=202', import.meta.url).href);
   },
 
   init(container, onBackToHub) {
@@ -366,7 +366,7 @@ export const DadaSurvivorGame = {
     this.refreshSkills();
     this.resize();
     this.lastTime = performance.now();
-    this.bgm.start();
+    this.bgm.start(st.bgm);
     this.showBanner(`ステージ${st.id} ${st.name}`, 2500);
   },
 

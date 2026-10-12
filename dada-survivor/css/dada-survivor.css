@@ -229,6 +229,7 @@
 .ds-root[data-ground="snow"] { background: #8ea0ae; }
 .ds-root[data-ground="forest"] { background: #1a241c; }
 .ds-root[data-ground="castle"] { background: #24222c; }
+.ds-root[data-ground="jungle"] { background: #5f7d40; }
 .ds-root[data-ground="forest"] .ds-hp, .ds-root[data-ground="castle"] .ds-hp { border-color: #fff; }
 
 .ds-thin { min-height: 40px; font-size: 14px; padding: 6px; }
@@ -242,6 +243,7 @@
 .ds-stage-card[data-ground="snow"] { background: #8ea0ae; color: #0f172a; }
 .ds-stage-card[data-ground="forest"] { background: #243028; color: #f5f0e6; }
 .ds-stage-card[data-ground="castle"] { background: #3a3842; color: #f5f0e6; }
+.ds-stage-card[data-ground="jungle"] { background: #4d7a2c; color: #fefce8; }
 .ds-stage-card small { font-size: 11px; font-weight: 700; }
 .ds-stage-card b { font-size: 20px; line-height: 1.2; }
 .ds-stage-card em { font-style: normal; font-size: 11px; font-weight: 700; opacity: .85; }

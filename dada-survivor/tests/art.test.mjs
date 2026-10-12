@@ -55,7 +55,7 @@ test('every enemy and boss wears the わるものぐんだん emblem', () => {
 test('enemies are わるものぐんだん soldiers with kana-only boss names', () => {
   const kana = /^[\u3041-\u309f\u30a0-\u30ff ]+$/;
   const bosses = Object.entries(ENEMY_TYPES).filter(([, t]) => t.name);
-  assert.equal(bosses.length, 7); // 6 ステージの ボス ＋ さばくの ちかの ドリルたいちょう
+  assert.equal(bosses.length, 8); // 6 ステージの ボス（v1.13.0 から ジャングルたいちょう も）＋ さばくの ちかの ドリルたいちょう
   for (const [, t] of bosses) assert.match(t.name, kana, t.name);
   for (const s of STAGES) if (s.mini.name) assert.match(s.mini.name, kana, s.mini.name);
   assert.equal(ENEMY_TYPES.maou.name, 'だいそうすい');

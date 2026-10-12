@@ -283,7 +283,7 @@ const villainPatch = (x, y, k = 1) => `<g data-emblem="warumono" transform="tran
 // てきごとの ワッペンの いち（むねの かた より。プレイヤーの にほんの はたと おなじ がわ）
 const PATCH_AT = {
   zombie: [21, 46], bat: [21, 46], ghost: [21, 46], skull: [16, 47], scorpion: [21, 46], mummy: [21, 46],
-  snowman: [21, 46], wolf: [26, 47], pumpkin: [21, 45.5], thrower: [21, 46], driller: [21, 46],
+  snowman: [21, 46], wolf: [26, 47], pumpkin: [21, 45.5], thrower: [21, 46], driller: [21, 46], jungler: [21, 46], walker: [32, 33, 1.3],
   ogre: [24, 48], dragon: [32, 31, 1.1], snake: [24, 45], icegiant: [21, 50], witch: [26, 47], maou: [22, 50],
 };
 const withPatch = (k, body) => body + villainPatch(...PATCH_AT[k]);
@@ -375,6 +375,20 @@ const scorpion = trooper({ uni: '#a8865a', dark: '#7a5f3c', face: vMask('km', '#
   hat: `<path d="M14 32 Q11 9 32 9 Q53 9 50 32 L47 26 Q32 19 17 26Z" fill="#c9a874" ${S}/>
     <path d="M16.5 21.5 Q32 15 47.5 21.5" fill="none" stroke="#a8865a" stroke-width="1.7"/>
     <path d="M14 30 Q9 40 13 46 L16 38Z" fill="#c9a874" ${S2}/>` });
+
+// ジャングルへい（ジャングル。めいさいの せいふく・つばの ある ぼうしに はっぱ・あかい バンダナ・なた）
+const jcamo = (id) => `<clipPath id="${id}"><ellipse cx="32" cy="52" rx="13" ry="10"/></clipPath>
+  <g clip-path="url(#${id})"><ellipse cx="25" cy="48" rx="6" ry="3.4" fill="#2f3d1c"/><ellipse cx="39" cy="54" rx="6.4" ry="3.2" fill="#6b5a2e"/><ellipse cx="30" cy="58" rx="5" ry="2.6" fill="#2f3d1c"/></g>`;
+const jungler = trooper({ uni: '#55652f', dark: '#323d1b',
+  vest: `${jcamo('jc')}<path d="M21 46 Q32 50 43 46 L42.4 49 Q32 53 21.6 49Z" fill="#b91c1c" ${S2}/>`,
+  gun: `<path d="M45 49 L60 39" ${SW(5)}/><path d="M45 49 L60 39" stroke="#cbd5e1" stroke-width="3" stroke-linecap="round"/>
+    <path d="M44 50 L47.4 47.6" stroke="#5c3d24" stroke-width="3.4" stroke-linecap="round"/>${vglove(45, 49.5, '#2f3d1c')}${vglove(21, 55.5, '#2f3d1c')}`,
+  hat: `<path d="M6 25 Q10 20 17 21 Q32 25 47 21 Q54 20 58 25 Q52 29 44 27 Q32 30 20 27 Q12 29 6 25Z" fill="#4d5a2c" ${S}/>
+    <path d="M17 22 Q16 9 32 9 Q48 9 47 22 Q32 26 17 22Z" fill="#5f6e36" ${S}/>
+    <path d="M17.4 19.6 Q32 23.6 46.6 19.6" fill="none" stroke="#b91c1c" stroke-width="2.6"/>
+    <path d="M44 12 Q52 6 56 10 Q50 11 47 16Z" fill="#22c55e" ${S2}/><path d="M45 13 L53 9" stroke="#14532d" stroke-width="1"/>
+    <ellipse cx="25" cy="14" rx="3" ry="1.6" fill="#323d1b"/><ellipse cx="38" cy="15" rx="3.4" ry="1.6" fill="#6b5a2e"/>`,
+  extra: `<path d="M22.6 38.6 L26 37.4 M38 37.4 L41.4 38.6" stroke="#323d1b" stroke-width="2" stroke-linecap="round"/>` });
 
 // ばくはへい（ばくだん もち。ゆっくり）
 const mummy = trooper({ uni: '#6b6a4a', dark: '#45442f',
@@ -494,6 +508,26 @@ const ogre = `
   <path d="M18.5 21.6 L29 25.4 M45.5 21.6 L35 25.4" fill="none" ${SW(3.4)}/>
   ${animeEye(24.5, 27.8, VE)}${animeEye(39.5, 27.8, VE)}
   <path d="M26 33.4 H38 L37 36.8 H27Z" fill="#f5f5f4" ${S2}/><path d="M30 33.4 V36.8 M34 33.4 V36.8" stroke="${O}" stroke-width=".9"/>`;
+
+// ジャングルたいちょう（2ほんあしの ジャングルメカに のった たいちょう。めいさいと はっぱ）
+const walker = `
+  <path d="M18 44 L12 56 L16 62" fill="none" ${SW(7)}/><path d="M18 44 L12 56 L16 62" fill="none" stroke="#3f4a24" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M46 44 L52 56 L48 62" fill="none" ${SW(7)}/><path d="M46 44 L52 56 L48 62" fill="none" stroke="#3f4a24" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round"/>
+  <ellipse cx="14" cy="62" rx="7" ry="2.8" fill="#1c1917" ${S2}/><ellipse cx="50" cy="62" rx="7" ry="2.8" fill="#1c1917" ${S2}/>
+  <circle cx="12" cy="56" r="3.2" fill="#52525b" ${S2}/><circle cx="52" cy="56" r="3.2" fill="#52525b" ${S2}/>
+  <path d="M6 30 Q4 22 12 20 L52 20 Q60 22 58 30 L56 44 Q32 52 8 44Z" fill="#55652f" ${S}/>
+  <clipPath id="wkc"><path d="M6 30 Q4 22 12 20 L52 20 Q60 22 58 30 L56 44 Q32 52 8 44Z"/></clipPath>
+  <g clip-path="url(#wkc)"><ellipse cx="14" cy="38" rx="8" ry="4" fill="#323d1b"/><ellipse cx="50" cy="40" rx="8" ry="4" fill="#6b5a2e"/><ellipse cx="30" cy="46" rx="9" ry="3.6" fill="#323d1b"/><ellipse cx="44" cy="26" rx="6" ry="3" fill="#6b5a2e"/></g>
+  <path d="M8 42 Q32 50 56 42" fill="none" stroke="#b91c1c" stroke-width="2.4"/>
+  <rect x="-1" y="28" width="10" height="9" rx="2" fill="#3f4a24" ${S2}/><path d="M1 32.5 H-6" ${SW(4.4)}/><path d="M1 32.5 H-6" stroke="#52525b" stroke-width="2.4" stroke-linecap="round"/>
+  <rect x="55" y="28" width="10" height="9" rx="2" fill="#3f4a24" ${S2}/><path d="M63 32.5 H70" ${SW(4.4)}/><path d="M63 32.5 H70" stroke="#52525b" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M18 22 Q18 8 32 8 Q46 8 46 22Z" fill="#a5f3fc" opacity=".55" ${S2}/>
+  ${shadedCircle('wk', 32, 17, 8.5, VSKIN, VSKIN2)}
+  <path d="M23 14 Q24 6 32 6 Q41 6 41.4 12 Q38 10 33 11.6 Q27 10 23 14Z" fill="#7f1d1d" ${S2}/><circle cx="37" cy="9" r="1.4" fill="#d6a548"/>
+  <path d="M25 15.6 L30 17 M39 15.6 L34 17" ${SW(1.6)}/>
+  <circle cx="28.4" cy="19" r="1.5" fill="${VE}"/><circle cx="35.6" cy="19" r="1.5" fill="${VE}"/>
+  <path d="M29.4 23 H34.6" ${SW(1.2)}/>
+  <path d="M10 20 Q6 12 12 10 Q12 16 16 18Z M54 20 Q58 12 52 10 Q52 16 48 18Z M20 20 Q20 14 25 13 Q23 17 25 20Z" fill="#22c55e" ${S2}/>`;
 
 // せんしゃたいちょう（せんしゃに のった たいちょう）
 const dragon = `
@@ -1062,6 +1096,16 @@ const GROUNDS = {
     ${tuft(20, 80, '#121a14')}${tuft(96, 60, '#121a14')}${tuft(140, 150, '#121a14')}
     ${shroom(60, 30)}${shroom(120, 104)}${shroom(28, 120)}
     <circle cx="100" cy="24" r="1.2" fill="#d6d3d1" opacity=".35"/><circle cx="40" cy="60" r="1" fill="#d6d3d1" opacity=".3"/>`),
+  // ジャングル：こけの ゆかに はっぱ・シダ・つる・どろみず・ふるい いせきの いし（てきの みどりと まざらない ように あかるめ）
+  jungle: tile(`<rect width="160" height="160" fill="#7a9a52"/>
+    <ellipse cx="44" cy="40" rx="36" ry="22" fill="#86a95c"/><ellipse cx="122" cy="120" rx="40" ry="24" fill="#86a95c"/>
+    <path d="M96 22 Q118 14 140 24 Q150 34 136 40 Q114 44 100 36 Q88 30 96 22Z" fill="#8a6a3e"/><path d="M104 28 Q118 24 132 30" fill="none" stroke="#a5f3fc" stroke-width="2" opacity=".55" stroke-linecap="round"/>
+    <path d="M0 96 Q24 88 40 100 T80 98 T120 104 T160 96" fill="none" stroke="#4d7a2c" stroke-width="3" stroke-linecap="round"/>
+    ${[[12, 100], [52, 99], [92, 101], [134, 101]].map(([x, y]) => `<ellipse cx="${x}" cy="${y + 4}" rx="4" ry="2.4" fill="#5d9a3a" transform="rotate(30 ${x} ${y + 4})"/>`).join('')}
+    <g transform="translate(30 140)"><path d="M0 0 Q-10 -10 -16 -8 M0 0 Q-6 -14 -2 -20 M0 0 Q8 -14 14 -14 M0 0 Q12 -6 18 -2" fill="none" stroke="#3f6b23" stroke-width="3" stroke-linecap="round"/></g>
+    <g transform="translate(140 72)"><path d="M0 0 Q-10 -10 -16 -8 M0 0 Q-6 -14 -2 -20 M0 0 Q8 -14 14 -14" fill="none" stroke="#3f6b23" stroke-width="3" stroke-linecap="round"/></g>
+    <g transform="translate(70 60)"><rect x="-12" y="-8" width="24" height="16" rx="2" fill="#a8a29e" stroke="#57534e" stroke-width="2"/><path d="M-12 0 H12 M0 -8 V0 M-6 0 V8 M6 0 V8" stroke="#78716c" stroke-width="1.4"/><path d="M-12 -8 Q-4 -12 4 -8" fill="none" stroke="#4d7a2c" stroke-width="2.4" stroke-linecap="round"/></g>
+    <circle cx="20" cy="70" r="2.2" fill="#fde047"/><circle cx="23" cy="72" r="1.4" fill="#f97316"/><circle cx="112" cy="146" r="2.2" fill="#f472b6"/><circle cx="115" cy="144" r="1.3" fill="#fde047"/>`),
   castle: tile(`<rect width="160" height="160" fill="#3a3842"/>
     <path d="M0 0 H80 V80 H0Z M80 80 H160 V160 H80Z" fill="#2e2c36"/>
     <path d="M0 40 H160 M0 80 H160 M0 120 H160 M40 0 V40 M120 0 V40 M0 40 M80 40 V80 M40 80 V120 M120 80 V120 M80 120 V160" stroke="#1c1a22" stroke-width="3"/>
@@ -1103,12 +1147,12 @@ const SOURCES = {
   ally: wrap(allySoldier), medic: wrap(medic), container: crate(false), containerOpen: crate(true), whistle, healPlus,
   outpost, hut, kamakura, hatch: hatch(false), hatchOpen: hatch(true), wallL: stretch(wallSide(true)), wallR: stretch(wallSide(false)), wallT: stretch(wallEnd(true)), wallB: stretch(wallEnd(false)),
   cellA: cell(['soldier', 'soldier']), cellB: cell(['researcher', 'medic']), cellC: cell(['soldier', 'researcher']), cellOpen: cell([], true), exitStairs,
-  driller: wrap(withPatch('driller', driller)), laserGun, lbullet, lrocket, modeMg, modeBeam, modeRk: lrocket,
+  driller: wrap(withPatch('driller', driller)), jungler: wrap(withPatch('jungler', jungler)), walker: wrap(withPatch('walker', walker), '-8 0 80 66'), laserGun, lbullet, lrocket, modeMg, modeBeam, modeRk: lrocket,
   gun, shotgun, bazooka, dual, gatling, rocket, mega, bullet, pellet, blast,
   sword: wrap(sword), armor: wrap(armor), shoes: wrap(shoes), charm: wrap(charm), chest: wrap(chest), chestOpen: wrap(chestOpen, '0 -4 64 68'),
   ...Object.fromEntries(Object.entries(GROUNDS).map(([k, v]) => [`ground-${k}`, v])),
 };
-const FLASHABLE = ['zombie', 'bat', 'ghost', 'skull', 'ogre', 'dragon', 'scorpion', 'mummy', 'snake', 'snowman', 'wolf', 'icegiant', 'pumpkin', 'witch', 'maou', 'thrower', 'alien', 'driller'];
+const FLASHABLE = ['zombie', 'bat', 'ghost', 'skull', 'ogre', 'dragon', 'scorpion', 'mummy', 'snake', 'snowman', 'wolf', 'icegiant', 'pumpkin', 'witch', 'maou', 'thrower', 'alien', 'driller', 'jungler', 'walker'];
 
 const toUrl = svg => `url("data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}")`;
 

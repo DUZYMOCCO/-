@@ -41,6 +41,8 @@ export const ENEMY_TYPES = {
   pumpkin:  { hp: 22, speed: 50, dmg: 10, xp: 2, r: 16, size: 34 },
   // けんきゅうじょ（ステージ1）だけ：ばくだんなげへい（はなれて とまり、ばくだんを なげる。いちどに cap にんまで）
   thrower:  { hp: 16, speed: 48, dmg: 8,  xp: 2, r: 16, size: 36, ranged: true, cap: 4 },
+  // ジャングル（ステージ6）：めいさいの ジャングルへい（なた もち・すこし かたい）
+  jungler:  { hp: 24, speed: 54, dmg: 11, xp: 2, r: 16, size: 36 },
   // ボトルから とびだす うちゅうじん（わるものぐんだん では ないので ワッペンなし）
   alien:    { hp: 14, speed: 74, dmg: 7,  xp: 4, r: 14, size: 34, noEmblem: true },
   // ボス（hp は ステージがわで きめる）
@@ -52,6 +54,8 @@ export const ENEMY_TYPES = {
   icegiant: { speed: 36, dmg: 28, xp: 40, r: 50, size: 110, name: 'ゆきやまたいちょう' },
   witch:    { speed: 52, dmg: 28, xp: 40, r: 40, size: 96,  name: 'かげの たいちょう' },
   maou:     { speed: 40, dmg: 32, xp: 40, r: 52, size: 116, name: 'だいそうすい' },
+  // ジャングルの ボス：2ほんあしの ジャングルメカに のった たいちょう
+  walker:   { speed: 44, dmg: 30, xp: 40, r: 50, size: 112, name: 'ジャングルたいちょう' },
 };
 
 // enemies: [しゅるい, でてくる びょう, でやすさ]
@@ -80,6 +84,10 @@ export const STAGES = [
   { id: 5, name: 'まおうじょう', ground: 'castle', hpMul: 2.8, spawnMul: 1.4, dmgMul: 1.05,
     enemies: [['zombie', 0, 8], ['skull', 0, 4], ['wolf', 30, 5], ['mummy', 60, 5], ['pumpkin', 120, 5], ['snowman', 180, 4]],
     mini: { type: 'dragon', hp: 7200 }, boss: { type: 'maou', hp: 18000 } },
+  // v1.13.0：まおうじょうの あと（ステージ5 クリアで ひらく）。わるものぐんだんの ジャングルの きち
+  { id: 6, name: 'ジャングル', ground: 'jungle', hpMul: 3.1, spawnMul: 1.45, dmgMul: 1.15, bgm: 'jungle',
+    enemies: [['jungler', 0, 10], ['bat', 30, 5], ['wolf', 60, 5], ['ghost', 90, 5], ['skull', 150, 5]],
+    mini: { type: 'jungler', hp: 8000, big: 2.5, name: 'でかジャングルへい' }, boss: { type: 'walker', hp: 20000 } },
 ];
 
 export function stageById(id) { return STAGES.find(s => s.id === id) || STAGES[0]; }

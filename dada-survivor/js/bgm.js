@@ -50,6 +50,23 @@ export const SONGS = {
     ],
     hats16: true, arpFrom: 0,
   },
+  // ジャングル（ステージ6）：128 BPM・Dm – C – F – C、ペンタトニックの メロディと ポコポコ たいこ（toms）
+  jungle: {
+    bpm: 128,
+    chords: [
+      { root: 50, notes: [62, 65, 69] },
+      { root: 48, notes: [60, 64, 67] },
+      { root: 53, notes: [60, 65, 69] },
+      { root: 48, notes: [60, 64, 67] },
+    ],
+    lead: [
+      [[0, 74, 1], [1, 77, 1], [2, 79, 2], [4, 81, 1], [5, 79, 1], [6, 77, 2]],
+      [[0, 76, 1], [1, 79, 1], [2, 76, 1], [3, 72, 1], [4, 74, 2], [6, 72, 2]],
+      [[0, 74, 1], [1, 77, 1], [2, 81, 2], [4, 84, 1], [5, 81, 1], [6, 79, 2]],
+      [[0, 81, 1], [1, 79, 1], [2, 77, 1], [3, 76, 1], [4, 74, 3]],
+    ],
+    hats16: false, arpFrom: 2, toms: true,
+  },
 };
 
 /**
@@ -66,6 +83,8 @@ export function songEvents(song, bar) {
     ev.push({ kind: 'hat', t: b * beat + e8, open: true });                   // うらの ハイハット
     if (song.hats16) { ev.push({ kind: 'hat', t: b * beat + e16 }); ev.push({ kind: 'hat', t: b * beat + 3 * e16 }); }
   }
+  // ジャングルの ポコポコ たいこ（16ぶの うらに やさしい スネア）
+  if (song.toms) for (const i of [3, 6, 10, 13, 15]) ev.push({ kind: 'snare', t: i * e16, soft: true });
   if (song.hats16 && bar % 4 === 3) for (let i = 0; i < 4; i++) ev.push({ kind: 'snare', t: 3 * beat + i * e16, soft: true }); // フィル
   // ベース：8ぶで ルート ↔ オクターブ（ぴょんぴょん）
   for (let i = 0; i < 8; i++) ev.push({ kind: 'bass', t: i * e8, note: ch.root - 12 + (i % 2 ? 12 : 0), len: e8 * 0.8 });
@@ -145,9 +164,11 @@ export function makeBus(ctx, dest) {
 
 /** ゲームで つかう BGM プレイヤー */
 export class PopBGM {
-  constructor(sound) { this.sound = sound; this.wanted = false; this.mode = 'main'; this.timer = null; this.bus = null; }
-  start() {
-    this.mode = 'main';
+  constructor(sound) { this.sound = sound; this.wanted = false; this.mode = 'main'; this.theme = 'main'; this.timer = null; this.bus = null; }
+  /** theme: ステージの きょく（SONGS に ある なまえ。ないときは main） */
+  start(theme = 'main') {
+    this.theme = SONGS[theme] && theme !== 'boss' ? theme : 'main';
+    this.mode = this.theme;
     if (this.wanted && this.bus) return; // もう ながれている（もういちど あそぶ ときは そのまま つづける）
     this.wanted = true; this.bar = 0; this.next = 0;
     if (!this.timer) this.timer = setInterval(() => this.tick(), 50);
@@ -165,7 +186,7 @@ export class PopBGM {
     }
   }
   /** ボスが いる あいだは はげしい ほうへ（つぎの しょうせつから） */
-  setBoss(on) { this.mode = on ? 'boss' : 'main'; }
+  setBoss(on) { this.mode = on ? 'boss' : this.theme; }
   tick() {
     const s = this.sound, ctx = s.ctx;
     const ok = this.wanted && ctx && ctx.state === 'running' && !s.isMuted && !s.pageHidden && s.bgmVolume > 0 && s.limiter;

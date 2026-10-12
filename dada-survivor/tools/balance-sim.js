@@ -5,7 +5,7 @@
  *   sim.campaign({ difficulty: 'easy', bot: 'kid', runs: 5 });
  * セーブデータは上書きするので、終わったら sim.cleanup() で消す。
  */
-import * as rules from '../js/rules.js?v=201';
+import * as rules from '../js/rules.js?v=202';
 import { storage } from '../../common/js/storage.js';
 
 const SAVE_KEY = 'dada_survivor_save';
@@ -98,7 +98,8 @@ export function campaign({ difficulty = 'easy', bot = 'kid', runs = 5, fresh = t
   const g = game();
   if (fresh) { g.save = rules.normalizeSave(null); g.save.difficulty = difficulty; }
   const log = [];
-  for (let n = 0; n < runs && !g.save.stageClears[5]; n++) {
+  const last = rules.STAGES[rules.STAGES.length - 1].id;
+  for (let n = 0; n < runs && !g.save.stageClears[last]; n++) {
     const st = g.save.stage;
     const chars = rules.CHARACTERS.filter(c => rules.charUnlocked(g.save, c));
     g.save.character = chars[chars.length - 1].id;
