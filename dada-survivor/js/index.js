@@ -13,13 +13,13 @@ import {
   SQUAD, allyDamage, squadSlot, canWhistle, healAmount,
   QUEST, CAMP, underHalfW, clampUnder, hutSpot, LASER_MODES, nextLaserMode, squadRoom, beamHits, MAX_LEVEL as MAXLV,
   enemyDmgMul, startWeapons, CITY_FIRE, burnSites, TOWER, MANSION, FORTRESS, fortressBossScale, trailSteps, missileTargets, towerSpot, rollHeli, heliDamage, floorName,
-} from './rules.js?v=214';
-import { DecorField } from './decor.js?v=214';
-import { EnemyGrid, nearestN } from './grid.js?v=214';
-import { preloadArt, art } from './art.js?v=214';
-import { Stage } from './stage.js?v=214';
-import { menuMethods, iconHtml } from './menus.js?v=214';
-import { PopBGM, playWhistle } from './bgm.js?v=214';
+} from './rules.js?v=215';
+import { DecorField } from './decor.js?v=215';
+import { EnemyGrid, nearestN } from './grid.js?v=215';
+import { preloadArt, art } from './art.js?v=215';
+import { Stage } from './stage.js?v=215';
+import { menuMethods, iconHtml } from './menus.js?v=215';
+import { PopBGM, playWhistle } from './bgm.js?v=215';
 
 const SAVE_KEY = 'dada_survivor_save';
 const TAU = Math.PI * 2;
@@ -45,7 +45,7 @@ export const DadaSurvivorGame = {
 
   // 起動時にこのゲームのCSSを自分で読み込む（?v= はこのフォルダ内で管理）。ハブが init 前に await する
   prepare() {
-    return loadCss(new URL('../css/dada-survivor.css?v=214', import.meta.url).href);
+    return loadCss(new URL('../css/dada-survivor.css?v=215', import.meta.url).href);
   },
 
   init(container, onBackToHub) {
@@ -588,10 +588,11 @@ export const DadaSurvivorGame = {
     // たからべや：ブラックロボを たおすと ひらく。さわると おたから
     if (q.vault && q.vault.open && !q.vault.taken && dist2(p, q.vault) < T.vaultR ** 2) this.takeVault();
     if (T.fortress) this.updateFortress();
-    if (q.stairs && q.stairs.hidden && q.left <= 0 && !(q.pending > 0) && q.floor <= T.floors && !(q.vault && !q.vault.taken)) {
+    if (q.stairs && q.stairs.hidden && q.left <= 0 && !(q.pending > 0) && !(q.foe && q.foe.hp > 0) && q.floor <= T.floors && !(q.vault && !q.vault.taken)) {
       q.stairs.hidden = false; q.stairs.mark = true;
       sound.playHeal();
-      this.showBanner(q.floor === T.floors && q.cells.some(c => !c.open) ? 'かいだんが でた！ でも さきに ろうやの なかまを たすけよう！' : 'かいだんが でた！ うえへ いこう！', 2600);
+      if (T.fortress && q.floor === 5) this.showBanner('そうすいメカを たおした！ クリア！ でぐちで おわる？ かいだんの うえには きょだいきんこ！', 4200);
+      else this.showBanner(q.floor === T.floors && q.cells.some(c => !c.open) ? 'かいだんが でた！ でも さきに ろうやの なかまを たすけよう！' : 'かいだんが でた！ うえへ いこう！', 2600);
     }
     if (q.stairs && !q.stairs.hidden && dist2(p, q.stairs) < T.stairsR ** 2) { this.goFloor(q.floor + 1); return; }
     for (const c of q.cells) {
@@ -699,6 +700,16 @@ export const DadaSurvivorGame = {
       this.showBanner(`きんこの まえに ⚠ ブラックロボが ${T.robo.total}たい！ ${T.robo.wave}たいずつ くるよ。あかい しるしから にげて！`, 3800);
       return;
     }
+    if (f === 6) {
+      // きょだいきんこ。ロケットけいの ぶきが ない ときは スーパーミサイルを ひろう（こわせない ことが ない ように）
+      const M = T.mega, e = this.spawnEnemy('megavault', 1, { ...ENEMY_TYPES.megavault, hp: M.hits, boss: true, xp: 0 }, { x: M.x, y: M.y });
+      e.mega = M.coins; e.hx = M.x; e.hy = M.y; q.boxes = [e]; q.mega = e;
+      const hasRocket = Object.keys(r.weapons).some(id => WEAPONS[id].fire === 'rocket' && !WEAPONS[id].mode) || r.weapons.laser; // レーザーじゅうは ロケットランチャー モードで こわせる
+      if (!hasRocket) { r.weapons.supermissile = MAXLV; this.refreshSkills(); }
+      this.addFortressExit();
+      this.showBanner(hasRocket ? (r.weapons.laser ? 'きょだいきんこ！ でかいミサイルで こわそう！ レーザーじゅうは ロケットランチャー モードに してね' : 'きょだいきんこ！ でかいミサイルで こわそう！（ほかの ぶきは きかないよ）') : 'きょだいきんこ！ スーパーミサイルを ひろった！ でかいミサイルで こわそう！', 4200);
+      return;
+    }
     if (f === 4) {
       q.boxes = T.boxes.map(b => {
         const e = this.spawnEnemy('coinbox', 1, { ...ENEMY_TYPES.coinbox, hp: b.hp * r.diff.enemyHp }, { x: b.x, y: b.y });
@@ -713,9 +724,16 @@ export const DadaSurvivorGame = {
     const spec = T.boss, bt = bossType(spec, r.diff, r.stageDef);
     bt.hp *= fortressBossScale(r.level, T);
     const e = this.spawnEnemy(spec.type, 1, bt, { ...spec.at });
-    e.final = true; e.mR = T.bossMissile; e.cd = T.bossMissile.firstCd; q.foe = e;
+    e.fBoss = true; e.mR = T.bossMissile; e.cd = T.bossMissile.firstCd; q.foe = e;
     for (const sx of [-1, 1]) r.items.push({ kind: 'meat', x: sx * (U.halfW - 50), y: U.bottom - 60 });
     this.showBanner(`めいれいしつ！ ⚠ ${e.T.name}！ たおせば クリア！ あかい しるしに ミサイルが おちるよ！`, 3800);
+  },
+
+  /** v1.20.0 ようさいの でぐち（さわると ステージクリア） */
+  addFortressExit() {
+    const r = this.run, q = r.quest;
+    q.exit = { kind: 'roofExit', ...q.T.exit, w: 80, h: 80, mark: true };
+    r.props.push(q.exit);
   },
 
   spawnRoboWave() {
@@ -746,6 +764,7 @@ export const DadaSurvivorGame = {
 
   exitTower() {
     const r = this.run, q = r.quest, s = q.surface, p = r.player;
+    if (q.T?.fortress) { this.endRun(true); return; } // v1.20.0 ようさいの でぐち＝ステージクリア
     for (const g of r.gems) r.xp += g.v;
     for (const it of r.items) if (it.kind === 'coin') r.coins++;
     r.enemies = s.enemies; r.gems = s.gems; r.items = s.items; r.props = s.props;
@@ -1266,6 +1285,16 @@ export const DadaSurvivorGame = {
 
   hitEnemy(e, dmg, fromX = null, fromY = null, kbTime = 0.12) {
     if (e.hp <= 0) return;
+    if (e.T.rocketOnly) {
+      // きょだいきんこ：ロケットの ばくはつ 1ぱつで 1ダメージ。ほかは きかない
+      const s = this.rocketShot;
+      if (!s || e.lastShot === s) return;
+      e.lastShot = s; e.hp -= 1; e.flash = 0.1;
+      this.stage.text(e.x, e.y - 60, `のこり ${Math.max(0, e.hp)}`, true);
+      sound.play('hit', { volume: 0.4, gap: 0.05 });
+      if (e.hp <= 0) this.killEnemy(e);
+      return;
+    }
     const d = Math.round(dmg * (0.9 + Math.random() * 0.2));
     e.hp -= d; e.flash = 0.1;
     if (fromX !== null && !e.T.boss) {
@@ -1287,6 +1316,13 @@ export const DadaSurvivorGame = {
     const r = this.run;
     r.kills++;
     if (e.guard && r.quest) r.quest.left--;
+    if (e.mega) {
+      r.coins += e.mega; r.boss = null; this.el.boss.classList.add('hidden'); this.bgm.setBoss(false);
+      for (let i = 0; i < 30; i++) r.items.push({ kind: 'coin', x: e.x + (Math.random() - 0.5) * 260, y: e.y + 60 + Math.random() * 160 });
+      this.stage.fx('boom', e.x, e.y, 300); this.stage.flash(); this.stage.shake(12); sound.playBomb(); sound.playHeal();
+      this.showBanner(`きょだいきんこが こわれた！ コイン ${e.mega}まい！ でぐちで おわろう`, 4200);
+      return;
+    }
     if (e.box) {
       // コインばこが あいた（コインが ばらばら でて くる。かずは まとめて たす）
       r.coins += e.box;
@@ -1307,6 +1343,7 @@ export const DadaSurvivorGame = {
       r.items.push({ kind: 'meat', x: e.x, y: e.y });
       if (e.under) { this.underBossDown(); return; }
       if (e.inMansion) { this.mansionBossDown(e); return; }
+      if (e.fBoss) { r.won = true; r.quest.foe = null; this.addFortressExit(); return; } // v1.20.0 クリア きまり。でぐち か うえの きょだいきんこへ
       this.showBanner(`${e.T.name}を たおした！ たからばこ ゲット！`);
       return;
     }
@@ -1366,7 +1403,7 @@ export const DadaSurvivorGame = {
           s.life = 0;
           const rad = s.radius * (r.stats.boom || 1);
           this.stage.fx(s.fx || 'boom', s.x, s.y, rad * 2.1);
-          this.areaDamage(s.x, s.y, rad, s.dmg);
+          this.rocketShot = s; this.areaDamage(s.x, s.y, rad, s.dmg); this.rocketShot = null;
           this.stage.shake(s.art === 'smissile' ? 10 : s.art === 'mega' ? 7 : 3);
           sound.playBomb();
         }
@@ -1654,7 +1691,8 @@ export const DadaSurvivorGame = {
       }
       if (q.foe && q.foe.hp > 0) return null; // ボスと たたかう だけ
       const bx = q.boxes && q.boxes.find(b => b.hp > 0);
-      if (bx) return { x: bx.x, y: bx.y + 120, label: 'はこを うて！' };
+      if (bx) return { x: bx.x, y: bx.y + (bx.mega ? 260 : 120), label: bx.mega ? 'でかいミサイルで うて！' : 'はこを うて！' };
+      if (q.T?.fortress && q.floor === 6 && q.exit) return { x: q.exit.x, y: q.exit.y, label: 'でぐち' };
       if (q.vault && q.vault.open && !q.vault.taken) return { x: q.vault.x, y: q.vault.y, label: 'たからべや' };
       const c = q.cells.find(c => !c.open);
       if (c) return { x: c.x, y: c.y, label: 'ろうや' };

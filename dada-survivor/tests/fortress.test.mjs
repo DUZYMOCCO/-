@@ -18,8 +18,8 @@ test('stage 8 わるものの ようさい: after stage 7, hardest, fortress que
 });
 
 test('fortress rooms: ろうか → ぶきこ(20) → ブラックロボ 20 (waves) → きんこ 100+230 → めいれいしつ', () => {
-  assert.equal(FORTRESS.floors, 5);
-  assert.deepEqual(FORTRESS.names.map((_, i) => floorName(i + 1, FORTRESS)), ['ろうか', 'ぶきこ', 'きんこの まえ', 'きんこ', 'めいれいしつ']);
+  assert.equal(FORTRESS.floors, 6);
+  assert.deepEqual(FORTRESS.names.map((_, i) => floorName(i + 1, FORTRESS)), ['ろうか', 'ぶきこ', 'きんこの まえ', 'きんこ', 'めいれいしつ', 'きょだいきんこ']);
   for (const n of FORTRESS.names) assert.match(n, kana);
   assert.equal(FORTRESS.foes[1], 20);
   assert.equal(FORTRESS.robo.total, 20); assert.ok(FORTRESS.robo.wave <= 5, 'いちどに でるのは すこし');
@@ -49,4 +49,17 @@ test('v1.19.1: fortress door opens at 1:15; boss HP eases a bit for low-level ea
   assert.equal(fortressBossScale(FORTRESS.boss.levelRef), 1);
   assert.equal(fortressBossScale(1), FORTRESS.boss.minHp);
   assert.ok(FORTRESS.boss.minHp >= 0.7, 'ボスは つよい まま');
+});
+
+test('v1.20.0: wider rooms + きょだいきんこ above the command room (rockets only, 20 hits, 10000 coins)', async () => {
+  const { WEAPONS } = await import('../js/rules.js');
+  assert.ok(FORTRESS.room.halfW >= 500 && FORTRESS.room.bottom - FORTRESS.room.top >= 1000, 'ひろい へや');
+  for (const b of FORTRESS.boxes) assert.ok(Math.abs(b.x) < FORTRESS.room.halfW - 60 && b.y > FORTRESS.room.top);
+  assert.ok(FORTRESS.stairs.y > FORTRESS.room.top && FORTRESS.boss.at.y > FORTRESS.room.top);
+  assert.deepEqual({ hits: FORTRESS.mega.hits, coins: FORTRESS.mega.coins }, { hits: 20, coins: 10000 });
+  assert.equal(ENEMY_TYPES.megavault.rocketOnly, true); assert.equal(ENEMY_TYPES.megavault.dmg, 0); assert.equal(ENEMY_TYPES.megavault.speed, 0);
+  assert.equal(floorName(6, FORTRESS), 'きょだいきんこ');
+  const rockets = Object.entries(WEAPONS).filter(([, w]) => w.fire === 'rocket').map(([id]) => id);
+  for (const id of ['bazooka', 'supermissile']) assert.ok(rockets.includes(id), id);
+  assert.ok(svgOf(art('megavault')).includes('data-emblem="warumono"'));
 });

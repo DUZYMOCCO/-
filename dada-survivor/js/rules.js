@@ -76,6 +76,8 @@ export const ENEMY_TYPES = {
   supreme:  { speed: 44, dmg: 34, xp: 40, r: 56, size: 136, name: 'そうすいメカ', missiles: true },
   // v1.19.0 きんこの コインばこ（うごかない・いたく ない。うって あける）
   coinbox:  { hp: 1, speed: 0, dmg: 0, xp: 0, r: 34, size: 84, name: 'コインばこ' },
+  // v1.20.0 きょだいきんこ（ロケットけい だけ きく。1ぱつ 1ダメージ）
+  megavault: { hp: 20, speed: 0, dmg: 0, xp: 0, r: 110, size: 280, name: 'きょだいきんこ', rocketOnly: true },
 };
 
 // enemies: [しゅるい, でてくる びょう, でやすさ]
@@ -669,17 +671,20 @@ export const MANSION = {
 /**
  * v1.19.0 ステージ8 わるものの ようさい（なかは へやが 5つ。じかんは はんぶんの はやさ）。
  * 1 ろうか（ザコ いっぱい）→ 2 ぶきこ（20たい）→ 3 ブラックロボ 20たい（wave たいずつ。のこりが 2 より すくなく なったら つぎ）
- * → 4 きんこ（コインばこ 2こ：70まい と 120まい。うって あける）→ 5 めいれいしつ（そうすいメカ＝たおすと クリア）。
+ * → 4 きんこ（コインばこ 2こ：100まい と 230まい。うって あける）→ 5 めいれいしつ（そうすいメカ＝たおすと クリア）。
  * ようさいに はいらずに 5:00 に なったら、そうすいメカが そとに でて くる（たおせば クリア）
  */
 export const FORTRESS = {
   fortress: true, at: 75, dist0: 560, dist1: 780, doorR: 54, stairsR: 50, cellR: 72, heliR: 80,
-  floors: 5, foes: [14, 20, 0, 0, 0], foeHp: 1.4, names: ['ろうか', 'ぶきこ', 'きんこの まえ', 'きんこ', 'めいれいしつ'],
-  room: { halfW: 340, roomHalfW: 340, roomY: -1e9, top: -680, bottom: 140 },
-  stairs: { x: 0, y: -600 }, cells: [], pad: TOWER.pad, roofExit: TOWER.roofExit, heli: TOWER.heli,
+  floors: 6, foes: [14, 20, 0, 0, 0, 0], foeHp: 1.4, names: ['ろうか', 'ぶきこ', 'きんこの まえ', 'きんこ', 'めいれいしつ', 'きょだいきんこ'],
+  // v1.20.0 へやを ひろく（はば 680→1040・おくゆき 820→1100）
+  room: { halfW: 520, roomHalfW: 520, roomY: -1e9, top: -960, bottom: 140 },
+  stairs: { x: 0, y: -870 }, exit: { x: -380, y: 40 }, cells: [], pad: TOWER.pad, roofExit: TOWER.roofExit, heli: TOWER.heli,
   robo: { total: 20, wave: 4, hp: 420, cd: 6.5, firstCd: 2.5 },
-  boxes: [{ x: -120, y: -320, coins: 100, hp: 1400 }, { x: 120, y: -320, coins: 230, hp: 2200 }],
-  boss: { type: 'supreme', hp: 33000, at: { x: 0, y: -460 }, levelRef: 31, minHp: 0.75 },
+  boxes: [{ x: -200, y: -420, coins: 100, hp: 1400 }, { x: 200, y: -420, coins: 230, hp: 2200 }],
+  // v1.20.0 めいれいしつの うえの きょだいきんこ：ロケットけいの ぶき（バズーカ・でかロケット・スーパーミサイル・レーザーの ロケット）でだけ こわれる。hits かい あてると コイン coins まい
+  mega: { x: 0, y: -520, hits: 20, coins: 10000 },
+  boss: { type: 'supreme', hp: 33000, at: { x: 0, y: -620 }, levelRef: 31, minHp: 0.75 },
   bossMissile: { n: 5, spread: 120, flight: 1.5, blast: 56, dmg: 12, range: 700, cd: 3.2, firstCd: 2.8 },
 };
 /** v1.19.1 そうすいメカの HP の ばいりつ（プレイヤーの レベル / levelRef。minHp〜1） */
