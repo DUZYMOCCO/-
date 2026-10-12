@@ -673,15 +673,17 @@ export const MANSION = {
  * ようさいに はいらずに 5:00 に なったら、そうすいメカが そとに でて くる（たおせば クリア）
  */
 export const FORTRESS = {
-  fortress: true, at: 150, dist0: 560, dist1: 780, doorR: 54, stairsR: 50, cellR: 72, heliR: 80,
+  fortress: true, at: 75, dist0: 560, dist1: 780, doorR: 54, stairsR: 50, cellR: 72, heliR: 80,
   floors: 5, foes: [14, 20, 0, 0, 0], foeHp: 1.4, names: ['ろうか', 'ぶきこ', 'きんこの まえ', 'きんこ', 'めいれいしつ'],
   room: { halfW: 340, roomHalfW: 340, roomY: -1e9, top: -680, bottom: 140 },
   stairs: { x: 0, y: -600 }, cells: [], pad: TOWER.pad, roofExit: TOWER.roofExit, heli: TOWER.heli,
   robo: { total: 20, wave: 4, hp: 420, cd: 6.5, firstCd: 2.5 },
   boxes: [{ x: -120, y: -320, coins: 70, hp: 1400 }, { x: 120, y: -320, coins: 120, hp: 2200 }],
-  boss: { type: 'supreme', hp: 33000, at: { x: 0, y: -460 } },
+  boss: { type: 'supreme', hp: 33000, at: { x: 0, y: -460 }, levelRef: 31, minHp: 0.75 },
   bossMissile: { n: 5, spread: 120, flight: 1.5, blast: 56, dmg: 12, range: 700, cd: 3.2, firstCd: 2.8 },
 };
+/** v1.19.1 そうすいメカの HP の ばいりつ（プレイヤーの レベル / levelRef。minHp〜1） */
+export function fortressBossScale(level, T = FORTRESS) { return Math.max(T.boss.minHp, Math.min(1, level / T.boss.levelRef)); }
 /** v1.17.1 みちの あしあとの ばしょ（スタートから d までの きょり。はじめと おわりは あける） */
 export function trailSteps(d, step = 100, start = 110, end = 90) {
   const out = [];

@@ -12,14 +12,14 @@ import {
   newQuality, adaptQuality, THROW, fireRadius, capType, gatherCount, BOTTLE, bottleOutcome,
   SQUAD, allyDamage, squadSlot, canWhistle, healAmount,
   QUEST, CAMP, underHalfW, clampUnder, hutSpot, LASER_MODES, nextLaserMode, squadRoom, beamHits, MAX_LEVEL as MAXLV,
-  enemyDmgMul, startWeapons, CITY_FIRE, burnSites, TOWER, MANSION, FORTRESS, trailSteps, missileTargets, towerSpot, rollHeli, heliDamage, floorName,
-} from './rules.js?v=212';
-import { DecorField } from './decor.js?v=212';
-import { EnemyGrid, nearestN } from './grid.js?v=212';
-import { preloadArt, art } from './art.js?v=212';
-import { Stage } from './stage.js?v=212';
-import { menuMethods, iconHtml } from './menus.js?v=212';
-import { PopBGM, playWhistle } from './bgm.js?v=212';
+  enemyDmgMul, startWeapons, CITY_FIRE, burnSites, TOWER, MANSION, FORTRESS, fortressBossScale, trailSteps, missileTargets, towerSpot, rollHeli, heliDamage, floorName,
+} from './rules.js?v=213';
+import { DecorField } from './decor.js?v=213';
+import { EnemyGrid, nearestN } from './grid.js?v=213';
+import { preloadArt, art } from './art.js?v=213';
+import { Stage } from './stage.js?v=213';
+import { menuMethods, iconHtml } from './menus.js?v=213';
+import { PopBGM, playWhistle } from './bgm.js?v=213';
 
 const SAVE_KEY = 'dada_survivor_save';
 const TAU = Math.PI * 2;
@@ -45,7 +45,7 @@ export const DadaSurvivorGame = {
 
   // 起動時にこのゲームのCSSを自分で読み込む（?v= はこのフォルダ内で管理）。ハブが init 前に await する
   prepare() {
-    return loadCss(new URL('../css/dada-survivor.css?v=212', import.meta.url).href);
+    return loadCss(new URL('../css/dada-survivor.css?v=213', import.meta.url).href);
   },
 
   init(container, onBackToHub) {
@@ -709,7 +709,10 @@ export const DadaSurvivorGame = {
       this.showBanner('きんこ！ かぎの かかった はこが 2つ。はこを うって あけよう！', 3600);
       return;
     }
-    const spec = T.boss, e = this.spawnEnemy(spec.type, 1, bossType(spec, r.diff, r.stageDef), { ...spec.at });
+    // v1.19.1 はやく はいった（レベルが ひくい）ときは ボスの HP を すこし へらす（levelRef で 100%、さいていでも minHp）
+    const spec = T.boss, bt = bossType(spec, r.diff, r.stageDef);
+    bt.hp *= fortressBossScale(r.level, T);
+    const e = this.spawnEnemy(spec.type, 1, bt, { ...spec.at });
     e.final = true; e.mR = T.bossMissile; e.cd = T.bossMissile.firstCd; q.foe = e;
     for (const sx of [-1, 1]) r.items.push({ kind: 'meat', x: sx * (U.halfW - 50), y: U.bottom - 60 });
     this.showBanner(`めいれいしつ！ ⚠ ${e.T.name}！ たおせば クリア！ あかい しるしに ミサイルが おちるよ！`, 3800);

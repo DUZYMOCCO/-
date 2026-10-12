@@ -41,3 +41,12 @@ test('fortress art: building, coin box, supreme boss with villain emblem', () =>
   }
   assert.notEqual(svgOf(art('supreme')), svgOf(art('blackrobo')));
 });
+
+test('v1.19.1: fortress door opens at 1:15; boss HP eases a bit for low-level early entry but stays hard', async () => {
+  const { fortressBossScale } = await import('../js/rules.js');
+  assert.equal(FORTRESS.at, 75);
+  assert.equal(fortressBossScale(40), 1);
+  assert.equal(fortressBossScale(FORTRESS.boss.levelRef), 1);
+  assert.equal(fortressBossScale(1), FORTRESS.boss.minHp);
+  assert.ok(FORTRESS.boss.minHp >= 0.7, 'ボスは つよい まま');
+});
