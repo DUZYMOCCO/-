@@ -55,9 +55,18 @@ const live=Object.create(IronSquadGame);live.container=document.getElementById('
 Object.assign(live,{width:390,height:664,zoom:1,ctx,camera:{x:center,y:center},selectedSaleIds:new Set(),commandActiveUntil:0});
 live.startGameLoop=noop;live.showToast=noop;live.setupUI();live.activeSlotId=saveSlots.create('MERCHANT TEST ONLY').id;live.startFreshGame(false);
 let shop=live.merchants[0];Object.assign(live.player,{x:shop.x,y:shop.y,hp:1});live.gold=150;
-live.openMerchantShop(shop);let button=document.querySelector('.merchant-heal-button');assert.equal(button.disabled,false);button.click();
+live.openMerchantShop(shop);document.querySelector('.merchant-services').open=true;document.querySelector('#merchant-shop-popup .transfer-popup-container').scrollTop=91;let button=document.querySelector('.merchant-heal-button');assert.equal(button.disabled,false);button.focus();button.click();
 assert.equal(live.gold,0);assert.equal(live.player.hp,live.player.maxHp);assert.equal(document.querySelector('.merchant-heal-button').disabled,true);
+assert.equal(document.querySelector('.merchant-services').open,true);assert.equal(document.querySelector('#merchant-shop-popup .transfer-popup-container').scrollTop,91,'healing keeps the same service view');
 const snapshot=saveSlots.get(live.activeSlotId).data;assert.equal(snapshot.merchants.find(m=>m.id===shop.id).healingUsed,true);assert.equal(snapshot.merchantCampSeed,live.merchantCampSeed);
+// Transactions and checkpoint actions stay in the shop until explicit Back.
+live.gold=20000;live.squadPotion=0;live.revivalPotion=0;live._merchantShopRefresh();
+const retained=()=>{assert.equal(document.querySelector('#merchant-shop-popup').classList.contains('hidden'),false);assert.equal(document.querySelector('.merchant-services').open,true);assert.equal(document.querySelector('#merchant-shop-popup .transfer-popup-container').scrollTop,91);};
+document.querySelector('.merchant-potion-button').click();retained();assert.equal(live.gold,19700);assert.equal(live.squadPotion,1);document.querySelector('.merchant-potion-button').click();assert.equal(live.gold,19700);
+document.querySelector('.merchant-revival-button').click();retained();assert.equal(live.gold,9700);assert.equal(live.revivalPotion,1);document.querySelector('.merchant-revival-button').click();assert.equal(live.gold,9700);
+const checkpointPanel=document.querySelector('.merchant-checkpoint .supply-panel'),saveButton=checkpointPanel.querySelector('[data-supply="save"]');saveButton.focus();saveButton.click();retained();assert.equal(document.querySelector('.merchant-checkpoint .supply-panel'),checkpointPanel,'saving updates the existing service panel');assert.equal(document.activeElement,saveButton);
+const help=checkpointPanel.querySelector('.supply-help').textContent;saveButton.click();assert.equal(checkpointPanel.querySelector('.supply-help').textContent,help,'refreshing never appends duplicate help');live.gold=1;checkpointPanel.querySelector('[data-supply="load"]').click();retained();assert.equal(live.gold,9700);
+const clock=live.worldTime;live.update(1);assert.equal(live.worldTime,clock,'the shop still pauses play after loading');document.querySelector('#merchant-shop-popup').click();retained();assert.match(document.querySelector('.transfer-popup-close-btn').textContent,/戻る/);
 document.querySelector('.btn-close-merchant').click();live.resumeSavedGame(snapshot);shop=live.merchants[0];live.player.x=shop.x;live.player.y=shop.y;live.player.hp=1;live.gold=200;
 live.openMerchantShop(shop);assert.match(document.querySelector('.merchant-heal-button').textContent,/あと2ウェーブ/);document.querySelector('.merchant-heal-button').click();assert.equal(live.gold,200);assert.equal(live.player.hp,1);
 // Old saves without these fields gain the service and a stable seed normally.

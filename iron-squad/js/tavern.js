@@ -1,8 +1,8 @@
 import {isEnlisted,CAREER_RULES} from './career-rules.js?v=200';
 import {isOwnSquad} from './own-squad-marker.js?v=182';
 import {persistentUnit} from './render-support.js';
-import {drawSoldierPortrait} from './soldier-appearance.js?v=206';
-import {setSubDialog} from './interface.js?v=218';
+import {drawSoldierPortrait,describeSoldierAppearance} from './soldier-appearance.js?v=206';
+import {setSubDialog} from './interface.js?v=220';
 import {WORLD_SIZE,TAVERN_SITE} from './world.js?v=198';
 import {daylightAt} from './day-night.js?v=208';
 import {drawTavernFixtures,drawTavernCandles} from './nightlife-visuals.js?v=208';
@@ -106,7 +106,7 @@ export const tavernMethods={
     const host=el('div','game-overlay commander-editor');host.id='tavern-dialog';
     host.innerHTML='<section class="strategy-panel ce-panel tavern-panel"><header class="sheet-bar"><strong class="sheet-bar-title" id="tavern-title"></strong><button type="button" class="sheet-bar-btn" id="btn-tavern-close">閉じる ×</button></header><div class="ce-body tavern-body"></div></section>';
     (this.container.querySelector('.iron-squad')||this.container).append(host);
-    const close=()=>{setSubDialog(this,host,false);host.remove();this.saveGame();returnToCaller();};
+    const close=()=>{this.closeTavernPersonDetail();setSubDialog(this,host,false);host.remove();this.saveGame();returnToCaller();};
     host.querySelector('#btn-tavern-close').onclick=close;setSubDialog(this,host,true,close);host.setAttribute('aria-label',FIELD_TAVERN.name);
     this.renderTavern();this.saveGame();return true;
   },
@@ -120,11 +120,16 @@ export const tavernMethods={
     const row=(unit,label)=>{
       const card=el('article','tavern-person'),portrait=el('canvas','tavern-portrait');portrait.width=120;portrait.height=132;
       const text=el('div','tavern-person-text');text.append(el('strong','',unit.name),el('p','',`${jobs[unit.soldierClass]||unit.soldierClass} · Lv.${unit.level||1} · HP ${unit.maxHp} · 攻撃 ${unit.atk}`),el('p','command-note',label));
-      const actions=el('div','tavern-actions');card.append(portrait,text,actions);body.append(card);drawSoldierPortrait(portrait.getContext('2d'),unit,120,132);return {card,text,actions};
+      const actions=el('div','tavern-actions');card.append(portrait,text,actions);body.append(card);drawSoldierPortrait(portrait.getContext('2d'),unit,120,132);
+      // Tapping the face or name opens the full spec sheet (same as the strategy screen's personal file).
+      portrait.setAttribute('role','button');portrait.tabIndex=0;portrait.setAttribute('aria-label',`${unit.name}の詳細を見る`);
+      portrait.onclick=text.querySelector('strong').onclick=()=>this.openTavernPersonDetail(unit);
+      return {card,text,actions};
     };
     const button=(actions,label,fn,disabled=false)=>{const b=el('button','action-btn secondary',label);b.type='button';b.disabled=disabled;b.onclick=fn;actions.append(b);return b;};
     for(const person of ensureTavernRoster(this).people.filter(p=>!p.joined)){
       const {actions}=row(person.unit,`雇用 ${person.cost.toLocaleString()}G`);
+      button(actions,'詳しく見る',()=>this.openTavernPersonDetail(person.unit));
       button(actions,`${person.cost.toLocaleString()}Gで雇う`,()=>this.recruitTavernPerson(person.unit.id,'gold'),this.gold<person.cost);
     }
     body.append(el('h3','ce-heading','同行中の仲間'));
@@ -135,6 +140,31 @@ export const tavernMethods={
       body.append(el('h3','ce-heading',`この酒場で待つ仲間（${waiting.length}人）`));
       for(const s of waiting){const {actions}=row(s,'いっしょに旅をした仲間。装備と成長を保持して待っています。');button(actions,'いっしょに出発する',()=>this.rejoinTavernCompanion(s.id),own.length>=limit);}
     }
+  },
+  /** Spec sheet for a stranger, companion or waiting friend; strangers get a hire button inside it. */
+  openTavernPersonDetail(unit){
+    const tavern=this.container?.querySelector('#tavern-dialog');if(!tavern||!unit)return false;
+    this.closeTavernPersonDetail();
+    const person=ensureTavernRoster(this).people.find(p=>p.unit===unit&&!p.joined);
+    const host=el('div','soldier-detail-host tavern-person-detail');host.id='tavern-person-detail';
+    host.innerHTML=this.buildSoldierDetailHtml(unit,{preview:!!person});
+    tavern.querySelector('.tavern-panel').append(host);
+    const portrait=host.querySelector('.soldier-face-portrait');
+    portrait.setAttribute('aria-label',`${unit.name}の素顔`);drawSoldierPortrait(portrait.getContext('2d'),unit,portrait.width,portrait.height);
+    host.querySelector('.soldier-look-description').textContent=describeSoldierAppearance(unit);
+    if(person){
+      const hire=el('button','action-btn tavern-detail-hire',this.gold<person.cost?`雇用 ${person.cost.toLocaleString()}G（所持金が足りません）`:`${person.cost.toLocaleString()}Gで雇う`);
+      hire.type='button';hire.disabled=this.gold<person.cost;
+      hire.onclick=()=>{this.closeTavernPersonDetail();this.recruitTavernPerson(unit.id,'gold');};
+      host.querySelector('.soldier-detail-head').after(hire);
+    }
+    const close=()=>this.closeTavernPersonDetail();
+    host.querySelector('.btn-close-soldier-detail').onclick=close;host.onclick=e=>{if(e.target===host)close();};
+    setSubDialog(this,host,true,close);return true;
+  },
+  closeTavernPersonDetail(){
+    const host=this.container?.querySelector('#tavern-person-detail');if(!host)return;
+    setSubDialog(this,host,false);for(const c of host.querySelectorAll('canvas')){c.width=c.height=1;}host.remove();
   },
   recruitTavernPerson(id,method='gold'){
     if(!nearFieldTavern(this))return false;

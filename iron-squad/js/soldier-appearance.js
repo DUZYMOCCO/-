@@ -105,9 +105,9 @@ export function ensureSoldierAppearance(soldier) {
 export function describeSoldierAppearance(soldier) {
   const a=ensureSoldierAppearance(soldier);
   const features=[...[[a.faceOutline,FACE_OUTLINES],[a.eyeShape,EYE_SHAPES],[a.nose,NOSE_TYPES],[a.jaw,JAW_TYPES]].filter(([key])=>key!=='standard').map(([key,labels])=>labels[key]),a.accessory!=='none'?ACCESSORY_LABELS[a.accessory]:''];
-  if(isFeminineLook(soldier,a))return [MEDIC_STYLES[a.medicHair],a.beautiful?'華やかな顔立ち':'やわらかな表情',...features,GLASSES_LABELS[a.glasses]].filter(Boolean).join(' · ');
+  if(isFeminineLook(soldier,a))return [MEDIC_STYLES[a.medicHair],a.beautiful?'華やかな顔立ち':'やわらかな表情',...features,GLASSES_LABELS[a.glasses]].filter((v,i,all)=>v&&all.indexOf(v)===i).join(' · ');
   const beard={none:'',stubble:'無精ひげ',mustache:'口ひげ',chin:'あごひげ'}[a.facialHair];
-  return [HAIR_LABELS[a.hairStyle],a.handsome?'端正な顔立ち':FACES[a.faceShape],...features,beard,GLASSES_LABELS[a.glasses]].filter(Boolean).join(' · ');
+  return [HAIR_LABELS[a.hairStyle],a.handsome?'端正な顔立ち':FACES[a.faceShape],...features,beard,GLASSES_LABELS[a.glasses]].filter((v,i,all)=>v&&all.indexOf(v)===i).join(' · ');
 }
 
 const ellipse=(c,x,y,rx,ry,color)=>{c.fillStyle=color;c.beginPath();c.ellipse(x,y,rx,ry,0,0,Math.PI*2);c.fill();};

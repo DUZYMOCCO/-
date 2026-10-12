@@ -5,6 +5,7 @@ import {tierDescription,tierNumber} from './equipment-tiers.js';
 import {equipmentName,compareEquipment} from './equipment-rules.js?v=217';
 import {weaponRequirementText} from './weapon-requirements.js?v=187';
 import {atFacility} from './hq-facilities.js?v=201';
+import {sound} from '../../common/js/audio.js?v=151';
 
 export const WORKSHOP_STOCK=CRAFT_RECIPES.map(recipe=>({...recipe,name:recipe.type==='WEAPON'?{
   sword:'剣',spear:'槍',hammer:'ハンマー',axe:'斧',bow:'弓',crossbow:'クロスボウ',cannon:'火砲',staff:'長杖',wand:'ワンド'
@@ -30,9 +31,22 @@ function quote(game,id,tier,crafted) {
   if(!Number.isInteger(t)||t<1||t>workshopTier(game))return null;
   return {recipe,tier:t,cost:workshopPrice(t,crafted),materials:crafted?recipeMaterials(recipe,t):{}};
 }
-function finish(game,item,message) {
+function showWorkshopReceipt(game,title,message) {
+  const host=game.container?.querySelector('#hq-facility-dialog[data-facility="smith"]')||game.container?.querySelector('#strategy-modal:not(.hidden) .strategy-panel');
+  if(!host)return;
+  const previous=game._workshopReceipt;if(previous){clearTimeout(previous._expiry);previous.remove();}
+  const notice=document.createElement('section');notice.className='workshop-receipt';notice.setAttribute('role','status');notice.setAttribute('aria-live','polite');
+  const text=document.createElement('div'),heading=document.createElement('strong'),detail=document.createElement('p'),close=document.createElement('button');
+  heading.textContent=title;detail.textContent=message;text.append(heading,detail);
+  close.type='button';close.textContent='×';close.setAttribute('aria-label','購入・製作通知を閉じる');
+  const dismiss=()=>{clearTimeout(notice._expiry);notice.remove();if(game._workshopReceipt===notice)game._workshopReceipt=null;};
+  close.onclick=dismiss;notice.append(text,close);host.append(notice);game._workshopReceipt=notice;
+  notice._expiry=setTimeout(dismiss,8000);notice._expiry?.unref?.();
+}
+function finish(game,item,message,title='購入完了') {
   (game.inventory||=[]).push(item);game.showToast?.(message);
   game.saveGame?.();game.updateStatsUI?.(true);game.renderStrategyUI?.();
+  sound.playItem();showWorkshopReceipt(game,title,message);
   return item;
 }
 export const workshopMethods={
@@ -48,7 +62,7 @@ export const workshopMethods={
     const item=this.makeWorkshopItem(q.recipe,q.tier);
     item.workshopSupply=true;item.qualityLabel='工房の制式品';
     this.gold-=q.cost;
-    return finish(this,item,`工房の供給：[T${item.tier}] ${equipmentName(item)}をバッグへ（${money(q.cost)}）`);
+    return finish(this,item,`[T${item.tier}] ${equipmentName(item)}をバッグへ追加しました（−${money(q.cost)}）`);
   },
   craftWorkshopEquipment(id,tier) {
     const q=quote(this,id,tier,true);
@@ -59,7 +73,7 @@ export const workshopMethods={
     this.materials=normalizeMaterials(this.materials);
     for(const [key,n] of Object.entries(q.materials))this.materials[key]-=n;
     this.gold-=q.cost;
-    return finish(this,item,`製作完了：[T${item.tier}] ${equipmentName(item)}をバッグへ。保護付き・${craftExclusiveLabel(item)}`);
+    return finish(this,item,`[T${item.tier}] ${equipmentName(item)}をバッグへ追加しました（−${money(q.cost)}）。保護付き・${craftExclusiveLabel(item)}`,'製作完了');
   },
   renderWorkshop(panel) {
     const maximum=workshopTier(this),level=workshopLevel(this),town=atWorkshop(this);

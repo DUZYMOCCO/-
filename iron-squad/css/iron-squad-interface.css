@@ -1359,6 +1359,11 @@
   .iron-squad .pad-move-column { flex-direction:column; align-items:center; gap:4px; }
   .iron-squad .pad-move-column #btn-pad-potion { flex:0 0 44px; width:74px; height:44px; min-height:44px; align-self:center; margin-bottom:0; }
 }
+/* Receipts stay above the workshop sheet while its contents refresh. */
+.iron-squad .workshop-receipt { position:absolute; z-index:600; top:max(64px,calc(env(safe-area-inset-top) + 58px)); left:12px; right:12px; max-width:620px; margin:0 auto; display:grid; grid-template-columns:minmax(0,1fr) 44px; align-items:start; gap:8px; padding:12px; border:1px solid #8cab87; border-radius:8px; background:#ecf3e8; color:#243b29; box-shadow:0 5px 20px #0005; }
+.iron-squad .workshop-receipt strong { display:block; color:#285438; font-size:16px; }
+.iron-squad .workshop-receipt p { margin:5px 0 0; font-size:14px; line-height:1.5; overflow-wrap:anywhere; }
+.iron-squad .workshop-receipt button { min-width:44px; min-height:44px; border:1px solid #9eaf9a; border-radius:6px; background:#dde8d7; color:#304833; font-size:22px; cursor:pointer; }
 /* Two adjacent medicine buttons fit above the stick without shifting attack controls. */
 .iron-squad .pad-move-column { flex-direction:column; align-items:center; gap:6px; }
 .iron-squad .pad-supply-buttons { display:flex; gap:4px; order:0; pointer-events:auto; }
@@ -1371,3 +1376,7 @@
   .iron-squad .pad-move-column .pad-stick-zone { order:0; }
   .iron-squad .pad-supply-buttons { order:1; }
 }
+/* v6.3.9 大酒場: 旅人・仲間の詳細（スペック）を酒場の上に重ねる */
+.iron-squad .tavern-person-detail { position: fixed; inset: 0; z-index: 260; background: var(--ui-bg, #081019); }
+.iron-squad .tavern-person-detail .tavern-detail-hire { display: block; width: calc(100% - 24px); max-width: 336px; margin: 4px auto 10px; min-height: 44px; font-size: 14px; }
+.iron-squad .tavern-portrait[role="button"], .iron-squad .tavern-person-text strong { cursor: pointer; }

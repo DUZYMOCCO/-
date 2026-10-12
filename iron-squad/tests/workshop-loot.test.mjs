@@ -75,6 +75,15 @@ assert.ok(document.querySelector('.workshop-craft-preview').textContent.includes
 assert.ok(!document.querySelector('.workshop-panel').textContent.includes('バッグの枠を使いません'));
 game.gold=0;game.refreshHeadquartersFacility();assert.equal(document.getElementById('btn-workshop-buy').disabled,true);assert.ok(document.getElementById('workshop-buy-reason').textContent.includes('あと'));
 game.gold=100000;game.refreshHeadquartersFacility();assert.equal(document.getElementById('btn-workshop-buy').disabled,false);
+// Actual clicks confirm the purchased item and sound only on success.
+const {sound}=await import('../../common/js/audio.js?v=151');const originalItemSound=sound.playItem;let purchaseSounds=0;sound.playItem=()=>{purchaseSounds++;return true;};
+try{
+ game.workshopSelectedTier=1;game.workshopSupplyId='weapon-axe';game.refreshHeadquartersFacility();const beforeBuy=game.gold,bagBefore=game.inventory.length;
+ document.getElementById('btn-workshop-buy').click();assert.equal(purchaseSounds,1);assert.equal(game.gold,beforeBuy-workshopPrice(1));assert.equal(game.inventory.length,bagBefore+1);
+ const receipt=document.querySelector('#hq-facility-dialog .workshop-receipt');assert.ok(receipt);assert.equal(receipt.querySelector('strong').textContent,'購入完了');assert.match(receipt.textContent,/バッグへ追加しました/);assert.ok(receipt.textContent.includes(workshopPrice(1).toLocaleString()+'G'));
+ const availableGold=game.gold;game.gold=0;assert.equal(game.buyWorkshopEquipment('weapon-axe',1),false);assert.equal(purchaseSounds,1);assert.equal(document.querySelector('.workshop-receipt'),receipt);game.gold=availableGold;
+ game.materials=Object.fromEntries(Object.keys(CRAFT_MATERIALS).map(id=>[id,10000]));game.refreshHeadquartersFacility();document.getElementById('btn-workshop-craft').click();assert.equal(purchaseSounds,2);assert.equal(document.querySelectorAll('.workshop-receipt').length,1);assert.equal(document.querySelector('.workshop-receipt strong').textContent,'製作完了');document.querySelector('.workshop-receipt button').click();assert.equal(document.querySelector('.workshop-receipt'),null);
+}finally{sound.playItem=originalItemSound;}
 game.equipped.armor=owned.find(i=>i.type==='ARMOR');game.workshopCraftId='armor';game.workshopSelectedTier=1;game.refreshHeadquartersFacility();
 const weaker=document.querySelector('.workshop-craft-preview').textContent;assert.ok(weaker.includes(game.equipped.armor.name));assert.ok(weaker.includes('弱くなる'),'a low-tier craft is compared against the equipped upgraded armor');
 game.closeHeadquartersFacility();

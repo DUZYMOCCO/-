@@ -1,0 +1,14 @@
+PASS: normal three-second and important eight-second expiry, real permanent reward, ordinary loot protection, queued rewards, urgent interruption/restoration and reset
+✔ iron-squad\tests\important-notices.test.mjs (1295.9246ms)
+kana-mode: 3009 Japanese fragments checked at grade 2
+✔ iron-squad\tests\kana-mode.test.mjs (354.1391ms)
+PASS: reduced completed gear, guaranteed treasure materials, actual enemy/commander/soldier pickup, 6 development tiers, workshop purchases, 15 exclusive recipes, exact costs, guarded failures, unique ownership, nonstacking upgrades, save migration, automatic supply budget/phase/UI
+✔ iron-squad\tests\workshop-loot.test.mjs (6945.9914ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6970.677

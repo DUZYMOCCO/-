@@ -169,8 +169,10 @@ export const supplyMethods={
   loadCheckpoint() {
     if(!supplyLocation(this))return false;
     const checkpoint=saveSlots.get(this.activeSlotId)?.checkpoint;if(!checkpoint?.data)return false;
+    const restoreMerchant=this._merchantShopRestore?.();
     this._merchantShopClose?.();this.closeStrategyModal();
     this.inBattle=true;this.resumeSavedGame(JSON.parse(JSON.stringify(checkpoint.data)));
+    restoreMerchant?.();
     this.showToast(`${checkpoint.place}の地点セーブを読み込みました`);return true;
   },
   refreshSupplyUI() {
@@ -199,13 +201,13 @@ export const supplyMethods={
     if(!panel){panel=document.createElement('section');panel.className='supply-panel hub-section';overview.prepend(panel);}
     const place=supplyLocation(this),cp=saveSlots.get(this.activeSlotId)?.checkpoint;
     const ranged=squadUnits(this).filter(u=>usable(u)&&isRangedUnit(this,u));
-    panel.innerHTML='<h4>補給・地点セーブ</h4><p class="supply-location"></p><p class="supply-counts"></p><p class="lethal-guard-status"></p><div class="supply-actions"><button type="button" data-supply="potion">本陣で回復薬を補給</button><button type="button" data-supply="save">現在地をセーブ</button><button type="button" data-supply="load">地点セーブへ戻る</button></div><p class="checkpoint-summary"></p><p class="supply-help">弾薬・魔力は本陣・救護所・町・商人・キャンプの近くで自動補給。回復薬は隊長と行動可能な直属兵のHP・弾薬・魔力を全回復。本隊・予備兵は対象外。ダウン中は搬送・衛生兵が必要です。地点セーブはオートセーブと別に保持し、読込時は記録時点へ戻ります。</p>';
+    if(!panel.querySelector('.supply-actions'))panel.innerHTML='<h4>補給・地点セーブ</h4><p class="supply-location"></p><p class="supply-counts"></p><p class="lethal-guard-status"></p><div class="supply-actions"><button type="button" data-supply="potion">本陣で回復薬を補給</button><button type="button" data-supply="save">現在地をセーブ</button><button type="button" data-supply="load">地点セーブへ戻る</button></div><p class="checkpoint-summary"></p><p class="supply-help"></p>';
     panel.querySelector('.lethal-guard-status').textContent=this.player.lethalGuardCooldown>0?`即死対策：再発動まで${Math.ceil(this.player.lethalGuardCooldown)}秒`:`即死対策：使用可能（再使用${LETHAL_GUARD_COOLDOWN}秒）`;
     panel.querySelector('.supply-location').textContent=place?`補給地点：${place.name}`:'野外：本陣・救護所・町・商人・キャンプに近づくとセーブ／読込できます';
     panel.querySelector('.supply-counts').textContent=`回復薬 ${this.squadPotion?1:0}/1 · 射手の弾薬 ${ranged.reduce((n,u)=>n+ensureAmmo(u),0)}/${ranged.length*AMMO_CAPACITY} · 予備弾薬 ${this.ammoReserve||0}`;
     panel.querySelector('.supply-counts').textContent+=` · 蘇生薬 ${this.revivalPotion?1:0}/1`;
-    panel.querySelector('.supply-help').textContent+=' 蘇生薬は術士の蘇生クールタイムを無視して、近くの味方1人を全快蘇生できます。自分には使えず、商店で1個10,000Gで補充できます。';
-    const potion=panel.querySelector('[data-supply="potion"]');potion.disabled=!!this.squadPotion||place?.kind!=='base';potion.onclick=()=>this.replenishSquadPotion();
+    panel.querySelector('.supply-help').textContent='弾薬・魔力は本陣・救護所・町・商人・キャンプの近くで自動補給。回復薬は隊長と行動可能な直属兵のHP・弾薬・魔力を全回復。本隊・予備兵は対象外。ダウン中は搬送・衛生兵が必要です。地点セーブはオートセーブと別に保持し、読込時は記録時点へ戻ります。蘇生薬は術士の蘇生クールタイムを無視して、近くの味方1人を全快蘇生できます。自分には使えず、商店で1個10,000Gで補充できます。';
+    const potion=panel.querySelector('[data-supply="potion"]');potion.disabled=!!this.squadPotion||place?.kind!=='base';potion.onclick=()=>{this.replenishSquadPotion();if(host){if(host.closest('#merchant-shop-popup'))this._merchantShopRefresh?.();else this.renderSupplyPanel(host);}};
     const save=panel.querySelector('[data-supply="save"]');save.disabled=!place;save.onclick=()=>{this.saveCheckpoint();if(host)this.renderSupplyPanel(host);};
     const load=panel.querySelector('[data-supply="load"]');load.disabled=!place||!cp?.data;load.onclick=()=>this.loadCheckpoint();
     panel.querySelector('.checkpoint-summary').textContent=cp?`記録：${cp.place} · 第${cp.data.phase}期 · ${new Date(cp.savedAt).toLocaleString('ja-JP')}${cp.data.player?` · HP ${Math.ceil(cp.data.player.hp)}`:''}${cp.entrance?'（町入口から再開）':''}`:'地点セーブはまだありません';

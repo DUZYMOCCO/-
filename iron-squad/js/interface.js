@@ -1,6 +1,6 @@
 import {commanderFullName} from './commander-identity.js?v=210';
 import {isEnlisted} from './career-rules.js?v=200';
-import {configureAudioInterface} from './audio-interface.js?v=191';
+import {configureAudioInterface} from './audio-interface.js?v=220';
 import {renderBattleLog} from './battle-log.js?v=217';
 import {renderTroopRankings} from './troop-rankings.js?v=187';
 import {genderLabel} from './soldier-names.js?v=210';
@@ -356,7 +356,7 @@ function configureRecruitmentDialog(game) {
 }
 
 /** A nested dialog must own keyboard focus and block controls behind it. */
-export function setSubDialog(game, host, open, close = null) {
+export function setSubDialog(game, host, open, close = null, focusOnOpen = true) {
   if (!host || !game.container) return;
   const modal = game.container.querySelector('#strategy-modal');
   const nested = !!host.closest('#strategy-modal');
@@ -387,7 +387,7 @@ export function setSubDialog(game, host, open, close = null) {
       };
       host.addEventListener('keydown', host._uiKeyHandler);
     }
-    host.querySelector('button')?.focus();
+    if(focusOnOpen)host.querySelector('button')?.focus();
   } else {
     const previous = host._uiReturnFocus; host._uiReturnFocus = null;
     if (previous?.isConnected) previous.focus(); else modal.querySelector('#btn-dialog-close')?.focus();
