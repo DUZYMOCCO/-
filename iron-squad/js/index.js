@@ -57,7 +57,7 @@ import { CAMP_PEACE_RADIUS, peaceContainment, pushOutsidePeace, relocatePeaceMon
 import { FARM_X, FARM_Y, farmPosts, farmOverlaps, reinforcementCount, reserveRosterLine, reserveRosterTitle } from './reserve-farm.js?v=182';
 import { drawMeleeRangeCue, meleeDrawReach, attackAnimationRate } from './weapon-motion.js?v=211';
 import { guardRegrouping, guardTarget, guardSpeedMult } from './guard-leash.js?v=211';
-import { KNOCK_RULES, knockbackDistance, knockFlight, slamDamage } from './knockback-rules.js?v=211';
+import { KNOCK_RULES, knockbackDistance, knockFlight, slamDamage, knockTransferDistance } from './knockback-rules.js?v=212';
 import { MELEE_SOUND_STYLES, playMeleeSound } from './weapon-sounds.js?v=211';
 import {emptyRescueBonuses,normalizeRescueBonuses,rescueBonusSummary} from './rescue-rewards.js?v=204';
 import {drawFieldCivilian} from './civilian-visuals.js?v=193';
@@ -4120,13 +4120,17 @@ export const IronSquadGame = {
       strengthRef: isPlayer ? KNOCK_RULES.playerStrengthRef : KNOCK_RULES.soldierStrengthRef
     }, m);
     if (!(dist > 0)) return 0;
-    const ang = Math.atan2(m.y - fromY, m.x - fromX);
+    return this.throwMonster(m, Math.atan2(m.y - fromY, m.x - fromX), dist, slamAttack * KNOCK_RULES.slamShare, unit, !!isPlayer);
+  },
+
+  /** Start (or restart) a knockback flight in a direction. */
+  throwMonster(m, ang, dist, slam, by, byPlayer, ignore = null) {
     if (dist < KNOCK_RULES.minFlight) { m.x += Math.cos(ang) * dist; m.y += Math.sin(ang) * dist; return dist; }
     const {time, decay} = knockFlight(dist), v = dist * decay;
     Object.assign(m, {
       knockVx: Math.cos(ang) * v, knockVy: Math.sin(ang) * v, knockV0: v, knockDecay: decay,
       knockFly: time, knockTime: time, knockSpin: Math.cos(ang) >= 0 ? 1 : -1,
-      knockSlam: slamAttack * KNOCK_RULES.slamShare, knockBy: unit, knockByPlayer: !!isPlayer
+      knockSlam: slam, _knockBy: by, knockByPlayer: byPlayer, _knockHits: ignore ? [ignore] : []
     });
     return dist;
   },
@@ -4142,23 +4146,43 @@ export const IronSquadGame = {
       || coverBlocked(this, from, to) || (!this.currentDungeon && headquartersBuildingBlocks(to.x, to.y));
     if (blocked) { this.slamMonster(m); return false; }
     m.x = to.x; m.y = to.y;
+    if (this.collideFlyingMonster(m)) return m.knockFly > 0 && m.hp > 0;
     m.knockVx *= f; m.knockVy *= f; m.knockFly -= dt;
     if (m.knockFly <= 0) { this.endMonsterKnock(m); return false; }
     return true;
   },
 
   endMonsterKnock(m) {
-    m.knockFly = 0; m.knockVx = 0; m.knockVy = 0; m.knockSlam = 0; m.knockBy = null;
+    m.knockFly = 0; m.knockVx = 0; m.knockVy = 0; m.knockSlam = 0; m._knockBy = null; m._knockHits = null;
   },
 
-  /** Thrown into an obstacle: damage from the speed left at impact (defence applies). */
-  slamMonster(m) {
-    const ratio = Math.hypot(m.knockVx, m.knockVy) / Math.max(1, m.knockV0 || 1);
-    let dmg = slamDamage(m.knockSlam, ratio);
-    const by = m.knockBy, byPlayer = m.knockByPlayer;
-    this.endMonsterKnock(m);
-    if (!(dmg > 0) || m.hp <= 0) return;
-    if ((m.def || 0) > 0) dmg = Math.max(1, Math.round(dmg * 100 / (100 + m.def * 1.2)));
+  /** A thrown enemy crashing into other enemies: both take impact damage, the struck one is
+   * launched onward (chain), the thrown one keeps half its speed. Each pair collides once. */
+  collideFlyingMonster(m) {
+    const r = m.radius || 12, hits = m._knockHits || (m._knockHits = []);
+    let collided = false;
+    for (const o of [...(this.monsters || [])]) {
+      if (o === m || o.hp <= 0 || o.retreated || hits.includes(o)) continue;
+      if (Math.hypot(o.x - m.x, o.y - m.y) > r + (o.radius || 12)) continue;
+      hits.push(o); collided = true;
+      const speed = Math.hypot(m.knockVx, m.knockVy), ratio = speed / Math.max(1, m.knockV0 || 1);
+      const dmg = slamDamage(m.knockSlam, ratio), by = m._knockBy, byPlayer = m.knockByPlayer;
+      if (!(dmg > 0)) continue;
+      const remaining = speed / (m.knockDecay || 7), ang = Math.atan2(m.knockVy, m.knockVx);
+      const sent = o.knockFly > 0 ? 0 : knockTransferDistance(remaining, m, o);
+      if (sent > 0) this.throwMonster(o, ang, sent, m.knockSlam * KNOCK_RULES.chainSlamShare, by, byPlayer, m);
+      m.knockVx *= KNOCK_RULES.keepSpeed; m.knockVy *= KNOCK_RULES.keepSpeed;
+      this.knockImpactDamage(o, dmg, by, byPlayer);
+      this.knockImpactDamage(m, dmg, by, byPlayer);
+      if (m.hp <= 0) { this.endMonsterKnock(m); break; }
+    }
+    return collided;
+  },
+
+  /** Impact damage from a knockback crash (defence applies); kills credit the thrower. */
+  knockImpactDamage(m, rawDmg, by, byPlayer) {
+    if (!(rawDmg > 0) || !m || m.hp <= 0) return 0;
+    const dmg = (m.def || 0) > 0 ? Math.max(1, Math.round(rawDmg * 100 / (100 + m.def * 1.2))) : rawDmg;
     m.hp -= dmg; m.hitPulse = 1;
     m.atkTimer = Math.max(m.atkTimer || 0, .35);
     this.screenShake = Math.max(this.screenShake || 0, .25);
@@ -4166,6 +4190,16 @@ export const IronSquadGame = {
     this.spawnSparks(m.x, m.y, '#d6c7a1', 10);
     playMeleeSound('hammer', m.x, m.y, {strong: true});
     if (m.hp <= 0) this.killMonster(m, by, byPlayer);
+    return dmg;
+  },
+
+  /** Thrown into an obstacle: damage from the speed left at impact (defence applies). */
+  slamMonster(m) {
+    const ratio = Math.hypot(m.knockVx, m.knockVy) / Math.max(1, m.knockV0 || 1);
+    const dmg = slamDamage(m.knockSlam, ratio);
+    const by = m._knockBy, byPlayer = m.knockByPlayer;
+    this.endMonsterKnock(m);
+    this.knockImpactDamage(m, dmg, by, byPlayer);
   },
 
   powerHitOutpost(radius, dmg) {

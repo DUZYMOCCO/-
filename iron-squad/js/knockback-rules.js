@@ -9,7 +9,10 @@ export const KNOCK_RULES = Object.freeze({
   footingHits: 3, maxFooting: 8,
   maxDistance: 1400, minFlight: 24,
   minTime: .45, maxTime: 1, timePerPx: 1 / 1600,
-  slamShare: .6, minSlamRatio: .15
+  slamShare: .6, minSlamRatio: .15,
+  // Body collisions: the thrown enemy keeps part of its speed; the struck one is launched
+  // with part of the remaining distance (scaled by weight) and carries a weaker slam.
+  keepSpeed: .5, transferShare: .6, chainSlamShare: .7
 });
 
 export const knockBrace = monster => Math.min(KNOCK_RULES.maxBrace, Math.max(0, Number(monster?.atk) || 0) * KNOCK_RULES.braceShare);
@@ -39,6 +42,13 @@ export function knockbackDistance(base, attacker, monster) {
 export function knockFlight(dist) {
   const time = Math.min(KNOCK_RULES.maxTime, Math.max(KNOCK_RULES.minTime, KNOCK_RULES.minTime + dist * KNOCK_RULES.timePerPx));
   return {time, decay: 3.15 / time};
+}
+
+/** Distance a struck enemy is sent: share of the thrower's remaining flight, by weight ratio. */
+export function knockTransferDistance(remaining, thrown, struck) {
+  if (!struck || struck.isColossal || !(remaining > 0)) return 0;
+  const ratio = Math.min(2, knockMass(thrown) / knockMass(struck));
+  return Math.min(KNOCK_RULES.maxDistance, remaining * KNOCK_RULES.transferShare * ratio);
 }
 
 /** Wall/obstacle impact damage, scaled by the speed still left at the moment of impact. */
