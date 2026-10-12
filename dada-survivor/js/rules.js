@@ -24,8 +24,8 @@ export const CHARACTERS = [
   { id: 'rabbit',  name: 'まじゅつし', weapon: 'aura',    perk: { spd: 0.2 },              trait: 'とっても はやい', unlock: 1 },
   { id: 'penguin', name: 'けいさつかん', weapon: 'gun',     perk: { pickup: 0.5, hp: 20 },   trait: 'ほうせき あつめ', unlock: 2 },
   { id: 'bear',    name: 'カウボーイ', weapon: 'shotgun', perk: { hp: 70 },                trait: 'すごく タフ', unlock: 3 },
-  { id: 'dino',    name: 'きょうりゅう', weapon: 'bazooka', perk: { dmg: 0.25 },           trait: 'すごく つよい', unlock: 4 },
-  { id: 'unicorn', name: 'ユニコーン', weapon: 'thunder', perk: { dmg: 0.15, spd: 0.1, hp: 40, regen: 0.5 }, trait: 'ぜんぶ アップ', unlock: 5 },
+  { id: 'dino',    name: 'ロケットへい', weapon: 'bazooka', perk: { dmg: 0.25 },           trait: 'すごく つよい', unlock: 4 },
+  { id: 'unicorn', name: 'かみさま', weapon: 'thunder', perk: { dmg: 0.15, spd: 0.1, hp: 40, regen: 0.5 }, trait: 'ぜんぶ アップ', unlock: 5 },
 ];
 
 // てきは ぜんぶ「わるものぐんだん」の へいたい（id は むかしの モンスターめいの まま。どの へいたいかは js/art.js の コメント）

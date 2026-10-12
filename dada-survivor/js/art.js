@@ -237,6 +237,56 @@ const laserSoldier = soldier
   + `<rect x="44" y="45.2" width="5" height="3.2" rx="1" transform="rotate(-17.7 46.5 46.8)" fill="#22d3ee" stroke="#0c4a6e" stroke-width=".9"/>
   <circle cx="62" cy="39.8" r="3" fill="#67e8f9" opacity=".75"/><circle cx="62" cy="39.8" r="1.4" fill="#fff"/>`;
 
+// ロケットへい（id は セーブ互換で dino のまま。みかたの とくしゅぶたい・にほんの ワッペン・かたに おおきな ロケットランチャー）
+// ソルジャー（くろ・あおい レーザーじゅう）と ちがう ように、ヘルメットは オリーブいろに オレンジの ライン。
+// てきの ゆきやまたいちょう（しろい そうび・あかい め・ドクロ）とも ちがう。
+const rocketTube = `
+  <path d="M2 40 L60 25" ${SW(11)}/><path d="M2 40 L60 25" stroke="#3d4f3a" stroke-width="8.4" stroke-linecap="round"/>
+  <path d="M8 38.6 L54 26.6" stroke="#f97316" stroke-width="1.6" stroke-linecap="round"/>
+  <path d="M-1 36 L5 34.4 L7.6 44.4 L1.6 46Z" fill="#26282d" ${S2}/>
+  <path d="M60 25 L66 23.4 L64 28.6 L60 29.4Z" fill="#facc15" stroke="#9a3412" stroke-width="1"/>
+  <path d="M58.4 21 L59.6 29.6" stroke="#26282d" stroke-width="2.6" stroke-linecap="round"/>`;
+const rocketHands = `<path d="M44 35.6 L45.6 40" stroke="#26282d" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="45.6" cy="41" r="3.3" fill="#27272a" ${S2}/><circle cx="18" cy="39.6" r="3.3" fill="#27272a" ${S2}/>
+  <rect x="47" y="19.6" width="7" height="5" rx="1" transform="rotate(-14.5 50.5 22)" fill="#26282d" ${S2}/><circle cx="53.4" cy="21.4" r="1" fill="#fb923c"/>`;
+const rocketSoldier = (() => {
+  const base = soldier.split('\n').filter(l => !/M6 59 L56 43|M4 60 L13 57|M27 52 L33 50|M30 47\.5 L40 44\.3|M55 42 L61\.5 40|cx="21" cy="55" r="3.3"/.test(l)).join('\n')
+    .replace('<path d="M11 26 Q11 6 32 6 Q53 6 53 26 Q32 21 11 26Z" fill="#3a3d44"', '<path d="M11 26 Q11 6 32 6 Q53 6 53 26 Q32 21 11 26Z" fill="#4a5d3f"')
+    .replace('<path d="M15 16 Q32 12 49 16" fill="none" stroke="#2a2d33" stroke-width="1.6"/>', '<path d="M15 16 Q32 12 49 16" fill="none" stroke="#f97316" stroke-width="2.6"/>');
+  const head = shadedCircle('hu', 32, 29, 16, '#f0c7a0', '#c48a5e');
+  const i = base.indexOf(head);
+  // ランチャーが はみでない ように すこし ちいさく
+  return `<g transform="translate(32 33) scale(.93) translate(-32 -33)">${base.slice(0, i) + rocketTube + base.slice(i) + rocketHands}</g>`;
+})();
+
+// かみさま（id は セーブ互換で unicorn のまま。ひかりの わ・しろと きんの ローブ・つえ。かみなりさま〈たいこ・くも〉とは ちがう）
+const godRays = Array.from({ length: 12 }, (_, i) => {
+  const a = i * Math.PI / 6, c = Math.cos(a), s = Math.sin(a);
+  return `<path d="M${(32 + c * 18).toFixed(1)} ${(32 + s * 18).toFixed(1)} L${(32 + c * 31).toFixed(1)} ${(32 + s * 31).toFixed(1)}" stroke="#fde68a" stroke-width="${i % 2 ? 2 : 3.4}" stroke-linecap="round" opacity=".8"/>`;
+}).join('');
+const deity = `
+  <radialGradient id="gd"><stop offset="0" stop-color="#fffbeb"/><stop offset=".6" stop-color="#fef3c7" stop-opacity=".7"/><stop offset="1" stop-color="#fde68a" stop-opacity="0"/></radialGradient>
+  <circle cx="32" cy="32" r="32" fill="url(#gd)"/>${godRays}
+  <path d="M51 62 L55 14" ${SW(3.6)}/><path d="M51 62 L55 14" stroke="#eab308" stroke-width="2" stroke-linecap="round"/>
+  <path d="M55 5 L57 10.4 L62.6 10.6 L58.2 14 L59.8 19.4 L55 16.2 L50.2 19.4 L51.8 14 L47.4 10.6 L53 10.4Z" fill="#fde047" ${SW(1.2)}/>
+  <circle cx="55" cy="12.6" r="1.6" fill="#fff"/>
+  <path d="M15 63 Q14 44 32 40 Q50 44 49 63Z" fill="#fafaf9" ${S}/>
+  <path d="M24 41.4 Q26 52 22 63 M40 41.4 Q38 52 42 63" fill="none" stroke="#facc15" stroke-width="2.6"/>
+  <path d="M24 41.4 Q26 52 22 63 M40 41.4 Q38 52 42 63" fill="none" stroke="#a16207" stroke-width=".7"/>
+  <path d="M19 53 Q32 57 45 53 L45 56.6 Q32 60.6 19 56.6Z" fill="#facc15" ${S2}/><circle cx="32" cy="57.4" r="2.4" fill="#fff" stroke="#a16207" stroke-width="1"/>
+  <path d="M15.4 61 Q32 64 48.6 61" fill="none" stroke="#facc15" stroke-width="2"/>
+  <circle cx="51.4" cy="46" r="3.3" fill="#f0c7a0" ${S2}/><path d="M48 44 Q44 46 42 50" fill="none" stroke="#fafaf9" stroke-width="4.4" stroke-linecap="round"/>
+  <path d="M15.6 30 Q12 42 16 50 L21 42Z M48.4 30 Q52 42 48 50 L43 42Z" fill="#f8fafc" ${S}/>
+  ${shadedCircle('gdf', 32, 29, 14.5, '#f3d2ad', '#cc976a')}
+  <path d="M22 38 Q32 50 42 38 Q41 45 32 47 Q23 45 22 38Z" fill="#f8fafc" ${S2}/>
+  <path d="M27.6 38.6 Q32 37 36.4 38.6" fill="none" stroke="#cbd5e1" stroke-width="1.6" stroke-linecap="round"/>
+  <path d="M17 28 Q16 14 32 13 Q48 14 47 28 Q44 20 32 19.6 Q20 20 17 28Z" fill="#f8fafc" ${S}/>
+  ${[[-1, 0], [1, 0]].map(([d]) => [0, 1, 2, 3].map(k => `<ellipse cx="${32 + d * (9 + k * 3.4)}" cy="${18 + k * 2.4}" rx="2.6" ry="1.4" transform="rotate(${d * (25 + k * 14)} ${32 + d * (9 + k * 3.4)} ${18 + k * 2.4})" fill="#84cc16" stroke="#3f6212" stroke-width=".8"/>`).join('')).join('')}
+  <circle cx="32" cy="15.6" r="1.8" fill="#facc15" ${SW(.8)}/>
+  <ellipse cx="32" cy="6" rx="12" ry="3.4" fill="none" stroke="#a16207" stroke-width="4"/><ellipse cx="32" cy="6" rx="12" ry="3.4" fill="none" stroke="#fde047" stroke-width="2.4"/>
+  <path d="M21.4 29 L28 29.8 M42.6 29 L36 29.8" fill="none" stroke="#e2e8f0" stroke-width="2" stroke-linecap="round"/>
+  ${animeEye(25.4, 32.6, '#d97706')}${animeEye(38.6, 32.6, '#d97706')}`;
+
 // ぶたいの なかま（じぶんと おなじ とくしゅぶたい。ヘルメットと ラインが あおい）
 const allySoldier = soldier
   .replace('<path d="M11 26 Q11 6 32 6 Q53 6 53 26 Q32 21 11 26Z" fill="#3a3d44"', '<path d="M11 26 Q11 6 32 6 Q53 6 53 26 Q32 21 11 26Z" fill="#2f4a73"')
@@ -1117,12 +1167,8 @@ const GROUNDS = {
 const hero2 = {
   penguin: police, // id は セーブ互換のため penguin のまま（絵と名前は けいさつかん）
   bear:    cowboy, // id は セーブ互換のため bear のまま（絵と名前は カウボーイ）
-  dino:    hero({ fur: '#3f7d46', shade: '#1f4d28', inner: '#14532d', ear: 'none', belly: '#d6d3d1',
-    behind: `<path d="M18 14 L20 3 L26 10 L32 0 L38 10 L44 3 L46 14Z" fill="#9a3412" ${S}/>`,
-    mouth: `<path d="M26 37 H38" fill="none" ${S2}/>` }),
-  unicorn: hero({ fur: '#e7e5e4', shade: '#a8a29e', inner: '#78716c', ear: 'cat',
-    behind: `<path d="M50 18 Q60 30 54 44 Q50 34 46 30Z" fill="#57534e" ${S2}/>`,
-    extra: `<path d="M16 24 Q12 12 26 10 Q22 16 25 20 Q19 19 16 24Z" fill="#44403c" ${S2}/><path d="M28.5 12 L32 1 L35.5 12Z" fill="#d6d3d1" ${S2}/>` }),
+  dino:    rocketSoldier, // id は セーブ互換のため dino のまま（絵と名前は ロケットへい）
+  unicorn: deity,         // id は セーブ互換のため unicorn のまま（絵と名前は かみさま）
 };
 
 const SOURCES = {

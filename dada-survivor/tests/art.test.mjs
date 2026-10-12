@@ -143,3 +143,19 @@ test('bear slot is the desert cowboy カウボーイ with a shotgun', () => {
   assert.ok(svg.includes('#2563eb') && !svg.includes('data-emblem="warumono"'), 'あおい バンダナの みかた（ナイフへいの あかい マスクでは ない）');
   assert.equal((svg.match(/<svg/g) || []).length, 1);
 });
+
+// こどもの リクエスト：きょうりゅう → ロケットへい、ユニコーン → かみさま（id は セーブ互換で dino／unicorn のまま）
+test('dino slot is the rocket soldier ロケットへい and unicorn slot is the deity かみさま', () => {
+  const dn = CHARACTERS.find(c => c.id === 'dino'), un = CHARACTERS.find(c => c.id === 'unicorn');
+  assert.equal(dn.name, 'ロケットへい'); assert.equal(dn.weapon, 'bazooka'); assert.deepEqual(dn.perk, { dmg: 0.25 }); assert.equal(dn.unlock, 4);
+  assert.equal(un.name, 'かみさま'); assert.equal(un.weapon, 'thunder'); assert.deepEqual(un.perk, { dmg: 0.15, spd: 0.1, hp: 40, regen: 0.5 }); assert.equal(un.unlock, 5);
+  const rk = svgOf(art('dino')), gd = svgOf(art('unicorn')), sol = svgOf(art('dog')), tg = svgOf(art('fox'));
+  assert.ok(rk.includes('fill="#f5f5f4"') && rk.includes('fill="#dc2626"'), 'にほんの はたの ワッペン');
+  assert.ok(rk.includes('#3d4f3a') && rk.includes('#f97316') && !rk.includes('#2563eb'), 'オリーブの ランチャー（ソルジャーの あおい レーザーじゅう では ない）');
+  assert.notEqual(rk, sol);
+  assert.ok(gd.includes('#fde047') && gd.includes('#fafaf9') && gd.includes('#84cc16'), 'ひかりの わ・しろい ローブ・はっぱの かんむり');
+  assert.ok(!gd.includes('#dc2626'), 'かみなりさまの あかい たいこは ない');
+  assert.ok(tg.includes('#dc2626'));
+  for (const s of [rk, gd]) { assert.ok(!s.includes('data-emblem="warumono"')); assert.equal((s.match(/<svg/g) || []).length, 1); }
+  for (const n of Object.values(ENEMY_TYPES)) assert.ok(n.name !== dn.name && n.name !== un.name);
+});
