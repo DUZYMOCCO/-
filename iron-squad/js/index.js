@@ -69,7 +69,7 @@ import { applyCommanderIdentity, normalizeCommanderIdentity, commanderFullName, 
 import {MAGIC_CLASSES,MAGIC_AFFINITIES,magicMethods,isMage,isMagicUser,ensureMana,initializeMagic,updateMagic,distributeMagicStones,castMedicBuff,castCasterStrength,updateMageAI,drawMagicBursts,spendMana,weaponMagicDamage,isPlayerCaster,castPlayerSpell,PLAYER_MAGIC_RULES} from './magic-rules.js?v=211';
 import {hazardMethods,updateHazards,drawHazards} from './hazard-fields.js?v=198';
 import {strongEnemyReward} from './combat-rewards.js?v=182';
-import {supplyMethods, initializeSupplies, updateSupplies, takeRangedShot, ammoCombatProfile, isRangedUnit, distributeAmmo, preventLethalHit, normalizeFieldSave, SQUAD_POTION_COST, REVIVAL_POTION_COST, ensureAmmo, RANGED_DAMAGE_MULT, supplyLocation} from './supply-rules.js?v=218';
+import {supplyMethods, initializeSupplies, updateSupplies, takeRangedShot, ammoCombatProfile, isRangedUnit, distributeAmmo, preventLethalHit, normalizeFieldSave, SQUAD_POTION_COST, REVIVAL_POTION_COST, ensureAmmo, RANGED_DAMAGE_MULT, supplyLocation} from './supply-rules.js?v=219';
 import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog } from './interface.js?v=218';
 import { renderTroopRankings, getSoldierRankerBadges, calcSoldierRankerBonus } from './troop-rankings.js?v=187';
 import { ensureSoldierAppearance, drawSoldierPortrait, describeSoldierAppearance } from './soldier-appearance.js?v=206';
@@ -111,7 +111,7 @@ import {
   nearestLivingMerchant, refreshMerchantStock, merchantBuyPrice, merchantSellTier,
   applyMerchantSave, serializeMerchants, MERCHANT_INTERACT_R,
   merchantHealingStatus, merchantHealWavesLeft, useMerchantHealing, MERCHANT_HEAL_COST, recalcEscortStats, finishEscortPhase
-} from './merchant-rules.js?v=218';
+} from './merchant-rules.js?v=219';
 
 import { daylightAt, advanceWorldClock, periodEnemy, enemyAvailable, PERIOD_ENEMIES } from './day-night.js?v=208';
 
@@ -119,8 +119,8 @@ import { clusterRescueMarkers } from './rescue-markers.js?v=182';
 import {visibleHeroMembers} from './hero-rules.js';
 import {updateHeroJournal} from './hero-journal.js?v=189';
 import {applyHeroEquipmentUpgrade} from './hero-equipment.js?v=211';
-import {initializeHeroJourney,rollHeroRevelation,serializeHeroJourney,updateHeroParty,updateHeroFollowing,awardHeroBattle,recordDemonKingDefeat,ensureHeroCastle,syncHeroCastle,renderHeroJourney,drawHeroMarks} from './hero-party.js?v=215';
-import { RESCUE_TIMEOUT, REVIVAL_COOLDOWN, revivalCooldownLeft, rescueUnits, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, receiveTownCargo, leaveCivilianSpace, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, markSoldierDown, downCommander, commanderDown, updateNpcRescue, CIV_KINDS, isMedic, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST } from './casualty-rules.js?v=218';
+import {initializeHeroJourney,rollHeroRevelation,serializeHeroJourney,updateHeroParty,updateHeroFollowing,awardHeroBattle,recordDemonKingDefeat,ensureHeroCastle,syncHeroCastle,renderHeroJourney,drawHeroMarks} from './hero-party.js?v=219';
+import { RESCUE_TIMEOUT, REVIVAL_COOLDOWN, revivalSkillCooldownLeft, normalizeRevivalSkill, headquartersRevivalPaused, rescueUnits, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, receiveTownCargo, leaveCivilianSpace, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, markSoldierDown, downCommander, commanderDown, updateNpcRescue, CIV_KINDS, isMedic, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST } from './casualty-rules.js?v=219';
 import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault, dungeonBlocks, dungeonSolids } from './dungeon.js?v=208';
 import {nearestDungeonFloor,dungeonSpawnPoint,dungeonSteeringTarget} from './dungeon-layout.js?v=182';
 import {normalizeDungeonExploration,updateDungeonSideChests,drawDungeonSideChests,updateDungeonRespawns,dungeonCoolingDown,recordDungeonClear,DUNGEON_RESET_PHASES} from './dungeon-exploration.js?v=200';
@@ -2450,7 +2450,7 @@ export const IronSquadGame = {
     this.rescueRewardIds=inheritVeterans?[...(inherited?.data?.rescueRewardIds||this.rescueRewardIds||[])]:[];
     const veterans = inherited?.veterans;
     this.reserves = inherited?.reserveSurvivors || [];
-    for(const soldier of this.reserves)if(soldier){soldier.phaseActivity=emptyActivity();soldier.deathlineDownHistory=[];soldier.revivalCooldownUntil=0;}
+    for(const soldier of this.reserves)if(soldier){soldier.phaseActivity=emptyActivity();soldier.deathlineDownHistory=[];delete soldier.revivalCooldownUntil;soldier.revivalSkillCooldownUntil=0;}
     this.squad = [];
     this.fog = new FogGrid();
     if(inheritVeterans&&inherited?.data?.fogExplored)this.fog.deserialize(inherited.data.fogExplored);
@@ -2467,7 +2467,7 @@ export const IronSquadGame = {
         vet.rescueProgress = 0;
         vet.isVeteran = true;
         vet.phaseActivity = emptyActivity();
-        vet.deathlineDownHistory=[];vet.revivalCooldownUntil=0;
+        vet.deathlineDownHistory=[];delete vet.revivalCooldownUntil;vet.revivalSkillCooldownUntil=0;
         vet.x = BASE_CAMP.x + (Math.random() - 0.5) * 120;
         vet.y = BASE_CAMP.y + (Math.random() - 0.5) * 120;
         this.recalcSoldierStats(vet);
@@ -3292,7 +3292,7 @@ export const IronSquadGame = {
     this.selectedSaleIds=new Set();this.soldierSlotSelections={};
     this.squad = saved.squad || [];
     this.reserves = saved.reserves || [];
-    for(const unit of [...this.squad,...this.reserves])unit.deathlineDownHistory=normalizeDeathlineHistory(unit,this.phase);
+    for(const unit of [...this.squad,...this.reserves]){unit.deathlineDownHistory=normalizeDeathlineHistory(unit,this.phase);normalizeRevivalSkill(this,unit);}
     refreshOwnedEquipmentUpgrades(this);
     this.recruitSequence = saved.recruitSequence ?? [...this.squad,...this.reserves].reduce((max,s)=>Math.max(max,Number(s.name?.match(/#(\d+)/)?.[1] || 0)),0);
     this.lastReinforcements = saved.lastReinforcements || null;
@@ -3384,7 +3384,7 @@ export const IronSquadGame = {
       kills: (pSave.minionKills !== undefined ? pSave.minionKills : (pSave.kills || 0)) + (pSave.bossKills || 0),
       survivedWaves: pSave.survivedWaves || 0,
       phaseActivity: pSave.phaseActivity || emptyActivity(),
-      revivalCooldownUntil:Math.max(0,Math.min(this.worldTime+REVIVAL_COOLDOWN,Number(pSave.revivalCooldownUntil)||0)),
+      revivalSkillCooldownUntil:Math.max(0,Math.min(this.worldTime+REVIVAL_COOLDOWN,Number(pSave.revivalSkillCooldownUntil)||0)),
       attributeProfile:pSave.attributeProfile,
       mana:Number.isFinite(pSave.mana)?Math.max(0,pSave.mana):undefined,
       magicAffinity:MAGIC_AFFINITIES[pSave.magicAffinity]?pSave.magicAffinity:'fire',
@@ -3774,7 +3774,7 @@ export const IronSquadGame = {
           isDown: !!this.player.isDown,
           downTimer: this.player.isDown ? (this.player.downTimer || 0) : 0,
           timesDown: this.player.timesDown || 0,
-          revivalCooldownUntil:this.player.revivalCooldownUntil||0,
+          revivalSkillCooldownUntil:this.player.revivalSkillCooldownUntil||0,
           maxHp: this.player.maxHp,
           level: this.player.level || 1,
           isAdvanced: !!this.player.isAdvanced,
@@ -6030,7 +6030,7 @@ export const IronSquadGame = {
 
     updateWounded(this,dt);
     for(let i=aliveSquad.length-1;i>=0;i--)if(aliveSquad[i].dead)aliveSquad.splice(i,1);
-    this._medicRescueAssign = buildMedicRescueAssign(rescueUnits(this).filter(s=>!this.currentDungeon||inCurrentInstance(this,s)),this.player);
+    this._medicRescueAssign = buildMedicRescueAssign(rescueUnits(this).filter(s=>!this.currentDungeon||inCurrentInstance(this,s)),this.player,this);
     // Shared mana regeneration and supply are processed once by updateMagic.
     if (!this.currentDungeon) {
       this._civSpawnClock = (this._civSpawnClock || 0) + dt;
@@ -6110,7 +6110,7 @@ export const IronSquadGame = {
 
       // 衛生兵（MEDIC）および大司教（HIGH_PRIEST）の自動救助 — 負傷者へ分散割当
       if (clsKey === 'MEDIC' || clsKey === 'HIGH_PRIEST' || clsKey === 'SAINT' || clsKey === 'ARCHANGEL') {
-        if (!this._medicRescueAssign) this._medicRescueAssign = buildMedicRescueAssign(rescueUnits(this).filter(s=>!this.currentDungeon||inCurrentInstance(this,s)),this.player);
+        if (!this._medicRescueAssign) this._medicRescueAssign = buildMedicRescueAssign(rescueUnits(this).filter(s=>!this.currentDungeon||inCurrentInstance(this,s)),this.player,this);
         const downedMate = this._medicRescueAssign.get(soldier.id) || null;
         if (downedMate && downedMate.isDown && !downedMate.dead) {
           const rescueTarget=this.dungeonMoveTarget(soldier,downedMate);
@@ -7662,7 +7662,7 @@ export const IronSquadGame = {
               <button type="button" class="transfer-tap-btn merchant-potion-button" ${this.squadPotion||gold<SQUAD_POTION_COST||m.dead||m.isDown||m.returningToBase?'disabled':''}>${this.squadPotion?'携帯中':`購入 · ${SQUAD_POTION_COST}G`}</button>
             </section>
             <section class="merchant-heal-service" aria-label="蘇生薬">
-              <div><h4>蘇生薬</h4><p>近くの味方1人を全快蘇生 · 携帯1個 · 自分には使用不可</p><p>蘇生クールタイムを無視できます · ${REVIVAL_POTION_COST.toLocaleString()}G</p></div>
+              <div><h4>蘇生薬</h4><p>近くの味方1人を全快蘇生 · 携帯1個 · 自分には使用不可</p><p>術士の蘇生クールタイムを無視して使えます · ${REVIVAL_POTION_COST.toLocaleString()}G</p></div>
               <button type="button" class="transfer-tap-btn merchant-revival-button" ${this.revivalPotion||gold<REVIVAL_POTION_COST||m.dead||m.isDown||m.returningToBase?'disabled':''}>${this.revivalPotion?'携帯中 1/1':`購入 · ${REVIVAL_POTION_COST.toLocaleString()}G`}</button>
             </section>
             <div class="merchant-checkpoint"></div>
@@ -8864,7 +8864,7 @@ export const IronSquadGame = {
             ${isMedic(s) ? `<div>実回復 💚 <strong>${Math.floor(s.healingHp || 0).toLocaleString()}HP</strong> · 回復EXP <strong>${(s.healingExp || 0).toLocaleString()}</strong></div><div>蘇生EXP <strong>${(s.revivalExp || 0).toLocaleString()}</strong></div><div style="font-size:10px;color:#94a3b8;">実回復${HEALING_HP_PER_EXP}HPで1EXP（継続回復含む）。蘇生は対象の最大HPの${REVIVAL_EXP_PER_MAX_HP*100}%をEXPで獲得。</div>` : ''}
             <div>隊長からの経験値 <strong>+${Math.floor(s.commanderBonusExp||0)}</strong> · 防御展開の遮断 <strong>${Math.floor(s.defenseBlocked||0)}</strong></div>
             <div>直近${DEATHLINE_WINDOW_PHASES}ウェーブのダウン <strong>${recentDownCount(s,this.phase)} / ${DEATHLINE_DOWN_THRESHOLD}回</strong></div>
-            <div>通常の蘇生間隔 <strong>${REVIVAL_COOLDOWN}秒</strong>${revivalCooldownLeft(this,s)>0?` · 次の蘇生まで${Math.ceil(revivalCooldownLeft(this,s))}秒`:''} · 蘇生薬は待ち時間なし</div>
+            ${isMedic(s)?`<div>蘇生魔法 <strong>${revivalSkillCooldownLeft(this,s)>0?`再使用まで${Math.ceil(revivalSkillCooldownLeft(this,s))}秒`:'使用可能'}</strong> · 再使用${REVIVAL_COOLDOWN}秒</div>`:''}
             <div>死線生還 💀 <strong style="color:#f87171;">${s.survivedDeathlines || 0}</strong></div>
           </div>
           <div class="soldier-detail-block">
@@ -12230,8 +12230,7 @@ export const IronSquadGame = {
     ctx.fillStyle = '#fecaca'; ctx.font = 'bold 18px sans-serif';
     ctx.fillText(displayKana(`隊長ダウン · 救助まで ${secs}秒`), w / 2, by + 24);
     ctx.fillStyle = '#fca5a5'; ctx.font = '12px sans-serif';
-    const revivalWait=Math.ceil(revivalCooldownLeft(this,p));
-    ctx.fillText(displayKana(revivalWait>0?`次の蘇生まで ${revivalWait}秒 · 搬送で救助を待て`:carried ? '味方が搬送中 · 衛生術士か本陣・町・救護所へ' : '衛生術士の救護か味方の搬送を待て'), w / 2, by + 47);
+    ctx.fillText(displayKana(headquartersRevivalPaused(this)?'本陣の復活停止中 · 衛生術士か町・救護所へ':carried ? '味方が搬送中 · 衛生術士か本陣・町・救護所へ' : '衛生術士の救護か味方の搬送を待て'), w / 2, by + 47);
     ctx.restore();
   },
 

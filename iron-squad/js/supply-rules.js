@@ -2,7 +2,7 @@ import {isMagicUser,ensureMana} from './magic-rules.js?v=211';
 import {WORLD_SIZE} from './world.js?v=198';
 import {inCurrentInstance} from './instance-rules.js?v=182';
 import {saveSlots} from './save-slots.js';
-import {nearestRevivalPotionTarget,reviveByPotion,REVIVAL_POTION_RANGE} from './casualty-rules.js?v=218';
+import {nearestRevivalPotionTarget,reviveByPotion,REVIVAL_POTION_RANGE} from './casualty-rules.js?v=219';
 
 export const AMMO_CAPACITY=30;
 export const SQUAD_POTION_COST=300;
@@ -204,7 +204,7 @@ export const supplyMethods={
     panel.querySelector('.supply-location').textContent=place?`補給地点：${place.name}`:'野外：本陣・救護所・町・商人・キャンプに近づくとセーブ／読込できます';
     panel.querySelector('.supply-counts').textContent=`回復薬 ${this.squadPotion?1:0}/1 · 射手の弾薬 ${ranged.reduce((n,u)=>n+ensureAmmo(u),0)}/${ranged.length*AMMO_CAPACITY} · 予備弾薬 ${this.ammoReserve||0}`;
     panel.querySelector('.supply-counts').textContent+=` · 蘇生薬 ${this.revivalPotion?1:0}/1`;
-    panel.querySelector('.supply-help').textContent+=' 蘇生薬は近くの味方1人を全快蘇生し、通常の蘇生待ち時間を無視できます。自分には使えず、商店で1個10,000Gで補充できます。';
+    panel.querySelector('.supply-help').textContent+=' 蘇生薬は術士の蘇生クールタイムを無視して、近くの味方1人を全快蘇生できます。自分には使えず、商店で1個10,000Gで補充できます。';
     const potion=panel.querySelector('[data-supply="potion"]');potion.disabled=!!this.squadPotion||place?.kind!=='base';potion.onclick=()=>this.replenishSquadPotion();
     const save=panel.querySelector('[data-supply="save"]');save.disabled=!place;save.onclick=()=>{this.saveCheckpoint();if(host)this.renderSupplyPanel(host);};
     const load=panel.querySelector('[data-supply="load"]');load.disabled=!place||!cp?.data;load.onclick=()=>this.loadCheckpoint();

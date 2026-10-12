@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
 import {mkdirSync,readFileSync,writeFileSync} from 'node:fs';
 const {chromium}=createRequire('C:/Users/Yoshiyuki/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/entry.cjs')('playwright');
-const base=process.argv[2]||'http://127.0.0.1:8002',out='iron-squad/docs/previews/revival-20261012';mkdirSync(out,{recursive:true});
+const base=process.argv[2]||'http://127.0.0.1:8002',out='iron-squad/docs/previews/medic-revival-20261012';mkdirSync(out,{recursive:true});
 const manifest={GAME_ASSETS:{}};new Function('self',readFileSync('iron-squad/sw-assets.js','utf8'))(manifest);const release=manifest.GAME_ASSETS['iron-squad'];
 const report={version:release.gameVersion,cache:release.version,checks:{},errors:[],screenshots:[]},browser=await chromium.launch({channel:'chrome',headless:true});
 try{
@@ -11,7 +11,7 @@ try{
   await page.evaluate(async()=>{
     window.g=qualityGame;g.stopGameLoop();g.closeStrategyModal();g.monsters=[];g.currentQuest=null;g.restTimer=0;
     window.initial=structuredClone(g.saveGame());window.C=79360;
-    window.casualty=await import('/iron-squad/js/casualty-rules.js?v=218');window.phase=await import('/iron-squad/js/phase-rules.js?v=218');
+    window.casualty=await import('/iron-squad/js/casualty-rules.js?v=219');window.phase=await import('/iron-squad/js/phase-rules.js?v=218');
     window.motion=await import('/iron-squad/js/weapon-motion.js?v=218');window.art=await import('/iron-squad/js/visuals.js?v=218');
     window.reset=()=>{g._merchantShopClose?.();g.resumeSavedGame(structuredClone(initial));g.stopGameLoop();g.closeStrategyModal();g.inBattle=true;g.restTimer=0;g.phaseTimer=120;g.monsters=[];g.currentQuest=null;g.updateSpawns=()=>{};g.screenShake=0;};
     window.draw=()=>{g.camera={x:g.player.x,y:g.player.y};g.resizeCanvas();g.revealFogAroundPlayer(true);g.updateStatsUI(true);g.render();};
@@ -21,18 +21,26 @@ try{
   });
   const shot=async name=>{await page.screenshot({path:`${out}/${name}.png`});report.screenshots.push(`${name}.png`);};
   report.checks.repeat=await page.evaluate(()=>{
-    const first=casualty.markSoldierDown(g,patient)&&casualty.treatWounded(g,medic,patient,1),deadline=patient.revivalCooldownUntil;
+    const first=casualty.markSoldierDown(g,patient)&&casualty.treatWounded(g,medic,patient,1),deadline=medic.revivalSkillCooldownUntil;
     casualty.markSoldierDown(g,patient);const rescues=patient.timesRescued,mana=medic.mana;
     for(let i=0;i<30;i++)casualty.treatWounded(g,medic,patient,1);
     const blockedMana=medic.mana===mana;for(let i=0;i<100;i++)g.update(.1);
     Object.assign(g.player,{x:patient.x,y:patient.y});draw();
-    return {first,deadline,blockedMana,isDown:patient.isDown,rescuesBefore:rescues,rescuesAfter:patient.timesRescued,remaining:casualty.revivalCooldownLeft(g,patient),buttonEnabled:!document.getElementById('btn-pad-revive').disabled};
+    return {first,deadline,blockedMana,isDown:patient.isDown,rescuesBefore:rescues,rescuesAfter:patient.timesRescued,remaining:casualty.revivalSkillCooldownLeft(g,medic),patientLock:!!patient.revivalCooldownUntil,buttonEnabled:!document.getElementById('btn-pad-revive').disabled};
   });
-  assert.equal(report.checks.repeat.first,true);assert.equal(report.checks.repeat.deadline,360);assert.equal(report.checks.repeat.blockedMana,true);assert.equal(report.checks.repeat.isDown,true);assert.equal(report.checks.repeat.rescuesAfter,report.checks.repeat.rescuesBefore);assert.ok(Math.abs(report.checks.repeat.remaining-50)<.001);assert.equal(report.checks.repeat.buttonEnabled,true);
+  assert.equal(report.checks.repeat.first,true);assert.equal(report.checks.repeat.deadline,360);assert.equal(report.checks.repeat.blockedMana,true);assert.equal(report.checks.repeat.isDown,true);assert.equal(report.checks.repeat.rescuesAfter,report.checks.repeat.rescuesBefore);assert.ok(Math.abs(report.checks.repeat.remaining-50)<.001);assert.equal(report.checks.repeat.patientLock,false);assert.equal(report.checks.repeat.buttonEnabled,true);
   await shot('medicine-ready-390');
   report.checks.menuPause=await page.evaluate(()=>{const before=g.worldTime;g.openStrategyModal(true);g.update(30);g.closeStrategyModal();return g.worldTime===before;});assert.equal(report.checks.menuPause,true);
-  await page.click('#btn-pad-revive');report.checks.medicine=await page.evaluate(()=>{draw();return {full:patient.hp===patient.maxHp,isDown:patient.isDown,stock:g.revivalPotion,remaining:casualty.revivalCooldownLeft(g,patient),disabled:document.getElementById('btn-pad-revive').disabled};});
-  assert.deepEqual(report.checks.medicine,{full:true,isDown:false,stock:0,remaining:60,disabled:true});await shot('medicine-used-390');
+  report.checks.otherMedic=await page.evaluate(()=>{
+    const other=g.createNewSoldier(null,{classKey:'MEDIC'});Object.assign(other,{x:patient.x,y:patient.y,mana:100,isPersonalGuard:true});g.squad.push(other);
+    for(let i=0;i<30&&patient.isDown;i++)g.update(.1);draw();return {rescued:!patient.isDown,originalOnCooldown:casualty.revivalSkillCooldownLeft(g,medic)>0,newCasterCooldown:casualty.revivalSkillCooldownLeft(g,other),noPatientLock:!patient.revivalCooldownUntil};
+  });assert.equal(report.checks.otherMedic.rescued,true);assert.equal(report.checks.otherMedic.originalOnCooldown,true);assert.ok(report.checks.otherMedic.newCasterCooldown>59);assert.equal(report.checks.otherMedic.noPatientLock,true);await shot('another-medic-rescue-390');
+  await page.evaluate(()=>{casualty.markSoldierDown(g,patient);window.medicineCooldownBefore=casualty.revivalSkillCooldownLeft(g,medic);draw();});
+  await page.click('#btn-pad-revive');report.checks.medicine=await page.evaluate(()=>{draw();return {full:patient.hp===patient.maxHp,isDown:patient.isDown,stock:g.revivalPotion,casterCooldownUnchanged:casualty.revivalSkillCooldownLeft(g,medic)===medicineCooldownBefore,patientLock:!!patient.revivalCooldownUntil,disabled:document.getElementById('btn-pad-revive').disabled};});
+  assert.deepEqual(report.checks.medicine,{full:true,isDown:false,stock:0,casterCooldownUnchanged:true,patientLock:false,disabled:true});await shot('medicine-used-390');
+  report.checks.casterSave=await page.evaluate(()=>{const id=medic.id,before=casualty.revivalSkillCooldownLeft(g,medic),state=structuredClone(g.saveGame());g.resumeSavedGame(state);g.stopGameLoop();g.closeStrategyModal();medic=g.squad.find(s=>s.id===id);return {before,after:casualty.revivalSkillCooldownLeft(g,medic)};});assert.equal(report.checks.casterSave.before,report.checks.casterSave.after);
+  await page.evaluate(()=>{g.openStrategyModal(true);g.openSoldierDetail(medic.id);[...document.querySelectorAll('.soldier-detail-block > div')].find(n=>n.textContent.startsWith('蘇生魔法')).scrollIntoView({block:'center'});});
+  assert.match(await page.locator('#soldier-detail-host').innerText(),/蘇生魔法.*再使用まで/);await shot('caster-cooldown-390');await page.evaluate(()=>{g.closeSoldierDetail();g.closeStrategyModal();});
   await page.evaluate(()=>{window.shop=g.merchants.find(m=>!m.dead&&!m.isDown&&!m.returningToBase);Object.assign(g.player,{x:shop.x,y:shop.y});g.gold=20000;g.openMerchantShop(shop);document.querySelector('.merchant-services').open=true;});
   await page.locator('.merchant-revival-button').scrollIntoViewIfNeeded();await shot('medicine-shop-390');await page.click('.merchant-revival-button');
   report.checks.shop=await page.evaluate(()=>{const result={stock:g.revivalPotion,gold:g.gold,disabled:document.querySelector('.merchant-revival-button').disabled};g._merchantShopClose();const saved=structuredClone(g.saveGame());g.resumeSavedGame(saved);g.stopGameLoop();g.closeStrategyModal();result.loadedStock=g.revivalPotion;return result;});
@@ -44,11 +52,16 @@ try{
     Object.assign(g.player,{x:injured.x,y:injured.y});draw();result.drawnAtActualPosition=g._lanternActors.some(a=>a.id.endsWith(`:${injured.id}`)&&a.x===injured.x&&a.y===injured.y);result.target=casualty.nearestRevivalPotionTarget(g)?.id===injured.id;
     const farm=await import('/iron-squad/js/reserve-farm.js?v=182');Object.assign(g.player,{x:farm.FARM_X+250,y:farm.FARM_Y});draw();result.ghostOnFarm=g._lanternActors.some(a=>a.id.endsWith(`:${injured.id}`));return result;
   });assert.deepEqual(report.checks.reserves,{deployed:1,healthyDeployed:true,injuredWaiting:true,down:true,hp:0,drawnAtActualPosition:true,target:true,ghostOnFarm:false});
+  report.checks.headquarters=await page.evaluate(()=>{
+    reset();g.worldTime=300;patient=g.squad[0];medic=g.squad.find(s=>s.soldierClass==='MEDIC');Object.assign(patient,{x:C+600,y:C});Object.assign(medic,{x:patient.x,y:patient.y,mana:100});casualty.markSoldierDown(g,patient);casualty.treatWounded(g,medic,patient,1);g.worldTime=310;casualty.markSoldierDown(g,patient);Object.assign(g.player,{x:C,y:C});Object.assign(patient,{x:C,y:C});g.startDemonInvasion();g.arriveDemonInvasion();casualty.updateWounded(g,0);draw();return {battle:g.invasions.stage,paused:casualty.headquartersRevivalPaused(g),stillDown:patient.isDown,originalCasterRemaining:casualty.revivalSkillCooldownLeft(g,medic)};
+  });assert.deepEqual(report.checks.headquarters,{battle:'battle',paused:true,stillDown:true,originalCasterRemaining:50});await shot('invasion-hq-revival-paused-390');
+  report.checks.clinic=await page.evaluate(()=>{const clinic=g.medicalPosts[0];Object.assign(patient,{x:clinic.x,y:clinic.y});Object.assign(g.player,{x:clinic.x,y:clinic.y});casualty.updateWounded(g,0);draw();return {invasion:g.invasions.stage,revived:!patient.isDown,full:patient.hp===patient.maxHp,casterStillWaiting:casualty.revivalSkillCooldownLeft(g,medic)===50};});assert.deepEqual(report.checks.clinic,{invasion:'battle',revived:true,full:true,casterStillWaiting:true});await shot('invasion-clinic-rescue-390');
+  report.checks.afterInvasion=await page.evaluate(()=>{Object.assign(patient,{x:C+600,y:C});casualty.markSoldierDown(g,patient);Object.assign(patient,{x:C,y:C});Object.assign(g.player,{x:C,y:C});g.finishDemonInvasion('victory');casualty.updateWounded(g,0);return {stage:g.invasions.stage,paused:casualty.headquartersRevivalPaused(g),revived:!patient.isDown};});assert.deepEqual(report.checks.afterInvasion,{stage:'idle',paused:false,revived:true});
   report.checks.waitLabel=await page.evaluate(()=>{
-    reset();g.worldTime=300;Object.assign(g.player,{x:C+600,y:C});const healer=g.squad.find(s=>s.soldierClass==='MEDIC');Object.assign(healer,{x:g.player.x,y:g.player.y,mana:100});casualty.downCommander(g);casualty.treatWounded(g,healer,g.player,1);casualty.downCommander(g);
+    reset();g.worldTime=300;Object.assign(g.player,{x:C+600,y:C});const healer=g.squad.find(s=>s.soldierClass==='MEDIC');Object.assign(healer,{x:g.player.x,y:g.player.y,mana:100});casualty.downCommander(g);casualty.treatWounded(g,healer,g.player,1);casualty.downCommander(g);g.invasions.stage='battle';
     const texts=[],old=g.ctx.fillText;g.ctx.fillText=function(...args){texts.push(args[0]);return old.apply(this,args);};draw();g.ctx.fillText=old;
-    return {shown:texts.some(t=>t.includes('次の蘇生まで 60秒')),drugDisabled:document.getElementById('btn-pad-revive').disabled};
-  });assert.deepEqual(report.checks.waitLabel,{shown:true,drugDisabled:true});await shot('commander-revival-wait-390');
+    return {patientLockLabel:texts.some(t=>t.includes('次の蘇生まで')),hqPausedLabel:texts.some(t=>t.includes('本陣の復活停止中')),drugDisabled:document.getElementById('btn-pad-revive').disabled};
+  });assert.deepEqual(report.checks.waitLabel,{patientLockLabel:false,hqPausedLabel:true,drugDisabled:true});await shot('commander-invasion-rescue-390');
   report.checks.waves=await page.evaluate(()=>{
     reset();patient=g.squad[0];medic=g.squad.find(s=>s.soldierClass==='MEDIC');const rows=[];
     for(let wave=1;wave<=5;wave++){
@@ -83,6 +96,6 @@ try{
   const offline=await browser.newContext({viewport:{width:390,height:844}}),tab=await offline.newPage();tab.on('pageerror',e=>report.errors.push(e.message));await tab.goto(base);await tab.waitForFunction(()=>navigator.serviceWorker.controller);
   await tab.waitForFunction(async({cache,total})=>(await(await caches.open(cache)).keys()).length>=total,{cache:`game-iron-squad-${release.version}`,total:release.files.length},{timeout:60000});
   await offline.setOffline(true);await tab.reload();await tab.click('[data-game-id="iron-squad"]');await tab.locator('#new-expedition-form').evaluate(f=>f.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})));await tab.click('#btn-commander-confirm');await tab.waitForFunction(()=>window.gameStudioInstance?.activeGame?.player);
-  report.checks.offline=await tab.evaluate(async()=>{const g=gameStudioInstance.activeGame;g.stopGameLoop();g.closeStrategyModal();const cr=await import('/iron-squad/js/casualty-rules.js?v=218'),pr=await import('/iron-squad/js/phase-rules.js?v=218');g.camera={x:g.player.x,y:g.player.y};g.render();return {stock:g.revivalPotion,disabled:document.getElementById('btn-pad-revive').disabled,cooldown:cr.REVIVAL_COOLDOWN,window:pr.DEATHLINE_WINDOW_PHASES,recovery:g._renderProblem||null};});assert.deepEqual(report.checks.offline,{stock:1,disabled:true,cooldown:60,window:5,recovery:null});report.checks.offline.assets=release.files.length;await tab.screenshot({path:`${out}/offline.png`});report.screenshots.push('offline.png');await offline.close();assert.deepEqual(report.errors,[]);console.log(JSON.stringify(report.checks));
+  report.checks.offline=await tab.evaluate(async()=>{const g=gameStudioInstance.activeGame;g.stopGameLoop();g.closeStrategyModal();const cr=await import('/iron-squad/js/casualty-rules.js?v=219'),pr=await import('/iron-squad/js/phase-rules.js?v=218');g.camera={x:g.player.x,y:g.player.y};g.render();return {stock:g.revivalPotion,disabled:document.getElementById('btn-pad-revive').disabled,cooldown:cr.REVIVAL_COOLDOWN,casterHelper:typeof cr.revivalSkillCooldownLeft,window:pr.DEATHLINE_WINDOW_PHASES,recovery:g._renderProblem||null};});assert.deepEqual(report.checks.offline,{stock:1,disabled:true,cooldown:60,casterHelper:'function',window:5,recovery:null});report.checks.offline.assets=release.files.length;await tab.screenshot({path:`${out}/offline.png`});report.screenshots.push('offline.png');await offline.close();assert.deepEqual(report.errors,[]);console.log(JSON.stringify(report.checks));
 }catch(error){report.failure=error.stack;throw error;}
 finally{await browser.close();writeFileSync(`${out}/browser.json`,JSON.stringify(report,null,2));}

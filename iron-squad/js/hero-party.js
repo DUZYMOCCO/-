@@ -9,10 +9,10 @@ import {persistentUnit} from './render-support.js';
 import {grantPersonalExp} from './experience-rules.js';
 import {formatDistance} from './distance-format.js';
 import {practiceAttribute} from './unit-attributes.js?v=187';
-import {isMedic,treatWounded,updateWounded} from './casualty-rules.js?v=218';
+import {isMedic,treatWounded,updateWounded,normalizeRevivalSkill,revivalSkillCooldownLeft} from './casualty-rules.js?v=219';
 import {healByMedic,healAmountFor} from './phase-rules.js?v=218';
 import {ensureMana,regenerateMana,spendMana,isMage} from './magic-rules.js?v=211';
-import {takeRangedShot,supplyLocation} from './supply-rules.js?v=218';
+import {takeRangedShot,supplyLocation} from './supply-rules.js?v=219';
 import {distanceScaling} from './equipment-rules.js?v=217';
 import {strongEnemyReward} from './combat-rewards.js?v=182';
 import {RANGED_ENEMIES} from './enemy-ranged.js?v=187';
@@ -24,7 +24,7 @@ export function initializeHeroJourney(game,saved=null) {
   game.heroJourney=saved?structuredClone(saved):{lastRollPhase:0,sequence:0,party:null,history:[],demonKingDefeat:null,castleScene:null};
   const journey=game.heroJourney;journey.history||=[];journey.sequence||=0;
   let equipped=false;
-  for(const u of heroMembers(game)){delete u._cachedEnemy;if(grantHeroEquipment(game,u))equipped=true;game.recalcSoldierStats(u);if(u.isDown)u.hp=0;}
+  for(const u of heroMembers(game)){delete u._cachedEnemy;normalizeRevivalSkill(game,u);if(grantHeroEquipment(game,u))equipped=true;game.recalcSoldierStats(u);if(u.isDown)u.hp=0;}
   if(equipped)recordHeroEquipmentGrant(game,journey.party);
 }
 export function rollHeroRevelation(game,random=game.random||Math.random) {
@@ -161,7 +161,7 @@ export function updateHeroParty(game,dt,classes) {
     const cls=classes[u.soldierClass]||classes.LIGHT;
     if(isMedic(u)){
       const down=living.find(v=>v.isDown&&!v.dead)||(shared&&game.player.isDown?game.player:null);
-      if(down){if(Math.hypot(u.x-down.x,u.y-down.y)>35)move(game,ctx,u,down,dt);else treatWounded(ctx,u,down,dt);return;}
+      if(down&&revivalSkillCooldownLeft(ctx,u)<=.000001){if(Math.hypot(u.x-down.x,u.y-down.y)>35)move(game,ctx,u,down,dt);else treatWounded(ctx,u,down,dt);return;}
       const hurt=living.filter(ready).sort((a,b)=>a.hp/a.maxHp-b.hp/b.maxHp)[0];
       if(hurt&&hurt.hp<hurt.maxHp*.85){if(Math.hypot(u.x-hurt.x,u.y-hurt.y)>cls.range)move(game,ctx,u,hurt,dt);else if(u._heroAttackClock<=0&&spendMana(u,16)){healByMedic(u,hurt,healAmountFor(u,hurt),ctx);u._heroAttackClock=cls.atkCooldown;ctx.spawnDamageText(hurt.x,hurt.y-20,'救護','#34d399');}return;}
     }

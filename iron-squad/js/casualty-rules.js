@@ -12,8 +12,14 @@ export const RESCUE_TIMEOUT = 45; // 救助猶予時間（秒）広域マップ�
 export const REVIVAL_COOLDOWN = 60;
 export const REVIVAL_POTION_RANGE = 80;
 const rescueClock=game=>Math.max(0,Number(game?.worldTime)||0);
-export const revivalCooldownLeft=(game,unit)=>Math.max(0,Math.min(REVIVAL_COOLDOWN,(Number(unit?.revivalCooldownUntil)||0)-rescueClock(game)));
 export const isMedic=unit=>['MEDIC','HIGH_PRIEST','SAINT','ARCHANGEL'].includes(unit?.soldierClass);
+export const revivalSkillCooldownLeft=(game,medic)=>isMedic(medic)?Math.max(0,Math.min(REVIVAL_COOLDOWN,(Number(medic?.revivalSkillCooldownUntil)||0)-rescueClock(game))):0;
+export function normalizeRevivalSkill(game,unit) {
+  if(!unit)return;
+  delete unit.revivalCooldownUntil; // v6.3.5 patient timers are discarded, never transferred to the healer.
+  unit.revivalSkillCooldownUntil=isMedic(unit)?Math.max(0,Math.min(rescueClock(game)+REVIVAL_COOLDOWN,Number(unit.revivalSkillCooldownUntil)||0)):0;
+}
+export const headquartersRevivalPaused=game=>!!(game?.baseRaidActive||game?.invasions?.stage==='battle');
 // Compatibility names for existing medical callers; the shared resource is mana.
 export const MEDIC_STAMINA_MAX=100;
 export const MEDIC_STAMINA_REGEN=.6;
@@ -210,9 +216,13 @@ export function markSoldierDown(game, soldier, opts = {}) {
 }
 
 function revive(game,wounded,hp,options=null) {
-  if(!wounded?.isDown||wounded.dead||wounded.dying||(!options?.ignoreCooldown&&revivalCooldownLeft(game,wounded)>.000001))return false;
+  if(!wounded?.isDown||wounded.dead||wounded.dying)return false;
+  const caster=options?.method==='MEDIC'?options.medic:null;
+  if(caster&&revivalSkillCooldownLeft(game,caster)>.000001)return false;
+  if(options?.method==='BASE'&&options.station?.kind==='base'&&headquartersRevivalPaused(game))return false;
   const carrier=carrierOf(game,wounded);
-  wounded.revivalCooldownUntil=rescueClock(game)+REVIVAL_COOLDOWN;
+  if(caster)caster.revivalSkillCooldownUntil=rescueClock(game)+REVIVAL_COOLDOWN;
+  delete wounded.revivalCooldownUntil;
   wounded.isDown=false;wounded.hp=Math.max(1,Math.floor(hp));wounded.rescueProgress=0;wounded.downTimer=0;
   delete wounded.carrierId;delete wounded.rescueHealerId;delete wounded.rescueTargetId;
   delete wounded.downedInAid;delete wounded.downId;delete wounded._medicCalled;
@@ -261,7 +271,7 @@ export function nearestRevivalPotionTarget(game) {
 }
 export function reviveByPotion(game,wounded) {
   if(wounded!==nearestRevivalPotionTarget(game))return false;
-  return revive(game,wounded,wounded.maxHp,{method:'POTION',medic:game.player,ignoreCooldown:true});
+  return revive(game,wounded,wounded.maxHp,{method:'POTION',medic:game.player});
 }
 
 export function grantRescueBonus(game,wounded,options={}) {
@@ -408,7 +418,7 @@ export function grantCivilianRescueBonus(game,civ,station) {
 
 export function treatWounded(game,medic,wounded,dt) {
   if(!Number.isFinite(dt)||dt<=0||!isMedic(medic)||medic.dead||medic.isDown||medic.hp<=0||!wounded?.isDown||wounded.dead||Math.hypot(medic.x-wounded.x,medic.y-wounded.y)>40)return false;
-  if(wounded.dying||revivalCooldownLeft(game,wounded)>.000001)return false;
+  if(wounded.dying||revivalSkillCooldownLeft(game,medic)>.000001)return false;
   // Soft fatigue: cannot channel revive when exhausted (HQ wipe becomes possible).
   if(!medicHasStamina(medic, MEDIC_TREAT_MIN)) return false;
   const drain = MEDIC_TREAT_DRAIN * dt;
@@ -430,9 +440,9 @@ export function treatWounded(game,medic,wounded,dt) {
  * 衛生兵・大司教を異なる負傷者へ分散割当（全員が同一ターゲットに群がらない）
  * 余り衛生兵は最も近い未完了ターゲットを支援可
  */
-export function buildMedicRescueAssign(aliveSquad,commander=null) {
+export function buildMedicRescueAssign(aliveSquad,commander=null,game=null) {
   const map=new Map();
-  const medics=(aliveSquad||[]).filter(s=>s&&!s.dead&&!s.isDown&&isMedic(s));
+  const medics=(aliveSquad||[]).filter(s=>s&&!s.dead&&!s.isDown&&s.hp>0&&isMedic(s)&&revivalSkillCooldownLeft(game,s)<=.000001);
   const downed=(aliveSquad||[]).filter(s=>s&&s.isDown&&!s.dead&&s!==commander);
   // 隊長ダウンは最優先：最寄りの衛生職2名を隊長へ向かわせる（残りは通常の負傷者へ）。
   if(commander?.isDown&&!commander.dead) {
@@ -611,8 +621,8 @@ export function handleTransportAI(game,soldier,dt) {
     .sort((a,b)=>Math.hypot(a.x-soldier.x,a.y-soldier.y)-Math.hypot(b.x-soldier.x,b.y-soldier.y))[0]:null;
   if(candidate&&attachWounded(game,soldier,candidate))return true;
   // 隊長を運ぶ場合：到達可能な衛生術士がいればその最寄りへ、いなければ町・本陣・救護所へ。
-  const healer=!candidate&&carried.includes(game.player)?(game.squad||[]).filter(h=>h!==soldier&&isMedic(h)&&!h.dead&&!h.isDown&&h.hp>0&&isLocalRescueUnit(game,h)===isLocalRescueUnit(game,soldier)).sort((a,b)=>Math.hypot(a.x-soldier.x,a.y-soldier.y)-Math.hypot(b.x-soldier.x,b.y-soldier.y))[0]:null;
-  const destination=candidate || healer || (carried.length?nearest(casualtyStations(game,carried.some(isMerchantCasualty)?carried.find(isMerchantCasualty):soldier).filter(p=>p.kind!=='medical'||p.discovered),soldier):null);
+  const healer=!candidate&&carried.length&&(carried.includes(game.player)||headquartersRevivalPaused(game))?(game.squad||[]).filter(h=>h!==soldier&&isMedic(h)&&!h.dead&&!h.isDown&&h.hp>0&&revivalSkillCooldownLeft(game,h)<=.000001&&medicHasStamina(h,MEDIC_TREAT_MIN)&&isLocalRescueUnit(game,h)===isLocalRescueUnit(game,soldier)).sort((a,b)=>Math.hypot(a.x-soldier.x,a.y-soldier.y)-Math.hypot(b.x-soldier.x,b.y-soldier.y))[0]:null;
+  const destination=candidate || healer || (carried.length?nearest(casualtyStations(game,carried.some(isMerchantCasualty)?carried.find(isMerchantCasualty):soldier).filter(p=>(p.kind!=='medical'||p.discovered)&&(p.kind!=='base'||!headquartersRevivalPaused(game))),soldier):null);
   if(!destination)return false;
   const goal=game.dungeonMoveTarget?.(soldier,destination)||destination;
   const dx=goal.x-soldier.x,dy=goal.y-soldier.y,d=Math.hypot(dx,dy);
@@ -677,6 +687,6 @@ export function updateNpcRescue(game,dt) {
     }
     return;
   }
-  const dest=nearest(casualtyStations(game,p).filter(st=>st.kind!=='medical'||st.discovered),carrier);
+  const dest=nearest(casualtyStations(game,p).filter(st=>(st.kind!=='medical'||st.discovered)&&(st.kind!=='base'||!headquartersRevivalPaused(game))),carrier);
   if(dest)go(dest,speed*transportSpeedFactor(game,carrier));
 }
