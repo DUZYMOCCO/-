@@ -34,3 +34,11 @@ test('horde after the treasure: 200 small villains, max 16-18 at once', () => {
   assert.ok(H.types.includes('mummy'), 'ばくはへい');
   for (const k of ['temple', 'templeDoor', 'templeDoorOpen', 'spikes0', 'spikesW', 'spikes1', 'rowWarn', 'boulder', 'rock']) assert.ok(art(k), k);
 });
+
+test('v1.21.1: fortress is far (about 2x) and footprints start right at the spawn', async () => {
+  const { trailSteps } = await import('../js/rules.js');
+  assert.ok(TEMPLE.dist0 >= 1200 && TEMPLE.dist1 <= 1800);
+  const steps = trailSteps(TEMPLE.dist0 + 90, 100, TEMPLE.trailStart);
+  assert.ok(steps[0] <= 60, 'スタートの がめんに みえる');
+  assert.ok(steps.length >= 12 && steps.length <= 20, 'あしあとの かずは ほどほど（おもく ならない）');
+});

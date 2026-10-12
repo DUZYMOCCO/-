@@ -696,7 +696,7 @@ export const FORTRESS = {
  * おたからを とると その へやで だいぐん 200たい（いちどに cap たい まで）。はしごは おたからの あと すぐ でる（にげても OK）
  */
 export const TEMPLE = {
-  temple: true, door: 'templeDoor', noArrow: true, at: 3, dist0: 520, dist1: 720, doorR: 54, stairsR: 50, cellR: 72, heliR: 80, vaultR: 70,
+  temple: true, door: 'templeDoor', noArrow: true, at: 3, dist0: 1300, dist1: 1600, trailStart: 45, // v1.21.1 とおく（まえの やく 2ばい）・あしあとは スタートの すぐ そばから doorR: 54, stairsR: 50, cellR: 72, heliR: 80, vaultR: 70,
   floors: 4, foes: [0, 0, 0, 0], foeHp: 1, names: ['とげの へや', 'ころがる いしの へや', 'おちる いわの へや', 'おたからの へや'],
   room: { halfW: 380, roomHalfW: 380, roomY: -1e9, top: -900, bottom: 140 },
   stairs: { x: 0, y: -820 }, cells: [], pad: TOWER.pad, roofExit: { x: -260, y: 40 }, heli: TOWER.heli,

@@ -13,13 +13,13 @@ import {
   SQUAD, allyDamage, squadSlot, canWhistle, healAmount,
   QUEST, CAMP, underHalfW, clampUnder, hutSpot, LASER_MODES, nextLaserMode, squadRoom, beamHits, MAX_LEVEL as MAXLV,
   enemyDmgMul, startWeapons, CITY_FIRE, burnSites, TOWER, MANSION, FORTRESS, TEMPLE, spikeState, fortressBossScale, trailSteps, missileTargets, towerSpot, rollHeli, heliDamage, floorName,
-} from './rules.js?v=217';
-import { DecorField } from './decor.js?v=217';
-import { EnemyGrid, nearestN } from './grid.js?v=217';
-import { preloadArt, art } from './art.js?v=217';
-import { Stage } from './stage.js?v=217';
-import { menuMethods, iconHtml } from './menus.js?v=217';
-import { PopBGM, playWhistle } from './bgm.js?v=217';
+} from './rules.js?v=218';
+import { DecorField } from './decor.js?v=218';
+import { EnemyGrid, nearestN } from './grid.js?v=218';
+import { preloadArt, art } from './art.js?v=218';
+import { Stage } from './stage.js?v=218';
+import { menuMethods, iconHtml } from './menus.js?v=218';
+import { PopBGM, playWhistle } from './bgm.js?v=218';
 
 const SAVE_KEY = 'dada_survivor_save';
 const TAU = Math.PI * 2;
@@ -45,7 +45,7 @@ export const DadaSurvivorGame = {
 
   // 起動時にこのゲームのCSSを自分で読み込む（?v= はこのフォルダ内で管理）。ハブが init 前に await する
   prepare() {
-    return loadCss(new URL('../css/dada-survivor.css?v=217', import.meta.url).href);
+    return loadCss(new URL('../css/dada-survivor.css?v=218', import.meta.url).href);
   },
 
   init(container, onBackToHub) {
@@ -541,11 +541,11 @@ export const DadaSurvivorGame = {
 
   /* ---------- ゆきやまの スタートキャンプ（ステージ3） ---------- */
   /** v1.17.1 スタートから めあてまで じめんに みち（やじるしの あしあと）。to は { x, y } */
-  addTrail(to, text) {
+  addTrail(to, text, start = 110) {
     // とびらの まえ（した）まで いって、さいごは うえむき。たてものの うえには かかない
     const r = this.run, A = { x: to.x, y: to.y + 110 }, d = Math.hypot(A.x, A.y), ang = Math.atan2(A.y, A.x);
     const blocks = r.props.filter(p => p.w >= 150), inside = (x, y) => blocks.some(p => Math.abs(x - p.x) < p.w / 2 + 30 && Math.abs(y - p.y) < p.h / 2 + 30);
-    const pts = trailSteps(d + 90).map(s => ({ x: Math.cos(ang) * s, y: Math.sin(ang) * s, rot: ang }));
+    const pts = trailSteps(d + 90, 100, start).map(s => ({ x: Math.cos(ang) * s, y: Math.sin(ang) * s, rot: ang }));
     pts.push({ x: A.x, y: A.y, rot: -Math.PI / 2 });
     for (const q of pts) if (!inside(q.x, q.y)) r.props.unshift({ kind: 'trail', x: q.x, y: q.y, w: 64, h: 64, rot: q.rot });
     r.goalMsg = { t: 2.6, text }; // 「ステージN 〜」の バナーの あとに だす
@@ -571,7 +571,7 @@ export const DadaSurvivorGame = {
     r.props = [Tp ? { kind: 'temple', x: at.x, y: at.y, w: 380, h: 300 } : M ? { kind: 'mansion', x: at.x, y: at.y, w: 320, h: 270 } : F ? { kind: 'fortress', x: at.x, y: at.y, w: 400, h: 316 } : { kind: 'tower', x: at.x, y: at.y, w: 240, h: 304 }, door];
     r.quest = { tower: true, T, U: T.room, stage: 'wait', door, building: at, floor: 0, left: 0, stairs: null, cells: [],
       heli: M || F || Tp ? false : rollHeli(), pending: 0, heliTaken: false, heliProp: null, exit: null, surface: null, vault: null, foe: null };
-    this.addTrail(door, Tp ? 'あしあとを たどって いくと いしの ようさいが あるよ！' : F ? 'やじるしの さきに わるものの ようさいが あるよ！ みちを たどって いこう' : M ? 'やじるしの さきに おおきな こやが あるよ！ みちを たどって いこう' : 'やじるしの さきに たかい ビルが あるよ！ みちを たどって いこう');
+    this.addTrail(door, Tp ? 'あしあとを たどって いくと いしの ようさいが あるよ！ とおいけど がんばろう！' : F ? 'やじるしの さきに わるものの ようさいが あるよ！ みちを たどって いこう' : M ? 'やじるしの さきに おおきな こやが あるよ！ みちを たどって いこう' : 'やじるしの さきに たかい ビルが あるよ！ みちを たどって いこう', T.trailStart);
   },
 
   updateTower() {
