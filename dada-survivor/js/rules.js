@@ -67,6 +67,8 @@ export const ENEMY_TYPES = {
   // こわれた まち：ちゅうボスの そうこうトラック と ボスの こうげきヘリ（みかたの ヘリとは いろも かたちも ちがう）
   truck:    { speed: 40, dmg: 28, xp: 40, r: 46, size: 104, name: 'そうこうトラック' },
   gunship:  { speed: 50, dmg: 32, xp: 40, r: 50, size: 120, name: 'こうげきヘリ' },
+  // v1.17.0 おばけのもりの おおきな こやの たからべやを まもる わるもの ロボ（くろ×あかい め・ドクロの ワッペン）。でかい ミサイル（MANSION.robo）
+  blackrobo: { speed: 46, dmg: 18, xp: 40, r: 40, size: 106, name: 'ブラックロボ', missiles: true },
 };
 
 // enemies: [しゅるい, でてくる びょう, でやすさ]
@@ -91,7 +93,7 @@ export const STAGES = [
     camp: true },
   { id: 4, name: 'おばけのもり', ground: 'forest', hpMul: 3.0, spawnMul: 1.3, dmgMul: 1.25,
     enemies: [['pumpkin', 0, 10], ['ghost', 30, 7], ['bat', 90, 5], ['skull', 180, 5]],
-    mini: { type: 'pumpkin', hp: 4320, big: 2.6, name: 'でかかえんへい' }, boss: { type: 'witch', hp: 12600 } },
+    mini: { type: 'pumpkin', hp: 4320, big: 2.6, name: 'でかかえんへい' }, boss: { type: 'witch', hp: 12600 }, mansion: true },
   { id: 5, name: 'まおうじょう', ground: 'castle', hpMul: 2.8, spawnMul: 1.4, dmgMul: 1.05,
     enemies: [['zombie', 0, 8], ['skull', 0, 4], ['wolf', 30, 5], ['mummy', 60, 5], ['pumpkin', 120, 5], ['snowman', 180, 4]],
     mini: { type: 'dragon', hp: 7200 }, boss: { type: 'maou', hp: 18000 } },
@@ -121,7 +123,7 @@ export function bossType(def, difficulty = DIFFICULTIES.normal, stage = null) {
     name: def.name || T.name,
     r: def.big ? T.r * big * 0.9 : T.r,
     size: T.size * big,
-    dmg: def.big ? T.dmg * 2 : T.dmg,
+    dmg: def.dmg ?? (def.big ? T.dmg * 2 : T.dmg), // v1.17.0 def.dmg で うわがき（こやの こうげきヘリ）
     speed: def.big ? T.speed * 0.8 : T.speed,
     xp: 40,
   };
@@ -638,6 +640,26 @@ export const TOWER = {
   // みかたの ヘリの えんご：time びょう（そとで）うえから うつ。たまは なかまの ダメージ × dmgMul、ときどき ロケット
   heli: { time: 45, cd: 0.2, range: 380, dmgMul: 1, rocketCd: 2.4, rocketMul: 3, splash: 70 },
 };
+/**
+ * v1.17.0 おばけのもり：スタートの ちかくの おおきな こや（TOWER と おなじ しくみ。なかでは タイマーが はんぶん）。
+ * 1かい・2かいは わるものが いっぱい → 3かいは たからべや：まえで ブラックロボが まもる（でかい ミサイル。おちる ばしょに あかい しるし）→
+ * たおすと たからべやが ひらく（コイン・たからばこ・もって いる ぶき ぜんぶ +1）→ かいだんで おくじょう：てきの こうげきヘリ（ステージ4 むけに よわめ）→ たおすと はしご
+ */
+export const MANSION = {
+  mansion: true, at: 110, dist0: 430, dist1: 620, doorR: 54, stairsR: 50, cellR: 72, heliR: 80, vaultR: 70,
+  floors: 3, vaultFloor: 3, foes: [6, 8, 0], foeHp: 0.9,
+  room: TOWER.room, stairs: TOWER.stairs, cells: [], pad: TOWER.pad, roofExit: TOWER.roofExit, heli: TOWER.heli,
+  robo: { type: 'blackrobo', hp: 1800, at: { x: 0, y: -330 }, cd: 3.6, firstCd: 2.6, n: 3, spread: 95, flight: 1.5, blast: 52, dmg: 10, range: 560 },
+  vault: { x: -185, y: -470 }, reward: { coins: 50, chests: 1, levelUp: 1 },
+  heliBoss: { type: 'gunship', hp: 2000, dmg: 20, at: { x: 0, y: -420 } },
+};
+/** ブラックロボの ミサイルの おちる ばしょ（プレイヤーの いる ところ ＋ まわり。n こ） */
+export function missileTargets(px, py, rnd = Math.random, R = MANSION.robo) {
+  const out = [{ x: px, y: py }];
+  for (let i = 1; i < R.n; i++) { const a = rnd() * Math.PI * 2; out.push({ x: px + Math.cos(a) * R.spread, y: py + Math.sin(a) * R.spread }); }
+  return out;
+}
+
 /**
  * v1.15.1 こわれた まち：さいしょから もえて いる ところ（まえに ばくだんが おちた あと）。
  * ちかづくと（wake）ゆかの ひ（ステージ1と おなじ。たつと いたい）が flames こ ついて、きえたら relight びょうで また もえる。

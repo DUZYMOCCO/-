@@ -8,7 +8,7 @@
  * - おもい ときは「かるい モード」（ds-lite）：ぴょこぴょこ／ほうせきの ゆれを とめ、エフェクトと すうじを へらす
  * - ここでは Math.random を つかわない（みための ばらつきは カウンタで。ゲームの らんすうと まざらない）
  */
-import { art, groundTile } from './art.js?v=208';
+import { art, groundTile } from './art.js?v=209';
 
 class Pool {
   constructor(layer, make) { this.layer = layer; this.make = make; this.free = []; this.active = new Set(); this.key = Symbol('node'); }
@@ -387,13 +387,13 @@ export class Stage {
     });
     if (r.ebombs) {
       this.sync(this.marks, r.ebombs, (b, n) => {
-        const size = 96;
+        const size = b.blast ? Math.round(b.blast * 2.2) : 96;
         if (n._s !== size) { n._s = size; const st = n._img.style; st.width = st.height = `${size}px`; st.marginLeft = st.marginTop = `${-size / 2}px`; }
         Stage.place(n, b.tx, b.ty);
       });
       this.sync(this.ebombs, r.ebombs, (b, n) => {
         const k = Math.min(1, b.t / b.dur);
-        Stage.look(n, 'ebomb', 30);
+        Stage.look(n, b.big ? 'bmissile' : 'ebomb', b.big ? 44 : 30);
         Stage.place(n, b.sx + (b.tx - b.sx) * k, b.sy + (b.ty - b.sy) * k - Math.sin(k * Math.PI) * 110);
       }, false);
     }
