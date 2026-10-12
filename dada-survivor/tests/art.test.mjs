@@ -133,3 +133,13 @@ test('fox slot is the thunder god かみなりさま and penguin slot is the pol
   for (const s of [tg, pc]) { assert.ok(!s.includes('data-emblem="warumono"')); assert.equal((s.match(/<svg/g) || []).length, 1); }
   assert.equal((svgOf(art('rabbit')).match(/<svg/g) || []).length, 1, 'まじゅつしも 1まいの svg');
 });
+
+// こどもの リクエスト：くま → さばくに なじむ カウボーイ（id は セーブ互換で bear のまま）
+test('bear slot is the desert cowboy カウボーイ with a shotgun', () => {
+  const c = CHARACTERS.find(c => c.id === 'bear');
+  assert.equal(c.name, 'カウボーイ'); assert.equal(c.weapon, 'shotgun'); assert.deepEqual(c.perk, { hp: 70 }); assert.equal(c.unlock, 3);
+  const svg = svgOf(art('bear'));
+  assert.ok(svg.includes('#c2873a') && svg.includes('#e7d3a8'), 'すな・ちゃいろの ぼうしと シャツ');
+  assert.ok(svg.includes('#2563eb') && !svg.includes('data-emblem="warumono"'), 'あおい バンダナの みかた（ナイフへいの あかい マスクでは ない）');
+  assert.equal((svg.match(/<svg/g) || []).length, 1);
+});

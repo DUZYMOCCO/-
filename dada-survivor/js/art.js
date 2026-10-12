@@ -203,6 +203,31 @@ const police = `
   ${animeEye(25, 34.6, '#3b82f6')}${animeEye(39, 34.6, '#3b82f6')}
   <path d="M28.6 40.4 Q32 42.4 35.4 40.4" fill="none" stroke="#7c2d12" stroke-width="1.3" stroke-linecap="round"/>`;
 
+// カウボーイ（id は セーブ互換で bear のまま。さばくに なじむ すな・ちゃいろの いろ、ショットガン）
+// てきの ナイフへい（すなの フード＋あかい マスク）と まちがえない ように、あおい バンダナと きんの ほし
+const cowboy = `
+  <path d="M17 44 Q10 52 11 61 L22 61 L24 47Z M47 44 Q54 52 53 61 L42 61 L40 47Z" fill="#a16207" ${S}/>
+  <path d="M13 59 L21 59 M51 59 L43 59" stroke="#78350f" stroke-width="1.6"/>
+  <path d="M19 57 L19 61.6 Q19 63 21 63 L27 63 Q28 61 26 59.6 L25 57Z M45 57 L45 61.6 Q45 63 43 63 L37 63 Q36 61 38 59.6 L39 57Z" fill="#78350f" ${S2}/>
+  <path d="M20 60 Q20 42 32 40 Q44 42 44 60Z" fill="#e7d3a8" ${S}/>
+  <path d="M24 42 L26 60 M40 42 L38 60" stroke="#92400e" stroke-width="5"/><path d="M24 42 L26 60 M40 42 L38 60" fill="none" ${SW(1.2)}/>
+  <path d="M38.6 46.4 L39.8 48.8 L42.4 49 L40.4 50.6 L41 53.2 L38.6 51.8 L36.2 53.2 L36.8 50.6 L34.8 49 L37.4 48.8Z" fill="#facc15" ${SW(1)}/>
+  <path d="M20.6 54 Q32 57 43.4 54 L43.4 57 Q32 60 20.6 57Z" fill="#451a03" ${S2}/><rect x="29.4" y="54" width="5.2" height="4" rx=".8" fill="#fbbf24" ${SW(1)}/>
+  <path d="M6 58 L52 44" ${SW(6.6)}/><path d="M6 58 L52 44" stroke="#92400e" stroke-width="3.8" stroke-linecap="round"/>
+  <path d="M26 52 L57 42.6" ${SW(5.4)}/><path d="M26 52 L57 42.6" stroke="#4b5563" stroke-width="2.8" stroke-linecap="round"/>
+  <path d="M28 51 L44 46.2" stroke="#9ca3af" stroke-width="1" stroke-linecap="round"/>
+  <circle cx="22" cy="54.4" r="3.3" fill="#f0c7a0" ${S2}/><circle cx="44" cy="47" r="3.3" fill="#f0c7a0" ${S2}/>
+  ${shadedCircle('cb', 32, 30, 15, '#f0c7a0', '#c48a5e')}
+  <path d="M19 37 Q32 45 45 37 L44 41 Q32 49 20 41Z" fill="#2563eb" ${S2}/><path d="M29 43 L32 49 L35 43Z" fill="#2563eb" ${SW(1.2)}/>
+  <circle cx="25" cy="40.4" r=".9" fill="#fff"/><circle cx="32" cy="42.6" r=".9" fill="#fff"/><circle cx="39" cy="40.4" r=".9" fill="#fff"/>
+  <path d="M17.6 27 Q18 33 20 35 L21 28Z M46.4 27 Q46 33 44 35 L43 28Z" fill="#7c2d12" ${S2}/>
+  <path d="M2 24 Q6 19 14 21 Q32 26 50 21 Q58 19 62 24 Q56 29 46 27 Q32 30 18 27 Q8 29 2 24Z" fill="#b45309" ${S}/>
+  <path d="M17 22 Q16 8 24 7 Q28 10 32 7 Q36 10 40 7 Q48 8 47 22 Q32 26 17 22Z" fill="#c2873a" ${S}/>
+  <path d="M17.4 19.4 Q32 23.6 46.6 19.4 L46.8 22.4 Q32 26.6 17.2 22.4Z" fill="#451a03" ${S2}/>
+  <path d="M24 9 Q26 14 25 19 M40 9 Q38 14 39 19" fill="none" stroke="#a16207" stroke-width="1.4"/>
+  <path d="M21 30 L28 31 M43 30 L36 31" fill="none" ${SW(2)}/>
+  ${animeEye(25, 33.6, '#0e7490')}${animeEye(39, 33.6, '#0e7490')}`;
+
 // プレイヤーの ソルジャーは あおい レーザーじゅうを もつ（v1.11.0 こどもの リクエスト。なかま・ちりょうたいは soldier の まま）
 const laserSoldier = soldier
   .replace('<path d="M6 59 L56 43" stroke="#26282d" stroke-width="3.6" stroke-linecap="round"/>',
@@ -1047,7 +1072,7 @@ const GROUNDS = {
 
 const hero2 = {
   penguin: police, // id は セーブ互換のため penguin のまま（絵と名前は けいさつかん）
-  bear:    hero({ fur: '#7c4a12', shade: '#4a2c0a', inner: '#a16207', ear: 'bear', muzzle: '#d6d3d1' }),
+  bear:    cowboy, // id は セーブ互換のため bear のまま（絵と名前は カウボーイ）
   dino:    hero({ fur: '#3f7d46', shade: '#1f4d28', inner: '#14532d', ear: 'none', belly: '#d6d3d1',
     behind: `<path d="M18 14 L20 3 L26 10 L32 0 L38 10 L44 3 L46 14Z" fill="#9a3412" ${S}/>`,
     mouth: `<path d="M26 37 H38" fill="none" ${S2}/>` }),
