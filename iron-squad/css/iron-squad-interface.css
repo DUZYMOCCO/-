@@ -1418,3 +1418,9 @@
 .iron-squad .hero-record p { font-size: 13px; line-height: 1.6; }
 .iron-squad .ranking-funding-note { margin: 6px 0 0; font-size: 12px; color: var(--ui-danger); }
 .iron-squad .recruit-standout { margin: 2px 0 4px; font-size: 13px; font-weight: bold; color: #f5c451; }
+/* v6.3.15 戦場のポップアップは左端の自部隊HPの上へ。中央の視界を塞がない（位置はHP一覧から --field-note-bottom で受け取る） */
+.iron-squad.quiet-battlefield .battle-log-window.has-field-note {
+  position:fixed; top:auto; bottom:var(--field-note-bottom, 58%); left:max(4px, env(safe-area-inset-left)); right:auto;
+  width:min(232px, 60%); z-index:30;
+}
+.iron-squad.quiet-battlefield .battle-log-window.has-field-note .battle-log-msg { font-size:12px !important; line-height:1.4 !important; padding:4px 8px !important; text-align:left !important; }

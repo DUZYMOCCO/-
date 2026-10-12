@@ -24,13 +24,15 @@ export function updateSquadHpHud(game, dt = 0, force = false) {
   if (!host) return;
   let box = host.querySelector('#squad-hp-hud');
   const rows = game.inBattle ? squadHpRows(game) : [];
-  if (!rows.length) { if (box) box.hidden = true; return; }
+  const wrapper = host.closest('.iron-squad');
+  if (!rows.length) { if (box) box.hidden = true; wrapper?.style.removeProperty('--field-note-bottom'); return; }
   if (!box) {
     box = document.createElement('div'); box.id = 'squad-hp-hud'; box.className = 'squad-hp-hud';
     box.setAttribute('aria-label', '自部隊のHP'); host.append(box);
   }
   box.hidden = false;
   box.classList.toggle('compact', rows.length > 6); // up to 12 members still fit in landscape
+  anchorFieldNotes(box, wrapper);
   const key = rows.map(r => `${r.id}:${r.name}:${r.state}:${r.text}`).join('|');
   if (box.dataset.key === key) return;
   box.dataset.key = key;
@@ -44,4 +46,11 @@ export function updateSquadHpHud(game, dt = 0, force = false) {
     label.append(name, num); bar.append(fill); row.append(label, bar);
     return row;
   }));
+  anchorFieldNotes(box, wrapper);
+}
+/** Field popups sit just above this list on the left instead of over the middle of the field. */
+function anchorFieldNotes(box, wrapper) {
+  const rect = box.getBoundingClientRect?.(), height = window.innerHeight || 0;
+  if (!wrapper || !rect || !height || !rect.height) return;
+  wrapper.style.setProperty('--field-note-bottom', `${Math.max(0, Math.round(height - rect.top + 6))}px`);
 }
