@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {JSDOM} from '../../__pycache__/ui-tools/node_modules/jsdom/lib/api.js';
 import {TIERS} from '../js/equipment-tiers.js';
 import {weaponCombatProfile,meleeSweetSpotFor,equipmentIcon} from '../js/equipment-rules.js';
-import {emptyMastery,normalizeMastery,gainWeaponMastery,masteryAtkMult,masteryReloadMult,favoriteWeaponBias,rollWeaponStyle,weaponStyleOf} from '../js/growth-rules.js';
+import {emptyMastery,normalizeMastery,gainWeaponMastery,masteryAtkMult,masteryReloadMult,favoriteWeaponBias,rollWeaponStyle,weaponStyleOf,splitHeavyFavorite,pickFavoriteWeapon} from '../js/growth-rules.js';
 import {requiredWeaponStrength,canUseWeapon} from '../js/weapon-requirements.js';
 import {applyHeroEquipmentUpgrade} from '../js/hero-equipment.js';
 import {soldierEquipmentValue} from '../js/armament-rules.js';
@@ -26,10 +26,15 @@ const unique=gear('hammer');unique.dropOnly=true;unique.dropOnlyKey='WEAPON';app
 assert.deepEqual({...weaponCombatProfile({weaponStyle:'axe'}),style:'hammer'},weaponCombatProfile({weaponStyle:'hammer'}));
 assert.deepEqual(meleeSweetSpotFor('axe'),meleeSweetSpotFor('hammer'));
 assert.equal(rollWeaponStyle('melee',()=>.3),'axe');assert.equal(rollWeaponStyle('melee',()=>.2),'hammer');
-const mastery={weaponMastery:emptyMastery()};gainWeaponMastery(mastery,'axe',12);assert.equal(mastery.weaponMastery.hammer,12);assert.equal(Object.keys(mastery.weaponMastery).length,8);
-assert.equal(masteryAtkMult(mastery.weaponMastery,'axe'),masteryAtkMult(mastery.weaponMastery,'hammer'));assert.equal(masteryReloadMult(mastery.weaponMastery,'axe'),masteryReloadMult(mastery.weaponMastery,'hammer'));
-assert.equal(favoriteWeaponBias(gear('axe'),'hammer'),120);assert.equal(favoriteWeaponBias(gear('hammer'),'axe'),120);
-assert.equal(normalizeMastery({hammer:8,axe:4}).hammer,12);assert.deepEqual(normalizeMastery(normalizeMastery({hammer:8,axe:4})),normalizeMastery({hammer:8,axe:4}));
+// v6.3.0: axe and hammer are separate kinds with their own mastery tracks and favourites.
+const mastery={weaponMastery:emptyMastery()};gainWeaponMastery(mastery,'axe',12);assert.equal(mastery.weaponMastery.axe,12);assert.equal(mastery.weaponMastery.hammer,0);assert.equal(Object.keys(mastery.weaponMastery).length,9);
+assert.ok(masteryAtkMult(mastery.weaponMastery,'axe')>masteryAtkMult(mastery.weaponMastery,'hammer'));assert.ok(masteryReloadMult(mastery.weaponMastery,'axe')<masteryReloadMult(mastery.weaponMastery,'hammer'));
+assert.equal(favoriteWeaponBias(gear('axe'),'hammer'),0);assert.equal(favoriteWeaponBias(gear('hammer'),'axe'),0);assert.equal(favoriteWeaponBias(gear('axe'),'axe'),120);assert.equal(favoriteWeaponBias(gear('hammer'),'hammer'),120);
+assert.deepEqual([normalizeMastery({hammer:8,axe:4}).hammer,normalizeMastery({hammer:8,axe:4}).axe],[8,4],'separate tracks are kept');assert.deepEqual(normalizeMastery(normalizeMastery({hammer:8,axe:4})),normalizeMastery({hammer:8,axe:4}));
+assert.equal(normalizeMastery({sword:3,hammer:15}).axe,15,'pre-v6.3 saves (merged track, no axe key) start the axe track from the shared hammer value');assert.equal(normalizeMastery({hammer:15,axe:0}).axe,0);
+const legacy={favoriteWeapon:'hammer',equipped:{weapon:gear('axe')}};splitHeavyFavorite(legacy);assert.equal(legacy.favoriteWeapon,'axe','old hammer-lovers holding an axe now favour axes');legacy.equipped.weapon=gear('hammer');legacy.favoriteWeapon='hammer';splitHeavyFavorite(legacy);assert.equal(legacy.favoriteWeapon,'hammer','the split runs only once');
+const keeps={favoriteWeapon:'hammer',equipped:{weapon:gear('hammer')}};splitHeavyFavorite(keeps);assert.equal(keeps.favoriteWeapon,'hammer');
+const picks=new Set();for(let i=0;i<200;i++)picks.add(pickFavoriteWeapon('HEAVY',()=>i/200));assert.ok(picks.has('axe')&&picks.has('hammer'),'soldiers can favour axes and hammers separately');
 const old={...gear('hammer',9,2),id:'legacy-hammer'};old.stats.atk/=7;delete old.heavyAttackVersion;const expected=old.stats.atk*7,before={id:old.id,upgrade:old.upgrade,traits:structuredClone(old.weaponTraits)};
 migrateHeavyWeaponAttack(old);migrateHeavyWeaponAttack(old);assert.equal(old.stats.atk,expected);assert.deepEqual({id:old.id,upgrade:old.upgrade,traits:old.weaponTraits},before);
 // v6.1.x items carry the old x10 (heavyAttackVersion 1): converted once to x3 (axe) / x7 (hammer).
@@ -62,4 +67,4 @@ for(let load=0;load<2;load++){
   game.resumeSavedGame(load?structuredClone(game.saveGame()):saved);
   assert.equal(game.equipped.weapon.stats.atk,held.stats.atk);assert.equal(game.inventory.find(i=>i.id===old.id).stats.atk,expected);assert.equal(game.sharedEquipBox[0].stats.atk,expected);
 }
-console.log('PASS: axes through T1-T28, exact x3 axe / x7 hammer normal/unique/hero attack, v1 x10 migration, axe spin area, shared mastery/requirements/skills, actual player/soldier damage, fast unboosted sword, pure evaluation, upgrades and save migration');dom.window.close();
+console.log('PASS: axes through T1-T28, exact x3 axe / x7 hammer normal/unique/hero attack, v1 x10 migration, axe spin area, separate axe/hammer mastery and favourites with legacy split, shared requirements, actual player/soldier damage, fast unboosted sword, pure evaluation, upgrades and save migration');dom.window.close();

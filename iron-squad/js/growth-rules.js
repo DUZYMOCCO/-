@@ -4,13 +4,16 @@ import {heroGrowth} from './hero-rules.js';
 export const MELEE_STYLES = ['sword', 'spear', 'hammer', 'axe', 'staff', 'wand'];
 export const RANGED_STYLES = ['bow', 'crossbow', 'cannon'];
 export const WEAPON_STYLES = [...MELEE_STYLES, ...RANGED_STYLES];
-// Axes belong to the hammer category: one favourite, one mastery track.
-export const MASTERY_STYLES = WEAPON_STYLES.filter(style => style !== 'axe');
+// v6.3.0: axes and hammers are separate weapon kinds (own favourite and mastery track).
+// They still share the heavy combat profile (reach, sweet spot, knockback).
+export const MASTERY_STYLES = [...WEAPON_STYLES];
 export const weaponCategoryOf = value => {
   const style = typeof value === 'string' ? value : value?.weaponStyle;
-  return style === 'axe' ? 'hammer' : style || 'sword';
+  return style || 'sword';
 };
-export const isHeavyWeaponStyle = value => weaponCategoryOf(value) === 'hammer';
+/** Combat family: axes swing like hammers (shared reach / sweet spot), everything else is itself. */
+export const combatFamilyOf = value => { const style = weaponCategoryOf(value); return style === 'axe' ? 'hammer' : style; };
+export const isHeavyWeaponStyle = value => combatFamilyOf(value) === 'hammer';
 // v6.2.0: axe x3 (spinning area skill), hammer x7 (single heavy blow); was x10 for both.
 export const HEAVY_ATTACK_VERSION = 2, LEGACY_HEAVY_ATTACK_MULT = 10;
 export const heavyWeaponAttackMult = value => {
@@ -19,7 +22,7 @@ export const heavyWeaponAttackMult = value => {
 };
 
 export const WEAPON_STYLE_LABELS = {
-  sword: '剣', spear: '槍', hammer: '鎚・斧', axe: '斧',
+  sword: '剣', spear: '槍', hammer: '鎚', axe: '斧',
   bow: '弓', crossbow: 'クロスボウ', cannon: '火砲',staff:'杖',wand:'ワンド'
 };
 export const WEAPON_STYLE_ICONS = {
@@ -44,6 +47,7 @@ export const MASTERY_GAIN_MULT = {
   sword: 0.72,
   spear: 1.15,
   hammer: 1.35,
+  axe: 1.35,
   bow: 1.70,
   crossbow: 2.35,
   cannon: 3.10,staff:1,wand:1
@@ -67,8 +71,9 @@ export function normalizeMastery(map) {
     const v = Number(map[style]);
     m[style] = Number.isFinite(v) && v > 0 ? v : 0;
   }
-  const axeXp=Number(map.axe);
-  if(Number.isFinite(axeXp)&&axeXp>0)m.hammer+=axeXp;
+  // Saves from v5.3-v6.2 merged axe practice into the hammer track and stored no axe key:
+  // the axe track starts from that shared value, so nobody loses progress.
+  if (!Object.prototype.hasOwnProperty.call(map, 'axe')) m.axe = m.hammer;
   return m;
 }
 
@@ -166,19 +171,30 @@ export function gainWeaponMastery(unit, style, amount = null) {
   return unit.weaponMastery[style];
 }
 
+// v6.3.0: the former hammer share is split between hammer and axe.
 const FAVORITE_WEIGHTS = {
-  HEAVY: { sword: 28, spear: 24, hammer: 48 },
-  PALADIN: { sword: 32, spear: 22, hammer: 46 },
-  LIGHT: { sword: 52, spear: 32, hammer: 16 },
-  BLADEMASTER: { sword: 68, spear: 22, hammer: 10 },
+  HEAVY: { sword: 28, spear: 24, hammer: 26, axe: 22 },
+  PALADIN: { sword: 32, spear: 22, hammer: 26, axe: 20 },
+  LIGHT: { sword: 52, spear: 32, hammer: 8, axe: 8 },
+  BLADEMASTER: { sword: 68, spear: 22, hammer: 5, axe: 5 },
   ARCHER: { bow: 52, crossbow: 33, cannon: 15 },
   SNIPER: { bow: 28, crossbow: 47, cannon: 25 },
   MEDIC: { staff:65,wand:35 },HIGH_PRIEST: { staff:65,wand:35 },
   SAINT:{staff:65,wand:35},ARCHANGEL:{staff:65,wand:35},
   MAGE:{staff:35,wand:65},ARCHMAGE:{staff:35,wand:65},ELEMENTAL_SAGE:{staff:35,wand:65},ARCANE_SOVEREIGN:{staff:35,wand:65},
-  COMMANDER: { sword: 34, spear: 22, hammer: 22, bow: 12, crossbow: 6, cannon: 4 },
-  WARLORD: { sword: 30, spear: 20, hammer: 28, bow: 10, crossbow: 7, cannon: 5 }
+  COMMANDER: { sword: 34, spear: 22, hammer: 12, axe: 10, bow: 12, crossbow: 6, cannon: 4 },
+  WARLORD: { sword: 30, spear: 20, hammer: 15, axe: 13, bow: 10, crossbow: 7, cannon: 5 }
 };
+
+/** One-time split for soldiers from before v6.3.0, whose "hammer" favourite also meant axes:
+ * those holding an axe now favour the axe. New soldiers are created with the flag set. */
+export const FAVORITE_SPLIT_VERSION = 1;
+export function splitHeavyFavorite(unit) {
+  if (!unit || unit.favoriteSplit >= FAVORITE_SPLIT_VERSION) return unit;
+  if (unit.favoriteWeapon === 'hammer' && weaponStyleOf(unit.equipped?.weapon || unit.weapon) === 'axe') unit.favoriteWeapon = 'axe';
+  unit.favoriteSplit = FAVORITE_SPLIT_VERSION;
+  return unit;
+}
 
 export function pickFavoriteWeapon(soldierClass, random = Math.random) {
   const weights = FAVORITE_WEIGHTS[soldierClass] || FAVORITE_WEIGHTS.HEAVY;

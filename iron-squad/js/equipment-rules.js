@@ -1,6 +1,6 @@
 import {powerRank,MAX_EQUIPMENT_TIER,GENERATIONS} from './equipment-tiers.js?v=187';
 import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=182';
-import {WEAPON_STYLE_ICONS,weaponStyleOf,isHeavyWeaponStyle,weaponCategoryOf} from './growth-rules.js?v=211';
+import {WEAPON_STYLE_ICONS,weaponStyleOf,isHeavyWeaponStyle,combatFamilyOf} from './growth-rules.js?v=213';
 export const EQUIPMENT_TYPES = ['WEAPON','SHIELD','HELMET','ARMOR','GLOVES','LEGS','AMULET'];
 
 const GEAR_ICONS = {
@@ -383,7 +383,7 @@ export function weaponCombatProfile(item) {
     swingSpeed:trait(item,'swingSpeed')};
 }
 export function meleeSweetSpotFor(item) {
-  const base=MELEE_SWEET_SPOT[weaponCategoryOf(item)];if(!base)return null;
+  const base=MELEE_SWEET_SPOT[combatFamilyOf(item)];if(!base)return null;
   if(typeof item==='string'||!item?.weaponTraits)return base;
   const peak=Math.max(.12,Math.min(.94,base.peak+(item.weaponTraits.sweetShift||0))),width=trait(item,'sweetWidth');
   return {...base,peak,sweetMin:Math.max(.04,peak-(base.peak-base.sweetMin)*width),sweetMax:Math.min(1.05,peak+(base.sweetMax-base.peak)*width),sweetDmg:1+(base.sweetDmg-1)*trait(item,'sweetPower')};

@@ -13,7 +13,7 @@ const ordinary=game.createNewSoldier(null,{classKey:'MAGE',talent:'AVERAGE',attr
 const strongProfile=structuredClone(profile);strongProfile.innate.strength=80;strongProfile.innate.magic=1;
 const strong=game.createNewSoldier(null,{classKey:'MAGE',talent:'AVERAGE',attributeProfile:strongProfile});
 const weapon=(style,tier=1,id=style)=>generateRandomDrop(0,'normal',{type:'WEAPON',tier,weaponStyle:style,upgrade:0,quality:1,merchant:true,random:()=>.5,id});
-assert.ok(WEAPON_STYLES.includes('staff')&&WEAPON_STYLES.includes('wand'));assert.equal(Object.keys(emptyMastery()).length,8);
+assert.ok(WEAPON_STYLES.includes('staff')&&WEAPON_STYLES.includes('wand'));assert.equal(Object.keys(emptyMastery()).length,9);
 assert.ok(['staff','wand'].includes(ordinary.weapon.weaponStyle));assert.equal(strong.weapon.weaponStyle,'hammer');
 for(const style of ['staff','wand'])for(const tier of [1,14,28]){const item=weapon(style,tier);assert.ok(item.stats.magicAttack>item.stats.atk);assert.equal(requiredWeaponStrength(item),0);assert.equal(canUseWeapon(ordinary,item),true);assert.ok(item.name.includes(style==='staff'?'杖':'ワンド'));}
 assert.equal(requiredWeaponStrength(weapon('sword')),18);assert.equal(requiredWeaponStrength(weapon('spear')),24);assert.equal(requiredWeaponStrength(weapon('hammer')),32);
@@ -35,4 +35,4 @@ ordinary.equipped.weapon=forbidden;ordinary.weapon=forbidden;game.inventory=game
 const saved=structuredClone(game.saveGame());game.resumeSavedGame(saved);
 const resumed=[...game.squad,...game.reserves].find(s=>s.id===ordinary.id);assert.equal(resumed.weapon,null);assert.ok(game.sharedEquipBox.some(i=>i.id===forbidden.id));
 game.closeStrategyModal();game.destroy();dom.window.close();
-console.log('PASS: real staff/wand magical stats, 8 masteries and name migration, melee strength/material requirements, muscle mage hammer, shared/treasury/manual/player/source-identity gates, retained unsupported legacy items');
+console.log('PASS: real staff/wand magical stats, 9 masteries and name migration, melee strength/material requirements, muscle mage hammer, shared/treasury/manual/player/source-identity gates, retained unsupported legacy items');

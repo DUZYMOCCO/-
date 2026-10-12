@@ -96,7 +96,7 @@ import {
 import { EQUIPMENT_TYPES, saleValue, equippedIds, canSell, lowValueIds, chooseLootTier, distanceScaling, shrineUpgradeCap, compareEquipment, equipmentScore, compareEquipmentStrength, rollWeaponTraits, weaponCombatProfile, evaluateMeleeSweetSpot, isGodRollProtected, zoneRingPower, zoneRingLabelJa, equipmentIcon, equipmentName } from './equipment-rules.js?v=211';
 import { rollFieldBrute, advanceDemonWarband, stepDemonWarbandGroup } from './field-hosts.js?v=182';
 import {
-  WEAPON_STYLES, MASTERY_STYLES, WEAPON_STYLE_LABELS, WEAPON_STYLE_ICONS, isHeavyWeaponStyle, heavyWeaponAttackMult, HEAVY_ATTACK_VERSION, LEGACY_HEAVY_ATTACK_MULT, weaponCategoryOf,
+  WEAPON_STYLES, MASTERY_STYLES, WEAPON_STYLE_LABELS, WEAPON_STYLE_ICONS, isHeavyWeaponStyle, heavyWeaponAttackMult, HEAVY_ATTACK_VERSION, LEGACY_HEAVY_ATTACK_MULT, weaponCategoryOf, splitHeavyFavorite, FAVORITE_SPLIT_VERSION,
   MELEE_STYLES, RANGED_STYLES, HIT_GROWTH_SOFT_CAP,
   emptyMastery, normalizeMastery, isRangedStyle, isMeleeStyle,
   hitGrowthMult, applyHitGrowth, masteryAtkMult, masteryPctDisplay,
@@ -104,7 +104,7 @@ import {
   gainWeaponMastery, masteryGainForStyle, pickFavoriteWeapon, rollWeaponStyle,
   weaponStyleOf, favoriteWeaponBias, MASTERY_GAIN_PER_HIT,
   migrateFavoriteForClass, migrateWeaponStyleFromName
-} from './growth-rules.js?v=211';
+} from './growth-rules.js?v=213';
 
 import {
   initMerchants, ensureMerchants, updateMerchants, drawMerchantBody, drawMerchantEscort,
@@ -3156,6 +3156,7 @@ export const IronSquadGame = {
     if (!s.favoriteWeapon || !WEAPON_STYLES.includes(s.favoriteWeapon)) {
       s.favoriteWeapon = pickFavoriteWeapon(clsKey);
     }
+    splitHeavyFavorite(s);
     const tankMult = hitGrowthMult(s);
     const oldMaxHp = s.maxHp || 70;
     const baseCalcHp = (70 + (cls.bonusHp || 0) + (lv - 1) * 8 + waves * 14 + minionHp + bossHp + honorHp + vetHp + equipHp);
@@ -3641,7 +3642,7 @@ export const IronSquadGame = {
       deathlineSkills: [],
       survivedWaves: 0,
       phaseActivity: emptyActivity(),
-      favoriteWeapon,
+      favoriteWeapon, favoriteSplit: FAVORITE_SPLIT_VERSION,
       hitGrowthPct: 0,
       weaponMastery: emptyMastery(),
       timesDown: 0,
@@ -10001,7 +10002,7 @@ export const IronSquadGame = {
       const mark = st === pStyle ? '●' : '';
       return `${WEAPON_STYLE_ICONS[st]}${WEAPON_STYLE_LABELS[st]}${mark}${pct}%`;
     }).join(' ');
-    const meleeMast = MELEE_STYLES.filter(st => st !== 'axe').map(st => {
+    const meleeMast = MELEE_STYLES.map(st => {
       const pct = masteryPctDisplay(this.player.weaponMastery, st);
       const mark = st === pStyle ? '●' : '';
       return `${WEAPON_STYLE_ICONS[st]}${WEAPON_STYLE_LABELS[st]}${mark}${pct}%`;
