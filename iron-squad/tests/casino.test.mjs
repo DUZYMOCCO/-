@@ -32,8 +32,8 @@ assert.equal(rollSlots(sequence([.3,.6,.95]),5000).payout,0);
 assert.equal(normalizeCasino({slot:{reels:['seven','seven','seven'],payout:1,result:'<img>',bet:500}}).slot.payout,100000);
 assert.equal(normalizeCasino({poker:{hand:[0,0,1,2,3],deck:[],status:'draw'}}).poker,null);
 assert.equal(normalizeCasino({},8).pokerPhase,8,'an already used legacy casino phase stays used');
-for(const bet of [100,101,1000000,MAX_CASINO_BET])assert.equal(validCasinoBet(bet),true);
-for(const bet of [0,99,-100,100.5,NaN,Infinity,MAX_CASINO_BET+1])assert.equal(validCasinoBet(bet),false);
+for(const bet of [10,100,101,1000000,MAX_CASINO_BET])assert.equal(validCasinoBet(bet),true);
+for(const bet of [0,9,-100,100.5,NaN,Infinity,MAX_CASINO_BET+1])assert.equal(validCasinoBet(bet),false);
 
 const dom=new JSDOM('<div id="game" class="game-container"></div>',{url:'http://localhost/'});
 Object.assign(globalThis,{window:dom.window,document:dom.window.document,localStorage:dom.window.localStorage});
@@ -63,7 +63,7 @@ assert.equal(game.openHeadquartersFacility('casino'),true);assert.ok(document.qu
 const betInput=document.getElementById('casino-bet');betInput.value='20000';betInput.dispatchEvent(new window.Event('change'));assert.equal(game.nation.casino.bet,20000);
 document.querySelector('[data-bet-mult="10"]').click();assert.equal(game.nation.casino.bet,200000);
 assert.ok(!document.getElementById('nation-facilities').textContent.match(/ダイス|出目|一振り/));
-game.nation=normalizeNation({investment:45000});assert.equal(game.spinCasinoSlot(),false,'locked casino cannot charge');
+game.nation=normalizeNation();const levelZeroGold=game.gold;assert.equal(game.spinCasinoSlot(),true,'level zero casino is open');assert.ok(game.gold>=levelZeroGold-10);assert.equal(game.nation.casino.slot.bet,10);
 game.nation=normalizeNation({investment:90000});game.phase=50;game.gold=2000000;game.setCasinoBet(1000);assert.equal(game.startCasinoPoker(),true);
 game.startFreshGame(true);assert.equal(game.nation.casino.poker,null);assert.equal(game.nation.casino.pokerPhase,0);assert.equal(game.nation.casino.slotPhase,0);assert.equal(game.nation.casino.bet,1000,'a new inherited expedition keeps the wager preference without inheriting a paid hand or future cooldown');
 console.log('PASS: ten poker ranks, ace rules, deck/holds/one draw, weighted slots, variable million-G stakes, immutable paid wagers, locked/poor checks, independent phase limits, active-hand and settlement saves, live wager controls, no dice');

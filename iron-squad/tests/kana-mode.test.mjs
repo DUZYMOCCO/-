@@ -5,6 +5,7 @@ import {fileURLToPath} from 'node:url';
 import {toKana,leftoverKanji} from '../../common/js/kana-text.js';
 import {gradeOf} from '../../common/js/kanji-grades.js';
 import {wrapDialogueText} from '../js/soldier-dialogue.js';
+import {toGameKana} from '../js/game-text.js';
 
 // 1. grade 2 conversion examples
 assert.equal(toKana('兵士',2),'へいし');
@@ -54,7 +55,7 @@ for(const file of files){
 assert.ok(fragments.size>1500,`scanned a realistic number of Japanese fragments (${fragments.size})`);
 const bad=[];
 for(const [text,file] of fragments){
-  const out=toKana(text,2);
+  const out=file.startsWith('iron-squad')?toGameKana(text,2):toKana(text,2);
   const left=leftoverKanji(out,2);
   if(left.length)bad.push(`${file}: ${JSON.stringify(text)} -> ${left.join('')}`);
   assert.equal(toKana(out,2),out,`not idempotent: ${text}`);

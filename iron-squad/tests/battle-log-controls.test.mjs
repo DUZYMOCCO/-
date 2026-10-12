@@ -16,7 +16,7 @@ game.setupUI();game.activeSlotId=saveSlots.create('LOG CONTROLS TEST ONLY').id;g
 assert.equal(showsOnFieldLog('衛生救護！兵士が戦線復帰'),false);
 assert.equal(showsOnFieldLog('強敵を撃破！'),false);
 assert.equal(showsOnFieldLog('装備を購入した'),false);
-assert.equal(showsOnFieldLog('😈 [T1 鉄] 短剣 を横取り！'),true);
+assert.equal(showsOnFieldLog('📦 [T1 鉄] 短剣 を取得！'),true);
 assert.equal(showsOnFieldLog('👑【ボス戦利品獲得！】[T3 鉄] 剣！'),true);
 assert.equal(showsOnFieldLog('💠【神話秘宝！】入手'),true);
 assert.equal(showsOnFieldLog('📦【国庫買取】[T1] 兜'),true);
@@ -47,10 +47,12 @@ assert.equal(game.inBattle,false,'history uses the existing paused headquarters'
 game.closeStrategyModal();
 try{
   mockTimers();
-  game.showToast('😈 [T1 鉄] 短剣 を横取り！');
-  assert.equal(stream.children.length,1);assert.match(stream.textContent,/横取り/);
-  assert.equal(window.getComputedStyle(stream.firstElementChild).whiteSpace,'nowrap');
-  assert.equal(window.getComputedStyle(stream.firstElementChild).textOverflow,'ellipsis');
+  const pickup={id:'pickup-wording',type:'WEAPON',tier:4,mat:'鋼',name:'検証の剣',weaponStyle:'sword',stats:{atk:2},baseStats:{atk:2}};
+  game.collectDrop(pickup);
+  assert.equal(stream.children.length,1);assert.match(stream.textContent,/検証の剣.*を取得！/);assert.doesNotMatch(stream.textContent,/横取り/);
+  assert.ok(stream.firstElementChild.classList.contains('item-alert'));assert.equal(game.battleLogHistory.at(-1).category,'loot');
+  assert.equal(window.getComputedStyle(stream.firstElementChild).whiteSpace,'normal','field notices wrap so the complete message remains readable');
+  assert.equal(window.getComputedStyle(stream.firstElementChild).textOverflow,'clip','wrapped notices do not replace their ending with an ellipsis');
   assert.equal(window.getComputedStyle(logWindow).display,'block');
   assert.ok(logWindow.classList.contains('has-field-note'));
   assert.equal(window.getComputedStyle(document.getElementById('btn-battle-log-history')).display,'none');

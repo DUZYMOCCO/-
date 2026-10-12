@@ -1,0 +1,229 @@
+PASS: independent face outlines/7 eye looks/6 noses/6 jaws/12 ornaments for both genders, close/field pixels, new hair, stable personal generation, legacy neutral migration, saved/editor choices, no RNG/stat/render mutation
+✔ iron-squad\tests\appearance-features.test.mjs (1685.6496ms)
+PASS: 28 continuous tiers, visual coverage, vault boundaries, legacy-save retirement, study/research/city independence, bounded market, pure role-aware replacement, intact enhanced hand-me-downs; 30 waves issued=0, updated=52, forged=188, tech=11, city=2, payroll/budget/fiscal/save/policy/unique ownership
+✔ iron-squad\tests\armament-v3.test.mjs (43285.3512ms)
+PASS: attacks stop at cliff faces, dungeon walls, and fortifications
+✔ iron-squad\tests\attack-cover.test.mjs (431.4715ms)
+PASS: real WAV decode/energy/peaks/loop joins, lazy gesture audio, failed/interrupted resume, one cached BGM, mute/unmute/background recovery, bounded/disconnected/spatial voices, no per-hit downloads, persisted independent volumes, subscription cleanup and failed asset retry
+✔ iron-squad\tests\audio.test.mjs (3811.7065ms)
+PASS: field notes only for drops, half HP/MP/ammo, the 15s down warning and soldier deaths; rescue bursts stay in the 100-entry history; stale timers, headquarters history, 48px potion and expedition reset
+✔ iron-squad\tests\battle-log-controls.test.mjs (9339.6499ms)
+PASS: bob side locks remain while the neck below the chin is clear in close/far heads and the commander portrait
+✔ iron-squad\tests\bob-neck.test.mjs (477.6131ms)
+PASS: camp seats, quiet yard, sit drink eat
+✔ iron-squad\tests\camp-leisure.test.mjs (624.8548ms)
+PASS: bounded 4.6 MiB art surfaces, explicit pixel release, live appearance changes, allocation fallback
+✔ iron-squad\tests\canvas-art.test.mjs (979.7959ms)
+PASS: real Canvas pixels for new/resumed games, dialogs, fog, day/night, rotation, state reset, failure-before-first-update, recovery, context events and released tile buffers
+✔ iron-squad\tests\canvas-lifecycle.test.mjs (18590.3458ms)
+PASS: ten poker ranks, ace rules, deck/holds/one draw, weighted slots, variable million-G stakes, immutable paid wagers, locked/poor checks, independent phase limits, active-hand and settlement saves, live wager controls, no dice
+✔ iron-squad\tests\casino.test.mjs (24536.1854ms)
+PASS: qualified caster physique only, all promotions, persistent identity, equipment/buff independence, real training, unchanged heads, near/far/down/portraits and 8-direction grips
+✔ iron-squad\tests\caster-physique.test.mjs (965.9024ms)
+PASS: 2-person commander/paladin and 1-person ordinary towing, wounded safety/release/death, aid-station revival, medic-only field revival, save/resume, no remote revival, rare single-orb loot
+✔ iron-squad\tests\casualty-transport.test.mjs (1171.0265ms)
+PASS: weapon ATK single-counted, spear/hammer compensation on both paths, soldier crit, base medic self-defence priority, defence-only HQ mana regen
+✔ iron-squad\tests\class-balance.test.mjs (8315.1515ms)
+PASS: class-up walks and strikes through walls; basic units and enemies still stop
+✔ iron-squad\tests\class-wall.test.mjs (631.8561ms)
+PASS: six real ranged AIs, three defenses, swept shield/penetration/flanks/downs/legacy shots, shared EXP/fractions/no double credit/saves, six limited classes/ordinary exclusion, village/UI/coordinates/cage/once-only/reserves, ninja near/far, native visuals
+✔ iron-squad\tests\combat-allies.test.mjs (12547.9255ms)
+PASS: personal ten-down threshold, army-total rejection, repeated medic revivals, nine-down rejection, only recipient, zero deaths, NPC/rest exclusion, save/report roundtrip and no duplicate awakening
+✔ iron-squad\tests\combat-phase.test.mjs (4412.1266ms)
+commander-down ok
+✔ iron-squad\tests\commander-down.test.mjs (1093.8372ms)
+commander identity ok
+✔ iron-squad\tests\commander-identity.test.mjs (1230.8375ms)
+PASS: 4-minute day/night, smooth twilight, period-specific regional enemies, no retreat rewards, rest/meeting clocks, save/resume, six silhouettes
+✔ iron-squad\tests\day-night.test.mjs (953.0352ms)
+distance-format.test: PASS
+✔ iron-squad\tests\distance-format.test.mjs (181.8576ms)
+PASS: all 4 dungeon bosses have visible native Canvas bodies at 375px, hit flash, distinct silhouettes, no labels/shadow/RNG/stat mutation and balanced Canvas state
+✔ iron-squad\tests\dungeon-boss-bodies.test.mjs (926.61ms)
+PASS: 8 connected dungeon/ruin layouts, boss routes, treasure-spur round trips, floor spawns, chest persistence, down-state and wall consistency
+✔ iron-squad\tests\dungeon-exploration.test.mjs (512.7163ms)
+✔ five basic guards follow the commander down the main aisle and both treasure spurs; the outdoor army stays outside (632.9172ms)
+✔ side-chest opening is saved by the real slot serializer and cannot reward a second time after resume and reentry (126.4373ms)
+✔ goblin follows a player in a side room through the actual enemy movement loop (131.9114ms)
+✔ goblin_archer follows a player in a side room through the actual enemy movement loop (162.6097ms)
+✔ a basic medic reaches and revives a casualty across a hall and northern spur instead of stopping at the first portal (101.3522ms)
+✔ a guard carries the downed commander from a side room toward a medic through the hall portals (148.8058ms)
+PASS: two-phase dungeon/ruin reset boundaries, saved partial/completed visits, delayed occupied rooms, legacy waves, id-authoritative cooling, permanent demon castle, immediate chest rewards
+✔ iron-squad\tests\dungeon-respawn.test.mjs (292.7906ms)
+PASS: 30 enemy types render a visible, distinct body
+✔ iron-squad\tests\enemy-bodies.test.mjs (1087.4642ms)
+PASS: all 7 transfers, ownership, protected bulk sale, surplus retention, equipment comparisons, spatial loot caps, bounded difficulty
+✔ iron-squad\tests\equipment-loot.test.mjs (1003.4777ms)
+✔ iron-squad\tests\equipment-name.test.mjs (178.3926ms)
+PASS: cheeks and length survive every jaw combination, pointed chin tapers, both genders and close/field art, saved choices unchanged
+✔ iron-squad\tests\face-outline-combinations.test.mjs (916.545ms)
+PASS: field/far/down identity, glasses marker, helmet hides mohawk, promotion families, appearance unchanged and cheap LOD
+✔ iron-squad\tests\field-appearance.test.mjs (1293.8707ms)
+PASS: 60-second ground loot, all types, staggered drops, in-place mass expiry, pickup boundary, pause/rest, hidden outdoor field, actual loot producers
+✔ iron-squad\tests\field-drops.test.mjs (1113.9701ms)
+PASS: boss bodies, planted contact shadow, blade-only slash arc
+✔ iron-squad\tests\field-form.test.mjs (326.0737ms)
+PASS: wild brutes, demon formation, peace exemption, vault-safe field drops
+✔ iron-squad\tests\field-hosts.test.mjs (807.9552ms)
+PASS: field cues, hold, crossfade, shared-engine restore, six quiet loops
+✔ iron-squad\tests\field-music.test.mjs (271.0184ms)
+PASS: level-zero guild/casino, 26 scalable simultaneous contracts, species/boss filtering, unique demon king, kill dedupe, snapshots/save/one reward, paid wager stability and four-side building contact
+✔ iron-squad\tests\guild-contracts.test.mjs (25156.4967ms)
+heal-strength ok
+✔ iron-squad\tests\heal-strength.test.mjs (3445.2965ms)
+PASS: axes through T1-T28, exact x10 normal/unique/hero attack, shared mastery/requirements/skills, actual player/soldier damage, fast unboosted sword, pure evaluation, upgrades and save migration
+✔ iron-squad\tests\heavy-weapons.test.mjs (8138.2916ms)
+hero-equipment: full grant, class weapons, exclusive access, magic defense, visual profile, upgrades, save and migration passed
+✔ iron-squad\tests\hero-equipment.test.mjs (812.5672ms)
+hero-journal: identity, route, growth, down/rescue, result, history limits and serialization passed (31177 bytes)
+✔ iron-squad\tests\hero-journal.test.mjs (291.9633ms)
+hero-party: revelation, 6 members, x20 growth, autonomous march/battle, rescue, castle scene, victory, saves and defeat passed
+✔ iron-squad\tests\hero-party.test.mjs (1029.4347ms)
+PASS: three HQ buildings, solid footprints and five open gate aisles, local entry, locked/remote guards, paused clock, live shop transactions and UI, guild payment, casino stakes, reload cleanup and cleared scenery
+✔ iron-squad\tests\hq-facilities.test.mjs (12607.0162ms)
+{"case":"early","seed":1,"peak":48,"total":48,"dead":0,"outcome":"overrun","strength":{"hp":260,"atk":52.725,"def":50,"level":1,"count":28,"heroHp":130,"heroDef":0}}
+{"case":"early","seed":2,"peak":48,"total":48,"dead":0,"outcome":"overrun","strength":{"hp":292.3,"atk":50,"def":50,"level":1,"count":28,"heroHp":130,"heroDef":0}}
+{"case":"early","seed":3,"peak":48,"total":48,"dead":0,"outcome":"overrun","strength":{"hp":260,"atk":50,"def":50,"level":1,"count":28,"heroHp":130,"heroDef":0}}
+{"case":"early","seed":7,"peak":48,"total":48,"dead":0,"outcome":"overrun","strength":{"hp":260,"atk":50,"def":50,"level":1,"count":28,"heroHp":130,"heroDef":0}}
+{"case":"early","seed":24701,"peak":39,"total":48,"dead":0,"outcome":"timeout","strength":{"hp":292.3,"atk":50,"def":50,"level":1,"count":28,"heroHp":130,"heroDef":0}}
+{"case":"trained","peak":0,"total":48,"dead":0,"outcome":"victory","strength":{"hp":360,"atk":72,"def":50,"level":18,"count":28,"heroHp":130,"heroDef":0}}
+PASS: early HQ collapse across five RNG seeds, trained victory, bounded opposition, three approaches, mobilized army save/reload
+✔ iron-squad\tests\hq-invasion-balance.test.mjs (39069.354ms)
+PASS: dungeon/ruin/town personal-only combat/render/save/exit and carried casualties; shared empty-slot priority and field pickup; thirty-wave seven-slot procurement/payroll/ledger/save; sorted separate shop/bag panels, correct stock purchase/immediate equip/old gear retention
+✔ iron-squad\tests\instance-equipment.test.mjs (43354.2322ms)
+PASS: live DOM navigation, compact army, search, expanded-state retention, seven transfer slots, equipment comparison filters, real equip/sale actions, donation, healing and return to battle, quiet field controls and menu map
+✔ iron-squad\tests\interface.test.mjs (34396.2423ms)
+PASS: periodic bounded army and flanking arrivals, authored departure/ETA, crowd cap, campaign/rest/town saves, one-time fiscal reward, rare-event rolls/gap/cleanup, castle defeat, solid walls/open gates/AI detours, real guard combat/growth/rescue/save and native wall/route pixels
+✔ iron-squad\tests\invasion-gates.test.mjs (10610.5682ms)
+kana-mode: 2981 Japanese fragments checked at grade 2
+✔ iron-squad\tests\kana-mode.test.mjs (649.7973ms)
+PASS: five base classes, fragile mage, medical mana costs/slow regeneration/migration, four area spells/statuses, empty immobility/meditation recovery, real class-up buffs/expiry, HQ/camp/town/merchant supply, all collectors/stone bank/independent drops, potions/no revival, damaging/training fields/safe rest/towns/no idle XP, saved mana/personality/buffs, drop correction label and native human/terrain visuals
+✔ iron-squad\tests\magic-hazards.test.mjs (11685.5914ms)
+{"case":"default","largestLoss":31,"actualDead":0,"awakening":0,"outcome":"timeout"}
+{"case":"trained","lost":0,"outcome":"victory"}
+{"case":"basic-captain","hp":0,"outcome":"timeout"}
+PASS: post-wave-10 majors, fixed bounded reference and saves, live default mass downs/participating survivor and trained defense, distinct two-wave town replacements/HQ residents/cooldowns/death/down/save/migration
+✔ iron-squad\tests\major-invasion.test.mjs (37236.3438ms)
+{"healingHp":480,"healingExp":96,"ordinaryKills":16,"medicLevel":4,"attackerLevel":4,"revivalCases":[{"maxHp":1000,"exp":3000},{"maxHp":10000,"exp":30000}]}
+PASS: actual projectiles/aura, immediate medic growth, real-HP-only credit, fractions, all medic classes, max-HP revival scaling, distinct/shared carriers, once-per-down/potion separation, kill-growth parity, phase/save/reserve persistence and detail UI
+✔ iron-squad\tests\medic-growth.test.mjs (8905.3392ms)
+PASS: 12 uniform clinics/castle exclusion, discovery/save/migration, rope delivery/revival/anti-farm, civilian rewards, merchant/escort/guard HQ transfer and replacement, town local/world coordinates, AI transport, supplies/hazard clearance, known-only arrows/maps/travel lock, native Canvas
+✔ iron-squad\tests\medical-posts.test.mjs (9400.6708ms)
+PASS: camp distribution and saves, 150G wave-based healing, actual shop/resume, old saves, human guards and merchant, lethal damage→down, shared rope capacity, carried-state restore, base rescue and permanent stay, medic evacuation and ordinary timeout
+✔ iron-squad\tests\merchant-camps.test.mjs (8730.5345ms)
+PASS: merchant weapon upgrade inheritance
+✔ iron-squad\tests\merchant-inherit.test.mjs (8245.4684ms)
+PASS: technology-bound market/T24 cap/location independence, stable premium featured goods/wave renewal/purchase/save/no reroll, live weak/strong/inherit comparison and bag delivery, broad drop qualities/rare tags/exclusive generation/repeated upgrade/save, nation/army/hero field scaling/attenuation/caps/actual spawns/rewards
+✔ iron-squad\tests\merchant-progression.test.mjs (9434.9196ms)
+PASS: 12 real waves with payroll/reserves and reconciled ledgers, retained donations during rest, equipment priority/markup/protection/buyout/deposits, development/HQ damage, live nation UI, town smith/guild/casino cooldown, save migration and native architecture Canvas; death keeps nation development and can resume the living save or checkpoint
+✔ iron-squad\tests\nation.test.mjs (32217.0543ms)
+PASS: blocking guides lines=224 blocked=6159 openings=58 span=12000
+✔ iron-squad\tests\navigation-block.test.mjs (237.4075ms)
+PASS: both genders in all five families and commanders promote through classes 1–3 with identical costs, stable identity/appearance, legacy IDs and saved numeric metadata; future class labels have no fixed upper limit
+✔ iron-squad\tests\numbered-classes.test.mjs (1277.5221ms)
+{"invaders":28,"inside":28,"stage":"battle"}
+PASS: outer bailey at Lv3 on the highways, wide gates on the route grid, enemy pathing from 8 directions, cleared wall line, 4 outer guards saved and refilled like HQ gates, round-table beer-garden leisure and alarm, trade re-plan through gates, hero re-plan and march, real invasion entry, rendering
+✔ iron-squad\tests\outer-wall.test.mjs (11251.1351ms)
+ok
+✔ iron-squad\tests\own-squad-roster.test.mjs (7518.9145ms)
+{"prices":[112,1963,31392,633436,14384512],"runs":[{"label":"fresh economy","waves":40,"paid":130353,"rankerPaid":0,"upgrades":2117,"treasury":27537,"fullPayroll":6144},{"label":"mature gear requires savings","waves":24,"paid":166268,"rankerPaid":25993,"upgrades":879,"treasury":38219,"fullPayroll":8735}]}
+PASS: unlimited prices, economy-funded wages/honors, no army-created income, fair transfers, 40 fresh/24 mature periods, savings, reserves, no duplicate pay and save/resume
+✔ iron-squad\tests\payroll-finance.test.mjs (49297.6568ms)
+PASS: complete battle update, continuous close-combat movement, circular-cache-free saves, bounded ring paths, offscreen culling, no repeated failed frames, populations preserved
+✔ iron-squad\tests\performance-regression.test.mjs (758.0366ms)
+PASS: unlock without delivery, independent poor/limited/rich wallets, zero/rich public treasuries, exact personal charges and public reconciliation, retained old weapon, six-gold buffer, saved phase guard, later funded purchase, explicit UI
+✔ iron-squad\tests\personal-equipment-budget.test.mjs (6823.7181ms)
+PASS: captain staff/wand spells, four elements, magic resistance, shared auto/manual cooldown, MP/movement, charged spell, outposts, kill credit, supplies, switch/save/legacy, full status shortcut and unlimited equipment
+✔ iron-squad\tests\player-magic.test.mjs (8622.7992ms)
+PASS: fixed 48-person deployment, preserved overflow and save progress, 40 initial enemies, faster repopulation, 40-enemy cap including bosses, safe rest
+✔ iron-squad\tests\population.test.mjs (541.3013ms)
+PASS: facility detours, dialog return, in-flight caravan rerouting, actual treasure destinations and kana toggles
+✔ iron-squad\tests\progression-consistency.test.mjs (739.207ms)
+PASS: selected profession, one detailed candidate, free individual rolls, real timer/genius stop and protection, held-candidate save/resume, no reroll on hire/portrait/stats, exact cost and modal teardown
+✔ iron-squad\tests\recruitment.test.mjs (10651.3908ms)
+PASS: independent tax/payroll, discovered walkable routes, real bridge construction, funding reserves, private investment, arrivals/losses/guards, saved actor paths/threats, reconciled accounts, once-only missions and migration
+✔ iron-squad\tests\regional-economy.test.mjs (1397.5451ms)
+PASS: rescue reward owner (commander vs treasury)
+✔ iron-squad\tests\rescue-gold-owner.test.mjs (241.2702ms)
+PASS: all random rewards/jackpot, no duplicate/farming, real NPC rewards replace gold/XP, permanent stats through equip/reload/reenlistment, live 2→1→0 wave countdown, 150G reuse, guard kill/mastery/level/hit/wave growth and saves, civilian human figures
+✔ iron-squad\tests\rescue-growth.test.mjs (7622.9915ms)
+PASS: rescue marker clustering
+✔ iron-squad\tests\rescue-markers.test.mjs (113.8649ms)
+PASS: reserve cap, farm posts, hoe basket tend
+✔ iron-squad\tests\reserve-farm.test.mjs (1119.801ms)
+PASS: 8-second safe rest, regular soldier salary, staggered self-upgrades, combat pause, manual forge, save/resume, boss preservation, budget reasons, +30→31 maintenance and upkeep buffer
+✔ iron-squad\tests\rest-maintenance.test.mjs (1125.4311ms)
+rest-movement tests passed
+✔ iron-squad\tests\rest-movement.test.mjs (1088.739ms)
+ok
+✔ iron-squad\tests\scout-own-squad.test.mjs (10317.8436ms)
+PASS: visible shields for all 9 weapons and 8 directions, forearm/dual grips, near/far/rest/down, tier silhouettes, Canvas state and no RNG/stat/save mutation
+✔ iron-squad\tests\shield-visibility.test.mjs (1381.9316ms)
+PASS: real shrine reward/count, shared equipment once, dead/reserves excluded, chatter bypass, menu pause, zoom readability, expiry/reset, no-gear and offscreen cases
+✔ iron-squad\tests\shrine-result.test.mjs (431.1619ms)
+PASS: stable faces, old-save migration, save roundtrip, all bald variants, 634/10000 handsome, medical promotions, gameplay RNG/stat isolation and balanced Canvas state
+✔ iron-squad\tests\soldier-appearance.test.mjs (367.2868ms)
+PASS: Verified 498 unique quotes across 25 categories
+PASS: Anti-repetition engine properly tracked 30 recent quotes
+PASS: Global and individual cooldowns and maxActiveBubbles enforced properly
+PASS: Bubble lifecycle, position tracking, and expiration verified
+PASS: wrapDialogueText splits text appropriately for bounded width
+PASS: Small-screen high-zoom dialogue renders wrapped lines and clamps cleanly under DPR=2
+PASS: All 5 newly connected situations (90 quotes) trigger and deliver category-specific quotes
+PASS: Forced events enforce maxActiveBubbles=2 and single-representative policy for simultaneous triggers
+ALL SOLDIER DIALOGUE TESTS PASSED!
+✔ iron-squad\tests\soldier-dialogue.test.mjs (158.4537ms)
+soldier gender ok
+✔ iron-squad\tests\soldier-gender.test.mjs (1052.1632ms)
+PASS: soldier full names, ninja/beast single names, pool integrity, anti-duplication, migration
+✔ iron-squad\tests\soldier-names.test.mjs (149.4206ms)
+PASS: real manual/auto/soldier/power/advanced spear attacks pierce after kills, hit survivors, retain geometry and never double-hit
+✔ iron-squad\tests\spear-pierce.test.mjs (7302.6461ms)
+stall-recorder tests passed
+✔ iron-squad\tests\stall-recorder.test.mjs (148.3588ms)
+PASS: old-save cleanup, save isolation, fresh reset, position restore, 12 outposts, bounded deterministic terrain, expanded world, cliff gates and dungeon rooms
+✔ iron-squad\tests\state-world.test.mjs (917.8184ms)
+PASS: v2 real manual/auto/SNIPER/strong/outpost shots, 20%/75%, single-target stones, supply locations, any-collector ammo, reserve, independent enemy drop; personal-only potion in field/dungeon/ruin/town, no revival/main/reserves; lethal-hit 2s immunity/120s cooldown/second-hit death/rearm/heal/save/checkpoint/pause/legacy; immutable checkpoints/quota/slot isolation/town entry/legacy migration, unchanged population; relative-strength XP/5x/25x/player/soldier/save/display
+✔ iron-squad\tests\supply-v2.test.mjs (11381.8161ms)
+talent-identity.test: PASS
+✔ iron-squad\tests\talent-identity.test.mjs (267.0365ms)
+talent-labels.test: PASS
+✔ iron-squad\tests\talent-labels.test.mjs (201.1347ms)
+PASS: tavern candidates and waiting companions sit, eat and drink around terrace tables, clear of the doorway and army
+✔ iron-squad\tests\tavern-seating.test.mjs (273.0917ms)
+PASS: wide-view reuse, moving-strip generation, 24 MiB budget, phone resolution, identical recycled pixels, lost-context recovery
+✔ iron-squad\tests\terrain-cache.test.mjs (2511.268ms)
+PASS: five pond silhouettes, four irregular hazard contours, Canvas fill matches hits, unchanged tick damage, safe inlets/UI/hostiles/towns/rest, deterministic eviction/regeneration
+✔ iron-squad\tests\terrain-shapes.test.mjs (922.6301ms)
+PASS: traveler start, own merit and optional invitation, five followers, 5,000G hires without conversation, waiting/swap/save, unchanged rescue, independent demon-king route, gated army, gradual promotions and current save roundtrip
+✔ iron-squad\tests\traveler-career.test.mjs (17201.4677ms)
+PASS: civilian/player travel clothes vs uniforms in both genders, five professions, portraits/close/far art, same identity/stats/equipment
+✔ iron-squad\tests\traveler-clothes.test.mjs (1415.4349ms)
+✔ battle-log categorization test (1.8926ms)
+✔ troop-rankings granular status & top 3 ranker criteria (30.4396ms)
+✔ ranker bonus salary distribution for top 3 rankers (9.3611ms)
+{"meleeStrength":48,"rangedStrength":39,"brawlerAttack":6673,"brawlerMagicAttack":383,"oppositeTalentExamples":17}
+PASS: individual aptitudes, melee/ranged/spell training, resistance and all attack dodges, actual walking/no teleport credit, caster melee and healer priority, stable legacy/save/reserve/attribute rankings and UI
+✔ iron-squad\tests\unit-attributes.test.mjs (8621.4588ms)
+v5.0.0 ok
+✔ iron-squad\tests\v500.test.mjs (2769.8912ms)
+PASS: reproduced trailing civilian/town reception/save/release, soldier arrival revive, quiet HUD refresh and bottom merchant action, all gates/collisions/exits unchanged, native masonry contrast/mortar/town north label/state
+✔ iron-squad\tests\wall-town-navigation.test.mjs (7610.2163ms)
+PASS: all 9 weapons / 8 directions / 21 frames / 2 physiques: fixed arm lengths, connected grips, recovery, ranged draw/recoil, Canvas isolation and axe silhouette
+✔ iron-squad\tests\weapon-grips.test.mjs (689.5773ms)
+PASS: visible striking geometry in 8 directions, latched aim, two-hand grips, continuous recovery, Canvas state isolation, real sweet spot distances and no idle range effects
+✔ iron-squad\tests\weapon-motion.test.mjs (819.4412ms)
+PASS: real staff/wand magical stats, 8 masteries and name migration, melee strength/material requirements, muscle mage hammer, shared/treasury/manual/player/source-identity gates, retained unsupported legacy items
+✔ iron-squad\tests\weapon-requirements.test.mjs (7107.227ms)
+PASS: individual length/tempo/swing/width/sweet/crit axes, no crit compounding, real manual reach/cooldown/cone damage, weapon comparisons and save/load
+✔ iron-squad\tests\weapon-traits.test.mjs (7159.5608ms)
+PASS: reduced completed gear, guaranteed treasure materials, actual enemy/commander/soldier pickup, 6 development tiers, workshop purchases, 15 exclusive recipes, exact costs, guarded failures, unique ownership, nonstacking upgrades, save migration, automatic supply budget/phase/UI
+✔ iron-squad\tests\workshop-loot.test.mjs (9603.6756ms)
+ℹ tests 105
+ℹ suites 0
+ℹ pass 105
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 57774.7834

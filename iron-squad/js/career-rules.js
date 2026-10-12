@@ -17,7 +17,7 @@ export const ownCompanionCount=game=>[...(game.squad||[]),...(game.reserves||[])
 export function rankForCareer(game,ranks){
   const rank=ranks[game.rankIndex]||ranks[0];
   return isEnlisted(game)?{...rank,personalGuards:Math.max(CAREER_RULES.companionLimit,rank.personalGuards||0)}:
-    {...ranks[0],title:'在野の旅人',canCommand:false,personalGuards:CAREER_RULES.companionLimit,desc:'仲間5人までの旅の一行。地域へこうけんすると本陣から声がかかります。'};
+    {...ranks[0],title:'在野の旅人',canCommand:false,personalGuards:CAREER_RULES.companionLimit,desc:gameText('仲間5人までの旅の一行。地域へ貢献すると本陣から声がかかります。')};
 }
 export function recordCareerContribution(game,merit,serviceExp=0){
   game.career||=newCareer();
@@ -48,10 +48,11 @@ export function canPromoteCareer(game,nextRank){
   if(!isEnlisted(game)||!nextRank||(game.exp||0)<nextRank.reqExp)return false;
   return game.career.servicePhases-game.career.promotionServicePhases>=promotionServiceRequired(game.rankIndex);
 }
+import {gameText} from './game-text.js?v=200';
 export function careerSummary(game,ranks){
   const c=game.career;
   if(!isEnlisted(game))return c?.status==='invited'?'本陣からかんゆうが届いています。帰還して話を聞けます。':
-    `旅の仲間 ${ownCompanionCount(game)} / 5人 · 地域へのこうけん ${c?.contribution||0} / ${CAREER_RULES.invitationMerit} · 活動した期 ${c?.activePhases||0} / ${CAREER_RULES.invitationPhases}`;
+    gameText(`旅の仲間 ${ownCompanionCount(game)} / 5人 · 地域への貢献 ${c?.contribution||0} / ${CAREER_RULES.invitationMerit} · 活動した期 ${c?.activePhases||0} / ${CAREER_RULES.invitationPhases}`);
   const next=ranks[game.rankIndex+1];
   return next?`次の昇進：${next.title} · 本人と自部隊の功績 ${Math.floor(game.exp||0).toLocaleString()} / ${next.reqExp.toLocaleString()} · 前回の昇進から活動 ${Math.max(0,(c?.servicePhases||0)-(c?.promotionServicePhases||0))} / ${promotionServiceRequired(game.rankIndex)}期`:'最高階級です。';
 }

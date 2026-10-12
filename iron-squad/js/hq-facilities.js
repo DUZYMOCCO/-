@@ -1,14 +1,15 @@
 import {WORLD_SIZE} from './world.js?v=198';
-import {HQ_FACILITY_LAYOUT,hqFacilityBlocks} from './hq-facility-layout.js?v=198';
+import {HQ_FACILITY_LAYOUT,hqFacilityBlocks} from './hq-facility-layout.js?v=201';
 import {setSubDialog} from './interface.js?v=195';
 import {daylightAt} from './day-night.js?v=197';
+import {buildingContact} from './building-interactions.js?v=201';
 const center=WORLD_SIZE/2;
 export const HEADQUARTERS_FACILITIES=HQ_FACILITY_LAYOUT.map(p=>Object.freeze({...p,type:'hq-facility',x:center+p.x,y:center+p.y}));
 // Service architecture keeps the army's established combat and movement rules.
 export const headquartersBuildingBlocks=(x,y)=>hqFacilityBlocks(x-center,y-center);
 export function nearHeadquartersFacility(game,id) {
-  if(game.currentDungeon||!game.player||game.player.dead||game.player.isDown||game.restTimer>0)return null;
-  return HEADQUARTERS_FACILITIES.find(p=>(!id||p.id===id)&&Math.hypot(game.player.x-p.x,game.player.y-(p.y+24))<68)||null;
+  if(game.currentDungeon||!game.player||game.player.dead||game.player.isDown)return null;
+  return HEADQUARTERS_FACILITIES.find(p=>(!id||p.id===id)&&(buildingContact(game.player,p)||Math.hypot(game.player.x-p.x,game.player.y-(p.y+24))<68))||null;
 }
 // Town transactions keep their established rules; the headquarters service is reached on foot.
 export const atFacility=(game,id,level)=>!game.player?.dead&&!game.player?.isDown&&game.nation?.level>=level&&
@@ -99,8 +100,7 @@ export const headquartersFacilityMethods={
       const item=this.equipped?.weapon,cost=item?Math.max(1,Math.floor(this.getUpgradeCost(item)*.8)):0;
       body.insertAdjacentHTML('beforeend',`<div class="town-facility"><h5>武器の強化</h5><p>隊長武器の強化が2割引。1期に1回。${item?money(cost):'武器装備が必要'}${this.nation.smithPhase===this.phase?' · 今期は利用済み':''}</p><button type="button" data-hq-service="smith" ${!atFacility(this,'smith',1)||!item||this.nation.smithPhase===this.phase||this.gold<cost?'disabled':''}>武器を強化する</button></div>`);
     } else if(p.id==='guild') {
-      const n=this.nation,phase=this.phase||1;
-      body.insertAdjacentHTML('beforeend',`<div class="town-facility"><h5>討伐の依頼</h5><p>${n.guild?`討伐 ${n.guild.kills} / ${n.guild.target} · 報酬 ${money(n.guild.reward)}`:'部隊で敵20体を討伐し、組合へ戻って報酬を受け取る依頼。1期に1件。'}</p><button type="button" data-hq-service="guild" ${!atFacility(this,'guild',2)||(n.guild?n.guild.kills<20:n.guildPhase===phase)?'disabled':''}>${n.guild?'報酬を受け取る':n.guildPhase===phase?'今期の依頼は終了':'依頼を受ける'}</button></div>`);
+      this.renderGuild(body);
     } else this.renderCasino(body);
     for(const button of body.querySelectorAll('[data-hq-service]'))button.onclick=()=>this.useTownFacility(button.dataset.hqService);
     if(focus)body.querySelector(`[id="${focus}"]`)?.focus();

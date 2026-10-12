@@ -89,8 +89,12 @@ function seatsAround(groups, ox, oy) {
 }
 const YARD = seatsAround(YARD_GROUPS, CAMP_X, CAMP_Y);
 const GARDEN = seatsAround(GARDEN_GROUPS, TAVERN_SITE.x, TAVERN_SITE.y);
+// Two terrace tables for strangers and waiting companions. Keep the doorway clear
+// and use separate stools from the off-duty army's garden further south.
+const TAVERN = seatsAround([{x:-100,y:66,n:6},{x:105,y:70,n:6}],TAVERN_SITE.x,TAVERN_SITE.y);
 export const YARD_TABLES = YARD.tables, YARD_SEAT_COUNT = YARD.seats.length;
 export const GARDEN_TABLES = GARDEN.tables, GARDEN_SEAT_COUNT = GARDEN.seats.length;
+export const TAVERN_TABLES = TAVERN.tables, TAVERN_SEAT_COUNT = TAVERN.seats.length;
 function seatAt(layout, index, pose) {
   const base = layout.seats[index % layout.seats.length], lap = Math.floor(index / layout.seats.length);
   // More soldiers than stools: the extra ones squeeze in behind, a little further out.
@@ -100,6 +104,8 @@ function seatAt(layout, index, pose) {
 export const messPoint = (index, pose) => seatAt(YARD, index, pose);
 /** Seat in the beer garden in front of the field tavern (used once the outer bailey stands). */
 export const gardenPoint = (index, pose) => seatAt(GARDEN, index, pose);
+/** Terrace seat for tavern candidates and companions, independent of the army. */
+export const tavernPoint = (index, pose) => seatAt(TAVERN, index, pose);
 /** A small round table with a few mugs; drawn on the ground layer under the seated soldiers. */
 export function drawLeisureTable(c, t) {
   c.save(); c.translate(t.x, t.y);
@@ -195,10 +201,11 @@ export function tryCampLeisure(game, soldier, dt) {
     soldier.campPose = null;
     return false;
   }
-  const dx = seat.x - soldier.x;
-  const dy = seat.y - soldier.y;
+  const target=soldier.isPersonalGuard?(game.dungeonMoveTarget?.(soldier,seat)||seat):seat;
+  const dx = target.x - soldier.x;
+  const dy = target.y - soldier.y;
   const dist = Math.hypot(dx, dy);
-  if (dist > CAMP_ARRIVE) {
+  if (Math.hypot(seat.x-soldier.x,seat.y-soldier.y) > CAMP_ARRIVE && dist > 0) {
     soldier.campPose = null;
     const step = Math.min(dist * 3.5, soldier.speed || 90) * dt;
     soldier.x += (dx / dist) * step;

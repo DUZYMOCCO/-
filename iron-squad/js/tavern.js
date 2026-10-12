@@ -1,42 +1,39 @@
-import {isEnlisted,CAREER_RULES} from './career-rules.js?v=196';
+import {isEnlisted,CAREER_RULES} from './career-rules.js?v=200';
 import {isOwnSquad} from './own-squad-marker.js?v=182';
 import {persistentUnit} from './render-support.js';
-import {calcScoutCost} from './economy-rules.js?v=192';
 import {drawSoldierPortrait} from './soldier-appearance.js?v=195';
 import {setSubDialog} from './interface.js?v=195';
 import {WORLD_SIZE,TAVERN_SITE} from './world.js?v=198';
 import {daylightAt} from './day-night.js?v=197';
-import {GARDEN_TABLES,drawLeisureTable} from './camp-leisure.js?v=198';
+import {GARDEN_TABLES,TAVERN_TABLES,TAVERN_SEAT_COUNT,tavernPoint,campPoseFor,drawLeisureTable} from './camp-leisure.js?v=202';
+import {buildingContact} from './building-interactions.js?v=201';
 
 const classes=['HEAVY','LIGHT','ARCHER','MAGE','MEDIC'];
 const jobs={HEAVY:'重装兵',LIGHT:'軽装兵',ARCHER:'弓兵',MAGE:'魔法師',MEDIC:'衛生士'};
-const talks=[
-  {line:'「旅の途中でこまっている人を見かけたら、どうする？」',answers:['できる範囲で力を貸す','面倒なので置いていく'],good:0},
-  {line:'「強い敵に出会ったら、仲間をどう扱う？」',answers:['先に行かせて様子を見る','無理をせず、皆で帰る道を探す'],good:1},
-  {line:'「しばらく同じ道を歩いてみてもいいかもしれないな。」',answers:['いっしょに旅をしよう','手柄はすべて自分のものだ'],good:0}
-];
+export const TAVERN_HIRE_COST=5000;
 const el=(tag,cls,text)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(text!=null)e.textContent=text;return e;};
 /** One large tavern stands on the field just south of HQ. Strangers and waiting friends all gather there. */
 export const FIELD_TAVERN=Object.freeze({...TAVERN_SITE,radius:130,name:'本陣前の大酒場'});
 export function initializeTaverns(game,saved){
-  game.taverns={version:2,roster:saved?.roster?.people?structuredClone(saved.roster):null,waiting:Array.isArray(saved?.waiting)?saved.waiting.filter(s=>s?.id&&!s.dead).map(s=>structuredClone(s)):[]};
+  game.taverns={version:3,roster:saved?.roster?.people?structuredClone(saved.roster):null,waiting:Array.isArray(saved?.waiting)?saved.waiting.filter(s=>s?.id&&!s.dead).map(s=>structuredClone(s)):[]};
 }
-export const nearFieldTavern=game=>!game.currentDungeon&&!!game.player&&!game.player.isDown&&Math.hypot(game.player.x-FIELD_TAVERN.x,game.player.y-FIELD_TAVERN.y)<FIELD_TAVERN.radius;
+export const nearFieldTavern=game=>!game.currentDungeon&&!!game.player&&!game.player.dead&&!game.player.isDown&&(Math.hypot(game.player.x-FIELD_TAVERN.x,game.player.y-FIELD_TAVERN.y)<FIELD_TAVERN.radius||buildingContact(game.player,{...FIELD_TAVERN,w:344,h:150,roof:62},36));
 export function ensureTavernRoster(game){
   game.taverns||initializeTaverns(game);let roster=game.taverns.roster;const phase=game.phase||1;
   if(!roster||(roster.people.every(p=>p.joined)&&roster.phase!==phase)){
     const people=Array.from({length:4},(_,i)=>{
       const unit=game.createNewSoldier(null,{classKey:classes[(i+phase)%classes.length]});
       unit.civilianOutfit=true;
-      return {unit,cost:calcScoutCost(phase,unit.talent,unit.level||1),trust:0,talkStep:0,joined:false};
+      return {unit,cost:TAVERN_HIRE_COST,joined:false};
     });
     roster={phase,people};game.taverns.roster=roster;
   }
+  for(const person of roster.people){person.cost=TAVERN_HIRE_COST;delete person.trust;delete person.talkStep;}
   return roster;
 }
 export function serializeTaverns(game){
   const state=game.taverns||{roster:null,waiting:[]},r=state.roster;
-  return {version:2,waiting:state.waiting.map(persistentUnit),roster:r?{...r,people:r.people.map(p=>({...p,unit:p.joined?{id:p.unit.id}:persistentUnit(p.unit)}))}:null};
+  return {version:3,waiting:state.waiting.map(persistentUnit),roster:r?{phase:r.phase,people:r.people.map(p=>({cost:TAVERN_HIRE_COST,joined:p.joined,unit:p.joined?{id:p.unit.id}:persistentUnit(p.unit)}))}:null};
 }
 function park(game,unit){
   game.taverns||initializeTaverns(game);
@@ -65,6 +62,8 @@ export function settleTravelerCompanions(game){
 }
 /** Called every frame; touches the DOM only when the prompt changes. */
 export function updateTavernPrompt(game){
+  // Populate the terrace on approach, before the first visit opens its menu.
+  if(!game.currentDungeon&&game.player&&!game.player.dead&&Math.hypot(game.player.x-FIELD_TAVERN.x,game.player.y-FIELD_TAVERN.y)<430)ensureTavernRoster(game);
   const host=game.container?.querySelector?.('.field-prompts');if(!host)return;
   let button=host.querySelector('#btn-field-tavern');
   if(!button){button=el('button','phase-btn hidden',`🍺 ${FIELD_TAVERN.name}に入る`);button.id='btn-field-tavern';button.type='button';button.onclick=()=>game.openTavern();host.append(button);game._tavernPromptShown=false;}
@@ -90,19 +89,21 @@ export function drawFieldTavern(c,game,drawPerson){
   c.fillStyle='#3b2f23';c.fillRect(-70,-178,140,30);c.fillStyle='#ecd9aa';c.font='bold 18px sans-serif';c.textAlign='center';c.textBaseline='middle';c.fillText('大酒場',0,-163);
   c.fillStyle='#7a5a36';for(const bx of [-140,140]){c.beginPath();c.ellipse(bx,-12,13,16,0,0,Math.PI*2);c.fill();}
   c.restore();
-  for(const t of GARDEN_TABLES)drawLeisureTable(c,t);
-  const visitors=people.filter(v=>!v.joined).map(v=>v.unit).concat(game.taverns?.waiting||[]).slice(0,12);
-  for(const [i,s]of visitors.entries())drawPerson(s,x-150+(i%6)*60,y+40+Math.floor(i/6)*50);
+  for(const t of [...TAVERN_TABLES,...GARDEN_TABLES])drawLeisureTable(c,t);
+  const visitors=people.filter(v=>!v.joined).map(v=>v.unit).concat(game.taverns?.waiting||[]).slice(0,TAVERN_SEAT_COUNT);
+  const seated=visitors.map((s,i)=>({unit:s,seat:tavernPoint(i,campPoseFor(s))})).sort((a,b)=>a.seat.y-b.seat.y);
+  for(const {unit,seat}of seated)drawPerson({...unit,campPose:seat.pose,facingAngle:seat.facing},seat.x,seat.y);
 }
+import {fieldDialogReturn} from './dialog-return.js?v=200';
 export const tavernMethods={
   openTavern(){
     if(!nearFieldTavern(this)){this.showToast?.(`仲間との出会いは、本陣の南にある${FIELD_TAVERN.name}で探せます`);return false;}
     if(this.container.querySelector('#tavern-dialog'))return false;
-    ensureTavernRoster(this);this.openStrategyModal(true);
+    ensureTavernRoster(this);const returnToCaller=fieldDialogReturn(this);
     const host=el('div','game-overlay commander-editor');host.id='tavern-dialog';
     host.innerHTML='<section class="strategy-panel ce-panel tavern-panel"><header class="sheet-bar"><strong class="sheet-bar-title" id="tavern-title"></strong><button type="button" class="sheet-bar-btn" id="btn-tavern-close">閉じる ×</button></header><div class="ce-body tavern-body"></div></section>';
     (this.container.querySelector('.iron-squad')||this.container).append(host);
-    const close=()=>{host.remove();setSubDialog(this,host,false);this.saveGame();};
+    const close=()=>{setSubDialog(this,host,false);host.remove();this.saveGame();returnToCaller();};
     host.querySelector('#btn-tavern-close').onclick=close;setSubDialog(this,host,true,close);host.setAttribute('aria-label',FIELD_TAVERN.name);
     this.renderTavern();this.saveGame();return true;
   },
@@ -111,7 +112,7 @@ export const tavernMethods={
     host.querySelector('#tavern-title').textContent=FIELD_TAVERN.name;
     const body=host.querySelector('.tavern-body');for(const c of body.querySelectorAll('canvas')){c.width=c.height=1;}body.replaceChildren();
     const own=(this.squad||[]).filter(isOwnSquad),limit=this.limitedGuardLimit(),enlisted=this.isEnlisted();
-    body.append(el('p','command-note',`同行する仲間 ${own.length} / ${limit}人。金で雇うか、話をして信頼を得ると仲間になります。`));
+    body.append(el('p','command-note',`同行する仲間 ${own.length} / ${limit}人。雇用は1人${TAVERN_HIRE_COST.toLocaleString()}Gです。所持金 ${this.gold.toLocaleString()}G。`));
     body.append(el('p','command-note',enlisted?'同行しきれない仲間は本陣の予備に入ります。':'同行しきれない仲間は、この酒場で待ちます。入隊せずに旅を続けることもできます。'));
     const row=(unit,label)=>{
       const card=el('article','tavern-person'),portrait=el('canvas','tavern-portrait');portrait.width=120;portrait.height=132;
@@ -120,13 +121,8 @@ export const tavernMethods={
     };
     const button=(actions,label,fn,disabled=false)=>{const b=el('button','action-btn secondary',label);b.type='button';b.disabled=disabled;b.onclick=fn;actions.append(b);return b;};
     for(const person of ensureTavernRoster(this).people.filter(p=>!p.joined)){
-      const {text,actions}=row(person.unit,`雇用 ${person.cost.toLocaleString()}G · ${person.trust>=3?'意気投合しています':'まだ出会ったばかり'}`);
+      const {actions}=row(person.unit,`雇用 ${person.cost.toLocaleString()}G`);
       button(actions,`${person.cost.toLocaleString()}Gで雇う`,()=>this.recruitTavernPerson(person.unit.id,'gold'),this.gold<person.cost);
-      if(person.trust>=3)button(actions,'旅の仲間に誘う',()=>this.recruitTavernPerson(person.unit.id,'talk'));
-      else button(actions,'会話する',()=>{
-        const topic=talks[person.talkStep%talks.length];text.append(el('p','tavern-talk',topic.line));actions.replaceChildren();
-        topic.answers.forEach((answer,i)=>button(actions,answer,()=>this.talkToTavernPerson(person.unit.id,i)));
-      });
     }
     body.append(el('h3','ce-heading','同行中の仲間'));
     if(!own.length)body.append(el('p','command-note','まだ一人旅です。'));
@@ -137,20 +133,10 @@ export const tavernMethods={
       for(const s of waiting){const {actions}=row(s,'いっしょに旅をした仲間。装備と成長を保持して待っています。');button(actions,'いっしょに出発する',()=>this.rejoinTavernCompanion(s.id),own.length>=limit);}
     }
   },
-  talkToTavernPerson(id,answer){
-    if(!nearFieldTavern(this))return false;
-    const p=ensureTavernRoster(this).people.find(p=>p.unit.id===id&&!p.joined);if(!p||p.trust>=3)return false;
-    const topic=talks[p.talkStep%talks.length];
-    if(!Number.isInteger(answer)||answer<0||answer>=topic.answers.length)return false;
-    if(answer===topic.good){p.trust++;p.talkStep++;this.showToast(p.trust>=3?`${p.unit.name}と意気投合しました。旅に誘えます。`:`${p.unit.name}との距離が少し縮まりました。`);}
-    else this.showToast(`${p.unit.name}は少しこまった顔をしました。もう一度、話をしてみましょう。`);
-    this.saveGame();this.renderTavern();return true;
-  },
   recruitTavernPerson(id,method='gold'){
     if(!nearFieldTavern(this))return false;
-    const p=ensureTavernRoster(this).people.find(p=>p.unit.id===id&&!p.joined);if(!p||!['gold','talk'].includes(method))return false;
-    if(method==='gold'&&this.gold<p.cost||method==='talk'&&p.trust<3)return false;
-    if(method==='gold')this.gold-=p.cost;
+    const p=ensureTavernRoster(this).people.find(p=>p.unit.id===id&&!p.joined);if(!p||method!=='gold'||this.gold<TAVERN_HIRE_COST)return false;
+    this.gold-=TAVERN_HIRE_COST;
     p.joined=true;const s=p.unit;s.civilianOutfit=!this.isEnlisted();s.joinedFrom='tavern';s.isPersonalGuard=true;s.overflowGuard=false;
     if((this.squad||[]).filter(isOwnSquad).length<this.limitedGuardLimit()){
       s.x=this.player.x+28;s.y=this.player.y+18;this.squad.push(s);this.syncPersonalGuardSlots(null,this.limitedGuardLimit());
@@ -160,7 +146,7 @@ export const tavernMethods={
     }else{
       sendToReserve(this,s);this.showToast(`${s.name}が本陣の予備兵として加入しました。`);
     }
-    this.normalizeDeployment();this.saveGame();this.updateStatsUI();this.renderTavern();return true;
+    this.normalizeDeployment();this.saveGame();this.updateStatsUI();this.renderStrategyUI();this.renderTavern();return true;
   },
   parkTavernCompanion(id){
     if(!nearFieldTavern(this))return false;

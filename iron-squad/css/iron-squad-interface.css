@@ -23,12 +23,31 @@
 .iron-squad .merchant-stock-card { opacity: 1; }
 .iron-squad .merchant-stock-card .equipment-comparison { margin: 8px 0; padding: 9px 10px; }
 .iron-squad .merchant-stock-card .equipment-comparison small { display: block; color: var(--ui-muted); font-size: 11px; line-height: 1.6; overflow-wrap: anywhere; }
-.iron-squad .merchant-quality, .iron-squad .merchant-price-note { color: var(--ui-muted); font-size: 11px; line-height: 1.6; margin: 6px 0; }
+.iron-squad .merchant-quality, .iron-squad .merchant-price-note { color: var(--ui-muted); font-size: 13px; line-height: 1.6; margin: 6px 0; }
 .iron-squad .merchant-featured { border: 1px solid #c9ad70; background: #302f28; }
 .iron-squad .merchant-featured-label { color: #eed599; font-size: 12px; font-weight: 700; padding: 0 0 8px; }
 .iron-squad .merchant-stock-card .transfer-card-meta { flex-wrap: wrap; gap: 8px; }
 .iron-squad .merchant-stock-card .transfer-card-meta > span { flex: 1 1 170px; }
 .iron-squad .merchant-stock-card [data-buy] { min-height: 44px; padding: 8px 14px; white-space: nowrap; }
+.iron-squad .merchant-stock-card .transfer-card-header { flex-wrap:wrap; gap:8px 14px; align-items:flex-start; }
+.iron-squad .merchant-stock-card .transfer-item-name { flex:1 1 150px; min-width:0; font-size:14px; overflow-wrap:anywhere; }
+.iron-squad .merchant-purchase-price { flex:0 1 auto; max-width:100%; color:var(--ui-gold); font-size:18px; line-height:1.4; overflow-wrap:anywhere; text-align:right; }
+.iron-squad .merchant-purchase-price small { display:block; font-size:11px; font-weight:normal; color:var(--ui-muted); }
+.iron-squad .merchant-stock-card .equipment-comparison { font-size:14px; }
+.iron-squad .merchant-stock-card [data-buy] { font-size:14px; }
+/* Enlarge values on their own surfaces; allow long balances to wrap within a window. */
+.iron-squad .wallet-entry { min-width:0; max-width:100%; white-space:normal; overflow-wrap:anywhere; }
+.iron-squad .wallet-entry strong { font-size:16px; }
+.iron-squad .strat-window-gold { font-size:14px; overflow-wrap:anywhere; }
+.iron-squad .snapshot-metric strong { overflow-wrap:anywhere; }
+.iron-squad .equipment-comparison { font-size:14px; }
+.iron-squad .tavern-person-text p, .iron-squad .facility-intro, .iron-squad .workshop-materials { font-size:14px; }
+.iron-squad .treasure-receipt { position:absolute; z-index:25; top:max(80px,calc(env(safe-area-inset-top) + 80px)); left:12px; right:12px; max-width:440px; margin:auto; padding:12px 48px 12px 14px; border:1px solid #bba374; border-radius:9px; color:var(--ui-text); background:#192630f5; box-shadow:0 3px 12px #0005; font-size:14px; line-height:1.6; }
+.iron-squad .treasure-receipt strong { color:var(--ui-gold); font-size:15px; }
+.iron-squad .treasure-receipt > div { max-height:24vh; overflow:auto; overflow-wrap:anywhere; }
+.iron-squad .treasure-receipt p { margin:5px 0 0; }
+.iron-squad .treasure-receipt button { position:absolute; top:3px; right:3px; width:44px; height:44px; border:0; background:transparent; color:var(--ui-muted); font-size:22px; touch-action:manipulation; }
+.dialog-open .treasure-receipt { visibility:hidden; }
 /* Size the surface from its container; exclude its intrinsic backing-store
    dimensions from flex layout, including during Safari rotation/resizing. */
 .iron-squad #game-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
@@ -337,7 +356,7 @@
 }
 .iron-squad .wallet-entry { white-space: nowrap; }
 .iron-squad .wallet-entry small { display: block; color: var(--ui-muted); font-size: 10px; margin-bottom: 1px; }
-.iron-squad .wallet-entry strong { color: var(--ui-text) !important; font-size: 13px; }
+.iron-squad .wallet-entry strong { color: var(--ui-text) !important; font-size: 16px; }
 .iron-squad .dialog-tabs { display: flex; flex-wrap: nowrap; gap: 0; padding: 0 12px; background: var(--ui-panel); border-bottom: 1px solid var(--ui-line); }
 .iron-squad .dialog-tabs .sub-tab-btn {
   flex: 1; min-height: 48px; font-size: 13px; background: transparent; color: var(--ui-muted);
@@ -1291,3 +1310,52 @@
 .iron-squad .hq-facility-body .town-facility > button { width:100%; }
 .iron-squad.quiet-battlefield .field-prompts > #btn-hq-facility { width:min(340px,calc(100% - 24px)); min-height:44px; padding:8px 12px; border:1px solid var(--ui-line); border-radius:8px; background:var(--ui-panel); color:var(--ui-gold); font-size:14px; font-family:inherit; touch-action:manipulation; }
 .dialog-open #btn-hq-facility { visibility:hidden; pointer-events:none; }
+
+/* Value sizes take precedence over the compact legacy cards without enlarging labels. */
+.iron-squad .strat-window-gold { font-size:14px; }
+.iron-squad .equipment-comparison { font-size:14px; }
+.iron-squad .snapshot-metric strong { overflow-wrap:anywhere; }
+.iron-squad.quiet-battlefield .quiet-vitals { font-size:13px; line-height:18px; gap:2px 10px; overflow:visible; white-space:normal; }
+.iron-squad.quiet-battlefield .quiet-vitals > span { min-width:0; max-width:100%; overflow-wrap:anywhere; }
+.iron-squad.quiet-battlefield .quiet-vitals .qv-stats { font-size:12px; line-height:17px; opacity:.9; }
+.iron-squad .workshop-unavailable { color:var(--ui-gold); margin:4px 0 12px; }
+.iron-squad .workshop-panel .equipment-comparison { padding:10px; font-size:14px; overflow-wrap:anywhere; }
+.iron-squad .material-grid b, .iron-squad .recipe-materials { font-size:14px; overflow-wrap:anywhere; }
+.iron-squad .equipment-comparison .stat-delta-line, .iron-squad .equipment-comparison .stat-delta-crit { font-size:14px; }
+.iron-squad .equipment-comparison .stat-delta-range { font-size:13px; }
+
+/* Field notices use the tavern's light, compact shell against the dark playfield. */
+.iron-squad { --field-paper:#f0f0f0; --field-ink:#20251f; --field-border:#777d75; }
+.iron-squad.quiet-battlefield .field-prompts > :is(#btn-field-tavern,#btn-hq-facility,#btn-career-invitation,#btn-town-tavern,#btn-limited-ally,#merchant-prompt-banner,#dungeon-prompt-banner,#phase-complete-banner,button,.phase-banner),
+.iron-squad.quiet-battlefield .battle-log-window.has-field-note .battle-log-msg,
+.iron-squad.quiet-battlefield .battle-log-window.has-field-note .battle-log-msg.item-alert,
+.iron-squad.quiet-battlefield .battle-log-window.has-field-note .battle-log-msg.boss-alert,
+.iron-squad.quiet-battlefield .battle-log-window.has-field-note .battle-log-msg.levelup-alert,
+.iron-squad .treasure-receipt {
+  background:var(--field-paper) !important; color:var(--field-ink) !important; border:1px solid var(--field-border) !important;
+  border-radius:3px; box-shadow:0 1px 3px #0003; padding:5px 8px; font-size:14px; line-height:1.5;
+}
+.iron-squad.quiet-battlefield .field-prompts > :is(#btn-field-tavern,#btn-hq-facility,#btn-career-invitation,#btn-town-tavern,#btn-limited-ally,button) { min-height:44px; font-size:16px; font-family:inherit; font-weight:600; width:min(340px,calc(100% - 24px)); }
+.iron-squad.quiet-battlefield .field-prompts > :is(#merchant-prompt-banner,#dungeon-prompt-banner,#phase-complete-banner,.phase-banner) [style*="color"],
+.iron-squad.quiet-battlefield .field-prompts > :is(#merchant-prompt-banner,#dungeon-prompt-banner,#phase-complete-banner,.phase-banner) button { color:var(--field-ink) !important; }
+.iron-squad.quiet-battlefield .field-prompts > :is(#merchant-prompt-banner,#dungeon-prompt-banner,#phase-complete-banner,.phase-banner) button { background:#fff; border:1px solid var(--field-border); border-radius:3px; }
+.iron-squad .treasure-receipt { padding:8px 46px 8px 10px; }
+.iron-squad .treasure-receipt strong, .iron-squad .treasure-receipt button { color:var(--field-ink); }
+.iron-squad .guild-board h5 { margin:18px 0 8px; font-size:16px; }
+.iron-squad .guild-contract-list { display:grid; gap:10px; }
+.iron-squad .guild-contract { padding:12px; border:1px solid var(--ui-line); border-radius:6px; background:var(--ui-panel); min-width:0; }
+.iron-squad .guild-contract header { display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:6px 12px; }
+.iron-squad .guild-contract header strong { flex:1 1 180px; overflow-wrap:anywhere; }
+.iron-squad .guild-contract header b { color:var(--ui-gold); font-size:16px; }
+.iron-squad .guild-contract p { margin:8px 0; color:var(--ui-muted); }
+.iron-squad .guild-contract button { width:100%; }
+.iron-squad .guild-contract.guild-complete { border-color:var(--ui-good); }
+.iron-squad .guild-filters { display:flex; flex-wrap:wrap; gap:6px; margin:8px 0 12px; }
+.iron-squad .guild-filters button { flex:1 1 90px; }
+.iron-squad .guild-filters [aria-pressed="true"] { color:var(--ui-bg); background:var(--ui-gold); }
+.iron-squad .hq-facility-body .guild-abandon { width:auto; margin-top:8px; color:var(--ui-muted); background:transparent; font-size:12px; }
+.iron-squad.quiet-battlefield .battle-log-window.has-field-note .battle-log-msg { white-space:normal; overflow-wrap:anywhere; text-overflow:clip; }
+@media (max-width:360px) {
+  .iron-squad .pad-move-column { flex-direction:column; align-items:center; gap:4px; }
+  .iron-squad .pad-move-column #btn-pad-potion { flex:0 0 44px; width:74px; height:44px; min-height:44px; align-self:center; margin-bottom:0; }
+}

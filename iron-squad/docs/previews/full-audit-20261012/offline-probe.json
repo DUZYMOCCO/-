@@ -1,0 +1,17 @@
+{
+  "onlineVersion": "v6.0.0",
+  "offlineVersion": "",
+  "offlineResume": true,
+  "responseErrors": [
+    {
+      "url": "http://127.0.0.1:8001/iron-squad/sw-assets.js",
+      "status": 503,
+      "serviceWorker": true
+    },
+    {
+      "url": "http://127.0.0.1:8001/dada-survivor/sw-assets.js",
+      "status": 503,
+      "serviceWorker": true
+    }
+  ]
+}

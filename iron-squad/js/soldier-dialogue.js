@@ -1,4 +1,5 @@
 import { displayKana } from '../../common/js/kana-mode.js?v=175';
+import {FIELD_NOTICE_SECONDS,IMPORTANT_NOTICE_SECONDS} from './battle-log.js?v=205';
 // 兵士の一言フキダシ（感情・戦況リアクション）システム
 // 操作を邪魔しない控えめなCanvas描画 ＆ 直近重複排除エンジン（Anti-Repetition）
 
@@ -865,7 +866,7 @@ export class SoldierDialogueManager {
       const bw = textW + padX * 2;
       const lineHeight = 11;
       const bh = lines.length === 1 ? (14 + padY * 2) : (lines.length * lineHeight + padY * 2 + 2);
-      const radius = 5;
+      const radius = 3;
 
       // 画面内への水平位置クランプ（画面の論理幅基準）
       let offsetBoxX = 0;
@@ -880,15 +881,15 @@ export class SoldierDialogueManager {
       }
 
       ctx.save();
-      ctx.globalAlpha = Math.max(0, Math.min(1, b.opacity * 0.92));
+      ctx.globalAlpha = Math.max(0, Math.min(1, b.opacity));
       ctx.translate(sx, sy);
       if (b.scale !== 1.0) {
         ctx.scale(b.scale, b.scale);
       }
 
-      // フキダシ背景（上品なダーク半透明）
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.78)';
-      ctx.strokeStyle = 'rgba(148, 163, 184, 0.3)';
+      // Field notices and speech share a light paper surface and a thin frame.
+      ctx.fillStyle = '#f0f0f0';
+      ctx.strokeStyle = '#777d75';
       ctx.lineWidth = 1;
 
       const bx = -bw / 2 + offsetBoxX;
@@ -911,13 +912,11 @@ export class SoldierDialogueManager {
       ctx.lineTo(tailX + (0 - tailX) * 0.4, by + bh + 3);
       ctx.lineTo(tailX + 3, by + bh);
       if (typeof ctx.closePath === 'function') ctx.closePath();
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.78)';
+      ctx.fillStyle = '#f0f0f0';
       ctx.fill();
 
-      // テキスト描画（白文字＋わずかなドロップシャドウ）
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
-      ctx.shadowBlur = 2;
-      ctx.fillStyle = '#f8fafc';
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = '#20251f';
       const textCenterX = bx + bw / 2;
       if (lines.length === 1) {
         ctx.fillText(lines[0], textCenterX, by + bh / 2 + 0.5);
@@ -935,9 +934,11 @@ export class SoldierDialogueManager {
   }
 
   // A fixed result is independent of random chatter and its cooldown/slots.
-  notifyResult(anchor,lines) {
+  notifyResult(anchor,lines,options) {
     if(!anchor||!Array.isArray(lines)||!lines.length)return false;
-    this.resultNotice={anchor,lines:lines.map(String),life:3,maxLife:3};
+    if(this.resultNotice?.important&&!options?.important)return false;
+    const life=options?.important?IMPORTANT_NOTICE_SECONDS:FIELD_NOTICE_SECONDS;
+    this.resultNotice={anchor,lines:lines.map(String),life,maxLife:life,important:!!options?.important};
     return true;
   }
 
@@ -957,12 +958,12 @@ export class SoldierDialogueManager {
     const wanted=above?ay-(notice.anchor.radius||24)*zoom-16-bh:ay+20;
     const y=Math.max(36,Math.min(Math.max(36,height-160-bh),wanted));
     ctx.globalAlpha=Math.min(1,notice.life/.35);
-    ctx.fillStyle='rgba(20,29,25,.94)';ctx.strokeStyle='#9b9674';ctx.lineWidth=1;ctx.shadowBlur=0;
-    ctx.beginPath();if(typeof ctx.roundRect==='function')ctx.roundRect(x,y,bw,bh,7);else ctx.rect(x,y,bw,bh);ctx.fill();ctx.stroke();
+    ctx.fillStyle='#f0f0f0';ctx.strokeStyle='#777d75';ctx.lineWidth=1;ctx.shadowBlur=0;
+    ctx.beginPath();if(typeof ctx.roundRect==='function')ctx.roundRect(x,y,bw,bh,3);else ctx.rect(x,y,bw,bh);ctx.fill();ctx.stroke();
     const tail=Math.max(x+12,Math.min(x+bw-12,ax)),baseY=above?y+bh:y;
     ctx.beginPath();ctx.moveTo(tail-5,baseY);ctx.lineTo(tail+(ax-tail)*.3,baseY+(above?8:-8));ctx.lineTo(tail+5,baseY);ctx.closePath();ctx.fill();
     for(let i=0;i<lines.length;i++){
-      ctx.fillStyle=i===0?'#e4d09b':'#f0eee1';
+      ctx.fillStyle='#20251f';
       ctx.fillText(lines[i],x+14,y+16+i*17,bw-28);
     }
     ctx.restore();

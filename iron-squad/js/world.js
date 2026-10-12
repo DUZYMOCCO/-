@@ -2,7 +2,7 @@
 // Base walk is 165px/s, so camp to the nearest edge is 481s (8 min 1s).
 // 10800 was about 33s and 21600 about 65s. Both were still a short walk.
 import {drawNaturalPond,terrainSeed} from './terrain-shapes.js?v=182';
-import {hqFacilityPlotContains} from './hq-facility-layout.js?v=198';
+import {hqFacilityPlotContains} from './hq-facility-layout.js?v=201';
 import {outerWallLineNear} from './hq-outer-wall.js?v=198';
 export const WORLD_SIZE = 158720;
 export const WORLD_VERSION = 4;

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {JSDOM} from '../../__pycache__/ui-tools/node_modules/jsdom/lib/api.js';
 import {CRAFT_MATERIALS,CRAFT_RECIPES,normalizeMaterials,rollTreasureLoot,rollMaterialDrop,recipeMaterials,equipmentDropChance,workshopTier} from '../js/crafting-rules.js';
-import {workshopPrice} from '../js/workshop.js';
+import {workshopPrice,workshopPreview} from '../js/workshop.js';
 import {normalizeNation,nationalSalaryReserve,fiscalTotals} from '../js/nation-rules.js';
 import {saleValue,isGodRollProtected} from '../js/equipment-rules.js';
 const dom=new JSDOM('<div id="game" class="game-container"></div>',{url:'http://localhost/'});
@@ -49,7 +49,10 @@ const emptyGold=game.gold,emptyBag=game.inventory.length;assert.equal(game.craft
 game.materials=Object.fromEntries(Object.keys(CRAFT_MATERIALS).map(id=>[id,10000]));
 const owned=[];
 for(const recipe of CRAFT_RECIPES){
+ const bagBefore=game.inventory.length,goldBefore=game.gold,preview=workshopPreview(game,recipe,9,true);
+ assert.equal(game.inventory.length,bagBefore);assert.equal(game.gold,goldBefore);
  const before=structuredClone(game.materials),g=game.gold,item=game.craftWorkshopEquipment(recipe.id,9),needed=recipeMaterials(recipe,9);
+ assert.deepEqual(item.stats,preview.stats,'the comparison uses the exact crafted result including exclusive bonuses');
  assert.ok(item?.craftOnly&&item.favorite);assert.equal(item.type,recipe.type);if(recipe.weaponStyle)assert.equal(item.weaponStyle,recipe.weaponStyle);
  assert.equal(game.gold,g-workshopPrice(9,true));for(const id of Object.keys(before))assert.equal(game.materials[id],before[id]-(needed[id]||0));
  assert.ok(isGodRollProtected(item));applyUpgradeStats(item,4);const stats=structuredClone(item.stats);applyUpgradeStats(item,4);assert.deepEqual(item.stats,stats,'repeated upgrades do not stack craft or heavy-weapon multipliers');
@@ -68,6 +71,12 @@ const smith=(await import('../js/hq-facilities.js')).HEADQUARTERS_FACILITIES.fin
 game.currentDungeon=null;game.restTimer=0;Object.assign(game.player,{x:smith.x,y:smith.y+24});
 assert.equal(game.openHeadquartersFacility('smith'),true);
 assert.equal(document.getElementById('workshop-tier').options.length,9);assert.ok(document.querySelector('.material-stock'));assert.equal(document.getElementById('workshop-craft').options.length,15);
+assert.ok(document.querySelector('.workshop-craft-preview').textContent.includes('今の装備とくらべる'));
+assert.ok(!document.querySelector('.workshop-panel').textContent.includes('バッグの枠を使いません'));
+game.gold=0;game.refreshHeadquartersFacility();assert.equal(document.getElementById('btn-workshop-buy').disabled,true);assert.ok(document.getElementById('workshop-buy-reason').textContent.includes('あと'));
+game.gold=100000;game.refreshHeadquartersFacility();assert.equal(document.getElementById('btn-workshop-buy').disabled,false);
+game.equipped.armor=owned.find(i=>i.type==='ARMOR');game.workshopCraftId='armor';game.workshopSelectedTier=1;game.refreshHeadquartersFacility();
+const weaker=document.querySelector('.workshop-craft-preview').textContent;assert.ok(weaker.includes(game.equipped.armor.name));assert.ok(weaker.includes('弱くなる'),'a low-tier craft is compared against the equipped upgraded armor');
 game.closeHeadquartersFacility();
 console.log('PASS: reduced completed gear, guaranteed treasure materials, actual enemy/commander/soldier pickup, 6 development tiers, workshop purchases, 15 exclusive recipes, exact costs, guarded failures, unique ownership, nonstacking upgrades, save migration, automatic supply budget/phase/UI');
 dom.window.close();

@@ -10,6 +10,8 @@ export const LIMITED_CLASSES=Object.freeze({
  BEAST_FOX:{id:'BEAST_FOX',name:'狐獣人',icon:'🦊',species:'fox',baseClassId:'MAGE',combatClass:'MAGE',color:'#bb926b',range:275,speed:100,atkCooldown:2.1,bonusHp:-20,bonusAtk:22,desc:'魔法を扱う狐の一族。'},
  BEAST_BIRD:{id:'BEAST_BIRD',name:'鳥獣人',icon:'🦅',species:'bird',baseClassId:'ARCHER',combatClass:'ARCHER',color:'#9baba2',range:260,speed:125,atkCooldown:1.1,bonusHp:5,bonusAtk:14,desc:'弓を扱う鳥の一族。'}
 });
+export const CAPTIVE_SPAWN_CHANCE=.1;
+export const CAPTIVE_CLASSES=Object.freeze(Object.keys(LIMITED_CLASSES).filter(id=>id!=='NINJA'));
 const LIMITED_NAMES={NINJA:['影丸','朔','蓮','黒羽','千鳥','銀次'],wolf:['灰尾','ロウ','銀牙','遠吠'],bear:['ゴウ','岩掌','森助','厚丸'],cat:['ミケ','鈴音','クロ','日向'],fox:['琥珀','灯','コン','白露'],bird:['羽音','鷹丸','青羽','ツバサ']};
 const center=WORLD_SIZE/2;
 const locations=[['ninja_village','隠れ忍者村','NINJA',40200,41800],['wolf_hamlet','狼獣人の小集落','BEAST_WOLF',-4100,-900],['bear_hamlet','熊獣人の小集落','BEAST_BEAR',-9000,4600],['cat_hamlet','猫獣人の小集落','BEAST_CAT',7000,-4200],['fox_hamlet','狐獣人の小集落','BEAST_FOX',17000,12000],['bird_hamlet','鳥獣人の小集落','BEAST_BIRD',-20000,-12500]];
@@ -20,7 +22,7 @@ export const LIMITED_SETTLEMENTS=locations.map(([id,name,limitedClass,ox,oy])=>{
 });
 const alive=u=>u&&!u.dead&&!u.isDown&&u.hp>0;
 export function initializeLimitedAllies(game,saved=null) {
- game.limitedAllies={version:1,encounters:Array.isArray(saved?.encounters)?saved.encounters.filter(e=>e?.id&&e.unit?.id&&LIMITED_CLASSES[e.unit.soldierClass]):[],joinedIds:[...new Set(saved?.joinedIds||[])],joinNoticeIds:Array.isArray(saved?.joinNoticeIds)?saved.joinNoticeIds.filter(id=>typeof id==='string').slice(-8):[]};
+ game.limitedAllies={version:2,encounters:Array.isArray(saved?.encounters)?saved.encounters.filter(e=>e?.id&&e.unit?.id&&LIMITED_CLASSES[e.unit.soldierClass]):[],captiveChecks:[...new Set((Array.isArray(saved?.captiveChecks)?saved.captiveChecks:[]).filter(id=>typeof id==='string'))],joinedIds:[...new Set(saved?.joinedIds||[])],joinNoticeIds:Array.isArray(saved?.joinNoticeIds)?saved.joinNoticeIds.filter(id=>typeof id==='string').slice(-8):[]};
 }
 export function createLimitedAlly(game,classId,origin) {
  const def=LIMITED_CLASSES[classId];if(!def)return null;
@@ -39,16 +41,23 @@ export function createLimitedAlly(game,classId,origin) {
  if(classId==='BEAST_FOX')p.aptitudes.magic=Math.min(3,p.aptitudes.magic*1.25);
  game.recalcSoldierStats(s);s.hp=s.maxHp;return s;
 }
-export function prepareLimitedEncounter(game,dungeon) {
+export function prepareLimitedEncounter(game,dungeon,random=Math.random) {
  game.limitedAllies||initializeLimitedAllies(game);const state=game.limitedAllies;
  const settlement=!!dungeon.limitedClass;if(!settlement&&dungeon.kind!=='dungeon'&&dungeon.kind!=='ruin')return null;
- // Villages offer one individual each wave. Captives are once per dungeon for this expedition.
+ // Villages offer one individual each wave. A dungeon rolls for a rare captive
+ // once per expedition, remembering an empty result as well as an actual person.
  if(settlement){const waiting=state.encounters.find(e=>e.dungeonId===dungeon.id&&!e.joined);if(waiting)return waiting;}
  const id=settlement?`${dungeon.id}:wave:${game.phase||1}`:`${dungeon.id}:captive`;
  let e=state.encounters.find(e=>e.id===id);if(e)return e;
  if(settlement)state.encounters=state.encounters.filter(e=>e.dungeonId!==dungeon.id);
- const species=Object.keys(LIMITED_CLASSES).filter(k=>k!=='NINJA');let hash=0;for(const ch of dungeon.id)hash=(hash*31+ch.charCodeAt(0))>>>0;
- const classId=dungeon.limitedClass||species[hash%species.length];const unit=createLimitedAlly(game,classId,dungeon.name);
+ else{
+  const checked=state.captiveChecks||=[];if(checked.includes(dungeon.id))return null;
+  checked.push(dungeon.id);
+  if(random()>=CAPTIVE_SPAWN_CHANCE)return null;
+ }
+ // A separate draw keeps all five peoples equally likely at every dungeon,
+ // including the nearby fort and mines that used to be fixed to bears.
+ const classId=dungeon.limitedClass||CAPTIVE_CLASSES[Math.floor(random()*CAPTIVE_CLASSES.length)];const unit=createLimitedAlly(game,classId,dungeon.name);
  e={id,dungeonId:dungeon.id,kind:settlement?'volunteer':'cage',x:settlement?430:Math.round(dungeon.width*.62),y:settlement?dungeon.height/2:Math.round(dungeon.height*.7),joined:false,unit};
  state.encounters.push(e);return e;
 }
@@ -69,8 +78,8 @@ export function joinLimitedEncounter(game,id) {
  e.joined=true;game.limitedAllies.joinedIds.push(e.unit.id);game.saveGame?.();game.updateStatsUI?.();return true;
 }
 export function serializeLimitedAllies(game) {
- const state=game.limitedAllies||{version:1,encounters:[],joinedIds:[]};
- return {...state,encounters:state.encounters.map(e=>e.joined?{...e,unit:{id:e.unit.id,soldierClass:e.unit.soldierClass}}:e)};
+ const state=game.limitedAllies||{version:2,encounters:[],joinedIds:[]};
+ return {...state,captiveChecks:[...(state.captiveChecks||[])],encounters:state.encounters.map(e=>e.joined?{...e,unit:{id:e.unit.id,soldierClass:e.unit.soldierClass}}:e)};
 }
 export function notifyLimitedJoin(game,units) {
  game.limitedAllies||initializeLimitedAllies(game);

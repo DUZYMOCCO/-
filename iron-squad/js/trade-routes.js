@@ -68,6 +68,23 @@ export function routePosition(route,distance,outbound=false) {
   }
   return {x:route.points[0][0],y:route.points[0][1]};
 }
+/** Join the rebuilt route from the actor's current position, never teleport to its start. */
+export function rerouteTradeActor(game,actor) {
+  const route=economicState(game).routes.find(r=>r.id===actor.routeId);if(!route)return false;
+  const ordered=actor.outbound?[...route.points].reverse():route.points,start=[actor.x,actor.y];
+  let best=null,cost=Infinity;
+  for(let i=0;i<ordered.length;i++){
+    const candidates=[ordered[i]];
+    if(i+1<ordered.length){const a=ordered[i],b=ordered[i+1],dx=b[0]-a[0],dy=b[1]-a[1],t=Math.max(0,Math.min(1,((start[0]-a[0])*dx+(start[1]-a[1])*dy)/(dx*dx+dy*dy||1)));candidates.push([a[0]+dx*t,a[1]+dy*t]);}
+    for(const p of candidates){
+      const remaining=[start,p,...ordered.slice(i+1)];
+      if(!remaining.slice(1).every((q,j)=>tradeSegmentOpen(game,remaining[j],q)))continue;
+      const length=routeLength(remaining);if(length<cost){cost=length;best=remaining;}
+    }
+  }
+  if(!best)return false;
+  actor.points=actor.outbound?best.reverse():best;actor.routeLength=cost;actor.progress=0;return true;
+}
 export function spawnTradeParty(game,route,role='merchant',outbound=false) {
   const e=economicState(game);if(!route||e.traffic.length>=ECONOMIC_RULES.trafficLimit)return null;
   const r=e.regions[route.to];if(!r||r.safety<.15)return null;
@@ -159,14 +176,23 @@ export function updateRegionalTraffic(game,dt) {
   const interval=Math.max(4,15-e.technology.transport.level*.6);
   if(e.spawnClock>=interval){e.spawnClock=0;const routes=e.routes.filter(r=>e.regions[r.to]?.safety>.15);
     if(routes.length&&e.traffic.length<ECONOMIC_RULES.trafficLimit){const route=routes[Math.floor(Math.random()*routes.length)];spawnTradeParty(game,route,Math.random()<.65?'merchant':'traveler',Math.random()<.5);}}
-  for(const a of e.traffic){if(a.dead||a.hp<=0)continue;const route=a.points?.length>=2?{points:a.points,length:a.routeLength}:e.routes.find(r=>r.id===a.routeId);if(!route)continue;
-    const party=a.role==='guard'?e.traffic.find(p=>p.id===a.party&&!p.dead&&!p.arrived):null;
+  for(const a of e.traffic){if(a.dead||a.hp<=0)continue;
+    const party=a.role==='guard'?e.traffic.find(p=>p.id===a.party&&!p.dead):null;
+    if(party){a.points=party.points;a.routeLength=party.routeLength;a.progress=party.progress;a.x=party.x;a.y=party.y;a.arrived=!!party.arrived;continue;}
+    let route=a.points?.length>=2?{points:a.points,length:a.routeLength}:e.routes.find(r=>r.id===a.routeId);if(!route)continue;
+    const wall=outerWallBuilt(fieldWallContext(game))?1:0;
+    if(a._routeWall!==wall){
+      const ordered=a.outbound?[...route.points].reverse():route.points;
+      if(!ordered.slice(1).every((p,i)=>tradeSegmentOpen(game,ordered[i],p))&&!rerouteTradeActor(game,a))continue;
+      a._routeWall=wall;route={points:a.points||route.points,length:a.routeLength??route.length};
+    }
     const roadBonus=PUBLIC_WORKS.filter(p=>p.region===a.region&&p.kind==='road'&&e.projects[p.id]?.done).length*.12;
     let speed=a.speed*(1+e.technology.transport.level*.04+roadBonus);
     const enemies=game.currentDungeon?game.savedFieldMonsters:game.monsters;
     if(a.role!=='guard'&&enemies?.some(m=>m.hp>0&&Math.hypot(m.x-a.x,m.y-a.y)<130))speed*=e.traffic.some(g=>g.role==='guard'&&g.party===a.id&&g.hp>0)?.4:1.35;
-    a.progress=party?party.progress:Math.min(route.length,a.progress+speed*dt);
-    const pos=routePosition(route,a.progress,a.outbound);a.x=pos.x;a.y=pos.y;
+    const progress=Math.min(route.length,a.progress+speed*dt),pos=routePosition(route,progress,a.outbound);
+    if(!tradeSegmentOpen(game,[a.x,a.y],[pos.x,pos.y])){rerouteTradeActor(game,a);continue;}
+    a.progress=progress;a.x=pos.x;a.y=pos.y;
     if(a.progress>=route.length){if(a.role==='guard')a.arrived=true;else deliver(game,a);}
   }
   if(!(game.restTimer>0)){roadEncounter(game,dt);roadsideCombat(game,dt);}

@@ -1,6 +1,9 @@
 import { AMMO_CAPACITY, isRangedUnit } from './supply-rules.js?v=187';
 
 export const BATTLE_LOG_LIMIT = 100;
+export const FIELD_NOTICE_SECONDS=3;
+export const IMPORTANT_NOTICE_SECONDS=8;
+const IMPORTANT_QUEUE_LIMIT=6;
 const FIELD_HALF = 0.5;
 
 export const LOG_CATEGORIES = [
@@ -13,15 +16,16 @@ export const LOG_CATEGORIES = [
 
 export function categorizeLogMessage(text) {
   if (!text) return 'other';
-  if (/レベルアップ|Lv\.|昇進|昇格|覚醒|死線|マスター|習得|才能|成長|開花/.test(text)) return 'growth';
+  if (/レベルアップ|Lv\.|昇進|昇格|覚醒|死線|マスター|習得|才能|成長|開花|永続/.test(text)) return 'growth';
   if (/撃破|討伐|ボス|制圧|撃退|会心|大物|勝利|討ち取/.test(text)) return 'combat';
-  if (/獲得|ドロップ|秘宝|宝珠|宝玉|入手|購入|支給|配備|鍛錬/.test(text)) return 'loot';
+  if (/獲得|取得|ドロップ|秘宝|宝珠|宝玉|入手|購入|支給|配備|鍛錬/.test(text)) return 'loot';
   if (/倒れた|ダウン|搬送|救助|加入|蘇生|治療|回復|救援|強襲|危険|🚨|重傷/.test(text)) return 'rescue';
   return 'other';
 }
 
 export function resetBattleLog(game) {
   clearTimeout(game._battleLogTimer); game._battleLogTimer = null;
+  game._activeFieldNotice=null;game._importantFieldNotices=[];
   game.battleLogHistory = []; game._battleLogSequence = 0;
   game._fieldNotesPrimed = false;
   if (typeof document?.getElementById === 'function') {
@@ -114,25 +118,42 @@ export function renderBattleLog(game, requestedCategory = null) {
 }
 
 // 画面上の一行だけを絞る。履歴と司令部のティッカーは従来どおり残す。
+export function isImportantFieldNotice(text,options){
+  return options?.important??/（永続）/.test(String(text||''));
+}
+
 export function showsOnFieldLog(text, options) {
   if (options?.field === false) return false;
   if (options?.field === true) return true;
+  if(isImportantFieldNotice(text,options))return true;
   const line = String(text || '');
-  if (/横取り|戦利品|秘宝|宝珠|宝玉|国庫買取|ドロップ/.test(line)) return true;
+  if (/取得|戦利品|秘宝|宝珠|宝玉|国庫買取|ドロップ/.test(line)) return true;
   if (/半分以下/.test(line) && /HP|MP|残り弾薬/.test(line)) return true;
   if (/死亡まで残り/.test(line)) return true;
   if (/力尽きました/.test(line)) return true;
   return false;
 }
 
-function showFieldLine(game, text) {
+function showFieldLine(game, text, options) {
   const stream = document.getElementById('battle-log-stream');
   if (!stream) return;
+  const important=isImportantFieldNotice(text,options);
+  const urgent=/死亡まで残り|力尽きました|半分以下/.test(text);
+  const notice={text,important,priority:urgent?2:important?1:0};
+  const active=game._activeFieldNotice,queue=game._importantFieldNotices||=[];
+  // Keep rewards readable through ordinary drop bursts. Consecutive important
+  // rewards wait their turn; danger warnings interrupt and then restore them.
+  if(active&&(active.important&&!urgent||important&&active.priority===2)){
+    if(important&&queue.length<IMPORTANT_QUEUE_LIMIT)queue.push(notice);
+    return;
+  }
+  if(active?.important){queue.unshift(active);if(queue.length>IMPORTANT_QUEUE_LIMIT)queue.pop();}
+  game._activeFieldNotice=notice;
   const line = document.createElement('div');
   line.className = 'battle-log-msg';
   line.textContent = text;
   if (/死亡まで残り|力尽きました/.test(text)) line.classList.add('boss-alert');
-  else if (/獲得|ドロップ|秘宝|宝珠|宝玉|国庫買取|横取り/.test(text)) line.classList.add('item-alert');
+  else if (/獲得|取得|ドロップ|秘宝|宝珠|宝玉|国庫買取/.test(text)) line.classList.add('item-alert');
   if (typeof stream.replaceChildren === 'function') {
     stream.replaceChildren(line);
   } else {
@@ -143,12 +164,15 @@ function showFieldLine(game, text) {
   if (windowEl) windowEl.classList.add('has-field-note');
   clearTimeout(game._battleLogTimer);
   game._battleLogTimer = setTimeout(() => {
-    if (line.parentNode === stream) {
+    if (game._activeFieldNotice===notice&&line.parentNode === stream) {
+      game._activeFieldNotice=null;game._battleLogTimer=null;
+      const next=queue.shift();
+      if(next){showFieldLine(game,next.text,{important:next.important});return;}
       line.style.opacity = '0';
       line.style.transform = 'translateY(6px)';
       windowEl?.classList.remove('has-field-note');
     }
-  }, 3000);
+  }, (important?IMPORTANT_NOTICE_SECONDS:FIELD_NOTICE_SECONDS)*1000);
 }
 
 export function recordBattleLog(game, message, options) {
@@ -167,7 +191,7 @@ export function recordBattleLog(game, message, options) {
     category
   });
   if (history.length > BATTLE_LOG_LIMIT) history.splice(0, history.length - BATTLE_LOG_LIMIT);
-  if (showsOnFieldLog(text, options)) showFieldLine(game, text);
+  if (showsOnFieldLog(text, options)) showFieldLine(game, text, options);
 
   if (typeof document?.querySelector === 'function') {
     const ticker = document.querySelector('#strat-log-ticker .strat-ticker-msg');

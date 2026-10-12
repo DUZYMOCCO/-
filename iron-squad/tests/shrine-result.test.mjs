@@ -17,7 +17,8 @@ assert.deepEqual(manager.resultNotice.lines,['祭壇の祝福','隊長・出撃�
 assert.equal(manager.activeBubbles.length,2,'important result bypasses occupied chatter slots');
 assert.match(logs[0],/4部位/,'the full result remains in history');
 game.damageOutpost(shrine,1);assert.equal(a.upgrade,1,'a captured altar cannot grant the reward twice');
-game.inBattle=false;game.update(10);assert.equal(manager.resultNotice.life,3,'opening the menu pauses the result');
+game.inBattle=false;game.update(10);assert.equal(manager.resultNotice.life,8,'opening the menu pauses the important result');
+manager.notifyResult(shrine,['強化できる装備なし']);assert.equal(manager.resultNotice.life,8,'ordinary results cannot replace an important reward');
 let depth=0;const texts=[];
 const ctx=new Proxy({save(){depth++;},restore(){depth--;},measureText:t=>({width:[...t].length*13}),fillText:t=>texts.push(t)},{get:(o,k)=>k in o?o[k]:()=>{}});
 for(const zoom of [.45,2]){
@@ -25,11 +26,12 @@ for(const zoom of [.45,2]){
  assert.ok(rect.x>=12&&rect.x+rect.width<=308);assert.ok(rect.y>=36&&rect.y+rect.height<=438);
  assert.equal(ctx.font,'bold 13px sans-serif');assert.equal(depth,0);
 }
-assert.ok(texts.includes('計4部位を強化'));manager.update(3.01);assert.equal(manager.resultNotice,null);
+assert.ok(texts.includes('計4部位を強化'));manager.update(3.01);assert.ok(manager.resultNotice,'important result remains after the old three-second lifetime');manager.update(5);assert.equal(manager.resultNotice,null);
 manager.notifyResult(shrine,['祭壇の祝福','隊長・出撃兵の装備 ＋1','計4部位を強化']);
 const bottom=manager.drawResult(ctx,{x:center,y:center-600},.45,320,568);
 assert.ok(bottom.y+bottom.height<=408,'a result near the bottom stays above the controls');
 manager.reset();
 game.equipped={};game.squad=[];game.clearOutpost({...shrine});assert.deepEqual(manager.resultNotice.lines,['祭壇を確保','強化できる装備なし']);
+assert.equal(manager.resultNotice.life,3,'a shrine without an upgrade keeps the normal duration');
 manager.reset();assert.equal(manager.resultNotice,null);game.clearOutpost({...shrine,x:center+40000});assert.equal(manager.resultNotice,null,'an offscreen capture must not interrupt a local result');
 console.log('PASS: real shrine reward/count, shared equipment once, dead/reserves excluded, chatter bypass, menu pause, zoom readability, expiry/reset, no-gear and offscreen cases');

@@ -1,7 +1,8 @@
-export const CASINO_BET=100;
+export const CASINO_BET=10;
+export const casinoBaseBet=level=>[10,25,50,100,250,500][Math.max(0,Math.min(5,Math.floor(Number(level)||0)))];
 // Only the safe integer range limits the wager; there is no fixed gameplay ceiling.
 export const MAX_CASINO_BET=Math.floor(Number.MAX_SAFE_INTEGER/250);
-export const validCasinoBet=n=>Number.isSafeInteger(Number(n))&&Number(n)>=CASINO_BET&&Number(n)<=MAX_CASINO_BET;
+export const validCasinoBet=(n,minimum=CASINO_BET)=>Number.isSafeInteger(Number(n))&&Number(n)>=minimum&&Number(n)<=MAX_CASINO_BET;
 export const normalizeCasinoBet=n=>validCasinoBet(n)?Number(n):CASINO_BET;
 export const POKER_PAYOUTS=[
   {key:'royalFlush',name:'ロイヤルフラッシュ',mult:250},
@@ -69,8 +70,9 @@ export function rollSlots(random=Math.random,bet=CASINO_BET) {
   });
   return slotResult(reels,bet);
 }
-export function normalizeCasino(data={},legacyPhase=0) {
+export function normalizeCasino(data={},legacyPhase=0,level=0) {
   const slot=data?.slot,valid=Array.isArray(slot?.reels)&&slot.reels.length===3&&slot.reels.every(id=>SLOT_SYMBOLS.some(s=>s.id===id));
-  return {bet:normalizeCasinoBet(data?.bet),pokerPhase:integer(data?.pokerPhase??legacyPhase),slotPhase:integer(data?.slotPhase??legacyPhase),poker:normalizePoker(data?.poker),
+  const base=casinoBaseBet(level);
+  return {bet:data?.bet==null?base:Math.max(base,normalizeCasinoBet(data.bet)),pokerPhase:integer(data?.pokerPhase??legacyPhase),slotPhase:integer(data?.slotPhase??legacyPhase),poker:normalizePoker(data?.poker),
     slot:valid?slotResult([...slot.reels],slot.bet):null};
 }

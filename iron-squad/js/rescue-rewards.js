@@ -37,7 +37,7 @@ export function grantPermanentRescueReward(game,npc,random=Math.random) {
   game.rescueBonuses[reward.key]+=reward.amount;
   game.recalcPlayerStats?.();game.updateStatsUI?.();
   game.spawnDamageText?.(game.player.x,game.player.y-28,reward.label,reward.jackpot?'#deca99':'#9ee1b8');
-  game.showToast?.(`${reward.jackpot?'✨ 大当たり！ ':''}${npc.name||'救出成功'}のお礼 · 隊長の${reward.label}（永続）`);
+  game.showToast?.(`${reward.jackpot?'✨ 大当たり！ ':''}${npc.name||'救出成功'}のお礼 · 隊長の${reward.label}（永続）`,{important:true});
   game.saveGame?.();
   return reward;
 }

@@ -1,0 +1,80 @@
+{
+  "errors": [],
+  "checks": {
+    "absent": {
+      "miss": true,
+      "checked": [
+        "place_north_fort"
+      ],
+      "cages": 0
+    },
+    "absentSaveAndReentry": {
+      "miss": true,
+      "checks": 1
+    },
+    "enemyGate": true,
+    "speciesAndRescue": [
+      {
+        "id": "5rvdckz-49",
+        "classId": "BEAST_WOLF",
+        "species": "wolf",
+        "name": "ガルム",
+        "x": 1220,
+        "y": 840,
+        "gold": 50
+      },
+      {
+        "id": "unfnwfc-49",
+        "classId": "BEAST_BEAR",
+        "species": "bear",
+        "name": "ガウル",
+        "x": 1220,
+        "y": 840,
+        "gold": 50
+      },
+      {
+        "id": "lsvo88y-49",
+        "classId": "BEAST_CAT",
+        "species": "cat",
+        "name": "鈴音",
+        "x": 1220,
+        "y": 840,
+        "gold": 50
+      },
+      {
+        "id": "tzvual3-49",
+        "classId": "BEAST_FOX",
+        "species": "fox",
+        "name": "アカネ",
+        "x": 1220,
+        "y": 840,
+        "gold": 50
+      },
+      {
+        "id": "534wen7-49",
+        "classId": "BEAST_BIRD",
+        "species": "bird",
+        "name": "カナリア",
+        "x": 1220,
+        "y": 840,
+        "gold": 50
+      }
+    ],
+    "savedCaptivesAndOnceOnlyRescue": true,
+    "offline": {
+      "version": "v6.1.2",
+      "sameFox": true,
+      "revisitedDungeon": true,
+      "rescued": true
+    }
+  },
+  "screens": [
+    "01-no-captive",
+    "02-captive-wolf",
+    "02-captive-bear",
+    "02-captive-cat",
+    "02-captive-fox",
+    "03-fox-landscape",
+    "02-captive-bird"
+  ]
+}

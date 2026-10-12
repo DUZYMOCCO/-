@@ -7,10 +7,11 @@ import {createPayrollPlan,commanderStipendQuote,PAYROLL_RULES} from './payroll-r
 import {calcAllRankerBonuses} from './troop-rankings.js?v=187';
 import {normalizeRegionalEconomy,recurringNationalIncome,economicState,advanceRegionalEconomy,automaticEconomicTarget,investEconomicProject} from './regional-economy.js?v=182';
 import {drawSettlementQuarter} from './economic-visuals.js?v=198';
-import {atFacility,HEADQUARTERS_FACILITIES} from './hq-facilities.js?v=198';
+import {atFacility,HEADQUARTERS_FACILITIES} from './hq-facilities.js?v=201';
 import {renderRegionalEconomy} from './economic-interface.js?v=182';
 import {workshopFloorTier} from './crafting-rules.js?v=189';
-import {normalizeCasino} from './casino-rules.js?v=189';
+import {normalizeCasino} from './casino-rules.js?v=201';
+import {normalizeGuild,advanceGuildContracts} from './guild-contracts.js?v=201';
 
 export const DEVELOPMENT_STAGES=[
   {name:'野営本陣',cost:0}, {name:'城塞と宿場',cost:6000},
@@ -26,9 +27,9 @@ export function normalizeNation(data={}) {
   if(!data?.economy&&level>0){economy.regions.hq.level=level;for(const t of Object.values(economy.technology))t.level=Math.floor(level/2);}
   const armament=normalizeArmament(data?.armament);
   armament.techTier=Math.max(armament.techTier,workshopFloorTier(level));
-  return {armament,investment,level,economy,casino:normalizeCasino(data?.casino,data?.casinoPhase),
+  return {armament,investment,level,economy,casino:normalizeCasino(data?.casino,data?.casinoPhase,level),
     totalExports:amount(data?.totalExports),totalDonations:amount(data?.totalDonations),
-    guild:data?.guild?{kills:Math.min(20,amount(data.guild.kills)),target:20,reward:amount(data.guild.reward)||800}:null,
+    guild:normalizeGuild(data?.guild),
     guildPhase:amount(data?.guildPhase),casinoPhase:amount(data?.casinoPhase),smithPhase:amount(data?.smithPhase),lastCasino:String(data?.lastCasino||'')};
 }
 export const nationalPayrollPlan=game=>createPayrollPlan(game,calcAllRankerBonuses(game));
@@ -155,20 +156,16 @@ export const nationMethods={
     this.sharedEquipBox.push(...items);this.showToast(`装備${items.length}件を納入。次ウェーブに兵士へ支給し、余剰を外販します`);
     this.saveGame();this.renderStrategyUI();return true;
   },
-  onNationKill() {if(this.nation?.guild)this.nation.guild.kills=Math.min(20,this.nation.guild.kills+1);},
+  onNationKill(monster) {return advanceGuildContracts(this,monster);},
   useTownFacility(kind) {
     this.nation=normalizeNation(this.nation);const n=this.nation,phase=this.phase||1;
-    if(!atFacility(this,kind,kind==='smith'?1:2))return false;
+    if(kind!=='smith'||!atFacility(this,kind,1))return false;
     if(kind==='smith') {
       const item=this.equipped?.weapon;if(n.level<1||n.smithPhase===phase||!item)return false;
       const cost=Math.max(1,Math.floor(this.getUpgradeCost(item)*.8));if(this.gold<cost)return false;
       this.gold-=cost;n.smithPhase=phase;
       this.treasury=(this.treasury||0)+Math.floor(cost*.2);this.phaseFiscal.facilityRevenue=(this.phaseFiscal.facilityRevenue||0)+Math.floor(cost*.2);
       this.upgradeItem(item,true);this.showToast(`鍛冶工房：隊長の武器を2割引で強化（${money(cost)}）。今ウェーブは利用済み`);
-    } else if(kind==='guild') {
-      if(n.level<2)return false;
-      if(n.guild) {if(n.guild.kills<20)return false;this.gold+=n.guild.reward;this.showToast(`組合依頼を達成！報酬${money(n.guild.reward)}`);n.guild=null;}
-      else {if(n.guildPhase===phase)return false;n.guildPhase=phase;n.guild={kills:0,target:20,reward:600+n.level*200};this.showToast('冒険者組合：部隊で敵20体を討伐し、組合へ戻って報酬を受け取ろう');}
     } else return false;
     this.saveGame();this.updateStatsUI();this.renderStrategyUI();return true;
   },

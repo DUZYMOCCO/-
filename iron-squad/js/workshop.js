@@ -2,14 +2,25 @@ import {CRAFT_MATERIALS,CRAFT_RECIPES,craftRecipe,normalizeMaterials,addMaterial
   recipeMaterials,canAffordMaterials,stampCraftedItem,craftExclusiveLabel} from './crafting-rules.js?v=189';
 import {standardEquipmentCost} from './armament-rules.js?v=191';
 import {tierDescription,tierNumber} from './equipment-tiers.js';
-import {equipmentName} from './equipment-rules.js?v=189';
-import {atFacility} from './hq-facilities.js?v=198';
+import {equipmentName,compareEquipment} from './equipment-rules.js?v=189';
+import {weaponRequirementText} from './weapon-requirements.js?v=187';
+import {atFacility} from './hq-facilities.js?v=201';
 
 export const WORKSHOP_STOCK=CRAFT_RECIPES.map(recipe=>({...recipe,name:recipe.type==='WEAPON'?{
   sword:'剣',spear:'槍',hammer:'ハンマー',axe:'斧',bow:'弓',crossbow:'クロスボウ',cannon:'火砲',staff:'長杖',wand:'ワンド'
 }[recipe.weaponStyle]:{SHIELD:'盾',HELMET:'兜',ARMOR:'鎧',GLOVES:'籠手',LEGS:'脚具',AMULET:'装飾'}[recipe.type]}));
 const money=n=>`${Math.max(0,n||0).toLocaleString()}G`;
 const atWorkshop=game=>atFacility(game,'smith',1);
+const slots={WEAPON:'weapon',SHIELD:'shield',HELMET:'helmet',ARMOR:'armor',GLOVES:'gloves',LEGS:'legs',AMULET:'amulet'};
+export function workshopPreview(game,recipe,tier,crafted=false) {
+  const item=game.makeWorkshopItem(recipe,tier,{preview:true});
+  if(crafted){stampCraftedItem(item,recipe);game.applyEquipmentUpgrade(item,0);}
+  return item;
+}
+function comparison(game,item) {
+  const current=game.equipped?.[slots[item.type]],cmp=compareEquipment(item,current);
+  return `<div class="equipment-comparison ${cmp.kind}"><div class="equip-cmp-head">今の装備とくらべる：<strong>${cmp.label}</strong></div><small>現在：${current?equipmentName(current):'未装備'}</small>${cmp.html}</div>${item.type==='WEAPON'?`<p class="weapon-requirement">${weaponRequirementText(game.player,item)}</p>`:''}`;
+}
 export const workshopPrice=(tier,crafted=false)=>Math.ceil(standardEquipmentCost({tier})*(crafted?3:1.4));
 function quote(game,id,tier,crafted) {
   const recipe=craftRecipe(id);if(!recipe)return null;
@@ -51,24 +62,28 @@ export const workshopMethods={
   renderWorkshop(panel) {
     const maximum=workshopTier(this),level=workshopLevel(this),town=atWorkshop(this);
     this.materials=normalizeMaterials(this.materials);
-    const selectedTier=Math.min(maximum,tierNumber(this.workshopSelectedTier||maximum));
+    const selectedTier=Math.min(maximum,tierNumber(this.workshopSelectedTier||this.equipped?.weapon?.tier||1));
     this.workshopSelectedTier=selectedTier;
     const supplyId=craftRecipe(this.workshopSupplyId)?.id||'weapon-sword',craftId=craftRecipe(this.workshopCraftId)?.id||'weapon-sword';
     const makeOptions=(recipes,id)=>recipes.map(r=>`<option value="${r.id}" ${r.id===id?'selected':''}>${r.name}</option>`).join('');
-    const cq=quote(this,craftId,selectedTier,true),stock=this.materials;
+    const cq=quote(this,craftId,selectedTier,true),sq=quote(this,supplyId,selectedTier,false),stock=this.materials;
+    const supply=workshopPreview(this,sq.recipe,selectedTier),crafted=workshopPreview(this,cq.recipe,selectedTier,true);
+    const reason=q=>!town?(this.nation?.level<1?'本陣発展Lv1で利用できます':'鍛冶工房で利用できます'):(this.gold||0)<q.cost?`あと${money(q.cost-(this.gold||0))}必要です`:!canAffordMaterials(stock,q.materials)?'必要な素材が足りません':'';
+    const buyReason=reason(sq),craftReason=reason(cq);
     panel.insertAdjacentHTML('beforeend',`<div class="town-facility workshop-panel"><strong>鍛冶工房 · Lv${level}</strong>
       <p>製造可能ティア：${tierDescription(maximum)}<br>本陣の発展と軍備研究で作れる装備が増えます。隊長も兵士も購入には各自のGが必要。兵士は手持ちで買える範囲から順に整備します。</p>
       <label class="workshop-choice">製造ティア<select id="workshop-tier">${Array.from({length:maximum},(_,i)=>`<option value="${i+1}" ${i+1===selectedTier?'selected':''}>${tierDescription(i+1)}</option>`).join('')}</select></label>
-      <h5>制式装備の供給</h5><p>必要な装備をGで購入。バッグへ届きます。</p>
-      <label class="workshop-choice">装備<select id="workshop-supply">${makeOptions(WORKSHOP_STOCK,supplyId)}</select></label>
-      <button type="button" id="btn-workshop-buy" ${!town||this.gold<workshopPrice(selectedTier)?'disabled':''}>装備を購入 · ${money(workshopPrice(selectedTier))}</button>
-      <details class="material-stock" open><summary>素材庫 · バッグの枠を使いません</summary><div class="material-grid">${Object.entries(CRAFT_MATERIALS).map(([id,m])=>`<span>${m.name}<b data-material="${id}">${stock[id].toLocaleString()}</b></span>`).join('')}</div></details>
-      <h5>製作限定の装備</h5><p>敵・宝箱の素材から製作。品質120%と専用効果を持ち、完成品は保護してバッグへ届けます。</p>
+      <label class="workshop-choice">購入する品<select id="workshop-supply">${makeOptions(WORKSHOP_STOCK,supplyId)}</select></label>
+      <div class="workshop-purchase-preview">${comparison(this,supply)}</div>
+      <button type="button" id="btn-workshop-buy" ${buyReason?'disabled':''}>選んだ装備を購入 · ${money(sq.cost)}</button>
+      ${buyReason?`<p class="workshop-unavailable" id="workshop-buy-reason">${buyReason}</p>`:''}
+      <details class="material-stock" open><summary>持っている素材</summary><div class="material-grid">${Object.entries(CRAFT_MATERIALS).map(([id,m])=>`<span>${m.name}<b data-material="${id}">${stock[id].toLocaleString()}</b></span>`).join('')}</div></details>
       <label class="workshop-choice">製作する品<select id="workshop-craft">${makeOptions(CRAFT_RECIPES,craftId)}</select></label>
+      <div class="workshop-craft-preview">${comparison(this,crafted)}</div>
       <p class="craft-bonus">${craftExclusiveLabel({craftOnly:true,type:cq.recipe.type})}</p>
-      <ul class="recipe-materials">${Object.entries(cq.materials).map(([id,n])=>`<li class="${stock[id]>=n?'positive':'negative'}">${CRAFT_MATERIALS[id].name} ${stock[id]} / ${n}</li>`).join('')}</ul>
-      <button type="button" id="btn-workshop-craft" ${!town||this.gold<cq.cost||!canAffordMaterials(stock,cq.materials)?'disabled':''}>製作してバッグへ · ${money(cq.cost)}</button>
-      ${town?'':'<p class="facility-note">本陣発展Lv1以上で、本陣の鍛冶工房から供給・製作できます。</p>'}</div>`);
+      <ul class="recipe-materials">${Object.entries(cq.materials).map(([id,n])=>`<li class="${stock[id]>=n?'positive':'negative'}">${CRAFT_MATERIALS[id].name} · 所持${stock[id].toLocaleString()} / 必要${n}</li>`).join('')}</ul>
+      <button type="button" id="btn-workshop-craft" ${craftReason?'disabled':''}>製作してバッグへ · ${money(cq.cost)}</button>
+      ${craftReason?`<p class="workshop-unavailable" id="workshop-craft-reason">${craftReason}</p>`:''}</div>`);
     for(const [selector,key] of [['#workshop-tier','workshopSelectedTier'],['#workshop-supply','workshopSupplyId'],['#workshop-craft','workshopCraftId']]){
       panel.querySelector(selector).onchange=e=>{this[key]=key==='workshopSelectedTier'?Number(e.target.value):e.target.value;this.renderStrategyUI();};
     }

@@ -2,6 +2,7 @@ import {explorationLayout,dungeonSegmentOpen} from './dungeon-layout.js?v=182';
 import {chooseLootTier} from './equipment-rules.js?v=189';
 import {drawTreasureChest} from './loot-visuals.js?v=189';
 import {rollTreasureLoot} from './crafting-rules.js?v=189';
+import {receiveTreasure} from './treasure-receipt.js?v=200';
 
 export const DUNGEON_RESET_PHASES=2;
 const DEMON_CASTLE_ID='dungeon_demon_castle';
@@ -70,7 +71,7 @@ export function updateDungeonSideChests(game,createItem,random=Math.random) {
     // Mark first, then immediately deliver: saves cannot lose unopened floor loot.
     record.opened.push(chest.id);
     if(resettable(d)&&!integer(record.resetAt))record.resetAt=phaseOf(game)+DUNGEON_RESET_PHASES;
-    for(const item of rollTreasureLoot(d.distance,'chest',createItem,random))game.collectDrop(item);
+    receiveTreasure(game,rollTreasureLoot(d.distance,'chest',createItem,random));
     game.spawnDamageText?.(chest.x,chest.y-25,'宝箱を開いた！','#e1cc8f');
     game.saveGame?.();
   }
