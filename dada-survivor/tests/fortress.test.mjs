@@ -17,13 +17,13 @@ test('stage 8 わるものの ようさい: after stage 7, hardest, fortress que
   assert.equal(normalizeSave({ stage: 8, stageClears: { 7: 1 } }).stage, 8);
 });
 
-test('fortress rooms: ろうか → ぶきこ(20) → ブラックロボ 20 (waves) → きんこ 70+120 → めいれいしつ', () => {
+test('fortress rooms: ろうか → ぶきこ(20) → ブラックロボ 20 (waves) → きんこ 100+230 → めいれいしつ', () => {
   assert.equal(FORTRESS.floors, 5);
   assert.deepEqual(FORTRESS.names.map((_, i) => floorName(i + 1, FORTRESS)), ['ろうか', 'ぶきこ', 'きんこの まえ', 'きんこ', 'めいれいしつ']);
   for (const n of FORTRESS.names) assert.match(n, kana);
   assert.equal(FORTRESS.foes[1], 20);
   assert.equal(FORTRESS.robo.total, 20); assert.ok(FORTRESS.robo.wave <= 5, 'いちどに でるのは すこし');
-  assert.deepEqual(FORTRESS.boxes.map(b => b.coins).sort((a, b) => a - b), [70, 120]);
+  assert.deepEqual(FORTRESS.boxes.map(b => b.coins).sort((a, b) => a - b), [100, 230]);
   assert.equal(ENEMY_TYPES.coinbox.speed, 0); assert.equal(ENEMY_TYPES.coinbox.dmg, 0);
   const boss = bossType(FORTRESS.boss, DIFFICULTIES.normal, STAGES.find(s => s.id === 8));
   const others = STAGES.filter(s => s.id !== 8).map(s => bossType(s.boss, DIFFICULTIES.normal, s).hp);

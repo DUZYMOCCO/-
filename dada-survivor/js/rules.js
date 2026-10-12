@@ -678,7 +678,7 @@ export const FORTRESS = {
   room: { halfW: 340, roomHalfW: 340, roomY: -1e9, top: -680, bottom: 140 },
   stairs: { x: 0, y: -600 }, cells: [], pad: TOWER.pad, roofExit: TOWER.roofExit, heli: TOWER.heli,
   robo: { total: 20, wave: 4, hp: 420, cd: 6.5, firstCd: 2.5 },
-  boxes: [{ x: -120, y: -320, coins: 70, hp: 1400 }, { x: 120, y: -320, coins: 120, hp: 2200 }],
+  boxes: [{ x: -120, y: -320, coins: 100, hp: 1400 }, { x: 120, y: -320, coins: 230, hp: 2200 }],
   boss: { type: 'supreme', hp: 33000, at: { x: 0, y: -460 }, levelRef: 31, minHp: 0.75 },
   bossMissile: { n: 5, spread: 120, flight: 1.5, blast: 56, dmg: 12, range: 700, cd: 3.2, firstCd: 2.8 },
 };
