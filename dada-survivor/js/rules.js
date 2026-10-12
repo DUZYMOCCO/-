@@ -100,7 +100,7 @@ export const STAGES = [
   { id: 7, name: 'こわれた まち', ground: 'city', decor: 'city', hpMul: 4.0, spawnMul: 1.5, dmgMul: 1.35, bgm: 'city',
     enemies: [['urban', 0, 10], ['bat', 30, 5], ['ghost', 60, 4], ['skull', 120, 5], ['wolf', 150, 4]],
     mini: { type: 'truck', hp: 10000 }, boss: { type: 'gunship', hp: 26000 },
-    tower: true },
+    tower: true, burning: true },
 ];
 
 export function stageById(id) { return STAGES.find(s => s.id === id) || STAGES[0]; }
@@ -635,6 +635,25 @@ export const TOWER = {
   // みかたの ヘリの えんご：time びょう（そとで）うえから うつ。たまは なかまの ダメージ × dmgMul、ときどき ロケット
   heli: { time: 45, cd: 0.2, range: 380, dmgMul: 1, rocketCd: 2.4, rocketMul: 3, splash: 70 },
 };
+/**
+ * v1.15.1 こわれた まち：さいしょから もえて いる ところ（まえに ばくだんが おちた あと）。
+ * ちかづくと（wake）ゆかの ひ（ステージ1と おなじ。たつと いたい）が flames こ ついて、きえたら relight びょうで また もえる。
+ * はじめて ちかづいた ときに ばくはへいが group にん まわりに いる。もえなおす とき regather の かくりつで すこし あつまる（gatherCap まで）
+ */
+export const CITY_FIRE = { sites: 8, dist0: 520, dist1: 2200, avoidTower: 600, wake: 700, flames: 3, spread: 50, relight: 4.2, group: 4, regather: 0.3, maxFires: 12 };
+/** もえて いる ところの ばしょ（スタートと はいれる ビルの そばは さける） */
+export function burnSites(tower, rnd = Math.random, F = CITY_FIRE) {
+  const out = [];
+  for (let tries = 0; out.length < F.sites && tries < 400; tries++) {
+    const a = rnd() * Math.PI * 2, d = F.dist0 + rnd() * (F.dist1 - F.dist0);
+    const s = { x: Math.round(Math.cos(a) * d), y: Math.round(Math.sin(a) * d) };
+    if (tower && Math.hypot(s.x - tower.x, s.y - tower.y) < F.avoidTower) continue;
+    if (out.some(o => Math.hypot(o.x - s.x, o.y - s.y) < 360)) continue;
+    out.push({ ...s, seen: false, cd: 0 });
+  }
+  return out;
+}
+
 /** ビルの ばしょ（スタートから dist0〜dist1。うえ むきの ±40° は さける：hutSpot と おなじ） */
 export function towerSpot(rnd = Math.random, T = TOWER) { return hutSpot(rnd, { hutDist0: T.dist0, hutDist1: T.dist1 }); }
 /** おくじょうに ヘリが いるか（ラン ごとに 1かい きめる） */

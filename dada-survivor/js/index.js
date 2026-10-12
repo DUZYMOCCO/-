@@ -12,14 +12,14 @@ import {
   newQuality, adaptQuality, THROW, fireRadius, capType, gatherCount, BOTTLE, bottleOutcome,
   SQUAD, allyDamage, squadSlot, canWhistle, healAmount,
   QUEST, CAMP, underHalfW, clampUnder, hutSpot, LASER_MODES, nextLaserMode, squadRoom, beamHits, MAX_LEVEL as MAXLV,
-  enemyDmgMul, startWeapons, TOWER, towerSpot, rollHeli, heliDamage, floorName,
-} from './rules.js?v=205';
-import { DecorField } from './decor.js?v=205';
-import { EnemyGrid, nearestN } from './grid.js?v=205';
-import { preloadArt, art } from './art.js?v=205';
-import { Stage } from './stage.js?v=205';
-import { menuMethods, iconHtml } from './menus.js?v=205';
-import { PopBGM, playWhistle } from './bgm.js?v=205';
+  enemyDmgMul, startWeapons, CITY_FIRE, burnSites, TOWER, towerSpot, rollHeli, heliDamage, floorName,
+} from './rules.js?v=206';
+import { DecorField } from './decor.js?v=206';
+import { EnemyGrid, nearestN } from './grid.js?v=206';
+import { preloadArt, art } from './art.js?v=206';
+import { Stage } from './stage.js?v=206';
+import { menuMethods, iconHtml } from './menus.js?v=206';
+import { PopBGM, playWhistle } from './bgm.js?v=206';
 
 const SAVE_KEY = 'dada_survivor_save';
 const TAU = Math.PI * 2;
@@ -45,7 +45,7 @@ export const DadaSurvivorGame = {
 
   // 起動時にこのゲームのCSSを自分で読み込む（?v= はこのフォルダ内で管理）。ハブが init 前に await する
   prepare() {
-    return loadCss(new URL('../css/dada-survivor.css?v=205', import.meta.url).href);
+    return loadCss(new URL('../css/dada-survivor.css?v=206', import.meta.url).href);
   },
 
   init(container, onBackToHub) {
@@ -353,10 +353,11 @@ export const DadaSurvivorGame = {
       // さばくの クエスト：zone は surface／under。clock は ちかでも すすむ とけい（ステージの time は ちかでは とまる）
       zone: 'surface', clock: 0, props: null, quest: null, laserMode: 0,
       // こわれた まち：みかたの ヘリの えんご（おくじょうで もらう）
-      heli: null,
+      heli: null, burnSites: null,
     };
     if (st.quest) this.initQuest();
     if (st.tower) this.initTower();
+    if (st.burning) this.run.burnSites = burnSites(this.run.quest?.building);
     if (st.camp) this.initCamp();
     this.refreshStats();
     this.run.player.hp = this.run.stats.maxHp;
@@ -453,6 +454,7 @@ export const DadaSurvivorGame = {
     this.updateHeli(dt);
     this.updateShots(dt);
     this.updateEnemies(dt);
+    this.updateBurnSites(dt);
     this.updateHazards(dt);
     this.updatePickups(dt);
     if (r.quest) this.updateQuest();
@@ -1345,6 +1347,35 @@ export const DadaSurvivorGame = {
       p.hp -= THROW.fireDps * mul * dt;
       r.burnFx -= dt;
       if (r.burnFx <= 0) { r.burnFx = 0.6; this.stage.hurt(); sound.play('fire', { volume: 0.2, gap: 0.5 }); }
+    }
+  },
+
+  /** こわれた まち：もえて いる ところ（ちかくに きたら ひが つく・ばくはへいが いる） */
+  updateBurnSites(dt) {
+    const r = this.run, p = r.player, F = CITY_FIRE;
+    if (!r.burnSites || r.zone !== 'surface') return;
+    for (const s of r.burnSites) {
+      if (dist2(s, p) > F.wake ** 2) continue;
+      s.cd -= dt;
+      if (s.cd > 0) continue;
+      s.cd = F.relight;
+      for (let i = 0; i < F.flames; i++) {
+        if (r.fires.length >= F.maxFires) r.fires.shift();
+        const a = i / F.flames * TAU + s.x;
+        r.fires.push({ x: s.x + Math.cos(a) * F.spread * (i ? 1 : 0.2), y: s.y + Math.sin(a) * F.spread * 0.7 * (i ? 1 : 0.2), age: 0, id: ++r.fireSeq });
+      }
+      if (r.finalBossDone || r.enemies.length >= MAX_ENEMIES - F.group) continue;
+      let alive = 0;
+      for (const e of r.enemies) if (e.gather) alive++;
+      const n = !s.seen ? Math.min(F.group, THROW.gatherCap - alive) : Math.random() < F.regather ? gatherCount(alive, () => 0) : 0;
+      if (!s.seen && !r.burnMsg) { r.burnMsg = true; this.showBanner('もえて いる ところに ばくはへいが いる！ ひの なかは いたいよ', 2600); }
+      s.seen = true;
+      const hpScale = spawnPlan(r.time, r.diff, r.stageDef).hpScale;
+      for (let i = 0; i < n; i++) {
+        const a = i / Math.max(1, n) * TAU + 0.4, d = 80 + Math.random() * 30;
+        const e = this.spawnEnemy(THROW.gatherType, hpScale, undefined, { x: s.x + Math.cos(a) * d, y: s.y + Math.sin(a) * d });
+        e.gather = true;
+      }
     }
   },
 

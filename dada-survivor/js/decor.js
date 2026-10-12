@@ -43,10 +43,19 @@ export function decorCell(cx, cy, seed, kind = 'lab') {
 /**
  * こわれた まち：だいたい 3マスに 1つ、こわれた くるま（car）か くずれた ビルの かけら（ruin）。スタートの マスは なし
  */
-export const CITY_DECOR = { chance: 0.34, ruin: 0.45 };
+export const CITY_DECOR = { chance: 0.34, ruin: 0.45, bldg: 0.5, bldgFree: 950, bldgKinds: 7 };
+/**
+ * v1.15.1：こわれた ビルを たくさん（スカイライン）。だいたい 2マスに 1つ。たかさ・こわれかた・まどが ちがう 7しゅるい（bldg1〜7。はんぶん いじょうは ぎざぎざに くずれて あなの あいた ビル）。
+ * スタートから bldgFree より ちかい ところ（スタート・はいれる ビル・やじるしの みち）には おかない。はいれるのは ほんものの 1つだけ
+ */
 export function cityCell(cx, cy, seed) {
+  const C = DECOR_CELL;
+  if (Math.hypot((cx + 0.5) * C, (cy + 0.5) * C) > CITY_DECOR.bldgFree && cellRand(cx, cy, seed, 31) < CITY_DECOR.bldg) {
+    const v = 1 + Math.floor(cellRand(cx, cy, seed, 32) * CITY_DECOR.bldgKinds);
+    return [{ x: Math.round(cx * C + 120 + cellRand(cx, cy, seed, 33) * (C - 240)), y: Math.round(cy * C + 200 + cellRand(cx, cy, seed, 34) * (C - 220)), kind: `bldg${v}` }];
+  }
   if ((cx === 0 && cy === 0) || cellRand(cx, cy, seed, 21) >= CITY_DECOR.chance) return [];
-  const C = DECOR_CELL, m = 80;
+  const m = 80;
   return [{ x: Math.round(cx * C + m + cellRand(cx, cy, seed, 22) * (C - 2 * m)), y: Math.round(cy * C + m + cellRand(cx, cy, seed, 23) * (C - 2 * m)),
     kind: cellRand(cx, cy, seed, 24) < CITY_DECOR.ruin ? 'ruin' : 'car' }];
 }

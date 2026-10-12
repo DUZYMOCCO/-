@@ -1223,20 +1223,45 @@ const roofFloor = wrap(`<rect width="160" height="160" fill="#b4b8be"/>
   <path d="M110 110 L118 122 L112 130" fill="none" stroke="#6b7280" stroke-width="1.6"/><circle cx="130" cy="40" r="2.2" fill="#8b9099"/>`, '0 0 160 160');
 
 // たかい ビル（こわれかけ。まどは われて、うえの かどが かけて いる。いりぐちは べつの え）
-const tower = wrap(`
+// たかい ビル（こわれかけ。まどは われて、うえの かどが かけて いる。いりぐちは べつの え）
+// v: まちの かざり用の ちがい（0 は はいれる ビル。1〜5 は たかさ・こわれかた・まど・いろが すこし ちがう）
+const BLDG = [
+  { top: 8, rows: 7, wall: '#9aa1ab', side: '#7d848f', cut: 1, holes: 0 },
+  { top: 60, rows: 5, wall: '#a8a29e', side: '#857f7a', cut: 0, holes: 0 },
+  { top: 24, rows: 7, wall: '#94a3b8', side: '#748297', cut: 2, holes: 2 },
+  { top: 100, rows: 4, wall: '#b4aa9a', side: '#918674', cut: 1, holes: 1 },
+  { top: 40, rows: 6, wall: '#8e98a6', side: '#6f7987', cut: 0, holes: 1 },
+  { top: 76, rows: 5, wall: '#a3a3a3', side: '#7f7f7f', cut: 2, holes: 3 },
+  { top: 150, rows: 3, wall: '#a8a29e', side: '#857f7a', cut: 2, holes: 2 }, // くずれて ひくく なった ビル
+  { top: 16, rows: 7, wall: '#9ca3af', side: '#6b7280', cut: 2, holes: 3 },
+];
+// ぎざぎざの やね（cut 2：おおきく くずれた）
+const jagTop = T => `M14 296 L14 ${T + 46} L34 ${T + 30} L46 ${T + 52} L66 ${T + 18} L84 ${T + 40} L104 ${T + 6} L122 ${T + 34} L140 ${T + 12} L160 ${T + 44} L178 ${T} L196 ${T + 26} L212 ${T + 8} L226 ${T + 30} L226 296Z`;
+const towerArt = (v = 0) => {
+  const B = BLDG[v % BLDG.length], T = B.top, jag = B.cut === 2 ? 46 : B.cut ? 30 : 0;
+  const roof = B.cut === 2 ? jagTop(T) : B.cut ? `M14 296 L14 ${T + 32} L60 ${T + 32} L74 ${T + 14} L96 ${T + 22} L110 ${T} L226 ${T} L226 296Z` : `M14 296 L14 ${T} L226 ${T} L226 296Z`;
+  const holes = [[150, 130, 26, 20], [44, 200, 22, 16], [170, 220, 18, 24]].slice(0, B.holes)
+    .map(([x, y, rx, ry]) => `<path d="M${x - rx} ${y} L${x - rx / 2} ${y - ry} L${x + rx / 3} ${y - ry * 0.7} L${x + rx} ${y - 4} L${x + rx * 0.6} ${y + ry} L${x - rx / 3} ${y + ry * 0.8}Z" fill="#1f2937" stroke="#4b5563" stroke-width="2.4"/>
+      <path d="M${x - 6} ${y - 4} L${x + 8} ${y + 6} M${x + 2} ${y - 10} L${x - 4} ${y + 8}" stroke="#78350f" stroke-width="2"/>`).join('');
+  const rubble = B.holes >= 2 ? [[30, 290, 22], [96, 292, 18], [150, 290, 24], [204, 290, 20]] : [[24, 290, 14], [190, 288, 14], [60, 292, 14]];
+  return wrap(`
   <ellipse cx="120" cy="296" rx="116" ry="8" fill="#000" opacity=".2"/>
-  <path d="M14 296 L14 40 L60 40 L74 22 L96 30 L110 8 L226 8 L226 296Z" fill="#9aa1ab" ${SW(4)}/>
-  <path d="M206 8 L226 8 L226 296 L206 296Z" fill="#7d848f"/>
-  ${[0, 1, 2, 3, 4, 5, 6].map(r => [0, 1, 2, 3, 4].map(c => {
-    const x = 26 + c * 40, y = 54 + r * 32; if (y < 30 + (c < 2 ? 30 : 0)) return '';
-    const broken = (r * 5 + c) % 4 === 1;
+  <clipPath id="bw${v}"><path d="${roof}"/></clipPath>
+  <path d="${roof}" fill="${B.wall}" ${SW(4)}/>
+  <path d="M206 0 L226 0 L226 296 L206 296Z" fill="${B.side}" clip-path="url(#bw${v})"/>
+  <g clip-path="url(#bw${v})">${Array.from({ length: B.rows }, (_, r) => [0, 1, 2, 3, 4].map(c => {
+    const x = 26 + c * 40, y = 246 - (B.rows - 1 - r) * 32; if (y < T + 10 + (B.cut === 1 && c < 2 ? 30 : 0) + (B.cut === 2 ? 30 : 0)) return '';
+    const broken = (r * 5 + c + v * 2) % 4 === 1 || (B.holes >= 2 && (r + c + v) % 3 === 0);
     return `<rect x="${x}" y="${y}" width="26" height="20" rx="2" fill="${broken ? '#1f2937' : '#93c5fd'}" stroke="#334155" stroke-width="2"/>${broken ? `<path d="M${x + 4} ${y + 2} L${x + 10} ${y + 12} L${x + 6} ${y + 18}" stroke="#93c5fd" stroke-width="1.6" fill="none"/>` : `<path d="M${x + 4} ${y + 15} L${x + 12} ${y + 4}" stroke="#e0f2fe" stroke-width="2"/>`}`;
-  }).join('')).join('')}
-  <path d="M110 8 L132 8 L120 24Z M14 140 L30 150 L22 162" fill="#6b7280" stroke="#374151" stroke-width="2"/>
-  <path d="M150 120 L160 140 L150 152 L162 170" fill="none" stroke="#374151" stroke-width="2.4"/>
-  <rect x="86" y="236" width="68" height="60" fill="#475569" ${SW(3)}/>
-  <rect x="78" y="226" width="84" height="12" rx="2" fill="#1e3a8a" ${SW(2.4)}/>
-  ${[[24, 290], [190, 288], [60, 292]].map(([x, y]) => `<path d="M${x - 14} ${y + 6} L${x - 6} ${y - 8} L${x + 6} ${y - 4} L${x + 14} ${y + 6}Z" fill="#a8a29e" stroke="#57534e" stroke-width="2"/>`).join('')}`, '0 0 240 304');
+  }).join('')).join('')}${holes}</g>
+  ${B.cut === 1 ? `<path d="M110 ${T} L132 ${T} L120 ${T + 16}Z" fill="#6b7280" stroke="#374151" stroke-width="2"/>` : ''}
+  ${B.cut === 2 ? `<path d="M66 ${T + 18} L70 ${T + 8} M104 ${T + 6} L100 ${T - 6} M178 ${T} L182 ${T - 10}" stroke="#78350f" stroke-width="2.6" stroke-linecap="round"/>` : ''}
+  <path d="M14 ${Math.max(140, T + jag + 40)} L30 ${Math.max(150, T + jag + 50)} L22 ${Math.max(162, T + jag + 62)}" fill="none" stroke="#374151" stroke-width="2.4"/>
+  ${v === 0 ? `<rect x="86" y="236" width="68" height="60" fill="#475569" ${SW(3)}/><rect x="78" y="226" width="84" height="12" rx="2" fill="#1e3a8a" ${SW(2.4)}/>`
+    : `<rect x="96" y="250" width="48" height="46" fill="#1f2937" ${SW(3)}/><path d="M96 262 H144 M96 274 H144" stroke="#475569" stroke-width="3"/>`}
+  ${rubble.map(([x, y, s]) => `<path d="M${x - s} ${y + 6} L${x - s * 0.45} ${y - s * 0.6} L${x + s * 0.4} ${y - s * 0.35} L${x + s} ${y + 6}Z" fill="#a8a29e" stroke="#57534e" stroke-width="2"/><path d="M${x - s * 0.3} ${y - 2} L${x + s * 0.2} ${y + 3}" stroke="#78716c" stroke-width="1.6"/>`).join('')}`, '0 0 240 304');
+};
+const tower = towerArt(0);
 const towerDoor = open => wrap(`
   <rect x="2" y="2" width="76" height="76" rx="4" fill="${open ? '#0b0f14' : '#64748b'}" ${SW(3)}/>
   ${open ? `${[0, 1, 2, 3].map(i => `<rect x="${12 + i * 4}" y="${58 - i * 12}" width="${56 - i * 8}" height="9" rx="1.5" fill="#cbd5e1" opacity="${0.45 + i * 0.12}"/>`).join('')}
@@ -1361,7 +1386,7 @@ const SOURCES = {
   cellA: cell(['soldier', 'soldier']), cellB: cell(['researcher', 'medic']), cellC: cell(['soldier', 'researcher']), cellOpen: cell([], true), exitStairs,
   driller: wrap(withPatch('driller', driller)), jungler: wrap(withPatch('jungler', jungler)), walker: wrap(withPatch('walker', walker), '-8 0 80 66'),
   urban: wrap(withPatch('urban', urban)), truck: wrap(withPatch('truck', truck)), gunship: wrap(withPatch('gunship', gunship), '-10 0 84 68'),
-  heliFriend, heliFly, tower, towerDoor: towerDoor(false), towerDoorOpen: towerDoor(true), stairsUp, helipad, roofExit, wreckCar, ruinPile,
+  heliFriend, heliFly, tower, ...Object.fromEntries([1, 2, 3, 4, 5, 6, 7].map(v => [`bldg${v}`, towerArt(v)])), towerDoor: towerDoor(false), towerDoorOpen: towerDoor(true), stairsUp, helipad, roofExit, wreckCar, ruinPile,
   bwallL: stretch(bwallSide(true)), bwallR: stretch(bwallSide(false)), bwallT: stretch(bwallEnd(true)), bwallB: stretch(bwallEnd(false)), laserGun, lbullet, lrocket, modeMg, modeBeam, modeRk: lrocket,
   gun, shotgun, bazooka, dual, gatling, rocket, mega, bullet, pellet, blast,
   sword: wrap(sword), armor: wrap(armor), shoes: wrap(shoes), charm: wrap(charm), chest: wrap(chest), chestOpen: wrap(chestOpen, '0 -4 64 68'),

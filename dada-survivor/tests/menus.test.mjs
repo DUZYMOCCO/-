@@ -32,3 +32,13 @@ test('a save with cleared stages keeps every unlocked stage selectable', () => {
   for (const st of STAGES.slice(0, 3)) assert.ok(stageUnlocked(s, st.id), `stage ${st.id}`);
   assert.equal(stageUnlocked(s, 4), false);
 });
+
+test('v1.15.1：もちものバッジは ちいさく、せつめいの メッセージは うえの ほう', async () => {
+  const { readFileSync } = await import('node:fs');
+  const css = readFileSync(new URL('../css/dada-survivor.css', import.meta.url), 'utf8');
+  const icon = css.match(/\.ds-skill \.ds-icon\.sm \{[^}]*width: (\d+)px/);
+  assert.ok(icon && +icon[1] <= 18, 'バッジの アイコンは 18px いか');
+  const banner = css.match(/\.ds-banner \{[^}]*\}/)[0];
+  assert.ok(/top: calc\(env\(safe-area-inset-top, 0px\) \+ \d+px\)/.test(banner), 'バナーは うえから きまった いち');
+  assert.ok(!/top: 32%/.test(banner));
+});

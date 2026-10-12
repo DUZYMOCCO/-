@@ -69,10 +69,45 @@ test('まちの かざり（くるま・がれき）は きまった ばしょ�
   assert.deepEqual(cityCell(0, 0, 3), []);
   assert.deepEqual(decorCell(4, -2, 7, 'city'), cityCell(4, -2, 7));
   let n = 0;
-  for (let cx = -15; cx < 15; cx++) for (let cy = -15; cy < 15; cy++) for (const d of cityCell(cx, cy, 5)) { n++; assert.ok(d.kind === 'car' || d.kind === 'ruin'); assert.ok(!d.id, 'こわせない'); }
-  assert.ok(n > 200 && n < 450, String(n));
-  assert.ok(new DecorField(5, 'city').visible(-800, -800, 800, 800).every(d => d.kind === 'car' || d.kind === 'ruin'));
+  for (let cx = -15; cx < 15; cx++) for (let cy = -15; cy < 15; cy++) for (const d of cityCell(cx, cy, 5)) { if (d.kind.startsWith('bldg')) continue; n++; assert.ok(d.kind === 'car' || d.kind === 'ruin'); assert.ok(!d.id, 'こわせない'); }
+  assert.ok(n > 100 && n < 450, String(n));
+  assert.ok(new DecorField(5, 'city').visible(-600, -600, 600, 600).every(d => d.kind === 'car' || d.kind === 'ruin'), 'スタートの ちかくに ビルは ない');
   assert.equal(city.bgm, 'city');
   assert.ok(SONGS.city.bpm >= 128 && SONGS.city.bpm <= 140);
   assert.ok(songEvents(SONGS.city, 0).some(e => e.kind === 'arp'));
+});
+
+test('v1.15.1：こわれた ビルが たくさん（20こ いじょう・5しゅるい）。スタートと はいれる ビルの ちかくには ない', () => {
+  const all = [];
+  for (const seed of [1, 7, 42]) {
+    const b = [];
+    for (let cx = -8; cx < 8; cx++) for (let cy = -8; cy < 8; cy++) for (const d of cityCell(cx, cy, seed)) if (d.kind.startsWith('bldg')) b.push(d);
+    assert.ok(b.length >= 20, `seed ${seed}: ${b.length}`);
+    for (const d of b) assert.ok(Math.hypot(d.x, d.y) > TOWER.dist1 + 100, `${d.x},${d.y}`);
+    all.push(...b);
+  }
+  const kinds = new Set(all.map(d => d.kind));
+  assert.equal(kinds.size, 7);
+  for (const k of kinds) { assert.ok(svgOf(art(k)).length > 1000, k); assert.notEqual(art(k), art('tower')); }
+  assert.equal(new Set([...kinds].map(k => art(k))).size, 7, 'ぜんぶ ちがう え');
+  const broken = [...kinds].filter(k => svgOf(art(k)).includes('#1f2937" stroke="#4b5563"'));
+  assert.ok(broken.length >= 4, `こわれた（あなの ある）ビルが おおい ${broken.length}`);
+});
+
+test('v1.15.1：もえて いる ところ は スタートと はいれる ビルから はなれて ちらばる', async () => {
+  const { burnSites, CITY_FIRE } = await import('../js/rules.js');
+  let s = 3; const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
+  for (let k = 0; k < 30; k++) {
+    const tower = towerSpot(rnd), sites = burnSites(tower, rnd);
+    assert.equal(sites.length, CITY_FIRE.sites);
+    for (const b of sites) {
+      assert.ok(Math.hypot(b.x, b.y) >= CITY_FIRE.dist0 - 1, 'スタートの ちかくは もえない');
+      assert.ok(Math.hypot(b.x - tower.x, b.y - tower.y) >= CITY_FIRE.avoidTower, 'ビルの いりぐちは ふさがない');
+      assert.equal(b.seen, false);
+    }
+    for (let i = 0; i < sites.length; i++) for (let j = i + 1; j < sites.length; j++) assert.ok(Math.hypot(sites[i].x - sites[j].x, sites[i].y - sites[j].y) >= 360);
+  }
+  assert.ok(CITY_FIRE.maxFires >= CITY_FIRE.flames && CITY_FIRE.group <= 9);
+  assert.equal(STAGES.find(x => x.id === 7).burning, true);
+  assert.ok(!STAGES.filter(x => x.id !== 7).some(x => x.burning));
 });
