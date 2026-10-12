@@ -1,6 +1,6 @@
 // v4.2.24: 隊長（主人公）の名前・性別・見た目。保存先は game.player.{familyName,givenName,gender,appearance}。
 import {createSoldierAppearance,HAIR_LABELS,MEDIC_STYLES,SKINS,HAIRS,MEDIC_HAIRS,EYE_COLORS,FRAME_COLORS} from './soldier-appearance.js?v=206';
-import {randomGivenName,randomFamilyName} from './soldier-names.js?v=209';
+import {randomGivenName,randomFamilyName} from './soldier-names.js?v=210';
 import {FACE_OUTLINES,EYE_SHAPES,NOSE_TYPES,JAW_TYPES,ACCESSORY_LABELS,appearanceFeatureChoices} from './appearance-features.js?v=193';
 export {FACE_OUTLINES,EYE_SHAPES,NOSE_TYPES,JAW_TYPES,ACCESSORY_LABELS};
 
@@ -61,14 +61,14 @@ export function normalizeCommanderIdentity(raw={}) {
   const appearance=hasLook?buildCommanderAppearance(gender,{...choicesFromAppearance(raw.appearance,gender)}):defaultCommanderAppearance();
   return {familyName:cleanName(raw.familyName),givenName:cleanName(raw.givenName),gender,appearance};
 }
-/** 「おまかせ」用。名前は性別に合わせ、見た目はこの画面で選べる範囲だけから決める。 */
-export function randomCommanderIdentity(gender=null,random=Math.random) {
+/** 「おまかせ」用。名前は性別に合わせ、見た目はこの画面で選べる範囲だけから決める。avoid で直前の名前を回避可能。 */
+export function randomCommanderIdentity(gender=null,random=Math.random,avoid={}) {
   const g=isGender(gender)?gender:random()<.5?'male':'female',pickOf=list=>list[Math.floor(random()*list.length)%list.length];
   const choices={hairStyle:pickOf(g==='female'?FEMALE_HAIR_STYLES:MALE_HAIR_STYLES),hairColor:pickOf(HAIR_COLORS),skin:pickOf(SKINS),
     facialHair:g==='male'&&random()<.25?pickOf(['stubble','mustache','chin']):'none',glasses:random()<.15?pickOf(['round','square','half']):'none',
     beautiful:g==='female'&&random()<.4,eyeColor:pickOf(EYE_COLORS),accessory:pickOf(Object.keys(ACCESSORY_LABELS)),
     faceOutline:pickOf(Object.keys(FACE_OUTLINES)),eyeShape:pickOf(Object.keys(EYE_SHAPES)),nose:pickOf(Object.keys(NOSE_TYPES)),jaw:pickOf(Object.keys(JAW_TYPES))};
-  return {familyName:randomFamilyName(random),givenName:randomGivenName(g,random),gender:g,appearance:buildCommanderAppearance(g,choices)};
+  return {familyName:randomFamilyName(random,avoid?.familyName),givenName:randomGivenName(g,random,avoid?.givenName),gender:g,appearance:buildCommanderAppearance(g,choices)};
 }
 /** 旧セーブ・新規どちらでも、遠征の保存データから隊長の記録を取り出す。 */
 export const identityOf=p=>normalizeCommanderIdentity(p||{});

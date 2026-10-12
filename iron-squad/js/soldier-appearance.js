@@ -1,7 +1,7 @@
 import {equipmentVisualProfile} from './equipment-tiers.js?v=187';
 import {travelerClothes} from './traveler-clothes.js?v=195';
 import {isMuscleCaster} from './unit-attributes.js?v=187';
-import {genderOfSoldier} from './soldier-names.js?v=209';
+import {genderOfSoldier} from './soldier-names.js?v=210';
 import {classRegaliaFor,drawClassPortraitDress,drawClassHeadpiece} from './class-regalia.js?v=185';
 import {createAppearanceFeatures,normalizeAppearanceFeatures,FACE_OUTLINES,EYE_SHAPES,NOSE_TYPES,JAW_TYPES,ACCESSORY_LABELS,drawVariantFace,drawVariantEyes,drawVariantNose,drawPersonalAccessory} from './appearance-features.js?v=193';
 /** Stable personal looks, independent of talent, battle RNG and equipment. */

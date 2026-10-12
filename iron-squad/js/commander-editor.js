@@ -3,8 +3,8 @@ import {drawSoldierPortrait} from './soldier-appearance.js?v=206';
 import {drawFieldCommander} from './visuals.js?v=195';
 import {GENDERS,MALE_HAIR_STYLES,FEMALE_HAIR_STYLES,HAIR_CHOICE_LABELS,FEMALE_HAIR_LABELS,HAIR_COLORS,SKIN_COLORS,EYE_COLOR_CHOICES,BEARDS,GLASSES,
   NAME_MAX,cleanName,buildCommanderAppearance,choicesFromAppearance,normalizeCommanderIdentity,randomCommanderIdentity,
-  FACE_OUTLINES,EYE_SHAPES,NOSE_TYPES,JAW_TYPES,ACCESSORY_LABELS} from './commander-identity.js?v=193';
-import {randomGivenName,randomFamilyName} from './soldier-names.js?v=209';
+  FACE_OUTLINES,EYE_SHAPES,NOSE_TYPES,JAW_TYPES,ACCESSORY_LABELS} from './commander-identity.js?v=210';
+import {randomGivenName,randomFamilyName} from './soldier-names.js?v=210';
 
 const el=(tag,cls,text)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(text!=null)e.textContent=text;return e;};
 
@@ -47,8 +47,8 @@ export function openCommanderEditor({host,mode='create',initial=null,onConfirm,o
     dice.addEventListener('click',()=>{state[key]=make();if(key==='givenName')state.givenAuto=true;input.value=state[key];paint();});
     row.append(lab,input,dice);nameBox.append(row);return input;
   };
-  const familyInput=makeNameRow('名字','ce-family','familyName',()=>randomFamilyName());
-  const givenInput=makeNameRow('名前','ce-given','givenName',()=>randomGivenName(state.gender));
+  const familyInput=makeNameRow('名字','ce-family','familyName',()=>randomFamilyName(Math.random,state.familyName));
+  const givenInput=makeNameRow('名前','ce-given','givenName',()=>randomGivenName(state.gender,Math.random,state.givenName));
   body.append(nameBox);
   const genderBox=group('性別','ce-gender');genderBox.setAttribute('role','radiogroup');genderBox.setAttribute('aria-label','性別');
   const faceBox=group('りんかく','ce-face'),lookBox=group('目つき','ce-eye-shape'),noseBox=group('はな','ce-nose'),jawBox=group('あご','ce-jaw');
@@ -111,11 +111,11 @@ export function openCommanderEditor({host,mode='create',initial=null,onConfirm,o
     // 髪型は性別ごとに別の種類。髪の色・はだの色はそのまま引き継ぐ。
     state.choices={...state.choices,hairStyle:g==='female'?'bob':'short',facialHair:'none',beautiful:false};
     // おまかせで入った名前は、性別に合わせて入れ直す。自分で書いた名前は変えない。
-    if(state.givenAuto){state.givenName=randomGivenName(g);givenInput.value=state.givenName;}
+    if(state.givenAuto){state.givenName=randomGivenName(g,Math.random,state.givenName);givenInput.value=state.givenName;}
     repaint();
   }
   function applyAllRandom() {
-    const r=randomCommanderIdentity(null);
+    const r=randomCommanderIdentity(null,Math.random,{familyName:state.familyName,givenName:state.givenName});
     state.gender=r.gender;state.familyName=r.familyName;state.givenName=r.givenName;state.givenAuto=true;
     state.choices=choicesFromAppearance(r.appearance,r.gender);familyInput.value=r.familyName;givenInput.value=r.givenName;repaint();
   }

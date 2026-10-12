@@ -207,11 +207,27 @@ export function migrateSoldierName(soldier, existingNames = null) {
   }
 }
 
-/** 隊長の名前づくり（男女の名簿は上の MALE_GIVEN_NAMES / FEMALE_GIVEN_NAMES）。 */
-export function randomGivenName(gender = 'male', random = Math.random) {
+/** 隊長の名前づくり（男女の名簿は上の MALE_GIVEN_NAMES / FEMALE_GIVEN_NAMES）。avoid で直前の名前と被らないようにできる。 */
+export function randomGivenName(gender = 'male', random = Math.random, avoid = '') {
   const pool = gender === 'female' ? FEMALE_GIVEN_NAMES : MALE_GIVEN_NAMES;
-  return pool[Math.floor(random() * pool.length) % pool.length];
+  if (!pool || pool.length === 0) return '';
+  let name = pool[Math.floor(random() * pool.length) % pool.length];
+  if (avoid && name === avoid && pool.length > 1) {
+    for (let attempts = 0; attempts < 10; attempts++) {
+      name = pool[Math.floor(random() * pool.length) % pool.length];
+      if (name !== avoid) break;
+    }
+  }
+  return name;
 }
-export function randomFamilyName(random = Math.random) {
-  return FAMILY_NAMES[Math.floor(random() * FAMILY_NAMES.length) % FAMILY_NAMES.length];
+export function randomFamilyName(random = Math.random, avoid = '') {
+  if (!FAMILY_NAMES || FAMILY_NAMES.length === 0) return '';
+  let name = FAMILY_NAMES[Math.floor(random() * FAMILY_NAMES.length) % FAMILY_NAMES.length];
+  if (avoid && name === avoid && FAMILY_NAMES.length > 1) {
+    for (let attempts = 0; attempts < 10; attempts++) {
+      name = FAMILY_NAMES[Math.floor(random() * FAMILY_NAMES.length) % FAMILY_NAMES.length];
+      if (name !== avoid) break;
+    }
+  }
+  return name;
 }
