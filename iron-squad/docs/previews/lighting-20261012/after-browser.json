@@ -1,0 +1,320 @@
+{
+  "stage": "after",
+  "version": "6.1.7",
+  "errors": [],
+  "scenes": [
+    {
+      "name": "mines",
+      "width": 390,
+      "height": 844,
+      "filename": "after-mines-390.png",
+      "dungeon": "dungeon_goblin_mines",
+      "recovery": null,
+      "overflow": 0
+    },
+    {
+      "name": "catacombs",
+      "width": 390,
+      "height": 844,
+      "filename": "after-catacombs-390.png",
+      "dungeon": "dungeon_catacombs",
+      "recovery": null,
+      "overflow": 0
+    },
+    {
+      "name": "dragon",
+      "width": 390,
+      "height": 844,
+      "filename": "after-dragon-390.png",
+      "dungeon": "dungeon_dragon_cavern",
+      "recovery": null,
+      "overflow": 0
+    },
+    {
+      "name": "demon",
+      "width": 390,
+      "height": 844,
+      "filename": "after-demon-390.png",
+      "dungeon": "dungeon_demon_castle",
+      "recovery": null,
+      "overflow": 0
+    },
+    {
+      "name": "night-field",
+      "width": 390,
+      "height": 844,
+      "filename": "after-night-field-390.png",
+      "dungeon": null,
+      "recovery": null,
+      "overflow": 0
+    },
+    {
+      "name": "night-casino",
+      "width": 390,
+      "height": 844,
+      "filename": "after-night-casino-390.png",
+      "dungeon": null,
+      "recovery": null,
+      "overflow": 0
+    },
+    {
+      "name": "night-tavern",
+      "width": 390,
+      "height": 844,
+      "filename": "after-night-tavern-390.png",
+      "dungeon": null,
+      "recovery": null,
+      "overflow": 0
+    },
+    {
+      "name": "day-field",
+      "width": 390,
+      "height": 844,
+      "filename": "after-day-field-390.png",
+      "dungeon": null,
+      "recovery": null,
+      "overflow": 0
+    },
+    {
+      "name": "town-night",
+      "width": 390,
+      "height": 844,
+      "filename": "after-town-night-390.png",
+      "dungeon": "royal_castle_town",
+      "recovery": null,
+      "overflow": 0
+    },
+    {
+      "name": "mines",
+      "width": 844,
+      "height": 390,
+      "filename": "after-mines-844.png",
+      "dungeon": "dungeon_goblin_mines",
+      "recovery": null,
+      "overflow": 0
+    },
+    {
+      "name": "catacombs",
+      "width": 844,
+      "height": 390,
+      "filename": "after-catacombs-844.png",
+      "dungeon": "dungeon_catacombs",
+      "recovery": null,
+      "overflow": 0
+    },
+    {
+      "name": "dragon",
+      "width": 844,
+      "height": 390,
+      "filename": "after-dragon-844.png",
+      "dungeon": "dungeon_dragon_cavern",
+      "recovery": null,
+      "overflow": 0
+    },
+    {
+      "name": "demon",
+      "width": 844,
+      "height": 390,
+      "filename": "after-demon-844.png",
+      "dungeon": "dungeon_demon_castle",
+      "recovery": null,
+      "overflow": 0
+    },
+    {
+      "name": "night-field",
+      "width": 844,
+      "height": 390,
+      "filename": "after-night-field-844.png",
+      "dungeon": null,
+      "recovery": null,
+      "overflow": 0
+    },
+    {
+      "name": "night-casino",
+      "width": 844,
+      "height": 390,
+      "filename": "after-night-casino-844.png",
+      "dungeon": null,
+      "recovery": null,
+      "overflow": 0
+    },
+    {
+      "name": "night-tavern",
+      "width": 844,
+      "height": 390,
+      "filename": "after-night-tavern-844.png",
+      "dungeon": null,
+      "recovery": null,
+      "overflow": 0
+    },
+    {
+      "name": "day-field",
+      "width": 844,
+      "height": 390,
+      "filename": "after-day-field-844.png",
+      "dungeon": null,
+      "recovery": null,
+      "overflow": 0
+    },
+    {
+      "name": "town-night",
+      "width": 844,
+      "height": 390,
+      "filename": "after-town-night-844.png",
+      "dungeon": "royal_castle_town",
+      "recovery": null,
+      "overflow": 0
+    },
+    {
+      "name": "mines",
+      "width": 1280,
+      "height": 800,
+      "filename": "after-mines-1280.png",
+      "dungeon": "dungeon_goblin_mines",
+      "recovery": null,
+      "overflow": 0
+    },
+    {
+      "name": "catacombs",
+      "width": 1280,
+      "height": 800,
+      "filename": "after-catacombs-1280.png",
+      "dungeon": "dungeon_catacombs",
+      "recovery": null,
+      "overflow": 0
+    },
+    {
+      "name": "dragon",
+      "width": 1280,
+      "height": 800,
+      "filename": "after-dragon-1280.png",
+      "dungeon": "dungeon_dragon_cavern",
+      "recovery": null,
+      "overflow": 0
+    },
+    {
+      "name": "demon",
+      "width": 1280,
+      "height": 800,
+      "filename": "after-demon-1280.png",
+      "dungeon": "dungeon_demon_castle",
+      "recovery": null,
+      "overflow": 0
+    },
+    {
+      "name": "night-field",
+      "width": 1280,
+      "height": 800,
+      "filename": "after-night-field-1280.png",
+      "dungeon": null,
+      "recovery": null,
+      "overflow": 0
+    },
+    {
+      "name": "night-casino",
+      "width": 1280,
+      "height": 800,
+      "filename": "after-night-casino-1280.png",
+      "dungeon": null,
+      "recovery": null,
+      "overflow": 0
+    },
+    {
+      "name": "night-tavern",
+      "width": 1280,
+      "height": 800,
+      "filename": "after-night-tavern-1280.png",
+      "dungeon": null,
+      "recovery": null,
+      "overflow": 0
+    },
+    {
+      "name": "day-field",
+      "width": 1280,
+      "height": 800,
+      "filename": "after-day-field-1280.png",
+      "dungeon": null,
+      "recovery": null,
+      "overflow": 0
+    },
+    {
+      "name": "town-night",
+      "width": 1280,
+      "height": 800,
+      "filename": "after-town-night-1280.png",
+      "dungeon": "royal_castle_town",
+      "recovery": null,
+      "overflow": 0
+    }
+  ],
+  "checks": {
+    "cave": {
+      "day": {
+        "near": [
+          120,
+          120,
+          120,
+          255
+        ],
+        "far": [
+          2,
+          3,
+          4,
+          255
+        ]
+      },
+      "night": {
+        "near": [
+          120,
+          120,
+          120,
+          255
+        ],
+        "far": [
+          2,
+          3,
+          4,
+          255
+        ]
+      },
+      "moved": 33,
+      "lantern": {
+        "id": "player-lantern",
+        "x": 1033,
+        "y": 600,
+        "radius": 215,
+        "power": 0.94,
+        "rgb": "255,181,84",
+        "fixture": true,
+        "carried": true
+      },
+      "player": {
+        "x": 1033,
+        "y": 600
+      },
+      "oldPlayer": {
+        "x": 1000,
+        "y": 600
+      }
+    },
+    "mask": {
+      "movingRenderMeanMs": 2.6333333333333333,
+      "maskPixels": 506700,
+      "canvasPixels": 4096000,
+      "renderer": "desktop Chrome; not iPhone"
+    },
+    "saveResume": {
+      "fieldPositionRestored": true,
+      "sameClock": true,
+      "sameGold": true,
+      "noLightingInSave": true,
+      "reentered": true,
+      "recovery": null
+    },
+    "offline": {
+      "dungeon": "dungeon_goblin_mines",
+      "recovery": null,
+      "mask": true
+    }
+  }
+}

@@ -26,8 +26,10 @@ import {addFieldDrop,ageFieldDrops,attractFieldDrops,FIELD_DROP_PICKUP_RADIUS} f
 import {drawLootDrop,drawLootPullTrail} from './loot-visuals.js?v=189';
 import {drawOwnSquadRing,isOwnSquad} from './own-squad-marker.js?v=182';
 import {CAREER_RULES,newCareer,normalizeCareer,isEnlisted,ownCompanionCount,rankForCareer,recordCareerContribution,enlistCareer,canPromoteCareer,careerSummary,restartCareerExpedition} from './career-rules.js?v=200';
-import {tavernMethods,initializeTaverns,serializeTaverns,settleTravelerCompanions,drawFieldTavern,updateTavernPrompt,FIELD_TAVERN} from './tavern.js?v=202';
-import {headquartersFacilityMethods,HEADQUARTERS_FACILITIES,updateHeadquartersFacilityPrompt,drawHeadquartersFacilityGround,drawHeadquartersFacility,headquartersBuildingBlocks} from './hq-facilities.js?v=201';
+import {tavernMethods,initializeTaverns,serializeTaverns,settleTravelerCompanions,drawFieldTavern,updateTavernPrompt,FIELD_TAVERN} from './tavern.js?v=208';
+import {headquartersFacilityMethods,HEADQUARTERS_FACILITIES,updateHeadquartersFacilityPrompt,drawHeadquartersFacilityGround,drawHeadquartersFacility,headquartersBuildingBlocks} from './hq-facilities.js?v=208';
+import {drawNightlifeLights} from './nightlife-visuals.js?v=208';
+import {drawSceneDarkness,drawLanternLights} from './scene-lighting.js?v=208';
 import {queueSquadName,flushSquadNames} from './squad-names.js?v=182';
 import {syncGiveUpUI,resumeBGM} from './commander-giveup.js?v=206';
 import {bindFieldMusic,unbindFieldMusic,followFieldMusic} from './field-music.js?v=192';
@@ -68,7 +70,7 @@ import {supplyMethods, initializeSupplies, updateSupplies, takeRangedShot, ammoC
 import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog } from './interface.js?v=205';
 import { renderTroopRankings, getSoldierRankerBadges, calcSoldierRankerBonus } from './troop-rankings.js?v=187';
 import { ensureSoldierAppearance, drawSoldierPortrait, describeSoldierAppearance } from './soldier-appearance.js?v=206';
-import { attachSurfaceEvents, detachSurfaceEvents, frameSurfaceReady, releaseSceneCaches, releaseCanvas, surfaceCanResume } from './canvas-surface.js?v=182';
+import { attachSurfaceEvents, detachSurfaceEvents, frameSurfaceReady, releaseSceneCaches, releaseCanvas, surfaceCanResume } from './canvas-surface.js?v=208';
 import { SETTLEMENTS, WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt, routeNameAt, eastWestRoadY, northSouthRoadX, riverCenterY, drawFieldDepth, drawOakCrown, fieldBlocks, settleUnit } from './world.js?v=198';
 import { subscribeKana, kanaGrade, displayKana } from '../../common/js/kana-mode.js?v=175';
 import { FogGrid, FOG_REVEAL_RADIUS, FOG_CAMP_REVEAL } from './fog.js?v=182';
@@ -108,7 +110,7 @@ import {
   merchantHealingStatus, merchantHealWavesLeft, useMerchantHealing, MERCHANT_HEAL_COST, recalcEscortStats, finishEscortPhase
 } from './merchant-rules.js?v=193';
 
-import { daylightAt, advanceWorldClock, periodEnemy, enemyAvailable, PERIOD_ENEMIES } from './day-night.js?v=197';
+import { daylightAt, advanceWorldClock, periodEnemy, enemyAvailable, PERIOD_ENEMIES } from './day-night.js?v=208';
 
 import { clusterRescueMarkers } from './rescue-markers.js?v=182';
 import {visibleHeroMembers} from './hero-rules.js';
@@ -116,7 +118,7 @@ import {updateHeroJournal} from './hero-journal.js?v=189';
 import {applyHeroEquipmentUpgrade} from './hero-equipment.js?v=187';
 import {initializeHeroJourney,rollHeroRevelation,serializeHeroJourney,updateHeroParty,updateHeroFollowing,awardHeroBattle,recordDemonKingDefeat,ensureHeroCastle,syncHeroCastle,renderHeroJourney,drawHeroMarks} from './hero-party.js?v=198';
 import { RESCUE_TIMEOUT, rescueUnits, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, receiveTownCargo, leaveCivilianSpace, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, markSoldierDown, downCommander, commanderDown, updateNpcRescue, CIV_KINDS, isMedic, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST } from './casualty-rules.js?v=204';
-import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault, dungeonBlocks, dungeonSolids } from './dungeon.js?v=203';
+import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault, dungeonBlocks, dungeonSolids } from './dungeon.js?v=208';
 import {nearestDungeonFloor,dungeonSpawnPoint,dungeonSteeringTarget} from './dungeon-layout.js?v=182';
 import {normalizeDungeonExploration,updateDungeonSideChests,drawDungeonSideChests,updateDungeonRespawns,dungeonCoolingDown,recordDungeonClear,DUNGEON_RESET_PHASES} from './dungeon-exploration.js?v=200';
 import {
@@ -10473,7 +10475,7 @@ export const IronSquadGame = {
       }
 
       // 2.9 本陣の南の大酒場（旅の仲間との出会いと待ち合わせ）
-      if(inView(FIELD_TAVERN,420))drawFieldTavern(this.ctx,this,(s,x,y)=>drawFieldSoldier(this.ctx,{...s,x,y},now,SOLDIER_CLASSES[s.soldierClass],'#a59a76',false));
+      if(inView(FIELD_TAVERN,420))drawFieldTavern(this.ctx,this,(s,x,y)=>drawFieldSoldier(this.ctx,{...s,x,y},now,SOLDIER_CLASSES[s.soldierClass],'#a59a76',false),now);
 
     }
 
@@ -10611,7 +10613,7 @@ export const IronSquadGame = {
     } finally { this.ctx.restore(); } // カメラ復元（描画中の例外でも必ず戻す）
 
     // 大気で暗くした景色へ灯りを重ね、その上から未探索を隠す。
-    this.drawAtmosphere(this.ctx, now);
+    this.drawAtmosphere(this.ctx, now, shakeX, shakeY);
     this.ctx.save();
     try {
     this.ctx.translate(this.width / 2 + shakeX, this.height / 2 + shakeY);
@@ -11215,11 +11217,12 @@ export const IronSquadGame = {
 
   drawNightLights(ctx, now) {
     const strength=daylightAt(this.worldTime).nightLight;
-    if(strength<=0)return;
+    if(strength<=0&&this.currentDungeon?.kind!=='dungeon')return;
     const view=viewport(this.camera,this.width,this.height,this.zoom||1,0);
     ctx.save();
     try {
       ctx.globalCompositeOperation='screen';
+      drawLanternLights(ctx,this,now,view);
       for(const o of this.worldObjs||[]) {
         if(o.type!=='torch'&&o.type!=='fire')continue;
         const big=o.type==='fire',ph=o.ph||0;
@@ -11233,16 +11236,18 @@ export const IronSquadGame = {
         light.addColorStop(1,'rgba(208,119,45,0)');
         ctx.fillStyle=light;ctx.fillRect(o.x-radius,y-radius,radius*2,radius*2);
       }
+      drawNightlifeLights(ctx,this,now,strength,view);
     } finally {ctx.restore();}
   },
 
-  drawAtmosphere(ctx, now) {
+  drawAtmosphere(ctx, now, shakeX=0, shakeY=0) {
     const W = this.width, H = this.height;
     if (!W || !H || W < 10 || H < 10) return;
     // 景観と出現敵を同じ保存可能な時計で制御する。
     const time=daylightAt(this.worldTime);
-    ctx.fillStyle = `rgba(8,14,35,${time.darkness})`;
-    ctx.fillRect(0,0,W,H);
+    drawSceneDarkness(ctx,this,now,shakeX,shakeY);
+    // Underground has no daylight haze or screen vignette; lanterns own its visibility.
+    if(this.currentDungeon?.kind==='dungeon')return;
     if(time.label==='夕暮れ'||time.label==='夜明け') {
       ctx.fillStyle='rgba(164,104,53,0.06)';ctx.fillRect(0,0,W,H);
     }

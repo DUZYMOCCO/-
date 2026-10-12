@@ -13,7 +13,7 @@ assert.equal(daylightAt(480).period,'day');assert.equal(daylightAt(480).day,2);
 assert.equal(daylightAt(230).label,'夕暮れ');assert.equal(daylightAt(470).label,'夜明け');
 assert.ok(Math.abs(daylightAt(239.999).darkness-daylightAt(240).darkness)<.001);
 assert.ok(Math.abs(daylightAt(479.999).darkness-daylightAt(480).darkness)<.001);
-assert.ok(daylightAt(300).darkness>.27&&daylightAt(300).darkness<=.35,'night is slightly darker and remains readable');
+assert.equal(daylightAt(300).darkness,.74,'night is dark enough for local illumination to define visibility');
 assert.equal(daylightAt(230).nightLight,0,'outdoor lamps remain off during daytime');
 assert.equal(daylightAt(240).nightLight,0,'sunset starts a smooth lamp fade');
 assert.ok(daylightAt(243).nightLight>0&&daylightAt(243).nightLight<1);

@@ -4,7 +4,8 @@ import {persistentUnit} from './render-support.js';
 import {drawSoldierPortrait} from './soldier-appearance.js?v=206';
 import {setSubDialog} from './interface.js?v=195';
 import {WORLD_SIZE,TAVERN_SITE} from './world.js?v=198';
-import {daylightAt} from './day-night.js?v=197';
+import {daylightAt} from './day-night.js?v=208';
+import {drawTavernFixtures,drawTavernCandles} from './nightlife-visuals.js?v=208';
 import {GARDEN_TABLES,TAVERN_TABLES,TAVERN_SEAT_COUNT,tavernPoint,campPoseFor,drawLeisureTable} from './camp-leisure.js?v=202';
 import {buildingContact} from './building-interactions.js?v=201';
 
@@ -70,7 +71,7 @@ export function updateTavernPrompt(game){
   const show=nearFieldTavern(game);if(show===game._tavernPromptShown)return;
   game._tavernPromptShown=show;button.classList.toggle('hidden',!show);
 }
-export function drawFieldTavern(c,game,drawPerson){
+export function drawFieldTavern(c,game,drawPerson,now=0){
   if(game.currentDungeon)return;
   const {x,y}=FIELD_TAVERN,people=game.taverns?.roster?.people||[];
   c.save();c.translate(x,y);
@@ -88,8 +89,10 @@ export function drawFieldTavern(c,game,drawPerson){
   }
   c.fillStyle='#3b2f23';c.fillRect(-70,-178,140,30);c.fillStyle='#ecd9aa';c.font='bold 18px sans-serif';c.textAlign='center';c.textBaseline='middle';c.fillText('大酒場',0,-163);
   c.fillStyle='#7a5a36';for(const bx of [-140,140]){c.beginPath();c.ellipse(bx,-12,13,16,0,0,Math.PI*2);c.fill();}
+  drawTavernFixtures(c,now);
   c.restore();
   for(const t of [...TAVERN_TABLES,...GARDEN_TABLES])drawLeisureTable(c,t);
+  drawTavernCandles(c);
   const visitors=people.filter(v=>!v.joined).map(v=>v.unit).concat(game.taverns?.waiting||[]).slice(0,TAVERN_SEAT_COUNT);
   const seated=visitors.map((s,i)=>({unit:s,seat:tavernPoint(i,campPoseFor(s))})).sort((a,b)=>a.seat.y-b.seat.y);
   for(const {unit,seat}of seated)drawPerson({...unit,campPose:seat.pose,facingAngle:seat.facing},seat.x,seat.y);

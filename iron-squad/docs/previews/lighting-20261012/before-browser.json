@@ -1,0 +1,197 @@
+{
+  "stage": "before",
+  "version": "6.1.6",
+  "errors": [],
+  "scenes": [
+    {
+      "name": "mines",
+      "width": 390,
+      "height": 844,
+      "filename": "before-mines-390.png",
+      "dungeon": "dungeon_goblin_mines",
+      "recovery": null,
+      "overflow": 0
+    },
+    {
+      "name": "catacombs",
+      "width": 390,
+      "height": 844,
+      "filename": "before-catacombs-390.png",
+      "dungeon": "dungeon_catacombs",
+      "recovery": null,
+      "overflow": 0
+    },
+    {
+      "name": "night-field",
+      "width": 390,
+      "height": 844,
+      "filename": "before-night-field-390.png",
+      "dungeon": null,
+      "recovery": null,
+      "overflow": 0
+    },
+    {
+      "name": "night-casino",
+      "width": 390,
+      "height": 844,
+      "filename": "before-night-casino-390.png",
+      "dungeon": null,
+      "recovery": null,
+      "overflow": 0
+    },
+    {
+      "name": "night-tavern",
+      "width": 390,
+      "height": 844,
+      "filename": "before-night-tavern-390.png",
+      "dungeon": null,
+      "recovery": null,
+      "overflow": 0
+    },
+    {
+      "name": "day-field",
+      "width": 390,
+      "height": 844,
+      "filename": "before-day-field-390.png",
+      "dungeon": null,
+      "recovery": null,
+      "overflow": 0
+    },
+    {
+      "name": "town-night",
+      "width": 390,
+      "height": 844,
+      "filename": "before-town-night-390.png",
+      "dungeon": "royal_castle_town",
+      "recovery": null,
+      "overflow": 0
+    },
+    {
+      "name": "mines",
+      "width": 844,
+      "height": 390,
+      "filename": "before-mines-844.png",
+      "dungeon": "dungeon_goblin_mines",
+      "recovery": null,
+      "overflow": 0
+    },
+    {
+      "name": "catacombs",
+      "width": 844,
+      "height": 390,
+      "filename": "before-catacombs-844.png",
+      "dungeon": "dungeon_catacombs",
+      "recovery": null,
+      "overflow": 0
+    },
+    {
+      "name": "night-field",
+      "width": 844,
+      "height": 390,
+      "filename": "before-night-field-844.png",
+      "dungeon": null,
+      "recovery": null,
+      "overflow": 0
+    },
+    {
+      "name": "night-casino",
+      "width": 844,
+      "height": 390,
+      "filename": "before-night-casino-844.png",
+      "dungeon": null,
+      "recovery": null,
+      "overflow": 0
+    },
+    {
+      "name": "night-tavern",
+      "width": 844,
+      "height": 390,
+      "filename": "before-night-tavern-844.png",
+      "dungeon": null,
+      "recovery": null,
+      "overflow": 0
+    },
+    {
+      "name": "day-field",
+      "width": 844,
+      "height": 390,
+      "filename": "before-day-field-844.png",
+      "dungeon": null,
+      "recovery": null,
+      "overflow": 0
+    },
+    {
+      "name": "town-night",
+      "width": 844,
+      "height": 390,
+      "filename": "before-town-night-844.png",
+      "dungeon": "royal_castle_town",
+      "recovery": null,
+      "overflow": 0
+    },
+    {
+      "name": "mines",
+      "width": 1280,
+      "height": 800,
+      "filename": "before-mines-1280.png",
+      "dungeon": "dungeon_goblin_mines",
+      "recovery": null,
+      "overflow": 0
+    },
+    {
+      "name": "catacombs",
+      "width": 1280,
+      "height": 800,
+      "filename": "before-catacombs-1280.png",
+      "dungeon": "dungeon_catacombs",
+      "recovery": null,
+      "overflow": 0
+    },
+    {
+      "name": "night-field",
+      "width": 1280,
+      "height": 800,
+      "filename": "before-night-field-1280.png",
+      "dungeon": null,
+      "recovery": null,
+      "overflow": 0
+    },
+    {
+      "name": "night-casino",
+      "width": 1280,
+      "height": 800,
+      "filename": "before-night-casino-1280.png",
+      "dungeon": null,
+      "recovery": null,
+      "overflow": 0
+    },
+    {
+      "name": "night-tavern",
+      "width": 1280,
+      "height": 800,
+      "filename": "before-night-tavern-1280.png",
+      "dungeon": null,
+      "recovery": null,
+      "overflow": 0
+    },
+    {
+      "name": "day-field",
+      "width": 1280,
+      "height": 800,
+      "filename": "before-day-field-1280.png",
+      "dungeon": null,
+      "recovery": null,
+      "overflow": 0
+    },
+    {
+      "name": "town-night",
+      "width": 1280,
+      "height": 800,
+      "filename": "before-town-night-1280.png",
+      "dungeon": "royal_castle_town",
+      "recovery": null,
+      "overflow": 0
+    }
+  ],
+  "checks": {}
+}

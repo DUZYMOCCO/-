@@ -78,6 +78,19 @@ function geometryFor(layout,theme) {
  cached={theme,cells,areas,edges,props};GEOMETRY.set(layout,cached);return cached;
 }
 
+/** Reuse the authored lamp/candle props and their floor-side positions for wall-aware light. */
+export function explorationLamps(dungeon,layout){
+ if(!layout||dungeon?.kind!=='dungeon')return [];
+ const theme=SCENES[layout.theme]?layout.theme:'catacombs',g=geometryFor(layout,theme);
+ if(g.lamps)return g.lamps;
+ g.lamps=g.props.filter(p=>(p.type==='timber'&&p.seed>.66)||p.type==='candle'||p.type==='offering').map((p,i)=>({
+  id:`dungeon-lamp-${i}`,x:p.x+(p.side==='west'?29:p.side==='east'?-29:0),
+  y:p.y+(p.side==='north'?28:p.side==='south'?-36:0),radius:p.type==='offering'?125:90,power:.7,phase:p.seed*19,
+  drawX:p.x,drawY:p.y-(p.type==='candle'?45:p.type==='offering'?29:27),fixtureKind:p.type
+ }));
+ return g.lamps;
+}
+
 function floorCell(c,x,y,theme,s,detail) {
  const ix=x/GRID,iy=y/GRID,n=hash(ix,iy),tone=s.tiles[Math.floor(n*s.tiles.length)];
  c.fillStyle=tone;

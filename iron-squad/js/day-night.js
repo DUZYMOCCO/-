@@ -15,7 +15,7 @@ export function daylightAt(seconds=0) {
   const nightLight=period==='night'?Math.min(1,(position-DAY_LENGTH)/6)*(1-dawn):0;
   return {period,clock,day:Math.floor(time/WORLD_DAY_LENGTH)+1,remaining,
     label:dusk>0?'夕暮れ':dawn>0?'夜明け':period==='day'?'昼':'夜',
-    icon:period==='day'?'☀':'☾',darkness:period==='day'?.03+.31*dusk:.34-.31*dawn,nightLight};
+    icon:period==='day'?'☀':'☾',darkness:period==='day'?.03+.71*dusk:.74-.71*dawn,nightLight};
 }
 
 export function advanceWorldClock(game,dt) {

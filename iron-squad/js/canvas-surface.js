@@ -1,4 +1,4 @@
-/** Canvas lifecycle. No per-frame pixel readback or extra full-screen buffer. */
+/** Canvas lifecycle. Reusable bounded surfaces, without per-frame allocation or pixel readback. */
 export function releaseCanvas(canvas) {
   if (!canvas) return;
   canvas.width = 1; canvas.height = 1;
@@ -10,6 +10,8 @@ export function releaseSceneCaches(game) {
   releaseCanvas(game.vigCache);
   game.vigCache = null;
   game.vigW = game.vigH = 0;
+  releaseCanvas(game._lightingMask);
+  game._lightingMask = null;
 }
 
 export function frameSurfaceReady(game) {

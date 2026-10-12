@@ -1,8 +1,9 @@
 import {WORLD_SIZE} from './world.js?v=198';
 import {HQ_FACILITY_LAYOUT,hqFacilityBlocks} from './hq-facility-layout.js?v=201';
 import {setSubDialog} from './interface.js?v=195';
-import {daylightAt} from './day-night.js?v=197';
+import {daylightAt} from './day-night.js?v=208';
 import {buildingContact} from './building-interactions.js?v=201';
+import {drawCasinoSign} from './nightlife-visuals.js?v=208';
 const center=WORLD_SIZE/2;
 export const HEADQUARTERS_FACILITIES=HQ_FACILITY_LAYOUT.map(p=>Object.freeze({...p,type:'hq-facility',x:center+p.x,y:center+p.y}));
 // Service architecture keeps the army's established combat and movement rules.
@@ -71,7 +72,8 @@ export function drawHeadquartersFacility(c,prop,game,now) {
     poly(c,[[-23,-22],[-18,-14],[-23,-6],[-28,-14]],'#2d3b3e');
   }
   const titleY=-h+15;
-  rect(c,-w/2+5,titleY,w-10,25,'#2e352b');c.font='bold 15px sans-serif';c.textAlign='center';c.textBaseline='middle';c.fillStyle='#efe1b5';c.fillText(p.name,0,titleY+13);
+  if(p.id==='casino')drawCasinoSign(c,w,h,now);
+  else {rect(c,-w/2+5,titleY,w-10,25,'#2e352b');c.font='bold 15px sans-serif';c.textAlign='center';c.textBaseline='middle';c.fillStyle='#efe1b5';c.fillText(p.name,0,titleY+13);}
   if(!open){c.font='11px sans-serif';c.fillStyle='#e1cf9c';c.fillText(`準備中 · 本陣発展Lv${p.level}`,0,18);}
 }
 const money=n=>`${Math.max(0,n||0).toLocaleString()}G`;

@@ -9,7 +9,7 @@ import { WORLD_SIZE, SETTLEMENTS } from './world.js';
 import {chooseLootTier} from './equipment-rules.js?v=189';
 import {drawTreasureChest} from './loot-visuals.js?v=189';
 import {explorationLayout,explorationBlocks} from './dungeon-layout.js?v=182';
-import {drawExplorationInterior} from './dungeon-interior-visuals.js?v=182';
+import {drawExplorationInterior} from './dungeon-interior-visuals.js?v=208';
 
 const CENTER = WORLD_SIZE / 2;
 
