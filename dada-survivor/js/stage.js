@@ -8,7 +8,7 @@
  * - おもい ときは「かるい モード」（ds-lite）：ぴょこぴょこ／ほうせきの ゆれを とめ、エフェクトと すうじを へらす
  * - ここでは Math.random を つかわない（みための ばらつきは カウンタで。ゲームの らんすうと まざらない）
  */
-import { art, groundTile } from './art.js?v=207';
+import { art, groundTile } from './art.js?v=208';
 
 class Pool {
   constructor(layer, make) { this.layer = layer; this.make = make; this.free = []; this.active = new Set(); this.key = Symbol('node'); }
@@ -35,7 +35,7 @@ function el(cls, parent) {
 let spriteSeq = 0;
 // ゆかの かざりの え（けんきゅうじょの ボトル・はた／こわれた まちの くるま・がれき）
 const NO_DECOR = [];
-const DECOR_ART = { flag: 'labFlag', broken: 'capsuleBroken', capsule: 'capsule', alien: 'capsule', car: 'wreckCar', ruin: 'ruinPile', bldg1: 'bldg1', bldg2: 'bldg2', bldg3: 'bldg3', bldg4: 'bldg4', bldg5: 'bldg5', bldg6: 'bldg6', bldg7: 'bldg7' };
+const DECOR_ART = { flag: 'labFlag', broken: 'capsuleBroken', capsule: 'capsule', alien: 'capsule', car: 'wreckCar', ruin: 'ruinPile', bldg1: 'bldg1', bldg2: 'bldg2', bldg3: 'bldg3', bldg4: 'bldg4', bldg5: 'bldg5', bldg6: 'bldg6', bldg7: 'bldg7', blaze1: 'blaze1', blaze2: 'blaze2', blaze3: 'blaze3' };
 
 function makeSprite(extra = '') {
   const n = el('ds-ent');
@@ -369,6 +369,7 @@ export class Stage {
           n._img.classList.toggle('ds-decor-car', kind === 'car');
           n._img.classList.toggle('ds-decor-ruin', kind === 'ruin');
           n._img.classList.toggle('ds-decor-bldg', kind.startsWith('bldg'));
+          n._img.classList.toggle('ds-decor-blaze', kind.startsWith('blaze'));
           n._alien.style.display = kind === 'alien' ? '' : 'none';
         }
         Stage.place(n, d.x, d.y);

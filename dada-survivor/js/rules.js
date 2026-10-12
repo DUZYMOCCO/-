@@ -643,7 +643,7 @@ export const TOWER = {
  * ちかづくと（wake）ゆかの ひ（ステージ1と おなじ。たつと いたい）が flames こ ついて、きえたら relight びょうで また もえる。
  * はじめて ちかづいた ときに ばくはへいが group にん まわりに いる。もえなおす とき regather の かくりつで すこし あつまる（gatherCap まで）
  */
-export const CITY_FIRE = { sites: 8, dist0: 520, dist1: 2200, avoidTower: 600, wake: 700, flames: 3, spread: 50, relight: 4.2, group: 4, regather: 0.3, maxFires: 12 };
+export const CITY_FIRE = { sites: 8, dist0: 520, dist1: 2200, avoidTower: 600, wake: 1100, flames: 4, spread: 56, relight: 3.0, startAge: 1.2, group: 4, regather: 0.2, maxFires: 16 };
 /** もえて いる ところの ばしょ（スタートと はいれる ビルの そばは さける） */
 export function burnSites(tower, rnd = Math.random, F = CITY_FIRE) {
   const out = [];

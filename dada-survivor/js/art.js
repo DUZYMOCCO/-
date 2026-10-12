@@ -556,6 +556,16 @@ const flame = (x, y, s = 1) => `<g transform="translate(${x} ${y}) scale(${s})">
   <path d="M0 -2 Q-6 -3 -5 -11 Q-3 -16 0 -20 Q2 -14 5 -12 Q7 -6 4 -3 Q2 -1 0 -2Z" fill="#fde047"/></g>`;
 const fire = wrap(`<ellipse cx="50" cy="56" rx="46" ry="40" fill="#7c2d12" opacity=".22"/><ellipse cx="50" cy="56" rx="34" ry="28" fill="#ea580c" opacity=".22"/>
   ${flame(30, 52, 0.9)}${flame(68, 50, 0.95)}${flame(48, 40, 1.1)}${flame(22, 74, 0.75)}${flame(76, 76, 0.8)}${flame(50, 82, 0.9)}${flame(50, 62, 1.15)}`, '0 0 100 100');
+// v1.16.1 こわれた まちの もえて いる ところ（かざり。3しゅるい）：こげた じめん・ひ・けむり
+const smokeP = (x, y, k) => `<g opacity=".55"><circle cx="${x}" cy="${y}" r="${9 * k}" fill="#57534e"/><circle cx="${x + 8 * k}" cy="${y - 8 * k}" r="${7 * k}" fill="#78716c"/><circle cx="${x - 3 * k}" cy="${y - 16 * k}" r="${6 * k}" fill="#a8a29e"/></g>`;
+const blazeArt = flames => wrap(`<ellipse cx="80" cy="96" rx="76" ry="26" fill="#1c1917" opacity=".55"/><ellipse cx="80" cy="96" rx="58" ry="18" fill="#7c2d12" opacity=".5"/>
+  <path d="M20 98 L34 92 M120 100 L140 94 M60 112 L74 106" stroke="#0c0a09" stroke-width="3" stroke-linecap="round"/>
+  ${flames.map(([x, y, k]) => flame(x, y, k)).join('')}${smokeP(64, 30, 1)}${smokeP(104, 38, 0.8)}`, '0 0 160 124');
+const BLAZE = [
+  [[40, 92, 0.9], [80, 84, 1.25], [118, 92, 0.95], [60, 104, 0.8], [100, 106, 0.8]],
+  [[52, 90, 1.1], [96, 94, 1.0], [126, 102, 0.7], [72, 106, 0.85]],
+  [[30, 100, 0.75], [62, 88, 1.0], [90, 80, 1.3], [122, 94, 0.9], [80, 108, 0.7], [46, 108, 0.65]],
+];
 const glassShards = wrap(`<g fill="#dbeafe" stroke="#60a5fa" stroke-width="1.6" stroke-linejoin="round">
   <path d="M50 8 L56 20 L46 22Z"/><path d="M84 30 L92 38 L80 42Z"/><path d="M86 70 L78 84 L74 72Z"/><path d="M50 92 L42 80 L54 80Z"/>
   <path d="M14 72 L24 76 L16 86Z"/><path d="M10 30 L22 34 L12 42Z"/><path d="M30 14 L36 24 L26 22Z"/><path d="M70 14 L74 26 L64 22Z"/></g>
@@ -1399,6 +1409,7 @@ const hero2 = {
 };
 
 const SOURCES = {
+  blaze1: blazeArt(BLAZE[0]), blaze2: blazeArt(BLAZE[1]), blaze3: blazeArt(BLAZE[2]), // v1.16.1 まちの ひ（かざり）
   cat:   wrap(ninja), // id は セーブ互換のため cat のまま（絵と名前は にんじゃ）
   dog:   wrap(laserSoldier), // id は セーブ互換のため dog のまま（絵と名前は にんげんの ソルジャー・あおい レーザーじゅう）
   fox:   wrap(thunderGod), // id は セーブ互換のため fox のまま（絵と名前は かみなりさま）

@@ -43,12 +43,23 @@ export function decorCell(cx, cy, seed, kind = 'lab') {
 /**
  * こわれた まち：だいたい 3マスに 1つ、こわれた くるま（car）か くずれた ビルの かけら（ruin）。スタートの マスは なし
  */
-export const CITY_DECOR = { chance: 0.34, ruin: 0.45, bldg: 0.5, bldgFree: 950, bldgKinds: 7 };
+export const CITY_DECOR = { chance: 0.34, ruin: 0.45, bldg: 0.5, bldgFree: 950, bldgKinds: 7, blaze: 0.85, blaze2: 0.6, blazeFree: 260, blazeKinds: 3 };
 /**
  * v1.15.1：こわれた ビルを たくさん（スカイライン）。だいたい 2マスに 1つ。たかさ・こわれかた・まどが ちがう 7しゅるい（bldg1〜7。はんぶん いじょうは ぎざぎざに くずれて あなの あいた ビル）。
  * スタートから bldgFree より ちかい ところ（スタート・はいれる ビル・やじるしの みち）には おかない。はいれるのは ほんものの 1つだけ
  */
 export function cityCell(cx, cy, seed) {
+  const out = cityCell0(cx, cy, seed), C = DECOR_CELL;
+  // v1.16.1：まちじゅう あちこちが もえて いる（かざり。ふんでも いたくない。いたい ひは ばくはへいの いる CITY_FIRE）
+  // 1マスに 2つまで（ひだり うえ はんぶん／みぎ した はんぶん）
+  for (let k = 0; k < 2; k++) {
+    if (cellRand(cx, cy, seed, 41 + k * 10) >= (k ? CITY_DECOR.blaze2 : CITY_DECOR.blaze)) continue;
+    const h = C / 2, x = Math.round(cx * C + k * h + 40 + cellRand(cx, cy, seed, 42 + k * 10) * (h - 80)), y = Math.round(cy * C + k * h + 40 + cellRand(cx, cy, seed, 43 + k * 10) * (h - 80));
+    if (Math.hypot(x, y) > CITY_DECOR.blazeFree) out.unshift({ x, y, kind: `blaze${1 + Math.floor(cellRand(cx, cy, seed, 44 + k * 10) * CITY_DECOR.blazeKinds)}` });
+  }
+  return out;
+}
+function cityCell0(cx, cy, seed) {
   const C = DECOR_CELL;
   if (Math.hypot((cx + 0.5) * C, (cy + 0.5) * C) > CITY_DECOR.bldgFree && cellRand(cx, cy, seed, 31) < CITY_DECOR.bldg) {
     const v = 1 + Math.floor(cellRand(cx, cy, seed, 32) * CITY_DECOR.bldgKinds);

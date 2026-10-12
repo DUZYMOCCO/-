@@ -66,12 +66,12 @@ test('ビルの ばしょ・ヘリの かくりつ・ヘリの ダメージ', ()
 });
 
 test('まちの かざり（くるま・がれき）は きまった ばしょ、スタートの マスは なし。BGM は まちばん', () => {
-  assert.deepEqual(cityCell(0, 0, 3), []);
+  assert.ok(cityCell(0, 0, 3).every(d => d.kind.startsWith('blaze') && Math.hypot(d.x, d.y) > 260));
   assert.deepEqual(decorCell(4, -2, 7, 'city'), cityCell(4, -2, 7));
   let n = 0;
-  for (let cx = -15; cx < 15; cx++) for (let cy = -15; cy < 15; cy++) for (const d of cityCell(cx, cy, 5)) { if (d.kind.startsWith('bldg')) continue; n++; assert.ok(d.kind === 'car' || d.kind === 'ruin'); assert.ok(!d.id, 'こわせない'); }
+  for (let cx = -15; cx < 15; cx++) for (let cy = -15; cy < 15; cy++) for (const d of cityCell(cx, cy, 5)) { if (d.kind.startsWith('bldg') || d.kind.startsWith('blaze')) continue; n++; assert.ok(d.kind === 'car' || d.kind === 'ruin'); assert.ok(!d.id, 'こわせない'); }
   assert.ok(n > 100 && n < 450, String(n));
-  assert.ok(new DecorField(5, 'city').visible(-600, -600, 600, 600).every(d => d.kind === 'car' || d.kind === 'ruin'), 'スタートの ちかくに ビルは ない');
+  assert.ok(new DecorField(5, 'city').visible(-600, -600, 600, 600).every(d => !d.kind.startsWith('bldg')), 'スタートの ちかくに ビルは ない');
   assert.equal(city.bgm, 'city');
   assert.ok(SONGS.city.bpm >= 128 && SONGS.city.bpm <= 140);
   assert.ok(songEvents(SONGS.city, 0).some(e => e.kind === 'arp'));
@@ -110,4 +110,16 @@ test('v1.15.1：もえて いる ところ は スタートと はいれる ビ�
   assert.ok(CITY_FIRE.maxFires >= CITY_FIRE.flames && CITY_FIRE.group <= 9);
   assert.equal(STAGES.find(x => x.id === 7).burning, true);
   assert.ok(!STAGES.filter(x => x.id !== 7).some(x => x.burning));
+});
+
+test('v1.16.1：まちじゅうに もえて いる かざり（3しゅるい・スタートの まわりは なし）', async () => {
+  const { DecorField, CITY_DECOR } = await import('../js/decor.js');
+  const f = new DecorField(7, 'city');
+  const list = [...f.visible(-2400, -2400, 2400, 2400)].filter(d => d.kind.startsWith('blaze'));
+  assert.ok(list.length >= 100, `ひが たくさん ${list.length}`);
+  assert.equal(new Set(list.map(d => d.kind)).size, CITY_DECOR.blazeKinds);
+  for (const d of list) assert.ok(Math.hypot(d.x, d.y) > CITY_DECOR.blazeFree);
+  for (const k of ['blaze1', 'blaze2', 'blaze3']) assert.ok(art(k).length > 200, k);
+  const { CITY_FIRE, THROW } = await import('../js/rules.js');
+  assert.ok(CITY_FIRE.startAge + CITY_FIRE.relight < THROW.fireLife, 'いたい ひは とぎれない');
 });
