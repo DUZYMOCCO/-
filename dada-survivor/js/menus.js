@@ -7,8 +7,8 @@ import {
   DIFFICULTIES, CHARACTERS, WEAPONS, SHOP_ITEMS, STAGES, RARITIES, GEAR_SLOTS, CHEST_COST,
   shopCost, stageById, stageUnlocked, charUnlocked, gearLabel, rollGear, addGear, equipGear,
   unequipGear, mergeGear, bonusFor,
-} from './rules.js?v=204';
-import { art } from './art.js?v=204';
+} from './rules.js?v=205';
+import { art } from './art.js?v=205';
 
 const GEAR_ART = { weapon: 'sword', armor: 'armor', boots: 'shoes', charm: 'charm' };
 const ICON_ART = {
@@ -16,6 +16,9 @@ const ICON_ART = {
   gun: 'gun', shotgun: 'shotgun', bazooka: 'bazooka', dual: 'dual', gatling: 'gatling', mega: 'mega', supermissile: 'smissile', laser: 'laserGun',
   ammo: 'bullet', blast: 'blast',
 };
+// キャラの さいしょの ぶき（ゴッドロボは 2つ：レーザーじゅう＋かみなり）
+const weaponLabel = c => [c.weapon, ...(c.extra || [])].map(id => `${iconHtml(id, WEAPONS[id].icon, 'ds-icon sm')}${WEAPONS[id].name}`).join('＋');
+
 export const iconHtml = (id, fallback, cls = 'ds-icon') => ICON_ART[id]
   ? `<span class="${cls}" style='background-image:${art(ICON_ART[id])}'></span>`
   : `<span class="${cls} emoji">${fallback}</span>`;
@@ -54,7 +57,7 @@ export const menuMethods = {
         </div>
         <button class="ds-hero-pick" data-act="chars">
           ${pic(ch.id, 'ds-char-pic')}
-          <span class="ds-hero-text"><b>${ch.name}</b><small>${iconHtml(ch.weapon, WEAPONS[ch.weapon].icon, 'ds-icon sm')}${WEAPONS[ch.weapon].name}・${ch.trait}</small></span>
+          <span class="ds-hero-text"><b>${ch.name}</b><small>${weaponLabel(ch)}・${ch.trait}</small></span>
           <span class="ds-change">かえる</span>
         </button>
         <div class="ds-diffs">
@@ -95,7 +98,7 @@ export const menuMethods = {
             const open = charUnlocked(s, c);
             return `<button class="ds-char ${c.id === s.character ? 'on' : ''} ${open ? '' : 'locked'}" data-char="${c.id}" ${open ? '' : 'disabled'}>
               ${pic(c.id, 'ds-char-pic')}<b>${open ? c.name : '？？？'}</b>
-              <small>${open ? `${iconHtml(c.weapon, WEAPONS[c.weapon].icon, 'ds-icon sm')}${WEAPONS[c.weapon].name}` : `ステージ${c.unlock}<br>クリアで なかま`}</small>
+              <small>${open ? weaponLabel(c) : `ステージ${c.unlock}<br>クリアで なかま`}</small>
               ${open ? `<i>${c.trait}</i>` : ''}
             </button>`;
           }).join('')}

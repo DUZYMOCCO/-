@@ -159,3 +159,24 @@ test('dino slot is the rocket soldier ロケットへい and unicorn slot is the
   for (const s of [rk, gd]) { assert.ok(!s.includes('data-emblem="warumono"')); assert.equal((s.match(/<svg/g) || []).length, 1); }
   for (const n of Object.values(ENEMY_TYPES)) assert.ok(n.name !== dn.name && n.name !== un.name);
 });
+
+// v1.15.0：9にんが がったいした ゴッドロボ（あたらしい id。ステージ7 クリアで なかま）
+test('godrobo is the combined god robot ゴッドロボ (laser + thunder, unlock after stage 7)', async () => {
+  const { startWeapons, normalizeSave, charUnlocked, upgradeChoices } = await import('../js/rules.js');
+  const c = CHARACTERS.find(c => c.id === 'godrobo');
+  assert.equal(CHARACTERS.length, 10);
+  assert.equal(c.name, 'ゴッドロボ'); assert.equal(c.unlock, 7);
+  assert.deepEqual(startWeapons(c), { laser: 1, thunder: 1 });
+  assert.deepEqual(startWeapons(CHARACTERS[0]), { kunai: 1 });
+  assert.ok(!charUnlocked(normalizeSave({ stageClears: { 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1 } }), c));
+  assert.ok(charUnlocked(normalizeSave({ stageClears: { 7: 1 } }), c));
+  // まだ なかまで ない セーブで えらんで いたら さいしょの キャラに もどる
+  assert.equal(normalizeSave({ character: 'godrobo', stageClears: { 1: 1 } }).character, CHARACTERS[0].id);
+  // じゅう けいを もって いるので さいしょの じゅう3択は でない
+  const first = upgradeChoices(startWeapons(c), {}, () => 0.3);
+  assert.notDeepEqual(first.map(x => x.id), ['gun', 'shotgun', 'bazooka'], 'じゅう3択 では ない');
+  const svg = svgOf(art('godrobo'));
+  for (const col of ['#fde047', '#14b8a6', '#2563eb', '#dc2626', '#c2873a', '#3d4f3a', '#f8fafc']) assert.ok(svg.includes(col), col);
+  assert.ok(!svg.includes('data-emblem="warumono"'));
+  assert.equal((svg.match(/<svg/g) || []).length, 1);
+});

@@ -16,6 +16,7 @@ export const DIFFICULTIES = {
 
 // perk: キャラの とくちょう（hp:さいだいHP, dmg:ダメージ倍率+, spd:いどう+, pickup:ひろう範囲+, regen:まいびょう かいふく）
 // unlock: そのステージを クリアすると なかまになる
+// extra: さいしょから もって いる 2つめ いこうの ぶき（Lv1）
 export const CHARACTERS = [
   { id: 'cat',     name: 'にんじゃ',   weapon: 'kunai',   perk: { spd: 0.08 },             trait: 'すばやい' },
   { id: 'dog',     name: 'ソルジャー', weapon: 'laser',   perk: { hp: 10 },                trait: 'タフ' },
@@ -26,6 +27,8 @@ export const CHARACTERS = [
   { id: 'bear',    name: 'カウボーイ', weapon: 'shotgun', perk: { hp: 70 },                trait: 'すごく タフ', unlock: 3 },
   { id: 'dino',    name: 'ロケットへい', weapon: 'bazooka', perk: { dmg: 0.25 },           trait: 'すごく つよい', unlock: 4 },
   { id: 'unicorn', name: 'かみさま', weapon: 'thunder', perk: { dmg: 0.15, spd: 0.1, hp: 40, regen: 0.5 }, trait: 'ぜんぶ アップ', unlock: 5 },
+  // v1.15.0：9にんが がったいした ゴッドロボ。ステージ7 クリアで なかま。レーザーじゅう（Lv1）と かみなり（Lv1）の 2つで はじまる（extra）
+  { id: 'godrobo', name: 'ゴッドロボ', weapon: 'laser', extra: ['thunder'], perk: { dmg: 0.1, spd: 0.06, hp: 30, regen: 0.3 }, trait: 'さいきょう', unlock: 7 },
 ];
 
 // てきは ぜんぶ「わるものぐんだん」の へいたい（id は むかしの モンスターめいの まま。どの へいたいかは js/art.js の コメント）
@@ -392,6 +395,13 @@ function choiceWeight(item, weapons) {
  *  じゅう系をまだ持っていない最初の1回は、じゅう・ショットガン・バズーカだけ出す。
  *  進化できるときはそのカードを必ず1枚混ぜる。持っていない武器は出やすい。
  */
+/** キャラの さいしょの ぶき（weapon と extra を Lv1 で） */
+export function startWeapons(ch) {
+  const w = { [ch.weapon]: 1 };
+  for (const id of ch.extra || []) w[id] = 1;
+  return w;
+}
+
 export function upgradeChoices(weapons, passives, rnd = Math.random, count = 3) {
   const ownsGun = GUNS.some(id => weapons[id] > 0) || weapons.laser > 0
     || Object.values(EVOLUTIONS).some(e => weapons[e.into] > 0);

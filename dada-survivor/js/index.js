@@ -12,14 +12,14 @@ import {
   newQuality, adaptQuality, THROW, fireRadius, capType, gatherCount, BOTTLE, bottleOutcome,
   SQUAD, allyDamage, squadSlot, canWhistle, healAmount,
   QUEST, CAMP, underHalfW, clampUnder, hutSpot, LASER_MODES, nextLaserMode, squadRoom, beamHits, MAX_LEVEL as MAXLV,
-  enemyDmgMul, TOWER, towerSpot, rollHeli, heliDamage, floorName,
-} from './rules.js?v=204';
-import { DecorField } from './decor.js?v=204';
-import { EnemyGrid, nearestN } from './grid.js?v=204';
-import { preloadArt, art } from './art.js?v=204';
-import { Stage } from './stage.js?v=204';
-import { menuMethods, iconHtml } from './menus.js?v=204';
-import { PopBGM, playWhistle } from './bgm.js?v=204';
+  enemyDmgMul, startWeapons, TOWER, towerSpot, rollHeli, heliDamage, floorName,
+} from './rules.js?v=205';
+import { DecorField } from './decor.js?v=205';
+import { EnemyGrid, nearestN } from './grid.js?v=205';
+import { preloadArt, art } from './art.js?v=205';
+import { Stage } from './stage.js?v=205';
+import { menuMethods, iconHtml } from './menus.js?v=205';
+import { PopBGM, playWhistle } from './bgm.js?v=205';
 
 const SAVE_KEY = 'dada_survivor_save';
 const TAU = Math.PI * 2;
@@ -45,7 +45,7 @@ export const DadaSurvivorGame = {
 
   // 起動時にこのゲームのCSSを自分で読み込む（?v= はこのフォルダ内で管理）。ハブが init 前に await する
   prepare() {
-    return loadCss(new URL('../css/dada-survivor.css?v=204', import.meta.url).href);
+    return loadCss(new URL('../css/dada-survivor.css?v=205', import.meta.url).href);
   },
 
   init(container, onBackToHub) {
@@ -340,7 +340,7 @@ export const DadaSurvivorGame = {
       diff: DIFFICULTIES[this.save.difficulty] || DIFFICULTIES.easy,
       char: ch, stageDef: st, chests: 0,
       time: 0, kills: 0, coins: 0, earned: 0, level: 1, xp: 0, pendingLevels: 0,
-      weapons: { [ch.weapon]: 1 }, passives: {}, stats: null,
+      weapons: startWeapons(ch), passives: {}, stats: null,
       player: { x: 0, y: 0, hp: 100, hurt: 0, face: 1, mx: 0, my: 1 },
       enemies: [], shots: [], gems: [], items: [],
       timers: {}, spawnClock: 0, orbitAngle: 0, auraClock: 0,

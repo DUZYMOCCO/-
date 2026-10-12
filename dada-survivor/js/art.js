@@ -287,6 +287,39 @@ const deity = `
   <path d="M21.4 29 L28 29.8 M42.6 29 L36 29.8" fill="none" stroke="#e2e8f0" stroke-width="2" stroke-linecap="round"/>
   ${animeEye(25.4, 32.6, '#d97706')}${animeEye(38.6, 32.6, '#d97706')}`;
 
+// ゴッドロボ（v1.15.0。9にんの なかまが がったいした かみさまの ロボ。id は godrobo）
+// しろ×きん×あおの ピカピカ ロボに、みんなの しるし：かみさまの ひかりの わ・かみなりさまの たいこの わ（うしろ）・
+// にんじゃの みどりあおの マフラー・まじゅつしの きんの ほし・カウボーイの ぼうしの かざり・ロケットへいの ロケット・
+// ソルジャーの あおい レーザーの うで・けいさつかんの ほしの バッジ・ボマーの あおい ばくだん・にほんの ワッペン
+const godRobo = `
+  <circle cx="32" cy="31" r="27" fill="none" stroke="#b45309" stroke-width="2.6" opacity=".9"/>
+  ${[0, 1, 2, 3, 4, 5].map(i => { const a = -Math.PI / 2 + (i + 0.5) * Math.PI / 3, x = (32 + Math.cos(a) * 27).toFixed(1), y = (31 + Math.sin(a) * 27).toFixed(1);
+    return `<circle cx="${x}" cy="${y}" r="3.6" fill="#dc2626" ${SW(1.3)}/><circle cx="${x}" cy="${y}" r="1.6" fill="#fde68a"/>`; }).join('')}
+  <path d="M4 22 L8 4 L13 4 L14 22Z" fill="#3d4f3a" ${S2}/><path d="M8 4 L10.5 -1 L13 4Z" fill="#f97316" ${SW(1)}/><path d="M5 12 H14" stroke="#f97316" stroke-width="1.6"/>
+  <ellipse cx="22" cy="61" rx="6" ry="3.2" fill="#1e3a8a" ${S}/><ellipse cx="42" cy="61" rx="6" ry="3.2" fill="#1e3a8a" ${S}/>
+  <path d="M17 60 L18 49 L27 49 L27 60Z M37 60 L37 49 L46 49 L47 60Z" fill="#f8fafc" ${S2}/>
+  <path d="M14 50 Q14 38 32 37 Q50 38 50 50 L48 56 Q32 60 16 56Z" fill="#f8fafc" ${S}/>
+  <path d="M16 53 Q32 57 48 53 L48 56 Q32 60 16 56Z" fill="#facc15" ${S2}/>
+  ${[24, 30, 36].map(x => `<circle cx="${x}" cy="56.4" r="2.4" fill="#1e3a8a" ${SW(1)}/><circle cx="${x - .7}" cy="55.6" r=".7" fill="#93c5fd"/>`).join('')}
+  <path d="M24 39 L32 46 L40 39" fill="none" stroke="#facc15" stroke-width="2.2"/>
+  <circle cx="32" cy="48" r="3.6" fill="#38bdf8" ${SW(1.4)}/><circle cx="32" cy="48" r="1.5" fill="#e0f2fe"/>
+  <rect x="17.5" y="41.4" width="7" height="4.8" rx=".6" fill="#f5f5f4" ${SW(1.2)}/><circle cx="21" cy="43.8" r="1.4" fill="#dc2626"/>
+  <path d="M41.4 41.4 L42.4 43.4 L44.6 43.6 L43 45 L43.4 47.2 L41.4 46 L39.4 47.2 L39.8 45 L38.2 43.6 L40.4 43.4Z" fill="#facc15" ${SW(.9)}/>
+  <circle cx="13" cy="44" r="5" fill="#cbd5e1" ${S2}/><path d="M11 46 L8 56" ${SW(4)}/><path d="M11 46 L8 56" stroke="#f8fafc" stroke-width="2.4" stroke-linecap="round"/><circle cx="8" cy="56.4" r="3" fill="#facc15" ${S2}/>
+  <circle cx="51" cy="44" r="5" fill="#cbd5e1" ${S2}/>
+  <path d="M50 46 L64 41" ${SW(7)}/><path d="M50 46 L64 41" stroke="#2563eb" stroke-width="4.6" stroke-linecap="round"/><path d="M53 44.4 L62 41.3" stroke="#93c5fd" stroke-width="1.2" stroke-linecap="round"/>
+  <circle cx="65" cy="40.6" r="2.6" fill="#67e8f9" opacity=".85"/>
+  <path d="M19 37 Q26 41 32 40 Q38 41 45 37 L46 40.6 Q38 45 32 44 Q26 45 18 40.6Z" fill="#14b8a6" ${S2}/><path d="M18 40 L10 44 L12 38Z" fill="#14b8a6" ${S2}/>
+  <path d="M18 34 Q17 14 32 13 Q47 14 46 34 Q46 39 32 39 Q18 39 18 34Z" fill="#f8fafc" ${S}/>
+  <path d="M20 18 Q26 15 32 15" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/>
+  <path d="M21 25 Q32 21 43 25 L42.4 32 Q32 29.4 21.6 32Z" fill="#0f172a" ${S2}/>
+  <circle cx="26.6" cy="27.6" r="2.4" fill="#38bdf8"/><circle cx="37.4" cy="27.6" r="2.4" fill="#38bdf8"/><circle cx="27.2" cy="26.9" r=".8" fill="#fff"/><circle cx="38" cy="26.9" r=".8" fill="#fff"/>
+  <path d="M28.6 35 H35.4" stroke="#94a3b8" stroke-width="1.4" stroke-linecap="round"/>
+  <rect x="15.4" y="23" width="3.6" height="9" rx="1.6" fill="#facc15" ${SW(1.1)}/><rect x="45" y="23" width="3.6" height="9" rx="1.6" fill="#facc15" ${SW(1.1)}/>
+  <path d="M24 14 Q24 9 32 9 Q40 9 40 14 Q36 12.4 32 12.6 Q28 12.4 24 14Z" fill="#c2873a" ${SW(1.3)}/><path d="M21 14.4 Q32 11 43 14.4" fill="none" stroke="#b45309" stroke-width="1.6" stroke-linecap="round"/>
+  <path d="M32 15.4 L33.2 18 L36 18.2 L33.9 19.9 L34.6 22.6 L32 21.1 L29.4 22.6 L30.1 19.9 L28 18.2 L30.8 18Z" fill="#fde047" ${SW(.9)}/>
+  <ellipse cx="32" cy="4" rx="12" ry="3.2" fill="none" stroke="#a16207" stroke-width="3.6"/><ellipse cx="32" cy="4" rx="12" ry="3.2" fill="none" stroke="#fde047" stroke-width="2.2"/>`;
+
 // ぶたいの なかま（じぶんと おなじ とくしゅぶたい。ヘルメットと ラインが あおい）
 const allySoldier = soldier
   .replace('<path d="M11 26 Q11 6 32 6 Q53 6 53 26 Q32 21 11 26Z" fill="#3a3d44"', '<path d="M11 26 Q11 6 32 6 Q53 6 53 26 Q32 21 11 26Z" fill="#2f4a73"')
@@ -1301,6 +1334,7 @@ const hero2 = {
   bear:    cowboy, // id は セーブ互換のため bear のまま（絵と名前は カウボーイ）
   dino:    rocketSoldier, // id は セーブ互換のため dino のまま（絵と名前は ロケットへい）
   unicorn: deity,         // id は セーブ互換のため unicorn のまま（絵と名前は かみさま）
+  godrobo: `<g transform="translate(32 33) scale(.9) translate(-32 -33)">${godRobo}</g>`, // v1.15.0 9にんが がったいした ゴッドロボ
 };
 
 const SOURCES = {
