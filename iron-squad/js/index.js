@@ -29,7 +29,7 @@ import {CAREER_RULES,newCareer,normalizeCareer,isEnlisted,ownCompanionCount,rank
 import {tavernMethods,initializeTaverns,serializeTaverns,settleTravelerCompanions,drawFieldTavern,updateTavernPrompt,FIELD_TAVERN} from './tavern.js?v=202';
 import {headquartersFacilityMethods,HEADQUARTERS_FACILITIES,updateHeadquartersFacilityPrompt,drawHeadquartersFacilityGround,drawHeadquartersFacility,headquartersBuildingBlocks} from './hq-facilities.js?v=201';
 import {queueSquadName,flushSquadNames} from './squad-names.js?v=182';
-import {syncGiveUpUI,resumeBGM} from './commander-giveup.js?v=182';
+import {syncGiveUpUI,resumeBGM} from './commander-giveup.js?v=206';
 import {bindFieldMusic,unbindFieldMusic,followFieldMusic} from './field-music.js?v=192';
 import {economicState,advanceRegionalEconomy,discoverEconomicRegions,recordEconomicKill,economicFieldBlocked} from './regional-economy.js?v=182';
 import {updateRegionalTraffic,nearestCommerceTarget,damageCommerce,persistTradeRaiders,restoreTradeRaiders} from './trade-routes.js?v=200';
@@ -67,7 +67,7 @@ import {strongEnemyReward} from './combat-rewards.js?v=182';
 import {supplyMethods, initializeSupplies, updateSupplies, takeRangedShot, ammoCombatProfile, isRangedUnit, distributeAmmo, preventLethalHit, normalizeFieldSave, SQUAD_POTION_COST, ensureAmmo, RANGED_DAMAGE_MULT, supplyLocation} from './supply-rules.js?v=187';
 import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog } from './interface.js?v=205';
 import { renderTroopRankings, getSoldierRankerBadges, calcSoldierRankerBonus } from './troop-rankings.js?v=187';
-import { ensureSoldierAppearance, drawSoldierPortrait, describeSoldierAppearance } from './soldier-appearance.js?v=195';
+import { ensureSoldierAppearance, drawSoldierPortrait, describeSoldierAppearance } from './soldier-appearance.js?v=206';
 import { attachSurfaceEvents, detachSurfaceEvents, frameSurfaceReady, releaseSceneCaches, releaseCanvas, surfaceCanResume } from './canvas-surface.js?v=182';
 import { SETTLEMENTS, WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt, routeNameAt, eastWestRoadY, northSouthRoadX, riverCenterY, drawFieldDepth, drawOakCrown, fieldBlocks, settleUnit } from './world.js?v=198';
 import { subscribeKana, kanaGrade, displayKana } from '../../common/js/kana-mode.js?v=175';
@@ -3686,7 +3686,8 @@ export const IronSquadGame = {
 
   saveGame() {
     this.stallRecorder?.mark('セーブ中');
-    if (!this.activeSlotId || !this.player || (this.player.hp <= 0 && !this.player.isDown)) return null;
+    // v6.1.5: 隊長がダウン中・死亡時は上書きしない。やり直すとダウン前の最後のセーブから再開する。
+    if (!this.activeSlotId || !this.player || this.player.hp <= 0 || this.player.isDown || this.player.dead) return null;
     try {
       persistTradeRaiders(this);
       const data = {

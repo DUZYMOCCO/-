@@ -1,5 +1,5 @@
 // v5.0.0: 隊長ダウン中の「あきらめてセーブからやり直す」ボタン + BGM 復帰ヘルパー。
-// 再開処理は討ち死に後と同じ game.continueFallenSave('autosave') を使う（セーブ内容は変えない）。
+// v6.1.5: 「やりなおす」で遠征（セーブ）選択画面を開く。ダウン中はセーブを上書きしないので、各セーブはダウン前の状態。
 import {sound} from '../../common/js/audio.js?v=151';
 import {displayKana} from '../../common/js/kana-mode.js?v=175';
 
@@ -33,8 +33,7 @@ export function ensureGiveUpUI(game) {
   ui.yes.onclick=()=>{
     sound.playTap?.();close();
     if(!commanderGiveUpVisible(game))return;
-    game.stopGameLoop?.();
-    if(!game.continueFallenSave('autosave'))game.startGameLoop?.();
+    game.showSaveMenu();
   };
   game._giveUp=ui;return ui;
 }
