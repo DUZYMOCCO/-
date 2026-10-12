@@ -27,4 +27,12 @@ const small=mob('s',90);const g=mob('g',40);game.monsters=[g,small];game.throwMo
 assert.ok(big.knockTime<small.knockTime,'heavier enemies are sent a shorter distance');
 const h=mob('h',90);game.monsters=[h,col];game.throwMonster(h,0,600,1000,game.player,true);for(let i=0;i<6;i++)game.updateMonsterKnock(h,1/60);
 assert.ok(col.hp<5000&&!(col.knockFly>0),'colossi are hurt but never moved');
-console.log('PASS: enemy-to-enemy crash damage on both, onward chain launch, speed loss, single collision per pair, no bounce-back, kill credit, weight, colossi, save-safe mid-flight');dom.window.close();
+// v6.3.0 cannon: shells deal x2 damage, blast radius 62 (x1.2); out-of-ammo stones are not doubled.
+const {CANNON_RULES}=await import('../js/index.js');const {weaponCombatProfile}=await import('../js/equipment-rules.js');
+const cprof=weaponCombatProfile({weaponStyle:'cannon'});assert.equal(cprof.splash,62);assert.equal(CANNON_RULES.damageMult,2);
+const shooter={x:83000,y:83000,ammo:5,maxAmmo:5},tgt=mob('t',200);game.projectiles=[];game.monsters=[tgt];
+game.spawnRangedProjectile(shooter,tgt,100,cprof,false);const shell=game.projectiles.at(-1);
+const {RANGED_DAMAGE_MULT}=await import('../js/supply-rules.js');assert.equal(shell.type,'CANNONBALL');assert.equal(shell.splash,62);assert.equal(shell.damage,Math.round(Math.max(1,Math.round(100*RANGED_DAMAGE_MULT))*2),'shell damage doubled');
+const dry={x:83000,y:83000,ammo:0,maxAmmo:5};game.projectiles=[];game.spawnRangedProjectile(dry,tgt,100,cprof,false);const stone=game.projectiles.at(-1);
+assert.equal(stone.type,'STONE');assert.ok(stone.damage<Math.round(100*RANGED_DAMAGE_MULT)*2,'stones are not doubled');
+console.log('PASS: enemy-to-enemy crash damage on both, onward chain launch, speed loss, single collision per pair, no bounce-back, kill credit, weight, colossi, save-safe mid-flight, cannon x2 damage / x1.2 blast');dom.window.close();

@@ -150,7 +150,7 @@ export function applyMasteryToCombatProfile(profile, masteryMap) {
     out.baseCooldown = (Number(out.baseCooldown) || 1) * masteryReloadMult(masteryMap, style);
   }
   if (style === 'cannon') {
-    out.splash = (Number(out.splash) || 52) * masterySplashMult(masteryMap, style);
+    out.splash = (Number(out.splash) || 62) * masterySplashMult(masteryMap, style);
   }
   return out;
 }

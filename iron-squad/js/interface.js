@@ -1,7 +1,7 @@
 import {commanderFullName} from './commander-identity.js?v=210';
 import {isEnlisted} from './career-rules.js?v=200';
 import {configureAudioInterface} from './audio-interface.js?v=191';
-import {renderBattleLog} from './battle-log.js?v=205';
+import {renderBattleLog} from './battle-log.js?v=217';
 import {renderTroopRankings} from './troop-rankings.js?v=187';
 import {genderLabel} from './soldier-names.js?v=210';
 /** Presentation only: keep game actions on their original DOM nodes. */

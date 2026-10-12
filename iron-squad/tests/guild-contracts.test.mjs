@@ -10,6 +10,9 @@ Object.assign(globalThis,{window:dom.window,document:dom.window.document,localSt
 const noop=()=>{},ctx=new Proxy({measureText:()=>({width:40}),createLinearGradient:()=>({addColorStop:noop}),createRadialGradient:()=>({addColorStop:noop})},{get:(o,k)=>k in o?o[k]:noop});window.HTMLCanvasElement.prototype.getContext=()=>ctx;
 const {IronSquadGame}=await import('../js/index.js'),{saveSlots}=await import('../js/save-slots.js');
 const g=Object.create(IronSquadGame);Object.assign(g,{container:document.getElementById('game'),width:390,height:844,zoom:1,ctx,camera:{x:79360,y:79360},selectedSaleIds:new Set()});
+for(const def of GUILD_CONTRACTS)for(let level=0;level<=5;level++)assert.equal(guildQuote(def,level).reward,Math.round(def.baseReward*(1+level*.65))*20,'every contract and development level pays twenty times the old quote');
+const oldGuild={version:1,active:[{id:'slime',level:0,target:6,reward:120,progress:4,acceptedPhase:2},{id:'goblin-king',level:0,target:1,reward:800,progress:1,acceptedPhase:2}],claimed:{wolf:1},totalCompleted:3};
+const migratedGuild=normalizeGuild(oldGuild);assert.deepEqual(migratedGuild.active.map(q=>q.reward),[2400,16000]);assert.deepEqual(migratedGuild.active.map(q=>[q.progress,q.target,q.acceptedPhase]),[[4,6,2],[1,1,2]]);assert.equal(migratedGuild.totalCompleted,3);assert.deepEqual(normalizeGuild(migratedGuild),migratedGuild,'save reload cannot multiply an upgraded reward twice');
 for(const method of ['startGameLoop','showToast','spawnDamageText','spawnSparks'])g[method]=noop;
 g.setupUI();g.activeSlotId=saveSlots.create('GUILD SERVICES TEST').id;g.startFreshGame(false);g.monsters=[];g.currentQuest=null;g.restTimer=0;
 const site=id=>HEADQUARTERS_FACILITIES.find(p=>p.id===id),walk=id=>Object.assign(g.player,{x:site(id).x,y:site(id).y+22});

@@ -1,5 +1,5 @@
 import {fieldDialogReturn} from './dialog-return.js?v=200';
-import {guildMethods} from './guild-contracts.js?v=201';
+import {guildMethods} from './guild-contracts.js?v=217';
 import {headquartersMoveTarget} from './hq-navigation.js?v=200';
 import {configureBattlefieldUI,quietBattlefieldContext} from './battlefield-ui.js?v=182';
 import {renderNavigationMap} from './navigation-map.js?v=189';
@@ -10,7 +10,7 @@ import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './dista
 import {TIERS,MAX_EQUIPMENT_TIER,MAX_POWER_RANK,POWER_RANK_STEP,GENERATION_COUNT,TRADE_MAX_TIER,powerRank,tierDescription} from './equipment-tiers.js?v=187';
 import {fieldAdaptiveScaling} from './field-scaling.js?v=182';
 import {activeSquad,inCurrentInstance} from './instance-rules.js?v=182';
-import {recordBattleLog,resetBattleLog,refreshCombatFieldNotes} from './battle-log.js?v=205';
+import {recordBattleLog,resetBattleLog,refreshCombatFieldNotes} from './battle-log.js?v=217';
 import {rollDropExclusive,applyDropExclusive,dropExclusiveLabel} from './drop-exclusives.js?v=182';
 import {normalizeMaterials,applyCraftExclusive,craftExclusiveLabel,equipmentDropChance,materialDropChance,rollMaterialDrop,rollTreasureLoot} from './crafting-rules.js?v=189';
 import {workshopMethods} from './workshop.js?v=214';
@@ -19,7 +19,7 @@ import {normalizeCasino} from './casino-rules.js?v=201';
 import {latestEquipmentTier,recordMerchantEquipment,ensureMerchantCatalog,refreshWaveCatalogs,markMerchantPurchase} from './merchant-catalog.js?v=214';
 import {initializeMedicalPosts,updateMedicalPosts,serializeMedicalPosts,nearestKnownMedicalPost,drawMedicalPost,drawMedicalMap,drawMedicalMarker,drawTownMedicalReception,drawRescueDirection} from './medical-posts.js?v=182';
 import {invasionMethods,initializeInvasions,serializeInvasions,shouldTriggerRandomRaid,makeEnemyRoom,drawInvasionRoute} from './invasion-rules.js?v=211';
-import {gateMethods,serializeGatePosts,replenishTownGateGuards,initializeGateGuards,ensureTownGuards,serializeGateGuards,updateGateGuards,gateGuardVisible,applyFortifications,drawFortification,exitGateTown,townExitReached,wallBlocksAttack,attackBlocked as coverBlocked} from './gate-rules.js?v=198';
+import {gateMethods,serializeGatePosts,replenishTownGateGuards,initializeGateGuards,ensureTownGuards,serializeGateGuards,updateGateGuards,gateGuardVisible,applyFortifications,drawFortification,exitGateTown,townExitReached,wallBlocksAttack,attackBlocked as coverBlocked} from './gate-rules.js?v=215';
 import {nationMethods,normalizeNation,nationalIncome,nationalPayrollPlan,headquartersDamageMult,drawNationalDevelopment,DEVELOPMENT_STAGES} from './nation-rules.js?v=201';
 import {equipmentUpgradeCost,salaryQuote,paySoldiers} from './payroll-rules.js?v=195';
 import {addFieldDrop,ageFieldDrops,attractFieldDrops,FIELD_DROP_PICKUP_RADIUS} from './field-drops.js?v=182';
@@ -29,7 +29,7 @@ import {CAREER_RULES,newCareer,normalizeCareer,isEnlisted,ownCompanionCount,rank
 import {tavernMethods,initializeTaverns,serializeTaverns,settleTravelerCompanions,drawFieldTavern,updateTavernPrompt,FIELD_TAVERN} from './tavern.js?v=208';
 import {headquartersFacilityMethods,HEADQUARTERS_FACILITIES,updateHeadquartersFacilityPrompt,drawHeadquartersFacilityGround,drawHeadquartersFacility,headquartersBuildingBlocks} from './hq-facilities.js?v=208';
 import {drawNightlifeLights} from './nightlife-visuals.js?v=208';
-import {drawSceneDarkness,drawLanternLights} from './scene-lighting.js?v=208';
+import {drawSceneDarkness,drawLanternLights,recordLanternActor} from './scene-lighting.js?v=217';
 import {queueSquadName,flushSquadNames} from './squad-names.js?v=182';
 import {syncGiveUpUI,resumeBGM} from './commander-giveup.js?v=206';
 import {bindFieldMusic,unbindFieldMusic,followFieldMusic} from './field-music.js?v=192';
@@ -51,11 +51,11 @@ import { sound } from '../../common/js/audio.js?v=151';
 import { loadCss } from '../../common/js/load-css.js';
 import { storage } from '../../common/js/storage.js';
 import { createStallRecorder, mountStallLog } from './stall-recorder.js?v=182';
-import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow, isRuinKeeper, ruinKeeperScale } from './visuals.js?v=211';
+import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow, isRuinKeeper, ruinKeeperScale } from './visuals.js?v=215';
 import { refreshCampQuiet, assignCampSeats, tryCampLeisure, YARD_TABLES, drawLeisureTable } from './camp-leisure.js?v=202';
 import { CAMP_PEACE_RADIUS, peaceContainment, pushOutsidePeace, relocatePeaceMonster } from './peace-zones.js?v=182';
 import { FARM_X, FARM_Y, farmPosts, farmOverlaps, reinforcementCount, reserveRosterLine, reserveRosterTitle } from './reserve-farm.js?v=182';
-import { drawMeleeRangeCue, meleeDrawReach, attackAnimationRate } from './weapon-motion.js?v=211';
+import { drawMeleeRangeCue, meleeDrawReach, attackAnimationRate } from './weapon-motion.js?v=217';
 import { guardRegrouping, guardTarget, guardSpeedMult } from './guard-leash.js?v=211';
 import { KNOCK_RULES, knockbackDistance, knockFlight, slamDamage, knockTransferDistance } from './knockback-rules.js?v=212';
 import { MELEE_SOUND_STYLES, playMeleeSound } from './weapon-sounds.js?v=211';
@@ -73,7 +73,7 @@ import {supplyMethods, initializeSupplies, updateSupplies, takeRangedShot, ammoC
 import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog } from './interface.js?v=205';
 import { renderTroopRankings, getSoldierRankerBadges, calcSoldierRankerBonus } from './troop-rankings.js?v=187';
 import { ensureSoldierAppearance, drawSoldierPortrait, describeSoldierAppearance } from './soldier-appearance.js?v=206';
-import { attachSurfaceEvents, detachSurfaceEvents, frameSurfaceReady, releaseSceneCaches, releaseCanvas, surfaceCanResume } from './canvas-surface.js?v=208';
+import { attachSurfaceEvents, detachSurfaceEvents, frameSurfaceReady, releaseSceneCaches, releaseCanvas, surfaceCanResume } from './canvas-surface.js?v=217';
 import { SETTLEMENTS, WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt, routeNameAt, eastWestRoadY, northSouthRoadX, riverCenterY, drawFieldDepth, drawOakCrown, fieldBlocks, settleUnit } from './world.js?v=198';
 import { subscribeKana, kanaGrade, displayKana } from '../../common/js/kana-mode.js?v=175';
 import { FogGrid, FOG_REVEAL_RADIUS, FOG_CAMP_REVEAL } from './fog.js?v=182';
@@ -93,7 +93,7 @@ import {
   SHARED_BOX_MAX_TIER, SCOUT_COST_BY_TALENT, defaultDonateAmount, donatePresetAmounts, EQUIPMENT_SLOTS
 } from './economy-rules.js?v=192';
 
-import { EQUIPMENT_TYPES, saleValue, equippedIds, canSell, lowValueIds, chooseLootTier, distanceScaling, shrineUpgradeCap, compareEquipment, equipmentScore, compareEquipmentStrength, rollWeaponTraits, weaponCombatProfile, evaluateMeleeSweetSpot, isGodRollProtected, zoneRingPower, zoneRingLabelJa, equipmentIcon, equipmentName } from './equipment-rules.js?v=211';
+import { EQUIPMENT_TYPES, saleValue, equippedIds, canSell, lowValueIds, chooseLootTier, distanceScaling, shrineUpgradeCap, compareEquipment, equipmentScore, compareEquipmentStrength, rollWeaponTraits, weaponCombatProfile, evaluateMeleeSweetSpot, isGodRollProtected, zoneRingPower, zoneRingLabelJa, equipmentIcon, equipmentName } from './equipment-rules.js?v=217';
 import { rollFieldBrute, advanceDemonWarband, stepDemonWarbandGroup } from './field-hosts.js?v=182';
 import {
   WEAPON_STYLES, MASTERY_STYLES, WEAPON_STYLE_LABELS, WEAPON_STYLE_ICONS, isHeavyWeaponStyle, heavyWeaponAttackMult, HEAVY_ATTACK_VERSION, LEGACY_HEAVY_ATTACK_MULT, weaponCategoryOf, splitHeavyFavorite, FAVORITE_SPLIT_VERSION,
@@ -111,7 +111,7 @@ import {
   nearestLivingMerchant, refreshMerchantStock, merchantBuyPrice, merchantSellTier,
   applyMerchantSave, serializeMerchants, MERCHANT_INTERACT_R,
   merchantHealingStatus, merchantHealWavesLeft, useMerchantHealing, MERCHANT_HEAL_COST, recalcEscortStats, finishEscortPhase
-} from './merchant-rules.js?v=214';
+} from './merchant-rules.js?v=215';
 
 import { daylightAt, advanceWorldClock, periodEnemy, enemyAvailable, PERIOD_ENEMIES } from './day-night.js?v=208';
 
@@ -119,8 +119,8 @@ import { clusterRescueMarkers } from './rescue-markers.js?v=182';
 import {visibleHeroMembers} from './hero-rules.js';
 import {updateHeroJournal} from './hero-journal.js?v=189';
 import {applyHeroEquipmentUpgrade} from './hero-equipment.js?v=211';
-import {initializeHeroJourney,rollHeroRevelation,serializeHeroJourney,updateHeroParty,updateHeroFollowing,awardHeroBattle,recordDemonKingDefeat,ensureHeroCastle,syncHeroCastle,renderHeroJourney,drawHeroMarks} from './hero-party.js?v=198';
-import { RESCUE_TIMEOUT, rescueUnits, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, receiveTownCargo, leaveCivilianSpace, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, markSoldierDown, downCommander, commanderDown, updateNpcRescue, CIV_KINDS, isMedic, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST } from './casualty-rules.js?v=204';
+import {initializeHeroJourney,rollHeroRevelation,serializeHeroJourney,updateHeroParty,updateHeroFollowing,awardHeroBattle,recordDemonKingDefeat,ensureHeroCastle,syncHeroCastle,renderHeroJourney,drawHeroMarks} from './hero-party.js?v=215';
+import { RESCUE_TIMEOUT, rescueUnits, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, receiveTownCargo, leaveCivilianSpace, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, markSoldierDown, downCommander, commanderDown, updateNpcRescue, CIV_KINDS, isMedic, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST } from './casualty-rules.js?v=215';
 import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault, dungeonBlocks, dungeonSolids } from './dungeon.js?v=208';
 import {nearestDungeonFloor,dungeonSpawnPoint,dungeonSteeringTarget} from './dungeon-layout.js?v=182';
 import {normalizeDungeonExploration,updateDungeonSideChests,drawDungeonSideChests,updateDungeonRespawns,dungeonCoolingDown,recordDungeonClear,DUNGEON_RESET_PHASES} from './dungeon-exploration.js?v=200';
@@ -510,6 +510,9 @@ export const MEDIC_SELF_DEFENSE_COST = 10, MEDIC_SELF_DEFENSE_MIN_MANA = 40;
 export const SOLDIER_PHYS_DMG_MULT = 2.2;
 /** Axe spin skill duration; soldiers' base heavy-weapon knockback (before strength/size/footing). */
 export const AXE_SPIN_TIME = 0.42, SOLDIER_HEAVY_KNOCKBACK = 62;
+/** v6.3.0: cannon shells hit twice as hard for their slow fire (normal shots and the cluster skill;
+ * not the out-of-ammo stone). Applied at firing, so existing cannons benefit without a stat migration. */
+export const CANNON_RULES = Object.freeze({damageMult: 2, skillRadius: 74, skillRadiusWarlord: 94});
 export const SOLDIER_SPEAR_DMG_MULT = 1.15, SOLDIER_HAMMER_DMG_MULT = 1.35;
 // 兵種（クラス）定義
 export const SOLDIER_CLASSES = numberClassDefinitions({
@@ -4469,8 +4472,8 @@ export const IronSquadGame = {
       skillName = isWarlord ? '💣【ブロッサムキャノン】' : '💣【クラスターシェル】';
       skillColor = '#fbbf24';
       const count = powerShots;
-      const blastR = isWarlord ? 78 : 62;
-      const subDmg = Math.round(baseAtk * (isWarlord ? 2.1 : 1.65));
+      const blastR = isWarlord ? CANNON_RULES.skillRadiusWarlord : CANNON_RULES.skillRadius;
+      const subDmg = Math.round(baseAtk * (isWarlord ? 2.1 : 1.65) * CANNON_RULES.damageMult);
       if (!this.powerFx) this.powerFx = [];
       const aim = this.getNearestMonster(px, py);
       const baseAng = aim ? Math.atan2(aim.y - py, aim.x - px) : face;
@@ -6640,7 +6643,7 @@ export const IronSquadGame = {
           if (impact || proj.life <= 0) {
             const ix = impact ? impact.x : proj.x;
             const iy = impact ? impact.y : proj.y;
-            const rad = proj.splash || 52;
+            const rad = proj.splash || 62;
             this.projectiles.splice(i, 1);
             for (const m of this.monsters) {
               if (!m || m.hp <= 0) continue;
@@ -7248,7 +7251,7 @@ export const IronSquadGame = {
         x: attacker.x, y: attacker.y,
         vx: Math.cos(ang) * speed, vy: Math.sin(ang) * speed,
         target, attacker, isPlayer: !!isPlayer,
-        type: 'CANNONBALL', damage, life: 1.35, color,
+        type: 'CANNONBALL', damage: Math.round(damage * CANNON_RULES.damageMult), life: 1.35, color,
         splash, knockback: knock, hitEnemies: []
       });
       return;
@@ -10547,6 +10550,7 @@ export const IronSquadGame = {
 
   drawScene() {
     this.ctx=quietBattlefieldContext(this.ctx);
+    (this._lanternActors||=[]).length=0;
     const now = performance.now();
     this.ctx.clearRect(0, 0, this.width, this.height);
 
@@ -10610,13 +10614,13 @@ export const IronSquadGame = {
       }
 
       // 2.9 本陣の南の大酒場（旅の仲間との出会いと待ち合わせ）
-      if(inView(FIELD_TAVERN,420))drawFieldTavern(this.ctx,this,(s,x,y)=>drawFieldSoldier(this.ctx,{...s,x,y},now,SOLDIER_CLASSES[s.soldierClass],'#a59a76',false),now);
+      if(inView(FIELD_TAVERN,420))drawFieldTavern(this.ctx,this,(s,x,y)=>{recordLanternActor(this,s,x,y,'tavern');drawFieldSoldier(this.ctx,{...s,x,y},now,SOLDIER_CLASSES[s.soldierClass],'#a59a76',false);},now);
 
     }
 
     drawMagicBursts(this.ctx,this);
     drawDefenseWalls(this.ctx,this);
-    drawLimitedEncounter(this.ctx,this,(s,x,y)=>drawFieldSoldier(this.ctx,{...s,x,y},now,SOLDIER_CLASSES[s.soldierClass],'#a59a76',false));
+    drawLimitedEncounter(this.ctx,this,(s,x,y)=>{recordLanternActor(this,s,x,y,'encounter');drawFieldSoldier(this.ctx,{...s,x,y},now,SOLDIER_CLASSES[s.soldierClass],'#a59a76',false);});
     drawRescueDirection(this.ctx,this,rescueUnits(this).some(u=>u.isDown&&!u.dead&&u.carrierId)||(this.civilians||[]).some(u=>!u.rescued&&u.carrierId));
     // 搬送役と負傷者／民間人を結ぶ紐。
     this.ctx.save();this.ctx.strokeStyle='#b0a07c';this.ctx.lineWidth=1.6;
@@ -10683,6 +10687,7 @@ export const IronSquadGame = {
     renderList.sort((a, b) => a.y - b.y);
     for (let i = 0; i < renderList.length; i++) {
       const it = renderList[i];
+      if(it.k>=3&&it.k!==4)recordLanternActor(this,it.k===9?it.ref.soldier:it.ref,it.ref.x,it.ref.y,['','','','soldier','','merchant','escort','civilian','traffic','reserve'][it.k]);
       if (it.k === 0) this.drawWorldObj(this.ctx, it.ref, now, false);
       else if (it.k === 1) this.drawMonster(this.ctx, it.ref, now);
       else if (it.k === 2) {if(it.ref.commerceWreck)drawCommerceWreck(this.ctx,it.ref);else drawRemains(this.ctx,it.ref);}

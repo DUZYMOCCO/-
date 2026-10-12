@@ -3,7 +3,7 @@ import {WORLD_SIZE,fieldBlocks} from './world.js?v=198';
 import {dungeonBlocks} from './dungeon.js?v=198';
 import {inCurrentInstance} from './instance-rules.js?v=182';
 import {makeEscort,recalcEscortStats,updateEscortPatrol,npcSave,applyNpcSave} from './merchant-rules.js?v=193';
-import {rebuildMerchantCasualties,carrierOf,sanitizeCarriers} from './casualty-rules.js?v=196';
+import {rebuildMerchantCasualties,carrierOf,sanitizeCarriers} from './casualty-rules.js?v=215';
 import {OUTER_WALL,OUTER_GATES,outerWallBuilt} from './hq-outer-wall.js?v=198';
 export {outerWallBuilt};
 const center=WORLD_SIZE/2;
@@ -98,7 +98,7 @@ function registerPost(game,def) {
 }
 function townInteriorPosts(game,town) {
   const w={left:52,right:town.width-52,top:52,bottom:town.height-52,cx:town.width/2,cy:town.height/2,town:true};
-  return gatePositions(w).map((g,i)=>registerPost(game,{id:`${town.id}_inner_guard_${i}`,name:`${town.name}・${['北','東','南','西'][i]}門番`,x:g.x+(g.side==='east'?-18:g.side==='west'?18:0),y:g.y+(g.side==='north'?18:g.side==='south'?-18:0),space:town.id,townId:town.id,distance:Math.min(22000,town.distance||1200),index:i}));
+  return gatePositions(w).map((g,i)=>registerPost(game,{id:`${town.id}_inner_guard_${i}`,name:`${town.name}・${['北','東','南','西'][i]}門番`,x:g.x+(g.side==='east'?-18:g.side==='west'?18:0),y:g.y+(g.side==='north'?18:g.side==='south'?-18:0),side:g.side,space:town.id,townId:town.id,distance:Math.min(22000,town.distance||1200),index:i}));
 }
 function guardAtPost(game,post) {
   return game.gateGuards.some(g=>g.gatePostId===post.id&&!g.dead&&!g.rescuedToBase&&g.gateSpace===post.space);
@@ -109,7 +109,7 @@ function newGuardAtPost(game,post,id=null) {
   guard.gatePostId=post.id;guard.gateTownId=post.townId||null;game.gateGuards.push(guard);return guard;
 }
 function outerPosts(game) {
-  return OUTER_GEOMETRY.gates.map((g,i)=>registerPost(game,{id:`hq_outer_gate_${i}`,name:`外郭門番・${g.label.slice(2)}`,x:g.x,y:g.y,space:'field',townId:null,distance:1200,index:i}));
+  return OUTER_GEOMETRY.gates.map((g,i)=>registerPost(game,{id:`hq_outer_gate_${i}`,name:`外郭門番・${g.label.slice(2)}`,x:g.x,y:g.y,side:g.side,space:'field',townId:null,distance:1200,index:i}));
 }
 /** Posts guards on the outer gates once, when the outer bailey is completed. */
 export function ensureOuterWallGuards(game) {
@@ -121,7 +121,7 @@ export function ensureOuterWallGuards(game) {
 export function initializeGateGuards(game,saved={}) {
   game.gateGuards=[];game.gatePosts=[];game._gateRefillPhase=0;
   const w={left:center-300,right:center+300,top:center-300,bottom:center+300,cx:center,cy:center,town:false};
-  for(const [i,g] of gatePositions(w).entries())registerPost(game,{id:`hq_gate_${i}`,name:`本陣門番・${['北門','東門','南門','西門','城下町門'][i]}`,x:g.x,y:g.y,space:'field',townId:null,distance:1200,index:i});
+  for(const [i,g] of gatePositions(w).entries())registerPost(game,{id:`hq_gate_${i}`,name:`本陣門番・${['北門','東門','南門','西門','城下町門'][i]}`,x:g.x,y:g.y,side:g.side,space:'field',townId:null,distance:1200,index:i});
   if(outerWallBuilt(game)||(saved.gatePosts||[]).some(p=>p.id?.startsWith('hq_outer_gate_')))outerPosts(game);
   for(const d of game.dungeons||[])if(d.kind==='town'){
     for(let i=0;i<2;i++)registerPost(game,{id:`${d.id}_outer_guard_${i}`,name:`${d.name}・門番`,x:d.entrance.x+(i?52:-52),y:d.entrance.y+24,space:'field',townId:d.id,distance:Math.min(22000,d.distance||1200),index:i});
@@ -133,6 +133,7 @@ export function initializeGateGuards(game,saved={}) {
     const serial=Number(data.id?.split('_replacement_')[1])||0;post.serial=Math.max(post.serial,serial);
   }
   for(const post of game.gatePosts)if(!game.gateGuards.some(g=>g.gatePostId===post.id)&&!post.refillAtPhase)newGuardAtPost(game,post);
+  for(const guard of game.gateGuards)restoreGateGuardPost(game,guard,{snap:true});
   replenishTownGateGuards(game);rebuildMerchantCasualties(game);sanitizeCarriers(game);applyFortifications(game,0);
 }
 export function ensureTownGuards(game,town) {
@@ -147,19 +148,35 @@ export function replenishTownGateGuards(game) {
     if(guardAtPost(game,post)){post.refillAtPhase=0;continue;}
     if(!post.refillAtPhase){post.refillAtPhase=phase+GATE_REFILL_WAVES;continue;}
     if(phase<post.refillAtPhase)continue;
-    // The fallen predecessor's record is dropped; a rescued one keeps living at the HQ.
+    // Death still uses the established two-phase replacement rule.
     for(let i=game.gateGuards.length-1;i>=0;i--)if(game.gateGuards[i].gatePostId===post.id&&game.gateGuards[i].dead)game.gateGuards.splice(i,1);
     post.serial++;newGuardAtPost(game,post);post.refillAtPhase=0;count++;
   }
-  if(count)game.showToast?.(`門番${count}名が新任として着任。救助した門番は本陣に残ります`);
+  if(count)game.showToast?.(`門番${count}名が新任として着任`);
   return count;
 }
 export const gateMethods={
+  onGateGuardRevived(guard) {return restoreGateGuardPost(this,guard,{resume:true});},
   onGateGuardRelocated(guard) {
     const post=(this.gatePosts||[]).find(p=>p.id===guard?.gatePostId);
     if(post&&!guardAtPost(this,post)&&!post.refillAtPhase)post.refillAtPhase=(this.phase||1)+GATE_REFILL_WAVES;
   }
 };
+/** Recover the authored post rather than a saved HQ refuge. Keep all living veteran identities. */
+export function restoreGateGuardPost(game,guard,{snap=false,resume=false}={}) {
+  if(!guard||guard.dead||guard.isDown||guard.carrierId||guard._rescueMission||game.player?.carrierId===guard.id)return false;
+  const post=(game.gatePosts||[]).find(p=>p.id===guard.gatePostId);if(!post)return false;
+  const peers=(game.gateGuards||[]).filter(g=>!g.dead&&g.gatePostId===post.id).sort((a,b)=>String(a.id).localeCompare(String(b.id)));
+  const slot=Math.max(0,peers.indexOf(guard)),side=post.side||(['north','east','south','west','east'][post.index%5]),vertical=side==='east'||side==='west';
+  const along=slot?((slot%2?1:-1)*26*(1+(Math.floor((slot-1)/2)%2))):0,inward=slot?22*(1+Math.floor((slot-1)/4)):0;
+  const x=post.x+(vertical?(side==='east'?-inward:inward):along),y=post.y+(vertical?along:(side==='north'?inward:-inward));
+  const relocated=guard.gateSpace!==post.space||guard.rescuedToBase||guard.homeX!==x||guard.homeY!==y;
+  if(!relocated&&!resume)return false;
+  const crossedSpace=guard.gateSpace!==post.space;
+  guard.gateSpace=post.space;guard.homeX=x;guard.homeY=y;guard.rescuedToBase=false;guard.returningToBase=Math.hypot(guard.x-x,guard.y-y)>4;
+  if(snap||crossedSpace){guard.x=x;guard.y=y;guard.returningToBase=false;delete guard._wallSpace;delete guard._wallX;delete guard._wallY;}
+  post.refillAtPhase=0;return true;
+}
 export const serializeGatePosts=game=>(game.gatePosts||[]).map(p=>({...p}));
 export function serializeGateGuards(game) {return (game.gateGuards||[]).map(g=>{
   const data={id:g.id,gateSpace:g.gateSpace,gateOrigin:g.gateOrigin,gatePostId:g.gatePostId,gateTownId:g.gateTownId,...npcSave(g)};
@@ -171,10 +188,11 @@ export function exitGateTown(game,townId) {
 }
 export function updateGateGuards(game,dt) {
   if(!(dt>0)||game.restTimer>0)return;
+  for(const guard of game.gateGuards||[])restoreGateGuardPost(game,guard);
   if(game._gateRefillPhase!==(game.phase||1)){game._gateRefillPhase=game.phase||1;replenishTownGateGuards(game);}
   if(!game.currentDungeon)ensureOuterWallGuards(game);
   const monsters=game.monsters||[];
-  for(const guard of game.gateGuards||[]){if(!gateGuardVisible(game,guard)||guard.isDown)continue;
+  for(const guard of game.gateGuards||[]){if(!gateGuardVisible(game,guard)||guard.isDown||guard._rescueMission||game.player?.carrierId===guard.id)continue;
     const home={x:guard.homeX,y:guard.homeY,escorts:[guard]},near=game.player&&Math.hypot(guard.x-game.player.x,guard.y-game.player.y)<850;
     if(!near&&!guard.returningToBase&&!monsters.some(m=>m.hp>0&&Math.hypot(m.x-home.x,m.y-home.y)<380))continue;
     updateEscortPatrol(game,home,dt,monsters,{damageMonster:(unit,m,damage)=>{if(m.hp>0)game.performAttack(unit,m,false,damage);}});

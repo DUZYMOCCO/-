@@ -1,5 +1,5 @@
 import {drawEquipmentShield} from './equipment-art.js?v=188';
-import { MELEE_SWEET_SPOT, meleeSweetSpotFor, weaponCombatProfile } from './equipment-rules.js?v=211';
+import { MELEE_SWEET_SPOT, meleeSweetSpotFor, weaponCombatProfile } from './equipment-rules.js?v=217';
 import {isHeavyWeaponStyle} from './growth-rules.js?v=213';
 
 const TAU = Math.PI * 2;
@@ -243,10 +243,26 @@ export function drawRangedWeapon(c,actor,style,colors,simple=false,withArms=true
     segment(c,[[9,-3],[27,-3]],'#bca887',.9);
     if(!simple)segment(c,[[1,0],[3,3],[6,1]],'#41463f',1.1);
   }else{
-    polygon(c,[[-6,-7],[22,-8],[23,1],[-5,1]],blade);
-    polygon(c,[[20,-9],[26,-8],[26,2],[20,2]],'#333934');
-    polygon(c,[[-5,0],[3,0],[3,4],[-7,4]],'#735638');
-    if(!simple){segment(c,[[-2,-6],[19,-7]],'#e1ddc180',1);segment(c,[[4,-7],[4,1]],'#6a716a',1);}
+    // Large-bore shoulder gun: separate walnut stock, receiver, pump and open muzzle.
+    polygon(c,[[-19,-3],[-12,-6],[-4,-4],[0,-1],[-6,3],[-18,5]],'#76563d');
+    polygon(c,[[-20,-3],[-17,-3],[-16,5],[-20,5]],'#30332f');
+    polygon(c,[[-6,-7],[7,-7],[9,-2],[4,2],[-5,2]],blade);
+    polygon(c,[[-2,1],[3,1],[2,7],[-1,8],[-4,6]],'#634b36');
+    polygon(c,[[6,-7],[30,-7.5],[31,-2],[6,-2]],blade);
+    polygon(c,[[8,-1],[25,-1],[25,2],[8,2]],'#514b40');
+    polygon(c,[[9,-2],[19,-2],[19,3],[9,3]],'#896443');
+    polygon(c,[[29,-8],[33,-7],[33,0],[29,1]],'#737d7b');
+    c.fillStyle='#131b1b';c.beginPath();c.ellipse(32,-3.5,1.8,3.1,0,0,TAU);c.fill();
+    segment(c,[[29,-7.5],[32,-7]],'#d6dfd9',.9);
+    if(!simple){
+      segment(c,[[6,-6.5],[28,-6.8]],'#e1e6d9',.85);
+      segment(c,[[27,-8.5],[29,-8.5]],'#242e2e',1.6); // front sight
+      segment(c,[[5,-8.5],[24,-8.5]],'#465353',1); // rib over barrel
+      for(const x of [11,14,17])segment(c,[[x,-1],[x,2]],'#4c3729',.65);
+      segment(c,[[-15,-2],[-8,0]],'#b49468',.85);
+      segment(c,[[1,2],[6,2],[6,5],[3,6]],'#2d3532',1); // trigger guard
+      c.fillStyle='#313b38';c.fillRect(1,-5,4,2); // ejection port
+    }
   }
   if(!simple&&weaponProfile?.detail>=1)segment(c,[[6,-4],[9,-4]],'#ccba8f',1.3);
   c.restore();

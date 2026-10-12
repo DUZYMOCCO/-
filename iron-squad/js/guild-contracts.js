@@ -31,22 +31,25 @@ export const GUILD_CONTRACTS=Object.freeze([
 ]);
 const byId=new Map(GUILD_CONTRACTS.map(q=>[q.id,q]));
 const integer=(v,max=1e9)=>Number.isFinite(Number(v))?Math.max(0,Math.min(max,Math.floor(Number(v)))):0;
+export const GUILD_REWARD_MULT=20,GUILD_STATE_VERSION=2;
 export function guildQuote(def,level=0) {
   const l=integer(level,5),boss=def.kind==='boss'||def.baseTarget===1;
-  return {...def,level:l,target:def.unique?1:boss?def.baseTarget+Math.floor(l/3):def.baseTarget+l*2,reward:Math.round(def.baseReward*(1+l*.65))};
+  return {...def,level:l,target:def.unique?1:boss?def.baseTarget+Math.floor(l/3):def.baseTarget+l*2,reward:Math.round(def.baseReward*(1+l*.65))*GUILD_REWARD_MULT};
 }
 export function normalizeGuild(raw={}) {
   const active=[],seen=new Set();
   for(const q of Array.isArray(raw?.active)?raw.active:[]){
     const def=byId.get(q?.id);if(!def||seen.has(def.id))continue;seen.add(def.id);
     const quote=guildQuote(def,q.level);
-    active.push({id:def.id,level:quote.level,target:Math.max(1,integer(q.target,10000)||quote.target),reward:integer(q.reward)||quote.reward,progress:Math.min(integer(q.progress,10000),Math.max(1,integer(q.target,10000)||quote.target)),acceptedPhase:integer(q.acceptedPhase)});
+    const savedReward=integer(q.reward),reward=savedReward?integer(savedReward*(integer(raw.version)<GUILD_STATE_VERSION?GUILD_REWARD_MULT:1)):quote.reward;
+    active.push({id:def.id,level:quote.level,target:Math.max(1,integer(q.target,10000)||quote.target),reward,progress:Math.min(integer(q.progress,10000),Math.max(1,integer(q.target,10000)||quote.target)),acceptedPhase:integer(q.acceptedPhase)});
   }
   const claimed=Object.fromEntries([...byId.keys()].filter(id=>integer(raw?.claimed?.[id])>0).map(id=>[id,integer(raw.claimed[id])]));
-  return {version:1,active,claimed,totalCompleted:integer(raw?.totalCompleted)};
+  return {version:GUILD_STATE_VERSION,active,claimed,totalCompleted:integer(raw?.totalCompleted)};
 }
+const guildState=game=>!game.nation.guild||game.nation.guild.version!==GUILD_STATE_VERSION?(game.nation.guild=normalizeGuild(game.nation.guild)):game.nation.guild;
 export function guildBoard(game) {
-  const state=game.nation.guild||=normalizeGuild(),level=game.nation.level||0,phase=game.phase||1;
+  const state=guildState(game),level=game.nation.level||0,phase=game.phase||1;
   return GUILD_CONTRACTS.filter(q=>q.minLevel<=level).map(def=>{
     const accepted=state.active.find(q=>q.id===def.id),quote=guildQuote(def,level);
     return {...quote,...accepted,accepted:!!accepted,completed:!!accepted&&accepted.progress>=accepted.target,unavailable:!!def.unique&&!!game.heroJourney?.demonKingDefeat,claimed:def.unique?!!state.claimed[def.id]:state.claimed[def.id]===phase};
@@ -81,7 +84,7 @@ export const guildMethods={
   },
   claimGuildContract(id) {
     if(!atFacility(this,'guild',0))return false;
-    const state=this.nation.guild,q=state?.active.find(q=>q.id===id);if(!q||q.progress<q.target)return false;
+    const state=guildState(this),q=state.active.find(q=>q.id===id);if(!q||q.progress<q.target)return false;
     state.active=state.active.filter(other=>other!==q);state.claimed[id]=this.phase||1;state.totalCompleted++;
     this.gold=(this.gold||0)+q.reward;this.showToast?.(`組合依頼を達成！${byId.get(id).title} · 報酬${q.reward.toLocaleString()}G`);persist(this);return true;
   },

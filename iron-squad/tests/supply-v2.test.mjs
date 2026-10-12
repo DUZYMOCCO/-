@@ -29,7 +29,7 @@ const weapon=style=>({id:`test-${style}`,type:'WEAPON',weaponStyle:style,stats:{
 // All three loaded projectiles, exact 20% base boost and 75% empty fallback.
 for(const [style,type] of [['bow','ARROW'],['crossbow','BOLT'],['cannon','CANNONBALL']]) {
   field();game.equipped.weapon=weapon(style);game.player.ammo=1;game.monsters=[enemy()];game.rebuildMonsterSpatial();game.manualAttack();
-  assert.equal(game.player.ammo,0);assert.equal(game.projectiles[0].type,type);assert.equal(game.projectiles[0].damage,120);
+  assert.equal(game.player.ammo,0);assert.equal(game.projectiles[0].type,type);assert.equal(game.projectiles[0].damage,style==='cannon'?240:120,'v6.3.0: cannon shells x2');
   game.projectiles=[];game.player.atkCooldown=0;game.rebuildMonsterSpatial();game.manualAttack();const stone=game.projectiles[0];
   assert.equal(stone.type,'STONE');assert.equal(stone.damage,90);assert.equal(stone.splash,0);assert.equal(stone.knockback,0);
   const profile=ammoCombatProfile(game.player,game.combatProfileFor(game.player,weapon(style),true));assert.equal(profile.splash,0);

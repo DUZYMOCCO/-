@@ -4,7 +4,7 @@ const ellipse=(c,x,y,rx,ry,color)=>{c.fillStyle=color;c.beginPath();c.ellipse(x,
 import {drawSettlementQuarter} from './settlement-visuals.js?v=198';
 export {drawSettlementQuarter};
 export {drawCampTent} from './settlement-visuals.js?v=198';
-export {drawCommerceActor,drawCommerceWreck} from './commerce-visuals.js?v=193';
+export {drawCommerceActor,drawCommerceWreck} from './commerce-visuals.js?v=217';
 
 export function drawEconomicLandscape(ctx,game) {
   if(game.currentDungeon)return;

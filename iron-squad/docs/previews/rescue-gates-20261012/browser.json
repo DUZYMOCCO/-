@@ -1,0 +1,121 @@
+{
+  "version": "6.3.2",
+  "cache": "v215",
+  "checks": {
+    "legacy": {
+      "count": 27,
+      "expected": 27,
+      "guards": [
+        {
+          "id": "hq_gate_0",
+          "offset": 0,
+          "refuge": false,
+          "level": 1
+        },
+        {
+          "id": "hq_gate_1",
+          "offset": 0,
+          "refuge": false,
+          "level": 1
+        },
+        {
+          "id": "hq_gate_2",
+          "offset": 0,
+          "refuge": false,
+          "level": 1
+        },
+        {
+          "id": "hq_gate_3",
+          "offset": 0,
+          "refuge": false,
+          "level": 1
+        },
+        {
+          "id": "hq_gate_4",
+          "offset": 0,
+          "refuge": false,
+          "level": 1
+        }
+      ]
+    },
+    "passive": {
+      "commanderDown": true,
+      "guardRecovered": true,
+      "hpBefore": 130,
+      "hpAfter": 130,
+      "rewards": 0,
+      "permanentNotes": [],
+      "refuge": false
+    },
+    "ownership": [
+      {
+        "actor": "soldier",
+        "revived": true,
+        "hpBonus": 0,
+        "duplicate": 0,
+        "notices": 0,
+        "refuge": false
+      },
+      {
+        "actor": "personal-guard",
+        "revived": true,
+        "hpBonus": 0,
+        "duplicate": 0,
+        "notices": 0,
+        "refuge": false
+      },
+      {
+        "actor": "medic",
+        "revived": true,
+        "hpBonus": 0,
+        "duplicate": 0,
+        "notices": 0,
+        "refuge": false
+      },
+      {
+        "actor": "commander",
+        "revived": true,
+        "hpBonus": 1,
+        "duplicate": 1,
+        "notices": 1,
+        "refuge": false
+      },
+      {
+        "actor": "save-reload",
+        "hpBonus": 1,
+        "rewards": 1
+      }
+    ],
+    "guardRescuesCommander": {
+      "commanderRecovered": true,
+      "helper": "hq_gate_4",
+      "backAtGate": true,
+      "rewards": 0,
+      "permanentNotes": []
+    },
+    "town": {
+      "revived": true,
+      "space": "royal_castle_town",
+      "expected": "royal_castle_town",
+      "offset": 0,
+      "refuge": false
+    },
+    "offline": {
+      "recovery": null,
+      "rewards": 0,
+      "offset": 0,
+      "refuge": false,
+      "cachedFiles": 119
+    }
+  },
+  "screenshots": [
+    "legacy-courtyard-390.png",
+    "repaired-gates-390.png",
+    "repaired-gates-844.png",
+    "repaired-gates-1280.png",
+    "down-commander-no-unearned-bonus-390.png",
+    "town-guard-returned-390.png",
+    "offline-repaired-gates-390.png"
+  ],
+  "errors": []
+}

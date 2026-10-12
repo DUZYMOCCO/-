@@ -218,22 +218,25 @@ function revive(game,wounded,hp,options=null) {
     game.dialogue?.trigger(wounded, 'REVIVED', Date.now(), true);
   }
   if(isMerchantCasualty(wounded)) {
-    game._merchantWounded=(game._merchantWounded||[]).filter(unit=>unit!==wounded);
-    if(!wounded.rescuedToBase) {
-      // Separate resting spots keep rescued traders individually approachable.
-      let slot=0;
-      for(const merchant of game.merchants||[])for(const unit of [merchant,...(merchant.escorts||[])])if(unit!==wounded&&unit.rescuedToBase)slot++;
-      slot+=(game.gateGuards||[]).filter(g=>g!==wounded&&g.rescuedToBase).length;
-      const angle=slot*2.399963229728653,radius=Math.min(115,60+18*Math.sqrt(slot));
-      wounded.homeX=WORLD_SIZE/2+Math.cos(angle)*radius;
-      wounded.homeY=WORLD_SIZE/2+Math.sin(angle)*radius;
+    if(wounded.isGateGuard) {
+      // Recovered guards return to their assigned gates; traders rest at HQ.
+      game.onGateGuardRevived?.(wounded);
+    } else {
+      if(!wounded.rescuedToBase) {
+        // Separate resting spots keep rescued traders individually approachable.
+        let slot=0;
+        for(const merchant of game.merchants||[])for(const unit of [merchant,...(merchant.escorts||[])])if(unit!==wounded&&unit.rescuedToBase)slot++;
+        slot+=(game.gateGuards||[]).filter(g=>g!==wounded&&g.rescuedToBase).length;
+        const angle=slot*2.399963229728653,radius=Math.min(115,60+18*Math.sqrt(slot));
+        wounded.homeX=WORLD_SIZE/2+Math.cos(angle)*radius;
+        wounded.homeY=WORLD_SIZE/2+Math.sin(angle)*radius;
+      }
+      wounded.rescuedToBase=true;
+      if(['medical','town'].includes(options?.station?.kind)){wounded.x=wounded.homeX;wounded.y=wounded.homeY;}
+      wounded.returningToBase=Math.hypot(wounded.x-wounded.homeX,wounded.y-wounded.homeY)>4;
+      if(wounded.isMerchant)wounded.placeName='本陣・救助した商人';
     }
-    if(wounded.isGateGuard){if(game.currentDungeon&&wounded.gateSpace===game.currentDungeon.id){wounded.x=game.currentDungeon.entrance.x;wounded.y=game.currentDungeon.entrance.y;}wounded.gateSpace='field';}
-    wounded.rescuedToBase=true;
-    if(wounded.isGateGuard)game.onGateGuardRelocated?.(wounded);
-    if(['medical','town'].includes(options?.station?.kind)){wounded.x=wounded.homeX;wounded.y=wounded.homeY;}
-    wounded.returningToBase=Math.hypot(wounded.x-wounded.homeX,wounded.y-wounded.homeY)>4;
-    if(wounded.isMerchant)wounded.placeName='本陣・救助した商人';
+    game._merchantWounded=(game._merchantWounded||[]).filter(unit=>unit!==wounded);
   }
   if(options) {
     grantRescueBonus(game,wounded,{...options,carrier});
@@ -252,11 +255,12 @@ export function grantRescueBonus(game,wounded,options={}) {
 
   if(isMerchantCasualty(wounded)) {
     wounded.timesRescued=(wounded.timesRescued||0)+1;
-    if(carrier===game.player||medic===game.player)wounded.owesCommander=true; // 隊長が直接助けた恩（一度だけ返す）
+    const commanderHelped=!!game.player&&(carrier===game.player||medic===game.player);
+    if(commanderHelped)wounded.owesCommander=true; // 隊長が直接助けた恩（一度だけ返す）
     const rescuer=carrier||medic;
     if(rescuer)rescuer.rescues=(rescuer.rescues||0)+1;
     if(rescuer===game.player||rescuer?.isPersonalGuard)game.gainExp?.(20,{share:false,merit:20});
-    grantPermanentRescueReward(game,wounded);
+    if(commanderHelped)grantPermanentRescueReward(game,wounded);
     game.updateStatsUI?.();
     return;
   }
@@ -376,7 +380,7 @@ export function grantCivilianRescueBonus(game,civ,station) {
   game.civilianRescues=(game.civilianRescues||0)+1;
   if(carrier)carrier.rescues=(carrier.rescues||0)+1;
   if(carrier===game.player||carrier?.isPersonalGuard)game.gainExp?.(40,{share:false,merit:40});
-  grantPermanentRescueReward(game,civ);
+  if(game.player&&carrier===game.player)grantPermanentRescueReward(game,civ);
   game.sound?.playHighScore?.();
   const popX=(carrier?.x??game.player?.x??civ.x);
   const popY=(carrier?.y??game.player?.y??civ.y)-28;

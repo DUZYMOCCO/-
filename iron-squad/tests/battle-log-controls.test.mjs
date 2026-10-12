@@ -73,6 +73,8 @@ try{
   refreshCombatFieldNotes(game);assert.equal(halfMarks(),halfBefore+1);
   game.player.hp=100;refreshCombatFieldNotes(game);game.player.hp=40;refreshCombatFieldNotes(game);
   assert.equal(halfMarks(),halfBefore+2);
+  shooter.isPersonalGuard=false;shooter.overflowGuard=false;shooter.hp=shooter.maxHp;refreshCombatFieldNotes(game);const beforeOther=halfMarks();shooter.hp=1;refreshCombatFieldNotes(game);assert.equal(halfMarks(),beforeOther,'other platoons do not produce half-HP alerts');
+  shooter.isPersonalGuard=true;refreshCombatFieldNotes(game);assert.equal(halfMarks(),beforeOther+1,'own companion HP warnings remain');shooter.hp=shooter.maxHp;refreshCombatFieldNotes(game);shooter.isPersonalGuard=false;shooter.overflowGuard=true;shooter.hp=1;refreshCombatFieldNotes(game);assert.equal(halfMarks(),beforeOther+2,'own overflow companion warnings remain');
   shooter.mana=30;refreshCombatFieldNotes(game);assert.match(stream.textContent,/MPが半分以下 · 残り30\/80/);
   shooter.ammo=Math.floor(AMMO_CAPACITY/2);refreshCombatFieldNotes(game);assert.match(stream.textContent,new RegExp(`残り弾薬が半分以下 · ${shooter.ammo}/${AMMO_CAPACITY}`));
   refreshCombatFieldNotes(game);assert.equal(game.battleLogHistory.filter(e=>e.text.includes(`${shooter.name}の残り弾薬が半分以下`)).length,1);

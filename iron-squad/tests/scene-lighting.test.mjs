@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
-import {lightVisibilityPolygon,drawSceneDarkness,sceneLightSources} from '../js/scene-lighting.js';
+import {lightVisibilityPolygon,drawSceneDarkness,sceneLightSources,recordLanternActor,pooledLanternSources,NPC_LANTERN_RADIUS} from '../js/scene-lighting.js';
+import {explorationLayout,dungeonSegmentOpen} from '../js/dungeon-layout.js';
 import {releaseSceneCaches} from '../js/canvas-surface.js';
 const {createCanvas}=createRequire('C:/Users/Yoshiyuki/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/entry.cjs')('@napi-rs/canvas');
 globalThis.document={createElement:()=>createCanvas(1,1)};
@@ -26,4 +27,22 @@ game.player.x+=30;assert.equal(sceneLightSources(game)[0].x,380,'the lantern fol
 game.width=844;game.height=390;drawSceneDarkness(ctx,game);assert.equal(game._lightingMask,mask,'rotation reuses the lighting surface');
 releaseSceneCaches(game);assert.equal(game._lightingMask,null);assert.deepEqual([mask.width,mask.height],[1,1],'scene teardown releases lighting pixels');
 game.currentDungeon=null;game.worldTime=120;assert.deepEqual(sceneLightSources(game),[],'daytime has no active lantern or nightlife light');
-console.log('PASS: wall occlusion and lit wall faces, no light inside solids, near/far cave pixels, clock independence, carried lantern, bounded mask reuse/rotation/release, daylight extinction');
+// The actual render queue supplies only visible friendlies; emitters follow drawn positions.
+game._lanternActors=[];game.worldTime=300;
+for(const category of ['soldier','merchant','escort','traffic','reserve','tavern','civilian'])recordLanternActor(game,{id:category,hp:10,x:200,y:250},200,250,category);
+recordLanternActor(game,{id:'dead',dead:true,x:200,y:250});recordLanternActor(game,{id:'zero',hp:0,x:200,y:250});
+const carried=sceneLightSources(game).filter(l=>l.npc);assert.equal(carried.length,7);assert.ok(carried.every(l=>l.radius===NPC_LANTERN_RADIUS&&l.drawY===237));
+assert.equal(pooledLanternSources(carried).length,1,'a close crowd keeps all fixtures but shares one light pool');
+game._lanternActors.length=0;const trader={id:'cart-left',role:'merchant',outbound:true,x:220,y:250};recordLanternActor(game,trader,trader.x,trader.y,'traffic');assert.equal(game._lanternActors[0].x,252,'the lamp follows the left-facing merchant beside the cart');
+recordLanternActor(game,{id:'down',x:200,y:250,isDown:true,hp:0});assert.equal(game._lanternActors[1].drawY,246,'a downed actor leaves its lamp on the ground');
+game._lanternActors.length=0;recordLanternActor(game,{id:'moved',x:600,y:250});assert.equal(sceneLightSources(game).filter(l=>l.npc)[0].x,600,'rebuilding the frame drops the previous position');
+game.player=null;game.width=700;game.height=500;game.camera={x:350,y:250};game._lanternActors.length=0;recordLanternActor(game,{id:'lit-floor',x:200,y:250});
+ctx.fillStyle='#808080';ctx.fillRect(0,0,700,500);drawSceneDarkness(ctx,game,1200);assert.ok(ctx.getImageData(200,250,1,1).data[0]>80);assert.ok(ctx.getImageData(450,250,1,1).data[0]<40,'small NPC lamps retain the surrounding darkness');
+game.worldTime=120;assert.deepEqual(sceneLightSources(game),[],'friendly NPC lamps also extinguish in daylight');
+// Find floor on opposite sides of a real authored wall; a visible NPC must not shine through it.
+game.currentDungeon={kind:'dungeon',theme:'mines',width:1600,height:1200};const caveLayout=explorationLayout(game.currentDungeon),floor=[];
+for(let row=0;row<caveLayout.rows;row++)for(let col=0;col<caveLayout.cols;col++)if(caveLayout.floor[row*caveLayout.cols+col])floor.push({x:col*40+20,y:row*40+20});
+let blockedPair;for(const a of floor){const b=floor.find(b=>Math.hypot(a.x-b.x,a.y-b.y)<220&&!dungeonSegmentOpen(game.currentDungeon,a,b));if(b){blockedPair=[a,b];break;}}
+assert.ok(blockedPair);game.player=blockedPair[0];game._lanternActors.length=0;recordLanternActor(game,{id:'behind-wall',...blockedPair[1]});assert.equal(sceneLightSources(game).filter(l=>l.npc).length,0);
+releaseSceneCaches(game);assert.equal(game._lanternActors.length,0,'scene teardown drops transient actor fixtures');
+console.log('PASS: wall occlusion and lit wall faces, near/far cave pixels, carried player/NPC lanterns, all friendly render categories, moving/cart/downed positions, crowd pools, darkness contrast, wall-hidden NPCs, bounded mask reuse/rotation/release and daylight extinction');

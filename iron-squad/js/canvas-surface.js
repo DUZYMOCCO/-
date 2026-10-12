@@ -12,6 +12,7 @@ export function releaseSceneCaches(game) {
   game.vigW = game.vigH = 0;
   releaseCanvas(game._lightingMask);
   game._lightingMask = null;
+  if(game._lanternActors)game._lanternActors.length=0;
 }
 
 export function frameSurfaceReady(game) {

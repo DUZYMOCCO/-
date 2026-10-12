@@ -255,7 +255,7 @@ export function compareEquipment(candidate,current) {
       after,
       critical:CRITICAL_STATS.has(key)
     };
-  }).filter(c=>c.delta!==0);
+  }).filter(c=>c.delta!==0&&c.key!=='swingSpeed'); // Animation tempo is not combat performance.
   const up=changes.some(c=>c.delta>0), down=changes.some(c=>c.delta<0);
   const label=up&&down?'一長一短':up?'強くなる':down?'弱くなる':'同等';
   const text=changes.map(c=>{
@@ -354,7 +354,8 @@ function baseWeaponCombatProfile(item) {
       baseCooldown: 1.85, pierce: false, pierceHalfWidth: 0,
       // 最遅・最大火力。スプラッシュで複数ヒット前提の厚め威力
       atkMult: 3.15, knockback: 48, knockbackWarlord: 60,
-      projSpeed: 320, splash: 52, projType: 'CANNONBALL', color: '#f59e0b'
+      // v6.3.0: blast radius x1.2 (was 52); shell damage x2 is applied at firing (CANNON_RULES).
+      projSpeed: 320, splash: 62, projType: 'CANNONBALL', color: '#f59e0b'
     };
   }
   return {

@@ -1,4 +1,5 @@
 import { AMMO_CAPACITY, isRangedUnit } from './supply-rules.js?v=187';
+import {isOwnSquad} from './own-squad-marker.js?v=182';
 
 export const BATTLE_LOG_LIMIT = 100;
 export const FIELD_NOTICE_SECONDS=3;
@@ -220,7 +221,7 @@ export function refreshCombatFieldNotes(game) {
     const name = unit === game.player ? '隊長' : (unit.name || '兵士');
     const hp = Math.max(0, Math.floor(unit.hp));
     const maxHp = Math.max(1, Math.floor(unit.maxHp || 1));
-    rememberHalf(game, unit, 'hp', hp <= maxHp * FIELD_HALF, `${name}のHPが半分以下 · 残り${hp}/${maxHp}`);
+    rememberHalf(game, unit, 'hp', (unit===game.player||isOwnSquad(unit))&&hp <= maxHp * FIELD_HALF, `${name}のHPが半分以下 · 残り${hp}/${maxHp}`);
     const maxMana = Math.floor(unit.maxMana || 0);
     if (maxMana > 0) {
       const mana = Math.max(0, Math.floor(unit.mana || 0));

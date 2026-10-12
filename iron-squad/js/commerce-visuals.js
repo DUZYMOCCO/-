@@ -17,7 +17,7 @@ function appearance(actor){
   looks.set(actor,look);return look;
 }
 // Use the party's own saved path; a newly discovered shortcut cannot flip it.
-function heading(actor){
+export function commerceHeading(actor){
   const points=actor.points;if(!points?.length||points.length<2)return actor.outbound?Math.PI:0;
   let remaining=actor.outbound?Math.max(0,(actor.routeLength||0)-(actor.progress||0)):actor.progress||0;
   for(let i=1;i<points.length;i++){
@@ -96,7 +96,7 @@ function person(c,actor,look,merchant){
 }
 export function drawCommerceActor(ctx,actor,time=0){
   if(!actor||actor.dead)return;
-  const look=appearance(actor),angle=heading(actor);
+  const look=appearance(actor),angle=commerceHeading(actor);
   if(actor.role==='guard'){
     const proxy=look.guard;
     Object.assign(proxy,{x:actor.x,y:actor.y,vx:Math.cos(angle),vy:Math.sin(angle),facingAngle:angle,attackAngle:angle,atkAnim:Math.max(0,((actor.attackClock||0)-.72)/.28)*.55});

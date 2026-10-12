@@ -1,0 +1,144 @@
+{
+  "version": "6.3.4",
+  "cache": "v217",
+  "errors": [],
+  "checks": {
+    "group": {
+      "fixtures": [
+        {
+          "id": "npc-lantern:soldier:review-cannon",
+          "category": "soldier",
+          "x": 80715,
+          "y": 79240
+        },
+        {
+          "id": "npc-lantern:soldier:review-soldier",
+          "category": "soldier",
+          "x": 80825,
+          "y": 79240
+        },
+        {
+          "id": "npc-lantern:merchant:review-merchant",
+          "category": "merchant",
+          "x": 80715,
+          "y": 79360
+        },
+        {
+          "id": "npc-lantern:escort:review-escort",
+          "category": "escort",
+          "x": 80825,
+          "y": 79360
+        },
+        {
+          "id": "npc-lantern:escort:review-gate",
+          "category": "escort",
+          "x": 80715,
+          "y": 79470
+        },
+        {
+          "id": "npc-lantern:traffic:review-traveler",
+          "category": "traffic",
+          "x": 80825,
+          "y": 79470
+        },
+        {
+          "id": "npc-lantern:traffic:review-merchant",
+          "category": "traffic",
+          "x": 80793,
+          "y": 79580
+        },
+        {
+          "id": "npc-lantern:traffic:review-guard",
+          "category": "traffic",
+          "x": 80715,
+          "y": 79580
+        }
+      ],
+      "pools": 8,
+      "recovery": null
+    },
+    "day": 0,
+    "movement": {
+      "sourceX": 80759,
+      "unitX": 80759
+    },
+    "crowd": {
+      "fixtures": 63,
+      "pools": 21,
+      "meanRenderMs": 7.1066666662693025,
+      "maskPixels": 506700,
+      "recovery": null
+    },
+    "tavern": 4,
+    "cave": {
+      "npcLamps": 1,
+      "localOnly": true,
+      "recovery": null
+    },
+    "compare": {
+      "html": "<span class=\"stat-delta-equal\">能力差なし</span>",
+      "text": "能力差なし",
+      "kind": "equal",
+      "cooldown": 1.85,
+      "splash": 62
+    },
+    "hpAlerts": {
+      "otherWarnings": 0,
+      "ownWarnings": 1,
+      "commanderWarnings": 1
+    },
+    "guildBefore": {
+      "version": 2,
+      "slime": {
+        "id": "slime",
+        "level": 0,
+        "target": 6,
+        "reward": 2400,
+        "progress": 4,
+        "acceptedPhase": 1
+      },
+      "goblin": {
+        "id": "goblin",
+        "level": 0,
+        "target": 6,
+        "reward": 3200,
+        "progress": 2,
+        "acceptedPhase": 1
+      },
+      "gold": 50,
+      "treasury": 6000
+    },
+    "guildClaim": {
+      "paid": 2450,
+      "treasury": 6000,
+      "repeated": false,
+      "remaining": {
+        "id": "goblin",
+        "level": 0,
+        "target": 6,
+        "reward": 3200,
+        "progress": 2,
+        "acceptedPhase": 1
+      }
+    },
+    "offline": {
+      "fixtures": 59,
+      "recovery": null,
+      "slimeReward": 2400,
+      "assets": 119
+    }
+  },
+  "screenshots": [
+    "night-friendlies-390.png",
+    "day-friendlies-390.png",
+    "night-friendlies-844.png",
+    "night-friendlies-1280.png",
+    "night-hq-crowd-1280.png",
+    "night-tavern-1280.png",
+    "cave-allied-lanterns-390.png",
+    "own-hp-warning-only-390.png",
+    "guild-rewards-x20-390.png",
+    "cannon-before-after.png",
+    "offline.png"
+  ]
+}
