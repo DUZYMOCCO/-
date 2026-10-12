@@ -121,3 +121,15 @@ test('cat slot is the good ninja にんじゃ and panda slot is the good bomber 
   for (const s of [nj, bm]) assert.ok(!s.includes('data-emblem="warumono"'));
   for (const n of ['mummy', 'thrower']) assert.notEqual(ENEMY_TYPES[n].name, panda.name);
 });
+
+// こどもの リクエスト：きつね → かみなりさま、ペンギン → けいさつかん（id は セーブ互換で fox／penguin のまま）
+test('fox slot is the thunder god かみなりさま and penguin slot is the police officer けいさつかん', () => {
+  const fox = CHARACTERS.find(c => c.id === 'fox'), pg = CHARACTERS.find(c => c.id === 'penguin');
+  assert.equal(fox.name, 'かみなりさま'); assert.equal(fox.weapon, 'thunder'); assert.deepEqual(fox.perk, { dmg: 0.1 });
+  assert.equal(pg.name, 'けいさつかん'); assert.equal(pg.weapon, 'gun'); assert.deepEqual(pg.perk, { pickup: 0.5, hp: 20 }); assert.equal(pg.unlock, 2);
+  const tg = svgOf(art('fox')), pc = svgOf(art('penguin'));
+  assert.ok(tg.includes('#dc2626') && tg.includes('#facc15') && tg.includes('#e0f2fe'), 'たいこの わ・きんの かみなり・くも');
+  assert.ok(pc.includes('#1e3a8a') && pc.includes('#7dd3fc') && pc.includes('#facc15'), 'こんの ぼうし・みずいろの シャツ・きんの ほし');
+  for (const s of [tg, pc]) { assert.ok(!s.includes('data-emblem="warumono"')); assert.equal((s.match(/<svg/g) || []).length, 1); }
+  assert.equal((svgOf(art('rabbit')).match(/<svg/g) || []).length, 1, 'まじゅつしも 1まいの svg');
+});

@@ -156,6 +156,53 @@ const bomber = soldier.split('\n').filter(l => !/M6 59 L56 43|M4 60 L13 57|M27 5
   <path d="M55.5 34.5 Q57 30 60 29" fill="none" stroke="#a16207" stroke-width="1.8" stroke-linecap="round"/>
   <path d="M60 25.4 L61 28 L63.6 28.4 L61.4 30 L62 32.6 L60 31 L57.8 32.4 L58.6 30 L56.6 28.4 L59.2 28Z" fill="#fde047" stroke="#f97316" stroke-width=".9"/>`;
 
+// かみなりさま（id は セーブ互換で fox のまま。かみなりを おとす いい かみさま。せなかに たいこの わ、あしもとに くも）
+const thunderGod = `
+  <circle cx="32" cy="30" r="27" fill="none" stroke="#b45309" stroke-width="3.6"/><circle cx="32" cy="30" r="27" fill="none" stroke="#fbbf24" stroke-width="1.6"/>
+  ${Array.from({ length: 8 }, (_, i) => { const a = -Math.PI / 2 + i * Math.PI / 4, x = (32 + Math.cos(a) * 27).toFixed(1), y = (30 + Math.sin(a) * 27).toFixed(1);
+    return `<circle cx="${x}" cy="${y}" r="5.2" fill="#dc2626" ${SW(1.6)}/><circle cx="${x}" cy="${y}" r="3" fill="#fde68a"/><circle cx="${x}" cy="${y}" r="1.1" fill="#b45309"/>`; }).join('')}
+  <path d="M8 62 Q4 54 12 53 Q14 47 21 50 Q26 45 32 49 Q38 45 43 50 Q50 47 52 53 Q60 54 56 62Z" fill="#e0f2fe" ${S}/>
+  <path d="M14 58 Q22 55 30 58 M34 58 Q42 55 50 58" fill="none" stroke="#7dd3fc" stroke-width="1.8" stroke-linecap="round"/>
+  <path d="M19 55 Q19 41 32 39 Q45 41 45 55Z" fill="#1d4ed8" ${S}/>
+  <path d="M19.4 50 Q32 54 44.6 50 L44.8 55.4 Q32 59 19.2 55.4Z" fill="#facc15" ${S2}/>
+  <path d="M23 51.4 L24.6 56 M29 52.6 L30 57.4 M35 52.6 L34 57.4 M41 51.4 L39.4 56" stroke="#1c1917" stroke-width="1.6" stroke-linecap="round"/>
+  <path d="M24 40.6 L32 46 L40 40.6" fill="none" stroke="#facc15" stroke-width="2"/>
+  <circle cx="16" cy="47" r="3.4" fill="#f0c7a0" ${S2}/><path d="M13.6 44.4 L18.4 44.4" stroke="#facc15" stroke-width="2.4"/>
+  <path d="M15 46 L8 36" ${SW(3.4)}/><path d="M15 46 L8 36" stroke="#92400e" stroke-width="1.8" stroke-linecap="round"/><circle cx="7.6" cy="35.4" r="2.6" fill="#fde047" ${SW(1.2)}/>
+  <circle cx="48" cy="47" r="3.4" fill="#f0c7a0" ${S2}/><path d="M45.6 44.4 L50.4 44.4" stroke="#facc15" stroke-width="2.4"/>
+  <path d="M49 46 L56 36" ${SW(3.4)}/><path d="M49 46 L56 36" stroke="#92400e" stroke-width="1.8" stroke-linecap="round"/><circle cx="56.4" cy="35.4" r="2.6" fill="#fde047" ${SW(1.2)}/>
+  <path d="M60 22 L55 31 L59 31 L54 40" fill="none" stroke="#fde047" stroke-width="2.4" stroke-linejoin="round"/>
+  ${shadedCircle('tg', 32, 29, 14.5, '#f0c7a0', '#c48a5e')}
+  <path d="M24 17 Q21 9 19 4 Q25 8 27 15Z M40 17 Q43 9 45 4 Q39 8 37 15Z" fill="#fbbf24" ${S2}/>
+  <path d="M16.6 30 Q10 26 9 19 Q13 22 16 21 Q12 15 15 10 Q18 16 22 15 Q22 9 26 6 Q27 12 31 12 Q33 6 38 5 Q37 11 41 13 Q45 9 50 10 Q47 15 49 19 Q53 19 56 17 Q54 25 47.4 30 Q46 22 32 21 Q18 22 16.6 30Z" fill="#e0f2fe" ${S}/>
+  <path d="M19 24 Q24 17 32 17 Q40 17 45 24" fill="none" stroke="#7dd3fc" stroke-width="2" stroke-linecap="round"/>
+  <path d="M33 9 L29.4 15.6 L32.4 15.6 L29 22 L36 13.6 L32.8 13.6 L35.4 9Z" fill="#facc15" ${SW(1)}/>
+  <path d="M20.6 29.6 L28 28.6 M43.4 29.6 L36 28.6" fill="none" ${SW(2)}/>
+  ${animeEye(25, 33, '#60a5fa')}${animeEye(39, 33, '#60a5fa')}
+  <path d="M27.5 38.4 Q32 41.4 36.5 38.4" fill="#fff" ${SW(1.4)}/>`;
+
+// けいさつかん（id は セーブ互換で penguin のまま。つくりものの せいふく：こんの ぼうしと きんの ほしの バッジ。ほんものの マークは つかわない）
+const police = `
+  <ellipse cx="22" cy="60.5" rx="5" ry="3.2" fill="#0f172a" ${S}/><ellipse cx="42" cy="60.5" rx="5" ry="3.2" fill="#0f172a" ${S}/>
+  <path d="M18 61 Q18 42 32 40 Q46 42 46 61Z" fill="#7dd3fc" ${S}/>
+  <path d="M18.4 55 Q32 58 45.6 55 L46 61 Q32 63.6 18 61Z" fill="#1e3a8a" ${S2}/>
+  <path d="M18.6 53 Q32 56.4 45.4 53 L45.6 56 Q32 59.4 18.4 56Z" fill="#111827" ${S2}/><rect x="29.6" y="53.6" width="4.8" height="3.6" rx=".8" fill="#facc15" ${SW(1)}/>
+  <path d="M27 41 L32 47 L37 41" fill="none" stroke="#1e3a8a" stroke-width="2.4"/><path d="M32 47 L30.6 52 L32 53.4 L33.4 52Z" fill="#1e3a8a" ${SW(.9)}/>
+  <path d="M38.8 45 L40.2 47.6 L43 47.8 L40.9 49.6 L41.6 52.4 L38.8 51 L36 52.4 L36.7 49.6 L34.6 47.8 L37.4 47.6Z" fill="#facc15" ${SW(1)}/>
+  <path d="M21 45.5 H27" stroke="#1e3a8a" stroke-width="2.2"/>
+  <path d="M46 46 L55 43.4 L56 46.6 L50 48.4 L49.6 51 L47 51.4Z" fill="#374151" ${SW(1.6)}/>
+  <circle cx="17" cy="54" r="3.3" fill="#f8fafc" ${S2}/><circle cx="46.5" cy="48" r="3.3" fill="#f8fafc" ${S2}/>
+  ${shadedCircle('pc', 32, 30, 15, '#f0c7a0', '#c48a5e')}
+  <path d="M17.6 27 Q18 34 20 36 L21 28Z M46.4 27 Q46 34 44 36 L43 28Z" fill="#3b2a1e" ${S2}/>
+  <path d="M14 22 Q14 9 32 8 Q50 9 50 22 Q32 18 14 22Z" fill="#1e3a8a" ${S}/>
+  <path d="M14 21.6 Q32 17.6 50 21.6 L50 25 Q32 21 14 25Z" fill="#111827" ${S2}/>
+  <path d="M15 25 Q32 21.4 49 25 Q47 30 32 28 Q17 30 15 25Z" fill="#0f172a" ${S2}/>
+  <path d="M15.6 22.6 Q32 19 48.4 22.6" fill="none" stroke="#facc15" stroke-width="1.4"/>
+  <path d="M32 9.6 L33.6 13 L37.2 13.2 L34.4 15.4 L35.4 18.8 L32 16.8 L28.6 18.8 L29.6 15.4 L26.8 13.2 L30.4 13Z" fill="#facc15" ${SW(1)}/>
+  <path d="M21 31 L28 31.6 M43 31 L36 31.6" fill="none" ${SW(2)}/>
+  ${animeEye(25, 34.6, '#3b82f6')}${animeEye(39, 34.6, '#3b82f6')}
+  <path d="M28.6 40.4 Q32 42.4 35.4 40.4" fill="none" stroke="#7c2d12" stroke-width="1.3" stroke-linecap="round"/>`;
+
 // プレイヤーの ソルジャーは あおい レーザーじゅうを もつ（v1.11.0 こどもの リクエスト。なかま・ちりょうたいは soldier の まま）
 const laserSoldier = soldier
   .replace('<path d="M6 59 L56 43" stroke="#26282d" stroke-width="3.6" stroke-linecap="round"/>',
@@ -999,10 +1046,7 @@ const GROUNDS = {
 };
 
 const hero2 = {
-  rabbit:  wrap(magician, '0 -6 64 70'), // id は セーブ互換のため rabbit のまま（絵と名前は まじゅつし）
-  magicCircle,
-  penguin: hero({ fur: '#1e293b', shade: '#0f172a', inner: '#e7e5e4', ear: 'none', belly: '#d6d3d1',
-    face: `<ellipse cx="32" cy="31" rx="13" ry="11" fill="#d6d3d1"/>`, mouth: `<path d="M28 35 H36 L32 39Z" fill="#c2410c" ${S2}/>` }),
+  penguin: police, // id は セーブ互換のため penguin のまま（絵と名前は けいさつかん）
   bear:    hero({ fur: '#7c4a12', shade: '#4a2c0a', inner: '#a16207', ear: 'bear', muzzle: '#d6d3d1' }),
   dino:    hero({ fur: '#3f7d46', shade: '#1f4d28', inner: '#14532d', ear: 'none', belly: '#d6d3d1',
     behind: `<path d="M18 14 L20 3 L26 10 L32 0 L38 10 L44 3 L46 14Z" fill="#9a3412" ${S}/>`,
@@ -1015,7 +1059,9 @@ const hero2 = {
 const SOURCES = {
   cat:   wrap(ninja), // id は セーブ互換のため cat のまま（絵と名前は にんじゃ）
   dog:   wrap(laserSoldier), // id は セーブ互換のため dog のまま（絵と名前は にんげんの ソルジャー・あおい レーザーじゅう）
-  fox:   wrap(hero({ fur: '#c2410c', shade: '#7c2d12', inner: '#e7e5e4', ear: 'fox', muzzle: '#e7e5e4', extra: whiskers })),
+  fox:   wrap(thunderGod), // id は セーブ互換のため fox のまま（絵と名前は かみなりさま）
+  rabbit: wrap(magician, '0 -6 64 70'), // id は セーブ互換のため rabbit のまま（絵と名前は まじゅつし）
+  magicCircle,
   panda: wrap(bomber), // id は セーブ互換のため panda のまま（絵と名前は ボマー）
   ...Object.fromEntries(Object.entries(hero2).map(([k, v]) => [k, wrap(v)])),
   zombie: wrap(withPatch('zombie', zombie)), bat: wrap(withPatch('bat', bat)), ghost: wrap(withPatch('ghost', ghost)),
