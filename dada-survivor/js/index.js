@@ -13,13 +13,14 @@ import {
   SQUAD, allyDamage, squadSlot, canWhistle, healAmount,
   QUEST, CAMP, underHalfW, clampUnder, hutSpot, LASER_MODES, nextLaserMode, squadRoom, beamHits, MAX_LEVEL as MAXLV,
   enemyDmgMul, startWeapons, CITY_FIRE, burnSites, TOWER, MANSION, FORTRESS, TEMPLE, THRONE, sawPaths, spikeState, fortressBossScale, trailSteps, missileTargets, towerSpot, rollHeli, heliDamage, floorName,
-} from './rules.js?v=219';
-import { DecorField } from './decor.js?v=219';
-import { EnemyGrid, nearestN } from './grid.js?v=219';
-import { preloadArt, art } from './art.js?v=219';
-import { Stage } from './stage.js?v=219';
-import { menuMethods, iconHtml } from './menus.js?v=219';
-import { PopBGM, playWhistle } from './bgm.js?v=219';
+  SPECIAL,
+} from './rules.js?v=220';
+import { DecorField } from './decor.js?v=220';
+import { EnemyGrid, nearestN } from './grid.js?v=220';
+import { preloadArt, art } from './art.js?v=220';
+import { Stage } from './stage.js?v=220';
+import { menuMethods, iconHtml } from './menus.js?v=220';
+import { PopBGM, playWhistle } from './bgm.js?v=220';
 
 const SAVE_KEY = 'dada_survivor_save';
 const TAU = Math.PI * 2;
@@ -45,7 +46,7 @@ export const DadaSurvivorGame = {
 
   // 起動時にこのゲームのCSSを自分で読み込む（?v= はこのフォルダ内で管理）。ハブが init 前に await する
   prepare() {
-    return loadCss(new URL('../css/dada-survivor.css?v=219', import.meta.url).href);
+    return loadCss(new URL('../css/dada-survivor.css?v=220', import.meta.url).href);
   },
 
   init(container, onBackToHub) {
@@ -347,7 +348,7 @@ export const DadaSurvivorGame = {
       miniBossDone: false, finalBossDone: false, boss: null, ended: false,
       npc: null, researcherDone: false,
       // けんきゅうじょ：てきの ばくだん・ゆかの ひ・ボトルの じょうたい（id → { hp, broken, orbitHit }）
-      ebombs: [], fires: [], bottles: new Map(), nearBottles: [], fireSeq: 0, burnFx: 0, alienSeen: false,
+      ebombs: [], fires: [], burns: [], burnSeq: 0, zaps: 0, bottles: new Map(), nearBottles: [], fireSeq: 0, burnFx: 0, alienSeen: false,
       // コンテナと なかま（allies：へいたい 3 ＋ ちりょうたい。medic は その なかの ちりょうたい）
       container: null, allies: [], medic: null, whistleCd: 0, heading: Math.PI / 2,
       // さばくの クエスト：zone は surface／under。clock は ちかでも すすむ とけい（ステージの time は ちかでは とまる）
@@ -634,7 +635,7 @@ export const DadaSurvivorGame = {
     for (const g of r.gems) r.xp += g.v;
     for (const it of r.items) if (it.kind === 'coin') r.coins++;
     r.enemies.length = 0; r.gems.length = 0; r.items.length = 0;
-    r.shots.length = 0; r.ebombs.length = 0; r.fires.length = 0;
+    r.shots.length = 0; r.ebombs.length = 0; r.fires.length = 0; r.burns.length = 0;
     q.floor = f; q.left = 0; q.pending = 0; q.boxes = null; q.stairs = null; q.cells = []; q.heliProp = null; q.exit = null; q.vault = null; q.foe = null;
     const roof = f > T.floors, hw = U.halfW, h = U.bottom - U.top, cy = (U.top + U.bottom) / 2;
     const w = roof ? ['wallL', 'wallR', 'wallT', 'wallB'] : ['bwallL', 'bwallR', 'bwallT', 'bwallB'];
@@ -1095,7 +1096,7 @@ export const DadaSurvivorGame = {
     const r = this.run, q = r.quest, p = r.player;
     q.stage = 'under';
     q.surface = { enemies: r.enemies, gems: r.gems, items: r.items, props: r.props, boss: r.boss, x: p.x, y: p.y };
-    r.enemies = []; r.gems = []; r.items = []; r.shots.length = 0; r.ebombs.length = 0; r.fires.length = 0;
+    r.enemies = []; r.gems = []; r.items = []; r.shots.length = 0; r.ebombs.length = 0; r.fires.length = 0; r.burns.length = 0;
     if (r.boss) { r.boss = null; this.el.boss.classList.add('hidden'); this.bgm.setBoss(false); }
     r.props = q.under;
     r.zone = 'under';
@@ -1297,12 +1298,14 @@ export const DadaSurvivorGame = {
         x: p.x + Math.cos(ang) * 18, y: p.y + Math.sin(ang) * 18,
         vx: Math.cos(ang) * w.speed, vy: Math.sin(ang) * w.speed,
         ang, dmg, life, r: 8, pierce, splash, kb: w.kb || 0.1, fx: w.boomFx,
+        chain: w.chain ? weaponStat(id, 'chain', lv) : 0,
       });
     }
     const face = Math.cos(base);
     if (Math.abs(face) > 0.15) p.face = face > 0 ? 1 : -1;
     if (w.fire === 'spread') sound.play('cannon', { volume: 0.4, gap: 0.16 });
     else sound.play('crossbow', { volume: id === 'gatling' || w.quiet ? 0.2 : 0.34, gap: id === 'gatling' || w.quiet ? 0.09 : 0.07 });
+    if (w.chain) sound.play('crossbow', { volume: 0.16, gap: 0.12 });
     if (id !== 'gatling' && !w.quiet) this.stage.fx('pop', p.x + Math.cos(base) * 24, p.y + Math.sin(base) * 24, w.fire === 'spread' ? 46 : 30);
   },
 
@@ -1328,6 +1331,63 @@ export const DadaSurvivorGame = {
     if (Math.abs(face) > 0.15) p.face = face > 0 ? 1 : -1;
     sound.play('fire', { volume: 0.48, gap: 0.2 });
     this.stage.fx('pop', p.x + Math.cos(faceAng) * 28, p.y + Math.sin(faceAng) * 28, w.size > 40 ? 52 : 40);
+  },
+
+  /** v1.23.0 ブラックホールほう・ドラゴンバスター */
+  fireSpecial(id, lv, dmg) {
+    const r = this.run, p = r.player, w = WEAPONS[id];
+    if (r.shots.length > 90) return;
+    if (w.fire === 'hole' && r.shots.filter(s => s.kind === 'hole').length >= SPECIAL.maxHoles) return;
+    const n = w.count ? weaponStat(id, 'count', lv) : 1;
+    const t = this.nearestEnemies(n, 520);
+    const base = this.aimAngle();
+    for (let i = 0; i < n; i++) {
+      const tg = t[i];
+      const ang = tg ? Math.atan2(tg.y - p.y, tg.x - p.x) : base + (i - (n - 1) / 2) * 0.5;
+      const sh = { kind: w.fire, art: w.shot, size: w.size, x: p.x + Math.cos(ang) * 22, y: p.y + Math.sin(ang) * 22,
+        vx: Math.cos(ang) * w.speed, vy: Math.sin(ang) * w.speed, ang, dmg, r: 18 };
+      if (w.fire === 'hole') {
+        // とまる ところ：ねらった てきの いち（とおすぎれば 260 さき）
+        const d = tg ? Math.min(Math.hypot(tg.x - p.x, tg.y - p.y), 380) : 260;
+        Object.assign(sh, { ang: 0, travel: d / w.speed, life: w.life, radius: weaponStat(id, 'radius', lv), pull: w.pull, pullSpeed: w.pullSpeed });
+      } else {
+        Object.assign(sh, { life: weaponStat(id, 'life', lv), burn: weaponStat(id, 'burn', lv) * r.stats.damage, burnLife: weaponStat(id, 'burnLife', lv), burnR: w.burnR, gap: w.burnGap, run: 0, hit: new Set() });
+      }
+      r.shots.push(sh);
+    }
+    sound.play('fire', { volume: 0.42, gap: 0.2 });
+  },
+
+  /** かみなりチェーン：あたった てきから となりの てきへ（いっかいの フレームで ZAP_MAX まで） */
+  chainZap(from, s) {
+    const r = this.run, w = WEAPONS.chaingun;
+    let cur = from;
+    const done = [from];
+    for (let i = 0; i < s.chain && r.zaps < SPECIAL.zapMax; i++) {
+      let best = null, bd = w.chainRange ** 2;
+      for (const e of this.grid.query(cur.x, cur.y, w.chainRange, this.zapBuf || (this.zapBuf = []))) {
+        if (e.hp <= 0 || done.includes(e)) continue;
+        const d = (e.x - cur.x) ** 2 + (e.y - cur.y) ** 2;
+        if (d < bd) { bd = d; best = e; }
+      }
+      if (!best) break;
+      r.zaps++;
+      done.push(best);
+      if (r.shots.length < 110) r.shots.push({ kind: 'beam', zap: true, x: cur.x, y: cur.y, ang: Math.atan2(best.y - cur.y, best.x - cur.x), len: Math.sqrt(bd), w: 10, life: 0.12, max: 0.12 });
+      this.hitEnemy(best, s.dmg * w.chainMul, null, null, 0);
+      cur = best;
+    }
+  },
+
+  /** ドラゴンの もえる みち：0.5びょう ごとに ダメージ */
+  updateBurns(dt) {
+    const r = this.run;
+    if (!r.burns.length) return;
+    for (const b of r.burns) {
+      b.age += dt; b.tick -= dt;
+      if (b.tick <= 0) { b.tick = SPECIAL.burnTick; this.areaDamage(b.x, b.y, b.r, b.dmg, false); }
+    }
+    compact(r.burns, b => b.age < b.life);
   },
 
   orbitPositions() {
@@ -1369,6 +1429,10 @@ export const DadaSurvivorGame = {
       }
       if (w.fire === 'rocket') {
         if (ready(id, weaponStat(id, 'cooldown', lv))) this.fireRockets(id, lv, dmg);
+        continue;
+      }
+      if (w.fire === 'hole' || w.fire === 'dragon') {
+        if (ready(id, weaponStat(id, 'cooldown', lv))) this.fireSpecial(id, lv, dmg);
         continue;
       }
       if (id === 'kunai' && ready(id, weaponStat(id, 'cooldown', lv))) {
@@ -1508,12 +1572,15 @@ export const DadaSurvivorGame = {
 
   updateShots(dt) {
     const r = this.run;
+    r.zaps = 0;
+    this.updateBurns(dt);
     for (const s of r.shots) {
       if (s.kind === 'kunai' || s.kind === 'bullet') {
         s.x += s.vx * dt; s.y += s.vy * dt; s.life -= dt;
         for (const e of this.enemiesNear(s.x, s.y, s.r)) {
           if (e.hp <= 0 || (e.x - s.x) ** 2 + (e.y - s.y) ** 2 > (e.T.r + s.r) ** 2) continue;
           this.hitEnemy(e, s.dmg, s.x - s.vx, s.y - s.vy, s.kb || 0.12);
+          if (s.chain) this.chainZap(e, s);
           if (s.splash) {
             const rad = s.splash * (r.stats.boom || 1);
             this.stage.fx(s.fx || 'boom', s.x, s.y, rad * 2);
@@ -1557,6 +1624,36 @@ export const DadaSurvivorGame = {
           this.rocketShot = s; this.areaDamage(s.x, s.y, rad, s.dmg); this.rocketShot = null;
           this.stage.shake(s.art === 'smissile' ? 10 : s.art === 'mega' ? 7 : 3);
           sound.playBomb();
+        }
+      } else if (s.kind === 'hole') {
+        s.life -= dt;
+        if (s.travel > 0) { s.travel -= dt; s.x += s.vx * dt; s.y += s.vy * dt; }
+        s.ang += dt * 6;
+        const pr = s.radius * s.pull;
+        for (const e of this.enemiesNear(s.x, s.y, pr)) {
+          if (e.hp <= 0 || e.T.boss || e.T.rocketOnly || !e.T.speed) continue;
+          const dx = s.x - e.x, dy = s.y - e.y, d = Math.hypot(dx, dy);
+          if (d > 8 && d < pr + e.T.r) { const k = Math.min(d, s.pullSpeed * dt) / d; e.x += dx * k; e.y += dy * k; }
+        }
+        if (s.life <= 0) {
+          const rad = s.radius * (r.stats.boom || 1);
+          this.stage.fx('hboom', s.x, s.y, rad * 2.1);
+          this.areaDamage(s.x, s.y, rad, s.dmg);
+          this.stage.shake(4);
+          sound.playBomb();
+        }
+      } else if (s.kind === 'dragon') {
+        const step = Math.hypot(s.vx, s.vy) * dt;
+        s.x += s.vx * dt; s.y += s.vy * dt; s.life -= dt; s.run += step;
+        for (const e of this.enemiesNear(s.x, s.y, s.r + 10)) {
+          if (e.hp <= 0 || s.hit.has(e) || (e.x - s.x) ** 2 + (e.y - s.y) ** 2 > (e.T.r + s.r + 10) ** 2) continue;
+          s.hit.add(e);
+          this.hitEnemy(e, s.dmg, s.x - s.vx, s.y - s.vy, 0.1);
+        }
+        if (s.run >= s.gap) {
+          s.run = 0;
+          if (r.burns.length >= SPECIAL.maxBurns) r.burns.shift();
+          r.burns.push({ x: s.x, y: s.y, r: s.burnR, dmg: s.burn, life: s.burnLife, age: 0, tick: 0.1, id: ++r.burnSeq });
         }
       } else if (s.kind === 'beam') {
         s.life -= dt;

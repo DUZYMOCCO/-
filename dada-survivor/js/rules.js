@@ -333,6 +333,26 @@ export const WEAPONS = {
     name: 'ロケットランチャー', mode: true, gift: true, fire: 'rocket', shot: 'lrocket', size: 40, speed: 300, turn: 4.2, boomFx: 'bboom',
     cooldown: [2.2, 2.0, 1.75, 1.45, 1.1], damage: [60, 70, 85, 108, 140], count: [1, 1, 1, 1, 1], radius: [70, 80, 90, 100, 110],
   },
+  // v1.23.0 すごい ぶき（rare）：どれかの ぶきが Lv5 に なってから たまに でる。1かいの プレイで 1つだけ
+  chaingun: {
+    name: 'かみなりチェーンガン', icon: '⚡', desc: 'どんどん うつ。あたると かみなりが となりへ',
+    rare: true, fire: 'bullet', shot: 'cbullet', size: 22, speed: 840, spread: 0, kb: 0.06, quiet: true,
+    cooldown: [0.22, 0.2, 0.17, 0.15, 0.13], damage: [9, 10, 12, 14, 17], count: [1, 1, 1, 1, 1],
+    pierce: [1, 1, 1, 1, 1], life: [0.6, 0.6, 0.62, 0.64, 0.66],
+    chain: [1, 2, 2, 3, 4], chainMul: 0.5, chainRange: 150,
+  },
+  blackhole: {
+    name: 'ブラックホールほう', icon: '🌑', desc: 'てきを すいこんで どかーん！',
+    rare: true, fire: 'hole', shot: 'bhole', size: 64, speed: 170,
+    cooldown: [3.8, 3.6, 3.4, 3.1, 2.8], damage: [70, 85, 100, 120, 145], count: [1, 1, 1, 1, 2],
+    radius: [105, 115, 125, 135, 150], pull: 1.7, pullSpeed: 150, life: 1.7,
+  },
+  dragon: {
+    name: 'ドラゴンバスター', icon: '🐉', desc: 'ひの ドラゴンが とんで みちが もえる',
+    rare: true, fire: 'dragon', shot: 'dragonShot', size: 60, speed: 340,
+    cooldown: [2.4, 2.2, 2.0, 1.8, 1.6], damage: [40, 50, 62, 76, 92], life: [1.3, 1.35, 1.4, 1.5, 1.6],
+    burn: [8, 10, 12, 15, 18], burnLife: [2.5, 3, 3, 3.5, 4], burnR: 34, burnGap: 48,
+  },
   mega: {
     name: 'でかロケット', icon: '🚀', desc: 'おおきな ロケットが ばくはつ',
     evolved: true, fire: 'rocket', shot: 'mega', size: 52, speed: 230, turn: 2.8,
@@ -411,8 +431,19 @@ export function pickWeighted(weights, rnd = Math.random) {
   return entries[entries.length - 1][0];
 }
 
+/** すごい ぶき（rare）の しばり。もうけんは さいしょの レベル（Lv5）の ぶきが ある とき だけ。1つ もったら ほかの rare は でない */
+/** すごい ぶきの こうかの じょうげん（SE2 でも かるく） */
+export const SPECIAL = { maxHoles: 3, maxBurns: 36, burnTick: 0.5, zapMax: 8 };
+export const RARE = { weight: 0.6, maxOwned: 1 };
+export function rareAllowed(id, weapons) {
+  if (weapons[id] > 0) return true;
+  const owned = Object.keys(weapons).filter(k => WEAPONS[k]?.rare && weapons[k] > 0).length;
+  if (owned >= RARE.maxOwned) return false;
+  return Object.entries(weapons).some(([k, lv]) => WEAPONS[k] && !WEAPONS[k].mode && lv >= MAX_LEVEL);
+}
 function choiceWeight(item, weapons) {
-  return item.kind === 'weapon' && !(weapons[item.id] > 0) ? 3 : 1;
+  if (item.kind !== 'weapon' || weapons[item.id] > 0) return 1;
+  return WEAPONS[item.id].rare ? RARE.weight : 3;
 }
 
 /** レベルアップ時の3択。
@@ -440,6 +471,7 @@ export function upgradeChoices(weapons, passives, rnd = Math.random, count = 3) 
   const pool = [];
   for (const id of Object.keys(WEAPONS)) {
     if (WEAPONS[id].evolved || (WEAPONS[id].gift && !(WEAPONS[id].levelUp && weapons[id] > 0))) continue;
+    if (WEAPONS[id].rare && !rareAllowed(id, weapons)) continue;
     const lv = weapons[id] || 0;
     if (lv < MAX_LEVEL) pool.push({ kind: 'weapon', id, level: lv + 1 });
   }

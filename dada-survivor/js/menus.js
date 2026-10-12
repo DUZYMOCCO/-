@@ -7,13 +7,14 @@ import {
   DIFFICULTIES, CHARACTERS, WEAPONS, SHOP_ITEMS, STAGES, RARITIES, GEAR_SLOTS, CHEST_COST,
   shopCost, stageById, stageUnlocked, charUnlocked, gearLabel, rollGear, addGear, equipGear,
   unequipGear, mergeGear, bonusFor,
-} from './rules.js?v=219';
-import { art } from './art.js?v=219';
+} from './rules.js?v=220';
+import { art } from './art.js?v=220';
 
 const GEAR_ART = { weapon: 'sword', armor: 'armor', boots: 'shoes', charm: 'charm' };
 const ICON_ART = {
   kunai: 'kunai', orbit: 'star', thunder: 'bolt', bomb: 'bomb', magnet: 'magnet', meat: 'meat', coin: 'coin',
   gun: 'gun', shotgun: 'shotgun', bazooka: 'bazooka', dual: 'dual', gatling: 'gatling', mega: 'mega', supermissile: 'smissile', laser: 'laserGun',
+  chaingun: 'chaingunArt', blackhole: 'bhole', dragon: 'dragonShot',
   ammo: 'bullet', blast: 'blast',
 };
 // キャラの さいしょの ぶき（ゴッドロボは 2つ：レーザーじゅう＋かみなり）

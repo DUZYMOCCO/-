@@ -1056,6 +1056,24 @@ const smissile = wrap(`
   <path d="M46 26 Q55 27.5 59 31" fill="none" stroke="#fef9c3" stroke-width="1.6" stroke-linecap="round"/>
   <circle cx="36" cy="30" r="2.7" fill="#38bdf8" ${S2}/>`);
 
+
+// v1.23.0 すごい ぶき
+const cbullet = wrap(`<path d="M8 32 L22 26 L20 31 L34 28 L58 32 L34 36 L20 33 L22 38Z" fill="#facc15" ${S2}/><path d="M24 31 H50" stroke="#fffbeb" stroke-width="2.4" stroke-linecap="round"/>`);
+const chaingunArt = wrap(`<rect x="6" y="26" width="34" height="14" rx="4" fill="#334155" ${S}/>
+  <rect x="38" y="24" width="20" height="6" rx="2" fill="#64748b" ${S2}/><rect x="38" y="31" width="20" height="6" rx="2" fill="#64748b" ${S2}/><rect x="38" y="38" width="20" height="5" rx="2" fill="#64748b" ${S2}/>
+  <path d="M14 40 L10 54 L20 54 L24 40Z" fill="#1e293b" ${S}/>
+  <path d="M30 4 L40 4 L33 15 L41 15 L26 30 L30 18 L23 18Z" fill="#facc15" ${S2}/>`);
+const bhole = wrap(`<circle cx="32" cy="32" r="29" fill="#a855f7" opacity=".35"/>
+  <path d="M32 6 A26 26 0 0 1 58 32" fill="none" stroke="#c084fc" stroke-width="5" stroke-linecap="round"/>
+  <path d="M32 58 A26 26 0 0 1 6 32" fill="none" stroke="#c084fc" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="32" cy="32" r="18" fill="#0b0614" ${S}/><circle cx="32" cy="32" r="18" fill="none" stroke="#7c3aed" stroke-width="3"/>
+  <circle cx="26" cy="26" r="3" fill="#e9d5ff"/>`);
+const dragonShot = wrap(`<path d="M2 32 Q14 20 22 26 Q14 32 22 38 Q14 44 2 32Z" fill="#fb923c" ${S2}/>
+  <path d="M18 32 Q30 18 44 22 L50 18 L50 25 Q60 28 62 33 Q56 36 48 36 L44 42 Q30 46 18 32Z" fill="#ef4444" ${S}/>
+  <path d="M24 32 Q32 26 42 28" fill="none" stroke="#fde047" stroke-width="3" stroke-linecap="round"/>
+  <path d="M30 22 L34 12 L38 21Z" fill="#f97316" ${S2}/><path d="M38 21 L44 13 L44 22Z" fill="#f97316" ${S2}/>
+  <circle cx="50" cy="28" r="2.6" fill="#fde047" ${S2}/><path d="M56 34 L60 33" stroke="${O}" stroke-width="1.6"/>`);
+
 const miniGun = (x, y) => `
   <g transform="translate(${x} ${y})">
     <path d="M6 12 L10 11 L12 24 L4 25Z" fill="#3f2a1d" ${S}/>
@@ -1599,6 +1617,7 @@ const SOURCES = {
   outpost, hut, kamakura, hatch: hatch(false), hatchOpen: hatch(true), wallL: stretch(wallSide(true)), wallR: stretch(wallSide(false)), wallT: stretch(wallEnd(true)), wallB: stretch(wallEnd(false)),
   cellA: cell(['soldier', 'soldier']), cellB: cell(['researcher', 'medic']), cellC: cell(['soldier', 'researcher']), cellOpen: cell([], true), exitStairs,
   blackrobo: wrap(withPatch('blackrobo', blackRobo)), supreme: wrap(withPatch('supreme', supreme), '0 -4 64 68'), coinbox: wrap(withPatch('coinbox', coinbox)), fortress,
+  cbullet, chaingunArt, bhole, dragonShot,
   skeleton: wrap(withPatch('skeleton', skeleton)), ctower1: ctower(0), ctower2: ctower(1), cbanner: fixPatch(cbanner), brazier, throneKeep: fixPatch(throneKeep), throneDoor: throneDoor(false), throneDoorOpen: throneDoor(true), saw, throne: fixPatch(throne),
   temple, templeDoor: templeDoor(false), templeDoorOpen: templeDoor(true), spikes0, spikesW, spikes1, rowWarn, boulder, rock,
   megavault: vault(false).replace(/<\/svg>$/, `${villainPatch(18, 108, 1.6)}<text x="65" y="117" text-anchor="middle" font-size="11" font-weight="900" fill="#fde047" stroke="#1c1917" stroke-width=".8">10000</text></svg>`), bmissile, mansion, mansionDoor: mansionDoor(false), mansionDoorOpen: mansionDoor(true), vault: vault(false), vaultOpen: vault(true),

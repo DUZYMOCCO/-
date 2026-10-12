@@ -8,7 +8,7 @@
  * - おもい ときは「かるい モード」（ds-lite）：ぴょこぴょこ／ほうせきの ゆれを とめ、エフェクトと すうじを へらす
  * - ここでは Math.random を つかわない（みための ばらつきは カウンタで。ゲームの らんすうと まざらない）
  */
-import { art, groundTile } from './art.js?v=219';
+import { art, groundTile } from './art.js?v=220';
 
 class Pool {
   constructor(layer, make) { this.layer = layer; this.make = make; this.free = []; this.active = new Set(); this.key = Symbol('node'); }
@@ -55,7 +55,8 @@ const FX_FRAMES = {
   bolt: [{ transform: 'scaleY(.2)', opacity: 1, transformOrigin: '50% 100%' }, { transform: 'scaleY(1)', opacity: 1, offset: .25, transformOrigin: '50% 100%' }, { transform: 'scaleY(1)', opacity: 0, transformOrigin: '50% 100%' }],
 };
 FX_FRAMES.bboom = FX_FRAMES.boom;
-const FX_OPTS = { bboom: { duration: 420, easing: 'ease-out' }, heal: { duration: 700, easing: 'ease-out' }, shatter: { duration: 520, easing: 'ease-out' }, pop: { duration: 300, easing: 'ease-out' }, boom: { duration: 420, easing: 'ease-out' }, bolt: { duration: 320, easing: 'ease-out' } };
+FX_FRAMES.hboom = FX_FRAMES.boom;
+const FX_OPTS = { hboom: { duration: 480, easing: 'ease-out' }, bboom: { duration: 420, easing: 'ease-out' }, heal: { duration: 700, easing: 'ease-out' }, shatter: { duration: 520, easing: 'ease-out' }, pop: { duration: 300, easing: 'ease-out' }, boom: { duration: 420, easing: 'ease-out' }, bolt: { duration: 320, easing: 'ease-out' } };
 const TEXT_FRAMES = [
   { transform: 'translate(-50%,0) scale(.6)', opacity: 1 },
   { transform: 'translate(-50%,-14px) scale(1.15)', opacity: 1, offset: .25 },
@@ -101,6 +102,7 @@ export class Stage {
     this.decorKind = null;
     // けんきゅうじょの ひ（ゆか）と、ばくだんの おちる しるし
     this.fires = new Pool(haz, () => makeSprite('ds-fire'));
+    this.burns = new Pool(haz, () => makeSprite('ds-burn'));
     this.marks = new Pool(haz, () => { const n = el('ds-ent'); n._img = el('ds-mark', n); return n; });
     this.aura = el('ds-aura', floor);
     this.aura.style.display = 'none';
@@ -200,7 +202,7 @@ export class Stage {
 
   reset() {
     this.gen = (this.gen || 0) + 1;
-    for (const p of [this.props, this.beams, this.allies, this.decor, this.fires, this.marks, this.ebombs, this.gems, this.items, this.enemies, this.kunai, this.bullets, this.rockets, this.bombs, this.stars, this.fxPool, this.textPool]) {
+    for (const p of [this.burns, this.props, this.beams, this.allies, this.decor, this.fires, this.marks, this.ebombs, this.gems, this.items, this.enemies, this.kunai, this.bullets, this.rockets, this.bombs, this.stars, this.fxPool, this.textPool]) {
       for (const n of p.active) n._img.getAnimations?.().forEach(a => a.cancel());
       p.clear();
     }
@@ -389,6 +391,8 @@ export class Stage {
       }
       Stage.place(n, f.x, f.y);
     });
+    // ドラゴンの もえる みち（アニメは CSS だけ。かるい モードでは とめる）
+    if (r.burns) this.sync(this.burns, r.burns, (b, n) => { Stage.look(n, 'fire', 72); Stage.place(n, b.x, b.y); });
     if (r.ebombs) {
       this.sync(this.marks, r.ebombs, (b, n) => {
         const size = b.blast ? Math.round(b.blast * 2.2) : 96;
@@ -410,7 +414,7 @@ export class Stage {
     });
     const bk = this.bk;
     bk.kunai.length = bk.bullet.length = bk.rocket.length = bk.bomb.length = bk.beam.length = 0;
-    for (const s of r.shots) bk[s.kind]?.push(s);
+    for (const s of r.shots) bk[s.kind === 'hole' || s.kind === 'dragon' ? 'bullet' : s.kind]?.push(s);
     this.sync(this.kunai, bk.kunai, (s, n) => { Stage.look(n, 'kunai', 30); Stage.place(n, s.x, s.y, Math.round(s.ang * 20) / 20); });
     this.sync(this.bullets, bk.bullet, (s, n) => {
       Stage.look(n, s.art || 'bullet', s.size || 22);
@@ -428,6 +432,7 @@ export class Stage {
     if (bk.beam.length || this.beams.active.size) this.sync(this.beams, bk.beam, (s, n) => {
       const st = n._img.style, len = Math.round(s.len), w = s.w;
       if (n._len !== len) { n._len = len; st.width = `${len}px`; }
+      if (n._z !== !!s.zap) { n._z = !!s.zap; n._img.classList.toggle('ds-zap', n._z); }
       if (n._w !== w) { n._w = w; st.height = `${w}px`; st.marginTop = `${-w / 2}px`; }
       const o = Math.round(Math.max(0, s.life / s.max) * 10) / 10;
       if (n._o !== o) { n._o = o; st.opacity = o; }
@@ -443,7 +448,7 @@ export class Stage {
     // がめんの そとの エフェクトは つくらない
     const c = this.cull, m = size / 2;
     if (x + m < c.x0 || x - m > c.x1 || y + m < c.y0 || y - (kind === 'bolt' ? 0 : m) > c.y1) return;
-    const boom = kind === 'boom' || kind === 'bboom';
+    const boom = kind === 'boom' || kind === 'bboom' || kind === 'hboom';
     if (boom) { if (this.booms >= (lite ? C.boomLite : C.boom)) return; this.booms++; }
     else if (kind === 'pop' && lite && active > 8) return; // かるい モードでは こまかい ポンを まびく
     const n = this.fxPool.get(), img = n._img;
