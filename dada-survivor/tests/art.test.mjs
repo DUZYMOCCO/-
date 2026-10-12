@@ -164,7 +164,7 @@ test('dino slot is the rocket soldier ロケットへい and unicorn slot is the
 test('godrobo is the combined god robot ゴッドロボ (laser + thunder, unlock after stage 7)', async () => {
   const { startWeapons, normalizeSave, charUnlocked, upgradeChoices } = await import('../js/rules.js');
   const c = CHARACTERS.find(c => c.id === 'godrobo');
-  assert.equal(CHARACTERS.length, 10);
+  assert.ok(CHARACTERS.length >= 10);
   assert.equal(c.name, 'ゴッドロボ'); assert.equal(c.unlock, 7);
   assert.deepEqual(startWeapons(c), { laser: 1, thunder: 1 });
   assert.deepEqual(startWeapons(CHARACTERS[0]), { kunai: 1 });
@@ -177,6 +177,31 @@ test('godrobo is the combined god robot ゴッドロボ (laser + thunder, unlock
   assert.notDeepEqual(first.map(x => x.id), ['gun', 'shotgun', 'bazooka'], 'じゅう3択 では ない');
   const svg = svgOf(art('godrobo'));
   for (const col of ['#fde047', '#14b8a6', '#2563eb', '#dc2626', '#c2873a', '#3d4f3a', '#f8fafc']) assert.ok(svg.includes(col), col);
+  assert.ok(!svg.includes('data-emblem="warumono"'));
+  assert.equal((svg.match(/<svg/g) || []).length, 1);
+});
+
+// v1.16.0：2たいめの ロボ バトルロボ（あたらしい id robo。ステージ6 クリアで なかま）
+test('robo is the 2nd robot バトルロボ (bazooka + shotgun, unlock after stage 6, distinct from ゴッドロボ)', async () => {
+  const { startWeapons, normalizeSave, charUnlocked } = await import('../js/rules.js');
+  const c = CHARACTERS.find(c => c.id === 'robo'), g = CHARACTERS.find(c => c.id === 'godrobo');
+  assert.equal(CHARACTERS.length, 11);
+  assert.equal(new Set(CHARACTERS.map(c => c.id)).size, 11);
+  assert.equal(c.name, 'バトルロボ'); assert.equal(c.unlock, 6);
+  assert.ok(c.unlock < g.unlock, 'ゴッドロボより さきに なかま');
+  assert.deepEqual(startWeapons(c), { bazooka: 1, shotgun: 1 });
+  assert.ok(/^[ぁ-んァ-ンー\s]+$/.test(c.name + c.trait));
+  // かなり つよいが やりすぎない（こうげき +20% いか・はやさ アップ なし）
+  assert.ok(c.perk.dmg > 0.1 && c.perk.dmg <= 0.2 && !c.perk.spd);
+  assert.ok(!charUnlocked(normalizeSave({ stageClears: { 1: 1, 2: 1, 3: 1, 4: 1, 5: 1 } }), c));
+  assert.ok(charUnlocked(normalizeSave({ stageClears: { 6: 1 } }), c));
+  assert.equal(normalizeSave({ character: 'robo', stageClears: { 1: 1 } }).character, CHARACTERS[0].id);
+  assert.equal(normalizeSave({ character: 'robo', stageClears: { 6: 1 } }).character, 'robo');
+  const svg = svgOf(art('robo')), gsvg = svgOf(art('godrobo'));
+  // メタリックグレー（オレンジの ライン）・ゴッドロボと おなじ ひかる め・にほんの ワッペン・ほしの バッジ・あおい ばくだん・ロケット・ぼうしの かざり・きんの わっか
+  for (const col of ['#9ca3af', '#6b7280', '#f97316', '#38bdf8', '#dc2626', '#fde047', '#2563eb', '#3d4f3a', '#c2873a', '#facc15']) assert.ok(svg.includes(col), col);
+  assert.ok(!svg.includes('#f8fafc'), 'ゴッドロボの しろい からだ では ない');
+  assert.notEqual(svg, gsvg);
   assert.ok(!svg.includes('data-emblem="warumono"'));
   assert.equal((svg.match(/<svg/g) || []).length, 1);
 });

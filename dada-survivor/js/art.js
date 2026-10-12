@@ -356,6 +356,41 @@ const healPlus = wrap(`<circle cx="32" cy="32" r="22" fill="#fff" ${S}/>${greenP
 
 const whiskers = `<path d="M10 33 L18 34 M10 38 L18 37 M54 33 L46 34 M54 38 L46 37" ${S2} fill="none"/>`;
 
+
+// バトルロボ（v1.16.0。こどもの リクエストの 2たいめの ロボ。id は robo）
+// ゴッドロボの ロボの からだに、ロケットへい（かたの ロケットランチャー）・カウボーイ（ぼうしの かざり・ショットガン）・
+// ボマー（こしの あおい ばくだん）・けいさつかん（ほしの バッジ）・ソルジャー（にほんの ワッペン・みずいろの バイザー）・
+// かみさま（ちいさな きんの わっか）を あわせた、メタリックな はいいろの オリジナル せんとうロボ（オレンジの ライン。めは ゴッドロボと おなじ くろい かおに ひかる あおい まるい め。しろ×きんの ゴッドロボとは からだの いろが ちがう）
+const roboHei = `
+  <ellipse cx="32" cy="61" rx="18" ry="3" fill="#000" opacity=".22"/>
+  <ellipse cx="31" cy="3.6" rx="9" ry="2.4" fill="none" stroke="#a16207" stroke-width="3"/><ellipse cx="31" cy="3.6" rx="9" ry="2.4" fill="none" stroke="#facc15" stroke-width="1.6"/>
+  <path d="M19 61 L20 50 L29 50 L29 61Z M35 61 L35 50 L44 50 L45 61Z" fill="#475569" ${S2}/>
+  <path d="M16 62 Q16 56.5 21.5 56.5 L30 56.5 L30 62Z M34 62 L34 56.5 L42.5 56.5 Q48 56.5 48 62Z" fill="#f97316" ${S2}/>
+  <path d="M14 34 Q14 29 19 29 L45 29 Q50 29 50 34 L49 49 Q49 53 45 53 L19 53 Q15 53 15 49Z" fill="#6b7280" ${S}/>
+  <path d="M18 32 L46 32 L45 45 L19 45Z" fill="#9ca3af" ${S2}/><path d="M20 33.6 L44 33.6" stroke="#e5e7eb" stroke-width="1.6" stroke-linecap="round"/><path d="M18 44 L46 44" stroke="#f97316" stroke-width="1.6"/>
+  <path d="M24 34.5 L25.3 37.6 L28.6 37.8 L26 39.9 L26.9 43.1 L24 41.3 L21.1 43.1 L22 39.9 L19.4 37.8 L22.7 37.6Z" fill="#fde047" ${SW(1.2)}/>
+  <rect x="35" y="35" width="8" height="5.6" rx=".8" fill="#fff" ${SW(1.1)}/><circle cx="39" cy="37.8" r="1.7" fill="#dc2626"/>
+  <path d="M15 47.5 H49" stroke="#7c2d12" stroke-width="3.2"/><rect x="29" y="45.6" width="6" height="4" rx="1" fill="#facc15" ${SW(1)}/>
+  <circle cx="20" cy="51" r="3.6" fill="#2563eb" ${SW(1.4)}/><path d="M20 47.4 Q21 45.6 23 45.4" fill="none" stroke="${O}" stroke-width="1.2"/><circle cx="23.4" cy="45.2" r="1" fill="#fb923c"/>
+  <circle cx="44" cy="51" r="3.6" fill="#2563eb" ${SW(1.4)}/><circle cx="43" cy="50" r="1" fill="#93c5fd"/>
+  <g transform="translate(5 1) rotate(-24 12 24)">
+    <rect x="0" y="19" width="26" height="9" rx="2" fill="#3d4f3a" ${S2}/>
+    <path d="M0 19 L-3.5 17.5 L-3.5 29.5 L0 28Z" fill="#334155" ${S2}/>
+    <path d="M26 20 L30 20 L30 27 L26 27Z" fill="#f97316" ${S2}/><path d="M6 19 V28 M16 19 V28" stroke="#f97316" stroke-width="1.6"/>
+  </g>
+  <path d="M10 33 Q8 44 12 48 L17 47 L16 34Z" fill="#6b7280" ${S2}/><circle cx="13.5" cy="48" r="3.4" fill="#334155" ${S2}/>
+  <path d="M48 33 Q55 36 54 44 L49 45 L48 37Z" fill="#6b7280" ${S2}/>
+  <path d="M44 41 L52 40 L53 46 L46 47Z" fill="#92400e" ${S2}/>
+  <path d="M51 40 L63 40 L63 43 L51 43Z M51 43.2 L63 43.2 L63 46.2 L51 46.2Z" fill="#334155" ${S2}/>
+  <path d="M55 40 V46.2" stroke="#78716c" stroke-width="1.4"/>
+  <path d="M15 22 Q14 11 25 11 L39 11 Q50 11 49 22 L49 26 Q49 30 45 30 L19 30 Q15 30 15 26Z" fill="#9ca3af" ${S}/><path d="M19 14.6 Q24 12.6 30 12.8" fill="none" stroke="#f3f4f6" stroke-width="2" stroke-linecap="round"/><path d="M15.4 27 H48.6" stroke="#f97316" stroke-width="1.6"/>
+  <path d="M18 12.6 Q22 6 32 6.4 Q42 6 46 12.6 Q39 10.6 32 10.8 Q25 10.6 18 12.6Z" fill="#c2873a" ${S2}/>
+  <path d="M28 8.4 L32 6.6 L36 8.4" fill="none" stroke="#fde68a" stroke-width="1.4" stroke-linecap="round"/>
+  <path d="M19 17.4 Q32 14.6 45 17.4 L44.4 25.4 Q32 23.2 19.6 25.4Z" fill="#0f172a" ${S2}/>
+  <circle cx="26" cy="20.8" r="3" fill="#38bdf8"/><circle cx="38" cy="20.8" r="3" fill="#38bdf8"/><circle cx="26.8" cy="19.9" r="1" fill="#fff"/><circle cx="38.8" cy="19.9" r="1" fill="#fff"/>
+  <rect x="11" y="17" width="5" height="9" rx="1.5" fill="#475569" ${S2}/><rect x="48" y="17" width="5" height="9" rx="1.5" fill="#475569" ${S2}/><circle cx="13.5" cy="21.5" r="1.2" fill="#38bdf8"/><circle cx="50.5" cy="21.5" r="1.2" fill="#38bdf8"/>
+  <path d="M27 29 H37" stroke="#374151" stroke-width="1.6" stroke-linecap="round"/>`;
+
 /* ---------- わるものぐんだんの ワッペン（オリジナル：ドクロ＋クロスした ナイフ。ちは なし） ---------- */
 const villainPatch = (x, y, k = 1) => `<g data-emblem="warumono" transform="translate(${x} ${y}) scale(${k})">
   <rect x="-5.2" y="-4.2" width="10.4" height="8.4" rx="1.2" fill="#2a0a0e" ${SW(1.3)}/>
@@ -1359,6 +1394,7 @@ const hero2 = {
   bear:    cowboy, // id は セーブ互換のため bear のまま（絵と名前は カウボーイ）
   dino:    rocketSoldier, // id は セーブ互換のため dino のまま（絵と名前は ロケットへい）
   unicorn: deity,         // id は セーブ互換のため unicorn のまま（絵と名前は かみさま）
+  robo: roboHei, // v1.16.0 2たいめの ロボ バトルロボ
   godrobo: `<g transform="translate(32 33) scale(.9) translate(-32 -33)">${godRobo}</g>`, // v1.15.0 9にんが がったいした ゴッドロボ
 };
 

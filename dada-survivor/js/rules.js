@@ -27,6 +27,9 @@ export const CHARACTERS = [
   { id: 'bear',    name: 'カウボーイ', weapon: 'shotgun', perk: { hp: 70 },                trait: 'すごく タフ', unlock: 3 },
   { id: 'dino',    name: 'ロケットへい', weapon: 'bazooka', perk: { dmg: 0.25 },           trait: 'すごく つよい', unlock: 4 },
   { id: 'unicorn', name: 'かみさま', weapon: 'thunder', perk: { dmg: 0.15, spd: 0.1, hp: 40, regen: 0.5 }, trait: 'ぜんぶ アップ', unlock: 5 },
+  // v1.16.0：2たいめの ロボ バトルロボ（ロケットへい・カウボーイ・ボマー・けいさつかん・ソルジャー・かみさま・ゴッドロボを あわせた）。
+  // ステージ6 クリアで なかま（ゴッドロボより さき）。バズーカ（Lv1）と ショットガン（Lv1）で はじまる。かなり つよい（ゴッドロボと だいたい おなじ くらい。はやさ アップは なし）
+  { id: 'robo',    name: 'バトルロボ', weapon: 'bazooka', extra: ['shotgun'], perk: { dmg: 0.18, hp: 30, regen: 0.25 }, trait: 'つよい ロボ', unlock: 6 },
   // v1.15.0：9にんが がったいした ゴッドロボ。ステージ7 クリアで なかま。レーザーじゅう（Lv1）と かみなり（Lv1）の 2つで はじまる（extra）
   { id: 'godrobo', name: 'ゴッドロボ', weapon: 'laser', extra: ['thunder'], perk: { dmg: 0.1, spd: 0.06, hp: 30, regen: 0.3 }, trait: 'さいきょう', unlock: 7 },
 ];
