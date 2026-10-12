@@ -63,3 +63,11 @@ test('v1.20.0: wider rooms + きょだいきんこ above the command room (rocke
   for (const id of ['bazooka', 'supermissile']) assert.ok(rockets.includes(id), id);
   assert.ok(svgOf(art('megavault')).includes('data-emblem="warumono"'));
 });
+
+test('v1.20.1: 90 enemies in the giant vault room, max 15 at once; death after the boss still counts as clear', async () => {
+  const { readFileSync } = await import('node:fs');
+  assert.equal(FORTRESS.horde.total, 90);
+  assert.ok(FORTRESS.horde.cap <= 15 && FORTRESS.horde.batch <= FORTRESS.horde.cap);
+  const src = readFileSync(new URL('../js/index.js', import.meta.url), 'utf8');
+  assert.ok(src.includes('this.endRun(!!r.won)'), 'クリアの あとに たおれても クリア');
+});

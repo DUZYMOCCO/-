@@ -13,13 +13,13 @@ import {
   SQUAD, allyDamage, squadSlot, canWhistle, healAmount,
   QUEST, CAMP, underHalfW, clampUnder, hutSpot, LASER_MODES, nextLaserMode, squadRoom, beamHits, MAX_LEVEL as MAXLV,
   enemyDmgMul, startWeapons, CITY_FIRE, burnSites, TOWER, MANSION, FORTRESS, fortressBossScale, trailSteps, missileTargets, towerSpot, rollHeli, heliDamage, floorName,
-} from './rules.js?v=215';
-import { DecorField } from './decor.js?v=215';
-import { EnemyGrid, nearestN } from './grid.js?v=215';
-import { preloadArt, art } from './art.js?v=215';
-import { Stage } from './stage.js?v=215';
-import { menuMethods, iconHtml } from './menus.js?v=215';
-import { PopBGM, playWhistle } from './bgm.js?v=215';
+} from './rules.js?v=216';
+import { DecorField } from './decor.js?v=216';
+import { EnemyGrid, nearestN } from './grid.js?v=216';
+import { preloadArt, art } from './art.js?v=216';
+import { Stage } from './stage.js?v=216';
+import { menuMethods, iconHtml } from './menus.js?v=216';
+import { PopBGM, playWhistle } from './bgm.js?v=216';
 
 const SAVE_KEY = 'dada_survivor_save';
 const TAU = Math.PI * 2;
@@ -45,7 +45,7 @@ export const DadaSurvivorGame = {
 
   // 起動時にこのゲームのCSSを自分で読み込む（?v= はこのフォルダ内で管理）。ハブが init 前に await する
   prepare() {
-    return loadCss(new URL('../css/dada-survivor.css?v=215', import.meta.url).href);
+    return loadCss(new URL('../css/dada-survivor.css?v=216', import.meta.url).href);
   },
 
   init(container, onBackToHub) {
@@ -465,7 +465,7 @@ export const DadaSurvivorGame = {
     // XP → レベルアップ
     while (r.xp >= xpToNext(r.level)) { r.xp -= xpToNext(r.level); r.level++; r.pendingLevels++; }
     this.updateHud();
-    if (p.hp <= 0) { this.endRun(false); return; }
+    if (p.hp <= 0) { this.endRun(!!r.won); return; } // v1.20.1 ボスを たおした あとは たおれても クリア（コインも もらえる）
     if (r.pendingLevels > 0) this.showLevelUp();
   },
 
@@ -707,7 +707,8 @@ export const DadaSurvivorGame = {
       const hasRocket = Object.keys(r.weapons).some(id => WEAPONS[id].fire === 'rocket' && !WEAPONS[id].mode) || r.weapons.laser; // レーザーじゅうは ロケットランチャー モードで こわせる
       if (!hasRocket) { r.weapons.supermissile = MAXLV; this.refreshSkills(); }
       this.addFortressExit();
-      this.showBanner(hasRocket ? (r.weapons.laser ? 'きょだいきんこ！ でかいミサイルで こわそう！ レーザーじゅうは ロケットランチャー モードに してね' : 'きょだいきんこ！ でかいミサイルで こわそう！（ほかの ぶきは きかないよ）') : 'きょだいきんこ！ スーパーミサイルを ひろった！ でかいミサイルで こわそう！', 4200);
+      q.horde = T.horde.total; // v1.20.1 てきが 90たい（いちどに cap まで）
+      this.showBanner(hasRocket ? (r.weapons.laser ? 'きょだいきんこ！ でかいミサイルで こわそう！ レーザーじゅうは ロケットランチャー モードに してね' : 'きょだいきんこ！ でかいミサイルで こわそう！（ほかの ぶきは きかないよ）わるものが 90にん くるよ！') : 'きょだいきんこ！ スーパーミサイルを ひろった！ でかいミサイルで こわそう！', 4200);
       return;
     }
     if (f === 4) {
@@ -750,6 +751,18 @@ export const DadaSurvivorGame = {
   updateFortress() {
     const q = this.run.quest;
     if (q.pending > 0 && q.left < 2) this.spawnRoboWave();
+    if (q.horde > 0) {
+      const r = this.run, H = q.T.horde, U = q.T.room;
+      let alive = 0; for (const e of r.enemies) if (e.horde) alive++;
+      if (alive <= H.cap - H.batch) {
+        const types = r.stageDef.enemies.map(e => e[0]), hp = spawnPlan(r.time, r.diff, r.stageDef).hpScale * H.hp;
+        for (let i = 0; i < H.batch && q.horde > 0; i++, q.horde--) {
+          const side = Math.random() < 0.5 ? -1 : 1, e = this.spawnEnemy(types[Math.floor(Math.random() * types.length)], hp, undefined,
+            { x: side * (U.halfW - 40 - Math.random() * 120), y: U.top + 80 + Math.random() * 500 });
+          e.horde = true;
+        }
+      }
+    }
     if (q.boxes) for (const b of q.boxes) if (b.hp > 0) { b.x = b.hx; b.y = b.hy; }
   },
 

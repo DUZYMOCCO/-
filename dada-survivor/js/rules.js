@@ -684,6 +684,8 @@ export const FORTRESS = {
   boxes: [{ x: -200, y: -420, coins: 100, hp: 1400 }, { x: 200, y: -420, coins: 230, hp: 2200 }],
   // v1.20.0 めいれいしつの うえの きょだいきんこ：ロケットけいの ぶき（バズーカ・でかロケット・スーパーミサイル・レーザーの ロケット）でだけ こわれる。hits かい あてると コイン coins まい
   mega: { x: 0, y: -520, hits: 20, coins: 10000 },
+  // v1.20.1 きょだいきんこの へやに てき 90たい（いちどに cap たい まで、batch たいずつ）
+  horde: { total: 90, cap: 15, batch: 5, hp: 1.0 },
   boss: { type: 'supreme', hp: 33000, at: { x: 0, y: -620 }, levelRef: 31, minHp: 0.75 },
   bossMissile: { n: 5, spread: 120, flight: 1.5, blast: 56, dmg: 12, range: 700, cd: 3.2, firstCd: 2.8 },
 };
