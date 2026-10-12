@@ -17,7 +17,8 @@ export function cellRand(cx, cy, seed, salt = 0) {
 }
 
 // 1マスぶんの かざり（[{ x, y, kind: 'capsule' | 'alien' | 'broken' | 'flag', id? }]）。ボトルの id は こわれた じょうたいを ランの あいだ おぼえる ため
-export function decorCell(cx, cy, seed) {
+export function decorCell(cx, cy, seed, kind = 'lab') {
+  if (kind === 'city') return cityCell(cx, cy, seed);
   const out = [];
   // スタート ちてん（0,0 の マス）は ボトルを おかず、みかたの はたを 1ぽん（じぶんの すこし みぎした）
   if (cx === 0 && cy === 0) { out.push({ x: 96, y: 60, kind: 'flag' }); return out; }
@@ -39,9 +40,20 @@ export function decorCell(cx, cy, seed) {
   return out;
 }
 
+/**
+ * こわれた まち：だいたい 3マスに 1つ、こわれた くるま（car）か くずれた ビルの かけら（ruin）。スタートの マスは なし
+ */
+export const CITY_DECOR = { chance: 0.34, ruin: 0.45 };
+export function cityCell(cx, cy, seed) {
+  if ((cx === 0 && cy === 0) || cellRand(cx, cy, seed, 21) >= CITY_DECOR.chance) return [];
+  const C = DECOR_CELL, m = 80;
+  return [{ x: Math.round(cx * C + m + cellRand(cx, cy, seed, 22) * (C - 2 * m)), y: Math.round(cy * C + m + cellRand(cx, cy, seed, 23) * (C - 2 * m)),
+    kind: cellRand(cx, cy, seed, 24) < CITY_DECOR.ruin ? 'ruin' : 'car' }];
+}
+
 /** みえる はんいの かざりを あつめる（マスごとに キャッシュ。おなじ オブジェクトを かえすので DOM プールが つけかえを しない） */
 export class DecorField {
-  constructor(seed = 1) { this.seed = seed; this.cache = new Map(); this.list = []; }
+  constructor(seed = 1, kind = 'lab') { this.seed = seed; this.kind = kind; this.cache = new Map(); this.list = []; }
   setSeed(seed) { if (seed !== this.seed) { this.seed = seed; this.cache.clear(); } }
   visible(x0, y0, x1, y1) {
     const C = DECOR_CELL, out = this.list;
@@ -50,7 +62,7 @@ export class DecorField {
     for (let cx = Math.floor(x0 / C); cx <= Math.floor(x1 / C); cx++) for (let cy = Math.floor(y0 / C); cy <= Math.floor(y1 / C); cy++) {
       const k = ((cx & 0xffff) << 16) | (cy & 0xffff);
       let cell = this.cache.get(k);
-      if (!cell) { cell = decorCell(cx, cy, this.seed); this.cache.set(k, cell); }
+      if (!cell) { cell = decorCell(cx, cy, this.seed, this.kind); this.cache.set(k, cell); }
       for (const d of cell) out.push(d);
     }
     return out;

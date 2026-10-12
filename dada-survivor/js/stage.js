@@ -8,7 +8,7 @@
  * - おもい ときは「かるい モード」（ds-lite）：ぴょこぴょこ／ほうせきの ゆれを とめ、エフェクトと すうじを へらす
  * - ここでは Math.random を つかわない（みための ばらつきは カウンタで。ゲームの らんすうと まざらない）
  */
-import { art, groundTile } from './art.js?v=203';
+import { art, groundTile } from './art.js?v=204';
 
 class Pool {
   constructor(layer, make) { this.layer = layer; this.make = make; this.free = []; this.active = new Set(); this.key = Symbol('node'); }
@@ -33,6 +33,10 @@ function el(cls, parent) {
 
 // 位置(外) > 向き(中) > 絵(内) の3段。内側は CSS アニメ（ぴょこぴょこ）専用
 let spriteSeq = 0;
+// ゆかの かざりの え（けんきゅうじょの ボトル・はた／こわれた まちの くるま・がれき）
+const NO_DECOR = [];
+const DECOR_ART = { flag: 'labFlag', broken: 'capsuleBroken', capsule: 'capsule', alien: 'capsule', car: 'wreckCar', ruin: 'ruinPile' };
+
 function makeSprite(extra = '') {
   const n = el('ds-ent');
   n._flip = el('ds-flip', n);
@@ -128,11 +132,15 @@ export class Stage {
     this.props = new Pool(deco, () => { const n = el('ds-ent'); n._img = el('ds-img ds-prop', n); return n; });
     this.propVis = [];
 
+    // みかたの ヘリ（こわれた まちの おくじょうで もらう。そとで プレイヤーの うえを とぶ）
+    this.heli = makeSprite('ds-heli');
+    this.heli.style.display = 'none';
     this.kunai = new Pool(top, () => makeSprite('ds-kunai'));
     this.bullets = new Pool(top, () => makeSprite('ds-bullet'));
     this.rockets = new Pool(top, () => makeSprite('ds-rocket'));
     this.bombs = new Pool(top, () => makeSprite('ds-bomb'));
     this.ebombs = new Pool(top, () => makeSprite('ds-ebomb'));
+    top.appendChild(this.heli);
     this.stars = new Pool(top, () => makeSprite('ds-star'));
     this.beams = new Pool(top, () => { const n = el('ds-ent'); n._img = el('ds-beam', n); return n; });
     this.fxPool = new Pool(fx, () => { const n = el('ds-ent'); n._img = el('ds-fx', n); return n; });
@@ -200,6 +208,7 @@ export class Stage {
     this.booms = 0;
     this.aura.style.display = 'none';
     this.npc.style.display = 'none';
+    this.heli.style.display = 'none';
     this.crate.style.display = 'none';
     this.helper.style.display = 'none';
     this.arrow(null);
@@ -323,6 +332,15 @@ export class Stage {
       Stage.place(n, a.x, a.y);
     }, false);
 
+    // みかたの ヘリ
+    const heli = r.zone === 'surface' ? r.heli : null;
+    if (heli) {
+      if (this.heli.style.display === 'none') this.heli.style.display = '';
+      Stage.look(this.heli, 'heliFly', 120);
+      Stage.face(this.heli, heli.face < 0);
+      Stage.place(this.heli, heli.x, heli.y);
+    } else if (this.heli.style.display !== 'none') this.heli.style.display = 'none';
+
     // バリア
     const aura = look.auraRadius;
     if (aura) {
@@ -338,15 +356,18 @@ export class Stage {
     }
 
     if (this.decorKind) {
-      const list = this.decorField.visible(c.x0, c.y0, c.x1, c.y1);
+      // ちか・ビルの なかでは そとの かざりを かかない
+      const list = r.zone === 'under' ? NO_DECOR : this.decorField.visible(c.x0, c.y0, c.x1, c.y1);
       const states = look.bottles;
       this.sync(this.decor, list, (d, n) => {
         // こわされた ボトルは われた え（うちゅうじんも いない）
-        const kind = d.kind !== 'flag' && states?.get(d.id)?.broken ? 'broken' : d.kind;
+        const kind = d.id && states?.get(d.id)?.broken ? 'broken' : d.kind;
         if (n._a !== kind) {
           n._a = kind;
-          n._img.style.backgroundImage = art(kind === 'flag' ? 'labFlag' : kind === 'broken' ? 'capsuleBroken' : 'capsule');
+          n._img.style.backgroundImage = art(DECOR_ART[kind] || 'capsule');
           n._img.classList.toggle('ds-decor-flag', kind === 'flag');
+          n._img.classList.toggle('ds-decor-car', kind === 'car');
+          n._img.classList.toggle('ds-decor-ruin', kind === 'ruin');
           n._alien.style.display = kind === 'alien' ? '' : 'none';
         }
         Stage.place(n, d.x, d.y);

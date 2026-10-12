@@ -10,7 +10,7 @@ test('ステージ1は けんきゅうじょ（かなだけ）で ボトルの �
   assert.equal(st.ground, 'lab');
   assert.equal(st.decor, 'lab');
   assert.ok(st.researcher, 'けんきゅうしゃは そのまま');
-  for (const s of STAGES.slice(1)) assert.ok(!s.decor, `${s.name} は かざり なし`);
+  for (const s of STAGES.slice(1)) assert.ok(!s.decor || s.decor === 'city', `${s.name} は ボトルの かざり なし`);
 });
 
 test('decorCell: おなじ たね・マスなら いつも おなじ、たねが ちがうと ならびが かわる', () => {

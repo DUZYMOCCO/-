@@ -54,6 +54,11 @@
 /* けんきゅうじょの ボトル（ゆかの かざり。56×88 の なかに ボトル、うちゅうじんは ガラスの なかで ゆらゆら） */
 .ds-decor { width: 88px; height: 88px; margin: -70px 0 0 -44px; }
 .ds-decor-flag { width: 100px; height: 112px; margin: -104px 0 0 -18px; }
+.ds-decor-car { width: 120px; height: 72px; margin: -60px 0 0 -60px; }
+.ds-decor-ruin { width: 140px; height: 100px; margin: -88px 0 0 -70px; }
+.ds-heli { animation: ds-heli-bob 1.6s ease-in-out infinite alternate; }
+@keyframes ds-heli-bob { from { translate: 0 -3px; } to { translate: 0 4px; } }
+.ds-root.ds-lite .ds-heli { animation: none; }
 .ds-alien { left: 27.5px; top: 30px; width: 26px; height: 31px; opacity: .88; animation: ds-alien 2.4s ease-in-out infinite alternate; }
 @keyframes ds-alien { from { transform: translateY(0) rotate(-4deg); } to { transform: translateY(6px) rotate(4deg); } }
 
@@ -230,6 +235,9 @@
 .ds-root[data-ground="forest"] { background: #1a241c; }
 .ds-root[data-ground="castle"] { background: #24222c; }
 .ds-root[data-ground="jungle"] { background: #5f7d40; }
+.ds-root[data-ground="city"] { background: #8f949c; }
+.ds-root[data-ground="office"] { background: #5b6270; }
+.ds-root[data-ground="roof"] { background: #8b929e; }
 .ds-root[data-ground="forest"] .ds-hp, .ds-root[data-ground="castle"] .ds-hp { border-color: #fff; }
 
 .ds-thin { min-height: 40px; font-size: 14px; padding: 6px; }
@@ -244,6 +252,7 @@
 .ds-stage-card[data-ground="forest"] { background: #243028; color: #f5f0e6; }
 .ds-stage-card[data-ground="castle"] { background: #3a3842; color: #f5f0e6; }
 .ds-stage-card[data-ground="jungle"] { background: #4d7a2c; color: #fefce8; }
+.ds-stage-card[data-ground="city"] { background: #6b7280; color: #f8fafc; }
 .ds-stage-card small { font-size: 11px; font-weight: 700; }
 .ds-stage-card b { font-size: 20px; line-height: 1.2; }
 .ds-stage-card em { font-style: normal; font-size: 11px; font-weight: 700; opacity: .85; }

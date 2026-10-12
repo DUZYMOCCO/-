@@ -9,8 +9,7 @@ const kana = /^[\u3041-\u309f\u30a0-\u30ff ]+$/;
 const jungle = STAGES.find(s => s.ground === 'jungle');
 
 test('ジャングル は まおうじょうの あとの ステージ6（ステージ5 クリアで ひらく）', () => {
-  assert.equal(STAGES.length, 6);
-  assert.deepEqual(STAGES.map(s => s.id), [1, 2, 3, 4, 5, 6]);
+  assert.deepEqual(STAGES.map(s => s.id).slice(0, 6), [1, 2, 3, 4, 5, 6]);
   assert.equal(jungle.id, 6);
   assert.equal(jungle.name, 'ジャングル');
   assert.match(jungle.name, kana);

@@ -12,14 +12,14 @@ import {
   newQuality, adaptQuality, THROW, fireRadius, capType, gatherCount, BOTTLE, bottleOutcome,
   SQUAD, allyDamage, squadSlot, canWhistle, healAmount,
   QUEST, CAMP, underHalfW, clampUnder, hutSpot, LASER_MODES, nextLaserMode, squadRoom, beamHits, MAX_LEVEL as MAXLV,
-  enemyDmgMul,
-} from './rules.js?v=203';
-import { DecorField } from './decor.js?v=203';
-import { EnemyGrid, nearestN } from './grid.js?v=203';
-import { preloadArt, art } from './art.js?v=203';
-import { Stage } from './stage.js?v=203';
-import { menuMethods, iconHtml } from './menus.js?v=203';
-import { PopBGM, playWhistle } from './bgm.js?v=203';
+  enemyDmgMul, TOWER, towerSpot, rollHeli, heliDamage, floorName,
+} from './rules.js?v=204';
+import { DecorField } from './decor.js?v=204';
+import { EnemyGrid, nearestN } from './grid.js?v=204';
+import { preloadArt, art } from './art.js?v=204';
+import { Stage } from './stage.js?v=204';
+import { menuMethods, iconHtml } from './menus.js?v=204';
+import { PopBGM, playWhistle } from './bgm.js?v=204';
 
 const SAVE_KEY = 'dada_survivor_save';
 const TAU = Math.PI * 2;
@@ -45,7 +45,7 @@ export const DadaSurvivorGame = {
 
   // 起動時にこのゲームのCSSを自分で読み込む（?v= はこのフォルダ内で管理）。ハブが init 前に await する
   prepare() {
-    return loadCss(new URL('../css/dada-survivor.css?v=203', import.meta.url).href);
+    return loadCss(new URL('../css/dada-survivor.css?v=204', import.meta.url).href);
   },
 
   init(container, onBackToHub) {
@@ -333,7 +333,7 @@ export const DadaSurvivorGame = {
     this.stage.setGround(st.ground);
     const seed = 1 + Math.floor(Math.random() * 1e6);
     // ゆかの かざり（ボトル）は ゲームがわで もつ（こわせる ので）。ステージは おなじ ものを かく
-    this.decorField = st.decor ? new DecorField(seed) : null;
+    this.decorField = st.decor ? new DecorField(seed, st.decor) : null;
     this.stage.setDecor(st.decor, this.decorField);
     this.touches.clear(); this.pinch = null;
     this.run = {
@@ -352,8 +352,11 @@ export const DadaSurvivorGame = {
       container: null, allies: [], medic: null, whistleCd: 0, heading: Math.PI / 2,
       // さばくの クエスト：zone は surface／under。clock は ちかでも すすむ とけい（ステージの time は ちかでは とまる）
       zone: 'surface', clock: 0, props: null, quest: null, laserMode: 0,
+      // こわれた まち：みかたの ヘリの えんご（おくじょうで もらう）
+      heli: null,
     };
     if (st.quest) this.initQuest();
+    if (st.tower) this.initTower();
     if (st.camp) this.initCamp();
     this.refreshStats();
     this.run.player.hp = this.run.stats.maxHp;
@@ -438,7 +441,7 @@ export const DadaSurvivorGame = {
     if (ml > 1) { mx /= ml; my /= ml; }
     p.x += mx * r.stats.speed * dt;
     p.y += my * r.stats.speed * dt;
-    if (r.zone === 'under') clampUnder(p, 16);
+    if (r.zone === 'under') clampUnder(p, 16, this.zoneU());
     if (ml > 0.1) { p.mx = mx; p.my = my; if (Math.abs(mx) > 0.1) p.face = mx > 0 ? 1 : -1; }
     p.hurt = Math.max(0, p.hurt - dt);
     if (r.stats.regen) p.hp = Math.min(r.stats.maxHp, p.hp + r.stats.regen * dt);
@@ -447,6 +450,7 @@ export const DadaSurvivorGame = {
     this.collectBottles();
     this.updateWeapons(dt);
     this.updateAllies(dt);
+    this.updateHeli(dt);
     this.updateShots(dt);
     this.updateEnemies(dt);
     this.updateHazards(dt);
@@ -540,6 +544,168 @@ export const DadaSurvivorGame = {
     r.campMsg = 2.6; // 「ステージ3 ゆきやま」の あとに だす
   },
 
+  /* ---------- こわれた まちの たかい ビル（ステージ7） ---------- */
+  /** いま いる ばしょの かべの かたち（さばくの ちか／ビルの なか） */
+  zoneU() { return this.run.quest?.U || QUEST.under; },
+
+  initTower() {
+    const r = this.run, T = TOWER, at = towerSpot();
+    const door = { kind: 'towerDoor', x: at.x, y: at.y + 112, w: 80, h: 80 };
+    r.props = [{ kind: 'tower', x: at.x, y: at.y, w: 240, h: 304 }, door];
+    r.quest = { tower: true, U: T.room, stage: 'wait', door, building: at, floor: 0, left: 0, stairs: null, cells: [],
+      heli: rollHeli(), heliTaken: false, heliProp: null, exit: null, surface: null };
+  },
+
+  updateTower() {
+    const r = this.run, q = r.quest, p = r.player, T = TOWER;
+    if (r.zone === 'surface') {
+      if (q.stage === 'wait' && r.time >= T.at) {
+        q.stage = 'door'; q.door.kind = 'towerDoorOpen'; q.door.mark = true;
+        sound.playItem();
+        this.showBanner('たかい ビルの いりぐちが ひらいた！ やじるしの ほうへ いこう！', 3200);
+      }
+      if (q.stage === 'door' && dist2(p, q.door) < T.doorR ** 2) this.enterTower();
+      return;
+    }
+    // ビルの なか
+    if (q.stairs && q.stairs.hidden && q.left <= 0 && q.floor <= T.floors) {
+      q.stairs.hidden = false; q.stairs.mark = true;
+      sound.playHeal();
+      this.showBanner(q.floor === T.floors && q.cells.some(c => !c.open) ? 'かいだんが でた！ でも さきに ろうやの なかまを たすけよう！' : 'かいだんが でた！ うえへ いこう！', 2600);
+    }
+    if (q.stairs && !q.stairs.hidden && dist2(p, q.stairs) < T.stairsR ** 2) { this.goFloor(q.floor + 1); return; }
+    for (const c of q.cells) {
+      if (c.open || dist2(p, c) > T.cellR ** 2) continue;
+      c.open = true; c.kind = 'cellOpen'; c.mark = false;
+      let sci = 0;
+      for (const who of c.cell.who) {
+        if (who === 'researcher') { sci++; r.props.push({ kind: 'researcher', x: c.x - c.cell.side * 80, y: c.y + 20 + sci * 6, w: 46, h: 46 }); continue; }
+        this.addAlly(who === 'medic', c.x, c.y + 50);
+      }
+      this.stage.fx('pop', c.x, c.y, 110);
+      sound.playHeal();
+      this.showBanner(c.cell.who.includes('medic') ? 'ちりょうたいを たすけた！ ふえで よべるよ！'
+        : sci ? 'けんきゅうしゃ「おくじょうに みかたの ヘリが いるかも！」' : 'なかまを たすけた！ いっしょに たたかうよ！', 3000);
+    }
+    if (q.heliProp && !q.heliTaken && dist2(p, q.heliProp) < T.heliR ** 2) this.takeHeli();
+    if (q.exit && dist2(p, q.exit) < T.doorR ** 2) this.exitTower();
+  },
+
+  enterTower() {
+    const r = this.run, q = r.quest, p = r.player;
+    q.stage = 'inside';
+    q.surface = { enemies: r.enemies, gems: r.gems, items: r.items, props: r.props, boss: r.boss };
+    r.enemies = []; r.gems = []; r.items = [];
+    if (r.boss) { r.boss = null; this.el.boss.classList.add('hidden'); this.bgm.setBoss(false); }
+    r.zone = 'under';
+    p.hurt = 1;
+    this.goFloor(1);
+  },
+
+  /** f かいへ（1〜4 は へや、floors+1 は おくじょう）。のこった ほうせきは もって いく */
+  goFloor(f) {
+    const r = this.run, q = r.quest, p = r.player, T = TOWER, U = T.room;
+    for (const g of r.gems) r.xp += g.v;
+    for (const it of r.items) if (it.kind === 'coin') r.coins++;
+    r.enemies.length = 0; r.gems.length = 0; r.items.length = 0;
+    r.shots.length = 0; r.ebombs.length = 0; r.fires.length = 0;
+    q.floor = f; q.left = 0; q.stairs = null; q.cells = []; q.heliProp = null; q.exit = null;
+    const roof = f > T.floors, hw = U.halfW, h = U.bottom - U.top, cy = (U.top + U.bottom) / 2;
+    const w = roof ? ['wallL', 'wallR', 'wallT', 'wallB'] : ['bwallL', 'bwallR', 'bwallT', 'bwallB'];
+    const props = [
+      { kind: w[0], x: -hw - 450, y: cy, w: 900, h }, { kind: w[1], x: hw + 450, y: cy, w: 900, h },
+      { kind: w[2], x: 0, y: U.top - 200, w: 2400, h: 400 }, { kind: w[3], x: 0, y: U.bottom + 200, w: 2400, h: 400 },
+    ];
+    if (!roof) {
+      q.stairs = { kind: 'stairsUp', ...T.stairs, w: 100, h: 80, hidden: true };
+      props.push(q.stairs);
+    }
+    if (f === T.floors) for (const c of T.cells) { const pr = { kind: c.art, x: c.x, y: c.y, w: 120, h: 100, mark: true, cell: c, open: false }; props.push(pr); q.cells.push(pr); }
+    if (roof) {
+      props.push({ kind: 'helipad', ...T.pad, w: 220, h: 220 });
+      if (q.heli && !q.heliTaken) { q.heliProp = { kind: 'heliFriend', x: T.pad.x, y: T.pad.y - 10, w: 168, h: 120, mark: true }; props.push(q.heliProp); }
+      q.exit = { kind: 'roofExit', ...T.roofExit, w: 80, h: 80, mark: true };
+      props.push(q.exit);
+    }
+    r.props = props;
+    p.x = 0; p.y = U.bottom - 70; p.hurt = Math.max(p.hurt, 0.8);
+    r.allies.forEach((a, i) => { a.x = (i - 1.5) * 26; a.y = p.y + 30; if (a.mode !== 'heal') a.mode = 'follow'; });
+    this.stage.setGround(roof ? 'roof' : 'office');
+    this.stage.fx('pop', p.x, p.y, 100);
+    sound.playItem();
+    if (!roof) {
+      const n = T.foes[f - 1], hp = spawnPlan(r.time, r.diff, r.stageDef).hpScale * T.foeHp, types = r.stageDef.enemies.slice(0, 4).map(e => e[0]);
+      for (let i = 0; i < n; i++) {
+        const e = this.spawnEnemy(types[i % types.length], hp, undefined, { x: (i / Math.max(1, n - 1) - 0.5) * 2 * (hw - 60), y: U.top + 120 + (i % 2) * 70 });
+        e.guard = true;
+      }
+      q.left = n;
+      this.showBanner(f === 1 ? 'ビルに はいった！ わるものを たおすと かいだんが でるよ（なかでは じかんが ゆっくり）'
+        : f === T.floors ? `${floorName(f)}：つかまった なかまが いる！ たすけよう！` : `${floorName(f)}：わるものを たおして うえへ！`, 3200);
+      return;
+    }
+    if (q.heli && !q.heliTaken) { this.showBanner('おくじょう！ みかたの ヘリが いる！ さわって みよう！', 3200); return; }
+    // ヘリが いない とき（はんぶんの かくりつ）：きゅうきゅうばこ（にく 2こ と コイン）
+    if (!q.heli) {
+      for (let i = 0; i < 2; i++) r.items.push({ kind: 'meat', x: T.pad.x + (i - 0.5) * 50, y: T.pad.y });
+      for (let i = 0; i < 6; i++) r.items.push({ kind: 'coin', x: T.pad.x + (i - 2.5) * 22, y: T.pad.y + 50 });
+      this.showBanner('おくじょう… きょうは ヘリが いなかった。きゅうきゅうばこと コインを みつけた！', 3400);
+    }
+  },
+
+  takeHeli() {
+    const r = this.run, q = r.quest, H = TOWER.heli, pr = q.heliProp;
+    q.heliTaken = true; pr.hidden = true; pr.mark = false;
+    r.heli = { t: H.time, x: pr.x, y: pr.y, cd: 0.6, rcd: 1.5, face: 1 };
+    this.stage.flash();
+    sound.playHeal();
+    this.showBanner(`ヘリが なかまに なった！ そとに でたら ${H.time}びょう うえから うって くれるよ！ はしごで おりよう`, 3800);
+  },
+
+  exitTower() {
+    const r = this.run, q = r.quest, s = q.surface, p = r.player;
+    for (const g of r.gems) r.xp += g.v;
+    for (const it of r.items) if (it.kind === 'coin') r.coins++;
+    r.enemies = s.enemies; r.gems = s.gems; r.items = s.items; r.props = s.props;
+    r.shots.length = 0;
+    r.zone = 'surface'; q.stage = 'done'; q.surface = null; q.stairs = null; q.cells = []; q.exit = null; q.heliProp = null;
+    q.door.kind = 'towerDoor'; q.door.mark = false;
+    p.x = q.door.x; p.y = q.door.y + 80; p.hurt = 1;
+    r.allies.forEach((a, i) => { a.x = p.x + (i - 1.5) * 26; a.y = p.y + 40; });
+    if (r.heli) { r.heli.x = p.x; r.heli.y = p.y - 200; }
+    if (s.boss && s.boss.hp > 0) { r.boss = s.boss; this.el.bossName.textContent = s.boss.T.name; this.el.boss.classList.remove('hidden'); this.bgm.setBoss(true); }
+    this.stage.setGround(r.stageDef.ground);
+    sound.playItem();
+    this.showBanner(r.heli ? 'ちじょうに もどった！ ヘリの えんごが はじまるよ！' : 'ちじょうに もどった！ じかんが また うごくよ！', 3000);
+  },
+
+  /** みかたの ヘリ：そとに いる あいだ、プレイヤーの うえを とんで うつ（time びょうで かえる） */
+  updateHeli(dt) {
+    const r = this.run, h = r.heli, p = r.player, H = TOWER.heli;
+    if (!h || r.zone !== 'surface') return;
+    h.t -= dt;
+    if (h.t <= 0) { r.heli = null; this.showBanner('ヘリが かえって いった！ ありがとう！', 2200); return; }
+    const tx = p.x + Math.cos(r.clock * 0.7) * 80, ty = p.y - 120 + Math.sin(r.clock * 1.3) * 16;
+    const dx = tx - h.x, dy = ty - h.y, d = Math.hypot(dx, dy);
+    if (d > 1) { const v = Math.min(d * 3, 320 + (d > 300 ? d : 0)); h.x += dx / d * v * dt; h.y += dy / d * v * dt; if (Math.abs(dx) > 6) h.face = dx > 0 ? 1 : -1; }
+    h.cd -= dt; h.rcd -= dt;
+    if (h.cd > 0 && h.rcd > 0) return;
+    const t = nearestN(r.enemies, p, 1, H.range ** 2)[0];
+    if (!t || r.shots.length > 100) return;
+    const sx = h.x, sy = h.y + 24, ang = Math.atan2(t.y - sy, t.x - sx), dmg = heliDamage(r.time, r.stats.damage);
+    h.face = Math.cos(ang) >= 0 ? 1 : -1;
+    if (h.cd <= 0) {
+      h.cd = H.cd;
+      r.shots.push({ kind: 'bullet', art: WEAPONS.gun.shot, size: WEAPONS.gun.size, ally: true, x: sx, y: sy,
+        vx: Math.cos(ang) * 600, vy: Math.sin(ang) * 600, ang, dmg, life: 0.9, r: 8, pierce: 1, splash: 0, kb: 0.06 });
+    }
+    if (h.rcd <= 0) {
+      h.rcd = H.rocketCd;
+      r.shots.push({ kind: 'bullet', art: 'lrocket', size: 30, ally: true, x: sx, y: sy,
+        vx: Math.cos(ang) * 460, vy: Math.sin(ang) * 460, ang, dmg: dmg * H.rocketMul, life: 1.1, r: 12, pierce: 1, splash: H.splash, fx: 'bboom', kb: 0.15 });
+    }
+  },
+
   /* ---------- さばくの クエスト（ステージ2） ---------- */
   initQuest() {
     const r = this.run, Q = QUEST, U = Q.under, hut = hutSpot();
@@ -572,10 +738,11 @@ export const DadaSurvivorGame = {
     });
     const exit = { kind: 'exitStairs', x: U.exit.x, y: U.exit.y, w: 80, h: 80, hidden: true };
     props.push(exit);
-    r.quest = { stage: 'wait', hut, door, left: 0, under: props, cells, exit, groups: U.groups.map(g => ({ ...g, done: false })), bossOut: false, bossDead: false, surface: null };
+    r.quest = { U, stage: 'wait', hut, door, left: 0, under: props, cells, exit, groups: U.groups.map(g => ({ ...g, done: false })), bossOut: false, bossDead: false, surface: null };
   },
 
   updateQuest() {
+    if (this.run.quest.tower) { this.updateTower(); return; }
     const r = this.run, q = r.quest, p = r.player, Q = QUEST, U = Q.under;
     if (r.zone === 'surface') {
       if (q.stage === 'wait' && r.time >= Q.at) {
@@ -757,7 +924,7 @@ export const DadaSurvivorGame = {
         a.x += dx / d * v * dt; a.y += dy / d * v * dt;
         if (Math.abs(dx) > 4) a.face = dx > 0 ? 1 : -1;
       }
-      if (r.zone === 'under') clampUnder(a, 14);
+      if (r.zone === 'under') clampUnder(a, 14, this.zoneU());
       if (a.medic) continue;
       a.cd -= dt;
       if (a.cd > 0) continue;
@@ -1131,7 +1298,7 @@ export const DadaSurvivorGame = {
         if (navigator.vibrate) navigator.vibrate(30);
       }
       // とおくに いきすぎた ザコは まえに だしなおす
-      if (r.zone === 'under') { clampUnder(e, Math.min(e.T.r, 40)); continue; }
+      if (r.zone === 'under') { clampUnder(e, Math.min(e.T.r, 40), this.zoneU()); continue; }
       if (!e.T.boss && dist2(e, p) > far) {
         const a = Math.atan2(p.my, p.mx) + (Math.random() - 0.5) * 1.6, rad = Math.hypot(this.w, this.h) / 2 + 50;
         e.x = p.x + Math.cos(a) * rad; e.y = p.y + Math.sin(a) * rad;
@@ -1321,6 +1488,14 @@ export const DadaSurvivorGame = {
   questGoal() {
     const r = this.run, q = r.quest;
     if (!q) return r.container && !r.container.open ? { x: r.container.x, y: r.container.y, label: 'コンテナ' } : null;
+    if (q.tower) {
+      if (r.zone === 'surface') return q.stage === 'door' ? { x: q.door.x, y: q.door.y, label: 'ビル' } : null;
+      const c = q.cells.find(c => !c.open);
+      if (c) return { x: c.x, y: c.y, label: 'ろうや' };
+      if (q.stairs && !q.stairs.hidden) return { x: q.stairs.x, y: q.stairs.y, label: 'かいだん' };
+      if (q.heliProp && !q.heliTaken) return { x: q.heliProp.x, y: q.heliProp.y, label: 'ヘリ' };
+      return q.exit ? { x: q.exit.x, y: q.exit.y, label: 'はしご' } : null;
+    }
     if (r.zone === 'surface') {
       if (q.stage === 'hut' || q.stage === 'fight') return { x: q.hut.x, y: q.hut.y, label: 'こや' };
       if (q.stage === 'door') return { x: q.door.x, y: q.door.y, label: 'とびら' };

@@ -43,6 +43,8 @@ export const ENEMY_TYPES = {
   thrower:  { hp: 16, speed: 48, dmg: 8,  xp: 2, r: 16, size: 36, ranged: true, cap: 4 },
   // ジャングル（ステージ6）：めいさいの ジャングルへい（なた もち・すこし かたい）
   jungler:  { hp: 24, speed: 54, dmg: 11, xp: 2, r: 16, size: 36 },
+  // こわれた まち（ステージ7）：まちの へいたい（はいいろの めいさい・あかい ベレー）
+  urban:    { hp: 26, speed: 56, dmg: 12, xp: 2, r: 16, size: 36 },
   // ボトルから とびだす うちゅうじん（わるものぐんだん では ないので ワッペンなし）
   alien:    { hp: 14, speed: 74, dmg: 7,  xp: 4, r: 14, size: 34, noEmblem: true },
   // ボス（hp は ステージがわで きめる）
@@ -56,6 +58,9 @@ export const ENEMY_TYPES = {
   maou:     { speed: 40, dmg: 32, xp: 40, r: 52, size: 116, name: 'だいそうすい' },
   // ジャングルの ボス：2ほんあしの ジャングルメカに のった たいちょう
   walker:   { speed: 44, dmg: 30, xp: 40, r: 50, size: 112, name: 'ジャングルたいちょう' },
+  // こわれた まち：ちゅうボスの そうこうトラック と ボスの こうげきヘリ（みかたの ヘリとは いろも かたちも ちがう）
+  truck:    { speed: 40, dmg: 28, xp: 40, r: 46, size: 104, name: 'そうこうトラック' },
+  gunship:  { speed: 50, dmg: 32, xp: 40, r: 50, size: 120, name: 'こうげきヘリ' },
 };
 
 // enemies: [しゅるい, でてくる びょう, でやすさ]
@@ -88,6 +93,11 @@ export const STAGES = [
   { id: 6, name: 'ジャングル', ground: 'jungle', hpMul: 3.1, spawnMul: 1.45, dmgMul: 1.15, bgm: 'jungle',
     enemies: [['jungler', 0, 10], ['bat', 30, 5], ['wolf', 60, 5], ['ghost', 90, 5], ['skull', 150, 5]],
     mini: { type: 'jungler', hp: 8000, big: 2.5, name: 'でかジャングルへい' }, boss: { type: 'walker', hp: 20000 } },
+  // v1.14.0：ジャングルの あと（ステージ6 クリアで ひらく）。こわれた まち。たかい ビルに はいって 4かいの なかまを たすけ、おくじょうへ（`TOWER`）
+  { id: 7, name: 'こわれた まち', ground: 'city', decor: 'city', hpMul: 4.0, spawnMul: 1.5, dmgMul: 1.35, bgm: 'city',
+    enemies: [['urban', 0, 10], ['bat', 30, 5], ['ghost', 60, 4], ['skull', 120, 5], ['wolf', 150, 4]],
+    mini: { type: 'truck', hp: 10000 }, boss: { type: 'gunship', hp: 26000 },
+    tower: true },
 ];
 
 export function stageById(id) { return STAGES.find(s => s.id === id) || STAGES[0]; }
@@ -598,6 +608,32 @@ export const QUEST = {
     boss: { type: 'driller', hp: 1600 }, bossAt: { x: 0, y: -2020 }, bossTrigger: -1600, exit: { x: 0, y: -2200 },
   },
 };
+/**
+ * こわれた まち（ステージ7）の たかい ビル：at びょうで いりぐちが ひらく（やじるし）→ なかは 1かい〜4かい と おくじょう。
+ * かくかいの わるものを ぜんぶ たおすと かいだんが でる。4かいの ろうやに なかま。おくじょうには half の かくりつで みかたの ヘリ。
+ * なかでは タイマーが はんぶんの はやさ（QUEST.underTime と おなじ）。
+ */
+export const TOWER = {
+  at: 60, dist0: 520, dist1: 760, doorR: 54, cellR: 72, stairsR: 50, heliR: 80, heliChance: 0.5,
+  floors: 4, foes: [4, 5, 6, 6], foeHp: 1.2,
+  room: { halfW: 300, roomHalfW: 300, roomY: -1e9, top: -620, bottom: 140 },
+  stairs: { x: 0, y: -540 },
+  cells: [{ x: -125, y: -360, side: -1, art: 'cellA', who: ['soldier', 'soldier'] },
+    { x: 125, y: -360, side: 1, art: 'cellB', who: ['researcher', 'medic'] },
+    { x: -125, y: -170, side: -1, art: 'cellC', who: ['soldier', 'researcher'] }],
+  pad: { x: 0, y: -320 }, roofExit: { x: -220, y: 40 },
+  // みかたの ヘリの えんご：time びょう（そとで）うえから うつ。たまは なかまの ダメージ × dmgMul、ときどき ロケット
+  heli: { time: 45, cd: 0.2, range: 380, dmgMul: 1, rocketCd: 2.4, rocketMul: 3, splash: 70 },
+};
+/** ビルの ばしょ（スタートから dist0〜dist1。うえ むきの ±40° は さける：hutSpot と おなじ） */
+export function towerSpot(rnd = Math.random, T = TOWER) { return hutSpot(rnd, { hutDist0: T.dist0, hutDist1: T.dist1 }); }
+/** おくじょうに ヘリが いるか（ラン ごとに 1かい きめる） */
+export function rollHeli(rnd = Math.random, T = TOWER) { return rnd() < T.heliChance; }
+/** みかたの ヘリの たまの ダメージ */
+export function heliDamage(t, playerDamage = 1, T = TOWER) { return allyDamage(t, playerDamage) * T.heli.dmgMul; }
+/** かいの なまえ（1〜4 は「Nかい」、そのうえは おくじょう） */
+export function floorName(f, T = TOWER) { return f > T.floors ? 'おくじょう' : `${f}かい`; }
+
 /** ちかの ろうかの はば（y で かわる：おくは ボスの へや） */
 export function underHalfW(y, U = QUEST.under) { return y < U.roomY ? U.roomHalfW : U.halfW; }
 /** ちかの なかに おさめる（r は からだの はんけい） */

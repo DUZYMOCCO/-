@@ -333,7 +333,7 @@ const villainPatch = (x, y, k = 1) => `<g data-emblem="warumono" transform="tran
 // てきごとの ワッペンの いち（むねの かた より。プレイヤーの にほんの はたと おなじ がわ）
 const PATCH_AT = {
   zombie: [21, 46], bat: [21, 46], ghost: [21, 46], skull: [16, 47], scorpion: [21, 46], mummy: [21, 46],
-  snowman: [21, 46], wolf: [26, 47], pumpkin: [21, 45.5], thrower: [21, 46], driller: [21, 46], jungler: [21, 46], walker: [32, 33, 1.3],
+  snowman: [21, 46], wolf: [26, 47], pumpkin: [21, 45.5], thrower: [21, 46], driller: [21, 46], jungler: [21, 46], walker: [32, 33, 1.3], urban: [21, 46], truck: [12, 40, 1.1], gunship: [36, 28, 1.1],
   ogre: [24, 48], dragon: [32, 31, 1.1], snake: [24, 45], icegiant: [21, 50], witch: [26, 47], maou: [22, 50],
 };
 const withPatch = (k, body) => body + villainPatch(...PATCH_AT[k]);
@@ -1116,6 +1116,137 @@ const driller = trooper({ uni: '#7c2d12', dark: '#431407', bodyR: 15,
     <rect x="26" y="9" width="12" height="9" rx="2" fill="#fef9c3" ${SW(1.6)}/><path d="M28 13 h8" stroke="#facc15" stroke-width="2"/>
     <rect x="19" y="20" width="26" height="7" rx="3.4" fill="#1f2937" ${S2}/><circle cx="26" cy="23.5" r="2.2" fill="#fb923c"/><circle cx="38" cy="23.5" r="2.2" fill="#fb923c"/>` });
 
+/* ---------- こわれた まち（ステージ7） ---------- */
+// まちの へいたい（はいいろの めいさい・あかい ベレー・あかい うでわ。ゆかの はいいろと まざらない ように こいめ）
+const ucamo = id => `<clipPath id="${id}"><ellipse cx="32" cy="52" rx="13" ry="10"/></clipPath>
+  <g clip-path="url(#${id})"><ellipse cx="25" cy="49" rx="6" ry="3.2" fill="#1f2937"/><ellipse cx="39" cy="55" rx="6.4" ry="3" fill="#6b7280"/><ellipse cx="31" cy="58" rx="4.6" ry="2.4" fill="#1f2937"/></g>`;
+const urban = trooper({ uni: '#475063', dark: '#2a3040',
+  vest: `${ucamo('uc')}${vVest('#2a3040')}<rect x="18" y="47" width="5" height="4" rx="1" fill="#dc2626" ${SW(1)}/>`,
+  gun: vRifle({ metal: '#27272a', stock: '#3f3f46', glove: '#1f2937' }),
+  hat: `<path d="M15 24 Q13 11 30 10 Q46 9 50 18 Q47 22 42 22 Q30 19 15 24Z" fill="#b91c1c" ${S}/>
+    <path d="M16 23.4 Q32 18.6 48 22.6" fill="none" stroke="#7f1d1d" stroke-width="2.4"/><circle cx="22" cy="17" r="2" fill="#facc15" ${SW(.8)}/>`,
+  extra: `<path d="M20 36 Q32 40 44 36 L44 39 Q32 43 20 39Z" fill="#1f2937" opacity=".85"/>` });
+
+// そうこうトラック（ちゅうボス。わるものぐんだんの トラックに あかい め の うんてんしゅ）
+const truck = `
+  <ellipse cx="32" cy="61" rx="30" ry="3" fill="#000" opacity=".25"/>
+  <rect x="2" y="26" width="38" height="26" rx="3" fill="#57534e" ${S}/>
+  <path d="M6 30 H36 M6 38 H36 M6 46 H36" stroke="#44403c" stroke-width="2"/>
+  <rect x="8" y="20" width="16" height="7" rx="1.6" fill="#3f3f46" ${S2}/><path d="M16 20 L16 14 L30 12" fill="none" ${SW(3.4)}/><path d="M16 20 L16 14 L30 12" fill="none" stroke="#52525b" stroke-width="1.8" stroke-linecap="round"/>
+  <path d="M40 30 L52 30 L62 40 L62 52 L40 52Z" fill="#7f1d1d" ${S}/>
+  <path d="M43 33 L51 33 L58 40 L43 40Z" fill="#fca5a5" opacity=".9" ${S2}/>
+  <circle cx="49" cy="37" r="3.4" fill="${VSKIN}" ${SW(1)}/><path d="M45.6 35.6 Q49 31.4 52.6 35" fill="#1f2937"/><circle cx="50.4" cy="37.4" r="1" fill="${VE}"/>
+  <path d="M40 46 H62" stroke="#450a0a" stroke-width="2.4"/><rect x="58" y="44" width="5" height="4" rx="1" fill="#fde047" ${SW(1)}/>
+  <path d="M60 52 L64 52 L64 56 L58 56Z" fill="#3f3f46" ${S2}/>
+  ${[12, 30, 52].map(x => `<circle cx="${x}" cy="54" r="7" fill="#1c1917" ${S2}/><circle cx="${x}" cy="54" r="3" fill="#71717a"/>`).join('')}`;
+
+// こうげきヘリ（ボス。くろと あかの かくかくした ヘリ・あかい ひかり・ミサイルの はこ。みかたの しろ×あおの まるい ヘリと ちがう）
+const gunship = `
+  <ellipse cx="32" cy="64" rx="26" ry="2.6" fill="#000" opacity=".22"/>
+  <rect x="-6" y="4" width="76" height="3.4" rx="1.7" fill="#3f3f46" ${SW(1.4)}/><rect x="29" y="6" width="6" height="7" fill="#27272a" ${S2}/>
+  <path d="M-6 26 L22 24 L22 32 L-6 30Z" fill="#3f3f46" ${S}/><path d="M-8 18 L-4 18 L-1 30 L-6 30Z" fill="#7f1d1d" ${S2}/>
+  <path d="M18 14 L46 12 L60 22 L62 34 L50 42 L22 42 L14 32Z" fill="#292524" ${S}/>
+  <path d="M20 36 L50 36 L58 32" fill="none" stroke="#b91c1c" stroke-width="3"/>
+  <path d="M46 16 L58 23 L59 31 L48 30Z" fill="#ef4444" opacity=".9" ${S2}/><path d="M50 20 L55 24" stroke="#fecaca" stroke-width="1.6" stroke-linecap="round"/>
+  <circle cx="51" cy="25.4" r="3.4" fill="${VSKIN}" ${SW(1)}/><path d="M47.6 24 Q51 20 54.4 23.6" fill="#7f1d1d"/><circle cx="52.4" cy="26" r="1" fill="#111"/>
+  <path d="M26 42 L22 50 M44 42 L48 50" ${SW(2.4)}/><path d="M14 51 H56" ${SW(3.4)}/><path d="M14 51 H56" stroke="#52525b" stroke-width="1.6" stroke-linecap="round"/>
+  <path d="M24 38 L40 38 L40 46 L24 46Z" fill="#3f3f46" ${S2}/>
+  ${[27, 32, 37].map(x => `<circle cx="${x}" cy="42" r="1.8" fill="#ef4444"/>`).join('')}
+  <path d="M58 32 L66 34" ${SW(3.6)}/><path d="M58 32 L66 34" stroke="#52525b" stroke-width="1.8" stroke-linecap="round"/>`;
+
+// みかたの ヘリ（しろ×あお・まるい・にほんの まるい しるし。おくじょうで のせて くれて、そとでは うえから うって くれる）
+const heliBody = `
+  <path d="M6 26 L26 26 L26 32 L6 31Z" fill="#e2e8f0" ${S}/><path d="M2 18 L7 18 L9 30 L4 30Z" fill="#2563eb" ${S2}/>
+  <path d="M22 18 Q24 12 38 12 Q56 12 60 26 Q60 38 46 40 L28 40 Q20 38 20 28Z" fill="#f8fafc" ${S}/>
+  <path d="M21 31 Q40 34 59.6 30 L59 34 Q40 38 21.6 35Z" fill="#2563eb"/>
+  <path d="M42 15 Q55 15 58 26 L44 26Z" fill="#7dd3fc" ${S2}/><path d="M46 18 L50 23" stroke="#e0f2fe" stroke-width="1.8" stroke-linecap="round"/>
+  <circle cx="32" cy="24" r="4.4" fill="#fff" ${SW(1.2)}/><circle cx="32" cy="24" r="2.4" fill="#dc2626"/>
+  <path d="M28 40 L26 47 M46 40 L48 47" ${SW(2.2)}/><path d="M18 48 H56" ${SW(3.2)}/><path d="M18 48 H56" stroke="#94a3b8" stroke-width="1.6" stroke-linecap="round"/>
+  <rect x="35" y="8" width="6" height="5" fill="#475569" ${S2}/>`;
+const heliFriend = wrap(`<rect x="2" y="4" width="72" height="3.4" rx="1.7" fill="#475569" opacity=".85" ${SW(1.2)}/>${heliBody}`, '0 0 76 54');
+// そとで とんで いる ときは プロペラが まわって みえる（うすい だえん）
+const heliFly = wrap(`<ellipse cx="38" cy="6" rx="36" ry="3.2" fill="#cbd5e1" opacity=".55"/>${heliBody}`, '0 0 76 54');
+
+// まちの ゆか：ひびわれた アスファルト・しろい せん・がれき・マンホール（あかるめの はいいろ）
+const cityFloor = wrap(`<rect width="160" height="160" fill="#a3a8b0"/>
+  <rect x="0" y="0" width="160" height="70" fill="#8f949c"/>
+  <path d="M0 70 H160" stroke="#d6d3d1" stroke-width="5"/><path d="M0 74 H160" stroke="#6b7280" stroke-width="1.4"/>
+  ${[10, 60, 110].map(x => `<rect x="${x}" y="32" width="26" height="5" rx="1" fill="#f8fafc" opacity=".8"/>`).join('')}
+  <path d="M40 0 L46 14 L40 22 L50 34 M120 40 L112 52 L118 62" fill="none" stroke="#4b5563" stroke-width="1.8" stroke-linecap="round"/>
+  <path d="M0 110 H160 M0 150 H160 M40 74 V110 M100 74 V110 M70 110 V150 M130 110 V150 M20 150 V160 M90 150 V160" stroke="#8b9099" stroke-width="2"/>
+  <path d="M60 120 L66 132 L58 140" fill="none" stroke="#4b5563" stroke-width="1.6"/>
+  <circle cx="132" cy="18" r="9" fill="#6b7280" stroke="#4b5563" stroke-width="2"/><path d="M125 18 H139 M132 11 V25" stroke="#4b5563" stroke-width="1.4"/>
+  ${[[24, 92], [118, 126], [80, 50]].map(([x, y]) => `<path d="M${x - 6} ${y + 3} L${x - 2} ${y - 4} L${x + 5} ${y - 2} L${x + 6} ${y + 4}Z" fill="#9ca3af" stroke="#4b5563" stroke-width="1.4"/>`).join('')}
+  <circle cx="150" cy="96" r="2" fill="#78716c"/><circle cx="8" cy="130" r="1.6" fill="#78716c"/>`, '0 0 160 160');
+// ビルの なか（こわれた オフィスの ゆか）と おくじょう（コンクリート）
+const officeFloor = wrap(`<rect width="160" height="160" fill="#c8bfae"/>
+  <path d="M0 40 H160 M0 80 H160 M0 120 H160 M40 0 V160 M80 0 V160 M120 0 V160" stroke="#b3a993" stroke-width="2"/>
+  <rect x="84" y="44" width="32" height="32" fill="#bdb39c"/><rect x="4" y="124" width="32" height="32" fill="#bdb39c"/>
+  <path d="M20 60 l10 -3 l2 7 l-9 2z" fill="#f8fafc" opacity=".8"/><path d="M130 100 l8 2 l-2 7 l-8 -2z" fill="#f8fafc" opacity=".7"/>
+  <path d="M96 140 L104 128 L112 134" fill="none" stroke="#8a7f68" stroke-width="1.6"/>`, '0 0 160 160');
+const roofFloor = wrap(`<rect width="160" height="160" fill="#b4b8be"/>
+  <path d="M0 80 H160 M80 0 V160" stroke="#9ca3af" stroke-width="3"/>
+  <rect x="12" y="12" width="12" height="12" rx="2" fill="#6b7280" stroke="#4b5563" stroke-width="1.6"/>
+  <path d="M110 110 L118 122 L112 130" fill="none" stroke="#6b7280" stroke-width="1.6"/><circle cx="130" cy="40" r="2.2" fill="#8b9099"/>`, '0 0 160 160');
+
+// たかい ビル（こわれかけ。まどは われて、うえの かどが かけて いる。いりぐちは べつの え）
+const tower = wrap(`
+  <ellipse cx="120" cy="296" rx="116" ry="8" fill="#000" opacity=".2"/>
+  <path d="M14 296 L14 40 L60 40 L74 22 L96 30 L110 8 L226 8 L226 296Z" fill="#9aa1ab" ${SW(4)}/>
+  <path d="M206 8 L226 8 L226 296 L206 296Z" fill="#7d848f"/>
+  ${[0, 1, 2, 3, 4, 5, 6].map(r => [0, 1, 2, 3, 4].map(c => {
+    const x = 26 + c * 40, y = 54 + r * 32; if (y < 30 + (c < 2 ? 30 : 0)) return '';
+    const broken = (r * 5 + c) % 4 === 1;
+    return `<rect x="${x}" y="${y}" width="26" height="20" rx="2" fill="${broken ? '#1f2937' : '#93c5fd'}" stroke="#334155" stroke-width="2"/>${broken ? `<path d="M${x + 4} ${y + 2} L${x + 10} ${y + 12} L${x + 6} ${y + 18}" stroke="#93c5fd" stroke-width="1.6" fill="none"/>` : `<path d="M${x + 4} ${y + 15} L${x + 12} ${y + 4}" stroke="#e0f2fe" stroke-width="2"/>`}`;
+  }).join('')).join('')}
+  <path d="M110 8 L132 8 L120 24Z M14 140 L30 150 L22 162" fill="#6b7280" stroke="#374151" stroke-width="2"/>
+  <path d="M150 120 L160 140 L150 152 L162 170" fill="none" stroke="#374151" stroke-width="2.4"/>
+  <rect x="86" y="236" width="68" height="60" fill="#475569" ${SW(3)}/>
+  <rect x="78" y="226" width="84" height="12" rx="2" fill="#1e3a8a" ${SW(2.4)}/>
+  ${[[24, 290], [190, 288], [60, 292]].map(([x, y]) => `<path d="M${x - 14} ${y + 6} L${x - 6} ${y - 8} L${x + 6} ${y - 4} L${x + 14} ${y + 6}Z" fill="#a8a29e" stroke="#57534e" stroke-width="2"/>`).join('')}`, '0 0 240 304');
+const towerDoor = open => wrap(`
+  <rect x="2" y="2" width="76" height="76" rx="4" fill="${open ? '#0b0f14' : '#64748b'}" ${SW(3)}/>
+  ${open ? `${[0, 1, 2, 3].map(i => `<rect x="${12 + i * 4}" y="${58 - i * 12}" width="${56 - i * 8}" height="9" rx="1.5" fill="#cbd5e1" opacity="${0.45 + i * 0.12}"/>`).join('')}
+    <path d="M28 18 L40 4 L52 18 H45 V26 H35 V18Z" fill="#22c55e" ${SW(1.8)}/>`
+    : `${[12, 22, 32, 42, 52, 62].map(y => `<path d="M6 ${y} H74" stroke="#475569" stroke-width="3"/>`).join('')}<rect x="32" y="60" width="16" height="6" rx="2" fill="#facc15" ${SW(1.4)}/>`}`, '0 0 80 80');
+// ビルの なかの かべ（コンクリートに まど）
+const bwallSide = left => wrap(`<rect width="400" height="160" fill="#5b6270"/>
+  ${[30, 110].map(y => `<rect x="${left ? 300 : 40}" y="${y}" width="50" height="34" rx="3" fill="#93c5fd" stroke="#334155" stroke-width="3"/>`).join('')}
+  <rect x="${left ? 376 : 0}" width="24" height="160" fill="#8b929e"/>
+  <path d="M${left ? 376 : 24} 0 V160" stroke="#1f2329" stroke-width="4"/>`, '0 0 400 160');
+const bwallEnd = top => wrap(`<rect width="1200" height="400" fill="#5b6270"/>
+  ${[200, 420, 640, 860].map(x => `<rect x="${x}" y="${top ? 300 : 40}" width="80" height="50" rx="4" fill="#93c5fd" stroke="#334155" stroke-width="4"/>`).join('')}
+  <rect y="${top ? 376 : 0}" width="1200" height="24" fill="#8b929e"/>
+  <path d="M0 ${top ? 376 : 24} H1200" stroke="#1f2329" stroke-width="4"/>`, '0 0 1200 400');
+// うえへの かいだん（みどりの やじるし）・おくじょうの ヘリポート・おりる はしご
+const stairsUp = wrap(`
+  <rect x="4" y="4" width="92" height="72" rx="8" fill="#334155" ${SW(2.6)}/>
+  ${[0, 1, 2, 3, 4].map(i => `<rect x="${10 + i * 12}" y="${60 - i * 11}" width="${80 - i * 12}" height="9" rx="1.5" fill="#e2e8f0" opacity="${0.55 + i * 0.09}" ${SW(1.2)}/>`).join('')}
+  <path d="M10 22 L22 8 L34 22 H27 V32 H17 V22Z" fill="#22c55e" ${SW(1.8)}/>`, '0 0 100 80');
+const helipad = wrap(`<circle cx="80" cy="80" r="76" fill="#4b5563" stroke="#facc15" stroke-width="6"/><circle cx="80" cy="80" r="62" fill="none" stroke="#f8fafc" stroke-width="3" stroke-dasharray="10 8"/>
+  <path d="M56 46 V114 M104 46 V114 M56 80 H104" stroke="#f8fafc" stroke-width="12" stroke-linecap="round"/>`, '0 0 160 160');
+const roofExit = wrap(`
+  <rect x="4" y="4" width="72" height="72" rx="8" fill="#1f2937" ${SW(2.6)}/>
+  <path d="M26 10 V72 M54 10 V72" stroke="#cbd5e1" stroke-width="4"/>${[18, 30, 42, 54, 66].map(y => `<path d="M26 ${y} H54" stroke="#cbd5e1" stroke-width="3"/>`).join('')}
+  <path d="M28 40 L40 54 L52 40 H45 V28 H35 V40Z" fill="#22c55e" ${SW(1.8)}/>`, '0 0 80 80');
+
+// まちの かざり（ぶつからない）：こわれた くるま と くずれた ビルの かけら
+const wreckCar = wrap(`
+  <ellipse cx="60" cy="66" rx="54" ry="5" fill="#000" opacity=".2"/>
+  <path d="M8 56 L8 40 Q10 34 18 34 L34 34 L44 20 L80 20 L92 34 L108 36 Q114 38 114 46 L114 56Z" fill="#9f6b54" ${SW(2.6)}/>
+  <path d="M48 24 L60 24 L60 34 L40 34Z M66 24 L78 24 L88 34 L66 34Z" fill="#1f2937" stroke="#334155" stroke-width="1.6"/>
+  <path d="M50 26 L54 32 M70 26 L76 32" stroke="#93c5fd" stroke-width="1.4"/>
+  <path d="M8 46 H114" stroke="#7c4a36" stroke-width="2"/><path d="M84 40 L92 48 L86 52" fill="none" stroke="#3f3f46" stroke-width="2"/>
+  <ellipse cx="30" cy="58" rx="10" ry="8" fill="#1c1917" ${SW(2)}/><ellipse cx="92" cy="60" rx="10" ry="6" fill="#1c1917" ${SW(2)}/>
+  <circle cx="30" cy="58" r="3" fill="#71717a"/>
+  <path d="M20 30 Q16 20 24 14 Q22 22 28 24" fill="none" stroke="#a8a29e" stroke-width="3" stroke-linecap="round" opacity=".6"/>`, '0 0 120 72');
+const ruinPile = wrap(`
+  <ellipse cx="70" cy="92" rx="64" ry="6" fill="#000" opacity=".18"/>
+  <path d="M10 92 L10 40 L30 40 L30 20 L52 20 L58 34 L70 28 L76 46 L96 40 L104 58 L130 62 L132 92Z" fill="#a1a1aa" ${SW(2.6)}/>
+  <rect x="16" y="48" width="10" height="10" fill="#1f2937"/><rect x="36" y="28" width="10" height="10" fill="#1f2937"/><rect x="36" y="48" width="10" height="10" fill="#93c5fd"/>
+  <path d="M60 50 L66 30 M72 52 L80 34 M100 56 L108 44" stroke="#78350f" stroke-width="2.2" stroke-linecap="round"/>
+  ${[[20, 88], [56, 86], [90, 84], [118, 88]].map(([x, y]) => `<path d="M${x - 12} ${y + 4} L${x - 4} ${y - 8} L${x + 8} ${y - 6} L${x + 12} ${y + 4}Z" fill="#d6d3d1" ${SW(1.6)}/>`).join('')}`, '0 0 140 100');
+
 /* ---------- あおい レーザーじゅう（3つの モード） ---------- */
 const laserGun = wrap(`
   <path d="M8 34 H40 L46 28 H56 V40 H46 L42 44 H22 L18 54 H8 L12 42 H8Z" fill="#1e3a8a" ${S}/>
@@ -1156,6 +1287,7 @@ const GROUNDS = {
     <g transform="translate(140 72)"><path d="M0 0 Q-10 -10 -16 -8 M0 0 Q-6 -14 -2 -20 M0 0 Q8 -14 14 -14" fill="none" stroke="#3f6b23" stroke-width="3" stroke-linecap="round"/></g>
     <g transform="translate(70 60)"><rect x="-12" y="-8" width="24" height="16" rx="2" fill="#a8a29e" stroke="#57534e" stroke-width="2"/><path d="M-12 0 H12 M0 -8 V0 M-6 0 V8 M6 0 V8" stroke="#78716c" stroke-width="1.4"/><path d="M-12 -8 Q-4 -12 4 -8" fill="none" stroke="#4d7a2c" stroke-width="2.4" stroke-linecap="round"/></g>
     <circle cx="20" cy="70" r="2.2" fill="#fde047"/><circle cx="23" cy="72" r="1.4" fill="#f97316"/><circle cx="112" cy="146" r="2.2" fill="#f472b6"/><circle cx="115" cy="144" r="1.3" fill="#fde047"/>`),
+  city: cityFloor, office: officeFloor, roof: roofFloor,
   castle: tile(`<rect width="160" height="160" fill="#3a3842"/>
     <path d="M0 0 H80 V80 H0Z M80 80 H160 V160 H80Z" fill="#2e2c36"/>
     <path d="M0 40 H160 M0 80 H160 M0 120 H160 M40 0 V40 M120 0 V40 M0 40 M80 40 V80 M40 80 V120 M120 80 V120 M80 120 V160" stroke="#1c1a22" stroke-width="3"/>
@@ -1193,12 +1325,15 @@ const SOURCES = {
   ally: wrap(allySoldier), medic: wrap(medic), container: crate(false), containerOpen: crate(true), whistle, healPlus,
   outpost, hut, kamakura, hatch: hatch(false), hatchOpen: hatch(true), wallL: stretch(wallSide(true)), wallR: stretch(wallSide(false)), wallT: stretch(wallEnd(true)), wallB: stretch(wallEnd(false)),
   cellA: cell(['soldier', 'soldier']), cellB: cell(['researcher', 'medic']), cellC: cell(['soldier', 'researcher']), cellOpen: cell([], true), exitStairs,
-  driller: wrap(withPatch('driller', driller)), jungler: wrap(withPatch('jungler', jungler)), walker: wrap(withPatch('walker', walker), '-8 0 80 66'), laserGun, lbullet, lrocket, modeMg, modeBeam, modeRk: lrocket,
+  driller: wrap(withPatch('driller', driller)), jungler: wrap(withPatch('jungler', jungler)), walker: wrap(withPatch('walker', walker), '-8 0 80 66'),
+  urban: wrap(withPatch('urban', urban)), truck: wrap(withPatch('truck', truck)), gunship: wrap(withPatch('gunship', gunship), '-10 0 84 68'),
+  heliFriend, heliFly, tower, towerDoor: towerDoor(false), towerDoorOpen: towerDoor(true), stairsUp, helipad, roofExit, wreckCar, ruinPile,
+  bwallL: stretch(bwallSide(true)), bwallR: stretch(bwallSide(false)), bwallT: stretch(bwallEnd(true)), bwallB: stretch(bwallEnd(false)), laserGun, lbullet, lrocket, modeMg, modeBeam, modeRk: lrocket,
   gun, shotgun, bazooka, dual, gatling, rocket, mega, bullet, pellet, blast,
   sword: wrap(sword), armor: wrap(armor), shoes: wrap(shoes), charm: wrap(charm), chest: wrap(chest), chestOpen: wrap(chestOpen, '0 -4 64 68'),
   ...Object.fromEntries(Object.entries(GROUNDS).map(([k, v]) => [`ground-${k}`, v])),
 };
-const FLASHABLE = ['zombie', 'bat', 'ghost', 'skull', 'ogre', 'dragon', 'scorpion', 'mummy', 'snake', 'snowman', 'wolf', 'icegiant', 'pumpkin', 'witch', 'maou', 'thrower', 'alien', 'driller', 'jungler', 'walker'];
+const FLASHABLE = ['zombie', 'bat', 'ghost', 'skull', 'ogre', 'dragon', 'scorpion', 'mummy', 'snake', 'snowman', 'wolf', 'icegiant', 'pumpkin', 'witch', 'maou', 'thrower', 'alien', 'driller', 'jungler', 'walker', 'urban', 'truck', 'gunship'];
 
 const toUrl = svg => `url("data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}")`;
 
