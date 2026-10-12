@@ -1,0 +1,302 @@
+{
+  "version": "6.3.5",
+  "cache": "v218",
+  "checks": {
+    "repeat": {
+      "first": true,
+      "deadline": 360,
+      "blockedMana": true,
+      "isDown": true,
+      "rescuesBefore": 1,
+      "rescuesAfter": 1,
+      "remaining": 49.999999999997726,
+      "buttonEnabled": true
+    },
+    "menuPause": true,
+    "medicine": {
+      "full": true,
+      "isDown": false,
+      "stock": 0,
+      "remaining": 60,
+      "disabled": true
+    },
+    "shop": {
+      "stock": 1,
+      "gold": 10000,
+      "disabled": true,
+      "loadedStock": 1
+    },
+    "noTarget": {
+      "disabled": true,
+      "used": false,
+      "selfUsed": false,
+      "stock": 1
+    },
+    "reserves": {
+      "deployed": 1,
+      "healthyDeployed": true,
+      "injuredWaiting": true,
+      "down": true,
+      "hp": 0,
+      "drawnAtActualPosition": true,
+      "target": true,
+      "ghostOnFarm": false
+    },
+    "waitLabel": {
+      "shown": true,
+      "drugDisabled": true
+    },
+    "waves": {
+      "rows": [
+        {
+          "wave": 1,
+          "recent": 2,
+          "awakened": 0
+        },
+        {
+          "wave": 2,
+          "recent": 4,
+          "awakened": 0
+        },
+        {
+          "wave": 3,
+          "recent": 6,
+          "awakened": 0
+        },
+        {
+          "wave": 4,
+          "recent": 8,
+          "awakened": 0
+        },
+        {
+          "wave": 5,
+          "recent": 10,
+          "awakened": 1
+        }
+      ],
+      "qualified": 1,
+      "recipient": "jcnsx2v-1",
+      "patient": "jcnsx2v-1",
+      "others": 0,
+      "consumed": 0,
+      "window": 5
+    },
+    "controls": [
+      {
+        "width": 320,
+        "height": 700,
+        "recovery": {
+          "x": 26.5,
+          "y": 504,
+          "w": 60,
+          "h": 48,
+          "right": 86.5,
+          "bottom": 552
+        },
+        "revival": {
+          "x": 90.5,
+          "y": 504,
+          "w": 60,
+          "h": 48,
+          "right": 150.5,
+          "bottom": 552
+        },
+        "stick": {
+          "x": 33.5,
+          "y": 568,
+          "w": 110,
+          "h": 110,
+          "right": 143.5,
+          "bottom": 678
+        },
+        "attack": {
+          "x": 236,
+          "y": 614,
+          "w": 68,
+          "h": 68,
+          "right": 304,
+          "bottom": 682
+        },
+        "overflow": false,
+        "recoveryError": null
+      },
+      {
+        "width": 375,
+        "height": 812,
+        "recovery": {
+          "x": 54,
+          "y": 616,
+          "w": 60,
+          "h": 48,
+          "right": 114,
+          "bottom": 664
+        },
+        "revival": {
+          "x": 118,
+          "y": 616,
+          "w": 60,
+          "h": 48,
+          "right": 178,
+          "bottom": 664
+        },
+        "stick": {
+          "x": 61,
+          "y": 680,
+          "w": 110,
+          "h": 110,
+          "right": 171,
+          "bottom": 790
+        },
+        "attack": {
+          "x": 291,
+          "y": 726,
+          "w": 68,
+          "h": 68,
+          "right": 359,
+          "bottom": 794
+        },
+        "overflow": false,
+        "recoveryError": null
+      },
+      {
+        "width": 390,
+        "height": 844,
+        "recovery": {
+          "x": 61.5,
+          "y": 648,
+          "w": 60,
+          "h": 48,
+          "right": 121.5,
+          "bottom": 696
+        },
+        "revival": {
+          "x": 125.5,
+          "y": 648,
+          "w": 60,
+          "h": 48,
+          "right": 185.5,
+          "bottom": 696
+        },
+        "stick": {
+          "x": 68.5,
+          "y": 712,
+          "w": 110,
+          "h": 110,
+          "right": 178.5,
+          "bottom": 822
+        },
+        "attack": {
+          "x": 306,
+          "y": 758,
+          "w": 68,
+          "h": 68,
+          "right": 374,
+          "bottom": 826
+        },
+        "overflow": false,
+        "recoveryError": null
+      },
+      {
+        "width": 844,
+        "height": 390,
+        "recovery": {
+          "x": 118,
+          "y": 309,
+          "w": 60,
+          "h": 48,
+          "right": 178,
+          "bottom": 357
+        },
+        "revival": {
+          "x": 182,
+          "y": 309,
+          "w": 60,
+          "h": 48,
+          "right": 242,
+          "bottom": 357
+        },
+        "stick": {
+          "x": 21,
+          "y": 293,
+          "w": 80,
+          "h": 80,
+          "right": 101,
+          "bottom": 373
+        },
+        "attack": {
+          "x": 774,
+          "y": 322,
+          "w": 54,
+          "h": 54,
+          "right": 828,
+          "bottom": 376
+        },
+        "overflow": false,
+        "recoveryError": null
+      },
+      {
+        "width": 1280,
+        "height": 800,
+        "recovery": {
+          "x": 506.5,
+          "y": 604,
+          "w": 60,
+          "h": 48,
+          "right": 566.5,
+          "bottom": 652
+        },
+        "revival": {
+          "x": 570.5,
+          "y": 604,
+          "w": 60,
+          "h": 48,
+          "right": 630.5,
+          "bottom": 652
+        },
+        "stick": {
+          "x": 513.5,
+          "y": 668,
+          "w": 110,
+          "h": 110,
+          "right": 623.5,
+          "bottom": 778
+        },
+        "attack": {
+          "x": 1196,
+          "y": 714,
+          "w": 68,
+          "h": 68,
+          "right": 1264,
+          "bottom": 782
+        },
+        "overflow": false,
+        "recoveryError": null
+      }
+    ],
+    "offline": {
+      "stock": 1,
+      "disabled": true,
+      "cooldown": 60,
+      "window": 5,
+      "recovery": null,
+      "assets": 119
+    }
+  },
+  "errors": [],
+  "screenshots": [
+    "medicine-ready-390.png",
+    "medicine-used-390.png",
+    "medicine-shop-390.png",
+    "commander-revival-wait-390.png",
+    "five-wave-awakening-390.png",
+    "cannon-right-390.png",
+    "cannon-left-390.png",
+    "controls-320.png",
+    "controls-375.png",
+    "controls-390.png",
+    "controls-844.png",
+    "controls-1280.png",
+    "cannon-directions.png",
+    "offline.png"
+  ]
+}

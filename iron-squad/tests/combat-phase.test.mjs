@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {storage} from '../../common/js/storage.js';
 import {markSoldierDown,treatWounded} from '../js/casualty-rules.js';
 import {saveSlots} from '../js/save-slots.js';
-import {DEATHLINE_DOWN_THRESHOLD,personalDownCount,deathlineEligible,PHASE_DURATION,emptyActivity,advancePhase,advanceRest,recordCombat,healByMedic,participated,finishExperience} from '../js/phase-rules.js';
+import {DEATHLINE_DOWN_THRESHOLD,DEATHLINE_WINDOW_PHASES,personalDownCount,recentDownCount,deathlineEligible,PHASE_DURATION,emptyActivity,advancePhase,advanceRest,recordCombat,healByMedic,participated,finishExperience} from '../js/phase-rules.js';
 
 const memory=new Map();
 globalThis.localStorage={getItem:k=>memory.get(k)??null,setItem:(k,v)=>memory.set(k,v),removeItem:k=>memory.delete(k)};
@@ -81,8 +81,8 @@ const lonely={hp:100,survivedWaves:0,phaseActivity:emptyActivity()};
 assert.equal(finishExperience(lonely),false);recordCombat(lonely);
 assert.equal(finishExperience(lonely),true);assert.equal(finishExperience(lonely),false);
 assert.equal(lonely.survivedWaves,1);
-// The new trigger works with zero deaths and repeated real medic revivals.
-game.startFreshGame(false);assert.equal(DEATHLINE_DOWN_THRESHOLD,10);
+// Two actual revivals per wave, spaced 60 seconds, reach ten across five waves.
+game.startFreshGame(false);assert.equal(DEATHLINE_DOWN_THRESHOLD,10);assert.equal(DEATHLINE_WINDOW_PHASES,5);
 let target=game.squad[0],healer=game.squad.find(s=>s.soldierClass==='MEDIC');
 recordCombat(target);healer.x=target.x;healer.y=target.y;
 const knockAndRevive=()=>{
@@ -90,34 +90,37 @@ const knockAndRevive=()=>{
  assert.equal(markSoldierDown(game,target),false);assert.equal(personalDownCount(target),n,'a still-downed unit is counted once');
  healer.mana=100;assert.equal(treatWounded(game,healer,target,1),true,'the production medic revival returns the same soldier to action');
 };
-for(let i=0;i<9;i++)knockAndRevive();
-assert.equal(personalDownCount(target),9);assert.equal(game.phaseCasualties,0);
-const beforeSave=structuredClone(game.saveGame());game.resumeSavedGame(beforeSave);assert.equal(personalDownCount(game.squad.find(s=>s.id===target.id)),9);
-target=game.squad.find(s=>s.id===target.id);healer=game.squad.find(s=>s.id===healer.id);healer.x=target.x;healer.y=target.y;
-knockAndRevive();assert.equal(personalDownCount(target),10);game.completePhase();
+for(let wave=1;wave<=5;wave++){
+ if(game.restTimer>0)advanceRest(game,10);game.worldTime=(wave-1)*128;healer.x=target.x;healer.y=target.y;
+ knockAndRevive();game.worldTime+=60;knockAndRevive();assert.equal(personalDownCount(target),2);assert.equal(recentDownCount(target,game.phase),wave*2);
+ game.completePhase();if(wave<5){assert.equal(target.survivedDeathlines,0);assert.equal(game.deathlineReport.occurred,false);}
+ if(wave===4){const targetId=target.id,healerId=healer.id;game.resumeSavedGame(structuredClone(game.saveGame()));target=game.squad.find(s=>s.id===targetId);healer=game.squad.find(s=>s.id===healerId);assert.equal(recentDownCount(target,game.phase),8);}
+}
 assert.equal(target.survivedDeathlines,1);assert.equal(healer.survivedDeathlines,0);assert.equal(game.deathlineReport.qualifiedCount,1);assert.equal(game.deathlineReport.awakenedList[0].id,target.id);assert.equal(game.deathlineReport.awakenedList[0].downCount,10);assert.equal(game.deathlineReport.deadCount,0);assert.equal(personalDownCount(target),0);
+assert.equal(game.deathlineReport.windowPhases,5);assert.equal(recentDownCount(target,game.phase),0);
 assert.ok(game.squad.filter(s=>s!==target&&s!==healer).every(s=>s.survivedDeathlines===0));
 const heldSkill=target.deathlineSkills.length;game.completePhase();assert.equal(target.deathlineSkills.length,heldSkill,'rest cannot duplicate the same wave awakening');
 const reportSave=structuredClone(game.saveGame());game.resumeSavedGame(reportSave);assert.equal(game.deathlineReport.awakenedList[0].downCount,10);assert.equal(personalDownCount(game.squad.find(s=>s.id===target.id)),0);
 advanceRest(game,10);game.completePhase();assert.equal(game.deathlineReport.occurred,false,'the next wave starts a fresh count');
-// Nine downs and many deaths cannot satisfy the new ten-down condition.
+// Ten lifetime downs spread across six waves are not ten in the rolling five-wave window.
 game.startFreshGame(false);target=game.squad[0];healer=game.squad.find(s=>s.soldierClass==='MEDIC');healer.x=target.x;healer.y=target.y;recordCombat(target);
-for(let i=0;i<9;i++)knockAndRevive();game.phaseCasualties=8;game.completePhase();assert.equal(target.survivedDeathlines,0);assert.equal(game.deathlineReport.occurred,false);
-advanceRest(game,10);knockAndRevive();assert.equal(personalDownCount(target),1);game.completePhase();assert.equal(target.survivedDeathlines,0,'nine downs in one wave and one in the next are not ten');
+for(let wave=1;wave<=6;wave++){if(game.restTimer>0)advanceRest(game,10);game.worldTime=(wave-1)*128;healer.x=target.x;healer.y=target.y;knockAndRevive();if(wave<=4){game.worldTime+=60;knockAndRevive();}game.phaseCasualties=8;game.completePhase();assert.equal(target.survivedDeathlines,0);assert.equal(game.deathlineReport.occurred,false);}
+assert.equal(target.timesDown,10);assert.equal(recentDownCount(target,6),8);
 // Merchant and gate-guard downs are outside the army trigger; rest downs do not leak into the next wave.
 game.startFreshGame(false);const npc={id:'npc-down',name:'NPC',isGateGuard:true,x:0,y:0,hp:100,maxHp:100};markSoldierDown(game,npc);assert.equal(personalDownCount(npc),0);
 game.restTimer=8;markSoldierDown(game,game.squad[0]);assert.equal(personalDownCount(game.squad[0]),0);
-const legacy=structuredClone(game.saveGame());delete legacy.squad[0].phaseActivity.downs;legacy.squad[0].timesDown=999;game.resumeSavedGame(legacy);assert.equal(personalDownCount(game.squad[0]),0,'lifetime downs in old saves are not this-wave events');
+const legacy=structuredClone(game.saveGame());delete legacy.squad[0].phaseActivity.downs;delete legacy.squad[0].deathlineDownHistory;legacy.squad[0].timesDown=999;game.resumeSavedGame(legacy);assert.equal(recentDownCount(game.squad[0],game.phase),0,'lifetime downs in old saves are not recent-wave events');
 // Per-person counts cannot carry across waves or award other participating soldiers.
-assert.equal(deathlineEligible({dead:true,phaseActivity:{downs:10}}),false);
-assert.equal(deathlineEligible({dead:false,phaseActivity:{downs:9}}),false);
-assert.equal(deathlineEligible({dead:false,phaseActivity:{downs:10}}),true);
+assert.equal(deathlineEligible({dead:true,phaseActivity:{downs:10}},1),false);
+assert.equal(deathlineEligible({dead:false,phaseActivity:{downs:9}},1),false);
+assert.equal(deathlineEligible({dead:false,deathlineDownHistory:[{phase:1,downs:10}]},5),true);
+assert.equal(deathlineEligible({dead:false,deathlineDownHistory:[{phase:1,downs:10}]},6),false);
 // A weak soldier really changes strength after personally reaching the threshold.
 game.startFreshGame(false);game.recalcSoldierStats=IronSquadGame.recalcSoldierStats.bind(game);
 const inferior=game.squad.find(s=>s.soldierClass==='HEAVY');inferior.talent='INFERIOR';game.recalcSoldierStats(inferior);
-const hpBefore=inferior.maxHp,defBefore=inferior.def;inferior.phaseActivity={combatActions:1,healingDone:0,downs:10};game.completePhase();
+const hpBefore=inferior.maxHp,defBefore=inferior.def;inferior.phaseActivity={combatActions:1,healingDone:0,downs:10};inferior.deathlineDownHistory=[{phase:game.phase,downs:10}];game.completePhase();
 assert.equal(inferior.talent,'INFERIOR');assert.ok(inferior.deathlineSkills.includes('IRON_RESOLVE'));const awakenedHp=inferior.maxHp,awakenedDef=inferior.def,skills=inferior.deathlineSkills;
 inferior.deathlineSkills=[];game.recalcSoldierStats(inferior);assert.ok(awakenedHp>inferior.maxHp);assert.ok(awakenedDef>inferior.def);
 inferior.deathlineSkills=skills;game.recalcSoldierStats(inferior);
 assert.ok(game.squad.filter(s=>s!==inferior).every(s=>!s.deathlineSkills.length),'the support team does not receive his awakening');
-console.log('PASS: personal ten-down threshold, army-total rejection, repeated medic revivals, nine-down rejection, only recipient, zero deaths, NPC/rest exclusion, save/report roundtrip and no duplicate awakening');
+console.log('PASS: personal ten downs in five waves with spaced medic revivals, six-wave expiry, army-total rejection, only recipient, NPC/rest exclusion, preserved save/report and consumed counts without duplicate awakening');

@@ -3,6 +3,7 @@ import {grantHealingExp} from './experience-rules.js';
 export const PHASE_DURATION = 120;
 export const REST_DURATION = 8;
 export const DEATHLINE_DOWN_THRESHOLD = 10;
+export const DEATHLINE_WINDOW_PHASES = 5;
 /** Legacy name denotes the minimum basic pay; quotes include growth and maintenance. */
 export {SOLDIER_SALARY} from './payroll-rules.js?v=195';
 export const MIN_REINFORCEMENTS = 5;
@@ -33,10 +34,25 @@ export function personalDownCount(unit) {
   const count=Number(unit?.phaseActivity?.downs);
   return Number.isFinite(count)?Math.max(0,Math.floor(count)):0;
 }
-export const deathlineEligible = unit => !!unit && !unit.dead && personalDownCount(unit)>=DEATHLINE_DOWN_THRESHOLD;
-/** Only fresh down events of a deployed soldier count toward that person's wave. */
+/** Keep at most five numbered waves. Lifetime downs never enter this ledger. */
+export function normalizeDeathlineHistory(unit,phase) {
+  const current=Math.max(1,Math.floor(Number(phase)||1)),counts=new Map();
+  const raw=Array.isArray(unit?.deathlineDownHistory)?unit.deathlineDownHistory:[{phase:current,downs:personalDownCount(unit)}];
+  for(const row of raw){const p=Math.floor(Number(row?.phase)),n=Math.floor(Number(row?.downs));
+    if(Number.isFinite(p)&&p>current-DEATHLINE_WINDOW_PHASES&&p<=current&&Number.isFinite(n)&&n>0)counts.set(p,Math.max(counts.get(p)||0,Math.min(10000,n)));
+  }
+  return [...counts].sort((a,b)=>a[0]-b[0]).map(([phase,downs])=>({phase,downs}));
+}
+export function recentDownCount(unit,phase) {return normalizeDeathlineHistory(unit,phase).reduce((n,row)=>n+row.downs,0);}
+export const deathlineEligible = (unit,phase) => !!unit && !unit.dead && !unit.dying && recentDownCount(unit,phase)>=DEATHLINE_DOWN_THRESHOLD;
+export function consumeDeathlineDowns(unit) {unit.deathlineDownHistory=[];if(unit.phaseActivity)unit.phaseActivity.downs=0;}
+/** Only fresh down events of a deployed soldier count toward that person's five-wave window. */
 export function recordDown(game, unit) {
   if(!game || !unit || unit.dead || game.restTimer>0 || !game.squad?.includes(unit))return false;
+  const phase=Math.max(1,Math.floor(game.phase||game.wave||1));
+  unit.deathlineDownHistory=normalizeDeathlineHistory(unit,phase);
+  let row=unit.deathlineDownHistory.find(row=>row.phase===phase);
+  if(!row){row={phase,downs:0};unit.deathlineDownHistory.push(row);}row.downs++;
   unit.phaseActivity ||= emptyActivity();
   unit.phaseActivity.downs=personalDownCount(unit)+1;
   return true;

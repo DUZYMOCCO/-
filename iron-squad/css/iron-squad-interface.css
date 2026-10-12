@@ -1359,3 +1359,15 @@
   .iron-squad .pad-move-column { flex-direction:column; align-items:center; gap:4px; }
   .iron-squad .pad-move-column #btn-pad-potion { flex:0 0 44px; width:74px; height:44px; min-height:44px; align-self:center; margin-bottom:0; }
 }
+/* Two adjacent medicine buttons fit above the stick without shifting attack controls. */
+.iron-squad .pad-move-column { flex-direction:column; align-items:center; gap:6px; }
+.iron-squad .pad-supply-buttons { display:flex; gap:4px; order:0; pointer-events:auto; }
+.iron-squad .pad-move-column .pad-stick-zone { order:1; }
+.iron-squad .pad-move-column .pad-supply-buttons :is(#btn-pad-potion,#btn-pad-revive) { width:60px; height:48px; min-height:48px; flex:none; grid-column:auto; grid-row:auto; margin:0; padding:3px; border-radius:12px; box-shadow:none; font-size:11px; color:#f0f4df; touch-action:manipulation; }
+.iron-squad #btn-pad-revive { background:#3e3c58; border:1px solid #afa4d0; }
+.iron-squad #btn-pad-revive:disabled { background:#2e2d38; border-color:#706c80; color:#a3a0ad; opacity:.7; }
+@media (orientation:landscape) and (max-height:500px) {
+  .iron-squad .pad-move-column { flex-direction:row; gap:12px; }
+  .iron-squad .pad-move-column .pad-stick-zone { order:0; }
+  .iron-squad .pad-supply-buttons { order:1; }
+}

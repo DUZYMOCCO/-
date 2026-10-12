@@ -221,7 +221,7 @@ export function rangedPose(style,anim=0,aim=0,physique=null) {
     grip.x+=side*Math.max(0,clearance-Math.abs(grip.x))*clamp((-dy-.35)/.4);
   }
   const offGrip=style==='bow'?{x:grip.x-dx*draw+nx,y:grip.y-dy*draw+ny}
-    :{x:grip.x+dx*11-nx*3,y:grip.y+dy*11-ny*3};
+    :{x:grip.x+dx*11-nx*3*(style==='cannon'?side:1),y:grip.y+dy*11-ny*3*(style==='cannon'?side:1)};
   return fitGrips({active,progress:p,angle:aim,aim,side,grip,offGrip,twoHanded:true,draw,recoil},physique);
 }
 export function drawRangedWeapon(c,actor,style,colors,simple=false,withArms=true,heldPose=null) {
@@ -230,6 +230,7 @@ export function drawRangedWeapon(c,actor,style,colors,simple=false,withArms=true
   c.save();c.lineCap='round';c.lineJoin='round';
   if(withArms)drawWeaponArms(c,actor,pose,colors,simple);
   c.translate(grip.x,grip.y);c.rotate(pose.angle);
+  if(style==='cannon'&&pose.side<0)c.scale(1,-1); // Keep stock/trigger below the barrel when aiming left.
   if(style==='bow'){
     c.strokeStyle=blade;c.lineWidth=simple?1.5:2.4;c.beginPath();c.moveTo(0,-15);c.bezierCurveTo(7,-11,7,-4,0,0);c.bezierCurveTo(7,4,7,11,0,15);c.stroke();
     segment(c,[[0,-15],[-pose.draw,1],[0,15]],'#d4c4a0',.7);

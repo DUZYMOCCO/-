@@ -1,11 +1,11 @@
 import {givenName} from './squad-names.js?v=182';
-import {downLabel} from './casualty-rules.js?v=215';
+import {downLabel} from './casualty-rules.js?v=218';
 import {RANGED_ENEMIES} from './enemy-ranged.js?v=187';
 import {BRUTE_DRAW_SCALE} from './field-hosts.js?v=182';
 import {equipmentVisualProfile} from './equipment-tiers.js?v=187';
 import {drawBodyEquipment,drawEquipmentShield} from './equipment-art.js?v=188';
 import {MAGIC_AFFINITIES,ensureMana} from './magic-rules.js?v=211';
-import { drawMeleeWeapon, drawMeleeRangeCue, drawRangedWeapon, drawWeaponArms, meleePose, rangedPose, weaponAim } from './weapon-motion.js?v=217';
+import { drawMeleeWeapon, drawMeleeRangeCue, drawRangedWeapon, drawWeaponArms, meleePose, rangedPose, weaponAim } from './weapon-motion.js?v=218';
 import { defaultCommanderAppearance } from './commander-identity.js?v=210';
 import {travelerClothes,drawTravelerTunic} from './traveler-clothes.js?v=195';
 import { createSoldierAppearance, drawSoldierHead, isMedicAppearance, soldierAppearanceFamily, soldierPhysique } from './soldier-appearance.js?v=206';

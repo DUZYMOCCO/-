@@ -42,7 +42,8 @@ export function configureInterface(game) {
   const fieldActions=element('div','field-interactions');
   fieldActions.append(get('merchant-prompt-banner'), get('dungeon-prompt-banner'), get('phase-complete-banner'));
   const gamepad=get('virtual-gamepad'),moveColumn=element('div','pad-move-column');
-  moveColumn.append(gamepad.querySelector('.pad-stick-zone'),get('btn-pad-potion'));
+  const medicines=element('div','pad-supply-buttons');medicines.append(get('btn-pad-potion'),get('btn-pad-revive'));
+  moveColumn.append(gamepad.querySelector('.pad-stick-zone'),medicines);
   gamepad.prepend(fieldActions,moveColumn);gamepad.append(get('battle-log-window'));
   const historyButton=element('button','','履歴');historyButton.type='button';historyButton.id='btn-battle-log-history';historyButton.setAttribute('aria-label','戦闘ログの履歴を開く');get('battle-log-window').append(historyButton);
   const fieldStatus = element('div', 'field-status');

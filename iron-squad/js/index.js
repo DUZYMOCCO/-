@@ -55,7 +55,7 @@ import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, draw
 import { refreshCampQuiet, assignCampSeats, tryCampLeisure, YARD_TABLES, drawLeisureTable } from './camp-leisure.js?v=202';
 import { CAMP_PEACE_RADIUS, peaceContainment, pushOutsidePeace, relocatePeaceMonster } from './peace-zones.js?v=182';
 import { FARM_X, FARM_Y, farmPosts, farmOverlaps, reinforcementCount, reserveRosterLine, reserveRosterTitle } from './reserve-farm.js?v=182';
-import { drawMeleeRangeCue, meleeDrawReach, attackAnimationRate } from './weapon-motion.js?v=217';
+import { drawMeleeRangeCue, meleeDrawReach, attackAnimationRate } from './weapon-motion.js?v=218';
 import { guardRegrouping, guardTarget, guardSpeedMult } from './guard-leash.js?v=211';
 import { KNOCK_RULES, knockbackDistance, knockFlight, slamDamage, knockTransferDistance } from './knockback-rules.js?v=212';
 import { MELEE_SOUND_STYLES, playMeleeSound } from './weapon-sounds.js?v=211';
@@ -69,8 +69,8 @@ import { applyCommanderIdentity, normalizeCommanderIdentity, commanderFullName, 
 import {MAGIC_CLASSES,MAGIC_AFFINITIES,magicMethods,isMage,isMagicUser,ensureMana,initializeMagic,updateMagic,distributeMagicStones,castMedicBuff,castCasterStrength,updateMageAI,drawMagicBursts,spendMana,weaponMagicDamage,isPlayerCaster,castPlayerSpell,PLAYER_MAGIC_RULES} from './magic-rules.js?v=211';
 import {hazardMethods,updateHazards,drawHazards} from './hazard-fields.js?v=198';
 import {strongEnemyReward} from './combat-rewards.js?v=182';
-import {supplyMethods, initializeSupplies, updateSupplies, takeRangedShot, ammoCombatProfile, isRangedUnit, distributeAmmo, preventLethalHit, normalizeFieldSave, SQUAD_POTION_COST, ensureAmmo, RANGED_DAMAGE_MULT, supplyLocation} from './supply-rules.js?v=187';
-import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog } from './interface.js?v=205';
+import {supplyMethods, initializeSupplies, updateSupplies, takeRangedShot, ammoCombatProfile, isRangedUnit, distributeAmmo, preventLethalHit, normalizeFieldSave, SQUAD_POTION_COST, REVIVAL_POTION_COST, ensureAmmo, RANGED_DAMAGE_MULT, supplyLocation} from './supply-rules.js?v=218';
+import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog } from './interface.js?v=218';
 import { renderTroopRankings, getSoldierRankerBadges, calcSoldierRankerBonus } from './troop-rankings.js?v=187';
 import { ensureSoldierAppearance, drawSoldierPortrait, describeSoldierAppearance } from './soldier-appearance.js?v=206';
 import { attachSurfaceEvents, detachSurfaceEvents, frameSurfaceReady, releaseSceneCaches, releaseCanvas, surfaceCanResume } from './canvas-surface.js?v=217';
@@ -81,7 +81,7 @@ import {
   classTierOf, nextClassId, classUpCostForNext, canAffordClassUp, formatClassUpCostJa, classUpShortageJa,
   playerClassTier, nextPlayerStage, playerStageById, numberedClassName, numberClassDefinitions, passesWalls as unitPassesWalls
 } from './class-up-rules.js?v=185';
-import { PHASE_DURATION, REST_DURATION, DEATHLINE_DOWN_THRESHOLD, SOLDIER_SALARY, MIN_REINFORCEMENTS, emptyActivity, advancePhase, advanceRest, recordCombat, recordHealing, healByMedic, healAmountFor, personalDownCount, deathlineEligible, participated, finishExperience } from './phase-rules.js?v=187';
+import { PHASE_DURATION, REST_DURATION, DEATHLINE_DOWN_THRESHOLD, DEATHLINE_WINDOW_PHASES, SOLDIER_SALARY, MIN_REINFORCEMENTS, emptyActivity, advancePhase, advanceRest, recordCombat, recordHealing, healByMedic, healAmountFor, personalDownCount, recentDownCount, normalizeDeathlineHistory, consumeDeathlineDowns, deathlineEligible, participated, finishExperience } from './phase-rules.js?v=218';
 import {HEALING_HP_PER_EXP,REVIVAL_EXP_PER_MAX_HP,shareCommanderExp,raiseLevelMark,ageLevelMarks} from './experience-rules.js';
 import {rollAttributeProfile,applyAttributeStats,attributeValues,practiceAttribute,attributeCarryCapacity,attributeSpecialties,prefersCasterMelee,canChannelWeaponMagic,magicAbilityMultiplier,beginAttributeMovement,finishAttributeMovement,ATTRIBUTE_LABELS,ATTRIBUTE_KEYS,aptitudeGrade} from './unit-attributes.js?v=187';
 import {rollScoutCandidate,renderRecruitment,nextScoutCandidate,startAutomaticRecruitment,stopAutomaticRecruitment,RECRUIT_CLASSES} from './recruitment.js?v=196';
@@ -111,7 +111,7 @@ import {
   nearestLivingMerchant, refreshMerchantStock, merchantBuyPrice, merchantSellTier,
   applyMerchantSave, serializeMerchants, MERCHANT_INTERACT_R,
   merchantHealingStatus, merchantHealWavesLeft, useMerchantHealing, MERCHANT_HEAL_COST, recalcEscortStats, finishEscortPhase
-} from './merchant-rules.js?v=215';
+} from './merchant-rules.js?v=218';
 
 import { daylightAt, advanceWorldClock, periodEnemy, enemyAvailable, PERIOD_ENEMIES } from './day-night.js?v=208';
 
@@ -120,7 +120,7 @@ import {visibleHeroMembers} from './hero-rules.js';
 import {updateHeroJournal} from './hero-journal.js?v=189';
 import {applyHeroEquipmentUpgrade} from './hero-equipment.js?v=211';
 import {initializeHeroJourney,rollHeroRevelation,serializeHeroJourney,updateHeroParty,updateHeroFollowing,awardHeroBattle,recordDemonKingDefeat,ensureHeroCastle,syncHeroCastle,renderHeroJourney,drawHeroMarks} from './hero-party.js?v=215';
-import { RESCUE_TIMEOUT, rescueUnits, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, receiveTownCargo, leaveCivilianSpace, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, markSoldierDown, downCommander, commanderDown, updateNpcRescue, CIV_KINDS, isMedic, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST } from './casualty-rules.js?v=215';
+import { RESCUE_TIMEOUT, REVIVAL_COOLDOWN, revivalCooldownLeft, rescueUnits, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, receiveTownCargo, leaveCivilianSpace, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, markSoldierDown, downCommander, commanderDown, updateNpcRescue, CIV_KINDS, isMedic, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST } from './casualty-rules.js?v=218';
 import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault, dungeonBlocks, dungeonSolids } from './dungeon.js?v=208';
 import {nearestDungeonFloor,dungeonSpawnPoint,dungeonSteeringTarget} from './dungeon-layout.js?v=182';
 import {normalizeDungeonExploration,updateDungeonSideChests,drawDungeonSideChests,updateDungeonRespawns,dungeonCoolingDown,recordDungeonClear,DUNGEON_RESET_PHASES} from './dungeon-exploration.js?v=200';
@@ -1118,7 +1118,7 @@ export const IronSquadGame = {
 
   // 起動時にこのゲームのCSSを自分で読み込む（?v= はこのフォルダ内で管理）。ハブが init 前に await する
   prepare() {
-    return loadCss(['../css/iron-squad.css?v=175', '../css/iron-squad-interface.css?v=201'].map(p => new URL(p, import.meta.url).href));
+    return loadCss(['../css/iron-squad.css?v=175', '../css/iron-squad-interface.css?v=218'].map(p => new URL(p, import.meta.url).href));
   },
 
   init(container, onBackToHub) {
@@ -1261,6 +1261,7 @@ export const IronSquadGame = {
               </div>
               <div class="pad-buttons-zone">
                 <button type="button" id="btn-pad-potion" class="pad-btn pad-btn-potion" aria-label="隊長と直属兵のHP・弾薬・魔力を回復">回復薬 1</button>
+                <button type="button" id="btn-pad-revive" class="pad-btn pad-btn-revive" aria-label="近くの味方1人を蘇生・自分には使用不可" disabled>蘇生薬 1</button>
                 <button id="btn-pad-command" class="pad-btn pad-btn-command hidden" title="号令">
                   <span class="pad-btn-icon">📢</span>
                   <span class="pad-btn-label">呼集</span>
@@ -1741,6 +1742,7 @@ export const IronSquadGame = {
     configureBattlefieldUI(this);
     this.setupStallRecorder();
     document.getElementById('btn-pad-potion').addEventListener('click',e=>{e.preventDefault();e.stopPropagation();this.useSquadPotion();});
+    document.getElementById('btn-pad-revive').addEventListener('click',e=>{e.preventDefault();e.stopPropagation();this.useRevivalPotion();});
   },
 
   setDialogState(open) {
@@ -2448,7 +2450,7 @@ export const IronSquadGame = {
     this.rescueRewardIds=inheritVeterans?[...(inherited?.data?.rescueRewardIds||this.rescueRewardIds||[])]:[];
     const veterans = inherited?.veterans;
     this.reserves = inherited?.reserveSurvivors || [];
-    for(const soldier of this.reserves)if(soldier)soldier.phaseActivity=emptyActivity();
+    for(const soldier of this.reserves)if(soldier){soldier.phaseActivity=emptyActivity();soldier.deathlineDownHistory=[];soldier.revivalCooldownUntil=0;}
     this.squad = [];
     this.fog = new FogGrid();
     if(inheritVeterans&&inherited?.data?.fogExplored)this.fog.deserialize(inherited.data.fogExplored);
@@ -2465,6 +2467,7 @@ export const IronSquadGame = {
         vet.rescueProgress = 0;
         vet.isVeteran = true;
         vet.phaseActivity = emptyActivity();
+        vet.deathlineDownHistory=[];vet.revivalCooldownUntil=0;
         vet.x = BASE_CAMP.x + (Math.random() - 0.5) * 120;
         vet.y = BASE_CAMP.y + (Math.random() - 0.5) * 120;
         this.recalcSoldierStats(vet);
@@ -3289,6 +3292,7 @@ export const IronSquadGame = {
     this.selectedSaleIds=new Set();this.soldierSlotSelections={};
     this.squad = saved.squad || [];
     this.reserves = saved.reserves || [];
+    for(const unit of [...this.squad,...this.reserves])unit.deathlineDownHistory=normalizeDeathlineHistory(unit,this.phase);
     refreshOwnedEquipmentUpgrades(this);
     this.recruitSequence = saved.recruitSequence ?? [...this.squad,...this.reserves].reduce((max,s)=>Math.max(max,Number(s.name?.match(/#(\d+)/)?.[1] || 0)),0);
     this.lastReinforcements = saved.lastReinforcements || null;
@@ -3380,6 +3384,7 @@ export const IronSquadGame = {
       kills: (pSave.minionKills !== undefined ? pSave.minionKills : (pSave.kills || 0)) + (pSave.bossKills || 0),
       survivedWaves: pSave.survivedWaves || 0,
       phaseActivity: pSave.phaseActivity || emptyActivity(),
+      revivalCooldownUntil:Math.max(0,Math.min(this.worldTime+REVIVAL_COOLDOWN,Number(pSave.revivalCooldownUntil)||0)),
       attributeProfile:pSave.attributeProfile,
       mana:Number.isFinite(pSave.mana)?Math.max(0,pSave.mana):undefined,
       magicAffinity:MAGIC_AFFINITIES[pSave.magicAffinity]?pSave.magicAffinity:'fire',
@@ -3647,6 +3652,7 @@ export const IronSquadGame = {
       deathlineSkills: [],
       survivedWaves: 0,
       phaseActivity: emptyActivity(),
+      deathlineDownHistory: [],
       favoriteWeapon, favoriteSplit: FAVORITE_SPLIT_VERSION,
       hitGrowthPct: 0,
       weaponMastery: emptyMastery(),
@@ -3711,6 +3717,7 @@ export const IronSquadGame = {
         ammoReserve:this.ammoReserve||0,
         magicReserve:this.magicReserve||0,
         squadPotion:this.squadPotion?1:0,
+        revivalPotion:this.revivalPotion?1:0,
         worldVersion: WORLD_VERSION,
         phase: this.phase || this.wave || 1,
         phaseTimer: this.phaseTimer,
@@ -3767,6 +3774,7 @@ export const IronSquadGame = {
           isDown: !!this.player.isDown,
           downTimer: this.player.isDown ? (this.player.downTimer || 0) : 0,
           timesDown: this.player.timesDown || 0,
+          revivalCooldownUntil:this.player.revivalCooldownUntil||0,
           maxHp: this.player.maxHp,
           level: this.player.level || 1,
           isAdvanced: !!this.player.isAdvanced,
@@ -5296,8 +5304,8 @@ export const IronSquadGame = {
     this.squad=this.squad.filter(s=>!s.dead);
     let deployed=0;
     while(this.squad.length<capacity && this.reserves.length) {
-      const soldier=this.reserves.shift();
-      if(soldier.dead) continue;
+      const index=this.reserves.findIndex(s=>!s.dead&&!s.isDown&&!s.dying&&s.hp>0);if(index<0)break;
+      const [soldier]=this.reserves.splice(index,1);
       Object.assign(soldier,{x:BASE_CAMP.x+(Math.random()-.5)*80,y:BASE_CAMP.y+(Math.random()-.5)*80,
         isDown:false,downTimer:0,rescueProgress:0,phaseActivity:emptyActivity()});
       this.squad.push(soldier);deployed++;
@@ -5328,6 +5336,8 @@ export const IronSquadGame = {
   completePhase() {
     this.stallRecorder?.mark('フェーズ切り替え');
     if(this.restTimer>0)return;
+    const completedPhase=this.phase||this.wave||1;
+    for(const unit of [...this.squad,...(this.reserves||[])])unit.deathlineDownHistory=normalizeDeathlineHistory(unit,completedPhase);
     if (this.baseRaidActive) {
       this.completeBaseRaid(false);
     }
@@ -5358,7 +5368,7 @@ export const IronSquadGame = {
     this.recalcPlayerStats();
     if(!this.player.isDown)this.player.hp = Math.min(this.player.maxHp, this.player.hp + 60);
 
-    // 死線生還判定：本人のウェーブ内ダウン回数。蘇生後の再ダウンも本人に加算する。
+    // A personal rolling five-wave window; consumed events cannot trigger again next wave.
     const initSquadCount = this.phaseInitialSquadCount || this.squad.length;
     const aliveSoldiers = this.squad.filter(s => !s.dead);
     const reserveParticipants=(this.reserves || []).filter(s=>!s.dead&&participated(s));
@@ -5366,7 +5376,7 @@ export const IronSquadGame = {
     const experiencedCount=activeExperiencedCount+reserveParticipants.length;
     const deadInPhase = Math.max(0, this.phaseCasualties || 0);
     const casualtyRate = initSquadCount > 0 ? (deadInPhase / initSquadCount) : 0;
-    const deathlineSurvivors=[...aliveSoldiers,...(this.reserves||[])].filter(deathlineEligible);
+    const deathlineSurvivors=[...aliveSoldiers,...(this.reserves||[])].filter(s=>deathlineEligible(s,completedPhase));
     const isDeathline = deathlineSurvivors.length>0;
 
     const awakenedList = [];
@@ -5374,6 +5384,7 @@ export const IronSquadGame = {
       sound.playHighScore();
       const allDeathSkills = Object.keys(DEATHLINE_SKILLS);
       deathlineSurvivors.forEach((s) => {
+        const downCount=recentDownCount(s,completedPhase);
         s.survivedDeathlines = (s.survivedDeathlines || 0) + 1;
         s.deathlineSkills = s.deathlineSkills || [];
 
@@ -5396,16 +5407,17 @@ export const IronSquadGame = {
 
           if (chosenSkillId) {
             s.deathlineSkills.push(chosenSkillId);
-            awakenedList.push({ soldier: s, name: s.name, downCount:personalDownCount(s),skill: DEATHLINE_SKILLS[chosenSkillId] });
-            this.recordBattleLog?.(`💀 ${s.name}が${personalDownCount(s)}回のダウンを生還し、「${DEATHLINE_SKILLS[chosenSkillId].name}」に死線覚醒！`,'growth');
+            awakenedList.push({ soldier: s, name: s.name, downCount,skill: DEATHLINE_SKILLS[chosenSkillId] });
+            this.recordBattleLog?.(`💀 ${s.name}が直近${DEATHLINE_WINDOW_PHASES}ウェーブで${downCount}回のダウンを生還し、「${DEATHLINE_SKILLS[chosenSkillId].name}」に死線覚醒！`,'growth');
           }
         }
         this.recalcSoldierStats(s);
+        consumeDeathlineDowns(s);
       });
 
-      this.showToast(`🚨【死線生還！】作戦第${this.phase - 1}期完了：個人で${DEATHLINE_DOWN_THRESHOLD}回以上ダウンして生還した${awakenedList.length}名が覚醒！`,{important:true});
+      this.showToast(`🚨【死線生還！】作戦第${this.phase - 1}期完了：直近${DEATHLINE_WINDOW_PHASES}ウェーブで個人が${DEATHLINE_DOWN_THRESHOLD}回以上ダウンして生還した${awakenedList.length}名が覚醒！`,{important:true});
     }
-    this.deathlineReport={phase:this.phase-1,condition:'personal-downs',occurred:isDeathline,threshold:DEATHLINE_DOWN_THRESHOLD,qualifiedCount:deathlineSurvivors.length,
+    this.deathlineReport={phase:this.phase-1,condition:'personal-downs',windowPhases:DEATHLINE_WINDOW_PHASES,occurred:isDeathline,threshold:DEATHLINE_DOWN_THRESHOLD,qualifiedCount:deathlineSurvivors.length,
       deadCount:deadInPhase,casualtyRatePct:Math.round(casualtyRate*100),
       awakenedList:awakenedList.map(({soldier,name,downCount,skill})=>({id:soldier.id,name,downCount,skill}))};
     // This wave's service and promotions determine both wages and their funding.
@@ -7649,6 +7661,10 @@ export const IronSquadGame = {
               <div><h4>部隊回復ポーション</h4><p>隊長と行動可能な直属兵のHP・弾薬・魔力を全回復 · 携帯1個</p><p>${this.squadPotion?'携帯中 1/1':`${SQUAD_POTION_COST}G · 本陣では無料補給`}</p></div>
               <button type="button" class="transfer-tap-btn merchant-potion-button" ${this.squadPotion||gold<SQUAD_POTION_COST||m.dead||m.isDown||m.returningToBase?'disabled':''}>${this.squadPotion?'携帯中':`購入 · ${SQUAD_POTION_COST}G`}</button>
             </section>
+            <section class="merchant-heal-service" aria-label="蘇生薬">
+              <div><h4>蘇生薬</h4><p>近くの味方1人を全快蘇生 · 携帯1個 · 自分には使用不可</p><p>蘇生クールタイムを無視できます · ${REVIVAL_POTION_COST.toLocaleString()}G</p></div>
+              <button type="button" class="transfer-tap-btn merchant-revival-button" ${this.revivalPotion||gold<REVIVAL_POTION_COST||m.dead||m.isDown||m.returningToBase?'disabled':''}>${this.revivalPotion?'携帯中 1/1':`購入 · ${REVIVAL_POTION_COST.toLocaleString()}G`}</button>
+            </section>
             <div class="merchant-checkpoint"></div>
             </details>
             <div class="equipment-group-tabs" role="tablist" aria-label="販売装備の分類">${groups.map(([id,label,goods])=>`<button type="button" role="tab" aria-selected="${id===shopGroup}" data-shop-group="${id}">${label}<small>${goods.length}件</small></button>`).join('')}</div>
@@ -7666,6 +7682,7 @@ export const IronSquadGame = {
       popup.onclick = (e) => { if (e.target === popup) close(); };
       this.renderSupplyPanel(popup.querySelector('.merchant-checkpoint'));
       popup.querySelector('.merchant-potion-button').addEventListener('click',()=>{this.replenishSquadPotion(m);render();});
+      popup.querySelector('.merchant-revival-button').addEventListener('click',()=>{this.replenishRevivalPotion(m);render();});
       popup.querySelector('.merchant-heal-button').addEventListener('click',()=>{
         const result=useMerchantHealing(this,m);
         if(result.ok) {
@@ -8846,7 +8863,8 @@ export const IronSquadGame = {
             <div class="attribute-growth-hint">基礎能力は255まで。近接／射撃で筋力（杖・ワンドを除く）、術の使用で魔力、魔法・属性被弾で魔法防御、歩行で速さ、回避成功で回避が成長します。限界に近づくほど成長は緩やかになります。</div>
             ${isMedic(s) ? `<div>実回復 💚 <strong>${Math.floor(s.healingHp || 0).toLocaleString()}HP</strong> · 回復EXP <strong>${(s.healingExp || 0).toLocaleString()}</strong></div><div>蘇生EXP <strong>${(s.revivalExp || 0).toLocaleString()}</strong></div><div style="font-size:10px;color:#94a3b8;">実回復${HEALING_HP_PER_EXP}HPで1EXP（継続回復含む）。蘇生は対象の最大HPの${REVIVAL_EXP_PER_MAX_HP*100}%をEXPで獲得。</div>` : ''}
             <div>隊長からの経験値 <strong>+${Math.floor(s.commanderBonusExp||0)}</strong> · 防御展開の遮断 <strong>${Math.floor(s.defenseBlocked||0)}</strong></div>
-            <div>今期ダウン <strong>${personalDownCount(s)} / ${DEATHLINE_DOWN_THRESHOLD}回</strong></div>
+            <div>直近${DEATHLINE_WINDOW_PHASES}ウェーブのダウン <strong>${recentDownCount(s,this.phase)} / ${DEATHLINE_DOWN_THRESHOLD}回</strong></div>
+            <div>通常の蘇生間隔 <strong>${REVIVAL_COOLDOWN}秒</strong>${revivalCooldownLeft(this,s)>0?` · 次の蘇生まで${Math.ceil(revivalCooldownLeft(this,s))}秒`:''} · 蘇生薬は待ち時間なし</div>
             <div>死線生還 💀 <strong style="color:#f87171;">${s.survivedDeathlines || 0}</strong></div>
           </div>
           <div class="soldier-detail-block">
@@ -9747,8 +9765,8 @@ export const IronSquadGame = {
       deathlineBannerHtml = `
         <div style="background: linear-gradient(135deg, rgba(239,68,68,0.22), rgba(15,23,42,0.95)); border: 1.5px solid #ef4444; border-radius: 8px; padding: 9px 11px; margin-bottom: 8px; box-shadow: 0 0 14px rgba(239,68,68,0.35);">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-            <strong style="color: #f87171; font-size: 12.5px;">🚨【死線突破・極限生還】 個人で${dl.threshold}回以上ダウンを生還 · ${dl.awakenedList.length}名覚醒</strong>
-            <span style="color: #fbbf24; font-size: 10.5px; font-weight: bold; background: rgba(251,191,36,0.15); border: 1px solid #fbbf24; border-radius: 4px; padding: 1px 5px;">🔥覚醒発動</span>
+            <strong style="color: #f87171; font-size: 12.5px; flex:1; min-width:0;">🚨【死線突破・極限生還】 直近${dl.windowPhases||1}ウェーブで個人が${dl.threshold}回以上ダウンを生還 · ${dl.awakenedList.length}名覚醒</strong>
+            <span style="color: #fbbf24; font-size: 10.5px; font-weight: bold; background: rgba(251,191,36,0.15); border: 1px solid #fbbf24; border-radius: 4px; padding: 1px 5px; flex:none; white-space:nowrap; align-self:flex-start; margin-left:8px;">🔥覚醒発動</span>
           </div>
           <div style="font-size: 10.5px; color: #fecaca; line-height: 1.4; margin-bottom: ${dl.awakenedList.length > 0 ? '6px' : '0'};">
             極限の死線を潜り抜けた兵士たちが、生と死の狭間で新たな固有スキルと能力覚醒を獲得！
@@ -10678,8 +10696,9 @@ export const IronSquadGame = {
     for(const guard of this.gateGuards||[])if(gateGuardVisible(this,guard)&&visible(guard))renderList.push({y:guard.y,k:6,ref:guard});
     for(const civ of this.civilians||[])if(!civ.rescued&&(!this.currentDungeon||civ.rescueSpace===this.currentDungeon.id)&&visible(civ))renderList.push({y:civ.y,k:7,ref:civ});
     if(!this.currentDungeon)for(const actor of this.nation?.economy?.traffic||[])if(actor.hp>0&&visible(actor))renderList.push({y:actor.y,k:8,ref:actor});
+    if(!this.currentDungeon)for(const soldier of this.reserves||[])if(!soldier.dead&&(soldier.isDown||soldier.dying)&&visible(soldier))renderList.push({y:soldier.y,k:3,ref:soldier});
     if(!this.currentDungeon && this.reserves?.length && farmOverlaps(this.reserves.length, camX, camY, visX, visY)) {
-      const posts=farmPosts(this.reserves,(x,y)=>economicFieldBlocked(this,x,y));
+      const posts=farmPosts(this.reserves.filter(s=>!s.isDown&&!s.dying),(x,y)=>economicFieldBlocked(this,x,y));
       for(let i=0;i<posts.length;i++) if(visible(posts[i])) renderList.push({y:posts[i].y,k:9,ref:posts[i]});
     }
     if (this.player) renderList.push({ y: this.player.y, k: 4, ref: this.player });
@@ -12211,7 +12230,8 @@ export const IronSquadGame = {
     ctx.fillStyle = '#fecaca'; ctx.font = 'bold 18px sans-serif';
     ctx.fillText(displayKana(`隊長ダウン · 救助まで ${secs}秒`), w / 2, by + 24);
     ctx.fillStyle = '#fca5a5'; ctx.font = '12px sans-serif';
-    ctx.fillText(displayKana(carried ? '味方が搬送中 · 衛生術士か本陣・町・救護所へ' : '衛生術士の救護か味方の搬送を待て'), w / 2, by + 47);
+    const revivalWait=Math.ceil(revivalCooldownLeft(this,p));
+    ctx.fillText(displayKana(revivalWait>0?`次の蘇生まで ${revivalWait}秒 · 搬送で救助を待て`:carried ? '味方が搬送中 · 衛生術士か本陣・町・救護所へ' : '衛生術士の救護か味方の搬送を待て'), w / 2, by + 47);
     ctx.restore();
   },
 

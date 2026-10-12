@@ -1,5 +1,5 @@
 import {ensureMana,regenerateMana,spendMana} from './magic-rules.js?v=211';
-import {recordHealing,recordDown,healAmountFor} from './phase-rules.js?v=187';
+import {recordHealing,recordDown,healAmountFor} from './phase-rules.js?v=218';
 import {WORLD_SIZE} from './world.js';
 import {inCurrentInstance} from './instance-rules.js?v=182';
 import {grantPermanentRescueReward} from './rescue-rewards.js?v=204';
@@ -9,6 +9,10 @@ import {attributeCarryCapacity} from './unit-attributes.js?v=187';
 import {visibleHeroMembers} from './hero-rules.js';
 
 export const RESCUE_TIMEOUT = 45; // 救助猶予時間（秒）広域マップ対応で45秒に延長
+export const REVIVAL_COOLDOWN = 60;
+export const REVIVAL_POTION_RANGE = 80;
+const rescueClock=game=>Math.max(0,Number(game?.worldTime)||0);
+export const revivalCooldownLeft=(game,unit)=>Math.max(0,Math.min(REVIVAL_COOLDOWN,(Number(unit?.revivalCooldownUntil)||0)-rescueClock(game)));
 export const isMedic=unit=>['MEDIC','HIGH_PRIEST','SAINT','ARCHANGEL'].includes(unit?.soldierClass);
 // Compatibility names for existing medical callers; the shared resource is mana.
 export const MEDIC_STAMINA_MAX=100;
@@ -30,7 +34,7 @@ export const commanderDown=game=>!!(game?.player?.isDown&&!game.player.dead);
 /** v5.0.0: 死亡表示（「死亡」を出している間）の秒数。この間は救助・搬送・治療の対象外。 */
 export const DYING_SECONDS=2;
 const downedPool=game=>{
-  const soldiers=[...(game.squad||[]),...visibleHeroMembers(game)];
+  const soldiers=[...(game.squad||[]),...(game.reserves||[]).filter(s=>s.isDown),...visibleHeroMembers(game)];
   return game._merchantWounded?.length?[...soldiers,...game._merchantWounded]:soldiers;
 };
 export const rescueUnits=game=>{
@@ -206,7 +210,9 @@ export function markSoldierDown(game, soldier, opts = {}) {
 }
 
 function revive(game,wounded,hp,options=null) {
+  if(!wounded?.isDown||wounded.dead||wounded.dying||(!options?.ignoreCooldown&&revivalCooldownLeft(game,wounded)>.000001))return false;
   const carrier=carrierOf(game,wounded);
+  wounded.revivalCooldownUntil=rescueClock(game)+REVIVAL_COOLDOWN;
   wounded.isDown=false;wounded.hp=Math.max(1,Math.floor(hp));wounded.rescueProgress=0;wounded.downTimer=0;
   delete wounded.carrierId;delete wounded.rescueHealerId;delete wounded.rescueTargetId;
   delete wounded.downedInAid;delete wounded.downId;delete wounded._medicCalled;
@@ -240,10 +246,22 @@ function revive(game,wounded,hp,options=null) {
   }
   if(options) {
     grantRescueBonus(game,wounded,{...options,carrier});
-    if(options.method==='BASE')wounded.hp=Math.max(1,Math.floor(wounded.maxHp));
+    if(options.method==='BASE'||options.method==='POTION')wounded.hp=Math.max(1,Math.floor(wounded.maxHp));
   } else {
     game.showToast?.(`${wounded===game.player?'隊長':wounded.name}が復活しました`);
   }
+  return true;
+}
+
+/** Medicine targets one living casualty in reach, in the commander's current coordinate space. */
+export function nearestRevivalPotionTarget(game) {
+  const p=game?.player;if(!p||p.dead||p.isDown||p.hp<=0)return null;
+  return rescueUnits(game).filter(u=>u!==p&&u.isDown&&!u.dead&&!u.dying&&isLocalRescueUnit(game,u)===isLocalRescueUnit(game,p)&&Math.hypot(u.x-p.x,u.y-p.y)<=REVIVAL_POTION_RANGE)
+    .sort((a,b)=>Math.hypot(a.x-p.x,a.y-p.y)-Math.hypot(b.x-p.x,b.y-p.y))[0]||null;
+}
+export function reviveByPotion(game,wounded) {
+  if(wounded!==nearestRevivalPotionTarget(game))return false;
+  return revive(game,wounded,wounded.maxHp,{method:'POTION',medic:game.player,ignoreCooldown:true});
 }
 
 export function grantRescueBonus(game,wounded,options={}) {
@@ -361,10 +379,10 @@ export function grantRescueBonus(game,wounded,options={}) {
     else game.showToast?.(`🚑 ${options.station?.name||'拠点'}救護成功！【${woundedName}】${isMerchantCasualty(wounded)?'は本陣に留まります':'が全快復帰！'}(${selfRescue?'':`+${shownGold}G, 武勲+${rankExpGain}`}${rescuerExpText?`, ${rescuerExpText}`:''}${isMerchantCasualty(wounded)?'':`, 兵士+${sExpGain}EXP/+${sGoldGain}G`}${carrierTxt})`);
   } else {
     game.sound?.playItem?.();
-    game.spawnDamageText?.(wounded.x,wounded.y-30,selfRescue?'💚 隊長 救護成功!':`💚 衛生兵救護成功! +${totalGold}G`,'#34d399');
+    game.spawnDamageText?.(wounded.x,wounded.y-30,selfRescue?'💚 隊長 救護成功!':`💚 ${method==='POTION'?'蘇生薬で復帰':'衛生兵救護成功'}! +${totalGold}G`,'#34d399');
     const carrierTxt=carrier===game.player?' (隊長に快足バフ)':(carrier&&carrier!==medic?` (搬送: ${unitLabel(carrier)})`:'');
     if(selfRescue)game.showToast?.(`💚 ${rescuerName}の衛生救護で隊長が復帰！${rescuerExpText?` (${rescuerExpText})`:''}`);
-    else game.showToast?.(`💚 衛生救護！【${woundedName}】${isMerchantCasualty(wounded)?'は本陣へ避難します':'が戦線復帰！'}(${selfRescue?'':`+${shownGold}G, 武勲+${rankExpGain}`}${rescuerExpText?`, ${rescuerExpText}`:''}${isMerchantCasualty(wounded)?'':`, 兵士+${sExpGain}EXP/+${sGoldGain}G`}${carrierTxt})`);
+    else game.showToast?.(`💚 ${method==='POTION'?'蘇生薬':'衛生救護'}！【${woundedName}】${isMerchantCasualty(wounded)?'は本陣へ避難します':'が戦線復帰！'}(${selfRescue?'':`+${shownGold}G, 武勲+${rankExpGain}`}${rescuerExpText?`, ${rescuerExpText}`:''}${isMerchantCasualty(wounded)?'':`, 兵士+${sExpGain}EXP/+${sGoldGain}G`}${carrierTxt})`);
   }
 
   game.updateStatsUI?.();
@@ -390,6 +408,7 @@ export function grantCivilianRescueBonus(game,civ,station) {
 
 export function treatWounded(game,medic,wounded,dt) {
   if(!Number.isFinite(dt)||dt<=0||!isMedic(medic)||medic.dead||medic.isDown||medic.hp<=0||!wounded?.isDown||wounded.dead||Math.hypot(medic.x-wounded.x,medic.y-wounded.y)>40)return false;
+  if(wounded.dying||revivalCooldownLeft(game,wounded)>.000001)return false;
   // Soft fatigue: cannot channel revive when exhausted (HQ wipe becomes possible).
   if(!medicHasStamina(medic, MEDIC_TREAT_MIN)) return false;
   const drain = MEDIC_TREAT_DRAIN * dt;
@@ -404,7 +423,7 @@ export function treatWounded(game,medic,wounded,dt) {
   // Revival strength depends on the healer (phase-rules healFraction); credit equals the HP actually restored.
   const restored=Math.max(1,Math.min(wounded.maxHp,Math.floor(healAmountFor(medic,wounded))));
   recordHealing(medic,restored);
-  revive(game,wounded,restored,{method:'MEDIC',medic});return true;
+  return revive(game,wounded,restored,{method:'MEDIC',medic});
 }
 
 /**
@@ -477,7 +496,7 @@ export function updateWounded(game,dt) {
     // Downed-at-HQ: no farmable BASE bonus; bleed-out still applies (safer rate, still mortal).
     const reception=station&&['medical','town'].includes(station.kind);
     const delivered=station&&Math.hypot(wounded.x-station.x,wounded.y-station.y)<=(wounded.downedInAid?station.intakeRadius||station.radius:station.radius);
-    if(!wounded.rescuedThisDown&&delivered&&(!wounded.downedInAid||(reception&&wounded.carrierId))) {revive(game,wounded,wounded.maxHp,{method:'BASE',station,suppressAidReward:!!wounded.downedInAid});continue;}
+    if(!wounded.rescuedThisDown&&delivered&&(!wounded.downedInAid||(reception&&wounded.carrierId))&&revive(game,wounded,wounded.maxHp,{method:'BASE',station,suppressAidReward:!!wounded.downedInAid}))continue;
     // Field carry can pause the timer; HQ/aid downs keep bleeding even while carried (no immortal freeze).
     if(!Number.isFinite(wounded.downTimer))wounded.downTimer=RESCUE_TIMEOUT; // 未設定のまま0秒表示になる不具合の防止
     if(wounded.carrierId && !wounded.downedInAid && wounded.downTimer>0)continue; // 搬送中だけ一時停止。0なら止めない

@@ -2,7 +2,7 @@ import {guardTarget,guardSpeedMult} from './guard-leash.js?v=211';
 import {sound} from '../../common/js/audio.js?v=151';
 import {WORLD_SIZE} from './world.js?v=198';
 import {inCurrentInstance} from './instance-rules.js?v=182';
-import {recordCombat} from './phase-rules.js?v=187';
+import {recordCombat} from './phase-rules.js?v=218';
 import {isSoldierOnExpedition} from './expedition-rules.js';
 import {practiceAttribute,prefersCasterMelee,attributeValues,canChannelWeaponMagic} from './unit-attributes.js?v=187';
 import {isMagicWeapon} from './weapon-requirements.js?v=187';

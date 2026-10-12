@@ -118,6 +118,9 @@ for (const maxHp of [1000,10000]) {
   assert.equal(casualty.hp,Math.round(maxHp*healFraction(medical)),"revival HP follows the healer formula (was flat 35%)"); assert.ok(casualty.hp/maxHp<.15); assert.equal(casualty.exp,30,'recipient keeps their separate survival reward');
   assert.ok(toasts.at(-1).includes(`+${(maxHp*3).toLocaleString()}EXP`));
   markSoldierDown(game,casualty);
+  assert.equal(treatWounded(game,medical,casualty,1),false,'rapid repeat revival cannot farm XP');
+  assert.equal(medical.exp,maxHp*3);
+  game.worldTime+=60;
   assert.equal(treatWounded(game,medical,casualty,1),true);
   assert.equal(medical.exp,maxHp*6,'a later real down event earns a new rescue reward');
 }

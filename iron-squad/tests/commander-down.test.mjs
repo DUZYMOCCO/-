@@ -15,7 +15,7 @@ game.activeSlotId=saveSlots.create('隊長ダウン検証').id;game.startFreshGa
 const c=WORLD_SIZE/2;let overs=0;game.gameOver=()=>{overs++;};
 const mk=(id,cls='HEAVY',x=c+800,y=c)=>({id,name:id,soldierClass:cls,hp:100,maxHp:100,x,y,speed:100});
 const p=game.player;
-const reset=()=>{Object.assign(p,{x:c+800,y:c,hp:p.maxHp,isDown:false,downTimer:0,invulnerableTimer:0,lethalGuardCooldown:999,rescuedThisDown:false});delete p.carrierId;delete p.downId;delete p.downedInAid;overs=0;game.gold=500;game.monsters=[];game.civilians=[];game.restTimer=0;};
+const reset=()=>{game.worldTime+=60;Object.assign(p,{x:c+800,y:c,hp:p.maxHp,isDown:false,downTimer:0,invulnerableTimer:0,lethalGuardCooldown:999,rescuedThisDown:false});delete p.carrierId;delete p.downId;delete p.downedInAid;overs=0;game.gold=500;game.monsters=[];game.civilians=[];game.restTimer=0;};
 
 // 1) lethal hit -> DOWN, not game over
 reset();game.squad=[mk('a')];

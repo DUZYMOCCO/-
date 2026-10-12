@@ -34,3 +34,12 @@ const cv=createCanvas(200,200),c=cv.getContext('2d');c.translate(80,130);
 const render=style=>{c.clearRect(-80,-130,200,200);drawMeleeWeapon(c,{facingAngle:0},style,colors);return cv.toBuffer('image/png');};
 assert.notDeepEqual(render('hammer'),render('axe'),'axe has a blade silhouette, not a hammer head');
 console.log('PASS: all 9 weapons / 8 directions / 21 frames / 2 physiques: fixed arm lengths, connected grips, recovery, ranged draw/recoil, Canvas isolation and axe silhouette');
+// The pistol grip hangs below the barrel in BOTH horizontal directions (rotation alone flips it).
+for(const aim of [0,Math.PI]){
+  const canvas=createCanvas(160,160),c=canvas.getContext('2d');c.translate(80,80);c.scale(3,3);
+  const pose=drawRangedWeapon(c,{facingAngle:aim},'cannon',colors,false,false);
+  const x=80+(pose.grip.x-pose.side)*3,y=80+(pose.grip.y+5)*3;
+  const pixel=c.getImageData(Math.floor(x),Math.floor(y),1,1).data;
+  assert.deepEqual([...pixel.slice(0,3)],[99,75,54],`cannon pistol grip stays below the barrel when ${aim?'left':'right'} facing`);
+  assert.ok(pose.offGrip.y<pose.grip.y,'the front hand stays on the upper fore-end, including left-facing poses');
+}

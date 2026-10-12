@@ -25,6 +25,7 @@ game.activeSlotId=saveSlots.create('HEAL STRENGTH TEST ONLY').id;game.startFresh
 const c=WORLD_SIZE/2,p=game.player;game.gameOver=()=>{};
 const mk=(id,healPower)=>({id,name:id,soldierClass:'MEDIC',hp:100,maxHp:100,x:c+800,y:c,speed:100,healPower});
 for(const [hpw,label] of [[6,'weak'],[50,'starting'],[400,'strong']]){
+  game.worldTime+=60; // Separate rescues happen after the same patient's cooldown.
   Object.assign(p,{x:c+800,y:c,hp:p.maxHp,isDown:false,downTimer:0,invulnerableTimer:0,lethalGuardCooldown:999,rescuedThisDown:false});delete p.carrierId;delete p.downId;
   game.gold=500;game.monsters=[];game.civilians=[];game.restTimer=0;
   const m=mk('m-'+label,hpw);game.squad=[m];game.damageTarget(p,p.maxHp*5);

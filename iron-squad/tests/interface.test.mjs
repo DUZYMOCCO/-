@@ -207,8 +207,8 @@ game.openStrategyModal(true);
 const faceSave=saveSlots.get(game.activeSlotId).data;
 assert.ok(faceSave.squad.every(s=>s.appearance?.version===1));
 // The current down-based deathline report is also shown during a manual opening.
-game.restTimer=0;game.squad[0].phaseActivity={combatActions:1,healingDone:0,downs:10};game.completePhase();game.openStrategyModal(true);
-assert.match($('strat-report').textContent,/個人で10回以上ダウン/);assert.doesNotMatch($('strat-report').textContent,/損耗率/);assert.ok(game.deathlineReport.awakenedList.length>0);
+game.restTimer=0;game.squad[0].phaseActivity={combatActions:1,healingDone:0,downs:10};game.squad[0].deathlineDownHistory=[{phase:game.phase,downs:10}];game.completePhase();game.openStrategyModal(true);
+assert.match($('strat-report').textContent,/直近5ウェーブで個人が10回以上ダウン/);assert.doesNotMatch($('strat-report').textContent,/損耗率/);assert.ok(game.deathlineReport.awakenedList.length>0);
 // Snapshot the actual generated DOM for static CSS review (not a browser screenshot).
 if (process.env.UI_REVIEW_DIR) {
   const folder = resolve(process.env.UI_REVIEW_DIR); mkdirSync(folder,{recursive:true});
