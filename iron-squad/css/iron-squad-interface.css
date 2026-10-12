@@ -1380,3 +1380,19 @@
 .iron-squad .tavern-person-detail { position: fixed; inset: 0; z-index: 260; background: var(--ui-bg, #081019); }
 .iron-squad .tavern-person-detail .tavern-detail-hire { display: block; width: calc(100% - 24px); max-width: 336px; margin: 4px auto 10px; min-height: 44px; font-size: 14px; }
 .iron-squad .tavern-portrait[role="button"], .iron-squad .tavern-person-text strong { cursor: pointer; }
+/* v6.3.10 自部隊のHP（左端・半透明・数字とゲージ）。操作を邪魔しない */
+.iron-squad .squad-hp-hud { position: absolute; left: 4px; top: 50%; transform: translateY(-50%); z-index: 9; display: flex; flex-direction: column; gap: 3px; width: 100px; max-height: 46%; overflow: hidden; padding: 4px 5px; border-radius: 6px; background: rgba(8, 14, 20, .32); pointer-events: none; opacity: .88; font-variant-numeric: tabular-nums; }
+.iron-squad .squad-hp-hud[hidden] { display: none; }
+.iron-squad .squad-hp-label { display: flex; justify-content: space-between; gap: 3px; font-size: 9.5px; line-height: 1.15; color: #e5e7eb; text-shadow: 0 1px 2px #000; white-space: nowrap; }
+.iron-squad .squad-hp-name { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.iron-squad .squad-hp-num { flex: none; }
+.iron-squad .squad-hp-bar { height: 4px; border-radius: 2px; background: rgba(255, 255, 255, .16); overflow: hidden; margin-top: 1px; }
+.iron-squad .squad-hp-bar i { display: block; height: 100%; background: #34d399; }
+.iron-squad .squad-hp-row.mid .squad-hp-bar i { background: #fbbf24; }
+.iron-squad .squad-hp-row.low .squad-hp-bar i { background: #f87171; }
+.iron-squad .squad-hp-row.low .squad-hp-num { color: #fca5a5; }
+.iron-squad .squad-hp-row.down .squad-hp-num, .iron-squad .squad-hp-row.dead .squad-hp-num { color: #f87171; font-weight: bold; }
+.iron-squad .squad-hp-row.down .squad-hp-name, .iron-squad .squad-hp-row.dead .squad-hp-name { color: #fca5a5; }
+.iron-squad .squad-hp-hud.compact { gap: 1px; max-height: 90%; }
+.iron-squad .squad-hp-hud.compact .squad-hp-label { font-size: 8.5px; line-height: 1.05; }
+.iron-squad .squad-hp-hud.compact .squad-hp-bar { height: 3px; }

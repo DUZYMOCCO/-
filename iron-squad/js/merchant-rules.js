@@ -10,7 +10,7 @@ import { saleValue, distanceScaling, weaponCombatProfile } from './equipment-rul
 import { drawFieldSoldier } from './visuals.js?v=211';
 import { createSoldierAppearance, drawSoldierHead } from './soldier-appearance.js?v=206';
 import { attackAnimationRate } from './weapon-motion.js?v=218';
-import { markSoldierDown, rebuildMerchantCasualties, RESCUE_TIMEOUT } from './casualty-rules.js?v=219';
+import { markSoldierDown, rebuildMerchantCasualties, RESCUE_TIMEOUT } from './casualty-rules.js?v=223';
 import {emptyMastery,normalizeMastery,hitGrowthMult,applyHitGrowth,masteryAtkMult,masteryReloadMult} from './growth-rules.js?v=213';
 import {recordCombat,finishExperience} from './phase-rules.js?v=218';
 

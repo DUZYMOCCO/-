@@ -7,6 +7,7 @@ import {grantPersonalExp,revivalExperience,raiseLevelMark} from './experience-ru
 import {guardRescueLines} from './soldier-dialogue.js';
 import {attributeCarryCapacity} from './unit-attributes.js?v=187';
 import {visibleHeroMembers} from './hero-rules.js';
+import {isOwnSquad} from './own-squad-marker.js?v=182';
 
 export const RESCUE_TIMEOUT = 45; // 救助猶予時間（秒）広域マップ対応で45秒に延長
 export const REVIVAL_COOLDOWN = 60;
@@ -163,6 +164,25 @@ export function attachCivilian(game,carrier,civ) {
   delete civ.releasedBy;civ.carrierId=carrierKey(game,carrier);
   game.showToast?.(`${CIV_KINDS[civ.kind]?.icon||'🙏'} ${civ.name}を紐で牽引中 → 本陣・救護所・町・拠点へ`);
   return true;
+}
+/** The commander's rope: own-squad members first. When the rope is full and an own-squad member lies
+ * within reach, the commander drops someone outside the squad (soldiers before civilians) and ties
+ * the squad member instead. Others are picked up only with rope to spare. */
+export function attachForCommander(game) {
+  const p=game.player,units=rescueUnits(game).filter(u=>u!==p);
+  const own=units.filter(u=>isOwnSquad(u)&&u.isDown&&!u.dead&&!u.carrierId&&isLocalRescueUnit(game,u)===isLocalRescueUnit(game,p)&&Math.hypot(u.x-p.x,u.y-p.y)<=45);
+  for(const wounded of own) {
+    if(attachWounded(game,p,wounded))continue;
+    if(carriedCount(game,p)<carryingCapacity(p))continue; // refused for another reason (e.g. just released)
+    if(wounded.releasedBy==='player')continue; // the commander just untied this one on purpose
+    const spare=carriedSoldiers(game,p).find(u=>!isOwnSquad(u))||carriedCivilians(game,p)[0];
+    if(!spare)break; // everyone on the rope is already from the squad
+    delete spare.carrierId;spare.releasedBy='player';
+    if(attachWounded(game,p,wounded))game.showToast?.(`🪢 ${wounded.name}（自部隊）を優先して牽引に繋ぎ直しました`);
+    else {spare.carrierId='player';delete spare.releasedBy;}
+  }
+  for(const wounded of units)if(!isOwnSquad(wounded))attachWounded(game,p,wounded);
+  for(const civ of game.civilians||[])if(civ&&!civ.rescued)attachCivilian(game,p,civ);
 }
 export function releaseWounded(game,carrier) {
   for(const wounded of carriedSoldiers(game,carrier)){delete wounded.carrierId;wounded.releasedBy=carrierKey(game,carrier);}
@@ -490,12 +510,7 @@ export function updateWounded(game,dt) {
   sanitizeCarriers(game);
   // v5.0.0: 「死亡」表示中の兵士は DYING_SECONDS 秒たってから従来の死亡処理へ。
   for(const u of downedPool(game))if(u?.dying&&!u.dead){u.dyingT=(u.dyingT??DYING_SECONDS)-dt;if(u.dyingT<=0)finalizeDeath(game,u);}
-  if(game.player?.hp>0) {
-    for(const wounded of rescueUnits(game))attachWounded(game,game.player,wounded);
-    for(const civ of game.civilians||[]) {
-      if(civ&&!civ.rescued)attachCivilian(game,game.player,civ);
-    }
-  }
+  if(game.player?.hp>0)attachForCommander(game);
   for(const wounded of rescueUnits(game)) {
     if(!wounded.isDown||wounded.dead)continue;
     wounded.hp=0;
