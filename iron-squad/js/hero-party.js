@@ -2,7 +2,7 @@ import {migrateCampaignEnemy} from './campaign-scaling.js?v=241';
 import {HERO_RULES,heroMembers,heroSharesSpace,visibleHeroMembers} from './hero-rules.js';
 import {advanceHeroRoute,heroSegmentOpen,heroRouteCurrent} from './hero-navigation.js?v=198';
 import {WORLD_SIZE,settleUnit} from './world.js?v=198';
-import {DUNGEON_DEFS,dungeonBlocks} from './dungeon.js?v=240';
+import {DUNGEON_DEFS,dungeonBlocks} from './dungeon.js?v=251';
 import {nearestDungeonFloor} from './dungeon-layout.js?v=182';
 import {economicFieldBlocked} from './regional-economy.js?v=182';
 import {RECRUIT_CLASSES} from './recruitment.js?v=247';

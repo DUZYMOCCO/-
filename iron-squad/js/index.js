@@ -1,3 +1,4 @@
+import {beginFollowerRecovery,noteFollowerIntent,suspendFollowerRecovery,finishFollowerRecovery} from './follower-recovery.js?v=251';
 import {gameText} from './game-text.js?v=247';
 import {talentTag} from './talent-labels.js?v=247';
 import {fieldDialogReturn} from './dialog-return.js?v=200';
@@ -7,7 +8,7 @@ import {configureBattlefieldUI,quietBattlefieldContext} from './battlefield-ui.j
 import {renderNavigationMap} from './navigation-map.js?v=189';
 import {soldierEquipmentValue,observeEquipment,standardEquipmentCost,RESERVE_ARMAMENT_COUNT} from './armament-rules.js?v=231';
 import {configureRangedEnemy,updateRangedEnemy,updateDefenseWalls,interceptHostileShot,isHostileShot,updateHostileBolt,drawDefenseWalls} from './enemy-ranged.js?v=235';
-import {LIMITED_CLASSES,initializeLimitedAllies,prepareLimitedEncounter,createLimitedAlly,joinLimitedEncounter,updateLimitedAllies,updateNinja,updateShuriken,drawLimitedEncounter,serializeLimitedAllies,notifyLimitedJoin} from './limited-allies.js?v=242';
+import {LIMITED_CLASSES,initializeLimitedAllies,prepareLimitedEncounter,createLimitedAlly,joinLimitedEncounter,updateLimitedAllies,updateNinja,updateShuriken,drawLimitedEncounter,serializeLimitedAllies,notifyLimitedJoin} from './limited-allies.js?v=251';
 import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=182';
 import {TIERS,MAX_EQUIPMENT_TIER,MAX_POWER_RANK,POWER_RANK_STEP,GENERATION_COUNT,TRADE_MAX_TIER,powerRank,tierDescription} from './equipment-tiers.js?v=231';
 import {fieldAdaptiveScaling} from './field-scaling.js?v=182';
@@ -132,7 +133,7 @@ import {initializeHeroJourney,rollHeroRevelation,serializeHeroJourney,updateHero
 import {updateSquadHpHud} from './squad-hp-hud.js?v=246';
 import {addBattleReport,normalizeBattleReport,renderBattleReport} from './battle-report.js?v=226';
 import { RESCUE_TIMEOUT, REVIVAL_COOLDOWN, revivalCooldownOf, revivalSkillCooldownLeft, normalizeRevivalSkill, headquartersRevivalPaused, rescueUnits, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, receiveTownCargo, leaveCivilianSpace, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, buildTransportRescueAssign, markSoldierDown, downCommander, commanderDown, updateNpcRescue, CIV_KINDS, isMedic, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST, medicHoldsByCommander } from './casualty-rules.js?v=243';
-import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault, dungeonBlocks, dungeonSolids } from './dungeon.js?v=240';
+import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault, dungeonBlocks, dungeonSolids } from './dungeon.js?v=251';
 import {nearestDungeonFloor,dungeonSpawnPoint,dungeonSteeringTarget} from './dungeon-layout.js?v=182';
 import {normalizeDungeonExploration,updateDungeonSideChests,drawDungeonSideChests,updateDungeonRespawns,dungeonCoolingDown,recordDungeonClear,DUNGEON_RESET_PHASES} from './dungeon-exploration.js?v=200';
 import {
@@ -5743,6 +5744,7 @@ export const IronSquadGame = {
     if(advanceRest(this,dt)) {this.updateStatsUI(false);if(!(this.restTimer>0))return;}
     const resting=this.restTimer>0;if(!this.joystick)this.joystick={active:false,x:0,y:0,dirX:0,dirY:0};
     beginAttributeMovement(this);
+    beginFollowerRecovery(this);
     if(!resting){
     this.totalBattleTime = (this.totalBattleTime || 0) + dt;
     advancePhase(this,dt);
@@ -6162,7 +6164,7 @@ export const IronSquadGame = {
         if(tryCampLeisure(this,soldier,dt))campRest=true;
         else{updateMageAI(this,soldier,dt,platoon,cls);return;}
       }
-      if(!campRest&&handleTransportAI(this,soldier,dt,transportRescueAssign)){soldier.campPose=null;return;}
+      if(!campRest&&handleTransportAI(this,soldier,dt,transportRescueAssign)){suspendFollowerRecovery(this,soldier);soldier.campPose=null;return;}
       if(!campRest&&tryCampLeisure(this,soldier,dt))campRest=true;
       if(campRest){
         soldier.medCooldown=(soldier.medCooldown||0)-dt;
@@ -7219,12 +7221,16 @@ export const IronSquadGame = {
     }
     this.settleTerrain();
     finishAttributeMovement(this,dt);
+    finishFollowerRecovery(this,dt);
     if(!resting)updateHeroJournal(this,this.heroJourney?.party,dt);
     refreshCombatFieldNotes(this);
     this.updateStatsUI(false); // Refresh HUD during quiet exploration, with the existing throttle.
   },
 
+  followerWallBlocked(from,to) {return wallBlocksAttack(this,from,to);},
+
   dungeonMoveTarget(unit,target) {
+    noteFollowerIntent(this,unit,target);
     if(this.passesWalls(unit))return target;
     return this.currentDungeon?dungeonSteeringTarget(this.currentDungeon,unit,target):isOwnSquad(unit)?headquartersMoveTarget(unit,target,this):target;
   },
