@@ -16,8 +16,8 @@ import {takeRangedShot,supplyLocation} from './supply-rules.js?v=234';
 import {distanceScaling} from './equipment-rules.js?v=238';
 import {strongEnemyReward} from './combat-rewards.js?v=182';
 import {RANGED_ENEMIES} from './enemy-ranged.js?v=235';
-import {startHeroJournal,archiveHeroJournal,appendHeroDiary,recordHeroEquipmentGrant} from './hero-journal.js?v=189';
-import {grantHeroEquipment} from './hero-equipment.js?v=211';
+import {startHeroJournal,archiveHeroJournal,appendHeroDiary,recordHeroEquipmentGrant} from './hero-journal.js?v=239';
+import {grantHeroEquipment} from './hero-equipment.js?v=239';
 const C=WORLD_SIZE/2,castle=()=>DUNGEON_DEFS.find(d=>d.id==='dungeon_demon_castle');
 const ready=u=>u&&!u.dead&&!u.isDown&&u.hp>0;
 export function initializeHeroJourney(game,saved=null) {

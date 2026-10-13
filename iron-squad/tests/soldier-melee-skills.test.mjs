@@ -3,6 +3,7 @@ import {JSDOM} from '../../__pycache__/ui-tools/node_modules/jsdom/lib/api.js';
 import {rollAttributeProfile} from '../js/unit-attributes.js';
 import {SOLDIER_MELEE_SKILLS,tickSoldierMeleeSkill,soldierMeleeSkillText} from '../js/soldier-melee-skills.js';
 import {WORLD_SIZE,northSouthRoadX} from '../js/world.js';
+import {applyHeroEquipmentUpgrade,HERO_SWORD_ATK_MULT} from '../js/hero-equipment.js';
 const dom=new JSDOM('<div id="game"></div>',{url:'http://localhost/'});
 Object.assign(globalThis,{window:dom.window,document:dom.window.document,localStorage:dom.window.localStorage});
 const noop=()=>{},ctx=new Proxy({measureText:()=>({width:40}),createLinearGradient:()=>({addColorStop:noop}),createRadialGradient:()=>({addColorStop:noop})},{get:(o,k)=>k in o?o[k]:noop});
@@ -80,6 +81,20 @@ try{
     held[style]=Math.hypot(u.x-m.x,u.y-m.y);
   }
   assert.ok(held.sword>30&&held.sword<55,JSON.stringify(held));assert.ok(held.spear>90&&held.spear<125,JSON.stringify(held));
+  // v6.6.1 Heavy infantry closes in even with a sword or spear, so the pressure aura and cover stay in reach.
+  for(const style of ['sword','spear']){
+    const u=fixture(style,'HEAVY');u.speed=60;u.weaponSkillCooldown=1e6;const m=enemy('heavy-front',160);
+    for(let i=0;i<80;i++)g.update(.05);
+    const d=Math.hypot(u.x-m.x,u.y-m.y);assert.ok(d<30,`heavy ${style} closes in well inside the 48px pressure aura (${d})`);
+  }
+  // v6.6.1 The hero's holy sword receives the same 1.8 sword coefficient; other hero weapons are unchanged.
+  {
+    const sword={type:'WEAPON',heroOnly:true,heroRole:'LIGHT',weaponStyle:'sword',baseName:'勇者の聖剣'};applyHeroEquipmentUpgrade(sword,0);
+    assert.equal(sword.stats.atk,Math.floor(1600*HERO_SWORD_ATK_MULT));
+    const bow={type:'WEAPON',heroOnly:true,heroRole:'ARCHER',weaponStyle:'bow',baseName:'勇者の誓い弓'};applyHeroEquipmentUpgrade(bow,0);assert.equal(bow.stats.atk,1600);
+    const old={type:'WEAPON',heroOnly:true,heroRole:'LIGHT',weaponStyle:'sword',baseName:'勇者の聖剣',name:'勇者の聖剣+2',upgrade:2,stats:{atk:Math.floor(1600*1.5)}};
+    migrateMeleeWeaponBalance(old);migrateMeleeWeaponBalance(old);assert.equal(old.stats.atk,Math.floor(Math.floor(1600*1.5)*HERO_SWORD_ATK_MULT),'saved holy sword migrates once, keeping its upgrade');
+  }
   // Repeated migration/re-forging cannot multiply saved item attack again.
   for(const style of ['sword','spear']){
     const fresh=gear(style),old=structuredClone(fresh);delete old.meleeBalanceVersion;old.stats.atk=Math.floor(old.stats.atk/(style==='sword'?1.8:1.6/1.5));

@@ -1,4 +1,4 @@
-import {canUseEquipment} from './weapon-requirements.js?v=231';
+import {canUseEquipment} from './weapon-requirements.js?v=239';
 import {GENERATION_COUNT} from './equipment-tiers.js?v=231';
 import {PAYROLL_RULES,commanderStipendQuote} from './payroll-rules.js?v=226';
 import {recurringNationalIncome} from './regional-economy.js?v=182';

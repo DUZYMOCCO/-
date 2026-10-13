@@ -89,7 +89,7 @@ import { PHASE_DURATION, REST_DURATION, DEATHLINE_DOWN_THRESHOLD, DEATHLINE_WIND
 import {HEALING_HP_PER_EXP,REVIVAL_EXP_PER_MAX_HP,shareCommanderExp,raiseLevelMark,ageLevelMarks} from './experience-rules.js';
 import {attributeFamily,rollAttributeProfile,applyAttributeStats,attributeValues,practiceAttribute,attributeCarryCapacity,attributeSpecialties,prefersCasterMelee,canChannelWeaponMagic,magicAbilityMultiplier,CASTER_STRIKE_COST,casterStrikeMultiplier,beginAttributeMovement,finishAttributeMovement,ATTRIBUTE_LABELS,ATTRIBUTE_KEYS,aptitudeGrade} from './unit-attributes.js?v=231';
 import {rollScoutCandidate,renderRecruitment,nextScoutCandidate,startAutomaticRecruitment,stopAutomaticRecruitment,RECRUIT_CLASSES} from './recruitment.js?v=226';
-import {canUseEquipment,requiredWeaponStrength,equipmentRequirementText,isMagicWeapon,MAGIC_WEAPON_STYLES,preferredWeaponStyle} from './weapon-requirements.js?v=231';
+import {canUseEquipment,requiredWeaponStrength,equipmentRequirementText,isMagicWeapon,MAGIC_WEAPON_STYLES,preferredWeaponStyle} from './weapon-requirements.js?v=239';
 import {CASTER_GEAR,DEFENSE_TYPES,casterGearName,applyDefenseEquipment,casterEquipmentSummary,absorbEquipmentBarrier,drawBarrierRing} from './defense-equipment.js?v=237';
 import {
   emptyFiscalLedger, calcCommanderStipend, calcBuyoutGold,
@@ -122,9 +122,9 @@ import { daylightAt, advanceWorldClock, periodEnemy, enemyAvailable, PERIOD_ENEM
 
 import { clusterRescueMarkers } from './rescue-markers.js?v=182';
 import {visibleHeroMembers} from './hero-rules.js';
-import {updateHeroJournal} from './hero-journal.js?v=189';
-import {applyHeroEquipmentUpgrade} from './hero-equipment.js?v=211';
-import {initializeHeroJourney,rollHeroRevelation,serializeHeroJourney,updateHeroParty,updateHeroFollowing,awardHeroBattle,recordDemonKingDefeat,ensureHeroCastle,syncHeroCastle,renderHeroJourney,drawHeroMarks} from './hero-party.js?v=226';
+import {updateHeroJournal} from './hero-journal.js?v=239';
+import {applyHeroEquipmentUpgrade} from './hero-equipment.js?v=239';
+import {initializeHeroJourney,rollHeroRevelation,serializeHeroJourney,updateHeroParty,updateHeroFollowing,awardHeroBattle,recordDemonKingDefeat,ensureHeroCastle,syncHeroCastle,renderHeroJourney,drawHeroMarks} from './hero-party.js?v=239';
 import {updateSquadHpHud} from './squad-hp-hud.js?v=237';
 import {addBattleReport,normalizeBattleReport,renderBattleReport} from './battle-report.js?v=226';
 import { RESCUE_TIMEOUT, REVIVAL_COOLDOWN, revivalCooldownOf, revivalSkillCooldownLeft, normalizeRevivalSkill, headquartersRevivalPaused, rescueUnits, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, receiveTownCargo, leaveCivilianSpace, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, markSoldierDown, downCommander, commanderDown, updateNpcRescue, CIV_KINDS, isMedic, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST, medicHoldsByCommander } from './casualty-rules.js?v=235';
@@ -912,7 +912,8 @@ export function applyUpgradeStats(item, upgradeLevel) {
 
 /** Rebuild old regular swords/spears once, retaining identity and forging properties. */
 export function migrateMeleeWeaponBalance(item) {
-  if(item?.type!=='WEAPON'||item.heroOnly||!Number.isFinite(item.tier)||!(item.name||item.baseName)||!['sword','spear'].includes(item.weaponStyle||'sword')||item.meleeBalanceVersion>=1)return item;
+  if(item?.type==='WEAPON'&&item.heroOnly){if((item.weaponStyle||'sword')==='sword'&&!(item.meleeBalanceVersion>=1))applyUpgradeStats(item,item.upgrade||0);return item;}
+  if(item?.type!=='WEAPON'||!Number.isFinite(item.tier)||!(item.name||item.baseName)||!['sword','spear'].includes(item.weaponStyle||'sword')||item.meleeBalanceVersion>=1)return item;
   applyUpgradeStats(item,item.upgrade||0);
   return item;
 }
@@ -1144,7 +1145,7 @@ export const IronSquadGame = {
 
   // 起動時にこのゲームのCSSを自分で読み込む（?v= はこのフォルダ内で管理）。ハブが init 前に await する
   prepare() {
-    return loadCss(['../css/iron-squad.css?v=175', '../css/iron-squad-interface.css?v=238'].map(p => new URL(p, import.meta.url).href));
+    return loadCss(['../css/iron-squad.css?v=175', '../css/iron-squad-interface.css?v=239'].map(p => new URL(p, import.meta.url).href));
   },
 
   init(container, onBackToHub) {
@@ -6428,7 +6429,8 @@ export const IronSquadGame = {
           } else if(rkProf.stone) {
             targetX=nearestEnemy.x;targetY=nearestEnemy.y;
           }
-        } else if (['sword','spear'].includes((soldier.equipped?.weapon||soldier.weapon)?.weaponStyle)) {
+        } else if (attributeFamily(soldier)!=='HEAVY'&&['sword','spear'].includes((soldier.equipped?.weapon||soldier.weapon)?.weaponStyle)) {
+          // v6.6.1 間合いを保つのは軽装だけ。重装は剣・槍でも前に出て、重圧オーラと身代わりを効かせる（槍は貫通で後ろにも届く）
           const meleePos=soldierMeleePosition(soldier,nearestEnemy,this.combatProfileFor(soldier,soldier.equipped?.weapon||soldier.weapon,false));
           if(meleePos){targetX=meleePos.x;targetY=meleePos.y;}
         } else if (clsKey === 'HEAVY' || clsKey === 'PALADIN' || clsKey === 'TEMPLAR' || clsKey === 'IMMORTAL_AEGIS') {

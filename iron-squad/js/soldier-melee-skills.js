@@ -1,5 +1,5 @@
 import {attributeFamily} from './unit-attributes.js?v=237';
-import {canUseEquipment} from './weapon-requirements.js?v=237';
+import {canUseEquipment} from './weapon-requirements.js?v=239';
 import {masteryReloadMult} from './growth-rules.js?v=234';
 import {attackBlocked} from './gate-rules.js?v=215';
 

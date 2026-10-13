@@ -6,7 +6,7 @@ import {inCurrentInstance} from './instance-rules.js?v=182';
 import {recordCombat} from './phase-rules.js?v=218';
 import {isSoldierOnExpedition} from './expedition-rules.js';
 import {practiceAttribute,prefersCasterMelee,attributeValues,canChannelWeaponMagic} from './unit-attributes.js?v=231';
-import {isMagicWeapon} from './weapon-requirements.js?v=231';
+import {isMagicWeapon} from './weapon-requirements.js?v=239';
 import {numberClassDefinitions} from './class-up-rules.js?v=185';
 
 export const MAGE_IDS=['MAGE','ARCHMAGE','ELEMENTAL_SAGE','ARCANE_SOVEREIGN'];

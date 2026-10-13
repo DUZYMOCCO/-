@@ -1,6 +1,6 @@
 import {powerRank} from './equipment-tiers.js?v=231';
 import {attributeValues,attributeFamily,ATTRIBUTE_BASES} from './unit-attributes.js?v=231';
-import {heroEquipmentAllowed} from './hero-equipment.js?v=211';
+import {heroEquipmentAllowed} from './hero-equipment.js?v=239';
 import {requiredDefenseStrength,DEFENSE_TYPES} from './defense-equipment.js?v=237';
 export const MAGIC_WEAPON_STYLES=['staff','wand'];
 export const WEAPON_STRENGTH_RULES={sword:{base:18,perRank:4},spear:{base:24,perRank:6},hammer:{base:32,perRank:10},axe:{base:32,perRank:10}};
