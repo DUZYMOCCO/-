@@ -1,4 +1,4 @@
-import { ammoCapacity, isRangedUnit } from './supply-rules.js?v=246';
+import { ammoCapacity, isRangedUnit } from './supply-rules.js?v=249';
 import {isOwnSquad} from './own-squad-marker.js?v=182';
 import {noteBattleReport} from './battle-report.js?v=226';
 

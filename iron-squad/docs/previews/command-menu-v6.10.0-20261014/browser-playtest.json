@@ -1,0 +1,260 @@
+{
+  "version": "6.10.0",
+  "results": [
+    {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "launcher": [
+        {
+          "text": "ファストトラベル",
+          "top": 362,
+          "bottom": 414,
+          "height": 52
+        },
+        {
+          "text": "戦況",
+          "top": 422,
+          "bottom": 486,
+          "height": 64
+        },
+        {
+          "text": "部隊・装備",
+          "top": 422,
+          "bottom": 486,
+          "height": 64
+        },
+        {
+          "text": "国家",
+          "top": 494,
+          "bottom": 546,
+          "height": 52
+        },
+        {
+          "text": "ランキング",
+          "top": 494,
+          "bottom": 546,
+          "height": 52
+        },
+        {
+          "text": "戦闘報告書",
+          "top": 554,
+          "bottom": 606,
+          "height": 52
+        },
+        {
+          "text": "地図",
+          "top": 554,
+          "bottom": 606,
+          "height": 52
+        }
+      ],
+      "pages": 13,
+      "firstDestination": {
+        "x": 27,
+        "y": 250.53125,
+        "width": 164,
+        "height": 66.890625
+      },
+      "realPersonalInvestment": true,
+      "menuReturnPaused": true,
+      "successfulTravelClosesMenu": true
+    },
+    {
+      "viewport": {
+        "width": 390,
+        "height": 664
+      },
+      "launcher": [
+        {
+          "text": "ファストトラベル",
+          "top": 272,
+          "bottom": 324,
+          "height": 52
+        },
+        {
+          "text": "戦況",
+          "top": 332,
+          "bottom": 384,
+          "height": 52
+        },
+        {
+          "text": "部隊・装備",
+          "top": 332,
+          "bottom": 384,
+          "height": 52
+        },
+        {
+          "text": "国家",
+          "top": 392,
+          "bottom": 456,
+          "height": 64
+        },
+        {
+          "text": "ランキング",
+          "top": 392,
+          "bottom": 456,
+          "height": 64
+        },
+        {
+          "text": "戦闘報告書",
+          "top": 464,
+          "bottom": 516,
+          "height": 52
+        },
+        {
+          "text": "地図",
+          "top": 464,
+          "bottom": 516,
+          "height": 52
+        }
+      ],
+      "pages": 13,
+      "firstDestination": {
+        "x": 27,
+        "y": 250.53125,
+        "width": 164,
+        "height": 66.890625
+      },
+      "realPersonalInvestment": true,
+      "menuReturnPaused": true,
+      "successfulTravelClosesMenu": true
+    },
+    {
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "launcher": [
+        {
+          "text": "ファストトラベル",
+          "top": 340,
+          "bottom": 392,
+          "height": 52
+        },
+        {
+          "text": "戦況",
+          "top": 400,
+          "bottom": 452,
+          "height": 52
+        },
+        {
+          "text": "部隊・装備",
+          "top": 400,
+          "bottom": 452,
+          "height": 52
+        },
+        {
+          "text": "国家",
+          "top": 460,
+          "bottom": 524,
+          "height": 64
+        },
+        {
+          "text": "ランキング",
+          "top": 460,
+          "bottom": 524,
+          "height": 64
+        },
+        {
+          "text": "戦闘報告書",
+          "top": 532,
+          "bottom": 584,
+          "height": 52
+        },
+        {
+          "text": "地図",
+          "top": 532,
+          "bottom": 584,
+          "height": 52
+        }
+      ],
+      "pages": 13,
+      "firstDestination": {
+        "x": 297,
+        "y": 250.53125,
+        "width": 223.328125,
+        "height": 66.890625
+      },
+      "realPersonalInvestment": true,
+      "menuReturnPaused": true,
+      "successfulTravelClosesMenu": true
+    },
+    {
+      "viewport": {
+        "width": 844,
+        "height": 390
+      },
+      "launcher": [
+        {
+          "text": "ファストトラベル",
+          "top": 145,
+          "bottom": 197,
+          "height": 52
+        },
+        {
+          "text": "戦況",
+          "top": 145,
+          "bottom": 197,
+          "height": 52
+        },
+        {
+          "text": "部隊・装備",
+          "top": 145,
+          "bottom": 197,
+          "height": 52
+        },
+        {
+          "text": "国家",
+          "top": 205,
+          "bottom": 257,
+          "height": 52
+        },
+        {
+          "text": "ランキング",
+          "top": 205,
+          "bottom": 257,
+          "height": 52
+        },
+        {
+          "text": "戦闘報告書",
+          "top": 205,
+          "bottom": 257,
+          "height": 52
+        },
+        {
+          "text": "地図",
+          "top": 265,
+          "bottom": 317,
+          "height": 52
+        }
+      ],
+      "pages": 13,
+      "firstDestination": {
+        "x": 79,
+        "y": 210.53125,
+        "width": 223.328125,
+        "height": 66.890625
+      },
+      "realPersonalInvestment": true,
+      "menuReturnPaused": true,
+      "successfulTravelClosesMenu": true
+    }
+  ],
+  "save": {
+    "before": {
+      "gold": 399900,
+      "treasury": 100000,
+      "nation": "{\"armament\":{\"techTier\":1,\"research\":0,\"observedTier\":1,\"policy\":\"balanced\",\"researchPhase\":0,\"supplyPhase\":0,\"last\":null},\"investment\":100,\"level\":0,\"economy\":{\"version\":4,\"regions\":{\"hq\":{\"id\":\"hq\",\"discovered\":true,\"liberated\":true,\"population\":160,\"wealth\":300,\"level\":0,\"investment\":100,\"work\":0,\"safety\":1,\"prosperity\":0,\"delivered\":0,\"lost\":0,\"kills\":0,\"missionPaid\":false},\"place_crossroads\":{\"id\":\"place_crossroads\",\"discovered\":true,\"liberated\":true,\"population\":50,\"wealth\":300,\"level\":0,\"investment\":0,\"work\":0,\"safety\":0.7,\"prosperity\":0,\"delivered\":0,\"lost\":0,\"kills\":0,\"missionPaid\":false},\"place_north_fort\":{\"id\":\"place_north_fort\",\"discovered\":false,\"liberated\":false,\"population\":0,\"wealth\":300,\"level\":0,\"investment\":0,\"work\":0,\"safety\":0.7,\"prosperity\":0,\"delivered\":0,\"lost\":0,\"kills\":0,\"missionPaid\":false},\"place_north_gate\":{\"id\":\"place_north_gate\",\"discovered\":false,\"liberated\":true,\"population\":66,\"wealth\":300,\"level\":0,\"investment\":0,\"work\":0,\"safety\":0.7,\"prosperity\":0,\"delivered\":0,\"lost\":0,\"kills\":0,\"missionPaid\":false},\"place_salt_village\":{\"id\":\"place_salt_village\",\"discovered\":false,\"liberated\":false,\"population\":0,\"wealth\":300,\"level\":0,\"investment\":0,\"work\":0,\"safety\":0.7,\"prosperity\":0,\"delivered\":0,\"lost\":0,\"kills\":0,\"missionPaid\":false},\"place_iron_ridge\":{\"id\":\"place_iron_ridge\",\"discovered\":false,\"liberated\":true,\"population\":82,\"wealth\":300,\"level\":0,\"investment\":0,\"work\":0,\"safety\":0.7,\"prosperity\":0,\"delivered\":0,\"lost\":0,\"kills\":0,\"missionPaid\":false},\"place_west_keep\":{\"id\":\"place_west_keep\",\"discovered\":false,\"liberated\":false,\"population\":0,\"wealth\":300,\"level\":0,\"investment\":0,\"work\":0,\"safety\":0.7,\"prosperity\":0,\"delivered\":0,\"lost\":0,\"kills\":0,\"missionPaid\":false},\"place_last_inn\":{\"id\":\"place_last_inn\",\"discovered\":false,\"liberated\":true,\"population\":98,\"wealth\":300,\"level\":0,\"investment\":0,\"work\":0,\"safety\":0.7,\"prosperity\":0,\"delivered\":0,\"lost\":0,\"kills\":0,\"missionPaid\":false},\"place_rim_watch\":{\"id\":\"place_rim_watch\",\"discovered\":false,\"liberated\":false,\"population\":0,\"wealth\":300,\"level\":0,\"investment\":0,\"work\":0,\"safety\":0.7,\"prosperity\":0,\"delivered\":0,\"lost\":0,\"kills\":0,\"missionPaid\":false},\"river_farms\":{\"id\":\"river_farms\",\"discovered\":false,\"liberated\":true,\"population\":45,\"wealth\":300,\"level\":0,\"investment\":0,\"work\":0,\"safety\":0.7,\"prosperity\":0,\"delivered\":0,\"lost\":0,\"kills\":0,\"missionPaid\":false},\"mountain_mine\":{\"id\":\"mountain_mine\",\"discovered\":false,\"liberated\":true,\"population\":35,\"wealth\":300,\"level\":0,\"investment\":0,\"work\":0,\"safety\":0.7,\"prosperity\":0,\"delivered\":0,\"lost\":0,\"kills\":0,\"missionPaid\":false}},\"projects\":{\"farm_bridge\":{\"discovered\":false,\"funded\":0,\"work\":0,\"done\":false},\"crossroads_fill\":{\"discovered\":true,\"funded\":0,\"work\":0,\"done\":false},\"north_bridge\":{\"discovered\":false,\"funded\":0,\"work\":0,\"done\":false},\"north_road\":{\"discovered\":false,\"funded\":0,\"work\":0,\"done\":false},\"salt_fill\":{\"discovered\":false,\"funded\":0,\"work\":0,\"done\":false},\"iron_road\":{\"discovered\":false,\"funded\":0,\"work\":0,\"done\":false},\"west_bridge\":{\"discovered\":false,\"funded\":0,\"work\":0,\"done\":false},\"south_road\":{\"discovered\":false,\"funded\":0,\"work\":0,\"done\":false}},\"technology\":{\"production\":{\"level\":0,\"investment\":0},\"transport\":{\"level\":0,\"investment\":0},\"urban\":{\"level\":0,\"investment\":0}},\"priority\":{\"kind\":\"auto\",\"id\":\"hq\"},\"patrols\":0,\"lastPhase\":0,\"lastTax\":0,\"lastTrade\":0,\"phaseTrade\":0,\"shipments\":0,\"losses\":0,\"sequence\":0,\"spawnClock\":0,\"raidClock\":0,\"routes\":[],\"traffic\":[],\"raiders\":[],\"revision\":1},\"casino\":{\"bet\":10,\"pokerPhase\":0,\"slotPhase\":0,\"poker\":null,\"slot\":null},\"totalExports\":0,\"totalDonations\":0,\"guild\":{\"version\":2,\"active\":[],\"claimed\":{},\"totalCompleted\":0},\"guildPhase\":0,\"casinoPhase\":0,\"smithPhase\":0,\"lastCasino\":\"\"}"
+    },
+    "after": {
+      "gold": 399900,
+      "treasury": 100000,
+      "nation": "{\"armament\":{\"techTier\":1,\"research\":0,\"observedTier\":1,\"policy\":\"balanced\",\"researchPhase\":0,\"supplyPhase\":0,\"last\":null},\"investment\":100,\"level\":0,\"economy\":{\"version\":4,\"regions\":{\"hq\":{\"id\":\"hq\",\"discovered\":true,\"liberated\":true,\"population\":160,\"wealth\":300,\"level\":0,\"investment\":100,\"work\":0,\"safety\":1,\"prosperity\":0,\"delivered\":0,\"lost\":0,\"kills\":0,\"missionPaid\":false},\"place_crossroads\":{\"id\":\"place_crossroads\",\"discovered\":true,\"liberated\":true,\"population\":50,\"wealth\":300,\"level\":0,\"investment\":0,\"work\":0,\"safety\":0.7,\"prosperity\":0,\"delivered\":0,\"lost\":0,\"kills\":0,\"missionPaid\":false},\"place_north_fort\":{\"id\":\"place_north_fort\",\"discovered\":false,\"liberated\":false,\"population\":0,\"wealth\":300,\"level\":0,\"investment\":0,\"work\":0,\"safety\":0.7,\"prosperity\":0,\"delivered\":0,\"lost\":0,\"kills\":0,\"missionPaid\":false},\"place_north_gate\":{\"id\":\"place_north_gate\",\"discovered\":false,\"liberated\":true,\"population\":66,\"wealth\":300,\"level\":0,\"investment\":0,\"work\":0,\"safety\":0.7,\"prosperity\":0,\"delivered\":0,\"lost\":0,\"kills\":0,\"missionPaid\":false},\"place_salt_village\":{\"id\":\"place_salt_village\",\"discovered\":false,\"liberated\":false,\"population\":0,\"wealth\":300,\"level\":0,\"investment\":0,\"work\":0,\"safety\":0.7,\"prosperity\":0,\"delivered\":0,\"lost\":0,\"kills\":0,\"missionPaid\":false},\"place_iron_ridge\":{\"id\":\"place_iron_ridge\",\"discovered\":false,\"liberated\":true,\"population\":82,\"wealth\":300,\"level\":0,\"investment\":0,\"work\":0,\"safety\":0.7,\"prosperity\":0,\"delivered\":0,\"lost\":0,\"kills\":0,\"missionPaid\":false},\"place_west_keep\":{\"id\":\"place_west_keep\",\"discovered\":false,\"liberated\":false,\"population\":0,\"wealth\":300,\"level\":0,\"investment\":0,\"work\":0,\"safety\":0.7,\"prosperity\":0,\"delivered\":0,\"lost\":0,\"kills\":0,\"missionPaid\":false},\"place_last_inn\":{\"id\":\"place_last_inn\",\"discovered\":false,\"liberated\":true,\"population\":98,\"wealth\":300,\"level\":0,\"investment\":0,\"work\":0,\"safety\":0.7,\"prosperity\":0,\"delivered\":0,\"lost\":0,\"kills\":0,\"missionPaid\":false},\"place_rim_watch\":{\"id\":\"place_rim_watch\",\"discovered\":false,\"liberated\":false,\"population\":0,\"wealth\":300,\"level\":0,\"investment\":0,\"work\":0,\"safety\":0.7,\"prosperity\":0,\"delivered\":0,\"lost\":0,\"kills\":0,\"missionPaid\":false},\"river_farms\":{\"id\":\"river_farms\",\"discovered\":false,\"liberated\":true,\"population\":45,\"wealth\":300,\"level\":0,\"investment\":0,\"work\":0,\"safety\":0.7,\"prosperity\":0,\"delivered\":0,\"lost\":0,\"kills\":0,\"missionPaid\":false},\"mountain_mine\":{\"id\":\"mountain_mine\",\"discovered\":false,\"liberated\":true,\"population\":35,\"wealth\":300,\"level\":0,\"investment\":0,\"work\":0,\"safety\":0.7,\"prosperity\":0,\"delivered\":0,\"lost\":0,\"kills\":0,\"missionPaid\":false}},\"projects\":{\"farm_bridge\":{\"discovered\":false,\"funded\":0,\"work\":0,\"done\":false},\"crossroads_fill\":{\"discovered\":true,\"funded\":0,\"work\":0,\"done\":false},\"north_bridge\":{\"discovered\":false,\"funded\":0,\"work\":0,\"done\":false},\"north_road\":{\"discovered\":false,\"funded\":0,\"work\":0,\"done\":false},\"salt_fill\":{\"discovered\":false,\"funded\":0,\"work\":0,\"done\":false},\"iron_road\":{\"discovered\":false,\"funded\":0,\"work\":0,\"done\":false},\"west_bridge\":{\"discovered\":false,\"funded\":0,\"work\":0,\"done\":false},\"south_road\":{\"discovered\":false,\"funded\":0,\"work\":0,\"done\":false}},\"technology\":{\"production\":{\"level\":0,\"investment\":0},\"transport\":{\"level\":0,\"investment\":0},\"urban\":{\"level\":0,\"investment\":0}},\"priority\":{\"kind\":\"auto\",\"id\":\"hq\"},\"patrols\":0,\"lastPhase\":0,\"lastTax\":0,\"lastTrade\":0,\"phaseTrade\":0,\"shipments\":0,\"losses\":0,\"sequence\":0,\"spawnClock\":0,\"raidClock\":0,\"routes\":[],\"traffic\":[],\"raiders\":[],\"revision\":1},\"casino\":{\"bet\":10,\"pokerPhase\":0,\"slotPhase\":0,\"poker\":null,\"slot\":null},\"totalExports\":0,\"totalDonations\":0,\"guild\":{\"version\":2,\"active\":[],\"claimed\":{},\"totalCompleted\":0},\"guildPhase\":0,\"casinoPhase\":0,\"smithPhase\":0,\"lastCasino\":\"\"}"
+    },
+    "routeSaved": false
+  },
+  "pageErrors": [],
+  "disposableBrowserStorage": true
+}

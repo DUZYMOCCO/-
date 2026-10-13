@@ -3,9 +3,10 @@
 // パスは「ゲームフォルダからの相対パス」。ルートの sw.js は触らない。
 self.GAME_ASSETS = self.GAME_ASSETS || {};
 self.GAME_ASSETS['iron-squad'] = {
-  version: 'v248',
-  gameVersion: '6.9.1', // ハブのカードに表示する版（キャッシュ用 version とは別。リリース時に上げる）
+  version: 'v250',
+  gameVersion: '6.11.0', // ハブのカードに表示する版（キャッシュ用 version とは別。リリース時に上げる）
   files: [
+    'js/command-navigation.js',
     'js/campaign-scaling.js',
     'js/ranged-combat.js',
     'js/soldier-melee-skills.js',

@@ -19,7 +19,7 @@ assert.equal(game.squadPotion,1);assert.ok(game.squad.every(s=>s.ammo===ammoCapa
 const baseline=structuredClone(game.saveGame());
 function field() {
   game.resumeSavedGame(structuredClone(baseline));game.closeStrategyModal();
-  Object.assign(game.player,{x:81000,y:81000,atk:100,atkCooldown:0,powerAtkCooldown:0,speed:0});
+  Object.assign(game.player,{x:81000,y:81000,atk:100,atkCooldown:0,powerAtkCooldown:0,speed:0,dodge:0});
   game.camera={x:81000,y:81000};game.joystick={active:false,dirX:0,dirY:0};
   game.squad=[];game.reserves=[];game.outposts=[];game.merchants=[];game.civilians=[];game.projectiles=[];game.dropsOnField=[];game.monsters=[];
   game.updateSpawns=noop;game.restTimer=0;game.currentQuest=null;
@@ -81,6 +81,7 @@ assert.equal(game.replenishSquadPotion(),false);Object.assign(game.player,{x:793
 game.squadPotion=0;const merchant={id:'vendor',x:79360,y:79360,hp:10,maxHp:10};game.merchants=[merchant];game.gold=4999;assert.equal(game.replenishSquadPotion(merchant),false);game.gold=15200;for(let i=1;i<=3;i++){assert.equal(game.replenishSquadPotion(merchant),true);assert.equal(game.squadPotion,i);}assert.equal(game.gold,200);game.gold=99999;assert.equal(game.replenishSquadPotion(merchant),false,'carry limit is three');assert.equal(game.squadPotion,3);
 assert.equal(game.useSquadPotion(),true);assert.equal(game.squadPotion,2,'one use spends one dose');
 // Effective lethal damage, player only, exact HP 1 and a 2-second timer.
+// field() disables random evasion so this test always exercises an actual hit.
 field();Object.assign(game.player,{hp:100,maxHp:100,def:0,dmgReduction:0,invulnerableTimer:0});game.damageTarget(game.player,100);assert.equal(game.player.hp,1);assert.equal(game.player.invulnerableTimer,2);game.damageTarget(game.player,1000);assert.equal(game.player.hp,1);
 assert.equal(game.player.lethalGuardCooldown,LETHAL_GUARD_COOLDOWN);assert.match(document.getElementById('retreat-warning').textContent,/再発動まで120秒/);
 assert.equal(document.getElementById('retreat-warning').classList.contains('hidden'),false);updateSupplies(game,1.99);assert.ok(game.player.invulnerableTimer>0);updateSupplies(game,.011);assert.equal(game.player.invulnerableTimer,0);

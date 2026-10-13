@@ -138,6 +138,7 @@ test('a guard carries the downed commander from a side room toward a medic throu
  const dungeon=enterQuiet(game),layout=explorationLayout(dungeon);
  Object.assign(game.player,layout.branches[0]);Object.assign(carrier,{x:game.player.x+18,y:game.player.y});Object.assign(medic,layout.branches[1]);
  const start={x:carrier.x,y:carrier.y};
+ game.player.dodge=0; // Exercise the actual lethal hit, independent of random evasion.
  game.player.lethalGuardCooldown=100000;game.damageTarget(game.player,game.player.maxHp*5);
  assert.equal(game.player.isDown,true,'the real lethal damage transition creates a downed commander');
  let pickedUp=false;

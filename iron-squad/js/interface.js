@@ -1,3 +1,4 @@
+import {configureCommandNavigation} from './command-navigation.js?v=249';
 import {commanderFullName} from './commander-identity.js?v=210';
 import {isEnlisted} from './career-rules.js?v=240';
 import {configureAudioInterface} from './audio-interface.js?v=247';
@@ -75,9 +76,9 @@ export function configureInterface(game) {
   heal.firstElementChild.children[0].textContent = '部隊の一括治療';
   heal.firstElementChild.children[1].textContent = '隊長と行動可能な兵士を治療。ダウン中は搬送・衛生兵の救護が必要。';
   const links = element('div', 'command-shortcuts');
-  for (const [label, tab, sub] of [['兵士を管理', 'troops', 'roster'], ['装備を整理', 'troops', 'equip'], ['遠征・国庫', 'nation', null]]) {
+  for (const [label, tab, sub] of [['兵士を管理', 'troops', 'roster'], ['装備を整理', 'troops', 'equip'], ['国家', 'nation', null]]) {
     const button = element('button', '', label); button.type = 'button';
-    button.onclick = () => { if (sub) game.rosterManageTab = sub; game._selectStratTab(tab); };
+    button.onclick = () => { if (sub) game.rosterManageTab = sub; if(tab==='nation')game._nationRoute={group:null,page:null};game._selectStratTab(tab); };
     links.append(button);
   }
   snapshot.after(heal, links);
@@ -93,15 +94,15 @@ export function configureInterface(game) {
   const playerStatsButton=element('button','','隊長ステータス');playerStatsButton.type='button';playerStatsButton.id='btn-player-stats';
   playerStatsButton.onclick=()=>{game._selectStratTab('overview');commanderRecord.open=true;commanderRecord.scrollIntoView?.({block:'start',behavior:'smooth'});};
   links.prepend(playerStatsButton);
-  const rules = fold(overview, 'command-rules', '整備・昼夜・救助のルール', []); rules.querySelector('.fold-content').id = 'command-rule-content';
+  const liveNotes=element('section','command-live-notes');liveNotes.id='command-rule-content';overview.append(liveNotes);
   const restart = get('btn-restart-from-strat'); restart.textContent = 'セーブ選択へ戻る';
   fold(overview, 'command-session', 'セーブ・ゲーム管理', [restart]);
 
   const troops = get('view-strat-troops');
   troops.querySelector('.hub-intro').replaceChildren();
-  title(troops.querySelector('.hub-intro'), '部隊と装備', '名簿で兵士を選び、支給・強化・昇格を行えます。');
+  troops.querySelector('.hub-intro').remove();
   get('formation-bar').classList.add('command-note');
-  const subnav = root.querySelector('.economy-tab-row'); troops.querySelector('.hub-intro').after(subnav);
+  const subnav = root.querySelector('.economy-tab-row'); troops.prepend(subnav);
   get('tab-econ-roster').textContent = '兵士名簿'; get('tab-econ-scout').textContent = '雇用'; get('tab-econ-equip').textContent = '隊長装備・バッグ';
   const rosterTools = element('div', 'list-tools'); rosterTools.id = 'roster-tools';
   const searchLabel = element('label', '', '兵士を探す');
@@ -155,16 +156,17 @@ export function configureInterface(game) {
   const inventoryEmpty = element('p', 'list-empty hidden', '条件に合う装備はありません。'); inventoryEmpty.id = 'inventory-filter-empty'; get('inventory-list').after(inventoryEmpty);
 
   const nation = get('view-strat-nation'); nation.querySelector('.hub-intro').replaceChildren();
-  title(nation.querySelector('.hub-intro'), '国家運営', '軍令の確認、国庫への寄付、本隊の遠征をまとめて管理。');
+  title(nation.querySelector('.hub-intro'), '国家');
   const donate = get('view-econ-invest'); donate.classList.add('command-card'); get('nation-quest-panel').after(donate);
-  title(get('nation-expedition-panel'), '本隊の小隊遠征', '出発先と参加兵士を確認して派遣します。');
-  const finances=fold(nation, 'nation-finances', '直近ウェーブの収支', [get('nation-fiscal-panel')]);finances.open=true;
+  title(get('nation-expedition-panel'), '小隊遠征');
+  const finances=element('section','nation-status');finances.id='nation-finances';finances.append(get('nation-fiscal-panel'));nation.append(finances);
   const status=element('section','nation-status');status.id='nation-status';nation.querySelector('.hub-intro').after(status,finances);
   const defense=element('section','nation-status');defense.id='nation-defense';nation.append(defense);
   const facilities=element('section','nation-status');facilities.id='nation-facilities';finances.after(facilities);
   const deposit=element('button','','バッグの売却選択装備を国家へ納入');deposit.type='button';deposit.onclick=()=>game.depositNationalEquipment([...(game.selectedSaleIds||[])]);get('view-econ-box').prepend(deposit);
   get('view-econ-box').append(element('p','','バッグで装備を選択して納入できます。装備中・保護中・異質／神鍛は除外。'));
-  fold(nation, 'nation-shared-box', '共有装備箱', [get('view-econ-box')]);
+  const shared=element('section','nation-status');shared.id='nation-shared-box';const sharedTitle=element('h4');sharedTitle.id='nation-shared-title';shared.append(sharedTitle,get('view-econ-box'));nation.append(shared);
+  configureCommandNavigation(game);
   // Details and hand-off popups close before the underlying dialog on Escape.
   const modal = get('strategy-modal');
   modal.addEventListener('keydown', event => {
@@ -281,7 +283,7 @@ export function filterInventory(root) {
     row.classList.toggle('hidden', !show); if (show) visible++;
   }
   for(const button of root.querySelectorAll('[data-inventory-group]'))button.setAttribute('aria-selected',String(button.dataset.inventoryGroup===group));
-  const count = root.querySelector('#inventory-visible-count'); if (count) count.textContent = `${group==='weapon'?'武器':'防具・装飾'} ${visible}件表示 · 強い順（総合性能）${root.querySelector('#inventory-list')?.dataset.upgradeOrder==='fixed'?'・強化中は並び順を維持':''}。上昇項目は引継後も含む。売却は売却メニューから。`;
+  const count = root.querySelector('#inventory-visible-count'); if (count) count.textContent = `${group==='weapon'?'武器':'防具・装飾'} ${visible}件 · 強い順${root.querySelector('#inventory-list')?.dataset.upgradeOrder==='fixed'?'（強化中は固定）':''}`;
   root.querySelector('#inventory-filter-empty')?.classList.toggle('hidden', visible > 0 || rows.length === 0);
 }
 
@@ -307,8 +309,8 @@ export function refreshInterface(game, { rank, time, zone }) {
   snapshot.append(metrics, element('p', 'command-location', `${zone.name || zone.label || '現在地'} · ${time.day}日目`));
   if (game.currentQuest) snapshot.append(element('p', 'command-objective', `軍令：${game.currentQuest.title} · ${game.currentQuest.completed ? '達成済み' : '遂行中'}`));
   for (const id of ['maintenance-summary', 'day-night-summary', 'casualty-summary']) if (get(id)) get('command-rule-content').append(get(id));
-  get('nation-shared-box').querySelector('summary').textContent = `共有装備箱 · ${(game.sharedEquipBox || []).length} 件`;
-  get('formation-bar').textContent = isEnlisted(game)?'防衛陣形 · 本隊は本陣防衛圏、直属は隊長に追従。遠征は「国家」から。':'旅の仲間は5人まで、主人公に同行します。本隊の編成・引き抜きは本陣への加入後に解禁。';
+  get('nation-shared-title').textContent = `共有装備箱 · ${(game.sharedEquipBox || []).length} 件`;
+  get('formation-bar').textContent = isEnlisted(game)?'直属は隊長に追従 · 本隊は本陣防衛':'仲間は5人まで · 本隊管理は本陣加入後';
   // Formatting is local to the panel and does not alter economy or item rules.
   for (const btn of root.querySelectorAll('#inventory-list button, #player-equip-box button')) btn.type = 'button';
   for (const button of root.querySelectorAll('.btn-up-equipped, .btn-up-inv, .btn-soldier-up')) {
@@ -316,12 +318,13 @@ export function refreshInterface(game, { rank, time, zone }) {
   }
   const scout = get('scout-candidates-list'); for (const row of scout.children) row.classList.add('scout-card');
   const expedition = get('nation-expedition-panel');
-  if (!expedition.querySelector('.section-heading')) title(expedition, '本隊の小隊遠征', '出発先と参加兵士を確認して派遣します。');
+  if (!expedition.querySelector('.section-heading')) title(expedition, '小隊遠征');
   if(!isEnlisted(game))for(const button of root.querySelectorAll('#nation-status button,.btn-expedition-send,.btn-expedition-recall')){
     if(button.dataset.economicSource==='personal')continue; // travelers may support a town with their own money
     button.disabled=true;button.title='本陣への加入後に解禁';
   }
   filterRoster(root); filterInventory(root);
+  game._refreshCommandNavigation?.();
 }
 
 /** Reuse recruitment controls so the next-candidate button never moves or loses focus. */

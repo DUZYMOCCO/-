@@ -228,7 +228,7 @@ export const supplyMethods={
     panel.querySelector('.supply-location').textContent=place?`補給地点：${place.name}`:'野外：本陣・救護所・町・商人・キャンプに近づくとセーブ／読込できます';
     panel.querySelector('.supply-counts').textContent=`回復薬 ${this.squadPotion||0}/${SQUAD_POTION_MAX} · 射手の弾薬 ${ranged.reduce((n,u)=>n+ensureAmmo(u),0)}/${ranged.reduce((n,u)=>n+ammoCapacity(u),0)} · 予備弾薬 ${this.ammoReserve||0}`;
     panel.querySelector('.supply-counts').textContent+=` · 蘇生薬 ${this.revivalPotion||0}/${REVIVAL_POTION_MAX}`;
-    panel.querySelector('.supply-help').textContent='弾薬・魔力は本陣・救護所・町・商人・キャンプの近くで自動補給。回復薬は隊長と行動可能な直属兵のHP・弾薬・魔力を全回復。本隊・予備兵は対象外。3個まで携帯でき、商人で1個5,000G、本陣では無料で満タンに補給。ダウン中は搬送・衛生兵が必要です。地点セーブはオートセーブと別に保持し、読込時は記録時点へ戻ります。蘇生薬は術士の蘇生クールタイムを無視して、近くの味方1人を全快蘇生できます。自分には使えず、2個まで携帯でき、商人から1個30,000Gで補充できます。';
+    panel.querySelector('.supply-help').textContent='地点セーブへ戻ると、保存時点に巻き戻ります。';
     const potion=panel.querySelector('[data-supply="potion"]');potion.disabled=(this.squadPotion||0)>=SQUAD_POTION_MAX||place?.kind!=='base';potion.onclick=()=>{this.replenishSquadPotion();if(host){if(host.closest('#merchant-shop-popup'))this._merchantShopRefresh?.();else this.renderSupplyPanel(host);}};
     const save=panel.querySelector('[data-supply="save"]');save.disabled=!place;save.onclick=()=>{this.saveCheckpoint();if(host)this.renderSupplyPanel(host);};
     const load=panel.querySelector('[data-supply="load"]');load.disabled=!place||!cp?.data;load.onclick=()=>this.loadCheckpoint();

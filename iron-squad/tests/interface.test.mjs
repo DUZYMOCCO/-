@@ -51,7 +51,8 @@ const assertTab = (tab, sub=game.rosterManageTab) => {
     assert.equal($(`tab-strat-${key}`).getAttribute('aria-pressed'), String(key===tab));
   }
   for (const id of ['nation-quest-panel','nation-expedition-panel','view-econ-invest','nation-finances','nation-shared-box']) {
-    assert.equal(shown($(id)), tab==='nation', `${id} follows the nation tab`);
+    const pages={'nation-quest-panel':'quest','nation-expedition-panel':'expedition','view-econ-invest':'treasury','nation-finances':'fiscal','nation-shared-box':'shared'};
+    assert.equal(shown($(id)), tab==='nation'&&game._nationRoute.page===pages[id], `${id} follows its nation page`);
   }
   for (const id of ['squad-roster-list','roster-tools','reserve-roster','roster-experience-note']) {
     assert.equal(shown($(id)), tab==='troops' && sub==='roster', `${id} follows the roster subtab`);
@@ -70,7 +71,7 @@ assert.equal(shown($('view-strat-overview')),false,'launcher hides section conte
 assert.equal(shown($('tab-strat-nation')),true,'launcher shows the section buttons');
 assert.equal(shown($('btn-start-next-wave')),true,'launcher keeps the return-to-battle button');
 // v6.3.12: rankings is its own top-level window, in the order 戦況・部隊・装備・国家・ランキング.
-assert.deepEqual([...document.querySelectorAll('#strategy-modal .dialog-tabs .sub-tab-btn')].filter(b=>!b.classList.contains('hidden')).map(b=>b.textContent),['戦況','部隊・装備','国家','ランキング','戦闘報告書'],'hero record stays hidden until a hero appears');
+assert.deepEqual([...document.querySelectorAll('#strategy-modal .dialog-tabs .sub-tab-btn')].filter(b=>!b.classList.contains('hidden')).map(b=>b.textContent),['ファストトラベル','戦況','部隊・装備','国家','ランキング','戦闘報告書','地図'],'hero record stays hidden until a hero appears');
 assert.ok($('view-strat-rankings').contains($('command-troop-rankings')),'rankings moved out of the overview');
 assert.ok(!$('view-strat-overview').contains($('command-troop-rankings')));
 for (const [tab,title] of [['overview','戦況'],['troops','部隊・装備'],['nation','国家'],['rankings','ランキング'],['report','戦闘報告書']]) {
@@ -179,6 +180,7 @@ document.querySelector('.btn-close-soldier-detail').dispatchEvent(new dom.window
 assert.equal(game.selectedSoldierDetailId,null); assert.equal(document.querySelector('.dialog-body').inert,false); assert.equal($('strategy-modal').classList.contains('hidden'),false);
 $('tab-strat-nation').click(); assert.equal($('view-strat-nation').classList.contains('hidden'),false);
 assertTab('nation');
+game._openNationPage('operations','expedition');
 const members = document.querySelector('.expedition-members'); members.open=true;
 const pick = members.querySelector('.expedition-pick'); const pickedId=pick.dataset.sid, wasPicked=pick.checked; pick.click();
 assert.equal(document.querySelector('.expedition-members').open,true,'member picker stays open while selecting soldiers');
@@ -187,6 +189,7 @@ assertTab('nation');
 const nextTier = document.querySelector('.btn-danger-tier:not(.active)'); nextTier.click();
 assert.equal(document.querySelector('.btn-danger-tier.active').getAttribute('aria-pressed'),'true');
 assertTab('nation');
+game._openNationPage('finance','treasury');
 let donations=0; game.donateToTreasury=()=>donations++; $('btn-donate-treasury').click(); assert.equal(donations,1,'donation keeps its action after reparenting');
 let heals=0; game.healAllSquad=()=>heals++; $('btn-heal-all').click(); assert.equal(heals,1);
 const reserve=game.createNewSoldier();game.reserves.push(reserve);game.renderStrategyUI();
@@ -242,7 +245,7 @@ assert.equal(window.getComputedStyle($('btn-open-merchant')).pointerEvents, 'aut
 game.player.x = stall.x + 400; game.checkMerchantProximity();
 assert.equal($('merchant-prompt-banner').classList.contains('hidden'), true);
 game.player.x = awayX; game.player.y = awayY;
-assert.equal($('btn-world-map').closest('#battlefield-menu'), $('battlefield-menu'));
+assert.equal($('btn-world-map').closest('.dialog-tabs'), document.querySelector('#strategy-modal .dialog-tabs'));
 assert.equal($('btn-zoom-toggle').closest('#battlefield-menu'), $('battlefield-menu'));
 assert.equal($('btn-pad-command').closest('#battlefield-menu'), $('battlefield-menu'));
 assert.equal($('btn-pad-attack').closest('#virtual-gamepad'), $('virtual-gamepad'));

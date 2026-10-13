@@ -185,8 +185,8 @@ healByMedic(restoredReserve,{hp:1,maxHp:2},1,game);
 assert.equal(restoredReserve.healingExp,1); assert.equal(restoredReserve.healingExpRemainder,0);
 const detail = document.createElement('div'); detail.innerHTML=game.buildSoldierDetailHtml(restored);
 assert.match(detail.textContent,/実回復 💚 485HP/); assert.match(detail.textContent,/回復EXP 97/);
-assert.match(detail.textContent,/実回復5HPで1EXP/);
-assert.match(detail.textContent,/蘇生は対象の最大HPの300%をEXPで獲得/);
+assert.doesNotMatch(detail.textContent,/実回復5HPで1EXP/,'mechanics prose removed; actual healing and XP records remain');
+assert.match(detail.textContent,new RegExp(`蘇生EXP ${restored.revivalExp||0}`));
 
 // The common helper retains the established rescue/player level thresholds.
 const captain={isPlayer:true,level:1,exp:0,reqExp:20};

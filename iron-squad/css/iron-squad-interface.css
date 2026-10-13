@@ -1483,3 +1483,104 @@
 .iron-squad.quiet-battlefield .field-prompts > :is(#merchant-prompt-banner,#dungeon-prompt-banner):not(.hidden) { flex-wrap:wrap; gap:6px; padding:6px 8px; }
 .iron-squad.quiet-battlefield .field-prompts :is(#merchant-banner-text,#dungeon-banner-text) { flex:1 1 100%; white-space:normal; overflow-wrap:anywhere; font-size:13px; line-height:1.4; }
 .iron-squad.quiet-battlefield .field-prompts :is(#btn-open-merchant,#btn-enter-dungeon) { flex:1 1 auto; min-height:40px; font-size:14px; }
+/* v6.10.0: compact command launcher and a single scrolling nation page. */
+.iron-squad #strategy-modal:not(.strat-window-open) .dialog-tabs {
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:12px;
+}
+.iron-squad #strategy-modal:not(.strat-window-open) .dialog-tabs .sub-tab-btn {
+  min-height:52px;font-size:16px;padding:10px 8px;margin:0;
+}
+.iron-squad #strategy-modal:not(.strat-window-open) .dialog-tabs .menu-travel {
+  grid-column:1/-1;border-color:var(--ui-gold);color:var(--ui-gold);
+}
+.nation-category-grid {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
+.nation-category-grid button {
+  min-height:112px;padding:16px 10px;background:var(--ui-panel);border:1px solid var(--ui-line);
+  border-radius:12px;color:var(--ui-gold);text-align:left;
+}
+.nation-category-grid strong {display:block;font-size:17px;line-height:1.4;}
+.nation-category-grid small {display:block;margin-top:8px;color:var(--ui-muted);font-size:12px;line-height:1.6;}
+.nation-page-tabs {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;}
+.world-map-tabs {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;}
+.nation-page-tabs button,.world-map-tabs button {
+  min-height:48px;background:var(--ui-panel);border:1px solid var(--ui-line);border-radius:8px;color:var(--ui-text);
+}
+.nation-page-tabs button[aria-pressed="true"],.world-map-tabs button[aria-pressed="true"] {border-color:var(--ui-gold);color:var(--ui-gold);background:var(--ui-raised);}
+.nation-path {color:var(--ui-muted);font-size:12px;margin:10px 0;}
+#nation-status {padding:0;border:0;background:none;margin:0;}
+#nation-status>[data-nation-section] {padding:12px;border:1px solid var(--ui-line);border-radius:10px;background:var(--ui-panel);}
+#nation-status p,.regional-economy-panel p {margin:8px 0;}
+#view-strat-nation .section-heading {display:none;}
+#nation-shared-box #view-econ-box {background:none;border:0;padding:0;}
+#view-strat-nation #shared-box-list {max-height:none;overflow:visible;}
+.world-map-tabs {flex-shrink:0;padding:0 12px 8px;}
+#world-map-modal .strategy-panel {display:flex;flex-direction:column;max-height:100%;}
+#world-map-modal .world-map-body {min-height:0;}
+#world-map-modal #fast-travel-container {margin-top:0!important;padding-top:0!important;border-top:0!important;}
+#world-map-modal #fast-travel-list {grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important;}
+#world-map-modal #fast-travel-list button {min-height:64px;font-size:14px!important;padding:10px!important;}
+#world-map-modal #fast-travel-list button span:first-child {font-size:14px;}
+#world-map-modal #fast-travel-list button span:last-child {font-size:12px!important;}
+.world-map-legend {font-size:12px;color:var(--ui-muted);margin:6px 0;}
+.command-live-notes {font-size:12px;color:var(--ui-muted);}
+@media(min-width:700px) {
+  .nation-category-grid {grid-template-columns:repeat(4,minmax(0,1fr));}
+  .nation-page-tabs {grid-template-columns:repeat(4,minmax(0,1fr));}
+  #world-map-modal #fast-travel-list {grid-template-columns:repeat(3,minmax(0,1fr))!important;}
+}
+@media(max-height:500px) and (orientation:landscape) {
+  .iron-squad #strategy-modal:not(.strat-window-open) .dialog-tabs {grid-template-columns:repeat(3,minmax(0,1fr));}
+  .iron-squad #strategy-modal:not(.strat-window-open) .dialog-tabs .menu-travel {grid-column:auto;}
+  .nation-category-grid {grid-template-columns:repeat(4,minmax(0,1fr));}
+}
+
+.iron-squad #strategy-modal:not(.strat-window-open) .dialog-heading {grid-template-rows:auto auto!important;padding:8px 12px!important;gap:8px!important;}
+.iron-squad #strategy-modal:not(.strat-window-open) #strat-title {grid-column:1!important;grid-row:1!important;font-size:16px!important;align-self:center;}
+.iron-squad #strategy-modal:not(.strat-window-open) .command-wallet {grid-row:2!important;}
+
+/* Override the legacy nation rule which deliberately exposed hidden donation nodes. */
+.iron-squad .hub-nation #view-econ-invest.hidden, .iron-squad .hub-nation #view-econ-box.hidden {display:none!important;}
+
+/* v6.11.0 兵士の詳細：4つのタブ・めくるボタンを下に固定・武器マスタリーを2行に */
+.iron-squad .soldier-detail-head { flex-wrap: wrap; row-gap: 8px; }
+.iron-squad .soldier-detail-tabs { flex: 1 0 100%; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.iron-squad .soldier-detail-tabs button { min-height: 44px; padding: 4px; border: 1px solid var(--ui-line); border-radius: 8px; background: var(--ui-raised); color: var(--ui-text); font-size: 14px; font-weight: bold; cursor: pointer; }
+.iron-squad .soldier-detail-tabs button[aria-selected="true"] { border-color: var(--ui-gold); color: var(--ui-gold); background: #2e4352; }
+.iron-squad .soldier-detail-pane[hidden] { display: none !important; }
+.iron-squad .soldier-detail-pane .soldier-personal-profile { margin-bottom: 0; }
+.iron-squad .soldier-detail-pager { position: sticky; bottom: 0; z-index: 2; margin: 8px 0 0; padding: 8px 0 max(8px, env(safe-area-inset-bottom)); background: var(--ui-bg); border-top: 1px solid var(--ui-line); }
+.iron-squad .mastery-grid { grid-template-columns: repeat(auto-fill, minmax(62px, 1fr)); gap: 5px; }
+.iron-squad .mastery-chip { min-height: 38px; padding: 3px 4px; font-size: 12px; gap: 2px; }
+.iron-squad .mastery-chip .mastery-icon { font-size: 14px; }
+
+/* v6.11.0 商人の取引：選んだ1品だけを開き、他は名前・価格・比較の1〜2行に畳む */
+.iron-squad .merchant-stock-toggle { display: block; width: 100%; min-height: 44px; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.iron-squad .merchant-stock-toggle .transfer-card-header { display: flex; }
+.iron-squad .merchant-stock-summary { display: block; margin-top: 4px; font-size: 12px; color: var(--ui-muted); }
+.iron-squad .merchant-stock-summary .cmp-better { color: #91dfa5; }
+.iron-squad .merchant-stock-summary .cmp-worse { color: #ffaaa4; }
+.iron-squad .merchant-stock-summary .cmp-mixed { color: #ebce88; }
+.iron-squad .merchant-featured-mark { display: inline-block; margin-right: 6px; padding: 0 5px; border: 1px solid var(--ui-gold); border-radius: 4px; color: var(--ui-gold); font-size: 11px; }
+.iron-squad .merchant-stock-detail[hidden] { display: none !important; }
+.iron-squad .merchant-stock-card:not(.is-open) { padding-top: 8px; padding-bottom: 8px; }
+.iron-squad .merchant-stock-card.is-open { border-color: var(--ui-gold); }
+/* 取引の上部を詰め、開いた品の購入ボタンを画面の下に貼り付ける */
+.iron-squad #merchant-shop-popup .transfer-popup-hint { margin: 6px 0; padding: 6px 10px; font-size: 12px; line-height: 1.5; }
+.iron-squad #merchant-shop-popup .merchant-section-title { margin: 6px 0 4px; }
+.iron-squad #merchant-shop-popup .merchant-recipient-panel { grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 4px 10px; padding: 8px 10px; margin: 0 0 8px; }
+.iron-squad #merchant-shop-popup .merchant-recipient-panel p { grid-column: 1 / -1; }
+.iron-squad #merchant-shop-popup .merchant-recipient-panel select { min-height: 44px; min-width: 0; }
+.iron-squad #merchant-shop-popup .equipment-group-tabs { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 8px 0 4px; }
+.iron-squad #merchant-shop-popup .equipment-group-tabs button { flex-direction: column; gap: 0; padding: 4px; }
+.iron-squad #merchant-shop-popup .equipment-sort-note { margin: 4px 0 8px; }
+.iron-squad #merchant-shop-popup .merchant-price-note { margin: 4px 0 0; color: var(--ui-muted); font-size: 12px; }
+.iron-squad #merchant-shop-popup .merchant-stock-card.is-open .transfer-card-meta { position: sticky; bottom: 0; z-index: 1; margin: 8px -12px -12px; padding: 8px 12px max(8px, env(safe-area-inset-bottom)); background: var(--ui-panel); box-shadow: 0 -6px 10px #0006; border-top: 1px solid var(--ui-line); }
+/* 横向き（低い画面）の兵士の詳細：名前・タブ・閉じるを1段にまとめる */
+@media (max-height: 500px) and (min-width: 640px) {
+  .iron-squad .soldier-detail-head { flex-wrap: nowrap; align-items: center; padding-top: 6px; padding-bottom: 6px; margin-bottom: 6px; }
+  .iron-squad .soldier-detail-tabs { flex: 1 1 auto; order: 1; }
+  .iron-squad .btn-close-soldier-detail { order: 2; }
+  .iron-squad .soldier-detail-tabs button { min-height: 40px; }
+  .iron-squad .soldier-detail-pager { padding-top: 4px; padding-bottom: max(4px, env(safe-area-inset-bottom)); }
+  .iron-squad .soldier-detail-pager .mini-btn { min-height: 40px; }
+}
