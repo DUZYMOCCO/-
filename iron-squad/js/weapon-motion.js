@@ -1,6 +1,6 @@
 import {drawEquipmentShield} from './equipment-art.js?v=231';
 import { MELEE_SWEET_SPOT, meleeSweetSpotFor, weaponCombatProfile } from './equipment-rules.js?v=231';
-import {isHeavyWeaponStyle} from './growth-rules.js?v=213';
+import {isHeavyWeaponStyle} from './growth-rules.js?v=234';
 
 const TAU = Math.PI * 2;
 const clamp = n => Math.max(0, Math.min(1, n));

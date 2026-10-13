@@ -10,7 +10,7 @@ game.setupUI();game.activeSlotId=saveSlots.create('RECRUITMENT TEST ONLY').id;ga
 game.openStrategyModal(true);document.getElementById('tab-strat-troops').click();document.getElementById('tab-econ-scout').click();
 const recruitmentDialog=document.getElementById('recruitment-dialog');
 assert.equal(recruitmentDialog.classList.contains('hidden'),false);assert.equal(recruitmentDialog.getAttribute('aria-label'),'雇用候補');assert.equal(document.getElementById('strategy-modal').inert,true);
-game.rollScoutTalent=()=> 'AVERAGE';
+game.rollScoutTalent=()=> 'AVERAGE';window.confirm=()=>true; // 初期候補がまれに突出個体だと職種変更前の確認で止まる（まれに落ちていた原因）
 const job=document.getElementById('scout-class');job.value='MAGE';job.dispatchEvent(new window.Event('change'));
 assert.equal(game.scoutClass,'MAGE');assert.equal(game.scoutCandidates.length,1);assert.equal(game.scoutCandidates[0].classKey,'MAGE');
 const list=document.getElementById('scout-candidates-list');assert.equal(list.children.length,1);

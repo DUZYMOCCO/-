@@ -29,7 +29,7 @@ assert.ok(largestLoss>=16,'unattended defense still puts a third of the army dow
 assert.ok(survivor.survivedWaves>0,'the actual participating survivor earns wave experience'); // Deathline eligibility at ten personal downs is independently covered by combat-phase.test.mjs.
 // Same progression with developed equipment and levels must allow a real victory, without changing the enemy reference.
 game.resumeSavedGame(structuredClone(ten));game.closeStrategyModal();game.updateSpawns=noop;game.monsters=[];game.currentQuest=null;game.player.x=c+4000;game.player.y=c+4000;
-for(const s of game.squad){s.level=18;s.reqExp=14000;s.hitGrowthPct=.35;s.weaponMastery={sword:1000,spear:1000,hammer:1000,bow:1000,crossbow:1000,cannon:1000};
+for(const s of game.squad){s.level=18;s.reqExp=14000;s.hitGrowthHp=300;s.weaponMastery={sword:1000,spear:1000,hammer:1000,bow:1000,crossbow:1000,cannon:1000};
   for(const [type,slot] of Object.entries(SLOT_INFO)){const item={id:`trained-${s.id}-${type}`,type,tier:10,name:'育成防衛装備',weaponStyle:s.equipped?.weapon?.weaponStyle||'sword',stats:{},rollMult:1};applyUpgradeStats(item,8);s.equipped[slot.key]=item;}
   game.recalcSoldierStats(s);s.hp=s.maxHp;
 }

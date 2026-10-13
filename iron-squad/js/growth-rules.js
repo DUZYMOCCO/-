@@ -30,10 +30,7 @@ export const WEAPON_STYLE_ICONS = {
   bow: '🏹', crossbow: '🎯', cannon: '💣',staff:'🪄',wand:'🔮'
 };
 
-/** 被弾HP成長: 最大+40%。重い一撃ほど伸びやすい。ソフト減衰。 */
-export const HIT_GROWTH_SOFT_CAP = 0.40;
-const HIT_GROWTH_BASE = 0.0052;
-
+/** 被弾鍛錬は割合ではなく絶対値。実際に失ったHP×係数だけ最大HP（重装はDEFも）が上限なしで増える。 */
 /** 武器マスタリー: ATK最大+35%。剣/槍/鎚=ATK+攻撃速度、弓/石弓=ATK+リロード、火砲=爆発半径+リロード。 */
 export const MASTERY_SOFT_CAP = 0.35;
 const MASTERY_XP_SCALE = 48;
@@ -85,30 +82,52 @@ export function isMeleeStyle(style) {
   return MELEE_STYLES.includes(style);
 }
 
-export function hitGrowthMult(unit) {
-  const pct = Math.max(0, Math.min(HIT_GROWTH_SOFT_CAP, Number(unit?.hitGrowthPct) || 0));
-  return 1 + pct;
+/** 被弾鍛錬（絶対値・上限なし・逓減なし）。敵の与ダメージが奥ほど大きいので成長量も自然に増える。
+ *  HP: 失ったHP × 0.006。DEF（重装のみ）: 失ったHP × 0.0015。小数で保持し、反映は切り捨て。 */
+export const HIT_HP_PER_DAMAGE = 0.006;
+export const HIT_DEF_PER_DAMAGE = 0.0015;
+export const hitGrowthHpOf = unit => Math.max(0, Number(unit?.hitGrowthHp) || 0);
+export const hitGrowthDefOf = unit => Math.max(0, Number(unit?.hitGrowthDef) || 0);
+export const hitGrowthHpBonus = unit => Math.floor(hitGrowthHpOf(unit));
+export const hitGrowthDefBonus = unit => Math.floor(hitGrowthDefOf(unit));
+const HIT_DEF_LEGACY_RATIO = 0.375;
+
+/** 旧セーブ（割合 hitGrowthPct）を一度だけ絶対値へ。hpBase/defBase = 旧式が掛けていた被弾前の値。 */
+export function migrateHitGrowth(unit, hpBase, defBase = 0, heavy = false) {
+  if (!unit) return unit;
+  const pct = Math.max(0, Number(unit.hitGrowthPct) || 0);
+  if (pct > 0 && !(hitGrowthHpOf(unit) > 0)) {
+    unit.hitGrowthHp = Math.round(pct * Math.max(0, Number(hpBase) || 0));
+    if (heavy && !(hitGrowthDefOf(unit) > 0)) unit.hitGrowthDef = Math.round(pct * HIT_DEF_LEGACY_RATIO * Math.max(0, Number(defBase) || 0));
+  }
+  if (unit.hitGrowthPct != null) delete unit.hitGrowthPct;
+  if (unit.hitGrowthHp == null) unit.hitGrowthHp = 0;
+  if (unit.hitGrowthDef == null) unit.hitGrowthDef = 0;
+  return unit;
 }
 
+/** 通知の節目: HP+100刻み（1000以上は1000刻み、10000以上は10000刻み）。 */
+const hitMilestone = value => value < 1000 ? 100 : value < 10000 ? 1000 : 10000;
+
 /**
- * 被弾時に maxHP% を成長させる。
- * @returns {{gain:number, crossed:number|null}} crossed = 新たに跨いだ5%刻み（なければnull）
+ * 被弾時に失ったHP(lost)に応じて最大HP（heavy=trueならDEFも）を絶対値で増やす。
+ * @returns {{gain:number, defGain:number, changed:boolean, crossed:number|null}}
+ *   changed = 反映値（切り捨て後）が変わった / crossed = 新たに跨いだHP成長の節目
  */
-export function applyHitGrowth(unit, dmg) {
-  if (!unit || !(dmg > 0)) return { gain: 0, crossed: null };
-  const maxHp = Math.max(1, unit.maxHp || 1);
-  const severity = Math.max(0.05, Math.min(1, dmg / maxHp));
-  const absFactor = 0.62 + Math.min(2.0, dmg / 32) * 0.38;
-  const before = Math.max(0, Math.min(HIT_GROWTH_SOFT_CAP, Number(unit.hitGrowthPct) || 0));
-  const room = Math.max(0, 1 - before / HIT_GROWTH_SOFT_CAP);
-  const gain = HIT_GROWTH_BASE * severity * absFactor * room * heroGrowth(unit);
-  if (gain <= 0) return { gain: 0, crossed: null };
-  const after = Math.min(HIT_GROWTH_SOFT_CAP, before + gain);
-  unit.hitGrowthPct = after;
-  const beforeStep = Math.floor(before * 20);
-  const afterStep = Math.floor(after * 20);
-  const crossed = afterStep > beforeStep ? afterStep * 5 : null;
-  return { gain, crossed };
+export function applyHitGrowth(unit, lost, heavy = false) {
+  if (!unit || !(lost > 0)) return { gain: 0, defGain: 0, changed: false, crossed: null };
+  const factor = heroGrowth(unit);
+  const beforeHp = hitGrowthHpOf(unit), beforeDef = hitGrowthDefOf(unit);
+  const gain = lost * HIT_HP_PER_DAMAGE * factor;
+  const defGain = heavy ? lost * HIT_DEF_PER_DAMAGE * factor : 0;
+  if (gain <= 0) return { gain: 0, defGain: 0, changed: false, crossed: null };
+  const afterHp = beforeHp + gain, afterDef = beforeDef + defGain;
+  unit.hitGrowthHp = afterHp;
+  if (heavy) unit.hitGrowthDef = afterDef;
+  const step = hitMilestone(beforeHp);
+  const crossed = Math.floor(afterHp / step) > Math.floor(beforeHp / step) ? Math.floor(afterHp / step) * step : null;
+  const changed = Math.floor(afterHp) !== Math.floor(beforeHp) || Math.floor(afterDef) !== Math.floor(beforeDef);
+  return { gain, defGain, changed, crossed };
 }
 
 export function masteryAtkMult(masteryMap, style) {

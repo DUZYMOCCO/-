@@ -1,5 +1,5 @@
 import {weaponCombatProfile,meleeSweetSpotFor} from './equipment-rules.js?v=231';
-import {masteryReloadMult,applyMasteryToCombatProfile,isHeavyWeaponStyle} from './growth-rules.js?v=213';
+import {masteryReloadMult,applyMasteryToCombatProfile,isHeavyWeaponStyle} from './growth-rules.js?v=234';
 import {MAX_EQUIPMENT_TIER,GENERATION_COUNT,tierNumber,powerRank,tierDescription} from './equipment-tiers.js?v=231';
 import {canUseEquipment} from './weapon-requirements.js?v=231';
 import {prefersCasterMelee} from './unit-attributes.js?v=231';

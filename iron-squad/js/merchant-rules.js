@@ -10,8 +10,8 @@ import { saleValue, distanceScaling, weaponCombatProfile } from './equipment-rul
 import { drawFieldSoldier } from './visuals.js?v=211';
 import { createSoldierAppearance, drawSoldierHead } from './soldier-appearance.js?v=206';
 import { attackAnimationRate } from './weapon-motion.js?v=218';
-import { markSoldierDown, rebuildMerchantCasualties, RESCUE_TIMEOUT } from './casualty-rules.js?v=232';
-import {emptyMastery,normalizeMastery,hitGrowthMult,applyHitGrowth,masteryAtkMult,masteryReloadMult} from './growth-rules.js?v=213';
+import { markSoldierDown, rebuildMerchantCasualties, RESCUE_TIMEOUT } from './casualty-rules.js?v=234';
+import {emptyMastery,normalizeMastery,hitGrowthHpBonus,hitGrowthDefBonus,migrateHitGrowth,applyHitGrowth,masteryAtkMult,masteryReloadMult} from './growth-rules.js?v=234';
 import {recordCombat,finishExperience} from './phase-rules.js?v=218';
 
 export const MERCHANT_PRICE_MULT = 3.2; // 相場の約3.2倍（高め）
@@ -93,7 +93,7 @@ export function makeEscort(merchant, index, phase = 1) {
     dmgReduction: st.dmgReduction,
     color: index === 0 ? '#94a3b8' : '#78716c',
     soldierClass: 'HEAVY', isNamed: true, level: 1,
-    exp:0,reqExp:14,minionKills:0,bossKills:0,survivedWaves:0,hitGrowthPct:0,hitGrowthEvents:0,
+    exp:0,reqExp:14,minionKills:0,bossKills:0,survivedWaves:0,hitGrowthHp:0,hitGrowthDef:0,hitGrowthEvents:0,
     weaponMastery:emptyMastery(),favoriteWeapon:index===0?'spear':'hammer',atkSpeed:1,
     escortBaseStats:{hp:st.hp,atk:st.atk,def:st.def,speed:st.speed,dmgReduction:st.dmgReduction},
     equipped:{weapon:{id:`${merchant.id}_guard_weapon_${index}`,weaponStyle:index===0?'spear':'hammer',stats:{}}},
@@ -116,11 +116,13 @@ export function recalcEscortStats(esc) {
   esc.weaponMastery=normalizeMastery(esc.weaponMastery);
   const base=esc.escortBaseStats,lv=esc.level||1,waves=esc.survivedWaves||0,kills=esc.minionKills||0,bosses=esc.bossKills||0;
   const oldMax=esc.maxHp||base.hp,oldHp=esc.hp||0;
-  esc.maxHp=Math.floor((base.hp+(lv-1)*8+waves*14+Math.floor(kills/15)*6+bosses*45)*hitGrowthMult(esc));
+  const multipliedHp=base.hp+(lv-1)*8+waves*14+Math.floor(kills/15)*6+bosses*45;
+  migrateHitGrowth(esc,multipliedHp,base.def,true);
+  esc.maxHp=Math.floor(multipliedHp)+hitGrowthHpBonus(esc);
   esc.hp=esc.isDown||oldHp<=0?0:Math.min(esc.maxHp,oldHp+Math.max(0,esc.maxHp-oldMax));
   const style=esc.equipped?.weapon?.weaponStyle||esc.favoriteWeapon||'sword';
   esc.atk=Math.floor((base.atk+(lv-1)*2+waves*3+Math.floor(kills/5)+bosses*8)*masteryAtkMult(esc.weaponMastery,style));
-  esc.def=base.def;esc.speed=base.speed;
+  esc.def=base.def+hitGrowthDefBonus(esc);esc.speed=base.speed;
   esc.dmgReduction=Math.min(65,base.dmgReduction+Math.min(30,bosses*3));
   esc.atkSpeed=1;
   esc.dodge=0;applyAttributeStats(esc);
@@ -130,8 +132,8 @@ export function finishEscortPhase(game) {
 }
 function damageEscortFallback(game,esc,raw) {
   const dmg=Math.max(1,Math.round(raw*100/(100+(esc.def||0)*1.2)*(1-Math.min(.4,(esc.dmgReduction||0)/100))));
-  recordCombat(esc);esc.hp-=dmg;
-  const growth=applyHitGrowth(esc,dmg);if(growth.gain>0){esc.hitGrowthEvents=(esc.hitGrowthEvents||0)+1;recalcEscortStats(esc);}
+  recordCombat(esc);const lost=Math.min(dmg,Math.max(0,esc.hp));esc.hp-=dmg;
+  const growth=applyHitGrowth(esc,lost,true);if(growth.gain>0){esc.hitGrowthEvents=(esc.hitGrowthEvents||0)+1;if(growth.changed){const hpAfter=esc.hp;recalcEscortStats(esc);if(hpAfter<=0)esc.hp=hpAfter;}}
   if(esc.hp<=0)markSoldierDown(game,esc);
 }
 
@@ -544,12 +546,12 @@ export function applyMerchantSave(game, savedList, generateRandomDrop, BASE_CAMP
 
 export function npcSave(unit) {
   const result={};
-  for(const key of ['x','y','hp','maxHp','isDown','dead','downTimer','revivalSkillCooldownUntil','carrierId','homeX','homeY','timesDown','timesRescued','rescuedThisDown','downedInAid','downId','rescuedToBase','returningToBase','rescueRewardGranted','rescueReward','owesCommander','commanderFriend','commanderRescues','level','exp','reqExp','minionKills','bossKills','survivedWaves','hitGrowthPct','hitGrowthEvents','weaponMastery','favoriteWeapon','phaseActivity','escortBaseStats','attributeProfile'])if(unit[key]!==undefined)result[key]=unit[key];
+  for(const key of ['x','y','hp','maxHp','isDown','dead','downTimer','revivalSkillCooldownUntil','carrierId','homeX','homeY','timesDown','timesRescued','rescuedThisDown','downedInAid','downId','rescuedToBase','returningToBase','rescueRewardGranted','rescueReward','owesCommander','commanderFriend','commanderRescues','level','exp','reqExp','minionKills','bossKills','survivedWaves','hitGrowthPct','hitGrowthHp','hitGrowthDef','hitGrowthEvents','weaponMastery','favoriteWeapon','phaseActivity','escortBaseStats','attributeProfile'])if(unit[key]!==undefined)result[key]=unit[key];
   return result;
 }
 export function applyNpcSave(unit,saved) {
   delete unit.revivalCooldownUntil;
-  for(const key of ['x','y','hp','maxHp','downTimer','revivalSkillCooldownUntil','homeX','homeY','timesDown','timesRescued','downId','atk','def','dmgReduction','level','exp','reqExp','minionKills','bossKills','survivedWaves','hitGrowthPct','hitGrowthEvents'])if(Number.isFinite(saved[key]))unit[key]=saved[key];
+  for(const key of ['x','y','hp','maxHp','downTimer','revivalSkillCooldownUntil','homeX','homeY','timesDown','timesRescued','downId','atk','def','dmgReduction','level','exp','reqExp','minionKills','bossKills','survivedWaves','hitGrowthPct','hitGrowthHp','hitGrowthDef','hitGrowthEvents'])if(Number.isFinite(saved[key]))unit[key]=saved[key];
   if(saved.weaponMastery)unit.weaponMastery=normalizeMastery(saved.weaponMastery);
   if(saved.attributeProfile){unit.attributeProfile=structuredClone(saved.attributeProfile);unit._attributesNormalized=false;}
   if(saved.escortBaseStats)unit.escortBaseStats=saved.escortBaseStats;

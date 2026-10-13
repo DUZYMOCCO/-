@@ -62,10 +62,10 @@ assert.ok(guard.level>1,'real kills level up the guard');assert.ok(guard.minionK
 const hitRandom=Math.random;Math.random=()=>.99;
 const hpBeforeHits=guard.maxHp;for(let i=0;i<16;i++){guard.hp=guard.maxHp;game.damageTarget(guard,60);}
 Math.random=hitRandom;
-assert.ok(guard.hitGrowthPct>0);assert.equal(guard.hitGrowthEvents,16);assert.ok(guard.maxHp>hpBeforeHits,'real damage adds permanent tank growth');
+assert.ok(guard.hitGrowthHp>0);assert.equal(guard.hitGrowthEvents,16);assert.ok(guard.maxHp>hpBeforeHits,'real damage adds permanent tank growth');
 const phases=guard.survivedWaves;finishEscortPhase(game);assert.equal(guard.survivedWaves,phases+1);finishEscortPhase(game);assert.equal(guard.survivedWaves,phases+1,'an idle guard does not gain combat experience');
 game.saveGame();const guardSave=structuredClone(serializeMerchants(game.merchants)[0].escorts[0]);game.resumeSavedGame(saveSlots.get(game.activeSlotId).data);
-const guardAfter=game.merchants[0].escorts[0];for(const key of ['level','exp','maxHp','atk','hitGrowthPct','hitGrowthEvents','survivedWaves'])assert.equal(guardAfter[key],guardSave[key],`saved guard ${key}`);
+const guardAfter=game.merchants[0].escorts[0];for(const key of ['level','exp','maxHp','atk','hitGrowthHp','hitGrowthDef','hitGrowthEvents','survivedWaves'])assert.equal(guardAfter[key],guardSave[key],`saved guard ${key}`);
 assert.deepEqual(guardAfter.weaponMastery,guardSave.weaponMastery);
 assert.deepEqual(guardAfter.attributeProfile,guardSave.attributeProfile,'escort aptitude and practice survive save/resume');
 const {createCanvas}=createRequire(resolve('C:/Users/Yoshiyuki/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules','entry.cjs'))('@napi-rs/canvas');

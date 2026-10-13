@@ -11,14 +11,15 @@ import {isOwnSquad} from './own-squad-marker.js?v=182';
 
 export const RESCUE_TIMEOUT = 45; // 救助猶予時間（秒）広域マップ対応で45秒に延長
 export const REVIVAL_COOLDOWN = 60;
+export const revivalCooldownOf=medic=>REVIVAL_COOLDOWN/Math.max(1,Number(medic?.deathlineRevivalSpeed)||1); // ミラクルグレイス所持者は再使用時間が短い
 export const REVIVAL_POTION_RANGE = 80;
 const rescueClock=game=>Math.max(0,Number(game?.worldTime)||0);
 export const isMedic=unit=>['MEDIC','HIGH_PRIEST','SAINT','ARCHANGEL'].includes(unit?.soldierClass);
-export const revivalSkillCooldownLeft=(game,medic)=>isMedic(medic)?Math.max(0,Math.min(REVIVAL_COOLDOWN,(Number(medic?.revivalSkillCooldownUntil)||0)-rescueClock(game))):0;
+export const revivalSkillCooldownLeft=(game,medic)=>isMedic(medic)?Math.max(0,Math.min(revivalCooldownOf(medic),(Number(medic?.revivalSkillCooldownUntil)||0)-rescueClock(game))):0;
 export function normalizeRevivalSkill(game,unit) {
   if(!unit)return;
   delete unit.revivalCooldownUntil; // v6.3.5 patient timers are discarded, never transferred to the healer.
-  unit.revivalSkillCooldownUntil=isMedic(unit)?Math.max(0,Math.min(rescueClock(game)+REVIVAL_COOLDOWN,Number(unit.revivalSkillCooldownUntil)||0)):0;
+  unit.revivalSkillCooldownUntil=isMedic(unit)?Math.max(0,Math.min(rescueClock(game)+revivalCooldownOf(unit),Number(unit.revivalSkillCooldownUntil)||0)):0;
 }
 export const headquartersRevivalPaused=game=>!!(game?.baseRaidActive||game?.invasions?.stage==='battle');
 // Compatibility names for existing medical callers; the shared resource is mana.
@@ -245,7 +246,7 @@ function revive(game,wounded,hp,options=null) {
   if(caster&&revivalSkillCooldownLeft(game,caster)>.000001)return false;
   if(options?.method==='BASE'&&options.station?.kind==='base'&&headquartersRevivalPaused(game))return false;
   const carrier=carrierOf(game,wounded);
-  if(caster)caster.revivalSkillCooldownUntil=rescueClock(game)+REVIVAL_COOLDOWN;
+  if(caster)caster.revivalSkillCooldownUntil=rescueClock(game)+revivalCooldownOf(caster);
   delete wounded.revivalCooldownUntil;
   wounded.isDown=false;wounded.hp=Math.max(1,Math.floor(hp));wounded.rescueProgress=0;wounded.downTimer=0;
   delete wounded.carrierId;delete wounded.rescueHealerId;delete wounded.rescueTargetId;

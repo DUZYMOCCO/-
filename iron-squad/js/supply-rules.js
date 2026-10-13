@@ -2,11 +2,11 @@ import {isMagicUser,ensureMana} from './magic-rules.js?v=231';
 import {WORLD_SIZE} from './world.js?v=198';
 import {inCurrentInstance} from './instance-rules.js?v=182';
 import {saveSlots} from './save-slots.js';
-import {nearestRevivalPotionTarget,reviveByPotion,REVIVAL_POTION_RANGE} from './casualty-rules.js?v=232';
+import {nearestRevivalPotionTarget,reviveByPotion,REVIVAL_POTION_RANGE} from './casualty-rules.js?v=234';
 
 export const AMMO_CAPACITY=30;
-export const SQUAD_POTION_COST=300;
-export const REVIVAL_POTION_COST=10000;
+export const SQUAD_POTION_COST=5000,SQUAD_POTION_MAX=3; // 携帯は3個まで。商人で1個ずつ、本陣では無料で満タン
+export const REVIVAL_POTION_COST=30000,REVIVAL_POTION_MAX=2; // 携帯は2個まで、商人で1個ずつ補充
 export const LETHAL_GUARD_COOLDOWN=120;
 export const RANGED_DAMAGE_MULT=1.2;
 export const STONE_MULT=.75;
@@ -30,8 +30,8 @@ export function personalSquadUnits(game) {
 }
 export function initializeSupplies(game,saved=null) {
   game.ammoReserve=Math.max(0,Math.floor(Number(saved?.ammoReserve)||0));
-  game.squadPotion=saved?.squadPotion==null?1:(Number(saved.squadPotion)>0?1:0);
-  game.revivalPotion=saved?.revivalPotion==null?(saved?0:1):(Number(saved.revivalPotion)>0?1:0);
+  game.squadPotion=saved?.squadPotion==null?1:Math.max(0,Math.min(SQUAD_POTION_MAX,Math.floor(Number(saved.squadPotion)||0)));
+  game.revivalPotion=saved?.revivalPotion==null?(saved?0:1):Math.max(0,Math.min(REVIVAL_POTION_MAX,Math.floor(Number(saved.revivalPotion)||0)));
   game._supplyClock=0;
   for(const u of squadUnits(game))if(saved)ensureAmmo(u);else u.ammo=AMMO_CAPACITY;
   game.player.invulnerableTimer=Math.max(0,Math.min(2,Number(saved?.player?.invulnerableTimer)||0));
@@ -127,26 +127,26 @@ export const supplyMethods={
   useRevivalPotion() {
     if(!this.inBattle||this.container?.classList.contains('dialog-open')||this._merchantShopClose||!usable(this.player)||!this.revivalPotion)return false;
     const target=nearestRevivalPotionTarget(this);if(!target)return false;
-    this.revivalPotion=0;
-    if(!reviveByPotion(this,target)){this.revivalPotion=1;return false;}
+    this.revivalPotion--;
+    if(!reviveByPotion(this,target)){this.revivalPotion++;return false;}
     this.saveGame();this.updateStatsUI();return true;
   },
   replenishRevivalPotion(merchant) {
-    if(this.revivalPotion||!usable(this.player)||!(this.merchants||[]).includes(merchant)||!usable(merchant)||merchant.returningToBase)return false;
+    if((this.revivalPotion||0)>=REVIVAL_POTION_MAX||!usable(this.player)||!(this.merchants||[]).includes(merchant)||!usable(merchant)||merchant.returningToBase)return false;
     const inside=this.currentDungeon?.kind==='town'&&merchant.placeId===this.currentDungeon.id;
     if((!inside&&!near(this.player,merchant,110))||(this.gold||0)<REVIVAL_POTION_COST)return false;
-    this.gold-=REVIVAL_POTION_COST;this.revivalPotion=1;this.saveGame();this.updateStatsUI();this.renderSupplyPanel();
+    this.gold-=REVIVAL_POTION_COST;this.revivalPotion=(this.revivalPotion||0)+1;this.saveGame();this.updateStatsUI();this.renderSupplyPanel();
     this.showToast(`蘇生薬を購入 · ${REVIVAL_POTION_COST.toLocaleString()}G`);return true;
   },
   useSquadPotion() {
     if(!this.inBattle||this.container?.classList.contains('dialog-open')||this._merchantShopClose||!usable(this.player)||!this.squadPotion)return false;
-    this.squadPotion=0;
+    this.squadPotion--;
     for(const u of personalSquadUnits(this))if(usable(u)){u.hp=u.maxHp;u.ammo=AMMO_CAPACITY;if(isMagicUser(u)){ensureMana(u);u.mana=u.maxMana;u.magicRecovering=false;}}
     this.showToast('隊長と直属兵のHP・弾薬・魔力を全回復しました');this.saveGame();this.updateStatsUI();
     return true;
   },
   replenishSquadPotion(merchant=null) {
-    if(this.squadPotion||!usable(this.player))return false;
+    if((this.squadPotion||0)>=SQUAD_POTION_MAX||!usable(this.player))return false;
     const place=supplyLocation(this);
     if(merchant) {
       if(!(this.merchants||[]).includes(merchant)||!usable(merchant)||merchant.returningToBase)return false;
@@ -155,8 +155,8 @@ export const supplyMethods={
       if((this.gold||0)<SQUAD_POTION_COST)return false;
       this.gold-=SQUAD_POTION_COST;
     } else if(place?.kind!=='base')return false;
-    this.squadPotion=1;this.saveGame();this.updateStatsUI();this.renderSupplyPanel();
-    this.showToast(merchant?`部隊ポーションを購入 · ${SQUAD_POTION_COST}G`:'本陣で部隊ポーションを補給しました');
+    this.squadPotion=merchant?(this.squadPotion||0)+1:SQUAD_POTION_MAX;this.saveGame();this.updateStatsUI();this.renderSupplyPanel();
+    this.showToast(merchant?`部隊ポーションを購入 · ${SQUAD_POTION_COST.toLocaleString()}G`:'本陣で部隊ポーションを補給しました');
     return true;
   },
   saveCheckpoint() {
@@ -184,11 +184,11 @@ export const supplyMethods={
     const ranged=squadUnits(this).filter(u=>usable(u)&&isRangedUnit(this,u));
     const empty=ranged.filter(u=>ensureAmmo(u)===0).length;
     const heroRanged=isRangedUnit(this,this.player);
-    if(badge){const previous=badge.textContent;badge.textContent=`${heroRanged?`弾薬 ${ensureAmmo(this.player)}/${AMMO_CAPACITY} · `:''}${empty?`要補給 ${empty}名（石75%）`:`射手の弾薬 ${ranged.reduce((n,u)=>n+ensureAmmo(u),0)}/${ranged.length*AMMO_CAPACITY}`} · 回復薬 ${this.squadPotion?1:0}/1`;badge.dataset.empty=String(empty>0);}
+    if(badge){const previous=badge.textContent;badge.textContent=`${heroRanged?`弾薬 ${ensureAmmo(this.player)}/${AMMO_CAPACITY} · `:''}${empty?`要補給 ${empty}名（石75%）`:`射手の弾薬 ${ranged.reduce((n,u)=>n+ensureAmmo(u),0)}/${ranged.length*AMMO_CAPACITY}`} · 回復薬 ${this.squadPotion||0}/${SQUAD_POTION_MAX}`;badge.dataset.empty=String(empty>0);}
     const button=document.getElementById('btn-pad-potion');
-    if(button){button.disabled=!this.squadPotion||!usable(this.player);button.textContent=`回復薬 ${this.squadPotion?1:0}`;}
+    if(button){button.disabled=!this.squadPotion||!usable(this.player);button.textContent=`回復薬 ${this.squadPotion||0}`;}
     const revival=document.getElementById('btn-pad-revive'),target=nearestRevivalPotionTarget(this);
-    if(revival){revival.disabled=!this.revivalPotion||!target;revival.textContent=`蘇生薬 ${this.revivalPotion?1:0}`;revival.title=target?`${target.name}を蘇生（自分には使用不可）`:`近く${REVIVAL_POTION_RANGE/100}mのダウン中の味方に使用（自分には使用不可）`;}
+    if(revival){revival.disabled=!this.revivalPotion||!target;revival.textContent=`蘇生薬 ${this.revivalPotion||0}`;revival.title=target?`${target.name}を蘇生（自分には使用不可）`:`近く${REVIVAL_POTION_RANGE/100}mのダウン中の味方に使用（自分には使用不可）`;}
     let warning=document.getElementById('retreat-warning');
     const alerts=document.querySelector('.field-alerts');
     if(!warning&&alerts){warning=document.createElement('div');warning.id='retreat-warning';warning.setAttribute('role','status');warning.textContent='危険なので撤退すべきだ';alerts.append(warning);}
@@ -204,10 +204,10 @@ export const supplyMethods={
     if(!panel.querySelector('.supply-actions'))panel.innerHTML='<h4>補給・地点セーブ</h4><p class="supply-location"></p><p class="supply-counts"></p><p class="lethal-guard-status"></p><div class="supply-actions"><button type="button" data-supply="potion">本陣で回復薬を補給</button><button type="button" data-supply="save">現在地をセーブ</button><button type="button" data-supply="load">地点セーブへ戻る</button></div><p class="checkpoint-summary"></p><p class="supply-help"></p>';
     panel.querySelector('.lethal-guard-status').textContent=this.player.lethalGuardCooldown>0?`即死対策：再発動まで${Math.ceil(this.player.lethalGuardCooldown)}秒`:`即死対策：使用可能（再使用${LETHAL_GUARD_COOLDOWN}秒）`;
     panel.querySelector('.supply-location').textContent=place?`補給地点：${place.name}`:'野外：本陣・救護所・町・商人・キャンプに近づくとセーブ／読込できます';
-    panel.querySelector('.supply-counts').textContent=`回復薬 ${this.squadPotion?1:0}/1 · 射手の弾薬 ${ranged.reduce((n,u)=>n+ensureAmmo(u),0)}/${ranged.length*AMMO_CAPACITY} · 予備弾薬 ${this.ammoReserve||0}`;
-    panel.querySelector('.supply-counts').textContent+=` · 蘇生薬 ${this.revivalPotion?1:0}/1`;
-    panel.querySelector('.supply-help').textContent='弾薬・魔力は本陣・救護所・町・商人・キャンプの近くで自動補給。回復薬は隊長と行動可能な直属兵のHP・弾薬・魔力を全回復。本隊・予備兵は対象外。ダウン中は搬送・衛生兵が必要です。地点セーブはオートセーブと別に保持し、読込時は記録時点へ戻ります。蘇生薬は術士の蘇生クールタイムを無視して、近くの味方1人を全快蘇生できます。自分には使えず、商店で1個10,000Gで補充できます。';
-    const potion=panel.querySelector('[data-supply="potion"]');potion.disabled=!!this.squadPotion||place?.kind!=='base';potion.onclick=()=>{this.replenishSquadPotion();if(host){if(host.closest('#merchant-shop-popup'))this._merchantShopRefresh?.();else this.renderSupplyPanel(host);}};
+    panel.querySelector('.supply-counts').textContent=`回復薬 ${this.squadPotion||0}/${SQUAD_POTION_MAX} · 射手の弾薬 ${ranged.reduce((n,u)=>n+ensureAmmo(u),0)}/${ranged.length*AMMO_CAPACITY} · 予備弾薬 ${this.ammoReserve||0}`;
+    panel.querySelector('.supply-counts').textContent+=` · 蘇生薬 ${this.revivalPotion||0}/${REVIVAL_POTION_MAX}`;
+    panel.querySelector('.supply-help').textContent='弾薬・魔力は本陣・救護所・町・商人・キャンプの近くで自動補給。回復薬は隊長と行動可能な直属兵のHP・弾薬・魔力を全回復。本隊・予備兵は対象外。3個まで携帯でき、商人で1個5,000G、本陣では無料で満タンに補給。ダウン中は搬送・衛生兵が必要です。地点セーブはオートセーブと別に保持し、読込時は記録時点へ戻ります。蘇生薬は術士の蘇生クールタイムを無視して、近くの味方1人を全快蘇生できます。自分には使えず、2個まで携帯でき、商人から1個30,000Gで補充できます。';
+    const potion=panel.querySelector('[data-supply="potion"]');potion.disabled=(this.squadPotion||0)>=SQUAD_POTION_MAX||place?.kind!=='base';potion.onclick=()=>{this.replenishSquadPotion();if(host){if(host.closest('#merchant-shop-popup'))this._merchantShopRefresh?.();else this.renderSupplyPanel(host);}};
     const save=panel.querySelector('[data-supply="save"]');save.disabled=!place;save.onclick=()=>{this.saveCheckpoint();if(host)this.renderSupplyPanel(host);};
     const load=panel.querySelector('[data-supply="load"]');load.disabled=!place||!cp?.data;load.onclick=()=>this.loadCheckpoint();
     panel.querySelector('.checkpoint-summary').textContent=cp?`記録：${cp.place} · 第${cp.data.phase}期 · ${new Date(cp.savedAt).toLocaleString('ja-JP')}${cp.data.player?` · HP ${Math.ceil(cp.data.player.hp)}`:''}${cp.entrance?'（町入口から再開）':''}`:'地点セーブはまだありません';

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {JSDOM} from '../../__pycache__/ui-tools/node_modules/jsdom/lib/api.js';
 import {WORLD_SIZE} from '../js/world.js';
 import {markSoldierDown,treatWounded,updateWounded,receiveTownCargo,attachWounded,revivalSkillCooldownLeft,REVIVAL_COOLDOWN,nearestRevivalPotionTarget,buildMedicRescueAssign,headquartersRevivalPaused} from '../js/casualty-rules.js';
-import {REVIVAL_POTION_COST} from '../js/supply-rules.js';
+import {REVIVAL_POTION_COST,REVIVAL_POTION_MAX} from '../js/supply-rules.js';
 const dom=new JSDOM('<div id="game" class="game-container"></div>',{url:'http://localhost/'});Object.assign(globalThis,{window:dom.window,document:dom.window.document,localStorage:dom.window.localStorage});
 const noop=()=>{},ctx=new Proxy({measureText:()=>({width:40}),createLinearGradient:()=>({addColorStop:noop}),createRadialGradient:()=>({addColorStop:noop})},{get:(o,k)=>k in o?o[k]:noop});window.HTMLCanvasElement.prototype.getContext=()=>ctx;
 const {IronSquadGame}=await import('../js/index.js'),{saveSlots}=await import('../js/save-slots.js');
@@ -12,7 +12,7 @@ const fresh=()=>{g.resumeSavedGame(structuredClone(initial));g.closeStrategyModa
 const patient=()=>{const target=g.squad[0];target.x=C+500;target.y=C;return target;};
 const healer=target=>{const medic=g.squad.find(s=>s.soldierClass==='MEDIC');Object.assign(medic,{x:target.x,y:target.y,mana:100});return medic;};
 try{
-  assert.equal(REVIVAL_COOLDOWN,60);assert.equal(REVIVAL_POTION_COST,10000);assert.equal(g.revivalPotion,1);
+  assert.equal(REVIVAL_COOLDOWN,60);assert.equal(REVIVAL_POTION_COST,30000);assert.equal(REVIVAL_POTION_MAX,2);assert.equal(g.revivalPotion,1);
   fresh();let target=patient(),medic=healer(target);markSoldierDown(g,target);assert.equal(treatWounded(g,medic,target,1),true);assert.equal(revivalSkillCooldownLeft(g,medic),60);assert.equal(revivalSkillCooldownLeft(g,target),0);assert.equal(target.revivalCooldownUntil,undefined);
   g.worldTime=10;markSoldierDown(g,target);const rescued=target.timesRescued,mana=medic.mana;
   for(let i=0;i<20;i++)assert.equal(treatWounded(g,medic,target,1),false);assert.equal(target.timesRescued,rescued);assert.equal(medic.mana,mana,'a blocked revive consumes no mana');assert.equal(target.rescueProgress,0);
@@ -27,8 +27,8 @@ try{
   markSoldierDown(g,target);Object.assign(g.player,{x:target.x,y:target.y});g.inBattle=true;g.revivalPotion=1;g.refreshSupplyUI();const button=document.getElementById('btn-pad-revive');assert.equal(button.disabled,false);
   button.click();assert.equal(target.isDown,false);assert.equal(target.hp,target.maxHp);assert.equal(g.revivalPotion,0);assert.equal(revivalSkillCooldownLeft(g,medic),35);assert.equal(target.revivalCooldownUntil,undefined);button.click();assert.equal(g.revivalPotion,0);
   assert.equal(button.closest('.pad-supply-buttons'),document.getElementById('btn-pad-potion').closest('.pad-supply-buttons'));
-  const merchant=g.merchants[0];Object.assign(g.player,{x:merchant.x,y:merchant.y});g.gold=9999;assert.equal(g.replenishRevivalPotion(merchant),false);assert.equal(g.gold,9999);g.gold=10000;assert.equal(g.replenishRevivalPotion(merchant),true);assert.equal(g.gold,0);assert.equal(g.replenishRevivalPotion(merchant),false);assert.equal(g.revivalPotion,1);
-  const stockSave=structuredClone(g.saveGame());g.resumeSavedGame(stockSave);assert.equal(g.revivalPotion,1);const legacy=structuredClone(initial);delete legacy.revivalPotion;g.resumeSavedGame(legacy);assert.equal(g.revivalPotion,0,'older saves do not silently issue a medicine');
+  const merchant=g.merchants[0];Object.assign(g.player,{x:merchant.x,y:merchant.y});g.gold=29999;assert.equal(g.replenishRevivalPotion(merchant),false);assert.equal(g.gold,29999);g.gold=60000;assert.equal(g.replenishRevivalPotion(merchant),true);assert.equal(g.revivalPotion,1);assert.equal(g.replenishRevivalPotion(merchant),true);assert.equal(g.gold,0);assert.equal(g.revivalPotion,2);g.gold=99999;assert.equal(g.replenishRevivalPotion(merchant),false,'carry limit is two');assert.equal(g.revivalPotion,2);
+  const stockSave=structuredClone(g.saveGame());g.resumeSavedGame(stockSave);assert.equal(g.revivalPotion,2,'both doses survive save/load');const legacy=structuredClone(initial);delete legacy.revivalPotion;g.resumeSavedGame(legacy);assert.equal(g.revivalPotion,0,'older saves do not silently issue a medicine');
   // No target, own down, range, coordinate space, dying or dead cannot consume a dose.
   fresh();g.refreshSupplyUI();assert.equal(button.disabled,true);assert.equal(g.useRevivalPotion(),false);assert.equal(g.revivalPotion,1);
   target=patient();markSoldierDown(g,target);assert.equal(g.useRevivalPotion(),false,'far casualties are not targets');Object.assign(g.player,{x:target.x,y:target.y,hp:0,isDown:true});assert.equal(g.useRevivalPotion(),false);assert.equal(g.revivalPotion,1);

@@ -1,7 +1,7 @@
 import {isEnlisted,CAREER_RULES} from './career-rules.js?v=200';
 import {isOwnSquad} from './own-squad-marker.js?v=182';
 import {persistentUnit} from './render-support.js';
-import {drawSoldierPortrait,describeSoldierAppearance} from './soldier-appearance.js?v=206';
+import {drawSoldierPortrait} from './soldier-appearance.js?v=206';
 import {setSubDialog} from './interface.js?v=230';
 import {WORLD_SIZE,TAVERN_SITE} from './world.js?v=198';
 import {daylightAt} from './day-night.js?v=208';
@@ -151,7 +151,7 @@ export const tavernMethods={
     tavern.querySelector('.tavern-panel').append(host);
     const portrait=host.querySelector('.soldier-face-portrait');
     portrait.setAttribute('aria-label',`${unit.name}の素顔`);drawSoldierPortrait(portrait.getContext('2d'),unit,portrait.width,portrait.height);
-    host.querySelector('.soldier-look-description').textContent=describeSoldierAppearance(unit);
+    this.wireSoldierDetailPopovers(host);
     if(person){
       const hire=el('button','action-btn tavern-detail-hire',this.gold<person.cost?`雇用 ${person.cost.toLocaleString()}G（所持金が足りません）`:`${person.cost.toLocaleString()}Gで雇う`);
       hire.type='button';hire.disabled=this.gold<person.cost;

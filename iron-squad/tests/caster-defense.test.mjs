@@ -63,7 +63,7 @@ const comparison=compareEquipment(robe,plate);assert.match(comparison.text,/é­”å
 assert.deepEqual(lowValueIds([robe],{armor:plate},[],28),[],'high defense plate cannot auto-sell a low-strength robe');
 // Actual damage consumes a finite barrier, of both physical and magical hits. Swaps do not refill it.
 mage.equipped.armor=ward;game.recalcSoldierStats(mage);updateEquipmentBarrier(mage,30);const max=mage.equipmentBarrierMax;
-mage.hp=mage.maxHp;mage.dodge=0;mage.lethalGuardCooldown=999;mage.hitGrowthPct=1000;
+mage.hp=mage.maxHp;mage.dodge=0;mage.lethalGuardCooldown=999;mage.hitGrowthHp=0;
 const random=Math.random;Math.random=()=>.99;
 try{
   const hp=mage.hp;game.damageTarget(mage,30,{environmental:true});assert.ok(mage.hp<hp&&mage.equipmentBarrier<max);
