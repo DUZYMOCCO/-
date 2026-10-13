@@ -1,4 +1,4 @@
-import {requiredDefenseStrength} from './defense-equipment.js?v=236';
+import {requiredDefenseStrength} from './defense-equipment.js?v=237';
 import {powerRank,MAX_EQUIPMENT_TIER,GENERATIONS} from './equipment-tiers.js?v=231';
 import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=182';
 import {WEAPON_STYLE_ICONS,weaponStyleOf,isHeavyWeaponStyle,combatFamilyOf} from './growth-rules.js?v=234';

@@ -14,6 +14,8 @@ const noop=()=>{},ctx=new Proxy({measureText:()=>({width:40}),createLinearGradie
 window.HTMLCanvasElement.prototype.getContext=()=>ctx;
 const {IronSquadGame,generateRandomDrop,applyUpgradeStats}=await import('../js/index.js');
 const {saveSlots}=await import('../js/save-slots.js');
+const {sound}=await import('../../common/js/audio.js?v=151');
+const {drawBarrierRing,barrierRingAlpha}=await import('../js/defense-equipment.js');
 const game=Object.create(IronSquadGame);
 Object.assign(game,{container:document.getElementById('game'),width:390,height:844,zoom:1,ctx,camera:{x:83000,y:83000},selectedSaleIds:new Set(),commandActiveUntil:0});
 for(const method of ['startGameLoop','showToast','spawnSparks','spawnDamageText'])game[method]=noop;
@@ -73,7 +75,25 @@ try{
   assert.ok(mage.equipmentBarrier<remaining);
   mage.equipmentBarrier=1;game.damageTarget(mage,30,{environmental:true});assert.equal(mage.equipmentBarrier,0);
   const hpEmpty=mage.hp;game.damageTarget(mage,30,{environmental:true});assert.ok(mage.hp<hpEmpty);
+  // v6.5.2: a fully absorbed hit shows only the barrier text (no red 0, no hurt sound); a partial one still does.
+  const texts=[];let hurts=0;game.spawnDamageText=(x,y,text,color)=>texts.push({text,color});const hurt=sound.playHurt;sound.playHurt=()=>{hurts++;};
+  try{
+    medic.hp=medic.maxHp;medic.equipmentBarrier=1000;medic.equipmentBarrierMax=1000;medic.dodge=0;medic.lethalGuardCooldown=999;
+    const full=medic.hp;game.damageTarget(medic,30,{damageKind:'magic'});
+    assert.equal(medic.hp,full);assert.ok(texts.some(t=>/結界/.test(t.text)));assert.ok(!texts.some(t=>t.color==='#ff3344'),'no red number when fully absorbed');assert.equal(hurts,0,'no hurt sound when fully absorbed');
+    texts.length=0;medic.equipmentBarrier=3;game.damageTarget(medic,300,{environmental:true});
+    assert.ok(medic.hp<full);assert.ok(texts.some(t=>t.color==='#ff3344'&&t.text>0),'partial absorb still shows the red number');assert.equal(hurts,1);
+  }finally{sound.playHurt=hurt;game.spawnDamageText=noop;}
 }finally{Math.random=random;}
+// Barrier ring: only while barrier remains and the unit is up; alpha scales with the fill within 0.12-0.45.
+{
+  const u={x:5,y:6,hp:10,equipmentBarrierMax:100,equipmentBarrier:100};
+  const calls=[];const c=new Proxy({},{get:(o,k)=>(...a)=>{calls.push(k);}});
+  assert.ok(barrierRingAlpha(u,0)<=.45&&barrierRingAlpha(u,0)>=.38);u.equipmentBarrier=1;assert.ok(barrierRingAlpha(u,0)>=.1&&barrierRingAlpha(u,0)<.2);
+  assert.equal(drawBarrierRing(c,u,0),true);assert.ok(calls.includes('ellipse')&&calls.includes('stroke'));
+  u.equipmentBarrier=0;assert.equal(drawBarrierRing(c,u,0),false);u.equipmentBarrier=50;u.isDown=true;assert.equal(drawBarrierRing(c,u,0),false);
+  assert.equal(drawBarrierRing(c,{x:0,y:0,hp:5},0),false,'units without a barrier draw nothing');
+}
 const delay=mage.equipmentBarrierDelay;updateEquipmentBarrier(mage,delay-1);assert.equal(mage.equipmentBarrier,0);
 updateEquipmentBarrier(mage,2);assert.ok(Math.abs(mage.equipmentBarrier-max*.06)<1e-8);
 const partial=mage.equipmentBarrier;for(let i=0;i<5;i++)game.recalcSoldierStats(mage);assert.equal(mage.equipmentBarrier,partial);

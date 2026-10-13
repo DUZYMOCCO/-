@@ -5,6 +5,7 @@ from pathlib import Path
 base = Path(__file__).resolve().parents[1]
 result = base / "docs/previews/caster-archer-balance-20261013/results.json"
 r = json.loads(result.read_text(encoding="utf-8"))
+old_accounting = r.get("accountingVersion", 1) < 2
 stages = {"early": "Lv1 / T1", "middle": "Lv10 / T9", "late": "Lv30 / T21"}
 affinities = {"none": "弓兵", "fire": "魔法使い・炎", "ice": "魔法使い・氷", "lightning": "魔法使い・雷", "explosion": "魔法使い・爆発"}
 supplies = {"none": "野外・補給なし", "camp": "キャンプ補給", "hq-defense": "本陣防衛中の補給"}
@@ -36,7 +37,13 @@ for stage in stages:
     for supply in supplies:
         rows = [x for x in r["offense"] if x["stage"] == stage and x["supply"] == supply and x["targets"] == 1]
         values = [next(x for x in rows if x["affinity"] == a)["dps"] for a in affinities]
-        lines.append(f"|{stages[stage]}|{supplies[supply]}|" + "|".join(fmt(v) for v in values) + "|")
+        cells = [fmt(v) for v in values]
+        if old_accounting and stage == "late":
+            cells[0] = "訂正後は三武器レポート参照"
+        lines.append(f"|{stages[stage]}|{supplies[supply]}|" + "|".join(cells) + "|")
+
+if old_accounting:
+    lines += ["", "**2026-10-13 訂正：** 元の集計で、魔法の矢の再帰呼び出しを親のHP差と重ねて数える問題を発見。Lv30の弓だけがこの条件に該当したため、そのDPS欄は撤回し、[三武器の修正版計測](RANGED_WEAPONS_BALANCE.md)を参照する。Lv1/Lv10、魔法使い、耐久の数値には影響しない。元のJSONは測定時の記録として保持し、新しい集計ではダメージ合計と実際に減ったHPの一致を検証する。"]
 
 lines += ["", "## 中盤の時間帯別DPS（野外・補給なし）", "", "|職・属性|最初の15秒|180秒平均|60〜180秒|瞑想中の時間割合|", "|---|---:|---:|---:|---:|"]
 for x in r["offense"]:

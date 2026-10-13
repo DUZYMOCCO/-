@@ -67,3 +67,21 @@ export function updateEquipmentBarrier(unit,dt) {
   const charging=Math.max(0,dt-delay);
   unit.equipmentBarrier=Math.min(unit.equipmentBarrierMax,(unit.equipmentBarrier||0)+unit.equipmentBarrierMax*BARRIER_RULES.rechargeRate*charging);
 }
+
+/** Thin ward-coloured ring around a unit that still holds barrier. World coordinates; no allocation, one stroke. */
+export function barrierRingAlpha(unit,now=0) {
+  const max=unit?.equipmentBarrierMax||0;
+  if(!(max>0)||unit.dead||unit.isDown||unit.dying||!(unit.hp>0))return 0;
+  const ratio=Math.max(0,Math.min(1,(unit.equipmentBarrier||0)/max));
+  if(!(ratio>0))return 0;
+  return (.12+.33*ratio)*(.88+.12*Math.sin(now*.002));
+}
+export function drawBarrierRing(c,unit,now=0) {
+  const alpha=barrierRingAlpha(unit,now);
+  if(!(alpha>0))return false;
+  c.save();
+  c.globalAlpha=alpha;c.strokeStyle='#90b9c5';c.lineWidth=1.5;
+  c.beginPath();c.ellipse(unit.x,unit.y-12,17,23,0,0,Math.PI*2);c.stroke();
+  c.restore();
+  return true;
+}

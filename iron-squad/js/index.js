@@ -89,7 +89,7 @@ import {HEALING_HP_PER_EXP,REVIVAL_EXP_PER_MAX_HP,shareCommanderExp,raiseLevelMa
 import {attributeFamily,rollAttributeProfile,applyAttributeStats,attributeValues,practiceAttribute,attributeCarryCapacity,attributeSpecialties,prefersCasterMelee,canChannelWeaponMagic,magicAbilityMultiplier,CASTER_STRIKE_COST,casterStrikeMultiplier,beginAttributeMovement,finishAttributeMovement,ATTRIBUTE_LABELS,ATTRIBUTE_KEYS,aptitudeGrade} from './unit-attributes.js?v=231';
 import {rollScoutCandidate,renderRecruitment,nextScoutCandidate,startAutomaticRecruitment,stopAutomaticRecruitment,RECRUIT_CLASSES} from './recruitment.js?v=226';
 import {canUseEquipment,requiredWeaponStrength,equipmentRequirementText,isMagicWeapon,MAGIC_WEAPON_STYLES,preferredWeaponStyle} from './weapon-requirements.js?v=231';
-import {CASTER_GEAR,DEFENSE_TYPES,casterGearName,applyDefenseEquipment,casterEquipmentSummary,absorbEquipmentBarrier} from './defense-equipment.js?v=236';
+import {CASTER_GEAR,DEFENSE_TYPES,casterGearName,applyDefenseEquipment,casterEquipmentSummary,absorbEquipmentBarrier,drawBarrierRing} from './defense-equipment.js?v=237';
 import {
   emptyFiscalLedger, calcCommanderStipend, calcBuyoutGold,
   shouldAbsorbToSharedBox, calcScoutCost, estimateSoldierScoutValue, calcDismissSettlement,
@@ -124,7 +124,7 @@ import {visibleHeroMembers} from './hero-rules.js';
 import {updateHeroJournal} from './hero-journal.js?v=189';
 import {applyHeroEquipmentUpgrade} from './hero-equipment.js?v=211';
 import {initializeHeroJourney,rollHeroRevelation,serializeHeroJourney,updateHeroParty,updateHeroFollowing,awardHeroBattle,recordDemonKingDefeat,ensureHeroCastle,syncHeroCastle,renderHeroJourney,drawHeroMarks} from './hero-party.js?v=226';
-import {updateSquadHpHud} from './squad-hp-hud.js?v=229';
+import {updateSquadHpHud} from './squad-hp-hud.js?v=237';
 import {addBattleReport,normalizeBattleReport,renderBattleReport} from './battle-report.js?v=226';
 import { RESCUE_TIMEOUT, REVIVAL_COOLDOWN, revivalCooldownOf, revivalSkillCooldownLeft, normalizeRevivalSkill, headquartersRevivalPaused, rescueUnits, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, receiveTownCargo, leaveCivilianSpace, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, markSoldierDown, downCommander, commanderDown, updateNpcRescue, CIV_KINDS, isMedic, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST, medicHoldsByCommander } from './casualty-rules.js?v=235';
 import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault, dungeonBlocks, dungeonSolids } from './dungeon.js?v=208';
@@ -1133,7 +1133,7 @@ export const IronSquadGame = {
 
   // 起動時にこのゲームのCSSを自分で読み込む（?v= はこのフォルダ内で管理）。ハブが init 前に await する
   prepare() {
-    return loadCss(['../css/iron-squad.css?v=175', '../css/iron-squad-interface.css?v=233'].map(p => new URL(p, import.meta.url).href));
+    return loadCss(['../css/iron-squad.css?v=175', '../css/iron-squad-interface.css?v=237'].map(p => new URL(p, import.meta.url).href));
   },
 
   init(container, onBackToHub) {
@@ -7580,6 +7580,7 @@ export const IronSquadGame = {
     if(target.magicWardTimer>0)dmg=Math.max(1,Math.round(dmg*(1-(target.magicWardBonus||0))));
     const barrier=absorbEquipmentBarrier(target,dmg,magical);dmg=barrier.damage;
     if(barrier.absorbed>0)this.spawnDamageText(target.x,target.y-26,`結界 −${Math.ceil(barrier.absorbed)}`,'#90b9c5');
+    if(!(dmg>0))return; // 結界が全部受けた: 赤い数字・被弾音・HP成長なし
     if(covered){dmg=Math.min(dmg,target.hp-1);if(!(dmg>0))return;} // かばいでは倒れない
     if(preventLethalHit(this,target,dmg))return;
     if(magical)practiceAttribute(target,'magicDefense',1+Math.min(4,rawDmg/Math.max(1,target.maxHp||1)));
@@ -12357,6 +12358,7 @@ export const IronSquadGame = {
     }
     drawOwnSquadRing(ctx, s);
     drawFieldSoldier(ctx, s, now, cls, platoon?.color || '#829cae', simple);
+    if(s.equipmentBarrierMax>0)drawBarrierRing(ctx, s, now);
     if(!s.isCommander)queueSquadName(this,s);
     if(s.isChosenHero)drawHeroMarks(ctx,this);
   },
@@ -12401,6 +12403,7 @@ export const IronSquadGame = {
     drawFieldCommander(ctx,p,eq,now,this.rankIndex,this.currentRank().title,
       !!this.joystick?.active);
     if (p.isDown) ctx.restore();
+    else if (p.equipmentBarrierMax>0) drawBarrierRing(ctx, p, now);
   },
 
   /** 隊長ダウン中の画面オーバーレイ（救助までのカウントダウン）。 */

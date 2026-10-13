@@ -1,5 +1,5 @@
 import {guardTarget,guardSpeedMult} from './guard-leash.js?v=211';
-import {updateEquipmentBarrier} from './defense-equipment.js?v=236';
+import {updateEquipmentBarrier} from './defense-equipment.js?v=237';
 import {sound} from '../../common/js/audio.js?v=151';
 import {WORLD_SIZE} from './world.js?v=198';
 import {inCurrentInstance} from './instance-rules.js?v=182';

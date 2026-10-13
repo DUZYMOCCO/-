@@ -2,6 +2,8 @@
 // Only own-squad members are listed; the main army, NPCs and civilians are not.
 import {isOwnSquad} from './own-squad-marker.js?v=182';
 import {downLabel} from './casualty-rules.js?v=235';
+import {isMagicUser,ensureMana} from './magic-rules.js?v=231';
+import {isRangedUnit,ensureAmmo,AMMO_CAPACITY} from './supply-rules.js?v=234';
 
 const REFRESH = .15;
 const shortName = name => String(name || '').split(/[・\s]/)[0] || '兵士';
@@ -12,8 +14,22 @@ export function squadHpRows(game) {
     .map(s => {
       const max = Math.max(1, Math.round(s.maxHp || 1)), hp = s.isDown || s.dying ? 0 : Math.max(0, Math.min(max, Math.round(s.hp || 0)));
       const ratio = hp / max, state = s.dying ? 'dead' : s.isDown ? 'down' : ratio <= .3 ? 'low' : ratio <= .6 ? 'mid' : 'ok';
-      return {id: s.id, name: shortName(s.name), hp, max, ratio, state, text: s.isDown || s.dying ? downLabel(s) : `${hp}/${max}`};
+      const gone = s.isDown || s.dying;
+      return {id: s.id, name: shortName(s.name), hp, max, ratio, state, text: gone ? downLabel(s) : `${hp}/${max}`, res: gone ? null : resourceOf(game, s)};
     });
+}
+
+/** Second gauge: MP for magic users, ammo for ranged units, nothing for the rest. */
+function resourceOf(game, s) {
+  if (isMagicUser(s)) {
+    const max = Math.max(1, Math.round(ensureMana(s) ? s.maxMana : 0)), cur = Math.max(0, Math.min(max, Math.floor(s.mana || 0)));
+    return s.maxMana > 0 ? {kind: 'mp', cur, max, ratio: cur / max, text: `MP ${cur}/${max}`} : null;
+  }
+  if (isRangedUnit(game, s)) {
+    const cur = ensureAmmo(s), max = AMMO_CAPACITY;
+    return {kind: 'ammo', cur, max, ratio: cur / max, text: `弾 ${cur}/${max}`};
+  }
+  return null;
 }
 
 export function updateSquadHpHud(game, dt = 0, force = false) {
@@ -31,17 +47,36 @@ export function updateSquadHpHud(game, dt = 0, force = false) {
   }
   box.hidden = false;
   box.classList.toggle('compact', rows.length > 6); // up to 12 members still fit in landscape
-  const key = rows.map(r => `${r.id}:${r.name}:${r.state}:${r.text}`).join('|');
+  // Structure (who, name, state, which gauge) rebuilds the DOM; numbers/widths are updated in place.
+  const struct = rows.map(r => `${r.id}:${r.name}:${r.res?.kind || ''}`).join('|');
+  if (box.dataset.struct !== struct) {
+    box.dataset.struct = struct; delete box.dataset.key;
+    const nodes = [];
+    box.replaceChildren(...rows.map(r => {
+      const row = document.createElement('div'); row.className = `squad-hp-row ${r.state}`;
+      const label = document.createElement('div'); label.className = 'squad-hp-label';
+      const name = document.createElement('span'); name.className = 'squad-hp-name'; name.textContent = r.name;
+      const num = document.createElement('span'); num.className = 'squad-hp-num';
+      const bar = document.createElement('div'); bar.className = 'squad-hp-bar';
+      const fill = document.createElement('i');
+      label.append(name, num); bar.append(fill); row.append(label, bar);
+      const node = {row, num, fill, resText: null, resFill: null};
+      if (r.res) {
+        const res = document.createElement('div'); res.className = `squad-hp-res ${r.res.kind}`;
+        const rf = document.createElement('i'), rt = document.createElement('span');
+        res.append(rf, rt); row.append(res); node.resFill = rf; node.resText = rt;
+      }
+      nodes.push(node);
+      return row;
+    }));
+    box._nodes = nodes;
+  }
+  const key = rows.map(r => `${r.state}:${r.text}:${r.res ? r.res.text : ''}`).join('|');
   if (box.dataset.key === key) return;
   box.dataset.key = key;
-  box.replaceChildren(...rows.map(r => {
-    const row = document.createElement('div'); row.className = `squad-hp-row ${r.state}`;
-    const label = document.createElement('div'); label.className = 'squad-hp-label';
-    const name = document.createElement('span'); name.className = 'squad-hp-name'; name.textContent = r.name;
-    const num = document.createElement('span'); num.className = 'squad-hp-num'; num.textContent = r.text;
-    const bar = document.createElement('div'); bar.className = 'squad-hp-bar';
-    const fill = document.createElement('i'); fill.style.width = `${Math.round(r.ratio * 100)}%`;
-    label.append(name, num); bar.append(fill); row.append(label, bar);
-    return row;
-  }));
+  rows.forEach((r, i) => {
+    const n = box._nodes[i];
+    n.row.className = `squad-hp-row ${r.state}`; n.num.textContent = r.text; n.fill.style.width = `${Math.round(r.ratio * 100)}%`;
+    if (r.res) { n.resText.textContent = r.res.text; n.resFill.style.width = `${Math.round(r.res.ratio * 100)}%`; }
+  });
 }
