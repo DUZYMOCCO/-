@@ -115,11 +115,11 @@ v6.4.3 にて「被弾鍛錬の絶対値化・上限撤廃」および「重装�
 
 ## 5. 作業手順（Claude引き継ぎ用チェックリスト）
 
-- [ ] 1. `iron-squad/js/index.js` および `enemy-ranged.js` に索敵距離ボーナス（柱1）を実装。
-- [ ] 2. `iron-squad/js/index.js` の `damageTarget` に身代わり＆被弾成長連動（柱2）を実装。
-- [ ] 3. `iron-squad/js/index.js` の移動・攻撃処理に重圧オーラとスタン（柱3）を実装。
-- [ ] 4. `iron-squad/tests/heavy-tank-specialization.test.mjs` を作成し、テストケースを網羅。
-- [ ] 5. `node --test iron-squad/tests/*.test.mjs` を実行し、全件PASSを確認。
-- [ ] 6. `git checkout iron-squad/docs/previews/*.png` でテスト生成画像を元に戻す。
-- [ ] 7. `sw-assets.js`（v235 / 6.5.0）と `SPEC_AND_HANDOVER.md`、`CURRENT_WORK.md` を更新。
+- [x] 1. `iron-squad/js/index.js` および `enemy-ranged.js` に索敵距離ボーナス（柱1）を実装。
+- [x] 2. `iron-squad/js/index.js` の `damageTarget` に身代わり＆被弾成長連動（柱2）を実装。
+- [x] 3. `iron-squad/js/index.js` の移動・攻撃処理に重圧オーラとスタン（柱3）を実装。
+- [x] 4. `iron-squad/tests/heavy-tank-specialization.test.mjs` を作成し、テストケースを網羅。
+- [x] 5. `node --test iron-squad/tests/*.test.mjs` を実行し、全件PASSを確認。
+- [x] 6. `git checkout iron-squad/docs/previews/*.png` でテスト生成画像を元に戻す。
+- [x] 7. `sw-assets.js`（v235 / 6.5.0）と `SPEC_AND_HANDOVER.md`、`CURRENT_WORK.md` を更新。
 - [ ] 8. `git add iron-squad/` でステージし、コミット＆プッシュ（完了報告とゲーム批評を提示）。

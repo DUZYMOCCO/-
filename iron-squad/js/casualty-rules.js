@@ -6,6 +6,7 @@ import {grantPermanentRescueReward} from './rescue-rewards.js?v=204';
 import {grantPersonalExp,revivalExperience,raiseLevelMark} from './experience-rules.js';
 import {guardRescueLines} from './soldier-dialogue.js';
 import {attributeCarryCapacity} from './unit-attributes.js?v=231';
+import {isHeavySoldier} from './heavy-tank.js?v=235';
 import {visibleHeroMembers} from './hero-rules.js';
 import {isOwnSquad} from './own-squad-marker.js?v=182';
 
@@ -86,6 +87,7 @@ export const carriedCivilians=(game,unit)=>!unit?[]:(game.civilians||[]).filter(
 export const carriedCount=(game,unit)=>carriedSoldiers(game,unit).length+carriedCivilians(game,unit).length;
 export const transportSpeedFactor=(game,unit)=>{
   const n=carriedCount(game,unit);
+  if(n&&isHeavySoldier(unit))return 1; // 重装歩兵は牽引しても速度が落ちない
   return n>1?.55:n?.72:1;
 };
 export const NPC_RESCUE_RADIUS=720;

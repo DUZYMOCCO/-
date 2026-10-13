@@ -1,5 +1,6 @@
 import {inCurrentInstance} from './instance-rules.js?v=182';
 import {recordCombat} from './phase-rules.js?v=218';
+import {tankSlowFactor} from './heavy-tank.js?v=235';
 
 export const RANGED_ENEMIES=Object.freeze({
   goblin_archer:{name:'ゴブリン弓兵',base:'goblin',kind:'physical',range:300,interval:2.2,speed:310,color:'#b5a078'},
@@ -27,7 +28,7 @@ export function updateRangedEnemy(game,unit,target,dt) {
   unit.facingAngle=Math.atan2(dy,dx);unit.atkTimer=Math.max(0,(unit.atkTimer||0)-dt);
   if(d>def.range||game.wallBlocksEnemyAttack?.(unit,target)) {
     const goal=game.dungeonMoveTarget?.(unit,target)||target,mx=goal.x-unit.x,my=goal.y-unit.y,md=Math.hypot(mx,my)||1;
-    const step=Math.min(md,unit.speed*(unit.magicSlowTimer>0?.55:1)*dt);unit.x+=mx/md*step;unit.y+=my/md*step;
+    const step=Math.min(md,unit.speed*tankSlowFactor(game,unit,unit.magicSlowTimer>0?.55:1)*dt);unit.x+=mx/md*step;unit.y+=my/md*step;
   } else if(unit.atkTimer<=0) {
     game.projectiles||=[];
     if(game.projectiles.filter(isHostileShot).length<DEFENSE_RULES.projectileCap){

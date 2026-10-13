@@ -4,12 +4,13 @@ import {headquartersMoveTarget} from './hq-navigation.js?v=200';
 import {configureBattlefieldUI,quietBattlefieldContext} from './battlefield-ui.js?v=182';
 import {renderNavigationMap} from './navigation-map.js?v=189';
 import {soldierEquipmentValue,observeEquipment,standardEquipmentCost,RESERVE_ARMAMENT_COUNT} from './armament-rules.js?v=231';
-import {configureRangedEnemy,updateRangedEnemy,updateDefenseWalls,interceptHostileShot,isHostileShot,updateHostileBolt,drawDefenseWalls} from './enemy-ranged.js?v=187';
+import {configureRangedEnemy,updateRangedEnemy,updateDefenseWalls,interceptHostileShot,isHostileShot,updateHostileBolt,drawDefenseWalls} from './enemy-ranged.js?v=235';
 import {LIMITED_CLASSES,initializeLimitedAllies,prepareLimitedEncounter,createLimitedAlly,joinLimitedEncounter,updateLimitedAllies,updateNinja,updateShuriken,drawLimitedEncounter,serializeLimitedAllies,notifyLimitedJoin} from './limited-allies.js?v=211';
 import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=182';
 import {TIERS,MAX_EQUIPMENT_TIER,MAX_POWER_RANK,POWER_RANK_STEP,GENERATION_COUNT,TRADE_MAX_TIER,powerRank,tierDescription} from './equipment-tiers.js?v=231';
 import {fieldAdaptiveScaling} from './field-scaling.js?v=182';
 import {activeSquad,inCurrentInstance} from './instance-rules.js?v=182';
+import {TANK,prepareTanks,tankEvalDistSq,tankSlowFactor,tankCover,tankStunSeconds} from './heavy-tank.js?v=235';
 import {recordBattleLog,resetBattleLog,refreshCombatFieldNotes} from './battle-log.js?v=226';
 import {rollDropExclusive,applyDropExclusive,dropExclusiveLabel} from './drop-exclusives.js?v=182';
 import {normalizeMaterials,applyCraftExclusive,craftExclusiveLabel,equipmentDropChance,materialDropChance,rollMaterialDrop,rollTreasureLoot} from './crafting-rules.js?v=231';
@@ -88,7 +89,7 @@ import {HEALING_HP_PER_EXP,REVIVAL_EXP_PER_MAX_HP,shareCommanderExp,raiseLevelMa
 import {attributeFamily,rollAttributeProfile,applyAttributeStats,attributeValues,practiceAttribute,attributeCarryCapacity,attributeSpecialties,prefersCasterMelee,canChannelWeaponMagic,magicAbilityMultiplier,CASTER_STRIKE_COST,casterStrikeMultiplier,beginAttributeMovement,finishAttributeMovement,ATTRIBUTE_LABELS,ATTRIBUTE_KEYS,aptitudeGrade} from './unit-attributes.js?v=231';
 import {rollScoutCandidate,renderRecruitment,nextScoutCandidate,startAutomaticRecruitment,stopAutomaticRecruitment,RECRUIT_CLASSES} from './recruitment.js?v=226';
 import {canUseEquipment,requiredWeaponStrength,equipmentRequirementText,isMagicWeapon,MAGIC_WEAPON_STYLES,preferredWeaponStyle} from './weapon-requirements.js?v=231';
-import {CASTER_GEAR,DEFENSE_TYPES,casterGearName,applyDefenseEquipment,casterEquipmentSummary,absorbEquipmentBarrier} from './defense-equipment.js?v=231';
+import {CASTER_GEAR,DEFENSE_TYPES,casterGearName,applyDefenseEquipment,casterEquipmentSummary,absorbEquipmentBarrier} from './defense-equipment.js?v=236';
 import {
   emptyFiscalLedger, calcCommanderStipend, calcBuyoutGold,
   shouldAbsorbToSharedBox, calcScoutCost, estimateSoldierScoutValue, calcDismissSettlement,
@@ -125,7 +126,7 @@ import {applyHeroEquipmentUpgrade} from './hero-equipment.js?v=211';
 import {initializeHeroJourney,rollHeroRevelation,serializeHeroJourney,updateHeroParty,updateHeroFollowing,awardHeroBattle,recordDemonKingDefeat,ensureHeroCastle,syncHeroCastle,renderHeroJourney,drawHeroMarks} from './hero-party.js?v=226';
 import {updateSquadHpHud} from './squad-hp-hud.js?v=229';
 import {addBattleReport,normalizeBattleReport,renderBattleReport} from './battle-report.js?v=226';
-import { RESCUE_TIMEOUT, REVIVAL_COOLDOWN, revivalCooldownOf, revivalSkillCooldownLeft, normalizeRevivalSkill, headquartersRevivalPaused, rescueUnits, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, receiveTownCargo, leaveCivilianSpace, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, markSoldierDown, downCommander, commanderDown, updateNpcRescue, CIV_KINDS, isMedic, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST, medicHoldsByCommander } from './casualty-rules.js?v=234';
+import { RESCUE_TIMEOUT, REVIVAL_COOLDOWN, revivalCooldownOf, revivalSkillCooldownLeft, normalizeRevivalSkill, headquartersRevivalPaused, rescueUnits, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, receiveTownCargo, leaveCivilianSpace, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, markSoldierDown, downCommander, commanderDown, updateNpcRescue, CIV_KINDS, isMedic, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST, medicHoldsByCommander } from './casualty-rules.js?v=235';
 import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault, dungeonBlocks, dungeonSolids } from './dungeon.js?v=208';
 import {nearestDungeonFloor,dungeonSpawnPoint,dungeonSteeringTarget} from './dungeon-layout.js?v=182';
 import {normalizeDungeonExploration,updateDungeonSideChests,drawDungeonSideChests,updateDungeonRespawns,dungeonCoolingDown,recordDungeonClear,DUNGEON_RESET_PHASES} from './dungeon-exploration.js?v=200';
@@ -5733,6 +5734,7 @@ export const IronSquadGame = {
     try {
       if (typeof this.rebuildSquadSpatial === 'function') this.rebuildSquadSpatial(aliveSquad);
     } catch (e) { console.warn('rebuildSquadSpatial', e); }
+    prepareTanks(this, aliveSquad); // 健在重装(ヘイト/かばう/重圧オーラ)をフレーム頭で1回だけ抽出
     const BASE_TERRITORY_RADIUS = 2200;
     const BASE_TERRITORY_R2 = BASE_TERRITORY_RADIUS * BASE_TERRITORY_RADIUS;
     // Precompute base-territory threats once/frame (avoids O(squad*monsters) filter hypot).
@@ -6905,13 +6907,15 @@ export const IronSquadGame = {
       if (m.isRaidMob) {
         minDist = 999999;
         target = null;
+        let evalMin = 999999; // 重装は見かけ距離半分(ヘイト)。minDistは常に実距離
         for (const s of raidDefenders) {
           if (s.isDown) continue;
-          const d = Math.sqrt(this._distSq(s.x, s.y, m.x, m.y));
-          if (d < minDist) { minDist = d; target = s; }
+          const d = Math.sqrt(tankEvalDistSq(s, this._distSq(s.x, s.y, m.x, m.y)));
+          if (d < evalMin) { evalMin = d; target = s; }
         }
+        if (target) minDist = Math.sqrt(this._distSq(target.x, target.y, m.x, m.y));
         const pDist = Math.sqrt(pDistSq);
-        if (!this.player.isDown && pDist < minDist) { minDist = pDist; target = this.player; }
+        if (!this.player.isDown && pDist < evalMin) { minDist = pDist; target = this.player; }
         if (!target || minDist > 400) {
           target = { x: BASE_CAMP.x, y: BASE_CAMP.y };
           minDist = Math.sqrt(this._distSq(BASE_CAMP.x, BASE_CAMP.y, m.x, m.y));
@@ -6924,19 +6928,21 @@ export const IronSquadGame = {
         const retargetPeriod = nearPlayer ? 1 : (farPlayer ? 4 : 2);
         if (nearPlayer || (m._aiTick % retargetPeriod) === 0) {
           if (nearPlayer) {
+            let evalMin = minDist;
             for (const s of aliveSquad) {
               if (s.isDown) continue;
-              const dsq = this._distSq(s.x, s.y, m.x, m.y);
-              if (dsq < minDist * minDist) {
-                minDist = Math.sqrt(dsq);
+              const dsq = tankEvalDistSq(s, this._distSq(s.x, s.y, m.x, m.y));
+              if (dsq < evalMin * evalMin) {
+                evalMin = Math.sqrt(dsq);
                 target = s;
               }
             }
+            if (target !== this.player) minDist = Math.sqrt(this._distSq(target.x, target.y, m.x, m.y));
           } else {
             let nearS = null;
             try {
               if (typeof this.getNearestSquadInSpatial === 'function') {
-                nearS = this.getNearestSquadInSpatial(m.x, m.y, minDist);
+                nearS = this.getNearestSquadInSpatial(m.x, m.y, minDist, true);
               }
             } catch (e) { nearS = null; }
             if (nearS) {
@@ -6944,14 +6950,16 @@ export const IronSquadGame = {
               minDist = nearS.dist;
             } else {
               // Fallback linear scan if spatial missing/throws
+              let evalMin = minDist;
               for (const s of aliveSquad) {
                 if (s.isDown) continue;
-                const dsq = this._distSq(s.x, s.y, m.x, m.y);
-                if (dsq < minDist * minDist) {
-                  minDist = Math.sqrt(dsq);
+                const dsq = tankEvalDistSq(s, this._distSq(s.x, s.y, m.x, m.y));
+                if (dsq < evalMin * evalMin) {
+                  evalMin = Math.sqrt(dsq);
                   target = s;
                 }
               }
+              if (target !== this.player) minDist = Math.sqrt(this._distSq(target.x, target.y, m.x, m.y));
             }
           }
         } else if (m._cachedTarget && !m._cachedTarget.dead && (m._cachedTarget.hp || 0) > 0 && !m._cachedTarget.isDown) {
@@ -7041,7 +7049,7 @@ export const IronSquadGame = {
       const reach=m.attackReach||(m.radius ? m.radius * 0.8 : 12);
       const wallBlocked=dist<=reach&&coverBlocked(this,m,target);
       if (dist > reach || wallBlocked) {
-        const slow=m.magicSlowTimer>0?.55:1;
+        const slow=tankSlowFactor(this,m,m.magicSlowTimer>0?.55:1); // 重圧オーラ(重装48px内×0.60)
         const goal=this.dungeonMoveTarget(m,target),mx=goal.x-m.x,my=goal.y-m.y,md=Math.hypot(mx,my)||1,step=Math.min(md,m.speed*slow*dt);
         m.x += mx/md*step;
         m.y += my/md*step;
@@ -7235,14 +7243,14 @@ export const IronSquadGame = {
   },
 
   /** Nearby-only nearest soldier via squad spatial (3x3 cells). Returns {s, dist} or null. */
-  getNearestSquadInSpatial(x, y, maxDist) {
+  getNearestSquadInSpatial(x, y, maxDist, hate = false) {
     const cell = SPATIAL_CELL;
     const grid = this._squadGrid;
     if (!grid || !grid.size) return null;
     const cx = Math.floor(x / cell);
     const cy = Math.floor(y / cell);
     let nearest = null;
-    let minDistSq = (maxDist != null ? maxDist : 9999) * (maxDist != null ? maxDist : 9999);
+    let minDistSq = (maxDist != null ? maxDist : 9999) * (maxDist != null ? maxDist : 9999), nearReal = 0;
     for (let oy = -1; oy <= 1; oy++) {
       for (let ox = -1; ox <= 1; ox++) {
         const bucket = grid.get((cx + ox) + ',' + (cy + oy));
@@ -7250,12 +7258,18 @@ export const IronSquadGame = {
         for (let i = 0; i < bucket.length; i++) {
           const s = bucket[i];
           if (!s || s.isDown || s.dead) continue;
-          const dsq = this._distSq(s.x, s.y, x, y);
-          if (dsq < minDistSq) { minDistSq = dsq; nearest = s; }
+          const rsq = this._distSq(s.x, s.y, x, y), dsq = hate ? tankEvalDistSq(s, rsq) : rsq; // hate=重装の見かけ距離補正
+          if (dsq < minDistSq) { minDistSq = dsq; nearest = s; nearReal = rsq; }
         }
       }
     }
-    return nearest ? { s: nearest, dist: Math.sqrt(minDistSq) } : null;
+    // 重装の威圧感は近傍セルの外にも届く（見かけ距離で比較。実距離 TANK.hateReach まで）
+    if (hate) for (const s of this._tankHeavies || []) {
+      if (!s || s.isDown || s.dead || s === nearest) continue;
+      const rsq = this._distSq(s.x, s.y, x, y);if (rsq > TANK.hateReach * TANK.hateReach) continue;
+      const dsq = tankEvalDistSq(s, rsq);if (dsq < minDistSq) { minDistSq = dsq; nearest = s; nearReal = rsq; }
+    }
+    return nearest ? { s: nearest, dist: Math.sqrt(nearReal) } : null;
   },
 
   getNearestMonster(x, y, filterFn = null) {
@@ -7492,6 +7506,7 @@ export const IronSquadGame = {
     if (monster.hp <= 0) {
       this.killMonster(monster, attacker, isPlayer);
     } else if(!magicalAttack){
+      if(!isPlayer&&!wProf.ranged){const stun=tankStunSeconds(attacker,monster);if(stun>0){monster.magicStunTimer=Math.max(monster.magicStunTimer||0,stun);this.spawnDamageText(monster.x,monster.y-24,'💫スタン!','#fef08a');}} // 重装の重撃スタン
       const infused=magicBonus||(!wProf.ranged&&canChannelWeaponMagic(attacker)&&spendMana(attacker,6)?weaponMagicDamage(attacker):0);
       if(infused>0)this.performAttack(attacker,monster,isPlayer,infused,false,'magic');
     }
@@ -7502,17 +7517,26 @@ export const IronSquadGame = {
     const environmental=!!options.environmental;
     if (!target || target.dead || target.isDown || target.hp <= 0 || !(rawDmg > 0)) return;
     if(target===this.player&&target.invulnerableTimer>0)return;
-    if(!environmental && options.attacker && coverBlocked(this, options.attacker, target))return;
+    const covered=!!options.cover; // 重装の身代わり分: 回避・遮蔽判定なし、自身のDEF/軽減/結界/死線は通常どおり、倒れない(HP1止まり)
+    if(!environmental && !covered && options.attacker && coverBlocked(this, options.attacker, target))return;
     if(!environmental)recordCombat(target);
     const magical=options.damageKind==='magic'||options.damageKind==='elemental'||!!options.element;
     const dodgeChance=target.dodge ?? (target.soldierClass==='BLADEMASTER'?25:0);
-    if (!environmental && dodgeChance>0 && Math.random()*100 < dodgeChance) {
+    if (!environmental && !covered && dodgeChance>0 && Math.random()*100 < dodgeChance) {
       practiceAttribute(target,'evasion',1);
       if(target===this.player)this.recalcPlayerStats();else this.recalcSoldierStats(target);
       this.spawnDamageText(target.x, target.y - 14, '⚡回避!', '#fbbf24');
       this.spawnSparks(target.x, target.y, '#fbbf24', 5);
       sound.playSlash();
       return;
+    }
+
+    // 重装歩兵のかばう: 生ダメージの半分を近くの重装へ（重装側の防御計算を通す）。残りは被弾者の通常計算へ
+    const cv = tankCover(this, target, rawDmg, options);
+    if (cv) {
+      this.damageTarget(cv.guardian, cv.share, {...options, cover: true});
+      rawDmg = cv.rest;
+      this.spawnDamageText(target.x, target.y - 24, '🛡️みがわり!', '#38bdf8');
     }
 
     // 聖騎士（PALADIN）のサンクチュアリ (周囲140pxに生存中の聖騎士がいれば被ダメージ-30%カット)
@@ -7554,8 +7578,9 @@ export const IronSquadGame = {
 
     if(!environmental)dmg=Math.max(1,Math.round(dmg*headquartersDamageMult(this,target)));
     if(target.magicWardTimer>0)dmg=Math.max(1,Math.round(dmg*(1-(target.magicWardBonus||0))));
-    const barrier=absorbEquipmentBarrier(target,dmg);dmg=barrier.damage;
+    const barrier=absorbEquipmentBarrier(target,dmg,magical);dmg=barrier.damage;
     if(barrier.absorbed>0)this.spawnDamageText(target.x,target.y-26,`結界 −${Math.ceil(barrier.absorbed)}`,'#90b9c5');
+    if(covered){dmg=Math.min(dmg,target.hp-1);if(!(dmg>0))return;} // かばいでは倒れない
     if(preventLethalHit(this,target,dmg))return;
     if(magical)practiceAttribute(target,'magicDefense',1+Math.min(4,rawDmg/Math.max(1,target.maxHp||1)));
     const hpBeforeHit = target.hp, lostHp = Math.min(dmg, Math.max(0, hpBeforeHit));

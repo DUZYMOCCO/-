@@ -2,7 +2,7 @@ import {isMagicUser,ensureMana} from './magic-rules.js?v=231';
 import {WORLD_SIZE} from './world.js?v=198';
 import {inCurrentInstance} from './instance-rules.js?v=182';
 import {saveSlots} from './save-slots.js';
-import {nearestRevivalPotionTarget,reviveByPotion,REVIVAL_POTION_RANGE} from './casualty-rules.js?v=234';
+import {nearestRevivalPotionTarget,reviveByPotion,REVIVAL_POTION_RANGE} from './casualty-rules.js?v=235';
 
 export const AMMO_CAPACITY=30;
 export const SQUAD_POTION_COST=5000,SQUAD_POTION_MAX=3; // 携帯は3個まで。商人で1個ずつ、本陣では無料で満タン

@@ -67,7 +67,10 @@ mage.hp=mage.maxHp;mage.dodge=0;mage.lethalGuardCooldown=999;mage.hitGrowthHp=0;
 const random=Math.random;Math.random=()=>.99;
 try{
   const hp=mage.hp;game.damageTarget(mage,30,{environmental:true});assert.ok(mage.hp<hp&&mage.equipmentBarrier<max);
-  const remaining=mage.equipmentBarrier;game.damageTarget(mage,30,{damageKind:'magic'});assert.ok(mage.equipmentBarrier<remaining);
+  const remaining=mage.equipmentBarrier,hpBeforeMagic=mage.hp;
+  game.damageTarget(mage,30,{damageKind:'magic'});
+  assert.equal(mage.hp,hpBeforeMagic,'barrier absorbs 100% of magical damage while capacity remains');
+  assert.ok(mage.equipmentBarrier<remaining);
   mage.equipmentBarrier=1;game.damageTarget(mage,30,{environmental:true});assert.equal(mage.equipmentBarrier,0);
   const hpEmpty=mage.hp;game.damageTarget(mage,30,{environmental:true});assert.ok(mage.hp<hpEmpty);
 }finally{Math.random=random;}

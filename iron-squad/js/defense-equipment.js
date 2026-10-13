@@ -2,8 +2,8 @@ import {TIERS,materialTier,generation,powerRank} from './equipment-tiers.js?v=23
 
 export const DEFENSE_TYPES=['SHIELD','HELMET','ARMOR','GLOVES','LEGS','AMULET'];
 export const CASTER_GEAR={
-  arcane:{name:'魔導',color:'#7f719b',magic:1,heal:0,barrier:.2},
-  healing:{name:'治癒',color:'#d2c9ab',magic:.2,heal:1,barrier:.2},
+  arcane:{name:'魔導',color:'#7f719b',magic:1,heal:0,barrier:.5},
+  healing:{name:'治癒',color:'#d2c9ab',magic:.2,heal:1,barrier:.5},
   ward:{name:'結界',color:'#668d98',magic:0,heal:0,barrier:1}
 };
 const PIECES={SHIELD:'護符盾',HELMET:'頭巾',ARMOR:'ローブ',GLOVES:'手袋',LEGS:'脚衣',AMULET:'護符'};
@@ -42,10 +42,10 @@ export function casterEquipmentSummary(item) {
   if(s.magicBonus)parts.push(`魔力補正+${s.magicBonus}%`);
   if(s.healBonus)parts.push(`回復補正+${s.healBonus}%`);
   if(s.magicDefense)parts.push(`魔法防御+${s.magicDefense}`);
-  if(s.barrier)parts.push(`バリア+${s.barrier}（被ダメージの50%を吸収）`);
+  if(s.barrier)parts.push(`バリア+${s.barrier}（物理50%・魔法100%吸収）`);
   return parts.join(' · ');
 }
-export const BARRIER_RULES=Object.freeze({absorb:.5,rechargeDelay:8,rechargeRate:.06});
+export const BARRIER_RULES=Object.freeze({absorb:.5,magicAbsorb:1.0,rechargeDelay:8,rechargeRate:.06});
 /** Equipment swaps and recalculation never refill an existing barrier. */
 export function syncEquipmentBarrier(unit,maximum) {
   const first=!Number.isFinite(unit.equipmentBarrier),cap=Math.max(0,Math.floor(maximum));
@@ -53,8 +53,9 @@ export function syncEquipmentBarrier(unit,maximum) {
   unit.equipmentBarrier=first?cap:Math.max(0,Math.min(cap,unit.equipmentBarrier));
   unit.equipmentBarrierDelay=Math.max(0,Math.min(BARRIER_RULES.rechargeDelay,Number(unit.equipmentBarrierDelay)||0));
 }
-export function absorbEquipmentBarrier(unit,damage) {
-  const absorbed=Math.min(Math.floor(Math.max(0,unit.equipmentBarrier||0)),Math.floor(damage*BARRIER_RULES.absorb));
+export function absorbEquipmentBarrier(unit,damage,magical=false) {
+  const rate=magical?(BARRIER_RULES.magicAbsorb||1.0):BARRIER_RULES.absorb;
+  const absorbed=Math.min(Math.floor(Math.max(0,unit.equipmentBarrier||0)),Math.floor(damage*rate));
   if(unit.equipmentBarrierMax>0)unit.equipmentBarrierDelay=BARRIER_RULES.rechargeDelay;
   unit.equipmentBarrier=Math.max(0,(unit.equipmentBarrier||0)-absorbed);
   return {damage:damage-absorbed,absorbed};
