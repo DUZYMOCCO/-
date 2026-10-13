@@ -32,7 +32,7 @@ normal.reqExp=hero.reqExp=1e6;grantPersonalExp(game,normal,3);grantPersonalExp(g
 practiceAttribute(normal,'strength',2);practiceAttribute(hero,'strength',2);assert.equal(hero.attributeProfile.practice.strength,normal.attributeProfile.practice.strength*20);
 gainWeaponMastery(normal,'sword',2);gainWeaponMastery(hero,'sword',2);assert.equal(hero.weaponMastery.sword,normal.weaponMastery.sword*20);
 normal.maxHp=hero.maxHp=100;assert.equal(applyHitGrowth(hero,10).gain,applyHitGrowth(normal,10).gain*20);
-assert.equal(Math.round(zoneRingPower(8000)),10);assert.equal(Math.round(zoneRingPower(22000)),100);
+assert.equal(zoneRingPower(8000),12.5);assert.equal(zoneRingPower(22000),250);
 game.monsters=[];const x=p.x;for(let i=0;i<60;i++)updateHeroParty(game,.1,SOLDIER_CLASSES);assert.ok(p.x>x+200,'marches without player movement');
 assert.ok(p.members.some(u=>u.attributeProfile.practice.travel>0));
 const plan={x:BASE_CAMP.x+512,y:BASE_CAMP.y,destination:{x:BASE_CAMP.x+42000,y:BASE_CAMP.y+42000},route:[]};

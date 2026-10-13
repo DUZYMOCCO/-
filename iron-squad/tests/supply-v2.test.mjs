@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {strongEnemyReward,combatPower} from '../js/combat-rewards.js';
 import {JSDOM} from '../../__pycache__/ui-tools/node_modules/jsdom/lib/api.js';
-import {AMMO_CAPACITY,LETHAL_GUARD_COOLDOWN,initializeSupplies,updateSupplies,distributeAmmo,supplyLocation,ammoCombatProfile} from '../js/supply-rules.js';
+import {AMMO_CAPACITY,ammoCapacity,LETHAL_GUARD_COOLDOWN,initializeSupplies,updateSupplies,distributeAmmo,supplyLocation,ammoCombatProfile} from '../js/supply-rules.js';
 import {weaponCombatProfile} from '../js/equipment-rules.js';
 import {masteryReloadMult} from '../js/growth-rules.js';
 const dom=new JSDOM('<div id="game" class="game-container"></div>',{url:'http://localhost/'});
@@ -15,7 +15,7 @@ Object.assign(game,{width:390,height:664,zoom:1,ctx,camera:{x:79360,y:79360},sel
 for(const key of ['startGameLoop','showToast','spawnSparks','spawnDamageText'])game[key]=noop;
 game.setupUI();game.activeSlotId=saveSlots.create('V2 TEST ONLY').id;game.startFreshGame(false);game.career.status='enlisted';
 assert.equal(game.squad.length,DEPLOYMENT_CAPACITY);assert.equal(game.monsters.length,ENEMY_LIMIT);
-assert.equal(game.squadPotion,1);assert.ok(game.squad.every(s=>s.ammo===30));assert.equal(saveSlots.get(game.activeSlotId).data.squadPotion,1,'initial auto-save records the issued potion');assert.equal(saveSlots.get(game.activeSlotId).data.player.ammo,30);
+assert.equal(game.squadPotion,1);assert.ok(game.squad.every(s=>s.ammo===ammoCapacity(s)));assert.equal(saveSlots.get(game.activeSlotId).data.squadPotion,1,'initial auto-save records the issued potion');assert.equal(saveSlots.get(game.activeSlotId).data.player.ammo,30);
 const baseline=structuredClone(game.saveGame());
 function field() {
   game.resumeSavedGame(structuredClone(baseline));game.closeStrategyModal();
@@ -26,48 +26,44 @@ function field() {
 }
 const enemy=(x=81090,y=81000)=>({x,y,type:'goblin',hp:1e6,maxHp:1e6,radius:12,speed:0,atk:1,atkCooldown:100});
 const weapon=style=>({id:`test-${style}`,type:'WEAPON',weaponStyle:style,stats:{atk:0}});
-// All three loaded projectiles, exact 20% base boost and 75% empty fallback.
-for(const [style,type] of [['bow','ARROW'],['crossbow','BOLT'],['cannon','CANNONBALL']]) {
-  field();game.equipped.weapon=weapon(style);game.player.ammo=1;game.monsters=[enemy()];game.rebuildMonsterSpatial();game.manualAttack();
-  assert.equal(game.player.ammo,0);assert.equal(game.projectiles[0].type,type);assert.equal(game.projectiles[0].damage,style==='cannon'?240:120,'v6.3.0: cannon shells x2');
-  game.projectiles=[];game.player.atkCooldown=0;game.rebuildMonsterSpatial();game.manualAttack();const stone=game.projectiles[0];
-  assert.equal(stone.type,'STONE');assert.equal(stone.damage,90);assert.equal(stone.splash,0);assert.equal(stone.knockback,0);
-  const profile=ammoCombatProfile(game.player,game.combatProfileFor(game.player,weapon(style),true));assert.equal(profile.splash,0);
-  game.player.atkCooldown=100;stone.x=game.monsters[0].x;stone.y=game.monsters[0].y;
-  const neighbor=enemy(stone.x+8,stone.y);game.monsters.push(neighbor);const hp=neighbor.hp;
-  game.update(.01);assert.equal(neighbor.hp,hp,'stones never damage neighboring enemies');assert.ok(game.monsters[0].hp<1e6);
-  // Empty strong attack cannot create explosive / piercing / rain effects.
-  game.projectiles=[];game.powerFx=[];game.player.powerAtkCooldown=0;game.triggerPowerAttack();
-  assert.ok(game.projectiles.every(p=>p.type==='STONE'));assert.equal(game.powerFx.length,0);
+// Loaded shots consume actual rounds; empty mode uses a single defensive blade without projectiles.
+for(const [style,type] of [['bow','ARROW'],['crossbow','PIERCE_BOLT'],['cannon','CANNONBALL']]) {
+  field();game.equipped.weapon=weapon(style);game.player.equipped=game.equipped;game.player.ammo=1;game.monsters=[enemy()];game.rebuildMonsterSpatial();game.manualAttack();
+  assert.equal(game.player.ammo,0);assert.equal(game.projectiles[0].type,type);assert.equal(game.projectiles[0].damage,120,'shells no longer receive another x2');
+  game.projectiles=[];game.player.atkCooldown=0;game.rebuildMonsterSpatial();game.manualAttack();assert.equal(game.projectiles.length,0,'empty weapon cannot create a stone');
+  const profile=ammoCombatProfile(game.player,game.combatProfileFor(game.player,weapon(style),true));assert.equal(profile.sidearm,true);assert.equal(profile.splash,0);
+  game.monsters[0].x=game.player.x+45;game.player.atkCooldown=0;game.rebuildMonsterSpatial();const hp=game.monsters[0].hp;game.manualAttack();assert.ok(game.monsters[0].hp<hp,'near enemies are stabbed');
+  const cooldown=game.player.atkCooldown;game.manualAttack();assert.equal(game.player.atkCooldown,cooldown,'manual melee shares cooldown');
+  game.projectiles=[];game.powerFx=[];game.player.powerAtkCooldown=0;game.triggerPowerAttack();assert.equal(game.projectiles.length,0);assert.equal(game.powerFx.length,0);
 }
 assert.equal(weaponCombatProfile(weapon('crossbow')).baseCooldown,1.25);
 assert.equal(weaponCombatProfile(weapon('cannon')).baseCooldown,1.85);
 assert.ok(masteryReloadMult({cannon:1e10},'cannon')>=.55,'existing mastery reload floor is retained');
 field();game.equipped.weapon=weapon('bow');game.player.ammo=4;game.monsters=[enemy()];game.triggerPowerAttack();assert.equal(game.player.ammo,0);assert.equal(game.powerFx.length,4);
 // Player automatic shot and real squad AI, including an almost-empty SNIPER burst.
-field();game.equipped.weapon=weapon('crossbow');game.player.ammo=2;game.monsters=[enemy()];game.update(.01);assert.equal(game.player.ammo,1);assert.equal(game.projectiles[0].type,'BOLT');
+field();game.equipped.weapon=weapon('crossbow');game.player.ammo=2;game.monsters=[enemy()];game.update(.01);assert.equal(game.player.ammo,1);assert.equal(game.projectiles[0].type,'PIERCE_BOLT');
 field();game.equipped.weapon=weapon('sword');game.player.atkCooldown=100;
 const sniper=structuredClone(baseline.squad[0]);Object.assign(sniper,{soldierClass:'SNIPER',x:81000,y:81000,isPersonalGuard:true,ammo:1,atkCooldown:0,speed:0,isDown:false,hp:1000,maxHp:1000,equipped:{weapon:weapon('bow')},weapon:weapon('bow'),_cachedEnemy:null,_pgTick:0});
 game.squad=[sniper];game.monsters=[enemy()];game.update(.01);
-assert.equal(sniper.ammo,0);assert.equal(game.projectiles.filter(p=>p.type==='STAR_ARROW').length,1);assert.equal(game.projectiles.filter(p=>p.type==='STONE').length,2);
-Object.assign(sniper,{soldierClass:'ARCHER',x:81000,y:81000,ammo:0,speed:100,_pgTick:3,atkCooldown:0});game.monsters=[enemy(81230,81000)];game.projectiles=[];game.update(.01);assert.ok(sniper.x>81000,'an empty archer closes to stone range rather than stopping at bow range');
+assert.equal(sniper.ammo,0);assert.equal(game.projectiles.filter(p=>p.type==='STAR_ARROW').length,1);assert.equal(game.projectiles.filter(p=>p.type==='STONE').length,0);
+Object.assign(sniper,{soldierClass:'ARCHER',x:81000,y:81000,ammo:0,speed:100,_pgTick:3,atkCooldown:0});game.monsters=[enemy(81230,81000)];game.projectiles=[];game.update(.01);assert.ok(Math.abs(sniper.x-game.player.x)<80,'empty archer remains in formation instead of charging a far target');assert.equal(game.projectiles.length,0);
 // Direct structure attacks also consume ammunition; empty stones still deal less damage.
 field();game.equipped.weapon=weapon('cannon');game.player.ammo=1;
 const op={x:81020,y:81000,radius:50,hp:1e6,maxHp:1e6,type:'FORTRESS',cleared:false};game.outposts=[op];game.rebuildMonsterSpatial();game.manualAttack();assert.equal(game.player.ammo,0);const loss=1e6-op.hp;
 game.player.atkCooldown=0;const before=op.hp;game.rebuildMonsterSpatial();game.manualAttack();assert.ok(before-op.hp<loss);
 // Automatic supply by each unit's proximity, town entrance, field merchant and town coordinates.
 field();game.equipped.weapon=weapon('bow');game.player.ammo=0;updateSupplies(game,.25);assert.equal(game.player.ammo,0);
-Object.assign(game.player,{x:79360,y:79360});updateSupplies(game,.25);assert.equal(game.player.ammo,AMMO_CAPACITY);
-game.player.ammo=0;const town=game.dungeons.find(d=>d.kind==='town');Object.assign(game.player,town.entrance);assert.equal(supplyLocation(game).kind,'town');updateSupplies(game,.25);assert.equal(game.player.ammo,30);
-game.player.ammo=0;game.player.x=81000;game.player.y=81000;game.merchants=[{id:'supply',x:81010,y:81000,hp:10,maxHp:10,placeName:'野営キャンプ'}];updateSupplies(game,.25);assert.equal(game.player.ammo,30);
+Object.assign(game.player,{x:79360,y:79360});updateSupplies(game,.25);assert.equal(game.player.ammo,ammoCapacity(game.player));
+game.player.ammo=0;const town=game.dungeons.find(d=>d.kind==='town');Object.assign(game.player,town.entrance);assert.equal(supplyLocation(game).kind,'town');updateSupplies(game,.25);assert.equal(game.player.ammo,ammoCapacity(game.player));
+game.player.ammo=0;game.player.x=81000;game.player.y=81000;game.merchants=[{id:'supply',x:81010,y:81000,hp:10,maxHp:10,placeName:'野営キャンプ'}];updateSupplies(game,.25);assert.equal(game.player.ammo,ammoCapacity(game.player));
 game.player.ammo=0;game.merchants[0].isDown=true;updateSupplies(game,.25);assert.equal(game.player.ammo,0);
-game.currentDungeon={...town};game.player.x=180;game.player.y=town.height/2;updateSupplies(game,.25);assert.equal(game.player.ammo,30);game.currentDungeon=null;
+game.currentDungeon={...town};game.player.x=180;game.player.y=town.height/2;updateSupplies(game,.25);assert.equal(game.player.ammo,ammoCapacity(game.player));game.currentDungeon=null;
 // Picked ammo reaches archers even when a melee soldier or the player collects it.
 field();const archer={id:'archer',soldierClass:'ARCHER',x:83000,y:83000,hp:10,maxHp:10,ammo:0,speed:0,atkCooldown:100,equipped:{weapon:weapon('bow')}};
 const melee=structuredClone(baseline.squad[0]);Object.assign(melee,{soldierClass:'HEAVY',x:81000,y:81000,hp:1000,maxHp:1000,speed:0,atkCooldown:100,isPersonalGuard:true,equipped:{weapon:weapon('sword')},weapon:weapon('sword')});
 game.squad=[melee,archer];game.player.atkCooldown=100;game.dropsOnField=[{x:81000,y:81000,isAmmo:true,ammo:5}];game.update(.01);assert.equal(archer.ammo,5);assert.equal(game.dropsOnField.length,0);assert.equal(game.inventory.length,baseline.inventory.length);
 game.squad=[archer];game.dropsOnField=[{x:81000,y:81000,isAmmo:true,ammo:3}];game.update(.01);assert.equal(archer.ammo,8);
-archer.ammo=30;distributeAmmo(game,4);assert.equal(game.ammoReserve,4);archer.ammo=28;updateSupplies(game,.25);assert.equal(archer.ammo,30);assert.equal(game.ammoReserve,2);
+archer.ammo=ammoCapacity(archer);distributeAmmo(game,4);assert.equal(game.ammoReserve,4);archer.ammo=ammoCapacity(archer)-2;updateSupplies(game,.25);assert.equal(archer.ammo,ammoCapacity(archer));assert.equal(game.ammoReserve,2);
 // Enemy ammo drops are independent of equipment loot.
 field();const oldRandom=Math.random;try{Math.random=()=>.1;const mob=enemy();mob.hp=0;game.monsters=[mob];game.killMonster(mob,game.player,true);assert.ok(game.dropsOnField.some(d=>d.isAmmo&&d.ammo>=2&&d.ammo<=6));}finally{Math.random=oldRandom;}
 // One controller click consumes exactly one potion; no revival, no double-use.
@@ -76,7 +72,7 @@ const main={id:'main',soldierClass:'MAGE',x:81000,y:81000,hp:2,maxHp:100,ammo:2,
 const healer={id:'healer',isPersonalGuard:true,soldierClass:'MEDIC',x:81000,y:81000,hp:1,maxHp:100,ammo:0,mana:0};
 game.squad=[alive,healer,down,dead,main];game.reserves=[{id:'reserve',isPersonalGuard:true,soldierClass:'MAGE',hp:1,maxHp:50,ammo:1,mana:1,maxMana:100,magicAffinity:'ice',magicRecovering:true}];game.player.hp=1;game.player.ammo=0;
 const mainBefore=structuredClone(main),reserveBefore=structuredClone(game.reserves[0]);
-document.getElementById('btn-pad-potion').click();assert.equal(game.squadPotion,0);assert.equal(game.player.hp,game.player.maxHp);assert.equal(game.player.ammo,30);assert.equal(alive.hp,100);assert.equal(alive.ammo,30);assert.equal(healer.hp,100);assert.equal(healer.mana,100);assert.equal(down.hp,0);assert.equal(down.ammo,0);assert.equal(dead.hp,0);
+document.getElementById('btn-pad-potion').click();assert.equal(game.squadPotion,0);assert.equal(game.player.hp,game.player.maxHp);assert.equal(game.player.ammo,ammoCapacity(game.player));assert.equal(alive.hp,100);assert.equal(alive.ammo,ammoCapacity(alive));assert.equal(healer.hp,100);assert.equal(healer.mana,100);assert.equal(down.hp,0);assert.equal(down.ammo,0);assert.equal(dead.hp,0);
 assert.deepEqual(main,mainBefore,'co-located main army receives no HP/ammo/mana from potion');assert.deepEqual(game.reserves[0],reserveBefore,'reserves stay excluded even with a stale personal-guard flag');
 for(const kind of ['dungeon','ruin','town']){game.currentDungeon={id:'potion-instance',kind};Object.assign(alive,{x:180,y:180,hp:1,ammo:0});healer.hp=1;healer.mana=0;game.squadPotion=1;assert.equal(game.useSquadPotion(),true);assert.equal(alive.hp,100);assert.equal(healer.mana,100);assert.deepEqual(main,mainBefore);assert.deepEqual(game.reserves[0],reserveBefore);}
 game.currentDungeon=null;
@@ -111,7 +107,7 @@ assert.deepEqual(saveSlots.get(firstSlot).checkpoint,savedCp);
 // Real town entry records field positions, and a load resumes at that entrance.
 game.resumeSavedGame(structuredClone(baseline));game.closeStrategyModal();const actualTown=game.dungeons.find(d=>d.kind==='town');Object.assign(game.player,actualTown.entrance);const entry={x:game.player.x,y:game.player.y};game.enterDungeon(actualTown);
 assert.equal(game.currentDungeon.kind,'town');assert.equal(game.saveCheckpoint(),true);cp=saveSlots.get(firstSlot).checkpoint;assert.deepEqual({x:cp.data.player.x,y:cp.data.player.y},entry);assert.equal(game.loadCheckpoint(),true);assert.equal(game.currentDungeon,null);assert.deepEqual({x:game.player.x,y:game.player.y},entry);
-const legacy=structuredClone(baseline);delete legacy.squadPotion;delete legacy.ammoReserve;delete legacy.player.ammo;for(const s of legacy.squad)delete s.ammo;game.resumeSavedGame(legacy);assert.equal(game.squadPotion,1);assert.equal(game.player.ammo,30);assert.ok(game.squad.every(s=>s.ammo===30));
+const legacy=structuredClone(baseline);delete legacy.squadPotion;delete legacy.ammoReserve;delete legacy.player.ammo;for(const s of legacy.squad)delete s.ammo;game.resumeSavedGame(legacy);assert.equal(game.squadPotion,1);assert.equal(game.player.ammo,ammoCapacity(game.player));assert.ok(game.squad.every(s=>s.ammo===ammoCapacity(s)));
 delete legacy.player.lethalGuardCooldown;legacy.player.invulnerableTimer=1;game.resumeSavedGame(legacy);assert.equal(game.player.lethalGuardCooldown,120,'legacy saves with active protection receive a cooldown');legacy.player.invulnerableTimer=0;game.resumeSavedGame(legacy);assert.equal(game.player.lethalGuardCooldown,0,'untriggered legacy protection is available');
 // A fallen expedition can explicitly resume its manual checkpoint from selection.
 Object.assign(game.player,{x:79360,y:79360});game.gold=654;game.saveCheckpoint();game.gold=0;saveSlots.update(game.activeSlotId,{state:'fallen'});
@@ -136,5 +132,5 @@ game.saveGame();assert.equal(saveSlots.get(game.activeSlotId).data.lastStrongKil
 field();const strongSoldier=structuredClone(baseline.squad[0]);strongSoldier.reqExp=1e9;strongSoldier.exp=0;game.squad=[strongSoldier];
 const soldierThreat={...enemy(),hp:0,maxHp:strongSoldier.maxHp*2,atk:strongSoldier.atk*2,def:strongSoldier.def,dmgReduction:strongSoldier.dmgReduction,lootDistance:0};
 game.monsters=[soldierThreat];game.killMonster(soldierThreat,strongSoldier,false);assert.equal(strongSoldier.exp,30,'soldiers receive the same relative-strength bonus');
-console.log('PASS: v2 real manual/auto/SNIPER/strong/outpost shots, 20%/75%, single-target stones, supply locations, any-collector ammo, reserve, independent enemy drop; personal-only potion in field/dungeon/ruin/town, no revival/main/reserves; lethal-hit 2s immunity/120s cooldown/second-hit death/rearm/heal/save/checkpoint/pause/legacy; immutable checkpoints/quota/slot isolation/town entry/legacy migration, unchanged population; relative-strength XP/5x/25x/player/soldier/save/display');
+console.log('PASS: v2 real manual/auto/SNIPER/strong/outpost shots, 20% ranged bonus, zero stones, defensive sidearm, strength-dependent ammunition, supply locations, any-collector ammo, reserve, independent enemy drop; personal-only potion in field/dungeon/ruin/town, no revival/main/reserves; lethal-hit 2s immunity/120s cooldown/second-hit death/rearm/heal/save/checkpoint/pause/legacy; immutable checkpoints/quota/slot isolation/town entry/legacy migration, unchanged population; relative-strength XP/5x/25x/player/soldier/save/display');
 dom.window.close();

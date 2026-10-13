@@ -6,7 +6,7 @@ import {applyAttributeStats} from './unit-attributes.js?v=231';
  * - 強い護衛付き。放置するとモンスターに襲われ死亡しうる
  * - 護衛が倒した強敵のドロップを序盤から掠め取れるチャンス
  */
-import { saleValue, distanceScaling, weaponCombatProfile } from './equipment-rules.js?v=238';
+import { saleValue, distanceScaling, weaponCombatProfile } from './equipment-rules.js?v=241';
 import { drawFieldSoldier } from './visuals.js?v=211';
 import { createSoldierAppearance, drawSoldierHead } from './soldier-appearance.js?v=206';
 import { attackAnimationRate } from './weapon-motion.js?v=218';

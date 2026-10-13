@@ -2,7 +2,7 @@ import {CRAFT_MATERIALS,CRAFT_RECIPES,craftRecipe,normalizeMaterials,addMaterial
   recipeMaterials,canAffordMaterials,stampCraftedItem,craftExclusiveLabel} from './crafting-rules.js?v=231';
 import {standardEquipmentCost} from './armament-rules.js?v=231';
 import {tierDescription,tierNumber} from './equipment-tiers.js?v=231';
-import {equipmentName,compareEquipment} from './equipment-rules.js?v=238';
+import {equipmentName,compareEquipment} from './equipment-rules.js?v=241';
 import {equipmentRequirementText} from './weapon-requirements.js?v=239';
 import {atFacility} from './hq-facilities.js?v=201';
 import {sound} from '../../common/js/audio.js?v=151';

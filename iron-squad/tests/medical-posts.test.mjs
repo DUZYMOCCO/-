@@ -6,7 +6,7 @@ import {JSDOM} from '../../__pycache__/ui-tools/node_modules/jsdom/lib/api.js';
 import {WORLD_SIZE,WorldTerrain} from '../js/world.js';
 import {medicalPostLayout,MEDICAL_CASTLE_EXCLUSION,initializeMedicalPosts,updateMedicalPosts,nearestKnownMedicalPost,serializeMedicalPosts,drawMedicalPost,drawMedicalMap,drawTownMedicalReception,drawRescueDirection} from '../js/medical-posts.js?v=139';
 import {markSoldierDown,updateWounded,attachWounded,attachCivilian,updateCivilians,handleTransportAI,syncDragged} from '../js/casualty-rules.js?v=139';
-import {supplyLocation,updateSupplies} from '../js/supply-rules.js?v=139';
+import {supplyLocation,updateSupplies,ammoCapacity} from '../js/supply-rules.js?v=139';
 import {replenishTownGateGuards} from '../js/gate-rules.js?v=139';
 import {updateMagic} from '../js/magic-rules.js?v=139';
 import {currentFields} from '../js/hazard-fields.js?v=139';
@@ -54,7 +54,7 @@ game.enterDungeon(town2);const localGuard=game.gateGuards.find(g=>g.gateSpace===
 game.exitDungeon();assert.equal(localGuard.gateSpace,town2.id,'exiting town preserves the rescued guard’s town post');
 // Automatic carriers select nearby known aid, rather than HQ across the map.
 fresh();const m=game.medicalPosts[0];m.discovered=true;const carrier=game.squad[0],patient=game.squad[1];Object.assign(carrier,{x:m.x+300,y:m.y,soldierClass:'HEAVY'});Object.assign(patient,{x:carrier.x,y:carrier.y});game.player.x=center;game.player.y=center;markSoldierDown(game,patient);handleTransportAI(game,carrier,.1);assert.equal(patient.carrierId,carrier.id);const oldX=carrier.x;handleTransportAI(game,carrier,1);assert.ok(carrier.x<oldX);
-assert.equal(supplyLocation(game,{x:m.x,y:m.y}).kind,'medical');const archer=game.squad[2],medic=game.squad[3];Object.assign(archer,{soldierClass:'ARCHER',x:m.x,y:m.y,ammo:0});Object.assign(medic,{soldierClass:'MEDIC',x:m.x,y:m.y,mana:0});updateSupplies(game,.25);updateMagic(game,.25,supplyLocation);assert.equal(archer.ammo,30);assert.equal(medic.mana,medic.maxMana);game.player.x=m.x;game.player.y=m.y;assert.equal(game.saveCheckpoint(),true);assert.equal(saveSlots.get(game.activeSlotId).checkpoint.place,m.name);assert.ok(currentFields(game).every(f=>dist(f,m)>f.radius+m.radius));
+assert.equal(supplyLocation(game,{x:m.x,y:m.y}).kind,'medical');const archer=game.squad[2],medic=game.squad[3];Object.assign(archer,{soldierClass:'ARCHER',x:m.x,y:m.y,ammo:0});Object.assign(medic,{soldierClass:'MEDIC',x:m.x,y:m.y,mana:0});updateSupplies(game,.25);updateMagic(game,.25,supplyLocation);assert.equal(archer.ammo,ammoCapacity(archer));assert.equal(medic.mana,medic.maxMana);game.player.x=m.x;game.player.y=m.y;assert.equal(game.saveCheckpoint(),true);assert.equal(saveSlots.get(game.activeSlotId).checkpoint.place,m.name);assert.ok(currentFields(game).every(f=>dist(f,m)>f.radius+m.radius));
 // Direction chooses the nearest KNOWN station, respects town mode and transport locks.
 game.medicalPosts[1].discovered=true;game.player.x=game.medicalPosts[1].x+5;game.player.y=game.medicalPosts[1].y;assert.equal(nearestKnownMedicalPost(game).id,game.medicalPosts[1].id);game.medicalPosts[1].discovered=false;assert.equal(nearestKnownMedicalPost(game).id,m.id);
 patient.x=game.player.x;patient.y=game.player.y;delete patient.carrierId;attachWounded(game,game.player,patient);game.updateStatsUI();assert.match(document.getElementById('transport-status').textContent,/第1救護所/);assert.match(document.getElementById('transport-status').textContent,/[←↖↙]/);

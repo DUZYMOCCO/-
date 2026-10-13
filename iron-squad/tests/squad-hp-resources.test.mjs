@@ -11,7 +11,7 @@ const game={inBattle:true,container:document.getElementById('game'),player:{},sq
 const rows=squadHpRows(game);
 const byId=id=>rows.find(r=>r.id===id);
 assert.equal(byId(1).res.kind,'mp');assert.equal(byId(1).res.text,'MP 40/100');
-assert.equal(byId(2).res.kind,'ammo');assert.equal(byId(2).res.text,'弾 12/30');assert.equal(byId(2).res.ratio,.4);
+assert.equal(byId(2).res.kind,'ammo');assert.equal(byId(2).res.text,'弾 12/120');assert.equal(byId(2).res.ratio,.1);
 assert.equal(byId(3).res,null,'sword soldier has no extra gauge');
 assert.equal(byId(4).res.kind,'mp');
 assert.equal(byId(5).res,null,'downed rows keep the old layout');
@@ -27,7 +27,7 @@ archer.ammo=3;mage.mana=100;mage.hp=60;
 updateSquadHpHud(game,1,true);
 assert.equal(box.querySelectorAll('.squad-hp-row')[1],rowEls[1],'row node is reused');
 assert.equal(rowEls[1].querySelector('.squad-hp-res'),resEl);
-assert.equal(resEl.querySelector('span').textContent,'弾 3/30');assert.equal(resEl.querySelector('i').style.width,'10%');
+assert.equal(resEl.querySelector('span').textContent,'弾 3/120');assert.equal(resEl.querySelector('i').style.width,'3%');
 assert.equal(rowEls[0].querySelector('.squad-hp-res span').textContent,'MP 100/100');
 assert.equal(rowEls[0].querySelector('.squad-hp-num').textContent,'60/100');
 // Unchanged values do not touch the DOM.

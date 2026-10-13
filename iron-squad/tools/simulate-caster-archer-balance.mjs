@@ -1,3 +1,4 @@
+import {ammoCapacity} from '../js/supply-rules.js';
 // Controlled comparisons through the real game update/damage/projectile code.
 // This tool does not alter balance parameters or read a user's browser save.
 import assert from 'node:assert/strict';
@@ -45,9 +46,9 @@ g.performAttack=function(attacker,target,...args){
   if(stats&&attacker===stats.actor&&kind==='magic')stats.magicalDamage+=hp-target.hp;
   if(stats&&attacker===stats.actor&&attackDepth===0){const damage=hp-target.hp;stats.damage+=damage;stats.hits+=damage>0?1:0;
     if(damage>0&&kind!=='magic'){stats.attackDistanceSum+=hitDistance;stats.physicalHits++;}
-    if(this.__simRangedKind==='loaded'||stats.loadedRawDamages.has(args[1])){stats.loadedDamage+=damage;stats.loadedHits+=damage>0?1:0;}
+    if(this.__simRangedKind==='loaded'||stats.loadedRawDamages.has(args[1])||(['bow','crossbow','cannon'].includes(attacker.weapon?.weaponStyle)&&kind!=='sidearm'&&kind!=='magic')){stats.loadedDamage+=damage;stats.loadedHits+=damage>0?1:0;}
     if(this.__simRangedKind==='stone'||stats.stoneRawDamages.has(args[1]))stats.stoneDamage+=damage;
-    if(this.__simRangedKind==='sidearm')stats.sidearmDamage+=damage;
+    if(this.__simRangedKind==='sidearm'||kind==='sidearm')stats.sidearmDamage+=damage;
     if(kind==='magic'&&stats.lastCast!==clock){stats.casts++;stats.lastCast=clock;}}
   return result;
 };
@@ -60,7 +61,7 @@ g.spawnRangedProjectile=function(attacker,target,...args){
 };
 const phases=[{id:'early',level:1,tier:1,pressure:30},{id:'middle',level:10,tier:9,pressure:150},{id:'late',level:30,tier:21,pressure:600}];
 const fixtures={};
-function setup(stage,role,{supply='none',affinity='fire',ward=false,liveGrowth=false,weaponStyle,initialAmmo=30,neutralTraits=false}={}) {
+function setup(stage,role,{supply='none',affinity='fire',ward=false,liveGrowth=false,weaponStyle,initialAmmo=null,neutralTraits=false}={}) {
   const origin=supply==='hq-defense'?WORLD_SIZE/2:WORLD_SIZE/2+4000;
   Object.assign(g,{player:structuredClone(basePlayer),nation:structuredClone(baseNation),squad:[],reserves:[],monsters:[],outposts:[],merchants:[],gateGuards:[],medicalPosts:[],dungeons:[],civilians:[],remains:[],projectiles:[],particles:[],dropsOnField:[],magicBursts:[],damageFields:[],magicReserve:0,ammoReserve:0,currentQuest:null,currentDungeon:null,restTimer:0,inBattle:true,phase:1,phaseTimer:100000,worldTime:0,totalBattleTime:0,baseRaidActive:false,baseRaidMobs:[],_monsterGrid:null,_squadGrid:null,_tankHeavies:null,_tankAllies:null,_baseThreatList:[],_hazardClock:0,_civSpawnClock:-100000,autoSaveClock:0,reserveCheckTimer:0,_supplyClock:0,_manaSupplyClock:0,heroJourney:{party:null},worldTerrain:{tiles:new Map()},camera:{x:origin+100,y:origin},joystick:{active:false,dirX:0,dirY:0}});
   g.invasions.stage=supply==='hq-defense'?'battle':'idle';
@@ -82,7 +83,7 @@ function setup(stage,role,{supply='none',affinity='fire',ward=false,liveGrowth=f
     u.equipped[key]=item;if(key==='weapon')u.weapon=item;
   }
   realRecalc.call(g,u);assert.ok(Object.values(u.equipped).every(item=>canUseEquipment(u,item)),'every simulated item must be legal');
-  u.hp=u.maxHp;u.mana=u.maxMana;u.ammo=initialAmmo;u.equipmentBarrier=u.equipmentBarrierMax;u.equipmentBarrierDelay=0;g.squad=[u];
+  u.hp=u.maxHp;u.mana=u.maxMana;u.ammo=initialAmmo??ammoCapacity(u);u.equipmentBarrier=u.equipmentBarrierMax;u.equipmentBarrierDelay=0;g.squad=[u];
   const key=`${stage.id}-${role}${weaponStyle?'-'+weaponStyle:''}${ward?'-ward':''}`,snapshot={level:u.level,tier:stage.tier,hp:u.maxHp,def:u.def,magicDef:u.magicDef,barrier:u.equipmentBarrierMax,atk:u.atk,magicAttack:u.magicAttack,strength:u.strength,magic:u.magicPower,dodge:u.dodge,crit:u.crit,armor:u.equipped.armor.name,equipmentMagicBonus:u.equipmentMagicBonus};
   if(fixtures[key])assert.deepEqual(snapshot,fixtures[key],'only combat RNG can differ between repetitions');else fixtures[key]=snapshot;
   if(!liveGrowth)g.recalcSoldierStats=noop;
@@ -167,11 +168,11 @@ try{
  }
  // Verify core scenario assumptions and that source files did not change underneath the run.
  const rows=report.offense.filter(r=>r.stage==='middle'&&r.targets===1),archer=rows.find(r=>r.role==='ARCHER'&&r.supply==='none');
- assert.ok(archer.stones>0&&archer.ammoEmptyAt!==null);assert.ok(rows.filter(r=>r.role==='MAGE'&&r.supply==='none').every(r=>r.meditationPct>0));
+ assert.equal(archer.stones,0);assert.ok(archer.ammoEmptyAt!==null);assert.ok(rows.filter(r=>r.role==='MAGE'&&r.supply==='none').every(r=>r.meditationPct>0));
  assert.ok(rows.filter(r=>r.role==='MAGE'&&r.supply==='camp').every(r=>r.meditationPct===0));
  assert.ok(rows.filter(r=>r.role==='ARCHER'&&r.supply==='camp').every(r=>r.stones===0));
  assert.deepEqual(fingerprint(),sourceStart,'game source changed during the run; rerun against one consistent revision');
- report.checks.push('legal gear','actual damage > 0','no unintended rest/phase/death','field ammo depletion and stone fallback','field mage meditation','camp MP/ammo refill','source hash stability');
+ report.checks.push('legal gear','actual damage > 0','no unintended rest/phase/death','field ammo depletion without stones','field mage meditation','camp MP/ammo refill','source hash stability');
  writeFileSync(`${out}/results.json`,JSON.stringify(report,null,2));console.log(`PASS: ${report.offense.length} damage scenarios and ${report.durability.length*sampleCount} durability trials; results written`);
 }finally{cleanup();}
 }

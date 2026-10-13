@@ -1,0 +1,1681 @@
+{
+  "version": "6.7.0",
+  "cache": "v240",
+  "part": "hero",
+  "sourceHashes": {
+    "iron-squad/sw-assets.js": "0f2b03c364d32e3675f7ed2d55677bb2e2c95c13bc37bdccd6ff8ab5dd44ccb6",
+    "iron-squad/js/appearance-features.js": "61cb9cb096b430bdd243953efdbdc74fa6af98381b5fb02c1f272acfbdd207bb",
+    "iron-squad/js/armament-rules.js": "7d33a796606ecc1320ba52d433db3ea3f5c5975f1eee9174d855dc130665d6cd",
+    "iron-squad/js/audio-interface.js": "32c5054303f49f7384c2eb0cd39279e28fb81b408feac07d8649f0dd6ab49a2a",
+    "iron-squad/js/battle-log.js": "56d71953afaeae630d563e8546b02a6a4992bc4a1def811e3cb2e515ebdb12e3",
+    "iron-squad/js/battle-report.js": "316a284566247fffed422252f814ec5fe568f68dfe1d925e5c35a219d8197d3d",
+    "iron-squad/js/battlefield-ui.js": "b3fd91723a09d0cfb75bcd067a6813f5a4993fc46db84f2b58e9b0dd7128bd91",
+    "iron-squad/js/building-interactions.js": "c73671d8f8ade9d4606af35791c5b44d8b890d9ca15f1f2fc66d3d7262195068",
+    "iron-squad/js/camp-leisure.js": "4f1b65bc6df33d20bb8cf71c1f6e527b93d6eb6601f025e878cde0320cf252f8",
+    "iron-squad/js/campaign-scaling.js": "fc8746296fd6835850fa525a063810042100d349cc5075244a242fce21926749",
+    "iron-squad/js/canvas-surface.js": "590baecb6c46e98e4c3dcb53a4102a164bc1e96883823caffe17af267f4b00df",
+    "iron-squad/js/career-rules.js": "edb1af73db2d78fe40aa1582808512c0c1befff7b8ad12d986bd952c5c3144c2",
+    "iron-squad/js/casino-rules.js": "5899dd3009267425dc8f00ffee086f3874303d447746b1e945de98a115c80575",
+    "iron-squad/js/casino.js": "bed4b50657c339271961d16ea7a4ed7ebe3a67c8f58b90392cd40581be2d9673",
+    "iron-squad/js/casualty-rules.js": "4846b05ec564e87cb512f9ff25c147a12ad507e25ab5fb14808466889fc98289",
+    "iron-squad/js/civilian-visuals.js": "7c10d041373d70a2a096b98cc72d1587c8f4ea2e72129fcd11b644b528c72370",
+    "iron-squad/js/class-regalia.js": "55531ab9aa3fb17420c2275d4a4b8edf9e27c05f36495f023067e5ed5027b9c2",
+    "iron-squad/js/class-up-rules.js": "3d66787b99248888e56ec05401adb030987d3020c4076fddbf40a0da9201c35d",
+    "iron-squad/js/combat-rewards.js": "6added238f599c21672e488933e50b8859e2fa3afe14180efb0c51ea2c2481a8",
+    "iron-squad/js/commander-editor.js": "a42b0be985c55417925cc1379a64666b943be2118a2ee318405b98d399448b1e",
+    "iron-squad/js/commander-giveup.js": "70d436138f7f07336422f75531888bf4dc1e520ec079da8bc019247101dc29c3",
+    "iron-squad/js/commander-identity.js": "7f887693b63770072866dd871d6ac69a2a4fa07402e71b45bb7d927b157b000e",
+    "iron-squad/js/commerce-visuals.js": "b972386d8c9c32ad1be7a8fd8aefadd284a83fe4e1424349be7d94bd724d7cff",
+    "iron-squad/js/crafting-rules.js": "d0082bdc45cfc1d78763947e3cddb0315577fc7435e0fbe8d55ea89612457759",
+    "iron-squad/js/day-night.js": "f35b1ddfb01f79644ccb5acf07082cbf423c8eb4cc5839c563d8698f6c854415",
+    "iron-squad/js/deathline-rules.js": "9ea8099266a278b3eea030db82f9128d913443d4de11cd299edfc7b5a09ccde3",
+    "iron-squad/js/defense-equipment.js": "33df37c9077fb423edf8e65c590693b58201bc5e08ca0c1a6013b598e08ec071",
+    "iron-squad/js/dialog-return.js": "feb138e38d02b3a558c279e210304d88c79afa4542fe7ec440d39866a6fdde99",
+    "iron-squad/js/distance-format.js": "5a77ad4a4d07ffed8286cacb7a92445210bb37a85203f1cf81105bf5818b9b03",
+    "iron-squad/js/drop-exclusives.js": "65451fc71c250ec63d46aa5707eccd5a1878d6dfb46fca16d1c1d39fd2ccda4b",
+    "iron-squad/js/dungeon-exploration.js": "f7c80365d9351297442a32363bf83b8c96c7ccf9ad3969c3967efb8d330204a0",
+    "iron-squad/js/dungeon-interior-visuals.js": "573afd979fbc1fd4490c600189aaf6f501355a7376cb31e762c9b9a5d7cc5865",
+    "iron-squad/js/dungeon-layout.js": "eaa49158462da5c40c87e5575ce8872a59dee05e13a01ad685f3e37fbb45ac13",
+    "iron-squad/js/dungeon.js": "769bcef5b7f7a64484e2aa541374920f3595f6ccaf920a6bafa7b5dd89d72842",
+    "iron-squad/js/economic-interface.js": "1d2d22bb512cadf7805bb181c5200c2d66313f420517f9d38496de4c2cc9a50b",
+    "iron-squad/js/economic-visuals.js": "ce3ca4366c9925ccdc1cc096904d8537b186bfa3bd7e62c1b515fe9e55a106ca",
+    "iron-squad/js/economy-rules.js": "94ce51f33079e0950b45f0887b3de6b08033f30cd12b70053d2c3d92b7c919c6",
+    "iron-squad/js/enemy-ranged.js": "a93b460546d699cc60f9beffc115106c0f29595e0480b1cfcc8ffee10a7ae8b5",
+    "iron-squad/js/equipment-art.js": "198cd4592af82a8dc0fc8252d8b3624a61cf3632325050c03ce102dd31d0486d",
+    "iron-squad/js/equipment-rules.js": "90e3760937477183139b283235a36191a747fa993e042d4c51b4e386b4f7408e",
+    "iron-squad/js/equipment-tiers.js": "d4478be58cac6c16e834463ac57ede3c882b8610c148d2233c2a8ac3d70b5508",
+    "iron-squad/js/expedition-rules.js": "ca7ca3946924c1bb3a1fd83ffc751c449927f53c910c8decf36dd2736df3f25a",
+    "iron-squad/js/experience-rules.js": "fb08d83b1f3090c8f411d37d1f4859a0245fceb56611e909f6b36cc68d6e937d",
+    "iron-squad/js/field-drops.js": "b2dffb532e926d9bca7c725d08d2dc9c8b320966e5100830071301e09cb5291a",
+    "iron-squad/js/field-hosts.js": "db70b8b1cc8d10535f35571b9c8240e47cc54699552187d9abe69ef6e30d54ff",
+    "iron-squad/js/field-music.js": "36b5c071342d5c6001fb42582fad3fc72243a2e25fde7838017e1a70c1b94ed6",
+    "iron-squad/js/field-scaling.js": "7aa978a09b64910000af8155d8ba80839154a2b22cfd39340cf51cf17faa2600",
+    "iron-squad/js/fog.js": "5563c0137ca3c08242f7deb9583e70c22904dca8f6da8f759e62901589ee7f1a",
+    "iron-squad/js/fortification-visuals.js": "53124746cdb457c467b01c7639c3ae43903411ee1d758a4cf0bff235f3d40d19",
+    "iron-squad/js/game-text.js": "f46616344c3099f50bf087afb70fb3a0e82f43578955a2af2d380047e70b6b18",
+    "iron-squad/js/gate-rules.js": "afce31ac8c7ac389c089a66b64a0aca2b3de4de91827e3b82657761aceb6fa54",
+    "iron-squad/js/growth-rules.js": "9ef412dc3a75e5f4bfe3ae3b81694f08b673209662bd47d7275d715d0258a8b5",
+    "iron-squad/js/guard-leash.js": "da40c9a2ae6a0c0c0d2caeaf3082b91d7720a7b42e609b020f2c48c5319ddd2a",
+    "iron-squad/js/guild-contracts.js": "9a87df87452aa82a19b934adefb58e16b0c8cad1d9a3283a608995fb9e524123",
+    "iron-squad/js/hazard-fields.js": "9890201a1f41636f41bc61bb433de92043d16ac355120a6a7036723cbe595999",
+    "iron-squad/js/heavy-tank.js": "c9e0a826f45c8e0b49429226d7b48bb1ff3a29af26c728a8ad61fd4c59766589",
+    "iron-squad/js/hero-equipment.js": "fc3e2e2b39d25a01b9d66069bc61a7e6e36d201e5e27b18adb6ca6119044d80c",
+    "iron-squad/js/hero-journal.js": "0c13bcfb017724d05362e96a3367d5c28b645bc5064afd3f89ac9ccbd6fdfa60",
+    "iron-squad/js/hero-navigation.js": "fb89ac16c5792f0fd88999eeb784240814da846a13b7305177597e8a33722677",
+    "iron-squad/js/hero-party.js": "fbbfc4b0b5a0228615b8ac31bd7308446f41613e59cb9e0753654a3129dcb9b0",
+    "iron-squad/js/hero-rules.js": "2ae6daa33d108f6c215e7fe7c76888cb88764cc470f17139ca7e54e12909d7f1",
+    "iron-squad/js/hq-facilities.js": "d59652990d5524456409b7640be0bda2770d9071ab3036166e9875703a0db5a5",
+    "iron-squad/js/hq-facility-layout.js": "24ad64e8cb0594d1c5d81a50397dccf7301778847562c7eb51c93cd84d4e32ac",
+    "iron-squad/js/hq-navigation.js": "d74020af301a9b1a0e2e4ce5cacfc831fae03bdd6b070dd6570bcc4e182b9ec4",
+    "iron-squad/js/hq-outer-wall.js": "f330ab482f43131e484d6767d6fe5bd9161472a41b24d12255f5302ed03784e1",
+    "iron-squad/js/index.js": "9817a1fdbbe81bebafb1d7741702e2e4109ca6732683235dad719d84d058ecf4",
+    "iron-squad/js/instance-rules.js": "5ed27a38ee5f7dd8ef44769d53bd40efd3b2bbec7b52999eb607f833d9d047d6",
+    "iron-squad/js/interface.js": "ea92a26c6cf841ec52967fef9c3fe167cb817dd4b14344623a83533036d436f1",
+    "iron-squad/js/invasion-rules.js": "46770149a210e723cca43a9b564e542a83e9a3a34d841ee4bf307672cb8b047d",
+    "iron-squad/js/knockback-rules.js": "b03049e567d080fe5459af95872ceeb9ef105be587b624d79e1252aba3dffe5e",
+    "iron-squad/js/limited-allies.js": "77a29f1d5d13edddf1c0f43860d315619c75a68afdc4c0e3a06ed5981f5498c7",
+    "iron-squad/js/loot-visuals.js": "5b9b9299f834e04007443d2d56d0a088e70358093b0370d7c850a84218f66a79",
+    "iron-squad/js/magic-rules.js": "3be22aa6dc9cfbb240c552313640554a6704981e90b92cc7f3f84854dc253f81",
+    "iron-squad/js/medical-posts.js": "1a58f859452f48d857cc2edf54998e5f1b2f88eaba3dea5dcc6bea7a42dca54f",
+    "iron-squad/js/merchant-catalog.js": "703d56c9a1f8a1a01a02b257484e4debcee89f29d81afaee9989e6640c7aa307",
+    "iron-squad/js/merchant-rules.js": "1e444a909e4f77009c7688221f86c834b6157160a4b2074f93b2f752bb5c950d",
+    "iron-squad/js/nation-rules.js": "d142c1f310c8ac516400bcecc0a45a4b29a491bfc31eba114aa474717e0aa21b",
+    "iron-squad/js/navigation-map.js": "2aa5d6222439e4f1eb71608442f455c1a69e3a1c2c20c1198ba38c35c87ebad7",
+    "iron-squad/js/nightlife-visuals.js": "5f2fa1c689764a1e5f21694b21d9c36c4eaea66397d8fe0b5b98b14486942409",
+    "iron-squad/js/own-squad-marker.js": "846c01c52888542f68bdc2a3ec9404aa445173811eb98e284e0e148e33162f1a",
+    "iron-squad/js/payroll-rules.js": "89f88d70507f035a141a8179029d645c02e49e82b432ae93e963919774eff185",
+    "iron-squad/js/peace-zones.js": "e66f4f702cc6cfa5c6372c0b984fe998e0b59df350d5b1578cfacd40fb8d46e4",
+    "iron-squad/js/phase-rules.js": "7e6680c359a0e716e9d26a811ac622ffcdea87ab6cb03b55a3a8ab09a875bca3",
+    "iron-squad/js/ranged-combat.js": "665e8c257d14a7aecb4c64f904e9ec15c8f10f3e424603257e87b789d67fcd94",
+    "iron-squad/js/recruitment.js": "3c93fc78518fd7884bcdb581465197f12b34746683dbd7a608ecb91bda5d5d45",
+    "iron-squad/js/regional-economy.js": "ffb4ad9c0388507db7f76155817ca22ff30b559f7c4d4cb2719999c3eb9a36b1",
+    "iron-squad/js/render-support.js": "5183c68d0b2e8c6088180527db59a14aff5a3cc5ac886f56bc593c19cbd2f704",
+    "iron-squad/js/rescue-markers.js": "aeb192828ae339652e7487b5a72aa6739144f7724e82acb08b65e259ec16731d",
+    "iron-squad/js/rescue-rewards.js": "3ddb9a02c7991161efad57c81accc38a0e592c5f596abd636975a36e14075cc6",
+    "iron-squad/js/reserve-farm.js": "fc5065c91bb23bb5fb2cfb01310c775b79aed63dcfc1e6b57913ea633480a1b1",
+    "iron-squad/js/save-slots.js": "ab86a912b1329419b9b58a3f4f839e98effdc81b2d44047a4d3afdf7875dc465",
+    "iron-squad/js/scene-lighting.js": "d5d1f540ac3112729c875cb5d3ba1c9ceb2b13e5bfaf051bc9f40359a8f0139e",
+    "iron-squad/js/settlement-visuals.js": "d81dd8621d843bb5934f6a4b25bb632df17881fb4a9e24889f6d557d22f011db",
+    "iron-squad/js/soldier-appearance.js": "f39baf12d1986b9cd67ab52426cce5d8c62659bbf1d3a9dc41731f3abb217c54",
+    "iron-squad/js/soldier-dialogue.js": "32176e854163548affe9318cecbd327a5eff34c99a6e2c0245b844e1e50a044c",
+    "iron-squad/js/soldier-melee-skills.js": "132083be72f1b8702f187fc6b693f7f550a6fe760fc74db8ae4e76dee41ccec5",
+    "iron-squad/js/soldier-names.js": "cdf317cefed429169c3fc935a377694b02c6b2295e7b66ba1da1090292d70349",
+    "iron-squad/js/soldier-profile.js": "1287838e47532cfc0e9bc04dcff02dee3c22f3c52adc5a6e5c9c824da5e31d1b",
+    "iron-squad/js/squad-hp-hud.js": "199ef3a69591287ef8803d27539a5194e95254f4ab4eedc818c427b174bb3c28",
+    "iron-squad/js/squad-names.js": "169de9bebf85a8f9d9744d1218eb9c9377a76a4d104b2e8027060fcf30c48061",
+    "iron-squad/js/stall-recorder.js": "602b17b1ade58e130dc7e505cbeee6e636d218ec041e36e29d6a9757ada5d308",
+    "iron-squad/js/supply-rules.js": "18708d1ed1f8cbe455ee36b72d537688895f638841ce9abf51be99894a7444d1",
+    "iron-squad/js/talent-labels.js": "3859f0f720b3d7a8950cb8f82c81bd49ada55fd367351aa940c0544cde810623",
+    "iron-squad/js/tavern.js": "43cc586be394bf50bebd74eece95f4baa2cb746dbde52a320371639695710214",
+    "iron-squad/js/terrain-shapes.js": "99dadb6344a8ecdac794187ffa0b5243e7e7b5898ddac70f21a8d447d63aca66",
+    "iron-squad/js/trade-routes.js": "0f38e0e045ea1ce15c6e2ca524f22689dad6fe33d9dd022217abe114d4cb5520",
+    "iron-squad/js/traveler-clothes.js": "d9426e2fa70012023ad9c80eab801e1a5683c82e5b268fcff96066e6b9f4a253",
+    "iron-squad/js/treasure-receipt.js": "4de25efe2ba9c85f3fc055e6672ea4f3b7cdf0b62326d018c9c36ecff2962959",
+    "iron-squad/js/troop-rankings.js": "127d93d07cefe82441007455335320fab66dfa89547f190c1b00cbaa24e3328f",
+    "iron-squad/js/unit-attributes.js": "b6ac95a1cdee78132565bffc4be5bf4772ea86f3b575d20711b469bb4282b7de",
+    "iron-squad/js/visuals.js": "28dd60a364f7be424d4e680374a84f47fab7c50afc3aca51da665d8dbf2c5baa",
+    "iron-squad/js/weapon-motion.js": "32ab9ea4f1552afd9f4cb5f4f0e9a77c7945b0aae587e98286d4239b54a4eefc",
+    "iron-squad/js/weapon-requirements.js": "2f9913ab7ea7ca70c16ecb02453c6a7600b22e81c818f98adb6589f97cb25ddb",
+    "iron-squad/js/weapon-sounds.js": "59530e70937701fb963c137005be2955a28ba3fb922576a58da32eb842ab1b33",
+    "iron-squad/js/workshop.js": "b9bc49ea6eb1879369bcd3ecd42b6a21081d233ecd0acc03cc9493609d128591",
+    "iron-squad/js/world.js": "5da09281624449adad29b926d4509ccd07e0150c9a09958dbb1d5acb49a9b6c5"
+  },
+  "settings": {
+    "seeds": 3,
+    "castleCaptain": "passive in boss-only; native joystick approach toward nearest enemy in full encounter",
+    "stageGrowth": "allowed during combat",
+    "freshMemory": true,
+    "userSavesAccessed": false,
+    "unrelatedSpawns": false
+  },
+  "runs": [
+    {
+      "seed": 202610130,
+      "seconds": 657.0000000000808,
+      "maxDistance": 593.783239349192,
+      "castleDistance": 593.9696961966999,
+      "enteredAt": 509.10000000004726,
+      "status": "fallen",
+      "firstDown": 593.0000000000663,
+      "defeated": false,
+      "initial": [
+        {
+          "class": "LIGHT",
+          "level": 1,
+          "hp": 12246,
+          "atk": 4176,
+          "def": 10935,
+          "magicAttack": 921,
+          "magicDef": 4008,
+          "strength": 21,
+          "dodge": 3.1,
+          "barrier": 0,
+          "tier": 24,
+          "upgrade": 0
+        },
+        {
+          "class": "HEAVY",
+          "level": 1,
+          "hp": 11350,
+          "atk": 9088,
+          "def": 10980,
+          "magicAttack": 4272,
+          "magicDef": 4010,
+          "strength": 20,
+          "dodge": 1.2,
+          "barrier": 0,
+          "tier": 24,
+          "upgrade": 0
+        },
+        {
+          "class": "LIGHT",
+          "level": 1,
+          "hp": 7964,
+          "atk": 2679,
+          "def": 8400,
+          "magicAttack": 475,
+          "magicDef": 4006,
+          "strength": 20,
+          "dodge": 3,
+          "barrier": 0,
+          "tier": 24,
+          "upgrade": 0
+        },
+        {
+          "class": "ARCHER",
+          "level": 1,
+          "hp": 9084,
+          "atk": 1554,
+          "def": 6200,
+          "magicAttack": 459,
+          "magicDef": 4009,
+          "strength": 13,
+          "dodge": 2.2,
+          "barrier": 0,
+          "tier": 24,
+          "upgrade": 0
+        },
+        {
+          "class": "MEDIC",
+          "level": 1,
+          "hp": 7605,
+          "atk": 191,
+          "def": 6200,
+          "magicAttack": 998,
+          "magicDef": 4026,
+          "strength": 12,
+          "dodge": 1.2,
+          "barrier": 0,
+          "tier": 24,
+          "upgrade": 0
+        },
+        {
+          "class": "MAGE",
+          "level": 1,
+          "hp": 9054,
+          "atk": 203,
+          "def": 6200,
+          "magicAttack": 2751,
+          "magicDef": 4023,
+          "strength": 8,
+          "dodge": 1.5,
+          "barrier": 0,
+          "tier": 24,
+          "upgrade": 0
+        }
+      ],
+      "members": [
+        {
+          "class": "LIGHT",
+          "level": 33,
+          "hp": 14575,
+          "atk": 58098,
+          "def": 10935,
+          "magicAttack": 11804,
+          "magicDef": 4114,
+          "strength": 211,
+          "dodge": 11.8,
+          "barrier": 0,
+          "tier": 24,
+          "upgrade": 0,
+          "dead": true,
+          "isDown": false,
+          "kills": 49,
+          "bossKills": 2
+        },
+        {
+          "class": "HEAVY",
+          "level": 33,
+          "hp": 15834,
+          "atk": 97125,
+          "def": 12037,
+          "magicAttack": 54550,
+          "magicDef": 4123,
+          "strength": 158,
+          "dodge": 11.4,
+          "barrier": 0,
+          "tier": 24,
+          "upgrade": 0,
+          "dead": true,
+          "isDown": false,
+          "kills": 12,
+          "bossKills": 0
+        },
+        {
+          "class": "LIGHT",
+          "level": 33,
+          "hp": 9324,
+          "atk": 33120,
+          "def": 8400,
+          "magicAttack": 5352,
+          "magicDef": 4066,
+          "strength": 180,
+          "dodge": 7.2,
+          "barrier": 0,
+          "tier": 24,
+          "upgrade": 0,
+          "dead": true,
+          "isDown": false,
+          "kills": 7,
+          "bossKills": 0
+        },
+        {
+          "class": "ARCHER",
+          "level": 33,
+          "hp": 10790,
+          "atk": 19892,
+          "def": 6200,
+          "magicAttack": 8652,
+          "magicDef": 4132,
+          "strength": 119,
+          "dodge": 8.9,
+          "barrier": 0,
+          "tier": 24,
+          "upgrade": 0,
+          "dead": true,
+          "isDown": false,
+          "kills": 1,
+          "bossKills": 1
+        },
+        {
+          "class": "MEDIC",
+          "level": 33,
+          "hp": 9810,
+          "atk": 320,
+          "def": 6200,
+          "magicAttack": 5983,
+          "magicDef": 4150,
+          "strength": 12,
+          "dodge": 7.6,
+          "barrier": 0,
+          "tier": 24,
+          "upgrade": 0,
+          "dead": true,
+          "isDown": false,
+          "kills": 0,
+          "bossKills": 0
+        },
+        {
+          "class": "MAGE",
+          "level": 33,
+          "hp": 10709,
+          "atk": 356,
+          "def": 6200,
+          "magicAttack": 16479,
+          "magicDef": 4157,
+          "strength": 8,
+          "dodge": 8.1,
+          "barrier": 0,
+          "tier": 24,
+          "upgrade": 0,
+          "dead": true,
+          "isDown": false,
+          "kills": 21,
+          "bossKills": 0
+        }
+      ],
+      "trace": [
+        {
+          "seconds": 30.000000000000156,
+          "distance": 23.004851832390617,
+          "status": "marching",
+          "ready": 6,
+          "levels": [
+            6,
+            6,
+            6,
+            6,
+            6,
+            6
+          ]
+        },
+        {
+          "seconds": 60.00000000000058,
+          "distance": 50.86489360285967,
+          "status": "marching",
+          "ready": 6,
+          "levels": [
+            8,
+            8,
+            8,
+            8,
+            8,
+            8
+          ]
+        },
+        {
+          "seconds": 89.99999999999916,
+          "distance": 79.47808358660757,
+          "status": "marching",
+          "ready": 6,
+          "levels": [
+            9,
+            9,
+            9,
+            9,
+            9,
+            9
+          ]
+        },
+        {
+          "seconds": 119.99999999999746,
+          "distance": 110.99726834236222,
+          "status": "marching",
+          "ready": 6,
+          "levels": [
+            10,
+            10,
+            10,
+            10,
+            10,
+            10
+          ]
+        },
+        {
+          "seconds": 149.99999999999577,
+          "distance": 142.51503034384356,
+          "status": "marching",
+          "ready": 6,
+          "levels": [
+            11,
+            11,
+            11,
+            11,
+            11,
+            11
+          ]
+        },
+        {
+          "seconds": 179.99999999999406,
+          "distance": 172.57573780075836,
+          "status": "marching",
+          "ready": 6,
+          "levels": [
+            14,
+            14,
+            14,
+            14,
+            14,
+            14
+          ]
+        },
+        {
+          "seconds": 209.99999999999235,
+          "distance": 207.8125759489931,
+          "status": "marching",
+          "ready": 6,
+          "levels": [
+            16,
+            16,
+            16,
+            16,
+            16,
+            16
+          ]
+        },
+        {
+          "seconds": 239.99999999999065,
+          "distance": 243.75835476333768,
+          "status": "marching",
+          "ready": 6,
+          "levels": [
+            20,
+            20,
+            20,
+            20,
+            20,
+            20
+          ]
+        },
+        {
+          "seconds": 269.9999999999929,
+          "distance": 281.2089869479929,
+          "status": "marching",
+          "ready": 6,
+          "levels": [
+            21,
+            21,
+            21,
+            21,
+            21,
+            21
+          ]
+        },
+        {
+          "seconds": 299.9999999999997,
+          "distance": 320.4940032417873,
+          "status": "marching",
+          "ready": 6,
+          "levels": [
+            23,
+            23,
+            23,
+            23,
+            23,
+            23
+          ]
+        },
+        {
+          "seconds": 330.00000000000654,
+          "distance": 361.1476582469754,
+          "status": "marching",
+          "ready": 6,
+          "levels": [
+            25,
+            25,
+            25,
+            25,
+            25,
+            25
+          ]
+        },
+        {
+          "seconds": 360.00000000001336,
+          "distance": 400.4954234781341,
+          "status": "marching",
+          "ready": 6,
+          "levels": [
+            26,
+            26,
+            26,
+            26,
+            26,
+            26
+          ]
+        },
+        {
+          "seconds": 390.0000000000202,
+          "distance": 439.85643786864466,
+          "status": "marching",
+          "ready": 6,
+          "levels": [
+            26,
+            26,
+            26,
+            26,
+            26,
+            26
+          ]
+        },
+        {
+          "seconds": 420.000000000027,
+          "distance": 480.6787918444887,
+          "status": "marching",
+          "ready": 6,
+          "levels": [
+            28,
+            28,
+            28,
+            28,
+            28,
+            28
+          ]
+        },
+        {
+          "seconds": 450.0000000000338,
+          "distance": 521.3219433051036,
+          "status": "marching",
+          "ready": 6,
+          "levels": [
+            29,
+            29,
+            29,
+            29,
+            29,
+            29
+          ]
+        },
+        {
+          "seconds": 480.00000000004064,
+          "distance": 558.8980695211281,
+          "status": "marching",
+          "ready": 6,
+          "levels": [
+            30,
+            30,
+            30,
+            30,
+            30,
+            30
+          ]
+        },
+        {
+          "seconds": 510.00000000004746,
+          "distance": 593.783239349192,
+          "status": "castle",
+          "ready": 6,
+          "levels": [
+            30,
+            30,
+            30,
+            30,
+            30,
+            30
+          ]
+        },
+        {
+          "seconds": 540.0000000000542,
+          "distance": 593.783239349192,
+          "status": "castle",
+          "ready": 6,
+          "levels": [
+            31,
+            31,
+            31,
+            31,
+            31,
+            31
+          ]
+        },
+        {
+          "seconds": 570.000000000061,
+          "distance": 593.783239349192,
+          "status": "castle",
+          "ready": 6,
+          "levels": [
+            32,
+            32,
+            32,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "seconds": 600.0000000000679,
+          "distance": 593.783239349192,
+          "status": "castle",
+          "ready": 2,
+          "levels": [
+            33,
+            33,
+            33,
+            33,
+            33,
+            33
+          ]
+        },
+        {
+          "seconds": 630.0000000000747,
+          "distance": 593.783239349192,
+          "status": "down",
+          "ready": 0,
+          "levels": [
+            33,
+            33,
+            33,
+            33,
+            33,
+            33
+          ]
+        }
+      ]
+    },
+    {
+      "seed": 202610131,
+      "seconds": 682.5000000000866,
+      "maxDistance": 593.783239349192,
+      "castleDistance": 593.9696961966999,
+      "enteredAt": 529.8000000000519,
+      "status": "fallen",
+      "firstDown": 544.5000000000553,
+      "defeated": false,
+      "initial": [
+        {
+          "class": "LIGHT",
+          "level": 1,
+          "hp": 12246,
+          "atk": 3978,
+          "def": 10935,
+          "magicAttack": 921,
+          "magicDef": 4007,
+          "strength": 20,
+          "dodge": 2.8,
+          "barrier": 0,
+          "tier": 24,
+          "upgrade": 0
+        },
+        {
+          "class": "HEAVY",
+          "level": 1,
+          "hp": 11350,
+          "atk": 13633,
+          "def": 10980,
+          "magicAttack": 2373,
+          "magicDef": 4014,
+          "strength": 30,
+          "dodge": 1.3,
+          "barrier": 0,
+          "tier": 24,
+          "upgrade": 0
+        },
+        {
+          "class": "LIGHT",
+          "level": 1,
+          "hp": 7964,
+          "atk": 2812,
+          "def": 8400,
+          "magicAttack": 543,
+          "magicDef": 4007,
+          "strength": 21,
+          "dodge": 2.6,
+          "barrier": 0,
+          "tier": 24,
+          "upgrade": 0
+        },
+        {
+          "class": "ARCHER",
+          "level": 1,
+          "hp": 10598,
+          "atk": 2504,
+          "def": 6200,
+          "magicAttack": 747,
+          "magicDef": 4013,
+          "strength": 18,
+          "dodge": 2.3,
+          "barrier": 0,
+          "tier": 24,
+          "upgrade": 0
+        },
+        {
+          "class": "MEDIC",
+          "level": 1,
+          "hp": 7605,
+          "atk": 143,
+          "def": 6200,
+          "magicAttack": 1569,
+          "magicDef": 4026,
+          "strength": 9,
+          "dodge": 1.1,
+          "barrier": 0,
+          "tier": 24,
+          "upgrade": 0
+        },
+        {
+          "class": "MAGE",
+          "level": 1,
+          "hp": 7545,
+          "atk": 250,
+          "def": 6200,
+          "magicAttack": 2081,
+          "magicDef": 4018,
+          "strength": 14,
+          "dodge": 0.9,
+          "barrier": 0,
+          "tier": 24,
+          "upgrade": 0
+        }
+      ],
+      "members": [
+        {
+          "class": "LIGHT",
+          "level": 32,
+          "hp": 14482,
+          "atk": 56526,
+          "def": 10935,
+          "magicAttack": 11354,
+          "magicDef": 4107,
+          "strength": 206,
+          "dodge": 11.4,
+          "barrier": 0,
+          "tier": 24,
+          "upgrade": 0,
+          "dead": true,
+          "isDown": false,
+          "kills": 42,
+          "bossKills": 1
+        },
+        {
+          "class": "HEAVY",
+          "level": 32,
+          "hp": 13251,
+          "atk": 118401,
+          "def": 11393,
+          "magicAttack": 25081,
+          "magicDef": 4168,
+          "strength": 193,
+          "dodge": 9.4,
+          "barrier": 0,
+          "tier": 24,
+          "upgrade": 0,
+          "dead": true,
+          "isDown": false,
+          "kills": 7,
+          "bossKills": 0
+        },
+        {
+          "class": "LIGHT",
+          "level": 31,
+          "hp": 9363,
+          "atk": 27519,
+          "def": 8400,
+          "magicAttack": 5869,
+          "magicDef": 4091,
+          "strength": 151,
+          "dodge": 8.4,
+          "barrier": 0,
+          "tier": 24,
+          "upgrade": 0,
+          "dead": true,
+          "isDown": false,
+          "kills": 7,
+          "bossKills": 0
+        },
+        {
+          "class": "ARCHER",
+          "level": 32,
+          "hp": 12518,
+          "atk": 31171,
+          "def": 6200,
+          "magicAttack": 13416,
+          "magicDef": 4185,
+          "strength": 161,
+          "dodge": 9.8,
+          "barrier": 0,
+          "tier": 24,
+          "upgrade": 0,
+          "dead": true,
+          "isDown": false,
+          "kills": 6,
+          "bossKills": 0
+        },
+        {
+          "class": "MEDIC",
+          "level": 31,
+          "hp": 8987,
+          "atk": 242,
+          "def": 6200,
+          "magicAttack": 7941,
+          "magicDef": 4144,
+          "strength": 9,
+          "dodge": 6.8,
+          "barrier": 0,
+          "tier": 24,
+          "upgrade": 0,
+          "dead": true,
+          "isDown": false,
+          "kills": 4,
+          "bossKills": 0
+        },
+        {
+          "class": "MAGE",
+          "level": 32,
+          "hp": 8939,
+          "atk": 435,
+          "def": 6200,
+          "magicAttack": 12081,
+          "magicDef": 4115,
+          "strength": 14,
+          "dodge": 5.5,
+          "barrier": 0,
+          "tier": 24,
+          "upgrade": 0,
+          "dead": true,
+          "isDown": false,
+          "kills": 22,
+          "bossKills": 0
+        }
+      ],
+      "trace": [
+        {
+          "seconds": 30.000000000000156,
+          "distance": 22.170878916305924,
+          "status": "marching",
+          "ready": 6,
+          "levels": [
+            6,
+            6,
+            6,
+            6,
+            6,
+            6
+          ]
+        },
+        {
+          "seconds": 60.00000000000058,
+          "distance": 48.92437428482958,
+          "status": "marching",
+          "ready": 6,
+          "levels": [
+            8,
+            8,
+            8,
+            8,
+            8,
+            8
+          ]
+        },
+        {
+          "seconds": 89.99999999999916,
+          "distance": 76.59950552751401,
+          "status": "marching",
+          "ready": 6,
+          "levels": [
+            9,
+            9,
+            9,
+            9,
+            9,
+            9
+          ]
+        },
+        {
+          "seconds": 119.99999999999746,
+          "distance": 106.0357508321331,
+          "status": "marching",
+          "ready": 6,
+          "levels": [
+            10,
+            10,
+            10,
+            10,
+            10,
+            10
+          ]
+        },
+        {
+          "seconds": 149.99999999999577,
+          "distance": 135.38040194112335,
+          "status": "marching",
+          "ready": 6,
+          "levels": [
+            11,
+            11,
+            11,
+            11,
+            11,
+            11
+          ]
+        },
+        {
+          "seconds": 179.99999999999406,
+          "distance": 165.07435070055516,
+          "status": "marching",
+          "ready": 6,
+          "levels": [
+            14,
+            14,
+            14,
+            14,
+            14,
+            14
+          ]
+        },
+        {
+          "seconds": 209.99999999999235,
+          "distance": 196.81260874809024,
+          "status": "marching",
+          "ready": 6,
+          "levels": [
+            16,
+            16,
+            16,
+            16,
+            16,
+            16
+          ]
+        },
+        {
+          "seconds": 239.99999999999065,
+          "distance": 230.27907165471342,
+          "status": "marching",
+          "ready": 6,
+          "levels": [
+            19,
+            19,
+            19,
+            19,
+            19,
+            19
+          ]
+        },
+        {
+          "seconds": 269.9999999999929,
+          "distance": 265.52635763369204,
+          "status": "marching",
+          "ready": 6,
+          "levels": [
+            22,
+            22,
+            22,
+            22,
+            22,
+            22
+          ]
+        },
+        {
+          "seconds": 299.9999999999997,
+          "distance": 302.97834878826814,
+          "status": "marching",
+          "ready": 6,
+          "levels": [
+            23,
+            23,
+            23,
+            23,
+            23,
+            23
+          ]
+        },
+        {
+          "seconds": 330.00000000000654,
+          "distance": 341.54035541383104,
+          "status": "marching",
+          "ready": 6,
+          "levels": [
+            24,
+            24,
+            24,
+            24,
+            24,
+            24
+          ]
+        },
+        {
+          "seconds": 360.00000000001336,
+          "distance": 379.72536989007705,
+          "status": "marching",
+          "ready": 6,
+          "levels": [
+            24,
+            24,
+            24,
+            24,
+            24,
+            24
+          ]
+        },
+        {
+          "seconds": 390.0000000000202,
+          "distance": 417.72876798509196,
+          "status": "marching",
+          "ready": 6,
+          "levels": [
+            25,
+            25,
+            25,
+            25,
+            25,
+            25
+          ]
+        },
+        {
+          "seconds": 420.000000000027,
+          "distance": 457.64107983302836,
+          "status": "marching",
+          "ready": 6,
+          "levels": [
+            26,
+            26,
+            26,
+            26,
+            26,
+            26
+          ]
+        },
+        {
+          "seconds": 450.0000000000338,
+          "distance": 496.76281196073484,
+          "status": "marching",
+          "ready": 6,
+          "levels": [
+            28,
+            28,
+            28,
+            28,
+            28,
+            28
+          ]
+        },
+        {
+          "seconds": 480.00000000004064,
+          "distance": 535.9346380909816,
+          "status": "marching",
+          "ready": 6,
+          "levels": [
+            29,
+            29,
+            29,
+            29,
+            29,
+            29
+          ]
+        },
+        {
+          "seconds": 510.00000000004746,
+          "distance": 574.090375542306,
+          "status": "marching",
+          "ready": 6,
+          "levels": [
+            30,
+            30,
+            30,
+            30,
+            30,
+            30
+          ]
+        },
+        {
+          "seconds": 540.0000000000542,
+          "distance": 593.783239349192,
+          "status": "castle",
+          "ready": 6,
+          "levels": [
+            31,
+            31,
+            31,
+            31,
+            31,
+            31
+          ]
+        },
+        {
+          "seconds": 570.000000000061,
+          "distance": 593.783239349192,
+          "status": "castle",
+          "ready": 4,
+          "levels": [
+            31,
+            31,
+            31,
+            31,
+            31,
+            31
+          ]
+        },
+        {
+          "seconds": 600.0000000000679,
+          "distance": 593.783239349192,
+          "status": "castle",
+          "ready": 4,
+          "levels": [
+            32,
+            32,
+            31,
+            32,
+            31,
+            32
+          ]
+        },
+        {
+          "seconds": 630.0000000000747,
+          "distance": 593.783239349192,
+          "status": "castle",
+          "ready": 1,
+          "levels": [
+            32,
+            32,
+            31,
+            32,
+            31,
+            32
+          ]
+        },
+        {
+          "seconds": 660.0000000000815,
+          "distance": 593.783239349192,
+          "status": "down",
+          "ready": 0,
+          "levels": [
+            32,
+            32,
+            31,
+            32,
+            31,
+            32
+          ]
+        }
+      ]
+    },
+    {
+      "seed": 202610132,
+      "seconds": 714.800000000094,
+      "maxDistance": 593.8132298511185,
+      "castleDistance": 593.9696961966999,
+      "enteredAt": 577.7000000000628,
+      "status": "fallen",
+      "firstDown": 654.5000000000803,
+      "defeated": false,
+      "initial": [
+        {
+          "class": "LIGHT",
+          "level": 1,
+          "hp": 14695,
+          "atk": 3397,
+          "def": 10935,
+          "magicAttack": 2373,
+          "magicDef": 4014,
+          "strength": 14,
+          "dodge": 2.7,
+          "barrier": 0,
+          "tier": 24,
+          "upgrade": 0
+        },
+        {
+          "class": "HEAVY",
+          "level": 1,
+          "hp": 11350,
+          "atk": 9997,
+          "def": 10980,
+          "magicAttack": 2373,
+          "magicDef": 4018,
+          "strength": 22,
+          "dodge": 1.1,
+          "barrier": 0,
+          "tier": 24,
+          "upgrade": 0
+        },
+        {
+          "class": "LIGHT",
+          "level": 1,
+          "hp": 11244,
+          "atk": 5942,
+          "def": 8400,
+          "magicAttack": 753,
+          "magicDef": 4006,
+          "strength": 32,
+          "dodge": 2.5,
+          "barrier": 0,
+          "tier": 24,
+          "upgrade": 0
+        },
+        {
+          "class": "ARCHER",
+          "level": 1,
+          "hp": 6434,
+          "atk": 1552,
+          "def": 6200,
+          "magicAttack": 529,
+          "magicDef": 4009,
+          "strength": 18,
+          "dodge": 1.5,
+          "barrier": 0,
+          "tier": 24,
+          "upgrade": 0
+        },
+        {
+          "class": "MEDIC",
+          "level": 1,
+          "hp": 9126,
+          "atk": 135,
+          "def": 6200,
+          "magicAttack": 1148,
+          "magicDef": 4022,
+          "strength": 7,
+          "dodge": 1.6,
+          "barrier": 0,
+          "tier": 24,
+          "upgrade": 0
+        },
+        {
+          "class": "MAGE",
+          "level": 1,
+          "hp": 7545,
+          "atk": 219,
+          "def": 6200,
+          "magicAttack": 2024,
+          "magicDef": 4019,
+          "strength": 11,
+          "dodge": 1.1,
+          "barrier": 0,
+          "tier": 24,
+          "upgrade": 0
+        }
+      ],
+      "members": [
+        {
+          "class": "LIGHT",
+          "level": 33,
+          "hp": 18894,
+          "atk": 57807,
+          "def": 10935,
+          "magicAttack": 35950,
+          "magicDef": 4203,
+          "strength": 173,
+          "dodge": 12.7,
+          "barrier": 0,
+          "tier": 24,
+          "upgrade": 0,
+          "dead": true,
+          "isDown": false,
+          "kills": 42,
+          "bossKills": 0
+        },
+        {
+          "class": "HEAVY",
+          "level": 33,
+          "hp": 13259,
+          "atk": 97619,
+          "def": 11393,
+          "magicAttack": 32616,
+          "magicDef": 4195,
+          "strength": 159,
+          "dodge": 7.3,
+          "barrier": 0,
+          "tier": 24,
+          "upgrade": 0,
+          "dead": true,
+          "isDown": false,
+          "kills": 8,
+          "bossKills": 0
+        },
+        {
+          "class": "LIGHT",
+          "level": 33,
+          "hp": 13215,
+          "atk": 60482,
+          "def": 8400,
+          "magicAttack": 10878,
+          "magicDef": 4090,
+          "strength": 237,
+          "dodge": 7.7,
+          "barrier": 0,
+          "tier": 24,
+          "upgrade": 0,
+          "dead": true,
+          "isDown": false,
+          "kills": 19,
+          "bossKills": 0
+        },
+        {
+          "class": "ARCHER",
+          "level": 33,
+          "hp": 7609,
+          "atk": 14873,
+          "def": 6200,
+          "magicAttack": 7054,
+          "magicDef": 4085,
+          "strength": 124,
+          "dodge": 4.5,
+          "barrier": 0,
+          "tier": 24,
+          "upgrade": 0,
+          "dead": true,
+          "isDown": false,
+          "kills": 1,
+          "bossKills": 0
+        },
+        {
+          "class": "MEDIC",
+          "level": 33,
+          "hp": 11980,
+          "atk": 238,
+          "def": 6200,
+          "magicAttack": 8204,
+          "magicDef": 4159,
+          "strength": 7,
+          "dodge": 10.9,
+          "barrier": 0,
+          "tier": 24,
+          "upgrade": 0,
+          "dead": true,
+          "isDown": false,
+          "kills": 12,
+          "bossKills": 0
+        },
+        {
+          "class": "MAGE",
+          "level": 33,
+          "hp": 8908,
+          "atk": 384,
+          "def": 6200,
+          "magicAttack": 12100,
+          "magicDef": 4125,
+          "strength": 11,
+          "dodge": 6.1,
+          "barrier": 0,
+          "tier": 24,
+          "upgrade": 0,
+          "dead": true,
+          "isDown": false,
+          "kills": 22,
+          "bossKills": 0
+        }
+      ],
+      "trace": [
+        {
+          "seconds": 30.000000000000156,
+          "distance": 23.083759617488145,
+          "status": "marching",
+          "ready": 6,
+          "levels": [
+            6,
+            6,
+            6,
+            6,
+            6,
+            6
+          ]
+        },
+        {
+          "seconds": 60.00000000000058,
+          "distance": 50.781805219905706,
+          "status": "marching",
+          "ready": 6,
+          "levels": [
+            8,
+            8,
+            8,
+            8,
+            8,
+            8
+          ]
+        },
+        {
+          "seconds": 89.99999999999916,
+          "distance": 78.16609086673273,
+          "status": "marching",
+          "ready": 6,
+          "levels": [
+            9,
+            9,
+            9,
+            9,
+            9,
+            9
+          ]
+        },
+        {
+          "seconds": 119.99999999999746,
+          "distance": 107.1318763176186,
+          "status": "marching",
+          "ready": 6,
+          "levels": [
+            10,
+            10,
+            10,
+            10,
+            10,
+            10
+          ]
+        },
+        {
+          "seconds": 149.99999999999577,
+          "distance": 135.78249984670845,
+          "status": "marching",
+          "ready": 6,
+          "levels": [
+            12,
+            12,
+            12,
+            12,
+            12,
+            12
+          ]
+        },
+        {
+          "seconds": 179.99999999999406,
+          "distance": 164.34992746951227,
+          "status": "marching",
+          "ready": 6,
+          "levels": [
+            14,
+            14,
+            14,
+            14,
+            14,
+            14
+          ]
+        },
+        {
+          "seconds": 209.99999999999235,
+          "distance": 193.33418314156913,
+          "status": "marching",
+          "ready": 6,
+          "levels": [
+            16,
+            16,
+            16,
+            16,
+            16,
+            16
+          ]
+        },
+        {
+          "seconds": 239.99999999999065,
+          "distance": 224.12936869341738,
+          "status": "marching",
+          "ready": 6,
+          "levels": [
+            18,
+            18,
+            18,
+            18,
+            18,
+            18
+          ]
+        },
+        {
+          "seconds": 269.9999999999929,
+          "distance": 255.53815194525706,
+          "status": "marching",
+          "ready": 6,
+          "levels": [
+            21,
+            21,
+            21,
+            21,
+            21,
+            21
+          ]
+        },
+        {
+          "seconds": 299.9999999999997,
+          "distance": 288.0752879150451,
+          "status": "marching",
+          "ready": 6,
+          "levels": [
+            22,
+            22,
+            22,
+            22,
+            22,
+            22
+          ]
+        },
+        {
+          "seconds": 330.00000000000654,
+          "distance": 321.194101462731,
+          "status": "marching",
+          "ready": 6,
+          "levels": [
+            23,
+            23,
+            23,
+            23,
+            23,
+            23
+          ]
+        },
+        {
+          "seconds": 360.00000000001336,
+          "distance": 354.13194500302933,
+          "status": "marching",
+          "ready": 6,
+          "levels": [
+            24,
+            24,
+            24,
+            24,
+            24,
+            24
+          ]
+        },
+        {
+          "seconds": 390.0000000000202,
+          "distance": 386.6984553648892,
+          "status": "marching",
+          "ready": 6,
+          "levels": [
+            25,
+            25,
+            25,
+            25,
+            25,
+            25
+          ]
+        },
+        {
+          "seconds": 420.000000000027,
+          "distance": 420.5357754032941,
+          "status": "marching",
+          "ready": 6,
+          "levels": [
+            26,
+            26,
+            26,
+            26,
+            26,
+            26
+          ]
+        },
+        {
+          "seconds": 450.0000000000338,
+          "distance": 453.97057206002063,
+          "status": "marching",
+          "ready": 6,
+          "levels": [
+            27,
+            27,
+            27,
+            27,
+            27,
+            27
+          ]
+        },
+        {
+          "seconds": 480.00000000004064,
+          "distance": 487.6504001525001,
+          "status": "marching",
+          "ready": 6,
+          "levels": [
+            28,
+            28,
+            28,
+            28,
+            28,
+            28
+          ]
+        },
+        {
+          "seconds": 510.00000000004746,
+          "distance": 522.6361752431009,
+          "status": "marching",
+          "ready": 6,
+          "levels": [
+            28,
+            28,
+            28,
+            28,
+            28,
+            28
+          ]
+        },
+        {
+          "seconds": 540.0000000000542,
+          "distance": 555.7847726619955,
+          "status": "marching",
+          "ready": 6,
+          "levels": [
+            29,
+            29,
+            29,
+            29,
+            29,
+            29
+          ]
+        },
+        {
+          "seconds": 570.000000000061,
+          "distance": 586.2088634227889,
+          "status": "marching",
+          "ready": 6,
+          "levels": [
+            30,
+            30,
+            30,
+            30,
+            30,
+            30
+          ]
+        },
+        {
+          "seconds": 600.0000000000679,
+          "distance": 593.8132298511185,
+          "status": "castle",
+          "ready": 6,
+          "levels": [
+            31,
+            31,
+            31,
+            31,
+            31,
+            31
+          ]
+        },
+        {
+          "seconds": 630.0000000000747,
+          "distance": 593.8132298511185,
+          "status": "castle",
+          "ready": 6,
+          "levels": [
+            32,
+            32,
+            32,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "seconds": 660.0000000000815,
+          "distance": 593.8132298511185,
+          "status": "castle",
+          "ready": 4,
+          "levels": [
+            33,
+            33,
+            33,
+            33,
+            33,
+            33
+          ]
+        },
+        {
+          "seconds": 690.0000000000883,
+          "distance": 593.8132298511185,
+          "status": "down",
+          "ready": 0,
+          "levels": [
+            33,
+            33,
+            33,
+            33,
+            33,
+            33
+          ]
+        }
+      ]
+    }
+  ]
+}

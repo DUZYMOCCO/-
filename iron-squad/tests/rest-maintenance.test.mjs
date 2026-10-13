@@ -13,7 +13,7 @@ const soldier=game.squad[0];soldier.gold=500;soldier.hp=soldier.maxHp;
 for(const item of Object.values(soldier.equipped))if(item)applyUpgradeStats(item,0);
 const beforeGold=soldier.gold;
 const expectedSalary=salaryQuote(soldier,game).total;
-const boss={id:'boss',x:7000,y:7000,hp:1234,maxHp:2000,isBoss:true};game.monsters=[boss];game.projectiles=[{hostile:true}];
+const boss={campaignScaleVersion:2,id:'boss',x:7000,y:7000,hp:1234,maxHp:2000,isBoss:true};game.monsters=[boss];game.projectiles=[{hostile:true}];
 game.completePhase();const phase=game.phase,capacity=game.squad.length+game.reserves.length;
 assert.equal(game.restTimer,REST_DURATION);const afterProcurement=beforeGold+expectedSalary-(soldier.lastEquipmentPurchase?.spent||0);assert.equal(soldier.gold,afterProcurement);
 assert.equal(game.monsters.length,0);assert.equal(game.projectiles.length,0);assert.equal(game.restMonsters[0].hp,1234);

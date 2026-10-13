@@ -1,3 +1,4 @@
+import {campaignScaling} from './campaign-scaling.js?v=241';
 import {requiredDefenseStrength} from './defense-equipment.js?v=237';
 import {powerRank,MAX_EQUIPMENT_TIER,GENERATIONS} from './equipment-tiers.js?v=231';
 import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=182';
@@ -139,75 +140,17 @@ export function chooseLootTier(distance,kind='normal',random=Math.random) {
   return 1;
 }
 
-/** v1.25.8: ×10 / ring beyond 本陣防衛圏 (safe), soft-cap → ~1,000,000× at outermost. No world expand. */
-export const ZONE_SAFE_DIST = 8000;
-export const ZONE_POWER_SOFTCAP = 1000000;
-export const ZONE_EDGE_DIST = 79360; // ≈ WORLD_SIZE/2
-
-/**
- * Enemy combat power vs distance from base.
- * - 本陣防衛圏 (<8000): ×1
- * - 警戒辺境 ring1: ×10
- * - 魔境深部 ring2: ×100
- * - 最果て ring3+: ×1000 … easing toward soft-cap 1e6 at map rim
- */
-export function zoneRingPower(distance) {
-  const d = Math.max(0, Number(distance) || 0);
-  if (d < ZONE_SAFE_DIST) return 1;
-  let rings;
-  if (d < 22000) rings = 1;
-  else if (d < 48000) rings = 2;
-  else {
-    const t = Math.min(1, (d - 48000) / Math.max(1, ZONE_EDGE_DIST - 48000));
-    const s = t * t * (3 - 2 * t);
-    rings = 3 + s * 3;
-  }
-  const raw = Math.pow(10, rings);
-  const cap = ZONE_POWER_SOFTCAP;
-  // Soft approach: mostly raw, gently compress near cap so outermost ~1e6
-  return Math.min(cap, raw / (1 + raw / (cap * 20)));
+/** v6.7.1: authored border walls; labels show the actual HP/ATK multipliers. */
+export const ZONE_SAFE_DIST=8000,ZONE_POWER_SOFTCAP=1_000_000,ZONE_EDGE_DIST=79360;
+export const zoneRingPower=distance=>campaignScaling(distance,1).hp;
+export function zoneRingLabelJa(distance){
+  const d=Math.max(0,Number(distance)||0),p=campaignScaling(d,1),ring=d<8000?0:d<22000?1:d<48000?2:3;
+  const fmt=v=>v<10?v.toFixed(1):Math.round(v).toLocaleString('ja-JP');
+  const boundary=[0,8000,22000,48000][ring],before=ring?campaignScaling(boundary-1,1):null,after=ring?campaignScaling(boundary,1):null;
+  const wall=ring?{hp:after.hp/before.hp,atk:after.atk/before.atk}:null;
+  return {ring,mult:p.hp,name:['本陣防衛圏','警戒辺境','魔境深部','最果ての死地'][ring],tip:`HP×${fmt(p.hp)}・攻撃×${fmt(p.atk)}`,wallTip:wall?`敵のHP約${Math.round(wall.hp)}倍・攻撃約${Math.round(wall.atk)}倍`:'',wall};
 }
-
-export function zoneRingLabelJa(distance) {
-  const d = Math.max(0, Number(distance) || 0);
-  const p = zoneRingPower(d);
-  const rounded = Math.round(p);
-  if (d < 8000) return { ring: 0, mult: p, name: '本陣防衛圏', tip: '安全圏（敵倍率×1）' };
-  if (d < 22000) return { ring: 1, mult: p, name: '警戒辺境', tip: `危険リング1（敵倍率×${rounded}）` };
-  if (d < 48000) return { ring: 2, mult: p, name: '魔境深部', tip: `危険リング2（敵倍率×${rounded}）` };
-  return { ring: 3, mult: p, name: '最果ての死地', tip: `危険リング3+（敵倍率×${rounded.toLocaleString('ja-JP')}）` };
-}
-
-const KNOTS = [
-  [0, 1.0, 1.0, 1.0, 1.0],
-  [7999, 1.25, 1.25, 1.35, 1.35],
-  [8000, 6.0, 6.0, 2.8, 2.5],
-  [21999, 8.5, 8.5, 4.0, 3.5],
-  [22000, 35.0, 32.0, 7.5, 6.0],
-  [47999, 45.0, 42.0, 9.5, 8.0],
-  [48000, 180.0, 160.0, 16.0, 13.0],
-  [70000, 280.0, 240.0, 26.0, 22.0]
-];
-export function distanceScaling(distance,phase=1) {
-  const dRaw=Math.max(0,distance || 0);
-  const d=Math.max(0,Math.min(70000,dRaw));
-  let a=KNOTS[0],b=KNOTS[1];
-  for(let i=1;i<KNOTS.length;i++){a=KNOTS[i-1];b=KNOTS[i];if(d<=b[0])break;}
-  const t=(d-a[0])/Math.max(1e-9,(b[0]-a[0]));
-  const phaseBonus=1+Math.min(.6,Math.max(0,(phase || 1)-1)*.025);
-  const lerp=index=>a[index]+(b[index]-a[index])*t;
-  // v1.25.8: ring power ×10/ring beyond safe (soft-cap ~1e6). Rewards scale gentler (sqrt).
-  const ring=zoneRingPower(dRaw);
-  const rewardRing=Math.sqrt(ring);
-  return {
-    hp:lerp(1)*phaseBonus*ring,
-    atk:lerp(2)*phaseBonus*ring,
-    exp:lerp(3)*phaseBonus*rewardRing,
-    gold:lerp(4)*phaseBonus*rewardRing,
-    phaseBonus,
-    ringPower:ring
-  };
-}
+export const distanceScaling=campaignScaling;
 
 export function shrineUpgradeCap(distance) {
   return Infinity; // 無限強化解禁！
@@ -335,7 +278,7 @@ function baseWeaponCombatProfile(item) {
     return {
       style: 'bow', ranged: true,
       reach: 250, reachWarlord: 280,
-      baseCooldown: 0.95, pierce: false, pierceHalfWidth: 0,
+      baseCooldown: 0.60, pierce: false, pierceHalfWidth: 0,
       atkMult: 1.05, knockback: 0, knockbackWarlord: 0,
       projSpeed: 380, splash: 0, projType: 'ARROW', color: '#e2e8f0'
     };
@@ -345,8 +288,8 @@ function baseWeaponCombatProfile(item) {
       style: 'crossbow', ranged: true,
       reach: 285, reachWarlord: 320,
       baseCooldown: 1.25, pierce: false, pierceHalfWidth: 0,
-      // 弓より遅射・高威力（理論DPSは弓と同程度〜やや上、実戦は隙が目立つ）
-      atkMult: 1.85, knockback: 12, knockbackWarlord: 18,
+      // 重い一撃と直線3体貫通。単体の手数は弓、密集の範囲は火砲が優位。
+      atkMult: 2.40, knockback: 12, knockbackWarlord: 18,
       projSpeed: 460, splash: 0, projType: 'BOLT', color: '#94a3b8'
     };
   }

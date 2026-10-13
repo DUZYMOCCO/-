@@ -1,15 +1,38 @@
+import {attributeValues,ensureAttributeProfile} from './unit-attributes.js?v=231';
 import {isMagicUser,ensureMana} from './magic-rules.js?v=231';
 import {WORLD_SIZE} from './world.js?v=198';
 import {inCurrentInstance} from './instance-rules.js?v=182';
 import {saveSlots} from './save-slots.js';
 import {nearestRevivalPotionTarget,reviveByPotion,REVIVAL_POTION_RANGE} from './casualty-rules.js?v=235';
 
-export const AMMO_CAPACITY=30;
+export const AMMO_CAPACITY=30; // Legacy/default capacity for units without a ranged weapon.
+export const AMMO_BASE_CAPACITY=Object.freeze({bow:120,crossbow:60,cannon:30});
+export function recalcAmmoCapacity(unit){
+  const held=(unit?.equipped?.weapon||unit?.weapon)?.weaponStyle;
+  const style=AMMO_BASE_CAPACITY[held]?held:ARCHERS.has(unit?.soldierClass)?'bow':null;
+  if(!unit)return AMMO_CAPACITY;
+  let strength=0;
+  if(style){
+    if(!unit.attributeProfile&&Number.isFinite(unit.strength))strength=unit.strength-(unit._casterStrengthTimer>0?unit._casterStrengthBonus||0:0);
+    else {ensureAttributeProfile(unit);strength=attributeValues({...unit,_casterStrengthTimer:0,_casterStrengthBonus:0}).strength;}
+  }
+  unit._ammoCapacity=style?AMMO_BASE_CAPACITY[style]+Math.floor(Math.max(0,strength-30)/({bow:1,crossbow:2,cannon:4}[style])):AMMO_CAPACITY;
+  unit._ammoCapacityVersion=1;unit._ammoStyle=held;unit._ammoClass=unit.soldierClass;unit._ammoLevel=unit.level;
+  unit._ammoBuffStrength=unit._casterStrengthTimer>0?unit._casterStrengthBonus||0:0;unit._ammoStrength=unit.strength;unit._ammoInnate=unit.attributeProfile?.innate?.strength;unit._ammoPractice=unit.attributeProfile?.practice?.strength;
+  return unit._ammoCapacity;
+}
+export function ammoCapacity(unit){
+  if(!unit)return AMMO_CAPACITY;
+  // Usually computed at the end of stat recalculation. These scalar guards also handle
+  // lightweight actors and direct equipment/profile changes without per-frame allocation.
+  if(unit._ammoCapacityVersion!==1||unit._ammoStyle!==(unit.equipped?.weapon||unit.weapon)?.weaponStyle||unit._ammoClass!==unit.soldierClass||unit._ammoLevel!==unit.level||unit._ammoStrength!==unit.strength||unit._ammoBuffStrength!==(unit._casterStrengthTimer>0?unit._casterStrengthBonus||0:0)||unit._ammoInnate!==unit.attributeProfile?.innate?.strength||unit._ammoPractice!==unit.attributeProfile?.practice?.strength)return recalcAmmoCapacity(unit);
+  return unit._ammoCapacity;
+}
 export const SQUAD_POTION_COST=5000,SQUAD_POTION_MAX=3; // 携帯は3個まで。商人で1個ずつ、本陣では無料で満タン
 export const REVIVAL_POTION_COST=30000,REVIVAL_POTION_MAX=2; // 携帯は2個まで、商人で1個ずつ補充
 export const LETHAL_GUARD_COOLDOWN=120;
 export const RANGED_DAMAGE_MULT=1.2;
-export const STONE_MULT=.75;
+
 const BASE={x:WORLD_SIZE/2,y:WORLD_SIZE/2,radius:150};
 const ARCHERS=new Set(['ARCHER','SNIPER','STORM_BOW','STAR_HUNTER']);
 const RANGED=new Set(['bow','crossbow','cannon']);
@@ -21,7 +44,7 @@ export function isRangedUnit(game,u) {
   return RANGED.has(item?.weaponStyle)||ARCHERS.has(u?.soldierClass);
 }
 export function ensureAmmo(u) {
-  u.ammo=u.ammo==null?AMMO_CAPACITY:Math.max(0,Math.min(AMMO_CAPACITY,Math.floor(Number(u.ammo)||0)));
+  u.ammo=u.ammo==null?ammoCapacity(u):Math.max(0,Math.min(ammoCapacity(u),Math.floor(Number(u.ammo)||0)));
   return u.ammo;
 }
 export function squadUnits(game) {return [game.player,...(game.squad||[]),...(game.reserves||[])].filter(Boolean);}
@@ -33,7 +56,7 @@ export function initializeSupplies(game,saved=null) {
   game.squadPotion=saved?.squadPotion==null?1:Math.max(0,Math.min(SQUAD_POTION_MAX,Math.floor(Number(saved.squadPotion)||0)));
   game.revivalPotion=saved?.revivalPotion==null?(saved?0:1):Math.max(0,Math.min(REVIVAL_POTION_MAX,Math.floor(Number(saved.revivalPotion)||0)));
   game._supplyClock=0;
-  for(const u of squadUnits(game))if(saved)ensureAmmo(u);else u.ammo=AMMO_CAPACITY;
+  for(const u of squadUnits(game))if(saved)ensureAmmo(u);else u.ammo=ammoCapacity(u);
   game.player.invulnerableTimer=Math.max(0,Math.min(2,Number(saved?.player?.invulnerableTimer)||0));
   game.player.lethalGuardCooldown=Math.max(0,Math.min(LETHAL_GUARD_COOLDOWN,Number(saved?.player?.lethalGuardCooldown??(game.player.invulnerableTimer>0?LETHAL_GUARD_COOLDOWN:0))||0));
   game.player.retreatWarningTimer=game.player.invulnerableTimer>0?6:0;
@@ -41,12 +64,11 @@ export function initializeSupplies(game,saved=null) {
 export function takeRangedShot(unit,damage) {
   const loaded=ensureAmmo(unit)>0;
   if(loaded)unit.ammo--;
-  return {loaded,damage:Math.max(1,Math.round(damage*RANGED_DAMAGE_MULT*(loaded?1:STONE_MULT)))};
+  return {loaded,damage:loaded?Math.max(1,Math.round(damage*RANGED_DAMAGE_MULT)):0};
 }
 export function ammoCombatProfile(unit,profile) {
   if(!profile.ranged||ensureAmmo(unit)>0)return profile;
-  return {...profile,stone:true,reach:profile.reach*STONE_MULT,reachWarlord:profile.reachWarlord*STONE_MULT,
-    baseCooldown:profile.baseCooldown/STONE_MULT,projSpeed:profile.projSpeed*STONE_MULT,splash:0,knockback:0,knockbackWarlord:0};
+  return {...profile,sidearm:true,stone:false,reach:65,reachWarlord:65,baseCooldown:.9,pierce:false,splash:0,knockback:0,knockbackWarlord:0,projType:null};
 }
 // Distribute one round per pass so the closest collector does not monopolize supplies.
 export function distributeAmmo(game,amount=0) {
@@ -56,7 +78,7 @@ export function distributeAmmo(game,amount=0) {
   while(game.ammoReserve>0) {
     let changed=false;
     for(const u of recipients) {
-      if(ensureAmmo(u)>=AMMO_CAPACITY)continue;
+      if(ensureAmmo(u)>=ammoCapacity(u))continue;
       u.ammo++;game.ammoReserve--;delivered++;changed=true;
       if(!game.ammoReserve)break;
     }
@@ -88,7 +110,7 @@ export function updateSupplies(game,dt) {
   game._supplyClock=(game._supplyClock||0)+dt;
   if(game._supplyClock<.25)return;
   game._supplyClock=0;
-  for(const u of squadUnits(game))if(usable(u)&&ensureAmmo(u)<AMMO_CAPACITY&&supplyLocation(game,u))u.ammo=AMMO_CAPACITY;
+  for(const u of squadUnits(game))if(usable(u)&&ensureAmmo(u)<ammoCapacity(u)&&supplyLocation(game,u))u.ammo=ammoCapacity(u);
   distributeAmmo(game);
 }
 export function preventLethalHit(game,target,damage) {
@@ -141,7 +163,7 @@ export const supplyMethods={
   useSquadPotion() {
     if(!this.inBattle||this.container?.classList.contains('dialog-open')||this._merchantShopClose||!usable(this.player)||!this.squadPotion)return false;
     this.squadPotion--;
-    for(const u of personalSquadUnits(this))if(usable(u)){u.hp=u.maxHp;u.ammo=AMMO_CAPACITY;if(isMagicUser(u)){ensureMana(u);u.mana=u.maxMana;u.magicRecovering=false;}}
+    for(const u of personalSquadUnits(this))if(usable(u)){u.hp=u.maxHp;u.ammo=ammoCapacity(u);if(isMagicUser(u)){ensureMana(u);u.mana=u.maxMana;u.magicRecovering=false;}}
     this.showToast('隊長と直属兵のHP・弾薬・魔力を全回復しました');this.saveGame();this.updateStatsUI();
     return true;
   },
@@ -184,7 +206,7 @@ export const supplyMethods={
     const ranged=squadUnits(this).filter(u=>usable(u)&&isRangedUnit(this,u));
     const empty=ranged.filter(u=>ensureAmmo(u)===0).length;
     const heroRanged=isRangedUnit(this,this.player);
-    if(badge){const previous=badge.textContent;badge.textContent=`${heroRanged?`弾薬 ${ensureAmmo(this.player)}/${AMMO_CAPACITY} · `:''}${empty?`要補給 ${empty}名（石75%）`:`射手の弾薬 ${ranged.reduce((n,u)=>n+ensureAmmo(u),0)}/${ranged.length*AMMO_CAPACITY}`} · 回復薬 ${this.squadPotion||0}/${SQUAD_POTION_MAX}`;badge.dataset.empty=String(empty>0);}
+    if(badge){const previous=badge.textContent;badge.textContent=`${heroRanged?`弾薬 ${ensureAmmo(this.player)}/${ammoCapacity(this.player)} · `:''}${empty?`要補給 ${empty}名（短剣で迎撃）`:`射手の弾薬 ${ranged.reduce((n,u)=>n+ensureAmmo(u),0)}/${ranged.reduce((n,u)=>n+ammoCapacity(u),0)}`} · 回復薬 ${this.squadPotion||0}/${SQUAD_POTION_MAX}`;badge.dataset.empty=String(empty>0);}
     const button=document.getElementById('btn-pad-potion');
     if(button){button.disabled=!this.squadPotion||!usable(this.player);button.textContent=`回復薬 ${this.squadPotion||0}`;}
     const revival=document.getElementById('btn-pad-revive'),target=nearestRevivalPotionTarget(this);
@@ -204,7 +226,7 @@ export const supplyMethods={
     if(!panel.querySelector('.supply-actions'))panel.innerHTML='<h4>補給・地点セーブ</h4><p class="supply-location"></p><p class="supply-counts"></p><p class="lethal-guard-status"></p><div class="supply-actions"><button type="button" data-supply="potion">本陣で回復薬を補給</button><button type="button" data-supply="save">現在地をセーブ</button><button type="button" data-supply="load">地点セーブへ戻る</button></div><p class="checkpoint-summary"></p><p class="supply-help"></p>';
     panel.querySelector('.lethal-guard-status').textContent=this.player.lethalGuardCooldown>0?`即死対策：再発動まで${Math.ceil(this.player.lethalGuardCooldown)}秒`:`即死対策：使用可能（再使用${LETHAL_GUARD_COOLDOWN}秒）`;
     panel.querySelector('.supply-location').textContent=place?`補給地点：${place.name}`:'野外：本陣・救護所・町・商人・キャンプに近づくとセーブ／読込できます';
-    panel.querySelector('.supply-counts').textContent=`回復薬 ${this.squadPotion||0}/${SQUAD_POTION_MAX} · 射手の弾薬 ${ranged.reduce((n,u)=>n+ensureAmmo(u),0)}/${ranged.length*AMMO_CAPACITY} · 予備弾薬 ${this.ammoReserve||0}`;
+    panel.querySelector('.supply-counts').textContent=`回復薬 ${this.squadPotion||0}/${SQUAD_POTION_MAX} · 射手の弾薬 ${ranged.reduce((n,u)=>n+ensureAmmo(u),0)}/${ranged.reduce((n,u)=>n+ammoCapacity(u),0)} · 予備弾薬 ${this.ammoReserve||0}`;
     panel.querySelector('.supply-counts').textContent+=` · 蘇生薬 ${this.revivalPotion||0}/${REVIVAL_POTION_MAX}`;
     panel.querySelector('.supply-help').textContent='弾薬・魔力は本陣・救護所・町・商人・キャンプの近くで自動補給。回復薬は隊長と行動可能な直属兵のHP・弾薬・魔力を全回復。本隊・予備兵は対象外。3個まで携帯でき、商人で1個5,000G、本陣では無料で満タンに補給。ダウン中は搬送・衛生兵が必要です。地点セーブはオートセーブと別に保持し、読込時は記録時点へ戻ります。蘇生薬は術士の蘇生クールタイムを無視して、近くの味方1人を全快蘇生できます。自分には使えず、2個まで携帯でき、商人から1個30,000Gで補充できます。';
     const potion=panel.querySelector('[data-supply="potion"]');potion.disabled=(this.squadPotion||0)>=SQUAD_POTION_MAX||place?.kind!=='base';potion.onclick=()=>{this.replenishSquadPotion();if(host){if(host.closest('#merchant-shop-popup'))this._merchantShopRefresh?.();else this.renderSupplyPanel(host);}};

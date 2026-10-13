@@ -3,7 +3,7 @@
 import {isOwnSquad} from './own-squad-marker.js?v=182';
 import {downLabel} from './casualty-rules.js?v=235';
 import {isMagicUser,ensureMana} from './magic-rules.js?v=231';
-import {isRangedUnit,ensureAmmo,AMMO_CAPACITY} from './supply-rules.js?v=234';
+import {isRangedUnit,ensureAmmo,ammoCapacity} from './supply-rules.js?v=241';
 
 const REFRESH = .15;
 const shortName = name => String(name || '').split(/[・\s]/)[0] || '兵士';
@@ -26,7 +26,7 @@ function resourceOf(game, s) {
     return s.maxMana > 0 ? {kind: 'mp', cur, max, ratio: cur / max, text: `MP ${cur}/${max}`} : null;
   }
   if (isRangedUnit(game, s)) {
-    const cur = ensureAmmo(s), max = AMMO_CAPACITY;
+    const cur = ensureAmmo(s), max = ammoCapacity(s);
     return {kind: 'ammo', cur, max, ratio: cur / max, text: `弾 ${cur}/${max}`};
   }
   return null;

@@ -3,7 +3,7 @@ import {readFileSync} from 'node:fs';
 import {JSDOM} from '../../__pycache__/ui-tools/node_modules/jsdom/lib/api.js';
 import {resetBattleLog,BATTLE_LOG_LIMIT,showsOnFieldLog,refreshCombatFieldNotes} from '../js/battle-log.js';
 import {markSoldierDown,updateWounded} from '../js/casualty-rules.js';
-import {AMMO_CAPACITY} from '../js/supply-rules.js';
+import {AMMO_CAPACITY,ammoCapacity} from '../js/supply-rules.js';
 const css=['game-ui','iron-squad','iron-squad-interface'].map(n=>readFileSync(new URL(n==='game-ui'?`../../common/css/${n}.css`:`../css/${n}.css`,import.meta.url),'utf8')).join('\n');
 const dom=new JSDOM(`<style>${css}</style><div id="game" class="game-container iron-squad"></div>`,{url:'http://localhost/'});
 Object.assign(globalThis,{window:dom.window,document:dom.window.document,localStorage:dom.window.localStorage,screen:{}});
@@ -64,7 +64,7 @@ try{
   assert.match(stream.textContent,/HPが半分以下/,'ordinary combat notices do not replace the field line');
   game.player.maxHp=100;game.player.hp=100;game.player.maxMana=100;game.player.mana=100;game.player.ammo=AMMO_CAPACITY;
   const shooter=game.squad[1];
-  shooter.soldierClass='ARCHER';shooter.combatClass='ARCHER';shooter.dead=false;shooter.isDown=false;shooter.hp=shooter.maxHp||80;shooter.maxHp=shooter.hp;shooter.maxMana=80;shooter.mana=80;shooter.ammo=AMMO_CAPACITY;
+  shooter.soldierClass='ARCHER';shooter.combatClass='ARCHER';shooter.dead=false;shooter.isDown=false;shooter.hp=shooter.maxHp||80;shooter.maxHp=shooter.hp;shooter.maxMana=80;shooter.mana=80;shooter.ammo=ammoCapacity(shooter);
   const halfMarks=()=>game.battleLogHistory.filter(e=>/半分以下/.test(e.text)).length;
   const halfBefore=halfMarks();
   refreshCombatFieldNotes(game);
@@ -76,7 +76,7 @@ try{
   shooter.isPersonalGuard=false;shooter.overflowGuard=false;shooter.hp=shooter.maxHp;refreshCombatFieldNotes(game);const beforeOther=halfMarks();shooter.hp=1;refreshCombatFieldNotes(game);assert.equal(halfMarks(),beforeOther,'other platoons do not produce half-HP alerts');
   shooter.isPersonalGuard=true;refreshCombatFieldNotes(game);assert.equal(halfMarks(),beforeOther+1,'own companion HP warnings remain');shooter.hp=shooter.maxHp;refreshCombatFieldNotes(game);shooter.isPersonalGuard=false;shooter.overflowGuard=true;shooter.hp=1;refreshCombatFieldNotes(game);assert.equal(halfMarks(),beforeOther+2,'own overflow companion warnings remain');
   shooter.mana=30;refreshCombatFieldNotes(game);assert.match(stream.textContent,/MPが半分以下 · 残り30\/80/);
-  shooter.ammo=Math.floor(AMMO_CAPACITY/2);refreshCombatFieldNotes(game);assert.match(stream.textContent,new RegExp(`残り弾薬が半分以下 · ${shooter.ammo}/${AMMO_CAPACITY}`));
+  shooter.ammo=Math.floor(ammoCapacity(shooter)/2);refreshCombatFieldNotes(game);assert.match(stream.textContent,new RegExp(`残り弾薬が半分以下 · ${shooter.ammo}/${ammoCapacity(shooter)}`));
   refreshCombatFieldNotes(game);assert.equal(game.battleLogHistory.filter(e=>e.text.includes(`${shooter.name}の残り弾薬が半分以下`)).length,1);
   const ally=game.squad[0];ally.x=1000;ally.y=1000;markSoldierDown(game,ally);ally.downTimer=16;
   updateWounded(game,2);assert.match(stream.textContent,/死亡まで残り/);

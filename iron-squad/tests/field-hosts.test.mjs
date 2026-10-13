@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {distanceScaling} from '../js/equipment-rules.js';
 import {WORLD_SIZE} from '../js/world.js';
 import {relocatePeaceMonster, peaceContainment} from '../js/peace-zones.js';
 import {configureRangedEnemy} from '../js/enemy-ranged.js';
@@ -138,7 +139,7 @@ assert.equal(spawned.dropCount, 3);
 assert.equal(spawned.radius, 40);
 assert.equal(spawned.isBoss, false);
 assert.equal(spawned.activePeriod, null);
-assert.ok(spawned.maxHp > 4000, 'a wild brute keeps the same distance scaling as the orcs beside it');
+assert.equal(spawned.maxHp, Math.floor(brute.rawHp * distanceScaling(12000,game.phase).hp * spawned.fieldAdaptive.hp), 'a wild brute keeps the same distance scaling as the orcs beside it');
 game.dropsOnField = [];
 try{Math.random=()=>.99;game.killMonster(spawned, game.player, true);}finally{Math.random=random;}
 const gear = game.dropsOnField.filter(d => d.item && !d.isAmmo && !d.isMagicStone && !d.isOrb && d.item.type !== 'MATERIAL' && d.item.type !== 'ORB' && d.item.type !== 'GEM');

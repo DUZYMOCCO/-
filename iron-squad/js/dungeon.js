@@ -1,3 +1,4 @@
+import {DEMON_KING_HP} from './campaign-scaling.js?v=241';
 /**
  * IRON SQUAD: ダンジョン・宿場・廃墟のインスタンス
  * 入口は石門。内部は敷石・土間・崩れ壁。霓虹の魔法陣は使わない。
@@ -6,7 +7,7 @@
 
 import {LIMITED_SETTLEMENTS,drawLimitedEntrance} from './limited-allies.js?v=211';
 import { WORLD_SIZE, SETTLEMENTS } from './world.js';
-import {chooseLootTier} from './equipment-rules.js?v=238';
+import {chooseLootTier} from './equipment-rules.js?v=241';
 import {drawTreasureChest} from './loot-visuals.js?v=189';
 import {explorationLayout,explorationBlocks} from './dungeon-layout.js?v=182';
 import {drawExplorationInterior} from './dungeon-interior-visuals.js?v=208';
@@ -177,7 +178,7 @@ export const DUNGEON_DEFS = [
     theme: 'demon',
     reqDef: 800,
     reqLv: 40,
-    desc: '最果ての外縁にそびえる魔王の居城。城主『深淵魔王ヴァルドール』の力は約1000万規模。伝説職級の挑戦者のみが挑め。',
+    desc: '最果ての外縁にそびえる魔王の居城。城主『深淵魔王ヴァルドール』はHP10億。伝説職級の挑戦者のみが挑め。',
     entrance: { x: CENTER + 42000, y: CENTER + 42000, radius: 64 },
     width: 3200,
     height: 2000,
@@ -193,14 +194,14 @@ export const DUNGEON_DEFS = [
       icon: '😈👑',
       color: '#7f1d1d',
       radius: 72,
-      // v1.25.8: fixed ~10,000,000 scale (createDungeonBoss respects fixedStats)
+      // v1.25.8: fixed 1,000,000,000 HP (createDungeonBoss respects fixedStats)
       fixedStats: true,
-      hp: 10000000,
+      hp: DEMON_KING_HP,
       atk: 85000,
       speed: 54,
       skillCooldown: 3.2,
       skillName: 'アビスメテオ',
-      desc: '約1000万規模のHPと破格の攻撃力。黒炎の天墜で部隊を一掃する魔王！'
+      desc: 'HP10億と破格の攻撃力。黒炎の天墜で部隊を一掃する魔王！'
     },
     mobTypes: ['wyvern', 'colossal_dragon', 'orc'],
     mobCount: 28,

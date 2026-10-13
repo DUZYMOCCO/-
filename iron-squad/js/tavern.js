@@ -1,4 +1,4 @@
-import {isEnlisted,CAREER_RULES} from './career-rules.js?v=200';
+import {isEnlisted,CAREER_RULES} from './career-rules.js?v=240';
 import {isOwnSquad} from './own-squad-marker.js?v=182';
 import {persistentUnit} from './render-support.js';
 import {drawSoldierPortrait} from './soldier-appearance.js?v=206';

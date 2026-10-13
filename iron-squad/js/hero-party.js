@@ -1,7 +1,8 @@
+import {migrateCampaignEnemy} from './campaign-scaling.js?v=241';
 import {HERO_RULES,heroMembers,heroSharesSpace,visibleHeroMembers} from './hero-rules.js';
 import {advanceHeroRoute,heroSegmentOpen,heroRouteCurrent} from './hero-navigation.js?v=198';
 import {WORLD_SIZE,settleUnit} from './world.js?v=198';
-import {DUNGEON_DEFS,dungeonBlocks} from './dungeon.js?v=189';
+import {DUNGEON_DEFS,dungeonBlocks} from './dungeon.js?v=240';
 import {nearestDungeonFloor} from './dungeon-layout.js?v=182';
 import {economicFieldBlocked} from './regional-economy.js?v=182';
 import {RECRUIT_CLASSES} from './recruitment.js?v=226';
@@ -12,8 +13,8 @@ import {practiceAttribute} from './unit-attributes.js?v=231';
 import {isMedic,treatWounded,updateWounded,normalizeRevivalSkill,revivalSkillCooldownLeft} from './casualty-rules.js?v=235';
 import {healByMedic,healAmountFor} from './phase-rules.js?v=218';
 import {ensureMana,regenerateMana,spendMana,isMage} from './magic-rules.js?v=231';
-import {takeRangedShot,supplyLocation} from './supply-rules.js?v=234';
-import {distanceScaling} from './equipment-rules.js?v=238';
+import {takeRangedShot,supplyLocation,ammoCapacity} from './supply-rules.js?v=241';
+import {distanceScaling} from './equipment-rules.js?v=241';
 import {strongEnemyReward} from './combat-rewards.js?v=182';
 import {RANGED_ENEMIES} from './enemy-ranged.js?v=235';
 import {startHeroJournal,archiveHeroJournal,appendHeroDiary,recordHeroEquipmentGrant} from './hero-journal.js?v=239';
@@ -23,6 +24,7 @@ const ready=u=>u&&!u.dead&&!u.isDown&&u.hp>0;
 export function initializeHeroJourney(game,saved=null) {
   game.heroJourney=saved?structuredClone(saved):{lastRollPhase:0,sequence:0,party:null,history:[],demonKingDefeat:null,castleScene:null};
   const journey=game.heroJourney;journey.history||=[];journey.sequence||=0;
+  for(const m of journey.castleScene?.monsters||[])migrateCampaignEnemy(m,castle().distance,game.phase||1);
   let equipped=false;
   for(const u of heroMembers(game)){delete u._cachedEnemy;normalizeRevivalSkill(game,u);if(grantHeroEquipment(game,u))equipped=true;game.recalcSoldierStats(u);if(u.isDown)u.hp=0;}
   if(equipped)recordHeroEquipmentGrant(game,journey.party);
@@ -142,7 +144,7 @@ export function updateHeroParty(game,dt,classes) {
   if(!living.length){p.status='fallen';archiveHeroJournal(game,p,'全滅');game.showToast?.(`勇者【${p.name}】のパーティは全滅した。`);return;}
   p.status=j.demonKingDefeat?'victorious':fighters.length?(p.space==='field'?'marching':'castle'):'down';
   if(!fighters.length)return;
-  for(const u of living){u.atkAnim=Math.max(0,(u.atkAnim||0)-dt*4);regenerateMana(u,dt);if(p.space==='field'&&supplyLocation(ctx,u)){u.ammo=30;ensureMana(u);u.mana=u.maxMana;}}
+  for(const u of living){u.atkAnim=Math.max(0,(u.atkAnim||0)-dt*4);regenerateMana(u,dt);if(p.space==='field'&&supplyLocation(ctx,u)){u.ammo=ammoCapacity(u);ensureMana(u);u.mana=u.maxMana;}}
   if(p.space==='field'&&!j.demonKingDefeat){
     p.spawnClock=(p.spawnClock||0)+dt;
     if(p.spawnClock>=8){p.spawnClock=0;if(Math.hypot(p.x-C,p.y-C)>900&&!ctx.monsters.some(m=>ready(m)&&Math.hypot(m.x-p.x,m.y-p.y)<700))ctx.spawnMonster(p.x+200,p.y+180);}
@@ -167,9 +169,12 @@ export function updateHeroParty(game,dt,classes) {
     }
     const nearestEnemy=nearest(ctx.monsters,u,500),enemy=nearestEnemy&&!ctx.attackBlocked(u,nearestEnemy)?nearestEnemy:null,profile=ctx.combatProfileFor(u,u.equipped?.weapon,false),mage=isMage(u),magic=mage||isMedic(u);
     const reach=magic?cls.range:profile.reach+(enemy?.radius||0)*.5;
-    if(enemy){const dist=Math.hypot(u.x-enemy.x,u.y-enemy.y);if(dist>reach)move(game,ctx,u,enemy,dt);
+    if(enemy){const dist=Math.hypot(u.x-enemy.x,u.y-enemy.y);
+      if(profile.sidearm&&dist>90){move(game,ctx,u,{x:p.x+Math.cos(i*1.15)*34,y:p.y+Math.sin(i*1.15)*34},dt);return;}
+      if(dist>reach)move(game,ctx,u,enemy,dt);
       else if(u._heroAttackClock<=0){u._heroAttackClock=(profile.baseCooldown||cls.atkCooldown)/(u.atkSpeed||1);u.atkAnim=1;u.facingAngle=Math.atan2(enemy.y-u.y,enemy.x-u.x);
         if(magic){if(spendMana(u,mage?12:20))ctx.performAttack(u,enemy,false,u.magicAttack||u.atk,false,'magic');}
+        else if(profile.sidearm)ctx.performRangedSidearm(u,enemy,false,true);
         else if(profile.ranged&&shared)ctx.spawnRangedProjectile(u,enemy,u.atk,profile,false);
         else ctx.performAttack(u,enemy,false,profile.ranged?takeRangedShot(u,u.atk).damage:u.atk);
       }

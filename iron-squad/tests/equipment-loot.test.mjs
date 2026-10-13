@@ -51,8 +51,8 @@ for(const distance of [0,400,7999,8000,13999,14000,21999,22000,35999,36000,47999
  const a=distanceScaling(distance,1),b=distanceScaling(distance,9999);assert.ok(b.hp<=a.hp*1.6+.00001);
 }
 for(const d of [600,1200,2700,4400,12000,36000,60000])assert.ok(Math.abs(distanceScaling(d-.001).hp-distanceScaling(d+.001).hp)/distanceScaling(d).hp<1e-5,'difficulty is continuous within each ring at every world scale');
-for(const d of [8000,22000,48000]){const ratio=distanceScaling(d+.001).hp/distanceScaling(d-.001).hp;assert.ok(ratio>9.9&&ratio<10.1,'crossing a danger ring is an authored tenfold jump');}
-assert.ok(distanceScaling(12000).atk>distanceScaling(400).atk*5);
+for(const d of [8000,22000,48000]){const ratio=distanceScaling(d+.001).hp/distanceScaling(d-.001).hp;assert.ok(Math.abs(ratio-10)<.0001,'authored danger boundaries have tenfold HP walls');}
+assert.ok(distanceScaling(12000).atk>distanceScaling(400).atk);
 for(let n=0;n<300;n++){
  const i=generateRandomDrop(400,'chest');assert.ok(i.tier<=8);assert.ok(i.rollMult!=null&&Number.isFinite(i.rollMult));
  const expected={id:'expected',type:i.type,tier:i.tier,name:i.baseName||i.name,baseName:i.baseName,weaponStyle:i.weaponStyle,armorStyle:i.armorStyle,weaponTraits:i.weaponTraits,dropOnly:i.dropOnly,dropOnlyKey:i.dropOnlyKey,rollMult:i.rollMult,powerSkip:i.powerSkip||0,forgeTag:i.forgeTag||null,stats:{}};

@@ -1,4 +1,4 @@
-import { AMMO_CAPACITY, isRangedUnit } from './supply-rules.js?v=234';
+import { ammoCapacity, isRangedUnit } from './supply-rules.js?v=241';
 import {isOwnSquad} from './own-squad-marker.js?v=182';
 import {noteBattleReport} from './battle-report.js?v=226';
 
@@ -140,7 +140,7 @@ function showFieldLine(game, text, options) {
   const stream = document.getElementById('battle-log-stream');
   if (!stream) return;
   const important=isImportantFieldNotice(text,options);
-  const urgent=/死亡まで残り|力尽きました|半分以下/.test(text);
+  const urgent=options?.urgent??/死亡まで残り|力尽きました|半分以下/.test(text);
   const notice={text,important,priority:urgent?2:important?1:0};
   const active=game._activeFieldNotice,queue=game._importantFieldNotices||=[];
   // Keep rewards readable through ordinary drop bursts. Consecutive important
@@ -154,7 +154,7 @@ function showFieldLine(game, text, options) {
   const line = document.createElement('div');
   line.className = 'battle-log-msg';
   line.textContent = text;
-  if (/死亡まで残り|力尽きました/.test(text)) line.classList.add('boss-alert');
+  if (options?.urgent||/死亡まで残り|力尽きました/.test(text)) line.classList.add('boss-alert');
   else if (/獲得|取得|ドロップ|秘宝|宝珠|宝玉|国庫買取/.test(text)) line.classList.add('item-alert');
   if (typeof stream.replaceChildren === 'function') {
     stream.replaceChildren(line);
@@ -233,9 +233,9 @@ export function refreshCombatFieldNotes(game) {
     }
     if (isRangedUnit(game, unit)) {
       const ammo = unit.ammo == null || !Number.isFinite(Number(unit.ammo))
-        ? AMMO_CAPACITY
-        : Math.max(0, Math.min(AMMO_CAPACITY, Math.floor(Number(unit.ammo))));
-      rememberHalf(game, unit, 'ammo', ammo <= AMMO_CAPACITY * FIELD_HALF, `${name}の残り弾薬が半分以下 · ${ammo}/${AMMO_CAPACITY}`);
+        ? ammoCapacity(unit)
+        : Math.max(0, Math.min(ammoCapacity(unit), Math.floor(Number(unit.ammo))));
+      rememberHalf(game, unit, 'ammo', ammo <= ammoCapacity(unit) * FIELD_HALF, `${name}の残り弾薬が半分以下 · ${ammo}/${ammoCapacity(unit)}`);
     } else {
       unit._fieldHalf_ammo = false;
     }
