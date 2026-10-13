@@ -1,5 +1,6 @@
 import {heroGrowth} from './hero-rules.js';
 import {syncEquipmentBarrier} from './defense-equipment.js?v=237';
+import {isLateBloomer} from './talent-labels.js?v=247';
 /** 個体の素質と、実際の行動から育つ能力。装備・職業・Lvの再計算では履歴を変更しない。 */
 export const ATTRIBUTE_KEYS = ['strength','magic','magicDefense','quickness','evasion'];
 export const ATTRIBUTE_LABELS = {strength:'筋力',magic:'魔力',magicDefense:'魔法防御',quickness:'速さ',evasion:'回避'};
@@ -14,13 +15,15 @@ export const ATTRIBUTE_BASES = {
 };
 const FAMILIES={PALADIN:'HEAVY',TEMPLAR:'HEAVY',IMMORTAL_AEGIS:'HEAVY',BLADEMASTER:'LIGHT',SWORD_EMPEROR:'LIGHT',SWORD_SAINT:'LIGHT',VOID_EDGE:'LIGHT',SNIPER:'ARCHER',STORM_BOW:'ARCHER',STORM_ARCHER:'ARCHER',STAR_HUNTER:'ARCHER',HIGH_PRIEST:'MEDIC',SAINT:'MEDIC',ARCHANGEL:'MEDIC',ARCHMAGE:'MAGE',ELEMENTAL_SAGE:'MAGE',ARCANE_SOVEREIGN:'MAGE'};
 const CLASS_STRENGTH={PALADIN:20,TEMPLAR:35,IMMORTAL_AEGIS:60};
-const TALENT_GROWTH={INFERIOR:.85,AVERAGE:1,TALENTED:1.16,ELITE:1.35,GENIUS:1.8};
+export const TALENT_GROWTH={INFERIOR:.85,AVERAGE:1,TALENTED:1.16,ELITE:1.35,GENIUS:2.4};
+/** 大器晩成は死線経験＋Lv31から開花。Lv40以降は1.55で固定し、保存済み素質/鍛錬は書き換えない。 */
+export const talentGrowth=unit=>isLateBloomer(unit)?(85+Math.min(10,Math.max(0,(Number(unit.level)||1)-30))*7)/100:TALENT_GROWTH[unit?.talent]||1;
 /** 凡庸＝叩き上げ：実戦で伸びる分（practice）だけに掛かる追加倍率。Lv成長には掛けない。有望株（1.16）とちょうど並ぶ値。 */
 export const TALENT_PRACTICE_BONUS={AVERAGE:TALENT_GROWTH.TALENTED};
 /** 素質の振れ幅。凡庸は当たり外れが小さい（他は従来の.65〜1.35）。 */
 export const APTITUDE_ROLL_RANGE={AVERAGE:{min:.8,span:.45}};
 const DEFAULT_APTITUDE_ROLL={min:.65,span:.7};
-export const practiceGrowth=unit=>(TALENT_GROWTH[unit?.talent]||1)*(TALENT_PRACTICE_BONUS[unit?.talent]||1);
+export const practiceGrowth=unit=>talentGrowth(unit)*(TALENT_PRACTICE_BONUS[unit?.talent]||1);
 const positive=(value,fallback=0)=>Number.isFinite(Number(value))?Math.max(0,Number(value)):fallback;
 const clamp=(value,min,max)=>Math.max(min,Math.min(max,value));
 export const attributeFamily=unit=>unit?.isPlayer||unit?.isHero?'COMMANDER':FAMILIES[unit?.soldierClass]||(ATTRIBUTE_BASES[unit?.combatClass]?unit.combatClass:ATTRIBUTE_BASES[unit?.baseClassId]?unit.baseClassId:ATTRIBUTE_BASES[unit?.soldierClass]?unit.soldierClass:'HEAVY');
@@ -63,7 +66,7 @@ export function ensureAttributeProfile(unit) {
 const trainingValue=(kind,value)=>kind==='travel'?2*Math.sqrt(value/ATTRIBUTE_RULES.travelScale):kind==='evasion'?.6*Math.sqrt(value):2*Math.sqrt(value);
 function unassistedStrengthPotential(unit,profile) {
   const caster=['MEDIC','MAGE'].includes(attributeFamily(unit));
-  const growth=profile.aptitudes.strength*(TALENT_GROWTH[unit.talent]||1);
+  const growth=profile.aptitudes.strength*talentGrowth(unit);
   return profile.innate.strength+Math.max(0,(unit.level||1)-1)*(caster?ATTRIBUTE_RULES.casterLevelStrength:ATTRIBUTE_RULES.levelStrength)*growth
     +trainingValue('strength',profile.practice.strength)*profile.aptitudes.strength*practiceGrowth(unit)+(CLASS_STRENGTH[unit.soldierClass]||0);
 }
@@ -85,7 +88,7 @@ export const evasionChance=value=>Math.min(ATTRIBUTE_RULES.dodgeChanceMax,value*
 export const usesSoldierTempo=unit=>!!(unit?.soldierClass||unit?.combatClass)&&!unit.isPlayer&&!unit.isCommander&&!unit.heroPartyId&&!unit.isGateGuard&&!unit.isMerchantEscort&&attributeFamily(unit)!=='COMMANDER';
 export const soldierCombatTempo=unit=>usesSoldierTempo(unit)?clamp((15/Math.max(1,Number(unit.quickness)||15))**.35,.60,1):1;
 export function attributeValues(unit) {
-  const p=ensureAttributeProfile(unit),lv=Math.max(0,(unit.level||1)-1),gift=TALENT_GROWTH[unit.talent]||1;
+  const p=ensureAttributeProfile(unit),lv=Math.max(0,(unit.level||1)-1),gift=talentGrowth(unit);
   const trained=(key,levelGain,kind=key)=>p.innate[key]+lv*levelGain*p.aptitudes[key]*gift+trainingValue(kind,p.practice[kind])*p.aptitudes[key]*practiceGrowth(unit);
   const caster=['MEDIC','MAGE'].includes(attributeFamily(unit));
   let strengthPotential=unassistedStrengthPotential(unit,p);
@@ -154,7 +157,7 @@ export const prefersCasterMelee=unit=>['MEDIC','MAGE'].includes(attributeFamily(
 export const magicAbilityMultiplier=unit=>attributeMultipliers(unit).magic;
 const CASTER_STRENGTH_SCALE=20;
 /** ムキムキ術士の近接：MPを使った一撃だけ強化。倍率は2倍から筋力＋魔力で伸び、上限5倍 */
-export const CASTER_STRIKE_COST=10;
+export const CASTER_STRIKE_COST=55;
 export const casterStrikeMultiplier=unit=>{const v=attributeValues(unit);return Math.min(5,Math.round((2+(v.strength+v.magic)/120)*10)/10);};
 export const CHANNEL_WEAPON_STYLES=['sword','spear','hammer','axe','bow'];
 export function canChannelWeaponMagic(unit) {

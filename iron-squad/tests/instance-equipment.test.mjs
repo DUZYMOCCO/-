@@ -110,7 +110,7 @@ game.phase++;game.treasury=0;for(const s of [...game.squad,...game.reserves])s.g
 fresh();const merchant=game.merchants[0],old=gear('old-equipped','WEAPON',1,3);game.equipped.weapon=old;game.inventory=[old];game.gold=10000;
 const cheap=gear('cheap'),armor=gear('buy-armor','ARMOR',2),strong=gear('strong','WEAPON',1,20);
 for(const [item,price] of [[cheap,52],[armor,150],[strong,400]])item._merchantPrice=price;
-Object.assign(merchant,{stock:[cheap,armor,strong],catalogVersion:3,stockPhase:1,stockTier:2});game.openMerchantShop(merchant);
+Object.assign(merchant,{stock:[cheap,armor,strong],catalogVersion:3,stockPhase:1,stockTier:2});game.openMerchantShop(merchant);document.querySelector('#merchant-shop-popup [data-merchant-section="trade"]').click();
 const popup=document.getElementById('merchant-shop-popup');assert.equal(popup.querySelector('.merchant-stock-card').dataset.idx,'2');assert.equal(popup.querySelectorAll('.merchant-stock-card').length,2);
 savePreview('merchant-weapons-v2.7.1');
 assert.match(popup.querySelector('[data-buy]').textContent,/購入して装備/);const gold=game.gold;popup.querySelector('[data-buy="2"]').click();
@@ -130,7 +130,7 @@ assert.ok(compareEquipmentStrength(strong,cheap)<0);
 game.openStrategyModal();game._selectStratTab('troops');game._syncTroopsSubView('equip');savePreview('bag-armor-v2.7.1');
 if(process.env.EQUIPMENT_REVIEW_DIR){
   fresh();game.gold=7021;game.equipped.weapon=gear('preview-current','WEAPON',1,3);game.equipped.armor=gear('preview-current-armor','ARMOR',1,2);game.recalcPlayerStats();
-  const actualMerchant=game.merchants.find(m=>m.stock?.some(i=>i.type==='WEAPON'))||game.merchants[0];game.openMerchantShop(actualMerchant);savePreview('merchant-weapons-v2.7.1');
+  const actualMerchant=game.merchants.find(m=>m.stock?.some(i=>i.type==='WEAPON'))||game.merchants[0];game.openMerchantShop(actualMerchant);document.querySelector('#merchant-shop-popup [data-merchant-section="trade"]').click();savePreview('merchant-weapons-v2.7.1');
   document.querySelector('[data-shop-group="armor"]').click();savePreview('merchant-armor-v2.7.1');
 }
 console.log('PASS: dungeon/ruin/town personal-only combat/render/save/exit and carried casualties; shared empty-slot priority and field pickup; thirty-wave seven-slot procurement/payroll/ledger/save; sorted separate shop/bag panels, correct stock purchase/immediate equip/old gear retention');

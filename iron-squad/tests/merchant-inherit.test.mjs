@@ -22,7 +22,7 @@ const buyMarkup=(kind)=>{
   const next=generateRandomDrop(0,'normal',{tier:2,type:'WEAPON',weaponStyle:kind,quality:1,upgrade:0,id:'new-'+kind,merchant:true});
   game.equipped.weapon=old;game.inventory=[old];game.player.str=9999;game.recalcPlayerStats();game.gold=100000;
   next._merchantPrice=50;Object.assign(m,{stock:[next],catalogVersion:3,stockPhase:1,stockTier:2});
-  game.player.x=m.x;game.player.y=m.y;game.openMerchantShop(m);
+  game.player.x=m.x;game.player.y=m.y;game.openMerchantShop(m);document.querySelector('#merchant-shop-popup [data-merchant-section="trade"]').click();
   return {m,old,next};
 };
 {
@@ -53,7 +53,7 @@ const buyMarkup=(kind)=>{
     const next=generateRandomDrop(0,'normal',{tier:2,type,quality:1,upgrade:newUp,id:'new-'+type,merchant:true});
     game.equipped[old.type.toLowerCase()]=old;game.inventory=[old];game.player.str=9999;game.recalcPlayerStats();game.gold=100000;
     next._merchantPrice=50;Object.assign(m,{stock:[next],catalogVersion:3,stockPhase:1,stockTier:2});
-    game.player.x=m.x;game.player.y=m.y;game.openMerchantShop(m);
+    game.player.x=m.x;game.player.y=m.y;game.openMerchantShop(m);document.querySelector('#merchant-shop-popup [data-merchant-section="trade"]').click();
     return {old,next};
   };
   for(const type of ['SHIELD','ARMOR']){
@@ -75,7 +75,7 @@ const buyMarkup=(kind)=>{
   const sh=generateRandomDrop(0,'normal',{tier:2,type:'SHIELD',quality:1,upgrade:0,id:'st-shield',merchant:true});
   game.equipped.armor=arm;game.equipped.shield=null;game.inventory=[arm];game.recalcPlayerStats();game.gold=100000;
   sh._merchantPrice=50;Object.assign(m,{stock:[sh],catalogVersion:3,stockPhase:1,stockTier:2});
-  game.player.x=m.x;game.player.y=m.y;game.openMerchantShop(m);
+  game.player.x=m.x;game.player.y=m.y;game.openMerchantShop(m);document.querySelector('#merchant-shop-popup [data-merchant-section="trade"]').click();
   assert.equal(document.querySelector('.merchant-inherit-btn'),null,'different slot offers no inherit');
   game._merchantShopClose();
 }

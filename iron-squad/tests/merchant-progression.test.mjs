@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {JSDOM} from '../../__pycache__/ui-tools/node_modules/jsdom/lib/api.js';
 import {WORLD_SIZE} from '../js/world.js';
-import {catalogTier,ensureMerchantCatalog,latestEquipmentTier,markMerchantPurchase} from '../js/merchant-catalog.js?v=139';
+import {catalogTier,ensureMerchantCatalog,latestEquipmentTier,markMerchantPurchase,MERCHANT_CATALOG_SIZE} from '../js/merchant-catalog.js?v=139';
 import {serializeMerchants,merchantBuyPrice} from '../js/merchant-rules.js?v=139';
 import {fieldAdaptiveScaling} from '../js/field-scaling.js?v=139';
 import {DROP_EXCLUSIVES,rollDropExclusive} from '../js/drop-exclusives.js?v=139';
@@ -19,21 +19,21 @@ const fresh=()=>{game._merchantShopClose?.();game.resumeSavedGame(structuredClon
 // Rank comes from acquired gear rather than merchant position. T7 is never sold.
 const near={id:'test-near',distance:1},far={id:'test-far',distance:90000};
 game.inventory=[generateRandomDrop(0,'normal',{tier:4,type:'ARMOR',quality:1,id:'acquired-tier-four',upgrade:0,merchant:true})];assert.equal(catalogTier(game),2);game.nation.armament.techTier=4;assert.equal(catalogTier(game),5);
-for(const m of [near,far]){ensureMerchantCatalog(game,m,generateRandomDrop);assert.equal(m.stockTier,5);assert.equal(m.stock.length,6);assert.ok(m.stock.every(i=>i.tier===5&&i.rollMult>=1.15&&!i.dropOnly&&!i.isGodRoll));assert.equal(m.stock.filter(i=>i.merchantFeatured).length,1);assert.ok(m.stock[0].rollMult>=1.35);assert.ok(m.stock[0].upgrade>=2);}
+for(const m of [near,far]){ensureMerchantCatalog(game,m,generateRandomDrop);assert.equal(m.stockTier,5);assert.equal(m.stock.length,MERCHANT_CATALOG_SIZE);assert.ok(m.stock.every(i=>i.tier===5&&i.rollMult>=1.15&&!i.dropOnly&&!i.isGodRoll));assert.equal(m.stock.filter(i=>i.merchantFeatured).length,1);assert.ok(m.stock[0].rollMult>=1.35);assert.ok(m.stock[0].upgrade>=2);}
 game.inventory=[];assert.equal(latestEquipmentTier(game),4,'selling the reference item does not regress the market');game.merchantEquipmentTier=28;game.nation.armament.techTier=28;
 for(let phase=1;phase<=40;phase++){game.phase=phase;ensureMerchantCatalog(game,near,generateRandomDrop);assert.ok(near.stock.every(i=>i.tier===24&&!i.dropOnly),'market cap stays T24 even with T28 gear');}
 // Stable per-wave goods, one featured purchase, sold-out persistence and next-wave renewal.
 game.phase=40;const before=structuredClone(near.stock);assert.equal(ensureMerchantCatalog(game,near,generateRandomDrop),false);assert.deepEqual(near.stock,before);
-const featured=near.stock[0];markMerchantPurchase(near,featured,40);near.stock.shift();assert.equal(ensureMerchantCatalog(game,near,generateRandomDrop),false);assert.equal(near.stock.some(i=>i.merchantFeatured),false);near.stock=[];assert.equal(ensureMerchantCatalog(game,near,generateRandomDrop),false);assert.equal(near.stock.length,0);game.phase=41;ensureMerchantCatalog(game,near,generateRandomDrop);assert.equal(near.stock.length,6);assert.equal(near.stock[0].merchantFeatured,true);assert.notEqual(near.stock[0].id,featured.id);
+const featured=near.stock[0];markMerchantPurchase(near,featured,40);near.stock.shift();assert.equal(ensureMerchantCatalog(game,near,generateRandomDrop),false);assert.equal(near.stock.some(i=>i.merchantFeatured),false);near.stock=[];assert.equal(ensureMerchantCatalog(game,near,generateRandomDrop),false);assert.equal(near.stock.length,0);game.phase=41;ensureMerchantCatalog(game,near,generateRandomDrop);assert.equal(near.stock.length,MERCHANT_CATALOG_SIZE);assert.equal(near.stock[0].merchantFeatured,true);assert.notEqual(near.stock[0].id,featured.id);
 assert.notDeepEqual(near.stock.map(i=>[i.type,i.rollMult]),far.stock.map(i=>[i.type,i.rollMult]),'individual merchants have different featured goods');
 // Merchant comparisons use the actual purchased item; plain buying does not inherit; shields now offer an explicit inherit option.
 fresh();const m=game.merchants[0],current=generateRandomDrop(0,'normal',{tier:1,type:'SHIELD',quality:1,upgrade:20,id:'current-shield',merchant:true});game.equipped.shield=current;game.recalcPlayerStats();
-const item=generateRandomDrop(0,'normal',{tier:2,type:'SHIELD',quality:1.2,upgrade:0,id:'buy-shield',merchant:true});Object.assign(item,{merchantFeatured:true,merchantQuality:'特選'});item._merchantPrice=merchantBuyPrice(item);m.stock=[item];m.catalogVersion=3;m.stockPhase=1;m.stockTier=2;game.gold=0;game.player.x=m.x;game.player.y=m.y;game.openMerchantShop(m);
+const item=generateRandomDrop(0,'normal',{tier:2,type:'SHIELD',quality:1.2,upgrade:0,id:'buy-shield',merchant:true});Object.assign(item,{merchantFeatured:true,merchantQuality:'特選'});item._merchantPrice=merchantBuyPrice(item);m.stock=[item];m.catalogVersion=3;m.stockPhase=1;m.stockTier=2;game.gold=0;game.player.x=m.x;game.player.y=m.y;game.openMerchantShop(m);document.querySelector('#merchant-shop-popup [data-merchant-section="trade"]').click();
 const card=document.querySelector('.merchant-stock-card');assert.match(card.textContent,/一長一短/);assert.match(card.textContent,/引継後/);assert.match(card.textContent,/防御|HP/);assert.ok(card.querySelector('.stat-delta-down'));assert.equal(card.style.opacity,'');assert.equal(card.querySelector('[data-buy]').disabled,true);
 game.gold=100000;game._merchantShopRefresh();const gold=game.gold,treasury=game.treasury,techBeforePurchase=game.nation.armament.techTier;document.querySelector('[data-buy]').click();assert.equal(game.nation.armament.techTier,techBeforePurchase,'a purchase alone cannot advance manufacturing');assert.equal(game.gold,gold-item._merchantPrice);assert.equal(game.treasury,treasury);assert.equal(item.upgrade,0);assert.equal(current.upgrade,20);assert.ok(game.inventory.some(i=>i.id===current.id));assert.ok(game.inventory.some(i=>i.id===item.id));assert.equal(game.sharedEquipBox.some(i=>i.id===item.id),false);assert.equal(m.featuredSoldPhase,1);assert.match(document.getElementById('merchant-shop-popup').textContent,/購入済み/);
-game._merchantShopClose();game.openMerchantShop(m);assert.equal(m.stock.some(x=>x.merchantFeatured),false,'rank advancement cannot restock the featured item in the same wave');assert.ok(m.stock.every(x=>x.tier===2));m.stock=[];game.openMerchantShop(m);assert.equal(m.stock.length,0,'same-rank sold-out catalog stays empty');game._merchantShopClose();
+game._merchantShopClose();game.openMerchantShop(m);document.querySelector('#merchant-shop-popup [data-merchant-section="trade"]').click();assert.equal(m.stock.some(x=>x.merchantFeatured),false,'rank advancement cannot restock the featured item in the same wave');assert.ok(m.stock.every(x=>x.tier===2));m.stock=[];game.openMerchantShop(m);document.querySelector('#merchant-shop-popup [data-merchant-section="trade"]').click();assert.equal(m.stock.length,0,'same-rank sold-out catalog stays empty');game._merchantShopClose();
 game.saveGame();const saved=structuredClone(saveSlots.get(game.activeSlotId).data);game.resumeSavedGame(saved);const restored=game.merchants.find(x=>x.id===m.id);assert.equal(restored.stock.length,0);assert.equal(restored.featuredSoldPhase,1);assert.equal(game.merchantEquipmentTier,2);assert.deepEqual(serializeMerchants(game.merchants).find(x=>x.id===m.id).stock,[]);
-game.completePhase();assert.ok(restored.stock.length===6);assert.ok(restored.stock[0].merchantFeatured);assert.equal(restored.stockTier,Math.min(24,game.nation.armament.techTier+1),'the refreshed market follows actual manufacturing, including legitimate funded research');
+game.completePhase();assert.ok(restored.stock.length===MERCHANT_CATALOG_SIZE);assert.ok(restored.stock[0].merchantFeatured);assert.equal(restored.stockTier,Math.min(24,game.nation.armament.techTier+1),'the refreshed market follows actual manufacturing, including legitimate funded research');
 // A different weapon family must never advertise unperformed upgrade transfer.
 fresh();
 const weaponMerchant=game.merchants[0];
@@ -41,7 +41,7 @@ const oldWeapon=generateRandomDrop(0,'normal',{tier:1,type:'WEAPON',weaponStyle:
 const boughtWeapon=generateRandomDrop(0,'normal',{tier:2,type:'WEAPON',weaponStyle:'bow',quality:1,upgrade:0,id:'bought-bow',merchant:true});
 game.equipped.weapon=oldWeapon;game.inventory=[oldWeapon];game.recalcPlayerStats();game.gold=100000;
 boughtWeapon._merchantPrice=52;Object.assign(weaponMerchant,{stock:[boughtWeapon],catalogVersion:3,stockPhase:1,stockTier:2});
-game.openMerchantShop(weaponMerchant);
+game.openMerchantShop(weaponMerchant);document.querySelector('#merchant-shop-popup [data-merchant-section="trade"]').click();
 assert.notEqual(oldWeapon.weaponStyle,boughtWeapon.weaponStyle);
 assert.doesNotMatch(document.querySelector('.merchant-stock-card').textContent,/引継後/);
 const purchasedStats=structuredClone(boughtWeapon.stats);document.querySelector('[data-buy]').click();

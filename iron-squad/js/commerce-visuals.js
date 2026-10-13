@@ -1,5 +1,5 @@
 import {createSoldierAppearance,drawSoldierHead} from './soldier-appearance.js?v=206';
-import {drawFieldSoldier} from './visuals.js?v=242';
+import {drawFieldSoldier} from './visuals.js?v=245';
 
 const looks=new WeakMap();
 const ellipse=(c,x,y,rx,ry,color)=>{c.fillStyle=color;c.beginPath();c.ellipse(x,y,rx,ry,0,0,Math.PI*2);c.fill();};

@@ -1,4 +1,4 @@
-import {attributeValues,ensureAttributeProfile} from './unit-attributes.js?v=242';
+import {attributeValues,ensureAttributeProfile} from './unit-attributes.js?v=248';
 import {isMagicUser,ensureMana} from './magic-rules.js?v=231';
 import {WORLD_SIZE} from './world.js?v=198';
 import {inCurrentInstance} from './instance-rules.js?v=182';
@@ -232,6 +232,11 @@ export const supplyMethods={
     const potion=panel.querySelector('[data-supply="potion"]');potion.disabled=(this.squadPotion||0)>=SQUAD_POTION_MAX||place?.kind!=='base';potion.onclick=()=>{this.replenishSquadPotion();if(host){if(host.closest('#merchant-shop-popup'))this._merchantShopRefresh?.();else this.renderSupplyPanel(host);}};
     const save=panel.querySelector('[data-supply="save"]');save.disabled=!place;save.onclick=()=>{this.saveCheckpoint();if(host)this.renderSupplyPanel(host);};
     const load=panel.querySelector('[data-supply="load"]');load.disabled=!place||!cp?.data;load.onclick=()=>this.loadCheckpoint();
+    const merchantCheckpoint=!!host?.closest('#merchant-shop-popup');
+    panel.querySelector('h4').textContent=merchantCheckpoint?'地点セーブ':'補給・地点セーブ';
+    potion.classList.toggle('hidden',merchantCheckpoint);
+    for(const selector of ['.supply-counts','.lethal-guard-status'])panel.querySelector(selector).classList.toggle('hidden',merchantCheckpoint);
+    if(merchantCheckpoint)panel.querySelector('.supply-help').textContent='地点セーブはオートセーブとは別の記録です。読み込むと、HP・所持金・装備・品揃えなどが記録時点に戻ります。';
     panel.querySelector('.checkpoint-summary').textContent=cp?`記録：${cp.place} · 第${cp.data.phase}期 · ${new Date(cp.savedAt).toLocaleString('ja-JP')}${cp.data.player?` · HP ${Math.ceil(cp.data.player.hp)}`:''}${cp.entrance?'（町入口から再開）':''}`:'地点セーブはまだありません';
   }
 };

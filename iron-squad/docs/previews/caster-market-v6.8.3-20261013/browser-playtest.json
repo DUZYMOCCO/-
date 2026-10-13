@@ -1,0 +1,277 @@
+{
+  "version": "6.8.3",
+  "results": [
+    {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "labels": [
+        {
+          "text": "MP不足",
+          "a": 3.4000000953674316,
+          "d": 3.4000000953674316
+        },
+        {
+          "text": "MP不足",
+          "a": 3.4000000953674316,
+          "d": 3.4000000953674316
+        },
+        {
+          "text": "瞑想",
+          "a": 3.4000000953674316,
+          "d": 3.4000000953674316
+        },
+        {
+          "text": "瞑想",
+          "a": 3.4000000953674316,
+          "d": 3.4000000953674316
+        }
+      ],
+      "stock": [
+        {
+          "id": "market_caster_merchant_base_camp_1_t2_0",
+          "type": "WEAPON",
+          "weaponStyle": "staff",
+          "stats": {
+            "atk": 8,
+            "magicAttack": 28,
+            "crit": 0
+          }
+        },
+        {
+          "id": "market_caster_merchant_base_camp_1_t2_1",
+          "type": "WEAPON",
+          "weaponStyle": "wand",
+          "stats": {
+            "atk": 4,
+            "magicAttack": 29,
+            "crit": 8
+          }
+        },
+        {
+          "id": "market_caster_merchant_base_camp_1_t2_2",
+          "type": "HELMET",
+          "armorStyle": "arcane",
+          "stats": {
+            "def": 6,
+            "hp": 27,
+            "magicBonus": 5,
+            "magicDefense": 6,
+            "barrier": 11
+          }
+        },
+        {
+          "id": "market_caster_merchant_base_camp_1_t2_3",
+          "type": "GLOVES",
+          "armorStyle": "arcane",
+          "stats": {
+            "def": 5,
+            "atkSpeed": 12,
+            "hp": 0,
+            "magicBonus": 5,
+            "magicDefense": 5,
+            "barrier": 12
+          }
+        },
+        {
+          "id": "market_caster_merchant_base_camp_1_t2_4",
+          "type": "HELMET",
+          "armorStyle": "healing",
+          "stats": {
+            "def": 6,
+            "hp": 29,
+            "magicBonus": 1,
+            "healBonus": 7,
+            "magicDefense": 6,
+            "barrier": 12
+          }
+        },
+        {
+          "id": "market_caster_merchant_base_camp_1_t2_5",
+          "type": "GLOVES",
+          "armorStyle": "healing",
+          "stats": {
+            "def": 6,
+            "atkSpeed": 12,
+            "hp": 0,
+            "magicBonus": 1,
+            "healBonus": 6,
+            "magicDefense": 5,
+            "barrier": 13
+          }
+        },
+        {
+          "id": "market_caster_merchant_base_camp_1_t2_6",
+          "type": "HELMET",
+          "armorStyle": "ward",
+          "stats": {
+            "def": 6,
+            "hp": 27,
+            "magicDefense": 6,
+            "barrier": 23
+          }
+        },
+        {
+          "id": "market_caster_merchant_base_camp_1_t2_7",
+          "type": "GLOVES",
+          "armorStyle": "ward",
+          "stats": {
+            "def": 5,
+            "atkSpeed": 11,
+            "hp": 0,
+            "magicDefense": 5,
+            "barrier": 25
+          }
+        }
+      ],
+      "purchased": {
+        "mageHelmet": "arcane",
+        "mageWeapon": "wand",
+        "medicGloves": "healing",
+        "medicWeapon": "staff",
+        "mageGold": 100,
+        "medicGold": 100,
+        "remainingSupplies": 4,
+        "overflow": false
+      }
+    },
+    {
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "labels": [
+        {
+          "text": "MP不足",
+          "a": 3.4000000953674316,
+          "d": 3.4000000953674316
+        },
+        {
+          "text": "MP不足",
+          "a": 3.4000000953674316,
+          "d": 3.4000000953674316
+        },
+        {
+          "text": "瞑想",
+          "a": 3.4000000953674316,
+          "d": 3.4000000953674316
+        },
+        {
+          "text": "瞑想",
+          "a": 3.4000000953674316,
+          "d": 3.4000000953674316
+        }
+      ],
+      "stock": [
+        {
+          "id": "market_caster_merchant_base_camp_1_t2_0",
+          "type": "WEAPON",
+          "weaponStyle": "staff",
+          "stats": {
+            "atk": 8,
+            "magicAttack": 27,
+            "crit": 0
+          }
+        },
+        {
+          "id": "market_caster_merchant_base_camp_1_t2_1",
+          "type": "WEAPON",
+          "weaponStyle": "wand",
+          "stats": {
+            "atk": 3,
+            "magicAttack": 25,
+            "crit": 3
+          }
+        },
+        {
+          "id": "market_caster_merchant_base_camp_1_t2_2",
+          "type": "HELMET",
+          "armorStyle": "arcane",
+          "stats": {
+            "def": 6,
+            "hp": 26,
+            "magicBonus": 5,
+            "magicDefense": 5,
+            "barrier": 11
+          }
+        },
+        {
+          "id": "market_caster_merchant_base_camp_1_t2_3",
+          "type": "GLOVES",
+          "armorStyle": "arcane",
+          "stats": {
+            "def": 4,
+            "atkSpeed": 10,
+            "hp": 0,
+            "magicBonus": 4,
+            "magicDefense": 5,
+            "barrier": 10
+          }
+        },
+        {
+          "id": "market_caster_merchant_base_camp_1_t2_4",
+          "type": "HELMET",
+          "armorStyle": "healing",
+          "stats": {
+            "def": 7,
+            "hp": 34,
+            "magicBonus": 1,
+            "healBonus": 7,
+            "magicDefense": 6,
+            "barrier": 14
+          }
+        },
+        {
+          "id": "market_caster_merchant_base_camp_1_t2_5",
+          "type": "GLOVES",
+          "armorStyle": "healing",
+          "stats": {
+            "def": 4,
+            "atkSpeed": 11,
+            "hp": 0,
+            "magicBonus": 1,
+            "healBonus": 6,
+            "magicDefense": 5,
+            "barrier": 10
+          }
+        },
+        {
+          "id": "market_caster_merchant_base_camp_1_t2_6",
+          "type": "HELMET",
+          "armorStyle": "ward",
+          "stats": {
+            "def": 6,
+            "hp": 29,
+            "magicDefense": 6,
+            "barrier": 24
+          }
+        },
+        {
+          "id": "market_caster_merchant_base_camp_1_t2_7",
+          "type": "GLOVES",
+          "armorStyle": "ward",
+          "stats": {
+            "def": 5,
+            "atkSpeed": 11,
+            "hp": 0,
+            "magicDefense": 5,
+            "barrier": 24
+          }
+        }
+      ],
+      "purchased": {
+        "mageHelmet": "arcane",
+        "mageWeapon": "wand",
+        "medicGloves": "healing",
+        "medicWeapon": "staff",
+        "mageGold": 100,
+        "medicGold": 100,
+        "remainingSupplies": 4,
+        "overflow": false
+      }
+    }
+  ],
+  "pageErrors": [],
+  "disposableBrowserStorage": true
+}

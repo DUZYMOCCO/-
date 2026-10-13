@@ -12,5 +12,5 @@ for(const key of Object.keys(TALENT_TAGS)){
 assert.equal(talentTag('UNKNOWN'),'凡庸');
 const rank=fs.readFileSync(new URL('../js/troop-rankings.js',import.meta.url),'utf8');
 assert.ok(!rank.includes('[${s.talent}]'),'ranking must not print the raw talent key');
-assert.match(rank,/talentLabel\(s\.talent\)/);
+assert.match(rank,/talentLabel\(s\)/);
 console.log('talent-labels.test: PASS');

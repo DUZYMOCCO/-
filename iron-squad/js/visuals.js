@@ -483,20 +483,22 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod, displa
     mitre:medic&&advanced,cap:medic&&!advanced});
   if(mage){
     if(!civilian&&!eq.helmet){shape(c,[[-8,-32],[0,-44],[7,-32]],'#62536e');line(c,[[-9,-32],[9,-32]],'#9f8caa',2);}
-    const recovering=!!s.magicRecovering;shape(c,[[-9,-16],[-4,-15],[-4,-7],[-10,-8]],'#a2957a');
+    shape(c,[[-9,-16],[-4,-15],[-4,-7],[-10,-8]],'#a2957a');
     if(!s.portrait && c.showBattleLabels!==false){c.fillStyle='#282535';c.fillRect(-13,-49,26,2);c.fillStyle=spellColor;c.fillRect(-13,-49,26*s.mana/s.maxMana,2);}
-    if(recovering){c.fillStyle='#c1b6d1';c.font='10px sans-serif';c.textAlign='center';c.fillText('瞑想',0,-53);}
   } else if (archer) {
     // The quiver stays on the back; both shooting hands belong to the live pose.
     shape(c,[[-8,-24],[-12,-25],[-13,-10],[-9,-9]],'#6b503b');
     line(c,[[-11,-23],[-12,-31]],'#baa889');
     line(c,[[-10,-29],[-13,-31],[-11,-32]],'#c9c6ad',2);
   } else if (medic) {
-    ensureMana(s);if(s.mana<16){c.fillStyle='#c1b6d1';c.font='10px sans-serif';c.textAlign='center';c.fillText('MP不足',0,-48);}
+    ensureMana(s);
     shape(c,[[-9,-14],[-4,-13],[-5,-6],[-10,-7]],'#b2a386');
   }
   drawClassHeadpiece(c,regalia,{y:-28,helmet:!!eq.helmet});
   c.restore();
+  // Text belongs to the unmirrored field space, independently of body/attack facing.
+  const casterStatus=mage&&s.magicRecovering?'瞑想':medic&&s.mana<16?'MP不足':null;
+  if(casterStatus){c.save();c.translate(0,-bob);c.fillStyle='#c1b6d1';c.font='10px sans-serif';c.textAlign='center';c.fillText(casterStatus,0,mage?-53:-48);c.restore();}
   if(heldPose&&Math.sin(heldPose.aim)>=-.35){
     c.save();c.translate(0,-bob);
     if(melee)drawMeleeWeapon(c,s,wStyle,weaponColors,false,false,heldPose);

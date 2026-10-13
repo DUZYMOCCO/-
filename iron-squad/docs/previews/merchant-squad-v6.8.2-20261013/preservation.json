@@ -1,0 +1,17 @@
+{
+  "version": "6.8.2",
+  "changedJavaScript": [
+    "js/index.js"
+  ],
+  "protectedModulesByteIdentical": {
+    "js/campaign-scaling.js": true,
+    "js/casualty-rules.js": true,
+    "js/equipment-rules.js": true,
+    "js/ranged-combat.js": true,
+    "js/soldier-melee-skills.js": true,
+    "js/supply-rules.js": true,
+    "js/unit-attributes.js": true,
+    "js/visuals.js": true,
+    "js/weapon-motion.js": true
+  }
+}

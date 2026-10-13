@@ -141,8 +141,8 @@ try{
   // Native positioning: join existing front, lone shooter falls back, refill retreats next tick.
   reset();const gun=soldier('ARCHER','cannon'),tank=soldier('HEAVY','sword',120),foe=enemy(150);gun.ammo=0;gun.speed=80;tank.atkCooldown=1e6;
   g.update(.05);assert.ok(gun.x>x,'empty gun joins nearby front');
-  gun.x=x;g.squad=[gun];g.update(.05);assert.ok(gun.x<=x,'no front means no solo charge');
-  gun.x=x+120;gun.atkCooldown=0;g.squad=[gun,tank];g.player.x=gun.x;g.player.y=gun.y;
+  gun.x=x+100;foe.x=x+260;g.squad=[gun];const loneStart=gun.x;g.update(.05);assert.ok(gun.x<loneStart,'no front means returning from outside formation, not charging a distant enemy');
+  gun.x=x+120;foe.x=x+150;gun.atkCooldown=0;g.squad=[gun,tank];g.player.x=gun.x;g.player.y=gun.y;
   g.worldTerrain={tiles:new Map([['test',{camps:[{x:gun.x,y:gun.y}]}]])};updateSupplies(g,.25);assert.equal(gun.ammo,ammoCapacity(gun));
   const loaded=gun.ammo,start=gun.x,spawn=g.spawnRangedProjectile;let firedType;
   g.spawnRangedProjectile=function(...args){const result=spawn.apply(this,args);firedType=this.projectiles.at(-1)?.type;return result;};

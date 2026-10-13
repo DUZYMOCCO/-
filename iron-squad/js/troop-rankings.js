@@ -1,7 +1,7 @@
 import {salaryQuote,salaryFundingContext,regularSalaryReserve} from './payroll-rules.js?v=226';
 import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=182';
-import {talentTag as talentLabel} from './talent-labels.js?v=182';
-import {ATTRIBUTE_BASES,attributeFamily} from './unit-attributes.js?v=242';
+import {talentTag as talentLabel} from './talent-labels.js?v=247';
+import {ATTRIBUTE_BASES,attributeFamily} from './unit-attributes.js?v=248';
 /**
  * 兵士の武勲・ステータスランキングシステム
  * 各ステータス（総合・撃破・ボス・攻撃・防御・HP・回復・死線）を詳細にランキング化し、
@@ -338,7 +338,7 @@ export function renderTroopRankings(game) {
             const isNamed = !!s.title;
             const name = isNamed ? `${s.title}${s.name}` : s.name;
             const cls = s.class || s.rankTitle || '兵士';
-            const talentTag = s.talent ? `[${talentLabel(s.talent)}]` : '';
+            const talentTag = s.talent ? `[${talentLabel(s)}]` : '';
             const posNo = inClass ? oRank : rank; // 色・称号は全体順位基準
             const openable = canOpenSoldierRecord(game, s.id);
             return `

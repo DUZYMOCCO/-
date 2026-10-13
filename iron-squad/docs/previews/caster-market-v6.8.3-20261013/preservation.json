@@ -1,0 +1,20 @@
+{
+  "version": "6.8.3",
+  "gameplayBodyChanges": [
+    "js/index.js",
+    "js/merchant-catalog.js",
+    "js/merchant-rules.js",
+    "js/visuals.js"
+  ],
+  "protectedBodiesIgnoringImportVersions": {
+    "js/campaign-scaling.js": true,
+    "js/casualty-rules.js": true,
+    "js/equipment-rules.js": true,
+    "js/magic-rules.js": true,
+    "js/ranged-combat.js": true,
+    "js/soldier-melee-skills.js": true,
+    "js/supply-rules.js": true,
+    "js/unit-attributes.js": true,
+    "js/weapon-motion.js": true
+  }
+}

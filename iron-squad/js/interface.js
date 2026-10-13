@@ -1,9 +1,10 @@
 import {commanderFullName} from './commander-identity.js?v=210';
 import {isEnlisted} from './career-rules.js?v=240';
-import {configureAudioInterface} from './audio-interface.js?v=220';
-import {renderBattleLog} from './battle-log.js?v=241';
-import {renderTroopRankings} from './troop-rankings.js?v=230';
+import {configureAudioInterface} from './audio-interface.js?v=247';
+import {renderBattleLog} from './battle-log.js?v=246';
+import {renderTroopRankings} from './troop-rankings.js?v=247';
 import {genderLabel} from './soldier-names.js?v=210';
+import {talentTag as unitTalentTag} from './talent-labels.js?v=247';
 /** Presentation only: keep game actions on their original DOM nodes. */
 const element = (tag, className, text) => {
   const node = document.createElement(tag);
@@ -204,7 +205,7 @@ export function compactSoldierCard(game, row, soldier, cls, platoonName, talent)
   const details = element('details', 'roster-entry'); details.dataset.soldierId = soldier.id;
   const { shortName, doctrine } = parsePlatoonDoctrine(platoonName);
   const roleLabel = classCombatRoleLabel(cls);
-  const talentTag = (talent && talent.tag) || '';
+  const talentTag = talent ? unitTalentTag(soldier) : '';
   const talentName = (talent && talent.name) || '';
   const assignLabel = soldier.isPersonalGuard
     ? '直属'

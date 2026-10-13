@@ -7,6 +7,9 @@ import {gradeOf} from '../../common/js/kanji-grades.js';
 import {wrapDialogueText} from '../js/soldier-dialogue.js';
 import {toGameKana} from '../js/game-text.js';
 
+assert.equal(toGameKana('🍂大器晩成',2),'🍂たいきばんせい');
+assert.equal(toGameKana('🍂大器晩成',0),'🍂大器晩成');
+
 // 1. grade 2 conversion examples
 assert.equal(toKana('兵士',2),'へいし');
 assert.equal(toKana('戦う',2),'たたかう');

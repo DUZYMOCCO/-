@@ -1,5 +1,39 @@
-// 死線覚醒スキルの動的効果（攻撃速度・自然治癒・HP低下時の底力）。値は recalcSoldierStats が兵士に集計する。
+import {attributeFamily} from './unit-attributes.js?v=248';
+// 死線覚醒スキルの抽選と動的効果。昇格職も元の兵種で判定する。
 export const LOW_HP_RATIO = 0.35, LOW_HP_SPEED_MULT = 1.3, LOW_HP_DAMAGE_MULT = 0.5;
+
+const COMMON_SKILLS = ['SURVIVAL_INSTINCT','IRON_RESOLVE','PHANTOM_STEP','VETERAN_GRIT'];
+const PREFERRED_SKILLS = {HEAVY:'IRON_RESOLVE',LIGHT:'PHANTOM_STEP',ARCHER:'DEADLY_FOCUS',MEDIC:'MIRACLE_PRAYER',MAGE:'PHANTOM_STEP'};
+/** 術士には通常の物理会心、衛生職以外には回復・蘇生、射手以外には射程の覚醒を配らない。 */
+export function deathlineSkillPool(unit) {
+  const family=attributeFamily(unit);
+  return [...COMMON_SKILLS,...(['HEAVY','LIGHT','ARCHER'].includes(family)?['BLOOD_RAGE']:[]),...(family==='ARCHER'?['DEADLY_FOCUS']:[]),...(family==='MEDIC'?['MIRACLE_PRAYER']:[])];
+}
+/** 既存の有効な技能を優先保持し、無効な技能だけを固定順で置換。再計算/再読込で再抽選しない。 */
+export function normalizeDeathlineSkills(unit) {
+  if(!unit||unit.isHero||unit.heroPartyId||unit.isPlayer||unit.isCommander)return false;
+  const old=Array.isArray(unit.deathlineSkills)?unit.deathlineSkills:[],pool=deathlineSkillPool(unit);
+  const used=new Set(old.filter(id=>pool.includes(id)));
+  const preferred=PREFERRED_SKILLS[attributeFamily(unit)],replacementOrder=[preferred,...pool];
+  const seen=new Set(),next=old.map(id=>{
+    if(pool.includes(id)&&!seen.has(id)){seen.add(id);return id;}
+    const replacement=replacementOrder.find(key=>key&&!used.has(key)&&!seen.has(key));
+    if(replacement){used.add(replacement);seen.add(replacement);}return replacement;
+  }).filter(Boolean);
+  const changed=next.length!==old.length||next.some((id,i)=>id!==old[i]);
+  if(changed||!Array.isArray(unit.deathlineSkills))unit.deathlineSkills=next;
+  return changed;
+}
+/** 両方の覚醒経路が同じ候補・優先技能・上限を使う。 */
+export function chooseDeathlineSkill(unit,random=Math.random) {
+  normalizeDeathlineSkills(unit);
+  if((unit.deathlineSkills||[]).length>=4)return null;
+  const available=deathlineSkillPool(unit).filter(id=>!unit.deathlineSkills.includes(id));
+  const preferred=PREFERRED_SKILLS[attributeFamily(unit)];
+  return available.includes(preferred)?preferred:available[Math.min(available.length-1,Math.floor(random()*available.length))]||null;
+}
+/** デッドアイの射程。隊長・独立勇者・弾切れ時の白兵戦には掛けない。 */
+export const deathlineRangedRange=(unit,range)=>range*(unit?.isPlayer||unit?.isHero||unit?.heroPartyId||unit?.isCommander?1:unit?.deathlineSkillRangeMult||1);
 
 /** スキル一覧から動的効果の集計値を作る（兵士へ書き込む用）。 */
 export function aggregateDeathlineDynamics(skillIds, table) {

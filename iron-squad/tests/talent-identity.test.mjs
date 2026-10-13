@@ -33,7 +33,7 @@ for(const pr of [4,100,400]){
   assert.ok(Math.abs(gain('TALENTED',1,pr)-base*1.16)<1.01);
   assert.equal(gain('AVERAGE',1,pr),gain('TALENTED',1,pr),'AVERAGE practice portion equals TALENTED');
 }
-assert.equal(practiceGrowth({talent:'AVERAGE'}),practiceGrowth({talent:'TALENTED'}));assert.equal(practiceGrowth({talent:'GENIUS'}),1.8);assert.equal(practiceGrowth({talent:'INFERIOR'}),.85);
+assert.equal(practiceGrowth({talent:'AVERAGE'}),practiceGrowth({talent:'TALENTED'}));assert.equal(practiceGrowth({talent:'GENIUS'}),2.4);assert.equal(practiceGrowth({talent:'INFERIOR'}),.85);
 // practiceAttribute uses the bonus for dirty detection and accumulates raw amount
 const u=mk('AVERAGE',1,0);u._attributesNormalized=true;u.dead=false;assert.ok(practiceAttribute(u,'strength',1));assert.equal(u.attributeProfile.practice.strength,1);
 // 3. class-up discount

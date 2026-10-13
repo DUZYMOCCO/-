@@ -1,4 +1,4 @@
-import {attributeFamily,soldierCombatTempo} from './unit-attributes.js?v=242';
+import {attributeFamily,soldierCombatTempo} from './unit-attributes.js?v=248';
 import {canUseEquipment} from './weapon-requirements.js?v=239';
 import {masteryReloadMult} from './growth-rules.js?v=234';
 import {attackBlocked} from './gate-rules.js?v=215';

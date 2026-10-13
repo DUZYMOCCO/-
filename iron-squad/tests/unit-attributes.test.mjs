@@ -7,7 +7,7 @@ const dom=new JSDOM('<div id="game"></div>',{url:'http://localhost/',pretendToBe
 Object.assign(globalThis,{window:dom.window,document:dom.window.document,localStorage:dom.window.localStorage});
 const noop=()=>{},ctx=new Proxy({measureText:()=>({width:40}),createLinearGradient:()=>({addColorStop:noop}),createRadialGradient:()=>({addColorStop:noop})},{get:(o,k)=>k in o?o[k]:noop});
 window.HTMLCanvasElement.prototype.getContext=()=>ctx;
-const {IronSquadGame,generateRandomDrop,applyUpgradeStats}=await import('../js/index.js');
+const {IronSquadGame,generateRandomDrop,applyUpgradeStats,SOLDIER_PHYS_DMG_MULT}=await import('../js/index.js');
 const {saveSlots}=await import('../js/save-slots.js');
 const game=Object.create(IronSquadGame),F=83000;
 Object.assign(game,{container:document.getElementById('game'),width:390,height:664,zoom:1,ctx,camera:{x:F,y:F},selectedSaleIds:new Set(),commandActiveUntil:0,joystick:{active:false,dirX:0,dirY:0}});
@@ -72,6 +72,26 @@ try {
  brawler.level=30;game.recalcSoldierStats(brawler);const meleeStrength=brawler.strength;brawler.equipped.weapon.weaponStyle='wand';game.recalcSoldierStats(brawler);assert.ok(meleeStrength>brawler.strength+30);brawler.equipped.weapon.weaponStyle='hammer';game.recalcSoldierStats(brawler);
  // Hidden melee magic actually spends MP and trains magic. A healer's strength buff expires without compounding.
  field();brawler.atkCooldown=0;brawler.mana=100;brawler.hp=brawler.maxHp;game.squad=[brawler];const infusedEnemy=dummy();assert.equal(game.performCasterMelee(brawler,infusedEnemy),true);assert.equal(brawler.mana,100-CASTER_STRIKE_COST);assert.ok(brawler.attributeProfile.practice.magic>0);
+ // v6.9.1: MP100 funds exactly one empowered melee hit; the next is ordinary and spends nothing.
+ {
+   assert.equal(CASTER_STRIKE_COST,55);
+   field();const caster=unit('MAGE');caster.attributeProfile.innate.strength=80;caster.attributeProfile.innate.magic=1;caster.equipped.weapon=structuredClone(brawler.equipped.weapon);caster.weapon=caster.equipped.weapon;game.recalcSoldierStats(caster);caster.mana=100;caster.atkCooldown=0;
+   const hits=[],perform=game.performAttack;
+   game.performAttack=function(attacker,target,isPlayer,attack,...rest){hits.push({attack,base:attacker.atk,mult:casterStrikeMultiplier(attacker)});return perform.call(this,attacker,target,isPlayer,attack,...rest);};
+   try{
+     const first=dummy();assert.equal(game.performCasterMelee(caster,first),true);assert.equal(caster.mana,45);assert.ok(hits[0].mult>=2&&hits[0].mult<=5);assert.equal(hits[0].attack,Math.round(hits[0].base*SOLDIER_PHYS_DMG_MULT*hits[0].mult));
+     const magicPractice=caster.attributeProfile.practice.magic;caster.atkCooldown=0;const second=dummy();assert.equal(game.performCasterMelee(caster,second),true);assert.equal(caster.mana,45);assert.equal(caster.attributeProfile.practice.magic,magicPractice,'unfunded strike cannot spend/train magic');assert.equal(hits[1].attack,Math.round(hits[1].base*SOLDIER_PHYS_DMG_MULT));assert.ok(first.maxHp-first.hp>second.maxHp-second.hp);
+     assert.match(game.buildSoldierDetailHtml(caster),/魔力の一撃 ×[\d.]+（近接・MP55）/);
+   }finally{game.performAttack=perform;}
+   // Existing promotion capacities still give 1/2/3 strikes from 100/140/180 MP, without regeneration.
+   const budgets=[];
+   for(const [classKey,capacity,count] of [['MAGE',100,1],['ARCHMAGE',140,2],['ELEMENTAL_SAGE',180,3]]){
+     const u=structuredClone(caster);u.soldierClass=u.combatClass=classKey;game.recalcSoldierStats(u);u.mana=capacity;
+     for(let i=0;i<count;i++){u.atkCooldown=0;assert.equal(game.performCasterMelee(u,dummy()),true);assert.equal(u.mana,capacity-(i+1)*55);}
+     const remaining=u.mana;u.atkCooldown=0;assert.equal(game.performCasterMelee(u,dummy()),true);assert.equal(u.mana,remaining);assert.equal(u.maxMana,capacity);budgets.push({capacity,chargedStrikes:count,remaining});
+   }
+   console.log(JSON.stringify({casterStrikeCost:55,from100:[100,45,45],budgets}));
+ }
  // v6.3.17 筋力の効き方は戦士と同じ（基準を超えた分を÷20）。猛烈なのはMPを込めた一撃だけ（×2〜5）、MP切れは普通の殴り
  {const v=attributeValues(brawler);assert.equal(attributeMultipliers(brawler).physical,1+(v.strength-10)/20,'muscle caster strength scales like a fighter');
  const strike=casterStrikeMultiplier(brawler);assert.ok(strike>=2&&strike<=5);const hit=mana=>{field();brawler.atkCooldown=0;brawler.mana=mana;game.squad=[brawler];const e=dummy();game.performCasterMelee(brawler,e);return e.maxHp-e.hp;};

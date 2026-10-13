@@ -1,5 +1,5 @@
 // 重装歩兵(HEAVY系統)のタンク特化: ヘイト距離補正・かばう(身代わり)・重圧オーラ・重撃スタン。純関数＋フレーム毎の健在重装キャッシュ。
-import {attributeFamily} from './unit-attributes.js?v=242';
+import {attributeFamily} from './unit-attributes.js?v=248';
 import {activeSquad} from './instance-rules.js?v=182';
 import {weaponStyleOf} from './growth-rules.js?v=234';
 export const TANK={hateDistMult:.5,hateReach:1000,coverRadius:75,coverShare:.5,coverMinHp:.20,auraRadius:48,auraSlow:.60,slowFloor:.25,stunChance:.35,stunSeconds:.8,bossStunMult:.5};

@@ -42,13 +42,13 @@ try {
   assert.equal(escort.exp,0,'being rescued does not grant a kill level to the guard');
 } finally {Math.random=oldRandom;}
 // Full price, countdown, phase-boundary refresh and save/load of the deadline.
-const merchant=game.merchants[0];game.player.x=merchant.x;game.player.y=merchant.y;game.player.hp=1;game.gold=1000;game.openMerchantShop(merchant);
+const merchant=game.merchants[0];game.player.x=merchant.x;game.player.y=merchant.y;game.player.hp=1;game.gold=1000;game.openMerchantShop(merchant);document.querySelector('[data-merchant-section="recovery"]').click();
 document.querySelector('.merchant-heal-button').click();assert.equal(merchantHealWavesLeft(game,merchant),2);assert.match(document.querySelector('.merchant-heal-countdown').textContent,/あと2ウェーブ/);
 game.player.hp=1;const paidGold=game.gold;assert.equal(useMerchantHealing(game,merchant).reason,'cooldown');assert.equal(game.gold,paidGold);
 game.completePhase();assert.equal(merchantHealWavesLeft(game,merchant),1);assert.match(document.querySelector('.merchant-heal-countdown').textContent,/あと1ウェーブ/);
 game.saveGame();const waiting=saveSlots.get(game.activeSlotId).data;assert.equal(waiting.merchants.find(m=>m.id===merchant.id).healReadyPhase,3);
 document.querySelector('.btn-close-merchant').click();game.resumeSavedGame(waiting);let restored=game.merchants[0];assert.equal(merchantHealWavesLeft(game,restored),1);
-game.restTimer=0;game.player.hp=1;game.openMerchantShop(restored);game.completePhase();game.player.hp=1;game._merchantShopRefresh();
+game.restTimer=0;game.player.hp=1;game.openMerchantShop(restored);document.querySelector('[data-merchant-section="recovery"]').click();game.completePhase();game.player.hp=1;game._merchantShopRefresh();
 assert.equal(merchantHealWavesLeft(game,restored),0);assert.equal(merchantHealingStatus(game,restored),'available');assert.equal(document.querySelector('.merchant-heal-button').disabled,false);
 const beforeGold=game.gold;document.querySelector('.merchant-heal-button').click();assert.equal(game.gold,beforeGold-150);assert.equal(merchantHealWavesLeft(game,restored),2);
 document.querySelector('.btn-close-merchant').click();

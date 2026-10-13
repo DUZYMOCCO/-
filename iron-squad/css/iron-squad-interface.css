@@ -35,6 +35,19 @@
 .iron-squad .merchant-purchase-price small { display:block; font-size:11px; font-weight:normal; color:var(--ui-muted); }
 .iron-squad .merchant-stock-card .equipment-comparison { font-size:14px; }
 .iron-squad .merchant-stock-card [data-buy] { font-size:14px; }
+.iron-squad .merchant-recipient-panel { display:grid; gap:8px; padding:12px; margin:0 0 14px; border:1px solid var(--ui-line); border-radius:9px; background:var(--ui-panel); }
+.iron-squad .merchant-recipient-panel label { color:var(--ui-gold); font-size:14px; font-weight:700; }
+.iron-squad #merchant-recipient { width:100%; min-width:0; min-height:48px; padding:10px; border:1px solid #71818b; border-radius:7px; background:var(--ui-raised); color:var(--ui-text); font:inherit; font-size:16px; }
+.iron-squad #merchant-recipient:focus-visible { outline:2px solid var(--ui-gold); outline-offset:2px; }
+.iron-squad .merchant-recipient-panel p { margin:0; color:var(--ui-muted); font-size:12px; line-height:1.6; }
+.iron-squad .merchant-main-menu { display:grid; gap:14px; padding:8px 0 16px; }
+.iron-squad .merchant-main-menu button { display:grid; grid-template-columns:32px minmax(0,1fr) 18px; align-items:center; gap:12px; min-height:100px; padding:16px; border:1px solid var(--ui-line); border-radius:10px; background:var(--ui-raised); color:var(--ui-text); font:inherit; text-align:left; cursor:pointer; }
+.iron-squad .merchant-main-menu button strong { display:block; margin-bottom:7px; color:var(--ui-gold); font-size:20px; }
+.iron-squad .merchant-main-menu button small { display:block; color:var(--ui-muted); font-size:14px; line-height:1.6; }
+.iron-squad .merchant-main-menu button:focus-visible { outline:2px solid var(--ui-gold); outline-offset:2px; }
+.iron-squad .merchant-menu-intro { color:var(--ui-muted); font-size:14px; line-height:1.7; margin:8px 0 12px; }
+.iron-squad .merchant-section-title { color:var(--ui-gold); font-size:18px; margin:4px 0 16px; }
+.iron-squad #merchant-shop-popup .btn-close-merchant { min-height:48px; font-size:14px; }
 /* Enlarge values on their own surfaces; allow long balances to wrap within a window. */
 .iron-squad .wallet-entry { min-width:0; max-width:100%; white-space:normal; overflow-wrap:anywhere; }
 .iron-squad .wallet-entry strong { font-size:16px; }
