@@ -5,7 +5,7 @@ import {inCurrentInstance} from './instance-rules.js?v=182';
 import {grantPermanentRescueReward} from './rescue-rewards.js?v=204';
 import {grantPersonalExp,revivalExperience,raiseLevelMark} from './experience-rules.js';
 import {guardRescueLines} from './soldier-dialogue.js';
-import {attributeCarryCapacity} from './unit-attributes.js?v=231';
+import {attributeCarryCapacity,attributeFamily} from './unit-attributes.js?v=242';
 import {isHeavySoldier} from './heavy-tank.js?v=235';
 import {visibleHeroMembers} from './hero-rules.js';
 import {isOwnSquad} from './own-squad-marker.js?v=182';
@@ -640,13 +640,34 @@ export const waitsForPartyMedic=(game,unit)=>!!(unit&&isOwnSquad(unit)&&game?.pl
 export const PARTY_STAY_RADIUS=56;
 /** CT待ちの自部隊衛生職は、倒れた仲間がいる間は敵を追わず隊長の周りで待つ。 */
 export const medicHoldsByCommander=(game,medic)=>!!(medic&&isOwnSquad(medic)&&isMedic(medic)&&!medic.isDown&&game?.player&&!game.player.isDown&&revivalSkillCooldownLeft(game,medic)>.000001&&rescueUnits(game).some(u=>u!==medic&&u!==game.player&&u.isDown&&!u.dead&&isOwnSquad(u)));
-export function handleTransportAI(game,soldier,dt) {
+export const TRANSPORT_COMBAT_RADIUS=240;
+export function transportInCombat(game,unit){
+  const enemies=game.currentDungeon&&!isLocalRescueUnit(game,unit)?game.savedFieldMonsters:game.monsters;
+  return (enemies||[]).some(m=>m&&!m.dead&&!m.isDown&&!m.dying&&!m.retreated&&m.hp>0&&(m.x-unit.x)**2+(m.y-unit.y)**2<=TRANSPORT_COMBAT_RADIUS**2);
+}
+/** One assignment pass, independent of squad iteration order. Medics retain their own assignment. */
+export function buildTransportRescueAssign(game,pool=game.squad||[]){
+  const assigned=new Map(),patients=rescueUnits(game).filter(u=>u?.isDown&&!u.dead&&!u.carrierId&&!u.dying&&(!u.downedInAid||['medical','town'].includes(nearestCasualtyStation(game,u)?.kind)))
+    .sort((a,b)=>a===game.player?-1:b===game.player?1:(a.downTimer??RESCUE_TIMEOUT)-(b.downTimer??RESCUE_TIMEOUT));
+  if(!patients.length)return assigned;
+  const carriers=pool.filter(u=>u&&u!==game.player&&!u.heroPartyId&&!u.dead&&!u.isDown&&u.hp>0&&!isMedic(u)&&!u.magicRecovering)
+    .map(u=>({unit:u,local:isLocalRescueUnit(game,u),family:attributeFamily(u),carried:carriedSoldiers(game,u).length,free:carriedCount(game,u)<carryingCapacity(u)})).filter(c=>c.free)
+    .map(c=>{const inCombat=c.family==='HEAVY'&&transportInCombat(game,c.unit);return {...c,inCombat,priority:c.family==='LIGHT'?0:c.family==='HEAVY'?(inCombat?3:1):2};});
+  for(const patient of patients){
+    const local=isLocalRescueUnit(game,patient),available=carriers.filter(c=>!assigned.has(c.unit)&&c.unit!==patient&&c.local===local&&Math.hypot(c.unit.x-patient.x,c.unit.y-patient.y)<(c.carried?160:240));
+    const otherAvailable=available.some(c=>c.family!=='HEAVY');
+    const eligible=available.filter(c=>!c.inCombat||!otherAvailable);
+    eligible.sort((a,b)=>a.priority-b.priority||Math.hypot(a.unit.x-patient.x,a.unit.y-patient.y)-Math.hypot(b.unit.x-patient.x,b.unit.y-patient.y));
+    if(eligible.length)assigned.set(eligible[0].unit,patient);
+  }
+  return assigned;
+}
+export function handleTransportAI(game,soldier,dt,assignments=null) {
   if(soldier.dead||soldier.isDown)return false;
   const carried=carriedSoldiers(game,soldier);
   // Medics treat in place; everyone else collects nearby casualties and returns to aid.
-  const candidate=!isMedic(soldier)&&carried.length<carryingCapacity(soldier)?rescueUnits(game)
-    .filter(s=>s!==soldier&&s.isDown&&!s.dead&&!s.carrierId&&isLocalRescueUnit(game,s)===isLocalRescueUnit(game,soldier)&&(!s.downedInAid||['medical','town'].includes(nearestCasualtyStation(game,s)?.kind))&&Math.hypot(s.x-soldier.x,s.y-soldier.y)<(carried.length?160:240))
-    .sort((a,b)=>Math.hypot(a.x-soldier.x,a.y-soldier.y)-Math.hypot(b.x-soldier.x,b.y-soldier.y))[0]:null;
+  const chosen=(assignments||buildTransportRescueAssign(game,(game.squad||[]).includes(soldier)?game.squad:[...(game.squad||[]),soldier])).get(soldier);
+  const candidate=chosen?.isDown&&!chosen.dead&&!chosen.carrierId?chosen:null;
   if(candidate&&attachWounded(game,soldier,candidate))return true;
   // 隊長を運ぶ場合：到達可能な衛生術士がいればその最寄りへ、いなければ町・本陣・救護所へ。
   const healer=!candidate&&carried.length&&(carried.includes(game.player)||headquartersRevivalPaused(game))?(game.squad||[]).filter(h=>h!==soldier&&isMedic(h)&&!h.dead&&!h.isDown&&h.hp>0&&revivalSkillCooldownLeft(game,h)<=.000001&&medicHasStamina(h,MEDIC_TREAT_MIN)&&isLocalRescueUnit(game,h)===isLocalRescueUnit(game,soldier)).sort((a,b)=>Math.hypot(a.x-soldier.x,a.y-soldier.y)-Math.hypot(b.x-soldier.x,b.y-soldier.y))[0]:null;

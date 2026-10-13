@@ -81,6 +81,9 @@ export function cappedAttributeValue(potential,precision=1,min=0) {
   return clamp(Math.round(value*precision)/precision,min,cap);
 }
 export const evasionChance=value=>Math.min(ATTRIBUTE_RULES.dodgeChanceMax,value*.36+7.2*Math.pow(value/ATTRIBUTE_RULES.cap,4));
+/** Ordinary soldiers only. Commander and independent hero/NPC combat keep their existing clocks. */
+export const usesSoldierTempo=unit=>!!(unit?.soldierClass||unit?.combatClass)&&!unit.isPlayer&&!unit.isCommander&&!unit.heroPartyId&&!unit.isGateGuard&&!unit.isMerchantEscort&&attributeFamily(unit)!=='COMMANDER';
+export const soldierCombatTempo=unit=>usesSoldierTempo(unit)?clamp((15/Math.max(1,Number(unit.quickness)||15))**.35,.60,1):1;
 export function attributeValues(unit) {
   const p=ensureAttributeProfile(unit),lv=Math.max(0,(unit.level||1)-1),gift=TALENT_GROWTH[unit.talent]||1;
   const trained=(key,levelGain,kind=key)=>p.innate[key]+lv*levelGain*p.aptitudes[key]*gift+trainingValue(kind,p.practice[kind])*p.aptitudes[key]*practiceGrowth(unit);

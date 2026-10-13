@@ -1,3 +1,4 @@
+import {gameText} from './game-text.js?v=242';
 import {fieldDialogReturn} from './dialog-return.js?v=200';
 import {guildMethods} from './guild-contracts.js?v=217';
 import {headquartersMoveTarget} from './hq-navigation.js?v=200';
@@ -5,7 +6,7 @@ import {configureBattlefieldUI,quietBattlefieldContext} from './battlefield-ui.j
 import {renderNavigationMap} from './navigation-map.js?v=189';
 import {soldierEquipmentValue,observeEquipment,standardEquipmentCost,RESERVE_ARMAMENT_COUNT} from './armament-rules.js?v=231';
 import {configureRangedEnemy,updateRangedEnemy,updateDefenseWalls,interceptHostileShot,isHostileShot,updateHostileBolt,drawDefenseWalls} from './enemy-ranged.js?v=235';
-import {LIMITED_CLASSES,initializeLimitedAllies,prepareLimitedEncounter,createLimitedAlly,joinLimitedEncounter,updateLimitedAllies,updateNinja,updateShuriken,drawLimitedEncounter,serializeLimitedAllies,notifyLimitedJoin} from './limited-allies.js?v=211';
+import {LIMITED_CLASSES,initializeLimitedAllies,prepareLimitedEncounter,createLimitedAlly,joinLimitedEncounter,updateLimitedAllies,updateNinja,updateShuriken,drawLimitedEncounter,serializeLimitedAllies,notifyLimitedJoin} from './limited-allies.js?v=242';
 import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=182';
 import {TIERS,MAX_EQUIPMENT_TIER,MAX_POWER_RANK,POWER_RANK_STEP,GENERATION_COUNT,TRADE_MAX_TIER,powerRank,tierDescription} from './equipment-tiers.js?v=231';
 import {fieldAdaptiveScaling} from './field-scaling.js?v=182';
@@ -24,19 +25,19 @@ import {gateMethods,serializeGatePosts,replenishTownGateGuards,initializeGateGua
 import {nationMethods,normalizeNation,nationalIncome,nationalPayrollPlan,headquartersDamageMult,drawNationalDevelopment,DEVELOPMENT_STAGES} from './nation-rules.js?v=231';
 import {equipmentUpgradeCost,salaryQuote,paySoldiers} from './payroll-rules.js?v=226';
 import {addFieldDrop,ageFieldDrops,attractFieldDrops,FIELD_DROP_PICKUP_RADIUS} from './field-drops.js?v=182';
-import {drawLootDrop,drawLootPullTrail} from './loot-visuals.js?v=189';
+import {drawLootDrop,drawLootPullTrail} from './loot-visuals.js?v=242';
 import {drawOwnSquadRing,isOwnSquad} from './own-squad-marker.js?v=182';
 import {CAREER_RULES,newCareer,normalizeCareer,isEnlisted,ownCompanionCount,rankForCareer,recordCareerContribution,enlistCareer,canPromoteCareer,careerSummary,restartCareerExpedition} from './career-rules.js?v=240';
 import {tavernMethods,initializeTaverns,serializeTaverns,settleTravelerCompanions,drawFieldTavern,updateTavernPrompt,FIELD_TAVERN} from './tavern.js?v=240';
 import {headquartersFacilityMethods,HEADQUARTERS_FACILITIES,updateHeadquartersFacilityPrompt,drawHeadquartersFacilityGround,drawHeadquartersFacility,headquartersBuildingBlocks} from './hq-facilities.js?v=208';
-import {drawNightlifeLights} from './nightlife-visuals.js?v=208';
+import {drawNightlifeLights} from './nightlife-visuals.js?v=242';
 import {drawSceneDarkness,drawLanternLights,recordLanternActor} from './scene-lighting.js?v=217';
 import {queueSquadName,flushSquadNames} from './squad-names.js?v=182';
 import {syncGiveUpUI,resumeBGM} from './commander-giveup.js?v=206';
 import {bindFieldMusic,unbindFieldMusic,followFieldMusic} from './field-music.js?v=192';
 import {economicState,advanceRegionalEconomy,discoverEconomicRegions,recordEconomicKill,economicFieldBlocked} from './regional-economy.js?v=182';
 import {updateRegionalTraffic,nearestCommerceTarget,damageCommerce,persistTradeRaiders,restoreTradeRaiders} from './trade-routes.js?v=200';
-import {drawEconomicLandscape,drawCommerceActor,drawEconomicMinimap,drawCommerceWreck,drawCampTent} from './economic-visuals.js?v=198';
+import {drawEconomicLandscape,drawCommerceActor,drawEconomicMinimap,drawCommerceWreck,drawCampTent} from './economic-visuals.js?v=242';
 /**
  * ゲーム3: IRON SQUAD (アイアン・スクワッド: 雑兵立身出世録)
  * ローグライク・アクションRPG
@@ -52,16 +53,16 @@ import { sound } from '../../common/js/audio.js?v=151';
 import { loadCss } from '../../common/js/load-css.js';
 import { storage } from '../../common/js/storage.js';
 import { createStallRecorder, mountStallLog } from './stall-recorder.js?v=182';
-import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow, isRuinKeeper, ruinKeeperScale } from './visuals.js?v=215';
+import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow, isRuinKeeper, ruinKeeperScale } from './visuals.js?v=242';
 import { refreshCampQuiet, assignCampSeats, tryCampLeisure, YARD_TABLES, drawLeisureTable } from './camp-leisure.js?v=202';
 import { CAMP_PEACE_RADIUS, peaceContainment, pushOutsidePeace, relocatePeaceMonster } from './peace-zones.js?v=182';
 import { FARM_X, FARM_Y, farmPosts, farmOverlaps, reinforcementCount, reserveRosterLine, reserveRosterTitle } from './reserve-farm.js?v=182';
-import { drawMeleeRangeCue, meleeDrawReach, attackAnimationRate } from './weapon-motion.js?v=218';
+import { drawMeleeRangeCue, meleeDrawReach, attackAnimationRate } from './weapon-motion.js?v=242';
 import { guardRegrouping, guardTarget, guardSpeedMult } from './guard-leash.js?v=211';
 import { KNOCK_RULES, knockbackDistance, knockFlight, slamDamage, knockTransferDistance } from './knockback-rules.js?v=212';
 import { MELEE_SOUND_STYLES, playMeleeSound } from './weapon-sounds.js?v=211';
 import {emptyRescueBonuses,normalizeRescueBonuses,rescueBonusSummary} from './rescue-rewards.js?v=204';
-import {drawFieldCivilian} from './civilian-visuals.js?v=193';
+import {drawFieldCivilian} from './civilian-visuals.js?v=242';
 import { saveSlots } from './save-slots.js';
 import { soldierDialogue } from './soldier-dialogue.js?v=205';
 import { generateSoldierName, migrateSoldierName, rollGenderByKey, isGenderId, ensureSoldierGender, genderLabel } from './soldier-names.js?v=210';
@@ -70,14 +71,14 @@ import { applyCommanderIdentity, normalizeCommanderIdentity, commanderFullName, 
 import {MAGIC_CLASSES,MAGIC_AFFINITIES,magicMethods,isMage,isMagicUser,ensureMana,initializeMagic,updateMagic,distributeMagicStones,castMedicBuff,castCasterStrength,updateMageAI,drawMagicBursts,spendMana,weaponMagicDamage,isPlayerCaster,castPlayerSpell,PLAYER_MAGIC_RULES} from './magic-rules.js?v=231';
 import {hazardMethods,updateHazards,drawHazards} from './hazard-fields.js?v=198';
 import {strongEnemyReward} from './combat-rewards.js?v=182';
-import {supplyMethods, initializeSupplies, updateSupplies, takeRangedShot, ammoCombatProfile, isRangedUnit, distributeAmmo, preventLethalHit, normalizeFieldSave, SQUAD_POTION_COST, REVIVAL_POTION_COST, REVIVAL_POTION_MAX, SQUAD_POTION_MAX, ensureAmmo, ammoCapacity, recalcAmmoCapacity, RANGED_DAMAGE_MULT, supplyLocation} from './supply-rules.js?v=241';
+import {supplyMethods, initializeSupplies, updateSupplies, takeRangedShot, ammoCombatProfile, isRangedUnit, distributeAmmo, preventLethalHit, normalizeFieldSave, SQUAD_POTION_COST, REVIVAL_POTION_COST, REVIVAL_POTION_MAX, SQUAD_POTION_MAX, ensureAmmo, ammoCapacity, recalcAmmoCapacity, RANGED_DAMAGE_MULT, supplyLocation} from './supply-rules.js?v=242';
 import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog } from './interface.js?v=240';
 import { renderTroopRankings, getSoldierRankerBadges, calcSoldierRankerBonus, setRankingFamilyLabels, RANKING_FAMILIES } from './troop-rankings.js?v=230';
 import { ensureSoldierAppearance, drawSoldierPortrait } from './soldier-appearance.js?v=206';
 import { aggregateDeathlineDynamics, tickDeathline, deathlineDamage } from './deathline-rules.js?v=234';
 import {CAMPAIGN_SCALE_VERSION,migrateCampaignEnemy,campaignScalingV1} from './campaign-scaling.js?v=241';
-import {rangedCombatMethods,updatePiercingBolt,rangedDrawPose} from './ranged-combat.js?v=240';
-import {soldierMeleeMethods,tickSoldierMeleeSkill,soldierMeleeReach,soldierMeleePosition,soldierMeleeSkillText,soldierMeleeDrawPose,MELEE_BALANCE} from './soldier-melee-skills.js?v=238';
+import {rangedCombatMethods,updatePiercingBolt,rangedDrawPose,rangedFrontlinePosition} from './ranged-combat.js?v=242';
+import {soldierMeleeMethods,tickSoldierMeleeSkill,soldierMeleeReach,soldierMeleePosition,soldierMeleeSkillText,soldierMeleeDrawPose,MELEE_BALANCE} from './soldier-melee-skills.js?v=243';
 import { buildSoldierProfile, describeDeathlineEffect } from './soldier-profile.js?v=234';
 import { attachSurfaceEvents, detachSurfaceEvents, frameSurfaceReady, releaseSceneCaches, releaseCanvas, surfaceCanResume } from './canvas-surface.js?v=217';
 import { SETTLEMENTS, WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt, routeNameAt, eastWestRoadY, northSouthRoadX, riverCenterY, drawFieldDepth, drawOakCrown, fieldBlocks, settleUnit } from './world.js?v=198';
@@ -89,7 +90,7 @@ import {
 } from './class-up-rules.js?v=185';
 import { PHASE_DURATION, REST_DURATION, DEATHLINE_DOWN_THRESHOLD, DEATHLINE_WINDOW_PHASES, SOLDIER_SALARY, MIN_REINFORCEMENTS, emptyActivity, advancePhase, advanceRest, recordCombat, recordHealing, healByMedic, healAmountFor, personalDownCount, recentDownCount, normalizeDeathlineHistory, consumeDeathlineDowns, deathlineEligible, participated, finishExperience } from './phase-rules.js?v=218';
 import {HEALING_HP_PER_EXP,REVIVAL_EXP_PER_MAX_HP,shareCommanderExp,raiseLevelMark,ageLevelMarks} from './experience-rules.js';
-import {attributeFamily,rollAttributeProfile,applyAttributeStats,attributeValues,practiceAttribute,attributeCarryCapacity,attributeSpecialties,prefersCasterMelee,canChannelWeaponMagic,magicAbilityMultiplier,CASTER_STRIKE_COST,casterStrikeMultiplier,beginAttributeMovement,finishAttributeMovement,ATTRIBUTE_LABELS,ATTRIBUTE_KEYS,aptitudeGrade} from './unit-attributes.js?v=231';
+import {attributeFamily,rollAttributeProfile,applyAttributeStats,attributeValues,practiceAttribute,attributeCarryCapacity,attributeSpecialties,prefersCasterMelee,canChannelWeaponMagic,magicAbilityMultiplier,CASTER_STRIKE_COST,casterStrikeMultiplier,beginAttributeMovement,finishAttributeMovement,ATTRIBUTE_LABELS,ATTRIBUTE_KEYS,aptitudeGrade} from './unit-attributes.js?v=242';
 import {rollScoutCandidate,renderRecruitment,nextScoutCandidate,startAutomaticRecruitment,stopAutomaticRecruitment,RECRUIT_CLASSES} from './recruitment.js?v=226';
 import {canUseEquipment,requiredWeaponStrength,equipmentRequirementText,isMagicWeapon,MAGIC_WEAPON_STYLES,preferredWeaponStyle} from './weapon-requirements.js?v=239';
 import {CASTER_GEAR,DEFENSE_TYPES,casterGearName,applyDefenseEquipment,casterEquipmentSummary,absorbEquipmentBarrier,drawBarrierRing} from './defense-equipment.js?v=237';
@@ -100,7 +101,7 @@ import {
   SHARED_BOX_MAX_TIER, SCOUT_COST_BY_TALENT, defaultDonateAmount, donatePresetAmounts, EQUIPMENT_SLOTS
 } from './economy-rules.js?v=231';
 
-import { EQUIPMENT_TYPES, saleValue, equippedIds, canSell, lowValueIds, chooseLootTier, distanceScaling, shrineUpgradeCap, compareEquipment, equipmentScore, compareEquipmentStrength, rollWeaponTraits, weaponCombatProfile, evaluateMeleeSweetSpot, isGodRollProtected, zoneRingPower, zoneRingLabelJa, equipmentIcon, equipmentName } from './equipment-rules.js?v=241';
+import { EQUIPMENT_TYPES, saleValue, equippedIds, canSell, lowValueIds, chooseLootTier, distanceScaling, shrineUpgradeCap, compareEquipment, equipmentScore, compareEquipmentStrength, rollWeaponTraits, weaponCombatProfile, soldierAttackCooldown, evaluateMeleeSweetSpot, isGodRollProtected, zoneRingPower, zoneRingLabelJa, equipmentIcon, equipmentName } from './equipment-rules.js?v=242';
 import { rollFieldBrute, advanceDemonWarband, stepDemonWarbandGroup } from './field-hosts.js?v=182';
 import {
   WEAPON_STYLES, MASTERY_STYLES, WEAPON_STYLE_LABELS, WEAPON_STYLE_ICONS, isHeavyWeaponStyle, heavyWeaponAttackMult, HEAVY_ATTACK_VERSION, LEGACY_HEAVY_ATTACK_MULT, weaponCategoryOf, splitHeavyFavorite, FAVORITE_SPLIT_VERSION,
@@ -129,7 +130,7 @@ import {applyHeroEquipmentUpgrade} from './hero-equipment.js?v=239';
 import {initializeHeroJourney,rollHeroRevelation,serializeHeroJourney,updateHeroParty,updateHeroFollowing,awardHeroBattle,recordDemonKingDefeat,ensureHeroCastle,syncHeroCastle,renderHeroJourney,drawHeroMarks} from './hero-party.js?v=240';
 import {updateSquadHpHud} from './squad-hp-hud.js?v=240';
 import {addBattleReport,normalizeBattleReport,renderBattleReport} from './battle-report.js?v=226';
-import { RESCUE_TIMEOUT, REVIVAL_COOLDOWN, revivalCooldownOf, revivalSkillCooldownLeft, normalizeRevivalSkill, headquartersRevivalPaused, rescueUnits, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, receiveTownCargo, leaveCivilianSpace, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, markSoldierDown, downCommander, commanderDown, updateNpcRescue, CIV_KINDS, isMedic, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST, medicHoldsByCommander } from './casualty-rules.js?v=235';
+import { RESCUE_TIMEOUT, REVIVAL_COOLDOWN, revivalCooldownOf, revivalSkillCooldownLeft, normalizeRevivalSkill, headquartersRevivalPaused, rescueUnits, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, receiveTownCargo, leaveCivilianSpace, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, buildTransportRescueAssign, markSoldierDown, downCommander, commanderDown, updateNpcRescue, CIV_KINDS, isMedic, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST, medicHoldsByCommander } from './casualty-rules.js?v=243';
 import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault, dungeonBlocks, dungeonSolids } from './dungeon.js?v=240';
 import {nearestDungeonFloor,dungeonSpawnPoint,dungeonSteeringTarget} from './dungeon-layout.js?v=182';
 import {normalizeDungeonExploration,updateDungeonSideChests,drawDungeonSideChests,updateDungeonRespawns,dungeonCoolingDown,recordDungeonClear,DUNGEON_RESET_PHASES} from './dungeon-exploration.js?v=200';
@@ -4096,7 +4097,7 @@ export const IronSquadGame = {
     const wProf = this.combatProfileFor(this.player, (this.equipped && this.equipped.weapon) || null, true);
     if(wProf.sidearm){
       if(nearest)this.performRangedSidearm(this.player,nearest,true);
-      else if(nearestOp&&this.rangedOutpostAttack(this.player,nearestOp,this.player.atk))this.player.atkCooldown=.9/Math.max(.55,this.player.atkSpeed||1);
+      else if(nearestOp&&this.rangedOutpostAttack(this.player,nearestOp,this.player.atk))this.player.atkCooldown=wProf.baseCooldown/Math.max(.55,this.player.atkSpeed||1);
       return;
     }
     const isWarlord = !!this.player.isAdvanced;
@@ -4400,7 +4401,7 @@ export const IronSquadGame = {
       if(ensureAmmo(this.player)===0) {
         this.player.powerAtkCooldown=0;const target=this.getNearestMonster(this.player.x,this.player.y);
         if(target)this.performRangedSidearm(this.player,target,true);
-        this.showToast('弾切れ：短剣で迎撃。補給地点で弾薬を補充できます');return;
+        this.showToast(gameText(`弾切れ：${style==='cannon'?'銃身殴り':'短剣'}で援護。補給地点で弾薬を補充できます`));return;
       }
       const requested=style==='bow'?(isWarlord?6:4):style==='cannon'?(isWarlord?5:4):1;
       powerShots=Math.min(ensureAmmo(this.player),requested);this.player.ammo-=powerShots;
@@ -4850,7 +4851,7 @@ export const IronSquadGame = {
           crossbow: { icon: '🎯', label: isWarlord ? 'ロイヤル\nボルト' : 'ピアス\nボルト', title: isWarlord ? 'ロイヤルボルト' : 'ピアスボルト' },
           cannon:   { icon: '💣', label: isWarlord ? 'ブロッサム' : 'クラスター', title: isWarlord ? 'ブロッサムキャノン' : 'クラスターシェル' }
         };
-        const L = isPlayerCaster(this.player)?{icon:'🔮',label:'マナ\nバースト',title:`${MAGIC_AFFINITIES[this.player.magicAffinity].name}のマナバースト · ${PLAYER_MAGIC_RULES.powerCost}MP`}:(['bow','crossbow','cannon'].includes(st)&&ensureAmmo(this.player)===0?{icon:'🗡️',label:'短剣',title:'弾切れ時の護身攻撃'}:labels[st]||labels.sword);
+        const L = isPlayerCaster(this.player)?{icon:'🔮',label:'マナ\nバースト',title:`${MAGIC_AFFINITIES[this.player.magicAffinity].name}のマナバースト · ${PLAYER_MAGIC_RULES.powerCost}MP`}:(['bow','crossbow','cannon'].includes(st)&&ensureAmmo(this.player)===0?{icon:st==='cannon'?'🔨':'🗡️',label:gameText(st==='cannon'?'銃身殴り':'短剣'),title:gameText(st==='cannon'?'弾切れ時の銃身殴り':'弾切れ時の護身攻撃')}:labels[st]||labels.sword);
         iconEl.textContent = L.icon;
         labelEl.textContent = L.label;
         delete labelEl.dataset.len;
@@ -6133,6 +6134,7 @@ export const IronSquadGame = {
       if (this._civSpawnClock >= 12) { this._civSpawnClock = 0; ensureCiviliansSpawned(this, { targetCount: 4 }); }
     }
 
+    const transportRescueAssign=buildTransportRescueAssign(this,aliveSquad);
     assignCampSeats(this, aliveSquad);
 
     // 各兵士の自律行動・兵種戦闘・救助
@@ -6152,7 +6154,7 @@ export const IronSquadGame = {
         if(tryCampLeisure(this,soldier,dt))campRest=true;
         else{updateMageAI(this,soldier,dt,platoon,cls);return;}
       }
-      if(!campRest&&handleTransportAI(this,soldier,dt)){soldier.campPose=null;return;}
+      if(!campRest&&handleTransportAI(this,soldier,dt,transportRescueAssign)){soldier.campPose=null;return;}
       if(!campRest&&tryCampLeisure(this,soldier,dt))campRest=true;
       if(campRest){
         soldier.medCooldown=(soldier.medCooldown||0)-dt;
@@ -6332,7 +6334,7 @@ export const IronSquadGame = {
             const basicMedic = clsKey === 'MEDIC';
             const nearestEnemyToHealer = this.getNearestMonster(soldier.x, soldier.y);
             if (nearestEnemyToHealer && Math.hypot(nearestEnemyToHealer.x - soldier.x, nearestEnemyToHealer.y - soldier.y) <= cls.range && (!basicMedic || ensureMana(soldier) >= MEDIC_SELF_DEFENSE_MIN_MANA) && spendMana(soldier,basicMedic?MEDIC_SELF_DEFENSE_COST:20)) {
-              soldier.atkCooldown = cls.atkCooldown;
+              soldier.atkCooldown = soldierAttackCooldown(soldier,cls.atkCooldown);
               soldier.atkAnim = 1.0;
               soldier.facingAngle = Math.atan2(nearestEnemyToHealer.y - soldier.y, nearestEnemyToHealer.x - soldier.x);
               if (!this.projectiles) this.projectiles = [];
@@ -6437,8 +6439,10 @@ export const IronSquadGame = {
           const safeDist = clsKey === 'SNIPER' ? 95 : (rkProf.style === 'cannon' ? 110 : 75);
           const maxDist = rkProf.stone?Math.max(cls.range*.75,reachHint)*.92:Math.max(clsKey === 'SNIPER' ? 340 : 230, reachHint * 0.92);
           if(rkProf.sidearm){
-            if(enemyDist<=90){targetX=nearestEnemy.x;targetY=nearestEnemy.y;if(enemyDist<=48){targetX=soldier.x;targetY=soldier.y;}}
-            // Farther enemies: keep the formation target and return to the commander or main army.
+            const front=rangedFrontlinePosition(this,soldier,nearestEnemy);
+            if(front){targetX=front.x;targetY=front.y;}
+            else if(enemyDist<=90){targetX=nearestEnemy.x;targetY=nearestEnemy.y;if(enemyDist<=48){targetX=soldier.x;targetY=soldier.y;}}
+            // No nearby melee front: keep the original defensive/formation behavior.
           } else if (enemyDist < safeDist) {
             targetX = soldier.x - (nearestEnemy.x - soldier.x);
             targetY = soldier.y - (nearestEnemy.y - soldier.y);
@@ -6497,7 +6501,7 @@ export const IronSquadGame = {
             this.performRangedSidearm(soldier,nearestEnemy,false);
           } else if (enemyDist <= shotRange) {
             const cd = Math.max(0.35/(rangedProf.stone?.75:1), (rangedProf.baseCooldown || cls.atkCooldown) / Math.max(0.55, (soldier.atkSpeed || 1)));
-            soldier.atkCooldown = clsKey === 'SNIPER' ? cd * 0.88 : cd;
+            soldier.atkCooldown = soldierAttackCooldown(soldier,clsKey === 'SNIPER' ? cd * 0.88 : cd);
             soldier.atkAnim = 1.0;
             soldier.facingAngle = Math.atan2(nearestEnemy.y - soldier.y, nearestEnemy.x - soldier.x);
             soldier.attackAngle = soldier.facingAngle;
@@ -6512,7 +6516,7 @@ export const IronSquadGame = {
           }
         } else if (clsKey === 'PALADIN' && enemyDist <= cls.range + 25) {
           // 聖騎士（PALADIN）: 光輝の盾衝撃波（前方広角スプラッシュ＆ノックバック）
-          soldier.atkCooldown = cls.atkCooldown;
+          soldier.atkCooldown = soldierAttackCooldown(soldier,cls.atkCooldown);
           soldier.atkAnim = 1.0;
           soldier.facingAngle = Math.atan2(nearestEnemy.y - soldier.y, nearestEnemy.x - soldier.x);
           soldier.attackAngle = soldier.facingAngle;
@@ -6538,7 +6542,7 @@ export const IronSquadGame = {
           sound.playBomb();
         } else if (clsKey === 'BLADEMASTER' && enemyDist <= cls.range + 40) {
           // 剣聖（BLADEMASTER）: 神速二刀連撃 ＆ ソニックブレード（SWORD_BEAM）射出
-          soldier.atkCooldown = cls.atkCooldown;
+          soldier.atkCooldown = soldierAttackCooldown(soldier,cls.atkCooldown);
           soldier.atkAnim = 1.0;
           soldier.facingAngle = Math.atan2(nearestEnemy.y - soldier.y, nearestEnemy.x - soldier.x);
           soldier.attackAngle = soldier.facingAngle;
@@ -6569,7 +6573,7 @@ export const IronSquadGame = {
             const styleDmgMult = sProf.style === 'spear' ? SOLDIER_SPEAR_DMG_MULT : (isHeavyWeaponStyle(sProf.style) ? SOLDIER_HAMMER_DMG_MULT : 1);
             const meleeAtk = Math.max(1, Math.round(totalAtk * styleDmgMult));
             const masteryCd = masteryReloadMult(soldier.weaponMastery, sProf.style);
-            soldier.atkCooldown = cls.atkCooldown * cdMult * masteryCd / Math.max(.55,sWpn?.weaponTraits?(soldier.atkSpeed||1)*(sWpn.weaponTraits.attackTempo||1):1);
+            soldier.atkCooldown = soldierAttackCooldown(soldier,cls.atkCooldown * cdMult * masteryCd / Math.max(.55,(soldier.atkSpeed||1)*(sWpn?.weaponTraits?.attackTempo||1)));
             soldier.atkAnim = 1.0;
             soldier.facingAngle = Math.atan2(nearestEnemy.y - soldier.y, nearestEnemy.x - soldier.x);
             soldier.attackAngle = soldier.facingAngle;
@@ -6596,7 +6600,7 @@ export const IronSquadGame = {
         if (!nearestEnemy || enemyDist > 160) {
           const nearOp = this.getNearestUnclearedOutpost(soldier.x, soldier.y);
           if (nearOp && Math.hypot(nearOp.x - soldier.x, nearOp.y - soldier.y) <= nearOp.radius + 55 && soldier.atkCooldown <= 0) {
-            soldier.atkCooldown = cls.atkCooldown;
+            soldier.atkCooldown = soldierAttackCooldown(soldier,isRangedUnit(this,soldier)&&ensureAmmo(soldier)===0?this.combatProfileFor(soldier,soldier.equipped?.weapon||soldier.weapon,false).baseCooldown/Math.max(.55,soldier.atkSpeed||1):cls.atkCooldown);
             soldier.atkAnim = 1.0;
             soldier.facingAngle = Math.atan2(nearOp.y - soldier.y, nearOp.x - soldier.x);
             if(isRangedUnit(this,soldier))this.rangedOutpostAttack(soldier,nearOp,totalAtk);else this.damageOutpost(nearOp,totalAtk,soldier);
@@ -7364,6 +7368,7 @@ export const IronSquadGame = {
     if (!attacker || !target) return;
     if (!this.projectiles) this.projectiles = [];
     if(ensureAmmo(attacker)<=0)return false;
+    attacker._cannonBashAttack=false;
     const shot=takeRangedShot(attacker,damage);damage=shot.damage;
     sound.playWeapon(shot.loaded?(profile?.style||'bow'):'stone',attacker.x,attacker.y);
     const style = profile?.style || 'bow';
@@ -7424,7 +7429,7 @@ export const IronSquadGame = {
     if(!canUseEquipment(caster,weapon))return false;
     if(Math.hypot(target.x-caster.x,target.y-caster.y)>(profile.reach||45))return false;
     if(isMedic(caster))castCasterStrength(this,caster);
-    caster.atkCooldown=Math.max(.35,(profile.baseCooldown||1)*masteryReloadMult(caster.weaponMastery,profile.style));
+    caster.atkCooldown=soldierAttackCooldown(caster,(profile.baseCooldown||1)*masteryReloadMult(caster.weaponMastery,profile.style)/Math.max(.55,caster.atkSpeed||1));
     caster.atkAnim=1;caster.facingAngle=Math.atan2(target.y-caster.y,target.x-caster.x);
     // MPを込めた一撃だけ猛烈に強い。MP切れは普通の殴り
     const strike=spendMana(caster,CASTER_STRIKE_COST)?casterStrikeMultiplier(caster):1;
@@ -9037,7 +9042,7 @@ export const IronSquadGame = {
             <div>移動 ${formatSpeed(s.speed||0)}${isMagicUser(s)?` · 魔法攻撃 ${s.magicAttack||0}`:''}</div>${prefersCasterMelee(s)?`<div>魔力の一撃 ×${casterStrikeMultiplier(s)}（近接・MP${CASTER_STRIKE_COST}）</div>`:''}
             <div class="recruit-specialties">${attributeSpecialties(s).join('・')||'均整型'}</div>
             ${isMagicUser(s)?`<div class="soldier-mana-state">${this.magicUnitDescription(s)}</div>`:''}
-            ${isRangedUnit(this,s)?`<div class="soldier-ammo-state">弾薬 ${ensureAmmo(s)}/${ammoCapacity(s)} ${s.ammo===0?'· 弾切れ／短剣で迎撃・要補給':''}</div>`:''}
+            ${isRangedUnit(this,s)?`<div class="soldier-ammo-state">弾薬 ${ensureAmmo(s)}/${ammoCapacity(s)} ${s.ammo===0?`· 弾切れ／${gameText((s.equipped?.weapon||s.weapon)?.weaponStyle==='cannon'?'銃身殴り':'短剣')}で援護・要補給`:''}</div>`:''}
           </div>
           <div class="soldier-detail-block">
             <div class="soldier-detail-label">戦績・成長</div>
@@ -12461,7 +12466,7 @@ export const IronSquadGame = {
       const t = 1 - p.spinAnim / AXE_SPIN_TIME, start = (p.spinDir || 1) < 0 ? Math.PI : 0;
       p = { ...p, slashAnim: .54, slashAngle: start + (p.spinDir || 1) * t * Math.PI * 2 };
     }
-    drawFieldCommander(ctx,p,eq,now,this.rankIndex,this.currentRank().title,
+    drawFieldCommander(ctx,{...p,_rangedBash:shown._rangedBash},eq,now,this.rankIndex,this.currentRank().title,
       !!this.joystick?.active);
     if (p.isDown) ctx.restore();
     else if (p.equipmentBarrierMax>0) drawBarrierRing(ctx, p, now);

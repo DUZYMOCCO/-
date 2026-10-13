@@ -1,11 +1,11 @@
 import {givenName} from './squad-names.js?v=182';
-import {downLabel} from './casualty-rules.js?v=235';
+import {downLabel} from './casualty-rules.js?v=243';
 import {RANGED_ENEMIES} from './enemy-ranged.js?v=235';
 import {BRUTE_DRAW_SCALE} from './field-hosts.js?v=182';
 import {equipmentVisualProfile} from './equipment-tiers.js?v=231';
 import {drawBodyEquipment,drawEquipmentShield} from './equipment-art.js?v=231';
 import {MAGIC_AFFINITIES,ensureMana} from './magic-rules.js?v=231';
-import { drawMeleeWeapon, drawMeleeRangeCue, drawRangedWeapon, drawWeaponArms, meleePose, rangedPose, weaponAim } from './weapon-motion.js?v=218';
+import { drawMeleeWeapon, drawMeleeRangeCue, drawRangedWeapon, drawWeaponArms, meleePose, rangedPose, weaponAim } from './weapon-motion.js?v=242';
 import { defaultCommanderAppearance } from './commander-identity.js?v=210';
 import {travelerClothes,drawTravelerTunic} from './traveler-clothes.js?v=195';
 import { createSoldierAppearance, drawSoldierHead, isMedicAppearance, soldierAppearanceFamily, soldierPhysique } from './soldier-appearance.js?v=206';
@@ -366,7 +366,7 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod, displa
   const ranged = ['bow','crossbow','cannon'].includes(wStyle);
   const weaponColors = {cloth,gloves,blade,board,physique,hand:s.appearance?.skin||'#c1a083',gloveProfile:equipmentVisualProfile(eq.gloves),shieldProfile:equipmentVisualProfile(eq.shield),weaponProfile:equipmentVisualProfile(eq.weapon||s.weapon)};
   const aim=weaponAim(s);
-  const heldPose=melee?meleePose(wStyle,s.atkAnim||0,aim,physique):ranged?rangedPose(wStyle,s.atkAnim||0,aim,physique):null;
+  const heldPose=melee?meleePose(wStyle,s.atkAnim||0,aim,physique):ranged?rangedPose(wStyle,s.atkAnim||0,aim,physique,s._rangedBash):null;
   c.save(); c.translate(s.x, s.y);
   if (!s.isDown && (s.campPose === 'sit' || s.campPose === 'drink' || s.campPose === 'eat')) {
     drawCampRest(c, s, now, s.campPose, { cloth, armorColor, legs, blade, steel, gloves, board, platoonColor, medic, advanced, mage, eq, physique, regalia }, simpleLod);
@@ -534,7 +534,7 @@ export function drawFieldCommander(c,p,equipped,now,rankIndex,rankTitle,moving,p
   const commanderRegalia=classRegaliaFor(p,true);
   drawFieldSoldier(c,{id:'commander',appearance:p.appearance||commanderAppearance,x:0,y:0,hp:p.hp,maxHp:p.maxHp,_levelMark:portrait?0:p._levelMark,level:p.level,
     soldierClass:commanderRegalia?.id||'COMMANDER',advancedClass:p.advancedClass,isAdvanced:!!commanderRegalia,isCommander:true,isNamed:true,rankIndex,civilianOutfit:!!p.civilianOutfit,
-    equipped,portrait:true,atkAnim:p.slashAnim || 0,
+    equipped,portrait:true,atkAnim:p.slashAnim || 0,_rangedBash:p._rangedBash,
     facingAngle:p.facingAngle,attackAngle:p.slashAngle,vx:moving?1:0,vy:0},now,
     {isAdvanced:!!commanderRegalia,name:'隊長'},'#b7c6b6');
   if(!portrait) {

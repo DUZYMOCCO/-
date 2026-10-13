@@ -3,7 +3,7 @@ import {HQ_FACILITY_LAYOUT,hqFacilityBlocks} from './hq-facility-layout.js?v=201
 import {setSubDialog} from './interface.js?v=230';
 import {daylightAt} from './day-night.js?v=208';
 import {buildingContact} from './building-interactions.js?v=201';
-import {drawCasinoSign} from './nightlife-visuals.js?v=208';
+import {drawCasinoSign} from './nightlife-visuals.js?v=242';
 const center=WORLD_SIZE/2;
 export const HEADQUARTERS_FACILITIES=HQ_FACILITY_LAYOUT.map(p=>Object.freeze({...p,type:'hq-facility',x:center+p.x,y:center+p.y}));
 // Service architecture keeps the army's established combat and movement rules.

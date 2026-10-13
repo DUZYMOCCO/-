@@ -1,3 +1,4 @@
+import {soldierAttackCooldown} from './equipment-rules.js?v=242';
 import {guardTarget,guardSpeedMult} from './guard-leash.js?v=211';
 import {WORLD_SIZE,fieldBlocks} from './world.js?v=198';
 import {inCurrentInstance} from './instance-rules.js?v=182';
@@ -134,8 +135,8 @@ export function updateNinja(game,s,dt,platoon,damageMult=1) {
  if(dist>Math.max(35,reach*.8)){const step=Math.min(dist,s.speed*guardSpeedMult(s)*dt);s.x+=dx/dist*step;s.y+=dy/dist*step;s.vx=dx/dist;s.vy=dy/dist;}else{s.vx=s.vy=0;}
  s.facingAngle=Math.atan2(dy,dx);
  if(alive(target)&&s.atkCooldown<=0&&d<=250){
-  if(d<=reach+10){if(profile.ranged)game.performAttack(s,target,false,Math.round(s.atk*damageMult),false,'physical');else game.performMeleeSweep(s,target,false,Math.round(s.atk*damageMult),profile,reach);s.atkCooldown=.75/(s.atkSpeed||1);}
-  else{game.projectiles.push({type:'NINJA_SHURIKEN',attacker:s,target,x:s.x,y:s.y,damage:Math.round(s.atk*.7*damageMult),speed:390,life:1.5});s.atkCooldown=1.7/(s.atkSpeed||1);}
+  if(d<=reach+10){if(profile.ranged)game.performAttack(s,target,false,Math.round(s.atk*damageMult),false,'physical');else game.performMeleeSweep(s,target,false,Math.round(s.atk*damageMult),profile,reach);s.atkCooldown=soldierAttackCooldown(s,.75/(s.atkSpeed||1));}
+  else{game.projectiles.push({type:'NINJA_SHURIKEN',attacker:s,target,x:s.x,y:s.y,damage:Math.round(s.atk*.7*damageMult),speed:390,life:1.5});s.atkCooldown=soldierAttackCooldown(s,1.7/(s.atkSpeed||1));}
   s.atkAnim=1;
  }
  return true;

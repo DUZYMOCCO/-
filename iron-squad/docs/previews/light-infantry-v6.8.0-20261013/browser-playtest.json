@@ -1,0 +1,129 @@
+{
+  "version": "6.8.0",
+  "results": [
+    {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "rescue": {
+        "heavyForward": true,
+        "heavyY": 0,
+        "lightTowardPatient": true,
+        "overflow": false
+      }
+    },
+    {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "bash": {
+        "hit": true,
+        "damage": 1186,
+        "knockback": 25,
+        "cooldown": 1.4,
+        "actualStyle": "cannon",
+        "drawStyle": "cannon",
+        "bashPose": true,
+        "ammo": 0,
+        "badge": "要補給 1名（白兵戦で援護） · 回復薬 1/3"
+      }
+    },
+    {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "refill": {
+        "full": 55,
+        "max": 55,
+        "remaining": 54,
+        "retreat": true,
+        "shot": "CANNONBALL",
+        "bashFlag": false
+      }
+    },
+    {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "commander": {
+        "damage": 198,
+        "cooldown": 1.4,
+        "label": "銃身殴り"
+      }
+    },
+    {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "kana": "じゅうしんなぐり"
+    },
+    {
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "rescue": {
+        "heavyForward": true,
+        "heavyY": 0,
+        "lightTowardPatient": true,
+        "overflow": false
+      }
+    },
+    {
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "bash": {
+        "hit": true,
+        "damage": 1186,
+        "knockback": 25,
+        "cooldown": 1.4,
+        "actualStyle": "cannon",
+        "drawStyle": "cannon",
+        "bashPose": true,
+        "ammo": 0,
+        "badge": "要補給 1名（白兵戦で援護） · 回復薬 1/3"
+      }
+    },
+    {
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "refill": {
+        "full": 55,
+        "max": 55,
+        "remaining": 54,
+        "retreat": true,
+        "shot": "CANNONBALL",
+        "bashFlag": false
+      }
+    },
+    {
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "commander": {
+        "damage": 91,
+        "cooldown": 1.4,
+        "label": "銃身殴り"
+      }
+    },
+    {
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "kana": "じゅうしんなぐり"
+    }
+  ],
+  "pageErrors": [],
+  "disposableBrowserStorage": true
+}

@@ -1,4 +1,5 @@
 import {campaignScaling} from './campaign-scaling.js?v=241';
+import {soldierCombatTempo,usesSoldierTempo} from './unit-attributes.js?v=242';
 import {requiredDefenseStrength} from './defense-equipment.js?v=237';
 import {powerRank,MAX_EQUIPMENT_TIER,GENERATIONS} from './equipment-tiers.js?v=231';
 import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=182';
@@ -329,6 +330,10 @@ export function weaponCombatProfile(item) {
     sweepArc:!p.ranged&&!p.pierce&&item?.weaponTraits?(isHeavyWeaponStyle(p.style)?1.8:1.2)*sweep:0,
     swingSpeed:trait(item,'swingSpeed')};
 }
+/** Apply quickness after every ordinary-attack modifier, then enforce the soldier floor. */
+// Phantom advances the existing attack clock faster in tickDeathline. Raise its
+// stored floor by the same rate so the elapsed interval still cannot be < .12s.
+export const soldierAttackCooldown=(unit,cooldown)=>usesSoldierTempo(unit)?Math.max(.12*(1+Math.max(0,unit.deathlineAtkSpeed||0)/100),cooldown*soldierCombatTempo(unit)):cooldown;
 export function meleeSweetSpotFor(item) {
   const base=MELEE_SWEET_SPOT[combatFamilyOf(item)];if(!base)return null;
   if(typeof item==='string'||!item?.weaponTraits)return base;

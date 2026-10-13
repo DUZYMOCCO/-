@@ -14,5 +14,19 @@ try{
   await page.waitForFunction(()=>window.gameStudioInstance?.activeGame?.player);await page.evaluate(()=>gameStudioInstance.activeGame.stopGameLoop());
   const evidence=await page.evaluate(async cache=>{const {campaignScaling,CAMPAIGN_SCALE_VERSION}=await import(`/iron-squad/js/campaign-scaling.js?v=${cache}`),{DUNGEON_DEFS}=await import(`/iron-squad/js/dungeon.js?v=${cache}`),{weaponCombatProfile}=await import(`/iron-squad/js/equipment-rules.js?v=${cache}`),{ammoCapacity}=await import(`/iron-squad/js/supply-rules.js?v=${cache}`);return {rimHp:campaignScaling(79360).hp,borderHp:campaignScaling(48000).hp,scaleVersion:CAMPAIGN_SCALE_VERSION,ammoCache:gameStudioInstance.activeGame.player._ammoCapacity,bossHp:DUNGEON_DEFS.find(d=>d.id==='dungeon_demon_castle').boss.hp,bowCooldown:weaponCombatProfile({weaponStyle:'bow'}).baseCooldown,bowAmmo:ammoCapacity({weapon:{weaponStyle:'bow'},strength:30})};},release.version.slice(1));
   assert.equal(evidence.rimHp,1_000_000);assert.equal(evidence.borderHp,6000);assert.equal(evidence.scaleVersion,2);assert.ok(evidence.ammoCache>0);assert.equal(evidence.bossHp,1_000_000_000);assert.equal(evidence.bowCooldown,.60);assert.equal(evidence.bowAmmo,120);assert.deepEqual(errors,[]);
+  if(['6.8.0','6.8.1'].includes(release.gameVersion)){
+    evidence.lightInfantry=await page.evaluate(async cache=>{const {soldierCombatTempo}=await import(`/iron-squad/js/unit-attributes.js?v=${cache}`),{soldierAttackCooldown}=await import(`/iron-squad/js/equipment-rules.js?v=${cache}`),{ammoCombatProfile}=await import(`/iron-squad/js/supply-rules.js?v=${cache}`);return {minTempo:soldierCombatTempo({soldierClass:'LIGHT',quickness:255}),commanderTempo:soldierCombatTempo({isCommander:true,quickness:255}),phantomStoredFloor:soldierAttackCooldown({soldierClass:'LIGHT',quickness:255,deathlineAtkSpeed:25},.01),cannonBashCooldown:ammoCombatProfile({weapon:{weaponStyle:'cannon'},ammo:0,strength:30},{ranged:true,style:'cannon'}).baseCooldown};},release.version.slice(1));
+    assert.deepEqual(evidence.lightInfantry,{minTempo:.6,commanderTempo:1,phantomStoredFloor:.15,cannonBashCooldown:1.4});
+  }
+  if(release.gameVersion==='6.8.1'){
+    evidence.reviewFixes=await page.evaluate(async cache=>{
+      const {soldierMeleeReload}=await import(`/iron-squad/js/soldier-melee-skills.js?v=${cache}`),{buildTransportRescueAssign}=await import(`/iron-squad/js/casualty-rules.js?v=${cache}`);
+      const u={soldierClass:'HEAVY',quickness:15,weapon:{weaponStyle:'sword'},weaponMastery:{sword:0}},slow=soldierMeleeReload({...u,atkSpeed:.1}),fast=soldierMeleeReload({...u,atkSpeed:100});
+      const heavy={id:'offline-heavy',soldierClass:'HEAVY',hp:100,x:0,y:0},archer={id:'offline-archer',soldierClass:'ARCHER',hp:100,x:0,y:0},patient={id:'offline-patient',hp:0,isDown:true,x:30,y:0};
+      const game={player:{hp:100,x:0,y:0},squad:[heavy,archer,patient],monsters:[{hp:100,x:50,y:0}]},first=[...buildTransportRescueAssign(game).keys()][0]?.id;game.squad=[heavy,patient];
+      return {skillSlow:slow,skillFast:fast,rescuerWithArcher:first,rescuerAlone:[...buildTransportRescueAssign(game).keys()][0]?.id};
+    },release.version.slice(1));
+    assert.deepEqual(evidence.reviewFixes,{skillSlow:6,skillFast:6,rescuerWithArcher:'offline-archer',rescuerAlone:'offline-heavy'});
+  }
   const report={version:release.gameVersion,cache:release.version,assets:release.files.length,allAssetsCached:true,offlineResume:true,evidence,pageErrors:errors,disposableBrowserStorage:true};writeFileSync(`${process.argv[2]||'iron-squad/docs/previews/campaign-ranged-v6.7.0-20261013'}/offline-playtest.json`,JSON.stringify(report,null,2)+'\n');console.log(JSON.stringify(report));await context.close();
 }finally{await browser.close();}

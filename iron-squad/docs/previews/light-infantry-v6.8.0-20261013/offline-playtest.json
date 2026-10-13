@@ -1,0 +1,24 @@
+{
+  "version": "6.8.0",
+  "cache": "v242",
+  "assets": 128,
+  "allAssetsCached": true,
+  "offlineResume": true,
+  "evidence": {
+    "rimHp": 1000000,
+    "borderHp": 6000,
+    "scaleVersion": 2,
+    "ammoCache": 30,
+    "bossHp": 1000000000,
+    "bowCooldown": 0.6,
+    "bowAmmo": 120,
+    "lightInfantry": {
+      "minTempo": 0.6,
+      "commanderTempo": 1,
+      "phantomStoredFloor": 0.15,
+      "cannonBashCooldown": 1.4
+    }
+  },
+  "pageErrors": [],
+  "disposableBrowserStorage": true
+}

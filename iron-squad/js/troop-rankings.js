@@ -1,7 +1,7 @@
 import {salaryQuote,salaryFundingContext,regularSalaryReserve} from './payroll-rules.js?v=226';
 import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=182';
 import {talentTag as talentLabel} from './talent-labels.js?v=182';
-import {ATTRIBUTE_BASES,attributeFamily} from './unit-attributes.js?v=231';
+import {ATTRIBUTE_BASES,attributeFamily} from './unit-attributes.js?v=242';
 /**
  * 兵士の武勲・ステータスランキングシステム
  * 各ステータス（総合・撃破・ボス・攻撃・防御・HP・回復・死線）を詳細にランキング化し、

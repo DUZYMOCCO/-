@@ -1,5 +1,5 @@
 import {drawEquipmentShield} from './equipment-art.js?v=231';
-import { MELEE_SWEET_SPOT, meleeSweetSpotFor, weaponCombatProfile } from './equipment-rules.js?v=241';
+import { MELEE_SWEET_SPOT, meleeSweetSpotFor, weaponCombatProfile } from './equipment-rules.js?v=242';
 import {isHeavyWeaponStyle} from './growth-rules.js?v=234';
 
 const TAU = Math.PI * 2;
@@ -209,7 +209,12 @@ export function drawMeleeWeapon(c, actor, style, colors, simple=false,withArms=t
   return pose;
 }
 
-export function rangedPose(style,anim=0,aim=0,physique=null) {
+export function rangedPose(style,anim=0,aim=0,physique=null,bash=false) {
+  if(style==='cannon'&&bash&&anim>0){
+    const pose=meleePose('hammer',anim,aim,physique),dx=Math.cos(pose.angle),dy=Math.sin(pose.angle);
+    pose.offGrip={x:pose.grip.x+dx*11+dy*3*pose.side,y:pose.grip.y+dy*11-dx*3*pose.side};
+    return fitGrips({...pose,draw:0,recoil:0,bash:true},physique);
+  }
   aim=Number.isFinite(aim)?aim:0;
   const active=anim>0,p=1-clamp(anim),dx=Math.cos(aim),dy=Math.sin(aim),nx=-dy,ny=dx,side=dx<-.15?-1:1;
   const draw=style==='bow'?(active?keys(p,[[0,5],[.2,11],[.43,3],[.65,4],[1,5]]):5):0;
@@ -226,7 +231,7 @@ export function rangedPose(style,anim=0,aim=0,physique=null) {
 }
 export function drawRangedWeapon(c,actor,style,colors,simple=false,withArms=true,heldPose=null) {
   const anim=actor.atkAnim||0,aim=weaponAim(actor);
-  const pose=heldPose||rangedPose(style,anim,aim,colors.physique),{grip,offGrip}=pose,{blade,weaponProfile}=colors;
+  const pose=heldPose||rangedPose(style,anim,aim,colors.physique,actor._rangedBash),{grip,offGrip}=pose,{blade,weaponProfile}=colors;
   c.save();c.lineCap='round';c.lineJoin='round';
   if(withArms)drawWeaponArms(c,actor,pose,colors,simple);
   c.translate(grip.x,grip.y);c.rotate(pose.angle);

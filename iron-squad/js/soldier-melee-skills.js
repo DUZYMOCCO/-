@@ -1,4 +1,4 @@
-import {attributeFamily} from './unit-attributes.js?v=237';
+import {attributeFamily,soldierCombatTempo} from './unit-attributes.js?v=242';
 import {canUseEquipment} from './weapon-requirements.js?v=239';
 import {masteryReloadMult} from './growth-rules.js?v=234';
 import {attackBlocked} from './gate-rules.js?v=215';
@@ -14,6 +14,7 @@ const alive=u=>u&&!u.dead&&!u.isDown&&u.hp>0;
 const weapon=u=>u?.equipped?.weapon||u?.weapon;
 const context=game=>game.currentDungeon?.id||'field';
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+export const soldierMeleeReload=(unit,rule=soldierMeleeSkill(unit))=>rule?rule.cooldown*masteryReloadMult(unit.weaponMastery,weapon(unit)?.weaponStyle)*soldierCombatTempo(unit)/(1+Math.max(0,unit.deathlineAtkSpeed||0)/100):0;
 export function soldierMeleeSkill(unit){
   if(!['HEAVY','LIGHT'].includes(attributeFamily(unit))||unit.soldierClass==='NINJA')return null;
   return SOLDIER_MELEE_SKILLS[weapon(unit)?.weaponStyle]||null;
@@ -48,7 +49,7 @@ export function tickSoldierMeleeSkill(game,unit,dt){
   unit.weaponSpinTime=Math.max(0,(unit.weaponSpinTime||0)-dt);
   const rule=soldierMeleeSkill(unit);
   if(!rule){delete unit.weaponSkillPending;return;}
-  if(!Number.isFinite(unit.weaponSkillCooldown))unit.weaponSkillCooldown=rule.cooldown*.5;
+  if(!Number.isFinite(unit.weaponSkillCooldown))unit.weaponSkillCooldown=soldierMeleeReload(unit,rule)*.5;
   unit.weaponSkillCooldown=Math.max(0,unit.weaponSkillCooldown-dt);
   const pending=unit.weaponSkillPending;
   if(!pending)return;
@@ -59,7 +60,7 @@ export function tickSoldierMeleeSkill(game,unit,dt){
   const target=game.monsters.find(m=>m.id===pending.targetId&&valid(game,unit,m,reach))||game.getNearestMonster(unit.x,unit.y,m=>valid(game,unit,m,reach));
   if(target&&canUseEquipment(unit,weapon(unit)))swordHit(game,unit,target,pending.damage,profile);
 }
-export function soldierMeleeSkillText(unit){const rule=soldierMeleeSkill(unit);return rule?`${rule.name} · 自動 · CT${rule.cooldown}秒`:'';}
+export function soldierMeleeSkillText(unit){const rule=soldierMeleeSkill(unit);return rule?`${rule.name} · 自動 · CT${soldierMeleeReload(unit,rule).toFixed(1)}秒`:'';}
 export function soldierMeleeDrawPose(unit){return unit.weaponSpinTime>0?{...unit,atkAnim:.9,attackAngle:(unit.weaponSpinAngle||0)+(1-unit.weaponSpinTime/.42)*Math.PI*2}:unit;}
 export const soldierMeleeMethods={
   trySoldierMeleeSkill(unit,target){
@@ -69,7 +70,7 @@ export const soldierMeleeMethods={
     const reach=style==='spear'?Math.max(140,profile.reach*1.15):style==='axe'?120:style==='hammer'?110:Math.max(80,profile.reach);
     if(!valid(this,unit,target,reach))return false;
     const base=Math.round(unit.atk*2.2*(this.player.isAdvanced?1.25:1)),damage=Math.round(base*rule.mult),angle=Math.atan2(target.y-unit.y,target.x-unit.x);
-    unit.weaponSkillCooldown=rule.cooldown*masteryReloadMult(unit.weaponMastery,style);unit.atkAnim=1;unit.attackAngle=angle;unit.facingAngle=angle;
+    unit.weaponSkillCooldown=soldierMeleeReload(unit,rule);unit.atkAnim=1;unit.attackAngle=angle;unit.facingAngle=angle;
     if(style==='sword'){
       swordHit(this,unit,target,damage,profile);
       unit.weaponSkillPending={style,weaponId:item.id,context:context(this),targetId:target.id,delay:rule.followup,damage};

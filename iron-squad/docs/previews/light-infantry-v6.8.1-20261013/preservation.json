@@ -1,0 +1,17 @@
+{
+  "version": "6.8.1",
+  "gameplayBodyChanges": [
+    "js/casualty-rules.js",
+    "js/soldier-melee-skills.js"
+  ],
+  "unchangedBodiesIgnoringImportVersions": {
+    "js/campaign-scaling.js": true,
+    "js/deathline-rules.js": true,
+    "js/equipment-rules.js": true,
+    "js/index.js": true,
+    "js/ranged-combat.js": true,
+    "js/supply-rules.js": true,
+    "js/unit-attributes.js": true,
+    "js/weapon-motion.js": true
+  }
+}

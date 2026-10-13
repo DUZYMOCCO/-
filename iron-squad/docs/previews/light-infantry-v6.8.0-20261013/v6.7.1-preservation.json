@@ -1,0 +1,7 @@
+{
+  "campaignScalingExactBytes": true,
+  "checkZoneTransitionUnchanged": true,
+  "triggerBaseRaidUnchanged": true,
+  "ammoCacheFunctionsUnchanged": true,
+  "raidKeepsV1Curve": true
+}

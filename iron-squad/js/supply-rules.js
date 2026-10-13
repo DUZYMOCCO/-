@@ -1,9 +1,9 @@
-import {attributeValues,ensureAttributeProfile} from './unit-attributes.js?v=231';
+import {attributeValues,ensureAttributeProfile} from './unit-attributes.js?v=242';
 import {isMagicUser,ensureMana} from './magic-rules.js?v=231';
 import {WORLD_SIZE} from './world.js?v=198';
 import {inCurrentInstance} from './instance-rules.js?v=182';
 import {saveSlots} from './save-slots.js';
-import {nearestRevivalPotionTarget,reviveByPotion,REVIVAL_POTION_RANGE} from './casualty-rules.js?v=235';
+import {nearestRevivalPotionTarget,reviveByPotion,REVIVAL_POTION_RANGE} from './casualty-rules.js?v=243';
 
 export const AMMO_CAPACITY=30; // Legacy/default capacity for units without a ranged weapon.
 export const AMMO_BASE_CAPACITY=Object.freeze({bow:120,crossbow:60,cannon:30});
@@ -68,7 +68,7 @@ export function takeRangedShot(unit,damage) {
 }
 export function ammoCombatProfile(unit,profile) {
   if(!profile.ranged||ensureAmmo(unit)>0)return profile;
-  return {...profile,sidearm:true,stone:false,reach:65,reachWarlord:65,baseCooldown:.9,pierce:false,splash:0,knockback:0,knockbackWarlord:0,projType:null};
+  return {...profile,sidearm:true,stone:false,reach:65,reachWarlord:65,baseCooldown:profile.style==='cannon'?1.4:.9,pierce:false,splash:0,knockback:0,knockbackWarlord:0,projType:null};
 }
 // Distribute one round per pass so the closest collector does not monopolize supplies.
 export function distributeAmmo(game,amount=0) {
@@ -206,7 +206,7 @@ export const supplyMethods={
     const ranged=squadUnits(this).filter(u=>usable(u)&&isRangedUnit(this,u));
     const empty=ranged.filter(u=>ensureAmmo(u)===0).length;
     const heroRanged=isRangedUnit(this,this.player);
-    if(badge){const previous=badge.textContent;badge.textContent=`${heroRanged?`弾薬 ${ensureAmmo(this.player)}/${ammoCapacity(this.player)} · `:''}${empty?`要補給 ${empty}名（短剣で迎撃）`:`射手の弾薬 ${ranged.reduce((n,u)=>n+ensureAmmo(u),0)}/${ranged.reduce((n,u)=>n+ammoCapacity(u),0)}`} · 回復薬 ${this.squadPotion||0}/${SQUAD_POTION_MAX}`;badge.dataset.empty=String(empty>0);}
+    if(badge){const previous=badge.textContent;badge.textContent=`${heroRanged?`弾薬 ${ensureAmmo(this.player)}/${ammoCapacity(this.player)} · `:''}${empty?`要補給 ${empty}名（白兵戦で援護）`:`射手の弾薬 ${ranged.reduce((n,u)=>n+ensureAmmo(u),0)}/${ranged.reduce((n,u)=>n+ammoCapacity(u),0)}`} · 回復薬 ${this.squadPotion||0}/${SQUAD_POTION_MAX}`;badge.dataset.empty=String(empty>0);}
     const button=document.getElementById('btn-pad-potion');
     if(button){button.disabled=!this.squadPotion||!usable(this.player);button.textContent=`回復薬 ${this.squadPotion||0}`;}
     const revival=document.getElementById('btn-pad-revive'),target=nearestRevivalPotionTarget(this);

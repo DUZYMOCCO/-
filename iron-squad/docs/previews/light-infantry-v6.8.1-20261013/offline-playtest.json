@@ -1,0 +1,30 @@
+{
+  "version": "6.8.1",
+  "cache": "v243",
+  "assets": 128,
+  "allAssetsCached": true,
+  "offlineResume": true,
+  "evidence": {
+    "rimHp": 1000000,
+    "borderHp": 6000,
+    "scaleVersion": 2,
+    "ammoCache": 30,
+    "bossHp": 1000000000,
+    "bowCooldown": 0.6,
+    "bowAmmo": 120,
+    "lightInfantry": {
+      "minTempo": 0.6,
+      "commanderTempo": 1,
+      "phantomStoredFloor": 0.15,
+      "cannonBashCooldown": 1.4
+    },
+    "reviewFixes": {
+      "skillSlow": 6,
+      "skillFast": 6,
+      "rescuerWithArcher": "offline-archer",
+      "rescuerAlone": "offline-heavy"
+    }
+  },
+  "pageErrors": [],
+  "disposableBrowserStorage": true
+}

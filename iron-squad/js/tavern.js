@@ -5,7 +5,7 @@ import {drawSoldierPortrait} from './soldier-appearance.js?v=206';
 import {setSubDialog} from './interface.js?v=230';
 import {WORLD_SIZE,TAVERN_SITE} from './world.js?v=198';
 import {daylightAt} from './day-night.js?v=208';
-import {drawTavernFixtures,drawTavernCandles} from './nightlife-visuals.js?v=208';
+import {drawTavernFixtures,drawTavernCandles} from './nightlife-visuals.js?v=242';
 import {GARDEN_TABLES,TAVERN_TABLES,TAVERN_SEAT_COUNT,tavernPoint,campPoseFor,drawLeisureTable} from './camp-leisure.js?v=202';
 import {buildingContact} from './building-interactions.js?v=201';
 
