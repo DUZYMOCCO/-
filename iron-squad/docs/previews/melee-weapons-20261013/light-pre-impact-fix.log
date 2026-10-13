@@ -1,0 +1,29 @@
+{"weaponStyle":"sword","layout":"single","moving":false,"seeds":8,"dps":1205.3930555555555,"physicalDps":1190.3930555555555,"magicalDps":15,"p10":1175.0633333333333,"p90":1241.3977777777777,"burstDps":1250.6499999999999,"tailDps":1194.7,"meanAttackDistance":4.509986139938906,"hits":400}
+{"weaponStyle":"spear","layout":"single","moving":false,"seeds":8,"dps":729.8715277777778,"physicalDps":712.6215277777778,"magicalDps":17.25,"p10":712.0344444444445,"p90":747.575,"burstDps":807.9,"tailDps":728.1979166666669,"meanAttackDistance":4.711711728469269,"hits":225}
+{"weaponStyle":"hammer","layout":"single","moving":false,"seeds":8,"dps":5130.038888888888,"physicalDps":5043.3388888888885,"magicalDps":86.70000000000002,"p10":4970.905555555555,"p90":5294.855555555555,"burstDps":5683.158333333334,"tailDps":5027.58125,"meanAttackDistance":4.686592476391251,"hits":150}
+{"weaponStyle":"axe","layout":"single","moving":false,"seeds":8,"dps":2359.516666666667,"physicalDps":2316.316666666666,"magicalDps":43.199999999999996,"p10":2286.436666666667,"p90":2435.206666666667,"burstDps":2626.7083333333335,"tailDps":2311.335416666667,"meanAttackDistance":4.686592476391251,"hits":150}
+{"weaponStyle":"sword","layout":"dense5","moving":false,"seeds":8,"dps":1478.6763888888888,"physicalDps":1463.6763888888888,"magicalDps":15,"p10":1447.7683333333334,"p90":1503.933888888889,"burstDps":1546.7166666666667,"tailDps":1443.1812499999999,"meanAttackDistance":12.084367138325293,"hits":587}
+{"weaponStyle":"spear","layout":"dense5","moving":false,"seeds":8,"dps":2390.141666666667,"physicalDps":2372.891666666667,"magicalDps":17.25,"p10":2339.633888888889,"p90":2432.6511111111113,"burstDps":2367.841666666667,"tailDps":2371.1625,"meanAttackDistance":15.174701703230529,"hits":715}
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: damage accounting must equal actual HP lost, including magical arrows
++ actual - expected
+
++ 1232474
+- 1646732
+
+    at offense (file:///D:/%E3%82%B9%E3%83%9E%E3%83%9B%E3%82%B2%E3%83%BC%E3%83%A0%E5%B7%A5%E6%88%BF/iron-squad/tools/simulate-caster-archer-balance.mjs:112:10)
+    at file:///D:/%E3%82%B9%E3%83%9E%E3%83%9B%E3%82%B2%E3%83%BC%E3%83%A0%E5%B7%A5%E6%88%BF/iron-squad/tools/simulate-melee-weapons.mjs:15:49
+    at Array.from (<anonymous>)
+    at file:///D:/%E3%82%B9%E3%83%9E%E3%83%9B%E3%82%B2%E3%83%BC%E3%83%A0%E5%B7%A5%E6%88%BF/iron-squad/tools/simulate-melee-weapons.mjs:15:22 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: 1232474,
+  expected: 1646732,
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v24.19.0

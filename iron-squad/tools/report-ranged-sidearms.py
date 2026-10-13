@@ -1,0 +1,67 @@
+"""Summarize the no-ammo melee transition and its contact-risk control."""
+import json
+from pathlib import Path
+
+base = Path(__file__).resolve().parents[1]
+directory = base / 'docs/previews/ranged-candidates-20261013'
+datasets = {(stance, pressure): json.loads((directory / f'sidearm-{stance}{"-no-pressure" if pressure == 0 else ""}.json').read_text(encoding='utf-8')) for stance in ['charge', 'hold'] for pressure in [150, 0]}
+reference = datasets['charge', 150]
+for (stance, pressure), data in datasets.items():
+    assert data['hypothetical'] and data['stance'] == stance
+    assert data['settings']['seeds'] == 8 and data['settings']['pressure'] == pressure
+    assert data['sourceHashes'] == reference['sourceHashes']
+    assert data['candidate'] == reference['candidate'] and data['loaderHash'] == reference['loaderHash']
+    assert 'no stone or shuriken fallback' in data['checks'] and 'source hash stability' in data['checks']
+    if pressure == 0:
+        assert all(r['survival180'] == 1 for r in data['results'])
+
+weapons = {'bow': '弓', 'crossbow': 'クロスボウ', 'cannon': '火砲'}
+stances = {'charge': '接近して近接', 'hold': '隊長へ戻り迎撃'}
+f = lambda n: f'{n:,.1f}'
+def row(stance, weapon, moving, pressure):
+    return next(r for r in datasets[stance, pressure]['results'] if r['weaponStyle'] == weapon and r['moving'] == moving)
+def table(headers, rows):
+    return ['|' + '|'.join(headers) + '|', '|' + '|'.join('---' if i == 0 else '---:' for i in range(len(headers))) + '|'] + ['|' + '|'.join(map(str, r)) + '|' for r in rows]
+
+lines = [
+    '# 石投げ廃止後の行動：忍者の遠近切り替えを応用する試験', '',
+    '**切り替えの仕組みは応用できる。ただし忍者のように無条件に接近するより、射手は隊長のそばへ戻り、接近してきた敵を副武器で迎撃する案が適している。** この判断は固定条件のシミュレーションからの設計案。ゲームへの反映はまだ行っていない。', '',
+    '## ユーザー指定と試験の範囲', '',
+    '- 石投げは廃止する方針。クロスボウには小さなノックバックを残す（候補では12内部単位＝0.12m）。',
+    '- 弓120発/0.60秒、クロスボウ60発/ATK倍率2.40/3体貫通、火砲30発/追加砲弾倍率1.0は前の試験と同じ仮値。数値の採用は未決定。配置別の結果は [武器候補レポート](RANGED_WEAPONS_CANDIDATES.md)。',
+    '- 既存の `limited-allies.js:updateNinja` を確認。忍者はターゲットへ接近し、近距離では刀、遠距離では手裏剣を使う。射手には距離に応じた移動・近接攻撃への切り替え方を参考にする。手裏剣は追加しない。',
+    '- 副武器は短剣相当の試験値。遠隔武器の装備ATK部分を除外し、本人のレベル・筋力・他部位補正による攻撃力を使う。基礎間隔0.9秒、命中距離65（0.65m）、移動は距離48で止める。範囲・貫通・ノックバック・魔法追撃はなし。',
+    '- 接近案：弾切れ後、交戦対象へ接近して近接攻撃。迎撃案：敵が90（0.9m）より遠ければ隊長のそばへ戻り、90以内へ入った相手だけ近接で迎撃。通常の直属ターゲット制限と経路処理を使用。',
+    '- 弾数から毎回動作を選ぶので、弾が補充されれば通常の射撃プロフィールへ戻る構成。ただし今回の試験は補給なし。復帰の実ゲーム検証は採用時に必要。', '',
+    '## 条件', '',
+    '- Lv10/T9、通常職ARCHER、凡庸/均衡、同じ通常鎧（HP727/DEF563）、熟練0、成長なし、各8seed。2動作×3武器×静止/接近×被弾なし/あり＝24条件・192回。前の配置・投石試験480回と合わせて672回。',
+    '- 単体のDEF/魔防100、十分なHP、180秒。敵を倒して近接戦が終わる効果は除く。接近する敵は0.3m/秒。',
+    '- 被弾ありは敵との距離65以内だけ、0.5秒ごとに物理生ダメージ150（300/秒）を `damageTarget` に入力。射程外では被弾しない。固定された接触圧力であり、実ボスの攻撃AIや遠征勝率ではない。治療・重装のかばう・蘇生はなし。',
+    '- ダウン時に試験を止める。DPSはそれまでのダメージ÷180秒として、ダウン後の攻撃をゼロ扱い。被弾なしの対照試験で、近接移行自体の火力も分けて確認。',
+    '- 候補はローダーでメモリ上だけに適用。ダメージ合計と実際のHP減少、装填弾＋副武器の一致、投石/手裏剣ゼロ、ソースハッシュ不変を検証。', '',
+    '## 被弾を除いた単体180秒平均DPS', '',
+]
+lines += table(['動作 / 敵', *weapons.values()], [[f'{stances[stance]} / {"接近" if moving else "静止"}', *(f(row(stance, weapon, moving, 0)['dps']) for weapon in weapons)] for stance in stances for moving in [False, True]])
+lines += [
+    '', '静止した敵へ向かう接近案では、弾切れ後も副武器で火力を追加できる。迎撃案は静止した敵を追わず、射撃だけで終わる。敵が近づいてくる場合は両案とも迎撃するため、火力がほぼ同じになる。', '',
+    '## 接触時に被弾する場合：ダウンまでの中央値', '',
+]
+def survival_cell(r):
+    return '180秒生存（8/8）' if r['survival180'] == 1 else f'{f(r["medianDownAt"])}秒（生存0/8）'
+lines += table(['動作 / 敵', *weapons.values()], [[f'{stances[stance]} / {"接近" if moving else "静止"}', *(survival_cell(row(stance, weapon, moving, 150)) for weapon in weapons)] for stance in stances for moving in [False, True]])
+lines += [
+    '', '接近案は弾切れ後に自分から接触圧力へ入り、近接移行から約21秒でダウンした。迎撃案は静止した敵に接近せず全員が180秒生存。追ってくる敵に近接を強制されると迎撃案も同じようにダウンする。戻るだけで接近する敵への耐久が改善する、とは結論できない。', '',
+    '## 接触被弾を含む180秒平均DPS', '',
+]
+lines += table(['動作 / 敵', *weapons.values()], [[f'{stances[stance]} / {"接近" if moving else "静止"}', *(f(row(stance, weapon, moving, 150)['dps']) for weapon in weapons)] for stance in stances for moving in [False, True]])
+lines += [
+    '', '## 判断', '',
+    '射手に忍者の遠近切り替えを応用するなら、弾がある間は距離を保って射撃、弾切れ後は隊長のそばへ戻る、接近した敵にだけ副武器で反撃、という動作が候補になる。無条件に突撃させる設計は、継続火力を少し増やす代わりに射手が早くダウンする。', '',
+    '副武器の攻撃力を火砲やクロスボウのATKからそのまま取らないことが重要。今回の試験では遠隔武器のATK部分を外し、弾切れ後の近接性能が武器倍率だけで大きく変わることを避けた。', '',
+    '射手の無力化を避けながら、忍者は刀と手裏剣で常時戦えるという特徴も残せる。実際に採用する際は、近接時の装備表示・熟練の扱い・補給後の射撃復帰・隊長自身の弾切れ・上位職技能・保存互換も合わせて確認する。', '',
+    '## 再実行と記録', '',
+    'PowerShellで `$env:IRON_RANGED_FALLBACK="idle"`、`$env:IRON_RANGED_SIDEARM` を `charge` / `hold` にして `node --no-warnings --loader ./iron-squad/tools/ranged-sidearm-loader.mjs iron-squad/tools/simulate-ranged-sidearms.mjs`。被弾なしは `--pressure 0` を追加。最後に `python iron-squad/tools/report-ranged-sidearms.py`。', '',
+    '[接近案](previews/ranged-candidates-20261013/sidearm-charge.json) / [迎撃案](previews/ranged-candidates-20261013/sidearm-hold.json) / [被弾なし・接近](previews/ranged-candidates-20261013/sidearm-charge-no-pressure.json) / [被弾なし・迎撃](previews/ranged-candidates-20261013/sidearm-hold-no-pressure.json)。',
+]
+(base / 'docs/RANGED_SIDEARM_SIMULATION.md').write_text('\n'.join(lines) + '\n', encoding='utf-8')
+print('Generated RANGED_SIDEARM_SIMULATION.md: 24 scenarios / 192 runs')

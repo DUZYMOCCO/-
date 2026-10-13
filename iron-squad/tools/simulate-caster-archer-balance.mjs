@@ -32,13 +32,22 @@ const basePlayer=structuredClone(g.player),baseNation=structuredClone(g.nation);
 for(const name of ['saveGame','updateStatsUI','refreshSupplyUI','updateQuestUI','revealFogAroundPlayer','changeTimePeriod','updateSpawns','updateDemonInvasion','deployReserves'])g[name]=noop;
 const realRecalc=IronSquadGame.recalcSoldierStats,realAttack=IronSquadGame.performAttack,realShot=IronSquadGame.spawnRangedProjectile;
 let stats=null,clock=0,attackDepth=0;
+const realImpact=IronSquadGame.knockImpactDamage;
+g.knockImpactDamage=function(monster,rawDamage,by,byPlayer){
+  const hp=monster?.hp,result=realImpact.call(this,monster,rawDamage,by,byPlayer);
+  if(stats&&by===stats.actor&&Number.isFinite(hp)){const damage=hp-monster.hp;stats.damage+=damage;stats.impactDamage+=damage;}
+  return result;
+};
 g.performAttack=function(attacker,target,...args){
-  const hp=target.hp,kind=args[3];let result;
+  const hp=target.hp,kind=args[3],hitDistance=typeof args[2]==='number'?args[2]:Math.hypot(target.x-attacker.x,target.y-attacker.y);let result;
   attackDepth++;try{result=realAttack.call(this,attacker,target,...args);}finally{attackDepth--;}
   // A magical arrow recursively applies its extra hit. Its parent HP delta already includes that hit.
+  if(stats&&attacker===stats.actor&&kind==='magic')stats.magicalDamage+=hp-target.hp;
   if(stats&&attacker===stats.actor&&attackDepth===0){const damage=hp-target.hp;stats.damage+=damage;stats.hits+=damage>0?1:0;
+    if(damage>0&&kind!=='magic'){stats.attackDistanceSum+=hitDistance;stats.physicalHits++;}
     if(this.__simRangedKind==='loaded'||stats.loadedRawDamages.has(args[1])){stats.loadedDamage+=damage;stats.loadedHits+=damage>0?1:0;}
     if(this.__simRangedKind==='stone'||stats.stoneRawDamages.has(args[1]))stats.stoneDamage+=damage;
+    if(this.__simRangedKind==='sidearm')stats.sidearmDamage+=damage;
     if(kind==='magic'&&stats.lastCast!==clock){stats.casts++;stats.lastCast=clock;}}
   return result;
 };
@@ -51,7 +60,7 @@ g.spawnRangedProjectile=function(attacker,target,...args){
 };
 const phases=[{id:'early',level:1,tier:1,pressure:30},{id:'middle',level:10,tier:9,pressure:150},{id:'late',level:30,tier:21,pressure:600}];
 const fixtures={};
-function setup(stage,role,{supply='none',affinity='fire',ward=false,liveGrowth=false,weaponStyle,initialAmmo=30}={}) {
+function setup(stage,role,{supply='none',affinity='fire',ward=false,liveGrowth=false,weaponStyle,initialAmmo=30,neutralTraits=false}={}) {
   const origin=supply==='hq-defense'?WORLD_SIZE/2:WORLD_SIZE/2+4000;
   Object.assign(g,{player:structuredClone(basePlayer),nation:structuredClone(baseNation),squad:[],reserves:[],monsters:[],outposts:[],merchants:[],gateGuards:[],medicalPosts:[],dungeons:[],civilians:[],remains:[],projectiles:[],particles:[],dropsOnField:[],magicBursts:[],damageFields:[],magicReserve:0,ammoReserve:0,currentQuest:null,currentDungeon:null,restTimer:0,inBattle:true,phase:1,phaseTimer:100000,worldTime:0,totalBattleTime:0,baseRaidActive:false,baseRaidMobs:[],_monsterGrid:null,_squadGrid:null,_tankHeavies:null,_tankAllies:null,_baseThreatList:[],_hazardClock:0,_civSpawnClock:-100000,autoSaveClock:0,reserveCheckTimer:0,_supplyClock:0,_manaSupplyClock:0,heroJourney:{party:null},worldTerrain:{tiles:new Map()},camera:{x:origin+100,y:origin},joystick:{active:false,dirX:0,dirY:0}});
   g.invasions.stage=supply==='hq-defense'?'battle':'idle';
@@ -65,7 +74,8 @@ function setup(stage,role,{supply='none',affinity='fire',ward=false,liveGrowth=f
     const item=g.createSupplyEquipment(type,u,stage.tier);
     if(type==='WEAPON'){
       item.weaponStyle=weaponStyle||(role==='MAGE'?'wand':'bow');
-      if(weaponStyle){item.baseName=TIERS[stage.tier-1][{bow:'bow',crossbow:'crossbow',cannon:'cannon'}[weaponStyle]];u.favoriteWeapon=weaponStyle;}
+      if(weaponStyle){item.baseName=TIERS[stage.tier-1][{sword:'weapon',spear:'spear',hammer:'hammer',axe:'axe',bow:'bow',crossbow:'crossbow',cannon:'cannon'}[weaponStyle]];u.favoriteWeapon=weaponStyle;}
+      if(neutralTraits)item.weaponTraits={length:1,attackTempo:1,swingSpeed:1,sweep:1,sweetWidth:1,sweetPower:1,sweetShift:0,crit:0};
       g.applyEquipmentUpgrade(item,0);
     }
     if(ward&&type==='ARMOR'){item.armorStyle='ward';g.applyEquipmentUpgrade(item,0);}
@@ -76,7 +86,7 @@ function setup(stage,role,{supply='none',affinity='fire',ward=false,liveGrowth=f
   const key=`${stage.id}-${role}${weaponStyle?'-'+weaponStyle:''}${ward?'-ward':''}`,snapshot={level:u.level,tier:stage.tier,hp:u.maxHp,def:u.def,magicDef:u.magicDef,barrier:u.equipmentBarrierMax,atk:u.atk,magicAttack:u.magicAttack,strength:u.strength,magic:u.magicPower,dodge:u.dodge,crit:u.crit,armor:u.equipped.armor.name,equipmentMagicBonus:u.equipmentMagicBonus};
   if(fixtures[key])assert.deepEqual(snapshot,fixtures[key],'only combat RNG can differ between repetitions');else fixtures[key]=snapshot;
   if(!liveGrowth)g.recalcSoldierStats=noop;
-  stats={actor:u,damage:0,hits:0,casts:0,lastCast:-1,shots:0,stones:0,infusedShots:0,loadedDamage:0,stoneDamage:0,loadedHits:0,loadedRawDamages:new Set(),stoneRawDamages:new Set()};clock=0;
+  stats={actor:u,damage:0,hits:0,casts:0,lastCast:-1,shots:0,stones:0,infusedShots:0,loadedDamage:0,stoneDamage:0,sidearmDamage:0,magicalDamage:0,impactDamage:0,attackDistanceSum:0,physicalHits:0,loadedHits:0,loadedRawDamages:new Set(),stoneRawDamages:new Set()};clock=0;
   return u;
 }
 function fixedProgress(u,liveGrowth){if(liveGrowth)return;u.weaponMastery={};u.attributeProfile.practice={strength:0,magic:0,magicDefense:0,travel:0,evasion:0};u._attributesDirty=false;u.hitGrowthHp=0;u.hitGrowthDef=0;}
@@ -87,22 +97,27 @@ function offense(stage,role,config,seed) {
   const center=u.x+(config.distance??150),ys=u.y,positions=config.positions??(config.targets===5?[[0,0],[-20,0],[20,0],[0,-20],[0,20]]:[[0,0]]);
   g.monsters=positions.map(([dx,dy],i)=>({id:`target-${i}`,type:'goblin',isBoss:config.targets===1,x:center+dx,y:ys+dy,hp:1e12,maxHp:1e12,def:config.def??100,magicDef:config.magicDef??100,dmgReduction:0,atk:0,speed:config.targetSpeed??0,radius:8,atkTimer:100000,attackInterval:100000,exp:0,color:'#444'}));
   const homes=g.monsters.map(m=>({x:m.x,y:m.y}));
-  let meditation=0,ammoEmpty=null,burst=0,at60=0,manaUsed=0;const trace=[];
+  let meditation=0,ammoEmpty=null,burst=0,at60=0,manaUsed=0,downAt=null,pressureIncoming=0,closeSeconds=0;const trace=[];
   const count=Math.round(duration/dt);
   for(let tick=1;tick<=count;tick++){
     clock=tick*dt;
     if(config.anchorTargets)g.monsters.forEach((m,i)=>Object.assign(m,homes[i]));
     const mana=u.mana;g.update(dt);if(mana>u.mana)manaUsed+=mana-u.mana;
+    if(config.closePressure){
+      const nearest=g.getNearestMonster(u.x,u.y),distance=nearest?Math.hypot(nearest.x-u.x,nearest.y-u.y):Infinity;
+      if(distance<=65){closeSeconds+=dt;if(tick%Math.round(.5/dt)===0){pressureIncoming+=config.closePressure;g.damageTarget(u,config.closePressure,{attacker:nearest,damageKind:'physical'});}}
+    }
     if(config.anchorTargets)g.monsters.forEach((m,i)=>Object.assign(m,homes[i]));
     if(u.magicRecovering)meditation+=dt;if(u.ammo===0&&ammoEmpty===null)ammoEmpty=clock;
     fixedProgress(u,config.liveGrowth);
     if(Math.abs(clock-15)<dt/2)burst=stats.damage;if(Math.abs(clock-60)<dt/2)at60=stats.damage;
     if(tick%Math.round(5/dt)===0)trace.push({seconds:clock,damage:stats.damage,mp:u.mana??0,ammo:u.ammo,meditating:!!u.magicRecovering});
+    if(config.allowDown&&(u.isDown||u.hp<=0)){downAt=clock;break;}
   }
-  assert.ok(stats.damage>0);assert.equal(g.phase,1);assert.equal(g.restTimer,0);assert.equal(u.isDown,false);
+  assert.ok(stats.damage>0||config.allowIdle);assert.equal(g.phase,1);assert.equal(g.restTimer,0);if(!config.allowDown)assert.equal(u.isDown,false);
   assert.equal(stats.damage,g.monsters.reduce((total,m)=>total+m.maxHp-m.hp,0),'damage accounting must equal actual HP lost, including magical arrows');
   assert.equal(g.invasions.stage,config.supply==='hq-defense'?'battle':'idle');
-  return {seed,dps:stats.damage/duration,burstDps:burst/15,lateDps:duration>60?(stats.damage-at60)/(duration-60):null,damage:stats.damage,hits:stats.hits,casts:stats.casts,shots:stats.shots,stones:stats.stones,infusedShots:stats.infusedShots,loadedDamage:stats.loadedDamage,stoneDamage:stats.stoneDamage,loadedHits:stats.loadedHits,loadedShots:stats.shots-stats.stones,meditationSeconds:meditation,ammoEmptyAt:ammoEmpty,manaUsed,targetDamage:g.monsters.map(m=>m.maxHp-m.hp),trace};
+  return {seed,dps:stats.damage/duration,burstDps:burst/15,lateDps:duration>60?(stats.damage-at60)/(duration-60):null,damage:stats.damage,magicalDamage:stats.magicalDamage,impactDamage:stats.impactDamage,meanAttackDistance:stats.physicalHits?stats.attackDistanceSum/stats.physicalHits:null,hits:stats.hits,casts:stats.casts,shots:stats.shots,stones:stats.stones,infusedShots:stats.infusedShots,loadedDamage:stats.loadedDamage,stoneDamage:stats.stoneDamage,sidearmDamage:stats.sidearmDamage,loadedHits:stats.loadedHits,loadedShots:stats.shots-stats.stones,meditationSeconds:meditation,ammoEmptyAt:ammoEmpty,manaUsed,downAt,pressureIncoming,closeSeconds,targetDamage:g.monsters.map(m=>m.maxHp-m.hp),trace};
 }
 function durability(stage,role,mix,seed,{ward=false,liveGrowth=false,weaponStyle}={}) {
   Math.random=randomFor(seed);const u=setup(stage,role,{ward,liveGrowth,weaponStyle});Math.random=randomFor(seed^0x65af22);
