@@ -1,5 +1,5 @@
 import {TIERS,GENERATION_COUNT,MAX_EQUIPMENT_TIER,tierNumber,materialTier,generation} from './equipment-tiers.js?v=231';
-import {chooseLootTier} from './equipment-rules.js?v=231';
+import {chooseLootTier} from './equipment-rules.js?v=238';
 import {CASTER_GEAR,DEFENSE_TYPES} from './defense-equipment.js?v=237';
 
 export const CRAFT_MATERIALS={

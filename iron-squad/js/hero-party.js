@@ -13,7 +13,7 @@ import {isMedic,treatWounded,updateWounded,normalizeRevivalSkill,revivalSkillCoo
 import {healByMedic,healAmountFor} from './phase-rules.js?v=218';
 import {ensureMana,regenerateMana,spendMana,isMage} from './magic-rules.js?v=231';
 import {takeRangedShot,supplyLocation} from './supply-rules.js?v=234';
-import {distanceScaling} from './equipment-rules.js?v=231';
+import {distanceScaling} from './equipment-rules.js?v=238';
 import {strongEnemyReward} from './combat-rewards.js?v=182';
 import {RANGED_ENEMIES} from './enemy-ranged.js?v=235';
 import {startHeroJournal,archiveHeroJournal,appendHeroDiary,recordHeroEquipmentGrant} from './hero-journal.js?v=189';

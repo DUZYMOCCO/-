@@ -17,7 +17,7 @@ for(const tier of TIERS)for(const upgrade of [0,2,5])for(const quality of [.73,1
   const a=gear('axe',tier.tier,upgrade,quality),h=gear('hammer',tier.tier,upgrade,quality),s=gear('sword',tier.tier,upgrade,quality);
   const oldHammer=Math.floor((10+tier.powerRank*5)*tier.mult*(1+upgrade*.25)*2.45*quality);
   assert.equal(a.stats.atk,oldHammer*3,'axe x3');assert.equal(h.stats.atk,oldHammer*7,'hammer x7');
-  assert.equal(s.stats.atk,Math.floor((10+tier.powerRank*5)*tier.mult*(1+upgrade*.25)*quality),'sword attack is unchanged');
+  assert.equal(s.stats.atk,Math.floor((10+tier.powerRank*5)*tier.mult*(1+upgrade*.25)*1.8*quality),'sword attack uses v6.6 balance');
   assert.equal(a.stats.atkSpeed,h.stats.atkSpeed);assert.equal(requiredWeaponStrength(a),requiredWeaponStrength(h));
   assert.match(a.name,/斧/);assert.equal(weaponStyleOf(a),'axe');assert.equal(equipmentIcon(a),'🪓');
   const atk=a.stats.atk;applyUpgradeStats(a,upgrade);assert.equal(a.stats.atk,atk,'reforging does not repeat the multiplier');
@@ -67,4 +67,4 @@ for(let load=0;load<2;load++){
   game.resumeSavedGame(load?structuredClone(game.saveGame()):saved);
   assert.equal(game.equipped.weapon.stats.atk,held.stats.atk);assert.equal(game.inventory.find(i=>i.id===old.id).stats.atk,expected);assert.equal(game.sharedEquipBox[0].stats.atk,expected);
 }
-console.log('PASS: axes through T1-T28, exact x3 axe / x7 hammer normal/unique/hero attack, v1 x10 migration, axe spin area, separate axe/hammer mastery and favourites with legacy split, shared requirements, actual player/soldier damage, fast unboosted sword, pure evaluation, upgrades and save migration');dom.window.close();
+console.log('PASS: axes through T1-T28, exact x3 axe / x7 hammer normal/unique/hero attack, v1 x10 migration, axe spin area, separate axe/hammer mastery and favourites with legacy split, shared requirements, actual player/soldier damage, fast balanced sword, pure evaluation, upgrades and save migration');dom.window.close();

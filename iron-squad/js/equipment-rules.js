@@ -317,7 +317,7 @@ function baseWeaponCombatProfile(item) {
       style: 'spear', ranged: false,
       reach: 145, reachWarlord: 175,
       baseCooldown: 0.78, pierce: true, pierceHalfWidth: 26,
-      atkMult: 1.5, knockback: 0, knockbackWarlord: 0,
+      atkMult: 1.6, knockback: 0, knockbackWarlord: 0,
       projSpeed: 0, splash: 0, projType: null
     };
   }
@@ -363,10 +363,10 @@ function baseWeaponCombatProfile(item) {
   }
   return {
     style: 'sword', ranged: false,
-    // v6.2.0: quicker sword (was .52).
+    // v6.6.0: fast, reliable damage without ammunition or heavy-weapon launches.
     reach: 85, reachWarlord: 110,
-    baseCooldown: 0.40, pierce: false, pierceHalfWidth: 0,
-    atkMult: 1.0, knockback: 0, knockbackWarlord: 0,
+    baseCooldown: 0.32, pierce: false, pierceHalfWidth: 0,
+    atkMult: 1.8, knockback: 0, knockbackWarlord: 0,
     projSpeed: 0, splash: 0, projType: null
   };
 }

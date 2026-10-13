@@ -7,7 +7,7 @@ const arg=(key,fallback)=>{const i=process.argv.indexOf(key);return i<0?fallback
 const role=arg('--role','HEAVY'),seeds=Number(arg('--seeds','8')),stage={id:'melee-middle',level:14,tier:9,pressure:150};
 assert.ok(['HEAVY','LIGHT'].includes(role));
 const layouts={single:[[0,0]],dense5:[[0,0],[-20,0],[20,0],[0,-20],[0,20]],line5:[[-40,0],[-20,0],[0,0],[20,0],[40,0]]},styles=['sword','spear','hammer','axe'];
-const out='iron-squad/docs/previews/melee-weapons-20261013';mkdirSync(out,{recursive:true});
+const out=arg('--out','iron-squad/docs/previews/melee-weapons-20261013');mkdirSync(out,{recursive:true});
 const report={version:release.gameVersion,cache:release.version,role,settings:{seeds,level:14,tier:9,duration,dt,frozenProgress:true,neutralTraits:true,quality:1,upgrade:0,targetDef:100,initialDistance:100,targetHp:1e12},sourceHashes:sourceStart,harnessHash:createHash('sha256').update(readFileSync('iron-squad/tools/simulate-caster-archer-balance.mjs')).digest('hex'),fixtures,results:[],checks:[]};
 try{
   for(const moving of [false,true])for(const [layout,positions]of Object.entries(layouts))for(const weaponStyle of styles){

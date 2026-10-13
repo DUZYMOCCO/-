@@ -75,6 +75,7 @@ import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog 
 import { renderTroopRankings, getSoldierRankerBadges, calcSoldierRankerBonus, setRankingFamilyLabels, RANKING_FAMILIES } from './troop-rankings.js?v=230';
 import { ensureSoldierAppearance, drawSoldierPortrait } from './soldier-appearance.js?v=206';
 import { aggregateDeathlineDynamics, tickDeathline, deathlineDamage } from './deathline-rules.js?v=234';
+import {soldierMeleeMethods,tickSoldierMeleeSkill,soldierMeleeReach,soldierMeleePosition,soldierMeleeSkillText,soldierMeleeDrawPose,MELEE_BALANCE} from './soldier-melee-skills.js?v=238';
 import { buildSoldierProfile, describeDeathlineEffect } from './soldier-profile.js?v=234';
 import { attachSurfaceEvents, detachSurfaceEvents, frameSurfaceReady, releaseSceneCaches, releaseCanvas, surfaceCanResume } from './canvas-surface.js?v=217';
 import { SETTLEMENTS, WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt, routeNameAt, eastWestRoadY, northSouthRoadX, riverCenterY, drawFieldDepth, drawOakCrown, fieldBlocks, settleUnit } from './world.js?v=198';
@@ -97,7 +98,7 @@ import {
   SHARED_BOX_MAX_TIER, SCOUT_COST_BY_TALENT, defaultDonateAmount, donatePresetAmounts, EQUIPMENT_SLOTS
 } from './economy-rules.js?v=231';
 
-import { EQUIPMENT_TYPES, saleValue, equippedIds, canSell, lowValueIds, chooseLootTier, distanceScaling, shrineUpgradeCap, compareEquipment, equipmentScore, compareEquipmentStrength, rollWeaponTraits, weaponCombatProfile, evaluateMeleeSweetSpot, isGodRollProtected, zoneRingPower, zoneRingLabelJa, equipmentIcon, equipmentName } from './equipment-rules.js?v=231';
+import { EQUIPMENT_TYPES, saleValue, equippedIds, canSell, lowValueIds, chooseLootTier, distanceScaling, shrineUpgradeCap, compareEquipment, equipmentScore, compareEquipmentStrength, rollWeaponTraits, weaponCombatProfile, evaluateMeleeSweetSpot, isGodRollProtected, zoneRingPower, zoneRingLabelJa, equipmentIcon, equipmentName } from './equipment-rules.js?v=238';
 import { rollFieldBrute, advanceDemonWarband, stepDemonWarbandGroup } from './field-hosts.js?v=182';
 import {
   WEAPON_STYLES, MASTERY_STYLES, WEAPON_STYLE_LABELS, WEAPON_STYLE_ICONS, isHeavyWeaponStyle, heavyWeaponAttackMult, HEAVY_ATTACK_VERSION, LEGACY_HEAVY_ATTACK_MULT, weaponCategoryOf, splitHeavyFavorite, FAVORITE_SPLIT_VERSION,
@@ -906,9 +907,17 @@ export function applyUpgradeStats(item, upgradeLevel) {
   if(item.type==='WEAPON'&&isHeavyWeaponStyle(item)){
     item.stats.atk*=heavyWeaponAttackMult(item);item.heavyAttackVersion=HEAVY_ATTACK_VERSION;
   }
+  if(item.type==='WEAPON'&&['sword','spear'].includes(item.weaponStyle||'sword'))item.meleeBalanceVersion=1;
 }
 
-/** Refresh owned movement upgrades and migrate old heavy weapon attack once. */
+/** Rebuild old regular swords/spears once, retaining identity and forging properties. */
+export function migrateMeleeWeaponBalance(item) {
+  if(item?.type!=='WEAPON'||item.heroOnly||!Number.isFinite(item.tier)||!(item.name||item.baseName)||!['sword','spear'].includes(item.weaponStyle||'sword')||item.meleeBalanceVersion>=1)return item;
+  applyUpgradeStats(item,item.upgrade||0);
+  return item;
+}
+
+/** Refresh owned equipment upgrades and migrate old weapon attack once. */
 function refreshOwnedEquipmentUpgrades(game) {
   const piles = [Object.values(game.equipped || {}), game.inventory || [], game.sharedEquipBox || []];
   for (const soldier of [...(game.squad || []), ...(game.reserves || []), ...(game.scoutCandidates || []).map(entry => entry?.soldier).filter(Boolean)]) {
@@ -917,6 +926,7 @@ function refreshOwnedEquipmentUpgrades(game) {
   for (const merchant of game.merchants || []) piles.push(merchant.stock || []);
   for (const pile of piles) for (const item of pile) if(item){
     migrateHeavyWeaponAttack(item);
+    migrateMeleeWeaponBalance(item);
     if(item.type==='LEGS'||item.type==='AMULET')applyUpgradeStats(item,item.upgrade||0);
   }
 }
@@ -1122,6 +1132,7 @@ export const IronSquadGame = {
   ...casinoMethods,
   ...guildMethods,
   ...supplyMethods,
+  ...soldierMeleeMethods,
   ...magicMethods,
   ...hazardMethods,
   id: 'iron-squad',
@@ -1133,7 +1144,7 @@ export const IronSquadGame = {
 
   // 起動時にこのゲームのCSSを自分で読み込む（?v= はこのフォルダ内で管理）。ハブが init 前に await する
   prepare() {
-    return loadCss(['../css/iron-squad.css?v=175', '../css/iron-squad-interface.css?v=237'].map(p => new URL(p, import.meta.url).href));
+    return loadCss(['../css/iron-squad.css?v=175', '../css/iron-squad-interface.css?v=238'].map(p => new URL(p, import.meta.url).href));
   },
 
   init(container, onBackToHub) {
@@ -2963,6 +2974,7 @@ export const IronSquadGame = {
 
   recalcPlayerStats() {
     migrateHeavyWeaponAttack(this.equipped?.weapon);
+    migrateMeleeWeaponBalance(this.equipped?.weapon);
     if (!this.player) return;
     this.player.equipped=this.equipped;
     this.returnUnusableDefense(this.player,this.equipped,this.inventory||=[]);
@@ -3071,6 +3083,7 @@ export const IronSquadGame = {
     if (!s) return;
     if(!s._equipmentTrial)this.returnUnusableDefense(s,s.equipped,this.sharedEquipBox||=[]);
     migrateHeavyWeaponAttack(s.equipped?.weapon || s.weapon);
+    migrateMeleeWeaponBalance(s.equipped?.weapon || s.weapon);
     ensureSoldierGender(s);
     if(s?.isMerchantEscort){recalcEscortStats(s);return;}
     ensureSoldierAppearance(s);
@@ -6113,7 +6126,7 @@ export const IronSquadGame = {
       const platoon = this.platoons[soldier.platoonId % 3] || this.platoons[0];
 
       if(soldier.shieldTimer > 0) soldier.shieldTimer = Math.max(0, soldier.shieldTimer - dt);
-      if(soldier.dead||soldier.isDown)return;
+      if(soldier.dead||soldier.isDown){tickSoldierMeleeSkill(this,soldier,dt);return;}
       tickDeathline(soldier,dt); // 死線覚醒: 攻撃速度・自然治癒・底力の移動速度
       const mageAffinity=isMage(soldier)?MAGIC_AFFINITIES[soldier.magicAffinity]:null;
       const mageHolds=!!(mageAffinity&&(prefersCasterMelee(soldier)||soldier.magicRecovering||soldier.mana<mageAffinity.cost));
@@ -6136,6 +6149,7 @@ export const IronSquadGame = {
       }
       if(updateNinja(this,soldier,dt,platoon,SOLDIER_PHYS_DMG_MULT))return;
       if(isMage(soldier)){updateMageAI(this,soldier,dt,platoon,cls);return;}
+      tickSoldierMeleeSkill(this,soldier,dt);
       if(isMedic(soldier))castMedicBuff(this,soldier);
 
       // Far LOD v1.24.2: keep 2200 + 7/8 skip; expose farCam for boids.
@@ -6414,6 +6428,9 @@ export const IronSquadGame = {
           } else if(rkProf.stone) {
             targetX=nearestEnemy.x;targetY=nearestEnemy.y;
           }
+        } else if (['sword','spear'].includes((soldier.equipped?.weapon||soldier.weapon)?.weaponStyle)) {
+          const meleePos=soldierMeleePosition(soldier,nearestEnemy,this.combatProfileFor(soldier,soldier.equipped?.weapon||soldier.weapon,false));
+          if(meleePos){targetX=meleePos.x;targetY=meleePos.y;}
         } else if (clsKey === 'HEAVY' || clsKey === 'PALADIN' || clsKey === 'TEMPLAR' || clsKey === 'IMMORTAL_AEGIS') {
           // 重装/聖騎士: 敵に真っ向から突進
           targetX = nearestEnemy.x;
@@ -6521,10 +6538,10 @@ export const IronSquadGame = {
         } else if (clsKey !== 'ARCHER' && clsKey !== 'MEDIC' && clsKey !== 'HIGH_PRIEST' && clsKey !== 'SNIPER') {
           const sWpn = (soldier.equipped && soldier.equipped.weapon) || soldier.weapon || null;
           const sProf = this.combatProfileFor(soldier, sWpn, false);
-          const meleeReach = Math.max(cls.range, sProf.style === 'spear' ? Math.floor(sProf.reach * 0.55) : (isHeavyWeaponStyle(sProf.style) ? Math.max(cls.range,52)*(sWpn?.weaponTraits?.length||1) : cls.range*(sWpn?.weaponTraits?.length||1)));
+          const meleeReach = soldierMeleeReach(cls,sProf,sWpn);
           if (enemyDist <= meleeReach) {
             // 近接通常攻撃（槍=貫通、鎚=高威力ノックバック）。マスタリーで攻撃速度↑（baseCooldown短縮と同カーブ）
-            const cdMult = sProf.style === 'spear' ? 1.5 : (isHeavyWeaponStyle(sProf.style) ? 2.25 : sProf.style === 'sword' ? .8 : 1.0);
+            const cdMult = sProf.style === 'spear' ? 1.5 : (isHeavyWeaponStyle(sProf.style) ? 2.25 : sProf.style === 'sword' ? MELEE_BALANCE.swordSoldierTempo : 1.0);
             // 遅い武器の火力補填（槍×1.15／鎚×1.35）。新旧武器どちらの兵士経路にも同じ式を適用
             const styleDmgMult = sProf.style === 'spear' ? SOLDIER_SPEAR_DMG_MULT : (isHeavyWeaponStyle(sProf.style) ? SOLDIER_HAMMER_DMG_MULT : 1);
             const meleeAtk = Math.max(1, Math.round(totalAtk * styleDmgMult));
@@ -6563,6 +6580,7 @@ export const IronSquadGame = {
           }
         }
       }
+      this.trySoldierMeleeSkill(soldier,nearestEnemy);
     });
 
     updateDefenseWalls(this,dt);
@@ -9005,6 +9023,7 @@ export const IronSquadGame = {
           <div class="soldier-detail-block">
             <div class="soldier-detail-label">武器マスタリー</div>
             <div style="font-size:10px;color:#94a3b8;margin-bottom:4px;">得意: ${WEAPON_STYLE_ICONS[s.favoriteWeapon] || ''}${WEAPON_STYLE_LABELS[s.favoriteWeapon] || '剣'}</div>
+            ${soldierMeleeSkillText(s)?`<div class="soldier-weapon-skill">${soldierMeleeSkillText(s)}</div>`:''}
             <div class="mastery-grid" role="group" aria-label="武器マスタリー">${masteryRows}</div>
             <div class="mastery-caption" aria-live="polite" hidden></div>
           </div>
@@ -12357,7 +12376,7 @@ export const IronSquadGame = {
       simple = Math.abs(s.x - this.camera.x) > mx || Math.abs(s.y - this.camera.y) > my;
     }
     drawOwnSquadRing(ctx, s);
-    drawFieldSoldier(ctx, s, now, cls, platoon?.color || '#829cae', simple);
+    drawFieldSoldier(ctx, soldierMeleeDrawPose(s), now, cls, platoon?.color || '#829cae', simple);
     if(s.equipmentBarrierMax>0)drawBarrierRing(ctx, s, now);
     if(!s.isCommander)queueSquadName(this,s);
     if(s.isChosenHero)drawHeroMarks(ctx,this);

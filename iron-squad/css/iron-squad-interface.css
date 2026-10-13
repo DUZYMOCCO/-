@@ -1461,3 +1461,12 @@
 .iron-squad .soldier-detail-pager { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 8px 0; }
 .iron-squad .soldier-detail-pager .mini-btn { flex: 1; min-height: 44px; font-size: 13px; font-weight: bold; }
 .iron-squad .soldier-detail-pos { flex-shrink: 0; min-width: 56px; text-align: center; font-size: 13px; font-weight: bold; color: var(--ui-gold); }
+/* v6.6.0 商人の取引・施設の「入る」などの案内は、攻撃ボタンの上（右側）に出す。十字キーと薬は左に寄せる */
+.iron-squad.quiet-battlefield #virtual-gamepad { grid-template-columns:auto minmax(0,1fr); grid-template-rows:auto auto; column-gap:10px; }
+.iron-squad.quiet-battlefield .pad-move-column { grid-column:1; grid-row:1 / span 2; align-self:end; align-items:flex-start; }
+.iron-squad.quiet-battlefield .pad-buttons-column { grid-column:2; grid-row:2; justify-self:end; }
+.iron-squad.quiet-battlefield .field-prompts { grid-column:2; grid-row:1; align-self:end; align-items:stretch; min-width:0; margin:0 0 8px; }
+.iron-squad.quiet-battlefield .field-prompts > :is(#merchant-prompt-banner,#dungeon-prompt-banner,#btn-field-tavern,#btn-hq-facility,#btn-career-invitation,#btn-town-tavern,#btn-limited-ally,button) { width:100% !important; max-width:none; box-sizing:border-box; }
+.iron-squad.quiet-battlefield .field-prompts > :is(#merchant-prompt-banner,#dungeon-prompt-banner):not(.hidden) { flex-wrap:wrap; gap:6px; padding:6px 8px; }
+.iron-squad.quiet-battlefield .field-prompts :is(#merchant-banner-text,#dungeon-banner-text) { flex:1 1 100%; white-space:normal; overflow-wrap:anywhere; font-size:13px; line-height:1.4; }
+.iron-squad.quiet-battlefield .field-prompts :is(#btn-open-merchant,#btn-enter-dungeon) { flex:1 1 auto; min-height:40px; font-size:14px; }
