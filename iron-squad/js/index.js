@@ -2025,17 +2025,14 @@ export const IronSquadGame = {
     this.player.x = targetX;
     this.player.y = targetY;
 
-    // 生存部隊も隊長周囲に一斉ワープ
-    if (this.squad) {
-      this.squad.forEach((s, idx) => {
-        if (!s.dead) {
-          const ang = (idx / Math.max(1, this.squad.length)) * Math.PI * 2;
-          const dist = 30 + (idx % 4) * 15;
-          s.x = targetX + Math.cos(ang) * dist;
-          s.y = targetY + Math.sin(ang) * dist;
-        }
-      });
-    }
+    // 直属だけを同行転送。本隊・勇者・予備兵は持ち場を維持し、搬送者はsyncDraggedが運ぶ。
+    const followers = (this.squad || []).filter(s => s && !s.dead && s.isPersonalGuard === true && !s.heroPartyId && !s.carrierId);
+    followers.forEach((s, idx) => {
+      const ang = (idx / followers.length) * Math.PI * 2;
+      const dist = 30 + (idx % 4) * 15;
+      s.x = targetX + Math.cos(ang) * dist;
+      s.y = targetY + Math.sin(ang) * dist;
+    });
 
     // カメラ同期
     this.camera = { x: targetX, y: targetY };

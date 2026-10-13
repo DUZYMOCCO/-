@@ -53,6 +53,31 @@ assert.match($('fast-travel-list').textContent,/第1救護所/);assert.doesNotMa
 $('btn-world-map-close').click();assert.equal(shown($('strategy-modal')),true);assert.equal(g.inBattle,false);assert.equal(document.activeElement,$('btn-fast-travel'));
 $('btn-fast-travel').click();g.player.x+=1000;$('fast-travel-list').querySelector('button').click();assert.equal($('world-map-modal').classList.contains('hidden'),true);assert.equal($('strategy-modal').classList.contains('hidden'),true);assert.equal(g.inBattle,true);
 g.openWorldMap();$('btn-world-map-close').click();assert.equal(g.inBattle,true,'map opened directly from the field returns to battle');
+// Regression: destination formation contains only the actual personal squad.
+{
+const realSquad=g.squad,realReserves=g.reserves;
+const freshUnit=(id,personal=false)=>Object.assign(g.createNewSoldier(null,{classKey:'LIGHT',talent:'AVERAGE'}),{id,isPersonalGuard:personal,x:79360+350,y:79360+400});
+const guardA=freshUnit('travel-guard-a',true),guardB=freshUnit('travel-guard-b',true),mainA=freshUnit('travel-main-a'),mainB=freshUnit('travel-main-b'),hero=freshUnit('travel-hero',true),deadGuard=freshUnit('travel-dead',true),reserve=freshUnit('travel-reserve',true);
+hero.heroPartyId='independent-heroes';deadGuard.dead=true;
+g.squad=[mainA,guardA,hero,mainB,guardB,deadGuard];g.reserves=[reserve];
+const stationary=[mainA,mainB,hero,deadGuard,reserve],stationaryPositions=stationary.map(u=>[u.x,u.y]),resourceSnapshot=[guardA,guardB].map(u=>[u.hp,u.mana,u.ammo,JSON.stringify(u.equipped)]);
+const target={x:86000,y:85000};g.fastTravelTo(target.x,target.y,'guard-only-test');
+assert.deepEqual(stationary.map(u=>[u.x,u.y]),stationaryPositions,'main army, hero, dead guard and reserves do not move');
+assert.ok(Math.hypot(guardA.x-target.x,guardA.y-target.y)<=60);assert.ok(Math.hypot(guardB.x-target.x,guardB.y-target.y)<=60);
+assert.ok(Math.abs((guardA.x-target.x)/30+(guardB.x-target.x)/45)<1e-8,'two guards use two-person angles despite unrelated squad indices');
+assert.ok(Math.abs((guardA.y-target.y)/30+(guardB.y-target.y)/45)<1e-8);
+assert.deepEqual([guardA,guardB].map(u=>[u.hp,u.mana,u.ammo,JSON.stringify(u.equipped)]),resourceSnapshot,'travel does not alter resources or equipment');
+g.career.status='traveler';g.fastTravelTo(87000,86000,'traveler-test');assert.ok(Math.hypot(guardA.x-87000,guardA.y-86000)<=60,'pre-enlistment companions still follow');assert.deepEqual(stationary.map(u=>[u.x,u.y]),stationaryPositions);
+g.career.status='enlisted';g.fastTravelTo(79360,79360,'headquarters',{rescueWarp:true});assert.deepEqual(stationary.map(u=>[u.x,u.y]),stationaryPositions,'headquarters rescue warp also leaves the main army in place');
+// A main-army casualty follows its personal carrier through the existing rope sync.
+const {syncDragged}=await import('../js/casualty-rules.js');const patient=freshUnit('travel-patient');Object.assign(patient,{isDown:true,hp:0,carrierId:guardA.id});g.squad.push(patient);
+const patientBefore=[patient.x,patient.y];g.fastTravelTo(86000,85000,'carrier-test');assert.deepEqual([patient.x,patient.y],patientBefore,'the travel loop does not move a carried main-army patient');syncDragged(g,1);assert.ok(Math.hypot(patient.x-guardA.x,patient.y-guardA.y)<=40);assert.equal(patient.hp,0);assert.equal(patient.carrierId,guardA.id);
+// A personal casualty being carried by a stationary main soldier stays with that carrier.
+delete patient.carrierId;const carriedGuard=freshUnit('travel-carried-guard',true);Object.assign(carriedGuard,{isDown:true,hp:0,carrierId:mainA.id});g.squad.push(carriedGuard);const carriedPosition=[carriedGuard.x,carriedGuard.y];g.fastTravelTo(88000,88000,'stationary-carrier-test');assert.deepEqual([carriedGuard.x,carriedGuard.y],carriedPosition);syncDragged(g,1);assert.ok(Math.hypot(carriedGuard.x-mainA.x,carriedGuard.y-mainA.y)<=40);assert.equal(carriedGuard.hp,0);assert.deepEqual(stationary.map(u=>[u.x,u.y]),stationaryPositions);
+// The rescue exception still carries the commander's casualty without reviving it.
+Object.assign(patient,{isDown:true,hp:0,carrierId:'player'});delete carriedGuard.carrierId;g.fastTravelTo(79360,79360,'rope-rescue-test',{rescueWarp:true});syncDragged(g,1);assert.ok(Math.hypot(patient.x-g.player.x,patient.y-g.player.y)<=40);assert.equal(patient.hp,0);assert.deepEqual(stationary.map(u=>[u.x,u.y]),stationaryPositions);
+g.squad=realSquad;g.reserves=realReserves;
+}
 g.openStrategyModal(true);g.currentDungeon=g.dungeons[0];const position=[g.player.x,g.player.y];$('btn-fast-travel').click();assert.equal($('fast-travel-list').querySelectorAll('button').length,0);g.fastTravelTo(0,0,'test');assert.deepEqual([g.player.x,g.player.y],position);assert.equal(g.inBattle,false);$('btn-world-map-close').click();assert.equal(g.inBattle,false);
 g.currentDungeon=null;const patient=g.squad[0];Object.assign(patient,{isDown:true,hp:0,carrierId:'player',x:g.player.x,y:g.player.y});$('btn-fast-travel').click();$('fast-travel-list').querySelector('button').click();assert.deepEqual([g.player.x,g.player.y],position);assert.ok(shown($('world-map-modal')));assert.equal(g.inBattle,false,'blocked transfer leaves the pause and destination screen intact');
 assert.equal(new Set([...document.querySelectorAll('[id]')].map(n=>n.id)).size,document.querySelectorAll('[id]').length);
