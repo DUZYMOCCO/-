@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {JSDOM} from '../../__pycache__/ui-tools/node_modules/jsdom/lib/api.js';
-import {perfRequested,createPerfRecorder,installPerfDiagnostics,PERF_RECORD_LIMIT} from '../js/perf-diagnostics.js';
+import {perfRequested,createPerfRecorder,installPerfDiagnostics,configurePerfSettings,PERF_SETTING_KEY,PERF_RECORD_LIMIT} from '../js/perf-diagnostics.js';
 
 test('perf is strictly opt-in and disabled installation never touches functions, DOM, storage or observers',()=>{
   for(const search of ['', '?perf=0','?perf=true','?x=perf=1'])assert.equal(perfRequested(search),false);
@@ -91,4 +91,53 @@ test('longtask observer is optional, reports entries and disconnects on disposal
   const api=installPerfDiagnostics(g,{WorldTerrain:Empty,FogGrid:Empty,saveSlots:{}},{document:dom.window.document,window:dom.window,PerformanceObserver:Observer});
   assert.deepEqual(observed,{type:'longtask',buffered:false});received({getEntries:()=>[{startTime:100,duration:250}]});assert.equal(api.snapshot().longTasks[0].ms,250);assert.equal(api.snapshot().longTaskSupported,true);
   api.dispose();assert.equal(disconnected,true);dom.window.close();
+});
+
+const settingFixture=()=>{
+  const dom=new JSDOM('<div id="game"><div class="iron-squad"><div id="view-strat-overview"></div></div></div>',{url:'http://localhost/',pretendToBeVisual:true}),win=dom.window;
+  let now=0,id=0;const queue=new Map();win.requestAnimationFrame=fn=>{queue.set(++id,fn);return id;};win.cancelAnimationFrame=id=>queue.delete(id);
+  class Terrain{constructor(){this.tiles=new Map();this._pendingTerrain=new Set();this.rasterSize=512;this._terrainWorker={onmessage(){}};}generate(){now+=150;}}
+  class Fog{}
+  const game={container:win.document.getElementById('game'),worldTerrain:new Terrain(),running:false,update(){this.worldTerrain.generate();},
+    startGameLoop(){this.running=true;this.loop=function(t){if(!this.running)return;this.update();this.animFrameId=win.requestAnimationFrame(this.loop);}.bind(this);this.animFrameId=win.requestAnimationFrame(this.loop);},
+    stopGameLoop(){this.running=false;win.cancelAnimationFrame(this.animFrameId);this.animFrameId=null;}};
+  const deps={WorldTerrain:Terrain,FogGrid:Fog,saveSlots:{}},options={window:win,document:win.document,now:()=>now,PerformanceObserver:false};
+  const frame=()=>{const [id,callback]=queue.entries().next().value;queue.delete(id);callback(now);now+=16;};
+  return {dom,win,game,deps,options,queue,frame};
+};
+
+test('in-game setting defaults OFF, switches a running loop immediately and restores the queued original callback',()=>{
+  const f=settingFixture(),{game,win,deps,options}=f,originalUpdate=game.update,originalWorker=game.worldTerrain._terrainWorker.onmessage;
+  win.localStorage.setItem('game_studio_ironsquad_save_slots_v1','existing saves');
+  const controller=configurePerfSettings(game,deps,options);
+  try{
+    assert.equal(game.perfDiagnostics,null);assert.equal(game.update,originalUpdate);assert.equal(win.document.querySelector('#btn-perf-toggle').getAttribute('aria-checked'),'false');
+    game.startGameLoop();const rawLoop=game.loop;assert.equal(f.queue.size,1);
+    win.document.querySelector('#btn-perf-toggle').click();const active=game.perfDiagnostics;assert.ok(active);assert.equal(win.localStorage.getItem(PERF_SETTING_KEY),'1');assert.equal(f.queue.size,1);
+    f.frame();f.frame();assert.equal(active.snapshot().records.length,1,'already running loop is instrumented without reload');
+    assert.notEqual(game.worldTerrain._terrainWorker.onmessage,originalWorker);
+    win.document.querySelector('#btn-perf-toggle').click();assert.equal(game.perfDiagnostics,null);assert.equal(game.update,originalUpdate);assert.equal(game.loop,rawLoop);assert.equal(Object.getOwnPropertyDescriptor(game,'loop').get,undefined);
+    assert.equal(game.worldTerrain._terrainWorker.onmessage,originalWorker);assert.equal(win.localStorage.getItem(PERF_SETTING_KEY),null);assert.equal(f.queue.size,1);assert.equal([...f.queue.values()][0],rawLoop,'no queued diagnostic callback remains');
+    f.frame();assert.equal(active.snapshot().records.length,1,'OFF does not keep recording');
+    for(let i=0;i<3;i++){controller.setEnabled(true);assert.equal(win.document.querySelectorAll('.perf-diagnostics').length,1);controller.setEnabled(false);assert.equal(f.queue.size,1);assert.equal(game.update,originalUpdate);}
+    assert.equal(win.localStorage.getItem('game_studio_ironsquad_save_slots_v1'),'existing saves');
+  }finally{game.stopGameLoop();controller.dispose();f.dom.window.close();}
+});
+
+test('saved ON survives a new controller without URL query; saved OFF stays off; ?perf=1 remains available',()=>{
+  const f=settingFixture(),{game,win,deps,options}=f;
+  let controller=configurePerfSettings(game,deps,options);controller.setEnabled(true);controller.dispose();assert.equal(win.localStorage.getItem(PERF_SETTING_KEY),'1');
+  controller=configurePerfSettings(game,deps,options);assert.ok(game.perfDiagnostics);assert.equal(win.document.querySelector('#btn-perf-toggle').getAttribute('aria-checked'),'true');controller.setEnabled(false);controller.dispose();
+  controller=configurePerfSettings(game,deps,options);assert.equal(game.perfDiagnostics,null);controller.dispose();
+  controller=configurePerfSettings(game,deps,{...options,search:'?perf=1'});assert.ok(game.perfDiagnostics);controller.setEnabled(false);assert.equal(game.perfDiagnostics,null);assert.match(win.document.querySelector('.perf-setting-status').textContent,/URL/);controller.dispose();f.dom.window.close();
+});
+
+test('preference storage rejection reports failure while live toggling still restores instrumentation and preserves saves',()=>{
+  const f=settingFixture(),{game,win,deps,options}=f,set=win.Storage.prototype.setItem,remove=win.Storage.prototype.removeItem;
+  win.localStorage.setItem('game_studio_ironsquad_save_slots_v1','kept');
+  win.Storage.prototype.setItem=function(key,value){if(key===PERF_SETTING_KEY)throw new Error('setting quota');return set.call(this,key,value);};
+  win.Storage.prototype.removeItem=function(key){if(key===PERF_SETTING_KEY)throw new Error('setting permission');return remove.call(this,key);};
+  const controller=configurePerfSettings(game,deps,options),original=game.update;
+  try{assert.equal(controller.setEnabled(true),true);assert.match(win.document.querySelector('.perf-setting-status').textContent,/設定を保存できません/);assert.equal(controller.setEnabled(false),false);assert.equal(game.update,original);assert.match(win.document.querySelector('.perf-setting-status').textContent,/設定を保存できません/);assert.equal(win.localStorage.getItem('game_studio_ironsquad_save_slots_v1'),'kept');}
+  finally{controller.dispose();win.Storage.prototype.setItem=set;win.Storage.prototype.removeItem=remove;f.dom.window.close();}
 });

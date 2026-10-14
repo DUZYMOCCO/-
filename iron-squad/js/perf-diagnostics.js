@@ -1,6 +1,7 @@
 // Opt-in, in-memory instrumentation. No hooks, observers, timers or storage writes at import time.
 import {gameText} from './game-text.js?v=262';
-export const PERF_VERSION='6.11.12',PERF_THRESHOLD_MS=100,PERF_RECORD_LIMIT=10;
+export const PERF_VERSION='6.11.13',PERF_THRESHOLD_MS=100,PERF_RECORD_LIMIT=10;
+export const PERF_SETTING_KEY='game_studio_ironsquad_perf_enabled';
 export const perfRequested=search=>new URLSearchParams(search??globalThis.window?.location?.search??'').get('perf')==='1';
 
 /** rAF gaps include synchronous work AND worker callbacks between frames. Nested times are exclusive. */
@@ -63,7 +64,7 @@ const shortName=name=>({
 })[name]||name;
 
 export function installPerfDiagnostics(game,{WorldTerrain,FogGrid,saveSlots,profileSaveCompletions,profileFollowerRecovery},options={}) {
-  if(!perfRequested(options.search??options.window?.location?.search))return null;
+  if(!(options.enabled??perfRequested(options.search??options.window?.location?.search)))return null;
   const doc=options.document||document,win=options.window||window,root=game.container.querySelector('.iron-squad');
   if(!root)return null;
   const recorder=createPerfRecorder({now:options.now,clock:options.clock,terrain:()=>terrainState(game)}),restore=[],seenWorkers=new WeakSet();
@@ -116,10 +117,18 @@ export function installPerfDiagnostics(game,{WorldTerrain,FogGrid,saveSlots,prof
   Object.defineProperty(game,'loop',{configurable:true,enumerable:loopDescriptor?.enumerable??true,get:()=>loopWrapper,set:fn=>{
     loopSource=fn;const timed=recorder.wrap('フレーム本体',fn);
     loopWrapper=function(timestamp){
+      if(disposed)return fn.call(this,timestamp);
       if(doc.hidden||!game.running)recorder.resetFrames();else recorder.frame(timestamp);
       return timed.call(this,timestamp);
     };
   }});
+  if(typeof loopSource==='function')game.loop=loopSource;
+  const reschedule=()=>{
+    if(game.running&&game.animFrameId&&typeof win.cancelAnimationFrame==='function'&&typeof win.requestAnimationFrame==='function'){
+      win.cancelAnimationFrame(game.animFrameId);game.animFrameId=win.requestAnimationFrame(game.loop);
+    }
+  };
+  reschedule();
   restore.push(()=>Object.defineProperty(game,'loop',{configurable:true,writable:true,enumerable:loopDescriptor?.enumerable??true,value:loopSource}));
   const reset=()=>recorder.resetFrames();doc.addEventListener('visibilitychange',reset);win.addEventListener('pagehide',reset);win.addEventListener('pageshow',reset);
   restore.push(()=>{doc.removeEventListener('visibilitychange',reset);win.removeEventListener('pagehide',reset);win.removeEventListener('pageshow',reset);});
@@ -131,7 +140,7 @@ export function installPerfDiagnostics(game,{WorldTerrain,FogGrid,saveSlots,prof
     }
   }catch{observer?.disconnect();observer=null;}
   const panel=doc.createElement('aside');panel.className='perf-diagnostics';panel.setAttribute('aria-label',gameText('停止の計測'));
-  panel.innerHTML=gameText('<header><strong>PERF v6.11.12 · 100ms超</strong><div><button type="button" data-perf-freeze>表示固定</button><button type="button" data-perf-copy>コピー</button></div></header><p class="perf-state"></p><p class="perf-legend">W:Worker停止 Q:待機 R:解像度 C:画像枚数<br>内訳は重複を除く上位3処理(ms)・全内訳はコピー</p><ol class="perf-records"></ol><p class="perf-feedback"></p><textarea class="perf-copy hidden" readonly aria-label="計測データ"></textarea>');
+  panel.innerHTML=gameText(`<header><strong>PERF v${PERF_VERSION} · 100ms超</strong><div><button type="button" data-perf-freeze>表示固定</button><button type="button" data-perf-copy>コピー</button></div></header><p class="perf-state"></p><p class="perf-legend">W:Worker停止 Q:待機 R:解像度 C:画像枚数<br>内訳は重複を除く上位3処理(ms)・全内訳はコピー</p><ol class="perf-records"></ol><p class="perf-feedback"></p><textarea class="perf-copy hidden" readonly aria-label="計測データ"></textarea>`);
   root.append(panel);
   const state=panel.querySelector('.perf-state'),list=panel.querySelector('.perf-records'),feedback=panel.querySelector('.perf-feedback');
   const snapshot=()=>({version:PERF_VERSION,thresholdMs:PERF_THRESHOLD_MS,terrain:terrainState(game),storageSupported,longTaskSupported,records:recorder.records(),longTasks:recorder.longTasks()});
@@ -165,5 +174,29 @@ export function installPerfDiagnostics(game,{WorldTerrain,FogGrid,saveSlots,prof
   };
   const timer=win.setInterval(refresh,500);refresh();
   return {recorder,snapshot,json:()=>JSON.stringify(frozen||snapshot(),null,2),refresh,
-    dispose(){if(disposed)return;disposed=true;win.clearInterval(timer);observer?.disconnect();for(const undo of restore.reverse())undo();panel.remove();}};
+    dispose(){if(disposed)return;disposed=true;win.clearInterval(timer);observer?.disconnect();for(const undo of restore.reverse())undo();reschedule();panel.remove();}};
+}
+
+/** Preference/controller only. OFF never installs the instrumentation above. */
+export function configurePerfSettings(game,dependencies,options={}){
+  const doc=options.document||document,win=options.window||window,host=game.container.querySelector('#view-strat-overview');
+  if(!host)return null;
+  const queryOn=perfRequested(options.search??win.location?.search);
+  let savedOn=false;try{savedOn=win.localStorage.getItem(PERF_SETTING_KEY)==='1';}catch{/* Default OFF when storage is inaccessible. */}
+  const section=doc.createElement('details');section.id='perf-settings';section.className='command-fold perf-settings';
+  section.innerHTML=gameText('<summary>計測表示</summary><div class="fold-content"><button type="button" class="action-btn secondary" id="btn-perf-toggle" role="switch" aria-checked="false">計測表示 OFF</button><p class="perf-setting-status" role="status"></p></div>');host.append(section);
+  const button=section.querySelector('button'),status=section.querySelector('.perf-setting-status');
+  const render=(saved=true)=>{
+    const on=!!game.perfDiagnostics;button.setAttribute('aria-checked',String(on));button.textContent=gameText(`計測表示 ${on?'ON':'OFF'}`);
+    status.textContent=gameText(!saved?'表示は変えましたが、設定を保存できませんでした。':on?'ON · 次の起動でも計測します。':queryOn?'OFF · URL指定中は次の起動でONになります。':'OFF · 計測していません。');
+  };
+  const setEnabled=(on,persist=true)=>{
+    if(on&&!game.perfDiagnostics)game.perfDiagnostics=installPerfDiagnostics(game,dependencies,{...options,enabled:true});
+    if(!on){game.perfDiagnostics?.dispose();game.perfDiagnostics=null;}
+    let saved=true;if(persist)try{if(on)win.localStorage.setItem(PERF_SETTING_KEY,'1');else win.localStorage.removeItem(PERF_SETTING_KEY);}catch{saved=false;}
+    render(saved);return !!game.perfDiagnostics;
+  };
+  button.onclick=()=>setEnabled(!game.perfDiagnostics);
+  setEnabled(queryOn||savedOn,false);
+  return {setEnabled,dispose(){button.onclick=null;game.perfDiagnostics?.dispose();game.perfDiagnostics=null;section.remove();}};
 }

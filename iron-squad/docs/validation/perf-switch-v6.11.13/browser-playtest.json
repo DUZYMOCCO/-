@@ -1,0 +1,159 @@
+{
+  "version": "6.11.13",
+  "disposableStorage": true,
+  "defaultOff": {
+    "panel": false,
+    "api": false,
+    "updateWrapped": false,
+    "loopAccessor": false,
+    "nativeStorage": true
+  },
+  "liveOn": {
+    "stored": "1",
+    "samePlayer": true,
+    "sameTerrain": true,
+    "saveUnchanged": true,
+    "wrapped": true
+  },
+  "liveRecords": {
+    "version": "6.11.13",
+    "thresholdMs": 100,
+    "terrain": {
+      "disabled": false,
+      "pending": 0,
+      "rasterSize": 512,
+      "tiles": 8,
+      "workerActive": false,
+      "workerSupported": true,
+      "offscreenSupported": true,
+      "bitmapSupported": true
+    },
+    "storageSupported": true,
+    "longTaskSupported": true,
+    "records": [
+      {
+        "time": "2026-10-14T13:47:22.625Z",
+        "frameMs": 138.1000000005588,
+        "rafMs": 150.19999999999982,
+        "sincePreviousSeconds": null,
+        "intervalStart": 1653,
+        "intervalEnd": 1791.1000000005588,
+        "timing": [
+          {
+            "name": "追従.開始",
+            "ms": 0,
+            "totalMs": 0,
+            "calls": 1
+          },
+          {
+            "name": "敵出現",
+            "ms": 0,
+            "totalMs": 0,
+            "calls": 1
+          },
+          {
+            "name": "霧.revealAt",
+            "ms": 0,
+            "totalMs": 0,
+            "calls": 1
+          },
+          {
+            "name": "フォグ公開",
+            "ms": 0,
+            "totalMs": 0,
+            "calls": 1
+          },
+          {
+            "name": "追従.復帰",
+            "ms": 0,
+            "totalMs": 0,
+            "calls": 1
+          },
+          {
+            "name": "更新その他",
+            "ms": 1.2000000001862645,
+            "totalMs": 1.2000000001862645,
+            "calls": 1
+          },
+          {
+            "name": "霧.drawFieldOverlay",
+            "ms": 0,
+            "totalMs": 0,
+            "calls": 1
+          },
+          {
+            "name": "描画その他",
+            "ms": 5.6000000005587935,
+            "totalMs": 5.6000000005587935,
+            "calls": 1
+          },
+          {
+            "name": "フレーム本体",
+            "ms": 0,
+            "totalMs": 6.800000000745058,
+            "calls": 1
+          }
+        ],
+        "measuredMs": 6.800000000745058,
+        "unmeasuredMs": 131.29999999981374,
+        "terrain": {
+          "disabled": false,
+          "pending": 0,
+          "rasterSize": 512,
+          "tiles": 8,
+          "workerActive": false,
+          "workerSupported": true,
+          "offscreenSupported": true,
+          "bitmapSupported": true
+        },
+        "longTasks": [
+          {
+            "start": 1652.9000000003725,
+            "ms": 137
+          }
+        ]
+      }
+    ],
+    "longTasks": [
+      {
+        "start": 1426,
+        "ms": 95
+      },
+      {
+        "start": 1652.9000000003725,
+        "ms": 137
+      }
+    ]
+  },
+  "restartOn": {
+    "stored": "1",
+    "panel": true,
+    "slot": "mv85zdgp-9bc70pp",
+    "version": "6.11.13"
+  },
+  "liveOff": {
+    "panel": false,
+    "api": false,
+    "updateWrapped": false,
+    "loopAccessor": false,
+    "nativeStorage": true
+  },
+  "offMoved": 332.7060000000056,
+  "restartOff": {
+    "panel": false,
+    "api": false,
+    "updateWrapped": false,
+    "loopAccessor": false,
+    "nativeStorage": true
+  },
+  "repeatedToggle": true,
+  "queryStillWorks": true,
+  "destroy": {
+    "panelGone": true,
+    "settingsGone": true,
+    "updateRestored": true,
+    "storageNative": true
+  },
+  "servedAssets": 135,
+  "errors": []
+}

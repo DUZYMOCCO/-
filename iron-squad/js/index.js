@@ -1,5 +1,5 @@
 import {beginFollowerRecovery,noteFollowerIntent,suspendFollowerRecovery,finishFollowerRecovery,profileFollowerRecovery} from './follower-recovery.js?v=262';
-import {perfRequested,installPerfDiagnostics} from './perf-diagnostics.js?v=262';
+import {configurePerfSettings} from './perf-diagnostics.js?v=263';
 import {gameText} from './game-text.js?v=262';
 import {talentTag} from './talent-labels.js?v=247';
 import {fieldDialogReturn} from './dialog-return.js?v=200';
@@ -1155,7 +1155,7 @@ export const IronSquadGame = {
 
   // 起動時にこのゲームのCSSを自分で読み込む（?v= はこのフォルダ内で管理）。ハブが init 前に await する
   prepare() {
-    return loadCss(['../css/iron-squad.css?v=262', '../css/iron-squad-interface.css?v=254'].map(p => new URL(p, import.meta.url).href));
+    return loadCss(['../css/iron-squad.css?v=263', '../css/iron-squad-interface.css?v=254'].map(p => new URL(p, import.meta.url).href));
   },
 
   init(container, onBackToHub) {
@@ -1179,7 +1179,7 @@ export const IronSquadGame = {
     this._surfaceLost = false; this._renderProblem = null;
     this.inBattle = false;
     this.setupUI();
-    if(perfRequested())this.perfDiagnostics=installPerfDiagnostics(this,{WorldTerrain,FogGrid,saveSlots,profileSaveCompletions,profileFollowerRecovery});
+    this.perfSettings=configurePerfSettings(this,{WorldTerrain,FogGrid,saveSlots,profileSaveCompletions,profileFollowerRecovery});
     this.setupGame();
     bindFieldMusic(sound);
     sound.setListener(()=>this.player);sound.startBGM();
@@ -12782,6 +12782,7 @@ export const IronSquadGame = {
       if (this.boundWheel) this.canvas.removeEventListener('wheel', this.boundWheel);
     }
     for (const canvas of this.container?.querySelectorAll('canvas') || []) releaseCanvas(canvas);
+    this.perfSettings?.dispose();this.perfSettings=null;
     this.perfDiagnostics?.dispose();this.perfDiagnostics=null;
   }
 };

@@ -42,6 +42,8 @@
 .perf-diagnostics li strong { display: block; font-size: 12px; color: #f1dba9; }
 .perf-diagnostics li div { font-size: 12px; }
 .perf-diagnostics .perf-copy { width: 100%; min-height: 90px; font-size: 12px; color: #edf0da; background: #182321; }
+.perf-settings button { min-height: 44px; }
+.perf-setting-status { margin: 8px 0; color: #bbc9c9; font-size: 12px; line-height: 1.5; }
 .save-card .action-btn { font-size: 13px; margin: 0; }
 .reinforcement-summary { padding: 10px; margin-bottom: 8px; border: 1px solid #738574; border-radius: 8px; background: #30423a; color: #d2dec4; font-size: 12px; line-height: 1.6; }
 .reserve-roster { margin-bottom: 12px; padding: 8px 10px; border: 1px solid #56685e; border-radius: 8px; color: #c7d0b9; font-size: 12px; }
