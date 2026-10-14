@@ -1,5 +1,5 @@
 import {heroGrowth} from './hero-rules.js';
-import {syncEquipmentBarrier} from './defense-equipment.js?v=257';
+import {syncEquipmentBarrier} from './defense-equipment.js?v=261';
 import {isLateBloomer} from './talent-labels.js?v=247';
 /** 個体の素質と、実際の行動から育つ能力。装備・職業・Lvの再計算では履歴を変更しない。 */
 export const ATTRIBUTE_KEYS = ['strength','magic','magicDefense','quickness','evasion'];

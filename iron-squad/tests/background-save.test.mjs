@@ -7,7 +7,8 @@ let controlled;
 globalThis.Worker=class{
   constructor(){controlled=this;this.queue=[];}
   postMessage(message){this.queue.push(structuredClone(message));}
-  terminate(){}
+  terminate(){this.queue=[];this.terminated=true;}
+  fail(index=0){const message=this.queue.splice(index,1)[0];this.onmessage({data:{id:message.id,error:'worker codec failure'}});}
   finish(index=0){
     const message=this.queue.splice(index,1)[0],stored=JSON.parse(message.base);
     const slots=stored?.encoding===SAVE_ENCODING?JSON.parse(unpackSave(stored)):stored;
@@ -52,4 +53,27 @@ test('worker failure preserves the current save via synchronous compatibility fa
   const a=saveSlots.create('fallback',{data:{gold:1}}),pending=saveSlots.updateBackground(a.id,{data:{gold:2}});
   controlled.onerror();assert.deepEqual(await pending,{status:'saved'});assert.equal(saveSlots.get(a.id).data.gold,2);
   assert.deepEqual(await saveSlots.updateBackground(a.id,{data:{gold:3}}),{status:'saved'});
+});
+
+test('worker error messages retry only current frozen snapshots, reset after success, and disable after two consecutive errors',async()=>{
+  const {saveSlots:slots}=await import('../js/save-slots.js?error-recovery');
+  const a=slots.create('message recovery',{data:{gold:1},checkpoint:{data:{gold:7}}}),b=slots.create('other',{data:{gold:99}});
+  const values={data:{gold:2}},pending=slots.updateBackground(a.id,values);values.data.gold=1000;controlled.fail();
+  assert.deepEqual(await pending,{status:'saved'});assert.equal(slots.get(a.id).data.gold,2);assert.equal(slots.get(a.id).checkpoint.data.gold,7);assert.equal(slots.get(b.id).data.gold,99);
+  const success=slots.updateBackground(a.id,{data:{gold:3}});controlled.finish();assert.deepEqual(await success,{status:'saved'});
+  const stale=slots.updateBackground(a.id,{data:{gold:4}});slots.update(a.id,{data:{gold:5}});controlled.fail();assert.deepEqual(await stale,{status:'superseded'});assert.equal(slots.get(a.id).data.gold,5);
+  const external=slots.updateBackground(a.id,{data:{gold:6}}),changed=slots.list();changed.find(s=>s.id===a.id).data.gold=8;localStorage.setItem(key,JSON.stringify(changed));const before=localStorage.getItem(key);controlled.fail();
+  assert.deepEqual(await external,{status:'superseded'});assert.equal(localStorage.getItem(key),before);
+  const older=slots.updateBackground(a.id,{data:{gold:9}}),latest=slots.updateBackground(a.id,{data:{gold:10}});controlled.fail();assert.deepEqual(await older,{status:'superseded'});controlled.fail();assert.deepEqual(await latest,{status:'saved'});
+  const dormant=slots.updateBackground(a.id,{data:{gold:0}}),second=slots.updateBackground(a.id,{data:{gold:11}});assert.equal(controlled.queue.length,2,'success reset means the first new error kept the worker enabled');controlled.fail(1);assert.deepEqual(await second,{status:'saved'});assert.deepEqual(await dormant,{status:'superseded'},'terminating the worker also settles old jobs that can no longer reply');assert.equal(controlled.terminated,true);
+  const workerBefore=controlled;assert.deepEqual(await slots.updateBackground(a.id,{data:{gold:12}}),{status:'saved'});assert.equal(controlled,workerBefore);assert.equal(controlled.queue.length,0);assert.equal(slots.get(a.id).data.gold,12);
+});
+
+test('worker error followed by synchronous verification failure preserves all prior storage bytes',async()=>{
+  const {saveSlots:slots}=await import('../js/save-slots.js?error-verification');
+  const a=slots.create('safe fallback',{data:{gold:13}}),before=localStorage.getItem(key);
+  const pending=slots.updateBackground(a.id,{data:{text:'再検証'.repeat(50_000)}}),Decoder=globalThis.TextDecoder,warn=console.warn;
+  console.warn=()=>{};globalThis.TextDecoder=class{decode(){throw new Error('decoder failure');}};
+  try{controlled.fail();assert.deepEqual(await pending,{status:'failed'});assert.equal(localStorage.getItem(key),before);}finally{globalThis.TextDecoder=Decoder;console.warn=warn;}
+  assert.equal(slots.get(a.id).data.gold,13);
 });

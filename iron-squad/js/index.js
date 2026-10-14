@@ -1,5 +1,6 @@
-import {beginFollowerRecovery,noteFollowerIntent,suspendFollowerRecovery,finishFollowerRecovery} from './follower-recovery.js?v=251';
-import {gameText} from './game-text.js?v=247';
+import {beginFollowerRecovery,noteFollowerIntent,suspendFollowerRecovery,finishFollowerRecovery,profileFollowerRecovery} from './follower-recovery.js?v=262';
+import {perfRequested,installPerfDiagnostics} from './perf-diagnostics.js?v=262';
+import {gameText} from './game-text.js?v=262';
 import {talentTag} from './talent-labels.js?v=247';
 import {fieldDialogReturn} from './dialog-return.js?v=200';
 import {guildMethods} from './guild-contracts.js?v=217';
@@ -21,7 +22,7 @@ import {workshopMethods} from './workshop.js?v=231';
 import {casinoMethods} from './casino.js?v=201';
 import {normalizeCasino} from './casino-rules.js?v=201';
 import {latestEquipmentTier,recordMerchantEquipment,ensureMerchantCatalog,refreshWaveCatalogs,markMerchantPurchase} from './merchant-catalog.js?v=258';
-import {initializeMedicalPosts,updateMedicalPosts,serializeMedicalPosts,nearestKnownMedicalPost,drawMedicalPost,drawMedicalMap,drawMedicalMarker,drawTownMedicalReception,drawRescueDirection} from './medical-posts.js?v=182';
+import {initializeMedicalPosts,updateMedicalPosts,serializeMedicalPosts,medicalPostLayout,nearestKnownMedicalPost,drawMedicalPost,drawMedicalMap,drawMedicalMarker,drawTownMedicalReception,drawRescueDirection} from './medical-posts.js?v=182';
 import {invasionMethods,initializeInvasions,serializeInvasions,shouldTriggerRandomRaid,makeEnemyRoom,drawInvasionRoute} from './invasion-rules.js?v=249';
 import {gateMethods,serializeGatePosts,replenishTownGateGuards,initializeGateGuards,ensureTownGuards,serializeGateGuards,updateGateGuards,gateGuardVisible,applyFortifications,drawFortification,exitGateTown,townExitReached,wallBlocksAttack,attackBlocked as coverBlocked} from './gate-rules.js?v=215';
 import {nationMethods,normalizeNation,nationalIncome,nationalPayrollPlan,headquartersDamageMult,drawNationalDevelopment,DEVELOPMENT_STAGES} from './nation-rules.js?v=249';
@@ -65,7 +66,7 @@ import { KNOCK_RULES, knockbackDistance, knockFlight, slamDamage, knockTransferD
 import { MELEE_SOUND_STYLES, playMeleeSound } from './weapon-sounds.js?v=211';
 import {emptyRescueBonuses,normalizeRescueBonuses,rescueBonusSummary} from './rescue-rewards.js?v=204';
 import {drawFieldCivilian} from './civilian-visuals.js?v=242';
-import { saveSlots } from './save-slots.js?v=260';
+import { saveSlots,profileSaveCompletions } from './save-slots.js?v=262';
 import { soldierDialogue } from './soldier-dialogue.js?v=246';
 import { generateSoldierName, migrateSoldierName, rollGenderByKey, isGenderId, ensureSoldierGender, genderLabel } from './soldier-names.js?v=210';
 import { openCommanderEditor } from './commander-editor.js?v=210';
@@ -73,7 +74,7 @@ import { applyCommanderIdentity, normalizeCommanderIdentity, commanderFullName, 
 import {MAGIC_CLASSES,MAGIC_AFFINITIES,magicMethods,isMage,isMagicUser,ensureMana,initializeMagic,updateMagic,distributeMagicStones,castMedicBuff,castCasterStrength,updateMageAI,drawMagicBursts,spendMana,weaponMagicDamage,isPlayerCaster,castPlayerSpell,PLAYER_MAGIC_RULES} from './magic-rules.js?v=257';
 import {hazardMethods,updateHazards,drawHazards} from './hazard-fields.js?v=198';
 import {strongEnemyReward} from './combat-rewards.js?v=182';
-import {supplyMethods, initializeSupplies, updateSupplies, takeRangedShot, ammoCombatProfile, isRangedUnit, distributeAmmo, preventLethalHit, normalizeFieldSave, SQUAD_POTION_COST, REVIVAL_POTION_COST, REVIVAL_POTION_MAX, SQUAD_POTION_MAX, ensureAmmo, ammoCapacity, recalcAmmoCapacity, RANGED_DAMAGE_MULT, supplyLocation} from './supply-rules.js?v=260';
+import {supplyMethods, initializeSupplies, updateSupplies, takeRangedShot, ammoCombatProfile, isRangedUnit, distributeAmmo, preventLethalHit, normalizeFieldSave, SQUAD_POTION_COST, REVIVAL_POTION_COST, REVIVAL_POTION_MAX, SQUAD_POTION_MAX, ensureAmmo, ammoCapacity, recalcAmmoCapacity, RANGED_DAMAGE_MULT, supplyLocation} from './supply-rules.js?v=261';
 import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog } from './interface.js?v=254';
 import { renderTroopRankings, getSoldierRankerBadges, calcSoldierRankerBonus, setRankingFamilyLabels, RANKING_FAMILIES } from './troop-rankings.js?v=247';
 import { ensureSoldierAppearance, drawSoldierPortrait } from './soldier-appearance.js?v=206';
@@ -95,7 +96,7 @@ import {HEALING_HP_PER_EXP,REVIVAL_EXP_PER_MAX_HP,shareCommanderExp,raiseLevelMa
 import {attributeFamily,rollAttributeProfile,applyAttributeStats,attributeValues,practiceAttribute,attributeCarryCapacity,attributeSpecialties,prefersCasterMelee,canChannelWeaponMagic,magicAbilityMultiplier,CASTER_STRIKE_COST,casterStrikeMultiplier,beginAttributeMovement,finishAttributeMovement,ATTRIBUTE_LABELS,ATTRIBUTE_KEYS,aptitudeGrade} from './unit-attributes.js?v=248';
 import {rollScoutCandidate,renderRecruitment,nextScoutCandidate,startAutomaticRecruitment,stopAutomaticRecruitment,RECRUIT_CLASSES} from './recruitment.js?v=247';
 import {canUseEquipment,requiredWeaponStrength,equipmentRequirementText,isMagicWeapon,MAGIC_WEAPON_STYLES,preferredWeaponStyle} from './weapon-requirements.js?v=239';
-import {CASTER_GEAR,DEFENSE_TYPES,casterGearName,applyDefenseEquipment,casterEquipmentSummary,absorbEquipmentBarrier,drawBarrierRing} from './defense-equipment.js?v=257';
+import {CASTER_GEAR,DEFENSE_TYPES,casterGearName,applyDefenseEquipment,casterEquipmentSummary,absorbEquipmentBarrier,drawBarrierRing} from './defense-equipment.js?v=261';
 import {
   emptyFiscalLedger, calcCommanderStipend, calcBuyoutGold,
   shouldAbsorbToSharedBox, calcScoutCost, estimateSoldierScoutValue, calcDismissSettlement,
@@ -1154,7 +1155,7 @@ export const IronSquadGame = {
 
   // 起動時にこのゲームのCSSを自分で読み込む（?v= はこのフォルダ内で管理）。ハブが init 前に await する
   prepare() {
-    return loadCss(['../css/iron-squad.css?v=175', '../css/iron-squad-interface.css?v=254'].map(p => new URL(p, import.meta.url).href));
+    return loadCss(['../css/iron-squad.css?v=262', '../css/iron-squad-interface.css?v=254'].map(p => new URL(p, import.meta.url).href));
   },
 
   init(container, onBackToHub) {
@@ -1178,6 +1179,7 @@ export const IronSquadGame = {
     this._surfaceLost = false; this._renderProblem = null;
     this.inBattle = false;
     this.setupUI();
+    if(perfRequested())this.perfDiagnostics=installPerfDiagnostics(this,{WorldTerrain,FogGrid,saveSlots,profileSaveCompletions,profileFollowerRecovery});
     this.setupGame();
     bindFieldMusic(sound);
     sound.setListener(()=>this.player);sound.startBGM();
@@ -1905,13 +1907,15 @@ export const IronSquadGame = {
       const slots=saveSlots.list().sort((a,b)=>b.savedAt-a.savedAt);
       if (!slots.length) list.textContent='まだ遠征の記録はありません。ニューゲームから出発できます。';
       for(const slot of slots) {
-        const card=document.createElement('article');card.className='save-card';
+        const card=document.createElement('article');card.className='save-card';card.dataset.saveSlot=slot.id;
+        if(slot.id===this.activeSlotId){card.classList.add('save-card-active');const active=document.createElement('p');active.className='save-active-mark';active.textContent='● 今プレイ中';card.append(active);}
         const name=document.createElement('h4');name.textContent=slot.name;
         const details=document.createElement('p');
         const data=slot.data;
-        details.textContent=data ? `第${data.phase || data.wave || 1}期 · Lv.${data.player?.level || 1} · ${(data.gold || 0).toLocaleString()}G · 生存${data.squad?.length || 0}名` : '生存部隊の引き継ぎ記録';
+        const commander=data?.player||slot.commander||slot.checkpoint?.data?.player;
+        details.textContent=`隊長 ${commanderFullName(commander)||'名前未設定'} · Lv.${commander?.level||1}${data?` · ${(data.gold||0).toLocaleString()}G · 生存${data.squad?.filter(s=>!s.dead).length||0}名`:''}`;
         const date=document.createElement('p');date.className='save-date';
-        date.textContent=`${slot.state==='fallen'?'討死 · ':''}${new Date(slot.savedAt).toLocaleString('ja-JP')}`;
+        date.textContent=data?`通常記録（オートセーブ）：${slot.state==='fallen'?'討死 · ':''}${this.saveSnapshotPlace(data)} · 第${data.phase||data.wave||1}期 · ${new Date(slot.savedAt).toLocaleString('ja-JP')}`:`通常記録：${slot.state==='fallen'?'討死・生存部隊の引き継ぎ':'まだ記録がありません'} · ${new Date(slot.savedAt).toLocaleString('ja-JP')}`;
         const btnGroup = document.createElement('div');
         btnGroup.className = 'save-card-actions';
         const button=document.createElement('button');button.className='action-btn';button.dataset.slotId=slot.id;
@@ -1939,12 +1943,13 @@ export const IronSquadGame = {
         });
 
         btnGroup.append(button, delButton);
-        card.append(name,details,date,btnGroup);
+        card.append(name,details,date);
         if(slot.checkpoint?.data) {
-          const point=document.createElement('p');point.className='save-date';point.textContent=`地点記録：${slot.checkpoint.place} · 第${slot.checkpoint.data.phase}期 · ${new Date(slot.checkpoint.savedAt).toLocaleString('ja-JP')}`;
+          const point=document.createElement('p');point.className='save-date';point.textContent=`地点記録：${slot.checkpoint.place||this.saveSnapshotPlace(slot.checkpoint.data)} · 第${slot.checkpoint.data.phase||slot.checkpoint.data.wave||1}期 · ${new Date(slot.checkpoint.savedAt).toLocaleString('ja-JP')}`;
+          card.append(point,btnGroup);
           const restore=document.createElement('button');restore.type='button';restore.className='action-btn secondary save-checkpoint-button';restore.dataset.checkpointSlot=slot.id;restore.textContent='地点セーブから再開';
-          restore.addEventListener('click',()=>this.selectSaveSlot(slot.id,true));card.append(point,restore);
-        }
+          restore.addEventListener('click',()=>this.selectSaveSlot(slot.id,true));card.append(restore);
+        }else card.append(btnGroup);
         list.append(card);
       }
     } catch(error) { list.textContent=error.message; }
@@ -1969,6 +1974,16 @@ export const IronSquadGame = {
     });
     this.saveMenu.classList.remove('hidden');this.setDialogState(true);
     this.saveMenu.querySelector('#save-menu-title').focus({preventScroll:true});
+  },
+
+  saveSnapshotPlace(data) {
+    const player=data?.player;
+    if(!Number.isFinite(player?.x)||!Number.isFinite(player?.y))return '場所不明';
+    // Saves normalize indoor positions to the entrance; inspect saved objects only.
+    const place=supplyLocation({player,medicalPosts:medicalPostLayout(data),dungeons:data.dungeons,merchants:data.merchants});
+    if(place)return place.name;
+    const zone=getFieldZone(player.x,player.y),where=routeNameAt(player.x,player.y)||biomeAt(player.x,player.y).name;
+    return `${zone.shortName}${where?` · ${where}`:''}`;
   },
 
   beginSelectedExpedition() {
@@ -3527,6 +3542,7 @@ export const IronSquadGame = {
 
     this.initPlatoons();
     if (saved.platoonMissions) restorePlatoonMissions(this.platoons, saved.platoonMissions);
+    this.reserves=this.reserves.filter(s=>!(s.reserveExpeditionPlatoon!=null&&s.dead));
     for(const s of this.reserves)if(s.reserveExpeditionPlatoon!=null&&!isExpeditionReserve(this,s)){clearReserveExpedition(s);s.x=s.isDown?BASE_CAMP.x:FARM_X;s.y=s.isDown?BASE_CAMP.y:FARM_Y;}
     this.initOutposts();
     this.initDungeons();
@@ -12766,6 +12782,7 @@ export const IronSquadGame = {
       if (this.boundWheel) this.canvas.removeEventListener('wheel', this.boundWheel);
     }
     for (const canvas of this.container?.querySelectorAll('canvas') || []) releaseCanvas(canvas);
+    this.perfDiagnostics?.dispose();this.perfDiagnostics=null;
   }
 };
 

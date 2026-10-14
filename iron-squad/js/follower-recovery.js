@@ -9,6 +9,13 @@ export const FOLLOW_RECOVERY = Object.freeze({seconds:8, away:160, progress:12, 
 const sessions=new WeakMap();
 const live=u=>u&&!u.dead&&!u.isDown&&!u.dying&&u.hp>0;
 const spaceOf=game=>game.currentDungeon?.id||game.currentDungeon||'field';
+// Imported bindings remain live. No replacement occurs unless ?perf=1 installs the hook.
+export function profileFollowerRecovery(wrap){
+  const begin=beginFollowerRecovery,finish=finishFollowerRecovery;
+  const timedBegin=wrap('追従.開始',begin),timedFinish=wrap('追従.復帰',finish);
+  beginFollowerRecovery=timedBegin;finishFollowerRecovery=timedFinish;
+  return ()=>{if(beginFollowerRecovery===timedBegin)beginFollowerRecovery=begin;if(finishFollowerRecovery===timedFinish)finishFollowerRecovery=finish;};
+}
 const eligible=(game,u,session)=>live(game.player)&&live(u)&&u.isPersonalGuard===true&&!u.heroPartyId&&!u.carrierId
   &&u.speed>0&&!u.magicRecovering&&!u.campPose&&!u.farmPose
   &&!session.carriers.has(String(u.id))&&!game._medicRescueAssign?.get(u.id)

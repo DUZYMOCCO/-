@@ -1,11 +1,11 @@
 import { storage } from '../../common/js/storage.js';
-import {encodeSaveList,unpackSave,SAVE_ENCODING} from './save-codec.js?v=260';
+import {encodeSaveList,unpackSave,SAVE_ENCODING} from './save-codec.js?v=261';
 
 const KEY = 'ironsquad_save_slots_v1';
 const LOCAL_KEY=`game_studio_${KEY}`;
 let cachedRaw,cachedJson;
 let cachedIds=new Set();
-let revision=0,sequence=0,worker=null,workerDisabled=false;
+let revision=0,sequence=0,worker=null,workerDisabled=false,workerFailures=0;
 const jobs=new Map();
 function readSlots(){
   const raw=localStorage.getItem(LOCAL_KEY);if(raw===null)return null;
@@ -28,32 +28,52 @@ function writeSlots(slots){
     return true;
   }catch(error){saveSlots.lastWriteError=error;console.warn('Save slot write failed:',error);return false;}
 }
-function completeJob(job,raw,error,json){
+function disableWorker(){
+  workerDisabled=true;worker?.terminate();worker=null;
+  // Termination prevents replies for older queued work; settle those promises too.
+  for(const job of [...jobs.values()])if(job.revision!==revision)completeJob(job,null);
+}
+function retryJob(job){
+  try{
+    const stored=JSON.parse(job.base),slots=stored?.encoding===SAVE_ENCODING?JSON.parse(unpackSave(stored)):stored;
+    const slot=slots.find(item=>item.id===job.slotId);if(!slot)throw new Error('Save slot missing');
+    Object.assign(slot,job.values,{savedAt:job.savedAt});
+    const json=JSON.stringify(slots);completeJob(job,encodeSaveList(json),null,json,false);
+  }catch(error){completeJob(job,null,String(error),null,false);}
+}
+function completeJob(job,raw,error,json,retry=true){
   jobs.delete(job.id);
   try{
     if(job.revision!==revision||localStorage.getItem(LOCAL_KEY)!==job.base){job.resolve({status:'superseded'});return;}
-    if(error)throw new Error(error);
+    if(error){
+      if(retry){
+        if(++workerFailures>=2)disableWorker();
+        retryJob(job);return;
+      }
+      throw new Error(error);
+    }
+    if(retry)workerFailures=0;
     localStorage.setItem(LOCAL_KEY,raw);cachedRaw=raw;cachedJson=json;saveSlots.lastWriteError=null;
     job.resolve({status:'saved'});
   }catch(failure){saveSlots.lastWriteError=failure;console.warn('Background save failed:',failure);job.resolve({status:'failed'});}
+}
+// The opt-in diagnostic installs this hook; normal saves keep the original function.
+export function profileSaveCompletions(wrap){
+  const original=completeJob,timed=wrap(original);completeJob=timed;
+  return ()=>{if(completeJob===timed)completeJob=original;};
 }
 function backgroundWorker(){
   if(workerDisabled||typeof Worker!=='function')return null;
   if(worker)return worker;
   try{
-    worker=new Worker(new URL('./save-worker.js?v=260',import.meta.url),{type:'module'});
+    worker=new Worker(new URL('./save-worker.js?v=261',import.meta.url),{type:'module'});
     worker.onmessage=({data})=>{const job=jobs.get(data.id);if(job)completeJob(job,data.raw,data.error,data.json);};
     worker.onerror=()=>{
-      workerDisabled=true;worker?.terminate();worker=null;
+      disableWorker();
       for(const job of [...jobs.values()]){
         // Preserve saving in browsers where workers are blocked; only the current job may commit.
-        if(job.revision!==revision){completeJob(job,null);continue;}
-        try{
-          const stored=JSON.parse(job.base),slots=stored?.encoding===SAVE_ENCODING?JSON.parse(unpackSave(stored)):stored;
-          const slot=slots.find(item=>item.id===job.slotId);if(!slot)throw new Error('Save slot missing');
-          Object.assign(slot,job.values,{savedAt:job.savedAt});
-          const json=JSON.stringify(slots);completeJob(job,encodeSaveList(json),null,json);
-        }catch(error){completeJob(job,null,String(error));}
+        if(job.revision!==revision||localStorage.getItem(LOCAL_KEY)!==job.base){completeJob(job,null);continue;}
+        retryJob(job);
       }
     };
     return worker;
@@ -99,11 +119,11 @@ export const saveSlots = {
       if(!target)return Promise.resolve({status:this.update(id,values)?'saved':'failed'});
       if(localStorage.getItem(LOCAL_KEY)!==cachedRaw)this.list();
       if(!cachedIds.has(id))return Promise.resolve({status:'missing'});
-      const base=localStorage.getItem(LOCAL_KEY),ticket=++revision,jobId=++sequence;
+      const snapshot=structuredClone(values),base=localStorage.getItem(LOCAL_KEY),ticket=++revision,jobId=++sequence;
       return new Promise(resolve=>{
-        const job={id:jobId,slotId:id,values,savedAt:Date.now(),base,revision:ticket,resolve};jobs.set(jobId,job);
+        const job={id:jobId,slotId:id,values:snapshot,savedAt:Date.now(),base,revision:ticket,resolve};jobs.set(jobId,job);
         // postMessage clones the snapshot before gameplay resumes. Parsing/merging/JSON/packing run off-thread.
-        try{target.postMessage({id:jobId,slotId:id,values,savedAt:job.savedAt,base});}catch(error){completeJob(job,null,String(error));}
+        try{target.postMessage({id:jobId,slotId:id,values:job.values,savedAt:job.savedAt,base});}catch(error){completeJob(job,null,String(error));}
       });
     }catch(error){saveSlots.lastWriteError=error;return Promise.resolve({status:'failed'});}
   },

@@ -1,5 +1,6 @@
 import {TIERS,materialTier,generation,powerRank} from './equipment-tiers.js?v=231';
 import {isMage} from './magic-rules.js?v=257';
+import {attributeFamily,isMuscleCaster} from './unit-attributes.js?v=248';
 
 export const DEFENSE_TYPES=['SHIELD','HELMET','ARMOR','GLOVES','LEGS','AMULET'];
 export const CASTER_GEAR={
@@ -43,11 +44,12 @@ export function casterEquipmentSummary(item) {
   if(s.magicBonus)parts.push(`魔力補正+${s.magicBonus}%`);
   if(s.healBonus)parts.push(`回復補正+${s.healBonus}%`);
   if(s.magicDefense)parts.push(`魔法防御+${s.magicDefense}`);
-  if(s.barrier)parts.push(`バリア+${s.barrier}（物理50%・魔法100%吸収／魔法使い・衛生術師のみ有効）`);
+  if(s.barrier)parts.push(`バリア+${s.barrier}（物理50%・魔法100%吸収／指揮官・魔法使い・衛生術師のみ有効、筋肉魔法使いは対象外）`);
   return parts.join(' · ');
 }
 export const BARRIER_RULES=Object.freeze({absorb:.5,magicAbsorb:1.0,rechargeDelay:8,rechargeRate:.06});
-export const canUseEquipmentBarrier=unit=>isMage(unit)||['MEDIC','HIGH_PRIEST','SAINT','ARCHANGEL'].includes(unit?.soldierClass);
+export const canUseEquipmentBarrier=unit=>attributeFamily(unit)==='COMMANDER'
+  ||(isMage(unit)?!isMuscleCaster(unit):['MEDIC','HIGH_PRIEST','SAINT','ARCHANGEL'].includes(unit?.combatClass||unit?.soldierClass));
 /** Equipment swaps and recalculation never refill an existing barrier. */
 export function syncEquipmentBarrier(unit,maximum) {
   const first=!Number.isFinite(unit.equipmentBarrier),cap=canUseEquipmentBarrier(unit)?Math.max(0,Math.floor(maximum)):0;

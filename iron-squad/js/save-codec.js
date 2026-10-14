@@ -5,7 +5,10 @@ const dictionary=()=>new Map(alphabet().map((char,i)=>[char,i]));
 const checksum=text=>{let hash=2166136261;for(let i=0;i<text.length;i++)hash=Math.imul(hash^text.charCodeAt(i),16777619);return hash>>>0;};
 export function encodeSaveList(json){
   const packed=json.length>=128_000?JSON.stringify(packSave(json)):null;
-  return packed&&packed.length<json.length?packed:json;
+  if(!packed||packed.length>=json.length)return json;
+  // Validate the exact bytes we will store before any slot can be overwritten.
+  if(unpackSave(JSON.parse(packed))!==json)throw new Error('Save round-trip verification failed');
+  return packed;
 }
 export function packSave(json){
   let dict=dictionary(),next=256,word='';const codes=[];

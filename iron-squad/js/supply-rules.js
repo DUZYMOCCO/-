@@ -2,7 +2,7 @@ import {attributeValues,ensureAttributeProfile} from './unit-attributes.js?v=248
 import {isMagicUser,ensureMana} from './magic-rules.js?v=257';
 import {WORLD_SIZE} from './world.js?v=260';
 import {inCurrentInstance} from './instance-rules.js?v=256';
-import {saveSlots} from './save-slots.js?v=260';
+import {saveSlots} from './save-slots.js?v=262';
 import {requestCheckpointAction,checkpointNotice} from './checkpoint-ui.js?v=259';
 import {nearestRevivalPotionTarget,reviveByPotion,REVIVAL_POTION_RANGE} from './casualty-rules.js?v=256';
 
@@ -195,7 +195,7 @@ export const supplyMethods={
       const checkpoint={place:place.name,entrance:this.currentDungeon?.kind==='town',savedAt:Date.now(),data:JSON.parse(JSON.stringify(snapshot))};
       const values={data:snapshot,checkpoint,state:'active',career:{...this.career}};
       if(newSlot){
-        const name=`${previous.name.slice(0,20)} · ${new Date(checkpoint.savedAt).toLocaleString('ja-JP')}`;
+        const name=previous.name;
         const slot=saveSlots.create(name,{...values,veterans:previous.veterans,reserveSurvivors:previous.reserveSurvivors});
         this.activeSlotId=slot.id;
       }else if(!saveSlots.update(this.activeSlotId,values))throw new Error('記録を書き込めません');

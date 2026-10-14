@@ -64,7 +64,13 @@ game.recalcSoldierStats(archer);
 assert.equal(canUseEquipment(archer,shield),true);
 assert.equal(archer.equipmentBarrierMax,0);assert.equal(archer.equipmentBarrier,0);
 updateEquipmentBarrier(archer,60);assert.equal(archer.equipmentBarrier,0);
-assert.match(casterEquipmentSummary(shield),/魔法使い・衛生術師のみ有効/);
+assert.match(casterEquipmentSummary(shield),/指揮官・魔法使い・衛生術師のみ有効/);
+for(const combatClass of ['MEDIC','HIGH_PRIEST','SAINT','ARCHANGEL'])assert.equal(canUseEquipmentBarrier({soldierClass:'HEAVY',combatClass}),true);
+assert.equal(canUseEquipmentBarrier({soldierClass:'MEDIC',combatClass:'HEAVY'}),false);
+const muscle=unit('MAGE');muscle.attributeProfile.innate.strength=80;muscle.equipped.shield=shield;game.recalcSoldierStats(muscle);assert.equal(muscle.equipmentBarrierMax,0);assert.equal(muscle.equipmentBarrier,0);
+game.equipped.shield=shield;game.recalcPlayerStats();assert.ok(game.player.equipmentBarrierMax>0,'commander receives an equipment barrier even with a melee weapon');
+const commanderCap=game.player.equipmentBarrierMax;game.player.equipmentBarrier=commanderCap;assert.deepEqual(absorbEquipmentBarrier(game.player,10,true),{damage:0,absorbed:10});
+game.recalcPlayerStats();assert.equal(game.player.equipmentBarrier,commanderCap-10,'recalculation never refills commander barrier');
 mage.equipped.shield=shield;mage.mana=0;game.recalcSoldierStats(mage);
 assert.ok(mage.equipmentBarrierMax>0,'caster job controls the barrier, not current MP');
 mage.equipmentBarrier=20;
@@ -126,7 +132,7 @@ game.equipped.weapon=gear('player-wand','WEAPON',1);game.equipped.weapon.weaponS
 game.equipped.armor=gear('player-ward','ARMOR',1,'ward');game.recalcPlayerStats();game.player.equipmentBarrier=3;game.player.equipmentBarrierDelay=4;
 const saved=game.saveGame();assert.ok(saved);saved.squad.find(s=>s.id===medic.id).equipped.armor=gear('legacy-medic-plate','ARMOR',25);
 game.resumeSavedGame(structuredClone(saved));game.closeStrategyModal();
-assert.equal(game.player.equipmentBarrier,0);assert.equal(game.player.equipmentBarrierMax,0,'a wand alone does not grant the commander a caster job');
+assert.equal(game.player.equipmentBarrier,3);assert.ok(game.player.equipmentBarrierMax>0,'commander barrier survives save/load');assert.equal(game.player.equipmentBarrierDelay,4);
 const restored=game.squad.find(s=>s.id===mage.id);assert.equal(restored.equipmentBarrier,7);assert.equal(restored.equipmentBarrierDelay,5);
 assert.ok(game.sharedEquipBox.some(item=>item.id==='legacy-medic-plate'));
 // The real paid procurement chooses class-appropriate gear and respects a personal wallet.

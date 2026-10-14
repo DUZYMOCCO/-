@@ -1,4 +1,4 @@
-import {encodeSaveList,unpackSave,SAVE_ENCODING} from './save-codec.js?v=260';
+import {encodeSaveList,unpackSave,SAVE_ENCODING} from './save-codec.js?v=261';
 self.onmessage=({data})=>{
   try{
     const stored=JSON.parse(data.base),slots=stored?.encoding===SAVE_ENCODING?JSON.parse(unpackSave(stored)):stored;

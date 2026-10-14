@@ -1,4 +1,4 @@
-import {noteFollowerIntent} from './follower-recovery.js?v=251';
+import {noteFollowerIntent} from './follower-recovery.js?v=262';
 import {soldierAttackCooldown} from './equipment-rules.js?v=242';
 import {guardTarget,guardSpeedMult} from './guard-leash.js?v=211';
 import {WORLD_SIZE,fieldBlocks} from './world.js?v=260';

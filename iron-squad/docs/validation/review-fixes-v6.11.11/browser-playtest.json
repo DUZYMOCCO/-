@@ -1,0 +1,61 @@
+{
+  "version": "6.11.11",
+  "saves": {
+    "slots": 3,
+    "active": "mv832dzw-n0yjebf",
+    "name": "第一遠征隊・山田家の冒険記録第一遠征隊・山田家の冒険記録第一遠征隊・山田家の冒険",
+    "realWorker": "saved",
+    "staleWorker": "superseded",
+    "errorWorkerAttempts": 2,
+    "commanderBarrierMax": 40
+  },
+  "results": [
+    {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "ui": {
+        "text": "● 今プレイ中第一遠征隊・山田家の冒険記録第一遠征隊・山田家の冒険記録第一遠征隊・山田家の冒険隊長 青空・山田 · Lv.23 · 1,234G · 生存48名通常記録（オートセーブ）：第1救護所 · 第9期 · 2026/10/14 21:25:46地点記録：本陣 · 第4期 · 2026/10/14 21:25:42このセーブで続ける🗑️ 削除地点セーブから再開",
+        "rows": [
+          "通常記録（オートセーブ）：第1救護所 · 第9期 · 2026/10/14 21:25:46",
+          "地点記録：本陣 · 第4期 · 2026/10/14 21:25:42"
+        ],
+        "rect": {
+          "x": 17,
+          "right": 373
+        },
+        "overflow": 0,
+        "activeMarks": 1,
+        "pageOverflow": 0
+      },
+      "normalLoad": true,
+      "checkpointLoad": true
+    },
+    {
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "ui": {
+        "text": "● 今プレイ中第一遠征隊・山田家の冒険記録第一遠征隊・山田家の冒険記録第一遠征隊・山田家の冒険隊長 青空・山田 · Lv.23 · 1,234G · 生存48名通常記録（オートセーブ）：第1救護所 · 第9期 · 2026/10/14 21:25:49地点記録：本陣 · 第4期 · 2026/10/14 21:25:42このセーブで続ける🗑️ 削除地点セーブから再開",
+        "rows": [
+          "通常記録（オートセーブ）：第1救護所 · 第9期 · 2026/10/14 21:25:49",
+          "地点記録：本陣 · 第4期 · 2026/10/14 21:25:42"
+        ],
+        "rect": {
+          "x": 247,
+          "right": 1033
+        },
+        "overflow": 0,
+        "activeMarks": 1,
+        "pageOverflow": 0
+      },
+      "normalLoad": true,
+      "checkpointLoad": true
+    }
+  ],
+  "pageErrors": [],
+  "servedAssets": 134,
+  "disposableBrowserStorage": true
+}

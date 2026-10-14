@@ -1,0 +1,26 @@
+import assert from 'node:assert/strict';
+import {JSDOM} from '../../__pycache__/ui-tools/node_modules/jsdom/lib/api.js';
+const dom=new JSDOM('<div id="game"></div>',{url:'http://localhost/'});
+Object.assign(globalThis,{window:dom.window,document:dom.window.document,localStorage:dom.window.localStorage});
+const noop=()=>{},ctx=new Proxy({measureText:()=>({width:40}),createLinearGradient:()=>({addColorStop:noop}),createRadialGradient:()=>({addColorStop:noop})},{get:(o,k)=>k in o?o[k]:noop});
+window.HTMLCanvasElement.prototype.getContext=()=>ctx;
+const {IronSquadGame}=await import('../js/index.js'),{saveSlots}=await import('../js/save-slots.js');
+const g=Object.create(IronSquadGame);Object.assign(g,{container:document.getElementById('game'),width:390,height:844,zoom:1,ctx,camera:{x:79360,y:79360},selectedSaleIds:new Set(),commandActiveUntil:0,startGameLoop:noop,showToast:noop});
+g.setupUI();g.activeSlotId=saveSlots.create('長い名前'.repeat(10)).id;g.startFreshGame(false);g.closeStrategyModal();
+Object.assign(g.player,{x:79360,y:79360,givenName:'青空',familyName:'山田',level:12});g.phase=4;
+assert.equal(g.saveCheckpoint(),true);const original=structuredClone(saveSlots.get(g.activeSlotId)),oldId=g.activeSlotId;
+for(let i=0;i<3;i++)assert.equal(g.saveCheckpoint({newSlot:true}),true);
+assert.ok(saveSlots.list().every(s=>s.name===original.name),'repeated copies do not append timestamps');assert.deepEqual(saveSlots.get(oldId),original);
+const normal=structuredClone(g.saveGame({persist:false})),post=g.medicalPosts[0];normal.phase=9;Object.assign(normal.player,{x:post.x,y:post.y,level:23});
+const active=g.activeSlotId;saveSlots.update(active,{data:normal});
+// Place lookup must use each saved position, even if the current player is elsewhere.
+Object.assign(g.player,{x:140000,y:30000});g.showSaveMenu();
+const card=document.querySelector(`[data-save-slot="${active}"]`),rows=[...card.querySelectorAll('.save-date')];
+assert.equal(document.querySelectorAll('.save-active-mark').length,1);assert.match(card.textContent,/今プレイ中/);assert.match(card.textContent,/隊長 青空・山田 · Lv\.23/);
+assert.match(rows[0].textContent,new RegExp(`通常記録（オートセーブ）：${post.name} · 第9期`));assert.match(rows[1].textContent,/地点記録：本陣 · 第4期/);
+assert.equal(g.saveSnapshotPlace(original.data),'本陣');assert.equal(g.saveSnapshotPlace({player:{x:NaN,y:1}}),'場所不明');
+const town=g.dungeons.find(d=>d.kind==='town');assert.equal(g.saveSnapshotPlace({...normal,player:{...normal.player,...town.entrance}}),town.name);
+const field=g.saveSnapshotPlace({...normal,player:{x:140000,y:30000}});assert.ok(field&&field!=='場所不明');
+const chosen=[];g.selectSaveSlot=(...args)=>chosen.push(args);card.querySelector('[data-slot-id]').click();card.querySelector('[data-checkpoint-slot]').click();assert.deepEqual(chosen,[[active],[active,true]]);
+assert.equal(saveSlots.get(active).checkpoint.data.phase,4);assert.equal(saveSlots.get(active).data.phase,9);
+dom.window.close();console.log('PASS: separate saved locations/phases/dates, commander/name/level, single active mark, stable copied names, intact old slots and both load actions');
