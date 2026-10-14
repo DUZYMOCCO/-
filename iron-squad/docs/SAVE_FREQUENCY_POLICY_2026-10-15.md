@@ -43,5 +43,13 @@
   3. 地点セーブ（`saveCheckpoint`）
   4. ゲームオーバー・全滅の記録（`gameOver` / `state: 'fallen'`）
 - **操作ロールバックの撤廃**: 遠征派遣（`startPlatoonExpedition`）や兵士保護（`toggleSoldierLock`）から保存失敗時の巻き戻し機構を撤廃。通常の操作としてオートセーブに委ねる形へ簡素化。
-- **検証**: `iron-squad/tests/auto-save.test.mjs` を新設し、通常呼出の書き込みゼロ、即時保存の同期実行、10秒タイマー発火による背景保存、4場面での保存、ロールバック撤廃操作の永続化を検証。全188テストPASS。
+- **検証**: `iron-squad/tests/auto-save.test.mjs` を新設し、通常呼出の書き込みゼロ、即時保存の同期実行、10秒タイマー発火による背景保存、4場面での保存、ロールバック撤廃操作の永続化を検証。全189テストPASS。
 
+
+### 実測と最終検証の追記（v6.11.19）
+
+- 最終全189テストPASS（78.4秒）、ログ`docs/backups/full-tests-v6.11.19-final.log`。通常保存200呼出で書込/スナップショット0、メニュー停止中の時計、hidden/pagehide/ハブ/セーブ画面/地点/fallen、保存不能時でも派遣/保護が成功して次の自動記録と一致することを確認。既存の保存/読込テストも新しい方針に合わせて明示保存へ移行した。
+- Chrome/CPU4倍/48人/約610KB、同じ約61秒のメニュー強化連打→休憩→期終了/休憩明け→戦闘で、実際のlocalStorage書込45回→6回。修正後もメニュー中の10秒/20秒に保存した。保存処理単体最大は修正前36.4ms/後46.3ms。保存処理の合計が100msを超えるフレームは両方0。全体の100ms超は両方41フレームあり、主にメニュー描画/期処理で残るため「全フレーム100ms内」とは扱わない。ページ/コンソールエラー0、iPhone実機未確認。
+- 証跡[修正前](validation/save-policy-v6.11.19/before.json)、[修正後](validation/save-policy-v6.11.19/after.json)、画像`docs/validation/save-policy-v6.11.19/`。再現`node iron-squad/tools/playtest-save-policy.mjs after`は自身で一時HTTPサーバーを保持。旧コード比較は開始前ZIPから`docs/backups/save-policy-v6.11.18-reference/`へJS/manifestを展開した配信で実施し、作業ツリーを戻していない。
+- 構文130ファイル/139アセット/git diff --check通過、生成PNGを指定のcheckoutで復元。開始前ZIP`docs/backups/20261015-before-save-policy-v6.11.19.zip`。新規/再開の土台記録、fallen後のactive上書き防止、時計の終了/多重防止も確認。
+- この作業からgit add/コミット/プッシュは実行していない。途中に別操作で作られたステージ/コミットは戻さず保持した。

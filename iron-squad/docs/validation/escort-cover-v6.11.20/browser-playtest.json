@@ -1,0 +1,35 @@
+{
+  "version": "6.11.20",
+  "disposableStorage": true,
+  "contact": {
+    "before": {
+      "merchant": 1000,
+      "guardian": 363,
+      "other": 363
+    },
+    "after": {
+      "merchant": 982.5,
+      "guardian": 351,
+      "other": 363
+    },
+    "wait": 3,
+    "coverShown": true
+  },
+  "regen": {
+    "before": 351,
+    "afterThree": 351,
+    "afterFour": 354.6299999999994,
+    "maxHp": 363,
+    "expectedAfterFour": 354.63
+  },
+  "far": {
+    "before": 275.6299999999994,
+    "after": 301.0399999999994,
+    "expected": 301.03999999999945
+  },
+  "persistence": {
+    "savedWait": 3,
+    "loadedWait": 3
+  },
+  "errors": []
+}

@@ -1,7 +1,7 @@
 import {startAutoSave,stopAutoSave} from './auto-save.js?v=269';
 import {requestEvenUpgrade} from './even-upgrade.js?v=268';
 import {beginFollowerRecovery,noteFollowerIntent,suspendFollowerRecovery,finishFollowerRecovery,profileFollowerRecovery} from './follower-recovery.js?v=262';
-import {configurePerfSettings} from './perf-diagnostics.js?v=269';
+import {configurePerfSettings} from './perf-diagnostics.js?v=270';
 import {gameText} from './game-text.js?v=268';
 import {talentTag} from './talent-labels.js?v=247';
 import {fieldDialogReturn} from './dialog-return.js?v=200';
@@ -124,8 +124,8 @@ import {
   initMerchants, ensureMerchants, updateMerchants, drawMerchantBody, drawMerchantEscort,
   nearestLivingMerchant, refreshMerchantStock, merchantBuyPrice, merchantSellTier,
   applyMerchantSave, serializeMerchants, MERCHANT_INTERACT_R,
-  merchantHealingStatus, merchantHealWavesLeft, useMerchantHealing, MERCHANT_HEAL_COST, recalcEscortStats, finishEscortPhase
-} from './merchant-rules.js?v=267';
+  merchantHealingStatus, merchantHealWavesLeft, useMerchantHealing, MERCHANT_HEAL_COST, recalcEscortStats, finishEscortPhase, merchantEscortCover, noteEscortDamage
+} from './merchant-rules.js?v=270';
 
 import { daylightAt, advanceWorldClock, periodEnemy, enemyAvailable, PERIOD_ENEMIES } from './day-night.js?v=208';
 
@@ -5949,7 +5949,7 @@ export const IronSquadGame = {
     if (!this.currentDungeon) {
       ensureMerchants(this, generateRandomDrop, BASE_CAMP);
       updateMerchants(this, dt, generateRandomDrop, {
-        damageEscort:(escort,raw)=>this.damageTarget(escort,raw),
+        damageEscort:(escort,raw,options)=>this.damageTarget(escort,raw,options),
         damageMonster: (esc, mon, dmg) => {
           if (!mon || mon.hp <= 0) return;
           this.performAttack(esc, mon, false, dmg);
@@ -7640,11 +7640,13 @@ export const IronSquadGame = {
     }
 
     // 重装歩兵のかばう: 生ダメージの半分を近くの重装へ（重装側の防御計算を通す）。残りは被弾者の通常計算へ
-    const cv = tankCover(this, target, rawDmg, options);
+    const merchantCover=merchantEscortCover(this,target,rawDmg,options);
+    const cv = merchantCover || tankCover(this, target, rawDmg, options);
     if (cv) {
       this.damageTarget(cv.guardian, cv.share, {...options, cover: true});
       rawDmg = cv.rest;
-      this.spawnDamageText(target.x, target.y - 24, '🛡️みがわり!', '#38bdf8');
+      const coveredActor=merchantCover?cv.guardian:target;
+      this.spawnDamageText(coveredActor.x, coveredActor.y - 24, '🛡️みがわり!', '#38bdf8');
     }
 
     // 聖騎士（PALADIN）のサンクチュアリ (周囲140pxに生存中の聖騎士がいれば被ダメージ-30%カット)
@@ -7694,6 +7696,7 @@ export const IronSquadGame = {
     if(magical)practiceAttribute(target,'magicDefense',1+Math.min(4,rawDmg/Math.max(1,target.maxHp||1)));
     const hpBeforeHit = target.hp, lostHp = Math.min(dmg, Math.max(0, hpBeforeHit));
     target.hp -= dmg;
+    noteEscortDamage(target,lostHp);
     this.spawnDamageText(target.x, target.y - 12, dmg, '#ff3344');
     sound.playHurt(target.x,target.y);
 

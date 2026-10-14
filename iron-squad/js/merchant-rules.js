@@ -20,6 +20,28 @@ export const MERCHANT_INTERACT_R = 72;
 export const MERCHANT_AGGRO_R = 340;
 export const MERCHANT_RESPAWN_SEC = 210; // 死亡後〜3.5分で再訪
 export const ESCORT_COUNT = 2;
+export const ESCORT_COVER = Object.freeze({radius:180,share:.5,minHp:.20});
+export const ESCORT_REGEN = Object.freeze({delay:3,perSecond:.01});
+
+export function merchantEscortCover(game,merchant,raw,options={}) {
+  if(!merchant?.isMerchant||options.environmental||options.cover||options.noCover||!options.attacker||!(raw>0))return null;
+  let guardian=null,best=ESCORT_COVER.radius**2;
+  for(const esc of livingEscorts(merchant)){
+    if(esc.isGateGuard||!(esc.hp>esc.maxHp*ESCORT_COVER.minHp))continue;
+    const distance=(esc.x-merchant.x)**2+(esc.y-merchant.y)**2;
+    if(distance<=best){guardian=esc;best=distance;}
+  }
+  return guardian?{guardian,share:raw*ESCORT_COVER.share,rest:raw*(1-ESCORT_COVER.share)}:null;
+}
+export function noteEscortDamage(escort,lostHp) {
+  if(escort?.isMerchantEscort&&!escort.isGateGuard&&lostHp>0)escort.escortRegenWait=ESCORT_REGEN.delay;
+}
+export function updateEscortRegen(escort,dt) {
+  if(!escort?.isMerchantEscort||escort.isGateGuard||escort.dead||escort.isDown||!(escort.hp>0)||!(dt>0))return;
+  const wait=Math.max(0,Number(escort.escortRegenWait) || 0),healingTime=Math.max(0,dt-wait);
+  escort.escortRegenWait=Math.max(0,wait-dt);
+  escort.hp=Math.min(escort.maxHp,escort.hp+escort.maxHp*ESCORT_REGEN.perSecond*healingTime);
+}
 export const MERCHANT_HEAL_COST = 150;
 export const MERCHANT_HEAL_WAIT_WAVES = 2;
 export const CAMP_MERCHANT_CHANCE = .55;
@@ -130,9 +152,11 @@ export function recalcEscortStats(esc) {
 export function finishEscortPhase(game) {
   for(const esc of [...(game.merchants||[]).flatMap(m=>m.escorts||[]),...(game.gateGuards||[])])if(!esc.dead&&finishExperience(esc))recalcEscortStats(esc);
 }
-function damageEscortFallback(game,esc,raw) {
-  const dmg=Math.max(1,Math.round(raw*100/(100+(esc.def||0)*1.2)*(1-Math.min(.4,(esc.dmgReduction||0)/100))));
+function damageEscortFallback(game,esc,raw,options={}) {
+  let dmg=Math.max(1,Math.round(raw*100/(100+(esc.def||0)*1.2)*(1-Math.min(.4,(esc.dmgReduction||0)/100))));
+  if(options.cover)dmg=Math.max(0,Math.min(dmg,esc.hp-1));
   recordCombat(esc);const lost=Math.min(dmg,Math.max(0,esc.hp));esc.hp-=dmg;
+  noteEscortDamage(esc,lost);
   const growth=applyHitGrowth(esc,lost,true);if(growth.gain>0){esc.hitGrowthEvents=(esc.hitGrowthEvents||0)+1;if(growth.changed){const hpAfter=esc.hp;recalcEscortStats(esc);if(hpAfter<=0)esc.hp=hpAfter;}}
   if(esc.hp<=0)markSoldierDown(game,esc);
 }
@@ -356,6 +380,8 @@ export function updateMerchants(game, dt, generateRandomDrop, hooks = {}) {
   const monsters = game.monsters || [];
 
   for (const m of merchants) {
+    // Regeneration is cheap and runs before the distant-caravan AI skip.
+    for(const esc of m.escorts||[])updateEscortRegen(esc,dt);
     if (m.dead) {
       m.respawnIn = (m.respawnIn || MERCHANT_RESPAWN_SEC) - dt;
       if (m.respawnIn <= 0) {
@@ -393,7 +419,13 @@ export function updateMerchants(game, dt, generateRandomDrop, hooks = {}) {
         if (mon._merchantAtk <= 0) {
           mon._merchantAtk = 1.05;
           const raw = Math.max(1, Math.round((mon.atk || 10) * (escortsAlive > 0 ? 0.35 : 1)));
-          m.hp -= raw;
+          const cover=merchantEscortCover(game,m,raw,{attacker:mon});
+          if(cover){
+            if(hooks.damageEscort)hooks.damageEscort(cover.guardian,cover.share,{attacker:mon,cover:true});
+            else damageEscortFallback(game,cover.guardian,cover.share,{cover:true});
+            game.spawnDamageText?.(cover.guardian.x,cover.guardian.y-24,'🛡️みがわり!','#38bdf8');
+          }
+          m.hp -= cover?cover.rest:raw;
           if (m.hp <= 0) {
             markSoldierDown(game,m);
             game.showToast?.(`${m.name}が負傷！紐で本陣へ救助できます`);
@@ -407,7 +439,7 @@ export function updateMerchants(game, dt, generateRandomDrop, hooks = {}) {
           mon._escortAtk = (mon._escortAtk || 0) - dt;
           if ((mon._escortAtk || 0) <= 0) {
             mon._escortAtk = 1.0;
-            if(hooks.damageEscort)hooks.damageEscort(esc,mon.atk||10);
+            if(hooks.damageEscort)hooks.damageEscort(esc,mon.atk||10,{attacker:mon});
             else damageEscortFallback(game,esc,mon.atk||10);
           }
         }
@@ -556,18 +588,19 @@ export function applyMerchantSave(game, savedList, generateRandomDrop, BASE_CAMP
 
 export function npcSave(unit) {
   const result={};
-  for(const key of ['x','y','hp','maxHp','isDown','dead','downTimer','revivalSkillCooldownUntil','carrierId','homeX','homeY','timesDown','timesRescued','rescuedThisDown','downedInAid','downId','rescuedToBase','returningToBase','rescueRewardGranted','rescueReward','owesCommander','commanderFriend','commanderRescues','level','exp','reqExp','minionKills','bossKills','survivedWaves','hitGrowthPct','hitGrowthHp','hitGrowthDef','hitGrowthEvents','weaponMastery','favoriteWeapon','phaseActivity','escortBaseStats','attributeProfile'])if(unit[key]!==undefined)result[key]=unit[key];
+  for(const key of ['x','y','hp','maxHp','isDown','dead','downTimer','revivalSkillCooldownUntil','carrierId','homeX','homeY','timesDown','timesRescued','rescuedThisDown','downedInAid','downId','rescuedToBase','returningToBase','rescueRewardGranted','rescueReward','owesCommander','commanderFriend','commanderRescues','level','exp','reqExp','minionKills','bossKills','survivedWaves','escortRegenWait','hitGrowthPct','hitGrowthHp','hitGrowthDef','hitGrowthEvents','weaponMastery','favoriteWeapon','phaseActivity','escortBaseStats','attributeProfile'])if(unit[key]!==undefined)result[key]=unit[key];
   return result;
 }
 export function applyNpcSave(unit,saved) {
   delete unit.revivalCooldownUntil;
-  for(const key of ['x','y','hp','maxHp','downTimer','revivalSkillCooldownUntil','homeX','homeY','timesDown','timesRescued','downId','atk','def','dmgReduction','level','exp','reqExp','minionKills','bossKills','survivedWaves','hitGrowthPct','hitGrowthHp','hitGrowthDef','hitGrowthEvents'])if(Number.isFinite(saved[key]))unit[key]=saved[key];
+  for(const key of ['x','y','hp','maxHp','downTimer','revivalSkillCooldownUntil','homeX','homeY','timesDown','timesRescued','downId','atk','def','dmgReduction','level','exp','reqExp','minionKills','bossKills','survivedWaves','escortRegenWait','hitGrowthPct','hitGrowthHp','hitGrowthDef','hitGrowthEvents'])if(Number.isFinite(saved[key]))unit[key]=saved[key];
   if(saved.weaponMastery)unit.weaponMastery=normalizeMastery(saved.weaponMastery);
   if(saved.attributeProfile){unit.attributeProfile=structuredClone(saved.attributeProfile);unit._attributesNormalized=false;}
   if(saved.escortBaseStats)unit.escortBaseStats=saved.escortBaseStats;
   else if(unit.isMerchantEscort&&Number.isFinite(saved.maxHp))unit.escortBaseStats={hp:saved.maxHp,atk:saved.atk||unit.atk,def:saved.def??unit.def,speed:unit.speed,dmgReduction:saved.dmgReduction??unit.dmgReduction};
   if(saved.phaseActivity)unit.phaseActivity=saved.phaseActivity;
   if(saved.favoriteWeapon)unit.favoriteWeapon=saved.favoriteWeapon;
+  if(unit.isMerchantEscort&&!unit.isGateGuard)unit.escortRegenWait=Math.max(0,Math.min(ESCORT_REGEN.delay,Number(saved.escortRegenWait)||0));
   for(const key of ['isDown','dead','rescuedThisDown','downedInAid','rescuedToBase','returningToBase'])unit[key]=!!saved[key];
   if(saved.owesCommander)unit.owesCommander=true;
   if(saved.commanderFriend)unit.commanderFriend=true;
