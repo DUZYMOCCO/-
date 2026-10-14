@@ -1,0 +1,1236 @@
+{
+  "version": "6.11.15",
+  "cpuThrottle": 4,
+  "disposableStorage": true,
+  "legacy": {
+    "fixture": {
+      "jsonUtf8Bytes": 610063,
+      "jsonCharacters": 577607,
+      "storedUtf8Bytes": 212532,
+      "inventory": 0,
+      "historicalInventory": 106,
+      "soldiers": 48
+    },
+    "durationMs": 16265.599999999627,
+    "events": [
+      {
+        "name": "completePhase",
+        "time": 6852.5999999996275,
+        "ms": 2473.4000000003725,
+        "costs": {
+          "updateStatsUI": {
+            "calls": 1,
+            "ms": 110.70000000111759
+          },
+          "recalcPlayerStats": {
+            "calls": 1,
+            "ms": 1.300000000745058
+          },
+          "recalcSoldierStats": {
+            "calls": 7931,
+            "ms": 802.3000000994653,
+            "actual": 109,
+            "trial": 7822
+          },
+          "createSupplyEquipment": {
+            "calls": 24,
+            "ms": 1.3999999985098839
+          },
+          "supplyReinforcements": {
+            "calls": 1,
+            "ms": 10
+          },
+          "equipmentValueFor": {
+            "calls": 7822,
+            "ms": 2142.400000007823
+          },
+          "processSharedEquipmentBox": {
+            "calls": 2,
+            "ms": 2015.9999999981374
+          },
+          "investNation": {
+            "calls": 1,
+            "ms": 2.900000000372529
+          },
+          "advanceArmamentResearch": {
+            "calls": 1,
+            "ms": 2.300000000745058
+          },
+          "supplyMissingEquipment": {
+            "calls": 1,
+            "ms": 1173.2999999988824
+          }
+        },
+        "frameMs": 2501
+      },
+      {
+        "name": "changeTimePeriod",
+        "time": 12236,
+        "ms": 44.69999999925494,
+        "costs": {
+          "updateStatsUI": {
+            "calls": 0,
+            "ms": 0
+          },
+          "recalcPlayerStats": {
+            "calls": 0,
+            "ms": 0
+          },
+          "recalcSoldierStats": {
+            "calls": 0,
+            "ms": 0,
+            "actual": 0,
+            "trial": 0
+          },
+          "createSupplyEquipment": {
+            "calls": 0,
+            "ms": 0
+          },
+          "supplyReinforcements": {
+            "calls": 0,
+            "ms": 0
+          },
+          "equipmentValueFor": {
+            "calls": 0,
+            "ms": 0
+          },
+          "processSharedEquipmentBox": {
+            "calls": 0,
+            "ms": 0
+          },
+          "investNation": {
+            "calls": 0,
+            "ms": 0
+          },
+          "advanceArmamentResearch": {
+            "calls": 0,
+            "ms": 0
+          },
+          "supplyMissingEquipment": {
+            "calls": 0,
+            "ms": 0
+          }
+        },
+        "frameMs": 71.5
+      },
+      {
+        "name": "finishRest",
+        "time": 17256.400000000373,
+        "ms": 1303.4000000003725,
+        "costs": {
+          "updateStatsUI": {
+            "calls": 1,
+            "ms": 9.100000001490116
+          },
+          "recalcPlayerStats": {
+            "calls": 0,
+            "ms": 0
+          },
+          "recalcSoldierStats": {
+            "calls": 3731,
+            "ms": 390.49999997764826,
+            "actual": 0,
+            "trial": 3731
+          },
+          "createSupplyEquipment": {
+            "calls": 0,
+            "ms": 0
+          },
+          "supplyReinforcements": {
+            "calls": 0,
+            "ms": 0
+          },
+          "equipmentValueFor": {
+            "calls": 3731,
+            "ms": 1222.1000000108033
+          },
+          "processSharedEquipmentBox": {
+            "calls": 1,
+            "ms": 1245.4000000003725
+          },
+          "investNation": {
+            "calls": 0,
+            "ms": 0
+          },
+          "advanceArmamentResearch": {
+            "calls": 0,
+            "ms": 0
+          },
+          "supplyMissingEquipment": {
+            "calls": 0,
+            "ms": 0
+          },
+          "seedInitialMonsters": {
+            "calls": 1,
+            "ms": 6.199999999254942
+          }
+        },
+        "frameMs": 1327.5999999996275
+      }
+    ],
+    "methodCosts": {
+      "updateStatsUI": {
+        "calls": 1139,
+        "ms": 263.0000000074506
+      },
+      "recalcPlayerStats": {
+        "calls": 5,
+        "ms": 3.800000000745058
+      },
+      "recalcSoldierStats": {
+        "calls": 11711,
+        "ms": 1220.2000000812113,
+        "actual": 158,
+        "trial": 11553
+      },
+      "createSupplyEquipment": {
+        "calls": 24,
+        "ms": 1.3999999985098839
+      },
+      "supplyReinforcements": {
+        "calls": 1,
+        "ms": 10
+      },
+      "equipmentValueFor": {
+        "calls": 11553,
+        "ms": 3364.5000000186265
+      },
+      "processSharedEquipmentBox": {
+        "calls": 3,
+        "ms": 3261.39999999851
+      },
+      "investNation": {
+        "calls": 1,
+        "ms": 2.900000000372529
+      },
+      "advanceArmamentResearch": {
+        "calls": 1,
+        "ms": 2.300000000745058
+      },
+      "supplyMissingEquipment": {
+        "calls": 1,
+        "ms": 1173.2999999988824
+      },
+      "seedInitialMonsters": {
+        "calls": 1,
+        "ms": 6.199999999254942
+      }
+    },
+    "ticks": 8,
+    "restDurationMs": 10403.800000000745,
+    "saveCalls": [
+      {
+        "time": 9173.800000000745,
+        "ms": 41.09999999962747,
+        "background": true,
+        "restTimer": 8
+      },
+      {
+        "time": 10235.099999999627,
+        "ms": 33,
+        "background": true,
+        "restTimer": 7.016799999999998
+      },
+      {
+        "time": 12239.099999999627,
+        "ms": 41.59999999962747,
+        "background": true,
+        "restTimer": 5.016799999999992
+      },
+      {
+        "time": 18508.699999999255,
+        "ms": 42,
+        "background": true,
+        "restTimer": 0
+      },
+      {
+        "time": 21511.800000000745,
+        "ms": 36.09999999962747,
+        "background": true,
+        "restTimer": 0
+      }
+    ],
+    "frames": 690,
+    "maxFrameMs": 2501,
+    "p95FrameMs": 24.699999999254942,
+    "over100": 2,
+    "records": [
+      {
+        "time": "2026-10-14T15:34:39.818Z",
+        "frameMs": 2501.0999999996275,
+        "rafMs": 2483.3999999999996,
+        "sincePreviousSeconds": null,
+        "intervalStart": 6850.800000000745,
+        "intervalEnd": 9351.900000000373,
+        "timing": [
+          {
+            "name": "追従.開始",
+            "ms": 0,
+            "totalMs": 0,
+            "calls": 1
+          },
+          {
+            "name": "LS書く",
+            "ms": 0,
+            "totalMs": 0,
+            "calls": 1
+          },
+          {
+            "name": "霧.revealAt",
+            "ms": 0.09999999962747097,
+            "totalMs": 0.09999999962747097,
+            "calls": 2
+          },
+          {
+            "name": "霧.revealCamp",
+            "ms": 0,
+            "totalMs": 0.09999999962747097,
+            "calls": 1
+          },
+          {
+            "name": "霧.forceRevealAt",
+            "ms": 0,
+            "totalMs": 0,
+            "calls": 1
+          },
+          {
+            "name": "フォグ公開",
+            "ms": 0,
+            "totalMs": 0.09999999962747097,
+            "calls": 1
+          },
+          {
+            "name": "LS読む",
+            "ms": 0,
+            "totalMs": 0,
+            "calls": 2
+          },
+          {
+            "name": "枠.updateBackground",
+            "ms": 30.40000000037253,
+            "totalMs": 30.40000000037253,
+            "calls": 1
+          },
+          {
+            "name": "ゲーム保存",
+            "ms": 10.699999999254942,
+            "totalMs": 41.09999999962747,
+            "calls": 1
+          },
+          {
+            "name": "更新その他",
+            "ms": 2435.699999999255,
+            "totalMs": 2476.89999999851,
+            "calls": 1
+          },
+          {
+            "name": "霧.drawFieldOverlay",
+            "ms": 0,
+            "totalMs": 0,
+            "calls": 1
+          },
+          {
+            "name": "描画その他",
+            "ms": 16.800000000745058,
+            "totalMs": 16.800000000745058,
+            "calls": 1
+          },
+          {
+            "name": "フレーム本体",
+            "ms": 0,
+            "totalMs": 2493.699999999255,
+            "calls": 1
+          }
+        ],
+        "measuredMs": 2493.699999999255,
+        "unmeasuredMs": 7.400000000372529,
+        "terrain": {
+          "disabled": false,
+          "pending": 0,
+          "rasterSize": 512,
+          "tiles": 24,
+          "workerActive": true,
+          "workerSupported": true,
+          "offscreenSupported": true,
+          "bitmapSupported": true
+        },
+        "longTasks": [
+          {
+            "start": 6850.5,
+            "ms": 2500
+          }
+        ]
+      },
+      {
+        "time": "2026-10-14T15:34:49.047Z",
+        "frameMs": 1327.6000000014901,
+        "rafMs": 1316.4000000000015,
+        "sincePreviousSeconds": 9.228400000000372,
+        "intervalStart": 17252.699999999255,
+        "intervalEnd": 18580.300000000745,
+        "timing": [
+          {
+            "name": "LS読む",
+            "ms": 0,
+            "totalMs": 0,
+            "calls": 2
+          },
+          {
+            "name": "枠.updateBackground",
+            "ms": 33.59999999962747,
+            "totalMs": 33.59999999962747,
+            "calls": 1
+          },
+          {
+            "name": "ゲーム保存",
+            "ms": 8.200000001117587,
+            "totalMs": 41.80000000074506,
+            "calls": 1
+          },
+          {
+            "name": "更新その他",
+            "ms": 1265.699999999255,
+            "totalMs": 1307.5,
+            "calls": 1
+          },
+          {
+            "name": "霧.drawFieldOverlay",
+            "ms": 0,
+            "totalMs": 0,
+            "calls": 1
+          },
+          {
+            "name": "描画その他",
+            "ms": 8.700000001117587,
+            "totalMs": 8.700000001117587,
+            "calls": 1
+          },
+          {
+            "name": "フレーム本体",
+            "ms": 0.09999999962747097,
+            "totalMs": 1316.300000000745,
+            "calls": 1
+          }
+        ],
+        "measuredMs": 1316.300000000745,
+        "unmeasuredMs": 11.300000000745058,
+        "terrain": {
+          "disabled": false,
+          "pending": 0,
+          "rasterSize": 512,
+          "tiles": 24,
+          "workerActive": true,
+          "workerSupported": true,
+          "offscreenSupported": true,
+          "bitmapSupported": true
+        },
+        "longTasks": [
+          {
+            "start": 17252.300000000745,
+            "ms": 1326
+          }
+        ]
+      }
+    ],
+    "diagnostic": {
+      "version": "6.11.15",
+      "thresholdMs": 100,
+      "terrain": {
+        "disabled": false,
+        "pending": 0,
+        "rasterSize": 512,
+        "tiles": 24,
+        "workerActive": true,
+        "workerSupported": true,
+        "offscreenSupported": true,
+        "bitmapSupported": true
+      },
+      "storageSupported": true,
+      "longTaskSupported": true,
+      "records": [
+        {
+          "time": "2026-10-14T15:34:39.818Z",
+          "frameMs": 2501.0999999996275,
+          "rafMs": 2483.3999999999996,
+          "sincePreviousSeconds": null,
+          "intervalStart": 6850.800000000745,
+          "intervalEnd": 9351.900000000373,
+          "timing": [
+            {
+              "name": "追従.開始",
+              "ms": 0,
+              "totalMs": 0,
+              "calls": 1
+            },
+            {
+              "name": "LS書く",
+              "ms": 0,
+              "totalMs": 0,
+              "calls": 1
+            },
+            {
+              "name": "霧.revealAt",
+              "ms": 0.09999999962747097,
+              "totalMs": 0.09999999962747097,
+              "calls": 2
+            },
+            {
+              "name": "霧.revealCamp",
+              "ms": 0,
+              "totalMs": 0.09999999962747097,
+              "calls": 1
+            },
+            {
+              "name": "霧.forceRevealAt",
+              "ms": 0,
+              "totalMs": 0,
+              "calls": 1
+            },
+            {
+              "name": "フォグ公開",
+              "ms": 0,
+              "totalMs": 0.09999999962747097,
+              "calls": 1
+            },
+            {
+              "name": "LS読む",
+              "ms": 0,
+              "totalMs": 0,
+              "calls": 2
+            },
+            {
+              "name": "枠.updateBackground",
+              "ms": 30.40000000037253,
+              "totalMs": 30.40000000037253,
+              "calls": 1
+            },
+            {
+              "name": "ゲーム保存",
+              "ms": 10.699999999254942,
+              "totalMs": 41.09999999962747,
+              "calls": 1
+            },
+            {
+              "name": "更新その他",
+              "ms": 2435.699999999255,
+              "totalMs": 2476.89999999851,
+              "calls": 1
+            },
+            {
+              "name": "霧.drawFieldOverlay",
+              "ms": 0,
+              "totalMs": 0,
+              "calls": 1
+            },
+            {
+              "name": "描画その他",
+              "ms": 16.800000000745058,
+              "totalMs": 16.800000000745058,
+              "calls": 1
+            },
+            {
+              "name": "フレーム本体",
+              "ms": 0,
+              "totalMs": 2493.699999999255,
+              "calls": 1
+            }
+          ],
+          "measuredMs": 2493.699999999255,
+          "unmeasuredMs": 7.400000000372529,
+          "terrain": {
+            "disabled": false,
+            "pending": 0,
+            "rasterSize": 512,
+            "tiles": 24,
+            "workerActive": true,
+            "workerSupported": true,
+            "offscreenSupported": true,
+            "bitmapSupported": true
+          },
+          "longTasks": [
+            {
+              "start": 6850.5,
+              "ms": 2500
+            }
+          ]
+        },
+        {
+          "time": "2026-10-14T15:34:49.047Z",
+          "frameMs": 1327.6000000014901,
+          "rafMs": 1316.4000000000015,
+          "sincePreviousSeconds": 9.228400000000372,
+          "intervalStart": 17252.699999999255,
+          "intervalEnd": 18580.300000000745,
+          "timing": [
+            {
+              "name": "LS読む",
+              "ms": 0,
+              "totalMs": 0,
+              "calls": 2
+            },
+            {
+              "name": "枠.updateBackground",
+              "ms": 33.59999999962747,
+              "totalMs": 33.59999999962747,
+              "calls": 1
+            },
+            {
+              "name": "ゲーム保存",
+              "ms": 8.200000001117587,
+              "totalMs": 41.80000000074506,
+              "calls": 1
+            },
+            {
+              "name": "更新その他",
+              "ms": 1265.699999999255,
+              "totalMs": 1307.5,
+              "calls": 1
+            },
+            {
+              "name": "霧.drawFieldOverlay",
+              "ms": 0,
+              "totalMs": 0,
+              "calls": 1
+            },
+            {
+              "name": "描画その他",
+              "ms": 8.700000001117587,
+              "totalMs": 8.700000001117587,
+              "calls": 1
+            },
+            {
+              "name": "フレーム本体",
+              "ms": 0.09999999962747097,
+              "totalMs": 1316.300000000745,
+              "calls": 1
+            }
+          ],
+          "measuredMs": 1316.300000000745,
+          "unmeasuredMs": 11.300000000745058,
+          "terrain": {
+            "disabled": false,
+            "pending": 0,
+            "rasterSize": 512,
+            "tiles": 24,
+            "workerActive": true,
+            "workerSupported": true,
+            "offscreenSupported": true,
+            "bitmapSupported": true
+          },
+          "longTasks": [
+            {
+              "start": 17252.300000000745,
+              "ms": 1326
+            }
+          ]
+        }
+      ],
+      "longTasks": [
+        {
+          "start": 6850.5,
+          "ms": 2500
+        },
+        {
+          "start": 10234.099999999627,
+          "ms": 76
+        },
+        {
+          "start": 12233.800000000745,
+          "ms": 71
+        },
+        {
+          "start": 17252.300000000745,
+          "ms": 1326
+        },
+        {
+          "start": 21510.199999999255,
+          "ms": 53
+        }
+      ]
+    },
+    "moved": 2753.499589659754,
+    "saved": {
+      "restTimer": 0,
+      "count": 49,
+      "spent": 1004,
+      "gold": 855,
+      "upgrade": 2
+    },
+    "current": {
+      "count": 49,
+      "spent": 1004,
+      "gold": 855,
+      "upgrade": 2
+    }
+  },
+  "fixed": {
+    "fixture": {
+      "jsonUtf8Bytes": 610401,
+      "jsonCharacters": 577955,
+      "storedUtf8Bytes": 212288,
+      "inventory": 0,
+      "historicalInventory": 109,
+      "soldiers": 48
+    },
+    "durationMs": 12884.199999999255,
+    "events": [
+      {
+        "name": "completePhase",
+        "time": 6687.199999999255,
+        "ms": 355.09999999962747,
+        "costs": {
+          "updateStatsUI": {
+            "calls": 1,
+            "ms": 101.19999999925494
+          },
+          "recalcPlayerStats": {
+            "calls": 1,
+            "ms": 0.8000000007450581
+          },
+          "recalcSoldierStats": {
+            "calls": 261,
+            "ms": 91.59999997913837,
+            "actual": 109,
+            "trial": 152
+          },
+          "createSupplyEquipment": {
+            "calls": 24,
+            "ms": 1.699999999254942
+          },
+          "supplyReinforcements": {
+            "calls": 1,
+            "ms": 9
+          },
+          "processSharedEquipmentBox": {
+            "calls": 2,
+            "ms": 19.800000000745058
+          },
+          "investNation": {
+            "calls": 1,
+            "ms": 2.599999999627471
+          },
+          "advanceArmamentResearch": {
+            "calls": 1,
+            "ms": 2
+          },
+          "equipmentValueFor": {
+            "calls": 152,
+            "ms": 73.00000001117587
+          },
+          "supplyMissingEquipment": {
+            "calls": 1,
+            "ms": 108.5
+          }
+        },
+        "frameMs": 377.69999999925494
+      },
+      {
+        "name": "changeTimePeriod",
+        "time": 9953.89999999851,
+        "ms": 36.90000000037253,
+        "costs": {
+          "updateStatsUI": {
+            "calls": 0,
+            "ms": 0
+          },
+          "recalcPlayerStats": {
+            "calls": 0,
+            "ms": 0
+          },
+          "recalcSoldierStats": {
+            "calls": 0,
+            "ms": 0,
+            "actual": 0,
+            "trial": 0
+          },
+          "createSupplyEquipment": {
+            "calls": 0,
+            "ms": 0
+          },
+          "supplyReinforcements": {
+            "calls": 0,
+            "ms": 0
+          },
+          "processSharedEquipmentBox": {
+            "calls": 0,
+            "ms": 0
+          },
+          "investNation": {
+            "calls": 0,
+            "ms": 0
+          },
+          "advanceArmamentResearch": {
+            "calls": 0,
+            "ms": 0
+          },
+          "equipmentValueFor": {
+            "calls": 0,
+            "ms": 0
+          },
+          "supplyMissingEquipment": {
+            "calls": 0,
+            "ms": 0
+          }
+        },
+        "frameMs": 60.70000000111759
+      },
+      {
+        "name": "finishRest",
+        "time": 14971.39999999851,
+        "ms": 51.90000000037253,
+        "costs": {
+          "updateStatsUI": {
+            "calls": 1,
+            "ms": 4.099999999627471
+          },
+          "recalcPlayerStats": {
+            "calls": 0,
+            "ms": 0
+          },
+          "recalcSoldierStats": {
+            "calls": 0,
+            "ms": 0,
+            "actual": 0,
+            "trial": 0
+          },
+          "createSupplyEquipment": {
+            "calls": 0,
+            "ms": 0
+          },
+          "supplyReinforcements": {
+            "calls": 0,
+            "ms": 0
+          },
+          "processSharedEquipmentBox": {
+            "calls": 1,
+            "ms": 7.099999999627471
+          },
+          "investNation": {
+            "calls": 0,
+            "ms": 0
+          },
+          "advanceArmamentResearch": {
+            "calls": 0,
+            "ms": 0
+          },
+          "equipmentValueFor": {
+            "calls": 0,
+            "ms": 0
+          },
+          "supplyMissingEquipment": {
+            "calls": 0,
+            "ms": 0
+          },
+          "seedInitialMonsters": {
+            "calls": 1,
+            "ms": 4.5
+          }
+        },
+        "frameMs": 75.5
+      }
+    ],
+    "methodCosts": {
+      "updateStatsUI": {
+        "calls": 1201,
+        "ms": 227.5
+      },
+      "recalcPlayerStats": {
+        "calls": 5,
+        "ms": 2.5000000037252903
+      },
+      "recalcSoldierStats": {
+        "calls": 311,
+        "ms": 117.79999997653067,
+        "actual": 159,
+        "trial": 152
+      },
+      "createSupplyEquipment": {
+        "calls": 24,
+        "ms": 1.699999999254942
+      },
+      "supplyReinforcements": {
+        "calls": 1,
+        "ms": 9
+      },
+      "processSharedEquipmentBox": {
+        "calls": 3,
+        "ms": 26.90000000037253
+      },
+      "investNation": {
+        "calls": 1,
+        "ms": 2.599999999627471
+      },
+      "advanceArmamentResearch": {
+        "calls": 1,
+        "ms": 2
+      },
+      "equipmentValueFor": {
+        "calls": 152,
+        "ms": 73.00000001117587
+      },
+      "supplyMissingEquipment": {
+        "calls": 1,
+        "ms": 108.5
+      },
+      "seedInitialMonsters": {
+        "calls": 1,
+        "ms": 4.5
+      }
+    },
+    "ticks": 8,
+    "restDurationMs": 8284.199999999255,
+    "saveCalls": [
+      {
+        "time": 6905.5,
+        "ms": 35.59999999962747,
+        "background": true,
+        "restTimer": 8
+      },
+      {
+        "time": 7953.39999999851,
+        "ms": 30.40000000037253,
+        "background": true,
+        "restTimer": 7.016599999999998
+      },
+      {
+        "time": 9956.199999999255,
+        "ms": 34.59999999962747,
+        "background": true,
+        "restTimer": 5.016699999999974
+      },
+      {
+        "time": 14983.799999998882,
+        "ms": 35.30000000074506,
+        "background": true,
+        "restTimer": 0
+      },
+      {
+        "time": 17974.799999998882,
+        "ms": 37,
+        "background": true,
+        "restTimer": 0
+      }
+    ],
+    "frames": 731,
+    "maxFrameMs": 377.69999999925494,
+    "p95FrameMs": 19.600000001490116,
+    "over100": 1,
+    "records": [
+      {
+        "time": "2026-10-14T15:35:00.411Z",
+        "frameMs": 377.7000000011176,
+        "rafMs": 366.60000000000036,
+        "sincePreviousSeconds": null,
+        "intervalStart": 6685.799999998882,
+        "intervalEnd": 7063.5,
+        "timing": [
+          {
+            "name": "追従.開始",
+            "ms": 0.2000000011175871,
+            "totalMs": 0.2000000011175871,
+            "calls": 1
+          },
+          {
+            "name": "LS書く",
+            "ms": 0.19999999925494194,
+            "totalMs": 0.19999999925494194,
+            "calls": 1
+          },
+          {
+            "name": "霧.revealAt",
+            "ms": 0,
+            "totalMs": 0,
+            "calls": 2
+          },
+          {
+            "name": "霧.revealCamp",
+            "ms": 0,
+            "totalMs": 0,
+            "calls": 1
+          },
+          {
+            "name": "霧.forceRevealAt",
+            "ms": 0,
+            "totalMs": 0,
+            "calls": 1
+          },
+          {
+            "name": "フォグ公開",
+            "ms": 0.2000000011175871,
+            "totalMs": 0.2000000011175871,
+            "calls": 1
+          },
+          {
+            "name": "LS読む",
+            "ms": 0,
+            "totalMs": 0,
+            "calls": 2
+          },
+          {
+            "name": "枠.updateBackground",
+            "ms": 29,
+            "totalMs": 29,
+            "calls": 1
+          },
+          {
+            "name": "ゲーム保存",
+            "ms": 6.599999999627471,
+            "totalMs": 35.59999999962747,
+            "calls": 1
+          },
+          {
+            "name": "更新その他",
+            "ms": 321.69999999925494,
+            "totalMs": 357.90000000037253,
+            "calls": 1
+          },
+          {
+            "name": "霧.drawFieldOverlay",
+            "ms": 0,
+            "totalMs": 0,
+            "calls": 1
+          },
+          {
+            "name": "描画その他",
+            "ms": 13.5,
+            "totalMs": 13.5,
+            "calls": 1
+          },
+          {
+            "name": "フレーム本体",
+            "ms": 0,
+            "totalMs": 371.40000000037253,
+            "calls": 1
+          }
+        ],
+        "measuredMs": 371.40000000037253,
+        "unmeasuredMs": 6.300000000745058,
+        "terrain": {
+          "disabled": false,
+          "pending": 0,
+          "rasterSize": 512,
+          "tiles": 24,
+          "workerActive": true,
+          "workerSupported": true,
+          "offscreenSupported": true,
+          "bitmapSupported": true
+        },
+        "longTasks": [
+          {
+            "start": 6685.5999999996275,
+            "ms": 376
+          }
+        ]
+      }
+    ],
+    "diagnostic": {
+      "version": "6.11.15",
+      "thresholdMs": 100,
+      "terrain": {
+        "disabled": false,
+        "pending": 0,
+        "rasterSize": 512,
+        "tiles": 24,
+        "workerActive": true,
+        "workerSupported": true,
+        "offscreenSupported": true,
+        "bitmapSupported": true
+      },
+      "storageSupported": true,
+      "longTaskSupported": true,
+      "records": [
+        {
+          "time": "2026-10-14T15:35:00.411Z",
+          "frameMs": 377.7000000011176,
+          "rafMs": 366.60000000000036,
+          "sincePreviousSeconds": null,
+          "intervalStart": 6685.799999998882,
+          "intervalEnd": 7063.5,
+          "timing": [
+            {
+              "name": "追従.開始",
+              "ms": 0.2000000011175871,
+              "totalMs": 0.2000000011175871,
+              "calls": 1
+            },
+            {
+              "name": "LS書く",
+              "ms": 0.19999999925494194,
+              "totalMs": 0.19999999925494194,
+              "calls": 1
+            },
+            {
+              "name": "霧.revealAt",
+              "ms": 0,
+              "totalMs": 0,
+              "calls": 2
+            },
+            {
+              "name": "霧.revealCamp",
+              "ms": 0,
+              "totalMs": 0,
+              "calls": 1
+            },
+            {
+              "name": "霧.forceRevealAt",
+              "ms": 0,
+              "totalMs": 0,
+              "calls": 1
+            },
+            {
+              "name": "フォグ公開",
+              "ms": 0.2000000011175871,
+              "totalMs": 0.2000000011175871,
+              "calls": 1
+            },
+            {
+              "name": "LS読む",
+              "ms": 0,
+              "totalMs": 0,
+              "calls": 2
+            },
+            {
+              "name": "枠.updateBackground",
+              "ms": 29,
+              "totalMs": 29,
+              "calls": 1
+            },
+            {
+              "name": "ゲーム保存",
+              "ms": 6.599999999627471,
+              "totalMs": 35.59999999962747,
+              "calls": 1
+            },
+            {
+              "name": "更新その他",
+              "ms": 321.69999999925494,
+              "totalMs": 357.90000000037253,
+              "calls": 1
+            },
+            {
+              "name": "霧.drawFieldOverlay",
+              "ms": 0,
+              "totalMs": 0,
+              "calls": 1
+            },
+            {
+              "name": "描画その他",
+              "ms": 13.5,
+              "totalMs": 13.5,
+              "calls": 1
+            },
+            {
+              "name": "フレーム本体",
+              "ms": 0,
+              "totalMs": 371.40000000037253,
+              "calls": 1
+            }
+          ],
+          "measuredMs": 371.40000000037253,
+          "unmeasuredMs": 6.300000000745058,
+          "terrain": {
+            "disabled": false,
+            "pending": 0,
+            "rasterSize": 512,
+            "tiles": 24,
+            "workerActive": true,
+            "workerSupported": true,
+            "offscreenSupported": true,
+            "bitmapSupported": true
+          },
+          "longTasks": [
+            {
+              "start": 6685.5999999996275,
+              "ms": 376
+            }
+          ]
+        }
+      ],
+      "longTasks": [
+        {
+          "start": 6685.5999999996275,
+          "ms": 376
+        },
+        {
+          "start": 7952.299999998882,
+          "ms": 72
+        },
+        {
+          "start": 9952.299999998882,
+          "ms": 60
+        },
+        {
+          "start": 14968.799999998882,
+          "ms": 74
+        },
+        {
+          "start": 17973.799999998882,
+          "ms": 51
+        }
+      ]
+    },
+    "moved": 2741.660068753874,
+    "saved": {
+      "restTimer": 0,
+      "count": 50,
+      "spent": 1024,
+      "gold": 855,
+      "upgrade": 2
+    },
+    "current": {
+      "count": 50,
+      "spent": 1024,
+      "gold": 855,
+      "upgrade": 2
+    },
+    "realWorkerBurst": {
+      "results": [
+        {
+          "status": "superseded"
+        },
+        {
+          "status": "superseded"
+        },
+        {
+          "status": "superseded"
+        },
+        {
+          "status": "superseded"
+        },
+        {
+          "status": "superseded"
+        },
+        {
+          "status": "superseded"
+        },
+        {
+          "status": "superseded"
+        },
+        {
+          "status": "superseded"
+        },
+        {
+          "status": "superseded"
+        },
+        {
+          "status": "superseded"
+        },
+        {
+          "status": "superseded"
+        },
+        {
+          "status": "saved"
+        }
+      ],
+      "finalGold": 211,
+      "oldResult": {
+        "status": "superseded"
+      },
+      "hiddenGold": 222,
+      "hiddenSaveSynchronous": true
+    }
+  },
+  "errors": [],
+  "phaseBoundariesAtMost100ms": false,
+  "allFramesAtMost100ms": false
+}

@@ -208,7 +208,10 @@ export function distributeSharedBoxToSoldiers(box, soldiers, recalcFn, valueFor=
   const held=new Set((soldiers||[]).flatMap(s=>Object.values(s?.equipped||{}).filter(Boolean).map(i=>i.id)));
   const remaining=[...new Map((box||[]).filter(i=>i&&!held.has(i.id)).map(i=>[i.id,i])).values()];let equippedCount=0;
   const alive=(soldiers||[]).filter(s=>s&&!s.dead),changed=new Set();
+  // Keep the legacy initialization even when there is no candidate to distribute.
+  for(const soldier of alive)soldier.equipped||={};
   for(const [type,key] of Object.entries(EQUIPMENT_SLOTS)){
+    if(!remaining.some(item=>item.type===type&&!item.favorite&&!isGodRollProtected(item)))continue;
     // Fill empty slots before upgrading existing equipment, including wounded soldiers.
     const recipients=[...alive].sort((a,b)=>Number(!!a.equipped?.[key])-Number(!!b.equipped?.[key])||valueFor(a,a.equipped?.[key],key)-valueFor(b,b.equipped?.[key],key));
     for(const soldier of recipients){soldier.equipped||={};

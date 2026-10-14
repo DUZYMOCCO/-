@@ -1,5 +1,5 @@
 import {beginFollowerRecovery,noteFollowerIntent,suspendFollowerRecovery,finishFollowerRecovery,profileFollowerRecovery} from './follower-recovery.js?v=262';
-import {configurePerfSettings} from './perf-diagnostics.js?v=264';
+import {configurePerfSettings} from './perf-diagnostics.js?v=265';
 import {gameText} from './game-text.js?v=262';
 import {talentTag} from './talent-labels.js?v=247';
 import {fieldDialogReturn} from './dialog-return.js?v=200';
@@ -7,7 +7,7 @@ import {guildMethods} from './guild-contracts.js?v=264';
 import {headquartersMoveTarget} from './hq-navigation.js?v=200';
 import {configureBattlefieldUI,quietBattlefieldContext} from './battlefield-ui.js?v=249';
 import {renderNavigationMap} from './navigation-map.js?v=189';
-import {soldierEquipmentValue,observeEquipment,standardEquipmentCost,RESERVE_ARMAMENT_COUNT} from './armament-rules.js?v=231';
+import {soldierEquipmentValue,createEquipmentValueCache,observeEquipment,standardEquipmentCost,RESERVE_ARMAMENT_COUNT} from './armament-rules.js?v=265';
 import {configureRangedEnemy,updateRangedEnemy,updateDefenseWalls,interceptHostileShot,isHostileShot,updateHostileBolt,drawDefenseWalls} from './enemy-ranged.js?v=235';
 import {LIMITED_CLASSES,initializeLimitedAllies,prepareLimitedEncounter,createLimitedAlly,joinLimitedEncounter,updateLimitedAllies,updateNinja,updateShuriken,drawLimitedEncounter,serializeLimitedAllies,notifyLimitedJoin} from './limited-allies.js?v=264';
 import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=182';
@@ -25,7 +25,7 @@ import {latestEquipmentTier,recordMerchantEquipment,ensureMerchantCatalog,refres
 import {initializeMedicalPosts,updateMedicalPosts,serializeMedicalPosts,medicalPostLayout,nearestKnownMedicalPost,drawMedicalPost,drawMedicalMap,drawMedicalMarker,drawTownMedicalReception,drawRescueDirection} from './medical-posts.js?v=182';
 import {invasionMethods,initializeInvasions,serializeInvasions,shouldTriggerRandomRaid,makeEnemyRoom,drawInvasionRoute} from './invasion-rules.js?v=264';
 import {gateMethods,serializeGatePosts,replenishTownGateGuards,initializeGateGuards,ensureTownGuards,serializeGateGuards,updateGateGuards,gateGuardVisible,applyFortifications,drawFortification,exitGateTown,townExitReached,wallBlocksAttack,attackBlocked as coverBlocked} from './gate-rules.js?v=215';
-import {nationMethods,normalizeNation,nationalIncome,nationalPayrollPlan,headquartersDamageMult,drawNationalDevelopment,DEVELOPMENT_STAGES} from './nation-rules.js?v=264';
+import {nationMethods,normalizeNation,nationalIncome,nationalPayrollPlan,headquartersDamageMult,drawNationalDevelopment,DEVELOPMENT_STAGES} from './nation-rules.js?v=265';
 import {equipmentUpgradeCost,salaryQuote,paySoldiers} from './payroll-rules.js?v=226';
 import {addFieldDrop,ageFieldDrops,attractFieldDrops,FIELD_DROP_PICKUP_RADIUS} from './field-drops.js?v=182';
 import {drawLootDrop,drawLootPullTrail} from './loot-visuals.js?v=242';
@@ -102,7 +102,7 @@ import {
   shouldAbsorbToSharedBox, calcScoutCost, estimateSoldierScoutValue, calcDismissSettlement,
   formatFiscalReportJa, formatFiscalReportHtml, distributeSharedBoxToSoldiers, sellWeakSurplusFromBox,
   SHARED_BOX_MAX_TIER, SCOUT_COST_BY_TALENT, defaultDonateAmount, donatePresetAmounts, EQUIPMENT_SLOTS
-} from './economy-rules.js?v=231';
+} from './economy-rules.js?v=265';
 
 import { EQUIPMENT_TYPES, saleValue, equippedIds, canSell, lowValueIds, chooseLootTier, distanceScaling, shrineUpgradeCap, compareEquipment, equipmentScore, compareEquipmentStrength, rollWeaponTraits, weaponCombatProfile, soldierAttackCooldown, evaluateMeleeSweetSpot, isGodRollProtected, zoneRingPower, zoneRingLabelJa, equipmentIcon, equipmentName } from './equipment-rules.js?v=242';
 import { rollFieldBrute, advanceDemonWarband, stepDemonWarbandGroup } from './field-hosts.js?v=182';
@@ -3152,6 +3152,7 @@ export const IronSquadGame = {
   recalcSoldierStats(s) {
     if(isOwnSquad(s)||s.joinedFrom==='tavern')s.civilianOutfit=!this.isEnlisted();
     if (!s) return;
+    if(!s._equipmentTrial)this._equipmentStatRevision=(this._equipmentStatRevision||0)+1;
     if(!s._equipmentTrial)this.returnUnusableDefense(s,s.equipped,this.sharedEquipBox||=[]);
     migrateHeavyWeaponAttack(s.equipped?.weapon || s.weapon);
     migrateMeleeWeaponBalance(s.equipped?.weapon || s.weapon);
@@ -9878,6 +9879,27 @@ export const IronSquadGame = {
 
   processSharedEquipmentBox() {
     this.sharedEquipBox = this.sharedEquipBox || [];
+    const state=()=>{
+      const stamp=[this.phase,this._equipmentStatRevision||0];
+      const gear=item=>{
+        stamp.push(item,item?.type,item?.tier,item?.upgrade,item?.favorite,isGodRollProtected(item),item?.forgeTag,item?.isGodRoll,item?.powerSkip,item?.dropOnly,item?.craftOnly,item?.heroOnly,item?.minStrength,item?.weaponStyle,item?.armorStyle,item?.rollMult);
+        for(const [key,value] of Object.entries(item?.stats||{}))stamp.push(key,value);
+      };
+      for(const item of this.sharedEquipBox)gear(item);
+      stamp.push('soldiers');
+      for(const unit of [...(this.squad||[]),...(this.reserves||[])]){
+        stamp.push(unit,unit.id,unit.dead,unit.isDown,unit.soldierClass,unit.heroPartyId,unit.level,unit.talent,unit.isNamed,unit.isVeteran,unit.survivedWaves,unit.minionKills,unit.bossKills,unit.inferiorGrit,unit.favoriteWeapon,unit._casterStrengthTimer,unit._casterStrengthBonus,
+          JSON.stringify([unit.attributeProfile,unit.weaponMastery,unit.deathlineSkills]));
+        for(const key of ['weapon','armor','shield','helmet','legs','gloves','amulet'])gear(unit.equipped?.[key]);
+        gear(unit.weapon);
+      }
+      return stamp;
+    };
+    const before=state(),previous=this._sharedEquipmentProcessed;
+    if(previous&&before.length===previous.length&&before.every((value,i)=>Object.is(value,previous[i]))){
+      this.nation=normalizeNation(this.nation);
+      return {equippedCount:0,soldGold:0,soldCount:0};
+    }
     // 異質/神鍛 that somehow landed in 国庫共有 → repatriate to personal inventory (never auto-sell/distribute as weak surplus)
     const stay = [];
     this.inventory = this.inventory || [];
@@ -9890,8 +9912,8 @@ export const IronSquadGame = {
     }
     this.sharedEquipBox = stay;
     const soldiers = [...(this.squad || []), ...(this.reserves || [])];
-    const value=(unit,item,key)=>this.equipmentValueFor(unit,item,key);
-    const dist = distributeSharedBoxToSoldiers(this.sharedEquipBox, soldiers, (s) => this.recalcSoldierStats(s),value);
+    const value=createEquipmentValueCache((unit,item,key)=>this.equipmentValueFor(unit,item,key));
+    const dist = distributeSharedBoxToSoldiers(this.sharedEquipBox, soldiers, s=>{this.recalcSoldierStats(s);value.invalidate(s);},value);
     this.sharedEquipBox = dist.remaining;
     if(this.phaseFiscal)this.phaseFiscal.sharedEquipmentIssued=(this.phaseFiscal.sharedEquipmentIssued||0)+dist.equippedCount;
     // 売却基準は通常品で作る（先頭が術士だと魔導/治癒品が基準になり、低ティアの通常防具まで売ってしまう）
@@ -9908,6 +9930,9 @@ export const IronSquadGame = {
         this.phaseFiscal.surplusCount = (this.phaseFiscal.surplusCount || 0) + sold.soldCount;
       }
     }
+    // A recalculation after a replacement can expose a new opportunity on the
+    // next pass. Only remember a pass that changed no actor's equipment.
+    this._sharedEquipmentProcessed=dist.equippedCount===0?state():null;
     return { equippedCount: dist.equippedCount, soldGold: sold.soldGold, soldCount: sold.soldCount };
   },
 

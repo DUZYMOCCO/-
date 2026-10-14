@@ -1,9 +1,9 @@
 import {canUseEquipment} from './weapon-requirements.js?v=239';
-import {normalizeArmament,ARMAMENT_POLICIES,advanceResearch,researchCost,standardEquipmentCost,personalEquipmentBudget,RESERVE_ARMAMENT_COUNT,ARMAMENT_LIMITS} from './armament-rules.js?v=231';
+import {normalizeArmament,ARMAMENT_POLICIES,advanceResearch,researchCost,standardEquipmentCost,personalEquipmentBudget,createEquipmentValueCache,RESERVE_ARMAMENT_COUNT,ARMAMENT_LIMITS} from './armament-rules.js?v=265';
 import {tierDescription,MAX_EQUIPMENT_TIER} from './equipment-tiers.js?v=231';
 import {WORLD_SIZE} from './world.js?v=260';
 import {saleValue,isGodRollProtected} from './equipment-rules.js?v=242';
-import {calcTreasuryGrossIncome,calcCommanderStipend,EQUIPMENT_SLOTS} from './economy-rules.js?v=231';
+import {calcTreasuryGrossIncome,calcCommanderStipend,EQUIPMENT_SLOTS} from './economy-rules.js?v=265';
 import {createPayrollPlan,commanderStipendQuote,PAYROLL_RULES,regularSalaryReserve} from './payroll-rules.js?v=226';
 import {calcAllRankerBonuses} from './troop-rankings.js?v=247';
 import {normalizeRegionalEconomy,recurringNationalIncome,economicState,advanceRegionalEconomy,automaticEconomicTarget,investEconomicProject} from './regional-economy.js?v=182';
@@ -101,7 +101,8 @@ export const nationMethods={
       }
     }
     // One paid improvement per actor, at most eight actors per wave. Keep the old piece intact.
-    const ordered=[...deployed].sort((x,y)=>this.equipmentValueFor(x,x.equipped?.weapon,'weapon')-this.equipmentValueFor(y,y.equipped?.weapon,'weapon'));
+    const valueFor=createEquipmentValueCache((unit,item,key)=>this.equipmentValueFor(unit,item,key));
+    const ordered=[...deployed].sort((x,y)=>valueFor(x,x.equipped?.weapon,'weapon')-valueFor(y,y.equipped?.weapon,'weapon'));
     for(const soldier of ordered){
       if(updated+forged>=ARMAMENT_LIMITS.improvementsPerWave)break;let best=null;
       const available=personalEquipmentBudget(soldier);if(!available)continue;
@@ -109,14 +110,14 @@ export const nationMethods={
         const cur=soldier.equipped?.[key];if(!cur||cur.favorite||isGodRollProtected(cur))continue;
         const cost=standardEquipmentCost({tier:a.techTier}),forgeCost=soldier.isDown?Infinity:this.getUpgradeCost(cur);
         if(cost>available&&forgeCost>available)continue;
-        const value=this.equipmentValueFor(soldier,cur,key);
+        const value=valueFor(soldier,cur,key);
         if(cost<=available){
-          const item=this.createSupplyEquipment(type,soldier,a.techTier),next=this.equipmentValueFor(soldier,item,key),gain=next/Math.max(1,value)-1;
+          const item=this.createSupplyEquipment(type,soldier,a.techTier),next=valueFor(soldier,item,key),gain=next/Math.max(1,value)-1;
           if(gain>=ARMAMENT_LIMITS.replacementMinGain&&(!best||gain/cost>best.efficiency))best={key,item,cost,efficiency:gain/cost,kind:'replace'};
         }
         if(forgeCost<=available){
           const enhanced={...cur,stats:{...cur.stats}};this.applyEquipmentUpgrade(enhanced,(cur.upgrade||0)+1);
-          const benefit=this.equipmentValueFor(soldier,enhanced,key)/Math.max(1,value)-1;
+          const benefit=valueFor(soldier,enhanced,key)/Math.max(1,value)-1;
           if(benefit>=ARMAMENT_LIMITS.forgeMinGain&&(!best||benefit/forgeCost>best.efficiency))best={key,item:enhanced,cost:forgeCost,efficiency:benefit/forgeCost,kind:'forge'};
         }
       }
@@ -128,7 +129,7 @@ export const nationMethods={
       if(best.kind==='replace'){(this.sharedEquipBox||=[]).push(old);best.item.selfFunded=true;soldier.equipped[best.key]=best.item;updated++;}
       else{this.applyEquipmentUpgrade(old,best.item.upgrade);forged++;forgeSpent+=best.cost;}
       if(best.key==='weapon')soldier.weapon=soldier.equipped.weapon;
-      spent+=best.cost;this.recalcSoldierStats(soldier);
+      spent+=best.cost;this.recalcSoldierStats(soldier);valueFor.invalidate(soldier);
     }
     this.treasury=(this.treasury||0)-publicSpent;
     if(!this.phaseFiscal)this.beginPhaseFiscal();

@@ -1,6 +1,6 @@
 import {CRAFT_MATERIALS,CRAFT_RECIPES,craftRecipe,normalizeMaterials,addMaterials,workshopTier,workshopLevel,
   recipeMaterials,canAffordMaterials,stampCraftedItem,craftExclusiveLabel} from './crafting-rules.js?v=231';
-import {standardEquipmentCost} from './armament-rules.js?v=231';
+import {standardEquipmentCost} from './armament-rules.js?v=265';
 import {tierDescription,tierNumber} from './equipment-tiers.js?v=231';
 import {equipmentName,compareEquipment} from './equipment-rules.js?v=242';
 import {equipmentRequirementText} from './weapon-requirements.js?v=239';
