@@ -1,4 +1,14 @@
 /* Command journal. A single scrolling body, fixed navigation and clear action hierarchy. */
+.iron-squad .checkpoint-confirm-overlay { position:absolute; inset:0; z-index:600; display:flex; align-items:center; justify-content:center; background:#081019d9; padding:16px; }
+.iron-squad .checkpoint-confirm-panel { width:min(100%,440px); max-height:calc(100dvh - 48px); overflow:auto; box-sizing:border-box; padding:20px; border:1px solid var(--ui-line); border-radius:14px; background:var(--ui-panel); box-shadow:0 12px 48px #0008; }
+.iron-squad .checkpoint-confirm-panel h3 { margin:0 0 14px; color:var(--ui-gold); font-size:20px; }
+.iron-squad .checkpoint-confirm-panel p { margin:0 0 20px; color:var(--ui-text); line-height:1.7; }
+.iron-squad .checkpoint-confirm-actions { display:grid; gap:12px; }
+.iron-squad .checkpoint-confirm-actions button { min-height:52px; padding:12px; border:1px solid var(--ui-line); border-radius:9px; background:var(--ui-raised); color:var(--ui-text); font:inherit; cursor:pointer; }
+.iron-squad .checkpoint-confirm-actions .checkpoint-cancel { background:var(--ui-bg); color:var(--ui-muted); }
+.iron-squad .checkpoint-confirm-actions button:focus-visible { outline:2px solid var(--ui-gold); outline-offset:3px; }
+.iron-squad .checkpoint-notice { position:absolute; z-index:610; top:max(18px,env(safe-area-inset-top)); left:50%; transform:translateX(-50%); width:max-content; max-width:calc(100% - 32px); box-sizing:border-box; padding:14px 22px; border:1px solid var(--ui-good); border-radius:10px; background:var(--ui-panel); color:var(--ui-text); box-shadow:0 4px 24px #0008; font-size:17px; text-align:center; pointer-events:none; }
+.iron-squad .checkpoint-notice[data-failed="true"] { border-color:var(--ui-danger); color:var(--ui-danger); }
 .iron-squad {
   --ui-bg: #111a22;
   --ui-panel: #192630;

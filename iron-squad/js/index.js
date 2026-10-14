@@ -65,7 +65,7 @@ import { KNOCK_RULES, knockbackDistance, knockFlight, slamDamage, knockTransferD
 import { MELEE_SOUND_STYLES, playMeleeSound } from './weapon-sounds.js?v=211';
 import {emptyRescueBonuses,normalizeRescueBonuses,rescueBonusSummary} from './rescue-rewards.js?v=204';
 import {drawFieldCivilian} from './civilian-visuals.js?v=242';
-import { saveSlots } from './save-slots.js';
+import { saveSlots } from './save-slots.js?v=253';
 import { soldierDialogue } from './soldier-dialogue.js?v=246';
 import { generateSoldierName, migrateSoldierName, rollGenderByKey, isGenderId, ensureSoldierGender, genderLabel } from './soldier-names.js?v=210';
 import { openCommanderEditor } from './commander-editor.js?v=210';
@@ -73,7 +73,7 @@ import { applyCommanderIdentity, normalizeCommanderIdentity, commanderFullName, 
 import {MAGIC_CLASSES,MAGIC_AFFINITIES,magicMethods,isMage,isMagicUser,ensureMana,initializeMagic,updateMagic,distributeMagicStones,castMedicBuff,castCasterStrength,updateMageAI,drawMagicBursts,spendMana,weaponMagicDamage,isPlayerCaster,castPlayerSpell,PLAYER_MAGIC_RULES} from './magic-rules.js?v=231';
 import {hazardMethods,updateHazards,drawHazards} from './hazard-fields.js?v=198';
 import {strongEnemyReward} from './combat-rewards.js?v=182';
-import {supplyMethods, initializeSupplies, updateSupplies, takeRangedShot, ammoCombatProfile, isRangedUnit, distributeAmmo, preventLethalHit, normalizeFieldSave, SQUAD_POTION_COST, REVIVAL_POTION_COST, REVIVAL_POTION_MAX, SQUAD_POTION_MAX, ensureAmmo, ammoCapacity, recalcAmmoCapacity, RANGED_DAMAGE_MULT, supplyLocation} from './supply-rules.js?v=249';
+import {supplyMethods, initializeSupplies, updateSupplies, takeRangedShot, ammoCombatProfile, isRangedUnit, distributeAmmo, preventLethalHit, normalizeFieldSave, SQUAD_POTION_COST, REVIVAL_POTION_COST, REVIVAL_POTION_MAX, SQUAD_POTION_MAX, ensureAmmo, ammoCapacity, recalcAmmoCapacity, RANGED_DAMAGE_MULT, supplyLocation} from './supply-rules.js?v=253';
 import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog } from './interface.js?v=249';
 import { renderTroopRankings, getSoldierRankerBadges, calcSoldierRankerBonus, setRankingFamilyLabels, RANKING_FAMILIES } from './troop-rankings.js?v=247';
 import { ensureSoldierAppearance, drawSoldierPortrait } from './soldier-appearance.js?v=206';
@@ -1154,7 +1154,7 @@ export const IronSquadGame = {
 
   // 起動時にこのゲームのCSSを自分で読み込む（?v= はこのフォルダ内で管理）。ハブが init 前に await する
   prepare() {
-    return loadCss(['../css/iron-squad.css?v=175', '../css/iron-squad-interface.css?v=250'].map(p => new URL(p, import.meta.url).href));
+    return loadCss(['../css/iron-squad.css?v=175', '../css/iron-squad-interface.css?v=253'].map(p => new URL(p, import.meta.url).href));
   },
 
   init(container, onBackToHub) {
@@ -3796,7 +3796,7 @@ export const IronSquadGame = {
     return soldier;
   },
 
-  saveGame() {
+  saveGame({persist=true}={}) {
     this.stallRecorder?.mark('セーブ中');
     // v6.1.5: 隊長がダウン中・死亡時は上書きしない。やり直すとダウン前の最後のセーブから再開する。
     if (!this.activeSlotId || !this.player || this.player.hp <= 0 || this.player.isDown || this.player.dead) return null;
@@ -3902,7 +3902,7 @@ export const IronSquadGame = {
         platoonMissions: persistPlatoonMissions(this.platoons)
       };
       normalizeFieldSave(this,data);
-      if (!saveSlots.update(this.activeSlotId, {data, state:'active',career:{...this.career}})) throw new Error('保存容量が不足しています');
+      if (persist && !saveSlots.update(this.activeSlotId, {data, state:'active',career:{...this.career}})) throw new Error('保存容量が不足しています');
       return data;
     } catch (e) {
       console.warn('Save failed:', e);

@@ -2,7 +2,8 @@ import {attributeValues,ensureAttributeProfile} from './unit-attributes.js?v=248
 import {isMagicUser,ensureMana} from './magic-rules.js?v=231';
 import {WORLD_SIZE} from './world.js?v=198';
 import {inCurrentInstance} from './instance-rules.js?v=182';
-import {saveSlots} from './save-slots.js';
+import {saveSlots} from './save-slots.js?v=253';
+import {requestCheckpointAction,checkpointNotice} from './checkpoint-ui.js?v=253';
 import {nearestRevivalPotionTarget,reviveByPotion,REVIVAL_POTION_RANGE} from './casualty-rules.js?v=243';
 
 export const AMMO_CAPACITY=30; // Legacy/default capacity for units without a ranged weapon.
@@ -181,21 +182,33 @@ export const supplyMethods={
     this.showToast(merchant?`部隊ポーションを購入 · ${SQUAD_POTION_COST.toLocaleString()}G`:'本陣で部隊ポーションを補給しました');
     return true;
   },
-  saveCheckpoint() {
-    const place=supplyLocation(this);if(!place||!usable(this.player))return false;
-    const snapshot=this.saveGame();if(!snapshot)return false;
-    const checkpoint={place:place.name,entrance:this.currentDungeon?.kind==='town',savedAt:Date.now(),data:JSON.parse(JSON.stringify(snapshot))};
-    if(!saveSlots.update(this.activeSlotId,{checkpoint})) {this.showToast('地点セーブに失敗しました');return false;}
-    this.showToast(`${place.name}で地点セーブしました`);this.renderSupplyPanel();return true;
+  saveCheckpoint({newSlot=false}={}) {
+    try {
+      const place=supplyLocation(this);if(!place||!usable(this.player))throw new Error('現在は保存できません');
+      const previous=saveSlots.get(this.activeSlotId);if(!previous)throw new Error('保存先がありません');
+      const snapshot=this.saveGame({persist:false});if(!snapshot)throw new Error('記録を作成できません');
+      const checkpoint={place:place.name,entrance:this.currentDungeon?.kind==='town',savedAt:Date.now(),data:JSON.parse(JSON.stringify(snapshot))};
+      const values={data:snapshot,checkpoint,state:'active',career:{...this.career}};
+      if(newSlot){
+        const name=`${previous.name.slice(0,20)} · ${new Date(checkpoint.savedAt).toLocaleString('ja-JP')}`;
+        const slot=saveSlots.create(name,{...values,veterans:previous.veterans,reserveSurvivors:previous.reserveSurvivors});
+        this.activeSlotId=slot.id;
+      }else if(!saveSlots.update(this.activeSlotId,values))throw new Error('記録を書き込めません');
+      this.renderSupplyPanel();
+      const host=document.querySelector('#merchant-shop-popup:not(.hidden) .merchant-checkpoint');if(host)this.renderSupplyPanel(host);
+      checkpointNotice(this,'セーブしました');return true;
+    } catch {checkpointNotice(this,'セーブに失敗しました',true);return false;}
   },
   loadCheckpoint() {
-    if(!supplyLocation(this))return false;
-    const checkpoint=saveSlots.get(this.activeSlotId)?.checkpoint;if(!checkpoint?.data)return false;
-    const restoreMerchant=this._merchantShopRestore?.();
-    this._merchantShopClose?.();this.closeStrategyModal();
-    this.inBattle=true;this.resumeSavedGame(JSON.parse(JSON.stringify(checkpoint.data)));
-    restoreMerchant?.();
-    this.showToast(`${checkpoint.place}の地点セーブを読み込みました`);return true;
+    try {
+      if(!supplyLocation(this))return false;
+      const checkpoint=saveSlots.get(this.activeSlotId)?.checkpoint;if(!checkpoint?.data)return false;
+      const snapshot=JSON.parse(JSON.stringify(checkpoint.data)),restoreMerchant=this._merchantShopRestore?.();
+      this._merchantShopClose?.();this.closeStrategyModal();
+      this.inBattle=true;this.resumeSavedGame(snapshot);
+      restoreMerchant?.();
+      checkpointNotice(this,'地点セーブへ戻りました');return true;
+    }catch{checkpointNotice(this,'地点セーブを読み込めませんでした',true);return false;}
   },
   refreshSupplyUI() {
     if(!this.player)return;
@@ -230,8 +243,8 @@ export const supplyMethods={
     panel.querySelector('.supply-counts').textContent+=` · 蘇生薬 ${this.revivalPotion||0}/${REVIVAL_POTION_MAX}`;
     panel.querySelector('.supply-help').textContent='地点セーブへ戻ると、保存時点に巻き戻ります。';
     const potion=panel.querySelector('[data-supply="potion"]');potion.disabled=(this.squadPotion||0)>=SQUAD_POTION_MAX||place?.kind!=='base';potion.onclick=()=>{this.replenishSquadPotion();if(host){if(host.closest('#merchant-shop-popup'))this._merchantShopRefresh?.();else this.renderSupplyPanel(host);}};
-    const save=panel.querySelector('[data-supply="save"]');save.disabled=!place;save.onclick=()=>{this.saveCheckpoint();if(host)this.renderSupplyPanel(host);};
-    const load=panel.querySelector('[data-supply="load"]');load.disabled=!place||!cp?.data;load.onclick=()=>this.loadCheckpoint();
+    const save=panel.querySelector('[data-supply="save"]');save.disabled=!place||!usable(this.player);save.onclick=()=>requestCheckpointAction(this,'save',save);
+    const load=panel.querySelector('[data-supply="load"]');load.disabled=!place||!cp?.data;load.onclick=()=>requestCheckpointAction(this,'load',load);
     const merchantCheckpoint=!!host?.closest('#merchant-shop-popup');
     panel.querySelector('h4').textContent=merchantCheckpoint?'地点セーブ':'補給・地点セーブ';
     potion.classList.toggle('hidden',merchantCheckpoint);

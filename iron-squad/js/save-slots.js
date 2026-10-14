@@ -16,11 +16,14 @@ export const saveSlots = {
     if (!storage.set('ironsquad_rules_version', RULES_VERSION)) throw new Error('保存形式を更新できませんでした。');
     return current;
   },
-  create(name) {
+  create(name, initialValues = {}) {
     const slots = this.list();
     const slot = {id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2,9)}`,
       name: name.trim().slice(0,40) || `遠征 ${slots.length + 1}`, rulesVersion: RULES_VERSION,
-      savedAt: Date.now(), state: 'active', data: null, veterans: [], reserveSurvivors: []};
+      savedAt: Date.now(), state: 'active', data: initialValues.data ?? null,
+      veterans: initialValues.veterans ?? [], reserveSurvivors: initialValues.reserveSurvivors ?? []};
+    if (initialValues.checkpoint) slot.checkpoint = initialValues.checkpoint;
+    if (initialValues.career) slot.career = initialValues.career;
     if (!storage.set(KEY, [...slots, slot])) throw new Error('新しい遠征を保存できませんでした。');
     return slot;
   },
