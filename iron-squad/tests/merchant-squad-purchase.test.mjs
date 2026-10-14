@@ -18,7 +18,7 @@ function fresh(type='WEAPON',style='sword'){
   g._merchantShopClose?.();g.resumeSavedGame(structuredClone(initial));g.closeStrategyModal();g.monsters=[];g.restTimer=0;g.career.status='enlisted';
   const profile=rollAttributeProfile('HEAVY','AVERAGE',()=>.5,true);profile.innate.strength=150;
   const s=g.createNewSoldier(null,{classKey:'HEAVY',talent:'AVERAGE',attributeProfile:profile});Object.assign(s,{isPersonalGuard:true,name:'購入先の兵士',gold:100000});g.squad=[s];g.reserves=[];
-  const m=g.merchants[0],item=gear(type,style);item._merchantPrice=50;Object.assign(m,{stock:[item],catalogVersion:3,stockPhase:1,stockTier:2});g.player.x=m.x;g.player.y=m.y;g.gold=1000;g.treasury=5000;
+  const m=g.merchants[0],item=gear(type,style);item._merchantPrice=50;Object.assign(m,{stock:[item],catalogVersion:4,stockPhase:1,stockTier:2});g.player.x=m.x;g.player.y=m.y;g.gold=1000;g.treasury=5000;
   g.openMerchantShop(m);document.querySelector('#merchant-shop-popup [data-merchant-section="trade"]').click();return {s,m,item};
 }
 function select(id){const el=document.getElementById('merchant-recipient');el.value=id;el.dispatchEvent(new window.Event('change',{bubbles:true}));}

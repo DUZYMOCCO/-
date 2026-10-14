@@ -1,8 +1,8 @@
-import {catalogTier,catalogPrice,ensureMerchantCatalog,MERCHANT_MAX_TIER,MERCHANT_CATALOG_VERSION} from './merchant-catalog.js?v=245';
+import {catalogTier,catalogPrice,ensureMerchantCatalog,MERCHANT_MAX_TIER,MERCHANT_CATALOG_VERSION} from './merchant-catalog.js?v=258';
 import {applyAttributeStats} from './unit-attributes.js?v=248';
 /**
  * IRON SQUAD: 宿場・本陣・各地のキャンプの行商人
- * - 最新入手Tier+1（最大T6）の厳選品を販売、毎ウェーブの目玉商品
+ * - 製造技術Tier+1（最大T24）の厳選品。武器2枠/防具4枠を毎ウェーブ抽選
  * - 強い護衛付き。放置するとモンスターに襲われ死亡しうる
  * - 護衛が倒した強敵のドロップを序盤から掠め取れるチャンス
  */
@@ -507,7 +507,6 @@ export function serializeMerchants(merchants) {
     respawnIn: m.respawnIn || 0,
     stockIds: (m.stock || []).map(i => i?.id).filter(Boolean),
     stock:(m.stock||[]).map(i=>({...i,stats:{...i.stats}})),stockPhase:m.stockPhase,stockTier:m.stockTier,catalogVersion:m.catalogVersion,featuredSoldPhase:m.featuredSoldPhase,
-    casterCatalogVersion:m.casterCatalogVersion,casterStockPhase:m.casterStockPhase
   }));
 }
 
@@ -523,7 +522,7 @@ export function applyMerchantSave(game, savedList, generateRandomDrop, BASE_CAMP
     if (!m) continue;
     applyNpcSave(m,s);
     m.featuredSoldPhase=Math.max(0,Number(s.featuredSoldPhase)||0);
-    if(s.catalogVersion===MERCHANT_CATALOG_VERSION&&Array.isArray(s.stock)){m.stock=s.stock.filter(i=>i&&i.tier>=1&&i.tier<=MERCHANT_MAX_TIER&&!i.dropOnly).map(i=>({...i,stats:{...i.stats}}));m.stockPhase=s.stockPhase;m.stockTier=s.stockTier;m.catalogVersion=MERCHANT_CATALOG_VERSION;m.casterCatalogVersion=s.casterCatalogVersion||0;m.casterStockPhase=s.casterStockPhase;}
+    if([3,MERCHANT_CATALOG_VERSION].includes(s.catalogVersion)&&Array.isArray(s.stock)){m.stock=s.stock.filter(i=>i&&i.tier>=1&&i.tier<=MERCHANT_MAX_TIER&&!i.dropOnly).map(i=>({...i,stats:{...i.stats}}));m.stockPhase=s.stockPhase;m.stockTier=s.stockTier;m.catalogVersion=s.catalogVersion;}
     ensureMerchantCatalog(game,m,generateRandomDrop);
     if(Number.isFinite(s.distance))m.distance=s.distance;
     if(m.rescuedToBase)m.placeName='本陣・救助した商人';

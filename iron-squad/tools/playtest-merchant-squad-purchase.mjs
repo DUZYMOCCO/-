@@ -16,7 +16,7 @@ try{
       const soldier=make('HEAVY','ヨウ・ガレイン',100),mage=make('MAGE','ミラ・セレス',3),main=make('LIGHT','本隊の兵士',60);main.isPersonalGuard=false;
       const weapon=generateRandomDrop(0,'normal',{type:'WEAPON',weaponStyle:'crossbow',tier:3,quality:1,id:'browser-squad-weapon',merchant:true,random:()=>.5});weapon._merchantPrice=250;
       const armor=generateRandomDrop(0,'normal',{type:'ARMOR',tier:7,quality:1,id:'browser-heavy-armor',merchant:true,random:()=>.5});armor._merchantPrice=350;
-      const m=g.merchants[0];m.dead=false;m.isDown=false;m.returningToBase=false;m.hp=m.maxHp||100;Object.assign(m,{stock:[weapon,armor],catalogVersion:3,stockPhase:g.phase,stockTier:2});g.nation.armament.techTier=1;g.gold=2000;g.treasury=9000;Object.assign(g.player,{x:m.x,y:m.y,hp:g.player.maxHp,isDown:false});
+      const m=g.merchants[0];m.dead=false;m.isDown=false;m.returningToBase=false;m.hp=m.maxHp||100;Object.assign(m,{stock:[weapon,armor],catalogVersion:4,stockPhase:g.phase,stockTier:2});g.nation.armament.techTier=1;g.gold=2000;g.treasury=9000;Object.assign(g.player,{x:m.x,y:m.y,hp:g.player.maxHp,isDown:false});
       window.merchantSquadQA={g,soldier,mage,m,weapon,armor,oldWeapon:soldier.equipped.weapon,commander:g.equipped.weapon};g.openMerchantShop(m);document.querySelector('#merchant-shop-popup [data-merchant-section="trade"]')?.click();
       return {soldierId:soldier.id,mageId:mage.id,mainId:main.id};
     });

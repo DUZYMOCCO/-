@@ -1,0 +1,113 @@
+{
+  "version": "6.11.8",
+  "results": [
+    {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "stock": [
+        {
+          "id": "market_v4_merchant_base_camp_1_t2_0",
+          "type": "WEAPON",
+          "weaponStyle": "spear"
+        },
+        {
+          "id": "market_v4_merchant_base_camp_1_t2_1",
+          "type": "WEAPON",
+          "weaponStyle": "sword"
+        },
+        {
+          "id": "market_v4_merchant_base_camp_1_t2_2",
+          "type": "SHIELD"
+        },
+        {
+          "id": "market_v4_merchant_base_camp_1_t2_3",
+          "type": "HELMET"
+        },
+        {
+          "id": "market_v4_merchant_base_camp_1_t2_4",
+          "type": "HELMET"
+        },
+        {
+          "id": "market_v4_merchant_base_camp_1_t2_5",
+          "type": "SHIELD"
+        }
+      ],
+      "overflow": false,
+      "bought": "market_v4_merchant_base_camp_1_t2_0",
+      "after": {
+        "ids": [
+          "market_v4_merchant_base_camp_1_t2_1",
+          "market_v4_merchant_base_camp_1_t2_2",
+          "market_v4_merchant_base_camp_1_t2_3",
+          "market_v4_merchant_base_camp_1_t2_4",
+          "market_v4_merchant_base_camp_1_t2_5"
+        ],
+        "restored": [
+          "market_v4_merchant_base_camp_1_t2_1",
+          "market_v4_merchant_base_camp_1_t2_2",
+          "market_v4_merchant_base_camp_1_t2_3",
+          "market_v4_merchant_base_camp_1_t2_4",
+          "market_v4_merchant_base_camp_1_t2_5"
+        ],
+        "total": 5
+      }
+    },
+    {
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "stock": [
+        {
+          "id": "market_v4_merchant_base_camp_1_t2_0",
+          "type": "WEAPON",
+          "weaponStyle": "spear"
+        },
+        {
+          "id": "market_v4_merchant_base_camp_1_t2_1",
+          "type": "WEAPON",
+          "weaponStyle": "sword"
+        },
+        {
+          "id": "market_v4_merchant_base_camp_1_t2_2",
+          "type": "SHIELD"
+        },
+        {
+          "id": "market_v4_merchant_base_camp_1_t2_3",
+          "type": "HELMET"
+        },
+        {
+          "id": "market_v4_merchant_base_camp_1_t2_4",
+          "type": "HELMET"
+        },
+        {
+          "id": "market_v4_merchant_base_camp_1_t2_5",
+          "type": "SHIELD"
+        }
+      ],
+      "overflow": false,
+      "bought": "market_v4_merchant_base_camp_1_t2_0",
+      "after": {
+        "ids": [
+          "market_v4_merchant_base_camp_1_t2_1",
+          "market_v4_merchant_base_camp_1_t2_2",
+          "market_v4_merchant_base_camp_1_t2_3",
+          "market_v4_merchant_base_camp_1_t2_4",
+          "market_v4_merchant_base_camp_1_t2_5"
+        ],
+        "restored": [
+          "market_v4_merchant_base_camp_1_t2_1",
+          "market_v4_merchant_base_camp_1_t2_2",
+          "market_v4_merchant_base_camp_1_t2_3",
+          "market_v4_merchant_base_camp_1_t2_4",
+          "market_v4_merchant_base_camp_1_t2_5"
+        ],
+        "total": 5
+      }
+    }
+  ],
+  "pageErrors": [],
+  "disposableBrowserStorage": true
+}

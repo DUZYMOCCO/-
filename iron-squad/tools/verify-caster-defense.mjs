@@ -43,7 +43,7 @@ try{
    mage.equipped.armor=g.makeWorkshopItem(craft.craftRecipe('arcane-armor'),9);g.squad=[mage];g.reserves=[];g.recalcSoldierStats(mage);
    window.plate=gear.generateRandomDrop(0,'normal',{id:'test-heavy',type:'ARMOR',tier:25,armorStyle:null,quality:1,merchant:true,random:()=>.5});g.inventory.push(plate);
    const money=g.gold,old=g.equipped.armor;g.player.attributeProfile.innate.strength=10;g.recalcPlayerStats();const equip=g.equipItem(plate);
-   const merchant=g.merchants[0];Object.assign(g.player,{x:merchant.x,y:merchant.y});Object.assign(merchant,{stock:[plate],catalogVersion:3,stockPhase:g.phase,stockTier:2});
+   const merchant=g.merchants[0];Object.assign(g.player,{x:merchant.x,y:merchant.y});Object.assign(merchant,{stock:[plate],catalogVersion:4,stockPhase:g.phase,stockTier:2});
    // This interaction uses an explicit ordinary market item, without a restock.
    plate._merchantPrice=100;g.nation.armament.techTier=1;g.openMerchantShop(merchant);
    return {equip,oldPreserved:g.equipped.armor===old,moneyPreserved:g.gold===money,canMage:req.canUseEquipment(mage,plate),requirement:req.equipmentRequirementText(mage,plate)};
