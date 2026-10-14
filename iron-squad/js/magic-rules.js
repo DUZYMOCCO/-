@@ -1,17 +1,19 @@
 import {guardTarget,guardSpeedMult} from './guard-leash.js?v=211';
-import {updateEquipmentBarrier} from './defense-equipment.js?v=237';
+import {updateEquipmentBarrier} from './defense-equipment.js?v=257';
 import {sound} from '../../common/js/audio.js?v=151';
 import {WORLD_SIZE} from './world.js?v=198';
 import {inCurrentInstance} from './instance-rules.js?v=256';
 import {recordCombat} from './phase-rules.js?v=218';
 import {isSoldierOnExpedition} from './expedition-rules.js?v=256';
-import {practiceAttribute,prefersCasterMelee,attributeValues,canChannelWeaponMagic} from './unit-attributes.js?v=248';
+import {practiceAttribute,prefersCasterMelee,isMuscleCaster,attributeValues,canChannelWeaponMagic} from './unit-attributes.js?v=248';
 import {isMagicWeapon} from './weapon-requirements.js?v=239';
 import {numberClassDefinitions} from './class-up-rules.js?v=185';
 
 export const MAGE_IDS=['MAGE','ARCHMAGE','ELEMENTAL_SAGE','ARCANE_SOVEREIGN'];
 const MEDIC_IDS=['MEDIC','HIGH_PRIEST','SAINT','ARCHANGEL'];
 export const isMage=u=>MAGE_IDS.includes(u?.combatClass||u?.soldierClass);
+// Muscle identity survives weapon changes and changes in attack/magic bonuses.
+export const canMeditate=u=>isMage(u)&&!isMuscleCaster(u)&&!prefersCasterMelee(u);
 // The commander casts through the held weapon, without joining soldier job/AI rules.
 export const isPlayerCaster=u=>!!(u?.isHero||u?.isPlayer)&&isMagicWeapon(u.equipped?.weapon||u.weapon||{weaponStyle:u.weaponStyle});
 export const isSpellcaster=u=>isMage(u)||isPlayerCaster(u);
@@ -34,6 +36,7 @@ export function magicTier(u) {return Math.max(0,isMage(u)?MAGE_IDS.indexOf(u.com
 export function manaCapacity(u) {return isPlayerCaster(u)?PLAYER_MAGIC_RULES.mana:isMagicUser(u)?100+magicTier(u)*40:canChannelWeaponMagic(u)?60:0;}
 export const weaponMagicDamage=u=>Math.max(1,Math.round((u.magicAttack||1)*.7));
 export function ensureMana(u) {
+  if(u?.magicRecovering&&!canMeditate(u))u.magicRecovering=false;
   if(!manaCapacity(u)){if(u)u.maxMana=0;return 0;}
   u.maxMana=manaCapacity(u);
   if(!Number.isFinite(u.mana))u.mana=Number.isFinite(u.medicStamina)?u.medicStamina:u.maxMana;
@@ -148,7 +151,7 @@ export function castPlayerSpell(game,{power=false,target,outpost}={}) {
 export function updateMageAI(game,mage,dt,platoon,cls) {
   ensureMana(mage);const spell=MAGIC_AFFINITIES[mage.magicAffinity];mage.atkCooldown=Math.max(0,(mage.atkCooldown||0)-dt);mage.atkAnim=Math.max(0,(mage.atkAnim||0)-dt*4);
   const melee=prefersCasterMelee(mage);
-  if(melee)mage.magicRecovering=false;
+  if(!canMeditate(mage))mage.magicRecovering=false;
   else if(mage.mana<spell.cost)mage.magicRecovering=true;
   if(mage.magicRecovering){if(mage.mana<40){mage.vx=mage.vy=0;return;}mage.magicRecovering=false;}
   const away=isSoldierOnExpedition(platoon,mage),free=mage.isPersonalGuard||game.currentDungeon||away;

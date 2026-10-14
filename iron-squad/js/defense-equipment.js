@@ -1,4 +1,5 @@
 import {TIERS,materialTier,generation,powerRank} from './equipment-tiers.js?v=231';
+import {isMage} from './magic-rules.js?v=257';
 
 export const DEFENSE_TYPES=['SHIELD','HELMET','ARMOR','GLOVES','LEGS','AMULET'];
 export const CASTER_GEAR={
@@ -42,18 +43,20 @@ export function casterEquipmentSummary(item) {
   if(s.magicBonus)parts.push(`魔力補正+${s.magicBonus}%`);
   if(s.healBonus)parts.push(`回復補正+${s.healBonus}%`);
   if(s.magicDefense)parts.push(`魔法防御+${s.magicDefense}`);
-  if(s.barrier)parts.push(`バリア+${s.barrier}（物理50%・魔法100%吸収）`);
+  if(s.barrier)parts.push(`バリア+${s.barrier}（物理50%・魔法100%吸収／魔法使い・衛生術師のみ有効）`);
   return parts.join(' · ');
 }
 export const BARRIER_RULES=Object.freeze({absorb:.5,magicAbsorb:1.0,rechargeDelay:8,rechargeRate:.06});
+export const canUseEquipmentBarrier=unit=>isMage(unit)||['MEDIC','HIGH_PRIEST','SAINT','ARCHANGEL'].includes(unit?.soldierClass);
 /** Equipment swaps and recalculation never refill an existing barrier. */
 export function syncEquipmentBarrier(unit,maximum) {
-  const first=!Number.isFinite(unit.equipmentBarrier),cap=Math.max(0,Math.floor(maximum));
+  const first=!Number.isFinite(unit.equipmentBarrier),cap=canUseEquipmentBarrier(unit)?Math.max(0,Math.floor(maximum)):0;
   unit.equipmentBarrierMax=cap;
   unit.equipmentBarrier=first?cap:Math.max(0,Math.min(cap,unit.equipmentBarrier));
   unit.equipmentBarrierDelay=Math.max(0,Math.min(BARRIER_RULES.rechargeDelay,Number(unit.equipmentBarrierDelay)||0));
 }
 export function absorbEquipmentBarrier(unit,damage,magical=false) {
+  if(!canUseEquipmentBarrier(unit))return {damage,absorbed:0};
   const rate=magical?(BARRIER_RULES.magicAbsorb||1.0):BARRIER_RULES.absorb;
   const absorbed=Math.min(Math.floor(Math.max(0,unit.equipmentBarrier||0)),Math.floor(damage*rate));
   if(unit.equipmentBarrierMax>0)unit.equipmentBarrierDelay=BARRIER_RULES.rechargeDelay;
@@ -61,7 +64,7 @@ export function absorbEquipmentBarrier(unit,damage,magical=false) {
   return {damage:damage-absorbed,absorbed};
 }
 export function updateEquipmentBarrier(unit,dt) {
-  if(!unit||unit.dead||unit.isDown||!(unit.hp>0)||!(dt>0)||!unit.equipmentBarrierMax)return;
+  if(!unit||unit.dead||unit.isDown||!(unit.hp>0)||!(dt>0)||!unit.equipmentBarrierMax||!canUseEquipmentBarrier(unit))return;
   const delay=unit.equipmentBarrierDelay||0;
   unit.equipmentBarrierDelay=Math.max(0,delay-dt);
   const charging=Math.max(0,dt-delay);
@@ -71,7 +74,7 @@ export function updateEquipmentBarrier(unit,dt) {
 /** Thin ward-coloured ring around a unit that still holds barrier. World coordinates; no allocation, one stroke. */
 export function barrierRingAlpha(unit,now=0) {
   const max=unit?.equipmentBarrierMax||0;
-  if(!(max>0)||unit.dead||unit.isDown||unit.dying||!(unit.hp>0))return 0;
+  if(!(max>0)||unit.dead||unit.isDown||unit.dying||!(unit.hp>0)||!canUseEquipmentBarrier(unit))return 0;
   const ratio=Math.max(0,Math.min(1,(unit.equipmentBarrier||0)/max));
   if(!(ratio>0))return 0;
   return (.12+.33*ratio)*(.88+.12*Math.sin(now*.002));

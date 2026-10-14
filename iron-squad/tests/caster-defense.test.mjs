@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {JSDOM} from '../../__pycache__/ui-tools/node_modules/jsdom/lib/api.js';
 import {rollAttributeProfile} from '../js/unit-attributes.js';
 import {canUseEquipment,equipmentRequirementText} from '../js/weapon-requirements.js';
-import {requiredDefenseStrength,updateEquipmentBarrier} from '../js/defense-equipment.js';
+import {requiredDefenseStrength,updateEquipmentBarrier,casterEquipmentSummary,absorbEquipmentBarrier,canUseEquipmentBarrier} from '../js/defense-equipment.js';
 import {craftRecipe} from '../js/crafting-rules.js';
 import {normalizeNation} from '../js/nation-rules.js';
 import {distributeSharedBoxToSoldiers} from '../js/economy-rules.js';
@@ -53,6 +53,25 @@ for(const type of ['ARMOR','SHIELD','HELMET','GLOVES','LEGS','AMULET'])for(const
   assert.equal(item.armorStyle,style);assert.ok(item.stats.barrier>0);assert.equal(canUseEquipment(mage,item),true);
 }
 const magicBefore=mage.magicAttack,healBefore=medic.healPower;
+// Shields remain equippable by non-casters; barrier eligibility follows the job only.
+for(const soldierClass of ['MAGE','ARCHMAGE','ELEMENTAL_SAGE','ARCANE_SOVEREIGN','MEDIC','HIGH_PRIEST','SAINT','ARCHANGEL'])
+  assert.equal(canUseEquipmentBarrier({soldierClass,mana:0}),true);
+for(const soldierClass of ['HEAVY','PALADIN','LIGHT','NINJA','ARCHER','SNIPER','STAR_HUNTER'])
+  assert.equal(canUseEquipmentBarrier({soldierClass,mana:100,maxMana:100}),false,'even MP-positive non-casters cannot use barriers');
+const archer=unit('ARCHER'),shield=gear('archer-ward','SHIELD',1,'ward');
+archer.equipped.shield=shield;archer.equipmentBarrier=1000;archer.equipmentBarrierMax=1000;
+game.recalcSoldierStats(archer);
+assert.equal(canUseEquipment(archer,shield),true);
+assert.equal(archer.equipmentBarrierMax,0);assert.equal(archer.equipmentBarrier,0);
+updateEquipmentBarrier(archer,60);assert.equal(archer.equipmentBarrier,0);
+assert.match(casterEquipmentSummary(shield),/魔法使い・衛生術師のみ有効/);
+mage.equipped.shield=shield;mage.mana=0;game.recalcSoldierStats(mage);
+assert.ok(mage.equipmentBarrierMax>0,'caster job controls the barrier, not current MP');
+mage.equipmentBarrier=20;
+assert.deepEqual(absorbEquipmentBarrier(mage,10,true),{damage:0,absorbed:10});
+assert.ok(barrierRingAlpha(mage)>0);
+updateEquipmentBarrier(mage,60);assert.ok(mage.equipmentBarrier>10,'caster barrier recharges at MP0');
+mage.equipped.shield=null;game.recalcSoldierStats(mage);
 mage.equipped.armor=robe;medic.equipped.armor=healer;game.recalcSoldierStats(mage);game.recalcSoldierStats(medic);
 assert.ok(mage.magicAttack>magicBefore);assert.ok(medic.healPower>healBefore);
 assert.ok(robe.stats.def<plate.stats.def*.3);assert.ok(robe.stats.hp<plate.stats.hp*.6);
@@ -87,7 +106,7 @@ try{
 }finally{Math.random=random;}
 // Barrier ring: only while barrier remains and the unit is up; alpha scales with the fill within 0.12-0.45.
 {
-  const u={x:5,y:6,hp:10,equipmentBarrierMax:100,equipmentBarrier:100};
+  const u={soldierClass:'MAGE',mana:1,x:5,y:6,hp:10,equipmentBarrierMax:100,equipmentBarrier:100};
   const calls=[];const c=new Proxy({},{get:(o,k)=>(...a)=>{calls.push(k);}});
   assert.ok(barrierRingAlpha(u,0)<=.45&&barrierRingAlpha(u,0)>=.38);u.equipmentBarrier=1;assert.ok(barrierRingAlpha(u,0)>=.1&&barrierRingAlpha(u,0)<.2);
   assert.equal(drawBarrierRing(c,u,0),true);assert.ok(calls.includes('ellipse')&&calls.includes('stroke'));
@@ -103,10 +122,11 @@ applyUpgradeStats(ward,3);assert.ok(ward.stats.barrier>oldStats.barrier);const u
 // Recalc and save/load return legacy illegal equipment to storage without deleting it.
 mage.equipped.armor=plate;game.recalcSoldierStats(mage);assert.equal(mage.equipped.armor,null);assert.ok(game.sharedEquipBox.includes(plate));
 mage.equipped.armor=ward;game.recalcSoldierStats(mage);mage.equipmentBarrier=7;mage.equipmentBarrierDelay=5;
+game.equipped.weapon=gear('player-wand','WEAPON',1);game.equipped.weapon.weaponStyle='wand';
 game.equipped.armor=gear('player-ward','ARMOR',1,'ward');game.recalcPlayerStats();game.player.equipmentBarrier=3;game.player.equipmentBarrierDelay=4;
 const saved=game.saveGame();assert.ok(saved);saved.squad.find(s=>s.id===medic.id).equipped.armor=gear('legacy-medic-plate','ARMOR',25);
 game.resumeSavedGame(structuredClone(saved));game.closeStrategyModal();
-assert.equal(game.player.equipmentBarrier,3);assert.equal(game.player.equipmentBarrierDelay,4);
+assert.equal(game.player.equipmentBarrier,0);assert.equal(game.player.equipmentBarrierMax,0,'a wand alone does not grant the commander a caster job');
 const restored=game.squad.find(s=>s.id===mage.id);assert.equal(restored.equipmentBarrier,7);assert.equal(restored.equipmentBarrierDelay,5);
 assert.ok(game.sharedEquipBox.some(item=>item.id==='legacy-medic-plate'));
 // The real paid procurement chooses class-appropriate gear and respects a personal wallet.

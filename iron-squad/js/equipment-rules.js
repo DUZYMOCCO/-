@@ -1,6 +1,6 @@
 import {campaignScaling} from './campaign-scaling.js?v=241';
 import {soldierCombatTempo,usesSoldierTempo} from './unit-attributes.js?v=248';
-import {requiredDefenseStrength} from './defense-equipment.js?v=237';
+import {requiredDefenseStrength} from './defense-equipment.js?v=257';
 import {powerRank,MAX_EQUIPMENT_TIER,GENERATIONS} from './equipment-tiers.js?v=231';
 import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=182';
 import {WEAPON_STYLE_ICONS,weaponStyleOf,isHeavyWeaponStyle,combatFamilyOf} from './growth-rules.js?v=234';

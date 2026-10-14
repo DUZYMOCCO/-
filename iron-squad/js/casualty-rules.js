@@ -1,5 +1,5 @@
 import {expeditionCombatUnits,isExpeditionReserve} from './expedition-rules.js?v=256';
-import {ensureMana,regenerateMana,spendMana} from './magic-rules.js?v=231';
+import {ensureMana,regenerateMana,spendMana} from './magic-rules.js?v=257';
 import {recordHealing,recordDown,healAmountFor} from './phase-rules.js?v=218';
 import {WORLD_SIZE} from './world.js';
 import {inCurrentInstance} from './instance-rules.js?v=256';
