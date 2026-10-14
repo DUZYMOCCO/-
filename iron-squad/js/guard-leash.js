@@ -19,5 +19,5 @@ export function guardTarget(game, u, enemy) {
   return Math.hypot(enemy.x - game.player.x, enemy.y - game.player.y) <= GUARD_LEASH.engage ? enemy : null;
 }
 
-/** Movement speed multiplier: dash only while regrouping. */
-export const guardSpeedMult = u => u?.regrouping ? GUARD_LEASH.dash : 1;
+/** The separate formation flag never changes regrouping or combat target selection. */
+export const guardSpeedMult = (u,formationCatchUp=false) => u?.regrouping||formationCatchUp ? GUARD_LEASH.dash : 1;

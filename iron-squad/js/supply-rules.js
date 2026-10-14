@@ -1,10 +1,10 @@
 import {attributeValues,ensureAttributeProfile} from './unit-attributes.js?v=248';
-import {isMagicUser,ensureMana} from './magic-rules.js?v=257';
+import {isMagicUser,ensureMana} from './magic-rules.js?v=266';
 import {WORLD_SIZE} from './world.js?v=260';
 import {inCurrentInstance} from './instance-rules.js?v=256';
 import {saveSlots} from './save-slots.js?v=262';
 import {requestCheckpointAction,checkpointNotice} from './checkpoint-ui.js?v=259';
-import {nearestRevivalPotionTarget,reviveByPotion,REVIVAL_POTION_RANGE} from './casualty-rules.js?v=256';
+import {nearestRevivalPotionTarget,reviveByPotion,REVIVAL_POTION_RANGE} from './casualty-rules.js?v=267';
 
 export const AMMO_CAPACITY=30; // Legacy/default capacity for units without a ranged weapon.
 export const AMMO_BASE_CAPACITY=Object.freeze({bow:120,crossbow:60,cannon:30});
@@ -97,7 +97,7 @@ export function supplyLocation(game,u=game.player) {
   for(const p of game.medicalPosts||[])if(near(u,p,p.radius))return {kind:'medical',name:p.name};
   for(const d of game.dungeons||[])if(d.kind==='town'&&near(u,d.entrance||d,150))return {kind:'town',name:d.name||'町'};
   for(const m of game.merchants||[]) {
-    if(!usable(m)||m.returningToBase)continue;
+    if(!usable(m))continue;
     if(near(u,m,110))return {kind:'merchant',name:m.placeName||'商人のキャンプ'};
   }
   for(const tile of game.worldTerrain?.tiles?.values?.()||[])if(!tile.prefetched)for(const camp of tile.camps||[])if(near(u,camp,110))return {kind:'camp',name:'野営キャンプ'};
@@ -159,7 +159,7 @@ export const supplyMethods={
     this.saveGame({background:true});this.updateStatsUI();return true;
   },
   replenishRevivalPotion(merchant) {
-    if((this.revivalPotion||0)>=REVIVAL_POTION_MAX||!usable(this.player)||!(this.merchants||[]).includes(merchant)||!usable(merchant)||merchant.returningToBase)return false;
+    if((this.revivalPotion||0)>=REVIVAL_POTION_MAX||!usable(this.player)||!(this.merchants||[]).includes(merchant)||!usable(merchant))return false;
     const inside=this.currentDungeon?.kind==='town'&&merchant.placeId===this.currentDungeon.id;
     if((!inside&&!near(this.player,merchant,110))||(this.gold||0)<REVIVAL_POTION_COST)return false;
     this.gold-=REVIVAL_POTION_COST;this.revivalPotion=(this.revivalPotion||0)+1;this.saveGame({background:true});this.updateStatsUI();this.renderSupplyPanel();
@@ -176,7 +176,7 @@ export const supplyMethods={
     if((this.squadPotion||0)>=SQUAD_POTION_MAX||!usable(this.player))return false;
     const place=supplyLocation(this);
     if(merchant) {
-      if(!(this.merchants||[]).includes(merchant)||!usable(merchant)||merchant.returningToBase)return false;
+      if(!(this.merchants||[]).includes(merchant)||!usable(merchant))return false;
       const inside=this.currentDungeon?.kind==='town'&&merchant.placeId===this.currentDungeon.id;
       if(!inside&&!near(this.player,merchant,110))return false;
       if((this.gold||0)<SQUAD_POTION_COST)return false;

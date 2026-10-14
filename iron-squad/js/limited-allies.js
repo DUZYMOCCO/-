@@ -1,6 +1,7 @@
 import {noteFollowerIntent} from './follower-recovery.js?v=262';
 import {soldierAttackCooldown} from './equipment-rules.js?v=242';
-import {guardTarget,guardSpeedMult} from './guard-leash.js?v=211';
+import {guardTarget,guardRegrouping,guardSpeedMult} from './guard-leash.js?v=266';
+import {guardFormationTarget,guardFormationSpeedMult} from './guard-formation.js?v=266';
 import {WORLD_SIZE,fieldBlocks} from './world.js?v=260';
 import {inCurrentInstance} from './instance-rules.js?v=256';
 import {isSoldierOnExpedition} from './expedition-rules.js?v=256';
@@ -126,14 +127,17 @@ export function updateLimitedAllies(game) {
 export function updateNinja(game,s,dt,platoon,damageMult=1) {
  if(s.soldierClass!=='NINJA')return false;
  const free=s.isPersonalGuard||game.currentDungeon||isSoldierOnExpedition(platoon,s);
+ guardRegrouping(game,s);
  const target=guardTarget(game,s,free?game.getNearestMonster(s.x,s.y):game.getNearestFromList(s.x,s.y,game._baseThreatList));
  const d=target?Math.hypot(target.x-s.x,target.y-s.y):Infinity;
  const anchor=s.isPersonalGuard?game.player:platoon;
- const destination=alive(target)&&d<360?target:{x:anchor.x+35,y:anchor.y+25};
+ const engaged=alive(target)&&d<360;
+ const destination=engaged?target:s.isPersonalGuard?guardFormationTarget(game,s):{x:anchor.x+35,y:anchor.y+25};
  const dx=destination.x-s.x,dy=destination.y-s.y,dist=Math.hypot(dx,dy)||1;
  s.atkCooldown=Math.max(0,(s.atkCooldown||0)-dt);s.atkAnim=Math.max(0,(s.atkAnim||0)-dt*4);
  const profile=game.combatProfileFor(s,s.equipped?.weapon||s.weapon),reach=Math.min(95,profile.reach);
- if(dist>Math.max(35,reach*.8)){noteFollowerIntent(game,s,destination);const step=Math.min(dist,s.speed*guardSpeedMult(s)*dt);s.x+=dx/dist*step;s.y+=dy/dist*step;s.vx=dx/dist;s.vy=dy/dist;}else{s.vx=s.vy=0;}
+ const mult=s.isPersonalGuard?guardFormationSpeedMult(game,s,destination,engaged):guardSpeedMult(s);
+ if(dist>Math.max(35,reach*.8)){noteFollowerIntent(game,s,destination);const step=Math.min(dist,s.speed*mult*dt);s.x+=dx/dist*step;s.y+=dy/dist*step;s.vx=dx/dist;s.vy=dy/dist;}else{s.vx=s.vy=0;}
  s.facingAngle=Math.atan2(dy,dx);
  if(alive(target)&&s.atkCooldown<=0&&d<=250){
   if(d<=reach+10){if(profile.ranged)game.performAttack(s,target,false,Math.round(s.atk*damageMult),false,'physical');else game.performMeleeSweep(s,target,false,Math.round(s.atk*damageMult),profile,reach);s.atkCooldown=soldierAttackCooldown(s,.75/(s.atkSpeed||1));}

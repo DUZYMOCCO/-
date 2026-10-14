@@ -80,12 +80,19 @@ test('the real ninja AI repeatedly blocked by the guild returns via the real upd
  const {createLimitedAlly}=await import('../js/limited-allies.js?v=251');const ninja=createLimitedAlly(g,'NINJA','recovery-test');
  Object.assign(ninja,{isPersonalGuard:true,x:C+95,y:C-130,atkCooldown:100000,_guardSlot:0});g.squad=[ninja];
  Object.assign(g.player,{x:C+285,y:C-155,atkCooldown:100000,powerAtkCooldown:100000});g.camera={x:g.player.x,y:g.player.y};g.joystick={active:true,dirX:0,dirY:0};
- assert.equal(g.passesWalls(ninja),false);let largest=0,warpedAt=null,walkBeforeWarp=0;const trace=[];
+ assert.equal(g.passesWalls(ninja),false);let largest=0,warpedAt=null,beforeWarpPractice,afterWarpPractice;const trace=[];
+ const {profileFollowerRecovery}=await import('../js/follower-recovery.js?v=262');
+ const unhook=profileFollowerRecovery((name,fn)=>name==='追従.復帰'?function(...args){
+   const before=ninja.attributeProfile.practice.travel||0,result=fn(...args);
+   if(result.includes(ninja)){beforeWarpPractice=before;afterWarpPractice=ninja.attributeProfile.practice.travel||0;}
+   return result;
+ }:fn);
  for(let i=0;i<240;i++) {
   const old={x:ninja.x,y:ninja.y,travel:ninja.attributeProfile.practice.travel||0};g.update(DT);const moved=Math.hypot(ninja.x-old.x,ninja.y-old.y);if(i%20===0)trace.push([i,ninja.x-C,ninja.y-C,ninja.soldierClass,ninja.campPose,g.inBattle,g.player.x-C,g.player.y-C]);largest=Math.max(largest,moved);
   assert.equal(headquartersBuildingBlocks(ninja.x,ninja.y),false);
-  if(moved>100){warpedAt=(i+1)*DT;walkBeforeWarp=old.travel;assert.equal(ninja.attributeProfile.practice.travel||0,walkBeforeWarp,'teleport is not walking practice');break;}
+  if(moved>100){warpedAt=(i+1)*DT;assert.equal(afterWarpPractice,beforeWarpPractice,'the warp itself is not walking practice; actual wall sliding before it may train');break;}
  }
+ unhook();
  assert.ok(warpedAt>=8&&warpedAt<10,`actual collision must lead to recovery: ${warpedAt}; ${JSON.stringify(trace)}`);assert.ok(largest>100);assert.ok(Math.hypot(ninja.x-g.player.x,ninja.y-g.player.y)<=100);
  const saved=structuredClone(g.saveGame());assert.ok(!Object.keys(saved.squad[0]).some(k=>/follow|recover/i.test(k)),'tracking is not persisted');
  g.resumeSavedGame(saved);assert.equal(g.squad[0].hp,ninja.hp);assert.deepEqual(g.squad[0].equipped,ninja.equipped);

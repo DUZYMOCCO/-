@@ -1,4 +1,5 @@
-import {guardTarget,guardSpeedMult} from './guard-leash.js?v=211';
+import {guardTarget,guardRegrouping,guardSpeedMult} from './guard-leash.js?v=266';
+import {guardFormationTarget,guardFormationSpeedMult} from './guard-formation.js?v=266';
 import {updateEquipmentBarrier} from './defense-equipment.js?v=261';
 import {sound} from '../../common/js/audio.js?v=151';
 import {WORLD_SIZE} from './world.js?v=260';
@@ -27,7 +28,7 @@ export const MAGIC_AFFINITIES=Object.freeze({
   explosion:{name:'爆発',color:'#ab8175',damage:4.2,radius:84,cost:26,cooldown:2.7}
 });
 export const MAGIC_CLASSES=numberClassDefinitions({
-  MAGE:{id:'MAGE',classTier:0,name:'魔法使い',icon:'🔮',color:'#ab9ac5',range:260,speed:92,atkCooldown:2.1,bonusHp:-25,bonusAtk:18,advancedClassId:'ARCHMAGE',desc:'高威力の範囲魔法。脆く、MP不足時は動けず瞑想する。得意属性は各自異なる'},
+  MAGE:{id:'MAGE',classTier:0,name:'魔法使い',icon:'🔮',color:'#ab9ac5',range:260,speed:92,atkCooldown:2.1,bonusHp:-25,bonusAtk:18,advancedClassId:'ARCHMAGE',desc:'高威力の範囲魔法。脆く、MP不足時は瞑想する。得意属性は各自異なる'},
   ARCHMAGE:{id:'ARCHMAGE',classTier:1,baseClassId:'MAGE',isAdvanced:true,name:'大魔導士',icon:'🔮',color:'#a592c5',range:290,speed:98,atkCooldown:1.9,bonusHp:10,bonusAtk:40,atkMultBonus:.35,advancedClassId:'ELEMENTAL_SAGE',tag:'大魔導士',desc:'魔力上限と魔法の威力・範囲が成長。装甲は薄い'},
   ELEMENTAL_SAGE:{id:'ELEMENTAL_SAGE',classTier:2,baseClassId:'MAGE',isAdvanced:true,isMaster:true,name:'元素賢者',icon:'🔮',color:'#9b8aba',range:320,speed:102,atkCooldown:1.8,bonusHp:50,bonusAtk:65,atkMultBonus:.6,advancedClassId:'ARCANE_SOVEREIGN',tag:'元素賢者',desc:'得意属性を磨いた極職。魔力消耗と脆さは残る'},
   ARCANE_SOVEREIGN:{id:'ARCANE_SOVEREIGN',classTier:3,baseClassId:'MAGE',isAdvanced:true,isLegendary:true,name:'秘術王',icon:'🔮',color:'#b5a6d0',range:350,speed:108,atkCooldown:1.6,bonusHp:90,bonusAtk:100,atkMultBonus:.9,tag:'秘術王',desc:'広範囲を制圧する伝説の術者。MP切れでは無防備'}
@@ -153,18 +154,23 @@ export function updateMageAI(game,mage,dt,platoon,cls) {
   const melee=prefersCasterMelee(mage);
   if(!canMeditate(mage))mage.magicRecovering=false;
   else if(mage.mana<spell.cost)mage.magicRecovering=true;
-  if(mage.magicRecovering){if(mage.mana<40){mage.vx=mage.vy=0;return;}mage.magicRecovering=false;}
+  if(mage.magicRecovering&&mage.mana>=40)mage.magicRecovering=false;
   const away=isSoldierOnExpedition(platoon,mage),free=mage.isPersonalGuard||game.currentDungeon||away;
   mage._magicSearchClock=(mage._magicSearchClock||0)+dt;
   if(mage._magicSearchClock>=.2||!active(mage._magicEnemy)){mage._magicSearchClock=0;mage._magicEnemy=free?game.getNearestMonster(mage.x,mage.y):game.getNearestFromList(mage.x,mage.y,game._baseThreatList);}
+  guardRegrouping(game,mage);
   const target=guardTarget(game,mage,mage._magicEnemy),dist=target?Math.hypot(target.x-mage.x,target.y-mage.y):Infinity;
+  const engaged=!!target&&dist<400;
+  if(mage.magicRecovering&&(!mage.isPersonalGuard||engaged)){if(mage.isPersonalGuard)guardFormationSpeedMult(game,mage,game.player,true);mage.vx=mage.vy=0;return;}
   const anchor=mage.isPersonalGuard?game.player:(away?platoon:{x:WORLD_SIZE/2+(platoon.id-1)*70,y:WORLD_SIZE/2});
   const angle=(mage._guardSlot||0)*1.25+(mage.platoonId||0)*1.1;let tx=anchor.x+Math.cos(angle)*55,ty=anchor.y+Math.sin(angle)*55;
+  if(mage.isPersonalGuard){const goal=guardFormationTarget(game,mage);tx=goal.x;ty=goal.y;}
   if(target&&dist<400){if(melee){tx=target.x;ty=target.y;}else if(dist<100){tx=mage.x-(target.x-mage.x);ty=mage.y-(target.y-mage.y);}else if(dist<=cls.range){tx=mage.x;ty=mage.y;}}
   const goal=game.dungeonMoveTarget?.(mage,{x:tx,y:ty})||{x:tx,y:ty};
-  const dx=goal.x-mage.x,dy=goal.y-mage.y,d=Math.hypot(dx,dy),step=Math.min(d,(mage.speed||90)*guardSpeedMult(mage)*dt);mage.vx=d>4?dx/d:0;mage.vy=d>4?dy/d:0;
+  const mult=mage.isPersonalGuard?guardFormationSpeedMult(game,mage,{x:tx,y:ty},engaged):guardSpeedMult(mage);
+  const dx=goal.x-mage.x,dy=goal.y-mage.y,d=Math.hypot(dx,dy),step=Math.min(d,(mage.speed||90)*mult*dt);mage.vx=d>4?dx/d:0;mage.vy=d>4?dy/d:0;
   if(d>4){mage.x+=dx/d*step;mage.y+=dy/d*step;mage.facingAngle=Math.atan2(dy,dx);}
-  if(target&&mage.atkCooldown<=0){if(melee)game.performCasterMelee(mage,target);else if(dist<=cls.range)castMageSpell(game,mage,target);}
+  if(!mage.magicRecovering&&target&&mage.atkCooldown<=0){if(melee)game.performCasterMelee(mage,target);else if(dist<=cls.range)castMageSpell(game,mage,target);}
 }
 export function drawMagicBursts(ctx,game) {
   for(const b of game.magicBursts||[]){ctx.save();ctx.globalAlpha=Math.max(0,b.life/.3)*.42;ctx.strokeStyle=b.color;ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(b.x,b.y,b.radius,0,Math.PI*2);ctx.stroke();ctx.fillStyle=b.color;ctx.beginPath();ctx.arc(b.x,b.y,5,0,Math.PI*2);ctx.fill();ctx.restore();}
@@ -182,7 +188,7 @@ export const magicMethods={
   magicUnitDescription(u) {
     if(!isMagicUser(u))return '';ensureMana(u);
     if(isPlayerCaster(u))return `MP ${Math.floor(u.mana)}/${u.maxMana} · ${MAGIC_AFFINITIES[u.magicAffinity].name}魔法${u.mana<MAGIC_AFFINITIES[u.magicAffinity].cost?' · MP不足（回復待ち）':''}`;
-    const affinity=isMage(u)?` · 得意魔法：${MAGIC_AFFINITIES[u.magicAffinity].name}${u.magicRecovering?' · 瞑想中（移動不可）':''}`:(magicTier(u)>0?' · 攻撃・守護バフ使用可':' · クラスアップでバフ解放');
+    const affinity=isMage(u)?` · 得意魔法：${MAGIC_AFFINITIES[u.magicAffinity].name}${u.magicRecovering?(u.isPersonalGuard?' · 瞑想中（戦闘中は停止）':' · 瞑想中（移動不可）'):''}`:(magicTier(u)>0?' · 攻撃・守護バフ使用可':' · クラスアップでバフ解放');
     return `MP ${Math.floor(u.mana)}/${u.maxMana}${affinity}${!isMage(u)&&u.mana<16?' · MP不足（回復待ち）':''}`;
   }
 };

@@ -1,0 +1,52 @@
+{
+  "version": "6.11.17",
+  "disposableStorage": true,
+  "rescued": {
+    "down": false,
+    "returning": true,
+    "reward": true,
+    "potions": 1
+  },
+  "services": {
+    "hp": 130,
+    "maxHp": 130,
+    "potions": 2
+  },
+  "paused": {
+    "same": true,
+    "open": true
+  },
+  "checkpointRestored": true,
+  "arrived": {
+    "moved": true,
+    "returning": false,
+    "atHome": true,
+    "rewardUnchanged": true,
+    "markerCleared": true
+  },
+  "nonmodal": {
+    "clockAdvanced": true,
+    "moved": true,
+    "unpaused": true,
+    "stillDown": true
+  },
+  "medic": {
+    "approached": true,
+    "revived": true,
+    "returning": true,
+    "promptGone": true
+  },
+  "range": {
+    "farDisabled": true,
+    "nearEnabled": true,
+    "revived": true
+  },
+  "commander": {
+    "approaching": true,
+    "revived": true,
+    "fullHP": true,
+    "potions": 1,
+    "notCarried": true
+  },
+  "errors": []
+}

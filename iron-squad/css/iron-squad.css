@@ -562,3 +562,9 @@
 .economic-amount input{width:120px;min-height:44px;box-sizing:border-box;padding:7px;background:#112219;border:1px solid #738867;border-radius:5px;color:#e1e6cf;font-size:16px}
 .economic-mission{color:#b8c6a3}
 @media(max-width:430px){.economic-cards{grid-template-columns:1fr}.economic-actions button{flex:1 1 100px}}
+
+/* Nonmodal rescue question: the field and controls continue running. */
+.npc-rescue-request { position:absolute;top:calc(env(safe-area-inset-top,0px) + 145px);left:50%;transform:translateX(-50%);z-index:45;width:min(280px,calc(100% - 32px));padding:9px 12px;border:1px solid #7eaa9b;border-radius:10px;background:#10251ff2;color:#edf8f1;box-shadow:0 3px 12px #0006;font-size:12px;line-height:1.5;pointer-events:auto; }
+.npc-rescue-request p { margin:0 0 7px; }
+.npc-rescue-request button { min-height:36px;padding:5px 12px;margin-right:8px;border:1px solid #8aafa0;border-radius:6px;background:#294f42;color:#fff;font:inherit; }
+.iron-squad.dialog-open .npc-rescue-request { visibility:hidden; }

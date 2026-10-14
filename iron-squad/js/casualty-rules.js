@@ -1,5 +1,5 @@
 import {expeditionCombatUnits,isExpeditionReserve} from './expedition-rules.js?v=256';
-import {ensureMana,regenerateMana,spendMana} from './magic-rules.js?v=257';
+import {ensureMana,regenerateMana,spendMana} from './magic-rules.js?v=266';
 import {recordHealing,recordDown,healAmountFor} from './phase-rules.js?v=218';
 import {WORLD_SIZE} from './world.js';
 import {inCurrentInstance} from './instance-rules.js?v=256';
@@ -14,7 +14,7 @@ import {isOwnSquad} from './own-squad-marker.js?v=182';
 export const RESCUE_TIMEOUT = 45; // 救助猶予時間（秒）広域マップ対応で45秒に延長
 export const REVIVAL_COOLDOWN = 60;
 export const revivalCooldownOf=medic=>REVIVAL_COOLDOWN/Math.max(1,Number(medic?.deathlineRevivalSpeed)||1); // ミラクルグレイス所持者は再使用時間が短い
-export const REVIVAL_POTION_RANGE = 80;
+export const REVIVAL_POTION_RANGE = 150;
 const rescueClock=game=>Math.max(0,Number(game?.worldTime)||0);
 export const isMedic=unit=>['MEDIC','HIGH_PRIEST','SAINT','ARCHANGEL'].includes(unit?.soldierClass);
 export const revivalSkillCooldownLeft=(game,medic)=>isMedic(medic)?Math.max(0,Math.min(revivalCooldownOf(medic),(Number(medic?.revivalSkillCooldownUntil)||0)-rescueClock(game))):0;
@@ -308,9 +308,10 @@ export function nearestRevivalPotionTarget(game) {
   const target=candidates.length===1?candidates[0]:candidates[Math.min(candidates.length-1,Math.max(0,Math.floor((game.random||Math.random)()*candidates.length)))];
   revivalPotionChoices.set(game,{candidates,target});return target;
 }
-export function reviveByPotion(game,wounded) {
-  if(wounded!==nearestRevivalPotionTarget(game))return false;
-  return revive(game,wounded,wounded.maxHp,{method:'POTION',medic:game.player});
+export function reviveByPotion(game,wounded,rescuer=game.player) {
+  if(rescuer===game.player){if(wounded!==nearestRevivalPotionTarget(game))return false;}
+  else if(wounded!==game.player||!commanderDown(game)||!rescuer||rescuer.dead||rescuer.isDown||rescuer.hp<=0||attributeFamily(rescuer)!=='LIGHT'||isLocalRescueUnit(game,rescuer)!==isLocalRescueUnit(game,wounded)||Math.hypot(rescuer.x-wounded.x,rescuer.y-wounded.y)>REVIVAL_POTION_RANGE)return false;
+  return revive(game,wounded,wounded.maxHp,{method:'POTION',medic:rescuer});
 }
 
 export function grantRescueBonus(game,wounded,options={}) {

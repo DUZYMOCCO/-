@@ -31,12 +31,12 @@ test('muscle mage never meditates with any weapon or promotion; stale saved medi
   }
 });
 
-test('ordinary mage still meditates and temporary strength does not change identity',()=>{
+test('ordinary personal mage still meditates while following outside combat; temporary strength does not change identity',()=>{
   const u=mage('MAGE',false);u.strength=255;u._casterStrengthBonus=100;u._casterStrengthTimer=8;
   const g=game();g.squad=[u];
   assert.equal(canMeditate(u),true);
   updateMageAI(g,u,.1,{id:0},{range:260});
-  assert.equal(u.magicRecovering,true);assert.equal(u.x,0);
+  assert.equal(u.magicRecovering,true);assert.ok(u.x>0,'quiet personal meditation follows the rear formation');
   regenerateMana(u,2);assert.equal(u.mana,8);
 });
 

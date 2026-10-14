@@ -1,5 +1,5 @@
 import {beginFollowerRecovery,noteFollowerIntent,suspendFollowerRecovery,finishFollowerRecovery,profileFollowerRecovery} from './follower-recovery.js?v=262';
-import {configurePerfSettings} from './perf-diagnostics.js?v=265';
+import {configurePerfSettings} from './perf-diagnostics.js?v=267';
 import {gameText} from './game-text.js?v=262';
 import {talentTag} from './talent-labels.js?v=247';
 import {fieldDialogReturn} from './dialog-return.js?v=200';
@@ -9,7 +9,7 @@ import {configureBattlefieldUI,quietBattlefieldContext} from './battlefield-ui.j
 import {renderNavigationMap} from './navigation-map.js?v=189';
 import {soldierEquipmentValue,createEquipmentValueCache,observeEquipment,standardEquipmentCost,RESERVE_ARMAMENT_COUNT} from './armament-rules.js?v=265';
 import {configureRangedEnemy,updateRangedEnemy,updateDefenseWalls,interceptHostileShot,isHostileShot,updateHostileBolt,drawDefenseWalls} from './enemy-ranged.js?v=235';
-import {LIMITED_CLASSES,initializeLimitedAllies,prepareLimitedEncounter,createLimitedAlly,joinLimitedEncounter,updateLimitedAllies,updateNinja,updateShuriken,drawLimitedEncounter,serializeLimitedAllies,notifyLimitedJoin} from './limited-allies.js?v=264';
+import {LIMITED_CLASSES,initializeLimitedAllies,prepareLimitedEncounter,createLimitedAlly,joinLimitedEncounter,updateLimitedAllies,updateNinja,updateShuriken,drawLimitedEncounter,serializeLimitedAllies,notifyLimitedJoin} from './limited-allies.js?v=266';
 import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=182';
 import {TIERS,MAX_EQUIPMENT_TIER,MAX_POWER_RANK,POWER_RANK_STEP,GENERATION_COUNT,TRADE_MAX_TIER,powerRank,tierDescription} from './equipment-tiers.js?v=231';
 import {fieldAdaptiveScaling} from './field-scaling.js?v=182';
@@ -61,7 +61,8 @@ import { refreshCampQuiet, assignCampSeats, tryCampLeisure, YARD_TABLES, drawLei
 import { CAMP_PEACE_RADIUS, peaceContainment, pushOutsidePeace, relocatePeaceMonster } from './peace-zones.js?v=182';
 import { FARM_X, FARM_Y, farmPosts, farmOverlaps, reinforcementCount, reserveRosterLine, reserveRosterTitle } from './reserve-farm.js?v=256';
 import { drawMeleeRangeCue, meleeDrawReach, attackAnimationRate } from './weapon-motion.js?v=242';
-import { guardRegrouping, guardTarget, guardSpeedMult } from './guard-leash.js?v=211';
+import { guardRegrouping, guardTarget } from './guard-leash.js?v=266';
+import {beginGuardFormation,guardFormationTarget,guardFormationSpeedMult} from './guard-formation.js?v=266';
 import { KNOCK_RULES, knockbackDistance, knockFlight, slamDamage, knockTransferDistance } from './knockback-rules.js?v=212';
 import { MELEE_SOUND_STYLES, playMeleeSound } from './weapon-sounds.js?v=211';
 import {emptyRescueBonuses,normalizeRescueBonuses,rescueBonusSummary} from './rescue-rewards.js?v=264';
@@ -71,10 +72,10 @@ import { soldierDialogue } from './soldier-dialogue.js?v=246';
 import { generateSoldierName, migrateSoldierName, rollGenderByKey, isGenderId, ensureSoldierGender, genderLabel } from './soldier-names.js?v=210';
 import { openCommanderEditor } from './commander-editor.js?v=210';
 import { applyCommanderIdentity, normalizeCommanderIdentity, commanderFullName, GENDERS as COMMANDER_GENDERS } from './commander-identity.js?v=210';
-import {MAGIC_CLASSES,MAGIC_AFFINITIES,magicMethods,isMage,isMagicUser,ensureMana,initializeMagic,updateMagic,distributeMagicStones,castMedicBuff,castCasterStrength,updateMageAI,drawMagicBursts,spendMana,weaponMagicDamage,isPlayerCaster,castPlayerSpell,PLAYER_MAGIC_RULES} from './magic-rules.js?v=257';
+import {MAGIC_CLASSES,MAGIC_AFFINITIES,magicMethods,isMage,isMagicUser,ensureMana,initializeMagic,updateMagic,distributeMagicStones,castMedicBuff,castCasterStrength,updateMageAI,drawMagicBursts,spendMana,weaponMagicDamage,isPlayerCaster,castPlayerSpell,PLAYER_MAGIC_RULES} from './magic-rules.js?v=266';
 import {hazardMethods,updateHazards,drawHazards} from './hazard-fields.js?v=198';
 import {strongEnemyReward} from './combat-rewards.js?v=182';
-import {supplyMethods, initializeSupplies, updateSupplies, takeRangedShot, ammoCombatProfile, isRangedUnit, distributeAmmo, preventLethalHit, normalizeFieldSave, SQUAD_POTION_COST, REVIVAL_POTION_COST, REVIVAL_POTION_MAX, SQUAD_POTION_MAX, ensureAmmo, ammoCapacity, recalcAmmoCapacity, RANGED_DAMAGE_MULT, supplyLocation} from './supply-rules.js?v=264';
+import {supplyMethods, initializeSupplies, updateSupplies, takeRangedShot, ammoCombatProfile, isRangedUnit, distributeAmmo, preventLethalHit, normalizeFieldSave, SQUAD_POTION_COST, REVIVAL_POTION_COST, REVIVAL_POTION_MAX, SQUAD_POTION_MAX, ensureAmmo, ammoCapacity, recalcAmmoCapacity, RANGED_DAMAGE_MULT, supplyLocation} from './supply-rules.js?v=267';
 import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog } from './interface.js?v=254';
 import { renderTroopRankings, getSoldierRankerBadges, calcSoldierRankerBonus, setRankingFamilyLabels, RANKING_FAMILIES } from './troop-rankings.js?v=247';
 import { ensureSoldierAppearance, drawSoldierPortrait } from './soldier-appearance.js?v=206';
@@ -122,7 +123,7 @@ import {
   nearestLivingMerchant, refreshMerchantStock, merchantBuyPrice, merchantSellTier,
   applyMerchantSave, serializeMerchants, MERCHANT_INTERACT_R,
   merchantHealingStatus, merchantHealWavesLeft, useMerchantHealing, MERCHANT_HEAL_COST, recalcEscortStats, finishEscortPhase
-} from './merchant-rules.js?v=258';
+} from './merchant-rules.js?v=267';
 
 import { daylightAt, advanceWorldClock, periodEnemy, enemyAvailable, PERIOD_ENEMIES } from './day-night.js?v=208';
 
@@ -133,7 +134,8 @@ import {applyHeroEquipmentUpgrade} from './hero-equipment.js?v=239';
 import {initializeHeroJourney,rollHeroRevelation,serializeHeroJourney,updateHeroParty,updateHeroFollowing,awardHeroBattle,recordDemonKingDefeat,ensureHeroCastle,syncHeroCastle,renderHeroJourney,drawHeroMarks} from './hero-party.js?v=246';
 import {updateSquadHpHud} from './squad-hp-hud.js?v=246';
 import {addBattleReport,normalizeBattleReport,renderBattleReport} from './battle-report.js?v=226';
-import { RESCUE_TIMEOUT, REVIVAL_COOLDOWN, revivalCooldownOf, revivalSkillCooldownLeft, normalizeRevivalSkill, headquartersRevivalPaused, rescueUnits, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, receiveTownCargo, leaveCivilianSpace, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, buildTransportRescueAssign, markSoldierDown, downCommander, commanderDown, updateNpcRescue, CIV_KINDS, isMedic, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST, medicHoldsByCommander } from './casualty-rules.js?v=256';
+import {updateRescueAssistance,handleRescueAssistance} from './rescue-assistance.js?v=267';
+import { RESCUE_TIMEOUT, REVIVAL_COOLDOWN, revivalCooldownOf, revivalSkillCooldownLeft, normalizeRevivalSkill, headquartersRevivalPaused, rescueUnits, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, receiveTownCargo, leaveCivilianSpace, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, buildTransportRescueAssign, markSoldierDown, downCommander, commanderDown, updateNpcRescue, CIV_KINDS, isMedic, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST, medicHoldsByCommander, isMerchantCasualty } from './casualty-rules.js?v=267';
 import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault, dungeonBlocks, dungeonSolids } from './dungeon.js?v=251';
 import {nearestDungeonFloor,dungeonSpawnPoint,dungeonSteeringTarget} from './dungeon-layout.js?v=182';
 import {normalizeDungeonExploration,updateDungeonSideChests,drawDungeonSideChests,updateDungeonRespawns,dungeonCoolingDown,recordDungeonClear,DUNGEON_RESET_PHASES} from './dungeon-exploration.js?v=264';
@@ -1155,7 +1157,7 @@ export const IronSquadGame = {
 
   // 起動時にこのゲームのCSSを自分で読み込む（?v= はこのフォルダ内で管理）。ハブが init 前に await する
   prepare() {
-    return loadCss(['../css/iron-squad.css?v=263', '../css/iron-squad-interface.css?v=254'].map(p => new URL(p, import.meta.url).href));
+    return loadCss(['../css/iron-squad.css?v=267', '../css/iron-squad-interface.css?v=254'].map(p => new URL(p, import.meta.url).href));
   },
 
   init(container, onBackToHub) {
@@ -6176,16 +6178,19 @@ export const IronSquadGame = {
       }
     });
 
+    beginGuardFormation(this,dt);
     updateWounded(this,dt);
     for(let i=aliveSquad.length-1;i>=0;i--)if(aliveSquad[i].dead)aliveSquad.splice(i,1);
-    this._medicRescueAssign = buildMedicRescueAssign(rescueUnits(this).filter(s=>!this.currentDungeon||inCurrentInstance(this,s)),this.player,this);
+    this._medicRescueAssign = buildMedicRescueAssign(rescueUnits(this).filter(s=>!isMerchantCasualty(s)&&!s.isGateGuard&&(!this.currentDungeon||inCurrentInstance(this,s))),this.player,this);
     // Shared mana regeneration and supply are processed once by updateMagic.
     if (!this.currentDungeon) {
       this._civSpawnClock = (this._civSpawnClock || 0) + dt;
       if (this._civSpawnClock >= 12) { this._civSpawnClock = 0; ensureCiviliansSpawned(this, { targetCount: 4 }); }
     }
 
-    const transportRescueAssign=buildTransportRescueAssign(this,aliveSquad);
+    const assistance=updateRescueAssistance(this,dt,aliveSquad);
+    const transportRescueAssign=buildTransportRescueAssign(this,aliveSquad.filter(u=>u!==assistance.potionRunner));
+    if(assistance.potionRunner)for(const [carrier,target]of transportRescueAssign)if(target===this.player)transportRescueAssign.delete(carrier);
     assignCampSeats(this, aliveSquad);
 
     // 各兵士の自律行動・兵種戦闘・救助
@@ -6202,11 +6207,11 @@ export const IronSquadGame = {
       const mageAffinity=isMage(soldier)?MAGIC_AFFINITIES[soldier.magicAffinity]:null;
       const mageHolds=!!(mageAffinity&&(prefersCasterMelee(soldier)||soldier.magicRecovering||soldier.mana<mageAffinity.cost));
       let campRest=false;
+      if(handleRescueAssistance(this,soldier,dt)||handleTransportAI(this,soldier,dt,transportRescueAssign)){suspendFollowerRecovery(this,soldier);soldier.campPose=null;return;}
       if(mageHolds){
         if(tryCampLeisure(this,soldier,dt))campRest=true;
         else{updateMageAI(this,soldier,dt,platoon,cls);return;}
       }
-      if(!campRest&&handleTransportAI(this,soldier,dt,transportRescueAssign)){suspendFollowerRecovery(this,soldier);soldier.campPose=null;return;}
       if(!campRest&&tryCampLeisure(this,soldier,dt))campRest=true;
       if(campRest){
         soldier.medCooldown=(soldier.medCooldown||0)-dt;
@@ -6262,7 +6267,7 @@ export const IronSquadGame = {
 
       // 衛生兵（MEDIC）および大司教（HIGH_PRIEST）の自動救助 — 負傷者へ分散割当
       if (clsKey === 'MEDIC' || clsKey === 'HIGH_PRIEST' || clsKey === 'SAINT' || clsKey === 'ARCHANGEL') {
-        if (!this._medicRescueAssign) this._medicRescueAssign = buildMedicRescueAssign(rescueUnits(this).filter(s=>!this.currentDungeon||inCurrentInstance(this,s)),this.player,this);
+        if (!this._medicRescueAssign) this._medicRescueAssign = buildMedicRescueAssign(rescueUnits(this).filter(s=>!isMerchantCasualty(s)&&!s.isGateGuard&&(!this.currentDungeon||inCurrentInstance(this,s))),this.player,this);
         const downedMate = this._medicRescueAssign.get(soldier.id) || null;
         if (downedMate && downedMate.isDown && !downedMate.dead) {
           const rescueTarget=this.dungeonMoveTarget(soldier,downedMate);
@@ -6410,11 +6415,7 @@ export const IronSquadGame = {
       // 自律移動目標の決定（直属小隊ならプレイヤーに追従！本隊なら小隊重心で防衛圏内を作戦行動！）
       let targetX, targetY;
       if (soldier.isPersonalGuard) {
-        const guardIndex = soldier._guardSlot != null ? soldier._guardSlot : 0;
-        const guardAngle = (guardIndex * 1.25) + (now * 0.001);
-        const guardDist = 32 + (guardIndex % 4) * 10;
-        targetX = this.player.x + Math.cos(guardAngle) * guardDist;
-        targetY = this.player.y + Math.sin(guardAngle) * guardDist;
+        const goal=guardFormationTarget(this,soldier);targetX=goal.x;targetY=goal.y;
       } else {
         // 本隊: 遠征選抜メンバーのみ小隊重心に追随。未選抜は本陣防衛圏に残留。
         const onExpedition = isSoldierOnExpedition(platoon, soldier);
@@ -6459,8 +6460,8 @@ export const IronSquadGame = {
       // 直属は隊長の近くの敵だけと戦い、離れすぎたら戦闘をやめてダッシュで戻る。
       guardRegrouping(this, soldier);
       nearestEnemy = guardTarget(this, soldier, nearestEnemy);
-      const guardSpeed = soldier.speed * guardSpeedMult(soldier);
       const enemyDist = nearestEnemy ? Math.hypot(nearestEnemy.x - soldier.x, nearestEnemy.y - soldier.y) : 9999;
+      const guardSpeed = soldier.speed * guardFormationSpeedMult(this,soldier,{x:targetX,y:targetY},!!nearestEnemy&&enemyDist<deathlineRangedRange(soldier,360));
 
       // AI light frame: orbit/move only, skip auto-attack & class skills this tick.
       if (aiLight && enemyDist >= deathlineRangedRange(soldier,360)) {
@@ -7803,7 +7804,7 @@ export const IronSquadGame = {
   openMerchantShop(merchant = null) {
     this.stallRecorder?.mark('商人を開いた');
     let m = merchant || this.nearMerchant || nearestLivingMerchant(this, this.player?.x || 0, this.player?.y || 0, MERCHANT_INTERACT_R + 40);
-    if (!m || m.dead || m.isDown || m.returningToBase) {
+    if (!m || m.dead || m.isDown || m.hp<=0 || !this.player || this.player.dead || this.player.isDown || this.player.hp<=0) {
       this.showToast('行商人は居ないか、すでに命を落としています');
       return;
     }
@@ -7819,12 +7820,12 @@ export const IronSquadGame = {
       (document.querySelector('.iron-squad') || document.body).appendChild(popup);
     }
     const close = () => {
-      popup.classList.add('hidden');this._merchantShopRefresh=null;this._merchantShopRestore=null;this._merchantShopClose=null;
+      popup.classList.add('hidden');this._merchantShopRefresh=null;this._merchantShopRestore=null;this._merchantShopClose=null;this._tradingMerchant=null;
       setSubDialog(this,popup,false);
       this.setDialogState(!document.getElementById('strategy-modal').classList.contains('hidden'));
       this.resetMovementInput();
     };
-    this._merchantShopClose=close;
+    this._merchantShopClose=close;this._tradingMerchant=m;
     let shopGroup=(m.stock||[]).some(i=>i.type==='WEAPON')?'weapon':'armor';
     let recipientId='commander',shopSection='home',openStockId=null; // 取引の一覧は選んだ1品だけを開く（画面の状態のみ）
     const sectionNames={home:'商人メニュー',recovery:'回復',trade:'取引',save:'セーブ'};
@@ -7839,7 +7840,7 @@ export const IronSquadGame = {
       view.listScrollTop=popup.querySelector('.transfer-item-list')?.scrollTop||0;
       view.focus=['[data-merchant-section="recovery"]','[data-merchant-section="trade"]','[data-merchant-section="save"]','.transfer-popup-close-btn','#merchant-recipient','.merchant-heal-button','.merchant-potion-button','.merchant-revival-button','[data-supply="potion"]','[data-supply="save"]','[data-supply="load"]',`[data-shop-group="${shopGroup}"]`].find(selector=>document.activeElement?.matches(selector))||null;
     };
-    const canTrade=()=>!!((this.merchants||[]).includes(m)&&!m.dead&&!m.isDown&&!m.returningToBase&&m.hp>0&&this.player?.hp>0&&!this.player.isDown&&(!restoredFromCheckpoint||(this.currentDungeon?this.currentDungeon.kind==='town'&&m.placeId===this.currentDungeon.id:Math.hypot(this.player.x-m.x,this.player.y-m.y)<=MERCHANT_INTERACT_R+40)));
+    const canTrade=()=>!!((this.merchants||[]).includes(m)&&!m.dead&&!m.isDown&&m.hp>0&&this.player?.hp>0&&!this.player.isDown&&!this.player.dead&&(!restoredFromCheckpoint||(this.currentDungeon?this.currentDungeon.kind==='town'&&m.placeId===this.currentDungeon.id:Math.hypot(this.player.x-m.x,this.player.y-m.y)<=MERCHANT_INTERACT_R+40)));
     const render = (captureExisting=true) => {
       if(rendered&&captureExisting)captureView();
       const view=views[shopSection];
@@ -8018,7 +8019,7 @@ export const IronSquadGame = {
       this._merchantShopRefresh=()=>{if(!popup.classList.contains('hidden'))render();};
       this._merchantShopRestore=()=>{
         captureView();const merchantId=m.id;
-        return ()=>{m=this.merchants.find(unit=>unit.id===merchantId)||m;restoredFromCheckpoint=true;this._merchantShopClose=close;render(false);};
+        return ()=>{m=this.merchants.find(unit=>unit.id===merchantId)||m;restoredFromCheckpoint=true;this._merchantShopClose=close;this._tradingMerchant=m;render(false);};
       };
       setSubDialog(this, popup, true, close, !rendered);
       this.setDialogState(true);

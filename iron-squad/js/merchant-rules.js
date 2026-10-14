@@ -10,7 +10,7 @@ import { saleValue, distanceScaling, weaponCombatProfile } from './equipment-rul
 import { drawFieldSoldier } from './visuals.js?v=245';
 import { createSoldierAppearance, drawSoldierHead } from './soldier-appearance.js?v=206';
 import { attackAnimationRate } from './weapon-motion.js?v=242';
-import { markSoldierDown, rebuildMerchantCasualties, RESCUE_TIMEOUT } from './casualty-rules.js?v=256';
+import { markSoldierDown, rebuildMerchantCasualties, RESCUE_TIMEOUT } from './casualty-rules.js?v=267';
 import {emptyMastery,normalizeMastery,hitGrowthHpBonus,hitGrowthDefBonus,migrateHitGrowth,applyHitGrowth,masteryAtkMult,masteryReloadMult} from './growth-rules.js?v=234';
 import {recordCombat,finishExperience} from './phase-rules.js?v=218';
 
@@ -240,7 +240,7 @@ export function merchantHealWavesLeft(game,m) {
   return Math.max(0,(m?.healReadyPhase||0)-phase);
 }
 export function merchantHealingStatus(game,m) {
-  if(!m||m.dead||m.isDown||m.returningToBase||m.hp<=0||!game.player||game.player.hp<=0||!(game.merchants||[]).includes(m))return 'unavailable';
+  if(!m||m.dead||m.isDown||m.hp<=0||!game.player||game.player.dead||game.player.isDown||game.player.hp<=0||!(game.merchants||[]).includes(m))return 'unavailable';
   if(merchantHealWavesLeft(game,m)>0)return 'cooldown';
   if(game.currentDungeon) {
     if(game.currentDungeon.kind!=='town'||m.placeId!==game.currentDungeon.id)return 'unavailable';
@@ -264,9 +264,10 @@ export function livingEscorts(merchant) {
 }
 
 export function nearestLivingMerchant(game, x, y, maxR = MERCHANT_INTERACT_R) {
+  if(game.player&&(game.player.dead||game.player.isDown||game.player.hp<=0))return null;
   let best = null, bestD = maxR;
   for (const m of (game.merchants || [])) {
-    if (!m || m.dead || m.isDown || m.returningToBase) continue;
+    if (!m || m.dead || m.isDown || m.hp<=0) continue;
     // 宿場内にいるときは、その宿場の商人を会話可能に（入口外にいる商人）
     if (game.currentDungeon && game.currentDungeon.kind === 'town') {
       if (m.placeId === game.currentDungeon.id) return m;
@@ -290,6 +291,8 @@ export function refreshMerchantStock(merchant, generateRandomDrop, phase = 1, ga
  * @param {object} hooks { damageMonster(attacker, monster), onMerchantDied(m), onMerchantRespawn(m) }
  */
 export function updateEscortPatrol(game,m,dt,monsters,hooks={}) {
+    const returning=!!(m.returningToBase&&!m.dead&&!m.isDown&&m.hp>0);
+    const heading=Math.atan2(m.homeY-m.y,m.homeX-m.x);
     // 護衛行動
     for (const esc of (m.escorts || [])) {
       if (!esc || esc.dead || esc.isDown) {
@@ -300,21 +303,24 @@ export function updateEscortPatrol(game,m,dt,monsters,hooks={}) {
       if(esc.shieldTimer>0)esc.shieldTimer=Math.max(0,esc.shieldTimer-dt);
       esc.atkAnim=Math.max(0,(esc.atkAnim||0)-dt*attackAnimationRate(esc.displayEquipment?.weapon));
       // 近くの敵を探す
-      const homeX=esc.rescuedToBase?esc.homeX:m.x,homeY=esc.rescuedToBase?esc.homeY:m.y;
-      if(esc.returningToBase) {returnToBase(esc,dt);continue;}
+      const index=(m.escorts||[]).indexOf(esc),side=(index%2?1:-1)*(30+Math.floor(index/2)*22);
+      const homeX=returning?m.x-Math.cos(heading)*22-Math.sin(heading)*side:esc.rescuedToBase?esc.homeX:m.x;
+      const homeY=returning?m.y-Math.sin(heading)*22+Math.cos(heading)*side:esc.rescuedToBase?esc.homeY:m.y;
+      if(esc.returningToBase&&!returning) {returnToBase(esc,dt);continue;}
       let target = null, tDist = MERCHANT_AGGRO_R;
       for (const mon of monsters) {
         if (!mon || mon.hp <= 0) continue;
-        if((esc.rescuedToBase||m.rescuedToBase)&&Math.hypot(mon.x-homeX,mon.y-homeY)>180)continue;
+        if(returning?Math.hypot(mon.x-m.x,mon.y-m.y)>180:(esc.rescuedToBase||m.rescuedToBase)&&Math.hypot(mon.x-homeX,mon.y-homeY)>180)continue;
         const d = Math.hypot(mon.x - esc.x, mon.y - esc.y);
         if (d < tDist) { tDist = d; target = mon; }
       }
       // 商人から離れすぎたら帰宅
       const homeD = Math.hypot(esc.x - homeX, esc.y - homeY);
-      if (!target && homeD > 55) {
+      if (!target && homeD > (returning?1:55)) {
         const ang = Math.atan2(homeY - esc.y, homeX - esc.x);
-        esc.x += Math.cos(ang) * esc.speed * dt * 0.7;
-        esc.y += Math.sin(ang) * esc.speed * dt * 0.7;
+        const step=Math.min(homeD,(returning?(homeD>65?esc.speed||78:55):(esc.speed||78)*.7)*dt);
+        esc.x += Math.cos(ang) * step;
+        esc.y += Math.sin(ang) * step;
         esc.facingAngle=ang;esc.vx=Math.cos(ang);esc.vy=Math.sin(ang);
         continue;
       }
@@ -363,12 +369,16 @@ export function updateMerchants(game, dt, generateRandomDrop, hooks = {}) {
     }
 
     if(!m.dead&&m.stockPhase!==phase)buildStock(game,m,generateRandomDrop);
-    if(m.returningToBase&&!m.isDown)returnToBase(m,dt);
+    const wasReturning=m.returningToBase;
+    if(m.returningToBase&&!m.dead&&!m.isDown&&m.hp>0){
+      if(game._tradingMerchant===m)m.vx=m.vy=0;else returnToBase(m,dt);
+    }
+    if(wasReturning&&!m.returningToBase)for(const esc of livingEscorts(m))if(esc.rescuedToBase)esc.returningToBase=Math.hypot(esc.x-esc.homeX,esc.y-esc.homeY)>4;
     // Discovered camps persist, but distant caravans do not run full escort AI.
     const nearPlayer=game.player&&Math.hypot(m.x-game.player.x,m.y-game.player.y)<850;
     const nearView=game.camera&&Math.hypot(m.x-game.camera.x,m.y-game.camera.y)<850;
     const activeEscort=(m.escorts||[]).some(e=>!e.dead&&(e.returningToBase||(e.rescuedToBase&&game.player&&Math.hypot(e.x-game.player.x,e.y-game.player.y)<850)));
-    if(!nearPlayer&&!nearView&&!activeEscort&&!monsters.some(mon=>mon&&mon.hp>0&&Math.hypot(mon.x-m.x,mon.y-m.y)<MERCHANT_AGGRO_R+160))continue;
+    if(!m.returningToBase&&!nearPlayer&&!nearView&&!activeEscort&&!monsters.some(mon=>mon&&mon.hp>0&&Math.hypot(mon.x-m.x,mon.y-m.y)<MERCHANT_AGGRO_R+160))continue;
 
     updateEscortPatrol(game,m,dt,monsters,hooks);
 
