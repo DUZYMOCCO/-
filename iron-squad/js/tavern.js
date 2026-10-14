@@ -106,9 +106,9 @@ export const tavernMethods={
     const host=el('div','game-overlay commander-editor');host.id='tavern-dialog';
     host.innerHTML='<section class="strategy-panel ce-panel tavern-panel"><header class="sheet-bar"><strong class="sheet-bar-title" id="tavern-title"></strong><button type="button" class="sheet-bar-btn" id="btn-tavern-close">閉じる ×</button></header><div class="ce-body tavern-body"></div></section>';
     (this.container.querySelector('.iron-squad')||this.container).append(host);
-    const close=()=>{this.closeTavernPersonDetail();setSubDialog(this,host,false);host.remove();this.saveGame();returnToCaller();};
+    const close=()=>{this.closeTavernPersonDetail();setSubDialog(this,host,false);host.remove();this.saveGame({background:true});returnToCaller();};
     host.querySelector('#btn-tavern-close').onclick=close;setSubDialog(this,host,true,close);host.setAttribute('aria-label',FIELD_TAVERN.name);
-    this.renderTavern();this.saveGame();return true;
+    this.renderTavern();this.saveGame({background:true});return true;
   },
   renderTavern(){
     const host=this.container?.querySelector('#tavern-dialog');if(!host)return;
@@ -179,18 +179,18 @@ export const tavernMethods={
     }else{
       sendToReserve(this,s);this.showToast(`${s.name}が本陣の予備兵として加入しました。`);
     }
-    this.normalizeDeployment();this.saveGame();this.updateStatsUI();this.renderStrategyUI();this.renderTavern();return true;
+    this.normalizeDeployment();this.saveGame({background:true});this.updateStatsUI();this.renderStrategyUI();this.renderTavern();return true;
   },
   parkTavernCompanion(id){
     if(!nearFieldTavern(this))return false;
     const s=(this.squad||[]).find(s=>s.id===id&&isOwnSquad(s));if(!s||s.isDown||s.carrierId)return false;
     if(this.isEnlisted())sendToReserve(this,s);else park(this,s);
-    this.syncPersonalGuardSlots(null,this.limitedGuardLimit());this.normalizeDeployment();this.saveGame();this.updateStatsUI();this.renderTavern();return true;
+    this.syncPersonalGuardSlots(null,this.limitedGuardLimit());this.normalizeDeployment();this.saveGame({background:true});this.updateStatsUI();this.renderTavern();return true;
   },
   rejoinTavernCompanion(id){
     if(!nearFieldTavern(this)||(this.squad||[]).filter(isOwnSquad).length>=this.limitedGuardLimit())return false;
     const s=this.taverns?.waiting.find(s=>s.id===id);if(!s)return false;
     this.taverns.waiting=this.taverns.waiting.filter(u=>u!==s);Object.assign(s,{x:this.player.x+28,y:this.player.y+18,isPersonalGuard:true,overflowGuard:false});
-    this.squad.push(s);this.syncPersonalGuardSlots(null,this.limitedGuardLimit());this.saveGame();this.updateStatsUI();this.renderTavern();return true;
+    this.squad.push(s);this.syncPersonalGuardSlots(null,this.limitedGuardLimit());this.saveGame({background:true});this.updateStatsUI();this.renderTavern();return true;
   }
 };

@@ -18,6 +18,19 @@ globalThis.Worker=class{
 };
 const {saveSlots}=await import('../js/save-slots.js');
 
+test('a burst of background events commits the final snapshot in either reply order',async()=>{
+  const {saveSlots:slots}=await import('../js/save-slots.js?event-burst');
+  const a=slots.create('burst',{data:{gold:100},checkpoint:{data:{gold:7}}}),b=slots.create('untouched',{data:{gold:99}});
+  for(const reverse of [false,true]){
+    const pending=[];
+    for(let i=0;i<12;i++)pending.push(slots.updateBackground(a.id,{data:{gold:100-i,restTimer:Math.max(0,8-i),restReport:{count:i,spent:i}},state:'active'}));
+    while(controlled.queue.length)controlled.finish(reverse?controlled.queue.length-1:0);
+    assert.deepEqual(await Promise.all(pending),[...Array.from({length:11},()=>({status:'superseded'})),{status:'saved'}]);
+    assert.deepEqual(slots.get(a.id).data,{gold:89,restTimer:0,restReport:{count:11,spent:11}});
+    assert.equal(slots.get(a.id).checkpoint.data.gold,7);assert.equal(slots.get(b.id).data.gold,99);
+  }
+});
+
 test('background save freezes its snapshot, commits atomically and retains checkpoint/other slots',async()=>{
   const a=saveSlots.create('A',{data:{gold:1},checkpoint:{data:{gold:7}}}),b=saveSlots.create('B',{data:{gold:99}});
   const value={data:{gold:2}},before=localStorage.getItem(key),pending=saveSlots.updateBackground(a.id,value);

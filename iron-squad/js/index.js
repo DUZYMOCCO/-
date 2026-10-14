@@ -1,15 +1,15 @@
 import {beginFollowerRecovery,noteFollowerIntent,suspendFollowerRecovery,finishFollowerRecovery,profileFollowerRecovery} from './follower-recovery.js?v=262';
-import {configurePerfSettings} from './perf-diagnostics.js?v=263';
+import {configurePerfSettings} from './perf-diagnostics.js?v=264';
 import {gameText} from './game-text.js?v=262';
 import {talentTag} from './talent-labels.js?v=247';
 import {fieldDialogReturn} from './dialog-return.js?v=200';
-import {guildMethods} from './guild-contracts.js?v=217';
+import {guildMethods} from './guild-contracts.js?v=264';
 import {headquartersMoveTarget} from './hq-navigation.js?v=200';
 import {configureBattlefieldUI,quietBattlefieldContext} from './battlefield-ui.js?v=249';
 import {renderNavigationMap} from './navigation-map.js?v=189';
 import {soldierEquipmentValue,observeEquipment,standardEquipmentCost,RESERVE_ARMAMENT_COUNT} from './armament-rules.js?v=231';
 import {configureRangedEnemy,updateRangedEnemy,updateDefenseWalls,interceptHostileShot,isHostileShot,updateHostileBolt,drawDefenseWalls} from './enemy-ranged.js?v=235';
-import {LIMITED_CLASSES,initializeLimitedAllies,prepareLimitedEncounter,createLimitedAlly,joinLimitedEncounter,updateLimitedAllies,updateNinja,updateShuriken,drawLimitedEncounter,serializeLimitedAllies,notifyLimitedJoin} from './limited-allies.js?v=251';
+import {LIMITED_CLASSES,initializeLimitedAllies,prepareLimitedEncounter,createLimitedAlly,joinLimitedEncounter,updateLimitedAllies,updateNinja,updateShuriken,drawLimitedEncounter,serializeLimitedAllies,notifyLimitedJoin} from './limited-allies.js?v=264';
 import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=182';
 import {TIERS,MAX_EQUIPMENT_TIER,MAX_POWER_RANK,POWER_RANK_STEP,GENERATION_COUNT,TRADE_MAX_TIER,powerRank,tierDescription} from './equipment-tiers.js?v=231';
 import {fieldAdaptiveScaling} from './field-scaling.js?v=182';
@@ -18,21 +18,21 @@ import {TANK,prepareTanks,tankEvalDistSq,tankSlowFactor,tankCover,tankStunSecond
 import {recordBattleLog,resetBattleLog,refreshCombatFieldNotes} from './battle-log.js?v=246';
 import {rollDropExclusive,applyDropExclusive,dropExclusiveLabel} from './drop-exclusives.js?v=182';
 import {normalizeMaterials,applyCraftExclusive,craftExclusiveLabel,equipmentDropChance,materialDropChance,rollMaterialDrop,rollTreasureLoot} from './crafting-rules.js?v=231';
-import {workshopMethods} from './workshop.js?v=231';
-import {casinoMethods} from './casino.js?v=201';
+import {workshopMethods} from './workshop.js?v=264';
+import {casinoMethods} from './casino.js?v=264';
 import {normalizeCasino} from './casino-rules.js?v=201';
 import {latestEquipmentTier,recordMerchantEquipment,ensureMerchantCatalog,refreshWaveCatalogs,markMerchantPurchase} from './merchant-catalog.js?v=258';
 import {initializeMedicalPosts,updateMedicalPosts,serializeMedicalPosts,medicalPostLayout,nearestKnownMedicalPost,drawMedicalPost,drawMedicalMap,drawMedicalMarker,drawTownMedicalReception,drawRescueDirection} from './medical-posts.js?v=182';
-import {invasionMethods,initializeInvasions,serializeInvasions,shouldTriggerRandomRaid,makeEnemyRoom,drawInvasionRoute} from './invasion-rules.js?v=249';
+import {invasionMethods,initializeInvasions,serializeInvasions,shouldTriggerRandomRaid,makeEnemyRoom,drawInvasionRoute} from './invasion-rules.js?v=264';
 import {gateMethods,serializeGatePosts,replenishTownGateGuards,initializeGateGuards,ensureTownGuards,serializeGateGuards,updateGateGuards,gateGuardVisible,applyFortifications,drawFortification,exitGateTown,townExitReached,wallBlocksAttack,attackBlocked as coverBlocked} from './gate-rules.js?v=215';
-import {nationMethods,normalizeNation,nationalIncome,nationalPayrollPlan,headquartersDamageMult,drawNationalDevelopment,DEVELOPMENT_STAGES} from './nation-rules.js?v=249';
+import {nationMethods,normalizeNation,nationalIncome,nationalPayrollPlan,headquartersDamageMult,drawNationalDevelopment,DEVELOPMENT_STAGES} from './nation-rules.js?v=264';
 import {equipmentUpgradeCost,salaryQuote,paySoldiers} from './payroll-rules.js?v=226';
 import {addFieldDrop,ageFieldDrops,attractFieldDrops,FIELD_DROP_PICKUP_RADIUS} from './field-drops.js?v=182';
 import {drawLootDrop,drawLootPullTrail} from './loot-visuals.js?v=242';
 import {drawOwnSquadRing,isOwnSquad} from './own-squad-marker.js?v=182';
 import {CAREER_RULES,newCareer,normalizeCareer,isEnlisted,ownCompanionCount,rankForCareer,recordCareerContribution,enlistCareer,canPromoteCareer,careerSummary,restartCareerExpedition} from './career-rules.js?v=240';
-import {tavernMethods,initializeTaverns,serializeTaverns,settleTravelerCompanions,drawFieldTavern,updateTavernPrompt,FIELD_TAVERN} from './tavern.js?v=240';
-import {headquartersFacilityMethods,HEADQUARTERS_FACILITIES,updateHeadquartersFacilityPrompt,drawHeadquartersFacilityGround,drawHeadquartersFacility,headquartersBuildingBlocks} from './hq-facilities.js?v=208';
+import {tavernMethods,initializeTaverns,serializeTaverns,settleTravelerCompanions,drawFieldTavern,updateTavernPrompt,FIELD_TAVERN} from './tavern.js?v=264';
+import {headquartersFacilityMethods,HEADQUARTERS_FACILITIES,updateHeadquartersFacilityPrompt,drawHeadquartersFacilityGround,drawHeadquartersFacility,headquartersBuildingBlocks} from './hq-facilities.js?v=264';
 import {drawNightlifeLights} from './nightlife-visuals.js?v=242';
 import {drawSceneDarkness,drawLanternLights,recordLanternActor} from './scene-lighting.js?v=217';
 import {queueSquadName,flushSquadNames} from './squad-names.js?v=182';
@@ -64,7 +64,7 @@ import { drawMeleeRangeCue, meleeDrawReach, attackAnimationRate } from './weapon
 import { guardRegrouping, guardTarget, guardSpeedMult } from './guard-leash.js?v=211';
 import { KNOCK_RULES, knockbackDistance, knockFlight, slamDamage, knockTransferDistance } from './knockback-rules.js?v=212';
 import { MELEE_SOUND_STYLES, playMeleeSound } from './weapon-sounds.js?v=211';
-import {emptyRescueBonuses,normalizeRescueBonuses,rescueBonusSummary} from './rescue-rewards.js?v=204';
+import {emptyRescueBonuses,normalizeRescueBonuses,rescueBonusSummary} from './rescue-rewards.js?v=264';
 import {drawFieldCivilian} from './civilian-visuals.js?v=242';
 import { saveSlots,profileSaveCompletions } from './save-slots.js?v=262';
 import { soldierDialogue } from './soldier-dialogue.js?v=246';
@@ -74,7 +74,7 @@ import { applyCommanderIdentity, normalizeCommanderIdentity, commanderFullName, 
 import {MAGIC_CLASSES,MAGIC_AFFINITIES,magicMethods,isMage,isMagicUser,ensureMana,initializeMagic,updateMagic,distributeMagicStones,castMedicBuff,castCasterStrength,updateMageAI,drawMagicBursts,spendMana,weaponMagicDamage,isPlayerCaster,castPlayerSpell,PLAYER_MAGIC_RULES} from './magic-rules.js?v=257';
 import {hazardMethods,updateHazards,drawHazards} from './hazard-fields.js?v=198';
 import {strongEnemyReward} from './combat-rewards.js?v=182';
-import {supplyMethods, initializeSupplies, updateSupplies, takeRangedShot, ammoCombatProfile, isRangedUnit, distributeAmmo, preventLethalHit, normalizeFieldSave, SQUAD_POTION_COST, REVIVAL_POTION_COST, REVIVAL_POTION_MAX, SQUAD_POTION_MAX, ensureAmmo, ammoCapacity, recalcAmmoCapacity, RANGED_DAMAGE_MULT, supplyLocation} from './supply-rules.js?v=261';
+import {supplyMethods, initializeSupplies, updateSupplies, takeRangedShot, ammoCombatProfile, isRangedUnit, distributeAmmo, preventLethalHit, normalizeFieldSave, SQUAD_POTION_COST, REVIVAL_POTION_COST, REVIVAL_POTION_MAX, SQUAD_POTION_MAX, ensureAmmo, ammoCapacity, recalcAmmoCapacity, RANGED_DAMAGE_MULT, supplyLocation} from './supply-rules.js?v=264';
 import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog } from './interface.js?v=254';
 import { renderTroopRankings, getSoldierRankerBadges, calcSoldierRankerBonus, setRankingFamilyLabels, RANKING_FAMILIES } from './troop-rankings.js?v=247';
 import { ensureSoldierAppearance, drawSoldierPortrait } from './soldier-appearance.js?v=206';
@@ -94,7 +94,7 @@ import {
 import { PHASE_DURATION, REST_DURATION, DEATHLINE_DOWN_THRESHOLD, DEATHLINE_WINDOW_PHASES, SOLDIER_SALARY, MIN_REINFORCEMENTS, emptyActivity, advancePhase, advanceRest, recordCombat, recordHealing, healByMedic, healAmountFor, personalDownCount, recentDownCount, normalizeDeathlineHistory, consumeDeathlineDowns, deathlineEligible, participated, finishExperience } from './phase-rules.js?v=218';
 import {HEALING_HP_PER_EXP,REVIVAL_EXP_PER_MAX_HP,shareCommanderExp,raiseLevelMark,ageLevelMarks} from './experience-rules.js';
 import {attributeFamily,rollAttributeProfile,applyAttributeStats,attributeValues,practiceAttribute,attributeCarryCapacity,attributeSpecialties,prefersCasterMelee,canChannelWeaponMagic,magicAbilityMultiplier,CASTER_STRIKE_COST,casterStrikeMultiplier,beginAttributeMovement,finishAttributeMovement,ATTRIBUTE_LABELS,ATTRIBUTE_KEYS,aptitudeGrade} from './unit-attributes.js?v=248';
-import {rollScoutCandidate,renderRecruitment,nextScoutCandidate,startAutomaticRecruitment,stopAutomaticRecruitment,RECRUIT_CLASSES} from './recruitment.js?v=247';
+import {rollScoutCandidate,renderRecruitment,nextScoutCandidate,startAutomaticRecruitment,stopAutomaticRecruitment,RECRUIT_CLASSES} from './recruitment.js?v=264';
 import {canUseEquipment,requiredWeaponStrength,equipmentRequirementText,isMagicWeapon,MAGIC_WEAPON_STYLES,preferredWeaponStyle} from './weapon-requirements.js?v=239';
 import {CASTER_GEAR,DEFENSE_TYPES,casterGearName,applyDefenseEquipment,casterEquipmentSummary,absorbEquipmentBarrier,drawBarrierRing} from './defense-equipment.js?v=261';
 import {
@@ -136,7 +136,7 @@ import {addBattleReport,normalizeBattleReport,renderBattleReport} from './battle
 import { RESCUE_TIMEOUT, REVIVAL_COOLDOWN, revivalCooldownOf, revivalSkillCooldownLeft, normalizeRevivalSkill, headquartersRevivalPaused, rescueUnits, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, receiveTownCargo, leaveCivilianSpace, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, buildTransportRescueAssign, markSoldierDown, downCommander, commanderDown, updateNpcRescue, CIV_KINDS, isMedic, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST, medicHoldsByCommander } from './casualty-rules.js?v=256';
 import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault, dungeonBlocks, dungeonSolids } from './dungeon.js?v=251';
 import {nearestDungeonFloor,dungeonSpawnPoint,dungeonSteeringTarget} from './dungeon-layout.js?v=182';
-import {normalizeDungeonExploration,updateDungeonSideChests,drawDungeonSideChests,updateDungeonRespawns,dungeonCoolingDown,recordDungeonClear,DUNGEON_RESET_PHASES} from './dungeon-exploration.js?v=200';
+import {normalizeDungeonExploration,updateDungeonSideChests,drawDungeonSideChests,updateDungeonRespawns,dungeonCoolingDown,recordDungeonClear,DUNGEON_RESET_PHASES} from './dungeon-exploration.js?v=264';
 import {
   EXPEDITION_CHECK_INTERVAL, EXPEDITION_RETURN_HOME, EXPEDITION_ENGAGE_R,
   EXPEDITION_DANGER_TIERS, EXPEDITION_MIN_MEMBERS,
@@ -1470,7 +1470,7 @@ export const IronSquadGame = {
         this.openStrategyModal(true);
       });
     }
-    document.getElementById('btn-release-wounded').onclick=()=>{releaseWounded(this,this.player);this.saveGame();this.updateStatsUI();};
+    document.getElementById('btn-release-wounded').onclick=()=>{releaseWounded(this,this.player);this.saveGame({background:true});this.updateStatsUI();};
     const phaseBanner = document.getElementById('phase-complete-banner');
     if (phaseBanner) {
       phaseBanner.addEventListener('click', () => {
@@ -1827,7 +1827,7 @@ export const IronSquadGame = {
       onConfirm:identity=>{
         applyCommanderIdentity(this.player,identity);
         restore();
-        this.saveGame?.();this.updateStatsUI?.();this.renderStrategyUI?.();this.render?.();this._sceneDirty=true;
+        this.saveGame?.({background:true});this.updateStatsUI?.();this.renderStrategyUI?.();this.render?.();this._sceneDirty=true;
         this.showToast?.(`${commanderFullName(this.player)||'隊長'}の身だしなみを整えました`);
       }});
   },
@@ -2652,7 +2652,7 @@ export const IronSquadGame = {
     beginReturnState(platoon, reason);
     const label = reason === 'manual' ? '\u53ec\u9084' : '\u81ea\u52d5\u5e30\u9084';
     this.showToast(`${platoon.icon}${platoon.name.split(' ')[0]} ${label} \u2014 \u751f\u5b58\u8005\u306f\u672c\u9663\u3078`);
-    this.saveGame();
+    this.saveGame({background:true});
     return true;
   },
 
@@ -2720,7 +2720,7 @@ export const IronSquadGame = {
     const homePosts=new Map(farmPosts(this.reserves.filter(s=>s.reserveExpeditionPlatoon==null&&!s.isDown&&!s.dying),(x,y)=>economicFieldBlocked(this,x,y)).map(post=>[post.soldier,post]));
     for(const s of returning){const post=homePosts.get(s);if(post){s.x=post.x;s.y=post.y;}}
     clearExpeditionState(platoon);
-    this.saveGame();
+    this.saveGame({background:true});
   },
 
   getExpeditionPicks(platoonId) {
@@ -5225,7 +5225,7 @@ export const IronSquadGame = {
   checkBaseRaidTrigger() {
     const oldRoll=this.invasions?.raidRollPhase;
     const trigger=shouldTriggerRandomRaid(this);
-    if(this.invasions?.raidRollPhase!==oldRoll)this.saveGame();
+    if(this.invasions?.raidRollPhase!==oldRoll)this.saveGame({background:true});
     if(trigger)this.triggerBaseRaid();
   },
 
@@ -5652,7 +5652,7 @@ export const IronSquadGame = {
     rollHeroRevelation(this);
     refreshWaveCatalogs(this,generateRandomDrop);
     this._merchantShopRefresh?.();
-    this.saveGame();
+    this.saveGame({background:true});
     this.updateStatsUI();
     if(!this.container?.querySelector('#strategy-modal')?.classList.contains('hidden'))this.renderStrategyUI();
   },
@@ -5666,7 +5666,7 @@ export const IronSquadGame = {
     this.monsters=filter(this.monsters);this.restMonsters=filter(this.restMonsters);
     this.projectiles=(this.projectiles||[]).filter(p=>!p.target?.retreated);
     this.showToast(time.period==='night'?'夜になりました。昼の敵が退き、夜の敵が現れます。':'夜が明けました。夜の敵が退き、昼の敵が現れます。');
-    this.saveGame();
+    this.saveGame({background:true});
   },
 
   maintenanceSummary() {
@@ -5694,7 +5694,6 @@ export const IronSquadGame = {
       if(!this.restReport.trainedIds.includes(soldier.id))this.restReport.trainedIds.push(soldier.id);
       this.recalcSoldierStats(soldier);
     }
-    this.saveGame();
   },
 
   finishRest() {
@@ -5705,7 +5704,7 @@ export const IronSquadGame = {
     if(!this.phaseFiscal||this.phaseFiscal.phase!==this.phase)this.beginPhaseFiscal();
     this.processSharedEquipmentBox();
     this.showToast(`第${this.phase}期開始 · 自己強化${this.restReport?.count||0}回完了`);
-    this.saveGame();this.updateStatsUI();
+    this.saveGame({background:true});this.updateStatsUI();
   },
 
   checkPeriodicDialogue(dt) {
@@ -7971,7 +7970,7 @@ export const IronSquadGame = {
         const result=useMerchantHealing(this,m);
         if(result.ok) {
           this.showToast(`隊長のHPを全回復（+${Math.ceil(result.restored)}） · ${MERCHANT_HEAL_COST}G`);
-          this.saveGame();this.updateStatsUI();
+          this.saveGame({background:true});this.updateStatsUI();
         } else this.showToast(healLabels[result.reason]);
         render();
       });
@@ -8010,7 +8009,7 @@ export const IronSquadGame = {
             this.dialogue?.trigger(soldier,'GEAR_ACQUIRED',Date.now(),true);sound.playItem();
           }else this.collectDrop(item, false, {purchased:true,inherit});
           this.showToast(`🏪【購入${inherit?'・強化引継':canUseEquipment(unit,item)?'・装備':'・バッグへ'}】${soldier?`${soldier.name}に `:''}[T${item.tier}] ${equipmentName(item)} · ${price.toLocaleString()}G`);
-          this.saveGame();
+          this.saveGame({background:true});
           this.updateStatsUI();
           render();
         });
@@ -8200,7 +8199,7 @@ export const IronSquadGame = {
     this.settleTerrain();
     this.refreshInvasionUI();
     this.updateStatsUI();
-    if(encounter)this.saveGame();
+    if(encounter)this.saveGame({background:true});
     sound.playLaunch();
   },
 
@@ -8676,7 +8675,7 @@ export const IronSquadGame = {
     if(this.taverns)this.taverns.waiting=[];
     for(const s of [...this.squad,...this.reserves])if(s.civilianOutfit)s.civilianOutfit=false;
     this.normalizeDeployment();this.syncPersonalGuardSlots(null,this.limitedGuardLimit());this.recalcPlayerStats();
-    this.saveGame();this.updateStatsUI();this.showToast('本陣の一員になりました。旅の仲間もいっしょです。新兵として軍歴を積んでいきましょう。');return true;
+    this.saveGame({background:true});this.updateStatsUI();this.showToast('本陣の一員になりました。旅の仲間もいっしょです。新兵として軍歴を積んでいきましょう。');return true;
   },
   wallBlocksEnemyAttack(enemy,target) {return coverBlocked(this,enemy,target);},
   attackBlocked(from,to) {return coverBlocked(this,from,to);},
@@ -8700,7 +8699,7 @@ export const IronSquadGame = {
       if(!this.player.isDown)this.player.hp = this.player.maxHp;
       sound.playHighScore();
       this.showToast(`🎖️ 【昇進】${nextRank.title}へ！${nextRank.canCommand ? '号令解禁！' : ''}`);
-      this.saveGame();
+      this.saveGame({background:true});
       this.updateStatsUI();
     }
   },
@@ -8720,7 +8719,7 @@ export const IronSquadGame = {
       this.awakeningOrbs = (this.awakeningOrbs || 0) + 1;
       sound.playHighScore();
       this.showToast(`🔱【ボス秘宝獲得！】『覚醒の英雄宝珠』を入手！(所持数: ${this.awakeningOrbs}個 / 上位クラスへ覚醒昇格可能！)`);
-      this.saveGame();
+      this.saveGame({background:true});
       this.updateStatsUI();
       return;
     }
@@ -8740,7 +8739,7 @@ export const IronSquadGame = {
         this.phaseFiscal.buyoutCount = (this.phaseFiscal.buyoutCount || 0) + 1;
       }
       this.showToast(`📦【国庫買取】[T${item.tier}] ${equipmentName(item)} を共有ボックスへ · 買い取り+${buyout}G`);
-      this.saveGame();
+      this.saveGame({background:true});
       this.updateStatsUI();
       return;
     }
@@ -8763,7 +8762,7 @@ export const IronSquadGame = {
       toastText = `📦 ${forgeNote}[T${item.tier} ${item.mat}] ${equipmentName(item)} を取得！${autoEquipped ? ' (即装備)' : ''}`;
     }
     this.showToast(toastText);
-    this.saveGame();
+    this.saveGame({background:true});
   },
 
   equipItem(item, inheritUpgradeFromCurrent = false) {
@@ -8793,7 +8792,7 @@ export const IronSquadGame = {
     if (!this.inventory.some(i => i.id === item.id)) this.inventory.push(item);
     this.recalcPlayerStats();
     sound.playTap();
-    this.saveGame();
+    this.saveGame({background:true});
     this.updateStatsUI();
     return true;
   },
@@ -8811,7 +8810,7 @@ export const IronSquadGame = {
     this.recalcPlayerStats();
     sound.playHighScore();
     this.showToast(`✨ 鍛冶屋の魔術！「${equipmentName(sourceItem)}」の強化値を「${equipmentName(targetItem)}」へ引き継ぎました！`);
-    this.saveGame();
+    this.saveGame({background:true});
     this.renderStrategyUI();
   },
 
@@ -8849,7 +8848,7 @@ export const IronSquadGame = {
 
     sound.playHighScore();
     this.showToast(`✨ 【叙勲】${s.title}${s.name} が誕生した！`);
-    this.saveGame();
+    this.saveGame({background:true});
     this.renderStrategyUI();
   },
 
@@ -8883,7 +8882,7 @@ export const IronSquadGame = {
     this.showToast(`🔨 鍛冶完了！「${equipmentName(item)}」に強化成功！`);
 
     this.recalcPlayerStats();
-    this.saveGame();
+    this.saveGame({background:true});
     this.renderStrategyUI();
     this.updateStatsUI();
     const focusTarget = focusBagUpgrade
@@ -8911,7 +8910,7 @@ export const IronSquadGame = {
     this.recalcSoldierStats(s);
     sound.playHighScore();
     this.showToast(`🔨 ${s.name}が自費で「${equipmentName(item)}」を強化！`);
-    this.saveGame();
+    this.saveGame({background:true});
     this.renderStrategyUI();
   },
 
@@ -8941,7 +8940,7 @@ export const IronSquadGame = {
 
     sound.playHighScore();
     this.showToast(`🔱⚡【天命覚醒！】${s.name} が【${advCls.name}】へ昇格！壁を突き抜けて進み、攻撃も壁の向こうへ届きます（消費: ${formatClassUpCostJa(cost)}）`);
-    this.saveGame();
+    this.saveGame({background:true});
     this.renderStrategyUI();
     this.updateStatsUI();
     return true;
@@ -8969,7 +8968,7 @@ export const IronSquadGame = {
 
     sound.playHighScore();
     this.showToast(`👑🔥【覚醒昇格！】隊長が【${next.name}】へ！壁を突き抜けて進み、攻撃も壁の向こうへ届きます（消費: ${formatClassUpCostJa(cost)}）`);
-    this.saveGame();
+    this.saveGame({background:true});
     this.renderStrategyUI();
     this.updateStatsUI();
     return true;
@@ -8987,7 +8986,7 @@ export const IronSquadGame = {
       if (!s.dead && !s.isDown) s.hp = s.maxHp;
     });
     this.showToast('💚 行動可能な兵士を治療しました。負傷ダウンは搬送か衛生兵の処置が必要です。');
-    this.saveGame();
+    this.saveGame({background:true});
     this.renderStrategyUI();
     this.updateStatsUI();
   },
@@ -9063,7 +9062,7 @@ export const IronSquadGame = {
 
     this.showToast(`💰【資金援助】${s.name} に ${amount.toLocaleString()}G を渡した！${autoUpgradedMsg}`);
     this.recalcSoldierStats(s);
-    this.saveGame();
+    this.saveGame({background:true});
     this.renderStrategyUI();
     this.updateStatsUI();
     return true;
@@ -9453,7 +9452,7 @@ export const IronSquadGame = {
 
     sound.playHighScore();
     this.showToast(`🏛【国庫寄付】${amount.toLocaleString()}G → 全国${living.length}名へ各${per.toLocaleString()}G配分（強化${totalUpgrades}回） / 国庫残${(this.treasury || 0).toLocaleString()}G`);
-    this.saveGame();
+    this.saveGame({background:true});
     this.renderStrategyUI();
     this.updateStatsUI();
     return true;
@@ -9575,7 +9574,7 @@ export const IronSquadGame = {
       this.syncPersonalGuardSlots(null, maxGuards);
       this.showToast?.(`⭐【引き抜き】${soldier.name} を自部隊へ（代わりに ${outgoing.name} を${fromReserve && squadCount + 1 > cap ? '予備へ' : '本隊へ'}）`);
       sound.playHighScore?.();
-      this.saveGame();
+      this.saveGame({background:true});
       this.renderStrategyUI();
       this.updateStatsUI();
       if (this.selectedSoldierDetailId) this.openSoldierDetail(this.selectedSoldierDetailId);
@@ -9591,7 +9590,7 @@ export const IronSquadGame = {
     this.syncPersonalGuardSlots(null, maxGuards);
     this.showToast?.(`⭐【引き抜き】${soldier.name} を自部隊（直属）へ編入`);
     sound.playHighScore?.();
-    this.saveGame();
+    this.saveGame({background:true});
     this.renderStrategyUI();
     this.updateStatsUI();
     if (this.selectedSoldierDetailId) this.openSoldierDetail(this.selectedSoldierDetailId);
@@ -9634,7 +9633,7 @@ export const IronSquadGame = {
     const maxGuards = Math.min(currentRank.personalGuards || 0, PERSONAL_GUARD_MAX);
     this.syncPersonalGuardSlots(null, maxGuards);
     this.showToast?.(`🏰【編成変更】${soldier.name} を本隊へ戻した`);
-    this.saveGame();
+    this.saveGame({background:true});
     this.renderStrategyUI();
     this.updateStatsUI();
     return true;
@@ -9787,7 +9786,7 @@ export const IronSquadGame = {
     const destLabel = destination === 'personal' ? '自部隊' : '本隊';
     sound.playHighScore();
     this.showToast(`🔍【スカウト成功】[${talentTag(soldier)}] ${cls.icon}${cls.name} Lv.${soldier.level} を${destLabel}へ雇用 (−${cost.toLocaleString()}G)`);
-    this.saveGame();
+    this.saveGame({background:true});
     this.renderStrategyUI();
     this.updateStatsUI();
     return true;
@@ -9849,7 +9848,7 @@ export const IronSquadGame = {
     sound.playItem();
     this.showToast(`🚪【放逐】${s.name} を解雇 · 返還+${settle.refundToPlayer.toLocaleString()}G / 国庫+${(settle.goldReturnToTreasury + settle.gearSellToTreasury).toLocaleString()}G`);
     this.normalizeDeployment?.();
-    this.saveGame();
+    this.saveGame({background:true});
     this.renderStrategyUI();
     this.updateStatsUI();
     return true;
@@ -9949,7 +9948,7 @@ export const IronSquadGame = {
 
     this.recalcSoldierStats(soldier);
     sound.playHighScore();
-    this.saveGame();
+    this.saveGame({background:true});
     this.renderStrategyUI();
   },
 
@@ -9966,7 +9965,7 @@ export const IronSquadGame = {
     const value=[...sold.values()].reduce((sum,item)=>sum+saleValue(item),0);
     if(!sold.size)return {count:0,value:0};
     this.inventory=this.inventory.filter(i=>!sold.has(i.id));this.gold=(this.gold||0)+value;
-    this.selectedSaleIds=new Set();this.saveGame();this.updateStatsUI();this.renderStrategyUI();
+    this.selectedSaleIds=new Set();this.saveGame({background:true});this.updateStatsUI();this.renderStrategyUI();
     this.showToast(`${sold.size}個を売却：+${value}G`);return {count:sold.size,value};
   },
 
@@ -10152,7 +10151,7 @@ export const IronSquadGame = {
   renderSaleControls(row,item) {
     const controls=document.createElement('div');controls.className='sale-controls';
     const protect=document.createElement('button');protect.textContent=item.favorite?'★ 保護中':'☆ 保護';protect.setAttribute('aria-pressed',String(!!item.favorite));
-    protect.onclick=()=>{item.favorite=!item.favorite;this.saveGame();this.renderStrategyUI();};controls.append(protect);row.append(controls);
+    protect.onclick=()=>{item.favorite=!item.favorite;this.saveGame({background:true});this.renderStrategyUI();};controls.append(protect);row.append(controls);
   },
 
   completeWave() { this.completePhase(); },
@@ -10229,7 +10228,7 @@ export const IronSquadGame = {
     this._showStratLauncher?.();
     this.inBattle = false;
     this.resetMovementInput();
-    this.saveGame();
+    this.saveGame({background:true});
     modal.classList.remove('hidden');
     this.setDialogState(true);
     document.getElementById('btn-dialog-close').focus();
@@ -10373,7 +10372,7 @@ export const IronSquadGame = {
 
       pRecordBox.querySelector('#player-magic-affinity').addEventListener('change',event=>{
         const affinity=event.target.value;if(!MAGIC_AFFINITIES[affinity])return;
-        p.magicAffinity=affinity;this.saveGame();this.updateStatsUI();this.renderStrategyUI();
+        p.magicAffinity=affinity;this.saveGame({background:true});this.updateStatsUI();this.renderStrategyUI();
       });
       const pPromoteBtn = pRecordBox.querySelector('#btn-promote-player');
       if (pPromoteBtn) {

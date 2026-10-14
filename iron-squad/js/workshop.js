@@ -4,7 +4,7 @@ import {standardEquipmentCost} from './armament-rules.js?v=231';
 import {tierDescription,tierNumber} from './equipment-tiers.js?v=231';
 import {equipmentName,compareEquipment} from './equipment-rules.js?v=242';
 import {equipmentRequirementText} from './weapon-requirements.js?v=239';
-import {atFacility} from './hq-facilities.js?v=201';
+import {atFacility} from './hq-facilities.js?v=264';
 import {sound} from '../../common/js/audio.js?v=151';
 
 export const WORKSHOP_STOCK=CRAFT_RECIPES.map(recipe=>({...recipe,name:recipe.armorStyle?recipe.name:recipe.type==='WEAPON'?{
@@ -45,7 +45,7 @@ function showWorkshopReceipt(game,title,message) {
 }
 function finish(game,item,message,title='購入完了') {
   (game.inventory||=[]).push(item);game.showToast?.(message);
-  game.saveGame?.();game.updateStatsUI?.(true);game.renderStrategyUI?.();
+  game.saveGame?.({background:true});game.updateStatsUI?.(true);game.renderStrategyUI?.();
   sound.playItem();showWorkshopReceipt(game,title,message);
   return item;
 }

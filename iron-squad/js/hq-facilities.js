@@ -90,7 +90,7 @@ export const headquartersFacilityMethods={
   closeHeadquartersFacility(resume=true) {
     const host=this.container?.querySelector('#hq-facility-dialog');if(!host)return;
     setSubDialog(this,host,false);host.remove();this.setDialogState(false);this.resetMovementInput();this.inBattle=resume&&host._wasBattle;
-    if(resume){this.saveGame();this.updateStatsUI(true);this.container.querySelector('#btn-hq-facility')?.focus();}
+    if(resume){this.saveGame({background:true});this.updateStatsUI(true);this.container.querySelector('#btn-hq-facility')?.focus();}
   },
   refreshHeadquartersFacility() {
     const host=this.container?.querySelector('#hq-facility-dialog');if(!host)return;

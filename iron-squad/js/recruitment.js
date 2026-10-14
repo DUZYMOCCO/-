@@ -21,7 +21,7 @@ export function rollScoutCandidate(game) {
 }
 export function stopAutomaticRecruitment(game,save=false) {
   clearTimeout(game._scoutAutoTimer);game._scoutAutoTimer=null;game._scoutAuto=false;
-  if(save)game.saveGame?.();
+  if(save)game.saveGame?.({background:true});
 }
 function recruitingVisible(game) {
   const root=game.container;
@@ -47,12 +47,12 @@ export function nextScoutCandidate(game,automatic=false) {
   if(isGenius(first)){
     stopAutomaticRecruitment(game);
     game.showToast?.('🌟 天才候補が現れました。自動募集を停止して、この人を保持します。');
-    game.saveGame?.();
+    game.saveGame?.({background:true});
   } else if(candidateStandout(first)){
     stopAutomaticRecruitment(game);
     game.showToast?.(`✨ 突出した技能の候補（${candidateStandout(first)}）が現れました。自動募集を停止して保持します。`);
-    game.saveGame?.();
-  } else if(!automatic)game.saveGame?.();
+    game.saveGame?.({background:true});
+  } else if(!automatic)game.saveGame?.({background:true});
   game.renderScoutCandidates();return true;
 }
 export function startAutomaticRecruitment(game) {
@@ -77,7 +77,7 @@ export function renderRecruitment(game,classes,talents) {
       const selected=job.value,previous=game.scoutClass||'HEAVY';
       const warning=passOverWarning(game,'job');
       if(warning&&!window.confirm(warning)){job.value=previous;return;}
-      stopAutomaticRecruitment(game);game.scoutClass=selected;game.refreshScoutCandidates();game.saveGame();game.renderScoutCandidates();
+      stopAutomaticRecruitment(game);game.scoutClass=selected;game.refreshScoutCandidates();game.saveGame({background:true});game.renderScoutCandidates();
     };
   }
   const next=root.querySelector('#btn-refresh-scouts');if(next){next.textContent='次の候補（無料）';next.onclick=()=>nextScoutCandidate(game);}

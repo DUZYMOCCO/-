@@ -1,4 +1,4 @@
-import {atFacility} from './hq-facilities.js?v=201';
+import {atFacility} from './hq-facilities.js?v=264';
 const species=(id,title,types,baseTarget,baseReward,hint,minLevel=0)=>({id,title,types,baseTarget,baseReward,hint,minLevel,kind:baseTarget===1?'boss':'species'});
 const challenge=(id,title,match,baseTarget,baseReward,hint,minLevel=0)=>({id,title,match,baseTarget,baseReward,hint,minLevel,kind:'boss'});
 export const GUILD_CONTRACTS=Object.freeze([
@@ -74,7 +74,7 @@ export function advanceGuildContracts(game,monster) {
   }
   return completed;
 }
-function persist(game) {game.saveGame?.();game.updateStatsUI?.(true);game.renderStrategyUI?.();}
+function persist(game) {game.saveGame?.({background:true});game.updateStatsUI?.(true);game.renderStrategyUI?.();}
 export const guildMethods={
   acceptGuildContract(id) {
     if(!atFacility(this,'guild',0))return false;

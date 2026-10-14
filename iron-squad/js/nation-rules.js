@@ -8,11 +8,11 @@ import {createPayrollPlan,commanderStipendQuote,PAYROLL_RULES,regularSalaryReser
 import {calcAllRankerBonuses} from './troop-rankings.js?v=247';
 import {normalizeRegionalEconomy,recurringNationalIncome,economicState,advanceRegionalEconomy,automaticEconomicTarget,investEconomicProject} from './regional-economy.js?v=182';
 import {drawSettlementQuarter} from './economic-visuals.js?v=242';
-import {atFacility,HEADQUARTERS_FACILITIES} from './hq-facilities.js?v=201';
-import {renderRegionalEconomy} from './economic-interface.js?v=249';
+import {atFacility,HEADQUARTERS_FACILITIES} from './hq-facilities.js?v=264';
+import {renderRegionalEconomy} from './economic-interface.js?v=264';
 import {workshopFloorTier} from './crafting-rules.js?v=231';
 import {normalizeCasino} from './casino-rules.js?v=201';
-import {normalizeGuild,advanceGuildContracts} from './guild-contracts.js?v=217';
+import {normalizeGuild,advanceGuildContracts} from './guild-contracts.js?v=264';
 
 export const DEVELOPMENT_STAGES=[
   {name:'野営本陣',cost:0}, {name:'城塞と宿場',cost:6000},
@@ -159,7 +159,7 @@ export const nationMethods={
     if(!items.length){this.showToast('バッグで納入する装備を選択してください。装備中・保護中の品は納入できません');return false;}
     const donated=new Set(items.map(i=>i.id));this.inventory=this.inventory.filter(i=>!donated.has(i.id));
     this.sharedEquipBox.push(...items);this.showToast(`装備${items.length}件を納入。次ウェーブに兵士へ支給し、余剰を外販します`);
-    this.saveGame();this.renderStrategyUI();return true;
+    this.saveGame({background:true});this.renderStrategyUI();return true;
   },
   onNationKill(monster) {return advanceGuildContracts(this,monster);},
   useTownFacility(kind) {
@@ -172,7 +172,7 @@ export const nationMethods={
       this.treasury=(this.treasury||0)+Math.floor(cost*.2);this.phaseFiscal.facilityRevenue=(this.phaseFiscal.facilityRevenue||0)+Math.floor(cost*.2);
       this.upgradeItem(item,true);this.showToast(`鍛冶工房：隊長の武器を2割引で強化（${money(cost)}）。今ウェーブは利用済み`);
     } else return false;
-    this.saveGame();this.updateStatsUI();this.renderStrategyUI();return true;
+    this.saveGame({background:true});this.updateStatsUI();this.renderStrategyUI();return true;
   },
   renderNationStatus() {
     this.nation=normalizeNation(this.nation);const n=this.nation,plan=nationalPayrollPlan(this),payroll=plan.total,count=plan.entries.length,gross=nationalIncome(this,this.phase||1,count,plan),stipend=calcCommanderStipend(this.phase||1,gross,this);
@@ -183,8 +183,8 @@ export const nationMethods={
     const last=this.lastFiscalReport||{};
     const a=n.armament,armed=(this.squad||[]).filter(s=>!s.dead),equippedAtStandard=armed.filter(s=>(s.equipped?.weapon?.tier||0)>=a.techTier).length,nextCost=researchCost(a.techTier+1);
     panel.insertAdjacentHTML('beforeend',`<section data-nation-section="armament"><p><strong>製造技術：${tierDescription(a.techTier)}</strong><br>現行規格以上の主武器：${equippedAtStandard}/${armed.length}名（${armed.length?Math.round(equippedAtStandard/armed.length*100):0}%）<br>補充用の備蓄を含む共有箱：${this.sharedEquipBox?.length||0}件</p>${a.techTier<MAX_EQUIPMENT_TIER?`<progress max="${nextCost}" value="${Math.min(nextCost,a.research)}"></progress><p>次は${tierDescription(a.techTier+1)} · 開発${money(a.research)} / ${money(nextCost)}</p>`:'<p>全${MAX_EQUIPMENT_TIER}世代の製造技術を完成しました。</p>'}<div class="armament-policies">${Object.entries(ARMAMENT_POLICIES).map(([key,p])=>`<button type="button" data-armament-policy="${key}" aria-pressed="${a.policy===key}">${p.name}</button>`).join('')}</div><p>空き部位：出撃兵 ${missing(this.squad||[])} / 予備兵 ${missing(this.reserves||[])}<br>直近：共有支給${last.sharedEquipmentIssued||0}部位 / 国庫の空き部位支給${last.publicEquipmentIssued||0}部位 / 自費購入${last.equipmentIssued||0}部位 / 換装${last.equipmentUpdated||0}名 / 自費強化${a.last?.forged||0}回<br>国庫の空き部位支給${money(last.equipmentProcurement)} / 兵士の自費調達${money(last.personalEquipmentProcurement)} / 自費強化${money(last.personalForging)} / 国庫の技術開発${money(last.armamentResearch)}</p><p>購入・強化：兵士の財布 / 空き部位の国庫支給枠：${money(publicEquipmentCap(this))}</p></section>`);
-    for(const button of panel.querySelectorAll('[data-armament-policy]'))button.onclick=()=>{this.nation.armament.policy=button.dataset.armamentPolicy;this.saveGame();this.renderStrategyUI();};
-    panel.querySelector('[data-nation="invest"]').onclick=()=>{this.investNation();this.saveGame();this.renderStrategyUI();this.updateStatsUI();};
+    for(const button of panel.querySelectorAll('[data-armament-policy]'))button.onclick=()=>{this.nation.armament.policy=button.dataset.armamentPolicy;this.saveGame({background:true});this.renderStrategyUI();};
+    panel.querySelector('[data-nation="invest"]').onclick=()=>{this.investNation();this.saveGame({background:true});this.renderStrategyUI();this.updateStatsUI();};
     renderRegionalEconomy(this,panel,nationalSalaryReserve);
     const facilities=this.container.querySelector('#nation-facilities');
     facilities.innerHTML=`<h4>本陣の施設</h4><p>建物の入口で利用 · 鍛冶工房：北西 / 冒険者組合：北東 / カジノ：南東</p>${HEADQUARTERS_FACILITIES.map(p=>`<p><strong>${p.name}</strong> · ${n.level>=p.level?'営業中':`本陣発展Lv${p.level}で営業`}</p>`).join('')}`;

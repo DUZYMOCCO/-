@@ -26,8 +26,8 @@ export function renderRegionalEconomy(game,panel,reserveQuote) {
     game.economicInvestmentAmount=Math.max(1,Math.floor(Number(amount.value)||1000));
     const spent=investEconomicProject(game,b.dataset.economicKind,b.dataset.economicId,game.economicInvestmentAmount,b.dataset.economicSource,Math.max(0,(game.treasury||0)-reserveQuote(game)),reserveQuote);
     if(!spent)game.showToast?.('投資できる資金が不足しています。巡回隊は必要額を一括で支払います');
-    game.saveGame();game.updateStatsUI();game.renderStrategyUI();
+    game.saveGame({background:true});game.updateStatsUI();game.renderStrategyUI();
   };
-  for(const b of root.querySelectorAll('[data-economic-priority]'))b.onclick=()=>{economicState(game).priority={kind:b.dataset.economicPriority,id:b.dataset.economicId};game.saveGame();game.renderStrategyUI();};
-  root.querySelector('[data-economic-auto]').onclick=()=>{economicState(game).priority={kind:'auto',id:'hq'};game.saveGame();game.renderStrategyUI();};
+  for(const b of root.querySelectorAll('[data-economic-priority]'))b.onclick=()=>{economicState(game).priority={kind:b.dataset.economicPriority,id:b.dataset.economicId};game.saveGame({background:true});game.renderStrategyUI();};
+  root.querySelector('[data-economic-auto]').onclick=()=>{economicState(game).priority={kind:'auto',id:'hq'};game.saveGame({background:true});game.renderStrategyUI();};
 }

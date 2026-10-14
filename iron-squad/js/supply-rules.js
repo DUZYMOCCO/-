@@ -156,20 +156,20 @@ export const supplyMethods={
     const target=nearestRevivalPotionTarget(this);if(!target)return false;
     this.revivalPotion--;
     if(!reviveByPotion(this,target)){this.revivalPotion++;return false;}
-    this.saveGame();this.updateStatsUI();return true;
+    this.saveGame({background:true});this.updateStatsUI();return true;
   },
   replenishRevivalPotion(merchant) {
     if((this.revivalPotion||0)>=REVIVAL_POTION_MAX||!usable(this.player)||!(this.merchants||[]).includes(merchant)||!usable(merchant)||merchant.returningToBase)return false;
     const inside=this.currentDungeon?.kind==='town'&&merchant.placeId===this.currentDungeon.id;
     if((!inside&&!near(this.player,merchant,110))||(this.gold||0)<REVIVAL_POTION_COST)return false;
-    this.gold-=REVIVAL_POTION_COST;this.revivalPotion=(this.revivalPotion||0)+1;this.saveGame();this.updateStatsUI();this.renderSupplyPanel();
+    this.gold-=REVIVAL_POTION_COST;this.revivalPotion=(this.revivalPotion||0)+1;this.saveGame({background:true});this.updateStatsUI();this.renderSupplyPanel();
     this.showToast(`蘇生薬を購入 · ${REVIVAL_POTION_COST.toLocaleString()}G`);return true;
   },
   useSquadPotion() {
     if(!this.inBattle||this.container?.classList.contains('dialog-open')||this._merchantShopClose||!usable(this.player)||!this.squadPotion)return false;
     this.squadPotion--;
     for(const u of personalSquadUnits(this))if(usable(u)){u.hp=u.maxHp;u.ammo=ammoCapacity(u);if(isMagicUser(u)){ensureMana(u);u.mana=u.maxMana;u.magicRecovering=false;}}
-    this.showToast('隊長と直属兵のHP・弾薬・魔力を全回復しました');this.saveGame();this.updateStatsUI();
+    this.showToast('隊長と直属兵のHP・弾薬・魔力を全回復しました');this.saveGame({background:true});this.updateStatsUI();
     return true;
   },
   replenishSquadPotion(merchant=null) {
@@ -182,7 +182,7 @@ export const supplyMethods={
       if((this.gold||0)<SQUAD_POTION_COST)return false;
       this.gold-=SQUAD_POTION_COST;
     } else if(place?.kind!=='base')return false;
-    this.squadPotion=merchant?(this.squadPotion||0)+1:SQUAD_POTION_MAX;this.saveGame();this.updateStatsUI();this.renderSupplyPanel();
+    this.squadPotion=merchant?(this.squadPotion||0)+1:SQUAD_POTION_MAX;this.saveGame({background:true});this.updateStatsUI();this.renderSupplyPanel();
     this.showToast(merchant?`部隊ポーションを購入 · ${SQUAD_POTION_COST.toLocaleString()}G`:'本陣で部隊ポーションを補給しました');
     return true;
   },

@@ -63,7 +63,7 @@ export const invasionMethods={
     const strength=invasionStrength(this);
     if(s.kind==='major'){s.majorReference ||= majorReference(strength);s.majorCount++;s.nextMajorPhase=(this.phase||1)+MAJOR_INTERVAL;s.strength=majorInvasionStrength(s.majorReference,s.majorCount);}else s.strength=regularInvasionStrength(strength);
     s.source={...(castle?.entrance||{x:center+42000,y:center+42000})};s.nextPhase=(this.phase||1)+INVASION_INTERVAL;
-    this.showToast(s.kind==='major'?`壊滅危険！魔王城の本格侵攻軍が出撃。${s.eta}秒後に到着。隊長の救援・育成兵・衛生兵で迎撃し、撤退も判断せよ`:`壊滅危険！魔王城から第${s.sequence}侵攻軍が出撃。25秒後に本陣の三方向へ展開。初期装備での迎撃は厳しい。救援・退避を判断せよ`);sound.playBomb();this.refreshInvasionUI();this.saveGame();return true;
+    this.showToast(s.kind==='major'?`壊滅危険！魔王城の本格侵攻軍が出撃。${s.eta}秒後に到着。隊長の救援・育成兵・衛生兵で迎撃し、撤退も判断せよ`:`壊滅危険！魔王城から第${s.sequence}侵攻軍が出撃。25秒後に本陣の三方向へ展開。初期装備での迎撃は厳しい。救援・退避を判断せよ`);sound.playBomb();this.refreshInvasionUI();this.saveGame({background:true});return true;
   },
   arriveDemonInvasion() {
     const s=this.invasions;if(!s||s.stage!=='marching')return;
@@ -83,7 +83,7 @@ export const invasionMethods={
         color:'#754851',isBoss:commander,isInvasionCommander:commander,isDemonInvasion:true,attackReach:major?(commander?100:elite?78:flanker?30:52):r.attackReach,cleaveRadius:major?(commander?65:elite?45:0):commander?35:r.cleaveRadius,isMajorInvasion:major,isMajorElite:elite,isRaidMob:true,attackInterval:major?.85:1,atkTimer:.3+(i%4)*.15,hitPulse:0,
         lootDistance:Math.min(22000,1200+strength.level*180)});
     }
-    this.showToast(s.kind==='major'?'本格侵攻軍が到着！放置防衛は壊滅危険。隊長の強撃・育成兵・衛生兵を投入せよ':'魔王軍が本陣の三方向へ展開！初期軍は壊滅危険。隊長の救援・育成兵・衛生兵で門を守れ');this.refreshInvasionUI();this.saveGame();
+    this.showToast(s.kind==='major'?'本格侵攻軍が到着！放置防衛は壊滅危険。隊長の強撃・育成兵・衛生兵を投入せよ':'魔王軍が本陣の三方向へ展開！初期軍は壊滅危険。隊長の救援・育成兵・衛生兵で門を守れ');this.refreshInvasionUI();this.saveGame({background:true});
   },
   finishDemonInvasion(outcome) {
     const s=this.invasions;if(!s||s.stage==='idle')return false;
@@ -95,7 +95,7 @@ export const invasionMethods={
       this.gold+=rewardGold;this.treasury+=treasuryGold;if(!this.phaseFiscal)this.beginPhaseFiscal();this.phaseFiscal.defenseRewards=(this.phaseFiscal.defenseRewards||0)+treasuryGold;
       s.lastResult={phase:this.phase,sequence,kind:s.kind,outcome,rewardGold,treasuryGold};sound.playHighScore();this.showToast(`魔王軍を撃退！隊長+${rewardGold}G／国庫+${treasuryGold}G`);
     } else {s.lastResult={phase:this.phase,sequence,kind:s.kind,outcome};this.showToast(outcome==='castle-fallen'?'魔王城を制圧！定期侵攻軍は指揮を失い撤退した':outcome==='timeout'?'魔王軍は攻撃時間を終えて撤退した。負傷兵を救助し、次の侵攻へ備えよう':'魔王軍が本隊を制圧して撤退。負傷兵の救助を優先せよ');}
-    this.refreshInvasionUI();this.saveGame();return true;
+    this.refreshInvasionUI();this.saveGame({background:true});return true;
   },
   updateDemonInvasion(dt) {
     const s=this.invasions;if(!s||!(dt>0)||!this.inBattle)return;

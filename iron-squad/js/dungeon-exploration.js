@@ -73,7 +73,7 @@ export function updateDungeonSideChests(game,createItem,random=Math.random) {
     if(resettable(d)&&!integer(record.resetAt))record.resetAt=phaseOf(game)+DUNGEON_RESET_PHASES;
     receiveTreasure(game,rollTreasureLoot(d.distance,'chest',createItem,random));
     game.spawnDamageText?.(chest.x,chest.y-25,'宝箱を開いた！','#e1cc8f');
-    game.saveGame?.();
+    game.saveGame?.({background:true});
   }
 }
 export function drawDungeonSideChests(ctx,game,time) {

@@ -1,9 +1,9 @@
 import {casinoBaseBet,MAX_CASINO_BET,validCasinoBet,normalizeCasinoBet,POKER_PAYOUTS,SLOT_SYMBOLS,dealPoker,finishPoker,cardFace} from './casino-rules.js?v=201';
 import {rollSlots} from './casino-rules.js?v=201';
-import {atFacility} from './hq-facilities.js?v=201';
+import {atFacility} from './hq-facilities.js?v=264';
 const canPlay=game=>atFacility(game,'casino',0);
 const wager=game=>Math.max(casinoBaseBet(game.nation?.level),normalizeCasinoBet(game.nation?.casino?.bet));
-function persist(game) {game.saveGame?.();game.updateStatsUI?.(true);game.renderStrategyUI?.();}
+function persist(game) {game.saveGame?.({background:true});game.updateStatsUI?.(true);game.renderStrategyUI?.();}
 const money=n=>`${n.toLocaleString()}G`;
 const profit=(payout,bet)=>`${payout-bet>=0?'+':''}${money(payout-bet)}`;
 export const casinoMethods={

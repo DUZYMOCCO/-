@@ -1,0 +1,2730 @@
+{
+  "version": "6.11.14",
+  "cpuThrottle": 4,
+  "disposableStorage": true,
+  "legacy": {
+    "fixture": {
+      "jsonUtf8Bytes": 610250,
+      "jsonCharacters": 577808,
+      "storedUtf8Bytes": 213176,
+      "inventory": 0,
+      "historicalInventory": 104,
+      "soldiers": 48
+    },
+    "durationMs": 23004.900000000373,
+    "events": [
+      {
+        "name": "completePhase",
+        "time": 6727.200000001118,
+        "ms": 2494.199999999255
+      },
+      {
+        "name": "changeTimePeriod",
+        "time": 14060,
+        "ms": 39.20000000111759
+      },
+      {
+        "name": "finishRest",
+        "time": 24086.700000001118,
+        "ms": 1097.2999999988824
+      }
+    ],
+    "methodCosts": {
+      "updateStatsUI": {
+        "calls": 1115,
+        "ms": 255.60000002384186
+      },
+      "recalcPlayerStats": {
+        "calls": 3,
+        "ms": 1.4000000022351742
+      },
+      "recalcSoldierStats": {
+        "calls": 11754,
+        "ms": 1139.1999999377877
+      },
+      "supplyReinforcements": {
+        "calls": 1,
+        "ms": 10
+      },
+      "processSharedEquipmentBox": {
+        "calls": 3,
+        "ms": 3117.300000000745
+      },
+      "investNation": {
+        "calls": 1,
+        "ms": 2.599999999627471
+      },
+      "advanceArmamentResearch": {
+        "calls": 1,
+        "ms": 2.199999999254942
+      },
+      "supplyMissingEquipment": {
+        "calls": 1,
+        "ms": 1184.2000000011176
+      }
+    },
+    "ticks": 8,
+    "restDurationMs": 17359.5,
+    "saveCalls": [
+      {
+        "time": 9074.300000000745,
+        "ms": 36,
+        "background": true,
+        "restTimer": 8
+      },
+      {
+        "time": 10142.700000001118,
+        "ms": 36.59999999962747,
+        "background": true,
+        "restTimer": 7.016799999999992
+      },
+      {
+        "time": 10228.900000000373,
+        "ms": 982.9000000003725,
+        "background": false,
+        "restTimer": 6.950199999999991
+      },
+      {
+        "time": 12104.700000001118,
+        "ms": 1057.2999999988824,
+        "background": false,
+        "restTimer": 5.983499999999982
+      },
+      {
+        "time": 14061.60000000149,
+        "ms": 37.59999999962747,
+        "background": true,
+        "restTimer": 5.016799999999975
+      },
+      {
+        "time": 14132.60000000149,
+        "ms": 1076,
+        "background": false,
+        "restTimer": 4.933499999999976
+      },
+      {
+        "time": 16078.800000000745,
+        "ms": 883.1999999992549,
+        "background": false,
+        "restTimer": 3.9835999999999667
+      },
+      {
+        "time": 17884.300000000745,
+        "ms": 1006.5,
+        "background": false,
+        "restTimer": 2.983599999999969
+      },
+      {
+        "time": 19812.400000000373,
+        "ms": 737.9000000003725,
+        "background": false,
+        "restTimer": 1.9835999999999678
+      },
+      {
+        "time": 21460.60000000149,
+        "ms": 823.1999999992549,
+        "background": false,
+        "restTimer": 0.9837999999999669
+      },
+      {
+        "time": 23194.300000000745,
+        "ms": 892.1999999992549,
+        "background": false,
+        "restTimer": 0
+      },
+      {
+        "time": 25140.60000000149,
+        "ms": 36.899999998509884,
+        "background": true,
+        "restTimer": 0
+      },
+      {
+        "time": 28100.10000000149,
+        "ms": 36.5,
+        "background": true,
+        "restTimer": 0
+      }
+    ],
+    "frames": 689,
+    "maxFrameMs": 2519.699999999255,
+    "p95FrameMs": 22.5,
+    "over100": 9,
+    "records": [
+      {
+        "time": "2026-10-14T14:53:16.769Z",
+        "frameMs": 2519.7000000011176,
+        "rafMs": 2516.800000000001,
+        "sincePreviousSeconds": null,
+        "intervalStart": 6725.4000000003725,
+        "intervalEnd": 9245.10000000149,
+        "timing": [
+          {
+            "name": "追従.開始",
+            "ms": 0,
+            "totalMs": 0,
+            "calls": 1
+          },
+          {
+            "name": "LS書く",
+            "ms": 0.30000000074505806,
+            "totalMs": 0.30000000074505806,
+            "calls": 1
+          },
+          {
+            "name": "霧.revealAt",
+            "ms": 0,
+            "totalMs": 0,
+            "calls": 2
+          },
+          {
+            "name": "霧.revealCamp",
+            "ms": 0,
+            "totalMs": 0,
+            "calls": 1
+          },
+          {
+            "name": "霧.forceRevealAt",
+            "ms": 0,
+            "totalMs": 0,
+            "calls": 1
+          },
+          {
+            "name": "フォグ公開",
+            "ms": 0.09999999962747097,
+            "totalMs": 0.09999999962747097,
+            "calls": 1
+          },
+          {
+            "name": "LS読む",
+            "ms": 0,
+            "totalMs": 0,
+            "calls": 2
+          },
+          {
+            "name": "枠.updateBackground",
+            "ms": 28.40000000037253,
+            "totalMs": 28.40000000037253,
+            "calls": 1
+          },
+          {
+            "name": "ゲーム保存",
+            "ms": 7.5,
+            "totalMs": 35.90000000037253,
+            "calls": 1
+          },
+          {
+            "name": "更新その他",
+            "ms": 2460.4000000003725,
+            "totalMs": 2496.7000000011176,
+            "calls": 1
+          },
+          {
+            "name": "霧.drawFieldOverlay",
+            "ms": 0,
+            "totalMs": 0,
+            "calls": 1
+          },
+          {
+            "name": "描画その他",
+            "ms": 16,
+            "totalMs": 16,
+            "calls": 1
+          },
+          {
+            "name": "フレーム本体",
+            "ms": 0.09999999962747097,
+            "totalMs": 2512.800000000745,
+            "calls": 1
+          }
+        ],
+        "measuredMs": 2512.800000000745,
+        "unmeasuredMs": 6.900000000372529,
+        "terrain": {
+          "disabled": false,
+          "pending": 0,
+          "rasterSize": 512,
+          "tiles": 24,
+          "workerActive": true,
+          "workerSupported": true,
+          "offscreenSupported": true,
+          "bitmapSupported": true
+        },
+        "longTasks": [
+          {
+            "start": 6725.10000000149,
+            "ms": 2518
+          },
+          {
+            "start": 9244.5,
+            "ms": 52
+          }
+        ]
+      },
+      {
+        "time": "2026-10-14T14:53:18.765Z",
+        "frameMs": 1048.8999999985099,
+        "rafMs": 1033.2999999999993,
+        "sincePreviousSeconds": 1.99689999999851,
+        "intervalStart": 10193.10000000149,
+        "intervalEnd": 11242,
+        "timing": [
+          {
+            "name": "LS読む",
+            "ms": 0.09999999962747097,
+            "totalMs": 0.09999999962747097,
+            "calls": 2
+          },
+          {
+            "name": "枠.list",
+            "ms": 21.09999999962747,
+            "totalMs": 21.199999999254942,
+            "calls": 1
+          },
+          {
+            "name": "LS書く",
+            "ms": 1.599999999627471,
+            "totalMs": 1.599999999627471,
+            "calls": 1
+          },
+          {
+            "name": "枠.update",
+            "ms": 952.3000000007451,
+            "totalMs": 975.0999999996275,
+            "calls": 1
+          },
+          {
+            "name": "ゲーム保存",
+            "ms": 7.800000000745058,
+            "totalMs": 982.9000000003725,
+            "calls": 1
+          },
+          {
+            "name": "追従.開始",
+            "ms": 0,
+            "totalMs": 0,
+            "calls": 1
+          },
+          {
+            "name": "霧.revealAt",
+            "ms": 0,
+            "totalMs": 0,
+            "calls": 1
+          },
+          {
+            "name": "フォグ公開",
+            "ms": 0.19999999925494194,
+            "totalMs": 0.19999999925494194,
+            "calls": 1
+          },
+          {
+            "name": "追従.復帰",
+            "ms": 0,
+            "totalMs": 0,
+            "calls": 1
+          },
+          {
+            "name": "更新その他",
+            "ms": 47.59999999962747,
+            "totalMs": 1030.699999999255,
+            "calls": 1
+          },
+          {
+            "name": "霧.drawFieldOverlay",
+            "ms": 0,
+            "totalMs": 0,
+            "calls": 1
+          },
+          {
+            "name": "描画その他",
+            "ms": 6.700000001117587,
+            "totalMs": 6.700000001117587,
+            "calls": 1
+          },
+          {
+            "name": "ミニマップ",
+            "ms": 1.799999998882413,
+            "totalMs": 1.799999998882413,
+            "calls": 1
+          },
+          {
+            "name": "フレーム本体",
+            "ms": 0.19999999925494194,
+            "totalMs": 1039.3999999985099,
+            "calls": 1
+          },
+          {
+            "name": "保存完了",
+            "ms": 0,
+            "totalMs": 0,
+            "calls": 1
+          }
+        ],
+        "measuredMs": 1039.3999999985099,
+        "unmeasuredMs": 9.5,
+        "terrain": {
+          "disabled": false,
+          "pending": 0,
+          "rasterSize": 512,
+          "tiles": 24,
+          "workerActive": true,
+          "workerSupported": true,
+          "offscreenSupported": true,
+          "bitmapSupported": true
+        },
+        "longTasks": [
+          {
+            "start": 10192.900000000373,
+            "ms": 1044
+          }
+        ]
+      },
+      {
+        "time": "2026-10-14T14:53:20.711Z",
+        "frameMs": 1087.300000000745,
+        "rafMs": 1083.2999999999993,
+        "sincePreviousSeconds": 1.9458000000007452,
+        "intervalStart": 12100.5,
+        "intervalEnd": 13187.800000000745,
+        "timing": [
+          {
+            "name": "LS読む",
+            "ms": 0.09999999962747097,
+            "totalMs": 0.09999999962747097,
+            "calls": 2
+          },
+          {
+            "name": "枠.list",
+            "ms": 15.699999999254942,
+            "totalMs": 15.799999998882413,
+            "calls": 1
+          },
+          {
+            "name": "LS書く",
+            "ms": 4.599999999627471,
+            "totalMs": 4.599999999627471,
+            "calls": 1
+          },
+          {
+            "name": "枠.update",
+            "ms": 1029.7000000011176,
+            "totalMs": 1050.0999999996275,
+            "calls": 1
+          },
+          {
+            "name": "ゲーム保存",
+            "ms": 7.199999999254942,
+            "totalMs": 1057.2999999988824,
+            "calls": 1
+          },
+          {
+            "name": "追従.開始",
+            "ms": 0.2000000011175871,
+            "totalMs": 0.2000000011175871,
+            "calls": 1
+          },
+          {
+            "name": "霧.revealAt",
+            "ms": 0,
+            "totalMs": 0,
+            "calls": 1
+          },
+          {
+            "name": "フォグ公開",
+            "ms": 0,
+            "totalMs": 0,
+            "calls": 1
+          },
+          {
+            "name": "追従.復帰",
+            "ms": 0,
+            "totalMs": 0,
+            "calls": 1
+          },
+          {
+            "name": "更新その他",
+            "ms": 14.5,
+            "totalMs": 1072,
+            "calls": 1
+          },
+          {
+            "name": "霧.drawFieldOverlay",
+            "ms": 0,
+            "totalMs": 0,
+            "calls": 1
+          },
+          {
+            "name": "描画その他",
+            "ms": 7.800000000745058,
+            "totalMs": 7.800000000745058,
+            "calls": 1
+          },
+          {
+            "name": "フレーム本体",
+            "ms": 0,
+            "totalMs": 1079.800000000745,
+            "calls": 1
+          }
+        ],
+        "measuredMs": 1079.800000000745,
+        "unmeasuredMs": 7.5,
+        "terrain": {
+          "disabled": false,
+          "pending": 0,
+          "rasterSize": 512,
+          "tiles": 24,
+          "workerActive": true,
+          "workerSupported": true,
+          "offscreenSupported": true,
+          "bitmapSupported": true
+        },
+        "longTasks": [
+          {
+            "start": 12100,
+            "ms": 1085
+          }
+        ]
+      },
+      {
+        "time": "2026-10-14T14:53:22.766Z",
+        "frameMs": 1113.9000000003725,
+        "rafMs": 1100,
+        "sincePreviousSeconds": 2.054800000000745,
+        "intervalStart": 14128.700000001118,
+        "intervalEnd": 15242.60000000149,
+        "timing": [
+          {
+            "name": "LS読む",
+            "ms": 0,
+            "totalMs": 0,
+            "calls": 2
+          },
+          {
+            "name": "枠.list",
+            "ms": 22.800000000745058,
+            "totalMs": 22.800000000745058,
+            "calls": 1
+          },
+          {
+            "name": "LS書く",
+            "ms": 1.400000000372529,
+            "totalMs": 1.400000000372529,
+            "calls": 1
+          },
+          {
+            "name": "枠.update",
+            "ms": 1043.199999999255,
+            "totalMs": 1067.4000000003725,
+            "calls": 1
+          },
+          {
+            "name": "ゲーム保存",
+            "ms": 8.399999998509884,
+            "totalMs": 1075.7999999988824,
+            "calls": 1
+          },
+          {
+            "name": "追従.開始",
+            "ms": 0,
+            "totalMs": 0,
+            "calls": 1
+          },
+          {
+            "name": "霧.revealAt",
+            "ms": 0,
+            "totalMs": 0,
+            "calls": 1
+          },
+          {
+            "name": "フォグ公開",
+            "ms": 0,
+            "totalMs": 0,
+            "calls": 1
+          },
+          {
+            "name": "追従.復帰",
+            "ms": 0,
+            "totalMs": 0,
+            "calls": 1
+          },
+          {
+            "name": "更新その他",
+            "ms": 14,
+            "totalMs": 1089.7999999988824,
+            "calls": 1
+          },
+          {
+            "name": "霧.drawFieldOverlay",
+            "ms": 0.09999999962747097,
+            "totalMs": 0.09999999962747097,
+            "calls": 1
+          },
+          {
+            "name": "描画その他",
+            "ms": 9.099999999627471,
+            "totalMs": 9.199999999254942,
+            "calls": 1
+          },
+          {
+            "name": "ミニマップ",
+            "ms": 2.300000000745058,
+            "totalMs": 2.300000000745058,
+            "calls": 1
+          },
+          {
+            "name": "フレーム本体",
+            "ms": 0.10000000149011612,
+            "totalMs": 1101.4000000003725,
+            "calls": 1
+          },
+          {
+            "name": "保存完了",
+            "ms": 0,
+            "totalMs": 0,
+            "calls": 1
+          }
+        ],
+        "measuredMs": 1101.4000000003725,
+        "unmeasuredMs": 12.5,
+        "terrain": {
+          "disabled": false,
+          "pending": 0,
+          "rasterSize": 512,
+          "tiles": 24,
+          "workerActive": true,
+          "workerSupported": true,
+          "offscreenSupported": true,
+          "bitmapSupported": true
+        },
+        "longTasks": [
+          {
+            "start": 14127.800000000745,
+            "ms": 1107
+          }
+        ]
+      },
+      {
+        "time": "2026-10-14T14:53:24.505Z",
+        "frameMs": 906.2000000011176,
+        "rafMs": 900,
+        "sincePreviousSeconds": 1.739,
+        "intervalStart": 16075.400000000373,
+        "intervalEnd": 16981.60000000149,
+        "timing": [
+          {
+            "name": "LS読む",
+            "ms": 0.2000000011175871,
+            "totalMs": 0.2000000011175871,
+            "calls": 2
+          },
+          {
+            "name": "枠.list",
+            "ms": 12.599999999627471,
+            "totalMs": 12.800000000745058,
+            "calls": 1
+          },
+          {
+            "name": "LS書く",
+            "ms": 4.599999999627471,
+            "totalMs": 4.599999999627471,
+            "calls": 1
+          },
+          {
+            "name": "枠.update",
+            "ms": 859.5999999996275,
+            "totalMs": 877,
+            "calls": 1
+          },
+          {
+            "name": "ゲーム保存",
+            "ms": 6.199999999254942,
+            "totalMs": 883.1999999992549,
+            "calls": 1
+          },
+          {
+            "name": "追従.開始",
+            "ms": 0,
+            "totalMs": 0,
+            "calls": 1
+          },
+          {
+            "name": "霧.revealAt",
+            "ms": 0,
+            "totalMs": 0,
+            "calls": 1
+          },
+          {
+            "name": "フォグ公開",
+            "ms": 0,
+            "totalMs": 0,
+            "calls": 1
+          },
+          {
+            "name": "追従.復帰",
+            "ms": 0,
+            "totalMs": 0,
+            "calls": 1
+          },
+          {
+            "name": "更新その他",
+            "ms": 10.800000000745058,
+            "totalMs": 894,
+            "calls": 1
+          },
+          {
+            "name": "霧.drawFieldOverlay",
+            "ms": 0,
+            "totalMs": 0,
+            "calls": 1
+          },
+          {
+            "name": "描画その他",
+            "ms": 5,
+            "totalMs": 5,
+            "calls": 1
+          },
+          {
+            "name": "フレーム本体",
+            "ms": 0.09999999962747097,
+            "totalMs": 899.0999999996275,
+            "calls": 1
+          }
+        ],
+        "measuredMs": 899.0999999996275,
+        "unmeasuredMs": 7.100000001490116,
+        "terrain": {
+          "disabled": false,
+          "pending": 0,
+          "rasterSize": 512,
+          "tiles": 24,
+          "workerActive": true,
+          "workerSupported": true,
+          "offscreenSupported": true,
+          "bitmapSupported": true
+        },
+        "longTasks": [
+          {
+            "start": 16074.900000000373,
+            "ms": 904
+          }
+        ]
+      },
+      {
+        "time": "2026-10-14T14:53:26.446Z",
+        "frameMs": 1041.7999999988824,
+        "rafMs": 1033.5,
+        "sincePreviousSeconds": 1.9407999999988823,
+        "intervalStart": 17880.60000000149,
+        "intervalEnd": 18922.400000000373,
+        "timing": [
+          {
+            "name": "LS読む",
+            "ms": 0.19999999925494194,
+            "totalMs": 0.19999999925494194,
+            "calls": 2
+          },
+          {
+            "name": "枠.list",
+            "ms": 20.700000001117587,
+            "totalMs": 20.90000000037253,
+            "calls": 1
+          },
+          {
+            "name": "LS書く",
+            "ms": 1.700000001117587,
+            "totalMs": 1.700000001117587,
+            "calls": 1
+          },
+          {
+            "name": "枠.update",
+            "ms": 976.3999999985099,
+            "totalMs": 999,
+            "calls": 1
+          },
+          {
+            "name": "ゲーム保存",
+            "ms": 7.5,
+            "totalMs": 1006.5,
+            "calls": 1
+          },
+          {
+            "name": "追従.開始",
+            "ms": 0.09999999962747097,
+            "totalMs": 0.09999999962747097,
+            "calls": 1
+          },
+          {
+            "name": "霧.revealAt",
+            "ms": 0,
+            "totalMs": 0,
+            "calls": 1
+          },
+          {
+            "name": "フォグ公開",
+            "ms": 0,
+            "totalMs": 0,
+            "calls": 1
+          },
+          {
+            "name": "追従.復帰",
+            "ms": 0,
+            "totalMs": 0,
+            "calls": 1
+          },
+          {
+            "name": "更新その他",
+            "ms": 12.099999999627471,
+            "totalMs": 1018.6999999992549,
+            "calls": 1
+          },
+          {
+            "name": "霧.drawFieldOverlay",
+            "ms": 0,
+            "totalMs": 0,
+            "calls": 1
+          },
+          {
+            "name": "描画その他",
+            "ms": 7.800000000745058,
+            "totalMs": 7.800000000745058,
+            "calls": 1
+          },
+          {
+            "name": "フレーム本体",
+            "ms": 0.2999999988824129,
+            "totalMs": 1026.7999999988824,
+            "calls": 1
+          }
+        ],
+        "measuredMs": 1026.7999999988824,
+        "unmeasuredMs": 15,
+        "terrain": {
+          "disabled": false,
+          "pending": 0,
+          "rasterSize": 512,
+          "tiles": 24,
+          "workerActive": true,
+          "workerSupported": true,
+          "offscreenSupported": true,
+          "bitmapSupported": true
+        },
+        "longTasks": [
+          {
+            "start": 17879.900000000373,
+            "ms": 1034
+          }
+        ]
+      },
+      {
+        "time": "2026-10-14T14:53:28.090Z",
+        "frameMs": 757.8000000007451,
+        "rafMs": 750,
+        "sincePreviousSeconds": 1.644300000000745,
+        "intervalStart": 19808.900000000373,
+        "intervalEnd": 20566.700000001118,
+        "timing": [
+          {
+            "name": "LS読む",
+            "ms": 0,
+            "totalMs": 0,
+            "calls": 2
+          },
+          {
+            "name": "枠.list",
+            "ms": 11.199999999254942,
+            "totalMs": 11.199999999254942,
+            "calls": 1
+          },
+          {
+            "name": "LS書く",
+            "ms": 4.100000001490116,
+            "totalMs": 4.100000001490116,
+            "calls": 1
+          },
+          {
+            "name": "枠.update",
+            "ms": 716.1999999992549,
+            "totalMs": 731.5,
+            "calls": 1
+          },
+          {
+            "name": "ゲーム保存",
+            "ms": 6.400000000372529,
+            "totalMs": 737.9000000003725,
+            "calls": 1
+          },
+          {
+            "name": "追従.開始",
+            "ms": 0.09999999962747097,
+            "totalMs": 0.09999999962747097,
+            "calls": 1
+          },
+          {
+            "name": "霧.revealAt",
+            "ms": 0,
+            "totalMs": 0,
+            "calls": 1
+          },
+          {
+            "name": "フォグ公開",
+            "ms": 0,
+            "totalMs": 0,
+            "calls": 1
+          },
+          {
+            "name": "追従.復帰",
+            "ms": 0,
+            "totalMs": 0,
+            "calls": 1
+          },
+          {
+            "name": "更新その他",
+            "ms": 9.400000000372529,
+            "totalMs": 747.4000000003725,
+            "calls": 1
+          },
+          {
+            "name": "霧.drawFieldOverlay",
+            "ms": 0.19999999925494194,
+            "totalMs": 0.19999999925494194,
+            "calls": 1
+          },
+          {
+            "name": "描画その他",
+            "ms": 4.900000000372529,
+            "totalMs": 5.099999999627471,
+            "calls": 1
+          },
+          {
+            "name": "フレーム本体",
+            "ms": 0,
+            "totalMs": 752.5,
+            "calls": 1
+          }
+        ],
+        "measuredMs": 752.5,
+        "unmeasuredMs": 5.300000000745058,
+        "terrain": {
+          "disabled": false,
+          "pending": 0,
+          "rasterSize": 512,
+          "tiles": 24,
+          "workerActive": true,
+          "workerSupported": true,
+          "offscreenSupported": true,
+          "bitmapSupported": true
+        },
+        "longTasks": [
+          {
+            "start": 19808.300000000745,
+            "ms": 757
+          }
+        ]
+      },
+      {
+        "time": "2026-10-14T14:53:29.830Z",
+        "frameMs": 848.4000000003725,
+        "rafMs": 833.5,
+        "sincePreviousSeconds": 1.7400999999996274,
+        "intervalStart": 21458.400000000373,
+        "intervalEnd": 22306.800000000745,
+        "timing": [
+          {
+            "name": "LS読む",
+            "ms": 0,
+            "totalMs": 0,
+            "calls": 2
+          },
+          {
+            "name": "枠.list",
+            "ms": 11.300000000745058,
+            "totalMs": 11.300000000745058,
+            "calls": 1
+          },
+          {
+            "name": "LS書く",
+            "ms": 1.6000000014901161,
+            "totalMs": 1.6000000014901161,
+            "calls": 1
+          },
+          {
+            "name": "枠.update",
+            "ms": 804.7999999988824,
+            "totalMs": 817.7000000011176,
+            "calls": 1
+          },
+          {
+            "name": "ゲーム保存",
+            "ms": 5.299999998882413,
+            "totalMs": 823,
+            "calls": 1
+          },
+          {
+            "name": "追従.開始",
+            "ms": 0,
+            "totalMs": 0,
+            "calls": 1
+          },
+          {
+            "name": "霧.revealAt",
+            "ms": 0,
+            "totalMs": 0,
+            "calls": 1
+          },
+          {
+            "name": "フォグ公開",
+            "ms": 0,
+            "totalMs": 0,
+            "calls": 1
+          },
+          {
+            "name": "追従.復帰",
+            "ms": 0,
+            "totalMs": 0,
+            "calls": 1
+          },
+          {
+            "name": "更新その他",
+            "ms": 11.400000000372529,
+            "totalMs": 834.4000000003725,
+            "calls": 1
+          },
+          {
+            "name": "霧.drawFieldOverlay",
+            "ms": 0,
+            "totalMs": 0,
+            "calls": 1
+          },
+          {
+            "name": "描画その他",
+            "ms": 6.599999999627471,
+            "totalMs": 6.599999999627471,
+            "calls": 1
+          },
+          {
+            "name": "フレーム本体",
+            "ms": 0,
+            "totalMs": 841,
+            "calls": 1
+          }
+        ],
+        "measuredMs": 841,
+        "unmeasuredMs": 7.400000000372529,
+        "terrain": {
+          "disabled": false,
+          "pending": 0,
+          "rasterSize": 512,
+          "tiles": 24,
+          "workerActive": true,
+          "workerSupported": true,
+          "offscreenSupported": true,
+          "bitmapSupported": true
+        },
+        "longTasks": [
+          {
+            "start": 21458.10000000149,
+            "ms": 846
+          }
+        ]
+      },
+      {
+        "time": "2026-10-14T14:53:32.727Z",
+        "frameMs": 2012.1000000014901,
+        "rafMs": 2000,
+        "sincePreviousSeconds": 2.896800000000745,
+        "intervalStart": 23191.5,
+        "intervalEnd": 25203.60000000149,
+        "timing": [
+          {
+            "name": "LS読む",
+            "ms": 0.2999999988824129,
+            "totalMs": 0.2999999988824129,
+            "calls": 4
+          },
+          {
+            "name": "枠.list",
+            "ms": 13.199999999254942,
+            "totalMs": 13.299999998882413,
+            "calls": 1
+          },
+          {
+            "name": "LS書く",
+            "ms": 1.900000000372529,
+            "totalMs": 1.900000000372529,
+            "calls": 1
+          },
+          {
+            "name": "枠.update",
+            "ms": 871.1999999992549,
+            "totalMs": 886.3999999985099,
+            "calls": 1
+          },
+          {
+            "name": "ゲーム保存",
+            "ms": 13.199999999254942,
+            "totalMs": 929.0999999977648,
+            "calls": 2
+          },
+          {
+            "name": "枠.updateBackground",
+            "ms": 29.300000000745058,
+            "totalMs": 29.5,
+            "calls": 1
+          },
+          {
+            "name": "更新その他",
+            "ms": 1063.4000000022352,
+            "totalMs": 1992.5,
+            "calls": 1
+          },
+          {
+            "name": "霧.drawFieldOverlay",
+            "ms": 0,
+            "totalMs": 0,
+            "calls": 1
+          },
+          {
+            "name": "描画その他",
+            "ms": 6.799999998882413,
+            "totalMs": 6.799999998882413,
+            "calls": 1
+          },
+          {
+            "name": "フレーム本体",
+            "ms": 0.2000000011175871,
+            "totalMs": 1999.5,
+            "calls": 1
+          }
+        ],
+        "measuredMs": 1999.5,
+        "unmeasuredMs": 12.600000001490116,
+        "terrain": {
+          "disabled": false,
+          "pending": 0,
+          "rasterSize": 512,
+          "tiles": 24,
+          "workerActive": true,
+          "workerSupported": true,
+          "offscreenSupported": true,
+          "bitmapSupported": true
+        },
+        "longTasks": [
+          {
+            "start": 23191.400000000373,
+            "ms": 2009
+          }
+        ]
+      }
+    ],
+    "diagnostic": {
+      "version": "6.11.14",
+      "thresholdMs": 100,
+      "terrain": {
+        "disabled": false,
+        "pending": 0,
+        "rasterSize": 512,
+        "tiles": 24,
+        "workerActive": true,
+        "workerSupported": true,
+        "offscreenSupported": true,
+        "bitmapSupported": true
+      },
+      "storageSupported": true,
+      "longTaskSupported": true,
+      "records": [
+        {
+          "time": "2026-10-14T14:53:16.769Z",
+          "frameMs": 2519.7000000011176,
+          "rafMs": 2516.800000000001,
+          "sincePreviousSeconds": null,
+          "intervalStart": 6725.4000000003725,
+          "intervalEnd": 9245.10000000149,
+          "timing": [
+            {
+              "name": "追従.開始",
+              "ms": 0,
+              "totalMs": 0,
+              "calls": 1
+            },
+            {
+              "name": "LS書く",
+              "ms": 0.30000000074505806,
+              "totalMs": 0.30000000074505806,
+              "calls": 1
+            },
+            {
+              "name": "霧.revealAt",
+              "ms": 0,
+              "totalMs": 0,
+              "calls": 2
+            },
+            {
+              "name": "霧.revealCamp",
+              "ms": 0,
+              "totalMs": 0,
+              "calls": 1
+            },
+            {
+              "name": "霧.forceRevealAt",
+              "ms": 0,
+              "totalMs": 0,
+              "calls": 1
+            },
+            {
+              "name": "フォグ公開",
+              "ms": 0.09999999962747097,
+              "totalMs": 0.09999999962747097,
+              "calls": 1
+            },
+            {
+              "name": "LS読む",
+              "ms": 0,
+              "totalMs": 0,
+              "calls": 2
+            },
+            {
+              "name": "枠.updateBackground",
+              "ms": 28.40000000037253,
+              "totalMs": 28.40000000037253,
+              "calls": 1
+            },
+            {
+              "name": "ゲーム保存",
+              "ms": 7.5,
+              "totalMs": 35.90000000037253,
+              "calls": 1
+            },
+            {
+              "name": "更新その他",
+              "ms": 2460.4000000003725,
+              "totalMs": 2496.7000000011176,
+              "calls": 1
+            },
+            {
+              "name": "霧.drawFieldOverlay",
+              "ms": 0,
+              "totalMs": 0,
+              "calls": 1
+            },
+            {
+              "name": "描画その他",
+              "ms": 16,
+              "totalMs": 16,
+              "calls": 1
+            },
+            {
+              "name": "フレーム本体",
+              "ms": 0.09999999962747097,
+              "totalMs": 2512.800000000745,
+              "calls": 1
+            }
+          ],
+          "measuredMs": 2512.800000000745,
+          "unmeasuredMs": 6.900000000372529,
+          "terrain": {
+            "disabled": false,
+            "pending": 0,
+            "rasterSize": 512,
+            "tiles": 24,
+            "workerActive": true,
+            "workerSupported": true,
+            "offscreenSupported": true,
+            "bitmapSupported": true
+          },
+          "longTasks": [
+            {
+              "start": 6725.10000000149,
+              "ms": 2518
+            },
+            {
+              "start": 9244.5,
+              "ms": 52
+            }
+          ]
+        },
+        {
+          "time": "2026-10-14T14:53:18.765Z",
+          "frameMs": 1048.8999999985099,
+          "rafMs": 1033.2999999999993,
+          "sincePreviousSeconds": 1.99689999999851,
+          "intervalStart": 10193.10000000149,
+          "intervalEnd": 11242,
+          "timing": [
+            {
+              "name": "LS読む",
+              "ms": 0.09999999962747097,
+              "totalMs": 0.09999999962747097,
+              "calls": 2
+            },
+            {
+              "name": "枠.list",
+              "ms": 21.09999999962747,
+              "totalMs": 21.199999999254942,
+              "calls": 1
+            },
+            {
+              "name": "LS書く",
+              "ms": 1.599999999627471,
+              "totalMs": 1.599999999627471,
+              "calls": 1
+            },
+            {
+              "name": "枠.update",
+              "ms": 952.3000000007451,
+              "totalMs": 975.0999999996275,
+              "calls": 1
+            },
+            {
+              "name": "ゲーム保存",
+              "ms": 7.800000000745058,
+              "totalMs": 982.9000000003725,
+              "calls": 1
+            },
+            {
+              "name": "追従.開始",
+              "ms": 0,
+              "totalMs": 0,
+              "calls": 1
+            },
+            {
+              "name": "霧.revealAt",
+              "ms": 0,
+              "totalMs": 0,
+              "calls": 1
+            },
+            {
+              "name": "フォグ公開",
+              "ms": 0.19999999925494194,
+              "totalMs": 0.19999999925494194,
+              "calls": 1
+            },
+            {
+              "name": "追従.復帰",
+              "ms": 0,
+              "totalMs": 0,
+              "calls": 1
+            },
+            {
+              "name": "更新その他",
+              "ms": 47.59999999962747,
+              "totalMs": 1030.699999999255,
+              "calls": 1
+            },
+            {
+              "name": "霧.drawFieldOverlay",
+              "ms": 0,
+              "totalMs": 0,
+              "calls": 1
+            },
+            {
+              "name": "描画その他",
+              "ms": 6.700000001117587,
+              "totalMs": 6.700000001117587,
+              "calls": 1
+            },
+            {
+              "name": "ミニマップ",
+              "ms": 1.799999998882413,
+              "totalMs": 1.799999998882413,
+              "calls": 1
+            },
+            {
+              "name": "フレーム本体",
+              "ms": 0.19999999925494194,
+              "totalMs": 1039.3999999985099,
+              "calls": 1
+            },
+            {
+              "name": "保存完了",
+              "ms": 0,
+              "totalMs": 0,
+              "calls": 1
+            }
+          ],
+          "measuredMs": 1039.3999999985099,
+          "unmeasuredMs": 9.5,
+          "terrain": {
+            "disabled": false,
+            "pending": 0,
+            "rasterSize": 512,
+            "tiles": 24,
+            "workerActive": true,
+            "workerSupported": true,
+            "offscreenSupported": true,
+            "bitmapSupported": true
+          },
+          "longTasks": [
+            {
+              "start": 10192.900000000373,
+              "ms": 1044
+            }
+          ]
+        },
+        {
+          "time": "2026-10-14T14:53:20.711Z",
+          "frameMs": 1087.300000000745,
+          "rafMs": 1083.2999999999993,
+          "sincePreviousSeconds": 1.9458000000007452,
+          "intervalStart": 12100.5,
+          "intervalEnd": 13187.800000000745,
+          "timing": [
+            {
+              "name": "LS読む",
+              "ms": 0.09999999962747097,
+              "totalMs": 0.09999999962747097,
+              "calls": 2
+            },
+            {
+              "name": "枠.list",
+              "ms": 15.699999999254942,
+              "totalMs": 15.799999998882413,
+              "calls": 1
+            },
+            {
+              "name": "LS書く",
+              "ms": 4.599999999627471,
+              "totalMs": 4.599999999627471,
+              "calls": 1
+            },
+            {
+              "name": "枠.update",
+              "ms": 1029.7000000011176,
+              "totalMs": 1050.0999999996275,
+              "calls": 1
+            },
+            {
+              "name": "ゲーム保存",
+              "ms": 7.199999999254942,
+              "totalMs": 1057.2999999988824,
+              "calls": 1
+            },
+            {
+              "name": "追従.開始",
+              "ms": 0.2000000011175871,
+              "totalMs": 0.2000000011175871,
+              "calls": 1
+            },
+            {
+              "name": "霧.revealAt",
+              "ms": 0,
+              "totalMs": 0,
+              "calls": 1
+            },
+            {
+              "name": "フォグ公開",
+              "ms": 0,
+              "totalMs": 0,
+              "calls": 1
+            },
+            {
+              "name": "追従.復帰",
+              "ms": 0,
+              "totalMs": 0,
+              "calls": 1
+            },
+            {
+              "name": "更新その他",
+              "ms": 14.5,
+              "totalMs": 1072,
+              "calls": 1
+            },
+            {
+              "name": "霧.drawFieldOverlay",
+              "ms": 0,
+              "totalMs": 0,
+              "calls": 1
+            },
+            {
+              "name": "描画その他",
+              "ms": 7.800000000745058,
+              "totalMs": 7.800000000745058,
+              "calls": 1
+            },
+            {
+              "name": "フレーム本体",
+              "ms": 0,
+              "totalMs": 1079.800000000745,
+              "calls": 1
+            }
+          ],
+          "measuredMs": 1079.800000000745,
+          "unmeasuredMs": 7.5,
+          "terrain": {
+            "disabled": false,
+            "pending": 0,
+            "rasterSize": 512,
+            "tiles": 24,
+            "workerActive": true,
+            "workerSupported": true,
+            "offscreenSupported": true,
+            "bitmapSupported": true
+          },
+          "longTasks": [
+            {
+              "start": 12100,
+              "ms": 1085
+            }
+          ]
+        },
+        {
+          "time": "2026-10-14T14:53:22.766Z",
+          "frameMs": 1113.9000000003725,
+          "rafMs": 1100,
+          "sincePreviousSeconds": 2.054800000000745,
+          "intervalStart": 14128.700000001118,
+          "intervalEnd": 15242.60000000149,
+          "timing": [
+            {
+              "name": "LS読む",
+              "ms": 0,
+              "totalMs": 0,
+              "calls": 2
+            },
+            {
+              "name": "枠.list",
+              "ms": 22.800000000745058,
+              "totalMs": 22.800000000745058,
+              "calls": 1
+            },
+            {
+              "name": "LS書く",
+              "ms": 1.400000000372529,
+              "totalMs": 1.400000000372529,
+              "calls": 1
+            },
+            {
+              "name": "枠.update",
+              "ms": 1043.199999999255,
+              "totalMs": 1067.4000000003725,
+              "calls": 1
+            },
+            {
+              "name": "ゲーム保存",
+              "ms": 8.399999998509884,
+              "totalMs": 1075.7999999988824,
+              "calls": 1
+            },
+            {
+              "name": "追従.開始",
+              "ms": 0,
+              "totalMs": 0,
+              "calls": 1
+            },
+            {
+              "name": "霧.revealAt",
+              "ms": 0,
+              "totalMs": 0,
+              "calls": 1
+            },
+            {
+              "name": "フォグ公開",
+              "ms": 0,
+              "totalMs": 0,
+              "calls": 1
+            },
+            {
+              "name": "追従.復帰",
+              "ms": 0,
+              "totalMs": 0,
+              "calls": 1
+            },
+            {
+              "name": "更新その他",
+              "ms": 14,
+              "totalMs": 1089.7999999988824,
+              "calls": 1
+            },
+            {
+              "name": "霧.drawFieldOverlay",
+              "ms": 0.09999999962747097,
+              "totalMs": 0.09999999962747097,
+              "calls": 1
+            },
+            {
+              "name": "描画その他",
+              "ms": 9.099999999627471,
+              "totalMs": 9.199999999254942,
+              "calls": 1
+            },
+            {
+              "name": "ミニマップ",
+              "ms": 2.300000000745058,
+              "totalMs": 2.300000000745058,
+              "calls": 1
+            },
+            {
+              "name": "フレーム本体",
+              "ms": 0.10000000149011612,
+              "totalMs": 1101.4000000003725,
+              "calls": 1
+            },
+            {
+              "name": "保存完了",
+              "ms": 0,
+              "totalMs": 0,
+              "calls": 1
+            }
+          ],
+          "measuredMs": 1101.4000000003725,
+          "unmeasuredMs": 12.5,
+          "terrain": {
+            "disabled": false,
+            "pending": 0,
+            "rasterSize": 512,
+            "tiles": 24,
+            "workerActive": true,
+            "workerSupported": true,
+            "offscreenSupported": true,
+            "bitmapSupported": true
+          },
+          "longTasks": [
+            {
+              "start": 14127.800000000745,
+              "ms": 1107
+            }
+          ]
+        },
+        {
+          "time": "2026-10-14T14:53:24.505Z",
+          "frameMs": 906.2000000011176,
+          "rafMs": 900,
+          "sincePreviousSeconds": 1.739,
+          "intervalStart": 16075.400000000373,
+          "intervalEnd": 16981.60000000149,
+          "timing": [
+            {
+              "name": "LS読む",
+              "ms": 0.2000000011175871,
+              "totalMs": 0.2000000011175871,
+              "calls": 2
+            },
+            {
+              "name": "枠.list",
+              "ms": 12.599999999627471,
+              "totalMs": 12.800000000745058,
+              "calls": 1
+            },
+            {
+              "name": "LS書く",
+              "ms": 4.599999999627471,
+              "totalMs": 4.599999999627471,
+              "calls": 1
+            },
+            {
+              "name": "枠.update",
+              "ms": 859.5999999996275,
+              "totalMs": 877,
+              "calls": 1
+            },
+            {
+              "name": "ゲーム保存",
+              "ms": 6.199999999254942,
+              "totalMs": 883.1999999992549,
+              "calls": 1
+            },
+            {
+              "name": "追従.開始",
+              "ms": 0,
+              "totalMs": 0,
+              "calls": 1
+            },
+            {
+              "name": "霧.revealAt",
+              "ms": 0,
+              "totalMs": 0,
+              "calls": 1
+            },
+            {
+              "name": "フォグ公開",
+              "ms": 0,
+              "totalMs": 0,
+              "calls": 1
+            },
+            {
+              "name": "追従.復帰",
+              "ms": 0,
+              "totalMs": 0,
+              "calls": 1
+            },
+            {
+              "name": "更新その他",
+              "ms": 10.800000000745058,
+              "totalMs": 894,
+              "calls": 1
+            },
+            {
+              "name": "霧.drawFieldOverlay",
+              "ms": 0,
+              "totalMs": 0,
+              "calls": 1
+            },
+            {
+              "name": "描画その他",
+              "ms": 5,
+              "totalMs": 5,
+              "calls": 1
+            },
+            {
+              "name": "フレーム本体",
+              "ms": 0.09999999962747097,
+              "totalMs": 899.0999999996275,
+              "calls": 1
+            }
+          ],
+          "measuredMs": 899.0999999996275,
+          "unmeasuredMs": 7.100000001490116,
+          "terrain": {
+            "disabled": false,
+            "pending": 0,
+            "rasterSize": 512,
+            "tiles": 24,
+            "workerActive": true,
+            "workerSupported": true,
+            "offscreenSupported": true,
+            "bitmapSupported": true
+          },
+          "longTasks": [
+            {
+              "start": 16074.900000000373,
+              "ms": 904
+            }
+          ]
+        },
+        {
+          "time": "2026-10-14T14:53:26.446Z",
+          "frameMs": 1041.7999999988824,
+          "rafMs": 1033.5,
+          "sincePreviousSeconds": 1.9407999999988823,
+          "intervalStart": 17880.60000000149,
+          "intervalEnd": 18922.400000000373,
+          "timing": [
+            {
+              "name": "LS読む",
+              "ms": 0.19999999925494194,
+              "totalMs": 0.19999999925494194,
+              "calls": 2
+            },
+            {
+              "name": "枠.list",
+              "ms": 20.700000001117587,
+              "totalMs": 20.90000000037253,
+              "calls": 1
+            },
+            {
+              "name": "LS書く",
+              "ms": 1.700000001117587,
+              "totalMs": 1.700000001117587,
+              "calls": 1
+            },
+            {
+              "name": "枠.update",
+              "ms": 976.3999999985099,
+              "totalMs": 999,
+              "calls": 1
+            },
+            {
+              "name": "ゲーム保存",
+              "ms": 7.5,
+              "totalMs": 1006.5,
+              "calls": 1
+            },
+            {
+              "name": "追従.開始",
+              "ms": 0.09999999962747097,
+              "totalMs": 0.09999999962747097,
+              "calls": 1
+            },
+            {
+              "name": "霧.revealAt",
+              "ms": 0,
+              "totalMs": 0,
+              "calls": 1
+            },
+            {
+              "name": "フォグ公開",
+              "ms": 0,
+              "totalMs": 0,
+              "calls": 1
+            },
+            {
+              "name": "追従.復帰",
+              "ms": 0,
+              "totalMs": 0,
+              "calls": 1
+            },
+            {
+              "name": "更新その他",
+              "ms": 12.099999999627471,
+              "totalMs": 1018.6999999992549,
+              "calls": 1
+            },
+            {
+              "name": "霧.drawFieldOverlay",
+              "ms": 0,
+              "totalMs": 0,
+              "calls": 1
+            },
+            {
+              "name": "描画その他",
+              "ms": 7.800000000745058,
+              "totalMs": 7.800000000745058,
+              "calls": 1
+            },
+            {
+              "name": "フレーム本体",
+              "ms": 0.2999999988824129,
+              "totalMs": 1026.7999999988824,
+              "calls": 1
+            }
+          ],
+          "measuredMs": 1026.7999999988824,
+          "unmeasuredMs": 15,
+          "terrain": {
+            "disabled": false,
+            "pending": 0,
+            "rasterSize": 512,
+            "tiles": 24,
+            "workerActive": true,
+            "workerSupported": true,
+            "offscreenSupported": true,
+            "bitmapSupported": true
+          },
+          "longTasks": [
+            {
+              "start": 17879.900000000373,
+              "ms": 1034
+            }
+          ]
+        },
+        {
+          "time": "2026-10-14T14:53:28.090Z",
+          "frameMs": 757.8000000007451,
+          "rafMs": 750,
+          "sincePreviousSeconds": 1.644300000000745,
+          "intervalStart": 19808.900000000373,
+          "intervalEnd": 20566.700000001118,
+          "timing": [
+            {
+              "name": "LS読む",
+              "ms": 0,
+              "totalMs": 0,
+              "calls": 2
+            },
+            {
+              "name": "枠.list",
+              "ms": 11.199999999254942,
+              "totalMs": 11.199999999254942,
+              "calls": 1
+            },
+            {
+              "name": "LS書く",
+              "ms": 4.100000001490116,
+              "totalMs": 4.100000001490116,
+              "calls": 1
+            },
+            {
+              "name": "枠.update",
+              "ms": 716.1999999992549,
+              "totalMs": 731.5,
+              "calls": 1
+            },
+            {
+              "name": "ゲーム保存",
+              "ms": 6.400000000372529,
+              "totalMs": 737.9000000003725,
+              "calls": 1
+            },
+            {
+              "name": "追従.開始",
+              "ms": 0.09999999962747097,
+              "totalMs": 0.09999999962747097,
+              "calls": 1
+            },
+            {
+              "name": "霧.revealAt",
+              "ms": 0,
+              "totalMs": 0,
+              "calls": 1
+            },
+            {
+              "name": "フォグ公開",
+              "ms": 0,
+              "totalMs": 0,
+              "calls": 1
+            },
+            {
+              "name": "追従.復帰",
+              "ms": 0,
+              "totalMs": 0,
+              "calls": 1
+            },
+            {
+              "name": "更新その他",
+              "ms": 9.400000000372529,
+              "totalMs": 747.4000000003725,
+              "calls": 1
+            },
+            {
+              "name": "霧.drawFieldOverlay",
+              "ms": 0.19999999925494194,
+              "totalMs": 0.19999999925494194,
+              "calls": 1
+            },
+            {
+              "name": "描画その他",
+              "ms": 4.900000000372529,
+              "totalMs": 5.099999999627471,
+              "calls": 1
+            },
+            {
+              "name": "フレーム本体",
+              "ms": 0,
+              "totalMs": 752.5,
+              "calls": 1
+            }
+          ],
+          "measuredMs": 752.5,
+          "unmeasuredMs": 5.300000000745058,
+          "terrain": {
+            "disabled": false,
+            "pending": 0,
+            "rasterSize": 512,
+            "tiles": 24,
+            "workerActive": true,
+            "workerSupported": true,
+            "offscreenSupported": true,
+            "bitmapSupported": true
+          },
+          "longTasks": [
+            {
+              "start": 19808.300000000745,
+              "ms": 757
+            }
+          ]
+        },
+        {
+          "time": "2026-10-14T14:53:29.830Z",
+          "frameMs": 848.4000000003725,
+          "rafMs": 833.5,
+          "sincePreviousSeconds": 1.7400999999996274,
+          "intervalStart": 21458.400000000373,
+          "intervalEnd": 22306.800000000745,
+          "timing": [
+            {
+              "name": "LS読む",
+              "ms": 0,
+              "totalMs": 0,
+              "calls": 2
+            },
+            {
+              "name": "枠.list",
+              "ms": 11.300000000745058,
+              "totalMs": 11.300000000745058,
+              "calls": 1
+            },
+            {
+              "name": "LS書く",
+              "ms": 1.6000000014901161,
+              "totalMs": 1.6000000014901161,
+              "calls": 1
+            },
+            {
+              "name": "枠.update",
+              "ms": 804.7999999988824,
+              "totalMs": 817.7000000011176,
+              "calls": 1
+            },
+            {
+              "name": "ゲーム保存",
+              "ms": 5.299999998882413,
+              "totalMs": 823,
+              "calls": 1
+            },
+            {
+              "name": "追従.開始",
+              "ms": 0,
+              "totalMs": 0,
+              "calls": 1
+            },
+            {
+              "name": "霧.revealAt",
+              "ms": 0,
+              "totalMs": 0,
+              "calls": 1
+            },
+            {
+              "name": "フォグ公開",
+              "ms": 0,
+              "totalMs": 0,
+              "calls": 1
+            },
+            {
+              "name": "追従.復帰",
+              "ms": 0,
+              "totalMs": 0,
+              "calls": 1
+            },
+            {
+              "name": "更新その他",
+              "ms": 11.400000000372529,
+              "totalMs": 834.4000000003725,
+              "calls": 1
+            },
+            {
+              "name": "霧.drawFieldOverlay",
+              "ms": 0,
+              "totalMs": 0,
+              "calls": 1
+            },
+            {
+              "name": "描画その他",
+              "ms": 6.599999999627471,
+              "totalMs": 6.599999999627471,
+              "calls": 1
+            },
+            {
+              "name": "フレーム本体",
+              "ms": 0,
+              "totalMs": 841,
+              "calls": 1
+            }
+          ],
+          "measuredMs": 841,
+          "unmeasuredMs": 7.400000000372529,
+          "terrain": {
+            "disabled": false,
+            "pending": 0,
+            "rasterSize": 512,
+            "tiles": 24,
+            "workerActive": true,
+            "workerSupported": true,
+            "offscreenSupported": true,
+            "bitmapSupported": true
+          },
+          "longTasks": [
+            {
+              "start": 21458.10000000149,
+              "ms": 846
+            }
+          ]
+        },
+        {
+          "time": "2026-10-14T14:53:32.727Z",
+          "frameMs": 2012.1000000014901,
+          "rafMs": 2000,
+          "sincePreviousSeconds": 2.896800000000745,
+          "intervalStart": 23191.5,
+          "intervalEnd": 25203.60000000149,
+          "timing": [
+            {
+              "name": "LS読む",
+              "ms": 0.2999999988824129,
+              "totalMs": 0.2999999988824129,
+              "calls": 4
+            },
+            {
+              "name": "枠.list",
+              "ms": 13.199999999254942,
+              "totalMs": 13.299999998882413,
+              "calls": 1
+            },
+            {
+              "name": "LS書く",
+              "ms": 1.900000000372529,
+              "totalMs": 1.900000000372529,
+              "calls": 1
+            },
+            {
+              "name": "枠.update",
+              "ms": 871.1999999992549,
+              "totalMs": 886.3999999985099,
+              "calls": 1
+            },
+            {
+              "name": "ゲーム保存",
+              "ms": 13.199999999254942,
+              "totalMs": 929.0999999977648,
+              "calls": 2
+            },
+            {
+              "name": "枠.updateBackground",
+              "ms": 29.300000000745058,
+              "totalMs": 29.5,
+              "calls": 1
+            },
+            {
+              "name": "更新その他",
+              "ms": 1063.4000000022352,
+              "totalMs": 1992.5,
+              "calls": 1
+            },
+            {
+              "name": "霧.drawFieldOverlay",
+              "ms": 0,
+              "totalMs": 0,
+              "calls": 1
+            },
+            {
+              "name": "描画その他",
+              "ms": 6.799999998882413,
+              "totalMs": 6.799999998882413,
+              "calls": 1
+            },
+            {
+              "name": "フレーム本体",
+              "ms": 0.2000000011175871,
+              "totalMs": 1999.5,
+              "calls": 1
+            }
+          ],
+          "measuredMs": 1999.5,
+          "unmeasuredMs": 12.600000001490116,
+          "terrain": {
+            "disabled": false,
+            "pending": 0,
+            "rasterSize": 512,
+            "tiles": 24,
+            "workerActive": true,
+            "workerSupported": true,
+            "offscreenSupported": true,
+            "bitmapSupported": true
+          },
+          "longTasks": [
+            {
+              "start": 23191.400000000373,
+              "ms": 2009
+            }
+          ]
+        }
+      ],
+      "longTasks": [
+        {
+          "start": 6725.10000000149,
+          "ms": 2518
+        },
+        {
+          "start": 9244.5,
+          "ms": 52
+        },
+        {
+          "start": 10141.60000000149,
+          "ms": 50
+        },
+        {
+          "start": 10192.900000000373,
+          "ms": 1044
+        },
+        {
+          "start": 12100,
+          "ms": 1085
+        },
+        {
+          "start": 14058.300000000745,
+          "ms": 69
+        },
+        {
+          "start": 14127.800000000745,
+          "ms": 1107
+        },
+        {
+          "start": 16074.900000000373,
+          "ms": 904
+        },
+        {
+          "start": 17879.900000000373,
+          "ms": 1034
+        },
+        {
+          "start": 19808.300000000745,
+          "ms": 757
+        },
+        {
+          "start": 21458.10000000149,
+          "ms": 846
+        },
+        {
+          "start": 23191.400000000373,
+          "ms": 2009
+        },
+        {
+          "start": 28098.5,
+          "ms": 54
+        }
+      ]
+    },
+    "moved": 2748.6923860327806,
+    "saved": {
+      "restTimer": 0,
+      "count": 48,
+      "spent": 984,
+      "gold": 855,
+      "upgrade": 2
+    },
+    "current": {
+      "count": 48,
+      "spent": 984,
+      "gold": 855,
+      "upgrade": 2
+    }
+  },
+  "fixed": {
+    "fixture": {
+      "jsonUtf8Bytes": 610123,
+      "jsonCharacters": 577655,
+      "storedUtf8Bytes": 211700,
+      "inventory": 0,
+      "historicalInventory": 112,
+      "soldiers": 48
+    },
+    "durationMs": 15949.900000000373,
+    "events": [
+      {
+        "name": "completePhase",
+        "time": 6949.9000000003725,
+        "ms": 2433.4000000003725
+      },
+      {
+        "name": "changeTimePeriod",
+        "time": 12300.200000001118,
+        "ms": 34.40000000037253
+      },
+      {
+        "name": "finishRest",
+        "time": 17318.10000000149,
+        "ms": 1047.3999999985099
+      }
+    ],
+    "methodCosts": {
+      "updateStatsUI": {
+        "calls": 1203,
+        "ms": 215.40000000037253
+      },
+      "recalcPlayerStats": {
+        "calls": 3,
+        "ms": 1.6000000014901161
+      },
+      "recalcSoldierStats": {
+        "calls": 11650,
+        "ms": 1140.500000052154
+      },
+      "supplyReinforcements": {
+        "calls": 1,
+        "ms": 9.400000000372529
+      },
+      "processSharedEquipmentBox": {
+        "calls": 3,
+        "ms": 3010.2999999988824
+      },
+      "investNation": {
+        "calls": 1,
+        "ms": 2.700000001117587
+      },
+      "advanceArmamentResearch": {
+        "calls": 1,
+        "ms": 2.599999999627471
+      },
+      "supplyMissingEquipment": {
+        "calls": 1,
+        "ms": 1163.300000000745
+      }
+    },
+    "ticks": 8,
+    "restDurationMs": 10368.200000001118,
+    "saveCalls": [
+      {
+        "time": 9248,
+        "ms": 33.40000000037253,
+        "background": true,
+        "restTimer": 8
+      },
+      {
+        "time": 10300.200000001118,
+        "ms": 41.90000000037253,
+        "background": true,
+        "restTimer": 7.016899999999997
+      },
+      {
+        "time": 12302.5,
+        "ms": 32.100000001490116,
+        "background": true,
+        "restTimer": 5.01689999999999
+      },
+      {
+        "time": 18326.800000000745,
+        "ms": 33.69999999925494,
+        "background": true,
+        "restTimer": 0
+      },
+      {
+        "time": 21268.10000000149,
+        "ms": 34.899999998509884,
+        "background": true,
+        "restTimer": 0
+      }
+    ],
+    "frames": 734,
+    "maxFrameMs": 2452.5999999996275,
+    "p95FrameMs": 18.59999999962747,
+    "over100": 2,
+    "records": [
+      {
+        "time": "2026-10-14T14:53:46.401Z",
+        "frameMs": 2452.4000000003725,
+        "rafMs": 2450.2,
+        "sincePreviousSeconds": null,
+        "intervalStart": 6948.700000001118,
+        "intervalEnd": 9401.10000000149,
+        "timing": [
+          {
+            "name": "追従.開始",
+            "ms": 0,
+            "totalMs": 0,
+            "calls": 1
+          },
+          {
+            "name": "LS書く",
+            "ms": 0.2000000011175871,
+            "totalMs": 0.2000000011175871,
+            "calls": 1
+          },
+          {
+            "name": "霧.revealAt",
+            "ms": 0.09999999962747097,
+            "totalMs": 0.09999999962747097,
+            "calls": 2
+          },
+          {
+            "name": "霧.revealCamp",
+            "ms": 0,
+            "totalMs": 0.09999999962747097,
+            "calls": 1
+          },
+          {
+            "name": "霧.forceRevealAt",
+            "ms": 0,
+            "totalMs": 0,
+            "calls": 1
+          },
+          {
+            "name": "フォグ公開",
+            "ms": 0.09999999962747097,
+            "totalMs": 0.19999999925494194,
+            "calls": 1
+          },
+          {
+            "name": "LS読む",
+            "ms": 0,
+            "totalMs": 0,
+            "calls": 2
+          },
+          {
+            "name": "枠.updateBackground",
+            "ms": 26.300000000745058,
+            "totalMs": 26.300000000745058,
+            "calls": 1
+          },
+          {
+            "name": "ゲーム保存",
+            "ms": 7.099999999627471,
+            "totalMs": 33.40000000037253,
+            "calls": 1
+          },
+          {
+            "name": "更新その他",
+            "ms": 2401.5999999996275,
+            "totalMs": 2435.4000000003725,
+            "calls": 1
+          },
+          {
+            "name": "霧.drawFieldOverlay",
+            "ms": 0,
+            "totalMs": 0,
+            "calls": 1
+          },
+          {
+            "name": "描画その他",
+            "ms": 11,
+            "totalMs": 11,
+            "calls": 1
+          },
+          {
+            "name": "フレーム本体",
+            "ms": 0,
+            "totalMs": 2446.4000000003725,
+            "calls": 1
+          }
+        ],
+        "measuredMs": 2446.4000000003725,
+        "unmeasuredMs": 6,
+        "terrain": {
+          "disabled": false,
+          "pending": 0,
+          "rasterSize": 512,
+          "tiles": 24,
+          "workerActive": true,
+          "workerSupported": true,
+          "offscreenSupported": true,
+          "bitmapSupported": true
+        },
+        "longTasks": [
+          {
+            "start": 6948.4000000003725,
+            "ms": 2451
+          }
+        ]
+      },
+      {
+        "time": "2026-10-14T14:53:55.381Z",
+        "frameMs": 1065.699999999255,
+        "rafMs": 1050.1000000000022,
+        "sincePreviousSeconds": 8.97989999999851,
+        "intervalStart": 17315.300000000745,
+        "intervalEnd": 18381,
+        "timing": [
+          {
+            "name": "LS読む",
+            "ms": 0.19999999925494194,
+            "totalMs": 0.19999999925494194,
+            "calls": 2
+          },
+          {
+            "name": "枠.updateBackground",
+            "ms": 26.59999999962747,
+            "totalMs": 26.799999998882413,
+            "calls": 1
+          },
+          {
+            "name": "ゲーム保存",
+            "ms": 6.900000000372529,
+            "totalMs": 33.69999999925494,
+            "calls": 1
+          },
+          {
+            "name": "更新その他",
+            "ms": 1016.5,
+            "totalMs": 1050.199999999255,
+            "calls": 1
+          },
+          {
+            "name": "霧.drawFieldOverlay",
+            "ms": 0.09999999962747097,
+            "totalMs": 0.09999999962747097,
+            "calls": 1
+          },
+          {
+            "name": "描画その他",
+            "ms": 6.400000000372529,
+            "totalMs": 6.5,
+            "calls": 1
+          },
+          {
+            "name": "フレーム本体",
+            "ms": 0,
+            "totalMs": 1056.699999999255,
+            "calls": 1
+          }
+        ],
+        "measuredMs": 1056.699999999255,
+        "unmeasuredMs": 9,
+        "terrain": {
+          "disabled": false,
+          "pending": 0,
+          "rasterSize": 512,
+          "tiles": 24,
+          "workerActive": true,
+          "workerSupported": true,
+          "offscreenSupported": true,
+          "bitmapSupported": true
+        },
+        "longTasks": [
+          {
+            "start": 17315,
+            "ms": 1065
+          }
+        ]
+      }
+    ],
+    "diagnostic": {
+      "version": "6.11.14",
+      "thresholdMs": 100,
+      "terrain": {
+        "disabled": false,
+        "pending": 0,
+        "rasterSize": 512,
+        "tiles": 24,
+        "workerActive": true,
+        "workerSupported": true,
+        "offscreenSupported": true,
+        "bitmapSupported": true
+      },
+      "storageSupported": true,
+      "longTaskSupported": true,
+      "records": [
+        {
+          "time": "2026-10-14T14:53:46.401Z",
+          "frameMs": 2452.4000000003725,
+          "rafMs": 2450.2,
+          "sincePreviousSeconds": null,
+          "intervalStart": 6948.700000001118,
+          "intervalEnd": 9401.10000000149,
+          "timing": [
+            {
+              "name": "追従.開始",
+              "ms": 0,
+              "totalMs": 0,
+              "calls": 1
+            },
+            {
+              "name": "LS書く",
+              "ms": 0.2000000011175871,
+              "totalMs": 0.2000000011175871,
+              "calls": 1
+            },
+            {
+              "name": "霧.revealAt",
+              "ms": 0.09999999962747097,
+              "totalMs": 0.09999999962747097,
+              "calls": 2
+            },
+            {
+              "name": "霧.revealCamp",
+              "ms": 0,
+              "totalMs": 0.09999999962747097,
+              "calls": 1
+            },
+            {
+              "name": "霧.forceRevealAt",
+              "ms": 0,
+              "totalMs": 0,
+              "calls": 1
+            },
+            {
+              "name": "フォグ公開",
+              "ms": 0.09999999962747097,
+              "totalMs": 0.19999999925494194,
+              "calls": 1
+            },
+            {
+              "name": "LS読む",
+              "ms": 0,
+              "totalMs": 0,
+              "calls": 2
+            },
+            {
+              "name": "枠.updateBackground",
+              "ms": 26.300000000745058,
+              "totalMs": 26.300000000745058,
+              "calls": 1
+            },
+            {
+              "name": "ゲーム保存",
+              "ms": 7.099999999627471,
+              "totalMs": 33.40000000037253,
+              "calls": 1
+            },
+            {
+              "name": "更新その他",
+              "ms": 2401.5999999996275,
+              "totalMs": 2435.4000000003725,
+              "calls": 1
+            },
+            {
+              "name": "霧.drawFieldOverlay",
+              "ms": 0,
+              "totalMs": 0,
+              "calls": 1
+            },
+            {
+              "name": "描画その他",
+              "ms": 11,
+              "totalMs": 11,
+              "calls": 1
+            },
+            {
+              "name": "フレーム本体",
+              "ms": 0,
+              "totalMs": 2446.4000000003725,
+              "calls": 1
+            }
+          ],
+          "measuredMs": 2446.4000000003725,
+          "unmeasuredMs": 6,
+          "terrain": {
+            "disabled": false,
+            "pending": 0,
+            "rasterSize": 512,
+            "tiles": 24,
+            "workerActive": true,
+            "workerSupported": true,
+            "offscreenSupported": true,
+            "bitmapSupported": true
+          },
+          "longTasks": [
+            {
+              "start": 6948.4000000003725,
+              "ms": 2451
+            }
+          ]
+        },
+        {
+          "time": "2026-10-14T14:53:55.381Z",
+          "frameMs": 1065.699999999255,
+          "rafMs": 1050.1000000000022,
+          "sincePreviousSeconds": 8.97989999999851,
+          "intervalStart": 17315.300000000745,
+          "intervalEnd": 18381,
+          "timing": [
+            {
+              "name": "LS読む",
+              "ms": 0.19999999925494194,
+              "totalMs": 0.19999999925494194,
+              "calls": 2
+            },
+            {
+              "name": "枠.updateBackground",
+              "ms": 26.59999999962747,
+              "totalMs": 26.799999998882413,
+              "calls": 1
+            },
+            {
+              "name": "ゲーム保存",
+              "ms": 6.900000000372529,
+              "totalMs": 33.69999999925494,
+              "calls": 1
+            },
+            {
+              "name": "更新その他",
+              "ms": 1016.5,
+              "totalMs": 1050.199999999255,
+              "calls": 1
+            },
+            {
+              "name": "霧.drawFieldOverlay",
+              "ms": 0.09999999962747097,
+              "totalMs": 0.09999999962747097,
+              "calls": 1
+            },
+            {
+              "name": "描画その他",
+              "ms": 6.400000000372529,
+              "totalMs": 6.5,
+              "calls": 1
+            },
+            {
+              "name": "フレーム本体",
+              "ms": 0,
+              "totalMs": 1056.699999999255,
+              "calls": 1
+            }
+          ],
+          "measuredMs": 1056.699999999255,
+          "unmeasuredMs": 9,
+          "terrain": {
+            "disabled": false,
+            "pending": 0,
+            "rasterSize": 512,
+            "tiles": 24,
+            "workerActive": true,
+            "workerSupported": true,
+            "offscreenSupported": true,
+            "bitmapSupported": true
+          },
+          "longTasks": [
+            {
+              "start": 17315,
+              "ms": 1065
+            }
+          ]
+        }
+      ],
+      "longTasks": [
+        {
+          "start": 6948.4000000003725,
+          "ms": 2451
+        },
+        {
+          "start": 10298.5,
+          "ms": 58
+        },
+        {
+          "start": 10357.400000000373,
+          "ms": 55
+        },
+        {
+          "start": 12298.400000000373,
+          "ms": 56
+        },
+        {
+          "start": 17315,
+          "ms": 1065
+        },
+        {
+          "start": 21265.900000000373,
+          "ms": 50
+        }
+      ]
+    },
+    "moved": 2748.809252848805,
+    "saved": {
+      "restTimer": 0,
+      "count": 52,
+      "spent": 1064,
+      "gold": 855,
+      "upgrade": 2
+    },
+    "current": {
+      "count": 52,
+      "spent": 1064,
+      "gold": 855,
+      "upgrade": 2
+    },
+    "realWorkerBurst": {
+      "results": [
+        {
+          "status": "superseded"
+        },
+        {
+          "status": "superseded"
+        },
+        {
+          "status": "superseded"
+        },
+        {
+          "status": "superseded"
+        },
+        {
+          "status": "superseded"
+        },
+        {
+          "status": "superseded"
+        },
+        {
+          "status": "superseded"
+        },
+        {
+          "status": "superseded"
+        },
+        {
+          "status": "superseded"
+        },
+        {
+          "status": "superseded"
+        },
+        {
+          "status": "superseded"
+        },
+        {
+          "status": "saved"
+        }
+      ],
+      "finalGold": 211,
+      "oldResult": {
+        "status": "superseded"
+      },
+      "hiddenGold": 222,
+      "hiddenSaveSynchronous": true
+    }
+  },
+  "errors": [],
+  "savingRegressionFixed": true,
+  "allFramesAtMost100ms": false
+}

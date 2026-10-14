@@ -78,7 +78,7 @@ export function joinLimitedEncounter(game,id) {
   (game.squad||=[]).push(s);
   notifyLimitedJoin(game,[s]);
  }
- e.joined=true;game.limitedAllies.joinedIds.push(e.unit.id);game.saveGame?.();game.updateStatsUI?.();return true;
+ e.joined=true;game.limitedAllies.joinedIds.push(e.unit.id);game.saveGame?.({background:true});game.updateStatsUI?.();return true;
 }
 export function serializeLimitedAllies(game) {
  const state=game.limitedAllies||{version:2,encounters:[],joinedIds:[]};
@@ -101,7 +101,7 @@ function renderLimitedJoinNotice(game) {
   const roster=document.createElement('button');roster.type='button';roster.textContent='加入兵の名簿';roster.id='btn-limited-join-roster';
   roster.onclick=()=>{game.rosterManageTab='roster';game.openStrategyModal?.(true);game._selectStratTab?.('troops');const reserves=game.container.querySelector('#reserve-roster');if(reserves&&notice.dataset.hasReserves==='true'){reserves.open=true;reserves.scrollIntoView?.({block:'start'});reserves.querySelector('summary')?.focus({preventScroll:true});}};
   const close=document.createElement('button');close.type='button';close.textContent='確認';close.id='btn-limited-join-dismiss';close.setAttribute('aria-label','加入通知を閉じる');
-  close.onclick=()=>{game.limitedAllies.joinNoticeIds=[];renderLimitedJoinNotice(game);game.saveGame?.();};
+  close.onclick=()=>{game.limitedAllies.joinNoticeIds=[];renderLimitedJoinNotice(game);game.saveGame?.({background:true});};
   actions.append(roster,close);notice.append(title,names,hint,actions);host.append(notice);
  }
  const ids=new Set(game.limitedAllies?.joinNoticeIds||[]),reserves=game.reserves||[];

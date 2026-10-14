@@ -3,7 +3,7 @@ import {ensureMana,regenerateMana,spendMana} from './magic-rules.js?v=257';
 import {recordHealing,recordDown,healAmountFor} from './phase-rules.js?v=218';
 import {WORLD_SIZE} from './world.js';
 import {inCurrentInstance} from './instance-rules.js?v=256';
-import {grantPermanentRescueReward} from './rescue-rewards.js?v=204';
+import {grantPermanentRescueReward} from './rescue-rewards.js?v=264';
 import {grantPersonalExp,revivalExperience,raiseLevelMark} from './experience-rules.js';
 import {guardRescueLines} from './soldier-dialogue.js';
 import {attributeCarryCapacity,attributeFamily} from './unit-attributes.js?v=248';
