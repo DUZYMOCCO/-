@@ -47,7 +47,7 @@ try {
   const genius=structuredClone(game.scoutCandidates[0]);assert.equal(document.getElementById('btn-auto-scouts').getAttribute('aria-pressed'),'false');
   assert.equal(game.startScoutAuto(),false);assert.equal(game.scoutCandidates[0].id,genius.id);
   window.confirm=()=>false;assert.equal(game.nextScoutCandidate(),false);assert.equal(game.scoutCandidates[0].id,genius.id);
-  const saved=structuredClone(game.saveGame());game.resumeSavedGame(saved);
+  const saved=structuredClone(game.saveGame({immediate:true}));game.resumeSavedGame(saved);
   assert.equal(game.scoutClass,'MAGE');assert.equal(game.scoutCandidates[0].id,genius.id);assert.deepEqual(game.scoutCandidates[0].soldier.attributeProfile,genius.soldier.attributeProfile);
   game.gold=1e7;game.rollScoutTalent=()=> 'AVERAGE';const preview=structuredClone(game.scoutCandidates[0].soldier),cost=game.scoutCandidates[0].cost,beforeMoney=game.gold;
   assert.equal(game.scoutSoldier(genius.id,'main'),true);const hired=[...game.squad,...game.reserves].find(u=>u.id===genius.id);

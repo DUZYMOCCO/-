@@ -16,7 +16,7 @@ for(const key of ['startGameLoop','showToast','spawnSparks','spawnDamageText'])g
 game.setupUI();game.activeSlotId=saveSlots.create('V2 TEST ONLY').id;game.startFreshGame(false);game.career.status='enlisted';
 assert.equal(game.squad.length,DEPLOYMENT_CAPACITY);assert.equal(game.monsters.length,ENEMY_LIMIT);
 assert.equal(game.squadPotion,1);assert.ok(game.squad.every(s=>s.ammo===ammoCapacity(s)));assert.equal(saveSlots.get(game.activeSlotId).data.squadPotion,1,'initial auto-save records the issued potion');assert.equal(saveSlots.get(game.activeSlotId).data.player.ammo,30);
-const baseline=structuredClone(game.saveGame());
+const baseline=structuredClone(game.saveGame({immediate:true}));
 function field() {
   game.resumeSavedGame(structuredClone(baseline));game.closeStrategyModal();
   Object.assign(game.player,{x:81000,y:81000,atk:100,atkCooldown:0,powerAtkCooldown:0,speed:0,dodge:0});
@@ -86,7 +86,7 @@ field();Object.assign(game.player,{hp:100,maxHp:100,def:0,dmgReduction:0,invulne
 assert.equal(game.player.lethalGuardCooldown,LETHAL_GUARD_COOLDOWN);assert.match(document.getElementById('retreat-warning').textContent,/再発動まで120秒/);
 assert.equal(document.getElementById('retreat-warning').classList.contains('hidden'),false);updateSupplies(game,1.99);assert.ok(game.player.invulnerableTimer>0);updateSupplies(game,.011);assert.equal(game.player.invulnerableTimer,0);
 game.squadPotion=1;assert.equal(game.useSquadPotion(),true);assert.ok(game.player.lethalGuardCooldown>117,'full healing cannot reset the guard');
-const cooldownBefore=game.player.lethalGuardCooldown,guardSave=structuredClone(game.saveGame());assert.equal(guardSave.player.lethalGuardCooldown,cooldownBefore);
+const cooldownBefore=game.player.lethalGuardCooldown,guardSave=structuredClone(game.saveGame({immediate:true}));assert.equal(guardSave.player.lethalGuardCooldown,cooldownBefore);
 game.resumeSavedGame(guardSave);assert.equal(game.player.lethalGuardCooldown,cooldownBefore,'save/resume retains the actual cooldown');
 game.renderStrategyUI();assert.match(document.querySelector('.lethal-guard-status').textContent,/再発動まで118秒/);
 Object.assign(game.player,{x:79360,y:79360});assert.equal(game.saveCheckpoint(),true);game.player.lethalGuardCooldown=0;assert.equal(game.loadCheckpoint(),true);assert.equal(game.player.lethalGuardCooldown,cooldownBefore,'checkpoint loads restore the recorded cooldown too');Object.assign(game.player,{x:81000,y:81000});
@@ -97,7 +97,7 @@ const ordinary={id:'ordinary',hp:100,maxHp:100,def:0,soldierClass:'HEAVY'};game.
 let lost=false;game.gameOver=()=>{lost=true;};game.player.hitGrowthHp=400;game.recalcPlayerStats();Object.assign(game.player,{hp:10,def:0,invulnerableTimer:0,dodge:0,isDown:false});game.damageTarget(game.player,20);assert.equal(game.player.isDown,true,'small damage still floors the commander at low HP (now: down, not instant death)');assert.equal(lost,false);game.player.isDown=false;
 // Independent checkpoints, actual UI clicks, immutable snapshot, saved supply state and slot isolation.
 field();Object.assign(game.player,{x:79360,y:79360,ammo:7});game.gold=321;game.squadPotion=0;game.openStrategyModal(true);document.querySelector('#view-strat-overview [data-supply="save"]').click();document.querySelector('[data-checkpoint-choice="overwrite"]').click();await new Promise(resolve=>window.setTimeout(resolve,460));
-let cp=saveSlots.get(game.activeSlotId).checkpoint;assert.equal(cp.place,'本陣');assert.equal(cp.data.player.ammo,7);assert.equal(cp.data.squadPotion,0);game.gold=999;game.player.ammo=1;game.saveGame();assert.equal(saveSlots.get(game.activeSlotId).checkpoint.data.gold,321);
+let cp=saveSlots.get(game.activeSlotId).checkpoint;assert.equal(cp.place,'本陣');assert.equal(cp.data.player.ammo,7);assert.equal(cp.data.squadPotion,0);game.gold=999;game.player.ammo=1;game.saveGame({immediate:true});assert.equal(saveSlots.get(game.activeSlotId).checkpoint.data.gold,321);
 assert.equal(game.loadCheckpoint(),true);assert.equal(game.gold,321);assert.equal(game.player.ammo,7);assert.equal(game.squadPotion,0);
 Object.assign(game.player,{x:81000,y:81000});game.merchants=[];assert.equal(game.saveCheckpoint(),false);assert.equal(game.loadCheckpoint(),false);
 const firstSlot=game.activeSlotId;game.activeSlotId=saveSlots.create('OTHER V2 SLOT').id;assert.equal(saveSlots.get(game.activeSlotId).checkpoint,undefined);game.activeSlotId=firstSlot;
@@ -129,7 +129,7 @@ const threat={...enemy(),hp:0,maxHp:game.player.maxHp*2,atk:game.player.atk*2,de
 game.monsters=[threat];game.killMonster(threat,game.player,true);
 assert.equal(game.player.exp,30);assert.equal(game.exp,30);assert.equal(game.lastStrongKill.bonusExp,24);
 game.renderStrategyUI();assert.match(document.getElementById('kill-xp-summary').textContent,/格上検証敵.*30EXP/);
-game.saveGame();assert.equal(saveSlots.get(game.activeSlotId).data.lastStrongKill.exp,30);
+game.saveGame({immediate:true});assert.equal(saveSlots.get(game.activeSlotId).data.lastStrongKill.exp,30);
 field();const strongSoldier=structuredClone(baseline.squad[0]);strongSoldier.reqExp=1e9;strongSoldier.exp=0;game.squad=[strongSoldier];
 const soldierThreat={...enemy(),hp:0,maxHp:strongSoldier.maxHp*2,atk:strongSoldier.atk*2,def:strongSoldier.def,dmgReduction:strongSoldier.dmgReduction,lootDistance:0};
 game.monsters=[soldierThreat];game.killMonster(soldierThreat,strongSoldier,false);assert.equal(strongSoldier.exp,30,'soldiers receive the same relative-strength bonus');

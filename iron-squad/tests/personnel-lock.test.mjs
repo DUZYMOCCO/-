@@ -14,7 +14,7 @@ const fingerprint=u=>JSON.stringify({hp:u.hp,maxHp:u.maxHp,atk:u.atk,def:u.def,m
 const before=fingerprint(a),beforePicks=g.getExpeditionPicks(0).map(String);assert.ok(beforePicks.includes(a.id));
 // Lock using the real roster button; an already captured dismissal button cannot bypass it.
 const row=()=>[...document.querySelectorAll('.roster-entry')].find(n=>n.dataset.soldierId===a.id),staleDismiss=row().querySelector('.btn-dismiss');row().querySelector('.btn-personnel-lock').click();
-assert.equal(a.personnelLocked,true);assert.equal(fingerprint(a),before);assert.equal(saveSlots.get(g.activeSlotId).data.squad.find(u=>u.id===a.id).personnelLocked,true);
+assert.equal(a.personnelLocked,true);assert.equal(fingerprint(a),before);g.saveGame({auto:true});assert.equal(saveSlots.get(g.activeSlotId).data.squad.find(u=>u.id===a.id).personnelLocked,true);
 assert.match(row().querySelector('.roster-identity strong').textContent,/🔒/);assert.equal(row().querySelector('.btn-dismiss').disabled,true);assert.equal(row().querySelector('.btn-personnel-lock').getAttribute('aria-pressed'),'true');
 const funds=[g.gold,g.treasury,JSON.stringify(g.inventory),JSON.stringify(g.sharedEquipBox)];staleDismiss.click();assert.equal(g.dismissSoldier(a.id),false);assert.equal(confirmations,0);assert.ok(g.squad.includes(a));assert.deepEqual([g.gold,g.treasury,JSON.stringify(g.inventory),JSON.stringify(g.sharedEquipBox)],funds);
 // Both the selection UI and actual dispatch reject the lock, including stale cached IDs.
@@ -29,13 +29,13 @@ const direct={};startExpeditionState(direct,{x:1,y:1},[a,b,c,d],4);assert.deepEq
 g.openSoldierDetail(a.id);document.querySelector('[data-detail-tab="record"]').click();const oldSheet=document.getElementById('soldier-detail-host');oldSheet.querySelector('.btn-personnel-lock').click();assert.equal(a.personnelLocked,false);assert.equal(document.getElementById('soldier-detail-host'),oldSheet);assert.equal(document.querySelector('[data-detail-tab="record"]').getAttribute('aria-selected'),'true');assert.equal(document.querySelector('#soldier-detail-host .btn-personnel-lock').getAttribute('aria-pressed'),'false');g.closeSoldierDetail();
 assert.equal(g.dismissSoldier(a.id),true);assert.equal(confirmations,1);assert.ok(!g.squad.some(u=>u.id===a.id));
 // Personal companions and reserves keep protection across ordinary/checkpoint resumes.
-assert.equal(g.toggleSoldierLock(reserve.id),true);assert.equal(g.toggleSoldierLock(personal.id),true);const snapshot=structuredClone(g.saveGame());g.resumeSavedGame(snapshot);g.closeStrategyModal();
+assert.equal(g.toggleSoldierLock(reserve.id),true);assert.equal(g.toggleSoldierLock(personal.id),true);const snapshot=structuredClone(g.saveGame({immediate:true}));g.resumeSavedGame(snapshot);g.closeStrategyModal();
 for(const id of [reserve.id,personal.id]){const u=[...g.squad,...g.reserves].find(u=>u.id===id);assert.equal(u.personnelLocked,true);assert.equal(g.dismissSoldier(id),false);}
 Object.assign(g.player,{x:79360,y:79360});assert.equal(g.saveCheckpoint(),true);assert.equal(g.toggleSoldierLock(reserve.id),true);assert.equal(g.loadCheckpoint(),true);assert.equal([...g.squad,...g.reserves].find(u=>u.id===reserve.id).personnelLocked,true);
-// Storage failure rolls the toggle back and cannot clear an existing protection.
+// Ordinary protection changes do not write or roll back when storage is unavailable.
 const current=[...g.squad,...g.reserves].find(u=>u.id===reserve.id),set=window.Storage.prototype.setItem,warn=console.warn;console.warn=noop;
-try{window.Storage.prototype.setItem=()=>{throw new Error('quota fixture');};assert.equal(g.toggleSoldierLock(current.id),false);assert.equal(current.personnelLocked,true);}finally{window.Storage.prototype.setItem=set;console.warn=warn;}
+try{window.Storage.prototype.setItem=()=>{throw new Error('quota fixture');};assert.equal(g.toggleSoldierLock(current.id),true);assert.equal(current.personnelLocked,false);}finally{window.Storage.prototype.setItem=set;console.warn=warn;}
 assert.equal([...saveSlots.get(g.activeSlotId).data.squad,...saveSlots.get(g.activeSlotId).data.reserves].find(u=>u.id===current.id).personnelLocked,true);
 const legacy=structuredClone(snapshot);for(const u of [...legacy.squad,...legacy.reserves])delete u.personnelLocked;g.resumeSavedGame(legacy);g.closeStrategyModal();assert.ok([...g.squad,...g.reserves].every(u=>u.personnelLocked!==true));assert.ok(expeditionCandidates(g,0).some(u=>u.id===b.id));
 assert.equal(g.toggleSoldierLock('missing'),false);const hero=g.squad[0];hero.heroPartyId='independent';assert.equal(g.toggleSoldierLock(hero.id),false);hero.dead=true;assert.equal(g.toggleSoldierLock(hero.id),false);
-dom.window.close();console.log('PASS: roster/detail protection and unlock, stale/direct dismissal guards, unchanged stats/economy, all four dispatch tiers and empty picks, selection pruning, active mission continuity, personal/reserve ordinary and checkpoint saves, quota rollback, legacy unlocked, hero/dead guards');
+dom.window.close();console.log('PASS: roster/detail protection and unlock, stale/direct dismissal guards, unchanged stats/economy, all four dispatch tiers and empty picks, selection pruning, active mission continuity, personal/reserve ordinary and checkpoint saves, deferred protection without quota rollback, legacy unlocked, hero/dead guards');

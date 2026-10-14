@@ -1,6 +1,8 @@
+import {startAutoSave,stopAutoSave} from './auto-save.js?v=269';
+import {requestEvenUpgrade} from './even-upgrade.js?v=268';
 import {beginFollowerRecovery,noteFollowerIntent,suspendFollowerRecovery,finishFollowerRecovery,profileFollowerRecovery} from './follower-recovery.js?v=262';
-import {configurePerfSettings} from './perf-diagnostics.js?v=267';
-import {gameText} from './game-text.js?v=262';
+import {configurePerfSettings} from './perf-diagnostics.js?v=269';
+import {gameText} from './game-text.js?v=268';
 import {talentTag} from './talent-labels.js?v=247';
 import {fieldDialogReturn} from './dialog-return.js?v=200';
 import {guildMethods} from './guild-contracts.js?v=264';
@@ -67,7 +69,7 @@ import { KNOCK_RULES, knockbackDistance, knockFlight, slamDamage, knockTransferD
 import { MELEE_SOUND_STYLES, playMeleeSound } from './weapon-sounds.js?v=211';
 import {emptyRescueBonuses,normalizeRescueBonuses,rescueBonusSummary} from './rescue-rewards.js?v=264';
 import {drawFieldCivilian} from './civilian-visuals.js?v=242';
-import { saveSlots,profileSaveCompletions } from './save-slots.js?v=262';
+import { saveSlots,profileSaveCompletions } from './save-slots.js?v=269';
 import { soldierDialogue } from './soldier-dialogue.js?v=246';
 import { generateSoldierName, migrateSoldierName, rollGenderByKey, isGenderId, ensureSoldierGender, genderLabel } from './soldier-names.js?v=210';
 import { openCommanderEditor } from './commander-editor.js?v=210';
@@ -1453,7 +1455,7 @@ export const IronSquadGame = {
 
     document.getElementById('btn-back').addEventListener('click', () => {
       sound.playTap();
-      this.saveGame();
+      this.saveGame({immediate:true});
       this.destroy();
       this.onBackToHub();
     });
@@ -1526,7 +1528,6 @@ export const IronSquadGame = {
     if (restartStratBtn) {
       restartStratBtn.addEventListener('click', () => {
         sound.playTap();
-        this.saveGame();
         this.showSaveMenu();
       });
     }
@@ -1875,6 +1876,7 @@ export const IronSquadGame = {
   },
 
   showSaveMenu() {
+    this.saveGame({immediate:true});stopAutoSave(this);
     this._merchantShopClose?.();
     this.stopGameLoop();
     this.inBattle = false;
@@ -2265,13 +2267,15 @@ export const IronSquadGame = {
     // 画面切り替え（タブ・別アプリ移動からの復帰）時のデルタタイム＆リサイズ安全化
     this.handleVisibility = () => {
       sound.setPageHidden(document.hidden);
-      if (document.hidden) this.saveGame();
+      if (document.hidden) this.saveGame({immediate:true});
       if (!document.hidden) {
         this.lastTime = performance.now();
         if (this.resizeCanvas) this.resizeCanvas();
       }
     };
     document.addEventListener('visibilitychange', this.handleVisibility);
+    this.handlePageHide=()=>this.saveGame({immediate:true});
+    window.addEventListener('pagehide',this.handlePageHide);
 
     this.buildTerrain();
     this.setupInput();
@@ -2326,6 +2330,7 @@ export const IronSquadGame = {
   },
 
   startGameLoop() {
+    startAutoSave(this);
     if (this.animFrameId) {
       cancelAnimationFrame(this.animFrameId);
       this.animFrameId = null;
@@ -2415,6 +2420,7 @@ export const IronSquadGame = {
   },
 
   startFreshGame(inheritVeterans = true) {
+    stopAutoSave(this);this._saveFallen=false;
     this._zonePreviousDistance=null;this._zoneApproachWarned=0;this.lastZoneId=null;
     this.closeHeadquartersFacility(false);
     this.container?.querySelector('#tavern-dialog')?.remove();this.container?.querySelector('#career-invitation')?.remove();
@@ -2584,7 +2590,7 @@ export const IronSquadGame = {
     initializeSupplies(this);
     initializeMagic(this);this.damageFields=[];this._hazardClock=0;
     discoverEconomicRegions(this);
-    this.saveGame();
+    this.saveGame({immediate:true});
     this.updateStatsUI();
     this.camera = { x: BASE_CAMP.x, y: BASE_CAMP.y };
     if (this.joystick) {
@@ -2631,17 +2637,13 @@ export const IronSquadGame = {
     const target = pickExpeditionTarget(this, BASE_CAMP, 2200, tier.id);
     const members = expeditionCandidates(this, platoonId, picks);
     const reserveSet=new Set(this.reserves||[]),sentReserves=members.filter(s=>reserveSet.has(s));
-    const previousPositions=new Map(sentReserves.map(s=>[s,{x:s.x,y:s.y}]));
     const departurePosts=new Map(farmPosts((this.reserves||[]).filter(s=>s.reserveExpeditionPlatoon==null&&!s.isDown&&!s.dying),(x,y)=>economicFieldBlocked(this,x,y)).map(post=>[post.soldier,post]));
     for(const s of sentReserves){
       const post=departurePosts.get(s);if(post){s.x=post.x;s.y=post.y;}
       s.reserveExpeditionOriginalGuard=!!s.isPersonalGuard;s.isPersonalGuard=false;s.reserveExpeditionPlatoon=platoon.id;
     }
     const n = startExpeditionState(platoon, target, members, tier.id);
-    if(!this.saveGame()){
-      for(const s of sentReserves){clearReserveExpedition(s);Object.assign(s,previousPositions.get(s));}clearExpeditionState(platoon);
-      this.showToast('遠征の派遣を保存できませんでした');return false;
-    }
+    this.saveGame();
     this.showToast(`${platoon.icon}${platoon.name.split(' ')[0]} 遠征派遣（本隊${n-sentReserves.length}名・予備${sentReserves.length}名・${tier.icon}${tier.label}）→ ${target.label}`);
     return true;
   },
@@ -3360,6 +3362,7 @@ export const IronSquadGame = {
   },
 
   resumeSavedGame(saved) {
+    stopAutoSave(this);this._saveFallen=false;
     this._zonePreviousDistance=null;this._zoneApproachWarned=0;this.lastZoneId=null;
     this.closeHeadquartersFacility(false);
     this.closeScoutDialog?.(false);
@@ -3600,7 +3603,7 @@ export const IronSquadGame = {
     this.camera = {x:this.player.x,y:this.player.y};
     this.autoSaveClock = 0;
     discoverEconomicRegions(this);
-    this.saveGame();
+    this.saveGame({immediate:true});
     this.showToast(`第${this.wave}期から遠征を再開しました`);
   },
 
@@ -3838,10 +3841,11 @@ export const IronSquadGame = {
     return soldier;
   },
 
-  saveGame({persist=true,background=false}={}) {
+  saveGame({persist=true,background=false,immediate=false,auto=false}={}) {
+    if(persist&&!immediate&&!auto)return null;
     this.stallRecorder?.mark('セーブ中');
     // v6.1.5: 隊長がダウン中・死亡時は上書きしない。やり直すとダウン前の最後のセーブから再開する。
-    if (!this.activeSlotId || !this.player || this.player.hp <= 0 || this.player.isDown || this.player.dead) return null;
+    if (this._saveFallen || !this.activeSlotId || !this.player || this.player.hp <= 0 || this.player.isDown || this.player.dead) return null;
     try {
       persistTradeRaiders(this);
       const data = {
@@ -3944,7 +3948,7 @@ export const IronSquadGame = {
         platoonMissions: persistPlatoonMissions(this.platoons)
       };
       normalizeFieldSave(this,data);
-      if(persist&&background){
+      if(persist&&!immediate&&(background||auto)){
         this._pendingAutoSave=saveSlots.updateBackground(this.activeSlotId,{data,state:'active',career:{...this.career}}).then(result=>{
           if(result.status==='failed')this.showToast('保存に失敗しました。ブラウザの空き容量を確認してください');
           return result;
@@ -5775,8 +5779,6 @@ export const IronSquadGame = {
     updateSupplies(this,dt);
     updateMagic(this,dt,supplyLocation);
     this.ageRemains(dt);
-    this.autoSaveClock = (this.autoSaveClock || 0) + dt;
-    if (this.autoSaveClock >= 10) { this.autoSaveClock = 0; this.saveGame({background:true}); }
     this.reserveCheckTimer = (this.reserveCheckTimer || 0) + dt;
     if(this.reserveCheckTimer>=1) { this.reserveCheckTimer=0; this.deployReserves(true); }
 
@@ -9797,11 +9799,8 @@ export const IronSquadGame = {
   toggleSoldierLock(soldierId) {
     const s=[...(this.squad||[]),...(this.reserves||[])].find(u=>u&&u.id===soldierId);
     if(!s||s.dead||s.heroPartyId)return false;
-    const previous=s.personnelLocked;s.personnelLocked=previous!==true;
-    if(!this.saveGame()){
-      if(previous===undefined)delete s.personnelLocked;else s.personnelLocked=previous;
-      this.showToast('保護設定を保存できませんでした');return false;
-    }
+    s.personnelLocked=s.personnelLocked!==true;
+    this.saveGame();
     for(const key of Object.keys(this.expeditionPicks||{}))this.getExpeditionPicks(Number(key));
     this.renderStrategyUI();
     if(this.selectedSoldierDetailId===soldierId){
@@ -10480,8 +10479,11 @@ export const IronSquadGame = {
         🏹遠隔熟練 ${rangedMast}<br/>
         <span style="color:#67e8f9;">剣/槍/鎚熟練＝ATK+攻撃速度　弓/石弓熟練＝ATK+リロード短縮　火砲熟練＝爆発半径+リロード短縮</span>
       </div>
+      <button type="button" class="mini-btn" id="btn-even-upgrade" style="min-height:36px;margin-bottom:8px;">${gameText('均等に強化')}</button>
       ${slotsConfig.map(s => renderEquipRow(s)).join('')}
     `;
+
+    playerEquipBox.querySelector('#btn-even-upgrade').onclick=e=>{e.stopPropagation();requestEvenUpgrade(this,e.currentTarget);};
 
     // 装備中アイテムの強化イベント
     playerEquipBox.querySelectorAll('.btn-up-equipped').forEach(btn => {
@@ -12710,6 +12712,7 @@ export const IronSquadGame = {
   },
 
   gameOver() {
+    stopAutoSave(this);this._saveFallen=true;
     this.stopGameLoop();
     sound.playGameOver();
     this.inBattle = false;
@@ -12717,8 +12720,9 @@ export const IronSquadGame = {
     // 先輩兵士として引き継ぐ（生存かつダウンしていない兵士）。国家の発展は同じ遠征の再入隊へ残す。
     const aliveVeterans = this.squad ? this.squad.filter(s => !s.dead && !s.isDown) : [];
     const nation = normalizeNation(this.nation);
-    saveSlots.update(this.activeSlotId, {state:'fallen', nation, career:{...this.career},taverns:serializeTaverns(this), commander:normalizeCommanderIdentity(this.player), veterans:aliveVeterans.map(persistentUnit), reserveSurvivors:(this.reserves || []).map(persistentUnit)});
+    const fallenSaved=saveSlots.update(this.activeSlotId, {state:'fallen', nation, career:{...this.career},taverns:serializeTaverns(this), commander:normalizeCommanderIdentity(this.player), veterans:aliveVeterans.map(persistentUnit), reserveSurvivors:(this.reserves || []).map(persistentUnit)});
 
+    if(!fallenSaved)this.showToast('保存に失敗しました。ブラウザの空き容量を確認してください');
     const overlay = document.getElementById('game-overlay');
     document.getElementById('final-wave').textContent = this.wave;
     document.getElementById('final-rank').textContent = this.currentRank().title;
@@ -12762,6 +12766,8 @@ export const IronSquadGame = {
   },
 
   destroy() {
+    stopAutoSave(this);
+    if(this.handlePageHide)window.removeEventListener('pagehide',this.handlePageHide);
     this.closeHeadquartersFacility(false);
     this.stopScoutAuto();
     clearTimeout(this._treasureReceiptTimer);this.container?.querySelector('.treasure-receipt')?.remove();

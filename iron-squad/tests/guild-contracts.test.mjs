@@ -34,7 +34,7 @@ const same={type:'slime'};g.onNationKill(same);g.onNationKill(same);assert.equal
 g.onNationKill({type:'slime',retreated:true});assert.equal(active('slime').progress,1,'retreats never count');
 const snapshots=structuredClone(g.nation.guild.active);g.nation.investment=180000;g.nation=normalizeNation(g.nation);assert.deepEqual(g.nation.guild.active,snapshots,'growth does not change accepted targets or rewards');
 const afterGrowth=guildBoard(g).find(q=>q.id==='wolf'),low=guildQuote(GUILD_CONTRACTS.find(q=>q.id==='wolf'),0);assert.ok(afterGrowth.target>low.target&&afterGrowth.reward>low.reward);assert.equal(guildBoard(g).length,GUILD_CONTRACTS.length);
-const saved=structuredClone(g.saveGame());g.resumeSavedGame(saved);assert.deepEqual(g.nation.guild.active,snapshots);walk('guild');g.openHeadquartersFacility('guild');
+const saved=structuredClone(g.saveGame({immediate:true}));g.resumeSavedGame(saved);assert.deepEqual(g.nation.guild.active,snapshots);walk('guild');g.openHeadquartersFacility('guild');
 assert.equal(g.acceptGuildContract('colossal'),true);g.onNationKill({type:'orc',isDungeonBoss:true,isBoss:false,isElite:true});assert.equal(active('dungeon-boss').progress,0,'a ruin guardian is an elite, not a boss');
 const boss={id:'guild-boss',type:'goblin_king',isBoss:true,isDungeonBoss:true,isColossal:true,hp:0,maxHp:10,x:g.player.x,y:g.player.y,lootDistance:0};g.monsters=[boss];g.killMonster(boss,g.player,true);
 assert.equal(active('colossal').progress,0,'dungeon bosses share the large-drawing flag but are not outdoor colossal beasts');g.onNationKill({type:'colossal_dragon',isBoss:true,isColossal:true});assert.equal(active('colossal').progress,1);

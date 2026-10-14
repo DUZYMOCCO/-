@@ -15,11 +15,11 @@ assert.ok(game.monsters.every(m=>m.hp>0&&m.zoneId),'initial crowd contains actua
 assert.ok(game.monsters.every(m=>m.isRaidMob||m.isBoss||m.isColossal||!peaceContainment(m.x,m.y)),'ordinary enemies start outside camp and settlements');
 // A formerly larger detachment is preserved as active plus reserve members.
 while(game.squad.length<DEPLOYMENT_CAPACITY+15)game.squad.push(game.createNewSoldier());game.rankIndex=8;
-const ids=new Set(game.squad.map(s=>s.id));game.saveGame();game.resumeSavedGame(saveSlots.get(game.activeSlotId).data);
+const ids=new Set(game.squad.map(s=>s.id));game.saveGame({immediate:true});game.resumeSavedGame(saveSlots.get(game.activeSlotId).data);
 assert.equal(game.squad.length,DEPLOYMENT_CAPACITY);assert.equal(game.reserves.length,15);
 assert.deepEqual(new Set([...game.squad,...game.reserves].map(s=>s.id)),ids);
 // Existing under-capacity saves deploy their waiting soldiers, without resetting progress.
-game.reserves=game.squad.splice(DEPLOYMENT_CAPACITY-4,4).concat(game.reserves.slice(0,2));game.phaseTimer=53;game.saveGame();
+game.reserves=game.squad.splice(DEPLOYMENT_CAPACITY-4,4).concat(game.reserves.slice(0,2));game.phaseTimer=53;game.saveGame({immediate:true});
 game.resumeSavedGame(saveSlots.get(game.activeSlotId).data);assert.equal(game.squad.length,DEPLOYMENT_CAPACITY);assert.equal(game.reserves.length,2);assert.equal(game.phaseTimer,53);
 game.monsters=[];game.colossalBossRespawnTimer=999;game.spawnTimer=0;
 const campX=game.player.x,campY=game.player.y;

@@ -30,7 +30,7 @@ try{
   assert.ok(savedBytes<JSON.stringify([pending]).length,'compression significantly reduces storage');
   assert.equal(g.saveCheckpoint({newSlot:true}),true);const newId=g.activeSlotId;
   assert.notEqual(newId,id);assert.deepEqual(saveSlots.get(id),overwrite);assert.equal(saveSlots.list().length,2);
-  g.gold=99;assert.ok(g.saveGame());assert.equal(saveSlots.get(newId).data.gold,99);assert.equal(saveSlots.get(newId).checkpoint.data.gold,403855);
+  g.gold=99;assert.ok(g.saveGame({immediate:true}));assert.equal(saveSlots.get(newId).data.gold,99);assert.equal(saveSlots.get(newId).checkpoint.data.gold,403855);
   assert.deepEqual(saveSlots.get(id),overwrite);
   assert.equal(g.loadCheckpoint(),true);assert.equal(g.gold,403855);assert.equal(g.inventory.length,2500);
   // If even the compressed write is denied, keep all bytes and the active ID intact.

@@ -13,8 +13,8 @@ for(let i=0;i<3;i++)assert.equal(g.saveCheckpoint({newSlot:true}),true);
 assert.ok(saveSlots.list().every(s=>s.name===original.name),'repeated copies do not append timestamps');assert.deepEqual(saveSlots.get(oldId),original);
 const normal=structuredClone(g.saveGame({persist:false})),post=g.medicalPosts[0];normal.phase=9;Object.assign(normal.player,{x:post.x,y:post.y,level:23});
 const active=g.activeSlotId;saveSlots.update(active,{data:normal});
-// Place lookup must use each saved position, even if the current player is elsewhere.
-Object.assign(g.player,{x:140000,y:30000});g.showSaveMenu();
+// Saved place lookup is independent of the live position; leaving saves the latest live state.
+Object.assign(g.player,{x:140000,y:30000});assert.equal(g.saveSnapshotPlace(normal),post.name);Object.assign(g.player,normal.player);g.phase=9;g.showSaveMenu();
 const card=document.querySelector(`[data-save-slot="${active}"]`),rows=[...card.querySelectorAll('.save-date')];
 assert.equal(document.querySelectorAll('.save-active-mark').length,1);assert.match(card.textContent,/今プレイ中/);assert.match(card.textContent,/隊長 青空・山田 · Lv\.23/);
 assert.match(rows[0].textContent,new RegExp(`通常記録（オートセーブ）：${post.name} · 第9期`));assert.match(rows[1].textContent,/地点記録：本陣 · 第4期/);

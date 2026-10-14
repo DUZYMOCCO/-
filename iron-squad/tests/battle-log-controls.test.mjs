@@ -12,7 +12,7 @@ window.HTMLCanvasElement.prototype.getContext=()=>ctx;
 const {IronSquadGame}=await import('../js/index.js'),{saveSlots}=await import('../js/save-slots.js');
 const game=Object.create(IronSquadGame);Object.assign(game,{container:document.getElementById('game'),width:390,height:774,zoom:1,ctx,camera:{x:79360,y:79360},commandActiveUntil:0,selectedSaleIds:new Set(),joystick:{active:false,dirX:0,dirY:0}});
 for(const key of ['startGameLoop','spawnDamageText','spawnSparks'])game[key]=noop;
-game.setupUI();game.activeSlotId=saveSlots.create('LOG CONTROLS TEST ONLY').id;game.startFreshGame(false);const initial=structuredClone(game.saveGame());resetBattleLog(game);
+game.setupUI();game.activeSlotId=saveSlots.create('LOG CONTROLS TEST ONLY').id;game.startFreshGame(false);const initial=structuredClone(game.saveGame({immediate:true}));resetBattleLog(game);
 assert.equal(showsOnFieldLog('衛生救護！兵士が戦線復帰'),false);
 assert.equal(showsOnFieldLog('強敵を撃破！'),false);
 assert.equal(showsOnFieldLog('装備を購入した'),false);

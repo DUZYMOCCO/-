@@ -7,7 +7,7 @@ const {IronSquadGame}=await import('../js/index.js');
 const {saveSlots}=await import('../js/save-slots.js?v=262');
 const {encodeSaveList,unpackSave,SAVE_ENCODING}=await import('../js/save-codec.js?v=261');
 
-test('eight maintenance ticks do not save; rest boundaries and daylight save the final consistent state in background',async()=>{
+test('maintenance, rest boundaries and daylight defer persistence until the next autosave',async()=>{
   const game=Object.create(IronSquadGame);
   for(const method of ['recalcSoldierStats','recalcPlayerStats','updateStatsUI','updateQuestUI','startGameLoop','showToast','spawnSparks','spawnDamageText','renderStrategyUI'])game[method]=()=>{};
   game.activeSlotId=saveSlots.create('休憩保存').id;game.startFreshGame(false);
@@ -25,7 +25,7 @@ test('eight maintenance ticks do not save; rest boundaries and daylight save the
   assert.equal(game.restTimer,1);assert.equal(modes.length,1,'maintenance makes no save request');assert.equal(localStorage.getItem('game_studio_ironsquad_save_slots_v1'),atStart);
   advanceRest(game,1);assert.equal(game.restTimer,0);assert.ok(game.restReport.count>before);assert.deepEqual(modes,[{background:true},{background:true}]);
   game.worldTime=700;game.changeTimePeriod();assert.deepEqual(modes.at(-1),{background:true});
-  const pending=game._pendingAutoSave;while(worker.queue.length)worker.finish();assert.deepEqual(await pending,{status:'saved'});
+  assert.equal(worker,undefined,'boundary calls do not even start a worker');game.saveGame({auto:true,background:true});const pending=game._pendingAutoSave;while(worker.queue.length)worker.finish();assert.deepEqual(await pending,{status:'saved'});
   const saved=saveSlots.get(game.activeSlotId).data;assert.equal(saved.restTimer,0);assert.equal(saved.restReport.count,game.restReport.count);assert.equal(saved.restReport.spent,game.restReport.spent);assert.equal(saved.squad[0].gold,soldier.gold);
   assert.deepEqual(saved.squad[0].equipped,JSON.parse(JSON.stringify(soldier.equipped)),'money and the enhanced equipment come from the same final snapshot');
 });

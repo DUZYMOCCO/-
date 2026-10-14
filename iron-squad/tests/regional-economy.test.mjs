@@ -58,7 +58,7 @@ fresh();e=economicState(game);const buildCost=regionDevelopmentCost(e.regions.hq
 assert.equal(investEconomicProject(game,'region','hq',buildCost,'personal'),buildCost);
 assert.equal(e.regions.hq.level,0);tickEconomicConstruction(game,45);assert.equal(e.regions.hq.level,1);
 const builtIncome=nationalIncome(game);assert.ok(builtIncome>initial);
-game.saveGame();game.resumeSavedGame(saveSlots.get(game.activeSlotId).data);e=economicState(game);
+game.saveGame({immediate:true});game.resumeSavedGame(saveSlots.get(game.activeSlotId).data);e=economicState(game);
 assert.equal(e.regions.hq.level,1);assert.equal(game.gold,0);assert.equal(nationalIncome(game),builtIncome);
 
 // Actual arrivals, loss, patrol combat and period accounting use the game update.
@@ -79,7 +79,7 @@ const outbound=spawnTradeParty(game,active,'traveler',true);assert.deepEqual({x:
 
 // Discovery, investments, actor health/path and threats survive serialization.
 escorted.hp=73;game.monsters=[{id:'persist-raider',isTradeRaider:true,type:'goblin',x:C+1000,y:C,hp:77,maxHp:160,atk:18,speed:95,_cachedTarget:escorted}];
-game.saveGame();const data=saveSlots.get(game.activeSlotId).data;assert.doesNotThrow(()=>JSON.stringify(data));
+game.saveGame({immediate:true});const data=saveSlots.get(game.activeSlotId).data;assert.doesNotThrow(()=>JSON.stringify(data));
 game.resumeSavedGame(data);e=economicState(game);const survivor=e.traffic.find(a=>a.id===escorted.id);
 assert.equal(survivor.hp,73);assert.deepEqual(survivor.points,escorted.points);assert.equal(game.monsters.find(m=>m.id==='persist-raider').hp,77);
 game.monsters=[];game.completePhase();

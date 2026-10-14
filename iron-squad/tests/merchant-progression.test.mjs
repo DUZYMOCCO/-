@@ -14,7 +14,7 @@ const {saveSlots}=await import('../js/save-slots.js');
 const game=Object.create(IronSquadGame),c=WORLD_SIZE/2;
 Object.assign(game,{container:document.getElementById('game'),width:390,height:664,zoom:1,ctx,camera:{x:c,y:c},selectedSaleIds:new Set(),commandActiveUntil:0,joystick:{active:false,dirX:0,dirY:0}});
 for(const m of ['startGameLoop','showToast','spawnSparks','spawnDamageText'])game[m]=noop;
-game.setupUI();game.activeSlotId=saveSlots.create('MERCHANT PROGRESSION TEST ONLY').id;game.startFreshGame(false);const initial=structuredClone(game.saveGame());
+game.setupUI();game.activeSlotId=saveSlots.create('MERCHANT PROGRESSION TEST ONLY').id;game.startFreshGame(false);const initial=structuredClone(game.saveGame({immediate:true}));
 const fresh=()=>{game._merchantShopClose?.();game.resumeSavedGame(structuredClone(initial));game.closeStrategyModal();game.monsters=[];game.restTimer=0;game.currentQuest=null;};
 // Rank comes from acquired gear rather than merchant position. T7 is never sold.
 const near={id:'test-near',distance:1},far={id:'test-far',distance:90000};
@@ -32,7 +32,7 @@ const item=generateRandomDrop(0,'normal',{tier:2,type:'SHIELD',quality:1.2,upgra
 const card=document.querySelector('.merchant-stock-card');assert.match(card.textContent,/一長一短/);assert.match(card.textContent,/引継後/);assert.match(card.textContent,/防御|HP/);assert.ok(card.querySelector('.stat-delta-down'));assert.equal(card.style.opacity,'');assert.equal(card.querySelector('[data-buy]').disabled,true);
 game.gold=100000;game._merchantShopRefresh();const gold=game.gold,treasury=game.treasury,techBeforePurchase=game.nation.armament.techTier;document.querySelector('[data-buy]').click();assert.equal(game.nation.armament.techTier,techBeforePurchase,'a purchase alone cannot advance manufacturing');assert.equal(game.gold,gold-item._merchantPrice);assert.equal(game.treasury,treasury);assert.equal(item.upgrade,0);assert.equal(current.upgrade,20);assert.ok(game.inventory.some(i=>i.id===current.id));assert.ok(game.inventory.some(i=>i.id===item.id));assert.equal(game.sharedEquipBox.some(i=>i.id===item.id),false);assert.equal(m.featuredSoldPhase,1);assert.match(document.getElementById('merchant-shop-popup').textContent,/購入済み/);
 game._merchantShopClose();game.openMerchantShop(m);document.querySelector('#merchant-shop-popup [data-merchant-section="trade"]').click();assert.equal(m.stock.some(x=>x.merchantFeatured),false,'rank advancement cannot restock the featured item in the same wave');assert.ok(m.stock.every(x=>x.tier===2));m.stock=[];game.openMerchantShop(m);document.querySelector('#merchant-shop-popup [data-merchant-section="trade"]').click();assert.equal(m.stock.length,0,'same-rank sold-out catalog stays empty');game._merchantShopClose();
-game.saveGame();const saved=structuredClone(saveSlots.get(game.activeSlotId).data);game.resumeSavedGame(saved);const restored=game.merchants.find(x=>x.id===m.id);assert.equal(restored.stock.length,0);assert.equal(restored.featuredSoldPhase,1);assert.equal(game.merchantEquipmentTier,2);assert.deepEqual(serializeMerchants(game.merchants).find(x=>x.id===m.id).stock,[]);
+game.saveGame({immediate:true});const saved=structuredClone(saveSlots.get(game.activeSlotId).data);game.resumeSavedGame(saved);const restored=game.merchants.find(x=>x.id===m.id);assert.equal(restored.stock.length,0);assert.equal(restored.featuredSoldPhase,1);assert.equal(game.merchantEquipmentTier,2);assert.deepEqual(serializeMerchants(game.merchants).find(x=>x.id===m.id).stock,[]);
 game.completePhase();assert.ok(restored.stock.length===MERCHANT_CATALOG_SIZE);assert.ok(restored.stock[0].merchantFeatured);assert.equal(restored.stockTier,Math.min(24,game.nation.armament.techTier+1),'the refreshed market follows actual manufacturing, including legitimate funded research');
 // A different weapon family must never advertise unperformed upgrade transfer.
 fresh();
@@ -58,7 +58,7 @@ for(const type of Object.keys(DROP_EXCLUSIVES)){
   const plain={...x,dropOnly:false,stats:{}};applyUpgradeStats(plain,4);assert.ok(compareEquipment(x,plain).changes.some(s=>s.delta>0));applyUpgradeStats(x,8);assert.equal(x.dropOnly,true);
 }
 const normalRoll=()=>.001;const actual=generateRandomDrop(8000,'boss',{tier:3,type:'ARMOR',upgrade:0,id:'actual-exclusive',random:normalRoll});assert.equal(actual.dropOnly,true);assert.match(actual.name,/古参の戦鎧/);
-fresh();game.collectDrop(actual);assert.ok(game.inventory.some(i=>i.id===actual.id));game.saveGame();game.resumeSavedGame(saveSlots.get(game.activeSlotId).data);assert.equal(game.inventory.find(i=>i.id===actual.id).dropOnly,true);
+fresh();game.collectDrop(actual);assert.ok(game.inventory.some(i=>i.id===actual.id));game.saveGame({immediate:true});game.resumeSavedGame(saveSlots.get(game.activeSlotId).data);assert.equal(game.inventory.find(i=>i.id===actual.id).dropOnly,true);
 // Nearby encounters follow permanent nation/army/hero strength, with weaker extra scaling farther away and finite caps.
 const weak={player:{maxHp:130,atk:25},squad:Array.from({length:20},()=>({maxHp:150,atk:25,def:20})),nation:{level:0}};
 const strong={player:{maxHp:1200,atk:350,def:100},squad:Array.from({length:20},()=>({maxHp:1000,atk:200,def:100})),nation:{level:5}};

@@ -1,0 +1,25 @@
+import assert from 'node:assert/strict';
+import {JSDOM} from '../../__pycache__/ui-tools/node_modules/jsdom/lib/api.js';
+import {startAutoSave,stopAutoSave,AUTO_SAVE_INTERVAL_MS} from '../js/auto-save.js?v=269';
+const dom=new JSDOM('<div id="game"></div>',{url:'http://localhost/'});Object.assign(globalThis,{window:dom.window,document:dom.window.document,localStorage:dom.window.localStorage,alert:()=>{}});
+const noop=()=>{},ctx=new Proxy({measureText:()=>({width:40}),createLinearGradient:()=>({addColorStop:noop}),createRadialGradient:()=>({addColorStop:noop})},{get:(o,k)=>k in o?o[k]:noop});window.HTMLCanvasElement.prototype.getContext=()=>ctx;
+const {IronSquadGame}=await import('../js/index.js'),{saveSlots}=await import('../js/save-slots.js?v=269');
+const g=Object.create(IronSquadGame);Object.assign(g,{container:document.getElementById('game'),width:390,height:844,zoom:1,ctx,camera:{x:79360,y:79360},selectedSaleIds:new Set(),startGameLoop:noop,showToast:noop,buildTerrain:noop});
+g.setupUI();g.setupGame();g.activeSlotId=saveSlots.create('SAVE POLICY TEST').id;g.startFreshGame(false);g.closeStrategyModal();g.career.status='enlisted';
+const key='game_studio_ironsquad_save_slots_v1',stored=localStorage.getItem(key);let writes=0,marks=0;
+const set=window.Storage.prototype.setItem;window.Storage.prototype.setItem=function(k,v){if(k===key)writes++;return set.call(this,k,v);};g.stallRecorder={mark(){marks++;},reset:noop};
+g.gold=12345;for(let i=0;i<100;i++){assert.equal(g.saveGame(),null);assert.equal(g.saveGame({background:true}),null);}assert.equal(writes,0);assert.equal(marks,0);assert.equal(localStorage.getItem(key),stored);
+let tick=null,cleared=0;const clock={setInterval(fn,ms){assert.equal(ms,AUTO_SAVE_INTERVAL_MS);tick=fn;return 1;},clearInterval(){tick=null;cleared++;}};
+startAutoSave(g,clock);const initialTick=tick;startAutoSave(g,clock);assert.equal(tick,initialTick);g.openStrategyModal(true);assert.equal(g.inBattle,false);tick();await g._pendingAutoSave;assert.equal(writes,1);assert.equal(saveSlots.get(g.activeSlotId).data.gold,12345);
+g.closeStrategyModal();g.player.x=80000;g.player.y=76000;
+// Live operations proceed despite denied storage; the next autosave records a complete snapshot.
+const members=g.squad.filter(u=>!u.isPersonalGuard&&u.platoonId===0).slice(0,3);assert.equal(members.length,3);
+window.Storage.prototype.setItem=()=>{throw new Error('denied');};assert.equal(g.startPlatoonExpedition(0,1,members.map(u=>u.id)),true);assert.equal(g.toggleSoldierLock(members[0].id),true);assert.equal(members[0].personnelLocked,true);
+window.Storage.prototype.setItem=function(k,v){if(k===key)writes++;return set.call(this,k,v);};tick();await g._pendingAutoSave;let data=saveSlots.get(g.activeSlotId).data;assert.equal(data.squad.find(u=>u.id===members[0].id).personnelLocked,true);assert.equal(data.platoonMissions.find(p=>p.id===0).mission,'expedition');
+g.gold=201;Object.defineProperty(document,'hidden',{configurable:true,get:()=>true});document.dispatchEvent(new window.Event('visibilitychange'));delete document.hidden;assert.equal(saveSlots.get(g.activeSlotId).data.gold,201);
+g.gold=202;window.dispatchEvent(new window.Event('pagehide'));assert.equal(saveSlots.get(g.activeSlotId).data.gold,202);
+g.gold=203;Object.assign(g.player,{x:79360,y:79360});assert.equal(g.saveCheckpoint(),true);assert.equal(saveSlots.get(g.activeSlotId).checkpoint.data.gold,203);
+g.gold=204;g.showSaveMenu();assert.equal(saveSlots.get(g.activeSlotId).data.gold,204);assert.equal(tick,null);assert.equal(cleared,1);
+g.gold=205;let back=false;g.onBackToHub=()=>{back=true;};const destroy=g.destroy;g.destroy=()=>{stopAutoSave(g);};document.getElementById('btn-back').click();assert.ok(back);assert.equal(saveSlots.get(g.activeSlotId).data.gold,205);g.destroy=destroy;
+g.gameOver();assert.equal(saveSlots.get(g.activeSlotId).state,'fallen');g.saveGame({immediate:true});assert.equal(saveSlots.get(g.activeSlotId).state,'fallen','leaving after defeat cannot overwrite fallen as active');
+window.Storage.prototype.setItem=set;stopAutoSave(g);dom.window.close();console.log('PASS: ordinary saves skip snapshots/writes, independent paused clock, dispatch/lock deferred, hidden/pagehide/checkpoint/menu/hub/fallen persistence and timer lifecycle');

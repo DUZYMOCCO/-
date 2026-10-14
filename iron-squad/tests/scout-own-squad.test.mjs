@@ -13,7 +13,7 @@ const {saveSlots}=await import('../js/save-slots.js');
 const game=Object.create(IronSquadGame);Object.assign(game,{container:document.getElementById('game'),width:390,height:664,zoom:1,ctx,camera:{x:79360,y:79360},selectedSaleIds:new Set(),commandActiveUntil:0});
 for(const name of ['startGameLoop','showToast','spawnSparks','spawnDamageText'])game[name]=noop;
 game.setupUI();game.activeSlotId=saveSlots.create('SCOUT OWN SQUAD TEST ONLY').id;game.startFreshGame(false);game.career.status='enlisted';
-const base=structuredClone(game.saveGame());
+const base=structuredClone(game.saveGame({immediate:true}));
 function field(){game.resumeSavedGame(structuredClone(base));game.closeStrategyModal();Object.assign(game,{rankIndex:4,squad:[],reserves:[],monsters:[],outposts:[],merchants:[],civilians:[],projectiles:[],dropsOnField:[],currentQuest:null,restTimer:0,_monsterGrid:null,_hazardClock:0,updateSpawns:noop,worldTerrain:{tiles:new Map()}});Object.assign(game.player,{x:83000,y:83000,atkCooldown:100});game.recalcPlayerStats();game.player.hp=game.player.maxHp;game.player.dodge=game.player.crit=0;game.camera={x:83000,y:83000};game.joystick={active:false,dirX:0,dirY:0};}
 const village=game.dungeons.find(d=>d.id==='ninja_village');
 const rosterSoldier=()=>game.createNewSoldier(null,{classKey:'HEAVY'});
@@ -44,7 +44,7 @@ for(const full of [false,true]){
   assert.equal(joinLimitedEncounter(game,enc.id),true);
   const check=g=>{const a=g.squad.find(s=>s.id===enc.unit.id);assert.ok(a&&a.isPersonalGuard,'in own platoon');assert.ok(!g.reserves.some(s=>s.id===a.id),'not in reserve');return a;};
   const a=check(game);assert.ok(Math.hypot(a.x-game.player.x,a.y-game.player.y)<80,'next to player');assert.equal(!!a.overflowGuard,full);
-  const sv=structuredClone(game.saveGame());game.resumeSavedGame(structuredClone(sv));check(game);
+  const sv=structuredClone(game.saveGame({immediate:true}));game.resumeSavedGame(structuredClone(sv));check(game);
   game.exitDungeon();check(game);game.syncPersonalGuardSlots(null,game.limitedGuardLimit());check(game);
 }
 console.log('ok');

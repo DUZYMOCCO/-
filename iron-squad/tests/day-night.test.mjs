@@ -46,10 +46,10 @@ const gold=game.gold,exp=game.exp;game.changeTimePeriod();
 assert.deepEqual(game.monsters,[common]);assert.deepEqual(game.restMonsters,[common,night]);assert.equal(game.projectiles.length,1);
 game.killMonster(day,game.player,true);assert.equal(game.gold,gold);assert.equal(game.exp,exp,'retreat awards no kill rewards');
 game.restTimer=5;game.restUpgradeClock=0;game.update(.5);assert.equal(game.worldTime,240.5,'clock advances during active rest');
-game.saveGame();const saved=saveSlots.get(game.activeSlotId).data;game.resumeSavedGame(saved);
+game.saveGame({immediate:true});const saved=saveSlots.get(game.activeSlotId).data;game.resumeSavedGame(saved);
 assert.equal(game.worldTime,240.5);assert.equal(game.restTimer,4.5);assert.equal(game.monsters.length,0);
 assert.ok(game.restMonsters.every(m=>m.activePeriod!=='day'));
-game.restTimer=0;game.worldTime=300;game.saveGame();game.resumeSavedGame(saveSlots.get(game.activeSlotId).data);
+game.restTimer=0;game.worldTime=300;game.saveGame({immediate:true});game.resumeSavedGame(saveSlots.get(game.activeSlotId).data);
 assert.equal(daylightAt(game.worldTime).period,'night');assert.ok(game.monsters.every(m=>m.activePeriod!=='day'));
 // All six distinct silhouettes render with balanced canvas state.
 let depth=0,draws=0;const context=new Proxy({save(){depth++;},restore(){depth--;}},{get:(o,k)=>k in o?o[k]:(()=>{draws++;})});

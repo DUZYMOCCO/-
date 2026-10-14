@@ -130,7 +130,7 @@ mage.equipped.armor=plate;game.recalcSoldierStats(mage);assert.equal(mage.equipp
 mage.equipped.armor=ward;game.recalcSoldierStats(mage);mage.equipmentBarrier=7;mage.equipmentBarrierDelay=5;
 game.equipped.weapon=gear('player-wand','WEAPON',1);game.equipped.weapon.weaponStyle='wand';
 game.equipped.armor=gear('player-ward','ARMOR',1,'ward');game.recalcPlayerStats();game.player.equipmentBarrier=3;game.player.equipmentBarrierDelay=4;
-const saved=game.saveGame();assert.ok(saved);saved.squad.find(s=>s.id===medic.id).equipped.armor=gear('legacy-medic-plate','ARMOR',25);
+const saved=game.saveGame({immediate:true});assert.ok(saved);saved.squad.find(s=>s.id===medic.id).equipped.armor=gear('legacy-medic-plate','ARMOR',25);
 game.resumeSavedGame(structuredClone(saved));game.closeStrategyModal();
 assert.equal(game.player.equipmentBarrier,3);assert.ok(game.player.equipmentBarrierMax>0,'commander barrier survives save/load');assert.equal(game.player.equipmentBarrierDelay,4);
 const restored=game.squad.find(s=>s.id===mage.id);assert.equal(restored.equipmentBarrier,7);assert.equal(restored.equipmentBarrierDelay,5);

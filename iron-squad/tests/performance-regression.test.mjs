@@ -31,9 +31,9 @@ assert.ok(soldier.isPersonalGuard,'manual guard selection persists');assert.ok(s
 assert.equal(DEPLOYMENT_CAPACITY,48);assert.equal(ENEMY_LIMIT,40,'population unchanged by this performance fix');
 soldier._cachedEnemy=monster;monster._cachedTarget=soldier;
 assert.doesNotThrow(()=>JSON.stringify(persistentUnit(soldier)));
-game.saveGame();let saved=saveSlots.get(game.activeSlotId).data;
+game.saveGame({immediate:true});let saved=saveSlots.get(game.activeSlotId).data;
 assert.ok(saved.squad[0]);assert.equal(saved.squad[0]._cachedEnemy,undefined);
-game.restTimer=3;game.restMonsters=[monster];game.saveGame();saved=saveSlots.get(game.activeSlotId).data;
+game.restTimer=3;game.restMonsters=[monster];game.saveGame({immediate:true});saved=saveSlots.get(game.activeSlotId).data;
 assert.equal(saved.restMonsters[0]._cachedTarget,undefined);
 assert.equal(saved.restMonsters[0].hp,monster.hp);
 game.camera={x:center+20000,y:center+20000};let outposts=0,camp=0;

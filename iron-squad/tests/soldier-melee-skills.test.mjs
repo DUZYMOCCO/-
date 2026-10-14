@@ -103,17 +103,17 @@ try{
   }
   {
     const u=fixture('sword'),m=enemy('save-target',40);g.trySoldierMeleeSkill(u,m);
-    const cooldown=u.weaponSkillCooldown;const saved=structuredClone(g.saveGame());assert.doesNotThrow(()=>JSON.stringify(saved));
+    const cooldown=u.weaponSkillCooldown;const saved=structuredClone(g.saveGame({immediate:true}));assert.doesNotThrow(()=>JSON.stringify(saved));
     g.resumeSavedGame(saved);const restored=g.squad.find(s=>s.id===u.id);assert.equal(restored.weaponSkillCooldown,cooldown);assert.ok(restored.weaponSkillPending);
   }
   {
     const u=fixture('sword'),reserve=fixture('spear');g.squad=[u];g.reserves=[reserve];g.inventory=[gear('sword')];g.sharedEquipBox=[gear('spear')];g.equipped.weapon=gear('sword');
-    const saved=structuredClone(g.saveGame());
+    const saved=structuredClone(g.saveGame({immediate:true}));
     const items=[saved.equipped.weapon,saved.squad[0].equipped.weapon,saved.squad[0].weapon,saved.reserves[0].equipped.weapon,saved.reserves[0].weapon,saved.inventory[0],saved.sharedEquipBox[0]];
     const expected=new Map(items.map(w=>[w.id,w.stats.atk]));
     for(const w of items){delete w.meleeBalanceVersion;w.stats.atk=Math.floor(w.stats.atk/(w.weaponStyle==='sword'?1.8:1.6/1.5));}
     for(let load=0;load<2;load++){
-      g.resumeSavedGame(load?structuredClone(g.saveGame()):saved);
+      g.resumeSavedGame(load?structuredClone(g.saveGame({immediate:true})):saved);
       const restored=[...g.squad,...g.reserves];
       for(const w of [g.equipped.weapon,restored.find(s=>s.id===u.id).equipped.weapon,restored.find(s=>s.id===reserve.id).equipped.weapon,g.inventory[0],g.sharedEquipBox[0]])assert.equal(w.stats.atk,expected.get(w.id),'old owned gear migrates exactly once on load');
     }

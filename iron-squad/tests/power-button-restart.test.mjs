@@ -5,7 +5,7 @@ const noop=()=>{},ctx=new Proxy({measureText:()=>({width:40}),createLinearGradie
 const {IronSquadGame}=await import('../js/index.js');const {saveSlots}=await import('../js/save-slots.js');
 const game=Object.create(IronSquadGame);Object.assign(game,{container:document.getElementById('game'),width:390,height:664,zoom:1,ctx,camera:{x:79360,y:79360},selectedSaleIds:new Set(),commandActiveUntil:0,joystick:{active:false,dirX:0,dirY:0}});
 for(const m of ['startGameLoop','showToast'])game[m]=noop;game.setupUI();game.activeSlotId=saveSlots.create('POWER BUTTON TEST ONLY').id;game.startFreshGame(false);game.closeStrategyModal();
-const saved=structuredClone(game.saveGame()),overlay=document.getElementById('pad-power-cd-overlay'),text=document.getElementById('pad-power-cd-text'),btn=document.getElementById('btn-pad-power');
+const saved=structuredClone(game.saveGame({immediate:true})),overlay=document.getElementById('pad-power-cd-overlay'),text=document.getElementById('pad-power-cd-text'),btn=document.getElementById('btn-pad-power');
 // Counting down shows the remaining time.
 game.player.powerAtkCooldown=2.3;game.update(1/30);assert.equal(overlay.classList.contains('hidden'),false);assert.equal(text.textContent,'2.3');
 // Restarting from a save (e.g. after death) replaces the commander with cooldown 0: the overlay must clear.

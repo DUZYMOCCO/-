@@ -19,7 +19,7 @@ const game=Object.create(IronSquadGame),center=WORLD_SIZE/2;
 Object.assign(game,{container:document.getElementById('game'),width:390,height:664,zoom:1,ctx,camera:{x:center,y:center},selectedSaleIds:new Set(),commandActiveUntil:0,joystick:{active:false,dirX:0,dirY:0}});
 for(const key of ['startGameLoop','showToast','spawnSparks','spawnDamageText'])game[key]=noop;
 game.setupUI();game.activeSlotId=saveSlots.create('MEDICAL TEST ONLY').id;game.startFreshGame(false);
-const initial=structuredClone(game.saveGame());
+const initial=structuredClone(game.saveGame({immediate:true}));
 const fresh=()=>{game.resumeSavedGame(structuredClone(initial));game.closeStrategyModal();game.monsters=[];game.civilians=[];game.currentQuest=null;game.restTimer=0;};
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 assert.equal(game.medicalPosts.length,12);
@@ -28,7 +28,7 @@ for(const p of game.medicalPosts){assert.ok(dist(p,castle)>=MEDICAL_CASTLE_EXCLU
 const xs=[...new Set(game.medicalPosts.map(p=>p.x))].sort((a,b)=>a-b);assert.equal(xs.length,4);for(let i=1;i<xs.length;i++)assert.equal(xs[i]-xs[i-1],WORLD_SIZE/4);
 assert.deepEqual(medicalPostLayout(game),medicalPostLayout(game));assert.equal(nearestKnownMedicalPost(game),null);
 const p=game.medicalPosts[0];Object.assign(game.player,{x:p.x+600,y:p.y});updateMedicalPosts(game,.25);assert.equal(p.discovered,true);assert.equal(nearestKnownMedicalPost(game).id,p.id);
-game.saveGame();game.resumeSavedGame(saveSlots.get(game.activeSlotId).data);assert.ok(game.medicalPosts.find(m=>m.id===p.id).discovered);assert.deepEqual(serializeMedicalPosts(game),[p.id]);
+game.saveGame({immediate:true});game.resumeSavedGame(saveSlots.get(game.activeSlotId).data);assert.ok(game.medicalPosts.find(m=>m.id===p.id).discovered);assert.deepEqual(serializeMedicalPosts(game),[p.id]);
 const legacy=structuredClone(initial);delete legacy.medicalPostIds;game.resumeSavedGame(legacy);assert.equal(game.medicalPosts.length,12,'old saves get facilities without losing world state');
 // Real dragging delivers a soldier and detaches the rope. Aid latches prevent repeat rewards.
 fresh();const post=game.medicalPosts[0];post.discovered=true;
@@ -58,7 +58,7 @@ assert.equal(supplyLocation(game,{x:m.x,y:m.y}).kind,'medical');const archer=gam
 // Direction chooses the nearest KNOWN station, respects town mode and transport locks.
 game.medicalPosts[1].discovered=true;game.player.x=game.medicalPosts[1].x+5;game.player.y=game.medicalPosts[1].y;assert.equal(nearestKnownMedicalPost(game).id,game.medicalPosts[1].id);game.medicalPosts[1].discovered=false;assert.equal(nearestKnownMedicalPost(game).id,m.id);
 patient.x=game.player.x;patient.y=game.player.y;delete patient.carrierId;attachWounded(game,game.player,patient);game.updateStatsUI();assert.match(document.getElementById('transport-status').textContent,/第1救護所/);assert.match(document.getElementById('transport-status').textContent,/[←↖↙]/);
-game.worldTerrain=new WorldTerrain();game.openWorldMap();assert.match(document.getElementById('fast-travel-list').textContent,/第1救護所/);assert.doesNotMatch(document.getElementById('fast-travel-list').textContent,/第2救護所/);const pos={x:game.player.x,y:game.player.y};game.fastTravelTo(m.x,m.y,m.name);assert.equal(game.player.x,pos.x);assert.equal(game.player.y,pos.y,'carrying still prohibits map travel');game.saveGame();game.resumeSavedGame(saveSlots.get(game.activeSlotId).data);assert.equal(game.squad.find(u=>u.id===patient.id).carrierId,'player');assert.ok(game.medicalPosts.find(p=>p.id===m.id).discovered);
+game.worldTerrain=new WorldTerrain();game.openWorldMap();assert.match(document.getElementById('fast-travel-list').textContent,/第1救護所/);assert.doesNotMatch(document.getElementById('fast-travel-list').textContent,/第2救護所/);const pos={x:game.player.x,y:game.player.y};game.fastTravelTo(m.x,m.y,m.name);assert.equal(game.player.x,pos.x);assert.equal(game.player.y,pos.y,'carrying still prohibits map travel');game.saveGame({immediate:true});game.resumeSavedGame(saveSlots.get(game.activeSlotId).data);assert.equal(game.squad.find(u=>u.id===patient.id).carrierId,'player');assert.ok(game.medicalPosts.find(p=>p.id===m.id).discovered);
 // Native Canvas verifies building, known map marker and directional arrow actually render.
 const {createCanvas,GlobalFonts}=createRequire(resolve('C:/Users/Yoshiyuki/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules','entry.cjs'))('@napi-rs/canvas');GlobalFonts.registerFromPath('C:/Windows/Fonts/meiryo.ttc','sans-serif');const canvas=createCanvas(340,260),c=canvas.getContext('2d');
 c.translate(170-m.x,145-m.y);drawMedicalPost(c,m);assert.ok(c.getImageData(105,100,130,75).data.some((v,i)=>i%4===3&&v>0));if(process.env.MEDICAL_REVIEW_DIR){mkdirSync(process.env.MEDICAL_REVIEW_DIR,{recursive:true});const preview=createCanvas(340,260),pc=preview.getContext('2d');pc.fillStyle='#465c43';pc.fillRect(0,0,340,260);pc.drawImage(canvas,0,0);writeFileSync(resolve(process.env.MEDICAL_REVIEW_DIR,'medical-post.png'),preview.toBuffer('image/png'));}c.resetTransform();c.clearRect(0,0,340,260);drawMedicalMap(c,game,x=>100,y=>100);assert.ok(c.getImageData(96,96,8,8).data.some((v,i)=>i%4===3&&v>0));

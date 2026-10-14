@@ -11,7 +11,7 @@ window.HTMLCanvasElement.prototype.getContext=()=>ctx;
 const {IronSquadGame,generateRandomDrop,applyUpgradeStats}=await import('../js/index.js'),{saveSlots}=await import('../js/save-slots.js');
 const game=Object.create(IronSquadGame);Object.assign(game,{container:document.getElementById('game'),width:375,height:780,zoom:1,ctx,camera:{x:79360,y:79360},selectedSaleIds:new Set(),commandActiveUntil:0});
 for(const method of ['startGameLoop','showToast','spawnDamageText','spawnSparks'])game[method]=noop;
-game.setupUI();game.activeSlotId=saveSlots.create('WORKSHOP TEST ONLY').id;game.startFreshGame(false);const initial=structuredClone(game.saveGame());
+game.setupUI();game.activeSlotId=saveSlots.create('WORKSHOP TEST ONLY').id;game.startFreshGame(false);const initial=structuredClone(game.saveGame({immediate:true}));
 assert.deepEqual(game.materials,normalizeMaterials());
 assert.equal(normalizeMaterials({wood:-1,iron:Infinity,fabric:2.9,unexpected:40}).fabric,2);
 assert.equal(normalizeMaterials({wood:-1,iron:Infinity}).iron,0);
@@ -39,7 +39,7 @@ game.dropsOnField=[{x:s.x,y:s.y,item:rollMaterialDrop(0,'normal',()=>0)}];game.u
 const realSave=game.saveGame;let pickupSaves=0;game.saveGame=function(...args){pickupSaves++;return realSave.apply(this,args);};
 for(let i=0;i<3;i++)game.collectCraftMaterials({materials:{wood:2}});
 assert.equal(pickupSaves,0,'a pickup burst cannot synchronously rewrite the whole save for each material');
-game.autoSaveClock=9.99;game.update(.02);assert.ok(pickupSaves>0);assert.equal(saveSlots.get(game.activeSlotId).data.materials.wood,game.materials.wood,'existing autosave persists the shared material store');
+game.saveGame({auto:true});assert.ok(pickupSaves>0);assert.equal(saveSlots.get(game.activeSlotId).data.materials.wood,game.materials.wood,'existing autosave persists the shared material store');
 game.saveGame=realSave;
 quiet();game.nation=normalizeNation({investment:18000});game.gold=1000000;assert.equal(game.buyWorkshopEquipment('weapon-axe',9),false);
 game.enterDungeon(game.dungeons.find(d=>d.id==='royal_castle_town'));game.gold=1000000;
@@ -60,7 +60,7 @@ for(const recipe of CRAFT_RECIPES){
  owned.push(item);
 }
 assert.equal(new Set(owned.map(item=>item.id)).size,owned.length);assert.ok(game.inventory.filter(i=>i.craftOnly).length===CRAFT_RECIPES.length);
-const craftedState=structuredClone(game.saveGame());game.resumeSavedGame(craftedState);assert.deepEqual(game.materials,craftedState.materials);assert.equal(game.inventory.filter(i=>i.craftOnly).length,CRAFT_RECIPES.length);
+const craftedState=structuredClone(game.saveGame({immediate:true}));game.resumeSavedGame(craftedState);assert.deepEqual(game.materials,craftedState.materials);assert.equal(game.inventory.filter(i=>i.craftOnly).length,CRAFT_RECIPES.length);
 const legacy={...initial};delete legacy.materials;game.resumeSavedGame(legacy);assert.deepEqual(game.materials,normalizeMaterials(),'old saves gain an empty material store');
 game.nation=normalizeNation({investment:18000});game.treasury=2000000;game.phase=2;game.phaseFiscal.startBalance=game.treasury;
 const soldiers=game.squad.slice(0,2);game.squad=soldiers;game.reserves=[];for(const s of soldiers){s.equipped={};s.weapon=null;s.gold=100000;game.recalcSoldierStats(s);}

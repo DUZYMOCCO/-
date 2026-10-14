@@ -13,7 +13,7 @@ const game=Object.create(IronSquadGame),F=83000;
 Object.assign(game,{container:document.getElementById('game'),width:390,height:664,zoom:1,ctx,camera:{x:F,y:F},selectedSaleIds:new Set(),commandActiveUntil:0,joystick:{active:false,dirX:0,dirY:0}});
 for(const method of ['startGameLoop','showToast','spawnSparks','spawnDamageText'])game[method]=noop;
 game.setupUI();game.activeSlotId=saveSlots.create('ATTRIBUTES TEST ONLY').id;game.startFreshGame(false);
-const initial=structuredClone(game.saveGame());
+const initial=structuredClone(game.saveGame({immediate:true}));
 function field(){game.resumeSavedGame(structuredClone(initial));game.closeStrategyModal();Object.assign(game.player,{x:F+150,y:F,atkCooldown:1000});Object.assign(game,{squad:[],reserves:[],monsters:[],outposts:[],merchants:[],dungeons:[],civilians:[],projectiles:[],dropsOnField:[],magicReserve:0,currentQuest:null,restTimer:0,currentDungeon:null,updateSpawns:noop,worldTerrain:{tiles:new Map()}});game.invasions.stage='idle';game.baseRaidActive=false;game.joystick={active:false,dirX:0,dirY:0};game._hazardClock=0;}
 function unit(classKey='HEAVY',overrides={}){const u=game.createNewSoldier(null,{classKey,talent:'AVERAGE',attributeProfile:rollAttributeProfile(classKey,'AVERAGE',()=>.5,true)});u.attributeProfile=rollAttributeProfile(classKey,'AVERAGE',()=>.5,true);u._attributesNormalized=false;Object.assign(u,{x:F,y:F,isPersonalGuard:true,atkCooldown:1000,speed:0},overrides);game.recalcSoldierStats(u);u.hp=u.maxHp;return u;}
 const dummy=()=>({type:'goblin',x:F+25,y:F,hp:1e8,maxHp:1e8,atk:0,def:0,radius:12,speed:0,atkTimer:1000});
@@ -123,7 +123,7 @@ try {
  const reloaded=JSON.parse(JSON.stringify(legacy));assert.deepEqual(attributeValues(reloaded),first);
  assert.deepEqual(attributeSpecialties(reloaded),attributeSpecialties(legacy));
  Math.random=()=>.99;
- game.recalcSoldierStats(brawler);game.recalcSoldierStats(melee);game.squad=[brawler];game.reserves=[melee];const data=structuredClone(game.saveGame());game.resumeSavedGame(data);
+ game.recalcSoldierStats(brawler);game.recalcSoldierStats(melee);game.squad=[brawler];game.reserves=[melee];const data=structuredClone(game.saveGame({immediate:true}));game.resumeSavedGame(data);
  const savedBrawler=[...game.squad,...game.reserves].find(u=>u.id===brawler.id);assert.deepEqual(savedBrawler.attributeProfile.practice,brawler.attributeProfile.practice);
  assert.equal(savedBrawler.strength,brawler.strength);assert.equal(savedBrawler.magicPower,brawler.magicPower);
  const all=collectAllSoldiers(game);assert.ok(all.some(entry=>entry.soldier.id===melee.id),'reserve soldiers participate in rankings');

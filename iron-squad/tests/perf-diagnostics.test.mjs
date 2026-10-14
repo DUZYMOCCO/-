@@ -69,7 +69,7 @@ test('enabled hooks cover storage, newly created/replaced workers, fog, saves, m
   },{window:win,document:doc,now:()=>now,PerformanceObserver:false});
   try{
     assert.ok(doc.querySelector('.perf-diagnostics'));assert.notEqual(game.saveGame,original.save);assert.notEqual(win.Storage.prototype.setItem,original.storage);
-    game.startGameLoop();game.loop(0);const firstWorker=game.worldTerrain._terrainWorker;firstWorker.dispatch();game.saveGame();savedCompletion();game.updateSpawns();game.revealFogAroundPlayer();game.renderMinimap();game.openWorldMap();
+    game.startGameLoop();game.loop(0);const firstWorker=game.worldTerrain._terrainWorker;firstWorker.dispatch();game.saveGame({immediate:true});savedCompletion();game.updateSpawns();game.revealFogAroundPlayer();game.renderMinimap();game.openWorldMap();
     win.localStorage.getItem('game_studio_ironsquad_save_slots_v1');win.localStorage.setItem('other_game','untimed');
     now=300;game.loop(300);const record=api.snapshot().records[0],labels=record.timing.map(t=>t.name);
     for(const label of ['地形.generate','地形.takeSurface','地形受信','枠.get','枠.list','LS書く','LS読む','フォグ公開','ミニマップ','地図再描画','保存完了','追従.開始','敵出現'])assert.ok(labels.includes(label),label);

@@ -32,7 +32,7 @@ globalThis.window={};globalThis.document={getElementById:()=>null};
 const {IronSquadGame,applyUpgradeStats}=await import('../js/index.js');
 const real=Object.create(IronSquadGame);
 for(const m of ['updateStatsUI','updateQuestUI','startGameLoop','showToast','spawnSparks','spawnDamageText','renderStrategyUI'])real[m]=()=>{};
-real.activeSlotId=saveSlots.create('v4 payroll').id;real.startFreshGame(false);const starting=structuredClone(real.saveGame());
+real.activeSlotId=saveSlots.create('v4 payroll').id;real.startFreshGame(false);const starting=structuredClone(real.saveGame({immediate:true}));
 real.squad=Array.from({length:1000},(_,i)=>unit(`reserve-${i}`));real.reserves=[];
 assert.ok(nationalPayrollPlan(real).regular<=economicPayrollBudget(real));assert.equal(nationalIncome(real),baseIncome);
 real.resumeSavedGame(structuredClone(starting));
@@ -58,7 +58,7 @@ for(const s of real.squad){s.gold=0;s.level=100;s.survivedWaves=50;s.minionKills
 real.treasury=nationalSalaryReserve(real)*2;real.phaseFiscal=emptyFiscalLedger(real.phase,real.treasury);
 runs.push(simulate('mature gear requires savings',24));assert.ok(real.squad.some(s=>s.gold>0));
 assert.ok(real.squad.some(s=>s.gold<real.getUpgradeCost(s.equipped.weapon)));
-const saved=structuredClone(real.saveGame()),wallets=[...real.squad,...real.reserves].map(s=>s.gold),treasury=real.treasury;
+const saved=structuredClone(real.saveGame({immediate:true})),wallets=[...real.squad,...real.reserves].map(s=>s.gold),treasury=real.treasury;
 real.resumeSavedGame(saved);assert.equal(real.treasury,treasury);assert.deepEqual([...real.squad,...real.reserves].map(s=>s.gold),wallets);
 assert.deepEqual(real.lastFiscalReport,saved.lastFiscalReport);
 console.log(JSON.stringify({prices,runs}));

@@ -19,7 +19,7 @@ const p=game.player;
 assert.equal(p.familyName,'ミラー');assert.equal(p.givenName,'エミリア');assert.equal(p.gender,'female');
 assert.equal(p.appearance.medicHair,'long');assert.equal(p.appearance.feminine,true);assert.equal(p.appearance.glasses,'round');assert.equal(p.appearance.beautiful,true);
 assert.equal(commanderFullName(p),'エミリア・ミラー');
-const data=structuredClone(game.saveGame());
+const data=structuredClone(game.saveGame({immediate:true}));
 assert.equal(data.player.familyName,'ミラー');assert.equal(data.player.gender,'female');
 game.player.familyName='';game.player.gender='';game.resumeSavedGame(structuredClone(data));
 assert.equal(game.player.familyName,'ミラー');assert.equal(game.player.givenName,'エミリア');assert.equal(game.player.gender,'female');

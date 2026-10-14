@@ -12,7 +12,7 @@ const g=Object.create(IronSquadGame),C=WORLD_SIZE/2,notices=[];
 Object.assign(g,{container:document.getElementById('game'),width:390,height:844,zoom:1,ctx,camera:{x:C,y:C},selectedSaleIds:new Set()});
 for(const key of ['startGameLoop','spawnDamageText','spawnSparks'])g[key]=noop;g.showToast=t=>notices.push(t);
 g.setupUI();g.activeSlotId=saveSlots.create('Rescue owner / gate post regression').id;g.startFreshGame(false);
-const initial=structuredClone(g.saveGame()),fresh=()=>{g.resumeSavedGame(structuredClone(initial));g.closeStrategyModal();g.restTimer=0;g.monsters=[];g.civilians=[];notices.length=0;};
+const initial=structuredClone(g.saveGame({immediate:true})),fresh=()=>{g.resumeSavedGame(structuredClone(initial));g.closeStrategyModal();g.restTimer=0;g.monsters=[];g.civilians=[];notices.length=0;};
 const downGuard=()=>{const guard=g.gateGuards.find(u=>u.gatePostId==='hq_gate_4');Object.assign(guard,{x:C+500,y:C});markSoldierDown(g,guard);return guard;};
 const permanent=()=>notices.filter(t=>t.includes('（永続）'));
 const random=Math.random;Math.random=()=>.1;
@@ -36,7 +36,7 @@ try{
   fresh();guard=downGuard();Object.assign(g.player,{x:guard.x,y:guard.y});assert.equal(attachWounded(g,g.player,guard),true);
   g.player.x=C;g.player.y=C;syncDragged(g,1);updateWounded(g,0);assert.equal(g.rescueBonuses.hpPct,1);assert.equal(permanent().length,1);assert.equal(guard.owesCommander,true);
   grantRescueBonus(g,guard,{carrier:g.player});assert.equal(g.rescueBonuses.hpPct,1);
-  const data=g.saveGame();g.resumeSavedGame(structuredClone(data));assert.equal(g.rescueBonuses.hpPct,1);assert.ok(g.rescueRewardIds.includes(guard.id));
+  const data=g.saveGame({immediate:true});g.resumeSavedGame(structuredClone(data));assert.equal(g.rescueBonuses.hpPct,1);assert.ok(g.rescueRewardIds.includes(guard.id));
   // Direct player treatment is eligible; copied actor flags are not personal rescue evidence.
   for(const type of [{isMerchant:true},{isMerchantEscort:true},{isMerchantEscort:true,isGateGuard:true}]){
     fresh();const patient={...type,id:'owner-patient',name:'NPC',x:C+500,y:C,maxHp:100};
@@ -66,6 +66,6 @@ try{
   Object.assign(local,{gateSpace:'field',x:C,y:C,homeX:C,homeY:C,rescuedToBase:true});assert.equal(restoreGateGuardPost(g,local),true);
   assert.equal(local.gateSpace,town.id);assert.deepEqual([local.x,local.y],[localPost.x,localPost.y]);
   const before={x:guard.x,y:guard.y,homeX:guard.homeX,homeY:guard.homeY};guard._rescueMission=true;guard.homeX=C;assert.equal(restoreGateGuardPost(g,guard),false);assert.equal(guard.homeX,C);delete guard._rescueMission;Object.assign(guard,before);
-  const guardSave=structuredClone(g.saveGame());g.resumeSavedGame(guardSave);const restored=g.gateGuards.find(u=>u.id===local.id);assert.equal(restored.gateSpace,town.id);assert.equal(restored.homeX,localPost.x);
+  const guardSave=structuredClone(g.saveGame({immediate:true}));g.resumeSavedGame(guardSave);const restored=g.gateGuards.find(u=>u.id===local.id);assert.equal(restored.gateSpace,town.id);assert.equal(restored.homeX,localPost.x);
   console.log('PASS: no passive/AI permanent commander rewards, real commander rescue once/save, NPC and civilian owner checks, gate revival/return, legacy refuge migration, preserved veterans/replacements and town-space posts, rescue missions');
 }finally{Math.random=random;g.destroy();dom.window.close();}

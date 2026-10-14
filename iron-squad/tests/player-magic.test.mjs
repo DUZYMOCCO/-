@@ -14,7 +14,7 @@ const game=Object.create(IronSquadGame);
 Object.assign(game,{container:document.getElementById('game'),width:390,height:664,zoom:1,ctx,camera:{x:79360,y:79360},selectedSaleIds:new Set(),commandActiveUntil:0});
 for(const name of ['startGameLoop','showToast','spawnSparks','spawnDamageText'])game[name]=noop;
 game.setupUI();game.activeSlotId=saveSlots.create('PLAYER MAGIC TEST ONLY').id;game.startFreshGame(false);game.career.status='enlisted';
-const baseline=structuredClone(game.saveGame());
+const baseline=structuredClone(game.saveGame({immediate:true}));
 const weapon=(style,upgrade=0)=>generateRandomDrop(0,'normal',{type:'WEAPON',tier:1,weaponStyle:style,upgrade,quality:1,merchant:true,random:()=>.5,id:`player-${style}-${upgrade}`});
 function field(style='wand'){
   game.resumeSavedGame(structuredClone(baseline));game.closeStrategyModal();
@@ -72,15 +72,15 @@ p().mana=0;assert.equal(distributeMagicStones(game,20),20);assert.equal(p().mana
 // Switching away cannot refill MP; mana/element/training survive a real save.
 field();p().mana=7;p().magicAffinity='lightning';game.equipItem(weapon('sword'));assert.equal(isPlayerCaster(p()),false);assert.equal(p().maxMana,0);assert.equal(p().mana,7);
 game.monsters=[monster(30,{def:0})];p().atkCooldown=0;p().crit=0;game.manualAttack();assert.ok(game.monsters[0].hp<1e8);assert.equal(p().mana,7);
-const nonCasterSave=structuredClone(game.saveGame());game.resumeSavedGame(nonCasterSave);assert.equal(p().mana,7);assert.equal(isPlayerCaster(p()),false);
+const nonCasterSave=structuredClone(game.saveGame({immediate:true}));game.resumeSavedGame(nonCasterSave);assert.equal(p().mana,7);assert.equal(isPlayerCaster(p()),false);
 game.equipItem(weapon('staff'));assert.equal(p().mana,7);assert.equal(p().magicAffinity,'lightning');assert.equal(p().maxMana,100);
-const save=structuredClone(game.saveGame());game.resumeSavedGame(save);assert.equal(p().mana,7);assert.equal(p().magicAffinity,'lightning');assert.equal(isPlayerCaster(p()),true);assert.deepEqual(p().attributeProfile,save.player.attributeProfile);
+const save=structuredClone(game.saveGame({immediate:true}));game.resumeSavedGame(save);assert.equal(p().mana,7);assert.equal(p().magicAffinity,'lightning');assert.equal(isPlayerCaster(p()),true);assert.deepEqual(p().attributeProfile,save.player.attributeProfile);
 const oldSave=structuredClone(save);delete oldSave.player.mana;delete oldSave.player.magicAffinity;game.resumeSavedGame(oldSave);assert.equal(p().mana,100);assert.equal(p().magicAffinity,'fire');
 // Full status UI and shortcut use the same real captain; element change is saved.
 game.openStrategyModal(true);document.getElementById('btn-player-stats').click();assert.equal(document.getElementById('commander-record').open,true);
 const grid=document.querySelector('.commander-stat-grid');assert.equal(grid.querySelectorAll('dt').length,13);
 for(const label of ['HP','攻撃','防御','筋力','魔力','魔法防御','速さ','回避','魔法攻撃','移動','搬送','MP','バリア'])assert.ok([...grid.querySelectorAll('dt')].some(n=>n.textContent===label));
-const select=document.getElementById('player-magic-affinity');select.value='ice';select.dispatchEvent(new window.Event('change',{bubbles:true}));assert.equal(p().magicAffinity,'ice');assert.equal(saveSlots.get(game.activeSlotId).data.player.magicAffinity,'ice');
+const select=document.getElementById('player-magic-affinity');select.value='ice';select.dispatchEvent(new window.Event('change',{bubbles:true}));assert.equal(p().magicAffinity,'ice');game.saveGame({auto:true});assert.equal(saveSlots.get(game.activeSlotId).data.player.magicAffinity,'ice');
 assert.match(document.getElementById('player-magic-status').textContent,/隊長.*100\/100.*氷/);assert.match(document.getElementById('btn-pad-attack').textContent,/魔法/);assert.match(document.getElementById('btn-pad-power').textContent.split(/\s+/).join(''),/マナバースト/);
 game.equipItem(weapon('sword'));assert.ok(document.getElementById('player-magic-status').classList.contains('hidden'));assert.doesNotMatch(document.getElementById('btn-pad-attack').textContent,/魔法/);
 // The five attributes cap at 255, while equipment and spell output keep growing.

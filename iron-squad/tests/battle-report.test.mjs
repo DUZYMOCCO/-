@@ -53,7 +53,7 @@ assert.equal(view.querySelectorAll('.report-entry').length,3);assert.match(view.
 [...view.querySelectorAll('.report-filter')].find(b=>b.dataset.kind==='death').click();
 assert.equal(document.querySelectorAll('#view-strat-report .report-entry').length,1);assert.match(document.querySelector('#view-strat-report .report-entry').textContent,/力尽きました/);
 game.showToast('🧒 子供を安全な場所へ送り届けた！');assert.equal(document.querySelectorAll('#view-strat-report .report-entry').length,1,'filter kept while new entries arrive');
-const saved=JSON.parse(JSON.stringify(game.saveGame()));game.resumeSavedGame(saved);assert.equal(game.battleReport.length,4,'report survives save/resume');
+const saved=JSON.parse(JSON.stringify(game.saveGame({immediate:true})));game.resumeSavedGame(saved);assert.equal(game.battleReport.length,4,'report survives save/resume');
 // A hero appears: the record window shows up with the party.
 const {rollHeroRevelation}=await import('../js/hero-party.js');game.phase=10;rollHeroRevelation(game,()=>0);assert.ok(game.heroJourney.party);
 game.renderStrategyUI();assert.equal(document.getElementById('tab-strat-hero').classList.contains('hidden'),false,'hero record appears once a hero is born');

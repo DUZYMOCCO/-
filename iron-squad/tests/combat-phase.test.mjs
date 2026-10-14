@@ -63,7 +63,7 @@ assert.equal(game.lastReinforcements.deployed,8);assert.equal(game.reserves.leng
 assert.ok(game.squad.every(s=>!participated(s)));
 // In-progress combat/healing and reserve pools survive saving and loading.
 recordCombat(game.player);healByMedic(medic,{hp:10,maxHp:100},7);
-game.phaseTimer=87;game.saveGame();
+game.phaseTimer=87;game.saveGame({immediate:true});
 const saved=saveSlots.get(game.activeSlotId).data;
 game.resumeSavedGame(saved);
 assert.equal(game.phaseTimer,87);assert.equal(game.phaseDuration,120);
@@ -94,13 +94,13 @@ for(let wave=1;wave<=5;wave++){
  if(game.restTimer>0)advanceRest(game,10);game.worldTime=(wave-1)*128;healer.x=target.x;healer.y=target.y;
  knockAndRevive();game.worldTime+=60;knockAndRevive();assert.equal(personalDownCount(target),2);assert.equal(recentDownCount(target,game.phase),wave*2);
  game.completePhase();if(wave<5){assert.equal(target.survivedDeathlines,0);assert.equal(game.deathlineReport.occurred,false);}
- if(wave===4){const targetId=target.id,healerId=healer.id;game.resumeSavedGame(structuredClone(game.saveGame()));target=game.squad.find(s=>s.id===targetId);healer=game.squad.find(s=>s.id===healerId);assert.equal(recentDownCount(target,game.phase),8);}
+ if(wave===4){const targetId=target.id,healerId=healer.id;game.resumeSavedGame(structuredClone(game.saveGame({immediate:true})));target=game.squad.find(s=>s.id===targetId);healer=game.squad.find(s=>s.id===healerId);assert.equal(recentDownCount(target,game.phase),8);}
 }
 assert.equal(target.survivedDeathlines,1);assert.equal(healer.survivedDeathlines,0);assert.equal(game.deathlineReport.qualifiedCount,1);assert.equal(game.deathlineReport.awakenedList[0].id,target.id);assert.equal(game.deathlineReport.awakenedList[0].downCount,10);assert.equal(game.deathlineReport.deadCount,0);assert.equal(personalDownCount(target),0);
 assert.equal(game.deathlineReport.windowPhases,5);assert.equal(recentDownCount(target,game.phase),0);
 assert.ok(game.squad.filter(s=>s!==target&&s!==healer).every(s=>s.survivedDeathlines===0));
 const heldSkill=target.deathlineSkills.length;game.completePhase();assert.equal(target.deathlineSkills.length,heldSkill,'rest cannot duplicate the same wave awakening');
-const reportSave=structuredClone(game.saveGame());game.resumeSavedGame(reportSave);assert.equal(game.deathlineReport.awakenedList[0].downCount,10);assert.equal(personalDownCount(game.squad.find(s=>s.id===target.id)),0);
+const reportSave=structuredClone(game.saveGame({immediate:true}));game.resumeSavedGame(reportSave);assert.equal(game.deathlineReport.awakenedList[0].downCount,10);assert.equal(personalDownCount(game.squad.find(s=>s.id===target.id)),0);
 advanceRest(game,10);game.completePhase();assert.equal(game.deathlineReport.occurred,false,'the next wave starts a fresh count');
 // Ten lifetime downs spread across six waves are not ten in the rolling five-wave window.
 game.startFreshGame(false);target=game.squad[0];healer=game.squad.find(s=>s.soldierClass==='MEDIC');healer.x=target.x;healer.y=target.y;recordCombat(target);
@@ -109,7 +109,7 @@ assert.equal(target.timesDown,10);assert.equal(recentDownCount(target,6),8);
 // Merchant and gate-guard downs are outside the army trigger; rest downs do not leak into the next wave.
 game.startFreshGame(false);const npc={id:'npc-down',name:'NPC',isGateGuard:true,x:0,y:0,hp:100,maxHp:100};markSoldierDown(game,npc);assert.equal(personalDownCount(npc),0);
 game.restTimer=8;markSoldierDown(game,game.squad[0]);assert.equal(personalDownCount(game.squad[0]),0);
-const legacy=structuredClone(game.saveGame());delete legacy.squad[0].phaseActivity.downs;delete legacy.squad[0].deathlineDownHistory;legacy.squad[0].timesDown=999;game.resumeSavedGame(legacy);assert.equal(recentDownCount(game.squad[0],game.phase),0,'lifetime downs in old saves are not recent-wave events');
+const legacy=structuredClone(game.saveGame({immediate:true}));delete legacy.squad[0].phaseActivity.downs;delete legacy.squad[0].deathlineDownHistory;legacy.squad[0].timesDown=999;game.resumeSavedGame(legacy);assert.equal(recentDownCount(game.squad[0],game.phase),0,'lifetime downs in old saves are not recent-wave events');
 // Per-person counts cannot carry across waves or award other participating soldiers.
 assert.equal(deathlineEligible({dead:true,phaseActivity:{downs:10}},1),false);
 assert.equal(deathlineEligible({dead:false,phaseActivity:{downs:9}},1),false);

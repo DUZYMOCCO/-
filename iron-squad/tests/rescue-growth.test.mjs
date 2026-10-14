@@ -28,9 +28,9 @@ assert.equal(game.player.maxHp,Math.floor(original.hp*1.01));assert.equal(game.p
 const bonuses=structuredClone(game.rescueBonuses);game.recalcPlayerStats();game.recalcPlayerStats();assert.equal(game.player.atkSpeed,original.atkSpeed*1.01,'recalculation does not compound the reward');
 game.equipped.weapon={id:'speed-gear',type:'WEAPON',weaponStyle:'sword',stats:{atkSpeed:20}};game.recalcPlayerStats();assert.equal(game.player.atkSpeed,1.2*1.01);
 game.equipped.weapon=null;game.recalcPlayerStats();assert.equal(game.player.atkSpeed,1.01,'changing equipment preserves the permanent percentage');
-game.saveGame();game.resumeSavedGame(saveSlots.get(game.activeSlotId).data);assert.deepEqual(game.rescueBonuses,bonuses);
+game.saveGame({immediate:true});game.resumeSavedGame(saveSlots.get(game.activeSlotId).data);assert.deepEqual(game.rescueBonuses,bonuses);
 assert.equal(grantPermanentRescueReward(game,{id:'reward-test-0'},()=>.99),null,'the saved identity ledger blocks duplicates even with a reconstructed NPC');
-game.saveGame();game.startFreshGame(true);assert.deepEqual(game.rescueBonuses,bonuses,'reenlistment in this expedition retains permanent rewards');
+game.saveGame({immediate:true});game.startFreshGame(true);assert.deepEqual(game.rescueBonuses,bonuses,'reenlistment in this expedition retains permanent rewards');
 game.activeSlotId=saveSlots.create('SEPARATE EXPEDITION').id;game.startFreshGame(false);assert.deepEqual(game.rescueBonuses,emptyRescueBonuses(),'a different new expedition starts separately');
 const oldRandom=Math.random;
 try {
@@ -46,7 +46,7 @@ const merchant=game.merchants[0];game.player.x=merchant.x;game.player.y=merchant
 document.querySelector('.merchant-heal-button').click();assert.equal(merchantHealWavesLeft(game,merchant),2);assert.match(document.querySelector('.merchant-heal-countdown').textContent,/あと2ウェーブ/);
 game.player.hp=1;const paidGold=game.gold;assert.equal(useMerchantHealing(game,merchant).reason,'cooldown');assert.equal(game.gold,paidGold);
 game.completePhase();assert.equal(merchantHealWavesLeft(game,merchant),1);assert.match(document.querySelector('.merchant-heal-countdown').textContent,/あと1ウェーブ/);
-game.saveGame();const waiting=saveSlots.get(game.activeSlotId).data;assert.equal(waiting.merchants.find(m=>m.id===merchant.id).healReadyPhase,3);
+game.saveGame({immediate:true});const waiting=saveSlots.get(game.activeSlotId).data;assert.equal(waiting.merchants.find(m=>m.id===merchant.id).healReadyPhase,3);
 document.querySelector('.btn-close-merchant').click();game.resumeSavedGame(waiting);let restored=game.merchants[0];assert.equal(merchantHealWavesLeft(game,restored),1);
 game.restTimer=0;game.player.hp=1;game.openMerchantShop(restored);document.querySelector('[data-merchant-section="recovery"]').click();game.completePhase();game.player.hp=1;game._merchantShopRefresh();
 assert.equal(merchantHealWavesLeft(game,restored),0);assert.equal(merchantHealingStatus(game,restored),'available');assert.equal(document.querySelector('.merchant-heal-button').disabled,false);
@@ -64,7 +64,7 @@ const hpBeforeHits=guard.maxHp;for(let i=0;i<16;i++){guard.hp=guard.maxHp;game.d
 Math.random=hitRandom;
 assert.ok(guard.hitGrowthHp>0);assert.equal(guard.hitGrowthEvents,16);assert.ok(guard.maxHp>hpBeforeHits,'real damage adds permanent tank growth');
 const phases=guard.survivedWaves;finishEscortPhase(game);assert.equal(guard.survivedWaves,phases+1);finishEscortPhase(game);assert.equal(guard.survivedWaves,phases+1,'an idle guard does not gain combat experience');
-game.saveGame();const guardSave=structuredClone(serializeMerchants(game.merchants)[0].escorts[0]);game.resumeSavedGame(saveSlots.get(game.activeSlotId).data);
+game.saveGame({immediate:true});const guardSave=structuredClone(serializeMerchants(game.merchants)[0].escorts[0]);game.resumeSavedGame(saveSlots.get(game.activeSlotId).data);
 const guardAfter=game.merchants[0].escorts[0];for(const key of ['level','exp','maxHp','atk','hitGrowthHp','hitGrowthDef','hitGrowthEvents','survivedWaves'])assert.equal(guardAfter[key],guardSave[key],`saved guard ${key}`);
 assert.deepEqual(guardAfter.weaponMastery,guardSave.weaponMastery);
 assert.deepEqual(guardAfter.attributeProfile,guardSave.attributeProfile,'escort aptitude and practice survive save/resume');

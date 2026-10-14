@@ -94,6 +94,6 @@ test('the real ninja AI repeatedly blocked by the guild returns via the real upd
  }
  unhook();
  assert.ok(warpedAt>=8&&warpedAt<10,`actual collision must lead to recovery: ${warpedAt}; ${JSON.stringify(trace)}`);assert.ok(largest>100);assert.ok(Math.hypot(ninja.x-g.player.x,ninja.y-g.player.y)<=100);
- const saved=structuredClone(g.saveGame());assert.ok(!Object.keys(saved.squad[0]).some(k=>/follow|recover/i.test(k)),'tracking is not persisted');
+ const saved=structuredClone(g.saveGame({immediate:true}));assert.ok(!Object.keys(saved.squad[0]).some(k=>/follow|recover/i.test(k)),'tracking is not persisted');
  g.resumeSavedGame(saved);assert.equal(g.squad[0].hp,ninja.hp);assert.deepEqual(g.squad[0].equipped,ninja.equipped);
 });

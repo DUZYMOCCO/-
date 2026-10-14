@@ -14,7 +14,7 @@ const g=Object.create(IronSquadGame);
 Object.assign(g,{container:document.getElementById('game'),width:390,height:844,zoom:1,ctx,camera:{x:83000,y:83000},selectedSaleIds:new Set(),commandActiveUntil:0});
 for(const method of ['startGameLoop','showToast','spawnSparks','spawnDamageText','updateSpawns'])g[method]=noop;
 g.setupUI();g.activeSlotId=saveSlots.create('DEATHLINE ROLE AND MERCHANT MENU TEST ONLY').id;g.startFreshGame(false);g.closeStrategyModal();g.career.status='enlisted';
-const initial=structuredClone(g.saveGame()),rng=Math.random;
+const initial=structuredClone(g.saveGame({immediate:true})),rng=Math.random;
 const soldier=cls=>{const base=SOLDIER_CLASSES[cls].baseClassId||cls,u=g.createNewSoldier(null,{classKey:base,talent:'AVERAGE',attributeProfile:rollAttributeProfile(base,'AVERAGE',()=>.5,true)});u.soldierClass=cls;g.recalcSoldierStats(u);return u;};
 const popup=()=>document.getElementById('merchant-shop-popup');
 const enter=section=>popup().querySelector(`[data-merchant-section="${section}"]`).click();
@@ -45,10 +45,10 @@ try{
   const mage=soldier('ARCANE_SOVEREIGN');mage.deathlineSkills=['BLOOD_RAGE','DEADLY_FOCUS','MIRACLE_PRAYER','PHANTOM_STEP'];g.recalcSoldierStats(mage);assert.equal(mage.deathlineSkills.length,4);assert.deepEqual(new Set(mage.deathlineSkills),new Set(deathlineSkillPool(mage)));
   const down=soldier('VOID_EDGE');down.deathlineSkills=['MIRACLE_PRAYER'];down.isDown=true;down.hp=0;g.recalcSoldierStats(down);assert.equal(down.hp,0);assert.equal(down.deathlineSkills.length,1);
   const hero={isHero:true,deathlineSkills:['MIRACLE_PRAYER']};assert.equal(normalizeDeathlineSkills(hero),false);assert.deepEqual(hero.deathlineSkills,['MIRACLE_PRAYER']);
-  g.squad=[light,mage];g.reserves=[down];const stored=structuredClone(g.saveGame());
-  for(let n=0;n<3;n++){g.resumeSavedGame(structuredClone(n?g.saveGame():stored));assert.deepEqual(g.squad.find(u=>u.id===light.id).deathlineSkills,light.deathlineSkills);assert.deepEqual(g.reserves.find(u=>u.id===down.id).deathlineSkills,down.deathlineSkills);}
+  g.squad=[light,mage];g.reserves=[down];const stored=structuredClone(g.saveGame({immediate:true}));
+  for(let n=0;n<3;n++){g.resumeSavedGame(structuredClone(n?g.saveGame({immediate:true}):stored));assert.deepEqual(g.squad.find(u=>u.id===light.id).deathlineSkills,light.deathlineSkills);assert.deepEqual(g.reserves.find(u=>u.id===down.id).deathlineSkills,down.deathlineSkills);}
   // A legacy save is repaired on load (both deployed soldiers and reserves), without re-awakening.
-  const legacy=structuredClone(g.saveGame());legacy.squad.find(u=>u.id===light.id).deathlineSkills=['PHANTOM_STEP','MIRACLE_PRAYER'];legacy.reserves.find(u=>u.id===down.id).deathlineSkills=['MIRACLE_PRAYER'];
+  const legacy=structuredClone(g.saveGame({immediate:true}));legacy.squad.find(u=>u.id===light.id).deathlineSkills=['PHANTOM_STEP','MIRACLE_PRAYER'];legacy.reserves.find(u=>u.id===down.id).deathlineSkills=['MIRACLE_PRAYER'];
   g.resumeSavedGame(legacy);assert.equal(g.squad.find(u=>u.id===light.id).deathlineSkills.includes('MIRACLE_PRAYER'),false);assert.equal(g.reserves.find(u=>u.id===down.id).deathlineSkills.includes('MIRACLE_PRAYER'),false);
   // A real healer keeps the useful healing and resurrection modifiers.
   const medic=soldier('MEDIC'),baseHeal=medic.healPower;medic.deathlineSkills=['MIRACLE_PRAYER'];g.recalcSoldierStats(medic);assert.ok(medic.healPower>baseHeal);assert.equal(revivalCooldownOf(medic),24);

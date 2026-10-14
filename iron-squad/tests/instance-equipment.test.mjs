@@ -20,7 +20,7 @@ const game=Object.create(IronSquadGame),center=WORLD_SIZE/2;
 Object.assign(game,{container:document.getElementById('game'),width:390,height:664,zoom:1,ctx,camera:{x:center,y:center},selectedSaleIds:new Set(),commandActiveUntil:0,joystick:{active:false,dirX:0,dirY:0}});
 for(const method of ['startGameLoop','showToast','spawnDamageText','spawnSparks'])game[method]=noop;
 game.setupUI();game.activeSlotId=saveSlots.create('INSTANCE EQUIPMENT TEST ONLY').id;game.startFreshGame(false);
-const initial=structuredClone(game.saveGame()),fresh=()=>{game._merchantShopClose?.();game.resumeSavedGame(structuredClone(initial));game.closeStrategyModal();game.monsters=[];game.restTimer=0;game.currentQuest=null;game.updateSpawns=noop;};
+const initial=structuredClone(game.saveGame({immediate:true})),fresh=()=>{game._merchantShopClose?.();game.resumeSavedGame(structuredClone(initial));game.closeStrategyModal();game.monsters=[];game.restTimer=0;game.currentQuest=null;game.updateSpawns=noop;};
 const savePreview=name=>{
   if(!process.env.EQUIPMENT_REVIEW_DIR)return;
   mkdirSync(process.env.EQUIPMENT_REVIEW_DIR,{recursive:true});
@@ -56,7 +56,7 @@ for(const kind of ['dungeon','ruin','town']){
   const drawn=[],draw=game.drawSoldier;game.drawSoldier=(c,s)=>drawn.push(s.id);game.render();game.drawSoldier=draw;
   assert.ok(drawn.includes(companions[0].id),'the real renderer still draws the personal squad');
   assert.ok(drawn.every(id=>companions.some(s=>s.id===id)),'field soldiers are absent even at overlapping room coordinates');
-  const snapshot=game.saveGame();assert.ok(snapshot);
+  const snapshot=game.saveGame({immediate:true});assert.ok(snapshot);
   for(const s of main){const saved=snapshot.squad.find(u=>u.id===s.id);assert.deepEqual([saved.x,saved.y],[positions.get(s.id).x,positions.get(s.id).y]);}
   game.exitDungeon();for(const s of main)assert.deepEqual([s.x,s.y],[positions.get(s.id).x,positions.get(s.id).y]);
   assert.deepEqual([newcomer.x,newcomer.y],newPos,'recruits arriving outside also stay outside on exit');
@@ -73,7 +73,7 @@ for(const kind of ['merchant','gate']){
   Object.assign(npc,{x:game.player.x+10,y:game.player.y});markSoldierDown(game,npc);assert.equal(attachWounded(game,game.player,npc),true);const origin={x:game.player.x,y:game.player.y};
   game.enterDungeon({...game.dungeons.find(d=>d.kind==='dungeon'),mobCount:0,eliteCount:0,boss:null});syncDragged(game,1);assert.equal(inCurrentInstance(game,npc),true);
   if(kind==='gate')assert.equal(gateGuardVisible(game,npc),true);
-  const data=game.saveGame(),saved=(kind==='merchant'?data.merchants:data.gateGuards).find(u=>u.id===npc.id);
+  const data=game.saveGame({immediate:true}),saved=(kind==='merchant'?data.merchants:data.gateGuards).find(u=>u.id===npc.id);
   assert.ok(Math.hypot(saved.x-origin.x,saved.y-origin.y)<50,'carried NPC saves return to field coordinates');
   game.exitDungeon();assert.ok(Math.hypot(npc.x-origin.x,npc.y-origin.y)<50);assert.equal(npc.carrierId,'player');
 }
@@ -103,7 +103,7 @@ for(let i=0;i<30;i++){
 }
 assert.ok(game.squad.filter(s=>originalIds.includes(s.id)).some(s=>Object.values(s.equipped).filter(Boolean).length>1),'funded soldiers gradually acquire equipment over thirty waves');
 assert.equal(game.squad[0].equipped.armor.id,upgraded.id);assert.equal(upgraded.upgrade,25);assert.ok(totalProcurement>0);
-game.saveGame();game.resumeSavedGame(saveSlots.get(game.activeSlotId).data);assert.equal(game.squad[0].equipped.armor.id,upgraded.id);
+game.saveGame({immediate:true});game.resumeSavedGame(saveSlots.get(game.activeSlotId).data);assert.equal(game.squad[0].equipped.armor.id,upgraded.id);
 game.phase++;game.treasury=0;for(const s of [...game.squad,...game.reserves])s.gold=0;game.squad[0].equipped.shield=null;assert.deepEqual(game.supplyMissingEquipment(),{phase:game.phase-1,issued:0,spent:0,updated:0,forged:0,budget:0,publicIssued:0,publicSpent:0,funding:'personal'});assert.equal(game.treasury,0);assert.equal(game.squad[0].equipped.shield,null);
 
 // Sorted shop cards keep original stock indices; purchase replaces the correct slot and retains old gear.
@@ -117,7 +117,7 @@ assert.match(popup.querySelector('[data-buy]').textContent,/購入して装備/)
 assert.equal(game.equipped.weapon.id,strong.id);assert.equal(game.gold,gold-400);assert.ok(game.inventory.some(i=>i.id===old.id));assert.equal(old.upgrade,3);assert.ok(merchant.stock.some(i=>i.id===cheap.id));
 popup.querySelector('[data-shop-group="armor"]').click();assert.equal(popup.querySelectorAll('.merchant-stock-card').length,1);savePreview('merchant-armor-v2.7.1');popup.querySelector('[data-buy]').click();assert.equal(game.equipped.armor.id,armor.id);
 popup.querySelector('[data-shop-group="weapon"]').click();popup.querySelector('[data-buy]').click();assert.equal(game.equipped.weapon.id,cheap.id,'explicitly buying weaker gear also equips it');assert.ok(game.inventory.some(i=>i.id===strong.id));
-assert.equal(saveSlots.get(game.activeSlotId).data.equipped.weapon.id,cheap.id);game._merchantShopClose();
+game.saveGame({auto:true});assert.equal(saveSlots.get(game.activeSlotId).data.equipped.weapon.id,cheap.id);game._merchantShopClose();
 // Separate bag panels retain selected sale IDs and sort by real bonuses rather than tier alone.
 game.inventory=[cheap,armor,strong,gear('weak-helmet','HELMET',2),gear('strong-helmet','HELMET',1,20)];game.selectedSaleIds=new Set([strong.id]);game.renderStrategyUI();
 document.querySelector('[data-inventory-group="weapon"]').click();

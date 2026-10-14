@@ -12,7 +12,7 @@ const noop=()=>{},ctx=new Proxy({measureText:()=>({width:40}),createLinearGradie
 const {IronSquadGame}=await import('../js/index.js');const {saveSlots}=await import('../js/save-slots.js');
 const game=Object.create(IronSquadGame);Object.assign(game,{container:document.getElementById('game'),width:390,height:664,zoom:1,ctx,camera:{x:79360,y:79360},selectedSaleIds:new Set(),commandActiveUntil:0});
 for(const method of ['startGameLoop','showToast','spawnDamageText','spawnSparks'])game[method]=noop;
-game.setupUI();game.activeSlotId=saveSlots.create('NATION TEST ONLY').id;game.startFreshGame(false);const initial=structuredClone(game.saveGame());
+game.setupUI();game.activeSlotId=saveSlots.create('NATION TEST ONLY').id;game.startFreshGame(false);const initial=structuredClone(game.saveGame({immediate:true}));
 for(const count of [0,48,200,1000])assert.equal(calcTreasuryGrossIncome(1,count),calcTreasuryGrossIncome(9999,0),'army size and elapsed phases cannot create income');
 game.gold=100000;const before=game.treasury;assert.equal(game.donateToTreasury(10000),true);assert.ok(game.treasury>=before+7500);assert.equal(game.nation.totalDonations,10000);
 for(let wave=0;wave<12;wave++){
@@ -46,14 +46,14 @@ const random=Math.random;Math.random=()=>.99;const casinoGold=game.gold,bet=game
 game.exitDungeon();const center=79360;game.player.x=center;game.player.y=center;
 const target={x:center,y:center,maxHp:10000,hp:10000,def:0};game.squad=[];game.nation=normalizeNation({investment:180000});assert.equal(headquartersDamageMult(game,target),.7);let displayedDamage;game.spawnDamageText=(x,y,value)=>{if(typeof value==='number')displayedDamage=value;};game.damageTarget(target,100);assert.equal(displayedDamage,70,'developed HQ reduces actual combat damage');game.spawnDamageText=noop;
 target.x+=1000;assert.equal(headquartersDamageMult(game,target),1);game.currentDungeon={kind:'town'};target.x=center;assert.equal(headquartersDamageMult(game,target),1,'local town coordinates never receive field defenses');game.currentDungeon=null;
-const saved=structuredClone(game.saveGame());game.nation=null;game.resumeSavedGame(saved);assert.equal(game.nation.level,5);assert.equal(game.nation.casinoPhase,saved.nation.casinoPhase);const legacy={...initial};delete legacy.nation;game.resumeSavedGame(legacy);assert.equal(game.nation.level,0);
+const saved=structuredClone(game.saveGame({immediate:true}));game.nation=null;game.resumeSavedGame(saved);assert.equal(game.nation.level,5);assert.equal(game.nation.casinoPhase,saved.nation.casinoPhase);const legacy={...initial};delete legacy.nation;game.resumeSavedGame(legacy);assert.equal(game.nation.level,0);
 game.renderStrategyUI();game._selectStratTab('nation');assert.ok(document.getElementById('nation-status').textContent.includes('次ウェーブ'));assert.equal(document.getElementById('nation-status').closest('#view-strat-nation').id,'view-strat-nation');game._openNationPage('finance','fiscal');assert.equal(document.getElementById('nation-finances').classList.contains('hidden'),false);game.completePhase();game.renderStrategyUI();assert.ok(document.querySelector('.fiscal-table').textContent.includes('本陣・町の開発'));assert.ok(document.querySelector('.fiscal-net').textContent.includes('黒字'));
 // Render the real architecture into pixels at both early and late development levels.
 const {createCanvas}=createRequire(resolve('C:/Users/Yoshiyuki/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules','entry.cjs'))('@napi-rs/canvas');const canvas=createCanvas(640,640),c=canvas.getContext('2d');
 game.nation=normalizeNation({investment:180000});drawNationalDevelopment(c,game,320,320);assert.ok(c.getImageData(0,0,640,640).data.some((n,i)=>i%4===3&&n>0));drawNationalDevelopment(c,game,320,320,true);
 // Death keeps this expedition's nation and offers the last living save.
 game.nation=normalizeNation({investment:90000,armament:{...game.nation.armament,policy:'balanced',techTier:4}});
-game.gold=777;game.treasury=42000;game.player.hp=game.player.maxHp||130;game.saveGame();
+game.gold=777;game.treasury=42000;game.player.hp=game.player.maxHp||130;game.saveGame({immediate:true});
 const livingGold=saveSlots.get(game.activeSlotId).data.gold;
 game.gold=1;game.treasury=99999;game.nation=normalizeNation({investment:180000,armament:{...game.nation.armament,policy:'military',techTier:6}});
 game.sharedEquipBox=[{id:'death-box'}];game.player.hp=0;game.gameOver();

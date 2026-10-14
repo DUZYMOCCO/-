@@ -14,7 +14,7 @@ const c=WORLD_SIZE/2,F=83000,game=Object.create(IronSquadGame);game.container=do
 Object.assign(game,{width:390,height:664,zoom:1,ctx,camera:{x:c,y:c},selectedSaleIds:new Set(),commandActiveUntil:0,joystick:{active:false,dirX:0,dirY:0}});
 for(const k of ['startGameLoop','showToast','spawnSparks','spawnDamageText'])game[k]=noop;
 game.setupUI();game.activeSlotId=saveSlots.create('CLASS BALANCE TEST ONLY').id;game.startFreshGame(false);
-const original=structuredClone(game.saveGame());
+const original=structuredClone(game.saveGame({immediate:true}));
 const tpl=cls=>structuredClone(original.squad.find(s=>s.soldierClass===cls));
 // Class numbers.
 assert.equal(SOLDIER_CLASSES.HEAVY.bonusHp,120);assert.equal(SOLDIER_CLASSES.HEAVY.bonusDef,60);assert.equal(SOLDIER_SPEAR_DMG_MULT,1.15);assert.equal(SOLDIER_HAMMER_DMG_MULT,1.35);

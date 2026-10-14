@@ -2,7 +2,7 @@ import {attributeValues,ensureAttributeProfile} from './unit-attributes.js?v=248
 import {isMagicUser,ensureMana} from './magic-rules.js?v=266';
 import {WORLD_SIZE} from './world.js?v=260';
 import {inCurrentInstance} from './instance-rules.js?v=256';
-import {saveSlots} from './save-slots.js?v=262';
+import {saveSlots} from './save-slots.js?v=269';
 import {requestCheckpointAction,checkpointNotice} from './checkpoint-ui.js?v=259';
 import {nearestRevivalPotionTarget,reviveByPotion,REVIVAL_POTION_RANGE} from './casualty-rules.js?v=267';
 

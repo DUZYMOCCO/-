@@ -6,6 +6,7 @@ const LOCAL_KEY=`game_studio_${KEY}`;
 let cachedRaw,cachedJson;
 let cachedIds=new Set();
 let revision=0,sequence=0,worker=null,workerDisabled=false,workerFailures=0;
+let pendingJob=null;
 const jobs=new Map();
 function readSlots(){
   const raw=localStorage.getItem(LOCAL_KEY);if(raw===null)return null;
@@ -20,6 +21,7 @@ function readSlots(){
 }
 function writeSlots(slots){
   revision++; // A manual write supersedes any older background snapshot, even if it fails.
+  if(pendingJob){pendingJob.resolve({status:'superseded'});pendingJob=null;}
   try{
     const json=JSON.stringify(slots);
     const raw=encodeSaveList(json);
@@ -30,8 +32,23 @@ function writeSlots(slots){
 }
 function disableWorker(){
   workerDisabled=true;worker?.terminate();worker=null;
-  // Termination prevents replies for older queued work; settle those promises too.
-  for(const job of [...jobs.values()])if(job.revision!==revision)completeJob(job,null);
+}
+function drainPending(){
+  if(jobs.size||!pendingJob)return;
+  const job=pendingJob;pendingJob=null;
+  try{
+    // Read again at dispatch, but never rebase a request over a newer manual/external write.
+    const base=localStorage.getItem(LOCAL_KEY);
+    if(job.revision!==revision||base!==job.base){job.resolve({status:'superseded'});return;}
+    job.base=base;sendJob(job);
+  }catch(error){completeJob(job,null,String(error),null,false);}
+}
+function sendJob(job){
+  jobs.set(job.id,job);
+  const target=backgroundWorker();
+  if(!target){retryJob(job);drainPending();return;}
+  try{target.postMessage({id:job.id,slotId:job.slotId,values:job.values,savedAt:job.savedAt,base:job.base});}
+  catch(error){completeJob(job,null,String(error));drainPending();}
 }
 function retryJob(job){
   try{
@@ -67,7 +84,7 @@ function backgroundWorker(){
   if(worker)return worker;
   try{
     worker=new Worker(new URL('./save-worker.js?v=261',import.meta.url),{type:'module'});
-    worker.onmessage=({data})=>{const job=jobs.get(data.id);if(job)completeJob(job,data.raw,data.error,data.json);};
+    worker.onmessage=({data})=>{const job=jobs.get(data.id);if(job)completeJob(job,data.raw,data.error,data.json);drainPending();};
     worker.onerror=()=>{
       disableWorker();
       for(const job of [...jobs.values()]){
@@ -75,6 +92,7 @@ function backgroundWorker(){
         if(job.revision!==revision||localStorage.getItem(LOCAL_KEY)!==job.base){completeJob(job,null);continue;}
         retryJob(job);
       }
+      drainPending();
     };
     return worker;
   }catch{workerDisabled=true;return null;}
@@ -115,15 +133,14 @@ export const saveSlots = {
   },
   updateBackground(id,values){
     try{
-      const target=backgroundWorker();
-      if(!target)return Promise.resolve({status:this.update(id,values)?'saved':'failed'});
       if(localStorage.getItem(LOCAL_KEY)!==cachedRaw)this.list();
       if(!cachedIds.has(id))return Promise.resolve({status:'missing'});
       const snapshot=structuredClone(values),base=localStorage.getItem(LOCAL_KEY),ticket=++revision,jobId=++sequence;
       return new Promise(resolve=>{
-        const job={id:jobId,slotId:id,values:snapshot,savedAt:Date.now(),base,revision:ticket,resolve};jobs.set(jobId,job);
-        // postMessage clones the snapshot before gameplay resumes. Parsing/merging/JSON/packing run off-thread.
-        try{target.postMessage({id:jobId,slotId:id,values:job.values,savedAt:job.savedAt,base});}catch(error){completeJob(job,null,String(error));}
+        const job={id:jobId,slotId:id,values:snapshot,savedAt:Date.now(),base,revision:ticket,resolve};
+        // Retain only one running clone and the newest waiting snapshot, including across slots.
+        if(jobs.size){if(pendingJob)pendingJob.resolve({status:'superseded'});pendingJob=job;}
+        else sendJob(job);
       });
     }catch(error){saveSlots.lastWriteError=error;return Promise.resolve({status:'failed'});}
   },

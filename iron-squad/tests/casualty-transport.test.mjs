@@ -37,7 +37,7 @@ const expired=wounded('expired');expired.downTimer=.1;game.squad=[expired];const
 updateWounded(game,1);updateWounded(game,1);updateWounded(game,2.1);assert.equal(expired.dead,true);assert.equal(game.phaseCasualties,casualties+1);
 assert.equal(game.remains.length,1);assert.equal(game.remains[0].x,expired.x);game.ageRemains(26);assert.equal(game.remains.length,0);
 const carried=wounded('saved');game.squad=[carried];game.player.x=center+600;assert.equal(attachWounded(game,game.player,carried),true);
-game.saveGame();game.resumeSavedGame(saveSlots.get(game.activeSlotId).data);assert.equal(game.squad[0].carrierId,'player');assert.equal(game.squad[0].hp,0);
+game.saveGame({immediate:true});game.resumeSavedGame(saveSlots.get(game.activeSlotId).data);assert.equal(game.squad[0].carrierId,'player');assert.equal(game.squad[0].hp,0);
 game.gold=100;game.healAllSquad();assert.equal(game.squad[0].hp,0);
 game.clearOutpost({type:'SUPPLY',x:center+600,y:center});assert.equal(game.squad[0].hp,0);
 game.completePhase();assert.equal(game.squad[0].hp,0,'salary/treatment does not remotely revive a casualty');

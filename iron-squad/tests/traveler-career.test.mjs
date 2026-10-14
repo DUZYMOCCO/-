@@ -61,7 +61,7 @@ assert.deepEqual([waiting.x,waiting.y],[FIELD_TAVERN.x,FIELD_TAVERN.y]);assert.e
 assert.ok(game.parkTavernCompanion(game.listPersonalGuardsAlive()[0].id));const rejoinWallet=game.gold;assert.ok(game.rejoinTavernCompanion(waitId));assert.equal(game.gold,rejoinWallet,'existing companions rejoin without another fee');
 assert.equal(JSON.stringify(game.squad.find(s=>s.id===waitId).appearance),identity);assert.equal(JSON.stringify(game.squad.find(s=>s.id===waitId).equipped),weapon);
 document.getElementById('btn-tavern-close').click();game.closeStrategyModal();
-const saved=structuredClone(game.saveGame());game.resumeSavedGame(structuredClone(saved));assert.equal(game.career.status,'invited');assert.equal(game.taverns.waiting.length,2);
+const saved=structuredClone(game.saveGame({immediate:true}));game.resumeSavedGame(structuredClone(saved));assert.equal(game.career.status,'invited');assert.equal(game.taverns.waiting.length,2);
 assert.equal(game.listPersonalGuardsAlive().length,5);assert.deepEqual(game.taverns.waiting.map(s=>s.id),saved.taverns.waiting.map(s=>s.id));assert.equal(game.taverns.roster.phase,saved.taverns.roster.phase);game.closeStrategyModal();
 
 // Existing rescue joins immediately even at five; safely waiting only after leaving the instance.
@@ -86,9 +86,9 @@ for(let phase=10;phase<14;phase++){game.phase=phase;game.gainExp(1,{share:false}
 assert.equal(game.rankIndex,1,'huge stored merit still promotes just one grade after four active phases');
 for(let i=0;i<100;i++)game.gainExp(1e6,{share:false});assert.equal(game.rankIndex,1,'many kills in the same phase do not count as years of service');
 for(let phase=14;phase<20;phase++){game.phase=phase;game.gainExp(1,{share:false});}assert.equal(game.rankIndex,2);
-const roundTrip=structuredClone(game.saveGame());game.resumeSavedGame(roundTrip);assert.equal(game.career.status,'enlisted');assert.equal(game.exp,roundTrip.exp);assert.equal(game.rankIndex,2);
+const roundTrip=structuredClone(game.saveGame({immediate:true}));game.resumeSavedGame(roundTrip);assert.equal(game.career.status,'enlisted');assert.equal(game.exp,roundTrip.exp);assert.equal(game.rankIndex,2);
 // A later expedition keeps the enlisted status but restarts service streaks with the new phase numbering.
-game.saveGame();game.startFreshGame(true);game.closeStrategyModal();assert.equal(game.career.status,'enlisted');assert.equal(game.rankIndex,0);
+game.saveGame({immediate:true});game.startFreshGame(true);game.closeStrategyModal();assert.equal(game.career.status,'enlisted');assert.equal(game.rankIndex,0);
 assert.equal(game.career.servicePhases,0);assert.equal(game.career.promotionServicePhases,0);assert.equal(game.career.lastActivePhase,0);
 game.destroy();dom.window.close();
 console.log('PASS: traveler start, own merit and optional invitation, five followers, 5,000G hires without conversation, waiting/swap/save, unchanged rescue, independent demon-king route, gated army, gradual promotions and current save roundtrip');

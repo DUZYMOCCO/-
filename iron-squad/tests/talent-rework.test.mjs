@@ -55,8 +55,8 @@ try{
   assert.equal(genius.maxHp,average.maxHp*2);assert.ok(genius.atk>=average.atk*2);assert.equal(genius.crit-average.crit,40);assert.ok(genius.speed>average.speed);
   // Old talent keys/counters and saved abilities stay intact, while real views show the new tag.
   const late=make('HEAVY','INFERIOR',35);late.name='大器晩成の確認';late.survivedDeathlines=1;late.inferiorGrit=8;g.recalcSoldierStats(late);g.squad=[late,genius];g.reserves=[];
-  const snapshot=structuredClone(g.saveGame()),profile=structuredClone(late.attributeProfile),lateStats=stats(late);
-  for(let n=0;n<3;n++){g.resumeSavedGame(structuredClone(n?g.saveGame():snapshot));const u=g.squad.find(s=>s.id===late.id);assert.equal(u.talent,'INFERIOR');assert.equal(u.inferiorGrit,8);assert.deepEqual(u.attributeProfile,profile);assert.deepEqual(stats(u),lateStats);}
+  const snapshot=structuredClone(g.saveGame({immediate:true})),profile=structuredClone(late.attributeProfile),lateStats=stats(late);
+  for(let n=0;n<3;n++){g.resumeSavedGame(structuredClone(n?g.saveGame({immediate:true}):snapshot));const u=g.squad.find(s=>s.id===late.id);assert.equal(u.talent,'INFERIOR');assert.equal(u.inferiorGrit,8);assert.deepEqual(u.attributeProfile,profile);assert.deepEqual(stats(u),lateStats);}
   g.closeStrategyModal();g.openStrategyModal();g.renderStrategyUI();const roster=document.querySelector(`.roster-entry[data-soldier-id="${late.id}"]`);assert.ok(roster);assert.match(roster.querySelector('.roster-talent').textContent,/大器晩成/);assert.match(roster.dataset.search,/大器晩成/);
   assert.match(g.buildSoldierDetailHtml(g.squad.find(s=>s.id===late.id)),/🍂大器晩成/);g._troopRankingCategory='deathline';g.renderTroopRankings();assert.match(document.getElementById('command-troop-rankings').textContent,/大器晩成/);
   console.log(JSON.stringify({geniusSimulation:{samples:100000,count:counts.GENIUS,ratePercent:counts.GENIUS/1000,counts},growth:{lv30:.85,lv35:1.2,lv40:1.55,genius:2.4},gritCases,allFamilies:true,saveStable:true,uiLabelsVerified:true}));

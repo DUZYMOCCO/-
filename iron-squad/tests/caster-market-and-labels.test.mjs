@@ -33,12 +33,12 @@ try{
   assert.equal(weaponKinds.size,9);assert.equal(armorKinds.size,6);assert.ok(repeatedWeapons>0&&repeatedArmor>0,'duplicate kinds remain possible');
   // Old live catalogs migrate once; old sold-out catalogs must stay sold out.
   g.nation.armament.techTier=8;for(const merchant of g.merchants)ensureMerchantCatalog(g,merchant,generateRandomDrop);
-  const saved=structuredClone(g.saveGame()),entry=saved.merchants[0];entry.catalogVersion=3;const sold=entry.stock.shift();entry.featuredSoldPhase=saved.phase;
+  const saved=structuredClone(g.saveGame({immediate:true})),entry=saved.merchants[0];entry.catalogVersion=3;const sold=entry.stock.shift();entry.featuredSoldPhase=saved.phase;
   const emptyEntry=saved.merchants[1];emptyEntry.catalogVersion=3;emptyEntry.stock=[];
   g.resumeSavedGame(saved);let m=g.merchants.find(u=>u.id===entry.id);
   assert.equal(m.stock.length,5);assert.equal(m.stock.some(i=>i.id===sold.id),false);assert.equal(m.stock.some(i=>i.merchantCasterSupply),false);assert.equal(m.stock.some(i=>i.merchantFeatured),false);assert.equal(m.catalogVersion,4);
   assert.equal(g.merchants.find(u=>u.id===emptyEntry.id).stock.length,0);
-  const migrated=JSON.stringify(m.stock);g.saveGame();g.resumeSavedGame(structuredClone(g.saveGame()));m=g.merchants.find(u=>u.id===entry.id);assert.equal(JSON.stringify(m.stock),migrated,'reload cannot restock or reroll');
+  const migrated=JSON.stringify(m.stock);g.saveGame({immediate:true});g.resumeSavedGame(structuredClone(g.saveGame({immediate:true})));m=g.merchants.find(u=>u.id===entry.id);assert.equal(JSON.stringify(m.stock),migrated,'reload cannot restock or reroll');
   // Explicit shop fixtures test caster purchase support, independently of random availability.
   m.stock=recipes.map((recipe,i)=>generateRandomDrop(0,'normal',{...recipe,tier:9,id:`purchase-fixture-${i}`,merchant:true,random:()=>.5}));m.catalogVersion=4;m.featuredSoldPhase=0;
   const restoredMage=g.squad.find(u=>u.id===mage.id),restoredMedic=g.squad.find(u=>u.id===medic.id);g.player.x=m.x;g.player.y=m.y;g.gold=1e7;g.openMerchantShop(m);document.querySelector('#merchant-shop-popup [data-merchant-section="trade"]').click();
@@ -50,7 +50,7 @@ try{
     assert.ok((unit.soldierClass==='MAGE'?unit.magicAttack:unit.healPower)>before,'head/hand bonuses affect actual recalculated caster stats');assert.equal(unit.gold,wallet);
     const weapon=m.stock.find(i=>i.weaponStyle===(style==='arcane'?'wand':'staff'));[...document.querySelectorAll('[data-buy]:not([data-inherit])')].find(b=>b.dataset.buyId===weapon.id).click();assert.equal(unit.weapon.id,weapon.id);assert.ok(unit.magicAttack>0);purchased.push(weapon.id);
   }
-  g._merchantShopClose();g.saveGame();g.resumeSavedGame(structuredClone(g.saveGame()));m=g.merchants.find(u=>u.id===entry.id);for(const id of purchased)assert.equal(m.stock.some(i=>i.id===id),false);
+  g._merchantShopClose();g.saveGame({immediate:true});g.resumeSavedGame(structuredClone(g.saveGame({immediate:true})));m=g.merchants.find(u=>u.id===entry.id);for(const id of purchased)assert.equal(m.stock.some(i=>i.id===id),false);
   m.stock=[];assert.equal(ensureMerchantCatalog(g,m,generateRandomDrop),false);assert.equal(m.stock.length,0,'sold-out supplies stay sold through reload/open');g.phase++;ensureMerchantCatalog(g,m,generateRandomDrop);assert.equal(m.stock.length,MERCHANT_CATALOG_SIZE);assert.equal(m.stock.some(i=>i.merchantCasterSupply),false);
   // Actual Canvas text matrices, including attack-facing and walking bob.
   const labelEvidence=[];

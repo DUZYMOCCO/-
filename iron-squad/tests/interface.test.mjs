@@ -208,7 +208,7 @@ assert.equal(window.getComputedStyle($('player-hp')).color,'var(--ui-danger)','c
 game.restTimer=0; game.player.hp=game.player.maxHp; game.updateStatsUI();
 document.querySelector('.btn-expedition-send[data-pid="2"]').click();
 assert.equal(game.platoons[2].mission,'expedition','nation screen still dispatches the real selected platoon');
-game.saveGame(); const expeditionSave=saveSlots.get(game.activeSlotId).data;
+game.saveGame({immediate:true}); const expeditionSave=saveSlots.get(game.activeSlotId).data;
 game.resumeSavedGame(expeditionSave); assert.equal(game.platoons[2].mission,'expedition','mission restoration belongs to saved-game loading, not New Game');
 game.openStrategyModal(true);
 const faceSave=saveSlots.get(game.activeSlotId).data;

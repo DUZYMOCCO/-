@@ -11,7 +11,7 @@ const {saveSlots}=await import('../js/save-slots.js');
 const g=Object.create(IronSquadGame),c=WORLD_SIZE/2;
 Object.assign(g,{container:document.getElementById('game'),width:390,height:844,zoom:1,ctx,camera:{x:c,y:c},selectedSaleIds:new Set(),commandActiveUntil:0,joystick:{active:false,dirX:0,dirY:0}});
 for(const name of ['startGameLoop','showToast','spawnSparks','spawnDamageText'])g[name]=noop;
-g.setupUI();g.activeSlotId=saveSlots.create('MERCHANT SQUAD PURCHASE TEST ONLY').id;g.startFreshGame(false);const initial=structuredClone(g.saveGame());
+g.setupUI();g.activeSlotId=saveSlots.create('MERCHANT SQUAD PURCHASE TEST ONLY').id;g.startFreshGame(false);const initial=structuredClone(g.saveGame({immediate:true}));
 let n=0;
 function gear(type='WEAPON',style='sword',upgrade=0){return generateRandomDrop(0,'normal',{tier:2,type,weaponStyle:style,quality:1,upgrade,id:`squad-buy-${++n}`,merchant:true,random:()=>.5});}
 function fresh(type='WEAPON',style='sword'){
@@ -35,7 +35,7 @@ try{
     assert.equal(item.upgrade,0,'plain purchase does not silently inherit');assert.equal(g.equipped[info.key],commander,'commander equipment untouched');
     assert.equal(m.stock.length,0);assert.ok(g.inventory.some(i=>i.id===old.id));assert.equal(g.inventory.some(i=>i.id===item.id),false,'soldier ownership is unique');
     assert.equal(document.getElementById('merchant-recipient').value,s.id,'selection survives purchase');assert.equal(document.getElementById('merchant-shop-popup').classList.contains('hidden'),false);
-    const saved=structuredClone(saveSlots.get(g.activeSlotId).data);g.resumeSavedGame(saved);const restored=g.squad.find(u=>u.id===s.id);assert.equal(restored.equipped[info.key].id,item.id);assert.equal(restored.gold,wallet);assert.equal(g.gold,950);
+    g.saveGame({auto:true});const saved=structuredClone(saveSlots.get(g.activeSlotId).data);g.resumeSavedGame(saved);const restored=g.squad.find(u=>u.id===s.id);assert.equal(restored.equipped[info.key].id,item.id);assert.equal(restored.gold,wallet);assert.equal(g.gold,950);
   }
   {const {s,m,item}=fresh('WEAPON','crossbow');select(s.id);buy().click();assert.equal(s.weapon.weaponStyle,'crossbow');assert.equal(s._ammoCapacity,ammoCapacity(s));assert.ok(s._ammoCapacity>=60);}
   // The dropdown is exactly the living own party, including overflow companions.

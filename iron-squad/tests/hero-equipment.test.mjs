@@ -35,7 +35,7 @@ assert.equal(JSON.stringify(game.squad),armyBefore,'normal army does not receive
 const atk=weapon.stats.atk;applyUpgradeStats(weapon,2);assert.equal(weapon.stats.atk,Math.floor(atk*1.5));assert.equal(weapon.minStrength,0);assert.equal(weapon.heroOnly,true);
 assert.equal(equipmentVisualProfile(weapon).coverage,1);
 const expectedMagic=attributeValues(hero).magicDefense+hero.equipped.amulet.stats.magicDefense;assert.equal(hero.magicDef,expectedMagic);
-const saved=game.saveGame();game.resumeSavedGame(JSON.parse(JSON.stringify(saved)));assert.equal(game.heroJourney.party.members[0].equipped.weapon.upgrade,2);assert.equal(game.heroJourney.party.members[0].heroRetiredEquipment.length,count);
+const saved=game.saveGame({immediate:true});game.resumeSavedGame(JSON.parse(JSON.stringify(saved)));assert.equal(game.heroJourney.party.members[0].equipped.weapon.upgrade,2);assert.equal(game.heroJourney.party.members[0].heroRetiredEquipment.length,count);
 // An existing active party receives equipment once; retired pieces and down state remain.
 const legacy=structuredClone(saved.heroJourney);for(const u of legacy.party.members){u.heroEquipmentVersion=0;u.equipped={weapon:u.heroRetiredEquipment[0]};u.weapon=u.equipped.weapon;}
 legacy.party.members[0].isDown=true;legacy.party.members[0].hp=0;initializeHeroJourney(game,legacy);assert.equal(game.heroJourney.party.members[0].hp,0);assert.equal(game.heroJourney.party.members[0].isDown,true);assert.ok(heroEquipmentSummary(game.heroJourney.party.members[0]).length>=6);

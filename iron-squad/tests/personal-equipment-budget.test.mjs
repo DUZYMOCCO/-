@@ -11,7 +11,7 @@ const {IronSquadGame}=await import('../js/index.js'),{saveSlots}=await import('.
 const game=Object.create(IronSquadGame);Object.assign(game,{container:document.getElementById('game'),width:375,height:780,zoom:1,ctx,camera:{x:79360,y:79360},selectedSaleIds:new Set(),commandActiveUntil:0});
 for(const method of ['startGameLoop','showToast','spawnDamageText','spawnSparks'])game[method]=noop;
 game.setupUI();game.activeSlotId=saveSlots.create('PERSONAL EQUIPMENT BUDGET TEST').id;game.startFreshGame(false);
-const base=structuredClone(game.saveGame());
+const base=structuredClone(game.saveGame({immediate:true}));
 function buyer(id,gold){
   const s=game.createNewSoldier(null,{classKey:'LIGHT'});s.id=id;s.gold=gold;s.equipped={};s.weapon=null;
   s.attributeProfile.innate.strength=10000;game.recalcSoldierStats(s);return s;
@@ -42,7 +42,7 @@ for(const balance of [0,10000000]){
   assert.ok(formatFiscalReportJa(game.phaseFiscal).includes(`兵士の自費調達・強化 ${result.spent.toLocaleString()}G`));
   assert.ok(formatFiscalReportJa(game.phaseFiscal).includes(`空き部位${publicCount}部位`));
   assert.ok(formatFiscalReportHtml(game.phaseFiscal).includes(`装備調達 ${result.spent.toLocaleString()}G`));
-  const saved=structuredClone(game.saveGame());game.resumeSavedGame(saved);
+  const saved=structuredClone(game.saveGame({immediate:true}));game.resumeSavedGame(saved);
   const ownership=JSON.stringify(game.squad.map(s=>[s.gold,s.equipped]));game.supplyMissingEquipment();assert.equal(JSON.stringify(game.squad.map(s=>[s.gold,s.equipped])),ownership,'resume cannot buy or pay twice within the phase');
   if(!funded){
     const beforePoor=game.squad.find(s=>s.id==='poor');beforePoor.gold=lowCost+6;game.phase++;game.supplyMissingEquipment();

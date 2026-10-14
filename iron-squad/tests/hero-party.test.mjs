@@ -64,7 +64,7 @@ game.savedFieldMonsters=[{x:s.x+1,y:s.y,hp:1,maxHp:1,atk:1,radius:10,type:'slime
 assert.equal(game.savedFieldMonsters.length,0,'remote field combat runs');
 game.currentDungeon=null;
 // Saves include positions, down timers, failed chance and history; no target cycles.
-const snapshot=game.saveGame();assert.ok(snapshot.heroJourney);const encoded=JSON.stringify(snapshot);
+const snapshot=game.saveGame({immediate:true});assert.ok(snapshot.heroJourney);const encoded=JSON.stringify(snapshot);
 game.resumeSavedGame(JSON.parse(encoded));p=game.heroJourney.party;assert.equal(p.members.length,6);assert.equal(p.members[0].dead,true);assert.equal(game.heroJourney.lastRollPhase,12);
 const d=DUNGEON_DEFS.find(d=>d.id==='dungeon_demon_castle');const scene=ensureHeroCastle(game,d);scene.monsters.at(-1).hp=543210;
 const encodedJourney=JSON.stringify(serializeHeroJourney(game));initializeHeroJourney(game,JSON.parse(encodedJourney));assert.equal(game.heroJourney.castleScene.monsters.at(-1).hp,543210);

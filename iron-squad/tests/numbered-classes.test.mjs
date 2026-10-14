@@ -31,7 +31,7 @@ for(const gender of ['male','female']){
   }
   assert.equal(game.promotePlayer(),false);assert.equal(game.awakeningOrbs,0);assert.equal(game.awakeningGems,0);
 }
-const saved=structuredClone(game.saveGame());game.resumeSavedGame(saved);
+const saved=structuredClone(game.saveGame({immediate:true}));game.resumeSavedGame(saved);
 for(const before of promoted){
   const s=[...game.squad,...game.reserves].find(s=>s.id===before.id);assert.ok(s);
   assert.equal(s.soldierClass,before.classId);assert.equal(s.classTier,3);assert.equal(s.baseClassId,before.family);assert.equal(s.gender,before.gender);

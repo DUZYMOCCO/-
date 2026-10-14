@@ -135,10 +135,10 @@ reset();game.squad=[mk('a')];game.damageTarget(p,p.maxHp*5);p.downTimer=.2;updat
 reset();game.squad=[mk('a')];game.damageTarget(p,p.maxHp*5);const rt=p.downTimer;updateWounded(game,0);assert.equal(p.downTimer,rt);
 
 // 11) no save while down: restarting returns to the last save before the down
-reset();game.squad=[mk('a')];p.downTimer=0;assert.ok(game.saveGame());const before=saveSlots.get(game.activeSlotId).data;assert.ok(!before.player.isDown);
+reset();game.squad=[mk('a')];p.downTimer=0;assert.ok(game.saveGame({immediate:true}));const before=saveSlots.get(game.activeSlotId).data;assert.ok(!before.player.isDown);
 game.damageTarget(p,p.maxHp*5);assert.equal(p.isDown,true);p.downTimer=33;
-assert.equal(game.saveGame(),null,'saving is skipped while down');const snap=saveSlots.get(game.activeSlotId).data;assert.ok(!snap.player.isDown);assert.ok(snap.player.hp>0);
-p.dead=true;assert.equal(game.saveGame(),null,'saving is skipped after death');delete p.dead;
+assert.equal(game.saveGame({immediate:true}),null,'saving is skipped while down');const snap=saveSlots.get(game.activeSlotId).data;assert.ok(!snap.player.isDown);assert.ok(snap.player.hp>0);
+p.dead=true;assert.equal(game.saveGame({immediate:true}),null,'saving is skipped after death');delete p.dead;
 game.resumeSavedGame(structuredClone(snap));assert.ok(!game.player.isDown);assert.ok(game.player.hp>0);
 // legacy saves made while down still resume with a safe countdown
 const legacy=structuredClone(snap);Object.assign(legacy.player,{isDown:true,hp:0,downTimer:2});game.resumeSavedGame(legacy);assert.equal(game.player.isDown,true);assert.ok(game.player.downTimer>=20,'resume never drops straight into death');assert.equal(overs,0);

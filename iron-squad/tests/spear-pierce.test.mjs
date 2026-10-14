@@ -12,7 +12,7 @@ Math.random=()=>{randomSeed=(Math.imul(randomSeed,1664525)+1013904223)>>>0;retur
 const g=Object.create(IronSquadGame);Object.assign(g,{container:document.getElementById('game'),width:390,height:664,zoom:1,ctx,selectedSaleIds:new Set(),commandActiveUntil:0});
 for(const name of ['startGameLoop','showToast','spawnSparks','spawnDamageText'])g[name]=noop;
 g.setupUI();g.activeSlotId=saveSlots.create('SPEAR TEST ONLY').id;g.startFreshGame(false);
-const saved=structuredClone(g.saveGame()),y=WORLD_SIZE/2+6000,x=northSouthRoadX(y);
+const saved=structuredClone(g.saveGame({immediate:true})),y=WORLD_SIZE/2+6000,x=northSouthRoadX(y);
 function fixture(mode,frontHp=1,rearHp=1,reverse=false){
  g.resumeSavedGame(structuredClone(saved));g.closeStrategyModal();g.currentQuest=null;g.currentDungeon=null;g.restTimer=0;g.updateSpawns=noop;g.outposts=[];g.merchants=[];g.dungeons=[];g.medicalPosts=[];g.civilians=[];g.gateGuards=[];g.reserves=[];g.projectiles=[];g.dropsOnField=[];g._hazardClock=0;
  const spear={id:'test-spear',type:'WEAPON',name:'木の槍',weaponStyle:'spear',tier:1,stats:{}};applyUpgradeStats(spear,0);

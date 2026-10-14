@@ -14,7 +14,7 @@ const {saveSlots}=await import('../js/save-slots.js');
 const game=Object.create(IronSquadGame),c=WORLD_SIZE/2;
 Object.assign(game,{container:document.getElementById('game'),width:390,height:664,zoom:1,ctx,camera:{x:c,y:c},selectedSaleIds:new Set(),commandActiveUntil:0,joystick:{active:false,dirX:0,dirY:0}});
 for(const m of ['startGameLoop','showToast','spawnSparks','spawnDamageText'])game[m]=noop;
-game.setupUI();game.activeSlotId=saveSlots.create('MERCHANT PROGRESSION TEST ONLY').id;game.startFreshGame(false);const initial=structuredClone(game.saveGame());
+game.setupUI();game.activeSlotId=saveSlots.create('MERCHANT PROGRESSION TEST ONLY').id;game.startFreshGame(false);const initial=structuredClone(game.saveGame({immediate:true}));
 const fresh=()=>{game._merchantShopClose?.();game.resumeSavedGame(structuredClone(initial));game.closeStrategyModal();game.monsters=[];game.restTimer=0;game.currentQuest=null;};
 const buyMarkup=(kind)=>{
   fresh();const m=game.merchants[0];

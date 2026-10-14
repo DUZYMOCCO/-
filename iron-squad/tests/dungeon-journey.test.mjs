@@ -88,7 +88,7 @@ test('side-chest opening is saved by the real slot serializer and cannot reward 
  const firstCount=received.length;assert.ok(firstCount>=1&&firstCount<=2);
  assert.equal(dungeonSideChests(game)[0].opened,true);
  tick(game);assert.equal(received.length,firstCount);
- const persisted=saveSlots.get(game.activeSlotId).data;
+ game.saveGame({auto:true});const persisted=saveSlots.get(game.activeSlotId).data;
  assert.deepEqual(persisted.dungeonExploration[dungeon.id].opened,['north']);
  for(const item of received){
    if(item.type==='MATERIAL')for(const [id,n]of Object.entries(item.materials))assert.ok(persisted.materials[id]>=n,'the actual material count is saved, not only its opened flag');

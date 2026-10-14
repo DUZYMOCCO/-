@@ -29,7 +29,7 @@ game.inBattle=false;const paused=game.restTimer,spent=game.restReport.spent;adva
 assert.equal(game.restTimer,paused);assert.equal(game.restReport.spent,spent,'meeting does not spend money in background');game.inBattle=true;
 // Manual weapon enhancement stays available, even while the rest clock is paused.
 soldier.gold+=500;game.upgradeSoldierEquip(soldier.id,'weapon');const manual=soldier.equipped.weapon.upgrade;assert.ok(manual>0);
-game.update(1.5);game.saveGame();const saved=saveSlots.get(game.activeSlotId).data;
+game.update(1.5);game.saveGame({immediate:true});const saved=saveSlots.get(game.activeSlotId).data;
 const savedGold=soldier.gold,savedCount=game.restReport.count,savedTimer=game.restTimer;
 game.resumeSavedGame(saved);
 assert.equal(game.restTimer,savedTimer);assert.equal(game.monsters.length,0);assert.equal(game.restReport.count,savedCount);

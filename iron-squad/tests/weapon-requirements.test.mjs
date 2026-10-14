@@ -32,7 +32,7 @@ assert.ok(['staff','wand'].includes(game.createSupplyEquipment('WEAPON',ordinary
 const usableSupply=game.createSupplyEquipment('WEAPON',strong,8);assert.equal(usableSupply.weaponStyle,'hammer');assert.equal(canUseWeapon(strong,usableSupply),true);
 // An old unsupported weapon is kept intact in the box, rather than disappearing on load.
 ordinary.equipped.weapon=forbidden;ordinary.weapon=forbidden;game.inventory=game.inventory.filter(i=>i.id!==forbidden.id);
-const saved=structuredClone(game.saveGame());game.resumeSavedGame(saved);
+const saved=structuredClone(game.saveGame({immediate:true}));game.resumeSavedGame(saved);
 const resumed=[...game.squad,...game.reserves].find(s=>s.id===ordinary.id);assert.equal(resumed.weapon,null);assert.ok(game.sharedEquipBox.some(i=>i.id===forbidden.id));
 game.closeStrategyModal();game.destroy();dom.window.close();
 console.log('PASS: real staff/wand magical stats, 9 masteries and name migration, melee strength/material requirements, muscle mage hammer, shared/treasury/manual/player/source-identity gates, retained unsupported legacy items');

@@ -33,7 +33,7 @@ advance(1800);assert.equal(notice(),null,'notice disappears even though the batt
 // New save atomically creates a fully populated slot and leaves the old slot untouched.
 const originalSlot=structuredClone(saveSlots.get(oldId));g.gold=333;saveButton().click();choice('new').click();const newId=g.activeSlotId;
 assert.notEqual(newId,oldId);assert.equal(saveSlots.list().length,2);assert.deepEqual(saveSlots.get(oldId),originalSlot);assert.equal(saveSlots.get(newId).data.gold,333);assert.equal(saveSlots.get(newId).checkpoint.data.gold,333);assert.equal(saveSlots.get(newId).rulesVersion,originalSlot.rulesVersion);
-assert.equal(popup().dataset.section,'save');advance(450);g.gold=444;g.saveGame();assert.equal(saveSlots.get(newId).data.gold,444);assert.deepEqual(saveSlots.get(oldId),originalSlot,'later autosaves use only the new slot');
+assert.equal(popup().dataset.section,'save');advance(450);g.gold=444;g.saveGame({immediate:true});assert.equal(saveSlots.get(newId).data.gold,444);assert.deepEqual(saveSlots.get(oldId),originalSlot,'later autosaves use only the new slot');
 // Both overwrite and new-slot quota failures preserve every existing record and active ID.
 const originalWarn=console.warn;console.warn=noop;
 try {

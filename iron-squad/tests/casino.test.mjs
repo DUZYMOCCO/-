@@ -48,10 +48,10 @@ game.enterDungeon(game.dungeons.find(d=>d.id==='royal_castle_town'));game.render
 game.setCasinoBet(50000);const before=game.gold;assert.equal(game.startCasinoPoker(),true);assert.equal(game.gold,before-50000);assert.equal(game.startCasinoPoker(),false);
 const initial=structuredClone(game.nation.casino.poker);assert.equal(game.holdCasinoCard(0),true);assert.equal(game.holdCasinoCard(5),false);
 game.setCasinoBet(1000000);assert.equal(game.nation.casino.poker.bet,50000,'changing the next bet cannot increase an already paid hand');
-const saved=structuredClone(game.saveGame());game.resumeSavedGame(saved);assert.equal(game.nation.casino.poker.held[0],true);assert.deepEqual(game.nation.casino.poker.hand,initial.hand);assert.deepEqual(game.nation.casino.poker.deck,initial.deck);
+const saved=structuredClone(game.saveGame({immediate:true}));game.resumeSavedGame(saved);assert.equal(game.nation.casino.poker.held[0],true);assert.deepEqual(game.nation.casino.poker.hand,initial.hand);assert.deepEqual(game.nation.casino.poker.deck,initial.deck);
 if(game.currentDungeon?.kind!=='town')game.enterDungeon(game.dungeons.find(d=>d.id==='royal_castle_town'));
 const drawingGold=game.gold;assert.equal(game.drawCasinoPoker(),true);assert.equal(game.gold,drawingGold+game.nation.casino.poker.payout);assert.equal(game.drawCasinoPoker(),false);
-const settledGold=game.gold;game.resumeSavedGame(structuredClone(game.saveGame()));assert.equal(game.gold,settledGold);assert.equal(game.drawCasinoPoker(),false,'reload never pays again');
+const settledGold=game.gold;game.resumeSavedGame(structuredClone(game.saveGame({immediate:true})));assert.equal(game.gold,settledGold);assert.equal(game.drawCasinoPoker(),false,'reload never pays again');
 if(game.currentDungeon?.kind!=='town')game.enterDungeon(game.dungeons.find(d=>d.id==='royal_castle_town'));
 game.gold=100;game.setCasinoBet(1000);assert.equal(game.spinCasinoSlot(),false);assert.equal(game.startCasinoPoker(),false);assert.equal(game.gold,100);
 game.gold=2000000;const random=Math.random;try{Math.random=()=>.99;assert.equal(game.spinCasinoSlot(),true);}finally{Math.random=random;}
@@ -65,6 +65,6 @@ document.querySelector('[data-bet-mult="10"]').click();assert.equal(game.nation.
 assert.ok(!document.getElementById('nation-facilities').textContent.match(/ダイス|出目|一振り/));
 game.nation=normalizeNation();const levelZeroGold=game.gold;assert.equal(game.spinCasinoSlot(),true,'level zero casino is open');assert.ok(game.gold>=levelZeroGold-10);assert.equal(game.nation.casino.slot.bet,10);
 game.nation=normalizeNation({investment:90000});game.phase=50;game.gold=2000000;game.setCasinoBet(1000);assert.equal(game.startCasinoPoker(),true);
-game.startFreshGame(true);assert.equal(game.nation.casino.poker,null);assert.equal(game.nation.casino.pokerPhase,0);assert.equal(game.nation.casino.slotPhase,0);assert.equal(game.nation.casino.bet,1000,'a new inherited expedition keeps the wager preference without inheriting a paid hand or future cooldown');
+game.saveGame({auto:true});game.startFreshGame(true);assert.equal(game.nation.casino.poker,null);assert.equal(game.nation.casino.pokerPhase,0);assert.equal(game.nation.casino.slotPhase,0);assert.equal(game.nation.casino.bet,1000,'a new inherited expedition keeps the wager preference without inheriting a paid hand or future cooldown');
 console.log('PASS: ten poker ranks, ace rules, deck/holds/one draw, weighted slots, variable million-G stakes, immutable paid wagers, locked/poor checks, independent phase limits, active-hand and settlement saves, live wager controls, no dice');
 dom.window.close();

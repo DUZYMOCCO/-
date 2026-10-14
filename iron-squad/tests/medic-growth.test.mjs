@@ -21,7 +21,7 @@ game.showToast = text => toasts.push(text);
 game.setupUI();
 game.activeSlotId = saveSlots.create('MEDIC GROWTH TEST ONLY').id;
 game.startFreshGame(false);
-const initial = structuredClone(game.saveGame());
+const initial = structuredClone(game.saveGame({immediate:true}));
 const template = key => structuredClone(initial.squad.find(s => s.soldierClass === key));
 function soldier(key, overrides = {}) {
   const unit = {...template(key === 'HIGH_PRIEST' ? 'MEDIC' : key), soldierClass:key, talent:'AVERAGE', x:field, y:field, speed:0, atkCooldown:1000, ...overrides};
@@ -172,7 +172,7 @@ const reserve = soldier('MEDIC',{id:'reserve-medic',reqExp:1e9});
 healByMedic(reserve,{hp:1,maxHp:5},4,game); game.reserves=[reserve];
 grantRescueBonus(game,{...soldier('HEAVY',{id:'reserve-patient',reqExp:1e9}),maxHp:1000},{method:'MEDIC',medic:reserve});
 finishExperience(supporter);
-const supporterId = supporter.id, saved = structuredClone(game.saveGame());
+const supporterId = supporter.id, saved = structuredClone(game.saveGame({immediate:true}));
 game.resumeSavedGame(saved);
 const restored = game.squad.find(s=>s.id===supporterId);
 const restoredReserve = [...game.squad,...game.reserves].find(s=>s.id==='reserve-medic');

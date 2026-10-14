@@ -58,7 +58,7 @@ assert.deepEqual(new Set(game.squad.map(s=>s.soldierClass)),new Set(['HEAVY','LI
 assert.ok(game.outposts.every(op=>!op.cleared));
 game.player.x=8500;game.player.y=2300;game.gold=0;game.phase=7;game.phaseTimer=31;
 game.phaseCasualties=2;game.phaseInitialSquadCount=22;
-game.saveGame();
+game.saveGame({immediate:true});
 game.resumeSavedGame(saveSlots.get(fresh.id).data);
 assert.equal(game.player.x,8500);assert.equal(game.player.y,2300);assert.equal(game.gold,0);
 assert.equal(game.phase,7);assert.equal(game.phaseTimer,31);

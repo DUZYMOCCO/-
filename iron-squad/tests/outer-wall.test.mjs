@@ -64,7 +64,7 @@ assert.equal(outerGuards().length,4,'each outer gate gets one guard, once');
 assert.deepEqual(outerGuards().map(x=>x.name).sort(),['外郭門番・北門','外郭門番・南門','外郭門番・東門','外郭門番・西門'].sort());
 for(const guard of outerGuards()){const post=OUTER_GATES[Number(guard.gatePostId.at(-1))];assert.equal(guard.x,C+post.x);assert.equal(guard.y,C+post.y);}
 outerGuards()[0].dead=true;
-const saved=structuredClone(g.saveGame());g.resumeSavedGame(saved);g.closeStrategyModal();g.updateSpawns=noop;g.monsters=[];
+const saved=structuredClone(g.saveGame({immediate:true}));g.resumeSavedGame(saved);g.closeStrategyModal();g.updateSpawns=noop;g.monsters=[];
 updateGateGuards(g,.1);assert.equal(outerGuards().filter(x=>!x.dead).length,3,'the vacancy is not filled at once');
 const vacantPost=g.gatePosts.find(p=>p.id==='hq_outer_gate_0');assert.equal(vacantPost.refillAtPhase,g.phase+2);
 g.phase+=2;updateGateGuards(g,.1);assert.equal(outerGuards().filter(x=>!x.dead).length,4,'a new outer gate guard arrives two phases later');

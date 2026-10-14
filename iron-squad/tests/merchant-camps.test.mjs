@@ -58,7 +58,7 @@ let shop=live.merchants[0];Object.assign(live.player,{x:shop.x,y:shop.y,hp:1});l
 live.openMerchantShop(shop);document.querySelector('[data-merchant-section="recovery"]').click();document.querySelector('#merchant-shop-popup .transfer-popup-container').scrollTop=91;let button=document.querySelector('.merchant-heal-button');assert.equal(button.disabled,false);button.focus();button.click();
 assert.equal(live.gold,0);assert.equal(live.player.hp,live.player.maxHp);assert.equal(document.querySelector('.merchant-heal-button').disabled,true);
 assert.equal(document.querySelector('#merchant-shop-popup').dataset.section,'recovery');assert.equal(document.querySelector('#merchant-shop-popup .transfer-popup-container').scrollTop,91,'healing keeps the same service view');
-const snapshot=saveSlots.get(live.activeSlotId).data;assert.equal(snapshot.merchants.find(m=>m.id===shop.id).healingUsed,true);assert.equal(snapshot.merchantCampSeed,live.merchantCampSeed);
+live.saveGame({auto:true});const snapshot=saveSlots.get(live.activeSlotId).data;assert.equal(snapshot.merchants.find(m=>m.id===shop.id).healingUsed,true);assert.equal(snapshot.merchantCampSeed,live.merchantCampSeed);
 // Transactions and checkpoint actions stay in the shop until explicit Back.
 live.gold=70000;live.squadPotion=2;live.revivalPotion=1;live._merchantShopRefresh();
 const retained=()=>{assert.equal(document.querySelector('#merchant-shop-popup').classList.contains('hidden'),false);assert.equal(document.querySelector('#merchant-shop-popup').dataset.section,'recovery');assert.equal(document.querySelector('#merchant-shop-popup .transfer-popup-container').scrollTop,91);};
@@ -128,7 +128,7 @@ assert.ok(personCtx.getImageData(105,111,10,15).data.some((v,i)=>i%4===3&&v>0),'
 // The actual expedition save/load path reconstructs NPC casualties and ropes.
 const livePatient=live.merchants[0];Object.assign(live.player,{x:livePatient.x+10,y:livePatient.y,hp:100});
 markSoldierDown(live,livePatient);updateWounded(live,0);assert.equal(livePatient.carrierId,'player');
-live.saveGame();live.resumeSavedGame(saveSlots.get(live.activeSlotId).data);
+live.saveGame({immediate:true});live.resumeSavedGame(saveSlots.get(live.activeSlotId).data);
 assert.equal(live.merchants[0].isDown,true);assert.equal(live.merchants[0].carrierId,'player');assert.ok(live._merchantWounded.includes(live.merchants[0]));
 const portGame=fixture();portGame.player.x=center;portGame.player.y=center;initMerchants(portGame,loot,base);ensureMerchants(portGame,loot,base);
 const portPatient=portGame.merchants.find(m=>m.placeKind==='field-camp');markSoldierDown(portGame,portPatient);

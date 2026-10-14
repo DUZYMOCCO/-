@@ -10,13 +10,13 @@ const mob=(id,dx,extra={})=>({id,type:'goblin',x:83000+dx,y:83000,hp:5000,maxHp:
 // A thrown goblin crashes into a second one: both take impact damage, the second flies on.
 const a=mob('a',40),b=mob('b',90),c=mob('c',400);game.monsters=[a,b,c];
 game.throwMonster(a,0,600,1000,game.player,true);
-assert.doesNotThrow(()=>JSON.stringify(game.saveGame()),'mid-flight runtime references are not persisted');
+assert.doesNotThrow(()=>JSON.stringify(game.saveGame({immediate:true})),'mid-flight runtime references are not persisted');
 for(let i=0;i<4&&!(b.hp<5000);i++)game.updateMonsterKnock(a,1/60);
 assert.ok(a.hp<5000&&b.hp<5000,'thrower and struck enemy are both hurt');assert.equal(5000-a.hp,5000-b.hp,'same impact on both');
 assert.ok(b.knockFly>0,'the struck enemy is launched onward');assert.ok(Math.hypot(a.knockVx,a.knockVy)<a.knockV0,'the thrown enemy loses speed');
 const aHp=a.hp;for(let i=0;i<5;i++)game.updateMonsterKnock(a,1/60);assert.equal(a.hp,aHp,'the same pair collides only once');
 assert.ok(b._knockHits.includes(a),'the chain does not bounce back into the thrower');
-assert.doesNotThrow(()=>JSON.stringify(game.saveGame()),'cross-referencing flights still save');
+assert.doesNotThrow(()=>JSON.stringify(game.saveGame({immediate:true})),'cross-referencing flights still save');
 // Lethal crash credits the thrower; heavier targets are sent less far; colossi do not move.
 const d=mob('d',40),e=mob('e',90,{hp:10,maxHp:10});game.monsters=[d,e];let credited=null;const kill=game.killMonster;game.killMonster=function(m,by,isPlayer){credited={m,by,isPlayer};return kill.call(this,m,by,isPlayer);};
 game.throwMonster(d,0,600,1000,game.player,true);for(let i=0;i<4&&game.monsters.includes(e);i++)game.updateMonsterKnock(d,1/60);

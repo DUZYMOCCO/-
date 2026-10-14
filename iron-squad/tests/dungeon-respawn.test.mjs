@@ -69,7 +69,7 @@ for(const def of [mine,ruin]) {
   assert.equal(dungeonCoolingDown(game,{...stale,cleared:false}),true,'the ID record wins over a stale entry definition');
   game.currentDungeon=null;game.phase=32;assert.equal(updateDungeonRespawns(game),0);
   assert.equal(dungeonCoolingDown(game,stale),true,'no boss regeneration in the next phase');
-  game.saveGame();const loaded=restore(game);loaded.phase=33;loaded.currentDungeon=loaded.dungeons[0];
+  game.saveGame({immediate:true});const loaded=restore(game);loaded.phase=33;loaded.currentDungeon=loaded.dungeons[0];
   assert.equal(updateDungeonRespawns(loaded),0,'a cleared room does not repopulate around its occupants');
   assert.equal(dungeonCoolingDown(loaded,stale),true);
   loaded.currentDungeon=null;assert.equal(updateDungeonRespawns(loaded),1);
@@ -101,7 +101,7 @@ for(const def of [mine,ruin]) {
 {
   const game=fixture(80,[castle,town]);game.currentDungeon=game.dungeons[0];openSide(game);
   assert.equal(game.dungeonExploration[castle.id].resetAt,0);
-  recordDungeonClear(game,game.dungeons[0]);game.saveGame();const loaded=restore(game);
+  recordDungeonClear(game,game.dungeons[0]);game.saveGame({immediate:true});const loaded=restore(game);
   loaded.phase=1000;loaded.currentDungeon=null;
   // A legacy/future record with a timer still cannot bypass the explicit castle exception.
   loaded.dungeonExploration[castle.id].resetAt=82;

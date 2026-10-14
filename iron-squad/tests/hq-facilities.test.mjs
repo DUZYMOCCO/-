@@ -38,7 +38,7 @@ walkTo('smith');g.openHeadquartersFacility('smith');
 const before=g.gold,items=g.inventory.length;document.getElementById('btn-workshop-buy').click();
 assert.ok(g.gold<before);assert.equal(g.inventory.length,items+1);assert.equal(document.querySelectorAll('#workshop-tier').length,1);
 assert.ok(document.querySelector('.facility-intro').textContent.includes(g.gold.toLocaleString()),'shop shows the transaction result');
-const saved=structuredClone(g.saveGame());g.resumeSavedGame(saved);assert.equal(document.getElementById('hq-facility-dialog'),null,'loading closes transient shop UI');
+const saved=structuredClone(g.saveGame({immediate:true}));g.resumeSavedGame(saved);assert.equal(document.getElementById('hq-facility-dialog'),null,'loading closes transient shop UI');
 walkTo('guild');g.openHeadquartersFacility('guild');document.querySelector('[data-guild-accept="slime"]').click();
 assert.equal(g.nation.guild.active.length,1);assert.equal(document.querySelector('[data-guild-claim="slime"]').disabled,true);
 const contract=g.nation.guild.active[0];for(let i=0;i<contract.target;i++)g.onNationKill({type:'slime'});g.renderStrategyUI();const gold=g.gold,reward=contract.reward;

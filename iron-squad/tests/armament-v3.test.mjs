@@ -19,7 +19,7 @@ const {IronSquadGame,generateRandomDrop,applyUpgradeStats}=await import('../js/i
 const game=Object.create(IronSquadGame);Object.assign(game,{container:document.getElementById('game'),width:390,height:664,zoom:1,ctx,camera:{x:79360,y:79360},selectedSaleIds:new Set(),commandActiveUntil:0});
 for(const method of ['startGameLoop','showToast','spawnSparks','spawnDamageText'])game[method]=noop;
 game.setupUI();game.activeSlotId=saveSlots.create('V3 TEST ONLY').id;game.startFreshGame(false);game.career.status='enlisted';
-const initial=structuredClone(game.saveGame()),fresh=()=>{game.resumeSavedGame(structuredClone(initial));game.closeStrategyModal();};
+const initial=structuredClone(game.saveGame({immediate:true})),fresh=()=>{game.resumeSavedGame(structuredClone(initial));game.closeStrategyModal();};
 const gear=(tier,type='WEAPON',upgrade=0)=>generateRandomDrop(0,'normal',{tier,type,upgrade,quality:1,merchant:true,random:()=>.5,id:`test-${tier}-${type}-${upgrade}`});
 assert.equal(TIERS.length,28);assert.equal(powerRank(1),1);assert.equal(powerRank(28),7);
 for(const type of ['WEAPON','ARMOR','SHIELD','HELMET','LEGS','GLOVES','AMULET']){
@@ -76,7 +76,7 @@ for(let wave=1;wave<=30;wave++){
  const owned=[...game.squad,...game.reserves].flatMap(s=>Object.values(s.equipped).filter(Boolean)).concat(game.sharedEquipBox);assert.equal(new Set(owned.map(i=>i.id)).size,owned.length,'an item has exactly one owner');
 }
 assert.ok(issuedCount>=0,'recruits arrive fully equipped, so empty-slot purchases are optional');assert.ok(updatedCount+forgedCount>0);assert.ok(game.nation.armament.techTier>=2);assert.ok(game.nation.armament.techTier<=Math.max(4*(game.nation.level+1),game.nation.armament.observedTier),'manufacturing follows funded development and observed loot');assert.ok(game.squad.every(s=>Object.values(s.equipped).filter(Boolean).length===7));
-const currentArmament=structuredClone(game.nation.armament);game.saveGame();game.resumeSavedGame(saveSlots.get(game.activeSlotId).data);assert.deepEqual(game.nation.armament,currentArmament);
+const currentArmament=structuredClone(game.nation.armament);game.saveGame({immediate:true});game.resumeSavedGame(saveSlots.get(game.activeSlotId).data);assert.deepEqual(game.nation.armament,currentArmament);
 game.renderStrategyUI();assert.match(document.getElementById('nation-status').textContent,/製造技術|軍備整備/);assert.match(document.querySelector('[data-nation-section="armament"]').textContent,/購入・強化：兵士の財布/);assert.match(document.querySelector('[data-nation-section="armament"]').textContent,/空き部位の国庫支給枠：/);assert.ok(!document.getElementById('nation-status').textContent.includes('[object Object]'));
 const policy=document.querySelector('[data-armament-policy="military"]');assert.ok(policy);policy.click();assert.equal(game.nation.armament.policy,'military');
 assert.equal(researchCost(29),researchCost(28));
