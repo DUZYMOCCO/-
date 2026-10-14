@@ -6,7 +6,7 @@ import {setSubDialog} from './interface.js?v=254';
 import {WORLD_SIZE,TAVERN_SITE} from './world.js?v=198';
 import {daylightAt} from './day-night.js?v=208';
 import {drawTavernFixtures,drawTavernCandles} from './nightlife-visuals.js?v=242';
-import {GARDEN_TABLES,TAVERN_TABLES,TAVERN_SEAT_COUNT,tavernPoint,campPoseFor,drawLeisureTable} from './camp-leisure.js?v=202';
+import {GARDEN_TABLES,TAVERN_TABLES,TAVERN_SEAT_COUNT,tavernPoint,campPoseFor,drawLeisureTable} from './camp-leisure.js?v=256';
 import {buildingContact} from './building-interactions.js?v=201';
 
 const classes=['HEAVY','LIGHT','ARCHER','MAGE','MEDIC'];

@@ -1,4 +1,5 @@
 import {visibleHeroMembers} from './hero-rules.js';
+import {expeditionCombatUnits} from './expedition-rules.js?v=256';
 // Field coordinates and instance coordinates must never share combat participants.
 export function inCurrentInstance(game, unit) {
   if (!game.currentDungeon || !unit) return false;
@@ -10,5 +11,5 @@ export function inCurrentInstance(game, unit) {
 }
 
 export function activeSquad(game) {
-  return (game.squad || []).filter(s => s && !s.dead && (!game.currentDungeon || inCurrentInstance(game, s))).concat(visibleHeroMembers(game));
+  return expeditionCombatUnits(game).filter(s => s && !s.dead && (!game.currentDungeon || inCurrentInstance(game, s))).concat(visibleHeroMembers(game));
 }

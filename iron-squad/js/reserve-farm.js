@@ -27,7 +27,7 @@ function byId(a, b) {
 
 function livingReserves(reserves) {
   const living = [];
-  for (const soldier of reserves || []) if (soldier && !soldier.dead) living.push(soldier);
+  for (const soldier of reserves || []) if (soldier && !soldier.dead && soldier.reserveExpeditionPlatoon==null) living.push(soldier);
   living.sort(byId);
   return living;
 }
@@ -77,7 +77,7 @@ export function farmPosts(reserves, blocked = fieldBlocks) {
   return posts;
 }
 
-export function reserveRosterLine(activeCount, capacity, reserveCount, reserveLiving, supply) {
+export function reserveRosterLine(activeCount, capacity, reserveCount, reserveLiving, supply, awayCount=0) {
   const full = reserveLiving >= RESERVE_CAP;
   const farm = reserveCount ? '川辺の農村で農作業' : `予備${RESERVE_CAP}名まで自動補充`;
   const note = full
@@ -85,10 +85,10 @@ export function reserveRosterLine(activeCount, capacity, reserveCount, reserveLi
     : supply
       ? `前回の新兵 ${supply.received}名（配備${supply.deployed}名）${reserveCount ? ' · 川辺の農村' : ''}`
       : farm;
-  return `実戦 ${activeCount}/${capacity}名 · 予備 ${reserveCount}/${RESERVE_CAP}名 · ${note}`;
+  return `実戦 ${activeCount}/${capacity}名 · 予備 ${reserveCount}/${RESERVE_CAP}名 · ${awayCount?`農村待機${Math.max(0,reserveCount-awayCount)}名・遠征/帰還${awayCount}名`:note}`;
 }
 
-export function reserveRosterTitle(reserveCount) {
-  if (!reserveCount) return '本陣の予備兵 0名（欠員時に合流）';
-  return `川辺の農村の予備兵 ${reserveCount}名（欠員時に合流）`;
+export function reserveRosterTitle(reserveCount,awayCount=0) {
+  if (!reserveCount) return '川辺の農村の予備兵 0名（欠員時に合流）';
+  return `川辺の農村の予備兵 ${reserveCount}名（${awayCount?`待機${Math.max(0,reserveCount-awayCount)}・遠征/帰還${awayCount}`:'欠員時に合流'}）`;
 }

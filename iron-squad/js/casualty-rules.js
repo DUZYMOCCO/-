@@ -1,7 +1,8 @@
+import {expeditionCombatUnits,isExpeditionReserve} from './expedition-rules.js?v=256';
 import {ensureMana,regenerateMana,spendMana} from './magic-rules.js?v=231';
 import {recordHealing,recordDown,healAmountFor} from './phase-rules.js?v=218';
 import {WORLD_SIZE} from './world.js';
-import {inCurrentInstance} from './instance-rules.js?v=182';
+import {inCurrentInstance} from './instance-rules.js?v=256';
 import {grantPermanentRescueReward} from './rescue-rewards.js?v=204';
 import {grantPersonalExp,revivalExperience,raiseLevelMark} from './experience-rules.js';
 import {guardRescueLines} from './soldier-dialogue.js';
@@ -43,7 +44,7 @@ export const commanderDown=game=>!!(game?.player?.isDown&&!game.player.dead);
 /** v5.0.0: 死亡表示（「死亡」を出している間）の秒数。この間は救助・搬送・治療の対象外。 */
 export const DYING_SECONDS=2;
 const downedPool=game=>{
-  const soldiers=[...(game.squad||[]),...(game.reserves||[]).filter(s=>s.isDown),...visibleHeroMembers(game)];
+  const soldiers=[...expeditionCombatUnits(game),...(game.reserves||[]).filter(s=>s.isDown&&!isExpeditionReserve(game,s)),...visibleHeroMembers(game)];
   return game._merchantWounded?.length?[...soldiers,...game._merchantWounded]:soldiers;
 };
 export const rescueUnits=game=>{
@@ -63,7 +64,7 @@ function finalizeDeath(game,wounded) {
   game.showToast?.(`${wounded.name}は力尽きました`,{field:!isMerchantCasualty(wounded)});
 }
 /** 隊長を助けられる味方（同じ空間で健在な兵士）がいるか。 */
-export const commanderHelpers=game=>(game.squad||[]).filter(s=>s&&!s.dead&&!s.isDown&&s.hp>0&&(!game.currentDungeon||inCurrentInstance(game,s)));
+export const commanderHelpers=game=>expeditionCombatUnits(game).filter(s=>s&&!s.dead&&!s.isDown&&s.hp>0&&(!game.currentDungeon||inCurrentInstance(game,s)));
 /** 隊長が0HPになったとき：必ずダウンへ移行（助けがなければ猶予切れで従来の討ち死に）。 */
 export function downCommander(game,opts={}) {
   const p=game?.player;
@@ -94,7 +95,7 @@ export const NPC_RESCUE_RADIUS=720;
 /** 門番・商人護衛など、部隊に属さない味方NPC（隊長救助のみ手伝う）。 */
 export const friendlyNpcs=game=>[...(game.gateGuards||[]),...(game.currentDungeon?[]:(game.merchants||[]).flatMap(m=>m.escorts||[]))].filter(u=>u&&u.id!=null);
 export const npcRescuers=game=>friendlyNpcs(game).filter(u=>!u.dead&&!u.isDown&&u.hp>0&&Number.isFinite(u.x)&&(u.isGateGuard?(game.currentDungeon?inCurrentInstance(game,u):u.gateSpace==='field'):(!game.currentDungeon&&!!(u.owesCommander||u.commanderFriend))));
-export const carrierOf=(game,wounded)=>wounded.carrierId==='player'?game.player:([...game.squad||[],...visibleHeroMembers(game)].find(s=>s.id===wounded.carrierId)||(wounded===game.player?friendlyNpcs(game).find(s=>s.id===wounded.carrierId):undefined));
+export const carrierOf=(game,wounded)=>wounded.carrierId==='player'?game.player:([...expeditionCombatUnits(game),...visibleHeroMembers(game)].find(s=>s.id===wounded.carrierId)||(wounded===game.player?friendlyNpcs(game).find(s=>s.id===wounded.carrierId):undefined));
 export const hasActiveRopePull=game=>{
   if(!game) return false;
   // 壊れた carrierId を先に掃除（常時trueで転送封じを防ぐ）
@@ -146,7 +147,7 @@ const nearest=(list,unit)=>list.reduce((a,b)=>!a||Math.hypot(unit.x-b.x,unit.y-b
 export const nearestCasualtyStation=(game,unit)=>nearest(casualtyStations(game,unit),unit);
 /** 民間人救出先：本陣・救護所・制圧拠点・町入口 */
 export function civilianRescueStations(game,unit=null) {
-  const d=game.currentDungeon,carrier=unit?.carrierId==='player'?game.player:(game.squad||[]).find(s=>s.id===unit?.carrierId);
+  const d=game.currentDungeon,carrier=unit?.carrierId==='player'?game.player:expeditionCombatUnits(game).find(s=>s.id===unit?.carrierId);
   if(d&&(unit?.rescueSpace===d.id||(carrier&&isLocalRescueUnit(game,carrier))))return d.kind==='town'?aidStations(game,game.player):[];
   return aidStations(game).filter(p=>p.kind!=='town'||(game.dungeons||[]).some(d=>`town-${d.id}`===p.id&&townKnown(game,d)));
 }
@@ -205,7 +206,7 @@ export function sanitizeCarriers(game) {
   }
   for(const civ of game.civilians||[]) {
     if(!civ||civ.rescued||!civ.carrierId)continue;
-    const carrier=civ.carrierId==='player'?game.player:(game.squad||[]).find(s=>s.id===civ.carrierId);
+    const carrier=civ.carrierId==='player'?game.player:expeditionCombatUnits(game).find(s=>s.id===civ.carrierId);
     const count=bump(civ.carrierId);
     if(!carrier||carrier.dead||carrier.isDown||carrier.hp<=0||count>carryingCapacity(carrier))delete civ.carrierId;
   }
@@ -233,7 +234,7 @@ export function markSoldierDown(game, soldier, opts = {}) {
   delete soldier.carrierId;
   delete soldier.rescueHealerId;
   beginDownEvent(game, soldier);
-  const nearby = (game.squad || []).find(s => s !== soldier && !s.dead && !s.isDown && Math.hypot(s.x - soldier.x, s.y - soldier.y) < 320);
+  const nearby = expeditionCombatUnits(game).find(s => s !== soldier && !s.dead && !s.isDown && Math.hypot(s.x - soldier.x, s.y - soldier.y) < 320);
   if (nearby) game.dialogue?.trigger(nearby, 'ALLY_DOWN');
   if(isMerchantCasualty(soldier)) {
     game._merchantWounded ||= [];
@@ -441,7 +442,7 @@ export function grantCivilianRescueBonus(game,civ,station) {
   if(!game||!civ||civ.rescued)return;
   const def=CIV_KINDS[civ.kind]||CIV_KINDS.child;
   const carrierId=civ.carrierId;
-  const carrier=carrierId==='player'?game.player:(game.squad||[]).find(s=>s&&s.id===carrierId);
+  const carrier=carrierId==='player'?game.player:expeditionCombatUnits(game).find(s=>s&&s.id===carrierId);
   civ.rescued=true;civ.rescueStationId=station?.id;delete civ.carrierId;
   game.civilianRescues=(game.civilianRescues||0)+1;
   if(carrier)carrier.rescues=(carrier.rescues||0)+1;
@@ -646,7 +647,7 @@ export function ensureCiviliansSpawned(game, opts={}) {
 }
 
 /** 隊長の自部隊に健在な衛生職がいるか（いれば直属の搬送者は町へ行かず隊長のそばでCT明けを待つ）。 */
-export const partyMedics=(game,unit)=>(game.squad||[]).filter(h=>h!==unit&&isOwnSquad(h)&&isMedic(h)&&!h.dead&&!h.isDown&&h.hp>0&&isLocalRescueUnit(game,h)===isLocalRescueUnit(game,unit));
+export const partyMedics=(game,unit)=>expeditionCombatUnits(game).filter(h=>h!==unit&&isOwnSquad(h)&&isMedic(h)&&!h.dead&&!h.isDown&&h.hp>0&&isLocalRescueUnit(game,h)===isLocalRescueUnit(game,unit));
 export const waitsForPartyMedic=(game,unit)=>!!(unit&&isOwnSquad(unit)&&game?.player&&!game.player.isDown&&!game.player.dead&&isLocalRescueUnit(game,unit)===isLocalRescueUnit(game,game.player)&&partyMedics(game,unit).length);
 export const PARTY_STAY_RADIUS=56;
 /** CT待ちの自部隊衛生職は、倒れた仲間がいる間は敵を追わず隊長の周りで待つ。 */
@@ -657,7 +658,7 @@ export function transportInCombat(game,unit){
   return (enemies||[]).some(m=>m&&!m.dead&&!m.isDown&&!m.dying&&!m.retreated&&m.hp>0&&(m.x-unit.x)**2+(m.y-unit.y)**2<=TRANSPORT_COMBAT_RADIUS**2);
 }
 /** One assignment pass, independent of squad iteration order. Medics retain their own assignment. */
-export function buildTransportRescueAssign(game,pool=game.squad||[]){
+export function buildTransportRescueAssign(game,pool=expeditionCombatUnits(game)){
   const assigned=new Map(),patients=rescueUnits(game).filter(u=>u?.isDown&&!u.dead&&!u.carrierId&&!u.dying&&(!u.downedInAid||['medical','town'].includes(nearestCasualtyStation(game,u)?.kind)))
     .sort((a,b)=>a===game.player?-1:b===game.player?1:(a.downTimer??RESCUE_TIMEOUT)-(b.downTimer??RESCUE_TIMEOUT));
   if(!patients.length)return assigned;
@@ -677,11 +678,11 @@ export function handleTransportAI(game,soldier,dt,assignments=null) {
   if(soldier.dead||soldier.isDown)return false;
   const carried=carriedSoldiers(game,soldier);
   // Medics treat in place; everyone else collects nearby casualties and returns to aid.
-  const chosen=(assignments||buildTransportRescueAssign(game,(game.squad||[]).includes(soldier)?game.squad:[...(game.squad||[]),soldier])).get(soldier);
+  const chosen=(assignments||buildTransportRescueAssign(game,expeditionCombatUnits(game).includes(soldier)?expeditionCombatUnits(game):[...expeditionCombatUnits(game),soldier])).get(soldier);
   const candidate=chosen?.isDown&&!chosen.dead&&!chosen.carrierId?chosen:null;
   if(candidate&&attachWounded(game,soldier,candidate))return true;
   // 隊長を運ぶ場合：到達可能な衛生術士がいればその最寄りへ、いなければ町・本陣・救護所へ。
-  const healer=!candidate&&carried.length&&(carried.includes(game.player)||headquartersRevivalPaused(game))?(game.squad||[]).filter(h=>h!==soldier&&isMedic(h)&&!h.dead&&!h.isDown&&h.hp>0&&revivalSkillCooldownLeft(game,h)<=.000001&&medicHasStamina(h,MEDIC_TREAT_MIN)&&isLocalRescueUnit(game,h)===isLocalRescueUnit(game,soldier)).sort((a,b)=>Math.hypot(a.x-soldier.x,a.y-soldier.y)-Math.hypot(b.x-soldier.x,b.y-soldier.y))[0]:null;
+  const healer=!candidate&&carried.length&&(carried.includes(game.player)||headquartersRevivalPaused(game))?expeditionCombatUnits(game).filter(h=>h!==soldier&&isMedic(h)&&!h.dead&&!h.isDown&&h.hp>0&&revivalSkillCooldownLeft(game,h)<=.000001&&medicHasStamina(h,MEDIC_TREAT_MIN)&&isLocalRescueUnit(game,h)===isLocalRescueUnit(game,soldier)).sort((a,b)=>Math.hypot(a.x-soldier.x,a.y-soldier.y)-Math.hypot(b.x-soldier.x,b.y-soldier.y))[0]:null;
   // 自部隊に衛生職がいる間は搬送せず、牽引したまま隊長のそばで待つ（CT明けに衛生職が蘇生）。
   if(!candidate&&!healer&&carried.length&&!carried.includes(game.player)&&waitsForPartyMedic(game,soldier)){
     const p=game.player,dx=p.x-soldier.x,dy=p.y-soldier.y,d=Math.hypot(dx,dy);
@@ -697,7 +698,7 @@ export function handleTransportAI(game,soldier,dt,assignments=null) {
 }
 export function syncDragged(game,dt) {
   sanitizeCarriers(game);
-  for(const carrier of [game.player,...(game.squad||[]),...(commanderDown(game)?friendlyNpcs(game):[])].filter(Boolean)) {
+  for(const carrier of [game.player,...expeditionCombatUnits(game),...(commanderDown(game)?friendlyNpcs(game):[])].filter(Boolean)) {
     const list=[...carriedSoldiers(game,carrier),...carriedCivilians(game,carrier)];
     list.forEach((unit,i)=>{
       const angle=(carrier.facingAngle||0)+Math.PI+(list.length>1?(i?-.4:.4):0);

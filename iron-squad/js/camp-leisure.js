@@ -2,7 +2,7 @@
 // The pose comes from the soldier id and is not written into the save.
 import { WORLD_SIZE, TAVERN_SITE } from './world.js?v=198';
 import { outerWallBuilt, insideOuterWall } from './hq-outer-wall.js?v=198';
-import { isSoldierOnExpedition } from './expedition-rules.js?v=254';
+import { isSoldierOnExpedition,expeditionPlatoonId } from './expedition-rules.js?v=256';
 
 export const CAMP_X = WORLD_SIZE / 2;
 export const CAMP_Y = WORLD_SIZE / 2;
@@ -45,7 +45,7 @@ function canRest(game, soldier) {
   const patient = game._medicRescueAssign?.get?.(soldier.id);
   if (patient && patient.isDown && !patient.dead) return false;
   const platoons = game.platoons || [];
-  const platoon = platoons[(soldier.platoonId || 0) % 3] || platoons[0];
+  const platoon = platoons[expeditionPlatoonId(soldier)] || platoons[0];
   if (isSoldierOnExpedition(platoon, soldier)) return false;
   if (soldier.isPersonalGuard) {
     const player = game.player;

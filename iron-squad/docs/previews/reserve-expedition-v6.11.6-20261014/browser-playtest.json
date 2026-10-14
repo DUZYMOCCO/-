@@ -1,0 +1,65 @@
+{
+  "version": "6.11.6",
+  "results": [
+    {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "dispatched": {
+        "main": 48,
+        "reserves": 4,
+        "ids": [
+          "reserve-a",
+          "reserve-b",
+          "reserve-c"
+        ],
+        "away": 3,
+        "farmWorkers": 1
+      },
+      "moved": 67.75168119064608,
+      "reloaded": {
+        "main": 48,
+        "away": 3
+      },
+      "returned": {
+        "mission": "idle",
+        "main": 48,
+        "reserves": 4,
+        "away": 0,
+        "markersCleared": true
+      }
+    },
+    {
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "dispatched": {
+        "main": 48,
+        "reserves": 4,
+        "ids": [
+          "reserve-a",
+          "reserve-b",
+          "reserve-c"
+        ],
+        "away": 3,
+        "farmWorkers": 1
+      },
+      "moved": 72.20124572258199,
+      "reloaded": {
+        "main": 48,
+        "away": 3
+      },
+      "returned": {
+        "mission": "idle",
+        "main": 48,
+        "reserves": 4,
+        "away": 0,
+        "markersCleared": true
+      }
+    }
+  ],
+  "pageErrors": [],
+  "disposableStorage": true
+}

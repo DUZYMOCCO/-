@@ -2,8 +2,8 @@ import {noteFollowerIntent} from './follower-recovery.js?v=251';
 import {soldierAttackCooldown} from './equipment-rules.js?v=242';
 import {guardTarget,guardSpeedMult} from './guard-leash.js?v=211';
 import {WORLD_SIZE,fieldBlocks} from './world.js?v=198';
-import {inCurrentInstance} from './instance-rules.js?v=182';
-import {isSoldierOnExpedition} from './expedition-rules.js?v=254';
+import {inCurrentInstance} from './instance-rules.js?v=256';
+import {isSoldierOnExpedition} from './expedition-rules.js?v=256';
 import {generateSoldierName} from './soldier-names.js?v=210';
 export const LIMITED_CLASSES=Object.freeze({
  NINJA:{id:'NINJA',name:'忍者',icon:'🥷',baseClassId:'LIGHT',combatClass:'LIGHT',color:'#8e97ac',range:250,speed:136,atkCooldown:.75,bonusHp:5,bonusAtk:12,desc:'刀と手裏剣を間合いに応じて使い分ける。'},

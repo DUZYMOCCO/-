@@ -1,6 +1,6 @@
 import {WORLD_SIZE,biomeAt,eastWestRoadY,northSouthRoadX,riverCenterY,blockingGuides} from './world.js?v=198';
 import {dungeonSolids} from './dungeon.js?v=251';
-import {inCurrentInstance} from './instance-rules.js?v=182';
+import {inCurrentInstance} from './instance-rules.js?v=256';
 import {ECONOMIC_REGIONS,economicState,economicFieldBlocked} from './regional-economy.js?v=182';
 
 export const NAVIGATION_RULES=Object.freeze({fieldSpan:12000,maxSize:168,terrainAlpha:.2,roadAlpha:.48,iconAlpha:1});

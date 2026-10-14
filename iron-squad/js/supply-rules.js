@@ -1,10 +1,10 @@
 import {attributeValues,ensureAttributeProfile} from './unit-attributes.js?v=248';
 import {isMagicUser,ensureMana} from './magic-rules.js?v=231';
 import {WORLD_SIZE} from './world.js?v=198';
-import {inCurrentInstance} from './instance-rules.js?v=182';
+import {inCurrentInstance} from './instance-rules.js?v=256';
 import {saveSlots} from './save-slots.js?v=253';
 import {requestCheckpointAction,checkpointNotice} from './checkpoint-ui.js?v=253';
-import {nearestRevivalPotionTarget,reviveByPotion,REVIVAL_POTION_RANGE} from './casualty-rules.js?v=255';
+import {nearestRevivalPotionTarget,reviveByPotion,REVIVAL_POTION_RANGE} from './casualty-rules.js?v=256';
 
 export const AMMO_CAPACITY=30; // Legacy/default capacity for units without a ranged weapon.
 export const AMMO_BASE_CAPACITY=Object.freeze({bow:120,crossbow:60,cannon:30});
@@ -132,6 +132,10 @@ export function normalizeFieldSave(game,data) {
     if(pos)return {...u,x:pos.x,y:pos.y};
     if(!inCurrentInstance(game,u))return u;
     return {...u,x:game.savedFieldPos.x+(i%8-4)*18,y:game.savedFieldPos.y+Math.floor(i/8)*18};
+  });
+  data.reserves=(data.reserves||[]).map(u=>{
+    if(!inCurrentInstance(game,u)&&!game.instanceCargoIds?.includes(u.id))return u;
+    const pos=positions.get(u.id)||game.savedFieldPos;return {...u,x:pos.x,y:pos.y};
   });
   data.civilians=(data.civilians||[]).map(c=>{
     if(c.rescueSpace!==game.currentDungeon.id&&c.carrierId!=='player')return {...c};

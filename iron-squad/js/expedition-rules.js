@@ -1,7 +1,7 @@
 /**
  * IRON SQUAD: 小隊遠征 (platoon expedition) — send 本隊 platoon into danger,
  * fight independently, auto-return when near death so survivors can awaken.
- * UI lives under 国家運営. Selection = 本隊 only (直属 never join; player can escort them).
+ * UI lives under 国家運営. Selection = 本隊 + healthy reserves (直属 never join; player can escort them).
  * Player picks danger tier (risk → harder fights / more casualty chance, better return loot).
  * Return grants gold / items / XP; surviving へっぽこ get grit + deathline luck.
  * v1.25.7
@@ -37,12 +37,13 @@ export function getDangerTier(tierId) {
   return EXPEDITION_DANGER_TIERS.find((t) => t.id === id) || EXPEDITION_DANGER_TIERS[1];
 }
 
-/** Main-body soldiers of a platoon (excludes personal guards / dead). */
+/** Main-body soldiers plus assigned expedition reserves (excludes personal guards / dead). */
 export function expeditionMembers(game, platoonId, pickedIds = null) {
   const pid = (platoonId | 0) % 3;
   let list = (game.squad || []).filter(
     (s) => s && !s.dead && !s.isPersonalGuard && ((s.platoonId || 0) % 3) === pid
   );
+  list=list.concat(activeExpeditionReserves(game).filter(s=>s.reserveExpeditionPlatoon===pid));
   if (pickedIds && pickedIds.length) {
     const set = new Set(pickedIds.map(String));
     list = list.filter((s) => set.has(String(s.id)));
@@ -54,9 +55,29 @@ export function expeditionCombatReady(members) {
   return (members || []).filter((s) => s && !s.isDown);
 }
 
+export function isExpeditionReserve(game,soldier) {
+  const pid=soldier?.reserveExpeditionPlatoon;
+  if(!Number.isInteger(pid)||soldier.dead)return false;
+  const p=(game.platoons||[]).find(p=>p.id===pid);
+  return isPlatoonAway(p)&&Array.isArray(p.expeditionMemberIds)&&p.expeditionMemberIds.some(id=>String(id)===String(soldier.id));
+}
+export const activeExpeditionReserves=game=>(game?.reserves||[]).filter(s=>s&&isExpeditionReserve(game,s));
+export const expeditionCombatUnits=game=>[...(game?.squad||[]),...activeExpeditionReserves(game)];
+export const expeditionPlatoonId=soldier=>Number.isInteger(soldier?.reserveExpeditionPlatoon)?soldier.reserveExpeditionPlatoon:(soldier?.platoonId||0)%3;
+export function expeditionRoster(game,platoonId) {
+  const pid=(platoonId|0)%3,p=(game.platoons||[]).find(p=>p.id===pid);
+  return expeditionMembers(game,pid).concat(isPlatoonAway(p)?[]:(game.reserves||[]).filter(s=>s&&!s.dead&&s.reserveExpeditionPlatoon==null&&!s.heroPartyId));
+}
+export function clearReserveExpedition(soldier) {
+  if(soldier.reserveExpeditionPlatoon==null)return;
+  soldier.isPersonalGuard=!!soldier.reserveExpeditionOriginalGuard;
+  delete soldier.reserveExpeditionPlatoon;delete soldier.reserveExpeditionOriginalGuard;
+}
+
 // Protection excludes new dispatches, not members of an expedition already in progress.
 export function expeditionCandidates(game, platoonId, pickedIds = null) {
-  let members=expeditionMembers(game,platoonId).filter(s=>s.personnelLocked!==true&&!s.heroPartyId);
+  const reserveSet=new Set(game.reserves||[]);
+  let members=expeditionRoster(game,platoonId).filter(s=>s.personnelLocked!==true&&!s.heroPartyId&&(!reserveSet.has(s)||(s.reserveExpeditionPlatoon==null&&!s.isDown&&!s.dying&&s.hp>0)));
   if(Array.isArray(pickedIds)){
     const ids=new Set(pickedIds.map(String));members=members.filter(s=>ids.has(String(s.id)));
   }

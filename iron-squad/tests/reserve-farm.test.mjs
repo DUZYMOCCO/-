@@ -71,7 +71,7 @@ assert.match(reserveRosterLine(48, 48, 120, 120, { received: 0, deployed: 0 }), 
 assert.match(reserveRosterLine(48, 48, 120, 120, null), /川辺の農村/);
 assert.match(reserveRosterLine(48, 48, 10, 10, null), /川辺の農村/);
 assert.match(reserveRosterLine(48, 48, 0, 0, null), /自動補充/);
-assert.equal(reserveRosterTitle(0), '本陣の予備兵 0名（欠員時に合流）');
+assert.equal(reserveRosterTitle(0), '川辺の農村の予備兵 0名（欠員時に合流）');
 assert.match(reserveRosterTitle(120), /川辺の農村の予備兵 120名/);
 
 function near(data, rgb, limit = 12) {

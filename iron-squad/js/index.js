@@ -12,7 +12,7 @@ import {LIMITED_CLASSES,initializeLimitedAllies,prepareLimitedEncounter,createLi
 import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=182';
 import {TIERS,MAX_EQUIPMENT_TIER,MAX_POWER_RANK,POWER_RANK_STEP,GENERATION_COUNT,TRADE_MAX_TIER,powerRank,tierDescription} from './equipment-tiers.js?v=231';
 import {fieldAdaptiveScaling} from './field-scaling.js?v=182';
-import {activeSquad,inCurrentInstance} from './instance-rules.js?v=182';
+import {activeSquad,inCurrentInstance} from './instance-rules.js?v=256';
 import {TANK,prepareTanks,tankEvalDistSq,tankSlowFactor,tankCover,tankStunSeconds} from './heavy-tank.js?v=235';
 import {recordBattleLog,resetBattleLog,refreshCombatFieldNotes} from './battle-log.js?v=246';
 import {rollDropExclusive,applyDropExclusive,dropExclusiveLabel} from './drop-exclusives.js?v=182';
@@ -56,9 +56,9 @@ import { loadCss } from '../../common/js/load-css.js';
 import { storage } from '../../common/js/storage.js';
 import { createStallRecorder, mountStallLog } from './stall-recorder.js?v=182';
 import { drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow, isRuinKeeper, ruinKeeperScale } from './visuals.js?v=245';
-import { refreshCampQuiet, assignCampSeats, tryCampLeisure, YARD_TABLES, drawLeisureTable } from './camp-leisure.js?v=202';
+import { refreshCampQuiet, assignCampSeats, tryCampLeisure, YARD_TABLES, drawLeisureTable } from './camp-leisure.js?v=256';
 import { CAMP_PEACE_RADIUS, peaceContainment, pushOutsidePeace, relocatePeaceMonster } from './peace-zones.js?v=182';
-import { FARM_X, FARM_Y, farmPosts, farmOverlaps, reinforcementCount, reserveRosterLine, reserveRosterTitle } from './reserve-farm.js?v=182';
+import { FARM_X, FARM_Y, farmPosts, farmOverlaps, reinforcementCount, reserveRosterLine, reserveRosterTitle } from './reserve-farm.js?v=256';
 import { drawMeleeRangeCue, meleeDrawReach, attackAnimationRate } from './weapon-motion.js?v=242';
 import { guardRegrouping, guardTarget, guardSpeedMult } from './guard-leash.js?v=211';
 import { KNOCK_RULES, knockbackDistance, knockFlight, slamDamage, knockTransferDistance } from './knockback-rules.js?v=212';
@@ -73,7 +73,7 @@ import { applyCommanderIdentity, normalizeCommanderIdentity, commanderFullName, 
 import {MAGIC_CLASSES,MAGIC_AFFINITIES,magicMethods,isMage,isMagicUser,ensureMana,initializeMagic,updateMagic,distributeMagicStones,castMedicBuff,castCasterStrength,updateMageAI,drawMagicBursts,spendMana,weaponMagicDamage,isPlayerCaster,castPlayerSpell,PLAYER_MAGIC_RULES} from './magic-rules.js?v=231';
 import {hazardMethods,updateHazards,drawHazards} from './hazard-fields.js?v=198';
 import {strongEnemyReward} from './combat-rewards.js?v=182';
-import {supplyMethods, initializeSupplies, updateSupplies, takeRangedShot, ammoCombatProfile, isRangedUnit, distributeAmmo, preventLethalHit, normalizeFieldSave, SQUAD_POTION_COST, REVIVAL_POTION_COST, REVIVAL_POTION_MAX, SQUAD_POTION_MAX, ensureAmmo, ammoCapacity, recalcAmmoCapacity, RANGED_DAMAGE_MULT, supplyLocation} from './supply-rules.js?v=253';
+import {supplyMethods, initializeSupplies, updateSupplies, takeRangedShot, ammoCombatProfile, isRangedUnit, distributeAmmo, preventLethalHit, normalizeFieldSave, SQUAD_POTION_COST, REVIVAL_POTION_COST, REVIVAL_POTION_MAX, SQUAD_POTION_MAX, ensureAmmo, ammoCapacity, recalcAmmoCapacity, RANGED_DAMAGE_MULT, supplyLocation} from './supply-rules.js?v=256';
 import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog } from './interface.js?v=254';
 import { renderTroopRankings, getSoldierRankerBadges, calcSoldierRankerBonus, setRankingFamilyLabels, RANKING_FAMILIES } from './troop-rankings.js?v=247';
 import { ensureSoldierAppearance, drawSoldierPortrait } from './soldier-appearance.js?v=206';
@@ -132,20 +132,20 @@ import {applyHeroEquipmentUpgrade} from './hero-equipment.js?v=239';
 import {initializeHeroJourney,rollHeroRevelation,serializeHeroJourney,updateHeroParty,updateHeroFollowing,awardHeroBattle,recordDemonKingDefeat,ensureHeroCastle,syncHeroCastle,renderHeroJourney,drawHeroMarks} from './hero-party.js?v=246';
 import {updateSquadHpHud} from './squad-hp-hud.js?v=246';
 import {addBattleReport,normalizeBattleReport,renderBattleReport} from './battle-report.js?v=226';
-import { RESCUE_TIMEOUT, REVIVAL_COOLDOWN, revivalCooldownOf, revivalSkillCooldownLeft, normalizeRevivalSkill, headquartersRevivalPaused, rescueUnits, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, receiveTownCargo, leaveCivilianSpace, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, buildTransportRescueAssign, markSoldierDown, downCommander, commanderDown, updateNpcRescue, CIV_KINDS, isMedic, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST, medicHoldsByCommander } from './casualty-rules.js?v=255';
+import { RESCUE_TIMEOUT, REVIVAL_COOLDOWN, revivalCooldownOf, revivalSkillCooldownLeft, normalizeRevivalSkill, headquartersRevivalPaused, rescueUnits, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, receiveTownCargo, leaveCivilianSpace, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, buildTransportRescueAssign, markSoldierDown, downCommander, commanderDown, updateNpcRescue, CIV_KINDS, isMedic, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST, medicHoldsByCommander } from './casualty-rules.js?v=256';
 import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault, dungeonBlocks, dungeonSolids } from './dungeon.js?v=251';
 import {nearestDungeonFloor,dungeonSpawnPoint,dungeonSteeringTarget} from './dungeon-layout.js?v=182';
 import {normalizeDungeonExploration,updateDungeonSideChests,drawDungeonSideChests,updateDungeonRespawns,dungeonCoolingDown,recordDungeonClear,DUNGEON_RESET_PHASES} from './dungeon-exploration.js?v=200';
 import {
   EXPEDITION_CHECK_INTERVAL, EXPEDITION_RETURN_HOME, EXPEDITION_ENGAGE_R,
   EXPEDITION_DANGER_TIERS, EXPEDITION_MIN_MEMBERS,
-  getDangerTier, expeditionMembers, expeditionCandidates, expeditionCombatReady, shouldAutoReturn, pickExpeditionTarget,
+  getDangerTier, expeditionMembers, expeditionCandidates, expeditionRoster, activeExpeditionReserves, expeditionCombatUnits, isExpeditionReserve, expeditionPlatoonId, clearReserveExpedition, expeditionCombatReady, shouldAutoReturn, pickExpeditionTarget,
   canStartExpedition, startExpeditionState, beginReturnState, clearExpeditionState,
   isPlatoonAway, persistPlatoonMissions, restorePlatoonMissions, missionStatusJa,
   computeExpeditionReturnRewards, isInferiorSurvivor, applyInferiorExpeditionGrit,
   INFERIOR_EXPEDITION_EXTRA_XP, INFERIOR_DEATHLINE_LUCK,
   expeditionHazardTakenMult, expeditionEngageRadius, isSoldierOnExpedition
-} from './expedition-rules.js?v=254';
+} from './expedition-rules.js?v=256';
 
 import { viewport, circleInView, strokeVisibleRing, persistentUnit } from './render-support.js';
 
@@ -1357,7 +1357,7 @@ export const IronSquadGame = {
               <!-- 部隊名簿 ＆ 叙勲タブ -->
               <div id="view-strat-squad">
                 <div id="reinforcement-summary" class="reinforcement-summary"></div>
-                <details id="reserve-roster" class="reserve-roster"><summary id="reserve-roster-title">本陣の予備兵</summary><div id="reserve-roster-list"></div></details>
+                <details id="reserve-roster" class="reserve-roster"><summary id="reserve-roster-title">川辺の農村の予備兵</summary><div id="reserve-roster-list"></div></details>
                 <!-- 💰 自部隊投資 / 国庫寄付 ・ スカウト（全軍一括支給は廃止） -->
                 <div id="economy-manage-bar" class="economy-manage-bar">
                   <div class="economy-tab-row">
@@ -2606,16 +2606,26 @@ export const IronSquadGame = {
     if (!platoon) return false;
     if (isPlatoonAway(platoon)) { this.showToast('\u305d\u306e\u5c0f\u968a\u306f\u3059\u3067\u306b\u9060\u5f81\uff0f\u5e30\u9084\u4e2d\u3067\u3059'); return false; }
     const tier = getDangerTier(tierId != null ? tierId : (this.expeditionDangerTier || 2));
-    const picks = pickedIds || (this.expeditionPicks && this.expeditionPicks[platoonId]) || null;
+    const picks = pickedIds ?? this.getExpeditionPicks(platoonId);
     if (!canStartExpedition(this, platoonId, picks)) {
-      this.showToast('\u9060\u5f81\u306b\u306f\u672c\u968a\u306e\u6226\u95d8\u53ef\u80fd3\u540d\u4ee5\u4e0a\u304c\u5fc5\u8981\u3067\u3059\uff08\u76f4\u5c5e\u306f\u5bfe\u8c61\u5916\uff09');
+      this.showToast('遠征には本隊・予備兵から戦闘可能な3名以上が必要です（直属は対象外）');
       return false;
     }
     const target = pickExpeditionTarget(this, BASE_CAMP, 2200, tier.id);
     const members = expeditionCandidates(this, platoonId, picks);
+    const reserveSet=new Set(this.reserves||[]),sentReserves=members.filter(s=>reserveSet.has(s));
+    const previousPositions=new Map(sentReserves.map(s=>[s,{x:s.x,y:s.y}]));
+    const departurePosts=new Map(farmPosts((this.reserves||[]).filter(s=>s.reserveExpeditionPlatoon==null&&!s.isDown&&!s.dying),(x,y)=>economicFieldBlocked(this,x,y)).map(post=>[post.soldier,post]));
+    for(const s of sentReserves){
+      const post=departurePosts.get(s);if(post){s.x=post.x;s.y=post.y;}
+      s.reserveExpeditionOriginalGuard=!!s.isPersonalGuard;s.isPersonalGuard=false;s.reserveExpeditionPlatoon=platoon.id;
+    }
     const n = startExpeditionState(platoon, target, members, tier.id);
-    this.showToast(`${platoon.icon}${platoon.name.split(' ')[0]} \u9060\u5f81\u6d3e\u9063\uff08\u672c\u968a${n}\u540d\u30fb${tier.icon}${tier.label}\uff09\u2192 ${target.label}`);
-    this.saveGame();
+    if(!this.saveGame()){
+      for(const s of sentReserves){clearReserveExpedition(s);Object.assign(s,previousPositions.get(s));}clearExpeditionState(platoon);
+      this.showToast('遠征の派遣を保存できませんでした');return false;
+    }
+    this.showToast(`${platoon.icon}${platoon.name.split(' ')[0]} 遠征派遣（本隊${n-sentReserves.length}名・予備${sentReserves.length}名・${tier.icon}${tier.label}）→ ${target.label}`);
     return true;
   },
 
@@ -2683,10 +2693,17 @@ export const IronSquadGame = {
   },
 
   completePlatoonExpeditionReturn(platoon) {
-    if (!platoon) return;
+    if (!platoon || !isPlatoonAway(platoon)) return;
     const members = expeditionMembers(this, platoon.id, platoon.expeditionMemberIds);
     // Grant before clear so tier/startCount still available
     this.grantExpeditionReturnRewards(platoon, members);
+    const returning=(this.reserves||[]).filter(s=>s.reserveExpeditionPlatoon===platoon.id);
+    for(const s of returning)if(!s.dead){s.x=BASE_CAMP.x;s.y=BASE_CAMP.y;}
+    if(returning.length)syncDragged(this,1);
+    for(const s of returning){releaseWounded(this,s);clearReserveExpedition(s);}
+    this.reserves=(this.reserves||[]).filter(s=>!returning.includes(s)||!s.dead);
+    const homePosts=new Map(farmPosts(this.reserves.filter(s=>s.reserveExpeditionPlatoon==null&&!s.isDown&&!s.dying),(x,y)=>economicFieldBlocked(this,x,y)).map(post=>[post.soldier,post]));
+    for(const s of returning){const post=homePosts.get(s);if(post){s.x=post.x;s.y=post.y;}}
     clearExpeditionState(platoon);
     this.saveGame();
   },
@@ -2696,7 +2713,7 @@ export const IronSquadGame = {
     const key = platoonId % 3;
     if (!this.expeditionPicks[key]) {
       // default: all combat-ready main-army members of the platoon
-      this.expeditionPicks[key] = expeditionCombatReady(expeditionCandidates(this, key)).map((s) => s.id);
+      this.expeditionPicks[key] = expeditionCombatReady(expeditionCandidates(this, key)).filter(s=>!(this.reserves||[]).includes(s)).map((s) => s.id);
     }
     const available=new Set(expeditionCandidates(this,key).map(s=>String(s.id)));
     this.expeditionPicks[key]=this.expeditionPicks[key].filter(id=>available.has(String(id)));
@@ -2727,33 +2744,34 @@ export const IronSquadGame = {
       return `<button type="button" class="mini-btn btn-danger-tier ${on ? 'active' : ''}" aria-pressed="${on}" data-tier="${t.id}" style="background:${on ? t.color : '#334155'};color:${on ? '#0f172a' : '#e2e8f0'};font-size:10px;padding:3px 7px;font-weight:${on ? 'bold' : 'normal'};">${t.icon}${t.label}<span style="opacity:.8;font-size:9px;"> x${t.rewardMult}</span></button>`;
     }).join('');
     const rows = this.platoons.map((p) => {
-      const allMembers = expeditionMembers(this, p.id);
-      const picks = this.getExpeditionPicks(p.id);
+      const away = isPlatoonAway(p);
+      const allMembers = expeditionRoster(this, p.id);
+      const picks = away?(p.expeditionMemberIds?.length?p.expeditionMemberIds:expeditionMembers(this,p.id).map(s=>s.id)):this.getExpeditionPicks(p.id);
       const pickSet = new Set(picks.map(String));
-      const selected = expeditionCandidates(this,p.id,picks);
+      const selected = away?expeditionMembers(this,p.id,picks):expeditionCandidates(this,p.id,picks);
       const ready = expeditionCombatReady(selected);
       const downed = selected.filter((s) => s.isDown).length;
-      const away = isPlatoonAway(p);
       const status = missionStatusJa(p);
       const statusColor = p.mission === 'expedition' ? '#f59e0b' : (p.mission === 'returning' ? '#f87171' : '#94a3b8');
       const canGo = this.isEnlisted() && !away && ready.length >= EXPEDITION_MIN_MEMBERS && !this.currentDungeon;
       const btn = away
         ? `<button type="button" class="mini-btn btn-expedition-recall" data-pid="${p.id}" style="background:#7f1d1d;color:#fecaca;font-size:10px;padding:3px 8px;">\u21a9 \u53ec\u9084</button>`
         : `<button type="button" class="mini-btn btn-expedition-send" data-pid="${p.id}" ${canGo ? '' : 'disabled'} style="background:${canGo ? '#a16207' : '#334155'};color:#fff;font-size:10px;padding:3px 8px;">\ud83d\udea9 \u9060\u5f81\u6d3e\u9063</button>`;
-      const memberChecks = allMembers.slice(0, 24).map((s) => {
+      const memberChecks = allMembers.map((s) => {
         const locked=s.personnelLocked===true;
-        const checked = !locked&&pickSet.has(String(s.id)) ? 'checked' : '';
+        const reserve=(this.reserves||[]).includes(s),unfit=reserve&&(s.isDown||s.dying||s.hp<=0);
+        const checked = (away||!locked)&&pickSet.has(String(s.id)) ? 'checked' : '';
         const talent = (s.talent === 'INFERIOR') ? ' \ud83c\udf42' : '';
         const down = s.isDown ? '(\u8ca0\u50b7)' : '';
-        const label = `${s.name || '\u5175'}${talent}${down}${locked?' 🔒保護中':''}`;
-        return `<label style="display:inline-flex;align-items:center;gap:2px;margin:1px 4px 1px 0;font-size:9.5px;color:#cbd5e1;"><input type="checkbox" class="expedition-pick" data-pid="${p.id}" data-sid="${s.id}" ${checked} ${away||locked ? 'disabled' : ''}>${label}</label>`;
+        const label = `${reserve?'[予備] ':''}${s.name || '\u5175'}${talent}${down}${locked?' 🔒保護中':''}`;
+        return `<label style="display:inline-flex;align-items:center;gap:2px;margin:1px 4px 1px 0;font-size:9.5px;color:#cbd5e1;"><input type="checkbox" class="expedition-pick" data-pid="${p.id}" data-sid="${s.id}" ${checked} ${away||locked||unfit ? 'disabled' : ''}>${label}</label>`;
       }).join('');
-      const more = allMembers.length > 24 ? `<span style="font-size:9px;color:#64748b;">\u2026\u4ed6${allMembers.length - 24}\u540d</span>` : '';
+      const more = '';
       return `<div class="expedition-card" style="margin-bottom:8px;padding-bottom:6px;border-bottom:1px dashed rgba(148,163,184,0.2);">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;font-size:10.5px;">
           <div style="min-width:0;flex:1;">
             <span style="color:${p.color};font-weight:bold;">${p.icon}${p.name.split(' ')[0]}</span>
-            <span style="color:#64748b;"> \u672c\u968a\u9078\u629c${ready.length}/\u8ca0\u50b7${downed} (\u5728\u7c4d${allMembers.length})</span>
+            <span style="color:#64748b;"> 選抜${ready.length}（本隊${ready.filter(s=>!(this.reserves||[]).includes(s)).length}・予備${ready.filter(s=>(this.reserves||[]).includes(s)).length}）/\u8ca0\u50b7${downed} (\u5728\u7c4d${allMembers.length})</span>
             <div style="color:${statusColor};font-size:9.5px;">${status}</div>
           </div>
           ${btn}
@@ -2765,7 +2783,7 @@ export const IronSquadGame = {
       </div>`;
     }).join('');
     host.innerHTML = `
-      <p class="command-note">本隊から3名以上を選択 · 保護中の兵士は派遣対象外</p>
+      <p class="command-note">本隊・予備兵から3名以上を選択 · 保護中は派遣対象外 · 予備兵は帰還後に待機へ</p>
 
       <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px;">${tierBtns}</div>
       <div style="font-size:9.5px;color:${tier.color};margin-bottom:8px;">${tier.icon}<strong>${tier.label}</strong> \u2014 ${tier.desc} \u5831\u916cx${tier.rewardMult} / \u88ab\u30c0\u30e1x${tier.hazardTaken}</div>
@@ -3505,11 +3523,11 @@ export const IronSquadGame = {
     };
     // 旧セーブは名前なし・性別未設定・従来の見た目のまま（家名のセリフは出ない）。
     applyCommanderIdentity(this.player, pSave);
-    sanitizeCarriers(this);
     this.recalcPlayerStats();
 
     this.initPlatoons();
     if (saved.platoonMissions) restorePlatoonMissions(this.platoons, saved.platoonMissions);
+    for(const s of this.reserves)if(s.reserveExpeditionPlatoon!=null&&!isExpeditionReserve(this,s)){clearReserveExpedition(s);s.x=s.isDown?BASE_CAMP.x:FARM_X;s.y=s.isDown?BASE_CAMP.y:FARM_Y;}
     this.initOutposts();
     this.initDungeons();
     this.dungeonExploration = normalizeDungeonExploration(saved.dungeonExploration);
@@ -5427,14 +5445,14 @@ export const IronSquadGame = {
     this.squad=this.squad.filter(s=>!s.dead);
     let deployed=0;
     while(this.squad.length<capacity && this.reserves.length) {
-      const index=this.reserves.findIndex(s=>!s.dead&&!s.isDown&&!s.dying&&s.hp>0);if(index<0)break;
+      const index=this.reserves.findIndex(s=>!s.dead&&!s.isDown&&!s.dying&&s.hp>0&&s.reserveExpeditionPlatoon==null);if(index<0)break;
       const [soldier]=this.reserves.splice(index,1);
       Object.assign(soldier,{x:BASE_CAMP.x+(Math.random()-.5)*80,y:BASE_CAMP.y+(Math.random()-.5)*80,
         isDown:false,downTimer:0,rescueProgress:0,phaseActivity:emptyActivity()});
       this.squad.push(soldier);deployed++;
     }
     if(announce && deployed) {
-      this.showToast(`本陣の予備兵${deployed}名が実戦部隊へ合流・予備${this.reserves.length}名`);
+      this.showToast(`川辺の農村の予備兵${deployed}名が実戦部隊へ合流・予備${this.reserves.length}名`);
       this.updateStatsUI();
     }
     return deployed;
@@ -5686,7 +5704,7 @@ export const IronSquadGame = {
       this._dialogueTimer = 0;
       const camX = this.camera ? this.camera.x : this.player.x;
       const camY = this.camera ? this.camera.y : this.player.y;
-      const nearSoldiers = this.squad.filter(s => !s.dead && !s.isDown && Math.hypot(s.x - camX, s.y - camY) < 320);
+      const nearSoldiers = expeditionCombatUnits(this).filter(s => !s.dead && !s.isDown && Math.hypot(s.x - camX, s.y - camY) < 320);
       if (nearSoldiers.length > 0) {
         const lucky = nearSoldiers[Math.floor(Math.random() * nearSoldiers.length)];
         const isDefense = Boolean((this.invasions?.stage && this.invasions.stage !== 'idle') || this.baseRaidActive || this.invasionActive);
@@ -6154,7 +6172,8 @@ export const IronSquadGame = {
       if(soldier.heroPartyId)return; // The independent party has its own movement and combat AI.
       const clsKey = soldier.combatClass || soldier.soldierClass || 'HEAVY';
       const cls = SOLDIER_CLASSES[clsKey] || SOLDIER_CLASSES.HEAVY;
-      const platoon = this.platoons[soldier.platoonId % 3] || this.platoons[0];
+      const platoon = this.platoons[expeditionPlatoonId(soldier)] || this.platoons[0];
+      if((this.reserves||[]).includes(soldier)&&!isExpeditionReserve(this,soldier))return;
 
       if(soldier.shieldTimer > 0) soldier.shieldTimer = Math.max(0, soldier.shieldTimer - dt);
       if(soldier.dead||soldier.isDown){tickSoldierMeleeSkill(this,soldier,dt);return;}
@@ -7256,7 +7275,7 @@ export const IronSquadGame = {
       settleUnit(unit, blocked);
     };
     apply(this.player, !!dungeon);
-    for (const s of this.squad || []) apply(s, !!(dungeon && inCurrentInstance(this, s)));
+    for (const s of expeditionCombatUnits(this)) apply(s, !!(dungeon && inCurrentInstance(this, s)));
     for (const m of this.monsters || []) apply(m, !!dungeon);
     for (const p of this.platoons || []) apply(p, false);
     if (dungeon) return;
@@ -7634,7 +7653,7 @@ export const IronSquadGame = {
 
     // 遠征選抜の本隊のみ危険度ティア被ダメ増（実マップ戦闘の難度）
     if (!environmental && target !== this.player && this.platoons && !target.isPersonalGuard) {
-      const ep = this.platoons[(target.platoonId || 0) % 3];
+      const ep = this.platoons[expeditionPlatoonId(target)];
       if (isSoldierOnExpedition(ep, target)) {
         const haz = expeditionHazardTakenMult(ep);
         if (haz > 1) dmg = Math.max(1, Math.round(dmg * haz));
@@ -8072,7 +8091,7 @@ export const IronSquadGame = {
     this.savedFieldSquadPos = null;
     this.savedFieldPlatoonPos = null;
     if (this.squad) {
-      this.savedFieldSquadPos = this.squad.map((s) => ({
+      this.savedFieldSquadPos = [...this.squad,...(this.reserves||[])].map((s) => ({
         id: s.id, x: s.x, y: s.y, isPersonalGuard: !!s.isPersonalGuard
       }));
       if (this.platoons) {
@@ -9084,7 +9103,7 @@ export const IronSquadGame = {
       const up = it.upgrade > 0 && !/\+\d+$/.test(String(it.name || '')) ? `+${it.upgrade}` : '';
       return `<div>${slotJa[k]||k}: <span style="color:${it.color || '#e2e8f0'};">[T${it.tier}] ${equipmentName(it)}${up}</span>${bitTxt}</div>`;
     }).join('');
-    const role = preview ? '🍺 酒場の旅人（未雇用）' : (this.reserves || []).includes(s) ? '予備兵' : s.isPersonalGuard ? '⭐ 自部隊（直属）' : '🏰 本隊';
+    const role = preview ? '🍺 酒場の旅人（未雇用）' : (this.reserves || []).includes(s) ? `予備兵${isExpeditionReserve(this,s)?' · 遠征/帰還中':''}` : s.isPersonalGuard ? '⭐ 自部隊（直属）' : '🏰 本隊';
     const wage=salaryQuote(s,this),ranker=calcSoldierRankerBonus(this,s.id);
     const hitHp = Math.floor(hitGrowthHpOf(s)), hitDef = Math.floor(hitGrowthDefOf(s));
     // 長い1枚を4つのタブに分ける。開いているタブは兵士をめくっても保つ（画面の状態だけでセーブしない）
@@ -9493,6 +9512,7 @@ export const IronSquadGame = {
       this.showToast?.('⚠️ 対象の兵士が見つかりません');
       return false;
     }
+    if(soldier.reserveExpeditionPlatoon!=null){this.showToast('遠征中の予備兵は帰還後に直属へ編入できます');return false;}
     if (soldier.isPersonalGuard && !soldier.overflowGuard) {
       this.showToast?.('すでに自部隊（直属）です');
       return false;
@@ -9560,6 +9580,7 @@ export const IronSquadGame = {
   /** 兵士詳細用：自分の小隊へスカウトできるか。show=falseならボタン非表示。 */
   personalScoutState(s) {
     if (!s || s.dead || s.isPersonalGuard || s === this.player) return {show:false};
+    if(s.reserveExpeditionPlatoon!=null)return {show:true,enabled:false,reason:'遠征中の予備兵は帰還後に編入できます'};
     if(!this.isEnlisted())return {show:true,enabled:false,reason:'本陣に加入すると他部隊から引き抜けます'};
     const rank = this.currentRank() || RANKS[0];
     const maxGuards = Math.min(rank.personalGuards || 0, PERSONAL_GUARD_MAX);
@@ -10242,14 +10263,15 @@ export const IronSquadGame = {
     const reserveLiving=(this.reserves || []).filter(s=>s&&!s.dead).length;
     const activeCount=this.squad.filter(s=>!s.dead).length;
     const supply=this.lastReinforcements;
-    document.getElementById('reinforcement-summary').textContent=reserveRosterLine(activeCount,this.currentRank().maxSquad,reserveCount,reserveLiving,supply);
-    document.getElementById('reserve-roster-title').textContent=reserveRosterTitle(reserveCount);
+    document.getElementById('reinforcement-summary').textContent=reserveRosterLine(activeCount,this.currentRank().maxSquad,reserveCount,reserveLiving,supply,activeExpeditionReserves(this).length);
+    document.getElementById('reserve-roster-title').textContent=reserveRosterTitle(reserveCount,activeExpeditionReserves(this).length);
     const reserveList=document.getElementById('reserve-roster-list');reserveList.replaceChildren();
     for(const soldier of this.reserves || []) {
       const row=document.createElement('div');row.className='reserve-row';
       const cls=SOLDIER_CLASSES[soldier.soldierClass] || SOLDIER_CLASSES.HEAVY;
       const talent=TALENTS[soldier.talent] || TALENTS.AVERAGE;
       row.textContent=`${soldier.name} · ${cls.name} · ${genderLabel(soldier)} · ${talentTag(soldier)} · Lv.${soldier.level || 1} · 経験${soldier.survivedWaves || 0}戦線 · 通常給与見込${salaryQuote(soldier,this).total.toLocaleString()}G`;
+      if(isExpeditionReserve(this,soldier))row.textContent+=` · ${missionStatusJa(this.platoons[expeditionPlatoonId(soldier)])}`;
       if(soldier.lastMaintenance)row.textContent+=` · 自己強化${soldier.lastMaintenance.count}回 / ${soldier.lastMaintenance.spent}G · ${soldier.lastMaintenance.status}`;
       const info=document.createElement('span');info.textContent=row.textContent;
       const detail=document.createElement('button');detail.type='button';detail.className='mini-btn';detail.textContent='個人詳細';
@@ -11055,7 +11077,7 @@ export const IronSquadGame = {
       if (visible(remains)) renderList.push({ y: remains.y, k: 2, ref: remains });
     }
     if (this.squad) {
-      const drawnSquad=this.squad.concat(visibleHeroMembers(this));
+      const drawnSquad=expeditionCombatUnits(this).concat(visibleHeroMembers(this));
       for (let i = 0; i < drawnSquad.length; i++) {
         const s = drawnSquad[i];
         if (!s.dead && (!this.currentDungeon||inCurrentInstance(this,s)) && visible(s)) renderList.push({ y: s.y, k: 3, ref: s });
@@ -11069,9 +11091,9 @@ export const IronSquadGame = {
     for(const guard of this.gateGuards||[])if(gateGuardVisible(this,guard)&&visible(guard))renderList.push({y:guard.y,k:6,ref:guard});
     for(const civ of this.civilians||[])if(!civ.rescued&&(!this.currentDungeon||civ.rescueSpace===this.currentDungeon.id)&&visible(civ))renderList.push({y:civ.y,k:7,ref:civ});
     if(!this.currentDungeon)for(const actor of this.nation?.economy?.traffic||[])if(actor.hp>0&&visible(actor))renderList.push({y:actor.y,k:8,ref:actor});
-    if(!this.currentDungeon)for(const soldier of this.reserves||[])if(!soldier.dead&&(soldier.isDown||soldier.dying)&&visible(soldier))renderList.push({y:soldier.y,k:3,ref:soldier});
+    if(!this.currentDungeon)for(const soldier of this.reserves||[])if(!isExpeditionReserve(this,soldier)&&!soldier.dead&&(soldier.isDown||soldier.dying)&&visible(soldier))renderList.push({y:soldier.y,k:3,ref:soldier});
     if(!this.currentDungeon && this.reserves?.length && farmOverlaps(this.reserves.length, camX, camY, visX, visY)) {
-      const posts=farmPosts(this.reserves.filter(s=>!s.isDown&&!s.dying),(x,y)=>economicFieldBlocked(this,x,y));
+      const posts=farmPosts(this.reserves.filter(s=>!isExpeditionReserve(this,s)&&!s.isDown&&!s.dying),(x,y)=>economicFieldBlocked(this,x,y));
       for(let i=0;i<posts.length;i++) if(visible(posts[i])) renderList.push({y:posts[i].y,k:9,ref:posts[i]});
     }
     if (this.player) renderList.push({ y: this.player.y, k: 4, ref: this.player });
