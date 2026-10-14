@@ -1,8 +1,8 @@
 import {attributeValues,ensureAttributeProfile} from './unit-attributes.js?v=248';
 import {isMagicUser,ensureMana} from './magic-rules.js?v=257';
-import {WORLD_SIZE} from './world.js?v=198';
+import {WORLD_SIZE} from './world.js?v=260';
 import {inCurrentInstance} from './instance-rules.js?v=256';
-import {saveSlots} from './save-slots.js?v=259';
+import {saveSlots} from './save-slots.js?v=260';
 import {requestCheckpointAction,checkpointNotice} from './checkpoint-ui.js?v=259';
 import {nearestRevivalPotionTarget,reviveByPotion,REVIVAL_POTION_RANGE} from './casualty-rules.js?v=256';
 
@@ -100,7 +100,7 @@ export function supplyLocation(game,u=game.player) {
     if(!usable(m)||m.returningToBase)continue;
     if(near(u,m,110))return {kind:'merchant',name:m.placeName||'商人のキャンプ'};
   }
-  for(const tile of game.worldTerrain?.tiles?.values?.()||[])for(const camp of tile.camps||[])if(near(u,camp,110))return {kind:'camp',name:'野営キャンプ'};
+  for(const tile of game.worldTerrain?.tiles?.values?.()||[])if(!tile.prefetched)for(const camp of tile.camps||[])if(near(u,camp,110))return {kind:'camp',name:'野営キャンプ'};
   return null;
 }
 export function updateSupplies(game,dt) {

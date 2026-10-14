@@ -874,30 +874,72 @@ function tileMayHaveRelief(x0, y0) {
 }
 
 export class WorldTerrain {
-  constructor() { this.tiles=new Map(); this.generated=0; this.visibleCamps=[]; this.rasterSize=TILE; ensureDepthArt(); }
+  constructor() { this.tiles=new Map(); this.generated=0; this.visibleCamps=[]; this.rasterSize=TILE;this._terrainEpoch=0;this._pendingTerrain=new Set(); ensureDepthArt(); }
   clear() {
     for (const tile of this.tiles.values()) { tile.canvas.width=1; tile.canvas.height=1; }
-    this.tiles.clear(); this.visibleCamps=[];
+    this.tiles.clear(); this.visibleCamps=[];this._terrainEpoch++;this._pendingTerrain.clear();this._lastGroundCamera=null;this._visibleTileBounds=null;
+    this._terrainWorker?.terminate();this._terrainWorker=null;
   }
   get(tx,ty) {
     const key=`${tx},${ty}`;
     if(this.tiles.has(key)) {
       const tile=this.tiles.get(key); this.tiles.delete(key);
-      if (tile.context?.isContextLost?.() !== true) { this.tiles.set(key,tile); return tile; }
+      if (tile.context?.isContextLost?.() !== true) { tile.prefetched=false;this.tiles.set(key,tile); return tile; }
       tile.canvas.width=1; tile.canvas.height=1;
     }
     // Repaint an existing surface instead of resizing and allocating a canvas at
     // every tile boundary. Pixel capacity stays bounded even when GC is deferred.
+    const reusable=this.takeSurface();
+    const tile=this.generate(tx,ty,reusable); this.tiles.set(key,tile);
+    return tile;
+  }
+  takeSurface(protectVisible=false){
     let reusable;
     const limit=Math.floor(CACHE_PIXELS/(this.rasterSize*this.rasterSize));
     while(this.tiles.size>=limit) {
-      const oldest=this.tiles.keys().next().value, retired=this.tiles.get(oldest);
+      let oldest=this.tiles.keys().next().value;
+      if(protectVisible&&this._visibleTileBounds){
+        const b=this._visibleTileBounds;
+        oldest=[...this.tiles].find(([,tile])=>tile.x/TILE<b.minX||tile.x/TILE>b.maxX||tile.y/TILE<b.minY||tile.y/TILE>b.maxY)?.[0];
+        if(oldest===undefined)return null;
+      }
+      const retired=this.tiles.get(oldest);
       this.tiles.delete(oldest);
       if(!reusable&&retired.context?.isContextLost?.()!==true)reusable=retired.canvas;
       else {retired.canvas.width=1;retired.canvas.height=1;}
     }
-    const tile=this.generate(tx,ty,reusable); this.tiles.set(key,tile);
-    return tile;
+    return reusable;
+  }
+  requestTile(tx,ty){
+    const key=`${tx},${ty}`,edge=Math.ceil(WORLD_SIZE/TILE);
+    if(tx<0||ty<0||tx>=edge||ty>=edge||this.tiles.has(key)||this._pendingTerrain.has(key)||this._pendingTerrain.size>=8||this._terrainWorkerDisabled)return;
+    if(typeof Worker!=='function'||typeof OffscreenCanvas!=='function')return;
+    if(!this._terrainWorker){
+      try{
+        this._terrainWorker=new Worker(new URL('./terrain-worker.js?v=260',import.meta.url),{type:'module'});
+        const disable=()=>{this._terrainWorkerDisabled=true;this._terrainWorker?.terminate();this._terrainWorker=null;this._pendingTerrain.clear();};
+        this._terrainWorker.onerror=disable;
+        this._terrainWorker.onmessage=({data})=>{
+          if(data.epoch!==this._terrainEpoch||data.size!==this.rasterSize){data.bitmap?.close();return;}
+          this._pendingTerrain.delete(`${data.tx},${data.ty}`);
+          if(data.error){disable();return;}
+          const key=`${data.tx},${data.ty}`;
+          if(this.tiles.has(key)){data.bitmap.close();return;}
+          try{
+            const reusable=this.takeSurface(true);if(reusable===null)return;
+            const canvas=reusable||document.createElement('canvas');
+            if(canvas.width!==this.rasterSize)canvas.width=this.rasterSize;
+            if(canvas.height!==this.rasterSize)canvas.height=this.rasterSize;
+            const context=canvas.getContext('2d');context.setTransform(1,0,0,1,0,0);context.globalAlpha=1;context.globalCompositeOperation='source-over';
+            context.clearRect(0,0,this.rasterSize,this.rasterSize);context.drawImage(data.bitmap,0,0);
+            this.tiles.set(key,{canvas,context,objects:data.objects,camps:data.camps,x:data.tx*TILE,y:data.ty*TILE,prefetched:true});this.generated++;
+          }catch{disable();}finally{data.bitmap.close();}
+        };
+      }catch{this._terrainWorkerDisabled=true;return;}
+    }
+    this._pendingTerrain.add(key);
+    try{this._terrainWorker.postMessage({tx,ty,size:this.rasterSize,epoch:this._terrainEpoch});}
+    catch{this._terrainWorkerDisabled=true;this._terrainWorker.terminate();this._terrainWorker=null;this._pendingTerrain.clear();}
   }
   generate(tx,ty,reusable) {
     const rnd=seeded(Math.imul(tx+31,73856093)^Math.imul(ty+31,19349663));
@@ -1035,11 +1077,23 @@ export class WorldTerrain {
     const visibleCount=Math.min(maxTiles,Math.ceil(hw*2/TILE)+1)*Math.min(maxTiles,Math.ceil(hh*2/TILE)+1);
     const size=[512,384,256,192,128,96,64,32,16,8,4,2,1].find(n=>visibleCount*n*n<=CACHE_PIXELS);
     if(size!==this.rasterSize){this.clear();this.rasterSize=size;}
+    this._visibleTileBounds={minX,maxX,minY,maxY};
     const objects=[], camps=[];
     for(let y=minY;y<=maxY;y++) for(let x=minX;x<=maxX;x++) {
       const tile=this.get(x,y);c.drawImage(tile.canvas,tile.x,tile.y,TILE,TILE);objects.push(...tile.objects);camps.push(...tile.camps);
     }
     this.visibleCamps=camps;
+    const previous=this._lastGroundCamera,dx=previous?camera.x-previous.x:0,dy=previous?camera.y-previous.y:0;
+    this._lastGroundCamera={x:camera.x,y:camera.y};
+    // Prebuild the incoming strip only. Leave enough capacity for every visible tile.
+    const capacity=Math.floor(CACHE_PIXELS/(size*size)),horizontal=Math.abs(dx)>.01&&Math.abs(dx)>=Math.abs(dy)*.3,vertical=Math.abs(dy)>.01&&Math.abs(dy)>=Math.abs(dx)*.3;
+    const aheadX=dx>0?maxX+1:minX-1,aheadY=dy>0?maxY+1:minY-1;
+    const extra=(horizontal?maxY-minY+1:0)+(vertical?maxX-minX+1:0)+(horizontal&&vertical?1:0);
+    if(previous&&visibleCount+extra<=capacity){
+      if(horizontal)for(let y=minY;y<=maxY;y++)this.requestTile(aheadX,y);
+      if(vertical)for(let x=minX;x<=maxX;x++)this.requestTile(x,aheadY);
+      if(horizontal&&vertical)this.requestTile(aheadX,aheadY);
+    }
     return objects;
   }
   drawOverview(c,size,game) {

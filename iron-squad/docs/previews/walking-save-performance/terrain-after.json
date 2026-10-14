@@ -1,0 +1,21 @@
+{
+  "mode": "after",
+  "cold": {
+    "ms": 58.3,
+    "generated": 8
+  },
+  "frames": 260,
+  "blockingCalls": 0,
+  "blockingMs": 0,
+  "groundMs": {
+    "p50": 0.4,
+    "p95": 0.6,
+    "max": 2.6
+  },
+  "over50": 0,
+  "identical": {
+    "pixelDifferences": 0,
+    "objects": true,
+    "camps": true
+  }
+}

@@ -1,4 +1,4 @@
-import {WORLD_SIZE} from './world.js?v=198';
+import {WORLD_SIZE} from './world.js?v=260';
 import {HQ_FACILITY_LAYOUT} from './hq-facility-layout.js?v=201';
 import {fieldWalls,fieldWallContext,gatePositions,wallBlocksAttack,outerWallBuilt} from './gate-rules.js?v=198';
 const C=WORLD_SIZE/2,PAD=12;

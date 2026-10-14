@@ -1,4 +1,4 @@
-import {WORLD_SIZE} from './world.js?v=198';
+import {WORLD_SIZE} from './world.js?v=260';
 import {hazardContour,insideHazard,containsContour,traceContour,terrainSeed} from './terrain-shapes.js?v=182';
 import {insideOuterWall} from './hq-outer-wall.js?v=198';
 const BASE=WORLD_SIZE/2,CELL=1024;
@@ -25,7 +25,7 @@ function safe(game,f) {
   if((game.medicalPosts||[]).some(p=>distance(p,f)<f.radius+p.radius+40))return false;
   if((game.dungeons||[]).some(d=>d.kind==='town'&&distance(d.entrance||d,f)<f.radius+170))return false;
   if((game.merchants||[]).some(m=>!m.dead&&distance(m,f)<f.radius+130))return false;
-  for(const tile of game.worldTerrain?.tiles?.values?.()||[])if((tile.camps||[]).some(c=>distance(c,f)<f.radius+130))return false;
+  for(const tile of game.worldTerrain?.tiles?.values?.()||[])if(!tile.prefetched&&(tile.camps||[]).some(c=>distance(c,f)<f.radius+130))return false;
   return true;
 }
 export function currentFields(game) {

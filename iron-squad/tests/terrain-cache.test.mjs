@@ -32,4 +32,22 @@ const freshCanvas=reused.canvas;reused.context.isContextLost=()=>true;
 const recovered=terrain.get(141,156);assert.notEqual(recovered.canvas,freshCanvas);assert.equal(freshCanvas.width,1);
 assert.deepEqual(recovered.canvas.toBuffer('image/png'),expectedPixels,'a lost cached context regenerates intact ground');
 terrain.clear();
+// A late prefetch must not revive a cleared cache or evict a visible ground tile.
+let controlled,closed=0;
+globalThis.OffscreenCanvas=function(){};
+globalThis.Worker=class{constructor(){controlled=this;this.messages=[];}postMessage(message){this.messages.push(message);}terminate(){this.terminated=true;}};
+try{
+  const ahead=new WorldTerrain();ahead.requestTile(145,150);const worker=controlled,job=worker.messages[0];
+  ahead.clear();const bitmap=createCanvas(512,512);bitmap.close=()=>{closed++;bitmap.width=bitmap.height=1;};
+  worker.onmessage({data:{...job,bitmap,objects:[],camps:[]}});
+  assert.equal(ahead.tiles.size,0);assert.equal(closed,1);assert.equal(worker.terminated,true);
+  for(let x=120;x<144;x++)ahead.get(x,150);
+  ahead._visibleTileBounds={minX:120,maxX:143,minY:150,maxY:150};
+  const keys=[...ahead.tiles.keys()];ahead.requestTile(145,150);const freshJob=controlled.messages[0],incoming=createCanvas(512,512);incoming.close=()=>{closed++;incoming.width=incoming.height=1;};
+  controlled.onmessage({data:{...freshJob,bitmap:incoming,objects:[],camps:[]}});
+  assert.deepEqual([...ahead.tiles.keys()],keys,'prefetch never evicts any protected visible tile');assert.equal(closed,2);
+  ahead.clear();for(let i=0;i<12;i++)ahead.requestTile(120+i,160);
+  assert.equal(ahead._pendingTerrain.size,8,'worker queue stays bounded');
+  controlled.onerror();assert.equal(ahead._pendingTerrain.size,0);assert.ok(ahead.get(145,150).canvas,'failed worker falls back to ordinary generation');ahead.clear();
+}finally{delete globalThis.Worker;delete globalThis.OffscreenCanvas;}
 console.log('PASS: wide-view reuse, moving-strip generation, 24 MiB budget, phone resolution, identical recycled pixels, lost-context recovery');

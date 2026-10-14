@@ -1,7 +1,7 @@
 import {migrateCampaignEnemy} from './campaign-scaling.js?v=241';
 import {HERO_RULES,heroMembers,heroSharesSpace,visibleHeroMembers} from './hero-rules.js';
 import {advanceHeroRoute,heroSegmentOpen,heroRouteCurrent} from './hero-navigation.js?v=198';
-import {WORLD_SIZE,settleUnit} from './world.js?v=198';
+import {WORLD_SIZE,settleUnit} from './world.js?v=260';
 import {DUNGEON_DEFS,dungeonBlocks} from './dungeon.js?v=251';
 import {nearestDungeonFloor} from './dungeon-layout.js?v=182';
 import {economicFieldBlocked} from './regional-economy.js?v=182';
@@ -13,7 +13,7 @@ import {practiceAttribute} from './unit-attributes.js?v=248';
 import {isMedic,treatWounded,updateWounded,normalizeRevivalSkill,revivalSkillCooldownLeft} from './casualty-rules.js?v=256';
 import {healByMedic,healAmountFor} from './phase-rules.js?v=218';
 import {ensureMana,regenerateMana,spendMana,isMage} from './magic-rules.js?v=257';
-import {takeRangedShot,supplyLocation,ammoCapacity} from './supply-rules.js?v=259';
+import {takeRangedShot,supplyLocation,ammoCapacity} from './supply-rules.js?v=260';
 import {distanceScaling} from './equipment-rules.js?v=242';
 import {strongEnemyReward} from './combat-rewards.js?v=182';
 import {RANGED_ENEMIES} from './enemy-ranged.js?v=235';

@@ -1,0 +1,24 @@
+{
+  "syncSaveMs": [
+    298.2,
+    303.5,
+    354.1
+  ],
+  "walkingUpdateMs": {
+    "p50": 4.3,
+    "p95": 11,
+    "max": 26.5
+  },
+  "renderMs": {
+    "p50": 10.4,
+    "p95": 43,
+    "max": 171.9
+  },
+  "autoSaveFrameMs": 30.1,
+  "autoSaveResult": {
+    "status": "saved"
+  },
+  "backgroundWaitMs": 244.1,
+  "movedDuringSave": 33.36600000000908,
+  "worldTiles": 12
+}

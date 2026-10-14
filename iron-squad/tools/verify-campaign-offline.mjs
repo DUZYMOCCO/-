@@ -14,7 +14,7 @@ try{
   await page.waitForFunction(()=>window.gameStudioInstance?.activeGame?.player);await page.evaluate(()=>gameStudioInstance.activeGame.stopGameLoop());
   const evidence=await page.evaluate(async cache=>{const {campaignScaling,CAMPAIGN_SCALE_VERSION}=await import(`/iron-squad/js/campaign-scaling.js?v=${cache}`),{DUNGEON_DEFS}=await import(`/iron-squad/js/dungeon.js?v=${cache}`),{weaponCombatProfile}=await import(`/iron-squad/js/equipment-rules.js?v=${cache}`),{ammoCapacity}=await import(`/iron-squad/js/supply-rules.js?v=${cache}`);return {rimHp:campaignScaling(79360).hp,borderHp:campaignScaling(48000).hp,scaleVersion:CAMPAIGN_SCALE_VERSION,ammoCache:gameStudioInstance.activeGame.player._ammoCapacity,bossHp:DUNGEON_DEFS.find(d=>d.id==='dungeon_demon_castle').boss.hp,bowCooldown:weaponCombatProfile({weaponStyle:'bow'}).baseCooldown,bowAmmo:ammoCapacity({weapon:{weaponStyle:'bow'},strength:30})};},release.version.slice(1));
   assert.equal(evidence.rimHp,1_000_000);assert.equal(evidence.borderHp,6000);assert.equal(evidence.scaleVersion,2);assert.ok(evidence.ammoCache>0);assert.equal(evidence.bossHp,1_000_000_000);assert.equal(evidence.bowCooldown,.60);assert.equal(evidence.bowAmmo,120);assert.deepEqual(errors,[]);
-  if(['6.9.1','6.10.0','6.11.0','6.11.1','6.11.2','6.11.3','6.11.4','6.11.5','6.11.6','6.11.7','6.11.8','6.11.9'].includes(release.gameVersion)){
+  if(['6.9.1','6.10.0','6.11.0','6.11.1','6.11.2','6.11.3','6.11.4','6.11.5','6.11.6','6.11.7','6.11.8','6.11.9','6.11.10'].includes(release.gameVersion)){
     evidence.casterStrikeCost=await page.evaluate(async cache=>{
       const {CASTER_STRIKE_COST,rollAttributeProfile}=await import(`/iron-squad/js/unit-attributes.js?v=${cache}`),{generateRandomDrop}=await import(`/iron-squad/js/index.js?v=${cache}`),{WORLD_SIZE,northSouthRoadX}=await import(`/iron-squad/js/world.js?v=${cache}`),g=gameStudioInstance.activeGame;
       g.closeStrategyModal();g.restTimer=0;const profile=rollAttributeProfile('MAGE','AVERAGE',()=>.5,true);profile.innate.strength=80;profile.innate.magic=1;
@@ -25,7 +25,7 @@ try{
     },release.version.slice(1));
     assert.deepEqual(evidence.casterStrikeCost,{cost:55,mana:[100,45,45],first:true,second:true,detailShowsMP55:true});
   }
-  if(['6.9.0','6.9.1','6.10.0','6.11.0','6.11.1','6.11.2','6.11.3','6.11.4','6.11.5','6.11.6','6.11.7','6.11.8','6.11.9'].includes(release.gameVersion)){
+  if(['6.9.0','6.9.1','6.10.0','6.11.0','6.11.1','6.11.2','6.11.3','6.11.4','6.11.5','6.11.6','6.11.7','6.11.8','6.11.9','6.11.10'].includes(release.gameVersion)){
     evidence.talentRework=await page.evaluate(async cache=>{
       const {talentGrowth,rollAttributeProfile}=await import(`/iron-squad/js/unit-attributes.js?v=${cache}`),{talentTag}=await import(`/iron-squad/js/talent-labels.js?v=${cache}`),{TALENTS}=await import(`/iron-squad/js/index.js?v=${cache}`),g=gameStudioInstance.activeGame;
       const unit=g.createNewSoldier(null,{classKey:'HEAVY',talent:'INFERIOR',level:40,attributeProfile:rollAttributeProfile('HEAVY','INFERIOR',()=>.5,true)});const before={hp:unit.maxHp,atk:unit.atk,def:unit.def};unit.inferiorGrit=8;g.recalcSoldierStats(unit);const boosted={hp:unit.maxHp,atk:unit.atk,def:unit.def};
@@ -33,7 +33,7 @@ try{
     },release.version.slice(1));
     assert.deepEqual(evidence.talentRework,{growth:[.85,1.2,1.55,1.55],ordinaryInferior:.85,geniusGrowth:2.4,geniusBase:[2,2.2,40,40],lateTag:'🍂大器晩成',gritExact:true});
   }
-  if(['6.8.4','6.9.0','6.9.1','6.10.0','6.11.0','6.11.1','6.11.2','6.11.3','6.11.4','6.11.5','6.11.6','6.11.7','6.11.8','6.11.9'].includes(release.gameVersion)){
+  if(['6.8.4','6.9.0','6.9.1','6.10.0','6.11.0','6.11.1','6.11.2','6.11.3','6.11.4','6.11.5','6.11.6','6.11.7','6.11.8','6.11.9','6.11.10'].includes(release.gameVersion)){
     evidence.merchantMenuAndSkills=await page.evaluate(async cache=>{
       const {normalizeDeathlineSkills,chooseDeathlineSkill}=await import(`/iron-squad/js/deathline-rules.js?v=${cache}`),u={soldierClass:'LIGHT',deathlineSkills:['PHANTOM_STEP','MIRACLE_PRAYER']};normalizeDeathlineSkills(u);
       const g=gameStudioInstance.activeGame,m=g.merchants[0];g.closeStrategyModal();g.player.x=m.x;g.player.y=m.y;g.openMerchantShop(m);const popup=document.getElementById('merchant-shop-popup'),categories=[...popup.querySelectorAll('.merchant-main-menu strong')].map(n=>n.textContent),noInventory=!popup.querySelector('[data-buy]');popup.querySelector('[data-merchant-section="save"]').click();const savePage=popup.dataset.section;g._merchantShopClose();
@@ -41,11 +41,11 @@ try{
     },release.version.slice(1));
     assert.deepEqual(evidence.merchantMenuAndSkills,{categories:['回復','取引','セーブ'],noInventory:true,savePage:'save',lightSkills:['PHANTOM_STEP','SURVIVAL_INSTINCT'],healerFirst:'MIRACLE_PRAYER'});
   }
-  if(['6.8.0','6.8.1','6.8.2','6.8.3','6.8.4','6.9.0','6.9.1','6.10.0','6.11.0','6.11.1','6.11.2','6.11.3','6.11.4','6.11.5','6.11.6','6.11.7','6.11.8','6.11.9'].includes(release.gameVersion)){
+  if(['6.8.0','6.8.1','6.8.2','6.8.3','6.8.4','6.9.0','6.9.1','6.10.0','6.11.0','6.11.1','6.11.2','6.11.3','6.11.4','6.11.5','6.11.6','6.11.7','6.11.8','6.11.9','6.11.10'].includes(release.gameVersion)){
     evidence.lightInfantry=await page.evaluate(async cache=>{const {soldierCombatTempo}=await import(`/iron-squad/js/unit-attributes.js?v=${cache}`),{soldierAttackCooldown}=await import(`/iron-squad/js/equipment-rules.js?v=${cache}`),{ammoCombatProfile}=await import(`/iron-squad/js/supply-rules.js?v=${cache}`);return {minTempo:soldierCombatTempo({soldierClass:'LIGHT',quickness:255}),commanderTempo:soldierCombatTempo({isCommander:true,quickness:255}),phantomStoredFloor:soldierAttackCooldown({soldierClass:'LIGHT',quickness:255,deathlineAtkSpeed:25},.01),cannonBashCooldown:ammoCombatProfile({weapon:{weaponStyle:'cannon'},ammo:0,strength:30},{ranged:true,style:'cannon'}).baseCooldown};},release.version.slice(1));
     assert.deepEqual(evidence.lightInfantry,{minTempo:.6,commanderTempo:1,phantomStoredFloor:.15,cannonBashCooldown:1.4});
   }
-  if(['6.8.1','6.8.2','6.8.3','6.8.4','6.9.0','6.9.1','6.10.0','6.11.0','6.11.1','6.11.2','6.11.3','6.11.4','6.11.5','6.11.6','6.11.7','6.11.8','6.11.9'].includes(release.gameVersion)){
+  if(['6.8.1','6.8.2','6.8.3','6.8.4','6.9.0','6.9.1','6.10.0','6.11.0','6.11.1','6.11.2','6.11.3','6.11.4','6.11.5','6.11.6','6.11.7','6.11.8','6.11.9','6.11.10'].includes(release.gameVersion)){
     evidence.reviewFixes=await page.evaluate(async cache=>{
       const {soldierMeleeReload}=await import(`/iron-squad/js/soldier-melee-skills.js?v=${cache}`),{buildTransportRescueAssign}=await import(`/iron-squad/js/casualty-rules.js?v=${cache}`);
       const u={soldierClass:'HEAVY',quickness:15,weapon:{weaponStyle:'sword'},weaponMastery:{sword:0}},slow=soldierMeleeReload({...u,atkSpeed:.1}),fast=soldierMeleeReload({...u,atkSpeed:100});
@@ -55,7 +55,7 @@ try{
     },release.version.slice(1));
     assert.deepEqual(evidence.reviewFixes,{skillSlow:6,skillFast:6,rescuerWithArcher:'offline-archer',rescuerAlone:'offline-heavy'});
   }
-  if(['6.8.2','6.8.3','6.8.4','6.9.0','6.9.1','6.10.0','6.11.0','6.11.1','6.11.2','6.11.3','6.11.4','6.11.5','6.11.6','6.11.7','6.11.8','6.11.9'].includes(release.gameVersion)){
+  if(['6.8.2','6.8.3','6.8.4','6.9.0','6.9.1','6.10.0','6.11.0','6.11.1','6.11.2','6.11.3','6.11.4','6.11.5','6.11.6','6.11.7','6.11.8','6.11.9','6.11.10'].includes(release.gameVersion)){
     evidence.merchantSquadPurchase=await page.evaluate(async cache=>{
       const g=gameStudioInstance.activeGame,{generateRandomDrop}=await import(`/iron-squad/js/index.js?v=${cache}`);g.closeStrategyModal();
       const soldier=g.createNewSoldier(null,{classKey:'HEAVY',talent:'AVERAGE'});soldier.isPersonalGuard=true;soldier.gold=70;g.squad=[soldier];
@@ -70,7 +70,7 @@ try{
     evidence.casterMarket=await page.evaluate(()=>{const g=gameStudioInstance.activeGame;g._merchantShopClose();const m=g.merchants[1],supplies=m.stock.filter(i=>i.merchantCasterSupply),mage=g.createNewSoldier(null,{classKey:'MAGE',talent:'AVERAGE'});mage.isPersonalGuard=true;mage.gold=50;g.squad=[mage];g.gold=1e7;g.player.x=m.x;g.player.y=m.y;g.openMerchantShop(m);document.querySelector('#merchant-shop-popup [data-merchant-section="trade"]')?.click();const select=document.getElementById('merchant-recipient');select.value=mage.id;select.dispatchEvent(new Event('change',{bubbles:true}));const tab=document.querySelector('[data-shop-group="caster"]').getAttribute('aria-selected');const wand=supplies.find(i=>i.weaponStyle==='wand');[...document.querySelectorAll('[data-buy]:not([data-inherit])')].find(b=>b.dataset.buyId===wand.id).click();return {supplies:supplies.length,hasStaff:supplies.some(i=>i.weaponStyle==='staff'),hasWand:!!wand,headpieces:supplies.filter(i=>i.type==='HELMET').length,gloves:supplies.filter(i=>i.type==='GLOVES').length,selectedTab:tab,equipped:mage.weapon.weaponStyle,soldierGold:mage.gold};});
     assert.deepEqual(evidence.casterMarket,{supplies:8,hasStaff:true,hasWand:true,headpieces:3,gloves:3,selectedTab:'true',equipped:'wand',soldierGold:50});assert.deepEqual(errors,[]);
   }
-  if(['6.10.0','6.11.0','6.11.1','6.11.2','6.11.3','6.11.4','6.11.5','6.11.6','6.11.7','6.11.8','6.11.9'].includes(release.gameVersion)){
+  if(['6.10.0','6.11.0','6.11.1','6.11.2','6.11.3','6.11.4','6.11.5','6.11.6','6.11.7','6.11.8','6.11.9','6.11.10'].includes(release.gameVersion)){
     evidence.commandMenu=await page.evaluate(()=>{
       const g=gameStudioInstance.activeGame;g._merchantShopClose?.();g.closeScoutDialog?.();g.closeSoldierDetail?.();g.currentDungeon=null;g.player.hp=g.player.maxHp;g.player.isDown=false;
       g.openStrategyModal(true);const travel=document.getElementById('btn-fast-travel'),direct=travel.closest('.dialog-tabs')?.firstElementChild===travel;
@@ -81,7 +81,7 @@ try{
     });
     assert.deepEqual(evidence.commandMenu,{direct:true,categories:4,donationHidden:true,retained:true,noEconomyFolds:true,destinationFirst:true,returnPaused:true});assert.deepEqual(errors,[]);
   }
-  if(['6.11.1','6.11.2','6.11.3','6.11.4','6.11.5','6.11.6','6.11.7','6.11.8','6.11.9'].includes(release.gameVersion)){
+  if(['6.11.1','6.11.2','6.11.3','6.11.4','6.11.5','6.11.6','6.11.7','6.11.8','6.11.9','6.11.10'].includes(release.gameVersion)){
     evidence.followerRecovery=await page.evaluate(async()=>{
       const g=gameStudioInstance.activeGame;g.stopGameLoop();g.closeStrategyModal();g.startFreshGame(false);g.stopGameLoop();g.updateSpawns=()=>{};
       g.monsters=[];g.reserves=[];g.civilians=[];g.gateGuards=[];g.merchants=[];g.dropsOnField=[];g.currentQuest=null;g.currentDungeon=null;g.phaseTimer=100000;
@@ -93,7 +93,7 @@ try{
     });
     assert.ok(evidence.followerRecovery.warpedAt>=8&&evidence.followerRecovery.warpedAt<10);assert.ok(evidence.followerRecovery.distance<=100);assert.equal(evidence.followerRecovery.unearnedTravel,false);assert.deepEqual(errors,[]);
   }
-  if(['6.11.2','6.11.3','6.11.4','6.11.5','6.11.6','6.11.7','6.11.8','6.11.9'].includes(release.gameVersion)){
+  if(['6.11.2','6.11.3','6.11.4','6.11.5','6.11.6','6.11.7','6.11.8','6.11.9','6.11.10'].includes(release.gameVersion)){
     evidence.guardOnlyTravel=await page.evaluate(()=>{
       const g=gameStudioInstance.activeGame;g.stopGameLoop();g.closeStrategyModal();g.startFreshGame(false);g.stopGameLoop();g.closeStrategyModal();g.currentDungeon=null;
       const make=(id,personal)=>Object.assign(g.createNewSoldier(null,{classKey:'LIGHT',talent:'AVERAGE'}),{id,isPersonalGuard:personal,x:79360,y:79360});
@@ -103,7 +103,7 @@ try{
     });
     assert.equal(evidence.guardOnlyTravel.mainHeroReservesUnchanged,true);assert.ok(evidence.guardOnlyTravel.guardDistance<=60);assert.deepEqual(errors,[]);
   }
-  if(['6.11.3','6.11.4','6.11.5','6.11.6','6.11.7','6.11.8','6.11.9'].includes(release.gameVersion)){
+  if(['6.11.3','6.11.4','6.11.5','6.11.6','6.11.7','6.11.8','6.11.9','6.11.10'].includes(release.gameVersion)){
     await page.evaluate(()=>{
       const g=gameStudioInstance.activeGame;g.stopGameLoop();g.currentDungeon=null;g.startFreshGame(false);g.stopGameLoop();g.closeStrategyModal();g.gold=303;
       const m=g.merchants[0];g.player.x=m.x;g.player.y=m.y;g.openMerchantShop(m);document.querySelector('[data-merchant-section="save"]').click();
@@ -117,7 +117,7 @@ try{
     await page.click('#merchant-shop-popup [data-supply="load"]');await page.click('[data-checkpoint-choice="load"]');assert.equal(await page.evaluate(()=>gameStudioInstance.activeGame.gold),303);
     evidence.checkpointUX={saveChoice:true,defaultCancel:true,noticeDismissed:true,returnConfirm:true,cancelPreservedProgress:true,restoredGold:303};assert.deepEqual(errors,[]);
   }
-  if(['6.11.4','6.11.5','6.11.6','6.11.7','6.11.8','6.11.9'].includes(release.gameVersion)){
+  if(['6.11.4','6.11.5','6.11.6','6.11.7','6.11.8','6.11.9','6.11.10'].includes(release.gameVersion)){
     evidence.personnelLock=await page.evaluate(()=>{
       const g=gameStudioInstance.activeGame;g._merchantShopClose?.();g.closeStrategyModal();g.stopGameLoop();g.currentDungeon=null;g.career.status='enlisted';
       const make=id=>Object.assign(g.createNewSoldier(null,{classKey:'HEAVY',talent:'AVERAGE'}),{id,isPersonalGuard:false,platoonId:0,x:79360,y:79360});g.squad=['protected','b','c','d'].map(make);g.reserves=[];g.initPlatoons();
@@ -127,7 +127,7 @@ try{
     });
     assert.deepEqual(evidence.personnelLock,{toggled:true,persisted:true,dismissed:false,sent:true,dispatched:['b','c','d']});assert.deepEqual(errors,[]);
   }
-  if(['6.11.5','6.11.6','6.11.7','6.11.8','6.11.9'].includes(release.gameVersion)){
+  if(['6.11.5','6.11.6','6.11.7','6.11.8','6.11.9','6.11.10'].includes(release.gameVersion)){
     evidence.revivalPriority=await page.evaluate(()=>{
       const g=gameStudioInstance.activeGame;g.stopGameLoop();g.startFreshGame(false);g.stopGameLoop();g.closeStrategyModal();g.currentDungeon=null;g.random=()=>.999;Object.assign(g.player,{x:80560,y:79360});g.inBattle=true;
       const make=(id,cls,distance)=>Object.assign(g.createNewSoldier(null,{classKey:cls,talent:'AVERAGE'}),{id,name:id,isPersonalGuard:true,isDown:true,hp:0,downTimer:45,x:g.player.x+distance,y:g.player.y});
@@ -137,7 +137,7 @@ try{
     });
     assert.deepEqual(evidence.revivalPriority,{order:['medic','heavy','other'],remaining:0,allFullHp:true,mageStillDown:true});assert.deepEqual(errors,[]);
   }
-  if(['6.11.6','6.11.7','6.11.8','6.11.9'].includes(release.gameVersion)){
+  if(['6.11.6','6.11.7','6.11.8','6.11.9','6.11.10'].includes(release.gameVersion)){
     evidence.reserveExpedition=await page.evaluate(async()=>{
       const g=gameStudioInstance.activeGame,{activeExpeditionReserves}=await import('/iron-squad/js/expedition-rules.js?v=256'),{FARM_X,FARM_Y,farmPosts}=await import('/iron-squad/js/reserve-farm.js?v=256');
       g.stopGameLoop();g.startFreshGame(false);g.stopGameLoop();g.closeStrategyModal();g.career.status='enlisted';g.currentDungeon=null;g.expeditionPicks={};
@@ -148,7 +148,7 @@ try{
     });
     assert.deepEqual(evidence.reserveExpedition,{sent:true,ids:['reserve-a','reserve-b','reserve-c'],departedFromFarm:true,farmWorkers:1,resumed:3,main:48,reserves:4,returnedToFarm:true,away:0});assert.deepEqual(errors,[]);
   }
-  if(['6.11.8','6.11.9'].includes(release.gameVersion)){
+  if(['6.11.8','6.11.9','6.11.10'].includes(release.gameVersion)){
     evidence.randomMerchant=await page.evaluate(async()=>{
       const g=gameStudioInstance.activeGame,{generateRandomDrop}=await import('/iron-squad/js/index.js'),{ensureMerchantCatalog}=await import('/iron-squad/js/merchant-catalog.js?v=258');
       const m=g.merchants.find(u=>!u.dead);m.featuredSoldPhase=0;ensureMerchantCatalog(g,m,generateRandomDrop,true);
@@ -156,6 +156,22 @@ try{
       return {weapons:m.stock.filter(i=>i.type==='WEAPON').length,armor:m.stock.filter(i=>i.type!=='WEAPON').length,total:m.stock.length,guaranteed:m.stock.some(i=>i.merchantCasterSupply),stable:!reopened&&stock===JSON.stringify(m.stock)};
     });
     assert.deepEqual(evidence.randomMerchant,{weapons:2,armor:4,total:6,guaranteed:false,stable:true});
+  }
+  if(release.gameVersion==='6.11.10'){
+    evidence.backgroundSave=await page.evaluate(async()=>{
+      const g=gameStudioInstance.activeGame,{saveSlots}=await import('/iron-squad/js/save-slots.js?v=260');
+      g._merchantShopClose?.();g.closeStrategyModal();g.player.hp=g.player.maxHp;g.player.isDown=false;g.gold=777;
+      g.saveGame({background:true});const result=await g._pendingAutoSave;return {status:result.status,gold:saveSlots.get(g.activeSlotId).data.gold};
+    });
+    assert.deepEqual(evidence.backgroundSave,{status:'saved',gold:777});
+  }
+  if(release.gameVersion==='6.11.10'){
+    evidence.terrainWorker=await page.evaluate(async()=>{
+      const {WorldTerrain}=await import('/iron-squad/js/world.js?v=260'),terrain=new WorldTerrain();terrain.requestTile(145,150);
+      const start=performance.now();while(!terrain.tiles.has('145,150')&&performance.now()-start<5000&&!terrain._terrainWorkerDisabled)await new Promise(resolve=>setTimeout(resolve,10));
+      const tile=terrain.tiles.get('145,150'),result={ready:!!tile,prefetched:tile?.prefetched===true,width:tile?.canvas.width,queued:terrain._pendingTerrain.size};terrain.clear();return result;
+    });
+    assert.deepEqual(evidence.terrainWorker,{ready:true,prefetched:true,width:512,queued:0});
   }
   const report={version:release.gameVersion,cache:release.version,assets:release.files.length,allAssetsCached:true,offlineResume:true,evidence,pageErrors:errors,disposableBrowserStorage:true};writeFileSync(`${process.argv[2]||'iron-squad/docs/previews/campaign-ranged-v6.7.0-20261013'}/offline-playtest.json`,JSON.stringify(report,null,2)+'\n');console.log(JSON.stringify(report));await context.close();
 }finally{await browser.close();}
