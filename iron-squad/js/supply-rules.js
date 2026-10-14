@@ -2,8 +2,8 @@ import {attributeValues,ensureAttributeProfile} from './unit-attributes.js?v=248
 import {isMagicUser,ensureMana} from './magic-rules.js?v=257';
 import {WORLD_SIZE} from './world.js?v=198';
 import {inCurrentInstance} from './instance-rules.js?v=256';
-import {saveSlots} from './save-slots.js?v=253';
-import {requestCheckpointAction,checkpointNotice} from './checkpoint-ui.js?v=253';
+import {saveSlots} from './save-slots.js?v=259';
+import {requestCheckpointAction,checkpointNotice} from './checkpoint-ui.js?v=259';
 import {nearestRevivalPotionTarget,reviveByPotion,REVIVAL_POTION_RANGE} from './casualty-rules.js?v=256';
 
 export const AMMO_CAPACITY=30; // Legacy/default capacity for units without a ranged weapon.
@@ -187,6 +187,7 @@ export const supplyMethods={
     return true;
   },
   saveCheckpoint({newSlot=false}={}) {
+    saveSlots.lastWriteError=null;
     try {
       const place=supplyLocation(this);if(!place||!usable(this.player))throw new Error('現在は保存できません');
       const previous=saveSlots.get(this.activeSlotId);if(!previous)throw new Error('保存先がありません');
@@ -201,7 +202,11 @@ export const supplyMethods={
       this.renderSupplyPanel();
       const host=document.querySelector('#merchant-shop-popup:not(.hidden) .merchant-checkpoint');if(host)this.renderSupplyPanel(host);
       checkpointNotice(this,'セーブしました');return true;
-    } catch {checkpointNotice(this,'セーブに失敗しました',true);return false;}
+    } catch(error) {
+      const failure=saveSlots.lastWriteError||error;
+      const reason=failure.name==='QuotaExceededError'?'（保存容量不足）':failure.name==='SecurityError'?'（保存が許可されていません）':'';
+      console.warn('Checkpoint save failed:',failure);checkpointNotice(this,`セーブに失敗しました${reason}`,true);return false;
+    }
   },
   loadCheckpoint() {
     try {

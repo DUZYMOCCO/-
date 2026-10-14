@@ -33,7 +33,8 @@ export function requestCheckpointAction(game,kind,source) {
     try {
       if(game.activeSlotId!==slotId)throw new Error('保存先が変更されました');
       const ok=action==='load'?game.loadCheckpoint():game.saveCheckpoint({newSlot:action==='new'});
-      if(!ok)checkpointNotice(game,action==='load'?'地点セーブを読み込めませんでした':'セーブに失敗しました',true);
+      // saveCheckpoint reports its own failure, including the actual storage reason.
+      if(!ok&&action==='load')checkpointNotice(game,'地点セーブを読み込めませんでした',true);
     } catch {checkpointNotice(game,action==='load'?'地点セーブを読み込めませんでした':'セーブに失敗しました',true);}
     finally {
       // Keep the request locked briefly so a second tap cannot reopen a fresh dialog.

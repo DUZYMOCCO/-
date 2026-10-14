@@ -1,0 +1,21 @@
+{
+  "version": "6.11.9",
+  "before": {
+    "rawBytes": 5982542,
+    "slots": 1,
+    "inventory": 2500
+  },
+  "overwrite": {
+    "bytes": 980394,
+    "inventory": 2500,
+    "gold": 403855
+  },
+  "fresh": {
+    "slots": 2,
+    "newId": "mv7w1i48-cjo94j9",
+    "oldUnchanged": true,
+    "inventory": 2500
+  },
+  "pageErrors": [],
+  "disposableBrowserStorage": true
+}

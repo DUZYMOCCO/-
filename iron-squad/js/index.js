@@ -65,7 +65,7 @@ import { KNOCK_RULES, knockbackDistance, knockFlight, slamDamage, knockTransferD
 import { MELEE_SOUND_STYLES, playMeleeSound } from './weapon-sounds.js?v=211';
 import {emptyRescueBonuses,normalizeRescueBonuses,rescueBonusSummary} from './rescue-rewards.js?v=204';
 import {drawFieldCivilian} from './civilian-visuals.js?v=242';
-import { saveSlots } from './save-slots.js?v=253';
+import { saveSlots } from './save-slots.js?v=259';
 import { soldierDialogue } from './soldier-dialogue.js?v=246';
 import { generateSoldierName, migrateSoldierName, rollGenderByKey, isGenderId, ensureSoldierGender, genderLabel } from './soldier-names.js?v=210';
 import { openCommanderEditor } from './commander-editor.js?v=210';
@@ -73,7 +73,7 @@ import { applyCommanderIdentity, normalizeCommanderIdentity, commanderFullName, 
 import {MAGIC_CLASSES,MAGIC_AFFINITIES,magicMethods,isMage,isMagicUser,ensureMana,initializeMagic,updateMagic,distributeMagicStones,castMedicBuff,castCasterStrength,updateMageAI,drawMagicBursts,spendMana,weaponMagicDamage,isPlayerCaster,castPlayerSpell,PLAYER_MAGIC_RULES} from './magic-rules.js?v=257';
 import {hazardMethods,updateHazards,drawHazards} from './hazard-fields.js?v=198';
 import {strongEnemyReward} from './combat-rewards.js?v=182';
-import {supplyMethods, initializeSupplies, updateSupplies, takeRangedShot, ammoCombatProfile, isRangedUnit, distributeAmmo, preventLethalHit, normalizeFieldSave, SQUAD_POTION_COST, REVIVAL_POTION_COST, REVIVAL_POTION_MAX, SQUAD_POTION_MAX, ensureAmmo, ammoCapacity, recalcAmmoCapacity, RANGED_DAMAGE_MULT, supplyLocation} from './supply-rules.js?v=256';
+import {supplyMethods, initializeSupplies, updateSupplies, takeRangedShot, ammoCombatProfile, isRangedUnit, distributeAmmo, preventLethalHit, normalizeFieldSave, SQUAD_POTION_COST, REVIVAL_POTION_COST, REVIVAL_POTION_MAX, SQUAD_POTION_MAX, ensureAmmo, ammoCapacity, recalcAmmoCapacity, RANGED_DAMAGE_MULT, supplyLocation} from './supply-rules.js?v=259';
 import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog } from './interface.js?v=254';
 import { renderTroopRankings, getSoldierRankerBadges, calcSoldierRankerBonus, setRankingFamilyLabels, RANKING_FAMILIES } from './troop-rankings.js?v=247';
 import { ensureSoldierAppearance, drawSoldierPortrait } from './soldier-appearance.js?v=206';
