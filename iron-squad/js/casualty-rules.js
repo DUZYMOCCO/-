@@ -290,11 +290,22 @@ function revive(game,wounded,hp,options=null) {
   return true;
 }
 
-/** Medicine targets one living casualty in reach, in the commander's current coordinate space. */
+// Keep the random choice stable between HUD refresh and use/validation. Never save it.
+const revivalPotionChoices=new WeakMap();
+/** Within reach: medic first, heavy second (nearest within each), otherwise random. */
 export function nearestRevivalPotionTarget(game) {
   const p=game?.player;if(!p||p.dead||p.isDown||p.hp<=0)return null;
-  return rescueUnits(game).filter(u=>u!==p&&u.isDown&&!u.dead&&!u.dying&&isLocalRescueUnit(game,u)===isLocalRescueUnit(game,p)&&Math.hypot(u.x-p.x,u.y-p.y)<=REVIVAL_POTION_RANGE)
-    .sort((a,b)=>Math.hypot(a.x-p.x,a.y-p.y)-Math.hypot(b.x-p.x,b.y-p.y))[0]||null;
+  const candidates=rescueUnits(game).filter(u=>u!==p&&u.isDown&&!u.dead&&!u.dying&&isLocalRescueUnit(game,u)===isLocalRescueUnit(game,p)&&Math.hypot(u.x-p.x,u.y-p.y)<=REVIVAL_POTION_RANGE);
+  if(!candidates.length){revivalPotionChoices.delete(game);return null;}
+  const medics=candidates.filter(isMedic),priority=medics.length?medics:candidates.filter(isHeavySoldier);
+  if(priority.length){
+    revivalPotionChoices.delete(game);
+    return priority.sort((a,b)=>Math.hypot(a.x-p.x,a.y-p.y)-Math.hypot(b.x-p.x,b.y-p.y))[0];
+  }
+  const cached=revivalPotionChoices.get(game);
+  if(cached&&cached.candidates.length===candidates.length&&candidates.every((u,i)=>u===cached.candidates[i]))return cached.target;
+  const target=candidates.length===1?candidates[0]:candidates[Math.min(candidates.length-1,Math.max(0,Math.floor((game.random||Math.random)()*candidates.length)))];
+  revivalPotionChoices.set(game,{candidates,target});return target;
 }
 export function reviveByPotion(game,wounded) {
   if(wounded!==nearestRevivalPotionTarget(game))return false;

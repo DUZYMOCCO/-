@@ -4,7 +4,7 @@ import {WORLD_SIZE} from './world.js?v=198';
 import {inCurrentInstance} from './instance-rules.js?v=182';
 import {saveSlots} from './save-slots.js?v=253';
 import {requestCheckpointAction,checkpointNotice} from './checkpoint-ui.js?v=253';
-import {nearestRevivalPotionTarget,reviveByPotion,REVIVAL_POTION_RANGE} from './casualty-rules.js?v=243';
+import {nearestRevivalPotionTarget,reviveByPotion,REVIVAL_POTION_RANGE} from './casualty-rules.js?v=255';
 
 export const AMMO_CAPACITY=30; // Legacy/default capacity for units without a ranged weapon.
 export const AMMO_BASE_CAPACITY=Object.freeze({bow:120,crossbow:60,cannon:30});

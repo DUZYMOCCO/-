@@ -1,0 +1,57 @@
+{
+  "version": "6.11.5",
+  "results": [
+    {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "first": {
+        "medicDown": false,
+        "fullHp": true,
+        "heavyDown": true,
+        "potions": 1
+      },
+      "second": {
+        "heavyDown": false,
+        "fullHp": true,
+        "mageDown": true,
+        "otherDown": true,
+        "potions": 0
+      },
+      "third": {
+        "otherDown": false,
+        "fullHp": true,
+        "mageDown": true,
+        "potions": 0
+      }
+    },
+    {
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "first": {
+        "medicDown": false,
+        "fullHp": true,
+        "heavyDown": true,
+        "potions": 1
+      },
+      "second": {
+        "heavyDown": false,
+        "fullHp": true,
+        "mageDown": true,
+        "otherDown": true,
+        "potions": 0
+      },
+      "third": {
+        "otherDown": false,
+        "fullHp": true,
+        "mageDown": true,
+        "potions": 0
+      }
+    }
+  ],
+  "pageErrors": [],
+  "disposableStorage": true
+}

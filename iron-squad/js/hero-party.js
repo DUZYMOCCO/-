@@ -10,7 +10,7 @@ import {persistentUnit} from './render-support.js';
 import {grantPersonalExp} from './experience-rules.js';
 import {formatDistance} from './distance-format.js';
 import {practiceAttribute} from './unit-attributes.js?v=248';
-import {isMedic,treatWounded,updateWounded,normalizeRevivalSkill,revivalSkillCooldownLeft} from './casualty-rules.js?v=243';
+import {isMedic,treatWounded,updateWounded,normalizeRevivalSkill,revivalSkillCooldownLeft} from './casualty-rules.js?v=255';
 import {healByMedic,healAmountFor} from './phase-rules.js?v=218';
 import {ensureMana,regenerateMana,spendMana,isMage} from './magic-rules.js?v=231';
 import {takeRangedShot,supplyLocation,ammoCapacity} from './supply-rules.js?v=253';
