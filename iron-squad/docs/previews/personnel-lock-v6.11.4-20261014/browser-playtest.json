@@ -1,0 +1,47 @@
+{
+  "version": "6.11.4",
+  "results": [
+    {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "saveResumePreserved": true,
+      "dismissalBlocked": true,
+      "expeditionChoiceDisabled": true,
+      "dispatched": {
+        "ids": [
+          "lock-b",
+          "lock-c",
+          "lock-d"
+        ],
+        "locked": true
+      },
+      "locked": false,
+      "selectedTab": "stats",
+      "focusReturned": true
+    },
+    {
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "saveResumePreserved": true,
+      "dismissalBlocked": true,
+      "expeditionChoiceDisabled": true,
+      "dispatched": {
+        "ids": [
+          "lock-b",
+          "lock-c",
+          "lock-d"
+        ],
+        "locked": true
+      },
+      "locked": false,
+      "selectedTab": "stats",
+      "focusReturned": true
+    }
+  ],
+  "pageErrors": [],
+  "disposableStorage": true
+}

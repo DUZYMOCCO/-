@@ -4,7 +4,7 @@ import {sound} from '../../common/js/audio.js?v=151';
 import {WORLD_SIZE} from './world.js?v=198';
 import {inCurrentInstance} from './instance-rules.js?v=182';
 import {recordCombat} from './phase-rules.js?v=218';
-import {isSoldierOnExpedition} from './expedition-rules.js';
+import {isSoldierOnExpedition} from './expedition-rules.js?v=254';
 import {practiceAttribute,prefersCasterMelee,attributeValues,canChannelWeaponMagic} from './unit-attributes.js?v=248';
 import {isMagicWeapon} from './weapon-requirements.js?v=239';
 import {numberClassDefinitions} from './class-up-rules.js?v=185';

@@ -2,7 +2,7 @@ import {isEnlisted,CAREER_RULES} from './career-rules.js?v=240';
 import {isOwnSquad} from './own-squad-marker.js?v=182';
 import {persistentUnit} from './render-support.js';
 import {drawSoldierPortrait} from './soldier-appearance.js?v=206';
-import {setSubDialog} from './interface.js?v=249';
+import {setSubDialog} from './interface.js?v=254';
 import {WORLD_SIZE,TAVERN_SITE} from './world.js?v=198';
 import {daylightAt} from './day-night.js?v=208';
 import {drawTavernFixtures,drawTavernCandles} from './nightlife-visuals.js?v=242';

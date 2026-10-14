@@ -217,7 +217,7 @@ export function compactSoldierCard(game, row, soldier, cls, platoonName, talent)
   const summary = element('summary', 'roster-summary');
   const portrait = row.querySelector('.soldier-portrait'); summary.append(portrait);
   const identity = element('span', 'roster-identity');
-  identity.append(element('strong', '', `${soldier.isNamed ? soldier.title || '' : ''}${soldier.name}`));
+  identity.append(element('strong', '', `${soldier.isNamed ? soldier.title || '' : ''}${soldier.name}${soldier.personnelLocked===true?' 🔒':''}`));
   const meta = element('small', 'roster-meta');
   meta.append(document.createTextNode(`${cls.name} · ${genderLabel(soldier)} · Lv.${soldier.level || 1} · ${roleLabel}`));
   if (talentTag) {

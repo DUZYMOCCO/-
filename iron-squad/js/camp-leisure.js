@@ -2,7 +2,7 @@
 // The pose comes from the soldier id and is not written into the save.
 import { WORLD_SIZE, TAVERN_SITE } from './world.js?v=198';
 import { outerWallBuilt, insideOuterWall } from './hq-outer-wall.js?v=198';
-import { isSoldierOnExpedition } from './expedition-rules.js';
+import { isSoldierOnExpedition } from './expedition-rules.js?v=254';
 
 export const CAMP_X = WORLD_SIZE / 2;
 export const CAMP_Y = WORLD_SIZE / 2;

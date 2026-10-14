@@ -54,6 +54,15 @@ export function expeditionCombatReady(members) {
   return (members || []).filter((s) => s && !s.isDown);
 }
 
+// Protection excludes new dispatches, not members of an expedition already in progress.
+export function expeditionCandidates(game, platoonId, pickedIds = null) {
+  let members=expeditionMembers(game,platoonId).filter(s=>s.personnelLocked!==true&&!s.heroPartyId);
+  if(Array.isArray(pickedIds)){
+    const ids=new Set(pickedIds.map(String));members=members.filter(s=>ids.has(String(s.id)));
+  }
+  return members;
+}
+
 export function avgHpRatio(members) {
   const living = expeditionCombatReady(members);
   if (!living.length) return 0;
@@ -110,11 +119,12 @@ export function pickExpeditionTarget(game, baseCamp, territoryR, tierId = 2) {
 }
 
 export function canStartExpedition(game, platoonId, pickedIds = null) {
-  const members = expeditionMembers(game, platoonId, pickedIds);
+  const members = expeditionCandidates(game, platoonId, pickedIds);
   return expeditionCombatReady(members).length >= EXPEDITION_MIN_MEMBERS;
 }
 
 export function startExpeditionState(platoon, target, members, tierId = 2) {
+  members=(members||[]).filter(s=>s&&!s.dead&&s.personnelLocked!==true&&!s.heroPartyId);
   const ready = expeditionCombatReady(members);
   const tier = getDangerTier(tierId);
   platoon.mission = 'expedition';

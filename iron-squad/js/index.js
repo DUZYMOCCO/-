@@ -74,7 +74,7 @@ import {MAGIC_CLASSES,MAGIC_AFFINITIES,magicMethods,isMage,isMagicUser,ensureMan
 import {hazardMethods,updateHazards,drawHazards} from './hazard-fields.js?v=198';
 import {strongEnemyReward} from './combat-rewards.js?v=182';
 import {supplyMethods, initializeSupplies, updateSupplies, takeRangedShot, ammoCombatProfile, isRangedUnit, distributeAmmo, preventLethalHit, normalizeFieldSave, SQUAD_POTION_COST, REVIVAL_POTION_COST, REVIVAL_POTION_MAX, SQUAD_POTION_MAX, ensureAmmo, ammoCapacity, recalcAmmoCapacity, RANGED_DAMAGE_MULT, supplyLocation} from './supply-rules.js?v=253';
-import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog } from './interface.js?v=249';
+import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog } from './interface.js?v=254';
 import { renderTroopRankings, getSoldierRankerBadges, calcSoldierRankerBonus, setRankingFamilyLabels, RANKING_FAMILIES } from './troop-rankings.js?v=247';
 import { ensureSoldierAppearance, drawSoldierPortrait } from './soldier-appearance.js?v=206';
 import { aggregateDeathlineDynamics, tickDeathline, deathlineDamage, normalizeDeathlineSkills, chooseDeathlineSkill, deathlineRangedRange } from './deathline-rules.js?v=246';
@@ -139,13 +139,13 @@ import {normalizeDungeonExploration,updateDungeonSideChests,drawDungeonSideChest
 import {
   EXPEDITION_CHECK_INTERVAL, EXPEDITION_RETURN_HOME, EXPEDITION_ENGAGE_R,
   EXPEDITION_DANGER_TIERS, EXPEDITION_MIN_MEMBERS,
-  getDangerTier, expeditionMembers, expeditionCombatReady, shouldAutoReturn, pickExpeditionTarget,
+  getDangerTier, expeditionMembers, expeditionCandidates, expeditionCombatReady, shouldAutoReturn, pickExpeditionTarget,
   canStartExpedition, startExpeditionState, beginReturnState, clearExpeditionState,
   isPlatoonAway, persistPlatoonMissions, restorePlatoonMissions, missionStatusJa,
   computeExpeditionReturnRewards, isInferiorSurvivor, applyInferiorExpeditionGrit,
   INFERIOR_EXPEDITION_EXTRA_XP, INFERIOR_DEATHLINE_LUCK,
   expeditionHazardTakenMult, expeditionEngageRadius, isSoldierOnExpedition
-} from './expedition-rules.js';
+} from './expedition-rules.js?v=254';
 
 import { viewport, circleInView, strokeVisibleRing, persistentUnit } from './render-support.js';
 
@@ -1154,7 +1154,7 @@ export const IronSquadGame = {
 
   // 起動時にこのゲームのCSSを自分で読み込む（?v= はこのフォルダ内で管理）。ハブが init 前に await する
   prepare() {
-    return loadCss(['../css/iron-squad.css?v=175', '../css/iron-squad-interface.css?v=253'].map(p => new URL(p, import.meta.url).href));
+    return loadCss(['../css/iron-squad.css?v=175', '../css/iron-squad-interface.css?v=254'].map(p => new URL(p, import.meta.url).href));
   },
 
   init(container, onBackToHub) {
@@ -2612,7 +2612,7 @@ export const IronSquadGame = {
       return false;
     }
     const target = pickExpeditionTarget(this, BASE_CAMP, 2200, tier.id);
-    const members = expeditionMembers(this, platoonId, picks);
+    const members = expeditionCandidates(this, platoonId, picks);
     const n = startExpeditionState(platoon, target, members, tier.id);
     this.showToast(`${platoon.icon}${platoon.name.split(' ')[0]} \u9060\u5f81\u6d3e\u9063\uff08\u672c\u968a${n}\u540d\u30fb${tier.icon}${tier.label}\uff09\u2192 ${target.label}`);
     this.saveGame();
@@ -2696,19 +2696,23 @@ export const IronSquadGame = {
     const key = platoonId % 3;
     if (!this.expeditionPicks[key]) {
       // default: all combat-ready main-army members of the platoon
-      this.expeditionPicks[key] = expeditionCombatReady(expeditionMembers(this, key)).map((s) => s.id);
+      this.expeditionPicks[key] = expeditionCombatReady(expeditionCandidates(this, key)).map((s) => s.id);
     }
+    const available=new Set(expeditionCandidates(this,key).map(s=>String(s.id)));
+    this.expeditionPicks[key]=this.expeditionPicks[key].filter(id=>available.has(String(id)));
     return this.expeditionPicks[key];
   },
 
   toggleExpeditionPick(platoonId, soldierId) {
     const key = platoonId % 3;
+    if(!expeditionCandidates(this,key).some(s=>String(s.id)===String(soldierId)))return false;
     const picks = this.getExpeditionPicks(key).map(String);
     const sid = String(soldierId);
     const idx = picks.indexOf(sid);
     if (idx >= 0) picks.splice(idx, 1);
     else picks.push(sid);
     this.expeditionPicks[key] = picks;
+    return true;
   },
 
   renderExpeditionPanel() {
@@ -2726,7 +2730,7 @@ export const IronSquadGame = {
       const allMembers = expeditionMembers(this, p.id);
       const picks = this.getExpeditionPicks(p.id);
       const pickSet = new Set(picks.map(String));
-      const selected = allMembers.filter((s) => pickSet.has(String(s.id)));
+      const selected = expeditionCandidates(this,p.id,picks);
       const ready = expeditionCombatReady(selected);
       const downed = selected.filter((s) => s.isDown).length;
       const away = isPlatoonAway(p);
@@ -2737,11 +2741,12 @@ export const IronSquadGame = {
         ? `<button type="button" class="mini-btn btn-expedition-recall" data-pid="${p.id}" style="background:#7f1d1d;color:#fecaca;font-size:10px;padding:3px 8px;">\u21a9 \u53ec\u9084</button>`
         : `<button type="button" class="mini-btn btn-expedition-send" data-pid="${p.id}" ${canGo ? '' : 'disabled'} style="background:${canGo ? '#a16207' : '#334155'};color:#fff;font-size:10px;padding:3px 8px;">\ud83d\udea9 \u9060\u5f81\u6d3e\u9063</button>`;
       const memberChecks = allMembers.slice(0, 24).map((s) => {
-        const checked = pickSet.has(String(s.id)) ? 'checked' : '';
+        const locked=s.personnelLocked===true;
+        const checked = !locked&&pickSet.has(String(s.id)) ? 'checked' : '';
         const talent = (s.talent === 'INFERIOR') ? ' \ud83c\udf42' : '';
         const down = s.isDown ? '(\u8ca0\u50b7)' : '';
-        const label = `${s.name || '\u5175'}${talent}${down}`;
-        return `<label style="display:inline-flex;align-items:center;gap:2px;margin:1px 4px 1px 0;font-size:9.5px;color:#cbd5e1;"><input type="checkbox" class="expedition-pick" data-pid="${p.id}" data-sid="${s.id}" ${checked} ${away ? 'disabled' : ''}>${label}</label>`;
+        const label = `${s.name || '\u5175'}${talent}${down}${locked?' 🔒保護中':''}`;
+        return `<label style="display:inline-flex;align-items:center;gap:2px;margin:1px 4px 1px 0;font-size:9.5px;color:#cbd5e1;"><input type="checkbox" class="expedition-pick" data-pid="${p.id}" data-sid="${s.id}" ${checked} ${away||locked ? 'disabled' : ''}>${label}</label>`;
       }).join('');
       const more = allMembers.length > 24 ? `<span style="font-size:9px;color:#64748b;">\u2026\u4ed6${allMembers.length - 24}\u540d</span>` : '';
       return `<div class="expedition-card" style="margin-bottom:8px;padding-bottom:6px;border-bottom:1px dashed rgba(148,163,184,0.2);">
@@ -2760,7 +2765,7 @@ export const IronSquadGame = {
       </div>`;
     }).join('');
     host.innerHTML = `
-      <p class="command-note">本隊から3名以上を選択 · ダンジョン内は派遣不可</p>
+      <p class="command-note">本隊から3名以上を選択 · 保護中の兵士は派遣対象外</p>
 
       <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px;">${tierBtns}</div>
       <div style="font-size:9.5px;color:${tier.color};margin-bottom:8px;">${tier.icon}<strong>${tier.label}</strong> \u2014 ${tier.desc} \u5831\u916cx${tier.rewardMult} / \u88ab\u30c0\u30e1x${tier.hazardTaken}</div>
@@ -9094,6 +9099,7 @@ export const IronSquadGame = {
           </div>
           <button type="button" class="mini-btn btn-close-soldier-detail" style="background:#334155;color:#e2e8f0;font-size:11px;">閉じる</button>
           ${tabBar}
+          ${!preview&&!s.heroPartyId?`<div class="soldier-lock-control"><button type="button" class="mini-btn btn-personnel-lock" aria-pressed="${s.personnelLocked===true}" title="放逐・新たな遠征派遣を防止">${s.personnelLocked===true?'🔒 保護中':'🔓 保護する'}</button><span>放逐・新たな遠征派遣を防止</span></div>`:''}
         </div>
         ${(() => { const sc = preview ? {show:false} : this.personalScoutState(s); return sc.show ? `<div class="soldier-detail-scout"><button type="button" class="mini-btn btn-scout-own-squad" ${sc.enabled ? '' : 'disabled'} style="background:${sc.enabled ? '#a16207' : '#475569'};color:#fff;font-size:12px;font-weight:bold;min-height:36px;width:100%;margin:6px 0;">⭐ 自分の小隊にスカウト</button>${sc.enabled ? '' : `<div class="soldier-scout-reason" style="font-size:10px;color:#fca5a5;">${sc.reason}</div>`}</div>` : ''; })()}
         <div class="soldier-detail-pane" data-detail-pane="stats" role="tabpanel" ${tab==='stats'?'':'hidden'}>
@@ -9228,6 +9234,8 @@ export const IronSquadGame = {
     this.wireSoldierDetailPopovers(host);
     const closeBtn = host.querySelector('.btn-close-soldier-detail');
     if (closeBtn) closeBtn.onclick = () => this.closeSoldierDetail();
+    const lockBtn=host.querySelector('.btn-personnel-lock');
+    if(lockBtn)lockBtn.onclick=()=>this.toggleSoldierLock(soldierId);
     const scoutBtn = host.querySelector('.btn-scout-own-squad');
     if (scoutBtn && !scoutBtn.disabled) scoutBtn.onclick = () => {
       this.assignToPersonalSquad(soldierId);
@@ -9743,11 +9751,29 @@ export const IronSquadGame = {
     return true;
   },
 
+  toggleSoldierLock(soldierId) {
+    const s=[...(this.squad||[]),...(this.reserves||[])].find(u=>u&&u.id===soldierId);
+    if(!s||s.dead||s.heroPartyId)return false;
+    const previous=s.personnelLocked;s.personnelLocked=previous!==true;
+    if(!this.saveGame()){
+      if(previous===undefined)delete s.personnelLocked;else s.personnelLocked=previous;
+      this.showToast('保護設定を保存できませんでした');return false;
+    }
+    for(const key of Object.keys(this.expeditionPicks||{}))this.getExpeditionPicks(Number(key));
+    this.renderStrategyUI();
+    if(this.selectedSoldierDetailId===soldierId){
+      this.openSoldierDetail(soldierId);document.querySelector('#soldier-detail-host .btn-personnel-lock')?.focus({preventScroll:true});
+    }else [...document.querySelectorAll('.roster-entry')].find(row=>row.dataset.soldierId===String(soldierId))?.querySelector('.btn-personnel-lock')?.focus({preventScroll:true});
+    this.showToast(s.personnelLocked?'🔒 保護しました（放逐・新たな遠征派遣を防止）':'🔓 保護を解除しました');
+    return true;
+  },
+
   dismissSoldier(soldierId) {
     const inSquad = (this.squad || []).find(s => s.id === soldierId);
     const inReserve = (this.reserves || []).find(s => s.id === soldierId);
     const s = inSquad || inReserve;
     if (!s) return false;
+    if(s.personnelLocked===true){this.showToast('保護中の兵士は放逐できません。先に保護を解除してください');return false;}
     if(!this.isEnlisted()&&!this.isPersonalSquadSoldier(s)){this.showToast('他部隊の兵士を放逐できるのは本陣への加入後です');return false;}
     if (s.isDown) {
       alert('負傷ダウン中の兵士は放逐できません。救護後に行ってください');
@@ -10715,7 +10741,8 @@ export const IronSquadGame = {
               : `<button type="button" class="mini-btn btn-pull-personal" style="background:#a16207;color:#fff;font-size:10px;padding:3px 6px;font-weight:bold;" title="本隊から自部隊（直属）へ引き抜く">⭐ 自部隊へ引き抜</button>`
           ) : ''}
           <button class="mini-btn btn-soldier-detail" style="background:#1e3a5f;color:#93c5fd;font-size:10px;padding:3px 6px;" title="個人詳細">📋 詳細</button>
-          <button class="mini-btn btn-dismiss" style="background:#7f1d1d;color:#fecaca;font-size:10px;padding:3px 6px;" title="放逐（一部返還）">🚪 放逐</button>
+          ${!s.heroPartyId?`<button type="button" class="mini-btn btn-personnel-lock" aria-pressed="${s.personnelLocked===true}" title="放逐・新たな遠征派遣を防止">${s.personnelLocked===true?'🔒 保護中':'🔓 保護する'}</button>`:''}
+          <button class="mini-btn btn-dismiss" ${s.personnelLocked===true?'disabled':''} style="background:#7f1d1d;color:#fecaca;font-size:10px;padding:3px 6px;" title="${s.personnelLocked===true?'保護中のため放逐できません':'放逐（一部返還）'}">🚪 放逐</button>
           ${cls.advancedClassId && SOLDIER_CLASSES[cls.advancedClassId] ? (() => {
             const next = SOLDIER_CLASSES[cls.advancedClassId];
             const cost = classUpCostForNext(cls, s.talent);
@@ -10761,6 +10788,8 @@ export const IronSquadGame = {
       }
 
       const dismissBtn = row.querySelector('.btn-dismiss');
+      const lockBtn=row.querySelector('.btn-personnel-lock');
+      if(lockBtn)lockBtn.onclick=()=>this.toggleSoldierLock(s.id);
       if (dismissBtn) {
         dismissBtn.addEventListener('click', () => this.dismissSoldier(s.id));
       }
