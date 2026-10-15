@@ -1,5 +1,6 @@
 import {formatCompact,exactEquipmentStats} from './number-format.js?v=282';
 import {pushDamageText,drawDamageText,DAMAGE_POPUP_CAP} from './damage-text.js?v=282';
+import {spawnDeathShatter,updateDeathShatters,drawDeathShatters} from './death-shatter.js?v=283';
 import {enemyTier,rollBossTreasure,finalCriticalChance,bossCriticalBonus} from './enemy-tier.js?v=274';
 import {levelGrowthSteps,levelDefenseGrowth} from './level-growth.js?v=274';
 import {soldierCombatTempo} from './unit-attributes.js?v=274';
@@ -3400,6 +3401,7 @@ export const IronSquadGame = {
   },
 
   resumeSavedGame(saved) {
+    this.deathShatters = [];this._deathShatterSequence=0;
     resetAmbientCrowd(this);
     stopAutoSave(this);this._saveFallen=false;
     this._zonePreviousDistance=null;this._zoneApproachWarned=0;this.lastZoneId=null;
@@ -3697,6 +3699,7 @@ export const IronSquadGame = {
   },
 
   initBattlefield() {
+    this.deathShatters = [];this._deathShatterSequence=0;
     this.inBattle = true;
     this.monsters = [];
     this.particles = [];
@@ -7310,6 +7313,8 @@ export const IronSquadGame = {
       }
     }
 
+    updateDeathShatters(this,dt);
+
     // パーティクル (swap-pop)
     for (let i = this.particles.length - 1; i >= 0; i--) {
       const p = this.particles[i];
@@ -8177,6 +8182,7 @@ export const IronSquadGame = {
       const point=nearestDungeonFloor(dungeonDef,encounter);encounter.x=point.x;encounter.y=point.y;
     }
 
+    this.deathShatters = [];
     // ダンジョン内モンスター・ドロップ・パーティクル初期化
     this.monsters = [];
     this.dropsOnField = [];
@@ -8329,6 +8335,7 @@ export const IronSquadGame = {
     this.savedFieldPlatoonPos = null;
     for(const s of rescueUnits(this))if(this.instanceCargoIds?.includes(s.id)&&!this.squad.includes(s)){s.x=returnPos.x-28;s.y=returnPos.y+12;}
     this.instanceCargoIds = [];
+    this.deathShatters = [];
     this.projectiles=[];this.magicBursts=[];this._nearBaseClock=.2;
 
     this.camera = { x: returnPos.x, y: returnPos.y };
@@ -8491,6 +8498,8 @@ export const IronSquadGame = {
 
   killMonster(monster, attacker, isPlayer) {
     if(monster?.retreated)return;
+    const shatter=spawnDeathShatter(this,monster);
+    if(shatter)sound.play(shatter.boss?'blast':'stone',{x:monster.x,y:monster.y,volume:shatter.boss?.7:.45,gap:.08,group:'combat'});
     const idx = this.monsters.indexOf(monster);
     if (idx !== -1) {recordWildernessGuardKill(this,monster);this.monsters.splice(idx, 1);}
     this.waveKills++;
@@ -8723,7 +8732,6 @@ export const IronSquadGame = {
     }
 
     if(xpReward.bonusExp>0)this.spawnDamageText(monster.x,monster.y-32,`格上討伐 +${expGain}EXP ×${xpReward.multiplier.toFixed(1)}`,'#d8d6a5');
-    this.spawnSparks(monster.x, monster.y, monster.color, monster.isColossal ? 30 : 14);
   },
 
   limitedDeploymentLimit() {return Math.min(this.currentRank()?.maxSquad||DEPLOYMENT_CAPACITY,DEPLOYMENT_CAPACITY);},
@@ -11247,6 +11255,8 @@ export const IronSquadGame = {
       }
     }
 
+    drawDeathShatters(this,this.ctx);
+
     // 7. Damage numbers: outlined, weighted, readable impact and fade.
     for(const popup of this.damageTexts)drawDamageText(this.ctx,popup);
 
@@ -12801,6 +12811,7 @@ export const IronSquadGame = {
   },
 
   gameOver() {
+    this.deathShatters = [];this._deathShatterSequence=0;
     stopAutoSave(this);this._saveFallen=true;
     this.stopGameLoop();
     sound.playGameOver();
@@ -12855,6 +12866,7 @@ export const IronSquadGame = {
   },
 
   destroy() {
+    this.deathShatters = [];this._deathShatterSequence=0;
     stopAutoSave(this);
     if(this.handlePageHide)window.removeEventListener('pagehide',this.handlePageHide);
     this.closeHeadquartersFacility(false);
