@@ -30,28 +30,79 @@ export function splitCount(total, parts, rng) {
 
 /**
  * counts: { 色キー: ピクセル数 } → 列ごとのタイル配列 [[{key,n},...], ...]
- * 配列の先頭（index 0）がその列の「いまタップできるタイル」。
+ * 外側のピクセルに対応するタイルほど列の手前に、内側の色ほど列の奥に配置される（外側ルール）。
+ * タイルの数字は小口（12〜35前後）に分割し、1ブロックの総量が多すぎないようにする。
  */
-export function buildTiles(counts, rng, { cols = 5, maxTiles = 30 } = {}) {
+export function buildTiles(counts, rng, { cols = 5, target = 22, pixels = null } = {}) {
   const entries = Object.entries(counts).filter(([, c]) => c > 0);
-  let target = 60;
-  let plan;
-  for (;;) {
-    plan = entries.map(([key, count]) => [key, Math.max(1, Math.min(count, Math.round(count / target)))]);
-    const total = plan.reduce((s, [, n]) => s + n, 0);
-    if (total <= maxTiles || target > 600) break;
-    target += 4;
+
+  if (!pixels) {
+    const plan = entries.map(([key, count]) => [key, Math.max(1, Math.min(count, Math.round(count / target)))]);
+    const tiles = [];
+    for (const [key, parts] of plan) {
+      for (const n of splitCount(counts[key], parts, rng)) tiles.push({ key, n });
+    }
+    for (let i = tiles.length - 1; i > 0; i--) {
+      const j = Math.floor(rng() * (i + 1));
+      [tiles[i], tiles[j]] = [tiles[j], tiles[i]];
+    }
+    const columns = Array.from({ length: cols }, () => []);
+    tiles.forEach((t, i) => columns[i % cols].push(t));
+    return columns;
   }
-  const tiles = [];
-  for (const [key, parts] of plan) {
-    for (const n of splitCount(counts[key], parts, rng)) tiles.push({ key, n });
+
+  const size = Math.round(Math.sqrt(pixels.length));
+  const dist = new Int32Array(size * size).fill(-1);
+  const q = [];
+  for (const p of pixels) {
+    if (p.isBg || p.gx === 0 || p.gx === size - 1 || p.gy === 0 || p.gy === size - 1) {
+      dist[p.gy * size + p.gx] = 0;
+      q.push(p);
+    }
   }
-  for (let i = tiles.length - 1; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1));
-    [tiles[i], tiles[j]] = [tiles[j], tiles[i]];
+  let head = 0;
+  while (head < q.length) {
+    const cur = q[head++];
+    const d = dist[cur.gy * size + cur.gx];
+    for (const [dx, dy] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) {
+      const nx = cur.gx + dx, ny = cur.gy + dy;
+      if (nx >= 0 && nx < size && ny >= 0 && ny < size) {
+        const nidx = ny * size + nx;
+        if (dist[nidx] === -1) {
+          dist[nidx] = d + 1;
+          q.push(pixels[nidx]);
+        }
+      }
+    }
   }
+
+  const byKey = {};
+  for (const p of pixels) {
+    if (p.isBg) continue;
+    if (!byKey[p.key]) byKey[p.key] = [];
+    byKey[p.key].push(p);
+  }
+
+  const allTiles = [];
+  for (const [key, pList] of Object.entries(byKey)) {
+    pList.sort((a, b) => dist[a.gy * size + a.gx] - dist[b.gy * size + b.gx]);
+    const parts = Math.max(1, Math.round(pList.length / target));
+    const sizes = splitCount(pList.length, parts, rng);
+    let offset = 0;
+    for (const sz of sizes) {
+      const slice = pList.slice(offset, offset + sz);
+      offset += sz;
+      const avgDist = slice.reduce((s, p) => s + dist[p.gy * size + p.gx], 0) / sz;
+      // 少しの揺らぎを加えて同層の色が交互に手前に来るようにする
+      allTiles.push({ key, n: sz, avgDist: avgDist + (rng() - 0.5) * 4 });
+    }
+  }
+
+  // 外側層（avgDist 小）が手前に、内側層（avgDist 大）が奥に来るようソート
+  allTiles.sort((a, b) => a.avgDist - b.avgDist);
+
   const columns = Array.from({ length: cols }, () => []);
-  tiles.forEach((t, i) => columns[i % cols].push(t));
+  allTiles.forEach((t, i) => columns[i % cols].push(t));
   return columns;
 }
 

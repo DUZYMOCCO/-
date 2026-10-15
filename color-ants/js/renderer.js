@@ -3,8 +3,8 @@
  * 額縁と絵は別キャンバスに用意しておき、かじられたマスだけ消す（64×64 でも軽い）。
  * アリはマスより大きく描いて、行列がはっきり見えるようにする。
  */
-import { SIZE } from './pictures.js?v=4';
-import { shade } from './colony.js?v=4';
+import { SIZE } from './pictures.js?v=5';
+import { shade } from './colony.js?v=5';
 
 const FRAME_PAD = 7;
 const MARGIN = 18;
@@ -57,7 +57,8 @@ export class ColonyRenderer {
       f.fill();
       f.stroke();
       f.shadowColor = 'transparent';
-      f.fillStyle = '#f6ecda'; // 食べ終わったあとの台紙
+      const bgColor = (colony.picture && colony.picture.palette && colony.picture.palette.bg) || '#f6ecda';
+      f.fillStyle = bgColor; // 絵の背景色（食べ終わった部分は透過してこれが見える）
       f.fillRect(MARGIN + FRAME_PAD, MARGIN + FRAME_PAD, bp, bp);
       f.restore();
     }

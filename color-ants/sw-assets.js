@@ -2,8 +2,8 @@
 // このファイルはゲーム側の更新専用。バージョンを上げる＝このゲームのキャッシュだけが作り直される。
 self.GAME_ASSETS = self.GAME_ASSETS || {};
 self.GAME_ASSETS['color-ants'] = {
-  version: 'v4',
-  gameVersion: '2.1.0',
+  version: 'v5',
+  gameVersion: '2.2.0',
   files: [
     'css/color-ants.css',
     'js/index.js',

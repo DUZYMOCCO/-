@@ -196,22 +196,30 @@ export const PICTURE_DEFS = [
   },
 ];
 
-/** 定義から実際のピクセル一覧を作る（eaten は運ばれたかどうか） */
+/** 定義から実際のピクセル一覧を作る（bg は最初から背景として扱い、アリの標的から除外する） */
 export function buildPicture(def) {
   const cells = def.draw();
-  const pixels = cells.map((key, i) => ({
-    gx: i % SIZE,
-    gy: Math.floor(i / SIZE),
-    key,
-    hex: def.palette[key],
-    eaten: false,
-  }));
+  const pixels = cells.map((key, i) => {
+    const isBg = key === 'bg';
+    return {
+      gx: i % SIZE,
+      gy: Math.floor(i / SIZE),
+      key,
+      hex: def.palette[key],
+      isBg,
+      eaten: isBg, // 背景は最初から食べられている扱い（枠外と同じ）
+    };
+  });
   return { id: def.id, name: def.name, icon: def.icon, palette: def.palette, pixels };
 }
 
 export function countByKey(pixels) {
   const counts = {};
-  for (const p of pixels) counts[p.key] = (counts[p.key] || 0) + 1;
+  for (const p of pixels) {
+    if (!p.isBg) {
+      counts[p.key] = (counts[p.key] || 0) + 1;
+    }
+  }
   return counts;
 }
 

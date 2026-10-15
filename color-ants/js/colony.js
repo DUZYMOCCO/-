@@ -1,12 +1,22 @@
 /**
- * カラー・アント アリ軍団シミュレーション（DOM 非依存）
- * タイルをタップ → 巣穴からアリが1匹ずつ出発 → 同じ色のピクセルを1つかじって
- * くわえ → 巣穴へ帰る（帰ったら「運んだ数」が1増える）
+ * カラー・アント アリ軍団＆パズルシミュレーション
+ *
+ * 【重要ルール】
+ * 1. 外側（露出ピクセル）からしか食べられない
+ *    - 上下左右のいずれかが「盤面外」「背景」「既に食べられたマス」であるピクセルのみが標的になる。
+ *    - 外側が削られることで、内側のピクセルが順次露出していく。
+ * 2. 5つの出撃スロット
+ *    - タップしたタイルはスロット（最大5枠）に入る。
+ *    - スロット内のタイルから、現在露出しているピクセルに向かってアリが出撃。
+ *    - タイルの残数が0になり、アリが全員帰還するとスロットが空く。
+ *    - スロットが満杯で、かつどのアリも出撃できず止まったら「手詰まり（STUCK）」！
  */
 
+import { SIZE } from './pictures.js?v=5';
+
 const TAU = Math.PI * 2;
-const SPAWN_GAP = 0.03; // 1匹ずつ出てくる間隔（秒）
-const CHEW = 0.18;      // ピクセルをかじる時間（秒）
+const SPAWN_GAP = 0.04; // アリの出撃間隔（秒）
+const CHEW = 0.14;      // かじる時間（秒）
 
 export function shade(hex, f) {
   const c = (i) => Math.max(0, Math.min(255, Math.round(parseInt(hex.slice(i, i + 2), 16) * f)));
@@ -14,59 +24,155 @@ export function shade(hex, f) {
 }
 
 export class Colony {
-  constructor() { this.version = 0; this.reset(null); }
+  constructor() {
+    this.version = 0;
+    this.reset(null);
+  }
 
   reset(picture, rng = Math.random) {
     this.version++;
+    this.picture = picture;
     this.pixels = picture ? picture.pixels : [];
+    this.grid = new Array(SIZE * SIZE);
+    for (const p of this.pixels) {
+      this.grid[p.gy * SIZE + p.gx] = p;
+      p.targeted = false;
+    }
+
     this.ants = [];
-    this.spawners = [];
     this.crumbs = [];
-    this.fresh = [];        // 描画側がまだ消していない（かじられた）ピクセル
-    this.remaining = this.pixels.length; // まだ絵に残っているピクセル
-    this.delivered = 0;     // 巣穴に届いたピクセル
-    this.total = this.pixels.length;
+    this.fresh = []; // 描画側で消す必要のあるピクセル一覧
+
+    // 食べるべき対象ピクセル数（背景を除く）
+    this.targetPixels = this.pixels.filter(p => !p.isBg);
+    this.total = this.targetPixels.length;
+    this.remaining = this.total;
+    this.delivered = 0;
+
+    // 出撃スロット（最大5枠）
+    this.slots = [null, null, null, null, null];
+
     this.pulse = 0;
     this.time = 0;
     this.layout = { cell: 5, boardX: 0, boardY: 0, nest: { x: 0, y: 0 }, ant: 7, speed: 100 };
-    // 各色のピクセルを「巣穴に近い順（ゆらぎつき）」に並べる → 絵が手前から自然に食べられていく
-    const byKey = {};
-    for (const p of this.pixels) {
-      (byKey[p.key] = byKey[p.key] || []).push({ p, k: Math.hypot(p.gx - 31.5, p.gy - 72) + rng() * 7 });
-    }
-    this.queues = {};
-    this.qi = {};
-    for (const key of Object.keys(byKey)) {
-      this.queues[key] = byKey[key].sort((a, b) => a.k - b.k).map(o => o.p);
-      this.qi[key] = 0;
-    }
   }
 
-  setLayout(layout) { this.layout = layout; }
+  setLayout(layout) {
+    this.layout = layout;
+  }
 
   pixelPos(p) {
     const { cell, boardX, boardY } = this.layout;
     return { x: boardX + (p.gx + 0.5) * cell, y: boardY + (p.gy + 0.5) * cell };
   }
 
-  /** n 匹のアリを送り出す。戻り値の spawner.left が「まだ出発していない数」（UIの数字） */
-  deploy(key, hex, n) {
-    const s = { key, hex, left: n, n, t: 0 };
-    this.spawners.push(s);
-    return s;
+  /**
+   * ピクセルが「露出」しているか判定（外側ルール）
+   * 上下左右のいずれかが「盤面外」「背景」「既に食べられたマス」なら露出
+   */
+  isExposed(p) {
+    if (p.eaten) return false;
+    const { gx, gy } = p;
+    if (gx === 0 || gx === SIZE - 1 || gy === 0 || gy === SIZE - 1) return true;
+    if (this.grid[gy * SIZE + (gx - 1)].eaten) return true;
+    if (this.grid[gy * SIZE + (gx + 1)].eaten) return true;
+    if (this.grid[(gy - 1) * SIZE + gx].eaten) return true;
+    if (this.grid[(gy + 1) * SIZE + gx].eaten) return true;
+    return false;
   }
 
-  claim(key) {
-    const q = this.queues[key];
-    if (!q) return null;
-    while (this.qi[key] < q.length) {
-      const p = q[this.qi[key]++];
-      if (!p.eaten) return p;
+  /**
+   * タイルを空きスロットに追加
+   * @returns {number} 追加されたスロットのインデックス（満杯なら -1）
+   */
+  addTileToSlot(tile, hex, colIndex = -1) {
+    const emptyIdx = this.slots.findIndex(s => s === null);
+    if (emptyIdx === -1) return -1;
+
+    this.slots[emptyIdx] = {
+      tile,
+      key: tile.key,
+      hex,
+      colIndex,
+      left: tile.n,
+      initial: tile.n,
+      activeAnts: 0,
+      spawnTimer: 0,
+    };
+    return emptyIdx;
+  }
+
+  /**
+   * まだ1匹も出撃していないスロットをキャンセルして戻す
+   */
+  cancelSlot(si) {
+    const slot = this.slots[si];
+    if (!slot) return null;
+    if (slot.left === slot.initial && slot.activeAnts === 0) {
+      this.slots[si] = null;
+      return slot;
     }
     return null;
   }
 
-  get busy() { return this.ants.length > 0 || this.spawners.length > 0; }
+  /**
+   * 簡易出撃（テストや単体呼び出し用）
+   */
+  deploy(key, hex, count) {
+    const tile = { key, n: count };
+    const idx = this.addTileToSlot(tile, hex);
+    return idx !== -1 ? this.slots[idx] : null;
+  }
+
+  /**
+   * 現在露出している、自分と同じ色のピクセルを探して確保
+   */
+  claimExposedPixel(key) {
+    // 巣穴に近い順、あるいは手前（下側）に近い順に探すと自然
+    let best = null;
+    let minDist = Infinity;
+    const nestX = 31.5;
+    const nestY = 68; // 巣穴の仮想方向
+
+    for (const p of this.targetPixels) {
+      if (p.key !== key || p.eaten || p.targeted) continue;
+      if (this.isExposed(p)) {
+        const d = Math.hypot(p.gx - nestX, p.gy - nestY);
+        if (d < minDist) {
+          minDist = d;
+          best = p;
+        }
+      }
+    }
+
+    if (best) {
+      best.targeted = true;
+      return best;
+    }
+    return null;
+  }
+
+  get busy() {
+    return this.ants.length > 0 || this.slots.some(s => s !== null);
+  }
+
+  /**
+   * 手詰まり（詰み）チェック
+   * 5つのスロットが埋まり、活動中のアリもおらず、どのスロットの色も露出ピクセルが無い
+   */
+  isStuck() {
+    if (this.slots.some(s => s === null)) return false; // 空きスロットがあるなら詰みではない
+    if (this.ants.length > 0) return false; // アリが活動中なら削られて露出する可能性がある
+
+    // 全スロットの色について、現在露出しているピクセルがあるか？
+    for (const s of this.slots) {
+      if (s && s.left > 0) {
+        const hasExposed = this.targetPixels.some(p => p.key === s.key && !p.eaten && !p.targeted && this.isExposed(p));
+        if (hasExposed) return false;
+      }
+    }
+    return true; // どのスロットも出撃できず完全に止まった
+  }
 
   moveToward(a, tx, ty, dist, eps) {
     const dx = tx - a.x, dy = ty - a.y;
@@ -79,47 +185,79 @@ export class Colony {
     return d - m <= eps;
   }
 
-  /** 1フレーム進める。このフレームにかじられたピクセル数を返す */
   update(dt, speedMul = 1) {
     const L = this.layout;
     const step = dt * speedMul;
     this.time += step;
     this.pulse = Math.max(0, this.pulse - dt * 4);
-    let eaten = 0;
+    let eatenCount = 0;
 
-    for (const s of this.spawners) {
-      s.t -= step;
-      while (s.t <= 0 && s.left > 0) {
-        s.t += SPAWN_GAP;
-        s.left--;
-        const p = this.claim(s.key);
-        if (!p) { s.left = 0; break; }
-        this.ants.push({
-          x: L.nest.x + (Math.random() - 0.5) * L.ant * 0.8, y: L.nest.y,
-          px: p, hex: s.hex, dark: shade(s.hex, 0.55),
-          state: 'out', chew: 0, ph: Math.random() * TAU, ang: -Math.PI / 2, carry: false,
-        });
+    // スロットからのアリ出撃処理
+    for (let si = 0; si < this.slots.length; si++) {
+      const slot = this.slots[si];
+      if (!slot) continue;
+
+      if (slot.left > 0) {
+        slot.spawnTimer = Math.max(-0.05, slot.spawnTimer - step);
+        if (slot.spawnTimer <= 0) {
+          // 露出しているピクセルを探す
+          const pixel = this.claimExposedPixel(slot.key);
+          if (pixel) {
+            slot.left--;
+            slot.activeAnts++;
+            slot.spawnTimer = SPAWN_GAP;
+
+            this.ants.push({
+              slotIndex: si,
+              x: L.nest.x + (Math.random() - 0.5) * L.ant * 0.8,
+              y: L.nest.y,
+              px: pixel,
+              hex: slot.hex,
+              dark: shade(slot.hex, 0.55),
+              state: 'out',
+              chew: 0,
+              ph: Math.random() * TAU,
+              ang: -Math.PI / 2,
+              carry: false,
+            });
+          }
+        }
+      }
+
+      // 出撃完了＆アリが全員帰還したらスロット枠を空ける
+      if (slot.left === 0 && slot.activeAnts === 0) {
+        this.slots[si] = null;
       }
     }
-    this.spawners = this.spawners.filter(s => s.left > 0);
 
+    // アリの移動＆咀嚼更新
     const move = L.speed * step;
     for (const a of this.ants) {
       a.ph += step * 14;
+
       if (a.state === 'out') {
         const t = this.pixelPos(a.px);
         if (this.moveToward(a, t.x, t.y, move, L.cell * 0.6)) {
-          // ついたらかじる：ピクセルは絵からすぐ消えて、アリがくわえる
+          // 到着・かじる（絵から消える）
           a.px.eaten = true;
+          a.px.targeted = false;
           this.remaining--;
           this.fresh.push(a.px);
-          eaten++;
+          eatenCount++;
           a.carry = true;
           a.state = 'chew';
           a.chew = CHEW;
+
           if (this.crumbs.length < 150) {
             for (let i = 0; i < 2; i++) {
-              this.crumbs.push({ x: t.x, y: t.y, vx: (Math.random() - 0.5) * 50, vy: (Math.random() - 0.8) * 50, life: 0.3, hex: a.hex });
+              this.crumbs.push({
+                x: t.x,
+                y: t.y,
+                vx: (Math.random() - 0.5) * 50,
+                vy: (Math.random() - 0.8) * 50,
+                life: 0.3,
+                hex: a.hex,
+              });
             }
           }
         }
@@ -131,15 +269,26 @@ export class Colony {
           a.state = 'done';
           this.delivered++;
           this.pulse = 1;
+          // スロットの帰還カウント
+          const slot = this.slots[a.slotIndex];
+          if (slot) {
+            slot.activeAnts--;
+          }
         }
       }
     }
+
     this.ants = this.ants.filter(a => a.state !== 'done');
 
+    // かけらパーティクル
     for (const c of this.crumbs) {
-      c.x += c.vx * dt; c.y += c.vy * dt; c.vy += 140 * dt; c.life -= dt;
+      c.x += c.vx * dt;
+      c.y += c.vy * dt;
+      c.vy += 140 * dt;
+      c.life -= dt;
     }
     this.crumbs = this.crumbs.filter(c => c.life > 0);
-    return eaten;
+
+    return eatenCount;
   }
 }

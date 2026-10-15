@@ -1,24 +1,23 @@
 /**
  * カラー・アント（Color Ants）
- * 数字タイルをタップ → その数のアリが1匹ずつ出発 → 同じ色のピクセルを運んで絵を食べつくす！
+ * 外側から順にピクセルを削る！5つの出撃スロットを上手くやりくりするパズルゲーム。
  */
 import { sound } from '../../common/js/audio.js?v=151';
 import { loadCss } from '../../common/js/load-css.js';
 import { storage } from '../../common/js/storage.js';
-import { PICTURE_DEFS, buildPicture, countByKey, paintPicture, SIZE } from './pictures.js?v=4';
-import { mulberry32, buildTiles, textColorFor } from './puzzle.js?v=4';
-import { Colony, shade } from './colony.js?v=4';
-import { ColonyRenderer } from './renderer.js?v=4';
+import { PICTURE_DEFS, buildPicture, countByKey, paintPicture, SIZE } from './pictures.js?v=5';
+import { mulberry32, buildTiles, textColorFor } from './puzzle.js?v=5';
+import { Colony, shade } from './colony.js?v=5';
+import { ColonyRenderer } from './renderer.js?v=5';
 
 const SAVE_KEY = 'color_ants_v2';
 const COLS = 5;
-const TILE_H = 38;
-const TILE_GAP = 5;
-const HIDDEN_DEPTH = 3; // これより奥のタイルは「？」
+const VISIBLE_DEPTH = 4; // 画面上に表示するタイルの深さ（手前4段）
+const HIDDEN_DEPTH = 3;  // これより奥のタイルは「？」
 
 export default {
   prepare() {
-    return loadCss(new URL('../css/color-ants.css?v=4', import.meta.url).href);
+    return loadCss(new URL('../css/color-ants.css?v=5', import.meta.url).href);
   },
 
   init(container, onBackToHub) {
@@ -29,11 +28,12 @@ export default {
     this.speedMul = 1;
     this.running = true;
     this.cleared = false;
+    this.stuck = false;
     this.audioCd = 0;
     this.lastDelivered = -1;
     this.lw = 0;
     this.lh = 0;
-    this.activeEls = new Map();
+    this.lastSlotCounts = [-1, -1, -1, -1, -1];
 
     this.buildDOM();
     this.colony = new Colony();
@@ -56,14 +56,30 @@ export default {
           <button class="ca-btn" id="ca-back">← もどる</button>
           <div class="ca-title">
             <span class="ca-level" id="ca-level">Level 1</span>
-            <span class="ca-pct" id="ca-pct">0 / 0</span>
+            <span class="ca-pct" id="ca-pct">運んだ 0 / 0</span>
           </div>
-          <button class="ca-btn ca-speed" id="ca-speed">▶▶ ×1</button>
+          <div class="ca-hdr-right">
+            <button class="ca-btn ca-restart-btn" id="ca-restart" title="やり直す">🔄</button>
+            <button class="ca-btn ca-speed" id="ca-speed">▶▶ ×1</button>
+          </div>
         </header>
-        <div class="ca-canvas-wrap" id="ca-wrap"><canvas class="ca-canvas" id="ca-canvas"></canvas></div>
+
+        <div class="ca-canvas-wrap" id="ca-wrap">
+          <canvas class="ca-canvas" id="ca-canvas"></canvas>
+        </div>
+
         <div class="ca-panel">
+          <div class="ca-tray-wrap">
+            <div class="ca-tray-head">
+              <span class="ca-tray-title">出撃スロット</span>
+              <span class="ca-tray-hint">外側の色から順に削ろう</span>
+            </div>
+            <div class="ca-slots" id="ca-slots"></div>
+          </div>
           <div class="ca-tiles" id="ca-tiles"></div>
         </div>
+
+        <!-- クリアモーダル -->
         <div class="ca-modal" id="ca-modal" style="display:none;">
           <div class="ca-card">
             <div class="ca-card-title" id="ca-card-title">クリア！</div>
@@ -72,16 +88,32 @@ export default {
             <button class="ca-next" id="ca-next">つぎのレベルへ ➔</button>
           </div>
         </div>
+
+        <!-- 手詰まり（STUCK）モーダル -->
+        <div class="ca-modal" id="ca-stuck-modal" style="display:none;">
+          <div class="ca-card ca-stuck-card">
+            <div class="ca-card-title ca-stuck-title">手詰まり！（STUCK）</div>
+            <div class="ca-stuck-desc">スロットが埋まり、出撃できるアリがいなくなりました。<br>外側に露出している色から順に選びましょう！</div>
+            <div class="ca-stuck-actions">
+              <button class="ca-stuck-btn ca-undo" id="ca-stuck-undo" style="display:none;">↺ 1手もどす</button>
+              <button class="ca-stuck-btn ca-retry" id="ca-stuck-retry">🔄 やり直す</button>
+            </div>
+          </div>
+        </div>
       </div>
     `;
+
     const q = (id) => this.container.querySelector(id);
     this.canvas = q('#ca-canvas');
     this.canvasWrap = q('#ca-wrap');
+    this.slotsEl = q('#ca-slots');
     this.tilesEl = q('#ca-tiles');
     this.levelEl = q('#ca-level');
     this.pctEl = q('#ca-pct');
     this.speedBtn = q('#ca-speed');
+    this.restartBtn = q('#ca-restart');
     this.modal = q('#ca-modal');
+    this.stuckModal = q('#ca-stuck-modal');
 
     q('#ca-back').addEventListener('click', () => { this.destroy(); this.onBackToHub(); });
     this.speedBtn.addEventListener('click', () => {
@@ -89,9 +121,20 @@ export default {
       this.speedBtn.textContent = `▶▶ ×${this.speedMul}`;
       this.speedBtn.classList.toggle('on', this.speedMul === 2);
     });
+    this.restartBtn.addEventListener('click', () => {
+      this.startLevel();
+    });
     q('#ca-next').addEventListener('click', () => {
       this.level++;
       this.startLevel();
+    });
+    q('#ca-stuck-retry').addEventListener('click', () => {
+      this.stuck = false;
+      this.stuckModal.style.display = 'none';
+      this.startLevel();
+    });
+    q('#ca-stuck-undo').addEventListener('click', () => {
+      this.undoLastSlot();
     });
   },
 
@@ -108,7 +151,6 @@ export default {
     this.canvas.style.height = `${h}px`;
   },
 
-  /** 絵と巣穴の位置を決める。1マスは端末ピクセルにぴったり合わせる（絵がにじまないように） */
   applyLayout() {
     const w = this.lw, h = this.lh;
     if (w <= 0 || h <= 0) return;
@@ -124,7 +166,7 @@ export default {
       cell, boardX, boardY,
       nest: { x: w / 2, y: Math.min(h - 14, boardY + bp + below * 0.55) },
       ant: Math.max(6, bp / 46),
-      speed: bp * 0.3,
+      speed: bp * 0.32,
     });
   },
 
@@ -134,81 +176,196 @@ export default {
     const rng = mulberry32(this.level * 7919 + 13);
     this.picture = picture;
     this.colony.reset(picture, rng);
-    this.columns = buildTiles(countByKey(picture.pixels), rng, { cols: COLS });
+    this.columns = buildTiles(countByKey(picture.pixels), rng, {
+      cols: COLS,
+      target: 22,
+      pixels: picture.pixels,
+    });
     this.cleared = false;
+    this.stuck = false;
     this.lastDelivered = -1;
+    this.lastSlotCounts = [-1, -1, -1, -1, -1];
     this.modal.style.display = 'none';
+    this.stuckModal.style.display = 'none';
     this.levelEl.textContent = `Level ${this.level}`;
 
-    // タイル欄の高さはレベル中ずっと固定（絵がガタつかないように）
-    const rows = Math.max(...this.columns.map(c => c.length));
-    this.tilesEl.style.height = `${rows * TILE_H + (rows - 1) * TILE_GAP}px`;
-
     this.applyLayout();
+    this.renderSlots();
     this.renderTiles();
     this.updateCounter();
   },
 
+  /** 5つの出撃スロットを描画 */
+  renderSlots() {
+    this.slotsEl.innerHTML = '';
+    for (let si = 0; si < 5; si++) {
+      const slot = this.colony.slots[si];
+      const slotEl = document.createElement('div');
+      slotEl.dataset.slot = String(si);
+
+      if (!slot) {
+        slotEl.className = 'ca-slot empty';
+      } else {
+        const hex = slot.hex;
+        const isWaiting = slot.left === slot.initial && slot.activeAnts === 0;
+        slotEl.className = 'ca-slot active' + (isWaiting ? ' waiting' : ' running');
+        slotEl.style.setProperty('--c', hex);
+        slotEl.style.setProperty('--d', shade(hex, 0.62));
+        slotEl.style.setProperty('--t', textColorFor(hex));
+        const pct = Math.round((slot.left / slot.initial) * 100);
+        slotEl.style.setProperty('--p', String(pct));
+
+        slotEl.innerHTML = `
+          <div class="ca-slot-bar"></div>
+          <span class="ca-slot-num">${slot.left}</span>
+          ${isWaiting ? '<span class="ca-slot-badge">待機</span>' : ''}
+        `;
+
+        if (isWaiting && slot.colIndex >= 0) {
+          slotEl.title = 'タップして戻す';
+          slotEl.addEventListener('click', () => this.cancelSlot(si));
+        }
+      }
+      this.slotsEl.appendChild(slotEl);
+    }
+  },
+
+  /** アリの出撃・帰還に応じてスロットの数値を更新 */
+  updateSlots() {
+    let structureChanged = false;
+    for (let si = 0; si < 5; si++) {
+      const slot = this.colony.slots[si];
+      const curLeft = slot ? slot.left : -1;
+      if (curLeft !== this.lastSlotCounts[si]) {
+        // スロットが空になった、または新しく入った場合は再描画
+        if ((curLeft === -1 && this.lastSlotCounts[si] !== -1) ||
+            (curLeft !== -1 && this.lastSlotCounts[si] === -1)) {
+          structureChanged = true;
+        }
+        this.lastSlotCounts[si] = curLeft;
+      }
+    }
+
+    if (structureChanged) {
+      this.renderSlots();
+      return;
+    }
+
+    // 数値とゲージのみ更新
+    const slotEls = this.slotsEl.children;
+    for (let si = 0; si < 5; si++) {
+      const slot = this.colony.slots[si];
+      const el = slotEls[si];
+      if (!slot || !el || !el.classList.contains('active')) continue;
+
+      const numEl = el.querySelector('.ca-slot-num');
+      if (numEl && numEl.textContent !== String(slot.left)) {
+        numEl.textContent = String(slot.left);
+        const pct = Math.round((slot.left / slot.initial) * 100);
+        el.style.setProperty('--p', String(pct));
+      }
+
+      const isWaiting = slot.left === slot.initial && slot.activeAnts === 0;
+      if (isWaiting !== el.classList.contains('waiting')) {
+        el.classList.toggle('waiting', isWaiting);
+        el.classList.toggle('running', !isWaiting);
+        const badge = el.querySelector('.ca-slot-badge');
+        if (isWaiting && !badge) {
+          const b = document.createElement('span');
+          b.className = 'ca-slot-badge';
+          b.textContent = '待機';
+          el.appendChild(b);
+        } else if (!isWaiting && badge) {
+          badge.remove();
+        }
+      }
+    }
+  },
+
+  /** 手前4段のタイルを5列描画 */
   renderTiles() {
     this.tilesEl.innerHTML = '';
-    this.activeEls.clear();
     this.columns.forEach((col, ci) => {
       const colEl = document.createElement('div');
       colEl.className = 'ca-col';
-      col.forEach((t, depth) => {
+
+      // 手前4段を表示
+      const visibleTiles = col.slice(0, VISIBLE_DEPTH);
+
+      visibleTiles.forEach((t, depth) => {
         const b = document.createElement('button');
         const hex = this.picture.palette[t.key];
         b.className = 'ca-tile ' + (depth === 0 ? 'front' : 'back');
+
         if (depth >= HIDDEN_DEPTH) {
           b.classList.add('hidden');
           b.textContent = '？';
         } else {
-          b.textContent = String(t.spawner ? t.spawner.left : t.n);
+          b.textContent = String(t.n);
           b.style.setProperty('--c', hex);
           b.style.setProperty('--d', shade(hex, 0.62));
           b.style.setProperty('--t', textColorFor(hex));
         }
+
         if (depth === 0) {
-          if (t.spawner) {
-            b.classList.remove('front');
-            b.classList.add('active');
-            b.style.setProperty('--p', String(Math.round((t.spawner.left / t.n) * 100)));
-            this.activeEls.set(t, b);
-          } else {
-            b.addEventListener('click', () => this.tapTile(ci));
-          }
+          b.addEventListener('click', () => this.tapTile(ci));
         }
         colEl.appendChild(b);
       });
+
+      // 4段を超える残数バッジ
+      if (col.length > VISIBLE_DEPTH) {
+        const badge = document.createElement('div');
+        badge.className = 'ca-col-badge';
+        badge.textContent = `+${col.length - VISIBLE_DEPTH}`;
+        colEl.appendChild(badge);
+      } else if (col.length === 0) {
+        const emptyHolder = document.createElement('div');
+        emptyHolder.className = 'ca-tile-empty';
+        colEl.appendChild(emptyHolder);
+      }
+
       this.tilesEl.appendChild(colEl);
     });
   },
 
   tapTile(ci) {
-    if (this.cleared) return;
-    const t = this.columns[ci][0];
-    if (!t || t.spawner) return;
-    t.spawner = this.colony.deploy(t.key, this.picture.palette[t.key], t.n);
+    if (this.cleared || this.stuck) return;
+    const col = this.columns[ci];
+    if (!col || col.length === 0) return;
+
+    const tile = col[0];
+    const hex = this.picture.palette[tile.key];
+    const slotIdx = this.colony.addTileToSlot(tile, hex, ci);
+    if (slotIdx === -1) {
+      // 5スロット満杯で入らない
+      sound.play('hit');
+      this.shakeTray();
+      return;
+    }
+
+    col.shift();
     sound.play('tap');
+    this.renderSlots();
     this.renderTiles();
   },
 
-  /** 出発中のタイルの数字を、アリが出ていくたびに減らす。全員出発したらタイルが消えて列が進む */
-  updateActiveTiles() {
-    let changed = false;
-    for (const col of this.columns) {
-      const t = col[0];
-      if (t && t.spawner && t.spawner.left <= 0) { col.shift(); changed = true; }
+  /** 待機中のスロットをタップして元の列に戻す */
+  cancelSlot(si) {
+    if (this.cleared || this.stuck) return;
+    const cancelled = this.colony.cancelSlot(si);
+    if (cancelled && cancelled.colIndex >= 0) {
+      this.columns[cancelled.colIndex].unshift(cancelled.tile);
+      sound.play('tap');
+      this.renderSlots();
+      this.renderTiles();
     }
-    if (changed) { this.renderTiles(); return; }
-    for (const [t, el] of this.activeEls) {
-      const left = t.spawner.left;
-      const s = String(left);
-      if (el.textContent !== s) {
-        el.textContent = s;
-        el.style.setProperty('--p', String(Math.round((left / t.n) * 100)));
-      }
-    }
+  },
+
+  shakeTray() {
+    this.slotsEl.classList.remove('shake');
+    void this.slotsEl.offsetWidth; // reflow
+    this.slotsEl.classList.add('shake');
   },
 
   updateCounter() {
@@ -226,12 +383,21 @@ export default {
     this.audioCd = Math.max(0, this.audioCd - dt);
 
     const eaten = this.colony.update(dt, this.speedMul);
-    if (eaten > 0 && this.audioCd <= 0) { sound.play('hit'); this.audioCd = 0.08; }
-    this.updateActiveTiles();
+    if (eaten > 0 && this.audioCd <= 0) {
+      sound.play('hit');
+      this.audioCd = 0.08;
+    }
+
+    this.updateSlots();
     this.updateCounter();
     this.renderer.render(this.colony, this.lw, this.lh);
 
-    if (!this.cleared && this.colony.delivered >= this.colony.total) this.showClear();
+    if (!this.cleared && this.colony.delivered >= this.colony.total) {
+      this.showClear();
+    } else if (!this.cleared && !this.stuck && this.colony.isStuck()) {
+      this.showStuck();
+    }
+
     this.animId = requestAnimationFrame(this.loop);
   },
 
@@ -246,6 +412,31 @@ export default {
     ctx.clearRect(0, 0, 128, 128);
     paintPicture(ctx, this.picture, 0, 0, 128 / SIZE);
     this.modal.style.display = 'flex';
+  },
+
+  showStuck() {
+    this.stuck = true;
+    sound.play('hit');
+    const undoBtn = this.container.querySelector('#ca-stuck-undo');
+    const undoable = this.colony.slots.find(s => s && s.left === s.initial && s.activeAnts === 0 && s.colIndex >= 0);
+    undoBtn.style.display = undoable ? 'block' : 'none';
+    this.stuckModal.style.display = 'flex';
+  },
+
+  undoLastSlot() {
+    const undoable = this.colony.slots.find(s => s && s.left === s.initial && s.activeAnts === 0 && s.colIndex >= 0);
+    if (undoable) {
+      const si = this.colony.slots.indexOf(undoable);
+      if (si !== -1) {
+        this.columns[undoable.colIndex].unshift(undoable.tile);
+        this.colony.slots[si] = null;
+      }
+      this.stuck = false;
+      this.stuckModal.style.display = 'none';
+      sound.play('tap');
+      this.renderSlots();
+      this.renderTiles();
+    }
   },
 
   destroy() {
