@@ -14,8 +14,8 @@ try{
    window.g=qualityGame;g.stopGameLoop();g.closeStrategyModal();
    window.gear=await import('/iron-squad/js/index.js');window.defense=await import('/iron-squad/js/defense-equipment.js?v=231');
    window.req=await import('/iron-squad/js/weapon-requirements.js?v=231');window.craft=await import('/iron-squad/js/crafting-rules.js?v=231');
-   window.attributes=await import('/iron-squad/js/unit-attributes.js?v=231');window.nation=await import('/iron-squad/js/nation-rules.js?v=231');
-   window.facilities=await import('/iron-squad/js/hq-facilities.js?v=201');window.initial=structuredClone(g.saveGame());
+   window.attributes=await import('/iron-squad/js/unit-attributes.js?v=231');window.nation=await import('/iron-squad/js/nation-rules.js?v=277');
+   window.facilities=await import('/iron-squad/js/hq-facilities.js?v=277');window.initial=structuredClone(g.saveGame());
  });
  for(const [width,height]of [[390,844],[320,700],[844,390],[1280,800]]){
    await page.setViewportSize({width,height});
@@ -71,8 +71,8 @@ try{
  await tab.locator('#new-expedition-form').evaluate(f=>f.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})));await tab.click('#btn-commander-confirm');
  await tab.waitForFunction(()=>window.gameStudioInstance?.activeGame?.player);
  const offlineResult=await tab.evaluate(async()=>{
-   const g=gameStudioInstance.activeGame;g.stopGameLoop();g.closeStrategyModal();g.nation=(await import('/iron-squad/js/nation-rules.js?v=231')).normalizeNation({investment:6000});
-   const facilities=await import('/iron-squad/js/hq-facilities.js?v=201'),p=facilities.HEADQUARTERS_FACILITIES.find(f=>f.id==='smith');
+   const g=gameStudioInstance.activeGame;g.stopGameLoop();g.closeStrategyModal();g.nation=(await import('/iron-squad/js/nation-rules.js?v=277')).normalizeNation({investment:6000});
+   const facilities=await import('/iron-squad/js/hq-facilities.js?v=277'),p=facilities.HEADQUARTERS_FACILITIES.find(f=>f.id==='smith');
    Object.assign(g.player,{x:p.x,y:p.y+24});g.gold=100000;g.workshopSelectedTier=1;g.workshopSupplyId='arcane-armor';g.openHeadquartersFacility('smith');
    document.getElementById('btn-workshop-buy').click();const item=g.inventory.at(-1);return {style:item.armorStyle,bonus:item.stats.magicBonus,receipt:document.querySelector('.workshop-receipt strong').textContent};
  });assert.equal(offlineResult.style,'arcane');assert.ok(offlineResult.bonus>0);assert.equal(offlineResult.receipt,'購入完了');report.offline=offlineResult;

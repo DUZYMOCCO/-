@@ -1648,3 +1648,24 @@
 @media (min-width:700px) { .iron-squad .casino-lobby { grid-template-columns:repeat(3,1fr); }.iron-squad .casino-lobby button { display:flex; flex-direction:column; text-align:center; gap:15px; }.iron-squad .casino-panel .poker-hand { max-width:500px; margin-inline:auto; }.iron-squad .arena-unit canvas { width:70px; height:84px; }.iron-squad .arena-unit strong { font-size:16px; }.iron-squad .arena-unit small { font-size:13px; } }
 
 .iron-squad .arena-field { display:block; width:100%; height:auto; margin:12px 0; border-radius:8px; }
+
+/* Exact equipment values remain available on mobile, beside compact glance values. */
+.equipment-exact { font-size:11px; color:#c6ced6; margin-top:3px; overflow-wrap:anywhere; }
+.equipment-exact summary { cursor:pointer; color:#a7c2ce; }
+.equipment-exact p { margin:4px 0; font-variant-numeric:tabular-nums; }
+.iron-squad .arena-caption.is-big-win { color:var(--ui-gold); font-size:18px; font-weight:700; text-shadow:0 0 10px rgba(249,217,120,.7); animation:arena-big-win .5s ease-out 3; }
+@keyframes arena-big-win { 0% { transform:scale(.9); } 50% { transform:scale(1.12); } 100% { transform:scale(1); } }
+@media (prefers-reduced-motion: reduce) { .iron-squad .arena-caption.is-big-win { animation:none; } }
+/* 回復薬の誤タップ対策: スティックとの間を空け、使った瞬間は光と中央表示で知らせる。 */
+.iron-squad .pad-move-column { gap:26px; }
+.iron-squad .pad-supply-buttons { gap:8px; }
+@media (orientation:landscape) and (max-height:500px) {
+  .iron-squad .pad-move-column { gap:28px; }
+}
+.iron-squad #btn-pad-potion.is-full { background:#26332f; border-color:#64746c; color:#a1ada7; opacity:.7; filter:grayscale(.5); }
+.iron-squad #btn-pad-potion:disabled, .iron-squad #btn-pad-revive:disabled { filter:grayscale(.5); }
+.iron-squad .pad-supply-buttons .potion-used { animation:ironPotionUsed .9s ease-out; }
+@keyframes ironPotionUsed { 0% { box-shadow:0 0 0 0 #9bf2a8cc; background:#47b46a; } 100% { box-shadow:0 0 0 18px #9bf2a800; } }
+.iron-squad .potion-flash { position:absolute; left:50%; top:38%; transform:translate(-50%,-50%); z-index:40; pointer-events:none; padding:10px 18px; border-radius:999px; font-size:16px; font-weight:bold; color:#effff0; background:#1f6b3fe6; border:2px solid #9bf2a8; box-shadow:0 0 24px #7dffa0aa; animation:ironPotionFlash 1.1s ease-out forwards; }
+.iron-squad .potion-flash-revival { background:#4c3f8de6; border-color:#c9bcff; box-shadow:0 0 24px #b9a8ffaa; }
+@keyframes ironPotionFlash { 0% { opacity:0; transform:translate(-50%,-30%) scale(.8); } 20% { opacity:1; transform:translate(-50%,-50%) scale(1.05); } 80% { opacity:1; } 100% { opacity:0; transform:translate(-50%,-70%) scale(1); } }

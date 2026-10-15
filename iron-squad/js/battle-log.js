@@ -1,6 +1,6 @@
-import { ammoCapacity, isRangedUnit } from './supply-rules.js?v=267';
+import { ammoCapacity, isRangedUnit } from './supply-rules.js?v=277';
 import {isOwnSquad} from './own-squad-marker.js?v=182';
-import {noteBattleReport} from './battle-report.js?v=226';
+import {noteBattleReport} from './battle-report.js?v=276';
 
 export const BATTLE_LOG_LIMIT = 100;
 export const FIELD_NOTICE_SECONDS=3;

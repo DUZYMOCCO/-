@@ -1,12 +1,13 @@
+import {bossOrbChance} from './enemy-tier.js?v=274';
 import {expeditionCombatUnits,isExpeditionReserve} from './expedition-rules.js?v=256';
-import {ensureMana,regenerateMana,spendMana} from './magic-rules.js?v=266';
+import {ensureMana,regenerateMana,spendMana} from './magic-rules.js?v=277';
 import {recordHealing,recordDown,healAmountFor} from './phase-rules.js?v=218';
 import {WORLD_SIZE} from './world.js';
 import {inCurrentInstance} from './instance-rules.js?v=256';
 import {grantPermanentRescueReward} from './rescue-rewards.js?v=264';
 import {grantPersonalExp,revivalExperience,raiseLevelMark} from './experience-rules.js';
 import {guardRescueLines} from './soldier-dialogue.js';
-import {attributeCarryCapacity,attributeFamily} from './unit-attributes.js?v=248';
+import {attributeCarryCapacity,attributeFamily} from './unit-attributes.js?v=274';
 import {isHeavySoldier} from './heavy-tank.js?v=235';
 import {visibleHeroMembers} from './hero-rules.js';
 import {isOwnSquad} from './own-squad-marker.js?v=182';
@@ -711,10 +712,8 @@ export function syncDragged(game,dt) {
   }
 }
 
-export function orbDropChance(monster,distance) {
-  if(monster.isColossal)return distance>=4400?.45:0;
-  if(distance<2700)return 0;
-  return monster.isBoss?.12:monster.isElite?.02:0;
+export function orbDropChance(monster,distance,defeats=1) {
+  return bossOrbChance(monster,defeats);
 }
 
 /**

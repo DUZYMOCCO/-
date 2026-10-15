@@ -1,7 +1,7 @@
 import {canUseEquipment} from './weapon-requirements.js?v=239';
 import {GENERATION_COUNT} from './equipment-tiers.js?v=231';
 import {PAYROLL_RULES,commanderStipendQuote} from './payroll-rules.js?v=226';
-import {recurringNationalIncome} from './regional-economy.js?v=182';
+import {recurringNationalIncome} from './regional-economy.js?v=277';
 /**
  * IRON SQUAD economy / roster reform (v1.23.0)
  * 国庫・共有装備ボックス・スカウト費用・財政報告の公式を集約
@@ -252,11 +252,53 @@ export function defaultDonateAmount(gold) {
   return Math.min(g, Math.max(100, Math.round(g * 0.1)));
 }
 
+/** 援助・寄付の選択肢（1・5段。100から始め、所持金を超える最初の段まで。小さい段は多すぎるとき省く。keep は必ず残す） */
+export function fundLadderAmounts(gold, keep = []) {
+  const g = Math.max(0, Math.floor(Number(gold) || 0));
+  const steps = [];
+  for (let mag = 100; mag <= 1e15; mag *= 10) {
+    for (const m of [1, 5]) {
+      const n = mag * m;
+      steps.push(n);
+      if (n >= g) { mag = Infinity; break; }
+    }
+  }
+  const floor = g / 1000;
+  const last = steps[steps.length - 1];
+  let list = steps.length > 12 ? steps.filter(n => n >= floor || n === last) : steps;
+  for (const k of [].concat(keep)) {
+    const n = Math.floor(Number(k) || 0);
+    if (n > 0 && n <= Number.MAX_SAFE_INTEGER) list = [...list, n];
+  }
+  return [...new Set(list)].sort((a, b) => a - b);
+}
+
+/** 保存された援助額の正規化（'max' か正の整数の文字列。それ以外は ''） */
+export function normalizeFundAmount(v) {
+  if (v === 'max') return 'max';
+  const n = Math.floor(Number(v));
+  return Number.isFinite(n) && n > 0 && n <= Number.MAX_SAFE_INTEGER ? String(n) : '';
+}
+
+/** 選択肢用の短い表示（1千G / 1万G / 1千万G / 1億G）。割り切れない額は桁区切りで正確に */
+export function formatFundKanji(amount) {
+  const n = Math.floor(Number(amount) || 0);
+  if (n < 1000) return `${n}G`;
+  for (const [u, name] of [[1e8, '億'], [1e4, '万']]) {
+    if (n >= u && n % u === 0 && (u === 1e8 || n / u < 10000)) {
+      const q = n / u;
+      return q >= 1000 && q % 1000 === 0 ? `${q / 1000}千${name}G` : `${q.toLocaleString()}${name}G`;
+    }
+  }
+  if (n < 10000 && n % 1000 === 0) return `${n / 1000}千G`;
+  return `${n.toLocaleString()}G`;
+}
+
 /** 寄付UI用プリセット（所持金に応じた候補＋固定段階。max は呼び出し側で） */
 export function donatePresetAmounts(gold) {
   const g = Math.max(0, Math.floor(Number(gold) || 0));
   const suggested = defaultDonateAmount(g);
-  const fixed = [100, 500, 1000, 5000, 10000, 50000, 100000, 500000, 1000000];
+  const fixed = [100, 500, 1000, 5000, 10000, 50000, 100000, 500000, 1000000, ...fundLadderAmounts(g).filter(n => n > 1000000)];
   const scaled = [suggested, Math.round(g * 0.25), Math.round(g * 0.5), g].map(n => Math.max(100, Math.floor(n || 0)));
   const set = new Set();
   for (const n of [...scaled, ...fixed]) {

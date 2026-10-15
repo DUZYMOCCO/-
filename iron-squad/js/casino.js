@@ -1,24 +1,24 @@
-import {casinoBaseBet,casinoMaxBet,validCasinoBet,normalizeCasinoBet,CASINO_POLICY,POKER_PAYOUTS,SLOT_SYMBOLS,SLOT_LINES,SLOT_CHERRY_TWO,dealPoker,finishPoker,cardFace,rollSlots,pokerWinningCards,evaluatePoker} from './casino-rules.js?v=271';
-import {chooseArena,arenaCandidates,simulateArena,recordArena} from './casino-arena.js?v=272';
-import {atFacility} from './hq-facilities.js?v=264';
+import {CASINO_BET,casinoBaseBet,casinoMaxBet,casinoPageMaxBet,validCasinoBet,normalizeCasinoBet,CASINO_POLICY,POKER_PAYOUTS,SLOT_SYMBOLS,SLOT_LINES,SLOT_CHERRY_TWO,dealPoker,finishPoker,cardFace,rollSlots,pokerWinningCards,evaluatePoker} from './casino-rules.js?v=276';
+import {chooseArena,arenaCandidates,simulateArena,recordArena} from './casino-arena.js?v=276';
+import {atFacility} from './hq-facilities.js?v=277';
 import {drawSoldierPortrait} from './soldier-appearance.js?v=206';
-import {casinoQuip} from './soldier-dialogue.js?v=271';
+import {casinoQuip} from './soldier-dialogue.js?v=276';
 import {sound} from '../../common/js/audio.js?v=151';
 import {gameText} from './game-text.js?v=271';
 const states=new WeakMap();
 const state=game=>{let s=states.get(game);if(!s||s.source!==game.nation?.casino){s={source:game.nation?.casino,page:'lobby',busy:null,step:0,net:0,history:{slot:[],poker:[],arena:[]},losses:0,comment:'',lastSpeech:0};states.set(game,s);}return s;};
 const canPlay=game=>atFacility(game,'casino',0);
-const wager=game=>Math.min(casinoMaxBet(game.nation?.level),Math.max(casinoBaseBet(game.nation?.level),normalizeCasinoBet(game.nation?.casino?.bet)));
+const wager=(game,page=state(game).page)=>Math.min(casinoPageMaxBet(game.nation?.level,page),Math.max(casinoBaseBet(game.nation?.level),validCasinoBet(game.nation?.casino?.bet,CASINO_BET,Infinity)?Number(game.nation.casino.bet):CASINO_BET));
 const money=n=>`${Number(n||0).toLocaleString(undefined,{maximumFractionDigits:1})}G`;
 const signed=n=>`${n>=0?'+':''}${money(n)}`;
 const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const reduced=()=>globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 function refresh(game){const s=state(game);if(s.root?.isConnected)draw(game,s.root);}
 function remember(game,page,result){const s=state(game);s.history[page].unshift(result);s.history[page].length=Math.min(10,s.history[page].length);}
-function speak(game,unit,force=false) {
+function speak(game,unit,force=false,big=false) {
  const s=state(game),now=Date.now();if(now-s.lastSpeech<7000||(!force&&Math.random()>.35))return;
  unit=unit||(game.squad||[]).find(u=>u.isPersonalGuard&&!u.dead&&!u.isDown);if(!unit)return;
- s.comment=`${unit.name}「${casinoQuip(unit)}」`;s.lastSpeech=now;
+ s.comment=`${unit.name}「${casinoQuip(unit,big)}」`;s.lastSpeech=now;
  setTimeout(()=>{if(states.get(game)===s){s.comment='';refresh(game);}},4500);
 }
 function animation(game,kind,count,onDone) {
@@ -31,12 +31,12 @@ function payoutComment(game,payout,bet,big){const s=state(game);s.losses=payout<
 const historyHtml=(s,page)=>`<details class="casino-history"><summary>直近の結果 · ${s.history[page].length}/10</summary><ol>${s.history[page].map(r=>`<li>${escape(r.result)} <b>${signed(r.payout-r.bet)}</b></li>`).join('')||'<li>まだ記録がありません。</li>'}</ol></details>`;
 const lineSvg=(lines,small=false)=>`<svg class="${small?'slot-line-key':'slot-win-lines'}" viewBox="0 0 300 300" aria-label="${small?'横3・縦3・ななめ2の8本':'当たりの線'}">${lines.map((line,i)=>{const cells=SLOT_LINES[line],a=cells[0],b=cells[2];return `<line x1="${a%3*100+50}" y1="${Math.floor(a/3)*100+50}" x2="${b%3*100+50}" y2="${Math.floor(b/3)*100+50}" stroke="${['#f9d978','#ef8787','#86bde8','#9dd2aa','#d9a7e8','#e7b27a','#f1f1c3','#b3eee9'][i%8]}"/>`;}).join('')}</svg>`;
 function draw(game,root) {
- const s=state(game),casino=game.nation.casino,page=s.page,open=canPlay(game),bet=wager(game),base=casinoBaseBet(game.nation.level),max=casinoMaxBet(game.nation.level),locked=!!s.busy;
+ const s=state(game),casino=game.nation.casino,page=s.page,open=canPlay(game),bet=wager(game),base=casinoBaseBet(game.nation.level),max=casinoPageMaxBet(game.nation.level,page),slotMax=casinoMaxBet(game.nation.level),arenaMax=casinoPageMaxBet(game.nation.level,'arena'),locked=!!s.busy;
  root.dataset.casinoPage=page;if(root.previousElementSibling?.classList.contains('facility-intro'))root.previousElementSibling.remove();
  root.innerHTML=gameText(`<nav class="casino-path"><button type="button" data-casino-page="lobby" ${page==='lobby'?'hidden':''}>‹ 入口へ</button><strong>CASINO / ${{lobby:'入口',slot:'SLOT',poker:'POKER',arena:'ARENA'}[page]}</strong></nav>
  ${!open?'<p>本陣のカジノから遊べます。</p>':''}
  ${page==='lobby'?`<p class="casino-welcome">戦いの合間に、ひと勝負。</p><p>所持金 ${money(game.gold)}</p><p>何回でも遊べます。お金の勝負に経験値は入りません。</p><div class="casino-lobby">${[['slot','7 · 🍒 · 💎','スロット','3×3、8本の線で大当たり。'],['poker','♠ ♥ ♦ ♣','ポーカー','5枚を配り、1回だけ交換。'],['arena','⚔','闘技場','仲間6人の練習試合。赤組か青組か。']].map(([p,icon,title,desc])=>`<button type="button" data-casino-page="${p}"><b>${icon}</b><strong>${title}</strong><small>${desc}</small></button>`).join('')}</div>`:
- `<div class="casino-wallet" aria-live="polite"><span>所持金 <b>${money(game.gold)}</b></span><span>今回の収支 <b>${signed(s.net)}</b></span></div><div class="casino-wager"><label>掛け金<input id="casino-bet" type="number" inputmode="numeric" min="${base}" max="${max}" step="1" value="${bet}" ${locked?'disabled':''}></label><small>基本 ${money(base)} / 上限 ${money(max)}</small><div class="casino-bet-actions"><button data-bet-base>基本に戻す</button><button data-bet-mult="2">2倍</button><button data-bet-mult="10">10倍</button></div></div>
+ `<div class="casino-wallet" aria-live="polite"><span>所持金 <b>${money(game.gold)}</b></span><span>今回の収支 <b>${signed(s.net)}</b></span></div><div class="casino-wager"><label>掛け金<input id="casino-bet" type="number" inputmode="numeric" min="${base}" max="${max}" step="1" value="${bet}" ${locked?'disabled':''}></label><small>基本 ${money(base)} / ${page==='arena'?'闘技場の上限':'今の上限'} ${money(max)}（今の掛け金 ${money(bet)}）</small><small>${page==='arena'?`スロット・ポーカーの上限は ${money(slotMax)}。そちらへ移ると上限で止まります。`:`闘技場の上限は ${money(arenaMax)}。`}</small><div class="casino-bet-actions"><button data-bet-base>基本に戻す</button><button data-bet-mult="2">2倍</button><button data-bet-mult="10">10倍</button></div></div>
  ${page==='slot'?slotHtml(game,s):page==='poker'?pokerHtml(game,s):arenaHtml(game,s)}${historyHtml(s,page)}`}
  <p class="casino-comment" role="status">${escape(s.comment)}</p>`);
  for(const b of root.querySelectorAll('[data-casino-page]'))b.onclick=()=>game.openCasinoPage(b.dataset.casinoPage);
@@ -86,19 +86,20 @@ function arenaHtml(game,s) {
  const match=s.arena;if(!match)return '<p>練習試合には、元気な兵士・予備兵が6人必要です。ダウン・搬送・遠征中の人は出場できません。</p><button id="btn-arena-shuffle">組み合わせを探す</button>';
  const fight=s.fight,playing=s.busy==='arena',frame=fight?.frames[Math.min(fight.frames.length-1,Math.floor((s.arenaProgress||0)*(fight.frames.length-1)))];
  return `${fight?'<canvas class="arena-field" width="600" height="240" role="img" aria-label="赤組と青組の模擬戦"></canvas>':''}<div class="arena-teams ${playing?'is-fighting':''}">${match.teams.map((team,side)=>`<section class="arena-team ${side?'blue':'red'}"><h4>${side?'青組':'赤組'} <span>${match.odds[side].toFixed(2)}倍</span></h4>${team.map((p,i)=>{const idx=side*3+i,hp=frame?frame.hp[idx]:p.hp;return `<div class="arena-unit ${hp<=0?'is-down':''} ${playing&&frame?.attack[idx]?'is-attacking':''}"><canvas width="88" height="100" data-arena-face="${idx}" role="img" aria-label="${escape(p.name)}"></canvas><div><strong>${escape(p.name)}</strong><small>${escape(p.className)} · Lv${p.level}</small><small>攻 ${Math.round(p.atk)} / 防 ${Math.round(p.def)}</small><small>HP ${Math.ceil(hp)} / ${Math.round(p.hp)}</small><progress max="${p.hp}" value="${hp}"></progress></div></div>`;}).join('')}<button data-arena-bet="${side}" ${s.busy||fight||game.gold<wager(game)||!canPlay(game)?'disabled':''}>${side?'青組':'赤組'}に賭ける</button></section>`).join('')}</div>
- <p class="arena-caption">${playing?'練習試合中…':fight?`${fight.winner?'青組':'赤組'}の勝ち · 受取 ${money(fight.payout)}`:'本番と同じ模擬戦800回で勝率を予想。倍率は1.1〜10倍。'}</p>
+ <p class="arena-caption ${s.bigWin?'is-big-win':''}">${playing?'練習試合中…':fight?`${s.bigWin?'大当たり！ ':''}${fight.winner?'青組':'赤組'}の勝ち · 受取 ${money(fight.payout)}`:`本番と同じ模擬戦${CASINO_POLICY.arenaTrials}回で勝率を予想。倍率は${CASINO_POLICY.arenaOddsRange.join('〜')}倍。`}</p>
  ${playing?'<button class="casino-play" id="btn-arena-fast">早送り</button>':`<button class="casino-play" id="btn-arena-shuffle" ${s.busy?'disabled':''}>組み直す · 無料</button>`}`;
 }
 export const casinoMethods={
  openCasinoPage(page='lobby') {
  if(!['lobby','slot','poker','arena'].includes(page))return false;
- const s=state(this);s.page=page;s.net=0;
+ const s=state(this),casino=this.nation?.casino,cap=casinoPageMaxBet(this.nation?.level,page);s.page=page;s.net=0;s.comment='';
+ if(casino&&casino.bet>cap){const old=casino.bet;casino.bet=cap;s.comment=`掛け金を${money(old)}から、このページの上限 ${money(cap)}に下げました。`;}
  if(page==='arena'&&!s.arena)s.arena=chooseArena(this);
  if(s.root?.parentElement)s.root.parentElement.scrollTop=0;
  refresh(this);return true;
  },
  setCasinoBet(value) {
- if(!this.nation?.casino||state(this).busy||!validCasinoBet(value,casinoBaseBet(this.nation.level),casinoMaxBet(this.nation.level)))return false;
+ if(!this.nation?.casino||state(this).busy||!validCasinoBet(value,casinoBaseBet(this.nation.level),casinoPageMaxBet(this.nation.level,state(this).page)))return false;
  this.nation.casino.bet=Number(value);refresh(this);return true;
  },
  startCasinoPoker() {
@@ -122,21 +123,21 @@ export const casinoMethods={
  animation(this,'slot',3,()=>{payoutComment(this,result.payout,bet,result.wins.some(w=>['seven','gem'].includes(w.key)));if(result.payout)sound.playItem();});return true;
  },
  shuffleCasinoArena() {
- const s=state(this);if(s.busy||!canPlay(this))return false;s.arena=chooseArena(this);s.fight=null;s.arenaProgress=0;speak(this,s.arena?.soldiers[0][0]);refresh(this);return !!s.arena;
+ const s=state(this);if(s.busy||!canPlay(this))return false;s.arena=chooseArena(this);s.fight=null;s.bigWin=false;s.arenaProgress=0;speak(this,s.arena?.soldiers[0][0]);refresh(this);return !!s.arena;
  },
  betCasinoArena(side) {
  const s=state(this),match=s.arena,bet=wager(this),eligible=new Set(arenaCandidates(this));
  if(!canPlay(this)||s.busy||!match||s.fight||![0,1].includes(side)||this.gold<bet||!match.soldiers.flat().every(u=>eligible.has(u)))return false;
  const result=simulateArena(match.teams,Math.random,true),payout=side===result.winner?Math.round(bet*match.odds[side]):0;
  this.gold+=payout-bet;s.net+=payout-bet;recordArena(match,result.winner);
- s.fight={...result,payout,bet};s.arenaProgress=0;s.busy='arena';speak(this,match.soldiers[side][0]);
+ s.fight={...result,payout,bet};s.bigWin=false;s.arenaProgress=0;s.busy='arena';speak(this,match.soldiers[side][0]);
  const started=Date.now(),tick=()=>{if(states.get(this)!==s||s.busy!=='arena')return;s.arenaProgress=Math.min(1,(Date.now()-started)/(CASINO_POLICY.arenaSeconds*1000));if(s.arenaProgress>=1)this.finishCasinoArena();else {refresh(this);setTimeout(tick,250);}};
  refresh(this);setTimeout(tick,250);return true;
  },
  finishCasinoArena() {
  const s=state(this);if(s.busy!=='arena')return false;s.busy=null;s.arenaProgress=1;
  const {winner,payout,bet}=s.fight,result=`${winner?'青組':'赤組'}の勝ち（${s.arena.teams[winner].map(p=>p.name).join('・')}）`;
- remember(this,'arena',{result,payout,bet});speak(this,s.arena.soldiers[winner][0]);sound.playItem();refresh(this);return true;
+ const big=payout>=bet*CASINO_POLICY.bigWinMultiple;s.bigWin=big;remember(this,'arena',{result,payout,bet});speak(this,s.arena.soldiers[winner][0],big,big);sound.playItem();if(big)setTimeout(()=>sound.playItem(),180);refresh(this);return true;
  },
  renderCasino(panel) {
  const s=state(this),root=document.createElement('section');root.className='town-facility casino-panel';

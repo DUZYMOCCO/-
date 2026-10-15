@@ -1,4 +1,4 @@
-import {WorldTerrain} from './world.js?v=260';
+import {WorldTerrain} from './world.js?v=277';
 // Ground generation uses procedural Canvas drawing only; scenery stays on the main thread.
 globalThis.document={createElement:()=>new OffscreenCanvas(1,1)};
 const terrain=new WorldTerrain();

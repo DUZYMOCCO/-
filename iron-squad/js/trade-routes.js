@@ -1,7 +1,7 @@
-import {WORLD_SIZE} from './world.js?v=260';
-import {wallBlocksAttack,fieldWallContext,outerWallBuilt} from './gate-rules.js?v=198';
-import {ECONOMIC_REGIONS,PUBLIC_WORKS,ECONOMIC_RULES,economicState,discoverEconomicRegions,tickEconomicConstruction,economicFieldBlocked,localProduction,recordEconomicKill} from './regional-economy.js?v=182';
-import {peaceContainment} from './peace-zones.js?v=182';
+import {WORLD_SIZE} from './world.js?v=277';
+import {wallBlocksAttack,fieldWallContext,outerWallBuilt} from './gate-rules.js?v=277';
+import {ECONOMIC_REGIONS,PUBLIC_WORKS,ECONOMIC_RULES,economicState,discoverEconomicRegions,tickEconomicConstruction,economicFieldBlocked,localProduction,recordEconomicKill} from './regional-economy.js?v=277';
+import {peaceContainment} from './peace-zones.js?v=277';
 
 const C=WORLD_SIZE/2,STEP=256,MAX_SEARCH_NODES=400000,SEARCH_BATCH=96;
 const key=(x,y)=>`${x},${y}`;

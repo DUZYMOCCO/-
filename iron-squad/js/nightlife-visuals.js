@@ -1,7 +1,7 @@
 // Daylight leaves the fixtures visible; the night pass adds their emitted light.
-import {WORLD_SIZE,TAVERN_SITE} from './world.js?v=260';
+import {WORLD_SIZE,TAVERN_SITE} from './world.js?v=277';
 import {HQ_FACILITY_LAYOUT} from './hq-facility-layout.js?v=201';
-import {TAVERN_TABLES,GARDEN_TABLES} from './camp-leisure.js?v=256';
+import {TAVERN_TABLES,GARDEN_TABLES} from './camp-leisure.js?v=277';
 import {circleInView} from './render-support.js';
 
 const TAU=Math.PI*2;

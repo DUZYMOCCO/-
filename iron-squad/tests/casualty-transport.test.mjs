@@ -41,7 +41,7 @@ game.saveGame({immediate:true});game.resumeSavedGame(saveSlots.get(game.activeSl
 game.gold=100;game.healAllSquad();assert.equal(game.squad[0].hp,0);
 game.clearOutpost({type:'SUPPLY',x:center+600,y:center});assert.equal(game.squad[0].hp,0);
 game.completePhase();assert.equal(game.squad[0].hp,0,'salary/treatment does not remotely revive a casualty');
-assert.equal(orbDropChance({isColossal:true},6000),.45);assert.equal(orbDropChance({isBoss:true},3000),.12);assert.equal(orbDropChance({isElite:true},3000),.02);assert.equal(orbDropChance({isBoss:true},600),0);
+assert.equal(orbDropChance({isColossal:true},6000),0);assert.equal(orbDropChance({isBoss:true},3000),0);assert.equal(orbDropChance({isElite:true},3000),0);assert.equal(orbDropChance({isDungeonBoss:true},3000),.25);assert.equal(orbDropChance({isBoss:true},600),0);
 // Exercise the real loot path at both ends of the random interval. Maximum one orb.
 const random=Math.random;
 try {
@@ -49,8 +49,8 @@ try {
   Math.random=()=>roll;game.restTimer=0;game.dropsOnField=[];game.particles=[];
   const monster={x:center+600,y:center,lootDistance:6000,isElite:type==='elite',isBoss:type!=='elite',isColossal:type==='colossal',hp:0};game.monsters=[monster];
   game.killMonster(monster,game.player,true);
-  assert.equal(game.dropsOnField.filter(d=>d.item?.type==='ORB'&&d.item.isOrb).length,roll<.1?1:0);
-  assert.equal(game.dropsOnField.filter(d=>d.item?.type==='GEM').length,type==='colossal'&&roll<.35?1:0,'a separate awakening gem is not a second hero orb');
+  assert.equal(game.dropsOnField.filter(d=>d.item?.type==='ORB'&&d.item.isOrb).length,0);
+  assert.equal(game.dropsOnField.filter(d=>d.item?.type==='GEM').length,0,'a separate awakening gem is not a second hero orb');
  }
 } finally {Math.random=random;}
 // Actual update loop: an ordinary soldier secures a nearby casualty and heads to the nearest aid facility.

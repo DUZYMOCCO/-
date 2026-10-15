@@ -11,7 +11,7 @@ try{
   await page.goto(server.origin);await page.locator('[data-game-id="iron-squad"]').click();await page.locator('#expedition-name').fill('カジノ画面の検証');await page.locator('#new-expedition-form button').click();await page.locator('#btn-commander-confirm').click();
   await page.waitForFunction(async()=>{const {IronSquadGame:g}=await import('/iron-squad/js/index.js');if(!g.player||!g.running)return false;window.qaGame=g;return true;});
   await page.evaluate(async()=>{
-   const g=qaGame,{HEADQUARTERS_FACILITIES}=await import('/iron-squad/js/hq-facilities.js?v=264');g.stopGameLoop();g.closeStrategyModal();g.monsters=[];g.restTimer=0;g.currentDungeon=null;g.gold=50000;
+   const g=qaGame,{HEADQUARTERS_FACILITIES}=await import('/iron-squad/js/hq-facilities.js?v=277');g.stopGameLoop();g.closeStrategyModal();g.monsters=[];g.restTimer=0;g.currentDungeon=null;g.gold=50000;
    const site=HEADQUARTERS_FACILITIES.find(p=>p.id==='casino');Object.assign(g.player,{x:site.x,y:site.y+24});g.camera={x:site.x,y:site.y};g.render();g.openHeadquartersFacility('casino');
    window.casinoRedraws=0;g.renderStrategyUI=()=>casinoRedraws++;
   });

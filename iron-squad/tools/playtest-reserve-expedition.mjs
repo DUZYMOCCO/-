@@ -10,7 +10,7 @@ try{
  for(const viewport of [{width:390,height:844},{width:1280,height:800}]){
   const size=viewport.width===390?'mobile':'desktop';await page.setViewportSize(viewport);
   await page.evaluate(async()=>{
-   const g=qualityGame,{FARM_X,FARM_Y,farmPosts}=await import('/iron-squad/js/reserve-farm.js?v=256'),{activeExpeditionReserves}=await import('/iron-squad/js/expedition-rules.js?v=256');
+   const g=qualityGame,{FARM_X,FARM_Y,farmPosts}=await import('/iron-squad/js/reserve-farm.js?v=277'),{activeExpeditionReserves}=await import('/iron-squad/js/expedition-rules.js?v=256');
    g.stopGameLoop();g.startFreshGame(false);g.stopGameLoop();g.closeStrategyModal();g.career.status='enlisted';g.currentDungeon=null;g.expeditionPicks={};g.monsters=[];g.updateSpawns=()=>{};g.phaseTimer=1e6;
    for(const u of g.squad)u.isPersonalGuard=false;
    const make=(id,name,cls)=>Object.assign(g.createNewSoldier(null,{classKey:cls,talent:'AVERAGE'}),{id,name,isPersonalGuard:false,platoonId:2,x:79360,y:79360});

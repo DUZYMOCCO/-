@@ -29,7 +29,7 @@ try{
           g.enterDungeon(d);g.stopGameLoop();g.monsters=[];x=name==='town-night'?230:640;y=d.height/2;
         }
         else{
-          const {WORLD_SIZE,TAVERN_SITE}=await import('/iron-squad/js/world.js?v=198');x=y=WORLD_SIZE/2;
+          const {WORLD_SIZE,TAVERN_SITE}=await import('/iron-squad/js/world.js?v=277');x=y=WORLD_SIZE/2;
           if(name==='night-field'||name==='day-field'){x+=1100;y+=160;}
           if(name==='night-casino'){x+=190;y+=255;}
           if(name==='night-tavern'){x=TAVERN_SITE.x;y=TAVERN_SITE.y;}

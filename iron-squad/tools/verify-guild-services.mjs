@@ -14,7 +14,7 @@ try{
       if(document.querySelector('#hq-facility-dialog'))g.closeHeadquartersFacility();if(document.querySelector('#tavern-dialog'))document.querySelector('#btn-tavern-close').click();
       if(!document.querySelector('#strategy-modal').classList.contains('hidden'))g.closeStrategyModal();
       g.resizeCanvas();
-      const {HEADQUARTERS_FACILITIES}=await import('/iron-squad/js/hq-facilities.js?v=201'),{FIELD_TAVERN}=await import('/iron-squad/js/tavern.js?v=201');
+      const {HEADQUARTERS_FACILITIES}=await import('/iron-squad/js/hq-facilities.js?v=277'),{FIELD_TAVERN}=await import('/iron-squad/js/tavern.js?v=277');
       const p=id==='tavern'?{...FIELD_TAVERN,w:344,h:150,roof:62}:HEADQUARTERS_FACILITIES.find(p=>p.id===id),roof=p.roof??35;
       const [x,y]=side==='north'?[p.x,p.y-p.h-roof-18]:side==='west'?[p.x-p.w/2-20,p.y-p.h/2]:side==='east'?[p.x+p.w/2+20,p.y-p.h/2]:[p.x,p.y+22];
       g.currentDungeon=null;Object.assign(g.player,{x,y,_openX:x,_openY:y,_wallX:x,_wallY:y});g.inBattle=true;g.restTimer=0;g.update(.01);g.camera={x,y};g.render();
@@ -46,7 +46,7 @@ try{
   const after=await page.evaluate(()=>({gold:g.gold,active:g.nation.guild.active.map(q=>q.id),completed:g.nation.guild.totalCompleted}));assert.equal(after.gold,before+120);assert.deepEqual(after.active,['goblin','boss','goblin-king']);assert.equal(await page.locator('[data-guild-accept="slime"]').count(),0,'boss filter hides species');
   await page.click('[data-guild-filter="all"]');assert.equal(await page.locator('[data-guild-accept="slime"]').isDisabled(),true);
   await page.click('[data-guild-abandon="goblin"]');assert.equal(await page.evaluate(()=>g.nation.guild.active.length),2);await shot('05-guild-report-and-withdraw');report.checks.guildReward={before,...after};
-  await page.evaluate(async()=>{const {normalizeNation}=await import('/iron-squad/js/nation-rules.js?v=201');g.nation.investment=180000;g.nation=normalizeNation(g.nation);g.refreshHeadquartersFacility();});
+  await page.evaluate(async()=>{const {normalizeNation}=await import('/iron-squad/js/nation-rules.js?v=277');g.nation.investment=180000;g.nation=normalizeNation(g.nation);g.refreshHeadquartersFacility();});
   assert.equal(await page.evaluate(()=>g.nation.guild.active.every(q=>q.level===0)),true);
   report.checks.growth=await page.evaluate(async()=>{const {guildBoard}=await import('/iron-squad/js/guild-contracts.js?v=201');return {catalog:guildBoard(g).length,accepted:g.nation.guild.active,quote:guildBoard(g).find(q=>q.id==='wolf')};});assert.equal(report.checks.growth.catalog,26);
   const guildLayouts=[];
@@ -55,9 +55,9 @@ try{
   }
   report.checks.guildLayouts=guildLayouts;await page.evaluate(()=>{const state=g.saveGame();g.resumeSavedGame(structuredClone(state));g.stopGameLoop();});assert.equal(await page.evaluate(()=>g.nation.guild.active.length),2);report.checks.guildReload=true;
   await page.setViewportSize({width:390,height:844});
-  await page.evaluate(async()=>{const {normalizeNation}=await import('/iron-squad/js/nation-rules.js?v=201');g.nation=normalizeNation();g.gold=50;});await move('casino','west');await page.click('#btn-hq-facility');
+  await page.evaluate(async()=>{const {normalizeNation}=await import('/iron-squad/js/nation-rules.js?v=277');g.nation=normalizeNation();g.gold=50;});await move('casino','west');await page.click('#btn-hq-facility');
   assert.equal(await page.locator('.facility-note').count(),0);assert.equal(await page.locator('#casino-bet').inputValue(),'10');await page.click('#btn-casino-poker');assert.equal(await page.evaluate(()=>g.gold),40);await page.click('[data-poker-hold="0"]');await shot('07-casino-level-zero');
-  await page.evaluate(async()=>{const {normalizeNation}=await import('/iron-squad/js/nation-rules.js?v=201');g.nation.investment=180000;g.nation=normalizeNation(g.nation);g.gold=1000000;g.refreshHeadquartersFacility();});
+  await page.evaluate(async()=>{const {normalizeNation}=await import('/iron-squad/js/nation-rules.js?v=277');g.nation.investment=180000;g.nation=normalizeNation(g.nation);g.gold=1000000;g.refreshHeadquartersFacility();});
   assert.equal(await page.locator('#casino-bet').inputValue(),'500');assert.equal(await page.evaluate(()=>g.nation.casino.poker.bet),10);const stake=await page.evaluate(()=>g.gold);await page.click('#btn-casino-poker');assert.equal(await page.evaluate(()=>g.gold),stake+await page.evaluate(()=>g.nation.casino.poker.payout));report.checks.paidHand={bet:10,nextBet:500};
   await page.evaluate(()=>{g.phase++;g.refreshHeadquartersFacility();});await page.fill('#casino-bet','1000000');await page.dispatchEvent('#casino-bet','change');assert.equal(await page.evaluate(()=>g.nation.casino.bet),1000000);await page.setViewportSize({width:844,height:390});await shot('08-casino-scaled-free-stake');
   const bets=await page.evaluate(async()=>{const {casinoBaseBet}=await import('/iron-squad/js/casino-rules.js?v=201');return [0,1,2,3,4,5].map(casinoBaseBet);});assert.deepEqual(bets,[10,25,50,100,250,500]);report.checks.baseBets=bets;

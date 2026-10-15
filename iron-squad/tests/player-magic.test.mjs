@@ -78,8 +78,8 @@ const save=structuredClone(game.saveGame({immediate:true}));game.resumeSavedGame
 const oldSave=structuredClone(save);delete oldSave.player.mana;delete oldSave.player.magicAffinity;game.resumeSavedGame(oldSave);assert.equal(p().mana,100);assert.equal(p().magicAffinity,'fire');
 // Full status UI and shortcut use the same real captain; element change is saved.
 game.openStrategyModal(true);document.getElementById('btn-player-stats').click();assert.equal(document.getElementById('commander-record').open,true);
-const grid=document.querySelector('.commander-stat-grid');assert.equal(grid.querySelectorAll('dt').length,13);
-for(const label of ['HP','攻撃','防御','筋力','魔力','魔法防御','速さ','回避','魔法攻撃','移動','搬送','MP','バリア'])assert.ok([...grid.querySelectorAll('dt')].some(n=>n.textContent===label));
+const grid=document.querySelector('.commander-stat-grid');assert.equal(grid.querySelectorAll('dt').length,14);
+for(const label of ['HP','攻撃','防御','筋力','魔力','魔法防御','速さ','回避','魔法攻撃','移動','搬送','MP','バリア','軍資金'])assert.ok([...grid.querySelectorAll('dt')].some(n=>n.textContent===label));
 const select=document.getElementById('player-magic-affinity');select.value='ice';select.dispatchEvent(new window.Event('change',{bubbles:true}));assert.equal(p().magicAffinity,'ice');game.saveGame({auto:true});assert.equal(saveSlots.get(game.activeSlotId).data.player.magicAffinity,'ice');
 assert.match(document.getElementById('player-magic-status').textContent,/隊長.*100\/100.*氷/);assert.match(document.getElementById('btn-pad-attack').textContent,/魔法/);assert.match(document.getElementById('btn-pad-power').textContent.split(/\s+/).join(''),/マナバースト/);
 game.equipItem(weapon('sword'));assert.ok(document.getElementById('player-magic-status').classList.contains('hidden'));assert.doesNotMatch(document.getElementById('btn-pad-attack').textContent,/魔法/);

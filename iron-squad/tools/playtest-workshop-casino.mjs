@@ -21,7 +21,7 @@ try{
   const pickup=await page.evaluate(()=>{const g=qualityGame;g.update(.6);g.render();return {wood:g.materials.wood,essence:g.materials.essence,drops:g.dropsOnField.length,bagUnchanged:g.inventory.length===__materialBag};});
   assert.equal(pickup.wood,12);assert.equal(pickup.essence,6);assert.equal(pickup.drops,0);assert.ok(pickup.bagUnchanged);
   await page.evaluate(async()=>{
-    const g=qualityGame;g.exitDungeon();const {normalizeNation}=await import('/iron-squad/js/nation-rules.js?v=189');
+    const g=qualityGame;g.exitDungeon();const {normalizeNation}=await import('/iron-squad/js/nation-rules.js?v=277');
     g.nation=normalizeNation({investment:90000});g.gold=100000;g.enterDungeon(g.dungeons.find(d=>d.id==='royal_castle_town'));g.render();
   });
   await page.click('#btn-strategy');await page.click('#tab-strat-nation');

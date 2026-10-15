@@ -51,12 +51,12 @@ try{
   const hits=[];
   for(const style of ['bow','crossbow','cannon']){
     const u=fixture(style),m=monster(48);u.ammo=0;g.monsters=[m];const original=u.equipped.weapon;
-    assert.equal(g.performRangedSidearm(u,m),true);hits.push(1e8-m.hp);assert.equal(g.projectiles.length,0);assert.equal(u.equipped.weapon,original);assert.equal(rangedDrawPose(u).equipped.weapon.weaponStyle,style==='cannon'?'cannon':'sword');
+    const expected=Math.round(sidearmAttack(u)*2.2*(style==='cannon'?1.6:1));assert.equal(g.performRangedSidearm(u,m),true);hits.push(1e8-m.hp);assert.equal(hits.at(-1),expected,'actual attack retains the exact sidearm multiplier');assert.equal(g.projectiles.length,0);assert.equal(u.equipped.weapon,original);assert.equal(rangedDrawPose(u).equipped.weapon.weaponStyle,style==='cannon'?'cannon':'sword');
     assert.equal(g.performRangedSidearm(u,m),false,'shared cooldown prevents repeated melee');
     assert.equal(ammoCombatProfile(u,g.combatProfileFor(u,original,false)).sidearm,true);
   }
   assert.ok(Math.abs(hits[0]-hits[1])<=3,'ranged weapon ATK does not leak into dagger damage');
-  assert.ok(Math.abs(hits[2]-hits[0]*1.6)<=3,'barrel bash has the approved 1.6 dagger multiplier');
+  assert.ok(Math.abs(hits[2]-hits[0]*1.6)<=6,'barrel bash has the approved 1.6 dagger multiplier');
   {const u=fixture('bow'),m=monster(200);u.ammo=0;u.x=x+60;g.monsters=[m];g.update(.05);assert.equal(m.hp,1e8);assert.equal(g.projectiles.length,0);assert.ok(u.x<x+60,'returns toward commander instead of chasing far enemy');
     g.player.x=u.x;g.player.y=u.y;g.worldTerrain={tiles:new Map([['test',{camps:[{x:u.x,y:u.y}]}]])};updateSupplies(g,.25);assert.equal(u.ammo,ammoCapacity(u));assert.equal(g.combatProfileFor(u,u.equipped.weapon,false).sidearm,undefined);
     assert.equal(rangedDrawPose(u),u);g.spawnRangedProjectile(u,m,100,g.combatProfileFor(u,u.equipped.weapon,false),false);assert.equal(g.projectiles[0].type,'ARROW');

@@ -1,3 +1,4 @@
+import {levelGrowthSteps} from '../js/level-growth.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {rollAttributeProfile,ensureAttributeProfile,attributeValues,practiceAttribute,APTITUDE_ROLL_RANGE,TALENT_PRACTICE_BONUS,practiceGrowth} from '../js/unit-attributes.js';
@@ -25,7 +26,7 @@ assert.deepEqual(Object.keys(TALENT_PRACTICE_BONUS),['AVERAGE']);
 // 2. practice multiplier only on practice, not level growth
 const mk=(talent,level,practice)=>{const u={id:'x'+talent,talent,level,soldierClass:'HEAVY',hp:10};u.attributeProfile={version:1,family:'HEAVY',innate:{strength:25,magic:12,magicDefense:8,quickness:15,evasion:2},aptitudes:{strength:1,magic:1,magicDefense:1,quickness:1,evasion:1},practice:{strength:practice,magic:0,magicDefense:0,travel:0,evasion:0}};return u;};
 const lvOnly=(t)=>attributeValues(mk(t,21,0)).strength;
-assert.equal(lvOnly('AVERAGE'),25+20*2.5,'AVERAGE level growth unchanged (x1)');
+assert.equal(lvOnly('AVERAGE'),Math.round(25+levelGrowthSteps(21)*2.5),'AVERAGE talent multiplier stays x1 on the common increasing level curve');
 const gain=(t,lv,pr)=>attributeValues(mk(t,lv,pr)).strength-attributeValues(mk(t,lv,0)).strength;
 for(const pr of [4,100,400]){
   const base=2*Math.sqrt(pr);

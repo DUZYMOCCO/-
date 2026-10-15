@@ -1,8 +1,11 @@
 export const CASINO_BET=10;
 export const casinoBaseBet=level=>[10,25,50,100,250,500][Math.max(0,Math.min(5,Math.floor(Number(level)||0)))];
-export const CASINO_POLICY=Object.freeze({betBaseMultiplier:200,slotReturn:[1.08,1.12],pokerReturn:[1.08,1.14],ordinaryReturn:[1.04,1.12],slotMs:1050,pokerMs:850,reducedMs:350,arenaSeconds:15,arenaTrials:800,arenaReturn:1.05});
+export const CASINO_POLICY=Object.freeze({betBaseMultiplier:200,slotReturn:[1.08,1.12],pokerReturn:[1.08,1.14],ordinaryReturn:[1.04,1.12],slotMs:1050,pokerMs:850,reducedMs:350,arenaSeconds:15,arenaTrials:800,arenaReturn:1.2,arenaOddsRange:[1.2,12],arenaBetMultiplier:5,bigWinMultiple:5});
 export const casinoMaxBet=level=>casinoBaseBet(level)*CASINO_POLICY.betBaseMultiplier;
 export const MAX_CASINO_BET=casinoMaxBet(5);
+export const casinoArenaMaxBet=level=>casinoMaxBet(level)*CASINO_POLICY.arenaBetMultiplier;
+export const MAX_CASINO_ARENA_BET=casinoArenaMaxBet(5);
+export const casinoPageMaxBet=(level,page)=>page==='arena'?casinoArenaMaxBet(level):casinoMaxBet(level);
 export const validCasinoBet=(n,minimum=CASINO_BET,maximum=MAX_CASINO_BET)=>Number.isSafeInteger(Number(n))&&Number(n)>=minimum&&Number(n)<=maximum;
 export const normalizeCasinoBet=n=>validCasinoBet(n)?Number(n):CASINO_BET;
 export const POKER_PAYOUTS=[
@@ -89,6 +92,6 @@ export function rollSlots(random=Math.random,bet=CASINO_BET) {
 export function normalizeCasino(data={},legacyPhase=0,level=0) {
   const slot=data?.slot,valid=Array.isArray(slot?.reels)&&slot.reels.length===9&&slot.reels.every(id=>SLOT_SYMBOLS.some(s=>s.id===id));
   const base=casinoBaseBet(level);
-  return {bet:data?.bet==null?base:Math.min(casinoMaxBet(level),Math.max(base,Number.isSafeInteger(Number(data.bet))?Number(data.bet):base)),poker:normalizePoker(data?.poker),
+  return {bet:data?.bet==null?base:Math.min(casinoArenaMaxBet(level),Math.max(base,Number.isSafeInteger(Number(data.bet))?Number(data.bet):base)),poker:normalizePoker(data?.poker),
     slot:valid?slotResult([...slot.reels],slot.bet):null};
 }

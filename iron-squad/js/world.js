@@ -12,7 +12,6 @@ const CENTER = WORLD_SIZE / 2;
 export const TAVERN_SITE = Object.freeze({ x: CENTER - 200, y: CENTER + 640 });
 // Building, its yard and the beer garden in front (hq-outer-wall.js GARDEN_*).
 const inTavernSite = (x, y) => Math.abs(x - TAVERN_SITE.x) < 215 && y > TAVERN_SITE.y - 245 && y < TAVERN_SITE.y + 400;
-const LIP = '#6e7264', FACE = '#1a1e1c', DROP = '#0e100e';
 const TAU = Math.PI * 2;
 
 const seeded = seed => () => {
@@ -54,14 +53,6 @@ export function drawOakCrown(c,tone,palette,size,sway=0){
     b.globalAlpha=1;OAK_CROWNS.set(key,art);
   }
   try{c.drawImage(art,-32*size+sway*.7,-70*size,64*size,72*size);return true;}catch{return false;}
-}
-const wrap = t => {
-  const x = t % TAU;
-  return x < 0 ? x + TAU : x;
-};
-function angleIn(a, a0, a1) {
-  const aa = wrap(a), s = wrap(a0), e = wrap(a1);
-  return s <= e ? aa >= s && aa <= e : aa >= s || aa <= e;
 }
 function cellHash(ix, iy) {
   let n = Math.imul(ix + 31, 73856093) ^ Math.imul(iy + 17, 19349663);
@@ -200,13 +191,6 @@ export const SETTLEMENTS = [
   })
 ];
 
-const ARCS = [
-  { r:16800, a0:0.15, a1:1.35 },
-  { r:26000, a0:-2.7, a1:-0.45 },
-  { r:40000, a0:2.35, a1:3.55 },
-  { r:52000, a0:-0.55, a1:0.75 },
-  { r:64000, a0:1.55, a1:2.85 }
-];
 const RAVINES = [
   { ox:2400, oy:1500, dx:0.80, dy:0.60, len:2100, bed:18, bank:34 },
   { ox:11000, oy:-5500, dx:0.92, dy:-0.39, len:7600, bed:24, bank:44 }
@@ -216,18 +200,6 @@ for (const rv of RAVINES) {
   rv.dx /= m; rv.dy /= m;
 }
 
-function band(dy, nearShadow) {
-  if (nearShadow) {
-    if (dy >= -66 && dy < -46) return DROP;
-    if (dy >= -46 && dy < -14) return FACE;
-    if (dy >= -14 && dy <= 4) return LIP;
-    return null;
-  }
-  if (dy > -16 && dy <= 0) return LIP;
-  if (dy > 0 && dy <= 46) return FACE;
-  if (dy > 46 && dy <= 64) return DROP;
-  return null;
-}
 function settlementShade(s, x, y) {
   const lx = x - (CENTER + s.ox), ly = y - (CENTER + s.oy);
   const cross = s.street === 'h' ? Math.abs(lx) < 15 : Math.abs(ly) < 15;
@@ -251,90 +223,15 @@ function ravineAt(x, y) {
   }
   return null;
 }
-const RIVER_CROSSING_PAD = 68;
-export function isNearRiverCrossing(x, y) {
-  return Math.abs(y - riverCenterY(x)) <= RIVER_CROSSING_PAD;
-}
-export function inPeriodicGap(val, period = 1800, gapWidth = 200, offset = 900) {
-  const m = (((val - offset) % period) + period) % period;
-  return m < gapWidth / 2 || m > period - gapWidth / 2;
-}
-
-function ridgeAt(x, y) {
-  if (isNearRiverCrossing(x, y)) return null;
-
-  if (x > CENTER - 16000 && x < CENTER + 16000) {
-    if (!inPeriodicGap(x - CENTER, 1800, 200)) {
-      const ridge = CENTER + 5000 + Math.sin((x - CENTER) / 980) * 110;
-      const shade = band(y - ridge, false);
-      if (shade) return shade;
-    }
-  }
-  if (x > CENTER - 18000 && x < CENTER + 18000) {
-    if (!inPeriodicGap(x - CENTER, 1800, 200)) {
-      const ridge = CENTER - 8000 + Math.sin((x - CENTER) / 1100) * 90;
-      const shade = band(y - ridge, false);
-      if (shade) return shade;
-    }
-  }
-  if (x > CENTER - 22000 && x < CENTER + 22000) {
-    if (!inPeriodicGap(x - CENTER, 1800, 200)) {
-      const ridge = CENTER + 24000 + Math.sin((x - CENTER) / 1400) * 160;
-      const shade = band(y - ridge, true);
-      if (shade) return shade;
-    }
-  }
-  if (y > CENTER - 14000 && y < CENTER + 14000) {
-    if (!inPeriodicGap(y - CENTER, 1800, 200)) {
-      const ridge = CENTER - 6400 + Math.sin((y - CENTER) / 860) * 80;
-      const dx = x - ridge;
-      if (dx > -16 && dx <= 0) return LIP;
-      if (dx > 0 && dx <= 46) return FACE;
-      if (dx > 46 && dx <= 64) return DROP;
-    }
-  }
-  const d = Math.hypot(x - CENTER, y - CENTER);
-  if (d < 15000 || d > 66000) return null;
-  const ang = Math.atan2(y - CENTER, x - CENTER);
-  for (const arc of ARCS) {
-    if (!angleIn(ang, arc.a0, arc.a1)) continue;
-    if (inPeriodicGap(arc.r * ang, 2000, 220, 1000)) continue;
-    const shade = band(d - arc.r, true);
-    if (shade) return shade;
-  }
-  return null;
-}
-
 export function reliefAt(x, y) {
   for (const s of SETTLEMENTS) {
     if (Math.abs(x - CENTER - s.ox) <= s.padW / 2 && Math.abs(y - CENTER - s.oy) <= s.padH / 2) return settlementShade(s, x, y);
   }
-  return ravineAt(x, y) || ridgeAt(x, y);
+  return ravineAt(x, y);
 }
 
-// Phase 2: painted cliff faces outside the sanctuary stop walking. Roads and the
-// approach to fixed landmarks stay open, so each face can be walked around.
-// Decorative shoulders do not collide, and there is no invisible hole in a face.
-const ROAD_GATE = 130;
-const DUNGEON_GATES = [[-2600, -2400], [4600, 4400], [7200, -7000], [42000, 42000]];
-function nearFixedLandmark(x, y) {
-  for (let ring = 0; ring < 3; ring++) for (let i = 0; i < 4; i++) {
-    const angle = (i * 90 + 45 + ring * 22) * Math.PI / 180;
-    const radius = [1800, 4500, 7800][ring];
-    const dx = x - (CENTER + Math.cos(angle) * radius);
-    const dy = y - (CENTER + Math.sin(angle) * radius);
-    if (dx * dx + dy * dy < 200 * 200) return true;
-  }
-  for (const [ox, oy] of DUNGEON_GATES) {
-    const dx = x - (CENTER + ox), dy = y - (CENTER + oy);
-    if (dx * dx + dy * dy < 240 * 240) return true;
-  }
-  for (const s of SETTLEMENTS) {
-    const dx = x - (CENTER + s.ox), dy = y - (CENTER + s.oy);
-    if (dx * dx + dy * dy < 280 * 280) return true;
-  }
-  return false;
-}
+// Only unbuilt public works (bridge / landfill pits) block the open field now.
+// The old cliff faces were removed; ravines and rivers are walkable.
 export function fieldBlocks(x, y, works=[]) {
   for(const p of works){
     const dx=x-p.x,dy=y-p.y;
@@ -344,58 +241,7 @@ export function fieldBlocks(x, y, works=[]) {
     if(p.done)return false;
     if(p.kind==='bridge'||p.kind==='landfill')return true;
   }
-  const dx = x - CENTER, dy = y - CENTER;
-  if (dx * dx + dy * dy <= HOME_SANCTUARY_RADIUS * HOME_SANCTUARY_RADIUS) return false;
-  if (roadDist(x, y) <= ROAD_GATE) return false;
-  if (isNearRiverCrossing(x, y)) return false;
-  if (reliefAt(x, y) !== FACE) return false;
-  if (nearFixedLandmark(x, y)) return false;
-  return true;
-}
-// Face centerlines for the field map. Roads, the sanctuary, and openings are
-// filtered by fieldBlocks at draw time. Lips, drops, and roadside rocks are omitted.
-let blockingGuideCache = null;
-export function blockingGuides(step = 60) {
-  if (blockingGuideCache?.step === step) return blockingGuideCache.lines;
-  const lines = [];
-  const push = run => { if (run.length > 1) lines.push(run); };
-  const walk = (n, at, keep) => {
-    let run = [];
-    for (let i = 0; i <= n; i++) {
-      const p = at(i);
-      if (!keep(p)) { push(run); run = []; continue; }
-      run.push(p);
-    }
-    push(run);
-  };
-  const horizontal = (x0, x1, ridgeAt, offset) => {
-    const n = Math.max(1, Math.ceil((x1 - x0) / step));
-    walk(n, i => {
-      const x = x0 + (x1 - x0) * (i / n);
-      return [x, ridgeAt(x) + offset];
-    }, ([x]) => !inPeriodicGap(x - CENTER, 1800, 200));
-  };
-  horizontal(CENTER - 16000, CENTER + 16000, x => CENTER + 5000 + Math.sin((x - CENTER) / 980) * 110, 23);
-  horizontal(CENTER - 18000, CENTER + 18000, x => CENTER - 8000 + Math.sin((x - CENTER) / 1100) * 90, 23);
-  horizontal(CENTER - 22000, CENTER + 22000, x => CENTER + 24000 + Math.sin((x - CENTER) / 1400) * 160, -30);
-  const y0 = CENTER - 14000, y1 = CENTER + 14000;
-  const nY = Math.max(1, Math.ceil((y1 - y0) / step));
-  walk(nY, i => {
-    const y = y0 + (y1 - y0) * (i / nY);
-    return [CENTER - 6400 + Math.sin((y - CENTER) / 860) * 80 + 23, y];
-  }, ([, y]) => !inPeriodicGap(y - CENTER, 1800, 200));
-  for (const arc of ARCS) {
-    const span = arc.a1 - arc.a0;
-    const n = Math.max(2, Math.ceil(arc.r * Math.abs(span) / step));
-    walk(n, i => {
-      const a = arc.a0 + span * (i / n);
-      const ang = Math.atan2(Math.sin(a), Math.cos(a));
-      const rad = arc.r - 30;
-      return [CENTER + Math.cos(ang) * rad, CENTER + Math.sin(ang) * rad];
-    }, ([x, y]) => !inPeriodicGap(arc.r * Math.atan2(y - CENTER, x - CENTER), 2000, 220, 1000));
-  }
-  blockingGuideCache = { step, lines };
-  return lines;
+  return false;
 }
 export function settleUnit(unit, blocked) {
   if (!unit || !Number.isFinite(unit.x) || !Number.isFinite(unit.y) || typeof blocked !== 'function') return false;
@@ -635,57 +481,6 @@ function paintPictures(c, x0, y0) {
     }
   }
 }
-function outsideSanctuary(x, y) {
-  return Math.hypot(x - CENTER, y - CENTER) >= HOME_SANCTUARY_RADIUS;
-}
-function cellFullyOutside(x, y) {
-  return outsideSanctuary(x, y) && outsideSanctuary(x + 32, y)
-    && outsideSanctuary(x, y + 32) && outsideSanctuary(x + 32, y + 32);
-}
-// High ground is +1, the drop side is -1. Matches the existing ridges and does not change reliefAt.
-function cliffShelf(x, y) {
-  if (!outsideSanctuary(x, y)) return 0;
-  if (isNearRiverCrossing(x, y)) return 0;
-  const horiz = (x0, x1, base, amp, wave, inwardFace) => {
-    if (x <= x0 || x >= x1) return 0;
-    if (inPeriodicGap(x - CENTER, 1800, 200)) return 0;
-    const dy = y - (base + Math.sin((x - CENTER) / wave) * amp);
-    if (inwardFace) {
-      if (dy > 8 && dy < 96) return 1;
-      if (dy < -70 && dy > -160) return -1;
-      return 0;
-    }
-    if (dy < -18 && dy > -120) return 1;
-    if (dy > 68 && dy < 150) return -1;
-    return 0;
-  };
-  let shelf = horiz(CENTER - 16000, CENTER + 16000, CENTER + 5000, 110, 980, false);
-  if (shelf) return shelf;
-  shelf = horiz(CENTER - 18000, CENTER + 18000, CENTER - 8000, 90, 1100, false);
-  if (shelf) return shelf;
-  shelf = horiz(CENTER - 22000, CENTER + 22000, CENTER + 24000, 160, 1400, true);
-  if (shelf) return shelf;
-  if (y > CENTER - 14000 && y < CENTER + 14000) {
-    if (!inPeriodicGap(y - CENTER, 1800, 200)) {
-      const ridge = CENTER - 6400 + Math.sin((y - CENTER) / 860) * 80;
-      const dx = x - ridge;
-      if (dx < -18 && dx > -110) return 1;
-      if (dx > 68 && dx < 140) return -1;
-    }
-  }
-  const d = Math.hypot(x - CENTER, y - CENTER);
-  if (d >= 15000 && d <= 66000) {
-    const ang = Math.atan2(y - CENTER, x - CENTER);
-    for (const arc of ARCS) {
-      if (!angleIn(ang, arc.a0, arc.a1)) continue;
-      if (inPeriodicGap(arc.r * ang, 2000, 220, 1000)) continue;
-      const dy = d - arc.r;
-      if (dy > 8 && dy < 90) return 1;
-      if (dy < -70 && dy > -150) return -1;
-    }
-  }
-  return 0;
-}
 function nearSettlement(x, y, pad) {
   for (const s of SETTLEMENTS) {
     if (Math.abs(x - CENTER - s.ox) < s.padW / 2 + pad && Math.abs(y - CENTER - s.oy) < s.padH / 2 + pad) return true;
@@ -851,12 +646,6 @@ export function drawFieldDepth(ctx, camera, width, height, zoom) {
 }
 function tileMayHaveRelief(x0, y0) {
   const cx = x0 + TILE / 2, cy = y0 + TILE / 2;
-  const hitY = (y, pad) => cy > y - pad && cy < y + pad;
-  const hitX = (x, pad) => cx > x - pad && cx < x + pad;
-  if (hitY(CENTER + 5000, 520) && cx > CENTER - 16800 && cx < CENTER + 16800) return true;
-  if (hitY(CENTER - 8000, 520) && cx > CENTER - 18800 && cx < CENTER + 18800) return true;
-  if (hitY(CENTER + 24000, 640) && cx > CENTER - 22800 && cx < CENTER + 22800) return true;
-  if (hitX(CENTER - 6400, 520) && cy > CENTER - 14800 && cy < CENTER + 14800) return true;
   for (const s of SETTLEMENTS) {
     if (Math.abs(cx - CENTER - s.ox) < s.padW / 2 + 280 && Math.abs(cy - CENTER - s.oy) < s.padH / 2 + 280) return true;
   }
@@ -864,11 +653,6 @@ function tileMayHaveRelief(x0, y0) {
     const mx = CENTER + rv.ox + rv.dx * rv.len * 0.5;
     const my = CENTER + rv.oy + rv.dy * rv.len * 0.5;
     if (Math.abs(cx - mx) < rv.len * 0.55 + 200 && Math.abs(cy - my) < rv.len * 0.45 + 200) return true;
-  }
-  const d = Math.hypot(cx - CENTER, cy - CENTER);
-  const ang = Math.atan2(cy - CENTER, cx - CENTER);
-  for (const arc of ARCS) {
-    if (Math.abs(d - arc.r) < 460 && angleIn(ang, arc.a0 - 0.18, arc.a1 + 0.18)) return true;
   }
   return false;
 }
@@ -916,7 +700,7 @@ export class WorldTerrain {
     if(typeof Worker!=='function'||typeof OffscreenCanvas!=='function')return;
     if(!this._terrainWorker){
       try{
-        this._terrainWorker=new Worker(new URL('./terrain-worker.js?v=260',import.meta.url),{type:'module'});
+        this._terrainWorker=new Worker(new URL('./terrain-worker.js?v=277',import.meta.url),{type:'module'});
         const disable=()=>{this._terrainWorkerDisabled=true;this._terrainWorker?.terminate();this._terrainWorker=null;this._pendingTerrain.clear();};
         this._terrainWorker.onerror=disable;
         this._terrainWorker.onmessage=({data})=>{
@@ -955,13 +739,6 @@ export class WorldTerrain {
     // Small cells follow world coordinates, so biome transitions align at tile edges.
     for(let y=0;y<TILE;y+=32) for(let x=0;x<TILE;x+=32) {
       c.fillStyle=biomeAt(x0+x+16,y0+y+16).ground; c.fillRect(x,y,32,32);
-      if (!cellFullyOutside(x0 + x, y0 + y)) continue;
-      const shelf = cliffShelf(x0 + x + 16, y0 + y + 16);
-      if (!shelf) continue;
-      c.globalAlpha = shelf > 0 ? 0.13 : 0.2;
-      c.fillStyle = shelf > 0 ? '#8a8070' : '#070a09';
-      c.fillRect(x, y, 32, 32);
-      c.globalAlpha = 1;
     }
     const tileName = biomeAt(x0 + TILE / 2, y0 + TILE / 2).name;
     const mote = tileName.startsWith('東') ? '#a0804024' : tileName.startsWith('南') ? '#b0a88828' : tileName.startsWith('北') ? '#60708024' : tileName.startsWith('西') ? '#40605028' : '#81936920';
@@ -971,17 +748,12 @@ export class WorldTerrain {
       g.addColorStop(0,i%2?mote:'#101c1828');g.addColorStop(1,'#00000000');
       c.fillStyle=g;c.fillRect(x-r,y-r,r*2,r*2);
     }
-    // Cliff lip, face and shadow, then roads so a road reads as a cut through the face.
+    // Ravines and settlement pads only; the old cliff bands are gone.
     if(may) {
       for(let y=0;y<TILE;y+=4) for(let x=0;x<TILE;x+=4) {
-        const wx=x0+x+2, wy=y0+y+2;
-        const shade=reliefAt(wx,wy);
+        const shade=reliefAt(x0+x+2,y0+y+2);
         if(!shade) continue;
         c.fillStyle=shade; c.fillRect(x,y,4,4);
-        if (shade === LIP && outsideSanctuary(wx, wy)) {
-          c.fillStyle = '#8e9286';
-          c.fillRect(x, y, 4, 2);
-        }
       }
     }
     paintRoutes(c, x0, y0);
@@ -1127,28 +899,6 @@ export class WorldTerrain {
       if(!riverPen){ c.moveTo(sx,sy); riverPen=true; } else c.lineTo(sx,sy);
     }
     c.stroke();
-    c.strokeStyle='#6a6458';c.lineWidth=1.25;
-    const line=(pts)=>{c.beginPath();pts.forEach((p,i)=>{const x=p[0]*scale,y=p[1]*scale;if(i)c.lineTo(x,y);else c.moveTo(x,y);});c.stroke();};
-    const south=(base,amp,wave,span)=>{
-      const pts=[];
-      for(let i=0;i<=64;i++){const x=CENTER-span+i*(span*2)/64;pts.push([x, base+Math.sin((x-CENTER)/wave)*amp]);}
-      line(pts);
-    };
-    south(CENTER+5000,110,980,16000);
-    south(CENTER-8000,90,1100,18000);
-    south(CENTER+24000,160,1400,22000);
-    const west=[];
-    for(let i=0;i<=64;i++){const y=CENTER-14000+i*28000/64;west.push([CENTER-6400+Math.sin((y-CENTER)/860)*80,y]);}
-    line(west);
-    for(const arc of ARCS) {
-      c.beginPath();
-      for(let i=0;i<=40;i++) {
-        const a=arc.a0+(arc.a1-arc.a0)*(i/40);
-        const x=(CENTER+Math.cos(a)*arc.r)*scale, y=(CENTER+Math.sin(a)*arc.r)*scale;
-        if(i)c.lineTo(x,y);else c.moveTo(x,y);
-      }
-      c.stroke();
-    }
     c.strokeStyle='#a7af8755';c.lineWidth=1;
     for(const r of [8000,22000,48000]){c.beginPath();c.arc(size/2,size/2,r*scale,0,Math.PI*2);c.stroke();}
     const mark=(x,y,color,r=3)=>ellipse(c,x*scale,y*scale,r,r,color);

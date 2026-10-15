@@ -1,8 +1,8 @@
-import {weaponCombatProfile,meleeSweetSpotFor} from './equipment-rules.js?v=273';
+import {weaponCombatProfile,meleeSweetSpotFor,soldierAttackCooldown} from './equipment-rules.js?v=273';
 import {masteryReloadMult,applyMasteryToCombatProfile,isHeavyWeaponStyle} from './growth-rules.js?v=234';
 import {MAX_EQUIPMENT_TIER,GENERATION_COUNT,tierNumber,powerRank,tierDescription} from './equipment-tiers.js?v=231';
 import {canUseEquipment} from './weapon-requirements.js?v=239';
-import {prefersCasterMelee} from './unit-attributes.js?v=248';
+import {prefersCasterMelee} from './unit-attributes.js?v=274';
 
 export const ARMAMENT_POLICIES={
   balanced:{name:'均衡',research:.25,development:.25,budget:1500,perLevel:250,maintenanceShare:.3},
@@ -70,7 +70,8 @@ export function soldierEquipmentValue(game,soldier,item,key,classes) {
   const sweet=meleeSweetSpotFor(weapon);
   let cooldown=archer?profile.baseCooldown:(cls.atkCooldown||1)*(profile.style==='spear'?1.5:isHeavyWeaponStyle(profile.style)?1.85:1)*masteryReloadMult(trial.weaponMastery,profile.style);
   if(weapon?.weaponTraits)cooldown/=Math.max(.55,(trial.atkSpeed||1)*(weapon.weaponTraits.attackTempo||1));
-  const crit=Math.max(0,Math.min(100,(trial.crit||0)+(weapon?.weaponTraits?(weapon.stats?.crit||0):0)))/100;
+  const crit=Math.max(0,Math.min(75,trial.crit||0))/100;
+  cooldown=soldierAttackCooldown(trial,cooldown);
   let dps=Math.max(1,trial.atk||1)*(1+crit*1.2)/Math.max(.15,cooldown);
   if(!archer&&!mage&&!medic){dps*=profile.style==='spear'?1.15:isHeavyWeaponStyle(profile.style)?1.35:1;if(weapon?.weaponTraits&&sweet)dps*=sweet.sweetDmg;}
   const durability=(Math.max(1,trial.maxHp||1)+(trial.equipmentBarrierMax||0))*(1+Math.max(0,trial.def||0)/120)/Math.max(.35,1-(trial.dmgReduction||0)/100);

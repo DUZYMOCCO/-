@@ -24,12 +24,12 @@ globalThis.requestAnimationFrame=()=>1;globalThis.cancelAnimationFrame=()=>{};
 // Keep unrelated flame/actor animations identical when comparing the light pass.
 Object.defineProperty(performance,'now',{value:()=>1200,configurable:true});
 const {IronSquadGame}=await import('../js/index.js');
-const {HEADQUARTERS_FACILITIES}=await import('../js/hq-facilities.js?v=207');
-const {FIELD_TAVERN,ensureTavernRoster}=await import('../js/tavern.js?v=207');
-const {normalizeNation}=await import('../js/nation-rules.js?v=201');
-const {refreshCampQuiet,assignCampSeats}=await import('../js/camp-leisure.js?v=202');
+const {HEADQUARTERS_FACILITIES}=await import('../js/hq-facilities.js?v=277');
+const {FIELD_TAVERN,ensureTavernRoster}=await import('../js/tavern.js?v=277');
+const {normalizeNation}=await import('../js/nation-rules.js?v=277');
+const {refreshCampQuiet,assignCampSeats}=await import('../js/camp-leisure.js?v=277');
 const {daylightAt}=await import('../js/day-night.js?v=197');
-const {drawCasinoSign,drawTavernFixtures,drawNightlifeLights}=await import('../js/nightlife-visuals.js?v=207');
+const {drawCasinoSign,drawTavernFixtures,drawNightlifeLights}=await import('../js/nightlife-visuals.js?v=277');
 const out='iron-squad/docs/previews/nightlife-20261012';mkdirSync(out,{recursive:true});
 const report={renderer:'real IronSquadGame scene with @napi-rs/canvas and JSDOM; browser not verified',scenes:[],checks:{}};
 const game=Object.create(IronSquadGame);game.init(document.getElementById('game'),()=>{});

@@ -1,3 +1,4 @@
+import {levelGrowthSteps} from './level-growth.js?v=274';
 import {heroGrowth} from './hero-rules.js';
 import {syncEquipmentBarrier} from './defense-equipment.js?v=261';
 import {isLateBloomer} from './talent-labels.js?v=247';
@@ -67,7 +68,7 @@ const trainingValue=(kind,value)=>kind==='travel'?2*Math.sqrt(value/ATTRIBUTE_RU
 function unassistedStrengthPotential(unit,profile) {
   const caster=['MEDIC','MAGE'].includes(attributeFamily(unit));
   const growth=profile.aptitudes.strength*talentGrowth(unit);
-  return profile.innate.strength+Math.max(0,(unit.level||1)-1)*(caster?ATTRIBUTE_RULES.casterLevelStrength:ATTRIBUTE_RULES.levelStrength)*growth
+  return profile.innate.strength+levelGrowthSteps(unit.level)*(caster?ATTRIBUTE_RULES.casterLevelStrength:ATTRIBUTE_RULES.levelStrength)*growth
     +trainingValue('strength',profile.practice.strength)*profile.aptitudes.strength*practiceGrowth(unit)+(CLASS_STRENGTH[unit.soldierClass]||0);
 }
 /** The melee growth unlock also determines physique. Rendering only reads saved abilities. */
@@ -88,7 +89,7 @@ export const evasionChance=value=>Math.min(ATTRIBUTE_RULES.dodgeChanceMax,value*
 export const usesSoldierTempo=unit=>!!(unit?.soldierClass||unit?.combatClass)&&!unit.isPlayer&&!unit.isCommander&&!unit.heroPartyId&&!unit.isGateGuard&&!unit.isMerchantEscort&&attributeFamily(unit)!=='COMMANDER';
 export const soldierCombatTempo=unit=>usesSoldierTempo(unit)?clamp((15/Math.max(1,Number(unit.quickness)||15))**.35,.60,1):1;
 export function attributeValues(unit) {
-  const p=ensureAttributeProfile(unit),lv=Math.max(0,(unit.level||1)-1),gift=talentGrowth(unit);
+  const p=ensureAttributeProfile(unit),lv=levelGrowthSteps(unit.level),gift=talentGrowth(unit);
   const trained=(key,levelGain,kind=key)=>p.innate[key]+lv*levelGain*p.aptitudes[key]*gift+trainingValue(kind,p.practice[kind])*p.aptitudes[key]*practiceGrowth(unit);
   const caster=['MEDIC','MAGE'].includes(attributeFamily(unit));
   let strengthPotential=unassistedStrengthPotential(unit,p);

@@ -1,5 +1,5 @@
-import {WORLD_SIZE} from './world.js?v=260';
-import {economicFieldBlocked} from './regional-economy.js?v=182';
+import {WORLD_SIZE} from './world.js?v=277';
+import {economicFieldBlocked} from './regional-economy.js?v=277';
 import {hqFacilityBlocks} from './hq-facility-layout.js?v=201';
 import {dungeonSegmentOpen,explorationBlocks as dungeonBlocks} from './dungeon-layout.js?v=182';
 const headquartersBuildingBlocks=(x,y)=>hqFacilityBlocks(x-WORLD_SIZE/2,y-WORLD_SIZE/2);

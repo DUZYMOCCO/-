@@ -1,10 +1,12 @@
-import {attributeValues,ensureAttributeProfile} from './unit-attributes.js?v=248';
-import {isMagicUser,ensureMana} from './magic-rules.js?v=266';
-import {WORLD_SIZE} from './world.js?v=260';
+import {attributeValues,ensureAttributeProfile} from './unit-attributes.js?v=274';
+import {isMagicUser,ensureMana} from './magic-rules.js?v=277';
+import {WORLD_SIZE} from './world.js?v=277';
 import {inCurrentInstance} from './instance-rules.js?v=256';
 import {saveSlots} from './save-slots.js?v=269';
 import {requestCheckpointAction,checkpointNotice} from './checkpoint-ui.js?v=259';
-import {nearestRevivalPotionTarget,reviveByPotion,REVIVAL_POTION_RANGE} from './casualty-rules.js?v=267';
+import {addBattleReport} from './battle-report.js?v=276';
+import {sound} from '../../common/js/audio.js?v=151';
+import {nearestRevivalPotionTarget,reviveByPotion,REVIVAL_POTION_RANGE} from './casualty-rules.js?v=274';
 
 export const AMMO_CAPACITY=30; // Legacy/default capacity for units without a ranged weapon.
 export const AMMO_BASE_CAPACITY=Object.freeze({bow:120,crossbow:60,cannon:30});
@@ -150,26 +152,54 @@ export function normalizeFieldSave(game,data) {
   return data;
 }
 
+
+/** 購入の保存: 背景保存のまとめ（実行中1件＋最新1件）に乗せる。 */
+const PURCHASE_SAVE=Object.freeze({auto:true,background:true});
+/** 隊長と直属兵の全員が、HP・弾薬・魔力とも満タンなら false（回復薬を使う意味がない）。 */
+export function squadNeedsRecovery(game) {
+  return personalSquadUnits(game).some(u=>{
+    if(!usable(u))return false;
+    if(u.hp<u.maxHp||ensureAmmo(u)<ammoCapacity(u))return true;
+    if(!isMagicUser(u))return false;
+    ensureMana(u);return u.mana<u.maxMana;
+  });
+}
+/** 使った瞬間の知らせ: HUDボタンの光、画面中央の短い表示、効果音、戦闘報告書。 */
+function potionUsedFeedback(game,kind,text,left) {
+  addBattleReport(game,'supply',`${text}（残り${left}個）`);
+  sound.playItem?.();
+  const root=game.container;if(!root?.querySelector||typeof document?.createElement!=='function')return;
+  const button=root.querySelector(kind==='revival'?'#btn-pad-revive':'#btn-pad-potion');
+  if(button){button.classList.remove('potion-used');void button.offsetWidth;button.classList.add('potion-used');setTimeout(()=>button.classList.remove('potion-used'),900);}
+  root.querySelectorAll('.potion-flash').forEach(n=>n.remove());
+  const flash=document.createElement('div');flash.className=`potion-flash potion-flash-${kind}`;flash.setAttribute('role','status');flash.textContent=text;
+  root.append(flash);setTimeout(()=>flash.remove(),1100);
+}
+
 export const supplyMethods={
   useRevivalPotion() {
     if(!this.inBattle||this.container?.classList.contains('dialog-open')||this._merchantShopClose||!usable(this.player)||!this.revivalPotion)return false;
     const target=nearestRevivalPotionTarget(this);if(!target)return false;
     this.revivalPotion--;
     if(!reviveByPotion(this,target)){this.revivalPotion++;return false;}
-    this.saveGame({background:true});this.updateStatsUI();return true;
+    this.saveGame({background:true});this.updateStatsUI();
+    potionUsedFeedback(this,'revival',`蘇生薬を使用: ${target.name}`,this.revivalPotion);return true;
   },
+  /** お金で物を買った直後の保存。背景保存のまとめ（実行中1件＋最新1件）に乗るので、連打しても保存がたまらない。 */
+  savePurchase() {return this.saveGame(PURCHASE_SAVE);},
   replenishRevivalPotion(merchant) {
     if((this.revivalPotion||0)>=REVIVAL_POTION_MAX||!usable(this.player)||!(this.merchants||[]).includes(merchant)||!usable(merchant))return false;
     const inside=this.currentDungeon?.kind==='town'&&merchant.placeId===this.currentDungeon.id;
     if((!inside&&!near(this.player,merchant,110))||(this.gold||0)<REVIVAL_POTION_COST)return false;
-    this.gold-=REVIVAL_POTION_COST;this.revivalPotion=(this.revivalPotion||0)+1;this.saveGame({background:true});this.updateStatsUI();this.renderSupplyPanel();
+    this.gold-=REVIVAL_POTION_COST;this.revivalPotion=(this.revivalPotion||0)+1;this.saveGame(PURCHASE_SAVE);this.updateStatsUI();this.renderSupplyPanel();
     this.showToast(`蘇生薬を購入 · ${REVIVAL_POTION_COST.toLocaleString()}G`);return true;
   },
   useSquadPotion() {
-    if(!this.inBattle||this.container?.classList.contains('dialog-open')||this._merchantShopClose||!usable(this.player)||!this.squadPotion)return false;
+    if(!this.inBattle||this.container?.classList.contains('dialog-open')||this._merchantShopClose||!usable(this.player)||!this.squadPotion||!squadNeedsRecovery(this))return false;
     this.squadPotion--;
     for(const u of personalSquadUnits(this))if(usable(u)){u.hp=u.maxHp;u.ammo=ammoCapacity(u);if(isMagicUser(u)){ensureMana(u);u.mana=u.maxMana;u.magicRecovering=false;}}
     this.showToast('隊長と直属兵のHP・弾薬・魔力を全回復しました');this.saveGame({background:true});this.updateStatsUI();
+    potionUsedFeedback(this,'squad','回復薬を使用',this.squadPotion);
     return true;
   },
   replenishSquadPotion(merchant=null) {
@@ -182,7 +212,7 @@ export const supplyMethods={
       if((this.gold||0)<SQUAD_POTION_COST)return false;
       this.gold-=SQUAD_POTION_COST;
     } else if(place?.kind!=='base')return false;
-    this.squadPotion=merchant?(this.squadPotion||0)+1:SQUAD_POTION_MAX;this.saveGame({background:true});this.updateStatsUI();this.renderSupplyPanel();
+    this.squadPotion=merchant?(this.squadPotion||0)+1:SQUAD_POTION_MAX;this.saveGame(PURCHASE_SAVE);this.updateStatsUI();this.renderSupplyPanel();
     this.showToast(merchant?`部隊ポーションを購入 · ${SQUAD_POTION_COST.toLocaleString()}G`:'本陣で部隊ポーションを補給しました');
     return true;
   },
@@ -230,7 +260,9 @@ export const supplyMethods={
     const heroRanged=isRangedUnit(this,this.player);
     if(badge){const previous=badge.textContent;badge.textContent=`${heroRanged?`弾薬 ${ensureAmmo(this.player)}/${ammoCapacity(this.player)} · `:''}${empty?`要補給 ${empty}名（白兵戦で援護）`:`射手の弾薬 ${ranged.reduce((n,u)=>n+ensureAmmo(u),0)}/${ranged.reduce((n,u)=>n+ammoCapacity(u),0)}`} · 回復薬 ${this.squadPotion||0}/${SQUAD_POTION_MAX}`;badge.dataset.empty=String(empty>0);}
     const button=document.getElementById('btn-pad-potion');
-    if(button){button.disabled=!this.squadPotion||!usable(this.player);button.textContent=`回復薬 ${this.squadPotion||0}`;}
+    if(button){button.disabled=!this.squadPotion||!usable(this.player);
+      // 満タンの表示は disabled にしない: 表示更新は間引かれるので、傷ついた直後に押せなくなるのを避ける。使うときに毎回あらためて判定する。
+      const full=!squadNeedsRecovery(this);button.classList.toggle('is-full',full);button.setAttribute('aria-disabled',String(button.disabled||full));button.textContent=`回復薬 ${this.squadPotion||0}`;}
     const revival=document.getElementById('btn-pad-revive'),target=nearestRevivalPotionTarget(this);
     if(revival){revival.disabled=!this.revivalPotion||!target;revival.textContent=`蘇生薬 ${this.revivalPotion||0}`;revival.title=target?`${target.name}を蘇生（自分には使用不可）`:`近く${REVIVAL_POTION_RANGE/100}mのダウン中の味方に使用（自分には使用不可）`;}
     let warning=document.getElementById('retreat-warning');

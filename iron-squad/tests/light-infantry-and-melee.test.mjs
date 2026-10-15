@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {JSDOM} from '../../__pycache__/ui-tools/node_modules/jsdom/lib/api.js';
 import {rollAttributeProfile,soldierCombatTempo,evasionChance} from '../js/unit-attributes.js';
-import {weaponCombatProfile,soldierAttackCooldown} from '../js/equipment-rules.js';
+import {attackCooldown,weaponCombatProfile,soldierAttackCooldown} from '../js/equipment-rules.js';
 import {soldierMeleeReload} from '../js/soldier-melee-skills.js';
 import {buildTransportRescueAssign,transportInCombat,transportSpeedFactor,attachWounded,carryingCapacity} from '../js/casualty-rules.js';
 import {rangedFrontlinePosition,rangedDrawPose,sidearmAttack} from '../js/ranged-combat.js';
@@ -131,7 +131,7 @@ try{
   for(const style of ['bow','crossbow','cannon']){
     reset();const u=soldier('ARCHER',style),m=enemy(45);u.ammo=0;u.quickness=15;
     u.weapon.weaponTraits.crit=100;u.weapon.stats.magic=1e6;u.weaponMagicFollowup=1e6;
-    assert.equal(g.performRangedSidearm(u,m),true);hits.push(1e10-m.hp);assert.equal(u.atkCooldown,style==='cannon'?1.4:.9);assert.equal(g.projectiles.length,0);assert.ok(!m.knockState&&!m.knockTimer);
+    assert.equal(g.performRangedSidearm(u,m),true);hits.push(1e10-m.hp);assert.equal(u.atkCooldown,soldierAttackCooldown(u,attackCooldown(u.weapon,style==='cannon'?1.4:.9,u.atkSpeed)));assert.equal(g.projectiles.length,0);assert.ok(!m.knockState&&!m.knockTimer);
     assert.equal(m.x,x+45+(style==='cannon'?25:0));assert.equal(rangedDrawPose(u).weapon.weaponStyle,style==='cannon'?'cannon':'sword');
     if(style==='cannon')assert.equal(rangedDrawPose(u)._rangedBash,true);
     assert.ok(Math.abs(hits.at(-1)-Math.round(sidearmAttack(u)*2.2*(style==='cannon'?1.6:1)))<=1,'only sidearm damage applies');

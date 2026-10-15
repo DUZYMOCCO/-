@@ -15,6 +15,9 @@ export const DIALOGUE_CATEGORIES = {
     '赤組、肉のためにがんばれ！','練習でも腹は減るんですね。',
     '負けても今日の飯はうまい！','勝ったら洗濯当番を代わってくれ！'
   ],
+  CASINO_BIG: [
+    '大当たりだ！今夜は肉と酒です！','隊長、俺の勘は本物でした！','財布が重い…盾より重い！','これで新しい剣と、ついでに肉も買えます！','見ましたか今の！俺、持ってます！','酒だ、肉だ、ついでに布団も新調だ！','赤でも青でも、勝ちは勝ちだ！','今日の俺は、財布がわらってます。','隊長、この金で全員に温かいスープを！','ふるえてたけど、信じてました！'
+  ],
   BOSS_ENCOUNTER: [
     'デカい…だが足元は隙だらけだ',
     '隊長、下がっててください！',
@@ -984,9 +987,9 @@ export class SoldierDialogueManager {
 
 export const soldierDialogue = new SoldierDialogueManager();
 // Menu chatter shares the field dialogue's recent-history filter, without a hidden Canvas bubble.
-export function casinoQuip(soldier) {
-  const lines=DIALOGUE_CATEGORIES.CASINO.filter(text=>!soldierDialogue.recentHistory.includes(text));
-  const pool=lines.length?lines:DIALOGUE_CATEGORIES.CASINO;
+export function casinoQuip(soldier,big=false) {
+  const source=big?DIALOGUE_CATEGORIES.CASINO_BIG:DIALOGUE_CATEGORIES.CASINO,lines=source.filter(text=>!soldierDialogue.recentHistory.includes(text));
+  const pool=lines.length?lines:source;
   const text=pool[Math.floor(Math.random()*pool.length)];soldierDialogue.recentHistory.push(text);
   if(soldierDialogue.recentHistory.length>soldierDialogue.maxHistory)soldierDialogue.recentHistory.shift();
   return text;

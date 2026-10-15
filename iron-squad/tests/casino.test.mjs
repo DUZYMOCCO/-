@@ -16,7 +16,7 @@ assert.equal(evaluatePoker(h([9,0],[9,1],[3,0],[7,1],[14,2])).key,'nothing','pai
 assert.equal(evaluatePoker(h([2,0],[3,1],[4,2],[13,0],[14,1])).key,'nothing','ace cannot bridge the middle of a straight');
 assert.throws(()=>evaluatePoker([0,0,1,2,3]));
 
-const {casinoBaseBet,casinoMaxBet,slotResult,SLOT_LINES,exactSlotReturn,CASINO_POLICY}=await import('../js/casino-rules.js');
+const {casinoBaseBet,casinoMaxBet,casinoArenaMaxBet,slotResult,SLOT_LINES,exactSlotReturn,CASINO_POLICY}=await import('../js/casino-rules.js');
 const {measurePoker,buildPokerOracle}=await import('../tools/casino-expectation.mjs');
 const {arenaCandidates,arenaProfile,chooseArena,simulateArena,estimateArena}=await import('../js/casino-arena.js');
 assert.equal(arenaProfile({id:'angel',soldierClass:'ARCHANGEL',hp:10},{baseClassId:'MEDIC'}).healer,true);assert.equal(arenaProfile({id:'sage',soldierClass:'ELEMENTAL_SAGE',hp:10},{baseClassId:'MAGE'}).magic,true);
@@ -33,7 +33,8 @@ assert.ok(Math.abs(slotResult(['cherry','cherry','lemon','lemon','gem','bell','c
 assert.equal(new Set(SLOT_LINES.map(l=>l.join())).size,8);
 assert.equal(normalizeCasino({pokerPhase:999,slotPhase:999}).pokerPhase,undefined);
 assert.equal(normalizeCasino({slot:{reels:Array(9).fill('seven'),bet:500,payout:1}}).slot.payout,800000);
-for(let level=0;level<=5;level++){assert.equal(casinoMaxBet(level),casinoBaseBet(level)*200);assert.equal(normalizeCasino({bet:MAX_CASINO_BET},0,level).bet,casinoMaxBet(level));}
+for(let level=0;level<=5;level++){assert.equal(casinoMaxBet(level),casinoBaseBet(level)*200);assert.equal(normalizeCasino({bet:MAX_CASINO_BET},0,level).bet,Math.min(MAX_CASINO_BET,casinoArenaMaxBet(level)));assert.equal(casinoArenaMaxBet(level),casinoMaxBet(level)*5);assert.equal(normalizeCasino({bet:1e9},0,level).bet,casinoArenaMaxBet(level));}
+assert.equal(casinoArenaMaxBet(5),500000);assert.equal(CASINO_POLICY.arenaReturn,1.2);assert.deepEqual(CASINO_POLICY.arenaOddsRange,[1.2,12]);assert.equal(CASINO_POLICY.arenaBetMultiplier,5);
 assert.equal(evaluatePoker(h([10,0],[10,1],[3,0],[7,1],[14,2])).key,'highPair');
 const report=measurePoker();
 assert.ok(report.hands>=1_000_000);assert.ok(report.optimalHit>.49&&report.ordinaryHit>.48);assert.ok(report.optimal>=CASINO_POLICY.pokerReturn[0]&&report.optimal<=CASINO_POLICY.pokerReturn[1],JSON.stringify(report));
@@ -81,11 +82,23 @@ assert.equal(arenaCandidates(game).length,6);game.squad[0].isDown=true;assert.eq
 for(const flag of ['carrierId','heroPartyId']){game.squad[0][flag]='x';assert.equal(arenaCandidates(game).length,5);delete game.squad[0][flag];}
 game._merchantWounded=[{id:'arena-npc-patient',isMerchant:true,isDown:true,carrierId:game.squad[0].id}];assert.equal(arenaCandidates(game).length,5,'carrying an allied NPC also excludes the carrier');game._merchantWounded=[];
 game.openCasinoPage('arena');assert.equal(document.querySelectorAll('[data-arena-face]').length,6);
+// Arena stake cap is 5x the shared cap and is clamped when moving between pages.
+{const lv=game.nation.level,arenaMax=casinoArenaMaxBet(lv),slotMax=casinoMaxBet(lv);game.gold=arenaMax*3;
+assert.equal(game.setCasinoBet(arenaMax),true);assert.equal(game.setCasinoBet(arenaMax+1),false);assert.equal(game.nation.casino.bet,arenaMax);
+assert.ok(document.querySelector('.casino-wager').textContent.includes(arenaMax.toLocaleString()),'arena page shows its cap');
+document.querySelector('[data-bet-mult="10"]').click();assert.equal(game.nation.casino.bet,arenaMax);
+game.openCasinoPage('slot');assert.equal(game.nation.casino.bet,slotMax,'slot page clamps arena stake');assert.ok(document.querySelector('.casino-wager').textContent.includes(slotMax.toLocaleString()));
+game.openCasinoPage('arena');assert.equal(game.setCasinoBet(arenaMax),true);game.openCasinoPage('poker');assert.equal(game.nation.casino.bet,slotMax);
+game.openCasinoPage('arena');game.setCasinoBet(arenaMax);const g0=game.gold;assert.equal(game.betCasinoArena(1),true);assert.equal(game.gold-g0<=arenaMax*(CASINO_POLICY.arenaOddsRange[1]-1)&&g0-game.gold<=arenaMax,true);game.finishCasinoArena();
+game.openCasinoPage('slot');game.openCasinoPage('arena');for(const u of game.squad)delete u.arenaRecord;game.shuffleCasinoArena();}
+// Odds clamp: heavy underdog is capped at 12x (EV below 1.2); even/favourite never drops below 1.2x.
+{const strong=p=>({...p,hp:2000,atk:300,def:60}),weak=p=>({...p,hp:40,atk:5,def:0}),base=chooseArena(game).teams,lopsided=[base[0].map(strong),base[1].map(weak)];
+const e=estimateArena(lopsided,random,400);assert.equal(e.odds[1],CASINO_POLICY.arenaOddsRange[1]);assert.ok(e.probability[1]*e.odds[1]<1.2);assert.ok(e.odds[0]>=CASINO_POLICY.arenaOddsRange[0]&&e.odds[0]<1.21);}
 const realBefore=structuredClone(game.squad);assert.equal(game.betCasinoArena(0),true);assert.equal(game.betCasinoArena(0),false);assert.equal(game.finishCasinoArena(),true);assert.equal(game.finishCasinoArena(),false);
 for(let i=0;i<6;i++){const s=game.squad[i];assert.equal(s.arenaRecord.wins+s.arenaRecord.losses,1);const actual=structuredClone(s);delete actual.arenaRecord;assert.deepEqual(actual,realBefore[i]);}
 const snapshot=game.saveGame({persist:false});assert.ok(snapshot.squad.every(s=>s.arenaRecord));
 const match=chooseArena(game,random);match.teams=match.teams.map(team=>team.map(p=>({...p,hp:400,atk:55,def:20,interval:.7,crit:.1,healer:false,magic:false,ranged:false})));const odds=estimateArena(match.teams,random,10000);let red=0;
 for(let i=0;i<20000;i++)red+=simulateArena(match.teams,random).winner===0?1:0;
-for(const [p,i]of [[red/20000,0],[1-red/20000,1]])assert.ok(p*odds.odds[i]>.99&&p*odds.odds[i]<1.11,`${p*odds.odds[i]}`);
+for(const [p,i]of [[red/20000,0],[1-red/20000,1]])assert.ok(p*odds.odds[i]>1.14&&p*odds.odds[i]<1.26,`${p*odds.odds[i]}`);
 console.log('PASS casino pages',JSON.stringify(report),JSON.stringify({red:red/20000,odds:odds.odds}));
 dom.window.close();

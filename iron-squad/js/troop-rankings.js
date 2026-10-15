@@ -1,7 +1,7 @@
 import {salaryQuote,salaryFundingContext,regularSalaryReserve} from './payroll-rules.js?v=226';
 import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=182';
 import {talentTag as talentLabel} from './talent-labels.js?v=247';
-import {ATTRIBUTE_BASES,attributeFamily} from './unit-attributes.js?v=248';
+import {ATTRIBUTE_BASES,attributeFamily} from './unit-attributes.js?v=274';
 /**
  * 兵士の武勲・ステータスランキングシステム
  * 各ステータス（総合・撃破・ボス・攻撃・防御・HP・回復・死線）を詳細にランキング化し、
@@ -82,7 +82,7 @@ export function computeRankings(soldiers, categoryId, limit = TOP_RANK_LIMIT) {
         break;
       }
       case 'kills': {
-        const minions = s.minionKills || 0;
+        const minions = (s.minionKills || 0)+(s.midbossKills||0);
         const bosses = s.bossKills || 0;
         score = minions + bosses * 5;
         metricText = `総討伐 ${minions + bosses}体`;
@@ -211,7 +211,7 @@ export function rankerHonorBudget(game) {
 export function isEligibleForRankerBonus(soldier) {
   if (!soldier || soldier.dead) return false;
   const waves = soldier.survivedWaves || 0;
-  const kills = (soldier.minionKills || 0) + (soldier.bossKills || 0);
+  const kills = (soldier.minionKills || 0) + (soldier.midbossKills||0) + (soldier.bossKills || 0);
   const heals = soldier.healingHp || 0;
   const dl = soldier.survivedDeathlines || 0;
   const participatedNow = (soldier.phaseActivity?.combatActions || 0) > 0 || (soldier.phaseActivity?.healingDone || 0) > 0;

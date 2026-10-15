@@ -16,8 +16,8 @@ try{
     window.g=qualityGame;g.stopGameLoop();g.closeStrategyModal();g.monsters=[];g.updateSpawns=()=>{};
     Object.defineProperty(performance,'now',{value:()=>1200,configurable:true});
     g.restTimer=0;g.phaseTimer=200;g.inBattle=true;g.currentQuest=null;g.screenShake=0;
-    window.casino=(await import('/iron-squad/js/hq-facilities.js?v=207')).HEADQUARTERS_FACILITIES.find(p=>p.id==='casino');
-    const tavern=await import('/iron-squad/js/tavern.js?v=207');window.tavern=tavern.FIELD_TAVERN;tavern.ensureTavernRoster(g);
+    window.casino=(await import('/iron-squad/js/hq-facilities.js?v=277')).HEADQUARTERS_FACILITIES.find(p=>p.id==='casino');
+    const tavern=await import('/iron-squad/js/tavern.js?v=277');window.tavern=tavern.FIELD_TAVERN;tavern.ensureTavernRoster(g);
   });
   for(const [width,height]of [[390,844],[844,390],[1280,800]]){
     await page.setViewportSize({width,height});await page.waitForTimeout(100);
@@ -37,7 +37,7 @@ try{
     }
   }
   report.checks.animation=await page.evaluate(async()=>{
-    const {drawCasinoSign,drawTavernFixtures,drawNightlifeLights}=await import('/iron-squad/js/nightlife-visuals.js?v=207');
+    const {drawCasinoSign,drawTavernFixtures,drawNightlifeLights}=await import('/iron-squad/js/nightlife-visuals.js?v=277');
     const surface=document.createElement('canvas');surface.width=600;surface.height=600;const c=surface.getContext('2d');
     const render=(time)=>{c.clearRect(0,0,600,600);c.save();c.translate(300,300);drawCasinoSign(c,170,110,time,1,true);drawTavernFixtures(c,time,1,true);c.restore();return c.getImageData(0,0,600,600).data;};
     const first=render(0),next=render(600);let changed=0;for(let i=0;i<first.length;i++)if(first[i]!==next[i])changed++;
@@ -78,7 +78,7 @@ try{
   await tab.waitForFunction(()=>window.gameStudioInstance?.activeGame?.player);
   const offlineResult=await tab.evaluate(async()=>{
     const g=gameStudioInstance.activeGame;g.stopGameLoop();g.closeStrategyModal();g.worldTime=300;
-    const site=(await import('/iron-squad/js/hq-facilities.js?v=207')).HEADQUARTERS_FACILITIES.find(p=>p.id==='casino');
+    const site=(await import('/iron-squad/js/hq-facilities.js?v=277')).HEADQUARTERS_FACILITIES.find(p=>p.id==='casino');
     Object.assign(g.player,{x:site.x,y:site.y+50});g.camera={x:site.x,y:site.y-50};g.revealFogAroundPlayer(true);g.render();
     return {moduleLoaded:true,recovery:g._renderProblem||null};
   });assert.equal(offlineResult.recovery,null);report.checks.offline=offlineResult;

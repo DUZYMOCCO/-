@@ -1,9 +1,10 @@
+import {formatCompact} from './number-format.js?v=275';
 import {configureCommandNavigation} from './command-navigation.js?v=249';
 import {commanderFullName} from './commander-identity.js?v=210';
 import {isEnlisted} from './career-rules.js?v=240';
 import {configureAudioInterface} from './audio-interface.js?v=247';
 import {renderBattleLog} from './battle-log.js?v=246';
-import {renderTroopRankings} from './troop-rankings.js?v=247';
+import {renderTroopRankings} from './troop-rankings.js?v=274';
 import {genderLabel} from './soldier-names.js?v=210';
 import {talentTag as unitTalentTag} from './talent-labels.js?v=247';
 /** Presentation only: keep game actions on their original DOM nodes. */
@@ -231,7 +232,7 @@ export function compactSoldierCard(game, row, soldier, cls, platoonName, talent)
   const magic=game.magicUnitDescription?.(soldier);if(magic){identity.append(element('small','roster-mana',magic));details.dataset.search+=' '+magic;}
   identity.append(element('small', 'roster-assign', assignLabel));
   const hp = element('span', 'roster-health');
-  const hpText = element('span', '', `${Math.max(0, Math.floor(soldier.hp))} / ${soldier.maxHp} HP`);
+  const hpText = element('span', '', `${formatCompact(Math.max(0,Math.floor(soldier.hp)))} / ${formatCompact(soldier.maxHp)} HP`);
   const hpBar = element('span', 'health-track'); const fill = element('span'); fill.style.width = `${Math.max(0, Math.min(100, soldier.hp / Math.max(1, soldier.maxHp) * 100))}%`; hpBar.append(fill);
   hp.append(hpText, hpBar);
   const status = element('span', `roster-state${soldier.isDown ? ' is-wounded' : ''}`, soldier.isDown ? '要救助' : soldier.magicRecovering?'瞑想':soldier.maxMana>0&&soldier.mana<16?'MP不足':soldier.hp < soldier.maxHp ? '負傷' : '健在');
@@ -301,7 +302,7 @@ export function refreshInterface(game, { rank, time, zone }) {
   }
   const metrics = element('div', 'snapshot-metrics');
   const alive = (game.squad || []).filter(s => !s.dead);
-  for (const [label, value, tone] of [['隊長 HP', `${Math.max(0, Math.floor(game.player.hp))} / ${game.player.maxHp}`, ''], ['実戦 / 予備', `${alive.length} / ${(game.reserves || []).length} 名`, ''], ['要救助', `${alive.filter(s => s.isDown).length} 名`, alive.some(s => s.isDown) ? 'danger-text' : ''], ['現在時刻', `${time.label} ${time.clock}`, '']]) {
+  for (const [label, value, tone] of [['隊長 HP', `${formatCompact(Math.max(0,Math.floor(game.player.hp)))} / ${formatCompact(game.player.maxHp)}`, ''], ['実戦 / 予備', `${alive.length} / ${(game.reserves || []).length} 名`, ''], ['要救助', `${alive.filter(s => s.isDown).length} 名`, alive.some(s => s.isDown) ? 'danger-text' : ''], ['現在時刻', `${time.label} ${time.clock}`, '']]) {
     const metric = element('div', 'snapshot-metric'); metric.append(element('small', '', label), element('strong', tone, value)); metrics.append(metric);
   }
   const commanderName = commanderFullName(game.player);

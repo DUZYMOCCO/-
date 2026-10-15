@@ -85,7 +85,7 @@ try{
     evidence.followerRecovery=await page.evaluate(async()=>{
       const g=gameStudioInstance.activeGame;g.stopGameLoop();g.closeStrategyModal();g.startFreshGame(false);g.stopGameLoop();g.updateSpawns=()=>{};
       g.monsters=[];g.reserves=[];g.civilians=[];g.gateGuards=[];g.merchants=[];g.dropsOnField=[];g.currentQuest=null;g.currentDungeon=null;g.phaseTimer=100000;
-      const {createLimitedAlly}=await import('/iron-squad/js/limited-allies.js?v=251');const u=createLimitedAlly(g,'NINJA','offline-recovery');Object.assign(u,{isPersonalGuard:true,x:79360+95,y:79360-130,atkCooldown:100000,_guardSlot:0});g.squad=[u];
+      const {createLimitedAlly}=await import('/iron-squad/js/limited-allies.js?v=277');const u=createLimitedAlly(g,'NINJA','offline-recovery');Object.assign(u,{isPersonalGuard:true,x:79360+95,y:79360-130,atkCooldown:100000,_guardSlot:0});g.squad=[u];
       Object.assign(g.player,{x:79360+285,y:79360-155,atkCooldown:100000,powerAtkCooldown:100000});g.camera={x:g.player.x,y:g.player.y};g.joystick={active:true,dirX:0,dirY:0};
       let warpedAt=null,unearnedTravel=false;
       for(let i=0;i<200;i++){const x=u.x,y=u.y,walk=u.attributeProfile.practice.travel||0;g.update(.05);if(Math.hypot(u.x-x,u.y-y)>100){warpedAt=(i+1)*.05;unearnedTravel=(u.attributeProfile.practice.travel||0)!==walk;break;}}
@@ -139,7 +139,7 @@ try{
   }
   if(['6.11.6','6.11.7','6.11.8','6.11.9','6.11.10'].includes(release.gameVersion)){
     evidence.reserveExpedition=await page.evaluate(async()=>{
-      const g=gameStudioInstance.activeGame,{activeExpeditionReserves}=await import('/iron-squad/js/expedition-rules.js?v=256'),{FARM_X,FARM_Y,farmPosts}=await import('/iron-squad/js/reserve-farm.js?v=256');
+      const g=gameStudioInstance.activeGame,{activeExpeditionReserves}=await import('/iron-squad/js/expedition-rules.js?v=256'),{FARM_X,FARM_Y,farmPosts}=await import('/iron-squad/js/reserve-farm.js?v=277');
       g.stopGameLoop();g.startFreshGame(false);g.stopGameLoop();g.closeStrategyModal();g.career.status='enlisted';g.currentDungeon=null;g.expeditionPicks={};
       const make=id=>Object.assign(g.createNewSoldier(null,{classKey:'HEAVY',talent:'AVERAGE'}),{id,name:id,platoonId:2,isPersonalGuard:false,x:79360,y:79360});g.reserves=['reserve-a','reserve-b','reserve-c','locked'].map(make);g.reserves[3].personnelLocked=true;
       const sent=g.startPlatoonExpedition(0,2,g.reserves.map(s=>s.id)),ids=[...g.platoons[0].expeditionMemberIds],departedFromFarm=Math.hypot(g.reserves[0].x-FARM_X,g.reserves[0].y-FARM_Y)<1200,farmWorkers=farmPosts(g.reserves).length;
@@ -167,7 +167,7 @@ try{
   }
   if(release.gameVersion==='6.11.10'){
     evidence.terrainWorker=await page.evaluate(async()=>{
-      const {WorldTerrain}=await import('/iron-squad/js/world.js?v=260'),terrain=new WorldTerrain();terrain.requestTile(145,150);
+      const {WorldTerrain}=await import('/iron-squad/js/world.js?v=277'),terrain=new WorldTerrain();terrain.requestTile(145,150);
       const start=performance.now();while(!terrain.tiles.has('145,150')&&performance.now()-start<5000&&!terrain._terrainWorkerDisabled)await new Promise(resolve=>setTimeout(resolve,10));
       const tile=terrain.tiles.get('145,150'),result={ready:!!tile,prefetched:tile?.prefetched===true,width:tile?.canvas.width,queued:terrain._pendingTerrain.size};terrain.clear();return result;
     });

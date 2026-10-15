@@ -36,10 +36,10 @@ const comp=(u,k)=>Math.round(Math.round(u.atk*SOLDIER_PHYS_DMG_MULT)*k);
 // 3. Soldier crit: s.crit applies once; mage spells do not crit.
 function hit(u){game.monsters=[dummy(F+25,F)];const m=game.monsters[0];game.performAttack(u,m,false,100,false);return 1e9-m.hp;}
 {field();const light={...tpl('LIGHT'),x:F,y:F};game.recalcSoldierStats(light);
- light.crit=100;assert.equal(hit(light),220);light.crit=0;assert.equal(hit(light),100);
+ light.crit=100;{const random=Math.random;Math.random=()=>.5;assert.equal(hit(light),220);Math.random=random;}light.crit=0;assert.equal(hit(light),100);
  game.recalcSoldierStats(light);const expectCrit=light.crit;assert.ok(expectCrit>=35);let crits=0;const N=4000,real=Math.random;let s=7;Math.random=()=>{s=(Math.imul(s,1664525)+1013904223)>>>0;return s/4294967296;};for(let i=0;i<N;i++)if(hit(light)>100)crits++;Math.random=real;assert.ok(Math.abs(crits/N-expectCrit/100)<.03,'crit chance equals s.crit (equipment crit not double-counted)');
  const mageU={...tpl('MAGE'),x:F,y:F,crit:100};assert.equal(hit(mageU),100,'mage spells never gain soldier crit');
- const l=tpl('LIGHT'),h=tpl('HEAVY');l.talent=h.talent='AVERAGE';game.recalcSoldierStats(l);game.recalcSoldierStats(h);assert.equal(l.crit-h.crit,SOLDIER_CLASSES.LIGHT.bonusCrit,'class bonusCrit reaches s.crit');}
+ const l=tpl('LIGHT'),h=tpl('HEAVY');l.talent=h.talent='AVERAGE';h.equipped=structuredClone(l.equipped);h.weapon=h.equipped.weapon;game.recalcSoldierStats(l);game.recalcSoldierStats(h);assert.equal(l.crit-h.crit,SOLDIER_CLASSES.LIGHT.bonusCrit,'class bonusCrit reaches s.crit');}
 // 4. Base medics: weak self-defence only when nobody needs healing, never at the cost of healing mana.
 function medicRun(setup){field();const m={...game.createNewSoldier(null,{classKey:'MEDIC',talent:'AVERAGE',attributeProfile:rollAttributeProfile('MEDIC','AVERAGE',()=>.5,true)}),x:F,y:F,isPersonalGuard:true,speed:0,atkCooldown:0,_pgTick:3};m.attributeProfile=rollAttributeProfile('MEDIC','AVERAGE',()=>.5,true);m._attributesNormalized=false;game.recalcSoldierStats(m);m.hp=m.maxHp;const allies=setup(m)||[];game.squad=[m,...allies];game.monsters=[dummy(m.x+60,m.y)];game.projectiles=[];game.update(.05);return {m,smite:game.projectiles.find(p=>p.type==='SMITE'),heal:game.projectiles.find(p=>p.type==='HEAL')};}
 {let castPower;const {m,smite}=medicRun(m=>{m.mana=100;castPower=m.magicAttack;});assert.ok(smite,'idle medic fires a self-defence bolt');assert.equal(smite.damage,castPower);assert.equal(smite.noSplash,true);assert.equal(Math.round(m.mana),90);}

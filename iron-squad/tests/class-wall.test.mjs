@@ -14,29 +14,14 @@ assert.equal(passesWalls({ soldierClass: 'HEAVY' }), false);
 assert.equal(passesWalls({ x: 1, y: 1 }), false);
 
 const center = WORLD_SIZE / 2;
-let face = null;
-for (let y = center + 4700; y < center + 5600 && !face; y += 4) {
-  const x = center + 2500;
-  if (fieldBlocks(x, y)) face = { x, y };
-}
-assert.ok(face, 'a cliff face exists');
-const openBeside = (dx) => {
-  for (let i = 1; i < 40; i++) {
-    const x = face.x + dx * i * 6;
-    if (!fieldBlocks(x, face.y)) return { x, y: face.y };
-  }
-  return null;
-};
-const west = openBeside(-1), east = openBeside(1);
-assert.ok(west && east);
+// The cliff faces are gone, so the open field never stops a strike, classed-up or not.
+const face = { x: center + 2500, y: center + 5024 };
+assert.equal(fieldBlocks(face.x, face.y), false, 'the former cliff line is open ground');
+const west = { x: face.x - 60, y: face.y }, east = { x: face.x + 60, y: face.y };
 const field = { currentDungeon: null, _economicWorks: [] };
 const allow = { ...field, passesWalls: (unit) => passesWalls(unit, unit?.soldierClass === 'PALADIN' ? { isAdvanced: true } : null) };
-assert.equal(attackBlocked(field, west, east), true, 'a basic strike still stops at the cliff');
-assert.equal(attackBlocked(allow, { ...west, isAdvanced: true, advancedClass: 'WARLORD' }, east), false, 'a classed-up commander strikes through');
-assert.equal(attackBlocked(allow, { ...west, soldierClass: 'HEAVY' }, east), true, 'a basic soldier still stops');
-assert.equal(attackBlocked(allow, { ...west, soldierClass: 'PALADIN' }, east), false, 'a classed-up soldier strikes through');
-assert.equal(attackBlocked(allow, { attacker: { ...west, soldierClass: 'PALADIN' } }, east), false, 'a classed-up shot crosses');
-assert.equal(attackBlocked(allow, { x: west.x, y: west.y, attacker: { x: west.x, y: west.y } }, east), true, 'an enemy shot still stops');
+assert.equal(attackBlocked(field, west, east), false, 'a basic strike crosses the former cliff line');
+assert.equal(attackBlocked(allow, { ...west, soldierClass: 'HEAVY' }, east), false);
 
 const dungeon = { kind: 'dungeon', width: 2200, height: 900 };
 const indoors = { currentDungeon: dungeon, passesWalls: allow.passesWalls };
@@ -64,11 +49,11 @@ game.platoons = [];
 game.civilians = [];
 game.merchants = [];
 game.settleTerrain();
-assert.equal(game.player.x, face.x, 'the classed-up commander stays on the cliff');
+assert.equal(game.player.x, face.x, 'the commander is not moved at the former cliff line');
 assert.equal(game.player.y, face.y);
-assert.equal(fieldBlocks(game.squad[0].x, game.squad[0].y), false, 'a basic soldier is pushed off the cliff');
-assert.equal(game.squad[1].x, face.x, 'a classed-up soldier stays on the cliff');
-assert.equal(fieldBlocks(game.monsters[0].x, game.monsters[0].y), false, 'an enemy is pushed off the cliff');
+assert.equal(game.squad[0].x, face.x, 'a basic soldier is not pushed off open ground');
+assert.equal(game.squad[1].x, face.x);
+assert.equal(game.monsters[0].x, face.x, 'an enemy is not pushed off open ground');
 
 game.currentDungeon = dungeon;
 game.player = { x: 360, y: 40, isAdvanced: true, advancedClass: 'EMPEROR' };
@@ -84,4 +69,4 @@ assert.equal(dungeonBlocks(dungeon, 360, 40), true);
 assert.equal(game.squad[0].x, 360, 'cargo dragged by a classed-up commander stays with them');
 assert.equal(dungeonBlocks(dungeon, game.squad[1].x, game.squad[1].y), false, 'a basic soldier is pushed out of the dungeon wall');
 assert.equal(game.squad[2].x, 360, 'a classed-up soldier stays inside the dungeon wall');
-console.log('PASS: class-up walks and strikes through walls; basic units and enemies still stop');
+console.log('PASS: class-up passes dungeon and fortification walls; basic units still stop there; no field cliff');

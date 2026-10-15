@@ -30,4 +30,4 @@
 - 終わったら、この文書の末尾「結果」と `docs/CURRENT_WORK.md` を更新する。
 
 ## 結果
-（作業者が記入）
+- 実装はSonnet（別作業ツリー）、Opusがレビューして v7.0.0 に統合。`soldierFundAmount`/`donateFundAmount` を別々に記憶・保存（`globalFundAmount`/`_donateUserPicked` は廃止）。選択肢は `fundLadderAmounts`（100から1・5段、所持金を超える最初の段まで。12段を超えると所持金の1/1000未満を省き、前回の額は残す）。表示は `formatFundKanji`（千/万/億。兆はかな表示の決まりで使わない）。兵士の所持金は `MAX_SAFE_INTEGER` で頭打ち。テスト `tests/fund-amount.test.mjs`。全197テストPASS。

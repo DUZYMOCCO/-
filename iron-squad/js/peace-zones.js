@@ -1,5 +1,5 @@
-import {WORLD_SIZE} from './world.js?v=260';
-import {ECONOMIC_REGIONS} from './regional-economy.js?v=182';
+import {WORLD_SIZE} from './world.js?v=277';
+import {ECONOMIC_REGIONS} from './regional-economy.js?v=277';
 
 export const CAMP_PEACE_RADIUS = 1200;
 export const SETTLEMENT_PEACE_RADIUS = 1040;

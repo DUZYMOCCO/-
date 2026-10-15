@@ -1,0 +1,24 @@
+{
+  "mode": "screens",
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "cpu": 4,
+  "disposableStorage": true,
+  "screens": [
+    "normal",
+    "critical",
+    "big-hit",
+    "healing",
+    "friendly"
+  ],
+  "display": {
+    "hp": "HP 123K/1.23M",
+    "gold": "5.55M G",
+    "mp": "MP 72/100",
+    "number": "+12.3K G"
+  },
+  "exact": "HP123,456 / 1,234,567攻撃5,545,200防御123,456筋力198魔力185魔法防御156速さ110回避26.6 · 1.4%魔法攻撃25移動1.7m/秒搬送5人MP72 / 100バリア0 / 0軍資金5,545,200G",
+  "errors": []
+}

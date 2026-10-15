@@ -1,4 +1,4 @@
-import {ECONOMIC_REGIONS} from './regional-economy.js?v=182';
+import {ECONOMIC_REGIONS} from './regional-economy.js?v=277';
 import {hqFacilityPlotContains} from './hq-facility-layout.js?v=201';
 
 const ellipse=(c,x,y,rx,ry,color)=>{c.fillStyle=color;c.beginPath();c.ellipse(x,y,rx,ry,0,0,Math.PI*2);c.fill();};

@@ -9,7 +9,7 @@ try{
   page.on('pageerror',e=>errors.push(e.message));
   await page.goto('http://localhost:8000/iron-squad/tools/canvas-quality-review.html');await page.waitForFunction(()=>window.qualityReady);
   const cases=await page.evaluate(async()=>{
-   const {SETTLEMENTS,WORLD_SIZE}=await import('/iron-squad/js/world.js?v=175'),C=WORLD_SIZE/2;
+   const {SETTLEMENTS,WORLD_SIZE}=await import('/iron-squad/js/world.js?v=277'),C=WORLD_SIZE/2;
    const g=qualityGame;g.stopGameLoop();g.monsters=[];g.updateSpawns=()=>{};
    const props=[];
    for(const [type,x,y] of [['oak',C,C],['pine',C,C-14000]]){
@@ -20,7 +20,7 @@ try{
     props.push({id:type,x:C+s.ox+p.dx,y:C+s.oy+p.dy-20});
    }
    props.push({id:'hq-wall',x:C+350,y:C+100});
-   const {ECONOMIC_REGIONS}=await import('/iron-squad/js/regional-economy.js?v=151');const village=ECONOMIC_REGIONS.find(r=>r.id!=='hq'&&r.kind==='village');
+   const {ECONOMIC_REGIONS}=await import('/iron-squad/js/regional-economy.js?v=277');const village=ECONOMIC_REGIONS.find(r=>r.id!=='hq'&&r.kind==='village');
    Object.assign(g.nation.economy.regions[village.id],{discovered:true,liberated:true,level:3});props.push({id:'developed-village',x:village.x,y:village.y});
    window.sceneryMetrics={};
    for(const name of ['update','render','renderMinimap']){const fn=g[name];g[name]=function(...args){const t=performance.now();try{return fn.apply(this,args);}finally{const a=sceneryMetrics[name]||(sceneryMetrics[name]=[]);a.push(performance.now()-t);}};}

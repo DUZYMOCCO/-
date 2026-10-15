@@ -12,7 +12,7 @@ try {
   const setup=await page.evaluate(async()=>{
    const g=qualityGame;g.stopGameLoop();g.startFreshGame(false);g.stopGameLoop();g.closeStrategyModal();g.updateSpawns=()=>{};
    g.monsters=[];g.reserves=[];g.civilians=[];g.gateGuards=[];g.merchants=[];g.dropsOnField=[];g.currentQuest=null;g.currentDungeon=null;g.phaseTimer=100000;
-   const {createLimitedAlly}=await import('/iron-squad/js/limited-allies.js?v=251');const u=createLimitedAlly(g,'NINJA','browser-recovery');
+   const {createLimitedAlly}=await import('/iron-squad/js/limited-allies.js?v=277');const u=createLimitedAlly(g,'NINJA','browser-recovery');
    Object.assign(u,{isPersonalGuard:true,x:79360+95,y:79360-130,atkCooldown:100000,_guardSlot:0});g.squad=[u];
    Object.assign(g.player,{x:79360+285,y:79360-155,atkCooldown:100000,powerAtkCooldown:100000});g.camera={x:g.player.x,y:g.player.y};g.joystick={active:true,dirX:0,dirY:0};
    window.recoveryQA={g,u,resources:{hp:u.hp,mana:u.mana,ammo:u.ammo,equipment:JSON.stringify(u.equipped)}};

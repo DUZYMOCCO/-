@@ -1,7 +1,8 @@
-import {WORLD_SIZE,biomeAt,eastWestRoadY,northSouthRoadX,riverCenterY,blockingGuides} from './world.js?v=260';
+import {WORLD_SIZE,biomeAt,eastWestRoadY,northSouthRoadX,riverCenterY} from './world.js?v=277';
+import {UNDISCOVERED_MEDICAL_LABEL} from './medical-posts.js?v=277';
 import {dungeonSolids} from './dungeon.js?v=251';
 import {inCurrentInstance} from './instance-rules.js?v=256';
-import {ECONOMIC_REGIONS,economicState,economicFieldBlocked} from './regional-economy.js?v=182';
+import {ECONOMIC_REGIONS,economicState} from './regional-economy.js?v=277';
 
 export const NAVIGATION_RULES=Object.freeze({fieldSpan:12000,maxSize:168,terrainAlpha:.2,roadAlpha:.48,iconAlpha:1});
 const center=WORLD_SIZE/2;
@@ -9,6 +10,7 @@ export function drawNavigationIcon(ctx,kind,x,y,label='',size=9) {
  ctx.save();ctx.translate(x,y);ctx.globalAlpha=NAVIGATION_RULES.iconAlpha;ctx.lineWidth=1.5;ctx.strokeStyle='#171f23';ctx.fillStyle=kind==='medical'?'#b9d6c4':kind==='cage'?'#c5b0cf':'#e0d3ad';
  ctx.beginPath();
  if(kind==='town'){ctx.moveTo(-size,-1);ctx.lineTo(0,-size);ctx.lineTo(size,-1);ctx.lineTo(size*.7,-1);ctx.lineTo(size*.7,size);ctx.lineTo(-size*.7,size);ctx.lineTo(-size*.7,-1);ctx.closePath();ctx.fill();ctx.stroke();ctx.fillStyle='#28383c';ctx.fillRect(-2,2,4,size-2);}
+ else if(kind==='medicalUnknown'){ctx.arc(0,0,size,0,Math.PI*2);ctx.fillStyle='#31413b';ctx.strokeStyle='#a7dfcb';ctx.fill();ctx.stroke();ctx.fillStyle='#d8e8dc';ctx.font='bold 13px "Yu Gothic",sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('？',0,1);ctx.strokeStyle='#171f23';}
  else if(kind==='medical'){ctx.rect(-size*.32,-size,size*.64,size*2);ctx.rect(-size,-size*.32,size*2,size*.64);ctx.fill();ctx.stroke();}
  else if(kind==='base'){ctx.moveTo(-size,size);ctx.lineTo(-size,-size);ctx.lineTo(-size*.4,-size);ctx.lineTo(-size*.4,-size*.5);ctx.lineTo(size*.4,-size*.5);ctx.lineTo(size*.4,-size);ctx.lineTo(size,-size);ctx.lineTo(size,size);ctx.closePath();ctx.fill();ctx.stroke();ctx.fillStyle='#28383c';ctx.fillRect(-2,1,4,size-1);}
  else if(kind==='cage'){ctx.rect(-size,-size,size*2,size*2);ctx.fill();ctx.stroke();ctx.strokeStyle='#35404a';for(const dx of [-size*.5,0,size*.5]){ctx.beginPath();ctx.moveTo(dx,-size);ctx.lineTo(dx,size);ctx.stroke();}}
@@ -17,29 +19,8 @@ export function drawNavigationIcon(ctx,kind,x,y,label='',size=9) {
  if(label){ctx.font='11px "Yu Gothic",sans-serif';ctx.textAlign='center';ctx.textBaseline='top';ctx.strokeStyle='#142125';ctx.lineWidth=3;ctx.strokeText(label,0,size+4);ctx.fillStyle='#ece4cf';ctx.fillText(label,0,size+4);}
  ctx.restore();
 }
-function drawBlockingMarks(ctx, px, py, known, blocked, game) {
-  if (game.player) blocked(game.player.x, game.player.y);
+function drawBlockingMarks(ctx, px, py, known, game) {
   ctx.save();
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
-  for (const line of blockingGuides()) {
-    let drawing = false, marked = false;
-    ctx.beginPath();
-    for (const [x, y] of line) {
-      if (!known(x, y) || !blocked(x, y)) { drawing = false; continue; }
-      const sx = px(x), sy = py(y);
-      if (!drawing) { ctx.moveTo(sx, sy); drawing = true; }
-      else { ctx.lineTo(sx, sy); marked = true; }
-    }
-    if (!marked) continue;
-    ctx.globalAlpha = 1;
-    ctx.strokeStyle = '#6e5844';
-    ctx.lineWidth = 3.2;
-    ctx.stroke();
-    ctx.strokeStyle = '#e6d3a8';
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-  }
   for (const work of game._economicWorks || []) {
     if (work.done || (work.kind !== 'bridge' && work.kind !== 'landfill') || !known(work.x, work.y)) continue;
     ctx.save();
@@ -68,11 +49,15 @@ export function renderNavigationMap(game) {
   const fog=game.ensureFog(),known=(x,y)=>fog.isExploredWorld(x,y);
   ctx.globalAlpha=NAVIGATION_RULES.terrainAlpha;for(let y=0;y<24;y++)for(let x=0;x<24;x++){const wx=originX+(x+.5)*span/24,wy=originY+(y+.5)*span/24;if(!known(wx,wy))continue;ctx.fillStyle=biomeAt(wx,wy).ground;ctx.fillRect(x*size/24,y*size/24,size/24+1,size/24+1);}
   ctx.globalAlpha=NAVIGATION_RULES.roadAlpha;for(let i=0;i<80;i++){const x=originX+(i+.5)*span/80,y=originY+(i+.5)*span/80;for(const [wx,wy,color] of [[x,eastWestRoadY(x),'#d2c09c'],[northSouthRoadX(y),y,'#d2c09c'],[x,riverCenterY(x),'#82aeb9']]){if(!known(wx,wy))continue;ctx.fillStyle=color;ctx.fillRect(px(wx)-1.2,py(wy)-1.2,2.4,2.4);}}
-  drawBlockingMarks(ctx,px,py,known,(x,y)=>economicFieldBlocked(game,x,y),game);
+  drawBlockingMarks(ctx,px,py,known,game);
   ctx.globalAlpha=1;
   if(inside(center,center)&&known(center,center))drawNavigationIcon(ctx,'base',px(center),py(center),'本陣',10);
   for(const d of game.dungeons||[]){const e=d.entrance;if(!e||!inside(e.x,e.y)||!known(e.x,e.y))continue;drawNavigationIcon(ctx,d.kind==='town'?'town':d.kind==='ruin'?'ruin':'dungeon',px(e.x),py(e.y),d.name,8);}
-  for(const p of game.medicalPosts||[])if(p.discovered&&inside(p.x,p.y)&&known(p.x,p.y))drawNavigationIcon(ctx,'medical',px(p.x),py(p.y),'診療所',9);
+  for(const p of game.medicalPosts||[]){
+   if(!inside(p.x,p.y))continue;
+   if(p.discovered){if(known(p.x,p.y))drawNavigationIcon(ctx,'medical',px(p.x),py(p.y),'診療所',9);}
+   else drawNavigationIcon(ctx,'medicalUnknown',px(p.x),py(p.y),UNDISCOVERED_MEDICAL_LABEL,8);
+  }
   const economy=game.nation?economicState(game):null;
   for(const region of ECONOMIC_REGIONS)if(region.kind==='village'&&economy?.regions?.[region.id]?.discovered&&inside(region.x,region.y)&&known(region.x,region.y))drawNavigationIcon(ctx,'town',px(region.x),py(region.y),region.name,8);
   for(const p of game.outposts||[])if(inside(p.x,p.y)&&known(p.x,p.y))drawNavigationIcon(ctx,p.type==='CAGE'?'cage':p.type==='FORT'?'base':'ruin',px(p.x),py(p.y),p.type==='CAGE'?'捕虜':p.type==='FORT'?'砦':'',6);

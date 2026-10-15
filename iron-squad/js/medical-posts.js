@@ -1,17 +1,58 @@
-import {WORLD_SIZE} from './world.js?v=260';
+import {WORLD_SIZE,SETTLEMENTS,eastWestRoadY,northSouthRoadX,riverCenterY} from './world.js?v=277';
 
 export const MEDICAL_CASTLE_EXCLUSION=32000;
 export const MEDICAL_DISCOVERY_RADIUS=650;
 export const MEDICAL_RADIUS=150;
 export const MEDICAL_INTAKE_RADIUS=72;
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+const CENTER=WORLD_SIZE/2;
+/** Posts sit beside the two highways at about 60 / 180 / 400 / 700 m (100 px = 1 m), and out in the
+ *  wilds on the four diagonals at about 450 / 700 m, so there is always one to find on the way. */
+export const MEDICAL_ROAD_METERS=Object.freeze([60,180,400,700]);
+export const MEDICAL_WILD_METERS=Object.freeze([450,700]);
+const ROAD_SIDE_OFFSET=240,CLEARANCE=Object.freeze({road:420,river:420,town:520,dungeon:700,outpost:700});
+const ROAD_ARMS=Object.freeze([['東',1,0],['南',0,1],['西',-1,0],['北',0,-1]]);
+const WILD_ARMS=Object.freeze([['北東',1,-1],['南東',1,1],['南西',-1,1],['北西',-1,-1]]);
+const roadPoint=(dx,dy,distance,side)=>dx
+  ?{x:CENTER+dx*distance,y:eastWestRoadY(CENTER+dx*distance)+side*ROAD_SIDE_OFFSET}
+  :{x:northSouthRoadX(CENTER+dy*distance)+side*ROAD_SIDE_OFFSET,y:CENTER+dy*distance};
+function openGround(p,game,beside=false) {
+  if(!beside&&Math.min(Math.abs(p.x-northSouthRoadX(p.y)),Math.abs(p.y-eastWestRoadY(p.x)))<CLEARANCE.road)return false;
+  if(Math.abs(p.y-riverCenterY(p.x))<CLEARANCE.river)return false;
+  if(SETTLEMENTS.some(s=>Math.abs(p.x-CENTER-s.ox)<s.padW/2+CLEARANCE.town&&Math.abs(p.y-CENTER-s.oy)<s.padH/2+CLEARANCE.town))return false;
+  if((game.dungeons||[]).some(d=>d.entrance&&distance(p,d.entrance)<CLEARANCE.dungeon))return false;
+  return !(game.outposts||[]).some(o=>distance(p,o)<CLEARANCE.outpost);
+}
+/** Walk outward in rings from the ideal spot until the ground is open. */
+function nudgeToOpenGround(p,game) {
+  for(const r of [0,500,900,1400,2000,2800])for(let i=0;i<(r?12:1);i++){
+    const a=i*Math.PI/6,q={x:p.x+Math.cos(a)*r,y:p.y+Math.sin(a)*r};
+    if(q.x>2000&&q.y>2000&&q.x<WORLD_SIZE-2000&&q.y<WORLD_SIZE-2000&&openGround(q,game))return q;
+  }
+  return p;
+}
+/** Road posts keep their side of the road and slide along it past a river, town or gate. */
+function roadSpot(dx,dy,meters,side,game) {
+  for(const slide of [0,600,-600,1200,-1200,1800,-1800]){
+    const p=roadPoint(dx,dy,meters*100+slide,side);
+    if(openGround(p,game,true))return p;
+  }
+  return roadPoint(dx,dy,meters*100,side);
+}
 export function medicalPostLayout(game={}) {
   const castle=(game.dungeons||[]).find(d=>d.id==='dungeon_demon_castle')?.entrance||{x:WORLD_SIZE/2+42000,y:WORLD_SIZE/2+42000};
+  const spots=[];
+  MEDICAL_ROAD_METERS.forEach((meters,tier)=>{
+    ROAD_ARMS.forEach(([label,dx,dy],arm)=>spots.push({key:`road-${label}-${meters}`,meters,...roadSpot(dx,dy,meters,(tier+arm)%2?1:-1,game)}));
+    if(meters===400)WILD_ARMS.forEach(([label,dx,dy])=>spots.push({key:`wild-${label}-450`,meters:450,wild:true,dx,dy}));
+  });
+  WILD_ARMS.forEach(([label,dx,dy])=>spots.push({key:`wild-${label}-700`,meters:700,wild:true,dx,dy}));
   const posts=[];
-  for(let row=0;row<4;row++)for(let col=0;col<4;col++){
-    const x=WORLD_SIZE*(col+.5)/4,y=WORLD_SIZE*(row+.5)/4;
-    if(distance({x,y},castle)<MEDICAL_CASTLE_EXCLUSION)continue;
-    posts.push({id:`medical-${row}-${col}`,kind:'medical',name:`第${posts.length+1}救護所`,x,y,radius:MEDICAL_RADIUS,intakeRadius:MEDICAL_INTAKE_RADIUS,discovered:false});
+  for(const spot of spots) {
+    const ideal=spot.wild?{x:CENTER+spot.dx*spot.meters*100/Math.SQRT2,y:CENTER+spot.dy*spot.meters*100/Math.SQRT2}:spot;
+    const at=spot.wild?nudgeToOpenGround(ideal,game):ideal;
+    if(distance(at,castle)<MEDICAL_CASTLE_EXCLUSION)continue;
+    posts.push({id:`medical-${spot.key}`,kind:'medical',name:`第${posts.length+1}救護所`,x:Math.round(at.x),y:Math.round(at.y),radius:MEDICAL_RADIUS,intakeRadius:MEDICAL_INTAKE_RADIUS,discovered:false});
   }
   return posts;
 }
@@ -57,8 +98,17 @@ export function drawMedicalPost(ctx,p) {
   ctx.font='600 12px sans-serif';ctx.textAlign='center';ctx.lineWidth=3;ctx.strokeStyle='#172520';ctx.strokeText(p.name,0,-99);ctx.fillStyle='#d8e8dc';ctx.fillText(p.name,0,-99);
   ctx.font='10px sans-serif';ctx.strokeText('搬送で復活・救出受付',0,90);ctx.fillText('搬送で復活・救出受付',0,90);ctx.restore();
 }
+export const UNDISCOVERED_MEDICAL_LABEL='未発見の救護所';
+/** A post that has not been found yet is still on the map, as a plain question mark. */
+export function drawUnknownMedicalMarker(ctx,x,y,size=5) {
+  ctx.save();ctx.fillStyle='#31413b';ctx.strokeStyle='#a7dfcb';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(x,y,size+2,0,Math.PI*2);ctx.fill();ctx.stroke();
+  ctx.font=`bold ${Math.round(size*2)}px sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#d8e8dc';ctx.fillText('？',x,y+1);ctx.restore();
+}
 export function drawMedicalMap(ctx,game,px,py,inside=()=>true) {
-  for(const p of game.medicalPosts||[])if(p.discovered&&inside(p.x,p.y))drawMedicalMarker(ctx,px(p.x),py(p.y));
+  for(const p of game.medicalPosts||[]){
+    if(!inside(p.x,p.y))continue;
+    if(p.discovered)drawMedicalMarker(ctx,px(p.x),py(p.y));else drawUnknownMedicalMarker(ctx,px(p.x),py(p.y));
+  }
 }
 export function drawTownMedicalReception(ctx,town) {
   const x=230,y=town.height/2;

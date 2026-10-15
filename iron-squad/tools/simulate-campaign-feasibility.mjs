@@ -26,7 +26,7 @@ const g=Object.create(IronSquadGame),C=WORLD_SIZE/2,castle=DUNGEON_DEFS.find(d=>
 Object.assign(g,{container:document.getElementById('game'),width:390,height:844,zoom:1,ctx,camera:{x:C,y:C},selectedSaleIds:new Set(),commandActiveUntil:0,joystick:{active:false,dirX:0,dirY:0}});
 for(const m of ['startGameLoop','showToast','spawnSparks','spawnDamageText'])g[m]=noop;
 g.setupUI();g.activeSlotId=saveSlots.create('CAMPAIGN SIMULATION ONLY').id;g.startFreshGame(false);g.closeStrategyModal();
-const initial=structuredClone(g.saveGame());
+const initial=structuredClone(g.saveGame({persist:false}));
 for(const m of ['saveGame','updateStatsUI','refreshSupplyUI','updateQuestUI','revealFogAroundPlayer','changeTimePeriod','deployReserves'])g[m]=noop;
 const mean=a=>a.reduce((x,y)=>x+y,0)/Math.max(1,a.length),sum=(a,k)=>a.reduce((n,v)=>n+(v[k]||0),0);
 const fixture=u=>({class:u.soldierClass,level:u.level,hp:u.maxHp,atk:u.atk,def:u.def,magicAttack:u.magicAttack,magicDef:u.magicDef,strength:u.strength,dodge:u.dodge,barrier:u.equipmentBarrierMax||0,tier:u.equipped?.weapon?.tier,upgrade:u.equipped?.weapon?.upgrade||0});
@@ -144,8 +144,8 @@ const report={version:release.gameVersion,cache:release.version,part,sourceHashe
 try{
   if(part==='stats')report.audit=statAudit();
   else if(part==='hq'){
-    for(const stage of [...stages.slice(0,5),{id:'natural-maintenance',natural:true}])for(const kind of ['regular','major'])for(let i=0;i<seeds;i++)report.runs.push(hq(stage,kind,202610130+i));
-    for(const stage of stages.slice(2,5))for(let i=0;i<seeds;i++)report.runs.push(hq(stage,'regular',202610130+i,'grown'));
+    for(const stage of [...stages,{id:'natural-maintenance',natural:true}].filter(s=>stageId==='all'||s.id===stageId))for(const kind of ['regular','major'])for(let i=0;i<seeds;i++)report.runs.push(hq(stage,kind,202610130+i));
+    for(const stage of stages.slice(2,5).filter(s=>stageId==='all'||s.id===stageId))for(let i=0;i<seeds;i++)report.runs.push(hq(stage,'regular',202610130+i,'grown'));
   }
   else if(part==='castle')for(const stage of stages.filter(s=>s.legendary&&(stageId==='all'||s.id===stageId)))for(const mode of ['boss','full'])for(let i=0;i<seeds;i++)report.runs.push(castleFight(stage,mode,202610130+i));
   else if(part==='wall')for(const mode of ['wall-before','wall-after'])for(let i=0;i<seeds;i++)report.runs.push(castleFight(stages.find(s=>s.id==='legendary40'),mode,202610130+i));

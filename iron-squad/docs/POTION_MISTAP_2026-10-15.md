@@ -29,4 +29,4 @@
 - 終わったら、この文書の末尾「結果」と `docs/CURRENT_WORK.md` を更新する。
 
 ## 結果
-（作業者が記入）
+- 実装はSonnet（別作業ツリー）、Opusがレビューして v7.0.0 に統合。満タン判定 `squadNeedsRecovery`（満タン時は `.is-full` 表示、使用もしない）。`js/pad-tap.js` の `bindPadTap`（pointerdownとpointerupが同じボタン上のときだけ。直後のclickは1秒無視）。`.pad-move-column` の gap 6→26px（横画面28px）、実機未確認。使用時の光・効果音・戦闘報告書「補給 🧪」。巻き戻りの原因は v6.11.19 以降 `saveGame({background:true})` 単独では保存されないこと。購入（回復薬/蘇生薬/装備/酒場の雇用/工房）は `savePurchase()`（`auto:true`）でその場で背景保存。テスト `tests/potion-mistap.test.mjs`。全197テストPASS。

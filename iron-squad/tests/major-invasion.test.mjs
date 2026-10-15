@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {JSDOM} from '../../__pycache__/ui-tools/node_modules/jsdom/lib/api.js';
 import {WORLD_SIZE} from '../js/world.js';
-import {majorReference,majorInvasionStrength} from '../js/invasion-rules.js?v=139';
+import {invasionStrength,majorReference,majorInvasionStrength} from '../js/invasion-rules.js?v=139';
 import {replenishTownGateGuards,serializeGateGuards,serializeGatePosts} from '../js/gate-rules.js?v=139';
 import {markSoldierDown,updateWounded,syncDragged} from '../js/casualty-rules.js';
 let simulationTime=0;const originalPerformance=globalThis.performance,originalDateNow=Date.now;Date.now=()=>1700000000000;Object.defineProperty(globalThis,'performance',{configurable:true,value:{now:()=>simulationTime}});
@@ -17,8 +17,8 @@ function tenthWave(){fresh();for(let i=0;i<10;i++){game.completePhase();for(let 
 // Major invasions start only after ten complete waves; training can overtake the fixed reference.
 fresh();game.phase=10;game.startDemonInvasion();assert.equal(game.invasions.kind,'regular');game.finishDemonInvasion('timeout');game.phase=11;game.startDemonInvasion();assert.equal(game.invasions.kind,'major');assert.equal(game.invasions.eta,35);assert.equal(game.invasions.remaining,125);assert.equal(game.invasions.strength.count,36);assert.equal(game.invasions.nextMajorPhase,19);
 const ref=structuredClone(game.invasions.majorReference);game.arriveDemonInvasion();assert.equal(game.monsters.filter(m=>m.isMajorInvasion).length,36);assert.ok(game.monsters.length<=40);assert.ok(game.monsters.some(m=>m.isMajorElite));const campaignSave=structuredClone(game.saveGame({immediate:true}));game.resumeSavedGame(campaignSave);assert.equal(game.invasions.kind,'major');assert.deepEqual(game.invasions.majorReference,ref);assert.equal(game.monsters.filter(m=>m.isMajorInvasion).length,36);
-game.finishDemonInvasion('timeout');game.phase=15;game.startDemonInvasion();assert.equal(game.invasions.kind,'regular');game.finishDemonInvasion('timeout');game.phase=19;game.player.maxHp=1e8;game.player.atk=1e8;game.startDemonInvasion();assert.equal(game.invasions.kind,'major');assert.deepEqual(game.invasions.majorReference,ref);assert.ok(game.invasions.strength.hp<ref.hp*1.2,'later growth does not copy a newly overpowered hero');
-assert.equal(majorReference({hp:1e9,atk:1e9,def:1e9}).hp,220);assert.ok(majorInvasionStrength(ref,100).hp<=ref.hp*3);
+game.finishDemonInvasion('timeout');game.phase=15;game.startDemonInvasion();assert.equal(game.invasions.kind,'regular');game.finishDemonInvasion('timeout');game.phase=19;game.player.maxHp=1e8;game.player.atk=1e8;const currentRef=majorReference(invasionStrength(game));game.startDemonInvasion();assert.equal(game.invasions.kind,'major');assert.deepEqual(game.invasions.majorReference,currentRef,'each event samples current army strength');
+assert.equal(majorReference({hp:1e9,atk:1e9,def:1e9}).hp,360);assert.ok(majorInvasionStrength(ref,100).hp<=ref.hp*3);
 // Real passive maintenance for ten waves, then an unattended defense. Preserve one combat participant in retreat.
 const ten=tenthWave();game.rankIndex=2;const survivor=game.squad.find(s=>s.soldierClass==='HEAVY')||game.squad[0];survivor.isPersonalGuard=true;game.player.x=c+4000;game.player.y=c+4000;survivor.x=game.player.x-20;survivor.y=game.player.y;
 function participate(){const target={x:survivor.x+20,y:survivor.y,hp:1,maxHp:1,type:'goblin',radius:10,atk:1,def:0};game.monsters.push(target);game.performAttack(survivor,target,false,20);}

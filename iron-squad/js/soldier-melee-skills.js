@@ -1,7 +1,7 @@
-import {attributeFamily,soldierCombatTempo} from './unit-attributes.js?v=248';
+import {attributeFamily,soldierCombatTempo} from './unit-attributes.js?v=274';
 import {canUseEquipment} from './weapon-requirements.js?v=239';
 import {masteryReloadMult} from './growth-rules.js?v=234';
-import {attackBlocked} from './gate-rules.js?v=215';
+import {attackBlocked} from './gate-rules.js?v=277';
 
 export const MELEE_BALANCE=Object.freeze({swordSoldierTempo:.55,spearReach:.82,spearHold:.74});
 export const SOLDIER_MELEE_SKILLS=Object.freeze({

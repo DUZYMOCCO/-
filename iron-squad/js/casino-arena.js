@@ -1,6 +1,6 @@
-import {CASINO_POLICY} from './casino-rules.js?v=271';
+import {CASINO_POLICY} from './casino-rules.js?v=276';
 import {isPlatoonAway,isExpeditionReserve} from './expedition-rules.js?v=269';
-import {rescueUnits} from './casualty-rules.js?v=267';
+import {rescueUnits} from './casualty-rules.js?v=274';
 
 export function arenaCandidates(game) {
   const carrying=new Set([...rescueUnits(game),...(game.civilians||[])].filter(s=>s.carrierId).map(s=>String(s.carrierId)));
@@ -39,7 +39,7 @@ export function simulateArena(teams,random=Math.random,replay=false) {
 export function estimateArena(teams,random=Math.random,trials=CASINO_POLICY.arenaTrials) {
   let red=0;for(let i=0;i<trials;i++)red+=simulateArena(teams,random).winner===0?1:0;
   const probability=[(red+.5)/(trials+1),(trials-red+.5)/(trials+1)];
-  return {trials,probability,odds:probability.map(p=>Math.max(1.1,Math.min(10,CASINO_POLICY.arenaReturn/p)))};
+  return {trials,probability,odds:probability.map(p=>Math.max(CASINO_POLICY.arenaOddsRange[0],Math.min(CASINO_POLICY.arenaOddsRange[1],CASINO_POLICY.arenaReturn/p)))};
 }
 export function chooseArena(game,random=Math.random) {
   const pool=arenaCandidates(game);if(pool.length<6)return null;

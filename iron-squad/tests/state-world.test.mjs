@@ -78,8 +78,8 @@ assert.equal(game.dungeons.find(d=>d.id==='royal_castle_town').kind,'town');
 assert.equal(game.dungeons.filter(d=>d.kind==='ruin').length,4);
 assert.equal(game.dungeons.find(d=>d.kind==='town').boss,null);
 assert.ok(game.dungeons.every(d=>d.entrance.x>0&&d.entrance.y>0&&d.entrance.x<WORLD_SIZE&&d.entrance.y<WORLD_SIZE));
-assert.equal(reliefAt(center,center+5000),'#6e7264');
-assert.equal(reliefAt(center,center+5024),'#1a1e1c');
+assert.equal(reliefAt(center,center+5000),null,'the old cliff lip is gone');
+assert.equal(reliefAt(center,center+5024),null,'the old cliff face is gone');
 assert.equal(HOME_SANCTUARY_RADIUS,3000);
 assert.equal(depthFade(center,center),0);
 assert.equal(depthFade(center+2999,center),0);
@@ -103,52 +103,29 @@ for (let t = -40000; t <= 40000; t += 200) {
   assert.equal(fieldBlocks(center + t, eastWestRoadY(center + t)), false, 'east-west road stays open');
   assert.equal(fieldBlocks(northSouthRoadX(center + t), center + t), false, 'north-south road stays open');
 }
-let blocked = null;
-for (let y = center + 4700; y < center + 5600 && !blocked; y += 4) {
-  const x = center + 2500;
-  if (fieldBlocks(x, y)) blocked = {x, y};
+// No field cliffs: the former straight lines and arcs are ordinary open ground.
+const formerCliffs = [];
+for (let x = center - 16000; x <= center + 16000; x += 40) {
+  formerCliffs.push([x, center + 5000 + Math.sin((x - center) / 980) * 110 + 23]);
+  formerCliffs.push([x, center - 8000 + Math.sin((x - center) / 1100) * 90 + 23]);
+  formerCliffs.push([x, center + 24000 + Math.sin((x - center) / 1400) * 160 - 30]);
 }
-assert.ok(blocked, 'a cliff face outside the sanctuary blocks passage');
-const stuck = {x: blocked.x, y: blocked.y};
-assert.equal(settleUnit(stuck, fieldBlocks), true);
-assert.equal(fieldBlocks(stuck.x, stuck.y), false);
-assert.ok(Math.hypot(stuck.x - blocked.x, stuck.y - blocked.y) <= 140, 'unstuck stays beside the cliff');
-const walker = {x: blocked.x, y: blocked.y - 80};
-if (fieldBlocks(walker.x, walker.y)) walker.y = blocked.y + 80;
-assert.equal(fieldBlocks(walker.x, walker.y), false);
-walker._openX = walker.x; walker._openY = walker.y;
-walker.x = blocked.x; walker.y = blocked.y;
-settleUnit(walker, fieldBlocks);
-assert.equal(fieldBlocks(walker.x, walker.y), false, 'sliding back off a cliff does not trap the walker');
-
-// River crossing test: River cutting through the west ridge (x = center - 6400)
-const westRidgeX = center - 6400;
-const riverCrossY = riverCenterY(westRidgeX);
-assert.equal(reliefAt(westRidgeX, riverCrossY), null, 'river crossing cliff is cut open in relief');
-assert.equal(fieldBlocks(westRidgeX, riverCrossY), false, 'river crossing is open for passage');
-assert.equal(fieldBlocks(westRidgeX + 15, riverCrossY), false, 'river crossing face is walkable');
-assert.equal(fieldBlocks(westRidgeX - 15, riverCrossY), false, 'river crossing lip is walkable');
-
-// Periodic cliff passes: west long ridge has open passes every 1800px so players never get trapped
-let passesFound = 0;
-for (let y = center - 13000; y <= center + 13000; y += 100) {
-  const ridge = center - 6400 + Math.sin((y - center) / 860) * 80;
-  if (!fieldBlocks(ridge + 10, y)) passesFound++;
+for (let y = center - 14000; y <= center + 14000; y += 40) formerCliffs.push([center - 6400 + Math.sin((y - center) / 860) * 80 + 23, y]);
+for (const r of [16800, 26000, 40000, 52000, 64000]) for (let a = -Math.PI; a < Math.PI; a += 0.0005) formerCliffs.push([center + Math.cos(a) * (r - 30), center + Math.sin(a) * (r - 30)]);
+let walkable = 0;
+for (const [x, y] of formerCliffs) {
+  assert.equal(fieldBlocks(x, y), false, 'former cliff face is open ground');
+  walkable++;
 }
-assert.ok(passesFound >= 12, `found ${passesFound} passable points along the 28km west ridge`);
-// Ensure maximum distance between consecutive open passes is bounded (no player is trapped)
-let maxGapBetweenPasses = 0, lastPassY = null;
-for (let y = center - 13000; y <= center + 13000; y += 20) {
-  const ridge = center - 6400 + Math.sin((y - center) / 860) * 80;
-  if (!fieldBlocks(ridge + 10, y)) {
-    if (lastPassY !== null) {
-      const gap = y - lastPassY;
-      if (gap > maxGapBetweenPasses) maxGapBetweenPasses = gap;
-    }
-    lastPassY = y;
-  }
-}
-assert.ok(maxGapBetweenPasses <= 1800, `maximum distance between cliff passes is ${maxGapBetweenPasses}px (<= 1800px)`);
+assert.ok(walkable > 5000, 'many former cliff points were checked');
+const walker = {x: center + 2500, y: center + 5024};
+assert.equal(settleUnit(walker, fieldBlocks), false, 'a unit standing on a former cliff is never pushed');
+assert.equal(walker.y, center + 5024);
+// Ravines and the river stay walkable; only unbuilt public works hold the field back.
+assert.equal(fieldBlocks(center + 11000 + 100, center - 5500 - 40), false, 'ravine is walkable');
+assert.equal(fieldBlocks(center + 3000, riverCenterY(center + 3000)), false, 'river is walkable');
+assert.equal(fieldBlocks(center + 2400, center + 1700, [{kind:'bridge', x:center + 2400, y:center + 1700, w:370, h:110, angle:0, done:false}]), true, 'an unbuilt bridge pit still blocks');
+assert.equal(fieldBlocks(center + 2400, center + 1700, [{kind:'bridge', x:center + 2400, y:center + 1700, w:370, h:110, angle:0, done:true}]), false, 'a built bridge is open');
 for (const d of DUNGEON_DEFS) {
   assert.equal(fieldBlocks(d.entrance.x, d.entrance.y), false, d.id);
   for (let a = 0; a < 8; a++) {

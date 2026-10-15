@@ -44,7 +44,7 @@ try {
   for(let i=0;i<3;i++)await page.getByRole('button',{name:/Gで雇う/}).first().click();
   await capture('08-party-and-waiting');await page.click('#btn-tavern-close');await capture('09-tavern-exit');
   await moveTo(79170,79279);await page.click('#btn-hq-facility');await capture('10-locked-smithy');await page.click('#btn-hq-facility-close');
-  await page.evaluate(async()=>{const {normalizeNation}=await import('/iron-squad/js/nation-rules.js?v=198');qa.nation=normalizeNation({investment:90000});qa.worldTime=300;qa.inBattle=true;qa.update(.1);qa.render();});
+  await page.evaluate(async()=>{const {normalizeNation}=await import('/iron-squad/js/nation-rules.js?v=277');qa.nation=normalizeNation({investment:90000});qa.worldTime=300;qa.inBattle=true;qa.update(.1);qa.render();});
   await moveTo(79360,79680);await page.evaluate(()=>{qa.zoom=.65;qa.render();});await capture('11-developed-hq-night');
   await moveTo(79170,79279);await page.click('#btn-hq-facility');const shopGold=await page.evaluate(()=>qa.gold);await page.click('#btn-workshop-buy');
   await capture('12-workshop-purchase',{shopGold});await page.click('#btn-hq-facility-close');
@@ -59,7 +59,7 @@ try {
   const slot=await page.evaluate(()=>qa.activeSlotId);await page.locator(`[data-slot-id="${slot}"]`).click();await page.evaluate(()=>qa.stopGameLoop());await capture('20-resumed');
   await page.evaluate(()=>{qa.closeStrategyModal();qa.restTimer=0;qa.enterDungeon(qa.dungeons.find(d=>d.id==='dungeon_goblin_mines'));qa.stopGameLoop();qa.render();});await capture('21-dungeon');
   await page.evaluate(()=>{qa.exitDungeon();qa.stopGameLoop();qa.openWorldMap();});await capture('22-world-map');await page.click('#btn-world-map-close');
-  await page.evaluate(async()=>{qa.resumeSavedGame(structuredClone(travelerBranch));qa.stopGameLoop();qa.closeStrategyModal();const {rollHeroRevelation}=await import('/iron-squad/js/hero-party.js?v=198');qa.phase=Math.max(10,qa.phase);rollHeroRevelation(qa,()=>0);qa.openStrategyModal(true);qa._selectStratTab('overview');document.getElementById('hero-journey').open=true;});await capture('23-hero-revelation');
+  await page.evaluate(async()=>{qa.resumeSavedGame(structuredClone(travelerBranch));qa.stopGameLoop();qa.closeStrategyModal();const {rollHeroRevelation}=await import('/iron-squad/js/hero-party.js?v=277');qa.phase=Math.max(10,qa.phase);rollHeroRevelation(qa,()=>0);qa.openStrategyModal(true);qa._selectStratTab('overview');document.getElementById('hero-journey').open=true;});await capture('23-hero-revelation');
   await page.getByRole('button',{name:'勇者を追う',exact:true}).click();
   const follow=await page.evaluate(()=>{qa.stopGameLoop();const initial={x:qa.player.x,y:qa.player.y};for(let i=0;i<90;i++)qa.update(1/30);qa.render();return {following:qa.heroFollowing,distance:Math.hypot(qa.player.x-initial.x,qa.player.y-initial.y),hero:qa.heroJourney.party.status};});await capture('24-follow-hero',{follow});
   await page.evaluate(()=>{qa.heroFollowing=false;qa.restTimer=0;qa.closeStrategyModal();qa.enterDungeon(qa.dungeons.find(d=>d.id==='dungeon_demon_castle'));qa.stopGameLoop();const boss=qa.monsters.find(m=>m.isDemonKing);if(!boss)throw new Error('Demon king missing');qa.monsters=[boss];boss.hp=1;qa.player.x=boss.x-30;qa.player.y=boss.y;qa.player.atkCooldown=0;qa.camera={x:qa.player.x,y:qa.player.y};qa.screenShake=0;qa.render();});await capture('25-traveler-demon-castle');

@@ -12,10 +12,10 @@ try {
     await page.goto(`${process.argv[2]||'http://127.0.0.1:8001'}/iron-squad/tools/canvas-quality-review.html`);await page.waitForFunction(()=>window.qualityReady);
     await page.evaluate(()=>{const g=qualityGame;g.stopGameLoop();g.monsters=[];g.restTimer=0;g.phaseTimer=100;g.screenShake=0;g.updateSpawns=()=>{};g.closeStrategyModal();g.zoom=.65;g.worldTime=120;g.camera={x:79360,y:79360};g.render();});
     await page.screenshot({path:`${out}/hq-facilities-new-${width}-v5.7.0.png`});
-    await page.evaluate(async()=>{const g=qualityGame,{normalizeNation}=await import('/iron-squad/js/nation-rules.js?v=198');g.nation=normalizeNation({investment:90000});g.gold=200000;g.worldTime=300;g.render();g.updateStatsUI(true);});
+    await page.evaluate(async()=>{const g=qualityGame,{normalizeNation}=await import('/iron-squad/js/nation-rules.js?v=277');g.nation=normalizeNation({investment:90000});g.gold=200000;g.worldTime=300;g.render();g.updateStatsUI(true);});
     await page.screenshot({path:`${out}/hq-facilities-night-${width}-v5.7.0.png`});
     const walkTo=async id=>page.evaluate(async id=>{
-      const g=qualityGame,{HEADQUARTERS_FACILITIES}=await import('/iron-squad/js/hq-facilities.js?v=198');const p=HEADQUARTERS_FACILITIES.find(p=>p.id===id);
+      const g=qualityGame,{HEADQUARTERS_FACILITIES}=await import('/iron-squad/js/hq-facilities.js?v=277');const p=HEADQUARTERS_FACILITIES.find(p=>p.id===id);
       const x=p.x,y=p.y+24;Object.assign(g.player,{x,y,_openX:x,_openY:y,_wallX:x,_wallY:y,_wallSpace:'field'});g.camera={x,y:y-55};g.zoom=1;g.inBattle=true;g.render();g.updateStatsUI(true);
       return {name:p.name,gold:g.gold,items:g.inventory.length,time:g.worldTime};
     },id);
@@ -44,7 +44,7 @@ try {
     await page.click('#btn-hq-facility-close');
     await walkTo('smith');
     const collision=await page.evaluate(async()=>{
-      const g=qualityGame,{HEADQUARTERS_FACILITIES}=await import('/iron-squad/js/hq-facilities.js?v=198'),p=HEADQUARTERS_FACILITIES[0];
+      const g=qualityGame,{HEADQUARTERS_FACILITIES}=await import('/iron-squad/js/hq-facilities.js?v=277'),p=HEADQUARTERS_FACILITIES[0];
       g.joystick.active=true;g.joystick.dirX=0;g.joystick.dirY=-1;for(let i=0;i<30;i++)g.update(1/60);g.joystick.active=false;g.render();return {y:g.player.y,front:p.y+2,recovery:!!g._renderProblem};
     });
     assert.ok(collision.y>=collision.front,'walking into a shop stops at its facade');assert.equal(collision.recovery,false);

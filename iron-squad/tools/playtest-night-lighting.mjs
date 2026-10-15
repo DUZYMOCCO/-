@@ -16,7 +16,7 @@ try {
     for(const site of ['hq','tavern','town']) {
       for(const [period,time] of [['day',120],['night',300]]) {
         const result=await page.evaluate(async({site,time})=>{
-          const g=qualityGame,{WORLD_SIZE,TAVERN_SITE}=await import('/iron-squad/js/world.js?v=197');
+          const g=qualityGame,{WORLD_SIZE,TAVERN_SITE}=await import('/iron-squad/js/world.js?v=277');
           const C=WORLD_SIZE/2;
           if(g.currentDungeon)g.exitDungeon();
           g.stopGameLoop();

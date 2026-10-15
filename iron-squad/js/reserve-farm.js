@@ -1,7 +1,7 @@
 // Reserves wait as farmhands at 川辺の農村. Posts are draw-only and are not saved.
 // Automatic recruits stop at one field army. Hired, rescued, and overflow soldiers can stand past that.
-import { fieldBlocks } from './world.js?v=260';
-import { ECONOMIC_REGIONS } from './regional-economy.js?v=182';
+import { fieldBlocks } from './world.js?v=277';
+import { ECONOMIC_REGIONS } from './regional-economy.js?v=277';
 
 export const RESERVE_CAP = 48;
 const FARM = ECONOMIC_REGIONS.find(region => region.id === 'river_farms');

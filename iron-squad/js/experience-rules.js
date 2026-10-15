@@ -1,6 +1,6 @@
 import {heroGrowth,heroMembers} from './hero-rules.js';
 import {isOwnSquad} from './own-squad-marker.js?v=182';
-import {addBattleReport} from './battle-report.js?v=226';
+import {addBattleReport} from './battle-report.js?v=276';
 /** 実回復量からの個人EXP。小さな継続回復も、兵士ごとに端数を積み立てる。 */
 export const HEALING_HP_PER_EXP = 5;
 export const REVIVAL_EXP_PER_MAX_HP = 3;

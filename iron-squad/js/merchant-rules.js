@@ -1,5 +1,5 @@
 import {catalogTier,catalogPrice,ensureMerchantCatalog,MERCHANT_MAX_TIER,MERCHANT_CATALOG_VERSION} from './merchant-catalog.js?v=258';
-import {applyAttributeStats} from './unit-attributes.js?v=248';
+import {applyAttributeStats} from './unit-attributes.js?v=274';
 /**
  * IRON SQUAD: 宿場・本陣・各地のキャンプの行商人
  * - 製造技術Tier+1（最大T24）の厳選品。武器2枠/防具4枠を毎ウェーブ抽選
@@ -10,7 +10,7 @@ import { saleValue, distanceScaling, weaponCombatProfile } from './equipment-rul
 import { drawFieldSoldier } from './visuals.js?v=272';
 import { createSoldierAppearance, drawSoldierHead } from './soldier-appearance.js?v=206';
 import { attackAnimationRate } from './weapon-motion.js?v=273';
-import { markSoldierDown, rebuildMerchantCasualties, RESCUE_TIMEOUT } from './casualty-rules.js?v=267';
+import { markSoldierDown, rebuildMerchantCasualties, RESCUE_TIMEOUT } from './casualty-rules.js?v=274';
 import {emptyMastery,normalizeMastery,hitGrowthHpBonus,hitGrowthDefBonus,migrateHitGrowth,applyHitGrowth,masteryAtkMult,masteryReloadMult} from './growth-rules.js?v=234';
 import {recordCombat,finishExperience} from './phase-rules.js?v=218';
 
@@ -588,12 +588,12 @@ export function applyMerchantSave(game, savedList, generateRandomDrop, BASE_CAMP
 
 export function npcSave(unit) {
   const result={};
-  for(const key of ['x','y','hp','maxHp','isDown','dead','downTimer','revivalSkillCooldownUntil','carrierId','homeX','homeY','timesDown','timesRescued','rescuedThisDown','downedInAid','downId','rescuedToBase','returningToBase','rescueRewardGranted','rescueReward','owesCommander','commanderFriend','commanderRescues','level','exp','reqExp','minionKills','bossKills','survivedWaves','escortRegenWait','hitGrowthPct','hitGrowthHp','hitGrowthDef','hitGrowthEvents','weaponMastery','favoriteWeapon','phaseActivity','escortBaseStats','attributeProfile'])if(unit[key]!==undefined)result[key]=unit[key];
+  for(const key of ['x','y','hp','maxHp','isDown','dead','downTimer','revivalSkillCooldownUntil','carrierId','homeX','homeY','timesDown','timesRescued','rescuedThisDown','downedInAid','downId','rescuedToBase','returningToBase','rescueRewardGranted','rescueReward','owesCommander','commanderFriend','commanderRescues','level','exp','reqExp','minionKills','midbossKills','bossKills','survivedWaves','escortRegenWait','hitGrowthPct','hitGrowthHp','hitGrowthDef','hitGrowthEvents','weaponMastery','favoriteWeapon','phaseActivity','escortBaseStats','attributeProfile'])if(unit[key]!==undefined)result[key]=unit[key];
   return result;
 }
 export function applyNpcSave(unit,saved) {
   delete unit.revivalCooldownUntil;
-  for(const key of ['x','y','hp','maxHp','downTimer','revivalSkillCooldownUntil','homeX','homeY','timesDown','timesRescued','downId','atk','def','dmgReduction','level','exp','reqExp','minionKills','bossKills','survivedWaves','escortRegenWait','hitGrowthPct','hitGrowthHp','hitGrowthDef','hitGrowthEvents'])if(Number.isFinite(saved[key]))unit[key]=saved[key];
+  for(const key of ['x','y','hp','maxHp','downTimer','revivalSkillCooldownUntil','homeX','homeY','timesDown','timesRescued','downId','atk','def','dmgReduction','level','exp','reqExp','minionKills','midbossKills','bossKills','survivedWaves','escortRegenWait','hitGrowthPct','hitGrowthHp','hitGrowthDef','hitGrowthEvents'])if(Number.isFinite(saved[key]))unit[key]=saved[key];
   if(saved.weaponMastery)unit.weaponMastery=normalizeMastery(saved.weaponMastery);
   if(saved.attributeProfile){unit.attributeProfile=structuredClone(saved.attributeProfile);unit._attributesNormalized=false;}
   if(saved.escortBaseStats)unit.escortBaseStats=saved.escortBaseStats;

@@ -26,7 +26,7 @@ try{
   await page.evaluate(async()=>{const {setKanaGrade}=await import('/common/js/kana-mode.js?v=175');setKanaGrade(0,{persist:false});});await page.waitForTimeout(100);assert.ok((await page.locator('#command-snapshot').innerText()).includes('貢献'));report.checks.kanaRoundTrip=true;
   report.checks.follower=await page.evaluate(async()=>{
     g.closeStrategyModal();g.currentDungeon=null;g.updateSpawns=()=>{};g.monsters=[];g.currentQuest=null;g.restTimer=0;g.phaseTimer=200;g.inBattle=true;
-    const {HEADQUARTERS_FACILITIES,headquartersBuildingBlocks}=await import('/iron-squad/js/hq-facilities.js?v=198'),p=HEADQUARTERS_FACILITIES[0];
+    const {HEADQUARTERS_FACILITIES,headquartersBuildingBlocks}=await import('/iron-squad/js/hq-facilities.js?v=277'),p=HEADQUARTERS_FACILITIES[0];
     const s=g.squad.find(s=>s.soldierClass==='LIGHT'&&!s.isAdvanced);g.squad=[s];Object.assign(s,{isPersonalGuard:true,overflowGuard:false,isDown:false,dead:false,hp:s.maxHp});g.syncPersonalGuardSlots(null,5);
     Object.assign(g.player,{x:p.x,y:p.y-150,_openX:p.x,_openY:p.y-150});Object.assign(s,{x:p.x,y:p.y+50,_openX:p.x,_openY:p.y+50});
     let insideFrames=0;for(let i=0;i<360;i++){g.update(1/30);if(headquartersBuildingBlocks(s.x,s.y))insideFrames++;}
@@ -34,12 +34,12 @@ try{
   });assert.equal(report.checks.follower.insideFrames,0);assert.ok(report.checks.follower.distance<100);await shot('03-follower-detour');
   report.checks.chest=await page.evaluate(async()=>{
     const {dungeonSideChests,updateDungeonSideChests}=await import('/iron-squad/js/dungeon-exploration.js?v=200');
-    const {generateRandomDrop}=await import('/iron-squad/js/index.js?v=200');g.currentDungeon=g.dungeons.find(d=>d.kind==='dungeon');
+    const {generateRandomDrop}=await import('/iron-squad/js/index.js?v=277');g.currentDungeon=g.dungeons.find(d=>d.kind==='dungeon');
     const c=dungeonSideChests(g)[0];Object.assign(g.player,{x:c.x,y:c.y});const before={...g.materials};updateDungeonSideChests(g,generateRandomDrop,()=>.99);g.camera={x:c.x,y:c.y};g.render();
     const first={...g.materials};updateDungeonSideChests(g,generateRandomDrop,()=>.99);return {before,first,after:g.materials,text:document.querySelector('.treasure-receipt')?.innerText};
   });assert.ok(report.checks.chest.text.includes('素材庫'));assert.deepEqual(report.checks.chest.first,report.checks.chest.after);assert.notDeepEqual(report.checks.chest.before,report.checks.chest.after);await shot('04-side-chest-receipt');
   await page.evaluate(async()=>{
-    const {normalizeNation}=await import('/iron-squad/js/nation-rules.js?v=198');g.currentDungeon=null;g.nation=normalizeNation({investment:18000});g.gold=0;g.phaseTimer=200;g.restTimer=0;g.inBattle=true;
+    const {normalizeNation}=await import('/iron-squad/js/nation-rules.js?v=277');g.currentDungeon=null;g.nation=normalizeNation({investment:18000});g.gold=0;g.phaseTimer=200;g.restTimer=0;g.inBattle=true;
     Object.assign(g.player,{x:79170,y:79279});g.openHeadquartersFacility('smith');
   });assert.equal(await page.locator('#btn-workshop-buy').isDisabled(),true);assert.ok((await page.locator('#workshop-buy-reason').innerText()).includes('あと'));await shot('05-workshop-insufficient');
   await page.evaluate(()=>{g.gold=1000000;g.materials=Object.fromEntries(Object.keys(g.materials).map(k=>[k,1000]));g.refreshHeadquartersFacility();});

@@ -1,4 +1,5 @@
-import {atFacility} from './hq-facilities.js?v=264';
+import {enemyTier} from './enemy-tier.js?v=274';
+import {atFacility} from './hq-facilities.js?v=277';
 const species=(id,title,types,baseTarget,baseReward,hint,minLevel=0)=>({id,title,types,baseTarget,baseReward,hint,minLevel,kind:baseTarget===1?'boss':'species'});
 const challenge=(id,title,match,baseTarget,baseReward,hint,minLevel=0)=>({id,title,match,baseTarget,baseReward,hint,minLevel,kind:'boss'});
 export const GUILD_CONTRACTS=Object.freeze([
@@ -12,7 +13,7 @@ export const GUILD_CONTRACTS=Object.freeze([
   species('bandit','山賊の討伐',['sun_bandit'],5,220,'昼の荒野で見かけます。'),
   species('shade-wolf','影狼の討伐',['shade_wolf'],5,240,'夜の荒野で見かけます。'),
   challenge('elite','精鋭の魔物を討伐','elite',2,320,'精鋭の敵を倒すと数えます。'),
-  challenge('boss','ボスの討伐','boss',1,600,'野外やダンジョンのボスが対象です。'),
+  challenge('boss','ボスの討伐','boss',1,600,'ダンジョンや遺跡の主が対象です。'),
   challenge('dungeon-boss','ダンジョンのボスを討伐','dungeonBoss',1,700,'ダンジョンや遺跡の奥にいます。'),
   species('goblin-king','ゴブリンの王を討伐',['goblin_king'],1,800,'ゴブリンの巣の奥にいます。'),
   species('skeleton','スケルトンの討伐',['skeleton'],6,300,'遠くの魔境やダンジョンにいます。',1),
@@ -57,7 +58,7 @@ export function guildBoard(game) {
 }
 function matches(def,m) {
   if(def.types)return def.types.includes(m.type);
-  return {any:true,elite:!!m.isElite,boss:!!m.isBoss,dungeonBoss:!!m.isDungeonBoss&&!!m.isBoss,colossal:!!m.isColossal&&!m.isDungeonBoss&&!m.isDemonKing,demonKing:!!m.isDemonKing,invasion:(!!m.isDemonInvasion||!!m.isRaidMob)&&!m.isDungeonBoss}[def.match]||false;
+  return {any:true,elite:!!m.isElite,boss:enemyTier(m)==='boss',dungeonBoss:!!m.isDungeonBoss&&enemyTier(m)==='boss',colossal:!!m.isColossal&&enemyTier(m)==='midboss',demonKing:!!m.isDemonKing,invasion:(!!m.isDemonInvasion||!!m.isRaidMob)&&!m.isDungeonBoss}[def.match]||false;
 }
 export function advanceGuildContracts(game,monster) {
   if(!monster||monster.retreated||monster._guildCredited)return [];

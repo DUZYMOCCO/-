@@ -1,4 +1,4 @@
-import {observeEquipment} from './armament-rules.js?v=265';
+import {observeEquipment} from './armament-rules.js?v=274';
 import {MAX_EQUIPMENT_TIER,TRADE_MAX_TIER} from './equipment-tiers.js?v=231';
 import {EQUIPMENT_TYPES,saleValue} from './equipment-rules.js?v=273';
 import {WEAPON_STYLES} from './growth-rules.js?v=234';

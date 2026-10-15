@@ -4,10 +4,12 @@
 export const REPORT_LIMIT = 300;
 export const REPORT_KINDS = Object.freeze({
   boss: {label: 'ボス撃破', icon: '👑'},
+  midboss:{label:'中ボス撃破',icon:'⚔️'},
   growth: {label: '成長', icon: '🌱'},
   rare: {label: 'レア取得', icon: '💎'},
   death: {label: '死亡', icon: '🕯️'},
-  rescue: {label: '救出', icon: '🤝'}
+  rescue: {label: '救出', icon: '🤝'},
+  supply: {label: '補給', icon: '🧪'}
 });
 const FILTERS = [['all', 'すべて'], ...Object.entries(REPORT_KINDS).map(([id, k]) => [id, `${k.icon} ${k.label}`])];
 

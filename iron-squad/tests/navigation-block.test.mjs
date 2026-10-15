@@ -1,22 +1,11 @@
 import assert from 'node:assert/strict';
-import { blockingGuides, fieldBlocks, HOME_SANCTUARY_RADIUS, WORLD_SIZE } from '../js/world.js';
-import { NAVIGATION_RULES } from '../js/navigation-map.js?v=156';
+import * as world from '../js/world.js';
+import { NAVIGATION_RULES } from '../js/navigation-map.js?v=277';
 
-const center = WORLD_SIZE / 2;
-const lines = blockingGuides();
-assert.ok(lines.length >= 5, 'each cliff run is available to the field map');
-let blocked = 0, inside = 0, open = 0;
-for (const line of lines) {
-  assert.ok(line.length > 1);
-  for (const [x, y] of line) {
-    if (Math.hypot(x - center, y - center) <= HOME_SANCTUARY_RADIUS) inside++;
-    else if (fieldBlocks(x, y)) blocked++;
-    else open++;
-  }
-}
-assert.equal(inside, 0, 'cliff guides stay outside the home sanctuary');
-assert.ok(blocked > 40, 'the guides follow ground that stops walking');
-assert.ok(open > 0, 'roads and landmark openings break the cliff lines');
+// Cliff walls and their minimap guide lines no longer exist.
+assert.equal(world.blockingGuides, undefined, 'the cliff guide lines are removed from the field map');
+assert.equal(world.isNearRiverCrossing, undefined, 'river-crossing cliff gaps are removed');
+assert.equal(world.fieldBlocks(world.WORLD_SIZE / 2 + 2500, world.WORLD_SIZE / 2 + 5024), false, 'former cliff line is open');
 assert.equal(NAVIGATION_RULES.fieldSpan, 12000);
 assert.ok(NAVIGATION_RULES.terrainAlpha <= 0.2);
-console.log(`PASS: blocking guides lines=${lines.length} blocked=${blocked} openings=${open} span=${NAVIGATION_RULES.fieldSpan}`);
+console.log(`PASS: no cliff guides on the field map span=${NAVIGATION_RULES.fieldSpan}`);

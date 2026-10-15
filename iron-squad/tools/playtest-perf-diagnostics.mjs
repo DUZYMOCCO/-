@@ -17,7 +17,7 @@ try{
   const ordinary=await browser.newContext({viewport:{width:390,height:844},serviceWorkers:'block'}),normal=activePage=await ordinary.newPage();listen(normal);
   await boot(normal,'');
   report.disabled=await normal.evaluate(async()=>{
-    const g=perfGame,{WorldTerrain}=await import('/iron-squad/js/world.js?v=260'),{saveSlots}=await import('/iron-squad/js/save-slots.js?v=262');
+    const g=perfGame,{WorldTerrain}=await import('/iron-squad/js/world.js?v=277'),{saveSlots}=await import('/iron-squad/js/save-slots.js?v=262');
     return {panel:!!document.querySelector('.perf-diagnostics'),api:!!g.perfDiagnostics,updateWrapped:g.update.name!=='update',loopAccessor:!!Object.getOwnPropertyDescriptor(g,'loop')?.get,
       terrainWrapped:WorldTerrain.prototype.generate.name!=='generate',slotsWrapped:saveSlots.list.name!=='list',nativeStorage:Storage.prototype.setItem.toString().includes('[native code]')};
   });
@@ -85,7 +85,7 @@ try{
   await page.waitForFunction(()=>window.qaClipboardText);const copy=await page.evaluate(()=>JSON.parse(qaClipboardText));assert.equal(copy.records.length,10);assert.equal(copy.version,'6.11.12');report.copyWorks=true;
   await page.evaluate(()=>navigator.clipboard.writeText=async()=>{throw new Error('Clipboard unavailable');});await page.locator('[data-perf-copy]').click();await page.locator('.perf-copy:not(.hidden)').waitFor();assert.equal(JSON.parse(await page.locator('.perf-copy').inputValue()).records.length,10);report.copyFallbackWorks=true;
   report.cleanup=await page.evaluate(async()=>{
-    const g=perfGame,{WorldTerrain}=await import('/iron-squad/js/world.js?v=260'),{saveSlots}=await import('/iron-squad/js/save-slots.js?v=262');g.destroy();
+    const g=perfGame,{WorldTerrain}=await import('/iron-squad/js/world.js?v=277'),{saveSlots}=await import('/iron-squad/js/save-slots.js?v=262');g.destroy();
     return {panelGone:!document.querySelector('.perf-diagnostics'),gameUpdateRestored:g.update.name==='update',terrainRestored:WorldTerrain.prototype.generate.name==='generate',slotsRestored:saveSlots.list.name==='list',storageRestored:Storage.prototype.setItem===qaBaseSet};
   });assert.ok(Object.values(report.cleanup).every(Boolean));await context.close();
   const fallback=await browser.newContext({viewport:{width:390,height:844},serviceWorkers:'block'});await fallback.addInitScript(()=>{window.Worker=undefined;window.OffscreenCanvas=undefined;window.PerformanceObserver=undefined;});

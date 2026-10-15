@@ -1,4 +1,4 @@
-import {WORLD_SIZE} from './world.js?v=260';
+import {WORLD_SIZE} from './world.js?v=277';
 import {combatPower} from './combat-rewards.js?v=182';
 import {persistentUnit} from './render-support.js?v=182';
 import {sound} from '../../common/js/audio.js?v=151';
@@ -27,13 +27,16 @@ export function regularInvasionStrength(strength) {
  return {...strength,hp:clamp(strength.hp,r.hpFloor,r.hpCeiling),atk:clamp(strength.atk,r.atkFloor,r.atkCeiling),def:clamp(strength.def,r.defFloor,r.defCeiling),count:r.count};
 }
 export function majorReference(strength) {
-  return {...strength,hp:Math.max(120,Math.min(220,positive(strength?.hp,120))),atk:Math.max(24,Math.min(48,positive(strength?.atk,24))),def:Math.max(15,Math.min(50,positive(strength?.def,15))),count:36};
+  // Reuse today's regular baseline, converting scale factors so common major troops
+  // have at least 1.5x HP AND ATK. No frozen first-invasion army reference.
+  const regular=regularInvasionStrength(strength);
+  return {...regular,hp:regular.hp,atk:regular.atk*(56*.8*1.55)/(MAJOR_ATK_SCALE*10),count:36};
 }
 export function initializeInvasions(game,saved=null) {
   const old=saved?.invasions;
   game.invasions={nextPhase:Math.max(INVASION_FIRST_PHASE,old?.nextPhase??Math.max(INVASION_FIRST_PHASE,game.phase||1)),stage:['marching','battle'].includes(old?.stage)?old.stage:'idle',
     eta:Math.max(0,old?.eta||0),remaining:Math.max(0,old?.remaining||0),sequence:old?.sequence||0,source:old?.source||{x:center+42000,y:center+42000},strength:old?.strength||null,
-    kind:old?.kind==='major'?'major':'regular',majorCount:old?.majorCount||0,nextMajorPhase:Math.max(MAJOR_FIRST_PHASE,old?.nextMajorPhase||MAJOR_FIRST_PHASE),majorReference:old?.majorReference?majorReference(old.majorReference):null,marchDuration:old?.marchDuration||INVASION_MARCH_SECONDS,
+    kind:old?.kind==='major'?'major':'regular',majorCount:old?.majorCount||0,nextMajorPhase:Math.max(MAJOR_FIRST_PHASE,old?.nextMajorPhase||MAJOR_FIRST_PHASE),majorReference:old?.majorReference?{...old.majorReference}:null,marchDuration:old?.marchDuration||INVASION_MARCH_SECONDS,
     lastResult:old?.lastResult||null,raidRollPhase:old?.raidRollPhase||0,raidScheduledPhase:old?.raidScheduledPhase||0,raidTriggerRemaining:old?.raidTriggerRemaining||0,raidLastPhase:old?.raidLastPhase||0};
   game.baseRaidActive=!!old?.baseRaidActive;game.baseRaidTimer=old?.baseRaidTimer||0;game.baseRaidTriggeredPhase=game.invasions.raidLastPhase;
   const mobs=(old?.mobs||[]).filter(m=>m&&m.hp>0).map(persistentUnit);
@@ -61,7 +64,7 @@ export const invasionMethods={
     const castle=(this.dungeons||[]).find(d=>d.id==='dungeon_demon_castle');if(castle?.cleared)return false;
     s.kind=(this.phase||1)>=s.nextMajorPhase?'major':'regular';s.stage='marching';s.marchDuration=s.kind==='major'?MAJOR_MARCH_SECONDS:INVASION_MARCH_SECONDS;s.eta=s.marchDuration;s.remaining=s.kind==='major'?MAJOR_BATTLE_SECONDS:INVASION_BATTLE_SECONDS;s.sequence++;
     const strength=invasionStrength(this);
-    if(s.kind==='major'){s.majorReference ||= majorReference(strength);s.majorCount++;s.nextMajorPhase=(this.phase||1)+MAJOR_INTERVAL;s.strength=majorInvasionStrength(s.majorReference,s.majorCount);}else s.strength=regularInvasionStrength(strength);
+    if(s.kind==='major'){s.majorReference = majorReference(strength);s.majorCount++;s.nextMajorPhase=(this.phase||1)+MAJOR_INTERVAL;s.strength=majorInvasionStrength(s.majorReference,s.majorCount);}else s.strength=regularInvasionStrength(strength);
     s.source={...(castle?.entrance||{x:center+42000,y:center+42000})};s.nextPhase=(this.phase||1)+INVASION_INTERVAL;
     this.showToast(s.kind==='major'?`壊滅危険！魔王城の本格侵攻軍が出撃。${s.eta}秒後に到着。隊長の救援・育成兵・衛生兵で迎撃し、撤退も判断せよ`:`壊滅危険！魔王城から第${s.sequence}侵攻軍が出撃。25秒後に本陣の三方向へ展開。初期装備での迎撃は厳しい。救援・退避を判断せよ`);sound.playBomb();this.refreshInvasionUI();this.saveGame({background:true});return true;
   },
@@ -75,7 +78,7 @@ export const invasionMethods={
       const major=s.kind==='major',commander=i===0,elite=major&&!commander&&i%6===0,flanker=!commander&&!elite&&i%4===0,offset=(i%5-2)*60,rank=Math.floor(i/5)*48;
       const r=REGULAR_INVASION_RULES,HS=MAJOR_HP_SCALE,AS=MAJOR_ATK_SCALE;const hp=Math.round(strength.hp*(major?HS*(commander?90:elite?40:flanker?18:24):r.hpScale*(commander?8:flanker?2.2:3))),def=Math.min(180,strength.def*(major?1.3:commander?.85:.55)+(major?(commander?100:elite?75:55):(commander?18:5)));
       const cap=Math.max(130,Math.min(260,strength.heroHp||130))*.24*(1+Math.max(0,Math.min(20,strength.heroDef||0))*.012);
-      const atk=Math.max(2,Math.round(major?AS*strength.atk*(commander?14:elite?12:flanker?8:10):r.atkScale*Math.min(strength.atk*(commander?1.15:flanker?.65:.8),cap)));
+      const atk=Math.max(2,Math.round(major?AS*strength.atk*(commander?14:elite?12:flanker?8.2:10):r.atkScale*Math.min(strength.atk*(commander?1.15:flanker?.65:.8),cap)));
       const angle=(i%3-1)*Math.PI/3+Math.PI/4,distance=650+Math.floor(i/3)*35,x=major?center+520+offset:center+Math.cos(angle)*distance,y=major?center+490+rank:center+Math.sin(angle)*distance;
       this.monsters.push({id:`invasion_${s.sequence}_${i}`,x,y,homeX:x,homeY:y,
         type:flanker?'wolf':'orc',name:major?(commander?'魔王軍・征服将軍':elite?'魔王軍・攻城黒騎士':flanker?'魔王軍・上位魔獣':'魔王軍・精鋭黒鎧兵'):commander?'魔王軍・侵攻隊長':flanker?'魔王軍・魔獣騎兵':'魔王軍・黒鎧兵',title:major?'【本格侵攻】':'魔王城侵攻軍',

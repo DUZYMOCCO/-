@@ -16,7 +16,7 @@ try {
  const cdp=await context.newCDPSession(page);await cdp.send('Emulation.setCPUThrottlingRate',{rate:4});
  async function scene(name) {
   return page.evaluate(async name=>{
-   const g=qaGame,{normalizeNation}=await import('/iron-squad/js/nation-rules.js?v=271'),{WORLD_SIZE,TAVERN_SITE,SETTLEMENTS}=await import('/iron-squad/js/world.js?v=260'),{messPoint,gardenPoint}=await import('/iron-squad/js/camp-leisure.js?v=256'),{FARM_X,FARM_Y}=await import('/iron-squad/js/reserve-farm.js?v=256'),C=WORLD_SIZE/2;
+   const g=qaGame,{normalizeNation}=await import('/iron-squad/js/nation-rules.js?v=277'),{WORLD_SIZE,TAVERN_SITE,SETTLEMENTS}=await import('/iron-squad/js/world.js?v=277'),{messPoint,gardenPoint}=await import('/iron-squad/js/camp-leisure.js?v=277'),{FARM_X,FARM_Y}=await import('/iron-squad/js/reserve-farm.js?v=277'),C=WORLD_SIZE/2;
    g.currentDungeon=null;g.inBattle=true;g.worldTime=80;g.nation=normalizeNation({investment:name==='tavern'?90000:0});for(const r of Object.values(g.nation.economy.regions)){r.discovered=true;r.liberated=true;r.level=1;}
    const town=SETTLEMENTS.find(s=>s.kind==='town');const loc=name==='hq'?{x:C,y:C+100}:name==='tavern'?{x:TAVERN_SITE.x,y:TAVERN_SITE.y+230}:name==='farm'?{x:FARM_X+350,y:FARM_Y+60}:{x:C+town.ox,y:C+town.oy};
    g._campYardQuiet=true;g._campAtTavern=name==='tavern';g.squad.forEach((s,i)=>{const seat=(name==='tavern'?gardenPoint:messPoint)(i,'sit');Object.assign(s,{x:seat.x,y:seat.y,campPose:'sit',_leisureSeat:seat,hp:s.maxHp,isDown:false,dead:false});});
@@ -30,7 +30,7 @@ try {
   await page.evaluate(async()=>{const g=qaGame;for(let i=0;i<90;i++){g.update(1/60);g.camera={x:qaScene.x,y:qaScene.y};g.render();await new Promise(requestAnimationFrame);}});
   await page.evaluate(()=>{if(qaGame.updateAmbientCrowd)for(let i=0;i<1000;i++)qaGame.updateAmbientCrowd(1/60);});
   const measured=await page.evaluate(async framesWanted=>{
-   const g=qaGame,frames=[],gaps=[];let previous=null,peakResidents=0,peakWalkers=0;const mod=g.updateAmbientCrowd?await import('/iron-squad/js/town-ambient.js?v=272'):null;
+   const g=qaGame,frames=[],gaps=[];let previous=null,peakResidents=0,peakWalkers=0;const mod=g.updateAmbientCrowd?await import('/iron-squad/js/town-ambient.js?v=277'):null;
    for(let i=0;i<framesWanted;i++){
     const timestamp=await new Promise(requestAnimationFrame);if(previous!==null)gaps.push(timestamp-previous);previous=timestamp;
     const x=qaScene.x+Math.sin(i/65)*70,y=qaScene.y+Math.cos(i/75)*40;Object.assign(g.player,{x,y});
@@ -48,7 +48,7 @@ try {
    await page.screenshot({path:`${out}/${name}-${night?'night':'day'}-390.png`});
   }
   report.behavior=await page.evaluate(async()=>{
-   const g=qaGame,mod=await import('/iron-squad/js/town-ambient.js?v=272');g.currentDungeon=null;g.civilians=[];g.camera={x:79360,y:79460};g.nation.level=0;g.worldTime=80;g.monsters=[];g.ambientDensity='many';mod.resetAmbientCrowd(g);for(let i=0;i<1000;i++)g.updateAmbientCrowd(1/60);
+   const g=qaGame,mod=await import('/iron-squad/js/town-ambient.js?v=277');g.currentDungeon=null;g.civilians=[];g.camera={x:79360,y:79460};g.nation.level=0;g.worldTime=80;g.monsters=[];g.ambientDensity='many';mod.resetAmbientCrowd(g);for(let i=0;i<1000;i++)g.updateAmbientCrowd(1/60);
    const before=mod.ambientSnapshot(g),save=g.saveGame({persist:false});g.monsters=[{x:79360,y:79460,hp:100,maxHp:100}];for(let i=0;i<180;i++)g.updateAmbientCrowd(1/60);const danger=mod.ambientSnapshot(g);g.monsters=[];for(let i=0;i<900;i++)g.updateAmbientCrowd(1/60);const returned=mod.ambientSnapshot(g);
    const logicalSaveClean=!Object.keys(save).some(k=>/ambient|crowd/i.test(k))&&!JSON.stringify(save).includes('ambient:hq');return {before,danger,returned,logicalSaveClean,civilians:g.civilians.length};
   });assert.equal(report.behavior.danger.residents,0);assert.equal(report.behavior.danger.walkers,0);assert.ok(report.behavior.returned.residents>0);assert.ok(report.behavior.logicalSaveClean);assert.equal(report.behavior.civilians,0);
