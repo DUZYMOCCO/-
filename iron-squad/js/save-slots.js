@@ -98,10 +98,16 @@ function backgroundWorker(){
   }catch{workerDisabled=true;return null;}
 }
 export const RULES_VERSION = 5;
+// Ask the browser (iOS home screen apps included) not to evict this origin's saves under storage pressure.
+export function requestPersistentSaves(){
+  try{const s=globalThis.navigator?.storage;if(s?.persist)s.persisted().then(done=>done||s.persist()).catch(()=>{});}catch{}
+}
 export const saveSlots = {
   lastWriteError:null,
   list() {
     const existing = readSlots();
+    // Nothing to read (fresh install, or a storage read that came back empty): never overwrite it with an empty list.
+    if (existing === null) return [];
     if (storage.get('ironsquad_rules_version', 0) === RULES_VERSION && Array.isArray(existing)
         && existing.every(slot=>slot.rulesVersion===RULES_VERSION)) return existing;
     // The user authorized retiring all old saves for the traveler/tavern rules.

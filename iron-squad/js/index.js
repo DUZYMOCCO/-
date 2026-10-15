@@ -79,7 +79,7 @@ import { KNOCK_RULES, knockbackDistance, knockFlight, slamDamage, knockTransferD
 import { MELEE_SOUND_STYLES, playMeleeSound } from './weapon-sounds.js?v=211';
 import {emptyRescueBonuses,normalizeRescueBonuses,rescueBonusSummary} from './rescue-rewards.js?v=264';
 import {drawFieldCivilian} from './civilian-visuals.js?v=272';
-import { saveSlots,profileSaveCompletions } from './save-slots.js?v=269';
+import { saveSlots,profileSaveCompletions,requestPersistentSaves } from './save-slots.js?v=285';
 import { soldierDialogue } from './soldier-dialogue.js?v=276';
 import { generateSoldierName, migrateSoldierName, rollGenderByKey, isGenderId, ensureSoldierGender, genderLabel } from './soldier-names.js?v=210';
 import { openCommanderEditor } from './commander-editor.js?v=210';
@@ -1178,6 +1178,7 @@ export const IronSquadGame = {
   init(container, onBackToHub) {
     this.container = container;
     this.onBackToHub = onBackToHub;
+    requestPersistentSaves();
     this.highWave = storage.get('ironsquad_max_wave', 1);
     this.gold = 50;
     this.formation = 'GUARD';
