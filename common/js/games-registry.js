@@ -15,7 +15,7 @@ export const games = [
     load: () => import('../../iron-squad/js/index.js'),
   },
   {
-    id: 'color-ants', section: 'casual', title: 'カラー・アント', subtitle: '色をたべつくす、わらわら蟻軍団！',
+    id: 'color-ants', section: 'casual', title: 'カラー・アント', subtitle: '色をたべつくす、わらわらあり軍団！',
     icon: '🐜', color: '#f59e0b',
     description: '同じ色のアリがカラフルな絵をガリガリ食べつくす！タップで超加速、軍団を強化して全ピクセルを完食しよう！',
     load: () => import('../../color-ants/js/index.js'),
