@@ -12202,15 +12202,15 @@ export const IronSquadGame = {
     const plant = Math.abs(Math.sin(now * 0.017 + (m.x || 0)));
     const big = !!m.isColossal;
     contactShadow(ctx, big ? 2 : 1, big ? 8 : 2, m.radius * (big ? 1.02 : 0.92), m.radius * (big ? 0.34 : 0.3), plant);
+
+    // 左右反転コンテキスト
+    ctx.save();
     if (m.knockFly > 0) {
-      // Airborne arc with a tumble in the flight direction; the shadow stays on the ground.
+      // Airborne arc with a tumble in the flight direction; the shadow, HP bar and HP text stay upright on the ground.
       const t = 1 - m.knockFly / (m.knockTime || .45);
       ctx.translate(0, -Math.sin(t * Math.PI) * Math.min(26, 10 + (m.radius || 12)));
       ctx.rotate((m.knockSpin || 1) * t * Math.PI * (m.isBoss ? .25 : 1.2));
     }
-
-    // 左右反転コンテキスト
-    ctx.save();
     if (isLeft) ctx.scale(-1, 1);
 
     if ((m.isDemonInvasion?drawFieldMob(ctx,{...m,isBoss:false},now,true):drawFieldBoss(ctx, m, now) || drawFieldMob(ctx, m, now,true))) {
