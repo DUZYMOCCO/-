@@ -10,9 +10,9 @@
 // 【更新検知】 importScripts した sw-assets.js もブラウザの SW 更新チェック対象（バイト比較）。
 //   併せてハブが起動時に 'refresh-games' を送り、SW が各 sw-assets.js を no-store で取り直す保険がある。
 
-const SHELL_VERSION = 'v181';
+const SHELL_VERSION = 'v182';
 const SHELL_CACHE = 'studio-shell-' + SHELL_VERSION;
-const GAME_IDS = ['iron-squad', 'dada-survivor'];
+const GAME_IDS = ['iron-squad', 'dada-survivor', 'color-ants'];
 
 const SHELL_ASSETS = [
   './',

@@ -3,6 +3,7 @@
 // 入口モジュールは default export で { init(container, onBackToHub), prepare?() } を返すこと。
 export const sections = [
   { id: 'main', label: 'IRON SQUAD · 雑兵立身出世録' },
+  { id: 'casual', label: 'カジュアル・パズル' },
   { id: 'kids', label: 'こどもの ゲーム' },
 ];
 
@@ -12,6 +13,12 @@ export const games = [
     icon: '🛡️', color: '#ffaa00',
     description: '自律行動する部隊と共に生き残れ！部隊と離れると危険だがソロ冒険も自由。伍長・隊長へ出世して初めて指揮権を掴み取れ。',
     load: () => import('../../iron-squad/js/index.js'),
+  },
+  {
+    id: 'color-ants', section: 'casual', title: 'カラー・アント', subtitle: '色をたべつくす、わらわら蟻軍団！',
+    icon: '🐜', color: '#f59e0b',
+    description: '同じ色のアリがカラフルな絵をガリガリ食べつくす！タップで超加速、軍団を強化して全ピクセルを完食しよう！',
+    load: () => import('../../color-ants/js/index.js'),
   },
   {
     id: 'dada-survivor', section: 'kids', title: 'ダダサバイバーもどき', subtitle: 'ゆびで うごいて いきのこれ！',

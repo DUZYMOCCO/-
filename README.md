@@ -28,6 +28,7 @@ Safariで開いた後：
 | ゲーム | フォルダ | 説明 |
 |---|---|---|
 | 🛡️ IRON SQUAD（雑兵立身出世録） | [iron-squad/](iron-squad/) | ローグライク・小隊育成アクションRPG。[README](iron-squad/README.md) / [最新の作業メモ](iron-squad/docs/CURRENT_WORK.md) / [仕様書](iron-squad/docs/SPEC_AND_HANDOVER.md) |
+| 🐜 カラー・アント | [color-ants/](color-ants/) | 色をたべつくす、わらわら蟻軍団！爽快クリッカー・パズル。[README](color-ants/README.md) |
 | 🐱 ダダサバイバーもどき | [dada-survivor/](dada-survivor/) | 子ども向けオートアタック・サバイバル。5ステージ・そうび・キャラ9人（canvas不使用・DOM＋SVGトゥーン描画）。[README](dada-survivor/README.md) |
 
 ---
