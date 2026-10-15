@@ -3,8 +3,8 @@
  * アリの自律AI、咀嚼処理、パーティクル、コインポップアップ
  */
 
-import { COLOR_GROUPS } from './stages.js?v=1';
-import { UPGRADE_DEFS } from './upgrades.js?v=1';
+import { COLOR_GROUPS } from './stages.js?v=2';
+import { UPGRADE_DEFS } from './upgrades.js?v=2';
 
 export class ParticleSystem {
   constructor() {

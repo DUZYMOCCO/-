@@ -13,16 +13,19 @@
   touch-action: none;
 }
 
-/* ヘッダー */
+/* ヘッダー (iOSセーフエリア対応) */
 .runner-header {
-  height: 52px;
+  height: calc(52px + env(safe-area-inset-top, 0px));
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-left: max(12px, env(safe-area-inset-left, 12px));
+  padding-right: max(12px, env(safe-area-inset-right, 12px));
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 12px;
-  background: rgba(15, 23, 42, 0.9);
+  background: rgba(15, 23, 42, 0.95);
   border-bottom: 1px solid #334155;
   z-index: 10;
+  box-sizing: border-box;
 }
 
 .runner-back-btn {

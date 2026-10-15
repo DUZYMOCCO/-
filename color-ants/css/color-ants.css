@@ -13,17 +13,20 @@
   touch-action: manipulation;
 }
 
-/* ヘッダー */
+/* ヘッダー (iOSセーフエリア対応) */
 .ants-header {
-  height: 52px;
+  height: calc(52px + env(safe-area-inset-top, 0px));
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-left: max(12px, env(safe-area-inset-left, 12px));
+  padding-right: max(12px, env(safe-area-inset-right, 12px));
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 12px;
   background: #ffffff;
   border-bottom: 1px solid #e2e8f0;
   box-shadow: 0 1px 3px rgba(0,0,0,0.04);
   z-index: 10;
+  box-sizing: border-box;
 }
 
 .ants-back-btn {

@@ -3,7 +3,7 @@
  * 爽快なレーン、ゲート、ブロック、弾幕、マズルフラッシュの描画
  */
 
-import { getGateText, isGoodGate } from './rules.js?v=1';
+import { getGateText, isGoodGate } from './rules.js?v=2';
 
 export class RunnerRenderer {
   constructor(canvas) {
@@ -11,11 +11,14 @@ export class RunnerRenderer {
     this.ctx = canvas.getContext('2d');
   }
 
-  render(engine) {
+  render(engine, logicalWidth, logicalHeight) {
     const ctx = this.ctx;
-    const w = this.canvas.width;
-    const h = this.canvas.height;
+    const dpr = window.devicePixelRatio || 1;
+    const w = logicalWidth || (this.canvas.width / dpr);
+    const h = logicalHeight || (this.canvas.height / dpr);
 
+    ctx.save();
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, w, h);
 
     // コース背景（未来感のあるクリーンなストライプレーザー）
@@ -35,6 +38,8 @@ export class RunnerRenderer {
 
     // ゲート通過エフェクト
     this.drawGateEffects(w, h, engine);
+
+    ctx.restore();
   }
 
   drawTrack(w, h, dist) {

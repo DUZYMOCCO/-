@@ -11,15 +11,15 @@ import {
   getUpgradeCost,
   normalizeSave,
   generateStageCourse,
-} from './rules.js?v=1';
-import { RunnerEngine } from './engine.js?v=1';
-import { RunnerRenderer } from './renderer.js?v=1';
+} from './rules.js?v=2';
+import { RunnerEngine } from './engine.js?v=2';
+import { RunnerRenderer } from './renderer.js?v=2';
 
 const SAVE_KEY = 'math_runner_save';
 
 export default {
   prepare() {
-    return loadCss(new URL('../css/math-runner.css?v=1', import.meta.url).href);
+    return loadCss(new URL('../css/math-runner.css?v=2', import.meta.url).href);
   },
 
   init(container, onBackToHub) {
@@ -157,10 +157,12 @@ export default {
 
     if (w <= 0 || h <= 0) return;
 
-    this.canvas.width = w * dpr;
-    this.canvas.height = h * dpr;
-    const ctx = this.canvas.getContext('2d');
-    ctx.scale(dpr, dpr);
+    this.logicalWidth = w;
+    this.logicalHeight = h;
+    this.canvas.width = Math.floor(w * dpr);
+    this.canvas.height = Math.floor(h * dpr);
+    this.canvas.style.width = `${w}px`;
+    this.canvas.style.height = `${h}px`;
   },
 
   startRun() {
@@ -185,7 +187,7 @@ export default {
         this.handleGameEvent(eventName, data);
       });
 
-      this.renderer.render(this.engine);
+      this.renderer.render(this.engine, this.logicalWidth, this.logicalHeight);
     }
 
     this.animId = requestAnimationFrame(this.loop);

@@ -6,21 +6,21 @@
 import { sound } from '../../common/js/audio.js?v=1';
 import { loadCss } from '../../common/js/load-css.js';
 import { storage } from '../../common/js/storage.js';
-import { STAGES, buildPixelGrid, COLOR_GROUPS } from './stages.js?v=1';
+import { STAGES, buildPixelGrid, COLOR_GROUPS } from './stages.js?v=2';
 import {
   UPGRADE_DEFS,
   COLOR_UNLOCK_ORDER,
   getUpgradeCost,
   normalizeSave,
-} from './upgrades.js?v=1';
-import { AntSimulation } from './ants.js?v=1';
-import { AntRenderer } from './renderer.js?v=1';
+} from './upgrades.js?v=2';
+import { AntSimulation } from './ants.js?v=2';
+import { AntRenderer } from './renderer.js?v=2';
 
 const SAVE_KEY = 'color_ants_save';
 
 export default {
   prepare() {
-    return loadCss(new URL('../css/color-ants.css?v=1', import.meta.url).href);
+    return loadCss(new URL('../css/color-ants.css?v=2', import.meta.url).href);
   },
 
   init(container, onBackToHub) {
@@ -139,10 +139,12 @@ export default {
 
     if (w <= 0 || h <= 0) return;
 
-    this.canvas.width = w * dpr;
-    this.canvas.height = h * dpr;
-    const ctx = this.canvas.getContext('2d');
-    ctx.scale(dpr, dpr);
+    this.logicalWidth = w;
+    this.logicalHeight = h;
+    this.canvas.width = Math.floor(w * dpr);
+    this.canvas.height = Math.floor(h * dpr);
+    this.canvas.style.width = `${w}px`;
+    this.canvas.style.height = `${h}px`;
 
     if (this.sim) {
       this.sim.resize(w, h);
@@ -191,7 +193,7 @@ export default {
     }
 
     // 描画
-    this.renderer.render(this.sim, this.pixels, this.gridInfo, this.saveData);
+    this.renderer.render(this.sim, this.pixels, this.gridInfo, this.saveData, this.logicalWidth, this.logicalHeight);
 
     this.animId = requestAnimationFrame(this.loop);
   },
