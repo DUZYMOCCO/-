@@ -26,5 +26,11 @@ export const games = [
     description: 'こうげきは じどう！ 5つの ステージで ボスを たおして、たからばこの そうびで つよくなろう！',
     load: () => import('../../dada-survivor/js/index.js'),
   },
+  {
+    id: 'math-runner', section: 'kids', title: 'さんすうシューター', subtitle: 'けいさんして たまを ふやせ！',
+    icon: '🎯', color: '#3b82f6',
+    description: '青いゲートを通って足し算・かけ算で弾を大量増殖！立ちはだかるブロックや巨大ウォールを粉砕しよう！',
+    load: () => import('../../math-runner/js/index.js'),
+  },
 ];
 export function getGameById(id) { return games.find(game => game.id === id); }

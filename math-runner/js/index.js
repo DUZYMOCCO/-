@@ -1,0 +1,294 @@
+/**
+ * さんすうシューター（Math Runner）
+ * けいさんして たまを ふやせ！
+ */
+
+import { sound } from '../../common/js/audio.js?v=1';
+import { loadCss } from '../../common/js/load-css.js';
+import { storage } from '../../common/js/storage.js';
+import {
+  UPGRADES,
+  getUpgradeCost,
+  normalizeSave,
+  generateStageCourse,
+} from './rules.js?v=1';
+import { RunnerEngine } from './engine.js?v=1';
+import { RunnerRenderer } from './renderer.js?v=1';
+
+const SAVE_KEY = 'math_runner_save';
+
+export default {
+  prepare() {
+    return loadCss(new URL('../css/math-runner.css?v=1', import.meta.url).href);
+  },
+
+  init(container, onBackToHub) {
+    this.container = container;
+    this.onBackToHub = onBackToHub;
+    this.saveData = normalizeSave(storage.get(SAVE_KEY));
+    this.running = true;
+    this.inRun = false;
+    this.animId = null;
+    this.lastTime = performance.now();
+    this.audioCooldown = 0;
+
+    this.buildDOM();
+    this.setupEvents();
+
+    this.renderer = new RunnerRenderer(this.canvas);
+    this.handleResize();
+    this.updateLobbyUI();
+
+    this.loop = this.loop.bind(this);
+    this.animId = requestAnimationFrame(this.loop);
+  },
+
+  buildDOM() {
+    this.container.innerHTML = `
+      <div class="math-runner-container">
+        <!-- ヘッダー -->
+        <header class="runner-header">
+          <button class="runner-back-btn" id="runner-back-btn">← もどる</button>
+          <div class="runner-stage-info" id="runner-stage-title">ステージ 1</div>
+          <div class="runner-coins">
+            <span>💰</span>
+            <span id="runner-coin-count">${this.saveData.coins}</span>
+          </div>
+        </header>
+
+        <!-- メインキャンバス -->
+        <div class="runner-canvas-wrap" id="runner-canvas-wrap">
+          <canvas class="runner-canvas" id="runner-canvas"></canvas>
+          <div class="runner-guide-hint" id="runner-guide-hint" style="display: none;">
+            ↔ ゆびを左右にスライドしてうごこう！
+          </div>
+        </div>
+
+        <!-- ロビー・アップグレード画面 -->
+        <div class="runner-lobby-overlay" id="runner-lobby">
+          <div class="runner-lobby-title">
+            <h1>🎯 さんすうシューター</h1>
+            <p>ゲートを えらんで たまを ふやそう！</p>
+          </div>
+
+          <div class="runner-lobby-upgrades" id="runner-up-list"></div>
+
+          <button class="runner-start-btn" id="runner-start-btn">
+            🚀 出撃する！
+          </button>
+        </div>
+
+        <!-- リザルト画面 -->
+        <div class="runner-result-overlay" id="runner-result" style="display: none;">
+          <div class="runner-result-card">
+            <div class="runner-result-icon">🏆</div>
+            <div class="runner-result-title">ステージクリア！</div>
+            <div class="runner-result-mult" id="runner-result-mult">ボーナス ×1.0</div>
+            <div class="runner-result-coins" id="runner-result-coins">獲得: +0 コイン</div>
+            <button class="runner-next-btn" id="runner-next-btn">つぎのステージへ ➔</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    this.canvas = this.container.querySelector('#runner-canvas');
+    this.canvasWrap = this.container.querySelector('#runner-canvas-wrap');
+    this.guideHint = this.container.querySelector('#runner-guide-hint');
+    this.coinText = this.container.querySelector('#runner-coin-count');
+    this.stageTitle = this.container.querySelector('#runner-stage-title');
+    this.lobby = this.container.querySelector('#runner-lobby');
+    this.upList = this.container.querySelector('#runner-up-list');
+    this.resultOverlay = this.container.querySelector('#runner-result');
+    this.resultMultText = this.container.querySelector('#runner-result-mult');
+    this.resultCoinsText = this.container.querySelector('#runner-result-coins');
+  },
+
+  setupEvents() {
+    this.container.querySelector('#runner-back-btn').addEventListener('click', () => {
+      this.destroy();
+      this.onBackToHub();
+    });
+
+    this.container.querySelector('#runner-start-btn').addEventListener('click', () => {
+      this.startRun();
+    });
+
+    this.container.querySelector('#runner-next-btn').addEventListener('click', () => {
+      this.saveData.stage++;
+      this.save();
+      this.resultOverlay.style.display = 'none';
+      this.updateLobbyUI();
+      this.lobby.style.display = 'flex';
+    });
+
+    // タッチ・ドラッグ操作
+    let isDragging = false;
+    const updatePointer = (clientX) => {
+      if (!this.engine || !this.inRun) return;
+      const rect = this.canvasWrap.getBoundingClientRect();
+      const normX = ((clientX - rect.left) / rect.width - 0.5) * 2; // -1.0 〜 +1.0
+      this.engine.setTargetX(normX);
+    };
+
+    this.canvasWrap.addEventListener('pointerdown', (e) => {
+      isDragging = true;
+      updatePointer(e.clientX);
+    });
+
+    window.addEventListener('pointermove', (e) => {
+      if (isDragging) {
+        updatePointer(e.clientX);
+      }
+    });
+
+    window.addEventListener('pointerup', () => {
+      isDragging = false;
+    });
+
+    this.resizeObserver = new ResizeObserver(() => this.handleResize());
+    this.resizeObserver.observe(this.canvasWrap);
+  },
+
+  handleResize() {
+    const rect = this.canvasWrap.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    const w = Math.floor(rect.width);
+    const h = Math.floor(rect.height);
+
+    if (w <= 0 || h <= 0) return;
+
+    this.canvas.width = w * dpr;
+    this.canvas.height = h * dpr;
+    const ctx = this.canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+  },
+
+  startRun() {
+    this.inRun = true;
+    this.lobby.style.display = 'none';
+    this.guideHint.style.display = 'block';
+
+    const course = generateStageCourse(this.saveData.stage);
+    this.engine = new RunnerEngine(course, this.saveData);
+    sound.play('reward');
+  },
+
+  loop(time) {
+    if (!this.running) return;
+
+    const dt = Math.min(0.08, (time - this.lastTime) / 1000);
+    this.lastTime = time;
+    this.audioCooldown = Math.max(0, this.audioCooldown - dt);
+
+    if (this.inRun && this.engine) {
+      this.engine.update(dt, (eventName, data) => {
+        this.handleGameEvent(eventName, data);
+      });
+
+      this.renderer.render(this.engine);
+    }
+
+    this.animId = requestAnimationFrame(this.loop);
+  },
+
+  handleGameEvent(eventName, data) {
+    switch (eventName) {
+      case 'shoot':
+        if (this.audioCooldown <= 0) {
+          sound.play('tap');
+          this.audioCooldown = 0.09;
+        }
+        break;
+      case 'gate':
+        if (data.isGood) {
+          sound.play('reward');
+        } else {
+          sound.play('down');
+        }
+        break;
+      case 'destroy-block':
+        sound.play('blast');
+        this.saveData.coins += data.coins;
+        this.coinText.textContent = this.saveData.coins;
+        break;
+      case 'hit-block':
+        sound.play('hit');
+        break;
+      case 'destroy-wall':
+        sound.play('coin');
+        break;
+      case 'clear':
+        this.inRun = false;
+        this.guideHint.style.display = 'none';
+        sound.play('reward');
+
+        const finalBonus = Math.floor(data.earnedCoins * data.finalMult);
+        this.saveData.coins += finalBonus;
+        this.save();
+
+        this.resultMultText.textContent = `ボーナス倍率 ×${data.finalMult}`;
+        this.resultCoinsText.textContent = `ステージ獲得: +${data.earnedCoins}  ➔  合計 +${data.earnedCoins + finalBonus} コイン！`;
+        this.resultOverlay.style.display = 'flex';
+        break;
+    }
+  },
+
+  updateLobbyUI() {
+    this.stageTitle.textContent = `ステージ ${this.saveData.stage}`;
+    this.coinText.textContent = this.saveData.coins;
+
+    const keys = ['startCount', 'fireRate', 'power'];
+    this.upList.innerHTML = keys.map(key => {
+      const def = UPGRADES[key];
+      const lvl = this.saveData.upgrades[key];
+      const cost = getUpgradeCost(key, lvl);
+      const isMax = lvl >= def.maxLevel;
+      const canAfford = this.saveData.coins >= cost && !isMax;
+
+      return `
+        <button class="runner-up-btn ${canAfford ? '' : 'disabled'}" data-up="${key}">
+          <div class="runner-up-info">
+            <span class="runner-up-name">${def.icon} ${def.name}</span>
+            <span class="runner-up-lvl">${isMax ? 'MAX' : `Lv.${lvl}`}</span>
+          </div>
+          <div class="runner-up-cost">${isMax ? 'MAX' : `💰 ${cost}`}</div>
+        </button>
+      `;
+    }).join('');
+
+    this.upList.querySelectorAll('.runner-up-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const key = btn.dataset.up;
+        this.buyUpgrade(key);
+      });
+    });
+  },
+
+  buyUpgrade(key) {
+    const lvl = this.saveData.upgrades[key];
+    const cost = getUpgradeCost(key, lvl);
+    if (this.saveData.coins >= cost && lvl < UPGRADES[key].maxLevel) {
+      this.saveData.coins -= cost;
+      this.saveData.upgrades[key]++;
+      sound.play('coin');
+      this.save();
+      this.updateLobbyUI();
+    }
+  },
+
+  save() {
+    storage.set(SAVE_KEY, this.saveData);
+  },
+
+  destroy() {
+    this.running = false;
+    if (this.animId) {
+      cancelAnimationFrame(this.animId);
+      this.animId = null;
+    }
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect();
+    }
+    this.save();
+  },
+};
