@@ -83,33 +83,56 @@ export class ColonyRenderer {
     ctx.drawImage(this.frame, L.boardX - off, L.boardY - off, this.frame.width / dpr, this.frame.height / dpr);
     ctx.drawImage(this.board, L.boardX, L.boardY, this.board.width / dpr, this.board.height / dpr);
 
-    this.drawNest(ctx, L, colony.pulse);
+    const nests = L.nests && L.nests.length > 0 ? L.nests : [L.nest || { x: w / 2, y: h * 0.8 }];
+    for (let ni = 0; ni < nests.length; ni++) {
+      const p = (colony.pulses && colony.pulses[ni]) || colony.pulse || 0;
+      this.drawSingleNest(ctx, nests[ni], L, p);
+    }
+
     const lite = colony.ants.length > LITE_ANTS;
     for (const a of colony.ants) this.drawAnt(ctx, a, L, lite);
     for (const c of colony.crumbs) {
       ctx.globalAlpha = Math.min(1, c.life / 0.2);
       ctx.fillStyle = c.hex;
-      ctx.fillRect(c.x, c.y, L.cell * 0.9, L.cell * 0.9);
+      if (c.isStar) {
+        const r = L.cell * 1.4;
+        ctx.beginPath();
+        ctx.moveTo(c.x, c.y - r);
+        ctx.quadraticCurveTo(c.x, c.y, c.x + r, c.y);
+        ctx.quadraticCurveTo(c.x, c.y, c.x, c.y + r);
+        ctx.quadraticCurveTo(c.x, c.y, c.x - r, c.y);
+        ctx.quadraticCurveTo(c.x, c.y, c.x, c.y - r);
+        ctx.fill();
+      } else {
+        ctx.fillRect(c.x, c.y, L.cell * 0.9, L.cell * 0.9);
+      }
     }
     ctx.globalAlpha = 1;
     ctx.restore();
   }
 
-  drawNest(ctx, L, pulse) {
-    const { x, y } = L.nest;
-    const r = L.ant * 1.5;
+  drawSingleNest(ctx, nest, L, pulse) {
+    const { x, y } = nest;
+    const r = L.ant * 1.35;
+    ctx.fillStyle = 'rgba(70, 35, 10, 0.18)';
+    ctx.beginPath();
+    ctx.ellipse(x, y + r * 0.5, r * 2.7, r * 1.2, 0, 0, Math.PI * 2);
+    ctx.fill();
+
     ctx.fillStyle = '#b9743a';
     ctx.beginPath();
-    ctx.ellipse(x, y + r * 0.3, r * 2.4, r * 1.05, 0, 0, Math.PI * 2);
+    ctx.ellipse(x, y + r * 0.25, r * 2.3, r * 0.95, 0, 0, Math.PI * 2);
     ctx.fill();
+
     ctx.fillStyle = '#d99a5c';
     ctx.beginPath();
-    ctx.ellipse(x, y + r * 0.1, r * 2.1, r * 0.85, 0, 0, Math.PI * 2);
+    ctx.ellipse(x, y + r * 0.08, r * 2.0, r * 0.78, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = '#3a2312';
-    const k = 1 + pulse * 0.18; // 巣穴に届くたびにぷくっと
+
+    ctx.fillStyle = '#2d1a0c';
+    const k = 1 + pulse * 0.25;
     ctx.beginPath();
-    ctx.ellipse(x, y + r * 0.18, r * 1.2 * k, r * 0.52 * k, 0, 0, Math.PI * 2);
+    ctx.ellipse(x, y + r * 0.15, r * 1.15 * k, r * 0.48 * k, 0, 0, Math.PI * 2);
     ctx.fill();
   }
 

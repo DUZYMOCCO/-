@@ -17,7 +17,7 @@
 
 /* ヘッダー */
 .ca-header {
-  height: calc(50px + env(safe-area-inset-top, 0px));
+  height: calc(48px + env(safe-area-inset-top, 0px));
   padding-top: env(safe-area-inset-top, 0px);
   padding-left: max(10px, env(safe-area-inset-left, 10px));
   padding-right: max(10px, env(safe-area-inset-right, 10px));
@@ -78,25 +78,72 @@
 
 .ca-canvas { display: block; }
 
-/* タイル＋スロットのボトムパネル */
+/* タイル＋スロット＋ブースターのボトムパネル */
 .ca-panel {
   flex: none;
-  padding: 8px 10px calc(10px + env(safe-area-inset-bottom, 0px));
+  padding: 6px 8px calc(8px + env(safe-area-inset-bottom, 0px));
   background: rgba(100, 50, 15, 0.18);
   border-radius: 18px 18px 0 0;
-  border-top: 2px solid rgba(255, 255, 255, 0.4);
+  border-top: 2px solid rgba(255, 255, 255, 0.45);
 }
 
-/* 5つの出撃スロット（トレイ） */
+/* お助けアイテム（ブースターバー） */
+.ca-boosters {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.ca-boost-btn {
+  background: rgba(255, 255, 255, 0.85);
+  border: 1.5px solid rgba(150, 80, 20, 0.35);
+  border-radius: 12px;
+  padding: 4px 2px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(70, 35, 10, 0.15);
+  touch-action: manipulation;
+  transition: transform 0.1s ease;
+}
+
+.ca-boost-btn:active {
+  transform: scale(0.93);
+}
+
+.ca-boost-btn:disabled,
+.ca-boost-btn.used {
+  opacity: 0.45;
+  filter: grayscale(0.8);
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.ca-boost-icon {
+  font-size: 16px;
+  line-height: 1.1;
+}
+
+.ca-boost-lbl {
+  font-size: 10px;
+  font-weight: 900;
+  color: #6a4020;
+  margin-top: 1px;
+}
+
+/* 5〜6個の出撃スロット（トレイ） */
 .ca-tray-wrap {
-  margin-bottom: 7px;
+  margin-bottom: 6px;
 }
 
 .ca-tray-head {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  padding: 0 4px 4px;
+  padding: 0 4px 3px;
 }
 
 .ca-tray-title {
@@ -107,14 +154,13 @@
 }
 
 .ca-tray-hint {
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 700;
   color: #a0642f;
 }
 
 .ca-slots {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
   gap: 5px;
 }
 
@@ -123,9 +169,9 @@
 }
 
 .ca-slot {
-  height: 42px;
+  height: 40px;
   box-sizing: border-box;
-  border-radius: 11px;
+  border-radius: 10px;
   position: relative;
   overflow: hidden;
   display: flex;
@@ -163,7 +209,7 @@
 .ca-slot-num {
   position: relative;
   z-index: 2;
-  font-size: 17px;
+  font-size: 16px;
   font-weight: 900;
   font-variant-numeric: tabular-nums;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
@@ -185,7 +231,7 @@
   position: absolute;
   bottom: 2px;
   z-index: 2;
-  font-size: 9px;
+  font-size: 8.5px;
   font-weight: 800;
   background: rgba(0, 0, 0, 0.65);
   color: #ffdd55;
@@ -210,15 +256,15 @@
 }
 
 .ca-tile {
-  height: 38px;
+  height: 36px;
   width: 100%;
   box-sizing: border-box;
-  border-radius: 10px;
+  border-radius: 9px;
   border: 2px solid var(--d, #888);
-  border-bottom-width: 5px;
+  border-bottom-width: 4px;
   background: var(--c, #aaa);
   color: var(--t, #fff);
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 900;
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.22);
   cursor: pointer;
@@ -227,6 +273,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: transform 0.1s ease;
 }
 
 .ca-tile.front {
@@ -252,21 +299,36 @@
   opacity: 0.9;
 }
 
+/* 鍵と南京錠ギミック */
+.ca-tile.locked {
+  border-color: #d97706 !important;
+  box-shadow: 0 0 0 2px #fbbf24;
+  cursor: not-allowed;
+}
+
+.ca-tile.has-key {
+  box-shadow: 0 0 0 2px #ffd700, 0 3px 10px rgba(255, 215, 0, 0.4);
+}
+
+.ca-tile.locked-shake {
+  animation: ca-shake 0.3s ease-in-out;
+}
+
 .ca-col-badge {
-  font-size: 10px;
+  font-size: 9.5px;
   font-weight: 800;
   color: #7b4f2c;
-  background: rgba(255, 255, 255, 0.55);
-  padding: 1px 6px;
+  background: rgba(255, 255, 255, 0.6);
+  padding: 1px 5px;
   border-radius: 8px;
   margin-top: 1px;
 }
 
 .ca-tile-empty {
-  height: 38px;
+  height: 36px;
   width: 100%;
   border: 1px dashed rgba(120, 70, 20, 0.2);
-  border-radius: 10px;
+  border-radius: 9px;
   box-sizing: border-box;
 }
 
@@ -277,13 +339,38 @@
 
 @keyframes ca-shake {
   0%, 100% { transform: translateX(0); }
-  20%, 60% { transform: translateX(-5px); }
-  40%, 80% { transform: translateX(5px); }
+  20%, 60% { transform: translateX(-4px); }
+  40%, 80% { transform: translateX(4px); }
 }
 
 @keyframes ca-waiting-pulse {
   0%, 100% { box-shadow: 0 0 0 0 rgba(255, 180, 0, 0.5); }
   50% { box-shadow: 0 0 0 3px rgba(255, 180, 0, 0.85); }
+}
+
+/* トースト通知 */
+.ca-toast {
+  position: absolute;
+  top: 54px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-10px);
+  background: rgba(45, 25, 10, 0.88);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+  padding: 6px 14px;
+  border-radius: 20px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  z-index: 60;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.ca-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
 }
 
 /* クリア画面＆手詰まりモーダル */
@@ -303,16 +390,23 @@
   background: #fff8ec;
   border: 3px solid #e7a84c;
   border-radius: 20px;
-  padding: 20px 18px;
+  padding: 18px 16px;
   text-align: center;
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.3);
+}
+
+.ca-card-stars {
+  font-size: 26px;
+  margin-bottom: 2px;
+  letter-spacing: 2px;
+  animation: ca-bob 1s ease-in-out infinite;
 }
 
 .ca-card-title {
   font-size: 20px;
   font-weight: 900;
   color: #5a3a1c;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .ca-thumb {
@@ -327,7 +421,7 @@
   font-size: 15px;
   font-weight: 800;
   color: #8a5a2b;
-  margin: 8px 0 14px;
+  margin: 8px 0 12px;
 }
 
 .ca-next {
@@ -360,7 +454,7 @@
   font-weight: 700;
   color: #6a4020;
   line-height: 1.45;
-  margin: 8px 0 16px;
+  margin: 6px 0 14px;
 }
 
 .ca-stuck-actions {
@@ -371,8 +465,8 @@
 
 .ca-stuck-btn {
   width: 100%;
-  padding: 11px;
-  font-size: 15px;
+  padding: 10px;
+  font-size: 14.5px;
   font-weight: 900;
   border: none;
   border-radius: 12px;
@@ -381,6 +475,12 @@
 
 .ca-stuck-btn:active { transform: scale(0.97); }
 
+.ca-stuck-magnet {
+  background: linear-gradient(135deg, #ffd700, #ff9f1c);
+  color: #4a2800;
+  box-shadow: 0 3px 10px rgba(255, 180, 0, 0.45);
+}
+
 .ca-stuck-btn.ca-undo {
   background: #fff;
   color: #c62828;
@@ -388,7 +488,6 @@
 }
 
 .ca-stuck-btn.ca-retry {
-  background: #ff9f1c;
+  background: #6b4423;
   color: #fff;
-  box-shadow: 0 4px 12px rgba(255, 159, 28, 0.4);
 }

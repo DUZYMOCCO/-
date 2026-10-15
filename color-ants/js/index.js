@@ -1,6 +1,7 @@
 /**
  * カラー・アント（Color Ants）
  * 外側から順にピクセルを削る！5つの出撃スロットを上手くやりくりするパズルゲーム。
+ * 子供が夢中になって遊べるお助けアイテム（枠+1、シャッフル、そうじマグネット、1手もどす）＆鍵ギミックつき。
  */
 import { sound } from '../../common/js/audio.js?v=151';
 import { loadCss } from '../../common/js/load-css.js';
@@ -33,7 +34,7 @@ export default {
     this.lastDelivered = -1;
     this.lw = 0;
     this.lh = 0;
-    this.lastSlotCounts = [-1, -1, -1, -1, -1];
+    this.lastSlotCounts = [];
 
     this.buildDOM();
     this.colony = new Colony();
@@ -69,6 +70,27 @@ export default {
         </div>
 
         <div class="ca-panel">
+          <!-- お助けアイテム（ブースターバー） -->
+          <div class="ca-boosters">
+            <button class="ca-boost-btn" id="ca-boost-undo" title="1手もどす">
+              <span class="ca-boost-icon">↺</span>
+              <span class="ca-boost-lbl">もどす</span>
+            </button>
+            <button class="ca-boost-btn" id="ca-boost-slot" title="スロット枠を+1ふやす">
+              <span class="ca-boost-icon">➕</span>
+              <span class="ca-boost-lbl">枠+1</span>
+            </button>
+            <button class="ca-boost-btn" id="ca-boost-shuffle" title="タイルを並び替える">
+              <span class="ca-boost-icon">🔀</span>
+              <span class="ca-boost-lbl">シャッフル</span>
+            </button>
+            <button class="ca-boost-btn" id="ca-boost-magnet" title="外側の色を一気におそうじ！">
+              <span class="ca-boost-icon">🧲</span>
+              <span class="ca-boost-lbl">そうじ</span>
+            </button>
+          </div>
+
+          <!-- 出撃スロット（トレイ） -->
           <div class="ca-tray-wrap">
             <div class="ca-tray-head">
               <span class="ca-tray-title">出撃スロット</span>
@@ -76,16 +98,22 @@ export default {
             </div>
             <div class="ca-slots" id="ca-slots"></div>
           </div>
+
+          <!-- タイル列（手前4段） -->
           <div class="ca-tiles" id="ca-tiles"></div>
         </div>
+
+        <!-- トースト通知 -->
+        <div class="ca-toast" id="ca-toast"></div>
 
         <!-- クリアモーダル -->
         <div class="ca-modal" id="ca-modal" style="display:none;">
           <div class="ca-card">
+            <div class="ca-card-stars">⭐⭐⭐</div>
             <div class="ca-card-title" id="ca-card-title">クリア！</div>
             <canvas class="ca-thumb" id="ca-thumb" width="128" height="128"></canvas>
             <div class="ca-card-name" id="ca-card-name"></div>
-            <button class="ca-next" id="ca-next">つぎのレベルへ ➔</button>
+            <button class="ca-next" id="ca-next">つぎの絵へ ➔</button>
           </div>
         </div>
 
@@ -93,9 +121,10 @@ export default {
         <div class="ca-modal" id="ca-stuck-modal" style="display:none;">
           <div class="ca-card ca-stuck-card">
             <div class="ca-card-title ca-stuck-title">手詰まり！（STUCK）</div>
-            <div class="ca-stuck-desc">スロットが埋まり、出撃できるアリがいなくなりました。<br>外側に露出している色から順に選びましょう！</div>
+            <div class="ca-stuck-desc">スロットが埋まってアリが動けなくなっちゃった！<br>アイテムを使って脱出するか、やり直そう！</div>
             <div class="ca-stuck-actions">
-              <button class="ca-stuck-btn ca-undo" id="ca-stuck-undo" style="display:none;">↺ 1手もどす</button>
+              <button class="ca-stuck-btn ca-stuck-magnet" id="ca-stuck-magnet">🧲 そうじアイテムで脱出！</button>
+              <button class="ca-stuck-btn ca-undo" id="ca-stuck-undo">↺ 1手もどす</button>
               <button class="ca-stuck-btn ca-retry" id="ca-stuck-retry">🔄 やり直す</button>
             </div>
           </div>
@@ -114,6 +143,14 @@ export default {
     this.restartBtn = q('#ca-restart');
     this.modal = q('#ca-modal');
     this.stuckModal = q('#ca-stuck-modal');
+    this.toastEl = q('#ca-toast');
+
+    // ブースターボタン
+    this.boostSlotBtn = q('#ca-boost-slot');
+    q('#ca-boost-undo').addEventListener('click', () => this.undoLastSlot());
+    this.boostSlotBtn.addEventListener('click', () => this.expandSlots());
+    q('#ca-boost-shuffle').addEventListener('click', () => this.shuffleColumns());
+    q('#ca-boost-magnet').addEventListener('click', () => this.triggerMagnet());
 
     q('#ca-back').addEventListener('click', () => { this.destroy(); this.onBackToHub(); });
     this.speedBtn.addEventListener('click', () => {
@@ -135,6 +172,11 @@ export default {
     });
     q('#ca-stuck-undo').addEventListener('click', () => {
       this.undoLastSlot();
+    });
+    q('#ca-stuck-magnet').addEventListener('click', () => {
+      this.stuck = false;
+      this.stuckModal.style.display = 'none';
+      this.triggerMagnet();
     });
   },
 
@@ -162,9 +204,19 @@ export default {
     const boardX = Math.round(((w - bp) / 2) * dpr) / dpr;
     const boardY = 14;
     const below = h - (boardY + bp);
+
+    // 3つの巣穴を均等に配置
+    const nestY = Math.min(h - 14, boardY + bp + below * 0.55);
+    const nests = [
+      { x: w * 0.28, y: nestY },
+      { x: w * 0.50, y: nestY },
+      { x: w * 0.72, y: nestY },
+    ];
+
     this.colony.setLayout({
       cell, boardX, boardY,
-      nest: { x: w / 2, y: Math.min(h - 14, boardY + bp + below * 0.55) },
+      nests,
+      nest: nests[1],
       ant: Math.max(6, bp / 46),
       speed: bp * 0.32,
     });
@@ -180,14 +232,17 @@ export default {
       cols: COLS,
       target: 22,
       pixels: picture.pixels,
+      level: this.level,
     });
     this.cleared = false;
     this.stuck = false;
     this.lastDelivered = -1;
-    this.lastSlotCounts = [-1, -1, -1, -1, -1];
+    this.lastSlotCounts = [];
     this.modal.style.display = 'none';
     this.stuckModal.style.display = 'none';
     this.levelEl.textContent = `Level ${this.level}`;
+    this.boostSlotBtn.disabled = false;
+    this.boostSlotBtn.classList.remove('used');
 
     this.applyLayout();
     this.renderSlots();
@@ -195,10 +250,73 @@ export default {
     this.updateCounter();
   },
 
-  /** 5つの出撃スロットを描画 */
+  showToast(msg) {
+    if (!this.toastEl) return;
+    this.toastEl.textContent = msg;
+    this.toastEl.classList.remove('show');
+    void this.toastEl.offsetWidth;
+    this.toastEl.classList.add('show');
+  },
+
+  /** スロット枠+1の拡張 */
+  expandSlots() {
+    if (this.colony.slots.length >= 6) {
+      this.showToast('これ以上スロットは増やせないよ！');
+      return;
+    }
+    const ok = this.colony.expandSlots();
+    if (ok) {
+      sound.play('coin');
+      this.boostSlotBtn.disabled = true;
+      this.boostSlotBtn.classList.add('used');
+      this.showToast('スロットが 6枠 に増えたよ！✨');
+      this.renderSlots();
+    }
+  },
+
+  /** タイル列のシャッフル */
+  shuffleColumns() {
+    // 全列の未タップタイルをすべて集めてシャッフル
+    const all = [];
+    for (const col of this.columns) {
+      while (col.length > 0) all.push(col.shift());
+    }
+    if (all.length === 0) return;
+
+    // シャッフル
+    const rng = mulberry32(Date.now());
+    for (let i = all.length - 1; i > 0; i--) {
+      const j = Math.floor(rng() * (i + 1));
+      [all[i], all[j]] = [all[j], all[i]];
+    }
+
+    all.forEach((t, i) => this.columns[i % COLS].push(t));
+    sound.play('hit');
+    this.showToast('タイルをシャッフルしたよ！🔀');
+    this.renderTiles();
+  },
+
+  /** マグネット（そうじ）ブースター */
+  triggerMagnet() {
+    const res = this.colony.useMagnet();
+    if (res) {
+      sound.play('reward');
+      this.showToast(`🧲 おそうじ！ ${res.count}マスを回収！✨`);
+      this.renderSlots();
+      this.renderTiles();
+      this.updateCounter();
+    } else {
+      this.showToast('回収できる外側のマスがありません');
+    }
+  },
+
+  /** 出撃スロットを描画（5〜6枠） */
   renderSlots() {
     this.slotsEl.innerHTML = '';
-    for (let si = 0; si < 5; si++) {
+    const totalSlots = this.colony.slots.length;
+    this.slotsEl.style.gridTemplateColumns = `repeat(${totalSlots}, 1fr)`;
+
+    for (let si = 0; si < totalSlots; si++) {
       const slot = this.colony.slots[si];
       const slotEl = document.createElement('div');
       slotEl.dataset.slot = String(si);
@@ -232,12 +350,13 @@ export default {
 
   /** アリの出撃・帰還に応じてスロットの数値を更新 */
   updateSlots() {
+    const totalSlots = this.colony.slots.length;
     let structureChanged = false;
-    for (let si = 0; si < 5; si++) {
+
+    for (let si = 0; si < totalSlots; si++) {
       const slot = this.colony.slots[si];
       const curLeft = slot ? slot.left : -1;
       if (curLeft !== this.lastSlotCounts[si]) {
-        // スロットが空になった、または新しく入った場合は再描画
         if ((curLeft === -1 && this.lastSlotCounts[si] !== -1) ||
             (curLeft !== -1 && this.lastSlotCounts[si] === -1)) {
           structureChanged = true;
@@ -253,7 +372,7 @@ export default {
 
     // 数値とゲージのみ更新
     const slotEls = this.slotsEl.children;
-    for (let si = 0; si < 5; si++) {
+    for (let si = 0; si < totalSlots; si++) {
       const slot = this.colony.slots[si];
       const el = slotEls[si];
       if (!slot || !el || !el.classList.contains('active')) continue;
@@ -297,11 +416,18 @@ export default {
         const hex = this.picture.palette[t.key];
         b.className = 'ca-tile ' + (depth === 0 ? 'front' : 'back');
 
-        if (depth >= HIDDEN_DEPTH) {
+        if (t.locked) b.classList.add('locked');
+        if (t.hasKey) b.classList.add('has-key');
+
+        if (depth >= HIDDEN_DEPTH && !t.locked) {
           b.classList.add('hidden');
           b.textContent = '？';
         } else {
-          b.textContent = String(t.n);
+          let label = String(t.n);
+          if (t.locked) label = `🔒${t.n}`;
+          else if (t.hasKey) label = `🗝️${t.n}`;
+          b.textContent = label;
+
           b.style.setProperty('--c', hex);
           b.style.setProperty('--d', shade(hex, 0.62));
           b.style.setProperty('--t', textColorFor(hex));
@@ -335,17 +461,48 @@ export default {
     if (!col || col.length === 0) return;
 
     const tile = col[0];
+
+    // 南京錠（🔒）がついている場合
+    if (tile.locked) {
+      sound.play('metal');
+      this.showToast('カギ 🗝️ をタップしてロックを解除しよう！');
+      const firstBtn = this.tilesEl.children[ci]?.querySelector('.ca-tile.front');
+      if (firstBtn) {
+        firstBtn.classList.remove('locked-shake');
+        void firstBtn.offsetWidth;
+        firstBtn.classList.add('locked-shake');
+      }
+      return;
+    }
+
     const hex = this.picture.palette[tile.key];
     const slotIdx = this.colony.addTileToSlot(tile, hex, ci);
     if (slotIdx === -1) {
-      // 5スロット満杯で入らない
       sound.play('hit');
       this.shakeTray();
       return;
     }
 
+    // 鍵タイル（🗝️）をタップした場合は、盤面にあるロックを解除！
+    if (tile.hasKey) {
+      let unlockedAny = false;
+      for (const otherCol of this.columns) {
+        for (const otherTile of otherCol) {
+          if (otherTile.locked) {
+            otherTile.locked = false;
+            unlockedAny = true;
+            break;
+          }
+        }
+        if (unlockedAny) break;
+      }
+      sound.play('coin');
+      this.showToast('カギで 🔒 ロックが解除された！✨');
+    } else {
+      sound.play('tap');
+    }
+
     col.shift();
-    sound.play('tap');
     this.renderSlots();
     this.renderTiles();
   },
@@ -417,9 +574,6 @@ export default {
   showStuck() {
     this.stuck = true;
     sound.play('hit');
-    const undoBtn = this.container.querySelector('#ca-stuck-undo');
-    const undoable = this.colony.slots.find(s => s && s.left === s.initial && s.activeAnts === 0 && s.colIndex >= 0);
-    undoBtn.style.display = undoable ? 'block' : 'none';
     this.stuckModal.style.display = 'flex';
   },
 
@@ -434,8 +588,11 @@ export default {
       this.stuck = false;
       this.stuckModal.style.display = 'none';
       sound.play('tap');
+      this.showToast('1手もどしたよ！↺');
       this.renderSlots();
       this.renderTiles();
+    } else {
+      this.showToast('もどせる待機中のタイルがありません');
     }
   },
 

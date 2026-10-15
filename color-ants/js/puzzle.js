@@ -33,7 +33,7 @@ export function splitCount(total, parts, rng) {
  * 外側のピクセルに対応するタイルほど列の手前に、内側の色ほど列の奥に配置される（外側ルール）。
  * タイルの数字は小口（12〜35前後）に分割し、1ブロックの総量が多すぎないようにする。
  */
-export function buildTiles(counts, rng, { cols = 5, target = 22, pixels = null } = {}) {
+export function buildTiles(counts, rng, { cols = 5, target = 22, pixels = null, level = 1 } = {}) {
   const entries = Object.entries(counts).filter(([, c]) => c > 0);
 
   if (!pixels) {
@@ -103,6 +103,26 @@ export function buildTiles(counts, rng, { cols = 5, target = 22, pixels = null }
 
   const columns = Array.from({ length: cols }, () => []);
   allTiles.forEach((t, i) => columns[i % cols].push(t));
+
+  // レベル2以上なら「鍵と南京錠（🔒・🗝️）」ギミックを配置
+  if (level >= 2) {
+    const lockPairs = level >= 4 ? 2 : 1;
+    for (let p = 0; p < lockPairs; p++) {
+      const lockCol = (p * 2 + 1) % cols;
+      const keyCol = (lockCol + 2) % cols;
+      const lockDepth = Math.min(2, Math.max(1, columns[lockCol].length - 1));
+      const keyDepth = Math.min(1, Math.max(0, columns[keyCol].length - 1));
+
+      const lockTile = columns[lockCol][lockDepth];
+      const keyTile = columns[keyCol][keyDepth];
+
+      if (lockTile && keyTile && lockTile !== keyTile && !lockTile.locked && !keyTile.hasKey) {
+        lockTile.locked = true;
+        keyTile.hasKey = true;
+      }
+    }
+  }
+
   return columns;
 }
 

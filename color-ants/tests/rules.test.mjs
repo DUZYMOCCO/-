@@ -129,3 +129,41 @@ test('deployed tiles count down as ants leave one at a time and clear exposed pi
   }
   assert.equal(s.left, 0);
 });
+
+test('boosters: expandSlots adds 6th slot, useMagnet sweeps exposed layer', () => {
+  const pic = buildPicture(PICTURE_DEFS[0]);
+  const colony = new Colony();
+  colony.reset(pic, mulberry32(1));
+  colony.setLayout(LAYOUT);
+
+  assert.equal(colony.slots.length, 5);
+  assert.equal(colony.expandSlots(), true);
+  assert.equal(colony.slots.length, 6);
+  assert.equal(colony.expandSlots(), false); // 6が上限
+
+  // マグネット使用
+  const initialDelivered = colony.delivered;
+  const res = colony.useMagnet();
+  assert.ok(res && res.count > 0, 'magnet should harvest exposed pixels');
+  assert.equal(colony.delivered, initialDelivered + res.count);
+  assert.ok(colony.crumbs.some(c => c.isStar), 'magnet should spawn star particles');
+});
+
+test('puzzle gimmicks: level >= 2 adds locked tile and key tile', () => {
+  const pic = buildPicture(PICTURE_DEFS[0]);
+  const counts = countByKey(pic.pixels);
+
+  // level 1: 鍵もロックもなし
+  const colsL1 = buildTiles(counts, mulberry32(1), { cols: 5, pixels: pic.pixels, level: 1 });
+  const allL1 = colsL1.flat();
+  assert.ok(allL1.every(t => !t.locked && !t.hasKey), 'level 1 should not have locks or keys');
+
+  // level 2: 1対の鍵と南京錠が存在する
+  const colsL2 = buildTiles(counts, mulberry32(1), { cols: 5, pixels: pic.pixels, level: 2 });
+  const allL2 = colsL2.flat();
+  const lockedTiles = allL2.filter(t => t.locked);
+  const keyTiles = allL2.filter(t => t.hasKey);
+  assert.equal(lockedTiles.length, 1, 'level 2 should have 1 locked tile');
+  assert.equal(keyTiles.length, 1, 'level 2 should have 1 key tile');
+});
+

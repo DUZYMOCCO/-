@@ -53,12 +53,26 @@ export class Colony {
     this.slots = [null, null, null, null, null];
 
     this.pulse = 0;
+    this.pulses = [0, 0, 0];
     this.time = 0;
-    this.layout = { cell: 5, boardX: 0, boardY: 0, nest: { x: 0, y: 0 }, ant: 7, speed: 100 };
+    this.layout = { cell: 5, boardX: 0, boardY: 0, nest: { x: 0, y: 0 }, nests: [{ x: 0, y: 0 }], ant: 7, speed: 100 };
   }
 
   setLayout(layout) {
     this.layout = layout;
+    if (!this.layout.nests) {
+      this.layout.nests = this.layout.nest ? [this.layout.nest] : [{ x: 0, y: 0 }];
+    }
+    this.pulses = new Array(this.layout.nests.length).fill(0);
+  }
+
+  /** スロット枠を1つ拡張（最大6枠） */
+  expandSlots() {
+    if (this.slots.length < 6) {
+      this.slots.push(null);
+      return true;
+    }
+    return false;
   }
 
   pixelPos(p) {
@@ -193,6 +207,11 @@ export class Colony {
     let eatenCount = 0;
 
     // スロットからのアリ出撃処理
+    const nests = L.nests && L.nests.length > 0 ? L.nests : [L.nest || { x: 0, y: 0 }];
+    if (this.pulses) {
+      for (let i = 0; i < this.pulses.length; i++) this.pulses[i] = Math.max(0, this.pulses[i] - dt * 4);
+    }
+
     for (let si = 0; si < this.slots.length; si++) {
       const slot = this.slots[si];
       if (!slot) continue;
@@ -207,10 +226,14 @@ export class Colony {
             slot.activeAnts++;
             slot.spawnTimer = SPAWN_GAP;
 
+            const nestIdx = si % nests.length;
+            const nest = nests[nestIdx];
+
             this.ants.push({
               slotIndex: si,
-              x: L.nest.x + (Math.random() - 0.5) * L.ant * 0.8,
-              y: L.nest.y,
+              nestIndex: nestIdx,
+              x: nest.x + (Math.random() - 0.5) * L.ant * 0.8,
+              y: nest.y,
               px: pixel,
               hex: slot.hex,
               dark: shade(slot.hex, 0.55),
@@ -265,10 +288,14 @@ export class Colony {
         a.chew -= step;
         if (a.chew <= 0) a.state = 'back';
       } else if (a.state === 'back') {
-        if (this.moveToward(a, L.nest.x, L.nest.y, move, L.ant * 0.6)) {
+        const nest = nests[a.nestIndex % nests.length] || nests[0];
+        if (this.moveToward(a, nest.x, nest.y, move, L.ant * 0.6)) {
           a.state = 'done';
           this.delivered++;
           this.pulse = 1;
+          if (this.pulses && this.pulses[a.nestIndex] !== undefined) {
+            this.pulses[a.nestIndex] = 1;
+          }
           // スロットの帰還カウント
           const slot = this.slots[a.slotIndex];
           if (slot) {
@@ -290,5 +317,64 @@ export class Colony {
     this.crumbs = this.crumbs.filter(c => c.life > 0);
 
     return eatenCount;
+  }
+
+  /**
+   * お助けアイテム：マグネット（一発そうじ）
+   * 現在外側に露出しているピクセルを最大25個、一気に回収して消去する
+   */
+  useMagnet() {
+    const exposedCounts = {};
+    for (const p of this.targetPixels) {
+      if (!p.eaten && !p.targeted && this.isExposed(p)) {
+        exposedCounts[p.key] = (exposedCounts[p.key] || 0) + 1;
+      }
+    }
+    const entries = Object.entries(exposedCounts);
+    if (entries.length === 0) return null;
+    entries.sort((a, b) => b[1] - a[1]);
+    const targetKey = entries[0][0];
+
+    const harvested = [];
+    for (const p of this.targetPixels) {
+      if (p.key === targetKey && !p.eaten && !p.targeted && this.isExposed(p)) {
+        p.eaten = true;
+        this.remaining--;
+        this.delivered++;
+        this.fresh.push(p);
+        harvested.push(p);
+        if (harvested.length >= 25) break;
+      }
+    }
+
+    // 対応するスロットがあれば数字を減らす
+    for (let si = 0; si < this.slots.length; si++) {
+      const s = this.slots[si];
+      if (s && s.key === targetKey && s.left > 0) {
+        s.left = Math.max(0, s.left - harvested.length);
+        if (s.left === 0 && s.activeAnts === 0) {
+          this.slots[si] = null;
+        }
+        break;
+      }
+    }
+
+    // 金色の星パーティクルを発生
+    for (const p of harvested) {
+      const pos = this.pixelPos(p);
+      for (let i = 0; i < 2; i++) {
+        this.crumbs.push({
+          x: pos.x,
+          y: pos.y,
+          vx: (Math.random() - 0.5) * 80,
+          vy: -20 - Math.random() * 60,
+          life: 0.6,
+          hex: '#ffd700',
+          isStar: true,
+        });
+      }
+    }
+
+    return { key: targetKey, count: harvested.length };
   }
 }
