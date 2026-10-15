@@ -1,6 +1,6 @@
 import {attributeValues,ensureAttributeProfile} from './unit-attributes.js?v=274';
 import {isMagicUser,ensureMana} from './magic-rules.js?v=277';
-import {WORLD_SIZE} from './world.js?v=277';
+import {WORLD_SIZE} from './world.js?v=281';
 import {inCurrentInstance} from './instance-rules.js?v=256';
 import {saveSlots} from './save-slots.js?v=269';
 import {requestCheckpointAction,checkpointNotice} from './checkpoint-ui.js?v=259';

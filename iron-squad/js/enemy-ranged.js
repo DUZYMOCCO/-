@@ -3,6 +3,10 @@ import {recordCombat} from './phase-rules.js?v=218';
 import {tankSlowFactor} from './heavy-tank.js?v=235';
 
 export const RANGED_ENEMIES=Object.freeze({
+  road_archer:{name:'\u91ce\u76d7\u306e\u5f13\u5175',base:'goblin',kind:'physical',range:300,interval:2.2,speed:310,color:'#b5a078'},
+  dust_spirit:{name:'\u7802\u306e\u7cbe',base:'slime',kind:'elemental',element:'earth',range:240,interval:2.8,speed:240,color:'#cfbc8e'},
+  marsh_wisp:{name:'\u6cbc\u306e\u9b3c\u706b',base:'slime',kind:'elemental',element:'lightning',range:265,interval:3,speed:280,color:'#8cc4bc'},
+  demon_mage:{name:'\u9b54\u65cf\u306e\u9b54\u5c0e\u58eb',base:'orc',kind:'magic',element:'arcane',range:340,interval:3.4,speed:220,color:'#aa8abf',splash:40},
   goblin_archer:{name:'ゴブリン弓兵',base:'goblin',kind:'physical',range:300,interval:2.2,speed:310,color:'#b5a078'},
   bandit_crossbow:{name:'山賊石弓兵',base:'goblin',kind:'physical',range:370,interval:3,speed:430,color:'#c4baa0'},
   flame_imp:{name:'火炎小鬼',base:'goblin',kind:'elemental',element:'fire',range:260,interval:2.8,speed:240,color:'#bd7755',splash:42},
@@ -17,7 +21,7 @@ export const isDefenseUnit=u=>['HEAVY','PALADIN','TEMPLAR','IMMORTAL_AEGIS'].inc
 export const isHostileShot=p=>p?.type==='ENEMY_BOLT'||p?.type==='BREATH_FLAME'||p?.type==='TITAN_BEAM';
 export function configureRangedEnemy(unit,{random=Math.random,forceType=null}={}) {
   if(!unit||unit.isBoss||unit.isColossal||unit.isDungeonBoss||unit.fixedKind)return unit;
-  const kind=forceType||(random()<.28?Object.keys(RANGED_ENEMIES)[Math.min(5,Math.floor(random()*6))]:null);
+  const kind=forceType||(random()<.28?['goblin_archer','bandit_crossbow','flame_imp','frost_spirit','storm_wisp','dark_mage'][Math.min(5,Math.floor(random()*6))]:null);
   const def=RANGED_ENEMIES[kind];if(!def)return unit;
   unit.type=kind;unit.name=def.name;unit.color=def.color;unit.rangedKind=kind;
   unit.atkTimer=Math.max(.6,unit.atkTimer||0);return unit;
@@ -26,7 +30,9 @@ export function updateRangedEnemy(game,unit,target,dt) {
   const def=RANGED_ENEMIES[unit.rangedKind||unit.type];if(!def)return false;
   const dx=target.x-unit.x,dy=target.y-unit.y,d=Math.hypot(dx,dy)||1;
   unit.facingAngle=Math.atan2(dy,dx);unit.atkTimer=Math.max(0,(unit.atkTimer||0)-dt);
-  if(d>def.range||game.wallBlocksEnemyAttack?.(unit,target)) {
+  // Flight can cross rocks, but its projectiles still need an unobstructed ray.
+  // Move out of cover instead of standing inside a rock firing blocked shots.
+  if(d>def.range||game.wallBlocksEnemyAttack?.(unit,target)||(unit.flying&&game.attackBlocked?.({x:unit.x,y:unit.y},target))) {
     const goal=game.dungeonMoveTarget?.(unit,target)||target,mx=goal.x-unit.x,my=goal.y-unit.y,md=Math.hypot(mx,my)||1;
     const step=Math.min(md,unit.speed*tankSlowFactor(game,unit,unit.magicSlowTimer>0?.55:1)*dt);unit.x+=mx/md*step;unit.y+=my/md*step;
   } else if(unit.atkTimer<=0) {

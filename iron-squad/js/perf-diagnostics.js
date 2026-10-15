@@ -1,6 +1,6 @@
 // Opt-in, in-memory instrumentation. No hooks, observers, timers or storage writes at import time.
-import {gameText} from './game-text.js?v=271';
-export const PERF_VERSION='6.11.25',PERF_THRESHOLD_MS=100,PERF_RECORD_LIMIT=10;
+import {gameText} from './game-text.js?v=281';
+export const PERF_VERSION='7.0.4',PERF_THRESHOLD_MS=100,PERF_RECORD_LIMIT=10;
 export const PERF_SETTING_KEY='game_studio_ironsquad_perf_enabled';
 export const perfRequested=search=>new URLSearchParams(search??globalThis.window?.location?.search??'').get('perf')==='1';
 

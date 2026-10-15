@@ -1,0 +1,9 @@
+{
+  "reference": "7.0.0 / v277",
+  "current": "7.0.4 / v281",
+  "whollyInsideHomeRadius": 3200,
+  "tiles": 96,
+  "pixels": "byte-identical PNG",
+  "scenery": "identical",
+  "camps": "identical"
+}

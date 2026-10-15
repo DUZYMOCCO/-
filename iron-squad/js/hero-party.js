@@ -4,7 +4,7 @@ import {attackCooldown} from './equipment-rules.js?v=273';
 import {migrateCampaignEnemy} from './campaign-scaling.js?v=241';
 import {HERO_RULES,heroMembers,heroSharesSpace,visibleHeroMembers} from './hero-rules.js';
 import {advanceHeroRoute,heroSegmentOpen,heroRouteCurrent} from './hero-navigation.js?v=277';
-import {WORLD_SIZE,settleUnit} from './world.js?v=277';
+import {WORLD_SIZE,settleUnit} from './world.js?v=281';
 import {DUNGEON_DEFS,dungeonBlocks} from './dungeon.js?v=251';
 import {nearestDungeonFloor} from './dungeon-layout.js?v=182';
 import {economicFieldBlocked} from './regional-economy.js?v=277';
@@ -19,7 +19,7 @@ import {ensureMana,regenerateMana,spendMana,isMage} from './magic-rules.js?v=277
 import {takeRangedShot,supplyLocation,ammoCapacity} from './supply-rules.js?v=277';
 import {distanceScaling} from './equipment-rules.js?v=273';
 import {strongEnemyReward} from './combat-rewards.js?v=182';
-import {RANGED_ENEMIES} from './enemy-ranged.js?v=235';
+import {RANGED_ENEMIES} from './enemy-ranged.js?v=281';
 import {startHeroJournal,archiveHeroJournal,appendHeroDiary,recordHeroEquipmentGrant} from './hero-journal.js?v=277';
 import {grantHeroEquipment} from './hero-equipment.js?v=239';
 const C=WORLD_SIZE/2,castle=()=>DUNGEON_DEFS.find(d=>d.id==='dungeon_demon_castle');

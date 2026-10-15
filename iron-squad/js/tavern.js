@@ -3,7 +3,7 @@ import {isOwnSquad} from './own-squad-marker.js?v=182';
 import {persistentUnit} from './render-support.js';
 import {drawSoldierPortrait} from './soldier-appearance.js?v=206';
 import {setSubDialog} from './interface.js?v=275';
-import {WORLD_SIZE,TAVERN_SITE} from './world.js?v=277';
+import {WORLD_SIZE,TAVERN_SITE} from './world.js?v=281';
 import {daylightAt} from './day-night.js?v=208';
 import {drawTavernFixtures,drawTavernCandles} from './nightlife-visuals.js?v=277';
 import {GARDEN_TABLES,TAVERN_TABLES,TAVERN_SEAT_COUNT,tavernPoint,campPoseFor,drawLeisureTable} from './camp-leisure.js?v=277';

@@ -1,4 +1,5 @@
-import {WORLD_SIZE,biomeAt,eastWestRoadY,northSouthRoadX,riverCenterY} from './world.js?v=277';
+import {drawWildernessMap} from './wilderness-sites.js?v=281';
+import {WORLD_SIZE,biomeAt,eastWestRoadY,northSouthRoadX,riverCenterY} from './world.js?v=281';
 import {UNDISCOVERED_MEDICAL_LABEL} from './medical-posts.js?v=277';
 import {dungeonSolids} from './dungeon.js?v=251';
 import {inCurrentInstance} from './instance-rules.js?v=256';
@@ -58,6 +59,7 @@ export function renderNavigationMap(game) {
    if(p.discovered){if(known(p.x,p.y))drawNavigationIcon(ctx,'medical',px(p.x),py(p.y),'診療所',9);}
    else drawNavigationIcon(ctx,'medicalUnknown',px(p.x),py(p.y),UNDISCOVERED_MEDICAL_LABEL,8);
   }
+  drawWildernessMap(ctx,game,px,py,inside);
   const economy=game.nation?economicState(game):null;
   for(const region of ECONOMIC_REGIONS)if(region.kind==='village'&&economy?.regions?.[region.id]?.discovered&&inside(region.x,region.y)&&known(region.x,region.y))drawNavigationIcon(ctx,'town',px(region.x),py(region.y),region.name,8);
   for(const p of game.outposts||[])if(inside(p.x,p.y)&&known(p.x,p.y))drawNavigationIcon(ctx,p.type==='CAGE'?'cage':p.type==='FORT'?'base':'ruin',px(p.x),py(p.y),p.type==='CAGE'?'捕虜':p.type==='FORT'?'砦':'',6);

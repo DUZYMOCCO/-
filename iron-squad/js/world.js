@@ -1,6 +1,8 @@
 // 158720 = 310 tiles of 512. Half-width 79360.
 // Base walk is 165px/s, so camp to the nearest edge is 481s (8 min 1s).
 // 10800 was about 33s and 21600 about 65s. Both were still a short walk.
+import {wildernessPlotContains} from './wilderness-layout.js?v=281';
+import {biomeKeyAt,naturalTerrainAt,paintBiomeTerrain,terrainHash} from './biome-terrain.js?v=278';
 import {drawNaturalPond,terrainSeed} from './terrain-shapes.js?v=182';
 import {hqFacilityPlotContains} from './hq-facility-layout.js?v=201';
 import {outerWallLineNear} from './hq-outer-wall.js?v=198';
@@ -68,7 +70,7 @@ export const HOME_SANCTUARY_RADIUS = 3000;
 const ROAD_CORRIDOR_RADIUS = 4000;
 const BIOMES = {
   east:  { name:'東の街道平原', grounds:['#2a2418','#201c12','#16120e'], grass:'#6a5830', tree:'oak' },
-  south: { name:'南の塩原',     grounds:['#343228','#28261e','#1c1a14'], grass:'#7a7460', tree:'dead' },
+  south: { name:'南の塩原',     grounds:['#b9b69a','#aba88e','#9c9c86'], grass:'#8a8970', tree:'dead' },
   north: { name:'北の山地',     grounds:['#161c20','#12161a','#0e1214'], grass:'#3a4a46', tree:'pine' },
   west:  { name:'西の湿地',     grounds:['#12201c','#0e1816','#0c1210'], grass:'#2a4034', tree:'dead' }
 };
@@ -83,13 +85,15 @@ export const biomeAt = (x, y) => {
   const dx = x - CENTER, dy = y - CENTER;
   const d = Math.hypot(dx, dy);
   if (d < HOME_R) return HOME_BIOME;
-  const ang = Math.atan2(dy, dx);
-  const band = ang > -0.785398 && ang < 0.785398 ? BIOMES.east
-    : ang >= 0.785398 && ang < 2.356195 ? BIOMES.south
-    : ang >= -2.356195 && ang <= -0.785398 ? BIOMES.north
-    : BIOMES.west;
+  const id=biomeKeyAt(x,y),band=BIOMES[id];
   const step = d < 22000 ? 0 : d < 48000 ? 1 : 2;
-  return { name: band.name, ground: band.grounds[step], grass: band.grass, tree: band.tree };
+  // Quantised blends avoid a visible straight colour seam at either boundary.
+  const edge=Math.abs(Math.abs(dx)-Math.abs(dy)),adj=Math.abs(dx)>Math.abs(dy)?(dy>0?'south':'north'):(dx>0?'east':'west');
+  const primary=Math.abs(dx)>Math.abs(dy)?(dx>0?'east':'west'):(dy>0?'south':'north');
+  const blend=(a,b,t)=>{const av=parseInt(a.slice(1),16),bv=parseInt(b.slice(1),16);let n=0;for(const shift of [16,8,0])n|=Math.round(((av>>shift)&255)*(1-t)+((bv>>shift)&255)*t)<<shift;return '#'+n.toString(16).padStart(6,'0');};
+  let ground=edge<500?blend(BIOMES[primary].grounds[step],BIOMES[adj].grounds[step],Math.round((.5-edge/1000)*8)/8):band.grounds[step];
+  if(d<3700)ground=blend(HOME_BIOME.ground,ground,Math.round((d-3200)/500*8)/8);
+  return {id,name:band.name,ground,grass:band.grass,tree:band.tree};
 };
 // The two old sine roads stay, so towns remain on them. Material changes by arm.
 const roadDist = (x, y) => Math.min(
@@ -230,8 +234,33 @@ export function reliefAt(x, y) {
   return ravineAt(x, y);
 }
 
-// Only unbuilt public works (bridge / landfill pits) block the open field now.
-// The old cliff faces were removed; ravines and rivers are walkable.
+// Only visible isolated rocks and unbuilt public works block the field.
+// The old cliff faces remain removed; ravines and rivers are walkable.
+// Existing dungeon entrances and twelve original outposts keep their approaches.
+const LANDMARK_CLEARINGS=[[-2600,-2400],[4600,4400],[7200,-7000],[42000,42000]];
+for(let ring=0;ring<3;ring++)for(let i=0;i<4;i++){const a=(i*90+45+ring*22)*Math.PI/180,r=[1800,4500,7800][ring];LANDMARK_CLEARINGS.push([Math.cos(a)*r,Math.sin(a)*r]);}
+export function biomeTerrainAllowed(x,y,pad=0) {
+  if(LANDMARK_CLEARINGS.some(([dx,dy])=>Math.hypot(x-CENTER-dx,y-CENTER-dy)<pad+220))return false;
+  if(roadDist(x,y)<pad+360)return false;
+  if(SETTLEMENTS.some(s=>Math.abs(x-CENTER-s.ox)<s.padW/2+pad+180&&Math.abs(y-CENTER-s.oy)<s.padH/2+pad+180))return false;
+  // All six diagonal aid posts (including their original nudge search area).
+  const d=Math.hypot(x-CENTER,y-CENTER);
+  if(Math.abs(Math.abs(x-CENTER)-Math.abs(y-CENTER))<4300+pad&&(Math.abs(d-45000)<3700+pad||Math.abs(d-70000)<3700+pad))return false;
+  return true;
+}
+export const fieldTerrainAt=(x,y)=>naturalTerrainAt(x,y,biomeTerrainAllowed);
+export const fieldSpeedFactor=(x,y)=>fieldTerrainAt(x,y)==='water'?.85:1;
+export function biomeMoveTarget(unit,target){
+  const dx=target.x-unit.x,dy=target.y-unit.y,d=Math.hypot(dx,dy);if(d<1)return target;
+  const reach=Math.min(95,d),nx=dx/d,ny=dy/d;
+  if(!fieldBlocks(unit.x+nx*reach,unit.y+ny*reach)&&!fieldBlocks(unit.x+nx*reach*.5,unit.y+ny*reach*.5))return target;
+  const side=unit._rockSide||(unit._rockSide=terrainHash(Math.floor(unit.x/1024),Math.floor(unit.y/1024))<.5?1:-1),a=Math.atan2(dy,dx);
+  for(const turn of [side*.65,-side*.65,side*1.25,-side*1.25,side*1.75,-side*1.75]){
+    const x=unit.x+Math.cos(a+turn)*95,y=unit.y+Math.sin(a+turn)*95;
+    if(!fieldBlocks(x,y)&&!fieldBlocks((x+unit.x)/2,(y+unit.y)/2))return {x,y};
+  }
+  return target;
+}
 export function fieldBlocks(x, y, works=[]) {
   for(const p of works){
     const dx=x-p.x,dy=y-p.y;
@@ -241,7 +270,7 @@ export function fieldBlocks(x, y, works=[]) {
     if(p.done)return false;
     if(p.kind==='bridge'||p.kind==='landfill')return true;
   }
-  return false;
+  return fieldTerrainAt(x,y)==='rock';
 }
 export function settleUnit(unit, blocked) {
   if (!unit || !Number.isFinite(unit.x) || !Number.isFinite(unit.y) || typeof blocked !== 'function') return false;
@@ -700,7 +729,7 @@ export class WorldTerrain {
     if(typeof Worker!=='function'||typeof OffscreenCanvas!=='function')return;
     if(!this._terrainWorker){
       try{
-        this._terrainWorker=new Worker(new URL('./terrain-worker.js?v=277',import.meta.url),{type:'module'});
+        this._terrainWorker=new Worker(new URL('./terrain-worker.js?v=281',import.meta.url),{type:'module'});
         const disable=()=>{this._terrainWorkerDisabled=true;this._terrainWorker?.terminate();this._terrainWorker=null;this._pendingTerrain.clear();};
         this._terrainWorker.onerror=disable;
         this._terrainWorker.onmessage=({data})=>{
@@ -756,6 +785,7 @@ export class WorldTerrain {
         c.fillStyle=shade; c.fillRect(x,y,4,4);
       }
     }
+    paintBiomeTerrain(c,x0,y0,biomeTerrainAllowed);
     paintRoutes(c, x0, y0);
     for(let i=0;i<260;i++) {
       const x=rnd()*TILE,y=rnd()*TILE,wx=x+x0,wy=y+y0;
@@ -808,8 +838,14 @@ export class WorldTerrain {
       if(feature<.22 && Math.hypot(wx-x0-fx,(wy-y0-fy)*1.6)<100) continue;
       if(may && reliefAt(wx,wy)) continue;
       const b=biomeAt(wx,wy),roll=rnd();
-      const type=roll<.58?b.tree:(roll<.82?'rock':'bush');
-      objects.push({type,x:wx,y:wy,s:.7+rnd()*.8,tone:Math.floor(rnd()*3),ph:rnd()*6.28});
+      const id=b.id||'home',h=terrainHash(Math.floor(wx/48),Math.floor(wy/48));
+      // Keep the old RNG consumption and home scenery exactly intact.
+      const type=id==='south'?(roll<.78?'rock':'bush'):id==='north'?(roll<.42?'pine':roll<.9?'rock':'bush'):id==='west'?(roll<.23?'dead':'bush'):id==='east'?(roll<.35?'oak':'bush'):(roll<.58?b.tree:(roll<.82?'rock':'bush'));
+      const size=.7+rnd()*.8,tone=Math.floor(rnd()*3),ph=rnd()*6.28;
+      if(id!=='home'&&(fieldTerrainAt(wx,wy)!=='open'||(id==='east'&&h>.30)||(id==='south'&&h>.45)||(id==='west'&&h>.55)))continue;
+      objects.push({type,x:wx,y:wy,s:size,tone,ph});
+      continue;
+
     }
     // Camp paving is anchored globally, including when its center crosses a tile edge.
     for(let row=-6;row<=6;row++) for(let col=-7;col<=7;col++) {
@@ -833,7 +869,7 @@ export class WorldTerrain {
     this.generated++;
     // The outer bailey line stays clear even before it is built (reserved land, stable tile cache).
     // Inside the HQ walls (buildings, tables, tents) nothing grows wild.
-    const clear=(x,y)=>!inTavernSite(x,y)&&!(Math.abs(x-CENTER)<330&&Math.abs(y-CENTER)<330)&&!hqFacilityPlotContains(x-CENTER,y-CENTER,55)&&!outerWallLineNear(x-CENTER,y-CENTER,60);
+    const clear=(x,y)=>!wildernessPlotContains(x,y)&&!inTavernSite(x,y)&&!(Math.abs(x-CENTER)<330&&Math.abs(y-CENTER)<330)&&!hqFacilityPlotContains(x-CENTER,y-CENTER,55)&&!outerWallLineNear(x-CENTER,y-CENTER,60);
     return {canvas,context:c,objects:objects.filter(o=>clear(o.x,o.y)),camps:camps.filter(o=>clear(o.x,o.y)),x:x0,y:y0};
   }
   draw(c,camera,width,height,zoom) {

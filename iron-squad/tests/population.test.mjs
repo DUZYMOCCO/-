@@ -28,7 +28,7 @@ game.updateSpawns(.02);assert.equal(game.monsters.length,0,'camp peace skips the
 const wildX=campX+6000,wildY=campY;
 assert.ok(ringMissesPeace(wildX,wildY),'the wild check point keeps a full spawn ring clear');
 game.player.x=wildX;game.player.y=wildY;game.spawnTimer=ENEMY_SPAWN_INTERVAL;
-game.updateSpawns(.02);assert.equal(game.monsters.length,1);
+game.updateSpawns(.02);assert.ok(game.monsters.length>=1&&game.monsters.length<=6,'one encounter is a solo enemy or a bounded pack');if(game.monsters.length>1)assert.ok(game.monsters.every(m=>m.encounterGroup),'extra enemies belong to the same deliberate group');
 game.player.x=campX;game.player.y=campY;
 // The cap includes bosses, and a pending boss waits until there is room.
 game.monsters=Array.from({length:ENEMY_LIMIT},()=>({x:game.player.x,y:game.player.y,hp:10,isBoss:false}));game.colossalBossRespawnTimer=0;

@@ -1,6 +1,7 @@
+import {drawEnemyArt} from './enemy-art.js?v=280';
 import {givenName} from './squad-names.js?v=182';
 import {downLabel} from './casualty-rules.js?v=274';
-import {RANGED_ENEMIES} from './enemy-ranged.js?v=235';
+import {RANGED_ENEMIES} from './enemy-ranged.js?v=281';
 import {BRUTE_DRAW_SCALE} from './field-hosts.js?v=182';
 import {equipmentVisualProfile} from './equipment-tiers.js?v=231';
 import {drawBodyEquipment,drawEquipmentShield} from './equipment-art.js?v=231';
@@ -703,7 +704,8 @@ function drawDemon(c, m, now) {
   }
 }
 
-export function drawFieldMob(c, m, now) {
+export function drawFieldMob(c, m, now, facingApplied=false) {
+  if(drawEnemyArt(c,m,now,facingApplied))return true;
   if (m.type === 'brute') { drawBrute(c, m, now); return true; }
   if (m.type === 'demon_front' || m.type === 'demon_rear') { drawDemon(c, m, now); return true; }
   const ranged=RANGED_ENEMIES[m.type];

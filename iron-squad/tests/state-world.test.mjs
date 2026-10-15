@@ -11,7 +11,7 @@ globalThis.localStorage = {
 globalThis.window = {};
 const noop = () => {};
 const context = new Proxy({}, {get: (_,key) =>
-  key === 'createRadialGradient' ? () => ({addColorStop:noop}) : noop,
+  ['createRadialGradient','createLinearGradient'].includes(key) ? () => ({addColorStop:noop}) : noop,
   set: () => true});
 globalThis.document = {
   getElementById: () => null,
@@ -19,7 +19,7 @@ globalThis.document = {
 };
 const {storage} = await import('../../common/js/storage.js');
 const {saveSlots} = await import('../js/save-slots.js');
-const {WorldTerrain,WORLD_SIZE,WORLD_VERSION,reliefAt,SETTLEMENTS,HOME_SANCTUARY_RADIUS,depthFade,fieldBlocks,settleUnit,eastWestRoadY,northSouthRoadX,riverCenterY} = await import('../js/world.js');
+const {WorldTerrain,WORLD_SIZE,WORLD_VERSION,reliefAt,SETTLEMENTS,HOME_SANCTUARY_RADIUS,depthFade,fieldBlocks,fieldTerrainAt,settleUnit,eastWestRoadY,northSouthRoadX,riverCenterY} = await import('../js/world.js');
 const {DUNGEON_DEFS,dungeonBlocks,dungeonSolids} = await import('../js/dungeon.js');
 const {IronSquadGame,getFieldZone,DEPLOYMENT_CAPACITY} = await import('../js/index.js');
 
@@ -114,10 +114,10 @@ for (let y = center - 14000; y <= center + 14000; y += 40) formerCliffs.push([ce
 for (const r of [16800, 26000, 40000, 52000, 64000]) for (let a = -Math.PI; a < Math.PI; a += 0.0005) formerCliffs.push([center + Math.cos(a) * (r - 30), center + Math.sin(a) * (r - 30)]);
 let walkable = 0;
 for (const [x, y] of formerCliffs) {
-  assert.equal(fieldBlocks(x, y), false, 'former cliff face is open ground');
-  walkable++;
+  if(fieldBlocks(x,y))assert.equal(fieldTerrainAt(x,y),'rock','only a newly visible isolated rock can block a former cliff point');
+  else walkable++;
 }
-assert.ok(walkable > 5000, 'many former cliff points were checked');
+assert.ok(walkable > formerCliffs.length*.85,'former cliff bands stay overwhelmingly open, with natural rock gaps');
 const walker = {x: center + 2500, y: center + 5024};
 assert.equal(settleUnit(walker, fieldBlocks), false, 'a unit standing on a former cliff is never pushed');
 assert.equal(walker.y, center + 5024);

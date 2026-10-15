@@ -1,4 +1,4 @@
-import {WORLD_SIZE} from './world.js?v=277';
+import {WORLD_SIZE} from './world.js?v=281';
 import {HQ_FACILITY_LAYOUT,hqFacilityBlocks} from './hq-facility-layout.js?v=201';
 import {setSubDialog} from './interface.js?v=275';
 import {daylightAt} from './day-night.js?v=208';

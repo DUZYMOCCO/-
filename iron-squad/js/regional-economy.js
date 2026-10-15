@@ -1,4 +1,4 @@
-import {WORLD_SIZE,SETTLEMENTS,fieldBlocks} from './world.js?v=277';
+import {WORLD_SIZE,SETTLEMENTS,fieldBlocks} from './world.js?v=281';
 
 const C=WORLD_SIZE/2;
 export const ECONOMY_VERSION=4;

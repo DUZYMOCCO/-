@@ -1,4 +1,4 @@
-import {WORLD_SIZE} from './world.js?v=277';
+import {WORLD_SIZE} from './world.js?v=281';
 import {hazardContour,insideHazard,containsContour,traceContour,terrainSeed} from './terrain-shapes.js?v=182';
 import {insideOuterWall} from './hq-outer-wall.js?v=198';
 const BASE=WORLD_SIZE/2,CELL=1024;

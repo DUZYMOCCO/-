@@ -1,7 +1,7 @@
 import {rescueUnits,friendlyNpcs,isMerchantCasualty,isMedic,commanderDown,carriedCount,revivalSkillCooldownLeft,medicHasStamina,MEDIC_TREAT_MIN,treatWounded,reviveByPotion,REVIVAL_POTION_RANGE} from './casualty-rules.js?v=274';
 import {attributeFamily} from './unit-attributes.js?v=274';
 import {inCurrentInstance} from './instance-rules.js?v=256';
-import {gameText} from './game-text.js?v=271';
+import {gameText} from './game-text.js?v=281';
 
 // Requests, cooldowns and jobs belong to this play session, never the save file.
 const sessions=new WeakMap();

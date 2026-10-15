@@ -4,7 +4,7 @@ import {atFacility} from './hq-facilities.js?v=277';
 import {drawSoldierPortrait} from './soldier-appearance.js?v=206';
 import {casinoQuip} from './soldier-dialogue.js?v=276';
 import {sound} from '../../common/js/audio.js?v=151';
-import {gameText} from './game-text.js?v=271';
+import {gameText} from './game-text.js?v=281';
 const states=new WeakMap();
 const state=game=>{let s=states.get(game);if(!s||s.source!==game.nation?.casino){s={source:game.nation?.casino,page:'lobby',busy:null,step:0,net:0,history:{slot:[],poker:[],arena:[]},losses:0,comment:'',lastSpeech:0};states.set(game,s);}return s;};
 const canPlay=game=>atFacility(game,'casino',0);

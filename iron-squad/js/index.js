@@ -6,16 +6,19 @@ import {soldierCombatTempo} from './unit-attributes.js?v=274';
 import {startAutoSave,stopAutoSave} from './auto-save.js?v=269';
 import {requestEvenUpgrade} from './even-upgrade.js?v=268';
 import {beginFollowerRecovery,noteFollowerIntent,suspendFollowerRecovery,finishFollowerRecovery,profileFollowerRecovery} from './follower-recovery.js?v=277';
-import {configurePerfSettings} from './perf-diagnostics.js?v=275';
-import {gameText} from './game-text.js?v=271';
+import {configurePerfSettings} from './perf-diagnostics.js?v=281';
+import {gameText} from './game-text.js?v=281';
 import {talentTag} from './talent-labels.js?v=247';
 import {fieldDialogReturn} from './dialog-return.js?v=200';
 import {guildMethods} from './guild-contracts.js?v=274';
 import {headquartersMoveTarget} from './hq-navigation.js?v=277';
 import {configureBattlefieldUI,quietBattlefieldContext} from './battlefield-ui.js?v=249';
-import {renderNavigationMap} from './navigation-map.js?v=277';
+import {renderNavigationMap} from './navigation-map.js?v=281';
 import {soldierEquipmentValue,createEquipmentValueCache,observeEquipment,standardEquipmentCost,RESERVE_ARMAMENT_COUNT} from './armament-rules.js?v=274';
-import {configureRangedEnemy,updateRangedEnemy,updateDefenseWalls,interceptHostileShot,isHostileShot,updateHostileBolt,drawDefenseWalls} from './enemy-ranged.js?v=235';
+import {initializeWildernessSites,serializeWildernessSites,updateWildernessSites,recordWildernessGuardKill,drawWildernessSite,drawWildernessMap,WILDERNESS_RULES} from './wilderness-sites.js?v=281';
+import {enemyArtHeadHeight} from './enemy-art.js?v=280';
+import {selectBiomeEncounter,biomeEnemyStats,encounterSlots,updateBiomeCharge} from './biome-encounters.js?v=279';
+import {configureRangedEnemy,updateRangedEnemy,updateDefenseWalls,interceptHostileShot,isHostileShot,updateHostileBolt,drawDefenseWalls} from './enemy-ranged.js?v=281';
 import {LIMITED_CLASSES,initializeLimitedAllies,prepareLimitedEncounter,createLimitedAlly,joinLimitedEncounter,updateLimitedAllies,updateNinja,updateShuriken,drawLimitedEncounter,serializeLimitedAllies,notifyLimitedJoin} from './limited-allies.js?v=277';
 import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=182';
 import {TIERS,MAX_EQUIPMENT_TIER,MAX_POWER_RANK,POWER_RANK_STEP,GENERATION_COUNT,TRADE_MAX_TIER,powerRank,tierDescription} from './equipment-tiers.js?v=231';
@@ -64,7 +67,7 @@ import { sound } from '../../common/js/audio.js?v=151';
 import { loadCss } from '../../common/js/load-css.js';
 import { storage } from '../../common/js/storage.js';
 import { createStallRecorder, mountStallLog } from './stall-recorder.js?v=182';
-import { clearRestPoseArt, drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow, isRuinKeeper, ruinKeeperScale } from './visuals.js?v=272';
+import { clearRestPoseArt, drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow, isRuinKeeper, ruinKeeperScale } from './visuals.js?v=280';
 import { refreshCampQuiet, assignCampSeats, tryCampLeisure, YARD_TABLES, drawLeisureTable } from './camp-leisure.js?v=277';
 import { CAMP_PEACE_RADIUS, peaceContainment, pushOutsidePeace, relocatePeaceMonster } from './peace-zones.js?v=277';
 import { FARM_X, FARM_Y, farmPosts, farmOverlaps, reinforcementCount, reserveRosterLine, reserveRosterTitle } from './reserve-farm.js?v=277';
@@ -94,7 +97,7 @@ import {rangedCombatMethods,updatePiercingBolt,rangedDrawPose,rangedFrontlinePos
 import {soldierMeleeMethods,tickSoldierMeleeSkill,soldierMeleeReach,soldierMeleePosition,soldierMeleeSkillText,soldierMeleeDrawPose,MELEE_BALANCE} from './soldier-melee-skills.js?v=243';
 import { buildSoldierProfile, describeDeathlineEffect } from './soldier-profile.js?v=234';
 import { attachSurfaceEvents, detachSurfaceEvents, frameSurfaceReady, releaseSceneCaches, releaseCanvas, surfaceCanResume } from './canvas-surface.js?v=217';
-import { SETTLEMENTS, WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt, routeNameAt, eastWestRoadY, northSouthRoadX, riverCenterY, drawFieldDepth, drawOakCrown, fieldBlocks, settleUnit } from './world.js?v=277';
+import { SETTLEMENTS, WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt, routeNameAt, eastWestRoadY, northSouthRoadX, riverCenterY, drawFieldDepth, drawOakCrown, fieldBlocks, settleUnit, fieldSpeedFactor, biomeMoveTarget } from './world.js?v=281';
 import { subscribeKana, kanaGrade, displayKana } from '../../common/js/kana-mode.js?v=175';
 import { FogGrid, FOG_REVEAL_RADIUS, FOG_CAMP_REVEAL } from './fog.js?v=182';
 import {
@@ -2117,7 +2120,7 @@ export const IronSquadGame = {
         <header class="map-heading"><h2 id="world-map-title">地図</h2><button id="btn-world-map-close" class="dialog-close">閉じる ×</button></header>
         <div class="world-map-tabs"><button type="button" data-map-mode="travel">ファストトラベル</button><button type="button" data-map-mode="map">地図</button></div><div class="dialog-body world-map-body">
           <canvas id="world-map-canvas" width="600" height="600" role="img" aria-label="本陣・拠点・発見済み救護所・現在地・ダンジョンを示す全体地図" style="touch-action:none; cursor:pointer; max-width:100%; border-radius:8px; border:1px solid #334155;"></canvas>
-          <p class="world-map-legend">白：現在地 / 淡黄：本陣 / 赤：ボス / 緑の十字：救護所 / ？：未発見の救護所</p>
+          <p class="world-map-legend">白：現在地 / 淡黄：本陣 / 赤：ボス / 緑の十字：救護所 / ？：未発見の救護所 / ◇廃墟 / △野営地 / ◠祠 / ▯見張り台（発見後）</p>
           <p id="world-location" style="font-weight:bold; color:#f1f5f9;"></p>
           <div id="fast-travel-container" style="margin-top:10px; border-top:1px solid #334155; padding-top:10px;">
             <h4 style="margin:0 0 8px; color:#38bdf8; font-size:13px; display:flex; align-items:center; gap:6px;">
@@ -2176,7 +2179,7 @@ export const IronSquadGame = {
     canvas.classList.toggle('hidden',travel);this.worldMapModal.querySelector('.world-map-legend').classList.toggle('hidden',travel);
     this.worldMapModal.querySelector('#fast-travel-container').classList.toggle('hidden',!travel);
     for(const button of this.worldMapModal.querySelectorAll('[data-map-mode]'))button.setAttribute('aria-pressed',String(button.dataset.mapMode===mode));
-    if(!travel){const wctx=canvas.getContext('2d');this.worldTerrain.drawOverview(wctx,canvas.width,this);this.ensureFog().drawMapOverlay(wctx,canvas.width,WORLD_SIZE);drawMedicalMap(wctx,this,x=>x*canvas.width/WORLD_SIZE,y=>y*canvas.height/WORLD_SIZE);}
+    if(!travel){const wctx=canvas.getContext('2d');this.worldTerrain.drawOverview(wctx,canvas.width,this);this.ensureFog().drawMapOverlay(wctx,canvas.width,WORLD_SIZE);drawMedicalMap(wctx,this,x=>x*canvas.width/WORLD_SIZE,y=>y*canvas.height/WORLD_SIZE);drawWildernessMap(wctx,this,x=>x*canvas.width/WORLD_SIZE,y=>y*canvas.height/WORLD_SIZE);}
     this.worldMapModal.querySelector('#world-location').textContent=
       this.currentDungeon
         ? `⛩️ 【ダンジョン内】${this.currentDungeon.name} · 最奥ボス討伐へ進撃中`
@@ -2596,7 +2599,7 @@ export const IronSquadGame = {
     this.recalcPlayerStats();
     this.initBattlefield();
     restoreTradeRaiders(this);
-    initializeGateGuards(this);initializeInvasions(this);initializeMedicalPosts(this);
+    initializeGateGuards(this);initializeInvasions(this);initializeMedicalPosts(this);initializeWildernessSites(this);
     saveSlots.update(this.activeSlotId, {state:'active', veterans:[], reserveSurvivors:[]});
     initializeSupplies(this);
     initializeMagic(this);this.damageFields=[];this._hazardClock=0;
@@ -2842,6 +2845,23 @@ export const IronSquadGame = {
         if (this.recallPlatoonExpedition(Number(btn.dataset.pid), 'manual')) this.renderStrategyUI();
       };
     });
+  },
+
+  claimWildernessSite(site) {
+    if(!site||site.cleared||!this.wildernessSites?.includes(site)||this.currentDungeon||this.restTimer>0||this.player?.isDown||!(this.player?.hp>0)||Math.hypot(site.x-this.player.x,site.y-this.player.y)>WILDERNESS_RULES.claim)return false;
+    if(site.kind==='camp'&&(site.guardsDefeated||0)<WILDERNESS_RULES.guards)return false;
+    site.cleared=true;site.discovered=true;
+    if(site.kind==='ruin'||site.kind==='camp'){
+      const distance=Math.hypot(site.x-BASE_CAMP.x,site.y-BASE_CAMP.y),count=site.kind==='camp'?3:2;
+      const gold=Math.round((site.kind==='camp'?80:45)*distanceScaling(distance).gold);this.gold=(this.gold||0)+gold;
+      for(let i=0;i<count;i++)for(const item of rollTreasureLoot(distance,'chest',generateRandomDrop))addFieldDrop(this,{x:site.x+(i-1)*25,y:site.y+8,item});
+      this.spawnDamageText(site.x,site.y-30,`+${gold}G`,'#e4cc8e');this.showToast(`${site.name}：+${formatCompact(gold)}G・宝箱${count}つ`);
+    }else if(site.kind==='shrine'){
+      this.wildernessBlessing=WILDERNESS_RULES.blessingSeconds;this.showToast(`祠の加護：隊長と出撃兵の攻撃+15%（180秒・重複なし）`);
+    }else{
+      this.ensureFog().forceRevealAt(site.x,site.y,WILDERNESS_RULES.towerReveal);this.showToast(`見張り台：周囲${formatDistance(WILDERNESS_RULES.towerReveal)}の霧が晴れました`);
+    }
+    this.spawnSparks(site.x,site.y,site.color,12);this.updateStatsUI(false);return true;
   },
 
   initOutposts() {
@@ -3605,7 +3625,7 @@ export const IronSquadGame = {
     this.phaseCasualties = saved.phaseCasualties ?? 0;
     this.deathlineReport=saved.deathlineReport?.condition==='personal-downs'?saved.deathlineReport:null;
     this.phaseInitialSquadCount = saved.phaseInitialSquadCount ?? this.squad.length;
-    initializeGateGuards(this,saved);initializeInvasions(this,saved);initializeMedicalPosts(this,saved);
+    initializeGateGuards(this,saved);initializeInvasions(this,saved);initializeMedicalPosts(this,saved);initializeWildernessSites(this,saved);
     initializeSupplies(this,saved);
     for(const m of this.restMonsters||[])migrateCampaignEnemy(m,m.lootDistance??Math.hypot(m.x-WORLD_SIZE/2,m.y-WORLD_SIZE/2),this.phase);
     initializeMagic(this,saved);this.damageFields=[];this._hazardClock=0;
@@ -3896,6 +3916,7 @@ export const IronSquadGame = {
         gateGuards:serializeGateGuards(this),
         gatePosts:serializeGatePosts(this),
         medicalPostIds:serializeMedicalPosts(this),
+        wildernessSites:serializeWildernessSites(this),wildernessBlessing:this.wildernessBlessing||0,
         sharedEquipBox: this.sharedEquipBox || [],
         limitedAllies:serializeLimitedAllies(this),
         civilians: (this.civilians || []).filter(c => c && !c.rescued).slice(0, 8),
@@ -4836,7 +4857,7 @@ export const IronSquadGame = {
     if (waveEl) waveEl.textContent = `第${this.phase || 1}期`;
     const clockBadge = document.getElementById('day-night-badge');
     if (clockBadge) {
-      clockBadge.textContent = `${clock.icon} ${clock.label} ${clock.clock}`;
+      clockBadge.textContent = `${clock.icon} ${clock.label} ${clock.clock}${this.wildernessBlessing>0?` · 攻撃+15% ${Math.ceil(this.wildernessBlessing)}秒`:""}`;
       clockBadge.setAttribute('data-period', clock.period);
     }
     const zoneBadge = document.getElementById('field-zone-badge');
@@ -5015,7 +5036,7 @@ export const IronSquadGame = {
   },
 
   // ゾーン制モンスター生成（本陣からの距離ゾーンに応じてステータス・種別が完全スケーリング）
-  spawnMonster(px, py, forceZone = null) {
+  spawnMonster(px, py, forceZone = null, forceEncounter = null) {
     if(this.restTimer>0 || this.monsters.length>=ENEMY_LIMIT)return null;
     let x = px;
     let y = py;
@@ -5147,32 +5168,51 @@ export const IronSquadGame = {
       }
     }
 
-    const exclusive=periodEnemy(zone.id,this.worldTime);
+    let exclusive=periodEnemy(zone.id,this.worldTime);
     if(exclusive) {
       type=exclusive.type;rawHp=exclusive.hp;rawAtk=exclusive.atk;speed=exclusive.speed;
       radius=exclusive.radius;color=exclusive.color;isElite=!!exclusive.elite;isBoss=false;
     }
-    const brute=!isBoss && rollFieldBrute(this.monsters, zone.id);
+    const brute=!forceEncounter&&!isBoss && rollFieldBrute(this.monsters, zone.id);
     if(brute) {
       type=brute.type;rawHp=brute.rawHp;rawAtk=brute.rawAtk;speed=brute.speed;
       radius=brute.radius;color=brute.color;isElite=true;isBoss=false;
     }
 
+    let encounter=null,encStats=null;
+    if(forceEncounter||(!isBoss&&!brute&&Math.hypot(x-BASE_CAMP.x,y-BASE_CAMP.y)>=3200)){
+      encounter=forceEncounter||selectBiomeEncounter(x,y,this.worldTime);encStats=biomeEnemyStats(encounter,zone.id);isBoss=false;
+      ({type,rawHp,rawAtk,speed,radius,color}=encStats);exclusive=null;
+    }
     const adaptive=fieldAdaptiveScaling(this,Math.hypot(x-BASE_CAMP.x,y-BASE_CAMP.y));
     const hp = Math.floor(rawHp * scaling.hp * adaptive.hp);
     const atk = Math.floor(rawAtk * scaling.atk * adaptive.atk);
 
-    this.monsters.push(configureRangedEnemy({
+    const monster=configureRangedEnemy({
       x, y, homeX:x, homeY:y, lootDistance:Math.hypot(x-BASE_CAMP.x,y-BASE_CAMP.y),campaignScaleVersion:CAMPAIGN_SCALE_VERSION,
       hp, maxHp: hp,
       atk, speed: speed * (zone.speedMult || 1.0),
       radius, color,
-      type, isBoss, isElite, name:brute?brute.name:exclusive?.name,activePeriod:brute?null:(exclusive?daylightAt(this.worldTime).period:null),
-      fixedKind:!!brute, dropCount:brute?brute.dropCount:undefined, sureDrop:!!brute, lootKind:brute?brute.lootKind:undefined,
-      attackInterval:brute?brute.attackInterval:undefined, attackReach:brute?brute.attackReach:undefined,
+      type, isBoss, isElite, name:brute?brute.name:encStats?.name||exclusive?.name,activePeriod:brute?null:encounter?.activePeriod||(exclusive?daylightAt(this.worldTime).period:null),
+      fixedKind:!!brute||!!encounter, flying:!!encStats?.flying,charge:!!encStats?.charge,rangedKind:encStats?.rangedKind, dropCount:brute?brute.dropCount:undefined, sureDrop:!!brute, lootKind:brute?brute.lootKind:undefined,
+      attackInterval:brute?brute.attackInterval:undefined, attackReach:brute?brute.attackReach:encStats?.attackReach,
       zoneId: zone.id, fieldAdaptive:{hp:adaptive.hp,atk:adaptive.atk,reward:adaptive.reward},
       hitPulse: 0
-    },{random:(exclusive||brute)?()=>1:Math.random}));
+    },{random:(exclusive||brute||encounter)?()=>1:Math.random});
+    this.monsters.push(monster);
+    if(encStats?.group||encounter?.forceGroup){
+      const room=Math.min(ENEMY_LIMIT-this.monsters.length+1,encounter.groupLimit||40);
+      const slots=encounterSlots(encounter.forceGroup?{...encStats,group:'pack'}:encStats,room,encounter.forceGroup?()=>.999999:Math.random),angle=Math.atan2((this.player?.y??BASE_CAMP.y)-y,(this.player?.x??BASE_CAMP.x)-x),c=Math.cos(angle),s=Math.sin(angle);
+      for(let i=0;i<slots.length;i++){
+        const slot=slots[i],stats=biomeEnemyStats({...encounter,type:slot.type},zone.id);
+        const nx=Math.max(30,Math.min(MAP_WIDTH-30,x+c*slot.dx-s*slot.dy)),ny=Math.max(30,Math.min(MAP_HEIGHT-30,y+s*slot.dx+c*slot.dy));
+        const pos={x:nx,y:ny};settleUnit(pos,(px,py)=>fieldBlocks(px,py));
+        const dist=Math.hypot(pos.x-BASE_CAMP.x,pos.y-BASE_CAMP.y),scale=distanceScaling(dist,curPhase),ad=fieldAdaptiveScaling(this,dist);
+        const member={...monster,...pos,type:stats.type,name:stats.name,hp:Math.floor(stats.rawHp*scale.hp*ad.hp),maxHp:Math.floor(stats.rawHp*scale.hp*ad.hp),atk:Math.floor(stats.rawAtk*scale.atk*ad.atk),speed:stats.speed*(getFieldZone(pos.x,pos.y).speedMult||1),radius:stats.radius,flying:!!stats.flying,charge:!!stats.charge,rangedKind:stats.rangedKind,homeX:pos.x,homeY:pos.y,lootDistance:dist,fieldAdaptive:ad,encounterGroup:encStats.group||'pack'};
+        if(i===0)Object.assign(monster,member);else this.monsters.push(member);
+      }
+    }
+    return monster;
   },
 
   // シームレス自律リポップ制御（戦場全体で最大72体を維持＋大ボス再臨管理）
@@ -5790,6 +5830,7 @@ export const IronSquadGame = {
     this.dialogue?.update(dt);
     this.checkPeriodicDialogue(dt);
     updateMedicalPosts(this,dt);
+    updateWildernessSites(this,dt);
     updateSupplies(this,dt);
     updateMagic(this,dt,supplyLocation);
     this.ageRemains(dt);
@@ -7158,6 +7199,7 @@ export const IronSquadGame = {
         }
       }
 
+      if(updateBiomeCharge(this,m,target,dt))continue;
       if(updateRangedEnemy(this,m,target,dt))continue;
       const dx = target.x - m.x;
       const dy = target.y - m.y;
@@ -7291,7 +7333,7 @@ export const IronSquadGame = {
   dungeonMoveTarget(unit,target) {
     noteFollowerIntent(this,unit,target);
     if(this.passesWalls(unit))return target;
-    return this.currentDungeon?dungeonSteeringTarget(this.currentDungeon,unit,target):isOwnSquad(unit)?headquartersMoveTarget(unit,target,this):target;
+    return this.currentDungeon?dungeonSteeringTarget(this.currentDungeon,unit,target):biomeMoveTarget(unit,isOwnSquad(unit)?headquartersMoveTarget(unit,target,this):target);
   },
 
   settleTerrain() {
@@ -7305,6 +7347,11 @@ export const IronSquadGame = {
       if(unit._terrainSpace!==space){
         delete unit._openX;delete unit._openY;unit._terrainSpace=space;
         if(inside&&!this.passesWalls(unit)&&!this.passesWalls(carrier)&&blocked(unit.x,unit.y))Object.assign(unit,nearestDungeonFloor(dungeon,unit));
+      }
+      if(!inside&&!unit.flying&&!carrier?.flying&&Number.isFinite(unit._openX)&&Number.isFinite(unit._openY)){
+        const dx=unit.x-unit._openX,dy=unit.y-unit._openY;
+        // Scale an ordinary movement step, never a teleport or a saved position.
+        if(dx*dx+dy*dy<10000){const factor=fieldSpeedFactor((unit.x+unit._openX)/2,(unit.y+unit._openY)/2);if(factor<1){unit.x=unit._openX+dx*factor;unit.y=unit._openY+dy*factor;}}
       }
       if (this.passesWalls(unit) || this.passesWalls(carrier)) {
         if (!blocked(unit.x, unit.y)) { unit._openX = unit.x; unit._openY = unit.y; }
@@ -7516,7 +7563,7 @@ export const IronSquadGame = {
     if (attacker && Number.isFinite(attacker.x) && Number.isFinite(monster.x) && coverBlocked(this, attacker, monster)) return;
     const baseAtk = customAtk !== undefined ? customAtk : (attacker ? (attacker.atk || 10) : 10);
     const magicalAttack=attackKind==='magic'||(attackKind==null&&isMage(attacker));
-    let dmg = baseAtk*(attacker?.magicAttackTimer>0?1+(attacker.magicAttackBonus||0):1);
+    let dmg = baseAtk*(attacker?.magicAttackTimer>0?1+(attacker.magicAttackBonus||0):1)*(this.wildernessBlessing>0&&(attacker===this.player||isOwnSquad(attacker))?1+WILDERNESS_RULES.attackBonus:1);
     let isCrit = false;
 
     // 近接スイートスポット: sweetOpt===false でスキップ（スキル弾など）
@@ -8429,7 +8476,7 @@ export const IronSquadGame = {
   killMonster(monster, attacker, isPlayer) {
     if(monster?.retreated)return;
     const idx = this.monsters.indexOf(monster);
-    if (idx !== -1) this.monsters.splice(idx, 1);
+    if (idx !== -1) {recordWildernessGuardKill(this,monster);this.monsters.splice(idx, 1);}
     this.waveKills++;
     this.onNationKill(monster);
     recordEconomicKill(this,monster);
@@ -8705,6 +8752,7 @@ export const IronSquadGame = {
   attackBlocked(from,to) {return coverBlocked(this,from,to);},
   passesWalls(unit) {
     if (!unit) return false;
+    if(unit.flying)return true;
     const cls = unit.soldierClass ? SOLDIER_CLASSES[unit.soldierClass] : null;
     return unitPassesWalls(unit, cls);
   },
@@ -11073,6 +11121,8 @@ export const IronSquadGame = {
         }
       }
 
+      for(const site of this.wildernessSites||[])if(inView(site,180))drawWildernessSite(this.ctx,site,this);
+
       // 2.8 フィールド上のダンジョン入口ポータル
       if (this.dungeons) {
         const reach = Math.max(this.width, this.height) / z + 220;
@@ -12137,7 +12187,7 @@ export const IronSquadGame = {
     ctx.save();
     if (isLeft) ctx.scale(-1, 1);
 
-    if ((m.isDemonInvasion?drawFieldMob(ctx,{...m,isBoss:false},now):drawFieldBoss(ctx, m, now) || drawFieldMob(ctx, m, now))) {
+    if ((m.isDemonInvasion?drawFieldMob(ctx,{...m,isBoss:false},now,true):drawFieldBoss(ctx, m, now) || drawFieldMob(ctx, m, now,true))) {
       // Bosses and common creatures share the live field illustration.
     } else if (m.type === 'slime') {
       // ===== 🟢 スライム (近郊安全ゾーン・ぷるぷる揺れる半透明ゲル) =====
@@ -12394,7 +12444,7 @@ export const IronSquadGame = {
       this.drawMonsterHpText(ctx,m,-headH+17);
     } else {
       const barW = Math.max(22, m.radius * 2);
-      const headH = isRuinKeeper(m) ? Math.round(46 * ruinKeeperScale(m) * (m.type === 'wyvern' ? .9 : 1)) : m.type === 'brute' ? 186 : (m.type === 'demon_front' || m.type === 'demon_rear' ? 52 : (m.activePeriod ? 43 : m.isBoss ? 46 : (m.type === 'orc' || m.type === 'wyvern' ? 44 : (m.type === 'goblin' ? 37 : 26))));
+      const headH = enemyArtHeadHeight(m) || (isRuinKeeper(m) ? Math.round(46 * ruinKeeperScale(m) * (m.type === 'wyvern' ? .9 : 1)) : m.type === 'brute' ? 186 : (m.type === 'demon_front' || m.type === 'demon_rear' ? 52 : (m.activePeriod ? 43 : m.isBoss ? 46 : (m.type === 'orc' || m.type === 'wyvern' ? 44 : (m.type === 'goblin' ? 37 : 26)))));
       ctx.fillStyle = 'rgba(0,0,0,0.65)';
       ctx.fillRect(-barW / 2, -headH, barW, 4);
       ctx.fillStyle = m.isBoss ? '#ef4444' : (m.isElite ? '#f59e0b' : '#34d399');

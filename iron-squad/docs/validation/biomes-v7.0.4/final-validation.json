@@ -1,0 +1,114 @@
+{
+  "syntaxFiles": 423,
+  "localImports": 1120,
+  "assets": 152,
+  "changedTextFiles": 68,
+  "snapshots": [
+    {
+      "version": "7.0.1",
+      "screens": 8
+    },
+    {
+      "version": "7.0.2",
+      "screens": 8
+    },
+    {
+      "version": "7.0.3",
+      "screens": 8
+    },
+    {
+      "version": "7.0.4",
+      "screens": 17
+    }
+  ],
+  "comparison": [
+    {
+      "name": "east",
+      "period": "day",
+      "mean": 15.851388889261418,
+      "p95": 26.700000002980232,
+      "max": 47.79999999701977,
+      "rafBefore": 0,
+      "rafAfter": 0,
+      "arrivalBefore": 0,
+      "arrivalAfter": 0
+    },
+    {
+      "name": "east",
+      "period": "night",
+      "mean": 12.523333333639634,
+      "p95": 17.900000005960464,
+      "max": 24.299999997019768,
+      "rafBefore": 0,
+      "rafAfter": 0,
+      "arrivalBefore": 0,
+      "arrivalAfter": 0
+    },
+    {
+      "name": "south",
+      "period": "day",
+      "mean": 12.836944444394774,
+      "p95": 18.600000008940697,
+      "max": 22.5,
+      "rafBefore": 0,
+      "rafAfter": 0,
+      "arrivalBefore": 0,
+      "arrivalAfter": 0
+    },
+    {
+      "name": "south",
+      "period": "night",
+      "mean": 13.688333333532016,
+      "p95": 18.899999991059303,
+      "max": 31.599999994039536,
+      "rafBefore": 0,
+      "rafAfter": 0,
+      "arrivalBefore": 0,
+      "arrivalAfter": 0
+    },
+    {
+      "name": "north",
+      "period": "day",
+      "mean": 15.14611111101177,
+      "p95": 20.200000002980232,
+      "max": 26.399999991059303,
+      "rafBefore": 0,
+      "rafAfter": 0,
+      "arrivalBefore": 0,
+      "arrivalAfter": 0
+    },
+    {
+      "name": "north",
+      "period": "night",
+      "mean": 15.084722222843103,
+      "p95": 19.5,
+      "max": 30.299999997019768,
+      "rafBefore": 0,
+      "rafAfter": 0,
+      "arrivalBefore": 0,
+      "arrivalAfter": 0
+    },
+    {
+      "name": "west",
+      "period": "day",
+      "mean": 15.132222221998704,
+      "p95": 27.5,
+      "max": 40.70000000298023,
+      "rafBefore": 1,
+      "rafAfter": 0,
+      "arrivalBefore": 1,
+      "arrivalAfter": 0
+    },
+    {
+      "name": "west",
+      "period": "night",
+      "mean": 14.433055555406543,
+      "p95": 24.200000002980232,
+      "max": 31.700000002980232,
+      "rafBefore": 0,
+      "rafAfter": 0,
+      "arrivalBefore": 0,
+      "arrivalAfter": 0
+    }
+  ]
+}

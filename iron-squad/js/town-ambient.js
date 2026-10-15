@@ -1,4 +1,4 @@
-import {WORLD_SIZE,TAVERN_SITE,SETTLEMENTS,fieldBlocks} from './world.js?v=277';
+import {WORLD_SIZE,TAVERN_SITE,SETTLEMENTS,fieldBlocks} from './world.js?v=281';
 import {economicFieldBlocked} from './regional-economy.js?v=277';
 import {headquartersBuildingBlocks} from './hq-facilities.js?v=277';
 import {farmPosts,FARM_X,FARM_Y} from './reserve-farm.js?v=277';
@@ -6,7 +6,7 @@ import {drawFieldCivilian} from './civilian-visuals.js?v=272';
 import {createSoldierAppearance} from './soldier-appearance.js?v=206';
 import {daylightAt} from './day-night.js?v=208';
 import {dungeonBlocks} from './dungeon.js?v=251';
-import {gameText} from './game-text.js?v=271';
+import {gameText} from './game-text.js?v=281';
 export const AMBIENT_LIMITS=Object.freeze({residents:16,walkers:12,walkingShare:.25,scanSeconds:.5,siteCache:6,walkSeconds:[10,20]});
 export const AMBIENT_COUNTS=Object.freeze({many:16,normal:10,few:5,none:0});
 export const AMBIENT_SETTING_KEY='game_studio_ironsquad_ambient';
