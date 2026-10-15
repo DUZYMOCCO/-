@@ -1,238 +1,120 @@
 /**
  * カラー・アント Canvas レンダラー
- * かわいいピクセルアート、ワラワラ動くアリ、咀嚼・コイン演出の描画
+ * 額縁つきのドット絵・巣穴・行列するアリ・くわえたピクセル・かけらを描く
  */
+import { SIZE } from './pictures.js?v=3';
+import { shade } from './colony.js?v=3';
 
-import { COLOR_GROUPS } from './stages.js?v=2';
-
-export class AntRenderer {
+export class ColonyRenderer {
   constructor(canvas) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
   }
 
-  render(sim, pixels, gridInfo, saveData, logicalWidth, logicalHeight) {
+  render(colony, w, h) {
     const ctx = this.ctx;
     const dpr = window.devicePixelRatio || 1;
-    const w = logicalWidth || (this.canvas.width / dpr);
-    const h = logicalHeight || (this.canvas.height / dpr);
-
+    const L = colony.layout;
     ctx.save();
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, w, h);
 
-    // 背景：やさしい方眼ペーパー風
-    this.drawBackground(w, h);
-
-    // ピクセルアートの描画
-    this.drawPixels(pixels, gridInfo);
-
-    // アリの巣穴の描画
-    this.drawNest(sim.nestPos.x, sim.nestPos.y);
-
-    // アリたちの描画
-    for (const ant of sim.ants) {
-      this.drawAnt(ant);
+    this.drawBoard(ctx, colony, L);
+    this.drawNest(ctx, L);
+    for (const a of colony.ants) this.drawAnt(ctx, a, L.cell);
+    for (const c of colony.crumbs) {
+      ctx.globalAlpha = Math.min(1, c.life / 0.25);
+      ctx.fillStyle = c.hex;
+      ctx.fillRect(c.x, c.y, L.cell * 0.28, L.cell * 0.28);
     }
-
-    // パーティクル＆コインテキスト描画
-    this.drawParticles(sim.particles);
-
-    // フレンジー（ブースト）時の画面演出
-    if (sim.isFrenzy) {
-      this.drawFrenzyVignette(w, h, sim.frenzyTimer);
-    }
-
+    ctx.globalAlpha = 1;
     ctx.restore();
   }
 
-  drawBackground(w, h) {
-    const ctx = this.ctx;
-    ctx.fillStyle = '#fdfbf7';
-    ctx.fillRect(0, 0, w, h);
-
-    // 淡いドットグリッド
-    ctx.fillStyle = '#e2e8f0';
-    const step = 24;
-    for (let x = step / 2; x < w; x += step) {
-      for (let y = step / 2; y < h; y += step) {
-        ctx.fillRect(x, y, 1.5, 1.5);
-      }
-    }
-  }
-
-  drawPixels(pixels, gridInfo) {
-    const ctx = this.ctx;
-    const { startX, startY, cellSize } = gridInfo;
-    const pad = 1.5;
-
-    // 台座（キャンバス風の影と枠）
-    const totalSize = cellSize * 12;
+  drawBoard(ctx, colony, L) {
+    const { cell, boardX, boardY } = L;
+    const bp = cell * SIZE;
+    const pad = 7;
     ctx.save();
-    ctx.shadowColor = 'rgba(0,0,0,0.06)';
+    ctx.shadowColor = 'rgba(90,50,10,0.28)';
     ctx.shadowBlur = 12;
     ctx.shadowOffsetY = 4;
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = '#fff8ec';
+    ctx.strokeStyle = '#d9b98a';
+    ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.roundRect(startX - 8, startY - 8, totalSize + 16, totalSize + 16, 12);
+    ctx.roundRect(boardX - pad, boardY - pad, bp + pad * 2, bp + pad * 2, 12);
     ctx.fill();
+    ctx.stroke();
     ctx.restore();
 
-    for (const p of pixels) {
-      const px = startX + p.gx * cellSize;
-      const py = startY + p.gy * cellSize;
+    // 食べ終わったあとの台紙
+    ctx.fillStyle = '#f6ecda';
+    ctx.fillRect(boardX, boardY, bp, bp);
 
-      if (p.eaten) {
-        // 食べられた跡（薄い点線または空マス）
-        ctx.fillStyle = 'rgba(0,0,0,0.03)';
-        ctx.fillRect(px + pad, py + pad, cellSize - pad * 2, cellSize - pad * 2);
-        continue;
-      }
-
+    for (const p of colony.pixels) {
+      if (p.eaten) continue;
       ctx.fillStyle = p.hex;
-      ctx.beginPath();
-      ctx.roundRect(px + pad, py + pad, cellSize - pad * 2, cellSize - pad * 2, 3);
-      ctx.fill();
+      ctx.fillRect(boardX + p.gx * cell, boardY + p.gy * cell, cell, cell);
+    }
+  }
 
-      // ダメージ（削れ）表現
-      if (p.hp < p.maxHp) {
-        const damageRatio = 1 - (p.hp / p.maxHp);
-        ctx.fillStyle = `rgba(255,255,255,${damageRatio * 0.5})`;
-        ctx.fillRect(px + pad, py + pad, cellSize - pad * 2, cellSize - pad * 2);
+  drawNest(ctx, L) {
+    const { x, y } = L.nest;
+    const r = L.cell;
+    ctx.fillStyle = '#b9743a';
+    ctx.beginPath();
+    ctx.ellipse(x, y + r * 0.35, r * 2.6, r * 1.15, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#d99a5c';
+    ctx.beginPath();
+    ctx.ellipse(x, y + r * 0.1, r * 2.3, r * 0.95, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#3a2312';
+    ctx.beginPath();
+    ctx.ellipse(x, y + r * 0.2, r * 1.35, r * 0.6, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  drawAnt(ctx, a, cell) {
+    const s = cell * 0.62;
+    const dx = Math.cos(a.ang), dy = Math.sin(a.ang);
+    const nx = -dy, ny = dx;
+    const wob = Math.sin(a.ph * 0.6) * cell * 0.1;
+    const x = a.x + nx * wob, y = a.y + ny * wob;
+
+    // あし（3対・歩くたびに交互に動く）
+    ctx.strokeStyle = 'rgba(40,25,12,0.85)';
+    ctx.lineWidth = 0.9;
+    ctx.beginPath();
+    for (let i = -1; i <= 1; i++) {
+      const sw = Math.sin(a.ph + i * 2.1) * s * 0.25;
+      const bx = x + dx * s * 0.12 * i, by = y + dy * s * 0.12 * i;
+      for (const side of [-1, 1]) {
+        ctx.moveTo(bx, by);
+        ctx.lineTo(bx + nx * side * s * 0.62 + dx * (i * s * 0.25 + sw), by + ny * side * s * 0.62 + dy * (i * s * 0.25 + sw));
       }
     }
-  }
-
-  drawNest(x, y) {
-    const ctx = this.ctx;
-    // 巣穴の土盛り
-    ctx.fillStyle = '#d97706';
-    ctx.beginPath();
-    ctx.ellipse(x, y + 4, 32, 14, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // 穴
-    ctx.fillStyle = '#451a03';
-    ctx.beginPath();
-    ctx.ellipse(x, y + 2, 16, 6, 0, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  drawAnt(ant) {
-    const ctx = this.ctx;
-    const group = COLOR_GROUPS[ant.colorGroup.toUpperCase()] || COLOR_GROUPS.RED;
-    const bodyColor = group.antColor;
-    const headColor = group.headColor;
-    const r = ant.size;
-
-    ctx.save();
-    ctx.translate(ant.x, ant.y);
-    ctx.rotate(ant.angle);
-
-    // 足（6本）
-    ctx.strokeStyle = '#1e293b';
-    ctx.lineWidth = ant.isGiant ? 2.5 : 1.2;
-    const legSwing = Math.sin(ant.legPhase) * (r * 0.5);
-
-    ctx.beginPath();
-    // 前足
-    ctx.moveTo(0, -r * 0.5);
-    ctx.lineTo(r * 0.8 + legSwing, -r * 1.2);
-    ctx.moveTo(0, r * 0.5);
-    ctx.lineTo(r * 0.8 - legSwing, r * 1.2);
-    // 中足
-    ctx.moveTo(-r * 0.4, -r * 0.5);
-    ctx.lineTo(-r * 0.4 - legSwing, -r * 1.3);
-    ctx.moveTo(-r * 0.4, r * 0.5);
-    ctx.lineTo(-r * 0.4 + legSwing, r * 1.3);
-    // 後足
-    ctx.moveTo(-r * 1.0, -r * 0.4);
-    ctx.lineTo(-r * 1.5 + legSwing, -r * 1.2);
-    ctx.moveTo(-r * 1.0, r * 0.4);
-    ctx.lineTo(-r * 1.5 - legSwing, r * 1.2);
     ctx.stroke();
 
-    // 腹部（Abdomen）
-    ctx.fillStyle = bodyColor;
-    ctx.beginPath();
-    ctx.ellipse(-r * 1.2, 0, r * 1.1, r * 0.75, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // 胸部（Thorax）
-    ctx.fillStyle = headColor;
-    ctx.beginPath();
-    ctx.ellipse(-r * 0.3, 0, r * 0.6, r * 0.5, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // 頭部（Head）
-    ctx.fillStyle = bodyColor;
-    ctx.beginPath();
-    ctx.ellipse(r * 0.6, 0, r * 0.7, r * 0.6, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // 触角（Antennae）
-    ctx.strokeStyle = headColor;
-    ctx.beginPath();
-    ctx.moveTo(r * 1.0, -r * 0.3);
-    ctx.lineTo(r * 1.6, -r * 0.7);
-    ctx.moveTo(r * 1.0, r * 0.3);
-    ctx.lineTo(r * 1.6, r * 0.7);
-    ctx.stroke();
-
-    // 目
-    ctx.fillStyle = '#0f172a';
-    ctx.beginPath();
-    ctx.arc(r * 0.8, -r * 0.25, r * 0.15, 0, Math.PI * 2);
-    ctx.arc(r * 0.8, r * 0.25, r * 0.15, 0, Math.PI * 2);
-    ctx.fill();
-
-    // 冠（ジャイアント）
-    if (ant.isGiant) {
-      ctx.fillStyle = '#fbbf24';
+    ctx.lineWidth = 0.8;
+    ctx.strokeStyle = a.dark;
+    ctx.fillStyle = a.hex;
+    const parts = [[-0.62, 0.34], [0, 0.26], [0.58, 0.28]]; // おしり・むね・あたま
+    parts.forEach(([off, r], i) => {
       ctx.beginPath();
-      ctx.moveTo(r * 0.2, -r * 0.6);
-      ctx.lineTo(r * 0.6, -r * 1.1);
-      ctx.lineTo(r * 0.8, -r * 0.5);
-      ctx.lineTo(r * 1.0, -r * 1.1);
-      ctx.lineTo(r * 1.2, -r * 0.5);
-      ctx.fill();
+      ctx.arc(x + dx * s * off, y + dy * s * off, s * r, 0, Math.PI * 2);
+      if (i === 2) { ctx.save(); ctx.fillStyle = a.dark; ctx.fill(); ctx.restore(); } else ctx.fill();
+      ctx.stroke();
+    });
+
+    if (a.carry) {
+      const c = cell * 0.62;
+      ctx.fillStyle = a.hex;
+      ctx.strokeStyle = shade(a.hex, 0.55);
+      ctx.lineWidth = 1;
+      ctx.fillRect(x - c / 2, y - s * 0.55 - c, c, c);
+      ctx.strokeRect(x - c / 2, y - s * 0.55 - c, c, c);
     }
-
-    ctx.restore();
-  }
-
-  drawParticles(particleSystem) {
-    const ctx = this.ctx;
-    for (const p of particleSystem.particles) {
-      if (p.isText) {
-        ctx.save();
-        ctx.font = 'bold 16px system-ui, sans-serif';
-        ctx.fillStyle = p.color;
-        ctx.shadowColor = 'rgba(0,0,0,0.3)';
-        ctx.shadowBlur = 4;
-        ctx.globalAlpha = Math.min(1, p.life / (p.maxLife * 0.4));
-        ctx.fillText(p.text, p.x, p.y);
-        ctx.restore();
-      } else {
-        ctx.save();
-        ctx.fillStyle = p.color;
-        ctx.globalAlpha = Math.min(1, p.life / p.maxLife);
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-      }
-    }
-  }
-
-  drawFrenzyVignette(w, h, timer) {
-    const ctx = this.ctx;
-    ctx.save();
-    const grad = ctx.createRadialGradient(w / 2, h / 2, w * 0.3, w / 2, h / 2, w * 0.7);
-    grad.addColorStop(0, 'rgba(251, 191, 36, 0)');
-    grad.addColorStop(1, 'rgba(245, 158, 11, 0.25)');
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, w, h);
-    ctx.restore();
   }
 }
