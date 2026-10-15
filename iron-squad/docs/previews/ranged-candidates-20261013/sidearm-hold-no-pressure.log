@@ -1,7 +1,0 @@
-{"weaponStyle":"bow","moving":false,"seeds":8,"dps":333.6444444444445,"sidearmDps":0,"medianDownAt":180,"survival180":1,"medianPressure":0,"ammoEmptyAt":77.4}
-{"weaponStyle":"crossbow","moving":false,"seeds":8,"dps":282.12916666666666,"sidearmDps":0,"medianDownAt":180,"survival180":1,"medianPressure":0,"ammoEmptyAt":73.8}
-{"weaponStyle":"cannon","moving":false,"seeds":8,"dps":170.99999999999997,"sidearmDps":0,"medianDownAt":180,"survival180":1,"medianPressure":0,"ammoEmptyAt":53.7}
-{"weaponStyle":"bow","moving":true,"seeds":8,"dps":453.0048611111111,"sidearmDps":120.11597222222224,"medianDownAt":180,"survival180":1,"medianPressure":0,"ammoEmptyAt":77.4}
-{"weaponStyle":"crossbow","moving":true,"seeds":8,"dps":404.5256944444444,"sidearmDps":122.39652777777778,"medianDownAt":180,"survival180":1,"medianPressure":0,"ammoEmptyAt":73.8}
-{"weaponStyle":"cannon","moving":true,"seeds":8,"dps":316.8590277777777,"sidearmDps":145.85902777777778,"medianDownAt":180,"survival180":1,"medianPressure":0,"ammoEmptyAt":53.7}
-PASS sidearm/hold/0: 6 scenarios / 48 runs

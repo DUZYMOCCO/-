@@ -1,2 +1,10 @@
 # Pre-edit backups live outside the repo: D:\スマホゲーム工房_バックアップ\iron-squad-docs-backups\
 docs/backups/
+# Validation screenshots and previews stay local (they slowed GitHub Pages deploys).
+# The four previews rewritten by the tests stay tracked so `git checkout iron-squad/docs/previews` still works.
+docs/validation/
+docs/previews/*
+!docs/previews/damage-field.png
+!docs/previews/enemy-bodies-audit.png
+!docs/previews/limited-allies-and-shields-v4.1.0.png
+!docs/previews/magic-users.png
