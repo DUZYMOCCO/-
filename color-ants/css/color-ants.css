@@ -76,18 +76,18 @@
 .ca-tiles {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  gap: 6px;
+  gap: 5px;
   align-items: start;
 }
 
 .ca-col {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
 }
 
 .ca-tile {
-  height: 42px;
+  height: 38px;
   width: 100%;
   box-sizing: border-box;
   border-radius: 10px;
@@ -95,7 +95,7 @@
   border-bottom-width: 5px;
   background: var(--c, #aaa);
   color: var(--t, #fff);
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 900;
   text-shadow: 0 1px 0 rgba(0, 0, 0, 0.18);
   cursor: pointer;
@@ -109,6 +109,17 @@
 }
 
 .ca-tile.front:active { transform: scale(0.94); animation: none; }
+
+/* 出発中：数字がアリの出発に合わせて減り、色の帯が縮んでいく */
+.ca-tile.active {
+  --p: 100;
+  background: linear-gradient(90deg, var(--c) calc(var(--p) * 1%), rgba(255, 255, 255, 0.55) calc(var(--p) * 1%));
+  box-shadow: 0 0 0 2px #fff;
+  pointer-events: none;
+  font-variant-numeric: tabular-nums;
+  color: #fff;
+  text-shadow: 0 0 3px rgba(0, 0, 0, 0.85), 0 1px 2px rgba(0, 0, 0, 0.7);
+}
 
 .ca-tile.back {
   filter: brightness(0.86) saturate(0.9);

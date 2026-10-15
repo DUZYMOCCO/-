@@ -32,9 +32,9 @@ export function splitCount(total, parts, rng) {
  * counts: { 色キー: ピクセル数 } → 列ごとのタイル配列 [[{key,n},...], ...]
  * 配列の先頭（index 0）がその列の「いまタップできるタイル」。
  */
-export function buildTiles(counts, rng, { cols = 5, maxTiles = 25 } = {}) {
+export function buildTiles(counts, rng, { cols = 5, maxTiles = 30 } = {}) {
   const entries = Object.entries(counts).filter(([, c]) => c > 0);
-  let target = 32;
+  let target = 60;
   let plan;
   for (;;) {
     plan = entries.map(([key, count]) => [key, Math.max(1, Math.min(count, Math.round(count / target)))]);
