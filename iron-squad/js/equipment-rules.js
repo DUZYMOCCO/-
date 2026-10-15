@@ -3,7 +3,7 @@ import {soldierCombatTempo,usesSoldierTempo} from './unit-attributes.js?v=274';
 import {requiredDefenseStrength} from './defense-equipment.js?v=261';
 import {powerRank,MAX_EQUIPMENT_TIER,GENERATIONS} from './equipment-tiers.js?v=231';
 import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=182';
-import {WEAPON_STYLE_ICONS,weaponStyleOf,isHeavyWeaponStyle,combatFamilyOf} from './growth-rules.js?v=234';
+import {WEAPON_STYLE_ICONS,weaponStyleOf,isHeavyWeaponStyle,combatFamilyOf} from './growth-rules.js?v=282';
 export const EQUIPMENT_TYPES = ['WEAPON','SHIELD','HELMET','ARMOR','GLOVES','LEGS','AMULET'];
 
 const GEAR_ICONS = {

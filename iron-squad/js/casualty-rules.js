@@ -9,7 +9,7 @@ import {grantPersonalExp,revivalExperience,raiseLevelMark} from './experience-ru
 import {guardRescueLines} from './soldier-dialogue.js';
 import {attributeCarryCapacity,attributeFamily} from './unit-attributes.js?v=274';
 import {isHeavySoldier} from './heavy-tank.js?v=235';
-import {visibleHeroMembers} from './hero-rules.js';
+import {visibleHeroMembers} from './hero-rules.js?v=282';
 import {isOwnSquad} from './own-squad-marker.js?v=182';
 
 export const RESCUE_TIMEOUT = 45; // 救助猶予時間（秒）広域マップ対応で45秒に延長

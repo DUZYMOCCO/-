@@ -1,8 +1,8 @@
-import {compactFieldText} from './number-format.js?v=275';
+import {compactFieldText} from './number-format.js?v=282';
 export const DAMAGE_POPUP_CAP=40;
 const bounds=p=>{
   const age=(p.maxLife||.6)-p.life,pop=1+.32*Math.max(0,1-age/.12)**2;
-  const width=(p.text.length*(p.size||18)*.61+8)*pop,height=((p.size||18)*.76+(p.kind==='critical'?12:1))*pop;
+  const width=(p.text.length*(p.size||18)*.75+8)*pop,height=((p.size||18)*.76+(p.kind==='critical'?12:1))*pop;
   const x=p.x+(p.offsetX||0);return {left:x-width/2,right:x+width/2,top:p.y-height,bottom:p.y+2};
 };
 const overlaps=(a,b)=>a.left<b.right&&a.right>b.left&&a.top<b.bottom&&a.bottom>b.top;

@@ -11,7 +11,7 @@ import { drawFieldSoldier } from './visuals.js?v=280';
 import { createSoldierAppearance, drawSoldierHead } from './soldier-appearance.js?v=206';
 import { attackAnimationRate } from './weapon-motion.js?v=273';
 import { markSoldierDown, rebuildMerchantCasualties, RESCUE_TIMEOUT } from './casualty-rules.js?v=274';
-import {emptyMastery,normalizeMastery,hitGrowthHpBonus,hitGrowthDefBonus,migrateHitGrowth,applyHitGrowth,masteryAtkMult,masteryReloadMult} from './growth-rules.js?v=234';
+import {emptyMastery,normalizeMastery,hitGrowthHpBonus,hitGrowthDefBonus,migrateHitGrowth,applyHitGrowth,masteryAtkMult,masteryReloadMult} from './growth-rules.js?v=282';
 import {recordCombat,finishExperience} from './phase-rules.js?v=218';
 
 export const MERCHANT_PRICE_MULT = 3.2; // 相場の約3.2倍（高め）
@@ -157,7 +157,7 @@ function damageEscortFallback(game,esc,raw,options={}) {
   if(options.cover)dmg=Math.max(0,Math.min(dmg,esc.hp-1));
   recordCombat(esc);const lost=Math.min(dmg,Math.max(0,esc.hp));esc.hp-=dmg;
   noteEscortDamage(esc,lost);
-  const growth=applyHitGrowth(esc,lost,true);if(growth.gain>0){esc.hitGrowthEvents=(esc.hitGrowthEvents||0)+1;if(growth.changed){const hpAfter=esc.hp;recalcEscortStats(esc);if(hpAfter<=0)esc.hp=hpAfter;}}
+  const growth=applyHitGrowth(esc,raw,true); // 成長の基準は防御前の攻撃の強さ（DEFが高くても鈍らない）if(growth.gain>0){esc.hitGrowthEvents=(esc.hitGrowthEvents||0)+1;if(growth.changed){const hpAfter=esc.hp;recalcEscortStats(esc);if(hpAfter<=0)esc.hp=hpAfter;}}
   if(esc.hp<=0)markSoldierDown(game,esc);
 }
 

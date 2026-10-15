@@ -1,6 +1,6 @@
 // v5.0.0: 戦場の兵士の名前（名のみ）。自小隊=金色で目立たせ、本隊=小さく薄く。
 // ラベルは毎フレーム1回のパスでまとめて描く（フォントは1回だけ設定・幅はキャッシュ・配列は使い回し）。
-import {heroMembers} from './hero-rules.js';
+import {heroMembers} from './hero-rules.js?v=282';
 import {isOwnSquad} from './own-squad-marker.js';
 import {UNITS_PER_METER} from './distance-format.js?v=182';
 

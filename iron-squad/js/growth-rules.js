@@ -1,4 +1,4 @@
-import {heroGrowth} from './hero-rules.js';
+import {heroGrowth} from './hero-rules.js?v=282';
 /** HP成長（被弾）と武器マスタリーの計算ヘルパー。毎フレーム割当なし。 */
 
 export const MELEE_STYLES = ['sword', 'spear', 'hammer', 'axe', 'staff', 'wand'];
@@ -30,7 +30,7 @@ export const WEAPON_STYLE_ICONS = {
   bow: '🏹', crossbow: '🎯', cannon: '💣',staff:'🪄',wand:'🔮'
 };
 
-/** 被弾鍛錬は割合ではなく絶対値。実際に失ったHP×係数だけ最大HP（重装はDEFも）が上限なしで増える。 */
+/** 被弾鍛錬は割合ではなく絶対値。受けた攻撃の強さ（防御・軽減・結界で減らす前のダメージ）×係数だけ最大HP（重装はDEFも）が上限なしで増える。 */
 /** 武器マスタリー: ATK最大+35%。剣/槍/鎚=ATK+攻撃速度、弓/石弓=ATK+リロード、火砲=爆発半径+リロード。 */
 export const MASTERY_SOFT_CAP = 0.35;
 const MASTERY_XP_SCALE = 48;
@@ -82,15 +82,59 @@ export function isMeleeStyle(style) {
   return MELEE_STYLES.includes(style);
 }
 
-/** 被弾鍛錬（絶対値・上限なし・逓減なし）。敵の与ダメージが奥ほど大きいので成長量も自然に増える。
- *  HP: 失ったHP × 0.006。DEF（重装のみ）: 失ったHP × 0.0015。小数で保持し、反映は切り捨て。 */
-export const HIT_HP_PER_DAMAGE = 0.006;
-export const HIT_DEF_PER_DAMAGE = 0.0015;
+/** 被弾鍛錬（絶対値・上限なし・逓減なし）。敵の攻撃が奥ほど強いので成長量も自然に増える。
+ *  基準は「防御で減らす前の攻撃の強さ」（敵ATK・スキル倍率は反映済み／受け手のDEF・軽減・結界・肩代わりは未反映）。
+ *  防御が高くても成長は鈍らず、自分の最大HP・現在HPでも頭打ちにしない。
+ *  HP: 攻撃の強さ × 0.003。DEF（重装のみ）: 攻撃の強さ × 0.0105（ユーザー判断で当初案の30倍）。小数で保持し、反映は切り捨て。
+ *  v7.0.5: 基準を「失ったHP」から「防御前の攻撃の強さ」へ変更し、係数も付け直した（旧 HP 0.006 / DEF 0.0015 は失ったHP基準）。 */
+export const HIT_HP_PER_DAMAGE = 0.003;
+export const HIT_DEF_PER_DAMAGE = 0.0105;
+/** セーブ全体の印。2 未満（無い）セーブは読込時に一度だけ旧係数ぶんの積み上げを換算する。保存時は必ず 2 を書く。 */
+export const HIT_GROWTH_SCALE = 2;
+export const HIT_GROWTH_LEGACY_HP_MULT = 3.5;
+export const HIT_GROWTH_LEGACY_DEF_MULT = 50;
 export const hitGrowthHpOf = unit => Math.max(0, Number(unit?.hitGrowthHp) || 0);
 export const hitGrowthDefOf = unit => Math.max(0, Number(unit?.hitGrowthDef) || 0);
 export const hitGrowthHpBonus = unit => Math.floor(hitGrowthHpOf(unit));
 export const hitGrowthDefBonus = unit => Math.floor(hitGrowthDefOf(unit));
 const HIT_DEF_LEGACY_RATIO = 0.375;
+
+/** 1体ぶんの積み上げ（hitGrowthHp / hitGrowthDef）を旧係数→新係数へ換算する。印の管理は呼び出し側。 */
+export function scaleUnitHitGrowth(unit) {
+  if (!unit || typeof unit !== 'object') return unit;
+  if (Number(unit.hitGrowthHp) > 0) unit.hitGrowthHp = unit.hitGrowthHp * HIT_GROWTH_LEGACY_HP_MULT;
+  if (Number(unit.hitGrowthDef) > 0) unit.hitGrowthDef = unit.hitGrowthDef * HIT_GROWTH_LEGACY_DEF_MULT;
+  return unit;
+}
+
+/** 酒場の待機兵・名簿（未加入）の積み上げを換算。 */
+export function scaleTavernHitGrowth(taverns) {
+  if (!taverns) return taverns;
+  for (const u of taverns.waiting || []) scaleUnitHitGrowth(u);
+  for (const p of taverns.roster?.people || []) if (!p?.joined) scaleUnitHitGrowth(p?.unit);
+  return taverns;
+}
+
+/**
+ * セーブデータ全体の被弾成長を換算する（読込の入口で1回）。印 hitGrowthScale が 2 以上なら何もしない。
+ * 換算したら saved.hitGrowthScale = 2 にする（同じオブジェクトを再度渡しても二重に掛からない）。
+ * 対象: 隊長 / 本隊・直属 / 予備 / スカウト候補 / 勇者パーティ / 商人の護衛 / 門衛 / 酒場 / 限定仲間の候補。
+ * @returns {boolean} 換算した
+ */
+export function migrateSaveHitGrowth(saved) {
+  if (!saved || typeof saved !== 'object' || Number(saved.hitGrowthScale) >= HIT_GROWTH_SCALE) return false;
+  scaleUnitHitGrowth(saved.player);
+  for (const u of saved.squad || []) scaleUnitHitGrowth(u);
+  for (const u of saved.reserves || []) scaleUnitHitGrowth(u);
+  for (const c of saved.scoutCandidates || []) scaleUnitHitGrowth(c?.soldier);
+  for (const u of saved.heroJourney?.party?.members || []) scaleUnitHitGrowth(u);
+  for (const m of saved.merchants || []) for (const e of m?.escorts || []) scaleUnitHitGrowth(e);
+  for (const g of saved.gateGuards || []) scaleUnitHitGrowth(g);
+  scaleTavernHitGrowth(saved.taverns);
+  for (const e of saved.limitedAllies?.encounters || []) if (!e?.joined) scaleUnitHitGrowth(e?.unit);
+  saved.hitGrowthScale = HIT_GROWTH_SCALE;
+  return true;
+}
 
 /** 旧セーブ（割合 hitGrowthPct）を一度だけ絶対値へ。hpBase/defBase = 旧式が掛けていた被弾前の値。 */
 export function migrateHitGrowth(unit, hpBase, defBase = 0, heavy = false) {
@@ -110,16 +154,16 @@ export function migrateHitGrowth(unit, hpBase, defBase = 0, heavy = false) {
 const hitMilestone = value => value < 1000 ? 100 : value < 10000 ? 1000 : 10000;
 
 /**
- * 被弾時に失ったHP(lost)に応じて最大HP（heavy=trueならDEFも）を絶対値で増やす。
+ * 被弾時の「防御で減らす前の攻撃の強さ」(strength)に応じて最大HP（heavy=trueならDEFも）を絶対値で増やす。
  * @returns {{gain:number, defGain:number, changed:boolean, crossed:number|null}}
  *   changed = 反映値（切り捨て後）が変わった / crossed = 新たに跨いだHP成長の節目
  */
-export function applyHitGrowth(unit, lost, heavy = false) {
-  if (!unit || !(lost > 0)) return { gain: 0, defGain: 0, changed: false, crossed: null };
+export function applyHitGrowth(unit, strength, heavy = false) {
+  if (!unit || !(strength > 0)) return { gain: 0, defGain: 0, changed: false, crossed: null };
   const factor = heroGrowth(unit);
   const beforeHp = hitGrowthHpOf(unit), beforeDef = hitGrowthDefOf(unit);
-  const gain = lost * HIT_HP_PER_DAMAGE * factor;
-  const defGain = heavy ? lost * HIT_DEF_PER_DAMAGE * factor : 0;
+  const gain = strength * HIT_HP_PER_DAMAGE * factor;
+  const defGain = heavy ? strength * HIT_DEF_PER_DAMAGE * factor : 0;
   if (gain <= 0) return { gain: 0, defGain: 0, changed: false, crossed: null };
   const afterHp = beforeHp + gain, afterDef = beforeDef + defGain;
   unit.hitGrowthHp = afterHp;

@@ -30,6 +30,6 @@ console.log('PASS: commander rope ties own-squad members first and swaps out str
 // HP list: own squad only, number + gauge ratio, down state shows the rescue timer.
 const rows=squadHpRows({squad:[{id:1,name:'ルチア・アルデン',hp:50,maxHp:200,isPersonalGuard:true},{id:2,name:'本隊兵',hp:10,maxHp:100},{id:3,name:'エド',isDown:true,downTimer:12.2,maxHp:90,overflowGuard:true},{id:4,name:'死者',dead:true,isPersonalGuard:true}]});
 assert.deepEqual(rows.map(r=>r.id),[1,3],'only own-squad members are listed');
-assert.equal(rows[0].name,'ルチア');assert.equal(rows[0].text,'50/200');assert.equal(rows[0].ratio,.25);assert.equal(rows[0].state,'low');
+assert.equal(rows[0].name,'ルチア');assert.equal(rows[0].text,'50');assert.equal(rows[0].ratio,.25);assert.equal(rows[0].state,'low');
 assert.equal(rows[1].state,'down');assert.equal(rows[1].text,'救助 13秒');assert.equal(rows[1].ratio,0);
 console.log('PASS: own-squad HP list');

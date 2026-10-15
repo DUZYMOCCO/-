@@ -1,5 +1,5 @@
-import {formatCompact,exactEquipmentStats} from './number-format.js?v=275';
-import {pushDamageText,drawDamageText,DAMAGE_POPUP_CAP} from './damage-text.js?v=275';
+import {formatCompact,exactEquipmentStats} from './number-format.js?v=282';
+import {pushDamageText,drawDamageText,DAMAGE_POPUP_CAP} from './damage-text.js?v=282';
 import {enemyTier,rollBossTreasure,finalCriticalChance,bossCriticalBonus} from './enemy-tier.js?v=274';
 import {levelGrowthSteps,levelDefenseGrowth} from './level-growth.js?v=274';
 import {soldierCombatTempo} from './unit-attributes.js?v=274';
@@ -25,7 +25,7 @@ import {TIERS,MAX_EQUIPMENT_TIER,MAX_POWER_RANK,POWER_RANK_STEP,GENERATION_COUNT
 import {fieldAdaptiveScaling} from './field-scaling.js?v=182';
 import {activeSquad,inCurrentInstance} from './instance-rules.js?v=256';
 import {TANK,prepareTanks,tankEvalDistSq,tankSlowFactor,tankCover,tankStunSeconds} from './heavy-tank.js?v=235';
-import {recordBattleLog,resetBattleLog,refreshCombatFieldNotes} from './battle-log.js?v=246';
+import {recordBattleLog,resetBattleLog,refreshCombatFieldNotes} from './battle-log.js?v=282';
 import {rollDropExclusive,applyDropExclusive,dropExclusiveLabel} from './drop-exclusives.js?v=182';
 import {normalizeMaterials,applyCraftExclusive,craftExclusiveLabel,equipmentDropChance,materialDropChance,rollMaterialDrop,rollTreasureLoot} from './crafting-rules.js?v=231';
 import {workshopMethods} from './workshop.js?v=276';
@@ -35,7 +35,7 @@ import {normalizeCasino} from './casino-rules.js?v=276';
 import {latestEquipmentTier,recordMerchantEquipment,ensureMerchantCatalog,refreshWaveCatalogs,markMerchantPurchase} from './merchant-catalog.js?v=258';
 import {initializeMedicalPosts,updateMedicalPosts,serializeMedicalPosts,medicalPostLayout,nearestKnownMedicalPost,drawMedicalPost,drawMedicalMap,drawMedicalMarker,drawTownMedicalReception,drawRescueDirection} from './medical-posts.js?v=277';
 import {invasionMethods,initializeInvasions,serializeInvasions,shouldTriggerRandomRaid,makeEnemyRoom,drawInvasionRoute} from './invasion-rules.js?v=277';
-import {gateMethods,serializeGatePosts,replenishTownGateGuards,initializeGateGuards,ensureTownGuards,serializeGateGuards,updateGateGuards,gateGuardVisible,applyFortifications,drawFortification,exitGateTown,townExitReached,wallBlocksAttack,attackBlocked as coverBlocked} from './gate-rules.js?v=277';
+import {gateMethods,serializeGatePosts,replenishTownGateGuards,initializeGateGuards,ensureTownGuards,serializeGateGuards,updateGateGuards,gateGuardVisible,applyFortifications,drawFortification,exitGateTown,townExitReached,wallBlocksAttack,attackBlocked as coverBlocked} from './gate-rules.js?v=282';
 import {nationMethods,normalizeNation,nationalIncome,nationalPayrollPlan,headquartersDamageMult,drawNationalDevelopment,DEVELOPMENT_STAGES} from './nation-rules.js?v=277';
 import {equipmentUpgradeCost,salaryQuote,paySoldiers} from './payroll-rules.js?v=226';
 import {addFieldDrop,ageFieldDrops,attractFieldDrops,FIELD_DROP_PICKUP_RADIUS} from './field-drops.js?v=182';
@@ -86,14 +86,14 @@ import { applyCommanderIdentity, normalizeCommanderIdentity, commanderFullName, 
 import {MAGIC_CLASSES,MAGIC_AFFINITIES,magicMethods,isMage,isMagicUser,ensureMana,initializeMagic,updateMagic,distributeMagicStones,castMedicBuff,castCasterStrength,updateMageAI,drawMagicBursts,spendMana,weaponMagicDamage,isPlayerCaster,castPlayerSpell,PLAYER_MAGIC_RULES} from './magic-rules.js?v=277';
 import {hazardMethods,updateHazards,drawHazards} from './hazard-fields.js?v=277';
 import {strongEnemyReward} from './combat-rewards.js?v=182';
-import {supplyMethods, initializeSupplies, updateSupplies, takeRangedShot, ammoCombatProfile, isRangedUnit, distributeAmmo, preventLethalHit, normalizeFieldSave, SQUAD_POTION_COST, REVIVAL_POTION_COST, REVIVAL_POTION_MAX, SQUAD_POTION_MAX, ensureAmmo, ammoCapacity, recalcAmmoCapacity, RANGED_DAMAGE_MULT, supplyLocation} from './supply-rules.js?v=277';
+import {supplyMethods, initializeSupplies, updateSupplies, takeRangedShot, ammoCombatProfile, isRangedUnit, distributeAmmo, preventLethalHit, normalizeFieldSave, SQUAD_POTION_COST, REVIVAL_POTION_COST, REVIVAL_POTION_MAX, SQUAD_POTION_MAX, ensureAmmo, ammoCapacity, recalcAmmoCapacity, RANGED_DAMAGE_MULT, supplyLocation} from './supply-rules.js?v=282';
 import { bindPadTap } from './pad-tap.js?v=276';
 import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog } from './interface.js?v=275';
 import { renderTroopRankings, getSoldierRankerBadges, calcSoldierRankerBonus, setRankingFamilyLabels, RANKING_FAMILIES } from './troop-rankings.js?v=274';
 import { ensureSoldierAppearance, drawSoldierPortrait } from './soldier-appearance.js?v=206';
 import { aggregateDeathlineDynamics, tickDeathline, deathlineDamage, normalizeDeathlineSkills, chooseDeathlineSkill, deathlineRangedRange } from './deathline-rules.js?v=273';
 import {CAMPAIGN_SCALE_VERSION,migrateCampaignEnemy,campaignScalingV1} from './campaign-scaling.js?v=241';
-import {rangedCombatMethods,updatePiercingBolt,rangedDrawPose,rangedFrontlinePosition} from './ranged-combat.js?v=273';
+import {rangedCombatMethods,updatePiercingBolt,rangedDrawPose,rangedFrontlinePosition} from './ranged-combat.js?v=282';
 import {soldierMeleeMethods,tickSoldierMeleeSkill,soldierMeleeReach,soldierMeleePosition,soldierMeleeSkillText,soldierMeleeDrawPose,MELEE_BALANCE} from './soldier-melee-skills.js?v=243';
 import { buildSoldierProfile, describeDeathlineEffect } from './soldier-profile.js?v=234';
 import { attachSurfaceEvents, detachSurfaceEvents, frameSurfaceReady, releaseSceneCaches, releaseCanvas, surfaceCanResume } from './canvas-surface.js?v=217';
@@ -124,29 +124,30 @@ import {
   MELEE_STYLES, RANGED_STYLES,
   emptyMastery, normalizeMastery, isRangedStyle, isMeleeStyle,
   hitGrowthHpBonus, hitGrowthDefBonus, hitGrowthHpOf, hitGrowthDefOf, migrateHitGrowth, applyHitGrowth, masteryAtkMult, masteryPctDisplay,
+  HIT_GROWTH_SCALE, migrateSaveHitGrowth, scaleUnitHitGrowth, scaleTavernHitGrowth,
   masteryReloadMult, masterySplashMult, applyMasteryToCombatProfile,
   gainWeaponMastery, masteryGainForStyle, pickFavoriteWeapon, rollWeaponStyle,
   weaponStyleOf, favoriteWeaponBias, MASTERY_GAIN_PER_HIT,
   migrateFavoriteForClass, migrateWeaponStyleFromName
-} from './growth-rules.js?v=234';
+} from './growth-rules.js?v=282';
 
 import {
   initMerchants, ensureMerchants, updateMerchants, drawMerchantBody, drawMerchantEscort,
   nearestLivingMerchant, refreshMerchantStock, merchantBuyPrice, merchantSellTier,
   applyMerchantSave, serializeMerchants, MERCHANT_INTERACT_R,
   merchantHealingStatus, merchantHealWavesLeft, useMerchantHealing, MERCHANT_HEAL_COST, recalcEscortStats, finishEscortPhase, merchantEscortCover, noteEscortDamage
-} from './merchant-rules.js?v=274';
+} from './merchant-rules.js?v=282';
 
 import { daylightAt, advanceWorldClock, periodEnemy, enemyAvailable, PERIOD_ENEMIES } from './day-night.js?v=208';
 
 import { clusterRescueMarkers } from './rescue-markers.js?v=182';
-import {visibleHeroMembers} from './hero-rules.js';
+import {visibleHeroMembers} from './hero-rules.js?v=282';
 import {updateHeroJournal} from './hero-journal.js?v=277';
 import {applyHeroEquipmentUpgrade} from './hero-equipment.js?v=239';
-import {initializeHeroJourney,rollHeroRevelation,serializeHeroJourney,updateHeroParty,updateHeroFollowing,awardHeroBattle,recordDemonKingDefeat,ensureHeroCastle,syncHeroCastle,renderHeroJourney,drawHeroMarks} from './hero-party.js?v=277';
-import {updateSquadHpHud} from './squad-hp-hud.js?v=275';
+import {initializeHeroJourney,rollHeroRevelation,serializeHeroJourney,updateHeroParty,updateHeroFollowing,awardHeroBattle,recordDemonKingDefeat,ensureHeroCastle,syncHeroCastle,renderHeroJourney,drawHeroMarks} from './hero-party.js?v=282';
+import {updateSquadHpHud} from './squad-hp-hud.js?v=282';
 import {addBattleReport,normalizeBattleReport,renderBattleReport} from './battle-report.js?v=276';
-import {updateRescueAssistance,handleRescueAssistance} from './rescue-assistance.js?v=267';
+import {updateRescueAssistance,handleRescueAssistance} from './rescue-assistance.js?v=282';
 import { RESCUE_TIMEOUT, REVIVAL_COOLDOWN, revivalCooldownOf, revivalSkillCooldownLeft, normalizeRevivalSkill, headquartersRevivalPaused, rescueUnits, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, receiveTownCargo, leaveCivilianSpace, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, buildTransportRescueAssign, markSoldierDown, downCommander, commanderDown, updateNpcRescue, CIV_KINDS, isMedic, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST, medicHoldsByCommander, isMerchantCasualty } from './casualty-rules.js?v=274';
 import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault, dungeonBlocks, dungeonSolids } from './dungeon.js?v=251';
 import {nearestDungeonFloor,dungeonSpawnPoint,dungeonSteeringTarget} from './dungeon-layout.js?v=182';
@@ -1170,7 +1171,7 @@ export const IronSquadGame = {
 
   // 起動時にこのゲームのCSSを自分で読み込む（?v= はこのフォルダ内で管理）。ハブが init 前に await する
   prepare() {
-    return loadCss(['../css/iron-squad.css?v=267', '../css/iron-squad-interface.css?v=276'].map(p => new URL(p, import.meta.url).href));
+    return loadCss(['../css/iron-squad.css?v=267', '../css/iron-squad-interface.css?v=282'].map(p => new URL(p, import.meta.url).href));
   },
 
   init(container, onBackToHub) {
@@ -2463,7 +2464,10 @@ export const IronSquadGame = {
     this.rankIndex = 0;
     const priorCareerSlot=inheritVeterans?saveSlots.get(this.activeSlotId):null;
     this.career=priorCareerSlot?.career||priorCareerSlot?.data?restartCareerExpedition(normalizeCareer(priorCareerSlot.career||priorCareerSlot.data?.career)):newCareer();
-    initializeTaverns(this,inheritVeterans?(priorCareerSlot?.taverns||priorCareerSlot?.data?.taverns):null);
+    const inheritedTaverns=inheritVeterans?(priorCareerSlot?.taverns||priorCareerSlot?.data?.taverns):null;
+    // 印の無い旧スロットの酒場兵は一度だけ換算（スロット直下の酒場はスロットの印、data 内の酒場は data の印）。
+    if(inheritedTaverns&&!((priorCareerSlot.taverns?priorCareerSlot.hitGrowthScale:priorCareerSlot.data?.hitGrowthScale)>=HIT_GROWTH_SCALE))scaleTavernHitGrowth(inheritedTaverns);
+    initializeTaverns(this,inheritedTaverns);
     this._careerDefenseContributed=false;
     this.inBattle = true;
     this.commandActiveUntil = 0;
@@ -2556,6 +2560,8 @@ export const IronSquadGame = {
     this.rescueRewardIds=inheritVeterans?[...(inherited?.data?.rescueRewardIds||this.rescueRewardIds||[])]:[];
     const veterans = inherited?.veterans;
     this.reserves = inherited?.reserveSurvivors || [];
+    // 先輩兵・予備生存者もスロットの印が無ければ（旧版で戦死したスロット）一度だけ換算してから再計算する。
+    if(inherited&&!(inherited.hitGrowthScale>=HIT_GROWTH_SCALE)){for(const u of veterans||[])scaleUnitHitGrowth(u);for(const u of this.reserves)scaleUnitHitGrowth(u);}
     for(const soldier of this.reserves)if(soldier){soldier.phaseActivity=emptyActivity();soldier.deathlineDownHistory=[];delete soldier.revivalCooldownUntil;soldier.revivalSkillCooldownUntil=0;}
     this.squad = [];
     this.fog = new FogGrid();
@@ -3407,6 +3413,8 @@ export const IronSquadGame = {
       return;
     }
     this.dialogue?.reset();
+    // v7.0.5: 被弾鍛錬の係数引き上げ。印の無い旧セーブ（地点セーブ含む）は全ユニットの積み上げを一度だけ換算してから復元する。
+    const hitGrowthScaled = migrateSaveHitGrowth(saved);
 
     this.phase = saved.phase || saved.wave || 1;
     this.wave = this.phase;
@@ -3589,6 +3597,7 @@ export const IronSquadGame = {
     this.merchantCampSeed=Number.isInteger(saved.merchantCampSeed)?saved.merchantCampSeed:Math.floor(Math.random()*4294967296);
     initMerchants(this, generateRandomDrop, BASE_CAMP);
     if (saved.merchants) applyMerchantSave(this, saved.merchants, generateRandomDrop, BASE_CAMP);
+    if (hitGrowthScaled) for (const m of this.merchants || []) for (const e of m.escorts || []) if (!e.dead) recalcEscortStats(e); // 護衛の最大HP/DEFを換算後の成長で再計算
     refreshOwnedEquipmentUpgrades(this);
     sanitizeCarriers(this);
     if (!legacyWorld && saved.dungeons) {
@@ -3886,6 +3895,7 @@ export const IronSquadGame = {
         magicReserve:this.magicReserve||0,
         squadPotion:this.squadPotion||0,
         revivalPotion:this.revivalPotion||0,
+        hitGrowthScale: HIT_GROWTH_SCALE,
         worldVersion: WORLD_VERSION,
         phase: this.phase || this.wave || 1,
         phaseTimer: this.phaseTimer,
@@ -5207,6 +5217,7 @@ export const IronSquadGame = {
         const slot=slots[i],stats=biomeEnemyStats({...encounter,type:slot.type},zone.id);
         const nx=Math.max(30,Math.min(MAP_WIDTH-30,x+c*slot.dx-s*slot.dy)),ny=Math.max(30,Math.min(MAP_HEIGHT-30,y+s*slot.dx+c*slot.dy));
         const pos={x:nx,y:ny};settleUnit(pos,(px,py)=>fieldBlocks(px,py));
+        if(peaceContainment(pos.x,pos.y)){const out=pushOutsidePeace(pos.x,pos.y);pos.x=out.x;pos.y=out.y;settleUnit(pos,(px,py)=>fieldBlocks(px,py));if(peaceContainment(pos.x,pos.y))continue;}
         const dist=Math.hypot(pos.x-BASE_CAMP.x,pos.y-BASE_CAMP.y),scale=distanceScaling(dist,curPhase),ad=fieldAdaptiveScaling(this,dist);
         const member={...monster,...pos,type:stats.type,name:stats.name,hp:Math.floor(stats.rawHp*scale.hp*ad.hp),maxHp:Math.floor(stats.rawHp*scale.hp*ad.hp),atk:Math.floor(stats.rawAtk*scale.atk*ad.atk),speed:stats.speed*(getFieldZone(pos.x,pos.y).speedMult||1),radius:stats.radius,flying:!!stats.flying,charge:!!stats.charge,rangedKind:stats.rangedKind,homeX:pos.x,homeY:pos.y,lootDistance:dist,fieldAdaptive:ad,encounterGroup:encStats.group||'pack'};
         if(i===0)Object.assign(monster,member);else this.monsters.push(member);
@@ -7681,6 +7692,29 @@ export const IronSquadGame = {
     }
   },
 
+  /** 被弾鍛錬: 防御で減らす前の攻撃の強さ(strength)を基準に成長。結界で全吸収・肩代わりで0になった被弾でも呼ぶ（回避・環境ダメージでは呼ばない）。 */
+  trainFromHit(target, strength) {
+    const growth = applyHitGrowth(target, strength, target !== this.player && attributeFamily(target) === 'HEAVY');
+    if (growth.gain > 0) {
+      target.hitGrowthEvents = (target.hitGrowthEvents || 0) + 1;
+      if (growth.changed) {
+        const hpAfterHit = target.hp, beforeMax = target.maxHp || 1;
+        if (target === this.player) this.recalcPlayerStats();
+        else this.recalcSoldierStats(target);
+        if (hpAfterHit <= 0) target.hp = hpAfterHit; // 致命傷は成長で救わない（ダウン判定はこの後）
+        else {
+          // 成長分だけ現在HPも少し底上げ（即死ループ防止のため差分の半額）
+          const gainedMax = Math.max(0, (target.maxHp || beforeMax) - beforeMax);
+          if (gainedMax > 0 && target.hp > 0) target.hp = Math.min(target.maxHp, target.hp + Math.ceil(gainedMax * 0.5));
+        }
+      }
+      if (growth.crossed != null) {
+        const who = target === this.player ? '隊長' : (target.name || '兵士');
+        this.showToast(`💪${who}の体躯鍛錬 被弾HP成長 +${growth.crossed}`);
+      }
+    }
+  },
+
   damageTarget(target, rawDmg, options={}) {
     if(target?.isCommerce){damageCommerce(this,target,rawDmg);return;}
     const environmental=!!options.environmental;
@@ -7751,9 +7785,9 @@ export const IronSquadGame = {
     if(target.magicWardTimer>0)dmg=Math.max(1,Math.round(dmg*(1-(target.magicWardBonus||0))));
     const barrier=absorbEquipmentBarrier(target,dmg,magical);dmg=barrier.damage;
     if(barrier.absorbed>0)this.spawnDamageText(target.x,target.y-26,`結界 −${Math.ceil(barrier.absorbed)}`,'#90b9c5');
-    if(!(dmg>0))return; // 結界が全部受けた: 赤い数字・被弾音・HP成長なし
-    if(covered){dmg=Math.min(dmg,target.hp-1);if(!(dmg>0))return;} // かばいでは倒れない
-    if(preventLethalHit(this,target,dmg))return;
+    if(!(dmg>0)){if(!environmental)this.trainFromHit(target,rawDmg);return;} // 結界が全部受けた: 赤い数字・被弾音なし。ただし攻撃は受けたので鍛錬は進む
+    if(covered){dmg=Math.min(dmg,target.hp-1);if(!(dmg>0)){if(!environmental)this.trainFromHit(target,rawDmg);return;}} // かばいでは倒れない（HP1で止まっても鍛錬は進む）
+    if(preventLethalHit(this,target,dmg)){if(!environmental)this.trainFromHit(target,rawDmg);return;} // 致命傷防止でも鍛錬は進む
     if(magical)practiceAttribute(target,'magicDefense',1+Math.min(4,rawDmg/Math.max(1,target.maxHp||1)));
     const hpBeforeHit = target.hp, lostHp = Math.min(dmg, Math.max(0, hpBeforeHit));
     target.hp -= dmg;
@@ -7761,26 +7795,8 @@ export const IronSquadGame = {
     this.spawnDamageText(target.x, target.y - 12, dmg,'#ff3344',{kind:'friendly',maxHp:target.maxHp});
     sound.playHurt(target.x,target.y);
 
-    // 被弾によるHP成長（実際に失ったHPに比例する絶対値・上限なし。重装はDEFも緩やかに）
-    const growth = applyHitGrowth(target, lostHp, target !== this.player && attributeFamily(target) === 'HEAVY');
-    if (growth.gain > 0) {
-      target.hitGrowthEvents = (target.hitGrowthEvents || 0) + 1;
-      if (growth.changed) {
-        const hpAfterHit = target.hp, beforeMax = target.maxHp || 1;
-        if (target === this.player) this.recalcPlayerStats();
-        else this.recalcSoldierStats(target);
-        if (hpAfterHit <= 0) target.hp = hpAfterHit; // 致命傷は成長で救わない（ダウン判定はこの後）
-        else {
-          // 成長分だけ現在HPも少し底上げ（即死ループ防止のため差分の半額）
-          const gainedMax = Math.max(0, (target.maxHp || beforeMax) - beforeMax);
-          if (gainedMax > 0 && target.hp > 0) target.hp = Math.min(target.maxHp, target.hp + Math.ceil(gainedMax * 0.5));
-        }
-      }
-      if (growth.crossed != null) {
-        const who = target === this.player ? '隊長' : (target.name || '兵士');
-        this.showToast(`💪${who}の体躯鍛錬 被弾HP成長 +${growth.crossed}`);
-      }
-    }
+    // 被弾によるHP成長（防御・軽減・結界の前の攻撃の強さに比例する絶対値・上限なし。重装はDEFも）
+    if (!environmental) this.trainFromHit(target, rawDmg);
 
     if (target !== this.player && target.hp > 0 && !target.isDown && target.hp / target.maxHp <= 0.3) {
       this.dialogue?.trigger(target, 'LOW_HP');
@@ -7981,11 +7997,11 @@ export const IronSquadGame = {
             </section>
             <section class="merchant-heal-service" aria-label="部隊ポーション">
               <div><h4>部隊回復ポーション</h4><p>隊長と行動可能な直属兵のHP・弾薬・魔力を全回復 · 携帯${SQUAD_POTION_MAX}個まで</p><p>${SQUAD_POTION_COST.toLocaleString()}G · 本陣では無料補給 · 携帯${this.squadPotion||0}/${SQUAD_POTION_MAX}</p></div>
-              <button type="button" class="transfer-tap-btn merchant-potion-button" ${(this.squadPotion||0)>=SQUAD_POTION_MAX||gold<SQUAD_POTION_COST||!available?'disabled':''}>${(this.squadPotion||0)>=SQUAD_POTION_MAX?'携帯上限':`購入 · ${SQUAD_POTION_COST.toLocaleString()}G`}</button>
+              <button type="button" class="transfer-tap-btn merchant-potion-button" ${(this.squadPotion||0)>=SQUAD_POTION_MAX||gold<SQUAD_POTION_COST||!available?'disabled':''}>${(this.squadPotion||0)>=SQUAD_POTION_MAX?'携帯上限':!available?'現在は利用できません':gold<SQUAD_POTION_COST?`所持金不足 · ${SQUAD_POTION_COST.toLocaleString()}G必要`:`購入 · ${SQUAD_POTION_COST.toLocaleString()}G`}</button>
             </section>
             <section class="merchant-heal-service" aria-label="蘇生薬">
               <div><h4>蘇生薬</h4><p>近くの味方1人を全快蘇生 · 携帯${REVIVAL_POTION_MAX}個まで · 自分には使用不可</p><p>術士の蘇生クールタイムを無視して使えます · ${REVIVAL_POTION_COST.toLocaleString()}G</p></div>
-              <button type="button" class="transfer-tap-btn merchant-revival-button" ${(this.revivalPotion||0)>=REVIVAL_POTION_MAX||gold<REVIVAL_POTION_COST||!available?'disabled':''}>${(this.revivalPotion||0)>=REVIVAL_POTION_MAX?`携帯中 ${REVIVAL_POTION_MAX}/${REVIVAL_POTION_MAX}`:`購入 · ${REVIVAL_POTION_COST.toLocaleString()}G（携帯${this.revivalPotion||0}/${REVIVAL_POTION_MAX}）`}</button>
+              <button type="button" class="transfer-tap-btn merchant-revival-button" ${(this.revivalPotion||0)>=REVIVAL_POTION_MAX||gold<REVIVAL_POTION_COST||!available?'disabled':''}>${(this.revivalPotion||0)>=REVIVAL_POTION_MAX?`携帯中 ${REVIVAL_POTION_MAX}/${REVIVAL_POTION_MAX}`:!available?'現在は利用できません':gold<REVIVAL_POTION_COST?`所持金不足 · ${REVIVAL_POTION_COST.toLocaleString()}G必要（携帯${this.revivalPotion||0}/${REVIVAL_POTION_MAX}）`:`購入 · ${REVIVAL_POTION_COST.toLocaleString()}G（携帯${this.revivalPotion||0}/${REVIVAL_POTION_MAX}）`}</button>
             </section>
             <button type="button" class="transfer-tap-btn merchant-base-potion-button" ${supplyLocation(this)?.kind==='base'&&(this.squadPotion||0)<SQUAD_POTION_MAX&&available?'':'disabled'}>本陣で回復薬を無料補給</button>
             <p class="merchant-menu-intro">弾薬・魔力は商人の近くで自動補給されます。</p>`:''}
@@ -9217,11 +9233,11 @@ export const IronSquadGame = {
         <div class="soldier-detail-grid">
           <div class="soldier-detail-block soldier-detail-span2">
             <div class="soldier-detail-label">基本ステータス</div>
-            <div>HP <strong style="color:#34d399;">${Math.floor(s.hp || 0)}</strong> / ${s.maxHp || 0}</div>
-            <div>ATK <strong>${s.atk || 0}</strong> · DEF <strong style="color:#38bdf8;">${s.def || 0}</strong></div>
+            <div>HP <strong style="color:#34d399;">${Math.floor(s.hp || 0).toLocaleString()}</strong> / ${(s.maxHp || 0).toLocaleString()}</div>
+            <div>ATK <strong>${(s.atk || 0).toLocaleString()}</strong> · DEF <strong style="color:#38bdf8;">${(s.def || 0).toLocaleString()}</strong></div>
             <div>サイフ <strong style="color:#fde047;">${(s.gold || 0).toLocaleString()}G</strong></div>
             <div>通常給与見込 <strong>${wage.total.toLocaleString()}G</strong>（基本${wage.basic.toLocaleString()}＋整備${wage.maintenance.toLocaleString()}）<br>栄誉手当 +${ranker.totalBonus.toLocaleString()}G／期</div>
-            <div>経験 ${s.exp || 0} / 次${s.reqExp || 14}</div><div>${attackSpeedLabel(s)} · 会心 ${Math.min(75,s.crit||0)}%（合計上限75%）</div>
+            <div>経験 ${Math.floor(s.exp || 0).toLocaleString()} / 次${(s.reqExp || 14).toLocaleString()}</div><div>${attackSpeedLabel(s)} · 会心 ${Math.min(75,s.crit||0)}%（合計上限75%）</div>
             <div class="soldier-attribute-grid"><span>筋力 <strong>${s.strength||0}</strong></span><span>魔力 <strong>${s.magicPower||0}</strong></span><span>魔法防御 <strong>${s.magicDef||0}</strong></span><span>速さ <strong>${s.quickness||0}</strong></span><span>回避 <strong>${s.evasion||0}</strong>（${s.dodge||0}%）</span><span>搬送 <strong>${attributeCarryCapacity(s)}人</strong></span></div>
             ${s.equipmentBarrierMax?`<div>バリア ${Math.floor(s.equipmentBarrier||0)} / ${s.equipmentBarrierMax} · 50%吸収（被弾後8秒で再生）</div>`:''}
             <div>移動 ${formatSpeed(s.speed||0)}${isMagicUser(s)?` · 魔法攻撃 ${s.magicAttack||0}`:''}</div>${prefersCasterMelee(s)?`<div>魔力の一撃 ×${casterStrikeMultiplier(s)}（近接・MP${CASTER_STRIKE_COST}）</div>`:''}
@@ -9257,12 +9273,12 @@ export const IronSquadGame = {
             <div class="soldier-detail-label">戦績・成長</div>
             <div>雑魚討伐 ⚔️ <strong>${s.minionKills || 0}</strong></div>
             <div>ボス討伐 👑 <strong style="color:#38bdf8;">${s.bossKills || 0}</strong></div><div>中ボス撃破 ${s.midbossKills||0}</div>
-            <div>総キル <strong>${s.kills || ((s.minionKills || 0) + (s.bossKills || 0))}</strong></div>
+            <div>総キル <strong>${(s.kills || ((s.minionKills || 0) + (s.bossKills || 0))).toLocaleString()}</strong></div>
             <div>戦線経験 <strong>${s.survivedWaves || 0}</strong>期（記録${phases.length}件）</div>
-            <div>歩いた距離 ${formatDistance(Math.floor(s.attributeProfile?.practice?.travel||0))} · 回避成功 ${Math.floor(s.attributeProfile?.practice?.evasion||0)}回</div>
+            <div>歩いた距離 ${formatDistance(Math.floor(s.attributeProfile?.practice?.travel||0))} · 回避成功 ${Math.floor(s.attributeProfile?.practice?.evasion||0).toLocaleString()}回</div>
 
             ${isMedic(s) ? `<div>実回復 💚 <strong>${Math.floor(s.healingHp || 0).toLocaleString()}HP</strong> · 回復EXP <strong>${(s.healingExp || 0).toLocaleString()}</strong></div><div>蘇生EXP <strong>${(s.revivalExp || 0).toLocaleString()}</strong></div>` : ''}
-            <div>隊長からの経験値 <strong>+${Math.floor(s.commanderBonusExp||0)}</strong> · 防御展開の遮断 <strong>${Math.floor(s.defenseBlocked||0)}</strong></div>
+            <div>隊長からの経験値 <strong>+${Math.floor(s.commanderBonusExp||0).toLocaleString()}</strong> · 防御展開の遮断 <strong>${Math.floor(s.defenseBlocked||0).toLocaleString()}</strong></div>
             <div>直近${DEATHLINE_WINDOW_PHASES}ウェーブのダウン <strong>${recentDownCount(s,this.phase)} / ${DEATHLINE_DOWN_THRESHOLD}回</strong></div>
             ${isMedic(s)?`<div>蘇生魔法 <strong>${revivalSkillCooldownLeft(this,s)>0?`再使用まで${Math.ceil(revivalSkillCooldownLeft(this,s))}秒`:'使用可能'}</strong> · 再使用${Math.round(revivalCooldownOf(s))}秒</div>`:''}
             <div>闘技場 <strong>${s.arenaRecord?.wins||0}勝 / ${s.arenaRecord?.losses||0}敗</strong></div>
@@ -9273,8 +9289,8 @@ export const IronSquadGame = {
             <div>負傷ダウン回数 🆘 <strong>${s.timesDown || 0}</strong></div>
             <div>被救護回数 🚑 <strong style="color:#34d399;">${s.timesRescued || 0}</strong></div>
             <div>他者救護回数 💚 <strong>${s.rescues || 0}</strong></div>
-            <div>被弾鍛錬回数 <strong>${s.hitGrowthEvents || 0}</strong></div>
-            <div>被弾HP成長 💪 <strong style="color:#fbbf24;">+${hitHp}</strong></div>${attributeFamily(s)==='HEAVY'?`<div>被弾防御成長 🛡 <strong style="color:#38bdf8;">+${hitDef}</strong></div>`:''}
+            <div>被弾鍛錬回数 <strong>${(s.hitGrowthEvents || 0).toLocaleString()}</strong></div>
+            <div>被弾HP成長 💪 <strong style="color:#fbbf24;">+${hitHp.toLocaleString()}</strong></div>${attributeFamily(s)==='HEAVY'?`<div>被弾防御成長 🛡 <strong style="color:#38bdf8;">+${hitDef.toLocaleString()}</strong></div>`:''}
           </div>
           <div class="soldier-detail-block soldier-detail-span2">
             <div class="soldier-detail-label">作戦期履歴（直近）</div>
@@ -10409,7 +10425,7 @@ export const IronSquadGame = {
       const playerStats=[['HP',`${Math.max(0,Math.floor(p.hp)).toLocaleString()} / ${p.maxHp.toLocaleString()}`],['攻撃',p.atk.toLocaleString()],['防御',(p.def||0).toLocaleString()],['筋力',values.strength],['魔力',values.magic],['魔法防御',values.magicDefense],['速さ',values.quickness],['回避',`${values.evasion} · ${p.dodge||0}%`],['魔法攻撃',(p.magicAttack||0).toLocaleString()],['移動',formatSpeed(p.speed||0)],['搬送',`${attributeCarryCapacity(p)}人`],['MP',caster?`${Math.floor(ensureMana(p))} / ${p.maxMana}`:'—'],['バリア',`${Math.floor(p.equipmentBarrier||0)} / ${p.equipmentBarrierMax||0}`],['軍資金',`${(this.gold||0).toLocaleString()}G`]];
       pRecordBox.innerHTML = `
         <h4 class="commander-stat-title">隊長ステータス <small>Lv.${p.level||1}</small></h4>
-        <dl class="commander-stat-grid">${playerStats.map(([label,value])=>`<div><dt>${label}</dt><dd>${value}</dd></div>`).join('')}</dl>
+        <dl class="commander-stat-grid">${playerStats.map(([label,value])=>`<div${String(value).length>11?' class="commander-stat-wide"':''}><dt>${label}</dt><dd>${value}</dd></div>`).join('')}</dl>
         <label class="commander-spell-choice">使用する魔法<select id="player-magic-affinity">${Object.entries(MAGIC_AFFINITIES).map(([id,spell])=>`<option value="${id}" ${p.magicAffinity===id?'selected':''}>${spell.name}</option>`).join('')}</select></label>
         <p class="command-note">${caster?`通常 ${MAGIC_AFFINITIES[p.magicAffinity].cost}MP · マナバースト ${PLAYER_MAGIC_RULES.powerCost}MP · 射程 ${formatDistance(PLAYER_MAGIC_RULES.range)}。補給地点・回復薬・魔法石でMPを補充。`:'ワンドか杖を装備すると魔法を使えます。'}</p>
         <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px;">
@@ -10533,7 +10549,7 @@ export const IronSquadGame = {
       <div style="font-size: 11px; font-weight: bold; color: #ffaa00; margin-bottom: 6px;">【隊長装備（全7部位）】(鍛冶屋で強化可能)</div>
       <div style="font-size: 9.5px; color: #7dd3fc; margin-bottom: 4px;">隊長は職制限なし — 剣/槍/鎚/弓/クロスボウ/火砲を自由装備</div>
       <div style="font-size: 10px; color: #94a3b8; margin-bottom: 6px; line-height: 1.45;">
-        💪被弾鍛錬 HP+${pTankHp}（上限なし）<br/>
+        💪被弾鍛錬 HP+${pTankHp}（上限なし・敵の攻撃の強さで成長）<br/>
         ⚔️近接熟練 ${meleeMast}<br/>
         🏹遠隔熟練 ${rangedMast}<br/>
         <span style="color:#67e8f9;">剣/槍/鎚熟練＝ATK+攻撃速度　弓/石弓熟練＝ATK+リロード短縮　火砲熟練＝爆発半径+リロード短縮</span>
@@ -12793,7 +12809,7 @@ export const IronSquadGame = {
     // 先輩兵士として引き継ぐ（生存かつダウンしていない兵士）。国家の発展は同じ遠征の再入隊へ残す。
     const aliveVeterans = this.squad ? this.squad.filter(s => !s.dead && !s.isDown) : [];
     const nation = normalizeNation(this.nation);
-    const fallenSaved=saveSlots.update(this.activeSlotId, {state:'fallen', nation, career:{...this.career},taverns:serializeTaverns(this), commander:normalizeCommanderIdentity(this.player), veterans:aliveVeterans.map(persistentUnit), reserveSurvivors:(this.reserves || []).map(persistentUnit)});
+    const fallenSaved=saveSlots.update(this.activeSlotId, {state:'fallen', nation, career:{...this.career},taverns:serializeTaverns(this), commander:normalizeCommanderIdentity(this.player), veterans:aliveVeterans.map(persistentUnit), reserveSurvivors:(this.reserves || []).map(persistentUnit), hitGrowthScale:HIT_GROWTH_SCALE});
 
     if(!fallenSaved)this.showToast('保存に失敗しました。ブラウザの空き容量を確認してください');
     const overlay = document.getElementById('game-overlay');

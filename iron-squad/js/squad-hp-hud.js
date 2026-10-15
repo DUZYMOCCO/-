@@ -1,10 +1,10 @@
-import {formatCompact} from './number-format.js?v=275';
+import {formatCompact} from './number-format.js?v=282';
 // Translucent HP list of the commander's own squad on the left edge (number + gauge).
 // Only own-squad members are listed; the main army, NPCs and civilians are not.
 import {isOwnSquad} from './own-squad-marker.js?v=182';
 import {downLabel} from './casualty-rules.js?v=274';
 import {isMagicUser,ensureMana} from './magic-rules.js?v=277';
-import {isRangedUnit,ensureAmmo,ammoCapacity} from './supply-rules.js?v=277';
+import {isRangedUnit,ensureAmmo,ammoCapacity} from './supply-rules.js?v=282';
 
 const REFRESH = .15;
 const shortName = name => String(name || '').split(/[・\s]/)[0] || '兵士';
@@ -16,7 +16,7 @@ export function squadHpRows(game) {
       const max = Math.max(1, Math.round(s.maxHp || 1)), hp = s.isDown || s.dying ? 0 : Math.max(0, Math.min(max, Math.round(s.hp || 0)));
       const ratio = hp / max, state = s.dying ? 'dead' : s.isDown ? 'down' : ratio <= .3 ? 'low' : ratio <= .6 ? 'mid' : 'ok';
       const gone = s.isDown || s.dying;
-      return {id: s.id, name: shortName(s.name), hp, max, ratio, state, text: gone ? downLabel(s) : `${formatCompact(hp)}/${formatCompact(max)}`, res: gone ? null : resourceOf(game, s)};
+      return {id: s.id, name: shortName(s.name), hp, max, ratio, state, text: gone ? downLabel(s) : formatCompact(hp) /* 幅100pxの枠に収めるため現在HPだけ（割合はバーで見せる） */, res: gone ? null : resourceOf(game, s)};
     });
 }
 

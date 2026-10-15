@@ -39,9 +39,9 @@ const lose=(u,fn)=>{u.maxHp=u.hp=100000;const b=u.hp;fn();return b-u.hp;};
 {const heavy=make('HEAVY',C,C),mage=make('MAGE',C+50,C);setup(heavy,mage);
  assert.equal(lose(mage,()=>g.damageTarget(mage,100,{attacker:foe})),50,'victim takes half');
  assert.equal(100000-heavy.hp,50,'guardian takes the other half (DEF 0)');
- assert.ok(heavy.hitGrowthHp>0&&heavy.hitGrowthDef>0,'guardian grows HP and DEF from the HP it actually lost');
+ assert.ok(heavy.hitGrowthHp>0&&heavy.hitGrowthDef>0,'guardian grows HP and DEF from its share of the attack strength');
  assert.ok(mage.hitGrowthHp>0&&!(mage.hitGrowthDef>0),'victim grows only from its own share (no DEF growth for non-heavy)');
- assert.ok(Math.abs(mage.hitGrowthHp/heavy.hitGrowthHp-1)<.5,'both lost 50 -> comparable growth');}
+ assert.ok(Math.abs(mage.hitGrowthHp/heavy.hitGrowthHp-1)<.5,'both took a 50 share -> equal growth');}
 // 範囲外(80px)・攻撃者なし・環境ダメージ・重装同士は対象外
 {const heavy=make('HEAVY',C,C),far=make('MAGE',C+80,C),near=make('MAGE',C+60,C);setup(heavy,far,near);
  assert.equal(lose(far,()=>g.damageTarget(far,100,{attacker:foe})),100);assert.equal(heavy.hp,100000);
@@ -50,7 +50,8 @@ const lose=(u,fn)=>{u.maxHp=u.hp=100000;const b=u.hp;fn();return b-u.hp;};
  const h2=make('HEAVY',C+30,C);setup(heavy,h2);assert.equal(lose(h2,()=>g.damageTarget(h2,100,{attacker:foe})),100,'heavy is never covered by another heavy');assert.equal(heavy.hp,100000);}
 // 隊長も守る
 {const heavy=make('HEAVY',C,C);setup(heavy);const p=g.player;Object.assign(p,{x:C+40,y:C,invulnerableTimer:0,def:0,dodge:0,dmgReduction:0,hp:100000,maxHp:100000});
- assert.equal(lose(p,()=>g.damageTarget(p,100,{attacker:foe})),50);assert.equal(100000-heavy.hp,50);p.x=C-9000;}
+ g.recalcPlayerStats=noop; // 被弾成長でHPが整数を跨いでも、テスト用の巨大HPを再計算で潰さない
+ assert.equal(lose(p,()=>g.damageTarget(p,100,{attacker:foe})),50);assert.equal(100000-heavy.hp,50);p.x=C-9000;delete g.recalcPlayerStats;}
 // 瀕死(HP<=20%)の重装は発動しない / 最寄りが守護者
 {const heavy=make('HEAVY',C,C),mage=make('MAGE',C+50,C);heavy.hp=Math.floor(heavy.maxHp*.15);setup(heavy,mage);const h0=heavy.hp;
  assert.equal(lose(mage,()=>g.damageTarget(mage,100,{attacker:foe})),100);assert.equal(heavy.hp,h0);

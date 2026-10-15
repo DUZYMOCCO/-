@@ -1,5 +1,5 @@
 // Equipment granted by revelation, outside the nation's manufacturing/loot tiers.
-import {heavyWeaponAttackMult,HEAVY_ATTACK_VERSION} from './growth-rules.js?v=234';
+import {heavyWeaponAttackMult,HEAVY_ATTACK_VERSION} from './growth-rules.js?v=282';
 export const HERO_SWORD_ATK_MULT=1.8;
 export const HERO_EQUIPMENT_RULES=Object.freeze({version:1,tier:24,power:1});
 const caster=role=>role==='MEDIC'||role==='MAGE';

@@ -3,12 +3,12 @@ import {JSDOM} from '../../__pycache__/ui-tools/node_modules/jsdom/lib/api.js';
 import {requestEvenUpgrade} from '../js/even-upgrade.js';
 import {formatCompact,compactFieldText,exactEquipmentStats} from '../js/number-format.js';
 import {pushDamageText,DAMAGE_POPUP_CAP,drawDamageText} from '../js/damage-text.js';
-for(const [input,expected] of [[0,'0'],[-0,'0'],[.125,'0.125'],[-.5,'-0.5'],[999,'999'],[1000,'1K'],[1234,'1.23K'],[12345,'12.3K'],[123456,'123K'],[999999,'1M'],[1000000,'1M'],[-1234567,'-1.23M'],[1e9,'1B'],[1e12,'1T']])assert.equal(formatCompact(input),expected,String(input));
-assert.equal(compactFieldText('+12345G'),'+12.3K G');assert.equal(compactFieldText('+12345HP'),'+12.3K HP');assert.equal(compactFieldText('-12345'),'-12.3K');
+for(const [input,expected] of [[0,'0'],[-0,'0'],[.125,'0.125'],[-.5,'-0.5'],[999,'999'],[1000,'1,000'],[1234,'1,234'],[1234.6,'1,235'],[12345,'12,345'],[123456,'123,456'],[999999,'999,999'],[1000000,'1,000,000'],[-1234567,'-1,234,567'],[1e9,'1,000,000,000'],[1e12,'1,000,000,000,000']])assert.equal(formatCompact(input),expected,String(input));
+assert.equal(compactFieldText('+12345G'),'+12,345 G');assert.equal(compactFieldText('+12345HP'),'+12,345 HP');assert.equal(compactFieldText('-12345'),'-12,345');
 const popupGame={damageTexts:[]};
 for(let i=0;i<60;i++)pushDamageText(popupGame,i*100,0,i,'#ffffff');
 assert.equal(popupGame.damageTexts.length,DAMAGE_POPUP_CAP);assert.equal(popupGame.damageTexts[0].text,'20');const crowded={damageTexts:[]};for(let i=0;i<20;i++)pushDamageText(crowded,i%4*20,0,12345,'#ffffff');assert.ok(crowded.damageTexts.length<20,'overlapping old numbers are culled');
-pushDamageText(popupGame,0,0,12345,'#ffaa00',{kind:'critical',maxHp:100000});assert.equal(popupGame.damageTexts.at(-1).big,true);assert.equal(popupGame.damageTexts.at(-1).text,'12.3K');
+pushDamageText(popupGame,0,0,12345,'#ffaa00',{kind:'critical',maxHp:100000});assert.equal(popupGame.damageTexts.at(-1).big,true);assert.equal(popupGame.damageTexts.at(-1).text,'12,345');
 const ops=[];let depth=0;const ctx=new Proxy({save:()=>depth++,restore:()=>depth--,strokeText:(...a)=>ops.push(['stroke',...a]),fillText:(...a)=>ops.push(['fill',...a])},{get:(o,k)=>k in o?o[k]:(...a)=>ops.push([k,...a])});
 drawDamageText(ctx,popupGame.damageTexts.at(-1));assert.equal(depth,0);assert.ok(ops.some(o=>o[0]==='stroke'));assert.ok(ops.some(o=>o[1]==='会心'));
 const dom=new JSDOM('<div id="game"></div>',{url:'http://localhost/'});
@@ -19,13 +19,13 @@ const g=Object.create(IronSquadGame);Object.assign(g,{container:document.getElem
 for(const key of ['startGameLoop','showToast','spawnSparks'])g[key]=noop;
 g.setupUI();g.activeSlotId=saveSlots.create('NUMBER DISPLAY TEST ONLY').id;g.startFreshGame(false);g.closeStrategyModal();
 g.gold=5545200;g.player.maxHp=1234567;g.player.hp=123456;g.updateStatsUI();
-assert.equal(document.querySelector('#current-gold').textContent,'5.55M G');assert.equal(document.querySelector('.qv-hp').textContent,'HP 123K/1.23M');
+assert.equal(document.querySelector('#current-gold').textContent,'5,545,200 G');assert.equal(document.querySelector('.qv-hp').textContent,'HP 123,456/1,234,567');
 const before=structuredClone(g.saveGame({persist:false}));g.spawnDamageText(0,0,1234567,'#ffffff');g.updateStatsUI();assert.deepEqual(structuredClone(g.saveGame({persist:false})),before,'formatting and effects never change save values');
 g.openStrategyModal();g._selectStratTab('overview');g.renderStrategyUI();
 assert.match(document.querySelector('.commander-stat-grid').textContent,/123,456.*1,234,567/,'commander detail retains exact HP');
 const w={id:'exact-test',type:'WEAPON',tier:28,weaponStyle:'sword',name:'検証装備',rollMult:1,stats:{}};applyUpgradeStats(w,50);
 assert.ok(exactEquipmentStats(w).includes(w.stats.atk.toLocaleString()));
-// Real equal-upgrade confirmation must retain all digits, while the top HUD is compact.
+// Real equal-upgrade confirmation must retain all digits (the top HUD also shows grouped digits).
 const source=document.createElement('button');g.container.append(source);g.getUpgradeCost=()=>1234567;
 g.gold=5545200;g.equipped={weapon:w};requestEvenUpgrade(g,source);
 const dialog=document.querySelector('#even-upgrade-confirm');assert.ok(dialog);

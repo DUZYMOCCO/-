@@ -439,6 +439,9 @@
 .iron-squad .commander-stat-grid > div { min-width: 0; padding: 8px; background: var(--ui-raised); border-radius: 6px; }
 .iron-squad .commander-stat-grid dt { color: var(--ui-muted); font-size: 11px; }
 .iron-squad .commander-stat-grid dd { margin: 3px 0 0; font-size: 14px; color: var(--ui-text); overflow-wrap: anywhere; }
+/* 桁区切りの長い数値（HP・軍資金など）は1行を使い、数字の途中で折り返さない */
+.iron-squad .commander-stat-grid > .commander-stat-wide { grid-column: 1 / -1; }
+.iron-squad .commander-stat-grid > .commander-stat-wide dd { overflow-wrap: normal; }
 .iron-squad .commander-spell-choice { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--ui-muted); font-size: 12px; }
 .iron-squad .commander-spell-choice select { min-height: 44px; min-width: 120px; border: 1px solid var(--ui-line); border-radius: 6px; background: var(--ui-raised); color: var(--ui-text); font-size: 16px; padding: 8px; }
 .iron-squad #player-record-box { margin: 0 !important; padding: 0 !important; background: none !important; border: 0 !important; }

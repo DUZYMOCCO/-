@@ -18,7 +18,7 @@ function session(game){
 export const pendingNpcRescue=game=>session(game).prompt;
 export function answerNpcRescue(game,accept){
   const s=session(game),p=s.prompt;if(!p)return false;
-  if(accept)s.job=p;else s.declined.set(p.target,{until:s.clock+30,downId:p.target.downId});
+  if(accept){s.job=p;p.medic.regrouping=false;}else s.declined.set(p.target,{until:s.clock+30,downId:p.target.downId});
   s.prompt=null;s.panel?.remove();s.panel=null;return true;
 }
 function showRequest(game,s){
@@ -34,13 +34,15 @@ function showRequest(game,s){
   for(const event of ['pointerdown','pointerup','touchstart','touchend'])panel.addEventListener(event,e=>e.stopPropagation());
   game.container.append(panel);s.panel=panel;
 }
-const readyMedic=(g,u)=>alive(u)&&!u.heroPartyId&&isMedic(u)&&local(g,u)&&!u.regrouping&&!carriedCount(g,u)&&revivalSkillCooldownLeft(g,u)<=.000001&&medicHasStamina(u,MEDIC_TREAT_MIN);
+// 相談・救助の継続では、隊長の疾走で離れて「隊列へ戻る」状態になっても取り消さない（疾走中に相談が一瞬で消えていた）。
+const medicAble=(g,u)=>alive(u)&&!u.heroPartyId&&isMedic(u)&&local(g,u)&&!carriedCount(g,u)&&revivalSkillCooldownLeft(g,u)<=.000001&&medicHasStamina(u,MEDIC_TREAT_MIN);
+const readyMedic=(g,u)=>medicAble(g,u)&&!u.regrouping;
 export function updateRescueAssistance(game,dt,pool){
   const s=session(game);s.clock+=Math.max(0,dt);
   const ownDown=rescueUnits(game).some(u=>down(u)&&!npc(u)&&local(game,u));
   for(const [target,decline]of s.declined)if(!down(target)||target.downId!==decline.downId||s.clock>=decline.until)s.declined.delete(target);
   const targets=[...friendlyNpcs(game),...(game.currentDungeon?[]:game.merchants||[])];
-  const valid=p=>p&&targets.includes(p.target)&&down(p.target)&&!p.target.carrierId&&local(game,p.target)&&pool.includes(p.medic)&&readyMedic(game,p.medic);
+  const valid=p=>p&&targets.includes(p.target)&&down(p.target)&&!p.target.carrierId&&local(game,p.target)&&pool.includes(p.medic)&&medicAble(game,p.medic);
   if(ownDown||!alive(game.player)||!valid(s.job))s.job=null;
   if(s.prompt&&(ownDown||!alive(game.player)||!valid(s.prompt))){s.prompt=null;s.panel?.remove();s.panel=null;}
   if(s.prompt&&s.clock>=s.prompt.until)answerNpcRescue(game,false);

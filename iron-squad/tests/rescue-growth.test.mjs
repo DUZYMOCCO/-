@@ -60,7 +60,7 @@ for(let i=0;i<12;i++) {
 }
 assert.ok(guard.level>1,'real kills level up the guard');assert.ok(guard.minionKills>=12);assert.ok(guard.weaponMastery.spear>0);assert.ok(guard.atk>starting.atk);assert.ok(guard.maxHp>starting.hp);assert.ok(masteryReloadMult(guard.weaponMastery,'spear')<1);
 const hitRandom=Math.random;Math.random=()=>.99;
-const hpBeforeHits=guard.maxHp;for(let i=0;i<16;i++){guard.hp=guard.maxHp;game.damageTarget(guard,60);}
+const hpBeforeHits=guard.maxHp;for(let i=0;i<16;i++){guard.hp=guard.maxHp;guard.def=1e7;game.damageTarget(guard,60000);} // 成長の基準は防御前の攻撃の強さ（係数0.0001）
 Math.random=hitRandom;
 assert.ok(guard.hitGrowthHp>0);assert.equal(guard.hitGrowthEvents,16);assert.ok(guard.maxHp>hpBeforeHits,'real damage adds permanent tank growth');
 const phases=guard.survivedWaves;finishEscortPhase(game);assert.equal(guard.survivedWaves,phases+1);finishEscortPhase(game);assert.equal(guard.survivedWaves,phases+1,'an idle guard does not gain combat experience');

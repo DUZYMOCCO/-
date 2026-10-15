@@ -2,7 +2,7 @@ import {enemyTier,rollBossTreasure} from './enemy-tier.js?v=274';
 import {addBattleReport} from './battle-report.js?v=276';
 import {attackCooldown} from './equipment-rules.js?v=273';
 import {migrateCampaignEnemy} from './campaign-scaling.js?v=241';
-import {HERO_RULES,heroMembers,heroSharesSpace,visibleHeroMembers} from './hero-rules.js';
+import {HERO_RULES,heroRevelationPhase,heroMembers,heroSharesSpace,visibleHeroMembers} from './hero-rules.js?v=282';
 import {advanceHeroRoute,heroSegmentOpen,heroRouteCurrent} from './hero-navigation.js?v=277';
 import {WORLD_SIZE,settleUnit} from './world.js?v=281';
 import {DUNGEON_DEFS,dungeonBlocks} from './dungeon.js?v=251';
@@ -16,7 +16,7 @@ import {practiceAttribute} from './unit-attributes.js?v=274';
 import {isMedic,treatWounded,updateWounded,normalizeRevivalSkill,revivalSkillCooldownLeft} from './casualty-rules.js?v=274';
 import {healByMedic,healAmountFor} from './phase-rules.js?v=218';
 import {ensureMana,regenerateMana,spendMana,isMage} from './magic-rules.js?v=277';
-import {takeRangedShot,supplyLocation,ammoCapacity} from './supply-rules.js?v=277';
+import {takeRangedShot,supplyLocation,ammoCapacity} from './supply-rules.js?v=282';
 import {distanceScaling} from './equipment-rules.js?v=273';
 import {strongEnemyReward} from './combat-rewards.js?v=182';
 import {RANGED_ENEMIES} from './enemy-ranged.js?v=281';
@@ -35,7 +35,7 @@ export function initializeHeroJourney(game,saved=null) {
 export function rollHeroRevelation(game,random=game.random||Math.random) {
   const j=game.heroJourney;if(!j||j.demonKingDefeat||game.phase<HERO_RULES.firstPhase||j.lastRollPhase>=game.phase)return false;
   j.lastRollPhase=game.phase;
-  if(j.party?.members.some(u=>!u.dead)||random()>=HERO_RULES.revelationChance)return false;
+  if(j.party?.members.some(u=>!u.dead)||!heroRevelationPhase(game.phase))return false;
   if(j.party)archiveHeroJournal(game,j.party,'全滅');
   const id=`hero_party_${++j.sequence}`,leader=game.createNewSoldier(null,{classKey:'LIGHT',talent:game.rollScoutTalent(),level:1});
   Object.assign(leader,{isChosenHero:true,isNamed:true,title:'天啓の勇者',rankTitle:'勇者',revelationPhase:game.phase});

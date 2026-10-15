@@ -189,8 +189,10 @@ export const supplyMethods={
   savePurchase() {return this.saveGame(PURCHASE_SAVE);},
   replenishRevivalPotion(merchant) {
     if((this.revivalPotion||0)>=REVIVAL_POTION_MAX||!usable(this.player)||!(this.merchants||[]).includes(merchant)||!usable(merchant))return false;
-    const inside=this.currentDungeon?.kind==='town'&&merchant.placeId===this.currentDungeon.id;
-    if((!inside&&!near(this.player,merchant,110))||(this.gold||0)<REVIVAL_POTION_COST)return false;
+    // 店を開いている商人なら距離は見ない（店は112以内で開けるので、110の判定だと押しても無反応になる隙間があった）
+    const inside=(this.currentDungeon?.kind==='town'&&merchant.placeId===this.currentDungeon.id)||this._tradingMerchant===merchant;
+    if(!inside&&!near(this.player,merchant,110))return false;
+    if((this.gold||0)<REVIVAL_POTION_COST){this.showToast(`所持金が足りません（蘇生薬は${REVIVAL_POTION_COST.toLocaleString()}G）`);return false;}
     this.gold-=REVIVAL_POTION_COST;this.revivalPotion=(this.revivalPotion||0)+1;this.saveGame(PURCHASE_SAVE);this.updateStatsUI();this.renderSupplyPanel();
     this.showToast(`蘇生薬を購入 · ${REVIVAL_POTION_COST.toLocaleString()}G`);return true;
   },
@@ -207,9 +209,9 @@ export const supplyMethods={
     const place=supplyLocation(this);
     if(merchant) {
       if(!(this.merchants||[]).includes(merchant)||!usable(merchant))return false;
-      const inside=this.currentDungeon?.kind==='town'&&merchant.placeId===this.currentDungeon.id;
+      const inside=(this.currentDungeon?.kind==='town'&&merchant.placeId===this.currentDungeon.id)||this._tradingMerchant===merchant;
       if(!inside&&!near(this.player,merchant,110))return false;
-      if((this.gold||0)<SQUAD_POTION_COST)return false;
+      if((this.gold||0)<SQUAD_POTION_COST){this.showToast(`所持金が足りません（部隊ポーションは${SQUAD_POTION_COST.toLocaleString()}G）`);return false;}
       this.gold-=SQUAD_POTION_COST;
     } else if(place?.kind!=='base')return false;
     this.squadPotion=merchant?(this.squadPotion||0)+1:SQUAD_POTION_MAX;this.saveGame(PURCHASE_SAVE);this.updateStatsUI();this.renderSupplyPanel();

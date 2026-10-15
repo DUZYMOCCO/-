@@ -1,9 +1,9 @@
-import {formatCompact} from './number-format.js?v=275';
+import {formatCompact} from './number-format.js?v=282';
 import {configureCommandNavigation} from './command-navigation.js?v=249';
 import {commanderFullName} from './commander-identity.js?v=210';
 import {isEnlisted} from './career-rules.js?v=240';
 import {configureAudioInterface} from './audio-interface.js?v=247';
-import {renderBattleLog} from './battle-log.js?v=246';
+import {renderBattleLog} from './battle-log.js?v=282';
 import {renderTroopRankings} from './troop-rankings.js?v=274';
 import {genderLabel} from './soldier-names.js?v=210';
 import {talentTag as unitTalentTag} from './talent-labels.js?v=247';

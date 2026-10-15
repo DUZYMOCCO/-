@@ -4,10 +4,8 @@ export function formatCompact(value) {
   if(Number.isNaN(n))return '—';
   if(!Number.isFinite(n))return n<0?'−∞':'∞';
   if(Math.abs(n)<1000)return String(Object.is(n,-0)?0:n);
-  const units=['','K','M','B','T'];let unit=Math.min(4,Math.floor(Math.log10(Math.abs(n))/3));
-  let scaled=Number((n/1000**unit).toPrecision(3));
-  if(Math.abs(scaled)>=1000&&unit<4){unit++;scaled=Number((n/1000**unit).toPrecision(3));}
-  return `${scaled}${units[unit]}`;
+  // K/M の短縮は単位が混ざると読みにくい（ユーザー判断）ため、桁区切りで全桁を出す。
+  return Math.round(n).toLocaleString('en-US');
 }
 /** Only field notices: currency/resources and purely numeric healing/damage. */
 export function compactFieldText(value) {

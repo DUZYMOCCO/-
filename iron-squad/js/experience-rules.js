@@ -1,4 +1,4 @@
-import {heroGrowth,heroMembers} from './hero-rules.js';
+import {heroGrowth,heroMembers} from './hero-rules.js?v=282';
 import {isOwnSquad} from './own-squad-marker.js?v=182';
 import {addBattleReport} from './battle-report.js?v=276';
 /** 実回復量からの個人EXP。小さな継続回復も、兵士ごとに端数を積み立てる。 */

@@ -6,7 +6,7 @@ const {WORLD_SIZE}=await import('../js/world.js');
 const BASE_CAMP={x:WORLD_SIZE/2,y:WORLD_SIZE/2};
 const {saveSlots}=await import('../js/save-slots.js');
 const {initializeHeroJourney,rollHeroRevelation,serializeHeroJourney,updateHeroParty,recordDemonKingDefeat,ensureHeroCastle,awardHeroBattle}=await import('../js/hero-party.js');
-const {heroMembers,visibleHeroMembers}=await import('../js/hero-rules.js');
+const {heroMembers,visibleHeroMembers,heroRevelationPhase}=await import('../js/hero-rules.js?v=282');
 const {activeSquad}=await import('../js/instance-rules.js');
 const {practiceAttribute}=await import('../js/unit-attributes.js');
 const {gainWeaponMastery,applyHitGrowth}=await import('../js/growth-rules.js');
@@ -18,15 +18,17 @@ const {zoneRingPower}=await import('../js/equipment-rules.js');
 const game=Object.create(IronSquadGame);
 for(const m of ['updateStatsUI','updateQuestUI','startGameLoop','showToast','spawnSparks','spawnDamageText','renderStrategyUI','refreshSupplyUI'])game[m]=()=>{};
 game.activeSlotId=saveSlots.create('勇者検証').id;game.startFreshGame(false);game.restTimer=0;
-game.phase=9;assert.equal(rollHeroRevelation(game,()=>0),false);
-game.phase=10;assert.equal(rollHeroRevelation(game,()=>.5),false);assert.equal(rollHeroRevelation(game,()=>0),false,'one roll per phase');
-game.phase=11;assert.equal(rollHeroRevelation(game,()=>0),true);
+game.phase=9;assert.equal(rollHeroRevelation(game),false);
+// 第10期から5期ごとに必ず生まれる。間の期は生まれない。
+for(const ph of [11,12,13,14])assert.equal(heroRevelationPhase(ph),false);for(const ph of [10,15,20,25,100])assert.equal(heroRevelationPhase(ph),true);
+game.phase=11;assert.equal(rollHeroRevelation(game),false,'off-interval phase');
+game.phase=15;assert.equal(rollHeroRevelation(game),true,'guaranteed on interval');assert.equal(rollHeroRevelation(game),false,'one roll per phase');
 let p=game.heroJourney.party;
 assert.equal(p.members.length,6);assert.equal(p.members[0].isChosenHero,true);
 assert.deepEqual(p.members.slice(1).map(s=>s.soldierClass),['HEAVY','LIGHT','ARCHER','MEDIC','MAGE']);
 assert.ok(p.members.every(s=>s.level===1&&s.talent&&!s.isPersonalGuard));
 assert.equal(game.squad.length,48,'separate from deployment');game.normalizeDeployment();assert.equal(heroMembers(game).length,6);
-game.phase=12;assert.equal(rollHeroRevelation(game,()=>0),false,'no concurrent second party');
+game.phase=20;assert.equal(rollHeroRevelation(game),false,'no concurrent second party');
 const normal=game.createNewSoldier(null,{talent:'AVERAGE'}),hero=structuredClone(normal);hero.id='growth';hero.heroPartyId=p.id;
 normal.reqExp=hero.reqExp=1e6;grantPersonalExp(game,normal,3);grantPersonalExp(game,hero,3);assert.equal(hero.exp,normal.exp*20);
 practiceAttribute(normal,'strength',2);practiceAttribute(hero,'strength',2);assert.equal(hero.attributeProfile.practice.strength,normal.attributeProfile.practice.strength*20);
@@ -65,7 +67,7 @@ assert.equal(game.savedFieldMonsters.length,0,'remote field combat runs');
 game.currentDungeon=null;
 // Saves include positions, down timers, failed chance and history; no target cycles.
 const snapshot=game.saveGame({immediate:true});assert.ok(snapshot.heroJourney);const encoded=JSON.stringify(snapshot);
-game.resumeSavedGame(JSON.parse(encoded));p=game.heroJourney.party;assert.equal(p.members.length,6);assert.equal(p.members[0].dead,true);assert.equal(game.heroJourney.lastRollPhase,12);
+game.resumeSavedGame(JSON.parse(encoded));p=game.heroJourney.party;assert.equal(p.members.length,6);assert.equal(p.members[0].dead,true);assert.equal(game.heroJourney.lastRollPhase,20);
 const d=DUNGEON_DEFS.find(d=>d.id==='dungeon_demon_castle');const scene=ensureHeroCastle(game,d);scene.monsters.at(-1).hp=543210;
 const encodedJourney=JSON.stringify(serializeHeroJourney(game));initializeHeroJourney(game,JSON.parse(encodedJourney));assert.equal(game.heroJourney.castleScene.monsters.at(-1).hp,543210);
 // Party reaches the castle and commander joins the SAME scene.
@@ -84,5 +86,5 @@ game.phase=21;assert.equal(rollHeroRevelation(game,()=>0),false,'no revelation a
 initializeHeroJourney(game);game.phase=30;rollHeroRevelation(game,()=>0);p=game.heroJourney.party;
 p.members.forEach(u=>{u.x=BASE_CAMP.x+1400;u.y=BASE_CAMP.y;markSoldierDown(game,u);});
 updateHeroParty(game,.1,SOLDIER_CLASSES);assert.equal(p.status,'down');updateWounded(game,46);updateWounded(game,2.1);updateHeroParty(game,.1,SOLDIER_CLASSES);assert.equal(p.status,'fallen');
-game.phase=31;assert.equal(rollHeroRevelation(game,()=>0),true);assert.equal(game.heroJourney.history.at(-1).result,'全滅');
+game.phase=35;assert.equal(rollHeroRevelation(game),true);assert.equal(game.heroJourney.history.at(-1).result,'全滅');
 console.log('hero-party: revelation, 6 members, x20 growth, autonomous march/battle, rescue, castle scene, victory, saves and defeat passed');
