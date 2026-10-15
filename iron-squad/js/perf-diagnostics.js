@@ -1,13 +1,13 @@
 // Opt-in, in-memory instrumentation. No hooks, observers, timers or storage writes at import time.
-import {gameText} from './game-text.js?v=268';
-export const PERF_VERSION='6.11.20',PERF_THRESHOLD_MS=100,PERF_RECORD_LIMIT=10;
+import {gameText} from './game-text.js?v=271';
+export const PERF_VERSION='6.11.23',PERF_THRESHOLD_MS=100,PERF_RECORD_LIMIT=10;
 export const PERF_SETTING_KEY='game_studio_ironsquad_perf_enabled';
 export const perfRequested=search=>new URLSearchParams(search??globalThis.window?.location?.search??'').get('perf')==='1';
 
 /** rAF gaps include synchronous work AND worker callbacks between frames. Nested times are exclusive. */
 export function createPerfRecorder({now=()=>performance.now(),clock=()=>new Date().toISOString(),terrain=()=>({})}={}) {
   let previousFrame=null,previousNow=null,lastSlow=null,bucket=new Map(),records=[],longTasks=[];
-  const stack=[];
+  const stack=[];let latestTiming=[];
   const api={
     wrap(name,fn){
       return function(...args){
@@ -28,7 +28,7 @@ export function createPerfRecorder({now=()=>performance.now(),clock=()=>new Date
       // Callback arrival intervals align with the timers and count that stall once.
       const gap=start===null?0:end-start;
       previousFrame=timestamp;previousNow=end;
-      const timing=[...bucket.values()];bucket=new Map();
+      const timing=[...bucket.values()];latestTiming=timing;bucket=new Map();
       if(start===null||!(gap>PERF_THRESHOLD_MS))return null;
       const measuredMs=timing.reduce((n,t)=>n+t.ms,0);
       const record={time:clock(),frameMs:gap,rafMs,sincePreviousSeconds:lastSlow===null?null:(end-lastSlow)/1000,
@@ -42,6 +42,7 @@ export function createPerfRecorder({now=()=>performance.now(),clock=()=>new Date
       for(const record of records)if(start<record.intervalEnd&&start+ms>record.intervalStart)record.longTasks.push(task);
     },
     records(){return structuredClone(records);},
+    latestTiming(){return structuredClone(latestTiming);},
     longTasks(){return longTasks.slice();}
   };
   return api;
@@ -84,6 +85,7 @@ export function installPerfDiagnostics(game,{WorldTerrain,FogGrid,saveSlots,prof
     worker.onmessage=timed;restore.push(()=>{if(worker.onmessage===timed)worker.onmessage=original;});
   };
   for(const [method,label] of [['update','更新その他'],['render','描画その他'],['saveGame','ゲーム保存'],['updateSpawns','敵出現'],['revealFogAroundPlayer','フォグ公開'],['renderMinimap','ミニマップ'],['openWorldMap','地図再描画']])time(game,method,label);
+  time(game,'updateAmbientCrowd','住民更新');time(game,'drawAmbientResident','住民描画');
   for(const method of ['generate','takeSurface','drawOverview'])time(WorldTerrain.prototype,method,`地形.${method}`);
   for(const method of ['revealAt','forceRevealAt','revealCamp','drawFieldOverlay','drawMapOverlay'])time(FogGrid.prototype,method,`霧.${method}`);
   for(const method of ['update','updateBackground','list','get'])time(saveSlots,method,`枠.${method}`);
@@ -143,11 +145,13 @@ export function installPerfDiagnostics(game,{WorldTerrain,FogGrid,saveSlots,prof
   panel.innerHTML=gameText(`<header><strong>PERF v${PERF_VERSION} · 100ms超</strong><div><button type="button" data-perf-freeze>表示固定</button><button type="button" data-perf-copy>コピー</button></div></header><p class="perf-state"></p><p class="perf-legend">W:Worker停止 Q:待機 R:解像度 C:画像枚数<br>内訳は重複を除く上位3処理(ms)・全内訳はコピー</p><ol class="perf-records"></ol><p class="perf-feedback"></p><textarea class="perf-copy hidden" readonly aria-label="計測データ"></textarea>`);
   root.append(panel);
   const state=panel.querySelector('.perf-state'),list=panel.querySelector('.perf-records'),feedback=panel.querySelector('.perf-feedback');
-  const snapshot=()=>({version:PERF_VERSION,thresholdMs:PERF_THRESHOLD_MS,terrain:terrainState(game),storageSupported,longTaskSupported,records:recorder.records(),longTasks:recorder.longTasks()});
+  const snapshot=()=>({version:PERF_VERSION,thresholdMs:PERF_THRESHOLD_MS,terrain:terrainState(game),storageSupported,longTaskSupported,latestTiming:recorder.latestTiming(),records:recorder.records(),longTasks:recorder.longTasks()});
   const refresh=recorder.wrap('計測表示',()=>{
     if(disposed||frozen)return;
     const t=terrainState(game),tasks=recorder.longTasks();
     state.textContent=gameText(`${stateText(t)} · OC${Number(t.offscreenSupported)} · LS${Number(storageSupported)} · LT${longTaskSupported?(tasks.length?`${ms(tasks.at(-1).ms)}ms`:'待機'):'非対応'}`);
+    const timing=recorder.latestTiming(),crowdUpdate=timing.find(t=>t.name==='住民更新')?.totalMs||0,crowdDraw=timing.find(t=>t.name==='住民描画')?.totalMs||0;
+    state.textContent+=gameText(` · 住民 更新${crowdUpdate.toFixed(1)} / 描画${crowdDraw.toFixed(1)}ms`);
     const rows=recorder.records(),signature=JSON.stringify(rows);
     if(signature===lastSignature)return;lastSignature=signature;list.replaceChildren();
     if(!rows.length){const empty=doc.createElement('li');empty.textContent=gameText('100ms超のフレームを待っています');list.append(empty);}

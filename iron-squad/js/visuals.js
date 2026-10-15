@@ -5,7 +5,7 @@ import {BRUTE_DRAW_SCALE} from './field-hosts.js?v=182';
 import {equipmentVisualProfile} from './equipment-tiers.js?v=231';
 import {drawBodyEquipment,drawEquipmentShield} from './equipment-art.js?v=231';
 import {MAGIC_AFFINITIES,ensureMana} from './magic-rules.js?v=266';
-import { drawMeleeWeapon, drawMeleeRangeCue, drawRangedWeapon, drawWeaponArms, meleePose, rangedPose, weaponAim } from './weapon-motion.js?v=242';
+import { drawMeleeWeapon, drawMeleeRangeCue, drawRangedWeapon, drawWeaponArms, meleePose, rangedPose, weaponAim } from './weapon-motion.js?v=273';
 import { defaultCommanderAppearance } from './commander-identity.js?v=210';
 import {travelerClothes,drawTravelerTunic} from './traveler-clothes.js?v=195';
 import { createSoldierAppearance, drawSoldierHead, isMedicAppearance, soldierAppearanceFamily, soldierPhysique } from './soldier-appearance.js?v=206';
@@ -87,6 +87,49 @@ const CLOTH = {
   COMMANDER: '#71858a', WARLORD: '#a29270'
 };
 
+// Off-duty poses use the same rounded uniform, material plates and full-size face
+// as standing soldiers. Only the posture changes; identity and equipment do not.
+function drawRestTorso(c,eq,look,scaleY=1,simple=false) {
+  c.save();c.scale(look.physique.bodyWidth,scaleY);
+  drawUniform(c,look.cloth,look.platoonColor);
+  drawBodyEquipment(c,{armor:eq.armor,legs:scaleY===1?eq.legs:null},{armorColor:look.armorColor,legColor:look.legs,role:look.family||'HEAVY',simple});
+  c.restore();
+}
+function drawRestArm(c,points,cloth,gloves,skin,simple=false) {
+  c.lineCap='round';line(c,points.slice(0,2),'#2b312d',4.6);
+  line(c,points.slice(0,2),cloth,3.5);line(c,points.slice(1),gloves,2.8);
+  const hand=points.at(-1);ellipse(c,hand[0],hand[1],1.5,1.65,skin);
+  if(!simple)line(c,[[points[0][0]-.6,points[0][1]],[points[1][0]-.6,points[1][1]]],'#d1c3a455',.65);
+}
+
+// Full quality off-duty bodies are static pose art. Cache one pose per identity
+// (not animation frames) so a crowded yard cannot churn the 64-head cache.
+// Strictly bounded to 4 MiB; evicted and disposed surfaces release pixels now.
+const REST_ART=new Map(),REST_ART_BYTES=4*1024*1024;let restBytes=0;
+export function clearRestPoseArt(){for(const art of REST_ART.values())art.width=art.height=1;REST_ART.clear();restBytes=0;}
+export function restPoseArtStats(){return {count:REST_ART.size,bytes:restBytes,limit:REST_ART_BYTES};}
+function cachedRestPose(c,s,now,cls,platoonColor,simple,displayEquipment) {
+  if(s._restArtDirect||!s.appearance||typeof c.canvas?.width!=='number'||typeof document==='undefined'||typeof document.createElement!=='function')return false;
+  const eq=displayEquipment||s.equipped||{},left=Math.cos(s.facingAngle||0)<-.15;
+  const key=JSON.stringify([s.appearance,s.gender,s.species,s.soldierClass,s.isAdvanced,s.isCommander,s.advancedClass,soldierPhysique(s),s.campPose,s.farmPose,left,platoonColor,
+    Object.values(eq).map(item=>item?[item.id,item.tier,item.color,item.rollMult,item.upgrade,item.weaponStyle,item.armorStyle,item.heroOnly]:null)]);
+  let art=REST_ART.get(key);
+  try{if(art?.getContext?.('2d')?.isContextLost?.()){restBytes-=art.width*art.height*4;art.width=art.height=1;REST_ART.delete(key);art=null;}}catch{if(art){restBytes-=art.width*art.height*4;art.width=art.height=1;REST_ART.delete(key);art=null;}}
+  if(!art){
+    art=document.createElement('canvas');art.width=soldierPhysique(s).bodyWidth>1?136:96;art.height=136;const b=art.getContext('2d');
+    if(!b){art.width=art.height=1;return false;}
+    const bytes=art.width*art.height*4;
+    while(restBytes+bytes>REST_ART_BYTES&&REST_ART.size){const oldest=REST_ART.keys().next().value,retired=REST_ART.get(oldest);restBytes-=retired.width*retired.height*4;retired.width=retired.height=1;REST_ART.delete(oldest);}
+    b.showBattleLabels=false;b.scale(2,2);b.translate(art.width/4,54);
+    drawFieldSoldier(b,{...s,x:0,y:0,hp:s.maxHp,portrait:true,_levelMark:0,_restArtDirect:true,facingAngle:left?Math.PI:0},1200,cls,platoonColor,false,displayEquipment);
+    REST_ART.set(key,art);restBytes+=bytes;
+  }else{REST_ART.delete(key);REST_ART.set(key,art);}
+  const breath=Math.sin(now*.002+(s.animOffset||0))*.3;
+  try{c.drawImage(art,s.x-art.width/4,s.y-54+breath,art.width/2,art.height/2);}catch{return false;}
+  if(c.showBattleLabels!==false&&s.maxHp>0&&s.hp<s.maxHp*.55){c.fillStyle='#283132';c.fillRect(s.x-12,s.y-48,24,3);c.fillStyle='#c4b48a';c.fillRect(s.x-12,s.y-48,24*Math.max(0,s.hp/s.maxHp),3);}
+  return true;
+}
+
 function drawCampRest(c, s, now, pose, look, simple) {
   const { cloth, armorColor, legs, blade, steel, gloves, board, platoonColor, medic, advanced, mage, eq, physique, regalia } = look;
   const bob = Math.sin(now * 0.0035 + (s.animOffset || 0)) * 1.2;
@@ -107,14 +150,10 @@ function drawCampRest(c, s, now, pose, look, simple) {
     c.scale(physique.bodyWidth, 1);
     c.fillStyle = legs;
     c.fillRect(-1, -1, 9, 3);
-    c.fillStyle = cloth;
-    c.beginPath();
-    c.ellipse(0, -9 + breath, 6, 6.5, 0, 0, Math.PI * 2);
-    c.fill();
-    if (eq.armor) { c.fillStyle = armorColor; c.fillRect(-4, -12, 8, 6); }
     c.restore();
-    drawSoldierHead(c, s, { y: -16 + breath, scale: 0.72, small: true, silhouette: true, ...head });
-    if(regalia){c.save();c.translate(0,8+breath);c.scale(physique.bodyWidth,.7);drawClassRegalia(c,regalia,{simple:true});c.restore();drawClassHeadpiece(c,regalia,{y:-16+breath,scale:.72,simple:true,helmet:!!eq.helmet});}
+    c.save();c.translate(0,breath);drawRestTorso(c,eq,look,.74,true);c.restore();
+    drawSoldierHead(c, s, { y: -22 + breath, scale:.86, small: true, ...head });
+    if(regalia){c.save();c.translate(0,8+breath);c.scale(physique.bodyWidth,.7);drawClassRegalia(c,regalia,{simple:true});c.restore();drawClassHeadpiece(c,regalia,{y:-22+breath,scale:.86,simple:true,helmet:!!eq.helmet});}
     if (pose === 'drink') {
       c.fillStyle = '#d9c7a2'; c.fillRect(2, -14, 4, 4);
       c.fillStyle = '#7a3e3a'; c.fillRect(3, -13, 2, 2);
@@ -129,8 +168,9 @@ function drawCampRest(c, s, now, pose, look, simple) {
     shape(c, [[-2, -3], [8, -1], [9, 3], [-1, 2]], legs);
     c.fillStyle = '#2a2624';
     c.fillRect(6, 1, 5, 3);
-    shape(c, [[-6, -16 + breath], [5, -16 + breath], [6, -3], [-6, -2]], cloth);
-    if (eq.armor) shape(c, [[-5, -14 + breath], [4, -14 + breath], [4, -6], [-5, -5]], armorColor);
+    c.restore();c.save();c.translate(0,breath);drawRestTorso(c,eq,look,.74);c.restore();c.save();c.scale(physique.bodyWidth,1);
+    line(c,[[-2,-2],[4,-1],[7,1]],'#c4bfaa55',.8);
+    line(c,[[7,1],[10,2]],'#9c9b8b',.8);
     c.fillStyle = '#64503c';
     c.fillRect(-6, -7, 12, 2);
     c.fillStyle = platoonColor;
@@ -144,8 +184,8 @@ function drawCampRest(c, s, now, pose, look, simple) {
     }
     if(regalia){c.save();c.translate(0,8+breath);c.scale(1,.7);drawClassRegalia(c,regalia);c.restore();}
     c.restore();
-    drawSoldierHead(c, s, { y: -20 + breath, small: true, ...head });
-    drawClassHeadpiece(c,regalia,{y:-20+breath,helmet:!!eq.helmet});
+    drawSoldierHead(c, s, { y: -22 + breath, small: true, ...head });
+    drawClassHeadpiece(c,regalia,{y:-22+breath,helmet:!!eq.helmet});
     c.strokeStyle = gloves;
     c.lineWidth = 2;
     c.lineCap = 'round';
@@ -163,6 +203,9 @@ function drawCampRest(c, s, now, pose, look, simple) {
       c.lineTo(5, -3);
     }
     c.stroke();
+    const skin=s.appearance?.skin||'#c1a083';
+    drawRestArm(c,[[-5,-14+breath],[-7,-8],[-1,-3]],cloth,gloves,skin);
+    drawRestArm(c,pose==='drink'?[[5,-14+breath],[7,-10],[4,-15+bob]]:pose==='eat'?[[5,-14+breath],[8,-9],[3,-14+bob]]:[[5,-14+breath],[7,-8],[6,-3]],cloth,gloves,skin);
     if (pose === 'drink') {
       ellipse(c, 4, -13 + bob, 2.8, 3.1, '#d9c7a2');
       ellipse(c, 4, -13.5 + bob, 1.7, 1.45, '#7a3e3a');
@@ -195,6 +238,9 @@ function drawFarmProp(c, pose, swing) {
     c.fillRect(8, -13, 3, 3);
     c.fillStyle = '#b8a16b';
     c.fillRect(12, -13, 3, 3);
+    line(c,[[7,-9],[16,-9],[16,-3],[7,-3],[7,-9]],'#c0a377',.8);
+    for(const x of [9,12,15])line(c,[[x,-8],[x,-4]],'#b59665',.6);
+    line(c,[[8,-6],[15,-6]],'#544532',.7);
     return;
   }
   if (pose === 'hoe') {
@@ -202,6 +248,9 @@ function drawFarmProp(c, pose, swing) {
     c.fillRect(11 + swing, -20, 3, 22);
     c.fillStyle = '#8a8478';
     c.fillRect(8 + swing, 1, 11, 3);
+    line(c,[[12+swing,-19],[12+swing,1]],'#c1a376',.7);
+    line(c,[[8+swing,1],[19+swing,1]],'#c7cbc1',1);
+    shape(c,[[9+swing,3],[18+swing,3],[17+swing,5],[10+swing,5]],'#6e7979');
     return;
   }
   c.fillStyle = '#c4a574';
@@ -226,6 +275,7 @@ function drawFieldFarmer(c, s, now, cls, platoonColor, simpleLod, displayEquipme
   const swing = Math.round(Math.sin(now * 0.003 + (s.animOffset || 0)));
   const kneel = pose === 'tend';
   const head = { helmet: eq.helmet ? steel : null, helmetTier: eq.helmet?.tier || 1, mitre: medic && advanced, cap: medic && !advanced };
+  const look={cloth,armorColor,legs,physique,family,platoonColor};
   c.save();
   c.translate(s.x, s.y);
   contactShadow(c, 0, 6, 13 * physique.shadowWidth, 4.2 * physique.shadowWidth, 0.74);
@@ -237,14 +287,10 @@ function drawFieldFarmer(c, s, now, cls, platoonColor, simpleLod, displayEquipme
   if (simpleLod) {
     c.save();
     c.scale(physique.bodyWidth, 1);
-    c.fillStyle = cloth;
-    c.beginPath();
-    c.ellipse(0, kneel ? -8 : -12 + breath, 6, kneel ? 5 : 7, 0, 0, Math.PI * 2);
-    c.fill();
-    if (eq.armor) { c.fillStyle = armorColor; c.fillRect(-4, kneel ? -11 : -15, 8, 5); }
     c.restore();
-    drawSoldierHead(c, s, { y: (kneel ? -16 : -22) + breath, scale: 0.72, small: true, silhouette: true, ...head });
-    if(regalia){c.save();c.translate(0,kneel?12:5);c.scale(physique.bodyWidth,kneel?.55:.8);drawClassRegalia(c,regalia,{simple:true});c.restore();drawClassHeadpiece(c,regalia,{y:(kneel?-16:-22)+breath,scale:.72,simple:true,helmet:!!eq.helmet});}
+    drawRestTorso(c,eq,look,kneel?.6:1,true);
+    drawSoldierHead(c, s, { y: (kneel ? -20 : -28) + breath, scale:.86, small: true, ...head });
+    if(regalia){c.save();c.translate(0,kneel?12:5);c.scale(physique.bodyWidth,kneel?.55:.8);drawClassRegalia(c,regalia,{simple:true});c.restore();drawClassHeadpiece(c,regalia,{y:(kneel?-20:-28)+breath,scale:.86,simple:true,helmet:!!eq.helmet});}
     drawFarmProp(c, pose, swing);
   } else {
     c.save();
@@ -257,8 +303,6 @@ function drawFieldFarmer(c, s, now, cls, platoonColor, simpleLod, displayEquipme
       c.fillRect(2, -6, 4, 7);
       c.fillStyle = '#2a2624';
       c.fillRect(2, 0, 5, 3);
-      shape(c, [[-6, -14 + breath], [5, -14 + breath], [6, -4], [-6, -3]], cloth);
-      if (eq.armor) shape(c, [[-5, -13 + breath], [4, -13 + breath], [4, -6], [-5, -5]], armorColor);
     } else {
       c.fillStyle = legs;
       c.fillRect(-5, -8, 4, 8);
@@ -266,17 +310,16 @@ function drawFieldFarmer(c, s, now, cls, platoonColor, simpleLod, displayEquipme
       c.fillStyle = '#2a2624';
       c.fillRect(-6, -1, 5, 3);
       c.fillRect(2, -1, 5, 3);
-      shape(c, [[-6, -20 + breath], [5, -20 + breath], [6, -8], [-6, -7]], cloth);
-      if (eq.armor) shape(c, [[-5, -18 + breath], [4, -18 + breath], [4, -9], [-5, -8]], armorColor);
     }
+    c.restore();c.save();c.translate(0,breath);drawRestTorso(c,eq,look,kneel?.6:1);c.restore();c.save();c.scale(physique.bodyWidth,1);
     c.fillStyle = '#64503c';
     c.fillRect(-6, kneel ? -6 : -10, 12, 2);
     c.fillStyle = platoonColor;
     c.fillRect(-5, (kneel ? -13 : -19) + breath, 3, 3);
     if(regalia){c.save();c.translate(0,kneel?12:5);c.scale(1,kneel?.55:.8);drawClassRegalia(c,regalia);c.restore();}
     c.restore();
-    drawSoldierHead(c, s, { y: (kneel ? -18 : -26) + breath, small: true, ...head });
-    drawClassHeadpiece(c,regalia,{y:(kneel?-18:-26)+breath,helmet:!!eq.helmet});
+    drawSoldierHead(c, s, { y: (kneel ? -20 : -28) + breath, small: true, ...head });
+    drawClassHeadpiece(c,regalia,{y:(kneel?-20:-28)+breath,helmet:!!eq.helmet});
     c.strokeStyle = gloves;
     c.lineWidth = 2;
     c.lineCap = 'round';
@@ -294,6 +337,9 @@ function drawFieldFarmer(c, s, now, cls, platoonColor, simpleLod, displayEquipme
       c.lineTo(12, 2);
     }
     c.stroke();
+    const skin=s.appearance?.skin||'#c1a083',shoulder=kneel?-12:-21;
+    drawRestArm(c,[[4,shoulder+breath],[8,kneel?-6:-13],[pose==='hoe'?12+swing:pose==='basket'?8:12,pose==='hoe'?-8:pose==='basket'?-7:2]],cloth,gloves,skin);
+    drawRestArm(c,[[-5,shoulder+breath],[-6,kneel?-6:-12],[pose==='hoe'?11+swing:pose==='basket'?8:8,pose==='hoe'?-13:pose==='basket'?-6:1]],cloth,gloves,skin);
     drawFarmProp(c, pose, swing);
     c.restore();
   }
@@ -334,6 +380,8 @@ export function drawLevelMark(c, unit, now) {
 }
 
 export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod, displayEquipment=null) {
+  const offDuty=['sit','drink','eat'].includes(s.campPose)||['hoe','basket','tend'].includes(s.farmPose);
+  if(!s.isDown&&offDuty&&cachedRestPose(c,s,now,cls,platoonColor,simpleLod,displayEquipment)){drawLevelMark(c,s,now);return;}
   if (!s.isDown && (s.farmPose === 'hoe' || s.farmPose === 'basket' || s.farmPose === 'tend')) {
     drawFieldFarmer(c, s, now, cls, platoonColor, simpleLod, displayEquipment);
     drawLevelMark(c, s, now);
@@ -369,7 +417,7 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod, displa
   const heldPose=melee?meleePose(wStyle,s.atkAnim||0,aim,physique):ranged?rangedPose(wStyle,s.atkAnim||0,aim,physique,s._rangedBash):null;
   c.save(); c.translate(s.x, s.y);
   if (!s.isDown && (s.campPose === 'sit' || s.campPose === 'drink' || s.campPose === 'eat')) {
-    drawCampRest(c, s, now, s.campPose, { cloth, armorColor, legs, blade, steel, gloves, board, platoonColor, medic, advanced, mage, eq, physique, regalia }, simpleLod);
+    drawCampRest(c, s, now, s.campPose, { cloth, armorColor, legs, blade, steel, gloves, board, platoonColor, medic, advanced, mage, eq, physique, family, regalia }, simpleLod);
     c.restore();
     drawLevelMark(c, s, now);
     return;

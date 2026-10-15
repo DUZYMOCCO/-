@@ -16,12 +16,14 @@ const stroke=(c,p,color,width)=>{c.strokeStyle=color;c.lineWidth=width;c.lineCap
 export function drawFieldCivilian(c,civ,now=0) {
   if(!civ||civ.rescued)return;
   const {n,female,face}=look(civ),child=civ.kind==='child',elder=civ.kind==='elder';
-  const scale=child?.72:1,cloth=(colors[civ.kind]||colors.woman)[n%3],dragged=!!civ.carrierId;
+  const scale=child?.72:1,cloth=civ.ambientCloth||(colors[civ.kind]||colors.woman)[n%3],dragged=!!civ.carrierId;
   c.save();c.translate(civ.x,civ.y);
   c.fillStyle='#0005';c.beginPath();c.ellipse(0,2,dragged?15:8*scale,3,0,0,Math.PI*2);c.fill();
   c.save();if(dragged){c.translate(12,-1);c.rotate(-Math.PI/2);}c.scale(scale,scale);
-  c.fillStyle='#49473b';c.fillRect(-4,-9,3.5,10);c.fillRect(1,-9,3.5,10);
-  c.fillStyle='#302c25';c.fillRect(-5,0,5,2.5);c.fillRect(1,0,5,2.5);
+  const gait=civ.ambientWalking?Math.sin(now*.012+(n%20))*2:0;
+  if(civ.ambient&&Math.cos(civ.facingAngle||0)<0)c.scale(-1,1);
+  c.fillStyle='#49473b';c.fillRect(-4,-9,3.5,10+gait);c.fillRect(1,-9,3.5,10-gait);
+  c.fillStyle='#302c25';c.fillRect(-5,gait,5,2.5);c.fillRect(1,-gait,5,2.5);
   const lean=elder?2:0;
   shape(c,[[-6+lean,-25],[5+lean,-25],[7,-11],[5,-7],[-6,-7],[-7,-16]],cloth);
   if(female&&!child)shape(c,[[-5,-17],[5,-17],[8,-1],[-8,-1]],cloth);
@@ -41,6 +43,7 @@ export function drawFieldCivilian(c,civ,now=0) {
   drawSoldierHead(c,face,{x:lean,y:elder?-29:-31,small:true});
   if(elder)stroke(c,[[lean-3,-29],[lean-1,-28],[lean+3,-29],[lean+4,-28]],'#997f68',.5);
   c.restore();
+  if(civ.ambient){c.restore();return;}
   const label=dragged?'搬送中':(civ.kind==='child'?'子供':civ.kind==='elder'?'老人':'女性');
   c.font='8px sans-serif';c.textAlign='center';const width=c.measureText(label).width+6;
   c.fillStyle='#15201cdd';c.fillRect(-width/2,8,width,11);c.fillStyle='#d7ccb2';c.fillText(label,0,16);

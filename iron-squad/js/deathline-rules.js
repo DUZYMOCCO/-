@@ -60,7 +60,7 @@ export function tickDeathline(s, dt) {
   if (!s || !(dt > 0)) return;
   if (s._lowHpBoost && !alive(s)) { s.speed = s._lowHpBaseSpeed; s._lowHpBoost = false; }
   if (!alive(s)) return;
-  const asp = s.deathlineAtkSpeed || 0;
+  const asp = Number.isFinite(s.attackSpeedBonusPct)?0:s.deathlineAtkSpeed || 0;
   if (asp > 0 && (s.atkCooldown || 0) > 0) s.atkCooldown = Math.max(0, s.atkCooldown - dt * asp / 100);
   const regen = s.deathlineRegenPct || 0;
   if (regen > 0 && s.hp < s.maxHp) s.hp = Math.min(s.maxHp, s.hp + s.maxHp * regen / 100 * dt);

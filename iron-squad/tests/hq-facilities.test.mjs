@@ -45,7 +45,7 @@ const contract=g.nation.guild.active[0];for(let i=0;i<contract.target;i++)g.onNa
 document.querySelector('[data-guild-claim="slime"]').click();assert.equal(g.gold,gold+reward);assert.equal(g.nation.guild.active.length,0);
 g.closeHeadquartersFacility();walkTo('casino');g.openHeadquartersFacility('casino');
 assert.equal(g.buyWorkshopEquipment('weapon-sword',1),false,'casino proximity cannot authorize workshop purchases');
-const stake=g.nation.casino.bet,casinoGold=g.gold;document.getElementById('btn-casino-poker').click();assert.equal(g.gold,casinoGold-stake);
+g.openCasinoPage('poker');const stake=g.nation.casino.bet,casinoGold=g.gold;document.getElementById('btn-casino-poker').click();assert.equal(g.gold,casinoGold-stake);
 assert.equal(g.nation.casino.poker.status,'draw');g.closeHeadquartersFacility();
 g.player.x=C;g.player.y=C;const remoteGold=g.gold;assert.equal(g.spinCasinoSlot(),false);assert.equal(g.gold,remoteGold);
 g.renderStrategyUI();assert.equal(document.querySelector('#nation-facilities .workshop-panel'),null,'the menu points to actual buildings');

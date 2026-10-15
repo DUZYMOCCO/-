@@ -6,10 +6,10 @@ import {applyAttributeStats} from './unit-attributes.js?v=248';
  * - 強い護衛付き。放置するとモンスターに襲われ死亡しうる
  * - 護衛が倒した強敵のドロップを序盤から掠め取れるチャンス
  */
-import { saleValue, distanceScaling, weaponCombatProfile } from './equipment-rules.js?v=242';
-import { drawFieldSoldier } from './visuals.js?v=245';
+import { saleValue, distanceScaling, weaponCombatProfile } from './equipment-rules.js?v=273';
+import { drawFieldSoldier } from './visuals.js?v=272';
 import { createSoldierAppearance, drawSoldierHead } from './soldier-appearance.js?v=206';
-import { attackAnimationRate } from './weapon-motion.js?v=242';
+import { attackAnimationRate } from './weapon-motion.js?v=273';
 import { markSoldierDown, rebuildMerchantCasualties, RESCUE_TIMEOUT } from './casualty-rules.js?v=267';
 import {emptyMastery,normalizeMastery,hitGrowthHpBonus,hitGrowthDefBonus,migrateHitGrowth,applyHitGrowth,masteryAtkMult,masteryReloadMult} from './growth-rules.js?v=234';
 import {recordCombat,finishExperience} from './phase-rules.js?v=218';

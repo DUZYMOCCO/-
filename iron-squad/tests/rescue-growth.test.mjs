@@ -26,7 +26,7 @@ for(const [i,roll] of [.1,.4,.7,.9,.99].entries()) {
 assert.equal(rollRescueReward(()=>.86).jackpot,true);assert.equal(rollRescueReward(()=>.84).jackpot,undefined);assert.equal(rollRescueReward(()=>.95).jackpot,true);
 assert.equal(game.player.maxHp,Math.floor(original.hp*1.01));assert.equal(game.player.atk,Math.floor(original.atk*1.01));assert.equal(game.player.def,Math.floor(original.def*1.01));assert.equal(game.player.speed,Math.floor(original.speed*1.01));assert.equal(game.player.atkSpeed,original.atkSpeed*1.01);
 const bonuses=structuredClone(game.rescueBonuses);game.recalcPlayerStats();game.recalcPlayerStats();assert.equal(game.player.atkSpeed,original.atkSpeed*1.01,'recalculation does not compound the reward');
-game.equipped.weapon={id:'speed-gear',type:'WEAPON',weaponStyle:'sword',stats:{atkSpeed:20}};game.recalcPlayerStats();assert.equal(game.player.atkSpeed,1.2*1.01);
+game.equipped.weapon={id:'speed-gear',type:'WEAPON',weaponStyle:'sword',stats:{atkSpeed:20}};game.recalcPlayerStats();assert.equal(game.player.atkSpeed,1.21);
 game.equipped.weapon=null;game.recalcPlayerStats();assert.equal(game.player.atkSpeed,1.01,'changing equipment preserves the permanent percentage');
 game.saveGame({immediate:true});game.resumeSavedGame(saveSlots.get(game.activeSlotId).data);assert.deepEqual(game.rescueBonuses,bonuses);
 assert.equal(grantPermanentRescueReward(game,{id:'reward-test-0'},()=>.99),null,'the saved identity ledger blocks duplicates even with a reconstructed NPC');

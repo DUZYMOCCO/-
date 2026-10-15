@@ -23,16 +23,11 @@ const plain=unit('HEAVY'),phantom=unit('HEAVY',['PHANTOM_STEP']),grit=unit('HEAV
 game.squad=[plain,phantom,grit,surv];
 assert.ok(DEATHLINE_SKILLS.PHANTOM_STEP.atkSpeedBonus===25&&DEATHLINE_SKILLS.VETERAN_GRIT.regenPct===2);
 
-// 1. 攻撃速度 +25%: CD は 1/1.25 の時間で明ける
-const settle=(s,cd,dt)=>{s.atkCooldown=cd;let t=0;while(s.atkCooldown>0&&t<100){tickDeathline(s,dt);s.atkCooldown-=dt;t+=dt;}return t;};
-const tPlain=settle(plain,2,.01),tFast=settle(phantom,2,.01);
-assert.ok(Math.abs(tPlain-2)<.03,'no skill: unchanged '+tPlain);
-assert.ok(Math.abs(tFast-2/1.25)<.03,`+25% attack speed: ${tFast} ~ 1.6`);
+// Phantom is included once in the shared non-weapon speed budget, not in clock advancement.
 assert.equal(phantom.deathlineAtkSpeed,25);assert.equal(plain.deathlineAtkSpeed,0);
-// 一度だけ適用（1フレームで dt*1.25 だけ進む）
-phantom.atkCooldown=1;tickDeathline(phantom,.2);assert.ok(Math.abs(phantom.atkCooldown-.95)<1e-9);
-// ダウン中は進めない
-phantom.atkCooldown=1;phantom.isDown=true;tickDeathline(phantom,.2);assert.equal(phantom.atkCooldown,1);phantom.isDown=false;
+assert.ok(phantom.atkSpeed>=plain.atkSpeed);
+phantom.atkCooldown=1;tickDeathline(phantom,.2);assert.equal(phantom.atkCooldown,1);
+phantom.isDown=true;tickDeathline(phantom,.2);assert.equal(phantom.atkCooldown,1);phantom.isDown=false;
 
 // 2. 自然治癒 毎秒最大HPの2%（ダウン中・死亡中は不可）
 grit.hp=Math.floor(grit.maxHp/2);let h0=grit.hp;for(let i=0;i<100;i++)tickDeathline(grit,.01);

@@ -1,6 +1,6 @@
 import {ensureAmmo,takeRangedShot} from './supply-rules.js?v=267';
 import {attackBlocked} from './gate-rules.js?v=215';
-import {soldierAttackCooldown} from './equipment-rules.js?v=242';
+import {attackCooldown,soldierAttackCooldown} from './equipment-rules.js?v=273';
 import {attributeFamily} from './unit-attributes.js?v=248';
 import {inCurrentInstance} from './instance-rules.js?v=256';
 import {sound} from '../../common/js/audio.js?v=151';
@@ -65,7 +65,7 @@ export const rangedCombatMethods={
     const aura=!isPlayer&&!unit.heroPartyId&&this.player?.isAdvanced?1.25:1;
     const bash=cannonSidearm(unit),rule=bash?CANNON_BASH_RULES:SIDEARM_RULES;
     const base=sidearmAttack(unit)*(isPlayer||unit.heroPartyId?1:2.2)*aura*(bash?rule.mult:1);
-    const cooldown=rule.cooldown/Math.max(.55,unit.atkSpeed||1);
+    const cooldown=attackCooldown(unit.equipped?.weapon||unit.weapon,rule.cooldown,unit.atkSpeed,unit.warlordSpeedPct);
     unit.atkCooldown=isPlayer?cooldown:soldierAttackCooldown(unit,cooldown);unit._cannonBashAttack=bash;
     unit.atkAnim=1;unit.attackAngle=Math.atan2(target.y-unit.y,target.x-unit.x);unit.facingAngle=unit.attackAngle;
     if(isPlayer){unit.slashAngle=unit.attackAngle;unit.slashAnim=1;}

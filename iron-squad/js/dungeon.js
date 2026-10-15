@@ -7,7 +7,7 @@ import {DEMON_KING_HP} from './campaign-scaling.js?v=241';
 
 import {LIMITED_SETTLEMENTS,drawLimitedEntrance} from './limited-allies.js?v=266';
 import { WORLD_SIZE, SETTLEMENTS } from './world.js';
-import {chooseLootTier} from './equipment-rules.js?v=242';
+import {chooseLootTier} from './equipment-rules.js?v=273';
 import {drawTreasureChest} from './loot-visuals.js?v=242';
 import {explorationLayout,explorationBlocks} from './dungeon-layout.js?v=182';
 import {drawExplorationInterior} from './dungeon-interior-visuals.js?v=242';

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {JSDOM} from '../../__pycache__/ui-tools/node_modules/jsdom/lib/api.js';
 import {rollAttributeProfile,soldierCombatTempo,evasionChance} from '../js/unit-attributes.js';
-import {soldierAttackCooldown} from '../js/equipment-rules.js';
+import {weaponCombatProfile,soldierAttackCooldown} from '../js/equipment-rules.js';
 import {soldierMeleeReload} from '../js/soldier-melee-skills.js';
 import {buildTransportRescueAssign,transportInCombat,transportSpeedFactor,attachWounded,carryingCapacity} from '../js/casualty-rules.js';
 import {rangedFrontlinePosition,rangedDrawPose,sidearmAttack} from '../js/ranged-combat.js';
@@ -81,13 +81,13 @@ try{
   assert.ok(Math.abs(soldierCombatTempo({soldierClass:'LIGHT',quickness:60})-.616)<.002);
   assert.equal(soldierCombatTempo({soldierClass:'LIGHT',quickness:255}),.6);
   for(const commander of [{quickness:255},{soldierClass:'LIGHT',quickness:255,isCommander:true},{soldierClass:'LIGHT',quickness:255,isPlayer:true}]){assert.equal(soldierCombatTempo(commander),1);assert.equal(soldierAttackCooldown(commander,.08),.08);}
-  assert.equal(soldierAttackCooldown({soldierClass:'LIGHT',quickness:255},.02),.12);
+  assert.equal(soldierAttackCooldown({soldierClass:'LIGHT',quickness:255},.02),.192);
   assert.equal(evasionChance(50),Math.min(48,50*.36+7.2*(50/255)**4),'dodge remains the existing formula');
   const timings=[];
   for(const style of ['sword','spear','hammer','axe']){
     const results=[];
     for(const cls of ['HEAVY','LIGHT']){
-      reset();const u=soldier(cls,style),m=enemy(style==='spear'?90:35);u.quickness=cls==='HEAVY'?15:28;u.weaponMastery={};
+      reset();const u=soldier(cls,style),m=enemy(style==='spear'?90:35);u.attributeProfile.innate.quickness=cls==='HEAVY'?15:28;g.recalcSoldierStats(u);u.quickness=cls==='HEAVY'?15:28;u.weaponMastery={};
       g.update(.001);assert.ok(m.hp<1e10,'native normal attack hits');const normal=u.atkCooldown;
       u.weaponSkillCooldown=0;g.trySoldierMeleeSkill(u,m);const skill=u.weaponSkillCooldown;assert.ok(skill>0);
       const gearIndependent=soldierMeleeReload(u);
@@ -97,7 +97,7 @@ try{
       assert.ok(Math.abs(soldierMeleeReload(u)/gearIndependent-masteryReloadMult(u.weaponMastery,style)/masteryReloadMult(savedMastery,style))<1e-9);u.weaponMastery=savedMastery;
       const reload=soldierMeleeReload(u);u.deathlineSkills=['PHANTOM_STEP'];g.recalcSoldierStats(u);u.quickness=cls==='HEAVY'?15:28;
       assert.equal(u.deathlineAtkSpeed,25);assert.ok(Math.abs(soldierMeleeReload(u)-reload/1.25)<1e-9,'actual phantom skill stacks with tempo');u.deathlineAtkSpeed=0;
-      u.atkSpeed=100;u.quickness=255;u.atkCooldown=0;u.weaponSkillCooldown=1e6;m.x=x+35;m.y=y;g.update(.001);assert.equal(u.atkCooldown,.12,'native final ordinary CT floor');
+      u.atkSpeed=100;u.quickness=255;u.atkCooldown=0;u.weaponSkillCooldown=1e6;m.x=x+35;m.y=y;g.update(.001);assert.equal(u.atkCooldown,weaponCombatProfile(u.weapon).baseCooldown*.6,'weapon-specific final ordinary CT floor');
       results.push({cls,normal,skill});
     }
     assert.ok(results[1].normal<results[0].normal*.81&&results[1].skill<results[0].skill*.81,style);
@@ -115,7 +115,7 @@ try{
   const attack=g.performAttack,hitTimes=[];let clock=0;
   g.performAttack=function(a,...args){if(a===floorUnit)hitTimes.push(clock);return attack.call(this,a,...args);};
   for(let i=0;i<200;i++){clock=i*.005;g.update(.005);}g.performAttack=attack;
-  assert.ok(hitTimes.length>=7);for(let i=1;i<hitTimes.length;i++)assert.ok(hitTimes[i]-hitTimes[i-1]>=.12-1e-9,'phantom cannot accelerate elapsed normal interval below .12 seconds');
+  assert.ok(hitTimes.length>=4);for(let i=1;i<hitTimes.length;i++)assert.ok(hitTimes[i]-hitTimes[i-1]>=weaponCombatProfile(floorUnit.weapon).baseCooldown*.6-1e-9,'phantom cannot bypass the weapon floor');
   // Front requires a live, nearby, same-space melee ally. Loaded mode immediately opts out.
   reset();const shooter=soldier('ARCHER','cannon'),target=enemy(150);shooter.ammo=0;
   assert.equal(rangedFrontlinePosition(g,shooter,target),null);

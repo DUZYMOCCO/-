@@ -1,5 +1,5 @@
 import {drawEquipmentShield} from './equipment-art.js?v=231';
-import { MELEE_SWEET_SPOT, meleeSweetSpotFor, weaponCombatProfile } from './equipment-rules.js?v=242';
+import { MELEE_SWEET_SPOT, meleeSweetSpotFor, weaponCombatProfile } from './equipment-rules.js?v=273';
 import {isHeavyWeaponStyle} from './growth-rules.js?v=234';
 
 const TAU = Math.PI * 2;
@@ -78,7 +78,7 @@ export function meleePose(style, anim=0, aim=0, physique=null) {
 export function attackAnimationRate(item,attackSpeed=1) {
   const style=item?.weaponStyle||'sword';
   const duration=style==='spear'?.30:(style==='hammer'||style==='axe')?.44:style==='sword'?.18:.24;
-  return Math.max(1, Math.min(2, Number(attackSpeed)||1))*(weaponCombatProfile(item).swingSpeed||1)/duration;
+  return Math.max(.55,Math.min(1/.6,Number(attackSpeed)||1)) * Math.min(1,weaponCombatProfile(item).swingSpeed||1)/duration;
 }
 
 /** Equal, fixed bone lengths; choose the lower elbow instead of crossing the face. */

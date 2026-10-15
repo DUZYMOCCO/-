@@ -1,3 +1,4 @@
+import {attackCooldown} from './equipment-rules.js?v=273';
 import {migrateCampaignEnemy} from './campaign-scaling.js?v=241';
 import {HERO_RULES,heroMembers,heroSharesSpace,visibleHeroMembers} from './hero-rules.js';
 import {advanceHeroRoute,heroSegmentOpen,heroRouteCurrent} from './hero-navigation.js?v=198';
@@ -14,7 +15,7 @@ import {isMedic,treatWounded,updateWounded,normalizeRevivalSkill,revivalSkillCoo
 import {healByMedic,healAmountFor} from './phase-rules.js?v=218';
 import {ensureMana,regenerateMana,spendMana,isMage} from './magic-rules.js?v=266';
 import {takeRangedShot,supplyLocation,ammoCapacity} from './supply-rules.js?v=267';
-import {distanceScaling} from './equipment-rules.js?v=242';
+import {distanceScaling} from './equipment-rules.js?v=273';
 import {strongEnemyReward} from './combat-rewards.js?v=182';
 import {RANGED_ENEMIES} from './enemy-ranged.js?v=235';
 import {startHeroJournal,archiveHeroJournal,appendHeroDiary,recordHeroEquipmentGrant} from './hero-journal.js?v=239';
@@ -172,7 +173,7 @@ export function updateHeroParty(game,dt,classes) {
     if(enemy){const dist=Math.hypot(u.x-enemy.x,u.y-enemy.y);
       if(profile.sidearm&&dist>90){move(game,ctx,u,{x:p.x+Math.cos(i*1.15)*34,y:p.y+Math.sin(i*1.15)*34},dt);return;}
       if(dist>reach)move(game,ctx,u,enemy,dt);
-      else if(u._heroAttackClock<=0){u._heroAttackClock=(profile.baseCooldown||cls.atkCooldown)/(u.atkSpeed||1);u.atkAnim=1;u.facingAngle=Math.atan2(enemy.y-u.y,enemy.x-u.x);
+      else if(u._heroAttackClock<=0){u._heroAttackClock=attackCooldown(u.equipped?.weapon||u.weapon,profile.baseCooldown||cls.atkCooldown,u.atkSpeed);u.atkAnim=1;u.facingAngle=Math.atan2(enemy.y-u.y,enemy.x-u.x);
         if(magic){if(spendMana(u,mage?12:20))ctx.performAttack(u,enemy,false,u.magicAttack||u.atk,false,'magic');}
         else if(profile.sidearm)ctx.performRangedSidearm(u,enemy,false,true);
         else if(profile.ranged&&shared)ctx.spawnRangedProjectile(u,enemy,u.atk,profile,false);

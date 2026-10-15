@@ -4,6 +4,17 @@ import {FIELD_NOTICE_SECONDS,IMPORTANT_NOTICE_SECONDS} from './battle-log.js?v=2
 // 操作を邪魔しない控えめなCanvas描画 ＆ 直近重複排除エンジン（Anti-Repetition）
 
 export const DIALOGUE_CATEGORIES = {
+  CASINO: [
+    '隊長、これで新しい剣が買えますね！','給料の前借り、今ならいけますか？',
+    '次こそ来ます。俺の勘です。','勝ったら肉、負けたら豆です。',
+    'この手、朝のパンに似てますね。','剣よりカードの方が重く感じる…。',
+    '今日の運、全部ここに置いてきました。','俺の分の酒もお願いします！',
+    '隊長、その顔は勝つ顔です！','飯代だけは残しておきましょう。',
+    '盾は持ちました。財布は守れません。','足がふるえるのは、気合です。',
+    '当たれ！新しいくつがほしい！','青組の飯、少し多くないですか？',
+    '赤組、肉のためにがんばれ！','練習でも腹は減るんですね。',
+    '負けても今日の飯はうまい！','勝ったら洗濯当番を代わってくれ！'
+  ],
   BOSS_ENCOUNTER: [
     'デカい…だが足元は隙だらけだ',
     '隊長、下がっててください！',
@@ -972,3 +983,11 @@ export class SoldierDialogueManager {
 }
 
 export const soldierDialogue = new SoldierDialogueManager();
+// Menu chatter shares the field dialogue's recent-history filter, without a hidden Canvas bubble.
+export function casinoQuip(soldier) {
+  const lines=DIALOGUE_CATEGORIES.CASINO.filter(text=>!soldierDialogue.recentHistory.includes(text));
+  const pool=lines.length?lines:DIALOGUE_CATEGORIES.CASINO;
+  const text=pool[Math.floor(Math.random()*pool.length)];soldierDialogue.recentHistory.push(text);
+  if(soldierDialogue.recentHistory.length>soldierDialogue.maxHistory)soldierDialogue.recentHistory.shift();
+  return text;
+}

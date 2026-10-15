@@ -1,5 +1,5 @@
 import {noteFollowerIntent} from './follower-recovery.js?v=262';
-import {soldierAttackCooldown} from './equipment-rules.js?v=242';
+import {soldierAttackCooldown} from './equipment-rules.js?v=273';
 import {guardTarget,guardRegrouping,guardSpeedMult} from './guard-leash.js?v=266';
 import {guardFormationTarget,guardFormationSpeedMult} from './guard-formation.js?v=266';
 import {WORLD_SIZE,fieldBlocks} from './world.js?v=260';

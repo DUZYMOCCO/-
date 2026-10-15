@@ -2,7 +2,7 @@ import {canUseEquipment} from './weapon-requirements.js?v=239';
 import {normalizeArmament,ARMAMENT_POLICIES,advanceResearch,researchCost,standardEquipmentCost,personalEquipmentBudget,createEquipmentValueCache,RESERVE_ARMAMENT_COUNT,ARMAMENT_LIMITS} from './armament-rules.js?v=265';
 import {tierDescription,MAX_EQUIPMENT_TIER} from './equipment-tiers.js?v=231';
 import {WORLD_SIZE} from './world.js?v=260';
-import {saleValue,isGodRollProtected} from './equipment-rules.js?v=242';
+import {saleValue,isGodRollProtected} from './equipment-rules.js?v=273';
 import {calcTreasuryGrossIncome,calcCommanderStipend,EQUIPMENT_SLOTS} from './economy-rules.js?v=265';
 import {createPayrollPlan,commanderStipendQuote,PAYROLL_RULES,regularSalaryReserve} from './payroll-rules.js?v=226';
 import {calcAllRankerBonuses} from './troop-rankings.js?v=247';
@@ -11,7 +11,7 @@ import {drawSettlementQuarter} from './economic-visuals.js?v=242';
 import {atFacility,HEADQUARTERS_FACILITIES} from './hq-facilities.js?v=264';
 import {renderRegionalEconomy} from './economic-interface.js?v=264';
 import {workshopFloorTier} from './crafting-rules.js?v=231';
-import {normalizeCasino} from './casino-rules.js?v=201';
+import {normalizeCasino} from './casino-rules.js?v=271';
 import {normalizeGuild,advanceGuildContracts} from './guild-contracts.js?v=264';
 
 export const DEVELOPMENT_STAGES=[
@@ -31,7 +31,7 @@ export function normalizeNation(data={}) {
   return {armament,investment,level,economy,casino:normalizeCasino(data?.casino,data?.casinoPhase,level),
     totalExports:amount(data?.totalExports),totalDonations:amount(data?.totalDonations),
     guild:normalizeGuild(data?.guild),
-    guildPhase:amount(data?.guildPhase),casinoPhase:amount(data?.casinoPhase),smithPhase:amount(data?.smithPhase),lastCasino:String(data?.lastCasino||'')};
+    guildPhase:amount(data?.guildPhase),smithPhase:amount(data?.smithPhase),lastCasino:String(data?.lastCasino||'')};
 }
 export const nationalPayrollPlan=game=>createPayrollPlan(game,calcAllRankerBonuses(game));
 export const nationalPayroll=game=>nationalPayrollPlan(game).total;

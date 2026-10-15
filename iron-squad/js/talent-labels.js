@@ -1,4 +1,4 @@
-import {gameText} from './game-text.js?v=268';
+import {gameText} from './game-text.js?v=271';
 /** 才能キーの表示名（内部キーを画面へ出さないための共有辞書。index.js の TALENTS.tag と一致させる）。 */
 export const TALENT_TAGS = {INFERIOR:'🍂へっぽこ',AVERAGE:'凡庸',TALENTED:'✨有望',ELITE:'🔮英才',GENIUS:'🌟天才'};
 export const isLateBloomer = unit => unit?.talent==='INFERIOR'&&(unit.survivedDeathlines>0||Array.isArray(unit.deathlineSkills)&&unit.deathlineSkills.length>0);

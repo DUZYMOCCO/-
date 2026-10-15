@@ -163,12 +163,12 @@ const PCT_STATS=new Set(['crit','blockChance','atkSpeed','vampire','swingSpeed',
 const STAT_ORDER=['atk','def','hp','speed','atkSpeed','crit','blockChance','regen','vampire','lightning'];
 
 function formatStatDisplay(key, value) {
-  const n=Number(value)||0;
+  const n=key==='atkSpeed'?Math.min(60,Number(value)||0):Number(value)||0;
   if(['reach','attackWidth'].includes(key))return formatLength(n);
   if(key==='attackRate')return `${n.toFixed(2)}回/秒`;
   if(key==='lightning') return n?'あり':'なし';
   if(key==='vampire') return `${Math.round(n*10000)/100}%`;
-  if(PCT_STATS.has(key)) return `${Math.round(n*100)/100}%`;
+  if(PCT_STATS.has(key)) return `${Math.round(n*100)/100}%${key==='atkSpeed'&&n>=60?'（上限）':''}`;
   return `${Math.round(n)}`;
 }
 
@@ -184,7 +184,8 @@ function formatDeltaDisplay(key, delta) {
 /** 装備乗り換え時の性能差。label/kind は既存互換。text=プレーン、html=色付き↑↓ */
 export function compareEquipment(candidate,current) {
   const axes=candidate?.type==='WEAPON'||current?.type==='WEAPON';
-  const afterStats={...(candidate?.stats||{}),...(axes?weaponAxisValues(candidate):{})},beforeStats={...(current?.stats||{}),...(axes?weaponAxisValues(current):{})};
+  const cappedStats=item=>({...item?.stats,...(item?.type!=='WEAPON'&&item?.stats?.atkSpeed!=null?{atkSpeed:Math.min(60,item.stats.atkSpeed)}:{})});
+  const afterStats={...cappedStats(candidate),...(axes?weaponAxisValues(candidate):{})},beforeStats={...cappedStats(current),...(axes?weaponAxisValues(current):{})};
   const keys=new Set([...Object.keys(afterStats),...Object.keys(beforeStats)]);
   const ordered=[...keys].sort((a,b)=>{
     const ia=STAT_ORDER.indexOf(a), ib=STAT_ORDER.indexOf(b);
@@ -330,10 +331,21 @@ export function weaponCombatProfile(item) {
     sweepArc:!p.ranged&&!p.pierce&&item?.weaponTraits?(isHeavyWeaponStyle(p.style)?1.8:1.2)*sweep:0,
     swingSpeed:trait(item,'swingSpeed')};
 }
-/** Apply quickness after every ordinary-attack modifier, then enforce the soldier floor. */
-// Phantom advances the existing attack clock faster in tickDeathline. Raise its
-// stored floor by the same rate so the elapsed interval still cannot be < .12s.
-export const soldierAttackCooldown=(unit,cooldown)=>usesSoldierTempo(unit)?Math.max(.12*(1+Math.max(0,unit.deathlineAtkSpeed||0)/100),cooldown*soldierCombatTempo(unit)):cooldown;
+/** Non-weapon sources share one additive budget; weapon penalties retain their identity. */
+export const ATTACK_SPEED_BONUS_CAP=60,ATTACK_COOLDOWN_FLOOR=.6;
+export function attackSpeedState(equipped={},extraPct=0,warlordPct=0) {
+  const weapon=equipped?.weapon;
+  const raw=Object.entries(equipped||{}).reduce((v,[slot,item])=>v+(slot==='weapon'?0:Number(item?.stats?.atkSpeed)||0),Number(extraPct)||0);
+  const bonus=Math.min(ATTACK_SPEED_BONUS_CAP,raw);
+  return {atkSpeed:Math.max(.55,1+(Number(weapon?.stats?.atkSpeed)||0)/100+bonus/100+warlordPct/100),attackSpeedBonusPct:bonus,attackSpeedAtCap:raw>=ATTACK_SPEED_BONUS_CAP,warlordSpeedPct:warlordPct};
+}
+export function attackCooldown(item,requestedBase,attackSpeed=1,warlordPct=0) {
+  return Math.max(weaponCombatProfile(item).baseCooldown*ATTACK_COOLDOWN_FLOOR/(1+warlordPct/100),requestedBase/Math.max(.55,Number(attackSpeed)||1));
+}
+export const attackSpeedLabel=unit=>`攻速補正 +${Math.round(unit?.attackSpeedBonusPct||0)}%${unit?.attackSpeedAtCap?'（上限）':''}${unit?.warlordSpeedPct?` · 覇王 +${unit.warlordSpeedPct}%（上限外）`:``} · 武器ごとの最短間隔${unit?.warlordSpeedPct?46.2:60}%`;
+/** Actual actors include quickness and Phantom in the shared budget at stat recalculation. */
+export const soldierAttackCooldown=(unit,cooldown)=>!usesSoldierTempo(unit)?cooldown:Math.max(.12,weaponCombatProfile(unit?.equipped?.weapon||unit?.weapon).baseCooldown*ATTACK_COOLDOWN_FLOOR,
+  cooldown*(Number.isFinite(unit?.attackSpeedBonusPct)?1:soldierCombatTempo(unit))*(Number.isFinite(unit?.attackSpeedBonusPct)?1:1+Math.max(0,unit?.deathlineAtkSpeed||0)/100));
 export function meleeSweetSpotFor(item) {
   const base=MELEE_SWEET_SPOT[combatFamilyOf(item)];if(!base)return null;
   if(typeof item==='string'||!item?.weaponTraits)return base;
@@ -344,7 +356,7 @@ export function weaponAxisValues(item) {
   if(!item)return {reach:0,attackWidth:0,swingSpeed:0,attackRate:0,sweetWidth:0,sweetPower:0};
   const p=weaponCombatProfile(item),sweet=p.ranged?null:meleeSweetSpotFor(item),arc=p.sweepArc||(isHeavyWeaponStyle(p.style)?1.8:1.2);
   return {reach:p.ranged?p.reach:p.playerReach,attackWidth:p.pierce?p.pierceHalfWidth*2:p.ranged?p.splash*2:2*p.playerReach*Math.sin(arc/2),
-    swingSpeed:p.swingSpeed*100,attackRate:Math.max(.05,1+(item.stats?.atkSpeed||0)/100)/p.baseCooldown,
+    swingSpeed:p.swingSpeed*100,attackRate:1/attackCooldown(item,p.baseCooldown,1+(item.stats?.atkSpeed||0)/100),
     sweetWidth:sweet?(sweet.sweetMax-sweet.sweetMin)*100:0,sweetPower:sweet?(sweet.sweetDmg-1)*100:0};
 }
 
