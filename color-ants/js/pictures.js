@@ -22,26 +22,40 @@ class Grid {
   ellipse(key, cx, cy, rx, ry) {
     this.fillIf(key, (x, y) => ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 <= 1);
   }
+  polygon(key, points) {
+    this.fillIf(key, (x, y) => {
+      let inside = false;
+      for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
+        const [ax, ay] = points[i], [bx, by] = points[j];
+        if ((ay > y) !== (by > y) && x < (bx - ax) * (y - ay) / (by - ay) + ax) inside = !inside;
+      }
+      return inside;
+    });
+  }
 }
 
 const CX = 15.5; // 盤面の中心
 
 function drawWatermelon() {
   const g = new Grid('bg');
-  g.fillIf('floor', (x, y) => y >= 27);
-  g.ellipse('shadow', CX, 27.4, 14, 1.1);
-  const cy = 9;
-  const d = (x, y) => Math.hypot(x - CX, y - cy);
-  g.fillIf('rind', (x, y) => y >= cy && d(x, y) <= 15.6);
-  g.fillIf('rind3', (x, y) => y >= cy && d(x, y) <= 15.6 && d(x, y) > 13.8 && Math.floor(Math.atan2(y - cy, x - CX) * 9) % 2 === 0);
-  g.fillIf('rind2', (x, y) => y >= cy && d(x, y) <= 13.8);
-  g.fillIf('pith', (x, y) => y >= cy && d(x, y) <= 12.8);
-  g.fillIf('red', (x, y) => y >= cy && d(x, y) <= 11.8);
-  g.fillIf('red2', (x, y) => y >= cy && d(x, y) <= 6.2);
-  g.fillIf('red3', (x, y) => y >= cy && d(x, y) <= 2.6);
-  const seeds = [[9, 13], [13, 12], [18, 12], [22, 13], [11, 17], [16, 16], [21, 17], [13, 19], [18, 19], [8, 16], [23, 16], [15.5, 21]];
-  for (const [x, y] of seeds) g.ellipse('seed', x, y + 0.5, 0.62, 1.1);
-  for (const [x, y] of seeds.slice(0, 6)) g.set('hi', x - 0.25, y - 0.25);
+  // A thick triangular slice: red cut surface, pale pith and striped green side.
+  g.ellipse('shadow', 17, 28, 13.5, 1.5);
+  g.polygon('rind', [[2, 10], [25, 3], [29, 22], [28, 27], [3, 15]]);
+  g.polygon('rind3', [[3, 11], [28, 22], [27, 26], [3, 14]]);
+  for (let i = 0; i < 6; i++) {
+    const x = 6 + i * 3.7, y = 12 + i * 1.65;
+    g.polygon('rind', [[x, y], [x + 1.3, y + .6], [x + .6, y + 3], [x - .8, y + 2.4]]);
+  }
+  g.polygon('rind2', [[2, 10], [25, 3], [29, 22], [27, 23]]);
+  g.polygon('pith', [[3, 10], [24.5, 4], [27.5, 21.4]]);
+  g.polygon('red', [[5, 10], [23.5, 5.5], [26, 20]]);
+  g.polygon('red2', [[5, 10], [23.5, 5.5], [24.2, 8.5], [9, 12]]);
+  g.polygon('red3', [[7, 10], [22, 6.5], [22.2, 7.1], [8.5, 10.7]]);
+  const seeds = [[12, 10], [18, 8.5], [22.5, 11], [16.5, 12.7], [22, 15.5]];
+  for (const [x, y] of seeds) {
+    g.ellipse('seed', x, y, .55, .85);
+    g.set('hi', x - .1, y - .25);
+  }
   return g.cells;
 }
 
@@ -172,7 +186,7 @@ function drawMushroom() {
 export const PICTURE_DEFS = [
   {
     id: 'watermelon', name: 'すいか', icon: '🍉', draw: drawWatermelon,
-    palette: { bg: '#ffe8a3', floor: '#f2cf7a', shadow: '#dcb45e', rind: '#1f7a3a', rind3: '#2f9a4e', rind2: '#7bd36b', pith: '#f4fbe8', red: '#ef4056', red2: '#ff6277', red3: '#ff8e9c', seed: '#2b2230', hi: '#6a5870' },
+    palette: { bg: '#c6e8e0', shadow: '#a7c9bb', rind: '#287651', rind3: '#44a969', rind2: '#a1d578', pith: '#fff4cc', red: '#f24e65', red2: '#ff7782', red3: '#ffb7b2', seed: '#48394d', hi: '#81607a' },
   },
   {
     id: 'cupcake', name: 'カップケーキ', icon: '🧁', draw: drawCupcake,

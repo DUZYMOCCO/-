@@ -6,10 +6,10 @@
 import { sound } from '../../common/js/audio.js?v=151';
 import { loadCss } from '../../common/js/load-css.js';
 import { storage } from '../../common/js/storage.js';
-import { PICTURE_DEFS, buildPicture, countByKey, paintPicture, SIZE } from './pictures.js?v=5';
+import { PICTURE_DEFS, buildPicture, countByKey, paintPicture, SIZE } from './pictures.js?v=7';
 import { mulberry32, buildTiles, textColorFor } from './puzzle.js?v=5';
-import { Colony, shade } from './colony.js?v=5';
-import { ColonyRenderer } from './renderer.js?v=5';
+import { Colony, shade } from './colony.js?v=7';
+import { ColonyRenderer } from './renderer.js?v=7';
 
 const SAVE_KEY = 'color_ants_v2';
 const COLS = 5;
@@ -18,7 +18,7 @@ const HIDDEN_DEPTH = 3;  // これより奥のタイルは「？」
 
 export default {
   prepare() {
-    return loadCss(new URL('../css/color-ants.css?v=5', import.meta.url).href);
+    return loadCss(new URL('../css/color-ants.css?v=7', import.meta.url).href);
   },
 
   init(container, onBackToHub) {
@@ -54,16 +54,22 @@ export default {
     this.container.innerHTML = `
       <div class="color-ants-container">
         <header class="ca-header">
-          <button class="ca-btn" id="ca-back">← もどる</button>
+          <button class="ca-btn ca-back" id="ca-back" aria-label="工房にもどる">‹</button>
           <div class="ca-title">
+            <span class="ca-brand">COLOR ANTS</span>
             <span class="ca-level" id="ca-level">Level 1</span>
             <span class="ca-pct" id="ca-pct">運んだ 0 / 0</span>
           </div>
           <div class="ca-hdr-right">
-            <button class="ca-btn ca-restart-btn" id="ca-restart" title="やり直す">🔄</button>
+            <button class="ca-btn ca-restart-btn" id="ca-restart" title="やり直す" aria-label="やり直す">↻</button>
             <button class="ca-btn ca-speed" id="ca-speed">▶▶ ×1</button>
           </div>
         </header>
+
+        <div class="ca-progress">
+          <div class="ca-progress-label"><span id="ca-picture-name"></span><span id="ca-progress-text">0%</span></div>
+          <div class="ca-progress-track" role="progressbar" aria-label="絵の回収率" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="ca-progress"><div id="ca-progress-fill"></div></div>
+        </div>
 
         <div class="ca-canvas-wrap" id="ca-wrap">
           <canvas class="ca-canvas" id="ca-canvas"></canvas>
@@ -77,11 +83,11 @@ export default {
               <span class="ca-boost-lbl">もどす</span>
             </button>
             <button class="ca-boost-btn" id="ca-boost-slot" title="スロット枠を+1ふやす">
-              <span class="ca-boost-icon">➕</span>
+              <span class="ca-boost-icon">＋</span>
               <span class="ca-boost-lbl">枠+1</span>
             </button>
             <button class="ca-boost-btn" id="ca-boost-shuffle" title="タイルを並び替える">
-              <span class="ca-boost-icon">🔀</span>
+              <span class="ca-boost-icon">⇄</span>
               <span class="ca-boost-lbl">シャッフル</span>
             </button>
             <button class="ca-boost-btn" id="ca-boost-magnet" title="外側の色を一気におそうじ！">
@@ -93,18 +99,19 @@ export default {
           <!-- 出撃スロット（トレイ） -->
           <div class="ca-tray-wrap">
             <div class="ca-tray-head">
-              <span class="ca-tray-title">出撃スロット</span>
-              <span class="ca-tray-hint">外側の色から順に削ろう</span>
+              <span class="ca-tray-title">アリの出撃トレイ</span>
+              <span class="ca-tray-hint" id="ca-tray-hint">0 / 5</span>
             </div>
             <div class="ca-slots" id="ca-slots"></div>
           </div>
 
           <!-- タイル列（手前4段） -->
           <div class="ca-tiles" id="ca-tiles"></div>
+          <div class="ca-guide">先頭の色をタップして、アリを送り出そう</div>
         </div>
 
         <!-- トースト通知 -->
-        <div class="ca-toast" id="ca-toast"></div>
+        <div class="ca-toast" id="ca-toast" role="status" aria-live="polite"></div>
 
         <!-- クリアモーダル -->
         <div class="ca-modal" id="ca-modal" style="display:none;">
@@ -139,6 +146,11 @@ export default {
     this.tilesEl = q('#ca-tiles');
     this.levelEl = q('#ca-level');
     this.pctEl = q('#ca-pct');
+    this.progressEl = q('#ca-progress');
+    this.progressFill = q('#ca-progress-fill');
+    this.progressText = q('#ca-progress-text');
+    this.pictureNameEl = q('#ca-picture-name');
+    this.trayHint = q('#ca-tray-hint');
     this.speedBtn = q('#ca-speed');
     this.restartBtn = q('#ca-restart');
     this.modal = q('#ca-modal');
@@ -182,7 +194,7 @@ export default {
 
   handleResize() {
     const rect = this.canvasWrap.getBoundingClientRect();
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = Math.min(3, window.devicePixelRatio || 1);
     const w = Math.floor(rect.width), h = Math.floor(rect.height);
     if (w <= 0 || h <= 0) return;
     this.lw = w;
@@ -196,17 +208,18 @@ export default {
   applyLayout() {
     const w = this.lw, h = this.lh;
     if (w <= 0 || h <= 0) return;
-    const dpr = window.devicePixelRatio || 1;
-    const avail = Math.min(w - 32, h - 14 - 58);
-    const cd = Math.max(3, Math.floor((avail * dpr) / SIZE));
+    const dpr = Math.min(3, window.devicePixelRatio || 1);
+    const walkingSpace = h < 320 ? 50 : 68;
+    const avail = Math.min(w - 44, h - 22 - walkingSpace);
+    const cd = Math.max(1, Math.floor((avail * dpr) / SIZE));
     const cell = cd / dpr;
     const bp = cell * SIZE;
     const boardX = Math.round(((w - bp) / 2) * dpr) / dpr;
-    const boardY = 14;
+    const boardY = 22;
     const below = h - (boardY + bp);
 
     // 3つの巣穴を均等に配置
-    const nestY = Math.min(h - 14, boardY + bp + below * 0.55);
+    const nestY = Math.min(h - 22, boardY + bp + below * 0.62);
     const nests = [
       { x: w * 0.28, y: nestY },
       { x: w * 0.50, y: nestY },
@@ -217,7 +230,7 @@ export default {
       cell, boardX, boardY,
       nests,
       nest: nests[1],
-      ant: Math.max(6, bp / 46),
+      ant: Math.max(5, bp / 52),
       speed: bp * 0.32,
     });
   },
@@ -240,7 +253,9 @@ export default {
     this.lastSlotCounts = [];
     this.modal.style.display = 'none';
     this.stuckModal.style.display = 'none';
+    this.toastEl.classList.remove('show');
     this.levelEl.textContent = `Level ${this.level}`;
+    this.pictureNameEl.textContent = `${picture.icon} ${picture.name}のピクセルアート`;
     this.boostSlotBtn.disabled = false;
     this.boostSlotBtn.classList.remove('used');
 
@@ -256,6 +271,8 @@ export default {
     this.toastEl.classList.remove('show');
     void this.toastEl.offsetWidth;
     this.toastEl.classList.add('show');
+    clearTimeout(this.toastTimer);
+    this.toastTimer = setTimeout(() => this.toastEl?.classList.remove('show'), 2800);
   },
 
   /** スロット枠+1の拡張 */
@@ -314,15 +331,19 @@ export default {
   renderSlots() {
     this.slotsEl.innerHTML = '';
     const totalSlots = this.colony.slots.length;
+    this.trayHint.textContent = `${this.colony.slots.filter(Boolean).length} / ${totalSlots}`;
     this.slotsEl.style.gridTemplateColumns = `repeat(${totalSlots}, 1fr)`;
 
     for (let si = 0; si < totalSlots; si++) {
       const slot = this.colony.slots[si];
-      const slotEl = document.createElement('div');
+      const slotEl = document.createElement('button');
+      slotEl.type = 'button';
       slotEl.dataset.slot = String(si);
 
       if (!slot) {
         slotEl.className = 'ca-slot empty';
+        slotEl.disabled = true;
+        slotEl.setAttribute('aria-label', `空き出撃枠 ${si + 1}`);
       } else {
         const hex = slot.hex;
         const isWaiting = slot.left === slot.initial && slot.activeAnts === 0;
@@ -332,6 +353,7 @@ export default {
         slotEl.style.setProperty('--t', textColorFor(hex));
         const pct = Math.round((slot.left / slot.initial) * 100);
         slotEl.style.setProperty('--p', String(pct));
+        slotEl.setAttribute('aria-label', `${slot.left}匹 ${isWaiting ? '待機中・タップして戻す' : '出撃中'}`);
 
         slotEl.innerHTML = `
           <div class="ca-slot-bar"></div>
@@ -385,6 +407,8 @@ export default {
       }
 
       const isWaiting = slot.left === slot.initial && slot.activeAnts === 0;
+      const label = `${slot.left}匹 ${isWaiting ? '待機中・タップして戻す' : '出撃中'}`;
+      if (el.getAttribute('aria-label') !== label) el.setAttribute('aria-label', label);
       if (isWaiting !== el.classList.contains('waiting')) {
         el.classList.toggle('waiting', isWaiting);
         el.classList.toggle('running', !isWaiting);
@@ -420,7 +444,7 @@ export default {
         if (t.hasKey) b.classList.add('has-key');
 
         if (depth >= HIDDEN_DEPTH && !t.locked) {
-          b.classList.add('hidden');
+          b.classList.add('mystery');
           b.textContent = '？';
         } else {
           let label = String(t.n);
@@ -435,6 +459,9 @@ export default {
 
         if (depth === 0) {
           b.addEventListener('click', () => this.tapTile(ci));
+          b.setAttribute('aria-label', `${ci + 1}列目 ${t.n}匹を出撃${t.locked ? '・カギが必要' : ''}`);
+        } else {
+          b.disabled = true;
         }
         colEl.appendChild(b);
       });
@@ -530,6 +557,10 @@ export default {
     if (c.delivered !== this.lastDelivered) {
       this.lastDelivered = c.delivered;
       this.pctEl.textContent = `運んだ ${c.delivered} / ${c.total}`;
+      const pct = c.total ? Math.round(c.delivered / c.total * 100) : 0;
+      this.progressFill.style.width = `${pct}%`;
+      this.progressText.textContent = `${pct}%`;
+      this.progressEl.setAttribute('aria-valuenow', String(pct));
     }
   },
 
@@ -598,6 +629,7 @@ export default {
 
   destroy() {
     this.running = false;
+    clearTimeout(this.toastTimer);
     if (this.animId) { cancelAnimationFrame(this.animId); this.animId = null; }
     if (this.resizeObserver) this.resizeObserver.disconnect();
   },

@@ -3,10 +3,10 @@
  * 額縁と絵は別キャンバスに用意しておき、かじられたマスだけ消す（64×64 でも軽い）。
  * アリはマスより大きく描いて、行列がはっきり見えるようにする。
  */
-import { SIZE } from './pictures.js?v=5';
-import { shade } from './colony.js?v=5';
+import { SIZE } from './pictures.js?v=7';
+import { shade } from './colony.js?v=7';
 
-const FRAME_PAD = 7;
+const FRAME_PAD = 9;
 const MARGIN = 18;
 const LITE_ANTS = 420; // これより多いときはアリを簡易描画
 
@@ -16,6 +16,8 @@ export class ColonyRenderer {
     this.ctx = canvas.getContext('2d');
     this.board = document.createElement('canvas');
     this.frame = document.createElement('canvas');
+    this.ground = document.createElement('canvas');
+    this.groundKey = '';
     this.key = '';
     this.cd = 1;
   }
@@ -36,6 +38,16 @@ export class ColonyRenderer {
         if (p.eaten) continue;
         b.fillStyle = p.hex;
         b.fillRect(p.gx * cd, p.gy * cd, cd, cd);
+        // The tiny highlights are baked once, never redrawn for every live frame.
+        if (cd >= 3) {
+          const edge = Math.max(1, Math.round(cd * .13));
+          b.fillStyle = 'rgba(255,255,255,.20)';
+          b.fillRect(p.gx * cd, p.gy * cd, cd, edge);
+          b.fillRect(p.gx * cd, p.gy * cd, edge, cd);
+          b.fillStyle = 'rgba(35,40,49,.12)';
+          b.fillRect(p.gx * cd, (p.gy + 1) * cd - edge, cd, edge);
+          b.fillRect((p.gx + 1) * cd - edge, p.gy * cd, edge, cd);
+        }
       }
 
       const bp = bpd / dpr;
@@ -46,20 +58,37 @@ export class ColonyRenderer {
       f.clearRect(0, 0, fw, fw);
       f.save();
       f.scale(dpr, dpr);
-      f.shadowColor = 'rgba(90,50,10,0.28)';
-      f.shadowBlur = 12;
-      f.shadowOffsetY = 4;
-      f.fillStyle = '#fff8ec';
-      f.strokeStyle = '#d9b98a';
-      f.lineWidth = 3;
+      f.shadowColor = 'rgba(111,78,36,0.23)';
+      f.shadowBlur = 8;
+      f.shadowOffsetY = 5;
+      f.fillStyle = '#bd925e';
       f.beginPath();
-      f.roundRect(MARGIN, MARGIN, bp + FRAME_PAD * 2, bp + FRAME_PAD * 2, 12);
+      f.roundRect(MARGIN - 2, MARGIN - 2, bp + FRAME_PAD * 2 + 4, bp + FRAME_PAD * 2 + 7, 16);
       f.fill();
-      f.stroke();
       f.shadowColor = 'transparent';
+      const wood = f.createLinearGradient(0, MARGIN, 0, bp + FRAME_PAD * 2);
+      wood.addColorStop(0, '#fff4d8'); wood.addColorStop(.4, '#f9e6bd'); wood.addColorStop(1, '#e4c08a');
+      f.fillStyle = wood;
+      f.beginPath();
+      f.roundRect(MARGIN, MARGIN, bp + FRAME_PAD * 2, bp + FRAME_PAD * 2, 14);
+      f.fill();
       const bgColor = (colony.picture && colony.picture.palette && colony.picture.palette.bg) || '#f6ecda';
-      f.fillStyle = bgColor; // 絵の背景色（食べ終わった部分は透過してこれが見える）
+      f.fillStyle = '#b79667';
+      f.fillRect(MARGIN + FRAME_PAD - 2, MARGIN + FRAME_PAD - 2, bp + 4, bp + 4);
+      f.fillStyle = bgColor;
       f.fillRect(MARGIN + FRAME_PAD, MARGIN + FRAME_PAD, bp, bp);
+      const unit = cd / dpr;
+      for (let y = 0; y < SIZE; y++) for (let x = 0; x < SIZE; x++) {
+        f.fillStyle = (x + y) % 2 ? 'rgba(255,255,255,.075)' : 'rgba(37,78,69,.025)';
+        f.fillRect(MARGIN + FRAME_PAD + x * unit, MARGIN + FRAME_PAD + y * unit, unit, unit);
+      }
+      // Four inset brass pins reinforce the toy frame without covering the puzzle.
+      for (const x of [MARGIN + 4, MARGIN + bp + FRAME_PAD * 2 - 4]) {
+        for (const y of [MARGIN + 4, MARGIN + bp + FRAME_PAD * 2 - 4]) {
+          f.fillStyle = '#c6a06a'; f.beginPath(); f.arc(x, y, 1.5, 0, Math.PI * 2); f.fill();
+          f.fillStyle = '#fff8dd'; f.fillRect(x - .5, y - 1, 1, 1);
+        }
+      }
       f.restore();
     }
     if (colony.fresh.length) {
@@ -71,7 +100,7 @@ export class ColonyRenderer {
 
   render(colony, w, h) {
     const ctx = this.ctx;
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = Math.min(3, window.devicePixelRatio || 1);
     const L = colony.layout;
     this.prepare(colony, L, dpr);
 
@@ -79,9 +108,15 @@ export class ColonyRenderer {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, w, h);
 
+    this.drawGround(ctx, colony, w, h, dpr);
     const off = FRAME_PAD + MARGIN;
     ctx.drawImage(this.frame, L.boardX - off, L.boardY - off, this.frame.width / dpr, this.frame.height / dpr);
+    ctx.shadowColor = 'rgba(39,67,57,.2)';
+    ctx.shadowBlur = 2;
+    ctx.shadowOffsetY = 2;
     ctx.drawImage(this.board, L.boardX, L.boardY, this.board.width / dpr, this.board.height / dpr);
+    ctx.shadowColor = 'transparent';
+    ctx.shadowOffsetY = 0;
 
     const nests = L.nests && L.nests.length > 0 ? L.nests : [L.nest || { x: w / 2, y: h * 0.8 }];
     for (let ni = 0; ni < nests.length; ni++) {
@@ -111,29 +146,67 @@ export class ColonyRenderer {
     ctx.restore();
   }
 
+  drawGround(ctx, colony, w, h, dpr) {
+    const L = colony.layout;
+    const key = `${w}|${h}|${dpr}|${L.cell}|${L.boardY}`;
+    if (key !== this.groundKey) {
+      this.groundKey = key;
+      this.ground.width = Math.ceil(w * dpr);
+      this.ground.height = Math.ceil(h * dpr);
+      const g = this.ground.getContext('2d');
+      g.scale(dpr, dpr);
+      const bottom = L.boardY + L.cell * SIZE;
+      const nests = L.nests || [L.nest];
+      // Quiet dotted trails and paper leaves keep the walking area legible.
+      g.setLineDash([1, 6]);
+      g.lineWidth = 2; g.lineCap = 'round'; g.strokeStyle = 'rgba(159,116,63,.18)';
+      for (const nest of nests) {
+        g.beginPath(); g.moveTo(nest.x, nest.y - 12);
+        g.quadraticCurveTo(nest.x - 12, bottom + 30, nest.x, bottom + 13); g.stroke();
+      }
+      g.setLineDash([]);
+      for (const [x, y, flip] of [[w * .09, bottom + 35, 1], [w * .9, h - 28, -1]]) {
+        g.save(); g.translate(x, y); g.rotate(flip * -.5);
+        g.fillStyle = '#b8c180'; g.beginPath(); g.ellipse(0, 0, 9, 4.5, 0, 0, Math.PI * 2); g.fill();
+        g.strokeStyle = '#899b62'; g.lineWidth = 1; g.beginPath(); g.moveTo(-7, 0); g.lineTo(7, 0); g.stroke(); g.restore();
+      }
+      for (let i = 0; i < 13; i++) {
+        const x = (i * 83 + 29) % Math.max(1, w - 12) + 6;
+        const y = bottom + 20 + ((i * 19) % Math.max(1, Math.floor(h - bottom - 28)));
+        g.fillStyle = i % 3 ? '#cda57066' : '#fff0ca99';
+        g.beginPath(); g.ellipse(x, y, 1.7, 1, -.5, 0, Math.PI * 2); g.fill();
+      }
+    }
+    ctx.drawImage(this.ground, 0, 0, w, h);
+  }
+
   drawSingleNest(ctx, nest, L, pulse) {
     const { x, y } = nest;
-    const r = L.ant * 1.35;
+    const r = L.ant * 1.25;
     ctx.fillStyle = 'rgba(70, 35, 10, 0.18)';
     ctx.beginPath();
     ctx.ellipse(x, y + r * 0.5, r * 2.7, r * 1.2, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.fillStyle = '#b9743a';
+    ctx.fillStyle = '#bb8c54';
     ctx.beginPath();
     ctx.ellipse(x, y + r * 0.25, r * 2.3, r * 0.95, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.fillStyle = '#d99a5c';
+    ctx.fillStyle = '#e9bb7c';
     ctx.beginPath();
     ctx.ellipse(x, y + r * 0.08, r * 2.0, r * 0.78, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.fillStyle = '#2d1a0c';
+    ctx.fillStyle = '#513725';
     const k = 1 + pulse * 0.25;
     ctx.beginPath();
     ctx.ellipse(x, y + r * 0.15, r * 1.15 * k, r * 0.48 * k, 0, 0, Math.PI * 2);
     ctx.fill();
+    ctx.fillStyle = '#35271e';
+    ctx.beginPath(); ctx.ellipse(x, y + r * .24, r * .86, r * .29, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#fff0bc'; ctx.lineWidth = 1.3;
+    ctx.beginPath(); ctx.ellipse(x - 1, y - r * .05, r * 1.7, r * .59, 0, Math.PI * 1.08, Math.PI * 1.85); ctx.stroke();
   }
 
   drawAnt(ctx, a, L, lite) {
@@ -163,6 +236,14 @@ export class ColonyRenderer {
       }
       ctx.stroke();
 
+      // Antennae point along the heading; the body has a small lit abdomen.
+      ctx.beginPath();
+      for (const side of [-1, 1]) {
+        ctx.moveTo(x + dx * s * .5 + nx * side * s * .12, y + dy * s * .5 + ny * side * s * .12);
+        ctx.lineTo(x + dx * s * .85 + nx * side * s * .32, y + dy * s * .85 + ny * side * s * .32);
+      }
+      ctx.stroke();
+
       ctx.fillStyle = a.hex;
       ctx.beginPath();
       ctx.arc(x - dx * s * 0.5, y - dy * s * 0.5, s * 0.3, 0, Math.PI * 2);
@@ -172,6 +253,8 @@ export class ColonyRenderer {
       ctx.beginPath();
       ctx.arc(x + dx * s * 0.46, y + dy * s * 0.46, s * 0.23, 0, Math.PI * 2);
       ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,.55)';
+      ctx.beginPath(); ctx.arc(x - dx * s * .53 - nx * s * .08, y - dy * s * .53 - ny * s * .08, s * .11, 0, Math.PI * 2); ctx.fill();
     }
 
     if (a.carry) {
@@ -181,6 +264,8 @@ export class ColonyRenderer {
       ctx.strokeStyle = shade(a.hex, 0.55);
       ctx.lineWidth = 0.8;
       ctx.strokeRect(x - c / 2, y - s * 0.55 - c, c, c);
+      ctx.fillStyle = 'rgba(255,255,255,.55)';
+      ctx.fillRect(x - c / 2 + .5, y - s * .55 - c + .5, c - 1, 1);
     }
   }
 }

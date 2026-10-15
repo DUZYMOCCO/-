@@ -12,7 +12,7 @@
  *    - スロットが満杯で、かつどのアリも出撃できず止まったら「手詰まり（STUCK）」！
  */
 
-import { SIZE } from './pictures.js?v=5';
+import { SIZE } from './pictures.js?v=7';
 
 const TAU = Math.PI * 2;
 const SPAWN_GAP = 0.04; // アリの出撃間隔（秒）
