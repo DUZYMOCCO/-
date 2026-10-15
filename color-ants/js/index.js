@@ -7,9 +7,9 @@ import { sound } from '../../common/js/audio.js?v=151';
 import { loadCss } from '../../common/js/load-css.js';
 import { storage } from '../../common/js/storage.js';
 import { PICTURE_DEFS, buildPicture, countByKey, paintPicture, SIZE } from './pictures.js?v=7';
-import { mulberry32, buildTiles, textColorFor } from './puzzle.js?v=5';
-import { Colony, shade } from './colony.js?v=7';
-import { ColonyRenderer } from './renderer.js?v=7';
+import { mulberry32, buildTiles, textColorFor } from './puzzle.js?v=8';
+import { Colony, shade } from './colony.js?v=8';
+import { ColonyRenderer } from './renderer.js?v=8';
 
 const SAVE_KEY = 'color_ants_v2';
 const COLS = 5;
@@ -107,7 +107,7 @@ export default {
 
           <!-- タイル列（手前4段） -->
           <div class="ca-tiles" id="ca-tiles"></div>
-          <div class="ca-guide">先頭の色をタップして、アリを送り出そう</div>
+          <div class="ca-guide">外郭の色から食べよう · 内側の色は待機</div>
         </div>
 
         <!-- トースト通知 -->
@@ -241,6 +241,7 @@ export default {
     const rng = mulberry32(this.level * 7919 + 13);
     this.picture = picture;
     this.colony.reset(picture, rng);
+    this.applyLayout();
     this.columns = buildTiles(countByKey(picture.pixels), rng, {
       cols: COLS,
       target: 22,
@@ -300,14 +301,10 @@ export default {
     }
     if (all.length === 0) return;
 
-    // シャッフル
+    // Keep the outside-in solution order; vary which column each tile uses.
     const rng = mulberry32(Date.now());
-    for (let i = all.length - 1; i > 0; i--) {
-      const j = Math.floor(rng() * (i + 1));
-      [all[i], all[j]] = [all[j], all[i]];
-    }
-
-    all.forEach((t, i) => this.columns[i % COLS].push(t));
+    all.sort((a, b) => a.order - b.order);
+    all.forEach(t => this.columns[Math.floor(rng() * COLS)].push(t));
     sound.play('hit');
     this.showToast('タイルをシャッフルしたよ！🔀');
     this.renderTiles();
@@ -317,6 +314,20 @@ export default {
   triggerMagnet() {
     const res = this.colony.useMagnet();
     if (res) {
+      // Magnet-picked pixels must also disappear from queued tile numbers.
+      let credit = res.unassigned;
+      for (const col of this.columns) {
+        for (let i = 0; i < col.length && credit > 0;) {
+          const tile = col[i];
+          if (tile.key !== res.key) { i++; continue; }
+          const take = Math.min(tile.n, credit);
+          tile.n -= take; credit -= take;
+          if (tile.n === 0) {
+            if (tile.hasKey) this.unlockTile(tile);
+            col.splice(i, 1);
+          } else i++;
+        }
+      }
       sound.play('reward');
       this.showToast(`🧲 おそうじ！ ${res.count}マスを回収！✨`);
       this.renderSlots();
@@ -325,6 +336,16 @@ export default {
     } else {
       this.showToast('回収できる外側のマスがありません');
     }
+  },
+
+  unlockTile(tile) {
+    for (const col of this.columns) for (const other of col) {
+      if (other.locked && other.lockId === tile.keyId) {
+        other.locked = false;
+        return true;
+      }
+    }
+    return false;
   },
 
   /** 出撃スロットを描画（5〜6枠） */
@@ -512,17 +533,7 @@ export default {
 
     // 鍵タイル（🗝️）をタップした場合は、盤面にあるロックを解除！
     if (tile.hasKey) {
-      let unlockedAny = false;
-      for (const otherCol of this.columns) {
-        for (const otherTile of otherCol) {
-          if (otherTile.locked) {
-            otherTile.locked = false;
-            unlockedAny = true;
-            break;
-          }
-        }
-        if (unlockedAny) break;
-      }
+      this.unlockTile(tile);
       sound.play('coin');
       this.showToast('カギで 🔒 ロックが解除された！✨');
     } else {

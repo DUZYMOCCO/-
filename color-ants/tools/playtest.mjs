@@ -11,10 +11,10 @@ catch {
     '.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/entry.cjs'))('playwright');
 }
 const origin = process.env.COLOR_ANTS_ORIGIN || 'http://127.0.0.1:8000';
-const out = 'color-ants/docs/validation/v2.4.0';
+const out = 'color-ants/docs/validation/v2.5.0';
 mkdirSync(out, { recursive: true });
 const browser = await playwright.chromium.launch({ channel: 'chrome', headless: true });
-const report = { version: '2.4.0', errors: [], layouts: [], pictures: [], checks: [] };
+const report = { version: '2.5.0', errors: [], layouts: [], pictures: [], clears: [], checks: [] };
 const context = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, serviceWorkers: 'block' });
 const page = await context.newPage();
 page.on('pageerror', e => report.errors.push(e.message));
@@ -79,6 +79,11 @@ try {
   assert(Number(await page.locator('#ca-progress').getAttribute('aria-valuenow')) > 0);
   await page.locator('#ca-boost-magnet').click();
   assert(await page.evaluate(n => qaGame.colony.delivered > n, delivered));
+  assert(await page.evaluate(() => {
+    const g = qaGame, credits = g.columns.flat().reduce((sum, t) => sum + t.n, 0) +
+      g.colony.slots.reduce((sum, s) => sum + (s?.left || 0), 0) + g.colony.ants.length;
+    return credits === g.colony.total - g.colony.delivered;
+  }), 'magnet must preserve the remaining tile budget');
   await page.locator('#ca-boost-shuffle').click();
   await page.locator('#ca-restart').click();
   assert.equal(await page.locator('.ca-slot').count(), 5);
@@ -109,13 +114,39 @@ try {
   await page.locator('#ca-next').click();
   assert.equal(await page.locator('#ca-level').innerText(), 'Level 2');
   assert.equal(await page.locator('#ca-modal').evaluate(e => e.style.display), 'none');
+  // Real clears using only column fronts, with no boosters or injected progress.
+  for (let level = 1; level <= 6; level++) {
+    const clear = await page.evaluate(level => {
+      const g = qaGame; g.level = level; g.startLevel();
+      const plan = g.columns.flat().slice().sort((a, b) => a.order - b.order);
+      for (const tile of plan) {
+        const ci = g.columns.findIndex(col => col[0] === tile);
+        if (ci < 0 || tile.locked) throw new Error(`level ${level}: required tile unavailable`);
+        g.tapTile(ci);
+        const maxTicks = Math.ceil((tile.n + 2) * (64 * 4 * g.colony.layout.cell / g.colony.layout.speed + 3) * 30 / 2);
+        let settled = false;
+        for (let tick = 0; tick < maxTicks; tick++) {
+          g.colony.update(1 / 30, 2);
+          if (!g.colony.busy) { settled = true; break; }
+        }
+        if (!settled) throw new Error(`level ${level}: tile ${tile.order} cannot complete`);
+        g.updateSlots();
+      }
+      if (g.colony.delivered !== g.colony.total) throw new Error(`level ${level}: incomplete picture`);
+      g.updateCounter(); g.renderer.render(g.colony, g.lw, g.lh); g.showClear();
+      return { level, picture: g.picture.id, total: g.colony.total, delivered: g.colony.delivered, tiles: plan.length, slots: g.colony.slots.length, boosters: 0 };
+    }, level);
+    report.clears.push(clear);
+    await page.screenshot({ path: `${out}/real-clear-${level}.png` });
+  }
+  await page.evaluate(() => qaGame.startLevel());
   await page.emulateMedia({ reducedMotion: 'reduce' });
   assert.equal(await page.locator('#ca-progress-fill').evaluate(e => getComputedStyle(e).transitionDuration), '0s');
   await page.locator('#ca-boost-shuffle').click();
   await page.waitForFunction(() => !document.querySelector('#ca-toast').classList.contains('show'));
   await page.locator('#ca-back').click();
   assert.equal(await page.locator('#ca-canvas').count(), 0);
-  report.checks = ['hub launch', 'five responsive layouts', 'six pictures', 'four visible tile rows', '2x speed', 'sixth slot', 'ant dispatch and return', 'progress', 'magnet', 'shuffle', 'restart', 'waiting tile return', 'undo', 'stuck dialog and rescue (fixture)', 'clear dialog and next level (fixture)', 'reduced motion', 'back to hub'];
+  report.checks = ['hub launch', 'five responsive layouts', 'six pictures', 'four visible tile rows', '2x speed', 'sixth slot', 'ant dispatch and return', 'progress', 'magnet and tile-budget conservation', 'shuffle', 'restart', 'waiting tile return', 'undo', 'stuck dialog and rescue (fixture)', 'clear dialog and next level (fixture)', 'six real clears with five slots and no boosters', 'reduced motion', 'back to hub'];
   assert.deepEqual(report.errors, []);
 } finally {
   writeFileSync(`${out}/report.json`, JSON.stringify(report, null, 2) + '\n');

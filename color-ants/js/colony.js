@@ -3,7 +3,7 @@
  *
  * 【重要ルール】
  * 1. 外側（露出ピクセル）からしか食べられない
- *    - 上下左右のいずれかが「盤面外」「背景」「既に食べられたマス」であるピクセルのみが標的になる。
+ *    - 外部と4方向につながる空間に面したピクセルのみが標的。閉じた空洞は含めない。
  *    - 外側が削られることで、内側のピクセルが順次露出していく。
  * 2. 5つの出撃スロット
  *    - タップしたタイルはスロット（最大5枠）に入る。
@@ -13,6 +13,7 @@
  */
 
 import { SIZE } from './pictures.js?v=7';
+import { Perimeter } from './perimeter.js?v=8';
 
 const TAU = Math.PI * 2;
 const SPAWN_GAP = 0.04; // アリの出撃間隔（秒）
@@ -55,10 +56,17 @@ export class Colony {
     this.pulse = 0;
     this.pulses = [0, 0, 0];
     this.time = 0;
+    this.perimeter = new Perimeter(SIZE);
+    this.perimeterDirty = true;
     this.layout = { cell: 5, boardX: 0, boardY: 0, nest: { x: 0, y: 0 }, nests: [{ x: 0, y: 0 }], ant: 7, speed: 100 };
   }
 
   setLayout(layout) {
+    const previous = this.layout;
+    if (previous && previous.cell > 0) for (const a of this.ants) {
+      a.x = layout.boardX + (a.x - previous.boardX) * layout.cell / previous.cell;
+      a.y = layout.boardY + (a.y - previous.boardY) * layout.cell / previous.cell;
+    }
     this.layout = layout;
     if (!this.layout.nests) {
       this.layout.nests = this.layout.nest ? [this.layout.nest] : [{ x: 0, y: 0 }];
@@ -82,17 +90,17 @@ export class Colony {
 
   /**
    * ピクセルが「露出」しているか判定（外側ルール）
-   * 上下左右のいずれかが「盤面外」「背景」「既に食べられたマス」なら露出
+   * 外部からつながる空きマスに接していること。閉じた空洞は外郭ではない。
    */
   isExposed(p) {
-    if (p.eaten) return false;
-    const { gx, gy } = p;
-    if (gx === 0 || gx === SIZE - 1 || gy === 0 || gy === SIZE - 1) return true;
-    if (this.grid[gy * SIZE + (gx - 1)].eaten) return true;
-    if (this.grid[gy * SIZE + (gx + 1)].eaten) return true;
-    if (this.grid[(gy - 1) * SIZE + gx].eaten) return true;
-    if (this.grid[(gy + 1) * SIZE + gx].eaten) return true;
-    return false;
+    this.ensurePerimeter();
+    return this.perimeter.isExposed(p);
+  }
+
+  ensurePerimeter() {
+    if (!this.perimeterDirty) return;
+    this.perimeter.rebuild(this.pixels);
+    this.perimeterDirty = false;
   }
 
   /**
@@ -142,6 +150,7 @@ export class Colony {
    * 現在露出している、自分と同じ色のピクセルを探して確保
    */
   claimExposedPixel(key) {
+    this.ensurePerimeter();
     // 巣穴に近い順、あるいは手前（下側）に近い順に探すと自然
     let best = null;
     let minDist = Infinity;
@@ -150,8 +159,8 @@ export class Colony {
 
     for (const p of this.targetPixels) {
       if (p.key !== key || p.eaten || p.targeted) continue;
-      if (this.isExposed(p)) {
-        const d = Math.hypot(p.gx - nestX, p.gy - nestY);
+      if (this.perimeter.isExposed(p)) {
+        const d = (p.gx - nestX) ** 2 + (p.gy - nestY) ** 2;
         if (d < minDist) {
           minDist = d;
           best = p;
@@ -199,6 +208,24 @@ export class Colony {
     return d - m <= eps;
   }
 
+  /** Follow the reserved route through exterior air; only its last node is food. */
+  followRoute(a, distance) {
+    while (a.routeIndex >= 0 && a.routeIndex < a.route.length) {
+      const t = this.pixelPos(a.route[a.routeIndex]);
+      const dx = t.x - a.x, dy = t.y - a.y, d = Math.hypot(dx, dy);
+      if (d > 0) {
+        a.ang = Math.atan2(dy, dx);
+        const move = Math.min(distance, d);
+        a.x += dx / d * move; a.y += dy / d * move;
+        distance -= move;
+        if (move < d) return false;
+      }
+      a.routeIndex += a.routeDirection;
+      if (distance <= 0) return a.routeIndex < 0 || a.routeIndex >= a.route.length;
+    }
+    return true;
+  }
+
   update(dt, speedMul = 1) {
     const L = this.layout;
     const step = dt * speedMul;
@@ -232,7 +259,7 @@ export class Colony {
             this.ants.push({
               slotIndex: si,
               nestIndex: nestIdx,
-              x: nest.x + (Math.random() - 0.5) * L.ant * 0.8,
+              x: nest.x,
               y: nest.y,
               px: pixel,
               hex: slot.hex,
@@ -242,6 +269,9 @@ export class Colony {
               ph: Math.random() * TAU,
               ang: -Math.PI / 2,
               carry: false,
+              route: this.perimeter.routeTo(pixel),
+              routeIndex: 0,
+              routeDirection: 1,
             });
           }
         }
@@ -260,10 +290,11 @@ export class Colony {
 
       if (a.state === 'out') {
         const t = this.pixelPos(a.px);
-        if (this.moveToward(a, t.x, t.y, move, L.cell * 0.6)) {
+        if (this.followRoute(a, move)) {
           // 到着・かじる（絵から消える）
           a.px.eaten = true;
           a.px.targeted = false;
+          this.perimeterDirty = true;
           this.remaining--;
           this.fresh.push(a.px);
           eatenCount++;
@@ -286,10 +317,14 @@ export class Colony {
         }
       } else if (a.state === 'chew') {
         a.chew -= step;
-        if (a.chew <= 0) a.state = 'back';
+        if (a.chew <= 0) {
+          a.state = 'back';
+          a.routeDirection = -1;
+          a.routeIndex = a.route.length - 2;
+        }
       } else if (a.state === 'back') {
         const nest = nests[a.nestIndex % nests.length] || nests[0];
-        if (this.moveToward(a, nest.x, nest.y, move, L.ant * 0.6)) {
+        if (this.followRoute(a, move) && this.moveToward(a, nest.x, nest.y, move, L.ant * 0.3)) {
           a.state = 'done';
           this.delivered++;
           this.pulse = 1;
@@ -339,6 +374,7 @@ export class Colony {
     for (const p of this.targetPixels) {
       if (p.key === targetKey && !p.eaten && !p.targeted && this.isExposed(p)) {
         p.eaten = true;
+        this.perimeterDirty = true;
         this.remaining--;
         this.delivered++;
         this.fresh.push(p);
@@ -347,15 +383,18 @@ export class Colony {
       }
     }
 
-    // 対応するスロットがあれば数字を減らす
+    // Consume exactly this much unspawned credit, across all matching slots.
+    let unassigned = harvested.length;
     for (let si = 0; si < this.slots.length; si++) {
       const s = this.slots[si];
       if (s && s.key === targetKey && s.left > 0) {
-        s.left = Math.max(0, s.left - harvested.length);
+        const take = Math.min(s.left, unassigned);
+        s.left -= take;
+        unassigned -= take;
         if (s.left === 0 && s.activeAnts === 0) {
           this.slots[si] = null;
         }
-        break;
+        if (unassigned === 0) break;
       }
     }
 
@@ -375,6 +414,6 @@ export class Colony {
       }
     }
 
-    return { key: targetKey, count: harvested.length };
+    return { key: targetKey, count: harvested.length, unassigned };
   }
 }

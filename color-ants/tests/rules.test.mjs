@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { PICTURE_DEFS, buildPicture, countByKey, SIZE } from '../js/pictures.js';
-import { mulberry32, splitCount, buildTiles, textColorFor } from '../js/puzzle.js';
+import { mulberry32, splitCount, buildTiles, textColorFor, verifyTilePlan, SOLUTION_LAYOUT } from '../js/puzzle.js';
 import { Colony } from '../js/colony.js';
 
 const LAYOUT = { cell: 5, boardX: 20, boardY: 14, nest: { x: 180, y: 420 }, ant: 7, speed: 100 };
@@ -72,11 +72,114 @@ test('outer-exposure rule: inner pixels are not exposed until outer pixels are e
   assert.ok(seedPixels.length > 0, 'watermelon has seeds');
   assert.ok(seedPixels.every(p => !colony.isExposed(p)), 'no seeds should be exposed at start');
 
-  // 種の周りのピクセルを食べられた扱いにすると、種が露出する
+  // An isolated eaten cell is an interior hole, not part of the exterior.
   const seed = seedPixels[0];
   const { gx, gy } = seed;
   colony.grid[gy * SIZE + (gx - 1)].eaten = true;
-  assert.equal(colony.isExposed(seed), true, 'seed is exposed once adjacent pixel is eaten');
+  colony.perimeterDirty = true;
+  assert.equal(colony.isExposed(seed), false, 'a closed interior hole must not expose seeds');
+  // Only a four-connected passage from outside opens the inner color.
+  for (let x = 0; x < gx; x++) colony.grid[gy * SIZE + x].eaten = true;
+  colony.perimeterDirty = true;
+  assert.equal(colony.isExposed(seed), true, 'seed becomes exposed after opening a passage to outside');
+});
+
+function blockedPicture() {
+  const pixels = Array.from({ length: SIZE * SIZE }, (_, i) => {
+    const gx = i % SIZE, gy = Math.floor(i / SIZE);
+    const isBg = gx < 14 || gx > 49 || gy < 10 || gy > 49;
+    const key = isBg ? 'bg' : gy < 13 ? 'red' : 'blue';
+    return { gx, gy, key, hex: key === 'red' ? '#ef4056' : '#3a9bff', isBg, eaten: isBg };
+  });
+  return { pixels };
+}
+
+test('closed background pockets and diagonal gaps do not expose the inner perimeter', () => {
+  const pic = blockedPicture(), at = (x, y) => pic.pixels[y * SIZE + x];
+  at(30, 30).eaten = true; at(30, 30).isBg = true;
+  const colony = new Colony(); colony.reset(pic);
+  assert.equal(colony.isExposed(at(31, 30)), false, 'enclosed background is not outside');
+  // A diagonal string of holes cannot carry an ant through solid corners.
+  for (let n = 0; n < 18; n++) at(30 - n, 30 - n).eaten = true;
+  colony.perimeterDirty = true;
+  assert.equal(colony.isExposed(at(31, 30)), false, 'diagonal gaps do not form a passage');
+  for (let x = 13; x <= 30; x++) at(x, 30).eaten = true;
+  colony.perimeterDirty = true;
+  assert.equal(colony.isExposed(at(31, 30)), true);
+});
+
+test('inner-color slots wait, then resume automatically when the outer shell is eaten', () => {
+  const pic = blockedPicture();
+  for (const p of pic.pixels) {
+    p.isBg = p.gx < 28 || p.gx > 34 || p.gy < 28 || p.gy > 34;
+    p.eaten = p.isBg;
+    p.key = p.gx >= 30 && p.gx <= 32 && p.gy >= 30 && p.gy <= 32 ? 'red' : 'blue';
+  }
+  const colony = new Colony(); colony.reset(pic); colony.setLayout(LAYOUT);
+  const inner = colony.deploy('red', '#ef4056', 9);
+  for (let i = 0; i < 120; i++) colony.update(1 / 30, 2);
+  assert.equal(inner.left, 9); assert.equal(colony.ants.length, 0);
+  assert(pic.pixels.filter(p => p.key === 'red').every(p => !p.eaten));
+  colony.deploy('blue', '#3a9bff', 40);
+  for (let i = 0; i < 15000 && colony.busy; i++) colony.update(1 / 30, 2);
+  assert.equal(colony.delivered, 49);
+  assert.equal(colony.busy, false);
+});
+
+test('resizing preserves grid positions of ants on reserved exterior routes', () => {
+  const colony = new Colony(); colony.reset(blockedPicture()); colony.setLayout(LAYOUT);
+  colony.deploy('red', '#ef4056', 12);
+  for (let i = 0; i < 80; i++) colony.update(1 / 30);
+  assert(colony.ants.length > 0);
+  const before = colony.ants.map(a => ({ x: (a.x - LAYOUT.boardX) / LAYOUT.cell, y: (a.y - LAYOUT.boardY) / LAYOUT.cell }));
+  const next = { ...LAYOUT, cell: 3, boardX: 45, boardY: 25 };
+  colony.setLayout(next);
+  colony.ants.forEach((a, i) => {
+    assert(Math.abs((a.x - next.boardX) / next.cell - before[i].x) < 1e-8);
+    assert(Math.abs((a.y - next.boardY) / next.cell - before[i].y) < 1e-8);
+  });
+});
+
+test('ants walk around other colors and return through open passages', () => {
+  const colony = new Colony(); colony.reset(blockedPicture()); colony.setLayout(LAYOUT);
+  colony.deploy('red', '#ef4056', 12);
+  let sawDetour = false;
+  for (let step = 0; step < 1200 && (step === 0 || colony.busy); step++) {
+    colony.update(1 / 30, 2);
+    for (const ant of colony.ants) {
+      if (ant.route.some(p => p.gx < 14 || p.gx > 49)) sawDetour = true;
+      for (const p of ant.route.slice(0, -1)) {
+        if (p.gx < 0 || p.gx >= SIZE || p.gy < 0 || p.gy >= SIZE) continue;
+        assert(colony.grid[p.gy * SIZE + p.gx].eaten, 'reserved route must stay in open air');
+      }
+      const gx = Math.floor((ant.x - LAYOUT.boardX) / LAYOUT.cell);
+      const gy = Math.floor((ant.y - LAYOUT.boardY) / LAYOUT.cell);
+      if (gx < 0 || gx >= SIZE || gy < 0 || gy >= SIZE) continue;
+      const p = colony.grid[gy * SIZE + gx];
+      assert(p.eaten || p === ant.px, `ant crossed uneaten ${p.key} at ${gx},${gy}`);
+    }
+  }
+  assert(sawDetour, 'upper red pixels require walking around the blue body');
+  assert.equal(colony.delivered, 12);
+  assert.equal(colony.busy, false);
+});
+
+test('fresh puzzles have a real outside-in winning sequence without boosters at both speeds', () => {
+  for (let level = 1; level <= 18; level++) {
+    const pic = buildPicture(PICTURE_DEFS[(level - 1) % PICTURE_DEFS.length]);
+    const columns = buildTiles(countByKey(pic.pixels), mulberry32(level * 7919 + 13), { pixels: pic.pixels, level });
+    const plan = columns.flat().sort((a, b) => a.order - b.order);
+    const queues = columns.map(col => col.slice());
+    for (const tile of plan) {
+      const ci = queues.findIndex(col => col[0] === tile);
+      assert(ci >= 0, `level ${level}: required tile is buried`); queues[ci].shift();
+      if (tile.locked) assert(plan.some(t => t.hasKey && t.keyId === tile.lockId && t.order < tile.order), 'key must precede its lock');
+    }
+    assert(verifyTilePlan(pic.pixels, plan, SOLUTION_LAYOUT, 1 / 60, 1), `level ${level}: 1x solution failed`);
+    const farNests = { ...SOLUTION_LAYOUT, nests: SOLUTION_LAYOUT.nests.map(n => ({ ...n, y: 98 })) };
+    assert(verifyTilePlan(pic.pixels, plan, farNests, 1 / 20, 2), `level ${level}: 2x solution failed`);
+    assert(pic.pixels.every(p => p.eaten === p.isBg), 'generator must not eat the live board');
+  }
 });
 
 test('5 slots dispatch system and stuck detection', () => {
@@ -165,5 +268,17 @@ test('puzzle gimmicks: level >= 2 adds locked tile and key tile', () => {
   const keyTiles = allL2.filter(t => t.hasKey);
   assert.equal(lockedTiles.length, 1, 'level 2 should have 1 locked tile');
   assert.equal(keyTiles.length, 1, 'level 2 should have 1 key tile');
+});
+
+test('magnet debit spans matching slots and reports only the queued remainder', () => {
+  const pic = buildPicture(PICTURE_DEFS[0]), probe = new Colony(); probe.reset(pic);
+  const key = probe.useMagnet().key;
+  const colony = new Colony(); colony.reset(buildPicture(PICTURE_DEFS[0]));
+  colony.deploy(key, pic.palette[key], 3); colony.deploy(key, pic.palette[key], 4);
+  const res = colony.useMagnet();
+  assert.equal(res.key, key);
+  assert(res.count > 7);
+  assert.equal(res.unassigned, res.count - 7);
+  assert(colony.slots.every(s => s === null), 'both small matching slots are consumed');
 });
 

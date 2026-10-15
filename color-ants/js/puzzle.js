@@ -1,8 +1,12 @@
 /**
  * カラー・アント パズル側のロジック（タイル生成）
  * 絵の「色ごとのピクセル数」を、数字つきタイルに分割して5列に並べる。
- * 各色のタイルの数字の合計 ＝ その色のピクセル数 なので、必ず全部食べきれる。
+ * 色数の一致に加え、外郭から実際に回収できる手順を作って配置する。
  */
+
+import { Colony } from './colony.js?v=8';
+import { Perimeter } from './perimeter.js?v=8';
+import { SIZE } from './pictures.js?v=7';
 
 export function mulberry32(seed) {
   let a = seed | 0;
@@ -28,101 +32,127 @@ export function splitCount(total, parts, rng) {
   return out;
 }
 
+/** Canonical layout for callers without a live playfield (unit tests/tools). */
+export const SOLUTION_LAYOUT = {
+  cell: 1, boardX: 0, boardY: 0,
+  nests: [{ x: 18, y: 78 }, { x: 32, y: 78 }, { x: 46, y: 78 }],
+  nest: { x: 32, y: 78 }, ant: 1, speed: 20.48,
+};
+
+function simulation(pixels, layout) {
+  const colony = new Colony();
+  colony.reset({ pixels: pixels.map(p => ({ ...p, targeted: false })) });
+  colony.setLayout(layout);
+  return colony;
+}
+
+/** All currently reachable pixels of one color, including paths opened by that color. */
+function colorRegion(pixels, key) {
+  const air = new Perimeter(SIZE);
+  air.rebuild(pixels.map(p => p.key === key ? { ...p, eaten: true } : p));
+  return pixels.filter(p => !p.eaten && p.key === key &&
+    air.distance[(p.gy + 1) * air.stride + p.gx + 1] >= 0);
+}
+
+function finishTile(colony, tile, dt = 1 / 30, speed = 1) {
+  colony.addTileToSlot(tile, colony.pixels.find(p => p.key === tile.key).hex);
+  // A thin strip can reveal just one new pixel per arriving ant.
+  const maxTicks = Math.ceil((tile.n + 2) * (SIZE * 4 * colony.layout.cell / colony.layout.speed + 3) / (dt * speed));
+  for (let tick = 0; tick < maxTicks; tick++) {
+    colony.update(dt, speed);
+    colony.fresh.length = 0;
+    if (!colony.busy) return true;
+    if (!colony.ants.length && colony.slots.some(s => s && s.left > 0) &&
+        !colony.targetPixels.some(p => !p.eaten && p.key === tile.key && colony.isExposed(p))) return false;
+  }
+  return false;
+}
+
+/** Replay the intended order using the real dispatch, path and eating simulation. */
+export function verifyTilePlan(pixels, plan, layout = SOLUTION_LAYOUT, dt = 1 / 30, speed = 1) {
+  const colony = simulation(pixels, layout);
+  const unlocked = new Set();
+  for (const tile of plan) {
+    if (tile.locked && !unlocked.has(tile.lockId)) return false;
+    if (tile.hasKey) unlocked.add(tile.keyId);
+    if (!finishTile(colony, tile, dt, speed)) return false;
+  }
+  return colony.remaining === 0 && colony.delivered === colony.total;
+}
+
 /**
- * counts: { 色キー: ピクセル数 } → 列ごとのタイル配列 [[{key,n},...], ...]
- * 外側のピクセルに対応するタイルほど列の手前に、内側の色ほど列の奥に配置される（外側ルール）。
- * タイルの数字は小口（12〜35前後）に分割し、1ブロックの総量が多すぎないようにする。
+ * Finish an entire reachable color region before changing color.
+ * Removing that region is independent of individual ants' arrival order.
+ */
+function regionPlan(pixels, rng, target) {
+  const board = pixels.map(p => ({ ...p })), air = new Perimeter(SIZE), plan = [];
+  while (board.some(p => !p.eaten)) {
+    air.rebuild(board);
+    const keys = [...new Set(board.filter(p => !p.eaten && air.isExposed(p)).map(p => p.key))];
+    const key = keys[Math.floor(rng() * keys.length)];
+    if (key === undefined) throw new Error('No exterior region while generating puzzle');
+    const region = colorRegion(board, key);
+    const parts = Math.max(1, Math.ceil(region.length / Math.min(30, target)));
+    for (const n of splitCount(region.length, parts, rng)) plan.push({ key, n });
+    for (const p of region) p.eaten = true;
+  }
+  return plan;
+}
+
+/**
+ * Columns keep required predecessors clear, so the next solution tile is always
+ * at a column front. Wrong choices can still occupy the five limited slots.
  */
 export function buildTiles(counts, rng, { cols = 5, target = 22, pixels = null, level = 1 } = {}) {
-  const entries = Object.entries(counts).filter(([, c]) => c > 0);
-
+  let plan;
   if (!pixels) {
-    const plan = entries.map(([key, count]) => [key, Math.max(1, Math.min(count, Math.round(count / target)))]);
-    const tiles = [];
-    for (const [key, parts] of plan) {
-      for (const n of splitCount(counts[key], parts, rng)) tiles.push({ key, n });
+    plan = [];
+    for (const [key, count] of Object.entries(counts)) {
+      for (const n of splitCount(count, Math.max(1, Math.ceil(count / target)), rng)) plan.push({ key, n });
     }
-    for (let i = tiles.length - 1; i > 0; i--) {
-      const j = Math.floor(rng() * (i + 1));
-      [tiles[i], tiles[j]] = [tiles[j], tiles[i]];
+    for (let i = plan.length - 1; i > 0; i--) {
+      const j = Math.floor(rng() * (i + 1)); [plan[i], plan[j]] = [plan[j], plan[i]];
     }
-    const columns = Array.from({ length: cols }, () => []);
-    tiles.forEach((t, i) => columns[i % cols].push(t));
-    return columns;
+  } else {
+    plan = regionPlan(pixels, rng, target);
   }
-
-  const size = Math.round(Math.sqrt(pixels.length));
-  const dist = new Int32Array(size * size).fill(-1);
-  const q = [];
-  for (const p of pixels) {
-    if (p.isBg || p.gx === 0 || p.gx === size - 1 || p.gy === 0 || p.gy === size - 1) {
-      dist[p.gy * size + p.gx] = 0;
-      q.push(p);
-    }
-  }
-  let head = 0;
-  while (head < q.length) {
-    const cur = q[head++];
-    const d = dist[cur.gy * size + cur.gx];
-    for (const [dx, dy] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) {
-      const nx = cur.gx + dx, ny = cur.gy + dy;
-      if (nx >= 0 && nx < size && ny >= 0 && ny < size) {
-        const nidx = ny * size + nx;
-        if (dist[nidx] === -1) {
-          dist[nidx] = d + 1;
-          q.push(pixels[nidx]);
-        }
-      }
-    }
-  }
-
-  const byKey = {};
-  for (const p of pixels) {
-    if (p.isBg) continue;
-    if (!byKey[p.key]) byKey[p.key] = [];
-    byKey[p.key].push(p);
-  }
-
-  const allTiles = [];
-  for (const [key, pList] of Object.entries(byKey)) {
-    pList.sort((a, b) => dist[a.gy * size + a.gx] - dist[b.gy * size + b.gx]);
-    const parts = Math.max(1, Math.round(pList.length / target));
-    const sizes = splitCount(pList.length, parts, rng);
-    let offset = 0;
-    for (const sz of sizes) {
-      const slice = pList.slice(offset, offset + sz);
-      offset += sz;
-      const avgDist = slice.reduce((s, p) => s + dist[p.gy * size + p.gx], 0) / sz;
-      // 少しの揺らぎを加えて同層の色が交互に手前に来るようにする
-      allTiles.push({ key, n: sz, avgDist: avgDist + (rng() - 0.5) * 4 });
-    }
-  }
-
-  // 外側層（avgDist 小）が手前に、内側層（avgDist 大）が奥に来るようソート
-  allTiles.sort((a, b) => a.avgDist - b.avgDist);
-
-  const columns = Array.from({ length: cols }, () => []);
-  allTiles.forEach((t, i) => columns[i % cols].push(t));
-
-  // レベル2以上なら「鍵と南京錠（🔒・🗝️）」ギミックを配置
+  plan.forEach((tile, order) => { tile.order = order; });
+  // Pair each lock with an earlier key in the proven solution, never behind it.
   if (level >= 2) {
-    const lockPairs = level >= 4 ? 2 : 1;
-    for (let p = 0; p < lockPairs; p++) {
-      const lockCol = (p * 2 + 1) % cols;
-      const keyCol = (lockCol + 2) % cols;
-      const lockDepth = Math.min(2, Math.max(1, columns[lockCol].length - 1));
-      const keyDepth = Math.min(1, Math.max(0, columns[keyCol].length - 1));
-
-      const lockTile = columns[lockCol][lockDepth];
-      const keyTile = columns[keyCol][keyDepth];
-
-      if (lockTile && keyTile && lockTile !== keyTile && !lockTile.locked && !keyTile.hasKey) {
-        lockTile.locked = true;
-        keyTile.hasKey = true;
-      }
+    const pairs = level >= 4 ? 2 : 1;
+    for (let id = 0; id < pairs; id++) {
+      const keyIndex = cols + id * cols * 2;
+      const lockIndex = keyIndex + cols + 1;
+      if (!plan[keyIndex] || !plan[lockIndex]) continue;
+      plan[keyIndex].hasKey = true; plan[keyIndex].keyId = id;
+      plan[lockIndex].locked = true; plan[lockIndex].lockId = id;
     }
   }
-
+  const columns = Array.from({ length: cols }, () => []);
+  const offset = Math.floor(rng() * cols);
+  // A couple of inner colors are visible early as deliberate waiting choices.
+  // Their columns receive no earlier solution steps underneath, so they cannot
+  // bury a required outer color or remove the intended winning sequence.
+  const decoys = new Map();
+  if (pixels && cols >= 3) {
+    const air = new Perimeter(SIZE); air.rebuild(pixels);
+    const exposed = new Set(pixels.filter(p => !p.eaten && air.isExposed(p)).map(p => p.key));
+    const chosenKeys = new Set();
+    const candidates = plan.filter(t => t.order >= cols * 2 && !t.locked && !t.hasKey && !exposed.has(t.key));
+    for (const tile of candidates) {
+      if (chosenKeys.has(tile.key)) continue;
+      const ci = (offset + decoys.size) % cols;
+      columns[ci].push(tile); decoys.set(tile, ci); chosenKeys.add(tile.key);
+      if (decoys.size === Math.min(2, cols - 1)) break;
+    }
+  }
+  const blocked = new Set(decoys.values());
+  let cursor = offset;
+  for (const tile of plan) {
+    if (decoys.has(tile)) { blocked.delete(decoys.get(tile)); continue; }
+    while (blocked.has(cursor)) cursor = (cursor + 1) % cols;
+    columns[cursor].push(tile); cursor = (cursor + 1) % cols;
+  }
   return columns;
 }
 

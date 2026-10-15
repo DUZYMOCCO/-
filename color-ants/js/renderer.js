@@ -4,7 +4,7 @@
  * アリはマスより大きく描いて、行列がはっきり見えるようにする。
  */
 import { SIZE } from './pictures.js?v=7';
-import { shade } from './colony.js?v=7';
+import { shade } from './colony.js?v=8';
 
 const FRAME_PAD = 9;
 const MARGIN = 18;
@@ -210,11 +210,12 @@ export class ColonyRenderer {
   }
 
   drawAnt(ctx, a, L, lite) {
-    const s = L.ant;
+    const onBoard = a.x >= L.boardX && a.x < L.boardX + L.cell * SIZE && a.y >= L.boardY && a.y < L.boardY + L.cell * SIZE;
+    const s = onBoard ? Math.min(L.ant, L.cell * .85) : L.ant;
     const dx = Math.cos(a.ang), dy = Math.sin(a.ang);
     const nx = -dy, ny = dx;
     // 行きと帰りで進行方向が逆 → 同じ向きにずらすと自然に2車線の行列になる
-    const lane = s * 0.5 + Math.sin(a.ph * 0.6) * s * 0.06;
+    const lane = onBoard ? L.cell * .06 : s * 0.5 + Math.sin(a.ph * 0.6) * s * 0.06;
     const x = a.x + nx * lane, y = a.y + ny * lane;
 
     if (lite) {
