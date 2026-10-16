@@ -1,6 +1,6 @@
 import {CASINO_BET,casinoBaseBet,casinoMaxBet,casinoPageMaxBet,validCasinoBet,normalizeCasinoBet,CASINO_POLICY,POKER_PAYOUTS,SLOT_SYMBOLS,SLOT_LINES,SLOT_CHERRY_TWO,dealPoker,finishPoker,cardFace,rollSlots,pokerWinningCards,evaluatePoker} from './casino-rules.js?v=276';
 import {chooseArena,arenaCandidates,simulateArena,recordArena} from './casino-arena.js?v=276';
-import {atFacility} from './hq-facilities.js?v=277';
+import {atFacility} from './hq-facilities.js?v=290';
 import {drawSoldierPortrait} from './soldier-appearance.js?v=206';
 import {casinoQuip} from './soldier-dialogue.js?v=276';
 import {sound} from '../../common/js/audio.js?v=151';

@@ -94,7 +94,7 @@ export const headquartersFacilityMethods={
   },
   refreshHeadquartersFacility() {
     const host=this.container?.querySelector('#hq-facility-dialog');if(!host)return;
-    const p=HEADQUARTERS_FACILITIES.find(p=>p.id===host.dataset.facility),body=host.querySelector('.hq-facility-body'),focus=document.activeElement?.id;
+    const p=HEADQUARTERS_FACILITIES.find(p=>p.id===host.dataset.facility),body=host.querySelector('.hq-facility-body'),focus=document.activeElement?.id,keep=[host,body].map(e=>[e,e.scrollTop]);
     const ready=(this.nation?.level||0)>=p.level;
     body.innerHTML=`<p class="facility-intro">本陣の${p.name} · 所持金 ${money(this.gold)}</p>${ready?'':`<p class="facility-note">営業準備中。本陣の発展Lv${p.level}で利用できます。</p>`}`;
     if(p.id==='smith') {
@@ -105,6 +105,7 @@ export const headquartersFacilityMethods={
       this.renderGuild(body);
     } else this.renderCasino(body);
     for(const button of body.querySelectorAll('[data-hq-service]'))button.onclick=()=>this.useTownFacility(button.dataset.hqService);
-    if(focus)body.querySelector(`[id="${focus}"]`)?.focus();
+    for(const [e,t] of keep)e.scrollTop=t;
+    if(focus)body.querySelector(`[id="${focus}"]`)?.focus({preventScroll:true});
   }
 };

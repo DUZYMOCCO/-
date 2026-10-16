@@ -8,11 +8,11 @@ import {createPayrollPlan,commanderStipendQuote,PAYROLL_RULES,regularSalaryReser
 import {calcAllRankerBonuses} from './troop-rankings.js?v=274';
 import {normalizeRegionalEconomy,recurringNationalIncome,economicState,advanceRegionalEconomy,automaticEconomicTarget,investEconomicProject} from './regional-economy.js?v=277';
 import {drawSettlementQuarter} from './economic-visuals.js?v=242';
-import {atFacility,HEADQUARTERS_FACILITIES} from './hq-facilities.js?v=277';
+import {atFacility,HEADQUARTERS_FACILITIES} from './hq-facilities.js?v=290';
 import {renderRegionalEconomy} from './economic-interface.js?v=264';
 import {workshopFloorTier} from './crafting-rules.js?v=231';
 import {normalizeCasino} from './casino-rules.js?v=276';
-import {normalizeGuild,advanceGuildContracts} from './guild-contracts.js?v=274';
+import {normalizeGuild,advanceGuildContracts} from './guild-contracts.js?v=290';
 
 export const DEVELOPMENT_STAGES=[
   {name:'野営本陣',cost:0}, {name:'城塞と宿場',cost:6000},
