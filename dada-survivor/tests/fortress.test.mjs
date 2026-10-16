@@ -51,12 +51,12 @@ test('v1.19.1: fortress door opens at 1:15; boss HP eases a bit for low-level ea
   assert.ok(FORTRESS.boss.minHp >= 0.7, 'ボスは つよい まま');
 });
 
-test('v1.20.0: wider rooms + きょだいきんこ above the command room (rockets only, 20 hits, 10000 coins)', async () => {
+test('v1.20.0: wider rooms + きょだいきんこ above the command room (rockets only, 20 hits, 1500 coins)', async () => {
   const { WEAPONS } = await import('../js/rules.js');
   assert.ok(FORTRESS.room.halfW >= 500 && FORTRESS.room.bottom - FORTRESS.room.top >= 1000, 'ひろい へや');
   for (const b of FORTRESS.boxes) assert.ok(Math.abs(b.x) < FORTRESS.room.halfW - 60 && b.y > FORTRESS.room.top);
   assert.ok(FORTRESS.stairs.y > FORTRESS.room.top && FORTRESS.boss.at.y > FORTRESS.room.top);
-  assert.deepEqual({ hits: FORTRESS.mega.hits, coins: FORTRESS.mega.coins }, { hits: 20, coins: 10000 });
+  assert.deepEqual({ hits: FORTRESS.mega.hits, coins: FORTRESS.mega.coins }, { hits: 20, coins: 1500 });
   assert.equal(ENEMY_TYPES.megavault.rocketOnly, true); assert.equal(ENEMY_TYPES.megavault.dmg, 0); assert.equal(ENEMY_TYPES.megavault.speed, 0);
   assert.equal(floorName(6, FORTRESS), 'きょだいきんこ');
   const rockets = Object.entries(WEAPONS).filter(([, w]) => w.fire === 'rocket').map(([id]) => id);

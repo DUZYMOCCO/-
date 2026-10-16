@@ -14,13 +14,13 @@ import {
   QUEST, CAMP, underHalfW, clampUnder, hutSpot, LASER_MODES, nextLaserMode, squadRoom, beamHits, MAX_LEVEL as MAXLV,
   enemyDmgMul, startWeapons, CITY_FIRE, burnSites, TOWER, MANSION, FORTRESS, TEMPLE, THRONE, sawPaths, spikeState, fortressBossScale, trailSteps, missileTargets, towerSpot, rollHeli, heliDamage, floorName,
   SPECIAL,
-} from './rules.js?v=221';
-import { DecorField } from './decor.js?v=221';
-import { EnemyGrid, nearestN } from './grid.js?v=221';
-import { preloadArt, art } from './art.js?v=221';
-import { Stage } from './stage.js?v=221';
-import { menuMethods, iconHtml } from './menus.js?v=221';
-import { PopBGM, playWhistle } from './bgm.js?v=221';
+} from './rules.js?v=222';
+import { DecorField } from './decor.js?v=222';
+import { EnemyGrid, nearestN } from './grid.js?v=222';
+import { preloadArt, art } from './art.js?v=222';
+import { Stage } from './stage.js?v=222';
+import { menuMethods, iconHtml } from './menus.js?v=222';
+import { PopBGM, playWhistle } from './bgm.js?v=222';
 
 const SAVE_KEY = 'dada_survivor_save';
 const TAU = Math.PI * 2;
@@ -46,7 +46,7 @@ export const DadaSurvivorGame = {
 
   // 起動時にこのゲームのCSSを自分で読み込む（?v= はこのフォルダ内で管理）。ハブが init 前に await する
   prepare() {
-    return loadCss(new URL('../css/dada-survivor.css?v=221', import.meta.url).href);
+    return loadCss(new URL('../css/dada-survivor.css?v=222', import.meta.url).href);
   },
 
   init(container, onBackToHub) {

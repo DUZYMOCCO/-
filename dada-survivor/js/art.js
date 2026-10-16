@@ -1620,7 +1620,7 @@ const SOURCES = {
   cbullet, chaingunArt, bhole, dragonShot,
   skeleton: wrap(withPatch('skeleton', skeleton)), ctower1: ctower(0), ctower2: ctower(1), cbanner: fixPatch(cbanner), brazier, throneKeep: fixPatch(throneKeep), throneDoor: throneDoor(false), throneDoorOpen: throneDoor(true), saw, throne: fixPatch(throne),
   temple, templeDoor: templeDoor(false), templeDoorOpen: templeDoor(true), spikes0, spikesW, spikes1, rowWarn, boulder, rock,
-  megavault: vault(false).replace(/<\/svg>$/, `${villainPatch(18, 108, 1.6)}<text x="65" y="117" text-anchor="middle" font-size="11" font-weight="900" fill="#fde047" stroke="#1c1917" stroke-width=".8">10000</text></svg>`), bmissile, mansion, mansionDoor: mansionDoor(false), mansionDoorOpen: mansionDoor(true), vault: vault(false), vaultOpen: vault(true),
+  megavault: vault(false).replace(/<\/svg>$/, `${villainPatch(18, 108, 1.6)}<text x="65" y="117" text-anchor="middle" font-size="11" font-weight="900" fill="#fde047" stroke="#1c1917" stroke-width=".8">1500</text></svg>`), bmissile, mansion, mansionDoor: mansionDoor(false), mansionDoorOpen: mansionDoor(true), vault: vault(false), vaultOpen: vault(true),
   driller: wrap(withPatch('driller', driller)), jungler: wrap(withPatch('jungler', jungler)), walker: wrap(withPatch('walker', walker), '-8 0 80 66'),
   urban: wrap(withPatch('urban', urban)), truck: wrap(withPatch('truck', truck)), gunship: wrap(withPatch('gunship', gunship), '-10 0 84 68'),
   heliFriend, heliFly, tower, ...Object.fromEntries([1, 2, 3, 4, 5, 6, 7].map(v => [`bldg${v}`, towerArt(v)])), towerDoor: towerDoor(false), towerDoorOpen: towerDoor(true), stairsUp, helipad, roofExit, wreckCar, ruinPile,

@@ -10,8 +10,8 @@ export const MAX_LEVEL = 5;
 
 export const DIFFICULTIES = {
   easy:   { id: 'easy',   label: 'やさしい',   enemyHp: 0.7, enemyDmg: 0.6, spawn: 0.8, coin: 1 },
-  normal: { id: 'normal', label: 'ふつう',     enemyHp: 1.35, enemyDmg: 1.35, spawn: 1.1, coin: 1.5 },
-  hard:   { id: 'hard',   label: 'むずかしい', enemyHp: 2.5, enemyDmg: 1.85, spawn: 1.7, lateHp: 0.3, coin: 2 },
+  normal: { id: 'normal', label: 'ふつう',     enemyHp: 1.35, enemyDmg: 1.35, spawn: 1.1, coin: 1.2 },
+  hard:   { id: 'hard',   label: 'むずかしい', enemyHp: 2.5, enemyDmg: 1.85, spawn: 1.7, lateHp: 0.3, coin: 1.4 },
 };
 
 // perk: キャラの とくちょう（hp:さいだいHP, dmg:ダメージ倍率+, spd:いどう+, pickup:ひろう範囲+, regen:まいびょう かいふく）
@@ -162,7 +162,7 @@ export const GEAR_SLOTS = {
   boots:  { name: 'くつ',     stat: 'spd',   values: [0.05, 0.1, 0.15, 0.22, 0.3] },
   charm:  { name: 'おまもり', stat: 'regen', values: [0.5, 1, 1.8, 2.8, 4] },
 };
-export const CHEST_COST = 80;
+export const CHEST_COST = 150; // v1.25.0 80→150
 
 export function gearLabel(slot, rarity) {
   const g = GEAR_SLOTS[slot], v = g.values[rarity];
@@ -375,25 +375,26 @@ export const PASSIVES = {
 
 // ショップ（ずっと残る強化）
 export const SHOP_ITEMS = {
-  hp:  { name: 'たいりょく', icon: '❤️', desc: 'さいだいHP +10', max: 10 },
-  atk: { name: 'こうげき',   icon: '⚔️', desc: 'ダメージ +5%',   max: 10 },
-  spd: { name: 'はやさ',     icon: '👟', desc: 'いどう +4%',     max: 10 },
+  hp:  { name: 'たいりょく', icon: '❤️', desc: 'さいだいHP +10', max: 15, base: 20, pow: 1.3, old: true },
+  atk: { name: 'こうげき',   icon: '⚔️', desc: 'ダメージ +5%',   max: 15, base: 20, pow: 1.3, old: true },
+  spd: { name: 'はやさ',     icon: '👟', desc: 'いどう +4%',     max: 15, base: 20, pow: 1.3, old: true },
   // v1.24.0 あたらしい おみせ（base が たかいほど たかい。レベルごとに ぐんぐん あがる）
-  zap:    { name: 'かみなり',     icon: '⚡', desc: '3びょうごとに かみなり +15', max: 5, base: 300 },
-  guard:  { name: 'ガード',       icon: '🛡️', desc: 'うける ダメージ -4%',  max: 5, base: 250 },
-  rate:   { name: 'じゅうの はやさ', icon: '🔫', desc: 'うつのが はやく -3%', max: 5, base: 300 },
-  multi:  { name: 'たまの かず',   icon: '🔶', desc: 'まっすぐ うつ たま +1', max: 2, base: 2000 },
-  reach:  { name: 'ひろい',       icon: '🧲', desc: 'ほうせきを ひろう はんい +10%', max: 5, base: 150 },
-  heal:   { name: 'かいふく',     icon: '💚', desc: 'まいびょう かいふく +0.2', max: 5, base: 250 },
-  crit:   { name: 'クリティカル', icon: '💥', desc: '4%で ダメージ 2ばい',  max: 5, base: 300 },
-  bonus:  { name: 'コイン ボーナス', icon: '🪙', desc: 'もらえる コイン +10%', max: 5, base: 200 },
+  zap:    { name: 'かみなり',     icon: '⚡', desc: '3びょうごとに かみなり +15', max: 5, base: 100 },
+  guard:  { name: 'ガード',       icon: '🛡️', desc: 'うける ダメージ -4%',  max: 5, base: 80 },
+  rate:   { name: 'じゅうの はやさ', icon: '🔫', desc: 'うつのが はやく -3%', max: 5, base: 100 },
+  multi:  { name: 'たまの かず',   icon: '🔶', desc: 'まっすぐ うつ たま +1', max: 2, base: 700 },
+  reach:  { name: 'ひろい',       icon: '🧲', desc: 'ほうせきを ひろう はんい +10%', max: 5, base: 50 },
+  heal:   { name: 'かいふく',     icon: '💚', desc: 'まいびょう かいふく +0.2', max: 5, base: 80 },
+  crit:   { name: 'クリティカル', icon: '💥', desc: '4%で ダメージ 2ばい',  max: 5, base: 100 },
+  bonus:  { name: 'コイン ボーナス', icon: '🪙', desc: 'もらえる コイン +10%', max: 5, base: 70 },
 };
 
-/** ねだん：むかしの 3つは 30×(Lv+1)。あたらしいのは base×(Lv+1)^1.6（10まいずつ） */
+/** ねだん：base×(Lv+1)^pow（v1.25.0。さいしょの 1〜3レベルは ずっと やすい）。pow が ないものは 1.6。100みまんは 5まいずつ、いじょうは 10まいずつ */
 export function shopCost(level, id) {
-  const base = SHOP_ITEMS[id]?.base;
-  if (!base) return 30 * (level + 1);
-  return Math.round(base * (level + 1) ** 1.6 / 10) * 10;
+  const it = SHOP_ITEMS[id];
+  if (!it?.base) return 30 * (level + 1);
+  const c = it.base * (level + 1) ** (it.pow || 1.6), q = c < 100 ? 5 : 10;
+  return Math.max(q, Math.round(c / q) * q);
 }
 
 export function weaponStat(id, key, level) {
@@ -402,14 +403,15 @@ export function weaponStat(id, key, level) {
 }
 
 /** バランスの つまみ（hpTime: てきの HP が 1ばい ふえる びょう／xp: レベルアップに いる ほうせき） */
-export const TUNE = { hpTime: 170, xpBase: 4, xpStep: 3.4, ramp0: 0.35, rampTime: 200 };
+export const TUNE = { hpTime: 170, xpBase: 4, xpStep: 3.4, xpFrom: 20, xpLate: 7, ramp0: 0.35, rampTime: 200 };
 /** 1より おおきい ばいりつは さいしょ ramp0 から rampTime びょうかけて ぜんぶに（いきなり やられない）。1いかは そのまま */
 export function rampMul(mul, t) { return mul > 1 ? 1 + (mul - 1) * Math.min(1, TUNE.ramp0 + t / TUNE.rampTime) : mul; }
 /** てきの こうげきの ばいりつ（むずかしさ × ステージ、じかんで じわじわ） */
 export function enemyDmgMul(t, difficulty = DIFFICULTIES.normal, stage = STAGES[0]) {
   return rampMul(difficulty.enemyDmg, t) * rampMul(stage.dmgMul || 1, t);
 }
-export function xpToNext(level) { return Math.round(TUNE.xpBase + (level - 1) * TUNE.xpStep); }
+/** レベル20 までは むかしの まま、そこから さきは 1レベルごとに +xpLate ずつ おもく（v1.25.0。ながく あそぶほど ゆっくり） */
+export function xpToNext(level) { return Math.round(TUNE.xpBase + (level - 1) * TUNE.xpStep + Math.max(0, level - TUNE.xpFrom) * TUNE.xpLate); }
 
 /** パッシブとショップ強化から最終ステータスを計算 */
 export function playerStats(passives = {}, shop = {}, bonus = {}) {
@@ -738,7 +740,7 @@ export const FORTRESS = {
   robo: { total: 20, wave: 4, hp: 420, cd: 6.5, firstCd: 2.5 },
   boxes: [{ x: -200, y: -420, coins: 100, hp: 1400 }, { x: 200, y: -420, coins: 230, hp: 2200 }],
   // v1.20.0 めいれいしつの うえの きょだいきんこ：ロケットけいの ぶき（バズーカ・でかロケット・スーパーミサイル・レーザーの ロケット）でだけ こわれる。hits かい あてると コイン coins まい
-  mega: { x: 0, y: -520, hits: 20, coins: 10000 },
+  mega: { x: 0, y: -520, hits: 20, coins: 1500 },
   // v1.20.1 きょだいきんこの へやに てき 90たい（いちどに cap たい まで、batch たいずつ）
   horde: { total: 90, cap: 15, batch: 5, hp: 1.0 },
   boss: { type: 'supreme', hp: 33000, at: { x: 0, y: -620 }, levelRef: 31, minHp: 0.75 },

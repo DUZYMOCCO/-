@@ -7,8 +7,8 @@ import {
   DIFFICULTIES, CHARACTERS, WEAPONS, SHOP_ITEMS, STAGES, RARITIES, GEAR_SLOTS, CHEST_COST,
   shopCost, stageById, stageUnlocked, charUnlocked, gearLabel, rollGear, addGear, equipGear,
   unequipGear, mergeGear, bonusFor,
-} from './rules.js?v=221';
-import { art } from './art.js?v=221';
+} from './rules.js?v=222';
+import { art } from './art.js?v=222';
 
 const GEAR_ART = { weapon: 'sword', armor: 'armor', boots: 'shoes', charm: 'charm' };
 const ICON_ART = {
@@ -186,7 +186,7 @@ export const menuMethods = {
         </div>
         ${Object.entries(SHOP_ITEMS).map(([id, it]) => {
           const lv = s.shop[id] || 0, max = lv >= it.max, cost = shopCost(lv, id);
-          return `<div class="ds-shop-item${it.base ? ' ds-shop-new' : ''}">
+          return `<div class="ds-shop-item${it.old ? '' : ' ds-shop-new'}">
             <span class="ds-icon emoji">${it.icon}</span>
             <div class="ds-shop-text"><b>${it.name} Lv${lv}/${it.max}</b><small>${it.desc}</small></div>
             <button class="ds-btn ds-buy" data-buy="${id}" ${max || s.coins < cost ? 'disabled' : ''}>${max ? 'MAX' : `🪙${cost}`}</button>
