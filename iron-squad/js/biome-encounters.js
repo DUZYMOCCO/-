@@ -1,5 +1,5 @@
 import {ENEMY_ROSTER} from './enemy-art.js?v=280';
-import {biomeAt} from './world.js?v=281';
+import {biomeAt} from './world.js?v=289';
 import {daylightAt,PERIOD_ENEMIES} from './day-night.js?v=182';
 const C=79360;
 // Multipliers are against an ordinary enemy in the SAME distance band.

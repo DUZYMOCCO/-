@@ -1,12 +1,12 @@
 import {attributeValues,ensureAttributeProfile} from './unit-attributes.js?v=274';
 import {isMagicUser,ensureMana} from './magic-rules.js?v=277';
-import {WORLD_SIZE} from './world.js?v=281';
+import {WORLD_SIZE} from './world.js?v=289';
 import {inCurrentInstance} from './instance-rules.js?v=256';
 import {saveSlots} from './save-slots.js?v=285';
 import {requestCheckpointAction,checkpointNotice} from './checkpoint-ui.js?v=259';
 import {addBattleReport} from './battle-report.js?v=276';
 import {sound} from '../../common/js/audio.js?v=151';
-import {nearestRevivalPotionTarget,reviveByPotion,REVIVAL_POTION_RANGE} from './casualty-rules.js?v=274';
+import {nearestRevivalPotionTarget,reviveByPotion,REVIVAL_POTION_RANGE} from './casualty-rules.js?v=286';
 
 export const AMMO_CAPACITY=30; // Legacy/default capacity for units without a ranged weapon.
 export const AMMO_BASE_CAPACITY=Object.freeze({bow:120,crossbow:60,cannon:30});

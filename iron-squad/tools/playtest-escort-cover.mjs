@@ -23,7 +23,7 @@ try{
   const g=qaGame,e=qaEscort;g.monsters=[];const before=e.hp;for(let i=0;i<180;i++)g.update(1/60);const afterThree=e.hp;for(let i=0;i<60;i++)g.update(1/60);const afterFour=e.hp;g.render();return {before,afterThree,afterFour,maxHp:e.maxHp,expectedAfterFour:Math.min(e.maxHp,before+e.maxHp*.01)};
  });assert.ok(Math.abs(report.regen.before-report.regen.afterThree)<.01);assert.ok(Math.abs(report.regen.afterFour-report.regen.expectedAfterFour)<.01);await page.screenshot({path:`${out}/02-regeneration-mobile.png`});
  report.far=await page.evaluate(async()=>{
-  const g=qaGame,e=qaEscort,{updateMerchants}=await import('/iron-squad/js/merchant-rules.js?v=270');g.damageTarget(e,120,{attacker:{x:e.x,y:e.y},noCover:true});
+  const g=qaGame,e=qaEscort,{updateMerchants}=await import('/iron-squad/js/merchant-rules.js?v=286');g.damageTarget(e,120,{attacker:{x:e.x,y:e.y},noCover:true});
   const before=e.hp,maxHp=e.maxHp;Object.assign(g.player,{x:100000,y:90000});g.camera={x:100000,y:90000};for(let i=0;i<10;i++)updateMerchants(g,1);
   return {before,after:e.hp,expected:Math.min(maxHp,before+maxHp*.07)};
  });assert.ok(Math.abs(report.far.after-report.far.expected)<.01);

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {initializeWildernessSites,serializeWildernessSites,updateWildernessSites,recordWildernessGuardKill,wildernessLayout,WILDERNESS_RULES} from '../js/wilderness-sites.js';
 import {fieldTerrainAt,biomeAt,WORLD_SIZE,biomeTerrainAllowed} from '../js/world.js';
-import {terrainCell} from '../js/biome-terrain.js?v=278';
+import {terrainCell} from '../js/biome-terrain.js?v=289';
 import {medicalPostLayout} from '../js/medical-posts.js';
 const memory=new Map();globalThis.localStorage={getItem:k=>memory.get(k)??null,setItem:(k,v)=>memory.set(k,v),removeItem:k=>memory.delete(k)};globalThis.window={};globalThis.document={getElementById:()=>null};
 const {IronSquadGame}=await import('../js/index.js'),{saveSlots}=await import('../js/save-slots.js');

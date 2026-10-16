@@ -17,7 +17,7 @@ try{
     window.initial=structuredClone(g.saveGame());window.notes=[];const toast=g.showToast.bind(g);g.showToast=(t,...args)=>{notes.push(t);return toast(t,...args);};
     window.reset=()=>{g.resumeSavedGame(structuredClone(initial));g.stopGameLoop();g.closeStrategyModal();g.restTimer=0;g.phaseTimer=300;g.monsters=[];g.inBattle=true;g.worldTime=120;notes.length=0;};
     window.draw=(x=C,y=C)=>{g.camera={x,y};g.resizeCanvas();g.revealFogAroundPlayer(true);g.updateStatsUI(true);g.render();};reset();
-    window.casualty=await import('/iron-squad/js/casualty-rules.js?v=215');window.gates=await import('/iron-squad/js/gate-rules.js?v=277');
+    window.casualty=await import('/iron-squad/js/casualty-rules.js?v=286');window.gates=await import('/iron-squad/js/gate-rules.js?v=286');
     // Reconstruct the old saved courtyard homes without modifying the live user saves.
     const hq=g.gateGuards.filter(u=>u.gatePostId.startsWith('hq_gate_'));
     hq.forEach((u,i)=>Object.assign(u,{homeX:C+(i-2)*42,homeY:C+35,x:C+(i-2)*42,y:C+35,rescuedToBase:true,returningToBase:false}));
@@ -77,7 +77,7 @@ try{
   await offline.setOffline(true);await tab.reload();await tab.click('[data-game-id="iron-squad"]');await tab.locator('#new-expedition-form').evaluate(f=>f.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})));await tab.click('#btn-commander-confirm');await tab.waitForFunction(()=>window.gameStudioInstance?.activeGame?.player);
   report.checks.offline=await tab.evaluate(async()=>{
     const g=gameStudioInstance.activeGame;g.stopGameLoop();g.closeStrategyModal();g.restTimer=0;g.monsters=[];
-    const gates=await import('/iron-squad/js/gate-rules.js?v=277'),{grantRescueBonus}=await import('/iron-squad/js/casualty-rules.js?v=215');
+    const gates=await import('/iron-squad/js/gate-rules.js?v=286'),{grantRescueBonus}=await import('/iron-squad/js/casualty-rules.js?v=286');
     const guard=g.gateGuards.find(u=>u.gatePostId==='hq_gate_0');guard.homeX=g.player.x;guard.homeY=g.player.y;guard.x=g.player.x;guard.y=g.player.y;guard.rescuedToBase=true;gates.restoreGateGuardPost(g,guard,{snap:true});
     grantRescueBonus(g,guard);const post=g.gatePosts.find(p=>p.id===guard.gatePostId);g.camera={x:g.player.x,y:g.player.y};g.render();
     return {recovery:g._renderProblem||null,rewards:g.rescueRewardIds.length,offset:Math.hypot(guard.x-post.x,guard.y-post.y),refuge:guard.rescuedToBase};

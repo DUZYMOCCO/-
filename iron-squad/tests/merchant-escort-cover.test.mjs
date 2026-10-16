@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {JSDOM} from '../../__pycache__/ui-tools/node_modules/jsdom/lib/api.js';
-import {merchantEscortCover,noteEscortDamage,updateEscortRegen,updateMerchants,npcSave,applyNpcSave,ESCORT_COVER,ESCORT_REGEN} from '../js/merchant-rules.js?v=270';
+import {merchantEscortCover,noteEscortDamage,updateEscortRegen,updateMerchants,npcSave,applyNpcSave,ESCORT_COVER,ESCORT_REGEN} from '../js/merchant-rules.js?v=286';
 const escort=(x=10100)=>({id:'escort',name:'護衛',isMerchantEscort:true,soldierClass:'HEAVY',x,y:10000,hp:200,maxHp:200,def:0,dmgReduction:0,radius:0,speed:78});
 const merchant=()=>({id:'merchant',name:'ルカ',isMerchant:true,x:10000,y:10000,hp:200,maxHp:200,stockPhase:1,escorts:[escort()]});
 const enemy={x:10000,y:10000,hp:1000,atk:100,radius:1};let m=merchant(),g={merchants:[m],player:{x:10000,y:10000},monsters:[],phase:1};

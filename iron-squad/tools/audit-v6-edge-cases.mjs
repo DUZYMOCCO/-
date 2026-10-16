@@ -10,7 +10,7 @@ try {
     const {normalizeNation}=await import('/iron-squad/js/nation-rules.js?v=277');
     const {economicState,ECONOMIC_REGIONS}=await import('/iron-squad/js/regional-economy.js?v=277');
     const {spawnTradeParty,updateRegionalTraffic,tradeSegmentOpen}=await import('/iron-squad/js/trade-routes.js?v=277');
-    const {wallBlocksAttack,fieldWallContext}=await import('/iron-squad/js/gate-rules.js?v=277');
+    const {wallBlocksAttack,fieldWallContext}=await import('/iron-squad/js/gate-rules.js?v=286');
     const C=79360;g.nation=normalizeNation({investment:18000});const e=economicState(g),region=ECONOMIC_REGIONS.find(p=>p.id!=='hq');
     e.regions[region.id].safety=1;e.regions[region.id].discovered=e.regions[region.id].liberated=true;
     const route={id:'audit-existing-route',to:region.id,points:[[C+512,C+400],[C+1400,C+400]],length:888};e.routes=[route];e.traffic=[];

@@ -1,8 +1,8 @@
 // 158720 = 310 tiles of 512. Half-width 79360.
 // Base walk is 165px/s, so camp to the nearest edge is 481s (8 min 1s).
 // 10800 was about 33s and 21600 about 65s. Both were still a short walk.
-import {wildernessPlotContains} from './wilderness-layout.js?v=281';
-import {biomeKeyAt,naturalTerrainAt,paintBiomeTerrain,terrainHash} from './biome-terrain.js?v=278';
+import {wildernessPlotContains} from './wilderness-layout.js?v=289';
+import {biomeKeyAt,naturalTerrainAt,paintBiomeTerrain,terrainHash,ridgeExit} from './biome-terrain.js?v=289';
 import {drawNaturalPond,terrainSeed} from './terrain-shapes.js?v=182';
 import {hqFacilityPlotContains} from './hq-facility-layout.js?v=201';
 import {outerWallLineNear} from './hq-outer-wall.js?v=198';
@@ -249,6 +249,8 @@ export function biomeTerrainAllowed(x,y,pad=0) {
   return true;
 }
 export const fieldTerrainAt=(x,y)=>naturalTerrainAt(x,y,biomeTerrainAllowed);
+// A point inside a ridge -> the closest open point just outside its outline (same ray from the peak centre), or null. Lets settleUnit slide units round a peak.
+export const fieldRockExit=(x,y)=>ridgeExit(x,y,biomeTerrainAllowed);
 export const fieldSpeedFactor=(x,y)=>fieldTerrainAt(x,y)==='water'?.85:1;
 export function biomeMoveTarget(unit,target){
   const dx=target.x-unit.x,dy=target.y-unit.y,d=Math.hypot(dx,dy);if(d<1)return target;
@@ -272,12 +274,23 @@ export function fieldBlocks(x, y, works=[]) {
   }
   return fieldTerrainAt(x,y)==='rock';
 }
-export function settleUnit(unit, blocked) {
+export function settleUnit(unit, blocked, rockExit) {
   if (!unit || !Number.isFinite(unit.x) || !Number.isFinite(unit.y) || typeof blocked !== 'function') return false;
   if (!blocked(unit.x, unit.y)) {
     unit._openX = unit.x;
     unit._openY = unit.y;
     return false;
+  }
+  // v7.0.11: pressed into a ridge -> stand on its outline at the same angle, so the unit keeps sliding round the peak and never sticks.
+  if (typeof rockExit === 'function') {
+    const e = rockExit(unit.x, unit.y);
+    if (e && Number.isFinite(e.x) && Number.isFinite(e.y) && !blocked(e.x, e.y)) {
+      unit.x = e.x;
+      unit.y = e.y;
+      unit._openX = e.x;
+      unit._openY = e.y;
+      return true;
+    }
   }
   const ox = unit._openX, oy = unit._openY;
   if (Number.isFinite(ox) && Number.isFinite(oy) && !blocked(ox, oy)) {
@@ -729,7 +742,7 @@ export class WorldTerrain {
     if(typeof Worker!=='function'||typeof OffscreenCanvas!=='function')return;
     if(!this._terrainWorker){
       try{
-        this._terrainWorker=new Worker(new URL('./terrain-worker.js?v=281',import.meta.url),{type:'module'});
+        this._terrainWorker=new Worker(new URL('./terrain-worker.js?v=289',import.meta.url),{type:'module'});
         const disable=()=>{this._terrainWorkerDisabled=true;this._terrainWorker?.terminate();this._terrainWorker=null;this._pendingTerrain.clear();};
         this._terrainWorker.onerror=disable;
         this._terrainWorker.onmessage=({data})=>{

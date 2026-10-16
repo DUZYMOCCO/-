@@ -10,7 +10,7 @@ try{
  await page.goto('http://127.0.0.1:8000/');await page.locator('[data-game-id="iron-squad"]').click();await page.locator('#expedition-name').fill('帰還する商人の確認');await page.locator('#new-expedition-form button').click();await page.locator('#btn-commander-confirm').click();
  await page.waitForFunction(async()=>{const {IronSquadGame:g}=await import('/iron-squad/js/index.js');if(!g.player||!g.running)return false;window.qaGame=g;return true;});
  await page.evaluate(async()=>{
-  const g=qaGame;window.qaCasualty=await import('/iron-squad/js/casualty-rules.js?v=267');window.qaAssist=await import('/iron-squad/js/rescue-assistance.js?v=267');
+  const g=qaGame;window.qaCasualty=await import('/iron-squad/js/casualty-rules.js?v=286');window.qaAssist=await import('/iron-squad/js/rescue-assistance.js?v=267');
   g.stopGameLoop();g.closeStrategyModal();g.monsters=[];g.updateSpawns=()=>{};g.squad=[];g.reserves=[];g.civilians=[];g.gateGuards=[];g.currentQuest=null;g.currentDungeon=null;g.phaseTimer=100000;g.autoSaveClock=-10000;g.restTimer=0;
   g.player.x=80000;g.player.y=78900;g.camera={x:g.player.x,y:g.player.y};g.gold=10000000;g.revivalPotion=2;
   const m=g.merchants[0];Object.assign(m,{x:80040,y:78900});for(const e of m.escorts)Object.assign(e,{x:m.x+30,y:m.y+30});g.merchants=[m];g._merchantById=new Map([[m.id,m]]);window.qaMerchant=m;
@@ -27,7 +27,7 @@ try{
  await page.screenshot({path:`${out}/03-recovery-while-returning.png`});await page.locator('.btn-close-merchant').click();await page.locator('[data-merchant-section="trade"]').click();
  const gold=await page.evaluate(()=>qaGame.gold);await page.locator('[data-buy]:not(:disabled)').first().click();assert.ok(await page.evaluate(()=>qaGame.gold)<gold);
  await page.screenshot({path:`${out}/04-trade-while-returning.png`});
- report.paused=await page.evaluate(async()=>{const g=qaGame,m=qaMerchant,start={x:m.x,y:m.y};const {updateMerchants}=await import('/iron-squad/js/merchant-rules.js?v=267');for(let i=0;i<300;i++)updateMerchants(g,1/60);return {same:m.x===start.x&&m.y===start.y,open:!!g._merchantShopClose};});assert.ok(report.paused.same&&report.paused.open);
+ report.paused=await page.evaluate(async()=>{const g=qaGame,m=qaMerchant,start={x:m.x,y:m.y};const {updateMerchants}=await import('/iron-squad/js/merchant-rules.js?v=286');for(let i=0;i<300;i++)updateMerchants(g,1/60);return {same:m.x===start.x&&m.y===start.y,open:!!g._merchantShopClose};});assert.ok(report.paused.same&&report.paused.open);
  await page.locator('.btn-close-merchant').click();await page.locator('[data-merchant-section="save"]').click();assert.ok(await page.locator('#merchant-shop-popup [data-supply="save"]').isEnabled());
  // Invoke the actual checkpoint method; the chooser UI is already covered by checkpoint tests.
  assert.equal(await page.evaluate(()=>qaGame.saveCheckpoint()),true);await page.screenshot({path:`${out}/05-checkpoint-while-returning.png`});

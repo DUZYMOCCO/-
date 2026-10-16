@@ -10,7 +10,7 @@ import { saleValue, distanceScaling, weaponCombatProfile } from './equipment-rul
 import { drawFieldSoldier } from './visuals.js?v=280';
 import { createSoldierAppearance, drawSoldierHead } from './soldier-appearance.js?v=206';
 import { attackAnimationRate } from './weapon-motion.js?v=273';
-import { markSoldierDown, rebuildMerchantCasualties, RESCUE_TIMEOUT } from './casualty-rules.js?v=274';
+import { markSoldierDown, rebuildMerchantCasualties, RESCUE_TIMEOUT, departFromRest } from './casualty-rules.js?v=286';
 import {emptyMastery,normalizeMastery,hitGrowthHpBonus,hitGrowthDefBonus,migrateHitGrowth,applyHitGrowth,masteryAtkMult,masteryReloadMult} from './growth-rules.js?v=282';
 import {recordCombat,finishExperience} from './phase-rules.js?v=218';
 
@@ -59,6 +59,7 @@ function prepareMerchant(m) {
   const female=/ミレイ|ネラ/.test(m.name||'');
   m.appearance ||= createSoldierAppearance(`${m.id}:merchant`,female?'female':'male');
   m.homeX ??= m.x;m.homeY ??= m.y;
+  m.originX ??= m.x;m.originY ??= m.y;m.basePlaceName ??= m.placeName; // where the trader returns to after resting at a medical post
   const colors=['#937650','#6a7861','#887063','#5c7780'];
   m.coatColor=colors[Math.floor(campRoll(0,`${m.id}:coat`)*colors.length)];
   m._faceActor={id:m.id,appearance:m.appearance,gender:female?'female':'male',soldierClass:female?'MEDIC':'LIGHT'};
@@ -369,6 +370,15 @@ export function updateEscortPatrol(game,m,dt,monsters,hooks={}) {
 
 }
 
+/** Rescued traders/escorts leave their medical post when their rest period has ended (they are not kept forever). */
+export function updateMerchantRest(game,m) {
+  const phase=game.phase||game.wave||1;
+  for(const u of [m,...(m.escorts||[])]) {
+    if(u.isGateGuard||!Number.isFinite(u.restUntilPhase)||phase<u.restUntilPhase||u.isDown)continue;
+    if(u===m&&game._tradingMerchant===m)continue;
+    departFromRest(game,u);
+  }
+}
 export function updateMerchants(game, dt, generateRandomDrop, hooks = {}) {
   const merchants = game.merchants || [];
   if (!merchants.length || !(dt > 0)) return;
@@ -382,6 +392,7 @@ export function updateMerchants(game, dt, generateRandomDrop, hooks = {}) {
   for (const m of merchants) {
     // Regeneration is cheap and runs before the distant-caravan AI skip.
     for(const esc of m.escorts||[])updateEscortRegen(esc,dt);
+    updateMerchantRest(game,m);
     if (m.dead) {
       m.respawnIn = (m.respawnIn || MERCHANT_RESPAWN_SEC) - dt;
       if (m.respawnIn <= 0) {
@@ -428,7 +439,7 @@ export function updateMerchants(game, dt, generateRandomDrop, hooks = {}) {
           m.hp -= cover?cover.rest:raw;
           if (m.hp <= 0) {
             markSoldierDown(game,m);
-            game.showToast?.(`${m.name}が負傷！紐で本陣へ救助できます`);
+            game.showToast?.(`${m.name}が負傷！紐で最寄りの救護所へ救助できます`);
           }
         }
       }
@@ -567,11 +578,13 @@ export function applyMerchantSave(game, savedList, generateRandomDrop, BASE_CAMP
     if([3,MERCHANT_CATALOG_VERSION].includes(s.catalogVersion)&&Array.isArray(s.stock)){m.stock=s.stock.filter(i=>i&&i.tier>=1&&i.tier<=MERCHANT_MAX_TIER&&!i.dropOnly).map(i=>({...i,stats:{...i.stats}}));m.stockPhase=s.stockPhase;m.stockTier=s.stockTier;m.catalogVersion=s.catalogVersion;}
     ensureMerchantCatalog(game,m,generateRandomDrop);
     if(Number.isFinite(s.distance))m.distance=s.distance;
-    if(m.rescuedToBase)m.placeName='本陣・救助した商人';
     for(const savedEscort of s.escorts||[]) {
       const escort=m.escorts.find(e=>e.id===savedEscort.id);
       if(escort)applyNpcSave(escort,savedEscort);
     }
+    // Saves from before v7.0.9 parked rescued traders at the HQ for good: send them back to their own camp on the first update.
+    for(const u of [m,...(m.escorts||[])])if(u.rescuedToBase&&!u.isGateGuard&&!u.restPostId&&!Number.isFinite(u.restUntilPhase))u.restUntilPhase=0;
+    if(m.rescuedToBase)m.placeName=m.restPostName?`${m.restPostName}・救助した商人`:'本陣・救助した商人';
     m.healingUsed=!!s.healingUsed;
     m.healReadyPhase=Number.isInteger(s.healReadyPhase)?s.healReadyPhase:(m.healingUsed?(game.phase||1)+MERCHANT_HEAL_WAIT_WAVES:0);
     if (s.dead) {
@@ -588,11 +601,13 @@ export function applyMerchantSave(game, savedList, generateRandomDrop, BASE_CAMP
 
 export function npcSave(unit) {
   const result={};
-  for(const key of ['x','y','hp','maxHp','isDown','dead','downTimer','revivalSkillCooldownUntil','carrierId','homeX','homeY','timesDown','timesRescued','rescuedThisDown','downedInAid','downId','rescuedToBase','returningToBase','rescueRewardGranted','rescueReward','owesCommander','commanderFriend','commanderRescues','level','exp','reqExp','minionKills','midbossKills','bossKills','survivedWaves','escortRegenWait','hitGrowthPct','hitGrowthHp','hitGrowthDef','hitGrowthEvents','weaponMastery','favoriteWeapon','phaseActivity','escortBaseStats','attributeProfile'])if(unit[key]!==undefined)result[key]=unit[key];
+  for(const key of ['x','y','hp','maxHp','isDown','dead','downTimer','revivalSkillCooldownUntil','carrierId','homeX','homeY','timesDown','timesRescued','rescuedThisDown','downedInAid','downId','rescuedToBase','returningToBase','restPostId','restPostName','restSlot','restSince','restUntilPhase','rescueRewardGranted','rescueReward','owesCommander','commanderFriend','commanderRescues','level','exp','reqExp','minionKills','midbossKills','bossKills','survivedWaves','escortRegenWait','hitGrowthPct','hitGrowthHp','hitGrowthDef','hitGrowthEvents','weaponMastery','favoriteWeapon','phaseActivity','escortBaseStats','attributeProfile'])if(unit[key]!==undefined)result[key]=unit[key];
   return result;
 }
 export function applyNpcSave(unit,saved) {
   delete unit.revivalCooldownUntil;
+  for(const key of ['restSlot','restSince','restUntilPhase'])if(Number.isFinite(saved[key]))unit[key]=saved[key];
+  for(const key of ['restPostId','restPostName'])if(typeof saved[key]==='string')unit[key]=saved[key];
   for(const key of ['x','y','hp','maxHp','downTimer','revivalSkillCooldownUntil','homeX','homeY','timesDown','timesRescued','downId','atk','def','dmgReduction','level','exp','reqExp','minionKills','midbossKills','bossKills','survivedWaves','escortRegenWait','hitGrowthPct','hitGrowthHp','hitGrowthDef','hitGrowthEvents'])if(Number.isFinite(saved[key]))unit[key]=saved[key];
   if(saved.weaponMastery)unit.weaponMastery=normalizeMastery(saved.weaponMastery);
   if(saved.attributeProfile){unit.attributeProfile=structuredClone(saved.attributeProfile);unit._attributesNormalized=false;}

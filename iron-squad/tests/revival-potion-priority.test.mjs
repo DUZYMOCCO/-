@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {JSDOM} from '../../__pycache__/ui-tools/node_modules/jsdom/lib/api.js';
-import {nearestRevivalPotionTarget,REVIVAL_POTION_RANGE,revivalSkillCooldownLeft} from '../js/casualty-rules.js?v=255';
+import {nearestRevivalPotionTarget,REVIVAL_POTION_RANGE,revivalSkillCooldownLeft} from '../js/casualty-rules.js?v=286';
 const unit=(id,soldierClass,distance)=>({id,name:id,soldierClass,isDown:true,hp:0,maxHp:100,x:1000+distance,y:1000});
 const plain=squad=>({player:{x:1000,y:1000,hp:100,maxHp:100},squad,reserves:[],heroParty:{members:[]}});
 const light=unit('light','LIGHT',1),heavy=unit('heavy','HEAVY',30),medic=unit('medic','MEDIC',70);

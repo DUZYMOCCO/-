@@ -6,9 +6,9 @@ import {JSDOM} from '../../__pycache__/ui-tools/node_modules/jsdom/lib/api.js';
 import {WORLD_SIZE,WorldTerrain,SETTLEMENTS,eastWestRoadY,northSouthRoadX,riverCenterY,fieldBlocks} from '../js/world.js';
 import {renderNavigationMap} from '../js/navigation-map.js?v=277';
 import {medicalPostLayout,MEDICAL_CASTLE_EXCLUSION,MEDICAL_DISCOVERY_RADIUS,initializeMedicalPosts,updateMedicalPosts,nearestKnownMedicalPost,serializeMedicalPosts,drawMedicalPost,drawMedicalMap,drawTownMedicalReception,drawRescueDirection,UNDISCOVERED_MEDICAL_LABEL} from '../js/medical-posts.js?v=277';
-import {markSoldierDown,updateWounded,attachWounded,attachCivilian,updateCivilians,handleTransportAI,syncDragged} from '../js/casualty-rules.js?v=139';
+import {markSoldierDown,updateWounded,attachWounded,attachCivilian,updateCivilians,handleTransportAI,syncDragged} from '../js/casualty-rules.js?v=286';
 import {supplyLocation,updateSupplies,ammoCapacity} from '../js/supply-rules.js?v=139';
-import {replenishTownGateGuards} from '../js/gate-rules.js?v=139';
+import {replenishTownGateGuards} from '../js/gate-rules.js?v=286';
 import {updateMagic} from '../js/magic-rules.js?v=139';
 import {currentFields} from '../js/hazard-fields.js?v=139';
 const dom=new JSDOM('<div id="game"></div>',{url:'http://localhost/'});
@@ -60,9 +60,9 @@ s.x=post.x+130;s.y=post.y;game.player.x=post.x+400;markSoldierDown(game,s);asser
 game.player.x=s.x;attachWounded(game,game.player,s);updateWounded(game,0);assert.equal(s.isDown,true);game.player.x=post.x;syncDragged(game,1);const beforeReception=game.gold;updateWounded(game,0);assert.equal(s.isDown,false,'reception immediately rescues a repeat casualty without a patient cooldown');assert.equal(game.gold,beforeReception);
 // Civilian rescue missions receive their existing one-time permanent reward at a clinic.
 const civ={id:'clinic-child',kind:'child',name:'子供',x:post.x+200,y:post.y};game.civilians=[civ];game.player.x=civ.x;assert.equal(attachCivilian(game,game.player,civ),true);game.player.x=post.x;syncDragged(game,1);updateCivilians(game,0);assert.equal(civ.rescued,true);assert.equal(civ.rescueStationId,post.id);const count=game.rescueRewardIds.length;updateCivilians(game,0);assert.equal(game.rescueRewardIds.length,count);
-// Traders rest at HQ; recovered guards resume their own posts without a replacement.
+// Traders rest at the nearest medical post; recovered guards resume their own posts without a replacement.
 fresh();const clinic=game.medicalPosts[1];clinic.discovered=true;const merchant=game.merchants[0],escort=merchant.escorts[0];
-for(const npc of [merchant,escort]){npc.x=clinic.x+200;npc.y=clinic.y;game.player.x=npc.x;game.player.y=npc.y;markSoldierDown(game,npc);attachWounded(game,game.player,npc);game.player.x=clinic.x;syncDragged(game,1);updateWounded(game,0);assert.equal(npc.rescuedToBase,true);assert.equal(npc.returningToBase,false);assert.ok(dist(npc,{x:center,y:center})<=115);}
+for(const npc of [merchant,escort]){npc.x=clinic.x+200;npc.y=clinic.y;game.player.x=npc.x;game.player.y=npc.y;markSoldierDown(game,npc);attachWounded(game,game.player,npc);game.player.x=clinic.x;syncDragged(game,1);updateWounded(game,0);assert.equal(npc.rescuedToBase,true);assert.equal(npc.returningToBase,false);assert.equal(npc.restPostId,clinic.id,'v7.0.9: rescued traders rest at the nearest medical post');assert.ok(dist(npc,clinic)<=125);assert.ok(dist(npc,{x:center,y:center})>1000,'and no longer gather at the HQ');}
 const town=game.dungeons.find(d=>d.kind==='town'),guard=game.gateGuards.find(g=>g.gateTownId===town.id&&g.gateSpace==='field');
 guard.x=clinic.x+200;guard.y=clinic.y;game.player.x=guard.x;game.player.y=guard.y;markSoldierDown(game,guard);attachWounded(game,game.player,guard);game.player.x=clinic.x;syncDragged(game,1);updateWounded(game,0);assert.equal(guard.rescuedToBase,false);const assigned=game.gatePosts.find(p=>p.id===guard.gatePostId);assert.deepEqual([guard.homeX,guard.homeY],[assigned.x,assigned.y]);assert.equal(assigned.refillAtPhase,0);assert.equal(guard.returningToBase,true);game.phase+=2;replenishTownGateGuards(game);
 assert.equal(game.gateGuards.filter(g=>g.gatePostId===guard.gatePostId).length,1);

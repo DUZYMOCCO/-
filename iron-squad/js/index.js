@@ -36,7 +36,7 @@ import {normalizeCasino} from './casino-rules.js?v=276';
 import {latestEquipmentTier,recordMerchantEquipment,ensureMerchantCatalog,refreshWaveCatalogs,markMerchantPurchase} from './merchant-catalog.js?v=258';
 import {initializeMedicalPosts,updateMedicalPosts,serializeMedicalPosts,medicalPostLayout,nearestKnownMedicalPost,drawMedicalPost,drawMedicalMap,drawMedicalMarker,drawTownMedicalReception,drawRescueDirection} from './medical-posts.js?v=277';
 import {invasionMethods,initializeInvasions,serializeInvasions,shouldTriggerRandomRaid,makeEnemyRoom,drawInvasionRoute} from './invasion-rules.js?v=277';
-import {gateMethods,serializeGatePosts,replenishTownGateGuards,initializeGateGuards,ensureTownGuards,serializeGateGuards,updateGateGuards,gateGuardVisible,applyFortifications,drawFortification,exitGateTown,townExitReached,wallBlocksAttack,attackBlocked as coverBlocked} from './gate-rules.js?v=282';
+import {gateMethods,serializeGatePosts,replenishTownGateGuards,initializeGateGuards,ensureTownGuards,serializeGateGuards,updateGateGuards,gateGuardVisible,applyFortifications,drawFortification,exitGateTown,townExitReached,wallBlocksAttack,attackBlocked as coverBlocked} from './gate-rules.js?v=286';
 import {nationMethods,normalizeNation,nationalIncome,nationalPayrollPlan,headquartersDamageMult,drawNationalDevelopment,DEVELOPMENT_STAGES} from './nation-rules.js?v=277';
 import {equipmentUpgradeCost,salaryQuote,paySoldiers} from './payroll-rules.js?v=226';
 import {addFieldDrop,ageFieldDrops,attractFieldDrops,FIELD_DROP_PICKUP_RADIUS} from './field-drops.js?v=182';
@@ -98,7 +98,7 @@ import {rangedCombatMethods,updatePiercingBolt,rangedDrawPose,rangedFrontlinePos
 import {soldierMeleeMethods,tickSoldierMeleeSkill,soldierMeleeReach,soldierMeleePosition,soldierMeleeSkillText,soldierMeleeDrawPose,MELEE_BALANCE} from './soldier-melee-skills.js?v=243';
 import { buildSoldierProfile, describeDeathlineEffect } from './soldier-profile.js?v=234';
 import { attachSurfaceEvents, detachSurfaceEvents, frameSurfaceReady, releaseSceneCaches, releaseCanvas, surfaceCanResume } from './canvas-surface.js?v=217';
-import { SETTLEMENTS, WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt, routeNameAt, eastWestRoadY, northSouthRoadX, riverCenterY, drawFieldDepth, drawOakCrown, fieldBlocks, settleUnit, fieldSpeedFactor, biomeMoveTarget } from './world.js?v=281';
+import { SETTLEMENTS, WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt, routeNameAt, eastWestRoadY, northSouthRoadX, riverCenterY, drawFieldDepth, drawOakCrown, fieldBlocks, settleUnit, fieldSpeedFactor, biomeMoveTarget, fieldRockExit } from './world.js?v=289';
 import { subscribeKana, kanaGrade, displayKana } from '../../common/js/kana-mode.js?v=175';
 import { FogGrid, FOG_REVEAL_RADIUS, FOG_CAMP_REVEAL } from './fog.js?v=182';
 import {
@@ -137,7 +137,7 @@ import {
   nearestLivingMerchant, refreshMerchantStock, merchantBuyPrice, merchantSellTier,
   applyMerchantSave, serializeMerchants, MERCHANT_INTERACT_R,
   merchantHealingStatus, merchantHealWavesLeft, useMerchantHealing, MERCHANT_HEAL_COST, recalcEscortStats, finishEscortPhase, merchantEscortCover, noteEscortDamage
-} from './merchant-rules.js?v=282';
+} from './merchant-rules.js?v=286';
 
 import { daylightAt, advanceWorldClock, periodEnemy, enemyAvailable, PERIOD_ENEMIES } from './day-night.js?v=208';
 
@@ -149,7 +149,7 @@ import {initializeHeroJourney,rollHeroRevelation,serializeHeroJourney,updateHero
 import {updateSquadHpHud} from './squad-hp-hud.js?v=282';
 import {addBattleReport,normalizeBattleReport,renderBattleReport} from './battle-report.js?v=276';
 import {updateRescueAssistance,handleRescueAssistance} from './rescue-assistance.js?v=282';
-import { RESCUE_TIMEOUT, REVIVAL_COOLDOWN, revivalCooldownOf, revivalSkillCooldownLeft, normalizeRevivalSkill, headquartersRevivalPaused, rescueUnits, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, receiveTownCargo, leaveCivilianSpace, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, buildTransportRescueAssign, markSoldierDown, downCommander, commanderDown, updateNpcRescue, CIV_KINDS, isMedic, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST, medicHoldsByCommander, isMerchantCasualty } from './casualty-rules.js?v=274';
+import { RESCUE_TIMEOUT, REVIVAL_COOLDOWN, revivalCooldownOf, revivalSkillCooldownLeft, normalizeRevivalSkill, headquartersRevivalPaused, rescueUnits, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, receiveTownCargo, leaveCivilianSpace, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, buildTransportRescueAssign, markSoldierDown, downCommander, commanderDown, updateNpcRescue, CIV_KINDS, isMedic, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST, medicHoldsByCommander, isMerchantCasualty } from './casualty-rules.js?v=286';
 import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault, dungeonBlocks, dungeonSolids } from './dungeon.js?v=251';
 import {nearestDungeonFloor,dungeonSpawnPoint,dungeonSteeringTarget} from './dungeon-layout.js?v=182';
 import {normalizeDungeonExploration,updateDungeonSideChests,drawDungeonSideChests,updateDungeonRespawns,dungeonCoolingDown,recordDungeonClear,DUNGEON_RESET_PHASES} from './dungeon-exploration.js?v=264';
@@ -7374,7 +7374,7 @@ export const IronSquadGame = {
         if (!blocked(unit.x, unit.y)) { unit._openX = unit.x; unit._openY = unit.y; }
         return;
       }
-      settleUnit(unit, blocked);
+      settleUnit(unit, blocked, inside ? undefined : fieldRockExit);
     };
     apply(this.player, !!dungeon);
     for (const s of expeditionCombatUnits(this)) apply(s, !!(dungeon && inCurrentInstance(this, s)));

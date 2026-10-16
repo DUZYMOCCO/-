@@ -1,5 +1,5 @@
-import {WORLD_SIZE,biomeAt,fieldTerrainAt} from './world.js?v=281';
-import {WILDERNESS_ANCHORS} from './wilderness-layout.js?v=281';
+import {WORLD_SIZE,biomeAt,fieldTerrainAt} from './world.js?v=289';
+import {WILDERNESS_ANCHORS} from './wilderness-layout.js?v=289';
 import {encounterBand} from './biome-encounters.js?v=279';
 const C=WORLD_SIZE/2,TAU=Math.PI*2;
 export const WILDERNESS_RULES=Object.freeze({discovery:650,claim:110,guards:4,towerReveal:5000,blessingSeconds:180,attackBonus:.15});

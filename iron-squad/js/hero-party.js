@@ -4,7 +4,7 @@ import {attackCooldown} from './equipment-rules.js?v=273';
 import {migrateCampaignEnemy} from './campaign-scaling.js?v=241';
 import {HERO_RULES,heroRevelationPhase,heroMembers,heroSharesSpace,visibleHeroMembers} from './hero-rules.js?v=282';
 import {advanceHeroRoute,heroSegmentOpen,heroRouteCurrent} from './hero-navigation.js?v=277';
-import {WORLD_SIZE,settleUnit} from './world.js?v=281';
+import {WORLD_SIZE,settleUnit,fieldRockExit} from './world.js?v=289';
 import {DUNGEON_DEFS,dungeonBlocks} from './dungeon.js?v=251';
 import {nearestDungeonFloor} from './dungeon-layout.js?v=182';
 import {economicFieldBlocked} from './regional-economy.js?v=277';
@@ -13,7 +13,7 @@ import {persistentUnit} from './render-support.js';
 import {grantPersonalExp} from './experience-rules.js';
 import {formatDistance} from './distance-format.js';
 import {practiceAttribute} from './unit-attributes.js?v=274';
-import {isMedic,treatWounded,updateWounded,normalizeRevivalSkill,revivalSkillCooldownLeft} from './casualty-rules.js?v=274';
+import {isMedic,treatWounded,updateWounded,normalizeRevivalSkill,revivalSkillCooldownLeft} from './casualty-rules.js?v=286';
 import {healByMedic,healAmountFor} from './phase-rules.js?v=218';
 import {ensureMana,regenerateMana,spendMana,isMage} from './magic-rules.js?v=277';
 import {takeRangedShot,supplyLocation,ammoCapacity} from './supply-rules.js?v=282';
@@ -119,7 +119,7 @@ function move(game,ctx,u,target,dt) {
   const dx=goal.x-u.x,dy=goal.y-u.y,d=Math.hypot(dx,dy);if(d<4){u.vx=u.vy=0;return;}
   const step=Math.min(d,(u.speed||100)*dt),from={x:u.x,y:u.y},next={x:u.x+dx/d*step,y:u.y+dy/d*step};
   const blocked=ctx.currentDungeon?(x,y)=>dungeonBlocks(ctx.currentDungeon,x,y):(x,y)=>economicFieldBlocked(game,x,y);
-  if(ctx.currentDungeon||heroSegmentOpen(game,from,next)){u.x=next.x;u.y=next.y;settleUnit(u,blocked);}
+  if(ctx.currentDungeon||heroSegmentOpen(game,from,next)){u.x=next.x;u.y=next.y;settleUnit(u,blocked,ctx.currentDungeon?undefined:fieldRockExit);}
   else {
     const angle=Math.atan2(dy,dx);
     for(const offset of [.55,-.55,1.1,-1.1,Math.PI/2,-Math.PI/2]){

@@ -3,7 +3,7 @@
 > **距離の単位について（2026-10-09）**: 内部座標・定数の単位は cm（100単位 = 1m）。画面表示は `distance-format.js` が ÷100 して整数mへ換算する（速さは小数1桁 m/秒、武器の長さ・攻撃幅は小数2桁 m）。以下の文書内の「m」付き数値は内部単位の値をそのまま書いたもので、ゲーム内の表示は ÷100（例: 48,000 → 480m、8,000 → 80m）。
 
 **作成日時**: 2026年10月7日  
-**プロジェクトバージョン**: v1.24.0 (Service Worker: `mobile-game-studio-v61`)  
+**プロジェクトバージョン**: 現行 v7.0.8 (ゲームキャッシュ `game-iron-squad-v285`)。以下の本文は v1.24.0 / `mobile-game-studio-v61` 時点の旧記述（履歴）。最新は [CURRENT_WORK.md](CURRENT_WORK.md) と [SPEC_AND_HANDOVER.md](SPEC_AND_HANDOVER.md) を参照。  
 **対象AI**: grok (xAI) および後続開発エージェント  
 **リポジトリ**: `main` ブランチ運用中
 

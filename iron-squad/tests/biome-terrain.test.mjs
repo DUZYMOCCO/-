@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
 import {WorldTerrain,WORLD_SIZE,fieldTerrainAt,fieldSpeedFactor,fieldBlocks,biomeTerrainAllowed,biomeAt} from '../js/world.js';
-import {terrainCell,biomeKeyAt} from '../js/biome-terrain.js?v=278';
+import {terrainCell,biomeKeyAt} from '../js/biome-terrain.js?v=289';
 import {medicalPostLayout} from '../js/medical-posts.js';
 const C=WORLD_SIZE/2;
 assert.equal(biomeKeyAt(C+3199,C),'home');

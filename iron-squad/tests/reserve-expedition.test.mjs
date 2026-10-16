@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {JSDOM} from '../../__pycache__/ui-tools/node_modules/jsdom/lib/api.js';
 import {expeditionCandidates,expeditionMembers,activeExpeditionReserves,expeditionPlatoonId,isExpeditionReserve,clearExpeditionState} from '../js/expedition-rules.js?v=256';
 import {activeSquad} from '../js/instance-rules.js?v=256';
-import {rescueUnits,attachWounded,carrierOf,syncDragged,markSoldierDown,buildMedicRescueAssign,updateWounded} from '../js/casualty-rules.js?v=256';
+import {rescueUnits,attachWounded,carrierOf,syncDragged,markSoldierDown,buildMedicRescueAssign,updateWounded} from '../js/casualty-rules.js?v=286';
 import {FARM_X,FARM_Y,farmPosts} from '../js/reserve-farm.js';
 const dom=new JSDOM('<div id="game"></div>',{url:'http://localhost/'});Object.assign(globalThis,{window:dom.window,document:dom.window.document,localStorage:dom.window.localStorage,confirm:()=>true,alert:()=>{}});
 const noop=()=>{},ctx=new Proxy({measureText:()=>({width:40}),createLinearGradient:()=>({addColorStop:noop}),createRadialGradient:()=>({addColorStop:noop})},{get:(o,k)=>k in o?o[k]:noop});window.HTMLCanvasElement.prototype.getContext=()=>ctx;

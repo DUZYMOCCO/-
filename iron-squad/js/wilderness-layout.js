@@ -1,5 +1,5 @@
 // World-only anchors: both terrain workers and gameplay reserve the same plots.
-import {terrainHash} from './biome-terrain.js?v=278';
+import {terrainHash} from './biome-terrain.js?v=289';
 const C=79360,KINDS=['ruin','camp','shrine','tower'],anchors=[];
 for(const [region,bearing] of [['east',0],['south',Math.PI/2],['north',-Math.PI/2],['west',Math.PI]])for(let ring=0;ring<3;ring++)for(let k=0;k<4;k++){
  const a=bearing+[-24,-8,8,24][k]*Math.PI/180+(ring-1)*.035,r=[28000,43000,62000][ring]+(terrainHash(k+region.length,ring+11)-.5)*2400;

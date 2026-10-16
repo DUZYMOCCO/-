@@ -1,6 +1,6 @@
 // Quiet camp. Off-duty soldiers keep one seat instead of orbiting a moving slot.
 // The pose comes from the soldier id and is not written into the save.
-import { WORLD_SIZE, TAVERN_SITE } from './world.js?v=281';
+import { WORLD_SIZE, TAVERN_SITE } from './world.js?v=289';
 import { outerWallBuilt, insideOuterWall } from './hq-outer-wall.js?v=198';
 import { isSoldierOnExpedition,expeditionPlatoonId } from './expedition-rules.js?v=256';
 

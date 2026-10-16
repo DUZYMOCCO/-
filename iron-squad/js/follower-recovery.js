@@ -1,4 +1,4 @@
-import {WORLD_SIZE} from './world.js?v=281';
+import {WORLD_SIZE} from './world.js?v=289';
 import {economicFieldBlocked} from './regional-economy.js?v=277';
 import {hqFacilityBlocks} from './hq-facility-layout.js?v=201';
 import {dungeonSegmentOpen,explorationBlocks as dungeonBlocks} from './dungeon-layout.js?v=182';

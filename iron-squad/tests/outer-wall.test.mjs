@@ -8,7 +8,7 @@ const noop=()=>{},ctx=new Proxy({measureText:()=>({width:40}),createLinearGradie
 window.HTMLCanvasElement.prototype.getContext=()=>ctx;
 const {WORLD_SIZE,TAVERN_SITE,northSouthRoadX,eastWestRoadY,WorldTerrain}=await import('../js/world.js?v=198');
 const {OUTER_WALL,OUTER_GATES,OUTER_WALL_LEVEL,insideOuterWall}=await import('../js/hq-outer-wall.js?v=198');
-const {fieldWalls,wallBlocksAttack,resolveWallMovement,fieldWallContext,updateGateGuards,drawFortification}=await import('../js/gate-rules.js?v=198');
+const {fieldWalls,wallBlocksAttack,resolveWallMovement,fieldWallContext,updateGateGuards,drawFortification}=await import('../js/gate-rules.js?v=286');
 const {tradeSegmentOpen,refreshTradeRoutes}=await import('../js/trade-routes.js?v=198');
 const {advanceHeroRoute,heroSegmentOpen,heroRouteCurrent}=await import('../js/hero-navigation.js?v=198');
 const {gardenPoint,messPoint,refreshCampQuiet,assignCampSeats,GARDEN_SEAT_COUNT,YARD_SEAT_COUNT}=await import('../js/camp-leisure.js?v=198');

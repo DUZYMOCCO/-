@@ -1,9 +1,9 @@
 import {drawStoneFortification} from './fortification-visuals.js?v=242';
-import {WORLD_SIZE,fieldBlocks} from './world.js?v=281';
+import {WORLD_SIZE,fieldBlocks} from './world.js?v=289';
 import {dungeonBlocks} from './dungeon.js?v=251';
 import {inCurrentInstance} from './instance-rules.js?v=256';
-import {makeEscort,recalcEscortStats,updateEscortPatrol,npcSave,applyNpcSave} from './merchant-rules.js?v=282';
-import {rebuildMerchantCasualties,carrierOf,sanitizeCarriers} from './casualty-rules.js?v=274';
+import {makeEscort,recalcEscortStats,updateEscortPatrol,npcSave,applyNpcSave} from './merchant-rules.js?v=286';
+import {rebuildMerchantCasualties,carrierOf,sanitizeCarriers} from './casualty-rules.js?v=286';
 import {OUTER_WALL,OUTER_GATES,outerWallBuilt} from './hq-outer-wall.js?v=198';
 export {outerWallBuilt};
 const center=WORLD_SIZE/2;
@@ -64,7 +64,44 @@ export function attackBlocked(game,from,to) {
   }
   return false;
 }
-export function resolveWallMovement(game,actor,fromX,fromY,dt=1/60) {
+/** v7.0.9: a friendly AI that is refused by a wall now walks THROUGH the nearest gate (two legs: just before it, just past it)
+ *  instead of shuttling at the wall (AI step toward the goal vs. a one-frame detour step = trembling in place). */
+export const WALL_ROUTE={margin:28,reach:8,maxSeconds:8,lineEpsilon:.75,nudge:2.5};
+function startWallRoute(actor,gates,hit,fromX,fromY) {
+  const g=gates[0];if(!g)return false;
+  const a=hit.vertical?fromX:fromY,b=hit.vertical?actor.x:actor.y,low=a<hit.value||(a===hit.value&&b>=hit.value);
+  const near=hit.value+(low?-WALL_ROUTE.margin:WALL_ROUTE.margin),far=hit.value+(low?WALL_ROUTE.margin:-WALL_ROUTE.margin);
+  const leg=v=>hit.vertical?{x:v,y:g.y}:{x:g.x,y:v};
+  actor._wallRoute={legs:[leg(near),leg(far)],i:0,t:0};return true;
+}
+/** One step of an active route from last frame's settled position. Returns true while the route still owns the actor. */
+function stepWallRoute(actor,fromX,fromY,dt) {
+  const r=actor._wallRoute;if(!r)return false;
+  r.t+=dt;const last=r.legs[r.legs.length-1];
+  if(r.t>WALL_ROUTE.maxSeconds){actor.x=last.x;actor.y=last.y;delete actor._wallRoute;return false;} // rescue: never stay stuck
+  let leg=r.legs[r.i],d=Math.hypot(leg.x-fromX,leg.y-fromY);
+  if(d<=WALL_ROUTE.reach&&r.i<r.legs.length-1){r.i++;leg=r.legs[r.i];d=Math.hypot(leg.x-fromX,leg.y-fromY);}
+  if(d<=WALL_ROUTE.reach){actor.x=leg.x;actor.y=leg.y;delete actor._wallRoute;return false;}
+  const step=Math.min(d,Math.max(actor.speed||70,60)*dt);
+  actor.x=fromX+(leg.x-fromX)/d*step;actor.y=fromY+(leg.y-fromY)/d*step;
+  actor.vx=(leg.x-fromX)/d;actor.vy=(leg.y-fromY)/d;actor.facingAngle=Math.atan2(leg.y-fromY,leg.x-fromX);return true;
+}
+/** A friendly standing exactly on a wall line (outside any gate) cannot plan a path (every link "crosses" the wall): step it off the line. */
+function nudgeOffWallLine(game,actor,fromX,fromY) {
+  for(const w of fieldWalls(game)){
+    for(const [value,vertical,low,high,side] of [[w.left,true,w.top,w.bottom,'west'],[w.right,true,w.top,w.bottom,'east'],[w.top,false,w.left,w.right,'north'],[w.bottom,false,w.left,w.right,'south']]){
+      const c=vertical?actor.x:actor.y,along=vertical?actor.y:actor.x;
+      if(Math.abs(c-value)>=WALL_ROUTE.lineEpsilon||along<low||along>high)continue;
+      if(gatePositions(w).some(g=>Math.abs(along-(vertical?g.y:g.x))<(g.half||GATE_HALF_WIDTH)-Math.min(24,actor.radius||10)&&g.side===side))continue;
+      const prev=vertical?fromX:fromY,inside=((vertical?w.cx:w.cy)>value?1:-1);
+      const dir=Math.abs(prev-value)>=WALL_ROUTE.lineEpsilon?(prev>value?1:-1):inside;
+      if(vertical)actor.x=value+dir*WALL_ROUTE.nudge;else actor.y=value+dir*WALL_ROUTE.nudge;
+      return true;
+    }
+  }
+  return false;
+}
+export function resolveWallMovement(game,actor,fromX,fromY,dt=1/60,{route=false}={}) {
   const walls=fieldWalls(game);if(!walls.length||actor.isDown||actor.carrierId)return false;
   if(game?.passesWalls?.(actor))return false;
   const from={x:fromX,y:fromY};let hit=null,w=null;
@@ -73,6 +110,7 @@ export function resolveWallMovement(game,actor,fromX,fromY,dt=1/60) {
   if(actor===game.player){const fraction=Math.max(0,hit.t-.005);actor.x=fromX+(actor.x-fromX)*fraction;actor.y=fromY+(actor.y-fromY)*fraction;return true;}
   // AI takes a short detour to the nearest opening instead of piling up at a wall.
   const gates=gatePositions(w).filter(g=>g.side===hit.side).sort((a,b)=>Math.hypot(a.x-fromX,a.y-fromY)-Math.hypot(b.x-fromX,b.y-fromY));
+  if(route&&startWallRoute(actor,gates,hit,fromX,fromY))return stepWallRoute(actor,fromX,fromY,dt)||true;
   const waypoint={...gates[0]},vertical=hit.vertical,origin=vertical?fromX:fromY,sign=origin<hit.value?-1:1;
   if(vertical)waypoint.x+=sign*28;else waypoint.y+=sign*28;
   const dx=waypoint.x-fromX,dy=waypoint.y-fromY,d=Math.hypot(dx,dy),step=Math.min(d,(actor.speed||70)*dt);
@@ -80,8 +118,14 @@ export function resolveWallMovement(game,actor,fromX,fromY,dt=1/60) {
 }
 export function applyFortifications(game,dt) {
   const actors=[game.player,...(game.squad||[]).filter(s=>!game.currentDungeon||s.isPersonalGuard),...(game.monsters||[]),...(game.gateGuards||[]).filter(g=>gateGuardVisible(game,g)),...(game.merchants||[]).flatMap(m=>!game.currentDungeon?[m,...(m.escorts||[])]:[])];
+  const hostile=new Set(game.monsters||[]);
   for(const u of actors){if(!u||u.dead)continue;const space=game.currentDungeon?.id||'field';
-    if(u._wallSpace===space&&Number.isFinite(u._wallX)&&Math.hypot(u.x-u._wallX,u.y-u._wallY)<Math.max(180,(u.speed||100)*dt*3))resolveWallMovement(game,u,u._wallX,u._wallY,dt);
+    const friendly=u!==game.player&&!hostile.has(u)&&!u.isDown&&!u.carrierId;
+    const settled=u._wallSpace===space&&Number.isFinite(u._wallX)&&Math.hypot(u.x-u._wallX,u.y-u._wallY)<Math.max(180,(u.speed||100)*dt*3);
+    if(u._wallRoute&&(!friendly||!settled||game.passesWalls?.(u)))delete u._wallRoute;
+    if(u._wallRoute){stepWallRoute(u,u._wallX,u._wallY,dt);u._wallSpace=space;u._wallX=u.x;u._wallY=u.y;continue;}
+    if(settled)resolveWallMovement(game,u,u._wallX,u._wallY,dt,{route:friendly});
+    if(friendly&&!u._wallRoute)nudgeOffWallLine(game,u,u._wallX,u._wallY);
     u._wallSpace=space;u._wallX=u.x;u._wallY=u.y;
   }
 }

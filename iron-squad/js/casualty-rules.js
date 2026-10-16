@@ -244,6 +244,64 @@ export function markSoldierDown(game, soldier, opts = {}) {
   return true;
 }
 
+/** v7.0.9: rescued traders/escorts rest at the NEAREST medical post (not the HQ), at most capPerPost people per post, and leave after `phases` phases. */
+export const MERCHANT_REST=Object.freeze({phases:2,capPerPost:6,walkMax:1500});
+const restingAt=(game,post,except=null)=>{
+  const out=[];
+  for(const m of game.merchants||[])for(const u of [m,...(m.escorts||[])])if(u!==except&&!u.isGateGuard&&u.restPostId===post.id)out.push(u);
+  return out;
+};
+const clearRest=u=>{delete u.restPostId;delete u.restPostName;delete u.restSlot;delete u.restSince;delete u.restUntilPhase;u.rescuedToBase=false;u.returningToBase=false;};
+/** The rest period is over (or the post is full): the person leaves the post and is back at the original camp/inn. */
+export function departFromRest(game,unit) {
+  if(!unit||unit.isGateGuard)return false;
+  const owner=unit.isMerchant?unit:(game._merchantById?.get?.(unit.merchantId)||(game.merchants||[]).find(m=>m.id===unit.merchantId));
+  clearRest(unit);unit.vx=unit.vy=0;
+  if(unit.isMerchant){
+    if(Number.isFinite(unit.originX)&&Number.isFinite(unit.originY)){unit.x=unit.originX;unit.y=unit.originY;}
+    unit.homeX=unit.x;unit.homeY=unit.y;if(unit.basePlaceName)unit.placeName=unit.basePlaceName;
+    for(const e of unit.escorts||[])if(!e.isGateGuard&&!e.dead&&!e.isDown){clearRest(e);e.x=unit.x+Math.cos(e.facingAngle||0)*42;e.y=unit.y+Math.sin(e.facingAngle||0)*42;e.homeX=unit.x;e.homeY=unit.y;}
+  } else if(owner){
+    const angle=(String(unit.id).endsWith('_1')?Math.PI:0)+.4;unit.x=owner.x+Math.cos(angle)*42;unit.y=owner.y+Math.sin(angle)*42;unit.homeX=owner.homeX??owner.x;unit.homeY=owner.homeY??owner.y;
+  }
+  return true;
+}
+function assignMerchantRest(game,wounded,station) {
+  const post=nearest(game.medicalPosts||[],wounded),phase=game.phase||game.wave||1;
+  if(!post) {
+    // No medical posts exist (older fixtures): keep the former HQ resting ring.
+    if(!wounded.rescuedToBase) {
+      let slot=0;
+      for(const merchant of game.merchants||[])for(const unit of [merchant,...(merchant.escorts||[])])if(unit!==wounded&&unit.rescuedToBase)slot++;
+      slot+=(game.gateGuards||[]).filter(g=>g!==wounded&&g.rescuedToBase).length;
+      const angle=slot*2.399963229728653,radius=Math.min(115,60+18*Math.sqrt(slot));
+      wounded.homeX=WORLD_SIZE/2+Math.cos(angle)*radius;
+      wounded.homeY=WORLD_SIZE/2+Math.sin(angle)*radius;
+    }
+    wounded.rescuedToBase=true;
+    if(['medical','town'].includes(station?.kind)){wounded.x=wounded.homeX;wounded.y=wounded.homeY;}
+    wounded.returningToBase=Math.hypot(wounded.x-wounded.homeX,wounded.y-wounded.homeY)>4;
+    if(wounded.isMerchant)wounded.placeName='本陣・救助した商人';
+    return;
+  }
+  let here=restingAt(game,post,wounded);
+  while(here.length>=MERCHANT_REST.capPerPost){ // a full post sends away whoever has stayed longest
+    here.sort((a,b)=>(a.restSince||0)-(b.restSince||0));departFromRest(game,here[0]);here=restingAt(game,post,wounded);
+  }
+  const taken=new Set(here.map(u=>u.restSlot));let slot=0;while(taken.has(slot))slot++;
+  const angle=slot*2.399963229728653,radius=Math.min(120,60+18*Math.sqrt(slot));
+  wounded.restPostId=post.id;wounded.restPostName=post.name;wounded.restSlot=slot;wounded.restSince=phase;wounded.restUntilPhase=phase+MERCHANT_REST.phases;
+  wounded.homeX=post.x+Math.cos(angle)*radius;wounded.homeY=post.y+Math.sin(angle)*radius;
+  wounded.rescuedToBase=true;
+  // Carried in: appear at the post. Revived in the field: walk there when it is near, otherwise hop.
+  if(station||Math.hypot(wounded.x-wounded.homeX,wounded.y-wounded.homeY)>MERCHANT_REST.walkMax){wounded.x=wounded.homeX;wounded.y=wounded.homeY;}
+  wounded.returningToBase=Math.hypot(wounded.x-wounded.homeX,wounded.y-wounded.homeY)>4;
+  if(wounded.isMerchant){
+    wounded.placeName=`${post.name}・救助した商人`;
+    // Healthy guards who were not hurt travel with their trader.
+    (wounded.escorts||[]).forEach((e,i)=>{if(!e.isGateGuard&&!e.dead&&!e.isDown&&!e.restPostId){const a=(i?Math.PI:0)+.4;e.x=wounded.homeX+Math.cos(a)*42;e.y=wounded.homeY+Math.sin(a)*42;}});
+  }
+}
 function revive(game,wounded,hp,options=null) {
   if(!wounded?.isDown||wounded.dead||wounded.dying)return false;
   const caster=options?.method==='MEDIC'?options.medic:null;
@@ -264,22 +322,10 @@ function revive(game,wounded,hp,options=null) {
   }
   if(isMerchantCasualty(wounded)) {
     if(wounded.isGateGuard) {
-      // Recovered guards return to their assigned gates; traders rest at HQ.
+      // Recovered guards return to their assigned gates; traders rest at the nearest medical post for a while.
       game.onGateGuardRevived?.(wounded);
     } else {
-      if(!wounded.rescuedToBase) {
-        // Separate resting spots keep rescued traders individually approachable.
-        let slot=0;
-        for(const merchant of game.merchants||[])for(const unit of [merchant,...(merchant.escorts||[])])if(unit!==wounded&&unit.rescuedToBase)slot++;
-        slot+=(game.gateGuards||[]).filter(g=>g!==wounded&&g.rescuedToBase).length;
-        const angle=slot*2.399963229728653,radius=Math.min(115,60+18*Math.sqrt(slot));
-        wounded.homeX=WORLD_SIZE/2+Math.cos(angle)*radius;
-        wounded.homeY=WORLD_SIZE/2+Math.sin(angle)*radius;
-      }
-      wounded.rescuedToBase=true;
-      if(['medical','town'].includes(options?.station?.kind)){wounded.x=wounded.homeX;wounded.y=wounded.homeY;}
-      wounded.returningToBase=Math.hypot(wounded.x-wounded.homeX,wounded.y-wounded.homeY)>4;
-      if(wounded.isMerchant)wounded.placeName='本陣・救助した商人';
+      assignMerchantRest(game,wounded,options?.station);
     }
     game._merchantWounded=(game._merchantWounded||[]).filter(unit=>unit!==wounded);
   }
@@ -676,23 +722,40 @@ export function buildTransportRescueAssign(game,pool=expeditionCombatUnits(game)
   }
   return assigned;
 }
+/** v7.0.9: a transporting soldier that makes no real progress toward its patient/station (wall, terrain block, crowd) is carried past the snag. */
+export const TRANSPORT_STALL=Object.freeze({seconds:3,progress:30,minDistance:4,jump:160,landing:2});
+export function rescueStalledTransport(soldier,destination,dt) {
+  const d=Math.hypot(destination.x-soldier.x,destination.y-soldier.y),key=destination.id??`${Math.round(destination.x)},${Math.round(destination.y)}`;
+  let s=soldier._transportStall;
+  if(!s||s.key!==key){s=soldier._transportStall={key,best:d,t:0,n:0,idle:0};return false;}
+  if(d<=TRANSPORT_STALL.minDistance){s.best=d;s.t=0;s.n=0;return false;}
+  if(d<s.best-TRANSPORT_STALL.progress){s.best=d;s.t=0;s.idle=0;return false;}
+  s.t+=dt;if(s.t<TRANSPORT_STALL.seconds)return false;
+  // First rescue hops forward; a repeat within the same trip lands beside the destination itself.
+  s.n++;const hop=s.n>=2?d-TRANSPORT_STALL.landing:Math.min(TRANSPORT_STALL.jump,d-TRANSPORT_STALL.landing);
+  soldier.x+=(destination.x-soldier.x)/d*hop;soldier.y+=(destination.y-soldier.y)/d*hop;
+  // The jump is accepted by walls and terrain: forget the pre-jump position and any half-finished wall route; terrain then pushes a blocked landing to open ground.
+  delete soldier._wallRoute;soldier._wallX=soldier.x;soldier._wallY=soldier.y;soldier._openX=soldier.x;soldier._openY=soldier.y;delete soldier._hqDetouring;
+  s.best=d-hop;s.t=0;soldier.vx=soldier.vy=0;return true;
+}
 export function handleTransportAI(game,soldier,dt,assignments=null) {
-  if(soldier.dead||soldier.isDown)return false;
+  if(soldier.dead||soldier.isDown){delete soldier._transportStall;return false;}
   const carried=carriedSoldiers(game,soldier);
   // Medics treat in place; everyone else collects nearby casualties and returns to aid.
   const chosen=(assignments||buildTransportRescueAssign(game,expeditionCombatUnits(game).includes(soldier)?expeditionCombatUnits(game):[...expeditionCombatUnits(game),soldier])).get(soldier);
   const candidate=chosen?.isDown&&!chosen.dead&&!chosen.carrierId?chosen:null;
-  if(candidate&&attachWounded(game,soldier,candidate))return true;
+  if(candidate&&attachWounded(game,soldier,candidate)){delete soldier._transportStall;return true;}
   // 隊長を運ぶ場合：到達可能な衛生術士がいればその最寄りへ、いなければ町・本陣・救護所へ。
   const healer=!candidate&&carried.length&&(carried.includes(game.player)||headquartersRevivalPaused(game))?expeditionCombatUnits(game).filter(h=>h!==soldier&&isMedic(h)&&!h.dead&&!h.isDown&&h.hp>0&&revivalSkillCooldownLeft(game,h)<=.000001&&medicHasStamina(h,MEDIC_TREAT_MIN)&&isLocalRescueUnit(game,h)===isLocalRescueUnit(game,soldier)).sort((a,b)=>Math.hypot(a.x-soldier.x,a.y-soldier.y)-Math.hypot(b.x-soldier.x,b.y-soldier.y))[0]:null;
   // 自部隊に衛生職がいる間は搬送せず、牽引したまま隊長のそばで待つ（CT明けに衛生職が蘇生）。
   if(!candidate&&!healer&&carried.length&&!carried.includes(game.player)&&waitsForPartyMedic(game,soldier)){
-    const p=game.player,dx=p.x-soldier.x,dy=p.y-soldier.y,d=Math.hypot(dx,dy);
+    delete soldier._transportStall;const p=game.player,dx=p.x-soldier.x,dy=p.y-soldier.y,d=Math.hypot(dx,dy);
     if(d>PARTY_STAY_RADIUS){const step=Math.min(d-PARTY_STAY_RADIUS+4,(soldier.speed||80)*(d>140?1.6:transportSpeedFactor(game,soldier))*dt);soldier.x+=dx/d*step;soldier.y+=dy/d*step;soldier.vx=dx/d;soldier.vy=dy/d;soldier.facingAngle=Math.atan2(dy,dx);}
     return true;
   }
   const destination=candidate || healer || (carried.length?nearest(casualtyStations(game,carried.some(isMerchantCasualty)?carried.find(isMerchantCasualty):soldier).filter(p=>(p.kind!=='medical'||p.discovered)&&stationKnown(game,p)&&(p.kind!=='base'||!headquartersRevivalPaused(game))),soldier):null);
-  if(!destination)return false;
+  if(!destination){delete soldier._transportStall;return false;}
+  if(rescueStalledTransport(soldier,destination,dt))return true;
   const goal=game.dungeonMoveTarget?.(soldier,destination)||destination;
   const dx=goal.x-soldier.x,dy=goal.y-soldier.y,d=Math.hypot(dx,dy);
   if(d>1){const step=Math.min(d,(soldier.speed||80)*transportSpeedFactor(game,soldier)*dt);soldier.x+=dx/d*step;soldier.y+=dy/d*step;soldier.vx=dx/d;soldier.vy=dy/d;soldier.facingAngle=Math.atan2(dy,dx);}

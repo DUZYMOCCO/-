@@ -1,4 +1,4 @@
-import {WORLD_SIZE,SETTLEMENTS,eastWestRoadY,northSouthRoadX,riverCenterY} from './world.js?v=281';
+import {WORLD_SIZE,SETTLEMENTS,eastWestRoadY,northSouthRoadX,riverCenterY} from './world.js?v=289';
 
 export const MEDICAL_CASTLE_EXCLUSION=32000;
 export const MEDICAL_DISCOVERY_RADIUS=650;

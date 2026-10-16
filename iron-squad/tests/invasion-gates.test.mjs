@@ -4,7 +4,7 @@ import {resolve} from 'node:path';
 import {JSDOM} from '../../__pycache__/ui-tools/node_modules/jsdom/lib/api.js';
 import {WORLD_SIZE} from '../js/world.js';
 import {invasionStrength,shouldTriggerRandomRaid,serializeInvasions,drawInvasionRoute} from '../js/invasion-rules.js?v=139';
-import {wallGeometry,gatePositions,resolveWallMovement,drawFortification,updateGateGuards,serializeGateGuards,townExitReached} from '../js/gate-rules.js?v=139';
+import {wallGeometry,gatePositions,resolveWallMovement,drawFortification,updateGateGuards,serializeGateGuards,townExitReached} from '../js/gate-rules.js?v=286';
 import {markSoldierDown,updateWounded,syncDragged,rescueUnits} from '../js/casualty-rules.js';
 const dom=new JSDOM('<div id="game"></div>',{url:'http://localhost/'});Object.assign(globalThis,{window:dom.window,document:dom.window.document,localStorage:dom.window.localStorage,confirm:()=>true,alert:()=>{}});
 const noop=()=>{},context=new Proxy({measureText:()=>({width:40}),createLinearGradient:()=>({addColorStop:noop}),createRadialGradient:()=>({addColorStop:noop})},{get:(o,k)=>k in o?o[k]:noop});window.HTMLCanvasElement.prototype.getContext=()=>context;

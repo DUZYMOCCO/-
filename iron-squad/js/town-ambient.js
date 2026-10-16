@@ -1,4 +1,4 @@
-import {WORLD_SIZE,TAVERN_SITE,SETTLEMENTS,fieldBlocks} from './world.js?v=281';
+import {WORLD_SIZE,TAVERN_SITE,SETTLEMENTS,fieldBlocks} from './world.js?v=289';
 import {economicFieldBlocked} from './regional-economy.js?v=277';
 import {headquartersBuildingBlocks} from './hq-facilities.js?v=277';
 import {farmPosts,FARM_X,FARM_Y} from './reserve-farm.js?v=277';
