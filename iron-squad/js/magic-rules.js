@@ -13,6 +13,9 @@ import {numberClassDefinitions} from './class-up-rules.js?v=185';
 
 export const MAGE_IDS=['MAGE','ARCHMAGE','ELEMENTAL_SAGE','ARCANE_SOVEREIGN'];
 const MEDIC_IDS=['MEDIC','HIGH_PRIEST','SAINT','ARCHANGEL'];
+// v7.0.19: mages (all four tiers) have 0.8x max HP. Applied once to the final multiplied HP in recalcSoldierStats (medics are not affected).
+export const MAGE_HP_MULT=0.8;
+export const classHpScale=id=>MAGE_IDS.includes(id)?MAGE_HP_MULT:1;
 export const isMage=u=>MAGE_IDS.includes(u?.combatClass||u?.soldierClass);
 // Muscle identity survives weapon changes and changes in attack/magic bonuses.
 export const canMeditate=u=>isMage(u)&&!isMuscleCaster(u)&&!prefersCasterMelee(u);
@@ -29,8 +32,8 @@ export const MAGIC_AFFINITIES=Object.freeze({
   explosion:{name:'爆発',color:'#ab8175',damage:4.2,radius:84,cost:26,cooldown:2.7}
 });
 export const MAGIC_CLASSES=numberClassDefinitions({
-  MAGE:{id:'MAGE',classTier:0,name:'魔法使い',icon:'🔮',color:'#ab9ac5',range:260,speed:92,atkCooldown:2.1,bonusHp:-25,bonusAtk:18,advancedClassId:'ARCHMAGE',desc:'高威力の範囲魔法。脆く、MP不足時は瞑想する。得意属性は各自異なる'},
-  ARCHMAGE:{id:'ARCHMAGE',classTier:1,baseClassId:'MAGE',isAdvanced:true,name:'大魔導士',icon:'🔮',color:'#a592c5',range:290,speed:98,atkCooldown:1.9,bonusHp:10,bonusAtk:40,atkMultBonus:.35,advancedClassId:'ELEMENTAL_SAGE',tag:'大魔導士',desc:'魔力上限と魔法の威力・範囲が成長。装甲は薄い'},
+  MAGE:{id:'MAGE',classTier:0,name:'魔法使い',icon:'🔮',color:'#ab9ac5',range:260,speed:92,atkCooldown:2.1,bonusHp:-25,bonusAtk:18,advancedClassId:'ARCHMAGE',desc:'高威力の範囲魔法。脆く（最大HP×0.8）、MP不足時は瞑想する。得意属性は各自異なる'},
+  ARCHMAGE:{id:'ARCHMAGE',classTier:1,baseClassId:'MAGE',isAdvanced:true,name:'大魔導士',icon:'🔮',color:'#a592c5',range:290,speed:98,atkCooldown:1.9,bonusHp:10,bonusAtk:40,atkMultBonus:.35,advancedClassId:'ELEMENTAL_SAGE',tag:'大魔導士',desc:'魔力上限と魔法の威力・範囲が成長。装甲は薄く、最大HPも低い'},
   ELEMENTAL_SAGE:{id:'ELEMENTAL_SAGE',classTier:2,baseClassId:'MAGE',isAdvanced:true,isMaster:true,name:'元素賢者',icon:'🔮',color:'#9b8aba',range:320,speed:102,atkCooldown:1.8,bonusHp:50,bonusAtk:65,atkMultBonus:.6,advancedClassId:'ARCANE_SOVEREIGN',tag:'元素賢者',desc:'得意属性を磨いた極職。魔力消耗と脆さは残る'},
   ARCANE_SOVEREIGN:{id:'ARCANE_SOVEREIGN',classTier:3,baseClassId:'MAGE',isAdvanced:true,isLegendary:true,name:'秘術王',icon:'🔮',color:'#b5a6d0',range:350,speed:108,atkCooldown:1.6,bonusHp:90,bonusAtk:100,atkMultBonus:.9,tag:'秘術王',desc:'広範囲を制圧する伝説の術者。MP切れでは無防備'}
 });

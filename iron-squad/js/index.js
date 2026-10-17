@@ -85,7 +85,7 @@ import { soldierDialogue } from './soldier-dialogue.js?v=295';
 import { generateSoldierName, migrateSoldierName, rollGenderByKey, isGenderId, ensureSoldierGender, genderLabel } from './soldier-names.js?v=210';
 import { openCommanderEditor } from './commander-editor.js?v=295';
 import { applyCommanderIdentity, normalizeCommanderIdentity, commanderFullName, GENDERS as COMMANDER_GENDERS } from './commander-identity.js?v=295';
-import {MAGIC_CLASSES,MAGIC_AFFINITIES,magicMethods,isMage,isMagicUser,ensureMana,initializeMagic,updateMagic,distributeMagicStones,castMedicBuff,castCasterStrength,updateMageAI,drawMagicBursts,spendMana,weaponMagicDamage,isPlayerCaster,castPlayerSpell,PLAYER_MAGIC_RULES} from './magic-rules.js?v=295';
+import {MAGIC_CLASSES,MAGIC_AFFINITIES,classHpScale,magicMethods,isMage,isMagicUser,ensureMana,initializeMagic,updateMagic,distributeMagicStones,castMedicBuff,castCasterStrength,updateMageAI,drawMagicBursts,spendMana,weaponMagicDamage,isPlayerCaster,castPlayerSpell,PLAYER_MAGIC_RULES} from './magic-rules.js?v=296';
 import {hazardMethods,updateHazards,drawHazards} from './hazard-fields.js?v=277';
 import {strongEnemyReward} from './combat-rewards.js?v=182';
 import {supplyMethods, initializeSupplies, updateSupplies, takeRangedShot, ammoCombatProfile, isRangedUnit, distributeAmmo, preventLethalHit, normalizeFieldSave, SQUAD_POTION_COST, REVIVAL_POTION_COST, REVIVAL_POTION_MAX, SQUAD_POTION_MAX, ensureAmmo, ammoCapacity, recalcAmmoCapacity, RANGED_DAMAGE_MULT, supplyLocation} from './supply-rules.js?v=295';
@@ -3351,7 +3351,7 @@ export const IronSquadGame = {
     const oldMaxHp = s.maxHp || 70;
     const baseCalcHp = (70 + (cls.bonusHp || 0) + levelGrowthSteps(lv) * 8 + waves * 14 + minionHp + bossHp + honorHp + vetHp + equipHp);
     // 被弾鍛錬は絶対値。全倍率の後に足すので再度掛け算されない（旧割合セーブは一度だけ換算）
-    const multipliedHp = Math.floor(baseCalcHp * (talent.hpMult || 1.0) * deathlineHpMult * classHpMult * honorMult * vetMult);
+    const multipliedHp = Math.floor(baseCalcHp * (talent.hpMult || 1.0) * deathlineHpMult * classHpMult * honorMult * vetMult * classHpScale(clsKey));
     const baseCalcDef = (cls.bonusDef || 0) + honorDef + vetDef + equipDef + levelDefenseGrowth(lv,.5);
     const multipliedDef = Math.floor(baseCalcDef * deathlineDefMult * classDefMult * honorMult * vetMult);
     migrateHitGrowth(s, multipliedHp, multipliedDef, isHeavyFamily);

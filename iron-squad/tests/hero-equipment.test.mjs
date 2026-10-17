@@ -18,7 +18,8 @@ game.activeSlotId=saveSlots.create('勇者装備検証').id;game.startFreshGame(
 const p=game.heroJourney.party,armyBefore=JSON.stringify(game.squad);
 assert.ok(p.members.every(u=>u.heroEquipmentVersion===HERO_EQUIPMENT_RULES.version));
 assert.ok(p.members.every(u=>Object.values(u.equipped).filter(Boolean).every(i=>i.heroOnly)));
-assert.ok(p.members.every(u=>u.level===1&&u.maxHp>7000&&u.def>5000));
+// v7.0.19: the hero party's mage has 0.8x max HP like every mage (7545 -> 6036)
+assert.ok(p.members.every(u=>u.level===1&&u.maxHp>7000*(u.soldierClass==='MAGE'?.8:1)&&u.def>5000));
 assert.equal(p.members[0].equipped.weapon.weaponStyle,'sword');
 assert.equal(p.members.find(u=>u.soldierClass==='ARCHER').equipped.weapon.weaponStyle,'bow');
 assert.equal(p.members.find(u=>u.soldierClass==='MEDIC').equipped.weapon.weaponStyle,'staff');
