@@ -2,7 +2,7 @@
  * さんすうシューター ランナー物理＆判定エンジン
  */
 
-import { applyGate, isGoodGate, UPGRADES } from './rules.js?v=2';
+import { applyGate, isGoodGate, UPGRADES, SPEEDS, DEFAULT_SPEED, START_DELAY } from './rules.js?v=3';
 
 export class RunnerEngine {
   constructor(course, saveData) {
@@ -13,7 +13,9 @@ export class RunnerEngine {
     this.playerX = 0; // -0.85 〜 +0.85
     this.targetX = 0;
     this.dist = 0; // 前進距離
-    this.speed = 260; // px/sec
+    this.speed = (SPEEDS[saveData.speed] || SPEEDS[DEFAULT_SPEED]).speed; // px/sec（おみせの「はやさ」で かわる）
+    this.delay = START_DELAY; // はじまって すこしは とまって いる
+    this.time = 0;
 
     this.bulletCount = UPGRADES.startCount.calcValue(saveData.upgrades.startCount);
     this.fireInterval = UPGRADES.fireRate.calcValue(saveData.upgrades.fireRate);
@@ -42,7 +44,9 @@ export class RunnerEngine {
     this.playerX += (this.targetX - this.playerX) * Math.min(1.0, dt * 15);
 
     // 前進
-    this.dist += this.speed * dt;
+    this.time += dt;
+    if (this.delay > 0) this.delay -= dt;
+    else this.dist += this.speed * dt;
 
     // 射撃処理
     this.shootTimer -= dt;
@@ -103,7 +107,7 @@ export class RunnerEngine {
             this.addSparks(el.laneNorm, el.y);
             if (el.hp <= 0) {
               el.destroyed = true;
-              const coins = 3 + Math.floor(el.maxHp / 5);
+              const coins = 3 + Math.floor(el.maxHp / (5 * (this.course.hpMul || 1)));
               this.earnedCoins += coins;
               this.addExplosion(el.laneNorm, el.y, '#3b82f6');
               if (onEvent) onEvent('destroy-block', { coins });

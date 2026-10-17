@@ -55,6 +55,27 @@ export function isGoodGate(gate) {
   return gate.type === GATE_TYPES.ADD || gate.type === GATE_TYPES.MUL;
 }
 
+/**
+ * v1.1.0 すすむ はやさ（7さいでも けいさん できるように ゆっくり）。
+ * speed = まえへ すすむ px/びょう、gateGap = ゲートの かんかく(px)。
+ * むかしは 260px/びょう・400px（ゲートまで 1.5びょう）。ゆっくり は 120px・520px（4.3びょう）。
+ * ゆっくり だと ブロックを うつ じかんが のびるので、ブロックと かべの HP も ぶん ふやす（hpMul）。
+ */
+export const SPEEDS = {
+  slow:   { label: 'ゆっくり', icon: '🐢', speed: 120, gateGap: 520, hpMul: 2 },
+  normal: { label: 'ふつう',   icon: '🚶', speed: 170, gateGap: 460, hpMul: 1.5 },
+  fast:   { label: 'はやい',   icon: '🐇', speed: 260, gateGap: 400, hpMul: 1 },
+};
+export const DEFAULT_SPEED = 'slow';
+export const START_DELAY = 1.2; // はじまって すぐは すすまない（ゲートを よむ じかん）
+
+/** ステージごとの けしき（3しゅるい ぐるぐる） */
+export const THEMES = ['meadow', 'desert', 'space'];
+export function stageTheme(stageNum) {
+  const n = Math.max(1, Math.floor(Number(stageNum) || 1));
+  return THEMES[(n - 1) % THEMES.length];
+}
+
 export const UPGRADES = {
   startCount: {
     name: 'スタートだんすう',
@@ -92,6 +113,7 @@ export function defaultSaveData() {
   return {
     coins: 0,
     stage: 1,
+    speed: DEFAULT_SPEED,
     upgrades: {
       startCount: 1,
       fireRate: 1,
@@ -106,6 +128,7 @@ export function normalizeSave(data) {
   return {
     coins: typeof data.coins === 'number' && data.coins >= 0 ? Math.floor(data.coins) : 0,
     stage: typeof data.stage === 'number' && data.stage >= 1 ? Math.floor(data.stage) : 1,
+    speed: SPEEDS[data.speed] ? data.speed : DEFAULT_SPEED,
     upgrades: {
       startCount: Math.min(UPGRADES.startCount.maxLevel, Math.max(1, data.upgrades?.startCount || 1)),
       fireRate: Math.min(UPGRADES.fireRate.maxLevel, Math.max(1, data.upgrades?.fireRate || 1)),
@@ -117,12 +140,13 @@ export function normalizeSave(data) {
 /**
  * ステージコースの生成
  */
-export function generateStageCourse(stageNum) {
-  const courseLength = 2400 + Math.min(1600, stageNum * 200);
+export function generateStageCourse(stageNum, speedKey = DEFAULT_SPEED) {
+  const sp = SPEEDS[speedKey] || SPEEDS[DEFAULT_SPEED];
+  const courseLength = Math.round((2400 + Math.min(1600, stageNum * 200)) * sp.gateGap / 400); // ゲートの かずが かわらない ように
   const elements = [];
 
   // ゲートペアの配置（約350pxごと）
-  const gateInterval = 400;
+  const gateInterval = sp.gateGap;
   let currentY = 500;
 
   while (currentY < courseLength - 600) {
@@ -155,9 +179,9 @@ export function generateStageCourse(stageNum) {
     });
 
     // ゲートの間にブロック群を配置
-    const blockY = currentY + 180;
+    const blockY = currentY + Math.round(sp.gateGap * 0.45);
     const numBlocks = Math.random() < 0.5 ? 2 : 3;
-    const hpBase = 10 + stageNum * 8;
+    const hpBase = (10 + stageNum * 8) * sp.hpMul;
 
     for (let i = 0; i < numBlocks; i++) {
       const lane = numBlocks === 2 ? (i === 0 ? -0.4 : 0.4) : (i - 1) * 0.6;
@@ -187,12 +211,15 @@ export function generateStageCourse(stageNum) {
     type: 'WALL',
     y: finishY + 100 + idx * 120,
     mult: mul,
-    hp: 40 + idx * 60 + stageNum * 30,
-    maxHp: 40 + idx * 60 + stageNum * 30,
+    hp: Math.round((40 + idx * 60 + stageNum * 30) * sp.hpMul),
+    maxHp: Math.round((40 + idx * 60 + stageNum * 30) * sp.hpMul),
     destroyed: false,
   }));
 
   return {
+    speedKey: SPEEDS[speedKey] ? speedKey : DEFAULT_SPEED,
+    hpMul: sp.hpMul,
+    theme: stageTheme(stageNum),
     length: finishY + multipliers.length * 120 + 300,
     finishY,
     elements,

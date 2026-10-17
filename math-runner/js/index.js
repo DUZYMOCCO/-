@@ -8,18 +8,19 @@ import { loadCss } from '../../common/js/load-css.js';
 import { storage } from '../../common/js/storage.js';
 import {
   UPGRADES,
+  SPEEDS,
   getUpgradeCost,
   normalizeSave,
   generateStageCourse,
-} from './rules.js?v=2';
-import { RunnerEngine } from './engine.js?v=2';
-import { RunnerRenderer } from './renderer.js?v=2';
+} from './rules.js?v=3';
+import { RunnerEngine } from './engine.js?v=3';
+import { RunnerRenderer } from './renderer.js?v=3';
 
 const SAVE_KEY = 'math_runner_save';
 
 export default {
   prepare() {
-    return loadCss(new URL('../css/math-runner.css?v=2', import.meta.url).href);
+    return loadCss(new URL('../css/math-runner.css?v=3', import.meta.url).href);
   },
 
   init(container, onBackToHub) {
@@ -71,6 +72,7 @@ export default {
             <p>ゲートを えらんで たまを ふやそう！</p>
           </div>
 
+          <div class="runner-speed" id="runner-speed"></div>
           <div class="runner-lobby-upgrades" id="runner-up-list"></div>
 
           <button class="runner-start-btn" id="runner-start-btn">
@@ -98,6 +100,7 @@ export default {
     this.stageTitle = this.container.querySelector('#runner-stage-title');
     this.lobby = this.container.querySelector('#runner-lobby');
     this.upList = this.container.querySelector('#runner-up-list');
+    this.speedBox = this.container.querySelector('#runner-speed');
     this.resultOverlay = this.container.querySelector('#runner-result');
     this.resultMultText = this.container.querySelector('#runner-result-mult');
     this.resultCoinsText = this.container.querySelector('#runner-result-coins');
@@ -170,7 +173,7 @@ export default {
     this.lobby.style.display = 'none';
     this.guideHint.style.display = 'block';
 
-    const course = generateStageCourse(this.saveData.stage);
+    const course = generateStageCourse(this.saveData.stage, this.saveData.speed);
     this.engine = new RunnerEngine(course, this.saveData);
     sound.play('reward');
   },
@@ -238,6 +241,19 @@ export default {
   updateLobbyUI() {
     this.stageTitle.textContent = `ステージ ${this.saveData.stage}`;
     this.coinText.textContent = this.saveData.coins;
+
+    // すすむ はやさ（ゆっくり／ふつう／はやい）
+    this.speedBox.innerHTML = `<div class="runner-speed-title">すすむ はやさ</div><div class="runner-speed-row">${
+      Object.entries(SPEEDS).map(([k, s]) => `<button class="runner-speed-btn ${this.saveData.speed === k ? 'on' : ''}" data-speed="${k}">${s.icon}<span>${s.label}</span></button>`).join('')
+    }</div>`;
+    this.speedBox.querySelectorAll('.runner-speed-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.saveData.speed = btn.dataset.speed;
+        sound.play('tap');
+        this.save();
+        this.updateLobbyUI();
+      });
+    });
 
     const keys = ['startCount', 'fireRate', 'power'];
     this.upList.innerHTML = keys.map(key => {
