@@ -1,5 +1,5 @@
 import {attributeValues,ensureAttributeProfile} from './unit-attributes.js?v=291';
-import {isMagicUser,ensureMana} from './magic-rules.js?v=291';
+import {isMagicUser,ensureMana} from './magic-rules.js?v=294';
 import {WORLD_SIZE} from './world.js?v=289';
 import {inCurrentInstance} from './instance-rules.js?v=256';
 import {saveSlots} from './save-slots.js?v=285';

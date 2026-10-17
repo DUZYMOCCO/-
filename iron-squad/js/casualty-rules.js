@@ -1,6 +1,6 @@
 import {bossOrbChance} from './enemy-tier.js?v=274';
 import {expeditionCombatUnits,isExpeditionReserve} from './expedition-rules.js?v=256';
-import {ensureMana,regenerateMana,spendMana} from './magic-rules.js?v=291';
+import {ensureMana,regenerateMana,spendMana} from './magic-rules.js?v=294';
 import {recordHealing,recordDown,healAmountFor} from './phase-rules.js?v=218';
 import {WORLD_SIZE} from './world.js';
 import {inCurrentInstance} from './instance-rules.js?v=256';

@@ -77,7 +77,7 @@ import { drawMeleeRangeCue, meleeDrawReach, attackAnimationRate } from './weapon
 import { guardRegrouping, guardTarget } from './guard-leash.js?v=266';
 import {beginGuardFormation,guardFormationTarget,guardFormationSpeedMult} from './guard-formation.js?v=291';
 import { KNOCK_RULES, knockbackDistance, knockFlight, slamDamage, knockTransferDistance } from './knockback-rules.js?v=212';
-import { MELEE_SOUND_STYLES, playMeleeSound } from './weapon-sounds.js?v=293';
+import { MELEE_SOUND_STYLES, playMeleeSound, playRangedSound, playMagicSound, playImpactSound } from './weapon-sounds.js?v=294';
 import {emptyRescueBonuses,normalizeRescueBonuses,rescueBonusSummary} from './rescue-rewards.js?v=264';
 import {drawFieldCivilian} from './civilian-visuals.js?v=291';
 import { saveSlots,profileSaveCompletions,requestPersistentSaves } from './save-slots.js?v=285';
@@ -85,7 +85,7 @@ import { soldierDialogue } from './soldier-dialogue.js?v=291';
 import { generateSoldierName, migrateSoldierName, rollGenderByKey, isGenderId, ensureSoldierGender, genderLabel } from './soldier-names.js?v=210';
 import { openCommanderEditor } from './commander-editor.js?v=291';
 import { applyCommanderIdentity, normalizeCommanderIdentity, commanderFullName, GENDERS as COMMANDER_GENDERS } from './commander-identity.js?v=291';
-import {MAGIC_CLASSES,MAGIC_AFFINITIES,magicMethods,isMage,isMagicUser,ensureMana,initializeMagic,updateMagic,distributeMagicStones,castMedicBuff,castCasterStrength,updateMageAI,drawMagicBursts,spendMana,weaponMagicDamage,isPlayerCaster,castPlayerSpell,PLAYER_MAGIC_RULES} from './magic-rules.js?v=291';
+import {MAGIC_CLASSES,MAGIC_AFFINITIES,magicMethods,isMage,isMagicUser,ensureMana,initializeMagic,updateMagic,distributeMagicStones,castMedicBuff,castCasterStrength,updateMageAI,drawMagicBursts,spendMana,weaponMagicDamage,isPlayerCaster,castPlayerSpell,PLAYER_MAGIC_RULES} from './magic-rules.js?v=294';
 import {hazardMethods,updateHazards,drawHazards} from './hazard-fields.js?v=277';
 import {strongEnemyReward} from './combat-rewards.js?v=182';
 import {supplyMethods, initializeSupplies, updateSupplies, takeRangedShot, ammoCombatProfile, isRangedUnit, distributeAmmo, preventLethalHit, normalizeFieldSave, SQUAD_POTION_COST, REVIVAL_POTION_COST, REVIVAL_POTION_MAX, SQUAD_POTION_MAX, ensureAmmo, ammoCapacity, recalcAmmoCapacity, RANGED_DAMAGE_MULT, supplyLocation} from './supply-rules.js?v=291';
@@ -6492,7 +6492,7 @@ export const IronSquadGame = {
                 speed: 320,
                 color: '#f472b6'
               });
-              sound.playMagic('lightning',soldier.x,soldier.y);
+              playMagicSound('lightning',soldier.x,soldier.y,{fromPlayer:false}); // v7.0.17: the medic's smite is an allied sound (quiet, sparse, nearby)
             }
           }
         }
@@ -7520,7 +7520,8 @@ export const IronSquadGame = {
     if(ensureAmmo(attacker)<=0)return false;
     attacker._cannonBashAttack=false;
     const shot=takeRangedShot(attacker,damage);damage=shot.damage;
-    sound.playWeapon(shot.loaded?(profile?.style||'bow'):'stone',attacker.x,attacker.y);
+    // v7.0.17: allied shots are quiet / sparse / nearby; a sniper's 3-arrow volley sounds once (the centre arrow); the commander is unchanged.
+    if(isPlayer||profile?.starOffset==null||profile.starOffset===0)playRangedSound(shot.loaded?(profile?.style||'bow'):'stone',attacker.x,attacker.y,{fromPlayer:!!isPlayer});
     const style = profile?.style || 'bow';
     const speed = (profile?.projSpeed || 360)*(shot.loaded||profile?.stone?1:.75);
     const magicDamage=style==='bow'&&canChannelWeaponMagic(attacker)&&spendMana(attacker,6)?weaponMagicDamage(attacker):0;
@@ -7691,7 +7692,7 @@ export const IronSquadGame = {
 
     const armored=['goblin','orc','skeleton','colossus_titan','colossal_titan'].includes(monster.type);
     if (!magicalAttack && !wProf.ranged && MELEE_SOUND_STYLES.includes(wProf.style)) playMeleeSound(wProf.style, monster.x, monster.y, {fromPlayer: !!isPlayer}); // v7.0.16: allied soldiers' hits are quieter, sparser and nearby-only
-    else sound.playImpact(magicalAttack?'magic':armored?wProf.style:'flesh',monster.x,monster.y);
+    else playImpactSound(magicalAttack?'magic':armored?wProf.style:'flesh',monster.x,monster.y,{fromPlayer:!!isPlayer}); // v7.0.17: allied ranged / magic hits are quiet, sparse and nearby
     if (isPlayer) {
       if (this.player.vampire > 0) {
         const heal = Math.ceil(dmg * this.player.vampire);

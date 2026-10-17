@@ -2,6 +2,7 @@ import {guardTarget,guardRegrouping,guardSpeedMult} from './guard-leash.js?v=266
 import {guardFormationTarget,guardFormationSpeedMult} from './guard-formation.js?v=291';
 import {updateEquipmentBarrier} from './defense-equipment.js?v=291';
 import {sound} from '../../common/js/audio.js?v=151';
+import {playMagicSound} from './weapon-sounds.js?v=294';
 import {WORLD_SIZE} from './world.js?v=289';
 import {inCurrentInstance} from './instance-rules.js?v=256';
 import {recordCombat} from './phase-rules.js?v=218';
@@ -116,7 +117,7 @@ function releaseSpell(game,caster,target,{power=false,outpost=null}={}) {
   if(!spendMana(caster,charged?PLAYER_MAGIC_RULES.powerCost:spell.cost))return false;
   const tier=magicTier(caster),radius=spell.radius*(1+tier*.12)*(charged?PLAYER_MAGIC_RULES.powerRadius:1);
   const damage=Math.round((caster.magicAttack||caster.atk)*spell.damage*(charged?PLAYER_MAGIC_RULES.powerDamage:1));
-  sound.playMagic(caster.magicAffinity,caster.x,caster.y);
+  playMagicSound(caster.magicAffinity,caster.x,caster.y,{fromPlayer:isPlayer}); // v7.0.17: allied casters are quiet / sparse / nearby; the commander is unchanged
   const x=target.x,y=target.y,cd=spell.cooldown/(isPlayer?(caster.atkSpeed||1):1+tier*.1);
   caster.atkCooldown=charged?Math.max(caster.atkCooldown||0,cd):cd;
   caster.atkAnim=1;caster.attackAngle=caster.facingAngle=Math.atan2(y-caster.y,x-caster.x);

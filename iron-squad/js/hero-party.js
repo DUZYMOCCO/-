@@ -15,7 +15,7 @@ import {formatDistance} from './distance-format.js';
 import {practiceAttribute} from './unit-attributes.js?v=291';
 import {isMedic,treatWounded,updateWounded,normalizeRevivalSkill,revivalSkillCooldownLeft} from './casualty-rules.js?v=291';
 import {healByMedic,healAmountFor} from './phase-rules.js?v=218';
-import {ensureMana,regenerateMana,spendMana,isMage} from './magic-rules.js?v=291';
+import {ensureMana,regenerateMana,spendMana,isMage} from './magic-rules.js?v=294';
 import {takeRangedShot,supplyLocation,ammoCapacity} from './supply-rules.js?v=291';
 import {distanceScaling} from './equipment-rules.js?v=292';
 import {strongEnemyReward} from './combat-rewards.js?v=182';
