@@ -4,9 +4,9 @@
  * 色数の一致に加え、外郭から実際に回収できる手順を作って配置する。
  */
 
-import { Colony } from './colony.js?v=8';
+import { Colony } from './colony.js?v=10';
 import { Perimeter } from './perimeter.js?v=8';
-import { SIZE } from './pictures.js?v=7';
+import { SIZE } from './pictures.js?v=10';
 
 export function mulberry32(seed) {
   let a = seed | 0;
@@ -15,6 +15,18 @@ export function mulberry32(seed) {
     let t = Math.imul(a ^ (a >>> 15), 1 | a);
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+export function difficultyFor(level) {
+  return {
+    name: level >= 25 ? '超上級' : level >= 13 ? '上級' : level >= 7 ? 'むずかしい' : 'ふつう',
+    slots: level >= 7 ? 3 : 4,
+    decoyColumns: level >= 4 ? 4 : 3,
+    decoyDepth: level >= 25 ? 5 : level >= 13 ? 4 : level >= 7 ? 3 : 2,
+    hiddenDepth: level >= 13 ? 1 : level >= 4 ? 2 : 3,
+    undo: level >= 7 ? 1 : 2,
+    lockPairs: level >= 25 ? 4 : level >= 13 ? 3 : level >= 4 ? 2 : level >= 2 ? 1 : 0,
   };
 }
 
@@ -39,9 +51,9 @@ export const SOLUTION_LAYOUT = {
   nest: { x: 32, y: 78 }, ant: 1, speed: 20.48,
 };
 
-function simulation(pixels, layout) {
+function simulation(pixels, layout, slots = 5) {
   const colony = new Colony();
-  colony.reset({ pixels: pixels.map(p => ({ ...p, targeted: false })) });
+  colony.reset({ pixels: pixels.map(p => ({ ...p, targeted: false })) }, Math.random, { slotCount: slots, maxSlots: slots + 1 });
   colony.setLayout(layout);
   return colony;
 }
@@ -69,8 +81,8 @@ function finishTile(colony, tile, dt = 1 / 30, speed = 1) {
 }
 
 /** Replay the intended order using the real dispatch, path and eating simulation. */
-export function verifyTilePlan(pixels, plan, layout = SOLUTION_LAYOUT, dt = 1 / 30, speed = 1) {
-  const colony = simulation(pixels, layout);
+export function verifyTilePlan(pixels, plan, layout = SOLUTION_LAYOUT, dt = 1 / 30, speed = 1, slots = 5) {
+  const colony = simulation(pixels, layout, slots);
   const unlocked = new Set();
   for (const tile of plan) {
     if (tile.locked && !unlocked.has(tile.lockId)) return false;
@@ -119,7 +131,7 @@ export function buildTiles(counts, rng, { cols = 5, target = 22, pixels = null, 
   plan.forEach((tile, order) => { tile.order = order; });
   // Pair each lock with an earlier key in the proven solution, never behind it.
   if (level >= 2) {
-    const pairs = level >= 4 ? 2 : 1;
+    const pairs = difficultyFor(level).lockPairs;
     for (let id = 0; id < pairs; id++) {
       const keyIndex = cols + id * cols * 2;
       const lockIndex = keyIndex + cols + 1;
@@ -130,26 +142,38 @@ export function buildTiles(counts, rng, { cols = 5, target = 22, pixels = null, 
   }
   const columns = Array.from({ length: cols }, () => []);
   const offset = Math.floor(rng() * cols);
-  // A couple of inner colors are visible early as deliberate waiting choices.
+  // Several runs of inner colors tempt players to spend scarce waiting slots.
   // Their columns receive no earlier solution steps underneath, so they cannot
   // bury a required outer color or remove the intended winning sequence.
   const decoys = new Map();
   if (pixels && cols >= 3) {
+    const difficulty = difficultyFor(level);
     const air = new Perimeter(SIZE); air.rebuild(pixels);
     const exposed = new Set(pixels.filter(p => !p.eaten && air.isExposed(p)).map(p => p.key));
-    const chosenKeys = new Set();
     const candidates = plan.filter(t => t.order >= cols * 2 && !t.locked && !t.hasKey && !exposed.has(t.key));
+    const groups = [];
     for (const tile of candidates) {
-      if (chosenKeys.has(tile.key)) continue;
-      const ci = (offset + decoys.size) % cols;
-      columns[ci].push(tile); decoys.set(tile, ci); chosenKeys.add(tile.key);
-      if (decoys.size === Math.min(2, cols - 1)) break;
+      let group = groups.find(g => g.key === tile.key && g.tiles.length < difficulty.decoyDepth);
+      if (!group) {
+        if (groups.length >= Math.min(difficulty.decoyColumns, cols - 1)) continue;
+        group = { key: tile.key, tiles: [], ci: (offset + groups.length) % cols };
+        groups.push(group);
+      }
+      group.tiles.push(tile);
+    }
+    for (const group of groups) for (const tile of group.tiles) {
+      columns[group.ci].push(tile); decoys.set(tile, group.ci);
     }
   }
-  const blocked = new Set(decoys.values());
+  const blocked = new Map();
+  for (const ci of decoys.values()) blocked.set(ci, (blocked.get(ci) || 0) + 1);
   let cursor = offset;
   for (const tile of plan) {
-    if (decoys.has(tile)) { blocked.delete(decoys.get(tile)); continue; }
+    if (decoys.has(tile)) {
+      const ci = decoys.get(tile), remaining = blocked.get(ci) - 1;
+      if (remaining) blocked.set(ci, remaining); else blocked.delete(ci);
+      continue;
+    }
     while (blocked.has(cursor)) cursor = (cursor + 1) % cols;
     columns[cursor].push(tile); cursor = (cursor + 1) % cols;
   }

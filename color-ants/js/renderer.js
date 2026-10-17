@@ -3,8 +3,8 @@
  * 額縁と絵は別キャンバスに用意しておき、かじられたマスだけ消す（64×64 でも軽い）。
  * アリはマスより大きく描いて、行列がはっきり見えるようにする。
  */
-import { SIZE } from './pictures.js?v=7';
-import { shade } from './colony.js?v=8';
+import { SIZE } from './pictures.js?v=10';
+import { shade } from './colony.js?v=10';
 
 const FRAME_PAD = 9;
 const MARGIN = 18;

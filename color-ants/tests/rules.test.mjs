@@ -1,13 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { PICTURE_DEFS, buildPicture, countByKey, SIZE } from '../js/pictures.js';
-import { mulberry32, splitCount, buildTiles, textColorFor, verifyTilePlan, SOLUTION_LAYOUT } from '../js/puzzle.js';
+import { mulberry32, splitCount, buildTiles, textColorFor, verifyTilePlan, SOLUTION_LAYOUT, difficultyFor } from '../js/puzzle.js';
 import { Colony } from '../js/colony.js';
 
 const LAYOUT = { cell: 5, boardX: 20, boardY: 14, nest: { x: 180, y: 420 }, ant: 7, speed: 100 };
 
 test('every picture is a full 64x64 grid with known palette keys and bg marked eaten', () => {
   assert.equal(SIZE, 64);
+  assert.equal(PICTURE_DEFS.length, 18);
+  assert.equal(new Set(PICTURE_DEFS.map(p => p.id)).size, 18, 'each new picture has its own stage');
   for (const def of PICTURE_DEFS) {
     const pic = buildPicture(def);
     assert.equal(pic.pixels.length, SIZE * SIZE, def.id);
@@ -165,7 +167,7 @@ test('ants walk around other colors and return through open passages', () => {
 });
 
 test('fresh puzzles have a real outside-in winning sequence without boosters at both speeds', () => {
-  for (let level = 1; level <= 18; level++) {
+  for (let level = 1; level <= PICTURE_DEFS.length * 2; level++) {
     const pic = buildPicture(PICTURE_DEFS[(level - 1) % PICTURE_DEFS.length]);
     const columns = buildTiles(countByKey(pic.pixels), mulberry32(level * 7919 + 13), { pixels: pic.pixels, level });
     const plan = columns.flat().sort((a, b) => a.order - b.order);
@@ -175,11 +177,58 @@ test('fresh puzzles have a real outside-in winning sequence without boosters at 
       assert(ci >= 0, `level ${level}: required tile is buried`); queues[ci].shift();
       if (tile.locked) assert(plan.some(t => t.hasKey && t.keyId === tile.lockId && t.order < tile.order), 'key must precede its lock');
     }
-    assert(verifyTilePlan(pic.pixels, plan, SOLUTION_LAYOUT, 1 / 60, 1), `level ${level}: 1x solution failed`);
+    assert(verifyTilePlan(pic.pixels, plan, SOLUTION_LAYOUT, 1 / 60, 1, difficultyFor(level).slots), `level ${level}: 1x solution failed`);
     const farNests = { ...SOLUTION_LAYOUT, nests: SOLUTION_LAYOUT.nests.map(n => ({ ...n, y: 98 })) };
-    assert(verifyTilePlan(pic.pixels, plan, farNests, 1 / 20, 2), `level ${level}: 2x solution failed`);
+    assert(verifyTilePlan(pic.pixels, plan, farNests, 1 / 20, 2, difficultyFor(level).slots), `level ${level}: 2x solution failed`);
     assert(pic.pixels.every(p => p.eaten === p.isBg), 'generator must not eat the live board');
   }
+});
+
+test('advanced stages increase planning depth and lock dependencies without shrinking slots below three', () => {
+  const middle = difficultyFor(7), hard = difficultyFor(13), expert = difficultyFor(25);
+  assert.equal(hard.slots, 3); assert.equal(expert.slots, 3);
+  assert(hard.decoyDepth > middle.decoyDepth && expert.decoyDepth > hard.decoyDepth);
+  assert(hard.hiddenDepth < middle.hiddenDepth);
+  for (const level of [13, 18, 25, 36]) {
+    const pic = buildPicture(PICTURE_DEFS[(level - 1) % PICTURE_DEFS.length]);
+    const tiles = buildTiles(countByKey(pic.pixels), mulberry32(level), { pixels: pic.pixels, level }).flat();
+    assert.equal(tiles.filter(t => t.locked).length, difficultyFor(level).lockPairs);
+    for (const t of tiles.filter(t => t.locked)) {
+      assert(tiles.some(k => k.hasKey && k.keyId === t.lockId && k.order < t.order));
+    }
+  }
+  for (let level = 13; level <= 18; level++) {
+    const pic = buildPicture(PICTURE_DEFS[level - 1]);
+    const c = new Colony(); c.reset(pic, Math.random, { slotCount: 3, maxSlots: 4 });
+    const cols = buildTiles(countByKey(pic.pixels), mulberry32(level * 7919 + 13), { pixels: pic.pixels, level });
+    for (let move = 0; move < 3; move++) {
+      const ci = cols.findIndex(col => col[0] && !col[0].locked && !pic.pixels.some(p => p.key === col[0].key && c.isExposed(p)));
+      assert(ci >= 0, `${pic.id}: needs meaningful inner-color choices`);
+      const t = cols[ci].shift(); c.addTileToSlot(t, pic.palette[t.key], ci);
+    }
+    assert(c.isStuck(), `${pic.id}: blindly filling the three slots should lose`);
+  }
+});
+
+test('limited slots and consecutive inner-color choices create real losing positions', () => {
+  let stuckStages = 0;
+  for (let level = 1; level <= 12; level++) {
+    const pic = buildPicture(PICTURE_DEFS[(level - 1) % 6]), d = difficultyFor(level);
+    const c = new Colony(); c.reset(pic, Math.random, { slotCount: d.slots, maxSlots: d.slots + 1 });
+    assert.equal(c.slots.length, level >= 7 ? 3 : 4);
+    const cols = buildTiles(countByKey(pic.pixels), mulberry32(level * 7919 + 13), { pixels: pic.pixels, level });
+    while (c.slots.some(s => s === null)) {
+      const ci = cols.findIndex(col => col[0] && !col[0].locked &&
+        !pic.pixels.some(p => p.key === col[0].key && c.isExposed(p)));
+      if (ci < 0) break;
+      const t = cols[ci].shift(); c.addTileToSlot(t, pic.palette[t.key], ci);
+    }
+    if (c.isStuck()) stuckStages++;
+    assert.equal(c.expandSlots(), true);
+    assert.equal(c.expandSlots(), false, 'extra slot is limited to one');
+    assert.equal(c.isStuck(), false, 'one extra slot frees a real losing position');
+  }
+  assert(stuckStages >= 10, `only ${stuckStages}/12 stages punish filling slots with inner colors`);
 });
 
 test('5 slots dispatch system and stuck detection', () => {

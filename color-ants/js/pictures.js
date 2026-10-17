@@ -183,6 +183,226 @@ function drawMushroom() {
   return g.cells;
 }
 
+function drawDonut() {
+  const g = new Grid('bg');
+  g.ellipse('shadow', CX, 28.5, 12.5, 1.2);
+  g.ellipse('crust', CX, 17, 13.5, 11.5);
+  g.ellipse('dough', CX, 15.5, 13, 10.5);
+  g.ellipse('icing', CX, 14, 12, 8.8);
+  for (const [x, y] of [[6, 19], [10, 21], [22, 20], [25, 17]]) g.ellipse('icing', x, y, 1.5, 2.2);
+  g.ellipse('shade', 20, 17.5, 6.5, 3.5);
+  g.ellipse('icing', 18, 16.5, 6, 3.1);
+  g.ellipse('hole', CX, 14, 5, 4);
+  g.ellipse('inner', CX, 15, 3.8, 2.5);
+  g.ellipse('bg', CX, 14.5, 2.6, 1.7);
+  g.ellipse('shine', 8.5, 10, 2.8, 1.2);
+  for (const [x, y, key] of [[11, 6, 'yellow'], [20, 7, 'blue'], [24, 11, 'yellow'], [6, 14, 'blue'], [9, 19, 'white'], [22, 19, 'white'], [17, 21, 'yellow'], [25, 15, 'blue']]) g.rect(key, x, y, x + 1, y + .5);
+  return g.cells;
+}
+
+function drawIceCream() {
+  const g = new Grid('bg');
+  g.ellipse('shadow', 16, 30, 7, .8);
+  g.polygon('cone', [[7, 16], [25, 16], [16, 30]]);
+  g.polygon('coneDark', [[21, 17], [25, 16], [16, 30], [17, 24]]);
+  g.fillIf('waffle', (x, y) => y >= 18 && y <= 28 && Math.abs(x - 16) < (30 - y) * .62 && (Math.floor(x + y) % 5 === 0 || Math.floor(x - y + 40) % 5 === 0));
+  g.circle('mint', 20, 13, 7.5);
+  g.ellipse('mintDark', 21.5, 17, 6, 2.5);
+  g.circle('pink', 11.5, 12.5, 7.5);
+  g.ellipse('pinkDark', 12.5, 17.5, 6.5, 2);
+  g.circle('cream', 16, 6.5, 5.8);
+  g.ellipse('creamShade', 18, 9.3, 3.5, 1.4);
+  g.circle('cherry', 17, 2.2, 1.8);
+  g.ellipse('shine', 13.7, 4.5, 2, .7);
+  g.ellipse('shine', 8, 10, 1.7, 1);
+  for (const [x, y] of [[21, 10], [25, 13], [20, 15], [22, 18], [17, 12]]) g.rect('chip', x, y, x + .5, y + .5);
+  return g.cells;
+}
+
+function drawPenguin() {
+  const g = new Grid('bg');
+  g.ellipse('ice', 16, 29.5, 14, 1.5);
+  g.ellipse('outline', 15.5, 17, 10.5, 13);
+  g.ellipse('outline', 4.8, 20, 2.8, 7);
+  g.ellipse('outline', 26.2, 20, 2.8, 7);
+  g.ellipse('coat', 14.5, 16, 9, 11.5);
+  g.ellipse('belly', 15.5, 21, 7.2, 7.8);
+  g.ellipse('bellyShade', 18.5, 24, 3.5, 4.5);
+  g.ellipse('white', 11, 11, 4.5, 4.8); g.ellipse('white', 20, 11, 4.5, 4.8);
+  g.ellipse('eye', 11, 11.5, 1.1, 1.7); g.ellipse('eye', 20, 11.5, 1.1, 1.7);
+  g.circle('white', 10.7, 10.8, .4); g.circle('white', 19.7, 10.8, .4);
+  g.polygon('beak', [[13, 14], [18, 14], [15.5, 17]]);
+  g.ellipse('blush', 8, 15, 1.8, 1); g.ellipse('blush', 23, 15, 1.8, 1);
+  g.rect('scarf', 7, 17, 24, 19); g.rect('scarf', 20, 18, 23, 25);
+  g.rect('scarfShade', 22, 20, 23, 25);
+  g.ellipse('beak', 10, 29, 4, 1.5); g.ellipse('beak', 21, 29, 4, 1.5);
+  return g.cells;
+}
+
+function drawBlossom() {
+  const g = new Grid('bg');
+  g.rect('stem', 15, 16, 16, 30);
+  g.ellipse('leafDark', 9.5, 25, 6, 2.8); g.ellipse('leaf', 21, 24, 6, 2.8);
+  for (let i = 0; i < 5; i++) {
+    const a = -Math.PI / 2 + i * Math.PI * 2 / 5;
+    const x = CX + Math.cos(a) * 7.5, y = 14 + Math.sin(a) * 7.5;
+    g.circle('petalEdge', x, y, 6.6);
+    g.circle('petal', x - .3, y - .5, 5.5);
+    g.circle('petalLight', x - 1, y - 1, 3.6);
+  }
+  g.circle('centerEdge', CX, 14, 5.3);
+  g.circle('center', CX, 14, 4.2);
+  g.circle('heart', CX, 14, 2.2);
+  for (const [x, y] of [[13, 12], [18, 12], [12, 16], [19, 16]]) g.set('pollen', x, y);
+  return g.cells;
+}
+
+function drawFox() {
+  const g = new Grid('bg');
+  g.ellipse('shadow', CX, 29, 12, 1);
+  g.polygon('outline', [[3, 2], [12, 7], [20, 7], [28, 2], [28, 22], [16, 29], [3, 22]]);
+  g.polygon('fur', [[4, 4], [12, 9], [20, 9], [27, 4], [26, 22], [16, 27], [5, 22]]);
+  g.polygon('ear', [[5, 6], [10, 9], [6, 13]]); g.polygon('ear', [[26, 6], [21, 9], [25, 13]]);
+  g.ellipse('furLight', 12, 15, 7, 6);
+  g.polygon('cream', [[4, 17], [12, 19], [16, 23], [20, 19], [27, 17], [24, 24], [16, 28], [7, 24]]);
+  g.polygon('creamShade', [[16, 25], [25, 21], [23, 25], [16, 28]]);
+  g.ellipse('eye', 10.5, 16, 1.1, 1.7); g.ellipse('eye', 21, 16, 1.1, 1.7);
+  g.set('shine', 10.5, 15.2); g.set('shine', 20.8, 15.2);
+  g.polygon('nose', [[13.5, 22], [18, 22], [15.7, 24.4]]);
+  g.rect('nose', 15.5, 24, 15.5, 25);
+  g.ellipse('blush', 7.8, 19, 2, 1); g.ellipse('blush', 23.5, 19, 2, 1);
+  return g.cells;
+}
+
+function drawRocket() {
+  const g = new Grid('bg');
+  for (const [x, y] of [[3, 6], [27, 4], [29, 16], [4, 23]]) {
+    g.rect('star', x - 1, y, x + 1, y); g.rect('star', x, y - 1, x, y + 1);
+  }
+  g.polygon('flame', [[10, 22], [21, 22], [19, 29], [16, 31], [12, 29]]);
+  g.polygon('flameInner', [[13, 23], [18, 23], [16, 29]]);
+  g.polygon('outline', [[15.5, 1], [23, 9], [23, 24], [8, 24], [8, 9]]);
+  g.polygon('hull', [[15.5, 3], [21, 10], [21, 22], [10, 22], [10, 10]]);
+  g.rect('hullShade', 19, 10, 21, 22);
+  g.polygon('red', [[15.5, 2.5], [21, 9], [10, 9]]);
+  g.polygon('red', [[8, 16], [3, 25], [10, 23]]); g.polygon('red', [[23, 16], [28, 25], [21, 23]]);
+  g.circle('rim', CX, 14.5, 5);
+  g.circle('glass', CX, 14.5, 3.4);
+  g.circle('glassLight', 14.2, 13.1, 1.5);
+  g.rect('red', 12, 21, 19, 22);
+  return g.cells;
+}
+
+function drawTreasure() {
+  const g = new Grid('bg');
+  g.ellipse('shadow', CX, 29, 14, 1.5);
+  g.rect('outline', 2, 8, 29, 27);
+  g.ellipse('outline', CX, 8, 13.5, 5.8);
+  g.ellipse('woodLight', CX, 8, 12, 4.5);
+  g.rect('wood', 4, 9, 27, 25);
+  g.rect('woodDark', 4, 18, 27, 19); g.rect('woodDark', 4, 23, 27, 24);
+  g.rect('goldDark', 6, 5, 8, 26); g.rect('goldDark', 23, 5, 25, 26);
+  g.rect('gold', 6, 5, 7, 25); g.rect('gold', 23, 5, 24, 25);
+  g.rect('goldDark', 3, 12, 28, 15); g.rect('gold', 3, 12, 28, 13);
+  g.rect('outline', 11, 11, 20, 22); g.rect('gold', 12, 12, 19, 21);
+  g.rect('goldLight', 13, 13, 18, 15);
+  g.circle('gemEdge', CX, 17.5, 3.1); g.circle('gem', CX, 17, 1.8);
+  g.set('shine', 15, 16);
+  for (const [x, y] of [[4, 6], [28, 7], [4, 28], [27, 28]]) g.circle('goldLight', x, y, 1.1);
+  return g.cells;
+}
+
+function drawOwl() {
+  const g = new Grid('bg');
+  g.rect('branch', 2, 28, 29, 30);
+  g.ellipse('outline', CX, 16, 12, 13);
+  g.polygon('outline', [[4, 2], [14, 6], [7, 12]]); g.polygon('outline', [[27, 2], [17, 6], [24, 12]]);
+  g.ellipse('feather', CX, 16, 10.5, 11.5);
+  g.ellipse('wing', 7, 20, 3.2, 7); g.ellipse('wing', 24, 20, 3.2, 7);
+  g.ellipse('belly', CX, 21.5, 6.5, 5.8);
+  for (const [x, y] of [[12, 21], [16, 23], [20, 21], [13, 25], [19, 25]]) g.polygon('bellyShade', [[x - 1, y], [x + 1, y], [x, y + 1.5]]);
+  for (const x of [10.5, 20.5]) {
+    g.circle('face', x, 12, 6); g.circle('eyeRim', x, 12, 4.3);
+    g.circle('iris', x, 12, 3.1); g.circle('pupil', x, 12, 1.7); g.circle('shine', x - .7, 11, .7);
+  }
+  g.polygon('beak', [[13.5, 16], [17.5, 16], [15.5, 19.5]]);
+  g.rect('beak', 10, 27, 12, 29); g.rect('beak', 19, 27, 21, 29);
+  return g.cells;
+}
+
+function drawButterfly() {
+  const g = new Grid('bg');
+  for (const side of [-1, 1]) {
+    const cx = CX + side * 7.5;
+    g.ellipse('outline', cx, 11, 7.2, 9.5); g.ellipse('outline', cx + side * .4, 23, 6.5, 6.8);
+    g.ellipse('wing', cx, 11, 6.1, 8.3); g.ellipse('wing', cx + side * .4, 23, 5.4, 5.7);
+    g.ellipse('blue', cx, 11, 4.8, 6.7); g.ellipse('purple', cx + side * .4, 23, 4.1, 4.3);
+    g.ellipse('pink', cx, 11, 3.3, 4.8); g.ellipse('pink', cx + side * .4, 23, 2.5, 2.8);
+    g.ellipse('gold', cx, 11, 1.8, 2.7); g.circle('cream', cx, 10.5, .9);
+    for (const y of [7, 12, 17]) g.set('cream', cx + side * 5.2, y);
+  }
+  g.ellipse('body', CX, 17, 1.5, 11);
+  g.circle('outline', CX, 7, 2.1);
+  g.polygon('outline', [[15, 7], [11, 2], [12, 1], [16, 7]]);
+  g.polygon('outline', [[16, 7], [20, 2], [19, 1], [15, 7]]);
+  return g.cells;
+}
+
+function drawCandyMaze() {
+  const g = new Grid('bg');
+  g.polygon('wrapper', [[1, 8], [8, 12], [8, 21], [1, 25], [3, 16]]);
+  g.polygon('wrapper', [[30, 8], [23, 12], [23, 21], [30, 25], [28, 16]]);
+  g.circle('outline', CX, 16, 13.5);
+  for (const [key, radius] of [['white', 12.4], ['red', 11.2], ['cream', 9.6], ['orange', 8.2], ['white', 6.7], ['mint', 5.3], ['blue', 3.8], ['purple', 2.4], ['pink', 1.1]]) g.circle(key, CX, 16, radius);
+  g.rect('pink', 14, 5, 16, 7); g.rect('mint', 24, 14, 26, 16);
+  g.rect('gold', 6, 15, 8, 17);
+  g.ellipse('shine', 10, 7, 2, .7);
+  return g.cells;
+}
+
+function drawCrystal() {
+  const g = new Grid('bg');
+  g.ellipse('shadow', CX, 30, 10, .8);
+  const shape = [[7, 2], [24, 2], [30, 12], [16, 30], [1, 12]];
+  g.polygon('outline', shape);
+  g.polygon('violet', [[8, 3.5], [23, 3.5], [28, 12], [16, 28], [3, 12]]);
+  g.polygon('blue', [[8, 3.5], [23, 3.5], [19, 11], [12, 11]]);
+  g.polygon('light', [[8, 3.5], [12, 11], [3, 12]]);
+  g.polygon('pink', [[23, 3.5], [28, 12], [19, 11]]);
+  g.polygon('deep', [[3, 12], [12, 11], [16, 28]]);
+  g.polygon('cyan', [[28, 12], [19, 11], [16, 28]]);
+  g.polygon('rim', [[12, 11], [19, 11], [16, 26]]);
+  g.polygon('inner', [[13.5, 13], [17.5, 13], [16, 22]]);
+  g.polygon('heart', [[14.5, 14], [16.5, 14], [16, 18]]);
+  g.rect('shine', 9, 5, 12, 5);
+  return g.cells;
+}
+
+function drawCastle() {
+  const g = new Grid('bg');
+  g.rect('grass', 1, 28, 30, 31);
+  g.rect('outline', 3, 10, 10, 28); g.rect('outline', 21, 10, 28, 28);
+  g.rect('stone', 4, 11, 9, 27); g.rect('stone', 22, 11, 27, 27);
+  g.rect('outline', 9, 15, 22, 28); g.rect('stoneLight', 10, 16, 21, 27);
+  for (let y = 18; y < 27; y += 3) {
+    g.rect('mortar', 10, y, 21, y);
+    for (let x = 11 + (y % 2 ? 2 : 0); x < 22; x += 5) g.rect('mortar', x, y - 2, x, y);
+  }
+  for (const x of [6.5, 24.5]) {
+    g.polygon('roof', [[x, 3], [x - 5, 11], [x + 5, 11]]);
+    g.polygon('roofLight', [[x, 3], [x - 5, 11], [x - 1, 11]]);
+    g.rect('outline', x - 1, 14, x + 1, 18); g.rect('window', x - .5, 14.5, x + .5, 16.5);
+    g.rect('gold', x, 1, x, 4); g.polygon('flag', [[x + .5, 1], [x + 4, 2], [x + .5, 3]]);
+  }
+  g.rect('outline', 11, 12, 13, 16); g.rect('outline', 18, 12, 20, 16);
+  g.ellipse('outline', CX, 24, 4.5, 5.3);
+  g.ellipse('door', CX, 24.5, 3.2, 4.2);
+  g.rect('outline', 15.5, 21, 15.5, 28);
+  g.rect('gold', 14, 24, 17, 24);
+  g.circle('gem', 16, 24, .65);
+  return g.cells;
+}
+
 export const PICTURE_DEFS = [
   {
     id: 'watermelon', name: 'すいか', icon: '🍉', draw: drawWatermelon,
@@ -208,6 +428,30 @@ export const PICTURE_DEFS = [
     id: 'mushroom', name: 'きのこ', icon: '🍄', draw: drawMushroom,
     palette: { bg: '#bfe9ff', grass: '#5bbf5b', grass2: '#3f9c47', cap: '#e63946', cap2: '#b5202f', cap3: '#ff6b76', spot: '#ffffff', stem: '#fff1d6', stem2: '#e8cfa6', black: '#2b2b3a', blush: '#ff9aa8' },
   },
+  { id: 'donut', name: 'いちごドーナツ', icon: '🍩', draw: drawDonut,
+    palette: { bg: '#e4f2dd', shadow: '#bed8b4', crust: '#b97a47', dough: '#efbd7b', icing: '#f384aa', shade: '#d96296', hole: '#a96249', inner: '#da9d65', shine: '#ffd8e7', yellow: '#ffe393', blue: '#82cee1', white: '#fff5ec' } },
+  { id: 'ice-cream', name: 'トリプルアイス', icon: '🍨', draw: drawIceCream,
+    palette: { bg: '#dceefa', shadow: '#b8cddc', cone: '#e5b477', coneDark: '#bb8451', waffle: '#c9965c', mint: '#98dac2', mintDark: '#66b39e', pink: '#f6a6bb', pinkDark: '#df7f9f', cream: '#fff2ca', creamShade: '#e9d9a8', cherry: '#db5264', shine: '#fffbed', chip: '#655054' } },
+  { id: 'penguin', name: 'マフラーペンギン', icon: '🐧', draw: drawPenguin,
+    palette: { bg: '#d6e9f3', ice: '#aacddc', outline: '#354c69', coat: '#4d6a88', belly: '#f5f5df', bellyShade: '#d3e0d6', white: '#fffdf0', eye: '#26374d', beak: '#efb75b', blush: '#f3b1b5', scarf: '#df7087', scarfShade: '#b94c6c' } },
+  { id: 'blossom', name: 'さくらの花', icon: '🌸', draw: drawBlossom,
+    palette: { bg: '#e2efd9', stem: '#5e9e6f', leaf: '#86be7d', leafDark: '#598c63', petalEdge: '#d980a4', petal: '#f1b4cb', petalLight: '#ffdae5', centerEdge: '#e9aa76', center: '#f7d58e', heart: '#e6ae62', pollen: '#fff3c1' } },
+  { id: 'fox', name: 'こぎつね', icon: '🦊', draw: drawFox,
+    palette: { bg: '#e7e3f3', shadow: '#c5bdd8', outline: '#914d39', fur: '#e6a259', furLight: '#f5bd77', ear: '#cc7964', cream: '#fff0ce', creamShade: '#e8cca2', eye: '#493942', shine: '#fff9e9', nose: '#5e4142', blush: '#edb0a0' } },
+  { id: 'rocket', name: 'おほしさまロケット', icon: '🚀', draw: drawRocket,
+    palette: { bg: '#cbd7ed', star: '#fff2ba', flame: '#efa55c', flameInner: '#ffe6a0', outline: '#697798', hull: '#f4f2de', hullShade: '#c5d2d9', red: '#d97588', rim: '#d9b56d', glass: '#74b7d2', glassLight: '#b9e6e6' } },
+  { id: 'treasure', name: 'ひみつの宝箱', icon: '💰', draw: drawTreasure,
+    palette: { bg: '#dae9e1', shadow: '#b1ccc1', outline: '#664a48', woodLight: '#cd9468', wood: '#b67c57', woodDark: '#8f5c49', goldDark: '#bc8e48', gold: '#edc874', goldLight: '#fff0b2', gemEdge: '#5b4b77', gem: '#bd8acb', shine: '#fff5e8' } },
+  { id: 'owl', name: '森のふくろう', icon: '🦉', draw: drawOwl,
+    palette: { bg: '#dcebdd', branch: '#98714d', outline: '#755345', feather: '#bc946d', wing: '#a67c58', belly: '#ead5ac', bellyShade: '#c8aa7c', face: '#f1e4c3', eyeRim: '#bc9767', iris: '#9eb6aa', pupil: '#3e4d51', shine: '#fff9df', beak: '#e4b466' } },
+  { id: 'butterfly', name: '宝石のちょうちょ', icon: '🦋', draw: drawButterfly,
+    palette: { bg: '#f2e6e7', outline: '#5c5374', wing: '#89b4cd', blue: '#96cdd8', purple: '#b09bd1', pink: '#e5acce', gold: '#ecd291', cream: '#fff0d6', body: '#8c7595' } },
+  { id: 'candy-maze', name: 'キャンディ迷宮', icon: '🍬', draw: drawCandyMaze,
+    palette: { bg: '#dbe9ef', wrapper: '#b6a0cf', outline: '#8b769b', white: '#fff6e4', red: '#df8191', cream: '#f5debb', orange: '#eab27d', mint: '#8ac5aa', blue: '#83b7cd', purple: '#b398ce', pink: '#e7adcd', gold: '#ead491', shine: '#fffced' } },
+  { id: 'crystal', name: 'まほうのクリスタル', icon: '💎', draw: drawCrystal,
+    palette: { bg: '#e5e8f4', shadow: '#c8cbe0', outline: '#76709e', violet: '#ad9cd3', blue: '#9cbedf', light: '#d2e4f0', pink: '#ddbedf', deep: '#9083bb', cyan: '#9bd5d4', rim: '#6e8eaf', inner: '#a7c1c7', heart: '#efe1be', shine: '#fff7e9' } },
+  { id: 'castle', name: '星あかりのお城', icon: '🏰', draw: drawCastle,
+    palette: { bg: '#d7e3ed', grass: '#a5bc96', outline: '#7b7a93', stone: '#c9ced6', stoneLight: '#e4dfd8', mortar: '#b6b4c4', roof: '#a790bd', roofLight: '#c2a9cc', window: '#edcf91', gold: '#d6b474', flag: '#df9eae', door: '#a9a2b9', gem: '#8dbcc6' } },
 ];
 
 /** 定義から実際のピクセル一覧を作る（bg は最初から背景として扱い、アリの標的から除外する） */

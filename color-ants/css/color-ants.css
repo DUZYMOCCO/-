@@ -100,6 +100,8 @@
 .ca-boost-btn:nth-child(3) .ca-boost-icon { color: #5e9fc1; background: linear-gradient(#f5ffff, #cce9f7); }
 .ca-boost-btn:nth-child(4) .ca-boost-icon { font-size: 23px; background: linear-gradient(#fff7fa, #f7ccd5); }
 .ca-boost-lbl { font-size: 9px; color: #8d6c42; }
+.ca-boost-icon { position: relative; }
+.ca-boost-icon::after { content: attr(data-count); position: absolute; right: -5px; top: -6px; min-width: 17px; height: 17px; padding: 1px 3px; border: 2px solid #fff5da; border-radius: 12px; background: #a47b47; color: white; font-size: 10px; line-height: 11px; font-weight: 900; }
 .ca-boost-btn:disabled { opacity: .4; cursor: default; }
 .ca-toast { position: absolute; top: calc(105px + env(safe-area-inset-top, 0px)); left: 50%; transform: translate(-50%, -8px); width: max-content; max-width: 90%; padding: 9px 15px; text-align: center; border-radius: 20px; background: #62492fed; color: #fff9e8; font-size: 12px; opacity: 0; pointer-events: none; z-index: 60; box-shadow: 0 4px 10px #5b3b2620; }
 .ca-toast.show { animation: ca-toast 2.8s both; }
@@ -115,6 +117,9 @@
 .ca-stuck-actions { display: flex; flex-direction: column; gap: 10px; }
 .ca-stuck-btn.ca-undo { background: #fffaf0; color: #9b7747; border: 1px solid #d6b987; border-bottom-width: 3px; }
 .ca-stuck-btn.ca-retry { background: #e6d2b0; color: #795b36; border-color: #b69869; }
+.ca-stuck-btn:disabled { opacity: .4; cursor: default; }
+.ca-stuck-btn.ca-giveup { background: transparent; border: 1px solid #c4a87b; color: #8d704c; padding: 9px; font-size: 12px !important; }
+.ca-card { max-height: calc(100% - 28px); overflow-y: auto; overscroll-behavior: contain; }
 .ca-slots.shake, .ca-tile.locked-shake { animation: ca-shake .3s ease-in-out; }
 @keyframes ca-shake { 20%, 60% { transform: translateX(-3px); } 40%, 80% { transform: translateX(3px); } }
 @keyframes ca-toast { 0%,100% { opacity: 0; transform: translate(-50%, -8px); } 8%,85% { opacity: 1; transform: translate(-50%, 0); } }

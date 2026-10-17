@@ -1,24 +1,23 @@
 /**
  * カラー・アント（Color Ants）
- * 外側から順にピクセルを削る！5つの出撃スロットを上手くやりくりするパズルゲーム。
- * 子供が夢中になって遊べるお助けアイテム（枠+1、シャッフル、そうじマグネット、1手もどす）＆鍵ギミックつき。
+ * 外郭の色と限られた出撃枠をやりくりするパズル。お助けは面ごとの回数制。
  */
 import { sound } from '../../common/js/audio.js?v=151';
 import { loadCss } from '../../common/js/load-css.js';
 import { storage } from '../../common/js/storage.js';
-import { PICTURE_DEFS, buildPicture, countByKey, paintPicture, SIZE } from './pictures.js?v=7';
-import { mulberry32, buildTiles, textColorFor } from './puzzle.js?v=8';
-import { Colony, shade } from './colony.js?v=8';
-import { ColonyRenderer } from './renderer.js?v=8';
+import { PICTURE_DEFS, buildPicture, countByKey, paintPicture, SIZE } from './pictures.js?v=10';
+import { mulberry32, buildTiles, textColorFor, difficultyFor } from './puzzle.js?v=10';
+import { Colony, shade } from './colony.js?v=10';
+import { ColonyRenderer } from './renderer.js?v=10';
+import { playNibble, stopNibbles, NIBBLE_GAP } from './soft-audio.js?v=10';
 
 const SAVE_KEY = 'color_ants_v2';
 const COLS = 5;
 const VISIBLE_DEPTH = 4; // 画面上に表示するタイルの深さ（手前4段）
-const HIDDEN_DEPTH = 3;  // これより奥のタイルは「？」
 
 export default {
   prepare() {
-    return loadCss(new URL('../css/color-ants.css?v=7', import.meta.url).href);
+    return loadCss(new URL('../css/color-ants.css?v=10', import.meta.url).href);
   },
 
   init(container, onBackToHub) {
@@ -107,7 +106,7 @@ export default {
 
           <!-- タイル列（手前4段） -->
           <div class="ca-tiles" id="ca-tiles"></div>
-          <div class="ca-guide">外郭の色から食べよう · 内側の色は待機</div>
+          <div class="ca-guide">外郭から食べよう · 待機タップも「もどす」消費</div>
         </div>
 
         <!-- トースト通知 -->
@@ -128,11 +127,13 @@ export default {
         <div class="ca-modal" id="ca-stuck-modal" style="display:none;">
           <div class="ca-card ca-stuck-card">
             <div class="ca-card-title ca-stuck-title">手詰まり！（STUCK）</div>
-            <div class="ca-stuck-desc">スロットが埋まってアリが動けなくなっちゃった！<br>アイテムを使って脱出するか、やり直そう！</div>
+            <div class="ca-stuck-desc">動ける色がなくなっちゃった！<br>お助けを使うか、工房へ戻ろう。</div>
             <div class="ca-stuck-actions">
               <button class="ca-stuck-btn ca-stuck-magnet" id="ca-stuck-magnet">🧲 そうじアイテムで脱出！</button>
               <button class="ca-stuck-btn ca-undo" id="ca-stuck-undo">↺ 1手もどす</button>
+              <button class="ca-stuck-btn ca-undo" id="ca-stuck-slot">＋ 枠を追加</button>
               <button class="ca-stuck-btn ca-retry" id="ca-stuck-retry">🔄 やり直す</button>
+              <button class="ca-stuck-btn ca-giveup" id="ca-stuck-giveup">あきらめる（工房へ）</button>
             </div>
           </div>
         </div>
@@ -186,10 +187,10 @@ export default {
       this.undoLastSlot();
     });
     q('#ca-stuck-magnet').addEventListener('click', () => {
-      this.stuck = false;
-      this.stuckModal.style.display = 'none';
       this.triggerMagnet();
     });
+    q('#ca-stuck-slot').addEventListener('click', () => this.expandSlots());
+    q('#ca-stuck-giveup').addEventListener('click', () => { this.destroy(); this.onBackToHub(); });
   },
 
   handleResize() {
@@ -236,11 +237,16 @@ export default {
   },
 
   startLevel() {
+    stopNibbles(sound);
+    this.audioCd = 0;
     const def = PICTURE_DEFS[(this.level - 1) % PICTURE_DEFS.length];
     const picture = buildPicture(def);
     const rng = mulberry32(this.level * 7919 + 13);
     this.picture = picture;
-    this.colony.reset(picture, rng);
+    this.difficulty = difficultyFor(this.level);
+    this.boosts = { undo: this.difficulty.undo, slot: 1, shuffle: 1, magnet: 1 };
+    this.moveSequence = 0;
+    this.colony.reset(picture, rng, { slotCount: this.difficulty.slots, maxSlots: this.difficulty.slots + 1 });
     this.applyLayout();
     this.columns = buildTiles(countByKey(picture.pixels), rng, {
       cols: COLS,
@@ -256,14 +262,36 @@ export default {
     this.stuckModal.style.display = 'none';
     this.toastEl.classList.remove('show');
     this.levelEl.textContent = `Level ${this.level}`;
-    this.pictureNameEl.textContent = `${picture.icon} ${picture.name}のピクセルアート`;
-    this.boostSlotBtn.disabled = false;
-    this.boostSlotBtn.classList.remove('used');
+    this.pictureNameEl.textContent = `${picture.icon} ${picture.name} · ${this.difficulty.name}`;
+    this.syncBoosters();
 
     this.applyLayout();
     this.renderSlots();
     this.renderTiles();
     this.updateCounter();
+  },
+
+  syncBoosters() {
+    const labels = { undo: 'もどす', slot: '枠+1', shuffle: 'シャッフル', magnet: 'そうじ' };
+    for (const [key, label] of Object.entries(labels)) {
+      const button = this.container.querySelector(`#ca-boost-${key}`);
+      button.disabled = this.boosts[key] === 0;
+      button.querySelector('.ca-boost-lbl').textContent = label;
+      button.querySelector('.ca-boost-icon').dataset.count = this.boosts[key];
+      button.setAttribute('aria-label', `${label} 残り${this.boosts[key]}回`);
+    }
+    for (const [key, label] of [['undo', '↺ 1手もどす'], ['magnet', '🧲 そうじ'], ['slot', '＋ 枠を追加']]) {
+      const button = this.container.querySelector(`#ca-stuck-${key}`);
+      button.disabled = this.boosts[key] === 0;
+      button.textContent = `${label}（残り${this.boosts[key]}回）`;
+    }
+  },
+
+  refreshStuck() {
+    if (this.stuck && !this.colony.isStuck()) {
+      this.stuck = false;
+      this.stuckModal.style.display = 'none';
+    }
   },
 
   showToast(msg) {
@@ -278,22 +306,24 @@ export default {
 
   /** スロット枠+1の拡張 */
   expandSlots() {
-    if (this.colony.slots.length >= 6) {
-      this.showToast('これ以上スロットは増やせないよ！');
+    if (this.cleared || this.boosts.slot === 0) {
+      this.showToast('枠を増やせるのは1面に1回だよ');
       return;
     }
     const ok = this.colony.expandSlots();
     if (ok) {
       sound.play('coin');
-      this.boostSlotBtn.disabled = true;
-      this.boostSlotBtn.classList.add('used');
-      this.showToast('スロットが 6枠 に増えたよ！✨');
+      this.boosts.slot--;
+      this.syncBoosters();
+      this.refreshStuck();
+      this.showToast(`スロットが ${this.colony.slots.length}枠 に増えたよ！`);
       this.renderSlots();
     }
   },
 
   /** タイル列のシャッフル */
   shuffleColumns() {
+    if (this.cleared || this.boosts.shuffle === 0) return;
     // 全列の未タップタイルをすべて集めてシャッフル
     const all = [];
     for (const col of this.columns) {
@@ -305,6 +335,8 @@ export default {
     const rng = mulberry32(Date.now());
     all.sort((a, b) => a.order - b.order);
     all.forEach(t => this.columns[Math.floor(rng() * COLS)].push(t));
+    this.boosts.shuffle--;
+    this.syncBoosters();
     sound.play('hit');
     this.showToast('タイルをシャッフルしたよ！🔀');
     this.renderTiles();
@@ -312,8 +344,10 @@ export default {
 
   /** マグネット（そうじ）ブースター */
   triggerMagnet() {
+    if (this.cleared || this.boosts.magnet === 0) return;
     const res = this.colony.useMagnet();
     if (res) {
+      this.boosts.magnet--;
       // Magnet-picked pixels must also disappear from queued tile numbers.
       let credit = res.unassigned;
       for (const col of this.columns) {
@@ -329,6 +363,8 @@ export default {
         }
       }
       sound.play('reward');
+      this.syncBoosters();
+      this.refreshStuck();
       this.showToast(`🧲 おそうじ！ ${res.count}マスを回収！✨`);
       this.renderSlots();
       this.renderTiles();
@@ -348,7 +384,7 @@ export default {
     return false;
   },
 
-  /** 出撃スロットを描画（5〜6枠） */
+  /** 出撃枠を描画（難度別の基本枠＋お助け1枠） */
   renderSlots() {
     this.slotsEl.innerHTML = '';
     const totalSlots = this.colony.slots.length;
@@ -374,7 +410,7 @@ export default {
         slotEl.style.setProperty('--t', textColorFor(hex));
         const pct = Math.round((slot.left / slot.initial) * 100);
         slotEl.style.setProperty('--p', String(pct));
-        slotEl.setAttribute('aria-label', `${slot.left}匹 ${isWaiting ? '待機中・タップして戻す' : '出撃中'}`);
+        slotEl.setAttribute('aria-label', `${slot.left}匹 ${isWaiting ? '待機中・もどすを1回使って戻す' : '出撃中'}`);
 
         slotEl.innerHTML = `
           <div class="ca-slot-bar"></div>
@@ -383,7 +419,7 @@ export default {
         `;
 
         if (isWaiting && slot.colIndex >= 0) {
-          slotEl.title = 'タップして戻す';
+          slotEl.title = 'もどすを1回使って戻す';
           slotEl.addEventListener('click', () => this.cancelSlot(si));
         }
       }
@@ -428,7 +464,7 @@ export default {
       }
 
       const isWaiting = slot.left === slot.initial && slot.activeAnts === 0;
-      const label = `${slot.left}匹 ${isWaiting ? '待機中・タップして戻す' : '出撃中'}`;
+      const label = `${slot.left}匹 ${isWaiting ? '待機中・もどすを1回使って戻す' : '出撃中'}`;
       if (el.getAttribute('aria-label') !== label) el.setAttribute('aria-label', label);
       if (isWaiting !== el.classList.contains('waiting')) {
         el.classList.toggle('waiting', isWaiting);
@@ -464,7 +500,7 @@ export default {
         if (t.locked) b.classList.add('locked');
         if (t.hasKey) b.classList.add('has-key');
 
-        if (depth >= HIDDEN_DEPTH && !t.locked) {
+        if (depth >= this.difficulty.hiddenDepth && !t.locked) {
           b.classList.add('mystery');
           b.textContent = '？';
         } else {
@@ -530,6 +566,7 @@ export default {
       this.shakeTray();
       return;
     }
+    this.colony.slots[slotIdx].placedAt = this.moveSequence++;
 
     // 鍵タイル（🗝️）をタップした場合は、盤面にあるロックを解除！
     if (tile.hasKey) {
@@ -547,14 +584,23 @@ export default {
 
   /** 待機中のスロットをタップして元の列に戻す */
   cancelSlot(si) {
-    if (this.cleared || this.stuck) return;
+    if (this.cleared) return false;
+    if (this.boosts.undo === 0) {
+      this.showToast('もどすの残りがないよ。空き枠を大切に！');
+      return false;
+    }
     const cancelled = this.colony.cancelSlot(si);
     if (cancelled && cancelled.colIndex >= 0) {
       this.columns[cancelled.colIndex].unshift(cancelled.tile);
+      this.boosts.undo--;
+      this.syncBoosters();
+      this.refreshStuck();
       sound.play('tap');
       this.renderSlots();
       this.renderTiles();
+      return true;
     }
+    return false;
   },
 
   shakeTray() {
@@ -583,8 +629,8 @@ export default {
 
     const eaten = this.colony.update(dt, this.speedMul);
     if (eaten > 0 && this.audioCd <= 0) {
-      sound.play('hit');
-      this.audioCd = 0.08;
+      playNibble(sound);
+      this.audioCd = NIBBLE_GAP;
     }
 
     this.updateSlots();
@@ -616,23 +662,16 @@ export default {
   showStuck() {
     this.stuck = true;
     sound.play('hit');
+    this.syncBoosters();
     this.stuckModal.style.display = 'flex';
   },
 
   undoLastSlot() {
-    const undoable = this.colony.slots.find(s => s && s.left === s.initial && s.activeAnts === 0 && s.colIndex >= 0);
+    const undoable = this.colony.slots.filter(s => s && s.left === s.initial && s.activeAnts === 0 && s.colIndex >= 0)
+      .sort((a, b) => (b.placedAt ?? -1) - (a.placedAt ?? -1))[0];
     if (undoable) {
       const si = this.colony.slots.indexOf(undoable);
-      if (si !== -1) {
-        this.columns[undoable.colIndex].unshift(undoable.tile);
-        this.colony.slots[si] = null;
-      }
-      this.stuck = false;
-      this.stuckModal.style.display = 'none';
-      sound.play('tap');
-      this.showToast('1手もどしたよ！↺');
-      this.renderSlots();
-      this.renderTiles();
+      if (this.cancelSlot(si)) this.showToast(`1手もどしたよ！ 残り${this.boosts.undo}回`);
     } else {
       this.showToast('もどせる待機中のタイルがありません');
     }
@@ -640,6 +679,7 @@ export default {
 
   destroy() {
     this.running = false;
+    stopNibbles(sound);
     clearTimeout(this.toastTimer);
     if (this.animId) { cancelAnimationFrame(this.animId); this.animId = null; }
     if (this.resizeObserver) this.resizeObserver.disconnect();

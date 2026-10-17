@@ -1,0 +1,625 @@
+{
+  "version": "2.7.0",
+  "errors": [],
+  "layouts": [
+    {
+      "name": "mobile",
+      "width": 390,
+      "height": 844,
+      "canvas": {
+        "x": 0,
+        "y": 94.328125,
+        "w": 390,
+        "h": 418.671875
+      },
+      "panel": {
+        "x": 16,
+        "y": 513,
+        "w": 358,
+        "h": 331
+      },
+      "board": {
+        "x": 35,
+        "y": 22,
+        "size": 320
+      },
+      "mysteryVisible": true,
+      "controlsFit": true
+    },
+    {
+      "name": "small",
+      "width": 320,
+      "height": 568,
+      "canvas": {
+        "x": 0,
+        "y": 67.25,
+        "w": 320,
+        "h": 239
+      },
+      "panel": {
+        "x": 0,
+        "y": 306.25,
+        "w": 320,
+        "h": 261.75
+      },
+      "board": {
+        "x": 80,
+        "y": 22,
+        "size": 160
+      },
+      "mysteryVisible": true,
+      "controlsFit": true
+    },
+    {
+      "name": "compact",
+      "width": 375,
+      "height": 667,
+      "canvas": {
+        "x": 0,
+        "y": 79.5,
+        "w": 375,
+        "h": 297.75
+      },
+      "panel": {
+        "x": 8.5,
+        "y": 377.25,
+        "w": 358,
+        "h": 289.75
+      },
+      "board": {
+        "x": 75.5,
+        "y": 22,
+        "size": 224
+      },
+      "mysteryVisible": true,
+      "controlsFit": true
+    },
+    {
+      "name": "desktop",
+      "width": 1280,
+      "height": 900,
+      "canvas": {
+        "x": 410,
+        "y": 94.328125,
+        "w": 460,
+        "h": 474.671875
+      },
+      "panel": {
+        "x": 461,
+        "y": 569,
+        "w": 358,
+        "h": 331
+      },
+      "board": {
+        "x": 38,
+        "y": 22,
+        "size": 384
+      },
+      "mysteryVisible": true,
+      "controlsFit": true
+    },
+    {
+      "name": "landscape",
+      "width": 844,
+      "height": 390,
+      "canvas": {
+        "x": 37,
+        "y": 60,
+        "w": 460,
+        "h": 330
+      },
+      "panel": {
+        "x": 522,
+        "y": 30.125,
+        "w": 310,
+        "h": 329.75
+      },
+      "board": {
+        "x": 118,
+        "y": 22,
+        "size": 224
+      },
+      "mysteryVisible": true,
+      "controlsFit": true
+    }
+  ],
+  "pictures": [
+    {
+      "level": 1,
+      "id": "watermelon",
+      "total": 1711,
+      "locks": 0
+    },
+    {
+      "level": 2,
+      "id": "cupcake",
+      "total": 1666,
+      "locks": 1
+    },
+    {
+      "level": 3,
+      "id": "chick",
+      "total": 2086,
+      "locks": 1
+    },
+    {
+      "level": 4,
+      "id": "strawberry",
+      "total": 1768,
+      "locks": 2
+    },
+    {
+      "level": 5,
+      "id": "rainbow",
+      "total": 2508,
+      "locks": 2
+    },
+    {
+      "level": 6,
+      "id": "mushroom",
+      "total": 2044,
+      "locks": 2
+    },
+    {
+      "level": 7,
+      "id": "donut",
+      "total": 2096,
+      "locks": 2
+    },
+    {
+      "level": 8,
+      "id": "ice-cream",
+      "total": 1712,
+      "locks": 2
+    },
+    {
+      "level": 9,
+      "id": "penguin",
+      "total": 2292,
+      "locks": 2
+    },
+    {
+      "level": 10,
+      "id": "blossom",
+      "total": 2302,
+      "locks": 2
+    },
+    {
+      "level": 11,
+      "id": "fox",
+      "total": 2168,
+      "locks": 2
+    },
+    {
+      "level": 12,
+      "id": "rocket",
+      "total": 1558,
+      "locks": 2
+    },
+    {
+      "level": 13,
+      "id": "treasure",
+      "total": 2959,
+      "locks": 3
+    },
+    {
+      "level": 14,
+      "id": "owl",
+      "total": 2456,
+      "locks": 3
+    },
+    {
+      "level": 15,
+      "id": "butterfly",
+      "total": 2826,
+      "locks": 3
+    },
+    {
+      "level": 16,
+      "id": "candy-maze",
+      "total": 2400,
+      "locks": 3
+    },
+    {
+      "level": 17,
+      "id": "crystal",
+      "total": 2064,
+      "locks": 3
+    },
+    {
+      "level": 18,
+      "id": "castle",
+      "total": 2500,
+      "locks": 3
+    }
+  ],
+  "clears": [
+    {
+      "level": 1,
+      "picture": "watermelon",
+      "total": 1711,
+      "delivered": 1711,
+      "tiles": 85,
+      "slots": 4,
+      "boosters": 0
+    },
+    {
+      "level": 2,
+      "picture": "cupcake",
+      "total": 1666,
+      "delivered": 1666,
+      "tiles": 81,
+      "slots": 4,
+      "boosters": 0
+    },
+    {
+      "level": 3,
+      "picture": "chick",
+      "total": 2086,
+      "delivered": 2086,
+      "tiles": 103,
+      "slots": 4,
+      "boosters": 0
+    },
+    {
+      "level": 4,
+      "picture": "strawberry",
+      "total": 1768,
+      "delivered": 1768,
+      "tiles": 86,
+      "slots": 4,
+      "boosters": 0
+    },
+    {
+      "level": 5,
+      "picture": "rainbow",
+      "total": 2508,
+      "delivered": 2508,
+      "tiles": 119,
+      "slots": 4,
+      "boosters": 0
+    },
+    {
+      "level": 6,
+      "picture": "mushroom",
+      "total": 2044,
+      "delivered": 2044,
+      "tiles": 99,
+      "slots": 4,
+      "boosters": 0
+    },
+    {
+      "level": 7,
+      "picture": "donut",
+      "total": 2096,
+      "delivered": 2096,
+      "tiles": 101,
+      "slots": 3,
+      "boosters": 0
+    },
+    {
+      "level": 8,
+      "picture": "ice-cream",
+      "total": 1712,
+      "delivered": 1712,
+      "tiles": 85,
+      "slots": 3,
+      "boosters": 0
+    },
+    {
+      "level": 9,
+      "picture": "penguin",
+      "total": 2292,
+      "delivered": 2292,
+      "tiles": 111,
+      "slots": 3,
+      "boosters": 0
+    },
+    {
+      "level": 10,
+      "picture": "blossom",
+      "total": 2302,
+      "delivered": 2302,
+      "tiles": 109,
+      "slots": 3,
+      "boosters": 0
+    },
+    {
+      "level": 11,
+      "picture": "fox",
+      "total": 2168,
+      "delivered": 2168,
+      "tiles": 105,
+      "slots": 3,
+      "boosters": 0
+    },
+    {
+      "level": 12,
+      "picture": "rocket",
+      "total": 1558,
+      "delivered": 1558,
+      "tiles": 77,
+      "slots": 3,
+      "boosters": 0
+    },
+    {
+      "level": 13,
+      "picture": "treasure",
+      "total": 2959,
+      "delivered": 2959,
+      "tiles": 142,
+      "slots": 3,
+      "boosters": 0
+    },
+    {
+      "level": 14,
+      "picture": "owl",
+      "total": 2456,
+      "delivered": 2456,
+      "tiles": 118,
+      "slots": 3,
+      "boosters": 0
+    },
+    {
+      "level": 15,
+      "picture": "butterfly",
+      "total": 2826,
+      "delivered": 2826,
+      "tiles": 134,
+      "slots": 3,
+      "boosters": 0
+    },
+    {
+      "level": 16,
+      "picture": "candy-maze",
+      "total": 2400,
+      "delivered": 2400,
+      "tiles": 116,
+      "slots": 3,
+      "boosters": 0
+    },
+    {
+      "level": 17,
+      "picture": "crystal",
+      "total": 2064,
+      "delivered": 2064,
+      "tiles": 100,
+      "slots": 3,
+      "boosters": 0
+    },
+    {
+      "level": 18,
+      "picture": "castle",
+      "total": 2500,
+      "delivered": 2500,
+      "tiles": 121,
+      "slots": 3,
+      "boosters": 0
+    },
+    {
+      "level": 19,
+      "picture": "watermelon",
+      "total": 1711,
+      "delivered": 1711,
+      "tiles": 85,
+      "slots": 3,
+      "boosters": 0
+    },
+    {
+      "level": 20,
+      "picture": "cupcake",
+      "total": 1666,
+      "delivered": 1666,
+      "tiles": 82,
+      "slots": 3,
+      "boosters": 0
+    },
+    {
+      "level": 21,
+      "picture": "chick",
+      "total": 2086,
+      "delivered": 2086,
+      "tiles": 101,
+      "slots": 3,
+      "boosters": 0
+    },
+    {
+      "level": 22,
+      "picture": "strawberry",
+      "total": 1768,
+      "delivered": 1768,
+      "tiles": 86,
+      "slots": 3,
+      "boosters": 0
+    },
+    {
+      "level": 23,
+      "picture": "rainbow",
+      "total": 2508,
+      "delivered": 2508,
+      "tiles": 119,
+      "slots": 3,
+      "boosters": 0
+    },
+    {
+      "level": 24,
+      "picture": "mushroom",
+      "total": 2044,
+      "delivered": 2044,
+      "tiles": 101,
+      "slots": 3,
+      "boosters": 0
+    },
+    {
+      "level": 25,
+      "picture": "donut",
+      "total": 2096,
+      "delivered": 2096,
+      "tiles": 103,
+      "slots": 3,
+      "boosters": 0
+    },
+    {
+      "level": 26,
+      "picture": "ice-cream",
+      "total": 1712,
+      "delivered": 1712,
+      "tiles": 86,
+      "slots": 3,
+      "boosters": 0
+    },
+    {
+      "level": 27,
+      "picture": "penguin",
+      "total": 2292,
+      "delivered": 2292,
+      "tiles": 109,
+      "slots": 3,
+      "boosters": 0
+    },
+    {
+      "level": 28,
+      "picture": "blossom",
+      "total": 2302,
+      "delivered": 2302,
+      "tiles": 109,
+      "slots": 3,
+      "boosters": 0
+    },
+    {
+      "level": 29,
+      "picture": "fox",
+      "total": 2168,
+      "delivered": 2168,
+      "tiles": 105,
+      "slots": 3,
+      "boosters": 0
+    },
+    {
+      "level": 30,
+      "picture": "rocket",
+      "total": 1558,
+      "delivered": 1558,
+      "tiles": 77,
+      "slots": 3,
+      "boosters": 0
+    },
+    {
+      "level": 31,
+      "picture": "treasure",
+      "total": 2959,
+      "delivered": 2959,
+      "tiles": 142,
+      "slots": 3,
+      "boosters": 0
+    },
+    {
+      "level": 32,
+      "picture": "owl",
+      "total": 2456,
+      "delivered": 2456,
+      "tiles": 118,
+      "slots": 3,
+      "boosters": 0
+    },
+    {
+      "level": 33,
+      "picture": "butterfly",
+      "total": 2826,
+      "delivered": 2826,
+      "tiles": 134,
+      "slots": 3,
+      "boosters": 0
+    },
+    {
+      "level": 34,
+      "picture": "candy-maze",
+      "total": 2400,
+      "delivered": 2400,
+      "tiles": 116,
+      "slots": 3,
+      "boosters": 0
+    },
+    {
+      "level": 35,
+      "picture": "crystal",
+      "total": 2064,
+      "delivered": 2064,
+      "tiles": 100,
+      "slots": 3,
+      "boosters": 0
+    },
+    {
+      "level": 36,
+      "picture": "castle",
+      "total": 2500,
+      "delivered": 2500,
+      "tiles": 121,
+      "slots": 3,
+      "boosters": 0
+    }
+  ],
+  "losses": [
+    {
+      "level": 1,
+      "slots": 4,
+      "stuck": true,
+      "delivered": 0,
+      "undo": 2
+    },
+    {
+      "level": 7,
+      "slots": 3,
+      "stuck": true,
+      "delivered": 0,
+      "undo": 1
+    },
+    {
+      "level": 13,
+      "slots": 3,
+      "stuck": true,
+      "delivered": 0,
+      "undo": 1
+    },
+    {
+      "level": 37,
+      "slots": 3,
+      "stuck": true,
+      "delivered": 0,
+      "undo": 1
+    }
+  ],
+  "checks": [
+    "hub launch",
+    "five responsive layouts",
+    "eighteen distinct pictures",
+    "advanced locks and hidden queues",
+    "2x speed",
+    "one extra slot",
+    "ant dispatch and return",
+    "soft nibble through live shared audio mixer",
+    "nibble mute and restart stop",
+    "progress",
+    "magnet and tile-budget conservation",
+    "one-use tools cannot be bypassed",
+    "restart restores attempt",
+    "waiting tile return shares undo charges",
+    "real STUCK from normal column clicks",
+    "undo exhaustion",
+    "extra-slot rescue",
+    "hard mode with three slots and one undo",
+    "36 real clears without boosters",
+    "give up returns to hub without advancing saved progress",
+    "reenter same stage",
+    "reduced motion",
+    "back to hub"
+  ],
+  "audio": {
+    "duration": 0.14002083333333334,
+    "peak": 0.13070669770240784,
+    "gap": 0.18,
+    "volume": 0.65,
+    "group": "color-ants-nibble",
+    "muteRespected": true
+  }
+}

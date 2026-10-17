@@ -5,14 +5,14 @@
  * 1. 外側（露出ピクセル）からしか食べられない
  *    - 外部と4方向につながる空間に面したピクセルのみが標的。閉じた空洞は含めない。
  *    - 外側が削られることで、内側のピクセルが順次露出していく。
- * 2. 5つの出撃スロット
- *    - タップしたタイルはスロット（最大5枠）に入る。
+ * 2. 限られた出撃スロット
+ *    - タップしたタイルは空き枠に入る。枠数はゲーム側の難度設定による。
  *    - スロット内のタイルから、現在露出しているピクセルに向かってアリが出撃。
  *    - タイルの残数が0になり、アリが全員帰還するとスロットが空く。
  *    - スロットが満杯で、かつどのアリも出撃できず止まったら「手詰まり（STUCK）」！
  */
 
-import { SIZE } from './pictures.js?v=7';
+import { SIZE } from './pictures.js?v=10';
 import { Perimeter } from './perimeter.js?v=8';
 
 const TAU = Math.PI * 2;
@@ -30,7 +30,7 @@ export class Colony {
     this.reset(null);
   }
 
-  reset(picture, rng = Math.random) {
+  reset(picture, rng = Math.random, { slotCount = 5, maxSlots = 6 } = {}) {
     this.version++;
     this.picture = picture;
     this.pixels = picture ? picture.pixels : [];
@@ -50,8 +50,9 @@ export class Colony {
     this.remaining = this.total;
     this.delivered = 0;
 
-    // 出撃スロット（最大5枠）
-    this.slots = [null, null, null, null, null];
+    // Runtime passes its difficulty; standalone callers retain the legacy default.
+    this.slots = Array(slotCount).fill(null);
+    this.maxSlots = maxSlots;
 
     this.pulse = 0;
     this.pulses = [0, 0, 0];
@@ -74,9 +75,9 @@ export class Colony {
     this.pulses = new Array(this.layout.nests.length).fill(0);
   }
 
-  /** スロット枠を1つ拡張（最大6枠） */
+  /** スロット枠を1つ拡張（難度ごとの上限まで） */
   expandSlots() {
-    if (this.slots.length < 6) {
+    if (this.slots.length < this.maxSlots) {
       this.slots.push(null);
       return true;
     }
@@ -181,7 +182,7 @@ export class Colony {
 
   /**
    * 手詰まり（詰み）チェック
-   * 5つのスロットが埋まり、活動中のアリもおらず、どのスロットの色も露出ピクセルが無い
+   * 全枠が埋まり、活動中のアリもおらず、どの枠の色も露出ピクセルが無い
    */
   isStuck() {
     if (this.slots.some(s => s === null)) return false; // 空きスロットがあるなら詰みではない

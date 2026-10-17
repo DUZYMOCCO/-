@@ -11,10 +11,10 @@ catch {
     '.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/entry.cjs'))('playwright');
 }
 const origin = process.env.COLOR_ANTS_ORIGIN || 'http://127.0.0.1:8000';
-const out = 'color-ants/docs/validation/v2.5.0';
+const out = 'color-ants/docs/validation/v2.7.0';
 mkdirSync(out, { recursive: true });
 const browser = await playwright.chromium.launch({ channel: 'chrome', headless: true });
-const report = { version: '2.5.0', errors: [], layouts: [], pictures: [], clears: [], checks: [] };
+const report = { version: '2.7.0', errors: [], layouts: [], pictures: [], clears: [], losses: [], checks: [] };
 const context = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, serviceWorkers: 'block' });
 const page = await context.newPage();
 page.on('pageerror', e => report.errors.push(e.message));
@@ -53,26 +53,65 @@ try {
   }
   await page.setViewportSize({ width: 390, height: 844 });
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  const pictureCount = await page.evaluate(async () => (await import('/color-ants/js/pictures.js?v=10')).PICTURE_DEFS.length);
+  await page.evaluate(count => {
+    window.qaGallery = document.createElement('canvas'); qaGallery.width = 1200; qaGallery.height = Math.ceil(count / 6) * 230;
+    const c = qaGallery.getContext('2d'); c.fillStyle = '#fff5df'; c.fillRect(0, 0, qaGallery.width, qaGallery.height);
+  }, pictureCount);
   // Capture every art family with the same treatment, including lock/key stages.
-  for (let level = 1; level <= 6; level++) {
+  for (let level = 1; level <= pictureCount; level++) {
     const state = await page.evaluate(level => {
       qaGame.level = level; qaGame.startLevel(); qaStep(0);
-      return { level, id: qaGame.picture.id, total: qaGame.colony.total, locks: qaGame.columns.flat().filter(t => t.locked).length };
+      const g = qaGame, L = g.colony.layout, c = qaGallery.getContext('2d'), x = (level - 1) % 6 * 200, y = Math.floor((level - 1) / 6) * 230;
+      const dpr = Math.min(3, devicePixelRatio || 1);
+      c.fillStyle = '#71563a'; c.font = 'bold 12px sans-serif'; c.fillText(`${level}. ${g.picture.name}`, x + 12, y + 18);
+      c.imageSmoothingEnabled = false;
+      c.drawImage(g.canvas, (L.boardX - 13) * dpr, (L.boardY - 13) * dpr, (L.cell * 64 + 26) * dpr, (L.cell * 64 + 26) * dpr, x + 10, y + 26, 180, 180);
+      c.font = '11px sans-serif'; c.fillText(`${g.difficulty.name} / ${g.colony.slots.length}枠`, x + 12, y + 221);
+      return { level, id: g.picture.id, total: g.colony.total, locks: g.columns.flat().filter(t => t.locked).length };
     }, level);
     report.pictures.push(state);
     await page.screenshot({ path: `${out}/art-${state.id}.png` });
   }
+  const gallery = await page.evaluate(() => qaGallery.toDataURL('image/png').split(',')[1]);
+  writeFileSync(`${out}/stage-gallery.png`, Buffer.from(gallery, 'base64'));
   await page.evaluate(() => { qaGame.level = 1; qaGame.startLevel(); });
   await page.locator('#ca-speed').click();
   assert.equal(await page.locator('#ca-speed').innerText(), '▶▶ ×2');
   await page.locator('#ca-boost-slot').click();
-  assert.equal(await page.locator('.ca-slot').count(), 6);
+  assert.equal(await page.locator('.ca-slot').count(), 5);
   assert(await page.locator('#ca-boost-slot').isDisabled());
   for (let i = 0; i < 5; i++) await page.locator(`.ca-col:nth-child(${i + 1}) .ca-tile.front`).click();
   const moving = await page.evaluate(() => { qaStep(1.6); return { ants: qaGame.colony.ants.length, slots: qaGame.colony.slots.filter(Boolean).length }; });
   assert(moving.ants > 10, 'dispatch should create a visible ant trail');
   await page.evaluate(() => qaGame.toastEl.classList.remove('show'));
   await page.screenshot({ path: `${out}/playing.png` });
+  report.audio = await page.evaluate(async () => {
+    const { sound } = await import('/common/js/audio.js?v=151');
+    const { NIBBLE_NAME, NIBBLE_GROUP, playNibble } = await import('/color-ants/js/soft-audio.js?v=10');
+    await sound.unlock();
+    const g = qaGame, original = sound.play, calls = [];
+    g.startLevel();
+    const ci = g.columns.findIndex(col => col[0] && !col[0].locked && g.picture.pixels.some(p => p.key === col[0].key && g.colony.isExposed(p)));
+    g.tapTile(ci);
+    sound.play = function(name, options) { calls.push({ name, options }); return original.call(this, name, options); };
+    try {
+      let time = performance.now(); g.lastTime = time;
+      for (let frame = 0; frame < 900 && !calls.some(c => c.name === NIBBLE_NAME); frame++) {
+        time += 1000 / 30; g.loop(time); cancelAnimationFrame(g.animId);
+      }
+    } finally { sound.play = original; g.lastTime = performance.now(); }
+    const nibble = calls.find(c => c.name === NIBBLE_NAME), buffer = sound.buffers.get(NIBBLE_NAME);
+    if (!nibble || !buffer || calls.some(c => c.name === 'hit')) throw new Error('chewing did not use the new soft sample');
+    sound.setMute(true); const muteRespected = playNibble(sound) === false; sound.setMute(false);
+    const peak = Math.max(...buffer.getChannelData(0).map(Math.abs));
+    g.startLevel();
+    if ([...sound.voices].some(v => v.group === NIBBLE_GROUP)) throw new Error('restart left nibble audio playing');
+    return { duration: buffer.duration, peak, gap: nibble.options.gap, volume: nibble.options.volume, group: nibble.options.group, muteRespected };
+  });
+  assert(report.audio.muteRespected);
+  // Continue the ordinary dispatch fixture after the audio-specific restart.
+  for (let i = 0; i < 4; i++) await page.locator(`.ca-col:nth-child(${i + 1}) .ca-tile.front`).click();
   await page.evaluate(() => qaStep(12, 2));
   const delivered = await page.evaluate(() => qaGame.colony.delivered);
   assert(delivered > 0, 'ants must return pixels to nests');
@@ -85,8 +124,15 @@ try {
     return credits === g.colony.total - g.colony.delivered;
   }), 'magnet must preserve the remaining tile budget');
   await page.locator('#ca-boost-shuffle').click();
+  assert(await page.locator('#ca-boost-shuffle').isDisabled());
+  assert(await page.locator('#ca-boost-magnet').isDisabled());
+  await page.evaluate(() => {
+    const g = qaGame, before = JSON.stringify(g.columns), delivered = g.colony.delivered;
+    g.shuffleColumns(); g.triggerMagnet();
+    if (before !== JSON.stringify(g.columns) || delivered !== g.colony.delivered) throw new Error('exhausted tools changed the game');
+  });
   await page.locator('#ca-restart').click();
-  assert.equal(await page.locator('.ca-slot').count(), 5);
+  assert.equal(await page.locator('.ca-slot').count(), 4);
   assert.equal(await page.locator('#ca-progress-text').innerText(), '0%');
   // Put a real, unexposed seed tile at the front to exercise return/undo.
   await page.evaluate(() => {
@@ -101,21 +147,67 @@ try {
   await page.locator('.ca-col:first-child .ca-tile.front').click();
   await page.locator('#ca-boost-undo').click();
   assert.equal(await page.locator('.ca-slot.waiting').count(), 0);
-  await page.evaluate(() => {
-    for (let i = 0; i < 5; i++) qaGame.colony.addTileToSlot({ key: 'seed', n: 10 }, qaGame.picture.palette.seed, 0);
-    if (!qaGame.colony.isStuck()) throw new Error('fixture must be stuck');
-    qaGame.renderSlots(); qaGame.showStuck();
-  });
+  await page.evaluate(() => qaGame.startLevel());
+  // Choose actual inner-color column fronts until the real game loop detects STUCK.
+  async function fillWrongColors() {
+    for (let i = 0; i < 6; i++) {
+      const ci = await page.evaluate(() => {
+        const g = qaGame;
+        if (!g.colony.slots.some(s => s === null)) return -1;
+        return g.columns.findIndex(col => col[0] && !col[0].locked &&
+          !g.picture.pixels.some(p => p.key === col[0].key && g.colony.isExposed(p)));
+      });
+      if (ci < 0) break;
+      await page.locator(`.ca-col:nth-child(${ci + 1}) .ca-tile.front`).click();
+    }
+    return page.evaluate(() => {
+      const g = qaGame; g.loop(performance.now()); cancelAnimationFrame(g.animId);
+      return { level: g.level, slots: g.colony.slots.length, stuck: g.stuck, delivered: g.colony.delivered, undo: g.boosts.undo };
+    });
+  }
+  report.losses.push(await fillWrongColors());
+  assert(report.losses.at(-1).stuck, 'real column choices must trigger STUCK');
   await page.screenshot({ path: `${out}/stuck.png` });
-  await page.locator('#ca-stuck-undo').click();
+  for (let used = 0; used < 2; used++) {
+    await page.locator('#ca-stuck-undo').click();
+    assert.equal(await page.locator('#ca-stuck-modal').evaluate(e => e.style.display), 'none');
+    assert((await fillWrongColors()).stuck);
+  }
+  assert(await page.locator('#ca-stuck-undo').isDisabled());
+  assert(await page.locator('#ca-boost-undo').isDisabled());
+  await page.evaluate(() => {
+    const g = qaGame, before = g.colony.slots.filter(Boolean).length;
+    g.cancelSlot(0); g.undoLastSlot();
+    if (g.colony.slots.filter(Boolean).length !== before) throw new Error('waiting-slot clicks bypass undo limit');
+  });
+  await page.screenshot({ path: `${out}/undo-exhausted.png` });
+  await page.locator('#ca-stuck-slot').click();
   assert.equal(await page.locator('#ca-stuck-modal').evaluate(e => e.style.display), 'none');
-  await page.evaluate(() => { qaGame.startLevel(); qaGame.colony.delivered = qaGame.colony.total; qaGame.updateCounter(); qaGame.showClear(); });
-  await page.screenshot({ path: `${out}/clear.png` });
-  await page.locator('#ca-next').click();
-  assert.equal(await page.locator('#ca-level').innerText(), 'Level 2');
-  assert.equal(await page.locator('#ca-modal').evaluate(e => e.style.display), 'none');
+  assert.equal(await page.locator('.ca-slot').count(), 5);
+  assert((await fillWrongColors()).stuck);
+  assert(await page.locator('#ca-stuck-slot').isDisabled());
+  await page.locator('#ca-stuck-retry').click();
+  assert.equal(await page.locator('.ca-slot').count(), 4);
+  assert.equal(await page.evaluate(() => qaGame.boosts.undo), 2);
+  await page.evaluate(() => { qaGame.level = 7; qaGame.startLevel(); });
+  assert.equal(await page.locator('.ca-slot').count(), 3);
+  assert.equal(await page.evaluate(() => qaGame.boosts.undo), 1);
+  report.losses.push(await fillWrongColors());
+  assert(report.losses.at(-1).stuck);
+  await page.screenshot({ path: `${out}/hard-stuck.png` });
+  await page.setViewportSize({ width: 320, height: 568 });
+  assert(await page.locator('#ca-stuck-modal .ca-card').evaluate(e => {
+    const r = e.getBoundingClientRect(); return r.top >= 0 && r.bottom <= innerHeight;
+  }), 'stuck dialog must fit small phones');
+  await page.screenshot({ path: `${out}/small-stuck.png` });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  await page.evaluate(() => { qaGame.level = 13; qaGame.startLevel(); });
+  report.losses.push(await fillWrongColors());
+  assert(report.losses.at(-1).stuck, 'advanced art must have real losing choices');
+  await page.screenshot({ path: `${out}/advanced-stuck.png` });
   // Real clears using only column fronts, with no boosters or injected progress.
-  for (let level = 1; level <= 6; level++) {
+  for (let level = 1; level <= pictureCount * 2; level++) {
     const clear = await page.evaluate(level => {
       const g = qaGame; g.level = level; g.startLevel();
       const plan = g.columns.flat().slice().sort((a, b) => a.order - b.order);
@@ -139,14 +231,28 @@ try {
     report.clears.push(clear);
     await page.screenshot({ path: `${out}/real-clear-${level}.png` });
   }
-  await page.evaluate(() => qaGame.startLevel());
+  await page.locator('#ca-next').click();
+  const savedBeforeGiveUp = await page.evaluate(() => localStorage.getItem('game_studio_color_ants_v2'));
+  report.losses.push(await fillWrongColors());
+  assert(report.losses.at(-1).stuck, 'give-up fixture must use a real losing position');
+  await page.setViewportSize({ width: 320, height: 568 });
+  await page.screenshot({ path: `${out}/give-up-small.png` });
+  await page.locator('#ca-stuck-giveup').click();
+  assert.equal(await page.locator('#ca-canvas').count(), 0);
+  assert(await page.evaluate(() => !qaGame.running && qaGame.animId === null));
+  assert.equal(await page.evaluate(() => localStorage.getItem('game_studio_color_ants_v2')), savedBeforeGiveUp);
+  await page.locator('[data-game-id="color-ants"]').click();
+  await page.locator('#ca-canvas').waitFor();
+  assert.equal(await page.locator('#ca-level').innerText(), `Level ${pictureCount * 2 + 1}`);
+  await page.evaluate(() => cancelAnimationFrame(qaGame.animId));
+  await page.setViewportSize({ width: 390, height: 844 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
   assert.equal(await page.locator('#ca-progress-fill').evaluate(e => getComputedStyle(e).transitionDuration), '0s');
   await page.locator('#ca-boost-shuffle').click();
   await page.waitForFunction(() => !document.querySelector('#ca-toast').classList.contains('show'));
   await page.locator('#ca-back').click();
   assert.equal(await page.locator('#ca-canvas').count(), 0);
-  report.checks = ['hub launch', 'five responsive layouts', 'six pictures', 'four visible tile rows', '2x speed', 'sixth slot', 'ant dispatch and return', 'progress', 'magnet and tile-budget conservation', 'shuffle', 'restart', 'waiting tile return', 'undo', 'stuck dialog and rescue (fixture)', 'clear dialog and next level (fixture)', 'six real clears with five slots and no boosters', 'reduced motion', 'back to hub'];
+  report.checks = ['hub launch', 'five responsive layouts', 'eighteen distinct pictures', 'advanced locks and hidden queues', '2x speed', 'one extra slot', 'ant dispatch and return', 'soft nibble through live shared audio mixer', 'nibble mute and restart stop', 'progress', 'magnet and tile-budget conservation', 'one-use tools cannot be bypassed', 'restart restores attempt', 'waiting tile return shares undo charges', 'real STUCK from normal column clicks', 'undo exhaustion', 'extra-slot rescue', 'hard mode with three slots and one undo', '36 real clears without boosters', 'give up returns to hub without advancing saved progress', 'reenter same stage', 'reduced motion', 'back to hub'];
   assert.deepEqual(report.errors, []);
 } finally {
   writeFileSync(`${out}/report.json`, JSON.stringify(report, null, 2) + '\n');
