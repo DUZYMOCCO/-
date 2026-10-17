@@ -2,7 +2,7 @@ import {noteFollowerIntent} from './follower-recovery.js?v=277';
 import {soldierAttackCooldown} from './equipment-rules.js?v=295';
 import {guardTarget,guardRegrouping,guardSpeedMult} from './guard-leash.js?v=266';
 import {guardFormationTarget,guardFormationSpeedMult} from './guard-formation.js?v=295';
-import {WORLD_SIZE,fieldBlocks} from './world.js?v=289';
+import {WORLD_SIZE,fieldTerrainAt} from './world.js?v=289';
 import {inCurrentInstance} from './instance-rules.js?v=256';
 import {isSoldierOnExpedition} from './expedition-rules.js?v=256';
 import {generateSoldierName} from './soldier-names.js?v=210';
@@ -18,10 +18,11 @@ export const CAPTIVE_SPAWN_CHANCE=.1;
 export const CAPTIVE_CLASSES=Object.freeze(Object.keys(LIMITED_CLASSES).filter(id=>id!=='NINJA'));
 const LIMITED_NAMES={NINJA:['影丸','朔','蓮','黒羽','千鳥','銀次'],wolf:['灰尾','ロウ','銀牙','遠吠'],bear:['ゴウ','岩掌','森助','厚丸'],cat:['ミケ','鈴音','クロ','日向'],fox:['琥珀','灯','コン','白露'],bird:['羽音','鷹丸','青羽','ツバサ']};
 const center=WORLD_SIZE/2;
-const locations=[['ninja_village','隠れ忍者村','NINJA',40200,41800],['wolf_hamlet','狼獣人の小集落','BEAST_WOLF',-4100,-900],['bear_hamlet','熊獣人の小集落','BEAST_BEAR',-9000,4600],['cat_hamlet','猫獣人の小集落','BEAST_CAT',7000,-4200],['fox_hamlet','狐獣人の小集落','BEAST_FOX',17000,12000],['bird_hamlet','鳥獣人の小集落','BEAST_BIRD',-20000,-12500]];
+const locations=[['ninja_village','隠れ忍者村','NINJA',40200,41800],['wolf_hamlet','狼獣人の小集落','BEAST_WOLF',-4100,-540],['bear_hamlet','熊獣人の小集落','BEAST_BEAR',-9000,4600],['cat_hamlet','猫獣人の小集落','BEAST_CAT',7000,-4200],['fox_hamlet','狐獣人の小集落','BEAST_FOX',17000,12000],['bird_hamlet','鳥獣人の小集落','BEAST_BIRD',-20000,-12500]];
 export const LIMITED_SETTLEMENTS=locations.map(([id,name,limitedClass,ox,oy])=>{
+ // v7.0.20: the entrance must stand on open ground (fieldTerrainAt), not just "not rock"; the wolf hamlet used to sit in a pond.
  let x=center+ox,y=center+oy;
- outer:for(const r of [0,40,80,120,180,240,320])for(let i=0;i<16;i++){const a=i*Math.PI/8,nx=center+ox+Math.cos(a)*r,ny=center+oy+Math.sin(a)*r;if(!fieldBlocks(nx,ny)){x=nx;y=ny;break outer;}}
+ outer:for(const r of [0,40,80,120,180,240,320])for(let i=0;i<16;i++){const a=i*Math.PI/8,nx=center+ox+Math.cos(a)*r,ny=center+oy+Math.sin(a)*r;if(fieldTerrainAt(nx,ny)==='open'){x=nx;y=ny;break outer;}}
  return {id,name,limitedClass,kind:'town',theme:'town',subtitle:'探索で出会う仲間',icon:LIMITED_CLASSES[limitedClass].icon,color:'#afa17e',accentColor:'#c6b17d',reqDef:0,reqLv:1,desc:'住民に話しかけると志願者が仲間になる。',entrance:{x,y,radius:68},width:1100,height:720,ambientColor:'#241e16',floorColor:'#3a3428',wallColor:'#14110e',torchColor:'#c47a3a',distance:Math.hypot(ox,oy),mobTypes:[],mobCount:0,eliteCount:0,boss:null,guardian:null};
 });
 const alive=u=>u&&!u.dead&&!u.isDown&&u.hp>0;

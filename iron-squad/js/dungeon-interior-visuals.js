@@ -5,6 +5,10 @@ const SCENES={
  catacombs:{void:'#13161a',floor:'#3e4143',tiles:['#4b4f50','#464a4b','#535455'],seam:'#2e3438',wall:'#2c3338',cap:'#697171',edge:'#99988a',shade:'#1a2128'},
  dragon:{void:'#1f1413',floor:'#453c35',tiles:['#57473d','#4d433b','#605044'],seam:'#342d29',wall:'#382d29',cap:'#786052',edge:'#a37c5a',shade:'#201817'},
  demon:{void:'#10141b',floor:'#343b44',tiles:['#424851','#38404a','#474c55'],seam:'#232a32',wall:'#252d38',cap:'#5d6774',edge:'#b1a075',shade:'#141d29'},
+ swamp:{void:'#0f1a15',floor:'#2f3b30',tiles:['#3a473a','#334034','#44503f'],seam:'#222c24',wall:'#27332b',cap:'#5b6e57',edge:'#8fb08a',shade:'#142019'},
+ sand:{void:'#1c1710',floor:'#5a4b36',tiles:['#675740','#5f503a','#706044'],seam:'#3e3427',wall:'#4a3e2d',cap:'#8a7550',edge:'#c9a86a',shade:'#2a2218'},
+ ice:{void:'#0d1620',floor:'#3b5062',tiles:['#476176','#415a6d','#506d82'],seam:'#2a3b49',wall:'#2f4556',cap:'#7fa3bd',edge:'#bfe3f5',shade:'#14212d'},
+ giant:{void:'#0f141a',floor:'#38414a',tiles:['#454f59','#3e4750','#4c5762'],seam:'#262e36',wall:'#2a333d',cap:'#6b7b8a',edge:'#67c7d6',shade:'#151c24'},
  ruin:{void:'#1c2520',floor:'#454a3d',tiles:['#55594a','#4d5243','#63624f'],seam:'#363d31',wall:'#42473b',cap:'#86836a',edge:'#b8ae88',shade:'#293126'}
 };
 const GEOMETRY=new WeakMap();

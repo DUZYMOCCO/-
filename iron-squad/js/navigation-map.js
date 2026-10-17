@@ -1,7 +1,7 @@
 import {drawWildernessMap} from './wilderness-sites.js?v=281';
 import {WORLD_SIZE,biomeAt,eastWestRoadY,northSouthRoadX,riverCenterY} from './world.js?v=289';
 import {UNDISCOVERED_MEDICAL_LABEL} from './medical-posts.js?v=277';
-import {dungeonSolids} from './dungeon.js?v=295';
+import {dungeonSolids} from './dungeon.js?v=297';
 import {inCurrentInstance} from './instance-rules.js?v=256';
 import {ECONOMIC_REGIONS,economicState} from './regional-economy.js?v=277';
 

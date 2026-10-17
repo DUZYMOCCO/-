@@ -8,7 +8,7 @@ import {startAutoSave,stopAutoSave} from './auto-save.js?v=269';
 import {requestEvenUpgrade} from './even-upgrade.js?v=291';
 import {beginFollowerRecovery,noteFollowerIntent,suspendFollowerRecovery,finishFollowerRecovery,profileFollowerRecovery} from './follower-recovery.js?v=277';
 import {configurePerfSettings} from './perf-diagnostics.js?v=291';
-import {gameText} from './game-text.js?v=291';
+import {gameText} from './game-text.js?v=297';
 import {talentTag} from './talent-labels.js?v=291';
 import {fieldDialogReturn} from './dialog-return.js?v=200';
 import {guildMethods} from './guild-contracts.js?v=295';
@@ -21,7 +21,7 @@ import {initializeWildernessSites,serializeWildernessSites,updateWildernessSites
 import {enemyArtHeadHeight} from './enemy-art.js?v=280';
 import {selectBiomeEncounter,biomeEnemyStats,encounterSlots,updateBiomeCharge} from './biome-encounters.js?v=279';
 import {configureRangedEnemy,updateRangedEnemy,updateDefenseWalls,interceptHostileShot,isHostileShot,updateHostileBolt,drawDefenseWalls} from './enemy-ranged.js?v=295';
-import {LIMITED_CLASSES,initializeLimitedAllies,prepareLimitedEncounter,createLimitedAlly,joinLimitedEncounter,updateLimitedAllies,updateNinja,updateShuriken,drawLimitedEncounter,serializeLimitedAllies,notifyLimitedJoin} from './limited-allies.js?v=295';
+import {LIMITED_CLASSES,initializeLimitedAllies,prepareLimitedEncounter,createLimitedAlly,joinLimitedEncounter,updateLimitedAllies,updateNinja,updateShuriken,drawLimitedEncounter,serializeLimitedAllies,notifyLimitedJoin} from './limited-allies.js?v=297';
 import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=182';
 import {TIERS,MAX_EQUIPMENT_TIER,MAX_POWER_RANK,POWER_RANK_STEP,GENERATION_COUNT,TRADE_MAX_TIER,powerRank,tierDescription} from './equipment-tiers.js?v=231';
 import {fieldAdaptiveScaling} from './field-scaling.js?v=182';
@@ -151,7 +151,7 @@ import {updateSquadHpHud} from './squad-hp-hud.js?v=295';
 import {addBattleReport,normalizeBattleReport,renderBattleReport} from './battle-report.js?v=276';
 import {updateRescueAssistance,handleRescueAssistance} from './rescue-assistance.js?v=295';
 import { RESCUE_TIMEOUT, REVIVAL_COOLDOWN, revivalCooldownOf, revivalSkillCooldownLeft, normalizeRevivalSkill, headquartersRevivalPaused, rescueUnits, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, receiveTownCargo, leaveCivilianSpace, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, buildTransportRescueAssign, markSoldierDown, downCommander, commanderDown, updateNpcRescue, CIV_KINDS, isMedic, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST, medicHoldsByCommander, isMerchantCasualty } from './casualty-rules.js?v=295';
-import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault, dungeonBlocks, dungeonSolids } from './dungeon.js?v=295';
+import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault, dungeonBlocks, dungeonSolids } from './dungeon.js?v=297';
 import {nearestDungeonFloor,dungeonSpawnPoint,dungeonSteeringTarget} from './dungeon-layout.js?v=182';
 import {normalizeDungeonExploration,updateDungeonSideChests,drawDungeonSideChests,updateDungeonRespawns,dungeonCoolingDown,recordDungeonClear,DUNGEON_RESET_PHASES} from './dungeon-exploration.js?v=295';
 import {
@@ -3623,7 +3623,8 @@ export const IronSquadGame = {
     refreshOwnedEquipmentUpgrades(this);
     sanitizeCarriers(this);
     if (!legacyWorld && saved.dungeons) {
-      this.dungeons = this.dungeons.map(d=>({...d,...saved.dungeons.find(old=>old.id===d.id)}));
+      // v7.0.20: the saved record wins for progress only. Entrance/distance (and ruin rewards) always follow the current definition so moved or re-priced places reach old saves.
+      this.dungeons = this.dungeons.map(d=>({...d,...saved.dungeons.find(old=>old.id===d.id),entrance:d.entrance,distance:d.distance,...(d.kind==='ruin'?{reward:d.reward}:{})}));
     } else if(saved.dungeons) {
       for(const old of saved.dungeons) {
         const d = this.dungeons.find(x => x.id === old.id);

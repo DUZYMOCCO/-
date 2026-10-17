@@ -1,7 +1,7 @@
 // Warm local illumination over a reusable darkness mask. Never changes exploration or saves.
 import {daylightAt} from './day-night.js?v=208';
 import {explorationLayout,dungeonSegmentOpen} from './dungeon-layout.js?v=182';
-import {explorationLamps} from './dungeon-interior-visuals.js?v=242';
+import {explorationLamps} from './dungeon-interior-visuals.js?v=297';
 import {nightlifeLightSources} from './nightlife-visuals.js?v=277';
 import {viewport,circleInView} from './render-support.js';
 import {commerceHeading} from './commerce-visuals.js?v=295';

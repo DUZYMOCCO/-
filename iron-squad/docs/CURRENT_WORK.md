@@ -1,5 +1,29 @@
 # 現在の作業と引き継ぎ（2026-10-16）
 
+## 2026-10-17 v7.0.20 / cache v297 — 遠方ダンジョン9件・遠方3廃墟の報酬を距離連動・狼の集落の入口を池から修正
+- **ユーザー決定**: 「案Bの9件を実装して、廃墟報酬と池の修正も入れる。コミットまで」。「近場にしかダンジョンがない」「何もない」の対策。pushはしていない。
+- **遠方ダンジョン9件**（`dungeon.js` の `FAR_DUNGEON_DEFS`、`farDungeon()` で定義。本陣からのオフセット、距離はゲーム内m表示）:
+  - 沈んだ水路の古墳 `dungeon_sunken_tomb`（-11743,-410 / 117.5m / 沼の主=colossal_dragon）
+  - 砂王の埋没墓 `dungeon_sand_king_tomb`（864,16477 / 165.0m / lich_elder）
+  - 凍てつく氷穴 `dungeon_frozen_cave`（353,-20247 / 202.5m / behemoth_king）
+  - 盗賊王の砦洞 `dungeon_bandit_fortress`（23996,-419 / 240.0m / goblin_king）
+  - 毒霧の沼底神殿 `dungeon_poison_marsh_temple`（-23996,419 / 240.0m / colossal_dragon）
+  - 岩トロールの深坑 `dungeon_troll_pit`（7903,-28161 / 292.5m / goblin_king）
+  - 古戦場の地下霊廟 `dungeon_battlefield_mausoleum`（31034,12366 / 334.1m / behemoth_king）
+  - 古代巨神の祠 `dungeon_titan_shrine`（3829,-45523 / 456.8m / colossal_titan）
+  - 塩の竜骸窟 `dungeon_salt_dragon_bones`（-803,45993 / 460.0m / colossal_dragon）
+  - 座標は調査時の候補をそのまま採用（ずらしなし）。全件 open 地形・周囲半径60/90/120/240/480の16方向が open・徒歩到達可・既存洞窟と他の遠方ダンジョンから3.5k以上・荒野拠点から2.5k以上・救護所から1.8k以上・街道450px以上・川700px以上。
+- **ボス**: 設定HP/ATK×max(1,距離係数×0.75)＝実HP/ATKは 33.9万/1.6k（古墳）〜2664万/5.4万（巨神）。スキルが実際に出るのは colossal_dragon（火炎ブレス）/behemoth_king（アースクエイク）/colossal_titan（レーザー）。goblin_king/lich_elder は絵のみで、既存の洞窟と同じくスキル分岐なし。
+- **報酬**（`farVaultReward`）: 22,000（220m）未満は 金=1500×金係数・EXP=400×EXP係数、22,000以上は 600×・250×（10の位で丸め）。箱は既存の dungeon_vault 表。itemCount は wild=5、frontier=6。ボス初回撃破の覚醒宝珠は既存の enemyTier ルール（初回100%）のまま＝**9件ぶん増える**。
+- **テーマ**: `dungeon-interior-visuals.js` の SCENES に swamp/sand/ice/giant を追加（床・壁の配色のみ。小物は既定の遺跡風）。mines/catacombs は再利用。BGM は既存規則（mines=ケルト、他=オルガン）。
+- **遠方廃墟の報酬を距離連動**（`farRuinReward`、距離8,000以上の廃墟のみ。北の崩れ砦は据え置き）: 金=雑魚10体ぶん（8×10×金係数）、EXP=雑魚10体ぶん（6×10×EXP係数）、10の位で丸め。塩の廃村 980/240→15,180/14,230、西の崩れ王城 980/240→23,010/21,570、縁の監視塔 1,200/280→126,760/113,140。itemCount=2・lootKind=chest は不変。
+- **狼の集落の入口**: 原因は limited-allies.js の入口探索が `fieldBlocks`（rock のみ）で水を弾かないこと。探索条件を `fieldTerrainAt==='open'` に変更し、狼の集落の座標を (-4100,-900)→(-4100,-540)（西、半径60〜480が全方向 open、旧位置から360px）に変更。他の5集落は r=0 で open のため不変。
+- **旧セーブ**: `saved.dungeons` は定義全体を保存し、読込時に保存側が勝つ。index.js の合成に `entrance:d.entrance,distance:d.distance`（全場所）と `kind==='ruin'` のとき `reward:d.reward` を定義側に戻す1行を追加（進捗の cleared/discovered/clearedWave は保存側のまま）。新IDは未保存なので定義からそのまま追加される。
+- **かなモード**: 新しい名前・説明の漢字が小2を超えるため、`game-text.js` のゲーム用語リストに約70語（古墳・水路・墓・洞窟・巨神・竜骸・毒霧 など）を追加（共有 common/ は未変更）。
+- **版**: APP 7.0.20 / cache v297。dungeon.js・limited-allies.js・dungeon-interior-visuals.js・game-text.js の `?v=` を 297 に（importer: index/gate-rules/hero-party/navigation-map/town-ambient/scene-lighting ほか）。
+- **テスト**: `tests/far-dungeons-v7020.test.mjs`（9件の定義・配置・ボス実HP/ATK・報酬・突入、廃墟報酬、狼の集落、旧セーブ移行2回、救護所22/荒野拠点48/前哨12/既存入口の座標ハッシュ不変）。`cave-entrances.test.mjs` の wolf_hamlet:'water' 例外を外した。
+- **注意**: 報酬・箱ティア・難易度は暫定値。入口は街道から450px以上離してあるので、歩いていて偶然見つかるとは限らない（荒野拠点の見張り台を取ると地図に出る）。
+
 ## 2026-10-17 v7.0.19 / cache v296 — 魔法使い系の最大HPを×0.8に
 - **ユーザー決定**: 「HP0.8のみ実装」。魔法使いは攻撃一辺倒に尖らせる方針。攻撃・防御・瀕死止まり（HP1で耐える仕組み）は**入れていない**。衛生兵（MEDIC系）は不変。
 - **実装**: magic-rules.js に MAGE_HP_MULT=0.8 と classHpScale(classId)（MAGE_IDS の4職＝魔法使い・大魔導士・元素賢者・秘術王だけ0.8、他は1）を追加。index.js の ecalcSoldierStats の multipliedHp の最後に * classHpScale(clsKey) を掛ける。classHpMult（上位職の乗算ボーナス）は別物なので上位職でも二重にはならず、4職とも1回だけ0.8倍になる。

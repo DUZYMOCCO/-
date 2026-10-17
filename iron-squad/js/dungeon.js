@@ -1,21 +1,33 @@
-import {DEMON_KING_HP} from './campaign-scaling.js?v=241';
+import {DEMON_KING_HP,campaignScaling} from './campaign-scaling.js?v=241';
 /**
  * IRON SQUAD: ダンジョン・宿場・廃墟のインスタンス
  * 入口は石門。内部は敷石・土間・崩れ壁。霓虹の魔法陣は使わない。
  * 脱出は常に x=180, y=height/2。至宝はボスか番兵を倒したあと、x=width-240。
  */
 
-import {LIMITED_SETTLEMENTS,drawLimitedEntrance} from './limited-allies.js?v=295';
+import {LIMITED_SETTLEMENTS,drawLimitedEntrance} from './limited-allies.js?v=297';
 import { WORLD_SIZE, SETTLEMENTS } from './world.js';
 import {chooseLootTier} from './equipment-rules.js?v=295';
 import {drawTreasureChest} from './loot-visuals.js?v=295';
 import {explorationLayout,explorationBlocks} from './dungeon-layout.js?v=182';
-import {drawExplorationInterior} from './dungeon-interior-visuals.js?v=242';
+import {drawExplorationInterior} from './dungeon-interior-visuals.js?v=297';
 
 const CENTER = WORLD_SIZE / 2;
 
+// v7.0.20: ruins beyond the first wall (8,000 = 80m) pay about ten ordinary kills at their own distance (no longer a fixed, tiny sum).
+// Gold = 8 x 10 x gold scale, EXP = 6 x 10 x exp scale (the same bases a normal kill uses in killMonster). The near north fort keeps its authored reward.
+export const FAR_RUIN_MIN_DISTANCE = 8000;
+export const FAR_RUIN_KILL_EQUIVALENT = 10;
+const round10 = (n) => Math.max(10, Math.round(n / 10) * 10);
+export function farRuinReward(reward, distance) {
+  if (!reward || !(distance >= FAR_RUIN_MIN_DISTANCE)) return reward || null;
+  const c = campaignScaling(distance, 1);
+  return { ...reward, gold: round10(8 * FAR_RUIN_KILL_EQUIVALENT * c.gold), exp: round10(6 * FAR_RUIN_KILL_EQUIVALENT * c.exp) };
+}
+
 function settlementToDef(s) {
   const town = s.kind === 'town';
+  const distance = Math.hypot(s.ox, s.oy);
   return {
     id: s.id,
     kind: s.kind,
@@ -35,16 +47,105 @@ function settlementToDef(s) {
     floorColor: town ? '#3a3428' : '#241f1a',
     wallColor: '#14110e',
     torchColor: '#c47a3a',
-    distance: Math.hypot(s.ox, s.oy),
+    distance,
     boss: null,
     guardian: s.guardian || null,
     mobTypes: s.mobTypes || [],
     mobCount: s.mobCount || 0,
     eliteCount: s.eliteCount || 0,
-    reward: s.reward || null,
+    reward: s.kind === 'ruin' ? farRuinReward(s.reward, distance) : (s.reward || null),
     street: s.street
   };
 }
+
+// v7.0.20: nine far dungeons (offsets from the headquarters in internal units; 100 units = 1m on screen).
+// Wild band (< 22,000): gold 1500 x gold scale, EXP 400 x exp scale. Frontier band (>= 22,000): gold 600 x, EXP 250 x.
+// Enemy strength and the vault tier follow the entrance distance, exactly like the older caves.
+export function farVaultReward(distance, itemCount) {
+  const c = campaignScaling(distance, 1), wild = distance < 22000;
+  return { gold: round10((wild ? 1500 : 600) * c.gold), exp: round10((wild ? 400 : 250) * c.exp), itemCount, lootKind: 'dungeon_vault' };
+}
+const farDungeon = ({ ox, oy, pal, itemCount, ...def }) => {
+  const distance = Math.hypot(ox, oy);
+  return {
+    kind: 'dungeon', ...def,
+    entrance: { x: CENTER + ox, y: CENTER + oy, radius: 48 },
+    ambientColor: pal[0], floorColor: pal[1], wallColor: pal[2], torchColor: pal[3],
+    distance,
+    reward: farVaultReward(distance, itemCount)
+  };
+};
+const PAL_SWAMP = ['#0f1a14', '#1d2b22', '#0a120e', '#7fbf8a'];
+const PAL_SAND = ['#1f180d', '#33291a', '#17110a', '#e0a85a'];
+const PAL_ICE = ['#0c1822', '#1d3040', '#08121a', '#8fd3ff'];
+const PAL_GIANT = ['#10161c', '#252f38', '#0a0f14', '#6ee7f2'];
+const PAL_MINE = ['#1c150c', '#2b2216', '#15110b', '#c47a3a'];
+const PAL_CRYPT = ['#120f1c', '#1e1a2b', '#0f0c18', '#c4b48a'];
+export const FAR_DUNGEON_DEFS = [
+  farDungeon({
+    id: 'dungeon_sunken_tomb', name: '沈んだ水路の古墳', subtitle: '【沼に呑まれた王墓】', icon: '🪦', color: '#4d7c5a', accentColor: '#86c79a',
+    theme: 'swamp', reqDef: 400, reqLv: 30, ox: -11743, oy: -410, width: 2400, height: 1500, pal: PAL_SWAMP, itemCount: 5,
+    desc: '湿地に半ば沈んだ古い水路墓。濁った水の底から、沼の主が侵入者を待つ。',
+    boss: { type: 'colossal_dragon', name: '沼の主・ミレムドラゴン', title: '【泥底の古竜】', icon: '🐊🌿', color: '#4d7c5a', radius: 48, hp: 30000, atk: 300, speed: 50, skillCooldown: 4.2, skillName: 'メガフレアブレス', desc: '泥を焼く炎を扇状に吐く沼の主！' },
+    mobTypes: ['slime', 'orc'], mobCount: 16, eliteCount: 3
+  }),
+  farDungeon({
+    id: 'dungeon_sand_king_tomb', name: '砂王の埋没墓', subtitle: '【塩原に眠る砂の王墓】', icon: '🏜️', color: '#c08a3e', accentColor: '#e8bb6a',
+    theme: 'sand', reqDef: 450, reqLv: 32, ox: 864, oy: 16477, width: 2400, height: 1500, pal: PAL_SAND, itemCount: 5,
+    desc: '塩の砂に埋もれた古い王墓。砂王の亡霊が、副葬の財宝とともに眠っている。',
+    boss: { type: 'lich_elder', name: '砂王・ネフェルカ', title: '【塩原の亡き王】', icon: '💀🏜️', color: '#c08a3e', radius: 38, hp: 42000, atk: 380, speed: 52, skillCooldown: 3.8, skillName: 'サンドカース', desc: '乾いた呪いで侵入者を蝕む砂の王！' },
+    mobTypes: ['wolf', 'orc'], mobCount: 18, eliteCount: 3
+  }),
+  farDungeon({
+    id: 'dungeon_troll_pit', name: '岩トロールの深坑', subtitle: '【山地に穿たれた巨石の坑】', icon: '🪨', color: '#78716c', accentColor: '#d6b36a',
+    theme: 'mines', reqDef: 640, reqLv: 37, ox: 7903, oy: -28161, width: 2600, height: 1600, pal: PAL_MINE, itemCount: 6,
+    desc: '山の奥に口を開けた深い採掘坑。岩のように硬いトロールが群れ、岩の王が坑底を支配する。',
+    boss: { type: 'goblin_king', name: '岩の王・グロムバルク', title: '【坑底の巨石王】', icon: '👑🪨', color: '#a8a29e', radius: 38, hp: 36000, atk: 400, speed: 54, skillCooldown: 4.0, skillName: 'ロックフォール', desc: '岩塊のような拳で坑道を揺らす岩の王！' },
+    mobTypes: ['wolf', 'orc'], mobCount: 20, eliteCount: 4
+  }),
+  farDungeon({
+    id: 'dungeon_battlefield_mausoleum', name: '古戦場の地下霊廟', subtitle: '【名もなき兵の眠る霊廟】', icon: '⚔️', color: '#9ca3af', accentColor: '#cbd5e1',
+    theme: 'catacombs', reqDef: 680, reqLv: 38, ox: 31034, oy: 12366, width: 2600, height: 1600, pal: PAL_CRYPT, itemCount: 6,
+    desc: '平原の古戦場の下に築かれた霊廟。戦で散った兵の無念が、巨獣の王を呼び覚ました。',
+    boss: { type: 'behemoth_king', name: '戦場の巨獣王・ガルザーク', title: '【古戦場の覇獣】', icon: '🦣⚔️', color: '#9ca3af', radius: 52, hp: 48000, atk: 480, speed: 50, skillCooldown: 4.4, skillName: 'アースクエイク', desc: '大地を砕く衝撃波を放つ巨獣の王！' },
+    mobTypes: ['orc', 'wyvern'], mobCount: 20, eliteCount: 4
+  }),
+  farDungeon({
+    id: 'dungeon_titan_shrine', name: '古代巨神の祠', subtitle: '【山地の奥に眠る巨神】', icon: '🗿', color: '#22b8cf', accentColor: '#67e8f9',
+    theme: 'giant', reqDef: 740, reqLv: 39, ox: 3829, oy: -45523, width: 2800, height: 1700, pal: PAL_GIANT, itemCount: 6,
+    desc: '最果ての山地に残る巨神の祠。数万年の眠りから覚めた古代の巨神が、光で侵入者を焼き払う。',
+    boss: { type: 'colossal_titan', name: '古代巨神・タイタニア', title: '【眠りを破られた巨神】', icon: '🗿✨', color: '#22b8cf', radius: 60, hp: 64000, atk: 640, speed: 46, skillCooldown: 4.0, skillName: 'ミシックレーザー', desc: '八方へ殲滅光線を放つ古代の巨神！' },
+    mobTypes: ['orc', 'wyvern'], mobCount: 22, eliteCount: 4
+  }),
+  farDungeon({
+    id: 'dungeon_frozen_cave', name: '凍てつく氷穴', subtitle: '【永久凍土の氷窟】', icon: '🧊', color: '#7dd3fc', accentColor: '#bae6fd',
+    theme: 'ice', reqDef: 480, reqLv: 33, ox: 353, oy: -20247, width: 2400, height: 1500, pal: PAL_ICE, itemCount: 5,
+    desc: '北の凍土に口を開けた氷の洞窟。壁の氷が青く光り、凍てついた巨獣が奥で眠る。',
+    boss: { type: 'behemoth_king', name: '氷牙の巨獣・フロストバイト', title: '【永久凍土の主】', icon: '🧊🦣', color: '#7dd3fc', radius: 48, hp: 48000, atk: 420, speed: 50, skillCooldown: 4.4, skillName: 'アースクエイク', desc: '凍土を砕く衝撃波を放つ氷の巨獣！' },
+    mobTypes: ['wolf', 'orc'], mobCount: 16, eliteCount: 3
+  }),
+  farDungeon({
+    id: 'dungeon_bandit_fortress', name: '盗賊王の砦洞', subtitle: '【略奪品を蓄える洞窟砦】', icon: '🗡️', color: '#b45309', accentColor: '#f59e0b',
+    theme: 'mines', reqDef: 600, reqLv: 36, ox: 23996, oy: -419, width: 2600, height: 1600, pal: PAL_MINE, itemCount: 6,
+    desc: '東の街道を荒らす盗賊の根城。洞窟を砦に変え、奪った財宝を盗賊王が守る。',
+    boss: { type: 'goblin_king', name: '盗賊王・ダルゴ', title: '【街道荒らしの頭目】', icon: '👑🗡️', color: '#b45309', radius: 36, hp: 30000, atk: 330, speed: 58, skillCooldown: 4.0, skillName: 'ダイナマイトフォール', desc: '奪った火薬で坑道を崩す盗賊の王！' },
+    mobTypes: ['wolf', 'orc'], mobCount: 18, eliteCount: 3
+  }),
+  farDungeon({
+    id: 'dungeon_poison_marsh_temple', name: '毒霧の沼底神殿', subtitle: '【毒霧に沈んだ神殿】', icon: '☣️', color: '#65a30d', accentColor: '#a3e635',
+    theme: 'swamp', reqDef: 610, reqLv: 36, ox: -23996, oy: 419, width: 2600, height: 1600, pal: PAL_SWAMP, itemCount: 6,
+    desc: '西の沼に沈んだ古い神殿。濃い毒霧の奥で、毒を宿した古竜がとぐろを巻く。',
+    boss: { type: 'colossal_dragon', name: '毒霧竜・ヴェノムガル', title: '【沼底の毒竜】', icon: '🐉☣️', color: '#65a30d', radius: 50, hp: 34000, atk: 360, speed: 50, skillCooldown: 4.0, skillName: 'メガフレアブレス', desc: '毒霧を裂く炎の息を放つ沼底の竜！' },
+    mobTypes: ['slime', 'orc'], mobCount: 18, eliteCount: 3
+  }),
+  farDungeon({
+    id: 'dungeon_salt_dragon_bones', name: '塩の竜骸窟', subtitle: '【塩に埋もれた竜の墓場】', icon: '🦴', color: '#e7e5e4', accentColor: '#fcd34d',
+    theme: 'sand', reqDef: 730, reqLv: 39, ox: -803, oy: 45993, width: 2800, height: 1700, pal: PAL_SAND, itemCount: 6,
+    desc: '南の塩原に竜の骨が白く積もる洞窟。竜の骸に宿った古竜が、最果て手前の門番となる。',
+    boss: { type: 'colossal_dragon', name: '骸竜・ソルトレクス', title: '【塩原の竜骸】', icon: '🐉🦴', color: '#e7e5e4', radius: 54, hp: 56000, atk: 600, speed: 48, skillCooldown: 3.8, skillName: 'メガフレアブレス', desc: '白い炎の扇を放つ竜骸の主！' },
+    mobTypes: ['orc', 'wyvern'], mobCount: 22, eliteCount: 4
+  })
+];
 
 export const DUNGEON_DEFS = [
   ...LIMITED_SETTLEMENTS,
@@ -208,6 +309,7 @@ export const DUNGEON_DEFS = [
     eliteCount: 6,
     reward: { gold: 250000, exp: 80000, itemCount: 7, lootKind: 'dungeon_vault', bonusOrbs: 3, bonusGems: 1 }
   },
+  ...FAR_DUNGEON_DEFS,
   ...SETTLEMENTS.map(settlementToDef)
 ];
 

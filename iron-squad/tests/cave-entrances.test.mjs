@@ -9,7 +9,7 @@ const C=WORLD_SIZE/2;
 const caves=['dungeon_goblin_mines','dungeon_catacombs','dungeon_dragon_cavern','dungeon_demon_castle'].map(id=>{const d=DUNGEON_DEFS.find(d=>d.id===id);assert.ok(d,id+' is defined');assert.equal(d.kind,'dungeon');assert.ok(d.entrance&&d.boss,id+' has an entrance and a boss');return d;});
 assert.deepEqual(caves.map(d=>[Math.round(d.entrance.x-C),Math.round(d.entrance.y-C)]),[[-2600,-2400],[4600,4400],[7200,-7000],[42000,42000]],'cave entrances keep their fixed positions');
 for(const d of DUNGEON_DEFS.filter(d=>d.entrance)){
-  assert.equal(fieldTerrainAt(d.entrance.x,d.entrance.y),d.id==='wolf_hamlet'?'water':'open',d.id+' entrance stands on open ground');
+  assert.equal(fieldTerrainAt(d.entrance.x,d.entrance.y),'open',d.id+' entrance stands on open ground');
 }
 for(const d of caves)for(const r of [60,120,240,480])for(let k=0;k<16;k++)assert.equal(fieldTerrainAt(d.entrance.x+Math.cos(k*Math.PI/8)*r,d.entrance.y+Math.sin(k*Math.PI/8)*r),'open',d.id+' approach is free of ridges at '+r);
 // Wilderness sites: every anchor yields a site, none is lost to the ridge terrain.
