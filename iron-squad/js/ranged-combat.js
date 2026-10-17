@@ -1,7 +1,7 @@
-import {ensureAmmo,takeRangedShot} from './supply-rules.js?v=291';
-import {attackBlocked} from './gate-rules.js?v=291';
-import {attackCooldown,soldierAttackCooldown} from './equipment-rules.js?v=292';
-import {attributeFamily} from './unit-attributes.js?v=291';
+import {ensureAmmo,takeRangedShot} from './supply-rules.js?v=295';
+import {attackBlocked} from './gate-rules.js?v=295';
+import {attackCooldown,soldierAttackCooldown} from './equipment-rules.js?v=295';
+import {attributeFamily} from './unit-attributes.js?v=295';
 import {inCurrentInstance} from './instance-rules.js?v=256';
 import {sound} from '../../common/js/audio.js?v=151';
 export const CROSSBOW_RULES=Object.freeze({limit:3,falloff:.7,halfWidth:10});

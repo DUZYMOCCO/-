@@ -1,14 +1,14 @@
 import {bossOrbChance} from './enemy-tier.js?v=274';
 import {expeditionCombatUnits,isExpeditionReserve} from './expedition-rules.js?v=256';
-import {ensureMana,regenerateMana,spendMana} from './magic-rules.js?v=294';
+import {ensureMana,regenerateMana,spendMana} from './magic-rules.js?v=295';
 import {recordHealing,recordDown,healAmountFor} from './phase-rules.js?v=218';
 import {WORLD_SIZE} from './world.js';
 import {inCurrentInstance} from './instance-rules.js?v=256';
 import {grantPermanentRescueReward} from './rescue-rewards.js?v=264';
 import {grantPersonalExp,revivalExperience,raiseLevelMark} from './experience-rules.js';
 import {guardRescueLines} from './soldier-dialogue.js';
-import {attributeCarryCapacity,attributeFamily} from './unit-attributes.js?v=291';
-import {isHeavySoldier} from './heavy-tank.js?v=291';
+import {attributeCarryCapacity,attributeFamily} from './unit-attributes.js?v=295';
+import {isHeavySoldier} from './heavy-tank.js?v=295';
 import {visibleHeroMembers} from './hero-rules.js?v=282';
 import {isOwnSquad} from './own-squad-marker.js?v=182';
 

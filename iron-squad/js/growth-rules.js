@@ -14,9 +14,10 @@ export const weaponCategoryOf = value => {
 /** Combat family: axes swing like hammers (shared reach / sweet spot), everything else is itself. */
 export const combatFamilyOf = value => { const style = weaponCategoryOf(value); return style === 'axe' ? 'hammer' : style; };
 export const isHeavyWeaponStyle = value => combatFamilyOf(value) === 'hammer';
-// v7.0.15 (provisional weapon rebalance): hidden multipliers are gone. Weapon strength is carried by the base weapon ATK
-// data (WEAPON_BASE_ATK_COEF below), never by a factor buried in a damage formula. The v6.2.0 generation-time
-// hammer x7 / axe x3 survives only as LEGACY data so that old saves can be converted exactly once.
+// v7.0.15 removed the hidden damage multipliers (soldier x2.2, spear x1.15, hammer/axe x1.35, holy sword x1.8). v7.0.18 withdrew the
+// provisional ATK compensation that v7.0.15 had put into the base coefficients. Weapon strength is carried by base weapon ATK DATA
+// (WEAPON_BASE_ATK_COEF below), never by a factor buried in a damage formula. The v6.2.0 generation-time hammer x7 / axe x3 is no
+// longer a formula step; it survives only as LEGACY data so that pre-v6.2 saves can still be converted exactly once.
 export const HEAVY_ATTACK_VERSION = 2, LEGACY_HEAVY_ATTACK_MULT = 10;
 export const legacyHeavyAttackMult = value => {
   const style = typeof value === 'string' ? value : value?.weaponStyle;
@@ -24,22 +25,27 @@ export const legacyHeavyAttackMult = value => {
 };
 /**
  * Base weapon ATK coefficient: stats.atk = floor(baseValue * tier.mult * (1 + 0.25*upgrade) * coef * rollMult).
- * This is DATA. v7.0.15 provisional values = (v7.0.14 coefficient incl. baked-in x7/x3) x (provisional rebalance factor):
- *   sword 1.8x2.4  spear 1.6x2.7  hammer 2.45x7x3.4  axe 2.45x3x3.0   (hammer/axe get a bonus over DPS parity: slow swings)
- *   bow 1.05x2.6  crossbow 2.40x2.37  cannon 3.15x2.33                  (ranged: provisional DPS-parity only; real tuning later)
- * staff/wand are unchanged. The old x2.2 soldier physical multiplier, spear x1.15 and hammer/axe x1.35 no longer exist.
+ * This is DATA (no compensation): the same effective weapon ATK as v7.0.14, where hammer/axe carried x7/x3 as a generation-time step.
+ *   sword 1.8  spear 1.6  hammer 17.15 (=2.45x7)  axe 7.35 (=2.45x3)  bow 1.05  crossbow 2.40  cannon 3.15  staff 0.35  wand 0.16
+ * (Because hammer/axe are now one floor() instead of floor() then x7/x3, a fresh hammer/axe is up to 6/2 ATK higher than v7.0.14.)
+ * The old x2.2 soldier physical multiplier, spear x1.15 and hammer/axe x1.35 no longer exist.
+ *
+ * WEAPON_BASE_ATK_VERSION (item.weaponBaseAtkVersion) says which data a stored weapon ATK was built with:
+ *   undefined / <3  v7.0.14-or-older data  -> same as 4, only stamped (ATK is never raised or lowered)
+ *   3 = WITHDRAWN_COMPENSATED_ATK_VERSION   v7.0.15-17 compensated data (sword 4.32 ...) -> converted back once
+ *   4 = current     this table
  */
-export const WEAPON_BASE_ATK_VERSION = 3;
+export const WEAPON_BASE_ATK_VERSION = 4, WITHDRAWN_COMPENSATED_ATK_VERSION = 3;
 export const WEAPON_BASE_ATK_COEF = Object.freeze({
-  sword: 4.32, spear: 4.32, hammer: 58.31, axe: 22.05,
-  bow: 2.73, crossbow: 5.688, cannon: 7.3395,
+  sword: 1.8, spear: 1.6, hammer: 17.15, axe: 7.35,
+  bow: 1.05, crossbow: 2.40, cannon: 3.15,
   staff: 0.35, wand: 0.16
 });
 export const weaponBaseAtkCoef = value => WEAPON_BASE_ATK_COEF[weaponCategoryOf(value)] ?? 1;
-/** Revelation (hero-party) weapons are built from a flat 1600 recipe; same provisional rebalance on top of their old factor. */
-export const HERO_WEAPON_BASE_ATK_COEF = Object.freeze({sword: 4.32, hammer: 23.8, axe: 9, bow: 2.6});
-/** One-time save conversion: stored weapon ATK (old balance) x factor = new balance. */
-export const WEAPON_REBALANCE_V3_FACTOR = Object.freeze({sword: 2.4, spear: 2.7, hammer: 3.4, axe: 3.0, bow: 2.6, crossbow: 2.37, cannon: 2.33});
+/** Revelation (hero-party) weapons are built from a flat 1600 recipe: the same DATA (v7.0.14 had sword x1.8, hammer x7, axe x3 here). */
+export const HERO_WEAPON_BASE_ATK_COEF = Object.freeze({sword: 1.8, hammer: 7, axe: 3});
+/** Withdrawn v7.0.15-17 compensation factors. Used ONLY to undo a version-3 weapon that cannot be rebuilt from its tier. */
+export const WITHDRAWN_COMPENSATION_FACTOR = Object.freeze({sword: 2.4, spear: 2.7, hammer: 3.4, axe: 3.0, bow: 2.6, crossbow: 2.37, cannon: 2.33});
 
 export const WEAPON_STYLE_LABELS = {
   sword: '剣', spear: '槍', hammer: '鎚', axe: '斧',

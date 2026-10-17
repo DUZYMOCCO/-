@@ -1,4 +1,4 @@
-import {attributeFamily,prefersCasterMelee} from './unit-attributes.js?v=291';
+import {attributeFamily,prefersCasterMelee} from './unit-attributes.js?v=295';
 import {guardSpeedMult} from './guard-leash.js?v=266';
 
 export const GUARD_FORMATION=Object.freeze({dashStart:60,dashStop:20,engage:360});

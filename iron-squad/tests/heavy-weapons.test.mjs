@@ -15,16 +15,17 @@ const traits={length:1,attackTempo:1,swingSpeed:1,sweep:1,sweetWidth:1,sweetPowe
 const gear=(style,tier=1,upgrade=0,quality=1)=>{const i=generateRandomDrop(0,'normal',{type:'WEAPON',tier,upgrade,weaponStyle:style,quality,merchant:true,random:()=>.5});i.weaponTraits={...traits};applyUpgradeStats(i,upgrade);return i;};
 for(const tier of TIERS)for(const upgrade of [0,2,5])for(const quality of [.73,1,1.37]){
   const a=gear('axe',tier.tier,upgrade,quality),h=gear('hammer',tier.tier,upgrade,quality),s=gear('sword',tier.tier,upgrade,quality);
-  // v7.0.15: strength comes from base weapon ATK data (axe 22.05 = 2.45x3x3.0, hammer 58.31 = 2.45x7x3.4, sword 4.32 = 1.8x2.4), not from a generation-time multiplier.
+  // v7.0.18: strength comes from base weapon ATK data (axe 7.35 = 2.45x3, hammer 17.15 = 2.45x7, sword 1.8: the v7.0.14 effective values, no compensation), not from a generation-time multiplier.
   const base=(10+tier.powerRank*5)*tier.mult*(1+upgrade*.25);
-  assert.equal(a.stats.atk,Math.floor(base*22.05*quality),'axe base ATK data');assert.equal(h.stats.atk,Math.floor(base*58.31*quality),'hammer base ATK data');
-  assert.equal(s.stats.atk,Math.floor(base*4.32*quality),'sword base ATK data');
+  assert.equal(a.stats.atk,Math.floor(base*7.35*quality),'axe base ATK data');assert.equal(h.stats.atk,Math.floor(base*17.15*quality),'hammer base ATK data');
+  const oldHammer=Math.floor(base*2.45*quality);assert.ok(a.stats.atk>=oldHammer*3&&a.stats.atk-oldHammer*3<3,'axe = v7.0.14 value (floor rounding only)');assert.ok(h.stats.atk>=oldHammer*7&&h.stats.atk-oldHammer*7<7,'hammer = v7.0.14 value (floor rounding only)');
+  assert.equal(s.stats.atk,Math.floor(base*1.8*quality),'sword attack uses v6.6 balance (unchanged)');
   assert.equal(a.stats.atkSpeed,h.stats.atkSpeed);assert.equal(requiredWeaponStrength(a),requiredWeaponStrength(h));
   assert.match(a.name,/斧/);assert.equal(weaponStyleOf(a),'axe');assert.equal(equipmentIcon(a),'🪓');
   const atk=a.stats.atk;applyUpgradeStats(a,upgrade);assert.equal(a.stats.atk,atk,'reforging does not repeat the multiplier');
 }
-const unique=gear('hammer');unique.dropOnly=true;unique.dropOnlyKey='WEAPON';applyUpgradeStats(unique,0);assert.equal(unique.stats.atk,Math.floor(Math.floor(15*58.31)*1.12),'exclusive bonus applies to the new base ATK');
-{const {atkMult:axeAtk,...axeShape}=weaponCombatProfile({weaponStyle:'axe'}),{atkMult:hammerAtk,...hammerShape}=weaponCombatProfile({weaponStyle:'hammer'});assert.deepEqual({...axeShape,style:'hammer'},hammerShape,'axe and hammer share the swing/knockback shape');assert.equal(axeAtk,22.05);assert.equal(hammerAtk,58.31);assert.ok(hammerAtk>axeAtk,'v7.0.15: the single-target hammer carries a higher base ATK than the area axe');}
+const unique=gear('hammer');unique.dropOnly=true;unique.dropOnlyKey='WEAPON';applyUpgradeStats(unique,0);assert.equal(unique.stats.atk,Math.floor(Math.floor(15*17.15)*1.12),'exclusive bonus applies to the base ATK data');
+{const {atkMult:axeAtk,...axeShape}=weaponCombatProfile({weaponStyle:'axe'}),{atkMult:hammerAtk,...hammerShape}=weaponCombatProfile({weaponStyle:'hammer'});assert.deepEqual({...axeShape,style:'hammer'},hammerShape,'axe and hammer share the swing/knockback shape');assert.equal(axeAtk,7.35);assert.equal(hammerAtk,17.15);assert.ok(hammerAtk>axeAtk,'the single-target hammer carries a higher base ATK than the area axe');}
 assert.deepEqual(meleeSweetSpotFor('axe'),meleeSweetSpotFor('hammer'));
 assert.equal(rollWeaponStyle('melee',()=>.3),'axe');assert.equal(rollWeaponStyle('melee',()=>.2),'hammer');
 // v6.3.0: axe and hammer are separate kinds with their own mastery tracks and favourites.
@@ -40,7 +41,7 @@ const old={...gear('hammer',9,2),id:'legacy-hammer'};old.stats.atk/=7;delete old
 migrateHeavyWeaponAttack(old);migrateHeavyWeaponAttack(old);assert.equal(old.stats.atk,expected);assert.deepEqual({id:old.id,upgrade:old.upgrade,traits:old.weaponTraits},before);
 // v6.1.x items carry the old x10 (heavyAttackVersion 1): converted once to x3 (axe) / x7 (hammer).
 for(const [style,mult] of [['axe',3],['hammer',7]]){const fresh=gear(style,9,2),v1=structuredClone(fresh);v1.stats.atk=v1.stats.atk/mult*10;v1.heavyAttackVersion=1;migrateHeavyWeaponAttack(v1);migrateHeavyWeaponAttack(v1);assert.equal(v1.stats.atk,fresh.stats.atk,`${style} v1 x10 becomes x${mult}`);assert.equal(v1.heavyAttackVersion,2);}
-const heroCoef={axe:9,hammer:23.8}; // hero weapons: old x3/x7 baked in x provisional 3.0/3.4
+const heroCoef={axe:3,hammer:7}; // hero weapons: the v7.0.14 x3/x7 as base ATK data
 for(const [style,mult] of [['axe',3],['hammer',7]]){
   const hero={type:'WEAPON',heroOnly:true,heroRole:'HEAVY',heroPower:1,weaponStyle:style,baseName:'勇者の武器'};applyHeroEquipmentUpgrade(hero,0);assert.equal(hero.stats.atk,Math.floor(1600*heroCoef[style]));applyHeroEquipmentUpgrade(hero,2);assert.equal(hero.stats.atk,Math.floor(2400*heroCoef[style]));applyHeroEquipmentUpgrade(hero,2);assert.equal(hero.stats.atk,Math.floor(2400*heroCoef[style]));
 }

@@ -87,13 +87,13 @@ try{
     for(let i=0;i<80;i++)g.update(.05);
     const d=Math.hypot(u.x-m.x,u.y-m.y);assert.ok(d<30,`heavy ${style} closes in well inside the 48px pressure aura (${d})`);
   }
-  // v7.0.15 The hero's holy sword uses the new 4.32 sword base ATK coefficient (1.8 x 2.4); hero bow 1600 x 2.6.
+  // v7.0.18 The hero's holy sword uses the 1.8 sword base ATK coefficient (same effective ATK as v6.6.1 / v7.0.14); other hero weapons are unchanged.
   {
     const sword={type:'WEAPON',heroOnly:true,heroRole:'LIGHT',weaponStyle:'sword',baseName:'勇者の聖剣'};applyHeroEquipmentUpgrade(sword,0);
-    assert.equal(sword.stats.atk,Math.floor(1600*4.32));
-    const bow={type:'WEAPON',heroOnly:true,heroRole:'ARCHER',weaponStyle:'bow',baseName:'勇者の誓い弓'};applyHeroEquipmentUpgrade(bow,0);assert.equal(bow.stats.atk,Math.floor(1600*2.6));
+    assert.equal(sword.stats.atk,Math.floor(1600*1.8));
+    const bow={type:'WEAPON',heroOnly:true,heroRole:'ARCHER',weaponStyle:'bow',baseName:'勇者の誓い弓'};applyHeroEquipmentUpgrade(bow,0);assert.equal(bow.stats.atk,1600);
     const old={type:'WEAPON',heroOnly:true,heroRole:'LIGHT',weaponStyle:'sword',baseName:'勇者の聖剣',name:'勇者の聖剣+2',upgrade:2,stats:{atk:Math.floor(1600*1.5)}};
-    migrateMeleeWeaponBalance(old);migrateMeleeWeaponBalance(old);assert.equal(old.stats.atk,Math.floor(Math.floor(1600*1.5)*4.32),'saved holy sword migrates once, keeping its upgrade');
+    migrateMeleeWeaponBalance(old);migrateMeleeWeaponBalance(old);assert.equal(old.stats.atk,Math.floor(Math.floor(1600*1.5)*1.8),'saved holy sword migrates once, keeping its upgrade');
   }
   // Repeated migration/re-forging cannot multiply saved item attack again.
   for(const style of ['sword','spear']){

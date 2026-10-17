@@ -1,5 +1,5 @@
-import {atFacility} from './hq-facilities.js?v=291';
-import {guildView} from './guild-contracts.js?v=291';
+import {atFacility} from './hq-facilities.js?v=295';
+import {guildView} from './guild-contracts.js?v=295';
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const KINDS=Object.freeze([['all','すべて'],['band','距離帯'],['species','魔物別'],['boss','ボス・強敵']]);
 const G=n=>`${Math.max(0,n||0).toLocaleString()}G`;

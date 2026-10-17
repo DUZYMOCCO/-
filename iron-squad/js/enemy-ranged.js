@@ -1,6 +1,6 @@
 import {inCurrentInstance} from './instance-rules.js?v=256';
 import {recordCombat} from './phase-rules.js?v=218';
-import {tankSlowFactor} from './heavy-tank.js?v=291';
+import {tankSlowFactor} from './heavy-tank.js?v=295';
 
 export const RANGED_ENEMIES=Object.freeze({
   road_archer:{name:'\u91ce\u76d7\u306e\u5f13\u5175',base:'goblin',kind:'physical',range:300,interval:2.2,speed:310,color:'#b5a078'},

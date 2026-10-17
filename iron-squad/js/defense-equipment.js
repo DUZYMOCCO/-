@@ -1,6 +1,6 @@
 import {TIERS,materialTier,generation,powerRank} from './equipment-tiers.js?v=231';
-import {isMage} from './magic-rules.js?v=294';
-import {attributeFamily,isMuscleCaster} from './unit-attributes.js?v=291';
+import {isMage} from './magic-rules.js?v=295';
+import {attributeFamily,isMuscleCaster} from './unit-attributes.js?v=295';
 
 export const DEFENSE_TYPES=['SHIELD','HELMET','ARMOR','GLOVES','LEGS','AMULET'];
 export const CASTER_GEAR={

@@ -1,10 +1,10 @@
 import {formatCompact} from './number-format.js?v=282';
 import {configureCommandNavigation} from './command-navigation.js?v=249';
-import {commanderFullName} from './commander-identity.js?v=291';
+import {commanderFullName} from './commander-identity.js?v=295';
 import {isEnlisted} from './career-rules.js?v=291';
 import {configureAudioInterface} from './audio-interface.js?v=247';
-import {renderBattleLog} from './battle-log.js?v=291';
-import {renderTroopRankings} from './troop-rankings.js?v=291';
+import {renderBattleLog} from './battle-log.js?v=295';
+import {renderTroopRankings} from './troop-rankings.js?v=295';
 import {genderLabel} from './soldier-names.js?v=210';
 import {talentTag as unitTalentTag} from './talent-labels.js?v=291';
 /** Presentation only: keep game actions on their original DOM nodes. */

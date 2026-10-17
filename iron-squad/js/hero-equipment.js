@@ -1,5 +1,5 @@
 // Equipment granted by revelation, outside the nation's manufacturing/loot tiers.
-import {HERO_WEAPON_BASE_ATK_COEF,WEAPON_BASE_ATK_VERSION,HEAVY_ATTACK_VERSION,isHeavyWeaponStyle} from './growth-rules.js?v=292';
+import {HERO_WEAPON_BASE_ATK_COEF,WEAPON_BASE_ATK_VERSION,HEAVY_ATTACK_VERSION,isHeavyWeaponStyle} from './growth-rules.js?v=295';
 export const HERO_EQUIPMENT_RULES=Object.freeze({version:1,tier:24,power:1});
 const caster=role=>role==='MEDIC'||role==='MAGE';
 const SLOT_TYPES={weapon:'WEAPON',shield:'SHIELD',helmet:'HELMET',armor:'ARMOR',gloves:'GLOVES',legs:'LEGS',amulet:'AMULET'};
@@ -15,7 +15,7 @@ export function applyHeroEquipmentUpgrade(item,upgrade=0){
   item.upgrade=Math.max(0,Math.floor(upgrade||0));const role=item.heroRole||'LIGHT',scale=(item.heroPower||HERO_EQUIPMENT_RULES.power)*(1+item.upgrade*.25);
   const base=item.type==='WEAPON'?(role==='MAGE'?{atk:180,magicAttack:1800}:role==='MEDIC'?{atk:180,magicAttack:650}:{atk:1600}):RECIPES[item.type];
   item.stats={};for(const [key,value] of Object.entries(base||{}))item.stats[key]=['speed','blockChance'].includes(key)?value:Math.floor(value*scale);
-  // v7.0.15: hero weapons take their strength from base weapon ATK data (HERO_WEAPON_BASE_ATK_COEF), not from x7/x3/x1.8 formulas.
+  // v7.0.18: hero weapons take their strength from base weapon ATK data (HERO_WEAPON_BASE_ATK_COEF: sword 1.8 / hammer 7 / axe 3, same effective ATK as v7.0.14), no compensation.
   if(item.type==='WEAPON'){
     const style=item.weaponStyle||'sword',coef=HERO_WEAPON_BASE_ATK_COEF[style];
     if(coef)item.stats.atk=Math.floor(item.stats.atk*coef);

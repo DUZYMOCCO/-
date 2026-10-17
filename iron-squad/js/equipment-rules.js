@@ -1,9 +1,9 @@
 import {campaignScaling} from './campaign-scaling.js?v=241';
-import {soldierCombatTempo,usesSoldierTempo} from './unit-attributes.js?v=291';
-import {requiredDefenseStrength} from './defense-equipment.js?v=291';
+import {soldierCombatTempo,usesSoldierTempo} from './unit-attributes.js?v=295';
+import {requiredDefenseStrength} from './defense-equipment.js?v=295';
 import {powerRank,MAX_EQUIPMENT_TIER,GENERATIONS} from './equipment-tiers.js?v=231';
 import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=182';
-import {WEAPON_STYLE_ICONS,weaponStyleOf,isHeavyWeaponStyle,combatFamilyOf,weaponBaseAtkCoef} from './growth-rules.js?v=292';
+import {WEAPON_STYLE_ICONS,weaponStyleOf,isHeavyWeaponStyle,combatFamilyOf,weaponBaseAtkCoef} from './growth-rules.js?v=295';
 export const EQUIPMENT_TYPES = ['WEAPON','SHIELD','HELMET','ARMOR','GLOVES','LEGS','AMULET'];
 
 const GEAR_ICONS = {

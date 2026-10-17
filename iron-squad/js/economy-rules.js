@@ -1,4 +1,4 @@
-import {canUseEquipment} from './weapon-requirements.js?v=291';
+import {canUseEquipment} from './weapon-requirements.js?v=295';
 import {GENERATION_COUNT} from './equipment-tiers.js?v=231';
 import {PAYROLL_RULES,commanderStipendQuote} from './payroll-rules.js?v=226';
 import {recurringNationalIncome} from './regional-economy.js?v=277';
@@ -7,7 +7,7 @@ import {recurringNationalIncome} from './regional-economy.js?v=277';
  * 国庫・共有装備ボックス・スカウト費用・財政報告の公式を集約
  */
 
-import { saleValue, compareEquipment, equipmentScore, isGodRollProtected } from './equipment-rules.js?v=292';
+import { saleValue, compareEquipment, equipmentScore, isGodRollProtected } from './equipment-rules.js?v=295';
 
 /** 作戦期ごとの国庫歳入（徴税・兵站） */
 export const TREASURY_INCOME_BASE = 3000;
