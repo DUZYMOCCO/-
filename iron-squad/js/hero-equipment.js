@@ -1,6 +1,5 @@
 // Equipment granted by revelation, outside the nation's manufacturing/loot tiers.
-import {heavyWeaponAttackMult,HEAVY_ATTACK_VERSION} from './growth-rules.js?v=282';
-export const HERO_SWORD_ATK_MULT=1.8;
+import {HERO_WEAPON_BASE_ATK_COEF,WEAPON_BASE_ATK_VERSION,HEAVY_ATTACK_VERSION,isHeavyWeaponStyle} from './growth-rules.js?v=292';
 export const HERO_EQUIPMENT_RULES=Object.freeze({version:1,tier:24,power:1});
 const caster=role=>role==='MEDIC'||role==='MAGE';
 const SLOT_TYPES={weapon:'WEAPON',shield:'SHIELD',helmet:'HELMET',armor:'ARMOR',gloves:'GLOVES',legs:'LEGS',amulet:'AMULET'};
@@ -16,9 +15,14 @@ export function applyHeroEquipmentUpgrade(item,upgrade=0){
   item.upgrade=Math.max(0,Math.floor(upgrade||0));const role=item.heroRole||'LIGHT',scale=(item.heroPower||HERO_EQUIPMENT_RULES.power)*(1+item.upgrade*.25);
   const base=item.type==='WEAPON'?(role==='MAGE'?{atk:180,magicAttack:1800}:role==='MEDIC'?{atk:180,magicAttack:650}:{atk:1600}):RECIPES[item.type];
   item.stats={};for(const [key,value] of Object.entries(base||{}))item.stats[key]=['speed','blockChance'].includes(key)?value:Math.floor(value*scale);
-  if(item.type==='WEAPON'&&heavyWeaponAttackMult(item)>1){item.stats.atk*=heavyWeaponAttackMult(item);item.heavyAttackVersion=HEAVY_ATTACK_VERSION;}
-  // v6.6.1 聖剣も普通の剣と同じ装備ATK係数1.8（equipment-rules.js の剣プロファイル）を受ける
-  if(item.type==='WEAPON'&&(item.weaponStyle||'sword')==='sword'){item.stats.atk=Math.floor(item.stats.atk*HERO_SWORD_ATK_MULT);item.meleeBalanceVersion=1;}
+  // v7.0.15: hero weapons take their strength from base weapon ATK data (HERO_WEAPON_BASE_ATK_COEF), not from x7/x3/x1.8 formulas.
+  if(item.type==='WEAPON'){
+    const style=item.weaponStyle||'sword',coef=HERO_WEAPON_BASE_ATK_COEF[style];
+    if(coef)item.stats.atk=Math.floor(item.stats.atk*coef);
+    item.weaponBaseAtkVersion=WEAPON_BASE_ATK_VERSION;
+    if(isHeavyWeaponStyle(item))item.heavyAttackVersion=HEAVY_ATTACK_VERSION;
+    if(style==='sword')item.meleeBalanceVersion=1;
+  }
   if(item.type==='GLOVES'&&caster(role)){delete item.stats.atk;item.stats.magicAttack=Math.floor(150*scale);}
   if(role==='HEAVY'){if(item.stats.hp)item.stats.hp=Math.floor(item.stats.hp*1.2);if(item.stats.def)item.stats.def=Math.floor(item.stats.def*1.3);}
   if(item.type==='WEAPON')item.minStrength=0;

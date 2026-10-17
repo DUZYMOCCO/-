@@ -33,7 +33,7 @@ for(const type of ['WEAPON','ARMOR','SHIELD','HELMET','LEGS','GLOVES','AMULET'])
   previous=item;
  }
 }
-assert.equal(gear(28).stats.atk,3960,'v6.6 spear receives the modest 1.5 to 1.6 attack coefficient');
+assert.equal(gear(28).stats.atk,10692,'v7.0.15 spear base ATK coefficient 4.32 (1.6 x 2.7 provisional rebalance; was 3960)');
 assert.equal(equipmentVisualProfile(null).coverage,0);
 assert.equal(new Set(TIERS.map(t=>t.weapon)).size,28);
 for(const distance of [0,8000,22000,48000,70000])for(const kind of ['normal','elite','boss','colossal','chest']){

@@ -3,7 +3,7 @@ import {soldierCombatTempo,usesSoldierTempo} from './unit-attributes.js?v=291';
 import {requiredDefenseStrength} from './defense-equipment.js?v=291';
 import {powerRank,MAX_EQUIPMENT_TIER,GENERATIONS} from './equipment-tiers.js?v=231';
 import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=182';
-import {WEAPON_STYLE_ICONS,weaponStyleOf,isHeavyWeaponStyle,combatFamilyOf} from './growth-rules.js?v=282';
+import {WEAPON_STYLE_ICONS,weaponStyleOf,isHeavyWeaponStyle,combatFamilyOf,weaponBaseAtkCoef} from './growth-rules.js?v=292';
 export const EQUIPMENT_TYPES = ['WEAPON','SHIELD','HELMET','ARMOR','GLOVES','LEGS','AMULET'];
 
 const GEAR_ICONS = {
@@ -256,13 +256,13 @@ export function compareEquipmentStrength(a,b) {
  */
 function baseWeaponCombatProfile(item) {
   const style = item?.weaponStyle || 'sword';
-  if(style==='staff'||style==='wand')return {style,ranged:false,magical:true,reach:style==='staff'?70:34,reachWarlord:style==='staff'?85:44,baseCooldown:style==='staff'?.95:.65,atkMult:style==='staff'?.35:.16,magicMult:style==='staff'?1.15:1.05,pierce:false,pierceHalfWidth:0,knockback:0,knockbackWarlord:0,projSpeed:0,splash:0,projType:null};
+  if(style==='staff'||style==='wand')return {style,ranged:false,magical:true,reach:style==='staff'?70:34,reachWarlord:style==='staff'?85:44,baseCooldown:style==='staff'?.95:.65,atkMult:weaponBaseAtkCoef(style),magicMult:style==='staff'?1.15:1.05,pierce:false,pierceHalfWidth:0,knockback:0,knockbackWarlord:0,projSpeed:0,splash:0,projType:null};
   if (style === 'spear') {
     return {
       style: 'spear', ranged: false,
       reach: 145, reachWarlord: 175,
       baseCooldown: 0.78, pierce: true, pierceHalfWidth: 26,
-      atkMult: 1.6, knockback: 0, knockbackWarlord: 0,
+      atkMult: weaponBaseAtkCoef('spear'), knockback: 0, knockbackWarlord: 0,
       projSpeed: 0, splash: 0, projType: null
     };
   }
@@ -272,7 +272,7 @@ function baseWeaponCombatProfile(item) {
       reach: 80, reachWarlord: 105,
       // v6.2.0: slower swings and a big, visible launch on every hit.
       baseCooldown: 1.22, pierce: false, pierceHalfWidth: 0,
-      atkMult: 2.45, knockback: 170, knockbackWarlord: 230,
+      atkMult: weaponBaseAtkCoef(style), knockback: 170, knockbackWarlord: 230,
       projSpeed: 0, splash: 0, projType: null
     };
   }
@@ -281,7 +281,7 @@ function baseWeaponCombatProfile(item) {
       style: 'bow', ranged: true,
       reach: 250, reachWarlord: 280,
       baseCooldown: 0.60, pierce: false, pierceHalfWidth: 0,
-      atkMult: 1.05, knockback: 0, knockbackWarlord: 0,
+      atkMult: weaponBaseAtkCoef('bow'), knockback: 0, knockbackWarlord: 0,
       projSpeed: 380, splash: 0, projType: 'ARROW', color: '#e2e8f0'
     };
   }
@@ -291,7 +291,7 @@ function baseWeaponCombatProfile(item) {
       reach: 285, reachWarlord: 320,
       baseCooldown: 1.25, pierce: false, pierceHalfWidth: 0,
       // 重い一撃と直線3体貫通。単体の手数は弓、密集の範囲は火砲が優位。
-      atkMult: 2.40, knockback: 12, knockbackWarlord: 18,
+      atkMult: weaponBaseAtkCoef('crossbow'), knockback: 12, knockbackWarlord: 18,
       projSpeed: 460, splash: 0, projType: 'BOLT', color: '#94a3b8'
     };
   }
@@ -301,7 +301,7 @@ function baseWeaponCombatProfile(item) {
       reach: 310, reachWarlord: 360,
       baseCooldown: 1.85, pierce: false, pierceHalfWidth: 0,
       // 最遅・最大火力。スプラッシュで複数ヒット前提の厚め威力
-      atkMult: 3.15, knockback: 48, knockbackWarlord: 60,
+      atkMult: weaponBaseAtkCoef('cannon'), knockback: 48, knockbackWarlord: 60,
       // v6.3.0: blast radius x1.2 (was 52); shell damage x2 is applied at firing (CANNON_RULES).
       projSpeed: 320, splash: 62, projType: 'CANNONBALL', color: '#f59e0b'
     };
@@ -311,7 +311,7 @@ function baseWeaponCombatProfile(item) {
     // v6.6.0: fast, reliable damage without ammunition or heavy-weapon launches.
     reach: 85, reachWarlord: 110,
     baseCooldown: 0.32, pierce: false, pierceHalfWidth: 0,
-    atkMult: 1.8, knockback: 0, knockbackWarlord: 0,
+    atkMult: weaponBaseAtkCoef('sword'), knockback: 0, knockbackWarlord: 0,
     projSpeed: 0, splash: 0, projType: null
   };
 }

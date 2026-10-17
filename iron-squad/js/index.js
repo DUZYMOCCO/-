@@ -16,12 +16,12 @@ import {guildUiMethods} from './guild-ui.js?v=291';
 import {headquartersMoveTarget} from './hq-navigation.js?v=291';
 import {configureBattlefieldUI,quietBattlefieldContext} from './battlefield-ui.js?v=249';
 import {renderNavigationMap} from './navigation-map.js?v=291';
-import {soldierEquipmentValue,createEquipmentValueCache,observeEquipment,standardEquipmentCost,RESERVE_ARMAMENT_COUNT} from './armament-rules.js?v=291';
+import {soldierEquipmentValue,createEquipmentValueCache,observeEquipment,standardEquipmentCost,RESERVE_ARMAMENT_COUNT} from './armament-rules.js?v=292';
 import {initializeWildernessSites,serializeWildernessSites,updateWildernessSites,recordWildernessGuardKill,drawWildernessSite,drawWildernessMap,WILDERNESS_RULES} from './wilderness-sites.js?v=281';
 import {enemyArtHeadHeight} from './enemy-art.js?v=280';
 import {selectBiomeEncounter,biomeEnemyStats,encounterSlots,updateBiomeCharge} from './biome-encounters.js?v=279';
 import {configureRangedEnemy,updateRangedEnemy,updateDefenseWalls,interceptHostileShot,isHostileShot,updateHostileBolt,drawDefenseWalls} from './enemy-ranged.js?v=291';
-import {LIMITED_CLASSES,initializeLimitedAllies,prepareLimitedEncounter,createLimitedAlly,joinLimitedEncounter,updateLimitedAllies,updateNinja,updateShuriken,drawLimitedEncounter,serializeLimitedAllies,notifyLimitedJoin} from './limited-allies.js?v=291';
+import {LIMITED_CLASSES,initializeLimitedAllies,prepareLimitedEncounter,createLimitedAlly,joinLimitedEncounter,updateLimitedAllies,updateNinja,updateShuriken,drawLimitedEncounter,serializeLimitedAllies,notifyLimitedJoin} from './limited-allies.js?v=292';
 import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=182';
 import {TIERS,MAX_EQUIPMENT_TIER,MAX_POWER_RANK,POWER_RANK_STEP,GENERATION_COUNT,TRADE_MAX_TIER,powerRank,tierDescription} from './equipment-tiers.js?v=231';
 import {fieldAdaptiveScaling} from './field-scaling.js?v=182';
@@ -95,8 +95,8 @@ import { renderTroopRankings, getSoldierRankerBadges, calcSoldierRankerBonus, se
 import { ensureSoldierAppearance, drawSoldierPortrait } from './soldier-appearance.js?v=291';
 import { aggregateDeathlineDynamics, tickDeathline, deathlineDamage, normalizeDeathlineSkills, chooseDeathlineSkill, deathlineRangedRange } from './deathline-rules.js?v=291';
 import {CAMPAIGN_SCALE_VERSION,migrateCampaignEnemy,campaignScalingV1} from './campaign-scaling.js?v=241';
-import {rangedCombatMethods,updatePiercingBolt,rangedDrawPose,rangedFrontlinePosition} from './ranged-combat.js?v=291';
-import {soldierMeleeMethods,tickSoldierMeleeSkill,soldierMeleeReach,soldierMeleePosition,soldierMeleeSkillText,soldierMeleeDrawPose,MELEE_BALANCE} from './soldier-melee-skills.js?v=291';
+import {rangedCombatMethods,updatePiercingBolt,rangedDrawPose,rangedFrontlinePosition} from './ranged-combat.js?v=292';
+import {soldierMeleeMethods,tickSoldierMeleeSkill,soldierMeleeReach,soldierMeleePosition,soldierMeleeSkillText,soldierMeleeDrawPose,MELEE_BALANCE} from './soldier-melee-skills.js?v=292';
 import { buildSoldierProfile, describeDeathlineEffect } from './soldier-profile.js?v=234';
 import { attachSurfaceEvents, detachSurfaceEvents, frameSurfaceReady, releaseSceneCaches, releaseCanvas, surfaceCanResume } from './canvas-surface.js?v=217';
 import { SETTLEMENTS, WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt, routeNameAt, eastWestRoadY, northSouthRoadX, riverCenterY, drawFieldDepth, drawOakCrown, fieldBlocks, settleUnit, fieldSpeedFactor, biomeMoveTarget, fieldRockExit } from './world.js?v=289';
@@ -119,10 +119,10 @@ import {
   SHARED_BOX_MAX_TIER, SCOUT_COST_BY_TALENT, defaultDonateAmount, donatePresetAmounts, fundLadderAmounts, formatFundKanji, normalizeFundAmount, EQUIPMENT_SLOTS
 } from './economy-rules.js?v=291';
 
-import { EQUIPMENT_TYPES, saleValue, equippedIds, canSell, lowValueIds, chooseLootTier, distanceScaling, shrineUpgradeCap, compareEquipment, equipmentScore, compareEquipmentStrength, rollWeaponTraits, weaponCombatProfile, attackSpeedState, attackCooldown, attackSpeedLabel, soldierAttackCooldown, evaluateMeleeSweetSpot, isGodRollProtected, zoneRingPower, zoneRingLabelJa, equipmentIcon, equipmentName } from './equipment-rules.js?v=291';
+import { EQUIPMENT_TYPES, saleValue, equippedIds, canSell, lowValueIds, chooseLootTier, distanceScaling, shrineUpgradeCap, compareEquipment, equipmentScore, compareEquipmentStrength, rollWeaponTraits, weaponCombatProfile, attackSpeedState, attackCooldown, attackSpeedLabel, soldierAttackCooldown, evaluateMeleeSweetSpot, isGodRollProtected, zoneRingPower, zoneRingLabelJa, equipmentIcon, equipmentName } from './equipment-rules.js?v=292';
 import { rollFieldBrute, advanceDemonWarband, stepDemonWarbandGroup } from './field-hosts.js?v=182';
 import {
-  WEAPON_STYLES, MASTERY_STYLES, WEAPON_STYLE_LABELS, WEAPON_STYLE_ICONS, isHeavyWeaponStyle, heavyWeaponAttackMult, HEAVY_ATTACK_VERSION, LEGACY_HEAVY_ATTACK_MULT, weaponCategoryOf, splitHeavyFavorite, FAVORITE_SPLIT_VERSION,
+  WEAPON_STYLES, MASTERY_STYLES, WEAPON_STYLE_LABELS, WEAPON_STYLE_ICONS, isHeavyWeaponStyle, legacyHeavyAttackMult, HEAVY_ATTACK_VERSION, LEGACY_HEAVY_ATTACK_MULT, WEAPON_BASE_ATK_VERSION, WEAPON_REBALANCE_V3_FACTOR, weaponCategoryOf, splitHeavyFavorite, FAVORITE_SPLIT_VERSION,
   MELEE_STYLES, RANGED_STYLES,
   emptyMastery, normalizeMastery, isRangedStyle, isMeleeStyle,
   hitGrowthHpBonus, hitGrowthDefBonus, hitGrowthHpOf, hitGrowthDefOf, migrateHitGrowth, applyHitGrowth, masteryAtkMult, masteryPctDisplay,
@@ -131,7 +131,7 @@ import {
   gainWeaponMastery, masteryGainForStyle, pickFavoriteWeapon, rollWeaponStyle,
   weaponStyleOf, favoriteWeaponBias, MASTERY_GAIN_PER_HIT,
   migrateFavoriteForClass, migrateWeaponStyleFromName
-} from './growth-rules.js?v=282';
+} from './growth-rules.js?v=292';
 
 import {
   initMerchants, ensureMerchants, updateMerchants, drawMerchantBody, drawMerchantEscort,
@@ -145,7 +145,7 @@ import { daylightAt, advanceWorldClock, periodEnemy, enemyAvailable, PERIOD_ENEM
 import { clusterRescueMarkers } from './rescue-markers.js?v=182';
 import {visibleHeroMembers} from './hero-rules.js?v=282';
 import {updateHeroJournal} from './hero-journal.js?v=291';
-import {applyHeroEquipmentUpgrade} from './hero-equipment.js?v=239';
+import {applyHeroEquipmentUpgrade} from './hero-equipment.js?v=292';
 import {initializeHeroJourney,rollHeroRevelation,serializeHeroJourney,updateHeroParty,updateHeroFollowing,awardHeroBattle,recordDemonKingDefeat,ensureHeroCastle,syncHeroCastle,renderHeroJourney,drawHeroMarks} from './hero-party.js?v=291';
 import {updateSquadHpHud} from './squad-hp-hud.js?v=291';
 import {addBattleReport,normalizeBattleReport,renderBattleReport} from './battle-report.js?v=276';
@@ -536,13 +536,12 @@ function canMerchantInherit(current,item,player){
 }
 
 export const MEDIC_SELF_DEFENSE_COST = 10, MEDIC_SELF_DEFENSE_MIN_MANA = 40;
-// v2.7クラスバランス: 武器ATK二重加算の解消(約-35〜50%)の補填＋非魔導兵の底上げ。兵士の通常攻撃（旧/新武器の両経路）にのみ掛かる
-export const SOLDIER_PHYS_DMG_MULT = 2.2;
+// v7.0.15: the hidden soldier physical multiplier (x2.2) is abolished. Soldier damage = soldier.atk; weapon strength lives in the base weapon ATK data (growth-rules.js WEAPON_BASE_ATK_COEF).
 /** Axe spin skill duration; soldiers' base heavy-weapon knockback (before strength/size/footing). */
 export const AXE_SPIN_TIME = 0.42, SOLDIER_HEAVY_KNOCKBACK = 62;
 /** v6.7.0: preserve cannon splash while removing the extra shell/cluster multiplier. */
 export const CANNON_RULES = Object.freeze({damageMult: 1, skillRadius: 74, skillRadiusWarlord: 94});
-export const SOLDIER_SPEAR_DMG_MULT = 1.15, SOLDIER_HAMMER_DMG_MULT = 1.35;
+// v7.0.15: the spear x1.15 / hammer+axe x1.35 soldier damage multipliers are abolished as well (weapon ATK data carries it).
 // 兵種（クラス）定義
 export const SOLDIER_CLASSES = numberClassDefinitions({
   ...MAGIC_CLASSES,
@@ -924,9 +923,9 @@ export function applyUpgradeStats(item, upgradeLevel) {
   applyDropExclusive(item);
   applyCraftExclusive(item);
   if(item.stats.crit)item.stats.crit=Math.min(30,item.stats.crit);
-  if(item.type==='WEAPON'&&isHeavyWeaponStyle(item)){
-    item.stats.atk*=heavyWeaponAttackMult(item);item.heavyAttackVersion=HEAVY_ATTACK_VERSION;
-  }
+  // v7.0.15: weapon ATK already carries its strength through the base coefficient table (no generation-time x7/x3).
+  if(item.type==='WEAPON'&&isHeavyWeaponStyle(item))item.heavyAttackVersion=HEAVY_ATTACK_VERSION;
+  if(item.type==='WEAPON')item.weaponBaseAtkVersion=WEAPON_BASE_ATK_VERSION;
   if(item.type==='WEAPON'&&['sword','spear'].includes(item.weaponStyle||'sword'))item.meleeBalanceVersion=1;
   if(item.type==='WEAPON'&&item.weaponStyle==='crossbow')item.rangedBalanceVersion=1;
 }
@@ -936,6 +935,16 @@ export function migrateMeleeWeaponBalance(item) {
   if(item?.type==='WEAPON'&&item.heroOnly){if((item.weaponStyle||'sword')==='sword'&&!(item.meleeBalanceVersion>=1))applyUpgradeStats(item,item.upgrade||0);return item;}
   if(item?.type!=='WEAPON'||!Number.isFinite(item.tier)||!(item.name||item.baseName)||!['sword','spear'].includes(item.weaponStyle||'sword')||item.meleeBalanceVersion>=1)return item;
   applyUpgradeStats(item,item.upgrade||0);
+  return item;
+}
+
+/** v7.0.15: bring weapons built under the old hidden-multiplier balance to the new base weapon ATK data, exactly once.
+ * Stored (already baked) ATK x provisional factor; staff/wand are unchanged. Run AFTER the heavy/melee/ranged migrations (which may already rebuild to the new base and stamp the version). */
+export function migrateWeaponBaseAtk(item) {
+  if(item?.type!=='WEAPON'||item.weaponBaseAtkVersion>=WEAPON_BASE_ATK_VERSION)return item;
+  const factor=WEAPON_REBALANCE_V3_FACTOR[weaponCategoryOf(item)];
+  if(factor&&Number.isFinite(item.stats?.atk))item.stats.atk=Math.round(item.stats.atk*factor);
+  item.weaponBaseAtkVersion=WEAPON_BASE_ATK_VERSION;
   return item;
 }
 
@@ -955,6 +964,7 @@ function refreshOwnedEquipmentUpgrades(game) {
     migrateHeavyWeaponAttack(item);
     migrateMeleeWeaponBalance(item);
     migrateRangedWeaponBalance(item);
+    migrateWeaponBaseAtk(item);
     if(item.type==='LEGS'||item.type==='AMULET')applyUpgradeStats(item,item.upgrade||0);
   }
 }
@@ -1048,7 +1058,7 @@ export function migrateHeavyWeaponAttack(item) {
   migrateWeaponStyleFromName(item);
   if(item?.type!=='WEAPON'||!isHeavyWeaponStyle(item)||item.heavyAttackVersion>=HEAVY_ATTACK_VERSION)return item;
   if(Number.isFinite(item.stats?.atk)){
-    const mult=heavyWeaponAttackMult(item);
+    const mult=legacyHeavyAttackMult(item);
     item.stats.atk=item.heavyAttackVersion===1?Math.round(item.stats.atk/LEGACY_HEAVY_ATTACK_MULT*mult):item.stats.atk*mult;
   }
   else applyUpgradeStats(item,item.upgrade||0);
@@ -3089,6 +3099,7 @@ export const IronSquadGame = {
     migrateHeavyWeaponAttack(this.equipped?.weapon);
     migrateMeleeWeaponBalance(this.equipped?.weapon);
     migrateRangedWeaponBalance(this.equipped?.weapon);
+    migrateWeaponBaseAtk(this.equipped?.weapon);
     if (!this.player) return;
     this.player.equipped=this.equipped;
     this.returnUnusableDefense(this.player,this.equipped,this.inventory||=[]);
@@ -3202,6 +3213,7 @@ export const IronSquadGame = {
     migrateHeavyWeaponAttack(s.equipped?.weapon || s.weapon);
     migrateMeleeWeaponBalance(s.equipped?.weapon || s.weapon);
     migrateRangedWeaponBalance(s.equipped?.weapon || s.weapon);
+    migrateWeaponBaseAtk(s.equipped?.weapon || s.weapon);
     ensureSoldierGender(s);
     if(s?.isMerchantEscort){recalcEscortStats(s);recalcAmmoCapacity(s);return;}
     ensureSoldierAppearance(s);
@@ -6297,7 +6309,7 @@ export const IronSquadGame = {
         }
         return;
       }
-      if(updateNinja(this,soldier,dt,platoon,SOLDIER_PHYS_DMG_MULT))return;
+      if(updateNinja(this,soldier,dt,platoon))return;
       if(isMage(soldier)){updateMageAI(this,soldier,dt,platoon,cls);return;}
       tickSoldierMeleeSkill(this,soldier,dt);
       if(isMedic(soldier))castMedicBuff(this,soldier);
@@ -6614,7 +6626,7 @@ export const IronSquadGame = {
         // 主人公が覇王（WARLORD）なら部隊全員のATK+25%オーラ付与
         const warlordMult = this.player.isAdvanced ? 1.25 : 1.0;
         // soldier.atk は recalcSoldierStats で武器ATKを既に含む（二重加算しない）
-        const totalAtk = Math.round(soldier.atk * warlordMult * SOLDIER_PHYS_DMG_MULT);
+        const totalAtk = Math.round(soldier.atk * warlordMult);
 
         if (isMedic(soldier)&&prefersCasterMelee(soldier)) {
           if(!soldier._casterCarePriority)this.performCasterMelee(soldier,nearestEnemy);
@@ -6696,9 +6708,8 @@ export const IronSquadGame = {
           if (enemyDist <= meleeReach) {
             // 近接通常攻撃（槍=貫通、鎚=高威力ノックバック）。マスタリーで攻撃速度↑（baseCooldown短縮と同カーブ）
             const cdMult = sProf.style === 'spear' ? 1.5 : (isHeavyWeaponStyle(sProf.style) ? 2.25 : sProf.style === 'sword' ? MELEE_BALANCE.swordSoldierTempo : 1.0);
-            // 遅い武器の火力補填（槍×1.15／鎚×1.35）。新旧武器どちらの兵士経路にも同じ式を適用
-            const styleDmgMult = sProf.style === 'spear' ? SOLDIER_SPEAR_DMG_MULT : (isHeavyWeaponStyle(sProf.style) ? SOLDIER_HAMMER_DMG_MULT : 1);
-            const meleeAtk = Math.max(1, Math.round(totalAtk * styleDmgMult));
+            // v7.0.15: no hidden per-weapon damage multiplier here; weapon strength comes from the base weapon ATK data.
+            const meleeAtk = Math.max(1, totalAtk);
             const masteryCd = masteryReloadMult(soldier.weaponMastery, sProf.style);
             soldier.atkCooldown = soldierAttackCooldown(soldier,cls.atkCooldown * cdMult * masteryCd / Math.max(.55,(soldier.atkSpeed||1)*(sWpn?.weaponTraits?.attackTempo||1)));
             soldier.atkAnim = 1.0;
@@ -7572,7 +7583,7 @@ export const IronSquadGame = {
     caster.atkAnim=1;caster.facingAngle=Math.atan2(target.y-caster.y,target.x-caster.x);
     // MPを込めた一撃だけ猛烈に強い。MP切れは普通の殴り
     const strike=spendMana(caster,CASTER_STRIKE_COST)?casterStrikeMultiplier(caster):1;
-    this.performAttack(caster,target,false,Math.round((caster.atk||1)*SOLDIER_PHYS_DMG_MULT*strike),undefined,'physical');
+    this.performAttack(caster,target,false,Math.round((caster.atk||1)*strike),undefined,'physical');
     return true;
   },
 

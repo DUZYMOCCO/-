@@ -1,6 +1,6 @@
 import {attributeFamily,soldierCombatTempo} from './unit-attributes.js?v=291';
 import {canUseEquipment} from './weapon-requirements.js?v=291';
-import {masteryReloadMult} from './growth-rules.js?v=282';
+import {masteryReloadMult} from './growth-rules.js?v=292';
 import {attackBlocked} from './gate-rules.js?v=291';
 
 export const MELEE_BALANCE=Object.freeze({swordSoldierTempo:.55,spearReach:.82,spearHold:.74});
@@ -69,7 +69,7 @@ export const soldierMeleeMethods={
     const profile=this.combatProfileFor(unit,item,false),style=profile.style;
     const reach=style==='spear'?Math.max(140,profile.reach*1.15):style==='axe'?120:style==='hammer'?110:Math.max(80,profile.reach);
     if(!valid(this,unit,target,reach))return false;
-    const base=Math.round(unit.atk*2.2*(this.player.isAdvanced?1.25:1)),damage=Math.round(base*rule.mult),angle=Math.atan2(target.y-unit.y,target.x-unit.x);
+    const base=Math.round(unit.atk*(this.player.isAdvanced?1.25:1)),damage=Math.round(base*rule.mult),angle=Math.atan2(target.y-unit.y,target.x-unit.x);
     unit.weaponSkillCooldown=soldierMeleeReload(unit,rule);unit.atkAnim=1;unit.attackAngle=angle;unit.facingAngle=angle;
     if(style==='sword'){
       swordHit(this,unit,target,damage,profile);

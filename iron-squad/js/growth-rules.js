@@ -14,12 +14,32 @@ export const weaponCategoryOf = value => {
 /** Combat family: axes swing like hammers (shared reach / sweet spot), everything else is itself. */
 export const combatFamilyOf = value => { const style = weaponCategoryOf(value); return style === 'axe' ? 'hammer' : style; };
 export const isHeavyWeaponStyle = value => combatFamilyOf(value) === 'hammer';
-// v6.2.0: axe x3 (spinning area skill), hammer x7 (single heavy blow); was x10 for both.
+// v7.0.15 (provisional weapon rebalance): hidden multipliers are gone. Weapon strength is carried by the base weapon ATK
+// data (WEAPON_BASE_ATK_COEF below), never by a factor buried in a damage formula. The v6.2.0 generation-time
+// hammer x7 / axe x3 survives only as LEGACY data so that old saves can be converted exactly once.
 export const HEAVY_ATTACK_VERSION = 2, LEGACY_HEAVY_ATTACK_MULT = 10;
-export const heavyWeaponAttackMult = value => {
+export const legacyHeavyAttackMult = value => {
   const style = typeof value === 'string' ? value : value?.weaponStyle;
   return style === 'axe' ? 3 : style === 'hammer' ? 7 : 1;
 };
+/**
+ * Base weapon ATK coefficient: stats.atk = floor(baseValue * tier.mult * (1 + 0.25*upgrade) * coef * rollMult).
+ * This is DATA. v7.0.15 provisional values = (v7.0.14 coefficient incl. baked-in x7/x3) x (provisional rebalance factor):
+ *   sword 1.8x2.4  spear 1.6x2.7  hammer 2.45x7x3.4  axe 2.45x3x3.0   (hammer/axe get a bonus over DPS parity: slow swings)
+ *   bow 1.05x2.6  crossbow 2.40x2.37  cannon 3.15x2.33                  (ranged: provisional DPS-parity only; real tuning later)
+ * staff/wand are unchanged. The old x2.2 soldier physical multiplier, spear x1.15 and hammer/axe x1.35 no longer exist.
+ */
+export const WEAPON_BASE_ATK_VERSION = 3;
+export const WEAPON_BASE_ATK_COEF = Object.freeze({
+  sword: 4.32, spear: 4.32, hammer: 58.31, axe: 22.05,
+  bow: 2.73, crossbow: 5.688, cannon: 7.3395,
+  staff: 0.35, wand: 0.16
+});
+export const weaponBaseAtkCoef = value => WEAPON_BASE_ATK_COEF[weaponCategoryOf(value)] ?? 1;
+/** Revelation (hero-party) weapons are built from a flat 1600 recipe; same provisional rebalance on top of their old factor. */
+export const HERO_WEAPON_BASE_ATK_COEF = Object.freeze({sword: 4.32, hammer: 23.8, axe: 9, bow: 2.6});
+/** One-time save conversion: stored weapon ATK (old balance) x factor = new balance. */
+export const WEAPON_REBALANCE_V3_FACTOR = Object.freeze({sword: 2.4, spear: 2.7, hammer: 3.4, axe: 3.0, bow: 2.6, crossbow: 2.37, cannon: 2.33});
 
 export const WEAPON_STYLE_LABELS = {
   sword: '剣', spear: '槍', hammer: '鎚', axe: '斧',

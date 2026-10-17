@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
 import {meleePose,weaponAim,weaponRestAim,attackAnimationRate} from '../js/weapon-motion.js';
 import {weaponCombatProfile} from '../js/equipment-rules.js';
-import {heavyWeaponAttackMult} from '../js/growth-rules.js';
+import {legacyHeavyAttackMult} from '../js/growth-rules.js';
 import {KNOCK_RULES,knockbackDistance,knockFlight,slamDamage,knockMass,knockFooting,knockBrace} from '../js/knockback-rules.js';
 import {GUARD_LEASH,guardRegrouping,guardTarget,guardSpeedMult} from '../js/guard-leash.js';
 
-// Multipliers: axe x3, hammer x7, others unchanged.
-assert.equal(heavyWeaponAttackMult('axe'),3);assert.equal(heavyWeaponAttackMult({weaponStyle:'hammer'}),7);assert.equal(heavyWeaponAttackMult('sword'),1);
+// v7.0.15: x3 / x7 are no longer part of weapon generation; they remain only as the LEGACY converter for old saves.
+assert.equal(legacyHeavyAttackMult('axe'),3);assert.equal(legacyHeavyAttackMult({weaponStyle:'hammer'}),7);assert.equal(legacyHeavyAttackMult('sword'),1);
 // Slower heavy swings than before (v6.1: cooldown .98, animation .34s).
 assert.ok(weaponCombatProfile({weaponStyle:'axe'}).baseCooldown>1.1);
 assert.ok(attackAnimationRate({weaponStyle:'axe'})<1/.34);
@@ -59,7 +59,7 @@ assert.ok(knockbackDistance(170,{strength:50,strengthRef:50,attack:100},invader)
 assert.equal(knockBrace({atk:1e9}),KNOCK_RULES.maxBrace,'brace is capped so max strength can always push');
 assert.ok(knockFlight(1200).time>knockFlight(100).time,'long throws stay airborne longer');
 assert.equal(slamDamage(100,1),100);assert.equal(slamDamage(100,.5),50);assert.equal(slamDamage(100,.1),0,'a spent flight does not hurt');
-console.log('PASS: axe x3 / hammer x7, strength/size/footing knockback and wall slam rules, slower heavy swings, mirrored swing per facing, horizontal idle aim, guard leash with dash-only regroup');
+console.log('PASS: legacy axe x3 / hammer x7 converter, strength/size/footing knockback and wall slam rules, slower heavy swings, mirrored swing per facing, horizontal idle aim, guard leash with dash-only regroup');
 // Weapon sounds: game-local PCM, normalized, click-free, with distinct lengths and weight.
 const {synthesizeMeleeSound,MELEE_SOUND_STYLES,playMeleeSound}=await import('../js/weapon-sounds.js');
 const pcm=Object.fromEntries(MELEE_SOUND_STYLES.map(s=>[s,synthesizeMeleeSound(s,22050)]));

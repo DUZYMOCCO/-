@@ -134,7 +134,7 @@ try{
     assert.equal(g.performRangedSidearm(u,m),true);hits.push(1e10-m.hp);assert.equal(u.atkCooldown,soldierAttackCooldown(u,attackCooldown(u.weapon,style==='cannon'?1.4:.9,u.atkSpeed)));assert.equal(g.projectiles.length,0);assert.ok(!m.knockState&&!m.knockTimer);
     assert.equal(m.x,x+45+(style==='cannon'?25:0));assert.equal(rangedDrawPose(u).weapon.weaponStyle,style==='cannon'?'cannon':'sword');
     if(style==='cannon')assert.equal(rangedDrawPose(u)._rangedBash,true);
-    assert.ok(Math.abs(hits.at(-1)-Math.round(sidearmAttack(u)*2.2*(style==='cannon'?1.6:1)))<=1,'only sidearm damage applies');
+    assert.ok(Math.abs(hits.at(-1)-Math.round(sidearmAttack(u)*(style==='cannon'?1.6:1)))<=1,'only sidearm damage applies');
   }
   assert.ok(Math.abs(hits[2]-hits[0]*1.6)<=3);assert.equal(hammerSounds,1);
   assert.equal(rangedPose('cannon',.8,0,null,true).bash,true);assert.notEqual(rangedPose('cannon',.8,0,null,false).bash,true);

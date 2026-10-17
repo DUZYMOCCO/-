@@ -51,7 +51,7 @@ try{
   const hits=[];
   for(const style of ['bow','crossbow','cannon']){
     const u=fixture(style),m=monster(48);u.ammo=0;g.monsters=[m];const original=u.equipped.weapon;
-    const expected=Math.round(sidearmAttack(u)*2.2*(style==='cannon'?1.6:1));assert.equal(g.performRangedSidearm(u,m),true);hits.push(1e8-m.hp);assert.equal(hits.at(-1),expected,'actual attack retains the exact sidearm multiplier');assert.equal(g.projectiles.length,0);assert.equal(u.equipped.weapon,original);assert.equal(rangedDrawPose(u).equipped.weapon.weaponStyle,style==='cannon'?'cannon':'sword');
+    const expected=Math.round(sidearmAttack(u)*(style==='cannon'?1.6:1));assert.equal(g.performRangedSidearm(u,m),true);hits.push(1e8-m.hp);assert.equal(hits.at(-1),expected,'actual attack retains the exact sidearm multiplier');assert.equal(g.projectiles.length,0);assert.equal(u.equipped.weapon,original);assert.equal(rangedDrawPose(u).equipped.weapon.weaponStyle,style==='cannon'?'cannon':'sword');
     assert.equal(g.performRangedSidearm(u,m),false,'shared cooldown prevents repeated melee');
     assert.equal(ammoCombatProfile(u,g.combatProfileFor(u,original,false)).sidearm,true);
   }

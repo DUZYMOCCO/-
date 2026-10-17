@@ -8,7 +8,7 @@ const dom=new JSDOM('<div id="game" class="game-container"></div>',{url:'http://
 Object.assign(globalThis,{window:dom.window,document:dom.window.document,localStorage:dom.window.localStorage});
 const noop=()=>{},ctx=new Proxy({measureText:()=>({width:40}),createLinearGradient:()=>({addColorStop:noop}),createRadialGradient:()=>({addColorStop:noop})},{get:(o,k)=>k in o?o[k]:noop});
 window.HTMLCanvasElement.prototype.getContext=()=>ctx;
-const {IronSquadGame,SOLDIER_CLASSES,SOLDIER_PHYS_DMG_MULT,SOLDIER_SPEAR_DMG_MULT,SOLDIER_HAMMER_DMG_MULT}=await import('../js/index.js');
+const {IronSquadGame,SOLDIER_CLASSES}=await import('../js/index.js');
 const {saveSlots}=await import('../js/save-slots.js');
 const c=WORLD_SIZE/2,F=83000,game=Object.create(IronSquadGame);game.container=document.getElementById('game');
 Object.assign(game,{width:390,height:664,zoom:1,ctx,camera:{x:c,y:c},selectedSaleIds:new Set(),commandActiveUntil:0,joystick:{active:false,dirX:0,dirY:0}});
@@ -17,7 +17,7 @@ game.setupUI();game.activeSlotId=saveSlots.create('CLASS BALANCE TEST ONLY').id;
 const original=structuredClone(game.saveGame({immediate:true}));
 const tpl=cls=>structuredClone(original.squad.find(s=>s.soldierClass===cls));
 // Class numbers.
-assert.equal(SOLDIER_CLASSES.HEAVY.bonusHp,120);assert.equal(SOLDIER_CLASSES.HEAVY.bonusDef,60);assert.equal(SOLDIER_SPEAR_DMG_MULT,1.15);assert.equal(SOLDIER_HAMMER_DMG_MULT,1.35);
+assert.equal(SOLDIER_CLASSES.HEAVY.bonusHp,120);assert.equal(SOLDIER_CLASSES.HEAVY.bonusDef,60);
 function field(){game.resumeSavedGame(structuredClone(original));game.closeStrategyModal();Object.assign(game.player,{x:F,y:F,atkCooldown:100,speed:0,isAdvanced:false});game.camera={x:F,y:F};game.squad=[];game.reserves=[];game.monsters=[];game.outposts=[];game.merchants=[];game.dungeons=[];game.civilians=[];game.projectiles=[];game.dropsOnField=[];game.magicBursts=[];game.magicReserve=0;game.updateSpawns=noop;game.currentQuest=null;game.restTimer=0;game.rankIndex=2;game.recalcPlayerStats();game.joystick={active:false,dirX:0,dirY:0};game._hazardClock=0;game.worldTerrain={tiles:new Map()};game.currentDungeon=null;game.invasions.stage='idle';game.baseRaidActive=false;}
 const dummy=(x,y)=>({type:'goblin',x,y,hp:1e9,maxHp:1e9,atk:0,def:0,radius:12,speed:0,atkTimer:100});
 function recordedAttack(cls,style,traits){
@@ -26,13 +26,14 @@ function recordedAttack(cls,style,traits){
   game.squad=[u];game.monsters=[dummy(u.x+25,u.y)];const calls=[];game.performAttack=(a,m,p,atk)=>calls.push(atk);
   for(let i=0;i<3&&!calls.length;i++)game.update(.1);delete game.performAttack;return {u,atk:calls[0]};
 }
-const comp=(u,k)=>Math.round(Math.round(u.atk*SOLDIER_PHYS_DMG_MULT)*k);
+// v7.0.15: no hidden soldier multiplier (x2.2 / spear x1.15 / hammer x1.35 abolished): a normal hit is exactly soldier.atk.
+const direct=u=>Math.round(u.atk);
 // 1. Weapon ATK is counted once (soldier.atk already contains it).
-{const {u,atk}=recordedAttack('LIGHT','sword');assert.ok(u.equipped.weapon.stats.atk>0);assert.equal(atk,Math.round(u.atk*SOLDIER_PHYS_DMG_MULT),'no second weapon ATK add');}
-// 2. Slow weapons get compensation on both soldier paths.
-{const {u,atk}=recordedAttack('HEAVY','spear');assert.equal(atk,comp(u,1.15));}
-{const {u,atk}=recordedAttack('HEAVY','hammer');assert.equal(atk,comp(u,1.35));}
-{const {u,atk}=recordedAttack('HEAVY','hammer',{length:1,attackTempo:1,crit:0});assert.equal(atk,comp(u,1.35),'new-weapon path uses the same compensation');}
+{const {u,atk}=recordedAttack('LIGHT','sword');assert.ok(u.equipped.weapon.stats.atk>0);assert.equal(atk,direct(u),'no second weapon ATK add and no hidden multiplier');}
+// 2. No weapon-specific damage multiplier on either soldier path (weapon strength lives in base weapon ATK data).
+{const {u,atk}=recordedAttack('HEAVY','spear');assert.equal(atk,direct(u),'spear: no hidden x1.15');}
+{const {u,atk}=recordedAttack('HEAVY','hammer');assert.equal(atk,direct(u),'hammer: no hidden x1.35');}
+{const {u,atk}=recordedAttack('HEAVY','hammer',{length:1,attackTempo:1,crit:0});assert.equal(atk,direct(u),'new-weapon path has no hidden multiplier either');}
 // 3. Soldier crit: s.crit applies once; mage spells do not crit.
 function hit(u){game.monsters=[dummy(F+25,F)];const m=game.monsters[0];game.performAttack(u,m,false,100,false);return 1e9-m.hp;}
 {field();const light={...tpl('LIGHT'),x:F,y:F};game.recalcSoldierStats(light);

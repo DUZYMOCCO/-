@@ -7,7 +7,7 @@ const dom=new JSDOM('<div id="game"></div>',{url:'http://localhost/',pretendToBe
 Object.assign(globalThis,{window:dom.window,document:dom.window.document,localStorage:dom.window.localStorage});
 const noop=()=>{},ctx=new Proxy({measureText:()=>({width:40}),createLinearGradient:()=>({addColorStop:noop}),createRadialGradient:()=>({addColorStop:noop})},{get:(o,k)=>k in o?o[k]:noop});
 window.HTMLCanvasElement.prototype.getContext=()=>ctx;
-const {IronSquadGame,generateRandomDrop,applyUpgradeStats,SOLDIER_PHYS_DMG_MULT}=await import('../js/index.js');
+const {IronSquadGame,generateRandomDrop,applyUpgradeStats}=await import('../js/index.js');
 const {saveSlots}=await import('../js/save-slots.js');
 const game=Object.create(IronSquadGame),F=83000;
 Object.assign(game,{container:document.getElementById('game'),width:390,height:664,zoom:1,ctx,camera:{x:F,y:F},selectedSaleIds:new Set(),commandActiveUntil:0,joystick:{active:false,dirX:0,dirY:0}});
@@ -79,8 +79,8 @@ try {
    const hits=[],perform=game.performAttack;
    game.performAttack=function(attacker,target,isPlayer,attack,...rest){hits.push({attack,base:attacker.atk,mult:casterStrikeMultiplier(attacker)});return perform.call(this,attacker,target,isPlayer,attack,...rest);};
    try{
-     const first=dummy();assert.equal(game.performCasterMelee(caster,first),true);assert.equal(caster.mana,45);assert.ok(hits[0].mult>=2&&hits[0].mult<=5);assert.equal(hits[0].attack,Math.round(hits[0].base*SOLDIER_PHYS_DMG_MULT*hits[0].mult));
-     const magicPractice=caster.attributeProfile.practice.magic;caster.atkCooldown=0;const second=dummy();assert.equal(game.performCasterMelee(caster,second),true);assert.equal(caster.mana,45);assert.equal(caster.attributeProfile.practice.magic,magicPractice,'unfunded strike cannot spend/train magic');assert.equal(hits[1].attack,Math.round(hits[1].base*SOLDIER_PHYS_DMG_MULT));assert.ok(first.maxHp-first.hp>second.maxHp-second.hp);
+     const first=dummy();assert.equal(game.performCasterMelee(caster,first),true);assert.equal(caster.mana,45);assert.ok(hits[0].mult>=2&&hits[0].mult<=5);assert.equal(hits[0].attack,Math.round(hits[0].base*hits[0].mult));
+     const magicPractice=caster.attributeProfile.practice.magic;caster.atkCooldown=0;const second=dummy();assert.equal(game.performCasterMelee(caster,second),true);assert.equal(caster.mana,45);assert.equal(caster.attributeProfile.practice.magic,magicPractice,'unfunded strike cannot spend/train magic');assert.equal(hits[1].attack,Math.round(hits[1].base));assert.ok(first.maxHp-first.hp>second.maxHp-second.hp);
      assert.match(game.buildSoldierDetailHtml(caster),/魔力の一撃 ×[\d.]+（近接・MP55）/);
    }finally{game.performAttack=perform;}
    // Existing promotion capacities still give 1/2/3 strikes from 100/140/180 MP, without regeneration.

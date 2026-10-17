@@ -1,5 +1,5 @@
-import {weaponCombatProfile,meleeSweetSpotFor,soldierAttackCooldown} from './equipment-rules.js?v=291';
-import {masteryReloadMult,applyMasteryToCombatProfile,isHeavyWeaponStyle} from './growth-rules.js?v=282';
+import {weaponCombatProfile,meleeSweetSpotFor,soldierAttackCooldown} from './equipment-rules.js?v=292';
+import {masteryReloadMult,applyMasteryToCombatProfile,isHeavyWeaponStyle} from './growth-rules.js?v=292';
 import {MAX_EQUIPMENT_TIER,GENERATION_COUNT,tierNumber,powerRank,tierDescription} from './equipment-tiers.js?v=231';
 import {canUseEquipment} from './weapon-requirements.js?v=291';
 import {prefersCasterMelee} from './unit-attributes.js?v=291';
@@ -73,7 +73,7 @@ export function soldierEquipmentValue(game,soldier,item,key,classes) {
   const crit=Math.max(0,Math.min(75,trial.crit||0))/100;
   cooldown=soldierAttackCooldown(trial,cooldown);
   let dps=Math.max(1,trial.atk||1)*(1+crit*1.2)/Math.max(.15,cooldown);
-  if(!archer&&!mage&&!medic){dps*=profile.style==='spear'?1.15:isHeavyWeaponStyle(profile.style)?1.35:1;if(weapon?.weaponTraits&&sweet)dps*=sweet.sweetDmg;}
+  if(!archer&&!mage&&!medic){if(weapon?.weaponTraits&&sweet)dps*=sweet.sweetDmg;}
   const durability=(Math.max(1,trial.maxHp||1)+(trial.equipmentBarrierMax||0))*(1+Math.max(0,trial.def||0)/120)/Math.max(.35,1-(trial.dmgReduction||0)/100);
   const stats=Object.values(trial.equipped).filter(Boolean).map(i=>i.stats||{});
   const recovery=stats.reduce((v,s)=>v+(s.regen||0)*.2+(s.vampire||0),0);

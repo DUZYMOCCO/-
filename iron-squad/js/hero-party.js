@@ -1,6 +1,6 @@
 import {enemyTier,rollBossTreasure} from './enemy-tier.js?v=274';
 import {addBattleReport} from './battle-report.js?v=276';
-import {attackCooldown} from './equipment-rules.js?v=291';
+import {attackCooldown} from './equipment-rules.js?v=292';
 import {migrateCampaignEnemy} from './campaign-scaling.js?v=241';
 import {HERO_RULES,heroRevelationPhase,heroMembers,heroSharesSpace,visibleHeroMembers} from './hero-rules.js?v=282';
 import {advanceHeroRoute,heroSegmentOpen,heroRouteCurrent} from './hero-navigation.js?v=291';
@@ -17,11 +17,11 @@ import {isMedic,treatWounded,updateWounded,normalizeRevivalSkill,revivalSkillCoo
 import {healByMedic,healAmountFor} from './phase-rules.js?v=218';
 import {ensureMana,regenerateMana,spendMana,isMage} from './magic-rules.js?v=291';
 import {takeRangedShot,supplyLocation,ammoCapacity} from './supply-rules.js?v=291';
-import {distanceScaling} from './equipment-rules.js?v=291';
+import {distanceScaling} from './equipment-rules.js?v=292';
 import {strongEnemyReward} from './combat-rewards.js?v=182';
 import {RANGED_ENEMIES} from './enemy-ranged.js?v=291';
 import {startHeroJournal,archiveHeroJournal,appendHeroDiary,recordHeroEquipmentGrant} from './hero-journal.js?v=291';
-import {grantHeroEquipment} from './hero-equipment.js?v=239';
+import {grantHeroEquipment} from './hero-equipment.js?v=292';
 const C=WORLD_SIZE/2,castle=()=>DUNGEON_DEFS.find(d=>d.id==='dungeon_demon_castle');
 const ready=u=>u&&!u.dead&&!u.isDown&&u.hp>0;
 export function initializeHeroJourney(game,saved=null) {
