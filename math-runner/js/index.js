@@ -12,15 +12,15 @@ import {
   getUpgradeCost,
   normalizeSave,
   generateStageCourse,
-} from './rules.js?v=4';
-import { RunnerEngine } from './engine.js?v=4';
-import { RunnerRenderer } from './renderer.js?v=4';
+} from './rules.js?v=5';
+import { RunnerEngine } from './engine.js?v=5';
+import { RunnerRenderer } from './renderer.js?v=5';
 
 const SAVE_KEY = 'math_runner_save';
 
 export default {
   prepare() {
-    return loadCss(new URL('../css/math-runner.css?v=4', import.meta.url).href);
+    return loadCss(new URL('../css/math-runner.css?v=5', import.meta.url).href);
   },
 
   init(container, onBackToHub) {
@@ -83,8 +83,8 @@ export default {
         <!-- リザルト画面 -->
         <div class="runner-result-overlay" id="runner-result" style="display: none;">
           <div class="runner-result-card">
-            <div class="runner-result-icon">🏆</div>
-            <div class="runner-result-title">ステージクリア！</div>
+            <div class="runner-result-icon" id="runner-result-icon">🏆</div>
+            <div class="runner-result-title" id="runner-result-title">ステージクリア！</div>
             <div class="runner-result-mult" id="runner-result-mult">ボーナス ×1.0</div>
             <div class="runner-result-coins" id="runner-result-coins">獲得: +0 コイン</div>
             <button class="runner-next-btn" id="runner-next-btn">つぎのステージへ ➔</button>
@@ -102,6 +102,9 @@ export default {
     this.upList = this.container.querySelector('#runner-up-list');
     this.speedBox = this.container.querySelector('#runner-speed');
     this.resultOverlay = this.container.querySelector('#runner-result');
+    this.resultIcon = this.container.querySelector('#runner-result-icon');
+    this.resultTitle = this.container.querySelector('#runner-result-title');
+    this.nextBtn = this.container.querySelector('#runner-next-btn');
     this.resultMultText = this.container.querySelector('#runner-result-mult');
     this.resultCoinsText = this.container.querySelector('#runner-result-coins');
   },
@@ -117,7 +120,7 @@ export default {
     });
 
     this.container.querySelector('#runner-next-btn').addEventListener('click', () => {
-      this.saveData.stage++;
+      if (this.lastCleared !== false) this.saveData.stage++; // かべを こわせなかった ときは おなじ ステージ
       this.save();
       this.resultOverlay.style.display = 'none';
       this.updateLobbyUI();
@@ -171,6 +174,7 @@ export default {
   startRun() {
     this.inRun = true;
     this.lobby.style.display = 'none';
+    this.guideHint.textContent = '↔ ゆびで うごいて ブロックと ゲートを うとう！';
     this.guideHint.style.display = 'block';
 
     const course = generateStageCourse(this.saveData.stage, this.saveData.speed);
@@ -190,7 +194,10 @@ export default {
         this.handleGameEvent(eventName, data);
       });
 
-      if (this.engine.time > 5 && this.guideHint.style.display !== 'none') this.guideHint.style.display = 'none';
+      if (this.engine.stuck > 0) { // かべの まえ：うちつづけよう
+        this.guideHint.textContent = '💥 かべを こわせ！ うちつづけよう！';
+        this.guideHint.style.display = 'block';
+      } else if (this.engine.time > 5 && this.guideHint.style.display !== 'none') this.guideHint.style.display = 'none';
       this.renderer.render(this.engine, this.logicalWidth, this.logicalHeight);
     }
 
@@ -231,11 +238,16 @@ export default {
         this.guideHint.style.display = 'none';
         sound.play('reward');
 
-        const finalBonus = Math.floor(data.earnedCoins * data.finalMult);
+        this.lastCleared = data.cleared !== false;
+        // かべを 1まいも こわせなかった ときは ボーナス なし。ステージは おなじ（もういちど ちょうせん）
+        const finalBonus = this.lastCleared ? Math.floor(data.earnedCoins * data.finalMult) : 0;
+        this.resultIcon.textContent = this.lastCleared ? '🏆' : '💪';
+        this.resultTitle.textContent = this.lastCleared ? 'ステージクリア！' : 'もうすこし！ ちからが たりなかったよ';
+        this.nextBtn.textContent = this.lastCleared ? 'つぎのステージへ ➔' : 'もういちど ちょうせん ➔';
         this.saveData.coins += finalBonus;
         this.save();
 
-        this.resultMultText.textContent = `ボーナス倍率 ×${data.finalMult}`;
+        this.resultMultText.textContent = this.lastCleared ? `ボーナス倍率 ×${data.finalMult}` : 'ゲートを うって たまを ふやして ブロックを たおそう！';
         this.resultCoinsText.textContent = `ステージ獲得: +${data.earnedCoins}  ➔  合計 +${data.earnedCoins + finalBonus} コイン！`;
         this.resultOverlay.style.display = 'flex';
         break;

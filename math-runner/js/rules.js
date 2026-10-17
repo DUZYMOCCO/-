@@ -98,6 +98,13 @@ export const FIRST_BLOCK_Y = 230;
 export const FIRST_RAMP = [0.45, 0.75];
 /** ゲートを うって かずが ふえるように なった ぶん、ボーナスの かべは かたく（コインが ふえすぎない） */
 export const WALL_MUL = 1.8;
+/**
+ * v1.2.0 まちがえても すぐ おわらない：まちがった ゲートは かずが へるだけ（のこりは 1こ いじょう。ブロックに ぶつかっても ×0.7）。
+ * しっぱいは さいごの かべを こわせなかった とき だけ。かべの まえで WALL_GRACE びょう うちつづけて、1まいも こわせなければ
+ * 「もういちど」（ステージは すすまない。コインは もらえる）。ステージ1〜3は さいしょの かべが やわらかい（WALL_EASE）。
+ */
+export const WALL_GRACE = 5;
+export const WALL_EASE = [0.4, 0.6, 0.8];
 
 /**
  * ゲートを うつと かずが かわる（v1.2.0）。たまが あたった かず（hits）で きまる。
@@ -262,8 +269,8 @@ export function generateStageCourse(stageNum, speedKey = DEFAULT_SPEED) {
     type: 'WALL',
     y: finishY + 100 + idx * 120,
     mult: mul,
-    hp: Math.round((40 + idx * 60 + stageNum * 30) * sp.hpMul * WALL_MUL),
-    maxHp: Math.round((40 + idx * 60 + stageNum * 30) * sp.hpMul * WALL_MUL),
+    hp: Math.round((40 + idx * 60 + stageNum * 30) * sp.hpMul * WALL_MUL * (WALL_EASE[stageNum - 1] ?? 1)),
+    maxHp: Math.round((40 + idx * 60 + stageNum * 30) * sp.hpMul * WALL_MUL * (WALL_EASE[stageNum - 1] ?? 1)),
     destroyed: false,
   }));
 

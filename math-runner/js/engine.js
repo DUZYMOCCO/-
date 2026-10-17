@@ -2,7 +2,7 @@
  * さんすうシューター ランナー物理＆判定エンジン
  */
 
-import { applyGate, isGoodGate, UPGRADES, SPEEDS, DEFAULT_SPEED, START_DELAY, STREAM, gateAfterHits } from './rules.js?v=4';
+import { applyGate, isGoodGate, UPGRADES, SPEEDS, DEFAULT_SPEED, START_DELAY, STREAM, gateAfterHits, WALL_GRACE } from './rules.js?v=5';
 
 export class RunnerEngine {
   constructor(course, saveData) {
@@ -16,6 +16,7 @@ export class RunnerEngine {
     this.speed = (SPEEDS[saveData.speed] || SPEEDS[DEFAULT_SPEED]).speed; // px/sec（おみせの「はやさ」で かわる）
     this.delay = START_DELAY; // はじまって すこしは とまって いる
     this.time = 0;
+    this.stuck = 0; // かべの まえで うちつづけて いる じかん（びょう）
 
     this.bulletCount = UPGRADES.startCount.calcValue(saveData.upgrades.startCount);
     this.fireInterval = UPGRADES.fireRate.calcValue(saveData.upgrades.fireRate);
@@ -160,6 +161,7 @@ export class RunnerEngine {
               this.addSparks(b.laneNorm, wall.y);
               if (wall.hp <= 0) {
                 wall.destroyed = true;
+                this.stuck = 0; // こわせたら また すすめる
                 this.finalMult = wall.mult;
                 this.addExplosion(0, wall.y, '#fbbf24', 20);
                 if (onEvent) onEvent('destroy-wall', { mult: wall.mult });
@@ -168,11 +170,16 @@ export class RunnerEngine {
             }
           }
 
-          // プレイヤー本体が未破壊の壁に激突したらストップ
+          // こわれて いない かべに ぶつかったら そこで とまって うちつづける（すぐには おわらない）。
+          // WALL_GRACE びょう たっても こわせなければ そこで おしまい（ちからが たりなかった）
           if (this.dist >= wall.y - 15) {
-            this.stopped = true;
-            this.isFinished = true;
-            if (onEvent) onEvent('clear', { finalMult: this.finalMult, earnedCoins: this.earnedCoins });
+            this.dist = wall.y - 15;
+            this.stuck += dt;
+            if (this.stuck >= WALL_GRACE) {
+              this.stopped = true;
+              this.isFinished = true;
+              if (onEvent) onEvent('clear', { finalMult: this.finalMult, earnedCoins: this.earnedCoins, cleared: this.finalMult > 1 });
+            }
             break;
           }
         }
@@ -183,7 +190,7 @@ export class RunnerEngine {
         this.stopped = true;
         this.isFinished = true;
         this.finalMult = this.course.walls[this.course.walls.length - 1].mult;
-        if (onEvent) onEvent('clear', { finalMult: this.finalMult, earnedCoins: this.earnedCoins });
+        if (onEvent) onEvent('clear', { finalMult: this.finalMult, earnedCoins: this.earnedCoins, cleared: true });
       }
     }
 

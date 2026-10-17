@@ -201,6 +201,54 @@ test('engine: bullets pass through gates and change them; blocks lose HP and fla
   for (let i = 0; i < 60 * 3 && !gate.passed; i++) e.update(1 / 60, ev => events.push(ev));
   assert.ok(g.hits > 0 && events.includes('gate-grow'));
   assert.ok(g.type !== startType || g.val !== startVal);
-  const blk = course.elements.filter(x => x.type === 'BLOCK').sort((a, b) => Math.abs(a.laneNorm - 0.4) - Math.abs(b.laneNorm - 0.4))[0];
+  const blk = course.elements.filter(x => x.type === 'BLOCK' && x.y === FIRST_BLOCK_Y).sort((a, b) => Math.abs(a.laneNorm - 0.4) - Math.abs(b.laneNorm - 0.4))[0];
   assert.ok(blk.hp < blk.maxHp || blk.destroyed);
+});
+
+// ---- v1.2.0 まちがえても すぐ おわらない ----
+import { WALL_GRACE, WALL_EASE } from '../js/rules.js';
+
+function playBot(stage, speed, pick) {
+  const e = new RunnerEngine(generateStageCourse(stage, speed), normalizeSave({ speed }));
+  const val = (g, c) => g.type === 'add' ? c + g.val : g.type === 'sub' ? Math.max(1, c - g.val) : g.type === 'mul' ? c * g.val : Math.max(1, Math.floor(c / g.val));
+  let t = 0, min = 99, last = null;
+  while (!e.isFinished && t < 300) {
+    const g = e.course.elements.find(x => x.type === 'GATE_PAIR' && !x.passed);
+    if (g) e.setTargetX(pick(val(g.left, e.bulletCount), val(g.right, e.bulletCount)) ? -0.5 : 0.5);
+    e.update(1 / 60, (ev, d) => { if (ev === 'clear') last = d; });
+    min = Math.min(min, e.bulletCount); t += 1 / 60;
+  }
+  return { e, min, last, t };
+}
+
+test('forgiving: wrong choices never end the run; count never below 1; early stages clear even with the worse gate every time', () => {
+  let clears = 0;
+  for (let i = 0; i < 40; i++) {
+    const r = playBot(1, 'slow', (a, b) => a < b); // いつも わるい ほうを えらぶ
+    assert.ok(r.min >= 1 && r.e.isFinished && r.last, 'ゴールまで いく');
+    assert.ok(r.t > 15, `すぐ おわらない: ${r.t}`);
+    if (r.last.cleared) clears++;
+  }
+  assert.ok(clears >= 30, `ステージ1は わるい ゲートばかりでも ほとんど クリア（${clears}/40）`);
+  // ふつうに えらべば かならず クリア
+  for (let i = 0; i < 20; i++) assert.ok(playBot(3, 'slow', (a, b) => a >= b).last.cleared);
+  assert.ok(WALL_EASE[0] < WALL_EASE[1] && WALL_EASE[1] < WALL_EASE[2] && WALL_EASE[2] <= 1);
+});
+
+test('failing only comes from too little power at the wall: stuck for WALL_GRACE seconds, then "try again" (no stage advance data)', () => {
+  const course = generateStageCourse(5, 'fast');
+  const e = new RunnerEngine(course, normalizeSave({ speed: 'fast' }));
+  e.delay = 0; e.bulletPower = 0.001; e.bulletCount = 1;          // ちからが たりない
+  for (const el of course.elements) { el.passed = true; if (el.type === 'BLOCK') el.destroyed = true; }
+  let ev = null, wasStuck = false;
+  for (let i = 0; i < 60 * 40 && !e.isFinished; i++) { e.update(1 / 60, (n, d) => { if (n === 'clear') ev = d; }); wasStuck ||= e.stuck > 1; }
+  assert.ok(wasStuck && ev && ev.cleared === false && ev.finalMult === 1);
+  assert.ok(e.stuck >= WALL_GRACE && e.stuck < WALL_GRACE + 0.1);
+  assert.equal(e.dist, course.walls[0].y - 15);                    // かべの まえで とまる
+  // ちからが あれば こわして すすめる
+  const e2 = new RunnerEngine(generateStageCourse(1, 'slow'), normalizeSave({ upgrades: { startCount: 12, power: 6 } }));
+  for (const el of e2.course.elements) { el.passed = true; if (el.type === 'BLOCK') el.destroyed = true; }
+  let ev2 = null;
+  for (let i = 0; i < 60 * 120 && !e2.isFinished; i++) e2.update(1 / 60, (n, d) => { if (n === 'clear') ev2 = d; });
+  assert.ok(ev2.cleared && ev2.finalMult > 1);
 });
