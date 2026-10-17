@@ -1,6 +1,6 @@
 import {TIERS,GENERATION_COUNT,MAX_EQUIPMENT_TIER,tierNumber,materialTier,generation} from './equipment-tiers.js?v=231';
-import {chooseLootTier} from './equipment-rules.js?v=295';
-import {CASTER_GEAR,DEFENSE_TYPES} from './defense-equipment.js?v=295';
+import {chooseLootTier} from './equipment-rules.js?v=298';
+import {CASTER_GEAR,DEFENSE_TYPES} from './defense-equipment.js?v=298';
 
 export const CRAFT_MATERIALS={
   wood:{name:'堅木材',color:'#b19165'},bronze:{name:'青銅片',color:'#ba9261'},
@@ -68,8 +68,8 @@ export function recipeMaterials(recipe,tier) {
 }
 export const canAffordMaterials=(stock,needed)=>Object.entries(needed).every(([id,n])=>count(stock?.[id])>=n);
 export const craftExclusiveLabel=item=>item?.craftOnly?{
-  WEAPON:'会心+6%（杖は魔攻+10%）',SHIELD:'HP+10%・盾防+8%',HELMET:'HP+20%',
-  ARMOR:'HP+18%・防御+10%',GLOVES:'攻速+8%',LEGS:'移動+8',AMULET:'攻速+8%・再生+2'
+  WEAPON:'会心+6%（杖は魔攻+10%）',SHIELD:'HP+10%・被ダメ軽減+2%',HELMET:'HP+20%',
+  ARMOR:'HP+18%・防御+10%',GLOVES:'攻速+8%',LEGS:'移動+8',AMULET:'攻速+8%・再生+0.2%/秒'
 }[item.type]||'専用補正':'';
 /** Called after the base stats are regenerated, so enhancement never stacks the bonus twice. */
 export function applyCraftExclusive(item) {

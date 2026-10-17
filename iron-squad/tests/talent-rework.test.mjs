@@ -1,7 +1,7 @@
 import {levelGrowthSteps} from '../js/level-growth.js';
 import assert from 'node:assert/strict';
 import {JSDOM} from '../../__pycache__/ui-tools/node_modules/jsdom/lib/api.js';
-import {talentGrowth,practiceGrowth,attributeValues,cappedAttributeValue,rollAttributeProfile} from '../js/unit-attributes.js';
+import {talentGrowth,practiceGrowth,attributeValues,cappedAttributeValue,cappedStrengthValue,rollAttributeProfile} from '../js/unit-attributes.js';
 import {isLateBloomer,talentTag} from '../js/talent-labels.js';
 import {applyInferiorExpeditionGrit} from '../js/expedition-rules.js';
 const dom=new JSDOM('<div id="game"></div>',{url:'http://localhost/',pretendToBeVisual:true});
@@ -32,7 +32,7 @@ try{
   for(const level of [30,35,40,60]){
     const u=make('LIGHT','INFERIOR',level);u.survivedDeathlines=1;u.attributeProfile.practice.strength=100;u.attributeProfile.practice.magic=100;u.attributeProfile.practice.travel=1500;
     const profile=structuredClone(u.attributeProfile),growth=talentGrowth(u),v=attributeValues(u),lv=levelGrowthSteps(level);
-    assert.equal(v.strength,cappedAttributeValue(profile.innate.strength+lv*2.5*growth+20*growth,1,1));
+    assert.equal(v.strength,cappedStrengthValue(profile.innate.strength+lv*2.5*growth+20*growth,1,1));
     assert.equal(v.magic,cappedAttributeValue(profile.innate.magic+lv*2.5*growth+20*growth,1,1));
     assert.equal(v.quickness,cappedAttributeValue(profile.innate.quickness+lv*1.1*growth+2*growth,1,1));assert.deepEqual(u.attributeProfile,profile,'growth never changes saved innate/aptitude/practice');
   }

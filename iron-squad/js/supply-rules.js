@@ -1,4 +1,4 @@
-import {attributeValues,ensureAttributeProfile} from './unit-attributes.js?v=295';
+import {attributeValues,ensureAttributeProfile,effectiveStrength} from './unit-attributes.js?v=298';
 import {isMagicUser,ensureMana} from './magic-rules.js?v=296';
 import {WORLD_SIZE} from './world.js?v=289';
 import {inCurrentInstance} from './instance-rules.js?v=256';
@@ -19,7 +19,7 @@ export function recalcAmmoCapacity(unit){
     if(!unit.attributeProfile&&Number.isFinite(unit.strength))strength=unit.strength-(unit._casterStrengthTimer>0?unit._casterStrengthBonus||0:0);
     else {ensureAttributeProfile(unit);strength=attributeValues({...unit,_casterStrengthTimer:0,_casterStrengthBonus:0}).strength;}
   }
-  unit._ammoCapacity=style?AMMO_BASE_CAPACITY[style]+Math.floor(Math.max(0,strength-30)/({bow:1,crossbow:2,cannon:4}[style])):AMMO_CAPACITY;
+  unit._ammoCapacity=style?AMMO_BASE_CAPACITY[style]+Math.floor(Math.max(0,effectiveStrength(strength)-30)/({bow:1,crossbow:2,cannon:4}[style])):AMMO_CAPACITY;
   unit._ammoCapacityVersion=1;unit._ammoStyle=held;unit._ammoClass=unit.soldierClass;unit._ammoLevel=unit.level;
   unit._ammoBuffStrength=unit._casterStrengthTimer>0?unit._casterStrengthBonus||0:0;unit._ammoStrength=unit.strength;unit._ammoInnate=unit.attributeProfile?.innate?.strength;unit._ammoPractice=unit.attributeProfile?.practice?.strength;
   return unit._ammoCapacity;

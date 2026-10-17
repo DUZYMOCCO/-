@@ -63,7 +63,7 @@ assert.equal(new Set(owned.map(item=>item.id)).size,owned.length);assert.ok(game
 const craftedState=structuredClone(game.saveGame({immediate:true}));game.resumeSavedGame(craftedState);assert.deepEqual(game.materials,craftedState.materials);assert.equal(game.inventory.filter(i=>i.craftOnly).length,CRAFT_RECIPES.length);
 const legacy={...initial};delete legacy.materials;game.resumeSavedGame(legacy);assert.deepEqual(game.materials,normalizeMaterials(),'old saves gain an empty material store');
 game.nation=normalizeNation({investment:18000});game.treasury=2000000;game.phase=2;game.phaseFiscal.startBalance=game.treasury;
-const soldiers=game.squad.slice(0,2);game.squad=soldiers;game.reserves=[];for(const s of soldiers){s.equipped={};s.weapon=null;s.gold=100000;game.recalcSoldierStats(s);}
+const soldiers=game.squad.slice(0,2);game.squad=soldiers;game.reserves=[];for(const s of soldiers){s.equipped={};s.weapon=null;s.gold=100000;s.attributeProfile.practice.strength=1e6;game.recalcSoldierStats(s);} // v7.0.21: T9 weapons need strength
 const treasury=game.treasury;game.supplyMissingEquipment();assert.ok(soldiers.every(s=>s.equipped.weapon?.tier===9),'automatic military supply uses the developed workshop tier');
 assert.ok(game.treasury>=nationalSalaryReserve(game));assert.equal(game.treasury,treasury);assert.equal(soldiers.reduce((n,s)=>n+100000-s.gold,0),game.phaseFiscal.personalEquipmentProcurement+game.phaseFiscal.personalForging);
 const after=game.treasury;game.supplyMissingEquipment();assert.equal(game.treasury,after,'same phase cannot supply twice');

@@ -1,6 +1,7 @@
 import {campaignScaling} from './campaign-scaling.js?v=241';
-import {soldierCombatTempo,usesSoldierTempo} from './unit-attributes.js?v=295';
-import {requiredDefenseStrength} from './defense-equipment.js?v=295';
+import {soldierCombatTempo,usesSoldierTempo} from './unit-attributes.js?v=298';
+import {requiredDefenseStrength} from './defense-equipment.js?v=298';
+import {shieldReductionPct} from './equipment-effects.js?v=298';
 import {powerRank,MAX_EQUIPMENT_TIER,GENERATIONS} from './equipment-tiers.js?v=231';
 import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=182';
 import {WEAPON_STYLE_ICONS,weaponStyleOf,isHeavyWeaponStyle,combatFamilyOf,weaponBaseAtkCoef} from './growth-rules.js?v=295';
@@ -157,7 +158,7 @@ export function shrineUpgradeCap(distance) {
   return Infinity; // 無限強化解禁！
 }
 
-const STAT_LABELS={atk:'攻撃',magicAttack:'魔法攻撃',magicDefense:'魔法防御',magicBonus:'魔力補正',healBonus:'回復補正',barrier:'バリア',def:'防御',hp:'HP',speed:'移動',atkSpeed:'攻速',crit:'会心',blockChance:'盾防',regen:'回復/秒',vampire:'吸血',lightning:'雷撃',reach:'長さ/射程',attackWidth:'攻撃幅',swingSpeed:'振り抜き',attackRate:'攻撃速度',sweetWidth:'スイート幅',sweetPower:'芯の威力補正'};
+const STAT_LABELS={atk:'攻撃',magicAttack:'魔法攻撃',magicDefense:'魔法防御',magicBonus:'魔力補正',healBonus:'回復補正',barrier:'バリア',def:'防御',hp:'HP',speed:'移動',atkSpeed:'攻速',crit:'会心',blockChance:'盾の被ダメ軽減',regen:'回復/秒',vampire:'吸血',lightning:'連鎖雷',reach:'長さ/射程',attackWidth:'攻撃幅',swingSpeed:'振り抜き',attackRate:'攻撃速度',sweetWidth:'スイート幅',sweetPower:'芯の威力補正'};
 const CRITICAL_STATS=new Set(['atk','def','hp']);
 const PCT_STATS=new Set(['crit','blockChance','atkSpeed','vampire','swingSpeed','sweetWidth','sweetPower','magicBonus','healBonus']);
 const STAT_ORDER=['atk','def','hp','speed','atkSpeed','crit','blockChance','regen','vampire','lightning'];
@@ -167,6 +168,7 @@ function formatStatDisplay(key, value) {
   if(['reach','attackWidth'].includes(key))return formatLength(n);
   if(key==='attackRate')return `${n.toFixed(2)}回/秒`;
   if(key==='lightning') return n?'あり':'なし';
+  if(key==='regen') return `毎秒${Math.round(n)/10}%`;
   if(key==='vampire') return `${Math.round(n*10000)/100}%`;
   if(PCT_STATS.has(key)) return `${Math.round(n*100)/100}%${key==='atkSpeed'&&n>=60?'（上限）':''}`;
   return `${Math.round(n)}`;
@@ -174,6 +176,7 @@ function formatStatDisplay(key, value) {
 
 function formatDeltaDisplay(key, delta) {
   if(key==='lightning') return delta>0?'+獲得':'−喪失';
+  if(key==='regen')return `${delta>0?'+':''}${Math.round(delta)/10}%`;
   const scale=key==='vampire'?100:1;
   if(['reach','attackWidth'].includes(key))return formatLengthDelta(delta);
   const v=Math.round(delta*scale*100)/100;
@@ -184,7 +187,7 @@ function formatDeltaDisplay(key, delta) {
 /** 装備乗り換え時の性能差。label/kind は既存互換。text=プレーン、html=色付き↑↓ */
 export function compareEquipment(candidate,current) {
   const axes=candidate?.type==='WEAPON'||current?.type==='WEAPON';
-  const cappedStats=item=>({...item?.stats,...(item?.type!=='WEAPON'&&item?.stats?.atkSpeed!=null?{atkSpeed:Math.min(60,item.stats.atkSpeed)}:{})});
+  const cappedStats=item=>({...item?.stats,...(item?.type!=='WEAPON'&&item?.stats?.atkSpeed!=null?{atkSpeed:Math.min(60,item.stats.atkSpeed)}:{}),...(item?.stats?.blockChance!=null?{blockChance:shieldReductionPct(item.stats.blockChance)}:{})});
   const afterStats={...cappedStats(candidate),...(axes?weaponAxisValues(candidate):{})},beforeStats={...cappedStats(current),...(axes?weaponAxisValues(current):{})};
   const keys=new Set([...Object.keys(afterStats),...Object.keys(beforeStats)]);
   const ordered=[...keys].sort((a,b)=>{
@@ -234,7 +237,7 @@ export function equipmentScore(item) {
   score += (s.speed || 0) * 15;
   if (s.lightning) score += 800;
   score += (s.magicBonus||0)*100+(s.healBonus||0)*100+(s.barrier||0)*4+(s.magicDefense||0)*6;
-  if (s.regen) score += s.regen * 100;
+  if (s.regen) score += s.regen * 200; // v7.0.21: regen is now tenths of a percent (was a flat 10-14)
   if (s.vampire) score += s.vampire * 1500;
   if (item.weaponStyle === 'spear') score += 40;
   if (isHeavyWeaponStyle(item)) score += 55;

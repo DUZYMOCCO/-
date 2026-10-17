@@ -1,8 +1,8 @@
-import {canUseEquipment} from './weapon-requirements.js?v=295';
-import {normalizeArmament,ARMAMENT_POLICIES,advanceResearch,researchCost,standardEquipmentCost,personalEquipmentBudget,createEquipmentValueCache,RESERVE_ARMAMENT_COUNT,ARMAMENT_LIMITS} from './armament-rules.js?v=295';
+import {canUseEquipment,usableSupplyTier} from './weapon-requirements.js?v=298';
+import {normalizeArmament,ARMAMENT_POLICIES,advanceResearch,researchCost,standardEquipmentCost,personalEquipmentBudget,createEquipmentValueCache,RESERVE_ARMAMENT_COUNT,ARMAMENT_LIMITS} from './armament-rules.js?v=298';
 import {tierDescription,MAX_EQUIPMENT_TIER} from './equipment-tiers.js?v=231';
 import {WORLD_SIZE} from './world.js?v=289';
-import {saleValue,isGodRollProtected} from './equipment-rules.js?v=295';
+import {saleValue,isGodRollProtected} from './equipment-rules.js?v=298';
 import {calcTreasuryGrossIncome,calcCommanderStipend,EQUIPMENT_SLOTS} from './economy-rules.js?v=295';
 import {createPayrollPlan,commanderStipendQuote,PAYROLL_RULES,regularSalaryReserve} from './payroll-rules.js?v=226';
 import {calcAllRankerBonuses} from './troop-rankings.js?v=295';
@@ -10,7 +10,7 @@ import {normalizeRegionalEconomy,recurringNationalIncome,economicState,advanceRe
 import {drawSettlementQuarter} from './economic-visuals.js?v=295';
 import {atFacility,HEADQUARTERS_FACILITIES} from './hq-facilities.js?v=295';
 import {renderRegionalEconomy} from './economic-interface.js?v=264';
-import {workshopFloorTier} from './crafting-rules.js?v=295';
+import {workshopFloorTier} from './crafting-rules.js?v=298';
 import {normalizeCasino} from './casino-rules.js?v=276';
 import {normalizeGuild,advanceGuildContracts} from './guild-contracts.js?v=295';
 
@@ -83,6 +83,7 @@ export const nationMethods={
           const available=personalEquipmentBudget(soldier),lowCost=standardEquipmentCost({tier:1});
           if(available>=lowCost){
             for(;tier>=1;tier--){cost=standardEquipmentCost({tier});if(cost<=available)break;}
+            tier=usableSupplyTier(soldier,type,tier);cost=standardEquipmentCost({tier}); // v7.0.21: stricter strength table - issue the best piece the soldier can really wear (no ward robes / staves)
             item=this.createSupplyEquipment(type,soldier,tier);
             if(!canUseEquipment(soldier,item))continue;
             soldier.gold-=cost;item.selfFunded=true;
@@ -112,7 +113,7 @@ export const nationMethods={
         if(cost>available&&forgeCost>available)continue;
         const value=valueFor(soldier,cur,key);
         if(cost<=available){
-          const item=this.createSupplyEquipment(type,soldier,a.techTier),next=valueFor(soldier,item,key),gain=next/Math.max(1,value)-1;
+          const item=this.createSupplyEquipment(type,soldier,usableSupplyTier(soldier,type,a.techTier)),next=valueFor(soldier,item,key),gain=next/Math.max(1,value)-1;
           if(gain>=ARMAMENT_LIMITS.replacementMinGain&&(!best||gain/cost>best.efficiency))best={key,item,cost,efficiency:gain/cost,kind:'replace'};
         }
         if(forgeCost<=available){

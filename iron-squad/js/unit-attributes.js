@@ -1,11 +1,11 @@
 import {levelGrowthSteps} from './level-growth.js?v=274';
 import {heroGrowth} from './hero-rules.js?v=282';
-import {syncEquipmentBarrier} from './defense-equipment.js?v=295';
+import {syncEquipmentBarrier} from './defense-equipment.js?v=298';
 import {isLateBloomer} from './talent-labels.js?v=291';
 /** 個体の素質と、実際の行動から育つ能力。装備・職業・Lvの再計算では履歴を変更しない。 */
 export const ATTRIBUTE_KEYS = ['strength','magic','magicDefense','quickness','evasion'];
 export const ATTRIBUTE_LABELS = {strength:'筋力',magic:'魔力',magicDefense:'魔法防御',quickness:'速さ',evasion:'回避'};
-export const ATTRIBUTE_RULES = {cap:255,softCapStart:100,levelStrength:2.5,casterLevelStrength:.005,casterMuscleChance:.002,casterMeleeUnlockStrength:18,levelMagic:2.5,levelMagicDefense:1.4,levelQuickness:1.1,levelEvasion:.18,travelScale:1500,carryStrength:40,carryMax:6,dodgeChanceMax:99};
+export const ATTRIBUTE_RULES = {cap:255,strengthCap:500,strengthCurveJoin:300,strengthPowerReference:255,strengthPowerShare:.3,softCapStart:100,levelStrength:2.5,casterLevelStrength:.005,casterMuscleChance:.002,casterMeleeUnlockStrength:18,levelMagic:2.5,levelMagicDefense:1.4,levelQuickness:1.1,levelEvasion:.18,travelScale:1500,carryStrength:40,carryMax:6,dodgeChanceMax:99};
 export const ATTRIBUTE_BASES = {
   HEAVY:{strength:25,magic:12,magicDefense:8,quickness:15,evasion:2},
   LIGHT:{strength:20,magic:10,magicDefense:6,quickness:28,evasion:5},
@@ -78,6 +78,17 @@ export function isMuscleCaster(unit) {
   return !!(profile?.version===1&&profile.innate&&profile.aptitudes&&profile.practice
     &&unassistedStrengthPotential(unit,profile)>=ATTRIBUTE_RULES.casterMeleeUnlockStrength);
 }
+/** Strength alone may exceed 255 (v7.0.21, cap 500). Identical to cappedAttributeValue up to the join potential (value ~212);
+ *  past it the same curve keeps its slope but bends towards 500 instead of 255, so every value reached before stays unchanged. */
+export function cappedStrengthValue(potential,precision=1,min=0) {
+  const {strengthCap,strengthCurveJoin,softCapStart,cap}=ATTRIBUTE_RULES;
+  if(!(potential>strengthCurveJoin))return cappedAttributeValue(potential,precision,min);
+  const span=cap-softCapStart,joinValue=softCapStart+span*(-Math.expm1(-(strengthCurveJoin-softCapStart)/span)),slope=Math.exp(-(strengthCurveJoin-softCapStart)/span),room=strengthCap-joinValue;
+  const value=joinValue+room*(-Math.expm1(-slope*(potential-strengthCurveJoin)/room));
+  return clamp(Math.round(value*precision)/precision,min,strengthCap);
+}
+/** Strength above 255 raises what equipment may be worn, but only a share of it adds to damage/knockback/ammo (no runaway). */
+export const effectiveStrength=value=>{const n=Number(value)||0,{strengthPowerReference:ref,strengthPowerShare:share}=ATTRIBUTE_RULES;return n<=ref?n:ref+(n-ref)*share;};
 /** Stored progress remains cumulative; the same additional effort yields less near 255. */
 export function cappedAttributeValue(potential,precision=1,min=0) {
   const {cap,softCapStart}=ATTRIBUTE_RULES,span=cap-softCapStart;
@@ -95,8 +106,8 @@ export function attributeValues(unit) {
   let strengthPotential=unassistedStrengthPotential(unit,p);
   const weapon=unit.equipped?.weapon||unit.weapon;
   if(caster&&isMuscleCaster(unit)&&['sword','spear','hammer','axe'].includes(weapon?.weaponStyle))strengthPotential+=lv*(ATTRIBUTE_RULES.levelStrength-ATTRIBUTE_RULES.casterLevelStrength)*p.aptitudes.strength*gift;
-  const baseStrength=cappedAttributeValue(strengthPotential,1,1);
-  const strength=Math.min(ATTRIBUTE_RULES.cap,baseStrength+(unit._casterStrengthTimer>0?unit._casterStrengthBonus||0:0));
+  const baseStrength=cappedStrengthValue(strengthPotential,1,1);
+  const strength=Math.min(ATTRIBUTE_RULES.strengthCap,baseStrength+(unit._casterStrengthTimer>0?unit._casterStrengthBonus||0:0));
   const magic=cappedAttributeValue(trained('magic',ATTRIBUTE_RULES.levelMagic),1,1);
   const magicDefense=cappedAttributeValue(trained('magicDefense',ATTRIBUTE_RULES.levelMagicDefense)+magic*.25);
   const quickness=cappedAttributeValue(trained('quickness',ATTRIBUTE_RULES.levelQuickness,'travel'),1,1);
@@ -107,7 +118,7 @@ export function attributeValues(unit) {
 export function attributeMultipliers(unit,values=attributeValues(unit)) {
   const family=attributeFamily(unit),base=ATTRIBUTE_BASES[family];
   // 術士の筋力は基準を超えた分を戦士と同じ割合で効かせる（基準10で割ると戦士の約2倍になっていた）。猛烈な一撃はMPを使う瞬間だけ
-  const physical=['MEDIC','MAGE'].includes(family)&&values.strength>base.strength?1+(values.strength-base.strength)/CASTER_STRENGTH_SCALE:values.strength/base.strength;
+  const power=effectiveStrength(values.strength),physical=['MEDIC','MAGE'].includes(family)&&power>base.strength?1+(power-base.strength)/CASTER_STRENGTH_SCALE:power/base.strength;
   return {physical:Math.max(.1,physical),magic:Math.max(.03,values.magic/base.magic),movement:.8+.2*values.quickness/base.quickness};
 }
 export function applyAttributeStats(unit) {

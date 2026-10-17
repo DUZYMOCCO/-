@@ -1686,3 +1686,8 @@
 .iron-squad .potion-flash { position:absolute; left:50%; top:38%; transform:translate(-50%,-50%); z-index:40; pointer-events:none; padding:10px 18px; border-radius:999px; font-size:16px; font-weight:bold; color:#effff0; background:#1f6b3fe6; border:2px solid #9bf2a8; box-shadow:0 0 24px #7dffa0aa; animation:ironPotionFlash 1.1s ease-out forwards; }
 .iron-squad .potion-flash-revival { background:#4c3f8de6; border-color:#c9bcff; box-shadow:0 0 24px #b9a8ffaa; }
 @keyframes ironPotionFlash { 0% { opacity:0; transform:translate(-50%,-30%) scale(.8); } 20% { opacity:1; transform:translate(-50%,-50%) scale(1.05); } 80% { opacity:1; } 100% { opacity:0; transform:translate(-50%,-70%) scale(1); } }
+/* v7.0.21: shortage in red + "if equipped" preview */
+.req-short{color:#f87171;font-weight:700}
+.equip-effect{margin-top:3px;font-size:10.5px;line-height:1.45;color:#cbd5e1;overflow-wrap:anywhere}
+.equip-effect b{color:#93c5fd}
+.equip-effect.req-short{color:#f87171}

@@ -1,6 +1,6 @@
 import {equipmentVisualProfile} from './equipment-tiers.js?v=231';
 import {travelerClothes} from './traveler-clothes.js?v=195';
-import {isMuscleCaster} from './unit-attributes.js?v=295';
+import {isMuscleCaster} from './unit-attributes.js?v=298';
 import {genderOfSoldier} from './soldier-names.js?v=210';
 import {classRegaliaFor,drawClassPortraitDress,drawClassHeadpiece} from './class-regalia.js?v=185';
 import {createAppearanceFeatures,normalizeAppearanceFeatures,FACE_OUTLINES,EYE_SHAPES,NOSE_TYPES,JAW_TYPES,ACCESSORY_LABELS,drawVariantFace,drawVariantEyes,drawVariantNose,drawPersonalAccessory} from './appearance-features.js?v=193';

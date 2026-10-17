@@ -4,7 +4,7 @@ import {formatCompact} from './number-format.js?v=282';
 import {isOwnSquad} from './own-squad-marker.js?v=182';
 import {downLabel} from './casualty-rules.js?v=295';
 import {isMagicUser,ensureMana} from './magic-rules.js?v=296';
-import {isRangedUnit,ensureAmmo,ammoCapacity} from './supply-rules.js?v=295';
+import {isRangedUnit,ensureAmmo,ammoCapacity} from './supply-rules.js?v=298';
 
 const REFRESH = .15;
 const shortName = name => String(name || '').split(/[・\s]/)[0] || '兵士';

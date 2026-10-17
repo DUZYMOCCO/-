@@ -84,7 +84,7 @@ const select=document.getElementById('player-magic-affinity');select.value='ice'
 assert.match(document.getElementById('player-magic-status').textContent,/隊長.*100\/100.*氷/);assert.match(document.getElementById('btn-pad-attack').textContent,/魔法/);assert.match(document.getElementById('btn-pad-power').textContent.split(/\s+/).join(''),/マナバースト/);
 game.equipItem(weapon('sword'));assert.ok(document.getElementById('player-magic-status').classList.contains('hidden'));assert.doesNotMatch(document.getElementById('btn-pad-attack').textContent,/魔法/);
 // The five attributes cap at 255, while equipment and spell output keep growing.
-game.equipItem(weapon('staff',100));p().level=100000;game.recalcPlayerStats();const before=p().magicAttack;assert.ok(Object.values(attributeValues(p())).every(v=>v<=255));
+game.equipItem(weapon('staff',100));p().level=100000;game.recalcPlayerStats();const before=p().magicAttack;assert.ok(Object.entries(attributeValues(p())).every(([key,v])=>v<=(key==='strength'?500:255)));
 game.equipItem(weapon('staff',200));assert.ok(p().magicAttack>before);assert.ok(p().magicAttack>255);
 console.log('PASS: captain staff/wand spells, four elements, magic resistance, shared auto/manual cooldown, MP/movement, charged spell, outposts, kill credit, supplies, switch/save/legacy, full status shortcut and unlimited equipment');
 dom.window.close();

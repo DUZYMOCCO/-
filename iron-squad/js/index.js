@@ -3,7 +3,7 @@ import {pushDamageText,drawDamageText,DAMAGE_POPUP_CAP} from './damage-text.js?v
 import {spawnDeathShatter,updateDeathShatters,drawDeathShatters} from './death-shatter.js?v=283';
 import {enemyTier,rollBossTreasure,finalCriticalChance,bossCriticalBonus} from './enemy-tier.js?v=274';
 import {levelGrowthSteps,levelDefenseGrowth} from './level-growth.js?v=274';
-import {soldierCombatTempo} from './unit-attributes.js?v=295';
+import {soldierCombatTempo} from './unit-attributes.js?v=298';
 import {startAutoSave,stopAutoSave} from './auto-save.js?v=269';
 import {requestEvenUpgrade} from './even-upgrade.js?v=291';
 import {beginFollowerRecovery,noteFollowerIntent,suspendFollowerRecovery,finishFollowerRecovery,profileFollowerRecovery} from './follower-recovery.js?v=277';
@@ -16,7 +16,7 @@ import {guildUiMethods} from './guild-ui.js?v=295';
 import {headquartersMoveTarget} from './hq-navigation.js?v=295';
 import {configureBattlefieldUI,quietBattlefieldContext} from './battlefield-ui.js?v=249';
 import {renderNavigationMap} from './navigation-map.js?v=295';
-import {soldierEquipmentValue,createEquipmentValueCache,observeEquipment,standardEquipmentCost,RESERVE_ARMAMENT_COUNT} from './armament-rules.js?v=295';
+import {soldierEquipmentValue,createEquipmentValueCache,observeEquipment,standardEquipmentCost,RESERVE_ARMAMENT_COUNT} from './armament-rules.js?v=298';
 import {initializeWildernessSites,serializeWildernessSites,updateWildernessSites,recordWildernessGuardKill,drawWildernessSite,drawWildernessMap,WILDERNESS_RULES} from './wilderness-sites.js?v=281';
 import {enemyArtHeadHeight} from './enemy-art.js?v=280';
 import {selectBiomeEncounter,biomeEnemyStats,encounterSlots,updateBiomeCharge} from './biome-encounters.js?v=279';
@@ -28,8 +28,8 @@ import {fieldAdaptiveScaling} from './field-scaling.js?v=182';
 import {activeSquad,inCurrentInstance} from './instance-rules.js?v=256';
 import {TANK,prepareTanks,tankEvalDistSq,tankSlowFactor,tankCover,tankStunSeconds} from './heavy-tank.js?v=295';
 import {recordBattleLog,resetBattleLog,refreshCombatFieldNotes} from './battle-log.js?v=295';
-import {rollDropExclusive,applyDropExclusive,dropExclusiveLabel} from './drop-exclusives.js?v=182';
-import {normalizeMaterials,applyCraftExclusive,craftExclusiveLabel,equipmentDropChance,materialDropChance,rollMaterialDrop,rollTreasureLoot} from './crafting-rules.js?v=295';
+import {rollDropExclusive,applyDropExclusive,dropExclusiveLabel} from './drop-exclusives.js?v=298';
+import {normalizeMaterials,applyCraftExclusive,craftExclusiveLabel,equipmentDropChance,materialDropChance,rollMaterialDrop,rollTreasureLoot} from './crafting-rules.js?v=298';
 import {workshopMethods} from './workshop.js?v=295';
 import {updateAmbientCrowd,ambientResidents,ambientSoldierPose,ambientFarmPosts,drawAmbientResident,configureAmbientSettings,resetAmbientCrowd} from './town-ambient.js?v=295';
 import {casinoMethods} from './casino.js?v=295';
@@ -38,7 +38,7 @@ import {latestEquipmentTier,recordMerchantEquipment,ensureMerchantCatalog,refres
 import {initializeMedicalPosts,updateMedicalPosts,serializeMedicalPosts,medicalPostLayout,nearestKnownMedicalPost,drawMedicalPost,drawMedicalMap,drawMedicalMarker,drawTownMedicalReception,drawRescueDirection} from './medical-posts.js?v=277';
 import {invasionMethods,initializeInvasions,serializeInvasions,shouldTriggerRandomRaid,makeEnemyRoom,drawInvasionRoute} from './invasion-rules.js?v=277';
 import {gateMethods,serializeGatePosts,replenishTownGateGuards,initializeGateGuards,ensureTownGuards,serializeGateGuards,updateGateGuards,gateGuardVisible,applyFortifications,drawFortification,exitGateTown,townExitReached,wallBlocksAttack,attackBlocked as coverBlocked} from './gate-rules.js?v=295';
-import {nationMethods,normalizeNation,nationalIncome,nationalPayrollPlan,headquartersDamageMult,drawNationalDevelopment,DEVELOPMENT_STAGES} from './nation-rules.js?v=295';
+import {nationMethods,normalizeNation,nationalIncome,nationalPayrollPlan,headquartersDamageMult,drawNationalDevelopment,DEVELOPMENT_STAGES} from './nation-rules.js?v=298';
 import {equipmentUpgradeCost,salaryQuote,paySoldiers} from './payroll-rules.js?v=226';
 import {addFieldDrop,ageFieldDrops,attractFieldDrops,FIELD_DROP_PICKUP_RADIUS} from './field-drops.js?v=182';
 import {drawLootDrop,drawLootPullTrail} from './loot-visuals.js?v=295';
@@ -88,7 +88,7 @@ import { applyCommanderIdentity, normalizeCommanderIdentity, commanderFullName, 
 import {MAGIC_CLASSES,MAGIC_AFFINITIES,classHpScale,magicMethods,isMage,isMagicUser,ensureMana,initializeMagic,updateMagic,distributeMagicStones,castMedicBuff,castCasterStrength,updateMageAI,drawMagicBursts,spendMana,weaponMagicDamage,isPlayerCaster,castPlayerSpell,PLAYER_MAGIC_RULES} from './magic-rules.js?v=296';
 import {hazardMethods,updateHazards,drawHazards} from './hazard-fields.js?v=277';
 import {strongEnemyReward} from './combat-rewards.js?v=182';
-import {supplyMethods, initializeSupplies, updateSupplies, takeRangedShot, ammoCombatProfile, isRangedUnit, distributeAmmo, preventLethalHit, normalizeFieldSave, SQUAD_POTION_COST, REVIVAL_POTION_COST, REVIVAL_POTION_MAX, SQUAD_POTION_MAX, ensureAmmo, ammoCapacity, recalcAmmoCapacity, RANGED_DAMAGE_MULT, supplyLocation} from './supply-rules.js?v=295';
+import {supplyMethods, initializeSupplies, updateSupplies, takeRangedShot, ammoCombatProfile, isRangedUnit, distributeAmmo, preventLethalHit, normalizeFieldSave, SQUAD_POTION_COST, REVIVAL_POTION_COST, REVIVAL_POTION_MAX, SQUAD_POTION_MAX, ensureAmmo, ammoCapacity, recalcAmmoCapacity, RANGED_DAMAGE_MULT, supplyLocation} from './supply-rules.js?v=298';
 import { bindPadTap } from './pad-tap.js?v=276';
 import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog } from './interface.js?v=295';
 import { renderTroopRankings, getSoldierRankerBadges, calcSoldierRankerBonus, setRankingFamilyLabels, RANKING_FAMILIES } from './troop-rankings.js?v=295';
@@ -108,10 +108,11 @@ import {
 } from './class-up-rules.js?v=185';
 import { PHASE_DURATION, REST_DURATION, DEATHLINE_DOWN_THRESHOLD, DEATHLINE_WINDOW_PHASES, SOLDIER_SALARY, MIN_REINFORCEMENTS, emptyActivity, advancePhase, advanceRest, recordCombat, recordHealing, healByMedic, healAmountFor, personalDownCount, recentDownCount, normalizeDeathlineHistory, consumeDeathlineDowns, deathlineEligible, participated, finishExperience } from './phase-rules.js?v=218';
 import {HEALING_HP_PER_EXP,REVIVAL_EXP_PER_MAX_HP,shareCommanderExp,raiseLevelMark,ageLevelMarks} from './experience-rules.js';
-import {attributeFamily,rollAttributeProfile,applyAttributeStats,attributeValues,practiceAttribute,attributeCarryCapacity,attributeSpecialties,prefersCasterMelee,canChannelWeaponMagic,magicAbilityMultiplier,CASTER_STRIKE_COST,casterStrikeMultiplier,beginAttributeMovement,finishAttributeMovement,ATTRIBUTE_LABELS,ATTRIBUTE_KEYS,aptitudeGrade} from './unit-attributes.js?v=295';
+import {attributeFamily,rollAttributeProfile,applyAttributeStats,attributeValues,practiceAttribute,attributeCarryCapacity,attributeSpecialties,prefersCasterMelee,canChannelWeaponMagic,magicAbilityMultiplier,CASTER_STRIKE_COST,casterStrikeMultiplier,beginAttributeMovement,finishAttributeMovement,ATTRIBUTE_LABELS,ATTRIBUTE_KEYS,aptitudeGrade,effectiveStrength} from './unit-attributes.js?v=298';
 import {rollScoutCandidate,renderRecruitment,nextScoutCandidate,startAutomaticRecruitment,stopAutomaticRecruitment,RECRUIT_CLASSES} from './recruitment.js?v=295';
-import {canUseEquipment,requiredWeaponStrength,equipmentRequirementText,isMagicWeapon,MAGIC_WEAPON_STYLES,preferredWeaponStyle} from './weapon-requirements.js?v=295';
-import {CASTER_GEAR,DEFENSE_TYPES,casterGearName,applyDefenseEquipment,casterEquipmentSummary,absorbEquipmentBarrier,drawBarrierRing} from './defense-equipment.js?v=295';
+import {canUseEquipment,requiredWeaponStrength,equipmentRequirementText,equipmentRequirementHtml,strengthShortfall,migrateStrengthRequirement,STRENGTH_REQUIREMENT_VERSION,isMagicWeapon,MAGIC_WEAPON_STYLES,preferredWeaponStyle} from './weapon-requirements.js?v=298';
+import {EQUIPMENT_HP_RULES,equipmentHpFormula,equipmentRegenOf,tickEquipmentRegen,SOLDIER_VAMPIRE,soldierVampireHeal,LIGHTNING_RULES,lightningReady,pickLightningTargets,lightningDamage,equipmentEffectParts,equipmentEffectHtml} from './equipment-effects.js?v=298';
+import {CASTER_GEAR,DEFENSE_TYPES,casterGearName,applyDefenseEquipment,casterEquipmentSummary,absorbEquipmentBarrier,drawBarrierRing} from './defense-equipment.js?v=298';
 import {
   emptyFiscalLedger, calcCommanderStipend, calcBuyoutGold,
   shouldAbsorbToSharedBox, calcScoutCost, estimateSoldierScoutValue, calcDismissSettlement,
@@ -119,7 +120,7 @@ import {
   SHARED_BOX_MAX_TIER, SCOUT_COST_BY_TALENT, defaultDonateAmount, donatePresetAmounts, fundLadderAmounts, formatFundKanji, normalizeFundAmount, EQUIPMENT_SLOTS
 } from './economy-rules.js?v=295';
 
-import { EQUIPMENT_TYPES, saleValue, equippedIds, canSell, lowValueIds, chooseLootTier, distanceScaling, shrineUpgradeCap, compareEquipment, equipmentScore, compareEquipmentStrength, rollWeaponTraits, weaponCombatProfile, attackSpeedState, attackCooldown, attackSpeedLabel, soldierAttackCooldown, evaluateMeleeSweetSpot, isGodRollProtected, zoneRingPower, zoneRingLabelJa, equipmentIcon, equipmentName } from './equipment-rules.js?v=295';
+import { EQUIPMENT_TYPES, saleValue, equippedIds, canSell, lowValueIds, chooseLootTier, distanceScaling, shrineUpgradeCap, compareEquipment, equipmentScore, compareEquipmentStrength, rollWeaponTraits, weaponCombatProfile, attackSpeedState, attackCooldown, attackSpeedLabel, soldierAttackCooldown, evaluateMeleeSweetSpot, isGodRollProtected, zoneRingPower, zoneRingLabelJa, equipmentIcon, equipmentName } from './equipment-rules.js?v=298';
 import { rollFieldBrute, advanceDemonWarband, stepDemonWarbandGroup } from './field-hosts.js?v=182';
 import {
   WEAPON_STYLES, MASTERY_STYLES, WEAPON_STYLE_LABELS, WEAPON_STYLE_ICONS, isHeavyWeaponStyle, legacyHeavyAttackMult, HEAVY_ATTACK_VERSION, LEGACY_HEAVY_ATTACK_MULT, WEAPON_BASE_ATK_VERSION, WITHDRAWN_COMPENSATED_ATK_VERSION, WITHDRAWN_COMPENSATION_FACTOR, weaponCategoryOf, splitHeavyFavorite, FAVORITE_SPLIT_VERSION,
@@ -894,15 +895,15 @@ export function applyUpgradeStats(item, upgradeLevel) {
     else delete item.stats.lightning;
   } else if (item.type === 'SHIELD') {
     item.stats.def = Math.floor(baseValue * 1.5 * chosenTier.mult * plusMult * rm);
-    item.stats.hp = Math.floor(baseValue * 1.5 * Math.pow(rank, 1.3) * plusMult * rm);
+    item.stats.hp = equipmentHpFormula('SHIELD', baseValue, rank, plusMult, rm);
     item.stats.blockChance = Math.floor(Math.min(45, 15 + effTier * 5));
   } else if (item.type === 'HELMET') {
     item.stats.def = Math.floor(baseValue * 1.1 * chosenTier.mult * plusMult * rm);
-    item.stats.hp = Math.floor(baseValue * 2.0 * Math.pow(rank, 1.3) * plusMult * rm);
+    item.stats.hp = equipmentHpFormula('HELMET', baseValue, rank, plusMult, rm);
   } else if (item.type === 'ARMOR') {
     item.stats.def = Math.floor(baseValue * 2.2 * chosenTier.mult * plusMult * rm);
-    item.stats.hp = Math.floor(baseValue * 3.0 * Math.pow(rank, 1.3) * plusMult * rm);
-    if (effTier >= 5) item.stats.regen = Math.floor(effTier * 2 * Math.min(1.4, Math.max(0.85, rm)));
+    item.stats.hp = equipmentHpFormula('ARMOR', baseValue, rank, plusMult, rm);
+    if (effTier >= 5) item.stats.regen = Math.max(1, Math.round((effTier - 1) * Math.min(1.4, Math.max(0.85, rm)))); // v7.0.21: tenths of a percent of max HP per second (was an unused flat 10-14)
     else delete item.stats.regen;
   } else if (item.type === 'GLOVES') {
     item.stats.def = Math.floor(baseValue * 0.8 * chosenTier.mult * plusMult * rm);
@@ -926,6 +927,9 @@ export function applyUpgradeStats(item, upgradeLevel) {
   // v7.0.18: weapon ATK already carries its strength through the base coefficient table (no generation-time x7/x3, no compensation).
   if(item.type==='WEAPON'&&isHeavyWeaponStyle(item))item.heavyAttackVersion=HEAVY_ATTACK_VERSION;
   if(item.type==='WEAPON')item.weaponBaseAtkVersion=WEAPON_BASE_ATK_VERSION;
+  // v7.0.21: armour/helmet/shield HP formula version and the strength-requirement table version (minStrength was just rebuilt from the new table).
+  if(['SHIELD','HELMET','ARMOR'].includes(item.type))item.equipHpVersion=EQUIPMENT_HP_RULES.version;
+  if(item.type==='WEAPON'||DEFENSE_TYPES.includes(item.type))item.strengthReqVersion=STRENGTH_REQUIREMENT_VERSION;
   if(item.type==='WEAPON'&&['sword','spear'].includes(item.weaponStyle||'sword'))item.meleeBalanceVersion=1;
   if(item.type==='WEAPON'&&item.weaponStyle==='crossbow')item.rangedBalanceVersion=1;
 }
@@ -953,6 +957,18 @@ export function migrateWeaponBaseAtk(item) {
   return item;
 }
 
+/** v7.0.21: rebuild a worn/owned shield, helmet or armour once with the stronger HP formula (and the new regen scale). Quality, upgrade and forging identity are kept. */
+export function migrateEquipmentHp(item) {
+  if(!item||item.heroOnly||!['SHIELD','HELMET','ARMOR'].includes(item.type)||item.equipHpVersion>=EQUIPMENT_HP_RULES.version||!Number.isFinite(item.tier)||!(item.name||item.baseName))return item;
+  applyUpgradeStats(item,item.upgrade||0);
+  return item;
+}
+/** Everything a unit wears right now: strength table first (grandfathers worn pieces, must precede any rebuild), then the HP formula. */
+export function migrateEquippedGear(equipped,weapon=null) {
+  const items=[...Object.values(equipped||{}),weapon].filter((item,i,all)=>item&&all.indexOf(item)===i);
+  for(const item of items)migrateStrengthRequirement(item,true);
+  for(const item of items)migrateEquipmentHp(item);
+}
 export function migrateRangedWeaponBalance(item){
   if(item?.type!=='WEAPON'||item.heroOnly||item.weaponStyle!=='crossbow'||item.rangedBalanceVersion>=1||!Number.isFinite(item.tier)||!(item.name||item.baseName))return item;
   applyUpgradeStats(item,item.upgrade||0);return item;
@@ -961,11 +977,15 @@ export function migrateRangedWeaponBalance(item){
 /** Refresh owned equipment upgrades and migrate old weapon attack once. */
 function refreshOwnedEquipmentUpgrades(game) {
   const piles = [Object.values(game.equipped || {}), game.inventory || [], game.sharedEquipBox || []];
+  const worn = new Set([piles[0]]);
   for (const soldier of [...(game.squad || []), ...(game.reserves || []), ...(game.scoutCandidates || []).map(entry => entry?.soldier).filter(Boolean)]) {
-    piles.push(Object.values(soldier.equipped || {}), soldier.weapon ? [soldier.weapon] : []);
+    const wornPiles = [Object.values(soldier.equipped || {}), soldier.weapon ? [soldier.weapon] : []];
+    piles.push(...wornPiles);for (const pile of wornPiles) worn.add(pile);
   }
   for (const merchant of game.merchants || []) piles.push(merchant.stock || []);
   for (const pile of piles) for (const item of pile) if(item){
+    migrateStrengthRequirement(item, worn.has(pile)); // v7.0.21: first, before any rebuild below
+    migrateEquipmentHp(item);
     migrateHeavyWeaponAttack(item);
     migrateMeleeWeaponBalance(item);
     migrateRangedWeaponBalance(item);
@@ -3101,6 +3121,7 @@ export const IronSquadGame = {
   },
 
   recalcPlayerStats() {
+    migrateEquippedGear(this.equipped);
     migrateHeavyWeaponAttack(this.equipped?.weapon);
     migrateMeleeWeaponBalance(this.equipped?.weapon);
     migrateRangedWeaponBalance(this.equipped?.weapon);
@@ -3201,6 +3222,7 @@ export const IronSquadGame = {
     this.player.crit = equipCrit + bossCrit + (isWarlord ? 30 : 0); // Final cap is applied after sweet-spot adjustments at the hit.
     this.player.vampire = equipVampire + (isWarlord ? 5 : 0);
     this.player.lightning = equipLightning;
+    this.player.equipmentRegen = equipmentRegenOf(this.equipped); // v7.0.21: armour/amulet regen now really heals
     this.player.dmgReduction = Math.min(55, bossReduction + Math.floor(equipBlock * 0.3) + (isWarlord ? 15 : 0));
     this.player.kills = minionKills + bossKills + (this.player.midbossKills||0);
     this.player.dodge = 0;
@@ -3213,6 +3235,7 @@ export const IronSquadGame = {
   recalcSoldierStats(s) {
     if(isOwnSquad(s)||s.joinedFrom==='tavern')s.civilianOutfit=!this.isEnlisted();
     if (!s) return;
+    if(s.equipped||s.weapon)migrateEquippedGear(s.equipped,s.weapon);
     if(!s._equipmentTrial)this._equipmentStatRevision=(this._equipmentStatRevision||0)+1;
     if(!s._equipmentTrial)this.returnUnusableDefense(s,s.equipped,this.sharedEquipBox||=[]);
     migrateHeavyWeaponAttack(s.equipped?.weapon || s.weapon);
@@ -3381,6 +3404,8 @@ export const IronSquadGame = {
     s.dmgReduction = Math.min(65, bossReduction + Math.floor((equipBlock + deathlineBlock) * 0.3) + deathlineDmgRed);
     s.crit = 10+(cls.bonusCrit||0)+(talent.critBonus||0)+deathlineCrit+bossCriticalBonus(bossKills)+Object.values(s.equipped).reduce((sum,item)=>sum+(item?.stats?.crit||0),0);
     s.dodge = (talent.dodgeBonus || 0) + deathlineDodge;
+    s.equipmentRegen = equipmentRegenOf(s.equipped); // v7.0.21: regen / vampire from equipment now reach soldiers and the hero party
+    s.vampire = Math.min(SOLDIER_VAMPIRE.maxRate, Object.values(s.equipped).reduce((sum, item) => sum + (Number(item?.stats?.vampire) || 0), 0));
     {const dd = aggregateDeathlineDynamics(s.deathlineSkills, DEATHLINE_SKILLS); s.deathlineAtkSpeed = dd.atkSpeed; s.deathlineRegenPct = dd.regenPct; s.deathlineRevivalSpeed = dd.revivalSpeed; s.deathlineLowHpGuard = dd.lowHpGuard; s.deathlineLowHpSpeed = dd.lowHpSpeed; s._lowHpBoost = false;} // 動的効果は集計値のみ保持（速度ブーストは毎フレーム tickDeathline が掛け直す）
     s.deathlineSkillRangeMult = deathlineRangeMult;
     s.deathlineRangeMult = deathlineRangeMult * (cls.rangeMultBonus ? (1.0 + cls.rangeMultBonus) : 1.0);
@@ -3514,6 +3539,8 @@ export const IronSquadGame = {
       ...(this.squad || []).map(s => s.name).filter(n => n && !/^兵士#\d+$/.test(n)),
       ...(this.reserves || []).map(s => s.name).filter(n => n && !/^兵士#\d+$/.test(n))
     ]);
+    migrateEquippedGear(this.equipped);
+    for (const unit of [...this.squad, ...(this.reserves || [])]) migrateEquippedGear(unit.equipped, unit.weapon);
     this.squad.forEach((s) => {
       migrateSoldierName(s, existingSoldierNames);
       if (s.name) existingSoldierNames.add(s.name);
@@ -4296,18 +4323,83 @@ export const IronSquadGame = {
 
   equipmentValueFor(soldier,item,key) {return soldierEquipmentValue(this,soldier,item,key,SOLDIER_CLASSES);},
   returnUnusableDefense(unit,equipment,bag) {
+    const returned=[];
     for(const [key,item] of Object.entries(equipment||{})){
       if(!item||item.type==='WEAPON'||canUseEquipment(unit,item))continue;
       equipment[key]=null;
       if(!bag.some(old=>old.id===item.id))bag.push(item);
-      // 杖への持ち替えなどで筋力が下がって外れたときも、黙って消えたように見えないよう知らせる
-      this.recordBattleLog?.(`${unit===this.player?'隊長':unit.name||'兵士'}の${item.name}は筋力不足のため${unit===this.player?'バッグ':'共有箱'}へ戻しました`);
+      returned.push(item);
     }
+    // 杖への持ち替えなどで筋力が下がって外れたときも、黙って消えたように見えないよう1行にまとめて知らせる
+    if(returned.length&&!unit?._equipmentTrial)this.notifyStrengthReturn(unit,returned,unit===this.player?'バッグ':'共有箱');
+  },
+  /** One log line (and a toast; soldiers' toasts are throttled) per unit: "筋力不足で○点を共有箱/バッグへ". */
+  notifyStrengthReturn(unit,items,destination) {
+    const who=unit===this.player?'隊長':unit?.name||'兵士',names=items.map(item=>item.name).join('・');
+    this.recordBattleLog?.(`${who}は筋力不足で${items.length}点（${names}）を${destination}へ戻しました`);
+    const now=Date.now();
+    if(unit===this.player||now-(this._strengthToastAt||0)>=4000){this._strengthToastAt=now;this.showToast(`⚠️${who}：筋力不足で${items.length}点を${destination}へ戻しました`);}
+  },
+  /** v7.0.21: armour/amulet regen (tenths of a percent of max HP per second, total capped at 0.8%/s). */
+  tickEquipmentRegenAll(dt) {
+    const members=this.heroJourney?.party?.members||[];
+    tickEquipmentRegen(this.player,dt);
+    for(const unit of this.squad||[])tickEquipmentRegen(unit,dt);
+    for(const unit of this.reserves||[])tickEquipmentRegen(unit,dt);
+    for(const unit of members)if(!(this.squad||[]).includes(unit))tickEquipmentRegen(unit,dt);
+  },
+  /** v7.0.21: weapon lightning. A physical hit may arc to the nearest 1-2 enemies for 40% / 25% of the hit; one arc per attacker per second. */
+  chainLightning(attacker,isPlayer,origin,dmg) {
+    const owner=isPlayer?this.player:attacker,now=this.worldTime||0;
+    if(!owner||!(dmg>0)||!lightningReady(owner,now))return 0;
+    const targets=pickLightningTargets(this.monsters,origin);
+    if(!targets.length)return 0;
+    owner._lightningReadyAt=now+LIGHTNING_RULES.cooldown;
+    let total=0;
+    targets.forEach((target,index)=>{
+      const arc=lightningDamage(dmg,index,target.magicDef);
+      target.hp-=arc;target.hitPulse=1;target._damageOwner=owner;target._damageIsPlayer=!!isPlayer;total+=arc;
+      this.spawnSparks(target.x,target.y,LIGHTNING_RULES.color,8);
+      this.spawnDamageText(target.x,target.y-10,arc,LIGHTNING_RULES.color,{kind:'normal',maxHp:target.maxHp});
+      if(target.hp<=0)this.killMonster(target,attacker,isPlayer);
+    });
+    return total;
+  },
+  /** "If equipped" numbers from the real stat calculation, without touching the unit (soldiers: copy; commander: snapshot and restore). */
+  equipmentEffectPreview(unit,item) {
+    const slot=SLOT_INFO[item?.type]?.key;
+    if(!slot||!unit)return null;
+    const read=u=>({maxHp:u.maxHp||0,def:u.def||0,atk:u.atk||0});
+    const copy=gear=>gear?{...gear,stats:{...gear.stats},weaponTraits:gear.weaponTraits?{...gear.weaponTraits}:undefined}:gear;
+    const equipped=Object.fromEntries(Object.entries(unit===this.player?this.equipped:unit.equipped||{}).map(([key,gear])=>[key,copy(gear)]));
+    equipped[slot]=copy(item);
+    if(unit!==this.player){
+      const trial={...unit,_equipmentTrial:true,equipped,weapon:slot==='weapon'?equipped.weapon:copy(unit.weapon),
+        appearance:unit.appearance?{...unit.appearance}:undefined,weaponMastery:{...unit.weaponMastery},deathlineSkills:[...(unit.deathlineSkills||[])]};
+      this.recalcSoldierStats(trial);
+      return {before:read(unit),after:read(trial)};
+    }
+    const player=this.player,snapshot={...player},original=this.equipped,before=read(player);
+    try{this.equipped=equipped;player.equipped=equipped;this.recalcPlayerStats();return {before,after:read(player)};}
+    finally{for(const key of Object.keys(player))if(!(key in snapshot))delete player[key];Object.assign(player,snapshot);this.equipped=original;player.equipped=original;}
+  },
+  effectPreviewHtml(unit,item) {
+    if(!unit||!item||!SLOT_INFO[item.type])return '';
+    const short=strengthShortfall(unit,item);
+    if(short)return `<div class="equip-effect req-short">筋力不足（必要${short.required}／現在${short.current}）</div>`;
+    if(!canUseEquipment(unit,item))return '';
+    const held=(unit===this.player?this.equipped:unit.equipped)?.[SLOT_INFO[item.type].key];
+    const key=[unit.id||'commander',item.id,item.tier,item.upgrade,held?.id,held?.upgrade,unit.maxHp,unit.def,unit.atk,unit.level,unit.strength].join('|');
+    const cache=this._effectPreviewCache||=new Map();
+    if(!cache.has(key)){if(cache.size>800)cache.clear();cache.set(key,this.equipmentEffectPreview(unit,item));}
+    const result=cache.get(key);
+    return result?equipmentEffectHtml(result.before,result.after):'';
   },
   enforceWeaponRequirements() {
     if(this.equipped?.weapon&&!canUseEquipment(this.player,this.equipped.weapon)){
       const item=this.equipped.weapon;this.equipped.weapon=null;this.inventory||=[];
       if(!this.inventory.some(old=>old.id===item.id))this.inventory.push(item);
+      this.notifyStrengthReturn(this.player,[item],'バッグ');
       this.recalcPlayerStats();
     }
     for(const soldier of [...(this.squad||[]),...(this.reserves||[])]){
@@ -4315,6 +4407,7 @@ export const IronSquadGame = {
       if(!item||canUseEquipment(soldier,item))continue;
       soldier.equipped||={};soldier.equipped.weapon=null;soldier.weapon=null;this.sharedEquipBox||=[];
       if(!this.sharedEquipBox.some(old=>old.id===item.id))this.sharedEquipBox.push(item);
+      this.notifyStrengthReturn(soldier,[item],'共有箱');
       this.recalcSoldierStats(soldier);
     }
     this.recalcPlayerStats();
@@ -4360,7 +4453,7 @@ export const IronSquadGame = {
     const unit = isPlayer ? this.player : attacker;
     const fromX = unit?.x ?? this.player.x, fromY = unit?.y ?? this.player.y;
     const dist = knockbackDistance(base, {
-      strength: unit?.strength, attack: unit?.atk,
+      strength: Number.isFinite(unit?.strength)?effectiveStrength(unit.strength):unit?.strength, attack: unit?.atk,
       strengthRef: isPlayer ? KNOCK_RULES.playerStrengthRef : KNOCK_RULES.soldierStrengthRef
     }, m);
     if (!(dist > 0)) return 0;
@@ -5868,6 +5961,7 @@ export const IronSquadGame = {
     updateWildernessSites(this,dt);
     updateSupplies(this,dt);
     updateMagic(this,dt,supplyLocation);
+    this.tickEquipmentRegenAll(dt);
     this.ageRemains(dt);
     this.reserveCheckTimer = (this.reserveCheckTimer || 0) + dt;
     if(this.reserveCheckTimer>=1) { this.reserveCheckTimer=0; this.deployReserves(true); }
@@ -7704,7 +7798,8 @@ export const IronSquadGame = {
         const heal = Math.ceil(dmg * this.player.vampire);
         this.player.hp = Math.min(this.player.maxHp, this.player.hp + heal);
       }
-    }
+    } else if (attacker && attackKind !== 'sidearm') soldierVampireHeal(attacker, dmg, this.worldTime || 0); // v7.0.21: capped lifesteal for soldiers / hero party
+    if (attackKind !== 'sidearm' && !magicalAttack && wItem?.stats?.lightning) this.chainLightning(attacker, isPlayer, monster, dmg); // v7.0.21: weapon lightning arcs to nearby enemies
 
     this.spawnDamageText(monster.x, monster.y - 10, dmg,isCrit?'#ffaa00':'#ffffff',{kind:isCrit?'critical':'normal',maxHp:monster.maxHp});
     this.spawnSparks(monster.x, monster.y, monster.color, 6);
@@ -7991,8 +8086,9 @@ export const IronSquadGame = {
           <div class="merchant-stock-detail" ${open?'':'hidden'}>
           ${item.merchantFeatured?`<div class="merchant-featured-label">今ウェーブの目玉 · 特選品（1点限り）</div>`:''}
           <p class="merchant-quality">${slot?.name||item.type} · ${item.merchantQuality||'厳選'} · 品質補正×${Number(item.rollMult||1).toFixed(2)} · 強化+${item.upgrade||0}</p>
-          <p class="weapon-requirement">${target?equipmentRequirementText(target,item):'購入先の兵士を選んでください'}</p>
+          <p class="weapon-requirement">${target?equipmentRequirementHtml(target,item):'購入先の兵士を選んでください'}</p>
           <div class="equipment-comparison ${cmp.kind}"><div class="equip-cmp-head">${shopText(targetName)}の現装備比：<strong>${cmp.label}</strong></div><small>現在：${current ? equipmentName(current) : '未装備'}</small>${cmp.html}</div>
+          ${target?this.effectPreviewHtml(target,item):''}
           ${inheritBuy}
           <p class="merchant-price-note">${item.mat||''} · 基準売値の約${(price/Math.max(1,saleValue(item))).toFixed(1)}倍（品質込み）</p>
           <div class="transfer-card-meta">
@@ -10191,7 +10287,8 @@ export const IronSquadGame = {
                   </div>
                   <div class="transfer-card-stats">
                     <div class="stat-delta-block">${comp.html}</div>
-                    <div class="weapon-requirement">${equipmentRequirementText(soldier,item)}</div>
+                    ${this.effectPreviewHtml(soldier,item)}
+                    <div class="weapon-requirement">${equipmentRequirementHtml(soldier,item)}</div>
                   </div>
                   <div class="transfer-card-meta">
                     <span class="transfer-meta-note">
@@ -10541,7 +10638,7 @@ export const IronSquadGame = {
       if (st.hp) statParts.push(`+${formatCompact(st.hp)}HP`);
       if (st.speed) statParts.push(`+${st.speed}速`);
       if(st.atkSpeed)statParts.push(`攻速 ${Math.min(60,st.atkSpeed)}%${st.atkSpeed>=60?'（上限）':''}`);
-      if (st.blockChance) statParts.push(`盾防${st.blockChance}%`);
+      statParts.push(...equipmentEffectParts(st)); // v7.0.21: shield = real damage reduction, regen / vampire / lightning are shown
       if(st.crit)statParts.push(`会心 ${st.crit}%`);
       const statText = statParts.join(' ') || '装備品';
 
@@ -10627,13 +10724,14 @@ export const IronSquadGame = {
         let statParts = [];
         if (st.atk) statParts.push(`+${formatCompact(st.atk)}攻`);
         if(st.magicAttack)statParts.push(`+${formatCompact(st.magicAttack)}魔攻`);
-        statParts.push(equipmentRequirementText(this.player,item));
+        statParts.push(equipmentRequirementHtml(this.player,item));
         if(casterEquipmentSummary(item))statParts.push(casterEquipmentSummary(item));
         if (st.def) statParts.push(`+${formatCompact(st.def)}防`);
         if (st.hp) statParts.push(`+${formatCompact(st.hp)}HP`);
         if (st.speed) statParts.push(`+${st.speed}速`);
       if(st.atkSpeed)statParts.push(`攻速 ${Math.min(60,st.atkSpeed)}%${st.atkSpeed>=60?'（上限）':''}`);
         if(st.crit)statParts.push(`会心 ${st.crit}%`);
+        statParts.push(...equipmentEffectParts(st));
         if (item.forgeTag) statParts.push(item.forgeTag);
         if (item.rollMult != null && Number(item.rollMult) !== 1) statParts.push(`ドロップランダム補正×${Number(item.rollMult).toFixed(2)}`);
         if(item.qualityLabel)statParts.push(item.qualityLabel);
@@ -10694,7 +10792,7 @@ export const IronSquadGame = {
           if(isEquipped){
             note.textContent='隊長装備中';
           } else {
-            note.innerHTML=`<div class="equip-cmp-head">隊長の現装備比：<strong>${comparison.label}</strong></div><div class="stat-delta-block">${comparison.html}</div>`;
+            note.innerHTML=`<div class="equip-cmp-head">隊長の現装備比：<strong>${comparison.label}</strong></div><div class="stat-delta-block">${comparison.html}</div>${this.effectPreviewHtml(this.player,item)}`;
           }
           itemRow.firstElementChild.append(note);
           if(canInherit) {

@@ -79,12 +79,13 @@ assert.ok(split.healingExpRemainder < 1e-8);
 freshField();
 const priest = soldier('HIGH_PRIEST',{reqExp:1e9,regenTimer:1,_mbTick:2});
 const auraPatient = soldier('HEAVY',{id:'aura-patient',x:field+40});
-auraPatient.hp = auraPatient.maxHp-7; game.squad=[priest,auraPatient];
+auraPatient.equipped={weapon:auraPatient.equipped.weapon};game.recalcSoldierStats(auraPatient); // v7.0.21: gear HP grew; heal a bare patient so the first pulse (3) stays below the exp step
+auraPatient.hp = auraPatient.maxHp-6; game.squad=[priest,auraPatient];
 game.update(.01);
-assert.equal(priest.healingHp,4); assert.equal(priest.exp,0);
+assert.equal(priest.healingHp,3); assert.equal(priest.exp,0);
 priest.regenTimer=1; priest._mbTick=2; game.update(.01);
 assert.equal(auraPatient.hp,auraPatient.maxHp);
-assert.equal(priest.healingHp,7); assert.equal(priest.exp,1);
+assert.equal(priest.healingHp,6); assert.equal(priest.exp,1);
 priest.regenTimer=1; priest._mbTick=2; game.update(.01);
 assert.equal(priest.exp,1,'an aura over healthy allies earns nothing');
 for (const soldierClass of ['MEDIC','HIGH_PRIEST','SAINT','ARCHANGEL']) {

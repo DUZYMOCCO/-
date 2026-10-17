@@ -29,10 +29,10 @@ const unit=classKey=>{
 };
 const mage=unit('MAGE'),medic=unit('MEDIC'),fighter=unit('HEAVY');game.squad=[mage,medic,fighter];
 const plate=gear('plate'),robe=gear('arcane','ARMOR',9,'arcane'),healer=gear('healing','ARMOR',9,'healing'),ward=gear('ward','ARMOR',9,'ward');
-assert.equal(requiredDefenseStrength(plate),34);assert.equal(requiredDefenseStrength(gear('steel','ARMOR',13)),50);
+assert.equal(requiredDefenseStrength(plate),48);assert.equal(requiredDefenseStrength(gear('steel','ARMOR',13)),107); // v7.0.21 strength table
 assert.equal(requiredDefenseStrength(robe),3);assert.ok(!canUseEquipment(mage,plate)&&!canUseEquipment(medic,plate));
 assert.equal(canUseEquipment(mage,{...plate,minStrength:0}),false,'legacy/falsely zero requirements cannot bypass plate strength');
-assert.match(equipmentRequirementText(mage,plate),/必要筋力34.*筋力不足/);
+assert.match(equipmentRequirementText(mage,plate),/必要筋力48.*筋力不足/);
 mage._casterStrengthTimer=8;mage._casterStrengthBonus=100;
 assert.equal(canUseEquipment(mage,plate),false,'temporary buffs cannot unlock heavy armour');mage._casterStrengthTimer=0;
 fighter.attributeProfile.innate.strength=80;game.recalcSoldierStats(fighter);assert.equal(canUseEquipment(fighter,plate),true);

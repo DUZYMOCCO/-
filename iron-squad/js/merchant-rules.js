@@ -1,12 +1,12 @@
 import {catalogTier,catalogPrice,ensureMerchantCatalog,MERCHANT_MAX_TIER,MERCHANT_CATALOG_VERSION} from './merchant-catalog.js?v=295';
-import {applyAttributeStats} from './unit-attributes.js?v=295';
+import {applyAttributeStats} from './unit-attributes.js?v=298';
 /**
  * IRON SQUAD: 宿場・本陣・各地のキャンプの行商人
  * - 製造技術Tier+1（最大T24）の厳選品。武器2枠/防具4枠を毎ウェーブ抽選
  * - 強い護衛付き。放置するとモンスターに襲われ死亡しうる
  * - 護衛が倒した強敵のドロップを序盤から掠め取れるチャンス
  */
-import { saleValue, distanceScaling, weaponCombatProfile } from './equipment-rules.js?v=295';
+import { saleValue, distanceScaling, weaponCombatProfile } from './equipment-rules.js?v=298';
 import { drawFieldSoldier } from './visuals.js?v=295';
 import { createSoldierAppearance, drawSoldierHead } from './soldier-appearance.js?v=295';
 import { attackAnimationRate } from './weapon-motion.js?v=295';

@@ -7,7 +7,7 @@ import {inCurrentInstance} from './instance-rules.js?v=256';
 import {grantPermanentRescueReward} from './rescue-rewards.js?v=264';
 import {grantPersonalExp,revivalExperience,raiseLevelMark} from './experience-rules.js';
 import {guardRescueLines} from './soldier-dialogue.js';
-import {attributeCarryCapacity,attributeFamily} from './unit-attributes.js?v=295';
+import {attributeCarryCapacity,attributeFamily} from './unit-attributes.js?v=298';
 import {isHeavySoldier} from './heavy-tank.js?v=295';
 import {visibleHeroMembers} from './hero-rules.js?v=282';
 import {isOwnSquad} from './own-squad-marker.js?v=182';

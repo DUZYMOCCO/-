@@ -1,6 +1,6 @@
-import {TIERS,materialTier,generation,powerRank} from './equipment-tiers.js?v=231';
+import {TIERS,materialTier,generation,powerRank,tierNumber} from './equipment-tiers.js?v=231';
 import {isMage} from './magic-rules.js?v=296';
-import {attributeFamily,isMuscleCaster} from './unit-attributes.js?v=295';
+import {attributeFamily,isMuscleCaster} from './unit-attributes.js?v=298';
 
 export const DEFENSE_TYPES=['SHIELD','HELMET','ARMOR','GLOVES','LEGS','AMULET'];
 export const CASTER_GEAR={
@@ -11,17 +11,30 @@ export const CASTER_GEAR={
 const PIECES={SHIELD:'護符盾',HELMET:'頭巾',ARMOR:'ローブ',GLOVES:'手袋',LEGS:'脚衣',AMULET:'護符'};
 const WEIGHTS={SHIELD:.6,HELMET:.4,ARMOR:1,GLOVES:.35,LEGS:.45,AMULET:.6};
 const LIGHT_REQUIREMENTS={SHIELD:3,HELMET:1,ARMOR:3,GLOVES:1,LEGS:2,AMULET:0};
-const HEAVY_REQUIREMENTS=[0,12,34,50,42,68,80];
+const LEGACY_HEAVY_REQUIREMENTS=[0,12,34,50,42,68,80]; // v7.0.20 and older (non-monotonic: steel 50 > mithril 42); kept only to grandfather equipped items
 const STRENGTH_WEIGHTS={SHIELD:.8,HELMET:.65,ARMOR:1,GLOVES:.45,LEGS:.55,AMULET:0};
 export const isCasterGear=item=>!!CASTER_GEAR[item?.armorStyle]&&DEFENSE_TYPES.includes(item?.type);
 export const casterGearName=(style,type,tier)=>`${CASTER_GEAR[style].name}の${PIECES[type]}・${TIERS[tier-1].mat}・${generation(tier)}型`;
 /** Infer old armour requirements too; an old minStrength:0 cannot bypass a metal plate. */
+/** v7.0.21: armour-slot strength requirement by tier. Strictly increasing T5..T28 (T1-4 need none). Value at T5 10 / T9 48 / T13 106 /
+ *  T17 177 / T19 215 / T20 230 / T24 268 / T28 300; every slot multiplies it by STRENGTH_WEIGHTS (armour 1.0 ... amulet 0). */
+export function armorStrengthCurve(tier) {
+  const t=tierNumber(tier);
+  if(t<5)return 0;
+  return t<=19?10+205*Math.pow((t-5)/14,1.35):215+85*Math.pow((t-19)/9,.8);
+}
 export function requiredDefenseStrength(item) {
   // Revelation equipment already has its own party-only access rule and fixed stats.
   if(item?.heroOnly)return 0;
   if(!DEFENSE_TYPES.includes(item?.type))return 0;
   if(isCasterGear(item))return LIGHT_REQUIREMENTS[item.type];
-  const base=HEAVY_REQUIREMENTS[materialTier(item.tier)-1];
+  return Math.max(0,Math.ceil(armorStrengthCurve(item.tier)*STRENGTH_WEIGHTS[item.type]-1e-9))+0;
+}
+/** The pre-v7.0.21 table, only used to let already-worn pieces stay on (see weapon-requirements.js grandfathering). */
+export function legacyDefenseStrength(item) {
+  if(item?.heroOnly||!DEFENSE_TYPES.includes(item?.type))return 0;
+  if(isCasterGear(item))return LIGHT_REQUIREMENTS[item.type];
+  const base=LEGACY_HEAVY_REQUIREMENTS[materialTier(item.tier)-1];
   return Math.ceil((base+(base?2*(generation(item.tier)-1):0))*STRENGTH_WEIGHTS[item.type]);
 }
 /** Called once after each full regeneration of the ordinary equipment stats. */
