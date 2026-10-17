@@ -2,7 +2,7 @@
  * さんすうシューター ランナー物理＆判定エンジン
  */
 
-import { applyGate, isGoodGate, UPGRADES, SPEEDS, DEFAULT_SPEED, START_DELAY } from './rules.js?v=3';
+import { applyGate, isGoodGate, UPGRADES, SPEEDS, DEFAULT_SPEED, START_DELAY, STREAM, gateAfterHits } from './rules.js?v=4';
 
 export class RunnerEngine {
   constructor(course, saveData) {
@@ -60,11 +60,34 @@ export class RunnerEngine {
     const bulletSpeed = 750;
     for (let i = this.bullets.length - 1; i >= 0; i--) {
       const b = this.bullets[i];
+      b.py = b.y;
       b.y += bulletSpeed * dt;
       // 画面外または一定距離で消滅
       if (b.y > this.dist + 650) {
         this.bullets.splice(i, 1);
       }
+    }
+
+    // ゲートを うつと かずが かわる（たまは ゲートを とおりぬける）。きりかわる おとと ぱっと ひかる
+    for (const el of this.course.elements) {
+      if (el.type === 'GATE_PAIR' && !el.passed) {
+        for (const b of this.bullets) {
+          if (!(b.py < el.y && b.y >= el.y)) continue;
+          const g = b.laneNorm < 0 ? el.left : el.right;
+          g.base = g.base || { type: g.type, val: g.val };
+          g.hits = (g.hits || 0) + (b.w || 1);
+          const n = gateAfterHits(g.base, g.hits);
+          if (n.type !== g.type || n.val !== g.val) {
+            g.type = n.type; g.val = n.val; g.pulse = 0.3;
+            if (onEvent) onEvent('gate-grow', { gate: g });
+          }
+          if (this.particles.length < 140) this.addSparks(b.laneNorm, el.y);
+        }
+      }
+      if (el.type === 'GATE_PAIR') {
+        if (el.left.pulse > 0) el.left.pulse -= dt;
+        if (el.right.pulse > 0) el.right.pulse -= dt;
+      } else if (el.flash > 0) el.flash -= dt;
     }
 
     // ゲート通過判定
@@ -101,10 +124,11 @@ export class RunnerEngine {
         // 弾との衝突
         for (let i = this.bullets.length - 1; i >= 0; i--) {
           const b = this.bullets[i];
-          if (Math.abs(b.y - el.y) < 25 && Math.abs(b.laneNorm - el.laneNorm) < 0.3) {
+          if (Math.abs(b.y - el.y) < 25 && Math.abs(b.laneNorm - el.laneNorm) < 0.27) {
             this.bullets.splice(i, 1);
             el.hp -= b.power;
-            this.addSparks(el.laneNorm, el.y);
+            el.flash = 0.1;
+            if (this.particles.length < 140) this.addSparks(b.laneNorm, el.y);
             if (el.hp <= 0) {
               el.destroyed = true;
               const coins = 3 + Math.floor(el.maxHp / (5 * (this.course.hpMul || 1)));
@@ -168,16 +192,17 @@ export class RunnerEngine {
   }
 
   spawnBullets() {
-    // 弾数に応じた並列発射
+    // v1.2.0 ほそい ながれ：みえる たまは 5ほんまで。ふえた ぶんは 1ぽんの いりょくに たす（ごうけいは おなじ）
     const count = this.bulletCount;
-    // 幅を分配
-    const span = Math.min(0.7, 0.08 * (count - 1));
-    for (let i = 0; i < count; i++) {
-      const offset = count === 1 ? 0 : -span / 2 + (span / (count - 1)) * i;
+    const n = Math.min(count, STREAM.maxVisible);
+    const power = this.bulletPower * count / n;
+    for (let i = 0; i < n; i++) {
       this.bullets.push({
-        laneNorm: this.playerX + offset,
+        laneNorm: this.playerX + (i - (n - 1) / 2) * STREAM.gap,
         y: this.dist + 15,
-        power: this.bulletPower,
+        py: this.dist + 15,
+        power,
+        w: 1 / n, // ゲートに あたった ときの おもみ（1かいの はっしゃ = 1）
       });
     }
   }

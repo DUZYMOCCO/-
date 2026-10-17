@@ -124,3 +124,83 @@ test('scenery themes cycle meadow/desert/space and ride on the course', () => {
   assert.deepEqual([1, 2, 3, 4, 5].map(stageTheme), ['meadow', 'desert', 'space', 'meadow', 'desert']);
   assert.equal(generateStageCourse(3).theme, 'space');
 });
+
+// ---- v1.2.0 ほそい ながれ・うてる ゲート・まとが さいしょから みえる・むずかしさの かいだん ----
+import { STREAM, FIRST_BLOCK_Y, gateAfterHits, gateSpec } from '../js/rules.js';
+
+const gatesOf = (stage, runs = 200) => {
+  const seen = {};
+  for (let i = 0; i < runs; i++) for (const e of generateStageCourse(stage).elements) {
+    if (e.type !== 'GATE_PAIR') continue;
+    for (const g of [e.left, e.right]) { const s = (seen[g.type] ||= { min: 1e9, max: 0 }); s.min = Math.min(s.min, g.val); s.max = Math.max(s.max, g.val); }
+  }
+  return seen;
+};
+
+test('difficulty ladder: stage 1-2 only +1..+5 and -1..-3, then x, then ÷, numbers grow', () => {
+  for (const st of [1, 2]) {
+    const g = gatesOf(st);
+    assert.deepEqual(Object.keys(g).sort(), ['add', 'sub']);
+    assert.ok(g.add.min >= 1 && g.add.max <= 5 && g.sub.min >= 1 && g.sub.max <= 3, JSON.stringify(g));
+  }
+  for (const st of [3, 4]) assert.deepEqual(Object.keys(gatesOf(st)).sort(), ['add', 'sub']);
+  assert.ok(gatesOf(6).mul && !gatesOf(6).div);          // ×は 5から、÷は まだ
+  assert.ok(gatesOf(6).mul.max === 2 && gatesOf(8).mul.max === 3);
+  assert.ok(!gatesOf(8).div && gatesOf(10).div);         // ÷は 9から
+  assert.ok(gatesOf(10).div.max === 2 && gatesOf(13).div.max === 3 && gatesOf(13).mul.max === 4);
+  assert.ok(gateSpec(10).addMax > gateSpec(3).addMax && gateSpec(3).addMax > gateSpec(1).addMax);
+  assert.ok(gateSpec(9).subMax >= gateSpec(3).subMax);
+  assert.equal(gateSpec(0).addMax, 5);
+});
+
+test('shootable gates: hits change numbers (+ grows, - shrinks then turns +, x and ÷ move slowly)', () => {
+  assert.deepEqual(gateAfterHits({ type: 'add', val: 3 }, 0), { type: 'add', val: 3 });
+  assert.deepEqual(gateAfterHits({ type: 'add', val: 3 }, 8), { type: 'add', val: 5 });
+  assert.equal(gateAfterHits({ type: 'add', val: 3 }, 9999).val, 3 + 8);                 // ふえすぎない
+  assert.deepEqual(gateAfterHits({ type: 'sub', val: 3 }, 4), { type: 'sub', val: 2 });
+  assert.deepEqual(gateAfterHits({ type: 'sub', val: 2 }, 8), { type: 'add', val: 1 });  // 0 → ＋に かわる
+  assert.equal(gateAfterHits({ type: 'sub', val: 2 }, 16).type, 'add');
+  assert.equal(gateAfterHits({ type: 'mul', val: 2 }, 32).val, 4);
+  assert.equal(gateAfterHits({ type: 'mul', val: 2 }, 9999).val, 5);
+  assert.equal(gateAfterHits({ type: 'div', val: 3 }, 16).val, 1);
+  assert.equal(gateAfterHits({ type: 'div', val: 3 }, 9999).val, 1);
+  assert.deepEqual(gateAfterHits({ type: 'add', val: 3 }, 7.9), { type: 'add', val: 4 }); // 1かいの はっしゃ = 1（小数OK）
+});
+
+test('narrow stream: at most 5 visible thin bullets in a tight column, total power unchanged', () => {
+  for (const count of [1, 3, 5, 12, 40, 200]) {
+    const e = new RunnerEngine(generateStageCourse(1), normalizeSave(null));
+    e.bulletCount = count; e.bulletPower = 1.5; e.playerX = 0.2;
+    e.spawnBullets();
+    assert.ok(e.bullets.length === Math.min(count, STREAM.maxVisible));
+    const xs = e.bullets.map(b => b.laneNorm), span = Math.max(...xs) - Math.min(...xs);
+    assert.ok(span <= (STREAM.maxVisible - 1) * STREAM.gap + 1e-9 && span <= 0.15, String(span));
+    const total = e.bullets.reduce((s, b) => s + b.power, 0);
+    assert.ok(Math.abs(total - count * 1.5) < 1e-6, `${count}: ${total}`);
+  }
+});
+
+test('targets are on screen from the start (blocks and the first gate)', () => {
+  for (const k of Object.keys(SPEEDS)) {
+    const c = generateStageCourse(1, k);
+    const first = c.elements.filter(e => e.type === 'BLOCK').sort((a, b) => a.y - b.y)[0];
+    const gate = c.elements.filter(e => e.type === 'GATE_PAIR').sort((a, b) => a.y - b.y)[0];
+    assert.equal(first.y, FIRST_BLOCK_Y);
+    assert.ok(first.y <= 300 && gate.y <= 470 && gate.y > first.y, `${k}: ${first.y}/${gate.y}`); // がめん（うえ 490px くらい）の なか
+    assert.ok(first.hp < 30 * SPEEDS[k].hpMul);                                                    // さいしょは たおしやすい
+  }
+});
+
+test('engine: bullets pass through gates and change them; blocks lose HP and flash', () => {
+  const course = generateStageCourse(1, 'fast');
+  const e = new RunnerEngine(course, normalizeSave({ speed: 'fast', upgrades: { startCount: 5 } }));
+  e.delay = 0; e.playerX = e.targetX = 0.4;
+  const gate = course.elements.find(x => x.type === 'GATE_PAIR');
+  const g = gate.right, startVal = g.val, startType = g.type;
+  const events = [];
+  for (let i = 0; i < 60 * 3 && !gate.passed; i++) e.update(1 / 60, ev => events.push(ev));
+  assert.ok(g.hits > 0 && events.includes('gate-grow'));
+  assert.ok(g.type !== startType || g.val !== startVal);
+  const blk = course.elements.filter(x => x.type === 'BLOCK').sort((a, b) => Math.abs(a.laneNorm - 0.4) - Math.abs(b.laneNorm - 0.4))[0];
+  assert.ok(blk.hp < blk.maxHp || blk.destroyed);
+});

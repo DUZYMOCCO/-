@@ -76,6 +76,53 @@ export function stageTheme(stageNum) {
   return THEMES[(n - 1) % THEMES.length];
 }
 
+/**
+ * v1.2.0 ステージごとの ゲートの むずかしさ（7さいでも あそべる ように ゆっくり ふやす）
+ *  ステージ1〜2：+1〜+5 と −1〜−3 だけ。3〜4：+と− の かずが すこし おおきく。
+ *  5〜：×2 が でてくる。7〜：×3 も。9〜：÷2 が でてくる。12〜：×4・÷3 まで。
+ */
+export function gateSpec(stageNum) {
+  const n = Math.max(1, Math.floor(Number(stageNum) || 1));
+  if (n <= 2) return { addMin: 1, addMax: 5, subMax: 3, mulMax: 0, mulChance: 0, divMax: 0, divChance: 0 };
+  const addMax = Math.min(20, 4 + Math.floor(n * 1.2));
+  return {
+    addMin: Math.max(2, addMax - 5), addMax,
+    subMax: Math.min(12, 3 + Math.floor((n - 3) / 2)),
+    mulMax: n < 5 ? 0 : n < 7 ? 2 : n < 12 ? 3 : 4, mulChance: n < 5 ? 0 : Math.min(0.5, 0.25 + (n - 5) * 0.03),
+    divMax: n < 9 ? 0 : n < 12 ? 2 : 3, divChance: n < 9 ? 0 : Math.min(0.4, 0.2 + (n - 9) * 0.03),
+  };
+}
+
+/** さいしょの ブロックの y と、1〜3かいめの HP ばいりつ（はじめは ひくい） */
+export const FIRST_BLOCK_Y = 230;
+export const FIRST_RAMP = [0.45, 0.75];
+/** ゲートを うって かずが ふえるように なった ぶん、ボーナスの かべは かたく（コインが ふえすぎない） */
+export const WALL_MUL = 1.8;
+
+/**
+ * ゲートを うつと かずが かわる（v1.2.0）。たまが あたった かず（hits）で きまる。
+ *  ＋ゲート：4かいで +1（+8まで）／−ゲート：4かいで 1へる。0に なったら ＋ゲートに かわる！
+ *  ×ゲート：16かいで +1（×5まで）／÷ゲート：8かいで 1へる（÷1まで）（かい = 1かいの はっしゃ）
+ */
+export const GATE_SHOOT = { addPer: 4, addCap: 8, subPer: 4, mulPer: 16, mulCap: 5, divPer: 8 };
+export function gateAfterHits(base, hits) {
+  const G = GATE_SHOOT, n = Math.max(0, Math.floor(hits) || 0);
+  switch (base.type) {
+    case GATE_TYPES.ADD: return { type: GATE_TYPES.ADD, val: base.val + Math.min(G.addCap, Math.floor(n / G.addPer)) };
+    case GATE_TYPES.SUB: {
+      const v = base.val - Math.floor(n / G.subPer);
+      return v > 0 ? { type: GATE_TYPES.SUB, val: v } : { type: GATE_TYPES.ADD, val: 1 + Math.min(G.addCap - 1, -v) };
+    }
+    case GATE_TYPES.MUL: return { type: GATE_TYPES.MUL, val: Math.min(G.mulCap, base.val + Math.floor(n / G.mulPer)) };
+    case GATE_TYPES.DIV: return { type: GATE_TYPES.DIV, val: Math.max(1, base.val - Math.floor(n / G.divPer)) };
+  }
+  return { ...base };
+}
+
+/** ゲートの かずは 1かいの はっしゃ（たまの かずに かんけいなく）を 1と かぞえる */
+/** たまの ならびかた：どんなに ふえても ほそい ながれ（がめんに でる たまは 5ほんまで、いりょくは ぜんぶ たす） */
+export const STREAM = { maxVisible: 5, gap: 0.035 };
+
 export const UPGRADES = {
   startCount: {
     name: 'スタートだんすう',
@@ -145,58 +192,62 @@ export function generateStageCourse(stageNum, speedKey = DEFAULT_SPEED) {
   const courseLength = Math.round((2400 + Math.min(1600, stageNum * 200)) * sp.gateGap / 400); // ゲートの かずが かわらない ように
   const elements = [];
 
-  // ゲートペアの配置（約350pxごと）
+  // v1.2.0 まず ブロック（うつ まと）→ すこし さきに ゲート、の くりかえし。
+  // さいしょの ブロックは はじまった ときから がめんに みえる（y=230）。ゲートも すぐ うえに みえる。
   const gateInterval = sp.gateGap;
-  let currentY = 500;
+  const gateOff = Math.round(sp.gateGap * 0.4);
+  let baseY = FIRST_BLOCK_Y, idx = 0;
 
-  while (currentY < courseLength - 600) {
-    // ゲートの難易度設定
-    const diff = Math.min(5, 1 + Math.floor(stageNum / 2));
-    const isMul = Math.random() < 0.35 && stageNum >= 2;
-
+  while (baseY + gateOff < courseLength - 600) {
+    // ゲートの むずかしさは ステージで ふえる（gateSpec）
+    const gs = gateSpec(stageNum);
+    const rint = (lo, hi) => lo + Math.floor(Math.random() * (hi - lo + 1));
+    const good = () => ({ type: GATE_TYPES.ADD, val: rint(gs.addMin, gs.addMax) });
     let leftGate, rightGate;
-    if (isMul) {
-      // かけ算と足し算の組み合わせ
-      leftGate = { type: GATE_TYPES.MUL, val: 2 };
-      rightGate = { type: GATE_TYPES.ADD, val: 5 + diff * 2 };
-      // ランダムで左右入れ替え
-      if (Math.random() < 0.5) [leftGate, rightGate] = [rightGate, leftGate];
+    if (gs.mulMax >= 2 && Math.random() < gs.mulChance) {
+      // かけ算（あおい ほうが ふえる）と たし算：どっちが おおきいか かんがえよう
+      leftGate = { type: GATE_TYPES.MUL, val: rint(2, gs.mulMax) };
+      rightGate = { type: GATE_TYPES.ADD, val: rint(gs.addMax, gs.addMax + 4) };
+    } else if (gs.divMax >= 2 && Math.random() < gs.divChance) {
+      // わり算（あかい）と たし算
+      leftGate = { type: GATE_TYPES.DIV, val: rint(2, gs.divMax) };
+      rightGate = good();
     } else {
-      // 足し算と引き算
-      const addVal = 2 + Math.floor(Math.random() * 4) + diff;
-      const subVal = 1 + Math.floor(Math.random() * 3) + Math.floor(diff / 2);
-      leftGate = { type: GATE_TYPES.ADD, val: addVal };
-      rightGate = { type: GATE_TYPES.SUB, val: subVal };
-      if (Math.random() < 0.5) [leftGate, rightGate] = [rightGate, leftGate];
+      // たし算と ひき算
+      leftGate = { type: GATE_TYPES.SUB, val: rint(1, gs.subMax) };
+      rightGate = good();
+    }
+    // ランダムで左右入れ替え
+    if (Math.random() < 0.5) [leftGate, rightGate] = [rightGate, leftGate];
+
+    // うつ まと：さいしょは HP ひくめ（すぐ たおせて ヒットが みえる）
+    const numBlocks = Math.random() < 0.5 ? 2 : 3;
+    const ramp = FIRST_RAMP[idx] ?? 1;
+    const hpBase = (10 + stageNum * 8) * sp.hpMul * ramp;
+    for (let i = 0; i < numBlocks; i++) {
+      const lane = numBlocks === 2 ? (i === 0 ? -0.4 : 0.4) : (i - 1) * 0.6;
+      elements.push({
+        type: 'BLOCK',
+        id: `blk_${baseY}_${i}`,
+        y: baseY,
+        laneNorm: lane, // -1 (左) 〜 +1 (右)
+        hp: Math.max(3, Math.floor(hpBase * (0.8 + Math.random() * 0.5))),
+        maxHp: 0, // 後でセット
+        destroyed: false,
+        flash: 0,
+      });
     }
 
     elements.push({
       type: 'GATE_PAIR',
-      y: currentY,
+      y: baseY + gateOff,
       left: leftGate,
       right: rightGate,
       passed: false,
     });
 
-    // ゲートの間にブロック群を配置
-    const blockY = currentY + Math.round(sp.gateGap * 0.45);
-    const numBlocks = Math.random() < 0.5 ? 2 : 3;
-    const hpBase = (10 + stageNum * 8) * sp.hpMul;
-
-    for (let i = 0; i < numBlocks; i++) {
-      const lane = numBlocks === 2 ? (i === 0 ? -0.4 : 0.4) : (i - 1) * 0.6;
-      elements.push({
-        type: 'BLOCK',
-        id: `blk_${blockY}_${i}`,
-        y: blockY,
-        laneNorm: lane, // -1 (左) 〜 +1 (右)
-        hp: Math.floor(hpBase * (0.8 + Math.random() * 0.5)),
-        maxHp: 0, // 後でセット
-        destroyed: false,
-      });
-    }
-
-    currentY += gateInterval;
+    baseY += gateInterval;
+    idx++;
   }
 
   // ブロックの初期HP記録
@@ -211,8 +262,8 @@ export function generateStageCourse(stageNum, speedKey = DEFAULT_SPEED) {
     type: 'WALL',
     y: finishY + 100 + idx * 120,
     mult: mul,
-    hp: Math.round((40 + idx * 60 + stageNum * 30) * sp.hpMul),
-    maxHp: Math.round((40 + idx * 60 + stageNum * 30) * sp.hpMul),
+    hp: Math.round((40 + idx * 60 + stageNum * 30) * sp.hpMul * WALL_MUL),
+    maxHp: Math.round((40 + idx * 60 + stageNum * 30) * sp.hpMul * WALL_MUL),
     destroyed: false,
   }));
 

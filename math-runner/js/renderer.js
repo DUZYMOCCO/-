@@ -3,7 +3,7 @@
  * 爽快なレーン、ゲート、ブロック、弾幕、マズルフラッシュの描画
  */
 
-import { getGateText, isGoodGate } from './rules.js?v=3';
+import { getGateText, isGoodGate } from './rules.js?v=4';
 
 export const LANE_FRAC = 0.8;
 
@@ -135,6 +135,9 @@ export class RunnerRenderer {
 
     // 弾丸の描画
     this.drawBullets(w, h, engine);
+
+    // ゲートの かず（たまの うえ。よみやすく）
+    this.drawGateLabels();
 
     // プレイヤー（銃）の描画
     this.drawPlayer(w, h, engine);
@@ -318,7 +321,7 @@ export class RunnerRenderer {
   drawGatePair(ctx, w, y, gatePair, laneWidth) {
     const half = laneWidth / 2;
     const gateW = half - 6;
-    const gateH = 46;
+    const gateH = 58;
 
     // 左ゲート
     const lx = w / 2 - half + 3;
@@ -348,39 +351,83 @@ export class RunnerRenderer {
     ctx.stroke();
     ctx.restore();
 
-    // ゲート文字
-    ctx.fillStyle = '#ffffff';
-    ctx.font = '900 20px system-ui, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(getGateText(gate), x + w / 2, y + h / 2);
+    // ゲート文字は たまの うえに かく（drawGateLabels）
+    (this.gateLabels || (this.gateLabels = [])).push({ x: x + w / 2, y: y + h / 2, gate });
+  }
+
+  /** ゲートの かず：おおきく・ふち つき。たまが あたると ぷるんと おおきくなる */
+  drawGateLabels() {
+    const ctx = this.ctx, list = this.gateLabels || [];
+    for (const L of list) {
+      const k = 1 + Math.max(0, L.gate.pulse || 0) * 1.1;
+      ctx.save();
+      ctx.translate(L.x, L.y);
+      ctx.scale(k, k);
+      ctx.font = '900 34px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.lineJoin = 'round';
+      ctx.lineWidth = 6;
+      ctx.strokeStyle = isGoodGate(L.gate) ? '#0b2a6b' : '#5b0f0f';
+      ctx.strokeText(getGateText(L.gate), 0, 1);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(getGateText(L.gate), 0, 1);
+      ctx.restore();
+    }
+    list.length = 0;
   }
 
   drawBlock(ctx, x, y, block) {
-    const bw = 54;
-    const bh = 34;
+    // うつ まと：まわりの けしきと ちがう あざやかな いろ＋ふとい ふちどり＋おこった かお。HPの かずは おおきく
+    const bw = 66, bh = 50;
+    const ratio = block.hp / Math.max(1, block.maxHp);
+    const tier = block.maxHp < 40 ? 0 : block.maxHp < 120 ? 1 : 2;
+    const [c1, c2] = [['#fb923c', '#ea580c'], ['#e879f9', '#a21caf'], ['#a78bfa', '#6d28d9']][tier];
+    const hit = block.flash > 0;
+    const k = hit ? 1.08 : 1;
 
     ctx.save();
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
-    ctx.shadowBlur = 6;
-    ctx.shadowOffsetY = 3;
-
-    // HPに応じたカラー（赤〜紫〜黄色）
-    ctx.fillStyle = '#e11d48';
-    ctx.strokeStyle = '#fecdd3';
-    ctx.lineWidth = 2;
+    ctx.translate(x, y);
+    ctx.scale(k, k);
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.45)';
+    ctx.shadowBlur = 7;
+    ctx.shadowOffsetY = 4;
+    const g = ctx.createLinearGradient(0, -bh / 2, 0, bh / 2);
+    g.addColorStop(0, hit ? '#ffffff' : c1);
+    g.addColorStop(1, hit ? '#fde68a' : c2);
+    ctx.fillStyle = g;
+    ctx.strokeStyle = '#1e1b4b';
+    ctx.lineWidth = 4;
     ctx.beginPath();
-    ctx.roundRect(x - bw / 2, y - bh / 2, bw, bh, 8);
+    ctx.roundRect(-bw / 2, -bh / 2, bw, bh, 12);
     ctx.fill();
+    ctx.shadowColor = 'transparent';
     ctx.stroke();
-    ctx.restore();
-
-    // HP表示
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 15px system-ui, sans-serif';
+    // かお（おこった まゆ と め）
+    ctx.fillStyle = '#1e1b4b';
+    ctx.beginPath(); ctx.moveTo(-22, -20); ctx.lineTo(-6, -14); ctx.lineTo(-6, -11); ctx.lineTo(-22, -16); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(22, -20); ctx.lineTo(6, -14); ctx.lineTo(6, -11); ctx.lineTo(22, -16); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(-12, -8, 4, 0, Math.PI * 2); ctx.arc(12, -8, 4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#1e1b4b';
+    ctx.beginPath(); ctx.arc(-11, -7, 2, 0, Math.PI * 2); ctx.arc(11, -7, 2, 0, Math.PI * 2); ctx.fill();
+    // HPバー
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.fillRect(-bw / 2 + 6, bh / 2 - 9, bw - 12, 5);
+    ctx.fillStyle = ratio > 0.5 ? '#86efac' : ratio > 0.25 ? '#fde047' : '#fca5a5';
+    ctx.fillRect(-bw / 2 + 6, bh / 2 - 9, (bw - 12) * Math.max(0, ratio), 5);
+    // HPの かず（ふち つき）
+    ctx.font = '900 22px system-ui, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(block.hp, x, y);
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = '#1e1b4b';
+    ctx.lineJoin = 'round';
+    const t = String(Math.max(1, Math.ceil(block.hp)));
+    ctx.strokeText(t, 0, 6);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(t, 0, 6);
+    ctx.restore();
   }
 
   drawWall(ctx, cx, y, wall, laneWidth) {
@@ -413,15 +460,16 @@ export class RunnerRenderer {
   drawBullets(w, h, engine) {
     const ctx = this.ctx;
     ctx.save();
+    ctx.shadowColor = '#f59e0b';
+    ctx.shadowBlur = 4;
     for (const b of engine.bullets) {
       const p = this.worldToScreen(w, h, b.laneNorm, b.y, engine.dist);
       if (p.y > -20 && p.y < h) {
+        // ほそい たま（よこ 3px・たて 16px）。まんなかは しろく
         ctx.fillStyle = '#fbbf24';
-        ctx.shadowColor = '#f59e0b';
-        ctx.shadowBlur = 6;
-        ctx.beginPath();
-        ctx.ellipse(p.x, p.y, 4, 9, 0, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.fillRect(p.x - 1.6, p.y - 8, 3.2, 16);
+        ctx.fillStyle = '#fffbeb';
+        ctx.fillRect(p.x - 0.6, p.y - 8, 1.2, 12);
       }
     }
     ctx.restore();

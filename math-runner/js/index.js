@@ -12,15 +12,15 @@ import {
   getUpgradeCost,
   normalizeSave,
   generateStageCourse,
-} from './rules.js?v=3';
-import { RunnerEngine } from './engine.js?v=3';
-import { RunnerRenderer } from './renderer.js?v=3';
+} from './rules.js?v=4';
+import { RunnerEngine } from './engine.js?v=4';
+import { RunnerRenderer } from './renderer.js?v=4';
 
 const SAVE_KEY = 'math_runner_save';
 
 export default {
   prepare() {
-    return loadCss(new URL('../css/math-runner.css?v=3', import.meta.url).href);
+    return loadCss(new URL('../css/math-runner.css?v=4', import.meta.url).href);
   },
 
   init(container, onBackToHub) {
@@ -61,7 +61,7 @@ export default {
         <div class="runner-canvas-wrap" id="runner-canvas-wrap">
           <canvas class="runner-canvas" id="runner-canvas"></canvas>
           <div class="runner-guide-hint" id="runner-guide-hint" style="display: none;">
-            ↔ ゆびを左右にスライドしてうごこう！
+            ↔ ゆびで うごいて ブロックと ゲートを うとう！
           </div>
         </div>
 
@@ -69,7 +69,7 @@ export default {
         <div class="runner-lobby-overlay" id="runner-lobby">
           <div class="runner-lobby-title">
             <h1>🎯 さんすうシューター</h1>
-            <p>ゲートを えらんで たまを ふやそう！</p>
+            <p>ブロックを うって たおそう！ ゲートも うつと かずが かわるよ</p>
           </div>
 
           <div class="runner-speed" id="runner-speed"></div>
@@ -190,6 +190,7 @@ export default {
         this.handleGameEvent(eventName, data);
       });
 
+      if (this.engine.time > 5 && this.guideHint.style.display !== 'none') this.guideHint.style.display = 'none';
       this.renderer.render(this.engine, this.logicalWidth, this.logicalHeight);
     }
 
@@ -203,6 +204,9 @@ export default {
           sound.play('tap');
           this.audioCooldown = 0.09;
         }
+        break;
+      case 'gate-grow':
+        if (this.audioCooldown <= 0) { sound.play('coin'); this.audioCooldown = 0.07; }
         break;
       case 'gate':
         if (data.isGood) {
