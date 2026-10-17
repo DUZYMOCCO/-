@@ -24,7 +24,7 @@ import {configureRangedEnemy,updateRangedEnemy,updateDefenseWalls,interceptHosti
 import {LIMITED_CLASSES,initializeLimitedAllies,prepareLimitedEncounter,createLimitedAlly,joinLimitedEncounter,updateLimitedAllies,updateNinja,updateShuriken,drawLimitedEncounter,serializeLimitedAllies,notifyLimitedJoin} from './limited-allies.js?v=297';
 import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=182';
 import {TIERS,MAX_EQUIPMENT_TIER,MAX_POWER_RANK,POWER_RANK_STEP,GENERATION_COUNT,TRADE_MAX_TIER,powerRank,tierDescription} from './equipment-tiers.js?v=231';
-import {fieldAdaptiveScaling} from './field-scaling.js?v=182';
+import {fieldAdaptiveScaling} from './field-scaling.js?v=299';
 import {activeSquad,inCurrentInstance} from './instance-rules.js?v=256';
 import {TANK,prepareTanks,tankEvalDistSq,tankSlowFactor,tankCover,tankStunSeconds} from './heavy-tank.js?v=295';
 import {recordBattleLog,resetBattleLog,refreshCombatFieldNotes} from './battle-log.js?v=295';
@@ -36,7 +36,7 @@ import {casinoMethods} from './casino.js?v=295';
 import {normalizeCasino} from './casino-rules.js?v=276';
 import {latestEquipmentTier,recordMerchantEquipment,ensureMerchantCatalog,refreshWaveCatalogs,markMerchantPurchase} from './merchant-catalog.js?v=295';
 import {initializeMedicalPosts,updateMedicalPosts,serializeMedicalPosts,medicalPostLayout,nearestKnownMedicalPost,drawMedicalPost,drawMedicalMap,drawMedicalMarker,drawTownMedicalReception,drawRescueDirection} from './medical-posts.js?v=277';
-import {invasionMethods,initializeInvasions,serializeInvasions,shouldTriggerRandomRaid,makeEnemyRoom,drawInvasionRoute} from './invasion-rules.js?v=277';
+import {invasionMethods,initializeInvasions,serializeInvasions,shouldTriggerRandomRaid,makeEnemyRoom,drawInvasionRoute} from './invasion-rules.js?v=299';
 import {gateMethods,serializeGatePosts,replenishTownGateGuards,initializeGateGuards,ensureTownGuards,serializeGateGuards,updateGateGuards,gateGuardVisible,applyFortifications,drawFortification,exitGateTown,townExitReached,wallBlocksAttack,attackBlocked as coverBlocked} from './gate-rules.js?v=295';
 import {nationMethods,normalizeNation,nationalIncome,nationalPayrollPlan,headquartersDamageMult,drawNationalDevelopment,DEVELOPMENT_STAGES} from './nation-rules.js?v=298';
 import {equipmentUpgradeCost,salaryQuote,paySoldiers} from './payroll-rules.js?v=226';
@@ -87,7 +87,7 @@ import { openCommanderEditor } from './commander-editor.js?v=295';
 import { applyCommanderIdentity, normalizeCommanderIdentity, commanderFullName, GENDERS as COMMANDER_GENDERS } from './commander-identity.js?v=295';
 import {MAGIC_CLASSES,MAGIC_AFFINITIES,classHpScale,magicMethods,isMage,isMagicUser,ensureMana,initializeMagic,updateMagic,distributeMagicStones,castMedicBuff,castCasterStrength,updateMageAI,drawMagicBursts,spendMana,weaponMagicDamage,isPlayerCaster,castPlayerSpell,PLAYER_MAGIC_RULES} from './magic-rules.js?v=296';
 import {hazardMethods,updateHazards,drawHazards} from './hazard-fields.js?v=277';
-import {strongEnemyReward} from './combat-rewards.js?v=182';
+import {strongEnemyReward,killXpFloor,killExpWithFloor} from './combat-rewards.js?v=299';
 import {supplyMethods, initializeSupplies, updateSupplies, takeRangedShot, ammoCombatProfile, isRangedUnit, distributeAmmo, preventLethalHit, normalizeFieldSave, SQUAD_POTION_COST, REVIVAL_POTION_COST, REVIVAL_POTION_MAX, SQUAD_POTION_MAX, ensureAmmo, ammoCapacity, recalcAmmoCapacity, RANGED_DAMAGE_MULT, supplyLocation} from './supply-rules.js?v=298';
 import { bindPadTap } from './pad-tap.js?v=276';
 import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog } from './interface.js?v=295';
@@ -147,7 +147,7 @@ import { clusterRescueMarkers } from './rescue-markers.js?v=182';
 import {visibleHeroMembers} from './hero-rules.js?v=282';
 import {updateHeroJournal} from './hero-journal.js?v=295';
 import {applyHeroEquipmentUpgrade} from './hero-equipment.js?v=295';
-import {initializeHeroJourney,rollHeroRevelation,serializeHeroJourney,updateHeroParty,updateHeroFollowing,awardHeroBattle,recordDemonKingDefeat,ensureHeroCastle,syncHeroCastle,renderHeroJourney,drawHeroMarks} from './hero-party.js?v=295';
+import {initializeHeroJourney,rollHeroRevelation,serializeHeroJourney,updateHeroParty,updateHeroFollowing,awardHeroBattle,recordDemonKingDefeat,ensureHeroCastle,syncHeroCastle,renderHeroJourney,drawHeroMarks} from './hero-party.js?v=299';
 import {updateSquadHpHud} from './squad-hp-hud.js?v=295';
 import {addBattleReport,normalizeBattleReport,renderBattleReport} from './battle-report.js?v=276';
 import {updateRescueAssistance,handleRescueAssistance} from './rescue-assistance.js?v=295';
@@ -8652,7 +8652,10 @@ export const IronSquadGame = {
     const rewards=distanceScaling(lootDistance, curPhase);
     const baseExpGain=Math.max(2,Math.round(expBase*rewards.exp*(monster.fieldAdaptive?.reward||1)));
     const xpReward=strongEnemyReward(baseExpGain,monster,isPlayer?this.player:attacker);
-    const expGain=xpReward.exp;
+    // v7.0.22: normal kills pay at least a share of the killer's XP-to-next-level (XP only). Hero party members are shared through awardHeroBattle and stay as before.
+    const defeater=isPlayer?this.player:attacker,floorable=!!defeater&&!trueBoss&&!midboss&&!defeater.heroPartyId; // the captain carries a historical isHero flag, so only the hero party id excludes
+    const floorExp=floorable?killXpFloor({distance:lootDistance,required:defeater.reqExp,level:defeater.level,captain:!!isPlayer,elite:isElite}):0;
+    const expGain=killExpWithFloor(xpReward,floorExp).exp;
     if(xpReward.bonusExp>0)this.lastStrongKill={...xpReward,enemy:monster.name||'強敵',who:isPlayer?'隊長':attacker?.name||'兵士',phase:curPhase};
     const goldGain = Math.max(1,Math.round(goldBase*rewards.gold*(monster.fieldAdaptive?.reward||1)));
 
@@ -8739,7 +8742,7 @@ export const IronSquadGame = {
     }
 
     // 本隊だけの戦果で旅人をかんゆうしたり、主人公を昇進させたりしない。
-    this.gainExp(expGain,{share:!!isPlayer,service:ownVictory,merit:Math.min(120,baseExpGain)});
+    this.gainExp(xpReward.exp,{share:!!isPlayer,service:ownVictory,merit:Math.min(120,baseExpGain)}); // v7.0.22: the floor is the killer's own XP only (career / guard share keep the old amount)
     this.updateStatsUI();
 
     // ⛩️ ダンジョンボス討伐時の至宝解錠判定
