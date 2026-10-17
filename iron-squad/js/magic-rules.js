@@ -1,13 +1,13 @@
 import {guardTarget,guardRegrouping,guardSpeedMult} from './guard-leash.js?v=266';
-import {guardFormationTarget,guardFormationSpeedMult} from './guard-formation.js?v=266';
-import {updateEquipmentBarrier} from './defense-equipment.js?v=261';
+import {guardFormationTarget,guardFormationSpeedMult} from './guard-formation.js?v=291';
+import {updateEquipmentBarrier} from './defense-equipment.js?v=291';
 import {sound} from '../../common/js/audio.js?v=151';
 import {WORLD_SIZE} from './world.js?v=289';
 import {inCurrentInstance} from './instance-rules.js?v=256';
 import {recordCombat} from './phase-rules.js?v=218';
 import {isSoldierOnExpedition} from './expedition-rules.js?v=256';
-import {practiceAttribute,prefersCasterMelee,isMuscleCaster,attributeValues,canChannelWeaponMagic} from './unit-attributes.js?v=274';
-import {isMagicWeapon} from './weapon-requirements.js?v=239';
+import {practiceAttribute,prefersCasterMelee,isMuscleCaster,attributeValues,canChannelWeaponMagic} from './unit-attributes.js?v=291';
+import {isMagicWeapon} from './weapon-requirements.js?v=291';
 import {numberClassDefinitions} from './class-up-rules.js?v=185';
 
 export const MAGE_IDS=['MAGE','ARCHMAGE','ELEMENTAL_SAGE','ARCANE_SOVEREIGN'];

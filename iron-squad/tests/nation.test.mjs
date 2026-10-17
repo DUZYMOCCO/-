@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {guildBoard} from '../js/guild-contracts.js';
 import {createRequire} from 'node:module';
 import {resolve} from 'node:path';
 import {JSDOM} from '../../__pycache__/ui-tools/node_modules/jsdom/lib/api.js';
@@ -41,7 +42,7 @@ game.inventory=[strong,protectedItem,gear('donate','ARMOR',30)];game.sharedEquip
 // Actual town entry, locked facilities, upgraded discounts, contracts and casino cooldown.
 game.nation=normalizeNation({investment:90000});game.gold=10000;game.equipped.weapon=gear('smith','WEAPON',20);const town=game.dungeons.find(d=>d.id==='royal_castle_town');assert.ok(town);game.enterDungeon(town);
 const smithGold=game.gold,smithCost=Math.floor(game.getUpgradeCost(game.equipped.weapon)*.8);assert.equal(game.useTownFacility('smith'),true);assert.equal(game.gold,smithGold-smithCost);assert.equal(game.equipped.weapon.upgrade,1);assert.equal(game.useTownFacility('smith'),false);
-assert.equal(game.acceptGuildContract('sweep'),true);const contract=game.nation.guild.active[0];for(let i=0;i<contract.target;i++)game.onNationKill({type:'slime'});const reward=contract.reward,guildGold=game.gold;assert.equal(game.claimGuildContract('sweep'),true);assert.equal(game.gold,guildGold+reward);assert.equal(game.claimGuildContract('sweep'),false);
+const contract=guildBoard(game).find(q=>q.id==='sweep');for(let i=0;i<contract.target;i++)game.onNationKill({type:'slime'});const reward=contract.reward,guildGold=game.gold;assert.equal(game.claimGuildContract('sweep'),true);assert.equal(game.gold,guildGold+reward);assert.equal(game.claimGuildContract('sweep'),false);
 const random=Math.random;Math.random=()=>.99;const casinoGold=game.gold,bet=game.nation.casino.bet;assert.equal(game.startCasinoPoker(),true);assert.equal(game.gold,casinoGold-bet);await new Promise(r=>setTimeout(r,900));assert.equal(game.drawCasinoPoker(),true);await new Promise(r=>setTimeout(r,900));const slotGold=game.gold;assert.equal(game.spinCasinoSlot(),true);assert.equal(game.gold,slotGold+bet*1599);assert.equal(game.spinCasinoSlot(),false);Math.random=random;
 game.exitDungeon();const center=79360;game.player.x=center;game.player.y=center;
 const target={x:center,y:center,maxHp:10000,hp:10000,def:0};game.squad=[];game.nation=normalizeNation({investment:180000});assert.equal(headquartersDamageMult(game,target),.7);let displayedDamage;game.spawnDamageText=(x,y,value)=>{if(typeof value==='number')displayedDamage=value;};game.damageTarget(target,100);assert.equal(displayedDamage,70,'developed HQ reduces actual combat damage');game.spawnDamageText=noop;

@@ -1380,19 +1380,33 @@
 .iron-squad.quiet-battlefield .field-prompts > :is(#merchant-prompt-banner,#dungeon-prompt-banner,#phase-complete-banner,.phase-banner) button { background:#fff; border:1px solid var(--field-border); border-radius:3px; }
 .iron-squad .treasure-receipt { padding:8px 46px 8px 10px; }
 .iron-squad .treasure-receipt strong, .iron-squad .treasure-receipt button { color:var(--field-ink); }
-.iron-squad .guild-board h5 { margin:18px 0 8px; font-size:16px; }
-.iron-squad .guild-contract-list { display:grid; gap:10px; }
-.iron-squad .guild-contract { padding:12px; border:1px solid var(--ui-line); border-radius:6px; background:var(--ui-panel); min-width:0; }
-.iron-squad .guild-contract header { display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:6px 12px; }
-.iron-squad .guild-contract header strong { flex:1 1 180px; overflow-wrap:anywhere; }
-.iron-squad .guild-contract header b { color:var(--ui-gold); font-size:16px; }
-.iron-squad .guild-contract p { margin:8px 0; color:var(--ui-muted); }
-.iron-squad .guild-contract button { width:100%; }
-.iron-squad .guild-contract.guild-complete { border-color:var(--ui-good); }
-.iron-squad .guild-filters { display:flex; flex-wrap:wrap; gap:6px; margin:8px 0 12px; }
-.iron-squad .guild-filters button { flex:1 1 90px; }
-.iron-squad .guild-filters [aria-pressed="true"] { color:var(--ui-bg); background:var(--ui-gold); }
-.iron-squad .hq-facility-body .guild-abandon { width:auto; margin-top:8px; color:var(--ui-muted); background:transparent; font-size:12px; }
+.iron-squad .hq-facility-body.guild-mode { display:flex; flex-direction:column; overflow:hidden; padding-top:8px; padding-bottom:0; scrollbar-gutter:auto; }
+.iron-squad .hq-facility-body.guild-mode > .guild-board { flex:1 1 auto; min-height:0; width:100%; display:flex; flex-direction:column; }
+.iron-squad .guild-head { flex:none; display:grid; gap:6px; padding-bottom:8px; border-bottom:1px solid var(--ui-line); }
+.iron-squad .hq-facility-body .guild-stats { display:flex; flex-wrap:wrap; gap:0 12px; margin:0; font-size:12px; line-height:1.5; color:var(--ui-muted); }
+.iron-squad .hq-facility-body .guild-stats span:nth-child(3) { color:var(--ui-gold); }
+.iron-squad .hq-facility-body .guild-claim-all { width:100%; min-height:44px; font-weight:700; color:var(--ui-bg); background:var(--ui-good); border-color:var(--ui-good); }
+.iron-squad .guild-filters, .iron-squad .guild-zones { display:flex; gap:6px; overflow-x:auto; scrollbar-width:none; }
+.iron-squad .guild-filters::-webkit-scrollbar, .iron-squad .guild-zones::-webkit-scrollbar { display:none; }
+.iron-squad .hq-facility-body .guild-chip { flex:1 0 auto; min-height:44px; padding:6px 12px; white-space:nowrap; }
+.iron-squad .hq-facility-body .guild-chip[aria-pressed="true"] { color:var(--ui-bg); background:var(--ui-gold); border-color:var(--ui-gold); }
+.iron-squad .guild-list { flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain; display:flex; flex-direction:column; gap:6px; padding:8px 0 max(16px,env(safe-area-inset-bottom)); }
+.iron-squad .guild-list > * { flex:none; }
+.iron-squad .guild-row { display:flex; flex-wrap:wrap; align-items:center; min-width:0; border:1px solid var(--ui-line); border-radius:6px; background:var(--ui-panel); }
+.iron-squad .guild-row.guild-ready { border-color:var(--ui-good); }
+.iron-squad .guild-row.guild-dim { opacity:.55; }
+.iron-squad .hq-facility-body .guild-row-main { flex:1 1 0; min-width:0; min-height:58px; display:flex; flex-direction:column; justify-content:center; gap:5px; padding:6px 10px; text-align:left; background:transparent; border:0; border-radius:6px; }
+.iron-squad .guild-row-title { display:flex; align-items:baseline; justify-content:space-between; gap:8px; min-width:0; }
+.iron-squad .guild-row-title strong { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:14px; }
+.iron-squad .guild-row-title b { flex:none; color:var(--ui-gold); font-size:14px; }
+.iron-squad .guild-row-bar { display:flex; align-items:center; gap:8px; min-width:0; }
+.iron-squad .guild-bar { flex:1 1 40%; min-width:48px; height:6px; border-radius:3px; background:#0006; overflow:hidden; }
+.iron-squad .guild-bar i { display:block; height:100%; background:var(--ui-gold); }
+.iron-squad .guild-ready .guild-bar i { background:var(--ui-good); }
+.iron-squad .guild-row-bar em { flex:0 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-style:normal; font-size:12px; color:var(--ui-muted); }
+.iron-squad .hq-facility-body .guild-claim { flex:none; width:64px; min-height:44px; margin:0 8px 0 0; padding:6px; font-weight:700; color:var(--ui-bg); background:var(--ui-good); border-color:var(--ui-good); }
+.iron-squad .hq-facility-body .guild-hint { flex:0 0 100%; margin:0; padding:0 10px 8px; font-size:12px; line-height:1.5; color:var(--ui-muted); }
+.iron-squad .hq-facility-body .guild-locked, .iron-squad .hq-facility-body .guild-note, .iron-squad .hq-facility-body .guild-empty { margin:4px 0 0; font-size:12px; line-height:1.5; color:var(--ui-muted); text-align:center; }
 .iron-squad.quiet-battlefield .battle-log-window.has-field-note .battle-log-msg { white-space:normal; overflow-wrap:anywhere; text-overflow:clip; }
 @media (max-width:360px) {
   .iron-squad .pad-move-column { flex-direction:column; align-items:center; gap:4px; }

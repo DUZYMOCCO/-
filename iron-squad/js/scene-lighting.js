@@ -4,7 +4,7 @@ import {explorationLayout,dungeonSegmentOpen} from './dungeon-layout.js?v=182';
 import {explorationLamps} from './dungeon-interior-visuals.js?v=242';
 import {nightlifeLightSources} from './nightlife-visuals.js?v=277';
 import {viewport,circleInView} from './render-support.js';
-import {commerceHeading} from './commerce-visuals.js?v=242';
+import {commerceHeading} from './commerce-visuals.js?v=291';
 
 export const CAVE_DARKNESS=.992;
 export const LANTERN_RADIUS=215;

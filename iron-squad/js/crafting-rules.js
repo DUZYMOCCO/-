@@ -1,6 +1,6 @@
 import {TIERS,GENERATION_COUNT,MAX_EQUIPMENT_TIER,tierNumber,materialTier,generation} from './equipment-tiers.js?v=231';
-import {chooseLootTier} from './equipment-rules.js?v=273';
-import {CASTER_GEAR,DEFENSE_TYPES} from './defense-equipment.js?v=261';
+import {chooseLootTier} from './equipment-rules.js?v=291';
+import {CASTER_GEAR,DEFENSE_TYPES} from './defense-equipment.js?v=291';
 
 export const CRAFT_MATERIALS={
   wood:{name:'堅木材',color:'#b19165'},bronze:{name:'青銅片',color:'#ba9261'},

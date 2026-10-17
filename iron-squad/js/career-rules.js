@@ -31,7 +31,7 @@ export function recordCareerContribution(game,merit,serviceExp=0){
     if(c.lastServicePhase!==phase){c.lastServicePhase=phase;c.servicePhases++;}
   }
   if(c.status==='traveler'&&c.contribution>=CAREER_RULES.invitationMerit&&c.activePhases>=CAREER_RULES.invitationPhases){
-    c.status='invited';game.showToast?.('本陣からかんゆうの話が届きました。戻って話を聞いてみましょう。');
+    c.status='invited';game.showToast?.('本陣から勧誘の話が届きました。戻って話を聞いてみましょう。');
   }
 }
 /** A new expedition restarts phase numbering, so service streaks restart with it. Status and contribution remain. */
@@ -48,10 +48,10 @@ export function canPromoteCareer(game,nextRank){
   if(!isEnlisted(game)||!nextRank||(game.exp||0)<nextRank.reqExp)return false;
   return game.career.servicePhases-game.career.promotionServicePhases>=promotionServiceRequired(game.rankIndex);
 }
-import {gameText} from './game-text.js?v=281';
+import {gameText} from './game-text.js?v=291';
 export function careerSummary(game,ranks){
   const c=game.career;
-  if(!isEnlisted(game))return c?.status==='invited'?'本陣からかんゆうが届いています。帰還して話を聞けます。':
+  if(!isEnlisted(game))return c?.status==='invited'?'本陣から勧誘が届いています。帰還して話を聞けます。':
     gameText(`旅の仲間 ${ownCompanionCount(game)} / 5人 · 地域への貢献 ${c?.contribution||0} / ${CAREER_RULES.invitationMerit} · 活動した期 ${c?.activePhases||0} / ${CAREER_RULES.invitationPhases}`);
   const next=ranks[game.rankIndex+1];
   return next?`次の昇進：${next.title} · 本人と自部隊の功績 ${Math.floor(game.exp||0).toLocaleString()} / ${next.reqExp.toLocaleString()} · 前回の昇進から活動 ${Math.max(0,(c?.servicePhases||0)-(c?.promotionServicePhases||0))} / ${promotionServiceRequired(game.rankIndex)}期`:'最高階級です。';

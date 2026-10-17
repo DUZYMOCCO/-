@@ -1,10 +1,10 @@
 import {CRAFT_MATERIALS,CRAFT_RECIPES,craftRecipe,normalizeMaterials,addMaterials,workshopTier,workshopLevel,
-  recipeMaterials,canAffordMaterials,stampCraftedItem,craftExclusiveLabel} from './crafting-rules.js?v=231';
-import {standardEquipmentCost} from './armament-rules.js?v=274';
+  recipeMaterials,canAffordMaterials,stampCraftedItem,craftExclusiveLabel} from './crafting-rules.js?v=291';
+import {standardEquipmentCost} from './armament-rules.js?v=291';
 import {tierDescription,tierNumber} from './equipment-tiers.js?v=231';
-import {equipmentName,compareEquipment} from './equipment-rules.js?v=273';
-import {equipmentRequirementText} from './weapon-requirements.js?v=239';
-import {atFacility} from './hq-facilities.js?v=290';
+import {equipmentName,compareEquipment} from './equipment-rules.js?v=291';
+import {equipmentRequirementText} from './weapon-requirements.js?v=291';
+import {atFacility} from './hq-facilities.js?v=291';
 import {sound} from '../../common/js/audio.js?v=151';
 
 export const WORKSHOP_STOCK=CRAFT_RECIPES.map(recipe=>({...recipe,name:recipe.armorStyle?recipe.name:recipe.type==='WEAPON'?{

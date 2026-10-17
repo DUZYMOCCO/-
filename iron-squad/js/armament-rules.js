@@ -1,8 +1,8 @@
-import {weaponCombatProfile,meleeSweetSpotFor,soldierAttackCooldown} from './equipment-rules.js?v=273';
+import {weaponCombatProfile,meleeSweetSpotFor,soldierAttackCooldown} from './equipment-rules.js?v=291';
 import {masteryReloadMult,applyMasteryToCombatProfile,isHeavyWeaponStyle} from './growth-rules.js?v=282';
 import {MAX_EQUIPMENT_TIER,GENERATION_COUNT,tierNumber,powerRank,tierDescription} from './equipment-tiers.js?v=231';
-import {canUseEquipment} from './weapon-requirements.js?v=239';
-import {prefersCasterMelee} from './unit-attributes.js?v=274';
+import {canUseEquipment} from './weapon-requirements.js?v=291';
+import {prefersCasterMelee} from './unit-attributes.js?v=291';
 
 export const ARMAMENT_POLICIES={
   balanced:{name:'均衡',research:.25,development:.25,budget:1500,perLevel:250,maintenanceShare:.3},

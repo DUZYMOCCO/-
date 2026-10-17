@@ -1,10 +1,10 @@
 import {CASINO_BET,casinoBaseBet,casinoMaxBet,casinoPageMaxBet,validCasinoBet,normalizeCasinoBet,CASINO_POLICY,POKER_PAYOUTS,SLOT_SYMBOLS,SLOT_LINES,SLOT_CHERRY_TWO,dealPoker,finishPoker,cardFace,rollSlots,pokerWinningCards,evaluatePoker} from './casino-rules.js?v=276';
-import {chooseArena,arenaCandidates,simulateArena,recordArena} from './casino-arena.js?v=276';
-import {atFacility} from './hq-facilities.js?v=290';
-import {drawSoldierPortrait} from './soldier-appearance.js?v=206';
-import {casinoQuip} from './soldier-dialogue.js?v=276';
+import {chooseArena,arenaCandidates,simulateArena,recordArena} from './casino-arena.js?v=291';
+import {atFacility} from './hq-facilities.js?v=291';
+import {drawSoldierPortrait} from './soldier-appearance.js?v=291';
+import {casinoQuip} from './soldier-dialogue.js?v=291';
 import {sound} from '../../common/js/audio.js?v=151';
-import {gameText} from './game-text.js?v=281';
+import {gameText} from './game-text.js?v=291';
 const states=new WeakMap();
 const state=game=>{let s=states.get(game);if(!s||s.source!==game.nation?.casino){s={source:game.nation?.casino,page:'lobby',busy:null,step:0,net:0,history:{slot:[],poker:[],arena:[]},losses:0,comment:'',lastSpeech:0};states.set(game,s);}return s;};
 const canPlay=game=>atFacility(game,'casino',0);

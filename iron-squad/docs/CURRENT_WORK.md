@@ -1,5 +1,11 @@
 # 現在の作業と引き継ぎ（2026-10-16）
 
+## 2026-10-17 v7.0.14 / cache v291 — 組合を「受注なしの常設依頼＋報告」に作り直し（固定ヘッダー＋内側スクロール）
+- 方針（ユーザー決定）: 受注操作を廃止。組合は常設の依頼を並べ、討伐数は受注に関係なく**常に数え続ける**。目標を満たしたら「報告」して報酬（報告時点の現在値）を受け取り、その依頼は0から数え直し。報酬は同じ依頼につき**期ごとに1回**（期が変われば再び可。魔王討伐は一生に1回）。完了表示は累計達成数のみ。同時受注の上限・取り下げは無し。
+- 状態（`guild-contracts.js`、`GUILD_STATE_VERSION=3`）: `nation.guild = {version:3, progress:{id:数}, claimed:{id:期}, totalCompleted}`。`advanceGuildContracts` は全30依頼に加算（未解放・未受注でも。今期報告済みの依頼は数えない＝次の期は0から）。`claimGuildContract(id)` / `claimAllGuildContracts()`（まとめて報告）。`acceptGuildContract` / `abandonGuildContract` は廃止。`guildBoard`（解放済み一覧、`ready/claimed/unavailable/progress`付き）と `guildView(game,kind,zone)`（画面用: 報告可能を先頭＝報酬の大きい順、次に進捗率の高い順、報告済み・達成済みは末尾）を追加。依頼定義に `zone` を追加（距離帯=近郊/荒野/辺境/最果て、魔物別=本陣周辺/荒野/魔境・遺跡/魔王軍、ボス=精鋭・ボス/ダンジョン/野外・防衛/魔王城）。`GUILD_ZONES` をエクスポート。
+- 旧セーブ移行: v1/v2 の `active[{id,progress,target,…}]` は `normalizeGuild` で `progress` へ引き継ぐ（同じ依頼が複数あれば最大値。受注時に目標へ届いていた未報告の依頼は、どの発展Lvでも報告できるよう最大目標以上へ）。`claimed`・`totalCompleted` は維持。新しい遠征（`index.js` の先輩引き継ぎ）では `claimed` のみ消去し、進捗は保持。
+- 画面（新規 `js/guild-ui.js`、`css/iron-squad-interface.css` の組合部分を置換、`hq-facilities.js`）: 組合だけ本文に `guild-mode` を付け、上部固定ヘッダー（発展Lv・主人公Lv・所持金・累計達成数、報告可能があれば「まとめて報告 N件 +合計G」、種類チップ＋条件チップ）と、内側スクロールの一覧（約60pxの進捗バー付き1行カード、タップで説明を展開、「報告」ボタン44px以上）。解放前の依頼は末尾に「発展LvNで解放」の1行。再描画（`refreshHeadquartersFacility`）では本文に加えて内側リストの `scrollTop` も保存・復元し、絞り込みを替えたときだけ先頭へ戻す。他施設の見た目は変更なし。画面に出る「かんゆう」を「勧誘」へ修正（`career-rules.js` / `index.js` / `interface.js` の文言のみ。コメントは未変更）。
+- テスト: `guild-contracts` / `guild-stability` / `hq-facilities` / `nation` を新仕様へ更新。受注なしで加算・報告で0リセット・期1回と期替わり再受付・魔王の一生1回・旧セーブ（v1/v2・保存→再開）移行・まとめて報告の合計・種類×条件の絞り込みと報告可能先頭の並び・再描画で内側スクロール保持を追加。実ブラウザ（390×844 / 360×640）で、最初の報告カードが初期表示に入り一覧だけがスクロールすることを確認。`?v=` は `guild-contracts.js` / `hq-facilities.js` / `guild-ui.js` とその importer、`iron-squad-interface.css` を291へ。iPhone 実機は未確認。
 ## 2026-10-17 v7.0.13 / cache v290 — 組合依頼の整理・報酬のレベル連動、洞窟/拠点の存在と到達の検査
 - 組合（`guild-contracts.js` / `hq-facilities.js`）: 依頼の内容は発展Lvと固定の一覧だけで決まる（乱数・時刻なし）。開き直す/更新する/保存→再開しても同じ並び・同じ内容。受注済みは受注時の目標と報酬を保存して固定し、完了（報酬受領）・取り下げ・新しい遠征のときだけ入れ替わる。施設画面の再描画でスクロール位置が戻らないよう、再描画前後で位置を保持（フォーカスも `preventScroll`）。
 - 距離帯の討伐依頼を追加（近郊0〜800m／荒野〜2,200m／辺境〜4,800m／最果て4,800m〜）。種類を問わず、その距離帯（`lootDistance`、なければ座標）で倒した魔物を数える。辺境は発展Lv1、最果ては発展Lv3から。絞り込みに「距離帯」を追加。既存の魔物別・ボス依頼と受注済みセーブはそのまま。

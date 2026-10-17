@@ -1,12 +1,12 @@
 import {formatCompact} from './number-format.js?v=282';
 import {configureCommandNavigation} from './command-navigation.js?v=249';
-import {commanderFullName} from './commander-identity.js?v=210';
-import {isEnlisted} from './career-rules.js?v=240';
+import {commanderFullName} from './commander-identity.js?v=291';
+import {isEnlisted} from './career-rules.js?v=291';
 import {configureAudioInterface} from './audio-interface.js?v=247';
-import {renderBattleLog} from './battle-log.js?v=282';
-import {renderTroopRankings} from './troop-rankings.js?v=274';
+import {renderBattleLog} from './battle-log.js?v=291';
+import {renderTroopRankings} from './troop-rankings.js?v=291';
 import {genderLabel} from './soldier-names.js?v=210';
-import {talentTag as unitTalentTag} from './talent-labels.js?v=247';
+import {talentTag as unitTalentTag} from './talent-labels.js?v=291';
 /** Presentation only: keep game actions on their original DOM nodes. */
 const element = (tag, className, text) => {
   const node = document.createElement(tag);
@@ -298,7 +298,7 @@ export function refreshInterface(game, { rank, time, zone }) {
   heading.append(element('span', 'command-eyebrow', 'FIELD COMMAND'), element('h4', '', `${rank.title} · 作戦第${game.phase || game.wave || 1}期`)); snapshot.append(heading);
   const career=element('p','command-note',game.careerProgressText?.()||'');career.id='career-progress';snapshot.append(career);
   if(game.career?.status==='invited'){
-    const invitation=element('button','action-btn','本陣のかんゆうを聞く');invitation.id='btn-career-menu';invitation.type='button';invitation.disabled=!game.atCareerHeadquarters();invitation.title=invitation.disabled?'本陣へ戻って話を聞きます':'';invitation.onclick=()=>game.openCareerInvitation();snapshot.append(invitation);
+    const invitation=element('button','action-btn','本陣の勧誘を聞く');invitation.id='btn-career-menu';invitation.type='button';invitation.disabled=!game.atCareerHeadquarters();invitation.title=invitation.disabled?'本陣へ戻って話を聞きます':'';invitation.onclick=()=>game.openCareerInvitation();snapshot.append(invitation);
   }
   const metrics = element('div', 'snapshot-metrics');
   const alive = (game.squad || []).filter(s => !s.dead);

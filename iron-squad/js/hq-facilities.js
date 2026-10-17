@@ -1,6 +1,6 @@
 import {WORLD_SIZE} from './world.js?v=289';
 import {HQ_FACILITY_LAYOUT,hqFacilityBlocks} from './hq-facility-layout.js?v=201';
-import {setSubDialog} from './interface.js?v=275';
+import {setSubDialog} from './interface.js?v=291';
 import {daylightAt} from './day-night.js?v=208';
 import {buildingContact} from './building-interactions.js?v=201';
 import {drawCasinoSign} from './nightlife-visuals.js?v=277';
@@ -94,9 +94,10 @@ export const headquartersFacilityMethods={
   },
   refreshHeadquartersFacility() {
     const host=this.container?.querySelector('#hq-facility-dialog');if(!host)return;
-    const p=HEADQUARTERS_FACILITIES.find(p=>p.id===host.dataset.facility),body=host.querySelector('.hq-facility-body'),focus=document.activeElement?.id,keep=[host,body].map(e=>[e,e.scrollTop]);
+    const p=HEADQUARTERS_FACILITIES.find(p=>p.id===host.dataset.facility),body=host.querySelector('.hq-facility-body'),focus=document.activeElement?.id,innerTop=body.querySelector('.guild-list')?.scrollTop,resetInner=!!this.guildScrollReset,keep=[host,body].map(e=>[e,e.scrollTop]);
     const ready=(this.nation?.level||0)>=p.level;
-    body.innerHTML=`<p class="facility-intro">本陣の${p.name} · 所持金 ${money(this.gold)}</p>${ready?'':`<p class="facility-note">営業準備中。本陣の発展Lv${p.level}で利用できます。</p>`}`;
+    body.classList.toggle('guild-mode',p.id==='guild'&&ready);this.guildScrollReset=false;
+    body.innerHTML=`${p.id==='guild'?'':`<p class="facility-intro">本陣の${p.name} · 所持金 ${money(this.gold)}</p>`}${ready?'':`<p class="facility-note">営業準備中。本陣の発展Lv${p.level}で利用できます。</p>`}`;
     if(p.id==='smith') {
       this.renderWorkshop(body);
       const item=this.equipped?.weapon,cost=item?Math.max(1,Math.floor(this.getUpgradeCost(item)*.8)):0;
@@ -106,6 +107,7 @@ export const headquartersFacilityMethods={
     } else this.renderCasino(body);
     for(const button of body.querySelectorAll('[data-hq-service]'))button.onclick=()=>this.useTownFacility(button.dataset.hqService);
     for(const [e,t] of keep)e.scrollTop=t;
+    const list=body.querySelector('.guild-list');if(list&&innerTop!=null)list.scrollTop=resetInner?0:innerTop;
     if(focus)body.querySelector(`[id="${focus}"]`)?.focus({preventScroll:true});
   }
 };

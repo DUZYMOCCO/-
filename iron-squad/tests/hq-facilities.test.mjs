@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {guildBoard} from '../js/guild-contracts.js';
 import {JSDOM} from '../../__pycache__/ui-tools/node_modules/jsdom/lib/api.js';
 import {HEADQUARTERS_FACILITIES,nearHeadquartersFacility,updateHeadquartersFacilityPrompt,headquartersBuildingBlocks} from '../js/hq-facilities.js';
 import {fieldBlocks,WORLD_SIZE,WorldTerrain} from '../js/world.js';
@@ -39,10 +40,9 @@ const before=g.gold,items=g.inventory.length;document.getElementById('btn-worksh
 assert.ok(g.gold<before);assert.equal(g.inventory.length,items+1);assert.equal(document.querySelectorAll('#workshop-tier').length,1);
 assert.ok(document.querySelector('.facility-intro').textContent.includes(g.gold.toLocaleString()),'shop shows the transaction result');
 const saved=structuredClone(g.saveGame({immediate:true}));g.resumeSavedGame(saved);assert.equal(document.getElementById('hq-facility-dialog'),null,'loading closes transient shop UI');
-walkTo('guild');g.openHeadquartersFacility('guild');document.querySelector('[data-guild-accept="slime"]').click();
-assert.equal(g.nation.guild.active.length,1);assert.equal(document.querySelector('[data-guild-claim="slime"]').disabled,true);
-const contract=g.nation.guild.active[0];for(let i=0;i<contract.target;i++)g.onNationKill({type:'slime'});g.renderStrategyUI();const gold=g.gold,reward=contract.reward;
-document.querySelector('[data-guild-claim="slime"]').click();assert.equal(g.gold,gold+reward);assert.equal(g.nation.guild.active.length,0);
+walkTo('guild');g.openHeadquartersFacility('guild');assert.equal(document.querySelector('[data-guild-accept]'),null,'the guild has no accept button');assert.equal(document.querySelector('[data-guild-claim="slime"]'),null,'nothing to report yet');
+const slimeJob=guildBoard(g).find(q=>q.id==='slime');for(let i=0;i<slimeJob.target;i++)g.onNationKill({type:'slime'});g.renderStrategyUI();g.refreshHeadquartersFacility();const gold=g.gold,reward=slimeJob.reward;
+document.querySelector('[data-guild-claim="slime"]').click();assert.equal(g.gold,gold+reward);assert.equal(g.nation.guild.progress.slime,undefined);assert.equal(g.nation.guild.totalCompleted,1);
 g.closeHeadquartersFacility();walkTo('casino');g.openHeadquartersFacility('casino');
 assert.equal(g.buyWorkshopEquipment('weapon-sword',1),false,'casino proximity cannot authorize workshop purchases');
 g.openCasinoPage('poker');const stake=g.nation.casino.bet,casinoGold=g.gold;document.getElementById('btn-casino-poker').click();assert.equal(g.gold,casinoGold-stake);

@@ -29,27 +29,27 @@ g.closeHeadquartersFacility();walk();g.openHeadquartersFacility('guild');assert.
 const ids=guildBoard(g).map(q=>q.id);assert.deepEqual(ids,GUILD_CONTRACTS.filter(q=>q.minLevel<=0).map(q=>q.id),'board order follows the fixed catalogue');
 assert.equal(new Set(ids).size,ids.length);assert.ok(ids.includes('band-near')&&ids.includes('band-wild')&&!ids.includes('band-edge'),'distance-band jobs unlock with settlement growth');
 // filters keep working and are stable
-for(const key of ['band','species','boss','all']){g.guildFilter=key;g.refreshHeadquartersFacility();const a=html();g.refreshHeadquartersFacility();assert.equal(html(),a);}
-assert.ok(document.querySelector('[data-guild-filter="band"]'),'distance filter button exists');g.guildFilter='band';g.refreshHeadquartersFacility();assert.ok(document.querySelector('#guild-accept-band-near')&&!document.querySelector('#guild-accept-slime'));g.guildFilter='all';g.refreshHeadquartersFacility();
-// --- distance-band counting ---
-assert.equal(g.acceptGuildContract('band-near'),true);assert.equal(g.acceptGuildContract('band-wild'),true);assert.equal(g.acceptGuildContract('slime'),true);
-const act=id=>g.nation.guild.active.find(q=>q.id===id);
-g.onNationKill({type:'goblin',lootDistance:1000});assert.deepEqual([act('band-near').progress,act('band-wild').progress,act('slime').progress],[1,0,0]);
-g.onNationKill({type:'slime',lootDistance:9000});assert.deepEqual([act('band-near').progress,act('band-wild').progress,act('slime').progress],[1,1,1]);
-g.onNationKill({type:'wolf',lootDistance:30000});assert.deepEqual([act('band-near').progress,act('band-wild').progress],[1,1],'other bands are not counted');
-g.onNationKill({type:'orc',x:79360+2000,y:79360});assert.equal(act('band-near').progress,2,'position decides when no loot distance is recorded');
-g.onNationKill({type:'orc'});assert.equal(act('band-near').progress,2,'an unplaced enemy never counts toward a band');
-g.onNationKill({type:'orc',lootDistance:500,retreated:true});assert.equal(act('band-near').progress,2);
-const same={type:'orc',lootDistance:500};g.onNationKill(same);g.onNationKill(same);assert.equal(act('band-near').progress,3,'a kill counts once');
-// --- accepted snapshots are frozen; unaccepted quotes follow the hero level ---
-const snap=structuredClone(g.nation.guild.active),quoteBefore=guildBoard(g).find(q=>q.id==='wolf').reward;
-g.player.level=25;assert.ok(guildBoard(g).find(q=>q.id==='wolf').reward>quoteBefore,'a higher hero level raises unaccepted rewards');
-assert.deepEqual(g.nation.guild.active,snap,'a level-up never rewrites a job already taken');
+for(const key of ['band','species','boss','all']){g.guildFilter=key;g.guildZone='all';g.refreshHeadquartersFacility();const a=html();g.refreshHeadquartersFacility();assert.equal(html(),a);}
+assert.ok(document.querySelector('[data-guild-filter="band"]'),'distance filter button exists');g.guildFilter='band';g.guildZone='all';g.refreshHeadquartersFacility();assert.ok(document.querySelector('#guild-toggle-band-near')&&!document.querySelector('#guild-toggle-slime'));assert.equal(document.querySelector('[data-guild-accept]'),null);assert.equal(document.querySelector('[data-guild-abandon]'),null);g.guildFilter='all';g.refreshHeadquartersFacility();
+// --- distance-band counting (every job counts from the start; no accepting) ---
+const prog=id=>g.nation.guild.progress[id]||0;
+g.onNationKill({type:'goblin',lootDistance:1000});assert.deepEqual([prog('band-near'),prog('band-wild'),prog('slime')],[1,0,0]);
+g.onNationKill({type:'slime',lootDistance:9000});assert.deepEqual([prog('band-near'),prog('band-wild'),prog('slime')],[1,1,1]);
+g.onNationKill({type:'wolf',lootDistance:30000});assert.deepEqual([prog('band-near'),prog('band-wild')],[1,1],'other bands are not counted');
+g.onNationKill({type:'orc',x:79360+2000,y:79360});assert.equal(prog('band-near'),2,'position decides when no loot distance is recorded');
+g.onNationKill({type:'orc'});assert.equal(prog('band-near'),2,'an unplaced enemy never counts toward a band');
+g.onNationKill({type:'orc',lootDistance:500,retreated:true});assert.equal(prog('band-near'),2);
+const same={type:'orc',lootDistance:500};g.onNationKill(same);g.onNationKill(same);assert.equal(prog('band-near'),3,'a kill counts once');
+// --- counted progress is never rewritten; quotes follow the hero level ---
+const snap=structuredClone(g.nation.guild.progress),quoteBefore=guildBoard(g).find(q=>q.id==='wolf').reward;
+g.player.level=25;assert.ok(guildBoard(g).find(q=>q.id==='wolf').reward>quoteBefore,'a higher hero level raises every reward');
+assert.deepEqual(g.nation.guild.progress,snap,'a level-up never rewrites counted progress');
 const afterLevel=board();g.refreshHeadquartersFacility();assert.equal(board(),afterLevel);
-const saved=structuredClone(g.saveGame({immediate:true}));g.resumeSavedGame(saved);assert.deepEqual(g.nation.guild.active,snap,'save and resume keep every accepted job');assert.equal(board(),afterLevel,'save and resume keep the same board');
+const saved=structuredClone(g.saveGame({immediate:true}));g.resumeSavedGame(saved);assert.deepEqual(g.nation.guild.progress,snap,'save and resume keep every count');assert.equal(board(),afterLevel,'save and resume keep the same board');
 assert.deepEqual(normalizeGuild(normalizeGuild(g.nation.guild)),normalizeGuild(g.nation.guild),'normalizing twice changes nothing');
-// --- jobs only change when finished or abandoned ---
-walk();g.openHeadquartersFacility('guild');const slimeReward=act('slime').reward;for(let i=0;i<act('slime').target;i++)g.onNationKill({type:'slime',lootDistance:100});
-assert.equal(g.claimGuildContract('slime'),true);assert.equal(g.nation.guild.active.some(q=>q.id==='slime'),false);assert.ok(act('band-near')&&act('band-wild'),'other jobs stay');
-assert.ok(slimeReward>=250);g.closeHeadquartersFacility();
-console.log('PASS: hero-level reward scaling with 250G floor and cap, stable board across refresh/reopen/save/resume, frozen accepted snapshots, distance-band job counting and filter');dom.window.close();
+// --- a report pays the quote of that moment and restarts that job only ---
+walk();g.openHeadquartersFacility('guild');const slime=guildBoard(g).find(q=>q.id==='slime');for(let i=prog('slime');i<slime.target;i++)g.onNationKill({type:'slime',lootDistance:100});
+assert.equal(guildBoard(g).find(q=>q.id==='slime').ready,true);const gold=g.gold;
+assert.equal(g.claimGuildContract('slime'),true);assert.equal(g.gold,gold+slime.reward);assert.equal(prog('slime'),0);assert.ok(prog('band-near')>0&&prog('band-wild')>0,'other jobs keep their counts');assert.equal(g.claimGuildContract('slime'),false);
+assert.ok(slime.reward>=250);g.closeHeadquartersFacility();
+console.log('PASS: hero-level reward scaling with 250G floor and cap, stable board across refresh/reopen/save/resume, always-on counts unaffected by level-ups, distance-band job counting and filter');dom.window.close();

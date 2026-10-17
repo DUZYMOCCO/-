@@ -1,16 +1,16 @@
-import {catalogTier,catalogPrice,ensureMerchantCatalog,MERCHANT_MAX_TIER,MERCHANT_CATALOG_VERSION} from './merchant-catalog.js?v=258';
-import {applyAttributeStats} from './unit-attributes.js?v=274';
+import {catalogTier,catalogPrice,ensureMerchantCatalog,MERCHANT_MAX_TIER,MERCHANT_CATALOG_VERSION} from './merchant-catalog.js?v=291';
+import {applyAttributeStats} from './unit-attributes.js?v=291';
 /**
  * IRON SQUAD: 宿場・本陣・各地のキャンプの行商人
  * - 製造技術Tier+1（最大T24）の厳選品。武器2枠/防具4枠を毎ウェーブ抽選
  * - 強い護衛付き。放置するとモンスターに襲われ死亡しうる
  * - 護衛が倒した強敵のドロップを序盤から掠め取れるチャンス
  */
-import { saleValue, distanceScaling, weaponCombatProfile } from './equipment-rules.js?v=273';
-import { drawFieldSoldier } from './visuals.js?v=280';
-import { createSoldierAppearance, drawSoldierHead } from './soldier-appearance.js?v=206';
-import { attackAnimationRate } from './weapon-motion.js?v=273';
-import { markSoldierDown, rebuildMerchantCasualties, RESCUE_TIMEOUT, departFromRest } from './casualty-rules.js?v=286';
+import { saleValue, distanceScaling, weaponCombatProfile } from './equipment-rules.js?v=291';
+import { drawFieldSoldier } from './visuals.js?v=291';
+import { createSoldierAppearance, drawSoldierHead } from './soldier-appearance.js?v=291';
+import { attackAnimationRate } from './weapon-motion.js?v=291';
+import { markSoldierDown, rebuildMerchantCasualties, RESCUE_TIMEOUT, departFromRest } from './casualty-rules.js?v=291';
 import {emptyMastery,normalizeMastery,hitGrowthHpBonus,hitGrowthDefBonus,migrateHitGrowth,applyHitGrowth,masteryAtkMult,masteryReloadMult} from './growth-rules.js?v=282';
 import {recordCombat,finishExperience} from './phase-rules.js?v=218';
 

@@ -1,18 +1,18 @@
-import {canUseEquipment} from './weapon-requirements.js?v=239';
-import {normalizeArmament,ARMAMENT_POLICIES,advanceResearch,researchCost,standardEquipmentCost,personalEquipmentBudget,createEquipmentValueCache,RESERVE_ARMAMENT_COUNT,ARMAMENT_LIMITS} from './armament-rules.js?v=274';
+import {canUseEquipment} from './weapon-requirements.js?v=291';
+import {normalizeArmament,ARMAMENT_POLICIES,advanceResearch,researchCost,standardEquipmentCost,personalEquipmentBudget,createEquipmentValueCache,RESERVE_ARMAMENT_COUNT,ARMAMENT_LIMITS} from './armament-rules.js?v=291';
 import {tierDescription,MAX_EQUIPMENT_TIER} from './equipment-tiers.js?v=231';
 import {WORLD_SIZE} from './world.js?v=289';
-import {saleValue,isGodRollProtected} from './equipment-rules.js?v=273';
-import {calcTreasuryGrossIncome,calcCommanderStipend,EQUIPMENT_SLOTS} from './economy-rules.js?v=276';
+import {saleValue,isGodRollProtected} from './equipment-rules.js?v=291';
+import {calcTreasuryGrossIncome,calcCommanderStipend,EQUIPMENT_SLOTS} from './economy-rules.js?v=291';
 import {createPayrollPlan,commanderStipendQuote,PAYROLL_RULES,regularSalaryReserve} from './payroll-rules.js?v=226';
-import {calcAllRankerBonuses} from './troop-rankings.js?v=274';
+import {calcAllRankerBonuses} from './troop-rankings.js?v=291';
 import {normalizeRegionalEconomy,recurringNationalIncome,economicState,advanceRegionalEconomy,automaticEconomicTarget,investEconomicProject} from './regional-economy.js?v=277';
-import {drawSettlementQuarter} from './economic-visuals.js?v=242';
-import {atFacility,HEADQUARTERS_FACILITIES} from './hq-facilities.js?v=290';
+import {drawSettlementQuarter} from './economic-visuals.js?v=291';
+import {atFacility,HEADQUARTERS_FACILITIES} from './hq-facilities.js?v=291';
 import {renderRegionalEconomy} from './economic-interface.js?v=264';
-import {workshopFloorTier} from './crafting-rules.js?v=231';
+import {workshopFloorTier} from './crafting-rules.js?v=291';
 import {normalizeCasino} from './casino-rules.js?v=276';
-import {normalizeGuild,advanceGuildContracts} from './guild-contracts.js?v=290';
+import {normalizeGuild,advanceGuildContracts} from './guild-contracts.js?v=291';
 
 export const DEVELOPMENT_STAGES=[
   {name:'野営本陣',cost:0}, {name:'城塞と宿場',cost:6000},
