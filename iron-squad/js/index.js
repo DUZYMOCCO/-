@@ -77,7 +77,7 @@ import { drawMeleeRangeCue, meleeDrawReach, attackAnimationRate } from './weapon
 import { guardRegrouping, guardTarget } from './guard-leash.js?v=266';
 import {beginGuardFormation,guardFormationTarget,guardFormationSpeedMult} from './guard-formation.js?v=291';
 import { KNOCK_RULES, knockbackDistance, knockFlight, slamDamage, knockTransferDistance } from './knockback-rules.js?v=212';
-import { MELEE_SOUND_STYLES, playMeleeSound } from './weapon-sounds.js?v=211';
+import { MELEE_SOUND_STYLES, playMeleeSound } from './weapon-sounds.js?v=293';
 import {emptyRescueBonuses,normalizeRescueBonuses,rescueBonusSummary} from './rescue-rewards.js?v=264';
 import {drawFieldCivilian} from './civilian-visuals.js?v=291';
 import { saveSlots,profileSaveCompletions,requestPersistentSaves } from './save-slots.js?v=285';
@@ -7690,7 +7690,7 @@ export const IronSquadGame = {
     }
 
     const armored=['goblin','orc','skeleton','colossus_titan','colossal_titan'].includes(monster.type);
-    if (!magicalAttack && !wProf.ranged && MELEE_SOUND_STYLES.includes(wProf.style)) playMeleeSound(wProf.style, monster.x, monster.y);
+    if (!magicalAttack && !wProf.ranged && MELEE_SOUND_STYLES.includes(wProf.style)) playMeleeSound(wProf.style, monster.x, monster.y, {fromPlayer: !!isPlayer}); // v7.0.16: allied soldiers' hits are quieter, sparser and nearby-only
     else sound.playImpact(magicalAttack?'magic':armored?wProf.style:'flesh',monster.x,monster.y);
     if (isPlayer) {
       if (this.player.vampire > 0) {
