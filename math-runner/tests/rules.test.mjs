@@ -126,7 +126,7 @@ test('scenery themes cycle meadow/desert/space and ride on the course', () => {
 });
 
 // ---- v1.2.0 ほそい ながれ・うてる ゲート・まとが さいしょから みえる・むずかしさの かいだん ----
-import { STREAM, FIRST_BLOCK_Y, gateAfterHits, gateSpec } from '../js/rules.js';
+import { STREAM, FIRST_BLOCK_Y, gateAfterHits, gateSpec, GATE_SHOOT } from '../js/rules.js';
 
 const gatesOf = (stage, runs = 200) => {
   const seen = {};
@@ -251,4 +251,30 @@ test('failing only comes from too little power at the wall: stuck for WALL_GRACE
   let ev2 = null;
   for (let i = 0; i < 60 * 120 && !e2.isFinished; i++) e2.update(1 / 60, (n, d) => { if (n === 'clear') ev2 = d; });
   assert.ok(ev2.cleared && ev2.finalMult > 1);
+});
+
+// ---- v1.2.1 れんだ（ゆびを いそがしく うごかす・タップ）で ゲートが はやく ふえない ----
+test('mashing/shaking the finger gives no advantage: fire rate is a fixed timer, gate hits ≤ volleys', () => {
+  const run = (mash) => {
+    const course = generateStageCourse(3, 'slow');
+    const e = new RunnerEngine(course, normalizeSave({ upgrades: { startCount: 5, fireRate: 4 } }));
+    e.delay = 99; // ゲートの てまえで とめて ひたすら うつ
+    let volleys = 0, k = 0;
+    const gate = course.elements.find(x => x.type === 'GATE_PAIR');
+    e.dist = gate.y - 300;
+    for (let i = 0; i < 60 * 6; i++) {
+      if (mash) for (let j = 0; j < 8; j++) e.setTargetX(((k++ % 2) ? 1 : -1) * 0.8); // 1フレームに 8かい れんだ
+      else e.setTargetX(0.3);
+      e.update(1 / 60, ev => { if (ev === 'shoot') volleys++; });
+    }
+    const hits = (gate.left.hits || 0) + (gate.right.hits || 0);
+    return { volleys, hits, gate };
+  };
+  const calm = run(false), mashed = run(true);
+  assert.equal(mashed.volleys, calm.volleys);                       // うつ はやさは おなじ
+  assert.ok(mashed.hits <= mashed.volleys + 1e-6);                   // 1かいの はっしゃ = さいだい 1かい
+  assert.ok(calm.hits <= calm.volleys + 1e-6 && calm.hits > 0 && mashed.hits > 0);
+  const cap = g => g.base.val + GATE_SHOOT.addCap;                   // ふえる じょうげんも ある
+  for (const side of ['left', 'right']) { const g = mashed.gate[side]; if (g.base && g.type === 'add') assert.ok(g.val <= cap(g)); }
+  assert.ok(Math.abs(mashed.volleys - 6 / UPGRADES.fireRate.calcValue(4)) < 6); // 60fps の きざみ ぶんだけ ずれる
 });
