@@ -7,7 +7,7 @@ import {recurringNationalIncome} from './regional-economy.js?v=277';
  * 国庫・共有装備ボックス・スカウト費用・財政報告の公式を集約
  */
 
-import { saleValue, compareEquipment, equipmentScore, isGodRollProtected } from './equipment-rules.js?v=298';
+import { saleValue, compareEquipment, equipmentScore, isGodRollProtected } from './equipment-rules.js?v=301';
 
 /** 作戦期ごとの国庫歳入（徴税・兵站） */
 export const TREASURY_INCOME_BASE = 3000;
@@ -106,8 +106,9 @@ export function shouldAbsorbToSharedBox(item, playerEquipped, slotKey) {
   if (!slotKey) return false;
   const current = playerEquipped?.[slotKey] || null;
   if (!current) return false; // 空きスロットなら隊長が取る（collectDrop側で即装備）
+  // v7.0.24: the displayed verdict changed (総合値・2%未満は無視), but absorption keeps the old rule: no stat is higher than the current gear's.
   const cmp = compareEquipment(item, current);
-  return cmp.kind === 'worse' || cmp.kind === 'equal';
+  return cmp.legacyKind === 'worse' || cmp.legacyKind === 'equal';
 }
 
 /** スカウト費用（才能・作戦期・レベル補正） */

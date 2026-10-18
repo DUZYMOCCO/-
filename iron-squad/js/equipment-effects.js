@@ -55,10 +55,10 @@ export const EFFECT_PREVIEW_STATS=Object.freeze([['maxHp','最大HP'],['def','�
 export function equipmentEffectText(before,after) {
   return '装備すると '+EFFECT_PREVIEW_STATS.map(([key,label])=>`${label} ${formatCompact(before[key])}→${formatCompact(after[key])}`).join(' / ');
 }
-export function equipmentEffectHtml(before,after) {
+export function equipmentEffectHtml(before,after,label='装備すると') {
   const cells=EFFECT_PREVIEW_STATS.map(([key,label])=>{
     const delta=Math.round(after[key])-Math.round(before[key]),cls=delta>0?'stat-delta-up':delta<0?'stat-delta-down':'';
     return `<span class="${cls}">${label} ${formatCompact(before[key])}→${formatCompact(after[key])}${delta?`（${delta>0?'+':''}${formatCompact(delta)}）`:''}</span>`;
   });
-  return `<div class="equip-effect"><b>装備すると</b> ${cells.join(' / ')}</div>`;
+  return `<div class="equip-effect"><b>${label}</b> ${cells.join(' / ')}</div>`;
 }

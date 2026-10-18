@@ -1,6 +1,6 @@
 import {enemyTier,rollBossTreasure} from './enemy-tier.js?v=274';
 import {addBattleReport} from './battle-report.js?v=276';
-import {attackCooldown} from './equipment-rules.js?v=298';
+import {attackCooldown} from './equipment-rules.js?v=301';
 import {migrateCampaignEnemy} from './campaign-scaling.js?v=241';
 import {HERO_RULES,heroRevelationPhase,heroMembers,heroSharesSpace,visibleHeroMembers} from './hero-rules.js?v=282';
 import {advanceHeroRoute,heroSegmentOpen,heroRouteCurrent} from './hero-navigation.js?v=295';
@@ -17,7 +17,7 @@ import {isMedic,treatWounded,updateWounded,normalizeRevivalSkill,revivalSkillCoo
 import {healByMedic,healAmountFor} from './phase-rules.js?v=218';
 import {ensureMana,regenerateMana,spendMana,isMage} from './magic-rules.js?v=296';
 import {takeRangedShot,supplyLocation,ammoCapacity} from './supply-rules.js?v=298';
-import {distanceScaling} from './equipment-rules.js?v=298';
+import {distanceScaling} from './equipment-rules.js?v=301';
 import {strongEnemyReward} from './combat-rewards.js?v=299';
 import {RANGED_ENEMIES} from './enemy-ranged.js?v=295';
 import {startHeroJournal,archiveHeroJournal,appendHeroDiary,recordHeroEquipmentGrant} from './hero-journal.js?v=295';

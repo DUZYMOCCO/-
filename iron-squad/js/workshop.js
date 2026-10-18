@@ -2,7 +2,7 @@ import {CRAFT_MATERIALS,CRAFT_RECIPES,craftRecipe,normalizeMaterials,addMaterial
   recipeMaterials,canAffordMaterials,stampCraftedItem,craftExclusiveLabel} from './crafting-rules.js?v=298';
 import {standardEquipmentCost} from './armament-rules.js?v=298';
 import {tierDescription,tierNumber} from './equipment-tiers.js?v=231';
-import {equipmentName,compareEquipment} from './equipment-rules.js?v=298';
+import {equipmentName,compareEquipment} from './equipment-rules.js?v=301';
 import {equipmentRequirementText} from './weapon-requirements.js?v=298';
 import {atFacility} from './hq-facilities.js?v=295';
 import {sound} from '../../common/js/audio.js?v=151';
@@ -19,8 +19,12 @@ export function workshopPreview(game,recipe,tier,crafted=false) {
   return item;
 }
 function comparison(game,item) {
-  const current=game.equipped?.[slots[item.type]],cmp=compareEquipment(item,current);
-  return `<div class="equipment-comparison ${cmp.kind}"><div class="equip-cmp-head">今の装備とくらべる：<strong>${cmp.label}</strong></div><small>現在：${current?equipmentName(current):'未装備'}</small>${cmp.html}</div><p class="weapon-requirement">${equipmentRequirementText(game.player,item)}</p>`;
+  const current=game.equipped?.[slots[item.type]];
+  // v7.0.24: judged on real totals when possible (no cache: craft previews are rebuilt each time); a new item cannot inherit +levels here.
+  const info=game.equipmentComparisonFor?.(game.player,item,current,{title:'今の装備とくらべる',cache:false});
+  const cmp=info?.primary||compareEquipment(item,current);
+  const card=info?.html||`<div class="equipment-comparison ${cmp.kind}"><div class="equip-cmp-head">今の装備とくらべる：<strong>${cmp.label}</strong></div><small>現在：${current?equipmentName(current):'未装備'}</small>${cmp.html}</div>`;
+  return `${card}<p class="weapon-requirement">${equipmentRequirementText(game.player,item)}</p>`;
 }
 // v6.3.0: x10 (was x1.4 bought / x3 crafted), in line with merchant prices.
 export const WORKSHOP_PRICE_MULT={bought:14,crafted:30};

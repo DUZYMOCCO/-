@@ -28,7 +28,7 @@ assert.deepEqual(lowValueIds([best,copy,weak,enhanced],{},[],2),['copy','weak'])
 assert.deepEqual(lowValueIds([best],{},[{equipped:{helmet:item('soldierBest','HELMET',3)}}],2),[]);
 assert.equal(compareEquipment(best,weak).label,'強くなる');assert.equal(compareEquipment(weak,best).label,'弱くなる');
 assert.equal(compareEquipment({stats:{atk:10,def:5}},{stats:{atk:5,def:10}}).label,'一長一短');
-assert.equal(compareEquipment(best,best).label,'同等');
+assert.equal(compareEquipment(best,best).label,'ほぼ同じ');
 assert.ok(equipmentScore(best)>equipmentScore(weak),'stronger item has higher score');
 assert.ok(equipmentScore(enhanced)>equipmentScore(weak),'enhanced item has higher score than base');
 // Current 158,720m world: regular loot bands use 8k/22k/48k distances. T7 is vault-only.

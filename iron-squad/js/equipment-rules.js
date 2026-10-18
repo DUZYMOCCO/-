@@ -1,7 +1,7 @@
 import {campaignScaling} from './campaign-scaling.js?v=241';
 import {soldierCombatTempo,usesSoldierTempo} from './unit-attributes.js?v=298';
 import {requiredDefenseStrength} from './defense-equipment.js?v=298';
-import {shieldReductionPct} from './equipment-effects.js?v=298';
+import {shieldReductionPct} from './equipment-effects.js?v=301';
 import {powerRank,MAX_EQUIPMENT_TIER,GENERATIONS} from './equipment-tiers.js?v=231';
 import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=182';
 import {WEAPON_STYLE_ICONS,weaponStyleOf,isHeavyWeaponStyle,combatFamilyOf,weaponBaseAtkCoef} from './growth-rules.js?v=295';
@@ -161,7 +161,7 @@ export function shrineUpgradeCap(distance) {
 const STAT_LABELS={atk:'攻撃',magicAttack:'魔法攻撃',magicDefense:'魔法防御',magicBonus:'魔力補正',healBonus:'回復補正',barrier:'バリア',def:'防御',hp:'HP',speed:'移動',atkSpeed:'攻速',crit:'会心',blockChance:'盾の被ダメ軽減',regen:'回復/秒',vampire:'吸血',lightning:'連鎖雷',reach:'長さ/射程',attackWidth:'攻撃幅',swingSpeed:'振り抜き',attackRate:'攻撃速度',sweetWidth:'スイート幅',sweetPower:'芯の威力補正'};
 const CRITICAL_STATS=new Set(['atk','def','hp']);
 const PCT_STATS=new Set(['crit','blockChance','atkSpeed','vampire','swingSpeed','sweetWidth','sweetPower','magicBonus','healBonus']);
-const STAT_ORDER=['atk','def','hp','speed','atkSpeed','crit','blockChance','regen','vampire','lightning'];
+const STAT_ORDER=['atk','magicAttack','def','hp','speed','atkSpeed','crit','blockChance','regen','vampire','lightning'];
 
 function formatStatDisplay(key, value) {
   const n=key==='atkSpeed'?Math.min(60,Number(value)||0):Number(value)||0;
@@ -184,8 +184,51 @@ function formatDeltaDisplay(key, delta) {
   return `${v>0?'+':''}${v}${suffix}`;
 }
 
-/** 装備乗り換え時の性能差。label/kind は既存互換。text=プレーン、html=色付き↑↓ */
-export function compareEquipment(candidate,current) {
+/**
+ * v7.0.24: how the equipment comparison is judged.
+ * - Each changed stat becomes a rate of change. Attack / defense / HP / speed use the unit's real totals "after equipping" when the caller
+ *   passes them (options.totals = {before,after} of {maxHp,def,atk,speed}); otherwise the item's own numbers are used.
+ * - A change under 2% is "ほぼ変わらず": it counts neither as up nor as down.
+ * - Weighted score: attack / magic attack / defense / HP x1, speed x0.5, everything else x0.3 (each rate capped at +-100%).
+ * - net score within +-3% = 一長一短. Beyond that the side with the larger score must be more than twice the other, otherwise it stays 一長一短.
+ */
+export const EQUIPMENT_JUDGE=Object.freeze({ignoreBelow:.02,balance:.03,dominance:2,rateCap:1,speedBase:150,lightningRate:.1,
+  weights:Object.freeze({atk:1,magicAttack:1,def:1,hp:1,speed:.5,other:.3})});
+const MAJOR_STATS=new Set(['atk','magicAttack','def','hp']);
+const TOTAL_KEY={atk:'atk',def:'def',hp:'maxHp',speed:'speed'};
+const PERCENT_POINT_STATS=new Set(['crit','atkSpeed','blockChance','healBonus','magicBonus','sweetWidth','sweetPower']);
+const clampRate=rate=>Math.max(-EQUIPMENT_JUDGE.rateCap,Math.min(EQUIPMENT_JUDGE.rateCap,rate));
+const relativeChange=(before,after)=>before>0?(after-before)/before:after>0?1:after<0?-1:0;
+function pctText(raw) {
+  const p=raw*100,abs=Math.abs(p),text=abs>=100?Math.round(abs).toLocaleString('ja-JP'):String(Math.round(abs*10)/10);
+  return `${p>0?'+':p<0?'-':''}${text}%`;
+}
+/** One changed stat -> {rate (capped), raw (uncapped %), text, weight, major, significant}. */
+function judgeAxis(change,totals) {
+  const {key,before,after,delta}=change,tk=TOTAL_KEY[key];
+  const hasTotals=!!tk&&Number.isFinite(totals?.before?.[tk])&&Number.isFinite(totals?.after?.[tk]);
+  let raw,text;
+  if(hasTotals){
+    raw=relativeChange(totals.before[tk],totals.after[tk]);
+    text=MAJOR_STATS.has(key)?pctText(raw):formatDeltaDisplay(key,delta);
+  } else if(key==='lightning'){
+    raw=delta>0?EQUIPMENT_JUDGE.lightningRate:-EQUIPMENT_JUDGE.lightningRate;text=formatDeltaDisplay(key,delta);
+  } else if(key==='speed'){
+    raw=delta/EQUIPMENT_JUDGE.speedBase;text=formatDeltaDisplay(key,delta);
+  } else if(PERCENT_POINT_STATS.has(key)){
+    raw=delta/100;text=formatDeltaDisplay(key,delta);
+  } else if(key==='vampire'){
+    raw=delta;text=formatDeltaDisplay(key,delta);
+  } else if(key==='regen'){
+    raw=delta/20;text=formatDeltaDisplay(key,delta);
+  } else {
+    raw=relativeChange(before,after);text=MAJOR_STATS.has(key)?pctText(raw):formatDeltaDisplay(key,delta);
+  }
+  const weights=EQUIPMENT_JUDGE.weights,weight=weights[key]??weights.other,rate=clampRate(raw);
+  return {key,label:change.label,delta,raw,rate,weight,score:rate*weight,text,major:MAJOR_STATS.has(key),significant:Math.abs(rate)>=EQUIPMENT_JUDGE.ignoreBelow};
+}
+/** 装備乗り換え時の性能差。label/kind は既存互換（kind: better/worse/mixed/equal）。options.totals で「装備した後の合計値」を渡すと総合値で判定する。 */
+export function compareEquipment(candidate,current,options={}) {
   const axes=candidate?.type==='WEAPON'||current?.type==='WEAPON';
   const cappedStats=item=>({...item?.stats,...(item?.type!=='WEAPON'&&item?.stats?.atkSpeed!=null?{atkSpeed:Math.min(60,item.stats.atkSpeed)}:{}),...(item?.stats?.blockChance!=null?{blockChance:shieldReductionPct(item.stats.blockChance)}:{})});
   const afterStats={...cappedStats(candidate),...(axes?weaponAxisValues(candidate):{})},beforeStats={...cappedStats(current),...(axes?weaponAxisValues(current):{})};
@@ -206,8 +249,22 @@ export function compareEquipment(candidate,current) {
       critical:CRITICAL_STATS.has(key)
     };
   }).filter(c=>c.delta!==0&&c.key!=='swingSpeed'); // Animation tempo is not combat performance.
-  const up=changes.some(c=>c.delta>0), down=changes.some(c=>c.delta<0);
-  const label=up&&down?'一長一短':up?'強くなる':down?'弱くなる':'同等';
+  const totals=options?.totals&&options.totals.before&&options.totals.after?options.totals:null;
+  const judged=changes.map(c=>judgeAxis(c,totals));
+  judged.forEach((j,i)=>{changes[i].significant=j.significant;changes[i].rate=j.rate;});
+  const ups=judged.filter(j=>j.significant&&j.score>0),downs=judged.filter(j=>j.significant&&j.score<0);
+  const gain=ups.reduce((s,j)=>s+j.score,0),loss=-downs.reduce((s,j)=>s+j.score,0),net=gain-loss,D=EQUIPMENT_JUDGE;
+  let kind;
+  if(!ups.length&&!downs.length)kind='equal';
+  else if(!downs.length)kind='better';
+  else if(!ups.length)kind='worse';
+  else if(Math.abs(net)<=D.balance)kind='mixed';
+  else if(net>0)kind=gain>loss*D.dominance?'better':'mixed';
+  else kind=loss>gain*D.dominance?'worse':'mixed';
+  const label={better:'強くなる',worse:'弱くなる',mixed:'一長一短',equal:'ほぼ同じ'}[kind];
+  // Old rule (any single up and any single down = mixed): kept only for the shared-box absorption, which must not change.
+  const rawUp=changes.some(c=>c.delta>0),rawDown=changes.some(c=>c.delta<0);
+  const legacyKind=rawUp&&rawDown?'mixed':rawUp?'better':rawDown?'worse':'equal';
   const text=changes.map(c=>{
     const arrow=c.delta>0?'↑':'↓';
     return `${c.label} ${arrow} ${formatDeltaDisplay(c.key,c.delta)} (${formatStatDisplay(c.key,c.before)}→${formatStatDisplay(c.key,c.after)})`;
@@ -217,10 +274,26 @@ export function compareEquipment(candidate,current) {
         const cls=c.delta>0?'stat-delta-up':'stat-delta-down';
         const arrow=c.delta>0?'↑':'↓';
         const crit=c.critical?' stat-delta-crit':'';
-        return `<span class="stat-delta-line ${cls}${crit}">${c.label} ${arrow} <strong>${formatDeltaDisplay(c.key,c.delta)}</strong> <span class="stat-delta-range">(${formatStatDisplay(c.key,c.before)}→${formatStatDisplay(c.key,c.after)})</span></span>`;
+        const minor=c.significant?'':' stat-delta-minor';
+        return `<span class="stat-delta-line ${cls}${crit}${minor}">${c.label} ${arrow} <strong>${formatDeltaDisplay(c.key,c.delta)}</strong> <span class="stat-delta-range">(${formatStatDisplay(c.key,c.before)}→${formatStatDisplay(c.key,c.after)})</span>${c.significant?'':' <span class="stat-delta-range">ほぼ変わらず</span>'}</span>`;
       }).join('')
     : '<span class="stat-delta-equal">能力差なし</span>';
-  return {label,text,html,changes,kind:up&&down?'mixed':up?'better':down?'worse':'equal'};
+  // Headline reasons: attack / defense / HP first, then by size. At most three.
+  const reasons=[...ups,...downs].sort((a,b)=>(b.major-a.major)||Math.abs(b.score)-Math.abs(a.score)).slice(0,3);
+  const reasonText=reasons.length?reasons.map(r=>`${r.label} ${r.text}`).join('・'):changes.length?'どの項目も変化は小さめ':'能力差なし';
+  const reasonHtml=reasons.length?reasons.map(r=>`<span class="${r.score>0?'stat-delta-up':'stat-delta-down'}">${r.label} <strong>${r.text}</strong></span>`).join('<span class="cmp-sep">・</span>'):`<span class="stat-delta-equal">${reasonText}</span>`;
+  const shortText=[...ups,...downs].sort((a,b)=>(b.major-a.major)||Math.abs(b.score)-Math.abs(a.score)).slice(0,3).map(r=>`${r.label}${r.score>0?'↑':'↓'}`).join(' ');
+  return {label,text,html,changes,kind,legacyKind,score:net,gain,loss,basis:totals?'total':'item',reasons:reasons.map(r=>({key:r.key,label:r.label,text:r.text,up:r.score>0})),reasonText,reasonHtml,shortText};
+}
+
+/** Comparison card: verdict on one big line, the main reasons on one line, every stat folded, the "swap as-is" result small underneath. */
+export function equipmentComparisonHtml(primary,{plain=null,basis='',warning='',title='',currentName=''}={}) {
+  const esc=s=>String(s??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  const note=primary.basis==='total'?'判定：装備した後の合計値（攻撃・防御・HP・移動）と、各項目の変化率。2%未満の差は数えません。':'判定：この装備の数値の変化率。2%未満の差は数えません。';
+  const plainRow=plain?`<div class="cmp-plain">そのまま替えた場合：<strong class="cmp-${plain.kind}">${plain.label}</strong><span class="cmp-plain-reason"> ${esc(plain.shortText||plain.reasonText)}</span></div>`:'';
+  return `<div class="equipment-comparison cmp-card ${primary.kind}">${title?`<div class="cmp-title equip-cmp-head">${esc(title)}</div>`:''}<div class="cmp-verdict"><strong class="cmp-label cmp-${primary.kind}">${primary.label}</strong>${basis?`<span class="cmp-basis">${basis}</span>`:''}${warning?`<span class="cmp-warning">${warning}</span>`:''}</div>`
+    +(currentName?`<div class="cmp-current">現在：${esc(currentName)}</div>`:'')
+    +`<div class="cmp-reason">${primary.reasonHtml}</div><details class="cmp-details"><summary>全項目の差</summary><div class="stat-delta-block">${primary.html}</div><small class="cmp-note">${note}</small></details>${plainRow}</div>`;
 }
 
 export function equipmentScore(item) {

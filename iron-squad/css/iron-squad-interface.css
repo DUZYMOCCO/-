@@ -1691,3 +1691,35 @@
 .equip-effect{margin-top:3px;font-size:10.5px;line-height:1.45;color:#cbd5e1;overflow-wrap:anywhere}
 .equip-effect b{color:#93c5fd}
 .equip-effect.req-short{color:#f87171}
+/* v7.0.24: comparison card (verdict / reasons / folded details / "as-is" note) and the +1 / +10 / +100 upgrade buttons */
+.iron-squad .equipment-comparison.cmp-card { color: var(--ui-text); padding: 9px 10px; margin: 8px 0; border-radius: 8px; border-left: 4px solid #8b98a0; background: #0c161eb3; font-size: 13px; line-height: 1.5; }
+.iron-squad .equipment-comparison.cmp-card.better { border-left-color: var(--ui-good); }
+.iron-squad .equipment-comparison.cmp-card.worse { border-left-color: var(--ui-danger); }
+.iron-squad .equipment-comparison.cmp-card.mixed { border-left-color: var(--ui-gold); }
+.iron-squad .cmp-card .cmp-title { font-size: 11px; color: var(--ui-muted); }
+.iron-squad .cmp-card .cmp-verdict { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; }
+.iron-squad .cmp-card .cmp-label { font-size: 18px; font-weight: 800; line-height: 1.35; }
+.iron-squad .cmp-better { color: #7ee09a; }
+.iron-squad .cmp-worse { color: #ff9a94; }
+.iron-squad .cmp-mixed { color: #f2cf72; }
+.iron-squad .cmp-equal { color: #aab4ba; }
+.iron-squad .cmp-card .cmp-basis { font-size: 11.5px; font-weight: 700; color: #c084fc; }
+.iron-squad .cmp-card .cmp-warning { font-size: 10.5px; font-weight: 700; color: #f87171; }
+.iron-squad .cmp-card .cmp-current { font-size: 11px; color: var(--ui-muted); overflow-wrap: anywhere; }
+.iron-squad .cmp-card .cmp-reason { font-size: 13px; font-weight: 600; line-height: 1.5; overflow-wrap: anywhere; }
+.iron-squad .cmp-card .cmp-sep { margin: 0 3px; color: var(--ui-muted); }
+.iron-squad .cmp-card .cmp-details { margin-top: 3px; }
+.iron-squad .cmp-card .cmp-details summary { min-height: 30px; line-height: 30px; display: list-item; cursor: pointer; font-size: 11.5px; color: var(--ui-muted); }
+.iron-squad .cmp-card .cmp-note { display: block; margin-top: 4px; font-size: 10.5px; color: var(--ui-muted); line-height: 1.5; }
+.iron-squad .stat-delta-minor { opacity: .6; }
+.iron-squad .cmp-card .cmp-plain { margin-top: 5px; padding-top: 5px; border-top: 1px dashed var(--ui-line); font-size: 11px; color: var(--ui-muted); overflow-wrap: anywhere; }
+.iron-squad .cmp-card .cmp-plain strong { font-size: 12px; }
+.iron-squad .merchant-stock-summary .cmp-equal { color: #aab4ba; }
+.iron-squad .upgrade-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; width: 100%; flex: 1 1 100%; box-sizing: border-box; }
+.iron-squad .upgrade-step, .iron-squad .dialog-body .upgrade-step { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; min-width: 0; min-height: 42px; padding: 3px 2px !important; line-height: 1.2; font-weight: 800; border-radius: 6px; background: #f59e0b !important; color: #0b0d14 !important; border: 1px solid #fcd34d !important; }
+.iron-squad .upgrade-step.soldier, .iron-squad .dialog-body .upgrade-step.soldier { background: #10b981 !important; color: #052e20 !important; border-color: #6ee7b7 !important; }
+.iron-squad .upgrade-step .up-step-n { font-size: 13px !important; }
+.iron-squad .upgrade-step .up-step-g { font-size: 10px; font-weight: 600; max-width: 100%; overflow-wrap: anywhere; text-align: center; font-variant-numeric: tabular-nums; }
+.iron-squad .upgrade-step:disabled, .iron-squad .dialog-body .upgrade-step:disabled { background: #475569 !important; color: #cbd5e1 !important; border-color: #64748b !important; opacity: .8; cursor: default; }
+.iron-squad .soldier-upgrade-row { flex: 1 1 100%; display: flex; flex-direction: column; gap: 3px; width: 100%; }
+.iron-squad .soldier-upgrade-label { font-size: 11px; color: var(--ui-muted); }

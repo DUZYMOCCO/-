@@ -30,7 +30,7 @@ import {TANK,prepareTanks,tankEvalDistSq,tankSlowFactor,tankCover,tankStunSecond
 import {recordBattleLog,resetBattleLog,refreshCombatFieldNotes} from './battle-log.js?v=295';
 import {rollDropExclusive,applyDropExclusive,dropExclusiveLabel} from './drop-exclusives.js?v=298';
 import {normalizeMaterials,applyCraftExclusive,craftExclusiveLabel,equipmentDropChance,materialDropChance,rollMaterialDrop,rollTreasureLoot} from './crafting-rules.js?v=298';
-import {workshopMethods} from './workshop.js?v=295';
+import {workshopMethods} from './workshop.js?v=301';
 import {updateAmbientCrowd,ambientResidents,ambientSoldierPose,ambientFarmPosts,drawAmbientResident,configureAmbientSettings,resetAmbientCrowd} from './town-ambient.js?v=295';
 import {casinoMethods} from './casino.js?v=295';
 import {normalizeCasino} from './casino-rules.js?v=276';
@@ -112,16 +112,17 @@ import {HEALING_HP_PER_EXP,REVIVAL_EXP_PER_MAX_HP,shareCommanderExp,raiseLevelMa
 import {attributeFamily,rollAttributeProfile,applyAttributeStats,attributeValues,practiceAttribute,attributeCarryCapacity,attributeSpecialties,prefersCasterMelee,canChannelWeaponMagic,magicAbilityMultiplier,CASTER_STRIKE_COST,casterStrikeMultiplier,beginAttributeMovement,finishAttributeMovement,ATTRIBUTE_LABELS,ATTRIBUTE_KEYS,aptitudeGrade,effectiveStrength} from './unit-attributes.js?v=298';
 import {rollScoutCandidate,renderRecruitment,nextScoutCandidate,startAutomaticRecruitment,stopAutomaticRecruitment,RECRUIT_CLASSES} from './recruitment.js?v=295';
 import {canUseEquipment,requiredWeaponStrength,equipmentRequirementText,equipmentRequirementHtml,strengthShortfall,migrateStrengthRequirement,STRENGTH_REQUIREMENT_VERSION,isMagicWeapon,MAGIC_WEAPON_STYLES,preferredWeaponStyle} from './weapon-requirements.js?v=298';
-import {EQUIPMENT_HP_RULES,equipmentHpFormula,equipmentRegenOf,tickEquipmentRegen,SOLDIER_VAMPIRE,soldierVampireHeal,LIGHTNING_RULES,lightningReady,pickLightningTargets,lightningDamage,equipmentEffectParts,equipmentEffectHtml} from './equipment-effects.js?v=298';
+import {EQUIPMENT_HP_RULES,equipmentHpFormula,equipmentRegenOf,tickEquipmentRegen,SOLDIER_VAMPIRE,soldierVampireHeal,LIGHTNING_RULES,lightningReady,pickLightningTargets,lightningDamage,equipmentEffectParts,equipmentEffectHtml} from './equipment-effects.js?v=301';
 import {CASTER_GEAR,DEFENSE_TYPES,casterGearName,applyDefenseEquipment,casterEquipmentSummary,absorbEquipmentBarrier,drawBarrierRing} from './defense-equipment.js?v=298';
 import {
   emptyFiscalLedger, calcCommanderStipend, calcBuyoutGold,
   shouldAbsorbToSharedBox, calcScoutCost, estimateSoldierScoutValue, calcDismissSettlement,
   formatFiscalReportJa, formatFiscalReportHtml, distributeSharedBoxToSoldiers, sellWeakSurplusFromBox,
   SHARED_BOX_MAX_TIER, SCOUT_COST_BY_TALENT, defaultDonateAmount, donatePresetAmounts, fundLadderAmounts, formatFundKanji, normalizeFundAmount, EQUIPMENT_SLOTS
-} from './economy-rules.js?v=295';
+} from './economy-rules.js?v=301';
 
-import { EQUIPMENT_TYPES, saleValue, equippedIds, canSell, lowValueIds, chooseLootTier, distanceScaling, shrineUpgradeCap, compareEquipment, equipmentScore, compareEquipmentStrength, rollWeaponTraits, weaponCombatProfile, attackSpeedState, attackCooldown, attackSpeedLabel, soldierAttackCooldown, evaluateMeleeSweetSpot, isGodRollProtected, zoneRingPower, zoneRingLabelJa, equipmentIcon, equipmentName } from './equipment-rules.js?v=298';
+import { EQUIPMENT_TYPES, saleValue, equippedIds, canSell, lowValueIds, chooseLootTier, distanceScaling, shrineUpgradeCap, compareEquipment, equipmentComparisonHtml, equipmentScore, compareEquipmentStrength, rollWeaponTraits, weaponCombatProfile, attackSpeedState, attackCooldown, attackSpeedLabel, soldierAttackCooldown, evaluateMeleeSweetSpot, isGodRollProtected, zoneRingPower, zoneRingLabelJa, equipmentIcon, equipmentName } from './equipment-rules.js?v=301';
+import {planBulkUpgrade,bulkUpgradeSummary,bulkUpgradeButtonsHtml} from './bulk-upgrade.js?v=301';
 import { rollFieldBrute, advanceDemonWarband, stepDemonWarbandGroup } from './field-hosts.js?v=182';
 import {
   WEAPON_STYLES, MASTERY_STYLES, WEAPON_STYLE_LABELS, WEAPON_STYLE_ICONS, isHeavyWeaponStyle, legacyHeavyAttackMult, HEAVY_ATTACK_VERSION, LEGACY_HEAVY_ATTACK_MULT, WEAPON_BASE_ATK_VERSION, WITHDRAWN_COMPENSATED_ATK_VERSION, WITHDRAWN_COMPENSATION_FACTOR, weaponCategoryOf, splitHeavyFavorite, FAVORITE_SPLIT_VERSION,
@@ -1210,7 +1211,7 @@ export const IronSquadGame = {
 
   // 起動時にこのゲームのCSSを自分で読み込む（?v= はこのフォルダ内で管理）。ハブが init 前に await する
   prepare() {
-    return loadCss(['../css/iron-squad.css?v=267', '../css/iron-squad-interface.css?v=291'].map(p => new URL(p, import.meta.url).href));
+    return loadCss(['../css/iron-squad.css?v=267', '../css/iron-squad-interface.css?v=301'].map(p => new URL(p, import.meta.url).href));
   },
 
   init(container, onBackToHub) {
@@ -4370,31 +4371,55 @@ export const IronSquadGame = {
   equipmentEffectPreview(unit,item) {
     const slot=SLOT_INFO[item?.type]?.key;
     if(!slot||!unit)return null;
-    const read=u=>({maxHp:u.maxHp||0,def:u.def||0,atk:u.atk||0});
+    const read=u=>({maxHp:u.maxHp||0,def:u.def||0,atk:u.atk||0,speed:u.speed||0});
     const copy=gear=>gear?{...gear,stats:{...gear.stats},weaponTraits:gear.weaponTraits?{...gear.weaponTraits}:undefined}:gear;
-    const equipped=Object.fromEntries(Object.entries(unit===this.player?this.equipped:unit.equipped||{}).map(([key,gear])=>[key,copy(gear)]));
-    equipped[slot]=copy(item);
+    const current=Object.fromEntries(Object.entries(unit===this.player?this.equipped:unit.equipped||{}).map(([key,gear])=>[key,copy(gear)]));
+    const equipped={...current,[slot]:copy(item)};
+    // base = the same calculation with the current gear, so a comparison never mixes live and trial numbers (before = what the panel shows).
     if(unit!==this.player){
-      const trial={...unit,_equipmentTrial:true,equipped,weapon:slot==='weapon'?equipped.weapon:copy(unit.weapon),
+      const trial=gear=>{const t={...unit,_equipmentTrial:true,equipped:gear,weapon:slot==='weapon'?gear.weapon:copy(unit.weapon),
         appearance:unit.appearance?{...unit.appearance}:undefined,weaponMastery:{...unit.weaponMastery},deathlineSkills:[...(unit.deathlineSkills||[])]};
-      this.recalcSoldierStats(trial);
-      return {before:read(unit),after:read(trial)};
+        this.recalcSoldierStats(t);return read(t);};
+      return {before:read(unit),after:trial(equipped),base:trial(current)};
     }
     const player=this.player,snapshot={...player},original=this.equipped,before=read(player);
-    try{this.equipped=equipped;player.equipped=equipped;this.recalcPlayerStats();return {before,after:read(player)};}
+    try{
+      this.equipped=current;player.equipped=current;this.recalcPlayerStats();const base=read(player);
+      this.equipped=equipped;player.equipped=equipped;this.recalcPlayerStats();return {before,after:read(player),base};
+    }
     finally{for(const key of Object.keys(player))if(!(key in snapshot))delete player[key];Object.assign(player,snapshot);this.equipped=original;player.equipped=original;}
   },
-  effectPreviewHtml(unit,item) {
+  /** Real "if equipped" totals {before,after} of {maxHp,def,atk,speed}, cached. null when the unit cannot use the item (cards then judge by the item's own numbers). */
+  equipmentTotalsFor(unit,item,{cache=true}={}) {
+    if(!unit||!item||!SLOT_INFO[item.type]||strengthShortfall(unit,item)||!canUseEquipment(unit,item))return null;
+    if(!cache)return this.equipmentEffectPreview(unit,item);
+    const held=(unit===this.player?this.equipped:unit.equipped)?.[SLOT_INFO[item.type].key];
+    const key=[unit.id||'commander',item.id,item.tier,item.upgrade,held?.id,held?.upgrade,unit.maxHp,unit.def,unit.atk,unit.speed,unit.level,unit.strength].join('|');
+    const store=this._effectPreviewCache||=new Map();
+    if(!store.has(key)){if(store.size>800)store.clear();store.set(key,this.equipmentEffectPreview(unit,item));}
+    return store.get(key);
+  },
+  effectPreviewHtml(unit,item,label) {
     if(!unit||!item||!SLOT_INFO[item.type])return '';
     const short=strengthShortfall(unit,item);
     if(short)return `<div class="equip-effect req-short">筋力不足（必要${short.required}／現在${short.current}）</div>`;
     if(!canUseEquipment(unit,item))return '';
-    const held=(unit===this.player?this.equipped:unit.equipped)?.[SLOT_INFO[item.type].key];
-    const key=[unit.id||'commander',item.id,item.tier,item.upgrade,held?.id,held?.upgrade,unit.maxHp,unit.def,unit.atk,unit.level,unit.strength].join('|');
-    const cache=this._effectPreviewCache||=new Map();
-    if(!cache.has(key)){if(cache.size>800)cache.clear();cache.set(key,this.equipmentEffectPreview(unit,item));}
-    const result=cache.get(key);
-    return result?equipmentEffectHtml(result.before,result.after):'';
+    const result=this.equipmentTotalsFor(unit,item);
+    return result?equipmentEffectHtml(result.before,result.after,label):'';
+  },
+  /**
+   * v7.0.24 comparison card for "item vs the unit's current gear". With inherit=true and a current +level above the item's,
+   * the verdict judges the item carrying that +level (what the player really gets); the as-is result is shown small underneath.
+   * Returns {primary, plain, html, previewItem}. primary/plain are compareEquipment results.
+   */
+  equipmentComparisonFor(unit,item,current,{inherit=false,warning='',title='',cache=true}={}) {
+    const totalsOf=gear=>{try{const r=this.equipmentTotalsFor(unit,gear,{cache});return r?{before:r.base||r.before,after:r.after}:null;}catch(e){return null;}};
+    const currentName=current?equipmentName(current):'未装備';
+    const plain=compareEquipment(item,current,{totals:totalsOf(item)});
+    if(!inherit||!current||(current.upgrade||0)<=(item.upgrade||0))return {primary:plain,plain:null,previewItem:null,html:equipmentComparisonHtml(plain,{title,currentName})};
+    const previewItem=structuredClone(item);applyUpgradeStats(previewItem,current.upgrade);
+    const primary=compareEquipment(previewItem,current,{totals:totalsOf(previewItem)});
+    return {primary,plain,previewItem,html:equipmentComparisonHtml(primary,{plain,title,currentName,basis:`✨+${current.upgrade}引継後`,warning})};
   },
   enforceWeaponRequirements() {
     if(this.equipped?.weapon&&!canUseEquipment(this.player,this.equipped.weapon)){
@@ -8068,15 +8093,13 @@ export const IronSquadGame = {
       if(!groupRows.some(({item})=>item.id===openStockId))openStockId=groupRows[0]?.item.id??null;
       const rows = shopSection==='trade'&&groupRows.map(({item,idx}) => {
         const open=item.id===openStockId;
-        const slot=SLOT_INFO[item.type],current=slot?targetEquipped?.[slot.key]:null,cmp=compareEquipment(item,current);
+        const slot=SLOT_INFO[item.type],current=slot?targetEquipped?.[slot.key]:null;
         // Plain purchases keep the item's actual stats; a same-family weapon may instead carry the +X over.
         const usable=!!target&&canUseEquipment(target,item);
         const canInheritBuy=!!slot&&!!target&&canMerchantInherit(current,item,target);
-        let inheritBuy='';
-        if(canInheritBuy){
-          const preview=structuredClone(item);applyUpgradeStats(preview,current.upgrade);const after=compareEquipment(preview,current);
-          inheritBuy=`<div class="equipment-comparison ${after.kind}"><div class="equip-cmp-head"><span style="color:#c084fc;font-weight:bold;">✨+${current.upgrade}引継後：</span><strong>${after.label}</strong> <span style="color:#f87171;font-weight:bold;">(※旧装備は消滅)</span></div>${after.html}</div>`;
-        }
+        // v7.0.24: the headline judges the item carrying the +level when inheriting is possible; "as-is" is shown small.
+        const cmpInfo=this.equipmentComparisonFor(target,item,current,{inherit:canInheritBuy,warning:canInheritBuy?'※旧装備は消滅':'',title:`${targetName}の現装備比`});
+        const cmp=cmpInfo.primary;
 
         const price = item._merchantPrice || merchantBuyPrice(item);
         const can = gold >= price && available && !!target && (!forSoldier||!!slot&&usable);
@@ -8087,15 +8110,14 @@ export const IronSquadGame = {
               <span class="transfer-item-name" style="color:${item.color || '#e2e8de'};">${item.merchantFeatured?'<span class="merchant-featured-mark">目玉</span>':''}[T${item.tier}] ${equipmentName(item)}</span>
               <strong class="merchant-purchase-price"><small>購入価格</small>${price.toLocaleString()}G</strong>
             </span>
-            <span class="merchant-stock-summary">${slot?.name||item.type} · ${shopText(targetName)}の現装備比：<strong class="cmp-${cmp.kind}">${cmp.label}</strong>${forSoldier&&!usable?' · 装備できません':''}</span>
+            <span class="merchant-stock-summary">${slot?.name||item.type} · ${shopText(targetName)}の現装備比${cmpInfo.previewItem?`（+${current.upgrade}引継後）`:''}：<strong class="cmp-${cmp.kind}">${cmp.label}</strong>${forSoldier&&!usable?' · 装備できません':''}</span>
           </button>
           <div class="merchant-stock-detail" ${open?'':'hidden'}>
           ${item.merchantFeatured?`<div class="merchant-featured-label">今ウェーブの目玉 · 特選品（1点限り）</div>`:''}
           <p class="merchant-quality">${slot?.name||item.type} · ${item.merchantQuality||'厳選'} · 品質補正×${Number(item.rollMult||1).toFixed(2)} · 強化+${item.upgrade||0}</p>
           <p class="weapon-requirement">${target?equipmentRequirementHtml(target,item):'購入先の兵士を選んでください'}</p>
-          <div class="equipment-comparison ${cmp.kind}"><div class="equip-cmp-head">${shopText(targetName)}の現装備比：<strong>${cmp.label}</strong></div><small>現在：${current ? equipmentName(current) : '未装備'}</small>${cmp.html}</div>
-          ${target?this.effectPreviewHtml(target,item):''}
-          ${inheritBuy}
+          ${cmpInfo.html}
+          ${target?this.effectPreviewHtml(target,cmpInfo.previewItem||item,cmpInfo.previewItem?`✨+${current.upgrade}引継ぎで装備すると`:undefined):''}
           <p class="merchant-price-note">${item.mat||''} · 基準売値の約${(price/Math.max(1,saleValue(item))).toFixed(1)}倍（品質込み）</p>
           <div class="transfer-card-meta">
             <button type="button" class="transfer-tap-btn" data-buy="${idx}" data-buy-id="${shopText(item.id)}" ${can ? '' : 'disabled'}>${buyLabel}</button>
@@ -9004,9 +9026,9 @@ export const IronSquadGame = {
       // 通常乗り換え: 外した装備は必ずバッグへ戻す（以前装備していても未保護なら売却可）
       if (!this.inventory) this.inventory = [];
       if (!this.inventory.some(i => i.id === curItem.id)) this.inventory.push(curItem);
-      const cmp = compareEquipment(item, curItem);
+      const cmp = compareEquipment(item, curItem, {totals: this.equipmentTotalsFor(this.player, item)});
       const tag = item.forgeTag ? `【${item.forgeTag}】` : '';
-      this.showToast(`着替え ${equipmentName(item)}${tag}｜${cmp.label}｜${cmp.text}`);
+      this.showToast(`着替え ${equipmentName(item)}${tag}｜${cmp.label}｜${cmp.reasonText}`);
     }
 
     this.equipped[slotKey] = item;
@@ -9078,13 +9100,15 @@ export const IronSquadGame = {
     return equipmentUpgradeCost(item);
   },
 
-  upgradeItem(item, isFree = false, sourceButton = null) {
+  /** times > 1 (the +10 / +100 buttons): as many single upgrades as the purse pays for, one save / one render / one toast. */
+  upgradeItem(item, isFree = false, sourceButton = null, times = 1) {
     const cost = this.getUpgradeCost(item);
     if (!isFree && this.gold < cost) {
       alert(`軍資金が足りません (必要: ${cost}G)`);
       return false;
     }
-    if (!isFree) this.gold -= cost;
+    const bulk = !isFree && times > 1 ? planBulkUpgrade(item, this.gold, times, gear => this.getUpgradeCost(gear)) : null;
+    if (!isFree) this.gold -= bulk ? bulk.spent : cost;
 
     // Keep the current bag order while this dialog stays open, so repeated taps
     // keep upgrading the same item even when its strength overtakes another.
@@ -9097,19 +9121,21 @@ export const IronSquadGame = {
     const focusEquippedSlot = focused?.classList.contains('btn-up-equipped') ? focused.dataset.slot : null;
     const buttonTop = (focusBagUpgrade || focusEquippedSlot) ? focused.getBoundingClientRect().top : null;
 
-    const nextUp = (item.upgrade || 0) + 1;
+    const nextUp = bulk ? bulk.to : (item.upgrade || 0) + 1;
     applyUpgradeStats(item, nextUp);
 
     sound.playHighScore();
-    this.showToast(`🔨 鍛冶完了！「${equipmentName(item)}」に強化成功！`);
+    this.showToast(bulk ? `🔨 鍛冶完了！「${equipmentName(item)}」に${bulkUpgradeSummary(bulk)}` : `🔨 鍛冶完了！「${equipmentName(item)}」に強化成功！`);
 
     this.recalcPlayerStats();
     this.saveGame({background:true});
     this.renderStrategyUI();
     this.updateStatsUI();
+    const sameStep = button => String(button?.dataset?.times || '1') === String(times);
+    const pickStep = buttons => buttons.find(b => sameStep(b) && !b.disabled) || buttons.find(b => (b.dataset.times || '1') === '1');
     const focusTarget = focusBagUpgrade
-      ? [...(modal?.querySelectorAll('#inventory-list > .inventory-card') || [])].find(row => row.dataset.itemId === String(item.id))?.querySelector('.btn-up-inv')
-      : focusEquippedSlot ? [...(modal?.querySelectorAll('.btn-up-equipped') || [])].find(button => button.dataset.slot === focusEquippedSlot) : null;
+      ? pickStep([...(modal?.querySelectorAll('#inventory-list > .inventory-card') || [])].filter(row => row.dataset.itemId === String(item.id)).flatMap(row => [...row.querySelectorAll('.btn-up-inv')]))
+      : focusEquippedSlot ? pickStep([...(modal?.querySelectorAll('.btn-up-equipped') || [])].filter(button => button.dataset.slot === focusEquippedSlot)) : null;
     if (focusTarget && buttonTop !== null) {
       const scrollBody = modal.querySelector('.dialog-body');
       if (scrollBody) scrollBody.scrollTop += focusTarget.getBoundingClientRect().top - buttonTop;
@@ -9118,7 +9144,7 @@ export const IronSquadGame = {
     return true;
   },
 
-  upgradeSoldierEquip(soldierId, slotKey = 'weapon') {
+  upgradeSoldierEquip(soldierId, slotKey = 'weapon', times = 1) {
     const s = this.squad.find(sol => sol.id === soldierId);
     if (!s || !this.canManageSoldier(s) || !s.equipped || !s.equipped[slotKey]) return;
     const item = s.equipped[slotKey];
@@ -9127,11 +9153,13 @@ export const IronSquadGame = {
       alert(`兵士の予算が足りません (兵士所持金: ${s.gold || 0}G / 必要: ${cost}G)`);
       return;
     }
-    s.gold -= cost;
-    applyUpgradeStats(item, (item.upgrade || 0) + 1);
+    // v7.0.24: +10 / +100 = as many single upgrades as the soldier's own gold pays for.
+    const bulk = times > 1 ? planBulkUpgrade(item, s.gold || 0, times, gear => this.getUpgradeCost(gear)) : null;
+    s.gold -= bulk ? bulk.spent : cost;
+    applyUpgradeStats(item, bulk ? bulk.to : (item.upgrade || 0) + 1);
     this.recalcSoldierStats(s);
     sound.playHighScore();
-    this.showToast(`🔨 ${s.name}が自費で「${equipmentName(item)}」を強化！`);
+    this.showToast(bulk ? `🔨 ${s.name}が自費で「${equipmentName(item)}」に${bulkUpgradeSummary(bulk)}` : `🔨 ${s.name}が自費で「${equipmentName(item)}」を強化！`);
     this.saveGame({background:true});
     this.renderStrategyUI();
   },
@@ -10254,7 +10282,8 @@ export const IronSquadGame = {
               const preview = structuredClone(item);
               const inherited = (current?.upgrade || 0) > (preview.upgrade || 0);
               if (inherited) applyUpgradeStats(preview, current.upgrade);
-              const comp = compareEquipment(preview, current);
+              const info = this.equipmentComparisonFor(soldier, item, current, {inherit: true, title: `${soldier.name}の現装備比`});
+              const comp = info.primary;
               const heroEquipped = Object.values(this.equipped || {}).some(i => i?.id === item.id);
 
               return `
@@ -10266,8 +10295,8 @@ export const IronSquadGame = {
                     <span class="transfer-comp-badge ${comp.kind}">${comp.label}</span>
                   </div>
                   <div class="transfer-card-stats">
-                    <div class="stat-delta-block">${comp.html}</div>
-                    ${this.effectPreviewHtml(soldier,item)}
+                    ${info.html}
+                    ${this.effectPreviewHtml(soldier,info.previewItem||item,info.previewItem?`✨+${current.upgrade}引継ぎで装備すると`:undefined)}
                     <div class="weapon-requirement">${equipmentRequirementHtml(soldier,item)}</div>
                   </div>
                   <div class="transfer-card-meta">
@@ -10623,12 +10652,12 @@ export const IronSquadGame = {
       const statText = statParts.join(' ') || '装備品';
 
       return `
-        <div style="font-size: 11px; margin-bottom: 5px; display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.02); padding: 2px 4px; border-radius:4px;">
-          <div>
+        <div style="font-size: 11px; margin-bottom: 5px; display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:4px; background:rgba(255,255,255,0.02); padding: 2px 4px; border-radius:4px;">
+          <div style="flex:1 1 100%;min-width:0;">
             <span style="color:${item.color}; font-weight:bold;">[T${item.tier}] ${equipmentName(item)}</span>
             <span style="color:#94a3b8; font-size:10px; margin-left:4px;">(${statText})</span><details class="equipment-exact"><summary>正確な能力</summary><p>${exactEquipmentStats(item)}</p></details>
           </div>
-          <button class="mini-btn btn-up-equipped" data-slot="${slotDef.key}" style="background:#f59e0b; color:#0b0d14; font-size:10px; padding:2px 6px;">🔨 強化 [${cost}G]</button>
+          ${bulkUpgradeButtonsHtml(item,this.gold||0,{className:'btn-up-equipped',attrs:`data-slot="${slotDef.key}"`,costOf:gear=>this.getUpgradeCost(gear)})}
         </div>`;
     };
 
@@ -10672,7 +10701,7 @@ export const IronSquadGame = {
         e.stopPropagation();
         const slotKey = btn.dataset.slot;
         const item = eq[slotKey];
-        if (item) this.upgradeItem(item, false, e.currentTarget);
+        if (item) this.upgradeItem(item, false, e.currentTarget, Number(btn.dataset.times) || 1);
       });
     });
 
@@ -10726,7 +10755,7 @@ export const IronSquadGame = {
             <span style="font-size: 10px; color: #94a3b8; margin-left: 3px;">(${statText})</span><details class="equipment-exact"><summary>正確な能力</summary><p>${exactEquipmentStats(item)}</p></details>
           </div>
           <div style="display:flex; gap:3px; align-items:center;">
-            <button class="mini-btn btn-up-inv" style="background:#f59e0b; color:#0b0d14; font-size:10px; padding:2px 5px;">🔨 [${upCost}G]</button>
+            ${bulkUpgradeButtonsHtml(item,this.gold||0,{className:'btn-up-inv',costOf:gear=>this.getUpgradeCost(gear)})}
             ${isEquipped ? '<span style="color: #00ffaa; font-size: 10px;">装備中</span>' : `
               <button class="mini-btn equip-btn" style="font-size:10px; padding:2px 5px;" title="現在の装備と交換（旧装備はバッグに残ります）">装備</button>
               ${canInherit ? `<button class="mini-btn inherit-btn" style="background:linear-gradient(135deg, #7c3aed, #9333ea); color:#fff; font-size:10px; font-weight:bold; padding:2px 6px; border:1px solid #c084fc; border-radius:4px;" title="現在装備の強化値(+${curEquipped.upgrade})を引き継いで乗り換え（※古い装備は消滅します）">✨+${curEquipped.upgrade}引継(旧装備消滅)</button>` : ''}
@@ -10759,29 +10788,22 @@ export const IronSquadGame = {
             this.renderStrategyUI();
           });
         }
-        const upBtn = itemRow.querySelector('.btn-up-inv');
-        if (upBtn) {
+        itemRow.querySelectorAll('.btn-up-inv').forEach(upBtn => {
           upBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            this.upgradeItem(item, false, e.currentTarget);
+            this.upgradeItem(item, false, e.currentTarget, Number(upBtn.dataset.times) || 1);
           });
-        }
+        });
         if(SLOT_INFO[item.type]) {
-          const comparison=compareEquipment(item,curEquipped);
-          const note=document.createElement('div');note.className='equipment-comparison '+comparison.kind;
           if(isEquipped){
-            note.textContent='隊長装備中';
+            const note=document.createElement('div');note.className='equipment-comparison equal';note.textContent='隊長装備中';
+            itemRow.firstElementChild.append(note);
           } else {
-            note.innerHTML=`<div class="equip-cmp-head">隊長の現装備比：<strong>${comparison.label}</strong></div><div class="stat-delta-block">${comparison.html}</div>${this.effectPreviewHtml(this.player,item)}`;
-          }
-          itemRow.firstElementChild.append(note);
-          if(canInherit) {
-            const preview=structuredClone(item);applyUpgradeStats(preview,curEquipped.upgrade);
-            const inherited=compareEquipment(preview,curEquipped);
-            if(inherited.changes.some(change => change.delta > 0)) itemRow.dataset.improves = 'true';
-            const extra=document.createElement('div');extra.className='equipment-comparison '+inherited.kind;
-            extra.innerHTML=`<div class="equip-cmp-head"><span style="color:#c084fc; font-weight:bold;">✨+${curEquipped.upgrade}引継後：</span><strong>${inherited.label}</strong> <span style="color:#f87171; font-size:9.5px; font-weight:bold;">(※古い装備は消滅)</span></div><div class="stat-delta-block">${inherited.html}</div>`;
-            itemRow.firstElementChild.append(extra);
+            // v7.0.24: the verdict is judged on real totals and, when a higher +level can be inherited, on the inherited item.
+            const info=this.equipmentComparisonFor(this.player,item,curEquipped,{inherit:canInherit,warning:canInherit?'※古い装備は消滅':'',title:'隊長の現装備比'});
+            // "上昇項目あり" filter keeps its old meaning: some stat goes up (as-is, or after inheriting the +level).
+            itemRow.dataset.improves=String([info.plain||info.primary,info.primary].some(cmp=>cmp.changes.some(change=>change.delta>0)));
+            itemRow.firstElementChild.insertAdjacentHTML('beforeend',info.html+this.effectPreviewHtml(this.player,info.previewItem||item,info.previewItem?`✨+${curEquipped.upgrade}引継ぎで装備すると`:undefined));
           }
           this.renderSaleControls(itemRow,item);
         }
@@ -10913,8 +10935,6 @@ export const IronSquadGame = {
 
       const canHonor = !isNamed && s.survivedWaves >= 2;
       const wItem = s.equipped && s.equipped.weapon ? s.equipped.weapon : s.weapon;
-      const wUpCost = wItem ? this.getUpgradeCost(wItem) : 0;
-      const hasWUpBudget = wItem && (s.gold || 0) >= wUpCost;
       const fundVal = this.soldierFundAmount || '100';
       const fundOpts = fundLadderAmounts(this.gold || 0, fundVal === 'max' ? [] : [parseInt(fundVal, 10)]).map(n => `<option value="${n}" ${fundVal === String(n) ? 'selected' : ''}>${formatFundKanji(n)}</option>`).join('') + `<option value="max" ${fundVal === 'max' ? 'selected' : ''}>全額</option>`;
 
@@ -11000,9 +11020,10 @@ export const IronSquadGame = {
             </button>`;
           })() : ''}
           ${wItem ? `
-            <button class="mini-btn btn-soldier-up" style="background:${hasWUpBudget ? '#10b981' : '#4b5563'}; color:#fff; font-size:10px;" title="兵士が自費で武器を強化">
-              🔨 武器自費強化 [${wUpCost}G]
-            </button>
+            <div class="soldier-upgrade-row">
+              <span class="soldier-upgrade-label">🔨 武器自費強化（兵士の所持金 ${(s.gold||0).toLocaleString('ja-JP')}G）</span>
+              ${bulkUpgradeButtonsHtml(wItem,s.gold||0,{className:'btn-soldier-up',tone:'soldier',attrs:'title="兵士が自費で武器を強化"',costOf:gear=>this.getUpgradeCost(gear)})}
+            </div>
           ` : ''}
         </div>
       `;
@@ -11075,12 +11096,11 @@ export const IronSquadGame = {
         });
       }
 
-      const sUpBtn = row.querySelector('.btn-soldier-up');
-      if (sUpBtn) {
+      row.querySelectorAll('.btn-soldier-up').forEach(sUpBtn => {
         sUpBtn.addEventListener('click', () => {
-          this.upgradeSoldierEquip(s.id, 'weapon');
+          this.upgradeSoldierEquip(s.id, 'weapon', Number(sUpBtn.dataset.times) || 1);
         });
-      }
+      });
 
       return compactSoldierCard(this, row, s, cls, pName, talent);
     };
