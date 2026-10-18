@@ -3,6 +3,27 @@ import {encodeSaveList,unpackSave,SAVE_ENCODING} from './save-codec.js?v=261';
 
 const KEY = 'ironsquad_save_slots_v1';
 const LOCAL_KEY=`game_studio_${KEY}`;
+// v7.0.34: a separate "saves have existed here" mark. If the save key reads as missing while the mark exists, the read
+// failed (iOS home-screen apps can return null right after launch) - never write over it and never report it as a fresh start.
+const MARK_KEY='game_studio_ironsquad_save_seen_v1';
+const UNREADABLE_MESSAGE='保存を読み込めない可能性があるため、中止しました。再読み込みしてからやり直してください。';
+let seenInSession=false;
+function hasMark(){
+  if(seenInSession)return true;
+  try{return localStorage.getItem(MARK_KEY)!==null;}catch{return false;}
+}
+function setMark(){
+  seenInSession=true;
+  try{if(localStorage.getItem(MARK_KEY)===null)localStorage.setItem(MARK_KEY,'1');}catch{}
+}
+function probeSlots(){
+  let raw;
+  try{raw=localStorage.getItem(LOCAL_KEY);}catch{return 'unreadable';}
+  if(raw!==null)return 'ok';
+  return hasMark()?'unreadable':'empty';
+}
+function unreadableError(){const error=new Error(UNREADABLE_MESSAGE);error.code='SAVE_UNREADABLE';return error;}
+function refuseUnreadable(){const error=unreadableError();saveSlots.lastWriteError=error;return error;}
 let cachedRaw,cachedJson;
 let cachedIds=new Set();
 let revision=0,sequence=0,worker=null,workerDisabled=false,workerFailures=0;
@@ -15,17 +36,21 @@ function readSlots(){
     const slots=JSON.parse(json);if(!Array.isArray(slots))throw new Error('Invalid save slot list');
     cachedIds=new Set(slots.map(slot=>slot.id));
     cachedRaw=raw;cachedJson=json;
+    if(slots.length)setMark();
   }
   // Each caller gets detached objects, as before. Cache only the decoded string.
   return JSON.parse(cachedJson);
 }
 function writeSlots(slots){
+  // Safety net for every write path: a missing key with the mark present is an unreadable store, not an empty one.
+  if(probeSlots()==='unreadable'){refuseUnreadable();return false;}
   revision++; // A manual write supersedes any older background snapshot, even if it fails.
   if(pendingJob){pendingJob.resolve({status:'superseded'});pendingJob=null;}
   try{
     const json=JSON.stringify(slots);
     const raw=encodeSaveList(json);
     localStorage.setItem(LOCAL_KEY,raw);cachedRaw=raw;cachedJson=json;cachedIds=new Set(slots.map(slot=>slot.id));
+    if(slots.length)setMark();
     saveSlots.lastWriteError=null;
     return true;
   }catch(error){saveSlots.lastWriteError=error;console.warn('Save slot write failed:',error);return false;}
@@ -70,7 +95,8 @@ function completeJob(job,raw,error,json,retry=true){
       throw new Error(error);
     }
     if(retry)workerFailures=0;
-    localStorage.setItem(LOCAL_KEY,raw);cachedRaw=raw;cachedJson=json;saveSlots.lastWriteError=null;
+    if(localStorage.getItem(LOCAL_KEY)===null)throw unreadableError();
+    localStorage.setItem(LOCAL_KEY,raw);cachedRaw=raw;cachedJson=json;saveSlots.lastWriteError=null;setMark();
     job.resolve({status:'saved'});
   }catch(failure){saveSlots.lastWriteError=failure;console.warn('Background save failed:',failure);job.resolve({status:'failed'});}
 }
@@ -104,6 +130,18 @@ export function requestPersistentSaves(){
 }
 export const saveSlots = {
   lastWriteError:null,
+  /** 'ok' (key present), 'empty' (never had saves here) or 'unreadable' (key missing although saves existed before). */
+  probe:probeSlots,
+  /** Re-read a few times (about 1 s) before trusting an empty read when saves are known to have existed. */
+  async settle({tries=6,interval=160}={}){
+    for(let i=0;i<tries&&probeSlots()==='unreadable';i++)await new Promise(resolve=>setTimeout(resolve,interval));
+    return probeSlots();
+  },
+  /** Deliberate escape hatch after the player confirmed that the saves are really gone. */
+  forgetSaveMark(){
+    seenInSession=false;cachedRaw=undefined;cachedJson=undefined;cachedIds=new Set();
+    try{localStorage.removeItem(MARK_KEY);}catch{}
+  },
   list() {
     const existing = readSlots();
     // Nothing to read (fresh install, or a storage read that came back empty): never overwrite it with an empty list.
@@ -120,6 +158,7 @@ export const saveSlots = {
     return current;
   },
   create(name, initialValues = {}) {
+    if (probeSlots() === 'unreadable') throw refuseUnreadable();
     const slots = this.list();
     const slot = {id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2,9)}`,
       name: name.trim().slice(0,40) || `遠征 ${slots.length + 1}`, rulesVersion: RULES_VERSION,
@@ -132,6 +171,7 @@ export const saveSlots = {
   },
   get(id) { return this.list().find(slot => slot.id === id); },
   update(id, values) {
+    if (probeSlots() === 'unreadable') {refuseUnreadable();return false;}
     const slots = this.list(), slot = slots.find(item => item.id === id);
     if (!slot) return false;
     Object.assign(slot, values, {savedAt: Date.now()});
@@ -139,6 +179,7 @@ export const saveSlots = {
   },
   updateBackground(id,values){
     try{
+      if(probeSlots()==='unreadable'){refuseUnreadable();return Promise.resolve({status:'failed'});}
       if(localStorage.getItem(LOCAL_KEY)!==cachedRaw)this.list();
       if(!cachedIds.has(id))return Promise.resolve({status:'missing'});
       const snapshot=structuredClone(values),base=localStorage.getItem(LOCAL_KEY),ticket=++revision,jobId=++sequence;
@@ -151,6 +192,7 @@ export const saveSlots = {
     }catch(error){saveSlots.lastWriteError=error;return Promise.resolve({status:'failed'});}
   },
   delete(id) {
+    if (probeSlots() === 'unreadable') throw refuseUnreadable();
     const slots = this.list().filter(item => item.id !== id);
     return writeSlots(slots);
   }

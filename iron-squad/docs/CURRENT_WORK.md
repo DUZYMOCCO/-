@@ -1,5 +1,13 @@
 # 現在の作業と引き継ぎ（2026-10-16）
 
+## 2026-10-19 v7.0.34 / cache v311 — セーブ「読めない状態」の防止策（誤上書き防止・再読み込みボタン・起動時の再試行）
+- **背景**: iPhoneのホーム画面アプリで、起動直後に `localStorage.getItem` が一時的に null を返し、保存メニューが空（「まだ遠征の記録はありません」）に見えた（データは残っていた）。この状態でニューゲームや削除をすると既存セーブが本当に消える穴があった。
+- **仕組み（`save-slots.js`）**: 別キー `game_studio_ironsquad_save_seen_v1` に「このオリジンに保存が存在した印」を持つ。セーブが1件以上ある一覧を書いた／読んだときに付ける（更新前から使っている人も最初の成功読込で付く）。`probe()` は 'ok'（キーあり）／'empty'（キー無し・印無し＝本当の初回）／'unreadable'（キー無しなのに印あり）を返す。
+- **1. 書き込みの保護**: 'unreadable' のとき `create`／`delete` は `code:'SAVE_UNREADABLE'` の例外（「保存を読み込めない可能性があるため、中止しました…」）、`update`／`updateBackground`／`writeSlots`（全書き込みの最終防壁）は false/failed を返し、何も書かない。バックグラウンド保存の確定時にもキー不在なら中止。本当の初回（印無し）は従来どおり作成できる。最後の1件を削除しても `[]` のキーが残るので 'unreadable' にはならない。
+- **2. 保存メニュー（`index.js` `showSaveMenu`/`renderSaveUnreadable`）**: 空表示になる場面で 'unreadable' なら「読み込めませんでした。…」と「再読み込み」ボタン（押すと再試行して再描画）を表示。ニューゲーム送信・作成確定時も同じ案内で中止。誤判定で閉じ込められないよう「記録なしとして続ける」（確認ダイアログ付き、印を消す）も用意。本当の初回は従来の文言のまま。
+- **3. 再試行**: `saveSlots.settle()` が約160ms間隔で最大6回（約1秒）読み直す。`showSaveMenu`（起動時の最初の表示もこれ）は 'unreadable' なら「保存を確認しています…」を出して settle してから再描画する（無限ループしないよう再描画は `settled:true`）。
+- **バージョン**: sw-assets `v310→v311`／gameVersion `7.0.33→7.0.34`。`save-slots.js?v=311`（index・supply-rules）、`supply-rules.js?v=311`（battle-log・hero-party・index・ranged-combat・squad-hp-hud）。
+- **テスト**: `save-unreadable-v7034.test.mjs`（初回は通常動作・読込で書込0／unreadableで list 空・書込0・create/delete/update/バックグラウンドが拒否され保存が無傷・復帰／settle が約1秒で諦める・回復で戻る／印なしの既存セーブが初回読込で印付き→保護／脱出口／最後の1件の削除）、`save-unreadable-menu-v7034.test.mjs`（JSDOM: 初回の文言／確認中→再読み込みUI／ニューゲーム拒否／再読み込みで復帰）。既存の save-list-guard・save-capacity 等は無修正で通過。
 ## 2026-10-19 v7.0.33 / cache v310 — 観戦中の倍速を待機（休憩）中も維持する／カジノ「今回の収支」が国家の再構築で0に戻る不具合の修正
 
 - **ユーザー要望**: 「観戦中休憩に入ると倍速が1倍に戻るのを維持するに直して。まだテスト中」。

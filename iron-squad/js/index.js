@@ -81,7 +81,7 @@ import { KNOCK_RULES, knockbackDistance, knockFlight, slamDamage, knockTransferD
 import { MELEE_SOUND_STYLES, playMeleeSound, playRangedSound, playMagicSound, playImpactSound } from './weapon-sounds.js?v=294';
 import {emptyRescueBonuses,normalizeRescueBonuses,rescueBonusSummary} from './rescue-rewards.js?v=264';
 import {drawFieldCivilian} from './civilian-visuals.js?v=295';
-import { saveSlots,profileSaveCompletions,requestPersistentSaves } from './save-slots.js?v=285';
+import { saveSlots,profileSaveCompletions,requestPersistentSaves } from './save-slots.js?v=311';
 import { soldierDialogue } from './soldier-dialogue.js?v=295';
 import { generateSoldierName, migrateSoldierName, rollGenderByKey, isGenderId, ensureSoldierGender, genderLabel } from './soldier-names.js?v=210';
 import { openCommanderEditor } from './commander-editor.js?v=306';
@@ -89,7 +89,7 @@ import { applyCommanderIdentity, normalizeCommanderIdentity, commanderFullName, 
 import {MAGIC_CLASSES,MAGIC_AFFINITIES,classHpScale,magicMethods,isMage,isMagicUser,ensureMana,initializeMagic,updateMagic,distributeMagicStones,castMedicBuff,castCasterStrength,updateMageAI,drawMagicBursts,spendMana,weaponMagicDamage,isPlayerCaster,castPlayerSpell,PLAYER_MAGIC_RULES} from './magic-rules.js?v=296';
 import {hazardMethods,updateHazards,drawHazards} from './hazard-fields.js?v=277';
 import {strongEnemyReward,killXpFloor,killExpWithFloor} from './combat-rewards.js?v=299';
-import {supplyMethods, initializeSupplies, updateSupplies, takeRangedShot, ammoCombatProfile, isRangedUnit, distributeAmmo, preventLethalHit, normalizeFieldSave, SQUAD_POTION_COST, REVIVAL_POTION_COST, REVIVAL_POTION_MAX, SQUAD_POTION_MAX, ensureAmmo, ammoCapacity, recalcAmmoCapacity, RANGED_DAMAGE_MULT, supplyLocation} from './supply-rules.js?v=305';
+import {supplyMethods, initializeSupplies, updateSupplies, takeRangedShot, ammoCombatProfile, isRangedUnit, distributeAmmo, preventLethalHit, normalizeFieldSave, SQUAD_POTION_COST, REVIVAL_POTION_COST, REVIVAL_POTION_MAX, SQUAD_POTION_MAX, ensureAmmo, ammoCapacity, recalcAmmoCapacity, RANGED_DAMAGE_MULT, supplyLocation} from './supply-rules.js?v=311';
 import { bindPadTap } from './pad-tap.js?v=276';
 import { POCKET_POTION, pocketPotionLabel, tickPocketPotion } from './pocket-potion.js?v=305';
 import { updateSpectate, spectateCameraTarget, clearSpectate, updateSpectateQueue, spectateSteps, spectateSpeed, fieldSpectating } from './hero-spectate.js?v=310';
@@ -1933,7 +1933,28 @@ export const IronSquadGame = {
     }, 3800);
   },
 
-  showSaveMenu() {
+  // v7.0.34: shown when the save store reads as missing although saves existed before (a transient iOS read failure).
+  // The saves are very likely still there, so offer an immediate retry instead of the "no records" text.
+  renderSaveUnreadable(list,reason='') {
+    list.textContent='';
+    const box=document.createElement('div');box.className='save-unreadable';box.setAttribute('role','alert');
+    const message=document.createElement('p');
+    message.textContent=`${reason?reason+'\n':''}読み込めませんでした。保存した遠征は消えていないことがあります。「再読み込み」でもう一度読み取ります。`;
+    message.style.whiteSpace='pre-line';
+    const retry=document.createElement('button');retry.type='button';retry.id='btn-save-reload';retry.className='action-btn';retry.textContent='再読み込み';
+    retry.addEventListener('click',()=>{
+      retry.disabled=true;retry.textContent='読み込み中…';
+      saveSlots.settle().then(()=>this.showSaveMenu({settled:true}));
+    });
+    const forget=document.createElement('button');forget.type='button';forget.id='btn-save-forget';forget.className='action-btn secondary';forget.textContent='記録なしとして続ける';
+    forget.addEventListener('click',()=>{
+      if(!window.confirm('保存が本当に無いと確認できた場合だけ続けてください。\n既存の記録があっても、新しい遠征で上書きされるおそれがあります。\n\n記録なしとして続けますか？'))return;
+      saveSlots.forgetSaveMark();this.showSaveMenu({settled:true});
+    });
+    box.append(message,retry,forget);list.append(box);
+  },
+
+  showSaveMenu({settled=false}={}) {
     this.saveGame({immediate:true});stopAutoSave(this);
     this._merchantShopClose?.();
     this.stopGameLoop();
@@ -1965,9 +1986,22 @@ export const IronSquadGame = {
         </div>
       </section>`;
     const list=this.saveMenu.querySelector('#save-slot-list');
+    // v7.0.34: a missing save key with the "saves existed" mark is retried for about 1 s before it is trusted as empty.
+    const settling=!settled&&!this._saveSettling&&saveSlots.probe()==='unreadable';
+    if(settling){
+      this._saveSettling=true;list.textContent='保存を確認しています…';
+      saveSlots.settle().then(()=>{
+        this._saveSettling=false;
+        if(this.saveMenu&&!this.saveMenu.classList.contains('hidden'))this.showSaveMenu({settled:true});
+      });
+    }
     try {
-      const slots=saveSlots.list().sort((a,b)=>b.savedAt-a.savedAt);
-      if (!slots.length) list.textContent='まだ遠征の記録はありません。ニューゲームから出発できます。';
+      const slots=settling?[]:saveSlots.list().sort((a,b)=>b.savedAt-a.savedAt);
+      if (settling) {/* waiting for the retry above */}
+      else if (!slots.length) {
+        if (saveSlots.probe()==='unreadable') this.renderSaveUnreadable(list);
+        else list.textContent='まだ遠征の記録はありません。ニューゲームから出発できます。';
+      }
       for(const slot of slots) {
         const card=document.createElement('article');card.className='save-card';card.dataset.saveSlot=slot.id;
         if(slot.id===this.activeSlotId){card.classList.add('save-card-active');const active=document.createElement('p');active.className='save-active-mark';active.textContent='● 今プレイ中';card.append(active);}
@@ -2017,6 +2051,7 @@ export const IronSquadGame = {
     } catch(error) { list.textContent=error.message; }
     this.saveMenu.querySelector('#new-expedition-form').addEventListener('submit',e=>{
       e.preventDefault();
+      if(saveSlots.probe()==='unreadable'){this.renderSaveUnreadable(list,'新しい遠征の作成を中止しました。');return;}
       try {
         const expeditionName=this.saveMenu.querySelector('#expedition-name').value;
         // v4.2.24: 遠征の名前のあと、隊長づくり。ここで戻れば遠征はまだ作られない。
@@ -2027,7 +2062,7 @@ export const IronSquadGame = {
               const slot=saveSlots.create(expeditionName);
               if(!saveSlots.update(slot.id,{commander:identity}))throw new Error('隊長の記録を保存できませんでした。');
               this.selectSaveSlot(slot.id);
-            } catch(error) { list.textContent=error.message; }
+            } catch(error) { if(error?.code==='SAVE_UNREADABLE')this.renderSaveUnreadable(list,error.message);else list.textContent=error.message; }
           }});
       } catch(error) { list.textContent=error.message; }
     });
