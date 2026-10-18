@@ -121,7 +121,7 @@ import {
   SHARED_BOX_MAX_TIER, SCOUT_COST_BY_TALENT, defaultDonateAmount, donatePresetAmounts, fundLadderAmounts, formatFundKanji, normalizeFundAmount, EQUIPMENT_SLOTS
 } from './economy-rules.js?v=301';
 
-import { EQUIPMENT_TYPES, saleValue, equippedIds, canSell, lowValueIds, chooseLootTier, distanceScaling, shrineUpgradeCap, compareEquipment, equipmentComparisonHtml, equipmentScore, compareEquipmentStrength, rollWeaponTraits, weaponCombatProfile, attackSpeedState, attackCooldown, attackSpeedLabel, soldierAttackCooldown, evaluateMeleeSweetSpot, isGodRollProtected, zoneRingPower, zoneRingLabelJa, equipmentIcon, equipmentName } from './equipment-rules.js?v=301';
+import { EQUIPMENT_TYPES, saleValue, equippedIds, canSell, lowValueIds, chooseLootTier, distanceScaling, shrineUpgradeCap, compareEquipment, equipmentComparisonHtml, equipmentScore, compareEquipmentStrength, rollWeaponTraits, weaponCombatProfile, attackSpeedState, attackCooldown, attackSpeedLabel, soldierAttackCooldown, evaluateMeleeSweetSpot, isGodRollProtected, zoneRingPower, zoneRingLabelJa, equipmentIcon, equipmentName } from './equipment-rules.js?v=303';
 import {planBulkUpgrade,bulkUpgradeSummary,bulkUpgradeButtonsHtml} from './bulk-upgrade.js?v=301';
 import { rollFieldBrute, advanceDemonWarband, stepDemonWarbandGroup } from './field-hosts.js?v=182';
 import {
@@ -4415,10 +4415,10 @@ export const IronSquadGame = {
   equipmentComparisonFor(unit,item,current,{inherit=false,warning='',title='',cache=true}={}) {
     const totalsOf=gear=>{try{const r=this.equipmentTotalsFor(unit,gear,{cache});return r?{before:r.base||r.before,after:r.after}:null;}catch(e){return null;}};
     const currentName=current?equipmentName(current):'未装備';
-    const plain=compareEquipment(item,current,{totals:totalsOf(item)});
+    const plain=compareEquipment(item,current,{totals:totalsOf(item),unit});
     if(!inherit||!current||(current.upgrade||0)<=(item.upgrade||0))return {primary:plain,plain:null,previewItem:null,html:equipmentComparisonHtml(plain,{title,currentName})};
     const previewItem=structuredClone(item);applyUpgradeStats(previewItem,current.upgrade);
-    const primary=compareEquipment(previewItem,current,{totals:totalsOf(previewItem)});
+    const primary=compareEquipment(previewItem,current,{totals:totalsOf(previewItem),unit});
     return {primary,plain,previewItem,html:equipmentComparisonHtml(primary,{plain,title,currentName,basis:`✨+${current.upgrade}引継後`,warning})};
   },
   enforceWeaponRequirements() {
@@ -9026,7 +9026,7 @@ export const IronSquadGame = {
       // 通常乗り換え: 外した装備は必ずバッグへ戻す（以前装備していても未保護なら売却可）
       if (!this.inventory) this.inventory = [];
       if (!this.inventory.some(i => i.id === curItem.id)) this.inventory.push(curItem);
-      const cmp = compareEquipment(item, curItem, {totals: this.equipmentTotalsFor(this.player, item)});
+      const cmp = compareEquipment(item, curItem, {totals: this.equipmentTotalsFor(this.player, item), unit: this.player});
       const tag = item.forgeTag ? `【${item.forgeTag}】` : '';
       this.showToast(`着替え ${equipmentName(item)}${tag}｜${cmp.label}｜${cmp.reasonText}`);
     }
@@ -10352,12 +10352,12 @@ export const IronSquadGame = {
     const protectedIds=equippedIds(this.equipped,[...this.squad,...(this.reserves||[])]);
     const selected=[...new Map((this.inventory||[]).filter(i=>this.selectedSaleIds.has(i.id)&&canSell(i,protectedIds)).map(i=>[i.id,i])).values()];
     this.selectedSaleIds=new Set(selected.map(i=>i.id));
-    toolbar.innerHTML=`<summary><span class="sale-menu-title">売却メニュー</span><span class="sale-selection-total"> · 選択${selected.length}個 / ${selected.reduce((n,i)=>n+saleValue(i),0)}G</span></summary><p>装備中・保護中の品は対象外。「弱い余剰」は未強化の下位互換を選択します。選択数と売却額を確認してください。</p>`;
+    toolbar.innerHTML=`<summary><span class="sale-menu-title">売却メニュー</span><span class="sale-selection-total"> · 選択${selected.length}個 / ${selected.reduce((n,i)=>n+saleValue(i),0)}G</span></summary><p>装備中・保護中の品は対象外。「弱い余剰」は、同じ部位に装備画面で「強くなる」と判定される品があり、それを誰かが装備できる下位品を選びます（強化済みも含む）。選択数と売却額を確認してください。</p>`;
     const tier=document.createElement('select');tier.setAttribute('aria-label','余剰選択のTier上限');
     for(let n=1;n<=GENERATION_COUNT*4;n++){const option=document.createElement('option');option.value=n;option.textContent=`T${n}以下`;tier.append(option);}tier.value=this.saleMaxTier||2;
     tier.onchange=()=>{this.saleMaxTier=Number(tier.value);};
     const choose=document.createElement('button');choose.textContent='弱い余剰を選択';
-    choose.onclick=()=>{this.selectedSaleIds=new Set(lowValueIds(this.inventory||[],this.equipped,[...this.squad,...(this.reserves||[])],Number(tier.value)));this.renderStrategyUI();};
+    choose.onclick=()=>{this.selectedSaleIds=new Set(lowValueIds(this.inventory||[],this.equipped,[...this.squad,...(this.reserves||[])],Number(tier.value),{commander:this.player,canUse:canUseEquipment}));this.renderStrategyUI();};
     const clear=document.createElement('button');clear.textContent='選択解除';clear.onclick=()=>{this.selectedSaleIds.clear();this.renderStrategyUI();};
     const sell=document.createElement('button');sell.textContent=`選択 ${selected.length}個を売却 · ${selected.reduce((sum,i)=>sum+saleValue(i),0)}G`;sell.disabled=!selected.length;
     sell.className='sell-selected';

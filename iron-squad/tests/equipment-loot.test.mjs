@@ -24,7 +24,7 @@ assert.deepEqual(game.sellInventoryItems(game.inventory.map(i=>i.id)),{count:2,v
 assert.equal(game.gold,76);assert.ok(game.inventory.includes(favorite));assert.ok(game.inventory.includes(reserved));assert.ok(game.inventory.includes(orb));assert.ok(game.inventory.includes(better));
 // Keep the best candidate per type, protected pieces, and enhanced items.
 const best=item('best','HELMET',2),copy=item('copy','HELMET',2),weak=item('weak','HELMET'),enhanced=item('enhanced','HELMET',1,1);
-assert.deepEqual(lowValueIds([best,copy,weak,enhanced],{},[],2),['copy','weak']);
+assert.deepEqual(lowValueIds([best,copy,weak,enhanced],{},[],2),['copy','weak','enhanced']);
 assert.deepEqual(lowValueIds([best],{},[{equipped:{helmet:item('soldierBest','HELMET',3)}}],2),[]);
 assert.equal(compareEquipment(best,weak).label,'強くなる');assert.equal(compareEquipment(weak,best).label,'弱くなる');
 assert.equal(compareEquipment({stats:{atk:10,def:5}},{stats:{atk:5,def:10}}).label,'一長一短');

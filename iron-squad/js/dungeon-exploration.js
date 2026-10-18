@@ -1,5 +1,5 @@
 import {explorationLayout,dungeonSegmentOpen} from './dungeon-layout.js?v=182';
-import {chooseLootTier} from './equipment-rules.js?v=301';
+import {chooseLootTier} from './equipment-rules.js?v=303';
 import {drawTreasureChest} from './loot-visuals.js?v=295';
 import {rollTreasureLoot} from './crafting-rules.js?v=298';
 import {receiveTreasure} from './treasure-receipt.js?v=295';

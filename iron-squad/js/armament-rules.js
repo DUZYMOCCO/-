@@ -1,4 +1,4 @@
-import {weaponCombatProfile,meleeSweetSpotFor,soldierAttackCooldown} from './equipment-rules.js?v=301';
+import {weaponCombatProfile,meleeSweetSpotFor,soldierAttackCooldown} from './equipment-rules.js?v=303';
 import {masteryReloadMult,applyMasteryToCombatProfile,isHeavyWeaponStyle} from './growth-rules.js?v=295';
 import {MAX_EQUIPMENT_TIER,GENERATION_COUNT,tierNumber,powerRank,tierDescription} from './equipment-tiers.js?v=231';
 import {canUseEquipment} from './weapon-requirements.js?v=298';

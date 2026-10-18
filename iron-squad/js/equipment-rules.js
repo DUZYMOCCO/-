@@ -1,6 +1,8 @@
 import {campaignScaling} from './campaign-scaling.js?v=241';
-import {soldierCombatTempo,usesSoldierTempo} from './unit-attributes.js?v=298';
-import {requiredDefenseStrength} from './defense-equipment.js?v=298';
+import {soldierCombatTempo,usesSoldierTempo,attributeFamily,canChannelWeaponMagic} from './unit-attributes.js?v=298';
+import {requiredDefenseStrength,canUseEquipmentBarrier} from './defense-equipment.js?v=298';
+import {isMagicUser} from './magic-rules.js?v=296';
+import {isMagicWeapon} from './weapon-requirements.js?v=298';
 import {shieldReductionPct} from './equipment-effects.js?v=301';
 import {powerRank,MAX_EQUIPMENT_TIER,GENERATIONS} from './equipment-tiers.js?v=231';
 import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=182';
@@ -50,17 +52,24 @@ export function canSell(item, protectedIds) {
   return !!item && !item.heroOnly && EQUIPMENT_TYPES.includes(item.type) && !item.favorite && !protectedIds.has(item.id);
 }
 
-const atLeastAsGood = (better, worse) => {
-  if(requiredDefenseStrength(better)>requiredDefenseStrength(worse))return false;
-  const keys=new Set([...Object.keys(better.stats || {}),...Object.keys(worse.stats || {})]);
-  return [...keys].every(key=>Number(better.stats?.[key] || 0)>=Number(worse.stats?.[key] || 0));
-};
-
-export function lowValueIds(inventory, playerEquipment, soldiers, maxTier=2) {
+const statValue=(item,key)=>Number(item?.stats?.[key]||0);
+/** Every stat of `better` is at least that of `worse` (requirements are not looked at). */
+const dominates=(better,worse)=>[...new Set([...Object.keys(better.stats||{}),...Object.keys(worse.stats||{})])].every(key=>statValue(better,key)>=statValue(worse,key));
+const CASTER_ONLY_STATS=['barrier','magicBonus','healBonus','magicAttack'];
+/**
+ * v7.0.26: 「弱い余剰」= 同じ部位に、装備画面と同じ判定で「強くなる」品があり、その品を誰か（隊長・隊員・予備兵）が装備できるときの下位品。
+ * - 比較は強化値込みの実効値（item.stats）。強化+1/+2の下位品も対象。装備中・☆保護・ヒーロー専用・異質/神鍛/ドロップ/クラフト限定は対象外（ティア上限は従来どおり）。
+ * - options.canUse(unit,item) と options.commander を渡すと、上位品を装備できる人の兵種で比較する（効かない項目は判定に入れない）。
+ *   渡さない場合は個体の数値だけで比べ、上位品の必要筋力が下位品より高ければ基準にしない。
+ * - 魔力補正・回復補正・バリア・魔法攻撃が下位品のほうが高く、それが効く兵種の人が下位品を使えるなら残す（ローブを重鎧の理由で売らない）。
+ * - 弱い順に処理し、すでに選んだ品は基準にしない。同等品は装備中・隊長装備・バッグ内で先に出る品を残す。部位が空になることはない。
+ */
+export function lowValueIds(inventory, playerEquipment, soldiers, maxTier=2, options={}) {
   const protectedIds=equippedIds(playerEquipment,soldiers);
   const bag = inventory || [];
-  // Dominance pool = 隊長の現装備 + バッグ。過去に装備したことがあるかは一切見ない。
-  // 除外は「いま装備中」(protectedIds) と「☆保護」(favorite) のみ。
+  const canUse=typeof options?.canUse==='function'?options.canUse:null;
+  const units=canUse?[options.commander,...(soldiers||[])].filter(Boolean):[];
+  // 比較の基準 = 隊長の現装備 + バッグ。過去に装備したことがあるかは一切見ない。
   const refs = [];
   const seen = new Set();
   for (const it of [...Object.values(playerEquipment || {}), ...bag]) {
@@ -68,22 +77,41 @@ export function lowValueIds(inventory, playerEquipment, soldiers, maxTier=2) {
     seen.add(it.id);
     refs.push(it);
   }
-  return bag.filter((item, bagIndex) => {
-    if (!canSell(item, protectedIds)) return false;
-    if (isGodRollProtected(item)) return false; // 異質/神鍛: never auto-select for bulk sell
-    if ((item.tier || 1) > maxTier) return false;
-    if (item.upgrade > 0) return false;
-    return refs.some(other => {
-      if (!other || other.id === item.id || other.type !== item.type) return false;
-      if (!atLeastAsGood(other, item)) return false;
-      // 厳密に上位、または other が現装備中、またはバッグ内で先に出現する同等品
-      if (!atLeastAsGood(item, other)) return true;
-      if (protectedIds.has(other.id)) return true;
-      const otherBagIndex = bag.findIndex(i => i && i.id === other.id);
-      if (otherBagIndex < 0) return true; // other は隊長装備のみ（バッグ外）→ 余剰側を売ってよい
-      return otherBagIndex < bagIndex;
-    });
-  }).map(item => item.id);
+  const usable=new Map();
+  const canUseBy=(unit,item)=>{const key=units.indexOf(unit)+'|'+item.id;if(!usable.has(key))usable.set(key,!!canUse(unit,item));return usable.get(key);};
+  const bagIndexOf=id=>bag.findIndex(i=>i&&i.id===id);
+  const survivesTie=(other,item,itemIndex)=>{
+    if(protectedIds.has(other.id))return true;
+    const otherIndex=bagIndexOf(other.id);
+    return otherIndex<0||otherIndex<itemIndex;
+  };
+  const candidates=bag.map((item,index)=>({item,index})).filter(({item})=>canSell(item,protectedIds)&&!isGodRollProtected(item)&&(item.tier||1)<=maxTier)
+    .sort((x,y)=>compareEquipmentStrength(y.item,x.item)); // 弱い順
+  const selected=new Set();
+  for(const {item,index} of candidates){
+    if(selected.has(item.id))continue;
+    // 下位品を使える人にとって、残すべき特化性能（バリア・魔力・回復）が上位品に無い
+    const keepsCasterEdge=other=>CASTER_ONLY_STATS.some(key=>statValue(item,key)>statValue(other,key)&&(canUse
+      ?units.some(unit=>canUseBy(unit,item)&&!ineffectiveStatKeys(unit,item,other).has(key))
+      :true));
+    const beaten=other=>{
+      if(!other||other.id===item.id||other.type!==item.type||other.heroOnly||selected.has(other.id))return false;
+      if(item.type==='WEAPON'&&weaponStyleOf(other)!==weaponStyleOf(item))return false;
+      if(keepsCasterEdge(other))return false;
+      const holders=canUse?units.filter(unit=>canUseBy(unit,other)):[null];
+      if(!holders.length)return false;
+      if(!canUse&&requiredDefenseStrength(other)>requiredDefenseStrength(item))return false;
+      return holders.some(unit=>{
+        const options=unit?{unit,verdictOnly:true}:{verdictOnly:true};
+        const forward=compareEquipment(other,item,options).kind,back=compareEquipment(item,other,options).kind;
+        if(forward==='better')return back!=='better'||survivesTie(other,item,index);
+        if(forward==='equal'&&back==='equal'&&dominates(other,item))return !dominates(item,other)||survivesTie(other,item,index);
+        return false;
+      });
+    };
+    if(refs.some(beaten))selected.add(item.id);
+  }
+  return bag.filter(item=>selected.has(item.id)).map(item=>item.id);
 }
 
 function materialLootWeights(distance, kind='normal') {
@@ -227,7 +255,29 @@ function judgeAxis(change,totals) {
   const weights=EQUIPMENT_JUDGE.weights,weight=weights[key]??weights.other,rate=clampRate(raw);
   return {key,label:change.label,delta,raw,rate,weight,score:rate*weight,text,major:MAJOR_STATS.has(key),significant:Math.abs(rate)>=EQUIPMENT_JUDGE.ignoreBelow};
 }
-/** 装備乗り換え時の性能差。label/kind は既存互換（kind: better/worse/mixed/equal）。options.totals で「装備した後の合計値」を渡すと総合値で判定する。 */
+const MEDIC_CLASSES=['MEDIC','HIGH_PRIEST','SAINT','ARCHANGEL'];
+/**
+ * v7.0.26: stats that do nothing for this unit (shown dimmed as 「(効果なし)」, left out of the judgement and the headline reasons).
+ * - barrier: only commander / mage (not muscle mage) / medic lines (canUseEquipmentBarrier).
+ * - magicAttack / magicBonus: only for units that cast or channel magic. The commander casts only while holding a staff or wand
+ *   (when a weapon is being compared, the weapon on either side of the swap counts).
+ * - healBonus: only for units with healing power.
+ */
+export function ineffectiveStatKeys(unit,candidate=null,current=null) {
+  const out=new Set();
+  if(!unit)return out;
+  if(!canUseEquipmentBarrier(unit))out.add('barrier');
+  const commander=!!(unit.isPlayer||unit.isHero)||attributeFamily(unit)==='COMMANDER';
+  let magic;
+  if(commander){
+    const weapons=candidate?.type==='WEAPON'||current?.type==='WEAPON'?[candidate,current].filter(i=>i?.type==='WEAPON'):[unit.equipped?.weapon||unit.weapon];
+    magic=weapons.some(isMagicWeapon);
+  } else magic=isMagicUser(unit)||MEDIC_CLASSES.includes(unit.combatClass||unit.soldierClass)||canChannelWeaponMagic(unit);
+  if(!magic){out.add('magicAttack');out.add('magicBonus');}
+  if(!(Number(unit.healPower)>0)&&!MEDIC_CLASSES.includes(unit.combatClass||unit.soldierClass))out.add('healBonus');
+  return out;
+}
+/** 装備乗り換え時の性能差。label/kind は既存互換（kind: better/worse/mixed/equal）。options.totals で「装備した後の合計値」を渡すと総合値で判定する。options.unit を渡すと、その兵士に効かない項目（バリア・魔力補正など）は表示だけ残して判定から外す。options.verdictOnly は判定だけ返す（売却の一括判定用）。 */
 export function compareEquipment(candidate,current,options={}) {
   const axes=candidate?.type==='WEAPON'||current?.type==='WEAPON';
   const cappedStats=item=>({...item?.stats,...(item?.type!=='WEAPON'&&item?.stats?.atkSpeed!=null?{atkSpeed:Math.min(60,item.stats.atkSpeed)}:{}),...(item?.stats?.blockChance!=null?{blockChance:shieldReductionPct(item.stats.blockChance)}:{})});
@@ -237,11 +287,13 @@ export function compareEquipment(candidate,current,options={}) {
     const ia=STAT_ORDER.indexOf(a), ib=STAT_ORDER.indexOf(b);
     return (ia<0?99:ia)-(ib<0?99:ib);
   });
+  const ignored=options?.unit?ineffectiveStatKeys(options.unit,candidate,current):new Set();
   const changes=ordered.map(key=>{
     const before=Number(beforeStats[key]||0);
     const after=Number(afterStats[key]||0);
     return {
       key,
+      ineffective:ignored.has(key),
       label:STAT_LABELS[key]||key,
       delta:after-before,
       before,
@@ -250,8 +302,9 @@ export function compareEquipment(candidate,current,options={}) {
     };
   }).filter(c=>c.delta!==0&&c.key!=='swingSpeed'); // Animation tempo is not combat performance.
   const totals=options?.totals&&options.totals.before&&options.totals.after?options.totals:null;
-  const judged=changes.map(c=>judgeAxis(c,totals));
-  judged.forEach((j,i)=>{changes[i].significant=j.significant;changes[i].rate=j.rate;});
+  const live=changes.filter(c=>!c.ineffective),judged=live.map(c=>judgeAxis(c,totals));
+  judged.forEach((j,i)=>{live[i].significant=j.significant;live[i].rate=j.rate;});
+  changes.filter(c=>c.ineffective).forEach(c=>{c.significant=false;c.rate=0;});
   const ups=judged.filter(j=>j.significant&&j.score>0),downs=judged.filter(j=>j.significant&&j.score<0);
   const gain=ups.reduce((s,j)=>s+j.score,0),loss=-downs.reduce((s,j)=>s+j.score,0),net=gain-loss,D=EQUIPMENT_JUDGE;
   let kind;
@@ -262,12 +315,13 @@ export function compareEquipment(candidate,current,options={}) {
   else if(net>0)kind=gain>loss*D.dominance?'better':'mixed';
   else kind=loss>gain*D.dominance?'worse':'mixed';
   const label={better:'強くなる',worse:'弱くなる',mixed:'一長一短',equal:'ほぼ同じ'}[kind];
-  // Old rule (any single up and any single down = mixed): kept only for the shared-box absorption, which must not change.
-  const rawUp=changes.some(c=>c.delta>0),rawDown=changes.some(c=>c.delta<0);
+  const rawUp=live.some(c=>c.delta>0),rawDown=live.some(c=>c.delta<0);
   const legacyKind=rawUp&&rawDown?'mixed':rawUp?'better':rawDown?'worse':'equal';
+  if(options?.verdictOnly)return {label,kind,legacyKind,changes,score:net,gain,loss};
+  // Old rule (any single up and any single down = mixed): kept only for the shared-box absorption, which must not change.
   const text=changes.map(c=>{
     const arrow=c.delta>0?'↑':'↓';
-    return `${c.label} ${arrow} ${formatDeltaDisplay(c.key,c.delta)} (${formatStatDisplay(c.key,c.before)}→${formatStatDisplay(c.key,c.after)})`;
+    return `${c.label} ${arrow} ${formatDeltaDisplay(c.key,c.delta)} (${formatStatDisplay(c.key,c.before)}→${formatStatDisplay(c.key,c.after)})${c.ineffective?' (効果なし)':''}`;
   }).join(' · ') || '能力差なし';
   const html=changes.length
     ? changes.map(c=>{
@@ -275,25 +329,26 @@ export function compareEquipment(candidate,current,options={}) {
         const arrow=c.delta>0?'↑':'↓';
         const crit=c.critical?' stat-delta-crit':'';
         const minor=c.significant?'':' stat-delta-minor';
-        return `<span class="stat-delta-line ${cls}${crit}${minor}">${c.label} ${arrow} <strong>${formatDeltaDisplay(c.key,c.delta)}</strong> <span class="stat-delta-range">(${formatStatDisplay(c.key,c.before)}→${formatStatDisplay(c.key,c.after)})</span>${c.significant?'':' <span class="stat-delta-range">ほぼ変わらず</span>'}</span>`;
+        return `<span class="stat-delta-line ${cls}${crit}${minor}">${c.label} ${arrow} <strong>${formatDeltaDisplay(c.key,c.delta)}</strong> <span class="stat-delta-range">(${formatStatDisplay(c.key,c.before)}→${formatStatDisplay(c.key,c.after)})</span>${c.ineffective?' <span class="stat-delta-range">(効果なし)</span>':c.significant?'':' <span class="stat-delta-range">ほぼ変わらず</span>'}</span>`;
       }).join('')
     : '<span class="stat-delta-equal">能力差なし</span>';
   // Headline reasons: attack / defense / HP first, then by size. At most three.
   const reasons=[...ups,...downs].sort((a,b)=>(b.major-a.major)||Math.abs(b.score)-Math.abs(a.score)).slice(0,3);
-  const reasonText=reasons.length?reasons.map(r=>`${r.label} ${r.text}`).join('・'):changes.length?'どの項目も変化は小さめ':'能力差なし';
+  const reasonText=reasons.length?reasons.map(r=>`${r.label} ${r.text}`).join('・'):!changes.length?'能力差なし':live.length?'どの項目も変化は小さめ':'この兵士に効く項目の差はなし';
   const reasonHtml=reasons.length?reasons.map(r=>`<span class="${r.score>0?'stat-delta-up':'stat-delta-down'}">${r.label} <strong>${r.text}</strong></span>`).join('<span class="cmp-sep">・</span>'):`<span class="stat-delta-equal">${reasonText}</span>`;
   const shortText=[...ups,...downs].sort((a,b)=>(b.major-a.major)||Math.abs(b.score)-Math.abs(a.score)).slice(0,3).map(r=>`${r.label}${r.score>0?'↑':'↓'}`).join(' ');
-  return {label,text,html,changes,kind,legacyKind,score:net,gain,loss,basis:totals?'total':'item',reasons:reasons.map(r=>({key:r.key,label:r.label,text:r.text,up:r.score>0})),reasonText,reasonHtml,shortText};
+  return {label,text,html,changes,kind,legacyKind,ineffectiveKeys:changes.filter(c=>c.ineffective).map(c=>c.key),score:net,gain,loss,basis:totals?'total':'item',reasons:reasons.map(r=>({key:r.key,label:r.label,text:r.text,up:r.score>0})),reasonText,reasonHtml,shortText};
 }
 
 /** Comparison card: verdict on one big line, the main reasons on one line, every stat folded, the "swap as-is" result small underneath. */
 export function equipmentComparisonHtml(primary,{plain=null,basis='',warning='',title='',currentName=''}={}) {
   const esc=s=>String(s??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
   const note=primary.basis==='total'?'判定：装備した後の合計値（攻撃・防御・HP・移動）と、各項目の変化率。2%未満の差は数えません。':'判定：この装備の数値の変化率。2%未満の差は数えません。';
+  const dimmed=primary.ineffectiveKeys?.length?'「(効果なし)」はこの兵士に効かない項目で、判定に入れていません。':'';
   const plainRow=plain?`<div class="cmp-plain">そのまま替えた場合：<strong class="cmp-${plain.kind}">${plain.label}</strong><span class="cmp-plain-reason"> ${esc(plain.shortText||plain.reasonText)}</span></div>`:'';
   return `<div class="equipment-comparison cmp-card ${primary.kind}">${title?`<div class="cmp-title equip-cmp-head">${esc(title)}</div>`:''}<div class="cmp-verdict"><strong class="cmp-label cmp-${primary.kind}">${primary.label}</strong>${basis?`<span class="cmp-basis">${basis}</span>`:''}${warning?`<span class="cmp-warning">${warning}</span>`:''}</div>`
     +(currentName?`<div class="cmp-current">現在：${esc(currentName)}</div>`:'')
-    +`<div class="cmp-reason">${primary.reasonHtml}</div><details class="cmp-details"><summary>全項目の差</summary><div class="stat-delta-block">${primary.html}</div><small class="cmp-note">${note}</small></details>${plainRow}</div>`;
+    +`<div class="cmp-reason">${primary.reasonHtml}</div><details class="cmp-details"><summary>全項目の差</summary><div class="stat-delta-block">${primary.html}</div><small class="cmp-note">${note}${dimmed}</small></details>${plainRow}</div>`;
 }
 
 export function equipmentScore(item) {
