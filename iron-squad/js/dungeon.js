@@ -279,7 +279,7 @@ export const DUNGEON_DEFS = [
     theme: 'demon',
     reqDef: 800,
     reqLv: 40,
-    desc: '最果ての外縁にそびえる魔王の居城。城主『深淵魔王ヴァルドール』はHP10億。伝説職級の挑戦者のみが挑め。',
+    desc: '最果ての外縁にそびえる魔王の居城。城主『深淵魔王ヴァルドール』は挑む隊長と直属の戦力に合わせて強くなる。強攻撃は防御を無視する最大HP割合ダメージ。伝説職級の挑戦者のみが挑め。',
     entrance: { x: CENTER + 42000, y: CENTER + 42000, radius: 64 },
     width: 3200,
     height: 2000,
@@ -302,7 +302,7 @@ export const DUNGEON_DEFS = [
       speed: 54,
       skillCooldown: 3.2,
       skillName: 'アビスメテオ',
-      desc: 'HP10億と破格の攻撃力。黒炎の天墜で部隊を一掃する魔王！'
+      desc: '入場した戦力に合わせて強くなる魔王。強攻撃は防御無視の最大HP割合ダメージ（保護がなければ2発で倒れる）。アビスメテオは範囲内の全員の最大HPを削る！'
     },
     mobTypes: ['wyvern', 'colossal_dragon', 'orc'],
     mobCount: 28,

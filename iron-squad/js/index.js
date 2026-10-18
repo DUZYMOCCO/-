@@ -149,12 +149,13 @@ import { clusterRescueMarkers } from './rescue-markers.js?v=182';
 import {visibleHeroMembers,heroMembers} from './hero-rules.js?v=302';
 import {updateHeroJournal} from './hero-journal.js?v=302';
 import {applyHeroEquipmentUpgrade} from './hero-equipment.js?v=295';
-import {initializeHeroJourney,rollHeroRevelation,serializeHeroJourney,updateHeroParty,updateHeroFollowing,awardHeroBattle,recordDemonKingDefeat,ensureHeroCastle,syncHeroCastle,renderHeroJourney,drawHeroMarks} from './hero-party.js?v=302';
+import {initializeHeroJourney,rollHeroRevelation,serializeHeroJourney,updateHeroParty,updateHeroFollowing,awardHeroBattle,recordDemonKingDefeat,ensureHeroCastle,prepareCastleVisit,syncHeroCastle,renderHeroJourney,drawHeroMarks} from './hero-party.js?v=304';
+import {DEMON_KING_RULES,demonKingStatsFor,shapeDemonKing,percentBaseDamage} from './demon-king-rules.js?v=304';
 import {updateSquadHpHud} from './squad-hp-hud.js?v=295';
 import {addBattleReport,normalizeBattleReport,renderBattleReport} from './battle-report.js?v=302';
 import {updateRescueAssistance,handleRescueAssistance} from './rescue-assistance.js?v=295';
 import { RESCUE_TIMEOUT, REVIVAL_COOLDOWN, revivalCooldownOf, revivalSkillCooldownLeft, normalizeRevivalSkill, headquartersRevivalPaused, rescueUnits, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, receiveTownCargo, leaveCivilianSpace, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, buildTransportRescueAssign, markSoldierDown, downCommander, commanderDown, updateNpcRescue, CIV_KINDS, isMedic, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST, medicHoldsByCommander, isMerchantCasualty } from './casualty-rules.js?v=295';
-import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault, dungeonBlocks, dungeonSolids } from './dungeon.js?v=297';
+import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault, dungeonBlocks, dungeonSolids } from './dungeon.js?v=304';
 import {nearestDungeonFloor,dungeonSpawnPoint,dungeonSteeringTarget} from './dungeon-layout.js?v=182';
 import {normalizeDungeonExploration,updateDungeonSideChests,drawDungeonSideChests,updateDungeonRespawns,dungeonCoolingDown,recordDungeonClear,DUNGEON_RESET_PHASES} from './dungeon-exploration.js?v=295';
 import {
@@ -7354,6 +7355,28 @@ export const IronSquadGame = {
             }
             this.spawnDamageText(m.x, m.y - 45, '✨ミシックレーザー!', '#06b6d4');
             sound.playLaser();
+          } else if (m.type === 'demon_king') {
+            // v7.0.27: アビスメテオ！ 300px内の全員に最大HPの割合ダメージ（魔法防御・結界・各軽減で減る）
+            this.screenShake = 0.5;
+            const meteorTargets = [this.player, ...aliveSquad.filter(s => !s.isDown)];
+            for (const tgt of meteorTargets) {
+              if (!tgt || tgt.dead || Math.hypot(tgt.x - m.x, tgt.y - m.y) > DEMON_KING_RULES.aoeRadius) continue;
+              this.damageTarget(tgt, m.atk * 1.5, {attacker:m, damageKind:'magic', pctMax:m.aoePct || DEMON_KING_RULES.aoePct});
+            }
+            this.spawnDamageText(m.x, m.y - 45, '☄️アビスメテオ!', '#a855f7');
+            this.spawnSparks(m.x, m.y, '#a855f7', 30);
+            sound.playBomb();
+          } else if (m.type === 'demon_king') {
+            // v7.0.27: アビスメテオ！ 300px内の全員に最大HPの割合ダメージ（魔法防御・結界・各軽減で減る）
+            this.screenShake = 0.5;
+            const meteorTargets = [this.player, ...aliveSquad.filter(s => !s.isDown)];
+            for (const tgt of meteorTargets) {
+              if (!tgt || tgt.dead || Math.hypot(tgt.x - m.x, tgt.y - m.y) > DEMON_KING_RULES.aoeRadius) continue;
+              this.damageTarget(tgt, m.atk * 1.5, {attacker:m, damageKind:'magic', pctMax:m.aoePct || DEMON_KING_RULES.aoePct});
+            }
+            this.spawnDamageText(m.x, m.y - 45, '☄️アビスメテオ!', '#a855f7');
+            this.spawnSparks(m.x, m.y, '#a855f7', 30);
+            sound.playBomb();
           }
         }
       }
@@ -7376,7 +7399,7 @@ export const IronSquadGame = {
         if (m.atkTimer <= 0) {
           m.atkTimer = m.attackInterval||1.0;
           if (target && target.hp !== undefined) {
-            this.damageTarget(target, m.atk, {attacker:m});
+            this.damageTarget(target, m.atk, {attacker:m,pctMax:m.strikePct||0});
             if(m.cleaveRadius){let swept=0;for(const unit of [this.player,...raidDefenders]){
               if(unit===target||unit.dead||unit.isDown||unit.hp<=0||Math.hypot(unit.x-target.x,unit.y-target.y)>m.cleaveRadius||Math.hypot(unit.x-m.x,unit.y-m.y)>reach+m.cleaveRadius||coverBlocked(this,m,unit))continue;
               this.damageTarget(unit,Math.round(m.atk*.65),{attacker:m});if(++swept>=2)break;
@@ -7876,6 +7899,9 @@ export const IronSquadGame = {
     if(!environmental && !covered && options.attacker && coverBlocked(this, options.attacker, target))return;
     if(!environmental)recordCombat(target);
     const magical=options.damageKind==='magic'||options.damageKind==='elemental'||!!options.element;
+    // v7.0.27: pctMax = 防御を無視した「最大HPの割合」ダメージ（魔王の強攻撃・アビスメテオ）。保護（かばう・サンクチュアリ・結界・各軽減）は通常どおり効く。被弾成長は元の攻撃の強さで計算する（割合ダメージで成長が暴走しない）。
+    const pct=!environmental&&options.pctMax>0?options.pctMax:0,growthStrength=rawDmg;
+    if(pct)rawDmg=percentBaseDamage(target,pct,magical);
     const dodgeChance=target.dodge ?? (target.soldierClass==='BLADEMASTER'?25:0);
     if (!environmental && !covered && dodgeChance>0 && Math.random()*100 < dodgeChance) {
       practiceAttribute(target,'evasion',1);
@@ -7890,7 +7916,7 @@ export const IronSquadGame = {
     const merchantCover=merchantEscortCover(this,target,rawDmg,options);
     const cv = merchantCover || tankCover(this, target, rawDmg, options);
     if (cv) {
-      this.damageTarget(cv.guardian, cv.share, {...options, cover: true});
+      this.damageTarget(cv.guardian, cv.share, {...options, cover: true, pctMax: 0});
       rawDmg = cv.rest;
       const coveredActor=merchantCover?cv.guardian:target;
       this.spawnDamageText(coveredActor.x, coveredActor.y - 24, '🛡️みがわり!', '#38bdf8');
@@ -7905,7 +7931,7 @@ export const IronSquadGame = {
     }
 
     const defVal = magical ? (target.magicDef || 0) : (target.def || 0);
-    const defFactor = environmental&&!magical?1:100 / (100 + defVal * 1.2);
+    const defFactor = pct||(environmental&&!magical)?1:100 / (100 + defVal * 1.2);
     let reduction = !environmental&&target.dmgReduction ? Math.min(0.40, target.dmgReduction / 100) : 0;
     let dmg = Math.max(1, Math.round(rawDmg * defFactor * (1 - reduction)));
 
@@ -7937,9 +7963,9 @@ export const IronSquadGame = {
     if(target.magicWardTimer>0)dmg=Math.max(1,Math.round(dmg*(1-(target.magicWardBonus||0))));
     const barrier=absorbEquipmentBarrier(target,dmg,magical);dmg=barrier.damage;
     if(barrier.absorbed>0)this.spawnDamageText(target.x,target.y-26,`結界 −${Math.ceil(barrier.absorbed)}`,'#90b9c5');
-    if(!(dmg>0)){if(!environmental)this.trainFromHit(target,rawDmg);return;} // 結界が全部受けた: 赤い数字・被弾音なし。ただし攻撃は受けたので鍛錬は進む
-    if(covered){dmg=Math.min(dmg,target.hp-1);if(!(dmg>0)){if(!environmental)this.trainFromHit(target,rawDmg);return;}} // かばいでは倒れない（HP1で止まっても鍛錬は進む）
-    if(preventLethalHit(this,target,dmg)){if(!environmental)this.trainFromHit(target,rawDmg);return;} // 致命傷防止でも鍛錬は進む
+    if(!(dmg>0)){if(!environmental)this.trainFromHit(target,pct?growthStrength:rawDmg);return;} // 結界が全部受けた: 赤い数字・被弾音なし。ただし攻撃は受けたので鍛錬は進む
+    if(covered){dmg=Math.min(dmg,target.hp-1);if(!(dmg>0)){if(!environmental)this.trainFromHit(target,pct?growthStrength:rawDmg);return;}} // かばいでは倒れない（HP1で止まっても鍛錬は進む）
+    if(preventLethalHit(this,target,dmg)){if(!environmental)this.trainFromHit(target,pct?growthStrength:rawDmg);return;} // 致命傷防止でも鍛錬は進む
     if(magical)practiceAttribute(target,'magicDefense',1+Math.min(4,rawDmg/Math.max(1,target.maxHp||1)));
     const hpBeforeHit = target.hp, lostHp = Math.min(dmg, Math.max(0, hpBeforeHit));
     target.hp -= dmg;
@@ -7948,7 +7974,7 @@ export const IronSquadGame = {
     sound.playHurt(target.x,target.y);
 
     // 被弾によるHP成長（防御・軽減・結界の前の攻撃の強さに比例する絶対値・上限なし。重装はDEFも）
-    if (!environmental) this.trainFromHit(target, rawDmg);
+    if (!environmental) this.trainFromHit(target, pct?growthStrength:rawDmg);
 
     if (target !== this.player && target.hp > 0 && !target.isDown && target.hp / target.maxHp <= 0.3) {
       this.dialogue?.trigger(target, 'LOW_HP');
@@ -8430,7 +8456,7 @@ export const IronSquadGame = {
     }
     this.settleTerrain();
     updateLimitedAllies(this);
-    if(dungeonDef.id==='dungeon_demon_castle'&&this.heroJourney){const scene=ensureHeroCastle(this,dungeonDef);this.monsters=scene.monsters;this.dungeonVault=scene.vault;}
+    if(dungeonDef.id==='dungeon_demon_castle'&&this.heroJourney){const scene=prepareCastleVisit(this,dungeonDef);this.monsters=scene.monsters;this.dungeonVault=scene.vault;}
     this.settleTerrain();
     this.refreshInvasionUI();
     this.updateStatsUI();
@@ -8546,7 +8572,7 @@ export const IronSquadGame = {
     const useFixed = !!(bossDef && bossDef.fixedStats);
     const hp = useFixed ? Math.round(bossDef.hp) : Math.round(bossDef.hp * Math.max(1, scaling.hp * 0.75));
     const atk = useFixed ? Math.round(bossDef.atk) : Math.round(bossDef.atk * Math.max(1, scaling.atk * 0.75));
-    return {
+    const boss = {
       type: bossDef.type,
       name: bossDef.name,
       title: bossDef.title,
@@ -8574,6 +8600,8 @@ export const IronSquadGame = {
       atkTimer: 0,
       hitPulse: 0
     };
+    if (bossDef.type === 'demon_king') shapeDemonKing(boss, demonKingStatsFor(this)); // v7.0.27: sized to the sortie force (or the strong default), %HP strike + meteor
+    return boss;
   },
 
   openDungeonVault() {
@@ -8776,7 +8804,7 @@ export const IronSquadGame = {
     // ⛩️ ダンジョンボス討伐時の至宝解錠判定
     if (monster.isDemonKing) {
       recordDemonKingDefeat(this,isPlayer?this.player:attacker);
-      this.showToast(`😈👑【魔王討伐！！】『${monster.name || '魔王'}』を撃破！約1000万規模の脅威を打ち破った！`);
+      this.showToast(`😈👑【魔王討伐！！】『${monster.name || '魔王'}』を撃破！戦力に応じて強くなる最強の脅威を打ち破った！`);
     }
     if (monster.isDungeonBoss) {
       sound.playHighScore();

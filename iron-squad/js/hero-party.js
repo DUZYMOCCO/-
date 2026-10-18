@@ -5,7 +5,8 @@ import {migrateCampaignEnemy} from './campaign-scaling.js?v=241';
 import {HERO_RULES,heroRevelationPhase,nextHeroRevelationPhase,heroPartyActive,heroMembers,heroSharesSpace,visibleHeroMembers} from './hero-rules.js?v=302';
 import {advanceHeroRoute,heroSegmentOpen,heroRouteCurrent} from './hero-navigation.js?v=295';
 import {WORLD_SIZE,settleUnit,fieldRockExit} from './world.js?v=289';
-import {DUNGEON_DEFS,dungeonBlocks} from './dungeon.js?v=297';
+import {DUNGEON_DEFS,dungeonBlocks} from './dungeon.js?v=304';
+import {DEMON_KING_RULES,recordKingProfile,shapeDemonKing,migrateDemonKing} from './demon-king-rules.js?v=304';
 import {nearestDungeonFloor} from './dungeon-layout.js?v=182';
 import {economicFieldBlocked} from './regional-economy.js?v=277';
 import {RECRUIT_CLASSES} from './recruitment.js?v=295';
@@ -28,7 +29,7 @@ const ready=u=>u&&!u.dead&&!u.isDown&&u.hp>0;
 export function initializeHeroJourney(game,saved=null) {
   game.heroJourney=saved?structuredClone(saved):{lastRollPhase:0,sequence:0,party:null,history:[],demonKingDefeat:null,castleScene:null};
   const journey=game.heroJourney;journey.history||=[];journey.sequence||=0;
-  for(const m of journey.castleScene?.monsters||[])migrateCampaignEnemy(m,castle().distance,game.phase||1);
+  for(const m of journey.castleScene?.monsters||[]){migrateCampaignEnemy(m,castle().distance,game.phase||1);if(m.isDemonKing)migrateDemonKing(m,game);} // v7.0.27: the saved king becomes the new king (HP fraction kept)
   let equipped=false;
   for(const u of heroMembers(game)){delete u._cachedEnemy;normalizeRevivalSkill(game,u);if(grantHeroEquipment(game,u))equipped=true;game.recalcSoldierStats(u);if(u.isDown)u.hp=0;}
   if(equipped)recordHeroEquipmentGrant(game,journey.party);
@@ -81,7 +82,7 @@ export function evaluateHeroWithdrawal(game,p){
 }
 export function withdrawHeroParty(game,p,idle=HERO_RULES.stagnationPhases){
   if(!p||p.status==='withdrawn')return;
-  p.status='withdrawn';p.members.forEach(u=>{delete u._cachedEnemy;});
+  p.status='withdrawn';p.members.forEach(u=>{delete u._cachedEnemy;});homeDemonKing(game);
   archiveHeroJournal(game,p,'撤退',`魔王城から撤退。${idle}期のあいだ進展がなかった。`);
   if(game.heroFollowing){game.heroFollowing=false;delete game._heroFollowPath;}
   announceHero(game,`勇者【${p.name}】のパーティは魔王城から撤退した。`);
@@ -111,6 +112,19 @@ function enterHeroCastle(game,p) {
   p.members.forEach((u,i)=>{u.x=200-i*10;u.y=d.height/2+(i-2)*22;delete u._cachedEnemy;});
   if(game.currentDungeon?.id===d.id){scene.monsters=game.monsters;scene.vault=game.dungeonVault;}
   game.showToast?.(`勇者【${p.name}】のパーティが魔王城へ突入した！`);
+}
+/** The king walks back to his throne once nobody is left to hunt (unless the commander is standing in the castle right now). */
+export function homeDemonKing(game,{force=false}={}) {
+  const d=castle(),king=game.heroJourney?.castleScene?.monsters?.find(m=>m.isDemonKing);
+  if(!king||(!force&&game.currentDungeon?.id===d.id))return;
+  king.x=d.width-350;king.y=d.height/2;king.atkTimer=0;king.skillTimer=king.skillCooldown;delete king._cachedTarget;delete king.returningHome;
+}
+/** Commander enters the castle: snapshot the sortie force (it only ratchets up), size the king, put him on his throne if no hero is fighting there. */
+export function prepareCastleVisit(game,d=castle()) {
+  const j=game.heroJourney;if(j)recordKingProfile(game);
+  const scene=ensureHeroCastle(game,d),king=scene.monsters.find(m=>m.isDemonKing);
+  if(king&&j){shapeDemonKing(king,j.kingProfile,{raiseOnly:true});const p=j.party;if(!(p&&p.status!=='withdrawn'&&p.status!=='fallen'&&p.space===d.id))homeDemonKing(game,{force:true});}
+  return scene;
 }
 export function ensureHeroCastle(game,d=castle()) {
   const j=game.heroJourney;if(j.castleScene){
@@ -170,11 +184,11 @@ function move(game,ctx,u,target,dt) {
 function nearest(list,u,limit=Infinity){let found=null,dist=limit;for(const v of list){if(!ready(v))continue;const d=Math.hypot(u.x-v.x,u.y-v.y);if(d<dist){dist=d;found=v;}}return found;}
 function stepHiddenEnemies(ctx,p,dt) {
   for(const m of [...ctx.monsters]){
-    const target=nearest(p.members,m,800);if(!target)continue;
+    const hunt=!!m.isDemonKing&&p.space===castle().id,target=nearest(p.members,m,hunt?Infinity:800);if(!target)continue; // v7.0.27: the king hunts the party through the whole castle
     const ranged=RANGED_ENEMIES[m.rangedKind||m.type],reach=ranged?.range||m.attackReach||(m.radius||12)*.8,dist=Math.hypot(m.x-target.x,m.y-target.y);
-    if(dist>reach)move(ctx,ctx,m,target,dt);
-    else {m.atkTimer=(m.atkTimer||0)-dt;if(m.atkTimer<=0){m.atkTimer=ranged?.interval||m.attackInterval||1;ctx.damageTarget(target,m.atk,{attacker:m,damageKind:ranged?.kind,element:ranged?.element});}}
-    if(m.isDemonKing){m.skillTimer=(m.skillTimer??m.skillCooldown)-dt;if(m.skillTimer<=0){m.skillTimer=m.skillCooldown;for(const u of p.members)if(ready(u)&&Math.hypot(u.x-m.x,u.y-m.y)<300)ctx.damageTarget(u,m.atk*1.5,{attacker:m,damageKind:'magic'});}}
+    if(dist>reach){if(hunt){const speed=m.speed;m.speed=Math.max(speed||0,DEMON_KING_RULES.huntSpeed);move(ctx,ctx,m,target,dt);m.speed=speed;}else move(ctx,ctx,m,target,dt);}
+    else {m.atkTimer=(m.atkTimer||0)-dt;if(m.atkTimer<=0){m.atkTimer=ranged?.interval||m.attackInterval||1;ctx.damageTarget(target,m.atk,{attacker:m,damageKind:ranged?.kind,element:ranged?.element,pctMax:m.strikePct||0});}}
+    if(m.isDemonKing){m.skillTimer=(m.skillTimer??m.skillCooldown)-dt;if(m.skillTimer<=0){m.skillTimer=m.skillCooldown;for(const u of p.members)if(ready(u)&&Math.hypot(u.x-m.x,u.y-m.y)<DEMON_KING_RULES.aoeRadius)ctx.damageTarget(u,m.atk*1.5,{attacker:m,damageKind:'magic',pctMax:m.aoePct||DEMON_KING_RULES.aoePct});}}
   }
 }
 export function updateHeroParty(game,dt,classes) {
@@ -184,7 +198,7 @@ export function updateHeroParty(game,dt,classes) {
   // Shared-space bleeding/rescue is already ticked by the ordinary battlefield.
   if(!shared)updateWounded(ctx,dt);
   const living=p.members.filter(u=>!u.dead),fighters=living.filter(ready);
-  if(!living.length){p.status='fallen';archiveHeroJournal(game,p,'全滅');announceHero(game,`勇者【${p.name}】のパーティは全滅した。`);return;}
+  if(!living.length){p.status='fallen';homeDemonKing(game);archiveHeroJournal(game,p,'全滅');announceHero(game,`勇者【${p.name}】のパーティは全滅した。`);return;}
   if(trackHeroProgress(game,p,dt))return;
   p.status=j.demonKingDefeat?'victorious':fighters.length?(p.space==='field'?'marching':'castle'):'down';
   if(!fighters.length)return;
