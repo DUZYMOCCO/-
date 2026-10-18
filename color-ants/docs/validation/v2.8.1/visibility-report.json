@@ -1,0 +1,84 @@
+{
+  "version": "2.8.1",
+  "fixture": "penguin photo-like residual art, prepared in disposable storage; not the exact photographed save",
+  "errors": [],
+  "layouts": [
+    {
+      "name": "small",
+      "width": 320,
+      "height": 568,
+      "guideFits": true,
+      "guideVisible": true,
+      "markers": [
+        "1",
+        "3"
+      ],
+      "countsClear": true
+    },
+    {
+      "name": "landscape",
+      "width": 844,
+      "height": 390,
+      "guideFits": true,
+      "guideVisible": true,
+      "markers": [
+        "1",
+        "3"
+      ],
+      "countsClear": true
+    }
+  ],
+  "legacy": {
+    "states": [
+      "blocked",
+      "empty",
+      "blocked"
+    ],
+    "markers": [
+      "1",
+      "3"
+    ],
+    "guide": "番号の点線＝内側 · 斜線＝ふさぐ色 · タップは戻す消費",
+    "exposedWingCells": 156,
+    "eyeCells": 38,
+    "wallColors": [
+      "white"
+    ]
+  },
+  "current": {
+    "states": [
+      "ready",
+      "empty",
+      "blocked"
+    ],
+    "markers": [
+      "3"
+    ],
+    "guide": "番号の点線＝内側 · 斜線＝ふさぐ色 · タップは戻す消費",
+    "ants": 18,
+    "navyTargets": [
+      "outline"
+    ],
+    "after": "active"
+  },
+  "enclosed": {
+    "states": [
+      "blocked",
+      "empty",
+      "blocked"
+    ],
+    "markers": [
+      "1",
+      "3"
+    ],
+    "guide": "番号の点線＝内側 · 斜線＝ふさぐ色 · タップは戻す消費",
+    "eyeParts": 2,
+    "wallColors": [
+      "belly"
+    ],
+    "unchanged": true,
+    "cacheReused": true,
+    "drawn": true,
+    "version": "2.8.1"
+  }
+}

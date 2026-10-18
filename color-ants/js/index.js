@@ -5,19 +5,26 @@
 import { sound } from '../../common/js/audio.js?v=151';
 import { loadCss } from '../../common/js/load-css.js';
 import { storage } from '../../common/js/storage.js';
-import { PICTURE_DEFS, buildPicture, countByKey, paintPicture, SIZE } from './pictures.js?v=10';
-import { mulberry32, buildTiles, textColorFor, difficultyFor } from './puzzle.js?v=10';
-import { Colony, shade } from './colony.js?v=10';
-import { ColonyRenderer } from './renderer.js?v=10';
-import { playNibble, stopNibbles, NIBBLE_GAP } from './soft-audio.js?v=10';
+import { PICTURE_DEFS, buildPicture, countByKey, paintPicture, SIZE } from './pictures.js?v=12';
+import { mulberry32, buildTiles, textColorFor, difficultyFor } from './puzzle.js?v=13';
+import { Colony, shade } from './colony.js?v=13';
+import { ColonyRenderer } from './renderer.js?v=13';
+import { playNibble, stopNibbles } from './soft-audio.js?v=11';
 
 const SAVE_KEY = 'color_ants_v2';
+const GAME_VERSION = '2.8.1';
 const COLS = 5;
 const VISIBLE_DEPTH = 4; // 画面上に表示するタイルの深さ（手前4段）
+const SLOT_LABELS = {
+  ready: ['準備', '出撃準備中'], active: ['', '出撃中'], collecting: ['回収中', '回収中'],
+  queued: ['順番待ち', '同じ色のアリが外郭を回収中・空いたら自動で出撃'],
+  blocked: ['外郭待ち', 'この色へ通じる外郭がまだ開いていません・開いたら自動で出撃'],
+  done: ['', '回収完了'],
+};
 
 export default {
   prepare() {
-    return loadCss(new URL('../css/color-ants.css?v=10', import.meta.url).href);
+    return loadCss(new URL('../css/color-ants.css?v=13', import.meta.url).href);
   },
 
   init(container, onBackToHub) {
@@ -29,7 +36,6 @@ export default {
     this.running = true;
     this.cleared = false;
     this.stuck = false;
-    this.audioCd = 0;
     this.lastDelivered = -1;
     this.lw = 0;
     this.lh = 0;
@@ -55,7 +61,7 @@ export default {
         <header class="ca-header">
           <button class="ca-btn ca-back" id="ca-back" aria-label="工房にもどる">‹</button>
           <div class="ca-title">
-            <span class="ca-brand">COLOR ANTS</span>
+            <span class="ca-brand">COLOR ANTS <small class="ca-version">${GAME_VERSION}</small></span>
             <span class="ca-level" id="ca-level">Level 1</span>
             <span class="ca-pct" id="ca-pct">運んだ 0 / 0</span>
           </div>
@@ -106,7 +112,7 @@ export default {
 
           <!-- タイル列（手前4段） -->
           <div class="ca-tiles" id="ca-tiles"></div>
-          <div class="ca-guide">外郭から食べよう · 待機タップも「もどす」消費</div>
+          <div class="ca-guide" id="ca-guide">外郭から食べよう · 待機タップも「もどす」消費</div>
         </div>
 
         <!-- トースト通知 -->
@@ -152,6 +158,7 @@ export default {
     this.progressText = q('#ca-progress-text');
     this.pictureNameEl = q('#ca-picture-name');
     this.trayHint = q('#ca-tray-hint');
+    this.guideEl = q('#ca-guide');
     this.speedBtn = q('#ca-speed');
     this.restartBtn = q('#ca-restart');
     this.modal = q('#ca-modal');
@@ -238,7 +245,6 @@ export default {
 
   startLevel() {
     stopNibbles(sound);
-    this.audioCd = 0;
     const def = PICTURE_DEFS[(this.level - 1) % PICTURE_DEFS.length];
     const picture = buildPicture(def);
     const rng = mulberry32(this.level * 7919 + 13);
@@ -403,28 +409,59 @@ export default {
         slotEl.setAttribute('aria-label', `空き出撃枠 ${si + 1}`);
       } else {
         const hex = slot.hex;
-        const isWaiting = slot.left === slot.initial && slot.activeAnts === 0;
-        slotEl.className = 'ca-slot active' + (isWaiting ? ' waiting' : ' running');
+        slotEl.className = 'ca-slot active';
         slotEl.style.setProperty('--c', hex);
         slotEl.style.setProperty('--d', shade(hex, 0.62));
         slotEl.style.setProperty('--t', textColorFor(hex));
         const pct = Math.round((slot.left / slot.initial) * 100);
         slotEl.style.setProperty('--p', String(pct));
-        slotEl.setAttribute('aria-label', `${slot.left}匹 ${isWaiting ? '待機中・もどすを1回使って戻す' : '出撃中'}`);
 
         slotEl.innerHTML = `
           <div class="ca-slot-bar"></div>
           <span class="ca-slot-num">${slot.left}</span>
-          ${isWaiting ? '<span class="ca-slot-badge">待機</span>' : ''}
+          <span class="ca-slot-badge" hidden></span>
+          <span class="ca-slot-cue" aria-hidden="true" hidden></span>
         `;
-
-        if (isWaiting && slot.colIndex >= 0) {
-          slotEl.title = 'もどすを1回使って戻す';
-          slotEl.addEventListener('click', () => this.cancelSlot(si));
-        }
+        this.syncSlotState(slotEl, slot);
+        // Keep eligibility live: the slot may leave waiting state without being rebuilt.
+        slotEl.addEventListener('click', () => {
+          const current = this.colony.slots[si];
+          if (current && current.left === current.initial && current.activeAnts === 0 && current.colIndex >= 0) this.cancelSlot(si);
+        });
       }
       this.slotsEl.appendChild(slotEl);
     }
+    this.syncWaitingGuide();
+  },
+
+  syncSlotState(el, slot) {
+    const state = this.colony.slotState(slot), [badge, description] = SLOT_LABELS[state];
+    const canReturn = slot.left === slot.initial && slot.activeAnts === 0 && slot.colIndex >= 0;
+    const label = `${slot.left}匹 ${description}${canReturn ? '・もどすを1回使って戻せます' : ''}`;
+    if (el.getAttribute('aria-label') !== label) el.setAttribute('aria-label', label);
+    el.title = label;
+    const cue = el.querySelector('.ca-slot-cue');
+    const cueId = state === 'blocked' ? this.colony.slots.findIndex(s => s && s.key === slot.key && this.colony.slotState(s) === 'blocked') + 1 : 0;
+    cue.hidden = !cueId;
+    if (cueId) {
+      cue.textContent = String(cueId);
+      el.setAttribute('aria-description', `絵の番号${cueId}と同じ場所が待機中。点線がこの色、斜線がふさいでいる色です。`);
+    } else el.removeAttribute('aria-description');
+    if (el.dataset.state !== state) {
+      el.dataset.state = state;
+      el.classList.toggle('has-status', !!badge);
+      el.classList.toggle('waiting', state === 'blocked');
+      el.classList.toggle('queued', state === 'queued');
+      el.classList.toggle('running', state === 'active' || state === 'collecting');
+      const b = el.querySelector('.ca-slot-badge');
+      b.textContent = badge; b.hidden = !badge;
+    }
+  },
+
+  syncWaitingGuide() {
+    const blocked = this.colony.slots.some(s => s && this.colony.slotState(s) === 'blocked');
+    const text = blocked ? '番号の点線＝内側 · 斜線＝ふさぐ色 · タップは戻す消費' : '外郭から食べよう · 待機タップも「もどす」消費';
+    if (this.guideEl.textContent !== text) this.guideEl.textContent = text;
   },
 
   /** アリの出撃・帰還に応じてスロットの数値を更新 */
@@ -463,23 +500,9 @@ export default {
         el.style.setProperty('--p', String(pct));
       }
 
-      const isWaiting = slot.left === slot.initial && slot.activeAnts === 0;
-      const label = `${slot.left}匹 ${isWaiting ? '待機中・もどすを1回使って戻す' : '出撃中'}`;
-      if (el.getAttribute('aria-label') !== label) el.setAttribute('aria-label', label);
-      if (isWaiting !== el.classList.contains('waiting')) {
-        el.classList.toggle('waiting', isWaiting);
-        el.classList.toggle('running', !isWaiting);
-        const badge = el.querySelector('.ca-slot-badge');
-        if (isWaiting && !badge) {
-          const b = document.createElement('span');
-          b.className = 'ca-slot-badge';
-          b.textContent = '待機';
-          el.appendChild(b);
-        } else if (!isWaiting && badge) {
-          badge.remove();
-        }
-      }
+      this.syncSlotState(el, slot);
     }
+    this.syncWaitingGuide();
   },
 
   /** 手前4段のタイルを5列描画 */
@@ -625,13 +648,8 @@ export default {
     if (!this.running) return;
     const dt = Math.min(0.05, (time - this.lastTime) / 1000);
     this.lastTime = time;
-    this.audioCd = Math.max(0, this.audioCd - dt);
-
     const eaten = this.colony.update(dt, this.speedMul);
-    if (eaten > 0 && this.audioCd <= 0) {
-      playNibble(sound);
-      this.audioCd = NIBBLE_GAP;
-    }
+    if (eaten > 0) playNibble(sound);
 
     this.updateSlots();
     this.updateCounter();

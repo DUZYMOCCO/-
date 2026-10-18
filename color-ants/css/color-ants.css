@@ -27,6 +27,7 @@
 .color-ants-container *, .color-ants-container *::before, .color-ants-container *::after { box-sizing: border-box; }
 .color-ants-container button { font-family: inherit; font-weight: inherit; line-height: 1; cursor: pointer; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
 .color-ants-container button:focus-visible { outline: 3px solid #278eab; outline-offset: 3px; }
+.ca-version { font-size: 7px; letter-spacing: .2px; opacity: .75; margin-left: 2px; white-space: nowrap; }
 .color-ants-container button:active:not(:disabled) { transform: translateY(2px) scale(.97); }
 .ca-header {
   flex: none;
@@ -80,6 +81,11 @@
 .ca-slot-num { position: relative; font-size: 19px; font-weight: 950; font-variant-numeric: tabular-nums; text-shadow: 0 1px 1px #0003; }
 .ca-slot.waiting { box-shadow: inset 0 2px 0 #fff9, 0 0 0 2px #ffe99d; }
 .ca-slot-badge { position: absolute; bottom: 1px; right: 2px; padding: 1px 3px; border-radius: 3px; background: #40301dc9; color: #fff2b9; font-size: 7px; line-height: 1.1; }
+.ca-slot-badge[hidden] { display: none; }
+.ca-slot-cue { position: absolute; top: 2px; left: 3px; width: 11px; height: 11px; display: grid; place-items: center; background: #fffbed; border: 1px solid #237d76; border-radius: 50%; color: #236f69; font-size: 8px; line-height: 1; pointer-events: none; }
+.ca-slot-cue[hidden] { display: none; }
+.ca-slot.queued .ca-slot-badge { background: #45685c; color: #fff9e8; }
+.ca-slot.has-status .ca-slot-num { align-self: flex-start; margin-top: 1px; font-size: 14px; line-height: 1; }
 .ca-tiles { order: 1; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; padding: 3px 9px 0; }
 .ca-col { display: flex; flex-direction: column; align-items: center; gap: 5px; }
 .ca-tile { position: relative; width: 100%; height: 32px; border: 1.5px solid var(--d, #8c6d99); border-bottom-width: 4px; border-radius: 8px; color: var(--t, #fff); background: linear-gradient(145deg, #ffffff55, #fff0 60%), var(--c, #a68abc); box-shadow: inset 0 2px 0 #ffffff8c, inset -2px 0 0 #0000000a, 0 3px 2px #8f653121; display: flex; align-items: center; justify-content: center; font-size: 16px !important; font-weight: 950 !important; font-variant-numeric: tabular-nums; text-shadow: 0 1px 1px #0003; padding: 0; }
@@ -133,6 +139,8 @@
   .ca-tile { height: 26px; font-size: 15px !important; border-radius: 8px; }
   .ca-col { gap: 5px; }
   .ca-slot { height: 28px; }
+  .ca-slot.has-status .ca-slot-num { font-size: 12px; }
+  .ca-slot-badge { font-size: 6px; padding: 0 2px; }
   .ca-boost-icon { height: 34px; width: 38px; font-size: 24px; }
   .ca-boost-btn { min-height: 49px; }
   .ca-boosters { padding-top: 7px; margin-top: 0; }
@@ -145,6 +153,7 @@
   .ca-progress-label { font-size: 9px; margin-bottom: 3px; }
   .ca-panel { gap: 5px; padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px)); }
   .ca-slot { height: 26px; }
+  .ca-slot.has-status .ca-slot-num { font-size: 11px; }
   .ca-tray-head { padding-bottom: 3px; }
   .ca-col { gap: 4px; }
   .ca-tile { height: 23px; font-size: 13px !important; border-radius: 6px; }

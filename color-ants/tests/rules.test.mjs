@@ -35,6 +35,132 @@ test('splitCount keeps the total and every part is at least 1', () => {
   }
 });
 
+test('paint shading stays intact while shade variants share the same food color', () => {
+  for (const def of PICTURE_DEFS) {
+    const pic = buildPicture(def), original = def.draw();
+    for (let i = 0; i < pic.pixels.length; i++) {
+      const p = pic.pixels[i];
+      assert.equal(p.paintKey, original[i]);
+      assert.equal(p.hex, def.palette[original[i]], `${def.id}: original artwork changed`);
+      assert(def.palette[p.key], `${def.id}: unknown food color ${p.key}`);
+    }
+    assert.equal(Object.values(countByKey(pic.pixels)).reduce((a, b) => a + b, 0), original.filter(k => k !== 'bg').length);
+  }
+  for (const [id, variants] of [
+    ['watermelon', ['rind', 'rind2', 'rind3']], ['watermelon', ['red', 'red2', 'red3']],
+    ['chick', ['yel', 'yel2', 'yel3', 'wing']], ['owl', ['feather', 'wing', 'eyeRim']],
+    ['castle', ['stone', 'stoneLight', 'mortar', 'door']],
+  ]) {
+    const pic = buildPicture(PICTURE_DEFS.find(d => d.id === id));
+    const colors = new Set(pic.pixels.filter(p => variants.includes(p.paintKey)).map(p => p.key));
+    assert.equal(colors.size, 1, `${id}: lighting must not create a different food color`);
+  }
+});
+
+test('a yellow ant can collect both nearly identical chick wing shades through exterior routes', () => {
+  const pic = buildPicture(PICTURE_DEFS.find(d => d.id === 'chick'));
+  // Keep the actual wing/yellow-shadow art cells; clear surrounding food to expose this region.
+  for (const p of pic.pixels) if (!['wing', 'yel3'].includes(p.paintKey)) { p.isBg = true; p.eaten = true; }
+  const colony = new Colony(); colony.reset(pic); colony.setLayout(LAYOUT);
+  assert.equal(new Set(colony.targetPixels.map(p => p.paintKey)).size, 2);
+  const slot = colony.deploy('yel', pic.palette.yel, colony.total);
+  assert.equal(colony.slotState(slot), 'ready');
+  for (let i = 0; i < 10000 && colony.busy; i++) colony.update(1 / 30, 2);
+  assert.equal(colony.delivered, colony.total);
+  assert(colony.targetPixels.every(p => p.eaten));
+});
+
+function redPocket({ gap = false } = {}) {
+  const pic = blockedPicture();
+  for (const p of pic.pixels) {
+    p.isBg = p.gx < 29 || p.gx > 33 || p.gy < 29 || p.gy > 33;
+    p.eaten = p.isBg;
+    p.key = p.isBg ? 'bg' : p.gx === 31 && (p.gy === 33 || p.gy === (gap ? 31 : 32)) ? 'red' : 'blue';
+  }
+  return pic;
+}
+
+function penguinPhoto({ legacy = false, wingsGone = false } = {}) {
+  const pic = buildPicture(PICTURE_DEFS.find(d => d.id === 'penguin'));
+  for (const p of pic.pixels) {
+    if (legacy) p.key = p.paintKey;
+    if (['coat', 'ice'].includes(p.paintKey) || p.paintKey === 'beak' && p.gy > 50 || wingsGone && p.paintKey === 'outline') {
+      p.isBg = true; p.eaten = true;
+    }
+  }
+  return pic;
+}
+
+test('penguin photo: old navy eyes are blocked while wings are exposed, and grouped navy can depart', () => {
+  const old = new Colony(); old.reset(penguinPhoto({ legacy: true }));
+  const eyes = old.deploy('eye', '#26374d', 21);
+  assert.equal(old.slotState(eyes), 'blocked');
+  assert(old.targetPixels.some(p => p.paintKey === 'outline' && old.isExposed(p)), 'the visible outer navy wings really are reachable');
+  const current = new Colony(); current.reset(penguinPhoto()); current.setLayout(LAYOUT);
+  const navy = current.deploy('outline', '#354c69', 21);
+  assert.equal(current.slotState(navy), 'ready');
+  assert.equal(current.blockedCue('outline'), null, 'reachable wings must never be marked as enclosed');
+  for (let i = 0; i < 3000 && current.busy; i++) current.update(1 / 30, 2);
+  assert.equal(current.delivered, 21);
+});
+
+test('a navy eye cue identifies the cream wall and never consumes food, tile credit or an undo', () => {
+  const colony = new Colony(); colony.reset(penguinPhoto({ wingsGone: true }));
+  const slot = colony.deploy('outline', '#354c69', 21);
+  assert.equal(colony.slotState(slot), 'blocked');
+  const before = JSON.stringify({ pixels: colony.pixels, slot, delivered: colony.delivered });
+  const cue = colony.blockedCue('outline');
+  assert(cue.targets.length > 0 && cue.targets.every(p => p.paintKey === 'eye'));
+  assert.equal(cue.components.length, 2, 'both eyes need an identifiable region');
+  assert(cue.barriers.length > 0 && cue.barriers.every(p => p.key === 'belly' && !p.eaten));
+  assert.equal(colony.blockedCue('outline'), cue, 'unchanged topology reuses its cached explanation');
+  assert.equal(JSON.stringify({ pixels: colony.pixels, slot, delivered: colony.delivered }), before);
+});
+
+test('a cue crosses enclosed empty space to show its true wall and clears when the passage opens', () => {
+  const pic = blockedPicture();
+  for (const p of pic.pixels) {
+    const outside = p.gx < 29 || p.gx > 35 || p.gy < 29 || p.gy > 35;
+    const wall = !outside && (p.gx === 29 || p.gx === 35 || p.gy === 29 || p.gy === 35);
+    const red = p.gx === 32 && p.gy === 32;
+    p.isBg = !wall && !red; p.eaten = p.isBg; p.key = red ? 'red' : wall ? 'blue' : 'bg';
+  }
+  const colony = new Colony(); colony.reset(pic);
+  const cue = colony.blockedCue('red');
+  assert.equal(cue.targets.length, 1);
+  assert.equal(cue.barriers.length, 20, 'show the enclosing ring, not the empty neighbors');
+  assert(cue.barriers.every(p => p.key === 'blue'));
+  colony.grid[29 * SIZE + 32].eaten = true;
+  colony.perimeterDirty = true;
+  assert.equal(colony.blockedCue('red'), null, 'the old dotted cue must vanish as soon as outside air connects');
+});
+
+test('tray states distinguish reachable food, reserved exterior food, and a blocked interior', () => {
+  const colony = new Colony(); colony.reset(redPocket(), Math.random, { slotCount: 2 }); colony.setLayout(LAYOUT);
+  const first = colony.deploy('red', '#ef4056', 1), second = colony.deploy('red', '#ef4056', 1);
+  assert.equal(colony.slotState(first), 'ready'); assert.equal(colony.slotState(second), 'ready');
+  colony.update(1 / 60);
+  assert.equal(colony.slotState(first), 'collecting');
+  assert.equal(colony.slotState(second), 'queued', 'reserved food is a queue, not a closed route');
+  assert.equal(colony.isStuck(), false);
+  for (let i = 0; i < 5000 && colony.busy; i++) colony.update(1 / 30, 2);
+  assert.equal(colony.delivered, 2, 'the queued ant must depart when the next red cell opens');
+  assert.equal(colony.busy, false);
+});
+
+test('a partially used tile correctly becomes blocked, then resumes when another color opens a path', () => {
+  const colony = new Colony(); colony.reset(redPocket({ gap: true }), Math.random, { slotCount: 1, maxSlots: 2 }); colony.setLayout(LAYOUT);
+  const slot = colony.deploy('red', '#ef4056', 2);
+  for (let i = 0; i < 2000 && (i === 0 || colony.ants.length || slot.left === 2); i++) colony.update(1 / 30, 2);
+  assert.equal(slot.left, 1); assert.equal(slot.activeAnts, 0);
+  assert.equal(colony.slotState(slot), 'blocked', 'partial progress does not mean a tile is still dispatching');
+  assert.equal(colony.isStuck(), true);
+  assert.equal(colony.cancelSlot(0), null, 'status text cannot grant an extra undo');
+  colony.expandSlots(); colony.deploy('blue', '#3a9bff', 23);
+  for (let i = 0; i < 6000 && colony.busy; i++) colony.update(1 / 30, 2);
+  assert.equal(colony.delivered, 25); assert.equal(colony.busy, false);
+});
+
 test('buildTiles: per-color tile numbers sum to pixel count, each tile is small (<= 45)', () => {
   for (const def of PICTURE_DEFS) {
     const pic = buildPicture(def);

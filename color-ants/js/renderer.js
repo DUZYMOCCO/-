@@ -3,8 +3,8 @@
  * 額縁と絵は別キャンバスに用意しておき、かじられたマスだけ消す（64×64 でも軽い）。
  * アリはマスより大きく描いて、行列がはっきり見えるようにする。
  */
-import { SIZE } from './pictures.js?v=10';
-import { shade } from './colony.js?v=10';
+import { SIZE } from './pictures.js?v=12';
+import { shade } from './colony.js?v=13';
 
 const FRAME_PAD = 9;
 const MARGIN = 18;
@@ -17,6 +17,9 @@ export class ColonyRenderer {
     this.board = document.createElement('canvas');
     this.frame = document.createElement('canvas');
     this.ground = document.createElement('canvas');
+    this.waitOverlay = document.createElement('canvas');
+    this.waitKey = '';
+    this.waitBarrierMarks = new Uint8Array(SIZE * SIZE);
     this.groundKey = '';
     this.key = '';
     this.cd = 1;
@@ -118,6 +121,8 @@ export class ColonyRenderer {
     ctx.shadowColor = 'transparent';
     ctx.shadowOffsetY = 0;
 
+    this.drawWaitCues(ctx, colony, L, dpr);
+
     const nests = L.nests && L.nests.length > 0 ? L.nests : [L.nest || { x: w / 2, y: h * 0.8 }];
     for (let ni = 0; ni < nests.length; ni++) {
       const p = (colony.pulses && colony.pulses[ni]) || colony.pulse || 0;
@@ -144,6 +149,63 @@ export class ColonyRenderer {
     }
     ctx.globalAlpha = 1;
     ctx.restore();
+  }
+
+  /** Cached, static cues: numbered dotted food borders and diagonal marks on enclosing colors. */
+  drawWaitCues(ctx, colony, L, dpr) {
+    const groups = [];
+    for (let i = 0; i < colony.slots.length; i++) {
+      const slot = colony.slots[i];
+      if (!slot || colony.slotState(slot) !== 'blocked' || groups.some(g => g.key === slot.key)) continue;
+      groups.push({ key: slot.key, id: i + 1 });
+    }
+    if (!groups.length) { this.waitKey = ''; return; }
+    const key = `${colony.version}|${colony.frontierVersion}|${L.cell}|${dpr}|${groups.map(g => `${g.id}:${g.key}`).join(',')}`;
+    if (key !== this.waitKey) {
+      this.waitKey = key;
+      const bp = L.cell * SIZE, c = L.cell;
+      this.waitOverlay.width = this.waitOverlay.height = Math.round(bp * dpr);
+      const w = this.waitOverlay.getContext('2d'); w.scale(dpr, dpr);
+      this.waitBarrierMarks.fill(0);
+      let markers = 0;
+      for (const group of groups) {
+        const cue = colony.blockedCue(group.key);
+        if (!cue) continue;
+        for (const p of cue.barriers) {
+          const i = p.gy * SIZE + p.gx;
+          if (this.waitBarrierMarks[i]) continue;
+          this.waitBarrierMarks[i] = 1;
+          const x = p.gx * c, y = p.gy * c;
+          w.fillStyle = '#e5a43c28'; w.fillRect(x, y, c, c);
+          w.strokeStyle = '#a36c2999'; w.lineWidth = .8; w.setLineDash([]);
+          w.beginPath(); w.moveTo(x + .2, y + c - .2); w.lineTo(x + c - .2, y + .2); w.stroke();
+        }
+        w.beginPath();
+        const same = (x, y) => { const p = colony.grid[y * SIZE + x]; return x >= 0 && x < SIZE && y >= 0 && y < SIZE && p && !p.eaten && p.key === group.key; };
+        for (const p of cue.targets) {
+          const x = p.gx * c, y = p.gy * c;
+          if (!same(p.gx, p.gy - 1)) { w.moveTo(x, y); w.lineTo(x + c, y); }
+          if (!same(p.gx + 1, p.gy)) { w.moveTo(x + c, y); w.lineTo(x + c, y + c); }
+          if (!same(p.gx, p.gy + 1)) { w.moveTo(x + c, y + c); w.lineTo(x, y + c); }
+          if (!same(p.gx - 1, p.gy)) { w.moveTo(x, y + c); w.lineTo(x, y); }
+        }
+        w.setLineDash([]); w.strokeStyle = '#fffdf0'; w.lineWidth = 2.8; w.stroke();
+        w.setLineDash([3, 2]); w.strokeStyle = '#237d76'; w.lineWidth = 1.3; w.stroke();
+        w.setLineDash([]);
+        for (const part of cue.components.slice(0, 2)) {
+          if (markers++ >= 6) break;
+          const x = Math.max(8, Math.min(bp - 8, (part.gx + .5) * c));
+          const y = Math.max(8, Math.min(bp - 8, part.gy * c - 10));
+          w.strokeStyle = '#237d76'; w.lineWidth = 1;
+          w.beginPath(); w.moveTo(x, y + 6); w.lineTo(x, Math.min(bp, (part.gy + .5) * c)); w.stroke();
+          w.fillStyle = '#fffbed'; w.lineWidth = 1.4;
+          w.beginPath(); w.arc(x, y, 6.5, 0, Math.PI * 2); w.fill(); w.stroke();
+          w.fillStyle = '#236f69'; w.font = 'bold 10px sans-serif'; w.textAlign = 'center'; w.textBaseline = 'middle';
+          w.fillText(String(group.id), x, y + .3);
+        }
+      }
+    }
+    ctx.drawImage(this.waitOverlay, L.boardX, L.boardY, this.waitOverlay.width / dpr, this.waitOverlay.height / dpr);
   }
 
   drawGround(ctx, colony, w, h, dpr) {

@@ -12,7 +12,7 @@
  *    - スロットが満杯で、かつどのアリも出撃できず止まったら「手詰まり（STUCK）」！
  */
 
-import { SIZE } from './pictures.js?v=10';
+import { SIZE } from './pictures.js?v=12';
 import { Perimeter } from './perimeter.js?v=8';
 
 const TAU = Math.PI * 2;
@@ -59,6 +59,12 @@ export class Colony {
     this.time = 0;
     this.perimeter = new Perimeter(SIZE);
     this.perimeterDirty = true;
+    this.exposedColors = new Map();
+    this.frontierVersion = 0;
+    this.cueCache = new Map();
+    this.cueSelected = new Uint8Array(SIZE * SIZE);
+    this.cueVisited = new Uint8Array(SIZE * SIZE);
+    this.cueQueue = new Int32Array(SIZE * SIZE);
     this.layout = { cell: 5, boardX: 0, boardY: 0, nest: { x: 0, y: 0 }, nests: [{ x: 0, y: 0 }], ant: 7, speed: 100 };
   }
 
@@ -101,7 +107,85 @@ export class Colony {
   ensurePerimeter() {
     if (!this.perimeterDirty) return;
     this.perimeter.rebuild(this.pixels);
+    this.exposedColors.clear();
+    for (const p of this.targetPixels) if (this.perimeter.isExposed(p)) {
+      const count = this.exposedColors.get(p.key) || { free: 0, reserved: 0 };
+      count[p.targeted ? 'reserved' : 'free']++;
+      this.exposedColors.set(p.key, count);
+    }
     this.perimeterDirty = false;
+    this.frontierVersion++;
+    this.cueCache.clear();
+  }
+
+  /** Match the status shown in the tray to the very same frontier used for dispatch. */
+  slotState(slot) {
+    if (!slot) return 'empty';
+    if (slot.activeAnts > 0) return slot.left > 0 ? 'active' : 'collecting';
+    if (slot.left === 0) return 'done';
+    this.ensurePerimeter();
+    const count = this.exposedColors.get(slot.key);
+    if (count?.free) return 'ready';
+    if (count?.reserved) return 'queued';
+    return 'blocked';
+  }
+
+  /** Locate a blocked color and its enclosing walls without moving ants or changing the puzzle. */
+  blockedCue(key) {
+    this.ensurePerimeter();
+    const exposed = this.exposedColors.get(key);
+    if (exposed?.free || exposed?.reserved) return null;
+    if (this.cueCache.has(key)) return this.cueCache.get(key);
+    const targets = this.targetPixels.filter(p => !p.eaten && p.key === key);
+    if (!targets.length) return null;
+    const selected = this.cueSelected, visited = this.cueVisited, queue = this.cueQueue;
+    const steps = [-1, 1, -SIZE, SIZE], n = SIZE * SIZE;
+    selected.fill(0); visited.fill(0);
+    for (const p of targets) selected[p.gy * SIZE + p.gx] = 1;
+    const components = [];
+    for (const p of targets) {
+      const start = p.gy * SIZE + p.gx;
+      if (visited[start]) continue;
+      let head = 0, tail = 1, sumX = 0, minY = SIZE;
+      queue[0] = start; visited[start] = 1;
+      while (head < tail) {
+        const i = queue[head++], cell = this.grid[i], x = i % SIZE;
+        sumX += cell.gx; minY = Math.min(minY, cell.gy);
+        for (const step of steps) {
+          if (step === -1 && !x || step === 1 && x === SIZE - 1) continue;
+          const next = i + step;
+          if (next >= 0 && next < n && selected[next] && !visited[next]) {
+            visited[next] = 1; queue[tail++] = next;
+          }
+        }
+      }
+      components.push({ gx: sumX / tail, gy: minY, count: tail });
+    }
+    components.sort((a, b) => b.count - a.count);
+    // Closed background can look like a passage. Follow that air to the real surrounding wall.
+    visited.fill(0);
+    let head = 0, tail = 0;
+    for (const p of targets) { const i = p.gy * SIZE + p.gx; visited[i] = 1; queue[tail++] = i; }
+    const barriers = [];
+    while (head < tail) {
+      const i = queue[head++], x = i % SIZE;
+      for (const step of steps) {
+        if (step === -1 && !x || step === 1 && x === SIZE - 1) continue;
+        const next = i + step;
+        if (next < 0 || next >= n || visited[next]) continue;
+        const cell = this.grid[next];
+        if (!cell.eaten) {
+          visited[next] = 2;
+          if (!selected[next]) barriers.push(cell);
+        } else {
+          const air = (cell.gy + 1) * this.perimeter.stride + cell.gx + 1;
+          if (this.perimeter.distance[air] < 0) { visited[next] = 1; queue[tail++] = next; }
+        }
+      }
+    }
+    const cue = { key, targets, barriers, components };
+    this.cueCache.set(key, cue);
+    return cue;
   }
 
   /**
@@ -152,6 +236,7 @@ export class Colony {
    */
   claimExposedPixel(key) {
     this.ensurePerimeter();
+    if (!this.exposedColors.get(key)?.free) return null;
     // 巣穴に近い順、あるいは手前（下側）に近い順に探すと自然
     let best = null;
     let minDist = Infinity;
@@ -171,6 +256,8 @@ export class Colony {
 
     if (best) {
       best.targeted = true;
+      const count = this.exposedColors.get(key);
+      count.free--; count.reserved++;
       return best;
     }
     return null;
@@ -189,12 +276,8 @@ export class Colony {
     if (this.ants.length > 0) return false; // アリが活動中なら削られて露出する可能性がある
 
     // 全スロットの色について、現在露出しているピクセルがあるか？
-    for (const s of this.slots) {
-      if (s && s.left > 0) {
-        const hasExposed = this.targetPixels.some(p => p.key === s.key && !p.eaten && !p.targeted && this.isExposed(p));
-        if (hasExposed) return false;
-      }
-    }
+    this.ensurePerimeter();
+    if (this.slots.some(s => s && s.left > 0 && this.exposedColors.get(s.key)?.free)) return false;
     return true; // どのスロットも出撃できず完全に止まった
   }
 

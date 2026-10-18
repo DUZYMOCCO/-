@@ -1,0 +1,233 @@
+{
+  "version": "2.8.1",
+  "errors": [],
+  "denseEating": [
+    {
+      "speed": 1,
+      "seconds": 5.1,
+      "calls": [
+        {
+          "name": "color-ants-chopi-v1",
+          "at": 5.24,
+          "group": "color-ants-nibble",
+          "gap": 0.52,
+          "volume": 0.55,
+          "voices": 1
+        },
+        {
+          "name": "color-ants-chopi-v1-1",
+          "at": 5.76,
+          "group": "color-ants-nibble",
+          "gap": 0.52,
+          "volume": 0.43,
+          "voices": 1
+        },
+        {
+          "name": "color-ants-chopi-v1-2",
+          "at": 6.290666666666667,
+          "group": "color-ants-nibble",
+          "gap": 0.52,
+          "volume": 0.43,
+          "voices": 1
+        },
+        {
+          "name": "color-ants-chopi-v1",
+          "at": 7.272,
+          "group": "color-ants-nibble",
+          "gap": 0.52,
+          "volume": 0.55,
+          "voices": 1
+        },
+        {
+          "name": "color-ants-chopi-v1-1",
+          "at": 7.792,
+          "group": "color-ants-nibble",
+          "gap": 0.52,
+          "volume": 0.43,
+          "voices": 1
+        },
+        {
+          "name": "color-ants-chopi-v1-2",
+          "at": 8.312,
+          "group": "color-ants-nibble",
+          "gap": 0.52,
+          "volume": 0.43,
+          "voices": 1
+        },
+        {
+          "name": "color-ants-chopi-v1",
+          "at": 9.312,
+          "group": "color-ants-nibble",
+          "gap": 0.52,
+          "volume": 0.55,
+          "voices": 1
+        },
+        {
+          "name": "color-ants-chopi-v1-1",
+          "at": 9.84,
+          "group": "color-ants-nibble",
+          "gap": 0.52,
+          "volume": 0.43,
+          "voices": 1
+        }
+      ],
+      "gaps": [
+        0.5199999999999996,
+        0.5306666666666668,
+        0.9813333333333336,
+        0.5199999999999996,
+        0.5199999999999996,
+        1,
+        0.5280000000000005
+      ]
+    },
+    {
+      "speed": 2,
+      "seconds": 5.1,
+      "calls": [
+        {
+          "name": "color-ants-chopi-v1",
+          "at": 10.370666666666667,
+          "group": "color-ants-nibble",
+          "gap": 0.52,
+          "volume": 0.55,
+          "voices": 1
+        },
+        {
+          "name": "color-ants-chopi-v1-1",
+          "at": 10.890666666666666,
+          "group": "color-ants-nibble",
+          "gap": 0.52,
+          "volume": 0.43,
+          "voices": 1
+        },
+        {
+          "name": "color-ants-chopi-v1-2",
+          "at": 11.410666666666666,
+          "group": "color-ants-nibble",
+          "gap": 0.52,
+          "volume": 0.43,
+          "voices": 1
+        },
+        {
+          "name": "color-ants-chopi-v1",
+          "at": 12.392,
+          "group": "color-ants-nibble",
+          "gap": 0.52,
+          "volume": 0.55,
+          "voices": 1
+        },
+        {
+          "name": "color-ants-chopi-v1-1",
+          "at": 12.912,
+          "group": "color-ants-nibble",
+          "gap": 0.52,
+          "volume": 0.43,
+          "voices": 1
+        },
+        {
+          "name": "color-ants-chopi-v1-2",
+          "at": 13.44,
+          "group": "color-ants-nibble",
+          "gap": 0.52,
+          "volume": 0.43,
+          "voices": 1
+        },
+        {
+          "name": "color-ants-chopi-v1",
+          "at": 14.421333333333333,
+          "group": "color-ants-nibble",
+          "gap": 0.52,
+          "volume": 0.55,
+          "voices": 1
+        },
+        {
+          "name": "color-ants-chopi-v1-1",
+          "at": 14.941333333333333,
+          "group": "color-ants-nibble",
+          "gap": 0.52,
+          "volume": 0.43,
+          "voices": 1
+        },
+        {
+          "name": "color-ants-chopi-v1-2",
+          "at": 15.461333333333334,
+          "group": "color-ants-nibble",
+          "gap": 0.52,
+          "volume": 0.43,
+          "voices": 1
+        }
+      ],
+      "gaps": [
+        0.5199999999999996,
+        0.5199999999999996,
+        0.9813333333333336,
+        0.5200000000000014,
+        0.5279999999999987,
+        0.9813333333333336,
+        0.5199999999999996,
+        0.5200000000000014
+      ]
+    }
+  ],
+  "before": {
+    "sample": "color-ants-soft-nibble",
+    "gap": 0.18,
+    "controlled": true,
+    "caches": [
+      "studio-shell-v183",
+      "game-iron-squad-v299",
+      "game-dada-survivor-v222",
+      "game-color-ants-v10",
+      "game-math-runner-v5"
+    ]
+  },
+  "after": {
+    "sample": "color-ants-chopi-v1",
+    "gap": 0.52,
+    "caches": [
+      "studio-shell-v183",
+      "game-iron-squad-v299",
+      "game-dada-survivor-v222",
+      "game-math-runner-v5",
+      "game-color-ants-v13"
+    ],
+    "ci": 1
+  },
+  "realChewing": {
+    "eaten": 1,
+    "calls": [
+      {
+        "name": "tap",
+        "at": 0.18133333333333335,
+        "voices": 0
+      },
+      {
+        "name": "color-ants-chopi-v1",
+        "at": 5.061333333333334,
+        "group": "color-ants-nibble",
+        "gap": 0.52,
+        "volume": 0.55,
+        "voices": 1
+      }
+    ],
+    "duration": 0.185,
+    "peak": 0.11063436418771744,
+    "oldBufferUsed": false
+  },
+  "controls": {
+    "mute": true,
+    "hidden": true
+  },
+  "exitStopped": true,
+  "offline": {
+    "sample": "color-ants-chopi-v1",
+    "caches": [
+      "studio-shell-v183",
+      "game-iron-squad-v299",
+      "game-dada-survivor-v222",
+      "game-math-runner-v5",
+      "game-color-ants-v13"
+    ]
+  }
+}

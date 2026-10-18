@@ -1,7 +1,7 @@
 /**
  * カラー・アント ドット絵データ（64×64）
  * 図形は 32 分割の座標系（0〜31）で描き、Grid が SIZE に合わせて細かく塗る。
- * 各セルは palette のキー名を持ち、アリは「同じキーの色」のセルだけを運んでいく。
+ * 陰影の描画色と、アリが食べる色のグループは分けて扱う。
  */
 
 export const SIZE = 64;
@@ -454,16 +454,42 @@ export const PICTURE_DEFS = [
     palette: { bg: '#d7e3ed', grass: '#a5bc96', outline: '#7b7a93', stone: '#c9ced6', stoneLight: '#e4dfd8', mortar: '#b6b4c4', roof: '#a790bd', roofLight: '#c2a9cc', window: '#edcf91', gold: '#d6b474', flag: '#df9eae', door: '#a9a2b9', gem: '#8dbcc6' } },
 ];
 
-/** 定義から実際のピクセル一覧を作る（bg は最初から背景として扱い、アリの標的から除外する） */
+// Lighting/outline variants belong to the same food color. Keep their original hex for the art.
+// Explicit groups avoid merging unrelated colors merely because their RGB values happen to be close.
+const COLOR_FAMILIES = {
+  watermelon: { rind2: 'rind', rind3: 'rind', red2: 'red', red3: 'red', hi: 'seed' },
+  cupcake: { wrap2: 'wrap', cream2: 'cream', cream3: 'cream', cherry2: 'cherry' },
+  chick: { grass2: 'grass', shadow: 'grass', yel2: 'yel', yel3: 'yel', wing: 'yel', orange2: 'orange' },
+  strawberry: { red2: 'red', dark: 'red', hi: 'red', leaf2: 'leaf' },
+  rainbow: { cloud2: 'white' },
+  mushroom: { grass2: 'grass', cap2: 'cap', cap3: 'cap', stem2: 'stem' },
+  donut: { hole: 'crust', inner: 'dough', shade: 'icing', shine: 'icing' },
+  'ice-cream': { coneDark: 'cone', waffle: 'cone', mintDark: 'mint', pinkDark: 'pink', creamShade: 'cream', shine: 'cream' },
+  penguin: { coat: 'outline', eye: 'outline', bellyShade: 'belly', white: 'belly', scarfShade: 'scarf' },
+  blossom: { leaf: 'stem', leafDark: 'stem', petalEdge: 'petal', petalLight: 'petal', centerEdge: 'center', heart: 'center', pollen: 'center' },
+  fox: { furLight: 'fur', ear: 'fur', creamShade: 'cream', shine: 'cream', nose: 'eye' },
+  rocket: { flameInner: 'flame', hullShade: 'hull', glassLight: 'glass' },
+  treasure: { outline: 'wood', woodLight: 'wood', woodDark: 'wood', goldDark: 'gold', goldLight: 'gold', gemEdge: 'gem' },
+  owl: { branch: 'feather', outline: 'feather', wing: 'feather', eyeRim: 'feather', bellyShade: 'belly', face: 'belly' },
+  butterfly: { blue: 'wing', body: 'outline' },
+  'candy-maze': { purple: 'wrapper', cream: 'white', shine: 'white', pink: 'red' },
+  crystal: { deep: 'violet', cyan: 'blue', inner: 'blue', light: 'blue', shine: 'blue', rim: 'outline' },
+  castle: { outline: 'stone', stoneLight: 'stone', mortar: 'stone', door: 'stone', roofLight: 'roof' },
+};
+
+/** 定義からピクセルを作る。paintKey/hex は陰影、key は食べられる色のグループ。 */
 export function buildPicture(def) {
   const cells = def.draw();
-  const pixels = cells.map((key, i) => {
+  const families = COLOR_FAMILIES[def.id] || {};
+  const pixels = cells.map((paintKey, i) => {
+    const key = families[paintKey] || paintKey;
     const isBg = key === 'bg';
     return {
       gx: i % SIZE,
       gy: Math.floor(i / SIZE),
       key,
-      hex: def.palette[key],
+      paintKey,
+      hex: def.palette[paintKey],
       isBg,
       eaten: isBg, // 背景は最初から食べられている扱い（枠外と同じ）
     };

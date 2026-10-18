@@ -4,9 +4,9 @@
  * 色数の一致に加え、外郭から実際に回収できる手順を作って配置する。
  */
 
-import { Colony } from './colony.js?v=10';
+import { Colony } from './colony.js?v=13';
 import { Perimeter } from './perimeter.js?v=8';
-import { SIZE } from './pictures.js?v=10';
+import { SIZE } from './pictures.js?v=12';
 
 export function mulberry32(seed) {
   let a = seed | 0;

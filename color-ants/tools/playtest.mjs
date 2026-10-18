@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { localTestServer } from './local-test-server.mjs';
 
 // Use a normal project installation, or the bundled desktop browser runtime.
 let playwright;
@@ -10,15 +11,30 @@ catch {
   playwright = createRequire(path.join(process.env.USERPROFILE,
     '.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/entry.cjs'))('playwright');
 }
-const origin = process.env.COLOR_ANTS_ORIGIN || 'http://127.0.0.1:8000';
-const out = 'color-ants/docs/validation/v2.7.0';
+const local = process.env.COLOR_ANTS_ORIGIN ? null : await localTestServer();
+const origin = process.env.COLOR_ANTS_ORIGIN || local.origin;
+const out = 'color-ants/docs/validation/v2.8.1';
 mkdirSync(out, { recursive: true });
 const browser = await playwright.chromium.launch({ channel: 'chrome', headless: true });
-const report = { version: '2.7.0', errors: [], layouts: [], pictures: [], clears: [], losses: [], checks: [] };
+const report = { version: '2.8.1', errors: [], layouts: [], pictures: [], clears: [], losses: [], checks: [] };
 const context = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, serviceWorkers: 'block' });
 const page = await context.newPage();
 page.on('pageerror', e => report.errors.push(e.message));
 page.on('response', r => { if (r.status() >= 400) report.errors.push(`${r.status()} ${r.url()}`); });
+async function dispatchExposed(limit) {
+  for (let i = 0; i < limit; i++) {
+    const ci = await page.evaluate(() => {
+      const g = qaGame;
+      if (!g.colony.slots.some(s => s === null)) return -1;
+      g.colony.ensurePerimeter();
+      const fronts = g.columns.map((col, ci) => ({ ci, tile: col[0], available: g.colony.exposedColors.get(col[0]?.key)?.free || 0 }))
+        .filter(f => f.tile && !f.tile.locked && f.available > 0).sort((a, b) => b.available - a.available);
+      return fronts[0]?.ci ?? -1;
+    });
+    if (ci < 0) break;
+    await page.locator(`.ca-col:nth-child(${ci + 1}) .ca-tile.front`).click();
+  }
+}
 try {
   await page.goto(origin);
   await page.locator('[data-game-id="color-ants"]').click();
@@ -53,7 +69,7 @@ try {
   }
   await page.setViewportSize({ width: 390, height: 844 });
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-  const pictureCount = await page.evaluate(async () => (await import('/color-ants/js/pictures.js?v=10')).PICTURE_DEFS.length);
+  const pictureCount = await page.evaluate(async () => (await import('/color-ants/js/pictures.js?v=12')).PICTURE_DEFS.length);
   await page.evaluate(count => {
     window.qaGallery = document.createElement('canvas'); qaGallery.width = 1200; qaGallery.height = Math.ceil(count / 6) * 230;
     const c = qaGallery.getContext('2d'); c.fillStyle = '#fff5df'; c.fillRect(0, 0, qaGallery.width, qaGallery.height);
@@ -75,20 +91,59 @@ try {
   }
   const gallery = await page.evaluate(() => qaGallery.toDataURL('image/png').split(',')[1]);
   writeFileSync(`${out}/stage-gallery.png`, Buffer.from(gallery, 'base64'));
+  report.slotStates = await page.evaluate(async () => {
+    const g = qaGame, { buildPicture, PICTURE_DEFS } = await import('/color-ants/js/pictures.js?v=12');
+    const fixture = (gap = false) => {
+      const pic = buildPicture(PICTURE_DEFS[0]);
+      for (const p of pic.pixels) {
+        p.isBg = p.gx < 29 || p.gx > 33 || p.gy < 29 || p.gy > 33;
+        p.eaten = p.isBg;
+        p.key = p.isBg ? 'bg' : p.gx === 31 && (p.gy === 33 || p.gy === (gap ? 31 : 32)) ? 'rind' : 'red';
+        p.hex = pic.palette[p.key];
+      }
+      return pic;
+    };
+    const states = () => [...g.slotsEl.children].map(el => ({ state: el.dataset.state || 'empty', waiting: el.classList.contains('waiting'), badge: el.querySelector('.ca-slot-badge')?.textContent }));
+    g.picture = fixture(); g.colony.reset(g.picture, Math.random, { slotCount: 2 }); g.applyLayout();
+    g.colony.addTileToSlot({ key: 'rind', n: 1 }, g.picture.palette.rind, 0);
+    g.colony.addTileToSlot({ key: 'rind', n: 1 }, g.picture.palette.rind, 1);
+    g.renderSlots();
+    const ready = states();
+    if (ready.some(s => s.state !== 'ready' || s.waiting)) throw new Error('reachable food was labelled waiting');
+    g.colony.update(1 / 60); g.updateSlots();
+    const reserved = states();
+    if (reserved[1].state !== 'queued' || reserved[1].badge !== '順番待ち' || reserved[1].waiting) throw new Error('reserved food was labelled blocked');
+    for (let i = 0; i < 5000 && g.colony.busy; i++) g.colony.update(1 / 30, 2);
+    if (g.colony.delivered !== 2 || g.colony.busy) throw new Error('queue did not automatically resume');
+    g.picture = fixture(true); g.colony.reset(g.picture, Math.random, { slotCount: 1, maxSlots: 2 }); g.applyLayout();
+    const si = g.colony.addTileToSlot({ key: 'rind', n: 2 }, g.picture.palette.rind, 0), slot = g.colony.slots[si];
+    for (let i = 0; i < 2000 && (i === 0 || g.colony.ants.length || slot.left === 2); i++) g.colony.update(1 / 30, 2);
+    g.renderSlots();
+    const partial = states();
+    if (partial[0].state !== 'blocked' || partial[0].badge !== '外郭待ち') throw new Error('partially used blocked tile was labelled running');
+    for (const el of g.slotsEl.querySelectorAll('.has-status')) {
+      const number = el.querySelector('.ca-slot-num').getBoundingClientRect(), badge = el.querySelector('.ca-slot-badge').getBoundingClientRect();
+      if (number.bottom > badge.top + .5) throw new Error('slot number overlaps status badge');
+    }
+    const undo = g.boosts.undo;
+    g.slotsEl.children[0].click();
+    if (undo !== g.boosts.undo || !g.colony.slots[0]) throw new Error('status change altered undo eligibility');
+    return { ready, reserved, partial, queuedDelivered: 2, undoUnchanged: true };
+  });
   await page.evaluate(() => { qaGame.level = 1; qaGame.startLevel(); });
   await page.locator('#ca-speed').click();
   assert.equal(await page.locator('#ca-speed').innerText(), '▶▶ ×2');
   await page.locator('#ca-boost-slot').click();
   assert.equal(await page.locator('.ca-slot').count(), 5);
   assert(await page.locator('#ca-boost-slot').isDisabled());
-  for (let i = 0; i < 5; i++) await page.locator(`.ca-col:nth-child(${i + 1}) .ca-tile.front`).click();
-  const moving = await page.evaluate(() => { qaStep(1.6); return { ants: qaGame.colony.ants.length, slots: qaGame.colony.slots.filter(Boolean).length }; });
-  assert(moving.ants > 10, 'dispatch should create a visible ant trail');
+  await dispatchExposed(5);
+  report.dispatch = await page.evaluate(() => { qaStep(.5); return { ants: qaGame.colony.ants.length, slots: qaGame.colony.slots.filter(Boolean).length, delivered: qaGame.colony.delivered }; });
+  assert(report.dispatch.ants > 0, `dispatch should create a visible ant trail: ${JSON.stringify(report.dispatch)}`);
   await page.evaluate(() => qaGame.toastEl.classList.remove('show'));
   await page.screenshot({ path: `${out}/playing.png` });
   report.audio = await page.evaluate(async () => {
     const { sound } = await import('/common/js/audio.js?v=151');
-    const { NIBBLE_NAME, NIBBLE_GROUP, playNibble } = await import('/color-ants/js/soft-audio.js?v=10');
+    const { NIBBLE_NAME, NIBBLE_GROUP, playNibble } = await import('/color-ants/js/soft-audio.js?v=11');
     await sound.unlock();
     const g = qaGame, original = sound.play, calls = [];
     g.startLevel();
@@ -111,7 +166,7 @@ try {
   });
   assert(report.audio.muteRespected);
   // Continue the ordinary dispatch fixture after the audio-specific restart.
-  for (let i = 0; i < 4; i++) await page.locator(`.ca-col:nth-child(${i + 1}) .ca-tile.front`).click();
+  await dispatchExposed(4);
   await page.evaluate(() => qaStep(12, 2));
   const delivered = await page.evaluate(() => qaGame.colony.delivered);
   assert(delivered > 0, 'ants must return pixels to nests');
@@ -196,6 +251,11 @@ try {
   assert(report.losses.at(-1).stuck);
   await page.screenshot({ path: `${out}/hard-stuck.png` });
   await page.setViewportSize({ width: 320, height: 568 });
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  assert(await page.locator('#ca-slots').evaluate(slots => [...slots.querySelectorAll('.has-status')].every(el => {
+    const number = el.querySelector('.ca-slot-num').getBoundingClientRect(), badge = el.querySelector('.ca-slot-badge').getBoundingClientRect();
+    return number.bottom <= badge.top + .5;
+  })), 'small phone: status label overlaps slot count');
   assert(await page.locator('#ca-stuck-modal .ca-card').evaluate(e => {
     const r = e.getBoundingClientRect(); return r.top >= 0 && r.bottom <= innerHeight;
   }), 'stuck dialog must fit small phones');
@@ -257,5 +317,6 @@ try {
 } finally {
   writeFileSync(`${out}/report.json`, JSON.stringify(report, null, 2) + '\n');
   await browser.close();
+  await local?.close();
 }
 console.log(JSON.stringify(report, null, 2));
