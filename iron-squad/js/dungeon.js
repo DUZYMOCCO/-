@@ -5,10 +5,10 @@ import {DEMON_KING_HP,campaignScaling} from './campaign-scaling.js?v=241';
  * 脱出は常に x=180, y=height/2。至宝はボスか番兵を倒したあと、x=width-240。
  */
 
-import {LIMITED_SETTLEMENTS,drawLimitedEntrance} from './limited-allies.js?v=297';
+import {LIMITED_SETTLEMENTS,drawLimitedEntrance} from './limited-allies.js?v=306';
 import { WORLD_SIZE, SETTLEMENTS } from './world.js';
-import {chooseLootTier} from './equipment-rules.js?v=303';
-import {drawTreasureChest} from './loot-visuals.js?v=295';
+import {chooseLootTier} from './equipment-rules.js?v=306';
+import {drawTreasureChest} from './loot-visuals.js?v=306';
 import {explorationLayout,explorationBlocks} from './dungeon-layout.js?v=182';
 import {drawExplorationInterior} from './dungeon-interior-visuals.js?v=297';
 

@@ -21,15 +21,19 @@ export function tickEquipmentRegen(unit,dt) {
   unit.hp+=heal;return heal;
 }
 
-/** Soldiers / hero party use the commander's 20% lifesteal, but each hit heals at most 1.5% of max HP and a unit heals at most every 0.25 s. */
+/** Soldiers / hero party: lifesteal rate up to 20%, but each hit heals at most 1.5% of max HP and a unit heals at most every 0.25 s. */
 export const SOLDIER_VAMPIRE=Object.freeze({maxRate:.2,perHitMaxHpShare:.015,minInterval:.25});
-export function soldierVampireHeal(unit,damage,now=0) {
-  const rate=Math.min(SOLDIER_VAMPIRE.maxRate,Number(unit?.vampire)||0);
+/** v7.0.29: the commander obeys the same per-hit / interval cap. His rate cap is 25% so the 20% amulet and the warlord's +5% both count. */
+export const COMMANDER_VAMPIRE=Object.freeze({...SOLDIER_VAMPIRE,maxRate:.25,warlordBonus:.05});
+export function soldierVampireHeal(unit,damage,now=0,rules=SOLDIER_VAMPIRE) {
+  const rate=Math.min(rules.maxRate,Number(unit?.vampire)||0);
+  if((unit?._vampireReadyAt||0)>now+rules.minInterval)unit._vampireReadyAt=0; // the clock went backwards (load / new run)
   if(!(rate>0)||!(damage>0)||!alive(unit)||!(unit.hp<unit.maxHp)||now<(unit._vampireReadyAt||0))return 0;
-  unit._vampireReadyAt=now+SOLDIER_VAMPIRE.minInterval;
-  const heal=Math.min(Math.ceil(damage*rate),Math.ceil(unit.maxHp*SOLDIER_VAMPIRE.perHitMaxHpShare));
+  unit._vampireReadyAt=now+rules.minInterval;
+  const heal=Math.min(Math.ceil(damage*rate),Math.ceil(unit.maxHp*rules.perHitMaxHpShare));
   unit.hp=Math.min(unit.maxHp,unit.hp+heal);return heal;
 }
+export const commanderVampireHeal=(unit,damage,now=0)=>soldierVampireHeal(unit,damage,now,COMMANDER_VAMPIRE);
 
 /** Weapon "lightning" (rank 6+): a physical hit arcs to the nearest enemies for a share of the hit. One arc per attacker per second. */
 export const LIGHTNING_RULES=Object.freeze({cooldown:1,radius:150,shares:Object.freeze([.4,.25]),color:'#e9d36a'});

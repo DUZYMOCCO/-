@@ -3,7 +3,7 @@ import {soldierCombatTempo,usesSoldierTempo,attributeFamily,canChannelWeaponMagi
 import {requiredDefenseStrength,canUseEquipmentBarrier} from './defense-equipment.js?v=298';
 import {isMagicUser} from './magic-rules.js?v=296';
 import {isMagicWeapon} from './weapon-requirements.js?v=298';
-import {shieldReductionPct} from './equipment-effects.js?v=301';
+import {shieldReductionPct} from './equipment-effects.js?v=306';
 import {powerRank,MAX_EQUIPMENT_TIER,GENERATIONS} from './equipment-tiers.js?v=231';
 import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=182';
 import {WEAPON_STYLE_ICONS,weaponStyleOf,isHeavyWeaponStyle,combatFamilyOf,weaponBaseAtkCoef} from './growth-rules.js?v=295';

@@ -1,15 +1,15 @@
 import {enemyTier,rollBossTreasure} from './enemy-tier.js?v=274';
 import {addBattleReport} from './battle-report.js?v=302';
-import {attackCooldown} from './equipment-rules.js?v=303';
+import {attackCooldown} from './equipment-rules.js?v=306';
 import {migrateCampaignEnemy} from './campaign-scaling.js?v=241';
 import {HERO_RULES,heroRevelationPhase,nextHeroRevelationPhase,heroPartyActive,heroMembers,heroSharesSpace,visibleHeroMembers} from './hero-rules.js?v=302';
-import {advanceHeroRoute,heroSegmentOpen,heroRouteCurrent} from './hero-navigation.js?v=295';
+import {advanceHeroRoute,heroSegmentOpen,heroRouteCurrent} from './hero-navigation.js?v=306';
 import {WORLD_SIZE,settleUnit,fieldRockExit} from './world.js?v=289';
-import {DUNGEON_DEFS,dungeonBlocks} from './dungeon.js?v=304';
+import {DUNGEON_DEFS,dungeonBlocks} from './dungeon.js?v=306';
 import {DEMON_KING_RULES,recordKingProfile,shapeDemonKing,migrateDemonKing} from './demon-king-rules.js?v=304';
 import {nearestDungeonFloor} from './dungeon-layout.js?v=182';
 import {economicFieldBlocked} from './regional-economy.js?v=277';
-import {RECRUIT_CLASSES} from './recruitment.js?v=295';
+import {RECRUIT_CLASSES} from './recruitment.js?v=306';
 import {persistentUnit} from './render-support.js';
 import {grantPersonalExp} from './experience-rules.js';
 import {formatDistance} from './distance-format.js';
@@ -18,13 +18,13 @@ import {isMedic,treatWounded,updateWounded,normalizeRevivalSkill,revivalSkillCoo
 import {healByMedic,healAmountFor} from './phase-rules.js?v=218';
 import {ensureMana,regenerateMana,spendMana,isMage} from './magic-rules.js?v=296';
 import {takeRangedShot,supplyLocation,ammoCapacity} from './supply-rules.js?v=305';
-import {distanceScaling} from './equipment-rules.js?v=303';
+import {distanceScaling} from './equipment-rules.js?v=306';
 import {strongEnemyReward} from './combat-rewards.js?v=299';
 import {RANGED_ENEMIES} from './enemy-ranged.js?v=295';
-import {startHeroJournal,archiveHeroJournal,appendHeroDiary,recordHeroEquipmentGrant,recordHeroEvent,announceHero} from './hero-journal.js?v=302';
+import {startHeroJournal,archiveHeroJournal,appendHeroDiary,recordHeroEquipmentGrant,recordHeroEvent,announceHero} from './hero-journal.js?v=306';
 import {showHeroRevelationScene} from './hero-revelation-scene.js?v=302';
 import {grantHeroEquipment} from './hero-equipment.js?v=295';
-import {spectateAvailability,startSpectate,endSpectate} from './hero-spectate.js?v=305';
+import {spectateAvailability,startSpectate,endSpectate} from './hero-spectate.js?v=306';
 const C=WORLD_SIZE/2,castle=()=>DUNGEON_DEFS.find(d=>d.id==='dungeon_demon_castle');
 const ready=u=>u&&!u.dead&&!u.isDown&&u.hp>0;
 export function initializeHeroJourney(game,saved=null) {

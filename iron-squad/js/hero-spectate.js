@@ -2,7 +2,7 @@
 // 観測者の隊長は不可視・無敵・敵の標的外・操作無効。野外の敵と隊員は凍結（既存のダンジョン入退場の仕組みを再利用）。
 // 観戦状態（game.spectating）は保存しない：保存データは入場前の野外位置を持つので、読み込み直しても隊長は魔王城に居座らない。
 import {heroPartyActive} from './hero-rules.js?v=302';
-import {DUNGEON_DEFS} from './dungeon.js?v=304';
+import {DUNGEON_DEFS} from './dungeon.js?v=306';
 import {formatCompact} from './number-format.js?v=282';
 
 export const CASTLE_ID='dungeon_demon_castle';

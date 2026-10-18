@@ -1,8 +1,8 @@
 import {drawStoneFortification} from './fortification-visuals.js?v=242';
 import {WORLD_SIZE,fieldBlocks} from './world.js?v=289';
-import {dungeonBlocks} from './dungeon.js?v=304';
+import {dungeonBlocks} from './dungeon.js?v=306';
 import {inCurrentInstance} from './instance-rules.js?v=305';
-import {makeEscort,recalcEscortStats,updateEscortPatrol,npcSave,applyNpcSave} from './merchant-rules.js?v=295';
+import {makeEscort,recalcEscortStats,updateEscortPatrol,npcSave,applyNpcSave} from './merchant-rules.js?v=306';
 import {rebuildMerchantCasualties,carrierOf,sanitizeCarriers} from './casualty-rules.js?v=295';
 import {OUTER_WALL,OUTER_GATES,outerWallBuilt} from './hq-outer-wall.js?v=198';
 export {outerWallBuilt};
