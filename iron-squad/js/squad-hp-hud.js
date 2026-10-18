@@ -4,7 +4,7 @@ import {formatCompact} from './number-format.js?v=282';
 import {isOwnSquad} from './own-squad-marker.js?v=182';
 import {downLabel} from './casualty-rules.js?v=295';
 import {isMagicUser,ensureMana} from './magic-rules.js?v=296';
-import {isRangedUnit,ensureAmmo,ammoCapacity} from './supply-rules.js?v=298';
+import {isRangedUnit,ensureAmmo,ammoCapacity} from './supply-rules.js?v=305';
 
 const REFRESH = .15;
 const shortName = name => String(name || '').split(/[・\s]/)[0] || '兵士';
@@ -40,7 +40,7 @@ export function updateSquadHpHud(game, dt = 0, force = false) {
   const host = game.container?.querySelector('#canvas-container');
   if (!host) return;
   let box = host.querySelector('#squad-hp-hud');
-  const rows = game.inBattle ? squadHpRows(game) : [];
+  const rows = game.inBattle && !game.spectating ? squadHpRows(game) : []; // the spectate panel replaces it
   if (!rows.length) { if (box) box.hidden = true; return; }
   if (!box) {
     box = document.createElement('div'); box.id = 'squad-hp-hud'; box.className = 'squad-hp-hud';

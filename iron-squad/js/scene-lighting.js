@@ -77,7 +77,7 @@ export function pooledLanternSources(lights,cave=false){
 export function sceneLightSources(game,now=0,view=null){
   const cave=isCave(game),strength=cave?1:daylightAt(game.worldTime).nightLight;
   if(strength<=0)return [];
-  const lights=[],player=game.player,layout=cave?explorationLayout(game.currentDungeon):null;
+  const lights=[],player=game.spectating?.viewer||game.player,layout=cave?explorationLayout(game.currentDungeon):null; // spectating: the light and sight follow the watched unit
   if(player&&Number.isFinite(player.x)&&Number.isFinite(player.y))lights.push({id:'player-lantern',x:player.x,y:player.y,radius:cave?LANTERN_RADIUS:170,power:.94*strength,rgb:'255,181,84',fixture:true,carried:true});
   const seen=new Set();
   for(const actor of game._lanternActors||[]){
@@ -112,7 +112,7 @@ export function drawSceneDarkness(c,game,now=0,shakeX=0,shakeY=0){
   m.save();
   try{
     m.translate(W/2+shakeX,H/2+shakeY);m.scale(z,z);m.translate(-game.camera.x,-game.camera.y);
-    if(cave&&game.player)clipPolygon(m,lightVisibilityPolygon(layout,{...game.player,id:'viewer'},Math.hypot(W,H)/z));
+    if(cave&&game.player)clipPolygon(m,lightVisibilityPolygon(layout,{...(game.spectating?.viewer||game.player),id:'viewer'},Math.hypot(W,H)/z));
     m.globalCompositeOperation='destination-out';
     for(const l of pooledLanternSources(lights,cave)){
       m.save();
@@ -134,7 +134,7 @@ export function drawLanternLights(c,game,now,view){
   const lights=sceneLightSources(game,now,view).filter(l=>l.fixture);
   c.save();
   try{
-    if(cave&&game.player)clipPolygon(c,lightVisibilityPolygon(layout,{...game.player,id:'viewer'},Math.hypot(game.width,game.height)/(game.zoom||1)));
+    if(cave&&game.player)clipPolygon(c,lightVisibilityPolygon(layout,{...(game.spectating?.viewer||game.player),id:'viewer'},Math.hypot(game.width,game.height)/(game.zoom||1)));
     for(const l of pooledLanternSources(lights,cave)){
       c.save();
       try{

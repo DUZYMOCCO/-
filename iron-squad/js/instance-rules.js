@@ -7,7 +7,8 @@ export function inCurrentInstance(game, unit) {
   if (unit.heroPartyId) return game.heroJourney?.party?.space===game.currentDungeon.id;
   if (game.instanceCargoIds?.includes(unit.id)) return true;
   if (unit.isGateGuard) return unit.gateSpace === game.currentDungeon.id;
-  return !!unit.isPersonalGuard && (game.squad || []).some(s=>s===unit||s.id===unit.id);
+  // v7.0.28: an observing commander enters alone; his own squad stays in the field (frozen, like the main army).
+  return !!unit.isPersonalGuard && !game.spectating && (game.squad || []).some(s=>s===unit||s.id===unit.id);
 }
 
 export function activeSquad(game) {

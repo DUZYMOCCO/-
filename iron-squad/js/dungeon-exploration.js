@@ -64,7 +64,7 @@ export function dungeonSideChests(game,dungeon=game.currentDungeon) {
 }
 export function updateDungeonSideChests(game,createItem,random=Math.random) {
   const d=game.currentDungeon,p=game.player;
-  if(!d||!p||p.dead||p.isDown||p.hp<=0)return;
+  if(!d||!p||p.dead||p.isDown||p.hp<=0||game.spectating)return;
   for(const chest of dungeonSideChests(game,d)){
     if(chest.opened||Math.hypot(p.x-chest.x,p.y-chest.y)>=48||!dungeonSegmentOpen(d,p,chest))continue;
     const record=game.dungeonExploration[d.id];

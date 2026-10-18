@@ -17,13 +17,14 @@ import {practiceAttribute} from './unit-attributes.js?v=298';
 import {isMedic,treatWounded,updateWounded,normalizeRevivalSkill,revivalSkillCooldownLeft} from './casualty-rules.js?v=295';
 import {healByMedic,healAmountFor} from './phase-rules.js?v=218';
 import {ensureMana,regenerateMana,spendMana,isMage} from './magic-rules.js?v=296';
-import {takeRangedShot,supplyLocation,ammoCapacity} from './supply-rules.js?v=298';
+import {takeRangedShot,supplyLocation,ammoCapacity} from './supply-rules.js?v=305';
 import {distanceScaling} from './equipment-rules.js?v=303';
 import {strongEnemyReward} from './combat-rewards.js?v=299';
 import {RANGED_ENEMIES} from './enemy-ranged.js?v=295';
 import {startHeroJournal,archiveHeroJournal,appendHeroDiary,recordHeroEquipmentGrant,recordHeroEvent,announceHero} from './hero-journal.js?v=302';
 import {showHeroRevelationScene} from './hero-revelation-scene.js?v=302';
 import {grantHeroEquipment} from './hero-equipment.js?v=295';
+import {spectateAvailability,startSpectate,endSpectate} from './hero-spectate.js?v=305';
 const C=WORLD_SIZE/2,castle=()=>DUNGEON_DEFS.find(d=>d.id==='dungeon_demon_castle');
 const ready=u=>u&&!u.dead&&!u.isDown&&u.hp>0;
 export function initializeHeroJourney(game,saved=null) {
@@ -116,7 +117,7 @@ function enterHeroCastle(game,p) {
 /** The king walks back to his throne once nobody is left to hunt (unless the commander is standing in the castle right now). */
 export function homeDemonKing(game,{force=false}={}) {
   const d=castle(),king=game.heroJourney?.castleScene?.monsters?.find(m=>m.isDemonKing);
-  if(!king||(!force&&game.currentDungeon?.id===d.id))return;
+  if(!king||(!force&&game.currentDungeon?.id===d.id&&!game.spectating))return; // v7.0.28: an observing commander does not count as standing in the castle
   king.x=d.width-350;king.y=d.height/2;king.atkTimer=0;king.skillTimer=king.skillCooldown;delete king._cachedTarget;delete king.returningHome;
 }
 /** Commander enters the castle: snapshot the sortie force (it only ratchets up), size the king, put him on his throne if no hero is fighting there. */
@@ -264,13 +265,23 @@ export function renderHeroJourney(game,classes,talents) {
   if(!j.demonKingDefeat){const rule=document.createElement('p');rule.className='hero-rule-note';rule.textContent=`天啓は第${HERO_RULES.firstPhase}期から${HERO_RULES.interval}期ごと（魔王討伐まで）。前の勇者パーティが生きている間は見送り、魔王城で${HERO_RULES.stagnationPhases}期進展が止まると撤退します。`;body.append(rule);}
   if(p?.members.some(u=>u.heroEquipmentVersion)){const gear=document.createElement('p');gear.textContent='勇者と仲間は、勇者パーティ専用の武具を支給されて出発します。';body.append(gear);}
   if(p&&p.status!=='withdrawn')for(const u of p.members){const row=document.createElement('p');row.textContent=`${u.isChosenHero?'勇者':classes[u.soldierClass]?.name||u.soldierClass} ${u.name} · ${talents[u.talent]?.tag||''} · Lv.${u.level} · ${u.dead?'戦死':u.isDown?`ダウン（残り${Math.ceil(u.downTimer)}秒）`:`HP ${Math.ceil(u.hp)} / ${u.maxHp}`}`;body.append(row);}
-  if(active&&!j.demonKingDefeat){const b=document.createElement('button');b.className='mini-btn';b.textContent=game.heroFollowing?'追従をやめる':'勇者を追う';b.onclick=()=>{game.heroFollowing=!game.heroFollowing;delete game._heroFollowPath;game.closeStrategyModal();};body.append(b);}
+  if(active&&!j.demonKingDefeat){
+    const row=document.createElement('div');row.className='hero-actions';
+    const b=document.createElement('button');b.className='mini-btn';b.textContent=game.heroFollowing?'追従をやめる':'勇者を追う';b.disabled=!!game.spectating;b.onclick=()=>{game.heroFollowing=!game.heroFollowing;delete game._heroFollowPath;game.closeStrategyModal();};row.append(b);
+    // v7.0.28: spectate = the commander watches the castle fight as an invisible observer (only while the party fights in the castle)
+    const spec=spectateAvailability(game),watch=document.createElement('button');watch.className='mini-btn hero-spectate-btn';watch.type='button';
+    if(game.spectating){watch.textContent='観戦を終了';watch.onclick=()=>{endSpectate(game,'観戦を終えて戻った。');game.closeStrategyModal();};}
+    else{watch.textContent='観戦する';watch.disabled=!spec.ok;watch.title=spec.reason;watch.onclick=()=>{if(startSpectate(game,classes))game.closeStrategyModal();};}
+    row.append(watch);body.append(row);
+    const note=document.createElement('p');note.className='hero-rule-note hero-spectate-note';note.textContent=game.spectating?'観戦中です。画面下の「観戦を終了」でも戻れます。':spec.ok?spec.reason:`観戦：${spec.reason}`;body.append(note);
+  }
   if(j?.demonKingDefeat){const result=document.createElement('p');result.textContent=`魔王討伐：第${j.demonKingDefeat.phase}期 · ${j.demonKingDefeat.by==='hero'?'勇者パーティ':'隊長側'}（${j.demonKingDefeat.name}）`;body.append(result);}
   if(p&&!j.history.some(h=>h.id===p.id))appendHeroDiary(body,p.journal,classes,talents);
   for(const h of [...j?.history||[]].reverse()){if(h.journal)appendHeroDiary(body,h.journal,classes,talents);else{const row=document.createElement('p');row.textContent=`第${h.phase}期 · ${h.name} · ${h.result}`;body.append(row);}}
 }
 export function updateHeroFollowing(game,dt) {
   const p=game.heroJourney?.party,u=game.player;
+  if(game.spectating){game.heroFollowing=false;return;}
   if(!game.heroFollowing||!(dt>0)||u?.isDown)return;
   if(!heroPartyActive(p)||game.heroJourney.demonKingDefeat||game.joystick?.active){game.heroFollowing=false;return;}
   const d=castle();

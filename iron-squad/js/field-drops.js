@@ -19,7 +19,7 @@ export const pullProgress = seconds => { const u = Math.min(1, Math.max(0, secon
 export function attractFieldDrops(game, dt) {
   if (!Number.isFinite(dt) || dt <= 0) return;
   const player = game.player;
-  const active = player && !player.dead && !player.isDown && player.hp > 0;
+  const active = player && !player.dead && !player.isDown && player.hp > 0 && !game.spectating;
   const radiusSq = FIELD_DROP_ATTRACT_RADIUS ** 2;
   const dropSq = (FIELD_DROP_ATTRACT_RADIUS * 1.6) ** 2;
   for (const drop of game.dropsOnField || []) {

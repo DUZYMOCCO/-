@@ -1744,3 +1744,29 @@
   .hero-revelation .hero-star { top: var(--y); opacity: .75; animation: none; }
   .hero-revelation-text .rev-kicker, .hero-revelation-text h2, .hero-revelation-text .rev-name { animation: none; }
 }
+
+/* v7.0.28 勇者の観戦（観測者モード）。画面下に小さなパネル。ゲームパッドと戦闘ログ窓は観戦中だけ隠す */
+.is-spectating #virtual-gamepad, .is-spectating #battle-log-window, .is-spectating #btn-pad-power { display: none !important; }
+.iron-squad .hero-record .hero-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 2px; }
+.iron-squad .hero-record .hero-actions .mini-btn[disabled] { opacity: .45; }
+.hero-spectate { position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%); z-index: 12; box-sizing: border-box; width: min(96%, 540px); max-height: 46%; overflow: hidden; display: flex; flex-direction: column; gap: 3px; padding: 6px 8px; border-radius: 8px; border: 1px solid rgba(225, 199, 126, .55); background: rgba(8, 12, 20, .72); color: #e5e7eb; font-size: 12px; line-height: 1.35; font-variant-numeric: tabular-nums; pointer-events: auto; touch-action: manipulation; }
+.hero-spectate .spectate-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.hero-spectate .spectate-badge { color: #e1c77e; font-weight: bold; overflow-wrap: anywhere; }
+.hero-spectate button { min-height: 32px; padding: 3px 10px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, .28); background: rgba(255, 255, 255, .1); color: inherit; font: inherit; cursor: pointer; touch-action: manipulation; }
+.hero-spectate .spectate-end { flex: none; border-color: rgba(248, 113, 113, .7); }
+.hero-spectate .spectate-who { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.hero-spectate .spectate-name { flex: 1 1 120px; min-width: 0; font-weight: bold; overflow-wrap: anywhere; }
+.hero-spectate .spectate-prev, .hero-spectate .spectate-next { flex: none; min-width: 36px; padding: 3px 6px; }
+.hero-spectate .spectate-hpbar { flex: 1 1 80px; height: 6px; border-radius: 3px; background: rgba(255, 255, 255, .16); overflow: hidden; }
+.hero-spectate .spectate-hpbar i { display: block; height: 100%; width: 0; background: #34d399; }
+.hero-spectate .spectate-hp { flex: none; font-size: 11px; opacity: .9; }
+.hero-spectate .spectate-chips { display: flex; gap: 3px; flex-wrap: nowrap; overflow-x: auto; }
+.hero-spectate .spectate-chip { flex: 1 1 0; min-width: 44px; min-height: 28px; padding: 2px 4px; font-size: 10.5px; display: flex; flex-direction: column; gap: 2px; align-items: stretch; text-align: center; overflow: hidden; }
+.hero-spectate .spectate-chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hero-spectate .spectate-chip i { display: block; height: 3px; width: 0; border-radius: 2px; background: #34d399; }
+.hero-spectate .spectate-chip.low i { background: #f87171; }
+.hero-spectate .spectate-chip.down { opacity: .55; }
+.hero-spectate .spectate-chip.active { border-color: #e1c77e; background: rgba(225, 199, 126, .22); }
+.hero-spectate p { margin: 0; font-size: 11.5px; overflow-wrap: anywhere; }
+.hero-spectate .spectate-log { margin: 0; padding: 0 0 0 14px; font-size: 10.5px; opacity: .8; overflow-wrap: anywhere; }
+@media (max-height: 460px) { .hero-spectate .spectate-log { display: none; } }

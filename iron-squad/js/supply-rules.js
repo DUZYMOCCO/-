@@ -1,7 +1,7 @@
 import {attributeValues,ensureAttributeProfile,effectiveStrength} from './unit-attributes.js?v=298';
 import {isMagicUser,ensureMana} from './magic-rules.js?v=296';
 import {WORLD_SIZE} from './world.js?v=289';
-import {inCurrentInstance} from './instance-rules.js?v=256';
+import {inCurrentInstance} from './instance-rules.js?v=305';
 import {saveSlots} from './save-slots.js?v=285';
 import {requestCheckpointAction,checkpointNotice} from './checkpoint-ui.js?v=259';
 import {addBattleReport} from './battle-report.js?v=302';
@@ -178,7 +178,7 @@ function potionUsedFeedback(game,kind,text,left) {
 
 export const supplyMethods={
   useRevivalPotion() {
-    if(!this.inBattle||this.container?.classList.contains('dialog-open')||this._merchantShopClose||!usable(this.player)||!this.revivalPotion)return false;
+    if(!this.inBattle||this.spectating||this.container?.classList.contains('dialog-open')||this._merchantShopClose||!usable(this.player)||!this.revivalPotion)return false;
     const target=nearestRevivalPotionTarget(this);if(!target)return false;
     this.revivalPotion--;
     if(!reviveByPotion(this,target)){this.revivalPotion++;return false;}
@@ -197,7 +197,7 @@ export const supplyMethods={
     this.showToast(`蘇生薬を購入 · ${REVIVAL_POTION_COST.toLocaleString()}G`);return true;
   },
   useSquadPotion() {
-    if(!this.inBattle||this.container?.classList.contains('dialog-open')||this._merchantShopClose||!usable(this.player)||!this.squadPotion||!squadNeedsRecovery(this))return false;
+    if(!this.inBattle||this.spectating||this.container?.classList.contains('dialog-open')||this._merchantShopClose||!usable(this.player)||!this.squadPotion||!squadNeedsRecovery(this))return false;
     this.squadPotion--;
     for(const u of personalSquadUnits(this))if(usable(u)){u.hp=u.maxHp;u.ammo=ammoCapacity(u);if(isMagicUser(u)){ensureMana(u);u.mana=u.maxMana;u.magicRecovering=false;}}
     this.showToast('隊長と直属兵のHP・弾薬・魔力を全回復しました');this.saveGame({background:true});this.updateStatsUI();
