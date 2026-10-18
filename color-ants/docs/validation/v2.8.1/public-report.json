@@ -1,0 +1,63 @@
+{
+  "url": "https://duzymocco.github.io/-/",
+  "version": "2.8.1",
+  "checkedAt": "2026-10-18T00:01:49.146Z",
+  "errors": [],
+  "assets": [
+    {
+      "file": "color-ants/sw-assets.js",
+      "sha256": "a59072831fdfd49642e8ed92b6d56196ad9a530c15402f5705ecadc1af73b5d8",
+      "matches": true
+    },
+    {
+      "file": "color-ants/css/color-ants.css",
+      "sha256": "25fd0ed88351bc420f03c38c5aa5150a751e13ca48602add7ce66ffbe36413a8",
+      "matches": true
+    },
+    {
+      "file": "color-ants/js/index.js",
+      "sha256": "f8ff88a2bd832bc75eeebb6b30f9f4c05a1de5f4b9071b8d1577331c646fc8e3",
+      "matches": true
+    },
+    {
+      "file": "color-ants/js/pictures.js",
+      "sha256": "0f79c95ca2152f125b208528fccb005843ef5c9d303bf3691aeda0b7be1c5a28",
+      "matches": true
+    },
+    {
+      "file": "color-ants/js/puzzle.js",
+      "sha256": "a00f8eb08e53984fe43ef7f4d8b468711c4ac17f0fbb1b13c65db2ee8dd26d2f",
+      "matches": true
+    },
+    {
+      "file": "color-ants/js/colony.js",
+      "sha256": "3d552b54a4051f4a217350ec5473b18a41e19b56205e80738e714b693a94671e",
+      "matches": true
+    },
+    {
+      "file": "color-ants/js/renderer.js",
+      "sha256": "0b1ec2f9fe89a697c763887303b7c546f0fdf6e9df761d236973f70bb260d570",
+      "matches": true
+    },
+    {
+      "file": "color-ants/js/perimeter.js",
+      "sha256": "62eaee3a9a7838e5968bac120c14238319b43324d7876b043f7ae3d973258bae",
+      "matches": true
+    },
+    {
+      "file": "color-ants/js/soft-audio.js",
+      "sha256": "b9b01fbf8f97e4f6dd7d6317c34d6e22166d0e2fab38694e0d916af3842a0d3e",
+      "matches": true
+    }
+  ],
+  "headerVersion": "2.8.1",
+  "runtime": {
+    "level": 9,
+    "picture": "penguin",
+    "navyEyesGrouped": true,
+    "sample": "color-ants-chopi-v1",
+    "sampleDuration": 0.185,
+    "headerFits": true,
+    "serviceWorkers": "blocked; fresh network runtime, cache upgrade tested separately"
+  }
+}
