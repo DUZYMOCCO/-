@@ -9,6 +9,31 @@ export const GATE_TYPES = {
   DIV: 'div',
 };
 
+/** たまの かずの じょうげん（v1.4.1 で 999 → 99,999,999 に ひろげた。ひょうじは fmtNum で みじかく） */
+export const LIMITS = { count: 99999999 };
+
+/** おおきな かずを みじかく：1234→1.3k、188000→188k、2500000→2.5M、3e9→3.0B（しょうすうは きりあげ） */
+export function fmtNum(v) {
+  const n = Math.max(0, Math.ceil(Number(v) || 0));
+  if (n < 1000) return String(n);
+  const units = [[1e9, 'B'], [1e6, 'M'], [1e3, 'k']];
+  for (const [d, u] of units) {
+    if (n >= d) {
+      const x = n / d;
+      if (x < 10) return (Math.ceil(x * 10) / 10).toFixed(1) + u;
+      const r = Math.ceil(x);
+      return r >= 1000 && d < 1e9 ? '1.0' + units[units.findIndex(a => a[1] === u) - 1][1] : r + u;
+    }
+  }
+  return String(n);
+}
+
+/** コインの ひょうじ：100000 みまんは そのまま、それいじょうは 「125k」のように みじかく */
+export function fmtCoin(v) {
+  const n = Math.max(0, Math.floor(Number(v) || 0));
+  return n < 100000 ? String(n) : fmtNum(n);
+}
+
 /**
  * ゲートの計算を適用する
  */
@@ -28,7 +53,7 @@ export function applyGate(currentCount, gate) {
       next = Math.max(1, Math.floor(currentCount / gate.val));
       break;
   }
-  return Math.min(999, Math.max(1, next));
+  return Math.min(LIMITS.count, Math.max(1, next));
 }
 
 /**
@@ -105,9 +130,9 @@ export const FIRST_RAMP = [0.45, 0.75];
  * 2まいめ いこうは 1まい ごとに ×WALL.grow かたい（×1.5 → ×20）。
  */
 export const WALL = {
-  grow: 1.45,
-  n: [[1, 2], [2, 2], [3, 5], [4, 11], [5, 60], [6, 100], [8, 190], [10, 250], [14, 330], [20, 390], [30, 420]],
-  perBullet: [[1, 6], [2, 8], [3, 16], [4, 24], [5, 56], [6, 62], [8, 75], [10, 86], [12, 97], [16, 115], [20, 127], [25, 142], [30, 157], [35, 169], [50, 170]],
+  grow: 3, // v1.4.1: たまの かずが おおきく ひらいた ので 1まいごとに ×3（1.45 から）
+  n: [[1, 2], [2, 2], [3, 5], [4, 10], [5, 34], [6, 32], [8, 40], [10, 58], [12, 72], [16, 100], [20, 115], [50, 115]],
+  perBullet: [[1, 6], [2, 8], [3, 16], [4, 24], [5, 27], [6, 32], [8, 44], [10, 57], [12, 72], [16, 98], [20, 118], [25, 140], [30, 160], [40, 169], [50, 170]],
   speedMul: { slow: 1, normal: 0.7, fast: 0.45 },
 };
 function interp(table, s) {
@@ -128,6 +153,8 @@ export function wallBaseHp(stageNum, speedKey = DEFAULT_SPEED) {
  * 「もういちど」（ステージは すすまない。コインは もらえる）。かべの HP は v1.3.0 から ステージで かたく なる（wallBaseHp）。
  */
 export const WALL_GRACE = 5;
+/** プレイヤーが ブロックに ぶつかった とき かずが のこる わりあい（v1.4.1: 0.7 → 0.8 に やさしく。ブロックが かたく なった ぶん） */
+export const RAM_MUL = 0.8;
 
 /**
  * ゲートを うつと かずが かわる（v1.2.0）。たまが あたった かず（hits）で きまる。
@@ -153,12 +180,55 @@ export function gateAfterHits(base, hits) {
 /** たまの ならびかた：どんなに ふえても ほそい ながれ（がめんに でる たまは 5ほんまで、いりょくは ぜんぶ たす） */
 export const STREAM = { maxVisible: 5, gap: 0.035 };
 
+/**
+ * v1.4.1 ブロックも ステージと「ならびの ばんごう」で かたく なる。
+ * ブロックの HP ＝ T(ステージ) びょう × ちから(ステージ) × そのときの たまの かずの めやす C。
+ * C ＝ 「てきとうに えらんだ ひと」の ならびごとの たまの かず（BLOCK.rows の ひょうを ステージで ならす）。
+ * だから てきとうな ひとが 3びょうくらい かけて けずる ＝ いい ひとは 1びょう まえあと、わるい ひとは けずりきれずに ぶつかる。
+ * コインは HPに よらず むかしの しき（3 + むかしの HP÷(5×hpMul)）のまま ＝ ショップの もうけは かわらない。
+ */
+export const BLOCK = {
+  k: 0.18, // ぜんたいの かたさ（ひょうの 0.18ばい。てきとうに えらぶ ひとが 2びょうくらい かけて けずる）
+  T: [[1, 1.2], [2, 1.5], [4, 2.2], [6, 3]],
+  start: [[1, 2], [3, 3], [5, 4], [8, 8], [15, 14], [25, 21]],
+  rows: [
+    [1, [8, 14, 21, 26, 31]],
+    [3, [8, 15, 22, 28, 33, 45]],
+    [5, [17, 31, 40, 61, 76, 91, 154]],
+    [8, [29, 48, 72, 92, 172, 256, 376, 564, 572]],
+    [15, [45, 80, 115, 285, 400, 474, 858, 2056, 2249]],
+    [25, [51, 84, 230, 319, 383, 1286, 1626, 2238, 4699]],
+  ],
+};
+function logInterp(a, b, s, va, vb) { const t = (s - a) / (b - a); return Math.exp(Math.log(va) + (Math.log(vb) - Math.log(va)) * t); }
+/** i ばんめの ならびの ブロックを うつ ときの たまの かずの めやす（ステージ s） */
+export function blockRefCount(stageNum, rowIdx) {
+  const s = Math.max(1, Math.floor(Number(stageNum) || 1));
+  const at = (st, i) => { // st の ひょうの、ならび i の ぜんの かず
+    if (i <= 0) { const t = BLOCK.start; let v = t[t.length - 1][1]; for (const [x, y] of t) if (x >= st) { v = y; break; } return v; }
+    const arr = BLOCK.rows.find(r => r[0] === st)[1];
+    return arr[Math.min(i - 1, arr.length - 1)] * (i - 1 >= arr.length ? Math.pow(1.35, i - arr.length) : 1);
+  };
+  const anchors = BLOCK.rows.map(r => r[0]);
+  if (s <= anchors[0]) return at(anchors[0], rowIdx);
+  if (s >= anchors[anchors.length - 1]) return at(anchors[anchors.length - 1], rowIdx);
+  let k = 1; while (anchors[k] < s) k++;
+  const a = anchors[k - 1], b = anchors[k];
+  const startAt = (st) => { const t = BLOCK.start; for (const [x, y] of t) if (x === st) return y; return 2; };
+  const va = rowIdx <= 0 ? startAt(a) : at(a, rowIdx), vb = rowIdx <= 0 ? startAt(b) : at(b, rowIdx);
+  return logInterp(a, b, s, va, vb);
+}
+export function blockBaseHp(stageNum, rowIdx) {
+  const s = Math.max(1, Math.min(50, Math.floor(Number(stageNum) || 1)));
+  return BLOCK.k * interp(BLOCK.T, s) * interp(WALL.perBullet, s) * blockRefCount(s, rowIdx);
+}
+
 export const UPGRADES = {
   startCount: {
     name: 'スタートだんすう',
     icon: '🔫',
     baseCost: 25,
-    costMult: 1.35, // v1.3.0 レベルを 20→25に ふやし、1.45→1.35（ぜんぶ かうと 25まで）
+    costMult: 1.41, // v1.3.0 レベル 20→25。v1.4.1 1.35→1.41（もうけが ふえた ぶん）
     calcValue: (lvl) => lvl, // Lv1: 1発, Lv2: 2発...
     maxLevel: 25,
   },
@@ -166,7 +236,7 @@ export const UPGRADES = {
     name: 'れんしゃスピード',
     icon: '⚡',
     baseCost: 35,
-    costMult: 1.5, // v1.3.0 1.4→1.5
+    costMult: 1.58, // v1.3.0 1.4→1.5、v1.4.1 1.58
     calcValue: (lvl) => Math.max(0.06, 0.16 - (lvl - 1) * 0.007), // 秒ごとの発射間隔
     maxLevel: 15,
   },
@@ -174,7 +244,7 @@ export const UPGRADES = {
     name: 'たまの いりょく',
     icon: '💥',
     baseCost: 50,
-    costMult: 1.31, // v1.3.0 レベルを 15→20に ふやし、1.5→1.31
+    costMult: 1.36, // v1.3.0 レベル 15→20。v1.4.1 1.31→1.36
     calcValue: (lvl) => 1 + (lvl - 1) * 0.5,
     maxLevel: 20,
   },
@@ -252,6 +322,7 @@ export function generateStageCourse(stageNum, speedKey = DEFAULT_SPEED) {
   const gateInterval = sp.gateGap;
   const gateOff = Math.round(sp.gateGap * 0.4);
   let baseY = FIRST_BLOCK_Y, idx = 0;
+  let nRows = 0; for (let y = FIRST_BLOCK_Y; y + gateOff < courseLength - 600; y += gateInterval) nRows++;
 
   while (baseY + gateOff < courseLength - 600) {
     // ゲートの むずかしさは ステージで ふえる（gateSpec）
@@ -278,16 +349,21 @@ export function generateStageCourse(stageNum, speedKey = DEFAULT_SPEED) {
     // うつ まと：さいしょは HP ひくめ（すぐ たおせて ヒットが みえる）
     const numBlocks = Math.random() < 0.5 ? 2 : 3;
     const ramp = FIRST_RAMP[idx] ?? 1;
-    const hpBase = (10 + stageNum * 8) * sp.hpMul * ramp;
+    const hpBase = (10 + stageNum * 8) * sp.hpMul * ramp;                // むかしの HP（コインの けいさんにだけ つかう）
+    const rowTier = Math.min(2, Math.floor(idx * 3 / Math.max(1, nRows)) + (stageNum >= 10 ? 1 : 0));
     for (let i = 0; i < numBlocks; i++) {
       const lane = numBlocks === 2 ? (i === 0 ? -0.4 : 0.4) : (i - 1) * 0.6;
+      const jitter = 0.8 + Math.random() * 0.5;
+      const hp = Math.max(3, Math.floor(blockBaseHp(stageNum, idx) * jitter * (WALL.speedMul[speedKey] ?? 1)));
       elements.push({
         type: 'BLOCK',
         id: `blk_${baseY}_${i}`,
         y: baseY,
         laneNorm: lane, // -1 (左) 〜 +1 (右)
-        hp: Math.max(3, Math.floor(hpBase * (0.8 + Math.random() * 0.5))),
+        hp,
         maxHp: 0, // 後でセット
+        tier: rowTier, // モンスターの なかま（0=よわい 1=ふつう 2=つよい）
+        coin: 3 + Math.floor(Math.max(3, Math.floor(hpBase * jitter)) / (5 * sp.hpMul)),
         destroyed: false,
         flash: 0,
       });

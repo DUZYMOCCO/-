@@ -2,7 +2,7 @@
  * さんすうシューター ランナー物理＆判定エンジン
  */
 
-import { applyGate, isGoodGate, UPGRADES, SPEEDS, DEFAULT_SPEED, START_DELAY, STREAM, gateAfterHits, WALL_GRACE } from './rules.js?v=8';
+import { applyGate, isGoodGate, UPGRADES, SPEEDS, DEFAULT_SPEED, START_DELAY, STREAM, gateAfterHits, WALL_GRACE, RAM_MUL, fmtNum } from './rules.js?v=9';
 
 export class RunnerEngine {
   constructor(course, saveData) {
@@ -103,7 +103,7 @@ export class RunnerEngine {
         this.gateEffects.push({
           y: el.y,
           isGood,
-          text: (this.bulletCount >= prevCount ? `+${this.bulletCount - prevCount}` : `-${prevCount - this.bulletCount}`),
+          text: (this.bulletCount >= prevCount ? `+${fmtNum(this.bulletCount - prevCount)}` : `-${fmtNum(prevCount - this.bulletCount)}`),
           life: 0.6,
         });
 
@@ -117,7 +117,7 @@ export class RunnerEngine {
         // プレイヤーとブロックの接触（ダメージ・減速）
         if (Math.abs(this.dist - el.y) < 30 && Math.abs(this.playerX - el.laneNorm) < 0.35) {
           el.destroyed = true;
-          this.bulletCount = Math.max(1, Math.floor(this.bulletCount * 0.7));
+          this.bulletCount = Math.max(1, Math.floor(this.bulletCount * RAM_MUL));
           this.addExplosion(el.laneNorm, el.y, '#ef4444');
           if (onEvent) onEvent('hit-block');
         }
@@ -132,7 +132,7 @@ export class RunnerEngine {
             if (this.particles.length < 140) this.addSparks(b.laneNorm, el.y);
             if (el.hp <= 0) {
               el.destroyed = true;
-              const coins = 3 + Math.floor(el.maxHp / (5 * (this.course.hpMul || 1)));
+              const coins = el.coin ?? (3 + Math.floor(el.maxHp / (5 * (this.course.hpMul || 1))));
               this.earnedCoins += coins;
               this.addExplosion(el.laneNorm, el.y, '#3b82f6');
               if (onEvent) onEvent('destroy-block', { coins });

@@ -3,7 +3,7 @@
  * 爽快なレーン、ゲート、ブロック、弾幕、マズルフラッシュの描画
  */
 
-import { getGateText, isGoodGate } from './rules.js?v=8';
+import { getGateText, isGoodGate, fmtNum } from './rules.js?v=9';
 
 export const LANE_FRAC = 0.8;
 
@@ -122,20 +122,14 @@ const MONSTER_PAL = {
 function strHash(str) { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0); }
 /** ブロックの しゅるい（kind）と いろ（pal）。id が おなじなら いつも おなじ */
 export function monsterOf(block) {
-  const tier = block.maxHp < 40 ? 0 : block.maxHp < 120 ? 1 : 2;
+  const tier = block.tier ?? (block.maxHp < 40 ? 0 : block.maxHp < 120 ? 1 : 2);
   const h = strHash(block.id || 'x');
   const kind = MONSTER_POOL[tier][h % MONSTER_POOL[tier].length];
   return { tier, h, kind, pal: MONSTER_PAL[kind][(h >>> 3) % MONSTER_PAL[kind].length] };
 }
 export const MONSTER_KINDS = Object.keys(MONSTER_PAL);
 export { strHash, MONSTER_POOL };
-export function fmtHp(hp) {
-  const n = Math.max(0, Math.ceil(hp));
-  if (n < 1000) return String(n);
-  if (n < 10000) return (Math.ceil(n / 100) / 10).toFixed(1) + 'k';
-  if (n < 1000000) return Math.ceil(n / 1000) + 'k';
-  return (Math.ceil(n / 100000) / 10).toFixed(1) + 'M';
-}
+export function fmtHp(hp) { return fmtNum(hp); }
 function bodyFill(ctx, hit, c1, c2, y0, y1) {
   if (hit) { ctx.fillStyle = '#fffbe6'; return; }
   const g = ctx.createLinearGradient(0, y0, 0, y1); g.addColorStop(0, c1); g.addColorStop(1, c2); ctx.fillStyle = g;
@@ -509,7 +503,7 @@ export class RunnerRenderer {
     ctx.textBaseline = 'middle';
     ctx.lineWidth = 4.5;
     ctx.strokeStyle = '#1f1b2e';
-    const tx = String(Math.max(1, Math.ceil(block.hp)));
+    const tx = fmtNum(Math.max(1, block.hp));
     ctx.strokeText(tx, 0, 10);
     ctx.fillStyle = '#ffffff';
     ctx.fillText(tx, 0, 10);
@@ -629,7 +623,7 @@ export class RunnerRenderer {
     ctx.shadowBlur = 4;
     ctx.font = '900 16px system-ui, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(`x${engine.bulletCount}`, 0, -42);
+    ctx.fillText(`x${fmtNum(engine.bulletCount)}`, 0, -42);
 
     ctx.restore();
   }

@@ -12,16 +12,17 @@ import {
   getUpgradeCost,
   normalizeSave,
   loadSaveOnce,
+  fmtCoin,
   generateStageCourse,
-} from './rules.js?v=8';
-import { RunnerEngine } from './engine.js?v=8';
-import { RunnerRenderer } from './renderer.js?v=8';
+} from './rules.js?v=9';
+import { RunnerEngine } from './engine.js?v=9';
+import { RunnerRenderer } from './renderer.js?v=9';
 
 const SAVE_KEY = 'math_runner_save';
 
 export default {
   prepare() {
-    return loadCss(new URL('../css/math-runner.css?v=8', import.meta.url).href);
+    return loadCss(new URL('../css/math-runner.css?v=9', import.meta.url).href);
   },
 
   init(container, onBackToHub) {
@@ -55,7 +56,7 @@ export default {
           <div class="runner-stage-info" id="runner-stage-title">ステージ 1</div>
           <div class="runner-coins">
             <span>💰</span>
-            <span id="runner-coin-count">${this.saveData.coins}</span>
+            <span id="runner-coin-count">${fmtCoin(this.saveData.coins)}</span>
           </div>
         </header>
 
@@ -227,7 +228,7 @@ export default {
       case 'destroy-block':
         sound.play('blast');
         this.saveData.coins += data.coins;
-        this.coinText.textContent = this.saveData.coins;
+        this.coinText.textContent = fmtCoin(this.saveData.coins);
         break;
       case 'hit-block':
         sound.play('hit');
@@ -250,7 +251,7 @@ export default {
         this.save();
 
         this.resultMultText.textContent = this.lastCleared ? `ボーナス倍率 ×${data.finalMult}` : 'ゲートを うって たまを ふやして ブロックを たおそう！';
-        this.resultCoinsText.textContent = `ステージ獲得: +${data.earnedCoins}  ➔  合計 +${data.earnedCoins + finalBonus} コイン！`;
+        this.resultCoinsText.textContent = `ステージ獲得: +${fmtCoin(data.earnedCoins)}  ➔  合計 +${fmtCoin(data.earnedCoins + finalBonus)} コイン！`;
         this.resultOverlay.style.display = 'flex';
         break;
     }
@@ -258,7 +259,7 @@ export default {
 
   updateLobbyUI() {
     this.stageTitle.textContent = `ステージ ${this.saveData.stage}`;
-    this.coinText.textContent = this.saveData.coins;
+    this.coinText.textContent = fmtCoin(this.saveData.coins);
 
     // すすむ はやさ（ゆっくり／ふつう／はやい）
     this.speedBox.innerHTML = `<div class="runner-speed-title">すすむ はやさ</div><div class="runner-speed-row">${
@@ -287,7 +288,7 @@ export default {
             <span class="runner-up-name">${def.icon} ${def.name}</span>
             <span class="runner-up-lvl">${isMax ? 'MAX' : `Lv.${lvl}/${def.maxLevel}`}</span>
           </div>
-          <div class="runner-up-cost">${isMax ? 'MAX' : `💰 ${cost}`}</div>
+          <div class="runner-up-cost">${isMax ? 'MAX' : `💰 ${fmtCoin(cost)}`}</div>
         </button>
       `;
     }).join('');

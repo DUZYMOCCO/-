@@ -1,8 +1,8 @@
 // さんすうシューター の Service Worker 用アセット一覧
 self.GAME_ASSETS = self.GAME_ASSETS || {};
 self.GAME_ASSETS['math-runner'] = {
-  version: 'v8',
-  gameVersion: '1.4.0',
+  version: 'v9',
+  gameVersion: '1.4.1',
   files: [
     'css/math-runner.css',
     'js/index.js',

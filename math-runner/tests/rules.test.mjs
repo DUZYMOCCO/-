@@ -10,6 +10,7 @@ import {
   defaultSaveData,
   normalizeSave,
   generateStageCourse,
+  LIMITS,
 } from '../js/rules.js';
 
 test('applyGate computes correct math operations with boundaries', () => {
@@ -24,7 +25,8 @@ test('applyGate computes correct math operations with boundaries', () => {
   assert.equal(applyGate(9, { type: GATE_TYPES.DIV, val: 2 }), 4);
   assert.equal(applyGate(1, { type: GATE_TYPES.DIV, val: 5 }), 1);
   // 上限999
-  assert.equal(applyGate(500, { type: GATE_TYPES.MUL, val: 10 }), 999);
+  assert.equal(applyGate(500, { type: GATE_TYPES.MUL, val: 10 }), 5000);   // v1.4.1: 999 の かべは なくなった
+  assert.equal(applyGate(5e7, { type: GATE_TYPES.MUL, val: 10 }), LIMITS.count);
 });
 
 test('getGateText and isGoodGate return correct representations', () => {
@@ -323,18 +325,17 @@ test('stage 1-2 stay forgiving even with fresh upgrades and careless gate picks'
 });
 
 test('mid/late stages: good gate-picking clears, careless picking can fall short, x20 is no longer automatic', () => {
-  const typical = { 8: { startCount: 8, fireRate: 15, power: 8 }, 15: { startCount: 14, fireRate: 15, power: 12 }, 25: { startCount: 21, fireRate: 15, power: 16 } };
-  for (const s of [8, 15, 25]) {
+  const typical = { 15: { startCount: 15, fireRate: 11, power: 15 }, 25: { startCount: 19, fireRate: 14, power: 19 }, 40: { startCount: 23, fireRate: 15, power: 20 } };
+  for (const s of [15, 25, 40]) {
     const best = rate(s, typical[s], PICKS.best), worst = rate(s, typical[s], PICKS.worst), rand = rate(s, typical[s], PICKS.rand);
     assert.ok(best.clear >= 0.9, `best ${s}: ${best.clear}`);
-    assert.ok(worst.clear <= 0.3, `worst ${s}: ${worst.clear}`);
-    assert.ok(rand.clear <= best.clear + 0.05);                    // てきとうは ときどき たりない
-    assert.ok(best.mult < 16, `x20ばかりに ならない ${s}: ${best.mult}`);
-    assert.ok(best.mult > rand.mult * 0.9 && best.mult > worst.mult);
+    assert.ok(worst.clear <= 0.65, `worst ${s}: ${worst.clear}`);
+    assert.ok(rand.clear <= 0.9 && rand.clear >= 0.1, `rand ${s}: ${rand.clear}`);   // てきとうは ときどき たりない
+    assert.ok(best.mult < 18, `x20ばかりに ならない ${s}: ${best.mult}`);
+    assert.ok(best.mult > rand.mult * 2 && best.mult > worst.mult * 2 && best.mult >= 4);
   }
-  // おもいっきり つよい（ショップ ぜんぶ MAX）なら ボーナスは おおきい
-  const maxed = rate(15, { startCount: 25, fireRate: 15, power: 20 }, PICKS.best, 20);
-  assert.ok(maxed.clear === 1 && maxed.mult >= 5);
+  const maxed = rate(25, { startCount: 25, fireRate: 15, power: 20 }, PICKS.best, 20);
+  assert.ok(maxed.clear === 1 && maxed.mult >= 8);
 });
 
 test('failing the wall is still gentle: nothing instant, grace period and retry kept', () => {
@@ -357,9 +358,9 @@ test('shop: costs rise a lot more (v1.3.0), early levels stay cheap, levels exte
     let prev = 0;
     for (let l = 1; l < UPGRADES[k].maxLevel; l++) { const c = getUpgradeCost(k, l); assert.ok(c > prev); prev = c; total += c; }
     assert.equal(getUpgradeCost(k, UPGRADES[k].maxLevel), Infinity);
-    assert.ok(getUpgradeCost(k, 1) <= 50 && getUpgradeCost(k, 3) <= 90, `${k} はじめは やすい`);
+    assert.ok(getUpgradeCost(k, 1) <= 50 && getUpgradeCost(k, 3) <= 100, `${k} はじめは やすい`);
   }
-  assert.ok(total >= 130000 && total <= 160000, `total ${total}`);   // v1.2: ぜんぶで 約10まんコイン
+  assert.ok(total >= 280000 && total <= 350000, `total ${total}`);   // v1.2: 約10まん → v1.3: 約14まん → v1.4.1: 約32まんコイン（かせぎが ふえた ぶん）
   // むかしの セーブ（20/15/15 ぜんぶ MAX）は そのまま、もっと のばせる。MAXを こえた かずは けずる
   const old = normalizeSave({ coins: 777, stage: 12, upgrades: { startCount: 20, fireRate: 15, power: 15 } });
   assert.deepEqual(old.upgrades, { startCount: 20, fireRate: 15, power: 15 });
@@ -498,4 +499,80 @@ test('blocks keep their hit flash and HP logic (engine unchanged for blocks); wa
   let wallFlash = false;
   for (let i = 0; i < 60 * 2; i++) { e.update(1 / 60); if (w.flash > 0) wallFlash = true; }
   assert.ok(wallFlash && w.hp < w.maxHp);
+});
+
+// ---- v1.4.1 たまの かずの じょうげん UP・みじかい ひょうじ・かたい ブロック ----
+import { fmtNum, fmtCoin, blockBaseHp, BLOCK, RAM_MUL } from '../js/rules.js';
+test('count cap raised a lot (999 -> 99,999,999) and big numbers are formatted compactly', () => {
+  assert.ok(LIMITS.count >= 99999999);
+  assert.equal(applyGate(1000, { type: GATE_TYPES.MUL, val: 4 }), 4000);
+  const e = new RunnerEngine(generateStageCourse(5, 'slow'), normalizeSave({ speed: 'slow' }));
+  e.bulletCount = 4_000_000; e.spawnBullets();
+  assert.equal(e.bullets.length, STREAM.maxVisible);                    // たくさん でも ほそい ながれ
+  assert.ok(Math.abs(e.bullets.reduce((a, b) => a + b.power, 0) - 4_000_000 * e.bulletPower) < 1);
+  const cases = { 0: '0', 7: '7', 999: '999', 1000: '1.0k', 1234: '1.3k', 12345: '13k', 187850: '188k', 999999: '1.0M', 2500000: '2.5M', 99999999: '100M', 3e9: '3.0B' };
+  for (const [v, t] of Object.entries(cases)) assert.equal(fmtNum(+v), t, v);
+  for (const v of [1, 99, 1e3, 5e4, 6.5e5, 7.7e6, 1e8, 4e9, 1e11]) assert.ok(fmtNum(v).length <= 5, `${v} -> ${fmtNum(v)}`);  // HUD・ブロックに おさまる
+  assert.equal(fmtCoin(99999), '99999');
+  assert.equal(fmtCoin(125000), '125k');
+  // HUD の x かず・ブロック・かべ：どんなに おおきくても みじかい もじ
+  const r = new RunnerRenderer({ getContext: () => ({}) });
+  const { ctx, texts } = recCtx();
+  r.drawBlock(ctx, 50, 50, { id: 'blk_1_0', hp: 8_765_432, maxHp: 9_000_000, flash: 0 });
+  r.drawWall(ctx, 100, 100, { mult: 20, hp: 2.5e10, maxHp: 3e10, flash: 0 }, 300);
+  assert.deepEqual(texts, ['8.8M', '×20  [25B]']);
+});
+
+test('blocks are much tougher: HP grows with stage and row, coins unchanged, ram penalty gentle', () => {
+  assert.equal(RAM_MUL, 0.8);
+  for (const s of [3, 8, 15, 30]) { for (let i = 1; i < 6; i++) assert.ok(blockBaseHp(s, i) >= blockBaseHp(s, i - 1) * 0.99, `s${s} row${i}`); }
+  assert.ok(blockBaseHp(15, 5) > blockBaseHp(8, 5) && blockBaseHp(8, 5) > blockBaseHp(3, 5));
+  const c = generateStageCourse(15, 'slow');
+  const blocks = c.elements.filter(x => x.type === 'BLOCK');
+  const oldHp = (10 + 15 * 8) * 2;                                         // v1.3 の ブロックHP（ほぼ）
+  const rows = [...new Set(blocks.map(b => b.y))].sort((a, b) => a - b);
+  const lastRow = blocks.filter(b => b.y === rows[rows.length - 1]);
+  assert.ok(lastRow.every(b => b.maxHp > oldHp * 20), `${lastRow[0].maxHp} vs ${oldHp}`);
+  assert.ok(blocks.every(b => b.coin >= 3 && b.coin < 80), 'コインは HPに よらない');
+  assert.ok(blocks.filter(b => b.y === rows[0]).every(b => b.tier === 1) && blocks.filter(b => b.y === rows[rows.length - 1]).every(b => b.tier === 2));
+  assert.ok(generateStageCourse(2, 'slow').elements.filter(x => x.type === 'BLOCK').some(b => b.tier === 0));
+  // ぶつかると かずが 0.8ばいに（ゼロには ならない）
+  const e = new RunnerEngine(generateStageCourse(3, 'slow'), normalizeSave({ speed: 'slow' }));
+  e.delay = 0; e.bulletCount = 100; const blk = e.course.elements.find(x => x.type === 'BLOCK');
+  for (const el of e.course.elements) if (el.type === 'GATE_PAIR') el.passed = true;
+  e.bullets.length = 0; e.dist = blk.y - 5; e.playerX = e.targetX = blk.laneNorm; e.shootTimer = 99;
+  e.update(1 / 120);
+  assert.equal(e.bulletCount, 80);
+});
+
+function ttkStats(stage, ups, pick, runs = 6) {
+  const ttk = []; let rams = 0, kills = 0;
+  for (let k = 0; k < runs; k++) {
+    const e = new RunnerEngine(generateStageCourse(stage, 'slow'), normalizeSave({ speed: 'slow', upgrades: ups }));
+    const first = new Map(), done = new Set();
+    for (let i = 0; i < 60 * 200 && !e.isFinished && !e.isWallPhase; i++) {
+      const g = e.course.elements.find(x => x.type === 'GATE_PAIR' && !x.passed);
+      e.setTargetX(g ? (pick(vOf(g.left, e.bulletCount), vOf(g.right, e.bulletCount)) ? -0.5 : 0.5) : 0);
+      e.update(1 / 60);
+      for (const b of e.course.elements) if (b.type === 'BLOCK') {
+        if (!first.has(b.id) && b.hp < b.maxHp) first.set(b.id, e.time);
+        if (b.destroyed && !done.has(b.id)) { done.add(b.id); if (b.hp <= 0) { kills++; if (first.has(b.id)) ttk.push(e.time - first.get(b.id)); } else rams++; }
+      }
+    }
+  }
+  ttk.sort((a, b) => a - b);
+  return { med: ttk[ttk.length >> 1] || 0, rams: rams / Math.max(1, rams + kills) };
+}
+test('auto-fire block fights: a block takes a visible moment to chip; careless players often get rammed', () => {
+  const ups = { startCount: 15, fireRate: 11, power: 15 };                 // ステージ15 の ふつうの ショップ
+  const good = ttkStats(15, ups, (a, b) => Math.random() < 0.8 ? a >= b : a < b);
+  const best = ttkStats(15, ups, PICKS.best);
+  const rand = ttkStats(15, ups, PICKS.rand);
+  assert.ok(good.med >= 0.25 && good.med <= 3, `good ttk ${good.med}`);
+  assert.ok(best.med >= 0.05 && best.med <= good.med + 0.3, `best ttk ${best.med}`);
+  assert.ok(rand.med >= 0.8 && rand.med <= 5, `rand ttk ${rand.med}`);
+  assert.ok(good.rams <= 0.25 && rand.rams >= 0.3 && rand.rams > good.rams, `rams good ${good.rams} rand ${rand.rams}`);
+  // むかしは 0.00びょう（いっしゅん）だった
+  const oldHpBlock = (10 + 15 * 8) * 2;
+  assert.ok(blockBaseHp(15, 4) / (oldHpBlock) > 50);
 });
