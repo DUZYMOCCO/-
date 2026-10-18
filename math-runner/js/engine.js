@@ -2,7 +2,7 @@
  * さんすうシューター ランナー物理＆判定エンジン
  */
 
-import { applyGate, isGoodGate, UPGRADES, SPEEDS, DEFAULT_SPEED, START_DELAY, STREAM, gateAfterHits, WALL_GRACE } from './rules.js?v=7';
+import { applyGate, isGoodGate, UPGRADES, SPEEDS, DEFAULT_SPEED, START_DELAY, STREAM, gateAfterHits, WALL_GRACE } from './rules.js?v=8';
 
 export class RunnerEngine {
   constructor(course, saveData) {
@@ -158,6 +158,7 @@ export class RunnerEngine {
             if (Math.abs(b.y - wall.y) < 25) {
               this.bullets.splice(i, 1);
               wall.hp -= b.power;
+              wall.flash = 0.08;
               this.addSparks(b.laneNorm, wall.y);
               if (wall.hp <= 0) {
                 wall.destroyed = true;
@@ -184,6 +185,8 @@ export class RunnerEngine {
           }
         }
       }
+
+      for (const wl of this.course.walls) if (wl.flash > 0) wl.flash -= dt;
 
       // 全ての壁を撃破してコース最奥に到達
       if (!this.stopped && this.dist >= this.course.length) {

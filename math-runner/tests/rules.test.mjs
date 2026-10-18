@@ -438,3 +438,64 @@ test('one-time save reset: new players, broken data and the marker rules', () =>
   assert.equal(resolveSave(null, 0).didReset, false);               // もともと セーブが ない
   assert.ok(Number.isInteger(RESET_EPOCH) && RESET_EPOCH >= 1);
 });
+
+// ---- v1.4.0 モンスターの まと ----
+import { RunnerRenderer, monsterOf, MONSTER_KINDS, MONSTER_POOL } from '../js/renderer.js';
+function recCtx() {
+  const calls = [], texts = [];
+  const ctx = new Proxy({}, {
+    get: (_, k) => {
+      if (k === 'createLinearGradient') return () => ({ addColorStop() {} });
+      if (k === 'fillText') return (t) => { texts.push(String(t)); calls.push(k); };
+      return (...a) => { calls.push(k); };
+    },
+    set: () => true,
+  });
+  return { ctx, calls, texts };
+}
+test('monster blocks: 4 kinds (zombie/slime/one-eye/bat), varied by HP tier and id, same id = same monster', () => {
+  assert.deepEqual([...MONSTER_KINDS].sort(), ['bat', 'cyclops', 'slime', 'zombie']);
+  const seen = new Set(), byTier = [new Set(), new Set(), new Set()];
+  for (let i = 0; i < 300; i++) for (const [tier, maxHp] of [[0, 20], [1, 80], [2, 300]]) {
+    const b = { id: `blk_${230 + i * 520}_${i % 3}`, maxHp, hp: maxHp };
+    const m = monsterOf(b); assert.equal(m.tier, tier);
+    assert.deepEqual(monsterOf(b), m);                               // ちらつかない
+    assert.ok(MONSTER_POOL[tier].includes(m.kind) && m.pal.length >= 2);
+    seen.add(m.kind); byTier[tier].add(m.kind);
+  }
+  assert.equal(seen.size, 4);
+  assert.ok(byTier[0].has('slime') && byTier[0].has('bat'));         // よわい なかま
+  assert.ok(byTier[1].has('zombie') && byTier[1].has('cyclops') && byTier[2].has('cyclops'));
+});
+
+test('monster blocks draw safely on every kind, keep a big HP number, hit flash, and stay light (no shadowBlur)', () => {
+  const r = new RunnerRenderer({ getContext: () => ({}) });
+  for (const maxHp of [20, 80, 300]) for (let i = 0; i < 12; i++) for (const flash of [0, 0.1]) {
+    const { ctx, calls, texts } = recCtx(); r.time = 1.3;
+    r.drawBlock(ctx, 100, 200, { id: `blk_${i * 777}_${i % 3}`, maxHp, hp: maxHp * 0.6, flash });
+    assert.deepEqual(texts, [String(Math.ceil(maxHp * 0.6))]);        // HPの かずは ちゃんと かく
+    assert.ok(calls.length < 140, `くうよう すくなめ: ${calls.length}`);
+  }
+  // かべ（ボス）：×と HP、しゃぼん なし
+  for (const flash of [0, 0.1]) {
+    const { ctx, texts, calls } = recCtx();
+    r.drawWall(ctx, 200, 300, { mult: 20, hp: 187850, maxHp: 187850, flash }, 300);
+    assert.deepEqual(texts, ['×20  [188k]']);
+    assert.ok(calls.length < 140);
+  }
+  // ふつうの ゲームの うごきで ブロックが 1フレームに たくさん でても 軽い（おおくても 6こ ほど）
+  const c = generateStageCourse(10, 'slow'); assert.ok(c.elements.filter(e => e.type === 'BLOCK').length >= 6);
+});
+
+test('blocks keep their hit flash and HP logic (engine unchanged for blocks); wall flashes when hit', () => {
+  const e = new RunnerEngine(generateStageCourse(1, 'slow'), normalizeSave({ speed: 'slow', upgrades: { startCount: 6 } }));
+  for (const el of e.course.elements) if (el.type === 'GATE_PAIR') el.passed = true;
+  e.delay = 99; e.playerX = e.targetX = 0.4;                         // ブロックの まえに たつ
+  let flashed = false;
+  for (let i = 0; i < 60 * 3; i++) { e.update(1 / 60); if (e.course.elements.some(x => x.type === 'BLOCK' && x.flash > 0)) flashed = true; }
+  assert.ok(flashed);
+  const w = e.course.walls[0]; e.isWallPhase = true; e.dist = w.y - 100; e.delay = 0; e.bulletCount = 3;
+  let wallFlash = false;
+  for (let i = 0; i < 60 * 2; i++) { e.update(1 / 60); if (w.flash > 0) wallFlash = true; }
+  assert.ok(wallFlash && w.hp < w.maxHp);
+});

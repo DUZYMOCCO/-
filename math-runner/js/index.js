@@ -13,15 +13,15 @@ import {
   normalizeSave,
   loadSaveOnce,
   generateStageCourse,
-} from './rules.js?v=7';
-import { RunnerEngine } from './engine.js?v=7';
-import { RunnerRenderer } from './renderer.js?v=7';
+} from './rules.js?v=8';
+import { RunnerEngine } from './engine.js?v=8';
+import { RunnerRenderer } from './renderer.js?v=8';
 
 const SAVE_KEY = 'math_runner_save';
 
 export default {
   prepare() {
-    return loadCss(new URL('../css/math-runner.css?v=7', import.meta.url).href);
+    return loadCss(new URL('../css/math-runner.css?v=8', import.meta.url).href);
   },
 
   init(container, onBackToHub) {
