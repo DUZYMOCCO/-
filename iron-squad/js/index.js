@@ -40,6 +40,7 @@ import {invasionMethods,initializeInvasions,serializeInvasions,shouldTriggerRand
 import {gateMethods,serializeGatePosts,replenishTownGateGuards,initializeGateGuards,ensureTownGuards,serializeGateGuards,updateGateGuards,gateGuardVisible,applyFortifications,drawFortification,exitGateTown,townExitReached,wallBlocksAttack,attackBlocked as coverBlocked} from './gate-rules.js?v=295';
 import {nationMethods,normalizeNation,nationalIncome,nationalPayrollPlan,headquartersDamageMult,drawNationalDevelopment,DEVELOPMENT_STAGES} from './nation-rules.js?v=298';
 import {equipmentUpgradeCost,salaryQuote,paySoldiers} from './payroll-rules.js?v=226';
+import {planSelfUpgrades,applySelfUpgradePlan,SELF_UPGRADE_SAFETY_LIMIT,REST_UPGRADES_PER_PHASE_MAX,REST_UPGRADES_PER_TICK_MAX} from './self-upgrade-rules.js?v=300';
 import {addFieldDrop,ageFieldDrops,attractFieldDrops,FIELD_DROP_PICKUP_RADIUS} from './field-drops.js?v=182';
 import {drawLootDrop,drawLootPullTrail} from './loot-visuals.js?v=295';
 import {drawOwnSquadRing,isOwnSquad} from './own-squad-marker.js?v=182';
@@ -5000,7 +5001,7 @@ export const IronSquadGame = {
     const restBanner=document.getElementById('phase-complete-banner'),restText=document.getElementById('phase-banner-text');
     if(restBanner && restText) {
       restBanner.classList.toggle('hidden',!(this.restTimer>0));
-      restText.textContent=this.restTimer>0?`次のラウンド開始まで ${Math.ceil(this.restTimer)}秒 · 敵は休止中 · 自己強化 ${this.restReport?.count||0}回（${this.restReport?.spent||0}G） · 会議を開く`:'';
+      restText.textContent=this.restTimer>0?`次のラウンド開始まで ${Math.ceil(this.restTimer)}秒 · 敵は休止中 · 自己強化 ${(this.restReport?.count||0).toLocaleString()}回（${(this.restReport?.spent||0).toLocaleString()}G） · 会議を開く`:'';
     }
 
     const aliveSquad = this.squad ? this.squad.filter(s => !s.dead) : [];
@@ -5872,14 +5873,19 @@ export const IronSquadGame = {
       const record=soldier.lastMaintenance ||= {phase:this.restReport.phase,count:0,spent:0,status:''};
       if(soldier.isDown) {record.status='負傷ダウン中';continue;}
       const equipment=[...new Map(Object.values(soldier.equipped||{}).filter(Boolean).map(i=>[i.id,i])).values()];
+      // v7.0.23: money decides how many pieces are maintained; a per-second and a per-period safety cap keep many soldiers cheap.
+      const room=Math.min(REST_UPGRADES_PER_TICK_MAX,REST_UPGRADES_PER_PHASE_MAX-(record.count||0));
+      if(room<=0){record.status='今期の整備上限に到達';continue;}
       const candidates=equipment.filter(i=>!seen.has(i.id))
         .sort((a,b)=>(a.upgrade||0)-(b.upgrade||0)||this.getUpgradeCost(a)-this.getUpgradeCost(b));
-      const chosen=candidates.find(i=>(soldier.gold||0)>=this.getUpgradeCost(i)+6);
-      if(!chosen){record.status=!equipment.length?'装備なし':'資金不足（維持費6Gを確保）';continue;}
-      const cost=this.getUpgradeCost(chosen);soldier.gold-=cost;
-      applyUpgradeStats(chosen,(chosen.upgrade||0)+1);seen.add(chosen.id);
-      record.count++;record.spent+=cost;record.status=`${chosen.name}を整備`;
-      this.restReport.count++;this.restReport.spent+=cost;
+      const plan=planSelfUpgrades(candidates,soldier.gold||0,{reserve:6,maxCount:room});
+      if(!plan.count){record.status=!equipment.length?'装備なし':'資金不足（維持費6Gを確保）';continue;}
+      soldier.gold-=plan.spent;
+      applySelfUpgradePlan(plan,applyUpgradeStats);
+      for(const step of plan.steps)seen.add(step.item.id);
+      record.count+=plan.count;record.spent+=plan.spent;
+      record.status=plan.count>1?`装備を計${plan.count}回整備（${plan.steps.length}箇所）`:`${plan.steps[0].item.name}を整備`;
+      this.restReport.count+=plan.count;this.restReport.spent+=plan.spent;
       if(!this.restReport.trainedIds.includes(soldier.id))this.restReport.trainedIds.push(soldier.id);
       this.recalcSoldierStats(soldier);
     }
@@ -9240,38 +9246,20 @@ export const IronSquadGame = {
     let upgradedCount = 0;
     const upgradedNames = [];
     if (s.equipped) {
+      // v7.0.23: the soldier keeps upgrading while the purse allows (lowest +level first); only a large safety limit remains.
       const slotKeys = ['weapon', 'armor', 'shield', 'helmet', 'legs', 'gloves', 'amulet'];
-      let canUpgradeMore = true;
-      let loopGuard = 0;
-      while (canUpgradeMore && loopGuard < 80) {
-        loopGuard++;
-        let anyUpgraded = false;
-        // 強化可能な装備を抽出し、強化値が低い順に優先してバランスよく底上げ
-        const candidates = slotKeys
-          .map(k => s.equipped[k])
-          .filter(it => it); // 無限強化可能！
-        
-        candidates.sort((a, b) => (a.upgrade || 0) - (b.upgrade || 0));
-
-        for (const eqItem of candidates) {
-          const cost = this.getUpgradeCost(eqItem);
-          if (s.gold >= cost) {
-            s.gold -= cost;
-            const nextUp = (eqItem.upgrade || 0) + 1;
-            applyUpgradeStats(eqItem, nextUp);
-            upgradedCount++;
-            if (!upgradedNames.includes(equipmentName(eqItem))) upgradedNames.push(equipmentName(eqItem));
-            anyUpgraded = true;
-            break; // 1回強化したら再ソートして次へ
-          }
-        }
-        if (!anyUpgraded) canUpgradeMore = false;
+      const plan = planSelfUpgrades(slotKeys.map(k => s.equipped[k]).filter(it => it), s.gold, {maxCount: SELF_UPGRADE_SAFETY_LIMIT});
+      if (plan.count > 0) {
+        s.gold -= plan.spent;
+        applySelfUpgradePlan(plan, applyUpgradeStats);
+        upgradedCount = plan.count;
+        for (const step of plan.steps) upgradedNames.push(equipmentName(step.item));
       }
     }
 
     let autoUpgradedMsg = '';
     if (upgradedCount > 0) {
-      autoUpgradedMsg = ` ➔ 兵士「隊長ッ、感謝します！」大金で装備を【計${upgradedCount}回】連続自主強化！(${upgradedNames.slice(0, 3).join(', ')}等)`;
+      autoUpgradedMsg = ` ➔ 兵士「隊長ッ、感謝します！」大金で装備を【計${upgradedCount.toLocaleString()}回】連続自主強化！(${upgradedNames.slice(0, 3).join(', ')}等)`;
     } else {
       autoUpgradedMsg = ` (兵士サイフ: ${s.gold.toLocaleString()}G)`;
     }
@@ -9634,29 +9622,18 @@ export const IronSquadGame = {
     for (const s of living) {
       if (!s.equipped) continue;
       const slotKeys = ['weapon', 'armor', 'shield', 'helmet', 'legs', 'gloves', 'amulet'];
-      let guard = 0;
-      while (guard < 20) {
-        guard++;
-        const candidates = slotKeys.map(k => s.equipped[k]).filter(Boolean)
-          .sort((a, b) => (a.upgrade || 0) - (b.upgrade || 0));
-        let any = false;
-        for (const eqItem of candidates) {
-          const cost = this.getUpgradeCost(eqItem);
-          if ((s.gold || 0) >= cost) {
-            s.gold -= cost;
-            applyUpgradeStats(eqItem, (eqItem.upgrade || 0) + 1);
-            totalUpgrades++;
-            any = true;
-            break;
-          }
-        }
-        if (!any) break;
+      // v7.0.23: no 20-per-soldier cap any more; each soldier upgrades while the received gold allows (safety limit only).
+      const plan = planSelfUpgrades(slotKeys.map(k => s.equipped[k]).filter(Boolean), s.gold || 0, {maxCount: SELF_UPGRADE_SAFETY_LIMIT});
+      if (plan.count > 0) {
+        s.gold -= plan.spent;
+        applySelfUpgradePlan(plan, applyUpgradeStats);
+        totalUpgrades += plan.count;
       }
       this.recalcSoldierStats(s);
     }
 
     sound.playHighScore();
-    this.showToast(`🏛【国庫寄付】${amount.toLocaleString()}G → 全国${living.length}名へ各${per.toLocaleString()}G配分（強化${totalUpgrades}回） / 国庫残${(this.treasury || 0).toLocaleString()}G`);
+    this.showToast(`🏛【国庫寄付】${amount.toLocaleString()}G → 全国${living.length}名へ各${per.toLocaleString()}G配分（強化${totalUpgrades.toLocaleString()}回） / 国庫残${(this.treasury || 0).toLocaleString()}G`);
     this.saveGame({background:true});
     this.renderStrategyUI();
     this.updateStatsUI();
@@ -11040,7 +11017,7 @@ export const IronSquadGame = {
       const m=s.lastMaintenance;
       const wage=salaryQuote(s,this);
       maintenanceNote.textContent=`通常給与見込 ${wage.total.toLocaleString()}G（基本${wage.basic.toLocaleString()}＋整備${wage.maintenance.toLocaleString()}）`;
-      maintenanceNote.textContent+=m?` · 第${m.phase}期${m.salaryPaid!=null?`支給${m.salaryPaid.toLocaleString()}G · `:''}強化${m.count}回 / ${m.spent}G · ${m.status}`:' · 次のラウンド開始前に所持金で自動整備';
+      maintenanceNote.textContent+=m?` · 第${m.phase}期${m.salaryPaid!=null?`支給${m.salaryPaid.toLocaleString()}G · `:''}強化${(m.count||0).toLocaleString()}回 / ${(m.spent||0).toLocaleString()}G · ${m.status}`:' · 次のラウンド開始前に所持金で自動整備';
       row.append(maintenanceNote);
       const transportNote=document.createElement('p');transportNote.className='maintenance-summary';
       const cargo=carriedSoldiers(this,s),carrier=s.carrierId?carrierOf(this,s):null;
