@@ -10,9 +10,10 @@ const {DUNGEON_DEFS}=await import('../js/dungeon.js');
 const {visibleHeroMembers}=await import('../js/hero-rules.js');
 const {activeSquad}=await import('../js/instance-rules.js');
 const {WORLD_SIZE}=await import('../js/world.js');
+const {showsOnFieldLog}=await import('../js/battle-log.js');
 const game=Object.create(IronSquadGame);
 for(const m of ['updateStatsUI','updateQuestUI','startGameLoop','spawnSparks','spawnDamageText','renderStrategyUI','refreshSupplyUI','recalcPlayerStats'])game[m]=()=>{};
-const toasts=[];game.showToast=m=>toasts.push(String(m));
+const toasts=[],toastOpts=[];game.showToast=(m,o)=>{toasts.push(String(m));toastOpts.push(o);};
 game.width=800;game.height=450;game.zoom=1;
 game.activeSlotId=saveSlots.create('観戦検証7031').id;game.startFreshGame(false);game.restTimer=0;game.monsters=[];
 const d=DUNGEON_DEFS.find(x=>x.id==='dungeon_demon_castle'),CASTLE=d.id,C=WORLD_SIZE/2;
@@ -28,7 +29,7 @@ const SQUAD_STATE=()=>game.squad.map(s=>`${s.id}:${s.x}:${s.y}:${s.hp}`).join('|
 {
   const p=marchParty(10);
   let a=sp.spectateAvailability(game);assert.deepEqual([a.ok,a.code,a.kind],[true,'ok','field']);assert.match(a.reason,/勇者の進軍を最初から見守ります/);
-  game.player.x=C+1500;a=sp.spectateAvailability(game);assert.deepEqual([a.ok,a.code,a.kind],[false,'away','field'],'away from the camp peace bubble: wait');assert.match(a.reason,/勇者は進軍中。隊長が本陣に戻ると観戦を始められます/);
+  game.player.x=C+1500;a=sp.spectateAvailability(game);assert.deepEqual([a.ok,a.code,a.kind],[true,'ok','field'],'v7.0.32: away from the camp peace bubble is no reason to wait');
   game.player.x=campPos.x;
   game.restTimer=8;assert.equal(sp.spectateAvailability(game).code,'rest');game.restTimer=0;
   game.currentDungeon=DUNGEON_DEFS.find(x=>x.kind==='town');assert.equal(sp.spectateAvailability(game).code,'inside');game.currentDungeon=null;
@@ -36,31 +37,58 @@ const SQUAD_STATE=()=>game.squad.map(s=>`${s.id}:${s.x}:${s.y}:${s.hp}`).join('|
   game.player.isDown=true;assert.equal(sp.spectateAvailability(game).code,'down');game.player.isDown=false;
   game.inBattle=false;assert.equal(sp.spectateAvailability(game).ok,true,'the 戦況 window (inBattle=false) no longer blocks it');game.inBattle=true;
   assert.equal(sp.spectateStatusLine(game),a=sp.spectateAvailability(game).reason);
-  game.player.x=C+1500;assert.match(sp.spectateStatusLine(game),/^観戦：勇者は進軍中/);game.player.x=campPos.x;
+  game.restTimer=8;assert.match(sp.spectateStatusLine(game),/^観戦：待機中です/);assert.equal(sp.spectateAvailability(game).short,'待機中');game.restTimer=0;
+  for(const [code,short,on,off] of [['raid','強襲中',()=>{game.baseRaidActive=true;},()=>{game.baseRaidActive=false;}],['inside','隊長が建物・洞窟内',()=>{game.currentDungeon=DUNGEON_DEFS.find(x=>x.kind==='town');},()=>{game.currentDungeon=null;}],['down','隊長がダウン中',()=>{game.player.isDown=true;},()=>{game.player.isDown=false;}]]){on();const b=sp.spectateAvailability(game);assert.deepEqual([b.code,b.short],[code,short]);off();}
+  game.invasions={...(game.invasions||{}),stage:'marching'};assert.equal(sp.spectateAvailability(game).short,'侵攻中');game.invasions.stage='idle';
   assert.equal(p.space,'field');
 }
-// ---------- queue: toggling, waiting, 3-second notice, auto start ----------
+// ---------- queue: toggling, waiting through every blocker, immediate start (v7.0.32: no countdown) ----------
 {
-  const p=marchParty(15);game.player.x=C+1500; // away from the camp
+  const p=marchParty(15);game.restTimer=8; // blocked: rest
   toasts.length=0;assert.equal(sp.queueSpectate(game,SOLDIER_CLASSES),true);assert.ok(game.spectateQueued);assert.equal(sp.queueSpectate(game),false,'no double queue');
-  assert.match(sp.spectateStatusLine(game),/^観戦待ち：勇者は進軍中。隊長が本陣に戻ると観戦を始まります|^観戦待ち：勇者は進軍中。隊長が本陣に戻ると/);
+  assert.ok(toasts.some(t=>t.includes('観戦待ちにした')&&t.includes('待機中')),'the queue toast names the reason');
+  assert.match(sp.spectateStatusLine(game),/^観戦待ち：待機中です。待機が終わると観戦が始まります/);
   for(let i=0;i<50;i++)sp.updateSpectateQueue(game,.1);
-  assert.ok(game.spectateQueued,'still waiting');assert.equal(game.spectating,null);assert.ok(!toasts.some(t=>t.includes('観戦できません')),'waiting is not an error');assert.ok(!toasts.some(t=>t.includes('秒後に観戦')));
-  // blockers keep the queue alive (and the game never enters anything)
-  game.player.x=campPos.x;
+  assert.ok(game.spectateQueued,'still waiting');assert.equal(game.spectating,null);assert.ok(!toasts.some(t=>t.includes('観戦できません')),'waiting is not an error');assert.ok(!toasts.some(t=>t.includes('秒後に観戦')),'no countdown any more');
+  game.restTimer=0;
+  // every blocker keeps the queue alive for as long as it lasts (nothing is entered, nothing is dropped)
   for(const [name,on,off] of [['rest',()=>{game.restTimer=8;},()=>{game.restTimer=0;}],['raid',()=>{game.baseRaidActive=true;},()=>{game.baseRaidActive=false;}],['inside',()=>{game.currentDungeon=DUNGEON_DEFS.find(x=>x.kind==='town');},()=>{game.currentDungeon=null;}],['down',()=>{game.player.isDown=true;},()=>{game.player.isDown=false;}]]){
     on();for(let i=0;i<40;i++)sp.updateSpectateQueue(game,.1);assert.ok(game.spectateQueued,`${name}: queue kept`);assert.equal(game.spectating,null,`${name}: nothing started`);off();
   }
-  // conditions met: announce, count 3 s, then start (can be interrupted: the countdown restarts)
+  // a blocker flipping on and off does not matter: nothing to restart, it starts on the first frame the conditions hold
+  game.restTimer=8;sp.updateSpectateQueue(game,.1);assert.ok(game.spectateQueued);game.restTimer=0;
   toasts.length=0;sp.updateSpectateQueue(game,.1);
-  assert.ok(toasts.some(t=>t==='3秒後に観戦を始めます（タップで中止）'),'pre-start notice');assert.equal(game.spectating,null);
-  game.restTimer=8;sp.updateSpectateQueue(game,.1);assert.equal(game.spectateQueued.countdown,null,'a blocker resets the countdown');game.restTimer=0;
-  toasts.length=0;sp.updateSpectateQueue(game,.1);assert.equal(toasts.filter(t=>t.includes('秒後に観戦')).length,1);
-  for(let i=0;i<28;i++)sp.updateSpectateQueue(game,.1);assert.equal(game.spectating,null,'not before the 3 s are over');assert.ok(game.spectateQueued);
-  for(let i=0;i<4;i++)sp.updateSpectateQueue(game,.1);
-  assert.ok(game.spectating&&game.spectating.field===true,'field spectate started by itself');assert.equal(game.spectateQueued,null,'the queue is consumed');assert.equal(game.currentDungeon,null);
+  assert.ok(game.spectating&&game.spectating.field===true,'field spectate started by itself on that very frame');assert.equal(game.spectateQueued,null,'the queue is consumed');assert.equal(game.currentDungeon,null);
+  assert.ok(!toasts.some(t=>t.includes('秒後')),'no pre-start notice');
   sp.clearSpectate(game);
 }
+{ // v7.0.32: no peace-bubble condition — far from the camp the field spectate starts anyway; the observer is invulnerable, the squad frozen and untouchable, and a short grace follows the end
+  const p=marchParty(20);const g2=game.squad.find(s=>s.isPersonalGuard&&!s.dead)||(()=>{const g=game.createNewSoldier();g.isPersonalGuard=true;game.squad.push(g);return g;})();
+  game.player.x=C+1500;game.player.y=C+300;g2.x=C+1480;g2.y=C+300;
+  const a=sp.spectateAvailability(game);assert.deepEqual([a.ok,a.code,a.kind],[true,'ok','field']);
+  assert.equal(sp.startSpectate(game,SOLDIER_CLASSES),true);assert.equal(game.spectating.field,true);
+  const me=game.player,hpBefore=me.hp,gHp=g2.hp;game.damageTarget(me,1e12,{});assert.equal(me.hp,hpBefore,'the far commander is invulnerable');game.damageTarget(g2,1e9,{});assert.equal(g2.hp,gHp,'the frozen squad is untouchable');
+  game.monsters=[{x:g2.x+10,y:g2.y,hp:100,maxHp:100,atk:1e9,radius:10,type:'slime',speed:50,attackInterval:.1},{x:me.x+10,y:me.y,hp:100,maxHp:100,atk:1e9,radius:10,type:'slime',speed:50,attackInterval:.1}];
+  for(let i=0;i<30;i++)game.update(.1);assert.equal(me.hp,hpBefore,'enemies never hurt the far observer');assert.equal(g2.hp,gHp,'nor the frozen squad');game.monsters=[];
+  assert.equal(sp.endSpectate(game,'観戦を終えて戻った。'),true);assert.equal(game.spectating,null);
+  assert.ok(game._spectateGrace>0&&me.invulnerableTimer>0,'a few safe seconds after coming back');game.damageTarget(g2,1e9,{});assert.equal(g2.hp,gHp,'grace: the squad is still untouchable');
+  game._spectateGrace=0;me.invulnerableTimer=0;game.damageTarget(g2,1e9,{});assert.ok(g2.hp<gHp||g2.dead||g2.isDown,'after the grace the squad is vulnerable again');
+  g2.hp=g2.maxHp;g2.dead=false;g2.isDown=false;
+}
+{ // v7.0.32: every spectate toast is visible on the field line (the field filter used to hide them all)
+  assert.equal(showsOnFieldLog('👁 観戦を始めた。'),false,'the bare filter hides it, so the calls must pass {field:true}');
+  toasts.length=0;toastOpts.length=0;
+  marchParty(25);game.restTimer=8;sp.queueSpectate(game);sp.cancelSpectateQueue(game,'観戦待ちを取り消した。');
+  game.restTimer=0;assert.equal(sp.startSpectate(game),true);assert.equal(sp.endSpectate(game,'観戦を終えて戻った。'),true);
+  game.restTimer=8;sp.startSpectate(game);game.restTimer=0; // refused: toast with the reason
+  {const q=marchParty(30);game.restTimer=8;sp.queueSpectate(game);q.status='fallen';q.members.forEach(u=>{u.dead=true;});sp.updateSpectateQueue(game,.1);}
+  {const q=marchParty(35);assert.equal(sp.startSpectate(game),true);q.status='fallen';q.members.forEach(u=>{u.dead=true;});sp.updateSpectate(game,.1);assert.equal(game.spectating,null);}
+  const spectateToasts=toasts.map((t,i)=>[t,toastOpts[i]]).filter(([t])=>/観戦/.test(t));
+  assert.ok(spectateToasts.length>=8,`enough toasts were exercised: ${toasts.join(' | ')}`);
+  for(const [t,o] of spectateToasts)assert.equal(showsOnFieldLog(t,o),true,`visible on screen: ${t}`);
+  for(const needle of ['観戦待ちにした','観戦待ちを取り消した','観戦を始めた','観戦を終えて戻った','観戦できません','全滅'])assert.ok(toasts.some(t=>t.includes(needle)),`toast: ${needle}`);
+}
+
 { // cancel: by button, by clearSpectate (load / new game), and by the party disappearing
   const p=marchParty(20);game.player.x=C+1500;
   assert.equal(sp.queueSpectate(game),true);assert.equal(sp.cancelSpectateQueue(game,'取消'),true);assert.equal(game.spectateQueued,null);assert.equal(sp.cancelSpectateQueue(game),false);
@@ -120,6 +148,7 @@ assert.match(sp.spectateSummary(game).castleText,/^野外を進軍中 · 魔王�
   toasts.length=0;game.camera.x=C+2600;assert.equal(sp.endSpectate(game),true);
   assert.equal(game.spectating,null);assert.equal(game.camera.x,campPos.x,'the camera snaps back to the commander');assert.equal(game.currentDungeon,null);
   assert.equal(activeSquad(game).length,normalActive,'the squad is active again');assert.ok(toasts.some(t=>t.includes('観戦を終えて')));
+  assert.ok(game._spectateGrace>0,'v7.0.32: a short grace follows');game._spectateGrace=0;
   const g=guard.hp;game.damageTarget(guard,5,{environmental:true});assert.ok(guard.hp<g||g<=0,'the squad is vulnerable again');guard.hp=guard.maxHp;
 }
 // ---------- field → castle hand-over ----------

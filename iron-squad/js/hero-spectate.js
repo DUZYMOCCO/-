@@ -12,7 +12,7 @@ import {formatDistance} from './distance-format.js';
 // 野外観戦は本編ワールドのまま（隊長は本陣で不可視・無敵、隊員は凍結して描画しない）、カメラだけ勇者を追う。
 // 勇者が魔王城に入ったら、既存の城観戦（隊長が観測者として入場）へ短いフェードでつなぐ。観戦フラグ・倍速・キューは保存しない。
 export const CASTLE_ID='dungeon_demon_castle';
-export const SPECTATE_RULES=Object.freeze({hudSeconds:.25,logLines:3,cameraEase:.12,startDelay:3,speeds:Object.freeze([1,2,4]),slowFrameDt:.045,fadeMs:900});
+export const SPECTATE_RULES=Object.freeze({hudSeconds:.25,logLines:3,cameraEase:.12,speeds:Object.freeze([1,2,4]),slowFrameDt:.045,fadeMs:900,returnGrace:4});
 const CAMP_CENTER=WORLD_SIZE/2;
 const ready=u=>!!u&&!u.dead&&!u.isDown&&u.hp>0;
 const living=u=>!!u&&!u.dead;
@@ -31,25 +31,24 @@ const kingOf=game=>game.spectating?.field?null:(game.heroJourney?.castleScene?.m
  * The one-line `reason` always says what the situation is and what has to happen next.
  */
 export function spectateAvailability(game) {
-  if(game.spectating)return {ok:false,code:'active',kind:null,reason:'観戦中です'};
+  if(game.spectating)return {ok:false,code:'active',kind:null,short:'観戦中',reason:'観戦中です'};
   const j=game.heroJourney,p=j?.party;
-  if(!p||!heroPartyActive(p)||j.demonKingDefeat)return {ok:false,code:'no-party',kind:null,reason:'観戦できる勇者パーティがいません'};
+  if(!p||!heroPartyActive(p)||j.demonKingDefeat)return {ok:false,code:'no-party',kind:null,short:'勇者なし',reason:'観戦できる勇者パーティがいません'};
   const kind=p.space===CASTLE_ID?'castle':p.space==='field'?'field':null;
-  if(!kind)return {ok:false,code:'not-castle',kind:null,reason:'勇者パーティの居場所を確認中です。分かり次第、観戦を始められます'};
-  if(!p.members.some(ready)||(kind==='castle'?p.status!=='castle':p.status==='down'))return {ok:false,code:'not-fighting',kind,reason:'勇者パーティが戦える状態になると観戦を始められます'};
-  if(game.currentDungeon)return {ok:false,code:'inside',kind,reason:'建物や洞窟の中にいます。外に出ると観戦を始められます'};
-  if(game.restTimer>0)return {ok:false,code:'rest',kind,reason:'待機中です。待機が終わると観戦を始められます'};
-  if(raidActive(game))return {ok:false,code:'raid',kind,reason:'襲撃中です。収まると観戦を始められます'};
+  if(!kind)return {ok:false,code:'not-castle',kind:null,short:'勇者の位置確認中',reason:'勇者パーティの居場所を確認中です。分かり次第、観戦を始められます'};
+  if(!p.members.some(ready)||(kind==='castle'?p.status!=='castle':p.status==='down'))return {ok:false,code:'not-fighting',kind,short:'勇者が戦えるまで',reason:'勇者パーティが戦える状態になると観戦を始められます'};
+  if(game.currentDungeon)return {ok:false,code:'inside',kind,short:'隊長が建物・洞窟内',reason:'建物や洞窟の中にいます。外に出ると観戦を始められます'};
+  if(game.restTimer>0)return {ok:false,code:'rest',kind,short:'待機中',reason:'待機中です。待機が終わると観戦を始められます'};
+  if(raidActive(game))return {ok:false,code:'raid',kind,short:game.baseRaidActive?'強襲中':'侵攻中',reason:'襲撃中です。収まると観戦を始められます'};
   const me=game.player;
-  if(!me||me.dead||me.isDown||me.hp<=0)return {ok:false,code:'down',kind,reason:'隊長がダウンしています。立ち上がると観戦を始められます'};
-  if(kind==='field'&&!commanderInCampPeace(game))return {ok:false,code:'away',kind,reason:'勇者は進軍中。隊長が本陣に戻ると観戦を始められます'};
-  return {ok:true,code:'ok',kind,reason:kind==='field'?'勇者の進軍を最初から見守ります。隊長と隊員は本陣で姿を消します（操作・手助けはできません）':'魔王城の勇者パーティを、隊長は姿を消して見守ります（操作・手助けはできません）'};
+  if(!me||me.dead||me.isDown||me.hp<=0)return {ok:false,code:'down',kind,short:'隊長がダウン中',reason:'隊長がダウンしています。立ち上がると観戦を始められます'};
+  return {ok:true,code:'ok',kind,short:'開始中',reason:kind==='field'?'勇者の進軍を最初から見守ります。隊長と隊員はその場で姿を消します（操作・手助けはできません）':'魔王城の勇者パーティを、隊長は姿を消して見守ります（操作・手助けはできません）'};
 }
 /** One status line for the hero record screen: the current situation, and what happens next. */
 export function spectateStatusLine(game) {
   if(game.spectating)return game.spectating.field?'観戦中です（勇者の進軍を追っています）。画面下の「観戦を終了」でも戻れます。':'観戦中です。画面下の「観戦を終了」でも戻れます。';
   const a=spectateAvailability(game);
-  if(game.spectateQueued)return `観戦待ち：${a.ok?'まもなく始まります':a.reason.replace('始められます','始まります')}`;
+  if(game.spectateQueued)return `観戦待ち：${a.ok?'まもなく始まります':a.reason.replace('観戦を始められます','観戦が始まります')}`;
   return a.ok?a.reason:`観戦：${a.reason}`;
 }
 
@@ -121,24 +120,25 @@ function endReason(game) {
 /** Begin spectating. The commander walks into the castle as an invisible, invulnerable observer. */
 export function startSpectate(game,classes=null) {
   const a=spectateAvailability(game);
-  if(!a.ok){game.showToast?.(`観戦できません：${a.reason}`);return false;}
+  if(!a.ok){game.showToast?.(`観戦できません：${a.reason}`,{field:true});return false;}
   const p=game.heroJourney.party,first=p.members.find(m=>m.isChosenHero&&ready(m))||p.members.find(ready);
   dropQueue(game); // pressing the button (or the queue firing) replaces the waiting state
   game.heroFollowing=false;delete game._heroFollowPath;
+  playSpectateFade(game); // v7.0.32: no countdown any more — a short black fade covers the start
   if(game.joystick){game.joystick.active=false;game.joystick.dirX=game.joystick.dirY=0;}
   game.spectating={targetId:first.id,targetOk:true,viewer:first,classes,hudClock:0,endRequested:false,pendingReason:null,startedPhase:game.phase,field:a.kind==='field',speed:1};
   if(a.kind==='field'){ // the ordinary field world: the commander stays parked in camp, only the camera leaves
     const viewer=resolveSpectateViewer(game);if(viewer&&game.camera){game.camera.x=viewer.x;game.camera.y=viewer.y;}
     game._sceneDirty=true;
     mountSpectateHud(game);
-    game.showToast?.('👁 観戦を始めた。勇者の進軍を最初から見守る（隊長と隊員は本陣で姿を消している）');
+    game.showToast?.('👁 観戦を始めた。勇者の進軍を最初から見守る（隊長と隊員はその場で姿を消している）',{field:true});
     return true;
   }
   game.enterDungeon(castleOf(game));
   if(game.currentDungeon?.id!==CASTLE_ID){game.spectating=null;return false;}
   const viewer=resolveSpectateViewer(game);if(viewer&&game.camera){game.camera.x=viewer.x;game.camera.y=viewer.y;}
   mountSpectateHud(game);
-  game.showToast?.('👁 観戦を始めた。隊長は姿を消して見守る（操作・手助けはできない）');
+  game.showToast?.('👁 観戦を始めた。隊長は姿を消して見守る（操作・手助けはできない）',{field:true});
   return true;
 }
 
@@ -147,22 +147,22 @@ function enterCastleFromField(game) {
   const s=game.spectating;
   s.field=false;delete s.hold;
   game.enterDungeon(castleOf(game));
-  if(game.currentDungeon?.id!==CASTLE_ID){clearSpectate(game);game.showToast?.('魔王城へ入れなかったので、観戦を終えて戻った。');return false;}
+  if(game.currentDungeon?.id!==CASTLE_ID){clearSpectate(game);game.showToast?.('魔王城へ入れなかったので、観戦を終えて戻った。',{field:true});return false;}
   playSpectateFade(game);
   const viewer=resolveSpectateViewer(game);if(viewer&&game.camera){game.camera.x=viewer.x;game.camera.y=viewer.y;}
   updateSpectateHud(game,true);
-  game.showToast?.('👁 勇者が魔王城へ突入した。観戦を続ける');
+  game.showToast?.('👁 勇者が魔王城へ突入した。観戦を続ける',{field:true});
   return true;
 }
 
 /** Leave the castle and clear the observer state. Waits out the 8-second rest between phases. */
 export function endSpectate(game,message='観戦を終えて戻った。') {
   const s=game.spectating;if(!s)return false;
-  if(s.field){clearSpectate(game);if(message)game.showToast?.(message);return true;} // nothing to leave: the field world never changed
+  if(s.field){clearSpectate(game);if(message)game.showToast?.(message,{field:true});return true;} // nothing to leave: the field world never changed
   if(game.restTimer>0){s.endRequested=true;s.pendingReason=message;s.speed=1;updateSpectateHud(game,true);return false;}
   if(game.currentDungeon?.id===CASTLE_ID)game.exitDungeon(); // still flagged as spectating here, so the guards are not pulled out of the field
   clearSpectate(game);
-  if(message)game.showToast?.(message);
+  if(message)game.showToast?.(message,{field:true});
   return true;
 }
 
@@ -170,7 +170,9 @@ export function endSpectate(game,message='観戦を終えて戻った。') {
 export function clearSpectate(game) {
   if(!game)return;
   const was=game.spectating;
-  game.spectating=null;dropQueue(game); // the speed lives on the spectate state, so it is gone too
+  game.spectating=null;dropQueue(game);
+  if(was){game._spectateGrace=SPECTATE_RULES.returnGrace;if(game.player)game.player.invulnerableTimer=Math.max(game.player.invulnerableTimer||0,SPECTATE_RULES.returnGrace);} // v7.0.32: the squad was parked (and the commander watching): a few safe seconds after coming back
+  // the speed lives on the spectate state, so it is gone too
   if(was?.field&&game.player&&game.camera){game.camera.x=game.player.x;game.camera.y=game.player.y;game._sceneDirty=true;} // back to the parked commander
   game.container?.classList?.remove('is-spectating');
   game.container?.querySelector?.('#hero-spectate')?.remove();
@@ -236,27 +238,24 @@ const queueEndReason=game=>{
 /** Start waiting: nothing is entered now; updateSpectateQueue starts the spectate when it can. */
 export function queueSpectate(game,classes=null) {
   if(game.spectating||game.spectateQueued)return false;
-  if(spectateAvailability(game).code==='no-party'){game.showToast?.('観戦できる勇者パーティがいません');return false;}
-  game.spectateQueued={classes,countdown:null};
+  if(spectateAvailability(game).code==='no-party'){game.showToast?.('観戦できる勇者パーティがいません',{field:true});return false;}
+  game.spectateQueued={classes};
   mountQueueChip(game);
-  game.showToast?.('👁 観戦待ちにした。条件が整うと自動で始まる（画面端のチップで取消）');
+  game.showToast?.(`👁 観戦待ちにした（${spectateAvailability(game).short}）。条件が整うと自動で始まる（画面端のチップで取消）`,{field:true});
   return true;
 }
 export function cancelSpectateQueue(game,message=null) {
   if(!game?.spectateQueued)return false;
-  dropQueue(game);if(message)game.showToast?.(message);return true;
+  dropQueue(game);if(message)game.showToast?.(message,{field:true});return true;
 }
-/** Per-frame: cancel when the party is gone, wait while something blocks, announce, then start 3 s later. */
+/** Per-frame (v7.0.32, no countdown): cancel only when the party is gone; keep waiting while anything blocks (the queue is never dropped for a blocker); start at once (black fade) as soon as nothing blocks. */
 export function updateSpectateQueue(game,dt) {
   const q=game.spectateQueued;if(!q)return;
   if(game.spectating){dropQueue(game);return;}
   const a=spectateAvailability(game);
   if(a.code==='no-party'){cancelSpectateQueue(game,queueEndReason(game));return;}
-  if(!a.ok){q.countdown=null;refreshQueueChip(game);return;}
-  if(q.countdown==null){q.countdown=SPECTATE_RULES.startDelay;game.showToast?.(`${SPECTATE_RULES.startDelay}秒後に観戦を始めます（タップで中止）`);}
-  q.countdown-=dt;
-  if(q.countdown<=0){if(!startSpectate(game,q.classes))dropQueue(game);return;}
-  refreshQueueChip(game);
+  if(!a.ok){refreshQueueChip(game);return;}
+  if(!startSpectate(game,q.classes))dropQueue(game);
 }
 function mountQueueChip(game) {
   const container=game.container;if(!container||typeof container.querySelector!=='function'||typeof document==='undefined'||!document.createElement)return null;
@@ -269,10 +268,9 @@ function mountQueueChip(game) {
 }
 function refreshQueueChip(game) {
   const q=game.spectateQueued,chip=game.container?.querySelector?.('#hero-spectate-queue');if(!q||!chip)return;
-  const counting=q.countdown!=null;
-  const text=counting?`👁 ${Math.max(1,Math.ceil(q.countdown))}秒後に観戦開始（タップで中止） ✕`:'👁観戦待ち ✕';
+  const a=spectateAvailability(game),text=`👁観戦待ち：${a.short||'準備中'} ✕`; // the reason is always visible as text (not only in the title)
   if(chip.textContent!==text)chip.textContent=text;
-  chip.dataset.state=counting?'counting':'waiting';chip.title=spectateStatusLine(game);
+  chip.dataset.state=a.ok?'starting':'waiting';chip.dataset.code=a.code;chip.title=spectateStatusLine(game);
 }
 
 /** A short black fade-in that hides the swap from the field world to the castle. */

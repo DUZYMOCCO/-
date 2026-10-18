@@ -101,6 +101,14 @@ for(const row of POKER_PAYOUTS){const p=dealPoker(1,random,1000);p.hand=hands[ro
 for(const symbol of SLOT_SYMBOLS){const result=slotResult(Array(9).fill(symbol.id),100);assert.equal(result.wins.length,8);assert.equal(result.payout,symbol.mult*800);}
 assert.ok(Math.abs(slotResult(['cherry','cherry','lemon','lemon','gem','bell','clover','gem','seven'],100).wins.find(w=>w.line===0).payout-14)<1e-9);
 assert.equal(new Set(SLOT_LINES.map(l=>l.join())).size,8);
+{ // v7.0.32: the big figure is the NET result; a hit that pays less than the stake is a '小当たり（掛け金割れ）'
+  const {slotNet}=await import('../js/casino.js');
+  const hit=[{line:0}];
+  const cases=[[{bet:100,payout:14,wins:hit},'partial','minus','−86G','小当たり（掛け金割れ）'],[{bet:100,payout:100,wins:hit},'even','even','±0','戻り'],[{bet:100,payout:250,wins:hit},'win','plus','+150G','1本の当たり！'],[{bet:100,payout:0,wins:[]},'miss','minus','−100G','はずれ'],[{bet:100,payout:99,wins:hit},'partial','minus','−1G','小当たり（掛け金割れ）']];
+  for(const [result,kind,sign,headline,text] of cases){const n=slotNet(result);assert.deepEqual([n.kind,n.sign,n.headline,n.text],[kind,sign,headline,text],JSON.stringify(result));}
+  const real=slotResult(Array(9).fill('seven'),100),n=slotNet(real);assert.equal(n.kind,'win');assert.equal(n.net,real.payout-100);
+  const cherryOnly=slotResult(['cherry','cherry','lemon','bell','gem','clover','seven','bell','gem'],100);assert.ok(cherryOnly.payout>0&&cherryOnly.payout<100);assert.equal(slotNet(cherryOnly).kind,'partial','two cherries on one line pay 0.14x: below the stake');
+}
 assert.equal(normalizeCasino({pokerPhase:999,slotPhase:999}).pokerPhase,undefined);
 assert.equal(normalizeCasino({slot:{reels:Array(9).fill('seven'),bet:500,payout:1}}).slot.payout,800000);
 for(let level=0;level<=5;level++){assert.equal(casinoMaxBet(level),casinoBaseBet(level)*200);assert.equal(normalizeCasino({bet:MAX_CASINO_BET},0,level).bet,Math.min(MAX_CASINO_BET,casinoArenaMaxBet(level)));assert.equal(casinoArenaMaxBet(level),casinoMaxBet(level)*5);assert.equal(normalizeCasino({bet:1e9},0,level).bet,casinoArenaMaxBet(level));}
@@ -162,6 +170,17 @@ game.gold=0;assert.equal(game.spinCasinoSlot(),false);assert.equal(game.startCas
 game.exitDungeon();const site=(await import('../js/hq-facilities.js')).HEADQUARTERS_FACILITIES.find(p=>p.id==='casino');game.restTimer=0;Object.assign(game.player,{x:site.x,y:site.y+24});
 assert.equal(game.openHeadquartersFacility('casino'),true);assert.equal(document.querySelector('.casino-panel').dataset.casinoPage,'lobby');
 document.querySelector('[data-casino-page="slot"]').click();assert.equal(document.querySelectorAll('.slot-reel').length,9);assert.ok(!document.querySelector('.poker-hand'));
+{ // v7.0.32: the slot panel shows the net, signed and coloured, with the payout as a sub line
+  const show=slot=>{game.nation.casino.slot=slot;game.openCasinoPage('slot');return {head:document.querySelector('.casino-award strong'),sub:document.querySelector('.casino-award span').textContent,lines:[...document.querySelectorAll('.slot-line-results small')].map(e=>e.textContent),board:document.querySelector('.casino-slot-board')};};
+  let r=show({bet:100,reels:['cherry','cherry','lemon','bell','gem','clover','seven','bell','gem'],wins:[{line:0,cells:[0,1,2],mult:.14,key:'cherryTwo',payout:14}],payout:14,result:'x'});
+  assert.equal(r.head.textContent,'−86G');assert.ok(r.head.classList.contains('is-minus'));assert.ok(r.sub.includes('小当たり（掛け金割れ）')&&r.sub.includes('払戻し 14G − 掛け金 100G'),r.sub);assert.ok(r.board.classList.contains('is-minor'),'the glow is toned down');assert.ok(r.lines[0].includes('14G'));
+  r=show({bet:100,reels:['seven','seven','seven','bell','gem','clover','seven','bell','gem'],wins:[{line:0,cells:[0,1,2],mult:2.5,key:'seven',payout:250}],payout:250,result:'x'});
+  assert.equal(r.head.textContent,'+150G');assert.ok(r.head.classList.contains('is-plus'));assert.ok(r.sub.includes('当たり！'));assert.ok(!r.board.classList.contains('is-minor'));
+  r=show({bet:100,reels:['seven','seven','seven','bell','gem','clover','seven','bell','gem'],wins:[{line:0,cells:[0,1,2],mult:1,key:'seven',payout:100}],payout:100,result:'x'});
+  assert.equal(r.head.textContent,'±0');assert.ok(r.head.classList.contains('is-even'));assert.ok(r.sub.includes('戻り'));
+  r=show({bet:100,reels:['seven','bell','gem','bell','gem','clover','seven','bell','gem'],wins:[],payout:0,result:'はずれ'});
+  assert.equal(r.head.textContent,'−100G');assert.ok(r.sub.includes('はずれ'));
+}
 assert.equal(game.setCasinoBet(casinoMaxBet(game.nation.level)+1),false);
 game.setCasinoBet(casinoMaxBet(game.nation.level));document.querySelector('[data-bet-mult="10"]').click();assert.equal(game.nation.casino.bet,casinoMaxBet(game.nation.level));
 // Pure arena and real soldier isolation, except the permitted W/L counters.

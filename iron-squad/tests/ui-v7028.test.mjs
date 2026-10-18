@@ -35,7 +35,9 @@ assert.ok(find('勇者を追う'), 'follow button is kept'); assert.ok(find('観
 assert.equal(find('観戦する').disabled, false, 'v7.0.31: the march can be watched from the camp');
 assert.match(host().textContent, /勇者の進軍を最初から見守ります/);
 game.player.x += 5000; renderHeroJourney(game, SOLDIER_CLASSES, TALENTS);
-assert.equal(find('観戦する').disabled, false, 'not startable yet: the button still queues'); assert.match(host().textContent, /観戦：勇者は進軍中。隊長が本陣に戻ると観戦を始められます/); game.player.x -= 5000;
+assert.equal(find('観戦する').disabled, false, 'v7.0.32: far from the camp is still startable'); assert.match(host().textContent, /勇者の進軍を最初から見守ります/); game.player.x -= 5000;
+game.restTimer = 8; renderHeroJourney(game, SOLDIER_CLASSES, TALENTS);
+assert.equal(find('観戦する').disabled, false, 'not startable yet: the button still queues'); assert.match(host().textContent, /観戦：待機中です。待機が終わると観戦を始められます/); game.restTimer = 0;
 renderHeroJourney(game, SOLDIER_CLASSES, TALENTS);
 assert.equal(find('観戦する').parentElement, find('勇者を追う').parentElement, 'side by side');
 

@@ -32,7 +32,7 @@ import {rollDropExclusive,applyDropExclusive,dropExclusiveLabel} from './drop-ex
 import {normalizeMaterials,applyCraftExclusive,craftExclusiveLabel,equipmentDropChance,materialDropChance,rollMaterialDrop,rollTreasureLoot} from './crafting-rules.js?v=306';
 import {workshopMethods} from './workshop.js?v=306';
 import {updateAmbientCrowd,ambientResidents,ambientSoldierPose,ambientFarmPosts,drawAmbientResident,configureAmbientSettings,resetAmbientCrowd} from './town-ambient.js?v=306';
-import {casinoMethods} from './casino.js?v=307';
+import {casinoMethods} from './casino.js?v=309';
 import {normalizeCasino} from './casino-rules.js?v=307';
 import {latestEquipmentTier,recordMerchantEquipment,ensureMerchantCatalog,refreshWaveCatalogs,markMerchantPurchase} from './merchant-catalog.js?v=306';
 import {initializeMedicalPosts,updateMedicalPosts,serializeMedicalPosts,medicalPostLayout,nearestKnownMedicalPost,drawMedicalPost,drawMedicalMap,drawMedicalMarker,drawTownMedicalReception,drawRescueDirection} from './medical-posts.js?v=277';
@@ -92,7 +92,7 @@ import {strongEnemyReward,killXpFloor,killExpWithFloor} from './combat-rewards.j
 import {supplyMethods, initializeSupplies, updateSupplies, takeRangedShot, ammoCombatProfile, isRangedUnit, distributeAmmo, preventLethalHit, normalizeFieldSave, SQUAD_POTION_COST, REVIVAL_POTION_COST, REVIVAL_POTION_MAX, SQUAD_POTION_MAX, ensureAmmo, ammoCapacity, recalcAmmoCapacity, RANGED_DAMAGE_MULT, supplyLocation} from './supply-rules.js?v=305';
 import { bindPadTap } from './pad-tap.js?v=276';
 import { POCKET_POTION, pocketPotionLabel, tickPocketPotion } from './pocket-potion.js?v=305';
-import { updateSpectate, spectateCameraTarget, clearSpectate, updateSpectateQueue, spectateSteps, spectateSpeed, fieldSpectating } from './hero-spectate.js?v=308';
+import { updateSpectate, spectateCameraTarget, clearSpectate, updateSpectateQueue, spectateSteps, spectateSpeed, fieldSpectating } from './hero-spectate.js?v=309';
 import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog } from './interface.js?v=295';
 import { renderTroopRankings, getSoldierRankerBadges, calcSoldierRankerBonus, setRankingFamilyLabels, RANKING_FAMILIES } from './troop-rankings.js?v=295';
 import { ensureSoldierAppearance, drawSoldierPortrait } from './soldier-appearance.js?v=295';
@@ -151,7 +151,7 @@ import { clusterRescueMarkers } from './rescue-markers.js?v=182';
 import {visibleHeroMembers,heroMembers} from './hero-rules.js?v=302';
 import {updateHeroJournal} from './hero-journal.js?v=306';
 import {applyHeroEquipmentUpgrade} from './hero-equipment.js?v=295';
-import {initializeHeroJourney,rollHeroRevelation,serializeHeroJourney,updateHeroParty,updateHeroFollowing,awardHeroBattle,recordDemonKingDefeat,ensureHeroCastle,prepareCastleVisit,syncHeroCastle,renderHeroJourney,drawHeroMarks} from './hero-party.js?v=308';
+import {initializeHeroJourney,rollHeroRevelation,serializeHeroJourney,updateHeroParty,updateHeroFollowing,awardHeroBattle,recordDemonKingDefeat,ensureHeroCastle,prepareCastleVisit,syncHeroCastle,renderHeroJourney,drawHeroMarks} from './hero-party.js?v=309';
 import {DEMON_KING_RULES,demonKingStatsFor,shapeDemonKing,percentBaseDamage} from './demon-king-rules.js?v=304';
 import {updateSquadHpHud} from './squad-hp-hud.js?v=305';
 import {addBattleReport,normalizeBattleReport,renderBattleReport} from './battle-report.js?v=302';
@@ -1214,7 +1214,7 @@ export const IronSquadGame = {
 
   // 起動時にこのゲームのCSSを自分で読み込む（?v= はこのフォルダ内で管理）。ハブが init 前に await する
   prepare() {
-    return loadCss(['../css/iron-squad.css?v=267', '../css/iron-squad-interface.css?v=302'].map(p => new URL(p, import.meta.url).href));
+    return loadCss(['../css/iron-squad.css?v=267', '../css/iron-squad-interface.css?v=309'].map(p => new URL(p, import.meta.url).href));
   },
 
   init(container, onBackToHub) {
@@ -6031,6 +6031,7 @@ export const IronSquadGame = {
     if(!resting)updateHeroParty(this,dt,SOLDIER_CLASSES);
     if(!resting)updateHeroFollowing(this,dt);
     if(this.spectating)updateSpectate(this,dt);
+    if(this._spectateGrace>0)this._spectateGrace=Math.max(0,this._spectateGrace-dt);
     updateSpectateQueue(this,dt); // v7.0.31: 観戦待ち — starts the spectate when the conditions are met (runs through rest/raid too, only cancels when the party is gone)
 
     settleTravelerCompanions(this);
@@ -7894,6 +7895,7 @@ export const IronSquadGame = {
     if(target===this.player&&target.invulnerableTimer>0)return;
     if(target===this.player&&this.spectating)return; // v7.0.28: the observer cannot be hurt
     if(this.spectating?.field&&target!==this.player&&!target.heroPartyId&&expeditionCombatUnits(this).includes(target))return; // v7.0.31: the parked squad is untouchable while the field march is watched
+    if(this._spectateGrace>0&&target!==this.player&&!target.heroPartyId&&expeditionCombatUnits(this).includes(target))return; // v7.0.32: a few safe seconds for the squad right after the spectate ends (it was frozen wherever the commander stood)
     const covered=!!options.cover; // 重装の身代わり分: 回避・遮蔽判定なし、自身のDEF/軽減/結界/死線は通常どおり、倒れない(HP1止まり)
     if(!environmental && !covered && options.attacker && coverBlocked(this, options.attacker, target))return;
     if(!environmental)recordCombat(target);
@@ -8527,7 +8529,7 @@ export const IronSquadGame = {
     this.updateStatsUI();
 
     sound.playLaunch();
-    this.showToast(wasTown ? '🚪 宿場を出た。本隊は野外のまま作戦継続中。' : this.spectating ? '👁 観戦を終えて、野外へ戻った。' : '🌀 外界へ無事帰還しました！');
+    this.showToast(wasTown ? '🚪 宿場を出た。本隊は野外のまま作戦継続中。' : this.spectating ? '👁 観戦を終えて、野外へ戻った。' : '🌀 外界へ無事帰還しました！', this.spectating ? {field:true} : undefined);
   },
 
   createDungeonMob(type, x, y, dungeonDef, isElite = false, allowRanged = true) {

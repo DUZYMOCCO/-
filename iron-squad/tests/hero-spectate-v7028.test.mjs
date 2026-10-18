@@ -33,7 +33,7 @@ function castleParty(phase){
   assert.equal(sp.spectateAvailability(game).code,'no-party');
   hp.initializeHeroJourney(game);game.phase=10;hp.rollHeroRevelation(game);
   game.inBattle=true;let a=sp.spectateAvailability(game);assert.equal(a.ok,true);assert.equal(a.kind,'field','v7.0.31: marching in the field can be watched from the camp (see hero-spectate-v7031.test.mjs)');
-  game.player.x=game.player.x+5000;a=sp.spectateAvailability(game);assert.equal(a.ok,false);assert.equal(a.code,'away');assert.equal(sp.startSpectate(game),false);assert.equal(game.currentDungeon,null);assert.ok(toasts.some(t=>t.includes('観戦できません')));game.player.x-=5000;
+  game.player.x=game.player.x+5000;a=sp.spectateAvailability(game);assert.equal(a.ok,true,'v7.0.32: away from the camp is fine (no peace-bubble condition)');game.restTimer=8;assert.equal(sp.startSpectate(game),false);assert.equal(game.currentDungeon,null);assert.ok(toasts.some(t=>t.includes('観戦できません')));game.restTimer=0;game.player.x-=5000;
   const {p}=castleParty(20);
   assert.equal(sp.spectateAvailability(game).ok,true);
   game.restTimer=8;assert.equal(sp.spectateAvailability(game).code,'rest');game.restTimer=0;

@@ -11,6 +11,14 @@ const canPlay=game=>atFacility(game,'casino',0);
 const wager=(game,page=state(game).page)=>Math.min(casinoPageMaxBet(game.nation?.level,page),Math.max(casinoBaseBet(game.nation?.level),validCasinoBet(game.nation?.casino?.bet,CASINO_BET,Infinity)?Number(game.nation.casino.bet):CASINO_BET));
 const money=n=>`${Number(n||0).toLocaleString(undefined,{maximumFractionDigits:1})}G`;
 const signed=n=>`${n>=0?'+':''}${money(n)}`;
+/** v7.0.32: the slot's net result (payout − stake) and how to call it. A hit that pays less than the stake is a '小当たり（掛け金割れ）', not a win. */
+export function slotNet(result) {
+  const bet=Number(result?.bet)||0,payout=Number(result?.payout)||0,net=Math.round(payout-bet),hit=(result?.wins?.length||0)>0;
+  const kind=!hit?'miss':net>0?'win':net===0?'even':'partial';
+  const text=kind==='win'?`${result.wins.length}本の当たり！`:kind==='even'?'戻り':kind==='partial'?'小当たり（掛け金割れ）':'はずれ';
+  return {net,payout,bet,hit,kind,text,sign:net>0?'plus':net<0?'minus':'even',headline:net>0?`+${money(net)}`:net<0?`−${money(-net)}`:'±0'};
+}
+const lineMoney=n=>`${Number.isInteger(n)?'':'約'}${money(Math.round(n))}`;
 const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const reduced=()=>globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 function refresh(game){const s=state(game);if(s.root?.isConnected)draw(game,s.root);}
@@ -66,11 +74,11 @@ function drawArenaField(game,s,canvas) {
 }
 function slotHtml(game,s) {
  const result=game.nation.casino.slot,rolling=s.busy==='slot',reels=result?.reels||['bell','seven','cherry','lemon','gem','clover','seven','bell','lemon'];
- const wins=rolling?[]:result?.wins||[],cells=new Set(wins.flatMap(w=>w.cells)),keys=new Set(wins.map(w=>w.key));
- return `<div class="casino-slot-board"><div class="slot-reels">${reels.map((id,i)=>{const symbol=SLOT_SYMBOLS.find(v=>v.id===id),spin=rolling&&i%3>=s.step;return `<span class="slot-reel ${spin?'is-spinning':''} ${cells.has(i)?'is-winning':''}" aria-label="${spin?'回転中':symbol.name}">${spin?'◆':symbol.icon}</span>`;}).join('')}</div>${lineSvg(wins.map(w=>w.line))}</div>
- <div class="casino-award" aria-live="polite"><strong>${rolling?'回転中…':result?money(result.payout):'8本の線で勝負'}</strong><span>${rolling?'左から止まります':result?`${result.result} · 収支 ${signed(result.payout-result.bet)}`:'掛け金ひとつで、全8本が対象'}</span></div>
+ const net=result&&!rolling?slotNet(result):null,wins=rolling?[]:result?.wins||[],cells=new Set(wins.flatMap(w=>w.cells)),keys=new Set(wins.map(w=>w.key));
+ return `<div class="casino-slot-board ${net?.kind==='partial'?'is-minor':''}"><div class="slot-reels">${reels.map((id,i)=>{const symbol=SLOT_SYMBOLS.find(v=>v.id===id),spin=rolling&&i%3>=s.step;return `<span class="slot-reel ${spin?'is-spinning':''} ${cells.has(i)?'is-winning':''}" aria-label="${spin?'回転中':symbol.name}">${spin?'◆':symbol.icon}</span>`;}).join('')}</div>${lineSvg(wins.map(w=>w.line))}</div>
+ <div class="casino-award" aria-live="polite"><strong class="slot-net ${net?`is-${net.sign}`:''}">${rolling?'回転中…':net?net.headline:'8本の線で勝負'}</strong><span>${rolling?'左から止まります':net?`${net.text} · 払戻し ${money(net.payout)} − 掛け金 ${money(net.bet)}`:'掛け金ひとつで、全8本が対象'}</span></div>
  <button class="casino-play" id="btn-casino-slot" ${!canPlay(game)||s.busy||game.gold<wager(game)?'disabled':''}>${rolling?'回転中…':result?'もう一回 回す':'リールを回す'} · ${money(wager(game))}</button>
- <div class="slot-line-results">${wins.map(w=>`<small>${['上段','中段','下段','左列','中列','右列','右下がり','右上がり'][w.line]} ${money(w.payout)}</small>`).join('')}</div>
+ <div class="slot-line-results">${wins.map(w=>`<small>${['上段','中段','下段','左列','中列','右列','右下がり','右上がり'][w.line]} ${lineMoney(w.payout)}</small>`).join('')}</div>
  <details class="casino-paytable" open><summary>1線あたりの配当 / 8本の線</summary><div class="casino-slot-pay">${lineSvg([0,1,2,3,4,5,6,7],true)}<dl>${SLOT_SYMBOLS.map(v=>`<div class="${keys.has(v.id)?'is-winning':''}"><dt>${v.icon} ×3</dt><dd>${v.mult}倍</dd></div>`).join('')}<div class="${keys.has('cherryTwo')?'is-winning':''}"><dt>🍒 ×2</dt><dd>${SLOT_CHERRY_TWO}倍</dd></div></dl></div></details>`;
 }
 const cardLabel=face=>face.joker?face.name:`${face.suit}${face.rank}`;
@@ -153,8 +161,8 @@ export const casinoMethods={
   },
  spinCasinoSlot() {
  const casino=this.nation?.casino,s=state(this),bet=wager(this);if(!canPlay(this)||!casino||s.busy||this.gold<bet)return false;
- const result=rollSlots(Math.random,bet);casino.slot=result;this.gold+=result.payout-bet;s.net+=result.payout-bet;remember(this,'slot',result);sound.playTap();
- animation(this,'slot',3,()=>{payoutComment(this,result.payout,bet,result.wins.some(w=>['seven','gem'].includes(w.key)));if(result.payout)sound.playItem();});return true;
+ const result=rollSlots(Math.random,bet);casino.slot=result;this.gold+=result.payout-bet;s.net+=result.payout-bet;remember(this,'slot',{...result,result:slotNet(result).text});sound.playTap();
+ animation(this,'slot',3,()=>{payoutComment(this,result.payout,bet,result.wins.some(w=>['seven','gem'].includes(w.key)));if(slotNet(result).kind==='win')sound.playItem();});return true; // v7.0.32: no jingle for a hit that pays less than the stake
  },
  shuffleCasinoArena() {
  const s=state(this);if(s.busy||!canPlay(this))return false;s.arena=chooseArena(this);s.fight=null;s.bigWin=false;s.arenaProgress=0;speak(this,s.arena?.soldiers[0][0]);refresh(this);return !!s.arena;

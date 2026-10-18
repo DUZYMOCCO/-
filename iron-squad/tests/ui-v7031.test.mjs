@@ -31,26 +31,27 @@ const C = WORLD_SIZE / 2, camp = { x: game.player.x, y: game.player.y };
 // ---- the hero record button toggles: 観戦する → 観戦待ち（取消）→ 観戦を終了 ----
 game.phase = 10; assert.equal(rollHeroRevelation(game), true);
 const p = game.heroJourney.party;
-game.player.x = C + 1500; // away from the camp: not startable yet
+game.restTimer = 8; // resting: not startable yet
 renderHeroJourney(game, SOLDIER_CLASSES, TALENTS);
 assert.ok(find('観戦する')); assert.equal(find('観戦する').disabled, false);
 closed = 0; find('観戦する').click();
-assert.ok(game.spectateQueued, 'queued instead of an error'); assert.equal(closed, 1, 'the record window closes so the game runs'); assert.ok(chip(), 'edge chip shown'); assert.equal(chip().textContent, '👁観戦待ち ✕');
+assert.ok(game.spectateQueued, 'queued instead of an error'); assert.equal(closed, 1, 'the record window closes so the game runs'); assert.ok(chip(), 'edge chip shown'); assert.equal(chip().textContent, '👁観戦待ち：待機中 ✕', 'the reason is visible text'); assert.match(chip().title, /待機中です/);
 assert.equal(game.container.querySelectorAll('#hero-spectate-queue').length, 1); assert.equal(game.spectating, null);
 renderHeroJourney(game, SOLDIER_CLASSES, TALENTS);
-assert.ok(find('観戦待ち（取消）')); assert.equal(find('観戦する'), undefined); assert.match(host().textContent, /観戦待ち：勇者は進軍中。隊長が本陣に戻ると観戦を始まります/);
+assert.ok(find('観戦待ち（取消）')); assert.equal(find('観戦する'), undefined); assert.match(host().textContent, /観戦待ち：待機中です。待機が終わると観戦が始まります/);
 find('観戦待ち（取消）').click(); assert.equal(game.spectateQueued, null); assert.equal(chip(), null, 'chip removed'); assert.ok(find('観戦する'), 'back to the first state');
 // chip tap cancels
 game.container.dispatchEvent(new dom.window.Event('x')); find('観戦する').click(); assert.ok(chip());
 let leaked = 0; game.container.addEventListener('pointerdown', () => leaked++); chip().dispatchEvent(new dom.window.Event('pointerdown', { bubbles: true })); assert.equal(leaked, 0, 'taps on the chip do not reach the game');
 chip().click(); assert.equal(game.spectateQueued, null); assert.equal(chip(), null);
-// the chip announces the start and counts down (tap to stop)
-find('観戦する').click(); game.player.x = camp.x; game.player.y = camp.y;
-sp.updateSpectateQueue(game, .1); assert.match(chip().textContent, /^👁 3秒後に観戦開始（タップで中止） ✕$/); assert.equal(chip().dataset.state, 'counting');
-sp.updateSpectateQueue(game, 1); assert.match(chip().textContent, /^👁 2秒後/);
-chip().click(); assert.equal(game.spectateQueued, null); assert.equal(game.spectating, null, 'tap during the notice stops it');
+// the chip shows why it waits, and follows the situation (no countdown any more)
+find('観戦する').click(); assert.equal(chip().textContent, '👁観戦待ち：待機中 ✕');
+game.restTimer = 0; game.baseRaidActive = true; sp.updateSpectateQueue(game, .1); assert.equal(chip().textContent, '👁観戦待ち：強襲中 ✕'); assert.equal(game.spectating, null);
+game.baseRaidActive = false; game.currentDungeon = { id: 'town_x', kind: 'town' }; sp.updateSpectateQueue(game, .1); assert.equal(chip().textContent, '👁観戦待ち：隊長が建物・洞窟内 ✕'); game.currentDungeon = null;
+game.player.isDown = true; sp.updateSpectateQueue(game, .1); assert.equal(chip().textContent, '👁観戦待ち：隊長がダウン中 ✕'); game.player.isDown = false;
+chip().click(); assert.equal(game.spectateQueued, null); assert.equal(game.spectating, null);
 // queue → auto start removes the chip and mounts the panel
-find('観戦する').click(); for (let i = 0; i < 40 && !game.spectating; i++) sp.updateSpectateQueue(game, .1);
+game.restTimer = 8; find('観戦する').click(); assert.ok(chip()); game.restTimer = 0; sp.updateSpectateQueue(game, .1);
 assert.ok(game.spectating && game.spectating.field); assert.equal(chip(), null); assert.ok(panel()); assert.ok(game.container.classList.contains('is-spectating'));
 
 // ---- panel in the field: speed button, summary line ----

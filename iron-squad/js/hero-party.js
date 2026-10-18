@@ -24,7 +24,7 @@ import {RANGED_ENEMIES} from './enemy-ranged.js?v=295';
 import {startHeroJournal,archiveHeroJournal,appendHeroDiary,recordHeroEquipmentGrant,recordHeroEvent,announceHero} from './hero-journal.js?v=306';
 import {showHeroRevelationScene} from './hero-revelation-scene.js?v=302';
 import {grantHeroEquipment} from './hero-equipment.js?v=295';
-import {spectateAvailability,startSpectate,endSpectate,queueSpectate,cancelSpectateQueue,spectateStatusLine} from './hero-spectate.js?v=308';
+import {spectateAvailability,startSpectate,endSpectate,queueSpectate,cancelSpectateQueue,spectateStatusLine} from './hero-spectate.js?v=309';
 const C=WORLD_SIZE/2,castle=()=>DUNGEON_DEFS.find(d=>d.id==='dungeon_demon_castle');
 const ready=u=>u&&!u.dead&&!u.isDown&&u.hp>0;
 export function initializeHeroJourney(game,saved=null) {
