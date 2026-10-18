@@ -3,7 +3,7 @@
  * 爽快なレーン、ゲート、ブロック、弾幕、マズルフラッシュの描画
  */
 
-import { getGateText, isGoodGate } from './rules.js?v=6';
+import { getGateText, isGoodGate } from './rules.js?v=7';
 
 export const LANE_FRAC = 0.8;
 

@@ -406,3 +406,35 @@ test('wall HP label is short and never shows decimals', () => {
   assert.equal(fmtHp(1250000), '1.3M');
   for (const hp of [1, 77.7, 4321.4, 99999.1, 287550, 5e6]) assert.ok(fmtHp(hp).length <= 5);
 });
+
+// ---- v1.3.1 いちどだけ セーブを リセット ----
+import { RESET_EPOCH, RESET_KEY, resolveSave, loadSaveOnce } from '../js/rules.js';
+function fakeStorage(init = {}) {
+  const m = new Map(Object.entries(init).map(([k, v]) => [k, JSON.stringify(v)]));
+  return { m, get: (k) => (m.has(k) ? JSON.parse(m.get(k)) : null), set: (k, v) => { m.set(k, JSON.stringify(v)); return true; } };
+}
+test('one-time save reset: old saves are cleared once (speed kept), then progress is kept on every later launch', () => {
+  const old = { coins: 5000, stage: 14, speed: 'fast', upgrades: { startCount: 20, fireRate: 15, power: 15 } };
+  const st = fakeStorage({ math_runner_save: old });                // むかしの セーブ・marker なし
+  const first = loadSaveOnce(st, 'math_runner_save');
+  assert.deepEqual(first, { coins: 0, stage: 1, speed: 'fast', upgrades: { startCount: 1, fireRate: 1, power: 1 } });
+  assert.equal(st.get(RESET_KEY), RESET_EPOCH);                     // marker を べつの キーに
+  assert.deepEqual(st.get('math_runner_save'), first);              // しょきかした セーブを すぐ かきこむ
+  // このあと あそぶ → セーブ → つぎの きどうでは リセットしない
+  const played = { ...first, coins: 321, stage: 3, upgrades: { startCount: 4, fireRate: 2, power: 3 } };
+  st.set('math_runner_save', played);
+  for (let i = 0; i < 5; i++) assert.deepEqual(loadSaveOnce(st, 'math_runner_save'), played);
+  assert.deepEqual(st.get('math_runner_save'), played);
+});
+test('one-time save reset: new players, broken data and the marker rules', () => {
+  const st = fakeStorage();                                          // はじめての ひと
+  assert.deepEqual(loadSaveOnce(st, 'math_runner_save'), defaultSaveData());
+  assert.equal(st.get(RESET_KEY), RESET_EPOCH);
+  assert.equal(defaultSaveData().speed, 'slow');                     // speed が ない/へん → ゆっくり
+  assert.equal(resolveSave({ coins: 99, speed: 'zzz' }, undefined).save.speed, 'slow');
+  assert.equal(resolveSave({ coins: 99 }, 'abc').didReset, true);    // marker が へんでも リセット（1かいだけ）
+  assert.equal(resolveSave({ coins: 99, stage: 4 }, RESET_EPOCH).save.stage, 4);   // marker が あれば そのまま
+  assert.equal(resolveSave({ coins: 99, stage: 4 }, RESET_EPOCH + 3).didReset, false);
+  assert.equal(resolveSave(null, 0).didReset, false);               // もともと セーブが ない
+  assert.ok(Number.isInteger(RESET_EPOCH) && RESET_EPOCH >= 1);
+});

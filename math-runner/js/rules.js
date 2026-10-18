@@ -199,6 +199,31 @@ export function defaultSaveData() {
   };
 }
 
+/**
+ * v1.3.1 いちどだけ セーブを さいしょに もどす（おとうさんの かくにんずみ）。
+ * ふだんの セーブとは べつの キー（RESET_KEY）に 「どこまで リセットしたか」の ばんごう（epoch）を のこす。
+ * marker が RESET_EPOCH より ちいさい（ない・ふるい）ときだけ: コイン・ステージ・アップグレードを しょきかし、
+ * 「はやさ」の せっていだけ のこす（ない・へんな ときは ゆっくり）。そのあと marker を RESET_EPOCH に する。
+ * つぎから（marker >= RESET_EPOCH）は ふつうに セーブを よむ。もういちど リセットしたい ときは RESET_EPOCH を 1 ふやす。
+ */
+export const RESET_EPOCH = 1;
+export const RESET_KEY = 'math_runner_reset_epoch';
+export function resolveSave(rawSave, marker) {
+  const m = typeof marker === 'number' && Number.isFinite(marker) ? marker : 0;
+  if (m >= RESET_EPOCH) return { save: normalizeSave(rawSave), marker: m, didReset: false };
+  const fresh = defaultSaveData();
+  if (rawSave && typeof rawSave === 'object' && SPEEDS[rawSave.speed]) fresh.speed = rawSave.speed;
+  return { save: fresh, marker: RESET_EPOCH, didReset: !!rawSave };
+}
+
+/** ひらいた ときの よみこみ：しょきかが ひつよう なら その ばで セーブと marker を かきこむ。st は storage（get/set） */
+export function loadSaveOnce(st, saveKey) {
+  const marker = st.get(RESET_KEY);
+  const r = resolveSave(st.get(saveKey), marker);
+  if (r.marker !== marker || r.didReset) { st.set(saveKey, r.save); st.set(RESET_KEY, r.marker); }
+  return r.save;
+}
+
 export function normalizeSave(data) {
   const def = defaultSaveData();
   if (!data || typeof data !== 'object') return def;

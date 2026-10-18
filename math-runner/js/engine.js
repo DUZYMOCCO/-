@@ -2,7 +2,7 @@
  * さんすうシューター ランナー物理＆判定エンジン
  */
 
-import { applyGate, isGoodGate, UPGRADES, SPEEDS, DEFAULT_SPEED, START_DELAY, STREAM, gateAfterHits, WALL_GRACE } from './rules.js?v=6';
+import { applyGate, isGoodGate, UPGRADES, SPEEDS, DEFAULT_SPEED, START_DELAY, STREAM, gateAfterHits, WALL_GRACE } from './rules.js?v=7';
 
 export class RunnerEngine {
   constructor(course, saveData) {

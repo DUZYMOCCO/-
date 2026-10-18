@@ -11,22 +11,24 @@ import {
   SPEEDS,
   getUpgradeCost,
   normalizeSave,
+  loadSaveOnce,
   generateStageCourse,
-} from './rules.js?v=6';
-import { RunnerEngine } from './engine.js?v=6';
-import { RunnerRenderer } from './renderer.js?v=6';
+} from './rules.js?v=7';
+import { RunnerEngine } from './engine.js?v=7';
+import { RunnerRenderer } from './renderer.js?v=7';
 
 const SAVE_KEY = 'math_runner_save';
 
 export default {
   prepare() {
-    return loadCss(new URL('../css/math-runner.css?v=6', import.meta.url).href);
+    return loadCss(new URL('../css/math-runner.css?v=7', import.meta.url).href);
   },
 
   init(container, onBackToHub) {
     this.container = container;
     this.onBackToHub = onBackToHub;
-    this.saveData = normalizeSave(storage.get(SAVE_KEY));
+    // v1.3.1 いちどだけ リセット（marker は セーブとは べつの キー。くわしくは rules.js の RESET_EPOCH）
+    this.saveData = loadSaveOnce(storage, SAVE_KEY);
     this.running = true;
     this.inRun = false;
     this.animId = null;
