@@ -185,14 +185,14 @@ export function updateSpectate(game,dt) {
     if(game.currentDungeon){clearSpectate(game);return;} // the commander went somewhere by another route
     const reason=endReason(game);
     if(reason){endSpectate(game,reason);return;}
-    const resting=game.restTimer>0;if(resting&&s.speed!==1)s.speed=1;
+    const resting=game.restTimer>0; // v7.0.33: the speed survives the rest
     if(game.heroJourney.party.space===CASTLE_ID&&!resting){if(!enterCastleFromField(game))return;}
     if(s.field&&game.heroJourney.party.space==='field')resolveSpectateViewer(game); // while the party is already in the castle but we wait out the rest, the camera holds
   }else{
     if(game.currentDungeon?.id!==CASTLE_ID){clearSpectate(game);return;} // the commander left by some other route
     const reason=s.endRequested?s.pendingReason:endReason(game);
     if(reason){if(game.restTimer>0){s.endRequested=true;s.pendingReason=reason;}else{endSpectate(game,reason);return;}}
-    if((game.restTimer>0||s.endRequested)&&s.speed!==1)s.speed=1;
+    if(s.endRequested&&s.speed!==1)s.speed=1;
     resolveSpectateViewer(game);
   }
   s.hudClock=(s.hudClock||0)-dt;if(s.hudClock<=0){s.hudClock=SPECTATE_RULES.hudSeconds;updateSpectateHud(game);}
@@ -206,9 +206,9 @@ export function spectateCameraTarget(game) {
 }
 
 // ---------------- speed (spectate only, whole-world time) ----------------
-/** Effective time multiplier now: ×1 unless spectating at ×2/×4; always ×1 during the rest, an end request, or when not spectating. */
+/** Effective time multiplier now: ×1 unless spectating at ×2/×4; always ×1 during an end request or when not spectating. v7.0.33: the rest between phases keeps the chosen speed. */
 export function spectateSpeed(game) {
-  const s=game?.spectating;if(!s||game.restTimer>0||s.endRequested)return 1;
+  const s=game?.spectating;if(!s||s.endRequested)return 1;
   return SPECTATE_RULES.speeds.includes(s.speed)?s.speed:1;
 }
 /** How many ordinary update steps one frame should run (each keeps the normal dt, so nothing tunnels). A slow frame is capped at ×2. */
@@ -321,7 +321,7 @@ export function updateSpectateHud(game,force=false) {
   const s=game.spectating,box=game.container?.querySelector?.('#hero-spectate');if(!s||!box)return;
   const list=spectateTargets(game),sum=spectateSummary(game),viewer=s.viewer;
   box.querySelector('.spectate-badge').textContent=s.endRequested?'👁 観戦中（待機が終わると戻ります）':'👁 観戦中';
-  const speedBtn=box.querySelector('.spectate-speed');if(speedBtn){const sp=spectateSpeed(game),text=`⏩ ×${sp}`;if(speedBtn.textContent!==text)speedBtn.textContent=text;speedBtn.classList.toggle('fast',sp>1);speedBtn.title=game.restTimer>0?'待機中は等倍です':'観戦中だけの倍速（期の進行・収支も速くなります）';}
+  const speedBtn=box.querySelector('.spectate-speed');if(speedBtn){const sp=spectateSpeed(game),text=`⏩ ×${sp}`;if(speedBtn.textContent!==text)speedBtn.textContent=text;speedBtn.classList.toggle('fast',sp>1);speedBtn.title='観戦中だけの倍速（期の進行・収支も速くなります。待機中も維持）';}
   const king=viewer?.isDemonKing;
   box.querySelector('.spectate-name').textContent=viewer?(king?`魔王 ${viewer.name||''}`.trim():`${label(game,viewer)} ${viewer.name||''} · Lv.${viewer.level||1}${viewer.dead?' · 戦死':viewer.isDown?' · ダウン':''}`):'—';
   const ratio=viewer&&viewer.maxHp>0?Math.max(0,Math.min(1,(viewer.hp||0)/viewer.maxHp)):0;

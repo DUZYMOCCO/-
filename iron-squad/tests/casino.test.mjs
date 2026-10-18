@@ -206,6 +206,36 @@ game.openCasinoPage('arena');assert.equal(game.setCasinoBet(arenaMax),true);game
  await new Promise(r=>setTimeout(r,380));assert.equal(document.querySelectorAll('.double-card').length,2);
  const after=game.nation.casino.poker.double;if(after.status==='offer'){document.querySelector('#btn-double-take').click();assert.equal(game.nation.casino.poker.double.end,'taken');}
  assert.ok(!document.querySelector('#btn-double-up'));assert.ok(document.querySelector('.poker-double .casino-award').textContent.length>0);}
+// v7.0.33: the wallet line's 今回の収支 must equal (wallet now - wallet when the page was opened) through deal, draw, double-up (win streak / tie / loss / take).
+{const rig=(dealer,player)=>{const q=[(dealer+.5)/54,((player<dealer?player:player-1)+.5)/53];return ()=>q.shift();};
+ const num=t=>Number(t.replace('\u2212','-').replace(/[,G+]/g,''));
+ const shownNet=()=>num(document.querySelectorAll('.casino-wallet b')[1].textContent),shownGold=()=>num(document.querySelectorAll('.casino-wallet b')[0].textContent);
+ const tick=()=>new Promise(r=>setTimeout(r,420));
+ const round=async(script,label)=>{game.gold=5000000;game.openCasinoPage('poker');const g0=game.gold;
+  assert.equal(game.startCasinoPoker(),true);await tick();
+  const ph=game.nation.casino.poker;ph.hand=[...hands.threeKind];ph.deck=Array.from({length:POKER_DECK_SIZE},(_,n)=>n).filter(n=>!ph.hand.includes(n));ph.held.fill(true);
+  assert.equal(game.drawCasinoPoker(),true);await tick();
+  const check=step=>{assert.equal(shownGold(),game.gold,`${label}/${step}: wallet line`);assert.equal(shownNet(),game.gold-g0,`${label}/${step}: net = wallet change`);};
+  check('settled');
+  for(const act of script){
+   if(act==='take'){assert.equal(game.takeCasinoPoker(),true);}
+   else{assert.equal(game.doubleUpCasinoPoker(act==='win'?rig(card(5),card(9)):act==='lose'?rig(card(14),card(13)):rig(J1,J2)),true);await tick();}
+   check(act);}};
+ await round(['win','win','win','take'],'streak+take');
+ await round(['win','lose'],'win then lose');
+ await round(['lose'],'lose at once');
+ await round(['tie','tie','win','take'],'tie retry');
+ await round(['take'],'take at once');
+ // the nation object is rebuilt now and then (phase end, payroll, donations...): the running net must survive that, with a pending double-up
+ game.gold=5000000;game.openCasinoPage('poker');const gStart=game.gold;assert.equal(game.startCasinoPoker(),true);await tick();
+ {const ph=game.nation.casino.poker;ph.hand=[...hands.threeKind];ph.deck=Array.from({length:POKER_DECK_SIZE},(_,n)=>n).filter(n=>!ph.hand.includes(n));ph.held.fill(true);}
+ assert.equal(game.drawCasinoPoker(),true);await tick();assert.equal(game.doubleUpCasinoPoker(rig(card(5),card(9))),true);await tick();
+ game.nation=normalizeNation(game.nation); // rebuilt while the double-up animation runs
+ await tick();assert.equal(shownNet(),game.gold-gStart,'rebuild during the animation: the panel still redraws and the net is kept');
+ assert.equal(game.doubleUpCasinoPoker(rig(card(5),card(9))),true);game.nation=normalizeNation(game.nation);await tick();
+ assert.equal(shownNet(),game.gold-gStart,'rebuild right after a win: net = wallet change');assert.equal(shownGold(),game.gold);
+ assert.equal(game.takeCasinoPoker(),true);game.nation=normalizeNation(game.nation);assert.equal(shownNet(),game.gold-gStart,'take after a rebuild');
+}
 game.openCasinoPage('arena');game.setCasinoBet(arenaMax);const g0=game.gold;assert.equal(game.betCasinoArena(1),true);assert.equal(game.gold-g0<=arenaMax*(CASINO_POLICY.arenaOddsRange[1]-1)&&g0-game.gold<=arenaMax,true);game.finishCasinoArena();
 game.openCasinoPage('slot');game.openCasinoPage('arena');for(const u of game.squad)delete u.arenaRecord;game.shuffleCasinoArena();}
 // Odds clamp: heavy underdog is capped at 12x (EV below 1.2); even/favourite never drops below 1.2x.

@@ -159,10 +159,10 @@ assert.match(sp.spectateSummary(game).castleText,/^野外を進軍中 · 魔王�
   // the party reaches the castle gate (field → castle)
   p.x=d.entrance.x;p.y=d.entrance.y;p.destination={...d.entrance};p.route=[{...d.entrance}];p.routeIndex=0;p.members.forEach(u=>{u.x=p.x;u.y=p.y;});
   const scene=hp.ensureHeroCastle(game,d);scene.monsters.length=0;
-  // during the 8-second rest the party cannot be entered nor followed: wait, ×1, camera holds
+  // during the 8-second rest the party cannot be entered nor followed: wait, camera holds (v7.0.33: the speed stays)
   const camBefore={x:game.camera.x,y:game.camera.y};
   game.restTimer=8;p.space=CASTLE;p.status='castle';p.x=240;p.y=d.height/2;p.members.forEach(u=>{u.x=240;u.y=d.height/2;});
-  sp.updateSpectate(game,.1);assert.equal(game.spectating.field,true,'waits for the rest');assert.equal(game.currentDungeon,null);assert.equal(game.spectating.speed,1,'×1 during the rest');
+  sp.updateSpectate(game,.1);assert.equal(game.spectating.field,true,'waits for the rest');assert.equal(game.currentDungeon,null);assert.equal(game.spectating.speed,4,'v7.0.33: the speed stays during the rest');assert.equal(sp.spectateSpeed(game),4);
   assert.deepEqual(sp.spectateCameraTarget(game),camBefore,'the camera holds its last view');assert.match(sp.spectateSummary(game).castleText,/魔王城へ突入した/);
   game.restTimer=0;sp.updateSpectate(game,.1);
   assert.equal(game.spectating.field,false,'handed over to the castle spectate');assert.equal(game.currentDungeon.id,CASTLE);assert.equal(game.monsters,scene.monsters);
@@ -205,8 +205,11 @@ for(const [name,mutate,pattern] of [
   game.spectating.speed=1;const t0=game.totalBattleTime||0;for(let f=0;f<10;f++){const n=sp.spectateSteps(game,.016);for(let i=0;i<n;i++)game.update(.016);}const slow=(game.totalBattleTime||0)-t0;
   game.spectating.speed=4;const t1=game.totalBattleTime||0;for(let f=0;f<10;f++){const n=sp.spectateSteps(game,.016);for(let i=0;i<n;i++)game.update(.016);}const fast=(game.totalBattleTime||0)-t1;
   assert.ok(Math.abs(fast/slow-4)<.05,`×4 runs 4× the time (${fast}/${slow})`);
-  // rest, end request, end → ×1 for sure
-  game.spectating.speed=4;game.restTimer=8;assert.equal(sp.spectateSpeed(game),1);sp.updateSpectate(game,.1);assert.equal(game.spectating.speed,1,'the stored speed is reset too');game.restTimer=0;
+  // v7.0.33: the rest itself runs at the chosen speed in ordinary dt steps (the countdown shrinks ×4 as fast, no overshoot, the speed survives the rest end)
+  {game.spectating.speed=4;game.restTimer=8;game.restUpgradeClock=0;let frames=0;const r0=game.restTimer;for(;game.restTimer>0&&frames<1000;frames++){const n=sp.spectateSteps(game,.016);assert.equal(n,4,'×4 steps every frame of the rest');for(let i=0;i<n&&game.inBattle;i++)game.update(.016);sp.updateSpectate(game,.016);assert.ok(game.restTimer>=0&&game.restTimer<=r0);}
+   assert.ok(frames>=Math.floor(8/(.016*4))-2&&frames<=Math.ceil(8/(.016*4))+2,'rest of 8 s takes about 8/(4×dt) frames: '+frames);assert.equal(game.restTimer,0);assert.equal(game.spectating.speed,4,'×4 kept after the rest ends');}
+  // v7.0.33: the rest keeps the chosen speed (end request / end still force ×1)
+  game.spectating.speed=4;game.restTimer=8;assert.equal(sp.spectateSpeed(game),4);assert.equal(sp.spectateSteps(game,.016),4);sp.updateSpectate(game,.1);assert.equal(game.spectating.speed,4,'the stored speed survives the rest');game.restTimer=0;
   game.spectating.speed=2;sp.endSpectate(game);assert.equal(sp.spectateSpeed(game),1);assert.equal(game.spectating,null);
   // a fresh spectate starts at ×1; a save/load never keeps it
   marchParty(75);sp.startSpectate(game,SOLDIER_CLASSES);game.spectating.speed=4;
@@ -217,7 +220,8 @@ for(const [name,mutate,pattern] of [
   const q=marchParty(85);q.x=d.entrance.x;q.y=d.entrance.y;q.destination={...d.entrance};q.route=[{...d.entrance}];q.routeIndex=0;q.members.forEach(u=>{u.x=q.x;u.y=q.y;});
   hp.updateHeroParty(game,.1,SOLDIER_CLASSES);assert.equal(q.space,CASTLE);const scene=hp.ensureHeroCastle(game,d);scene.monsters.length=0;q.route=[];
   assert.equal(sp.startSpectate(game,SOLDIER_CLASSES),true);assert.equal(game.spectating.field,false);assert.equal(game.spectating.speed,1);
-  sp.cycleSpectateSpeed(game);assert.equal(sp.spectateSpeed(game),2);game.restTimer=8;sp.updateSpectate(game,.1);assert.equal(game.spectating.speed,1);game.restTimer=0;
-  sp.endSpectate(game);assert.equal(game.currentDungeon,null);
+  sp.cycleSpectateSpeed(game);assert.equal(sp.spectateSpeed(game),2);game.restTimer=8;sp.updateSpectate(game,.1);assert.equal(game.spectating.speed,2,'v7.0.33: castle spectate keeps the speed in the rest');// the rest does not break the deferred end: the end request forces ×1 and the end waits for the rest to finish
+  game.spectating.speed=4;game.restTimer=8;assert.equal(sp.endSpectate(game,'x'),false);assert.equal(game.spectating.endRequested,true);assert.equal(game.spectating.speed,1,'end request → ×1');assert.equal(sp.spectateSpeed(game),1);
+  game.restTimer=0;sp.updateSpectate(game,.1);assert.equal(game.spectating,null,'the end happens once the rest is over');assert.equal(game.currentDungeon,null);
 }
 console.log('hero-spectate v7.0.31: queue, field spectate, castle hand-over, parked squad, speed passed');

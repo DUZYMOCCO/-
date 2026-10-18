@@ -6,7 +6,8 @@ import {casinoQuip} from './soldier-dialogue.js?v=295';
 import {sound} from '../../common/js/audio.js?v=151';
 import {gameText} from './game-text.js?v=307';
 const states=new WeakMap();
-const state=game=>{let s=states.get(game);if(!s||s.source!==game.nation?.casino){s={source:game.nation?.casino,page:'lobby',busy:null,step:0,net:0,history:{slot:[],poker:[],arena:[]},losses:0,comment:'',lastSpeech:0};states.set(game,s);}return s;};
+// v7.0.33: the session (running net, open panel, animation) belongs to the game, not to the nation.casino object: normalizeNation() rebuilds that object at phase end / payroll / donations, which used to drop the net to 0 and leave the open panel unredrawn. A load or a new game rebuilds the panel (renderCasino resets the page and net).
+const state=game=>{let s=states.get(game);if(s&&s.source!==game.nation?.casino)s.source=game.nation?.casino;if(!s){s={source:game.nation?.casino,page:'lobby',busy:null,step:0,net:0,history:{slot:[],poker:[],arena:[]},losses:0,comment:'',lastSpeech:0};states.set(game,s);}return s;};
 const canPlay=game=>atFacility(game,'casino',0);
 const wager=(game,page=state(game).page)=>Math.min(casinoPageMaxBet(game.nation?.level,page),Math.max(casinoBaseBet(game.nation?.level),validCasinoBet(game.nation?.casino?.bet,CASINO_BET,Infinity)?Number(game.nation.casino.bet):CASINO_BET));
 const money=n=>`${Number(n||0).toLocaleString(undefined,{maximumFractionDigits:1})}G`;
