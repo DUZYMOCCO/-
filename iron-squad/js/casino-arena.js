@@ -1,4 +1,4 @@
-import {CASINO_POLICY} from './casino-rules.js?v=276';
+import {CASINO_POLICY} from './casino-rules.js?v=307';
 import {isPlatoonAway,isExpeditionReserve} from './expedition-rules.js?v=269';
 import {rescueUnits} from './casualty-rules.js?v=295';
 

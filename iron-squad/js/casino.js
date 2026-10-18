@@ -1,10 +1,10 @@
-import {CASINO_BET,casinoBaseBet,casinoMaxBet,casinoPageMaxBet,validCasinoBet,normalizeCasinoBet,CASINO_POLICY,POKER_PAYOUTS,SLOT_SYMBOLS,SLOT_LINES,SLOT_CHERRY_TWO,dealPoker,finishPoker,cardFace,rollSlots,pokerWinningCards,evaluatePoker} from './casino-rules.js?v=276';
+import {CASINO_BET,casinoBaseBet,casinoMaxBet,casinoPageMaxBet,validCasinoBet,normalizeCasinoBet,CASINO_POLICY,POKER_PAYOUTS,SLOT_SYMBOLS,SLOT_LINES,SLOT_CHERRY_TWO,dealPoker,finishPoker,cardFace,rollSlots,pokerWinningCards,evaluatePoker,canDoubleUp,playDoubleUp,takeDoubleUp,DOUBLE_UP_MAX_WINS} from './casino-rules.js?v=307';
 import {chooseArena,arenaCandidates,simulateArena,recordArena} from './casino-arena.js?v=295';
 import {atFacility} from './hq-facilities.js?v=295';
 import {drawSoldierPortrait} from './soldier-appearance.js?v=295';
 import {casinoQuip} from './soldier-dialogue.js?v=295';
 import {sound} from '../../common/js/audio.js?v=151';
-import {gameText} from './game-text.js?v=305';
+import {gameText} from './game-text.js?v=307';
 const states=new WeakMap();
 const state=game=>{let s=states.get(game);if(!s||s.source!==game.nation?.casino){s={source:game.nation?.casino,page:'lobby',busy:null,step:0,net:0,history:{slot:[],poker:[],arena:[]},losses:0,comment:'',lastSpeech:0};states.set(game,s);}return s;};
 const canPlay=game=>atFacility(game,'casino',0);
@@ -35,7 +35,7 @@ function draw(game,root) {
  root.dataset.casinoPage=page;if(root.previousElementSibling?.classList.contains('facility-intro'))root.previousElementSibling.remove();
  root.innerHTML=gameText(`<nav class="casino-path"><button type="button" data-casino-page="lobby" ${page==='lobby'?'hidden':''}>‹ 入口へ</button><strong>CASINO / ${{lobby:'入口',slot:'SLOT',poker:'POKER',arena:'ARENA'}[page]}</strong></nav>
  ${!open?'<p>本陣のカジノから遊べます。</p>':''}
- ${page==='lobby'?`<p class="casino-welcome">戦いの合間に、ひと勝負。</p><p>所持金 ${money(game.gold)}</p><p>何回でも遊べます。お金の勝負に経験値は入りません。</p><div class="casino-lobby">${[['slot','7 · 🍒 · 💎','スロット','3×3、8本の線で大当たり。'],['poker','♠ ♥ ♦ ♣','ポーカー','5枚を配り、1回だけ交換。'],['arena','⚔','闘技場','仲間6人の練習試合。赤組か青組か。']].map(([p,icon,title,desc])=>`<button type="button" data-casino-page="${p}"><b>${icon}</b><strong>${title}</strong><small>${desc}</small></button>`).join('')}</div>`:
+ ${page==='lobby'?`<p class="casino-welcome">戦いの合間に、ひと勝負。</p><p>所持金 ${money(game.gold)}</p><p>何回でも遊べます。お金の勝負に経験値は入りません。</p><div class="casino-lobby">${[['slot','7 · 🍒 · 💎','スロット','3×3、8本の線で大当たり。'],['poker','♠ ♥ ♦ ♣','ポーカー','5枚を配り、1回だけ交換。ジョーカー入り。'],['arena','⚔','闘技場','仲間6人の練習試合。赤組か青組か。']].map(([p,icon,title,desc])=>`<button type="button" data-casino-page="${p}"><b>${icon}</b><strong>${title}</strong><small>${desc}</small></button>`).join('')}</div>`:
  `<div class="casino-wallet" aria-live="polite"><span>所持金 <b>${money(game.gold)}</b></span><span>今回の収支 <b>${signed(s.net)}</b></span></div><div class="casino-wager"><label>掛け金<input id="casino-bet" type="number" inputmode="numeric" min="${base}" max="${max}" step="1" value="${bet}" ${locked?'disabled':''}></label><small>基本 ${money(base)} / ${page==='arena'?'闘技場の上限':'今の上限'} ${money(max)}（今の掛け金 ${money(bet)}）</small><small>${page==='arena'?`スロット・ポーカーの上限は ${money(slotMax)}。そちらへ移ると上限で止まります。`:`闘技場の上限は ${money(arenaMax)}。`}</small><div class="casino-bet-actions"><button data-bet-base>基本に戻す</button><button data-bet-mult="2">2倍</button><button data-bet-mult="10">10倍</button></div></div>
  ${page==='slot'?slotHtml(game,s):page==='poker'?pokerHtml(game,s):arenaHtml(game,s)}${historyHtml(s,page)}`}
  <p class="casino-comment" role="status">${escape(s.comment)}</p>`);
@@ -45,7 +45,9 @@ function draw(game,root) {
  for(const b of root.querySelectorAll('[data-bet-mult]'))b.onclick=()=>game.setCasinoBet(Math.min(max,bet*Number(b.dataset.betMult)));
  for(const b of root.querySelectorAll('[data-poker-hold]'))b.onclick=()=>game.holdCasinoCard(Number(b.dataset.pokerHold));
  root.querySelector('#btn-casino-poker')?.addEventListener('click',()=>casino.poker?.status==='draw'?game.drawCasinoPoker():game.startCasinoPoker());
- root.querySelector('#btn-casino-slot')?.addEventListener('click',()=>game.spinCasinoSlot());
+ root.querySelector('#btn-double-up')?.addEventListener('click',()=>game.doubleUpCasinoPoker());
+  root.querySelector('#btn-double-take')?.addEventListener('click',()=>game.takeCasinoPoker());
+  root.querySelector('#btn-casino-slot')?.addEventListener('click',()=>game.spinCasinoSlot());
  root.querySelector('#btn-arena-shuffle')?.addEventListener('click',()=>game.shuffleCasinoArena());
  root.querySelector('#btn-arena-fast')?.addEventListener('click',()=>game.finishCasinoArena());
  for(const b of root.querySelectorAll('[data-arena-bet]'))b.onclick=()=>game.betCasinoArena(Number(b.dataset.arenaBet));
@@ -71,16 +73,33 @@ function slotHtml(game,s) {
  <div class="slot-line-results">${wins.map(w=>`<small>${['上段','中段','下段','左列','中列','右列','右下がり','右上がり'][w.line]} ${money(w.payout)}</small>`).join('')}</div>
  <details class="casino-paytable" open><summary>1線あたりの配当 / 8本の線</summary><div class="casino-slot-pay">${lineSvg([0,1,2,3,4,5,6,7],true)}<dl>${SLOT_SYMBOLS.map(v=>`<div class="${keys.has(v.id)?'is-winning':''}"><dt>${v.icon} ×3</dt><dd>${v.mult}倍</dd></div>`).join('')}<div class="${keys.has('cherryTwo')?'is-winning':''}"><dt>🍒 ×2</dt><dd>${SLOT_CHERRY_TWO}倍</dd></div></dl></div></details>`;
 }
+const cardLabel=face=>face.joker?face.name:`${face.suit}${face.rank}`;
+function doubleHtml(game,s,hand) {
+  const d=hand?.double;if(hand?.status!=='settled'||!d)return '';
+  const busy=s.busy==='double',shown=id=>id!=null&&(!busy||(id===d.dealer?s.step>=1:s.step>=2)),
+   slot=(id,label)=>{if(!shown(id))return `<div class="poker-card double-card card-back" aria-label="${label}のカード（伏せ）"><small class="hold-badge">${label}</small><span>◆</span></div>`;
+    const f=cardFace(id);return `<div class="poker-card double-card ${f.red?'red':''} ${f.joker?'joker':''}" aria-label="${label} ${cardLabel(f)}"><small class="hold-badge">${label}</small><span>${f.rank}</span><b>${f.suit}</b></div>`;};
+  const offer=d.status==='offer'&&!busy,can=canPlay(game)&&canDoubleUp(hand,game.gold);
+  const note=busy?'カードをめくっています…':offer?(d.outcome==='win'?`勝ち！ 賞金が倍になりました。（${d.wins}連勝）`:d.outcome==='tie'?'引き分け。賞金はそのままで、もう一度挑戦できます。':'賞金を倍にするチャンス。'):
+    d.end==='lost'?`負け… 賞金 ${money(d.prev)} を失いました。`:d.end==='limit'?`${d.wins}連勝！ 上限に達したので ${money(d.stake)} を受け取りました。`:`${money(d.stake)} を受け取りました。${d.wins?`（${d.wins}連勝）`:''}`;
+  return `<section class="poker-double" aria-label="ダブルアップ" data-double-status="${busy?'busy':d.status}"><h4>ダブルアップ <small>連勝 ${d.wins}/${DOUBLE_UP_MAX_WINS}</small></h4>
+  <p class="casino-help">ディーラーより強いカードを引けば賞金が倍。Aが最強で、ジョーカーはAより上。同じ強さは引き分けです。</p>
+  <div class="double-cards">${slot(d.dealer,'ディーラー')}${slot(d.player,'あなた')}</div>
+  <div class="casino-award" aria-live="polite"><strong>${d.status==='offer'||busy?`賞金 ${money(busy?d.prev:d.stake)}`:d.end==='lost'?'賞金なし':`受取 ${money(d.stake)}`}</strong><span>${note}</span></div>
+  ${offer?`<div class="double-actions"><button class="casino-play" id="btn-double-up" ${can?'':'disabled'}>ダブルアップ · 勝てば ${money(d.stake*2)} / 負ければ 0G</button><button class="casino-play" id="btn-double-take" ${canPlay(game)?'':'disabled'}>受け取る · ${money(d.stake)}</button></div>${!can&&canPlay(game)&&game.gold<d.stake?'<small>所持金が賞金より少ないので、挑戦できません。</small>':''}`:''}</section>`;
+}
 function pokerHtml(game,s) {
- const hand=game.nation.casino.poker,drawing=hand?.status==='draw',busy=s.busy==='deal'||s.busy==='draw',replaced=s.replaced||[],winning=!drawing&&!busy&&hand?pokerWinningCards(hand.hand):[],key=!drawing&&!busy&&hand?evaluatePoker(hand.hand).key:'';
- const cards=Array.from({length:5},(_,i)=>{
- const hidden=!hand||(s.busy==='deal'&&i>=s.step)||(s.busy==='draw'&&replaced.indexOf(i)>=s.step&&replaced.includes(i));
- if(hidden)return '<div class="poker-card card-back" aria-label="カードのうら">◆</div>';
- const face=cardFace(hand.hand[i]),held=hand.held[i];return `<button type="button" class="poker-card ${face.red?'red':''} ${winning.includes(i)?'is-winning':''}" data-poker-hold="${i}" aria-pressed="${drawing&&held}" aria-label="${face.suit}${face.rank} ${held?'保持':'交換'}" ${!drawing||busy||!canPlay(game)?'disabled':''}><small class="hold-badge">${drawing?(held?'保持':'交換'):'確定'}</small><span>${face.rank}</span><b>${face.suit}</b></button>`;
- }).join('');
- return `<p class="casino-help">残すカードを押して「保持」。交換は1回です。</p><div class="poker-hand">${cards}</div><div class="casino-award" aria-live="polite"><strong>${busy?'カードを配っています…':drawing?'残すカードを選ぼう':hand?hand.result:'5枚の勝負'}</strong><span>${busy?'':drawing?`この手の掛け金 ${money(hand.bet)}`:hand?`受取 ${money(hand.payout)} · 収支 ${signed(hand.payout-hand.bet)}`:'10以上のペアから配当'}</span></div>
- <button class="casino-play" id="btn-casino-poker" ${!canPlay(game)||s.busy||(!drawing&&game.gold<wager(game))?'disabled':''}>${busy?'配り中…':drawing?'交換して確定':hand?'もう一回 配る':'カードを配る'}${drawing?'':` · ${money(wager(game))}`}</button>
- <details class="casino-paytable" open><summary>ポーカーの役と配当</summary><dl>${POKER_PAYOUTS.filter(v=>v.mult).map(v=>`<div class="${key===v.key?'is-winning':''}"><dt>${v.name}</dt><dd>${v.mult}倍</dd></div>`).join('')}</dl></details>`;
+  const hand=game.nation.casino.poker,drawing=hand?.status==='draw',busy=s.busy==='deal'||s.busy==='draw',replaced=s.replaced||[],winning=!drawing&&!busy&&hand?pokerWinningCards(hand.hand):[],key=!drawing&&!busy&&hand?evaluatePoker(hand.hand).key:'';
+  const cards=Array.from({length:5},(_,i)=>{
+  const hidden=!hand||(s.busy==='deal'&&i>=s.step)||(s.busy==='draw'&&replaced.indexOf(i)>=s.step&&replaced.includes(i));
+  if(hidden)return '<div class="poker-card card-back" aria-label="カードのうら">◆</div>';
+  const face=cardFace(hand.hand[i]),held=hand.held[i];return `<button type="button" class="poker-card ${face.red?'red':''} ${face.joker?'joker':''} ${winning.includes(i)?'is-winning':''}" data-poker-hold="${i}" aria-pressed="${drawing&&held}" aria-label="${cardLabel(face)} ${held?'保持':'交換'}" ${!drawing||busy||!canPlay(game)?'disabled':''}><small class="hold-badge">${drawing?(held?'保持':'交換'):'確定'}</small><span>${face.rank}</span><b>${face.suit}</b></button>`;
+  }).join('');
+  const prize=hand?.status==='settled'&&hand.double?hand.double.stake:hand?.payout;
+  return `<p class="casino-help">残すカードを押して「保持」。交換は1回です。ジョーカー2枚入り（何にでも化けます）。</p><div class="poker-hand">${cards}</div><div class="casino-award" aria-live="polite"><strong>${busy?'カードを配っています…':drawing?'残すカードを選ぼう':hand?hand.result:'5枚の勝負'}</strong><span>${busy?'':drawing?`この手の掛け金 ${money(hand.bet)}`:hand?`受取 ${money(prize)} · 収支 ${signed(prize-hand.bet)}`:'10以上のペアから配当'}</span></div>
+  ${busy&&s.busy!=='double'?'':doubleHtml(game,s,hand)}
+  <button class="casino-play" id="btn-casino-poker" ${!canPlay(game)||s.busy||(!drawing&&game.gold<wager(game))?'disabled':''}>${busy?'配り中…':drawing?'交換して確定':hand?'もう一回 配る':'カードを配る'}${drawing?'':` · ${money(wager(game))}`}</button>
+  <details class="casino-paytable" open><summary>ポーカーの役と配当</summary><dl>${POKER_PAYOUTS.filter(v=>v.mult).map(v=>`<div class="${key===v.key?'is-winning':''}"><dt>${v.name}</dt><dd>${v.mult}倍</dd></div>`).join('')}</dl><p class="casino-help">ジョーカーは何にでもなるワイルド。いちばん強い役になります。勝ったあとは「ダブルアップ」で賞金を倍にできます（最大${DOUBLE_UP_MAX_WINS}連勝）。</p></details>`;
 }
 function arenaHtml(game,s) {
  const match=s.arena;if(!match)return '<p>練習試合には、元気な兵士・予備兵が6人必要です。ダウン・搬送・遠征中の人は出場できません。</p><button id="btn-arena-shuffle">組み合わせを探す</button>';
@@ -117,6 +136,21 @@ export const casinoMethods={
  s.replaced=hand.held.map((held,i)=>held?-1:i).filter(i=>i>=0);const payout=finishPoker(hand);this.gold+=payout;s.net+=payout;
  remember(this,'poker',hand);animation(this,'draw',Math.max(1,s.replaced.length),()=>{payoutComment(this,payout,hand.bet,['royalFlush','straightFlush','fourKind'].includes(evaluatePoker(hand.hand).key));if(payout)sound.playItem();});return true;
  },
+ doubleUpCasinoPoker(random=Math.random) {
+  const hand=this.nation?.casino?.poker,s=state(this);
+  if(!canPlay(this)||s.busy||!canDoubleUp(hand,this.gold))return false;
+  // The prize is already in the wallet: a win adds it once more, a loss removes it.
+  const r=playDoubleUp(hand,random);if(!r)return false;
+  this.gold+=r.delta;s.net+=r.delta;
+  if(r.outcome!=='tie')remember(this,'poker',{result:`ダブルアップ ${r.outcome==='win'?'勝ち':'負け'}`,payout:r.outcome==='win'?r.stake*2:0,bet:r.stake});
+  sound.playTap();
+  animation(this,'double',2,()=>{payoutComment(this,r.outcome==='lose'?0:1,1,hand.double.wins>=3);if(r.outcome==='win')sound.playItem();});return true;
+  },
+  takeCasinoPoker() {
+  const hand=this.nation?.casino?.poker,s=state(this);
+  if(!canPlay(this)||s.busy||!takeDoubleUp(hand))return false;
+  sound.playItem();refresh(this);return true;
+  },
  spinCasinoSlot() {
  const casino=this.nation?.casino,s=state(this),bet=wager(this);if(!canPlay(this)||!casino||s.busy||this.gold<bet)return false;
  const result=rollSlots(Math.random,bet);casino.slot=result;this.gold+=result.payout-bet;s.net+=result.payout-bet;remember(this,'slot',result);sound.playTap();

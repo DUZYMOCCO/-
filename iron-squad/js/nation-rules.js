@@ -11,7 +11,7 @@ import {drawSettlementQuarter} from './economic-visuals.js?v=306';
 import {atFacility,HEADQUARTERS_FACILITIES} from './hq-facilities.js?v=295';
 import {renderRegionalEconomy} from './economic-interface.js?v=264';
 import {workshopFloorTier} from './crafting-rules.js?v=306';
-import {normalizeCasino} from './casino-rules.js?v=276';
+import {normalizeCasino} from './casino-rules.js?v=307';
 import {normalizeGuild,advanceGuildContracts} from './guild-contracts.js?v=295';
 
 export const DEVELOPMENT_STAGES=[
