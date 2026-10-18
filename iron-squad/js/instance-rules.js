@@ -1,4 +1,4 @@
-import {visibleHeroMembers} from './hero-rules.js?v=282';
+import {visibleHeroMembers} from './hero-rules.js?v=302';
 import {expeditionCombatUnits} from './expedition-rules.js?v=256';
 // Field coordinates and instance coordinates must never share combat participants.
 export function inCurrentInstance(game, unit) {

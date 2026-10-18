@@ -1,5 +1,5 @@
 import {levelGrowthSteps} from './level-growth.js?v=274';
-import {heroGrowth} from './hero-rules.js?v=282';
+import {heroGrowth} from './hero-rules.js?v=302';
 import {syncEquipmentBarrier} from './defense-equipment.js?v=298';
 import {isLateBloomer} from './talent-labels.js?v=291';
 /** 個体の素質と、実際の行動から育つ能力。装備・職業・Lvの再計算では履歴を変更しない。 */

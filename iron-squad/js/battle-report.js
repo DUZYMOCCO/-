@@ -9,7 +9,8 @@ export const REPORT_KINDS = Object.freeze({
   rare: {label: 'レア取得', icon: '💎'},
   death: {label: '死亡', icon: '🕯️'},
   rescue: {label: '救出', icon: '🤝'},
-  supply: {label: '補給', icon: '🧪'}
+  supply: {label: '補給', icon: '🧪'},
+  hero: {label: '勇者', icon: '🌟'}
 });
 const FILTERS = [['all', 'すべて'], ...Object.entries(REPORT_KINDS).map(([id, k]) => [id, `${k.icon} ${k.label}`])];
 

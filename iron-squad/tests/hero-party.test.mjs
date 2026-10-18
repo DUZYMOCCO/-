@@ -6,7 +6,7 @@ const {WORLD_SIZE}=await import('../js/world.js');
 const BASE_CAMP={x:WORLD_SIZE/2,y:WORLD_SIZE/2};
 const {saveSlots}=await import('../js/save-slots.js');
 const {initializeHeroJourney,rollHeroRevelation,serializeHeroJourney,updateHeroParty,recordDemonKingDefeat,ensureHeroCastle,awardHeroBattle}=await import('../js/hero-party.js');
-const {heroMembers,visibleHeroMembers,heroRevelationPhase}=await import('../js/hero-rules.js?v=282');
+const {heroMembers,visibleHeroMembers,heroRevelationPhase}=await import('../js/hero-rules.js?v=302');
 const {activeSquad}=await import('../js/instance-rules.js');
 const {practiceAttribute}=await import('../js/unit-attributes.js');
 const {gainWeaponMastery,applyHitGrowth}=await import('../js/growth-rules.js');

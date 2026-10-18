@@ -4,7 +4,7 @@ import {WORLD_SIZE} from './world.js?v=289';
 import {inCurrentInstance} from './instance-rules.js?v=256';
 import {saveSlots} from './save-slots.js?v=285';
 import {requestCheckpointAction,checkpointNotice} from './checkpoint-ui.js?v=259';
-import {addBattleReport} from './battle-report.js?v=276';
+import {addBattleReport} from './battle-report.js?v=302';
 import {sound} from '../../common/js/audio.js?v=151';
 import {nearestRevivalPotionTarget,reviveByPotion,REVIVAL_POTION_RANGE} from './casualty-rules.js?v=295';
 

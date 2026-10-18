@@ -8,7 +8,7 @@ import {startAutoSave,stopAutoSave} from './auto-save.js?v=269';
 import {requestEvenUpgrade} from './even-upgrade.js?v=291';
 import {beginFollowerRecovery,noteFollowerIntent,suspendFollowerRecovery,finishFollowerRecovery,profileFollowerRecovery} from './follower-recovery.js?v=277';
 import {configurePerfSettings} from './perf-diagnostics.js?v=291';
-import {gameText} from './game-text.js?v=297';
+import {gameText} from './game-text.js?v=302';
 import {talentTag} from './talent-labels.js?v=291';
 import {fieldDialogReturn} from './dialog-return.js?v=200';
 import {guildMethods} from './guild-contracts.js?v=295';
@@ -146,12 +146,12 @@ import {
 import { daylightAt, advanceWorldClock, periodEnemy, enemyAvailable, PERIOD_ENEMIES } from './day-night.js?v=208';
 
 import { clusterRescueMarkers } from './rescue-markers.js?v=182';
-import {visibleHeroMembers} from './hero-rules.js?v=282';
-import {updateHeroJournal} from './hero-journal.js?v=295';
+import {visibleHeroMembers,heroMembers} from './hero-rules.js?v=302';
+import {updateHeroJournal} from './hero-journal.js?v=302';
 import {applyHeroEquipmentUpgrade} from './hero-equipment.js?v=295';
-import {initializeHeroJourney,rollHeroRevelation,serializeHeroJourney,updateHeroParty,updateHeroFollowing,awardHeroBattle,recordDemonKingDefeat,ensureHeroCastle,syncHeroCastle,renderHeroJourney,drawHeroMarks} from './hero-party.js?v=299';
+import {initializeHeroJourney,rollHeroRevelation,serializeHeroJourney,updateHeroParty,updateHeroFollowing,awardHeroBattle,recordDemonKingDefeat,ensureHeroCastle,syncHeroCastle,renderHeroJourney,drawHeroMarks} from './hero-party.js?v=302';
 import {updateSquadHpHud} from './squad-hp-hud.js?v=295';
-import {addBattleReport,normalizeBattleReport,renderBattleReport} from './battle-report.js?v=276';
+import {addBattleReport,normalizeBattleReport,renderBattleReport} from './battle-report.js?v=302';
 import {updateRescueAssistance,handleRescueAssistance} from './rescue-assistance.js?v=295';
 import { RESCUE_TIMEOUT, REVIVAL_COOLDOWN, revivalCooldownOf, revivalSkillCooldownLeft, normalizeRevivalSkill, headquartersRevivalPaused, rescueUnits, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, receiveTownCargo, leaveCivilianSpace, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, buildTransportRescueAssign, markSoldierDown, downCommander, commanderDown, updateNpcRescue, CIV_KINDS, isMedic, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST, medicHoldsByCommander, isMerchantCasualty } from './casualty-rules.js?v=295';
 import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault, dungeonBlocks, dungeonSolids } from './dungeon.js?v=297';
@@ -1211,7 +1211,7 @@ export const IronSquadGame = {
 
   // 起動時にこのゲームのCSSを自分で読み込む（?v= はこのフォルダ内で管理）。ハブが init 前に await する
   prepare() {
-    return loadCss(['../css/iron-squad.css?v=267', '../css/iron-squad-interface.css?v=301'].map(p => new URL(p, import.meta.url).href));
+    return loadCss(['../css/iron-squad.css?v=267', '../css/iron-squad-interface.css?v=302'].map(p => new URL(p, import.meta.url).href));
   },
 
   init(container, onBackToHub) {
@@ -4344,7 +4344,7 @@ export const IronSquadGame = {
   },
   /** v7.0.21: armour/amulet regen (tenths of a percent of max HP per second, total capped at 0.8%/s). */
   tickEquipmentRegenAll(dt) {
-    const members=this.heroJourney?.party?.members||[];
+    const members=heroMembers(this);
     tickEquipmentRegen(this.player,dt);
     for(const unit of this.squad||[])tickEquipmentRegen(unit,dt);
     for(const unit of this.reserves||[])tickEquipmentRegen(unit,dt);

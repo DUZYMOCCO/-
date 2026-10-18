@@ -1,8 +1,8 @@
 import {enemyTier,rollBossTreasure} from './enemy-tier.js?v=274';
-import {addBattleReport} from './battle-report.js?v=276';
+import {addBattleReport} from './battle-report.js?v=302';
 import {attackCooldown} from './equipment-rules.js?v=301';
 import {migrateCampaignEnemy} from './campaign-scaling.js?v=241';
-import {HERO_RULES,heroRevelationPhase,heroMembers,heroSharesSpace,visibleHeroMembers} from './hero-rules.js?v=282';
+import {HERO_RULES,heroRevelationPhase,nextHeroRevelationPhase,heroPartyActive,heroMembers,heroSharesSpace,visibleHeroMembers} from './hero-rules.js?v=302';
 import {advanceHeroRoute,heroSegmentOpen,heroRouteCurrent} from './hero-navigation.js?v=295';
 import {WORLD_SIZE,settleUnit,fieldRockExit} from './world.js?v=289';
 import {DUNGEON_DEFS,dungeonBlocks} from './dungeon.js?v=297';
@@ -20,7 +20,8 @@ import {takeRangedShot,supplyLocation,ammoCapacity} from './supply-rules.js?v=29
 import {distanceScaling} from './equipment-rules.js?v=301';
 import {strongEnemyReward} from './combat-rewards.js?v=299';
 import {RANGED_ENEMIES} from './enemy-ranged.js?v=295';
-import {startHeroJournal,archiveHeroJournal,appendHeroDiary,recordHeroEquipmentGrant} from './hero-journal.js?v=295';
+import {startHeroJournal,archiveHeroJournal,appendHeroDiary,recordHeroEquipmentGrant,recordHeroEvent,announceHero} from './hero-journal.js?v=302';
+import {showHeroRevelationScene} from './hero-revelation-scene.js?v=302';
 import {grantHeroEquipment} from './hero-equipment.js?v=295';
 const C=WORLD_SIZE/2,castle=()=>DUNGEON_DEFS.find(d=>d.id==='dungeon_demon_castle');
 const ready=u=>u&&!u.dead&&!u.isDown&&u.hp>0;
@@ -35,7 +36,9 @@ export function initializeHeroJourney(game,saved=null) {
 export function rollHeroRevelation(game,random=game.random||Math.random) {
   const j=game.heroJourney;if(!j||j.demonKingDefeat||game.phase<HERO_RULES.firstPhase||j.lastRollPhase>=game.phase)return false;
   j.lastRollPhase=game.phase;
-  if(j.party?.members.some(u=>!u.dead)||!heroRevelationPhase(game.phase))return false;
+  // v7.0.25: a party that has made no progress in the castle for long enough withdraws, so the next hero is not blocked forever.
+  if(j.party)evaluateHeroWithdrawal(game,j.party);
+  if(heroPartyActive(j.party)||!heroRevelationPhase(game.phase))return false;
   if(j.party)archiveHeroJournal(game,j.party,'全滅');
   const id=`hero_party_${++j.sequence}`,leader=game.createNewSoldier(null,{classKey:'LIGHT',talent:game.rollScoutTalent(),level:1});
   Object.assign(leader,{isChosenHero:true,isNamed:true,title:'天啓の勇者',rankTitle:'勇者',revelationPhase:game.phase});
@@ -47,7 +50,41 @@ export function rollHeroRevelation(game,random=game.random||Math.random) {
     destination:{...d.entrance},route:[{x:C+512,y:C}],routeIndex:0,spawnClock:0};
   startHeroJournal(game,j.party);
   game.showToast?.(`天啓！ 救いの御子【${leader.name}】が勇者となり、新兵5職と魔王城へ出発した！`);
+  showHeroRevelationScene(game,leader.name);
   return true;
+}
+/** Castle snapshot used by the battle log and the record screen: enemies left (king excluded) and the king's HP. */
+export function heroCastleInfo(game){
+  const monsters=game.heroJourney?.castleScene?.monsters;if(!monsters)return null;
+  const king=monsters.find(m=>m.isDemonKing);
+  return {mobs:monsters.filter(m=>!m.isDemonKing&&m.hp>0).length,bossHp:king?Math.max(0,king.hp):null,bossMax:king?king.maxHp:null};
+}
+/** Progress = a kill, a level, damage to the king or one enemy fewer in the castle. Old saves get a fresh clock on their first update. */
+function trackHeroProgress(game,p,dt){
+  if(p.space==='field')return false;
+  p._watchClock=(p._watchClock||0)+dt;if(p._watchClock<1&&p.watch)return false;p._watchClock=0;
+  const info=heroCastleInfo(game);if(!info)return false;p.castleInfo=info;
+  const kills=p.members.reduce((n,u)=>n+(u.minionKills||0)+(u.midbossKills||0)+(u.bossKills||0),0),levels=p.members.reduce((n,u)=>n+(u.level||0),0),w=p.watch;
+  if(!w){p.watch={sincePhase:game.phase,kills,levels,mobs:info.mobs,boss:info.bossHp,warned:false};return false;}
+  const progressed=kills>w.kills||levels>w.levels||info.mobs<w.mobs||(info.bossHp!=null&&w.boss!=null&&info.bossHp<w.boss);
+  if(progressed){w.sincePhase=game.phase;w.warned=false;}
+  w.kills=Math.max(w.kills,kills);w.levels=Math.max(w.levels,levels);w.mobs=Math.min(w.mobs,info.mobs);w.boss=info.bossHp==null?w.boss:w.boss==null?info.bossHp:Math.min(w.boss,info.bossHp);
+  return evaluateHeroWithdrawal(game,p);
+}
+export const heroIdlePhases=(game,p)=>p?.watch&&p.space!=='field'?Math.max(0,game.phase-p.watch.sincePhase):0;
+export function evaluateHeroWithdrawal(game,p){
+  if(!p||!p.watch||p.space==='field'||p.status==='withdrawn'||p.status==='fallen'||game.heroJourney?.demonKingDefeat)return false;
+  const idle=heroIdlePhases(game,p);
+  if(idle>=HERO_RULES.stagnationPhases){withdrawHeroParty(game,p,idle);return true;}
+  if(idle>=HERO_RULES.warnPhases&&!p.watch.warned){p.watch.warned=true;recordHeroEvent(game,p,'stall',`魔王城で${idle}期のあいだ進展がない。${HERO_RULES.stagnationPhases}期続くと撤退する。`);}
+  return false;
+}
+export function withdrawHeroParty(game,p,idle=HERO_RULES.stagnationPhases){
+  if(!p||p.status==='withdrawn')return;
+  p.status='withdrawn';p.members.forEach(u=>{delete u._cachedEnemy;});
+  archiveHeroJournal(game,p,'撤退',`魔王城から撤退。${idle}期のあいだ進展がなかった。`);
+  if(game.heroFollowing){game.heroFollowing=false;delete game._heroFollowPath;}
+  announceHero(game,`勇者【${p.name}】のパーティは魔王城から撤退した。`);
 }
 export function serializeHeroJourney(game) {
   syncHeroCastle(game);
@@ -64,7 +101,7 @@ export function recordDemonKingDefeat(game,attacker=null) {
   const j=game.heroJourney;if(!j||j.demonKingDefeat)return;
   const by=attacker?.heroPartyId?'hero':'commander';
   j.demonKingDefeat={phase:game.phase,by,name:attacker?.name||'隊長'};
-  if(j.party?.members.some(u=>!u.dead)){j.party.status='victorious';archiveHeroJournal(game,j.party,by==='hero'?'魔王討伐':'隊長側が魔王討伐');}
+  if(heroPartyActive(j.party)){j.party.status='victorious';archiveHeroJournal(game,j.party,by==='hero'?'魔王討伐':'隊長側が魔王討伐');}
 }
 function enterHeroCastle(game,p) {
   const d=castle();
@@ -107,7 +144,7 @@ function battleContext(game,p) {
     const treasure=rollBossTreasure(game,m);game.awakeningOrbs=(game.awakeningOrbs||0)+treasure.orbs;game.awakeningGems=(game.awakeningGems||0)+treasure.gems;
     if(treasure.orbs||treasure.gems)game.showToast?.(`ボス秘宝獲得：覚醒宝珠 +${treasure.orbs} / 神話宝玉 +${treasure.gems}`);
     game.recalcSoldierStats(u);
-    if(m.isDemonKing){recordDemonKingDefeat(game,u);game.heroJourney.castleScene.vault.unlocked=true;game.showToast?.(`勇者パーティが魔王【${m.name}】を討伐した！`);}
+    if(m.isDemonKing){recordDemonKingDefeat(game,u);game.heroJourney.castleScene.vault.unlocked=true;announceHero(game,`勇者パーティが魔王【${m.name}】を討伐した！`);}
   };
   return ctx;
 }
@@ -142,12 +179,13 @@ function stepHiddenEnemies(ctx,p,dt) {
 }
 export function updateHeroParty(game,dt,classes) {
   syncHeroCastle(game);
-  const j=game.heroJourney,p=j?.party;if(!p||!(dt>0)||game.restTimer>0||p.status==='fallen')return;
+  const j=game.heroJourney,p=j?.party;if(!p||!(dt>0)||game.restTimer>0||p.status==='fallen'||p.status==='withdrawn')return;
   const ctx=battleContext(game,p),shared=ctx===game;
   // Shared-space bleeding/rescue is already ticked by the ordinary battlefield.
   if(!shared)updateWounded(ctx,dt);
   const living=p.members.filter(u=>!u.dead),fighters=living.filter(ready);
-  if(!living.length){p.status='fallen';archiveHeroJournal(game,p,'全滅');game.showToast?.(`勇者【${p.name}】のパーティは全滅した。`);return;}
+  if(!living.length){p.status='fallen';archiveHeroJournal(game,p,'全滅');announceHero(game,`勇者【${p.name}】のパーティは全滅した。`);return;}
+  if(trackHeroProgress(game,p,dt))return;
   p.status=j.demonKingDefeat?'victorious':fighters.length?(p.space==='field'?'marching':'castle'):'down';
   if(!fighters.length)return;
   for(const u of living){u.atkAnim=Math.max(0,(u.atkAnim||0)-dt*4);regenerateMana(u,dt);if(p.space==='field'&&supplyLocation(ctx,u)){u.ammo=ammoCapacity(u);ensureMana(u);u.mana=u.maxMana;}}
@@ -197,13 +235,22 @@ export function renderHeroJourney(game,classes,talents) {
   if(!born){host.replaceChildren();if(!host.classList.contains('hidden'))game._showStratLauncher?.();return;}
   let panel=host.querySelector('#hero-journey');if(!panel){panel=document.createElement('section');panel.id='hero-journey';panel.className='hero-record';host.append(panel);}
   panel.replaceChildren();const summary=document.createElement('h4');summary.textContent='勇者パーティ';panel.append(summary);
-  const info=document.createElement('p');
-  info.textContent=p?`第${p.phase}期に天啓 · ${p.name} · ${p.status==='fallen'?'全滅':p.status==='down'?'全員ダウン':p.status==='victorious'?'魔王討伐後':p.space==='field'?`魔王城へ進軍中 · 本陣から${formatDistance(Math.hypot(p.x-C,p.y-C))}`:'魔王城で交戦中'}`:`第10期から各期2%で、救いの御子が天啓を受け勇者となります。`;
+  const info=document.createElement('p'),idle=heroIdlePhases(game,p),active=heroPartyActive(p),next=nextHeroRevelationPhase(game.phase);
+  const state=!p?'':p.status==='withdrawn'?'撤退（魔王城から引き上げた）':p.status==='fallen'?'全滅':p.status==='down'?'全員ダウン':p.status==='victorious'?'魔王討伐後':p.space==='field'?`魔王城へ進軍中 · 本陣から${formatDistance(Math.hypot(p.x-C,p.y-C))}`:idle>=HERO_RULES.warnPhases?`魔王城で停滞中（${idle}期）`:'魔王城で交戦中';
+  info.textContent=p?`第${p.phase}期に天啓 · ${p.name} · ${state}`:`第${next}期に、救いの御子が天啓を受け勇者となります。`;
   const body=document.createElement('div');body.className='fold-content';panel.append(body);
-  body.append(info);const hint=document.createElement('p');hint.textContent='経験値・実戦練習は20倍。追って共闘、救助、放置、隊長側による魔王討伐を自由に選べます。';body.append(hint);
+  body.append(info);
+  if(active&&p.space!=='field'&&p.status!=='victorious'){
+    const castleInfo=heroCastleInfo(game),box=document.createElement('div');box.className='hero-status';
+    if(castleInfo){const king=castleInfo.bossHp==null||!(castleInfo.bossMax>0)?'魔王は不在':`魔王HP ${(castleInfo.bossHp/castleInfo.bossMax*100).toFixed(castleInfo.bossHp/castleInfo.bossMax>=.1?1:2)}%`;
+      const l1=document.createElement('p');l1.textContent=`城内の敵 残り${castleInfo.mobs}体 · ${king}`;box.append(l1);}
+    const l2=document.createElement('p');l2.textContent=idle===0?'進展あり（撃破・成長・魔王へのダメージ）':`最後の進展から${idle}期（${HERO_RULES.stagnationPhases}期で撤退）`;box.append(l2);body.append(box);
+  }
+  if(!active&&!j.demonKingDefeat){const nx=document.createElement('p');nx.textContent=`次の勇者：第${next}期に天啓`;body.append(nx);}
+  if(!j.demonKingDefeat){const rule=document.createElement('p');rule.className='hero-rule-note';rule.textContent=`天啓は第${HERO_RULES.firstPhase}期から${HERO_RULES.interval}期ごと（魔王討伐まで）。前の勇者パーティが生きている間は見送り、魔王城で${HERO_RULES.stagnationPhases}期進展が止まると撤退します。`;body.append(rule);}
   if(p?.members.some(u=>u.heroEquipmentVersion)){const gear=document.createElement('p');gear.textContent='勇者と仲間は、勇者パーティ専用の武具を支給されて出発します。';body.append(gear);}
-  if(p)for(const u of p.members){const row=document.createElement('p');row.textContent=`${u.isChosenHero?'勇者':classes[u.soldierClass]?.name||u.soldierClass} ${u.name} · ${talents[u.talent]?.tag||''} · Lv.${u.level} · ${u.dead?'戦死':u.isDown?`ダウン（残り${Math.ceil(u.downTimer)}秒）`:`HP ${Math.ceil(u.hp)} / ${u.maxHp}`}`;body.append(row);}
-  if(p&&p.status!=='fallen'&&!j.demonKingDefeat){const b=document.createElement('button');b.className='mini-btn';b.textContent=game.heroFollowing?'追従をやめる':'勇者を追う';b.onclick=()=>{game.heroFollowing=!game.heroFollowing;delete game._heroFollowPath;game.closeStrategyModal();};body.append(b);}
+  if(p&&p.status!=='withdrawn')for(const u of p.members){const row=document.createElement('p');row.textContent=`${u.isChosenHero?'勇者':classes[u.soldierClass]?.name||u.soldierClass} ${u.name} · ${talents[u.talent]?.tag||''} · Lv.${u.level} · ${u.dead?'戦死':u.isDown?`ダウン（残り${Math.ceil(u.downTimer)}秒）`:`HP ${Math.ceil(u.hp)} / ${u.maxHp}`}`;body.append(row);}
+  if(active&&!j.demonKingDefeat){const b=document.createElement('button');b.className='mini-btn';b.textContent=game.heroFollowing?'追従をやめる':'勇者を追う';b.onclick=()=>{game.heroFollowing=!game.heroFollowing;delete game._heroFollowPath;game.closeStrategyModal();};body.append(b);}
   if(j?.demonKingDefeat){const result=document.createElement('p');result.textContent=`魔王討伐：第${j.demonKingDefeat.phase}期 · ${j.demonKingDefeat.by==='hero'?'勇者パーティ':'隊長側'}（${j.demonKingDefeat.name}）`;body.append(result);}
   if(p&&!j.history.some(h=>h.id===p.id))appendHeroDiary(body,p.journal,classes,talents);
   for(const h of [...j?.history||[]].reverse()){if(h.journal)appendHeroDiary(body,h.journal,classes,talents);else{const row=document.createElement('p');row.textContent=`第${h.phase}期 · ${h.name} · ${h.result}`;body.append(row);}}
@@ -211,7 +258,7 @@ export function renderHeroJourney(game,classes,talents) {
 export function updateHeroFollowing(game,dt) {
   const p=game.heroJourney?.party,u=game.player;
   if(!game.heroFollowing||!(dt>0)||u?.isDown)return;
-  if(!p||p.status==='fallen'||game.heroJourney.demonKingDefeat||game.joystick?.active){game.heroFollowing=false;return;}
+  if(!heroPartyActive(p)||game.heroJourney.demonKingDefeat||game.joystick?.active){game.heroFollowing=false;return;}
   const d=castle();
   if(game.currentDungeon){
     if(game.currentDungeon.id!==p.space){game.heroFollowing=false;return;}
