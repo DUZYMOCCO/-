@@ -96,15 +96,38 @@ export function gateSpec(stageNum) {
 /** さいしょの ブロックの y と、1〜3かいめの HP ばいりつ（はじめは ひくい） */
 export const FIRST_BLOCK_Y = 230;
 export const FIRST_RAMP = [0.45, 0.75];
-/** ゲートを うって かずが ふえるように なった ぶん、ボーナスの かべは かたく（コインが ふえすぎない） */
-export const WALL_MUL = 1.8;
+/**
+ * v1.3.0 さいごの ボーナスの かべは ステージが すすむほど かたく なる（つよく なった ぶんに あわせる）。
+ * 1まいめの かべ（×1.5）の HP = N(ステージ) × ちから(ステージ) × 5びょう（WALL_GRACE）。
+ *   N      = 「ゲートを ちゃんと えらんだ ひとの たまの かず」の めやす（WALL.n の ひょうを ステージで うめる）。
+ *            えらびまちがいが おおい ひとは かずが たりなくて 1まいめも とどかない。ステージ1〜2は ちいさく やさしい。
+ *   ちから = 「ショップを ふつうに かった ひとの 1ぽんの ダメージ/びょう」の めやす（WALL.perBullet の ひょう。s は 50まで）
+ * 2まいめ いこうは 1まい ごとに ×WALL.grow かたい（×1.5 → ×20）。
+ */
+export const WALL = {
+  grow: 1.45,
+  n: [[1, 2], [2, 2], [3, 5], [4, 11], [5, 60], [6, 100], [8, 190], [10, 250], [14, 330], [20, 390], [30, 420]],
+  perBullet: [[1, 6], [2, 8], [3, 16], [4, 24], [5, 56], [6, 62], [8, 75], [10, 86], [12, 97], [16, 115], [20, 127], [25, 142], [30, 157], [35, 169], [50, 170]],
+  speedMul: { slow: 1, normal: 0.7, fast: 0.45 },
+};
+function interp(table, s) {
+  if (s <= table[0][0]) return table[0][1];
+  for (let i = 1; i < table.length; i++) {
+    if (s <= table[i][0]) { const [x0, y0] = table[i - 1], [x1, y1] = table[i]; return y0 + (y1 - y0) * (s - x0) / (x1 - x0); }
+  }
+  return table[table.length - 1][1];
+}
+export function wallBaseHp(stageNum, speedKey = DEFAULT_SPEED) {
+  const s = Math.max(1, Math.min(50, Math.floor(Number(stageNum) || 1)));
+  return Math.round(interp(WALL.n, s) * interp(WALL.perBullet, s) * WALL_GRACE * (WALL.speedMul[speedKey] ?? 1));
+}
+
 /**
  * v1.2.0 まちがえても すぐ おわらない：まちがった ゲートは かずが へるだけ（のこりは 1こ いじょう。ブロックに ぶつかっても ×0.7）。
  * しっぱいは さいごの かべを こわせなかった とき だけ。かべの まえで WALL_GRACE びょう うちつづけて、1まいも こわせなければ
- * 「もういちど」（ステージは すすまない。コインは もらえる）。ステージ1〜3は さいしょの かべが やわらかい（WALL_EASE）。
+ * 「もういちど」（ステージは すすまない。コインは もらえる）。かべの HP は v1.3.0 から ステージで かたく なる（wallBaseHp）。
  */
 export const WALL_GRACE = 5;
-export const WALL_EASE = [0.4, 0.6, 0.8];
 
 /**
  * ゲートを うつと かずが かわる（v1.2.0）。たまが あたった かず（hits）で きまる。
@@ -135,15 +158,15 @@ export const UPGRADES = {
     name: 'スタートだんすう',
     icon: '🔫',
     baseCost: 25,
-    costMult: 1.45,
+    costMult: 1.35, // v1.3.0 レベルを 20→25に ふやし、1.45→1.35（ぜんぶ かうと 25まで）
     calcValue: (lvl) => lvl, // Lv1: 1発, Lv2: 2発...
-    maxLevel: 20,
+    maxLevel: 25,
   },
   fireRate: {
     name: 'れんしゃスピード',
     icon: '⚡',
     baseCost: 35,
-    costMult: 1.4,
+    costMult: 1.5, // v1.3.0 1.4→1.5
     calcValue: (lvl) => Math.max(0.06, 0.16 - (lvl - 1) * 0.007), // 秒ごとの発射間隔
     maxLevel: 15,
   },
@@ -151,9 +174,9 @@ export const UPGRADES = {
     name: 'たまの いりょく',
     icon: '💥',
     baseCost: 50,
-    costMult: 1.5,
+    costMult: 1.31, // v1.3.0 レベルを 15→20に ふやし、1.5→1.31
     calcValue: (lvl) => 1 + (lvl - 1) * 0.5,
-    maxLevel: 15,
+    maxLevel: 20,
   },
 };
 
@@ -269,8 +292,8 @@ export function generateStageCourse(stageNum, speedKey = DEFAULT_SPEED) {
     type: 'WALL',
     y: finishY + 100 + idx * 120,
     mult: mul,
-    hp: Math.round((40 + idx * 60 + stageNum * 30) * sp.hpMul * WALL_MUL * (WALL_EASE[stageNum - 1] ?? 1)),
-    maxHp: Math.round((40 + idx * 60 + stageNum * 30) * sp.hpMul * WALL_MUL * (WALL_EASE[stageNum - 1] ?? 1)),
+    hp: Math.round(wallBaseHp(stageNum, speedKey) * Math.pow(WALL.grow, idx)),
+    maxHp: Math.round(wallBaseHp(stageNum, speedKey) * Math.pow(WALL.grow, idx)),
     destroyed: false,
   }));
 

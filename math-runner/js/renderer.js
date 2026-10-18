@@ -3,7 +3,7 @@
  * 爽快なレーン、ゲート、ブロック、弾幕、マズルフラッシュの描画
  */
 
-import { getGateText, isGoodGate } from './rules.js?v=5';
+import { getGateText, isGoodGate } from './rules.js?v=6';
 
 export const LANE_FRAC = 0.8;
 
@@ -110,6 +110,15 @@ const DECOR = {
     circle(ctx, x + 4 * s, y + 2 * s, 2 * s, '#4c4f7a');
   },
 };
+
+// v1.3.0 かべの HPは おおきく なったので 1000いじょうは 「12.3k」・10000いじょうは 「188k」と みじかく（しょうすうは きりあげ）
+export function fmtHp(hp) {
+  const n = Math.max(0, Math.ceil(hp));
+  if (n < 1000) return String(n);
+  if (n < 10000) return (Math.ceil(n / 100) / 10).toFixed(1) + 'k';
+  if (n < 1000000) return Math.ceil(n / 1000) + 'k';
+  return (Math.ceil(n / 100000) / 10).toFixed(1) + 'M';
+}
 
 export class RunnerRenderer {
   constructor(canvas) {
@@ -454,7 +463,7 @@ export class RunnerRenderer {
     ctx.font = '900 18px system-ui, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(`×${wall.mult}  [${wall.hp}]`, cx, y);
+    ctx.fillText(`×${wall.mult}  [${fmtHp(wall.hp)}]`, cx, y);
   }
 
   drawBullets(w, h, engine) {

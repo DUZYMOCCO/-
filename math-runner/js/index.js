@@ -12,15 +12,15 @@ import {
   getUpgradeCost,
   normalizeSave,
   generateStageCourse,
-} from './rules.js?v=5';
-import { RunnerEngine } from './engine.js?v=5';
-import { RunnerRenderer } from './renderer.js?v=5';
+} from './rules.js?v=6';
+import { RunnerEngine } from './engine.js?v=6';
+import { RunnerRenderer } from './renderer.js?v=6';
 
 const SAVE_KEY = 'math_runner_save';
 
 export default {
   prepare() {
-    return loadCss(new URL('../css/math-runner.css?v=5', import.meta.url).href);
+    return loadCss(new URL('../css/math-runner.css?v=6', import.meta.url).href);
   },
 
   init(container, onBackToHub) {
@@ -283,7 +283,7 @@ export default {
         <button class="runner-up-btn ${canAfford ? '' : 'disabled'}" data-up="${key}">
           <div class="runner-up-info">
             <span class="runner-up-name">${def.icon} ${def.name}</span>
-            <span class="runner-up-lvl">${isMax ? 'MAX' : `Lv.${lvl}`}</span>
+            <span class="runner-up-lvl">${isMax ? 'MAX' : `Lv.${lvl}/${def.maxLevel}`}</span>
           </div>
           <div class="runner-up-cost">${isMax ? 'MAX' : `💰 ${cost}`}</div>
         </button>

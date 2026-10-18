@@ -206,7 +206,7 @@ test('engine: bullets pass through gates and change them; blocks lose HP and fla
 });
 
 // ---- v1.2.0 まちがえても すぐ おわらない ----
-import { WALL_GRACE, WALL_EASE } from '../js/rules.js';
+import { WALL_GRACE, WALL, wallBaseHp } from '../js/rules.js';
 
 function playBot(stage, speed, pick) {
   const e = new RunnerEngine(generateStageCourse(stage, speed), normalizeSave({ speed }));
@@ -232,7 +232,8 @@ test('forgiving: wrong choices never end the run; count never below 1; early sta
   assert.ok(clears >= 30, `ステージ1は わるい ゲートばかりでも ほとんど クリア（${clears}/40）`);
   // ふつうに えらべば かならず クリア
   for (let i = 0; i < 20; i++) assert.ok(playBot(3, 'slow', (a, b) => a >= b).last.cleared);
-  assert.ok(WALL_EASE[0] < WALL_EASE[1] && WALL_EASE[1] < WALL_EASE[2] && WALL_EASE[2] <= 1);
+  // ステージ1〜2の かべは とても やさしい（HPが ちいさい）
+  assert.ok(wallBaseHp(1) < 400 && wallBaseHp(2) < 600);
 });
 
 test('failing only comes from too little power at the wall: stuck for WALL_GRACE seconds, then "try again" (no stage advance data)', () => {
@@ -277,4 +278,131 @@ test('mashing/shaking the finger gives no advantage: fire rate is a fixed timer,
   const cap = g => g.base.val + GATE_SHOOT.addCap;                   // ふえる じょうげんも ある
   for (const side of ['left', 'right']) { const g = mashed.gate[side]; if (g.base && g.type === 'add') assert.ok(g.val <= cap(g)); }
   assert.ok(Math.abs(mashed.volleys - 6 / UPGRADES.fireRate.calcValue(4)) < 6); // 60fps の きざみ ぶんだけ ずれる
+});
+
+
+// ---- v1.3.0 さいごの かべは ステージで かたく なる／ショップは もっと かかる ----
+const vOf = (g, c) => g.type === 'add' ? c + g.val : g.type === 'sub' ? Math.max(1, c - g.val) : g.type === 'mul' ? c * g.val : Math.max(1, Math.floor(c / g.val));
+const PICKS = { best: (a, b) => a >= b, rand: () => Math.random() < 0.5, worst: (a, b) => a < b };
+function runWith(stage, ups, pick) {
+  const e = new RunnerEngine(generateStageCourse(stage, 'slow'), normalizeSave({ speed: 'slow', upgrades: ups }));
+  let last = null;
+  for (let i = 0; i < 60 * 300 && !e.isFinished; i++) {
+    const g = e.course.elements.find(x => x.type === 'GATE_PAIR' && !x.passed);
+    e.setTargetX(g ? (pick(vOf(g.left, e.bulletCount), vOf(g.right, e.bulletCount)) ? -0.5 : 0.5) : 0);
+    e.update(1 / 60, (n, d) => { if (n === 'clear') last = d; });
+  }
+  return last;
+}
+function rate(stage, ups, pick, n = 30) {
+  let ok = 0, mult = 0;
+  for (let i = 0; i < n; i++) { const r = runWith(stage, ups, pick); if (r.cleared) ok++; mult += r.finalMult; }
+  return { clear: ok / n, mult: mult / n };
+}
+
+test('final wall gets tougher with the stage (ladder x1.45 per wall, much harder than v1.2)', () => {
+  let prev = 0;
+  for (let s = 1; s <= 40; s++) { const h = wallBaseHp(s); assert.ok(h >= prev, `stage ${s}`); prev = h; }
+  const c = generateStageCourse(10, 'slow');
+  for (let i = 1; i < c.walls.length; i++) assert.ok(Math.abs(c.walls[i].hp / c.walls[i - 1].hp - WALL.grow) < 0.02);
+  assert.equal(c.walls[0].hp, c.walls[0].maxHp);
+  const oldHp10 = (40 + 30 * 10) * 2 * 1.8;                       // v1.2 の ステージ10の 1まいめ
+  assert.ok(c.walls[0].hp > oldHp10 * 5, `${c.walls[0].hp} vs ${oldHp10}`);
+  assert.ok(wallBaseHp(20) > wallBaseHp(5) * 5);
+  assert.ok(wallBaseHp(10, 'fast') < wallBaseHp(10, 'normal') && wallBaseHp(10, 'normal') < wallBaseHp(10, 'slow'));
+  assert.equal(wallBaseHp(80), wallBaseHp(50));                    // 50いじょうは ひとしい
+});
+
+test('stage 1-2 stay forgiving even with fresh upgrades and careless gate picks', () => {
+  const fresh = { startCount: 1, fireRate: 1, power: 1 };
+  for (const s of [1, 2]) {
+    assert.equal(rate(s, fresh, PICKS.best).clear, 1);
+    assert.ok(rate(s, fresh, PICKS.rand, 60).clear >= 0.7, `rand stage ${s}`);
+    assert.ok(rate(s, fresh, PICKS.worst, 60).clear >= 0.6, `worst stage ${s}`);
+  }
+});
+
+test('mid/late stages: good gate-picking clears, careless picking can fall short, x20 is no longer automatic', () => {
+  const typical = { 8: { startCount: 8, fireRate: 15, power: 8 }, 15: { startCount: 14, fireRate: 15, power: 12 }, 25: { startCount: 21, fireRate: 15, power: 16 } };
+  for (const s of [8, 15, 25]) {
+    const best = rate(s, typical[s], PICKS.best), worst = rate(s, typical[s], PICKS.worst), rand = rate(s, typical[s], PICKS.rand);
+    assert.ok(best.clear >= 0.9, `best ${s}: ${best.clear}`);
+    assert.ok(worst.clear <= 0.3, `worst ${s}: ${worst.clear}`);
+    assert.ok(rand.clear <= best.clear + 0.05);                    // てきとうは ときどき たりない
+    assert.ok(best.mult < 16, `x20ばかりに ならない ${s}: ${best.mult}`);
+    assert.ok(best.mult > rand.mult * 0.9 && best.mult > worst.mult);
+  }
+  // おもいっきり つよい（ショップ ぜんぶ MAX）なら ボーナスは おおきい
+  const maxed = rate(15, { startCount: 25, fireRate: 15, power: 20 }, PICKS.best, 20);
+  assert.ok(maxed.clear === 1 && maxed.mult >= 5);
+});
+
+test('failing the wall is still gentle: nothing instant, grace period and retry kept', () => {
+  const e = new RunnerEngine(generateStageCourse(20, 'slow'), normalizeSave({ speed: 'slow' }));
+  assert.equal(WALL_GRACE, 5);
+  e.delay = 0; e.bulletCount = 1; e.dist = e.course.finishY - 100;
+  for (const el of e.course.elements) { el.passed = true; if (el.type === 'BLOCK') el.destroyed = true; }
+  let ev = null, t = 0;
+  for (; t < 60 * 60 && !e.isFinished; t++) e.update(1 / 60, (n, d) => { if (n === 'clear') ev = d; });
+  assert.ok(ev && ev.cleared === false && ev.finalMult === 1);
+  assert.ok(e.stuck >= WALL_GRACE && e.stuck < WALL_GRACE + 0.1);  // 5びょうは ちゃんと うてる
+});
+
+test('shop: costs rise a lot more (v1.3.0), early levels stay cheap, levels extended, old saves stay valid', () => {
+  assert.equal(UPGRADES.startCount.maxLevel, 25);
+  assert.equal(UPGRADES.fireRate.maxLevel, 15);
+  assert.equal(UPGRADES.power.maxLevel, 20);
+  let total = 0;
+  for (const k of Object.keys(UPGRADES)) {
+    let prev = 0;
+    for (let l = 1; l < UPGRADES[k].maxLevel; l++) { const c = getUpgradeCost(k, l); assert.ok(c > prev); prev = c; total += c; }
+    assert.equal(getUpgradeCost(k, UPGRADES[k].maxLevel), Infinity);
+    assert.ok(getUpgradeCost(k, 1) <= 50 && getUpgradeCost(k, 3) <= 90, `${k} はじめは やすい`);
+  }
+  assert.ok(total >= 130000 && total <= 160000, `total ${total}`);   // v1.2: ぜんぶで 約10まんコイン
+  // むかしの セーブ（20/15/15 ぜんぶ MAX）は そのまま、もっと のばせる。MAXを こえた かずは けずる
+  const old = normalizeSave({ coins: 777, stage: 12, upgrades: { startCount: 20, fireRate: 15, power: 15 } });
+  assert.deepEqual(old.upgrades, { startCount: 20, fireRate: 15, power: 15 });
+  assert.equal(old.coins, 777);
+  assert.ok(getUpgradeCost('startCount', 20) < Infinity && getUpgradeCost('power', 15) < Infinity && getUpgradeCost('fireRate', 15) === Infinity);
+  assert.deepEqual(normalizeSave({ upgrades: { startCount: 99, fireRate: 99, power: 99 } }).upgrades, { startCount: 25, fireRate: 15, power: 20 });
+});
+
+test('economy: a careful player needs about 35-70 runs to max the shop (v1.2: about 19)', () => {
+  const vals = [];
+  for (let i = 0; i < 2; i++) {
+    const u = { startCount: 1, fireRate: 1, power: 1 }; let coins = 0, stage = 1, runs = 0;
+    while (!Object.keys(UPGRADES).every(k => u[k] >= UPGRADES[k].maxLevel) && runs < 150) {
+      const e = new RunnerEngine(generateStageCourse(stage, 'slow'), normalizeSave({ speed: 'slow', upgrades: u }));
+      let last = null;
+      for (let f = 0; f < 60 * 300 && !e.isFinished; f++) {
+        const g = e.course.elements.find(x => x.type === 'GATE_PAIR' && !x.passed);
+        e.setTargetX(g ? (vOf(g.left, e.bulletCount) >= vOf(g.right, e.bulletCount) ? -0.5 : 0.5) : 0);
+        e.update(1 / 60, (n, d) => { if (n === 'clear') last = d; });
+      }
+      runs++;
+      coins += last.earnedCoins + (last.cleared ? Math.floor(last.earnedCoins * last.finalMult) : 0);
+      if (last.cleared) stage++;
+      for (;;) {
+        let best = null;
+        for (const k of Object.keys(UPGRADES)) { const c = getUpgradeCost(k, u[k]); if (c !== Infinity && (!best || c < best.c)) best = { k, c }; }
+        if (!best || best.c > coins) break;
+        coins -= best.c; u[best.k]++;
+      }
+    }
+    vals.push(runs);
+  }
+  for (const r of vals) assert.ok(r >= 35 && r <= 70, `runs ${r}`);
+});
+
+import { fmtHp } from '../js/renderer.js';
+test('wall HP label is short and never shows decimals', () => {
+  assert.equal(fmtHp(55.6), '56');
+  assert.equal(fmtHp(-0.8), '0');
+  assert.equal(fmtHp(999), '999');
+  assert.equal(fmtHp(1234), '1.3k');
+  assert.equal(fmtHp(71250), '72k');
+  assert.equal(fmtHp(187850), '188k');
+  assert.equal(fmtHp(1250000), '1.3M');
+  for (const hp of [1, 77.7, 4321.4, 99999.1, 287550, 5e6]) assert.ok(fmtHp(hp).length <= 5);
 });
