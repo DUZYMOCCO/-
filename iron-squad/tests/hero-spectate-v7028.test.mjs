@@ -32,8 +32,8 @@ function castleParty(phase){
   game.heroJourney=null;hp.initializeHeroJourney(game);
   assert.equal(sp.spectateAvailability(game).code,'no-party');
   hp.initializeHeroJourney(game);game.phase=10;hp.rollHeroRevelation(game);
-  game.inBattle=true;let a=sp.spectateAvailability(game);assert.equal(a.ok,false);assert.equal(a.code,'not-castle');assert.match(a.reason,/魔王城で戦っているときだけ観戦できます/,'marching in the field: not allowed');
-  assert.equal(sp.startSpectate(game),false);assert.equal(game.currentDungeon,null);assert.ok(toasts.some(t=>t.includes('観戦できません')));
+  game.inBattle=true;let a=sp.spectateAvailability(game);assert.equal(a.ok,true);assert.equal(a.kind,'field','v7.0.31: marching in the field can be watched from the camp (see hero-spectate-v7031.test.mjs)');
+  game.player.x=game.player.x+5000;a=sp.spectateAvailability(game);assert.equal(a.ok,false);assert.equal(a.code,'away');assert.equal(sp.startSpectate(game),false);assert.equal(game.currentDungeon,null);assert.ok(toasts.some(t=>t.includes('観戦できません')));game.player.x-=5000;
   const {p}=castleParty(20);
   assert.equal(sp.spectateAvailability(game).ok,true);
   game.restTimer=8;assert.equal(sp.spectateAvailability(game).code,'rest');game.restTimer=0;
@@ -43,7 +43,7 @@ function castleParty(phase){
   p.members.forEach(u=>{u.isDown=true;});assert.equal(sp.spectateAvailability(game).code,'not-fighting','everyone down: nothing to watch');p.members.forEach(u=>{u.isDown=false;});
   p.status='down';assert.equal(sp.spectateAvailability(game).code,'not-fighting');p.status='castle';
   game.currentDungeon=DUNGEON_DEFS.find(x=>x.kind==='town');assert.equal(sp.spectateAvailability(game).code,'inside');game.currentDungeon=null;
-  p.space='field';assert.equal(sp.spectateAvailability(game).code,'not-castle');p.space=CASTLE;
+  p.space='field';assert.equal(sp.spectateAvailability(game).kind,'field');p.space=CASTLE;
 }
 const drop=m=>{const i=scene.monsters.indexOf(m);if(i>=0)scene.monsters.splice(i,1);};
 // ---------- start, observer rules ----------

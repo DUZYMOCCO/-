@@ -25,7 +25,7 @@ import {LIMITED_CLASSES,initializeLimitedAllies,prepareLimitedEncounter,createLi
 import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=182';
 import {TIERS,MAX_EQUIPMENT_TIER,MAX_POWER_RANK,POWER_RANK_STEP,GENERATION_COUNT,TRADE_MAX_TIER,powerRank,tierDescription} from './equipment-tiers.js?v=231';
 import {fieldAdaptiveScaling} from './field-scaling.js?v=299';
-import {activeSquad,inCurrentInstance} from './instance-rules.js?v=305';
+import {activeSquad,inCurrentInstance} from './instance-rules.js?v=308';
 import {TANK,prepareTanks,tankEvalDistSq,tankSlowFactor,tankCover,tankStunSeconds} from './heavy-tank.js?v=295';
 import {recordBattleLog,resetBattleLog,refreshCombatFieldNotes} from './battle-log.js?v=295';
 import {rollDropExclusive,applyDropExclusive,dropExclusiveLabel} from './drop-exclusives.js?v=298';
@@ -92,7 +92,7 @@ import {strongEnemyReward,killXpFloor,killExpWithFloor} from './combat-rewards.j
 import {supplyMethods, initializeSupplies, updateSupplies, takeRangedShot, ammoCombatProfile, isRangedUnit, distributeAmmo, preventLethalHit, normalizeFieldSave, SQUAD_POTION_COST, REVIVAL_POTION_COST, REVIVAL_POTION_MAX, SQUAD_POTION_MAX, ensureAmmo, ammoCapacity, recalcAmmoCapacity, RANGED_DAMAGE_MULT, supplyLocation} from './supply-rules.js?v=305';
 import { bindPadTap } from './pad-tap.js?v=276';
 import { POCKET_POTION, pocketPotionLabel, tickPocketPotion } from './pocket-potion.js?v=305';
-import { updateSpectate, spectateCameraTarget, clearSpectate } from './hero-spectate.js?v=306';
+import { updateSpectate, spectateCameraTarget, clearSpectate, updateSpectateQueue, spectateSteps, spectateSpeed, fieldSpectating } from './hero-spectate.js?v=308';
 import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog } from './interface.js?v=295';
 import { renderTroopRankings, getSoldierRankerBadges, calcSoldierRankerBonus, setRankingFamilyLabels, RANKING_FAMILIES } from './troop-rankings.js?v=295';
 import { ensureSoldierAppearance, drawSoldierPortrait } from './soldier-appearance.js?v=295';
@@ -151,7 +151,7 @@ import { clusterRescueMarkers } from './rescue-markers.js?v=182';
 import {visibleHeroMembers,heroMembers} from './hero-rules.js?v=302';
 import {updateHeroJournal} from './hero-journal.js?v=306';
 import {applyHeroEquipmentUpgrade} from './hero-equipment.js?v=295';
-import {initializeHeroJourney,rollHeroRevelation,serializeHeroJourney,updateHeroParty,updateHeroFollowing,awardHeroBattle,recordDemonKingDefeat,ensureHeroCastle,prepareCastleVisit,syncHeroCastle,renderHeroJourney,drawHeroMarks} from './hero-party.js?v=306';
+import {initializeHeroJourney,rollHeroRevelation,serializeHeroJourney,updateHeroParty,updateHeroFollowing,awardHeroBattle,recordDemonKingDefeat,ensureHeroCastle,prepareCastleVisit,syncHeroCastle,renderHeroJourney,drawHeroMarks} from './hero-party.js?v=308';
 import {DEMON_KING_RULES,demonKingStatsFor,shapeDemonKing,percentBaseDamage} from './demon-king-rules.js?v=304';
 import {updateSquadHpHud} from './squad-hp-hud.js?v=305';
 import {addBattleReport,normalizeBattleReport,renderBattleReport} from './battle-report.js?v=302';
@@ -2408,7 +2408,10 @@ export const IronSquadGame = {
         // Paint the initial/resized surface even if the following update fails.
         if (this._sceneDirty && this.player) { this.render(); this._sceneDirty = false; }
         stage = 'update';
+        // v7.0.31: spectate-only fast forward = extra ordinary update steps with the same (already capped) dt, so nothing tunnels; ×1 outside spectating.
+        const steps = spectateSteps(this, dt);
         this.update(dt);
+        for (let step = 1; step < steps && this.inBattle && spectateSpeed(this) >= steps; step++) this.update(dt);
         updateSquadHpHud(this, dt);
         stage = 'render';
         const draw=this.inBattle || this._lastRenderBattle || this._sceneDirty;
@@ -5947,7 +5950,7 @@ export const IronSquadGame = {
       this._dialogueTimer = 0;
       const camX = this.camera ? this.camera.x : this.player.x;
       const camY = this.camera ? this.camera.y : this.player.y;
-      const nearSoldiers = expeditionCombatUnits(this).filter(s => !s.dead && !s.isDown && Math.hypot(s.x - camX, s.y - camY) < 320);
+      const nearSoldiers = (fieldSpectating(this) ? [] : expeditionCombatUnits(this)).filter(s => !s.dead && !s.isDown && Math.hypot(s.x - camX, s.y - camY) < 320);
       if (nearSoldiers.length > 0) {
         const lucky = nearSoldiers[Math.floor(Math.random() * nearSoldiers.length)];
         const isDefense = Boolean((this.invasions?.stage && this.invasions.stage !== 'idle') || this.baseRaidActive || this.invasionActive);
@@ -6028,6 +6031,7 @@ export const IronSquadGame = {
     if(!resting)updateHeroParty(this,dt,SOLDIER_CLASSES);
     if(!resting)updateHeroFollowing(this,dt);
     if(this.spectating)updateSpectate(this,dt);
+    updateSpectateQueue(this,dt); // v7.0.31: 観戦待ち — starts the spectate when the conditions are met (runs through rest/raid too, only cancels when the party is gone)
 
     settleTravelerCompanions(this);
     const aliveSquad = activeSquad(this);
@@ -7889,6 +7893,7 @@ export const IronSquadGame = {
     if (!target || target.dead || target.isDown || target.hp <= 0 || !(rawDmg > 0)) return;
     if(target===this.player&&target.invulnerableTimer>0)return;
     if(target===this.player&&this.spectating)return; // v7.0.28: the observer cannot be hurt
+    if(this.spectating?.field&&target!==this.player&&!target.heroPartyId&&expeditionCombatUnits(this).includes(target))return; // v7.0.31: the parked squad is untouchable while the field march is watched
     const covered=!!options.cover; // 重装の身代わり分: 回避・遮蔽判定なし、自身のDEF/軽減/結界/死線は通常どおり、倒れない(HP1止まり)
     if(!environmental && !covered && options.attacker && coverBlocked(this, options.attacker, target))return;
     if(!environmental)recordCombat(target);
@@ -7997,7 +8002,7 @@ export const IronSquadGame = {
   },
 
   checkZoneTransition() {
-    if (this.currentDungeon || !this.player) return;
+    if (this.currentDungeon || !this.player || this.spectating) return; // v7.0.31: no zone warnings while spectating
     const distance=Math.hypot(this.player.x-BASE_CAMP.x,this.player.y-BASE_CAMP.y),previous=this._zonePreviousDistance;
     this._zonePreviousDistance=distance;
     const curZone=getFieldZone(this.player.x,this.player.y,distance);
@@ -11349,7 +11354,7 @@ export const IronSquadGame = {
       if (visible(remains)) renderList.push({ y: remains.y, k: 2, ref: remains });
     }
     if (this.squad) {
-      const drawnSquad=expeditionCombatUnits(this).concat(visibleHeroMembers(this));
+      const drawnSquad=(fieldSpectating(this)?[]:expeditionCombatUnits(this)).concat(visibleHeroMembers(this)); // v7.0.31: the parked squad is not drawn while the field march is watched
       for (let i = 0; i < drawnSquad.length; i++) {
         const s = drawnSquad[i];
         if (!s.dead && (!this.currentDungeon||inCurrentInstance(this,s)) && visible(s)) renderList.push({ y: ambientSoldierPose(this,s)?.y??s.y, k: 3, ref: s });
@@ -11363,8 +11368,8 @@ export const IronSquadGame = {
     for(const guard of this.gateGuards||[])if(gateGuardVisible(this,guard)&&visible(guard))renderList.push({y:guard.y,k:6,ref:guard});
     for(const civ of this.civilians||[])if(!civ.rescued&&(!this.currentDungeon||civ.rescueSpace===this.currentDungeon.id)&&visible(civ))renderList.push({y:civ.y,k:7,ref:civ});
     if(!this.currentDungeon)for(const actor of this.nation?.economy?.traffic||[])if(actor.hp>0&&visible(actor))renderList.push({y:actor.y,k:8,ref:actor});
-    if(!this.currentDungeon)for(const soldier of this.reserves||[])if(!isExpeditionReserve(this,soldier)&&!soldier.dead&&(soldier.isDown||soldier.dying)&&visible(soldier))renderList.push({y:soldier.y,k:3,ref:soldier});
-    if(!this.currentDungeon && this.reserves?.length && farmOverlaps(this.reserves.length, camX, camY, visX, visY)) {
+    if(!this.currentDungeon&&!fieldSpectating(this))for(const soldier of this.reserves||[])if(!isExpeditionReserve(this,soldier)&&!soldier.dead&&(soldier.isDown||soldier.dying)&&visible(soldier))renderList.push({y:soldier.y,k:3,ref:soldier});
+    if(!this.currentDungeon && !fieldSpectating(this) && this.reserves?.length && farmOverlaps(this.reserves.length, camX, camY, visX, visY)) {
       const posts=ambientFarmPosts(this);
       for(let i=0;i<posts.length;i++){const unit=posts[i].soldier;if(unit.dead||unit.isDown||unit.dying||unit.carrierId||unit.heroPartyId||isExpeditionReserve(this,unit))continue;const wander=ambientSoldierPose(this,posts[i].soldier),post=wander?{...posts[i],...wander,pose:null,facing:wander.facingAngle}:posts[i];if(visible(post))renderList.push({y:post.y,k:9,ref:post});}
     }
@@ -11450,7 +11455,7 @@ export const IronSquadGame = {
 
     // Fog of war (bit-grid fillRect; skip inside dungeons)
     // v1.25.11: camp seed + player-dark reseed; overlay gets player coords for fail-safe
-    if (!this.currentDungeon) {
+    if (!this.currentDungeon && !fieldSpectating(this)) { // v7.0.31: no fog over the watched march (the parked commander never explored it)
       const fog = this.ensureFog();
       if (fog) {
         if (!fog._campSeeded || (typeof fog.hasExploration === 'function' && !fog.hasExploration())) {

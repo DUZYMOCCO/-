@@ -24,7 +24,7 @@ import {RANGED_ENEMIES} from './enemy-ranged.js?v=295';
 import {startHeroJournal,archiveHeroJournal,appendHeroDiary,recordHeroEquipmentGrant,recordHeroEvent,announceHero} from './hero-journal.js?v=306';
 import {showHeroRevelationScene} from './hero-revelation-scene.js?v=302';
 import {grantHeroEquipment} from './hero-equipment.js?v=295';
-import {spectateAvailability,startSpectate,endSpectate} from './hero-spectate.js?v=306';
+import {spectateAvailability,startSpectate,endSpectate,queueSpectate,cancelSpectateQueue,spectateStatusLine} from './hero-spectate.js?v=308';
 const C=WORLD_SIZE/2,castle=()=>DUNGEON_DEFS.find(d=>d.id==='dungeon_demon_castle');
 const ready=u=>u&&!u.dead&&!u.isDown&&u.hp>0;
 export function initializeHeroJourney(game,saved=null) {
@@ -268,12 +268,13 @@ export function renderHeroJourney(game,classes,talents) {
   if(active&&!j.demonKingDefeat){
     const row=document.createElement('div');row.className='hero-actions';
     const b=document.createElement('button');b.className='mini-btn';b.textContent=game.heroFollowing?'追従をやめる':'勇者を追う';b.disabled=!!game.spectating;b.onclick=()=>{game.heroFollowing=!game.heroFollowing;delete game._heroFollowPath;game.closeStrategyModal();};row.append(b);
-    // v7.0.28: spectate = the commander watches the castle fight as an invisible observer (only while the party fights in the castle)
+    // v7.0.31: one toggle button — 観戦する → 観戦待ち（取消）→ 観戦を終了. Not startable yet = it waits and starts by itself (march from the camp, or the castle fight).
     const spec=spectateAvailability(game),watch=document.createElement('button');watch.className='mini-btn hero-spectate-btn';watch.type='button';
     if(game.spectating){watch.textContent='観戦を終了';watch.onclick=()=>{endSpectate(game,'観戦を終えて戻った。');game.closeStrategyModal();};}
-    else{watch.textContent='観戦する';watch.disabled=!spec.ok;watch.title=spec.reason;watch.onclick=()=>{if(startSpectate(game,classes))game.closeStrategyModal();};}
+    else if(game.spectateQueued){watch.textContent='観戦待ち（取消）';watch.title=spec.reason;watch.onclick=()=>{cancelSpectateQueue(game,'観戦待ちを取り消した。');renderHeroJourney(game,classes,talents);};}
+    else{watch.textContent='観戦する';watch.disabled=spec.code==='no-party';watch.title=spec.reason;watch.onclick=()=>{if(spectateAvailability(game).ok){if(startSpectate(game,classes))game.closeStrategyModal();}else if(queueSpectate(game,classes))game.closeStrategyModal();};}
     row.append(watch);body.append(row);
-    const note=document.createElement('p');note.className='hero-rule-note hero-spectate-note';note.textContent=game.spectating?'観戦中です。画面下の「観戦を終了」でも戻れます。':spec.ok?spec.reason:`観戦：${spec.reason}`;body.append(note);
+    const note=document.createElement('p');note.className='hero-rule-note hero-spectate-note';note.textContent=spectateStatusLine(game);body.append(note);
   }
   if(j?.demonKingDefeat){const result=document.createElement('p');result.textContent=`魔王討伐：第${j.demonKingDefeat.phase}期 · ${j.demonKingDefeat.by==='hero'?'勇者パーティ':'隊長側'}（${j.demonKingDefeat.name}）`;body.append(result);}
   if(p&&!j.history.some(h=>h.id===p.id))appendHeroDiary(body,p.journal,classes,talents);

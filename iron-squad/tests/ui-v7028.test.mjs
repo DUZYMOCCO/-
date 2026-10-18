@@ -32,8 +32,11 @@ const d = DUNGEON_DEFS.find(x => x.id === 'dungeon_demon_castle');
 game.phase = 10; assert.equal(rollHeroRevelation(game), true);
 renderHeroJourney(game, SOLDIER_CLASSES, TALENTS);
 assert.ok(find('勇者を追う'), 'follow button is kept'); assert.ok(find('観戦する'), 'spectate button next to it');
-assert.equal(find('観戦する').disabled, true);
-assert.match(host().textContent, /観戦：魔王城で戦っているときだけ観戦できます/);
+assert.equal(find('観戦する').disabled, false, 'v7.0.31: the march can be watched from the camp');
+assert.match(host().textContent, /勇者の進軍を最初から見守ります/);
+game.player.x += 5000; renderHeroJourney(game, SOLDIER_CLASSES, TALENTS);
+assert.equal(find('観戦する').disabled, false, 'not startable yet: the button still queues'); assert.match(host().textContent, /観戦：勇者は進軍中。隊長が本陣に戻ると観戦を始められます/); game.player.x -= 5000;
+renderHeroJourney(game, SOLDIER_CLASSES, TALENTS);
 assert.equal(find('観戦する').parentElement, find('勇者を追う').parentElement, 'side by side');
 
 // ---- party fights in the castle → enabled ----
@@ -46,8 +49,8 @@ for (let i = 0; i < 4; i++) scene.monsters.push({ hp: 5, maxHp: 5, x: d.width - 
 game.phase = 11; updateHeroParty(game, 1.1, SOLDIER_CLASSES);
 renderHeroJourney(game, SOLDIER_CLASSES, TALENTS);
 assert.equal(find('観戦する').disabled, false); assert.match(host().textContent, /隊長は姿を消して見守ります/);
-game.restTimer = 8; renderHeroJourney(game, SOLDIER_CLASSES, TALENTS); assert.equal(find('観戦する').disabled, true); assert.match(host().textContent, /待機中は観戦できません/); game.restTimer = 0;
-game.baseRaidActive = true; renderHeroJourney(game, SOLDIER_CLASSES, TALENTS); assert.match(host().textContent, /襲撃中は観戦できません/); game.baseRaidActive = false;
+game.restTimer = 8; renderHeroJourney(game, SOLDIER_CLASSES, TALENTS); assert.equal(find('観戦する').disabled, false); assert.match(host().textContent, /観戦：待機中です。待機が終わると観戦を始められます/); game.restTimer = 0;
+game.baseRaidActive = true; renderHeroJourney(game, SOLDIER_CLASSES, TALENTS); assert.match(host().textContent, /襲撃中です。収まると観戦を始められます/); game.baseRaidActive = false;
 renderHeroJourney(game, SOLDIER_CLASSES, TALENTS);
 
 // ---- start from the button ----

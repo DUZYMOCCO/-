@@ -12,5 +12,6 @@ export function inCurrentInstance(game, unit) {
 }
 
 export function activeSquad(game) {
+  if(game.spectating?.field)return visibleHeroMembers(game).filter(s=>s&&!s.dead); // v7.0.31: the commander's squad is parked (frozen, undrawn, untargetable) while the field march is watched
   return expeditionCombatUnits(game).filter(s => s && !s.dead && (!game.currentDungeon || inCurrentInstance(game, s))).concat(visibleHeroMembers(game));
 }
