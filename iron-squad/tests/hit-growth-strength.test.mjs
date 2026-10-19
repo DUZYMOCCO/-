@@ -20,7 +20,7 @@ const RAW=100000;
  hi.def=600000;hit(hi,'hi');lo.def=10;hit(lo,'lo');hit(light,'light');
  assert.ok(dealt.hi<dealt.lo/100,`high DEF lost far less HP (${dealt.hi} vs ${dealt.lo})`);
  near(hi.hitGrowthHp,RAW*HIT_HP_PER_DAMAGE,'high DEF heavy');near(lo.hitGrowthHp,RAW*HIT_HP_PER_DAMAGE,'low DEF heavy');near(light.hitGrowthHp,RAW*HIT_HP_PER_DAMAGE,'light');
- near(hi.hitGrowthDef,RAW*HIT_DEF_PER_DAMAGE);near(lo.hitGrowthDef,RAW*HIT_DEF_PER_DAMAGE);assert.ok(!(light.hitGrowthDef>0),'light has no DEF growth');
+ near(hi.hitGrowthDef,RAW*HIT_DEF_PER_DAMAGE);near(lo.hitGrowthDef,RAW*HIT_DEF_PER_DAMAGE);near(light.hitGrowthDef,RAW*HIT_DEF_PER_DAMAGE*.55,'v7.1.10: light grows DEF at 0.55');
  for(const u of [hi,lo,light])assert.equal(u.hitGrowthEvents,1);}
 
 // (b) 結界で全部吸収されても成長する（赤い数字は出ない）。結界を使えるのは隊長/術士/衛生兵で、魔法ダメージは100%吸収

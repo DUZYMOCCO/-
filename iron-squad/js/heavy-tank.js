@@ -1,7 +1,7 @@
 // 重装歩兵(HEAVY系統)のタンク特化: ヘイト距離補正・かばう(身代わり)・重圧オーラ・重撃スタン。純関数＋フレーム毎の健在重装キャッシュ。
 import {attributeFamily} from './unit-attributes.js?v=298';
 import {activeSquad} from './instance-rules.js?v=322';
-import {weaponStyleOf} from './growth-rules.js?v=295';
+import {weaponStyleOf} from './growth-rules.js?v=328';
 export const TANK={hateDistMult:.5,hateReach:1000,coverRadius:75,coverShare:.5,coverMinHp:.20,auraRadius:48,auraSlow:.60,slowFloor:.25,stunChance:.35,stunSeconds:.8,bossStunMult:.5};
 const alive=u=>!!u&&!u.dead&&!u.isDown&&(u.hp||0)>0;
 /** 兵士の重装(隊長・英雄・門番・商人は除く)。 */

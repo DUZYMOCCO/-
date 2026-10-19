@@ -9,7 +9,7 @@ const g=Object.create(IronSquadGame),C=WORLD_SIZE/2;Object.assign(g,{container:d
 g.setupUI();g.activeSlotId=saveSlots.create('Heavy hit defense').id;g.startFreshGame(false);
 const near=(a,b)=>assert.ok(Math.abs(a-b)<1e-9,`${a} ~ ${b}`);
 // Absolute points proportional to HP actually lost; no cap, no diminishing returns; none from 0 damage.
-{const u={maxHp:100};const r=applyHitGrowth(u,100);near(u.hitGrowthHp,100*HIT_HP_PER_DAMAGE);near(r.gain,100*HIT_HP_PER_DAMAGE);assert.equal(u.hitGrowthDef,undefined,'non-heavy gets no DEF growth');
+{const u={maxHp:100};const r=applyHitGrowth(u,100);near(u.hitGrowthHp,100*HIT_HP_PER_DAMAGE);near(r.gain,100*HIT_HP_PER_DAMAGE);assert.equal(u.hitGrowthDef,undefined,'no DEF factor given -> no DEF growth');
  applyHitGrowth(u,200);near(u.hitGrowthHp,300*HIT_HP_PER_DAMAGE);
  const big={maxHp:100};applyHitGrowth(big,1e6);near(big.hitGrowthHp,1e6*HIT_HP_PER_DAMAGE);
  const late={maxHp:100,hitGrowthHp:5000};near(applyHitGrowth(late,100).gain,100*HIT_HP_PER_DAMAGE);
@@ -25,13 +25,13 @@ const def0=heavy.def,hp0=heavy.maxHp,light0=light.def,lhp0=light.maxHp;assert.ok
 // Flat addition after all multipliers: exact floor(points) on top.
 heavy.hitGrowthHp=123.9;heavy.hitGrowthDef=45.9;light.hitGrowthHp=123.9;light.hitGrowthDef=45.9;g.recalcSoldierStats(heavy);g.recalcSoldierStats(light);
 assert.equal(heavy.maxHp,hp0+123);assert.equal(heavy.def,def0+45,'heavy DEF +floor(points)');
-assert.equal(light.maxHp,lhp0+123);assert.equal(light.def,light0,'light infantry DEF unchanged');
+assert.equal(light.maxHp,lhp0+123);assert.equal(light.def,light0+45,'v7.1.10: light infantry DEF +floor(points) too');
 const grown=[heavy.maxHp,heavy.def];for(let i=0;i<3;i++)g.recalcSoldierStats(heavy);assert.deepEqual([heavy.maxHp,heavy.def],grown,'no drift on recalc');
-// Real hits via damageTarget: grows from the attack strength before defence (heavy also DEF), light only HP.
+// Real hits via damageTarget: grows from the attack strength before defence; v7.1.10 light also DEF at its class factor.
 {const h=make('HEAVY'),l=make('LIGHT');for(const u of [h,l]){u.dodge=0;u.def=0;u.dmgReduction=0;u.shieldTimer=0;u.lethalGuardCooldown=999;u.hp=u.maxHp=100000;u.x=C;u.y=C;}
  g.squad=[h,l];h.def=0;
  let dealt=0;g.spawnDamageText=(x,y,txt)=>{if(typeof txt==='number')dealt=txt;};g.damageTarget(h,5000);const lost=dealt;g.damageTarget(l,5000);g.spawnDamageText=noop;
- assert.ok(h.hitGrowthHp>0&&l.hitGrowthHp>0);assert.ok(h.hitGrowthDef>0);assert.ok(!(l.hitGrowthDef>0));
+ assert.ok(h.hitGrowthHp>0&&l.hitGrowthHp>0);assert.ok(h.hitGrowthDef>0);near(l.hitGrowthDef,5000*HIT_DEF_PER_DAMAGE*.55);
  assert.ok(lost>0);near(h.hitGrowthHp,5000*HIT_HP_PER_DAMAGE);near(l.hitGrowthHp,5000*HIT_HP_PER_DAMAGE);near(h.hitGrowthDef,5000*HIT_DEF_PER_DAMAGE);}
 // Lethal hit still downs (growth does not save the target).
 {const t=make('HEAVY');t.dodge=0;t.def=0;t.dmgReduction=0;t.shieldTimer=0;t.lethalGuardCooldown=999;t.hitGrowthHp=0;t.hp=10;t.x=C;t.y=C;g.squad=[t];g.damageTarget(t,1e7);assert.ok(t.isDown||t.hp<=0,'lethal hit downs');near(t.hitGrowthHp,1e7*HIT_HP_PER_DAMAGE);}
@@ -41,5 +41,5 @@ const grown=[heavy.maxHp,heavy.def];for(let i=0;i<3;i++)g.recalcSoldierStats(hea
 {g.player.hitGrowthHp=0;g.recalcPlayerStats();const pm=g.player.maxHp;g.player.hitGrowthHp=250.7;g.recalcPlayerStats();assert.equal(g.player.maxHp,pm+250);g.recalcPlayerStats();assert.equal(g.player.maxHp,pm+250,'player no drift');
  g.saveGame({immediate:true});const hp=g.player.hitGrowthHp;g.player.hitGrowthHp=0;g.resumeSavedGame(saveSlots.get(g.activeSlotId).data);near(g.player.hitGrowthHp,hp);assert.equal(g.player.maxHp,pm+250,'player round trip');
  const pp=g.player;pp.hitGrowthPct=.2;pp.hitGrowthHp=0;g.recalcPlayerStats();assert.ok(pp.hitGrowthHp>0&&pp.hitGrowthPct===undefined,'player migrates old percentage');}
-assert.match(g.buildSoldierDetailHtml(heavy),/被弾防御成長/);assert.doesNotMatch(g.buildSoldierDetailHtml(light),/被弾防御成長/);assert.match(g.buildSoldierDetailHtml(heavy),/被弾HP成長 💪 <strong[^>]*>\+123</);
-console.log('PASS: absolute uncapped hit growth (HP all, DEF heavy-only gentle), migration, round trip, no drift, lethal still downs');
+assert.match(g.buildSoldierDetailHtml(heavy),/被弾防御成長/);assert.match(g.buildSoldierDetailHtml(light),/被弾防御成長/,'v7.1.10: every class shows hit DEF growth');assert.match(g.buildSoldierDetailHtml(heavy),/被弾HP成長 💪 <strong[^>]*>\+123</);
+console.log('PASS: absolute uncapped hit growth (HP all, DEF every class by factor), migration, round trip, no drift, lethal still downs');

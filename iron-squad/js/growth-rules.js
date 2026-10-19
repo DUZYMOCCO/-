@@ -1,4 +1,5 @@
 import {heroGrowth} from './hero-rules.js?v=302';
+import {attributeFamily} from './unit-attributes.js?v=298';
 /** HP成長（被弾）と武器マスタリーの計算ヘルパー。毎フレーム割当なし。 */
 
 export const MELEE_STYLES = ['sword', 'spear', 'hammer', 'axe', 'staff', 'wand'];
@@ -115,6 +116,11 @@ export function isMeleeStyle(style) {
  *  v7.0.5: 基準を「失ったHP」から「防御前の攻撃の強さ」へ変更し、係数も付け直した（旧 HP 0.006 / DEF 0.0015 は失ったHP基準）。 */
 export const HIT_HP_PER_DAMAGE = 0.003;
 export const HIT_DEF_PER_DAMAGE = 0.0105;
+/** v7.1.10: DEF from hits grows for every class. The one table of per-class factors (× HIT_DEF_PER_DAMAGE).
+ *  Heavy keeps 1.0 (0.0105). Front-line melee (light infantry, commander, hero) ~0.55,
+ *  shooters 0.3, healers and mages 0.25. Families come from unit-attributes (advanced and limited classes map to these). */
+export const HIT_DEF_CLASS_FACTORS = Object.freeze({ HEAVY: 1, LIGHT: 0.55, COMMANDER: 0.55, ARCHER: 0.3, MEDIC: 0.25, MAGE: 0.25 });
+export const hitDefGrowthFactor = unit => HIT_DEF_CLASS_FACTORS[attributeFamily(unit)] ?? HIT_DEF_CLASS_FACTORS.LIGHT;
 /** セーブ全体の印。2 未満（無い）セーブは読込時に一度だけ旧係数ぶんの積み上げを換算する。保存時は必ず 2 を書く。 */
 export const HIT_GROWTH_SCALE = 2;
 export const HIT_GROWTH_LEGACY_HP_MULT = 3.5;
@@ -184,16 +190,18 @@ const hitMilestone = value => value < 1000 ? 100 : value < 10000 ? 1000 : 10000;
  * @returns {{gain:number, defGain:number, changed:boolean, crossed:number|null}}
  *   changed = 反映値（切り捨て後）が変わった / crossed = 新たに跨いだHP成長の節目
  */
-export function applyHitGrowth(unit, strength, heavy = false) {
+export function applyHitGrowth(unit, strength, defFactor = 0) {
   if (!unit || !(strength > 0)) return { gain: 0, defGain: 0, changed: false, crossed: null };
   const factor = heroGrowth(unit);
+  // defFactor: per-class factor from HIT_DEF_CLASS_FACTORS (true = 1, the heavy rate; false/omitted = no DEF).
+  const defMult = defFactor === true ? 1 : Math.max(0, Number(defFactor) || 0);
   const beforeHp = hitGrowthHpOf(unit), beforeDef = hitGrowthDefOf(unit);
   const gain = strength * HIT_HP_PER_DAMAGE * factor;
-  const defGain = heavy ? strength * HIT_DEF_PER_DAMAGE * factor : 0;
+  const defGain = defMult > 0 ? strength * HIT_DEF_PER_DAMAGE * defMult * factor : 0;
   if (gain <= 0) return { gain: 0, defGain: 0, changed: false, crossed: null };
   const afterHp = beforeHp + gain, afterDef = beforeDef + defGain;
   unit.hitGrowthHp = afterHp;
-  if (heavy) unit.hitGrowthDef = afterDef;
+  if (defGain > 0) unit.hitGrowthDef = afterDef;
   const step = hitMilestone(beforeHp);
   const crossed = Math.floor(afterHp / step) > Math.floor(beforeHp / step) ? Math.floor(afterHp / step) * step : null;
   const changed = Math.floor(afterHp) !== Math.floor(beforeHp) || Math.floor(afterDef) !== Math.floor(beforeDef);

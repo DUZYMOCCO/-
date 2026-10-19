@@ -72,7 +72,7 @@ const SQUAD_STATE=()=>game.squad.map(s=>`${s.id}:${s.x}:${s.y}:${s.hp}`).join('|
   for(let i=0;i<30;i++)game.update(.1);assert.equal(me.hp,hpBefore,'enemies never hurt the far observer');assert.equal(g2.hp,gHp,'nor the frozen squad');game.monsters=[];
   assert.equal(sp.endSpectate(game,'観戦を終えて戻った。'),true);assert.equal(game.spectating,null);
   assert.ok(game._spectateGrace>0&&me.invulnerableTimer>0,'a few safe seconds after coming back');game.damageTarget(g2,1e9,{});assert.equal(g2.hp,gHp,'grace: the squad is still untouchable');
-  game._spectateGrace=0;me.invulnerableTimer=0;game.damageTarget(g2,1e9,{});assert.ok(g2.hp<gHp||g2.dead||g2.isDown,'after the grace the squad is vulnerable again');
+  game._spectateGrace=0;me.invulnerableTimer=0;g2.dodge=0;game.damageTarget(g2,1e9,{}); // v7.1.10: no random dodge (flaky under the full run)assert.ok(g2.hp<gHp||g2.dead||g2.isDown,'after the grace the squad is vulnerable again');
   g2.hp=g2.maxHp;g2.dead=false;g2.isDown=false;
 }
 { // v7.0.32: every spectate toast is visible on the field line (the field filter used to hide them all)

@@ -130,13 +130,13 @@ import {
   WEAPON_STYLES, MASTERY_STYLES, WEAPON_STYLE_LABELS, WEAPON_STYLE_ICONS, isHeavyWeaponStyle, legacyHeavyAttackMult, HEAVY_ATTACK_VERSION, LEGACY_HEAVY_ATTACK_MULT, WEAPON_BASE_ATK_VERSION, WITHDRAWN_COMPENSATED_ATK_VERSION, WITHDRAWN_COMPENSATION_FACTOR, weaponCategoryOf, splitHeavyFavorite, FAVORITE_SPLIT_VERSION,
   MELEE_STYLES, RANGED_STYLES,
   emptyMastery, normalizeMastery, isRangedStyle, isMeleeStyle,
-  hitGrowthHpBonus, hitGrowthDefBonus, hitGrowthHpOf, hitGrowthDefOf, migrateHitGrowth, applyHitGrowth, masteryAtkMult, masteryPctDisplay,
+  hitGrowthHpBonus, hitGrowthDefBonus, hitGrowthHpOf, hitGrowthDefOf, migrateHitGrowth, applyHitGrowth, hitDefGrowthFactor, masteryAtkMult, masteryPctDisplay,
   HIT_GROWTH_SCALE, migrateSaveHitGrowth, scaleUnitHitGrowth, scaleTavernHitGrowth,
   masteryReloadMult, masterySplashMult, applyMasteryToCombatProfile,
   gainWeaponMastery, masteryGainForStyle, pickFavoriteWeapon, rollWeaponStyle,
   weaponStyleOf, favoriteWeaponBias, MASTERY_GAIN_PER_HIT,
   migrateFavoriteForClass, migrateWeaponStyleFromName
-} from './growth-rules.js?v=295';
+} from './growth-rules.js?v=328';
 
 import {
   initMerchants, ensureMerchants, updateMerchants, drawMerchantBody, drawMerchantEscort,
@@ -3267,7 +3267,7 @@ export const IronSquadGame = {
     }
 
     const baseRawDef = equipDef + (isWarlord ? 24 : 0) + levelDefenseGrowth(lv);
-    this.player.def = Math.floor(baseRawDef * warlordDefMult * rescueDefMult);
+    this.player.def = Math.floor(baseRawDef * warlordDefMult * rescueDefMult) + hitGrowthDefBonus(this.player); // v7.1.10: 隊長の被弾防御成長（絶対値）
 
     const wpnStyle = weaponStyleOf(this.equipped && this.equipped.weapon);
     const masteryMult = masteryAtkMult(this.player.weaponMastery, wpnStyle);
@@ -3446,7 +3446,7 @@ export const IronSquadGame = {
 
     if(s.isDown)s.hp=0;
 
-    s.def = Math.floor((multipliedDef + (isHeavyFamily ? hitGrowthDefBonus(s) : 0)) * (1 + grit * .03)); // 重装のみ被弾防御成長（絶対値）
+    s.def = Math.floor((multipliedDef + hitGrowthDefBonus(s)) * (1 + grit * .03)); // v7.1.10: 被弾防御成長は全兵種（絶対値。兵種変更・クラスアップ後も残る）
 
     const wpnStyle = weaponStyleOf(s.equipped ? s.equipped.weapon : s.weapon);
     const masteryMult = masteryAtkMult(s.weaponMastery, wpnStyle);
@@ -7923,7 +7923,7 @@ export const IronSquadGame = {
 
   /** 被弾鍛錬: 防御で減らす前の攻撃の強さ(strength)を基準に成長。結界で全吸収・肩代わりで0になった被弾でも呼ぶ（回避・環境ダメージでは呼ばない）。 */
   trainFromHit(target, strength) {
-    const growth = applyHitGrowth(target, strength, target !== this.player && attributeFamily(target) === 'HEAVY');
+    const growth = applyHitGrowth(target, strength, hitDefGrowthFactor(target)); // v7.1.10: every class and the commander, by class factor
     if (growth.gain > 0) {
       target.hitGrowthEvents = (target.hitGrowthEvents || 0) + 1;
       if (growth.changed) {
@@ -8030,7 +8030,7 @@ export const IronSquadGame = {
     this.spawnDamageText(target.x, target.y - 12, dmg,'#ff3344',{kind:'friendly',maxHp:target.maxHp});
     sound.playHurt(target.x,target.y);
 
-    // 被弾によるHP成長（防御・軽減・結界の前の攻撃の強さに比例する絶対値・上限なし。重装はDEFも）
+    // 被弾によるHP成長（防御・軽減・結界の前の攻撃の強さに比例する絶対値・上限なし。DEFも兵種ごとの係数で伸びる）
     if (!environmental) this.trainFromHit(target, pct?growthStrength:rawDmg);
 
     if (target !== this.player && target.hp > 0 && !target.isDown && target.hp / target.maxHp <= 0.3) {
@@ -9520,7 +9520,7 @@ export const IronSquadGame = {
             <div>被救護回数 🚑 <strong style="color:#34d399;">${s.timesRescued || 0}</strong></div>
             <div>他者救護回数 💚 <strong>${s.rescues || 0}</strong></div>
             <div>被弾鍛錬回数 <strong>${(s.hitGrowthEvents || 0).toLocaleString()}</strong></div>
-            <div>被弾HP成長 💪 <strong style="color:#fbbf24;">+${hitHp.toLocaleString()}</strong></div>${attributeFamily(s)==='HEAVY'?`<div>被弾防御成長 🛡 <strong style="color:#38bdf8;">+${hitDef.toLocaleString()}</strong></div>`:''}
+            <div>被弾HP成長 💪 <strong style="color:#fbbf24;">+${hitHp.toLocaleString()}</strong></div><div>被弾防御成長 🛡 <strong style="color:#38bdf8;">+${hitDef.toLocaleString()}</strong></div>
           </div>
           <div class="soldier-detail-block soldier-detail-span2">
             <div class="soldier-detail-label">作戦期履歴（直近）</div>
@@ -10752,7 +10752,7 @@ export const IronSquadGame = {
         </div>`;
     };
 
-    const pTankHp = Math.floor(hitGrowthHpOf(this.player));
+    const pTankHp = Math.floor(hitGrowthHpOf(this.player)), pTankDef = Math.floor(hitGrowthDefOf(this.player));
     const pWpn = this.equipped && this.equipped.weapon;
     const pStyle = weaponStyleOf(pWpn);
     const pMast = masteryPctDisplay(this.player.weaponMastery, pStyle);
@@ -10775,7 +10775,7 @@ export const IronSquadGame = {
       <div style="font-size: 11px; font-weight: bold; color: #ffaa00; margin-bottom: 6px;">【隊長装備（全7部位）】(鍛冶屋で強化可能)</div>
       <div style="font-size: 9.5px; color: #7dd3fc; margin-bottom: 4px;">隊長は職制限なし — 剣/槍/鎚/弓/クロスボウ/火砲を自由装備</div>
       <div style="font-size: 10px; color: #94a3b8; margin-bottom: 6px; line-height: 1.45;">
-        💪被弾鍛錬 HP+${pTankHp}（上限なし・敵の攻撃の強さで成長）<br/>
+        💪被弾鍛錬 HP+${pTankHp} 🛡防御+${pTankDef}<br/>
         ⚔️近接熟練 ${meleeMast}<br/>
         🏹遠隔熟練 ${rangedMast}<br/>
         <span style="color:#67e8f9;">剣/槍/鎚熟練＝ATK+攻撃速度　弓/石弓熟練＝ATK+リロード短縮　火砲熟練＝爆発半径+リロード短縮</span>

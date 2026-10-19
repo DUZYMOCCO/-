@@ -40,7 +40,7 @@ const lose=(u,fn)=>{u.maxHp=u.hp=100000;const b=u.hp;fn();return b-u.hp;};
  assert.equal(lose(mage,()=>g.damageTarget(mage,100,{attacker:foe})),50,'victim takes half');
  assert.equal(100000-heavy.hp,50,'guardian takes the other half (DEF 0)');
  assert.ok(heavy.hitGrowthHp>0&&heavy.hitGrowthDef>0,'guardian grows HP and DEF from its share of the attack strength');
- assert.ok(mage.hitGrowthHp>0&&!(mage.hitGrowthDef>0),'victim grows only from its own share (no DEF growth for non-heavy)');
+ assert.ok(mage.hitGrowthHp>0&&mage.hitGrowthDef>0&&Math.abs(mage.hitGrowthDef/heavy.hitGrowthDef-.25)<.13,'victim grows only from its own share (v7.1.10: mage DEF at 0.25)');
  assert.ok(Math.abs(mage.hitGrowthHp/heavy.hitGrowthHp-1)<.5,'both took a 50 share -> equal growth');}
 // 範囲外(80px)・攻撃者なし・環境ダメージ・重装同士は対象外
 {const heavy=make('HEAVY',C,C),far=make('MAGE',C+80,C),near=make('MAGE',C+60,C);setup(heavy,far,near);
