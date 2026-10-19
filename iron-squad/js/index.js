@@ -93,7 +93,7 @@ import {supplyMethods, initializeSupplies, updateSupplies, takeRangedShot, ammoC
 import { bindPadTap } from './pad-tap.js?v=276';
 import { POCKET_POTION, pocketPotionLabel, tickPocketPotion } from './pocket-potion.js?v=305';
 import { updateSpectate, updateRaidGrace, spectateCameraTarget, clearSpectate, updateSpectateQueue, spectateSteps, spectateSpeed, fieldSpectating, expeditionSpectating, expeditionAvailability, expeditionStatusLine, startExpeditionSpectate, queueExpeditionSpectate, cancelSpectateQueue, endSpectate } from './hero-spectate.js?v=322';
-import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog, settingsHost, arrangeSettings } from './interface.js?v=329';
+import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog, settingsHost, arrangeSettings } from './interface.js?v=330';
 import { renderTroopRankings, getSoldierRankerBadges, calcSoldierRankerBonus, setRankingFamilyLabels, RANKING_FAMILIES } from './troop-rankings.js?v=295';
 import { ensureSoldierAppearance, drawSoldierPortrait } from './soldier-appearance.js?v=295';
 import { aggregateDeathlineDynamics, tickDeathline, deathlineDamage, normalizeDeathlineSkills, chooseDeathlineSkill, deathlineRangedRange } from './deathline-rules.js?v=295';
@@ -154,7 +154,7 @@ import {applyHeroEquipmentUpgrade} from './hero-equipment.js?v=295';
 import {initializeHeroJourney,rollHeroRevelation,serializeHeroJourney,updateHeroParty,updateHeroFollowing,awardHeroBattle,recordDemonKingDefeat,ensureHeroCastle,prepareCastleVisit,syncHeroCastle,renderHeroJourney,drawHeroMarks} from './hero-party.js?v=322';
 import {DEMON_KING_RULES,demonKingStatsFor,shapeDemonKing,percentBaseDamage} from './demon-king-rules.js?v=304';
 import {updateSquadHpHud} from './squad-hp-hud.js?v=322';
-import {addBattleReport,normalizeBattleReport,renderBattleReport} from './battle-report.js?v=302';
+import {addBattleReport,normalizeBattleReport,renderBattleReport} from './battle-report.js?v=330';
 import {updateRescueAssistance,handleRescueAssistance} from './rescue-assistance.js?v=322';
 import { RESCUE_TIMEOUT, REVIVAL_COOLDOWN, revivalCooldownOf, revivalSkillCooldownLeft, normalizeRevivalSkill, headquartersRevivalPaused, rescueUnits, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, receiveTownCargo, leaveCivilianSpace, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, buildTransportRescueAssign, markSoldierDown, downCommander, commanderDown, updateNpcRescue, CIV_KINDS, isMedic, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST, medicHoldsByCommander, isMerchantCasualty } from './casualty-rules.js?v=322';
 import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault, dungeonBlocks, dungeonSolids } from './dungeon.js?v=306';
@@ -1217,7 +1217,7 @@ export const IronSquadGame = {
 
   // 起動時にこのゲームのCSSを自分で読み込む（?v= はこのフォルダ内で管理）。ハブが init 前に await する
   prepare() {
-    return loadCss(['../css/iron-squad.css?v=267', '../css/iron-squad-interface.css?v=329'].map(p => new URL(p, import.meta.url).href));
+    return loadCss(['../css/iron-squad.css?v=267', '../css/iron-squad-interface.css?v=330'].map(p => new URL(p, import.meta.url).href));
   },
 
   init(container, onBackToHub) {
@@ -1781,7 +1781,7 @@ export const IronSquadGame = {
       nav.insertBefore(commanderTab,overviewTab);
     }
     // Top-level windows after 戦況・部隊・装備・国家. The hero record stays hidden until a hero appears.
-    for(const [key,label,hidden] of [['rankings','ランキング'],['report','戦闘報告書'],['hero','勇者の記録',true],['settings','設定']]){
+    for(const [key,label,hidden] of [['rankings','ランキング'],['report','記録'],['hero','勇者の記録',true],['settings','設定']]){
       if(document.getElementById(`tab-strat-${key}`))continue;
       const tab=document.createElement('button');
       tab.id=`tab-strat-${key}`; tab.className=`sub-tab-btn${hidden?' hidden':''}`; tab.textContent=label;
@@ -1796,7 +1796,7 @@ export const IronSquadGame = {
     footer.append(document.getElementById('btn-start-next-wave'),document.getElementById('btn-close-strat'));
     panel.append(footer);
     // Each tab is its own full-screen window; the panel is a launcher until one opens.
-    const windowTitles={commander:'隊長',overview:'戦況',troops:'部隊・装備',nation:'国家',rankings:'ランキング',report:'戦闘報告書',hero:'勇者の記録',settings:'設定'};
+    const windowTitles={commander:'隊長',overview:'戦況',troops:'部隊・装備',nation:'国家',rankings:'ランキング',report:'記録',hero:'勇者の記録',settings:'設定'};
     const windowBar=document.createElement('div'); windowBar.className='strat-window-bar';
     windowBar.innerHTML='<button type="button" id="btn-strat-window-back" class="strat-window-back">‹ 戻る</button><div class="strat-window-heading"><strong id="strat-window-title" class="strat-window-title"></strong><small id="strat-window-gold" class="strat-window-gold"></small></div><button type="button" id="btn-strat-window-close" class="strat-window-close">閉じる ×</button>';
     panel.insertBefore(windowBar,body);
@@ -10527,7 +10527,7 @@ export const IronSquadGame = {
     if (isManualOpen) {
       titleEl.textContent = `司令部 · 作戦第${this.phase || this.wave || 1}期`;
       const fr = this.lastFiscalReport;
-      reportEl.innerHTML = deathlineBannerHtml + (fr ? formatFiscalReportHtml(fr) : '') + '<div style="font-size:12px;color:#b0bacd;">装備の強化鍛冶、武器防具の支給、兵士の叙勲・投資・スカウトを行えます。</div>';
+      reportEl.innerHTML = (deathlineBannerHtml + (fr ? formatFiscalReportHtml(fr) : '')) || '<div class="report-empty">まだ作戦の報告はありません。</div>'; // v7.1.12: no guide to features
       nextBtn.textContent = this.restTimer>0?`待機へ戻る（残り${Math.ceil(this.restTimer)}秒）`:'戦場へ戻る';
       nextBtn.classList.remove('hidden');
       closeBtn.classList.add('hidden');

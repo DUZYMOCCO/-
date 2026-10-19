@@ -26,6 +26,7 @@ try{
   ok(Math.abs(tav.GENIUS/200000-r)<.002,`tavern genius ${(tav.GENIUS/2000).toFixed(2)}%`);
   for(const [key,p] of [['ELITE',.06-SCOUT_GENIUS_RATE],['TALENTED',.14],['INFERIOR',.15],['AVERAGE',.65]])ok(Math.abs(tav[key]/200000-p*scale)<.004,`${key} shrinks proportionally: ${(tav[key]/2000).toFixed(2)}% vs ${(p*scale*100).toFixed(2)}%`);
   // 4. Real tavern rosters: 4 strangers per wave; about 0.2 geniuses per wave, at least one in about 18.5% of waves.
+  toasts.length=0; // only this section's toasts (the fresh game's own recruits can be geniuses by chance)
   Math.random=seeded(7171);let people=0,genius=0,wavesWith=0;const waves=3000;
   for(let w=1;w<=waves;w++){game.phase=w;const roster=ensureTavernRoster(game);eq(roster.people.length,TAVERN_ROSTER_SIZE);people+=roster.people.length;const n=roster.people.filter(p=>p.unit.talent==='GENIUS').length;genius+=n;if(n)wavesWith++;}
   const per=genius/people,mean=genius/waves,atLeast=wavesWith/waves,expect=1-(1-r)**TAVERN_ROSTER_SIZE;

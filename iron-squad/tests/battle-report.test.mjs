@@ -48,7 +48,7 @@ game.openStrategyModal(true);
 assert.ok(document.getElementById('tab-strat-hero').classList.contains('hidden'),'no hero yet: hero record hidden');
 document.getElementById('tab-strat-report').click();
 const view=document.getElementById('view-strat-report');assert.equal(view.classList.contains('hidden'),false);
-assert.equal(document.getElementById('strat-window-title').textContent,'戦闘報告書');
+assert.equal(document.getElementById('strat-window-title').textContent,'記録');
 assert.equal(view.querySelectorAll('.report-entry').length,3);assert.match(view.querySelector('.report-entry').textContent,/自部隊/,'newest first');
 [...view.querySelectorAll('.report-filter')].find(b=>b.dataset.kind==='death').click();
 assert.equal(document.querySelectorAll('#view-strat-report .report-entry').length,1);assert.match(document.querySelector('#view-strat-report .report-entry').textContent,/力尽きました/);

@@ -27,6 +27,14 @@ const title = (parent, text, hint) => {
   parent.prepend(heading);
 };
 
+/** v7.1.12: the record window's tabs. */
+export const RECORD_TABS = [['report', '報告書'], ['log', '戦闘ログ'], ['ops', '作戦報告']];
+export function syncRecordTabs(game) {
+  const view = document.getElementById('view-strat-report'); if (!view) return;
+  const key = RECORD_TABS.some(([k]) => k === game._recordTab) ? game._recordTab : 'report';
+  for (const b of view.querySelectorAll('[data-rec-tab]')) b.setAttribute('aria-selected', String(b.dataset.recTab === key));
+  for (const pane of view.querySelectorAll('[data-rec-pane]')) pane.hidden = pane.dataset.recPane !== key;
+}
 /** v7.1.11: the commander window's tabs (same layout as a soldier's record). */
 export const COMMANDER_TABS = [['ability', '能力'], ['growth', '成長'], ['equip', '装備'], ['awaken', '覚醒・魔法'], ['groom', '身だしなみ']];
 export function syncCommanderTabs(game) {
@@ -105,10 +113,18 @@ export function configureInterface(game) {
   get('view-strat-rankings').append(rankings); // its own top-level window: 戦況・部隊・装備・国家・ランキング
   renderTroopRankings(game);
   game.renderTroopRankings = () => renderTroopRankings(game);
-  const battleLog=fold(overview,'command-battle-log','戦闘ログ · 直近100件',[]),logList=element('ol','battle-log-history');logList.id='battle-log-history';battleLog.querySelector('.fold-content').append(logList);
+  // v7.1.12: 記録 = 報告書・戦闘ログ・作戦報告 in one window (the old 戦闘報告書 window, same ids).
+  const recordView=get('view-strat-report')||overview;
+  const recordTabs=element('div','soldier-detail-tabs record-tabs');recordTabs.id='record-tabs';recordTabs.setAttribute('role','tablist');recordTabs.setAttribute('aria-label','記録');
+  const recordPanes={};
+  for(const [key,label] of RECORD_TABS){const b=element('button','',label);b.type='button';b.setAttribute('role','tab');b.dataset.recTab=key;b.onclick=()=>{game._recordTab=key;syncRecordTabs(game);if(key==='log'){battleLog.open=true;renderBattleLog(game);}};recordTabs.append(b);
+    const pane=element('section',`record-pane record-pane-${key}`);pane.dataset.recPane=key;if(key==='report')pane.id='battle-report-pane';recordPanes[key]=pane;}
+  recordView.replaceChildren(recordTabs,...Object.values(recordPanes));
+  const battleLog=fold(recordPanes.log,'command-battle-log','戦闘ログ · 直近100件',[]);battleLog.open=true;const logList=element('ol','battle-log-history');logList.id='battle-log-history';battleLog.querySelector('.fold-content').append(logList);
   battleLog.addEventListener('toggle',()=>{if(battleLog.open)renderBattleLog(game);});
-  historyButton.onclick=()=>{game.openStrategyModal(true);game._selectStratTab('overview');battleLog.open=true;renderBattleLog(game);battleLog.scrollIntoView?.({block:'nearest'});logList.scrollTop=logList.scrollHeight;};
-  fold(overview, 'command-report', '前回の作戦報告', [get('strat-report')]);
+  historyButton.onclick=()=>{game.openStrategyModal(true);game._recordTab='log';game._selectStratTab('report');syncRecordTabs(game);battleLog.open=true;renderBattleLog(game);battleLog.scrollIntoView?.({block:'nearest'});logList.scrollTop=logList.scrollHeight;};
+  fold(recordPanes.ops, 'command-report', '前回の作戦報告', [get('strat-report')]).open=true;
+  game._syncRecordTabs=()=>syncRecordTabs(game);syncRecordTabs(game);
   // v7.1.11: everything about the commander lives in one window (隊長), tabbed like a soldier's record.
   const commanderView=get('view-strat-commander')||overview;
   const commanderTabs=element('div','soldier-detail-tabs commander-tabs');commanderTabs.id='commander-tabs';commanderTabs.setAttribute('role','tablist');commanderTabs.setAttribute('aria-label','隊長の記録');

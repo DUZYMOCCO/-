@@ -71,7 +71,7 @@ assert.equal(shown($('view-strat-overview')),false,'launcher hides section conte
 assert.equal(shown($('tab-strat-nation')),true,'launcher shows the section buttons');
 assert.equal(shown($('btn-start-next-wave')),true,'launcher keeps the return-to-battle button');
 // v6.3.12: rankings is its own top-level window, in the order 戦況・部隊・装備・国家・ランキング.
-assert.deepEqual([...document.querySelectorAll('#strategy-modal .dialog-tabs .sub-tab-btn')].filter(b=>!b.classList.contains('hidden')).map(b=>b.textContent),['ファストトラベル','隊長','戦況','部隊・装備','国家','ランキング','戦闘報告書','地図','設定'],'hero record stays hidden until a hero appears');
+assert.deepEqual([...document.querySelectorAll('#strategy-modal .dialog-tabs .sub-tab-btn')].filter(b=>!b.classList.contains('hidden')).map(b=>b.textContent),['ファストトラベル','隊長','戦況','部隊・装備','国家','ランキング','記録','地図','設定'],'hero record stays hidden until a hero appears');
 // v7.1.9: 設定 is its own window; the overview no longer carries sound, kana, save or developer controls.
 for (const id of ['settings-display','audio-settings','kana-settings','ambient-settings','command-session','stall-log-fold','perf-settings','btn-zoom-toggle','btn-field-sound','btn-back','btn-restart-from-strat']) {
   if(['ambient-settings','perf-settings'].includes(id)&&!$(id))continue; // mounted by init(), not by setupUI()
@@ -84,7 +84,7 @@ $('tab-strat-settings').click();assert.equal(stratModal.classList.contains('stra
 $('btn-strat-window-back').click();assert.equal(stratModal.classList.contains('strat-window-open'),false,'settings back returns to the launcher');
 assert.ok($('view-strat-rankings').contains($('command-troop-rankings')),'rankings moved out of the overview');
 assert.ok(!$('view-strat-overview').contains($('command-troop-rankings')));
-for (const [tab,title] of [['commander','隊長'],['overview','戦況'],['troops','部隊・装備'],['nation','国家'],['rankings','ランキング'],['report','戦闘報告書']]) {
+for (const [tab,title] of [['commander','隊長'],['overview','戦況'],['troops','部隊・装備'],['nation','国家'],['rankings','ランキング'],['report','記録']]) {
   $(`tab-strat-${tab}`).click();
   assert.equal(stratModal.classList.contains('strat-window-open'),true,`${tab} opens a window`);
   assert.equal($('strat-window-title').textContent,title);

@@ -1,5 +1,13 @@
 # 現在の作業と引き継ぎ（2026-10-16）
 
+## 2026-10-19 v7.1.12 / cache v330 メニュー再編A案(3) 「記録」
+
+- 旧「戦闘報告書」窓（`#view-strat-report`・`tab-strat-report` のまま）を「記録」に改名し、タブ 報告書／戦闘ログ／作戦報告 を付けた（`interface.js` の `RECORD_TABS`・`syncRecordTabs`、選択は `game._recordTab`）。
+- 戦況にあった「戦闘ログ · 直近100件」（`#command-battle-log`）と「前回の作戦報告」（`#command-report`／`#strat-report`）を記録へ移動。報告書の描画先は `#battle-report-pane`（`renderBattleReport`）。
+- フィールドの「履歴」（`btn-battle-log-history`）は記録の戦闘ログタブを開く。
+- 前回の作戦報告から、機能の案内文「装備の強化鍛冶、武器防具の支給、兵士の叙勲・投資・スカウトを行えます。」を削除（報告が無いときは「まだ作戦の報告はありません。」）。
+- テスト: `record-window-v7112.test.mjs` 追加。interface／battle-report の題名を「記録」に更新。
+
 ## 2026-10-19 v7.1.11 / cache v329 メニュー再編A案(2) 「隊長」画面
 
 - トップに「隊長」タイル（ファストトラベルの次、戦況の前）。窓 `#view-strat-commander`、題「隊長」。隊長の情報はここ1か所に集約（戦況の「隊長ステータス・成長・覚醒」折りたたみと、部隊・装備の「隊長の装備・強化」折りたたみを廃止）。戦況の「隊長ステータス」ボタン（`btn-player-stats`）も同じ窓を開く。

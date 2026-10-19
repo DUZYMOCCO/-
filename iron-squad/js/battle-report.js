@@ -60,7 +60,7 @@ export function noteBattleReport(game, text, options) {
 }
 
 export function renderBattleReport(game) {
-  const host = game?.container?.querySelector?.('#view-strat-report');
+  const host = game?.container?.querySelector?.('#battle-report-pane') || game?.container?.querySelector?.('#view-strat-report'); // v7.1.12: the 報告書 tab of 記録
   if (!host || typeof document?.createElement !== 'function') return;
   const active = REPORT_KINDS[game._battleReportFilter] ? game._battleReportFilter : 'all';
   const all = game.battleReport || [];

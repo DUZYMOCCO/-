@@ -1924,3 +1924,7 @@
 .iron-squad .commander-mastery strong { flex: 0 0 52px; text-align: right; font-size: 11px; }
 .iron-squad .commander-mastery.is-current > span:first-child { color: #e1cf9d; font-weight: bold; }
 .iron-squad .commander-groom { display: grid; gap: 10px; justify-items: start; }
+/* v7.1.12: 記録 window */
+.iron-squad [data-rec-pane][hidden] { display: none !important; }
+.iron-squad .record-tabs { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 10px; position: sticky; top: 0; z-index: 2; background: var(--ui-panel, #17222c); padding-bottom: 4px; }
+.iron-squad .record-pane .command-fold > summary { pointer-events: none; }
