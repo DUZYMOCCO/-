@@ -21,7 +21,7 @@ import {initializeWildernessSites,serializeWildernessSites,updateWildernessSites
 import {enemyArtHeadHeight} from './enemy-art.js?v=280';
 import {selectBiomeEncounter,biomeEnemyStats,encounterSlots,updateBiomeCharge} from './biome-encounters.js?v=279';
 import {configureRangedEnemy,updateRangedEnemy,updateDefenseWalls,interceptHostileShot,isHostileShot,updateHostileBolt,drawDefenseWalls} from './enemy-ranged.js?v=295';
-import {tickLimitedSkills,limitedAttackMult,limitedCritFollowUp,limitedDamageTakenMult,limitedLastStand,drawLimitedFx} from './limited-skills.js?v=335';
+import {tickLimitedSkills,limitedAttackMult,limitedCritFollowUp,limitedDamageTakenMult,limitedLastStand,drawLimitedFx,limitedTauntTarget,limitedSmokeMiss,updateFoxfire} from './limited-skills.js?v=336';
 import {LIMITED_CLASSES,LIMITED_ADVANCED_CLASSES,initializeLimitedAllies,prepareLimitedEncounter,createLimitedAlly,joinLimitedEncounter,updateLimitedAllies,updateNinja,updateShuriken,drawLimitedEncounter,serializeLimitedAllies,notifyLimitedJoin} from './limited-allies.js?v=335';
 import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=182';
 import {TIERS,MAX_EQUIPMENT_TIER,MAX_POWER_RANK,POWER_RANK_STEP,GENERATION_COUNT,TRADE_MAX_TIER,powerRank,tierDescription} from './equipment-tiers.js?v=231';
@@ -6942,6 +6942,7 @@ export const IronSquadGame = {
         if(proj.type==='PIERCE_BOLT'){if(updatePiercingBolt(this,proj,dt))this.projectiles.splice(i,1);continue;}
         if(proj.type==='ENEMY_BOLT'){if(updateHostileBolt(this,proj,dt))this.projectiles.splice(i,1);continue;}
         if(proj.type==='NINJA_SHURIKEN'){if(updateShuriken(this,proj,dt))this.projectiles.splice(i,1);continue;}
+        if(proj.type==='FOXFIRE'){if(updateFoxfire(this,proj,dt))this.projectiles.splice(i,1);continue;}
         if(isHostileShot(proj)&&interceptHostileShot(this,proj,{x:proj.x,y:proj.y},{x:proj.x+proj.vx*dt,y:proj.y+proj.vy*dt})){this.projectiles.splice(i,1);continue;}
 
         // 1. 直進貫通弾（SWORD_BEAM: ソニックブレード）
@@ -7342,6 +7343,7 @@ export const IronSquadGame = {
         const commercial=nearestCommerceTarget(this,m,target,minDist);target=commercial.target;minDist=commercial.distance;
         m._cachedTarget = target;
       }
+      {const taunt=limitedTauntTarget(this,m);if(taunt){target=taunt;minDist=Math.hypot(taunt.x-m.x,taunt.y-m.y);}} // v7.2.2: 熊の挑発
 
       if (!m.isRaidMob) {
         if (!huntKing && m.homeX !== undefined && (m.returningHome || this._distSq(m.x,m.y,m.homeX,m.homeY)>(m.isBoss?810000:422500))) {
@@ -7454,7 +7456,7 @@ export const IronSquadGame = {
         m.atkTimer = (m.atkTimer || 0) - dt;
         if (m.atkTimer <= 0) {
           m.atkTimer = m.attackInterval||1.0;
-          if (target && target.hp !== undefined) {
+          if (target && target.hp !== undefined && !limitedSmokeMiss(this,m)) { // v7.2.2: 煙玉の中では空振りしやすい
             this.damageTarget(target, m.atk, {attacker:m,pctMax:m.strikePct||0});
             if(m.cleaveRadius){let swept=0;for(const unit of [this.player,...raidDefenders]){
               if(unit===target||unit.dead||unit.isDown||unit.hp<=0||Math.hypot(unit.x-target.x,unit.y-target.y)>m.cleaveRadius||Math.hypot(unit.x-m.x,unit.y-m.y)>reach+m.cleaveRadius||coverBlocked(this,m,unit))continue;
@@ -12712,6 +12714,7 @@ export const IronSquadGame = {
   },
 
   drawProjectile(ctx, proj, now) {
+    if(proj.type==='FOXFIRE'){ctx.save();ctx.translate(proj.x,proj.y);ctx.fillStyle='rgba(240,140,60,.35)';ctx.beginPath();ctx.arc(0,0,8,0,Math.PI*2);ctx.fill();ctx.fillStyle='#ffd08a';ctx.beginPath();ctx.arc(0,0,3.5+Math.sin(now*.02)*.8,0,Math.PI*2);ctx.fill();ctx.restore();return;} // v7.2.2: 狐火
     if(proj.type==='ENEMY_BOLT'||proj.type==='NINJA_SHURIKEN'){
       ctx.save();ctx.translate(proj.x,proj.y);ctx.strokeStyle=proj.color||'#c6c9c7';ctx.fillStyle=proj.color||'#c6c9c7';ctx.lineWidth=2;
       if(proj.type==='NINJA_SHURIKEN'){ctx.rotate(now*.02);ctx.beginPath();for(let j=0;j<8;j++){const a=j*Math.PI/4,r=j%2?2:7;j?ctx.lineTo(Math.cos(a)*r,Math.sin(a)*r):ctx.moveTo(Math.cos(a)*r,Math.sin(a)*r);}ctx.closePath();ctx.fill();}
