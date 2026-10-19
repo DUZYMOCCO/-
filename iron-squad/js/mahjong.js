@@ -1,11 +1,11 @@
-// v7.1.2: Mahjong at the casino (UI + game methods). Rules live in mahjong-rules.js, the CPUs in mahjong-ai.js.
+// v7.1.3: Mahjong at the casino (UI + game methods). Rules live in mahjong-rules.js, the CPUs in mahjong-ai.js.
 // Tile faces are inline SVG from mahjong-tiles.js (circles, bamboo, 萬 numerals, honours), so the kana mode (which only rewrites strings that go through gameText) leaves them alone.
 // Everything the player reads goes through gameText piece by piece; tile markup never does (it would turn 東 into とう).
-import {MAHJONG_MODES,MAHJONG_LEVELS,MAHJONG_PAYOUT,newMahjong,mahjongStep,humanDiscard,humanTsumo,humanAnkan,humanKakan,humanKyuushu,humanClaim,nextHand,abandonMahjong,tsumoInfo,ownOptions,riichiOptions,claimPrompt,riichiNeedsPlayer,discardWaits,currentWaits,liveWallLeft,handsTotal,tileFace,kindCounts,isRedId} from './mahjong-rules.js?v=320';
-import {mahjongAi} from './mahjong-ai.js?v=320';
-import {tileSvg,backSvg} from './mahjong-tiles.js?v=320';
-import {MAX_MAHJONG_PAYOUT} from './casino-rules.js?v=320';
-import {gameText} from './game-text.js?v=320';
+import {MAHJONG_MODES,MAHJONG_LEVELS,MAHJONG_PAYOUT,newMahjong,mahjongStep,humanDiscard,humanTsumo,humanAnkan,humanKakan,humanKyuushu,humanClaim,nextHand,abandonMahjong,tsumoInfo,ownOptions,riichiOptions,claimPrompt,riichiNeedsPlayer,discardWaits,currentWaits,liveWallLeft,handsTotal,tileFace,kindCounts,isRedId} from './mahjong-rules.js?v=321';
+import {mahjongAi} from './mahjong-ai.js?v=321';
+import {tileSvg,backSvg} from './mahjong-tiles.js?v=321';
+import {MAX_MAHJONG_PAYOUT} from './casino-rules.js?v=321';
+import {gameText} from './game-text.js?v=321';
 import {sound} from '../../common/js/audio.js?v=151';
 let host=null;
 /** casino.js hands over its session helpers (state, refresh, money, ...) so this module does not import it back. */
@@ -15,6 +15,8 @@ const SEAT_NAMES=['あなた','右','正面','左'];
 const HONOR_KANA=['とん','なん','しゃー','ぺー','はく','はつ','ちゅん'];
 const LIMIT_NAMES={mangan:'満貫',haneman:'跳満',baiman:'倍満',sanbaiman:'三倍満',kazoe:'数え役満',yakuman:'役満',doubleYakuman:'ダブル役満'};
 const ABORT_NAMES={kyuushu:'九種九牌',suufon:'四風連打',suucha:'四家立直',suukan:'四槓散了'};
+/** One line per CPU level in the setup. */
+const LEVEL_NOTES={novice:'守りはしません。ときどきミスをします。',adept:'あぶない牌をさけ、鳴いて手を早めます。ときどきミスをします。',master:'相手の捨て牌を読んで守り、手の高さを見て押すか引くかを決めます。ミスはしません。'};
 const CALL_NAMES={chi:'チー',pon:'ポン',minkan:'カン',ankan:'カン',kakan:'加カン'};
 /** The call buttons stay dead for a moment after they appear, so the tap that threw a tile cannot land on them. */
 export const CLAIM_ARM_MS=450;
@@ -134,7 +136,7 @@ function setupHtml(game,s) {
   const minutes={full:'10〜15',short:'2〜3'}[m.mode];
   return `<div class="mj-setup"><p class="casino-help">${T('4人で打つ麻雀です。相手はCPU3人。ポン・チー・カン、立直、ドラ、役満があり、親は連荘します。持ち点が0を下回ると終わります。閉じても、つぎに開くと続きから打てます。')}</p>
   <h4>${T('対局')}</h4><div class="mj-choice">${choice('data-mj-mode',MAHJONG_MODES,m.mode)}</div><small>${T(`${m.mode==='full'?'東風戦は4局（連荘で延びます）':'1局戦は1局だけ'}。時間の目安は${minutes}分。`)}</small>
-  <h4>${T('相手')}</h4><div class="mj-choice is-three">${choice('data-mj-level',MAHJONG_LEVELS,m.level)}</div>
+  <h4>${T('相手')}</h4><div class="mj-choice is-three">${choice('data-mj-level',MAHJONG_LEVELS,m.level)}</div><small class="mj-level-note">${T(LEVEL_NOTES[m.level]||'')}</small>
   <details class="casino-paytable" open><summary>${T('着順の払い戻し')}</summary><dl>${table.map((x,i)=>`<div><dt>${i+1}${T('位')}</dt><dd>${mult(x)} · ${host.money(Math.round(bet*x))}</dd></div>`).join('')}</dl><p class="casino-help">${T('掛け金は参加費。始めるときに引かれ、終わると着順に応じて戻ります。「放棄」は最下位あつかいで、戻りは0です。同点は座順で決まります。')}</p></details>
   <button type="button" class="casino-play" id="btn-mj-start" ${can?'':'disabled'}>${T('対局をはじめる')} · ${host.money(bet)}</button>${can||game.gold>=bet?'':`<small>${T('所持金が足りません。')}</small>`}</div>`;
 }

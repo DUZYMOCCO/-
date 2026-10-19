@@ -1,6 +1,6 @@
-import {CASINO_POLICY} from './casino-rules.js?v=320';
+import {CASINO_POLICY} from './casino-rules.js?v=321';
 import {isPlatoonAway,isExpeditionReserve} from './expedition-rules.js?v=269';
-import {rescueUnits} from './casualty-rules.js?v=320';
+import {rescueUnits} from './casualty-rules.js?v=321';
 
 export function arenaCandidates(game) {
   const carrying=new Set([...rescueUnits(game),...(game.civilians||[])].filter(s=>s.carrierId).map(s=>String(s.carrierId)));

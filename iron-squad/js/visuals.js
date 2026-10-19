@@ -1,6 +1,6 @@
 import {drawEnemyArt} from './enemy-art.js?v=280';
 import {givenName} from './squad-names.js?v=182';
-import {downLabel} from './casualty-rules.js?v=320';
+import {downLabel} from './casualty-rules.js?v=321';
 import {RANGED_ENEMIES} from './enemy-ranged.js?v=295';
 import {BRUTE_DRAW_SCALE} from './field-hosts.js?v=182';
 import {equipmentVisualProfile} from './equipment-tiers.js?v=231';

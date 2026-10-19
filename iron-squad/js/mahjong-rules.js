@@ -592,7 +592,7 @@ export function runMahjong(st,ai,policy=null,limit=300000,onResult=null,passRon=
 }
 // ---------------- save validation ----------------
 const int=(v,lo,hi)=>Number.isSafeInteger(v)&&v>=lo&&v<=hi;
-/** A v7.1.1 save (closed hands, no dealer rotation record) is not playable any more: an unfinished game ends at once with the stake refunded; a finished unpaid one keeps its payout. */
+/** A v7.1.0 save (closed hands, no dealer rotation record) is not playable any more: an unfinished game ends at once with the stake refunded; a finished unpaid one keeps its payout. */
 function legacyMahjong(data) {
   const modeOk=MAHJONG_MODES[data.mode],lvl=data.level==='adept'?'adept':'novice';
   if(!modeOk||!int(data.bet,1,1e13)||!Array.isArray(data.points)||data.points.length!==4||!data.points.every(p=>int(p,-1e6,1e6)))return null;
@@ -608,7 +608,7 @@ export function normalizeMahjong(data) {
   try {
     if(!data||typeof data!=='object')return null;
     if(data.v===1)return legacyMahjong(data);
-    if(data.v===2&&data.legacy===true)return data.paid?null:legacyMahjong({...data,v:1,stage:data.refund?'act':'over'}); // a converted v7.1.1 game saved again
+    if(data.v===2&&data.legacy===true)return data.paid?null:legacyMahjong({...data,v:1,stage:data.refund?'act':'over'}); // a converted v7.1.0 game saved again
     if(data.v!==2||!MAHJONG_MODES[data.mode]||!MAHJONG_LEVELS[data.level])return null;
     const total=MAHJONG_MODES[data.mode].hands;
     if(!int(data.bet,1,1e13)||!int(data.seed,0,4294967295)||!int(data.hand,0,total-1)||!int(data.deal,data.hand,MAX_DEALS+total)||!int(data.honba,0,MAX_DEALS+total)||!int(data.firstDealer,0,3))return null;

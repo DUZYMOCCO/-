@@ -1,11 +1,14 @@
-// v7.1.1+: Mahjong CPUs. They only ever see a `view` (own tiles, rivers, melds, riichi calls, dora indicators, points) — never the wall or other hands.
+// v7.1.3: Mahjong CPUs. They only ever see a `view` (own tiles, rivers, melds, riichi calls, dora indicators, points) — never the wall or other hands.
 // Levels: 'novice' (efficiency, a little sloppy, no defence), 'basic' (the calibration reference: efficiency + defence, yakuhai calls), 'adept' (+ ukeire, tanyao / flush calls),
-//         'master' (+ safety reading, push/fold by hand value and rank, riichi vs dama, kan, calls with value awareness).
-import {countsOf,kindCounts,shanten,waitsOf,evaluateHand,isYaochu,isHonor,isTerminal,isRedId,RIICHI_STICK} from './mahjong-rules.js?v=320';
+//         'master' (+ safety reading, push/fold by hand value and rank, riichi vs dama, kan, calls with value awareness). The adept also throws a random best-shanten tile now and then (ADEPT_SLOPPY); the master never does.
+import {countsOf,kindCounts,shanten,waitsOf,evaluateHand,isYaochu,isHonor,isTerminal,isRedId,RIICHI_STICK} from './mahjong-rules.js?v=321';
 const K=id=>id>>2;
 const CPU_RIICHI_MIN_WALL=4;
 /** Share of discards where the novice picks a random not-much-worse tile instead of the best one. */
 export const NOVICE_SLOPPY=0.1;
+/** Share of discards where the adept throws a random best-shanten tile instead of the one its evaluation prefers (the master never does). */
+export const ADEPT_SLOPPY=0.16;
+const MASTER_PUSH_VALUE=2,MASTER_PUSH_DANGER=5;
 const handKinds=view=>kindCounts([...view.hand,...(view.drawn>=0?[view.drawn]:[])]);
 const seenCounts=view=>{
   const c=handKinds(view);
@@ -32,7 +35,7 @@ function keepValue(view,c,t,adv=false) {
 }
 const FLUSH_PULL=0.9;
 /** Danger of throwing tile kind t against the seat `p` (lower = safer): 0 for genbutsu / tiles thrown after its riichi, then honours, terminals, suji, the rest. */
-function dangerVs(view,p,t,seen) {
+export function dangerVs(view,p,t,seen) {
   if(view.rivers[p].some(id=>K(id)===t))return 0;
   const at=view.riichiAt[p];
   if(view.riichi[p]&&at>=0)for(let i=at+1;i<view.log.length;i++)if(view.log[i][0]!==p&&K(view.log[i][1])===t)return 0;
@@ -84,30 +87,14 @@ function roughValue(view,c14) {
 }
 const flushSuit=(view,c)=>{let best=-1,bn=0;for(let s=0;s<3;s++){let n=0;for(let i=0;i<9;i++)n+=c[s*9+i];if(n>bn){bn=n;best=s;}}return {suit:best,n:bn};};
 
-const HAN_PTS=[0,1000,2000,3900,7700,8000,12000,12000,16000];
-/** Expected-value push/fold against a riichi (or heavily open) table: is chasing our own win worth the deal-in risk of the safest tile that keeps our shanten? */
-function pushEv(view,cands,best,seen,threats,c14,M,value,others) {
-  if(best>=3)return false;
-  const pool=cands.filter(x=>x.sh===best);
-  let pick=pool[0],minD=1e9;
-  for(const x of pool){const d=dangerOf(view,x.t,seen,threats);if(d<minD){minD=d;pick=x;}}
-  const w=Math.max(...threats.map(t=>t.w)),dealerThreat=threats.some(t=>t.seat===view.dealer);
-  const single=view.handsTotal===1,finalHand=view.handNo===view.handsTotal-1;
-  const lead=view.points[view.seat]-Math.max(...others.map(s=>view.points[s]));
-  const n=Math.max(1,Math.min(8,Math.floor(view.wallLeft/4)));
-  let U=0;for(let k=0;k<34;k++)U+=Math.max(0,4-seen[k]);U=Math.max(20,U);
-  c14[pick.t]--;const u=ukeire(view,c14,best,seen,M);c14[pick.t]++;
-  const kw=Math.min(n,5),kd=Math.min(n,2);
-  let pw;
-  if(best===0)pw=1-Math.pow(1-u/U,kw);
-  else if(best===1)pw=(1-Math.pow(1-u/U,kw))*0.9;
-  else pw=0.15;
-  const p=Math.min(0.3,0.008*minD*w);
-  const pdi=1-Math.pow(1-p,kd);
-  let V=HAN_PTS[Math.max(1,Math.min(8,Math.round(value)))]*(view.dealer===view.seat?1.5:1)+1000+1000*view.riichi.filter(Boolean).length;
-  let L=(dealerThreat?7700:5200)*Math.max(0.5,w);
-  if(single){V*=1.6;L*=0.6;}else if(finalHand&&lead<-4000)V*=1.5;else if(finalHand&&lead>6000)L*=1.6;
-  return pw*V>=pdi*L;
+/** Master push/fold against a riichi: tenpai pushes; a 1-shanten hand pushes only when it is worth it (value >= 2) and a tile that keeps it is fairly safe; everything slower folds. Open-hand threats alone never make master fold. */
+function masterFold(view,cands,best,seen,threats,value) {
+  if(!threats.some(t=>t.w>=1)||best<=0)return false;
+  if(best===1&&value>=MASTER_PUSH_VALUE){
+    const md=Math.min(...cands.filter(x=>x.sh===best).map(x=>dangerOf(view,x.t,seen,threats)));
+    return md>MASTER_PUSH_DANGER;
+  }
+  return true;
 }
 /** Choose what to do with our own turn. view → {action:'discard',tile(id),riichi} | {action:'ankan'|'kakan',kind} | {action:'kyuushu'}. (A win is taken by the engine.) */
 export function chooseAction(view,level,rand=Math.random) {
@@ -140,12 +127,11 @@ export function chooseAction(view,level,rand=Math.random) {
   const fold=(()=>{
     if(!threatened||best<0)return false;
     if(level==='basic'||level==='adept')return best>=1&&threats.some(t=>t.w>=1);
-    if(level==='master'){
-      return !pushEv(view,cands,best,seen,threats,c14,M,value,others);
-    }
+    if(level==='master')return masterFold(view,cands,best,seen,threats,value);
     return false;
   })();
-  if(level==='novice'){
+  if(level==='adept'&&rand()<ADEPT_SLOPPY){const pool=cands.filter(x=>x.sh===best);pick=pool[Math.floor(rand()*pool.length)];}
+  else if(level==='novice'){
     if(rand()<NOVICE_SLOPPY){const pool=cands.filter(x=>x.sh<=best+1);pick=pool[Math.floor(rand()*pool.length)];}
     else{const pool=cands.filter(x=>x.sh===best).map(x=>({...x,v:keepValue(view,c14,x.t)+rand()*0.4}));pool.sort((a,b)=>a.v-b.v);pick=pool[0];}
   } else if(fold){

@@ -38,7 +38,7 @@ function actOnce(call=null) {
 assert.equal(game.openHeadquartersFacility('casino'),true);assert.equal(panel().dataset.casinoPage,'lobby');
 const entry=document.querySelector('[data-casino-page="mahjong"]');ok(entry,'lobby has a mahjong entry');ok(!entry.textContent.includes('続き'),'no game in progress yet');
 entry.click();assert.equal(panel().dataset.casinoPage,'mahjong');
-ok(document.querySelector('#btn-mj-start'),'setup shows a start button');assert.equal(document.querySelectorAll('[data-mj-mode]').length,2);assert.equal(document.querySelectorAll('[data-mj-level]').length,3,'three CPU levels');
+ok(document.querySelector('#btn-mj-start'),'setup shows a start button');assert.equal(document.querySelectorAll('[data-mj-mode]').length,2);assert.equal(document.querySelectorAll('[data-mj-level]').length,3,'three CPU levels');for(const lv of ['novice','adept','master']){document.querySelector(`[data-mj-level="${lv}"]`).click();ok(document.querySelector('.mj-level-note')&&document.querySelector('.mj-level-note').textContent.length>12,'a one-line note for '+lv);}
 {const table=()=>[...document.querySelectorAll('.mj-setup .casino-paytable dd')].map(e=>e.textContent);
  for(const mode of ['full','short'])for(const level of ['novice','adept','master']){document.querySelector(`[data-mj-mode="${mode}"]`).click();document.querySelector(`[data-mj-level="${level}"]`).click();
   const want=MAHJONG_PAYOUT[mode][level];const got=table();assert.equal(got.length,4);want.forEach((x,i)=>ok(got[i].includes('×'+x),`${mode}/${level} rank ${i+1} shows ×${x}`));}
