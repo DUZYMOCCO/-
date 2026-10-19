@@ -7,7 +7,8 @@ import {formatCompact} from './number-format.js?v=282';
 import {WORLD_SIZE} from './world.js?v=289';
 import {CAMP_PEACE_RADIUS} from './peace-zones.js?v=277';
 import {formatDistance} from './distance-format.js';
-import {pendingRaid,raidGraceLeft} from './invasion-rules.js?v=314';
+import {pendingRaid,raidGraceLeft} from './invasion-rules.js?v=315';
+import {isPlatoonAway,isSoldierOnExpedition,expeditionCombatUnits,getDangerTier} from './expedition-rules.js?v=256';
 
 // v7.0.31: 観戦待ち（キュー）／野外の道中から魔王城まで通しで観戦／観戦中だけの倍速（×1/×2/×4）。
 // 野外観戦は本編ワールドのまま（隊長は本陣で不可視・無敵、隊員は凍結して描画しない）、カメラだけ勇者を追う。
@@ -21,10 +22,12 @@ export const castleOf=game=>game.dungeons?.find(d=>d.id===CASTLE_ID)||DUNGEON_DE
 export const isSpectating=game=>!!game?.spectating;
 /** Spectating the march in the open field (the world is the ordinary field; only the camera follows the hero). */
 export const fieldSpectating=game=>game?.spectating?.field===true;
+/** v7.0.38: watching a platoon expedition (the world is the ordinary field; only the commander and his own guards are parked, the camera follows the expedition). */
+export const expeditionSpectating=game=>game?.spectating?.expedition===true;
 /** The commander stands inside the camp's peace bubble: the only place the field spectate may start from (so a parked commander and guards are safe). */
 export const commanderInCampPeace=game=>{const u=game?.player;return !!u&&Number.isFinite(u.x)&&Number.isFinite(u.y)&&Math.hypot(u.x-CAMP_CENTER,u.y-CAMP_CENTER)<CAMP_PEACE_RADIUS;};
 const raidActive=game=>!!game.baseRaidActive||!!(game.invasions?.stage&&game.invasions.stage!=='idle');
-const kingOf=game=>game.spectating?.field?null:(game.heroJourney?.castleScene?.monsters||game.monsters||[]).find(m=>m.isDemonKing&&m.hp>0)||null;
+const kingOf=game=>game.spectating?.field||game.spectating?.expedition?null:(game.heroJourney?.castleScene?.monsters||game.monsters||[]).find(m=>m.isDemonKing&&m.hp>0)||null;
 
 /**
  * Whether a spectate may start right now. `ok` = start now (kind 'castle' or 'field').
@@ -45,9 +48,96 @@ export function spectateAvailability(game) {
   if(!me||me.dead||me.isDown||me.hp<=0)return {ok:false,code:'down',kind,short:'隊長がダウン中',reason:'隊長がダウンしています。立ち上がると観戦を始められます'};
   return {ok:true,code:'ok',kind,short:'開始中',reason:kind==='field'?'勇者の進軍を最初から見守ります。隊長と隊員はその場で姿を消します（操作・手助けはできません）':'魔王城の勇者パーティを、隊長は姿を消して見守ります（操作・手助けはできません）'};
 }
+// ---------------- v7.0.38: expedition watch ("遠征を見る") ----------------
+export const awayPlatoons=game=>(game?.platoons||[]).filter(isPlatoonAway);
+const platoonOf=(game,pid)=>(game?.platoons||[]).find(p=>p.id===pid)||null;
+const platoonName=p=>p?`${p.icon||''}${String(p.name||'').split(' ')[0]}`:'';
+/** The soldiers out on that platoon's expedition (the dead are gone; downed ones stay so the view can follow them). */
+export function expeditionUnits(game,pid) {
+  const p=platoonOf(game,pid);if(!p)return [];
+  return expeditionCombatUnits(game).filter(u=>u&&!u.dead&&!u.heroPartyId&&isSoldierOnExpedition(p,u));
+}
+/** Whether the expedition watch may start now (pid = a platoon id, or null for the first one away). Not ok = a reason to wait; nothing here ever cancels the queue. */
+export function expeditionAvailability(game,pid=null) {
+  if(game.spectating)return {ok:false,code:'active',kind:null,short:'見学中',reason:'見学中です'};
+  const away=awayPlatoons(game),target=pid!=null?away.find(p=>p.id===pid):away[0];
+  if(!target)return {ok:false,code:'no-expedition',kind:'expedition',short:'遠征待ち',reason:pid!=null?'その小隊は遠征に出ていません。遠征に出ると見学を始められます':'遠征中の小隊がいません。遠征に出ると見学を始められます'};
+  if(game.currentDungeon)return {ok:false,code:'inside',kind:'expedition',short:'隊長が建物・洞窟内',reason:'建物や洞窟の中にいます。外に出ると見学を始められます'};
+  if(game.restTimer>0)return {ok:false,code:'rest',kind:'expedition',short:'待機中',reason:'待機中です。待機が終わると見学を始められます'};
+  if(raidActive(game))return {ok:false,code:'raid',kind:'expedition',short:game.baseRaidActive?'強襲中':'侵攻中',reason:'襲撃中です。収まると見学を始められます'};
+  const me=game.player;
+  if(!me||me.dead||me.isDown||me.hp<=0)return {ok:false,code:'down',kind:'expedition',short:'隊長がダウン中',reason:'隊長がダウンしています。立ち上がると見学を始められます'};
+  return {ok:true,code:'ok',kind:'expedition',pid:target.id,short:'開始中',reason:'遠征隊を見守ります。隊長と直属の隊員はその場で姿を消します（本陣の兵と遠征隊はふだんどおり戦います）'};
+}
+/** One status line for the expedition panel. */
+export function expeditionStatusLine(game) {
+  if(game.spectating)return game.spectating.expedition?'遠征を見学中です。画面下の「見学を終了」でも戻れます。':'観戦中です。';
+  const q=game.spectateQueued,a=expeditionAvailability(game,q?.mode==='expedition'?q.pid:null);
+  if(q?.mode==='expedition')return `見学待ち：${a.ok?'まもなく始まります':a.reason.replace('見学を始められます','見学が始まります')}`;
+  return a.ok?a.reason:`見学：${a.reason}`;
+}
+function expeditionSummary(game) {
+  const s=game.spectating,p=platoonOf(game,s.pid),units=expeditionUnits(game,s.pid),alive=units.filter(living);
+  const counts=new Map();for(const u of alive)counts.set(bandOf(u),(counts.get(bandOf(u))||0)+1);
+  const bands=['健在','負傷','瀕死','ダウン'].filter(b=>counts.has(b)).map(b=>`${b}${counts.get(b)}`).join('・');
+  const away=!!p&&isPlatoonAway(p),tier=getDangerTier(p?.expeditionDangerTier),cx=p?.x??0,cy=p?.y??0;
+  const mobs=(game.monsters||[]).filter(m=>m&&m.hp>0&&Math.hypot(m.x-cx,m.y-cy)<700).length;
+  const start=Math.max(alive.length,p?.expeditionStartCount||units.length);
+  const state=p?.mission==='returning'?'帰還中':'遠征中';
+  const dest=away&&p.mission==='expedition'&&p.expeditionTargetX!=null?` · 目的地まで約${formatDistance(Math.hypot(p.expeditionTargetX-p.x,p.expeditionTargetY-p.y))}`:'';
+  return {alive:alive.length,total:start,bands,mobs,kingPct:null,kingHp:null,kingMax:null,log:[],
+    partyText:`${platoonName(p)} 生存${alive.length}/${start}${bands?`（${bands}）`:''}`,
+    castleText:away?`${tier.icon}${tier.label} · ${p.expeditionLabel||'危険地帯'}（${state}）${dest} · 周りの敵 ${mobs}体`:'遠征は終わりました'};
+}
+function expeditionOutcome(game,s) {
+  const p=platoonOf(game,s.pid);
+  if(p&&isPlatoonAway(p))return expeditionUnits(game,s.pid).some(living)?null:{code:'fallen',text:'遠征隊は全滅しました（見学を終了で戻ります）'};
+  const ids=new Set((s.memberIds||[]).map(String)),home=[...(game.squad||[]),...(game.reserves||[])].some(u=>u&&!u.dead&&ids.has(String(u.id)));
+  return home?{code:'returned',text:'遠征隊が本陣へ帰ってきました（見学を終了で戻ります）'}:{code:'fallen',text:'遠征隊は全滅しました（見学を終了で戻ります）'};
+}
+/** Begin watching a platoon's expedition. The commander stays where he is (invisible, untouchable) with his own guards; the camera follows the expedition. */
+export function startExpeditionSpectate(game,classes=null,pid=null) {
+  const a=expeditionAvailability(game,pid);
+  if(!a.ok){game.showToast?.(`見学できません：${a.reason}`,{field:true});return false;}
+  const units=expeditionUnits(game,a.pid),first=units.find(ready)||units[0]||null;
+  dropQueue(game);
+  game.heroFollowing=false;delete game._heroFollowPath;
+  game._spectateRaidGrace=0;updateRaidGraceHud(game);
+  playSpectateFade(game);
+  if(game.joystick){game.joystick.active=false;game.joystick.dirX=game.joystick.dirY=0;}
+  game.spectating={targetId:first?.id??null,targetOk:true,viewer:first,classes,hudClock:0,endRequested:false,pendingReason:null,startedPhase:game.phase,field:false,expedition:true,pid:a.pid,speed:1,partyId:null,memberIds:units.map(u=>u.id),recallArmedUntil:0};
+  if(first&&game.camera){game.camera.x=first.x;game.camera.y=first.y;}
+  game._sceneDirty=true;
+  mountSpectateHud(game);
+  game.showToast?.('👁 遠征の見学を始めた。隊長と直属の隊員はその場で姿を消している',{field:true});
+  return true;
+}
+/** Wait: nothing is entered now; updateSpectateQueue starts the watch as soon as an expedition is out and nothing blocks. */
+export function queueExpeditionSpectate(game,classes=null,pid=null) {
+  if(game.spectating||game.spectateQueued)return false;
+  game.spectateQueued={classes,mode:'expedition',pid};
+  mountQueueChip(game);
+  game.showToast?.(`👁 見学待ちにした（${expeditionAvailability(game,pid).short}）。条件が整うと自動で始まる（画面端のチップで取消）`,{field:true});
+  return true;
+}
+/** Switch the watched platoon (tab). */
+export function selectExpeditionPlatoon(game,pid) {
+  const s=game?.spectating,p=platoonOf(game,pid);if(!s?.expedition||s.ended||!p||!isPlatoonAway(p))return false;
+  if(s.pid===pid)return true;
+  s.pid=pid;s.targetId=null;s.targetOk=false;s.viewer=null;s.memberIds=expeditionUnits(game,pid).map(u=>u.id);s.recallArmedUntil=0;
+  resolveSpectateViewer(game);updateSpectateHud(game,true);return true;
+}
+/** The 【↩帰る】 button: the first tap arms it (3 s), the second tap recalls the watched platoon. Returns 'armed' | 'recalled' | false. */
+export function recallWatchedExpedition(game) {
+  const s=game?.spectating;if(!s?.expedition||s.ended)return false;
+  const p=platoonOf(game,s.pid);if(!p||p.mission!=='expedition')return false;
+  if(!(s.recallArmedUntil>Date.now())){s.recallArmedUntil=Date.now()+3000;updateSpectateHud(game,true);game.showToast?.('↩ もう一度押すと、この遠征隊を呼び戻します',{field:true});return 'armed';}
+  s.recallArmedUntil=0;const ok=game.recallPlatoonExpedition?.(s.pid,'manual');updateSpectateHud(game,true);return ok?'recalled':false;
+}
+
 /** One status line for the hero record screen: the current situation, and what happens next. */
 export function spectateStatusLine(game) {
-  if(game.spectating)return game.spectating.field?'観戦中です（勇者の進軍を追っています）。画面下の「観戦を終了」でも戻れます。':'観戦中です。画面下の「観戦を終了」でも戻れます。';
+  if(game.spectating)return game.spectating.expedition?'遠征を見学中です。画面下の「見学を終了」でも戻れます。':game.spectating.field?'観戦中です（勇者の進軍を追っています）。画面下の「観戦を終了」でも戻れます。':'観戦中です。画面下の「観戦を終了」でも戻れます。';
   const a=spectateAvailability(game);
   if(game.spectateQueued)return `観戦待ち：${a.ok?'まもなく始まります':a.reason.replace('観戦を始められます','観戦が始まります')}`;
   return a.ok?a.reason:`観戦：${a.reason}`;
@@ -55,6 +145,7 @@ export function spectateStatusLine(game) {
 
 /** Follow targets: living party members (hero first) and, while he stands, the demon king. */
 export function spectateTargets(game) {
+  if(game.spectating?.expedition)return expeditionUnits(game,game.spectating.pid).map(unit=>({id:unit.id,unit,kind:'member'})); // v7.0.38: the soldiers of the watched platoon
   const p=game.heroJourney?.party;if(!p)return [];
   const list=p.members.filter(living).map(unit=>({id:unit.id,unit,kind:'member'}));
   const king=kingOf(game);if(king)list.push({id:'__king',unit:king,kind:'king'});
@@ -90,6 +181,7 @@ export function selectSpectateTarget(game,which=1) {
 const bandOf=u=>u.isDown?'ダウン':(u.hp??u.maxHp)>=u.maxHp*.6?'健在':(u.hp??u.maxHp)>=u.maxHp*.25?'負傷':'瀕死';
 /** Corner summary (pure): party HP bands, enemies left in the castle, king HP, the last few diary lines. */
 export function spectateSummary(game) {
+  if(game.spectating?.expedition)return expeditionSummary(game);
   const p=game.heroJourney?.party,members=p?.members||[],alive=members.filter(living);
   const counts=new Map();for(const u of alive)counts.set(bandOf(u),(counts.get(bandOf(u))||0)+1);
   const bands=['健在','負傷','瀕死','ダウン'].filter(b=>counts.has(b)).map(b=>`${b}${counts.get(b)}`).join('・');
@@ -108,6 +200,11 @@ export function spectateSummary(game) {
 
 function endReason(game) {
   const j=game.heroJourney,p=j?.party,me=game.player;
+  if(game.spectating?.expedition){ // v7.0.38: only a raid in progress or a commander in trouble ends it; the expedition coming home / falling is an outcome, not an end
+    if(raidActive(game))return '襲撃が始まったので、見学を終えて戻った。';
+    if(!me||me.dead||me.isDown||me.hp<=0||game._saveFallen)return '隊長に異変があったので、見学を終えて戻った。';
+    return null;
+  }
   // v7.0.35: a wiped / withdrawn party or a slain demon king no longer ends the spectate (see spectateOutcome): the view stays until the user ends it.
   if(!p)return '勇者パーティが見当たらなくなったので、観戦を終えて戻った。';
   if(game.spectating?.partyId&&p.id!==game.spectating.partyId)return '新しい勇者が現れたので、観戦を終えて戻った。';
@@ -120,6 +217,7 @@ function endReason(game) {
 
 /** v7.0.35: how the watched fight ended, or null while it goes on. None of these ends the spectate by itself: the camera holds where it was and the user presses 観戦を終了. */
 export function spectateOutcome(game) {
+  if(game?.spectating?.expedition)return expeditionOutcome(game,game.spectating);
   const j=game?.heroJourney,p=j?.party;if(!p)return null;
   if(j.demonKingDefeat||p.status==='victorious')return {code:'victory',text:'魔王が討たれました（観戦を終了で戻ります）'};
   if(p.status==='withdrawn')return {code:'withdrawn',text:'勇者パーティが魔王城から撤退しました（観戦を終了で戻ります）'};
@@ -176,7 +274,7 @@ function enterCastleFromField(game) {
 /** Leave the castle and clear the observer state. Waits out the 8-second rest between phases. */
 export function endSpectate(game,message='観戦を終えて戻った。') {
   const s=game.spectating;if(!s)return false;
-  if(s.field){clearSpectate(game);if(message)game.showToast?.(message,{field:true});return true;} // nothing to leave: the field world never changed
+  if(s.field||s.expedition){clearSpectate(game);if(message)game.showToast?.(message,{field:true});return true;} // nothing to leave: the field world never changed
   if(game.restTimer>0){s.endRequested=true;s.pendingReason=message;s.speed=1;updateSpectateHud(game,true);return false;}
   if(game.currentDungeon?.id===CASTLE_ID)game.exitDungeon(); // still flagged as spectating here, so the guards are not pulled out of the field
   clearSpectate(game);
@@ -190,10 +288,10 @@ export function clearSpectate(game,announce=true) {
   const was=game.spectating;
   game.spectating=null;dropQueue(game);
   if(!announce)game._spectateRaidGrace=0;else if(was)game._spectateRaidGrace=SPECTATE_RULES.raidGrace; // v7.0.36: held raids start only after this many seconds (load / new game / game over pass announce=false: nothing carries over)
-  if(was){game._spectateGrace=SPECTATE_RULES.returnGrace;if(game.player)game.player.invulnerableTimer=Math.max(game.player.invulnerableTimer||0,SPECTATE_RULES.returnGrace);} // v7.0.32: the squad was parked (and the commander watching): a few safe seconds after coming back
+  if(was){game._spectateGraceScope=was.expedition?'guards':'all';game._spectateGrace=SPECTATE_RULES.returnGrace;if(game.player)game.player.invulnerableTimer=Math.max(game.player.invulnerableTimer||0,SPECTATE_RULES.returnGrace);} // v7.0.32: the squad was parked (and the commander watching): a few safe seconds after coming back
   if(was&&announce&&!game.currentDungeon){const raid=pendingRaid(game),sec=Math.ceil(raidGraceLeft(game));if(raid)game.showToast?.(raid==='invasion'?`🚨 観戦を終えた。保留されていた魔王軍の侵攻が${sec}秒後に始まる！`:`🚨 観戦を終えた。保留されていた本陣強襲が${sec}秒後に始まる！`,{field:true});} // v7.0.35: raids were held while watching; they begin now
   // the speed lives on the spectate state, so it is gone too
-  if(was?.field&&game.player&&game.camera){game.camera.x=game.player.x;game.camera.y=game.player.y;game._sceneDirty=true;} // back to the parked commander
+  if((was?.field||was?.expedition)&&game.player&&game.camera){game.camera.x=game.player.x;game.camera.y=game.player.y;game._sceneDirty=true;} // back to the parked commander
   game.container?.classList?.remove('is-spectating');
   game.container?.querySelector?.('#hero-spectate')?.remove();
   updateRaidGraceHud(game);
@@ -219,7 +317,13 @@ export function updateRaidGraceHud(game) {
 /** Per-frame: end conditions, camera target, HUD refresh. */
 export function updateSpectate(game,dt) {
   const s=game.spectating;if(!s)return;
-  if(s.field){
+  if(s.expedition){
+    if(game.currentDungeon){clearSpectate(game);return;} // the commander went somewhere by another route
+    const reason=endReason(game);
+    if(reason){endSpectate(game,reason);return;}
+    noteOutcome(game,s);
+    if(!s.ended){resolveSpectateViewer(game);const ids=expeditionUnits(game,s.pid).map(u=>u.id);if(ids.length)s.memberIds=ids;}
+  }else if(s.field){
     if(game.currentDungeon){clearSpectate(game);return;} // the commander went somewhere by another route
     const reason=endReason(game);
     if(reason){endSpectate(game,reason);return;}
@@ -295,10 +399,10 @@ export function cancelSpectateQueue(game,message=null) {
 export function updateSpectateQueue(game,dt) {
   const q=game.spectateQueued;if(!q)return;
   if(game.spectating){dropQueue(game);return;}
-  const a=spectateAvailability(game);
-  if(a.code==='no-party'){cancelSpectateQueue(game,queueEndReason(game));return;}
+  const exp=q.mode==='expedition',a=exp?expeditionAvailability(game,q.pid):spectateAvailability(game);
+  if(!exp&&a.code==='no-party'){cancelSpectateQueue(game,queueEndReason(game));return;}
   if(!a.ok){refreshQueueChip(game);return;}
-  if(!startSpectate(game,q.classes))dropQueue(game);
+  if(!(exp?startExpeditionSpectate(game,q.classes,q.pid):startSpectate(game,q.classes)))dropQueue(game);
 }
 function mountQueueChip(game) {
   const container=game.container;if(!container||typeof container.querySelector!=='function'||typeof document==='undefined'||!document.createElement)return null;
@@ -311,9 +415,9 @@ function mountQueueChip(game) {
 }
 function refreshQueueChip(game) {
   const q=game.spectateQueued,chip=game.container?.querySelector?.('#hero-spectate-queue');if(!q||!chip)return;
-  const a=spectateAvailability(game),text=`👁観戦待ち：${a.short||'準備中'} ✕`; // the reason is always visible as text (not only in the title)
+  const exp=q.mode==='expedition',a=exp?expeditionAvailability(game,q.pid):spectateAvailability(game),text=`👁${exp?'見学':'観戦'}待ち：${a.short||'準備中'} ✕`; // the reason is always visible as text (not only in the title)
   if(chip.textContent!==text)chip.textContent=text;
-  chip.dataset.state=a.ok?'starting':'waiting';chip.dataset.code=a.code;chip.title=spectateStatusLine(game);
+  chip.dataset.state=a.ok?'starting':'waiting';chip.dataset.code=a.code;chip.title=exp?expeditionStatusLine(game):spectateStatusLine(game);
 }
 
 /** A short black fade-in that hides the swap from the field world to the castle. */
@@ -329,11 +433,11 @@ function mountSpectateHud(game) {
   const container=game.container;if(!container||typeof container.querySelector!=='function'||typeof document==='undefined'||!document.createElement)return null;
   container.querySelector('#hero-spectate')?.remove();
   const host=container.querySelector('#canvas-container')||container,box=document.createElement('div');
-  box.id='hero-spectate';box.className='hero-spectate';box.setAttribute('role','region');box.setAttribute('aria-label','勇者の観戦');
+  box.id='hero-spectate';box.className='hero-spectate';box.setAttribute('role','region');box.setAttribute('aria-label',game.spectating?.expedition?'遠征の見学':'勇者の観戦');
   const head=document.createElement('div');head.className='spectate-head';
   const badge=document.createElement('span');badge.className='spectate-badge';badge.textContent='👁 観戦中';
   const end=document.createElement('button');end.type='button';end.className='spectate-end';end.textContent='観戦を終了';
-  end.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();endSpectate(game,'観戦を終えて戻った。');});
+  end.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();endSpectate(game,game.spectating?.expedition?'見学を終えて戻った。':'観戦を終えて戻った。');});
   const speed=document.createElement('button');speed.type='button';speed.className='spectate-speed';speed.textContent='⏩ ×1';speed.setAttribute('aria-label','観戦中の倍速切替');
   speed.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();cycleSpectateSpeed(game);});
   const tools=document.createElement('span');tools.className='spectate-tools';tools.append(speed,end);
@@ -348,12 +452,16 @@ function mountSpectateHud(game) {
   next.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();selectSpectateTarget(game,1);});
   who.append(prev,name,next,bar,hp);
   const chips=document.createElement('div');chips.className='spectate-chips';
+  const platoons=document.createElement('div');platoons.className='spectate-platoons';platoons.hidden=true; // v7.0.38: platoon tabs (only when several are out)
+  const actions=document.createElement('div');actions.className='spectate-actions';actions.hidden=true;
+  const recall=document.createElement('button');recall.type='button';recall.className='spectate-recall';recall.textContent='↩帰る';recall.setAttribute('aria-label','この遠征隊を呼び戻す');
+  recall.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();recallWatchedExpedition(game);});actions.append(recall);
   const party=document.createElement('p');party.className='spectate-party';
   const castle=document.createElement('p');castle.className='spectate-castle';
   const outcome=document.createElement('p');outcome.className='spectate-outcome';outcome.hidden=true; // v7.0.35: the fight is over, the view is held
   const raid=document.createElement('p');raid.className='spectate-raid';raid.hidden=true; // v7.0.35: shown only while a raid/invasion is waiting for the spectate to end
   const log=document.createElement('ul');log.className='spectate-log';
-  box.append(head,who,chips,party,castle,outcome,raid,log);
+  box.append(head,who,platoons,chips,actions,party,castle,outcome,raid,log);
   // taps inside the panel never reach the game underneath
   for(const type of ['pointerdown','touchstart','mousedown'])box.addEventListener(type,e=>e.stopPropagation());
   host.append(box);container.classList?.add('is-spectating');
@@ -365,7 +473,8 @@ const label=(game,u)=>u.isChosenHero?'勇者':(game.spectating?.classes?.[u.sold
 export function updateSpectateHud(game,force=false) {
   const s=game.spectating,box=game.container?.querySelector?.('#hero-spectate');if(!s||!box)return;
   const list=spectateTargets(game),sum=spectateSummary(game),viewer=s.viewer;
-  box.querySelector('.spectate-badge').textContent=s.endRequested?'👁 観戦中（待機が終わると戻ります）':'👁 観戦中';
+  box.querySelector('.spectate-badge').textContent=s.expedition?'👁 遠征を見学中':s.endRequested?'👁 観戦中（待機が終わると戻ります）':'👁 観戦中';
+  const endBtn=box.querySelector('.spectate-end');if(endBtn){const t=s.expedition?'見学を終了':'観戦を終了';if(endBtn.textContent!==t)endBtn.textContent=t;}
   const speedBtn=box.querySelector('.spectate-speed');if(speedBtn){const sp=spectateSpeed(game),text=`⏩ ×${sp}`;if(speedBtn.textContent!==text)speedBtn.textContent=text;speedBtn.classList.toggle('fast',sp>1);speedBtn.title='観戦中だけの倍速（期の進行・収支も速くなります。待機中も維持）';}
   const king=viewer?.isDemonKing;
   box.querySelector('.spectate-name').textContent=viewer?(king?`魔王 ${viewer.name||''}`.trim():`${label(game,viewer)} ${viewer.name||''} · Lv.${viewer.level||1}${viewer.dead?' · 戦死':viewer.isDown?' · ダウン':''}`):'—';
@@ -384,6 +493,17 @@ export function updateSpectateHud(game,force=false) {
     const r=t.unit.maxHp>0?Math.max(0,Math.min(1,(t.unit.hp||0)/t.unit.maxHp)):0;
     b.classList.toggle('active',t.id===s.targetId);b.classList.toggle('down',!!t.unit.isDown);b.classList.toggle('low',r<.25&&!t.unit.isDown);
     b.querySelector('i').style.width=`${Math.round(r*100)}%`;b.setAttribute('aria-pressed',String(t.id===s.targetId));});
+  if(s.expedition){
+    const tabs=box.querySelector('.spectate-platoons'),away=awayPlatoons(game),key=away.map(p=>p.id).join('|');
+    if(tabs){tabs.hidden=away.length<2;
+      if(force||tabs.dataset.struct!==key){tabs.dataset.struct=key;tabs.replaceChildren(...away.map(p=>{const b=document.createElement('button');b.type='button';b.className='spectate-platoon';b.dataset.pid=String(p.id);b.textContent=platoonName(p);b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();selectExpeditionPlatoon(game,p.id);});return b;}));}
+      for(const b of tabs.children){const on=Number(b.dataset.pid)===s.pid;b.classList.toggle('active',on);b.setAttribute('aria-pressed',String(on));}}
+    const acts=box.querySelector('.spectate-actions'),rb=box.querySelector('.spectate-recall'),wp=platoonOf(game,s.pid);
+    if(acts)acts.hidden=false;
+    if(rb){const can=!s.ended&&wp?.mission==='expedition';if(s.recallArmedUntil&&!(s.recallArmedUntil>Date.now()))s.recallArmedUntil=0;
+      const t=can?(s.recallArmedUntil?'もう一度で帰還':'↩帰る'):(!s.ended&&wp?.mission==='returning'?'帰還中':'↩帰る');
+      if(rb.textContent!==t)rb.textContent=t;rb.disabled=!can;rb.classList.toggle('armed',can&&!!s.recallArmedUntil);}
+  }
   box.querySelector('.spectate-party').textContent=sum.partyText;
   box.querySelector('.spectate-castle').textContent=sum.castleText;
   const outEl=box.querySelector('.spectate-outcome');if(outEl){const o=s.ended?spectateOutcome(game):null,text=o?o.text:'';if(outEl.textContent!==text)outEl.textContent=text;outEl.hidden=!o;}
