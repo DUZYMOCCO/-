@@ -49,7 +49,7 @@ document.querySelector('#btn-mj-start').click();
 ok(mj()&&!mj().over);assert.equal(game.gold,goldBefore-bet,'stake is taken at the start');assert.equal(mj().bet,bet);assert.equal(mj().v,2);
 assert.equal(game.startCasinoMahjong(),false,'no second game while one is in progress');
 ok(document.querySelector('.mj'),'table is shown');ok(document.querySelectorAll('.mj-hand .mj-tile').length>=13);
-for(const t of document.querySelectorAll('.mj-tile')){assert.equal(t.textContent,'');if(!t.classList.contains('mj-back')){ok(t.dataset.n);ok(!/[一-龥]/.test(t.getAttribute('aria-label')),'aria-label has no kanji (kana mode)');}}
+for(const t of document.querySelectorAll('.mj-tile')){ok([...t.childNodes].every(n=>n.nodeType===1),'tiles hold only the svg face');if(!t.classList.contains('mj-back')){ok(t.dataset.n);ok(!/[一-龥]/.test(t.getAttribute('aria-label')),'aria-label has no kanji (kana mode)');}}
 await waitFor(myTurnOrPrompt,'player turn');
 while(mj().stage==='claim'){game.passCasinoMahjong();await waitFor(myTurnOrPrompt,'player turn 2');}
 assert.equal(mj().h.turn,0);
@@ -64,7 +64,8 @@ assert.equal(panel().dataset.casinoPage,'mahjong','reopening returns to the game
 document.querySelector('[data-casino-page="lobby"]').click();ok(document.querySelector('[data-casino-page="mahjong"]').textContent.includes('続き'),'lobby offers 続きから');
 document.querySelector('[data-casino-page="mahjong"]').click();ok(document.querySelector('.mj-hand'),'pressing the entry returns to the game');
 {const keep=JSON.stringify(mj());document.querySelector('[data-casino-page="lobby"]').click();document.querySelector('[data-casino-page="slot"]').click();assert.equal(game.spinCasinoSlot(),true);await sleep(80);assert.equal(JSON.stringify(mj()),keep);document.querySelector('[data-casino-page="lobby"]').click();document.querySelector('[data-casino-page="mahjong"]').click();}
-const kanaOk=label=>{const left=leftoverKanji(document.querySelector('.casino-panel').textContent,2);if(left.length){const tx=document.querySelector('.casino-panel').textContent;console.log(left.map(c=>tx.slice(Math.max(0,tx.indexOf(c)-12),tx.indexOf(c)+8)).join(' | '));}assert.deepEqual(left,[],label+': '+left.join(''));for(const t of document.querySelectorAll('.mj-tile:not(.mj-back)'))ok(t.dataset.n,'tile data survives kana mode');};
+const panelText=()=>{const c=document.querySelector('.casino-panel').cloneNode(true);c.querySelectorAll('svg.mj-face').forEach(e=>e.remove());return c.textContent;}; // the tile drawings carry kanji (一萬 東) by design
+const kanaOk=label=>{const left=leftoverKanji(panelText(),2);if(left.length){const tx=panelText();console.log(left.map(c=>tx.slice(Math.max(0,tx.indexOf(c)-12),tx.indexOf(c)+8)).join(' | '));}assert.deepEqual(left,[],label+': '+left.join(''));for(const t of document.querySelectorAll('.mj-tile:not(.mj-back)'))ok(t.dataset.n,'tile data survives kana mode');};
 setKanaGrade(2,{persist:false});game.openCasinoPage('mahjong');await sleep(20);kanaOk('table');
 {const g=game.gold;document.querySelector('#btn-mj-abandon').click();ok(!mj().over,'first tap only asks');ok(document.querySelector('#btn-mj-abandon').classList.contains('is-confirm'));
  document.querySelector('#btn-mj-abandon').click();ok(mj().over);assert.equal(mj().abandoned,true);assert.equal(mj().ranks[0],4);assert.equal(mj().payout,0);assert.equal(game.gold,g,'abandon pays nothing back');

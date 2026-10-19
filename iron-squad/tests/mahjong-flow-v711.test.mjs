@@ -184,8 +184,8 @@ function simulate(n,{modes,levels,seedBase,snapEvery=0}) {
   return performance.now()-t0;
 }
 {
-  const t1=simulate(QUICK?700:7000,{modes:['short'],levels:['novice','adept','master'],seedBase:1000003,snapEvery:97});
-  const t2=simulate(QUICK?180:1800,{modes:['full'],levels:['novice','adept','master'],seedBase:77777,snapEvery:31});
+  const t1=simulate(QUICK?800:8000,{modes:['short'],levels:['novice','adept','master'],seedBase:1000003,snapEvery:97});
+  const t2=simulate(QUICK?220:2200,{modes:['full'],levels:['novice','adept','master'],seedBase:77777,snapEvery:31});
   report.simulation={games:features.games,hands:features.hands,seconds:Math.round((t1+t2)/1000)};report.features=features;
   if(QUICK)console.log(JSON.stringify(features));ok(QUICK||features.hands>=10000,`at least 10,000 hands were played (${features.hands})`);
   for(const k of QUICK?[]:['pon','chi','minkan','ankan','kakan','riichi','renchan','abort','draw','tsumo','ron','doubleRiichi','ippatsu','rinshan','aka','ura'])ok(features[k]>0,`the simulation exercised ${k}`);

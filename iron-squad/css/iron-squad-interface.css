@@ -1887,3 +1887,15 @@
 .iron-squad .mj-choice.is-three { grid-template-columns:repeat(3,minmax(0,1fr)); }
 .iron-squad .mj-actions button .mj-tile { vertical-align:middle; }
 @media (prefers-reduced-motion:reduce) { .iron-squad .mj-claim button { transition:none; } }
+/* v7.1.2: real mahjong tile faces (inline SVG from mahjong-tiles.js). Cream body, thick green edge underneath; the data-n / data-s text faces are gone. */
+.iron-squad .mj-tile { width:24px; height:35px; border:1px solid #b3a273; border-bottom:4px solid #3f8f66; border-radius:3px; background:linear-gradient(#fffaf0,#efe4c1) !important; box-shadow:0 1px 1px rgba(0,0,0,.45); color:inherit; overflow:hidden; }
+.iron-squad .mj-tile::before,.iron-squad .mj-tile::after { content:none !important; }
+.iron-squad .mj-tile .mj-face { display:block; width:100%; height:100%; pointer-events:none; }
+.iron-squad .mj-tile.mj-sm { width:17px; height:25px; border-bottom-width:3px; border-radius:2px; }
+.iron-squad .mj-me .mj-river .mj-tile.mj-sm,.iron-squad .mj-mymelds .mj-tile.mj-sm { width:20px; height:29px; }
+.iron-squad .mj-hand { flex-wrap:wrap; justify-content:center; gap:10px 3px; padding-top:12px; } /* big tiles: up to 7 per row, two rows for a 14-tile hand (390px: 40px wide) */
+.iron-squad .mj-hand .mj-tile { flex:0 0 auto; width:min(40px,calc((100% - 18px) / 7)); max-width:none; height:auto; aspect-ratio:34/54; }
+.iron-squad .mj-hand .mj-drawn { margin-left:10px; }
+.iron-squad .mj-tile.mj-back { background:linear-gradient(#3f8f66,#2b6a49) !important; border-color:#1e4a33; border-bottom-color:#164a2e; }
+.iron-squad .mj-tile.is-aka { box-shadow:0 1px 1px rgba(0,0,0,.45),inset 0 0 0 1.5px #e25a4f; }
+.iron-squad .mj-hand .mj-tile.is-selected { transform:translateY(-6px); box-shadow:0 0 0 2px var(--ui-gold),0 1px 1px rgba(0,0,0,.45); }

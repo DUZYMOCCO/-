@@ -1,7 +1,7 @@
 // v7.1.1+: Mahjong CPUs. They only ever see a `view` (own tiles, rivers, melds, riichi calls, dora indicators, points) — never the wall or other hands.
 // Levels: 'novice' (efficiency, a little sloppy, no defence), 'basic' (the calibration reference: efficiency + defence, yakuhai calls), 'adept' (+ ukeire, tanyao / flush calls),
 //         'master' (+ safety reading, push/fold by hand value and rank, riichi vs dama, kan, calls with value awareness).
-import {countsOf,kindCounts,shanten,waitsOf,evaluateHand,isYaochu,isHonor,isTerminal,isRedId,RIICHI_STICK} from './mahjong-rules.js?v=319';
+import {countsOf,kindCounts,shanten,waitsOf,evaluateHand,isYaochu,isHonor,isTerminal,isRedId,RIICHI_STICK} from './mahjong-rules.js?v=320';
 const K=id=>id>>2;
 const CPU_RIICHI_MIN_WALL=4;
 /** Share of discards where the novice picks a random not-much-worse tile instead of the best one. */

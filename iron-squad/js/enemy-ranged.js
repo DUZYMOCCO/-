@@ -1,4 +1,4 @@
-import {inCurrentInstance} from './instance-rules.js?v=319';
+import {inCurrentInstance} from './instance-rules.js?v=320';
 import {recordCombat} from './phase-rules.js?v=218';
 import {tankSlowFactor} from './heavy-tank.js?v=295';
 

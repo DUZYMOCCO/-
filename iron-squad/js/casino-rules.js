@@ -1,4 +1,4 @@
-import {normalizeMahjong,MAHJONG_TOP_MULTIPLE} from './mahjong-rules.js?v=319';
+import {normalizeMahjong,MAHJONG_TOP_MULTIPLE} from './mahjong-rules.js?v=320';
 export const CASINO_BET=10;
 export const casinoBaseBet=level=>[10,25,50,100,250,500][Math.max(0,Math.min(5,Math.floor(Number(level)||0)))];
 export const CASINO_POLICY=Object.freeze({betBaseMultiplier:200,slotReturn:[1.08,1.12],pokerReturn:[1.12,1.2],ordinaryReturn:[1.08,1.12],slotMs:1050,pokerMs:850,reducedMs:350,arenaSeconds:15,arenaTrials:800,arenaReturn:1.2,arenaOddsRange:[1.2,12],arenaBetMultiplier:5,bigWinMultiple:5});

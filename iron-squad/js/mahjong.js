@@ -1,10 +1,11 @@
-// v7.1.1: Mahjong at the casino (UI + game methods). Rules live in mahjong-rules.js, the CPUs in mahjong-ai.js.
-// Tile faces are drawn by CSS from data-* attributes, never as text nodes, so the kana mode (which rewrites text and aria-label/title) leaves them alone.
+// v7.1.2: Mahjong at the casino (UI + game methods). Rules live in mahjong-rules.js, the CPUs in mahjong-ai.js.
+// Tile faces are inline SVG from mahjong-tiles.js (circles, bamboo, 萬 numerals, honours), so the kana mode (which only rewrites strings that go through gameText) leaves them alone.
 // Everything the player reads goes through gameText piece by piece; tile markup never does (it would turn 東 into とう).
-import {MAHJONG_MODES,MAHJONG_LEVELS,MAHJONG_PAYOUT,newMahjong,mahjongStep,humanDiscard,humanTsumo,humanAnkan,humanKakan,humanKyuushu,humanClaim,nextHand,abandonMahjong,tsumoInfo,ownOptions,riichiOptions,claimPrompt,riichiNeedsPlayer,discardWaits,currentWaits,liveWallLeft,handsTotal,tileFace,kindCounts,isRedId} from './mahjong-rules.js?v=319';
-import {mahjongAi} from './mahjong-ai.js?v=319';
-import {MAX_MAHJONG_PAYOUT} from './casino-rules.js?v=319';
-import {gameText} from './game-text.js?v=319';
+import {MAHJONG_MODES,MAHJONG_LEVELS,MAHJONG_PAYOUT,newMahjong,mahjongStep,humanDiscard,humanTsumo,humanAnkan,humanKakan,humanKyuushu,humanClaim,nextHand,abandonMahjong,tsumoInfo,ownOptions,riichiOptions,claimPrompt,riichiNeedsPlayer,discardWaits,currentWaits,liveWallLeft,handsTotal,tileFace,kindCounts,isRedId} from './mahjong-rules.js?v=320';
+import {mahjongAi} from './mahjong-ai.js?v=320';
+import {tileSvg,backSvg} from './mahjong-tiles.js?v=320';
+import {MAX_MAHJONG_PAYOUT} from './casino-rules.js?v=320';
+import {gameText} from './game-text.js?v=320';
 import {sound} from '../../common/js/audio.js?v=151';
 let host=null;
 /** casino.js hands over its session helpers (state, refresh, money, ...) so this module does not import it back. */
@@ -24,10 +25,10 @@ export const mahjongInProgress=game=>{const st=mahjongOf(game);return !!st&&!st.
 const ownDraw=st=>!!st.h&&st.h.turn===0&&st.stage==='act';
 const needsAuto=st=>!!st&&!st.over&&!!st.h&&((st.stage==='act'&&(st.h.turn!==0||(st.h.riichi[0]&&!riichiNeedsPlayer(st))))||(st.stage==='claim'&&!!st.h.claim&&st.h.claim.wait!=='human'));
 /** A tile kind (0..33) as markup. */
-export const tileHtml=(t,cls='',attrs='')=>{const f=tileFace(t);return `<span class="mj-tile mj-${f.suit} ${cls}" data-n="${f.n}" data-s="${f.s}" role="img" aria-label="${tileLabel(t)}" ${attrs}></span>`;};
-const idHtml=(id,cls='')=>tileHtml(id>>2,`${cls}${isRedId(id)?' is-aka':''}`);
-const backHtml=cls=>`<span class="mj-tile mj-back ${cls}" aria-hidden="true"></span>`;
-const tileButton=(id,i,cls,disabled)=>{const f=tileFace(id>>2);return `<button type="button" class="mj-tile mj-${f.suit} ${cls}${isRedId(id)?' is-aka':''}" data-mj-tile="${i}" data-n="${f.n}" data-s="${f.s}" aria-label="${tileLabel(id>>2)}" ${disabled?'disabled':''}></button>`;};
+export const tileHtml=(t,cls='',attrs='',aka=false)=>{const f=tileFace(t);return `<span class="mj-tile mj-${f.suit} ${cls}${aka?' is-aka':''}" data-n="${f.n}" data-s="${f.s}" role="img" aria-label="${tileLabel(t)}" ${attrs}>${tileSvg(t,aka)}</span>`;};
+const idHtml=(id,cls='')=>tileHtml(id>>2,cls,'',isRedId(id));
+const backHtml=cls=>`<span class="mj-tile mj-back ${cls}" aria-hidden="true">${backSvg()}</span>`;
+const tileButton=(id,i,cls,disabled)=>{const f=tileFace(id>>2),aka=isRedId(id);return `<button type="button" class="mj-tile mj-${f.suit} ${cls}${aka?' is-aka':''}" data-mj-tile="${i}" data-n="${f.n}" data-s="${f.s}" aria-label="${tileLabel(id>>2)}" ${disabled?'disabled':''}>${tileSvg(id>>2,aka)}</button>`;};
 const pts=n=>Number(n).toLocaleString();
 const signedPts=n=>`${n>0?'+':''}${pts(n)}`;
 const mult=x=>`×${x}`;
