@@ -1,7 +1,7 @@
 // Incremental A*: search physical land, independently of the commander's fog.
 import {WORLD_SIZE} from './world.js?v=289';
 import {economicFieldBlocked} from './regional-economy.js?v=277';
-import {wallBlocksAttack,fieldWallContext,outerWallBuilt} from './gate-rules.js?v=313';
+import {wallBlocksAttack,fieldWallContext,outerWallBuilt} from './gate-rules.js?v=314';
 const STEP=256, key=(x,y)=>`${x},${y}`;
 const wallState=game=>outerWallBuilt(fieldWallContext(game))?1:0;
 export function heroSegmentOpen(game,a,b) {

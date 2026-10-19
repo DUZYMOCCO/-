@@ -7,12 +7,12 @@ import {calcTreasuryGrossIncome,calcCommanderStipend,EQUIPMENT_SLOTS} from './ec
 import {createPayrollPlan,commanderStipendQuote,PAYROLL_RULES,regularSalaryReserve} from './payroll-rules.js?v=226';
 import {calcAllRankerBonuses} from './troop-rankings.js?v=295';
 import {normalizeRegionalEconomy,recurringNationalIncome,economicState,advanceRegionalEconomy,automaticEconomicTarget,investEconomicProject} from './regional-economy.js?v=277';
-import {drawSettlementQuarter} from './economic-visuals.js?v=313';
-import {atFacility,HEADQUARTERS_FACILITIES} from './hq-facilities.js?v=313';
+import {drawSettlementQuarter} from './economic-visuals.js?v=314';
+import {atFacility,HEADQUARTERS_FACILITIES} from './hq-facilities.js?v=314';
 import {renderRegionalEconomy} from './economic-interface.js?v=264';
 import {workshopFloorTier} from './crafting-rules.js?v=306';
 import {normalizeCasino} from './casino-rules.js?v=307';
-import {normalizeGuild,advanceGuildContracts} from './guild-contracts.js?v=313';
+import {normalizeGuild,advanceGuildContracts} from './guild-contracts.js?v=314';
 
 export const DEVELOPMENT_STAGES=[
   {name:'野営本陣',cost:0}, {name:'城塞と宿場',cost:6000},

@@ -2,7 +2,7 @@ import {isEnlisted,CAREER_RULES} from './career-rules.js?v=291';
 import {isOwnSquad} from './own-squad-marker.js?v=182';
 import {persistentUnit} from './render-support.js';
 import {drawSoldierPortrait} from './soldier-appearance.js?v=295';
-import {setSubDialog} from './interface.js?v=313';
+import {setSubDialog} from './interface.js?v=314';
 import {WORLD_SIZE,TAVERN_SITE} from './world.js?v=289';
 import {daylightAt} from './day-night.js?v=208';
 import {drawTavernFixtures,drawTavernCandles} from './nightlife-visuals.js?v=277';
@@ -21,7 +21,8 @@ export function initializeTaverns(game,saved){
 export const nearFieldTavern=game=>!game.currentDungeon&&!!game.player&&!game.player.dead&&!game.player.isDown&&(Math.hypot(game.player.x-FIELD_TAVERN.x,game.player.y-FIELD_TAVERN.y)<FIELD_TAVERN.radius||buildingContact(game.player,{...FIELD_TAVERN,w:344,h:150,roof:62},36));
 export function ensureTavernRoster(game){
   game.taverns||initializeTaverns(game);let roster=game.taverns.roster;const phase=game.phase||1;
-  if(!roster||(roster.people.every(p=>p.joined)&&roster.phase!==phase)){
+  // v7.0.37: the strangers are replaced every wave (= game.phase, the unit the merchant restock and the 3-uses-per-wave potion also follow). The old ones were just civilians and simply leave; anyone already hired lives in the squad / waiting list / reserves, not in this roster.
+  if(!roster||roster.phase!==phase){
     const people=Array.from({length:4},(_,i)=>{
       const unit=game.createNewSoldier(null,{classKey:classes[(i+phase)%classes.length]});
       unit.civilianOutfit=true;
@@ -31,6 +32,15 @@ export function ensureTavernRoster(game){
   }
   for(const person of roster.people){person.cost=TAVERN_HIRE_COST;delete person.trust;delete person.talkStep;}
   return roster;
+}
+/** v7.0.37: the wave advanced. Replace the strangers now; when the tavern menu is open, close a stale spec sheet and redraw so nothing outdated can be hired, and say so lightly. */
+export function tavernWaveChanged(game){
+  const host=game?.container?.querySelector?.('#tavern-dialog');
+  if(!host)return false; // closed: the roster is rebuilt on the next visit / approach (ensureTavernRoster)
+  ensureTavernRoster(game);
+  if(host.dataset.wavePhase===String(game.phase||1))return false; // already showing this wave
+  game.closeTavernPersonDetail?.();game.renderTavern?.();
+  game.showToast?.('🍺 大酒場の人が入れかわった。新しい顔ぶれが来ている');return true;
 }
 export function serializeTaverns(game){
   const state=game.taverns||{roster:null,waiting:[]},r=state.roster;
@@ -112,11 +122,13 @@ export const tavernMethods={
   },
   renderTavern(){
     const host=this.container?.querySelector('#tavern-dialog');if(!host)return;
-    host.querySelector('#tavern-title').textContent=FIELD_TAVERN.name;
+    host.querySelector('#tavern-title').textContent=FIELD_TAVERN.name;host.dataset.wavePhase=String(this.phase||1);
     const body=host.querySelector('.tavern-body');for(const c of body.querySelectorAll('canvas')){c.width=c.height=1;}body.replaceChildren();
     const own=(this.squad||[]).filter(isOwnSquad),limit=this.limitedGuardLimit(),enlisted=this.isEnlisted();
     body.append(el('p','command-note',`同行する仲間 ${own.length} / ${limit}人。雇用は1人${TAVERN_HIRE_COST.toLocaleString()}Gです。所持金 ${this.gold.toLocaleString()}G。`));
     body.append(el('p','command-note',enlisted?'同行しきれない仲間は本陣の予備に入ります。':'同行しきれない仲間は、この酒場で待ちます。入隊せずに旅を続けることもできます。'));
+    const strangers=ensureTavernRoster(this).people.filter(p=>!p.joined);
+    body.append(el('p','command-note tavern-wave-note',strangers.length?`第${this.phase||1}期の人たちです。次のウェーブで入れかわります。`:`この期の人たちは全員雇用済みです。次のウェーブで新しい人たちが来ます。`));
     const row=(unit,label)=>{
       const card=el('article','tavern-person'),portrait=el('canvas','tavern-portrait');portrait.width=120;portrait.height=132;
       const text=el('div','tavern-person-text');text.append(el('strong','',unit.name),el('p','',`${jobs[unit.soldierClass]||unit.soldierClass} · Lv.${unit.level||1} · HP ${unit.maxHp} · 攻撃 ${unit.atk}`),el('p','command-note',label));
