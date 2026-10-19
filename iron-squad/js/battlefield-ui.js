@@ -26,8 +26,15 @@ export function configureBattlefieldUI(game) {
  for(const n of field.querySelectorAll('.ammo-status-badge,.mana-status-badge,.transport-badge'))info.append(n);
  current.append(currentTitle,info);menu.append(current);
  const tools=document.createElement('div');tools.className='battle-menu-tools';
- for(const id of ['btn-pad-command','btn-zoom-toggle','btn-field-sound','btn-back']){const n=get(id);if(n)tools.append(n);}
- const back=tools.querySelector('#btn-back');back.textContent='工房へ戻る';back.setAttribute('aria-label','工房へ戻る');menu.append(tools);
+ for(const id of ['btn-pad-command']){const n=get(id);if(n)tools.append(n);}
+ menu.append(tools);
+ // v7.1.9: camera zoom and the sound switch live in 設定; leaving the game sits with the save controls.
+ const settings=get('view-strat-settings')||overview;
+ const display=document.createElement('section');display.id='settings-display';display.className='settings-display battle-menu-tools';
+ for(const id of ['btn-zoom-toggle','btn-field-sound']){const n=get(id);if(n)display.append(n);}
+ settings.prepend(display);
+ const back=get('btn-back');back.textContent='工房へ戻る';back.setAttribute('aria-label','工房へ戻る');
+ const session=get('command-session')?.querySelector('.fold-content');(session||display).append(back);
  overview.prepend(menu);
  const button=get('btn-strategy');button.innerHTML='<span aria-hidden="true">☰</span><small>メニュー</small><b class="menu-join-count hidden"></b><b class="menu-attention hidden"></b>';button.setAttribute('aria-label','メニューを開く');field.append(button);
  const attention=button.querySelector('.menu-attention');

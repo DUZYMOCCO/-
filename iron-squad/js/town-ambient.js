@@ -143,7 +143,7 @@ export function ambientFarmPosts(game){return states.get(game)?.posts||[];}
 export function ambientSnapshot(game){const s=state(game);return {populations:s.populations.size,residents:s.visible.length,walkers:s.poses.size,people:s.visible.map(p=>({id:p.id,kind:p.kind,x:p.x,y:p.y,alpha:p.alpha,walking:p.ambientWalking})),paths:[...s.walkers.values()].map(p=>({x:p.x,y:p.y,path:p.path}))};}
 export function drawAmbientResident(ctx,person,now){ctx.save();ctx.globalAlpha*=person.alpha;drawFieldCivilian(ctx,person,now);ctx.restore();}
 export function configureAmbientSettings(game) {
- const host=game.container?.querySelector('#view-strat-overview');if(!host)return null;
+ const host=game.container?.querySelector('#view-strat-settings')||game.container?.querySelector('#view-strat-overview');if(!host)return null;
  let saved='normal';try{saved=localStorage.getItem(AMBIENT_SETTING_KEY)||saved;}catch{}
  game.ambientDensity=Object.hasOwn(AMBIENT_COUNTS,saved)?saved:'normal';
  const section=document.createElement('details');section.className='command-fold';section.id='ambient-settings';section.innerHTML=gameText('<summary>街のにぎわい</summary><div class="fold-content"><label>住民の数 <select id="ambient-density"><option value="many">多い</option><option value="normal">ふつう</option><option value="few">少ない</option><option value="none">なし</option></select></label><p>近くの住民だけを表示します。</p></div>');host.append(section);

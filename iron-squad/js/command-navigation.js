@@ -69,5 +69,6 @@ export function configureCommandNavigation(game) {
   const travel=document.createElement('button');travel.id='btn-fast-travel';travel.className='sub-tab-btn menu-travel';travel.type='button';travel.textContent='ファストトラベル';travel.onclick=()=>game.openWorldMap('travel');
   const map=get('btn-world-map');map.className='sub-tab-btn';map.textContent='地図';map.type='button';
   launcher.removeAttribute('style');launcher.prepend(travel);launcher.append(map);
+  const settings=get('tab-strat-settings');if(settings)launcher.append(settings);
   game._refreshCommandNavigation();
 }

@@ -1899,3 +1899,8 @@
 .iron-squad .mj-tile.mj-back { background:linear-gradient(#3f8f66,#2b6a49) !important; border-color:#1e4a33; border-bottom-color:#164a2e; }
 .iron-squad .mj-tile.is-aka { box-shadow:0 1px 1px rgba(0,0,0,.45),inset 0 0 0 1.5px #e25a4f; }
 .iron-squad .mj-hand .mj-tile.is-selected { transform:translateY(-6px); box-shadow:0 0 0 2px var(--ui-gold),0 1px 1px rgba(0,0,0,.45); }
+/* v7.1.9: 設定 window */
+.iron-squad #view-strat-settings > * + * { margin-top:10px; }
+.iron-squad #view-strat-settings .settings-display { margin-top:0; }
+.iron-squad #view-strat-settings .settings-group-title { margin:18px 0 4px; font-size:12px; color:var(--ui-muted, #94a3b8); font-weight:600; }
+.iron-squad #command-session #btn-back { position:static !important; display:block; width:100%; min-height:44px; margin-top:8px; box-sizing:border-box; border:1px solid var(--ui-line); background:var(--ui-panel-soft); color:var(--ui-text); border-radius:6px; font-size:13px; }

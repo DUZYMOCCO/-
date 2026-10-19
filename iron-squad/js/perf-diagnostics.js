@@ -183,7 +183,7 @@ export function installPerfDiagnostics(game,{WorldTerrain,FogGrid,saveSlots,prof
 
 /** Preference/controller only. OFF never installs the instrumentation above. */
 export function configurePerfSettings(game,dependencies,options={}){
-  const doc=options.document||document,win=options.window||window,host=game.container.querySelector('#view-strat-overview');
+  const doc=options.document||document,win=options.window||window,host=game.container.querySelector('#view-strat-settings')||game.container.querySelector('#view-strat-overview');
   if(!host)return null;
   const queryOn=perfRequested(options.search??win.location?.search);
   let savedOn=false;try{savedOn=win.localStorage.getItem(PERF_SETTING_KEY)==='1';}catch{/* Default OFF when storage is inaccessible. */}

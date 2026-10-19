@@ -1,8 +1,8 @@
 import {formatCompact} from './number-format.js?v=282';
-import {configureCommandNavigation} from './command-navigation.js?v=249';
+import {configureCommandNavigation} from './command-navigation.js?v=327';
 import {commanderFullName} from './commander-identity.js?v=295';
 import {isEnlisted} from './career-rules.js?v=291';
-import {configureAudioInterface} from './audio-interface.js?v=247';
+import {configureAudioInterface} from './audio-interface.js?v=327';
 import {renderBattleLog} from './battle-log.js?v=322';
 import {renderTroopRankings} from './troop-rankings.js?v=295';
 import {genderLabel} from './soldier-names.js?v=210';
@@ -26,6 +26,16 @@ const title = (parent, text, hint) => {
   if (hint) heading.append(element('p', '', hint));
   parent.prepend(heading);
 };
+
+/** v7.1.9: settings own a window. Fixtures without it keep the overview as the host. */
+export const settingsHost = root => root?.querySelector('#view-strat-settings') || root?.querySelector('#view-strat-overview') || null;
+const SETTINGS_ORDER = ['settings-display', 'audio-settings', 'kana-settings', 'ambient-settings', 'command-session', 'settings-developer', 'stall-log-fold', 'perf-settings'];
+/** Settings are mounted by several modules at different times; put them in one fixed order. */
+export function arrangeSettings(game) {
+  const host = game.container?.querySelector('#view-strat-settings'); if (!host) return;
+  if (!host.querySelector('#settings-developer')) { const dev = element('h4', 'settings-group-title', '開発者向け'); dev.id = 'settings-developer'; host.append(dev); }
+  for (const id of SETTINGS_ORDER) { const node = host.querySelector(`#${id}`); if (node) host.append(node); }
+}
 
 export function configureInterface(game) {
   const root = game.container;
@@ -97,7 +107,7 @@ export function configureInterface(game) {
   links.prepend(playerStatsButton);
   const liveNotes=element('section','command-live-notes');liveNotes.id='command-rule-content';overview.append(liveNotes);
   const restart = get('btn-restart-from-strat'); restart.textContent = 'セーブ選択へ戻る';
-  fold(overview, 'command-session', 'セーブ・ゲーム管理', [restart]);
+  fold(settingsHost(root), 'command-session', 'セーブ・ゲーム管理', [restart]);
 
   const troops = get('view-strat-troops');
   troops.querySelector('.hub-intro').replaceChildren();
