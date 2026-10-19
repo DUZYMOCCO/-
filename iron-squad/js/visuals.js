@@ -6,7 +6,7 @@ import {BRUTE_DRAW_SCALE} from './field-hosts.js?v=182';
 import {equipmentVisualProfile} from './equipment-tiers.js?v=231';
 import {drawBodyEquipment,drawEquipmentShield} from './equipment-art.js?v=231';
 import {MAGIC_AFFINITIES,ensureMana} from './magic-rules.js?v=334';
-import { drawMeleeWeapon, drawMeleeRangeCue, drawRangedWeapon, drawWeaponArms, meleePose, rangedPose, weaponAim } from './weapon-motion.js?v=306';
+import { drawMeleeWeapon, drawMeleeRangeCue, drawRangedWeapon, drawWeaponArms, meleePose, rangedPose, weaponAim, reverseGripFor } from './weapon-motion.js?v=337';
 import { defaultCommanderAppearance } from './commander-identity.js?v=295';
 import {travelerClothes,drawTravelerTunic} from './traveler-clothes.js?v=195';
 import { createSoldierAppearance, drawSoldierHead, isMedicAppearance, soldierAppearanceFamily, soldierPhysique } from './soldier-appearance.js?v=334';
@@ -415,7 +415,7 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod, displa
   const ranged = ['bow','crossbow','cannon'].includes(wStyle);
   const weaponColors = {cloth,gloves,blade,board,physique,hand:s.appearance?.skin||'#c1a083',gloveProfile:equipmentVisualProfile(eq.gloves),shieldProfile:equipmentVisualProfile(eq.shield),weaponProfile:equipmentVisualProfile(eq.weapon||s.weapon)};
   const aim=weaponAim(s);
-  const heldPose=melee?meleePose(wStyle,s.atkAnim||0,aim,physique):ranged?rangedPose(wStyle,s.atkAnim||0,aim,physique,s._rangedBash):null;
+  const heldPose=melee?meleePose(wStyle,s.atkAnim||0,aim,physique,reverseGripFor(s,wStyle)):ranged?rangedPose(wStyle,s.atkAnim||0,aim,physique,s._rangedBash):null;
   c.save(); c.translate(s.x, s.y);
   // v7.1.6 Wall hop: the shadow stays on the ground (smaller while high), the body is lifted.
   const jumpLift=s.isDown?0:Math.max(0,Number(s._jumpLift)||0);

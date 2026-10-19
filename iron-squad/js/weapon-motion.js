@@ -1,6 +1,7 @@
 import {drawEquipmentShield} from './equipment-art.js?v=231';
 import { MELEE_SWEET_SPOT, meleeSweetSpotFor, weaponCombatProfile } from './equipment-rules.js?v=306';
 import {isHeavyWeaponStyle} from './growth-rules.js?v=329';
+import {limitedLineOf} from './limited-lines.js?v=335';
 
 const TAU = Math.PI * 2;
 const clamp = n => Math.max(0, Math.min(1, n));
@@ -46,34 +47,43 @@ function fitGrips(pose,physique) {
   }
   return pose;
 }
-export function meleePose(style, anim=0, aim=0, physique=null) {
+/** v7.2.3 忍者の系列が剣を持つときだけ逆手（刃が下・柄頭が上で腕に沿う）。見た目だけで判定・威力は変えない。 */
+export const reverseGripFor=(actor,style)=>style==='sword'&&!!actor&&!actor.isPlayer&&!actor.isHero&&limitedLineOf(actor)==='NINJA';
+export function meleePose(style, anim=0, aim=0, physique=null, reverse=false) {
   aim=Number.isFinite(aim)?aim:0;
   const active=anim>0, p=1-clamp(anim);
   const spear=style==='spear', hammer=isHeavyWeaponStyle(style),staff=style==='staff';
-  const rest=hammer?-1.02:spear?-.12:-.68;
+  reverse=!!reverse&&style==='sword';
+  const rest=hammer?-1.02:spear?-.12:reverse?REVERSE_GRIP.rest:-.68;
   // Facing left mirrors the swing: right-facing swings clockwise, left-facing counter-clockwise.
   const side=Math.cos(aim)<-.15?-1:1;
-  const offset=side*(active ? keys(p, spear
+  const offset=side*(active ? keys(p, reverse
+    ? REVERSE_GRIP.swing.map(([t,o])=>[t,rest+o])
+    : spear
     ? [[0,rest],[.18,-.18],[.43,0],[.64,.04],[1,rest]]
     : hammer
       ? [[0,rest],[.2,-1.48],[.46,0],[.68,.65],[1,rest]]
       : [[0,rest],[.18,-1.08],[.43,0],[.66,.88],[1,rest]]) : rest);
-  const extension=spear&&active?keys(p,[[0,0],[.18,-3],[.43,10],[.64,6],[1,0]]):0;
+  const extension=active&&(spear||reverse)?keys(p,reverse?REVERSE_GRIP.punch:[[0,0],[.18,-3],[.43,10],[.64,6],[1,0]]):0;
   const angle=aim+offset, dx=Math.cos(angle), dy=Math.sin(angle);
   // Spears rest below the chin. When thrusting upwards, carry the shaft beside
   // the head rather than through the face; both grips move with that same axis.
   const shoulder=6*(physique?.bodyWidth||1),spacing=spear?13:6;
   const grip={x:side*4+dx*(9+extension*.6),y:-15+dy*(6+extension*.25)};
   // Raised shafts pass beside the face, with elbows below the shoulders.
-  const clearance=clamp((-dy-.25)/.55);
+  const clearance=reverse?0:clamp((-dy-.25)/.55);
   grip.x+=side*Math.max(0,9-Math.abs(grip.x))*clearance;
+  if(reverse){grip.x+=side*REVERSE_GRIP.hand.x;grip.y+=REVERSE_GRIP.hand.y;}
   const twoHanded=spear||hammer||staff;
   const offGrip=twoHanded?{x:grip.x-dx*spacing,y:grip.y-dy*spacing}
     : {x:-side*(shoulder+1.5),y:-10.5};
-  return fitGrips({active,progress:p,angle,aim,grip,offGrip,side,twoHanded,spacing,
-    length:spear?66:hammer?27:style==='staff'?48:style==='wand'?19:35,
+  return fitGrips({active,progress:p,angle,aim,grip,offGrip,side,twoHanded,spacing,reverse,
+    length:spear?66:hammer?27:style==='staff'?48:style==='wand'?19:reverse?35*REVERSE_GRIP.length:35,
     trail:active&&p>.22&&p<.66?Math.sin((p-.22)/.44*Math.PI):0},physique);
 }
+
+/** 逆手の構え: 手の向き(rest)から刃は反対側（下・後ろ）へ伸びる。攻撃は拳を引いて前へ突き出し、刃が後ろへ払う。 */
+export const REVERSE_GRIP=Object.freeze({rest:-1.39,length:.72,hand:{x:4,y:3},swing:[[0,0],[.18,-.35],[.43,.9],[.66,1.2],[1,0]],punch:[[0,0],[.18,-3],[.43,11],[.66,7],[1,0]]});
 
 export function attackAnimationRate(item,attackSpeed=1) {
   const style=item?.weaponStyle||'sword';
@@ -136,13 +146,13 @@ export function drawWeaponArms(c,actor,pose,colors,simple=false) {
 export function drawMeleeWeapon(c, actor, style, colors, simple=false,withArms=true,heldPose=null) {
   const anim=actor.atkAnim||0;
   const aim=weaponAim(actor);
-  const pose={...(heldPose||meleePose(style,anim,aim,colors.physique))}, {grip,offGrip}=pose;
+  const pose={...(heldPose||meleePose(style,anim,aim,colors.physique,reverseGripFor(actor,style)))}, {grip,offGrip}=pose;
   pose.length*=actor.equipped?.weapon?.weaponTraits?.length||1;
   const {cloth,gloves,blade,board,gloveProfile,shieldProfile,weaponProfile,hand,physique}=colors;
   c.save(); c.lineCap='round'; c.lineJoin='round';
   const twoHanded=pose.twoHanded;
   if(withArms)drawWeaponArms(c,actor,pose,colors,simple);
-  c.translate(grip.x,grip.y); c.rotate(pose.angle);
+  c.translate(grip.x,grip.y); c.rotate(pose.reverse?pose.angle+Math.PI:pose.angle);
   // The leading edge (axe blade, swing trace) faces the swing direction on both sides.
   if(pose.side<0)c.scale(1,-1);
   if(pose.trail>.01&&!simple) {
