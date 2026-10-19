@@ -45,7 +45,7 @@ import {addFieldDrop,ageFieldDrops,attractFieldDrops,FIELD_DROP_PICKUP_RADIUS} f
 import {drawLootDrop,drawLootPullTrail} from './loot-visuals.js?v=306';
 import {drawOwnSquadRing,isOwnSquad} from './own-squad-marker.js?v=182';
 import {CAREER_RULES,newCareer,normalizeCareer,isEnlisted,ownCompanionCount,rankForCareer,recordCareerContribution,enlistCareer,canPromoteCareer,careerSummary,restartCareerExpedition} from './career-rules.js?v=291';
-import {tavernMethods,initializeTaverns,serializeTaverns,settleTravelerCompanions,drawFieldTavern,updateTavernPrompt,tavernWaveChanged,FIELD_TAVERN} from './tavern.js?v=325';
+import {tavernMethods,initializeTaverns,serializeTaverns,settleTravelerCompanions,drawFieldTavern,updateTavernPrompt,tavernWaveChanged,FIELD_TAVERN} from './tavern.js?v=326';
 import {headquartersFacilityMethods,HEADQUARTERS_FACILITIES,updateHeadquartersFacilityPrompt,drawHeadquartersFacilityGround,drawHeadquartersFacility,headquartersBuildingBlocks} from './hq-facilities.js?v=322';
 import {drawNightlifeLights} from './nightlife-visuals.js?v=277';
 import {drawSceneDarkness,drawLanternLights,recordLanternActor} from './scene-lighting.js?v=322';

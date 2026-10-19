@@ -37,8 +37,8 @@ try{
   try{game.refreshScoutCandidates();game.createNewSoldier(null,{classKey:'HEAVY'});game.phase=99999;ensureTavernRoster(game);}finally{game.rollScoutTalent=real;}
   ok(calls.slice(0,-TAVERN_ROSTER_SIZE).every(a=>a===undefined),`ordinary paths use the default rate: ${JSON.stringify(calls)}`);ok(calls.slice(-TAVERN_ROSTER_SIZE).every(a=>a===r),'only the tavern roster asks for the tavern rate');
   for(const file of ['../js/recruitment.js','../js/hero-party.js'])ok(!/rollScoutTalent\([^)]/.test(readFileSync(new URL(file,import.meta.url),'utf8')),`${file} uses the ordinary rate`);
-  // 6. One short line in the tavern menu.
+  // 6. v7.1.8: the tavern note stays in-world (no explanation of the genius rate).
   Object.assign(game.player,{x:FIELD_TAVERN.x,y:FIELD_TAVERN.y+60});game.phase=100000;game.openTavern();
-  const note=game.container.querySelector('#tavern-dialog .tavern-wave-note')?.textContent||'';ok(note.includes('天才が見つかりやすい'),note);
+  const note=game.container.querySelector('#tavern-dialog .tavern-wave-note')?.textContent||'';ok(note.length>0&&!note.includes('天才')&&!/確率|見つかりやすい/.test(note),`v7.1.8: no meta explanation in the tavern note: ${note}`);
   console.log(`PASS: v7.1.7 tavern genius ${r*100}% (ordinary ${SCOUT_GENIUS_RATE*100}%), proportional shrink of other talents, ${(atLeast*100).toFixed(1)}% of waves with a genius, other paths unchanged (${checks} checks)`);
 }finally{Math.random=rng;dom.window.close();}
