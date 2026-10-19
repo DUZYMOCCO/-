@@ -51,8 +51,10 @@ export function serializeInvasions(game) {
 export function makeEnemyRoom(list,count) {
   while(list.length+count>40){let index=-1,d=-1;for(let i=0;i<list.length;i++){const m=list[i];if(m.isBoss||m.isColossal||m.isRaidMob)continue;const dist=Math.hypot(m.x-center,m.y-center);if(dist>d){d=dist;index=i;}}if(index<0)break;list.splice(index,1);}
 }
-/** v7.0.35: while the hero spectate runs (castle or field march) no raid/invasion starts or advances; it waits and begins once the spectate ends. */
-export const raidHeldBySpectate=game=>!!game?.spectating;
+/** v7.0.36: seconds left of the grace period after a spectate ends (not saved; set in clearSpectate, counted down every frame, reset on load / new game / game over). */
+export const raidGraceLeft=game=>Math.max(0,Number(game?._spectateRaidGrace)||0);
+/** v7.0.35: while the hero spectate runs (castle or field march) no raid/invasion starts or advances; it waits and begins once the spectate ends. v7.0.36: and for the grace seconds after it ends, so the squad (frozen while parked) is back in shape first. */
+export const raidHeldBySpectate=game=>!!game?.spectating||raidGraceLeft(game)>0;
 /** What is waiting to start right now (null = nothing): 'invasion' (a regular/major invasion is due) or 'raid' (the rolled random raid is due). Pure; ignores the hold itself, so the spectate HUD can say what is being held. */
 export function pendingRaid(game) {
   const state=game?.invasions;if(!state||game.baseRaidActive||state.stage!=='idle'||game.restTimer>0)return null;

@@ -1,5 +1,15 @@
 # 現在の作業と引き継ぎ（2026-10-16）
 
+## 2026-10-19 v7.0.36 / cache v313 — 観戦を終えてから保留襲撃が始まるまで15秒の猶予
+- **ユーザー要望**: 「15秒猶予を入れよう」。観戦終了直後に隊員の凍結が解けて体勢が整う前に、保留されていた襲撃が重ならないようにする。
+- **実装**: `SPECTATE_RULES.raidGrace=15`（`hero-spectate.js`）。`clearSpectate(game,announce)` が観戦の終了時（`was&&announce`）に `game._spectateRaidGrace=15` をセット（非保存）。ロード・新規開始（`announce=false`）は 0 に初期化、`gameOver()` でも 0、`startSpectate` でも 0（再観戦でリセット。観戦中は保留なので影響なし）。`updateRaidGrace(game,dt)` を `index.js` の毎フレーム（`_spectateGrace` の隣）で呼んで減らす。
+- **保留の判定**: `invasion-rules.js` の `raidHeldBySpectate(game)` ＝ `game.spectating` **または** `raidGraceLeft(game)>0`。v7.0.35 で入れた全ての保留箇所（`triggerBaseRaid`/`updateBaseRaid`/`startDemonInvasion`/`updateDemonInvasion`/`shouldTriggerRandomRaid`）がそのまま猶予中も保留になる。猶予は「保留中の襲撃があったか」に関わらず毎回セットする（観戦終了の直後に新たに期限が来た襲撃も同じく重ならないように。表示は保留中のときだけ）。
+- **表示**: 終了時のトーストを「🚨 観戦を終えた。保留されていた魔王軍の侵攻／本陣強襲が15秒後に始まる！」に変更。猶予中は `.field-alerts` に `#raid-grace-banner`「🚨 魔王軍の侵攻／本陣強襲まで あとN秒」（`pendingRaid` が返すときだけ表示。待機中・ダンジョン内・保留が無いときは非表示）。猶予が切れたら既存の開始通知（侵攻の出撃トースト等）がそのまま出る。
+- **期・待機**: `nextPhase`・`raidScheduledPhase` には触らないので、定期侵攻は1回分だけ残り、ランダム強襲は期替わりで消える既存挙動は不変。待機（休憩）中は猶予が減り続けるが、`pendingRaid` が null なので何も表示されず、待機が明ければ（猶予が残っていればその分だけ待って）通常どおり。
+- **バージョン**: sw-assets `v312→v313`／gameVersion `7.0.35→7.0.36`。`?v=312` を全 importer で `?v=313` に揃えた。css に `#raid-grace-banner`。
+- **テスト**: 新規 `hero-spectate-v7036.test.mjs`（終了直後14秒は侵攻・強襲とも始まらない／15秒後に始まる／HUD行の表示と非表示／猶予中の再観戦でリセット／ロード・新規開始・ゲームオーバーで初期化・セーブに含まれない／待機をまたいでも侵攻が1回だけ）。`hero-spectate-v7035` は「観戦後すぐ始まる」期待値を猶予後に更新。
+- **実機で未確認**: 猶予中の「あとN秒」表示の見た目と位置、猶予15秒の体感。
+
 ## 2026-10-19 v7.0.35 / cache v312 — 観戦中は襲撃を保留／全滅・撤退・魔王討伐の後も観戦を続ける／観戦中の隊長が勇者を紐で繋がない
 - **ユーザー要望**: 「本陣に襲撃が始まると勇者観戦が止まるのがやだな」（案1で承認）。続けて「全滅・撤退・魔王討伐のあとも自動では終わらず、カメラはその場のまま、観戦を終了で戻す」。観戦中の隊長が倒れた勇者を紐で繋いで搬送中にし、出血タイマーが止まって勇者が全滅しない不具合の修正。
 - **襲撃の保留（`invasion-rules.js` `index.js`）**: `raidHeldBySpectate(game)`＝`game.spectating`（野外・城どちらも）。`triggerBaseRaid`・`updateBaseRaid`・`startDemonInvasion`・`updateDemonInvasion`・`shouldTriggerRandomRaid` の `currentDungeon` 判定と並べて保留。ランダム強襲の抽選（`raidRollPhase`/`raidScheduledPhase`）は観戦中も行い、開始だけ保留する。観戦開始時に襲撃中なら開始できない既存仕様（`code:'raid'`）と、`endReason` の「襲撃が始まったので…」終了は安全弁として残した。

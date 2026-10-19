@@ -1,6 +1,6 @@
 import {WORLD_SIZE} from './world.js?v=289';
 import {HQ_FACILITY_LAYOUT,hqFacilityBlocks} from './hq-facility-layout.js?v=201';
-import {setSubDialog} from './interface.js?v=312';
+import {setSubDialog} from './interface.js?v=313';
 import {daylightAt} from './day-night.js?v=208';
 import {buildingContact} from './building-interactions.js?v=201';
 import {drawCasinoSign} from './nightlife-visuals.js?v=277';

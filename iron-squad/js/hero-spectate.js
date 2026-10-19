@@ -7,13 +7,13 @@ import {formatCompact} from './number-format.js?v=282';
 import {WORLD_SIZE} from './world.js?v=289';
 import {CAMP_PEACE_RADIUS} from './peace-zones.js?v=277';
 import {formatDistance} from './distance-format.js';
-import {pendingRaid} from './invasion-rules.js?v=312';
+import {pendingRaid,raidGraceLeft} from './invasion-rules.js?v=313';
 
 // v7.0.31: 観戦待ち（キュー）／野外の道中から魔王城まで通しで観戦／観戦中だけの倍速（×1/×2/×4）。
 // 野外観戦は本編ワールドのまま（隊長は本陣で不可視・無敵、隊員は凍結して描画しない）、カメラだけ勇者を追う。
 // 勇者が魔王城に入ったら、既存の城観戦（隊長が観測者として入場）へ短いフェードでつなぐ。観戦フラグ・倍速・キューは保存しない。
 export const CASTLE_ID='dungeon_demon_castle';
-export const SPECTATE_RULES=Object.freeze({hudSeconds:.25,logLines:3,cameraEase:.12,speeds:Object.freeze([1,2,4]),slowFrameDt:.045,fadeMs:900,returnGrace:4});
+export const SPECTATE_RULES=Object.freeze({hudSeconds:.25,logLines:3,cameraEase:.12,speeds:Object.freeze([1,2,4]),slowFrameDt:.045,fadeMs:900,returnGrace:4,raidGrace:15});
 const CAMP_CENTER=WORLD_SIZE/2;
 const ready=u=>!!u&&!u.dead&&!u.isDown&&u.hp>0;
 const living=u=>!!u&&!u.dead;
@@ -140,6 +140,7 @@ export function startSpectate(game,classes=null) {
   if(!a.ok){game.showToast?.(`観戦できません：${a.reason}`,{field:true});return false;}
   const p=game.heroJourney.party,first=p.members.find(m=>m.isChosenHero&&ready(m))||p.members.find(ready);
   dropQueue(game); // pressing the button (or the queue firing) replaces the waiting state
+  game._spectateRaidGrace=0;updateRaidGraceHud(game); // v7.0.36: watching again resets the raid grace (raids are held while watching anyway)
   game.heroFollowing=false;delete game._heroFollowPath;
   playSpectateFade(game); // v7.0.32: no countdown any more — a short black fade covers the start
   if(game.joystick){game.joystick.active=false;game.joystick.dirX=game.joystick.dirY=0;}
@@ -188,12 +189,31 @@ export function clearSpectate(game,announce=true) {
   if(!game)return;
   const was=game.spectating;
   game.spectating=null;dropQueue(game);
+  if(!announce)game._spectateRaidGrace=0;else if(was)game._spectateRaidGrace=SPECTATE_RULES.raidGrace; // v7.0.36: held raids start only after this many seconds (load / new game / game over pass announce=false: nothing carries over)
   if(was){game._spectateGrace=SPECTATE_RULES.returnGrace;if(game.player)game.player.invulnerableTimer=Math.max(game.player.invulnerableTimer||0,SPECTATE_RULES.returnGrace);} // v7.0.32: the squad was parked (and the commander watching): a few safe seconds after coming back
-  if(was&&announce&&!game.currentDungeon){const raid=pendingRaid(game);if(raid)game.showToast?.(raid==='invasion'?'🚨 観戦を終えた。保留されていた魔王軍の侵攻が始まる！':'🚨 観戦を終えた。保留されていた本陣強襲が始まる！',{field:true});} // v7.0.35: raids were held while watching; they begin now
+  if(was&&announce&&!game.currentDungeon){const raid=pendingRaid(game),sec=Math.ceil(raidGraceLeft(game));if(raid)game.showToast?.(raid==='invasion'?`🚨 観戦を終えた。保留されていた魔王軍の侵攻が${sec}秒後に始まる！`:`🚨 観戦を終えた。保留されていた本陣強襲が${sec}秒後に始まる！`,{field:true});} // v7.0.35: raids were held while watching; they begin now
   // the speed lives on the spectate state, so it is gone too
   if(was?.field&&game.player&&game.camera){game.camera.x=game.player.x;game.camera.y=game.player.y;game._sceneDirty=true;} // back to the parked commander
   game.container?.classList?.remove('is-spectating');
   game.container?.querySelector?.('#hero-spectate')?.remove();
+  updateRaidGraceHud(game);
+}
+
+/** v7.0.36: counts the post-spectate raid grace down (every frame) and keeps its HUD line up to date. */
+export function updateRaidGrace(game,dt) {
+  if(!game)return;
+  if(game._spectateRaidGrace>0)game._spectateRaidGrace=Math.max(0,game._spectateRaidGrace-(dt>0?dt:0));
+  updateRaidGraceHud(game);
+}
+/** "襲撃まで あとN秒" while a raid / invasion that was held is waiting out the grace. Hidden when nothing is pending (no useless display). */
+export function updateRaidGraceHud(game) {
+  const host=game?.container?.querySelector?.('.field-alerts');if(!host)return;
+  let el=host.querySelector('#raid-grace-banner');
+  const left=raidGraceLeft(game),kind=!game.spectating&&left>0&&!game.currentDungeon?pendingRaid(game):null;
+  const text=kind?`🚨 ${kind==='invasion'?'魔王軍の侵攻':'本陣強襲'}まで あと${Math.ceil(left)}秒`:'';
+  if(!el){if(!kind)return;el=document.createElement('div');el.id='raid-grace-banner';el.className='phase-banner hidden';el.setAttribute('role','status');host.prepend(el);}
+  if(el.textContent!==text)el.textContent=text;
+  el.classList.toggle('hidden',!kind);
 }
 
 /** Per-frame: end conditions, camera target, HUD refresh. */

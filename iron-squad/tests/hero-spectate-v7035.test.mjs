@@ -28,8 +28,8 @@ function marchParty(phase){
   assert.equal(inv.raidHeldBySpectate(game),true);assert.equal(game.startDemonInvasion(),false,'startDemonInvasion refuses while spectating');
   for(let i=0;i<40;i++)game.update(.1);assert.equal(game.invasions.stage,'idle','the invasion is held');assert.equal(game.baseRaidActive,false);assert.equal(inv.pendingRaid(game),'invasion','still waiting');assert.ok(game.spectating,'the spectate is not interrupted');
   toasts.length=0;toastOpts.length=0;assert.equal(sp.endSpectate(game),true);
-  const i=toasts.findIndex(t=>t.includes('保留されていた魔王軍の侵攻が始まる'));assert.ok(i>=0,`the held invasion is announced: ${toasts.join('|')}`);assert.deepEqual(toastOpts[i],{field:true},'visible on screen');
-  game.update(.1);assert.equal(game.invasions.stage,'marching','the held invasion starts right after the spectate');
+  const i=toasts.findIndex(t=>t.includes('保留されていた魔王軍の侵攻が15秒後に始まる'));assert.ok(i>=0,`the held invasion is announced: ${toasts.join('|')}`);assert.deepEqual(toastOpts[i],{field:true},'visible on screen');
+  for(let k=0;k<160;k++)game.update(.1);assert.equal(game.invasions.stage,'marching','the held invasion starts after the spectate (v7.0.36: and its 15 s grace)');
   game.invasions.stage='idle';
 }
 // ---------- a rolled random raid waits too (the roll still happens), and starts after ----------
@@ -42,13 +42,13 @@ function marchParty(phase){
   // a phase change while held: the roll is redone for the new phase (the scheduled raid of the old phase is gone); an invasion that is due is not lost
   game.phase=21;assert.equal(inv.pendingRaid(game),null,'the old phase\'s raid is gone');assert.equal(inv.shouldTriggerRandomRaid(game,()=>.99),false);
   game.phase=20;Object.assign(game.invasions,{raidRollPhase:20,raidScheduledPhase:20,raidTriggerRemaining:100});game.phaseTimer=60;
-  toasts.length=0;assert.equal(sp.endSpectate(game),true);assert.ok(toasts.some(t=>t.includes('保留されていた本陣強襲が始まる')),toasts.join('|'));
-  assert.equal(inv.shouldTriggerRandomRaid(game),true);game.triggerBaseRaid();assert.equal(game.baseRaidActive,true,'the raid starts after the spectate');
+  toasts.length=0;assert.equal(sp.endSpectate(game),true);assert.ok(toasts.some(t=>t.includes('保留されていた本陣強襲が15秒後に始まる')),toasts.join('|'));
+  assert.equal(inv.shouldTriggerRandomRaid(game),false,'v7.0.36: still held during the grace');game._spectateRaidGrace=0;assert.equal(inv.shouldTriggerRandomRaid(game),true);game.triggerBaseRaid();assert.equal(game.baseRaidActive,true,'the raid starts after the spectate and its grace');
   game.completeBaseRaid(false);game.baseRaidActive=false;game.monsters=[];
   // an invasion that comes due while held survives the phase change and the rest
   marchParty(30);game.invasions.nextPhase=30;assert.equal(sp.startSpectate(game,SOLDIER_CLASSES),true);game.phase=31;game.phaseTimer=50;assert.equal(inv.pendingRaid(game),'invasion');
   game.restTimer=8;assert.equal(inv.pendingRaid(game),null,'during the rest nothing is due');game.restTimer=0;
-  assert.equal(sp.endSpectate(game),true);game.update(.1);assert.equal(game.invasions.stage,'marching');game.invasions.stage='idle';
+  assert.equal(sp.endSpectate(game),true);for(let k=0;k<160;k++)game.update(.1);assert.equal(game.invasions.stage,'marching');game.invasions.stage='idle';
   // nothing pending: no announcement
   marchParty(40);toasts.length=0;sp.startSpectate(game,SOLDIER_CLASSES);sp.endSpectate(game);assert.ok(!toasts.some(t=>t.includes('保留')),'no pending raid, no announcement');
 }

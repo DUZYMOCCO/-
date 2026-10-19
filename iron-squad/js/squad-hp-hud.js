@@ -2,9 +2,9 @@ import {formatCompact} from './number-format.js?v=282';
 // Translucent HP list of the commander's own squad on the left edge (number + gauge).
 // Only own-squad members are listed; the main army, NPCs and civilians are not.
 import {isOwnSquad} from './own-squad-marker.js?v=182';
-import {downLabel} from './casualty-rules.js?v=312';
+import {downLabel} from './casualty-rules.js?v=313';
 import {isMagicUser,ensureMana} from './magic-rules.js?v=296';
-import {isRangedUnit,ensureAmmo,ammoCapacity} from './supply-rules.js?v=312';
+import {isRangedUnit,ensureAmmo,ammoCapacity} from './supply-rules.js?v=313';
 
 const REFRESH = .15;
 const shortName = name => String(name || '').split(/[・\s]/)[0] || '兵士';

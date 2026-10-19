@@ -196,6 +196,7 @@
   flex-shrink: 0 !important;
 }
 .iron-squad .field-alerts #demon-invasion-banner { border-color:#ad8880 !important; background:#382d30ed !important; color:#ead6c3; pointer-events:none !important; }
+.iron-squad .field-alerts #raid-grace-banner { border-color:#d0a677 !important; background:#4a2b31ed !important; color:#f3d6b3; font-weight:bold; pointer-events:none !important; } /* v7.0.36 */
 .iron-squad .field-alerts #demon-invasion-banner[data-major=true] { border-color:#d0a677 !important; background:#4a2b31ed !important; color:#f3d6b3; font-weight:bold; }
 .iron-squad .limited-join-notice { pointer-events:auto; width:100%; box-sizing:border-box; padding:10px 12px; border:1px solid #968667; border-radius:8px; background:#1a2931f5; color:#e2d2ac; text-align:left; }
 .iron-squad .limited-join-title { display:block; font-size:16px; line-height:1.4; }
