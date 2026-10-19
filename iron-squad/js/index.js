@@ -70,7 +70,7 @@ import { sound } from '../../common/js/audio.js?v=151';
 import { loadCss } from '../../common/js/load-css.js';
 import { storage } from '../../common/js/storage.js';
 import { createStallRecorder, mountStallLog } from './stall-recorder.js?v=182';
-import { clearRestPoseArt, drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow, isRuinKeeper, ruinKeeperScale } from './visuals.js?v=322';
+import { clearRestPoseArt, drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow, isRuinKeeper, ruinKeeperScale } from './visuals.js?v=324';
 import { refreshCampQuiet, assignCampSeats, tryCampLeisure, YARD_TABLES, drawLeisureTable } from './camp-leisure.js?v=277';
 import { CAMP_PEACE_RADIUS, peaceContainment, pushOutsidePeace, relocatePeaceMonster } from './peace-zones.js?v=277';
 import { FARM_X, FARM_Y, farmPosts, farmOverlaps, reinforcementCount, reserveRosterLine, reserveRosterTitle } from './reserve-farm.js?v=277';
@@ -171,7 +171,8 @@ import {
   expeditionHazardTakenMult, expeditionEngageRadius, isSoldierOnExpedition
 } from './expedition-rules.js?v=256';
 
-import { viewport, circleInView, strokeVisibleRing, persistentUnit } from './render-support.js';
+import { viewport, circleInView, strokeVisibleRing, persistentUnit } from './render-support.js?v=324';
+import {stepWallVault,clearWallVault,restingPosition} from './wall-vault.js?v=324';
 
 export const DEPLOYMENT_CAPACITY=48; // was 50/72 — 本隊 soft cap for iPhone (v1.24.2)
 const SOLDIER_DETAIL_TABS = [['stats','能力'],['gear','装備'],['record','記録'],['person','人物']];
@@ -4049,7 +4050,7 @@ export const IronSquadGame = {
           equipmentBarrier:this.player.equipmentBarrier||0,
           equipmentBarrierDelay:this.player.equipmentBarrierDelay||0,
           magicAffinity:this.player.magicAffinity,
-          x: this.player.x, y: this.player.y,
+          x: restingPosition(this.player).x, y: restingPosition(this.player).y,
           magicAttackTimer:this.player.magicAttackTimer||0,
           magicAttackBonus:this.player.magicAttackBonus||0,
           magicWardTimer:this.player.magicWardTimer||0,
@@ -7553,7 +7554,7 @@ export const IronSquadGame = {
       }
     }
     updateSoldierSkillFx(this,dt);
-    this.settleTerrain();
+    this.settleTerrain(dt);
     finishAttributeMovement(this,dt);
     finishFollowerRecovery(this,dt);
     if(!resting)updateHeroJournal(this,this.heroJourney?.party,dt);
@@ -7566,12 +7567,13 @@ export const IronSquadGame = {
 
   dungeonMoveTarget(unit,target) {
     noteFollowerIntent(this,unit,target);
-    if(this.passesWalls(unit))return target;
+    if(this.passesWalls(unit)){if(target){unit._moveGoal=target;unit._moveGoalTick=this._terrainTick||0;}return target;}
     return this.currentDungeon?dungeonSteeringTarget(this.currentDungeon,unit,target):biomeMoveTarget(unit,isOwnSquad(unit)?headquartersMoveTarget(unit,target,this):target);
   },
 
-  settleTerrain() {
+  settleTerrain(dt = 0) {
     const dungeon = this.currentDungeon;
+    if (dt > 0) this._terrainTick = (this._terrainTick || 0) + 1;
     const apply = (unit, inside) => {
       if (!unit || !Number.isFinite(unit.x) || !Number.isFinite(unit.y)) return;
       const blocked = (x, y) => inside ? dungeonBlocks(dungeon, x, y) :
@@ -7579,7 +7581,7 @@ export const IronSquadGame = {
       const carrier = unit.carrierId ? carrierOf(this, unit) : null;
       const space=inside?dungeon.id||'dungeon':'field';
       if(unit._terrainSpace!==space){
-        delete unit._openX;delete unit._openY;unit._terrainSpace=space;
+        delete unit._openX;delete unit._openY;unit._terrainSpace=space;clearWallVault(unit);
         if(inside&&!this.passesWalls(unit)&&!this.passesWalls(carrier)&&blocked(unit.x,unit.y))Object.assign(unit,nearestDungeonFloor(dungeon,unit));
       }
       if(!inside&&!unit.flying&&!carrier?.flying&&Number.isFinite(unit._openX)&&Number.isFinite(unit._openY)){
@@ -7588,6 +7590,8 @@ export const IronSquadGame = {
         if(dx*dx+dy*dy<10000){const factor=fieldSpeedFactor((unit.x+unit._openX)/2,(unit.y+unit._openY)/2);if(factor<1){unit.x=unit._openX+dx*factor;unit.y=unit._openY+dy*factor;}}
       }
       if (this.passesWalls(unit) || this.passesWalls(carrier)) {
+        // v7.1.6 The ability stays; crossing is shown as a short hop from edge to edge (wall-vault.js).
+        if (!carrier && stepWallVault(this, unit, blocked, dt, space)) return;
         if (!blocked(unit.x, unit.y)) { unit._openX = unit.x; unit._openY = unit.y; }
         return;
       }

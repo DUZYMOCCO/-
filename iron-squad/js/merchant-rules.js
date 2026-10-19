@@ -7,7 +7,7 @@ import {applyAttributeStats} from './unit-attributes.js?v=298';
  * - 護衛が倒した強敵のドロップを序盤から掠め取れるチャンス
  */
 import { saleValue, distanceScaling, weaponCombatProfile } from './equipment-rules.js?v=306';
-import { drawFieldSoldier } from './visuals.js?v=322';
+import { drawFieldSoldier } from './visuals.js?v=324';
 import { createSoldierAppearance, drawSoldierHead } from './soldier-appearance.js?v=295';
 import { attackAnimationRate } from './weapon-motion.js?v=306';
 import { markSoldierDown, rebuildMerchantCasualties, RESCUE_TIMEOUT, departFromRest } from './casualty-rules.js?v=322';

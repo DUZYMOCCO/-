@@ -19,6 +19,9 @@ export function strokeVisibleRing(ctx,x,y,r,view) {
 
 // Runtime target references point back to soldiers. Never persist those cycles.
 export function persistentUnit(unit) {
-  const result={};for(const key of Object.keys(unit))if(!key.startsWith('_'))result[key]=unit[key];return result;
+  const result={};for(const key of Object.keys(unit))if(!key.startsWith('_'))result[key]=unit[key];
+  // v7.1.6 A unit saved mid-hop is stored at its landing spot (the hop itself is never saved).
+  if(unit._vault&&Number.isFinite(unit._vault.tx)&&Number.isFinite(unit._vault.ty)){result.x=unit._vault.tx;result.y=unit._vault.ty;}
+  return result;
 }
 

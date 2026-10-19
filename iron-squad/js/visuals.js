@@ -417,6 +417,9 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod, displa
   const aim=weaponAim(s);
   const heldPose=melee?meleePose(wStyle,s.atkAnim||0,aim,physique):ranged?rangedPose(wStyle,s.atkAnim||0,aim,physique,s._rangedBash):null;
   c.save(); c.translate(s.x, s.y);
+  // v7.1.6 Wall hop: the shadow stays on the ground (smaller while high), the body is lifted.
+  const jumpLift=s.isDown?0:Math.max(0,Number(s._jumpLift)||0);
+  if(jumpLift>0){const k=Math.max(.55,1-jumpLift/40);contactShadow(c,2,3,11*physique.shadowWidth*k,3.5*physique.shadowWidth*k,0);c.translate(0,-jumpLift);}
   if (!s.isDown && (s.campPose === 'sit' || s.campPose === 'drink' || s.campPose === 'eat')) {
     drawCampRest(c, s, now, s.campPose, { cloth, armorColor, legs, blade, steel, gloves, board, platoonColor, medic, advanced, mage, eq, physique, family, regalia }, simpleLod);
     c.restore();
@@ -424,7 +427,7 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod, displa
     return;
   }
   const plant = s.isDown ? 1 : (moving ? Math.abs(stride) / 2.8 : 0.22);
-  contactShadow(c, 2, 3, s.isDown ? 16 : 11*physique.shadowWidth, (s.isDown ? 4.2 : 3.5)*physique.shadowWidth, plant);
+  if(!jumpLift)contactShadow(c, 2, 3, s.isDown ? 16 : 11*physique.shadowWidth, (s.isDown ? 4.2 : 3.5)*physique.shadowWidth, plant);
   // Perf v1.24.2: far/edge soldiers = silhouette only (skip gear/weapon strokes).
   if (simpleLod && !s.isDown) {
     c.save();c.scale(physique.bodyWidth,1);
@@ -586,7 +589,7 @@ export function drawFieldCommander(c,p,equipped,now,rankIndex,rankTitle,moving,p
   drawFieldSoldier(c,{id:'commander',appearance:p.appearance||commanderAppearance,x:0,y:0,hp:p.hp,maxHp:p.maxHp,_levelMark:portrait?0:p._levelMark,level:p.level,
     soldierClass:commanderRegalia?.id||'COMMANDER',advancedClass:p.advancedClass,isAdvanced:!!commanderRegalia,isCommander:true,isNamed:true,rankIndex,civilianOutfit:!!p.civilianOutfit,
     equipped,portrait:true,atkAnim:p.slashAnim || 0,_rangedBash:p._rangedBash,
-    facingAngle:p.facingAngle,attackAngle:p.slashAngle,vx:moving?1:0,vy:0},now,
+    facingAngle:p.facingAngle,attackAngle:p.slashAngle,vx:moving?1:0,vy:0,_jumpLift:p._jumpLift||0},now,
     {isAdvanced:!!commanderRegalia,name:'隊長'},'#b7c6b6');
   if(!portrait) {
     // A quiet ground pointer and a stable nameplate keep the player identifiable.
