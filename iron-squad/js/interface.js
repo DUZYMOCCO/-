@@ -4,7 +4,7 @@ import {commanderFullName} from './commander-identity.js?v=295';
 import {isEnlisted} from './career-rules.js?v=291';
 import {configureAudioInterface} from './audio-interface.js?v=329';
 import {renderBattleLog} from './battle-log.js?v=322';
-import {renderTroopRankings} from './troop-rankings.js?v=295';
+import {renderTroopRankings} from './troop-rankings.js?v=333';
 import {genderLabel} from './soldier-names.js?v=210';
 import {talentTag as unitTalentTag} from './talent-labels.js?v=291';
 /** Presentation only: keep game actions on their original DOM nodes. */
@@ -110,7 +110,7 @@ export function configureInterface(game) {
   get('tab-strat-nation').textContent = '国家';
   // Everyday management next to the overview, followed by national operations.
   get('tab-strat-overview').after(get('tab-strat-troops'));
-  get('tab-strat-nation').after(get('tab-strat-rankings'), get('tab-strat-report'), get('tab-strat-hero'));
+  get('tab-strat-nation').after(get('tab-strat-report'), get('tab-strat-hero'));
   const overview = get('view-strat-overview');
   configureAudioInterface(game);
   const snapshot = element('section', 'command-snapshot'); snapshot.id = 'command-snapshot'; overview.prepend(snapshot);
@@ -167,7 +167,6 @@ export function configureInterface(game) {
   const troopsExpedition=element('section','troops-pane');troopsExpedition.id='troops-expedition';troopsExpedition.append(get('nation-expedition-panel'));
   const troopsRankings=element('section','troops-pane');troopsRankings.id='troops-rankings';troopsRankings.append(rankings);
   troops.append(troopsExpedition,troopsRankings);
-  get('tab-strat-rankings').onclick=()=>{game.rosterManageTab='rankings';game._selectStratTab('troops');};
   const rosterTools = element('div', 'list-tools'); rosterTools.id = 'roster-tools';
   const searchLabel = element('label', '', '兵士を探す');
   const search = element('input'); search.id = 'roster-search'; search.type = 'search'; search.placeholder = '名前・職・小隊'; searchLabel.append(search);
@@ -414,7 +413,7 @@ function configureRecruitmentDialog(game) {
   footer.append(rollActions,hireActions);
   scout.replaceChildren(list);scout.removeAttribute('style');panel.append(header,scout,footer);host.append(panel);(root.querySelector('.iron-squad')||root).append(host);
   const launcher=element('section','recruitment-launcher hidden');launcher.id='recruitment-launcher';
-  launcher.append(element('p','','募集する職種を選び、候補の能力・成長素質・雇用費を確認できます。'));
+  
   const launch=element('button','mini-btn','雇用候補を確認');launch.type='button';launcher.append(launch);get('view-strat-troops').append(launcher);
   game.openScoutDialog=()=>{
     if(!isEnlisted(game))return game.openTavern();

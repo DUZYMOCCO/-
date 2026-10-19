@@ -3,9 +3,9 @@ import {normalizeArmament,ARMAMENT_POLICIES,advanceResearch,researchCost,standar
 import {tierDescription,MAX_EQUIPMENT_TIER} from './equipment-tiers.js?v=231';
 import {WORLD_SIZE} from './world.js?v=289';
 import {saleValue,isGodRollProtected} from './equipment-rules.js?v=306';
-import {calcTreasuryGrossIncome,calcCommanderStipend,EQUIPMENT_SLOTS} from './economy-rules.js?v=306';
-import {createPayrollPlan,commanderStipendQuote,PAYROLL_RULES,regularSalaryReserve} from './payroll-rules.js?v=226';
-import {calcAllRankerBonuses} from './troop-rankings.js?v=295';
+import {calcTreasuryGrossIncome,calcCommanderStipend,EQUIPMENT_SLOTS} from './economy-rules.js?v=333';
+import {createPayrollPlan,commanderStipendQuote,PAYROLL_RULES,regularSalaryReserve} from './payroll-rules.js?v=333';
+import {calcAllRankerBonuses} from './troop-rankings.js?v=333';
 import {normalizeRegionalEconomy,recurringNationalIncome,economicState,advanceRegionalEconomy,automaticEconomicTarget,investEconomicProject} from './regional-economy.js?v=277';
 import {drawSettlementQuarter} from './economic-visuals.js?v=322';
 import {atFacility,HEADQUARTERS_FACILITIES} from './hq-facilities.js?v=322';
@@ -160,7 +160,7 @@ export const nationMethods={
     const wanted=new Set(ids),items=(this.inventory||[]).filter(i=>wanted.has(i.id)&&!held.has(i.id)&&!i.favorite&&!isGodRollProtected(i)&&saleValue(i)>0&&['WEAPON','ARMOR','HELMET','SHIELD','GLOVES','LEGS','AMULET'].includes(i.type));
     if(!items.length){this.showToast('バッグで納入する装備を選択してください。装備中・保護中の品は納入できません');return false;}
     const donated=new Set(items.map(i=>i.id));this.inventory=this.inventory.filter(i=>!donated.has(i.id));
-    this.sharedEquipBox.push(...items);this.showToast(`装備${items.length}件を納入。次ウェーブに兵士へ支給し、余剰を外販します`);
+    this.sharedEquipBox.push(...items);this.showToast(`装備${items.length}件を納入。次の作戦期に兵士へ支給し、余剰を外販します`);
     this.saveGame({background:true});this.renderStrategyUI();return true;
   },
   onNationKill(monster) {return advanceGuildContracts(this,monster);},
@@ -172,7 +172,7 @@ export const nationMethods={
       const cost=Math.max(1,Math.floor(this.getUpgradeCost(item)*.8));if(this.gold<cost)return false;
       this.gold-=cost;n.smithPhase=phase;
       this.treasury=(this.treasury||0)+Math.floor(cost*.2);this.phaseFiscal.facilityRevenue=(this.phaseFiscal.facilityRevenue||0)+Math.floor(cost*.2);
-      this.upgradeItem(item,true);this.showToast(`鍛冶工房：隊長の武器を2割引で強化（${money(cost)}）。今ウェーブは利用済み`);
+      this.upgradeItem(item,true);this.showToast(`鍛冶工房：隊長の武器を2割引で強化（${money(cost)}）。今期は利用済み`);
     } else return false;
     this.saveGame({background:true});this.updateStatsUI();this.renderStrategyUI();return true;
   },
@@ -180,7 +180,7 @@ export const nationMethods={
     this.nation=normalizeNation(this.nation);const n=this.nation,plan=nationalPayrollPlan(this),payroll=plan.total,count=plan.entries.length,gross=nationalIncome(this,this.phase||1,count,plan),stipend=calcCommanderStipend(this.phase||1,gross,this);
     const panel=this.container?.querySelector('#nation-status');if(!panel)return;
     const next=DEVELOPMENT_STAGES[n.level+1],current=this.phaseFiscal||{},totals=fiscalTotals(current),investmentBudget=developmentBudget(this);
-    panel.innerHTML=`<section data-nation-section="treasury"><p class="${(this.treasury||0)>=payroll?'positive':'negative'}">${(this.treasury||0)>=payroll?'給与原資を確保しています':'給与原資が不足しています。寄付・産業・交易の発展が必要です'}</p><div class="nation-metrics"><div><small>国庫残高</small><strong>${money(this.treasury)}</strong></div><div><small>次ウェーブの地域税収</small><strong>+${money(gross)}</strong></div><div><small>次の給与見込み · ${count}名</small><strong>−${money(payroll)}</strong></div><div><small>給与・指揮手当後</small><strong>${gross-stipend-payroll>=0?'+':'−'}${money(Math.abs(gross-stipend-payroll))}</strong></div></div><p>通常給与${money(plan.regular)} / 栄誉手当${money(plan.ranker)} / 指揮手当${money(stipend)}</p><p>今ウェーブ：入金${money(totals.receipts)} / 支出${money(totals.expenses)}</p></section><section data-nation-section="development"><h4>${DEVELOPMENT_STAGES[n.level].name} · 発展Lv${n.level}</h4><progress max="${next?.cost||Math.max(180000,n.investment)}" value="${n.investment}"></progress><p>累計本陣開発${money(n.investment)}${next?` / 次は${next.name}（残り${money(next.cost-n.investment)}）`:' / 王都の設備改良を継続できます'}<br>本陣内の被ダメージ −${n.level*6}% · 回復 +${n.level*10}%</p><button type="button" data-nation="invest" ${investmentBudget<=0?'disabled':''}>重点事業へ ${money(investmentBudget)}</button></section>`;
+    panel.innerHTML=`<section data-nation-section="treasury"><p class="${(this.treasury||0)>=payroll?'positive':'negative'}">${(this.treasury||0)>=payroll?'給与原資を確保しています':'給与原資が不足しています。寄付・産業・交易の発展が必要です'}</p><div class="nation-metrics"><div><small>国庫残高</small><strong>${money(this.treasury)}</strong></div><div><small>次の作戦期の地域税収</small><strong>+${money(gross)}</strong></div><div><small>次の給与見込み · ${count}名</small><strong>−${money(payroll)}</strong></div><div><small>給与・指揮手当後</small><strong>${gross-stipend-payroll>=0?'+':'−'}${money(Math.abs(gross-stipend-payroll))}</strong></div></div><p>通常給与${money(plan.regular)} / 栄誉手当${money(plan.ranker)} / 指揮手当${money(stipend)}</p><p>今期：入金${money(totals.receipts)} / 支出${money(totals.expenses)}</p></section><section data-nation-section="development"><h4>${DEVELOPMENT_STAGES[n.level].name} · 発展Lv${n.level}</h4><progress max="${next?.cost||Math.max(180000,n.investment)}" value="${n.investment}"></progress><p>累計本陣開発${money(n.investment)}${next?` / 次は${next.name}（残り${money(next.cost-n.investment)}）`:' / 王都の設備改良を継続できます'}<br>本陣内の被ダメージ −${n.level*6}% · 回復 +${n.level*10}%</p><button type="button" data-nation="invest" ${investmentBudget<=0?'disabled':''}>重点事業へ ${money(investmentBudget)}</button></section>`;
     const missing=units=>units.filter(s=>s&&!s.dead).reduce((n,s)=>n+Object.values(EQUIPMENT_SLOTS).filter(key=>!s.equipped?.[key]).length,0);
     const last=this.lastFiscalReport||{};
     const a=n.armament,armed=(this.squad||[]).filter(s=>!s.dead),equippedAtStandard=armed.filter(s=>(s.equipped?.weapon?.tier||0)>=a.techTier).length,nextCost=researchCost(a.techTier+1);

@@ -86,11 +86,11 @@ export function renderBattleReport(game) {
   }
   if (!shown.length) {
     const empty = document.createElement('li'); empty.className = 'report-empty';
-    empty.textContent = active === 'all' ? 'まだ報告はありません。ボスの撃破や成長、レアアイテムの取得、死亡、救出がここに記録されます。' : `まだ「${REPORT_KINDS[active].label}」の報告はありません。`;
+    empty.textContent = active === 'all' ? 'まだ報告はありません。' : `まだ「${REPORT_KINDS[active].label}」の報告はありません。`;
     list.append(empty);
   }
   const intro = document.createElement('p'); intro.className = 'report-intro';
-  intro.textContent = `重要な出来事だけを新しい順に記録します（最新${REPORT_LIMIT}件）。`;
+  intro.textContent = `新しい順 · 最新${REPORT_LIMIT}件`;
   host.replaceChildren(intro, filters, list);
   filters.scrollLeft = scroll;
 }

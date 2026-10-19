@@ -28,7 +28,7 @@ const unit=(extra={})=>({hp:100,maxHp:1000,gold:100,medCooldown:0,...extra});
   assert.equal(pocketPotionLeft({},3),3);assert.equal(pocketPotionLeft({pocketPotion:{phase:2,used:3}},3),3);
   assert.equal(pocketPotionLeft({pocketPotion:{phase:3,used:2}},3),1);assert.equal(pocketPotionLeft({pocketPotion:{phase:3,used:'x'}},3),3);assert.equal(pocketPotionLeft({pocketPotion:{phase:3,used:99}},3),0);
   assert.equal(pocketPotionLeft(null,1),3);
-  assert.equal(pocketPotionLabel({pocketPotion:{phase:3,used:1}},3),'手当て 30%・1ウェーブ3回（残り2回）');
+  assert.equal(pocketPotionLabel({pocketPotion:{phase:3,used:1}},3),'手当て 30%・1作戦期3回（残り2回）');
 }
 // ---------- full game: the real update loop, save and reload ----------
 const memory=new Map();globalThis.localStorage={getItem:k=>memory.get(k)??null,setItem:(k,v)=>memory.set(k,v),removeItem:k=>memory.delete(k)};

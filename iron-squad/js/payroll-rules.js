@@ -74,7 +74,7 @@ export function paySoldiers(game,plan,phase) {
     if(ranker[i])rankerCount++;
     entry.soldier.lastMaintenance={phase,count:0,spent:0,salaryExpected:entry.expected,salaryPaid:paid,
       basicPay:Math.min(regular[i],entry.basic),maintenanceAllowance:Math.max(0,regular[i]-entry.basic),rankerBonus:ranker[i],
-      status:paid<entry.expected?'給与不足・開始前整備予定':'次ラウンド開始前に整備予定'};
+      status:paid<entry.expected?'給与不足・開始前整備予定':'次の作戦期開始前に整備予定'};
   });
   const paid=regularBudget+rankerBudget,shortfall=plan.total-paid;game.treasury=available-paid;
   if(game.phaseFiscal){

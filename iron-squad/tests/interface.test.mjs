@@ -45,8 +45,8 @@ const shown = node => {
   return true;
 };
 const assertTab = (tab, sub=game.rosterManageTab) => {
-  assert.deepEqual([...document.querySelector('.dialog-body').children].map(node=>node.id), ['view-strat-overview','view-strat-commander','view-strat-nation','view-strat-troops','view-strat-rankings','view-strat-report','view-strat-hero','view-strat-travel','view-strat-settings'], 'the scrolling body contains only tab-owned panels');
-  for (const key of ['commander','overview','troops','nation','rankings','report','hero','travel','settings']) {
+  assert.deepEqual([...document.querySelector('.dialog-body').children].map(node=>node.id), ['view-strat-overview','view-strat-commander','view-strat-nation','view-strat-troops','view-strat-report','view-strat-hero','view-strat-travel','view-strat-settings'], 'the scrolling body contains only tab-owned panels');
+  for (const key of ['commander','overview','troops','nation','report','hero','travel','settings']) {
     assert.equal(shown($(`view-strat-${key}`)), key===tab, `only ${tab} content is visible`);
     assert.equal($(`tab-strat-${key}`).getAttribute('aria-pressed'), String(key===tab));
   }
@@ -73,7 +73,7 @@ assert.equal(stratModal.classList.contains('strat-window-open'),false,'menu open
 assert.equal(shown($('view-strat-overview')),false,'launcher hides section content');
 assert.equal(shown($('tab-strat-nation')),true,'launcher shows the section buttons');
 assert.equal(shown($('btn-start-next-wave')),true,'launcher keeps the return-to-battle button');
-// v6.3.12: rankings is its own top-level window, in the order 戦況・部隊・装備・国家・ランキング.
+// v7.1.15: rankings live only in the 部隊 subtab (the separate rankings window was removed).
 assert.deepEqual([...document.querySelectorAll('#strategy-modal .dialog-tabs .sub-tab-btn')].filter(b=>!b.classList.contains('hidden')).map(b=>b.textContent),['隊長','部隊','国家','記録','地図・移動','設定'],'hero record stays hidden until a hero appears');
 // v7.1.9: 設定 is its own window; the overview no longer carries sound, kana, save or developer controls.
 for (const id of ['settings-display','audio-settings','kana-settings','ambient-settings','command-session','stall-log-fold','perf-settings','btn-zoom-toggle','btn-field-sound','btn-back','btn-restart-from-strat']) {
@@ -228,7 +228,7 @@ const faceSave=saveSlots.get(game.activeSlotId).data;
 assert.ok(faceSave.squad.every(s=>s.appearance?.version===1));
 // The current down-based deathline report is also shown during a manual opening.
 game.restTimer=0;game.squad[0].phaseActivity={combatActions:1,healingDone:0,downs:10};game.squad[0].deathlineDownHistory=[{phase:game.phase,downs:10}];game.completePhase();game.openStrategyModal(true);
-assert.match($('strat-report').textContent,/直近5ウェーブで個人が10回以上ダウン/);assert.doesNotMatch($('strat-report').textContent,/損耗率/);assert.ok(game.deathlineReport.awakenedList.length>0);
+assert.match($('strat-report').textContent,/直近5作戦期で個人が10回以上ダウン/);assert.doesNotMatch($('strat-report').textContent,/損耗率/);assert.ok(game.deathlineReport.awakenedList.length>0);
 // Snapshot the actual generated DOM for static CSS review (not a browser screenshot).
 if (process.env.UI_REVIEW_DIR) {
   const folder = resolve(process.env.UI_REVIEW_DIR); mkdirSync(folder,{recursive:true});

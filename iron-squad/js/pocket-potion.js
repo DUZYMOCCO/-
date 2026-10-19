@@ -16,7 +16,7 @@ export function pocketPotionLeft(soldier,phase){
 }
 
 export function pocketPotionLabel(soldier,phase){
-  return `手当て ${Math.round(POCKET_POTION.healPct*100)}%・1ウェーブ${POCKET_POTION.usesPerWave}回（残り${pocketPotionLeft(soldier,phase)}回）`;
+  return `手当て ${Math.round(POCKET_POTION.healPct*100)}%・1作戦期${POCKET_POTION.usesPerWave}回（残り${pocketPotionLeft(soldier,phase)}回）`;
 }
 
 /** Tick the cooldown and, if the conditions are met, pay and heal. Returns true when a potion was used. */

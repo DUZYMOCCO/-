@@ -1,5 +1,5 @@
 import {enemyTier,rollBossTreasure} from './enemy-tier.js?v=274';
-import {addBattleReport} from './battle-report.js?v=330';
+import {addBattleReport} from './battle-report.js?v=333';
 import {attackCooldown} from './equipment-rules.js?v=306';
 import {migrateCampaignEnemy} from './campaign-scaling.js?v=241';
 import {HERO_RULES,heroRevelationPhase,nextHeroRevelationPhase,heroPartyActive,heroMembers,heroSharesSpace,visibleHeroMembers} from './hero-rules.js?v=302';

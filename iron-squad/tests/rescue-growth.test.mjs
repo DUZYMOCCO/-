@@ -43,9 +43,9 @@ try {
 } finally {Math.random=oldRandom;}
 // Full price, countdown, phase-boundary refresh and save/load of the deadline.
 const merchant=game.merchants[0];game.player.x=merchant.x;game.player.y=merchant.y;game.player.hp=1;game.gold=1000;game.openMerchantShop(merchant);document.querySelector('[data-merchant-section="recovery"]').click();
-document.querySelector('.merchant-heal-button').click();assert.equal(merchantHealWavesLeft(game,merchant),2);assert.match(document.querySelector('.merchant-heal-countdown').textContent,/あと2ウェーブ/);
+document.querySelector('.merchant-heal-button').click();assert.equal(merchantHealWavesLeft(game,merchant),2);assert.match(document.querySelector('.merchant-heal-countdown').textContent,/あと2作戦期/);
 game.player.hp=1;const paidGold=game.gold;assert.equal(useMerchantHealing(game,merchant).reason,'cooldown');assert.equal(game.gold,paidGold);
-game.completePhase();assert.equal(merchantHealWavesLeft(game,merchant),1);assert.match(document.querySelector('.merchant-heal-countdown').textContent,/あと1ウェーブ/);
+game.completePhase();assert.equal(merchantHealWavesLeft(game,merchant),1);assert.match(document.querySelector('.merchant-heal-countdown').textContent,/あと1作戦期/);
 game.saveGame({immediate:true});const waiting=saveSlots.get(game.activeSlotId).data;assert.equal(waiting.merchants.find(m=>m.id===merchant.id).healReadyPhase,3);
 document.querySelector('.btn-close-merchant').click();game.resumeSavedGame(waiting);let restored=game.merchants[0];assert.equal(merchantHealWavesLeft(game,restored),1);
 game.restTimer=0;game.player.hp=1;game.openMerchantShop(restored);document.querySelector('[data-merchant-section="recovery"]').click();game.completePhase();game.player.hp=1;game._merchantShopRefresh();

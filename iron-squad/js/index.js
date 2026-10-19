@@ -30,22 +30,22 @@ import {TANK,prepareTanks,tankEvalDistSq,tankSlowFactor,tankCover,tankStunSecond
 import {recordBattleLog,resetBattleLog,refreshCombatFieldNotes} from './battle-log.js?v=322';
 import {rollDropExclusive,applyDropExclusive,dropExclusiveLabel} from './drop-exclusives.js?v=298';
 import {normalizeMaterials,applyCraftExclusive,craftExclusiveLabel,equipmentDropChance,materialDropChance,rollMaterialDrop,rollTreasureLoot} from './crafting-rules.js?v=306';
-import {workshopMethods} from './workshop.js?v=322';
+import {workshopMethods} from './workshop.js?v=333';
 import {updateAmbientCrowd,ambientResidents,ambientSoldierPose,ambientFarmPosts,drawAmbientResident,configureAmbientSettings,resetAmbientCrowd} from './town-ambient.js?v=327';
 import {casinoMethods} from './casino.js?v=322';
 import {normalizeCasino} from './casino-rules.js?v=322';
 import {latestEquipmentTier,recordMerchantEquipment,ensureMerchantCatalog,refreshWaveCatalogs,markMerchantPurchase} from './merchant-catalog.js?v=306';
 import {initializeMedicalPosts,updateMedicalPosts,serializeMedicalPosts,medicalPostLayout,nearestKnownMedicalPost,drawMedicalPost,drawMedicalMap,drawMedicalMarker,drawTownMedicalReception,drawRescueDirection} from './medical-posts.js?v=277';
-import {invasionMethods,initializeInvasions,serializeInvasions,shouldTriggerRandomRaid,makeEnemyRoom,drawInvasionRoute,raidHeldBySpectate} from './invasion-rules.js?v=322';
+import {invasionMethods,initializeInvasions,serializeInvasions,shouldTriggerRandomRaid,makeEnemyRoom,drawInvasionRoute,raidHeldBySpectate} from './invasion-rules.js?v=333';
 import {gateMethods,serializeGatePosts,replenishTownGateGuards,initializeGateGuards,ensureTownGuards,serializeGateGuards,updateGateGuards,gateGuardVisible,applyFortifications,drawFortification,exitGateTown,townExitReached,wallBlocksAttack,attackBlocked as coverBlocked} from './gate-rules.js?v=322';
-import {nationMethods,normalizeNation,nationalIncome,nationalPayrollPlan,headquartersDamageMult,drawNationalDevelopment,DEVELOPMENT_STAGES} from './nation-rules.js?v=322';
-import {equipmentUpgradeCost,salaryQuote,paySoldiers} from './payroll-rules.js?v=226';
+import {nationMethods,normalizeNation,nationalIncome,nationalPayrollPlan,headquartersDamageMult,drawNationalDevelopment,DEVELOPMENT_STAGES} from './nation-rules.js?v=333';
+import {equipmentUpgradeCost,salaryQuote,paySoldiers} from './payroll-rules.js?v=333';
 import {planSelfUpgrades,applySelfUpgradePlan,SELF_UPGRADE_SAFETY_LIMIT,REST_UPGRADES_PER_PHASE_MAX,REST_UPGRADES_PER_TICK_MAX} from './self-upgrade-rules.js?v=300';
 import {addFieldDrop,ageFieldDrops,attractFieldDrops,FIELD_DROP_PICKUP_RADIUS} from './field-drops.js?v=305';
 import {drawLootDrop,drawLootPullTrail} from './loot-visuals.js?v=306';
 import {drawOwnSquadRing,isOwnSquad} from './own-squad-marker.js?v=182';
 import {CAREER_RULES,newCareer,normalizeCareer,isEnlisted,ownCompanionCount,rankForCareer,recordCareerContribution,enlistCareer,canPromoteCareer,careerSummary,restartCareerExpedition} from './career-rules.js?v=291';
-import {tavernMethods,initializeTaverns,serializeTaverns,settleTravelerCompanions,drawFieldTavern,updateTavernPrompt,tavernWaveChanged,FIELD_TAVERN} from './tavern.js?v=326';
+import {tavernMethods,initializeTaverns,serializeTaverns,settleTravelerCompanions,drawFieldTavern,updateTavernPrompt,tavernWaveChanged,FIELD_TAVERN} from './tavern.js?v=333';
 import {headquartersFacilityMethods,HEADQUARTERS_FACILITIES,updateHeadquartersFacilityPrompt,drawHeadquartersFacilityGround,drawHeadquartersFacility,headquartersBuildingBlocks} from './hq-facilities.js?v=322';
 import {drawNightlifeLights} from './nightlife-visuals.js?v=277';
 import {drawSceneDarkness,drawLanternLights,recordLanternActor} from './scene-lighting.js?v=322';
@@ -91,10 +91,10 @@ import {hazardMethods,updateHazards,drawHazards} from './hazard-fields.js?v=277'
 import {strongEnemyReward,killXpFloor,killExpWithFloor} from './combat-rewards.js?v=299';
 import {supplyMethods, initializeSupplies, updateSupplies, takeRangedShot, ammoCombatProfile, isRangedUnit, distributeAmmo, preventLethalHit, normalizeFieldSave, SQUAD_POTION_COST, REVIVAL_POTION_COST, REVIVAL_POTION_MAX, SQUAD_POTION_MAX, ensureAmmo, ammoCapacity, recalcAmmoCapacity, RANGED_DAMAGE_MULT, supplyLocation} from './supply-rules.js?v=332';
 import { bindPadTap } from './pad-tap.js?v=276';
-import { POCKET_POTION, pocketPotionLabel, tickPocketPotion } from './pocket-potion.js?v=305';
+import { POCKET_POTION, pocketPotionLabel, tickPocketPotion } from './pocket-potion.js?v=333';
 import { updateSpectate, updateRaidGrace, spectateCameraTarget, clearSpectate, updateSpectateQueue, spectateSteps, spectateSpeed, fieldSpectating, expeditionSpectating, expeditionAvailability, expeditionStatusLine, startExpeditionSpectate, queueExpeditionSpectate, cancelSpectateQueue, endSpectate } from './hero-spectate.js?v=322';
-import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog, settingsHost, arrangeSettings } from './interface.js?v=332';
-import { renderTroopRankings, getSoldierRankerBadges, calcSoldierRankerBonus, setRankingFamilyLabels, RANKING_FAMILIES } from './troop-rankings.js?v=295';
+import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog, settingsHost, arrangeSettings } from './interface.js?v=333';
+import { renderTroopRankings, getSoldierRankerBadges, calcSoldierRankerBonus, setRankingFamilyLabels, RANKING_FAMILIES } from './troop-rankings.js?v=333';
 import { ensureSoldierAppearance, drawSoldierPortrait } from './soldier-appearance.js?v=295';
 import { aggregateDeathlineDynamics, tickDeathline, deathlineDamage, normalizeDeathlineSkills, chooseDeathlineSkill, deathlineRangedRange } from './deathline-rules.js?v=295';
 import {CAMPAIGN_SCALE_VERSION,migrateCampaignEnemy,campaignScalingV1} from './campaign-scaling.js?v=241';
@@ -121,7 +121,7 @@ import {
   shouldAbsorbToSharedBox, calcScoutCost, estimateSoldierScoutValue, calcDismissSettlement,
   formatFiscalReportJa, formatFiscalReportHtml, distributeSharedBoxToSoldiers, sellWeakSurplusFromBox,
   SHARED_BOX_MAX_TIER, SCOUT_COST_BY_TALENT, defaultDonateAmount, donatePresetAmounts, fundLadderAmounts, formatFundKanji, normalizeFundAmount, EQUIPMENT_SLOTS
-} from './economy-rules.js?v=306';
+} from './economy-rules.js?v=333';
 
 import { EQUIPMENT_TYPES, saleValue, equippedIds, canSell, lowValueIds, chooseLootTier, distanceScaling, shrineUpgradeCap, compareEquipment, equipmentComparisonHtml, equipmentScore, compareEquipmentStrength, rollWeaponTraits, weaponCombatProfile, attackSpeedState, attackCooldown, attackSpeedLabel, soldierAttackCooldown, evaluateMeleeSweetSpot, isGodRollProtected, zoneRingPower, zoneRingLabelJa, equipmentIcon, equipmentName } from './equipment-rules.js?v=306';
 import {planBulkUpgrade,bulkUpgradeSummary,bulkUpgradeButtonsHtml} from './bulk-upgrade.js?v=301';
@@ -154,7 +154,7 @@ import {applyHeroEquipmentUpgrade} from './hero-equipment.js?v=295';
 import {initializeHeroJourney,rollHeroRevelation,serializeHeroJourney,updateHeroParty,updateHeroFollowing,awardHeroBattle,recordDemonKingDefeat,ensureHeroCastle,prepareCastleVisit,syncHeroCastle,renderHeroJourney,drawHeroMarks} from './hero-party.js?v=322';
 import {DEMON_KING_RULES,demonKingStatsFor,shapeDemonKing,percentBaseDamage} from './demon-king-rules.js?v=304';
 import {updateSquadHpHud} from './squad-hp-hud.js?v=322';
-import {addBattleReport,normalizeBattleReport,renderBattleReport} from './battle-report.js?v=330';
+import {addBattleReport,normalizeBattleReport,renderBattleReport} from './battle-report.js?v=333';
 import {updateRescueAssistance,handleRescueAssistance} from './rescue-assistance.js?v=322';
 import { RESCUE_TIMEOUT, REVIVAL_COOLDOWN, revivalCooldownOf, revivalSkillCooldownLeft, normalizeRevivalSkill, headquartersRevivalPaused, rescueUnits, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, receiveTownCargo, leaveCivilianSpace, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, buildTransportRescueAssign, markSoldierDown, downCommander, commanderDown, updateNpcRescue, CIV_KINDS, isMedic, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST, medicHoldsByCommander, isMerchantCasualty } from './casualty-rules.js?v=322';
 import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault, dungeonBlocks, dungeonSolids } from './dungeon.js?v=306';
@@ -176,7 +176,7 @@ import {stepWallVault,clearWallVault,restingPosition} from './wall-vault.js?v=32
 
 export const DEPLOYMENT_CAPACITY=48; // was 50/72 — 本隊 soft cap for iPhone (v1.24.2)
 const SOLDIER_DETAIL_TABS = [['stats','能力'],['gear','装備'],['record','記録'],['person','人物']];
-const STRAT_WINDOWS=['commander','overview','nation','troops','rankings','report','hero','travel','settings'];
+const STRAT_WINDOWS=['commander','overview','nation','troops','report','hero','travel','settings'];
 export const PERSONAL_GUARD_MAX=12; // 直属小隊 ceiling (ranks ≤12; rope-tow default stays 2)
 export const ENEMY_LIMIT=40; // was 48/60/72 — aggressive soft load (v1.24.1)
 export const ENEMY_SPAWN_INTERVAL=.85; // was .72/.55 — fewer spawn spikes (v1.24.1)
@@ -214,7 +214,7 @@ export const COLOSSAL_RESPAWN=210; // was 75
 /** v1.27.4: melee swing sweet spots (sword wide / spear tip / hammer mid; ranged fixed); SW v88. */
 /** v1.26.0: command UI hierarchy / compact roster / bag filters / nested dialog focus / New Game and awakening UI fixes; SW v82. */
 /** v1.25.5: スカウト候補5枠 / 天才再募集確認 / 天才出現率低下(0.25%); SW v75. */
-/** v1.25.4: 作戦期切替待機 10s→8s / UI「休息」→「次のラウンド開始まで」; SW v74. */
+/** v1.25.4: 作戦期切替待機 10s→8s / UI「休息」→「次の作戦期開始まで」; SW v74. */
 /** v1.25.3: 手動攻撃ボタンが atkCooldown を共有（連打で攻撃速度無視バグ修正）; SW v73. */
 /** v1.25.2: 剣/槍/鎚マスタリー=ATK+攻撃速度（弓と同じCD短縮カーブ）; SW v72. */
 /** v1.25.1: 本陣救援ワープ≠地図FT / 槍突き可視化 / 弓石弓熟練=ATK+リロード・火砲=爆発+リロード / 強撃武器別; SW v71. */
@@ -1417,8 +1417,6 @@ export const IronSquadGame = {
               <div style="display: flex; gap: 6px; margin-bottom: 10px;">
                 <button id="tab-strat-nation" class="sub-tab-btn">🏛 国家運営</button>
                 <button id="tab-strat-troops" class="sub-tab-btn active">⚔ 部隊管理</button>
-                <button id="tab-strat-squad" class="sub-tab-btn hidden">👥 部隊名簿＆サイフ</button>
-                <button id="tab-strat-equip" class="sub-tab-btn hidden">🎒 装備＆鍛冶屋</button>
               </div>
 
               <!-- 部隊名簿 ＆ 叙勲タブ -->
@@ -1431,8 +1429,6 @@ export const IronSquadGame = {
                     <button type="button" id="tab-econ-roster" class="roster-filter-btn active" data-econ="roster">名簿</button>
                     <button type="button" id="tab-econ-scout" class="roster-filter-btn" data-econ="scout">🔍 スカウト</button>
                     <button type="button" id="tab-econ-equip" class="roster-filter-btn" data-econ="equip">🎒 装備</button>
-                    <button type="button" id="tab-econ-invest" class="roster-filter-btn hidden" data-econ="invest">🏛 国庫</button>
-                    <button type="button" id="tab-econ-box" class="roster-filter-btn hidden" data-econ="box">📦 共有箱</button>
                   </div>
                   <div id="view-econ-invest" class="hidden" style="background:rgba(2,132,199,0.12);border:1px solid rgba(14,116,144,0.45);border-radius:6px;padding:8px;margin-bottom:8px;font-size:11px;">
                     <div style="color:#67e8f9;font-weight:bold;margin-bottom:4px;">国庫への寄付</div>
@@ -1713,12 +1709,11 @@ export const IronSquadGame = {
     const close = document.createElement('button');
     close.id='btn-dialog-close'; close.className='dialog-close'; close.textContent='閉じる ×';
     close.addEventListener('click',()=>this.closeStrategyModal()); heading.append(close);
-    const nav=document.getElementById('tab-strat-nation')?.parentElement || document.getElementById('tab-strat-squad').parentElement;
+    const nav=document.getElementById('tab-strat-nation').parentElement;
     nav.classList.add('dialog-tabs');
     const overview=document.createElement('div'); overview.id='view-strat-overview';
     const nation=document.createElement('div'); nation.id='view-strat-nation'; nation.className='hidden hub-panel hub-nation';
     const troops=document.createElement('div'); troops.id='view-strat-troops'; troops.className='hidden hub-panel hub-troops';
-    const rankings=document.createElement('div'); rankings.id='view-strat-rankings'; rankings.className='hidden hub-panel hub-rankings';
     const report=document.createElement('div'); report.id='view-strat-report'; report.className='hidden hub-panel hub-report';
     const heroView=document.createElement('div'); heroView.id='view-strat-hero'; heroView.className='hidden hub-panel hub-hero';
     const settingsView=document.createElement('div'); settingsView.id='view-strat-settings'; settingsView.className='hidden hub-panel hub-settings';
@@ -1761,16 +1756,12 @@ export const IronSquadGame = {
     const formationBar=document.createElement('div');
     formationBar.id='formation-bar';
     formationBar.className='hub-section';
-    formationBar.innerHTML='<div style="font-size:11px;color:#cbd5e1;margin-bottom:6px;">🧭 編成：<strong style="color:#e1cf9d;">防衛陣形</strong>（直属は隊長追従／本隊は本陣防衛圏） · 上限 本隊48 / 直属12 · 遠征は国家運営</div>';
+    formationBar.innerHTML='<div style="font-size:11px;color:#cbd5e1;margin-bottom:6px;">🧭 編成：<strong style="color:#e1cf9d;">防衛陣形</strong>（直属は隊長追従／本隊は本陣防衛圏） · 上限 本隊48 / 直属12</div>';
     troops.append(formationBar);
     if(squadView){squadView.classList.remove('hidden');troops.append(squadView);}
     if(equipView){equipView.classList.add('hidden');troops.append(equipView);}
     body.prepend(overview);
-    body.append(commanderView, nation, troops, rankings, report, heroView, travelView, settingsView);
-    const legacySquad=document.getElementById('tab-strat-squad');
-    const legacyEquip=document.getElementById('tab-strat-equip');
-    if(legacySquad) legacySquad.classList.add('hidden');
-    if(legacyEquip) legacyEquip.classList.add('hidden');
+    body.append(commanderView, nation, troops, report, heroView, travelView, settingsView);
     let overviewTab=document.getElementById('tab-strat-overview');
     if(!overviewTab){
       overviewTab=document.createElement('button');
@@ -1782,7 +1773,7 @@ export const IronSquadGame = {
       nav.insertBefore(commanderTab,overviewTab);
     }
     // Top-level windows after 戦況・部隊・装備・国家. The hero record stays hidden until a hero appears.
-    for(const [key,label,hidden] of [['rankings','ランキング',true],['report','記録'],['hero','勇者の記録',true],['travel','地図・移動'],['settings','設定']]){
+    for(const [key,label,hidden] of [['report','記録'],['hero','勇者の記録',true],['travel','地図・移動'],['settings','設定']]){
       if(document.getElementById(`tab-strat-${key}`))continue;
       const tab=document.createElement('button');
       tab.id=`tab-strat-${key}`; tab.className=`sub-tab-btn${hidden?' hidden':''}`; tab.textContent=label;
@@ -1797,7 +1788,7 @@ export const IronSquadGame = {
     footer.append(document.getElementById('btn-start-next-wave'),document.getElementById('btn-close-strat'));
     panel.append(footer);
     // Each tab is its own full-screen window; the panel is a launcher until one opens.
-    const windowTitles={commander:'隊長',overview:'戦況',troops:'部隊',nation:'国家',rankings:'ランキング',report:'記録',hero:'勇者の記録',travel:'地図・移動',settings:'設定'};
+    const windowTitles={commander:'隊長',overview:'戦況',troops:'部隊',nation:'国家',report:'記録',hero:'勇者の記録',travel:'地図・移動',settings:'設定'};
     const windowBar=document.createElement('div'); windowBar.className='strat-window-bar';
     windowBar.innerHTML='<button type="button" id="btn-strat-window-back" class="strat-window-back">‹ 戻る</button><div class="strat-window-heading"><strong id="strat-window-title" class="strat-window-title"></strong><small id="strat-window-gold" class="strat-window-gold"></small></div><button type="button" id="btn-strat-window-close" class="strat-window-close">閉じる ×</button>';
     panel.insertBefore(windowBar,body);
@@ -5090,7 +5081,7 @@ export const IronSquadGame = {
     const restBanner=document.getElementById('phase-complete-banner'),restText=document.getElementById('phase-banner-text');
     if(restBanner && restText) {
       restBanner.classList.toggle('hidden',!(this.restTimer>0));
-      restText.textContent=this.restTimer>0?`次のラウンド開始まで ${Math.ceil(this.restTimer)}秒 · 敵は休止中 · 自己強化 ${(this.restReport?.count||0).toLocaleString()}回（${(this.restReport?.spent||0).toLocaleString()}G） · 会議を開く`:'';
+      restText.textContent=this.restTimer>0?`次の作戦期開始まで ${Math.ceil(this.restTimer)}秒 · 敵は休止中 · 自己強化 ${(this.restReport?.count||0).toLocaleString()}回（${(this.restReport?.spent||0).toLocaleString()}G） · 会議を開く`:'';
     }
 
     const aliveSquad = this.squad ? this.squad.filter(s => !s.dead) : [];
@@ -5127,7 +5118,7 @@ export const IronSquadGame = {
         const statText = `攻撃力 ${formatCompact(Math.floor(this.player.atk||0))}  防御力 ${formatCompact(Math.floor(this.player.def||0))}`;
         if (statsNode._text !== statText) { statsNode._text = statText; statsNode.textContent = statText; }
       }
-      // 戦場のポップアップと次ラウンド告知は隊長HPの行の直下（攻撃力・防御力の行に重ねる）。告知が出ていればその下にポップアップ
+      // 戦場のポップアップと次の作戦期告知は隊長HPの行の直下（攻撃力・防御力の行に重ねる）。告知が出ていればその下にポップアップ
       if (statsNode) {
         const top = Math.round(statsNode.getBoundingClientRect().top), rest = document.getElementById('phase-complete-banner');
         const restBottom = rest && !rest.classList.contains('hidden') ? Math.round(rest.getBoundingClientRect().bottom) : 0;
@@ -5834,14 +5825,14 @@ export const IronSquadGame = {
           if (chosenSkillId) {
             s.deathlineSkills.push(chosenSkillId);
             awakenedList.push({ soldier: s, name: s.name, downCount,skill: DEATHLINE_SKILLS[chosenSkillId] });
-            this.recordBattleLog?.(`💀 ${s.name}が直近${DEATHLINE_WINDOW_PHASES}ウェーブで${downCount}回のダウンを生還し、「${DEATHLINE_SKILLS[chosenSkillId].name}」に死線覚醒！`,'growth');
+            this.recordBattleLog?.(`💀 ${s.name}が直近${DEATHLINE_WINDOW_PHASES}作戦期で${downCount}回のダウンを生還し、「${DEATHLINE_SKILLS[chosenSkillId].name}」に死線覚醒！`,'growth');
           }
         }
         this.recalcSoldierStats(s);
         consumeDeathlineDowns(s);
       });
 
-      this.showToast(`🚨【死線生還！】作戦第${this.phase - 1}期完了：直近${DEATHLINE_WINDOW_PHASES}ウェーブで個人が${DEATHLINE_DOWN_THRESHOLD}回以上ダウンして生還した${awakenedList.length}名が覚醒！`,{important:true});
+      this.showToast(`🚨【死線生還！】作戦第${this.phase - 1}期完了：直近${DEATHLINE_WINDOW_PHASES}作戦期で個人が${DEATHLINE_DOWN_THRESHOLD}回以上ダウンして生還した${awakenedList.length}名が覚醒！`,{important:true});
     }
     this.deathlineReport={phase:this.phase-1,condition:'personal-downs',windowPhases:DEATHLINE_WINDOW_PHASES,occurred:isDeathline,threshold:DEATHLINE_DOWN_THRESHOLD,qualifiedCount:deathlineSurvivors.length,
       deadCount:deadInPhase,casualtyRatePct:Math.round(casualtyRate*100),
@@ -5951,9 +5942,9 @@ export const IronSquadGame = {
 
   maintenanceSummary() {
     const report=this.restReport;
-    if(!report)return `戦線${PHASE_DURATION}秒 → 次のラウンド開始まで${REST_DURATION}秒。その間は兵士が自費で自己強化します。通常給与はLv・昇格・国家発展と装備の強化費で増え、ランカーには栄誉手当を加算します。`;
+    if(!report)return `戦線${PHASE_DURATION}秒 → 次の作戦期開始まで${REST_DURATION}秒。`;
     const min=report.salaryMin??report.salary??SOLDIER_SALARY,max=report.salaryMax??min;
-    return `${this.restTimer>0?`次のラウンド開始まで残り${Math.ceil(this.restTimer)}秒`:`第${report.phase}期の整備結果`}：${report.trainedIds.length}名が計${report.count}回強化 / 自費${report.spent}G。通常給与${min.toLocaleString()}〜${max.toLocaleString()}G／人・栄誉手当計${(report.rankerPaid||0).toLocaleString()}Gを国庫から支給。会議中は待機時計も停止。`;
+    return `${this.restTimer>0?`次の作戦期開始まで残り${Math.ceil(this.restTimer)}秒`:`第${report.phase}期の整備結果`}：${report.trainedIds.length}名が計${report.count}回強化 / 自費${report.spent}G。通常給与${min.toLocaleString()}〜${max.toLocaleString()}G／人・栄誉手当計${(report.rankerPaid||0).toLocaleString()}Gを国庫から支給。会議中は待機時計も停止。`;
   },
 
   processRestSecond() {
@@ -8177,7 +8168,7 @@ export const IronSquadGame = {
       const targetEquipped=forSoldier?target?.equipped:this.equipped;
       const healStatus=merchantHealingStatus(this,m);
       const healWaves=merchantHealWavesLeft(this,m);
-      const healLabels={available:`隊長を全回復 · ${MERCHANT_HEAL_COST}G`,cooldown:`あと${healWaves}ウェーブ`,full:'HPは満タンです',poor:`${MERCHANT_HEAL_COST}G 必要です`,unavailable:'現在は利用できません'};
+      const healLabels={available:`隊長を全回復 · ${MERCHANT_HEAL_COST}G`,cooldown:`あと${healWaves}作戦期`,full:'HPは満タンです',poor:`${MERCHANT_HEAL_COST}G 必要です`,unavailable:'現在は利用できません'};
       const phase=this.phase||1,rank=latestEquipmentTier(this);
       const stock=(m.stock||[]).map((item,idx)=>({item,idx}));
       const groups=[['weapon','武器',stock.filter(({item})=>item.type==='WEAPON')],['armor','防具・装飾',stock.filter(({item})=>item.type!=='WEAPON')],['caster','術士用品',stock.filter(({item})=>isMagicWeapon(item)||!!CASTER_GEAR[item.armorStyle])]];
@@ -8205,7 +8196,7 @@ export const IronSquadGame = {
             <span class="merchant-stock-summary">${slot?.name||item.type} · ${shopText(targetName)}の現装備比${cmpInfo.previewItem?`（+${current.upgrade}引継後）`:''}：<strong class="cmp-${cmp.kind}">${cmp.label}</strong>${forSoldier&&!usable?' · 装備できません':''}</span>
           </button>
           <div class="merchant-stock-detail" ${open?'':'hidden'}>
-          ${item.merchantFeatured?`<div class="merchant-featured-label">今ウェーブの目玉 · 特選品（1点限り）</div>`:''}
+          ${item.merchantFeatured?`<div class="merchant-featured-label">今期の目玉 · 特選品（1点限り）</div>`:''}
           <p class="merchant-quality">${slot?.name||item.type} · ${item.merchantQuality||'厳選'} · 品質補正×${Number(item.rollMult||1).toFixed(2)} · 強化+${item.upgrade||0}</p>
           <p class="weapon-requirement">${target?equipmentRequirementHtml(target,item):'購入先の兵士を選んでください'}</p>
           ${cmpInfo.html}
@@ -8217,7 +8208,7 @@ export const IronSquadGame = {
           </div>
           </div>
         </div>`;
-      }).join('') || `<div class="transfer-empty-msg"><p>${stock.length?'この分類の装備はありません。もう一方のタブをご覧ください。':'今ウェーブは売り切れです。次のウェーブに仕入れ直します。'}</p></div>`;
+      }).join('') || `<div class="transfer-empty-msg"><p>${stock.length?'この分類の装備はありません。もう一方のタブをご覧ください。':'今期は売り切れです。次の作戦期に仕入れ直します。'}</p></div>`;
       popup.innerHTML = `
         <div class="transfer-popup-container">
           <div class="transfer-popup-header">
@@ -8234,7 +8225,7 @@ export const IronSquadGame = {
             </nav>`:`<h4 class="merchant-section-title">${sectionNames[shopSection]}</h4>`}
             ${shopSection==='recovery'?`
             <section class="merchant-heal-service" aria-label="商人の回復サービス">
-              <div><h4>隊長の回復サービス</h4><p>${MERCHANT_HEAL_COST}G · 利用後2ウェーブで再開</p><p class="merchant-heal-countdown">${healWaves?`再利用まで あと${healWaves}ウェーブ`:healStatus==='available'?'利用できます':healLabels[healStatus]}</p></div>
+              <div><h4>隊長の回復サービス</h4><p>${MERCHANT_HEAL_COST}G · 利用後2作戦期で再開</p><p class="merchant-heal-countdown">${healWaves?`再利用まで あと${healWaves}作戦期`:healStatus==='available'?'利用できます':healLabels[healStatus]}</p></div>
               <button type="button" class="transfer-tap-btn merchant-heal-button" ${available&&healStatus==='available'?'':'disabled'}>${healLabels[healStatus]}</button>
             </section>
             <section class="merchant-heal-service" aria-label="部隊ポーション">
@@ -8248,7 +8239,7 @@ export const IronSquadGame = {
             <button type="button" class="transfer-tap-btn merchant-base-potion-button" ${supplyLocation(this)?.kind==='base'&&(this.squadPotion||0)<SQUAD_POTION_MAX&&available?'':'disabled'}>本陣で回復薬を無料補給</button>
             <p class="merchant-menu-intro">弾薬・魔力は商人の近くで自動補給されます。</p>`:''}
             ${shopSection==='save'?'<div class="merchant-checkpoint"></div>':''}
-            ${shopSection==='trade'?`          <div class="transfer-popup-hint">交易品T${m.stockTier}（製造技術T${this.nation?.armament?.techTier||1} · T${TRADE_MAX_TIER+1}〜${MAX_EQUIPMENT_TIER}は非売） · 第${phase}ウェーブ · 次の仕入れまで${Math.ceil((this.phaseTimer||0)+(this.restTimer||0))}秒${m.featuredSoldPhase===phase?' · 目玉は購入済み':''}</div>
+            ${shopSection==='trade'?`          <div class="transfer-popup-hint">交易品T${m.stockTier}（製造技術T${this.nation?.armament?.techTier||1} · T${TRADE_MAX_TIER+1}〜${MAX_EQUIPMENT_TIER}は非売） · 第${phase}期 · 次の仕入れまで${Math.ceil((this.phaseTimer||0)+(this.restTimer||0))}秒${m.featuredSoldPhase===phase?' · 目玉は購入済み':''}</div>
             <section class="merchant-recipient-panel" aria-label="購入先">
               <label for="merchant-recipient">誰に装備を買いますか？</label>
               <select id="merchant-recipient" aria-describedby="merchant-recipient-help"></select>
@@ -8404,7 +8395,7 @@ export const IronSquadGame = {
 
   enterDungeon(dungeonDef) {
     if (this.currentDungeon) return;
-    if (this.restTimer > 0) { this.showToast('待機中は入れません。次のラウンドが始まってからにしましょう'); return; }
+    if (this.restTimer > 0) { this.showToast('待機中は入れません。次の作戦期が始まってからにしましょう'); return; }
     updateDungeonRespawns(this);
     const cooling=dungeonCoolingDown(this,dungeonDef);
     this.nearDungeon = null;
@@ -9518,7 +9509,7 @@ export const IronSquadGame = {
 
             ${isMedic(s) ? `<div>実回復 💚 <strong>${Math.floor(s.healingHp || 0).toLocaleString()}HP</strong> · 回復EXP <strong>${(s.healingExp || 0).toLocaleString()}</strong></div><div>蘇生EXP <strong>${(s.revivalExp || 0).toLocaleString()}</strong></div>` : ''}
             <div>隊長からの経験値 <strong>+${Math.floor(s.commanderBonusExp||0).toLocaleString()}</strong> · 防御展開の遮断 <strong>${Math.floor(s.defenseBlocked||0).toLocaleString()}</strong></div>
-            <div>直近${DEATHLINE_WINDOW_PHASES}ウェーブのダウン <strong>${recentDownCount(s,this.phase)} / ${DEATHLINE_DOWN_THRESHOLD}回</strong></div>
+            <div>直近${DEATHLINE_WINDOW_PHASES}作戦期のダウン <strong>${recentDownCount(s,this.phase)} / ${DEATHLINE_DOWN_THRESHOLD}回</strong></div>
             ${isMedic(s)?`<div>蘇生魔法 <strong>${revivalSkillCooldownLeft(this,s)>0?`再使用まで${Math.ceil(revivalSkillCooldownLeft(this,s))}秒`:'使用可能'}</strong> · 再使用${Math.round(revivalCooldownOf(s))}秒</div>`:''}
             <div>闘技場 <strong>${s.arenaRecord?.wins||0}勝 / ${s.arenaRecord?.losses||0}敗</strong></div>
             <div>死線生還 💀 <strong style="color:#f87171;">${s.survivedDeathlines || 0}</strong></div>
@@ -10504,7 +10495,7 @@ export const IronSquadGame = {
       deathlineBannerHtml = `
         <div style="background: linear-gradient(135deg, rgba(239,68,68,0.22), rgba(15,23,42,0.95)); border: 1.5px solid #ef4444; border-radius: 8px; padding: 9px 11px; margin-bottom: 8px; box-shadow: 0 0 14px rgba(239,68,68,0.35);">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-            <strong style="color: #f87171; font-size: 12.5px; flex:1; min-width:0;">🚨【死線突破・極限生還】 直近${dl.windowPhases||1}ウェーブで個人が${dl.threshold}回以上ダウンを生還 · ${dl.awakenedList.length}名覚醒</strong>
+            <strong style="color: #f87171; font-size: 12.5px; flex:1; min-width:0;">🚨【死線突破・極限生還】 直近${dl.windowPhases||1}作戦期で個人が${dl.threshold}回以上ダウンを生還 · ${dl.awakenedList.length}名覚醒</strong>
             <span style="color: #fbbf24; font-size: 10.5px; font-weight: bold; background: rgba(251,191,36,0.15); border: 1px solid #fbbf24; border-radius: 4px; padding: 1px 5px; flex:none; white-space:nowrap; align-self:flex-start; margin-left:8px;">🔥覚醒発動</span>
           </div>
           <div style="font-size: 10.5px; color: #fecaca; line-height: 1.4; margin-bottom: ${dl.awakenedList.length > 0 ? '6px' : '0'};">
@@ -10945,14 +10936,14 @@ export const IronSquadGame = {
     }
     const nf = document.getElementById('nation-fiscal-panel');
     this.renderNationStatus();this.refreshInvasionUI();this.refreshHeadquartersFacility();
-    if (nf) nf.innerHTML = formatFiscalReportHtml(this.lastFiscalReport) || '<div style="font-size:11px;color:#64748b;margin-bottom:8px;">財政報告は作戦期終了後に更新されます。</div>';
+    if (nf) nf.innerHTML = formatFiscalReportHtml(this.lastFiscalReport) || '<div style="font-size:11px;color:#64748b;margin-bottom:8px;">まだ財政の報告はありません。</div>';
 
     const econTab = this.rosterManageTab || 'roster';
     const showEcon = (name) => {
       this.rosterManageTab = name;
       if (typeof this._syncTroopsSubView === 'function') this._syncTroopsSubView(name);
       else {
-        ['roster', 'scout', 'equip', 'invest', 'box'].forEach((n) => {
+        ['roster', 'scout', 'equip'].forEach((n) => {
           const btn = document.getElementById(`tab-econ-${n}`);
           if (btn) btn.classList.toggle('active', n === name);
         });
@@ -11134,7 +11125,7 @@ export const IronSquadGame = {
       const m=s.lastMaintenance;
       const wage=salaryQuote(s,this);
       maintenanceNote.textContent=`通常給与見込 ${wage.total.toLocaleString()}G（基本${wage.basic.toLocaleString()}＋整備${wage.maintenance.toLocaleString()}）`;
-      maintenanceNote.textContent+=m?` · 第${m.phase}期${m.salaryPaid!=null?`支給${m.salaryPaid.toLocaleString()}G · `:''}強化${(m.count||0).toLocaleString()}回 / ${(m.spent||0).toLocaleString()}G · ${m.status}`:' · 次のラウンド開始前に所持金で自動整備';
+      maintenanceNote.textContent+=m?` · 第${m.phase}期${m.salaryPaid!=null?`支給${m.salaryPaid.toLocaleString()}G · `:''}強化${(m.count||0).toLocaleString()}回 / ${(m.spent||0).toLocaleString()}G · ${m.status}`:' · 次の作戦期開始前に所持金で自動整備';
       row.append(maintenanceNote);
       const transportNote=document.createElement('p');transportNote.className='maintenance-summary';
       const cargo=carriedSoldiers(this,s),carrier=s.carrierId?carrierOf(this,s):null;

@@ -4,7 +4,7 @@ import {formatDistance} from './distance-format.js';
 import {zoneRingLabelJa} from './equipment-rules.js?v=306';
 import {heroEquipmentSummary} from './hero-equipment.js?v=295';
 import {HERO_RULES} from './hero-rules.js?v=302';
-import {addBattleReport} from './battle-report.js?v=330';
+import {addBattleReport} from './battle-report.js?v=333';
 const C=WORLD_SIZE/2;
 export const JOURNAL_LIMITS=Object.freeze({events:48,trail:48,history:8,checkSeconds:2,trailStep:1200});
 const timeLabel=s=>`${Math.floor(s/60)}分${Math.floor(s%60)}秒`;

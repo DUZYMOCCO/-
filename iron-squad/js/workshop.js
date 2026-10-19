@@ -91,7 +91,7 @@ export const workshopMethods={
     const reason=q=>!town?(this.nation?.level<1?'本陣発展Lv1で利用できます':'鍛冶工房で利用できます'):(this.gold||0)<q.cost?`あと${money(q.cost-(this.gold||0))}必要です`:!canAffordMaterials(stock,q.materials)?'必要な素材が足りません':'';
     const buyReason=reason(sq),craftReason=reason(cq);
     panel.insertAdjacentHTML('beforeend',`<div class="town-facility workshop-panel"><strong>鍛冶工房 · Lv${level}</strong>
-      <p>製造可能ティア：${tierDescription(maximum)}<br>本陣の発展と軍備研究で作れる装備が増えます。隊長も兵士も購入には各自のGが必要。兵士は手持ちで買える範囲から順に整備します。</p>
+      <p>製造可能ティア：${tierDescription(maximum)}<br>購入には各自のGが必要です。</p>
       <p>重装には筋力が必要です。魔導・治癒・結界の防具は低筋力で使えます。物理防御は低め。バリアは被ダメージの50%を吸収し、被弾が8秒止まると再生します。</p>
       <label class="workshop-choice">製造ティア<select id="workshop-tier">${Array.from({length:maximum},(_,i)=>`<option value="${i+1}" ${i+1===selectedTier?'selected':''}>${tierDescription(i+1)}</option>`).join('')}</select></label>
       <label class="workshop-choice">購入する品<select id="workshop-supply">${makeOptions(WORKSHOP_STOCK,supplyId)}</select></label>

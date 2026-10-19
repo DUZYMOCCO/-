@@ -109,7 +109,7 @@ p.status = 'castle'; assert.equal(sp.startSpectate(game, SOLDIER_CLASSES), true)
 // ---- soldier detail: the pocket-potion line ----
 const soldier = game.squad.find(s => !s.isPersonalGuard && !s.heroPartyId);
 const html = game.buildSoldierDetailHtml(soldier);
-assert.match(html, /手当て 30%・1ウェーブ3回（残り3回）・8G/);
+assert.match(html, /手当て 30%・1作戦期3回（残り3回）・8G/);
 soldier.pocketPotion = { phase: game.phase, used: 2 };
 assert.match(game.buildSoldierDetailHtml(soldier), /（残り1回）/);
 const heroUnit = p.members[0]; assert.ok(!game.buildSoldierDetailHtml(heroUnit).includes('手当て 30%'), 'hero party members have their own rules');

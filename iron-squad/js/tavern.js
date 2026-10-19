@@ -2,7 +2,7 @@ import {isEnlisted,CAREER_RULES} from './career-rules.js?v=291';
 import {isOwnSquad} from './own-squad-marker.js?v=182';
 import {persistentUnit} from './render-support.js';
 import {drawSoldierPortrait} from './soldier-appearance.js?v=295';
-import {setSubDialog} from './interface.js?v=332';
+import {setSubDialog} from './interface.js?v=333';
 import {WORLD_SIZE,TAVERN_SITE} from './world.js?v=289';
 import {daylightAt} from './day-night.js?v=208';
 import {drawTavernFixtures,drawTavernCandles} from './nightlife-visuals.js?v=277';
@@ -131,7 +131,7 @@ export const tavernMethods={
     body.append(el('p','command-note',`同行する仲間 ${own.length} / ${limit}人。雇用は1人${TAVERN_HIRE_COST.toLocaleString()}Gです。所持金 ${this.gold.toLocaleString()}G。`));
     body.append(el('p','command-note',enlisted?'同行しきれない仲間は本陣の予備に入ります。':'同行しきれない仲間は、この酒場で待ちます。入隊せずに旅を続けることもできます。'));
     const strangers=ensureTavernRoster(this).people.filter(p=>!p.joined);
-    body.append(el('p','command-note tavern-wave-note',strangers.length?`第${this.phase||1}期の人たちです。次のウェーブで入れかわります。`:`この期の人たちは全員雇用済みです。次のウェーブで新しい人たちが来ます。`));
+    body.append(el('p','command-note tavern-wave-note',strangers.length?`第${this.phase||1}期の人たちです。次の作戦期で入れかわります。`:`この期の人たちは全員雇用済みです。次の作戦期で新しい人たちが来ます。`));
     const row=(unit,label)=>{
       const card=el('article','tavern-person'),portrait=el('canvas','tavern-portrait');portrait.width=120;portrait.height=132;
       const text=el('div','tavern-person-text');text.append(el('strong','',unit.name),el('p','',`${jobs[unit.soldierClass]||unit.soldierClass} · Lv.${unit.level||1} · HP ${unit.maxHp} · 攻撃 ${unit.atk}`),el('p','command-note',label));

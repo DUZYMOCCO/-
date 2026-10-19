@@ -1,4 +1,4 @@
-import {equipmentUpgradeCost} from './payroll-rules.js?v=226';
+import {equipmentUpgradeCost} from './payroll-rules.js?v=333';
 
 // v7.0.23: soldiers' self-funded upgrades are limited by money, not by a tiny per-action count.
 // Price (equipmentUpgradeCost), +level strength and the +level itself are unchanged; only the number of upgrades a soldier can chain is relaxed.

@@ -1,4 +1,4 @@
-import {salaryQuote,salaryFundingContext,regularSalaryReserve} from './payroll-rules.js?v=226';
+import {salaryQuote,salaryFundingContext,regularSalaryReserve} from './payroll-rules.js?v=333';
 import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=182';
 import {talentTag as talentLabel} from './talent-labels.js?v=291';
 import {ATTRIBUTE_BASES,attributeFamily} from './unit-attributes.js?v=298';
@@ -324,7 +324,7 @@ export function renderTroopRankings(game) {
     </div>
     <div class="ranking-body">
       ${topList.length === 0 ? `
-        <p class="ranking-empty">部隊に兵士がまだ配備されていません。雇用や合流を行うとランキングが記録されます。</p>
+        <p class="ranking-empty">まだ兵士がいません。</p>
       ` : `
         <ol class="ranking-list">
           ${topList.map((entry, idx) => {

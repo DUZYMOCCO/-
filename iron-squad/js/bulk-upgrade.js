@@ -1,4 +1,4 @@
-import {equipmentUpgradeCost} from './payroll-rules.js?v=226';
+import {equipmentUpgradeCost} from './payroll-rules.js?v=333';
 import {SELF_UPGRADE_SAFETY_LIMIT} from './self-upgrade-rules.js?v=300';
 
 // v7.0.24: +1 / +10 / +100 upgrade buttons. Price formula, +level strength and the save format are unchanged:

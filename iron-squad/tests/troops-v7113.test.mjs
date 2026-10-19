@@ -14,7 +14,7 @@ game.setupUI();game.activeSlotId=saveSlots.create('TROOPS WINDOW TEST ONLY').id;
 const $=id=>document.getElementById(id);let checks=0;const ok=(v,m)=>{assert.ok(v,m);checks++;},eq=(a,b,m)=>{assert.equal(a,b,m);checks++;};
 const visible=n=>{for(let e=n;e;e=e.parentElement){if(e.hidden||e.classList?.contains('hidden')||e.style?.display==='none')return false;}return true;};
 game.reserves.push(game.createNewSoldier());game.openStrategyModal(true);
-eq($('tab-strat-troops').textContent,'部隊');ok($('tab-strat-rankings').classList.contains('hidden'),'no separate rankings tile');
+eq($('tab-strat-troops').textContent,'部隊');ok(!$('tab-strat-rankings')&&!$('view-strat-rankings'),'no separate rankings tile');
 $('tab-strat-troops').click();eq($('strat-window-title').textContent,'部隊');
 assert.deepEqual([...document.querySelectorAll('#view-strat-troops .economy-tab-row [data-econ]')].filter(b=>!b.classList.contains('hidden')).map(b=>b.textContent),['兵士名簿','予備兵','雇用','バッグ','遠征','ランキング']);checks++;
 const panes={roster:'squad-roster-list',reserve:'reserve-roster',equip:'view-strat-equip',expedition:'nation-expedition-panel',rankings:'command-troop-rankings'};
@@ -27,6 +27,6 @@ $('tab-econ-reserve').click();ok($('reserve-roster-list').querySelector('.mini-b
 // 国家 no longer lists the expedition page.
 assert.deepEqual(NATION_GROUPS.operations.pages,[['quest','軍令']]);checks++;
 ok(!Object.values(NATION_GROUPS).some(g=>g.pages.some(([k])=>k==='expedition')));
-// The hidden rankings tile still routes to the 部隊 rankings subtab.
-$('btn-strat-window-back').click();$('tab-strat-rankings').click();eq($('strat-window-title').textContent,'部隊');eq(game.rosterManageTab,'rankings');ok(visible($('command-troop-rankings')));
+// v7.1.15: the hidden rankings tile is gone; rankings live only in the 部隊 subtab.
+$('btn-strat-window-back').click();$('tab-strat-troops').click();$('tab-econ-rankings').click();eq($('strat-window-title').textContent,'部隊');eq(game.rosterManageTab,'rankings');ok(visible($('command-troop-rankings')));
 console.log(`PASS troops-v7113 (${checks} checks)`);

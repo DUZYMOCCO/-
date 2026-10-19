@@ -1,6 +1,6 @@
 import {canUseEquipment} from './weapon-requirements.js?v=298';
 import {GENERATION_COUNT} from './equipment-tiers.js?v=231';
-import {PAYROLL_RULES,commanderStipendQuote} from './payroll-rules.js?v=226';
+import {PAYROLL_RULES,commanderStipendQuote} from './payroll-rules.js?v=333';
 import {recurringNationalIncome} from './regional-economy.js?v=277';
 /**
  * IRON SQUAD economy / roster reform (v1.23.0)
@@ -190,12 +190,12 @@ export function formatFiscalReportJa(ledger) {
 }
 
 export function formatFiscalReportHtml(ledger) {
-  if(!ledger)return '<p>まだウェーブが完了していません。最初の収支は終了時に記録されます。</p>';
+  if(!ledger)return '<p>まだ収支の記録はありません。</p>';
   const rows=[['交易税',ledger.tradeRevenue,0],['街道巡回の維持',0,ledger.securityUpkeep],['定期歳入・発展税収',ledger.income,0],['寄付',ledger.donations,0],['装備の外販',ledger.surplusSales,0],['兵士資金の還流',ledger.treasuryReturns,0],['施設納税',ledger.facilityRevenue,0],['防衛・地域任務の報奨',ledger.defenseRewards,0],['兵士給与・整備手当',0,(ledger.salariesPaid||0)-(ledger.rankerBonusesPaid||0)],['ランカー栄誉手当',0,ledger.rankerBonusesPaid],['隊長の指揮手当',0,ledger.commanderStipend],['寄付から兵士へ配分',0,ledger.distributed],['装備の買取',0,ledger.buyouts],['軍備の調達・換装',0,ledger.equipmentProcurement],['公費の装備強化',0,ledger.publicForging],['製造技術の開発',0,ledger.armamentResearch],['本陣・町の開発',0,ledger.developmentSpent]];
   const receipts=rows.reduce((n,r)=>n+(r[1]||0),0),expenses=rows.reduce((n,r)=>n+(r[2]||0),0),balance=(ledger.endBalance||0)-(ledger.startBalance||0),calc=receipts-expenses;
   const f=n=>Math.floor(n||0).toLocaleString()+'G';
   const personal=ledger.personalEquipmentProcurement||ledger.personalForging?`<p>兵士の自費：装備調達 ${f(ledger.personalEquipmentProcurement)} / 強化 ${f(ledger.personalForging)}</p>`:'';
-  return `<section class="fiscal-report-box"><h4>直近ウェーブの収支 · 第${ledger.phase}期</h4><div class="fiscal-net ${balance>=0?'positive':'negative'}">${balance>=0?'黒字 +':'赤字 '}${f(balance)}</div><div class="fiscal-table"><table><thead><tr><th>項目</th><th>収入</th><th>支出</th></tr></thead><tbody>${rows.map(r=>`<tr><th>${r[0]}</th><td>${r[1]?'+ '+f(r[1]):'—'}</td><td>${r[2]?'− '+f(r[2]):'—'}</td></tr>`).join('')}<tr class="fiscal-total"><th>合計</th><td>+ ${f(receipts)}</td><td>− ${f(expenses)}</td></tr></tbody></table></div><p>期首 ${f(ledger.startBalance)} → 期末 ${f(ledger.endBalance)}</p>${personal}${ledger.salaryShortfall?`<p class="negative">給与不足 ${f(ledger.salaryShortfall)}</p>`:''}${Math.abs(balance-calc)>1?'<p>旧版の記録は一部の取引内訳が不足しています。残高差を実際の収支として表示しています。</p>':''}</section>`;
+  return `<section class="fiscal-report-box"><h4>直近の作戦期の収支 · 第${ledger.phase}期</h4><div class="fiscal-net ${balance>=0?'positive':'negative'}">${balance>=0?'黒字 +':'赤字 '}${f(balance)}</div><div class="fiscal-table"><table><thead><tr><th>項目</th><th>収入</th><th>支出</th></tr></thead><tbody>${rows.map(r=>`<tr><th>${r[0]}</th><td>${r[1]?'+ '+f(r[1]):'—'}</td><td>${r[2]?'− '+f(r[2]):'—'}</td></tr>`).join('')}<tr class="fiscal-total"><th>合計</th><td>+ ${f(receipts)}</td><td>− ${f(expenses)}</td></tr></tbody></table></div><p>期首 ${f(ledger.startBalance)} → 期末 ${f(ledger.endBalance)}</p>${personal}${ledger.salaryShortfall?`<p class="negative">給与不足 ${f(ledger.salaryShortfall)}</p>`:''}${Math.abs(balance-calc)>1?'<p>旧版の記録は一部の取引内訳が不足しています。残高差を実際の収支として表示しています。</p>':''}</section>`;
 }
 
 /**
