@@ -1,5 +1,5 @@
 /** Ceremonial class dress. Pure drawing data: no abilities, equipment or save changes. */
-import {numberedClassName} from './class-up-rules.js?v=185';
+import {numberedClassName} from './class-up-rules.js?v=334';
 const STAGES={
  HEAVY:['PALADIN','TEMPLAR','IMMORTAL_AEGIS'],
  LIGHT:['BLADEMASTER','SWORD_EMPEROR','VOID_EDGE'],

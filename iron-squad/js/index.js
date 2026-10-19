@@ -3,12 +3,12 @@ import {pushDamageText,drawDamageText,DAMAGE_POPUP_CAP} from './damage-text.js?v
 import {spawnDeathShatter,updateDeathShatters,drawDeathShatters} from './death-shatter.js?v=283';
 import {enemyTier,rollBossTreasure,finalCriticalChance,bossCriticalBonus} from './enemy-tier.js?v=274';
 import {levelGrowthSteps,levelDefenseGrowth} from './level-growth.js?v=274';
-import {soldierCombatTempo} from './unit-attributes.js?v=298';
+import {soldierCombatTempo} from './unit-attributes.js?v=334';
 import {startAutoSave,stopAutoSave} from './auto-save.js?v=269';
 import {requestEvenUpgrade} from './even-upgrade.js?v=291';
 import {beginFollowerRecovery,noteFollowerIntent,suspendFollowerRecovery,finishFollowerRecovery,profileFollowerRecovery} from './follower-recovery.js?v=277';
 import {configurePerfSettings} from './perf-diagnostics.js?v=327';
-import {gameText} from './game-text.js?v=323';
+import {gameText} from './game-text.js?v=334';
 import {talentTag} from './talent-labels.js?v=291';
 import {fieldDialogReturn} from './dialog-return.js?v=200';
 import {guildMethods} from './guild-contracts.js?v=322';
@@ -21,7 +21,7 @@ import {initializeWildernessSites,serializeWildernessSites,updateWildernessSites
 import {enemyArtHeadHeight} from './enemy-art.js?v=280';
 import {selectBiomeEncounter,biomeEnemyStats,encounterSlots,updateBiomeCharge} from './biome-encounters.js?v=279';
 import {configureRangedEnemy,updateRangedEnemy,updateDefenseWalls,interceptHostileShot,isHostileShot,updateHostileBolt,drawDefenseWalls} from './enemy-ranged.js?v=295';
-import {LIMITED_CLASSES,initializeLimitedAllies,prepareLimitedEncounter,createLimitedAlly,joinLimitedEncounter,updateLimitedAllies,updateNinja,updateShuriken,drawLimitedEncounter,serializeLimitedAllies,notifyLimitedJoin} from './limited-allies.js?v=306';
+import {LIMITED_CLASSES,LIMITED_ADVANCED_CLASSES,initializeLimitedAllies,prepareLimitedEncounter,createLimitedAlly,joinLimitedEncounter,updateLimitedAllies,updateNinja,updateShuriken,drawLimitedEncounter,serializeLimitedAllies,notifyLimitedJoin} from './limited-allies.js?v=334';
 import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=182';
 import {TIERS,MAX_EQUIPMENT_TIER,MAX_POWER_RANK,POWER_RANK_STEP,GENERATION_COUNT,TRADE_MAX_TIER,powerRank,tierDescription} from './equipment-tiers.js?v=231';
 import {fieldAdaptiveScaling} from './field-scaling.js?v=299';
@@ -82,11 +82,11 @@ import { MELEE_SOUND_STYLES, playMeleeSound, playRangedSound, playMagicSound, pl
 import {emptyRescueBonuses,normalizeRescueBonuses,rescueBonusSummary} from './rescue-rewards.js?v=264';
 import {drawFieldCivilian} from './civilian-visuals.js?v=295';
 import { saveSlots,profileSaveCompletions,requestPersistentSaves } from './save-slots.js?v=311';
-import { soldierDialogue } from './soldier-dialogue.js?v=322';
-import { generateSoldierName, migrateSoldierName, rollGenderByKey, isGenderId, ensureSoldierGender, genderLabel } from './soldier-names.js?v=210';
+import { soldierDialogue } from './soldier-dialogue.js?v=334';
+import { generateSoldierName, migrateSoldierName, rollGenderByKey, isGenderId, ensureSoldierGender, genderLabel } from './soldier-names.js?v=334';
 import { openCommanderEditor } from './commander-editor.js?v=322';
 import { applyCommanderIdentity, normalizeCommanderIdentity, commanderFullName, GENDERS as COMMANDER_GENDERS } from './commander-identity.js?v=295';
-import {MAGIC_CLASSES,MAGIC_AFFINITIES,classHpScale,magicMethods,isMage,isMagicUser,ensureMana,initializeMagic,updateMagic,distributeMagicStones,castMedicBuff,castCasterStrength,updateMageAI,drawMagicBursts,spendMana,weaponMagicDamage,isPlayerCaster,castPlayerSpell,PLAYER_MAGIC_RULES} from './magic-rules.js?v=296';
+import {MAGIC_CLASSES,MAGIC_AFFINITIES,classHpScale,magicMethods,isMage,isMagicUser,ensureMana,initializeMagic,updateMagic,distributeMagicStones,castMedicBuff,castCasterStrength,updateMageAI,drawMagicBursts,spendMana,weaponMagicDamage,isPlayerCaster,castPlayerSpell,PLAYER_MAGIC_RULES} from './magic-rules.js?v=334';
 import {hazardMethods,updateHazards,drawHazards} from './hazard-fields.js?v=277';
 import {strongEnemyReward,killXpFloor,killExpWithFloor} from './combat-rewards.js?v=299';
 import {supplyMethods, initializeSupplies, updateSupplies, takeRangedShot, ammoCombatProfile, isRangedUnit, distributeAmmo, preventLethalHit, normalizeFieldSave, SQUAD_POTION_COST, REVIVAL_POTION_COST, REVIVAL_POTION_MAX, SQUAD_POTION_MAX, ensureAmmo, ammoCapacity, recalcAmmoCapacity, RANGED_DAMAGE_MULT, supplyLocation} from './supply-rules.js?v=332';
@@ -95,11 +95,11 @@ import { POCKET_POTION, pocketPotionLabel, tickPocketPotion } from './pocket-pot
 import { updateSpectate, updateRaidGrace, spectateCameraTarget, clearSpectate, updateSpectateQueue, spectateSteps, spectateSpeed, fieldSpectating, expeditionSpectating, expeditionAvailability, expeditionStatusLine, startExpeditionSpectate, queueExpeditionSpectate, cancelSpectateQueue, endSpectate } from './hero-spectate.js?v=322';
 import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog, settingsHost, arrangeSettings } from './interface.js?v=333';
 import { renderTroopRankings, getSoldierRankerBadges, calcSoldierRankerBonus, setRankingFamilyLabels, RANKING_FAMILIES } from './troop-rankings.js?v=333';
-import { ensureSoldierAppearance, drawSoldierPortrait } from './soldier-appearance.js?v=295';
+import { ensureSoldierAppearance, drawSoldierPortrait } from './soldier-appearance.js?v=334';
 import { aggregateDeathlineDynamics, tickDeathline, deathlineDamage, normalizeDeathlineSkills, chooseDeathlineSkill, deathlineRangedRange } from './deathline-rules.js?v=295';
 import {CAMPAIGN_SCALE_VERSION,migrateCampaignEnemy,campaignScalingV1} from './campaign-scaling.js?v=241';
 import {rangedCombatMethods,updatePiercingBolt,rangedDrawPose,rangedFrontlinePosition} from './ranged-combat.js?v=322';
-import {soldierMeleeMethods,tickSoldierMeleeSkill,soldierMeleeReach,soldierMeleePosition,soldierMeleeSkillLines,soldierMeleeDrawPose,updateSoldierSkillFx,drawSoldierSkillFx,MELEE_BALANCE} from './soldier-melee-skills.js?v=323';
+import {soldierMeleeMethods,tickSoldierMeleeSkill,soldierMeleeReach,soldierMeleePosition,soldierMeleeSkillLines,soldierMeleeDrawPose,updateSoldierSkillFx,drawSoldierSkillFx,MELEE_BALANCE} from './soldier-melee-skills.js?v=334';
 import { buildSoldierProfile, describeDeathlineEffect } from './soldier-profile.js?v=234';
 import { attachSurfaceEvents, detachSurfaceEvents, frameSurfaceReady, releaseSceneCaches, releaseCanvas, surfaceCanResume } from './canvas-surface.js?v=217';
 import { SETTLEMENTS, WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt, routeNameAt, eastWestRoadY, northSouthRoadX, riverCenterY, drawFieldDepth, drawOakCrown, fieldBlocks, settleUnit, fieldSpeedFactor, biomeMoveTarget, fieldRockExit } from './world.js?v=289';
@@ -107,11 +107,11 @@ import { subscribeKana, kanaGrade, displayKana } from '../../common/js/kana-mode
 import { FogGrid, FOG_REVEAL_RADIUS, FOG_CAMP_REVEAL } from './fog.js?v=182';
 import {
   classTierOf, nextClassId, classUpCostForNext, canAffordClassUp, formatClassUpCostJa, classUpShortageJa,
-  playerClassTier, nextPlayerStage, playerStageById, numberedClassName, numberClassDefinitions, passesWalls as unitPassesWalls
-} from './class-up-rules.js?v=185';
+  playerClassTier, nextPlayerStage, playerStageById, numberedClassName, numberClassDefinitions, classDetailName, passesWalls as unitPassesWalls
+} from './class-up-rules.js?v=334';
 import { PHASE_DURATION, REST_DURATION, DEATHLINE_DOWN_THRESHOLD, DEATHLINE_WINDOW_PHASES, SOLDIER_SALARY, MIN_REINFORCEMENTS, emptyActivity, advancePhase, advanceRest, recordCombat, recordHealing, healByMedic, healAmountFor, personalDownCount, recentDownCount, normalizeDeathlineHistory, consumeDeathlineDowns, deathlineEligible, participated, finishExperience } from './phase-rules.js?v=218';
 import {HEALING_HP_PER_EXP,REVIVAL_EXP_PER_MAX_HP,shareCommanderExp,raiseLevelMark,ageLevelMarks} from './experience-rules.js';
-import {attributeFamily,rollAttributeProfile,applyAttributeStats,attributeValues,practiceAttribute,attributeCarryCapacity,attributeSpecialties,prefersCasterMelee,canChannelWeaponMagic,magicAbilityMultiplier,CASTER_STRIKE_COST,casterStrikeMultiplier,beginAttributeMovement,finishAttributeMovement,ATTRIBUTE_LABELS,ATTRIBUTE_KEYS,aptitudeGrade,effectiveStrength} from './unit-attributes.js?v=298';
+import {attributeFamily,rollAttributeProfile,applyAttributeStats,attributeValues,practiceAttribute,attributeCarryCapacity,attributeSpecialties,prefersCasterMelee,canChannelWeaponMagic,magicAbilityMultiplier,CASTER_STRIKE_COST,casterStrikeMultiplier,beginAttributeMovement,finishAttributeMovement,ATTRIBUTE_LABELS,ATTRIBUTE_KEYS,aptitudeGrade,effectiveStrength} from './unit-attributes.js?v=334';
 import {rollScoutCandidate,renderRecruitment,nextScoutCandidate,startAutomaticRecruitment,stopAutomaticRecruitment,RECRUIT_CLASSES} from './recruitment.js?v=306';
 import {canUseEquipment,requiredWeaponStrength,equipmentRequirementText,equipmentRequirementHtml,strengthShortfall,migrateStrengthRequirement,STRENGTH_REQUIREMENT_VERSION,isMagicWeapon,MAGIC_WEAPON_STYLES,preferredWeaponStyle} from './weapon-requirements.js?v=298';
 import {EQUIPMENT_HP_RULES,equipmentHpFormula,equipmentRegenOf,tickEquipmentRegen,SOLDIER_VAMPIRE,COMMANDER_VAMPIRE,soldierVampireHeal,commanderVampireHeal,LIGHTNING_RULES,lightningReady,pickLightningTargets,lightningDamage,equipmentEffectParts,equipmentEffectHtml} from './equipment-effects.js?v=306';
@@ -555,6 +555,7 @@ export const CANNON_RULES = Object.freeze({damageMult: 1, skillRadius: 74, skill
 export const SOLDIER_CLASSES = numberClassDefinitions({
   ...MAGIC_CLASSES,
   ...LIMITED_CLASSES,
+  ...LIMITED_ADVANCED_CLASSES,
   HEAVY: {
     id: 'HEAVY',
     classTier: 0,
@@ -9274,7 +9275,7 @@ export const IronSquadGame = {
     if (!s.isDown) s.hp = s.maxHp;
 
     sound.playHighScore();
-    this.showToast(`🔱⚡【天命覚醒！】${s.name} が【${advCls.name}】へ昇格！壁を突き抜けて進み、攻撃も壁の向こうへ届きます（消費: ${formatClassUpCostJa(cost)}）`);
+    this.showToast(`🔱⚡【天命覚醒！】${s.name} が【${classDetailName(advCls)}】へ昇格！壁を突き抜けて進み、攻撃も壁の向こうへ届きます（消費: ${formatClassUpCostJa(cost)}）`);
     this.saveGame({background:true});
     this.renderStrategyUI();
     this.updateStatsUI();
@@ -9451,7 +9452,7 @@ export const IronSquadGame = {
         <div class="soldier-detail-head">
           <div>
             <div style="font-size:13px;font-weight:bold;color:#fde68a;">${cls.icon} ${s.isNamed ? `${s.title || ''}${s.name}` : s.name}</div>
-            <div style="font-size:10px;color:#94a3b8;margin-top:2px;">Lv.${s.level || 1} ${cls.name} · ${genderLabel(s)} · <span style="color:${talent.color};">[${talentTag(s)}]</span> · ${role}</div>
+            <div style="font-size:10px;color:#94a3b8;margin-top:2px;">Lv.${s.level || 1} ${classDetailName(cls)} · ${genderLabel(s)} · <span style="color:${talent.color};">[${talentTag(s)}]</span> · ${role}</div>
           </div>
           <button type="button" class="mini-btn btn-close-soldier-detail" style="background:#334155;color:#e2e8f0;font-size:11px;">閉じる</button>
           ${tabBar}

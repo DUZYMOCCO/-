@@ -5,11 +5,11 @@ import {RANGED_ENEMIES} from './enemy-ranged.js?v=295';
 import {BRUTE_DRAW_SCALE} from './field-hosts.js?v=182';
 import {equipmentVisualProfile} from './equipment-tiers.js?v=231';
 import {drawBodyEquipment,drawEquipmentShield} from './equipment-art.js?v=231';
-import {MAGIC_AFFINITIES,ensureMana} from './magic-rules.js?v=296';
+import {MAGIC_AFFINITIES,ensureMana} from './magic-rules.js?v=334';
 import { drawMeleeWeapon, drawMeleeRangeCue, drawRangedWeapon, drawWeaponArms, meleePose, rangedPose, weaponAim } from './weapon-motion.js?v=306';
 import { defaultCommanderAppearance } from './commander-identity.js?v=295';
 import {travelerClothes,drawTravelerTunic} from './traveler-clothes.js?v=195';
-import { createSoldierAppearance, drawSoldierHead, isMedicAppearance, soldierAppearanceFamily, soldierPhysique } from './soldier-appearance.js?v=295';
+import { createSoldierAppearance, drawSoldierHead, isMedicAppearance, soldierAppearanceFamily, soldierPhysique } from './soldier-appearance.js?v=334';
 import { classRegaliaFor, drawClassMantle, drawClassRegalia, drawClassHeadpiece } from './class-regalia.js?v=185';
 
 // Keep the commander's established face, with short hair in both field and portrait (v4.2.24: player.appearance overrides it).

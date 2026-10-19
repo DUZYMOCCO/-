@@ -1,4 +1,5 @@
 import { displayKana } from '../../common/js/kana-mode.js?v=175';
+import {limitedLineOf} from './limited-lines.js?v=334';
 import {FIELD_NOTICE_SECONDS,IMPORTANT_NOTICE_SECONDS} from './battle-log.js?v=322';
 // 兵士の一言フキダシ（感情・戦況リアクション）システム
 // 操作を邪魔しない控えめなCanvas描画 ＆ 直近重複排除エンジン（Anti-Repetition）
@@ -598,7 +599,7 @@ function getClassCategory(soldier) {
   const cls = soldier.classId || soldier.type || soldier.combatClass || '';
   const species = soldier.species || '';
 
-  if (soldier.soldierClass === 'NINJA' || /ninja|忍者/i.test(role) || /ninja|忍者/i.test(cls)) return 'CLASS_NINJA';
+  if (limitedLineOf(soldier) === 'NINJA' || /ninja|忍者/i.test(role) || /ninja|忍者/i.test(cls)) return 'CLASS_NINJA';
   if (species || /beast|獣人/i.test(role) || /beast|獣人/i.test(cls)) return 'CLASS_BEAST';
   if (/heavy|knight|paladin|guardian|iron/i.test(role) || /重装|騎士|盾/i.test(cls) || role === 'HEAVY') return 'CLASS_HEAVY';
   if (/light|scout|rogue|assassin|blade/i.test(role) || /軽装|遊撃|剣士/i.test(cls) || role === 'LIGHT') return 'CLASS_LIGHT';

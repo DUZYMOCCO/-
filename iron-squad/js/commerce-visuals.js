@@ -1,4 +1,4 @@
-import {createSoldierAppearance,drawSoldierHead} from './soldier-appearance.js?v=295';
+import {createSoldierAppearance,drawSoldierHead} from './soldier-appearance.js?v=334';
 import {drawFieldSoldier} from './visuals.js?v=324';
 
 const looks=new WeakMap();

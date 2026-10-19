@@ -1,5 +1,5 @@
 import {catalogTier,catalogPrice,ensureMerchantCatalog,MERCHANT_MAX_TIER,MERCHANT_CATALOG_VERSION} from './merchant-catalog.js?v=306';
-import {applyAttributeStats} from './unit-attributes.js?v=298';
+import {applyAttributeStats} from './unit-attributes.js?v=334';
 /**
  * IRON SQUAD: 宿場・本陣・各地のキャンプの行商人
  * - 製造技術Tier+1（最大T24）の厳選品。武器2枠/防具4枠を毎ウェーブ抽選
@@ -8,7 +8,7 @@ import {applyAttributeStats} from './unit-attributes.js?v=298';
  */
 import { saleValue, distanceScaling, weaponCombatProfile } from './equipment-rules.js?v=306';
 import { drawFieldSoldier } from './visuals.js?v=324';
-import { createSoldierAppearance, drawSoldierHead } from './soldier-appearance.js?v=295';
+import { createSoldierAppearance, drawSoldierHead } from './soldier-appearance.js?v=334';
 import { attackAnimationRate } from './weapon-motion.js?v=306';
 import { markSoldierDown, rebuildMerchantCasualties, RESCUE_TIMEOUT, departFromRest } from './casualty-rules.js?v=322';
 import {emptyMastery,normalizeMastery,hitGrowthHpBonus,hitGrowthDefBonus,migrateHitGrowth,applyHitGrowth,masteryAtkMult,masteryReloadMult} from './growth-rules.js?v=329';

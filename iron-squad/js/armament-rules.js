@@ -2,7 +2,7 @@ import {weaponCombatProfile,meleeSweetSpotFor,soldierAttackCooldown} from './equ
 import {masteryReloadMult,applyMasteryToCombatProfile,isHeavyWeaponStyle} from './growth-rules.js?v=329';
 import {MAX_EQUIPMENT_TIER,GENERATION_COUNT,tierNumber,powerRank,tierDescription} from './equipment-tiers.js?v=231';
 import {canUseEquipment} from './weapon-requirements.js?v=298';
-import {prefersCasterMelee} from './unit-attributes.js?v=298';
+import {prefersCasterMelee} from './unit-attributes.js?v=334';
 
 export const ARMAMENT_POLICIES={
   balanced:{name:'均衡',research:.25,development:.25,budget:1500,perLevel:250,maintenanceShare:.3},

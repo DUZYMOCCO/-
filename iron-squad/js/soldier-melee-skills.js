@@ -1,4 +1,5 @@
-import {attributeFamily,soldierCombatTempo} from './unit-attributes.js?v=298';
+import {attributeFamily,soldierCombatTempo} from './unit-attributes.js?v=334';
+import {limitedLineOf} from './limited-lines.js?v=334';
 import {canUseEquipment} from './weapon-requirements.js?v=298';
 import {masteryReloadMult} from './growth-rules.js?v=329';
 import {attackBlocked} from './gate-rules.js?v=322';
@@ -26,11 +27,11 @@ const context=game=>game.currentDungeon?.id||'field';
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 export const soldierMeleeReload=(unit,rule=soldierMeleeSkill(unit))=>rule?rule.cooldown*masteryReloadMult(unit.weaponMastery,weapon(unit)?.weaponStyle)*soldierCombatTempo(unit)/(1+Math.max(0,unit.deathlineAtkSpeed||0)/100):0;
 export function soldierMeleeSkill(unit){
-  if(!['HEAVY','LIGHT'].includes(attributeFamily(unit))||unit.soldierClass==='NINJA')return null;
+  if(!['HEAVY','LIGHT'].includes(attributeFamily(unit))||limitedLineOf(unit)==='NINJA')return null;
   return SOLDIER_MELEE_SKILLS[weapon(unit)?.weaponStyle]||null;
 }
 export function soldierMeleeSkill2(unit){
-  if(!unit||unit.isPlayer||unit.isHero||unit.heroPartyId||unit.isCommander||unit.soldierClass==='NINJA'||unit.combatClass==='NINJA')return null;
+  if(!unit||unit.isPlayer||unit.isHero||unit.heroPartyId||unit.isCommander||limitedLineOf(unit)==='NINJA'||unit.combatClass==='NINJA')return null;
   if(!['HEAVY','LIGHT'].includes(attributeFamily(unit)))return null;
   return SOLDIER_MELEE_SKILLS2[weapon(unit)?.weaponStyle]||null;
 }

@@ -2,6 +2,7 @@ import {levelGrowthSteps} from './level-growth.js?v=274';
 import {heroGrowth} from './hero-rules.js?v=302';
 import {syncEquipmentBarrier} from './defense-equipment.js?v=298';
 import {isLateBloomer} from './talent-labels.js?v=291';
+import {LIMITED_LINE_CLASSES} from './limited-lines.js?v=334';
 /** 個体の素質と、実際の行動から育つ能力。装備・職業・Lvの再計算では履歴を変更しない。 */
 export const ATTRIBUTE_KEYS = ['strength','magic','magicDefense','quickness','evasion'];
 export const ATTRIBUTE_LABELS = {strength:'筋力',magic:'魔力',magicDefense:'魔法防御',quickness:'速さ',evasion:'回避'};
@@ -14,7 +15,7 @@ export const ATTRIBUTE_BASES = {
   MAGE:{strength:10,magic:35,magicDefense:12,quickness:16,evasion:2},
   COMMANDER:{strength:50,magic:18,magicDefense:8,quickness:20,evasion:2}
 };
-const FAMILIES={PALADIN:'HEAVY',TEMPLAR:'HEAVY',IMMORTAL_AEGIS:'HEAVY',BLADEMASTER:'LIGHT',SWORD_EMPEROR:'LIGHT',SWORD_SAINT:'LIGHT',VOID_EDGE:'LIGHT',SNIPER:'ARCHER',STORM_BOW:'ARCHER',STORM_ARCHER:'ARCHER',STAR_HUNTER:'ARCHER',HIGH_PRIEST:'MEDIC',SAINT:'MEDIC',ARCHANGEL:'MEDIC',ARCHMAGE:'MAGE',ELEMENTAL_SAGE:'MAGE',ARCANE_SOVEREIGN:'MAGE'};
+const FAMILIES={...Object.fromEntries(Object.entries(LIMITED_LINE_CLASSES).map(([id,c])=>[id,c.baseClassId])),PALADIN:'HEAVY',TEMPLAR:'HEAVY',IMMORTAL_AEGIS:'HEAVY',BLADEMASTER:'LIGHT',SWORD_EMPEROR:'LIGHT',SWORD_SAINT:'LIGHT',VOID_EDGE:'LIGHT',SNIPER:'ARCHER',STORM_BOW:'ARCHER',STORM_ARCHER:'ARCHER',STAR_HUNTER:'ARCHER',HIGH_PRIEST:'MEDIC',SAINT:'MEDIC',ARCHANGEL:'MEDIC',ARCHMAGE:'MAGE',ELEMENTAL_SAGE:'MAGE',ARCANE_SOVEREIGN:'MAGE'};
 const CLASS_STRENGTH={PALADIN:20,TEMPLAR:35,IMMORTAL_AEGIS:60};
 export const TALENT_GROWTH={INFERIOR:.85,AVERAGE:1,TALENTED:1.16,ELITE:1.35,GENIUS:2.4};
 /** 大器晩成は死線経験＋Lv31から開花。Lv40以降は1.55で固定し、保存済み素質/鍛錬は書き換えない。 */

@@ -1,5 +1,5 @@
 import {heroGrowth} from './hero-rules.js?v=302';
-import {attributeFamily} from './unit-attributes.js?v=298';
+import {attributeFamily} from './unit-attributes.js?v=334';
 /** HP成長（被弾）と武器マスタリーの計算ヘルパー。毎フレーム割当なし。 */
 
 export const MELEE_STYLES = ['sword', 'spear', 'hammer', 'axe', 'staff', 'wand'];

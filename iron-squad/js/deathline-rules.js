@@ -1,4 +1,4 @@
-import {attributeFamily} from './unit-attributes.js?v=298';
+import {attributeFamily} from './unit-attributes.js?v=334';
 // 死線覚醒スキルの抽選と動的効果。昇格職も元の兵種で判定する。
 export const LOW_HP_RATIO = 0.35, LOW_HP_SPEED_MULT = 1.3, LOW_HP_DAMAGE_MULT = 0.5;
 

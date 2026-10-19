@@ -5,7 +5,7 @@ import {MAHJONG_MODES,MAHJONG_LEVELS,MAHJONG_PAYOUT,newMahjong,mahjongStep,human
 import {mahjongAi} from './mahjong-ai.js?v=322';
 import {tileSvg,backSvg} from './mahjong-tiles.js?v=322';
 import {MAX_MAHJONG_PAYOUT} from './casino-rules.js?v=322';
-import {gameText} from './game-text.js?v=323';
+import {gameText} from './game-text.js?v=334';
 import {sound} from '../../common/js/audio.js?v=151';
 let host=null;
 /** casino.js hands over its session helpers (state, refresh, money, ...) so this module does not import it back. */

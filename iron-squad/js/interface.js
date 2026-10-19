@@ -5,7 +5,7 @@ import {isEnlisted} from './career-rules.js?v=291';
 import {configureAudioInterface} from './audio-interface.js?v=329';
 import {renderBattleLog} from './battle-log.js?v=322';
 import {renderTroopRankings} from './troop-rankings.js?v=333';
-import {genderLabel} from './soldier-names.js?v=210';
+import {genderLabel} from './soldier-names.js?v=334';
 import {talentTag as unitTalentTag} from './talent-labels.js?v=291';
 /** Presentation only: keep game actions on their original DOM nodes. */
 const element = (tag, className, text) => {

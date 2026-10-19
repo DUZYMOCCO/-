@@ -5,15 +5,9 @@ import {guardFormationTarget,guardFormationSpeedMult} from './guard-formation.js
 import {WORLD_SIZE,fieldTerrainAt} from './world.js?v=289';
 import {inCurrentInstance} from './instance-rules.js?v=322';
 import {isSoldierOnExpedition} from './expedition-rules.js?v=256';
-import {generateSoldierName} from './soldier-names.js?v=210';
-export const LIMITED_CLASSES=Object.freeze({
- NINJA:{id:'NINJA',name:'忍者',icon:'🥷',baseClassId:'LIGHT',combatClass:'LIGHT',color:'#8e97ac',range:250,speed:136,atkCooldown:.75,bonusHp:5,bonusAtk:12,desc:'刀と手裏剣を間合いに応じて使い分ける。'},
- BEAST_WOLF:{id:'BEAST_WOLF',name:'狼獣人',icon:'🐺',species:'wolf',baseClassId:'LIGHT',combatClass:'LIGHT',color:'#9cabb0',range:65,speed:122,atkCooldown:.85,bonusHp:15,bonusAtk:15,desc:'近接戦と追跡に長けた獣人。'},
- BEAST_BEAR:{id:'BEAST_BEAR',name:'熊獣人',icon:'🐻',species:'bear',baseClassId:'HEAVY',combatClass:'HEAVY',color:'#a88e70',range:65,speed:88,atkCooldown:1.2,bonusHp:65,bonusAtk:15,bonusDef:20,desc:'盾で仲間を守る頑強な獣人。'},
- BEAST_CAT:{id:'BEAST_CAT',name:'猫獣人',icon:'🐱',species:'cat',baseClassId:'LIGHT',combatClass:'LIGHT',color:'#baa088',range:65,speed:145,atkCooldown:.6,bonusHp:-5,bonusAtk:10,desc:'速さと身のこなしに長けた獣人。'},
- BEAST_FOX:{id:'BEAST_FOX',name:'狐獣人',icon:'🦊',species:'fox',baseClassId:'MAGE',combatClass:'MAGE',color:'#bb926b',range:275,speed:100,atkCooldown:2.1,bonusHp:-20,bonusAtk:22,desc:'魔法を扱う狐の一族。'},
- BEAST_BIRD:{id:'BEAST_BIRD',name:'鳥獣人',icon:'🦅',species:'bird',baseClassId:'ARCHER',combatClass:'ARCHER',color:'#9baba2',range:260,speed:125,atkCooldown:1.1,bonusHp:5,bonusAtk:14,desc:'弓を扱う鳥の一族。'}
-});
+import {generateSoldierName} from './soldier-names.js?v=334';
+import {LIMITED_CLASSES,limitedLineOf,limitedClassOf} from './limited-lines.js?v=334';
+export {LIMITED_CLASSES,LIMITED_ADVANCED_CLASSES,limitedLineOf} from './limited-lines.js?v=334';
 export const CAPTIVE_SPAWN_CHANCE=.1;
 export const CAPTIVE_CLASSES=Object.freeze(Object.keys(LIMITED_CLASSES).filter(id=>id!=='NINJA'));
 const LIMITED_NAMES={NINJA:['影丸','朔','蓮','黒羽','千鳥','銀次'],wolf:['灰尾','ロウ','銀牙','遠吠'],bear:['ゴウ','岩掌','森助','厚丸'],cat:['ミケ','鈴音','クロ','日向'],fox:['琥珀','灯','コン','白露'],bird:['羽音','鷹丸','青羽','ツバサ']};
@@ -126,13 +120,14 @@ export function updateLimitedAllies(game) {
  button.classList.toggle('hidden',!e);if(e){button.textContent=e.kind==='cage'?`ケージを開けて${e.unit.name}を救助`:`${e.unit.name}に話しかける`;button.onclick=()=>joinLimitedEncounter(game,e.id);}
 }
 export function updateNinja(game,s,dt,platoon) {
- if(s.soldierClass!=='NINJA')return false;
+ if(limitedLineOf(s)!=='NINJA')return false;
+ const cls=limitedClassOf(s),throwRange=cls.range||250;
  const free=s.isPersonalGuard||game.currentDungeon||isSoldierOnExpedition(platoon,s);
  guardRegrouping(game,s);
  const target=guardTarget(game,s,free?game.getNearestMonster(s.x,s.y):game.getNearestFromList(s.x,s.y,game._baseThreatList));
  const d=target?Math.hypot(target.x-s.x,target.y-s.y):Infinity;
  const anchor=s.isPersonalGuard?game.player:platoon;
- const engaged=alive(target)&&d<360;
+ const engaged=alive(target)&&d<throwRange+110;
  const destination=engaged?target:s.isPersonalGuard?guardFormationTarget(game,s):{x:anchor.x+35,y:anchor.y+25};
  const dx=destination.x-s.x,dy=destination.y-s.y,dist=Math.hypot(dx,dy)||1;
  s.atkCooldown=Math.max(0,(s.atkCooldown||0)-dt);s.atkAnim=Math.max(0,(s.atkAnim||0)-dt*4);
@@ -140,9 +135,9 @@ export function updateNinja(game,s,dt,platoon) {
  const mult=s.isPersonalGuard?guardFormationSpeedMult(game,s,destination,engaged):guardSpeedMult(s);
  if(dist>Math.max(35,reach*.8)){noteFollowerIntent(game,s,destination);const step=Math.min(dist,s.speed*mult*dt);s.x+=dx/dist*step;s.y+=dy/dist*step;s.vx=dx/dist;s.vy=dy/dist;}else{s.vx=s.vy=0;}
  s.facingAngle=Math.atan2(dy,dx);
- if(alive(target)&&s.atkCooldown<=0&&d<=250){
-  if(d<=reach+10){if(profile.ranged)game.performAttack(s,target,false,Math.round(s.atk),false,'physical');else game.performMeleeSweep(s,target,false,Math.round(s.atk),profile,reach);s.atkCooldown=soldierAttackCooldown(s,.75/(s.atkSpeed||1));}
-  else{game.projectiles.push({type:'NINJA_SHURIKEN',attacker:s,target,x:s.x,y:s.y,damage:Math.round(s.atk*.7),speed:390,life:1.5});s.atkCooldown=soldierAttackCooldown(s,1.7/(s.atkSpeed||1));}
+ if(alive(target)&&s.atkCooldown<=0&&d<=throwRange){
+  if(d<=reach+10){if(profile.ranged)game.performAttack(s,target,false,Math.round(s.atk),false,'physical');else game.performMeleeSweep(s,target,false,Math.round(s.atk),profile,reach);s.atkCooldown=soldierAttackCooldown(s,(cls.atkCooldown||.75)/(s.atkSpeed||1));}
+  else{game.projectiles.push({type:'NINJA_SHURIKEN',attacker:s,target,x:s.x,y:s.y,damage:Math.round(s.atk*(cls.shurikenDamage||.7)),speed:390,life:1.5});s.atkCooldown=soldierAttackCooldown(s,(cls.shurikenCooldown||1.7)/(s.atkSpeed||1));}
   s.atkAnim=1;
  }
  return true;

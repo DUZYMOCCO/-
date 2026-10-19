@@ -3,13 +3,14 @@ import {guardFormationTarget,guardFormationSpeedMult} from './guard-formation.js
 import {updateEquipmentBarrier} from './defense-equipment.js?v=298';
 import {sound} from '../../common/js/audio.js?v=151';
 import {playMagicSound} from './weapon-sounds.js?v=294';
+import {limitedLineOf,limitedTierOf} from './limited-lines.js?v=334';
 import {WORLD_SIZE} from './world.js?v=289';
 import {inCurrentInstance} from './instance-rules.js?v=322';
 import {recordCombat} from './phase-rules.js?v=218';
 import {isSoldierOnExpedition} from './expedition-rules.js?v=256';
-import {practiceAttribute,prefersCasterMelee,isMuscleCaster,attributeValues,canChannelWeaponMagic} from './unit-attributes.js?v=298';
+import {practiceAttribute,prefersCasterMelee,isMuscleCaster,attributeValues,canChannelWeaponMagic} from './unit-attributes.js?v=334';
 import {isMagicWeapon} from './weapon-requirements.js?v=298';
-import {numberClassDefinitions} from './class-up-rules.js?v=185';
+import {numberClassDefinitions} from './class-up-rules.js?v=334';
 
 export const MAGE_IDS=['MAGE','ARCHMAGE','ELEMENTAL_SAGE','ARCANE_SOVEREIGN'];
 const MEDIC_IDS=['MEDIC','HIGH_PRIEST','SAINT','ARCHANGEL'];
@@ -37,7 +38,7 @@ export const MAGIC_CLASSES=numberClassDefinitions({
   ELEMENTAL_SAGE:{id:'ELEMENTAL_SAGE',classTier:2,baseClassId:'MAGE',isAdvanced:true,isMaster:true,name:'元素賢者',icon:'🔮',color:'#9b8aba',range:320,speed:102,atkCooldown:1.8,bonusHp:50,bonusAtk:65,atkMultBonus:.6,advancedClassId:'ARCANE_SOVEREIGN',tag:'元素賢者',desc:'得意属性を磨いた極職。魔力消耗と脆さは残る'},
   ARCANE_SOVEREIGN:{id:'ARCANE_SOVEREIGN',classTier:3,baseClassId:'MAGE',isAdvanced:true,isLegendary:true,name:'秘術王',icon:'🔮',color:'#b5a6d0',range:350,speed:108,atkCooldown:1.6,bonusHp:90,bonusAtk:100,atkMultBonus:.9,tag:'秘術王',desc:'広範囲を制圧する伝説の術者。MP切れでは無防備'}
 });
-export function magicTier(u) {return Math.max(0,isMage(u)?MAGE_IDS.indexOf(u.combatClass||u.soldierClass):MEDIC_IDS.indexOf(u?.soldierClass));}
+export function magicTier(u) {return Math.max(0,isMage(u)&&limitedLineOf(u)?limitedTierOf(u):isMage(u)?MAGE_IDS.indexOf(u.combatClass||u.soldierClass):MEDIC_IDS.indexOf(u?.soldierClass));}
 export function manaCapacity(u) {return isPlayerCaster(u)?PLAYER_MAGIC_RULES.mana:isMagicUser(u)?100+magicTier(u)*40:canChannelWeaponMagic(u)?60:0;}
 export const weaponMagicDamage=u=>Math.max(1,Math.round((u.magicAttack||1)*.7));
 export function ensureMana(u) {

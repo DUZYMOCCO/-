@@ -1,5 +1,15 @@
 # 現在の作業と引き継ぎ（2026-10-16）
 
+## 2026-10-20 v7.2.0 / cache v334 忍者・獣人の上位職（土台）
+
+- 新モジュール `js/limited-lines.js`（依存なしの純データ）: 忍者・狼・熊・猫・狐・鳥の基本職と、クラス1〜3の18職（`LIMITED_ADVANCED_CLASSES`）。各職に `lineId`（系列）、`baseClassId`/`combatClass`（系統）、`species`、`subName`（専用名）、上位職フラグ。`limitedLineOf`／`limitedTierOf`／`limitedFamilyOf`／`limitedClassOf`。`LIMITED_CLASSES` は limited-allies.js から再エクスポート（従来どおり6種）。
+- 表示名: 名簿など狭い所は「忍者 クラス1」（`numberClassDefinitions` が `lineId` から系列名を引く）。兵士詳細とクラスアップのお知らせは `classDetailName` で「忍者 クラス1 · 中忍」。
+- 完全一致の判定を系列判定に: `updateNinja`、近接スキル1・2の忍者除外、忍者の覆面（見た目）、体型の系統（`soldierAppearanceFamily`）、台詞の忍者カテゴリ。名前生成も `NINJA_*`／`BEAST_*_*` を扱う。`unit-attributes` の系統表にも18職を追加。
+- 狐の魔力: `magicTier` が系列の段階を使う（人間の魔法使いと同じく1段階ごとに上限+40）。
+- 手裏剣: 距離・近接の間隔・手裏剣の間隔・威力を職の数値から読む（`range`・`atkCooldown`・`shurikenCooldown`・`shurikenDamage`）。基本の忍者は従来値のまま。
+- 数値は人間の同じ系統・同じ段階とおおむね同じ総合力（配分は系列の個性）。コストは従来の段階表（1／3／5＋神話宝玉1、有望株は宝珠×0.7）。壁抜けはクラス1から。
+- テスト: `limited-classup-v720.test.mjs`（旧セーブの6種を読み込み→3段階昇格→表示名・コスト・系統・見た目・魔力・手裏剣・セーブ往復・名簿の番号表示）。
+
 ## 2026-10-19 v7.1.15 / cache v333 メニュー再編A案(6) メタ文の整理・作戦期への統一・隠しタブ削除
 
 - 用語を「作戦期」に統一（画面に出る ウェーブ／ラウンド を置換）: 次の作戦期開始まで、直近N作戦期、あとN作戦期、今期の目玉、1作戦期N回、侵攻の 第N期 など。技名（ホーリーウェーブ）と髪型（ゆるいウェーブ）はそのまま。

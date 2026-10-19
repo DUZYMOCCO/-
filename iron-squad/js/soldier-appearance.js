@@ -1,7 +1,8 @@
 import {equipmentVisualProfile} from './equipment-tiers.js?v=231';
 import {travelerClothes} from './traveler-clothes.js?v=195';
-import {isMuscleCaster} from './unit-attributes.js?v=298';
-import {genderOfSoldier} from './soldier-names.js?v=210';
+import {isMuscleCaster} from './unit-attributes.js?v=334';
+import {limitedLineOf,limitedFamilyOf} from './limited-lines.js?v=334';
+import {genderOfSoldier} from './soldier-names.js?v=334';
 import {classRegaliaFor,drawClassPortraitDress,drawClassHeadpiece} from './class-regalia.js?v=185';
 import {createAppearanceFeatures,normalizeAppearanceFeatures,FACE_OUTLINES,EYE_SHAPES,NOSE_TYPES,JAW_TYPES,ACCESSORY_LABELS,drawVariantFace,drawVariantEyes,drawVariantNose,drawPersonalAccessory} from './appearance-features.js?v=193';
 /** Stable personal looks, independent of talent, battle RNG and equipment. */
@@ -36,8 +37,7 @@ export function isFeminineLook(soldier,a=soldier?.appearance) {
   return genderOfSoldier(soldier)==='female';
 }
 const MAGES=new Set(['MAGE','ARCHMAGE','ELEMENTAL_SAGE','ARCANE_SOVEREIGN']);
-const LIMITED_FAMILIES={NINJA:'LIGHT',BEAST_WOLF:'LIGHT',BEAST_CAT:'LIGHT',BEAST_BEAR:'HEAVY',BEAST_FOX:'MAGE',BEAST_BIRD:'ARCHER'};
-export const soldierAppearanceFamily = key => LIMITED_FAMILIES[key]||(MAGES.has(key)?'MAGE':MEDICS.has(key)?'MEDIC':ARCHERS.has(key)?'ARCHER':LIGHTS.has(key)?'LIGHT':'HEAVY');
+export const soldierAppearanceFamily = key => limitedFamilyOf(key)||(MAGES.has(key)?'MAGE':MEDICS.has(key)?'MEDIC':ARCHERS.has(key)?'ARCHER':LIGHTS.has(key)?'LIGHT':'HEAVY');
 const NORMAL_PHYSIQUE=Object.freeze({bodyWidth:1,armWidth:1,shadowWidth:1,portraitWidth:1});
 const MUSCLE_PHYSIQUE=Object.freeze({bodyWidth:1.45,armWidth:1.55,shadowWidth:1.18,portraitWidth:1.28});
 export const soldierPhysique = soldier => isMuscleCaster(soldier)?MUSCLE_PHYSIQUE:NORMAL_PHYSIQUE;
@@ -238,7 +238,7 @@ export function drawSoldierHead(c,soldier,options={}) {
   const {x=0,y=0,scale=1,small=false,silhouette=false,helmet=null,helmetTier=1,mitre=false,cap=false}=options;
   if(!small||silhouette||typeof c.canvas?.width!=='number'||(typeof document==='undefined'||typeof document.createElement!=='function'))return paintSoldierHead(c,soldier,options);
   const a=ensureSoldierAppearance(soldier);
-  const key=JSON.stringify([a,isFeminineLook(soldier,a),soldier.species,soldier.soldierClass==='NINJA',helmet,helmetTier,mitre,cap]);
+  const key=JSON.stringify([a,isFeminineLook(soldier,a),soldier.species,limitedLineOf(soldier)==='NINJA',helmet,helmetTier,mitre,cap]);
   let art=FIELD_HEADS.get(key);
   try{if(art?.getContext?.('2d')?.isContextLost?.()){art.width=art.height=1;FIELD_HEADS.delete(key);art=null;}}catch{art=null;}
   if(!art){
@@ -255,11 +255,11 @@ export function drawSoldierHead(c,soldier,options={}) {
 /** Head centered on (x,y); far silhouettes remain direct, cheap primitives. */
 function paintSoldierHead(c,soldier,{x=0,y=0,scale=1,small=false,silhouette=false,helmet=null,helmetTier=1,mitre=false,cap=false}={}) {
   const a=ensureSoldierAppearance(soldier),medic=isFeminineLook(soldier,a);
-  if(soldier.species||soldier.soldierClass==='NINJA'){
+  if(soldier.species||limitedLineOf(soldier)==='NINJA'){
     c.save();c.translate(x,y);c.scale(scale,scale);
     const fur={wolf:'#899a9d',bear:'#8e7255',cat:'#b79b82',fox:'#c78d55',bird:'#99a99d'}[soldier.species]||'#333b4c';
     ellipse(c,0,0,5.5,6,fur);
-    if(soldier.soldierClass==='NINJA'){c.fillStyle='#222b38';c.fillRect(-5.4,1,10.8,4.2);c.fillRect(-5.4,-5,10.8,3);stroke(c,[[4,-2],[9,-4],[8,0]],'#4c596e',1.4);}
+    if(limitedLineOf(soldier)==='NINJA'){c.fillStyle='#222b38';c.fillRect(-5.4,1,10.8,4.2);c.fillRect(-5.4,-5,10.8,3);stroke(c,[[4,-2],[9,-4],[8,0]],'#4c596e',1.4);}
     else if(soldier.species==='bear'){ellipse(c,-4.5,-5,2.3,2.5,fur);ellipse(c,4.5,-5,2.3,2.5,fur);ellipse(c,0,3,3.2,2.2,'#c0a58b');}
     else if(soldier.species==='bird'){polygon(c,[[-1,1],[3,2],[0,4],[-2,2]],'#c2aa6c');polygon(c,[[-4,-4],[-2,-8],[1,-5],[3,-8],[5,-3]],fur);}
     else{polygon(c,[[-5,-1],[-6,-9],[-1,-5],[1,-5],[6,-9],[5,-1]],fur);ellipse(c,0,3,3.4,2.4,'#d9c7ac');}

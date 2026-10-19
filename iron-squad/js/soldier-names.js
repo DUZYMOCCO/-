@@ -142,12 +142,12 @@ export function generateSoldierName(options = {}) {
   const usedSet = usedNames instanceof Set ? usedNames : (Array.isArray(usedNames) ? new Set(usedNames) : null);
 
   // ニンジャ：ファミリーネームなしの和名系統（ハンゾー、コタロウなど）
-  if (soldierClass === 'NINJA' || soldierClass === 'ninja') {
+  if (/^NINJA(_|$)/.test(soldierClass) || soldierClass === 'ninja') {
     return pickUnique(NINJA_NAMES_BY_GENDER[gender], seed, usedSet);
   }
 
   // 獣人：ファミリーネームなし（種族ごとの単一ネーム）
-  const beastSpecies = species || (soldierClass.startsWith('BEAST_') ? soldierClass.replace('BEAST_', '').toLowerCase() : null);
+  const beastSpecies = species || (soldierClass.startsWith('BEAST_') ? soldierClass.split('_')[1].toLowerCase() : null);
   if (beastSpecies) {
     const pool = (BEAST_NAMES_BY_GENDER[beastSpecies] || BEAST_NAMES_BY_GENDER.common)[gender];
     return pickUnique(pool, seed, usedSet);

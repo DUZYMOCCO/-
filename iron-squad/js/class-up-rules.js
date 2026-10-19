@@ -4,6 +4,8 @@
  * Costs escalate; top tier needs rare 神話宝玉 (awakeningGems).
  */
 
+import {LIMITED_LINE_NAMES} from './limited-lines.js?v=334';
+
 /** @typedef {{ orbs: number, gems: number }} ClassUpCost */
 
 export const CLASS_UP_COSTS = Object.freeze({
@@ -19,16 +21,19 @@ export const CLASS_TIER_LABELS = Object.freeze({
   3: 'クラス3'
 });
 
-export const CLASS_FAMILY_NAMES=Object.freeze({HEAVY:'重装歩兵',LIGHT:'軽装遊撃兵',ARCHER:'弓兵',MEDIC:'衛生術師',MAGE:'魔法使い',COMMANDER:'隊長'});
+export const CLASS_FAMILY_NAMES=Object.freeze({HEAVY:'重装歩兵',LIGHT:'軽装遊撃兵',ARCHER:'弓兵',MEDIC:'衛生術師',MAGE:'魔法使い',COMMANDER:'隊長',...LIMITED_LINE_NAMES});
 export const classTierLabel=tier=>tier>0?`クラス${Math.floor(tier)}`:'基本職';
 export const numberedClassName=(family,tier)=>`${CLASS_FAMILY_NAMES[family]||family}${tier>0?` ${classTierLabel(tier)}`:''}`;
 /** Stable legacy IDs remain save/combat keys. All visible promotions use the family and number. */
 export function numberClassDefinitions(definitions) {
   return Object.fromEntries(Object.entries(definitions).map(([id,cls])=>{
     const tier=classTierOf(cls);
-    return [id,tier>0?{...cls,name:numberedClassName(cls.baseClassId,tier),tag:classTierLabel(tier)}:cls];
+    return [id,tier>0?{...cls,name:numberedClassName(cls.lineId||cls.baseClassId,tier),tag:classTierLabel(tier)}:cls];
   }));
 }
+
+/** v7.2.0 詳細とお知らせ用。忍者・獣人の上位職は専用名を添える（名簿など狭い所は cls.name だけ）。 */
+export const classDetailName=cls=>cls?.subName&&classTierOf(cls)>0?`${cls.name} · ${cls.subName}`:cls?.name||'';
 
 export function classTierOf(cls) {
   if (!cls) return 0;

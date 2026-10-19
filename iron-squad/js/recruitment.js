@@ -1,11 +1,11 @@
 import {calcScoutCost} from './economy-rules.js?v=333';
 import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=182';
-import {drawSoldierPortrait} from './soldier-appearance.js?v=295';
-import {ATTRIBUTE_KEYS,ATTRIBUTE_LABELS,attributeSpecialties,attributeCarryCapacity,aptitudeGrade,standoutAptitude} from './unit-attributes.js?v=298';
+import {drawSoldierPortrait} from './soldier-appearance.js?v=334';
+import {ATTRIBUTE_KEYS,ATTRIBUTE_LABELS,attributeSpecialties,attributeCarryCapacity,aptitudeGrade,standoutAptitude} from './unit-attributes.js?v=334';
 import {weaponRequirementText} from './weapon-requirements.js?v=298';
 import {equipmentName} from './equipment-rules.js?v=306';
 import {releaseCanvas} from './canvas-surface.js?v=217';
-import {genderLabel} from './soldier-names.js?v=210';
+import {genderLabel} from './soldier-names.js?v=334';
 import {talentTag} from './talent-labels.js?v=291';
 
 export const RECRUIT_CLASSES=['HEAVY','LIGHT','ARCHER','MEDIC','MAGE'];

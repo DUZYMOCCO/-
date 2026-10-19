@@ -1,6 +1,6 @@
 // 個人記録の人物プロフィール（性格・趣味・家族構成・仲の良い同僚）。
 // 兵士の id だけから決定的に作る純粋関数。セーブには何も足さない。
-import {genderOfSoldier} from './soldier-names.js?v=210';
+import {genderOfSoldier} from './soldier-names.js?v=334';
 
 /** FNV-1a (32bit)。文字列 → 符号なし整数 */
 export function hashString(text) {
