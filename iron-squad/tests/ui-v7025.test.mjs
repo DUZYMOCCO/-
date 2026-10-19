@@ -48,7 +48,7 @@ assert.match(rules, /position: fixed; inset: 0; z-index: 1400/); assert.match(ru
 const classes = SOLDIER_CLASSES, text = () => host().textContent;
 renderHeroJourney(game, classes, TALENTS);
 assert.ok(!text().includes('経験値・実戦練習は20倍'), 'the x20 sentence is gone'); assert.ok(!text().includes('各期2%'), 'the outdated 2% text is gone');
-assert.match(text(), /天啓は第10期から5期ごと（魔王討伐まで）/); assert.match(text(), /魔王城へ進軍中/);
+assert.doesNotMatch(text(), /天啓は第10期から5期ごと/); assert.doesNotMatch(text(), /前の勇者パーティが生きている間は見送り/); assert.doesNotMatch(text(), /魔王城で4期進展が止まると撤退します/); assert.match(text(), /魔王城へ進軍中/);
 const p = game.heroJourney.party, d = DUNGEON_DEFS.find(x => x.id === 'dungeon_demon_castle');
 p.x = d.entrance.x; p.y = d.entrance.y; p.destination = { ...d.entrance }; p.route = [{ ...d.entrance }]; p.routeIndex = 0; p.members.forEach(u => { u.x = p.x; u.y = p.y; });
 updateHeroParty(game, .1, SOLDIER_CLASSES); const scn = ensureHeroCastle(game, d); p.route = [];

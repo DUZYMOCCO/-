@@ -3,7 +3,7 @@ import {addBattleReport} from './battle-report.js?v=302';
 import {attackCooldown} from './equipment-rules.js?v=306';
 import {migrateCampaignEnemy} from './campaign-scaling.js?v=241';
 import {HERO_RULES,heroRevelationPhase,nextHeroRevelationPhase,heroPartyActive,heroMembers,heroSharesSpace,visibleHeroMembers} from './hero-rules.js?v=302';
-import {advanceHeroRoute,heroSegmentOpen,heroRouteCurrent} from './hero-navigation.js?v=316';
+import {advanceHeroRoute,heroSegmentOpen,heroRouteCurrent} from './hero-navigation.js?v=317';
 import {WORLD_SIZE,settleUnit,fieldRockExit} from './world.js?v=289';
 import {DUNGEON_DEFS,dungeonBlocks} from './dungeon.js?v=306';
 import {DEMON_KING_RULES,recordKingProfile,shapeDemonKing,migrateDemonKing} from './demon-king-rules.js?v=304';
@@ -14,17 +14,17 @@ import {persistentUnit} from './render-support.js';
 import {grantPersonalExp} from './experience-rules.js';
 import {formatDistance} from './distance-format.js';
 import {practiceAttribute} from './unit-attributes.js?v=298';
-import {isMedic,treatWounded,updateWounded,normalizeRevivalSkill,revivalSkillCooldownLeft} from './casualty-rules.js?v=316';
+import {isMedic,treatWounded,updateWounded,normalizeRevivalSkill,revivalSkillCooldownLeft} from './casualty-rules.js?v=317';
 import {healByMedic,healAmountFor} from './phase-rules.js?v=218';
 import {ensureMana,regenerateMana,spendMana,isMage} from './magic-rules.js?v=296';
-import {takeRangedShot,supplyLocation,ammoCapacity} from './supply-rules.js?v=316';
+import {takeRangedShot,supplyLocation,ammoCapacity} from './supply-rules.js?v=317';
 import {distanceScaling} from './equipment-rules.js?v=306';
 import {strongEnemyReward} from './combat-rewards.js?v=299';
 import {RANGED_ENEMIES} from './enemy-ranged.js?v=295';
 import {startHeroJournal,archiveHeroJournal,appendHeroDiary,recordHeroEquipmentGrant,recordHeroEvent,announceHero} from './hero-journal.js?v=306';
 import {showHeroRevelationScene} from './hero-revelation-scene.js?v=302';
 import {grantHeroEquipment} from './hero-equipment.js?v=295';
-import {spectateAvailability,startSpectate,endSpectate,queueSpectate,cancelSpectateQueue,spectateStatusLine} from './hero-spectate.js?v=316';
+import {spectateAvailability,startSpectate,endSpectate,queueSpectate,cancelSpectateQueue,spectateStatusLine} from './hero-spectate.js?v=317';
 const C=WORLD_SIZE/2,castle=()=>DUNGEON_DEFS.find(d=>d.id==='dungeon_demon_castle');
 const ready=u=>u&&!u.dead&&!u.isDown&&u.hp>0;
 export function initializeHeroJourney(game,saved=null) {
@@ -262,7 +262,6 @@ export function renderHeroJourney(game,classes,talents) {
     const l2=document.createElement('p');l2.textContent=idle===0?'進展あり（撃破・成長・魔王へのダメージ）':`最後の進展から${idle}期（${HERO_RULES.stagnationPhases}期で撤退）`;box.append(l2);body.append(box);
   }
   if(!active&&!j.demonKingDefeat){const nx=document.createElement('p');nx.textContent=`次の勇者：第${next}期に天啓`;body.append(nx);}
-  if(!j.demonKingDefeat){const rule=document.createElement('p');rule.className='hero-rule-note';rule.textContent=`天啓は第${HERO_RULES.firstPhase}期から${HERO_RULES.interval}期ごと（魔王討伐まで）。前の勇者パーティが生きている間は見送り、魔王城で${HERO_RULES.stagnationPhases}期進展が止まると撤退します。`;body.append(rule);}
   if(p?.members.some(u=>u.heroEquipmentVersion)){const gear=document.createElement('p');gear.textContent='勇者と仲間は、勇者パーティ専用の武具を支給されて出発します。';body.append(gear);}
   if(p&&p.status!=='withdrawn')for(const u of p.members){const row=document.createElement('p');row.textContent=`${u.isChosenHero?'勇者':classes[u.soldierClass]?.name||u.soldierClass} ${u.name} · ${talents[u.talent]?.tag||''} · Lv.${u.level} · ${u.dead?'戦死':u.isDown?(u.carrierId?`搬送中（${u.carrierId==='player'?'隊長':'隊員'}）`:`ダウン（残り${Math.ceil(u.downTimer)}秒）`):`HP ${Math.ceil(u.hp)} / ${u.maxHp}`}`;body.append(row);}
   if(active&&!j.demonKingDefeat){
