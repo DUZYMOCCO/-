@@ -1,9 +1,9 @@
 import {equipmentVisualProfile} from './equipment-tiers.js?v=231';
 import {travelerClothes} from './traveler-clothes.js?v=195';
 import {isMuscleCaster} from './unit-attributes.js?v=334';
-import {limitedLineOf,limitedFamilyOf} from './limited-lines.js?v=334';
+import {limitedLineOf,limitedFamilyOf} from './limited-lines.js?v=335';
 import {genderOfSoldier} from './soldier-names.js?v=334';
-import {classRegaliaFor,drawClassPortraitDress,drawClassHeadpiece} from './class-regalia.js?v=185';
+import {classRegaliaFor,drawClassPortraitDress,drawClassHeadpiece} from './class-regalia.js?v=335';
 import {createAppearanceFeatures,normalizeAppearanceFeatures,FACE_OUTLINES,EYE_SHAPES,NOSE_TYPES,JAW_TYPES,ACCESSORY_LABELS,drawVariantFace,drawVariantEyes,drawVariantNose,drawPersonalAccessory} from './appearance-features.js?v=193';
 /** Stable personal looks, independent of talent, battle RNG and equipment. */
 export const HAIR_LABELS = Object.freeze({

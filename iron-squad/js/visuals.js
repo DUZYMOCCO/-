@@ -10,7 +10,7 @@ import { drawMeleeWeapon, drawMeleeRangeCue, drawRangedWeapon, drawWeaponArms, m
 import { defaultCommanderAppearance } from './commander-identity.js?v=295';
 import {travelerClothes,drawTravelerTunic} from './traveler-clothes.js?v=195';
 import { createSoldierAppearance, drawSoldierHead, isMedicAppearance, soldierAppearanceFamily, soldierPhysique } from './soldier-appearance.js?v=334';
-import { classRegaliaFor, drawClassMantle, drawClassRegalia, drawClassHeadpiece } from './class-regalia.js?v=185';
+import { classRegaliaFor, drawClassMantle, drawClassRegalia, drawClassHeadpiece } from './class-regalia.js?v=335';
 
 // Keep the commander's established face, with short hair in both field and portrait (v4.2.24: player.appearance overrides it).
 const commanderAppearance=Object.freeze(defaultCommanderAppearance());

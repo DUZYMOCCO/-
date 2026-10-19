@@ -21,7 +21,8 @@ import {initializeWildernessSites,serializeWildernessSites,updateWildernessSites
 import {enemyArtHeadHeight} from './enemy-art.js?v=280';
 import {selectBiomeEncounter,biomeEnemyStats,encounterSlots,updateBiomeCharge} from './biome-encounters.js?v=279';
 import {configureRangedEnemy,updateRangedEnemy,updateDefenseWalls,interceptHostileShot,isHostileShot,updateHostileBolt,drawDefenseWalls} from './enemy-ranged.js?v=295';
-import {LIMITED_CLASSES,LIMITED_ADVANCED_CLASSES,initializeLimitedAllies,prepareLimitedEncounter,createLimitedAlly,joinLimitedEncounter,updateLimitedAllies,updateNinja,updateShuriken,drawLimitedEncounter,serializeLimitedAllies,notifyLimitedJoin} from './limited-allies.js?v=334';
+import {tickLimitedSkills,limitedAttackMult,limitedCritFollowUp,limitedDamageTakenMult,limitedLastStand,drawLimitedFx} from './limited-skills.js?v=335';
+import {LIMITED_CLASSES,LIMITED_ADVANCED_CLASSES,initializeLimitedAllies,prepareLimitedEncounter,createLimitedAlly,joinLimitedEncounter,updateLimitedAllies,updateNinja,updateShuriken,drawLimitedEncounter,serializeLimitedAllies,notifyLimitedJoin} from './limited-allies.js?v=335';
 import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=182';
 import {TIERS,MAX_EQUIPMENT_TIER,MAX_POWER_RANK,POWER_RANK_STEP,GENERATION_COUNT,TRADE_MAX_TIER,powerRank,tierDescription} from './equipment-tiers.js?v=231';
 import {fieldAdaptiveScaling} from './field-scaling.js?v=299';
@@ -3459,7 +3460,7 @@ export const IronSquadGame = {
 
     s.dmgReduction = Math.min(65, bossReduction + Math.floor((equipBlock + deathlineBlock) * 0.3) + deathlineDmgRed);
     s.crit = 10+(cls.bonusCrit||0)+(talent.critBonus||0)+deathlineCrit+bossCriticalBonus(bossKills)+Object.values(s.equipped).reduce((sum,item)=>sum+(item?.stats?.crit||0),0);
-    s.dodge = (talent.dodgeBonus || 0) + deathlineDodge;
+    s.dodge = (talent.dodgeBonus || 0) + deathlineDodge + (cls.bonusDodge || 0); // v7.2.1: 猫の上位職の身かわし
     s.equipmentRegen = equipmentRegenOf(s.equipped); // v7.0.21: regen / vampire from equipment now reach soldiers and the hero party
     s.vampire = Math.min(SOLDIER_VAMPIRE.maxRate, Object.values(s.equipped).reduce((sum, item) => sum + (Number(item?.stats?.vampire) || 0), 0));
     {const dd = aggregateDeathlineDynamics(s.deathlineSkills, DEATHLINE_SKILLS); s.deathlineAtkSpeed = dd.atkSpeed; s.deathlineRegenPct = dd.regenPct; s.deathlineRevivalSpeed = dd.revivalSpeed; s.deathlineLowHpGuard = dd.lowHpGuard; s.deathlineLowHpSpeed = dd.lowHpSpeed; s._lowHpBoost = false;} // 動的効果は集計値のみ保持（速度ブーストは毎フレーム tickDeathline が掛け直す）
@@ -6499,6 +6500,7 @@ export const IronSquadGame = {
         }
         return;
       }
+      tickLimitedSkills(this,soldier,dt); // v7.2.1: 忍者・獣人の上位職の特技
       if(updateNinja(this,soldier,dt,platoon))return;
       if(isMage(soldier)){updateMageAI(this,soldier,dt,platoon,cls);return;}
       tickSoldierMeleeSkill(this,soldier,dt);
@@ -7806,7 +7808,7 @@ export const IronSquadGame = {
     if (attacker && Number.isFinite(attacker.x) && Number.isFinite(monster.x) && coverBlocked(this, attacker, monster)) return;
     const baseAtk = customAtk !== undefined ? customAtk : (attacker ? (attacker.atk || 10) : 10);
     const magicalAttack=attackKind==='magic'||(attackKind==null&&isMage(attacker));
-    let dmg = baseAtk*(attacker?.magicAttackTimer>0?1+(attacker.magicAttackBonus||0):1)*(this.wildernessBlessing>0&&(attacker===this.player||isOwnSquad(attacker))?1+WILDERNESS_RULES.attackBonus:1);
+    let dmg = baseAtk*(attacker?.magicAttackTimer>0?1+(attacker.magicAttackBonus||0):1)*(this.wildernessBlessing>0&&(attacker===this.player||isOwnSquad(attacker))?1+WILDERNESS_RULES.attackBonus:1)*limitedAttackMult(this,isPlayer?this.player:attacker,monster); // v7.2.1: 遠吠え・鷹の目
     let isCrit = false;
 
     // 近接スイートスポット: sweetOpt===false でスキップ（スキル弾など）
@@ -7919,6 +7921,8 @@ export const IronSquadGame = {
       const infused=attackKind==='sidearm'?0:(magicBonus||(!wProf.ranged&&canChannelWeaponMagic(attacker)&&spendMana(attacker,6)?weaponMagicDamage(attacker):0));
       if(infused>0)this.performAttack(attacker,monster,isPlayer,infused,false,'magic');
     }
+    // v7.2.1: 猫の上位職は会心のあとにもう一撃（追撃からは続かない）
+    if(isCrit&&!isPlayer&&attackKind!=='followup'&&monster.hp>0){const ratio=limitedCritFollowUp(attacker);if(ratio>0){this.spawnDamageText(monster.x,monster.y-22,'🐾追撃','#f3e6d4');this.performAttack(attacker,monster,false,Math.max(1,Math.round(baseAtk*ratio)),false,'followup');}}
   },
 
   /** 被弾鍛錬: 防御で減らす前の攻撃の強さ(strength)を基準に成長。結界で全吸収・肩代わりで0になった被弾でも呼ぶ（回避・環境ダメージでは呼ばない）。 */
@@ -8001,6 +8005,8 @@ export const IronSquadGame = {
     }
 
     dmg = deathlineDamage(target, dmg); // サバイバルソウル: HP35%以下で被ダメ半減
+    const braced=limitedDamageTakenMult(target); // v7.2.1: 熊の踏ん張り
+    if(braced<1){dmg=Math.max(1,Math.round(dmg*braced));if(Math.random()<.2)this.spawnDamageText(target.x,target.y-20,'🐻踏ん張り','#d9c7a8');}
     if (!environmental && target.shieldTimer > 0) {
       dmg = Math.max(1, Math.round(dmg * 0.50)); // 生還シールドで被ダメ50%カット
       if (Math.random() < 0.45) {
@@ -8024,6 +8030,7 @@ export const IronSquadGame = {
     if(!(dmg>0)){if(!environmental)this.trainFromHit(target,pct?growthStrength:rawDmg);return;} // 結界が全部受けた: 赤い数字・被弾音なし。ただし攻撃は受けたので鍛錬は進む
     if(covered){dmg=Math.min(dmg,target.hp-1);if(!(dmg>0)){if(!environmental)this.trainFromHit(target,pct?growthStrength:rawDmg);return;}} // かばいでは倒れない（HP1で止まっても鍛錬は進む）
     if(preventLethalHit(this,target,dmg)){if(!environmental)this.trainFromHit(target,pct?growthStrength:rawDmg);return;} // 致命傷防止でも鍛錬は進む
+    if(dmg>=target.hp&&limitedLastStand(this,target)){if(!environmental)this.trainFromHit(target,pct?growthStrength:rawDmg);return;} // v7.2.1: 熊・猫のクラス3は1作戦期に1回踏みとどまる
     if(magical)practiceAttribute(target,'magicDefense',1+Math.min(4,rawDmg/Math.max(1,target.maxHp||1)));
     const hpBeforeHit = target.hp, lostHp = Math.min(dmg, Math.max(0, hpBeforeHit));
     target.hp -= dmg;
@@ -11369,6 +11376,7 @@ export const IronSquadGame = {
     }
 
     drawMagicBursts(this.ctx,this);
+    drawLimitedFx(this.ctx,this);
     drawDefenseWalls(this.ctx,this);
     drawLimitedEncounter(this.ctx,this,(s,x,y)=>{recordLanternActor(this,s,x,y,'encounter');drawFieldSoldier(this.ctx,{...s,x,y},now,SOLDIER_CLASSES[s.soldierClass],'#a59a76',false);});
     drawRescueDirection(this.ctx,this,rescueUnits(this).some(u=>u.isDown&&!u.dead&&u.carrierId)||(this.civilians||[]).some(u=>!u.rescued&&u.carrierId));

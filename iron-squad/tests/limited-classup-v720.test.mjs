@@ -51,7 +51,7 @@ for(const [i,[line,[lineName,family,subs]]] of Object.entries(LINES).entries()){
 // Ninja keeps its shuriken and reads the job's numbers.
 const ninja=team[0];Object.assign(ninja,{x:83000,y:83000,atkCooldown:0,speed:0});Object.assign(game.player,{x:83000,y:83000});game.currentDungeon=null;game.squad=[ninja];game.monsters=[{x:83200,y:83000,type:'goblin',hp:1e5,maxHp:1e5,atk:1,speed:0,radius:12,atkTimer:0}];game.rebuildMonsterSpatial?.();game.projectiles=[];game.restTimer=0;
 ok(updateNinja(game,ninja,.01,game.platoons[0]),"promoted ninja runs the ninja AI");
-eq(game.projectiles[0]?.type,'NINJA_SHURIKEN');eq(game.projectiles[0].damage,Math.round(ninja.atk*.7));
+eq(game.projectiles[0]?.type,'NINJA_SHURIKEN');eq(game.projectiles[0].damage,Math.round(ninja.atk*SOLDIER_CLASSES[ninja.soldierClass].shurikenDamage));
 ok(ninja.atkCooldown<1.7,'shuriken cooldown shortens with class (1.0 base)');
 // Save round trip keeps the promoted jobs.
 game.squad=team;const data=structuredClone(game.saveGame({immediate:true}));game.squad=[];game.resumeSavedGame(data);

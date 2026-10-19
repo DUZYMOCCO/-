@@ -17,10 +17,20 @@ const PALETTES={
  COMMANDER:[['#a29374','#754b43'],['#c2b390','#6c3944'],['#dacdae','#51415b']]
 };
 export const CLASS_REGALIA=Object.freeze(Object.fromEntries(Object.entries(STAGES).flatMap(([family,ids])=>ids.map((id,i)=>[id,Object.freeze({id,family,tier:i+1,cloth:PALETTES[family][i][0],mantle:PALETTES[family][i][1],metal:i?'#c6aa65':'#b8ad86',light:i===2?'#efe0ad':'#dbcfab',gem:{HEAVY:'#6b9dad',LIGHT:'#9b83ad',ARCHER:'#7aa088',MEDIC:'#c39da9',MAGE:'#aaa0c7',COMMANDER:'#b66b63'}[family],name:numberedClassName(family,i+1)})]))));
+// v7.2.1 忍者・獣人の上位職の式典服。形は系統（軽装・重装・弓・魔法）のまま、色だけ系列ごと。獣人と忍者は耳・覆面を隠さないよう頭飾りなし。
+const LIMITED_STAGES={
+ NINJA:['LIGHT',['NINJA_CHUNIN','NINJA_JONIN','NINJA_KASHIRA'],[['#3e4558','#2a2f3e'],['#363a52','#23263a'],['#2c2f45','#1c1e30']],'#8c9ab8'],
+ BEAST_WOLF:['LIGHT',['BEAST_WOLF_GARO','BEAST_WOLF_GINRO','BEAST_WOLF_TENRO'],[['#6f7c84','#45525a'],['#7d8b94','#3d4a55'],['#9aa7b0','#34404d']],'#a9c3d2'],
+ BEAST_BEAR:['HEAVY',['BEAST_BEAR_IWA','BEAST_BEAR_TETSU','BEAST_BEAR_SANNO'],[['#7a6248','#4e3b2a'],['#6c5a48','#3f3428'],['#8a7456','#3a2c20']],'#c79a5b'],
+ BEAST_CAT:['LIGHT',['BEAST_CAT_SUZU','BEAST_CAT_KAGE','BEAST_CAT_NEKOMATA'],[['#a88b6c','#6b5546'],['#5b4e5e','#3d3442'],['#7d6a7c','#3a2f40']],'#d9b26a'],
+ BEAST_FOX:['MAGE',['BEAST_FOX_KIKO','BEAST_FOX_TENKO','BEAST_FOX_KYUBI'],[['#b0644a','#7a3f2f'],['#d8cbb6','#a5523c'],['#efe6d6','#9b3f30']],'#e0a35c'],
+ BEAST_BIRD:['ARCHER',['BEAST_BIRD_TAKABA','BEAST_BIRD_KAZAKIRI','BEAST_BIRD_KARURA'],[['#5f7a68','#3b5143'],['#6d8c86','#355049'],['#b49a5e','#5a4630']],'#d6b65e']
+};
+export const LIMITED_REGALIA=Object.freeze(Object.fromEntries(Object.entries(LIMITED_STAGES).flatMap(([lineId,[family,ids,pal,gem]])=>ids.map((id,i)=>[id,Object.freeze({id,family,lineId,tier:i+1,cloth:pal[i][0],mantle:pal[i][1],metal:i?'#c6aa65':'#b8ad86',light:i===2?'#efe0ad':'#dbcfab',gem,noHeadpiece:true,name:numberedClassName(lineId,i+1)})]))));
 export function classRegaliaFor(unit,commander=false) {
  if(!unit)return null;
  const key=commander||unit.isCommander?unit.advancedClass|| (unit.isAdvanced?'WARLORD':null):unit.soldierClass;
- return CLASS_REGALIA[key]||null;
+ return CLASS_REGALIA[key]||LIMITED_REGALIA[key]||null;
 }
 const polygon=(c,p,color)=>{c.fillStyle=color;c.strokeStyle='#34352f';c.lineWidth=.65;c.beginPath();p.forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y));c.closePath();c.fill();c.stroke();};
 const line=(c,p,color,width=.8)=>{c.strokeStyle=color;c.lineWidth=width;c.beginPath();p.forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y));c.stroke();};
@@ -110,7 +120,7 @@ function paintClassRegalia(c,r,{simple=false}={}) {
 
 /** A crest above the hair/helmet; the personal face remains unobstructed. */
 export function drawClassHeadpiece(c,r,{x=0,y=0,scale=1,simple=false,helmet=false}={}) {
- if(!r)return;
+ if(!r||r.noHeadpiece)return;
  const {tier:t,family:f}=r;
  c.save();c.translate(x,y);c.scale(scale,scale);
  if(f==='MEDIC'){

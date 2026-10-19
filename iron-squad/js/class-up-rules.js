@@ -4,7 +4,7 @@
  * Costs escalate; top tier needs rare 神話宝玉 (awakeningGems).
  */
 
-import {LIMITED_LINE_NAMES} from './limited-lines.js?v=334';
+import {LIMITED_LINE_NAMES} from './limited-lines.js?v=335';
 
 /** @typedef {{ orbs: number, gems: number }} ClassUpCost */
 

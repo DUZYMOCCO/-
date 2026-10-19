@@ -6,8 +6,8 @@ import {WORLD_SIZE,fieldTerrainAt} from './world.js?v=289';
 import {inCurrentInstance} from './instance-rules.js?v=322';
 import {isSoldierOnExpedition} from './expedition-rules.js?v=256';
 import {generateSoldierName} from './soldier-names.js?v=334';
-import {LIMITED_CLASSES,limitedLineOf,limitedClassOf} from './limited-lines.js?v=334';
-export {LIMITED_CLASSES,LIMITED_ADVANCED_CLASSES,limitedLineOf} from './limited-lines.js?v=334';
+import {LIMITED_CLASSES,limitedLineOf,limitedClassOf} from './limited-lines.js?v=335';
+export {LIMITED_CLASSES,LIMITED_ADVANCED_CLASSES,limitedLineOf} from './limited-lines.js?v=335';
 export const CAPTIVE_SPAWN_CHANCE=.1;
 export const CAPTIVE_CLASSES=Object.freeze(Object.keys(LIMITED_CLASSES).filter(id=>id!=='NINJA'));
 const LIMITED_NAMES={NINJA:['影丸','朔','蓮','黒羽','千鳥','銀次'],wolf:['灰尾','ロウ','銀牙','遠吠'],bear:['ゴウ','岩掌','森助','厚丸'],cat:['ミケ','鈴音','クロ','日向'],fox:['琥珀','灯','コン','白露'],bird:['羽音','鷹丸','青羽','ツバサ']};
@@ -137,10 +137,16 @@ export function updateNinja(game,s,dt,platoon) {
  s.facingAngle=Math.atan2(dy,dx);
  if(alive(target)&&s.atkCooldown<=0&&d<=throwRange){
   if(d<=reach+10){if(profile.ranged)game.performAttack(s,target,false,Math.round(s.atk),false,'physical');else game.performMeleeSweep(s,target,false,Math.round(s.atk),profile,reach);s.atkCooldown=soldierAttackCooldown(s,(cls.atkCooldown||.75)/(s.atkSpeed||1));}
-  else{game.projectiles.push({type:'NINJA_SHURIKEN',attacker:s,target,x:s.x,y:s.y,damage:Math.round(s.atk*(cls.shurikenDamage||.7)),speed:390,life:1.5});s.atkCooldown=soldierAttackCooldown(s,(cls.shurikenCooldown||1.7)/(s.atkSpeed||1));}
+  else{for(const [i,aim] of shurikenTargets(game,s,target,cls.shurikenCount||1,throwRange).entries())game.projectiles.push({type:'NINJA_SHURIKEN',attacker:s,target:aim,x:s.x+(i?Math.cos(i*2.1)*6:0),y:s.y+(i?Math.sin(i*2.1)*6:0),damage:Math.round(s.atk*(cls.shurikenDamage||.7)),speed:390,life:1.5});s.atkCooldown=soldierAttackCooldown(s,(cls.shurikenCooldown||1.7)/(s.atkSpeed||1));}
   s.atkAnim=1;
  }
  return true;
+}
+/** v7.2.1 上位の忍者は手裏剣を重ねて放つ。2枚目以降は近い別の敵へ、いなければ同じ敵へ。 */
+export function shurikenTargets(game,s,first,count,range){
+ const out=[first];if(count<=1)return out;
+ const others=(game.monsters||[]).filter(m=>m!==first&&alive(m)&&(!game.currentDungeon||inCurrentInstance(game,m))&&Math.hypot(m.x-s.x,m.y-s.y)<=range).sort((a,b)=>Math.hypot(a.x-s.x,a.y-s.y)-Math.hypot(b.x-s.x,b.y-s.y));
+ for(let i=1;i<count;i++)out.push(others[i-1]||first);return out;
 }
 export function updateShuriken(game,p,dt) {
  p.life-=dt;if(!alive(p.target)||p.life<=0)return true;

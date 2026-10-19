@@ -2,9 +2,9 @@
 const line=(lineId,family,species,defs)=>defs.map((d,i)=>[d.id,Object.freeze({...d,lineId,baseClassId:family,combatClass:family,...(species?{species}:{}),...(i?{classTier:i,isAdvanced:true,...(i>=2?{isMaster:true}:{}),...(i>=3?{isLegendary:true}:{})}:{}),...(defs[i+1]?{advancedClassId:defs[i+1].id}:{})})]);
 const NINJA=line('NINJA','LIGHT',null,[
  {id:'NINJA',name:'忍者',icon:'🥷',color:'#8e97ac',range:250,speed:136,atkCooldown:.75,bonusHp:5,bonusAtk:12,shurikenCooldown:1.7,shurikenDamage:.7,desc:'刀と手裏剣を間合いに応じて使い分ける。'},
- {id:'NINJA_CHUNIN',subName:'中忍',icon:'🥷🍃',color:'#8e97ac',glowColor:'#b7c6d8',range:250,speed:160,atkCooldown:.5,bonusHp:120,bonusAtk:36,bonusCrit:50,hpMultBonus:.28,atkMultBonus:.52,speedMultBonus:.32,shurikenCooldown:1.4,shurikenDamage:.7,desc:'影から影へ渡り、手裏剣を重ねて放つ。'},
- {id:'NINJA_JONIN',subName:'上忍',icon:'🥷⚡',color:'#7f88a3',glowColor:'#c3cde0',range:250,speed:175,atkCooldown:.4,bonusHp:200,bonusAtk:68,bonusCrit:60,hpMultBonus:.46,atkMultBonus:.92,speedMultBonus:.48,shurikenCooldown:1.2,shurikenDamage:.7,desc:'気配を断ち、音もなく敵の背を取る。'},
- {id:'NINJA_KASHIRA',subName:'影頭領',icon:'🌌🥷',color:'#6f7896',glowColor:'#dfe6f3',range:270,speed:190,atkCooldown:.32,bonusHp:330,bonusAtk:115,bonusCrit:75,hpMultBonus:.75,atkMultBonus:1.45,speedMultBonus:.68,shurikenCooldown:1.0,shurikenDamage:.7,desc:'影の里を束ねる者。闇そのものが刃となる。'}]);
+ {id:'NINJA_CHUNIN',subName:'中忍',icon:'🥷🍃',color:'#8e97ac',glowColor:'#b7c6d8',range:250,speed:160,atkCooldown:.5,bonusHp:120,bonusAtk:36,bonusCrit:50,hpMultBonus:.28,atkMultBonus:.52,speedMultBonus:.32,shurikenCooldown:1.4,shurikenDamage:.5,shurikenCount:2,desc:'影から影へ渡り、手裏剣を重ねて放つ。'},
+ {id:'NINJA_JONIN',subName:'上忍',icon:'🥷⚡',color:'#7f88a3',glowColor:'#c3cde0',range:250,speed:175,atkCooldown:.4,bonusHp:200,bonusAtk:68,bonusCrit:60,hpMultBonus:.46,atkMultBonus:.92,speedMultBonus:.48,shurikenCooldown:1.2,shurikenDamage:.5,shurikenCount:2,desc:'気配を断ち、音もなく敵の背を取る。'},
+ {id:'NINJA_KASHIRA',subName:'影頭領',icon:'🌌🥷',color:'#6f7896',glowColor:'#dfe6f3',range:270,speed:190,atkCooldown:.32,bonusHp:330,bonusAtk:115,bonusCrit:75,hpMultBonus:.75,atkMultBonus:1.45,speedMultBonus:.68,shurikenCooldown:1.0,shurikenDamage:.42,shurikenCount:3,desc:'影の里を束ねる者。闇そのものが刃となる。'}]);
 const WOLF=line('BEAST_WOLF','LIGHT','wolf',[
  {id:'BEAST_WOLF',name:'狼獣人',icon:'🐺',color:'#9cabb0',range:65,speed:122,atkCooldown:.85,bonusHp:15,bonusAtk:15,desc:'近接戦と追跡に長けた獣人。'},
  {id:'BEAST_WOLF_GARO',subName:'牙狼',icon:'🐺🌙',color:'#9cabb0',glowColor:'#c9d6da',range:70,speed:145,atkCooldown:.57,bonusHp:170,bonusAtk:34,bonusCrit:35,hpMultBonus:.4,atkMultBonus:.5,speedMultBonus:.25,desc:'遠吠えが仲間の牙を研ぐ。'},
@@ -17,9 +17,9 @@ const BEAR=line('BEAST_BEAR','HEAVY','bear',[
  {id:'BEAST_BEAR_SANNO',subName:'山王',icon:'🌌🐻',color:'#8c7358',glowColor:'#efe2c8',range:75,speed:96,atkCooldown:.88,bonusHp:820,bonusAtk:95,bonusDef:125,hpMultBonus:1.65,atkMultBonus:1,defMultBonus:1.4,desc:'山の主。倒れても一度は立ち上がる。'}]);
 const CAT=line('BEAST_CAT','LIGHT','cat',[
  {id:'BEAST_CAT',name:'猫獣人',icon:'🐱',color:'#baa088',range:65,speed:145,atkCooldown:.6,bonusHp:-5,bonusAtk:10,desc:'速さと身のこなしに長けた獣人。'},
- {id:'BEAST_CAT_SUZU',subName:'鈴猫',icon:'🐱🔔',color:'#baa088',glowColor:'#e6d2b8',range:65,speed:172,atkCooldown:.4,bonusHp:100,bonusAtk:36,bonusCrit:55,hpMultBonus:.22,atkMultBonus:.55,speedMultBonus:.38,desc:'鈴の音だけを残して刃をかわす。'},
- {id:'BEAST_CAT_KAGE',subName:'影猫',icon:'🐱🌙',color:'#a08a76',glowColor:'#dccab4',range:68,speed:188,atkCooldown:.32,bonusHp:180,bonusAtk:70,bonusCrit:65,hpMultBonus:.4,atkMultBonus:.95,speedMultBonus:.55,desc:'夜を駆け、急所を逃さない。'},
- {id:'BEAST_CAT_NEKOMATA',subName:'猫又',icon:'🌌🐱',color:'#8e7a68',glowColor:'#f3e6d4',range:70,speed:205,atkCooldown:.25,bonusHp:300,bonusAtk:118,bonusCrit:82,hpMultBonus:.65,atkMultBonus:1.5,speedMultBonus:.78,desc:'二股の尾が、死の淵から身を返す。'}]);
+ {id:'BEAST_CAT_SUZU',subName:'鈴猫',icon:'🐱🔔',color:'#baa088',glowColor:'#e6d2b8',range:65,speed:172,atkCooldown:.4,bonusHp:100,bonusAtk:36,bonusCrit:55,hpMultBonus:.22,atkMultBonus:.55,speedMultBonus:.38,bonusDodge:8,desc:'鈴の音だけを残して刃をかわす。'},
+ {id:'BEAST_CAT_KAGE',subName:'影猫',icon:'🐱🌙',color:'#a08a76',glowColor:'#dccab4',range:68,speed:188,atkCooldown:.32,bonusHp:180,bonusAtk:70,bonusCrit:65,hpMultBonus:.4,atkMultBonus:.95,speedMultBonus:.55,bonusDodge:10,desc:'夜を駆け、急所を逃さない。'},
+ {id:'BEAST_CAT_NEKOMATA',subName:'猫又',icon:'🌌🐱',color:'#8e7a68',glowColor:'#f3e6d4',range:70,speed:205,atkCooldown:.25,bonusHp:300,bonusAtk:118,bonusCrit:82,hpMultBonus:.65,atkMultBonus:1.5,speedMultBonus:.78,bonusDodge:12,desc:'二股の尾が、死の淵から身を返す。'}]);
 const FOX=line('BEAST_FOX','MAGE','fox',[
  {id:'BEAST_FOX',name:'狐獣人',icon:'🦊',color:'#bb926b',range:275,speed:100,atkCooldown:2.1,bonusHp:-20,bonusAtk:22,desc:'魔法を扱う狐の一族。'},
  {id:'BEAST_FOX_KIKO',subName:'気狐',icon:'🦊🔥',color:'#bb926b',glowColor:'#ecc496',range:300,speed:106,atkCooldown:1.9,bonusHp:35,bonusAtk:36,hpMultBonus:.1,atkMultBonus:.32,desc:'狐火を操り、敵を追い焼く。'},
