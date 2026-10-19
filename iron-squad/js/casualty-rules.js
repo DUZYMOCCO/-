@@ -3,7 +3,7 @@ import {expeditionCombatUnits,isExpeditionReserve} from './expedition-rules.js?v
 import {ensureMana,regenerateMana,spendMana} from './magic-rules.js?v=296';
 import {recordHealing,recordDown,healAmountFor} from './phase-rules.js?v=218';
 import {WORLD_SIZE} from './world.js';
-import {inCurrentInstance} from './instance-rules.js?v=315';
+import {inCurrentInstance} from './instance-rules.js?v=316';
 import {grantPermanentRescueReward} from './rescue-rewards.js?v=264';
 import {grantPersonalExp,revivalExperience,raiseLevelMark} from './experience-rules.js';
 import {guardRescueLines} from './soldier-dialogue.js';
@@ -259,11 +259,13 @@ export function departFromRest(game,unit) {
   const owner=unit.isMerchant?unit:(game._merchantById?.get?.(unit.merchantId)||(game.merchants||[]).find(m=>m.id===unit.merchantId));
   clearRest(unit);unit.vx=unit.vy=0;
   if(unit.isMerchant){
-    if(Number.isFinite(unit.originX)&&Number.isFinite(unit.originY)){unit.x=unit.originX;unit.y=unit.originY;}
-    unit.homeX=unit.x;unit.homeY=unit.y;if(unit.basePlaceName)unit.placeName=unit.basePlaceName;
-    for(const e of unit.escorts||[])if(!e.isGateGuard&&!e.dead&&!e.isDown){clearRest(e);e.x=unit.x+Math.cos(e.facingAngle||0)*42;e.y=unit.y+Math.sin(e.facingAngle||0)*42;e.homeX=unit.x;e.homeY=unit.y;}
+    // v7.0.39: the trader WALKS back to his own camp/inn (no hop); his guards simply keep following him.
+    const ox=Number.isFinite(unit.originX)?unit.originX:unit.x,oy=Number.isFinite(unit.originY)?unit.originY:unit.y;
+    unit.homeX=ox;unit.homeY=oy;unit.returningToBase=Math.hypot(unit.x-ox,unit.y-oy)>4;if(unit.basePlaceName)unit.placeName=unit.basePlaceName;
+    for(const e of unit.escorts||[])if(!e.isGateGuard&&!e.dead&&!e.isDown){clearRest(e);e.homeX=ox;e.homeY=oy;}
   } else if(owner){
-    const angle=(String(unit.id).endsWith('_1')?Math.PI:0)+.4;unit.x=owner.x+Math.cos(angle)*42;unit.y=owner.y+Math.sin(angle)*42;unit.homeX=owner.homeX??owner.x;unit.homeY=owner.homeY??owner.y;
+    // a guard released on its own rejoins its trader on foot
+    unit.homeX=owner.homeX??owner.x;unit.homeY=owner.homeY??owner.y;
   }
   return true;
 }
@@ -280,7 +282,6 @@ function assignMerchantRest(game,wounded,station) {
       wounded.homeY=WORLD_SIZE/2+Math.sin(angle)*radius;
     }
     wounded.rescuedToBase=true;
-    if(['medical','town'].includes(station?.kind)){wounded.x=wounded.homeX;wounded.y=wounded.homeY;}
     wounded.returningToBase=Math.hypot(wounded.x-wounded.homeX,wounded.y-wounded.homeY)>4;
     if(wounded.isMerchant)wounded.placeName='本陣・救助した商人';
     return;
@@ -294,13 +295,11 @@ function assignMerchantRest(game,wounded,station) {
   wounded.restPostId=post.id;wounded.restPostName=post.name;wounded.restSlot=slot;wounded.restSince=phase;wounded.restUntilPhase=phase+MERCHANT_REST.phases;
   wounded.homeX=post.x+Math.cos(angle)*radius;wounded.homeY=post.y+Math.sin(angle)*radius;
   wounded.rescuedToBase=true;
-  // Carried in: appear at the post. Revived in the field: walk there when it is near, otherwise hop.
-  if(station||Math.hypot(wounded.x-wounded.homeX,wounded.y-wounded.homeY)>MERCHANT_REST.walkMax){wounded.x=wounded.homeX;wounded.y=wounded.homeY;}
+  // v7.0.39: always on foot — from the station he was carried to, or from where he was revived — to the nearest post. No hop, however far.
   wounded.returningToBase=Math.hypot(wounded.x-wounded.homeX,wounded.y-wounded.homeY)>4;
   if(wounded.isMerchant){
     wounded.placeName=`${post.name}・救助した商人`;
-    // Healthy guards who were not hurt travel with their trader.
-    (wounded.escorts||[]).forEach((e,i)=>{if(!e.isGateGuard&&!e.dead&&!e.isDown&&!e.restPostId){const a=(i?Math.PI:0)+.4;e.x=wounded.homeX+Math.cos(a)*42;e.y=wounded.homeY+Math.sin(a)*42;}});
+    // Healthy guards who were not hurt walk along with their trader (updateEscortPatrol keeps them at his side).
   }
 }
 function revive(game,wounded,hp,options=null) {

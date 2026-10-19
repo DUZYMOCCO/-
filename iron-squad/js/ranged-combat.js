@@ -1,8 +1,8 @@
-import {ensureAmmo,takeRangedShot} from './supply-rules.js?v=315';
-import {attackBlocked} from './gate-rules.js?v=315';
+import {ensureAmmo,takeRangedShot} from './supply-rules.js?v=316';
+import {attackBlocked} from './gate-rules.js?v=316';
 import {attackCooldown,soldierAttackCooldown} from './equipment-rules.js?v=306';
 import {attributeFamily} from './unit-attributes.js?v=298';
-import {inCurrentInstance} from './instance-rules.js?v=315';
+import {inCurrentInstance} from './instance-rules.js?v=316';
 import {sound} from '../../common/js/audio.js?v=151';
 export const CROSSBOW_RULES=Object.freeze({limit:3,falloff:.7,halfWidth:10});
 export const SIDEARM_RULES=Object.freeze({reach:65,cooldown:.9,engage:90,hold:48});

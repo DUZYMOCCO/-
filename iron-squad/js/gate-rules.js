@@ -1,10 +1,11 @@
 import {drawStoneFortification} from './fortification-visuals.js?v=242';
 import {WORLD_SIZE,fieldBlocks} from './world.js?v=289';
 import {dungeonBlocks} from './dungeon.js?v=306';
-import {inCurrentInstance} from './instance-rules.js?v=315';
-import {makeEscort,recalcEscortStats,updateEscortPatrol,npcSave,applyNpcSave} from './merchant-rules.js?v=315';
-import {rebuildMerchantCasualties,carrierOf,sanitizeCarriers} from './casualty-rules.js?v=315';
+import {inCurrentInstance} from './instance-rules.js?v=316';
+import {makeEscort,recalcEscortStats,updateEscortPatrol,npcSave,applyNpcSave} from './merchant-rules.js?v=316';
+import {rebuildMerchantCasualties,carrierOf,sanitizeCarriers} from './casualty-rules.js?v=316';
 import {OUTER_WALL,OUTER_GATES,outerWallBuilt} from './hq-outer-wall.js?v=198';
+import {medicalPostLayout} from './medical-posts.js?v=277';
 export {outerWallBuilt};
 const center=WORLD_SIZE/2;
 export const GATE_HALF_WIDTH=80,HQ_WALL_HALF_SIZE=300;
@@ -130,10 +131,14 @@ export function applyFortifications(game,dt) {
   }
 }
 export const gateGuardVisible=(game,g)=>!g.dead&&(game.currentDungeon?inCurrentInstance(game,g):g.gateSpace==='field');
-function buildGuard(game,id,name,x,y,space,distance=1200,index=0) {
-  const owner={id,x,y,distance};const guard=makeEscort(owner,index%2,1);
+/** v7.0.39: aid-station sentries are the gate-guard unit (same escort stat table and growth) built a notch stronger than a gate guard:
+ *  gate guard = escort x1.3 HP / x1.2 ATK at the gate's distance (wave 1); sentry = x1.6 HP / x1.35 ATK at the station's REAL distance from the HQ
+ *  (the zone ring it stands in, uncapped) and the CURRENT wave (the same wave factor merchant escorts are built with). */
+export const AID_SENTRY=Object.freeze({perStation:2,hp:1.6,atk:1.35,sideOffset:120,frontOffset:40});
+function buildGuard(game,id,name,x,y,space,distance=1200,index=0,power=null) {
+  const owner={id,x,y,distance};const guard=makeEscort(owner,index%2,power?.phase||1);
   Object.assign(guard,{id,isGateGuard:true,name,title:'',gateSpace:space,gateOrigin:space,x,y,homeX:x,homeY:y});
-  guard.escortBaseStats.hp=Math.round(guard.escortBaseStats.hp*1.3);guard.escortBaseStats.atk=Math.round(guard.escortBaseStats.atk*1.2);guard.hp=guard.maxHp=guard.escortBaseStats.hp;recalcEscortStats(guard);return guard;
+  guard.escortBaseStats.hp=Math.round(guard.escortBaseStats.hp*(power?.hp||1.3));guard.escortBaseStats.atk=Math.round(guard.escortBaseStats.atk*(power?.atk||1.2));guard.hp=guard.maxHp=guard.escortBaseStats.hp;recalcEscortStats(guard);return guard;
 }
 export const GATE_REFILL_WAVES=2;
 function registerPost(game,def) {
@@ -149,11 +154,22 @@ function guardAtPost(game,post) {
 }
 function newGuardAtPost(game,post,id=null) {
   id ||= post.serial?`${post.id}_replacement_${post.serial}`:post.id;
-  const guard=buildGuard(game,id,post.name,post.x,post.y,post.space,post.distance,post.index);
+  const guard=buildGuard(game,id,post.name,post.x,post.y,post.space,post.distance,post.index,post.aidPostId?{phase:Math.max(1,game.phase||1),hp:AID_SENTRY.hp,atk:AID_SENTRY.atk}:null);
+  if(post.aidPostId)guard.aidPostId=post.aidPostId;
   guard.gatePostId=post.id;guard.gateTownId=post.townId||null;game.gateGuards.push(guard);return guard;
 }
 function outerPosts(game) {
   return OUTER_GEOMETRY.gates.map((g,i)=>registerPost(game,{id:`hq_outer_gate_${i}`,name:`外郭門番・${g.label.slice(2)}`,x:g.x,y:g.y,side:g.side,space:'field',townId:null,distance:1200,index:i}));
+}
+/** v7.0.39: every medical post (aid station) keeps AID_SENTRY.perStation strong sentries, flanking the building. They are ordinary gate posts,
+ *  so refill (2 waves after a loss), rescue, revival, save/load and the walk back to the post all come from the gate-guard rules. */
+export function medicalSentryPosts(game) {
+  const posts=[];
+  for(const med of medicalPostLayout(game))for(let i=0;i<AID_SENTRY.perStation;i++){
+    const side=i%2?1:-1;
+    posts.push(registerPost(game,{id:`${med.id}_guard_${i}`,name:`${med.name}・番兵`,aidPostId:med.id,x:med.x+side*AID_SENTRY.sideOffset,y:med.y+AID_SENTRY.frontOffset,side:'south',space:'field',townId:null,distance:Math.max(1200,Math.hypot(med.x-center,med.y-center)),index:i}));
+  }
+  return posts;
 }
 /** Posts guards on the outer gates once, when the outer bailey is completed. */
 export function ensureOuterWallGuards(game) {
@@ -167,6 +183,7 @@ export function initializeGateGuards(game,saved={}) {
   const w={left:center-300,right:center+300,top:center-300,bottom:center+300,cx:center,cy:center,town:false};
   for(const [i,g] of gatePositions(w).entries())registerPost(game,{id:`hq_gate_${i}`,name:`本陣門番・${['北門','東門','南門','西門','城下町門'][i]}`,x:g.x,y:g.y,side:g.side,space:'field',townId:null,distance:1200,index:i});
   if(outerWallBuilt(game)||(saved.gatePosts||[]).some(p=>p.id?.startsWith('hq_outer_gate_')))outerPosts(game);
+  medicalSentryPosts(game); // v7.0.39: old saves get sentries on their existing stations too (a post without a saved guard is simply staffed)
   for(const d of game.dungeons||[])if(d.kind==='town'){
     for(let i=0;i<2;i++)registerPost(game,{id:`${d.id}_outer_guard_${i}`,name:`${d.name}・門番`,x:d.entrance.x+(i?52:-52),y:d.entrance.y+24,space:'field',townId:d.id,distance:Math.min(22000,d.distance||1200),index:i});
     if((saved.gateGuards||[]).some(g=>g.gateOrigin===d.id)||(saved.gatePosts||[]).some(p=>p.space===d.id))townInteriorPosts(game,d);

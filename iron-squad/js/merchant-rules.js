@@ -7,10 +7,10 @@ import {applyAttributeStats} from './unit-attributes.js?v=298';
  * - 護衛が倒した強敵のドロップを序盤から掠め取れるチャンス
  */
 import { saleValue, distanceScaling, weaponCombatProfile } from './equipment-rules.js?v=306';
-import { drawFieldSoldier } from './visuals.js?v=315';
+import { drawFieldSoldier } from './visuals.js?v=316';
 import { createSoldierAppearance, drawSoldierHead } from './soldier-appearance.js?v=295';
 import { attackAnimationRate } from './weapon-motion.js?v=306';
-import { markSoldierDown, rebuildMerchantCasualties, RESCUE_TIMEOUT, departFromRest } from './casualty-rules.js?v=315';
+import { markSoldierDown, rebuildMerchantCasualties, RESCUE_TIMEOUT, departFromRest } from './casualty-rules.js?v=316';
 import {emptyMastery,normalizeMastery,hitGrowthHpBonus,hitGrowthDefBonus,migrateHitGrowth,applyHitGrowth,masteryAtkMult,masteryReloadMult} from './growth-rules.js?v=295';
 import {recordCombat,finishExperience} from './phase-rules.js?v=218';
 
@@ -66,10 +66,11 @@ function prepareMerchant(m) {
   return m;
 }
 
+const REST_HURRY_DIST=1200,REST_HURRY_SPEED=75;
 function returnToBase(unit,dt) {
   const dx=unit.homeX-unit.x,dy=unit.homeY-unit.y,d=Math.hypot(dx,dy);
   if(d<4) {unit.x=unit.homeX;unit.y=unit.homeY;unit.returningToBase=false;unit.vx=unit.vy=0;return;}
-  const step=Math.min(d,(unit.isMerchant?55:unit.speed||78)*dt);
+  const step=Math.min(d,(unit.isMerchant?(d>REST_HURRY_DIST?REST_HURRY_SPEED:55):unit.speed||78)*dt); // v7.0.39: long walks to a post / home hurry (still on foot)
   unit.x+=dx/d*step;unit.y+=dy/d*step;unit.vx=dx/d;unit.vy=dy/d;unit.facingAngle=Math.atan2(dy,dx);
 }
 
