@@ -48,7 +48,7 @@ export function canPromoteCareer(game,nextRank){
   if(!isEnlisted(game)||!nextRank||(game.exp||0)<nextRank.reqExp)return false;
   return game.career.servicePhases-game.career.promotionServicePhases>=promotionServiceRequired(game.rankIndex);
 }
-import {gameText} from './game-text.js?v=322';
+import {gameText} from './game-text.js?v=323';
 export function careerSummary(game,ranks){
   const c=game.career;
   if(!isEnlisted(game))return c?.status==='invited'?'本陣から勧誘が届いています。帰還して話を聞けます。':

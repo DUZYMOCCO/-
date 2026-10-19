@@ -8,7 +8,7 @@ import {startAutoSave,stopAutoSave} from './auto-save.js?v=269';
 import {requestEvenUpgrade} from './even-upgrade.js?v=291';
 import {beginFollowerRecovery,noteFollowerIntent,suspendFollowerRecovery,finishFollowerRecovery,profileFollowerRecovery} from './follower-recovery.js?v=277';
 import {configurePerfSettings} from './perf-diagnostics.js?v=291';
-import {gameText} from './game-text.js?v=322';
+import {gameText} from './game-text.js?v=323';
 import {talentTag} from './talent-labels.js?v=291';
 import {fieldDialogReturn} from './dialog-return.js?v=200';
 import {guildMethods} from './guild-contracts.js?v=322';
@@ -99,7 +99,7 @@ import { ensureSoldierAppearance, drawSoldierPortrait } from './soldier-appearan
 import { aggregateDeathlineDynamics, tickDeathline, deathlineDamage, normalizeDeathlineSkills, chooseDeathlineSkill, deathlineRangedRange } from './deathline-rules.js?v=295';
 import {CAMPAIGN_SCALE_VERSION,migrateCampaignEnemy,campaignScalingV1} from './campaign-scaling.js?v=241';
 import {rangedCombatMethods,updatePiercingBolt,rangedDrawPose,rangedFrontlinePosition} from './ranged-combat.js?v=322';
-import {soldierMeleeMethods,tickSoldierMeleeSkill,soldierMeleeReach,soldierMeleePosition,soldierMeleeSkillText,soldierMeleeDrawPose,MELEE_BALANCE} from './soldier-melee-skills.js?v=322';
+import {soldierMeleeMethods,tickSoldierMeleeSkill,soldierMeleeReach,soldierMeleePosition,soldierMeleeSkillLines,soldierMeleeDrawPose,updateSoldierSkillFx,drawSoldierSkillFx,MELEE_BALANCE} from './soldier-melee-skills.js?v=323';
 import { buildSoldierProfile, describeDeathlineEffect } from './soldier-profile.js?v=234';
 import { attachSurfaceEvents, detachSurfaceEvents, frameSurfaceReady, releaseSceneCaches, releaseCanvas, surfaceCanResume } from './canvas-surface.js?v=217';
 import { SETTLEMENTS, WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt, routeNameAt, eastWestRoadY, northSouthRoadX, riverCenterY, drawFieldDepth, drawOakCrown, fieldBlocks, settleUnit, fieldSpeedFactor, biomeMoveTarget, fieldRockExit } from './world.js?v=289';
@@ -6924,7 +6924,7 @@ export const IronSquadGame = {
           }
         }
       }
-      this.trySoldierMeleeSkill(soldier,nearestEnemy);
+      if(!this.trySoldierMeleeSkill(soldier,nearestEnemy))this.trySoldierMeleeSkill2(soldier,nearestEnemy); // v7.1.5 skill 2 never on the same frame as skill 1
     });
 
     updateDefenseWalls(this,dt);
@@ -7552,6 +7552,7 @@ export const IronSquadGame = {
         if (sw.life <= 0) this.shockwaves.splice(i, 1);
       }
     }
+    updateSoldierSkillFx(this,dt);
     this.settleTerrain();
     finishAttributeMovement(this,dt);
     finishFollowerRecovery(this,dt);
@@ -9478,7 +9479,7 @@ export const IronSquadGame = {
           <div class="soldier-detail-block soldier-detail-span2">
             <div class="soldier-detail-label">武器マスタリー</div>
             <div style="font-size:10px;color:#94a3b8;margin-bottom:4px;">得意: ${WEAPON_STYLE_ICONS[s.favoriteWeapon] || ''}${WEAPON_STYLE_LABELS[s.favoriteWeapon] || '剣'}</div>
-            ${soldierMeleeSkillText(s)?`<div class="soldier-weapon-skill">${soldierMeleeSkillText(s)}</div>`:''}
+            ${soldierMeleeSkillLines(s).map(line=>`<div class="soldier-weapon-skill" style="font-size:10px;line-height:1.45;color:#cbd5e1;margin-bottom:2px;">${line}</div>`).join('')}
             <div class="mastery-grid" role="group" aria-label="武器マスタリー">${masteryRows}</div>
             <div class="mastery-caption" aria-live="polite" hidden></div>
           </div>
@@ -11456,6 +11457,8 @@ export const IronSquadGame = {
     // 7. Damage numbers: outlined, weighted, readable impact and fade.
     for(const popup of this.damageTexts)drawDamageText(this.ctx,popup);
 
+    // 7.4 v7.1.5 兵士スキル2の演出（斬撃線・貫通の光・ヒビ・半円の軌跡）
+    drawSoldierSkillFx(this.ctx,this);
     // 7.5 パワーアタック衝撃波（SHOCKWAVES）
     if (this.shockwaves) {
       for (const sw of this.shockwaves) {
