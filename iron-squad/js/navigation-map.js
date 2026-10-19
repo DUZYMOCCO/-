@@ -2,7 +2,7 @@ import {drawWildernessMap} from './wilderness-sites.js?v=281';
 import {WORLD_SIZE,biomeAt,eastWestRoadY,northSouthRoadX,riverCenterY} from './world.js?v=289';
 import {UNDISCOVERED_MEDICAL_LABEL} from './medical-posts.js?v=277';
 import {dungeonSolids} from './dungeon.js?v=306';
-import {inCurrentInstance} from './instance-rules.js?v=317';
+import {inCurrentInstance} from './instance-rules.js?v=318';
 import {ECONOMIC_REGIONS,economicState} from './regional-economy.js?v=277';
 
 export const NAVIGATION_RULES=Object.freeze({fieldSpan:12000,maxSize:168,terrainAlpha:.2,roadAlpha:.48,iconAlpha:1});

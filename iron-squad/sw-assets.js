@@ -3,8 +3,8 @@
 // パスは「ゲームフォルダからの相対パス」。ルートの sw.js は触らない。
 self.GAME_ASSETS = self.GAME_ASSETS || {};
 self.GAME_ASSETS['iron-squad'] = {
-  version: 'v317',
-  gameVersion: '7.0.40', // ハブのカードに表示する版（キャッシュ用 version とは別。リリース時に上げる）
+  version: 'v318',
+  gameVersion: '7.1.0', // ハブのカードに表示する版（キャッシュ用 version とは別。リリース時に上げる）
   files: [
     'js/death-shatter.js',
     'js/wilderness-sites.js',
@@ -83,6 +83,9 @@ self.GAME_ASSETS['iron-squad'] = {
     'js/workshop.js',
     'js/casino-rules.js',
     'js/casino.js',
+    'js/mahjong-rules.js',
+    'js/mahjong-ai.js',
+    'js/mahjong.js',
     'js/hero-rules.js',
     'js/hero-spectate.js',
     'js/pocket-potion.js',

@@ -1,6 +1,6 @@
 import {WORLD_SIZE} from './world.js?v=289';
 import {HQ_FACILITY_LAYOUT} from './hq-facility-layout.js?v=201';
-import {fieldWalls,fieldWallContext,gatePositions,wallBlocksAttack,outerWallBuilt} from './gate-rules.js?v=317';
+import {fieldWalls,fieldWallContext,gatePositions,wallBlocksAttack,outerWallBuilt} from './gate-rules.js?v=318';
 const C=WORLD_SIZE/2,PAD=12;
 const boxes=HQ_FACILITY_LAYOUT.map(p=>({left:C+p.x-p.w/2-PAD,right:C+p.x+p.w/2+PAD,top:C+p.y-52-PAD,bottom:C+p.y+2+PAD}));
 const contains=(b,p)=>p.x>b.left&&p.x<b.right&&p.y>b.top&&p.y<b.bottom;

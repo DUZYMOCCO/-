@@ -1,13 +1,14 @@
-import {CASINO_BET,casinoBaseBet,casinoMaxBet,casinoPageMaxBet,validCasinoBet,normalizeCasinoBet,CASINO_POLICY,POKER_PAYOUTS,SLOT_SYMBOLS,SLOT_LINES,SLOT_CHERRY_TWO,dealPoker,finishPoker,cardFace,rollSlots,pokerWinningCards,evaluatePoker,canDoubleUp,playDoubleUp,takeDoubleUp,DOUBLE_UP_MAX_WINS} from './casino-rules.js?v=307';
-import {chooseArena,arenaCandidates,simulateArena,recordArena} from './casino-arena.js?v=317';
-import {atFacility} from './hq-facilities.js?v=317';
+import {CASINO_BET,casinoBaseBet,casinoMaxBet,casinoPageMaxBet,validCasinoBet,normalizeCasinoBet,CASINO_POLICY,POKER_PAYOUTS,SLOT_SYMBOLS,SLOT_LINES,SLOT_CHERRY_TWO,dealPoker,finishPoker,cardFace,rollSlots,pokerWinningCards,evaluatePoker,canDoubleUp,playDoubleUp,takeDoubleUp,DOUBLE_UP_MAX_WINS} from './casino-rules.js?v=318';
+import {mahjongHtml,bindMahjong,mahjongMethods,setMahjongHost,mahjongInProgress,mahjongOf,drive as driveMahjong,settleMahjong} from './mahjong.js?v=318';
+import {chooseArena,arenaCandidates,simulateArena,recordArena} from './casino-arena.js?v=318';
+import {atFacility} from './hq-facilities.js?v=318';
 import {drawSoldierPortrait} from './soldier-appearance.js?v=295';
-import {casinoQuip} from './soldier-dialogue.js?v=317';
+import {casinoQuip} from './soldier-dialogue.js?v=318';
 import {sound} from '../../common/js/audio.js?v=151';
-import {gameText} from './game-text.js?v=307';
+import {gameText} from './game-text.js?v=318';
 const states=new WeakMap();
 // v7.0.33: the session (running net, open panel, animation) belongs to the game, not to the nation.casino object: normalizeNation() rebuilds that object at phase end / payroll / donations, which used to drop the net to 0 and leave the open panel unredrawn. A load or a new game rebuilds the panel (renderCasino resets the page and net).
-const state=game=>{let s=states.get(game);if(s&&s.source!==game.nation?.casino)s.source=game.nation?.casino;if(!s){s={source:game.nation?.casino,page:'lobby',busy:null,step:0,net:0,history:{slot:[],poker:[],arena:[]},losses:0,comment:'',lastSpeech:0};states.set(game,s);}return s;};
+const state=game=>{let s=states.get(game);if(s&&s.source!==game.nation?.casino)s.source=game.nation?.casino;if(!s){s={source:game.nation?.casino,page:'lobby',busy:null,step:0,net:0,history:{slot:[],poker:[],arena:[],mahjong:[]},losses:0,comment:'',lastSpeech:0};states.set(game,s);}return s;};
 const canPlay=game=>atFacility(game,'casino',0);
 const wager=(game,page=state(game).page)=>Math.min(casinoPageMaxBet(game.nation?.level,page),Math.max(casinoBaseBet(game.nation?.level),validCasinoBet(game.nation?.casino?.bet,CASINO_BET,Infinity)?Number(game.nation.casino.bet):CASINO_BET));
 const money=n=>`${Number(n||0).toLocaleString(undefined,{maximumFractionDigits:1})}G`;
@@ -23,7 +24,7 @@ const lineMoney=n=>`${Number.isInteger(n)?'':'約'}${money(Math.round(n))}`;
 const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const reduced=()=>globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 function refresh(game){const s=state(game);if(s.root?.isConnected)draw(game,s.root);}
-function remember(game,page,result){const s=state(game);s.history[page].unshift(result);s.history[page].length=Math.min(10,s.history[page].length);}
+function remember(game,page,result){const s=state(game);s.history[page]??=[];s.history[page].unshift(result);s.history[page].length=Math.min(10,s.history[page].length);}
 function speak(game,unit,force=false,big=false) {
  const s=state(game),now=Date.now();if(now-s.lastSpeech<7000||(!force&&Math.random()>.35))return;
  unit=unit||(game.squad||[]).find(u=>u.isPersonalGuard&&!u.dead&&!u.isDown);if(!unit)return;
@@ -41,13 +42,14 @@ const historyHtml=(s,page)=>`<details class="casino-history"><summary>直近の�
 const lineSvg=(lines,small=false)=>`<svg class="${small?'slot-line-key':'slot-win-lines'}" viewBox="0 0 300 300" aria-label="${small?'横3・縦3・ななめ2の8本':'当たりの線'}">${lines.map((line,i)=>{const cells=SLOT_LINES[line],a=cells[0],b=cells[2];return `<line x1="${a%3*100+50}" y1="${Math.floor(a/3)*100+50}" x2="${b%3*100+50}" y2="${Math.floor(b/3)*100+50}" stroke="${['#f9d978','#ef8787','#86bde8','#9dd2aa','#d9a7e8','#e7b27a','#f1f1c3','#b3eee9'][i%8]}"/>`;}).join('')}</svg>`;
 function draw(game,root) {
  const s=state(game),casino=game.nation.casino,page=s.page,open=canPlay(game),bet=wager(game),base=casinoBaseBet(game.nation.level),max=casinoPageMaxBet(game.nation.level,page),slotMax=casinoMaxBet(game.nation.level),arenaMax=casinoPageMaxBet(game.nation.level,'arena'),locked=!!s.busy;
- root.dataset.casinoPage=page;if(root.previousElementSibling?.classList.contains('facility-intro'))root.previousElementSibling.remove();
- root.innerHTML=gameText(`<nav class="casino-path"><button type="button" data-casino-page="lobby" ${page==='lobby'?'hidden':''}>‹ 入口へ</button><strong>CASINO / ${{lobby:'入口',slot:'SLOT',poker:'POKER',arena:'ARENA'}[page]}</strong></nav>
+ root.dataset.casinoPage=page;root.dataset.mjActive=page==='mahjong'&&mahjongOf(game)?'1':'0';if(page==='mahjong')driveMahjong(game,false);if(root.previousElementSibling?.classList.contains('facility-intro'))root.previousElementSibling.remove();
+ root.innerHTML=gameText(`<nav class="casino-path"><button type="button" data-casino-page="lobby" ${page==='lobby'?'hidden':''}>‹ 入口へ</button><strong>CASINO / ${{lobby:'入口',slot:'SLOT',poker:'POKER',arena:'ARENA',mahjong:'MAHJONG'}[page]}</strong></nav>
  ${!open?'<p>本陣のカジノから遊べます。</p>':''}
- ${page==='lobby'?`<p class="casino-welcome">戦いの合間に、ひと勝負。</p><p>所持金 ${money(game.gold)}</p><p>何回でも遊べます。お金の勝負に経験値は入りません。</p><div class="casino-lobby">${[['slot','7 · 🍒 · 💎','スロット','3×3、8本の線で大当たり。'],['poker','♠ ♥ ♦ ♣','ポーカー','5枚を配り、1回だけ交換。ジョーカー入り。'],['arena','⚔','闘技場','仲間6人の練習試合。赤組か青組か。']].map(([p,icon,title,desc])=>`<button type="button" data-casino-page="${p}"><b>${icon}</b><strong>${title}</strong><small>${desc}</small></button>`).join('')}</div>`:
+ ${page==='lobby'?`<p class="casino-welcome">戦いの合間に、ひと勝負。</p><p>所持金 ${money(game.gold)}</p><p>何回でも遊べます。お金の勝負に経験値は入りません。</p><div class="casino-lobby">${[['slot','7 · 🍒 · 💎','スロット','3×3、8本の線で大当たり。'],['poker','♠ ♥ ♦ ♣','ポーカー','5枚を配り、1回だけ交換。ジョーカー入り。'],['arena','⚔','闘技場','仲間6人の練習試合。赤組か青組か。'],['mahjong','🀄','麻雀',mahjongInProgress(game)?'続きから打てます。':'4人打ち（対CPU）。頭で勝つ。']].map(([p,icon,title,desc])=>`<button type="button" data-casino-page="${p}"><b>${icon}</b><strong>${title}</strong><small>${desc}</small></button>`).join('')}</div>`:
  `<div class="casino-wallet" aria-live="polite"><span>所持金 <b>${money(game.gold)}</b></span><span>今回の収支 <b>${signed(s.net)}</b></span></div><div class="casino-wager"><label>掛け金<input id="casino-bet" type="number" inputmode="numeric" min="${base}" max="${max}" step="1" value="${bet}" ${locked?'disabled':''}></label><small>基本 ${money(base)} / ${page==='arena'?'闘技場の上限':'今の上限'} ${money(max)}（今の掛け金 ${money(bet)}）</small><small>${page==='arena'?`スロット・ポーカーの上限は ${money(slotMax)}。そちらへ移ると上限で止まります。`:`闘技場の上限は ${money(arenaMax)}。`}</small><div class="casino-bet-actions"><button data-bet-base>基本に戻す</button><button data-bet-mult="2">2倍</button><button data-bet-mult="10">10倍</button></div></div>
- ${page==='slot'?slotHtml(game,s):page==='poker'?pokerHtml(game,s):arenaHtml(game,s)}${historyHtml(s,page)}`}
+ ${page==='slot'?slotHtml(game,s):page==='poker'?pokerHtml(game,s):page==='mahjong'?'<div class="mj-slot" data-mj-slot></div>':arenaHtml(game,s)}${historyHtml(s,page)}`}
  <p class="casino-comment" role="status">${escape(s.comment)}</p>`);
+ {const mount=root.querySelector('[data-mj-slot]');if(mount){mount.innerHTML=mahjongHtml(game,s);bindMahjong(mount,game);}}
  for(const b of root.querySelectorAll('[data-casino-page]'))b.onclick=()=>game.openCasinoPage(b.dataset.casinoPage);
  const input=root.querySelector('#casino-bet');if(input)input.onchange=()=>{game.setCasinoBet(Number(input.value));refresh(game);};
  root.querySelector('[data-bet-base]')?.addEventListener('click',()=>game.setCasinoBet(base));
@@ -117,12 +119,15 @@ function arenaHtml(game,s) {
  <p class="arena-caption ${s.bigWin?'is-big-win':''}">${playing?'練習試合中…':fight?`${s.bigWin?'大当たり！ ':''}${fight.winner?'青組':'赤組'}の勝ち · 受取 ${money(fight.payout)}`:`本番と同じ模擬戦${CASINO_POLICY.arenaTrials}回で勝率を予想。倍率は${CASINO_POLICY.arenaOddsRange.join('〜')}倍。`}</p>
  ${playing?'<button class="casino-play" id="btn-arena-fast">早送り</button>':`<button class="casino-play" id="btn-arena-shuffle" ${s.busy?'disabled':''}>組み直す · 無料</button>`}`;
 }
+setMahjongHost({state,refresh,canPlay,wager,money,signed,reduced,remember,payoutComment});
 export const casinoMethods={
+ ...mahjongMethods,
  openCasinoPage(page='lobby') {
- if(!['lobby','slot','poker','arena'].includes(page))return false;
+ if(!['lobby','slot','poker','arena','mahjong'].includes(page))return false;
  const s=state(this),casino=this.nation?.casino,cap=casinoPageMaxBet(this.nation?.level,page);s.page=page;s.net=0;s.comment='';
  if(casino&&casino.bet>cap){const old=casino.bet;casino.bet=cap;s.comment=`掛け金を${money(old)}から、このページの上限 ${money(cap)}に下げました。`;}
  if(page==='arena'&&!s.arena)s.arena=chooseArena(this);
+ if(page==='mahjong')settleMahjong(this);
  if(s.root?.parentElement)s.root.parentElement.scrollTop=0;
  refresh(this);return true;
  },
@@ -184,6 +189,6 @@ export const casinoMethods={
  },
  renderCasino(panel) {
  const s=state(this),root=document.createElement('section');root.className='town-facility casino-panel';
- if(!s.root?.isConnected){s.page='lobby';s.net=0;}s.root=root;panel.append(root);draw(this,root);
+ if(!s.root?.isConnected){s.page=mahjongInProgress(this)?'mahjong':'lobby';s.net=0;}s.root=root;panel.append(root);draw(this,root);
  }
 };

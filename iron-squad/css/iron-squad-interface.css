@@ -1810,3 +1810,59 @@
 .iron-squad .casino-award strong.slot-net.is-even { color:#d8d2bf; }
 .iron-squad .casino-slot-board.is-minor .slot-win-lines { opacity:.3; }
 .iron-squad .casino-panel .casino-slot-board.is-minor .slot-reel.is-winning { background:#efe8d4; color:#a63b3e; box-shadow:inset 0 0 6px #b9ab86; }
+
+/* v7.1.0: Mahjong. Tile faces come from data-n / data-s through ::before / ::after (no text nodes), so the kana mode never touches them. Fits 390x844 portrait. */
+.iron-squad .casino-panel[data-mj-active="1"] .casino-wager { display:none; }
+.iron-squad .mj { display:grid; gap:6px; margin:6px 0; font-size:12px; }
+.iron-squad .mj-tile { position:relative; display:inline-block; flex:none; box-sizing:border-box; width:22px; height:32px; min-width:0 !important; min-height:0 !important; margin:0; padding:0 !important; border:1px solid #7b775f; border-bottom-width:3px; border-radius:3px; background:linear-gradient(#fcf8e8,#e7dfc0) !important; color:#2a2a2a; font-weight:700; line-height:1; overflow:hidden; }
+.iron-squad .mj-tile::before { content:attr(data-n); position:absolute; left:0; right:0; top:2px; text-align:center; font-size:16px; line-height:1.05; }
+.iron-squad .mj-tile::after { content:attr(data-s); position:absolute; left:0; right:0; bottom:2px; text-align:center; font-size:9px; line-height:1; }
+.iron-squad .mj-tile.mj-m { color:#b02a2a !important; }.iron-squad .mj-tile.mj-p { color:#1f58b5 !important; }.iron-squad .mj-tile.mj-s { color:#1d7a3a !important; }
+.iron-squad .mj-tile.mj-w::before,.iron-squad .mj-tile.mj-h::before,.iron-squad .mj-tile.mj-g::before,.iron-squad .mj-tile.mj-r::before { top:50%; transform:translateY(-50%); font-size:20px; }
+.iron-squad .mj-tile.mj-h { color:#22262b !important; }.iron-squad .mj-tile.mj-g { color:#17803c !important; }.iron-squad .mj-tile.mj-r { color:#c0262d !important; }.iron-squad .mj-tile.mj-w { color:#4b5560 !important; box-shadow:inset 0 0 0 2px #e9e3cb,inset 0 0 0 3px #9aa3ab; }
+.iron-squad .mj-tile.mj-sm { width:15px; height:21px; border-bottom-width:2px; border-radius:2px; }
+.iron-squad .mj-tile.mj-sm::before { top:1px; font-size:11px; }.iron-squad .mj-tile.mj-sm::after { bottom:1px; font-size:6px; }
+.iron-squad .mj-tile.mj-sm.mj-w::before,.iron-squad .mj-tile.mj-sm.mj-h::before,.iron-squad .mj-tile.mj-sm.mj-g::before,.iron-squad .mj-tile.mj-sm.mj-r::before { top:50%; font-size:13px; }
+.iron-squad .mj-tile.is-last { outline:2px solid #e3b341; outline-offset:-1px; }.iron-squad .mj-tile.mj-win { outline:2px solid #e86a5f; outline-offset:-1px; }
+.iron-squad .mj-head { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+.iron-squad .mj-head > div:first-child { display:flex; flex-wrap:wrap; gap:2px 10px; align-items:baseline; }.iron-squad .mj-head strong { color:var(--ui-gold); font-size:14px; }
+.iron-squad .mj-dora { display:flex; align-items:center; gap:5px; }.iron-squad .mj-dora small { color:var(--ui-muted); }
+.iron-squad .mj-opps { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:4px; }
+.iron-squad .mj-seat { min-width:0; padding:4px; border:1px solid var(--ui-line); border-radius:6px; background:rgba(0,0,0,.16); }
+.iron-squad .mj-seat.is-turn { border-color:var(--ui-gold); box-shadow:0 0 0 1px var(--ui-gold); }
+.iron-squad .mj-seat header { display:flex; flex-wrap:wrap; align-items:center; gap:2px 5px; margin-bottom:3px; }
+.iron-squad .mj-seat .mj-pts { margin-left:auto; color:var(--ui-gold); font-weight:700; }
+.iron-squad .mj-tag { padding:0 4px; border-radius:3px; background:#8c3a34; color:#fff; font-size:10px; font-style:normal; }
+.iron-squad .mj-riichi { padding:0 4px; border-radius:3px; background:#c8a23c; color:#222; font-size:10px; font-style:normal; }
+.iron-squad .mj-river { display:flex; flex-wrap:wrap; gap:1px; align-content:flex-start; min-height:23px; }
+.iron-squad .mj-me .mj-river { min-height:23px; }
+.iron-squad .mj-wait { display:flex; flex-wrap:wrap; align-items:center; gap:4px 6px; min-height:34px; padding:3px 6px; border-radius:6px; background:rgba(40,80,60,.35); }
+.iron-squad .mj-wait.is-empty { background:rgba(0,0,0,.12); color:var(--ui-muted); }
+.iron-squad .mj-wait-tile { display:inline-flex; align-items:flex-end; gap:1px; }.iron-squad .mj-wait-tile small { color:var(--ui-muted); font-size:10px; }
+.iron-squad .mj-furiten { padding:0 5px; border-radius:3px; background:#7d2f2f; color:#fff; font-size:11px; }
+.iron-squad .mj-hand { container-type:inline-size; display:flex; justify-content:center; align-items:flex-end; gap:2px; min-height:48px; padding-top:10px; }
+.iron-squad .mj-hand .mj-tile { flex:1 1 0; width:auto; max-width:30px; height:auto; aspect-ratio:2/3.2; cursor:pointer; transition:transform .08s; }
+.iron-squad .mj-hand .mj-tile::before { font-size:min(20px,5cqw); }.iron-squad .mj-hand .mj-tile::after { font-size:min(11px,2.9cqw); }
+.iron-squad .mj-hand .mj-tile.mj-w::before,.iron-squad .mj-hand .mj-tile.mj-h::before,.iron-squad .mj-hand .mj-tile.mj-g::before,.iron-squad .mj-hand .mj-tile.mj-r::before { font-size:min(24px,6cqw); }
+.iron-squad .mj-hand .mj-drawn { margin-left:8px; }
+.iron-squad .mj-hand .mj-tile.is-selected { transform:translateY(-9px); box-shadow:0 0 0 2px var(--ui-gold); }
+.iron-squad .mj-hand .mj-tile.is-dim { opacity:.35; }.iron-squad button.mj-tile:disabled { opacity:1; }.iron-squad button.mj-tile.is-dim:disabled { opacity:.35; }
+.iron-squad .mj-status,.iron-squad .mj-msg { margin:0; min-height:1.5em; text-align:center; color:var(--ui-muted); }.iron-squad .mj-msg { display:flex; justify-content:center; align-items:center; gap:4px; flex-wrap:wrap; }
+.iron-squad .mj-actions { display:grid; grid-template-columns:repeat(auto-fit,minmax(70px,1fr)); gap:6px; }
+.iron-squad .mj-actions button { min-height:48px; font-size:15px; }.iron-squad .mj-actions .casino-play { margin:0; min-height:48px; font-size:16px; }
+.iron-squad .mj-actions button.is-on { border-color:var(--ui-gold); background:#8d794233; color:var(--ui-gold); }
+.iron-squad .mj-hot { background:#6b2a2a; color:#fff; }
+.iron-squad .mj-abandon { min-height:44px; font-size:12px; opacity:.85; }.iron-squad .mj-abandon.is-confirm { border-color:#c25a50; color:#ff9d93; opacity:1; }
+.iron-squad .mj-result,.iron-squad .mj-final { padding:8px 10px; border:1px solid #968255; border-radius:8px; background:rgba(0,0,0,.2); }
+.iron-squad .mj-result h4,.iron-squad .mj-final h4 { margin:2px 0 6px; color:var(--ui-gold); font-size:16px; }
+.iron-squad .mj-showhand { display:flex; flex-wrap:wrap; align-items:center; gap:1px; margin:4px 0; }.iron-squad .mj-showhand b { margin-right:6px; font-size:11px; }
+.iron-squad .mj-yaku,.iron-squad .mj-deltas,.iron-squad .mj-ranks { list-style:none; margin:6px 0; padding:0; }
+.iron-squad .mj-yaku li,.iron-squad .mj-deltas li,.iron-squad .mj-ranks li { display:flex; justify-content:space-between; gap:8px; padding:3px 0; border-bottom:1px solid rgba(255,255,255,.08); }
+.iron-squad .mj-han { margin:2px 0 6px; text-align:right; }.iron-squad .mj-han b { color:var(--ui-gold); font-size:18px; }
+.iron-squad .mj-deltas li.is-plus b { color:#7ddc8a; }.iron-squad .mj-deltas li.is-minus b { color:#ff8f86; }
+.iron-squad .mj-ranks li { align-items:center; }.iron-squad .mj-ranks li.is-me { color:var(--ui-gold); font-weight:700; }.iron-squad .mj-ranks li span { width:2.4em; }.iron-squad .mj-ranks li b { flex:1; }
+.iron-squad .mj-setup h4 { margin:12px 0 6px; color:var(--ui-gold); }
+.iron-squad .mj-choice { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-bottom:4px; }.iron-squad .mj-choice button { min-height:48px; font-size:15px; }
+.iron-squad .mj-choice button.is-on { border-color:var(--ui-gold); background:#8d794233; color:var(--ui-gold); }
+@media (prefers-reduced-motion:reduce) { .iron-squad .mj-hand .mj-tile { transition:none; } }
+.iron-squad .mj-ranks em { font-style:normal; }
