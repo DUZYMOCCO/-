@@ -51,16 +51,26 @@ export function serializeInvasions(game) {
 export function makeEnemyRoom(list,count) {
   while(list.length+count>40){let index=-1,d=-1;for(let i=0;i<list.length;i++){const m=list[i];if(m.isBoss||m.isColossal||m.isRaidMob)continue;const dist=Math.hypot(m.x-center,m.y-center);if(dist>d){d=dist;index=i;}}if(index<0)break;list.splice(index,1);}
 }
+/** v7.0.35: while the hero spectate runs (castle or field march) no raid/invasion starts or advances; it waits and begins once the spectate ends. */
+export const raidHeldBySpectate=game=>!!game?.spectating;
+/** What is waiting to start right now (null = nothing): 'invasion' (a regular/major invasion is due) or 'raid' (the rolled random raid is due). Pure; ignores the hold itself, so the spectate HUD can say what is being held. */
+export function pendingRaid(game) {
+  const state=game?.invasions;if(!state||game.baseRaidActive||state.stage!=='idle'||game.restTimer>0)return null;
+  const phase=game.phase||1;
+  if(phase>=state.nextPhase)return !(game.dungeons||[]).some(d=>d.id==='dungeon_demon_castle'&&d.cleared)&&game.phaseTimer<=(game.phaseDuration||120)-20?'invasion':null;
+  if(phase<RANDOM_RAID_MIN_PHASE||phase-(game.baseRaidTriggeredPhase||state.raidLastPhase||0)<RANDOM_RAID_GAP)return null;
+  return state.raidScheduledPhase===phase&&game.phaseTimer<=state.raidTriggerRemaining?'raid':null;
+}
 export function shouldTriggerRandomRaid(game,random=Math.random) {
   const state=game.invasions;if(!state||game.baseRaidActive||game.currentDungeon||game.restTimer>0||state.stage!=='idle'||(game.phase||1)>=state.nextPhase)return false;
   const phase=game.phase||1;
   if(phase<RANDOM_RAID_MIN_PHASE||phase-(game.baseRaidTriggeredPhase||state.raidLastPhase||0)<RANDOM_RAID_GAP)return false;
   if(state.raidRollPhase!==phase){state.raidRollPhase=phase;state.raidScheduledPhase=random()<RANDOM_RAID_CHANCE?phase:0;state.raidTriggerRemaining=(game.phaseDuration||120)*(.4+random()*.15);}
-  return state.raidScheduledPhase===phase&&game.phaseTimer<=state.raidTriggerRemaining;
+  return state.raidScheduledPhase===phase&&game.phaseTimer<=state.raidTriggerRemaining&&!raidHeldBySpectate(game); // v7.0.35: the roll still happens while spectating; only the start waits
 }
 export const invasionMethods={
   startDemonInvasion() {
-    const s=this.invasions;if(!s||s.stage!=='idle'||this.baseRaidActive||this.currentDungeon||this.restTimer>0)return false;
+    const s=this.invasions;if(!s||s.stage!=='idle'||this.baseRaidActive||this.currentDungeon||this.restTimer>0||raidHeldBySpectate(this))return false;
     const castle=(this.dungeons||[]).find(d=>d.id==='dungeon_demon_castle');if(castle?.cleared)return false;
     s.kind=(this.phase||1)>=s.nextMajorPhase?'major':'regular';s.stage='marching';s.marchDuration=s.kind==='major'?MAJOR_MARCH_SECONDS:INVASION_MARCH_SECONDS;s.eta=s.marchDuration;s.remaining=s.kind==='major'?MAJOR_BATTLE_SECONDS:INVASION_BATTLE_SECONDS;s.sequence++;
     const strength=invasionStrength(this);
@@ -104,7 +114,7 @@ export const invasionMethods={
     const s=this.invasions;if(!s||!(dt>0)||!this.inBattle)return;
     const defeated=(this.dungeons||[]).some(d=>d.id==='dungeon_demon_castle'&&d.cleared);
     if(defeated){if(s.stage!=='idle')this.finishDemonInvasion('castle-fallen');return;}
-    if(this.currentDungeon||this.restTimer>0)return;
+    if(this.currentDungeon||this.restTimer>0||raidHeldBySpectate(this))return; // v7.0.35: the spectate holds raids exactly like being inside a building
     if(s.stage==='idle'){if((this.phase||1)>=s.nextPhase&&this.phaseTimer<=(this.phaseDuration||120)-20)this.startDemonInvasion();return;}
     if(s.stage==='marching'){s.eta=Math.max(0,s.eta-dt);if(s.eta<=0)this.arriveDemonInvasion();}
     else if(s.stage==='battle') {

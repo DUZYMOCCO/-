@@ -102,7 +102,7 @@ assert.equal(game.currentDungeon, null); assert.ok(toasts.some(t => t.includes('
 renderHeroJourney(game, SOLDIER_CLASSES, TALENTS); assert.ok(find('観戦する'));
 // auto end removes the panel too
 assert.equal(sp.startSpectate(game, SOLDIER_CLASSES), true); assert.ok(panel());
-p.status = 'withdrawn'; game.update(.1); assert.equal(panel(), null); assert.equal(game.spectating, null); assert.equal(game.currentDungeon, null);
+game.baseRaidActive = true; game.update(.1); game.baseRaidActive = false; assert.equal(panel(), null); assert.equal(game.spectating, null); assert.equal(game.currentDungeon, null);
 // loading a game wipes a leftover panel
 p.status = 'castle'; assert.equal(sp.startSpectate(game, SOLDIER_CLASSES), true); assert.ok(panel()); sp.clearSpectate(game); assert.equal(panel(), null); game.currentDungeon = null;
 

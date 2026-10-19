@@ -1768,6 +1768,10 @@
 .hero-spectate .spectate-chip.down { opacity: .55; }
 .hero-spectate .spectate-chip.active { border-color: #e1c77e; background: rgba(225, 199, 126, .22); }
 .hero-spectate p { margin: 0; font-size: 11.5px; overflow-wrap: anywhere; }
+.hero-spectate .spectate-outcome { color: #fde68a; font-weight: bold; }
+.hero-spectate .spectate-outcome[hidden] { display: none; }
+.hero-spectate .spectate-raid { color: #fca5a5; font-weight: bold; }
+.hero-spectate .spectate-raid[hidden] { display: none; }
 .hero-spectate .spectate-log { margin: 0; padding: 0 0 0 14px; font-size: 10.5px; opacity: .8; overflow-wrap: anywhere; }
 @media (max-height: 460px) { .hero-spectate .spectate-log { display: none; } }
 /* v7.0.31 観戦中は隊長のHP・スキル（パッド）・建物/行商人の案内を隠す。倍速ボタン、観戦待ちチップ、城へ入るときのフェード */

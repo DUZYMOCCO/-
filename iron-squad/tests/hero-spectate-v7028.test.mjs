@@ -18,7 +18,7 @@ game.activeSlotId=saveSlots.create('観戦検証').id;game.startFreshGame(false)
 const d=DUNGEON_DEFS.find(x=>x.id==='dungeon_demon_castle'),CASTLE=d.id;
 const fieldMob={x:game.player.x+900,y:game.player.y,hp:10,maxHp:10,atk:1,radius:10,type:'slime'};
 function castleParty(phase){
-  game.currentDungeon=null;game.spectating=null;game.restTimer=0;game.baseRaidActive=false;
+  game.currentDungeon=null;game.spectating=null;game.restTimer=0;game.baseRaidActive=false;if(game.invasions)game.invasions.stage='idle'; // v7.0.35: an invasion held during the previous spectate starts when it ends
   hp.initializeHeroJourney(game);game.phase=phase;assert.equal(hp.rollHeroRevelation(game),true);const p=game.heroJourney.party;
   p.x=d.entrance.x;p.y=d.entrance.y;p.destination={...d.entrance};p.route=[{...d.entrance}];p.routeIndex=0;p.members.forEach(u=>{u.x=p.x;u.y=p.y;});
   hp.updateHeroParty(game,.1,SOLDIER_CLASSES);assert.equal(p.space,CASTLE);
@@ -131,10 +131,18 @@ assert.ok(toasts.some(t=>t.includes('観戦を始めた')));
   assert.equal(sp.endSpectate(game),false,'nothing to end');
 }
 // ---------- automatic ends ----------
+// v7.0.35: a wiped / withdrawn party and a slain king do NOT end the spectate: the camera holds, the panel says so, ×1, and only the user (or an unexpected state) ends it
+for(const [name,mutate,pattern] of [['fallen',(p)=>{p.status='fallen';p.members.forEach(u=>{u.dead=true;});},/全滅しました（観戦を終了で戻ります）/],['withdrawn',(p)=>{p.status='withdrawn';},/撤退しました（観戦を終了で戻ります）/],['victory',(p)=>{game.heroJourney.demonKingDefeat={phase:1,by:'hero',name:'x'};p.status='victorious';},/魔王が討たれました（観戦を終了で戻ります）/]]){
+  const c=castleParty(30);toasts.length=0;assert.equal(sp.startSpectate(game,SOLDIER_CLASSES),true,name);game.update(.1);sp.cycleSpectateSpeed(game);assert.equal(sp.spectateSpeed(game),2);
+  const viewerBefore=game.spectating.viewer;mutate(c.p);game.update(.1);
+  assert.ok(game.spectating,`${name}: the spectate goes on`);assert.equal(game.currentDungeon.id,CASTLE,`${name}: still in the castle`);assert.ok(game.spectating.ended,`${name}: marked ended`);assert.ok(toasts.some(t=>pattern.test(t)),`${name}: toast ${toasts.join('|')}`);
+  assert.equal(sp.spectateSpeed(game),1,`${name}: ×1`);assert.equal(sp.cycleSpectateSpeed(game),1,`${name}: the speed button is inert`);assert.match(sp.spectateOutcome(game).text,pattern);
+  const cam=sp.spectateCameraTarget(game);assert.ok(cam&&Number.isFinite(cam.x)&&Number.isFinite(cam.y),`${name}: a fixed camera target`);const at={x:cam.x,y:cam.y};
+  for(let i=0;i<40;i++)game.update(.1);assert.ok(game.spectating,`${name}: still on after a while`);const cam2=sp.spectateCameraTarget(game);assert.deepEqual({x:cam2.x,y:cam2.y},at,`${name}: the camera stays put`);assert.equal(sp.selectSpectateTarget(game,1),null,`${name}: no switching`);
+  assert.equal(sp.startSpectate(game),false);assert.equal(sp.endSpectate(game,'観戦を終えて戻った。'),true,`${name}: the user ends it`);assert.equal(game.spectating,null);assert.equal(game.currentDungeon,null);
+  game.heroJourney.demonKingDefeat=null;
+}
 const reasonCases=[
-  ['fallen',(p)=>{p.status='fallen';p.members.forEach(u=>{u.dead=true;});},/全滅/],
-  ['withdrawn',(p)=>{p.status='withdrawn';},/撤退/],
-  ['victory',(p,k)=>{game.heroJourney.demonKingDefeat={phase:1,by:'hero',name:'x'};p.status='victorious';},/魔王が討たれた/],
   ['raid',()=>{game.baseRaidActive=true;},/襲撃/],
   ['commander',()=>{game.player.isDown=true;},/隊長に異変/],
   ['left',(p)=>{p.space='field';},/魔王城を離れた/],
@@ -148,7 +156,7 @@ for(const [name,mutate,pattern] of reasonCases){
 }
 { // an end during the 8-second rest waits until the rest is over (no half-swapped monster lists)
   const c=castleParty(35);assert.equal(sp.startSpectate(game,SOLDIER_CLASSES),true);
-  game.restTimer=8;game.restMonsters=game.monsters;game.monsters=[];c.p.status='withdrawn';
+  game.restTimer=8;game.restMonsters=game.monsters;game.monsters=[];c.p.space='field';
   game.updateSpectateOnly?.();sp.updateSpectate(game,.1);assert.ok(game.spectating,'deferred during rest');assert.equal(game.spectating.endRequested,true);assert.equal(game.currentDungeon.id,CASTLE);
   game.restTimer=0;game.monsters=game.restMonsters;game.restMonsters=[];sp.updateSpectate(game,.1);
   assert.equal(game.spectating,null);assert.equal(game.currentDungeon,null);

@@ -1,8 +1,8 @@
 import {CASINO_BET,casinoBaseBet,casinoMaxBet,casinoPageMaxBet,validCasinoBet,normalizeCasinoBet,CASINO_POLICY,POKER_PAYOUTS,SLOT_SYMBOLS,SLOT_LINES,SLOT_CHERRY_TWO,dealPoker,finishPoker,cardFace,rollSlots,pokerWinningCards,evaluatePoker,canDoubleUp,playDoubleUp,takeDoubleUp,DOUBLE_UP_MAX_WINS} from './casino-rules.js?v=307';
-import {chooseArena,arenaCandidates,simulateArena,recordArena} from './casino-arena.js?v=295';
-import {atFacility} from './hq-facilities.js?v=295';
+import {chooseArena,arenaCandidates,simulateArena,recordArena} from './casino-arena.js?v=312';
+import {atFacility} from './hq-facilities.js?v=312';
 import {drawSoldierPortrait} from './soldier-appearance.js?v=295';
-import {casinoQuip} from './soldier-dialogue.js?v=295';
+import {casinoQuip} from './soldier-dialogue.js?v=312';
 import {sound} from '../../common/js/audio.js?v=151';
 import {gameText} from './game-text.js?v=307';
 const states=new WeakMap();

@@ -155,6 +155,7 @@ export function civilianRescueStations(game,unit=null) {
 export function nearestAidStation(game,unit) {return nearest(aidStations(game,unit),unit);}
 export function nearestCivilianStation(game,unit) {return nearest(civilianRescueStations(game,unit),unit);}
 export function attachWounded(game,carrier,wounded) {
+  if(game?.spectating&&wounded?.heroPartyId)return false; // v7.0.35: the observing commander cannot rope a hero (a carried hero stops bleeding, so the party would never fall)
   if(!carrier||carrier.dead||carrier.isDown||carrier.hp<=0||!wounded?.isDown||wounded.dead||wounded===carrier||wounded.carrierId)return false;
   if(isLocalRescueUnit(game,carrier)!==isLocalRescueUnit(game,wounded))return false;
   const distance=Math.hypot(carrier.x-wounded.x,carrier.y-wounded.y);
@@ -203,7 +204,7 @@ export function sanitizeCarriers(game) {
   for(const wounded of rescueUnits(game)) {
     if(!wounded.carrierId)continue;
     const carrier=carrierOf(game,wounded),count=bump(wounded.carrierId);
-    if(!wounded.isDown||wounded.dead||!carrier||carrier.dead||carrier.isDown||carrier.hp<=0||count>carryingCapacity(carrier))delete wounded.carrierId;
+    if(!wounded.isDown||wounded.dead||!carrier||carrier.dead||carrier.isDown||carrier.hp<=0||count>carryingCapacity(carrier)||(game.spectating&&wounded.heroPartyId&&wounded.carrierId==='player'))delete wounded.carrierId; // v7.0.35: a rope tied before the spectate began is cut too
   }
   for(const civ of game.civilians||[]) {
     if(!civ||civ.rescued||!civ.carrierId)continue;

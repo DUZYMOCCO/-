@@ -1,4 +1,4 @@
-import {rescueUnits,friendlyNpcs,isMerchantCasualty,isMedic,commanderDown,carriedCount,revivalSkillCooldownLeft,medicHasStamina,MEDIC_TREAT_MIN,treatWounded,reviveByPotion,REVIVAL_POTION_RANGE} from './casualty-rules.js?v=295';
+import {rescueUnits,friendlyNpcs,isMerchantCasualty,isMedic,commanderDown,carriedCount,revivalSkillCooldownLeft,medicHasStamina,MEDIC_TREAT_MIN,treatWounded,reviveByPotion,REVIVAL_POTION_RANGE} from './casualty-rules.js?v=312';
 import {attributeFamily} from './unit-attributes.js?v=298';
 import {inCurrentInstance} from './instance-rules.js?v=308';
 import {gameText} from './game-text.js?v=307';

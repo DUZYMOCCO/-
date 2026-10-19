@@ -82,7 +82,7 @@ const SQUAD_STATE=()=>game.squad.map(s=>`${s.id}:${s.x}:${s.y}:${s.hp}`).join('|
   game.restTimer=0;assert.equal(sp.startSpectate(game),true);assert.equal(sp.endSpectate(game,'観戦を終えて戻った。'),true);
   game.restTimer=8;sp.startSpectate(game);game.restTimer=0; // refused: toast with the reason
   {const q=marchParty(30);game.restTimer=8;sp.queueSpectate(game);q.status='fallen';q.members.forEach(u=>{u.dead=true;});sp.updateSpectateQueue(game,.1);}
-  {const q=marchParty(35);assert.equal(sp.startSpectate(game),true);q.status='fallen';q.members.forEach(u=>{u.dead=true;});sp.updateSpectate(game,.1);assert.equal(game.spectating,null);}
+  {const q=marchParty(35);assert.equal(sp.startSpectate(game),true);q.status='fallen';q.members.forEach(u=>{u.dead=true;});sp.updateSpectate(game,.1);assert.ok(game.spectating&&game.spectating.ended==='fallen','v7.0.35: the spectate goes on after a wipe');assert.equal(sp.endSpectate(game,'観戦を終えて戻った。'),true);}
   const spectateToasts=toasts.map((t,i)=>[t,toastOpts[i]]).filter(([t])=>/観戦/.test(t));
   assert.ok(spectateToasts.length>=8,`enough toasts were exercised: ${toasts.join(' | ')}`);
   for(const [t,o] of spectateToasts)assert.equal(showsOnFieldLog(t,o),true,`visible on screen: ${t}`);
@@ -180,8 +180,6 @@ assert.match(sp.spectateSummary(game).castleText,/^野外を進軍中 · 魔王�
 }
 // ---------- automatic ends in the field ----------
 for(const [name,mutate,pattern] of [
-  ['fallen',(q)=>{q.status='fallen';q.members.forEach(u=>{u.dead=true;});},/全滅/],
-  ['victory',(q)=>{game.heroJourney.demonKingDefeat={phase:1,by:'hero',name:'x'};q.status='victorious';},/魔王が討たれた/],
   ['raid',()=>{game.baseRaidActive=true;},/襲撃/],
   ['commander',()=>{game.player.isDown=true;},/隊長に異変/]]){
   const q=marchParty(60);assert.equal(sp.startSpectate(game,SOLDIER_CLASSES),true,name);game.spectating.speed=2;toasts.length=0;
@@ -189,6 +187,15 @@ for(const [name,mutate,pattern] of [
   mutate(q);game.update(.1);
   assert.equal(game.spectating,null,`${name}: ends`);assert.equal(game.camera.x,campPos.x,`${name}: camera back`);assert.ok(toasts.some(t=>pattern.test(t)),`${name}: ${toasts.join('|')}`);assert.equal(sp.spectateSpeed(game),1,`${name}: ×1`);
   game.player.isDown=false;game.baseRaidActive=false;
+}
+// v7.0.35: a wiped party / a slain king no longer ends the field spectate: the view holds where it was, ×1, until the user ends it
+for(const [name,mutate,pattern] of [['fallen',(q)=>{q.status='fallen';q.members.forEach(u=>{u.dead=true;});},/全滅しました（観戦を終了で戻ります）/],['victory',(q)=>{game.heroJourney.demonKingDefeat={phase:1,by:'hero',name:'x'};q.status='victorious';},/魔王が討たれました（観戦を終了で戻ります）/]]){
+  const q=marchParty(60);assert.equal(sp.startSpectate(game,SOLDIER_CLASSES),true,name);game.spectating.speed=2;q.members.forEach((u,i)=>{u.x=C+2600+i*10;u.y=C+300;});for(let i=0;i<30;i++)game.update(.05);toasts.length=0;const pre=sp.spectateCameraTarget(game),preAt={x:pre.x,y:pre.y};
+  mutate(q);game.update(.1);assert.ok(game.spectating,`${name}: still on`);assert.equal(game.spectating.ended,name==='fallen'?'fallen':'victory');assert.ok(toasts.some(t=>pattern.test(t)),`${name}: ${toasts.join('|')}`);assert.equal(sp.spectateSpeed(game),1,`${name}: ×1`);
+  const cam=sp.spectateCameraTarget(game);assert.ok(cam&&Number.isFinite(cam.x)&&Number.isFinite(cam.y),`${name}: fixed camera target`);const at={x:cam.x,y:cam.y};assert.ok(Math.hypot(at.x-preAt.x,at.y-preAt.y)<120,`${name}: held at the last view (${at.x} vs ${preAt.x})`);
+  for(let i=0;i<60;i++)game.update(.1);const cam2=sp.spectateCameraTarget(game);assert.deepEqual({x:cam2.x,y:cam2.y},at,`${name}: the camera stays put`);assert.ok(game.spectating,`${name}: still on after a while`);assert.equal(game.currentDungeon,null);
+  assert.equal(game.player.x,campPos.x,`${name}: the commander stays parked`);
+  assert.equal(sp.endSpectate(game),true);assert.equal(game.spectating,null);assert.equal(game.camera.x,campPos.x,`${name}: camera back after the user ends it`);game._spectateGrace=0;game.heroJourney.demonKingDefeat=null;
 }
 { // field spectate cannot start from, nor survive, a building
   const q=marchParty(65);assert.equal(sp.startSpectate(game,SOLDIER_CLASSES),true);

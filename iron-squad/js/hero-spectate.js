@@ -7,6 +7,7 @@ import {formatCompact} from './number-format.js?v=282';
 import {WORLD_SIZE} from './world.js?v=289';
 import {CAMP_PEACE_RADIUS} from './peace-zones.js?v=277';
 import {formatDistance} from './distance-format.js';
+import {pendingRaid} from './invasion-rules.js?v=312';
 
 // v7.0.31: 観戦待ち（キュー）／野外の道中から魔王城まで通しで観戦／観戦中だけの倍速（×1/×2/×4）。
 // 野外観戦は本編ワールドのまま（隊長は本陣で不可視・無敵、隊員は凍結して描画しない）、カメラだけ勇者を追う。
@@ -77,7 +78,7 @@ export function resolveSpectateViewer(game) {
 
 /** Switch the followed target (dir=+1 next, -1 previous) or jump to a specific id. */
 export function selectSpectateTarget(game,which=1) {
-  const s=game.spectating;if(!s)return null;
+  const s=game.spectating;if(!s||s.ended)return null; // v7.0.35: the view is frozen after an outcome
   const list=spectateTargets(game);if(!list.length)return null;
   let t;
   if(typeof which==='string')t=list.find(x=>x.id===which);
@@ -107,14 +108,30 @@ export function spectateSummary(game) {
 
 function endReason(game) {
   const j=game.heroJourney,p=j?.party,me=game.player;
-  if(j?.demonKingDefeat||p?.status==='victorious')return '魔王が討たれたので、観戦を終えて戻った。';
-  if(!p||p.status==='withdrawn')return '勇者パーティが魔王城から撤退したので、観戦を終えて戻った。';
-  if(p.status==='fallen'||!p.members.some(living))return '勇者パーティが全滅したので、観戦を終えて戻った。';
+  // v7.0.35: a wiped / withdrawn party or a slain demon king no longer ends the spectate (see spectateOutcome): the view stays until the user ends it.
+  if(!p)return '勇者パーティが見当たらなくなったので、観戦を終えて戻った。';
+  if(game.spectating?.partyId&&p.id!==game.spectating.partyId)return '新しい勇者が現れたので、観戦を終えて戻った。';
   if(game.spectating?.field){if(p.space!=='field'&&p.space!==CASTLE_ID)return '勇者パーティの行方が分からなくなったので、観戦を終えて戻った。';}
   else if(p.space!==CASTLE_ID)return '勇者パーティが魔王城を離れたので、観戦を終えて戻った。';
   if(raidActive(game))return '襲撃が始まったので、観戦を終えて戻った。';
   if(!me||me.dead||me.isDown||me.hp<=0||game._saveFallen)return '隊長に異変があったので、観戦を終えて戻った。';
   return null;
+}
+
+/** v7.0.35: how the watched fight ended, or null while it goes on. None of these ends the spectate by itself: the camera holds where it was and the user presses 観戦を終了. */
+export function spectateOutcome(game) {
+  const j=game?.heroJourney,p=j?.party;if(!p)return null;
+  if(j.demonKingDefeat||p.status==='victorious')return {code:'victory',text:'魔王が討たれました（観戦を終了で戻ります）'};
+  if(p.status==='withdrawn')return {code:'withdrawn',text:'勇者パーティが魔王城から撤退しました（観戦を終了で戻ります）'};
+  if(p.status==='fallen'||!p.members.some(living))return {code:'fallen',text:'勇者パーティが全滅しました（観戦を終了で戻ります）'};
+  return null;
+}
+/** First frame of an outcome: freeze the view where it was (a snapshot, so nothing can be null), force ×1, say so once. */
+function noteOutcome(game,s) {
+  if(s.ended)return;const o=spectateOutcome(game);if(!o)return;
+  const v=s.viewer;s.ended=o.code;s.speed=1;
+  s.viewer=v&&Number.isFinite(v.x)&&Number.isFinite(v.y)?{...v}:s.lastPos?{...s.lastPos,hp:0,maxHp:0}:{x:game.camera?.x??0,y:game.camera?.y??0,hp:0,maxHp:0};
+  game.showToast?.(`👁 ${o.text}`,{field:true});updateSpectateHud(game,true);
 }
 
 /** Begin spectating. The commander walks into the castle as an invisible, invulnerable observer. */
@@ -126,7 +143,7 @@ export function startSpectate(game,classes=null) {
   game.heroFollowing=false;delete game._heroFollowPath;
   playSpectateFade(game); // v7.0.32: no countdown any more — a short black fade covers the start
   if(game.joystick){game.joystick.active=false;game.joystick.dirX=game.joystick.dirY=0;}
-  game.spectating={targetId:first.id,targetOk:true,viewer:first,classes,hudClock:0,endRequested:false,pendingReason:null,startedPhase:game.phase,field:a.kind==='field',speed:1};
+  game.spectating={targetId:first.id,targetOk:true,viewer:first,classes,hudClock:0,endRequested:false,pendingReason:null,startedPhase:game.phase,field:a.kind==='field',speed:1,partyId:p.id};
   if(a.kind==='field'){ // the ordinary field world: the commander stays parked in camp, only the camera leaves
     const viewer=resolveSpectateViewer(game);if(viewer&&game.camera){game.camera.x=viewer.x;game.camera.y=viewer.y;}
     game._sceneDirty=true;
@@ -167,11 +184,12 @@ export function endSpectate(game,message='観戦を終えて戻った。') {
 }
 
 /** Drop the flag and the DOM (no castle exit). Used after the commander has already left, and when a game is loaded. */
-export function clearSpectate(game) {
+export function clearSpectate(game,announce=true) {
   if(!game)return;
   const was=game.spectating;
   game.spectating=null;dropQueue(game);
   if(was){game._spectateGrace=SPECTATE_RULES.returnGrace;if(game.player)game.player.invulnerableTimer=Math.max(game.player.invulnerableTimer||0,SPECTATE_RULES.returnGrace);} // v7.0.32: the squad was parked (and the commander watching): a few safe seconds after coming back
+  if(was&&announce&&!game.currentDungeon){const raid=pendingRaid(game);if(raid)game.showToast?.(raid==='invasion'?'🚨 観戦を終えた。保留されていた魔王軍の侵攻が始まる！':'🚨 観戦を終えた。保留されていた本陣強襲が始まる！',{field:true});} // v7.0.35: raids were held while watching; they begin now
   // the speed lives on the spectate state, so it is gone too
   if(was?.field&&game.player&&game.camera){game.camera.x=game.player.x;game.camera.y=game.player.y;game._sceneDirty=true;} // back to the parked commander
   game.container?.classList?.remove('is-spectating');
@@ -185,30 +203,34 @@ export function updateSpectate(game,dt) {
     if(game.currentDungeon){clearSpectate(game);return;} // the commander went somewhere by another route
     const reason=endReason(game);
     if(reason){endSpectate(game,reason);return;}
+    noteOutcome(game,s);
     const resting=game.restTimer>0; // v7.0.33: the speed survives the rest
-    if(game.heroJourney.party.space===CASTLE_ID&&!resting){if(!enterCastleFromField(game))return;}
-    if(s.field&&game.heroJourney.party.space==='field')resolveSpectateViewer(game); // while the party is already in the castle but we wait out the rest, the camera holds
+    if(game.heroJourney.party.space===CASTLE_ID&&!resting&&!s.ended){if(!enterCastleFromField(game))return;} // v7.0.35: after an outcome nothing is entered, the view just holds
+    if(!s.ended&&s.field&&game.heroJourney.party.space==='field')resolveSpectateViewer(game); // while the party is already in the castle but we wait out the rest, the camera holds
   }else{
     if(game.currentDungeon?.id!==CASTLE_ID){clearSpectate(game);return;} // the commander left by some other route
     const reason=s.endRequested?s.pendingReason:endReason(game);
     if(reason){if(game.restTimer>0){s.endRequested=true;s.pendingReason=reason;}else{endSpectate(game,reason);return;}}
+    noteOutcome(game,s);
     if(s.endRequested&&s.speed!==1)s.speed=1;
-    resolveSpectateViewer(game);
+    if(!s.ended)resolveSpectateViewer(game);
   }
+  if(s.viewer&&Number.isFinite(s.viewer.x)&&Number.isFinite(s.viewer.y))s.lastPos={x:s.viewer.x,y:s.viewer.y}; // v7.0.35: the last place we looked at, if the target ever vanishes
   s.hudClock=(s.hudClock||0)-dt;if(s.hudClock<=0){s.hudClock=SPECTATE_RULES.hudSeconds;updateSpectateHud(game);}
 }
 
 /** The unit the camera should centre on while spectating, or null for the normal commander camera. */
 export function spectateCameraTarget(game) {
   const s=game?.spectating;if(!s)return null;
+  if(s.ended&&s.viewer)return s.viewer; // v7.0.35: after the party fell / withdrew / the king died the camera stays where it was
   if(s.field&&game.heroJourney?.party?.space!=='field')return s.hold||(s.hold={x:game.camera?.x??0,y:game.camera?.y??0}); // the party went in while we wait: keep the last view
-  return s.viewer||null;
+  return s.viewer||s.lastPos||null; // never null while a last place is known
 }
 
 // ---------------- speed (spectate only, whole-world time) ----------------
 /** Effective time multiplier now: ×1 unless spectating at ×2/×4; always ×1 during an end request or when not spectating. v7.0.33: the rest between phases keeps the chosen speed. */
 export function spectateSpeed(game) {
-  const s=game?.spectating;if(!s||s.endRequested)return 1;
+  const s=game?.spectating;if(!s||s.endRequested||s.ended)return 1; // v7.0.35: ×1 once the fight is over
   return SPECTATE_RULES.speeds.includes(s.speed)?s.speed:1;
 }
 /** How many ordinary update steps one frame should run (each keeps the normal dt, so nothing tunnels). A slow frame is capped at ×2. */
@@ -219,6 +241,7 @@ export function spectateSteps(game,dt) {
 /** Button: ×1 → ×2 → ×4 → ×1. */
 export function cycleSpectateSpeed(game) {
   const s=game?.spectating;if(!s)return 1;
+  if(s.ended){s.speed=1;return 1;}
   const list=SPECTATE_RULES.speeds;s.speed=list[(Math.max(0,list.indexOf(s.speed))+1)%list.length];
   updateSpectateHud(game,true);return s.speed;
 }
@@ -307,8 +330,10 @@ function mountSpectateHud(game) {
   const chips=document.createElement('div');chips.className='spectate-chips';
   const party=document.createElement('p');party.className='spectate-party';
   const castle=document.createElement('p');castle.className='spectate-castle';
+  const outcome=document.createElement('p');outcome.className='spectate-outcome';outcome.hidden=true; // v7.0.35: the fight is over, the view is held
+  const raid=document.createElement('p');raid.className='spectate-raid';raid.hidden=true; // v7.0.35: shown only while a raid/invasion is waiting for the spectate to end
   const log=document.createElement('ul');log.className='spectate-log';
-  box.append(head,who,chips,party,castle,log);
+  box.append(head,who,chips,party,castle,outcome,raid,log);
   // taps inside the panel never reach the game underneath
   for(const type of ['pointerdown','touchstart','mousedown'])box.addEventListener(type,e=>e.stopPropagation());
   host.append(box);container.classList?.add('is-spectating');
@@ -341,6 +366,8 @@ export function updateSpectateHud(game,force=false) {
     b.querySelector('i').style.width=`${Math.round(r*100)}%`;b.setAttribute('aria-pressed',String(t.id===s.targetId));});
   box.querySelector('.spectate-party').textContent=sum.partyText;
   box.querySelector('.spectate-castle').textContent=sum.castleText;
+  const outEl=box.querySelector('.spectate-outcome');if(outEl){const o=s.ended?spectateOutcome(game):null,text=o?o.text:'';if(outEl.textContent!==text)outEl.textContent=text;outEl.hidden=!o;}
+  const raidEl=box.querySelector('.spectate-raid');if(raidEl){const held=pendingRaid(game),text=held?'🚨 襲撃は保留中（観戦を終えると始まる）':'';if(raidEl.textContent!==text)raidEl.textContent=text;raidEl.hidden=!held;raidEl.dataset.kind=held||'';}
   const ul=box.querySelector('.spectate-log'),key=sum.log.join('\n');
   if(ul.dataset.key!==key){ul.dataset.key=key;ul.replaceChildren(...sum.log.map(t=>{const li=document.createElement('li');li.textContent=t;return li;}));}
 }
