@@ -1,5 +1,13 @@
 # 現在の作業と引き継ぎ（2026-10-16）
 
+## 2026-10-20 v7.2.4 / cache v338 忍者の系列は剣のみ
+
+- limited-lines.js の忍者の系列（忍者・中忍・上忍・影頭領）に `allowedWeaponStyles:['sword']`。
+- weapon-requirements.js: `weaponStyleAllowed`／`allowedWeaponStylesFor` を `canUseWeapon` に入れたので、`canUseEquipment` を通る全経路（手動装備・渡す・行商人の購入・自動整備の共有箱配布・拾った装備の自動装備・軍の配給）で剣以外は不可。配給の武器種は `preferredWeaponStyle` が剣を返す。隊長・勇者・他の兵種・獣人は従来どおり。盾と防具は筋力の条件のまま。
+- 表示: 剣以外の武器は赤字で「忍びは刀のみを携える」、譲渡ボタンは押せない。
+- 古いセーブ: ロード時の `enforceWeaponRequirements` で剣以外を共有箱へ戻し（強化値もそのまま）、`rearmLimitedWeapon` が共有箱のいちばん良い剣（お気に入り・神引き保護は除く）を持たせる。なければ基本の剣（初期装備）を渡す。記録に1行。
+- テスト: `ninja-sword-only-v724.test.mjs`。
+
 ## 2026-10-20 v7.2.3 / cache v337 忍者の刀を逆手持ちに
 
 - 忍者の系列（忍者・中忍・上忍・影頭領）が剣を持つときだけ、逆手で描く（`reverseGripFor`、weapon-motion.js）。隊長・勇者・他の兵種・剣以外の武器は従来どおり。

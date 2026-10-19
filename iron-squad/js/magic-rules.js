@@ -3,13 +3,13 @@ import {guardFormationTarget,guardFormationSpeedMult} from './guard-formation.js
 import {updateEquipmentBarrier} from './defense-equipment.js?v=298';
 import {sound} from '../../common/js/audio.js?v=151';
 import {playMagicSound} from './weapon-sounds.js?v=294';
-import {limitedLineOf,limitedTierOf} from './limited-lines.js?v=335';
+import {limitedLineOf,limitedTierOf} from './limited-lines.js?v=338';
 import {WORLD_SIZE} from './world.js?v=289';
 import {inCurrentInstance} from './instance-rules.js?v=322';
 import {recordCombat} from './phase-rules.js?v=218';
 import {isSoldierOnExpedition} from './expedition-rules.js?v=256';
 import {practiceAttribute,prefersCasterMelee,isMuscleCaster,attributeValues,canChannelWeaponMagic} from './unit-attributes.js?v=334';
-import {isMagicWeapon} from './weapon-requirements.js?v=298';
+import {isMagicWeapon} from './weapon-requirements.js?v=338';
 import {numberClassDefinitions} from './class-up-rules.js?v=334';
 
 export const MAGE_IDS=['MAGE','ARCHMAGE','ELEMENTAL_SAGE','ARCANE_SOVEREIGN'];

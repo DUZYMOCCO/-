@@ -1,6 +1,7 @@
 import {powerRank} from './equipment-tiers.js?v=231';
 import {attributeValues,attributeFamily,ATTRIBUTE_BASES} from './unit-attributes.js?v=334';
 import {heroEquipmentAllowed} from './hero-equipment.js?v=295';
+import {limitedClassOf} from './limited-lines.js?v=338';
 import {requiredDefenseStrength,legacyDefenseStrength,armorStrengthCurve,DEFENSE_TYPES} from './defense-equipment.js?v=298';
 export const MAGIC_WEAPON_STYLES=['staff','wand'];
 /** v7.0.21: weapon requirement = max(old T1 value, coef x the armour-slot curve at that tier). Bows, crossbows, cannons and staves still need none. */
@@ -54,7 +55,11 @@ export function usableSupplyTier(unit,type,tier) {
   while(t>1&&!usable(t))t--;
   return t;
 }
-export const canUseWeapon=(unit,item)=>heroEquipmentAllowed(unit,item)&&(!item||item.type!=='WEAPON'||attributeValues({...unit,equipped:{...unit?.equipped,weapon:item},weapon:item}).strength>=effectiveStrengthRequirement(unit,item));
+/** v7.2.4 系列ごとに持てる武器の種類（忍者の系列は剣のみ）。一覧のない兵種・隊長・勇者は従来どおり。 */
+export const allowedWeaponStylesFor=unit=>unit&&!unit.isPlayer&&!unit.isHero?limitedClassOf(unit)?.allowedWeaponStyles||null:null;
+export const weaponStyleAllowed=(unit,item)=>{if(!item||item.type!=='WEAPON'||item.heroOnly)return true;const list=allowedWeaponStylesFor(unit);return !list||list.includes(item.weaponStyle||'sword');};
+export const WEAPON_STYLE_LIMIT_TEXT='忍びは刀のみを携える';
+export const canUseWeapon=(unit,item)=>heroEquipmentAllowed(unit,item)&&weaponStyleAllowed(unit,item)&&(!item||item.type!=='WEAPON'||attributeValues({...unit,equipped:{...unit?.equipped,weapon:item},weapon:item}).strength>=effectiveStrengthRequirement(unit,item));
 export const canUseEquipment=(unit,item)=>canUseWeapon(unit,item)&&(!DEFENSE_TYPES.includes(item?.type)||attributeValues({...unit,_casterStrengthTimer:0,_casterStrengthBonus:0}).strength>=effectiveStrengthRequirement(unit,item));
 export function equipmentRequirementText(unit,item) {
   if(item?.type==='WEAPON'||item?.heroOnly)return weaponRequirementText(unit,item);
@@ -71,10 +76,11 @@ export const strengthShortfall=(unit,item)=>{
 /** Same wording as equipmentRequirementText, with the shortage in red (UI cards only). */
 export function equipmentRequirementHtml(unit,item) {
   const text=equipmentRequirementText(unit,item),short=strengthShortfall(unit,item);
-  return short||/筋力不足/.test(text)?`<span class="req-short">${text}</span>`:text;
+  return short||!weaponStyleAllowed(unit,item)||/筋力不足/.test(text)?`<span class="req-short">${text}</span>`:text;
 }
 export function preferredWeaponStyle(unit,tier=1,preferred=unit.favoriteWeapon) {
   const family=attributeFamily(unit),values=attributeValues(unit),base=ATTRIBUTE_BASES[family];
+  const allowed=allowedWeaponStylesFor(unit);if(allowed)return allowed.includes(preferred)?preferred:allowed[0];
   const usable=style=>canUseWeapon(unit,{type:'WEAPON',weaponStyle:style,tier});
   if(family==='MEDIC'||family==='MAGE'){
     if(values.strength/base.strength>values.magic/base.magic*1.4){for(const style of ['hammer','spear','sword'])if(usable(style))return style;}
@@ -86,6 +92,7 @@ export function preferredWeaponStyle(unit,tier=1,preferred=unit.favoriteWeapon) 
 }
 export const weaponRequirementText=(unit,item)=>{
   if(item?.heroOnly)return heroEquipmentAllowed(unit,item)?'勇者パーティ専用':'勇者パーティ専用（装備不可）';
+  if(!weaponStyleAllowed(unit,item))return WEAPON_STYLE_LIMIT_TEXT;
   const required=effectiveStrengthRequirement(unit,item);if(!required)return isMagicWeapon(item)?'必要筋力なし':'';
   const current=attributeValues(unit).strength;
   return `必要筋力${required} · ${canUseWeapon(unit,item)?'装備可':`筋力不足（必要${required}／現在${current}）`}`;

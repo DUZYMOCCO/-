@@ -1,7 +1,7 @@
 import {weaponCombatProfile,meleeSweetSpotFor,soldierAttackCooldown} from './equipment-rules.js?v=306';
 import {masteryReloadMult,applyMasteryToCombatProfile,isHeavyWeaponStyle} from './growth-rules.js?v=329';
 import {MAX_EQUIPMENT_TIER,GENERATION_COUNT,tierNumber,powerRank,tierDescription} from './equipment-tiers.js?v=231';
-import {canUseEquipment} from './weapon-requirements.js?v=298';
+import {canUseEquipment} from './weapon-requirements.js?v=338';
 import {prefersCasterMelee} from './unit-attributes.js?v=334';
 
 export const ARMAMENT_POLICIES={

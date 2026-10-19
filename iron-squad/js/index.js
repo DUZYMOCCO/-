@@ -8,7 +8,7 @@ import {startAutoSave,stopAutoSave} from './auto-save.js?v=269';
 import {requestEvenUpgrade} from './even-upgrade.js?v=291';
 import {beginFollowerRecovery,noteFollowerIntent,suspendFollowerRecovery,finishFollowerRecovery,profileFollowerRecovery} from './follower-recovery.js?v=277';
 import {configurePerfSettings} from './perf-diagnostics.js?v=327';
-import {gameText} from './game-text.js?v=334';
+import {gameText} from './game-text.js?v=338';
 import {talentTag} from './talent-labels.js?v=291';
 import {fieldDialogReturn} from './dialog-return.js?v=200';
 import {guildMethods} from './guild-contracts.js?v=322';
@@ -114,7 +114,7 @@ import { PHASE_DURATION, REST_DURATION, DEATHLINE_DOWN_THRESHOLD, DEATHLINE_WIND
 import {HEALING_HP_PER_EXP,REVIVAL_EXP_PER_MAX_HP,shareCommanderExp,raiseLevelMark,ageLevelMarks} from './experience-rules.js';
 import {attributeFamily,rollAttributeProfile,applyAttributeStats,attributeValues,practiceAttribute,attributeCarryCapacity,attributeSpecialties,prefersCasterMelee,canChannelWeaponMagic,magicAbilityMultiplier,CASTER_STRIKE_COST,casterStrikeMultiplier,beginAttributeMovement,finishAttributeMovement,ATTRIBUTE_LABELS,ATTRIBUTE_KEYS,aptitudeGrade,effectiveStrength} from './unit-attributes.js?v=334';
 import {rollScoutCandidate,renderRecruitment,nextScoutCandidate,startAutomaticRecruitment,stopAutomaticRecruitment,RECRUIT_CLASSES} from './recruitment.js?v=306';
-import {canUseEquipment,requiredWeaponStrength,equipmentRequirementText,equipmentRequirementHtml,strengthShortfall,migrateStrengthRequirement,STRENGTH_REQUIREMENT_VERSION,isMagicWeapon,MAGIC_WEAPON_STYLES,preferredWeaponStyle} from './weapon-requirements.js?v=298';
+import {canUseEquipment,requiredWeaponStrength,equipmentRequirementText,equipmentRequirementHtml,strengthShortfall,migrateStrengthRequirement,STRENGTH_REQUIREMENT_VERSION,isMagicWeapon,MAGIC_WEAPON_STYLES,preferredWeaponStyle,weaponStyleAllowed,WEAPON_STYLE_LIMIT_TEXT} from './weapon-requirements.js?v=338';
 import {EQUIPMENT_HP_RULES,equipmentHpFormula,equipmentRegenOf,tickEquipmentRegen,SOLDIER_VAMPIRE,COMMANDER_VAMPIRE,soldierVampireHeal,commanderVampireHeal,LIGHTNING_RULES,lightningReady,pickLightningTargets,lightningDamage,equipmentEffectParts,equipmentEffectHtml} from './equipment-effects.js?v=306';
 import {CASTER_GEAR,DEFENSE_TYPES,casterGearName,applyDefenseEquipment,casterEquipmentSummary,absorbEquipmentBarrier,drawBarrierRing} from './defense-equipment.js?v=298';
 import {
@@ -4478,6 +4478,20 @@ export const IronSquadGame = {
     const primary=compareEquipment(previewItem,current,{totals:totalsOf(previewItem),unit});
     return {primary,plain,previewItem,html:equipmentComparisonHtml(primary,{plain,title,currentName,basis:`✨+${current.upgrade}引継後`,warning})};
   },
+  /** v7.2.4 持てない種類の武器を共有箱へ戻した兵（忍者の系列）に、共有箱の剣か基本の剣を持たせる。 */
+  rearmLimitedWeapon(soldier,returned) {
+    const box=this.sharedEquipBox||=[];
+    const candidates=box.filter(i=>i&&i.type==='WEAPON'&&!i.favorite&&!isGodRollProtected(i)&&canUseEquipment(soldier,i));
+    let best=null,bestValue=-Infinity;
+    for(const i of candidates){const v=this.equipmentValueFor(soldier,i,'weapon');if(Number.isFinite(v)&&v>bestValue){best=i;bestValue=v;}}
+    if(best)box.splice(box.indexOf(best),1);
+    else{best=this.createSupplyEquipment('WEAPON',soldier,1);best.qualityLabel='初期装備';best.initialIssue=true;if(!canUseEquipment(soldier,best))best=null;}
+    soldier.equipped.weapon=best;soldier.weapon=best;
+    const who=soldier.name||'兵士',now=Date.now();
+    this.recordBattleLog?.(`${who}は${WEAPON_STYLE_LIMIT_TEXT}。${returned.name}を共有箱へ納め${best?`、${best.name}に持ち替えました`:'ました'}`);
+    if(now-(this._strengthToastAt||0)>=4000){this._strengthToastAt=now;this.showToast(`🥷${who}：${returned.name}を共有箱へ納めました`);}
+    return best;
+  },
   enforceWeaponRequirements() {
     if(this.equipped?.weapon&&!canUseEquipment(this.player,this.equipped.weapon)){
       const item=this.equipped.weapon;this.equipped.weapon=null;this.inventory||=[];
@@ -4490,7 +4504,8 @@ export const IronSquadGame = {
       if(!item||canUseEquipment(soldier,item))continue;
       soldier.equipped||={};soldier.equipped.weapon=null;soldier.weapon=null;this.sharedEquipBox||=[];
       if(!this.sharedEquipBox.some(old=>old.id===item.id))this.sharedEquipBox.push(item);
-      this.notifyStrengthReturn(soldier,[item],'共有箱');
+      if(weaponStyleAllowed(soldier,item))this.notifyStrengthReturn(soldier,[item],'共有箱');
+      else this.rearmLimitedWeapon(soldier,item);
       this.recalcSoldierStats(soldier);
     }
     this.recalcPlayerStats();

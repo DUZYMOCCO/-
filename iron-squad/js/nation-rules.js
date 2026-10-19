@@ -1,4 +1,4 @@
-import {canUseEquipment,usableSupplyTier} from './weapon-requirements.js?v=298';
+import {canUseEquipment,usableSupplyTier} from './weapon-requirements.js?v=338';
 import {normalizeArmament,ARMAMENT_POLICIES,advanceResearch,researchCost,standardEquipmentCost,personalEquipmentBudget,createEquipmentValueCache,RESERVE_ARMAMENT_COUNT,ARMAMENT_LIMITS} from './armament-rules.js?v=306';
 import {tierDescription,MAX_EQUIPMENT_TIER} from './equipment-tiers.js?v=231';
 import {WORLD_SIZE} from './world.js?v=289';
