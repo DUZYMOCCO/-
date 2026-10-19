@@ -184,6 +184,11 @@ export function migrateHitGrowth(unit, hpBase, defBase = 0, heavy = false) {
 
 /** 通知の節目: HP+100刻み（1000以上は1000刻み、10000以上は10000刻み）。 */
 const hitMilestone = value => value < 1000 ? 100 : value < 10000 ? 1000 : 10000;
+/** v7.1.11: progress of the hit-growth HP toward its next milestone (for the commander's growth tab). */
+export function hitGrowthProgress(unit) {
+  const hp = hitGrowthHpOf(unit), step = hitMilestone(hp), prev = Math.floor(hp / step) * step, next = prev + step;
+  return { hp, prev, next, ratio: Math.max(0, Math.min(1, (hp - prev) / step)) };
+}
 
 /**
  * 被弾時の「防御で減らす前の攻撃の強さ」(strength)に応じて最大HP（heavy=trueならDEFも）を絶対値で増やす。

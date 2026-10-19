@@ -1,5 +1,15 @@
 # 現在の作業と引き継ぎ（2026-10-16）
 
+## 2026-10-19 v7.1.11 / cache v329 メニュー再編A案(2) 「隊長」画面
+
+- トップに「隊長」タイル（ファストトラベルの次、戦況の前）。窓 `#view-strat-commander`、題「隊長」。隊長の情報はここ1か所に集約（戦況の「隊長ステータス・成長・覚醒」折りたたみと、部隊・装備の「隊長の装備・強化」折りたたみを廃止）。戦況の「隊長ステータス」ボタン（`btn-player-stats`）も同じ窓を開く。
+- タブは兵士の個人記録と同じ形: 能力／成長／装備／覚醒・魔法／身だしなみ（`interface.js` の `COMMANDER_TABS`・`syncCommanderTabs`、選択は `game._commanderTab`、再描画でも維持）。
+- 成長タブ: Lvと経験値バー、被弾鍛錬（HP+N、次の節目までのバー、防御+N、被弾回数）、武器ごとの熟練バー（上限35%に対する割合）、救出の永続強化、戦線経験。`growth-rules.js` に `hitGrowthProgress()` を追加。
+- 隊長の被弾回数 `hitGrowthEvents` をセーブに追加（古いセーブは0）。隊長が被弾鍛錬の節目を越えると戦闘報告書の🌱成長に「隊長の体躯鍛錬 被弾HP成長 +N」を残す（兵士は従来どおり戦闘ログのみ）。
+- 装備欄のメタ文を削除（「鍛冶屋で強化可能」「職制限なし…」「○○熟練＝…」）。熟練は成長タブへ移動。
+- id（player-record-box / player-equip-box / btn-promote-player / player-magic-affinity / btn-edit-commander / rescue-permanent-summary / btn-player-stats）と処理は維持。肖像は従来どおり戦況の見出しに表示。
+- テスト: `commander-window-v7111.test.mjs` 追加。interface／player-magic の期待値を新しい窓に合わせて更新。
+
 ## 2026-10-19 v7.1.10 / cache v328 被弾DEF成長を全兵種へ（兵種係数）
 
 - `applyHitGrowth` のDEF成長（従来は重装のみ ×0.0105）を全兵種と隊長に広げた。係数表は `growth-rules.js` の `HIT_DEF_CLASS_FACTORS` 1か所（`HIT_DEF_PER_DAMAGE` × 係数）。

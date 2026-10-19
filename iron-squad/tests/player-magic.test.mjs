@@ -77,7 +77,7 @@ game.equipItem(weapon('staff'));assert.equal(p().mana,7);assert.equal(p().magicA
 const save=structuredClone(game.saveGame({immediate:true}));game.resumeSavedGame(save);assert.equal(p().mana,7);assert.equal(p().magicAffinity,'lightning');assert.equal(isPlayerCaster(p()),true);assert.deepEqual(p().attributeProfile,save.player.attributeProfile);
 const oldSave=structuredClone(save);delete oldSave.player.mana;delete oldSave.player.magicAffinity;game.resumeSavedGame(oldSave);assert.equal(p().mana,100);assert.equal(p().magicAffinity,'fire');
 // Full status UI and shortcut use the same real captain; element change is saved.
-game.openStrategyModal(true);document.getElementById('btn-player-stats').click();assert.equal(document.getElementById('commander-record').open,true);
+game.openStrategyModal(true);document.getElementById('btn-player-stats').click();assert.equal(document.getElementById('view-strat-commander').classList.contains('hidden'),false,'v7.1.11: the shortcut opens the commander window');
 const grid=document.querySelector('.commander-stat-grid');assert.equal(grid.querySelectorAll('dt').length,14);
 for(const label of ['HP','攻撃','防御','筋力','魔力','魔法防御','速さ','回避','魔法攻撃','移動','搬送','MP','バリア','軍資金'])assert.ok([...grid.querySelectorAll('dt')].some(n=>n.textContent===label));
 const select=document.getElementById('player-magic-affinity');select.value='ice';select.dispatchEvent(new window.Event('change',{bubbles:true}));assert.equal(p().magicAffinity,'ice');game.saveGame({auto:true});assert.equal(saveSlots.get(game.activeSlotId).data.player.magicAffinity,'ice');

@@ -1,5 +1,5 @@
 // Equipment granted by revelation, outside the nation's manufacturing/loot tiers.
-import {HERO_WEAPON_BASE_ATK_COEF,WEAPON_BASE_ATK_VERSION,HEAVY_ATTACK_VERSION,isHeavyWeaponStyle} from './growth-rules.js?v=328';
+import {HERO_WEAPON_BASE_ATK_COEF,WEAPON_BASE_ATK_VERSION,HEAVY_ATTACK_VERSION,isHeavyWeaponStyle} from './growth-rules.js?v=329';
 export const HERO_EQUIPMENT_RULES=Object.freeze({version:1,tier:24,power:1});
 const caster=role=>role==='MEDIC'||role==='MAGE';
 const SLOT_TYPES={weapon:'WEAPON',shield:'SHIELD',helmet:'HELMET',armor:'ARMOR',gloves:'GLOVES',legs:'LEGS',amulet:'AMULET'};

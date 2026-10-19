@@ -2,7 +2,7 @@ import {formatCompact} from './number-format.js?v=282';
 import {configureCommandNavigation} from './command-navigation.js?v=327';
 import {commanderFullName} from './commander-identity.js?v=295';
 import {isEnlisted} from './career-rules.js?v=291';
-import {configureAudioInterface} from './audio-interface.js?v=327';
+import {configureAudioInterface} from './audio-interface.js?v=329';
 import {renderBattleLog} from './battle-log.js?v=322';
 import {renderTroopRankings} from './troop-rankings.js?v=295';
 import {genderLabel} from './soldier-names.js?v=210';
@@ -27,6 +27,14 @@ const title = (parent, text, hint) => {
   parent.prepend(heading);
 };
 
+/** v7.1.11: the commander window's tabs (same layout as a soldier's record). */
+export const COMMANDER_TABS = [['ability', '能力'], ['growth', '成長'], ['equip', '装備'], ['awaken', '覚醒・魔法'], ['groom', '身だしなみ']];
+export function syncCommanderTabs(game) {
+  const view = document.getElementById('view-strat-commander'); if (!view) return;
+  const key = COMMANDER_TABS.some(([k]) => k === game._commanderTab) ? game._commanderTab : 'ability';
+  for (const b of view.querySelectorAll('[data-cmd-tab]')) b.setAttribute('aria-selected', String(b.dataset.cmdTab === key));
+  for (const pane of view.querySelectorAll('[data-cmd-pane]')) pane.hidden = pane.dataset.cmdPane !== key;
+}
 /** v7.1.9: settings own a window. Fixtures without it keep the overview as the host. */
 export const settingsHost = root => root?.querySelector('#view-strat-settings') || root?.querySelector('#view-strat-overview') || null;
 const SETTINGS_ORDER = ['settings-display', 'audio-settings', 'kana-settings', 'ambient-settings', 'command-session', 'settings-developer', 'stall-log-fold', 'perf-settings'];
@@ -101,9 +109,15 @@ export function configureInterface(game) {
   battleLog.addEventListener('toggle',()=>{if(battleLog.open)renderBattleLog(game);});
   historyButton.onclick=()=>{game.openStrategyModal(true);game._selectStratTab('overview');battleLog.open=true;renderBattleLog(game);battleLog.scrollIntoView?.({block:'nearest'});logList.scrollTop=logList.scrollHeight;};
   fold(overview, 'command-report', '前回の作戦報告', [get('strat-report')]);
-  const commanderRecord=fold(overview, 'commander-record', '隊長ステータス・成長・覚醒', [get('player-record-box')]);
+  // v7.1.11: everything about the commander lives in one window (隊長), tabbed like a soldier's record.
+  const commanderView=get('view-strat-commander')||overview;
+  const commanderTabs=element('div','soldier-detail-tabs commander-tabs');commanderTabs.id='commander-tabs';commanderTabs.setAttribute('role','tablist');commanderTabs.setAttribute('aria-label','隊長の記録');
+  for(const [key,label] of COMMANDER_TABS){const b=element('button','',label);b.type='button';b.setAttribute('role','tab');b.dataset.cmdTab=key;b.onclick=()=>{game._commanderTab=key;syncCommanderTabs(game);commanderView.closest?.('.dialog-body')?.scrollTo?.(0,0);};commanderTabs.append(b);}
+  const equipPane=element('section','commander-equip-pane');equipPane.dataset.cmdPane='equip';equipPane.append(get('player-equip-box'));
+  commanderView.append(commanderTabs,get('player-record-box'),equipPane);
+  game._syncCommanderTabs=()=>syncCommanderTabs(game);syncCommanderTabs(game);
   const playerStatsButton=element('button','','隊長ステータス');playerStatsButton.type='button';playerStatsButton.id='btn-player-stats';
-  playerStatsButton.onclick=()=>{game._selectStratTab('overview');commanderRecord.open=true;commanderRecord.scrollIntoView?.({block:'start',behavior:'smooth'});};
+  playerStatsButton.onclick=()=>{game._commanderTab='ability';game._selectStratTab('commander');syncCommanderTabs(game);};
   links.prepend(playerStatsButton);
   const liveNotes=element('section','command-live-notes');liveNotes.id='command-rule-content';overview.append(liveNotes);
   const restart = get('btn-restart-from-strat'); restart.textContent = 'セーブ選択へ戻る';
@@ -141,9 +155,6 @@ export function configureInterface(game) {
   };
 
   const equip = get('view-strat-equip'); equip.classList.add('equipment-workspace');
-  const worn = get('player-equip-box');
-  fold(equip, 'commander-equipment', '隊長の装備・強化（全7部位）', [worn]);
-  equip.prepend(get('commander-equipment'));
   const inventoryTools = element('div', 'list-tools'); inventoryTools.id = 'inventory-tools';
   inventoryTools.dataset.group='weapon';
   const equipmentGroups=element('div','equipment-group-tabs');equipmentGroups.setAttribute('role','tablist');equipmentGroups.setAttribute('aria-label','バッグの装備分類');

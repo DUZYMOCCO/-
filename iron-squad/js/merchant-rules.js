@@ -11,7 +11,7 @@ import { drawFieldSoldier } from './visuals.js?v=324';
 import { createSoldierAppearance, drawSoldierHead } from './soldier-appearance.js?v=295';
 import { attackAnimationRate } from './weapon-motion.js?v=306';
 import { markSoldierDown, rebuildMerchantCasualties, RESCUE_TIMEOUT, departFromRest } from './casualty-rules.js?v=322';
-import {emptyMastery,normalizeMastery,hitGrowthHpBonus,hitGrowthDefBonus,migrateHitGrowth,applyHitGrowth,masteryAtkMult,masteryReloadMult} from './growth-rules.js?v=328';
+import {emptyMastery,normalizeMastery,hitGrowthHpBonus,hitGrowthDefBonus,migrateHitGrowth,applyHitGrowth,masteryAtkMult,masteryReloadMult} from './growth-rules.js?v=329';
 import {recordCombat,finishExperience} from './phase-rules.js?v=218';
 
 export const MERCHANT_PRICE_MULT = 3.2; // 相場の約3.2倍（高め）

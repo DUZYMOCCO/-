@@ -16,7 +16,7 @@ const dom=new JSDOM('<div id="game"></div>',{url:'http://localhost/'});Object.as
 const noop=()=>{},ctx=new Proxy({measureText:()=>({width:40}),createLinearGradient:()=>({addColorStop:noop}),createRadialGradient:()=>({addColorStop:noop})},{get:(o,k)=>k in o?o[k]:noop});window.HTMLCanvasElement.prototype.getContext=()=>ctx;
 const {IronSquadGame}=await import('../js/index.js'),{saveSlots}=await import('../js/save-slots.js');
 const g=Object.create(IronSquadGame);Object.assign(g,{container:document.getElementById('game'),width:390,height:844,zoom:1,ctx,camera:{x:79360,y:79360},selectedSaleIds:new Set(),startGameLoop:noop,showToast:noop});
-g.setupUI();g.activeSlotId=saveSlots.create('EVEN FORGING TEST').id;g.startFreshGame(false);g.openStrategyModal(true);g._selectStratTab('troops');g._syncTroopsSubView('equip');
+g.setupUI();g.activeSlotId=saveSlots.create('EVEN FORGING TEST').id;g.startFreshGame(false);g.openStrategyModal(true);g._commanderTab='equip';g._selectStratTab('commander'); // v7.1.11: commander gear lives in the commander window
 for(const [slot,type]of Object.entries({weapon:'WEAPON',shield:'SHIELD',helmet:'HELMET',armor:'ARMOR',gloves:'GLOVES',legs:'LEGS',amulet:'AMULET'}))g.equipped[slot]=g.createSupplyEquipment(type,g.player,1);
 g.gold=5000;g.recalcPlayerStats();g.renderStrategyUI();
 const counts={};for(const method of ['recalcPlayerStats','saveGame','renderStrategyUI','updateStatsUI']){const original=g[method];g[method]=function(...args){counts[method]=(counts[method]||0)+1;return original.apply(this,args);};}

@@ -1904,3 +1904,23 @@
 .iron-squad #view-strat-settings .settings-display { margin-top:0; }
 .iron-squad #view-strat-settings .settings-group-title { margin:18px 0 4px; font-size:12px; color:var(--ui-muted, #94a3b8); font-weight:600; }
 .iron-squad #command-session #btn-back { position:static !important; display:block; width:100%; min-height:44px; margin-top:8px; box-sizing:border-box; border:1px solid var(--ui-line); background:var(--ui-panel-soft); color:var(--ui-text); border-radius:6px; font-size:13px; }
+
+/* v7.1.11: 隊長 window (tabbed like a soldier's record) */
+.iron-squad [data-cmd-pane][hidden] { display: none !important; }
+.iron-squad .commander-tabs { grid-template-columns: repeat(5, minmax(0, 1fr)); margin-bottom: 10px; position: sticky; top: 0; z-index: 2; background: var(--ui-panel, #17222c); padding-bottom: 4px; }
+.iron-squad .commander-tabs button { font-size: 12px; min-height: 40px; padding: 2px; white-space: nowrap; }
+.iron-squad .commander-bar { flex: 1 1 auto; height: 8px; border-radius: 4px; background: rgba(255,255,255,.08); overflow: hidden; display: block; min-width: 60px; }
+.iron-squad .commander-bar > span { display: block; height: 100%; background: #e1cf9d; }
+.iron-squad .commander-bar.is-exp > span { background: #a78bfa; }
+.iron-squad .commander-bar.is-hit > span { background: #fbbf24; }
+.iron-squad .commander-meter { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #cbd5e1; margin: 4px 0 8px; }
+.iron-squad .commander-meter > span:first-child { flex: 0 0 auto; min-width: 64px; }
+.iron-squad .commander-meter strong { flex: 0 0 auto; font-size: 11px; color: #e2e8f0; }
+.iron-squad .commander-growth h5 { margin: 10px 0 2px; font-size: 12px; color: #fde68a; }
+.iron-squad .commander-growth-line { margin: 0 0 6px; font-size: 12px; color: #7dd3fc; }
+.iron-squad .commander-mastery-list { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 4px; }
+.iron-squad .commander-mastery { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #cbd5e1; }
+.iron-squad .commander-mastery > span:first-child { flex: 0 0 88px; white-space: nowrap; }
+.iron-squad .commander-mastery strong { flex: 0 0 52px; text-align: right; font-size: 11px; }
+.iron-squad .commander-mastery.is-current > span:first-child { color: #e1cf9d; font-weight: bold; }
+.iron-squad .commander-groom { display: grid; gap: 10px; justify-items: start; }

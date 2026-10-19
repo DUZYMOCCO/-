@@ -93,7 +93,7 @@ import {supplyMethods, initializeSupplies, updateSupplies, takeRangedShot, ammoC
 import { bindPadTap } from './pad-tap.js?v=276';
 import { POCKET_POTION, pocketPotionLabel, tickPocketPotion } from './pocket-potion.js?v=305';
 import { updateSpectate, updateRaidGrace, spectateCameraTarget, clearSpectate, updateSpectateQueue, spectateSteps, spectateSpeed, fieldSpectating, expeditionSpectating, expeditionAvailability, expeditionStatusLine, startExpeditionSpectate, queueExpeditionSpectate, cancelSpectateQueue, endSpectate } from './hero-spectate.js?v=322';
-import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog, settingsHost, arrangeSettings } from './interface.js?v=327';
+import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog, settingsHost, arrangeSettings } from './interface.js?v=329';
 import { renderTroopRankings, getSoldierRankerBadges, calcSoldierRankerBonus, setRankingFamilyLabels, RANKING_FAMILIES } from './troop-rankings.js?v=295';
 import { ensureSoldierAppearance, drawSoldierPortrait } from './soldier-appearance.js?v=295';
 import { aggregateDeathlineDynamics, tickDeathline, deathlineDamage, normalizeDeathlineSkills, chooseDeathlineSkill, deathlineRangedRange } from './deathline-rules.js?v=295';
@@ -130,13 +130,13 @@ import {
   WEAPON_STYLES, MASTERY_STYLES, WEAPON_STYLE_LABELS, WEAPON_STYLE_ICONS, isHeavyWeaponStyle, legacyHeavyAttackMult, HEAVY_ATTACK_VERSION, LEGACY_HEAVY_ATTACK_MULT, WEAPON_BASE_ATK_VERSION, WITHDRAWN_COMPENSATED_ATK_VERSION, WITHDRAWN_COMPENSATION_FACTOR, weaponCategoryOf, splitHeavyFavorite, FAVORITE_SPLIT_VERSION,
   MELEE_STYLES, RANGED_STYLES,
   emptyMastery, normalizeMastery, isRangedStyle, isMeleeStyle,
-  hitGrowthHpBonus, hitGrowthDefBonus, hitGrowthHpOf, hitGrowthDefOf, migrateHitGrowth, applyHitGrowth, hitDefGrowthFactor, masteryAtkMult, masteryPctDisplay,
+  hitGrowthHpBonus, hitGrowthDefBonus, hitGrowthHpOf, hitGrowthDefOf, migrateHitGrowth, applyHitGrowth, hitDefGrowthFactor, hitGrowthProgress, MASTERY_SOFT_CAP, masteryAtkMult, masteryPctDisplay,
   HIT_GROWTH_SCALE, migrateSaveHitGrowth, scaleUnitHitGrowth, scaleTavernHitGrowth,
   masteryReloadMult, masterySplashMult, applyMasteryToCombatProfile,
   gainWeaponMastery, masteryGainForStyle, pickFavoriteWeapon, rollWeaponStyle,
   weaponStyleOf, favoriteWeaponBias, MASTERY_GAIN_PER_HIT,
   migrateFavoriteForClass, migrateWeaponStyleFromName
-} from './growth-rules.js?v=328';
+} from './growth-rules.js?v=329';
 
 import {
   initMerchants, ensureMerchants, updateMerchants, drawMerchantBody, drawMerchantEscort,
@@ -176,7 +176,7 @@ import {stepWallVault,clearWallVault,restingPosition} from './wall-vault.js?v=32
 
 export const DEPLOYMENT_CAPACITY=48; // was 50/72 — 本隊 soft cap for iPhone (v1.24.2)
 const SOLDIER_DETAIL_TABS = [['stats','能力'],['gear','装備'],['record','記録'],['person','人物']];
-const STRAT_WINDOWS=['overview','nation','troops','rankings','report','hero','settings'];
+const STRAT_WINDOWS=['commander','overview','nation','troops','rankings','report','hero','settings'];
 export const PERSONAL_GUARD_MAX=12; // 直属小隊 ceiling (ranks ≤12; rope-tow default stays 2)
 export const ENEMY_LIMIT=40; // was 48/60/72 — aggressive soft load (v1.24.1)
 export const ENEMY_SPAWN_INTERVAL=.85; // was .72/.55 — fewer spawn spikes (v1.24.1)
@@ -1217,7 +1217,7 @@ export const IronSquadGame = {
 
   // 起動時にこのゲームのCSSを自分で読み込む（?v= はこのフォルダ内で管理）。ハブが init 前に await する
   prepare() {
-    return loadCss(['../css/iron-squad.css?v=267', '../css/iron-squad-interface.css?v=327'].map(p => new URL(p, import.meta.url).href));
+    return loadCss(['../css/iron-squad.css?v=267', '../css/iron-squad-interface.css?v=329'].map(p => new URL(p, import.meta.url).href));
   },
 
   init(container, onBackToHub) {
@@ -1722,6 +1722,7 @@ export const IronSquadGame = {
     const report=document.createElement('div'); report.id='view-strat-report'; report.className='hidden hub-panel hub-report';
     const heroView=document.createElement('div'); heroView.id='view-strat-hero'; heroView.className='hidden hub-panel hub-hero';
     const settingsView=document.createElement('div'); settingsView.id='view-strat-settings'; settingsView.className='hidden hub-panel hub-settings';
+    const commanderView=document.createElement('div'); commanderView.id='view-strat-commander'; commanderView.className='hidden hub-panel hub-commander'; // v7.1.11: the commander's own window
     const body=document.createElement('div'); body.className='dialog-body';
     body.tabIndex=0; body.setAttribute('aria-label','会議の内容');
     // Retain live nodes before moving them into the detached body. Document ID
@@ -1764,7 +1765,7 @@ export const IronSquadGame = {
     if(squadView){squadView.classList.remove('hidden');troops.append(squadView);}
     if(equipView){equipView.classList.add('hidden');troops.append(equipView);}
     body.prepend(overview);
-    body.append(nation, troops, rankings, report, heroView, settingsView);
+    body.append(commanderView, nation, troops, rankings, report, heroView, settingsView);
     const legacySquad=document.getElementById('tab-strat-squad');
     const legacyEquip=document.getElementById('tab-strat-equip');
     if(legacySquad) legacySquad.classList.add('hidden');
@@ -1774,6 +1775,10 @@ export const IronSquadGame = {
       overviewTab=document.createElement('button');
       overviewTab.id='tab-strat-overview'; overviewTab.className='sub-tab-btn'; overviewTab.textContent='状況';
       nav.prepend(overviewTab);
+    }
+    if(!document.getElementById('tab-strat-commander')){
+      const commanderTab=document.createElement('button');commanderTab.id='tab-strat-commander';commanderTab.className='sub-tab-btn';commanderTab.textContent='隊長';
+      nav.insertBefore(commanderTab,overviewTab);
     }
     // Top-level windows after 戦況・部隊・装備・国家. The hero record stays hidden until a hero appears.
     for(const [key,label,hidden] of [['rankings','ランキング'],['report','戦闘報告書'],['hero','勇者の記録',true],['settings','設定']]){
@@ -1791,7 +1796,7 @@ export const IronSquadGame = {
     footer.append(document.getElementById('btn-start-next-wave'),document.getElementById('btn-close-strat'));
     panel.append(footer);
     // Each tab is its own full-screen window; the panel is a launcher until one opens.
-    const windowTitles={overview:'戦況',troops:'部隊・装備',nation:'国家',rankings:'ランキング',report:'戦闘報告書',hero:'勇者の記録',settings:'設定'};
+    const windowTitles={commander:'隊長',overview:'戦況',troops:'部隊・装備',nation:'国家',rankings:'ランキング',report:'戦闘報告書',hero:'勇者の記録',settings:'設定'};
     const windowBar=document.createElement('div'); windowBar.className='strat-window-bar';
     windowBar.innerHTML='<button type="button" id="btn-strat-window-back" class="strat-window-back">‹ 戻る</button><div class="strat-window-heading"><strong id="strat-window-title" class="strat-window-title"></strong><small id="strat-window-gold" class="strat-window-gold"></small></div><button type="button" id="btn-strat-window-close" class="strat-window-close">閉じる ×</button>';
     panel.insertBefore(windowBar,body);
@@ -2595,7 +2600,7 @@ export const IronSquadGame = {
       survivedWaves: 0,
       phaseActivity: emptyActivity(),
       hitGrowthHp: 0,
-      hitGrowthDef: 0,
+      hitGrowthDef: 0, hitGrowthEvents: 0,
       weaponMastery: emptyMastery(),
       hp: 130,
       maxHp: 130,
@@ -3668,6 +3673,7 @@ export const IronSquadGame = {
       hitGrowthPct: Math.max(0, Number(pSave.hitGrowthPct) || 0),
       hitGrowthHp: Math.max(0, Number(pSave.hitGrowthHp) || 0),
       hitGrowthDef: Math.max(0, Number(pSave.hitGrowthDef) || 0),
+      hitGrowthEvents: Math.max(0, Math.floor(Number(pSave.hitGrowthEvents) || 0)), // v7.1.11: older saves read 0
       weaponMastery: normalizeMastery(pSave.weaponMastery),
       magicAttackTimer:Math.max(0,Math.min(11,Number(pSave.magicAttackTimer)||0)),
       magicAttackBonus:Math.max(0,Math.min(.25,Number(pSave.magicAttackBonus)||0)),
@@ -4080,6 +4086,7 @@ export const IronSquadGame = {
           phaseActivity: this.player.phaseActivity || emptyActivity(),
           hitGrowthHp: this.player.hitGrowthHp || 0,
           hitGrowthDef: this.player.hitGrowthDef || 0,
+          hitGrowthEvents: this.player.hitGrowthEvents || 0,
           weaponMastery: normalizeMastery(this.player.weaponMastery)
         },
         equipped: this.equipped,
@@ -7940,6 +7947,7 @@ export const IronSquadGame = {
       if (growth.crossed != null) {
         const who = target === this.player ? '隊長' : (target.name || '兵士');
         this.showToast(`💪${who}の体躯鍛錬 被弾HP成長 +${growth.crossed}`);
+        if (target === this.player) addBattleReport(this, 'growth', `隊長の体躯鍛錬 被弾HP成長 +${growth.crossed.toLocaleString()}`); // v7.1.11: milestones go to the report (🌱成長)
       }
     }
   },
@@ -10649,13 +10657,17 @@ export const IronSquadGame = {
 
       const caster=isPlayerCaster(p),values=attributeValues(p);
       const playerStats=[['HP',`${Math.max(0,Math.floor(p.hp)).toLocaleString()} / ${p.maxHp.toLocaleString()}`],['攻撃',p.atk.toLocaleString()],['防御',(p.def||0).toLocaleString()],['筋力',values.strength],['魔力',values.magic],['魔法防御',values.magicDefense],['速さ',values.quickness],['回避',`${values.evasion} · ${p.dodge||0}%`],['魔法攻撃',(p.magicAttack||0).toLocaleString()],['移動',formatSpeed(p.speed||0)],['搬送',`${attributeCarryCapacity(p)}人`],['MP',caster?`${Math.floor(ensureMana(p))} / ${p.maxMana}`:'—'],['バリア',`${Math.floor(p.equipmentBarrier||0)} / ${p.equipmentBarrierMax||0}`],['軍資金',`${(this.gold||0).toLocaleString()}G`]];
+      // v7.1.11: the commander window, tabbed like a soldier's record (能力／成長／装備／覚醒・魔法／身だしなみ).
+      const bar=(ratio,cls='')=>`<span class="commander-bar${cls?` ${cls}`:''}"><span style="width:${Math.round(Math.max(0,Math.min(1,ratio))*100)}%"></span></span>`;
+      const reqExp=Math.max(1,p.reqExp||20),expNow=Math.max(0,Math.floor(p.exp||0));
+      const hitProg=hitGrowthProgress(p),hitDefNow=Math.floor(hitGrowthDefOf(p)),hitCount=Math.max(0,Math.floor(p.hitGrowthEvents||0));
+      const masteryRows=MASTERY_STYLES.map(st=>{const pct=masteryPctDisplay(p.weaponMastery,st);return `<li class="commander-mastery${st===weaponStyleOf(this.equipped&&this.equipped.weapon)?' is-current':''}"><span>${WEAPON_STYLE_ICONS[st]}${WEAPON_STYLE_LABELS[st]}</span>${bar(pct/(MASTERY_SOFT_CAP*100))}<strong>+${pct}%</strong></li>`;}).join('');
       pRecordBox.innerHTML = `
+        <section data-cmd-pane="ability" class="commander-ability">
         <h4 class="commander-stat-title">隊長ステータス <small>Lv.${p.level||1}</small></h4>
         <dl class="commander-stat-grid">${playerStats.map(([label,value])=>`<div${String(value).length>11?' class="commander-stat-wide"':''}><dt>${label}</dt><dd>${value}</dd></div>`).join('')}</dl>
-        <label class="commander-spell-choice">使用する魔法<select id="player-magic-affinity">${Object.entries(MAGIC_AFFINITIES).map(([id,spell])=>`<option value="${id}" ${p.magicAffinity===id?'selected':''}>${spell.name}</option>`).join('')}</select></label>
-        <p class="command-note">${caster?`通常 ${MAGIC_AFFINITIES[p.magicAffinity].cost}MP · マナバースト ${PLAYER_MAGIC_RULES.powerCost}MP · 射程 ${formatDistance(PLAYER_MAGIC_RULES.range)}。補給地点・回復薬・魔法石でMPを補充。`:'ワンドか杖を装備すると魔法を使えます。'}</p>
         <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px;">
-          <strong style="color: #38bdf8; font-size: 12px;">🎖️ 隊長の総合武勲（撃墜数ボーナス＆防御力）</strong>
+          <strong style="color: #38bdf8; font-size: 12px;">🎖️ 隊長の総合武勲</strong>
           <span style="color: #94a3b8; font-size: 10px;">総討伐: ${p.kills || 0}体</span>
         </div>
         <div style="display: flex; flex-direction: column; gap: 3px; color: #cbd5e1; font-size: 11px;">
@@ -10668,11 +10680,30 @@ export const IronSquadGame = {
             <span>👑 ボス撃破: <strong style="color: #ffd700;">${p.bossKills || 0}体</strong></span>
             <span style="color: #fde047;">(+${bossAtk}攻 / +${bossHp}HP / 会心+${bossCrit}% / 軽減-${bossRed}%)</span>
           </div>
-          <div style="margin-top: 5px; padding-top: 5px; border-top: 1px dashed rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center;">
+        </div>
+        </section>
+        <section data-cmd-pane="growth" class="commander-growth">
+          <h4 class="commander-stat-title">成長 <small>Lv.${p.level||1}</small></h4>
+          <div class="commander-meter"><span>経験値</span>${bar(expNow/reqExp,'is-exp')}<strong>${expNow.toLocaleString()} / ${reqExp.toLocaleString()}</strong></div>
+          <h5>💪 被弾鍛錬</h5>
+          <div class="commander-meter" id="commander-hit-growth"><span>HP +${Math.floor(hitProg.hp).toLocaleString()}</span>${bar(hitProg.ratio,'is-hit')}<strong>次 +${hitProg.next.toLocaleString()}</strong></div>
+          <p class="commander-growth-line">🛡 防御 +${hitDefNow.toLocaleString()} · 被弾 ${hitCount.toLocaleString()}回</p>
+          <h5>⚔️ 熟練</h5>
+          <ul class="commander-mastery-list">${masteryRows}</ul>
+          <p class="command-note" id="rescue-permanent-summary">救出の永続強化 · ${rescueBonusSummary(this.rescueBonuses)}</p>
+          <p class="commander-experience">戦線経験 ${p.survivedWaves || 0}回 · 今期 ${participated(p)?'参加':'未参加'}</p>
+        </section>
+        <section data-cmd-pane="awaken" class="commander-awaken">
+          <h4 class="commander-stat-title">覚醒</h4>
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
             <span class="commander-stage">現在：${stage.name}${playerClassTier(p) >= 1 ? ' · 壁を突き抜ける' : ''}${nextStage ? `<br>次：${nextStage.name} · ${formatClassUpCostJa(awakeningCost)} · 壁を突き抜ける` : ' · 最高位へ覚醒済み'}</span>
             ${nextStage ? `<button id="btn-promote-player" class="mini-btn" ${canAffordClassUp(this.awakeningOrbs,this.awakeningGems,awakeningCost) ? '' : 'disabled'}>${nextStage.name}へ覚醒</button>` : ''}
           </div>
-        </div>
+          <h4 class="commander-stat-title">魔法</h4>
+          <label class="commander-spell-choice">使用する魔法<select id="player-magic-affinity">${Object.entries(MAGIC_AFFINITIES).map(([id,spell])=>`<option value="${id}" ${p.magicAffinity===id?'selected':''}>${spell.name}</option>`).join('')}</select></label>
+          <p class="command-note">${caster?`通常 ${MAGIC_AFFINITIES[p.magicAffinity].cost}MP · マナバースト ${PLAYER_MAGIC_RULES.powerCost}MP · 射程 ${formatDistance(PLAYER_MAGIC_RULES.range)}。補給地点・回復薬・魔法石でMPを補充。`:'ワンドか杖を装備すると魔法を使えます。'}</p>
+        </section>
+        <section data-cmd-pane="groom" class="commander-groom"></section>
       `;
 
       const portrait=document.createElement('canvas');portrait.className='commander-portrait';
@@ -10683,16 +10714,15 @@ export const IronSquadGame = {
       const fullName=commanderFullName(p);
       const nameLine=document.createElement('strong');nameLine.className='commander-name';
       nameLine.textContent=fullName?`${fullName}${p.gender?`（${COMMANDER_GENDERS[p.gender]}）`:''}`:'名前はまだありません';
+      identityBox.append(nameLine);
+      const abilityPane=pRecordBox.querySelector('[data-cmd-pane="ability"]');abilityPane.prepend(portrait,identityBox);
+      const groomPane=pRecordBox.querySelector('[data-cmd-pane="groom"]');
+      const groomName=document.createElement('p');groomName.className='commander-name';groomName.textContent=nameLine.textContent;
       const groom=document.createElement('button');groom.type='button';groom.id='btn-edit-commander';groom.className='mini-btn commander-groom-btn';
-      groom.textContent='身だしなみ';groom.setAttribute('aria-label','隊長の名前・性別・見た目を変える');
+      groom.textContent='身だしなみを整える';groom.setAttribute('aria-label','隊長の名前・性別・見た目を変える');
       groom.addEventListener('click',()=>this.openCommanderGrooming(groom));
-      identityBox.append(nameLine,groom);pRecordBox.prepend(identityBox);
-      pRecordBox.prepend(portrait);
-      const experience=document.createElement('p');experience.className='commander-experience';
-      experience.textContent=`戦線経験 ${p.survivedWaves || 0}回 · 今期 ${participated(p)?'参加':'未参加'}`;
-      pRecordBox.append(experience);
-      const rescueRecord=document.createElement('p');rescueRecord.className='command-note';rescueRecord.id='rescue-permanent-summary';
-      rescueRecord.textContent=`救出の永続強化 · ${rescueBonusSummary(this.rescueBonuses)}`;pRecordBox.append(rescueRecord);
+      groomPane.append(groomName,groom);
+      this._syncCommanderTabs?.();
 
       pRecordBox.querySelector('#player-magic-affinity').addEventListener('change',event=>{
         const affinity=event.target.value;if(!MAGIC_AFFINITIES[affinity])return;
@@ -10752,34 +10782,8 @@ export const IronSquadGame = {
         </div>`;
     };
 
-    const pTankHp = Math.floor(hitGrowthHpOf(this.player)), pTankDef = Math.floor(hitGrowthDefOf(this.player));
-    const pWpn = this.equipped && this.equipped.weapon;
-    const pStyle = weaponStyleOf(pWpn);
-    const pMast = masteryPctDisplay(this.player.weaponMastery, pStyle);
-    const mastBits = MASTERY_STYLES.map(st => {
-      const pct = masteryPctDisplay(this.player.weaponMastery, st);
-      const mark = st === pStyle ? '●' : '';
-      return `${WEAPON_STYLE_ICONS[st]}${WEAPON_STYLE_LABELS[st]}${mark}${pct}%`;
-    }).join(' ');
-    const meleeMast = MELEE_STYLES.map(st => {
-      const pct = masteryPctDisplay(this.player.weaponMastery, st);
-      const mark = st === pStyle ? '●' : '';
-      return `${WEAPON_STYLE_ICONS[st]}${WEAPON_STYLE_LABELS[st]}${mark}${pct}%`;
-    }).join(' ');
-    const rangedMast = RANGED_STYLES.map(st => {
-      const pct = masteryPctDisplay(this.player.weaponMastery, st);
-      const mark = st === pStyle ? '●' : '';
-      return `${WEAPON_STYLE_ICONS[st]}${WEAPON_STYLE_LABELS[st]}${mark}${pct}%`;
-    }).join(' ');
     playerEquipBox.innerHTML = `
-      <div style="font-size: 11px; font-weight: bold; color: #ffaa00; margin-bottom: 6px;">【隊長装備（全7部位）】(鍛冶屋で強化可能)</div>
-      <div style="font-size: 9.5px; color: #7dd3fc; margin-bottom: 4px;">隊長は職制限なし — 剣/槍/鎚/弓/クロスボウ/火砲を自由装備</div>
-      <div style="font-size: 10px; color: #94a3b8; margin-bottom: 6px; line-height: 1.45;">
-        💪被弾鍛錬 HP+${pTankHp} 🛡防御+${pTankDef}<br/>
-        ⚔️近接熟練 ${meleeMast}<br/>
-        🏹遠隔熟練 ${rangedMast}<br/>
-        <span style="color:#67e8f9;">剣/槍/鎚熟練＝ATK+攻撃速度　弓/石弓熟練＝ATK+リロード短縮　火砲熟練＝爆発半径+リロード短縮</span>
-      </div>
+      <div style="font-size: 11px; font-weight: bold; color: #ffaa00; margin-bottom: 6px;">隊長の装備（全7部位）</div>
       <button type="button" class="mini-btn" id="btn-even-upgrade" style="min-height:36px;margin-bottom:8px;">${gameText('均等に強化')}</button>
       ${slotsConfig.map(s => renderEquipRow(s)).join('')}
     `;
