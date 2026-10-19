@@ -14,7 +14,7 @@ import {fieldDialogReturn} from './dialog-return.js?v=200';
 import {guildMethods} from './guild-contracts.js?v=322';
 import {guildUiMethods} from './guild-ui.js?v=322';
 import {headquartersMoveTarget} from './hq-navigation.js?v=322';
-import {configureBattlefieldUI,quietBattlefieldContext} from './battlefield-ui.js?v=327';
+import {configureBattlefieldUI,quietBattlefieldContext} from './battlefield-ui.js?v=332';
 import {renderNavigationMap} from './navigation-map.js?v=306';
 import {soldierEquipmentValue,createEquipmentValueCache,observeEquipment,standardEquipmentCost,RESERVE_ARMAMENT_COUNT} from './armament-rules.js?v=306';
 import {initializeWildernessSites,serializeWildernessSites,updateWildernessSites,recordWildernessGuardKill,drawWildernessSite,drawWildernessMap,WILDERNESS_RULES} from './wilderness-sites.js?v=281';
@@ -89,11 +89,11 @@ import { applyCommanderIdentity, normalizeCommanderIdentity, commanderFullName, 
 import {MAGIC_CLASSES,MAGIC_AFFINITIES,classHpScale,magicMethods,isMage,isMagicUser,ensureMana,initializeMagic,updateMagic,distributeMagicStones,castMedicBuff,castCasterStrength,updateMageAI,drawMagicBursts,spendMana,weaponMagicDamage,isPlayerCaster,castPlayerSpell,PLAYER_MAGIC_RULES} from './magic-rules.js?v=296';
 import {hazardMethods,updateHazards,drawHazards} from './hazard-fields.js?v=277';
 import {strongEnemyReward,killXpFloor,killExpWithFloor} from './combat-rewards.js?v=299';
-import {supplyMethods, initializeSupplies, updateSupplies, takeRangedShot, ammoCombatProfile, isRangedUnit, distributeAmmo, preventLethalHit, normalizeFieldSave, SQUAD_POTION_COST, REVIVAL_POTION_COST, REVIVAL_POTION_MAX, SQUAD_POTION_MAX, ensureAmmo, ammoCapacity, recalcAmmoCapacity, RANGED_DAMAGE_MULT, supplyLocation} from './supply-rules.js?v=322';
+import {supplyMethods, initializeSupplies, updateSupplies, takeRangedShot, ammoCombatProfile, isRangedUnit, distributeAmmo, preventLethalHit, normalizeFieldSave, SQUAD_POTION_COST, REVIVAL_POTION_COST, REVIVAL_POTION_MAX, SQUAD_POTION_MAX, ensureAmmo, ammoCapacity, recalcAmmoCapacity, RANGED_DAMAGE_MULT, supplyLocation} from './supply-rules.js?v=332';
 import { bindPadTap } from './pad-tap.js?v=276';
 import { POCKET_POTION, pocketPotionLabel, tickPocketPotion } from './pocket-potion.js?v=305';
 import { updateSpectate, updateRaidGrace, spectateCameraTarget, clearSpectate, updateSpectateQueue, spectateSteps, spectateSpeed, fieldSpectating, expeditionSpectating, expeditionAvailability, expeditionStatusLine, startExpeditionSpectate, queueExpeditionSpectate, cancelSpectateQueue, endSpectate } from './hero-spectate.js?v=322';
-import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog, settingsHost, arrangeSettings } from './interface.js?v=331';
+import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog, settingsHost, arrangeSettings } from './interface.js?v=332';
 import { renderTroopRankings, getSoldierRankerBadges, calcSoldierRankerBonus, setRankingFamilyLabels, RANKING_FAMILIES } from './troop-rankings.js?v=295';
 import { ensureSoldierAppearance, drawSoldierPortrait } from './soldier-appearance.js?v=295';
 import { aggregateDeathlineDynamics, tickDeathline, deathlineDamage, normalizeDeathlineSkills, chooseDeathlineSkill, deathlineRangedRange } from './deathline-rules.js?v=295';
@@ -176,7 +176,7 @@ import {stepWallVault,clearWallVault,restingPosition} from './wall-vault.js?v=32
 
 export const DEPLOYMENT_CAPACITY=48; // was 50/72 — 本隊 soft cap for iPhone (v1.24.2)
 const SOLDIER_DETAIL_TABS = [['stats','能力'],['gear','装備'],['record','記録'],['person','人物']];
-const STRAT_WINDOWS=['commander','overview','nation','troops','rankings','report','hero','settings'];
+const STRAT_WINDOWS=['commander','overview','nation','troops','rankings','report','hero','travel','settings'];
 export const PERSONAL_GUARD_MAX=12; // 直属小隊 ceiling (ranks ≤12; rope-tow default stays 2)
 export const ENEMY_LIMIT=40; // was 48/60/72 — aggressive soft load (v1.24.1)
 export const ENEMY_SPAWN_INTERVAL=.85; // was .72/.55 — fewer spawn spikes (v1.24.1)
@@ -1217,7 +1217,7 @@ export const IronSquadGame = {
 
   // 起動時にこのゲームのCSSを自分で読み込む（?v= はこのフォルダ内で管理）。ハブが init 前に await する
   prepare() {
-    return loadCss(['../css/iron-squad.css?v=267', '../css/iron-squad-interface.css?v=330'].map(p => new URL(p, import.meta.url).href));
+    return loadCss(['../css/iron-squad.css?v=267', '../css/iron-squad-interface.css?v=332'].map(p => new URL(p, import.meta.url).href));
   },
 
   init(container, onBackToHub) {
@@ -1722,6 +1722,7 @@ export const IronSquadGame = {
     const report=document.createElement('div'); report.id='view-strat-report'; report.className='hidden hub-panel hub-report';
     const heroView=document.createElement('div'); heroView.id='view-strat-hero'; heroView.className='hidden hub-panel hub-hero';
     const settingsView=document.createElement('div'); settingsView.id='view-strat-settings'; settingsView.className='hidden hub-panel hub-settings';
+    const travelView=document.createElement('div'); travelView.id='view-strat-travel'; travelView.className='hidden hub-panel hub-travel'; // v7.1.14: 地図・移動
     const commanderView=document.createElement('div'); commanderView.id='view-strat-commander'; commanderView.className='hidden hub-panel hub-commander'; // v7.1.11: the commander's own window
     const body=document.createElement('div'); body.className='dialog-body';
     body.tabIndex=0; body.setAttribute('aria-label','会議の内容');
@@ -1765,7 +1766,7 @@ export const IronSquadGame = {
     if(squadView){squadView.classList.remove('hidden');troops.append(squadView);}
     if(equipView){equipView.classList.add('hidden');troops.append(equipView);}
     body.prepend(overview);
-    body.append(commanderView, nation, troops, rankings, report, heroView, settingsView);
+    body.append(commanderView, nation, troops, rankings, report, heroView, travelView, settingsView);
     const legacySquad=document.getElementById('tab-strat-squad');
     const legacyEquip=document.getElementById('tab-strat-equip');
     if(legacySquad) legacySquad.classList.add('hidden');
@@ -1781,7 +1782,7 @@ export const IronSquadGame = {
       nav.insertBefore(commanderTab,overviewTab);
     }
     // Top-level windows after 戦況・部隊・装備・国家. The hero record stays hidden until a hero appears.
-    for(const [key,label,hidden] of [['rankings','ランキング',true],['report','記録'],['hero','勇者の記録',true],['settings','設定']]){
+    for(const [key,label,hidden] of [['rankings','ランキング',true],['report','記録'],['hero','勇者の記録',true],['travel','地図・移動'],['settings','設定']]){
       if(document.getElementById(`tab-strat-${key}`))continue;
       const tab=document.createElement('button');
       tab.id=`tab-strat-${key}`; tab.className=`sub-tab-btn${hidden?' hidden':''}`; tab.textContent=label;
@@ -1796,7 +1797,7 @@ export const IronSquadGame = {
     footer.append(document.getElementById('btn-start-next-wave'),document.getElementById('btn-close-strat'));
     panel.append(footer);
     // Each tab is its own full-screen window; the panel is a launcher until one opens.
-    const windowTitles={commander:'隊長',overview:'戦況',troops:'部隊',nation:'国家',rankings:'ランキング',report:'記録',hero:'勇者の記録',settings:'設定'};
+    const windowTitles={commander:'隊長',overview:'戦況',troops:'部隊',nation:'国家',rankings:'ランキング',report:'記録',hero:'勇者の記録',travel:'地図・移動',settings:'設定'};
     const windowBar=document.createElement('div'); windowBar.className='strat-window-bar';
     windowBar.innerHTML='<button type="button" id="btn-strat-window-back" class="strat-window-back">‹ 戻る</button><div class="strat-window-heading"><strong id="strat-window-title" class="strat-window-title"></strong><small id="strat-window-gold" class="strat-window-gold"></small></div><button type="button" id="btn-strat-window-close" class="strat-window-close">閉じる ×</button>';
     panel.insertBefore(windowBar,body);

@@ -51,7 +51,7 @@ loadButton().click();const load=choice('load');load.click();load.click();loadBut
 // A removed checkpoint after confirmation opened fails visibly rather than moving.
 loadButton().click();saveSlots.update(newId,{checkpoint:null});choice('load').click();assert.equal(resumes,1);assert.equal(notice().textContent,'地点セーブを読み込めませんでした');advance(450);
 // The overview shares the same confirmation flow; stale hidden controls cannot operate.
-g._merchantShopClose();g.openStrategyModal(true);const overview=document.querySelector('#view-strat-overview [data-supply="save"]');Object.assign(g.player,{x:79360,y:79360});g.renderSupplyPanel();overview.click();assert.ok(dialog());choice('cancel').click();g.closeStrategyModal();overview.click();assert.equal(dialog(),null);
+g._merchantShopClose();g.openStrategyModal(true);g._selectStratTab('travel');const overview=document.querySelector('#view-strat-travel [data-supply="save"]');Object.assign(g.player,{x:79360,y:79360});g.renderSupplyPanel();overview.click();assert.ok(dialog());choice('cancel').click();g.closeStrategyModal();overview.click();assert.equal(dialog(),null);
 const css=readFileSync('iron-squad/css/iron-squad-interface.css','utf8');assert.match(css,/checkpoint-notice.*z-index:610/);
 assert.equal(beforeGold,123);assert.equal(beforeXY.length,2);g.resumeSavedGame=originalResume;dom.window.close();
 console.log('PASS: save choice/cancel/Escape/focus/inert, atomic overwrite and new slot, old-slot retention/autosave routing, immediate record/1800ms notice, quota failures, return confirmation/cancel, duplicate taps, merchant pause, stale controls and missing checkpoint');

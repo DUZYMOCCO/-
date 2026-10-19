@@ -1,5 +1,5 @@
 import {formatCompact} from './number-format.js?v=282';
-import {configureCommandNavigation} from './command-navigation.js?v=331';
+import {configureCommandNavigation} from './command-navigation.js?v=332';
 import {commanderFullName} from './commander-identity.js?v=295';
 import {isEnlisted} from './career-rules.js?v=291';
 import {configureAudioInterface} from './audio-interface.js?v=329';
@@ -27,6 +27,17 @@ const title = (parent, text, hint) => {
   parent.prepend(heading);
 };
 
+/** v7.1.14: the menu's top strip carries the 戦況 summary (tap for details). */
+export function renderCommandStatus(game, rank) {
+  const strip = game.container?.querySelector?.('#btn-command-status'); if (!strip || !game.player) return;
+  const alive = (game.squad || []).filter(s => !s.dead), wounded = alive.filter(s => s.isDown).length;
+  const timer = game.container.querySelector('#phase-timer-display')?.textContent || '';
+  const line = (cls, text) => { const p = element('span', cls, text); return p; };
+  strip.replaceChildren(
+    line('command-status-main', `${rank?.title || ''} · 作戦第${game.phase || game.wave || 1}期${timer ? ` · 残り ${timer}` : ''}`),
+    line('command-status-sub', `隊長HP ${formatCompact(Math.max(0, Math.floor(game.player.hp)))}/${formatCompact(game.player.maxHp)} · 実戦 ${alive.length}名 · 予備 ${(game.reserves || []).length}名${wounded ? ` · 要救助 ${wounded}名` : ''}`),
+    line('command-status-more', '戦況 ›'));
+}
 /** v7.1.12: the record window's tabs. */
 export const RECORD_TABS = [['report', '報告書'], ['log', '戦闘ログ'], ['ops', '作戦報告']];
 export function syncRecordTabs(game) {
@@ -91,6 +102,10 @@ export function configureInterface(game) {
     const entry = element('span', 'wallet-entry'); entry.append(element('small', '', label), value, document.createTextNode(unit)); wallet.append(entry);
   }
   get('tab-strat-overview').textContent = '戦況';
+  get('tab-strat-overview').classList.add('hidden'); // v7.1.14: 戦況 is the status strip at the top of the menu
+  const commandStatus = element('button', 'command-status'); commandStatus.type = 'button'; commandStatus.id = 'btn-command-status'; commandStatus.setAttribute('aria-label', '戦況の詳細を開く');
+  commandStatus.onclick = () => game._selectStratTab('overview');
+  heading.after(commandStatus);
   get('tab-strat-troops').textContent = '部隊';
   get('tab-strat-nation').textContent = '国家';
   // Everyday management next to the overview, followed by national operations.
@@ -341,6 +356,9 @@ export function filterInventory(root) {
 export function refreshInterface(game, { rank, time, zone }) {
   const root = game.container; const get = id => root.querySelector(`#${id}`);
   if (!get('command-snapshot')) return; // allows non-DOM simulation fixtures
+  renderCommandStatus(game, rank);
+  const travelView = get('view-strat-travel');
+  if (travelView) for (const node of [get('travel-actions'), travelView.querySelector('.supply-panel'), get('battlefield-menu')]) if (node && node.parentElement === travelView) travelView.append(node);
   const snapshot = get('command-snapshot'); snapshot.replaceChildren();
   const heading = element('div', 'snapshot-heading');
   const portrait = get('player-record-box').querySelector('.commander-portrait');

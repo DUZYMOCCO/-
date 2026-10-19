@@ -1,0 +1,26 @@
+// v7.1.14: 地図・移動 window (fast travel, map, supply, field info) and the 戦況 strip at the top of the menu.
+import assert from 'node:assert/strict';
+import {JSDOM} from '../../__pycache__/ui-tools/node_modules/jsdom/lib/api.js';
+const dom=new JSDOM('<div id="game" class="game-container"></div>',{url:'http://localhost/',pretendToBeVisual:true});
+Object.assign(globalThis,{window:dom.window,document:dom.window.document,localStorage:dom.window.localStorage,confirm:()=>true,alert:()=>{}});
+const noop=()=>{},ctx=new Proxy({measureText:()=>({width:40}),createLinearGradient:()=>({addColorStop:noop}),createRadialGradient:()=>({addColorStop:noop})},{get:(o,k)=>k in o?o[k]:noop});
+window.HTMLCanvasElement.prototype.getContext=()=>ctx;
+const {IronSquadGame}=await import('../js/index.js'),{saveSlots}=await import('../js/save-slots.js');
+const game=Object.create(IronSquadGame);
+Object.assign(game,{container:document.getElementById('game'),width:390,height:844,zoom:1,ctx,camera:{x:79360,y:79360},selectedSaleIds:new Set(),commandActiveUntil:0});
+for(const name of ['startGameLoop','showToast','spawnSparks','spawnDamageText'])game[name]=noop;
+game.setupUI();game.activeSlotId=saveSlots.create('TRAVEL STATUS TEST ONLY').id;game.startFreshGame(false);
+const $=id=>document.getElementById(id);let checks=0;const ok=(v,m)=>{assert.ok(v,m);checks++;},eq=(a,b,m)=>{assert.equal(a,b,m);checks++;};
+game.openStrategyModal(true);
+assert.deepEqual([...document.querySelectorAll('#strategy-modal .dialog-tabs .sub-tab-btn')].filter(b=>!b.classList.contains('hidden')).map(b=>b.textContent),['隊長','部隊','国家','記録','地図・移動','設定'],'six categories');checks++;
+const strip=$('btn-command-status');ok(strip,'status strip');ok(strip.closest('#strategy-modal'));
+ok(/作戦第1期/.test(strip.textContent)&&/隊長HP/.test(strip.textContent)&&/実戦 \d+名/.test(strip.textContent),'strip summarises the situation');
+game.player.hp=12;game.renderStrategyUI();ok(/隊長HP 12\//.test(strip.textContent),'strip follows redraws');
+strip.click();eq($('strat-window-title').textContent,'戦況');eq($('view-strat-overview').classList.contains('hidden'),false);ok($('btn-heal-all'),'heal stays in the 戦況 details');
+$('btn-strat-window-back').click();$('tab-strat-travel').click();eq($('strat-window-title').textContent,'地図・移動');
+const v=$('view-strat-travel');
+assert.deepEqual([...v.children].map(n=>n.id||n.className),['travel-actions','supply-panel hub-section','battlefield-menu']);checks++;
+ok(v.contains($('btn-fast-travel'))&&v.contains($('btn-world-map')));ok(!document.querySelector('#strategy-modal .dialog-tabs #btn-fast-travel,#strategy-modal .dialog-tabs #btn-world-map'),'no travel/map tiles in the launcher');
+game.renderStrategyUI();assert.deepEqual([...v.children].map(n=>n.id||n.className),['travel-actions','supply-panel hub-section','battlefield-menu'],'order kept after redraw');checks++;
+ok(!$('view-strat-overview').querySelector('.supply-panel'),'supply is not duplicated in the overview');
+console.log(`PASS travel-status-v7114 (${checks} checks)`);

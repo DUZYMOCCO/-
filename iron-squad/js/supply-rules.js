@@ -274,7 +274,7 @@ export const supplyMethods={
     warning?.classList.toggle('hidden',!(this.player.retreatWarningTimer>0));
   },
   renderSupplyPanel(host=null) {
-    const overview=host||document.getElementById('view-strat-overview');if(!overview||!this.player)return;
+    const overview=host||document.getElementById('view-strat-travel')||document.getElementById('view-strat-overview');if(!overview||!this.player)return; // v7.1.14: supply sits in 地図・移動
     let panel=overview.querySelector('.supply-panel');
     if(!panel){panel=document.createElement('section');panel.className='supply-panel hub-section';overview.prepend(panel);}
     const place=supplyLocation(this),cp=saveSlots.get(this.activeSlotId)?.checkpoint;

@@ -1,5 +1,12 @@
 # 現在の作業と引き継ぎ（2026-10-16）
 
+## 2026-10-19 v7.1.14 / cache v332 メニュー再編A案(5) 「地図・移動」と戦況の吸収
+
+- トップは6分類だけ: 隊長／部隊／国家／記録／地図・移動／設定（勇者が現れたら「勇者の記録」が加わる）。
+- 新しい窓 `#view-strat-travel`（タイル `tab-strat-travel`、題「地図・移動」）: ファストトラベル（`btn-fast-travel`）と地図（`btn-world-map`）の2ボタン、補給・地点セーブ（`renderSupplyPanel` の描画先）、戦場の情報・周辺の施設・仲間（`#battlefield-menu`）。並びは `refreshInterface` で固定。
+- 戦況はトップの上側の帯（`#btn-command-status`）に吸収: 階級・作戦期・残り時間、隊長HP・実戦・予備・要救助。押すと従来の戦況の詳細（一括治療・FIELD COMMAND など、`#view-strat-overview`）を開く。戦況タイル（`tab-strat-overview`）は隠すだけで id・処理は残す。
+- テスト: `travel-status-v7114.test.mjs` 追加。interface／command-navigation の期待値（タイル・地図の場所）を更新。
+
 ## 2026-10-19 v7.1.13 / cache v331 メニュー再編A案(4) 「部隊」を作り直す
 
 - タイル・窓題を「部隊」に。下のタブは 兵士名簿／予備兵／雇用／バッグ／遠征／ランキング（新規 `tab-econ-reserve`・`tab-econ-expedition`・`tab-econ-rankings`。切替は `game._syncTroopsSubView`、選択は `rosterManageTab`）。

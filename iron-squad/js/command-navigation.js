@@ -66,9 +66,14 @@ export function configureCommandNavigation(game) {
   // The nation launcher always starts at its four categories; action redraws keep the current page.
   get('tab-strat-nation').addEventListener('click',()=>{game._nationRoute={group:null,page:null};game._refreshCommandNavigation();});
   const launcher=get('strategy-modal').querySelector('.dialog-tabs');
-  const travel=document.createElement('button');travel.id='btn-fast-travel';travel.className='sub-tab-btn menu-travel';travel.type='button';travel.textContent='ファストトラベル';travel.onclick=()=>game.openWorldMap('travel');
-  const map=get('btn-world-map');map.className='sub-tab-btn';map.textContent='地図';map.type='button';
-  launcher.removeAttribute('style');launcher.prepend(travel);launcher.append(map);
+  // v7.1.14: ファストトラベル and 地図 live in one window (地図・移動); the launcher keeps six tiles.
+  const travel=document.createElement('button');travel.id='btn-fast-travel';travel.className='action-btn travel-action menu-travel';travel.type='button';travel.textContent='ファストトラベル';travel.onclick=()=>game.openWorldMap('travel');
+  const map=get('btn-world-map');map.className='action-btn travel-action';map.textContent='地図';map.type='button';
+  const travelActions=document.createElement('div');travelActions.id='travel-actions';travelActions.className='travel-actions';travelActions.append(travel,map);
+  const travelView=get('view-strat-travel');
+  if(travelView)travelView.prepend(travelActions);else{launcher.prepend(travel);launcher.append(map);}
+  launcher.removeAttribute('style');
+  const travelTile=get('tab-strat-travel');if(travelTile)launcher.append(travelTile);
   const settings=get('tab-strat-settings');if(settings)launcher.append(settings);
   game._refreshCommandNavigation();
 }

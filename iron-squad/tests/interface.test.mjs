@@ -45,8 +45,8 @@ const shown = node => {
   return true;
 };
 const assertTab = (tab, sub=game.rosterManageTab) => {
-  assert.deepEqual([...document.querySelector('.dialog-body').children].map(node=>node.id), ['view-strat-overview','view-strat-commander','view-strat-nation','view-strat-troops','view-strat-rankings','view-strat-report','view-strat-hero','view-strat-settings'], 'the scrolling body contains only tab-owned panels');
-  for (const key of ['commander','overview','troops','nation','rankings','report','hero','settings']) {
+  assert.deepEqual([...document.querySelector('.dialog-body').children].map(node=>node.id), ['view-strat-overview','view-strat-commander','view-strat-nation','view-strat-troops','view-strat-rankings','view-strat-report','view-strat-hero','view-strat-travel','view-strat-settings'], 'the scrolling body contains only tab-owned panels');
+  for (const key of ['commander','overview','troops','nation','rankings','report','hero','travel','settings']) {
     assert.equal(shown($(`view-strat-${key}`)), key===tab, `only ${tab} content is visible`);
     assert.equal($(`tab-strat-${key}`).getAttribute('aria-pressed'), String(key===tab));
   }
@@ -74,7 +74,7 @@ assert.equal(shown($('view-strat-overview')),false,'launcher hides section conte
 assert.equal(shown($('tab-strat-nation')),true,'launcher shows the section buttons');
 assert.equal(shown($('btn-start-next-wave')),true,'launcher keeps the return-to-battle button');
 // v6.3.12: rankings is its own top-level window, in the order 戦況・部隊・装備・国家・ランキング.
-assert.deepEqual([...document.querySelectorAll('#strategy-modal .dialog-tabs .sub-tab-btn')].filter(b=>!b.classList.contains('hidden')).map(b=>b.textContent),['ファストトラベル','隊長','戦況','部隊','国家','記録','地図','設定'],'hero record stays hidden until a hero appears');
+assert.deepEqual([...document.querySelectorAll('#strategy-modal .dialog-tabs .sub-tab-btn')].filter(b=>!b.classList.contains('hidden')).map(b=>b.textContent),['隊長','部隊','国家','記録','地図・移動','設定'],'hero record stays hidden until a hero appears');
 // v7.1.9: 設定 is its own window; the overview no longer carries sound, kana, save or developer controls.
 for (const id of ['settings-display','audio-settings','kana-settings','ambient-settings','command-session','stall-log-fold','perf-settings','btn-zoom-toggle','btn-field-sound','btn-back','btn-restart-from-strat']) {
   if(['ambient-settings','perf-settings'].includes(id)&&!$(id))continue; // mounted by init(), not by setupUI()
@@ -87,7 +87,7 @@ $('tab-strat-settings').click();assert.equal(stratModal.classList.contains('stra
 $('btn-strat-window-back').click();assert.equal(stratModal.classList.contains('strat-window-open'),false,'settings back returns to the launcher');
 assert.ok($('view-strat-troops').contains($('command-troop-rankings')),'v7.1.13: rankings are a 部隊 subtab');
 assert.ok(!$('view-strat-overview').contains($('command-troop-rankings')));
-for (const [tab,title] of [['commander','隊長'],['overview','戦況'],['troops','部隊'],['nation','国家'],['report','記録']]) {
+for (const [tab,title] of [['commander','隊長'],['overview','戦況'],['troops','部隊'],['nation','国家'],['report','記録'],['travel','地図・移動']]) {
   $(`tab-strat-${tab}`).click();
   assert.equal(stratModal.classList.contains('strat-window-open'),true,`${tab} opens a window`);
   assert.equal($('strat-window-title').textContent,title);
@@ -258,7 +258,8 @@ assert.equal(window.getComputedStyle($('btn-open-merchant')).pointerEvents, 'aut
 game.player.x = stall.x + 400; game.checkMerchantProximity();
 assert.equal($('merchant-prompt-banner').classList.contains('hidden'), true);
 game.player.x = awayX; game.player.y = awayY;
-assert.equal($('btn-world-map').closest('.dialog-tabs'), document.querySelector('#strategy-modal .dialog-tabs'));
+assert.equal($('btn-world-map').closest('#view-strat-travel'), $('view-strat-travel')); // v7.1.14: map sits in 地図・移動
+assert.equal($('battlefield-menu').closest('#view-strat-travel'), $('view-strat-travel'));assert.ok($('view-strat-travel').querySelector('.supply-panel'),'supply in 地図・移動');assert.ok(!$('view-strat-overview').querySelector('.supply-panel,#battlefield-menu'));
 assert.equal($('btn-zoom-toggle').closest('#settings-display'), $('settings-display')); // v7.1.9: camera zoom is a setting
 assert.equal($('btn-pad-command').closest('#battlefield-menu'), $('battlefield-menu'));
 assert.equal($('btn-pad-attack').closest('#virtual-gamepad'), $('virtual-gamepad'));

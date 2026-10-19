@@ -35,7 +35,7 @@ export function configureBattlefieldUI(game) {
  settings.prepend(display);
  const back=get('btn-back');back.textContent='工房へ戻る';back.setAttribute('aria-label','工房へ戻る');
  const session=get('command-session')?.querySelector('.fold-content');(session||display).append(back);
- overview.prepend(menu);
+ (get('view-strat-travel')||overview).append(menu); // v7.1.14: field info and nearby places sit in 地図・移動
  const button=get('btn-strategy');button.innerHTML='<span aria-hidden="true">☰</span><small>メニュー</small><b class="menu-join-count hidden"></b><b class="menu-attention hidden"></b>';button.setAttribute('aria-label','メニューを開く');field.append(button);
  const attention=button.querySelector('.menu-attention');
  const refreshAttention=()=>{

@@ -48,7 +48,7 @@ g._openNationPage('army','armament');assert.ok([...document.querySelectorAll('[d
 g._openNationPage('operations','expedition');document.querySelector('.btn-danger-tier:not(.active)').click();assert.ok([...document.querySelectorAll('.btn-expedition-send')].every(b=>b.disabled));
 // Fast travel is one menu action; close returns to a paused menu, success to the field.
 g.career.status='enlisted';g.openStrategyModal(true);g.medicalPosts[0].discovered=true;g.medicalPosts[1].discovered=false;
-$('btn-fast-travel').focus();$('btn-fast-travel').click();assert.equal($('world-map-modal').dataset.mode,'travel');assert.equal(shown($('world-map-canvas')),false);assert.equal(shown($('fast-travel-list')),true);
+$('tab-strat-travel').click();assert.ok($('view-strat-travel').contains($('btn-fast-travel'))&&$('view-strat-travel').contains($('btn-world-map')),'v7.1.14: travel and map live in 地図・移動');$('btn-fast-travel').focus();$('btn-fast-travel').click();assert.equal($('world-map-modal').dataset.mode,'travel');assert.equal(shown($('world-map-canvas')),false);assert.equal(shown($('fast-travel-list')),true);
 assert.match($('fast-travel-list').textContent,/第1救護所/);assert.doesNotMatch($('fast-travel-list').textContent,/第2救護所/);assert.equal(g.inBattle,false);
 $('btn-world-map-close').click();assert.equal(shown($('strategy-modal')),true);assert.equal(g.inBattle,false);assert.equal(document.activeElement,$('btn-fast-travel'));
 $('btn-fast-travel').click();g.player.x+=1000;$('fast-travel-list').querySelector('button').click();assert.equal($('world-map-modal').classList.contains('hidden'),true);assert.equal($('strategy-modal').classList.contains('hidden'),true);assert.equal(g.inBattle,true);
