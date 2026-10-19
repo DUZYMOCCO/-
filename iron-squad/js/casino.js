@@ -1,11 +1,11 @@
-import {CASINO_BET,casinoBaseBet,casinoMaxBet,casinoPageMaxBet,validCasinoBet,normalizeCasinoBet,CASINO_POLICY,POKER_PAYOUTS,SLOT_SYMBOLS,SLOT_LINES,SLOT_CHERRY_TWO,dealPoker,finishPoker,cardFace,rollSlots,pokerWinningCards,evaluatePoker,canDoubleUp,playDoubleUp,takeDoubleUp,DOUBLE_UP_MAX_WINS} from './casino-rules.js?v=318';
-import {mahjongHtml,bindMahjong,mahjongMethods,setMahjongHost,mahjongInProgress,mahjongOf,drive as driveMahjong,settleMahjong} from './mahjong.js?v=318';
-import {chooseArena,arenaCandidates,simulateArena,recordArena} from './casino-arena.js?v=318';
-import {atFacility} from './hq-facilities.js?v=318';
+import {CASINO_BET,casinoBaseBet,casinoMaxBet,casinoPageMaxBet,validCasinoBet,normalizeCasinoBet,CASINO_POLICY,POKER_PAYOUTS,SLOT_SYMBOLS,SLOT_LINES,SLOT_CHERRY_TWO,dealPoker,finishPoker,cardFace,rollSlots,pokerWinningCards,evaluatePoker,canDoubleUp,playDoubleUp,takeDoubleUp,DOUBLE_UP_MAX_WINS} from './casino-rules.js?v=319';
+import {mahjongHtml,bindMahjong,mahjongMethods,setMahjongHost,mahjongInProgress,mahjongOf,drive as driveMahjong,settleMahjong} from './mahjong.js?v=319';
+import {chooseArena,arenaCandidates,simulateArena,recordArena} from './casino-arena.js?v=319';
+import {atFacility} from './hq-facilities.js?v=319';
 import {drawSoldierPortrait} from './soldier-appearance.js?v=295';
-import {casinoQuip} from './soldier-dialogue.js?v=318';
+import {casinoQuip} from './soldier-dialogue.js?v=319';
 import {sound} from '../../common/js/audio.js?v=151';
-import {gameText} from './game-text.js?v=318';
+import {gameText} from './game-text.js?v=319';
 const states=new WeakMap();
 // v7.0.33: the session (running net, open panel, animation) belongs to the game, not to the nation.casino object: normalizeNation() rebuilds that object at phase end / payroll / donations, which used to drop the net to 0 and leave the open panel unredrawn. A load or a new game rebuilds the panel (renderCasino resets the page and net).
 const state=game=>{let s=states.get(game);if(s&&s.source!==game.nation?.casino)s.source=game.nation?.casino;if(!s){s={source:game.nation?.casino,page:'lobby',busy:null,step:0,net:0,history:{slot:[],poker:[],arena:[],mahjong:[]},losses:0,comment:'',lastSpeech:0};states.set(game,s);}return s;};

@@ -1,5 +1,5 @@
 import {equipmentUpgradeCost} from './payroll-rules.js?v=226';
-import {gameText} from './game-text.js?v=318';
+import {gameText} from './game-text.js?v=319';
 
 /** Quote the same sequence used for execution, without mutating equipment or money. */
 export function planEvenUpgrades(equipped,gold,costOf=equipmentUpgradeCost){

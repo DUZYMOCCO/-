@@ -1,4 +1,4 @@
-import {normalizeMahjong,MAHJONG_TOP_MULTIPLE} from './mahjong-rules.js?v=318';
+import {normalizeMahjong,MAHJONG_TOP_MULTIPLE} from './mahjong-rules.js?v=319';
 export const CASINO_BET=10;
 export const casinoBaseBet=level=>[10,25,50,100,250,500][Math.max(0,Math.min(5,Math.floor(Number(level)||0)))];
 export const CASINO_POLICY=Object.freeze({betBaseMultiplier:200,slotReturn:[1.08,1.12],pokerReturn:[1.12,1.2],ordinaryReturn:[1.08,1.12],slotMs:1050,pokerMs:850,reducedMs:350,arenaSeconds:15,arenaTrials:800,arenaReturn:1.2,arenaOddsRange:[1.2,12],arenaBetMultiplier:5,bigWinMultiple:5});
@@ -10,7 +10,7 @@ export const MAX_CASINO_ARENA_BET=casinoArenaMaxBet(5);
 export const MAHJONG_BET_MULTIPLIER=5;
 export const casinoMahjongMaxBet=level=>casinoMaxBet(level)*MAHJONG_BET_MULTIPLIER;
 export const MAX_CASINO_MAHJONG_BET=casinoMahjongMaxBet(5);
-/** Largest possible mahjong payout (Lv5: 500,000 x 5 = 2,500,000). Below the poker royal flush (7.5M at the slot cap) and the arena maximum; asserted by the tests. */
+/** Largest possible mahjong payout = the stake cap x the best table multiple (asserted by the tests). Stays below the poker royal flush (7.5M at the slot cap) and the arena maximum. */
 export const MAX_MAHJONG_PAYOUT=MAX_CASINO_MAHJONG_BET*MAHJONG_TOP_MULTIPLE;
 export const casinoPageMaxBet=(level,page)=>page==='arena'?casinoArenaMaxBet(level):page==='mahjong'?casinoMahjongMaxBet(level):casinoMaxBet(level);
 export const validCasinoBet=(n,minimum=CASINO_BET,maximum=MAX_CASINO_BET)=>Number.isSafeInteger(Number(n))&&Number(n)>=minimum&&Number(n)<=maximum;

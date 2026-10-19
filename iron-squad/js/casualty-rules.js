@@ -3,7 +3,7 @@ import {expeditionCombatUnits,isExpeditionReserve} from './expedition-rules.js?v
 import {ensureMana,regenerateMana,spendMana} from './magic-rules.js?v=296';
 import {recordHealing,recordDown,healAmountFor} from './phase-rules.js?v=218';
 import {WORLD_SIZE} from './world.js';
-import {inCurrentInstance} from './instance-rules.js?v=318';
+import {inCurrentInstance} from './instance-rules.js?v=319';
 import {grantPermanentRescueReward} from './rescue-rewards.js?v=264';
 import {grantPersonalExp,revivalExperience,raiseLevelMark} from './experience-rules.js';
 import {guardRescueLines} from './soldier-dialogue.js';
