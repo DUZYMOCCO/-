@@ -3,7 +3,7 @@ export const NATION_GROUPS = {
   finance: { label: '財政・開発', pages: [['treasury','国庫・寄付'],['fiscal','収支報告'],['development','本陣開発'],['facilities','施設']] },
   territory: { label: '領土・交易', pages: [['regions','地域'],['technology','技術'],['projects','建設'],['patrols','街道巡回']] },
   army: { label: '軍備・防衛', pages: [['armament','軍備'],['shared','共有装備'],['defense','本陣防衛']] },
-  operations: { label: '軍令・遠征', pages: [['quest','軍令'],['expedition','小隊遠征']] }
+  operations: { label: '軍令', pages: [['quest','軍令']] } // v7.1.13: 小隊遠征 moved to 部隊
 };
 
 export function configureCommandNavigation(game) {
@@ -56,7 +56,7 @@ export function configureCommandNavigation(game) {
     visible(get('view-econ-invest'),page==='treasury');
     visible(get('nation-finances'),page==='fiscal');visible(get('nation-facilities'),page==='facilities');
     visible(get('nation-shared-box'),page==='shared');visible(get('nation-defense'),page==='defense');
-    visible(get('nation-quest-panel'),page==='quest');visible(get('nation-expedition-panel'),page==='expedition');
+    visible(get('nation-quest-panel'),page==='quest');
     visible(get('regional-economy-panel'),group==='territory');
     for(const section of root.querySelectorAll('[data-economic-page]'))visible(section,section.dataset.economicPage===page);
   };

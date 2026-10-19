@@ -93,7 +93,7 @@ import {supplyMethods, initializeSupplies, updateSupplies, takeRangedShot, ammoC
 import { bindPadTap } from './pad-tap.js?v=276';
 import { POCKET_POTION, pocketPotionLabel, tickPocketPotion } from './pocket-potion.js?v=305';
 import { updateSpectate, updateRaidGrace, spectateCameraTarget, clearSpectate, updateSpectateQueue, spectateSteps, spectateSpeed, fieldSpectating, expeditionSpectating, expeditionAvailability, expeditionStatusLine, startExpeditionSpectate, queueExpeditionSpectate, cancelSpectateQueue, endSpectate } from './hero-spectate.js?v=322';
-import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog, settingsHost, arrangeSettings } from './interface.js?v=330';
+import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog, settingsHost, arrangeSettings } from './interface.js?v=331';
 import { renderTroopRankings, getSoldierRankerBadges, calcSoldierRankerBonus, setRankingFamilyLabels, RANKING_FAMILIES } from './troop-rankings.js?v=295';
 import { ensureSoldierAppearance, drawSoldierPortrait } from './soldier-appearance.js?v=295';
 import { aggregateDeathlineDynamics, tickDeathline, deathlineDamage, normalizeDeathlineSkills, chooseDeathlineSkill, deathlineRangedRange } from './deathline-rules.js?v=295';
@@ -1781,7 +1781,7 @@ export const IronSquadGame = {
       nav.insertBefore(commanderTab,overviewTab);
     }
     // Top-level windows after 戦況・部隊・装備・国家. The hero record stays hidden until a hero appears.
-    for(const [key,label,hidden] of [['rankings','ランキング'],['report','記録'],['hero','勇者の記録',true],['settings','設定']]){
+    for(const [key,label,hidden] of [['rankings','ランキング',true],['report','記録'],['hero','勇者の記録',true],['settings','設定']]){
       if(document.getElementById(`tab-strat-${key}`))continue;
       const tab=document.createElement('button');
       tab.id=`tab-strat-${key}`; tab.className=`sub-tab-btn${hidden?' hidden':''}`; tab.textContent=label;
@@ -1796,7 +1796,7 @@ export const IronSquadGame = {
     footer.append(document.getElementById('btn-start-next-wave'),document.getElementById('btn-close-strat'));
     panel.append(footer);
     // Each tab is its own full-screen window; the panel is a launcher until one opens.
-    const windowTitles={commander:'隊長',overview:'戦況',troops:'部隊・装備',nation:'国家',rankings:'ランキング',report:'記録',hero:'勇者の記録',settings:'設定'};
+    const windowTitles={commander:'隊長',overview:'戦況',troops:'部隊',nation:'国家',rankings:'ランキング',report:'記録',hero:'勇者の記録',settings:'設定'};
     const windowBar=document.createElement('div'); windowBar.className='strat-window-bar';
     windowBar.innerHTML='<button type="button" id="btn-strat-window-back" class="strat-window-back">‹ 戻る</button><div class="strat-window-heading"><strong id="strat-window-title" class="strat-window-title"></strong><small id="strat-window-gold" class="strat-window-gold"></small></div><button type="button" id="btn-strat-window-close" class="strat-window-close">閉じる ×</button>';
     panel.insertBefore(windowBar,body);

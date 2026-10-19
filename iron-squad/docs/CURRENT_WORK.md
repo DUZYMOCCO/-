@@ -1,5 +1,14 @@
 # 現在の作業と引き継ぎ（2026-10-16）
 
+## 2026-10-19 v7.1.13 / cache v331 メニュー再編A案(4) 「部隊」を作り直す
+
+- タイル・窓題を「部隊」に。下のタブは 兵士名簿／予備兵／雇用／バッグ／遠征／ランキング（新規 `tab-econ-reserve`・`tab-econ-expedition`・`tab-econ-rankings`。切替は `game._syncTroopsSubView`、選択は `rosterManageTab`）。
+- 予備兵（`#reserve-roster`・`#reinforcement-summary`）を名簿から独立させた。
+- 小隊遠征（`#nation-expedition-panel`）を国家から部隊へ移動。国家の大分類「軍令・遠征」は「軍令」だけに（`NATION_GROUPS.operations`）。
+- ランキング（`#command-troop-rankings`）を独立窓から部隊へ移動。タイル `tab-strat-rankings`は隠し、押されたら部隊のランキングを開く（id・窓は v7.1.15 で整理）。
+- 「隊長装備・バッグ」タブは隊長の装備が隊長窓へ移ったので「バッグ」に。
+- テスト: `troops-v7113.test.mjs` 追加。interface の期待値（タイル名・遠征/ランキングの場所）を更新。
+
 ## 2026-10-19 v7.1.12 / cache v330 メニュー再編A案(3) 「記録」
 
 - 旧「戦闘報告書」窓（`#view-strat-report`・`tab-strat-report` のまま）を「記録」に改名し、タブ 報告書／戦闘ログ／作戦報告 を付けた（`interface.js` の `RECORD_TABS`・`syncRecordTabs`、選択は `game._recordTab`）。

@@ -1,5 +1,5 @@
 import {formatCompact} from './number-format.js?v=282';
-import {configureCommandNavigation} from './command-navigation.js?v=327';
+import {configureCommandNavigation} from './command-navigation.js?v=331';
 import {commanderFullName} from './commander-identity.js?v=295';
 import {isEnlisted} from './career-rules.js?v=291';
 import {configureAudioInterface} from './audio-interface.js?v=329';
@@ -91,7 +91,7 @@ export function configureInterface(game) {
     const entry = element('span', 'wallet-entry'); entry.append(element('small', '', label), value, document.createTextNode(unit)); wallet.append(entry);
   }
   get('tab-strat-overview').textContent = '戦況';
-  get('tab-strat-troops').textContent = '部隊・装備';
+  get('tab-strat-troops').textContent = '部隊';
   get('tab-strat-nation').textContent = '国家';
   // Everyday management next to the overview, followed by national operations.
   get('tab-strat-overview').after(get('tab-strat-troops'));
@@ -110,7 +110,7 @@ export function configureInterface(game) {
   }
   snapshot.after(heal, links);
   const rankings = element('section', 'command-troop-rankings'); rankings.id = 'command-troop-rankings';
-  get('view-strat-rankings').append(rankings); // its own top-level window: 戦況・部隊・装備・国家・ランキング
+  // v7.1.13: rankings are a 部隊 subtab (mounted with the troops panes below).
   renderTroopRankings(game);
   game.renderTroopRankings = () => renderTroopRankings(game);
   // v7.1.12: 記録 = 報告書・戦闘ログ・作戦報告 in one window (the old 戦闘報告書 window, same ids).
@@ -144,7 +144,15 @@ export function configureInterface(game) {
   troops.querySelector('.hub-intro').remove();
   get('formation-bar').classList.add('command-note');
   const subnav = root.querySelector('.economy-tab-row'); troops.prepend(subnav);
-  get('tab-econ-roster').textContent = '兵士名簿'; get('tab-econ-scout').textContent = '雇用'; get('tab-econ-equip').textContent = '隊長装備・バッグ';
+  get('tab-econ-roster').textContent = '兵士名簿'; get('tab-econ-scout').textContent = '雇用'; get('tab-econ-equip').textContent = 'バッグ';
+  // v7.1.13: 部隊 = 名簿・予備兵・雇用・バッグ・遠征・ランキング. Reserves get their own subtab; expedition (from 国家) and rankings (own window) move here.
+  const subButton=(key,label,after)=>{const b=element('button','roster-filter-btn',label);b.type='button';b.id=`tab-econ-${key}`;b.dataset.econ=key;after.after(b);b.onclick=()=>{game.rosterManageTab=key;game._syncTroopsSubView(key);};return b;};
+  const reserveTab=subButton('reserve','予備兵',get('tab-econ-roster'));
+  const expeditionTab=subButton('expedition','遠征',get('tab-econ-equip'));subButton('rankings','ランキング',expeditionTab);
+  const troopsExpedition=element('section','troops-pane');troopsExpedition.id='troops-expedition';troopsExpedition.append(get('nation-expedition-panel'));
+  const troopsRankings=element('section','troops-pane');troopsRankings.id='troops-rankings';troopsRankings.append(rankings);
+  troops.append(troopsExpedition,troopsRankings);
+  get('tab-strat-rankings').onclick=()=>{game.rosterManageTab='rankings';game._selectStratTab('troops');};
   const rosterTools = element('div', 'list-tools'); rosterTools.id = 'roster-tools';
   const searchLabel = element('label', '', '兵士を探す');
   const search = element('input'); search.id = 'roster-search'; search.type = 'search'; search.placeholder = '名前・職・小隊'; searchLabel.append(search);
@@ -163,9 +171,14 @@ export function configureInterface(game) {
     get('recruitment-launcher').classList.toggle('hidden',sub !== 'scout');
     originalSync(sub);
     get('squad-roster-list').style.display = sub === 'roster' ? '' : 'none';
-    for (const node of [rosterTools, get('reserve-roster'), get('reinforcement-summary'), get('formation-bar'), rulesNote]) {
+    for (const node of [rosterTools, get('formation-bar'), rulesNote]) {
       node?.classList.toggle('hidden', sub !== 'roster');
     }
+    for (const node of [get('reserve-roster'), get('reinforcement-summary')]) node?.classList.toggle('hidden', sub !== 'reserve');
+    get('troops-expedition')?.classList.toggle('hidden', sub !== 'expedition');
+    get('troops-rankings')?.classList.toggle('hidden', sub !== 'rankings');
+    if (sub === 'rankings') game.renderTroopRankings?.();
+    for (const b of root.querySelectorAll('.economy-tab-row [data-econ]')) { b.classList.toggle('active', b.dataset.econ === sub); b.setAttribute('aria-pressed', String(b.dataset.econ === sub)); }
     if (sub !== 'roster') empty.classList.add('hidden'); else filterRoster(root);
     game.rosterManageTab = sub;
   };
