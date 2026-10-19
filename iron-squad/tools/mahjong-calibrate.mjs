@@ -1,4 +1,4 @@
-// v7.1.1: payout calibration for Mahjong. Plays seat 0 with the reference policy ('basic' = tile efficiency + defence + yakuhai pons) or a random policy against
+// v7.1.4: payout calibration for Mahjong. Plays seat 0 with the reference policy ('basic' = tile efficiency + defence + yakuhai pons) or a random policy against
 // three CPUs of one level, and prints the finishing-place distribution and the expected return of each payout table.
 //   node tools/mahjong-calibrate.mjs [games=3000] [outFile]   → distributions + EV of the shipped MAHJONG_PAYOUT (one worker thread per mode/level)
 import {Worker,isMainThread,parentPort,workerData} from 'node:worker_threads';

@@ -1,22 +1,22 @@
-// v7.1.3: the CPU ladder. Safety reading (genbutsu / suji / kabe), push/fold, folding against riichi, the strength order 見習い < 雀士 < 達人 (measured with the reference player),
+// v7.1.3 / v7.1.4: the CPU ladder and the payout calibration. Safety reading (genbutsu / suji / kabe), push/fold, folding against riichi, the strength order 見習い < 雀士 < 達人 (measured with the reference player),
 // and that no level ever sees hidden information. Run: node iron-squad/tests/mahjong-ai-v713.test.mjs [quick]
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {Worker,isMainThread,parentPort,workerData} from 'node:worker_threads';
-import {newMahjong,runMahjong,mulberry32,shanten,kindCounts} from '../js/mahjong-rules.js';
-import {mahjongAi,referencePolicy,dangerVs,ADEPT_SLOPPY,NOVICE_SLOPPY} from '../js/mahjong-ai.js';
+import {newMahjong,runMahjong,mulberry32,shanten,kindCounts,MAHJONG_PAYOUT} from '../js/mahjong-rules.js';
+import {mahjongAi,referencePolicy,randomPolicy,dangerVs,ADEPT_SLOPPY,NOVICE_SLOPPY} from '../js/mahjong-ai.js';
 const K=id=>id>>2;
 const QUICK=process.argv[2]==='quick';
 const sloppyRef=ADEPT_SLOPPY;
 /** Reference player (seat 0) vs three CPUs of one level: average finishing place and win rate. */
-function ladder(level,games,seed0) {
-  let sum=0,first=0;
+function ladder(level,games,seed0,mode='full',random=false) {
+  let sum=0,first=0,ev=0;const table=MAHJONG_PAYOUT[mode][level];
   for(let i=0;i<games;i++){
-    const seed=(seed0+i*104729)>>>0,rand=mulberry32(seed^0x5bd1e995),st=newMahjong({mode:'full',level,bet:10,seed});
-    runMahjong(st,mahjongAi,referencePolicy(rand),300000);
-    sum+=st.ranks[0];if(st.ranks[0]===1)first++;
+    const seed=(seed0+i*104729)>>>0,rand=mulberry32(seed^0x5bd1e995),st=newMahjong({mode,level,bet:10,seed});
+    runMahjong(st,mahjongAi,random?randomPolicy(rand):referencePolicy(rand),300000);
+    sum+=st.ranks[0];if(st.ranks[0]===1)first++;ev+=table[st.ranks[0]-1];
   }
-  return {avg:sum/games,first:first/games};
+  return {avg:sum/games,first:first/games,ev:ev/games};
 }
 /** What the CPUs throw when somebody else is in riichi and they are far from tenpai. */
 function defence(level,games,seed0) {
@@ -41,7 +41,7 @@ function defence(level,games,seed0) {
   }
   return {n,safe:n?safe/n:0,safeOrSuji:n?(safe+suji)/n:0,dealInPerDeal:dealIn/deals};
 }
-if(!isMainThread){parentPort.postMessage(workerData.kind==='ladder'?ladder(workerData.level,workerData.games,workerData.seed):defence(workerData.level,workerData.games,workerData.seed));}
+if(!isMainThread){parentPort.postMessage(workerData.kind==='ladder'?ladder(workerData.level,workerData.games,workerData.seed,workerData.mode,workerData.random):defence(workerData.level,workerData.games,workerData.seed));}
 else {
   let checks=0;const ok=(c,m)=>{checks++;assert.ok(c,m);};
   // ---- 1. safety reading on a hand-made table ----
@@ -79,6 +79,16 @@ else {
   ok(F.adept.safe>F.novice.safe+0.25,`adept folds to genbutsu (${F.adept.safe.toFixed(2)} vs novice ${F.novice.safe.toFixed(2)})`);
   ok(F.master.safe>F.novice.safe+0.25,`master folds to genbutsu (${F.master.safe.toFixed(2)} vs novice ${F.novice.safe.toFixed(2)})`);
   ok(F.master.safeOrSuji>=F.master.safe&&F.master.safeOrSuji>0.5,'and prefers suji when no genbutsu is left');
-  console.log(JSON.stringify({checks,ladder:L,defence:F}));
-  console.log(`PASS mahjong ai v7.1.3 ${checks} checks`);
+  // ---- 4. payout calibration: the reference player returns about 1.15 / 1.25 / 1.35 x the stake, a random player far less than 1 ----
+  const [shortLad,rndFull,rndShort]=await Promise.all([Promise.all(levels.map(l=>run({kind:'ladder',level:l,games:3000,seed:555001,mode:'short'}))),Promise.all(levels.map(l=>run({kind:'ladder',level:l,games:300,seed:777001,mode:'full',random:true}))),Promise.all(levels.map(l=>run({kind:'ladder',level:l,games:1000,seed:888001,mode:'short',random:true})))]);
+  const target={novice:1.15,adept:1.25,master:1.35},EV={full:{},short:{}},RND={full:{},short:{}};
+  levels.forEach((l,i)=>{EV.full[l]=L[l].ev;EV.short[l]=shortLad[i].ev;RND.full[l]=rndFull[i].ev;RND.short[l]=rndShort[i].ev;});
+  for(const mode of ['full','short'])for(const l of levels){
+    ok(Math.abs(EV[mode][l]-target[l])<0.13,`${mode}/${l}: reference EV ${EV[mode][l].toFixed(3)} is near ${target[l]}`);
+    ok(RND[mode][l]<0.6,`${mode}/${l}: random EV ${RND[mode][l].toFixed(3)} is far below 1`);
+    ok(EV[mode][l]>1.0,`${mode}/${l}: a competent player profits`);
+  }
+  for(const mode of ['full','short'])ok(EV[mode].novice<EV[mode].master,`${mode}: the stronger table pays the reference player more (${EV[mode].novice.toFixed(2)} < ${EV[mode].master.toFixed(2)})`);
+  console.log(JSON.stringify({checks,ladder:L,defence:F,ev:EV,random:RND}));
+  console.log(`PASS mahjong ai v7.1.3-4 ${checks} checks`);
 }

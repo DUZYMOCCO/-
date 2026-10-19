@@ -1,11 +1,11 @@
-// v7.1.3: Mahjong at the casino (UI + game methods). Rules live in mahjong-rules.js, the CPUs in mahjong-ai.js.
+// v7.1.4: Mahjong at the casino (UI + game methods). Rules live in mahjong-rules.js, the CPUs in mahjong-ai.js.
 // Tile faces are inline SVG from mahjong-tiles.js (circles, bamboo, 萬 numerals, honours), so the kana mode (which only rewrites strings that go through gameText) leaves them alone.
 // Everything the player reads goes through gameText piece by piece; tile markup never does (it would turn 東 into とう).
-import {MAHJONG_MODES,MAHJONG_LEVELS,MAHJONG_PAYOUT,newMahjong,mahjongStep,humanDiscard,humanTsumo,humanAnkan,humanKakan,humanKyuushu,humanClaim,nextHand,abandonMahjong,tsumoInfo,ownOptions,riichiOptions,claimPrompt,riichiNeedsPlayer,discardWaits,currentWaits,liveWallLeft,handsTotal,tileFace,kindCounts,isRedId} from './mahjong-rules.js?v=321';
-import {mahjongAi} from './mahjong-ai.js?v=321';
-import {tileSvg,backSvg} from './mahjong-tiles.js?v=321';
-import {MAX_MAHJONG_PAYOUT} from './casino-rules.js?v=321';
-import {gameText} from './game-text.js?v=321';
+import {MAHJONG_MODES,MAHJONG_LEVELS,MAHJONG_PAYOUT,newMahjong,mahjongStep,humanDiscard,humanTsumo,humanAnkan,humanKakan,humanKyuushu,humanClaim,nextHand,abandonMahjong,tsumoInfo,ownOptions,riichiOptions,claimPrompt,riichiNeedsPlayer,discardWaits,currentWaits,liveWallLeft,handsTotal,tileFace,kindCounts,isRedId} from './mahjong-rules.js?v=322';
+import {mahjongAi} from './mahjong-ai.js?v=322';
+import {tileSvg,backSvg} from './mahjong-tiles.js?v=322';
+import {MAX_MAHJONG_PAYOUT} from './casino-rules.js?v=322';
+import {gameText} from './game-text.js?v=322';
 import {sound} from '../../common/js/audio.js?v=151';
 let host=null;
 /** casino.js hands over its session helpers (state, refresh, money, ...) so this module does not import it back. */
@@ -133,7 +133,7 @@ function playHtml(game,s,st) {
 function setupHtml(game,s) {
   const m=sessionOf(game),bet=host.wager(game,'mahjong'),table=MAHJONG_PAYOUT[m.mode][m.level],can=host.canPlay(game)&&game.gold>=bet;
   const choice=(attr,map,cur)=>Object.values(map).map(v=>`<button type="button" ${attr}="${v.key}" aria-pressed="${v.key===cur}" class="${v.key===cur?'is-on':''}">${T(v.name)}</button>`).join('');
-  const minutes={full:'10〜15',short:'2〜3'}[m.mode];
+  const minutes={full:'8〜12',short:'2〜3'}[m.mode];
   return `<div class="mj-setup"><p class="casino-help">${T('4人で打つ麻雀です。相手はCPU3人。ポン・チー・カン、立直、ドラ、役満があり、親は連荘します。持ち点が0を下回ると終わります。閉じても、つぎに開くと続きから打てます。')}</p>
   <h4>${T('対局')}</h4><div class="mj-choice">${choice('data-mj-mode',MAHJONG_MODES,m.mode)}</div><small>${T(`${m.mode==='full'?'東風戦は4局（連荘で延びます）':'1局戦は1局だけ'}。時間の目安は${minutes}分。`)}</small>
   <h4>${T('相手')}</h4><div class="mj-choice is-three">${choice('data-mj-level',MAHJONG_LEVELS,m.level)}</div><small class="mj-level-note">${T(LEVEL_NOTES[m.level]||'')}</small>

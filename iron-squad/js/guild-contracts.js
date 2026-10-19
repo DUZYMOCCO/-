@@ -1,5 +1,5 @@
 import {enemyTier} from './enemy-tier.js?v=274';
-import {atFacility} from './hq-facilities.js?v=321';
+import {atFacility} from './hq-facilities.js?v=322';
 import {encounterBand} from './biome-encounters.js?v=279';
 import {WORLD_SIZE} from './world.js?v=289';
 const species=(id,title,types,baseTarget,baseReward,hint,minLevel=0)=>({id,title,types,baseTarget,baseReward,hint,minLevel,kind:baseTarget===1?'boss':'species'});

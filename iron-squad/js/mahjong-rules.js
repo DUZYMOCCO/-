@@ -4,10 +4,10 @@
 export const MAHJONG_START_POINTS=25000,MAHJONG_TOTAL_POINTS=100000,RIICHI_STICK=1000,WALL_SIZE=136,LIVE_END=122,DORA_INDEX=130,ROUND_WIND=27,RINSHAN_TOP=135,HONBA_POINTS=300,MAX_DEALS=14;
 export const MAHJONG_MODES=Object.freeze({full:{key:'full',name:'東風戦',hands:4,minutes:10},short:{key:'short',name:'1局戦',hands:1,minutes:2}});
 export const MAHJONG_LEVELS=Object.freeze({novice:{key:'novice',name:'見習い'},adept:{key:'adept',name:'雀士'},master:{key:'master',name:'達人'}});
-/** Payout multiples by finishing place (1st..4th) x bet. Calibrated by tools/mahjong-calibrate.mjs (see docs/CURRENT_WORK.md). */
+/** Payout multiples by finishing place (1st..4th) x bet. v7.1.4: calibrated with tools/mahjong-calibrate.mjs so the reference player (basic defence, no ukeire counting) returns about 1.15 / 1.25 / 1.35 x the stake against 見習い / 雀士 / 達人, while a random player returns well under 1 (see docs/CURRENT_WORK.md). */
 export const MAHJONG_PAYOUT=Object.freeze({
-  full:Object.freeze({novice:Object.freeze([3.2,0.4,0.1,0]),adept:Object.freeze([5,0.6,0.15,0]),master:Object.freeze([6,0.7,0.2,0])}),
-  short:Object.freeze({novice:Object.freeze([3,0.9,0.3,0]),adept:Object.freeze([4.3,1,0.4,0]),master:Object.freeze([5,1,0.4,0])})
+  full:Object.freeze({novice:Object.freeze([2.7,0.3,0.1,0]),adept:Object.freeze([4.5,0.5,0.15,0]),master:Object.freeze([5.6,0.7,0.15,0])}),
+  short:Object.freeze({novice:Object.freeze([3.5,0.4,0.1,0]),adept:Object.freeze([5.5,0.7,0.15,0]),master:Object.freeze([6.4,0.8,0.2,0])})
 });
 export const MAHJONG_TOP_MULTIPLE=Math.max(...Object.values(MAHJONG_PAYOUT).flatMap(m=>Object.values(m).map(t=>t[0])));
 export const mahjongPayout=(mode,level,rank,bet)=>Math.round((Number(bet)||0)*((MAHJONG_PAYOUT[mode]?.[level]||[0,0,0,0])[Math.max(1,Math.min(4,rank))-1]||0));
