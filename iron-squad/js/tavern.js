@@ -12,6 +12,9 @@ import {buildingContact} from './building-interactions.js?v=201';
 const classes=['HEAVY','LIGHT','ARCHER','MAGE','MEDIC'];
 const jobs={HEAVY:'重装兵',LIGHT:'軽装兵',ARCHER:'弓兵',MAGE:'魔法師',MEDIC:'衛生士'};
 export const TAVERN_HIRE_COST=5000;
+/** v7.1.7: only the field tavern's strangers are more often geniuses (ordinary rate 0.033%). 4 people a wave: about 1 wave in 5 has one. */
+export const TAVERN_GENIUS_RATE=0.05;
+export const TAVERN_ROSTER_SIZE=4;
 const el=(tag,cls,text)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(text!=null)e.textContent=text;return e;};
 /** One large tavern stands on the field just south of HQ. Strangers and waiting friends all gather there. */
 export const FIELD_TAVERN=Object.freeze({...TAVERN_SITE,radius:130,name:'本陣前の大酒場'});
@@ -23,8 +26,8 @@ export function ensureTavernRoster(game){
   game.taverns||initializeTaverns(game);let roster=game.taverns.roster;const phase=game.phase||1;
   // v7.0.37: the strangers are replaced every wave (= game.phase, the unit the merchant restock and the 3-uses-per-wave potion also follow). The old ones were just civilians and simply leave; anyone already hired lives in the squad / waiting list / reserves, not in this roster.
   if(!roster||roster.phase!==phase){
-    const people=Array.from({length:4},(_,i)=>{
-      const unit=game.createNewSoldier(null,{classKey:classes[(i+phase)%classes.length]});
+    const people=Array.from({length:TAVERN_ROSTER_SIZE},(_,i)=>{
+      const unit=game.createNewSoldier(null,{classKey:classes[(i+phase)%classes.length],talent:game.rollScoutTalent(TAVERN_GENIUS_RATE)});
       unit.civilianOutfit=true;
       return {unit,cost:TAVERN_HIRE_COST,joined:false};
     });
@@ -128,7 +131,7 @@ export const tavernMethods={
     body.append(el('p','command-note',`同行する仲間 ${own.length} / ${limit}人。雇用は1人${TAVERN_HIRE_COST.toLocaleString()}Gです。所持金 ${this.gold.toLocaleString()}G。`));
     body.append(el('p','command-note',enlisted?'同行しきれない仲間は本陣の予備に入ります。':'同行しきれない仲間は、この酒場で待ちます。入隊せずに旅を続けることもできます。'));
     const strangers=ensureTavernRoster(this).people.filter(p=>!p.joined);
-    body.append(el('p','command-note tavern-wave-note',strangers.length?`第${this.phase||1}期の人たちです。次のウェーブで入れかわります。`:`この期の人たちは全員雇用済みです。次のウェーブで新しい人たちが来ます。`));
+    body.append(el('p','command-note tavern-wave-note',strangers.length?`第${this.phase||1}期の人たちです。次のウェーブで入れかわります。天才が見つかりやすい店です。`:`この期の人たちは全員雇用済みです。次のウェーブで新しい人たちが来ます。`));
     const row=(unit,label)=>{
       const card=el('article','tavern-person'),portrait=el('canvas','tavern-portrait');portrait.width=120;portrait.height=132;
       const text=el('div','tavern-person-text');text.append(el('strong','',unit.name),el('p','',`${jobs[unit.soldierClass]||unit.soldierClass} · Lv.${unit.level||1} · HP ${unit.maxHp} · 攻撃 ${unit.atk}`),el('p','command-note',label));

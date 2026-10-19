@@ -45,7 +45,7 @@ import {addFieldDrop,ageFieldDrops,attractFieldDrops,FIELD_DROP_PICKUP_RADIUS} f
 import {drawLootDrop,drawLootPullTrail} from './loot-visuals.js?v=306';
 import {drawOwnSquadRing,isOwnSquad} from './own-squad-marker.js?v=182';
 import {CAREER_RULES,newCareer,normalizeCareer,isEnlisted,ownCompanionCount,rankForCareer,recordCareerContribution,enlistCareer,canPromoteCareer,careerSummary,restartCareerExpedition} from './career-rules.js?v=291';
-import {tavernMethods,initializeTaverns,serializeTaverns,settleTravelerCompanions,drawFieldTavern,updateTavernPrompt,tavernWaveChanged,FIELD_TAVERN} from './tavern.js?v=322';
+import {tavernMethods,initializeTaverns,serializeTaverns,settleTravelerCompanions,drawFieldTavern,updateTavernPrompt,tavernWaveChanged,FIELD_TAVERN} from './tavern.js?v=325';
 import {headquartersFacilityMethods,HEADQUARTERS_FACILITIES,updateHeadquartersFacilityPrompt,drawHeadquartersFacilityGround,drawHeadquartersFacility,headquartersBuildingBlocks} from './hq-facilities.js?v=322';
 import {drawNightlifeLights} from './nightlife-visuals.js?v=277';
 import {drawSceneDarkness,drawLanternLights,recordLanternActor} from './scene-lighting.js?v=322';
@@ -183,6 +183,8 @@ export const ENEMY_SPAWN_INTERVAL=.85; // was .72/.55 — fewer spawn spikes (v1
 /** Field mid-bosses (ZONE_CHAOS dragons): rarer, capped, stronger. Excludes colossal/raid/dungeon. */
 export const FIELD_BOSS_CAP=2;
 /** Perf (v1.24.2): army48, personal12, AI cheapen (retarget/spatial, main/pg throttle, boids far-skip). */
+/** v7.1.7: ordinary genius rate of every recruitment path (scouting, rescues, heroes...). The field tavern uses TAVERN_GENIUS_RATE. */
+export const SCOUT_GENIUS_RATE=0.00033;
 export const PARTICLE_CAP=48; // was 80/110 (v1.24.1)
 export const DAMAGE_TEXT_CAP=DAMAGE_POPUP_CAP;
 export const SPATIAL_CELL=420;
@@ -9756,10 +9758,15 @@ export const IronSquadGame = {
     return this.donateToTreasury(amountInput);
   },
 
-  rollScoutTalent() {
+  rollScoutTalent(geniusRate = SCOUT_GENIUS_RATE) {
     // 天才 0.033%（約3,000人に1人）/ 英才 ~5.967% / 有望14% / へっぽこ15% / 凡庸65%
-    const roll = Math.random();
-    if (roll < 0.00033) return 'GENIUS';
+    let roll = Math.random();
+    // v7.1.7: a higher genius rate (the field tavern's strangers) takes its share proportionally from the other talents.
+    if (geniusRate !== SCOUT_GENIUS_RATE && Number.isFinite(geniusRate) && geniusRate > 0 && geniusRate < 1) {
+      if (roll < geniusRate) return 'GENIUS';
+      roll = SCOUT_GENIUS_RATE + (roll - geniusRate) / (1 - geniusRate) * (1 - SCOUT_GENIUS_RATE);
+    }
+    if (roll < SCOUT_GENIUS_RATE) return 'GENIUS';
     if (roll < 0.06) return 'ELITE';
     if (roll < 0.20) return 'TALENTED';
     if (roll < 0.35) return 'INFERIOR';
