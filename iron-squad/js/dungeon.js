@@ -15,7 +15,7 @@ import {drawExplorationInterior} from './dungeon-interior-visuals.js?v=297';
 const CENTER = WORLD_SIZE / 2;
 // v7.2.17: 真魔王城の入口（本陣からのずれ）と、真魔王の決まった体力・攻撃力（v7.2.18でシミュにより調整）。
 export const TRUE_CASTLE_OX = 74000, TRUE_CASTLE_OY = 74000;
-export const TRUE_DEMON_KING_HP = 10_000_000_000, TRUE_DEMON_KING_ATK = 300_000;
+export const TRUE_DEMON_KING_HP = 10_000_000_000, TRUE_DEMON_KING_ATK = 60_000_000;
 
 // v7.0.20: ruins beyond the first wall (8,000 = 80m) pay about ten ordinary kills at their own distance (no longer a fixed, tiny sum).
 // Gold = 8 x 10 x gold scale, EXP = 6 x 10 x exp scale (the same bases a normal kill uses in killMonster). The near north fort keeps its authored reward.

@@ -968,6 +968,11 @@ function drawDemonKing(c,m,flash) {
 // v7.2.17: 真魔王。魔王の鎧に、虚空の翼と後光、紫の外套を重ねる。
 function drawTrueDemonKing(c,m,now,flash) {
   const scale=Math.max(.95,Math.min(1.35,(m.radius||80)/72)),beat=Math.sin((now||0)*.004);
+  const tk=m.tk;
+  if(tk?.cast){const k=Math.max(0,Math.min(1,1-tk.cast.t/(tk.cast.total||1))),r=(tk.cast.radius||200)*(.25+.75*k);
+    c.save();c.globalAlpha=.25+.35*k;c.fillStyle=tk.cast.kind==='requiem'?'#a21caf':'#be185d';c.beginPath();c.ellipse(0,0,r,r*.55,0,0,Math.PI*2);c.fill();
+    c.globalAlpha=.8;c.strokeStyle='#fbcfe8';c.lineWidth=3;c.stroke();c.restore();}
+  if(tk?.barrier>0){c.save();c.globalAlpha=.35+.15*beat;c.strokeStyle='#c4b5fd';c.fillStyle='rgba(91,33,182,.18)';c.lineWidth=4;c.beginPath();c.arc(0,-40,88,0,Math.PI*2);c.fill();c.stroke();c.restore();}
   c.save();c.scale(scale,scale);
   c.globalAlpha=.55+.15*beat;c.strokeStyle=flash?'#f5f3ff':'#a78bfa';c.lineWidth=3;c.beginPath();c.arc(0,-66,24+2*beat,0,Math.PI*2);c.stroke();c.globalAlpha=1;
   for(const side of [-1,1]){

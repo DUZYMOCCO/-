@@ -1,6 +1,6 @@
 // v7.0.27: demon king scaled to the sortie force, %-of-max-HP strike and meteor, hero party wiped fast, old saves migrated.
 import assert from 'node:assert/strict';
-import {DEMON_KING_RULES as R,demonKingStatsForDps,percentBaseDamage,estimateSortieForce,demonKingStatsFor} from '../js/demon-king-rules.js';
+import {DEMON_KING_RULES as R,demonKingStatsForDps,percentBaseDamage,estimateSortieForce,demonKingStatsFor,guardDpsFactor,captainDpsFactor} from '../js/demon-king-rules.js';
 // ---------- pure rules ----------
 assert.equal(demonKingStatsForDps(0).hp,R.minHp,'floor');assert.equal(demonKingStatsForDps(1e6).hp,R.minHp,'weak force: floor');
 assert.equal(demonKingStatsForDps(20e6).hp,20e6*R.targetTtk);assert.equal(demonKingStatsForDps(40e6).hp,2*demonKingStatsForDps(20e6).hp,'HP is proportional to force');
@@ -10,7 +10,7 @@ assert.ok(R.minAtk>=85000&&R.minHp>=1e9&&R.strikePct===0.5&&R.aoePct>=.02&&R.aoe
  const mage={maxHp:1e6,magicDef:3000};assert.equal(percentBaseDamage(mage,.02,true),Math.round(1e6*.02*(1-R.pctMagicDefMax*.5)),'magic defence helps, but only a little');
  const hero={maxHp:1e6,magicDef:4000};assert.ok(percentBaseDamage(hero,.02,true)>1e6*.02*.7,'hero amulet cannot make the meteor harmless');}
 assert.equal(demonKingStatsFor({}).hp,R.defaultHp);assert.equal(demonKingStatsFor({heroJourney:{kingProfile:{hp:7e9,atk:1}}}).hp,7e9);assert.equal(demonKingStatsFor({heroJourney:{kingProfile:{hp:7e9,atk:1}}}).atk,R.minAtk);
-assert.equal(estimateSortieForce({player:{atk:1e6},squad:[{isPersonalGuard:true,atk:5e5},{isPersonalGuard:true,atk:5e5,dead:true},{atk:9e9}]}).dps,1e6*R.captainDps+5e5*R.guardDps,'only living personal guards count');
+assert.equal(estimateSortieForce({player:{atk:1e6},squad:[{isPersonalGuard:true,atk:5e5},{isPersonalGuard:true,atk:5e5,dead:true},{atk:9e9}]}).dps,1e6*captainDpsFactor({atk:1e6})+5e5*guardDpsFactor({isPersonalGuard:true,atk:5e5}),'only living personal guards count (v7.2.18: per class line and tier)');
 // ---------- full game ----------
 const memory=new Map();globalThis.localStorage={getItem:k=>memory.get(k)??null,setItem:(k,v)=>memory.set(k,v),removeItem:k=>memory.delete(k)};
 globalThis.window={};globalThis.document={getElementById:()=>null};
@@ -29,15 +29,15 @@ const setForce=(captainAtk,guardAtk,n=5)=>{game.player.atk=captainAtk;game.squad
 hp.initializeHeroJourney(game);
 { // no commander has entered yet: the strong default king, %HP rules switched on
   const k=game.createDungeonBoss(d.boss,0,0,d);
-  assert.equal(k.maxHp,R.defaultHp);assert.equal(k.hp,k.maxHp);assert.equal(k.atk,R.minAtk);assert.equal(k.strikePct,R.strikePct);assert.equal(k.attackInterval,R.strikeInterval);assert.equal(k.aoePct,R.aoePct);assert.equal(k.skillCooldown,R.aoeInterval);assert.equal(k.kingScaleVersion,1);
+  assert.equal(k.maxHp,R.defaultHp);assert.equal(k.hp,k.maxHp);assert.equal(k.atk,R.minAtk);assert.equal(k.strikePct,R.strikePct);assert.equal(k.attackInterval,R.strikeInterval);assert.equal(k.aoePct,R.aoePct);assert.equal(k.skillCooldown,R.aoeInterval);assert.equal(k.kingScaleVersion,R.scaleVersion);
   assert.ok(R.defaultHp>=3e9);
 }
 { // entering the castle snapshots the force: HP is proportional, never below the floor, never weaker on the next visit
-  setForce(1e6,.5e6);const dps=1e6*R.captainDps+5*.5e6*R.guardDps;
+  setForce(1e6,.5e6);const dps=estimateSortieForce(game).dps; // v7.2.18: class-aware factors
   const scene=hp.prepareCastleVisit(game,d);const k=scene.monsters.find(m=>m.isDemonKing);
   assert.equal(game.heroJourney.kingProfile.hp,Math.round(dps*R.targetTtk));
   assert.equal(k.maxHp,Math.round(dps*R.targetTtk),'the first king is made from the first snapshot');assert.equal(k.hp,k.maxHp);
-  setForce(4.1e6,4.1e6);const dps2=4.1e6*R.captainDps+5*4.1e6*R.guardDps;
+  setForce(4.1e6,4.1e6);const dps2=estimateSortieForce(game).dps;
   k.hp=k.maxHp/4;const ratio=k.hp/k.maxHp;hp.prepareCastleVisit(game,d);
   assert.equal(k.maxHp,Math.round(dps2*R.targetTtk),'stronger force: stronger king');assert.ok(Math.abs(k.hp/k.maxHp-ratio)<1e-6,'remaining HP fraction is kept');
   const big=k.maxHp;setForce(1e3,1e3);hp.prepareCastleVisit(game,d);
@@ -99,7 +99,7 @@ function heroFightRaw(level,seconds){
   const saved=JSON.parse(JSON.stringify(hp.serializeHeroJourney(game)));const sk=saved.castleScene.monsters.find(m=>m.isDemonKing);
   Object.assign(sk,{maxHp:1e9,hp:4e8,atk:85000,campaignScaleVersion:2});for(const f of ['kingScaleVersion','strikePct','aoePct'])delete sk[f];sk.attackInterval=undefined;sk.skillCooldown=3.2;delete saved.kingProfile;
   hp.initializeHeroJourney(game,saved);const nk=kingOf();
-  assert.equal(nk.maxHp,R.defaultHp);assert.ok(Math.abs(nk.hp/nk.maxHp-.4)<1e-6,'HP fraction kept');assert.equal(nk.strikePct,R.strikePct);assert.equal(nk.aoePct,R.aoePct);assert.equal(nk.kingScaleVersion,1);assert.equal(nk.atk,R.minAtk);
+  assert.equal(nk.maxHp,R.defaultHp);assert.ok(Math.abs(nk.hp/nk.maxHp-.4)<1e-6,'HP fraction kept');assert.equal(nk.strikePct,R.strikePct);assert.equal(nk.aoePct,R.aoePct);assert.equal(nk.kingScaleVersion,R.scaleVersion);assert.equal(nk.atk,R.minAtk);
   hp.initializeHeroJourney(game,JSON.parse(JSON.stringify(hp.serializeHeroJourney(game))));assert.equal(kingOf().maxHp,R.defaultHp,'migrating twice changes nothing');
   // with a recorded snapshot the saved king takes that size
   const again=JSON.parse(JSON.stringify(hp.serializeHeroJourney(game)));again.kingProfile={hp:9e9,atk:R.minAtk,dps:6e7,version:1};delete again.castleScene.monsters.find(m=>m.isDemonKing).kingScaleVersion;

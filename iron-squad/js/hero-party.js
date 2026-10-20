@@ -3,12 +3,12 @@ import {addBattleReport} from './battle-report.js?v=333';
 import {attackCooldown} from './equipment-rules.js?v=306';
 import {migrateCampaignEnemy} from './campaign-scaling.js?v=241';
 import {HERO_RULES,heroRevelationPhase,nextHeroRevelationPhase,heroPartyActive,heroMembers,heroSharesSpace,visibleHeroMembers} from './hero-rules.js?v=302';
-import {advanceHeroRoute,heroSegmentOpen,heroRouteCurrent} from './hero-navigation.js?v=351';
+import {advanceHeroRoute,heroSegmentOpen,heroRouteCurrent} from './hero-navigation.js?v=352';
 import {WORLD_SIZE,settleUnit,fieldRockExit} from './world.js?v=289';
-import {DUNGEON_DEFS,dungeonBlocks} from './dungeon.js?v=351';
-import {DEMON_KING_RULES,recordKingProfile,shapeDemonKing,migrateDemonKing} from './demon-king-rules.js?v=304';
+import {DUNGEON_DEFS,dungeonBlocks} from './dungeon.js?v=352';
+import {DEMON_KING_RULES,recordKingProfile,shapeDemonKing,migrateDemonKing} from './demon-king-rules.js?v=352';
 import {nearestDungeonFloor} from './dungeon-layout.js?v=182';
-import {unlockTrueCastle} from './true-demon-castle.js?v=351';
+import {unlockTrueCastle} from './true-demon-castle.js?v=352';
 import {economicFieldBlocked} from './regional-economy.js?v=277';
 import {RECRUIT_CLASSES} from './recruitment.js?v=306';
 import {persistentUnit} from './render-support.js';
@@ -25,8 +25,8 @@ import {RANGED_ENEMIES} from './enemy-ranged.js?v=295';
 import {startHeroJournal,archiveHeroJournal,appendHeroDiary,recordHeroEquipmentGrant,recordHeroEvent,announceHero} from './hero-journal.js?v=306';
 import {showHeroRevelationScene} from './hero-revelation-scene.js?v=302';
 import {grantHeroEquipment} from './hero-equipment.js?v=295';
-import {recordSealGuardianKill,heroPilgrimShrine,heroCastleOpen,ensureSealGuardian,sealDef,sealsRemaining,SEAL_RULES,HERO_SHRINE_STAND} from './seal-keys.js?v=351';
-import {spectateAvailability,startSpectate,endSpectate,queueSpectate,cancelSpectateQueue,spectateStatusLine} from './hero-spectate.js?v=351';
+import {recordSealGuardianKill,heroPilgrimShrine,heroCastleOpen,ensureSealGuardian,sealDef,sealsRemaining,SEAL_RULES,HERO_SHRINE_STAND} from './seal-keys.js?v=352';
+import {spectateAvailability,startSpectate,endSpectate,queueSpectate,cancelSpectateQueue,spectateStatusLine} from './hero-spectate.js?v=352';
 const C=WORLD_SIZE/2,castle=()=>DUNGEON_DEFS.find(d=>d.id==='dungeon_demon_castle');
 const ready=u=>u&&!u.dead&&!u.isDown&&u.hp>0;
 export function initializeHeroJourney(game,saved=null) {
@@ -133,7 +133,8 @@ export function homeDemonKing(game,{force=false}={}) {
 export function prepareCastleVisit(game,d=castle()) {
   const j=game.heroJourney;if(j)recordKingProfile(game);
   const scene=ensureHeroCastle(game,d),king=scene.monsters.find(m=>m.isDemonKing);
-  if(king&&j){shapeDemonKing(king,j.kingProfile,{raiseOnly:true});const p=j.party;if(!(p&&p.status!=='withdrawn'&&p.status!=='fallen'&&p.space===d.id))homeDemonKing(game,{force:true});}
+  if(king&&j){shapeDemonKing(king,j.kingProfile,{raiseOnly:true});delete king.gauge; // v7.2.18: a new commander visit is gauged afresh
+const p=j.party;if(!(p&&p.status!=='withdrawn'&&p.status!=='fallen'&&p.space===d.id))homeDemonKing(game,{force:true});}
   return scene;
 }
 export function ensureHeroCastle(game,d=castle()) {

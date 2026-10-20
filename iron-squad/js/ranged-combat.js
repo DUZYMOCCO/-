@@ -1,5 +1,5 @@
 import {ensureAmmo,takeRangedShot} from './supply-rules.js?v=332';
-import {attackBlocked} from './gate-rules.js?v=351';
+import {attackBlocked} from './gate-rules.js?v=352';
 import {attackCooldown,soldierAttackCooldown} from './equipment-rules.js?v=306';
 import {attributeFamily} from './unit-attributes.js?v=334';
 import {inCurrentInstance} from './instance-rules.js?v=322';

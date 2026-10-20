@@ -8,7 +8,7 @@ import {applyAttributeStats} from './unit-attributes.js?v=334';
  */
 import { saleValue, distanceScaling, weaponCombatProfile } from './equipment-rules.js?v=306';
 import {WORLD_SIZE} from './world.js?v=289';
-import { drawFieldSoldier } from './visuals.js?v=351';
+import { drawFieldSoldier } from './visuals.js?v=352';
 import { createSoldierAppearance, drawSoldierHead } from './soldier-appearance.js?v=342';
 import { attackAnimationRate } from './weapon-motion.js?v=341';
 import { markSoldierDown, rebuildMerchantCasualties, RESCUE_TIMEOUT, departFromRest } from './casualty-rules.js?v=346';

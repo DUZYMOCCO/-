@@ -13,12 +13,12 @@ import {talentTag} from './talent-labels.js?v=291';
 import {fieldDialogReturn} from './dialog-return.js?v=200';
 import {guildMethods} from './guild-contracts.js?v=322';
 import {guildUiMethods} from './guild-ui.js?v=322';
-import {headquartersMoveTarget} from './hq-navigation.js?v=351';
+import {headquartersMoveTarget} from './hq-navigation.js?v=352';
 import {configureBattlefieldUI,quietBattlefieldContext} from './battlefield-ui.js?v=332';
-import {renderNavigationMap} from './navigation-map.js?v=351';
+import {renderNavigationMap} from './navigation-map.js?v=352';
 import {soldierEquipmentValue,createEquipmentValueCache,observeEquipment,standardEquipmentCost,RESERVE_ARMAMENT_COUNT} from './armament-rules.js?v=306';
-import {initializeSealKeys,serializeSealKeys,updateSealShrines,recordSealGuardianKill,directionRelicRoll,drawSealShrine,drawSealMap,castleSealed,castleSealText,DEMON_CASTLE_ID as SEALED_CASTLE_ID} from './seal-keys.js?v=351';
-import {initializeTrueCastle,serializeTrueCastle,updateTrueCastle,drawTrueCastleMap,drawTrueCastleEntrance} from './true-demon-castle.js?v=351';
+import {initializeSealKeys,serializeSealKeys,updateSealShrines,recordSealGuardianKill,directionRelicRoll,drawSealShrine,drawSealMap,castleSealed,castleSealText,DEMON_CASTLE_ID as SEALED_CASTLE_ID} from './seal-keys.js?v=352';
+import {initializeTrueCastle,serializeTrueCastle,updateTrueCastle,drawTrueCastleMap,drawTrueCastleEntrance,shapeTrueDemonKing,updateTrueDemonKing,recordTrueKingDefeat} from './true-demon-castle.js?v=352';
 import {initializeWildernessSites,serializeWildernessSites,updateWildernessSites,recordWildernessGuardKill,drawWildernessSite,drawWildernessMap,WILDERNESS_RULES} from './wilderness-sites.js?v=281';
 import {enemyArtHeadHeight} from './enemy-art.js?v=280';
 import {selectBiomeEncounter,biomeEnemyStats,encounterSlots,updateBiomeCharge} from './biome-encounters.js?v=279';
@@ -35,14 +35,14 @@ import {recordBattleLog,resetBattleLog,refreshCombatFieldNotes} from './battle-l
 import {rollDropExclusive,applyDropExclusive,dropExclusiveLabel,markDirectionRelic,DIRECTION_RELICS} from './drop-exclusives.js?v=350';
 import {normalizeMaterials,applyCraftExclusive,craftExclusiveLabel,equipmentDropChance,materialDropChance,rollMaterialDrop,rollTreasureLoot} from './crafting-rules.js?v=306';
 import {workshopMethods} from './workshop.js?v=333';
-import {updateAmbientCrowd,ambientResidents,ambientSoldierPose,ambientFarmPosts,drawAmbientResident,configureAmbientSettings,resetAmbientCrowd} from './town-ambient.js?v=351';
+import {updateAmbientCrowd,ambientResidents,ambientSoldierPose,ambientFarmPosts,drawAmbientResident,configureAmbientSettings,resetAmbientCrowd} from './town-ambient.js?v=352';
 import {casinoMethods} from './casino.js?v=322';
 import {normalizeCasino} from './casino-rules.js?v=322';
 import {latestEquipmentTier,recordMerchantEquipment,ensureMerchantCatalog,refreshWaveCatalogs,markMerchantPurchase} from './merchant-catalog.js?v=306';
 import {initializeMedicalPosts,updateMedicalPosts,serializeMedicalPosts,medicalPostLayout,nearestKnownMedicalPost,drawMedicalPost,drawMedicalMap,drawMedicalMarker,drawTownMedicalReception,drawRescueDirection} from './medical-posts.js?v=277';
 import {invasionMethods,initializeInvasions,serializeInvasions,shouldTriggerRandomRaid,makeEnemyRoom,drawInvasionRoute,raidHeldBySpectate} from './invasion-rules.js?v=333';
-import {gateMethods,serializeGatePosts,replenishTownGateGuards,initializeGateGuards,ensureTownGuards,serializeGateGuards,updateGateGuards,gateGuardVisible,applyFortifications,drawFortification,exitGateTown,townExitReached,wallBlocksAttack,attackBlocked as coverBlocked} from './gate-rules.js?v=351';
-import {nationMethods,normalizeNation,nationalIncome,nationalPayrollPlan,headquartersDamageMult,drawNationalDevelopment,DEVELOPMENT_STAGES} from './nation-rules.js?v=351';
+import {gateMethods,serializeGatePosts,replenishTownGateGuards,initializeGateGuards,ensureTownGuards,serializeGateGuards,updateGateGuards,gateGuardVisible,applyFortifications,drawFortification,exitGateTown,townExitReached,wallBlocksAttack,attackBlocked as coverBlocked} from './gate-rules.js?v=352';
+import {nationMethods,normalizeNation,nationalIncome,nationalPayrollPlan,headquartersDamageMult,drawNationalDevelopment,DEVELOPMENT_STAGES} from './nation-rules.js?v=352';
 import {equipmentUpgradeCost,salaryQuote,paySoldiers} from './payroll-rules.js?v=333';
 import {planSelfUpgrades,applySelfUpgradePlan,SELF_UPGRADE_SAFETY_LIMIT,REST_UPGRADES_PER_PHASE_MAX,REST_UPGRADES_PER_TICK_MAX} from './self-upgrade-rules.js?v=300';
 import {addFieldDrop,ageFieldDrops,attractFieldDrops,FIELD_DROP_PICKUP_RADIUS} from './field-drops.js?v=305';
@@ -52,13 +52,13 @@ import {CAREER_RULES,newCareer,normalizeCareer,isEnlisted,ownCompanionCount,rank
 import {tavernMethods,initializeTaverns,serializeTaverns,settleTravelerCompanions,drawFieldTavern,updateTavernPrompt,tavernWaveChanged,FIELD_TAVERN} from './tavern.js?v=333';
 import {headquartersFacilityMethods,HEADQUARTERS_FACILITIES,updateHeadquartersFacilityPrompt,drawHeadquartersFacilityGround,drawHeadquartersFacility,headquartersBuildingBlocks} from './hq-facilities.js?v=322';
 import {drawNightlifeLights} from './nightlife-visuals.js?v=277';
-import {drawSceneDarkness,drawLanternLights,recordLanternActor} from './scene-lighting.js?v=351';
+import {drawSceneDarkness,drawLanternLights,recordLanternActor} from './scene-lighting.js?v=352';
 import {queueSquadName,flushSquadNames} from './squad-names.js?v=182';
 import {syncGiveUpUI,resumeBGM} from './commander-giveup.js?v=206';
 import {bindFieldMusic,unbindFieldMusic,followFieldMusic} from './field-music.js?v=306';
 import {economicState,advanceRegionalEconomy,discoverEconomicRegions,recordEconomicKill,economicFieldBlocked} from './regional-economy.js?v=277';
-import {updateRegionalTraffic,nearestCommerceTarget,damageCommerce,persistTradeRaiders,restoreTradeRaiders} from './trade-routes.js?v=351';
-import {drawEconomicLandscape,drawCommerceActor,drawEconomicMinimap,drawCommerceWreck,drawCampTent} from './economic-visuals.js?v=351';
+import {updateRegionalTraffic,nearestCommerceTarget,damageCommerce,persistTradeRaiders,restoreTradeRaiders} from './trade-routes.js?v=352';
+import {drawEconomicLandscape,drawCommerceActor,drawEconomicMinimap,drawCommerceWreck,drawCampTent} from './economic-visuals.js?v=352';
 /**
  * ゲーム3: IRON SQUAD (アイアン・スクワッド: 雑兵立身出世録)
  * ローグライク・アクションRPG
@@ -74,7 +74,7 @@ import { sound } from '../../common/js/audio.js?v=151';
 import { loadCss } from '../../common/js/load-css.js';
 import { storage } from '../../common/js/storage.js';
 import { createStallRecorder, mountStallLog } from './stall-recorder.js?v=182';
-import { clearRestPoseArt, drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow, isRuinKeeper, ruinKeeperScale } from './visuals.js?v=351';
+import { clearRestPoseArt, drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow, isRuinKeeper, ruinKeeperScale } from './visuals.js?v=352';
 import { refreshCampQuiet, assignCampSeats, tryCampLeisure, YARD_TABLES, drawLeisureTable } from './camp-leisure.js?v=277';
 import { CAMP_PEACE_RADIUS, peaceContainment, pushOutsidePeace, relocatePeaceMonster } from './peace-zones.js?v=277';
 import { FARM_X, FARM_Y, farmPosts, farmOverlaps, reinforcementCount, reserveRosterLine, reserveRosterTitle } from './reserve-farm.js?v=277';
@@ -88,7 +88,7 @@ import {drawFieldCivilian} from './civilian-visuals.js?v=295';
 import { saveSlots,profileSaveCompletions,requestPersistentSaves } from './save-slots.js?v=311';
 import { soldierDialogue } from './soldier-dialogue.js?v=334';
 import { generateSoldierName, migrateSoldierName, rollGenderByKey, isGenderId, ensureSoldierGender, genderLabel } from './soldier-names.js?v=341';
-import { openCommanderEditor } from './commander-editor.js?v=351';
+import { openCommanderEditor } from './commander-editor.js?v=352';
 import { applyCommanderIdentity, normalizeCommanderIdentity, commanderFullName, GENDERS as COMMANDER_GENDERS } from './commander-identity.js?v=295';
 import {MAGIC_CLASSES,MAGIC_AFFINITIES,classHpScale,magicMethods,isMage,isMagicUser,ensureMana,initializeMagic,updateMagic,distributeMagicStones,castMedicBuff,castCasterStrength,updateMageAI,drawMagicBursts,spendMana,weaponMagicDamage,isPlayerCaster,castPlayerSpell,PLAYER_MAGIC_RULES} from './magic-rules.js?v=334';
 import {hazardMethods,updateHazards,drawHazards} from './hazard-fields.js?v=277';
@@ -96,14 +96,14 @@ import {strongEnemyReward,killXpFloor,killExpWithFloor} from './combat-rewards.j
 import {supplyMethods, initializeSupplies, updateSupplies, takeRangedShot, ammoCombatProfile, isRangedUnit, distributeAmmo, preventLethalHit, normalizeFieldSave, SQUAD_POTION_COST, REVIVAL_POTION_COST, REVIVAL_POTION_MAX, SQUAD_POTION_MAX, ensureAmmo, ammoCapacity, recalcAmmoCapacity, RANGED_DAMAGE_MULT, supplyLocation} from './supply-rules.js?v=332';
 import { bindPadTap } from './pad-tap.js?v=276';
 import { POCKET_POTION, pocketPotionLabel, tickPocketPotion } from './pocket-potion.js?v=333';
-import { updateSpectate, updateRaidGrace, spectateCameraTarget, clearSpectate, updateSpectateQueue, spectateSteps, spectateSpeed, fieldSpectating, expeditionSpectating, expeditionAvailability, expeditionStatusLine, startExpeditionSpectate, queueExpeditionSpectate, cancelSpectateQueue, endSpectate } from './hero-spectate.js?v=351';
+import { updateSpectate, updateRaidGrace, spectateCameraTarget, clearSpectate, updateSpectateQueue, spectateSteps, spectateSpeed, fieldSpectating, expeditionSpectating, expeditionAvailability, expeditionStatusLine, startExpeditionSpectate, queueExpeditionSpectate, cancelSpectateQueue, endSpectate } from './hero-spectate.js?v=352';
 import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog, settingsHost, arrangeSettings } from './interface.js?v=333';
 import { renderTroopRankings, getSoldierRankerBadges, calcSoldierRankerBonus, setRankingFamilyLabels, RANKING_FAMILIES } from './troop-rankings.js?v=333';
 import { ensureSoldierAppearance, drawSoldierPortrait } from './soldier-appearance.js?v=342';
 import { aggregateDeathlineDynamics, tickDeathline, deathlineDamage, normalizeDeathlineSkills, chooseDeathlineSkill, deathlineRangedRange } from './deathline-rules.js?v=295';
 import {CAMPAIGN_SCALE_VERSION,migrateCampaignEnemy,campaignScalingV1} from './campaign-scaling.js?v=241';
-import {rangedCombatMethods,updatePiercingBolt,rangedDrawPose,rangedFrontlinePosition} from './ranged-combat.js?v=351';
-import {soldierMeleeMethods,tickSoldierMeleeSkill,soldierMeleeReach,soldierMeleePosition,soldierMeleeSkillLines,soldierMeleeDrawPose,updateSoldierSkillFx,drawSoldierSkillFx,MELEE_BALANCE} from './soldier-melee-skills.js?v=351';
+import {rangedCombatMethods,updatePiercingBolt,rangedDrawPose,rangedFrontlinePosition} from './ranged-combat.js?v=352';
+import {soldierMeleeMethods,tickSoldierMeleeSkill,soldierMeleeReach,soldierMeleePosition,soldierMeleeSkillLines,soldierMeleeDrawPose,updateSoldierSkillFx,drawSoldierSkillFx,MELEE_BALANCE} from './soldier-melee-skills.js?v=352';
 import { buildSoldierProfile, describeDeathlineEffect } from './soldier-profile.js?v=234';
 import { attachSurfaceEvents, detachSurfaceEvents, frameSurfaceReady, releaseSceneCaches, releaseCanvas, surfaceCanResume } from './canvas-surface.js?v=217';
 import { SETTLEMENTS, WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt, routeNameAt, eastWestRoadY, northSouthRoadX, riverCenterY, drawFieldDepth, drawOakCrown, fieldBlocks, settleUnit, fieldSpeedFactor, biomeMoveTarget, fieldRockExit } from './world.js?v=289';
@@ -147,7 +147,7 @@ import {
   nearestLivingMerchant, refreshMerchantStock, merchantBuyPrice, merchantSellTier,
   applyMerchantSave, serializeMerchants, MERCHANT_INTERACT_R,
   merchantHealingStatus, merchantHealWavesLeft, useMerchantHealing, MERCHANT_HEAL_COST, recalcEscortStats, finishEscortPhase, merchantEscortCover, noteEscortDamage
-} from './merchant-rules.js?v=351';
+} from './merchant-rules.js?v=352';
 
 import { daylightAt, advanceWorldClock, periodEnemy, enemyAvailable, PERIOD_ENEMIES } from './day-night.js?v=208';
 
@@ -155,13 +155,13 @@ import { clusterRescueMarkers } from './rescue-markers.js?v=182';
 import {visibleHeroMembers,heroMembers} from './hero-rules.js?v=302';
 import {updateHeroJournal} from './hero-journal.js?v=306';
 import {applyHeroEquipmentUpgrade} from './hero-equipment.js?v=295';
-import {initializeHeroJourney,rollHeroRevelation,serializeHeroJourney,updateHeroParty,updateHeroFollowing,awardHeroBattle,recordDemonKingDefeat,ensureHeroCastle,prepareCastleVisit,syncHeroCastle,renderHeroJourney,drawHeroMarks} from './hero-party.js?v=351';
-import {DEMON_KING_RULES,demonKingStatsFor,shapeDemonKing,percentBaseDamage} from './demon-king-rules.js?v=304';
+import {initializeHeroJourney,rollHeroRevelation,serializeHeroJourney,updateHeroParty,updateHeroFollowing,awardHeroBattle,recordDemonKingDefeat,ensureHeroCastle,prepareCastleVisit,syncHeroCastle,renderHeroJourney,drawHeroMarks} from './hero-party.js?v=352';
+import {DEMON_KING_RULES,demonKingStatsFor,shapeDemonKing,percentBaseDamage,gaugeDemonKing} from './demon-king-rules.js?v=352';
 import {updateSquadHpHud} from './squad-hp-hud.js?v=322';
 import {addBattleReport,normalizeBattleReport,renderBattleReport} from './battle-report.js?v=333';
 import {updateRescueAssistance,handleRescueAssistance} from './rescue-assistance.js?v=344';
 import { RESCUE_TIMEOUT, REVIVAL_COOLDOWN, revivalCooldownOf, revivalSkillCooldownLeft, normalizeRevivalSkill, headquartersRevivalPaused, rescueUnits, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, receiveTownCargo, leaveCivilianSpace, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, buildTransportRescueAssign, markSoldierDown, downCommander, commanderDown, updateNpcRescue, CIV_KINDS, isMedic, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST, medicHoldsByCommander, isMerchantCasualty } from './casualty-rules.js?v=346';
-import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault, dungeonBlocks, dungeonSolids } from './dungeon.js?v=351';
+import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault, dungeonBlocks, dungeonSolids } from './dungeon.js?v=352';
 import {nearestDungeonFloor,dungeonSpawnPoint,dungeonSteeringTarget} from './dungeon-layout.js?v=182';
 import {normalizeDungeonExploration,updateDungeonSideChests,drawDungeonSideChests,updateDungeonRespawns,dungeonCoolingDown,recordDungeonClear,DUNGEON_RESET_PHASES} from './dungeon-exploration.js?v=306';
 import {
@@ -176,7 +176,7 @@ import {
 } from './expedition-rules.js?v=256';
 
 import { viewport, circleInView, strokeVisibleRing, persistentUnit } from './render-support.js?v=324';
-import {stepWallVault,clearWallVault,restingPosition} from './wall-vault.js?v=351';
+import {stepWallVault,clearWallVault,restingPosition} from './wall-vault.js?v=352';
 
 export const DEPLOYMENT_CAPACITY=48; // was 50/72 — 本隊 soft cap for iPhone (v1.24.2)
 const SOLDIER_DETAIL_TABS = [['stats','能力'],['gear','装備'],['record','記録'],['person','人物']];
@@ -7279,6 +7279,8 @@ export const IronSquadGame = {
       if (this.updateMonsterKnock(m, dt) || m.hp <= 0) continue;
       if(m.magicStunTimer>0)continue;
       if (m.isDemonWarband) continue;
+      if(m.isDemonKing&&!this.spectating&&this.currentDungeon?.id===SEALED_CASTLE_ID&&gaugeDemonKing(this,m,dt))this.showToast('😈「……なるほど、それがおまえたちの力か。ならば本気でいくぞ」――魔王の力がふくれ上がった',{field:true,urgent:true}); // v7.2.18: the king reads the real firepower in the first seconds
+      if(m.isTrueDemonKing&&updateTrueDemonKing(this,m,dt,aliveSquad))continue; // v7.2.18: 真魔王の段階・障壁・大技（詠唱中は動かない）
 
       const pDistSq = this._distSq(this.player.x, this.player.y, m.x, m.y);
       let target = this.player;
@@ -7992,6 +7994,7 @@ export const IronSquadGame = {
     const magical=options.damageKind==='magic'||options.damageKind==='elemental'||!!options.element;
     // v7.0.27: pctMax = 防御を無視した「最大HPの割合」ダメージ（魔王の強攻撃・アビスメテオ）。保護（かばう・サンクチュアリ・結界・各軽減）は通常どおり効く。被弾成長は元の攻撃の強さで計算する（割合ダメージで成長が暴走しない）。
     const pct=!environmental&&options.pctMax>0?options.pctMax:0,growthStrength=rawDmg;
+    const growthBase=options.growthStrength>0?options.growthStrength:options.attacker?.hitGrowthStrength>0?options.attacker.hitGrowthStrength:null; // v7.2.18: a fixed-stat boss (true demon king) feeds hit growth as a strong field enemy, not by its raw ATK
     if(pct)rawDmg=percentBaseDamage(target,pct,magical);
     const dodgeChance=target.dodge ?? (target.soldierClass==='BLADEMASTER'?25:0);
     if (!environmental && !covered && dodgeChance>0 && Math.random()*100 < dodgeChance) {
@@ -8056,10 +8059,10 @@ export const IronSquadGame = {
     if(target.magicWardTimer>0)dmg=Math.max(1,Math.round(dmg*(1-(target.magicWardBonus||0))));
     const barrier=absorbEquipmentBarrier(target,dmg,magical);dmg=barrier.damage;
     if(barrier.absorbed>0)this.spawnDamageText(target.x,target.y-26,`結界 −${Math.ceil(barrier.absorbed)}`,'#90b9c5');
-    if(!(dmg>0)){if(!environmental)this.trainFromHit(target,pct?growthStrength:rawDmg);return;} // 結界が全部受けた: 赤い数字・被弾音なし。ただし攻撃は受けたので鍛錬は進む
-    if(covered){dmg=Math.min(dmg,target.hp-1);if(!(dmg>0)){if(!environmental)this.trainFromHit(target,pct?growthStrength:rawDmg);return;}} // かばいでは倒れない（HP1で止まっても鍛錬は進む）
-    if(preventLethalHit(this,target,dmg)){if(!environmental)this.trainFromHit(target,pct?growthStrength:rawDmg);return;} // 致命傷防止でも鍛錬は進む
-    if(dmg>=target.hp&&limitedLastStand(this,target)){if(!environmental)this.trainFromHit(target,pct?growthStrength:rawDmg);return;} // v7.2.1: 熊・猫のクラス3は1作戦期に1回踏みとどまる
+    if(!(dmg>0)){if(!environmental)this.trainFromHit(target,growthBase??(pct?growthStrength:rawDmg));return;} // 結界が全部受けた: 赤い数字・被弾音なし。ただし攻撃は受けたので鍛錬は進む
+    if(covered){dmg=Math.min(dmg,target.hp-1);if(!(dmg>0)){if(!environmental)this.trainFromHit(target,growthBase??(pct?growthStrength:rawDmg));return;}} // かばいでは倒れない（HP1で止まっても鍛錬は進む）
+    if(preventLethalHit(this,target,dmg)){if(!environmental)this.trainFromHit(target,growthBase??(pct?growthStrength:rawDmg));return;} // 致命傷防止でも鍛錬は進む
+    if(dmg>=target.hp&&limitedLastStand(this,target)){if(!environmental)this.trainFromHit(target,growthBase??(pct?growthStrength:rawDmg));return;} // v7.2.1: 熊・猫のクラス3は1作戦期に1回踏みとどまる
     if(magical)practiceAttribute(target,'magicDefense',1+Math.min(4,rawDmg/Math.max(1,target.maxHp||1)));
     const hpBeforeHit = target.hp, lostHp = Math.min(dmg, Math.max(0, hpBeforeHit));
     target.hp -= dmg;
@@ -8068,7 +8071,7 @@ export const IronSquadGame = {
     sound.playHurt(target.x,target.y);
 
     // 被弾によるHP成長（防御・軽減・結界の前の攻撃の強さに比例する絶対値・上限なし。DEFも兵種ごとの係数で伸びる）
-    if (!environmental) this.trainFromHit(target, pct?growthStrength:rawDmg);
+    if (!environmental) this.trainFromHit(target, growthBase??(pct?growthStrength:rawDmg));
 
     if (target !== this.player && target.hp > 0 && !target.isDown && target.hp / target.maxHp <= 0.3) {
       this.dialogue?.trigger(target, 'LOW_HP');
@@ -8698,6 +8701,7 @@ export const IronSquadGame = {
       atkTimer: 0,
       hitPulse: 0
     };
+    if (bossDef.type === 'true_demon_king') shapeTrueDemonKing(boss); // v7.2.18: fixed HP/ATK, phases and big moves
     if (bossDef.type === 'demon_king') shapeDemonKing(boss, demonKingStatsFor(this)); // v7.0.27: sized to the sortie force (or the strong default), %HP strike + meteor
     return boss;
   },
@@ -8803,7 +8807,7 @@ export const IronSquadGame = {
     const tier=enemyTier(monster),trueBoss=tier==='boss',midboss=tier==='midboss';
     const isBoss = !!monster.isBoss;
     const isElite = !!monster.isElite;
-    if(trueBoss)addBattleReport(this,'boss',`${monster.isDemonKing?'魔王':'ボス'}『${monster.name||'強敵'}』を撃破（トドメ：${isPlayer?'隊長':attacker?.name||'味方'}）`);
+    if(trueBoss)addBattleReport(this,'boss',`${monster.isTrueDemonKing?'真魔王':monster.isDemonKing?'魔王':'ボス'}『${monster.name||'強敵'}』を撃破（トドメ：${isPlayer?'隊長':attacker?.name||'味方'}）`);
 
     if(midboss){addBattleReport(this,'midboss',`中ボス『${monster.name||'強敵'}』を撃破（トドメ：${isPlayer?'隊長':attacker?.name||'味方'}）`);this.showToast(`中ボス『${monster.name||'強敵'}』を撃破`);}
     const curPhase = this.phase || this.wave || 1;
@@ -8908,6 +8912,7 @@ export const IronSquadGame = {
     this.updateStatsUI();
 
     // ⛩️ ダンジョンボス討伐時の至宝解錠判定
+    if (monster.isTrueDemonKing) recordTrueKingDefeat(this,attacker,isPlayer); // v7.2.18: first defeat: announcement, record, reward
     if (monster.isDemonKing) {
       recordDemonKingDefeat(this,isPlayer?this.player:attacker);
       this.showToast(`😈👑【魔王討伐！！】『${monster.name || '魔王'}』を撃破！戦力に応じて強くなる最強の脅威を打ち破った！`);

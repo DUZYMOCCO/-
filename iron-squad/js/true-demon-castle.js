@@ -1,5 +1,5 @@
 // v7.2.17: 真魔王城。魔王が倒れると南東の果てに現れ、入れるようになる。勇者隊は向かわない（勇者の行き先は封印と魔王城だけ）。
-import {DUNGEON_DEFS} from './dungeon.js?v=351';
+import {DUNGEON_DEFS,TRUE_DEMON_KING_HP,TRUE_DEMON_KING_ATK} from './dungeon.js?v=352';
 import {addBattleReport} from './battle-report.js?v=333';
 export const TRUE_CASTLE_ID='dungeon_true_demon_castle';
 const DEMON_CASTLE_ID='dungeon_demon_castle',TAU=Math.PI*2;
@@ -84,5 +84,74 @@ export function drawTrueCastleEntrance(ctx,def,time=0){
   ctx.font='bold 13px sans-serif';ctx.textAlign='center';ctx.lineWidth=4;ctx.strokeStyle='#0b0614';ctx.strokeText(def.name,x,y+34);ctx.fillStyle='#e9d5ff';ctx.fillText(def.name,x,y+34);
   if(def.cleared){ctx.font='11px sans-serif';ctx.strokeText('踏破済',x,y+49);ctx.fillStyle='#a5b4fc';ctx.fillText('踏破済',x,y+49);}
   ctx.restore();
+  return true;
+}
+
+// v7.2.18: 真魔王ゼルヴァーン。HPと攻撃は決まった値（挑む隊の強さでは変わらない）。
+// ふだんの攻撃は防御で減る近接（周りも薙ぐ）と、魔法防御で減る「虚空の波動」。段階ごとに大技が増える：
+//  第2段（HP70%以下）「さばきの刻」：近くの全員に最大HPの割合ダメージ（防御無視）。聖域・身代わり・結界などの保護で減る。
+//  第3段（HP40%以下）「終わりの鐘」：数人に最大HPを大きく超える割合ダメージ。聖域と身代わりが重ならないと倒れ、蘇生が追いつかないと崩れる。
+// 段階が変わるときは数秒「虚空の障壁」で攻撃が通らない（一瞬で終わらないように）。調整はこの表だけ。
+export const TRUE_KING_RULES=Object.freeze({
+  hp:TRUE_DEMON_KING_HP, atk:TRUE_DEMON_KING_ATK, strikeInterval:1.5, cleaveRadius:90, reach:96,
+  wave:{interval:3.5,radius:320,atk:30_000},
+  growthStrength:2_000_000, // 被弾成長はこの強さの敵として数える（決まった巨大ATKで成長が跳ねないように）
+  phaseAt:[0.7,0.4], barrierSeconds:8,
+  judgment:{phase:2,interval:22,windup:2,radius:650,pct:1.2},
+  requiem:{phase:3,interval:22,windup:2.5,targets:2,pct:4.0},
+  // 大技は聖騎士の系統（聖域）の光が届く者（この距離以内）には1/4しか通らない。ふつうの聖域（140px・-30%）・身代わりとも重なる。
+  // 光がなければさばきの刻（最大HPの120%）で倒れる。終わりの鐘（400%）は光の中でも100%なので、身代わりか近くの聖域が重ならないと倒れ、蘇生が要る。
+  sanctuary:{radius:300,cut:0.25},
+  firstReward:{orbs:20,gems:5}
+});
+export function shapeTrueDemonKing(king){
+  const R=TRUE_KING_RULES;if(!king)return king;
+  Object.assign(king,{hp:R.hp,maxHp:R.hp,atk:R.atk,attackInterval:R.strikeInterval,cleaveRadius:R.cleaveRadius,attackReach:R.reach,skillCooldown:9999,skillTimer:9999,isTrueDemonKing:true,hitGrowthStrength:R.growthStrength});
+  king.tk={phase:1,barrier:0,lockHp:0,wave:R.wave.interval,judgment:R.judgment.interval,requiem:R.requiem.interval,cast:null};
+  return king;
+}
+const ready=u=>!!u&&!u.dead&&!u.isDown&&u.hp>0;
+const SANCTUARY_CLASSES=['PALADIN','TEMPLAR','IMMORTAL_AEGIS'];
+/** 大技の割合：聖域の光（聖騎士の系統が近くにいる）なら半分。 */
+export function trueKingBlowPct(game,u,pct){const S=TRUE_KING_RULES.sanctuary;const lit=(game.squad||[]).some(s=>ready(s)&&SANCTUARY_CLASSES.includes(s.soldierClass)&&(!game.currentDungeon||!s.heroPartyId)&&Math.hypot(s.x-u.x,s.y-u.y)<=S.radius);return lit?pct*S.cut:pct;}
+const say=(game,m,text,color)=>game.spawnDamageText?.(m.x,m.y-70,text,color);
+function alliesOf(game,units){return [game.player,...(units||[])].filter(u=>ready(u)&&!(u===game.player&&game.spectating));}
+/** 毎フレーム。true を返す間（大技の詠唱中・障壁中）は通常の移動・攻撃をしない。 */
+export function updateTrueDemonKing(game,m,dt,units){
+  const R=TRUE_KING_RULES,s=m.tk||(shapeTrueDemonKing(m),m.tk);
+  // 段階の切り替え：しきい値で止めて障壁を張る
+  if(s.phase<3){const th=R.phaseAt[s.phase-1]*m.maxHp;if(m.hp<=th){m.hp=th;s.lockHp=th;s.phase++;s.barrier=R.barrierSeconds;s.cast=null;
+    if(s.phase===2)s.judgment=Math.min(s.judgment,R.judgment.windup+.5);else s.requiem=Math.min(s.requiem,R.barrierSeconds-R.requiem.windup);
+    game.screenShake=Math.max(game.screenShake||0,.7);
+    game.showToast?.(s.phase===2?'👿「……ほう、ここまで来るか。ならば、さばきを受けよ」――真魔王が虚空の守りをまとった':'👿「終わりだ。おまえたちをここでほうむってやろう」――真魔王のようすがかわった',{field:true,urgent:true});}}
+  if(s.barrier>0){s.barrier-=dt;if(m.hp<s.lockHp)m.hp=s.lockHp;if(s.barrier<=0)s.lockHp=0;}
+  const allies=alliesOf(game,units);
+  // 虚空の波動（魔法・魔法防御で減る）
+  s.wave-=dt;if(s.wave<=0){s.wave=R.wave.interval;let hit=0;
+    for(const u of allies)if(Math.hypot(u.x-m.x,u.y-m.y)<=R.wave.radius){game.damageTarget(u,R.wave.atk,{attacker:m,damageKind:'magic'});hit++;}
+    if(hit)say(game,m,'🌑虚空の波動','#a78bfa');}
+  // 大技の詠唱と発動
+  if(s.cast){s.cast.t-=dt;if(s.cast.t>0)return true;const kind=s.cast.kind;s.cast=null;
+    if(kind==='judgment'){for(const u of alliesOf(game,units))if(Math.hypot(u.x-m.x,u.y-m.y)<=R.judgment.radius)game.damageTarget(u,m.atk,{attacker:m,damageKind:'magic',pctMax:trueKingBlowPct(game,u,R.judgment.pct)});
+      game.screenShake=Math.max(game.screenShake||0,.8);say(game,m,'⚖️さばきの刻!','#f472b6');}
+    else{const pool=alliesOf(game,units).filter(u=>Math.hypot(u.x-m.x,u.y-m.y)<=900);
+      for(let k=0;k<R.requiem.targets&&pool.length;k++){const u=pool.splice(Math.floor(Math.random()*pool.length),1)[0];game.damageTarget(u,m.atk,{attacker:m,damageKind:'magic',pctMax:trueKingBlowPct(game,u,R.requiem.pct)});}
+      game.screenShake=Math.max(game.screenShake||0,.9);say(game,m,'⚰️終わりの鐘!','#e879f9');}
+    return true;}
+  if(s.phase>=R.judgment.phase){s.judgment-=dt;if(s.judgment<=0){s.judgment=R.judgment.interval;s.cast={kind:'judgment',t:R.judgment.windup,total:R.judgment.windup,radius:R.judgment.radius};say(game,m,'⚖️さばきの刻が来る……','#f9a8d4');return true;}}
+  if(s.phase>=R.requiem.phase){s.requiem-=dt;if(s.requiem<=0){s.requiem=R.requiem.interval;s.cast={kind:'requiem',t:R.requiem.windup,total:R.requiem.windup,radius:120};say(game,m,'⚰️終わりの鐘が鳴りはじめる……','#f0abfc');return true;}}
+  return s.barrier>0;
+}
+/** 真魔王が倒れたとき。初めての討伐は記録・発表・追加の褒美。 */
+export function recordTrueKingDefeat(game,attacker=null,isPlayer=false){
+  const s=game.trueCastle||(game.trueCastle={unlocked:true,unlockedPhase:int(game.phase)||1,defeats:0,firstDefeat:null});
+  s.defeats=int(s.defeats)+1;
+  const name=isPlayer?'隊長':String(attacker?.name||'味方').slice(0,40);
+  if(s.firstDefeat){game.showToast?.(`👿 真魔王ゼルヴァーンをふたたび討った（${s.defeats}度目）`,{field:true,important:true});return false;}
+  s.firstDefeat={phase:int(game.phase)||1,by:'commander',name};
+  const R=TRUE_KING_RULES.firstReward;game.awakeningOrbs=(game.awakeningOrbs||0)+R.orbs;game.awakeningGems=(game.awakeningGems||0)+R.gems;
+  game.showToast?.(`👿👑【真魔王討伐！！】『真魔王ゼルヴァーン』が倒れた。世界のはての玉座は、ついに空になった（トドメ：${name}）`,{field:true,urgent:true});
+  game.showToast?.(`💎 真魔王討伐のほうび：覚醒宝珠 +${R.orbs}・神話宝玉 +${R.gems}`,{field:true,important:true});
+  addBattleReport(game,'boss',`真魔王ゼルヴァーンを初めて討伐（第${s.firstDefeat.phase}期・トドメ：${name}）。覚醒宝珠+${R.orbs}・神話宝玉+${R.gems}`);
   return true;
 }
