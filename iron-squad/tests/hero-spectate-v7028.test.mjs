@@ -14,7 +14,7 @@ const game=Object.create(IronSquadGame);
 for(const m of ['updateStatsUI','updateQuestUI','startGameLoop','spawnSparks','spawnDamageText','renderStrategyUI','refreshSupplyUI','recalcPlayerStats'])game[m]=()=>{};
 const toasts=[];game.showToast=m=>toasts.push(String(m));
 game.width=800;game.height=450;game.zoom=1;
-game.activeSlotId=saveSlots.create('観戦検証').id;game.startFreshGame(false);game.restTimer=0;game.monsters=[];
+game.activeSlotId=saveSlots.create('観戦検証').id;game.startFreshGame(false);for(const id of ['seal_northwest','seal_north','seal_northeast'])game.sealKeys.broken[id]={by:'commander',phase:1}; /* v7.2.15 封印は解けた状態から（巡礼は hero-pilgrimage-v7215） */game.restTimer=0;game.monsters=[];
 const d=DUNGEON_DEFS.find(x=>x.id==='dungeon_demon_castle'),CASTLE=d.id;
 const fieldMob={x:game.player.x+900,y:game.player.y,hp:10,maxHp:10,atk:1,radius:10,type:'slime'};
 function castleParty(phase){
@@ -168,6 +168,6 @@ for(const [name,mutate,pattern] of reasonCases){
   const snapshot=JSON.parse(JSON.stringify(game.saveGame({immediate:true})));
   game.resumeSavedGame(snapshot);assert.equal(game.spectating,null);assert.equal(game.currentDungeon,null,'the commander does not sit in the castle after loading');
   assert.equal(game.player.x,fieldPos.x);
-  const c3=castleParty(45);assert.equal(sp.startSpectate(game,SOLDIER_CLASSES),true);game.startFreshGame(false);assert.equal(game.spectating,null);
+  const c3=castleParty(45);assert.equal(sp.startSpectate(game,SOLDIER_CLASSES),true);game.startFreshGame(false);for(const id of ['seal_northwest','seal_north','seal_northeast'])game.sealKeys.broken[id]={by:'commander',phase:1}; /* v7.2.15 封印は解けた状態から（巡礼は hero-pilgrimage-v7215） */assert.equal(game.spectating,null);
 }
 console.log('hero-spectate v7.0.28: start rules, observer (invisible/invulnerable/untargetable), camera, switching, auto-switch, king hunt, save safety, end conditions passed');

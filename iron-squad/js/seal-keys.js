@@ -79,7 +79,7 @@ export function createSealGuardian(game,shrine){
 }
 /** Spawn the guardian into a field list unless it is already there or still resting after a commander's victory. */
 export function ensureSealGuardian(game,shrine,list){
-  if(!Array.isArray(list)||sealGuardianOf(game,shrine.id))return null;
+  if(!Array.isArray(list)||list.some(m=>m?.sealSiteId===shrine.id&&m.hp>0)||sealGuardianOf(game,shrine.id))return null;
   const g=game.sealKeys.guardians[shrine.id];
   if(g?.respawnPhase&&Math.floor(game.phase||1)<g.respawnPhase)return null;
   if(g?.heroKilled)return null; // 勇者が倒した守護者は、勇者隊が離れてから戻る
@@ -102,6 +102,15 @@ export function recordSealGuardianKill(game,monster,attacker=null){
   return true;
 }
 /** Hero-slain guardians come back once no living hero stands near the shrine. */
+/** v7.2.15 勇者の巡礼先。解けていない祠を、今いる所から近い順に選ぶ（決めた祠は解けるまで変えない）。全部解けていれば null＝魔王城へ。 */
+export const HERO_SHRINE_STAND=150;
+export function heroPilgrimShrine(game,p){
+  const shrines=game?.sealKeys?game.sealShrines||[]:[];
+  const kept=shrines.find(s=>s.id===p?.pilgrimTarget&&!sealBroken(game,s.id));if(kept)return kept;
+  return shrines.filter(s=>!sealBroken(game,s.id)).sort((a,b)=>dist(a,p)-dist(b,p))[0]||null;
+}
+/** 勇者が門を通れるか（封印の仕組みがない古い呼び出しでは通す）。 */
+export const heroCastleOpen=game=>!game?.sealKeys||!castleSealed(game);
 export function releaseHeroKilledGuardians(game,heroes=[]){
   for(const shrine of game.sealShrines||[]){
     const g=game.sealKeys?.guardians?.[shrine.id];if(!g?.heroKilled)continue;

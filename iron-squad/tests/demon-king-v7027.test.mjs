@@ -22,7 +22,7 @@ const {heroMembers}=await import('../js/hero-rules.js');
 const game=Object.create(IronSquadGame);
 for(const m of ['updateStatsUI','updateQuestUI','startGameLoop','spawnSparks','spawnDamageText','renderStrategyUI','refreshSupplyUI','recalcPlayerStats'])game[m]=()=>{};
 const toasts=[];game.showToast=m=>toasts.push(String(m));
-game.activeSlotId=saveSlots.create('魔王強化検証').id;game.startFreshGame(false);game.restTimer=0;game.monsters=[];
+game.activeSlotId=saveSlots.create('魔王強化検証').id;game.startFreshGame(false);for(const id of ['seal_northwest','seal_north','seal_northeast'])game.sealKeys.broken[id]={by:'commander',phase:1}; /* v7.2.15 封印は解けた状態から（巡礼は hero-pilgrimage-v7215） */game.restTimer=0;game.monsters=[];
 const d=DUNGEON_DEFS.find(x=>x.id==='dungeon_demon_castle');
 const kingOf=()=>game.heroJourney.castleScene?.monsters.find(m=>m.isDemonKing);
 const setForce=(captainAtk,guardAtk,n=5)=>{game.player.atk=captainAtk;game.squad=game.squad.filter(s=>!s.isPersonalGuard);for(let i=0;i<n;i++)game.squad.push({id:`g${i}`,isPersonalGuard:true,atk:guardAtk,hp:1,maxHp:1});};

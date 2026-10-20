@@ -7,6 +7,7 @@ import {formatCompact} from './number-format.js?v=282';
 import {WORLD_SIZE} from './world.js?v=289';
 import {CAMP_PEACE_RADIUS} from './peace-zones.js?v=277';
 import {formatDistance} from './distance-format.js';
+import {sealDef} from './seal-keys.js?v=349';
 import {pendingRaid,raidGraceLeft} from './invasion-rules.js?v=333';
 import {isPlatoonAway,isSoldierOnExpedition,expeditionCombatUnits,getDangerTier} from './expedition-rules.js?v=256';
 
@@ -191,7 +192,8 @@ export function spectateSummary(game) {
   const events=p?.journal?.events||[];
   const log=events.filter(e=>e.type!=='departure').slice(-SPECTATE_RULES.logLines).map(e=>`第${e.phase}期 ${e.text}`);
   const marching=p?.space==='field',gate=castleOf(game)?.entrance;
-  const castleText=marching&&gate?`野外を進軍中 · 魔王城まで約${formatDistance(Math.hypot(p.x-gate.x,p.y-gate.y))}`
+  const shrine=marching&&sealDef(p.pilgrimTarget)?game.sealShrines?.find(s=>s.id===p.pilgrimTarget):null;
+  const castleText=shrine?`野外を進軍中 · ${sealDef(shrine.id).name}まで約${formatDistance(Math.hypot(p.x-shrine.x,p.y-shrine.y))}`:marching&&gate?`野外を進軍中 · 魔王城まで約${formatDistance(Math.hypot(p.x-gate.x,p.y-gate.y))}`
     :game.spectating?.field&&p?.space===CASTLE_ID?'勇者が魔王城へ突入した。待機が終わると観戦を続けます'
     :`城内の敵 残り${mobs}体 · ${kingPct==null?'魔王は不在':`魔王HP ${kingPct>=10?kingPct.toFixed(1):kingPct.toFixed(2)}%`}`;
   return {alive:alive.length,total:members.length,bands,mobs,kingPct,kingHp:king?.hp??null,kingMax:king?.maxHp??null,log,

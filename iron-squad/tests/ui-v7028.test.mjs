@@ -21,7 +21,7 @@ const game = Object.create(IronSquadGame); game.container = document.getElementB
 for (const m of ['updateStatsUI','updateQuestUI','startGameLoop','spawnSparks','spawnDamageText','renderStrategyUI','refreshSupplyUI','recalcPlayerStats']) game[m] = noop;
 const toasts=[]; game.showToast = m => toasts.push(String(m)); let closed=0; game.closeStrategyModal = () => { closed++; };
 game.width=800; game.height=450; game.zoom=1;
-game.activeSlotId = saveSlots.create('UI TEST ONLY').id; game.startFreshGame(false); game.restTimer = 0; game.monsters = []; game.inBattle = true;
+game.activeSlotId = saveSlots.create('UI TEST ONLY').id; game.startFreshGame(false);for(const id of ['seal_northwest','seal_north','seal_northeast'])game.sealKeys.broken[id]={by:'commander',phase:1}; /* v7.2.15 封印は解けた状態から（巡礼は hero-pilgrimage-v7215） */ game.restTimer = 0; game.monsters = []; game.inBattle = true;
 const host = () => game.container.querySelector('#view-strat-hero');
 const panel = () => game.container.querySelector('#hero-spectate');
 const buttons = () => [...host().querySelectorAll('button')];

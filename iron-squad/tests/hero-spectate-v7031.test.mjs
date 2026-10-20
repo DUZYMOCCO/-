@@ -15,7 +15,7 @@ const game=Object.create(IronSquadGame);
 for(const m of ['updateStatsUI','updateQuestUI','startGameLoop','spawnSparks','spawnDamageText','renderStrategyUI','refreshSupplyUI','recalcPlayerStats'])game[m]=()=>{};
 const toasts=[],toastOpts=[];game.showToast=(m,o)=>{toasts.push(String(m));toastOpts.push(o);};
 game.width=800;game.height=450;game.zoom=1;
-game.activeSlotId=saveSlots.create('観戦検証7031').id;game.startFreshGame(false);game.restTimer=0;game.monsters=[];
+game.activeSlotId=saveSlots.create('観戦検証7031').id;game.startFreshGame(false);for(const id of ['seal_northwest','seal_north','seal_northeast'])game.sealKeys.broken[id]={by:'commander',phase:1}; /* v7.2.15 封印は解けた状態から（巡礼は hero-pilgrimage-v7215） */game.restTimer=0;game.monsters=[];
 const d=DUNGEON_DEFS.find(x=>x.id==='dungeon_demon_castle'),CASTLE=d.id,C=WORLD_SIZE/2;
 const campPos={x:game.player.x,y:game.player.y};
 assert.ok(Math.hypot(campPos.x-C,campPos.y-C)<1200,'the commander starts in the camp');

@@ -20,7 +20,7 @@ const { DUNGEON_DEFS } = await import('../js/dungeon.js');
 const game = Object.create(IronSquadGame); game.container = document.getElementById('game');
 for (const m of ['updateStatsUI','updateQuestUI','startGameLoop','spawnSparks','spawnDamageText','renderStrategyUI','refreshSupplyUI']) game[m] = noop;
 const toasts=[]; game.showToast = m => toasts.push(String(m)); game.closeStrategyModal = noop;
-game.activeSlotId = saveSlots.create('UI TEST ONLY').id; game.startFreshGame(false); game.restTimer = 0; game.monsters = [];
+game.activeSlotId = saveSlots.create('UI TEST ONLY').id; game.startFreshGame(false);for(const id of ['seal_northwest','seal_north','seal_northeast'])game.sealKeys.broken[id]={by:'commander',phase:1}; /* v7.2.15 封印は解けた状態から（巡礼は hero-pilgrimage-v7215） */ game.restTimer = 0; game.monsters = [];
 const overlays = () => game.container.querySelectorAll('.hero-revelation');
 const host = () => game.container.querySelector('#view-strat-hero');
 const sleep = ms => new Promise(r => setTimeout(r, ms));

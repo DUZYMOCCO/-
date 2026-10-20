@@ -24,8 +24,8 @@ import {RANGED_ENEMIES} from './enemy-ranged.js?v=295';
 import {startHeroJournal,archiveHeroJournal,appendHeroDiary,recordHeroEquipmentGrant,recordHeroEvent,announceHero} from './hero-journal.js?v=306';
 import {showHeroRevelationScene} from './hero-revelation-scene.js?v=302';
 import {grantHeroEquipment} from './hero-equipment.js?v=295';
-import {recordSealGuardianKill} from './seal-keys.js?v=348';
-import {spectateAvailability,startSpectate,endSpectate,queueSpectate,cancelSpectateQueue,spectateStatusLine} from './hero-spectate.js?v=347';
+import {recordSealGuardianKill,heroPilgrimShrine,heroCastleOpen,ensureSealGuardian,sealDef,sealsRemaining,SEAL_RULES,HERO_SHRINE_STAND} from './seal-keys.js?v=349';
+import {spectateAvailability,startSpectate,endSpectate,queueSpectate,cancelSpectateQueue,spectateStatusLine} from './hero-spectate.js?v=349';
 const C=WORLD_SIZE/2,castle=()=>DUNGEON_DEFS.find(d=>d.id==='dungeon_demon_castle');
 const ready=u=>u&&!u.dead&&!u.isDown&&u.hp>0;
 export function initializeHeroJourney(game,saved=null) {
@@ -35,6 +35,12 @@ export function initializeHeroJourney(game,saved=null) {
   let equipped=false;
   for(const u of heroMembers(game)){delete u._cachedEnemy;normalizeRevivalSkill(game,u);if(grantHeroEquipment(game,u))equipped=true;game.recalcSoldierStats(u);if(u.isDown)u.hp=0;}
   if(equipped)recordHeroEquipmentGrant(game,journey.party);
+  // v7.2.15 野外を行軍中の勇者は、読み込み直後に今いる所から経路を引き直す（行き先は巡礼の次の祠か魔王城）。
+  const p=journey.party;
+  if(p&&p.space==='field'&&!journey.demonKingDefeat&&p.status!=='fallen'&&p.status!=='withdrawn'){
+    const departing=p.route?.length===1&&p.route[0].x===C+512&&p.route[0].y===C&&Math.hypot(p.x-C,p.y-C)<600;
+    if(!departing){p.route=[];p.routeIndex=0;}delete p._search;
+  }
 }
 export function rollHeroRevelation(game,random=game.random||Math.random) {
   const j=game.heroJourney;if(!j||j.demonKingDefeat||game.phase<HERO_RULES.firstPhase||j.lastRollPhase>=game.phase)return false;
@@ -186,6 +192,8 @@ function move(game,ctx,u,target,dt) {
 function nearest(list,u,limit=Infinity){let found=null,dist=limit;for(const v of list){if(!ready(v))continue;const d=Math.hypot(u.x-v.x,u.y-v.y);if(d<dist){dist=d;found=v;}}return found;}
 function stepHiddenEnemies(ctx,p,dt) {
   for(const m of [...ctx.monsters]){
+    // v7.2.15 封印の守護者は祠から離れすぎない（見えない所でも、勇者が待つ祠へ戻る）。
+    if(m.isSealGuardian&&Number.isFinite(m.homeX)&&Math.hypot(m.x-m.homeX,m.y-m.homeY)>900){move(ctx,ctx,m,{x:m.homeX,y:m.homeY},dt);continue;}
     const hunt=!!m.isDemonKing&&p.space===castle().id,target=nearest(p.members,m,hunt?Infinity:800);if(!target)continue; // v7.0.27: the king hunts the party through the whole castle
     const ranged=RANGED_ENEMIES[m.rangedKind||m.type],reach=ranged?.range||m.attackReach||(m.radius||12)*.8,dist=Math.hypot(m.x-target.x,m.y-target.y);
     if(dist>reach){if(hunt){const speed=m.speed;m.speed=Math.max(speed||0,DEMON_KING_RULES.huntSpeed);move(ctx,ctx,m,target,dt);m.speed=speed;}else move(ctx,ctx,m,target,dt);}
@@ -207,16 +215,21 @@ export function updateHeroParty(game,dt,classes) {
   for(const u of living){u.atkAnim=Math.max(0,(u.atkAnim||0)-dt*4);regenerateMana(u,dt);if(p.space==='field'&&supplyLocation(ctx,u)){u.ammo=ammoCapacity(u);ensureMana(u);u.mana=u.maxMana;}}
   if(p.space==='field'&&!j.demonKingDefeat){
     p.spawnClock=(p.spawnClock||0)+dt;
-    if(p.spawnClock>=8){p.spawnClock=0;if(Math.hypot(p.x-C,p.y-C)>900&&!ctx.monsters.some(m=>ready(m)&&Math.hypot(m.x-p.x,m.y-p.y)<700))ctx.spawnMonster(p.x+200,p.y+180);}
+    if(p.spawnClock>=8){p.spawnClock=0;if(Math.hypot(p.x-C,p.y-C)>900&&!ctx.monsters.some(m=>ready(m)&&Math.hypot(m.x-p.x,m.y-p.y)<700)){
+      // v7.2.15 岩の中や岩越しに湧かせない（巡礼で岩場を通るようになり、手の届かない敵の前で立ち往生していた）。
+      const spot=[0,1,2,3,4,5,6,7].map(k=>({x:p.x+Math.cos(.73+k*Math.PI/4)*269,y:p.y+Math.sin(.73+k*Math.PI/4)*269})).find(q=>heroSegmentOpen(game,p,q)&&!economicFieldBlocked(game,q.x,q.y));
+      if(spot)ctx.spawnMonster(spot.x,spot.y);}}
   }
-  const danger=ctx.monsters.some(m=>ready(m)&&Math.hypot(m.x-p.x,m.y-p.y)<420&&!ctx.attackBlocked(p,m)),wounded=living.some(u=>u.isDown);
+  const holding=p.space==='field'&&!j.demonKingDefeat&&stepHeroPilgrimage(game,p,ctx);
+  // v7.2.15 岩越しで誰も攻撃できない敵では足を止めない（巡礼で岩場を通るようになり、互いに手が出ないまま立ち往生していた）。
+  const danger=ctx.monsters.some(m=>ready(m)&&Math.hypot(m.x-p.x,m.y-p.y)<420&&!ctx.attackBlocked(p,m)&&fighters.some(u=>Math.hypot(u.x-m.x,u.y-m.y)<500&&!ctx.attackBlocked(u,m))),wounded=living.some(u=>u.isDown);
   // v7.2.13 魔王討伐後は城を出て本陣へ凱旋する（以前はその場で立ち尽くしていた）。戦闘中・負傷者がいる間は進まない。
   if(!danger&&!wounded&&j.demonKingDefeat&&p.homeState!=='home')stepHeroHomecoming(game,p,fighters,dt);
-  if(!danger&&!wounded&&!j.demonKingDefeat){
+  if(!danger&&!wounded&&!j.demonKingDefeat&&!holding){
     if(p.space==='field'&&!heroRouteCurrent(game,p))advanceHeroRoute(game,p);
     const target=p.route?.[p.routeIndex||0];
     if(target){const dx=target.x-p.x,dy=target.y-p.y,d=Math.hypot(dx,dy),speed=Math.min(...fighters.map(u=>u.speed||100)),step=Math.min(d,speed*dt*.85);
-      if(d>0){p.x+=dx/d*step;p.y+=dy/d*step;}if(d<=speed*dt+8){p.routeIndex=(p.routeIndex||0)+1;if(p.routeIndex>=p.route.length){p.route=[];p.routeIndex=0;if(p.space==='field'&&Math.hypot(p.x-p.destination.x,p.y-p.destination.y)<120)enterHeroCastle(game,p);}}}
+      if(d>0){p.x+=dx/d*step;p.y+=dy/d*step;if(p.space==='field')recordHeroTrail(p);}if(d<=speed*dt+8){p.routeIndex=(p.routeIndex||0)+1;if(p.routeIndex>=p.route.length){p.route=[];p.routeIndex=0;if(p.space==='field'&&p.pilgrimTarget==='castle'&&heroCastleOpen(game)&&Math.hypot(p.x-p.destination.x,p.y-p.destination.y)<120)enterHeroCastle(game,p);}}}
   }
   // Entering the castle changes coordinate space; start its combat next frame.
   if((ctx.currentDungeon?.id||'field')!==p.space)return;
@@ -229,7 +242,8 @@ export function updateHeroParty(game,dt,classes) {
       const hurt=living.filter(ready).sort((a,b)=>a.hp/a.maxHp-b.hp/b.maxHp)[0];
       if(hurt&&hurt.hp<hurt.maxHp*.85){if(Math.hypot(u.x-hurt.x,u.y-hurt.y)>cls.range)move(game,ctx,u,hurt,dt);else if(u._heroAttackClock<=0&&spendMana(u,16)){healByMedic(u,hurt,healAmountFor(u,hurt),ctx);u._heroAttackClock=cls.atkCooldown;ctx.spawnDamageText(hurt.x,hurt.y-20,'救護','#34d399');}return;}
     }
-    const nearestEnemy=nearest(ctx.monsters,u,500),enemy=nearestEnemy&&!ctx.attackBlocked(u,nearestEnemy)?nearestEnemy:null,profile=ctx.combatProfileFor(u,u.equipped?.weapon,false),mage=isMage(u),magic=mage||isMedic(u);
+    // v7.2.15 野外では隊から700以上離れた敵は追わない（敵を追って隊が二手に分かれ、長く立ち往生していた）。
+    const nearestEnemy=nearest(ctx.monsters,u,500),enemy=nearestEnemy&&!ctx.attackBlocked(u,nearestEnemy)&&(p.space!=='field'||Math.hypot(nearestEnemy.x-p.x,nearestEnemy.y-p.y)<700)?nearestEnemy:null,profile=ctx.combatProfileFor(u,u.equipped?.weapon,false),mage=isMage(u),magic=mage||isMedic(u);
     const reach=magic?cls.range:profile.reach+(enemy?.radius||0)*.5;
     if(enemy){const dist=Math.hypot(u.x-enemy.x,u.y-enemy.y);
       if(profile.sidearm&&dist>90){move(game,ctx,u,{x:p.x+Math.cos(i*1.15)*34,y:p.y+Math.sin(i*1.15)*34},dt);return;}
@@ -240,10 +254,45 @@ export function updateHeroParty(game,dt,classes) {
         else if(profile.ranged&&shared)ctx.spawnRangedProjectile(u,enemy,u.atk,profile,false);
         else ctx.performAttack(u,enemy,false,profile.ranged?takeRangedShot(u,u.atk).damage:u.atk);
       }
-    }else move(game,ctx,u,{x:p.x+Math.cos(i*1.15)*34,y:p.y+Math.sin(i*1.15)*34},dt);
+    }else followHeroParty(game,ctx,p,u,i,dt);
     if(u._attributesDirty)game.recalcSoldierStats(u);
   });
   if(!shared)stepHiddenEnemies(ctx,p,dt);
+}
+/** v7.2.15 隊の通った跡（約128ごと、最大48点）。本陣の建物の角などで隊員がはぐれたとき、跡をたどって追いつく。 */
+function recordHeroTrail(p) {
+  const t=p.trail||=[],last=t.at(-1);
+  if(!last||Math.hypot(p.x-last.x,p.y-last.y)>=128){t.push({x:Math.round(p.x),y:Math.round(p.y)});if(t.length>48)t.shift();}
+}
+function followHeroParty(game,ctx,p,u,i,dt) {
+  const slot={x:p.x+Math.cos(i*1.15)*34,y:p.y+Math.sin(i*1.15)*34};
+  if(ctx.currentDungeon||p.space!=='field'||Math.hypot(u.x-slot.x,u.y-slot.y)<240||!p.trail?.length){delete u._trailGoal;move(game,ctx,u,slot,dt);return;}
+  u._trailClock=(u._trailClock||0)-dt;
+  if(u._trailClock<=0){
+    u._trailClock=.5;
+    // 一番新しい跡から順に、まっすぐ歩ける点を探す。どれも無理なら一番古い跡へ。
+    u._trailGoal=heroSegmentOpen(game,u,slot)?null:[...p.trail].reverse().find(q=>Math.hypot(q.x-u.x,q.y-u.y)<2400&&heroSegmentOpen(game,u,q))||p.trail[0];
+  }
+  move(game,ctx,u,u._trailGoal||slot,dt);
+}
+/** v7.2.15 巡礼：まだ解けていない封印の祠を近い順に巡り、守護者を倒して封印を解く。すべて解けたら魔王城へ。
+ *  行き先が変わる（祠が解けた・読み込み直後）たびに経路を作り直す。戻り値は「祠の前で守護者を待つ（歩かない）」。 */
+function stepHeroPilgrimage(game,p,ctx) {
+  const shrine=heroPilgrimShrine(game,p),id=shrine?shrine.id:'castle';
+  if(p.pilgrimTarget!==id){
+    const prev=sealDef(p.pilgrimTarget),done=prev&&game.sealKeys?.broken?.[prev.id];
+    if(done)recordHeroEvent(game,p,'seal',done.by==='hero'?`${prev.dir}の封印の守護者を倒し、封印を解いた。`:`${prev.dir}の封印は、すでに解かれていた。`);
+    if(!shrine&&p.pilgrimTarget)recordHeroEvent(game,p,'seal',`魔王城の封印がすべて解けた。魔王城へ向かう。`);
+    else if(shrine)recordHeroEvent(game,p,'seal',`${sealDef(id).name}へ向かう（封印 残り${sealsRemaining(game)}）。`);
+    const goal=shrine?{x:shrine.x,y:shrine.y+HERO_SHRINE_STAND}:{...castle().entrance},same=p.destination&&Math.hypot(p.destination.x-goal.x,p.destination.y-goal.y)<1;
+    p.pilgrimTarget=id;p.destination=goal;
+    // 本陣を出る最初の一歩（東の門）と、行き先が同じ経路は残す。それ以外は新しい行き先へ引き直す。
+    const departing=p.route?.length===1&&p.route[0].x===C+512&&p.route[0].y===C&&Math.hypot(p.x-C,p.y-C)<600;
+    if(!departing&&!same){p.route=[];p.routeIndex=0;delete p._search;}
+  }
+  if(!shrine)return false;
+  if(Math.hypot(p.x-shrine.x,p.y-shrine.y)<SEAL_RULES.discovery)ensureSealGuardian(game,shrine,ctx.monsters);
+  return Math.hypot(p.x-p.destination.x,p.y-p.destination.y)<60;
 }
 /** v7.2.13 凱旋の帰り道。出発時に通った本陣の東の地点（HERO_HOME_GATE）までA*で歩き、そこから本陣の中央へ入る。 */
 export const HERO_HOME_GATE={x:C+512,y:C},HERO_HOME_RADIUS=60;
@@ -281,7 +330,7 @@ export function renderHeroJourney(game,classes,talents) {
   let panel=host.querySelector('#hero-journey');if(!panel){panel=document.createElement('section');panel.id='hero-journey';panel.className='hero-record';host.append(panel);}
   panel.replaceChildren();const summary=document.createElement('h4');summary.textContent='勇者パーティ';panel.append(summary);
   const info=document.createElement('p'),idle=heroIdlePhases(game,p),active=heroPartyActive(p),next=nextHeroRevelationPhase(game.phase);
-  const state=!p?'':p.status==='withdrawn'?'撤退（魔王城から引き上げた）':p.status==='fallen'?'全滅':p.status==='down'?'全員ダウン':p.status==='victorious'?(p.homeState==='home'?'魔王討伐後 · 本陣に凱旋':p.space==='field'?`魔王討伐後 · 本陣へ帰還中（あと${formatDistance(Math.hypot(p.x-C,p.y-C))}）`:'魔王討伐後 · 魔王城を出るところ'):p.space==='field'?`魔王城へ進軍中 · 本陣から${formatDistance(Math.hypot(p.x-C,p.y-C))}`:idle>=HERO_RULES.warnPhases?`魔王城で停滞中（${idle}期）`:'魔王城で交戦中';
+  const state=!p?'':p.status==='withdrawn'?'撤退（魔王城から引き上げた）':p.status==='fallen'?'全滅':p.status==='down'?'全員ダウン':p.status==='victorious'?(p.homeState==='home'?'魔王討伐後 · 本陣に凱旋':p.space==='field'?`魔王討伐後 · 本陣へ帰還中（あと${formatDistance(Math.hypot(p.x-C,p.y-C))}）`:'魔王討伐後 · 魔王城を出るところ'):p.space==='field'?`${sealDef(p.pilgrimTarget)?`${sealDef(p.pilgrimTarget).name}へ進軍中（封印 残り${sealsRemaining(game)}）`:'魔王城へ進軍中'} · 本陣から${formatDistance(Math.hypot(p.x-C,p.y-C))}`:idle>=HERO_RULES.warnPhases?`魔王城で停滞中（${idle}期）`:'魔王城で交戦中';
   info.textContent=p?`第${p.phase}期に天啓 · ${p.name} · ${state}`:`第${next}期に、救いの御子が天啓を受け勇者となります。`;
   const body=document.createElement('div');body.className='fold-content';panel.append(body);
   body.append(info);

@@ -69,7 +69,7 @@ const {markSoldierDown}=await import('../js/casualty-rules.js');
 const game=Object.create(IronSquadGame);
 for(const m of ['updateStatsUI','updateQuestUI','startGameLoop','spawnSparks','spawnDamageText','renderStrategyUI','refreshSupplyUI'])game[m]=()=>{};
 const toasts=[];game.showToast=m=>toasts.push(String(m));
-game.activeSlotId=saveSlots.create('勇者撤退検証').id;game.startFreshGame(false);game.restTimer=0;game.monsters=[];
+game.activeSlotId=saveSlots.create('勇者撤退検証').id;game.startFreshGame(false);for(const id of ['seal_northwest','seal_north','seal_northeast'])game.sealKeys.broken[id]={by:'commander',phase:1}; /* v7.2.15 封印は解けた状態から（巡礼は hero-pilgrimage-v7215） */game.restTimer=0;game.monsters=[];
 const d=DUNGEON_DEFS.find(x=>x.id==='dungeon_demon_castle');
 const tick=ph=>{game.phase=ph;const p=game.heroJourney.party;const r=rollHeroRevelation(game);if(game.heroJourney.party===p&&p)updateHeroParty(game,1.1,SOLDIER_CLASSES);const q=game.heroJourney.party;if(q)updateHeroJournal(game,q,2);return r;};
 function castleParty(phase){

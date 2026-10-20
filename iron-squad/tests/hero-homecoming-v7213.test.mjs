@@ -12,7 +12,7 @@ const C=WORLD_SIZE/2,d=DUNGEON_DEFS.find(x=>x.id==='dungeon_demon_castle');
 const game=Object.create(IronSquadGame);
 for(const m of ['updateStatsUI','updateQuestUI','startGameLoop','spawnSparks','spawnDamageText','renderStrategyUI','refreshSupplyUI','recalcPlayerStats'])game[m]=()=>{};
 const toasts=[];game.showToast=m=>toasts.push(String(m));
-const slot=saveSlots.create('凱旋検証');game.activeSlotId=slot.id;game.startFreshGame(false);game.restTimer=0;game.monsters=[];
+const slot=saveSlots.create('凱旋検証');game.activeSlotId=slot.id;game.startFreshGame(false);for(const id of ['seal_northwest','seal_north','seal_northeast'])game.sealKeys.broken[id]={by:'commander',phase:1}; /* v7.2.15 封印は解けた状態から（巡礼は hero-pilgrimage-v7215） */game.restTimer=0;game.monsters=[];
 hp.initializeHeroJourney(game);game.currentDungeon=null;game.phase=20;ok(hp.rollHeroRevelation(game,()=>0),'hero born');
 const j=game.heroJourney,p=j.party;
 // 魔王城の前まで来て突入

@@ -17,7 +17,7 @@ const {DUNGEON_DEFS}=await import('../js/dungeon.js');
 const {zoneRingPower}=await import('../js/equipment-rules.js');
 const game=Object.create(IronSquadGame);
 for(const m of ['updateStatsUI','updateQuestUI','startGameLoop','showToast','spawnSparks','spawnDamageText','renderStrategyUI','refreshSupplyUI'])game[m]=()=>{};
-game.activeSlotId=saveSlots.create('勇者検証').id;game.startFreshGame(false);game.restTimer=0;
+game.activeSlotId=saveSlots.create('勇者検証').id;game.startFreshGame(false);for(const id of ['seal_northwest','seal_north','seal_northeast'])game.sealKeys.broken[id]={by:'commander',phase:1}; /* v7.2.15 封印は解けた状態から（巡礼は hero-pilgrimage-v7215） */game.restTimer=0;
 game.phase=9;assert.equal(rollHeroRevelation(game),false);
 // 第10期から5期ごとに必ず生まれる。間の期は生まれない。
 for(const ph of [11,12,13,14])assert.equal(heroRevelationPhase(ph),false);for(const ph of [10,15,20,25,100])assert.equal(heroRevelationPhase(ph),true);
