@@ -1,7 +1,7 @@
 import {bossOrbChance} from './enemy-tier.js?v=274';
 import {expeditionCombatUnits,isExpeditionReserve} from './expedition-rules.js?v=256';
 import {ensureMana,regenerateMana,spendMana} from './magic-rules.js?v=334';
-import {recordHealing,recordDown,healAmountFor} from './phase-rules.js?v=218';
+import {recordHealing,recordDown,healAmountFor,recordDeathlineRescue} from './phase-rules.js?v=346';
 import {WORLD_SIZE} from './world.js';
 import {inCurrentInstance} from './instance-rules.js?v=322';
 import {grantPermanentRescueReward} from './rescue-rewards.js?v=264';
@@ -162,6 +162,7 @@ export function attachWounded(game,carrier,wounded) {
   if(wounded.releasedBy===carrierKey(game,carrier)) {if(distance<=65)return false;delete wounded.releasedBy;}
   if(distance>45||carriedCount(game,carrier)>=carryingCapacity(carrier))return false;
   delete wounded.releasedBy;wounded.carrierId=carrierKey(game,carrier);wounded.rescueProgress=0;delete wounded.rescueHealerId;
+  if(isMedic(carrier))recordDeathlineRescue(game,carrier,wounded); // v7.2.12 死線救護（搬送の開始）
   return true;
 }
 export function attachCivilian(game,carrier,civ) {
@@ -514,6 +515,8 @@ export function treatWounded(game,medic,wounded,dt) {
     wounded._medicCalled = true;
     game.dialogue?.trigger(medic, 'MEDIC_APPROACH');
   }
+  // v7.2.12 死線救護（蘇生の開始）：この衛生職がこの負傷者に手を当て始めた瞬間だけ判定する。
+  if(!((wounded.rescueProgress||0)>0)||wounded.rescueHealerId!==medic.id)recordDeathlineRescue(game,medic,wounded);
   wounded.rescueProgress=(wounded.rescueProgress||0)+dt*(medic.soldierClass==='HIGH_PRIEST'?2.8:1.1);
   wounded.rescueHealerId=medic.id;
   if(wounded.rescueProgress<1)return false;

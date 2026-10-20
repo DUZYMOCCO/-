@@ -1,5 +1,5 @@
 import {inCurrentInstance} from './instance-rules.js?v=322';
-import {recordCombat} from './phase-rules.js?v=218';
+import {recordCombat} from './phase-rules.js?v=346';
 import {tankSlowFactor} from './heavy-tank.js?v=295';
 
 export const RANGED_ENEMIES=Object.freeze({

@@ -111,7 +111,7 @@ import {
   classTierOf, nextClassId, classUpCostForNext, canAffordClassUp, formatClassUpCostJa, classUpShortageJa,
   playerClassTier, nextPlayerStage, playerStageById, numberedClassName, numberClassDefinitions, classDetailName, passesWalls as unitPassesWalls
 } from './class-up-rules.js?v=334';
-import { PHASE_DURATION, REST_DURATION, DEATHLINE_DOWN_THRESHOLD, DEATHLINE_WINDOW_PHASES, SOLDIER_SALARY, MIN_REINFORCEMENTS, emptyActivity, advancePhase, advanceRest, recordCombat, recordHealing, healByMedic, healAmountFor, personalDownCount, recentDownCount, normalizeDeathlineHistory, consumeDeathlineDowns, deathlineEligible, participated, finishExperience } from './phase-rules.js?v=218';
+import { PHASE_DURATION, REST_DURATION, DEATHLINE_DOWN_THRESHOLD, DEATHLINE_WINDOW_PHASES, SOLDIER_SALARY, MIN_REINFORCEMENTS, emptyActivity, advancePhase, advanceRest, recordCombat, recordHealing, healByMedic, healAmountFor, personalDownCount, recentDownCount,recentDeathlineRescueCount, normalizeDeathlineHistory, consumeDeathlineDowns, deathlineEligible, participated, finishExperience } from './phase-rules.js?v=346';
 import {HEALING_HP_PER_EXP,REVIVAL_EXP_PER_MAX_HP,shareCommanderExp,raiseLevelMark,ageLevelMarks} from './experience-rules.js';
 import {attributeFamily,rollAttributeProfile,applyAttributeStats,attributeValues,practiceAttribute,attributeCarryCapacity,attributeSpecialties,prefersCasterMelee,canChannelWeaponMagic,magicAbilityMultiplier,CASTER_STRIKE_COST,casterStrikeMultiplier,beginAttributeMovement,finishAttributeMovement,ATTRIBUTE_LABELS,ATTRIBUTE_KEYS,aptitudeGrade,effectiveStrength} from './unit-attributes.js?v=334';
 import {rollScoutCandidate,renderRecruitment,nextScoutCandidate,startAutomaticRecruitment,stopAutomaticRecruitment,RECRUIT_CLASSES} from './recruitment.js?v=306';
@@ -158,7 +158,7 @@ import {DEMON_KING_RULES,demonKingStatsFor,shapeDemonKing,percentBaseDamage} fro
 import {updateSquadHpHud} from './squad-hp-hud.js?v=322';
 import {addBattleReport,normalizeBattleReport,renderBattleReport} from './battle-report.js?v=333';
 import {updateRescueAssistance,handleRescueAssistance} from './rescue-assistance.js?v=344';
-import { RESCUE_TIMEOUT, REVIVAL_COOLDOWN, revivalCooldownOf, revivalSkillCooldownLeft, normalizeRevivalSkill, headquartersRevivalPaused, rescueUnits, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, receiveTownCargo, leaveCivilianSpace, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, buildTransportRescueAssign, markSoldierDown, downCommander, commanderDown, updateNpcRescue, CIV_KINDS, isMedic, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST, medicHoldsByCommander, isMerchantCasualty } from './casualty-rules.js?v=345';
+import { RESCUE_TIMEOUT, REVIVAL_COOLDOWN, revivalCooldownOf, revivalSkillCooldownLeft, normalizeRevivalSkill, headquartersRevivalPaused, rescueUnits, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, receiveTownCargo, leaveCivilianSpace, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, buildTransportRescueAssign, markSoldierDown, downCommander, commanderDown, updateNpcRescue, CIV_KINDS, isMedic, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST, medicHoldsByCommander, isMerchantCasualty } from './casualty-rules.js?v=346';
 import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault, dungeonBlocks, dungeonSolids } from './dungeon.js?v=306';
 import {nearestDungeonFloor,dungeonSpawnPoint,dungeonSteeringTarget} from './dungeon-layout.js?v=182';
 import {normalizeDungeonExploration,updateDungeonSideChests,drawDungeonSideChests,updateDungeonRespawns,dungeonCoolingDown,recordDungeonClear,DUNGEON_RESET_PHASES} from './dungeon-exploration.js?v=306';
@@ -5840,7 +5840,7 @@ export const IronSquadGame = {
     if (isDeathline) {
       sound.playHighScore();
       deathlineSurvivors.forEach((s) => {
-        const downCount=recentDownCount(s,completedPhase);
+        const downCount=recentDownCount(s,completedPhase),rescueCount=recentDeathlineRescueCount(s,completedPhase);
         s.survivedDeathlines = (s.survivedDeathlines || 0) + 1;
         if(normalizeDeathlineSkills(s))this.recalcSoldierStats(s);
 
@@ -5848,19 +5848,20 @@ export const IronSquadGame = {
           const chosenSkillId = chooseDeathlineSkill(s);
           if (chosenSkillId) {
             s.deathlineSkills.push(chosenSkillId);
-            awakenedList.push({ soldier: s, name: s.name, downCount,skill: DEATHLINE_SKILLS[chosenSkillId] });
-            this.recordBattleLog?.(`💀 ${s.name}が直近${DEATHLINE_WINDOW_PHASES}作戦期で${downCount}回のダウンを生還し、「${DEATHLINE_SKILLS[chosenSkillId].name}」に死線覚醒！`,'growth');
+            awakenedList.push({ soldier: s, name: s.name, downCount,rescueCount,skill: DEATHLINE_SKILLS[chosenSkillId] });
+            const ordeal=rescueCount?`${downCount}回のダウンと${rescueCount}回の死線救護をくぐり抜け`:`${downCount}回のダウンを生還し`;
+            this.recordBattleLog?.(`💀 ${s.name}が直近${DEATHLINE_WINDOW_PHASES}作戦期で${ordeal}、「${DEATHLINE_SKILLS[chosenSkillId].name}」に死線覚醒！`,'growth');
           }
         }
         this.recalcSoldierStats(s);
         consumeDeathlineDowns(s);
       });
 
-      this.showToast(`🚨【死線生還！】作戦第${this.phase - 1}期完了：直近${DEATHLINE_WINDOW_PHASES}作戦期で個人が${DEATHLINE_DOWN_THRESHOLD}回以上ダウンして生還した${awakenedList.length}名が覚醒！`,{important:true});
+      this.showToast(`🚨【死線生還！】作戦第${this.phase - 1}期完了：直近${DEATHLINE_WINDOW_PHASES}作戦期で個人が${DEATHLINE_DOWN_THRESHOLD}回以上死線をくぐって生還した${awakenedList.length}名が覚醒！`,{important:true});
     }
     this.deathlineReport={phase:this.phase-1,condition:'personal-downs',windowPhases:DEATHLINE_WINDOW_PHASES,occurred:isDeathline,threshold:DEATHLINE_DOWN_THRESHOLD,qualifiedCount:deathlineSurvivors.length,
       deadCount:deadInPhase,casualtyRatePct:Math.round(casualtyRate*100),
-      awakenedList:awakenedList.map(({soldier,name,downCount,skill})=>({id:soldier.id,name,downCount,skill}))};
+      awakenedList:awakenedList.map(({soldier,name,downCount,rescueCount,skill})=>({id:soldier.id,name,downCount,...(rescueCount?{rescueCount}:{}),skill}))};
     // This wave's service and promotions determine both wages and their funding.
     for(const s of [...aliveSoldiers,...reserveParticipants]) {
       if(finishExperience(s)) {
@@ -9541,7 +9542,7 @@ export const IronSquadGame = {
 
             ${isMedic(s) ? `<div>実回復 💚 <strong>${Math.floor(s.healingHp || 0).toLocaleString()}HP</strong> · 回復EXP <strong>${(s.healingExp || 0).toLocaleString()}</strong></div><div>蘇生EXP <strong>${(s.revivalExp || 0).toLocaleString()}</strong></div>` : ''}
             <div>隊長からの経験値 <strong>+${Math.floor(s.commanderBonusExp||0).toLocaleString()}</strong> · 防御展開の遮断 <strong>${Math.floor(s.defenseBlocked||0).toLocaleString()}</strong></div>
-            <div>直近${DEATHLINE_WINDOW_PHASES}作戦期のダウン <strong>${recentDownCount(s,this.phase)} / ${DEATHLINE_DOWN_THRESHOLD}回</strong></div>
+            ${isMedic(s)?`<div>直近${DEATHLINE_WINDOW_PHASES}作戦期のダウン・死線救護 <strong>${recentDownCount(s,this.phase)+recentDeathlineRescueCount(s,this.phase)} / ${DEATHLINE_DOWN_THRESHOLD}回</strong>（死線救護 ${recentDeathlineRescueCount(s,this.phase)}回）</div>`:`<div>直近${DEATHLINE_WINDOW_PHASES}作戦期のダウン <strong>${recentDownCount(s,this.phase)} / ${DEATHLINE_DOWN_THRESHOLD}回</strong></div>`}
             ${isMedic(s)?`<div>蘇生魔法 <strong>${revivalSkillCooldownLeft(this,s)>0?`再使用まで${Math.ceil(revivalSkillCooldownLeft(this,s))}秒`:'使用可能'}</strong> · 再使用${Math.round(revivalCooldownOf(s))}秒</div>`:''}
             <div>闘技場 <strong>${s.arenaRecord?.wins||0}勝 / ${s.arenaRecord?.losses||0}敗</strong></div>
             <div>死線生還 💀 <strong style="color:#f87171;">${s.survivedDeathlines || 0}</strong></div>
@@ -10527,7 +10528,7 @@ export const IronSquadGame = {
       deathlineBannerHtml = `
         <div style="background: linear-gradient(135deg, rgba(239,68,68,0.22), rgba(15,23,42,0.95)); border: 1.5px solid #ef4444; border-radius: 8px; padding: 9px 11px; margin-bottom: 8px; box-shadow: 0 0 14px rgba(239,68,68,0.35);">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-            <strong style="color: #f87171; font-size: 12.5px; flex:1; min-width:0;">🚨【死線突破・極限生還】 直近${dl.windowPhases||1}作戦期で個人が${dl.threshold}回以上ダウンを生還 · ${dl.awakenedList.length}名覚醒</strong>
+            <strong style="color: #f87171; font-size: 12.5px; flex:1; min-width:0;">🚨【死線突破・極限生還】 直近${dl.windowPhases||1}作戦期で個人が${dl.threshold}回以上死線をくぐって生還 · ${dl.awakenedList.length}名覚醒</strong>
             <span style="color: #fbbf24; font-size: 10.5px; font-weight: bold; background: rgba(251,191,36,0.15); border: 1px solid #fbbf24; border-radius: 4px; padding: 1px 5px; flex:none; white-space:nowrap; align-self:flex-start; margin-left:8px;">🔥覚醒発動</span>
           </div>
           <div style="font-size: 10.5px; color: #fecaca; line-height: 1.4; margin-bottom: ${dl.awakenedList.length > 0 ? '6px' : '0'};">
@@ -10538,7 +10539,7 @@ export const IronSquadGame = {
               ${dl.awakenedList.map(a => `
                 <div style="background: rgba(0,0,0,0.45); border-left: 3px solid ${a.skill.color}; padding: 3px 6px; border-radius: 4px; font-size: 10.5px; display:flex; justify-content:space-between; align-items:center;">
                   <span><strong>${a.name}</strong> <span style="color:#94a3b8; font-size:9.5px;">[${a.talent ? talentTag(a) : ''}]</span></span>
-                  <span><strong style="color:${a.skill.color};">${a.skill.icon} ${a.skill.name} · ${a.downCount}回ダウン</strong> <span style="color:#cbd5e1; font-size:9.5px;">(${a.skill.desc})</span></span>
+                  <span><strong style="color:${a.skill.color};">${a.skill.icon} ${a.skill.name} · ${a.downCount}回ダウン${a.rescueCount?`・死線救護${a.rescueCount}回`:''}</strong> <span style="color:#cbd5e1; font-size:9.5px;">(${a.skill.desc})</span></span>
                 </div>
               `).join('')}
             </div>

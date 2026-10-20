@@ -38,13 +38,20 @@ export function personalDownCount(unit) {
 export function normalizeDeathlineHistory(unit,phase) {
   const current=Math.max(1,Math.floor(Number(phase)||1)),counts=new Map();
   const raw=Array.isArray(unit?.deathlineDownHistory)?unit.deathlineDownHistory:[{phase:current,downs:personalDownCount(unit)}];
-  for(const row of raw){const p=Math.floor(Number(row?.phase)),n=Math.floor(Number(row?.downs));
-    if(Number.isFinite(p)&&p>current-DEATHLINE_WINDOW_PHASES&&p<=current&&Number.isFinite(n)&&n>0)counts.set(p,Math.max(counts.get(p)||0,Math.min(10000,n)));
+  const whole=v=>{const n=Math.floor(Number(v));return Number.isFinite(n)&&n>0?Math.min(10000,n):0;};
+  for(const row of raw){const p=Math.floor(Number(row?.phase)),n=whole(row?.downs),r=whole(row?.rescues);
+    if(!Number.isFinite(p)||p<=current-DEATHLINE_WINDOW_PHASES||p>current||(!n&&!r))continue;
+    const prev=counts.get(p)||{downs:0,rescues:0};counts.set(p,{downs:Math.max(prev.downs,n),rescues:Math.max(prev.rescues,r)});
   }
-  return [...counts].sort((a,b)=>a[0]-b[0]).map(([phase,downs])=>({phase,downs}));
+  // v7.2.12 rescues（衛生職の死線救護）は記録があるときだけ持たせ、旧来の {phase,downs} の形を保つ。
+  return [...counts].sort((a,b)=>a[0]-b[0]).map(([phase,{downs,rescues}])=>rescues?{phase,downs,rescues}:{phase,downs});
 }
 export function recentDownCount(unit,phase) {return normalizeDeathlineHistory(unit,phase).reduce((n,row)=>n+row.downs,0);}
-export const deathlineEligible = (unit,phase) => !!unit && !unit.dead && !unit.dying && recentDownCount(unit,phase)>=DEATHLINE_DOWN_THRESHOLD;
+/** v7.2.12 衛生職の死線救護（敵の間近、または自身が深手のまま始めた蘇生・搬送）の直近回数。 */
+export function recentDeathlineRescueCount(unit,phase) {return normalizeDeathlineHistory(unit,phase).reduce((n,row)=>n+(row.rescues||0),0);}
+/** 死線の判定値：ダウン＋死線救護（死線救護は衛生職にしか記録されない）。 */
+export const recentDeathlineCount = (unit,phase) => recentDownCount(unit,phase)+recentDeathlineRescueCount(unit,phase);
+export const deathlineEligible = (unit,phase) => !!unit && !unit.dead && !unit.dying && recentDeathlineCount(unit,phase)>=DEATHLINE_DOWN_THRESHOLD;
 export function consumeDeathlineDowns(unit) {unit.deathlineDownHistory=[];if(unit.phaseActivity)unit.phaseActivity.downs=0;}
 /** Only fresh down events of a deployed soldier count toward that person's five-wave window. */
 export function recordDown(game, unit) {
@@ -55,6 +62,31 @@ export function recordDown(game, unit) {
   if(!row){row={phase,downs:0};unit.deathlineDownHistory.push(row);}row.downs++;
   unit.phaseActivity ||= emptyActivity();
   unit.phaseActivity.downs=personalDownCount(unit)+1;
+  return true;
+}
+
+export const DEATHLINE_RESCUE_ENEMY_RANGE = 240, DEATHLINE_RESCUE_LOW_HP = 0.35;
+/** v7.2.12 死線救護の危険判定：始めた瞬間に敵が240以内にいるか、本人のHPが35%以下。 */
+export function deathlineRescueDanger(game, medic) {
+  if(!medic||!(medic.maxHp>0))return false;
+  if((medic.hp||0)<=medic.maxHp*DEATHLINE_RESCUE_LOW_HP)return true;
+  return (game?.monsters||[]).some(m=>m&&!m.dead&&!m.dying&&(m.hp||0)>0&&Number.isFinite(m.x)&&Number.isFinite(m.y)&&Math.hypot(m.x-medic.x,m.y-medic.y)<=DEATHLINE_RESCUE_ENEMY_RANGE);
+}
+/**
+ * v7.2.12 衛生職が蘇生・搬送を始めた時に呼ぶ（衛生職かどうかは呼び出し側で判定）。
+ * 同じ負傷者の同じダウンでは一度しか数えない。出撃中の兵・戦闘中だけ。
+ */
+export function recordDeathlineRescue(game, medic, wounded) {
+  if(!game||!medic||!wounded||wounded===medic||medic.dead||medic.isDown||!(medic.hp>0)||game.restTimer>0||!game.squad?.includes(medic))return false;
+  const downMark=Math.floor(Number(wounded.timesDown)||0);
+  if(wounded.deathlineRescueMark===downMark||!deathlineRescueDanger(game,medic))return false;
+  wounded.deathlineRescueMark=downMark;
+  const phase=Math.max(1,Math.floor(game.phase||game.wave||1));
+  medic.deathlineDownHistory=normalizeDeathlineHistory(medic,phase);
+  let row=medic.deathlineDownHistory.find(row=>row.phase===phase);
+  if(!row){row={phase,downs:0};medic.deathlineDownHistory.push(row);}
+  row.rescues=(row.rescues||0)+1;
+  medic.deathlineRescues=(medic.deathlineRescues||0)+1;
   return true;
 }
 
