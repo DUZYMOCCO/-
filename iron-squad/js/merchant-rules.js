@@ -7,6 +7,7 @@ import {applyAttributeStats} from './unit-attributes.js?v=334';
  * - 護衛が倒した強敵のドロップを序盤から掠め取れるチャンス
  */
 import { saleValue, distanceScaling, weaponCombatProfile } from './equipment-rules.js?v=306';
+import {WORLD_SIZE} from './world.js?v=289';
 import { drawFieldSoldier } from './visuals.js?v=342';
 import { createSoldierAppearance, drawSoldierHead } from './soldier-appearance.js?v=342';
 import { attackAnimationRate } from './weapon-motion.js?v=341';
@@ -22,6 +23,11 @@ export const MERCHANT_RESPAWN_SEC = 210; // 死亡後〜3.5分で再訪
 export const ESCORT_COUNT = 2;
 export const ESCORT_COVER = Object.freeze({radius:180,share:.5,minHp:.20});
 export const ESCORT_REGEN = Object.freeze({delay:3,perSecond:.01});
+/** v7.2.9 外側の世界（最初の境目8000より外）の行商人と護衛は、いまいる場所の敵の強さに合わせる。本陣近く（8000未満）は従来どおり。
+ *  護衛: その場所の距離で作り直した護衛の値に HP×1.8・攻撃×1.5（救護所の番兵 v7.0.39 と同じ「一枚上手」の考え方）。
+ *  商人: 元のHPに「境目での敵の攻撃の伸び（sc.atk/1.25）×4」を掛ける。敵の攻撃と同じだけ伸びるので、即死しない。
+ *  歩いて地域が変わったら（敵の攻撃の伸びが1.25倍以上変わったら）、その場所の値に更新する。HPの割合はそのまま。 */
+export const OUTER_PARTY=Object.freeze({border:8000,escortHp:1.8,escortAtk:1.5,merchantHp:4,borderAtk:1.25,band:1.25,checkEvery:1});
 
 export function merchantEscortCover(game,merchant,raw,options={}) {
   if(!merchant?.isMerchant||options.environmental||options.cover||options.noCover||!options.attacker||!(raw>0))return null;
@@ -96,6 +102,39 @@ function escortStats(distance, phase = 1) {
   return { hp, atk, speed: 78, radius: 15, def: 28, dmgReduction: 12 };
 }
 
+const hqDistance=u=>Math.hypot((u?.x||0)-WORLD_SIZE/2,(u?.y||0)-WORLD_SIZE/2);
+/** 商人の元のHP（本陣近くの値）。作るときと同じ式なので、保存しなくても何度でも同じ値になる。 */
+export function merchantBaseHp(m) {
+  const d=Number(m?.distance)||0;
+  if(m?.id==='merchant_base_camp'||m?.placeKind==='camp')return 180;
+  return (m?.placeKind==='inn'?160:180)+Math.min(220,Math.round(d/120));
+}
+export function outerMerchantHpMult(distance,phase=1) {
+  if(!(distance>=OUTER_PARTY.border))return 1;
+  return Math.max(1,distanceScaling(distance,phase).atk/OUTER_PARTY.borderAtk)*OUTER_PARTY.merchantHp;
+}
+/** 行商人と護衛の強さを、いまいる場所に合わせる。変えたら true。 */
+export function syncMerchantPower(game,m,force=false) {
+  if(!m||m.dead||!Number.isFinite(m.distance))return false; // 拠点の距離を持たない仮の商人（テスト用など）は対象外
+  const d=hqDistance(m),outer=d>=OUTER_PARTY.border,phase=Math.max(1,game?.phase||1);
+  if(!outer&&!(m.powerDistance>0))return false; // 本陣近くで、まだ外側の値になったことがない: v7.2.8 までのまま
+  if(!force&&m.powerDistance>0&&outer){
+    const a=distanceScaling(d,phase).atk,b=distanceScaling(m.powerDistance,phase).atk;
+    if(a/b<OUTER_PARTY.band&&b/a<OUTER_PARTY.band)return false;
+  }
+  const keep=u=>u.isDown||!(u.maxHp>0)?null:Math.max(0,Math.min(1,u.hp/u.maxHp));
+  const ratio=keep(m);
+  m.maxHp=Math.max(1,Math.round(merchantBaseHp(m)*outerMerchantHpMult(d,phase)));
+  if(ratio!==null)m.hp=Math.max(1,Math.round(m.maxHp*ratio));
+  for(const esc of m.escorts||[]){
+    if(!esc||esc.dead||esc.isGateGuard)continue;
+    const st=escortStats(d,phase),r=keep(esc);
+    esc.escortBaseStats={...(esc.escortBaseStats||{}),hp:Math.round(st.hp*(outer?OUTER_PARTY.escortHp:1)),atk:Math.round(st.atk*(outer?OUTER_PARTY.escortAtk:1))};
+    recalcEscortStats(esc);if(r!==null)esc.hp=Math.max(1,Math.round(esc.maxHp*r));
+  }
+  m.powerDistance=outer?d:0;
+  return true;
+}
 export function makeEscort(merchant, index, phase = 1) {
   const st = escortStats(merchant.distance, phase);
   const ang = (index / ESCORT_COUNT) * Math.PI * 2 + 0.4;
@@ -393,6 +432,7 @@ export function updateMerchants(game, dt, generateRandomDrop, hooks = {}) {
   for (const m of merchants) {
     // Regeneration is cheap and runs before the distant-caravan AI skip.
     for(const esc of m.escorts||[])updateEscortRegen(esc,dt);
+    m._powerCheckIn=(m._powerCheckIn||0)-dt;if(m._powerCheckIn<=0){m._powerCheckIn=OUTER_PARTY.checkEvery;syncMerchantPower(game,m);} // v7.2.9
     updateMerchantRest(game,m);
     if (m.dead) {
       m.respawnIn = (m.respawnIn || MERCHANT_RESPAWN_SEC) - dt;
@@ -402,6 +442,7 @@ export function updateMerchants(game, dt, generateRandomDrop, hooks = {}) {
         m.stock = buildStock(game,m,generateRandomDrop);
         m.escorts = Array.from({ length: ESCORT_COUNT }, (_, i) => m.escorts?.[i]&&!m.escorts[i].dead?m.escorts[i]:makeEscort(m,i,phase));
         m.respawnIn = 0;
+        syncMerchantPower(game,m,true); // v7.2.9 後任と新しい護衛も、その場所の強さで
         hooks.onMerchantRespawn?.(m);
       }
     }
@@ -602,13 +643,14 @@ export function applyMerchantSave(game, savedList, generateRandomDrop, BASE_CAMP
 
 export function npcSave(unit) {
   const result={};
-  for(const key of ['x','y','hp','maxHp','isDown','dead','downTimer','revivalSkillCooldownUntil','carrierId','homeX','homeY','timesDown','timesRescued','rescuedThisDown','downedInAid','downId','rescuedToBase','returningToBase','restPostId','restPostName','restSlot','restSince','restUntilPhase','rescueRewardGranted','rescueReward','owesCommander','commanderFriend','commanderRescues','level','exp','reqExp','minionKills','midbossKills','bossKills','survivedWaves','escortRegenWait','hitGrowthPct','hitGrowthHp','hitGrowthDef','hitGrowthEvents','weaponMastery','favoriteWeapon','phaseActivity','escortBaseStats','attributeProfile'])if(unit[key]!==undefined)result[key]=unit[key];
+  for(const key of ['x','y','hp','maxHp','isDown','dead','downTimer','revivalSkillCooldownUntil','carrierId','homeX','homeY','timesDown','timesRescued','rescuedThisDown','downedInAid','downId','rescuedToBase','returningToBase','restPostId','restPostName','restSlot','restSince','restUntilPhase','rescueRewardGranted','rescueReward','owesCommander','commanderFriend','commanderRescues','level','exp','reqExp','minionKills','midbossKills','bossKills','survivedWaves','escortRegenWait','hitGrowthPct','hitGrowthHp','hitGrowthDef','hitGrowthEvents','weaponMastery','favoriteWeapon','phaseActivity','escortBaseStats','attributeProfile','powerDistance'])if(unit[key]!==undefined)result[key]=unit[key];
   return result;
 }
 export function applyNpcSave(unit,saved) {
   delete unit.revivalCooldownUntil;
   for(const key of ['restSlot','restSince','restUntilPhase'])if(Number.isFinite(saved[key]))unit[key]=saved[key];
   for(const key of ['restPostId','restPostName'])if(typeof saved[key]==='string')unit[key]=saved[key];
+  for(const key of ['powerDistance'])if(Number.isFinite(saved[key]))unit[key]=saved[key]; // v7.2.9
   for(const key of ['x','y','hp','maxHp','downTimer','revivalSkillCooldownUntil','homeX','homeY','timesDown','timesRescued','downId','atk','def','dmgReduction','level','exp','reqExp','minionKills','midbossKills','bossKills','survivedWaves','escortRegenWait','hitGrowthPct','hitGrowthHp','hitGrowthDef','hitGrowthEvents'])if(Number.isFinite(saved[key]))unit[key]=saved[key];
   if(saved.weaponMastery)unit.weaponMastery=normalizeMastery(saved.weaponMastery);
   if(saved.attributeProfile){unit.attributeProfile=structuredClone(saved.attributeProfile);unit._attributesNormalized=false;}
