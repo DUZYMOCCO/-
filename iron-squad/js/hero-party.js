@@ -24,6 +24,7 @@ import {RANGED_ENEMIES} from './enemy-ranged.js?v=295';
 import {startHeroJournal,archiveHeroJournal,appendHeroDiary,recordHeroEquipmentGrant,recordHeroEvent,announceHero} from './hero-journal.js?v=306';
 import {showHeroRevelationScene} from './hero-revelation-scene.js?v=302';
 import {grantHeroEquipment} from './hero-equipment.js?v=295';
+import {recordSealGuardianKill} from './seal-keys.js?v=348';
 import {spectateAvailability,startSpectate,endSpectate,queueSpectate,cancelSpectateQueue,spectateStatusLine} from './hero-spectate.js?v=347';
 const C=WORLD_SIZE/2,castle=()=>DUNGEON_DEFS.find(d=>d.id==='dungeon_demon_castle');
 const ready=u=>u&&!u.dead&&!u.isDown&&u.hp>0;
@@ -150,7 +151,7 @@ function battleContext(game,p) {
   ctx.spawnDamageText=()=>{};ctx.spawnSparks=()=>{};ctx.dialogue=null;
   ctx.showToast=text=>game.showToast?.(text);ctx.leaveRemains=()=>{};
   ctx.killMonster=(m,u,isPlayer)=>{
-    const index=ctx.monsters.indexOf(m);if(index<0)return;ctx.monsters.splice(index,1);
+    const index=ctx.monsters.indexOf(m);if(index<0)return;ctx.monsters.splice(index,1);recordSealGuardianKill(game,m,u);
     const distance=m.lootDistance??Math.hypot(m.x-C,m.y-C),scale=distanceScaling(distance,game.phase);
     const exp=strongEnemyReward(Math.round((m.isBoss?80:m.isElite?24:6)*scale.exp),m,u).exp;
     awardHeroBattle(game,u,exp);

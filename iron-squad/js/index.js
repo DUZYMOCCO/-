@@ -17,6 +17,7 @@ import {headquartersMoveTarget} from './hq-navigation.js?v=322';
 import {configureBattlefieldUI,quietBattlefieldContext} from './battlefield-ui.js?v=332';
 import {renderNavigationMap} from './navigation-map.js?v=306';
 import {soldierEquipmentValue,createEquipmentValueCache,observeEquipment,standardEquipmentCost,RESERVE_ARMAMENT_COUNT} from './armament-rules.js?v=306';
+import {initializeSealKeys,serializeSealKeys,updateSealShrines,recordSealGuardianKill,drawSealShrine,drawSealMap,castleSealed,castleSealText,DEMON_CASTLE_ID as SEALED_CASTLE_ID} from './seal-keys.js?v=348';
 import {initializeWildernessSites,serializeWildernessSites,updateWildernessSites,recordWildernessGuardKill,drawWildernessSite,drawWildernessMap,WILDERNESS_RULES} from './wilderness-sites.js?v=281';
 import {enemyArtHeadHeight} from './enemy-art.js?v=280';
 import {selectBiomeEncounter,biomeEnemyStats,encounterSlots,updateBiomeCharge} from './biome-encounters.js?v=279';
@@ -153,7 +154,7 @@ import { clusterRescueMarkers } from './rescue-markers.js?v=182';
 import {visibleHeroMembers,heroMembers} from './hero-rules.js?v=302';
 import {updateHeroJournal} from './hero-journal.js?v=306';
 import {applyHeroEquipmentUpgrade} from './hero-equipment.js?v=295';
-import {initializeHeroJourney,rollHeroRevelation,serializeHeroJourney,updateHeroParty,updateHeroFollowing,awardHeroBattle,recordDemonKingDefeat,ensureHeroCastle,prepareCastleVisit,syncHeroCastle,renderHeroJourney,drawHeroMarks} from './hero-party.js?v=347';
+import {initializeHeroJourney,rollHeroRevelation,serializeHeroJourney,updateHeroParty,updateHeroFollowing,awardHeroBattle,recordDemonKingDefeat,ensureHeroCastle,prepareCastleVisit,syncHeroCastle,renderHeroJourney,drawHeroMarks} from './hero-party.js?v=348';
 import {DEMON_KING_RULES,demonKingStatsFor,shapeDemonKing,percentBaseDamage} from './demon-king-rules.js?v=304';
 import {updateSquadHpHud} from './squad-hp-hud.js?v=322';
 import {addBattleReport,normalizeBattleReport,renderBattleReport} from './battle-report.js?v=333';
@@ -2205,7 +2206,7 @@ export const IronSquadGame = {
         <header class="map-heading"><h2 id="world-map-title">地図</h2><button id="btn-world-map-close" class="dialog-close">閉じる ×</button></header>
         <div class="world-map-tabs"><button type="button" data-map-mode="travel">ファストトラベル</button><button type="button" data-map-mode="map">地図</button></div><div class="dialog-body world-map-body">
           <canvas id="world-map-canvas" width="600" height="600" role="img" aria-label="本陣・拠点・発見済み救護所・現在地・ダンジョンを示す全体地図" style="touch-action:none; cursor:pointer; max-width:100%; border-radius:8px; border:1px solid #334155;"></canvas>
-          <p class="world-map-legend">白：現在地 / 淡黄：本陣 / 赤：ボス / 緑の十字：救護所 / ？：未発見の救護所 / ◇廃墟 / △野営地 / ◠祠 / ▯見張り台（発見後）</p>
+          <p class="world-map-legend">白：現在地 / 淡黄：本陣 / 赤：ボス / 緑の十字：救護所 / ？：未発見の救護所 / ◇廃墟 / △野営地 / ◠祠 / ▯見張り台（発見後） / ◆封印の祠（「封」未解・「解」解けた）</p>
           <p id="world-location" style="font-weight:bold; color:#f1f5f9;"></p>
           <div id="fast-travel-container" style="margin-top:10px; border-top:1px solid #334155; padding-top:10px;">
             <h4 style="margin:0 0 8px; color:#38bdf8; font-size:13px; display:flex; align-items:center; gap:6px;">
@@ -2264,7 +2265,7 @@ export const IronSquadGame = {
     canvas.classList.toggle('hidden',travel);this.worldMapModal.querySelector('.world-map-legend').classList.toggle('hidden',travel);
     this.worldMapModal.querySelector('#fast-travel-container').classList.toggle('hidden',!travel);
     for(const button of this.worldMapModal.querySelectorAll('[data-map-mode]'))button.setAttribute('aria-pressed',String(button.dataset.mapMode===mode));
-    if(!travel){const wctx=canvas.getContext('2d');this.worldTerrain.drawOverview(wctx,canvas.width,this);this.ensureFog().drawMapOverlay(wctx,canvas.width,WORLD_SIZE);drawMedicalMap(wctx,this,x=>x*canvas.width/WORLD_SIZE,y=>y*canvas.height/WORLD_SIZE);drawWildernessMap(wctx,this,x=>x*canvas.width/WORLD_SIZE,y=>y*canvas.height/WORLD_SIZE);}
+    if(!travel){const wctx=canvas.getContext('2d');this.worldTerrain.drawOverview(wctx,canvas.width,this);this.ensureFog().drawMapOverlay(wctx,canvas.width,WORLD_SIZE);drawMedicalMap(wctx,this,x=>x*canvas.width/WORLD_SIZE,y=>y*canvas.height/WORLD_SIZE);drawWildernessMap(wctx,this,x=>x*canvas.width/WORLD_SIZE,y=>y*canvas.height/WORLD_SIZE);drawSealMap(wctx,this,x=>x*canvas.width/WORLD_SIZE,y=>y*canvas.height/WORLD_SIZE);}
     this.worldMapModal.querySelector('#world-location').textContent=
       this.currentDungeon
         ? `⛩️ 【ダンジョン内】${this.currentDungeon.name} · 最奥ボス討伐へ進撃中`
@@ -2692,7 +2693,7 @@ export const IronSquadGame = {
     this.recalcPlayerStats();
     this.initBattlefield();
     restoreTradeRaiders(this);
-    initializeGateGuards(this);initializeInvasions(this);initializeMedicalPosts(this);initializeWildernessSites(this);
+    initializeGateGuards(this);initializeInvasions(this);initializeMedicalPosts(this);initializeWildernessSites(this);initializeSealKeys(this);
     saveSlots.update(this.activeSlotId, {state:'active', veterans:[], reserveSurvivors:[]});
     initializeSupplies(this);
     initializeMagic(this);this.damageFields=[];this._hazardClock=0;
@@ -3743,7 +3744,7 @@ export const IronSquadGame = {
     this.phaseCasualties = saved.phaseCasualties ?? 0;
     this.deathlineReport=saved.deathlineReport?.condition==='personal-downs'?saved.deathlineReport:null;
     this.phaseInitialSquadCount = saved.phaseInitialSquadCount ?? this.squad.length;
-    initializeGateGuards(this,saved);initializeInvasions(this,saved);initializeMedicalPosts(this,saved);initializeWildernessSites(this,saved);
+    initializeGateGuards(this,saved);initializeInvasions(this,saved);initializeMedicalPosts(this,saved);initializeWildernessSites(this,saved);initializeSealKeys(this,saved);
     initializeSupplies(this,saved);
     for(const m of this.restMonsters||[])migrateCampaignEnemy(m,m.lootDistance??Math.hypot(m.x-WORLD_SIZE/2,m.y-WORLD_SIZE/2),this.phase);
     initializeMagic(this,saved);this.damageFields=[];this._hazardClock=0;
@@ -4042,7 +4043,7 @@ export const IronSquadGame = {
         gateGuards:serializeGateGuards(this),
         gatePosts:serializeGatePosts(this),
         medicalPostIds:serializeMedicalPosts(this),
-        wildernessSites:serializeWildernessSites(this),wildernessBlessing:this.wildernessBlessing||0,
+        wildernessSites:serializeWildernessSites(this),sealKeys:serializeSealKeys(this),wildernessBlessing:this.wildernessBlessing||0,
         sharedEquipBox: this.sharedEquipBox || [],
         limitedAllies:serializeLimitedAllies(this),
         civilians: (this.civilians || []).filter(c => c && !c.rescued).slice(0, 8),
@@ -5452,7 +5453,7 @@ export const IronSquadGame = {
   updateSpawns(dt) {
     if(this.restTimer>0 || this.currentDungeon)return;
     // 1. 大ボス再臨チェック（フィールド超巨頭のみ。ダンジョンボスは currentDungeon で除外済み）
-    const hasColossal = this.monsters.some(m => m.isColossal && !m.isDungeonBoss);
+    const hasColossal = this.monsters.some(m => m.isColossal && !m.isDungeonBoss && !m.isSealGuardian);
     if (!hasColossal) {
       this.colossalBossRespawnTimer = (this.colossalBossRespawnTimer || 0) - dt;
       if (this.colossalBossRespawnTimer <= 0 && this.monsters.length<ENEMY_LIMIT) {
@@ -6071,6 +6072,7 @@ export const IronSquadGame = {
     this.checkPeriodicDialogue(dt);
     updateMedicalPosts(this,dt);
     updateWildernessSites(this,dt);
+    updateSealShrines(this,dt);
     updateSupplies(this,dt);
     updateMagic(this,dt,supplyLocation);
     this.tickEquipmentRegenAll(dt);
@@ -8414,7 +8416,8 @@ export const IronSquadGame = {
           textEl.textContent = `${nearest.icon} ${nearest.name} (推奨DEF ${nearest.reqDef}+ / Lv${nearest.reqLv}+)`;
           if (enterBtn) enterBtn.textContent = '部隊突入';
         }
-        if(nearest.kind!=='town'&&dungeonCoolingDown(this,nearest)){
+        if(nearest.id===SEALED_CASTLE_ID&&castleSealed(this)&&!this.heroJourney?.demonKingDefeat){textEl.textContent=`${nearest.icon} ${nearest.name} · ${castleSealText(this)}`;if(enterBtn)enterBtn.textContent='調べる';}
+        else if(nearest.kind!=='town'&&dungeonCoolingDown(this,nearest)){
           const readyPhase=(nearest.clearedPhase||nearest.clearedWave||1)+DUNGEON_RESET_PHASES;
           textEl.textContent=`${nearest.icon} ${nearest.name} · 踏破済${nearest.id==='dungeon_demon_castle'?'':` · 第${readyPhase}期に復活`}`;
           if(enterBtn)enterBtn.textContent='入る';
@@ -8429,6 +8432,8 @@ export const IronSquadGame = {
   enterDungeon(dungeonDef) {
     if (this.currentDungeon) return;
     if (this.restTimer > 0) { this.showToast('待機中は入れません。次の作戦期が始まってからにしましょう'); return; }
+    // v7.2.14 魔王城は三つの封印が解けるまで門が開かない（観戦と、勇者隊が城内にいる時の同行は除く）。
+    if(dungeonDef?.id===SEALED_CASTLE_ID&&castleSealed(this)&&!this.spectating&&this.heroJourney?.party?.space!==SEALED_CASTLE_ID&&!this.heroJourney?.demonKingDefeat){this.showToast(`🔒 魔王城の門は固く閉ざされている（${castleSealText(this)}）。封印は北西・北・北東の祠で守護者が守っているという`);return;}
     updateDungeonRespawns(this);
     const cooling=dungeonCoolingDown(this,dungeonDef);
     this.nearDungeon = null;
@@ -8764,6 +8769,7 @@ export const IronSquadGame = {
     const shatter=spawnDeathShatter(this,monster);
     if(shatter)sound.play(shatter.boss?'blast':'stone',{x:monster.x,y:monster.y,volume:shatter.boss?.7:.45,gap:.08,group:'combat'});
     const idx = this.monsters.indexOf(monster);
+    recordSealGuardianKill(this,monster,isPlayer?this.player:attacker);
     if (idx !== -1) {recordWildernessGuardKill(this,monster);this.monsters.splice(idx, 1);}
     this.waveKills++;
     this.onNationKill(monster);
@@ -11385,6 +11391,7 @@ export const IronSquadGame = {
       }
 
       for(const site of this.wildernessSites||[])if(inView(site,180))drawWildernessSite(this.ctx,site,this);
+      for(const shrine of this.sealShrines||[])if(inView(shrine,200))drawSealShrine(this.ctx,shrine,this,now*.001);
 
       // 2.8 フィールド上のダンジョン入口ポータル
       if (this.dungeons) {
