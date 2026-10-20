@@ -253,15 +253,17 @@ export function drawSoldierHead(c,soldier,options={}) {
 }
 
 /** v7.2.5 忍者の頭を斜め後ろから: 頭巾の後ろ・鉢巻の結び目と垂れ・前の端にのぞく目元。 */
-function ninjaHeadBack(c,simple=false) {
-  c.fillStyle='#2a3242';c.beginPath();c.ellipse(-.8,.4,4.6,5.4,0,0,Math.PI*2);c.fill(); // 後頭部の陰
-  c.fillStyle='#222b38';c.fillRect(-5.4,-3.4,10.8,2); // 鉢巻
-  c.fillStyle='#1b2230';c.fillRect(3.2,-1.2,2.3,1.3); // 前の端の目元
-  if(!simple)ellipse(c,-1.5,-4.6,2.2,.6,'rgba(220,226,240,.12)');
-  ellipse(c,-4.9,-2.4,1.5,1.3,'#4c596e'); // 結び目
-  stroke(c,[[-5.2,-2.2],[-9.4,-.6],[-10.2,2.2]],'#4c596e',1.3);
-  stroke(c,[[-5.2,-2],[-8.2,1.4],[-8.6,4.6]],'#4c596e',1.1);
-  c.fillStyle='#222b38';c.fillRect(-4.6,3.6,9.2,2.2); // 首まわりの覆面
+function ninjaHeadBack(c,simple=false,skin=null) {
+  // v7.2.8 頭巾も黒。結び目と垂れは墨色で形だけ見せ、前の端に目元の肌がわずかにのぞく。
+  c.fillStyle='#16191e';c.beginPath();c.ellipse(-.8,.4,4.6,5.4,0,0,Math.PI*2);c.fill(); // 後頭部の陰
+  c.fillStyle='#101216';c.fillRect(-5.4,-3.4,10.8,2); // 鉢巻
+  c.fillStyle='#0f1114';c.fillRect(3.2,-1.2,2.3,1.3); // 目元の切れ目
+  c.fillStyle=skin||'#c9a184';c.fillRect(3.9,-.95,1.5,.8); // 目元の肌
+  if(!simple)ellipse(c,-1.5,-4.6,2.2,.6,'rgba(220,226,240,.08)');
+  ellipse(c,-4.9,-2.4,1.5,1.3,'#2b2f37'); // 結び目
+  stroke(c,[[-5.2,-2.2],[-9.4,-.6],[-10.2,2.2]],'#2b2f37',1.3);
+  stroke(c,[[-5.2,-2],[-8.2,1.4],[-8.6,4.6]],'#2b2f37',1.1);
+  c.fillStyle='#101216';c.fillRect(-4.6,3.6,9.2,2.2); // 首まわりの覆面
 }
 
 /** Head centered on (x,y); far silhouettes remain direct, cheap primitives. */
@@ -269,9 +271,9 @@ function paintSoldierHead(c,soldier,{x=0,y=0,scale=1,small=false,silhouette=fals
   const a=ensureSoldierAppearance(soldier),medic=isFeminineLook(soldier,a);
   if(soldier.species||limitedLineOf(soldier)==='NINJA'){
     c.save();c.translate(x,y);c.scale(scale,scale);
-    const fur={wolf:'#899a9d',bear:'#8e7255',cat:'#b79b82',fox:'#c78d55',bird:'#99a99d'}[soldier.species]||'#333b4c';
+    const fur={wolf:'#899a9d',bear:'#8e7255',cat:'#b79b82',fox:'#c78d55',bird:'#99a99d'}[soldier.species]||'#1c1f25'; // v7.2.8 忍者の頭巾も黒
     ellipse(c,0,0,5.5,6,fur);
-    if(back&&limitedLineOf(soldier)==='NINJA'){ninjaHeadBack(c,silhouette);if(helmet){c.fillStyle=helmet;c.fillRect(-5.5,-5,11,1.8);}c.restore();return;}
+    if(back&&limitedLineOf(soldier)==='NINJA'){ninjaHeadBack(c,silhouette,a.skin);c.restore();return;} // v7.2.8 兜の色は重ねない
     if(limitedLineOf(soldier)==='NINJA'){c.fillStyle='#222b38';c.fillRect(-5.4,1,10.8,4.2);c.fillRect(-5.4,-5,10.8,3);stroke(c,[[4,-2],[9,-4],[8,0]],'#4c596e',1.4);}
     else if(soldier.species==='bear'){ellipse(c,-4.5,-5,2.3,2.5,fur);ellipse(c,4.5,-5,2.3,2.5,fur);ellipse(c,0,3,3.2,2.2,'#c0a58b');}
     else if(soldier.species==='bird'){polygon(c,[[-1,1],[3,2],[0,4],[-2,2]],'#c2aa6c');polygon(c,[[-4,-4],[-2,-8],[1,-5],[3,-8],[5,-3]],fur);}

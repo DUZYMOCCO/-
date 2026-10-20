@@ -2,7 +2,7 @@ import {CASINO_BET,casinoBaseBet,casinoMaxBet,casinoPageMaxBet,validCasinoBet,no
 import {mahjongHtml,bindMahjong,mahjongMethods,setMahjongHost,mahjongInProgress,mahjongOf,drive as driveMahjong,settleMahjong} from './mahjong.js?v=322';
 import {chooseArena,arenaCandidates,simulateArena,recordArena} from './casino-arena.js?v=322';
 import {atFacility} from './hq-facilities.js?v=322';
-import {drawSoldierPortrait} from './soldier-appearance.js?v=339';
+import {drawSoldierPortrait} from './soldier-appearance.js?v=342';
 import {casinoQuip} from './soldier-dialogue.js?v=334';
 import {sound} from '../../common/js/audio.js?v=151';
 import {gameText} from './game-text.js?v=341';

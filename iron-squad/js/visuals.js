@@ -9,16 +9,27 @@ import {MAGIC_AFFINITIES,ensureMana} from './magic-rules.js?v=334';
 import { drawMeleeWeapon, drawMeleeRangeCue, drawRangedWeapon, drawWeaponArms, meleePose, rangedPose, weaponAim, reverseGripFor, drawFarArm } from './weapon-motion.js?v=341';
 import { defaultCommanderAppearance } from './commander-identity.js?v=295';
 import {travelerClothes,drawTravelerTunic} from './traveler-clothes.js?v=195';
-import { createSoldierAppearance, drawSoldierHead, isMedicAppearance, soldierAppearanceFamily, soldierPhysique } from './soldier-appearance.js?v=339';
+import { createSoldierAppearance, drawSoldierHead, isMedicAppearance, soldierAppearanceFamily, soldierPhysique } from './soldier-appearance.js?v=342';
 import { limitedLineOf, hidesShieldArt, ninjaHandTool } from './limited-lines.js?v=341';
 /** v7.2.5 忍者の系列だけ斜め後ろ姿で描く（背中の縫い目・帯の結び・頭巾の結び目）。隊長・勇者・旅装は除く。 */
 export const ninjaBackView=s=>!!s&&!s.isPlayer&&!s.isHero&&!s.isCommander&&limitedLineOf(s)==='NINJA';
-function drawNinjaBack(c,simple=false){
-  c.fillStyle='rgba(16,20,28,.16)';c.beginPath();c.ellipse(-3.2,-17.5,2.6,2.1,0,0,Math.PI*2);c.ellipse(2.4,-17.5,2.4,2.1,0,0,Math.PI*2);c.fill(); // 肩甲骨の陰
-  line(c,[[-.6,-22],[-1.2,-11]],'#20262f',simple?.8:1.1); // 背中の縫い目
-  c.fillStyle='#3e475a';c.fillRect(-6,-11.5,12,2.2); // 帯
-  shape(c,[[-1.5,-10.4],[-5,-12.6],[-5.2,-8.4]],'#4c596e');shape(c,[[-1.5,-10.4],[2,-12.4],[2.2,-8.6]],'#4c596e'); // 帯の結び
-  if(!simple)line(c,[[-1.6,-9.6],[-3,-5.5]],'#4c596e',1);
+// v7.2.8 忍者の系列は全身黒装束。段階の見分けは帯の差し色1か所だけ（忍者は墨、中忍は灰、上忍は深紅、影頭領は紫紺）。
+export const NINJA_SUIT=Object.freeze({cloth:'#1e2128',legs:'#1a1d23',gloves:'#1b1e24',boots:'#14161a',edge:'#0e1013'});
+export const NINJA_SASH=Object.freeze({NINJA:'#30343c',NINJA_CHUNIN:'#7d828a',NINJA_JONIN:'#82222d',NINJA_KASHIRA:'#3f3374'});
+export const ninjaSashColor=s=>NINJA_SASH[s?.soldierClass]||NINJA_SASH.NINJA;
+function paintNinjaSuit(c){
+  c.fillStyle=NINJA_SUIT.cloth;c.strokeStyle=NINJA_SUIT.edge;c.lineWidth=.8;c.beginPath();
+  c.moveTo(-3,-24);c.quadraticCurveTo(-7,-24,-8,-18);c.lineTo(-6,-8);
+  c.quadraticCurveTo(0,-5,6,-8);c.lineTo(7,-18);c.quadraticCurveTo(5,-24,2,-24);c.closePath();c.fill();c.stroke();
+  shape(c,[[-6,-22],[-2,-23],[-1,-12],[-5,-10]],'rgba(205,214,232,.07)','transparent'); // 肩口のわずかな光
+  shape(c,[[2,-23],[6,-20],[6,-9],[2,-8]],'rgba(0,0,0,.32)','transparent');
+}
+function drawNinjaBack(c,simple=false,sash=NINJA_SASH.NINJA){
+  c.fillStyle='rgba(0,0,0,.3)';c.beginPath();c.ellipse(-3.2,-17.5,2.6,2.1,0,0,Math.PI*2);c.ellipse(2.4,-17.5,2.4,2.1,0,0,Math.PI*2);c.fill(); // 肩甲骨の陰
+  line(c,[[-.6,-22],[-1.2,-11]],'#0c0e11',simple?.8:1.1); // 背中の縫い目
+  c.fillStyle=sash;c.fillRect(-6,-11.5,12,2.2); // 帯（差し色）
+  shape(c,[[-1.5,-10.4],[-5,-12.6],[-5.2,-8.4]],sash);shape(c,[[-1.5,-10.4],[2,-12.4],[2.2,-8.6]],sash); // 帯の結び
+  if(!simple)line(c,[[-1.6,-9.6],[-3,-5.5]],sash,1);
 }
 import { classRegaliaFor, drawClassMantle, drawClassRegalia, drawClassHeadpiece } from './class-regalia.js?v=335';
 
@@ -270,17 +281,18 @@ function drawFarmProp(c, pose, swing) {
 }
 
 function drawFieldFarmer(c, s, now, cls, platoonColor, simpleLod, displayEquipment) {
-  const key = s.soldierClass || 'HEAVY', eq = displayEquipment || s.equipped || {};
+  const key = s.soldierClass || 'HEAVY', ninjaSuit=ninjaBackView(s), worn = displayEquipment || s.equipped || {};
+  const eq=ninjaSuit?{...worn,shield:null,helmet:null,armor:null,legs:null,gloves:null}:worn; // v7.2.8 畑仕事でも黒装束
   const medic = isMedicAppearance(key);
   const physique = soldierPhysique(s);
   const family = cls?.baseClassId || soldierAppearanceFamily(key);
   const advanced = !!cls?.isAdvanced;
-  const regalia=classRegaliaFor(s);
-  const cloth = fieldTone(regalia?.cloth || CLOTH[key] || CLOTH[family] || CLOTH.HEAVY, 0.34);
+  const regalia=ninjaSuit?null:classRegaliaFor(s);
+  const cloth = ninjaSuit?NINJA_SUIT.cloth:fieldTone(regalia?.cloth || CLOTH[key] || CLOTH[family] || CLOTH.HEAVY, 0.34);
   const armorColor = fieldTone(equipmentVisualProfile(eq.armor).color || cloth, 0.2);
   const steel = fieldTone(equipmentVisualProfile(eq.helmet).color || (advanced ? '#d1c4a3' : '#9daab0'), 0.26);
-  const legs = fieldTone(equipmentVisualProfile(eq.legs).color || '#5c564c', 0.42);
-  const gloves = fieldTone(equipmentVisualProfile(eq.gloves).color || '#a09080', 0.4);
+  const legs = ninjaSuit?NINJA_SUIT.legs:fieldTone(equipmentVisualProfile(eq.legs).color || '#5c564c', 0.42);
+  const gloves = ninjaSuit?NINJA_SUIT.gloves:fieldTone(equipmentVisualProfile(eq.gloves).color || '#a09080', 0.4);
   const pose = s.farmPose;
   const breath = Math.sin(now * 0.002 + (s.animOffset || 0)) * 0.4;
   const swing = Math.round(Math.sin(now * 0.003 + (s.animOffset || 0)));
@@ -400,20 +412,21 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod, displa
   }
   const key = s.soldierClass || 'HEAVY', civilian=!!s.civilianOutfit,ownedEquipment=displayEquipment||s.equipped||{};
   const eqWorn=civilian?{...ownedEquipment,helmet:null,armor:null,legs:null,gloves:null}:ownedEquipment;
-  const eq=hidesShieldArt(s)&&eqWorn.shield?{...eqWorn,shield:null}:eqWorn; // v7.2.6 忍者は盾を描かない
+  const ninjaSuit=!civilian&&ninjaBackView(s); // v7.2.8 黒装束: 兜・鎧・脚・手袋の絵と色は描かない（装備と数値はそのまま）
+  const eq=ninjaSuit?{...eqWorn,shield:null,helmet:null,armor:null,legs:null,gloves:null}:hidesShieldArt(s)&&eqWorn.shield?{...eqWorn,shield:null}:eqWorn; // v7.2.6 忍者は盾を描かない
   const medic = !civilian&&isMedicAppearance(key);
   const physique=soldierPhysique(s),muscular=physique.bodyWidth>1;
   const family = cls.baseClassId || soldierAppearanceFamily(key);
   const mage=family==='MAGE';if(mage)ensureMana(s);
   const spellColor=mage?MAGIC_AFFINITIES[s.magicAffinity].color:null;
   const advanced = !!cls.isAdvanced;
-  const regalia=civilian?null:classRegaliaFor(s);
+  const regalia=civilian||ninjaSuit?null:classRegaliaFor(s); // v7.2.8 忍者は式典服（マント・紋章）を描かない
   const travelLook=civilian?travelerClothes(s.id):null;
-  const cloth = fieldTone(travelLook?.cloth || regalia?.cloth || CLOTH[key] || CLOTH[family] || CLOTH.HEAVY, 0.34);
+  const cloth = ninjaSuit?NINJA_SUIT.cloth:fieldTone(travelLook?.cloth || regalia?.cloth || CLOTH[key] || CLOTH[family] || CLOTH.HEAVY, 0.34);
   const armorColor=fieldTone(equipmentVisualProfile(eq.armor).color||cloth,.2);
   const steel = fieldTone(equipmentVisualProfile(eq.helmet).color || (advanced ? '#d1c4a3' : '#9daab0'), 0.26);
-  const legs = fieldTone(equipmentVisualProfile(eq.legs).color || '#5c564c', 0.42);
-  const gloves = fieldTone(equipmentVisualProfile(eq.gloves).color || '#a09080', 0.4);
+  const legs = ninjaSuit?NINJA_SUIT.legs:fieldTone(equipmentVisualProfile(eq.legs).color || '#5c564c', 0.42);
+  const gloves = ninjaSuit?NINJA_SUIT.gloves:fieldTone(equipmentVisualProfile(eq.gloves).color || '#a09080', 0.4);
   const board = fieldTone(equipmentVisualProfile(eq.shield).color || '#566b7c', 0.3);
   const blade = fieldTone(equipmentVisualProfile(eq.weapon || s.weapon).color || '#c3cbca', 0.18);
   const moving = Math.hypot(s.vx || 0, s.vy || 0) > 0.05;
@@ -424,7 +437,7 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod, displa
   const wStyle = (eq.weapon || s.weapon)?.weaponStyle || 'sword';
   const melee = ['sword','spear','hammer','axe','staff','wand'].includes(wStyle);
   const ranged = ['bow','crossbow','cannon'].includes(wStyle);
-  const weaponColors = {cloth,gloves,blade,board,physique,hand:s.appearance?.skin||'#c1a083',gloveProfile:equipmentVisualProfile(eq.gloves),shieldProfile:equipmentVisualProfile(eq.shield),weaponProfile:equipmentVisualProfile(eq.weapon||s.weapon)};
+  const weaponColors = {cloth,gloves,blade,board,physique,hand:s.appearance?.skin||'#c1a083',gloveProfile:ninjaSuit?{...equipmentVisualProfile(null),coverage:1}:equipmentVisualProfile(eq.gloves),shieldProfile:equipmentVisualProfile(eq.shield),weaponProfile:equipmentVisualProfile(eq.weapon||s.weapon)};
   const aim=weaponAim(s),backView=!civilian&&ninjaBackView(s);
   const heldPose=melee?meleePose(wStyle,s.atkAnim||0,aim,physique,reverseGripFor(s,wStyle)):ranged?rangedPose(wStyle,s.atkAnim||0,aim,physique,s._rangedBash):null;
   c.save(); c.translate(s.x, s.y);
@@ -499,7 +512,7 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod, displa
   c.save();c.scale(physique.bodyWidth,1);
   // Cloak, boots and an articulated torso give every class a distinct silhouette.
   if (regalia)drawClassMantle(c,regalia);
-  else if (advanced || s.isNamed || archer) {
+  else if (!ninjaSuit&&(advanced || s.isNamed || archer)) {
     shape(c, [[-4,-23],[-11,-17],[-14,-1],[-5,-5],[4,-17]], s.isCommander ? (advanced?'#794e41':'#3e5863') : (archer ? '#3d5148' : '#795d51'));
     line(c, [[-7,-17],[-10,-4]], '#b59a72');
   }
@@ -508,18 +521,18 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod, displa
   c.beginPath();
   c.moveTo(-5 + stride,-9);c.lineTo(-1 + stride,-9);c.lineTo(-1 + stride,1);c.lineTo(-5 + stride,1);
   c.moveTo(2 - stride,-9);c.lineTo(6 - stride,-9);c.lineTo(6 - stride,1);c.lineTo(2 - stride,1);c.fill();
-  c.fillStyle = '#292a26';
+  c.fillStyle = ninjaSuit?NINJA_SUIT.boots:'#292a26';
   c.beginPath();c.moveTo(-5+stride,-1);c.lineTo(-2+stride,-1);c.lineTo(1+stride,2);c.lineTo(1+stride,3);c.lineTo(-6+stride,3);
   c.moveTo(2-stride,-1);c.lineTo(5-stride,-1);c.lineTo(8-stride,2);c.lineTo(8-stride,3);c.lineTo(1-stride,3);c.fill();
   // Rounded shoulders and cloth folds are static; legs retain their stride.
-  if(civilian)drawTravelerTunic(c,{...travelLook,cloth});else drawUniform(c,cloth,platoonColor);
+  if(civilian)drawTravelerTunic(c,{...travelLook,cloth});else if(ninjaSuit)paintNinjaSuit(c);else drawUniform(c,cloth,platoonColor);
   if (medic && advanced) {
     shape(c,[[-6,-17],[-9,1],[7,1],[5,-17]],'#c6bc9c');
     line(c,[[-3,-14],[-5,-1],[3,-14],[4,-1]],'#eee3c2',1.3);
     c.fillStyle='#a18765'; c.fillRect(-2,-19,3,19);
   }
   if(mage&&!civilian){shape(c,[[-6,-19],[-9,1],[8,1],[5,-19]],'#685875');line(c,[[-4,-18],[-5,-2],[5,-18],[6,-2]],spellColor,1.1);c.fillStyle='#b1a389';c.fillRect(-6,-10,12,2);}
-  if (light&&!civilian) {
+  if (light&&!civilian&&!ninjaSuit) {
     line(c,[[-5,-21],[4,-9]],'#c8b797',2);
     line(c,[[-5,-19],[3,-10]],'#5c4633',.7);
     c.fillStyle='#624d38'; c.fillRect(-7,-12,3,5);
@@ -530,7 +543,7 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod, displa
   }
   drawBodyEquipment(c,eq,{armorColor,legColor:legs,role:family,stride});
   drawClassRegalia(c,regalia);
-  if(backView)drawNinjaBack(c);
+  if(backView)drawNinjaBack(c,false,ninjaSashColor(s));
   if(s.isCommander&&!civilian){line(c,[[-5,-22],[4,-10]],advanced?'#d2bb83':'#b7bda8',1.5);}
   c.restore();
   // Hands, face and headwear, with a restrained highlight on the upper edge.
