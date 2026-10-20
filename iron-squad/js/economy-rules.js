@@ -7,7 +7,7 @@ import {recurringNationalIncome} from './regional-economy.js?v=277';
  * 国庫・共有装備ボックス・スカウト費用・財政報告の公式を集約
  */
 
-import { saleValue, compareEquipment, equipmentScore, isGodRollProtected } from './equipment-rules.js?v=306';
+import { saleValue, compareEquipment, equipmentScore, isGodRollProtected } from './equipment-rules.js?v=353';
 
 /** 作戦期ごとの国庫歳入（徴税・兵站） */
 export const TREASURY_INCOME_BASE = 3000;

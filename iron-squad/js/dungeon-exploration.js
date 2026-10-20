@@ -1,8 +1,8 @@
 import {explorationLayout,dungeonSegmentOpen} from './dungeon-layout.js?v=182';
-import {chooseLootTier} from './equipment-rules.js?v=306';
-import {drawTreasureChest} from './loot-visuals.js?v=306';
-import {rollTreasureLoot} from './crafting-rules.js?v=306';
-import {receiveTreasure} from './treasure-receipt.js?v=306';
+import {chooseLootTier} from './equipment-rules.js?v=353';
+import {drawTreasureChest} from './loot-visuals.js?v=353';
+import {rollTreasureLoot} from './crafting-rules.js?v=353';
+import {receiveTreasure} from './treasure-receipt.js?v=353';
 
 export const DUNGEON_RESET_PHASES=2;
 const DEMON_CASTLE_ID='dungeon_demon_castle';

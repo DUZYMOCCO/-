@@ -1,5 +1,5 @@
 // v7.2.17: 真魔王城。魔王が倒れると南東の果てに現れ、入れるようになる。勇者隊は向かわない（勇者の行き先は封印と魔王城だけ）。
-import {DUNGEON_DEFS,TRUE_DEMON_KING_HP,TRUE_DEMON_KING_ATK} from './dungeon.js?v=352';
+import {DUNGEON_DEFS,TRUE_DEMON_KING_HP,TRUE_DEMON_KING_ATK} from './dungeon.js?v=353';
 import {addBattleReport} from './battle-report.js?v=333';
 export const TRUE_CASTLE_ID='dungeon_true_demon_castle';
 const DEMON_CASTLE_ID='dungeon_demon_castle',TAU=Math.PI*2;

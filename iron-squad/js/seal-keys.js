@@ -1,9 +1,9 @@
 // v7.2.14 魔王城の封印。北西・北・北東の祠に守護者が立ち、守護者が倒れるとその方角の封印が解ける。
 // 解けた封印は世界で共有（隊長・勇者のどちらが解いても同じ）。三つすべて解けるまで隊長は魔王城へ入れない。
 import {WORLD_SIZE,fieldTerrainAt} from './world.js?v=289';
-import {DUNGEON_DEFS} from './dungeon.js?v=352';
-import {distanceScaling} from './equipment-rules.js?v=306';
-import {CAMPAIGN_SCALE_VERSION} from './campaign-scaling.js?v=241';
+import {DUNGEON_DEFS} from './dungeon.js?v=353';
+import {distanceScaling} from './equipment-rules.js?v=353';
+import {CAMPAIGN_SCALE_VERSION} from './campaign-scaling.js?v=353';
 import {DIRECTION_RELICS,relicKeyFor} from './drop-exclusives.js?v=350';
 const C=WORLD_SIZE/2,TAU=Math.PI*2,R=38000,D=Math.round(R/Math.SQRT2);
 export const SEAL_RULES=Object.freeze({discovery:900,respawnPhases:2,heroLeaveDistance:1500,radius:70});

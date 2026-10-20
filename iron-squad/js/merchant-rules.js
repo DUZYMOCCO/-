@@ -1,4 +1,4 @@
-import {catalogTier,catalogPrice,ensureMerchantCatalog,MERCHANT_MAX_TIER,MERCHANT_CATALOG_VERSION} from './merchant-catalog.js?v=306';
+import {catalogTier,catalogPrice,ensureMerchantCatalog,MERCHANT_MAX_TIER,MERCHANT_CATALOG_VERSION} from './merchant-catalog.js?v=353';
 import {applyAttributeStats} from './unit-attributes.js?v=334';
 /**
  * IRON SQUAD: 宿場・本陣・各地のキャンプの行商人
@@ -6,11 +6,12 @@ import {applyAttributeStats} from './unit-attributes.js?v=334';
  * - 強い護衛付き。放置するとモンスターに襲われ死亡しうる
  * - 護衛が倒した強敵のドロップを序盤から掠め取れるチャンス
  */
-import { saleValue, distanceScaling, weaponCombatProfile } from './equipment-rules.js?v=306';
+import { saleValue, distanceScaling, weaponCombatProfile } from './equipment-rules.js?v=353';
 import {WORLD_SIZE} from './world.js?v=289';
-import { drawFieldSoldier } from './visuals.js?v=352';
+import {southEastAbyss} from './campaign-scaling.js?v=353';
+import { drawFieldSoldier } from './visuals.js?v=353';
 import { createSoldierAppearance, drawSoldierHead } from './soldier-appearance.js?v=342';
-import { attackAnimationRate } from './weapon-motion.js?v=341';
+import { attackAnimationRate } from './weapon-motion.js?v=353';
 import { markSoldierDown, rebuildMerchantCasualties, RESCUE_TIMEOUT, departFromRest } from './casualty-rules.js?v=346';
 import {emptyMastery,normalizeMastery,hitGrowthHpBonus,hitGrowthDefBonus,migrateHitGrowth,applyHitGrowth,masteryAtkMult,masteryReloadMult} from './growth-rules.js?v=329';
 import {recordCombat,finishExperience} from './phase-rules.js?v=346';
@@ -94,11 +95,11 @@ export function merchantBuyPrice(item) {
   return catalogPrice(item);
 }
 
-function escortStats(distance, phase = 1) {
+function escortStats(distance, phase = 1, abyss = 1) {
   const sc = distanceScaling(Math.max(1200, distance), phase);
   // 護衛は「そのエリアより一枚上手」：エリート寄り・プレイヤー序盤でも倒しがい
-  const hp = Math.max(220, Math.round(260 * sc.hp * 1.35));
-  const atk = Math.max(18, Math.round(22 * sc.atk * 1.25));
+  const hp = Math.max(220, Math.round(260 * sc.hp * 1.35 * abyss)); // v7.2.19: abyss = the south-east multiplier where the merchant stands
+  const atk = Math.max(18, Math.round(22 * sc.atk * 1.25 * abyss));
   return { hp, atk, speed: 78, radius: 15, def: 28, dmgReduction: 12 };
 }
 
@@ -109,30 +110,31 @@ export function merchantBaseHp(m) {
   if(m?.id==='merchant_base_camp'||m?.placeKind==='camp')return 180;
   return (m?.placeKind==='inn'?160:180)+Math.min(220,Math.round(d/120));
 }
-export function outerMerchantHpMult(distance,phase=1) {
+export function outerMerchantHpMult(distance,phase=1,abyss=1) {
   if(!(distance>=OUTER_PARTY.border))return 1;
-  return Math.max(1,distanceScaling(distance,phase).atk/OUTER_PARTY.borderAtk)*OUTER_PARTY.merchantHp;
+  return Math.max(1,distanceScaling(distance,phase).atk*Math.max(1,abyss)/OUTER_PARTY.borderAtk)*OUTER_PARTY.merchantHp;
 }
 /** 行商人と護衛の強さを、いまいる場所に合わせる。変えたら true。 */
 export function syncMerchantPower(game,m,force=false) {
   if(!m||m.dead||!Number.isFinite(m.distance))return false; // 拠点の距離を持たない仮の商人（テスト用など）は対象外
-  const d=hqDistance(m),outer=d>=OUTER_PARTY.border,phase=Math.max(1,game?.phase||1);
+  const d=hqDistance(m),outer=d>=OUTER_PARTY.border,phase=Math.max(1,game?.phase||1),ab=southEastAbyss((m.x||0)-WORLD_SIZE/2,(m.y||0)-WORLD_SIZE/2);
   if(!outer&&!(m.powerDistance>0))return false; // 本陣近くで、まだ外側の値になったことがない: v7.2.8 までのまま
   if(!force&&m.powerDistance>0&&outer){
-    const a=distanceScaling(d,phase).atk,b=distanceScaling(m.powerDistance,phase).atk;
+    const a=distanceScaling(d,phase).atk*ab,b=distanceScaling(m.powerDistance,phase).atk*(m.powerAbyss||1);
     if(a/b<OUTER_PARTY.band&&b/a<OUTER_PARTY.band)return false;
   }
   const keep=u=>u.isDown||!(u.maxHp>0)?null:Math.max(0,Math.min(1,u.hp/u.maxHp));
   const ratio=keep(m);
-  m.maxHp=Math.max(1,Math.round(merchantBaseHp(m)*outerMerchantHpMult(d,phase)));
+  m.maxHp=Math.max(1,Math.round(merchantBaseHp(m)*outerMerchantHpMult(d,phase,ab)));
   if(ratio!==null)m.hp=Math.max(1,Math.round(m.maxHp*ratio));
   for(const esc of m.escorts||[]){
     if(!esc||esc.dead||esc.isGateGuard)continue;
-    const st=escortStats(d,phase),r=keep(esc);
+    const st=escortStats(d,phase,ab),r=keep(esc);
     esc.escortBaseStats={...(esc.escortBaseStats||{}),hp:Math.round(st.hp*(outer?OUTER_PARTY.escortHp:1)),atk:Math.round(st.atk*(outer?OUTER_PARTY.escortAtk:1))};
     recalcEscortStats(esc);if(r!==null)esc.hp=Math.max(1,Math.round(esc.maxHp*r));
   }
   m.powerDistance=outer?d:0;
+  if(outer&&ab>1)m.powerAbyss=ab;else delete m.powerAbyss;
   return true;
 }
 export function makeEscort(merchant, index, phase = 1) {

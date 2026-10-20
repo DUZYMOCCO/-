@@ -34,6 +34,15 @@ function scale(points,distance,phase,walls=false){
   return {hp:value(1)*phaseBonus,atk:value(2)*phaseBonus,exp:value(3)*phaseBonus,gold:value(4)*phaseBonus,phaseBonus,ringPower:value(1)};
 }
 export const campaignScaling=(distance,phase=1)=>scale(CAMPAIGN_SCALE_POINTS,distance,phase,true);
+// v7.2.19: the abyss beyond the demon castle. Only where BOTH offsets from headquarters pass the castle (+42,000, +42,000), so the
+// other three corners and everything north / west of the castle keep the distance curve. Field enemies grow log-linearly from x1 at
+// the castle line to x10 at the true demon castle line (+74,000) and stay x10 to the map edge.
+export const ABYSS_START=42000,ABYSS_FULL=74000,ABYSS_MAX=10;
+export function southEastAbyss(dx,dy){
+  const reach=Math.min(Number(dx)||0,Number(dy)||0)-ABYSS_START;
+  if(!(reach>0))return 1;
+  return ABYSS_MAX**Math.min(1,reach/(ABYSS_FULL-ABYSS_START));
+}
 // Keep the old curve for 1 -> 2 migration and the unchanged random HQ raid producer.
 export const campaignScalingV1=(distance,phase=1)=>scale(VERSION_1_POINTS,distance,phase);
 // Only for migrating authored enemies retained by an old save, never for new generation.

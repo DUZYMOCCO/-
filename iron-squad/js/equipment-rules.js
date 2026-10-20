@@ -1,4 +1,4 @@
-import {campaignScaling} from './campaign-scaling.js?v=241';
+import {campaignScaling} from './campaign-scaling.js?v=353';
 import {soldierCombatTempo,usesSoldierTempo,attributeFamily,canChannelWeaponMagic} from './unit-attributes.js?v=334';
 import {requiredDefenseStrength,canUseEquipmentBarrier} from './defense-equipment.js?v=298';
 import {isMagicUser} from './magic-rules.js?v=334';
