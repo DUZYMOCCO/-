@@ -5,7 +5,7 @@ import {ATTRIBUTE_KEYS,ATTRIBUTE_LABELS,attributeSpecialties,attributeCarryCapac
 import {weaponRequirementText} from './weapon-requirements.js?v=338';
 import {equipmentName} from './equipment-rules.js?v=306';
 import {releaseCanvas} from './canvas-surface.js?v=217';
-import {genderLabel} from './soldier-names.js?v=334';
+import {genderLabel} from './soldier-names.js?v=341';
 import {talentTag} from './talent-labels.js?v=291';
 
 export const RECRUIT_CLASSES=['HEAVY','LIGHT','ARCHER','MEDIC','MAGE'];

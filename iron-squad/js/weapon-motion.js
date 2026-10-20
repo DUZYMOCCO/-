@@ -1,7 +1,7 @@
 import {drawEquipmentShield} from './equipment-art.js?v=231';
 import { MELEE_SWEET_SPOT, meleeSweetSpotFor, weaponCombatProfile } from './equipment-rules.js?v=306';
 import {isHeavyWeaponStyle} from './growth-rules.js?v=329';
-import {limitedLineOf} from './limited-lines.js?v=340';
+import {limitedLineOf} from './limited-lines.js?v=341';
 
 const TAU = Math.PI * 2;
 const clamp = n => Math.max(0, Math.min(1, n));
@@ -155,11 +155,23 @@ export function drawWeaponArms(c,actor,pose,colors,simple=false) {
 }
 
 /** v7.2.6 奥の手（胴の後ろ）。胴を描く前に呼ぶので、肩から先は胴の縁からわずかにのぞくだけになる。 */
-export function drawFarArm(c,pose,colors,simple=false) {
+/** v7.2.7 奥の手の小物。手の外側（背中の縁の向こう）へ少しだけのぞく大きさ。 */
+export function drawHandTool(c,x,y,side,tool) {
+  if(tool!=='shuriken'&&tool!=='kunai')return false;
+  c.save();c.lineJoin='round';c.strokeStyle='#22272b';c.lineWidth=.5;
+  if(tool==='shuriken'){const cx=x-side*2.4,cy=y+1.2;c.translate(cx,cy);c.rotate(.35);c.fillStyle='#7f888f';c.beginPath();
+    for(let j=0;j<8;j++){const a=j*Math.PI/4,r=j%2?1.1:3.3;j?c.lineTo(Math.cos(a)*r,Math.sin(a)*r):c.moveTo(Math.cos(a)*r,Math.sin(a)*r);}
+    c.closePath();c.fill();c.stroke();c.fillStyle='#2b3035';c.beginPath();c.arc(0,0,.55,0,TAU);c.fill();}
+  else{c.translate(x,y);c.fillStyle='#8b949a';c.beginPath();c.moveTo(-side*.6,.9);c.lineTo(-side*2.6,2.2);c.lineTo(-side*5.6,5.6);c.lineTo(-side*1.6,3.6);c.closePath();c.fill();c.stroke();
+    c.strokeStyle='#3a2f2a';c.lineWidth=1.1;c.beginPath();c.moveTo(-side*.1,1.2);c.lineTo(side*.5,-1.6);c.stroke();
+    c.strokeStyle='#5c646a';c.lineWidth=.6;c.beginPath();c.arc(side*.8,-2.6,1,0,TAU);c.stroke();}
+  c.restore();return true;
+}
+export function drawFarArm(c,pose,colors,simple=false,tool=null) {
   if(!pose?.farArm)return false;
   const shoulder=6*(colors.physique?.bodyWidth||1);
   c.save();c.lineCap='round';c.lineJoin='round';
-  arm(c,{x:-pose.side*shoulder,y:-21},pose.offGrip,colors,simple);gripHand(c,pose.offGrip.x,pose.offGrip.y,pose.angle,colors,simple);
+  arm(c,{x:-pose.side*shoulder,y:-21},pose.offGrip,colors,simple);if(tool&&!simple)drawHandTool(c,pose.offGrip.x,pose.offGrip.y,pose.side,tool);gripHand(c,pose.offGrip.x,pose.offGrip.y,pose.angle,colors,simple);
   c.restore();return true;
 }
 export function drawMeleeWeapon(c, actor, style, colors, simple=false,withArms=true,heldPose=null) {

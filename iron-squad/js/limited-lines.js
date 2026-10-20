@@ -43,4 +43,6 @@ export const limitedTierOf=unit=>LIMITED_LINE_CLASSES[typeof unit==='string'?uni
 export const limitedFamilyOf=unit=>LIMITED_LINE_CLASSES[typeof unit==='string'?unit:unit?.soldierClass]?.baseClassId||null;
 /** v7.2.6 忍者の系列は盾を持っていても盾の絵・盾の印を出さない（装備と数値はそのまま）。隊長・勇者は除く。 */
 export const hidesShieldArt=unit=>!!unit&&!unit.isPlayer&&!unit.isHero&&!unit.isCommander&&limitedLineOf(unit)==='NINJA';
+/** v7.2.7 忍者の奥の手（盾側）が持つ小物。兵士のidから決まるので、ロードしても変わらない（保存しない）。 */
+export const ninjaHandTool=unit=>{if(!hidesShieldArt(unit))return null;let h=2166136261;for(const ch of String(unit.id??unit.name??''))h=Math.imul(h^ch.charCodeAt(0),16777619);h^=h>>>15;h=Math.imul(h,2246822507);h^=h>>>13;return (h>>>7)&1?'kunai':'shuriken';};
 export const limitedClassOf=unit=>LIMITED_LINE_CLASSES[typeof unit==='string'?unit:unit?.soldierClass]||null;

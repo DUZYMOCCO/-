@@ -5,9 +5,9 @@ import {guardFormationTarget,guardFormationSpeedMult} from './guard-formation.js
 import {WORLD_SIZE,fieldTerrainAt} from './world.js?v=289';
 import {inCurrentInstance} from './instance-rules.js?v=322';
 import {isSoldierOnExpedition} from './expedition-rules.js?v=256';
-import {generateSoldierName} from './soldier-names.js?v=334';
-import {LIMITED_CLASSES,limitedLineOf,limitedClassOf} from './limited-lines.js?v=340';
-export {LIMITED_CLASSES,LIMITED_ADVANCED_CLASSES,limitedLineOf} from './limited-lines.js?v=340';
+import {generateSoldierName} from './soldier-names.js?v=341';
+import {LIMITED_CLASSES,limitedLineOf,limitedClassOf,ninjaHandTool} from './limited-lines.js?v=341';
+export {LIMITED_CLASSES,LIMITED_ADVANCED_CLASSES,limitedLineOf} from './limited-lines.js?v=341';
 export const CAPTIVE_SPAWN_CHANCE=.1;
 export const CAPTIVE_CLASSES=Object.freeze(Object.keys(LIMITED_CLASSES).filter(id=>id!=='NINJA'));
 const LIMITED_NAMES={NINJA:['影丸','朔','蓮','黒羽','千鳥','銀次'],wolf:['灰尾','ロウ','銀牙','遠吠'],bear:['ゴウ','岩掌','森助','厚丸'],cat:['ミケ','鈴音','クロ','日向'],fox:['琥珀','灯','コン','白露'],bird:['羽音','鷹丸','青羽','ツバサ']};
@@ -28,7 +28,9 @@ export function createLimitedAlly(game,classId,origin) {
  const s=game.createNewSoldier(null,{classKey:def.combatClass});
  s.soldierClass=classId;s.combatClass=def.combatClass;s.species=def.species||null;s.limitedOrigin=origin;s.isNamed=true;
  let nameSeed=0;for(const ch of s.id)nameSeed=(nameSeed*31+ch.charCodeAt(0))>>>0;
- s.name=generateSoldierName({soldierClass:classId,species:def.species||null,seed:nameSeed,gender:s.gender});
+ // v7.2.7 今いる全員（候補・捕虜・酒場・勇者一行も）の名前を避ける。本人（createNewSoldier の仮名）は数えない。
+ const usedNames=game.livingSoldierNames?.(s)||new Set([...(game.squad||[]),...(game.reserves||[])].map(u=>u?.name).filter(Boolean));
+ s.name=generateSoldierName({soldierClass:classId,species:def.species||null,seed:nameSeed,gender:s.gender,usedNames});
  // Each people has a tendency; individual aptitude rolls and rare talents remain intact.
  const p=s.attributeProfile;if(classId==='NINJA'||classId==='BEAST_CAT')p.aptitudes.quickness=Math.min(3,p.aptitudes.quickness*1.35);
  if(classId==='NINJA'){
@@ -137,7 +139,7 @@ export function updateNinja(game,s,dt,platoon) {
  s.facingAngle=Math.atan2(dy,dx);
  if(alive(target)&&s.atkCooldown<=0&&d<=throwRange){
   if(d<=reach+10){if(profile.ranged)game.performAttack(s,target,false,Math.round(s.atk),false,'physical');else game.performMeleeSweep(s,target,false,Math.round(s.atk),profile,reach);s.atkCooldown=soldierAttackCooldown(s,(cls.atkCooldown||.75)/(s.atkSpeed||1));}
-  else{for(const [i,aim] of shurikenTargets(game,s,target,cls.shurikenCount||1,throwRange).entries())game.projectiles.push({type:'NINJA_SHURIKEN',attacker:s,target:aim,x:s.x+(i?Math.cos(i*2.1)*6:0),y:s.y+(i?Math.sin(i*2.1)*6:0),damage:Math.round(s.atk*(cls.shurikenDamage||.7)),speed:390,life:1.5});s.atkCooldown=soldierAttackCooldown(s,(cls.shurikenCooldown||1.7)/(s.atkSpeed||1));}
+  else{for(const [i,aim] of shurikenTargets(game,s,target,cls.shurikenCount||1,throwRange).entries())game.projectiles.push({type:'NINJA_SHURIKEN',tool:ninjaHandTool(s),attacker:s,target:aim,x:s.x+(i?Math.cos(i*2.1)*6:0),y:s.y+(i?Math.sin(i*2.1)*6:0),damage:Math.round(s.atk*(cls.shurikenDamage||.7)),speed:390,life:1.5});s.atkCooldown=soldierAttackCooldown(s,(cls.shurikenCooldown||1.7)/(s.atkSpeed||1));}
   s.atkAnim=1;
  }
  return true;

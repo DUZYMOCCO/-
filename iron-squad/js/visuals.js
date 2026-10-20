@@ -6,11 +6,11 @@ import {BRUTE_DRAW_SCALE} from './field-hosts.js?v=182';
 import {equipmentVisualProfile} from './equipment-tiers.js?v=231';
 import {drawBodyEquipment,drawEquipmentShield} from './equipment-art.js?v=231';
 import {MAGIC_AFFINITIES,ensureMana} from './magic-rules.js?v=334';
-import { drawMeleeWeapon, drawMeleeRangeCue, drawRangedWeapon, drawWeaponArms, meleePose, rangedPose, weaponAim, reverseGripFor, drawFarArm } from './weapon-motion.js?v=340';
+import { drawMeleeWeapon, drawMeleeRangeCue, drawRangedWeapon, drawWeaponArms, meleePose, rangedPose, weaponAim, reverseGripFor, drawFarArm } from './weapon-motion.js?v=341';
 import { defaultCommanderAppearance } from './commander-identity.js?v=295';
 import {travelerClothes,drawTravelerTunic} from './traveler-clothes.js?v=195';
 import { createSoldierAppearance, drawSoldierHead, isMedicAppearance, soldierAppearanceFamily, soldierPhysique } from './soldier-appearance.js?v=339';
-import { limitedLineOf, hidesShieldArt } from './limited-lines.js?v=340';
+import { limitedLineOf, hidesShieldArt, ninjaHandTool } from './limited-lines.js?v=341';
 /** v7.2.5 忍者の系列だけ斜め後ろ姿で描く（背中の縫い目・帯の結び・頭巾の結び目）。隊長・勇者・旅装は除く。 */
 export const ninjaBackView=s=>!!s&&!s.isPlayer&&!s.isHero&&!s.isCommander&&limitedLineOf(s)==='NINJA';
 function drawNinjaBack(c,simple=false){
@@ -503,7 +503,7 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod, displa
     shape(c, [[-4,-23],[-11,-17],[-14,-1],[-5,-5],[4,-17]], s.isCommander ? (advanced?'#794e41':'#3e5863') : (archer ? '#3d5148' : '#795d51'));
     line(c, [[-7,-17],[-10,-4]], '#b59a72');
   }
-  if(heldPose?.farArm){c.save();c.scale(1/physique.bodyWidth,1);if(Math.cos(bodyFacing)<-.15)c.scale(-1,1);drawFarArm(c,heldPose,weaponColors);c.restore();} // v7.2.6 奥の手は胴より先に
+  if(heldPose?.farArm){c.save();c.scale(1/physique.bodyWidth,1);if(Math.cos(bodyFacing)<-.15)c.scale(-1,1);drawFarArm(c,heldPose,weaponColors,false,ninjaHandTool(s));c.restore();} // v7.2.6 奥の手は胴より先に・v7.2.7 手裏剣かクナイ
   c.fillStyle = legs;
   c.beginPath();
   c.moveTo(-5 + stride,-9);c.lineTo(-1 + stride,-9);c.lineTo(-1 + stride,1);c.lineTo(-5 + stride,1);

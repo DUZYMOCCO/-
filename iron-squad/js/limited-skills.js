@@ -1,5 +1,5 @@
 /** v7.2.1 忍者・獣人の上位職の特技（軽いもの）。数値は1か所にまとめ、人間の同じ段階とおおむねつり合う強さに抑える。 */
-import {limitedLineOf,limitedTierOf,limitedClassOf} from './limited-lines.js?v=340';
+import {limitedLineOf,limitedTierOf,limitedClassOf} from './limited-lines.js?v=341';
 export const LIMITED_SKILL_RULES=Object.freeze({
  howl:Object.freeze({radius:150,trigger:260,duration:5,cooldown:12,bonus:[0,.10,.12,.15]}), // 狼: 周りの味方のATK+
  hawkEye:Object.freeze({distance:220,bonus:[0,.10,.12,.15]}), // 鳥: 遠い敵への矢の威力+

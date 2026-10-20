@@ -1,5 +1,5 @@
 import { displayKana } from '../../common/js/kana-mode.js?v=175';
-import {limitedLineOf} from './limited-lines.js?v=340';
+import {limitedLineOf} from './limited-lines.js?v=341';
 import {FIELD_NOTICE_SECONDS,IMPORTANT_NOTICE_SECONDS} from './battle-log.js?v=322';
 // 兵士の一言フキダシ（感情・戦況リアクション）システム
 // 操作を邪魔しない控えめなCanvas描画 ＆ 直近重複排除エンジン（Anti-Repetition）

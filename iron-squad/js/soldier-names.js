@@ -143,14 +143,14 @@ export function generateSoldierName(options = {}) {
 
   // ニンジャ：ファミリーネームなしの和名系統（ハンゾー、コタロウなど）
   if (/^NINJA(_|$)/.test(soldierClass) || soldierClass === 'ninja') {
-    return pickUnique(NINJA_NAMES_BY_GENDER[gender], seed, usedSet);
+    return pickUnique(NINJA_NAMES_BY_GENDER[gender], seed, usedSet, { soldierClass: 'NINJA' });
   }
 
   // 獣人：ファミリーネームなし（種族ごとの単一ネーム）
   const beastSpecies = species || (soldierClass.startsWith('BEAST_') ? soldierClass.split('_')[1].toLowerCase() : null);
   if (beastSpecies) {
     const pool = (BEAST_NAMES_BY_GENDER[beastSpecies] || BEAST_NAMES_BY_GENDER.common)[gender];
-    return pickUnique(pool, seed, usedSet);
+    return pickUnique(pool, seed, usedSet, { soldierClass, species: beastSpecies });
   }
 
   // 人間（通常兵士）：ファーストネーム・ファミリーネーム
@@ -164,8 +164,53 @@ export function generateSoldierName(options = {}) {
     name = `${first}・${family}`;
     attempts++;
   } while (usedSet && usedSet.has(name) && attempts < 20);
-
+  if (usedSet && usedSet.has(name)) {
+    // v7.2.7 20回でもかぶったら名簿を順に当たり、それでも空きがなければ「〇世」を付けて必ず別の名前にする。
+    const givens = gender === 'female' ? FEMALE_GIVEN_NAMES : MALE_GIVEN_NAMES, start = seed !== null ? Math.abs(Math.floor(Number(seed))) : Math.floor(Math.random() * 1e9);
+    for (let i = 0; i < givens.length * FAMILY_NAMES.length; i++) {
+      const k = (start + i) % (givens.length * FAMILY_NAMES.length), candidate = `${givens[k % givens.length]}・${FAMILY_NAMES[Math.floor(k / givens.length)]}`;
+      if (!usedSet.has(candidate)) return candidate;
+    }
+    return distinctSoldierName(name, usedSet, { soldierClass });
+  }
   return name;
+}
+
+/** 漢数字（1〜99）。 */
+const KANJI_DIGITS = ['', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
+export function kanjiNumber(n) {
+  n = Math.max(1, Math.floor(Number(n) || 1));
+  if (n < 10) return KANJI_DIGITS[n];
+  if (n < 100) return `${n >= 20 ? KANJI_DIGITS[Math.floor(n / 10)] : ''}十${KANJI_DIGITS[n % 10]}`;
+  return String(n);
+}
+/** 獣人の「二人目」は種族の言い方（若・小・子・雛）、三人目からは「三代目」。 */
+export const BEAST_SECOND_PREFIX = Object.freeze({ wolf: '若', bear: '小', cat: '子', fox: '若', bird: '雛', common: '若' });
+/** 名簿のもとの名前（「二代目影丸」→「影丸」）。人間の「〇世」も外す。 */
+export function baseSoldierName(name = '') {
+  const text = String(name || '');
+  const stripped = text.replace(/[一二三四五六七八九十]+世$/, '');
+  if (stripped !== text && stripped.includes('・')) return stripped;
+  const m = text.match(/^[一二三四五六七八九十]+代目(.+)$/);
+  return m ? m[1] : text;
+}
+/**
+ * v7.2.7 かぶった名前を世界観に合う形で区別する。忍者・人間は「二代目影丸」「三代目影丸」…（人間は「レオン・ミラー二世」…）。
+ * 獣人は二人目だけ種族の言い方（若ガルム・小グリズ・子ミケ・雛ハヤテ）、三人目から「三代目」。必ず used にない名前を返す。
+ */
+export function distinctSoldierName(name, used, { soldierClass = '', species = null } = {}) {
+  const usedSet = used instanceof Set ? used : new Set(used || []);
+  if (!usedSet.has(name)) return name;
+  const base = baseSoldierName(name), human = base.includes('・') && !/^NINJA/.test(soldierClass) && !species;
+  const beast = species || (String(soldierClass).startsWith('BEAST_') ? String(soldierClass).split('_')[1].toLowerCase() : null);
+  if (!usedSet.has(base)) return base;
+  for (let k = 2; k < 1000; k++) {
+    const candidate = human ? `${base}${kanjiNumber(k)}世`
+      : beast && k === 2 ? `${BEAST_SECOND_PREFIX[beast] || BEAST_SECOND_PREFIX.common}${base}`
+      : `${kanjiNumber(k)}代目${base}`;
+    if (!usedSet.has(candidate)) return candidate;
+  }
+  return `${base}${usedSet.size}`;
 }
 
 function seededRandom(seed) {
@@ -179,15 +224,18 @@ function pickOne(arr, seed = null) {
   return arr[idx];
 }
 
-function pickUnique(arr, seed = null, usedSet = null) {
+function pickUnique(arr, seed = null, usedSet = null, options = {}) {
   if (!arr || arr.length === 0) return '';
   if (!usedSet) return pickOne(arr, seed);
   
+  // v7.2.7 乱数のときも名簿を順に当たる（20人目以降でも空きを取りこぼさない）。
+  const start = seed !== null ? Math.abs(Math.floor(Number(seed))) : Math.floor(Math.random() * arr.length);
   for (let i = 0; i < arr.length; i++) {
-    const candidate = pickOne(arr, seed !== null ? (seed + i) : null);
+    const candidate = arr[(start + i) % arr.length];
     if (!usedSet.has(candidate)) return candidate;
   }
-  return pickOne(arr, seed);
+  // 名簿を使い切ったら「二代目〇〇」など、必ずかぶらない名前にする。
+  return distinctSoldierName(pickOne(arr, seed), usedSet, options);
 }
 
 /**

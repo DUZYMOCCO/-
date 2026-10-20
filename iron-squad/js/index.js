@@ -8,7 +8,7 @@ import {startAutoSave,stopAutoSave} from './auto-save.js?v=269';
 import {requestEvenUpgrade} from './even-upgrade.js?v=291';
 import {beginFollowerRecovery,noteFollowerIntent,suspendFollowerRecovery,finishFollowerRecovery,profileFollowerRecovery} from './follower-recovery.js?v=277';
 import {configurePerfSettings} from './perf-diagnostics.js?v=327';
-import {gameText} from './game-text.js?v=338';
+import {gameText} from './game-text.js?v=341';
 import {talentTag} from './talent-labels.js?v=291';
 import {fieldDialogReturn} from './dialog-return.js?v=200';
 import {guildMethods} from './guild-contracts.js?v=322';
@@ -22,8 +22,8 @@ import {enemyArtHeadHeight} from './enemy-art.js?v=280';
 import {selectBiomeEncounter,biomeEnemyStats,encounterSlots,updateBiomeCharge} from './biome-encounters.js?v=279';
 import {configureRangedEnemy,updateRangedEnemy,updateDefenseWalls,interceptHostileShot,isHostileShot,updateHostileBolt,drawDefenseWalls} from './enemy-ranged.js?v=295';
 import {tickLimitedSkills,limitedAttackMult,limitedCritFollowUp,limitedDamageTakenMult,limitedLastStand,drawLimitedFx,limitedTauntTarget,limitedSmokeMiss,updateFoxfire} from './limited-skills.js?v=336';
-import {hidesShieldArt} from './limited-lines.js?v=340';
-import {LIMITED_CLASSES,LIMITED_ADVANCED_CLASSES,initializeLimitedAllies,prepareLimitedEncounter,createLimitedAlly,joinLimitedEncounter,updateLimitedAllies,updateNinja,updateShuriken,drawLimitedEncounter,serializeLimitedAllies,notifyLimitedJoin} from './limited-allies.js?v=335';
+import {hidesShieldArt} from './limited-lines.js?v=341';
+import {LIMITED_CLASSES,LIMITED_ADVANCED_CLASSES,initializeLimitedAllies,prepareLimitedEncounter,createLimitedAlly,joinLimitedEncounter,updateLimitedAllies,updateNinja,updateShuriken,drawLimitedEncounter,serializeLimitedAllies,notifyLimitedJoin} from './limited-allies.js?v=341';
 import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=182';
 import {TIERS,MAX_EQUIPMENT_TIER,MAX_POWER_RANK,POWER_RANK_STEP,GENERATION_COUNT,TRADE_MAX_TIER,powerRank,tierDescription} from './equipment-tiers.js?v=231';
 import {fieldAdaptiveScaling} from './field-scaling.js?v=299';
@@ -72,11 +72,11 @@ import { sound } from '../../common/js/audio.js?v=151';
 import { loadCss } from '../../common/js/load-css.js';
 import { storage } from '../../common/js/storage.js';
 import { createStallRecorder, mountStallLog } from './stall-recorder.js?v=182';
-import { clearRestPoseArt, drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow, isRuinKeeper, ruinKeeperScale } from './visuals.js?v=340';
+import { clearRestPoseArt, drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow, isRuinKeeper, ruinKeeperScale } from './visuals.js?v=341';
 import { refreshCampQuiet, assignCampSeats, tryCampLeisure, YARD_TABLES, drawLeisureTable } from './camp-leisure.js?v=277';
 import { CAMP_PEACE_RADIUS, peaceContainment, pushOutsidePeace, relocatePeaceMonster } from './peace-zones.js?v=277';
 import { FARM_X, FARM_Y, farmPosts, farmOverlaps, reinforcementCount, reserveRosterLine, reserveRosterTitle } from './reserve-farm.js?v=277';
-import { drawMeleeRangeCue, meleeDrawReach, attackAnimationRate } from './weapon-motion.js?v=340';
+import { drawMeleeRangeCue, meleeDrawReach, attackAnimationRate } from './weapon-motion.js?v=341';
 import { guardRegrouping, guardTarget } from './guard-leash.js?v=266';
 import {beginGuardFormation,guardFormationTarget,guardFormationSpeedMult} from './guard-formation.js?v=295';
 import { KNOCK_RULES, knockbackDistance, knockFlight, slamDamage, knockTransferDistance } from './knockback-rules.js?v=212';
@@ -85,7 +85,7 @@ import {emptyRescueBonuses,normalizeRescueBonuses,rescueBonusSummary} from './re
 import {drawFieldCivilian} from './civilian-visuals.js?v=295';
 import { saveSlots,profileSaveCompletions,requestPersistentSaves } from './save-slots.js?v=311';
 import { soldierDialogue } from './soldier-dialogue.js?v=334';
-import { generateSoldierName, migrateSoldierName, rollGenderByKey, isGenderId, ensureSoldierGender, genderLabel } from './soldier-names.js?v=334';
+import { generateSoldierName, migrateSoldierName, rollGenderByKey, isGenderId, ensureSoldierGender, genderLabel } from './soldier-names.js?v=341';
 import { openCommanderEditor } from './commander-editor.js?v=322';
 import { applyCommanderIdentity, normalizeCommanderIdentity, commanderFullName, GENDERS as COMMANDER_GENDERS } from './commander-identity.js?v=295';
 import {MAGIC_CLASSES,MAGIC_AFFINITIES,classHpScale,magicMethods,isMage,isMagicUser,ensureMana,initializeMagic,updateMagic,distributeMagicStones,castMedicBuff,castCasterStrength,updateMageAI,drawMagicBursts,spendMana,weaponMagicDamage,isPlayerCaster,castPlayerSpell,PLAYER_MAGIC_RULES} from './magic-rules.js?v=334';
@@ -3836,6 +3836,15 @@ export const IronSquadGame = {
     this._fieldNotesPrimed=false;
   },
 
+  /** v7.2.7 今いる全員の名前（隊長・本隊／直属／遠征中を含む squad・予備・酒場で待つ仲間・酒場の客・勧誘候補・まだ助けていない捕虜や志願者・勇者一行）。except の本人は除く。 */
+  soldierNamePool(except=null) {
+    const pool=[this.player,...(this.squad||[]),...(this.reserves||[]),...(this.taverns?.waiting||[]),
+      ...(this.taverns?.roster?.people||[]).filter(p=>!p.joined).map(p=>p.unit),...(this.scoutCandidates||[]).map(c=>c?.soldier),
+      ...(this.limitedAllies?.encounters||[]).filter(e=>!e.joined).map(e=>e.unit),...(this.heroJourney?.party?.members||[])];
+    return pool.filter(u=>u&&u!==except&&(!except||u.id!==except.id)&&!u.dead&&typeof u.name==='string'&&u.name);
+  },
+  commanderFullName() {const p=this.player||{};return p.givenName&&p.familyName?`${p.givenName}・${p.familyName}`:(p.name||'');},
+  livingSoldierNames(except=null) {const set=new Set(this.soldierNamePool(except).map(u=>u.name));const c=this.commanderFullName();if(c)set.add(c);return set;},
   createNewSoldier(index = null, options = {}) {
     index ??= (this.recruitSequence || 0) + 1;
     this.recruitSequence = Math.max(this.recruitSequence || 0, index);
@@ -3846,10 +3855,7 @@ export const IronSquadGame = {
 
     const talentKey=options.talent||this.rollScoutTalent();
     const attributeProfile=options.attributeProfile?structuredClone(options.attributeProfile):rollAttributeProfile(classKey,talentKey);
-    const existingNames = new Set([
-      ...(this.squad || []).map(s => s.name),
-      ...(this.reserves || []).map(s => s.name)
-    ]);
+    const existingNames = this.livingSoldierNames(); // v7.2.7 本隊・予備・酒場で待つ仲間・候補・捕虜・勇者一行まで
     // 性別は作成時に1回だけ決め、名前（同じ性別の名簿）と見た目（soldier-appearance）が同じ値を読む。
     const gender = isGenderId(options.gender) ? options.gender : rollGenderByKey(classKey, `${index}:${classKey}:${existingNames.size}:${Date.now()}`);
     const soldierName = options.name || generateSoldierName({
@@ -9195,7 +9201,7 @@ export const IronSquadGame = {
     s.isNamed = true;
     s.title = TITLES[Math.floor(Math.random() * TITLES.length)];
     if (!s.name || typeof s.name !== 'string' || !s.name.trim()) {
-      s.name = generateSoldierName(s);
+      s.name = generateSoldierName({...s,usedNames:this.livingSoldierNames(s)});
     }
     s.rankTitle = '叙勲勇士';
     this.recalcSoldierStats(s);
@@ -12733,7 +12739,8 @@ export const IronSquadGame = {
     if(proj.type==='FOXFIRE'){ctx.save();ctx.translate(proj.x,proj.y);ctx.fillStyle='rgba(240,140,60,.35)';ctx.beginPath();ctx.arc(0,0,8,0,Math.PI*2);ctx.fill();ctx.fillStyle='#ffd08a';ctx.beginPath();ctx.arc(0,0,3.5+Math.sin(now*.02)*.8,0,Math.PI*2);ctx.fill();ctx.restore();return;} // v7.2.2: 狐火
     if(proj.type==='ENEMY_BOLT'||proj.type==='NINJA_SHURIKEN'){
       ctx.save();ctx.translate(proj.x,proj.y);ctx.strokeStyle=proj.color||'#c6c9c7';ctx.fillStyle=proj.color||'#c6c9c7';ctx.lineWidth=2;
-      if(proj.type==='NINJA_SHURIKEN'){ctx.rotate(now*.02);ctx.beginPath();for(let j=0;j<8;j++){const a=j*Math.PI/4,r=j%2?2:7;j?ctx.lineTo(Math.cos(a)*r,Math.sin(a)*r):ctx.moveTo(Math.cos(a)*r,Math.sin(a)*r);}ctx.closePath();ctx.fill();}
+      if(proj.type==='NINJA_SHURIKEN'&&proj.tool==='kunai'){const t=proj.target;ctx.rotate(t?Math.atan2((t.y||0)-proj.y,(t.x||0)-proj.x):0);ctx.fillStyle='#9aa3a9';ctx.beginPath();ctx.moveTo(8,0);ctx.lineTo(1,-2.2);ctx.lineTo(-1,0);ctx.lineTo(1,2.2);ctx.closePath();ctx.fill();ctx.strokeStyle='#3a2f2a';ctx.lineWidth=1.4;ctx.beginPath();ctx.moveTo(-1,0);ctx.lineTo(-5,0);ctx.stroke();ctx.strokeStyle='#6a7278';ctx.lineWidth=.9;ctx.beginPath();ctx.arc(-6.4,0,1.4,0,Math.PI*2);ctx.stroke();} // v7.2.7 クナイ持ちはクナイを投げる（威力・判定は同じ）
+      else if(proj.type==='NINJA_SHURIKEN'){ctx.rotate(now*.02);ctx.beginPath();for(let j=0;j<8;j++){const a=j*Math.PI/4,r=j%2?2:7;j?ctx.lineTo(Math.cos(a)*r,Math.sin(a)*r):ctx.moveTo(Math.cos(a)*r,Math.sin(a)*r);}ctx.closePath();ctx.fill();}
       else if(proj.damageKind==='physical'){ctx.rotate(Math.atan2(proj.vy,proj.vx));ctx.beginPath();ctx.moveTo(-11,0);ctx.lineTo(5,0);ctx.lineTo(0,-3);ctx.moveTo(5,0);ctx.lineTo(0,3);ctx.stroke();}
       else{ctx.beginPath();ctx.arc(0,0,5,0,Math.PI*2);ctx.stroke();ctx.fillRect(-1,-1,2,2);}
       ctx.restore();return;
