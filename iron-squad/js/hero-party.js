@@ -24,7 +24,7 @@ import {RANGED_ENEMIES} from './enemy-ranged.js?v=295';
 import {startHeroJournal,archiveHeroJournal,appendHeroDiary,recordHeroEquipmentGrant,recordHeroEvent,announceHero} from './hero-journal.js?v=306';
 import {showHeroRevelationScene} from './hero-revelation-scene.js?v=302';
 import {grantHeroEquipment} from './hero-equipment.js?v=295';
-import {spectateAvailability,startSpectate,endSpectate,queueSpectate,cancelSpectateQueue,spectateStatusLine} from './hero-spectate.js?v=322';
+import {spectateAvailability,startSpectate,endSpectate,queueSpectate,cancelSpectateQueue,spectateStatusLine} from './hero-spectate.js?v=347';
 const C=WORLD_SIZE/2,castle=()=>DUNGEON_DEFS.find(d=>d.id==='dungeon_demon_castle');
 const ready=u=>u&&!u.dead&&!u.isDown&&u.hp>0;
 export function initializeHeroJourney(game,saved=null) {
@@ -209,6 +209,8 @@ export function updateHeroParty(game,dt,classes) {
     if(p.spawnClock>=8){p.spawnClock=0;if(Math.hypot(p.x-C,p.y-C)>900&&!ctx.monsters.some(m=>ready(m)&&Math.hypot(m.x-p.x,m.y-p.y)<700))ctx.spawnMonster(p.x+200,p.y+180);}
   }
   const danger=ctx.monsters.some(m=>ready(m)&&Math.hypot(m.x-p.x,m.y-p.y)<420&&!ctx.attackBlocked(p,m)),wounded=living.some(u=>u.isDown);
+  // v7.2.13 魔王討伐後は城を出て本陣へ凱旋する（以前はその場で立ち尽くしていた）。戦闘中・負傷者がいる間は進まない。
+  if(!danger&&!wounded&&j.demonKingDefeat&&p.homeState!=='home')stepHeroHomecoming(game,p,fighters,dt);
   if(!danger&&!wounded&&!j.demonKingDefeat){
     if(p.space==='field'&&!heroRouteCurrent(game,p))advanceHeroRoute(game,p);
     const target=p.route?.[p.routeIndex||0];
@@ -242,6 +244,33 @@ export function updateHeroParty(game,dt,classes) {
   });
   if(!shared)stepHiddenEnemies(ctx,p,dt);
 }
+/** v7.2.13 凱旋の帰り道。出発時に通った本陣の東の地点（HERO_HOME_GATE）までA*で歩き、そこから本陣の中央へ入る。 */
+export const HERO_HOME_GATE={x:C+512,y:C},HERO_HOME_RADIUS=60;
+function stepHeroHomecoming(game,p,fighters,dt) {
+  const speed=Math.min(...fighters.map(u=>u.speed||100));
+  const walk=target=>{const dx=target.x-p.x,dy=target.y-p.y,d=Math.hypot(dx,dy),step=Math.min(d,speed*dt*.85);if(d>0){p.x+=dx/d*step;p.y+=dy/d*step;}return d<=speed*dt+8;};
+  const d=castle();
+  if(p.space===d.id){p.homeState='leaving';p.route=[];p.routeIndex=0;if(walk({x:240,y:d.height/2}))leaveHeroCastle(game,p,d);return;}
+  if(p.homeState==='entering'){if(walk({x:C,y:C})||Math.hypot(p.x-C,p.y-C)<=HERO_HOME_RADIUS)arriveHeroHome(game,p);return;}
+  if(p.homeState!=='marching'){p.homeState='marching';p.destination={...HERO_HOME_GATE};p.route=[];p.routeIndex=0;delete p._search;}
+  if(!heroRouteCurrent(game,p)&&!advanceHeroRoute(game,p)){
+    // 探索が尽きたら（壁で囲まれた等）まっすぐ向かう。止まり続けないため。
+    if(p._search&&(p._search.count>=30000||!p._search.heap.length)){p.route=[{...p.destination}];p.routeIndex=0;delete p._search;}
+    return;
+  }
+  const target=p.route[p.routeIndex||0];if(!target){p.homeState='entering';return;}
+  if(walk(target)){p.routeIndex=(p.routeIndex||0)+1;if(p.routeIndex>=p.route.length){p.route=[];p.routeIndex=0;p.homeState='entering';}}
+}
+function leaveHeroCastle(game,p,d=castle()) {
+  const out={x:d.entrance.x-(d.entrance.radius||64)-60,y:d.entrance.y-(d.entrance.radius||64)-60};
+  p.space='field';p.x=out.x;p.y=out.y;p.homeState='marching';p.destination={...HERO_HOME_GATE};p.route=[];p.routeIndex=0;delete p._search;
+  p.members.forEach((u,i)=>{u.x=out.x+Math.cos(i*1.15)*34;u.y=out.y+Math.sin(i*1.15)*34;delete u._cachedEnemy;u.vx=u.vy=0;});
+  announceHero(game,`勇者【${p.name}】のパーティが魔王城を後にし、本陣への帰途についた。`);
+}
+function arriveHeroHome(game,p) {
+  p.homeState='home';p.homePhase=game.phase;p.route=[];p.routeIndex=0;delete p._search;
+  announceHero(game,`勇者【${p.name}】のパーティが本陣へ凱旋した！`);
+}
 export function renderHeroJourney(game,classes,talents) {
   // Its own top-level window「勇者の記録」, shown only once a hero has been born.
   const host=game.container?.querySelector('#view-strat-hero');if(!host)return;
@@ -251,7 +280,7 @@ export function renderHeroJourney(game,classes,talents) {
   let panel=host.querySelector('#hero-journey');if(!panel){panel=document.createElement('section');panel.id='hero-journey';panel.className='hero-record';host.append(panel);}
   panel.replaceChildren();const summary=document.createElement('h4');summary.textContent='勇者パーティ';panel.append(summary);
   const info=document.createElement('p'),idle=heroIdlePhases(game,p),active=heroPartyActive(p),next=nextHeroRevelationPhase(game.phase);
-  const state=!p?'':p.status==='withdrawn'?'撤退（魔王城から引き上げた）':p.status==='fallen'?'全滅':p.status==='down'?'全員ダウン':p.status==='victorious'?'魔王討伐後':p.space==='field'?`魔王城へ進軍中 · 本陣から${formatDistance(Math.hypot(p.x-C,p.y-C))}`:idle>=HERO_RULES.warnPhases?`魔王城で停滞中（${idle}期）`:'魔王城で交戦中';
+  const state=!p?'':p.status==='withdrawn'?'撤退（魔王城から引き上げた）':p.status==='fallen'?'全滅':p.status==='down'?'全員ダウン':p.status==='victorious'?(p.homeState==='home'?'魔王討伐後 · 本陣に凱旋':p.space==='field'?`魔王討伐後 · 本陣へ帰還中（あと${formatDistance(Math.hypot(p.x-C,p.y-C))}）`:'魔王討伐後 · 魔王城を出るところ'):p.space==='field'?`魔王城へ進軍中 · 本陣から${formatDistance(Math.hypot(p.x-C,p.y-C))}`:idle>=HERO_RULES.warnPhases?`魔王城で停滞中（${idle}期）`:'魔王城で交戦中';
   info.textContent=p?`第${p.phase}期に天啓 · ${p.name} · ${state}`:`第${next}期に、救いの御子が天啓を受け勇者となります。`;
   const body=document.createElement('div');body.className='fold-content';panel.append(body);
   body.append(info);

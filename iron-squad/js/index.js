@@ -94,7 +94,7 @@ import {strongEnemyReward,killXpFloor,killExpWithFloor} from './combat-rewards.j
 import {supplyMethods, initializeSupplies, updateSupplies, takeRangedShot, ammoCombatProfile, isRangedUnit, distributeAmmo, preventLethalHit, normalizeFieldSave, SQUAD_POTION_COST, REVIVAL_POTION_COST, REVIVAL_POTION_MAX, SQUAD_POTION_MAX, ensureAmmo, ammoCapacity, recalcAmmoCapacity, RANGED_DAMAGE_MULT, supplyLocation} from './supply-rules.js?v=332';
 import { bindPadTap } from './pad-tap.js?v=276';
 import { POCKET_POTION, pocketPotionLabel, tickPocketPotion } from './pocket-potion.js?v=333';
-import { updateSpectate, updateRaidGrace, spectateCameraTarget, clearSpectate, updateSpectateQueue, spectateSteps, spectateSpeed, fieldSpectating, expeditionSpectating, expeditionAvailability, expeditionStatusLine, startExpeditionSpectate, queueExpeditionSpectate, cancelSpectateQueue, endSpectate } from './hero-spectate.js?v=322';
+import { updateSpectate, updateRaidGrace, spectateCameraTarget, clearSpectate, updateSpectateQueue, spectateSteps, spectateSpeed, fieldSpectating, expeditionSpectating, expeditionAvailability, expeditionStatusLine, startExpeditionSpectate, queueExpeditionSpectate, cancelSpectateQueue, endSpectate } from './hero-spectate.js?v=347';
 import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog, settingsHost, arrangeSettings } from './interface.js?v=333';
 import { renderTroopRankings, getSoldierRankerBadges, calcSoldierRankerBonus, setRankingFamilyLabels, RANKING_FAMILIES } from './troop-rankings.js?v=333';
 import { ensureSoldierAppearance, drawSoldierPortrait } from './soldier-appearance.js?v=342';
@@ -153,7 +153,7 @@ import { clusterRescueMarkers } from './rescue-markers.js?v=182';
 import {visibleHeroMembers,heroMembers} from './hero-rules.js?v=302';
 import {updateHeroJournal} from './hero-journal.js?v=306';
 import {applyHeroEquipmentUpgrade} from './hero-equipment.js?v=295';
-import {initializeHeroJourney,rollHeroRevelation,serializeHeroJourney,updateHeroParty,updateHeroFollowing,awardHeroBattle,recordDemonKingDefeat,ensureHeroCastle,prepareCastleVisit,syncHeroCastle,renderHeroJourney,drawHeroMarks} from './hero-party.js?v=322';
+import {initializeHeroJourney,rollHeroRevelation,serializeHeroJourney,updateHeroParty,updateHeroFollowing,awardHeroBattle,recordDemonKingDefeat,ensureHeroCastle,prepareCastleVisit,syncHeroCastle,renderHeroJourney,drawHeroMarks} from './hero-party.js?v=347';
 import {DEMON_KING_RULES,demonKingStatsFor,shapeDemonKing,percentBaseDamage} from './demon-king-rules.js?v=304';
 import {updateSquadHpHud} from './squad-hp-hud.js?v=322';
 import {addBattleReport,normalizeBattleReport,renderBattleReport} from './battle-report.js?v=333';

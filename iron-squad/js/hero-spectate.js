@@ -208,7 +208,9 @@ function endReason(game) {
   // v7.0.35: a wiped / withdrawn party or a slain demon king no longer ends the spectate (see spectateOutcome): the view stays until the user ends it.
   if(!p)return '勇者パーティが見当たらなくなったので、観戦を終えて戻った。';
   if(game.spectating?.partyId&&p.id!==game.spectating.partyId)return '新しい勇者が現れたので、観戦を終えて戻った。';
-  if(game.spectating?.field){if(p.space!=='field'&&p.space!==CASTLE_ID)return '勇者パーティの行方が分からなくなったので、観戦を終えて戻った。';}
+  // v7.2.13 魔王討伐後の凱旋で城を出ても観戦は打ち切らない（視点はその場に留まり、観戦を終了で戻る）。
+  if(j?.demonKingDefeat){}
+  else if(game.spectating?.field){if(p.space!=='field'&&p.space!==CASTLE_ID)return '勇者パーティの行方が分からなくなったので、観戦を終えて戻った。';}
   else if(p.space!==CASTLE_ID)return '勇者パーティが魔王城を離れたので、観戦を終えて戻った。';
   if(raidActive(game))return '襲撃が始まったので、観戦を終えて戻った。';
   if(!me||me.dead||me.isDown||me.hp<=0||game._saveFallen)return '隊長に異変があったので、観戦を終えて戻った。';

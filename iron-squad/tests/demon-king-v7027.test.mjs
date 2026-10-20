@@ -67,7 +67,11 @@ hp.initializeHeroJourney(game);
   game.squad=[];game.trainFromHit=realTrain;
 }
 // ---------- hero party vs the king ----------
-function heroFight(level,seconds){
+// v7.2.13 才能・会心の乱数で全滅時間がばらつき（約16回に2〜3回150秒超え）落ちていたため、この戦闘だけ乱数を固定する。
+const SEED=Number(process.env.DK_SEED||7);
+function seeded(fn){let a=SEED>>>0;const real=Math.random;Math.random=()=>{a=(a+0x6D2B79F5)>>>0;let t=a;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return((t^(t>>>14))>>>0)/4294967296;};try{return fn();}finally{Math.random=real;}}
+function heroFight(level,seconds){return seeded(()=>heroFightRaw(level,seconds));}
+function heroFightRaw(level,seconds){
   hp.initializeHeroJourney(game);game.phase=10;game.heroJourney.castleScene=null;assert.equal(hp.rollHeroRevelation(game),true);const p=game.heroJourney.party;
   for(const u of p.members){u.level=level;game.recalcSoldierStats(u);u.hp=u.maxHp;}
   p.x=d.entrance.x;p.y=d.entrance.y;p.destination={...d.entrance};p.route=[{...d.entrance}];p.routeIndex=0;p.members.forEach(u=>{u.x=p.x;u.y=p.y;});
