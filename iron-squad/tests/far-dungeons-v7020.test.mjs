@@ -12,11 +12,11 @@ Object.assign(game,{width:375,height:640,zoom:1,joystick:{active:false,dirX:0,di
 for(const name of ['startGameLoop','updateStatsUI','updateQuestUI','renderStrategyUI','showToast','spawnSparks','spawnDamageText','refreshSupplyUI','refreshMagicUI','refreshInvasionUI'])game[name]=noop;
 game.activeSlotId=saveSlots.create('FAR DUNGEON TEST ONLY').id;game.startFreshGame(false);
 const C=WORLD_SIZE/2,hash=o=>createHash('sha1').update(JSON.stringify(o)).digest('hex').slice(0,16);
-const IDS=['dungeon_sunken_tomb','dungeon_sand_king_tomb','dungeon_troll_pit','dungeon_battlefield_mausoleum','dungeon_titan_shrine','dungeon_frozen_cave','dungeon_bandit_fortress','dungeon_poison_marsh_temple','dungeon_salt_dragon_bones'];
+const IDS=['dungeon_sunken_tomb','dungeon_sand_king_tomb','dungeon_troll_pit','dungeon_battlefield_mausoleum','dungeon_titan_shrine','dungeon_frozen_cave','dungeon_bandit_fortress','dungeon_poison_marsh_temple','dungeon_salt_dragon_bones','dungeon_twilight_sepulcher']; // v7.2.16 南西の黄昏の霊廟を追加
 const far=IDS.map(id=>{const d=game.dungeons.find(d=>d.id===id);assert.ok(d,id+' exists in a fresh game');return d;});
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 // 1) Definitions: nine new dungeons with real bosses and valid themes.
-assert.equal(FAR_DUNGEON_DEFS.length,9);assert.equal(DUNGEON_DEFS.length,28,'19 old places + 9 far dungeons');
+assert.equal(FAR_DUNGEON_DEFS.length,10);assert.equal(DUNGEON_DEFS.length,29,'19 old places + 9 far dungeons + the south-west sepulcher (v7.2.16)');
 assert.equal(new Set(DUNGEON_DEFS.map(d=>d.id)).size,DUNGEON_DEFS.length,'ids are unique');
 const THEMES=['mines','catacombs','dragon','demon','ruin','swamp','sand','ice','giant'];
 for(const d of far){
@@ -53,7 +53,7 @@ assert.equal(hash(game.wildernessSites.map(s=>[s.id,s.x,s.y])),'2ffc9dae18cea9b4
 assert.equal(hash(game.outposts.map(o=>[o.type,o.x,o.y])),'3bcc628f2b88cc26','outposts keep their coordinates');
 assert.equal(hash(olds.filter(d=>d.id!=='wolf_hamlet').map(d=>[d.id,d.entrance])),'0d1c3172ae231055','old entrances other than the wolf hamlet are unchanged');
 // 3) Bosses: real HP/ATK near the design table (distance-scaled x0.75, never below the authored value).
-const BOSS={dungeon_sunken_tomb:[339e3,1.6e3],dungeon_sand_king_tomb:[600e3,2.6e3],dungeon_troll_pit:[8.62e6,21.8e3],dungeon_battlefield_mausoleum:[13.2e6,29.3e3],dungeon_titan_shrine:[26.6e6,54.2e3],dungeon_frozen_cave:[825e3,3.5e3],dungeon_bandit_fortress:[6.02e6,15.7e3],dungeon_poison_marsh_temple:[6.82e6,17.1e3],dungeon_salt_dragon_bones:[23.6e6,51.2e3]};
+const BOSS={dungeon_sunken_tomb:[339e3,1.6e3],dungeon_sand_king_tomb:[600e3,2.6e3],dungeon_troll_pit:[8.62e6,21.8e3],dungeon_battlefield_mausoleum:[13.2e6,29.3e3],dungeon_titan_shrine:[26.6e6,54.2e3],dungeon_frozen_cave:[825e3,3.5e3],dungeon_bandit_fortress:[6.02e6,15.7e3],dungeon_poison_marsh_temple:[6.82e6,17.1e3],dungeon_salt_dragon_bones:[23.6e6,51.2e3],dungeon_twilight_sepulcher:[24.4e6,51.5e3]};
 for(const d of far){const b=game.createDungeonBoss(d.boss,100,100,d),[hp,atk]=BOSS[d.id];assert.ok(Math.abs(b.maxHp/hp-1)<.03&&Math.abs(b.atk/atk-1)<.04,`${d.id} boss ${b.maxHp}/${b.atk} is near ${hp}/${atk}`);assert.equal(b.bossPlaceId,d.id);assert.equal(b.isDungeonBoss,true);}
 // 4) Rewards follow the band: wild < 22,000 pays 1500/400 x scale, frontier pays 600/250 x scale; they grow with distance inside a band.
 for(const d of far){const c=campaignScaling(d.distance,1),wild=d.distance<22000;assert.equal(d.reward.gold,Math.round((wild?1500:600)*c.gold/10)*10);assert.equal(d.reward.exp,Math.round((wild?400:250)*c.exp/10)*10);assert.deepEqual(farVaultReward(d.distance,d.reward.itemCount),d.reward);}
@@ -86,7 +86,7 @@ Object.assign(old.dungeons.find(d=>d.id==='place_salt_village'),{discovered:true
 game.resumeSavedGame(old);
 for(let pass=0;pass<2;pass++){
   for(const id of IDS){const d=game.dungeons.find(d=>d.id===id);assert.ok(d&&d.boss&&d.entrance&&!d.cleared,id+' is added to an old save');}
-  assert.equal(game.dungeons.length,28);
+  assert.equal(game.dungeons.length,29);
   const w=game.dungeons.find(d=>d.id==='wolf_hamlet');assert.deepEqual([Math.round(w.entrance.x-C),Math.round(w.entrance.y-C)],[-4100,-540],'an old save moves the wolf entrance out of the pond');assert.equal(fieldTerrainAt(w.entrance.x,w.entrance.y),'open');assert.ok(Math.abs(w.distance-Math.hypot(4100,540))<1e-6);
   assert.equal(game.dungeons.find(d=>d.id==='place_salt_village').reward.gold,15180,'an old save gets the distance-linked ruin reward');assert.equal(game.dungeons.find(d=>d.id==='place_rim_watch').reward.gold,126760);
   const mines=game.dungeons.find(d=>d.id==='dungeon_goblin_mines');assert.deepEqual([mines.cleared,mines.discovered,mines.clearedWave],[true,true,3],'saved progress still wins');assert.equal(game.dungeons.find(d=>d.id==='place_salt_village').discovered,true);

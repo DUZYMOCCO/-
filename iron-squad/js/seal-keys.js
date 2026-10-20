@@ -1,9 +1,10 @@
 // v7.2.14 魔王城の封印。北西・北・北東の祠に守護者が立ち、守護者が倒れるとその方角の封印が解ける。
 // 解けた封印は世界で共有（隊長・勇者のどちらが解いても同じ）。三つすべて解けるまで隊長は魔王城へ入れない。
 import {WORLD_SIZE,fieldTerrainAt} from './world.js?v=289';
-import {DUNGEON_DEFS} from './dungeon.js?v=306';
+import {DUNGEON_DEFS} from './dungeon.js?v=350';
 import {distanceScaling} from './equipment-rules.js?v=306';
 import {CAMPAIGN_SCALE_VERSION} from './campaign-scaling.js?v=241';
+import {DIRECTION_RELICS,relicKeyFor} from './drop-exclusives.js?v=350';
 const C=WORLD_SIZE/2,TAU=Math.PI*2,R=38000,D=Math.round(R/Math.SQRT2);
 export const SEAL_RULES=Object.freeze({discovery:900,respawnPhases:2,heroLeaveDistance:1500,radius:70});
 export const DEMON_CASTLE_ID='dungeon_demon_castle';
@@ -52,7 +53,10 @@ export function initializeSealKeys(game,saved=null){
       const g=raw.guardians?.[def.id];if(g&&typeof g==='object')state.guardians[def.id]={respawnPhase:Math.max(0,Math.floor(Number(g.respawnPhase)||0)),heroKilled:!!g.heroKilled};
     }
     state.discovered=Object.fromEntries(SEAL_DEFS.filter(d=>raw.discovered?.[d.id]).map(d=>[d.id,true]));
+    // v7.2.16 方角の遺宝を何度手にしたか（初回は必ず遺す）
+    state.relics=Object.fromEntries(Object.values(DIRECTION_RELICS).map(r=>[r.source,Math.max(0,Math.floor(Number(raw.relics?.[r.source])||0))]).filter(([,n])=>n>0));
   }else state.discovered={};
+  state.relics||={};
   game.sealKeys=state;
   // 旧セーブ：すでに魔王城へ辿り着いていた世界では、三つの封印は解けている。
   if(legacy&&saved&&castleAlreadyReached(game))for(const def of SEAL_DEFS)state.broken[def.id]={by:'old-save',phase:Math.max(0,Math.floor(game.phase||0))};
@@ -101,6 +105,16 @@ export function recordSealGuardianKill(game,monster,attacker=null){
   game.recordBattleLog?.(`🔓 ${def.name}の守護者『${monster.name}』が倒れ、${def.dir}の封印が解けた（残り${left}）`,'growth');
   return true;
 }
+/** v7.2.16 方角の遺宝。封印の守護者・南西の霊廟の主を隊長側が倒すと、初回は必ず、2回目以降は15%で遺す（勇者が倒したときは遺さない）。 */
+export const RELIC_REPEAT_CHANCE=.15;
+export function directionRelicRoll(game,monster,attacker=null,random=Math.random){
+  if(!monster||monster._relicRolled||!game?.sealKeys||attacker?.heroPartyId)return null;
+  const source=monster.sealSiteId||(monster.isDungeonBoss?monster.bossPlaceId:null),key=source&&relicKeyFor(source);if(!key)return null;
+  monster._relicRolled=true;
+  const relics=game.sealKeys.relics||={},first=!(relics[source]>0);
+  if(!first&&random()>=RELIC_REPEAT_CHANCE)return null;
+  relics[source]=(relics[source]||0)+1;return key;
+}
 /** Hero-slain guardians come back once no living hero stands near the shrine. */
 /** v7.2.15 勇者の巡礼先。解けていない祠を、今いる所から近い順に選ぶ（決めた祠は解けるまで変えない）。全部解けていれば null＝魔王城へ。 */
 export const HERO_SHRINE_STAND=150;
@@ -126,7 +140,7 @@ export function updateSealShrines(game,dt=0){
   if(game.currentDungeon||game.restTimer>0||!game.player||game.player.isDown||!(game.player.hp>0))return;
   for(const shrine of game.sealShrines){
     if(dist(shrine,game.player)>SEAL_RULES.discovery)continue;
-    if(!game.sealKeys.discovered[shrine.id]){game.sealKeys.discovered[shrine.id]=true;game.showToast?.(`発見：${shrine.name}`);}
+    if(!game.sealKeys.discovered[shrine.id]){game.sealKeys.discovered[shrine.id]=true;const relic=DIRECTION_RELICS[relicKeyFor(shrine.id)];game.showToast?.(relic?`発見：${shrine.name}（守護者は「${relic.name}」を守っているという）`:`発見：${shrine.name}`);}
     ensureSealGuardian(game,shrine,game.monsters);
   }
 }

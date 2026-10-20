@@ -1,6 +1,6 @@
 import {drawStoneFortification} from './fortification-visuals.js?v=242';
 import {WORLD_SIZE,fieldBlocks} from './world.js?v=289';
-import {dungeonBlocks} from './dungeon.js?v=306';
+import {dungeonBlocks} from './dungeon.js?v=350';
 import {inCurrentInstance} from './instance-rules.js?v=322';
 import {makeEscort,recalcEscortStats,updateEscortPatrol,npcSave,applyNpcSave} from './merchant-rules.js?v=343';
 import {rebuildMerchantCasualties,carrierOf,sanitizeCarriers} from './casualty-rules.js?v=346';

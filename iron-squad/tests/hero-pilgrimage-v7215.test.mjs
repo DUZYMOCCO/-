@@ -5,9 +5,9 @@ const memory=new Map();globalThis.localStorage={getItem:k=>memory.get(k)??null,s
 globalThis.window={};globalThis.document={getElementById:()=>null};
 const {IronSquadGame,SOLDIER_CLASSES}=await import('../js/index.js');
 const {saveSlots}=await import('../js/save-slots.js');
-const S=await import('../js/seal-keys.js?v=349');
-const H=await import('../js/hero-party.js?v=349');
-const {spectateSummary}=await import('../js/hero-spectate.js?v=349');
+const S=await import('../js/seal-keys.js?v=350');
+const H=await import('../js/hero-party.js?v=350');
+const {spectateSummary}=await import('../js/hero-spectate.js?v=350');
 const {DUNGEON_DEFS}=await import('../js/dungeon.js');
 const {WORLD_SIZE}=await import('../js/world.js');
 let checks=0;const ok=(v,m)=>{assert.ok(v,m);checks++;};const eq=(a,b,m)=>{assert.deepEqual(a,b,m);checks++;};

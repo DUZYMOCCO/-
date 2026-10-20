@@ -144,6 +144,14 @@ export const FAR_DUNGEON_DEFS = [
     desc: '南の塩原に竜の骨が白く積もる洞窟。竜の骸に宿った古竜が、最果て手前の門番となる。',
     boss: { type: 'colossal_dragon', name: '骸竜・ソルトレクス', title: '【塩原の竜骸】', icon: '🐉🦴', color: '#e7e5e4', radius: 54, hp: 56000, atk: 600, speed: 48, skillCooldown: 3.8, skillName: 'メガフレアブレス', desc: '白い炎の扇を放つ竜骸の主！' },
     mobTypes: ['orc', 'wyvern'], mobCount: 22, eliteCount: 4
+  }),
+  // v7.2.16 南西：湿地と塩原の境（本陣から約450m）。封印のかぎではなく、主が南西の遺宝「黄昏の遺脚具」を遺す霊廟。
+  farDungeon({
+    id: 'dungeon_twilight_sepulcher', name: '黄昏の霊廟', subtitle: '【湿地と塩原の境に眠る王家の墓】', icon: '🌒', color: '#c2410c', accentColor: '#fdba74',
+    theme: 'catacombs', reqDef: 735, reqLv: 39, ox: -33962, oy: 29523, width: 2800, height: 1700, pal: PAL_CRYPT, itemCount: 6,
+    desc: '南西のはずれ、しめった塩の野に眠る王家の霊廟。夕日の方角を守ってきた霊王が、今も墓の奥で目を開けている。',
+    boss: { type: 'lich_elder', name: '黄昏の霊王・ノクタール', title: '【夕日を統べる墓守】', icon: '💀🌒', color: '#c2410c', radius: 42, hp: 60000, atk: 620, speed: 50, skillCooldown: 3.6, skillName: 'トワイライトカース', desc: '夕日の呪いで侵入者をむしばむ霊廟の王！' },
+    mobTypes: ['orc', 'wyvern'], mobCount: 22, eliteCount: 4
   })
 ];
 
