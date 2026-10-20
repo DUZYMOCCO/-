@@ -1,7 +1,7 @@
 import {drawEquipmentShield} from './equipment-art.js?v=231';
 import { MELEE_SWEET_SPOT, meleeSweetSpotFor, weaponCombatProfile } from './equipment-rules.js?v=306';
 import {isHeavyWeaponStyle} from './growth-rules.js?v=329';
-import {limitedLineOf} from './limited-lines.js?v=338';
+import {limitedLineOf} from './limited-lines.js?v=340';
 
 const TAU = Math.PI * 2;
 const clamp = n => Math.max(0, Math.min(1, n));
@@ -85,13 +85,14 @@ export function meleePose(style, anim=0, aim=0, physique=null, reverse=false) {
 /** 逆手の構えと振り（向いている側＝右向きなら右手）。x・y は拳の位置、blade は刃の向き（右向き基準、π/2 が真下）。
  *  構え: 拳は胸の高さで体の外、刃は真下よりわずかに後ろ。攻撃: 拳を少し寄せてから外へ振り抜き、刃先が前下へ払う。 */
 export const REVERSE_GRIP=Object.freeze({length:.72,
-  t:[0,.18,.43,.66,1],x:[13,10,20,19,13],y:[-19,-21,-16,-17,-19],blade:[1.65,1.5,.9,.75,1.65]});
+  t:[0,.18,.43,.66,1],x:[13,10,20,19,13],y:[-19,-21,-16,-17,-19],blade:[1.65,1.5,.9,.75,1.65],farHand:{x:2.2,y:-13}});
 function reverseGripPose(anim,aim,physique) {
   const active=anim>0,p=1-clamp(anim),side=Math.cos(aim)<-.15?-1:1,R=REVERSE_GRIP;
   const at=list=>active?keys(p,R.t.map((t,i)=>[t,list[i]])):list[0];
   const blade=at(R.blade),bladeAngle=side>0?blade:Math.PI-blade;
   const grip={x:side*at(R.x),y:at(R.y)},shoulder=6*(physique?.bodyWidth||1);
-  return fitGrips({active,progress:p,angle:bladeAngle-Math.PI,aim:side>0?0:Math.PI,grip,offGrip:{x:-side*(shoulder+1.5),y:-10.5},side,twoHanded:false,spacing:6,reverse:true,
+  // v7.2.6 刀を持たない手は胴の奥（後ろ）に回し、胴より先に描く（drawFarArm）。攻撃中も奥に置いたまま。
+  return fitGrips({active,progress:p,angle:bladeAngle-Math.PI,aim:side>0?0:Math.PI,grip,offGrip:{x:-side*(shoulder+R.farHand.x),y:R.farHand.y},side,twoHanded:false,spacing:6,reverse:true,farArm:true,
     length:35*R.length,trail:active&&p>.22&&p<.66?Math.sin((p-.22)/.44*Math.PI):0},physique);
 }
 
@@ -145,14 +146,22 @@ export function drawWeaponArms(c,actor,pose,colors,simple=false) {
     const mount=shieldMountFor(actor,pose,colors.physique);
     drawEquipmentShield(c,mount.x,mount.y,colors.board,colors.shieldProfile,simple);
   }
-  arm(c,{x:-side*shoulder,y:-21},offGrip,colors,simple);
+  if(!pose.farArm)arm(c,{x:-side*shoulder,y:-21},offGrip,colors,simple);
   arm(c,{x:side*shoulder,y:-21},grip,colors,simple);
-  if(!twoHanded){
+  if(!twoHanded&&!pose.farArm){
     gripHand(c,offGrip.x,offGrip.y,pose.angle,colors,simple);
   }
   c.restore();
 }
 
+/** v7.2.6 奥の手（胴の後ろ）。胴を描く前に呼ぶので、肩から先は胴の縁からわずかにのぞくだけになる。 */
+export function drawFarArm(c,pose,colors,simple=false) {
+  if(!pose?.farArm)return false;
+  const shoulder=6*(colors.physique?.bodyWidth||1);
+  c.save();c.lineCap='round';c.lineJoin='round';
+  arm(c,{x:-pose.side*shoulder,y:-21},pose.offGrip,colors,simple);gripHand(c,pose.offGrip.x,pose.offGrip.y,pose.angle,colors,simple);
+  c.restore();return true;
+}
 export function drawMeleeWeapon(c, actor, style, colors, simple=false,withArms=true,heldPose=null) {
   const anim=actor.atkAnim||0;
   const aim=weaponAim(actor);

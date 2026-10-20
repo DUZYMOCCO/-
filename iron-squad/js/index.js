@@ -22,6 +22,7 @@ import {enemyArtHeadHeight} from './enemy-art.js?v=280';
 import {selectBiomeEncounter,biomeEnemyStats,encounterSlots,updateBiomeCharge} from './biome-encounters.js?v=279';
 import {configureRangedEnemy,updateRangedEnemy,updateDefenseWalls,interceptHostileShot,isHostileShot,updateHostileBolt,drawDefenseWalls} from './enemy-ranged.js?v=295';
 import {tickLimitedSkills,limitedAttackMult,limitedCritFollowUp,limitedDamageTakenMult,limitedLastStand,drawLimitedFx,limitedTauntTarget,limitedSmokeMiss,updateFoxfire} from './limited-skills.js?v=336';
+import {hidesShieldArt} from './limited-lines.js?v=340';
 import {LIMITED_CLASSES,LIMITED_ADVANCED_CLASSES,initializeLimitedAllies,prepareLimitedEncounter,createLimitedAlly,joinLimitedEncounter,updateLimitedAllies,updateNinja,updateShuriken,drawLimitedEncounter,serializeLimitedAllies,notifyLimitedJoin} from './limited-allies.js?v=335';
 import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=182';
 import {TIERS,MAX_EQUIPMENT_TIER,MAX_POWER_RANK,POWER_RANK_STEP,GENERATION_COUNT,TRADE_MAX_TIER,powerRank,tierDescription} from './equipment-tiers.js?v=231';
@@ -71,11 +72,11 @@ import { sound } from '../../common/js/audio.js?v=151';
 import { loadCss } from '../../common/js/load-css.js';
 import { storage } from '../../common/js/storage.js';
 import { createStallRecorder, mountStallLog } from './stall-recorder.js?v=182';
-import { clearRestPoseArt, drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow, isRuinKeeper, ruinKeeperScale } from './visuals.js?v=339';
+import { clearRestPoseArt, drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow, isRuinKeeper, ruinKeeperScale } from './visuals.js?v=340';
 import { refreshCampQuiet, assignCampSeats, tryCampLeisure, YARD_TABLES, drawLeisureTable } from './camp-leisure.js?v=277';
 import { CAMP_PEACE_RADIUS, peaceContainment, pushOutsidePeace, relocatePeaceMonster } from './peace-zones.js?v=277';
 import { FARM_X, FARM_Y, farmPosts, farmOverlaps, reinforcementCount, reserveRosterLine, reserveRosterTitle } from './reserve-farm.js?v=277';
-import { drawMeleeRangeCue, meleeDrawReach, attackAnimationRate } from './weapon-motion.js?v=339';
+import { drawMeleeRangeCue, meleeDrawReach, attackAnimationRate } from './weapon-motion.js?v=340';
 import { guardRegrouping, guardTarget } from './guard-leash.js?v=266';
 import {beginGuardFormation,guardFormationTarget,guardFormationSpeedMult} from './guard-formation.js?v=295';
 import { KNOCK_RULES, knockbackDistance, knockFlight, slamDamage, knockTransferDistance } from './knockback-rules.js?v=212';
@@ -7515,7 +7516,7 @@ export const IronSquadGame = {
               if (slotKey === 'weapon') s.weapon = item;
               if(curItem)(this.sharedEquipBox ||= []).push(curItem);
               this.recalcSoldierStats(s);
-              this.spawnDamageText(s.x, s.y - 20, `${equipmentIcon(item)}[${item.name}]着用!`, '#38bdf8');
+              this.spawnDamageText(s.x, s.y - 20, `${item.type==='SHIELD'&&hidesShieldArt(s)?'':equipmentIcon(item)}[${item.name}]着用!`, '#38bdf8');
             } else {
               // 配布してから余剰を外販。拾った本人だけで不要と判断しない。
               (this.sharedEquipBox ||= []).push(item);
@@ -10327,7 +10328,7 @@ export const IronSquadGame = {
       const equipped = soldier.equipped?.[info.key];
       const hasEq = !!equipped;
       button.innerHTML = `
-        <span class="slot-header">${info.icon} ${info.name}</span>
+        <span class="slot-header">${info.key==='shield'&&hidesShieldArt(soldier)?'':`${info.icon} `}${info.name}</span>
         <span class="slot-item-text" style="color:${hasEq ? (equipped.color || '#fef08a') : '#718096'};">
           ${hasEq ? equipmentName(equipped) : '（空き）'}
         </span>
@@ -10370,7 +10371,7 @@ export const IronSquadGame = {
             <h3 class="transfer-popup-title">🎁 装備譲渡：${soldier.name}</h3>
             <button type="button" class="transfer-popup-close-btn" aria-label="閉じる">✕</button>
           </div>
-          <p class="transfer-popup-sub">${info.icon} ${info.name} · 現在：<strong style="color:${current?.color || '#e2e8de'};">${current ? equipmentName(current) : '（空きスロット）'}</strong></p>
+          <p class="transfer-popup-sub">${info.key==='shield'&&hidesShieldArt(soldier)?'':`${info.icon} `}${info.name} · 現在：<strong style="color:${current?.color || '#e2e8de'};">${current ? equipmentName(current) : '（空きスロット）'}</strong></p>
 
           <div class="transfer-slot-tabs">
             ${Object.values(SLOT_INFO).map(s => {

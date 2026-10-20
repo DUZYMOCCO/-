@@ -7,7 +7,7 @@ const noop=()=>{},ctx=new Proxy({measureText:()=>({width:40}),createLinearGradie
 window.HTMLCanvasElement.prototype.getContext=()=>ctx;
 const {IronSquadGame,SOLDIER_CLASSES}=await import('../js/index.js'),{saveSlots}=await import('../js/save-slots.js');
 const {createLimitedAlly}=await import('../js/limited-allies.js?v=338');
-const {drawFieldSoldier,ninjaBackView}=await import('../js/visuals.js?v=339');
+const {drawFieldSoldier,ninjaBackView}=await import('../js/visuals.js?v=340');
 const {drawSoldierHead}=await import('../js/soldier-appearance.js?v=339');
 const game=Object.create(IronSquadGame);
 Object.assign(game,{container:document.getElementById('game'),width:390,height:844,zoom:1,ctx,camera:{x:0,y:0},selectedSaleIds:new Set(),commandActiveUntil:0});
@@ -29,4 +29,20 @@ const field=s=>{const c=recorder();drawFieldSoldier(c,s,1000,SOLDIER_CLASSES[s.s
 for(const face of [0,Math.PI]){const log=field(Object.assign(ninja('NINJA_KASHIRA'),{facingAngle:face}));ok(log.includes('fillRect,-6,-11.5,12,2.2'),'sash at the back');ok(log.includes('lineTo,-1.2,-11'),'back seam');
  if(face)ok(log.includes('scale,-1,1'),'left-facing mirrors');}
 {const human=Object.assign(game.createNewSoldier(null,{classKey:'LIGHT'}),{x:0,y:0,vx:0,vy:0,atkAnim:0,facingAngle:0});const log=field(human);ok(!log.includes('fillRect,-6,-11.5,12,2.2'),'human light unchanged');}
+// v7.2.6 Ninjas carry their shield unseen: no shield art, no shield mark; gear and numbers unchanged.
+{const withShield=ninja('NINJA_CHUNIN');ok(withShield.equipped.shield,'ninja keeps the shield');const def=withShield.def;
+ const bare={...withShield,equipped:{...withShield.equipped,shield:null}};
+ for(const face of [0,Math.PI]){const a=field(Object.assign(withShield,{facingAngle:face})),b=field(Object.assign(bare,{facingAngle:face}));eq(a.join('|'),b.join('|'),'shield not drawn for ninjas');}
+ game.recalcSoldierStats(withShield);eq(withShield.def,def,'defence unchanged');
+ const human=Object.assign(game.createNewSoldier(null,{classKey:'LIGHT'}),{x:0,y:0,vx:0,vy:0,atkAnim:0,facingAngle:0});ok(human.equipped.shield);
+ ok(field(human).join('|')!==field({...human,equipped:{...human.equipped,shield:null}}).join('|'),'others still show their shield');
+ const row=document.createElement('div');game.squad=[withShield,human];game.renderSoldierEquipment(row,withShield);
+ const header=[...row.querySelectorAll('.slot-header')].map(e=>e.textContent.trim());ok(header.includes('盾')&&!header.some(t=>t.includes('🛡')),'no shield mark on the ninja equipment list');
+ const row2=document.createElement('div');game.renderSoldierEquipment(row2,human);ok([...row2.querySelectorAll('.slot-header')].some(e=>e.textContent.includes('🛡')),'others keep it');}
+// v7.2.6 The off hand goes behind the torso: painted before the body, at rest and while striking, both directions.
+for(const [face,anim] of [[0,0],[Math.PI,0],[0,.55],[Math.PI,.55]]){
+ const log=field(Object.assign(ninja('NINJA_JONIN'),{facingAngle:face,attackAngle:face,atkAnim:anim}));
+ const sash=log.indexOf('fillRect,-6,-11.5,12,2.2'),shoulders=log.map((l,i)=>[l,i]).filter(([l])=>/^moveTo,-?[\d.]+,-21$/.test(l));
+ ok(shoulders.length>=2,'two arms');ok(shoulders[0][1]<sash&&shoulders.at(-1)[1]>sash,`far arm before the body, sword arm after (face ${face}, anim ${anim})`);
+}
 console.log(`PASS ninja-back-view-v725 (${checks} checks)`);

@@ -1,6 +1,6 @@
 // v7.2.3: 忍者の系列が剣（刀）を持つときだけ逆手で描く。判定・威力・他の兵種は変えない。
 import assert from 'node:assert/strict';
-const {meleePose,reverseGripFor,drawMeleeWeapon,REVERSE_GRIP,attackAnimationRate}=await import('../js/weapon-motion.js?v=339');
+const {meleePose,reverseGripFor,drawMeleeWeapon,drawFarArm,drawWeaponArms,REVERSE_GRIP,attackAnimationRate}=await import('../js/weapon-motion.js?v=340');
 let checks=0;const ok=(v,m)=>{assert.ok(v,m);checks++;},eq=(a,b,m)=>{assert.equal(a,b,m);checks++;};
 const unit=(soldierClass,extra={})=>({soldierClass,atkAnim:0,facingAngle:0,equipped:{weapon:{weaponStyle:'sword'}},...extra});
 // Who holds the blade reversed.
@@ -42,4 +42,10 @@ for(const [id,reversed] of [['NINJA_CHUNIN',true],['LIGHT',false]]){
 }
 // Visual only: attack timing is the same as any sword.
 eq(attackAnimationRate({weaponStyle:'sword'}),attackAnimationRate({weaponStyle:'sword'}));ok(REVERSE_GRIP.length<1);
+// v7.2.6 The off hand stays tucked behind the torso the whole time; the normal arms do not change.
+for(const aim of [0,Math.PI])for(const anim of [0,.85,.55,.3]){const pose=meleePose('sword',anim,aim,null,true),side=aim?-1:1;
+ eq(pose.farArm,true);ok(pose.offGrip.x*side<-6&&pose.offGrip.x*side>-10,'far hand just past the back edge');ok(pose.offGrip.y>-16&&pose.offGrip.y<-10,'tucked low');}
+{const pose=meleePose('sword',.5,0,null,true),c1=recorder(),c2=recorder();drawWeaponArms(c1,unit('NINJA'),pose,colors);
+ ok(!c1.log.some(([k,x,y])=>k==='moveTo'&&x<0&&y===-21),'front pass skips the far arm');eq(drawFarArm(c2,pose,colors),true);ok(c2.log.some(([k,x,y])=>k==='moveTo'&&x<0&&y===-21),'far pass draws it');
+ eq(drawFarArm(recorder(),meleePose('sword',.5,0),colors),false,'other soldiers have no far-arm pass');eq(meleePose('sword',.5,0).farArm,undefined);}
 console.log(`PASS ninja-reverse-grip-v723 (${checks} checks)`);

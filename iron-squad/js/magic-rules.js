@@ -3,7 +3,7 @@ import {guardFormationTarget,guardFormationSpeedMult} from './guard-formation.js
 import {updateEquipmentBarrier} from './defense-equipment.js?v=298';
 import {sound} from '../../common/js/audio.js?v=151';
 import {playMagicSound} from './weapon-sounds.js?v=294';
-import {limitedLineOf,limitedTierOf} from './limited-lines.js?v=338';
+import {limitedLineOf,limitedTierOf} from './limited-lines.js?v=340';
 import {WORLD_SIZE} from './world.js?v=289';
 import {inCurrentInstance} from './instance-rules.js?v=322';
 import {recordCombat} from './phase-rules.js?v=218';

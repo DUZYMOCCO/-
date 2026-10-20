@@ -1,7 +1,7 @@
 import {powerRank} from './equipment-tiers.js?v=231';
 import {attributeValues,attributeFamily,ATTRIBUTE_BASES} from './unit-attributes.js?v=334';
 import {heroEquipmentAllowed} from './hero-equipment.js?v=295';
-import {limitedClassOf} from './limited-lines.js?v=338';
+import {limitedClassOf} from './limited-lines.js?v=340';
 import {requiredDefenseStrength,legacyDefenseStrength,armorStrengthCurve,DEFENSE_TYPES} from './defense-equipment.js?v=298';
 export const MAGIC_WEAPON_STYLES=['staff','wand'];
 /** v7.0.21: weapon requirement = max(old T1 value, coef x the armour-slot curve at that tier). Bows, crossbows, cannons and staves still need none. */

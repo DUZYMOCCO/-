@@ -41,4 +41,6 @@ export const LIMITED_LINE_NAMES=Object.freeze(Object.fromEntries(ALL.map(l=>[l[0
 export const limitedLineOf=unit=>LIMITED_LINE_CLASSES[typeof unit==='string'?unit:unit?.soldierClass]?.lineId||null;
 export const limitedTierOf=unit=>LIMITED_LINE_CLASSES[typeof unit==='string'?unit:unit?.soldierClass]?.classTier||0;
 export const limitedFamilyOf=unit=>LIMITED_LINE_CLASSES[typeof unit==='string'?unit:unit?.soldierClass]?.baseClassId||null;
+/** v7.2.6 忍者の系列は盾を持っていても盾の絵・盾の印を出さない（装備と数値はそのまま）。隊長・勇者は除く。 */
+export const hidesShieldArt=unit=>!!unit&&!unit.isPlayer&&!unit.isHero&&!unit.isCommander&&limitedLineOf(unit)==='NINJA';
 export const limitedClassOf=unit=>LIMITED_LINE_CLASSES[typeof unit==='string'?unit:unit?.soldierClass]||null;
