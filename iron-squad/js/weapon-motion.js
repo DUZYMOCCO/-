@@ -47,43 +47,53 @@ function fitGrips(pose,physique) {
   }
   return pose;
 }
-/** v7.2.3 忍者の系列が剣を持つときだけ逆手（刃が下・柄頭が上で腕に沿う）。見た目だけで判定・威力は変えない。 */
+/** v7.2.3 忍者の系列が剣を持つときだけ逆手（刃が下・柄頭が上で腕に沿う）。見た目だけで判定・威力は変えない。
+ *  v7.2.5 拳は体の外側、刃は前腕に沿って下へ。体の前（腹）を刃が横切らない。攻撃は逆手のまま腕を外へ振り抜く。 */
 export const reverseGripFor=(actor,style)=>style==='sword'&&!!actor&&!actor.isPlayer&&!actor.isHero&&limitedLineOf(actor)==='NINJA';
 export function meleePose(style, anim=0, aim=0, physique=null, reverse=false) {
   aim=Number.isFinite(aim)?aim:0;
   const active=anim>0, p=1-clamp(anim);
   const spear=style==='spear', hammer=isHeavyWeaponStyle(style),staff=style==='staff';
   reverse=!!reverse&&style==='sword';
-  const rest=hammer?-1.02:spear?-.12:reverse?REVERSE_GRIP.rest:-.68;
+  if(reverse)return reverseGripPose(anim,aim,physique);
+  const rest=hammer?-1.02:spear?-.12:-.68;
   // Facing left mirrors the swing: right-facing swings clockwise, left-facing counter-clockwise.
   const side=Math.cos(aim)<-.15?-1:1;
-  const offset=side*(active ? keys(p, reverse
-    ? REVERSE_GRIP.swing.map(([t,o])=>[t,rest+o])
-    : spear
+  const offset=side*(active ? keys(p, spear
     ? [[0,rest],[.18,-.18],[.43,0],[.64,.04],[1,rest]]
     : hammer
       ? [[0,rest],[.2,-1.48],[.46,0],[.68,.65],[1,rest]]
       : [[0,rest],[.18,-1.08],[.43,0],[.66,.88],[1,rest]]) : rest);
-  const extension=active&&(spear||reverse)?keys(p,reverse?REVERSE_GRIP.punch:[[0,0],[.18,-3],[.43,10],[.64,6],[1,0]]):0;
+  const extension=spear&&active?keys(p,[[0,0],[.18,-3],[.43,10],[.64,6],[1,0]]):0;
   const angle=aim+offset, dx=Math.cos(angle), dy=Math.sin(angle);
   // Spears rest below the chin. When thrusting upwards, carry the shaft beside
   // the head rather than through the face; both grips move with that same axis.
   const shoulder=6*(physique?.bodyWidth||1),spacing=spear?13:6;
   const grip={x:side*4+dx*(9+extension*.6),y:-15+dy*(6+extension*.25)};
   // Raised shafts pass beside the face, with elbows below the shoulders.
-  const clearance=reverse?0:clamp((-dy-.25)/.55);
+  const clearance=clamp((-dy-.25)/.55);
   grip.x+=side*Math.max(0,9-Math.abs(grip.x))*clearance;
-  if(reverse){grip.x+=side*REVERSE_GRIP.hand.x;grip.y+=REVERSE_GRIP.hand.y;}
   const twoHanded=spear||hammer||staff;
   const offGrip=twoHanded?{x:grip.x-dx*spacing,y:grip.y-dy*spacing}
     : {x:-side*(shoulder+1.5),y:-10.5};
-  return fitGrips({active,progress:p,angle,aim,grip,offGrip,side,twoHanded,spacing,reverse,
-    length:spear?66:hammer?27:style==='staff'?48:style==='wand'?19:reverse?35*REVERSE_GRIP.length:35,
+  return fitGrips({active,progress:p,angle,aim,grip,offGrip,side,twoHanded,spacing,reverse:false,
+    length:spear?66:hammer?27:style==='staff'?48:style==='wand'?19:35,
     trail:active&&p>.22&&p<.66?Math.sin((p-.22)/.44*Math.PI):0},physique);
 }
 
 /** 逆手の構え: 手の向き(rest)から刃は反対側（下・後ろ）へ伸びる。攻撃は拳を引いて前へ突き出し、刃が後ろへ払う。 */
-export const REVERSE_GRIP=Object.freeze({rest:-1.39,length:.72,hand:{x:4,y:3},swing:[[0,0],[.18,-.35],[.43,.9],[.66,1.2],[1,0]],punch:[[0,0],[.18,-3],[.43,11],[.66,7],[1,0]]});
+/** 逆手の構えと振り（向いている側＝右向きなら右手）。x・y は拳の位置、blade は刃の向き（右向き基準、π/2 が真下）。
+ *  構え: 拳は胸の高さで体の外、刃は真下よりわずかに後ろ。攻撃: 拳を少し寄せてから外へ振り抜き、刃先が前下へ払う。 */
+export const REVERSE_GRIP=Object.freeze({length:.72,
+  t:[0,.18,.43,.66,1],x:[13,10,20,19,13],y:[-19,-21,-16,-17,-19],blade:[1.65,1.5,.9,.75,1.65]});
+function reverseGripPose(anim,aim,physique) {
+  const active=anim>0,p=1-clamp(anim),side=Math.cos(aim)<-.15?-1:1,R=REVERSE_GRIP;
+  const at=list=>active?keys(p,R.t.map((t,i)=>[t,list[i]])):list[0];
+  const blade=at(R.blade),bladeAngle=side>0?blade:Math.PI-blade;
+  const grip={x:side*at(R.x),y:at(R.y)},shoulder=6*(physique?.bodyWidth||1);
+  return fitGrips({active,progress:p,angle:bladeAngle-Math.PI,aim:side>0?0:Math.PI,grip,offGrip:{x:-side*(shoulder+1.5),y:-10.5},side,twoHanded:false,spacing:6,reverse:true,
+    length:35*R.length,trail:active&&p>.22&&p<.66?Math.sin((p-.22)/.44*Math.PI):0},physique);
+}
 
 export function attackAnimationRate(item,attackSpeed=1) {
   const style=item?.weaponStyle||'sword';

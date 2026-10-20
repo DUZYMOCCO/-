@@ -235,30 +235,43 @@ function eyewear(c,a,y,small) {
 // 64 surfaces at 96x120 RGBA = at most 2.82 MiB; eviction releases pixels.
 const FIELD_HEADS=new Map();
 export function drawSoldierHead(c,soldier,options={}) {
-  const {x=0,y=0,scale=1,small=false,silhouette=false,helmet=null,helmetTier=1,mitre=false,cap=false}=options;
+  const {x=0,y=0,scale=1,small=false,silhouette=false,helmet=null,helmetTier=1,mitre=false,cap=false,back=false}=options;
   if(!small||silhouette||typeof c.canvas?.width!=='number'||(typeof document==='undefined'||typeof document.createElement!=='function'))return paintSoldierHead(c,soldier,options);
   const a=ensureSoldierAppearance(soldier);
-  const key=JSON.stringify([a,isFeminineLook(soldier,a),soldier.species,limitedLineOf(soldier)==='NINJA',helmet,helmetTier,mitre,cap]);
+  const key=JSON.stringify([a,isFeminineLook(soldier,a),soldier.species,limitedLineOf(soldier)==='NINJA',helmet,helmetTier,mitre,cap,!!back]);
   let art=FIELD_HEADS.get(key);
   try{if(art?.getContext?.('2d')?.isContextLost?.()){art.width=art.height=1;FIELD_HEADS.delete(key);art=null;}}catch{art=null;}
   if(!art){
     if(FIELD_HEADS.size>=64){const oldest=FIELD_HEADS.keys().next().value,retired=FIELD_HEADS.get(oldest);retired.width=retired.height=1;FIELD_HEADS.delete(oldest);}
     art=document.createElement('canvas');art.width=96;art.height=120;const b=art.getContext('2d');
     if(!b){art.width=art.height=1;return paintSoldierHead(c,soldier,options);}
-    b.scale(3,3);b.translate(16,20);paintSoldierHead(b,soldier,{small,helmet,helmetTier,mitre,cap});FIELD_HEADS.set(key,art);
+    b.scale(3,3);b.translate(16,20);paintSoldierHead(b,soldier,{small,helmet,helmetTier,mitre,cap,back});FIELD_HEADS.set(key,art);
   }else{FIELD_HEADS.delete(key);FIELD_HEADS.set(key,art);}
   c.save();c.translate(x,y);c.scale(scale,scale);
   try{c.drawImage(art,-16,-20,32,40);}catch{c.restore();return paintSoldierHead(c,soldier,options);}
   c.restore();
 }
 
+/** v7.2.5 忍者の頭を斜め後ろから: 頭巾の後ろ・鉢巻の結び目と垂れ・前の端にのぞく目元。 */
+function ninjaHeadBack(c,simple=false) {
+  c.fillStyle='#2a3242';c.beginPath();c.ellipse(-.8,.4,4.6,5.4,0,0,Math.PI*2);c.fill(); // 後頭部の陰
+  c.fillStyle='#222b38';c.fillRect(-5.4,-3.4,10.8,2); // 鉢巻
+  c.fillStyle='#1b2230';c.fillRect(3.2,-1.2,2.3,1.3); // 前の端の目元
+  if(!simple)ellipse(c,-1.5,-4.6,2.2,.6,'rgba(220,226,240,.12)');
+  ellipse(c,-4.9,-2.4,1.5,1.3,'#4c596e'); // 結び目
+  stroke(c,[[-5.2,-2.2],[-9.4,-.6],[-10.2,2.2]],'#4c596e',1.3);
+  stroke(c,[[-5.2,-2],[-8.2,1.4],[-8.6,4.6]],'#4c596e',1.1);
+  c.fillStyle='#222b38';c.fillRect(-4.6,3.6,9.2,2.2); // 首まわりの覆面
+}
+
 /** Head centered on (x,y); far silhouettes remain direct, cheap primitives. */
-function paintSoldierHead(c,soldier,{x=0,y=0,scale=1,small=false,silhouette=false,helmet=null,helmetTier=1,mitre=false,cap=false}={}) {
+function paintSoldierHead(c,soldier,{x=0,y=0,scale=1,small=false,silhouette=false,helmet=null,helmetTier=1,mitre=false,cap=false,back=false}={}) {
   const a=ensureSoldierAppearance(soldier),medic=isFeminineLook(soldier,a);
   if(soldier.species||limitedLineOf(soldier)==='NINJA'){
     c.save();c.translate(x,y);c.scale(scale,scale);
     const fur={wolf:'#899a9d',bear:'#8e7255',cat:'#b79b82',fox:'#c78d55',bird:'#99a99d'}[soldier.species]||'#333b4c';
     ellipse(c,0,0,5.5,6,fur);
+    if(back&&limitedLineOf(soldier)==='NINJA'){ninjaHeadBack(c,silhouette);if(helmet){c.fillStyle=helmet;c.fillRect(-5.5,-5,11,1.8);}c.restore();return;}
     if(limitedLineOf(soldier)==='NINJA'){c.fillStyle='#222b38';c.fillRect(-5.4,1,10.8,4.2);c.fillRect(-5.4,-5,10.8,3);stroke(c,[[4,-2],[9,-4],[8,0]],'#4c596e',1.4);}
     else if(soldier.species==='bear'){ellipse(c,-4.5,-5,2.3,2.5,fur);ellipse(c,4.5,-5,2.3,2.5,fur);ellipse(c,0,3,3.2,2.2,'#c0a58b');}
     else if(soldier.species==='bird'){polygon(c,[[-1,1],[3,2],[0,4],[-2,2]],'#c2aa6c');polygon(c,[[-4,-4],[-2,-8],[1,-5],[3,-8],[5,-3]],fur);}

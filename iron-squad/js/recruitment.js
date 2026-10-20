@@ -1,6 +1,6 @@
 import {calcScoutCost} from './economy-rules.js?v=333';
 import {formatDistance,formatSpeed,formatLength,formatLengthDelta} from './distance-format.js?v=182';
-import {drawSoldierPortrait} from './soldier-appearance.js?v=334';
+import {drawSoldierPortrait} from './soldier-appearance.js?v=339';
 import {ATTRIBUTE_KEYS,ATTRIBUTE_LABELS,attributeSpecialties,attributeCarryCapacity,aptitudeGrade,standoutAptitude} from './unit-attributes.js?v=334';
 import {weaponRequirementText} from './weapon-requirements.js?v=338';
 import {equipmentName} from './equipment-rules.js?v=306';

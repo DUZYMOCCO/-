@@ -6,10 +6,20 @@ import {BRUTE_DRAW_SCALE} from './field-hosts.js?v=182';
 import {equipmentVisualProfile} from './equipment-tiers.js?v=231';
 import {drawBodyEquipment,drawEquipmentShield} from './equipment-art.js?v=231';
 import {MAGIC_AFFINITIES,ensureMana} from './magic-rules.js?v=334';
-import { drawMeleeWeapon, drawMeleeRangeCue, drawRangedWeapon, drawWeaponArms, meleePose, rangedPose, weaponAim, reverseGripFor } from './weapon-motion.js?v=337';
+import { drawMeleeWeapon, drawMeleeRangeCue, drawRangedWeapon, drawWeaponArms, meleePose, rangedPose, weaponAim, reverseGripFor } from './weapon-motion.js?v=339';
 import { defaultCommanderAppearance } from './commander-identity.js?v=295';
 import {travelerClothes,drawTravelerTunic} from './traveler-clothes.js?v=195';
-import { createSoldierAppearance, drawSoldierHead, isMedicAppearance, soldierAppearanceFamily, soldierPhysique } from './soldier-appearance.js?v=334';
+import { createSoldierAppearance, drawSoldierHead, isMedicAppearance, soldierAppearanceFamily, soldierPhysique } from './soldier-appearance.js?v=339';
+import { limitedLineOf } from './limited-lines.js?v=338';
+/** v7.2.5 忍者の系列だけ斜め後ろ姿で描く（背中の縫い目・帯の結び・頭巾の結び目）。隊長・勇者・旅装は除く。 */
+export const ninjaBackView=s=>!!s&&!s.isPlayer&&!s.isHero&&!s.isCommander&&limitedLineOf(s)==='NINJA';
+function drawNinjaBack(c,simple=false){
+  c.fillStyle='rgba(16,20,28,.16)';c.beginPath();c.ellipse(-3.2,-17.5,2.6,2.1,0,0,Math.PI*2);c.ellipse(2.4,-17.5,2.4,2.1,0,0,Math.PI*2);c.fill(); // 肩甲骨の陰
+  line(c,[[-.6,-22],[-1.2,-11]],'#20262f',simple?.8:1.1); // 背中の縫い目
+  c.fillStyle='#3e475a';c.fillRect(-6,-11.5,12,2.2); // 帯
+  shape(c,[[-1.5,-10.4],[-5,-12.6],[-5.2,-8.4]],'#4c596e');shape(c,[[-1.5,-10.4],[2,-12.4],[2.2,-8.6]],'#4c596e'); // 帯の結び
+  if(!simple)line(c,[[-1.6,-9.6],[-3,-5.5]],'#4c596e',1);
+}
 import { classRegaliaFor, drawClassMantle, drawClassRegalia, drawClassHeadpiece } from './class-regalia.js?v=335';
 
 // Keep the commander's established face, with short hair in both field and portrait (v4.2.24: player.appearance overrides it).
@@ -414,7 +424,7 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod, displa
   const melee = ['sword','spear','hammer','axe','staff','wand'].includes(wStyle);
   const ranged = ['bow','crossbow','cannon'].includes(wStyle);
   const weaponColors = {cloth,gloves,blade,board,physique,hand:s.appearance?.skin||'#c1a083',gloveProfile:equipmentVisualProfile(eq.gloves),shieldProfile:equipmentVisualProfile(eq.shield),weaponProfile:equipmentVisualProfile(eq.weapon||s.weapon)};
-  const aim=weaponAim(s);
+  const aim=weaponAim(s),backView=!civilian&&ninjaBackView(s);
   const heldPose=melee?meleePose(wStyle,s.atkAnim||0,aim,physique,reverseGripFor(s,wStyle)):ranged?rangedPose(wStyle,s.atkAnim||0,aim,physique,s._rangedBash):null;
   c.save(); c.translate(s.x, s.y);
   // v7.1.6 Wall hop: the shadow stays on the ground (smaller while high), the body is lifted.
@@ -438,7 +448,7 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod, displa
     if(!showHeld){c.fillRect(-8,-20,2.5,11);c.fillRect(5.5,-20,2.5,11);}
     c.fillStyle='#2a2624';c.fillRect(-5,-5,4,7);c.fillRect(2,-5,4,7);
     c.restore();
-    drawSoldierHead(c,s,{y:-26,scale:.8,small:true,silhouette:true,helmet:eq.helmet?steel:null,helmetTier:eq.helmet?.tier||1,mitre:medic&&advanced,cap:medic&&!advanced});
+    drawSoldierHead(c,s,{y:-26,scale:.8,small:true,silhouette:true,helmet:eq.helmet?steel:null,helmetTier:eq.helmet?.tier||1,mitre:medic&&advanced,cap:medic&&!advanced,back:backView});
     c.save();c.scale(physique.bodyWidth,1);
     drawBodyEquipment(c,eq,{armorColor,legColor:legs,role:family,stride:0,simple:true});
     if(medic) {
@@ -518,6 +528,7 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod, displa
   }
   drawBodyEquipment(c,eq,{armorColor,legColor:legs,role:family,stride});
   drawClassRegalia(c,regalia);
+  if(backView)drawNinjaBack(c);
   if(s.isCommander&&!civilian){line(c,[[-5,-22],[4,-10]],advanced?'#d2bb83':'#b7bda8',1.5);}
   c.restore();
   // Hands, face and headwear, with a restrained highlight on the upper edge.
@@ -531,7 +542,7 @@ export function drawFieldSoldier(c, s, now, cls, platoonColor, simpleLod, displa
     }
     c.restore();
   }
-  drawSoldierHead(c,s,{y:-28,small:true,helmet:eq.helmet?steel:null,helmetTier:eq.helmet?.tier||1,
+  drawSoldierHead(c,s,{y:-28,small:true,back:backView,helmet:eq.helmet?steel:null,helmetTier:eq.helmet?.tier||1,
     mitre:medic&&advanced,cap:medic&&!advanced});
   if(mage){
     if(!civilian&&!eq.helmet){shape(c,[[-8,-32],[0,-44],[7,-32]],'#62536e');line(c,[[-9,-32],[9,-32]],'#9f8caa',2);}
