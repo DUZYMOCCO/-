@@ -16,12 +16,19 @@ function session(game){
   return s;
 }
 export const pendingNpcRescue=game=>session(game).prompt;
+// v7.2.10 相談はユーザーが選ぶまで残す。閉じるのは、選んだとき・相手が亡くなった／起き上がった／この場所からいなくなったときだけ。
+// 衛生士の手がふさがっても（MP不足・蘇生の待ち時間・搬送中・自部隊の負傷・隊長のダウン）消さず、「たすける」を押した時点で手のあいた衛生士が向かう。
+const closePrompt=s=>{s.prompt=null;s.panel?.remove();s.panel=null;};
 export function answerNpcRescue(game,accept){
   const s=session(game),p=s.prompt;if(!p)return false;
-  if(accept){s.job=p;p.medic.regrouping=false;}else s.declined.set(p.target,{until:s.clock+30,downId:p.target.downId});
-  s.prompt=null;s.panel?.remove();s.panel=null;return true;
+  if(!accept){s.declined.set(p.target,{until:s.clock+30,downId:p.target.downId});closePrompt(s);return true;}
+  if(p.target.carrierId){game.showToast?.(gameText(`${p.target.name||'なかま'}は もう はこばれています`));closePrompt(s);return true;}
+  const pool=s.pool||[],medic=[p.medic,...pool.filter(u=>u!==p.medic).sort((a,b)=>distance(a,p.target)-distance(b,p.target))].find(u=>pool.includes(u)&&medicAble(game,u));
+  if(!medic){game.showToast?.(gameText('いま 手の あいた えいせいしが いません。すこし まってから えらんでください'));return false;}
+  p.medic=medic;medic.regrouping=false;s.job=p;closePrompt(s);return true;
 }
 function showRequest(game,s){
+  if(s.panel&&!s.panel.isConnected)s.panel=null; // 画面の作り直しで外れたら出し直す
   if(!s.prompt||s.panel||!game.container?.ownerDocument)return;
   const doc=game.container.ownerDocument,panel=doc.createElement('aside');
   panel.className='npc-rescue-request';panel.setAttribute('aria-label',gameText('おたすけの そうだん'));
@@ -38,18 +45,18 @@ function showRequest(game,s){
 const medicAble=(g,u)=>alive(u)&&!u.heroPartyId&&isMedic(u)&&local(g,u)&&!carriedCount(g,u)&&revivalSkillCooldownLeft(g,u)<=.000001&&medicHasStamina(u,MEDIC_TREAT_MIN);
 const readyMedic=(g,u)=>medicAble(g,u)&&!u.regrouping;
 export function updateRescueAssistance(game,dt,pool){
-  const s=session(game);s.clock+=Math.max(0,dt);
-  const ownDown=rescueUnits(game).some(u=>down(u)&&!npc(u)&&local(game,u));
+  const s=session(game);s.clock+=Math.max(0,dt);s.pool=pool;
+  const ownDown=rescueUnits(game).some(u=>down(u)&&!npc(u)&&local(game,u));s.ownDown=ownDown;
   for(const [target,decline]of s.declined)if(!down(target)||target.downId!==decline.downId||s.clock>=decline.until)s.declined.delete(target);
   const targets=[...friendlyNpcs(game),...(game.currentDungeon?[]:game.merchants||[])];
   const valid=p=>p&&targets.includes(p.target)&&down(p.target)&&!p.target.carrierId&&local(game,p.target)&&pool.includes(p.medic)&&medicAble(game,p.medic);
   if(ownDown||!alive(game.player)||!valid(s.job))s.job=null;
-  if(s.prompt&&(ownDown||!alive(game.player)||!valid(s.prompt))){s.prompt=null;s.panel?.remove();s.panel=null;}
-  if(s.prompt&&s.clock>=s.prompt.until)answerNpcRescue(game,false);
+  const targetGone=p=>!targets.includes(p.target)||!down(p.target)||!local(game,p.target);
+  if(s.prompt&&targetGone(s.prompt))closePrompt(s);
   if(!ownDown&&alive(game.player)&&!s.prompt&&!s.job){
     const medics=pool.filter(u=>readyMedic(game,u)&&distance(u,game.player)<=300).sort((a,b)=>Number(!!b.isPersonalGuard)-Number(!!a.isPersonalGuard)||distance(a,game.player)-distance(b,game.player));
     const target=targets.filter(u=>npc(u)&&down(u)&&!u.carrierId&&local(game,u)&&distance(u,game.player)<=300&&!s.declined.has(u)).sort((a,b)=>distance(a,game.player)-distance(b,game.player))[0];
-    if(medics.length&&target)s.prompt={medic:medics[0],target,until:s.clock+10};
+    if(medics.length&&target)s.prompt={medic:medics[0],target,since:s.clock};
   }
   showRequest(game,s);
   const runnerReady=u=>pool.includes(u)&&alive(u)&&local(game,u)&&attributeFamily(u)==='LIGHT'&&!u.heroPartyId&&!u.regrouping&&!carriedCount(game,u)&&distance(u,game.player)<=400;

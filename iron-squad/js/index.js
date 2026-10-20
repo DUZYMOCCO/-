@@ -157,7 +157,7 @@ import {initializeHeroJourney,rollHeroRevelation,serializeHeroJourney,updateHero
 import {DEMON_KING_RULES,demonKingStatsFor,shapeDemonKing,percentBaseDamage} from './demon-king-rules.js?v=304';
 import {updateSquadHpHud} from './squad-hp-hud.js?v=322';
 import {addBattleReport,normalizeBattleReport,renderBattleReport} from './battle-report.js?v=333';
-import {updateRescueAssistance,handleRescueAssistance} from './rescue-assistance.js?v=322';
+import {updateRescueAssistance,handleRescueAssistance} from './rescue-assistance.js?v=344';
 import { RESCUE_TIMEOUT, REVIVAL_COOLDOWN, revivalCooldownOf, revivalSkillCooldownLeft, normalizeRevivalSkill, headquartersRevivalPaused, rescueUnits, carryingCapacity, carriedSoldiers, carriedCivilians, carriedCount, carrierOf, transportSpeedFactor, releaseWounded, sanitizeCarriers, updateWounded, receiveTownCargo, leaveCivilianSpace, handleTransportAI, syncDragged, treatWounded, orbDropChance, hasActiveRopePull, playerHasActiveRopePull, ensureCiviliansSpawned, buildMedicRescueAssign, buildTransportRescueAssign, markSoldierDown, downCommander, commanderDown, updateNpcRescue, CIV_KINDS, isMedic, spendMedicStamina, medicHasStamina, MEDIC_HEAL_COST, MEDIC_AURA_COST, medicHoldsByCommander, isMerchantCasualty } from './casualty-rules.js?v=322';
 import { DUNGEON_DEFS, drawDungeonEntrance, drawDungeonEnvironment, drawDungeonVault, dungeonBlocks, dungeonSolids } from './dungeon.js?v=306';
 import {nearestDungeonFloor,dungeonSpawnPoint,dungeonSteeringTarget} from './dungeon-layout.js?v=182';
