@@ -3,7 +3,7 @@ import {WORLD_SIZE,fieldBlocks} from './world.js?v=289';
 import {dungeonBlocks} from './dungeon.js?v=306';
 import {inCurrentInstance} from './instance-rules.js?v=322';
 import {makeEscort,recalcEscortStats,updateEscortPatrol,npcSave,applyNpcSave} from './merchant-rules.js?v=343';
-import {rebuildMerchantCasualties,carrierOf,sanitizeCarriers} from './casualty-rules.js?v=322';
+import {rebuildMerchantCasualties,carrierOf,sanitizeCarriers} from './casualty-rules.js?v=345';
 import {OUTER_WALL,OUTER_GATES,outerWallBuilt} from './hq-outer-wall.js?v=198';
 import {medicalPostLayout} from './medical-posts.js?v=277';
 export {outerWallBuilt};

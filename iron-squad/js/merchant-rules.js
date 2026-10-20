@@ -11,7 +11,7 @@ import {WORLD_SIZE} from './world.js?v=289';
 import { drawFieldSoldier } from './visuals.js?v=342';
 import { createSoldierAppearance, drawSoldierHead } from './soldier-appearance.js?v=342';
 import { attackAnimationRate } from './weapon-motion.js?v=341';
-import { markSoldierDown, rebuildMerchantCasualties, RESCUE_TIMEOUT, departFromRest } from './casualty-rules.js?v=322';
+import { markSoldierDown, rebuildMerchantCasualties, RESCUE_TIMEOUT, departFromRest } from './casualty-rules.js?v=345';
 import {emptyMastery,normalizeMastery,hitGrowthHpBonus,hitGrowthDefBonus,migrateHitGrowth,applyHitGrowth,masteryAtkMult,masteryReloadMult} from './growth-rules.js?v=329';
 import {recordCombat,finishExperience} from './phase-rules.js?v=218';
 

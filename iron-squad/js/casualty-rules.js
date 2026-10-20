@@ -710,10 +710,14 @@ export function buildTransportRescueAssign(game,pool=expeditionCombatUnits(game)
   const assigned=new Map(),patients=rescueUnits(game).filter(u=>u?.isDown&&!u.dead&&!u.carrierId&&!u.dying&&(!u.downedInAid||['medical','town'].includes(nearestCasualtyStation(game,u)?.kind)))
     .sort((a,b)=>a===game.player?-1:b===game.player?1:(a.downTimer??RESCUE_TIMEOUT)-(b.downTimer??RESCUE_TIMEOUT));
   if(!patients.length)return assigned;
+  // v7.2.11 手のあいた衛生職（CTなし・MPあり）が300以内で向かっている負傷者は、一般の兵が運び出さない（その場で蘇生する）。隊長は従来どおり。
+  const medicFor=new Map();for(const [medicId,target]of game?._medicRescueAssign||[])if(target&&target!==game.player)(medicFor.get(target)||medicFor.set(target,[]).get(target)).push(medicId);
+  const tended=patient=>(medicFor.get(patient)||[]).some(id=>{const m=pool.find(u=>u?.id===id);return m&&isMedic(m)&&!m.dead&&!m.isDown&&m.hp>0&&revivalSkillCooldownLeft(game,m)<=.000001&&medicHasStamina(m,MEDIC_TREAT_MIN)&&isLocalRescueUnit(game,m)===isLocalRescueUnit(game,patient)&&Math.hypot(m.x-patient.x,m.y-patient.y)<=300;});
   const carriers=pool.filter(u=>u&&u!==game.player&&!u.heroPartyId&&!u.dead&&!u.isDown&&u.hp>0&&!isMedic(u)&&!u.magicRecovering)
     .map(u=>({unit:u,local:isLocalRescueUnit(game,u),family:attributeFamily(u),carried:carriedSoldiers(game,u).length,free:carriedCount(game,u)<carryingCapacity(u)})).filter(c=>c.free)
     .map(c=>{const inCombat=c.family==='HEAVY'&&transportInCombat(game,c.unit);return {...c,inCombat,priority:c.family==='LIGHT'?0:c.family==='HEAVY'?(inCombat?3:1):2};});
   for(const patient of patients){
+    if(tended(patient))continue;
     const local=isLocalRescueUnit(game,patient),available=carriers.filter(c=>!assigned.has(c.unit)&&c.unit!==patient&&c.local===local&&Math.hypot(c.unit.x-patient.x,c.unit.y-patient.y)<(c.carried?160:240));
     const otherAvailable=available.some(c=>c.family!=='HEAVY');
     const eligible=available.filter(c=>!c.inCombat||!otherAvailable);
@@ -748,7 +752,8 @@ export function handleTransportAI(game,soldier,dt,assignments=null) {
   // 隊長を運ぶ場合：到達可能な衛生術士がいればその最寄りへ、いなければ町・本陣・救護所へ。
   const healer=!candidate&&carried.length&&(carried.includes(game.player)||headquartersRevivalPaused(game))?expeditionCombatUnits(game).filter(h=>h!==soldier&&isMedic(h)&&!h.dead&&!h.isDown&&h.hp>0&&revivalSkillCooldownLeft(game,h)<=.000001&&medicHasStamina(h,MEDIC_TREAT_MIN)&&isLocalRescueUnit(game,h)===isLocalRescueUnit(game,soldier)).sort((a,b)=>Math.hypot(a.x-soldier.x,a.y-soldier.y)-Math.hypot(b.x-soldier.x,b.y-soldier.y))[0]:null;
   // 自部隊に衛生職がいる間は搬送せず、牽引したまま隊長のそばで待つ（CT明けに衛生職が蘇生）。
-  if(!candidate&&!healer&&carried.length&&!carried.includes(game.player)&&waitsForPartyMedic(game,soldier)){
+  // v6.4.1 自部隊に衛生職がいれば（CT中でも）町へ行かず隊長のそばで待つ。v7.2.11 運ぶ人が本隊でも、運ばれている人が自部隊なら同じく待つ。
+  if(!candidate&&!healer&&carried.length&&!carried.includes(game.player)&&(waitsForPartyMedic(game,soldier)||carried.some(u=>waitsForPartyMedic(game,u)))){
     delete soldier._transportStall;const p=game.player,dx=p.x-soldier.x,dy=p.y-soldier.y,d=Math.hypot(dx,dy);
     if(d>PARTY_STAY_RADIUS){const step=Math.min(d-PARTY_STAY_RADIUS+4,(soldier.speed||80)*(d>140?1.6:transportSpeedFactor(game,soldier))*dt);soldier.x+=dx/d*step;soldier.y+=dy/d*step;soldier.vx=dx/d;soldier.vy=dy/d;soldier.facingAngle=Math.atan2(dy,dx);}
     return true;
