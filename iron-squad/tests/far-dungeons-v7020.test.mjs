@@ -16,7 +16,7 @@ const IDS=['dungeon_sunken_tomb','dungeon_sand_king_tomb','dungeon_troll_pit','d
 const far=IDS.map(id=>{const d=game.dungeons.find(d=>d.id===id);assert.ok(d,id+' exists in a fresh game');return d;});
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 // 1) Definitions: nine new dungeons with real bosses and valid themes.
-assert.equal(FAR_DUNGEON_DEFS.length,10);assert.equal(DUNGEON_DEFS.length,29,'19 old places + 9 far dungeons + the south-west sepulcher (v7.2.16)');
+assert.equal(FAR_DUNGEON_DEFS.length,10);assert.equal(DUNGEON_DEFS.length,30,'19 old places + 9 far dungeons + the south-west sepulcher (v7.2.16) + the true demon castle (v7.2.17, hidden until the king falls)');
 assert.equal(new Set(DUNGEON_DEFS.map(d=>d.id)).size,DUNGEON_DEFS.length,'ids are unique');
 const THEMES=['mines','catacombs','dragon','demon','ruin','swamp','sand','ice','giant'];
 for(const d of far){

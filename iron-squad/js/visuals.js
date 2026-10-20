@@ -965,6 +965,20 @@ function drawDemonKing(c,m,flash) {
   c.restore();
 }
 
+// v7.2.17: 真魔王。魔王の鎧に、虚空の翼と後光、紫の外套を重ねる。
+function drawTrueDemonKing(c,m,now,flash) {
+  const scale=Math.max(.95,Math.min(1.35,(m.radius||80)/72)),beat=Math.sin((now||0)*.004);
+  c.save();c.scale(scale,scale);
+  c.globalAlpha=.55+.15*beat;c.strokeStyle=flash?'#f5f3ff':'#a78bfa';c.lineWidth=3;c.beginPath();c.arc(0,-66,24+2*beat,0,Math.PI*2);c.stroke();c.globalAlpha=1;
+  for(const side of [-1,1]){
+    shape(c,[[side*20,-50],[side*58,-86],[side*76,-70],[side*70,-40],[side*84,-30],[side*60,-18],[side*66,-4],[side*30,-20]],flash?'#d6cfe0':'#1e1030','#4c1d95');
+    line(c,[[side*24,-46],[side*62,-74]],'#6d28d9',2);line(c,[[side*28,-34],[side*70,-36]],'#6d28d9',2);
+  }
+  shape(c,[[-30,-46],[30,-46],[44,10],[-44,10]],flash?'#e2d9f3':'#2e1065','#5b21b6');
+  c.restore();
+  drawDemonKing(c,{...m,radius:(m.radius||80)*.95},flash);
+}
+
 // Ruins keepers are ordinary orc/wyvern stat blocks flagged isDungeonBoss; draw them
 // as a larger armoured keeper so they read as the room's boss, not a stray grunt.
 export const isRuinKeeper=m=>!!m&&!!m.isDungeonBoss&&(m.type==='orc'||m.type==='wyvern')&&!m.isBoss;
@@ -989,7 +1003,7 @@ function drawRuinKeeper(c,m,now,flash){
   c.restore();
 }
 
-const BOSS_BODIES = new Set(['dragon', 'colossal_dragon', 'behemoth_king', 'colossal_titan','goblin_king','lich_elder','hellflame_drake','demon_king']);
+const BOSS_BODIES = new Set(['dragon', 'colossal_dragon', 'behemoth_king', 'colossal_titan','goblin_king','lich_elder','hellflame_drake','demon_king','true_demon_king']);
 
 export function drawFieldBoss(c, m, now) {
   const keeper=isRuinKeeper(m);
@@ -1002,6 +1016,7 @@ export function drawFieldBoss(c, m, now) {
   else if (m.type === 'goblin_king') drawMiningKing(c,m,now,flash);
   else if (m.type === 'lich_elder') drawLichElder(c,m,flash);
   else if (m.type === 'demon_king') drawDemonKing(c,m,flash);
+  else if (m.type === 'true_demon_king') drawTrueDemonKing(c,m,now,flash);
   else if (m.type === 'hellflame_drake') drawAncientDragon(c,now,flash,Math.max(.9,Math.min(1.3,(m.radius||58)/50)),true);
   else if (m.type === 'behemoth_king') drawBehemoth(c, now, flash);
   else if (m.type === 'colossal_titan') drawTitan(c, now, flash);

@@ -7,7 +7,7 @@ import {calcTreasuryGrossIncome,calcCommanderStipend,EQUIPMENT_SLOTS} from './ec
 import {createPayrollPlan,commanderStipendQuote,PAYROLL_RULES,regularSalaryReserve} from './payroll-rules.js?v=333';
 import {calcAllRankerBonuses} from './troop-rankings.js?v=333';
 import {normalizeRegionalEconomy,recurringNationalIncome,economicState,advanceRegionalEconomy,automaticEconomicTarget,investEconomicProject} from './regional-economy.js?v=277';
-import {drawSettlementQuarter} from './economic-visuals.js?v=322';
+import {drawSettlementQuarter} from './economic-visuals.js?v=351';
 import {atFacility,HEADQUARTERS_FACILITIES} from './hq-facilities.js?v=322';
 import {renderRegionalEconomy} from './economic-interface.js?v=264';
 import {workshopFloorTier} from './crafting-rules.js?v=306';

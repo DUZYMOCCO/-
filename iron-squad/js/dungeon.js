@@ -13,6 +13,9 @@ import {explorationLayout,explorationBlocks} from './dungeon-layout.js?v=182';
 import {drawExplorationInterior} from './dungeon-interior-visuals.js?v=297';
 
 const CENTER = WORLD_SIZE / 2;
+// v7.2.17: 真魔王城の入口（本陣からのずれ）と、真魔王の決まった体力・攻撃力（v7.2.18でシミュにより調整）。
+export const TRUE_CASTLE_OX = 74000, TRUE_CASTLE_OY = 74000;
+export const TRUE_DEMON_KING_HP = 10_000_000_000, TRUE_DEMON_KING_ATK = 300_000;
 
 // v7.0.20: ruins beyond the first wall (8,000 = 80m) pay about ten ordinary kills at their own distance (no longer a fixed, tiny sum).
 // Gold = 8 x 10 x gold scale, EXP = 6 x 10 x exp scale (the same bases a normal kill uses in killMonster). The near north fort keeps its authored reward.
@@ -316,6 +319,47 @@ export const DUNGEON_DEFS = [
     mobCount: 28,
     eliteCount: 6,
     reward: { gold: 250000, exp: 80000, itemCount: 7, lootKind: 'dungeon_vault', bonusOrbs: 3, bonusGems: 1 }
+  },
+  // v7.2.17: 真魔王城。魔王城よりさらに南東、地図の端の近く。魔王が倒れるまでは世界に現れない（true-demon-castle.js が出し入れする）。
+  {
+    id: 'dungeon_true_demon_castle',
+    kind: 'dungeon',
+    name: '真魔王城・虚空の玉座',
+    subtitle: '【地のはしでねむっていた真の王の城】',
+    icon: '🏰👿',
+    color: '#3b0764',
+    accentColor: '#c4b5fd',
+    theme: 'demon',
+    reqDef: 3000,
+    reqLv: 60,
+    desc: '南東の地のはしにそびえる黒い城。魔王ヴァルドールが仕えていた真の王が、ここで目ざめた。',
+    entrance: { x: CENTER + TRUE_CASTLE_OX, y: CENTER + TRUE_CASTLE_OY, radius: 72 },
+    width: 3400,
+    height: 2100,
+    ambientColor: '#0b0614',
+    floorColor: '#160d20',
+    wallColor: '#06030a',
+    torchColor: '#818cf8',
+    distance: Math.hypot(TRUE_CASTLE_OX, TRUE_CASTLE_OY),
+    boss: {
+      type: 'true_demon_king',
+      name: '真魔王ゼルヴァーン',
+      title: '【虚空の真魔王】',
+      icon: '👿👑',
+      color: '#3b0764',
+      radius: 80,
+      fixedStats: true,
+      hp: TRUE_DEMON_KING_HP,
+      atk: TRUE_DEMON_KING_ATK,
+      speed: 58,
+      skillCooldown: 3.5,
+      skillName: '虚空の波動',
+      desc: '魔王の上に立つ真の王。体力は決まっていて、いどむ隊の強さでは上がらない。'
+    },
+    mobTypes: ['wyvern', 'colossal_dragon', 'orc'],
+    mobCount: 18,
+    eliteCount: 6,
+    reward: { gold: 2500000, exp: 800000, itemCount: 9, lootKind: 'dungeon_vault', bonusOrbs: 10, bonusGems: 3 }
   },
   ...FAR_DUNGEON_DEFS,
   ...SETTLEMENTS.map(settlementToDef)

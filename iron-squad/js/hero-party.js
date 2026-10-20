@@ -3,11 +3,12 @@ import {addBattleReport} from './battle-report.js?v=333';
 import {attackCooldown} from './equipment-rules.js?v=306';
 import {migrateCampaignEnemy} from './campaign-scaling.js?v=241';
 import {HERO_RULES,heroRevelationPhase,nextHeroRevelationPhase,heroPartyActive,heroMembers,heroSharesSpace,visibleHeroMembers} from './hero-rules.js?v=302';
-import {advanceHeroRoute,heroSegmentOpen,heroRouteCurrent} from './hero-navigation.js?v=350';
+import {advanceHeroRoute,heroSegmentOpen,heroRouteCurrent} from './hero-navigation.js?v=351';
 import {WORLD_SIZE,settleUnit,fieldRockExit} from './world.js?v=289';
-import {DUNGEON_DEFS,dungeonBlocks} from './dungeon.js?v=350';
+import {DUNGEON_DEFS,dungeonBlocks} from './dungeon.js?v=351';
 import {DEMON_KING_RULES,recordKingProfile,shapeDemonKing,migrateDemonKing} from './demon-king-rules.js?v=304';
 import {nearestDungeonFloor} from './dungeon-layout.js?v=182';
+import {unlockTrueCastle} from './true-demon-castle.js?v=351';
 import {economicFieldBlocked} from './regional-economy.js?v=277';
 import {RECRUIT_CLASSES} from './recruitment.js?v=306';
 import {persistentUnit} from './render-support.js';
@@ -24,8 +25,8 @@ import {RANGED_ENEMIES} from './enemy-ranged.js?v=295';
 import {startHeroJournal,archiveHeroJournal,appendHeroDiary,recordHeroEquipmentGrant,recordHeroEvent,announceHero} from './hero-journal.js?v=306';
 import {showHeroRevelationScene} from './hero-revelation-scene.js?v=302';
 import {grantHeroEquipment} from './hero-equipment.js?v=295';
-import {recordSealGuardianKill,heroPilgrimShrine,heroCastleOpen,ensureSealGuardian,sealDef,sealsRemaining,SEAL_RULES,HERO_SHRINE_STAND} from './seal-keys.js?v=350';
-import {spectateAvailability,startSpectate,endSpectate,queueSpectate,cancelSpectateQueue,spectateStatusLine} from './hero-spectate.js?v=350';
+import {recordSealGuardianKill,heroPilgrimShrine,heroCastleOpen,ensureSealGuardian,sealDef,sealsRemaining,SEAL_RULES,HERO_SHRINE_STAND} from './seal-keys.js?v=351';
+import {spectateAvailability,startSpectate,endSpectate,queueSpectate,cancelSpectateQueue,spectateStatusLine} from './hero-spectate.js?v=351';
 const C=WORLD_SIZE/2,castle=()=>DUNGEON_DEFS.find(d=>d.id==='dungeon_demon_castle');
 const ready=u=>u&&!u.dead&&!u.isDown&&u.hp>0;
 export function initializeHeroJourney(game,saved=null) {
@@ -110,6 +111,7 @@ export function recordDemonKingDefeat(game,attacker=null) {
   const j=game.heroJourney;if(!j||j.demonKingDefeat)return;
   const by=attacker?.heroPartyId?'hero':'commander';
   j.demonKingDefeat={phase:game.phase,by,name:attacker?.name||'隊長'};
+  unlockTrueCastle(game,{by}); // v7.2.17: the king's last words, and the true castle appears far to the south-east
   if(heroPartyActive(j.party)){j.party.status='victorious';archiveHeroJournal(game,j.party,by==='hero'?'魔王討伐':'隊長側が魔王討伐');}
 }
 function enterHeroCastle(game,p) {
