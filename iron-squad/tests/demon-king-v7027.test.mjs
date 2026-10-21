@@ -1,6 +1,6 @@
 // v7.0.27: demon king scaled to the sortie force, %-of-max-HP strike and meteor, hero party wiped fast, old saves migrated.
 import assert from 'node:assert/strict';
-import {DEMON_KING_RULES as R,demonKingStatsForDps,percentBaseDamage,estimateSortieForce,demonKingStatsFor,guardDpsFactor,captainDpsFactor} from '../js/demon-king-rules.js';
+import {DEMON_KING_RULES as R,demonKingStatsForDps,percentBaseDamage,estimateSortieForce,demonKingStatsFor,shapeDemonKing,guardDpsFactor,captainDpsFactor} from '../js/demon-king-rules.js';
 // ---------- pure rules ----------
 assert.equal(demonKingStatsForDps(0).hp,R.minHp,'floor');assert.equal(demonKingStatsForDps(1e6).hp,R.minHp,'weak force: floor');
 assert.equal(demonKingStatsForDps(20e6).hp,20e6*R.targetTtk);assert.equal(demonKingStatsForDps(40e6).hp,2*demonKingStatsForDps(20e6).hp,'HP is proportional to force');
@@ -33,13 +33,15 @@ hp.initializeHeroJourney(game);
   assert.ok(R.defaultHp>=3e9);
 }
 { // entering the castle snapshots the force: HP is proportional, never below the floor, never weaker on the next visit
-  setForce(1e6,.5e6);const dps=estimateSortieForce(game).dps; // v7.2.18: class-aware factors
+  setForce(1e6,.5e6);const f1=estimateSortieForce(game),dps=f1.dps; // v7.2.18: class-aware factors; v7.2.21: low class stage → longer target
+  assert.equal(f1.stage,0);assert.equal(f1.ttkScale,1+R.lowTierTtkBonus,'no class-up: the king is sized for a longer fight');
   const scene=hp.prepareCastleVisit(game,d);const k=scene.monsters.find(m=>m.isDemonKing);
-  assert.equal(game.heroJourney.kingProfile.hp,Math.round(dps*R.targetTtk));
-  assert.equal(k.maxHp,Math.round(dps*R.targetTtk),'the first king is made from the first snapshot');assert.equal(k.hp,k.maxHp);
+  assert.equal(game.heroJourney.kingProfile.hp,Math.round(dps*R.targetTtk*f1.ttkScale));
+  assert.equal(k.maxHp,Math.round(dps*R.targetTtk*f1.ttkScale),'the first king is made from the first snapshot');assert.equal(k.hp,k.maxHp);
   setForce(4.1e6,4.1e6);const dps2=estimateSortieForce(game).dps;
-  k.hp=k.maxHp/4;const ratio=k.hp/k.maxHp;hp.prepareCastleVisit(game,d);
-  assert.equal(k.maxHp,Math.round(dps2*R.targetTtk),'stronger force: stronger king');assert.ok(Math.abs(k.hp/k.maxHp-ratio)<1e-6,'remaining HP fraction is kept');
+  k.hp=k.maxHp/4;hp.prepareCastleVisit(game,d);
+  assert.equal(k.maxHp,Math.round(dps2*R.targetTtk*f1.ttkScale),'stronger force: stronger king');assert.equal(k.hp,k.maxHp,'v7.2.21: with no hero in the castle the king has healed by the next visit');
+  {const s={hp:25,maxHp:100};shapeDemonKing(s,{hp:400,atk:1},{raiseOnly:true});assert.equal(s.hp,100,'shaping keeps the remaining HP fraction');}
   const big=k.maxHp;setForce(1e3,1e3);hp.prepareCastleVisit(game,d);
   assert.equal(k.maxHp,big,'swapping to weak gear before entering cannot weaken the king');assert.ok(game.heroJourney.kingProfile.hp>=big);
   assert.equal(k.atk,R.minAtk);

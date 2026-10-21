@@ -98,7 +98,7 @@ export function recordSealGuardianKill(game,monster,attacker=null){
   const byHero=!!attacker?.heroPartyId,phase=Math.max(1,Math.floor(game.phase||1));
   game.sealKeys.guardians[id]=byHero?{respawnPhase:0,heroKilled:true}:{respawnPhase:phase+SEAL_RULES.respawnPhases,heroKilled:false};
   if(sealBroken(game,id))return false;
-  game.sealKeys.broken[id]={by:byHero?'hero':'commander',phase};
+  game.sealKeys.broken[id]=byHero?{by:'hero',phase,party:String(attacker.heroPartyId)}:{by:'commander',phase}; // v7.2.21: which hero party (its class-ups count its own guardians)
   const left=sealsRemaining(game);
   const who=byHero?`勇者【${game.heroJourney?.party?.name||''}】のパーティが`:'';
   game.showToast?.(left?`🔓 ${who}${def.dir}の封印を解いた。魔王城の封印は残り${left}。`:`🔓 ${who}${def.dir}の封印を解いた。魔王城の封印がすべて解けた！`,{important:true});

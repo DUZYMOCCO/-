@@ -17,6 +17,8 @@ export const DEMON_KING_RULES = Object.freeze({
   pctMagicDefHalf: 3000,     // 魔法防御がこの値のとき上限の半分まで減らす
   huntSpeed: 110,            // 画面外の勇者戦で魔王が勇者を追う速さ(px/秒)
   gaugeTtk: 130,             // v7.2.18: 見切りで使う秒数。戦い始めは全員が元気で火力が高いので、150秒前後で倒れるよう少し短め
+  lowTierTtkBonus: 0.25,     // v7.2.21: クラスアップしていない隊ほど長く戦わせる。目標秒数×(1+この値×(1-平均段位/3))。段位0の隊は×1.25、最上位の隊は×1.0
+  heroGaugeTtk: 10,          // v7.2.21: 最上位職（クラス3）の勇者だけの戦いでは、勇者の想定火力×この秒数のHPにする（城の雑兵と一緒に戦うので短め。実測で勝率3割前後）。クラス3でない勇者には使わない
   gaugeSeconds: 12           // v7.2.18: 隊長側が城で戦い始めてからこの秒数の実際の火力を見て、HP=実火力×gaugeTtk まで引き上げる（下げない）
 });
 const num = v => (Number.isFinite(Number(v)) ? Number(v) : 0);
@@ -32,6 +34,11 @@ const CLASS_LINES = Object.freeze({
 });
 const CAPTAIN_STAGES = Object.freeze({ WARLORD: 1, EMPEROR: 2, MYTHIC_EMPEROR: 3 });
 /** 直属1人の係数。知らない職（限定の仲間など）は旧来の 2.2。 */
+export function classTier(unit) {
+  const id = unit?.soldierClass;
+  for (const line of Object.values(CLASS_LINES)) { const tier = line.indexOf(id); if (tier >= 0) return tier; }
+  return 0;
+}
 export function guardDpsFactor(unit) {
   const id = unit?.soldierClass;
   for (const [family, line] of Object.entries(CLASS_LINES)) { const tier = line.indexOf(id); if (tier >= 0) return DEMON_KING_CLASS_DPS[family][tier]; }
@@ -46,10 +53,14 @@ export function estimateSortieForce(game) {
   const guardAtk = guards.reduce((n, s) => n + Math.max(num(s.atk), num(s.magicAttack)), 0);
   const guardDps = guards.reduce((n, s) => n + Math.max(num(s.atk), num(s.magicAttack)) * guardDpsFactor(s), 0);
   const dps = captain * captainDpsFactor(p) + guardDps; // v7.2.18: per class line and tier (was ATK×6.5 + guards×2.2 for everyone)
-  return { dps, captainAtk: captain, guards: guards.length, guardAtk };
+  // v7.2.21: 平均のクラス段位（隊長0〜3段と直属それぞれの段位）。低いほど魔王は長く持ちこたえる。
+  const stages = [CAPTAIN_STAGES[p?.advancedClass] || (p?.isAdvanced ? 1 : 0), ...guards.map(classTier)];
+  const stage = stages.reduce((n, v) => n + v, 0) / stages.length;
+  const ttkScale = 1 + R.lowTierTtkBonus * Math.max(0, 1 - stage / 3);
+  return { dps, captainAtk: captain, guards: guards.length, guardAtk, stage, ttkScale };
 }
-export const demonKingStatsForDps = dps => ({
-  hp: Math.max(DEMON_KING_RULES.minHp, Math.round(num(dps) * DEMON_KING_RULES.targetTtk)),
+export const demonKingStatsForDps = (dps, ttkScale = 1) => ({
+  hp: Math.max(DEMON_KING_RULES.minHp, Math.round(num(dps) * DEMON_KING_RULES.targetTtk * Math.max(1, num(ttkScale) || 1))),
   atk: DEMON_KING_RULES.minAtk
 });
 /** The stats a freshly made king gets: the recorded sortie force, or the default strong king if no commander has entered yet. */
@@ -62,7 +73,7 @@ export function demonKingStatsFor(game) {
 export function recordKingProfile(game) {
   const j = game?.heroJourney;
   if (!j) return null;
-  const force = estimateSortieForce(game), next = demonKingStatsForDps(force.dps), prev = j.kingProfile || {};
+  const force = estimateSortieForce(game), next = demonKingStatsForDps(force.dps, force.ttkScale), prev = j.kingProfile || {};
   j.kingProfile = {
     version: DEMON_KING_RULES.scaleVersion,
     hp: Math.max(num(prev.hp), next.hp),
@@ -104,7 +115,7 @@ export function gaugeDemonKing(game, king, dt) {
   g.t += num(dt);
   if (g.t < R.gaugeSeconds) return 0;
   g.done = true;
-  const dealt = Math.max(0, g.start - king.hp), dps = dealt / g.t, target = Math.round(dps * R.gaugeTtk);
+  const dealt = Math.max(0, g.start - king.hp), dps = dealt / g.t, target = Math.round(dps * R.gaugeTtk * (estimateSortieForce(game).ttkScale || 1));
   if (!(target > king.maxHp)) return 0;
   const lost = king.maxHp - king.hp;
   king.maxHp = target; king.hp = Math.max(1, target - lost);
@@ -118,6 +129,24 @@ export function migrateDemonKing(king, game) {
   return shapeDemonKing(king, demonKingStatsFor(game));
 }
 /** Share of max HP that the meteor / the strike takes before protections: DEF is ignored, magic defence helps only a little. */
+/** v7.2.21 勇者だけの戦い（隊長は城にいない）：全員が最上位職（守護者3体）の勇者パーティなら、想定火力（職と段位ごとの係数×ATK）×heroGaugeTtk 秒のHPにする。
+ *  城に入るたび一度だけ決める（残りHPの割合は保つ）。隊長の見積もり（kingProfile）には書かない。
+ *  隊長が城に入ると prepareCastleVisit がいつもの値へ戻す（割合は保つ）。 */
+export function heroPartyForce(members) {
+  return (members || []).filter(u => u && !u.dead && u.hp > 0)
+    .reduce((n, u) => n + Math.max(num(u.atk), num(u.magicAttack)) * guardDpsFactor(u), 0);
+}
+export function gaugeDemonKingForHeroes(king, members) {
+  if (!king || !(king.hp > 0) || king.heroGauge) return 0;
+  const R = DEMON_KING_RULES, dps = heroPartyForce(members);
+  if (!(dps > 0)) return 0;
+  const alive = (members || []).filter(u => u && !u.dead && u.hp > 0), stage = Math.min(...alive.map(classTier));
+  if (stage < 3) return 0; // クラス3になる前の勇者には、魔王はいつもの強さのまま（ほぼ勝てない）
+  const target = Math.max(1, Math.round(dps * R.heroGaugeTtk)), ratio = Math.min(1, king.hp / Math.max(1, king.maxHp));
+  king.heroGauge = { dps: Math.round(dps), stage, hp: target };
+  king.maxHp = target; king.hp = Math.max(1, Math.round(target * ratio));
+  return target;
+}
 export function percentBaseDamage(target, pct, magical = false) {
   const R = DEMON_KING_RULES, md = magical ? Math.max(0, num(target?.magicDef)) : 0;
   const cut = magical ? R.pctMagicDefMax * md / (md + R.pctMagicDefHalf) : 0;

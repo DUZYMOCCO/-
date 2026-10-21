@@ -6,7 +6,7 @@ import {HERO_RULES,heroRevelationPhase,nextHeroRevelationPhase,heroPartyActive,h
 import {advanceHeroRoute,heroSegmentOpen,heroRouteCurrent} from './hero-navigation.js?v=354';
 import {WORLD_SIZE,settleUnit,fieldRockExit} from './world.js?v=289';
 import {DUNGEON_DEFS,dungeonBlocks} from './dungeon.js?v=354';
-import {DEMON_KING_RULES,recordKingProfile,shapeDemonKing,migrateDemonKing} from './demon-king-rules.js?v=352';
+import {DEMON_KING_RULES,recordKingProfile,shapeDemonKing,migrateDemonKing,gaugeDemonKingForHeroes} from './demon-king-rules.js?v=355';
 import {nearestDungeonFloor} from './dungeon-layout.js?v=182';
 import {unlockTrueCastle,trueCastleOpen,trueCastleDef,TRUE_CASTLE_ID,updateTrueDemonKing,recordTrueKingDefeat} from './true-demon-castle.js?v=354';
 import {economicFieldBlocked} from './regional-economy.js?v=277';
@@ -25,8 +25,8 @@ import {RANGED_ENEMIES} from './enemy-ranged.js?v=295';
 import {startHeroJournal,archiveHeroJournal,appendHeroDiary,recordHeroEquipmentGrant,recordHeroEvent,announceHero} from './hero-journal.js?v=354';
 import {showHeroRevelationScene} from './hero-revelation-scene.js?v=302';
 import {grantHeroEquipment} from './hero-equipment.js?v=295';
-import {recordSealGuardianKill,heroPilgrimShrine,heroCastleOpen,ensureSealGuardian,sealDef,sealsRemaining,SEAL_RULES,HERO_SHRINE_STAND} from './seal-keys.js?v=354';
-import {spectateAvailability,startSpectate,endSpectate,queueSpectate,cancelSpectateQueue,spectateStatusLine} from './hero-spectate.js?v=354';
+import {recordSealGuardianKill,heroPilgrimShrine,heroCastleOpen,ensureSealGuardian,sealDef,sealsRemaining,SEAL_RULES,HERO_SHRINE_STAND} from './seal-keys.js?v=355';
+import {spectateAvailability,startSpectate,endSpectate,queueSpectate,cancelSpectateQueue,spectateStatusLine} from './hero-spectate.js?v=355';
 const C=WORLD_SIZE/2,castle=()=>DUNGEON_DEFS.find(d=>d.id==='dungeon_demon_castle');
 const ready=u=>u&&!u.dead&&!u.isDown&&u.hp>0;
 export function initializeHeroJourney(game,saved=null) {
@@ -75,10 +75,12 @@ function trackHeroProgress(game,p,dt){
   p._watchClock=(p._watchClock||0)+dt;if(p._watchClock<1&&p.watch)return false;p._watchClock=0;
   const info=heroCastleInfo(game);if(!info)return false;p.castleInfo=info;
   const kills=p.members.reduce((n,u)=>n+(u.minionKills||0)+(u.midbossKills||0)+(u.bossKills||0),0),levels=p.members.reduce((n,u)=>n+(u.level||0),0),w=p.watch;
-  if(!w){p.watch={sincePhase:game.phase,kills,levels,mobs:info.mobs,boss:info.bossHp,warned:false};return false;}
-  const progressed=kills>w.kills||levels>w.levels||info.mobs<w.mobs||(info.bossHp!=null&&w.boss!=null&&info.bossHp<w.boss);
+  const frac=info.bossHp!=null&&info.bossMax>0?info.bossHp/info.bossMax:null; // v7.2.21: share of HP, so resizing the king for the heroes is not progress
+  if(!w){p.watch={sincePhase:game.phase,kills,levels,mobs:info.mobs,boss:frac,warned:false};return false;}
+  if(w.boss!=null&&w.boss>1)w.boss=frac; // older saves stored the king's HP itself: switch to the share without counting it as progress
+  const progressed=kills>w.kills||levels>w.levels||info.mobs<w.mobs||(frac!=null&&w.boss!=null&&frac<w.boss-1e-9);
   if(progressed){w.sincePhase=game.phase;w.warned=false;}
-  w.kills=Math.max(w.kills,kills);w.levels=Math.max(w.levels,levels);w.mobs=Math.min(w.mobs,info.mobs);w.boss=info.bossHp==null?w.boss:w.boss==null?info.bossHp:Math.min(w.boss,info.bossHp);
+  w.kills=Math.max(w.kills,kills);w.levels=Math.max(w.levels,levels);w.mobs=Math.min(w.mobs,info.mobs);w.boss=frac==null?w.boss:w.boss==null?frac:Math.min(w.boss,frac);
   return evaluateHeroWithdrawal(game,p);
 }
 export const heroIdlePhases=(game,p)=>p?.watch&&p.space!=='field'?Math.max(0,game.phase-p.watch.sincePhase):0;
@@ -128,14 +130,15 @@ function enterHeroCastle(game,p) {
 export function homeDemonKing(game,{force=false}={}) {
   const d=castle(),king=game.heroJourney?.castleScene?.monsters?.find(m=>m.isDemonKing);
   if(!king||(!force&&game.currentDungeon?.id===d.id&&!game.spectating))return; // v7.0.28: an observing commander does not count as standing in the castle
-  king.x=d.width-350;king.y=d.height/2;king.atkTimer=0;king.skillTimer=king.skillCooldown;delete king._cachedTarget;delete king.returningHome;
+  king.x=d.width-350;king.y=d.height/2;king.atkTimer=0;king.skillTimer=king.skillCooldown;delete king._cachedTarget;delete king.returningHome;delete king.heroGauge; // v7.2.21: the next hero fight is gauged afresh
 }
 /** Commander enters the castle: snapshot the sortie force (it only ratchets up), size the king, put him on his throne if no hero is fighting there. */
 export function prepareCastleVisit(game,d=castle()) {
   const j=game.heroJourney;if(j)recordKingProfile(game);
   const scene=ensureHeroCastle(game,d),king=scene.monsters.find(m=>m.isDemonKing);
-  if(king&&j){shapeDemonKing(king,j.kingProfile,{raiseOnly:true});delete king.gauge; // v7.2.18: a new commander visit is gauged afresh
-const p=j.party;if(!(p&&p.status!=='withdrawn'&&p.status!=='fallen'&&p.space===d.id))homeDemonKing(game,{force:true});}
+  if(king&&j){shapeDemonKing(king,j.kingProfile,{raiseOnly:true});delete king.gauge;delete king.heroGauge; // v7.2.18: a new commander visit is gauged afresh
+const p=j.party;if(!(p&&p.status!=='withdrawn'&&p.status!=='fallen'&&p.space===d.id)){homeDemonKing(game,{force:true}); // v7.2.21: with no hero fighting him, the king has healed while the commander was away (no chipping him down visit by visit)
+if(king.hp>0&&king.hp<king.maxHp){king.hp=king.maxHp;game.showToast?.('😈 魔王は傷をいやし、玉座で待ちかまえている。',{field:true});}}}
   return scene;
 }
 export function ensureHeroCastle(game,d=castle()) {
@@ -200,6 +203,7 @@ function stepHiddenEnemies(ctx,p,dt) {
     // v7.2.15 封印の守護者は祠から離れすぎない（見えない所でも、勇者が待つ祠へ戻る）。
     if(m.isSealGuardian&&Number.isFinite(m.homeX)&&Math.hypot(m.x-m.homeX,m.y-m.homeY)>900){move(ctx,ctx,m,{x:m.homeX,y:m.homeY},dt);continue;}
     if(m.isTrueDemonKing&&p.space===TRUE_CASTLE_ID&&updateTrueDemonKing(quietContext(ctx),m,dt,p.members))continue; // v7.2.20
+    if(m.isDemonKing&&p.space===castle().id)gaugeDemonKingForHeroes(m,p.members); // v7.2.21: heroes alone face a king sized to their own firepower
     const hunt=(!!m.isDemonKing&&p.space===castle().id)||(!!m.isTrueDemonKing&&p.space===TRUE_CASTLE_ID),target=nearest(p.members,m,hunt?Infinity:800);if(!target)continue; // v7.0.27: the king hunts the party through the whole castle
     const ranged=RANGED_ENEMIES[m.rangedKind||m.type],reach=ranged?.range||m.attackReach||(m.radius||12)*.8,dist=Math.hypot(m.x-target.x,m.y-target.y);
     if(dist>reach){if(hunt){const speed=m.speed;m.speed=Math.max(speed||0,DEMON_KING_RULES.huntSpeed);move(ctx,ctx,m,target,dt);m.speed=speed;}else move(ctx,ctx,m,target,dt);}
@@ -216,6 +220,7 @@ export function updateHeroParty(game,dt,classes) {
   const living=p.members.filter(u=>!u.dead),fighters=living.filter(ready);
   if(!living.length){const lost=p.space===TRUE_CASTLE_ID;p.status='fallen';if(lost){p.trueQuest='fallen';delete j.trueScene;}homeDemonKing(game);archiveHeroJournal(game,p,lost?'真魔王に敗北':'全滅');announceHero(game,lost?`勇者【${p.name}】のパーティは真魔王にやぶれ、全滅した。`:`勇者【${p.name}】のパーティは全滅した。`);return;}
   if(trackHeroProgress(game,p,dt))return;
+  syncHeroClassStage(game,p,classes); // v7.2.21: one class-up per guardian this party slew (old saves catch up here)
   p.status=j.demonKingDefeat?'victorious':fighters.length?(p.space==='field'?'marching':'castle'):'down';
   if(!fighters.length)return;
   for(const u of living){u.atkAnim=Math.max(0,(u.atkAnim||0)-dt*4);regenerateMana(u,dt);if(p.space==='field'&&supplyLocation(ctx,u)){u.ammo=ammoCapacity(u);ensureMana(u);u.mana=u.maxMana;}}
@@ -353,6 +358,28 @@ function enterHeroTrueCastle(game,p) {
   announceHero(game,`勇者【${p.name}】のパーティが真魔王城へ突入した！`);
 }
 const quietContext=ctx=>{const q=Object.create(ctx);q.showToast=()=>{};return q;};
+/** v7.2.21 勇者隊は、封印の守護者を1体倒すたびに全員が1段クラスアップする（3体で3段目＝最上位）。職はそれぞれの普通の系統。
+ *  数えるのは、この勇者隊が倒した守護者だけ（隊長が解いた封印・前の勇者が解いた封印は数えない）。旧セーブは倒した時期から数える。 */
+export const HERO_CLASS_RULES=Object.freeze({maxStage:3});
+export function heroGuardianStage(game,p){
+  let n=0;for(const v of Object.values(game?.sealKeys?.broken||{}))if(v?.by==='hero'&&(v.party?v.party===String(p?.id):(Number(v.phase)||0)>=(Number(p?.phase)||0)))n++;
+  return Math.min(HERO_CLASS_RULES.maxStage,n);
+}
+export function syncHeroClassStage(game,p,classes){
+  if(!p||!classes)return false;
+  const target=heroGuardianStage(game,p);if(!(target>(p.classStage||0)))return false;
+  for(const u of p.members){
+    if(u.dead)continue;let stage=u.heroClassStage||0;
+    while(stage<target){const next=classes[u.soldierClass]?.advancedClassId;if(!next||!classes[next])break;u.soldierClass=next;stage++;}
+    u.heroClassStage=stage;delete u._cachedEnemy;game.recalcSoldierStats(u);if(!u.isDown&&u.hp>0)u.hp=u.maxHp;
+  }
+  const from=p.classStage||0;p.classStage=target;
+  const leader=p.members.find(u=>u.isChosenHero),name=classes[leader?.soldierClass]?.name||'';
+  recordHeroEvent(game,p,'classup',`守護者をたおし、全員がクラス${target}になった（勇者は${name}）。`);
+  const text=target-from>1?`🔱 勇者【${p.name}】のパーティが、全員クラス${target}になった。`:`🔱 勇者【${p.name}】のパーティが守護者をたおし、全員クラス${target}へ昇格した！`;
+  game.showToast?.(text,{field:true,important:true});addBattleReport(game,'hero',text);
+  return true;
+}
 export function renderHeroJourney(game,classes,talents) {
   // Its own top-level window「勇者の記録」, shown only once a hero has been born.
   const host=game.container?.querySelector('#view-strat-hero');if(!host)return;
@@ -378,7 +405,7 @@ export function renderHeroJourney(game,classes,talents) {
   }
   if(!active&&!j.demonKingDefeat){const nx=document.createElement('p');nx.textContent=`次の勇者：第${next}期に天啓`;body.append(nx);}
   if(p?.members.some(u=>u.heroEquipmentVersion)){const gear=document.createElement('p');gear.textContent='勇者と仲間は、勇者パーティ専用の武具を支給されて出発します。';body.append(gear);}
-  if(p&&p.status!=='withdrawn')for(const u of p.members){const row=document.createElement('p');row.textContent=`${u.isChosenHero?'勇者':classes[u.soldierClass]?.name||u.soldierClass} ${u.name} · ${talents[u.talent]?.tag||''} · Lv.${u.level} · ${u.dead?'戦死':u.isDown?(u.carrierId?`搬送中（${u.carrierId==='player'?'隊長':'隊員'}）`:`ダウン（残り${Math.ceil(u.downTimer)}秒）`):`HP ${Math.ceil(u.hp)} / ${u.maxHp}`}`;body.append(row);}
+  if(p&&p.status!=='withdrawn')for(const u of p.members){const row=document.createElement('p');row.textContent=`${u.isChosenHero?(u.heroClassStage?`勇者（${classes[u.soldierClass]?.name||u.soldierClass}）`:'勇者'):classes[u.soldierClass]?.name||u.soldierClass} ${u.name} · ${talents[u.talent]?.tag||''} · Lv.${u.level} · ${u.dead?'戦死':u.isDown?(u.carrierId?`搬送中（${u.carrierId==='player'?'隊長':'隊員'}）`:`ダウン（残り${Math.ceil(u.downTimer)}秒）`):`HP ${Math.ceil(u.hp)} / ${u.maxHp}`}`;body.append(row);}
   if(active&&!j.demonKingDefeat){
     const row=document.createElement('div');row.className='hero-actions';
     const b=document.createElement('button');b.className='mini-btn';b.textContent=game.heroFollowing?'追従をやめる':'勇者を追う';b.disabled=!!game.spectating;b.onclick=()=>{game.heroFollowing=!game.heroFollowing;delete game._heroFollowPath;game.closeStrategyModal();};row.append(b);

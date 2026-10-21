@@ -7,7 +7,7 @@ import {formatCompact} from './number-format.js?v=282';
 import {WORLD_SIZE} from './world.js?v=289';
 import {CAMP_PEACE_RADIUS} from './peace-zones.js?v=277';
 import {formatDistance} from './distance-format.js';
-import {sealDef} from './seal-keys.js?v=354';
+import {sealDef} from './seal-keys.js?v=355';
 import {pendingRaid,raidGraceLeft} from './invasion-rules.js?v=333';
 import {isPlatoonAway,isSoldierOnExpedition,expeditionCombatUnits,getDangerTier} from './expedition-rules.js?v=256';
 
