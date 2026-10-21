@@ -4,7 +4,7 @@
 // border does not retune the camp.
 import { sound } from '../../common/js/audio.js?v=151';
 import { biomeAt, WORLD_SIZE } from './world.js?v=289';
-import { zoneRingLabelJa } from './equipment-rules.js?v=353';
+import { zoneRingLabelJa } from './equipment-rules.js?v=354';
 
 const CENTER = WORLD_SIZE / 2;
 const ASSET_VERSION = 192;

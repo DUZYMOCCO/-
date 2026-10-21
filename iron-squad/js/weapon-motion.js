@@ -1,5 +1,5 @@
 import {drawEquipmentShield} from './equipment-art.js?v=231';
-import { MELEE_SWEET_SPOT, meleeSweetSpotFor, weaponCombatProfile } from './equipment-rules.js?v=353';
+import { MELEE_SWEET_SPOT, meleeSweetSpotFor, weaponCombatProfile } from './equipment-rules.js?v=354';
 import {isHeavyWeaponStyle} from './growth-rules.js?v=329';
 import {limitedLineOf} from './limited-lines.js?v=341';
 

@@ -53,7 +53,7 @@ eq(g.dungeons.filter(d=>d.id!==ID).map(d=>[d.id,d.entrance.x,d.entrance.y]),befo
  const c=raw.dungeons.find(d=>d.id===CASTLE);c.cleared=true;const h=make();h.resumeSavedGame(raw);eq(has(h),1,'cleared castle opens it');}
 // 9) 魔王が倒れていないセーブは閉じたまま
 {const s=make();const raw=structuredClone(s.saveGame({immediate:true}));const h=make();h.resumeSavedGame(raw);eq(has(h),0,'still hidden');eq(h.trueCastle.unlocked,false,'still locked');}
-// 10) 勇者は向かわない：勇者の行き先は封印と魔王城だけ
-{const src=readFileSync(new URL('../js/hero-party.js',import.meta.url),'utf8');ok(!/dungeon_true_demon_castle|TRUE_CASTLE_ID/.test(src),'hero code never targets the true castle');}
+// 10) v7.2.20 から、魔王が倒れたあとの勇者は真魔王城へ向かう（hero-homecoming-v7213 が確かめる）。勇者の行き先を決めるのは hero-party.js だけ
+{const src=readFileSync(new URL('../js/hero-party.js',import.meta.url),'utf8');ok(/TRUE_CASTLE_ID/.test(src)&&/trueCastleOpen\(game\)/.test(src),'heroes head for the true castle only once it is open');}
 console.log(`true-demon-castle-v7217: ${checks} checks ok`);
 }finally{for(const id of slots)saveSlots.remove?.(id);}

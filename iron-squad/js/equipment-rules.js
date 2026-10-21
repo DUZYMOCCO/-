@@ -1,4 +1,4 @@
-import {campaignScaling} from './campaign-scaling.js?v=353';
+import {campaignScaling,southEastAbyss} from './campaign-scaling.js?v=353';
 import {soldierCombatTempo,usesSoldierTempo,attributeFamily,canChannelWeaponMagic} from './unit-attributes.js?v=334';
 import {requiredDefenseStrength,canUseEquipmentBarrier} from './defense-equipment.js?v=298';
 import {isMagicUser} from './magic-rules.js?v=334';
@@ -173,12 +173,13 @@ export function chooseLootTier(distance,kind='normal',random=Math.random) {
 /** v6.7.1: authored border walls; labels show the actual HP/ATK multipliers. */
 export const ZONE_SAFE_DIST=8000,ZONE_POWER_SOFTCAP=1_000_000,ZONE_EDGE_DIST=79360;
 export const zoneRingPower=distance=>campaignScaling(distance,1).hp;
-export function zoneRingLabelJa(distance){
-  const d=Math.max(0,Number(distance)||0),p=campaignScaling(d,1),ring=d<8000?0:d<22000?1:d<48000?2:3;
+/** dx,dy (offsets from headquarters, optional): v7.2.19 south-east abyss multiplier is included in mult / tip / abyss. */
+export function zoneRingLabelJa(distance,dx,dy){
+  const d=Math.max(0,Number(distance)||0),c=campaignScaling(d,1),ab=dx==null||dy==null?1:southEastAbyss(dx,dy),p={hp:c.hp*ab,atk:c.atk*ab},ring=d<8000?0:d<22000?1:d<48000?2:3;
   const fmt=v=>v<10?v.toFixed(1):Math.round(v).toLocaleString('ja-JP');
   const boundary=[0,8000,22000,48000][ring],before=ring?campaignScaling(boundary-1,1):null,after=ring?campaignScaling(boundary,1):null;
   const wall=ring?{hp:after.hp/before.hp,atk:after.atk/before.atk}:null;
-  return {ring,mult:p.hp,name:['本陣防衛圏','警戒辺境','魔境深部','最果ての死地'][ring],tip:`HP×${fmt(p.hp)}・攻撃×${fmt(p.atk)}`,wallTip:wall?`敵のHP約${Math.round(wall.hp)}倍・攻撃約${Math.round(wall.atk)}倍`:'',wall};
+  return {ring,mult:p.hp,name:['本陣防衛圏','警戒辺境','魔境深部','最果ての死地'][ring],tip:`HP×${fmt(p.hp)}・攻撃×${fmt(p.atk)}`+(ab>1.005?`（南東のおく ×${ab<9.95?ab.toFixed(1):'10'}をふくむ）`:''),abyss:ab,wallTip:wall?`敵のHP約${Math.round(wall.hp)}倍・攻撃約${Math.round(wall.atk)}倍`:'',wall};
 }
 export const distanceScaling=campaignScaling;
 

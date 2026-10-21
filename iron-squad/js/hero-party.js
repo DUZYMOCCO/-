@@ -1,16 +1,16 @@
 import {enemyTier,rollBossTreasure} from './enemy-tier.js?v=274';
 import {addBattleReport} from './battle-report.js?v=333';
-import {attackCooldown} from './equipment-rules.js?v=353';
+import {attackCooldown} from './equipment-rules.js?v=354';
 import {migrateCampaignEnemy} from './campaign-scaling.js?v=353';
 import {HERO_RULES,heroRevelationPhase,nextHeroRevelationPhase,heroPartyActive,heroMembers,heroSharesSpace,visibleHeroMembers} from './hero-rules.js?v=302';
-import {advanceHeroRoute,heroSegmentOpen,heroRouteCurrent} from './hero-navigation.js?v=353';
+import {advanceHeroRoute,heroSegmentOpen,heroRouteCurrent} from './hero-navigation.js?v=354';
 import {WORLD_SIZE,settleUnit,fieldRockExit} from './world.js?v=289';
-import {DUNGEON_DEFS,dungeonBlocks} from './dungeon.js?v=353';
+import {DUNGEON_DEFS,dungeonBlocks} from './dungeon.js?v=354';
 import {DEMON_KING_RULES,recordKingProfile,shapeDemonKing,migrateDemonKing} from './demon-king-rules.js?v=352';
 import {nearestDungeonFloor} from './dungeon-layout.js?v=182';
-import {unlockTrueCastle} from './true-demon-castle.js?v=353';
+import {unlockTrueCastle,trueCastleOpen,trueCastleDef,TRUE_CASTLE_ID,updateTrueDemonKing,recordTrueKingDefeat} from './true-demon-castle.js?v=354';
 import {economicFieldBlocked} from './regional-economy.js?v=277';
-import {RECRUIT_CLASSES} from './recruitment.js?v=353';
+import {RECRUIT_CLASSES} from './recruitment.js?v=354';
 import {persistentUnit} from './render-support.js';
 import {grantPersonalExp} from './experience-rules.js';
 import {formatDistance} from './distance-format.js';
@@ -19,14 +19,14 @@ import {isMedic,treatWounded,updateWounded,normalizeRevivalSkill,revivalSkillCoo
 import {healByMedic,healAmountFor} from './phase-rules.js?v=346';
 import {ensureMana,regenerateMana,spendMana,isMage} from './magic-rules.js?v=334';
 import {takeRangedShot,supplyLocation,ammoCapacity} from './supply-rules.js?v=332';
-import {distanceScaling} from './equipment-rules.js?v=353';
+import {distanceScaling} from './equipment-rules.js?v=354';
 import {strongEnemyReward} from './combat-rewards.js?v=299';
 import {RANGED_ENEMIES} from './enemy-ranged.js?v=295';
-import {startHeroJournal,archiveHeroJournal,appendHeroDiary,recordHeroEquipmentGrant,recordHeroEvent,announceHero} from './hero-journal.js?v=353';
+import {startHeroJournal,archiveHeroJournal,appendHeroDiary,recordHeroEquipmentGrant,recordHeroEvent,announceHero} from './hero-journal.js?v=354';
 import {showHeroRevelationScene} from './hero-revelation-scene.js?v=302';
 import {grantHeroEquipment} from './hero-equipment.js?v=295';
-import {recordSealGuardianKill,heroPilgrimShrine,heroCastleOpen,ensureSealGuardian,sealDef,sealsRemaining,SEAL_RULES,HERO_SHRINE_STAND} from './seal-keys.js?v=353';
-import {spectateAvailability,startSpectate,endSpectate,queueSpectate,cancelSpectateQueue,spectateStatusLine} from './hero-spectate.js?v=353';
+import {recordSealGuardianKill,heroPilgrimShrine,heroCastleOpen,ensureSealGuardian,sealDef,sealsRemaining,SEAL_RULES,HERO_SHRINE_STAND} from './seal-keys.js?v=354';
+import {spectateAvailability,startSpectate,endSpectate,queueSpectate,cancelSpectateQueue,spectateStatusLine} from './hero-spectate.js?v=354';
 const C=WORLD_SIZE/2,castle=()=>DUNGEON_DEFS.find(d=>d.id==='dungeon_demon_castle');
 const ready=u=>u&&!u.dead&&!u.isDown&&u.hp>0;
 export function initializeHeroJourney(game,saved=null) {
@@ -100,7 +100,8 @@ export function serializeHeroJourney(game) {
   syncHeroCastle(game);
   const j=game.heroJourney;if(!j)return null;
   const scene=j.castleScene&&{...j.castleScene,monsters:j.castleScene.monsters.map(persistentUnit)};
-  return {...j,castleScene:scene,party:j.party?{...persistentUnit(j.party),members:j.party.members.map(persistentUnit)}:null};
+  const trueScene=j.trueScene&&{...j.trueScene,monsters:j.trueScene.monsters.map(persistentUnit)};
+  return {...j,castleScene:scene,trueScene,party:j.party?{...persistentUnit(j.party),members:j.party.members.map(persistentUnit)}:null};
 }
 export function syncHeroCastle(game) {
   if(game.currentDungeon?.id!=='dungeon_demon_castle'||!game.heroJourney?.castleScene)return;
@@ -153,8 +154,8 @@ export function ensureHeroCastle(game,d=castle()) {
 function battleContext(game,p) {
   if(heroSharesSpace(game))return game;
   const ctx=Object.create(game);
-  ctx.currentDungeon=p.space==='field'?null:castle();
-  ctx.monsters=p.space==='field'?(game.savedFieldMonsters||[]):ensureHeroCastle(game).monsters;
+  ctx.currentDungeon=p.space==='field'?null:p.space===TRUE_CASTLE_ID?trueCastleDef():castle();
+  ctx.monsters=p.space==='field'?(game.savedFieldMonsters||[]):p.space===TRUE_CASTLE_ID?ensureHeroTrueCastle(game).monsters:ensureHeroCastle(game).monsters;
   ctx.squad=p.members;ctx.heroJourney=null;ctx.reserves=[];ctx.civilians=[];ctx.gateGuards=[];ctx.merchants=[];ctx._merchantWounded=[];
   ctx.player={x:-1e8,y:-1e8,hp:0,isDown:false};ctx._monsterSpatial=null;ctx.projectiles=[];
   ctx.spawnDamageText=()=>{};ctx.spawnSparks=()=>{};ctx.dialogue=null;
@@ -170,6 +171,7 @@ function battleContext(game,p) {
     if(treasure.orbs||treasure.gems)game.showToast?.(`ボス秘宝獲得：覚醒宝珠 +${treasure.orbs} / 神話宝玉 +${treasure.gems}`);
     game.recalcSoldierStats(u);
     if(m.isDemonKing){recordDemonKingDefeat(game,u);game.heroJourney.castleScene.vault.unlocked=true;announceHero(game,`勇者パーティが魔王【${m.name}】を討伐した！`);}
+    if(m.isTrueDemonKing){recordTrueKingDefeat(game,u,false);announceHero(game,`勇者パーティが真魔王【${m.name}】を討伐した！`);}
   };
   return ctx;
 }
@@ -197,7 +199,8 @@ function stepHiddenEnemies(ctx,p,dt) {
   for(const m of [...ctx.monsters]){
     // v7.2.15 封印の守護者は祠から離れすぎない（見えない所でも、勇者が待つ祠へ戻る）。
     if(m.isSealGuardian&&Number.isFinite(m.homeX)&&Math.hypot(m.x-m.homeX,m.y-m.homeY)>900){move(ctx,ctx,m,{x:m.homeX,y:m.homeY},dt);continue;}
-    const hunt=!!m.isDemonKing&&p.space===castle().id,target=nearest(p.members,m,hunt?Infinity:800);if(!target)continue; // v7.0.27: the king hunts the party through the whole castle
+    if(m.isTrueDemonKing&&p.space===TRUE_CASTLE_ID&&updateTrueDemonKing(quietContext(ctx),m,dt,p.members))continue; // v7.2.20
+    const hunt=(!!m.isDemonKing&&p.space===castle().id)||(!!m.isTrueDemonKing&&p.space===TRUE_CASTLE_ID),target=nearest(p.members,m,hunt?Infinity:800);if(!target)continue; // v7.0.27: the king hunts the party through the whole castle
     const ranged=RANGED_ENEMIES[m.rangedKind||m.type],reach=ranged?.range||m.attackReach||(m.radius||12)*.8,dist=Math.hypot(m.x-target.x,m.y-target.y);
     if(dist>reach){if(hunt){const speed=m.speed;m.speed=Math.max(speed||0,DEMON_KING_RULES.huntSpeed);move(ctx,ctx,m,target,dt);m.speed=speed;}else move(ctx,ctx,m,target,dt);}
     else {m.atkTimer=(m.atkTimer||0)-dt;if(m.atkTimer<=0){m.atkTimer=ranged?.interval||m.attackInterval||1;ctx.damageTarget(target,m.atk,{attacker:m,damageKind:ranged?.kind,element:ranged?.element,pctMax:m.strikePct||0});}}
@@ -211,7 +214,7 @@ export function updateHeroParty(game,dt,classes) {
   // Shared-space bleeding/rescue is already ticked by the ordinary battlefield.
   if(!shared)updateWounded(ctx,dt);
   const living=p.members.filter(u=>!u.dead),fighters=living.filter(ready);
-  if(!living.length){p.status='fallen';homeDemonKing(game);archiveHeroJournal(game,p,'全滅');announceHero(game,`勇者【${p.name}】のパーティは全滅した。`);return;}
+  if(!living.length){const lost=p.space===TRUE_CASTLE_ID;p.status='fallen';if(lost){p.trueQuest='fallen';delete j.trueScene;}homeDemonKing(game);archiveHeroJournal(game,p,lost?'真魔王に敗北':'全滅');announceHero(game,lost?`勇者【${p.name}】のパーティは真魔王にやぶれ、全滅した。`:`勇者【${p.name}】のパーティは全滅した。`);return;}
   if(trackHeroProgress(game,p,dt))return;
   p.status=j.demonKingDefeat?'victorious':fighters.length?(p.space==='field'?'marching':'castle'):'down';
   if(!fighters.length)return;
@@ -226,8 +229,9 @@ export function updateHeroParty(game,dt,classes) {
   const holding=p.space==='field'&&!j.demonKingDefeat&&stepHeroPilgrimage(game,p,ctx);
   // v7.2.15 岩越しで誰も攻撃できない敵では足を止めない（巡礼で岩場を通るようになり、互いに手が出ないまま立ち往生していた）。
   const danger=ctx.monsters.some(m=>ready(m)&&Math.hypot(m.x-p.x,m.y-p.y)<420&&!ctx.attackBlocked(p,m)&&fighters.some(u=>Math.hypot(u.x-m.x,u.y-m.y)<500&&!ctx.attackBlocked(u,m))),wounded=living.some(u=>u.isDown);
-  // v7.2.13 魔王討伐後は城を出て本陣へ凱旋する（以前はその場で立ち尽くしていた）。戦闘中・負傷者がいる間は進まない。
-  if(!danger&&!wounded&&j.demonKingDefeat&&p.homeState!=='home')stepHeroHomecoming(game,p,fighters,dt);
+  // v7.2.20 魔王討伐後（勇者でも隊長でも）は本陣へ帰らず、真魔王城へ向かう（v7.2.13 の凱旋はやめた）。負傷者がいる間は進まない。
+  // 野外と魔王城の中では敵がいても足を止めずに進む（南東の深みの敵や城の残りの敵に足止めされ、何時間も動けなかった）。真魔王城では戦う。
+  if(!wounded&&j.demonKingDefeat&&(!danger||p.space!==TRUE_CASTLE_ID))stepHeroTrueQuest(game,p,fighters,dt);
   if(!danger&&!wounded&&!j.demonKingDefeat&&!holding){
     if(p.space==='field'&&!heroRouteCurrent(game,p))advanceHeroRoute(game,p);
     const target=p.route?.[p.routeIndex||0];
@@ -297,33 +301,58 @@ function stepHeroPilgrimage(game,p,ctx) {
   if(Math.hypot(p.x-shrine.x,p.y-shrine.y)<SEAL_RULES.discovery)ensureSealGuardian(game,shrine,ctx.monsters);
   return Math.hypot(p.x-p.destination.x,p.y-p.destination.y)<60;
 }
-/** v7.2.13 凱旋の帰り道。出発時に通った本陣の東の地点（HERO_HOME_GATE）までA*で歩き、そこから本陣の中央へ入る。 */
-export const HERO_HOME_GATE={x:C+512,y:C},HERO_HOME_RADIUS=60;
-function stepHeroHomecoming(game,p,fighters,dt) {
+/** v7.2.20 魔王討伐後の旅：魔王城を出て、南東の真魔王城へ（v7.2.13 の本陣への凱旋はやめた）。真魔王城が開くまでは動かない。
+ *  野外は A* で入口へ。探索が尽きたらまっすぐ。入口の近くまで来たら突入し、玉座の前へ進む。真魔王は勇者を城の中で追ってくる。 */
+export const HERO_TRUE_RULES=Object.freeze({enterRadius:120,directRadius:400});
+const trueEntrance=()=>trueCastleDef().entrance;
+function startHeroTrueQuest(game,p,{announce=true}={}) {
+  const e=trueEntrance(),resumed=p.homeState==='home';
+  p.trueQuest='marching';delete p.homeState;delete p.homePhase;
+  p.destination={x:e.x,y:e.y};p.route=[];p.routeIndex=0;delete p._search;
+  if(announce)announceHero(game,resumed?`勇者【${p.name}】のパーティが本陣を出て、南東の真魔王城へ向かった。`:`勇者【${p.name}】のパーティが南東の真魔王城へ向かった。`);
+}
+function stepHeroTrueQuest(game,p,fighters,dt) {
+  if(!trueCastleOpen(game))return;
   const speed=Math.min(...fighters.map(u=>u.speed||100));
-  const walk=target=>{const dx=target.x-p.x,dy=target.y-p.y,d=Math.hypot(dx,dy),step=Math.min(d,speed*dt*.85);if(d>0){p.x+=dx/d*step;p.y+=dy/d*step;}return d<=speed*dt+8;};
-  const d=castle();
-  if(p.space===d.id){p.homeState='leaving';p.route=[];p.routeIndex=0;if(walk({x:240,y:d.height/2}))leaveHeroCastle(game,p,d);return;}
-  if(p.homeState==='entering'){if(walk({x:C,y:C})||Math.hypot(p.x-C,p.y-C)<=HERO_HOME_RADIUS)arriveHeroHome(game,p);return;}
-  if(p.homeState!=='marching'){p.homeState='marching';p.destination={...HERO_HOME_GATE};p.route=[];p.routeIndex=0;delete p._search;}
+  const walk=target=>{const dx=target.x-p.x,dy=target.y-p.y,d=Math.hypot(dx,dy),step=Math.min(d,speed*dt*.85);if(d>0){p.x+=dx/d*step;p.y+=dy/d*step;if(p.space==='field')recordHeroTrail(p);}return d<=speed*dt+8;};
+  const d=castle(),t=trueCastleDef(),e=t.entrance;
+  if(p.space===d.id){p.trueQuest='leaving';p.route=[];p.routeIndex=0;if(walk({x:240,y:d.height/2}))leaveHeroCastle(game,p,d);return;}
+  if(p.space===t.id){p.trueQuest='inside';walk(nearestDungeonFloor(t,{x:t.width-350-HERO_THRONE_STAND,y:t.height/2}));return;}
+  if(p.trueQuest!=='marching'||!p.destination||Math.hypot(p.destination.x-e.x,p.destination.y-e.y)>1)startHeroTrueQuest(game,p);
+  const left=Math.hypot(p.x-e.x,p.y-e.y);
+  if(left<HERO_TRUE_RULES.enterRadius){enterHeroTrueCastle(game,p);return;}
+  if(left<HERO_TRUE_RULES.directRadius){p.route=[];p.routeIndex=0;delete p._search;walk(e);return;}
   if(!heroRouteCurrent(game,p)&&!advanceHeroRoute(game,p)){
     // 探索が尽きたら（壁で囲まれた等）まっすぐ向かう。止まり続けないため。
-    if(p._search&&(p._search.count>=30000||!p._search.heap.length)){p.route=[{...p.destination}];p.routeIndex=0;delete p._search;}
+    if(p._search&&(p._search.count>=30000||!p._search.heap.length)){p.route=[{x:e.x,y:e.y}];p.routeIndex=0;delete p._search;}
     return;
   }
-  const target=p.route[p.routeIndex||0];if(!target){p.homeState='entering';return;}
-  if(walk(target)){p.routeIndex=(p.routeIndex||0)+1;if(p.routeIndex>=p.route.length){p.route=[];p.routeIndex=0;p.homeState='entering';}}
+  const target=p.route[p.routeIndex||0];if(!target){p.route=[{x:e.x,y:e.y}];p.routeIndex=0;return;}
+  if(walk(target)){p.routeIndex=(p.routeIndex||0)+1;if(p.routeIndex>=p.route.length){p.route=[];p.routeIndex=0;}}
 }
+const HERO_THRONE_STAND=260;
 function leaveHeroCastle(game,p,d=castle()) {
   const out={x:d.entrance.x-(d.entrance.radius||64)-60,y:d.entrance.y-(d.entrance.radius||64)-60};
-  p.space='field';p.x=out.x;p.y=out.y;p.homeState='marching';p.destination={...HERO_HOME_GATE};p.route=[];p.routeIndex=0;delete p._search;
+  p.space='field';p.x=out.x;p.y=out.y;p.trail=[];
   p.members.forEach((u,i)=>{u.x=out.x+Math.cos(i*1.15)*34;u.y=out.y+Math.sin(i*1.15)*34;delete u._cachedEnemy;u.vx=u.vy=0;});
-  announceHero(game,`勇者【${p.name}】のパーティが魔王城を後にし、本陣への帰途についた。`);
+  startHeroTrueQuest(game,p,{announce:false});
+  announceHero(game,`勇者【${p.name}】のパーティが魔王城を後にし、南東の真魔王城へ向かった。`);
 }
-function arriveHeroHome(game,p) {
-  p.homeState='home';p.homePhase=game.phase;p.route=[];p.routeIndex=0;delete p._search;
-  announceHero(game,`勇者【${p.name}】のパーティが本陣へ凱旋した！`);
+/** The hero's own view of the true castle: the true demon king on his throne (the castle guards do not trouble the heroes). */
+export function ensureHeroTrueCastle(game) {
+  const j=game.heroJourney,t=trueCastleDef();
+  if(j.trueScene?.monsters)return j.trueScene;
+  const at=nearestDungeonFloor(t,{x:t.width-350,y:t.height/2}),king=game.createDungeonBoss(t.boss,at.x,at.y,t);
+  j.trueScene={monsters:[king]};return j.trueScene;
 }
+function enterHeroTrueCastle(game,p) {
+  const t=trueCastleDef();ensureHeroTrueCastle(game);
+  const at=nearestDungeonFloor(t,{x:240,y:t.height/2});
+  p.space=t.id;p.trueQuest='inside';p.x=at.x;p.y=at.y;p.route=[];p.routeIndex=0;delete p._search;
+  p.members.forEach((u,i)=>{const q=nearestDungeonFloor(t,{x:at.x-40-i*10,y:at.y+(i-2)*22});u.x=q.x;u.y=q.y;delete u._cachedEnemy;u.vx=u.vy=0;});
+  announceHero(game,`勇者【${p.name}】のパーティが真魔王城へ突入した！`);
+}
+const quietContext=ctx=>{const q=Object.create(ctx);q.showToast=()=>{};return q;};
 export function renderHeroJourney(game,classes,talents) {
   // Its own top-level window「勇者の記録」, shown only once a hero has been born.
   const host=game.container?.querySelector('#view-strat-hero');if(!host)return;
@@ -333,11 +362,15 @@ export function renderHeroJourney(game,classes,talents) {
   let panel=host.querySelector('#hero-journey');if(!panel){panel=document.createElement('section');panel.id='hero-journey';panel.className='hero-record';host.append(panel);}
   panel.replaceChildren();const summary=document.createElement('h4');summary.textContent='勇者パーティ';panel.append(summary);
   const info=document.createElement('p'),idle=heroIdlePhases(game,p),active=heroPartyActive(p),next=nextHeroRevelationPhase(game.phase);
-  const state=!p?'':p.status==='withdrawn'?'撤退（魔王城から引き上げた）':p.status==='fallen'?'全滅':p.status==='down'?'全員ダウン':p.status==='victorious'?(p.homeState==='home'?'魔王討伐後 · 本陣に凱旋':p.space==='field'?`魔王討伐後 · 本陣へ帰還中（あと${formatDistance(Math.hypot(p.x-C,p.y-C))}）`:'魔王討伐後 · 魔王城を出るところ'):p.space==='field'?`${sealDef(p.pilgrimTarget)?`${sealDef(p.pilgrimTarget).name}へ進軍中（封印 残り${sealsRemaining(game)}）`:'魔王城へ進軍中'} · 本陣から${formatDistance(Math.hypot(p.x-C,p.y-C))}`:idle>=HERO_RULES.warnPhases?`魔王城で停滞中（${idle}期）`:'魔王城で交戦中';
+  const state=!p?'':p.status==='withdrawn'?'撤退（魔王城から引き上げた）':p.status==='fallen'?(p.trueQuest==='fallen'?'真魔王にやぶれて全滅':'全滅'):p.status==='down'?'全員ダウン':p.status==='victorious'?(p.space===TRUE_CASTLE_ID?'魔王討伐後 · 真魔王城で真魔王と交戦中':p.space==='field'?(trueCastleOpen(game)?`魔王討伐後 · 真魔王城へ進軍中（あと${formatDistance(Math.hypot(p.x-trueEntrance().x,p.y-trueEntrance().y))}）`:'魔王討伐後 · 待機中'):'魔王討伐後 · 魔王城を出て真魔王城へ向かうところ'):p.space==='field'?`${sealDef(p.pilgrimTarget)?`${sealDef(p.pilgrimTarget).name}へ進軍中（封印 残り${sealsRemaining(game)}）`:'魔王城へ進軍中'} · 本陣から${formatDistance(Math.hypot(p.x-C,p.y-C))}`:idle>=HERO_RULES.warnPhases?`魔王城で停滞中（${idle}期）`:'魔王城で交戦中';
   info.textContent=p?`第${p.phase}期に天啓 · ${p.name} · ${state}`:`第${next}期に、救いの御子が天啓を受け勇者となります。`;
   const body=document.createElement('div');body.className='fold-content';panel.append(body);
   body.append(info);
-  if(active&&p.space!=='field'&&p.status!=='victorious'){
+  if(active&&p.space===TRUE_CASTLE_ID){ // v7.2.20
+    const king=j.trueScene?.monsters?.find(m=>m.isTrueDemonKing),box=document.createElement('div');box.className='hero-status';
+    const l1=document.createElement('p');l1.textContent=king?`真魔王HP ${(Math.max(0,king.hp)/king.maxHp*100).toFixed(king.hp/king.maxHp>=.1?1:2)}%`:'真魔王は不在';box.append(l1);body.append(box);
+  }
+  if(active&&p.space!=='field'&&p.space!==TRUE_CASTLE_ID&&p.status!=='victorious'){
     const castleInfo=heroCastleInfo(game),box=document.createElement('div');box.className='hero-status';
     if(castleInfo){const king=castleInfo.bossHp==null||!(castleInfo.bossMax>0)?'魔王は不在':`魔王HP ${(castleInfo.bossHp/castleInfo.bossMax*100).toFixed(castleInfo.bossHp/castleInfo.bossMax>=.1?1:2)}%`;
       const l1=document.createElement('p');l1.textContent=`城内の敵 残り${castleInfo.mobs}体 · ${king}`;box.append(l1);}

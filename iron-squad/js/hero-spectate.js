@@ -2,12 +2,12 @@
 // 観測者の隊長は不可視・無敵・敵の標的外・操作無効。野外の敵と隊員は凍結（既存のダンジョン入退場の仕組みを再利用）。
 // 観戦状態（game.spectating）は保存しない：保存データは入場前の野外位置を持つので、読み込み直しても隊長は魔王城に居座らない。
 import {heroPartyActive} from './hero-rules.js?v=302';
-import {DUNGEON_DEFS} from './dungeon.js?v=353';
+import {DUNGEON_DEFS} from './dungeon.js?v=354';
 import {formatCompact} from './number-format.js?v=282';
 import {WORLD_SIZE} from './world.js?v=289';
 import {CAMP_PEACE_RADIUS} from './peace-zones.js?v=277';
 import {formatDistance} from './distance-format.js';
-import {sealDef} from './seal-keys.js?v=353';
+import {sealDef} from './seal-keys.js?v=354';
 import {pendingRaid,raidGraceLeft} from './invasion-rules.js?v=333';
 import {isPlatoonAway,isSoldierOnExpedition,expeditionCombatUnits,getDangerTier} from './expedition-rules.js?v=256';
 

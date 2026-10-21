@@ -1,5 +1,5 @@
-// v7.2.17: 真魔王城。魔王が倒れると南東の果てに現れ、入れるようになる。勇者隊は向かわない（勇者の行き先は封印と魔王城だけ）。
-import {DUNGEON_DEFS,TRUE_DEMON_KING_HP,TRUE_DEMON_KING_ATK} from './dungeon.js?v=353';
+// v7.2.17: 真魔王城。魔王が倒れると南東の果てに現れ、入れるようになる。v7.2.20 から、魔王が倒れたあとの勇者隊もここへ向かう（hero-party.js）。
+import {DUNGEON_DEFS,TRUE_DEMON_KING_HP,TRUE_DEMON_KING_ATK} from './dungeon.js?v=354';
 import {addBattleReport} from './battle-report.js?v=333';
 export const TRUE_CASTLE_ID='dungeon_true_demon_castle';
 const DEMON_CASTLE_ID='dungeon_demon_castle',TAU=Math.PI*2;
@@ -93,6 +93,7 @@ export function drawTrueCastleEntrance(ctx,def,time=0){
 //  第3段（HP40%以下）「終わりの鐘」：数人に最大HPを大きく超える割合ダメージ。聖域と身代わりが重ならないと倒れ、蘇生が追いつかないと崩れる。
 // 段階が変わるときは数秒「虚空の障壁」で攻撃が通らない（一瞬で終わらないように）。調整はこの表だけ。
 export const TRUE_KING_RULES=Object.freeze({
+  heroStrikePct:0.35, // v7.2.20: vs the hero party only (index.js damageTarget)
   hp:TRUE_DEMON_KING_HP, atk:TRUE_DEMON_KING_ATK, strikeInterval:1.5, cleaveRadius:90, reach:96,
   wave:{interval:3.5,radius:320,atk:30_000},
   growthStrength:2_000_000, // 被弾成長はこの強さの敵として数える（決まった巨大ATKで成長が跳ねないように）

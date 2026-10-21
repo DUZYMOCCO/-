@@ -1,4 +1,4 @@
-import {catalogTier,catalogPrice,ensureMerchantCatalog,MERCHANT_MAX_TIER,MERCHANT_CATALOG_VERSION} from './merchant-catalog.js?v=353';
+import {catalogTier,catalogPrice,ensureMerchantCatalog,MERCHANT_MAX_TIER,MERCHANT_CATALOG_VERSION} from './merchant-catalog.js?v=354';
 import {applyAttributeStats} from './unit-attributes.js?v=334';
 /**
  * IRON SQUAD: 宿場・本陣・各地のキャンプの行商人
@@ -6,12 +6,12 @@ import {applyAttributeStats} from './unit-attributes.js?v=334';
  * - 強い護衛付き。放置するとモンスターに襲われ死亡しうる
  * - 護衛が倒した強敵のドロップを序盤から掠め取れるチャンス
  */
-import { saleValue, distanceScaling, weaponCombatProfile } from './equipment-rules.js?v=353';
+import { saleValue, distanceScaling, weaponCombatProfile } from './equipment-rules.js?v=354';
 import {WORLD_SIZE} from './world.js?v=289';
 import {southEastAbyss} from './campaign-scaling.js?v=353';
-import { drawFieldSoldier } from './visuals.js?v=353';
+import { drawFieldSoldier } from './visuals.js?v=354';
 import { createSoldierAppearance, drawSoldierHead } from './soldier-appearance.js?v=342';
-import { attackAnimationRate } from './weapon-motion.js?v=353';
+import { attackAnimationRate } from './weapon-motion.js?v=354';
 import { markSoldierDown, rebuildMerchantCasualties, RESCUE_TIMEOUT, departFromRest } from './casualty-rules.js?v=346';
 import {emptyMastery,normalizeMastery,hitGrowthHpBonus,hitGrowthDefBonus,migrateHitGrowth,applyHitGrowth,masteryAtkMult,masteryReloadMult} from './growth-rules.js?v=329';
 import {recordCombat,finishExperience} from './phase-rules.js?v=346';
