@@ -1,7 +1,7 @@
 // タッチ／マウス操作（v0.1.2）: 味方の部隊をタップで選ぶ → 行き先をタップで移動。
 // ドラッグはどこでも画面移動、2本指でズーム。選んでいる部隊をもう一度タップすると選択解除。
-import { toTile } from '../sim/map.js?v=3';
-import { issueOrder, squadUnits } from '../sim/sim.js?v=3';
+import { toTile } from '../sim/map.js?v=4';
+import { issueOrder, squadUnits } from '../sim/sim.js?v=4';
 
 const TAP_SLOP = 10; // これより指が動いたらタップではなくドラッグ（画面移動）
 

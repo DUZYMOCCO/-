@@ -1,13 +1,15 @@
 // 描画（Pixi v8）。シミュレーションの state を読むだけで、書き換えない。
-import { Application, Container, Sprite, Graphics, Texture, RenderTexture, BlurFilter } from '../../vendor/pixi-8.22.0.min.mjs?v=3';
-import { TILE, TERRAIN, toTile, tileCenter } from '../sim/map.js?v=3';
-import { squadCommander, squadUnits } from '../sim/sim.js?v=3';
-import { artSources } from './art.js?v=3';
-import { buildTextures } from './textures.js?v=3';
+import { Application, Container, Sprite, Graphics, Texture, RenderTexture, BlurFilter } from '../../vendor/pixi-8.22.0.min.mjs?v=4';
+import { TILE, TERRAIN, toTile, tileCenter } from '../sim/map.js?v=4';
+import { squadCommander, squadUnits } from '../sim/sim.js?v=4';
+import { GATHER_RADIUS, EXTRACT_RADIUS } from '../sim/mission.js?v=4';
+import { artSources } from './art.js?v=4';
+import { buildTextures } from './textures.js?v=4';
 
 const FOG_PAD = 2;            // 霧テクスチャの外周（ぼかしで端が明るくならないように）
 const FOG_RT_SCALE = 4;       // 1タイル＝霧テクスチャ4px（ぼかし後）
 const UNIT_PX = 34;           // 機体の表示サイズ（ワールド座標）
+const KIND_PX = { scav: 32, ponco: 34, alien: 54 }; // 兵種ごとの表示サイズ（ないものは UNIT_PX）
 const SIDE_COLOR = { ally: 0x7df9ff, enemy: 0xffb347 };
 
 export async function createRenderer(host, sim) {
@@ -33,7 +35,9 @@ export async function createRenderer(host, sim) {
   const selLayer = new Graphics();
   const units = new Container(); units.sortableChildren = true;
   const fxLayer = new Graphics();
-  world.addChild(selLayer, pathLayer, units, fxLayer);
+  const markLayer = new Graphics(); // 回収の進み具合・脱出口の輪・気づきのゲージ
+  world.addChild(selLayer, pathLayer, units, fxLayer, markLayer);
+  const mission = sim.mission;
 
   // 本陣
   const hqs = {};
@@ -42,6 +46,23 @@ export async function createRenderer(host, sim) {
     s.anchor.set(0.5, 0.82); s.width = s.height = TILE * 3.2;
     s.position.set(tileCenter(h.tx), tileCenter(h.ty) + 18); s.zIndex = s.y;
     units.addChild(s); hqs[side] = s;
+  }
+  if (mission) hqs.enemy.visible = false;
+
+  // ミッション: 回収ポイント（ガラクタの山）と脱出口
+  const piles = [];
+  let hatchSprite = null;
+  if (mission) {
+    for (const p of mission.salvage) {
+      const s = new Sprite(tex[`salvage_${p.id % 2}`]);
+      s.anchor.set(0.5, 0.8); s.width = s.height = TILE * 1.9;
+      s.position.set(tileCenter(p.tx), tileCenter(p.ty) + 8); s.zIndex = s.y - 20;
+      units.addChild(s); piles.push({ p, s, empty: false });
+    }
+    hatchSprite = new Sprite(tex.hatch);
+    hatchSprite.anchor.set(0.5, 0.66); hatchSprite.width = hatchSprite.height = TILE * 3;
+    hatchSprite.position.set(tileCenter(mission.extraction.tx), tileCenter(mission.extraction.ty)); hatchSprite.zIndex = hatchSprite.y - 30;
+    units.addChild(hatchSprite);
   }
 
   // 霧: タイル1px の小さなキャンバス → ぼかして RenderTexture へ（霧が変わったときだけ）→ ワールド全体に引き伸ばす
@@ -74,6 +95,7 @@ export async function createRenderer(host, sim) {
 
   // カメラ
   const cam = { x: tileCenter(map.hq.ally.tx), y: tileCenter(map.hq.ally.ty) - 120, zoom: 1 };
+  if (mission) cam.y = tileCenter(map.hq.ally.ty) - 200;
   const minZoom = () => Math.max(app.screen.width / (map.w * TILE), app.screen.height / (map.h * TILE)) * 0.9;
   function clampCam() {
     cam.zoom = Math.max(minZoom(), Math.min(2.4, cam.zoom));
@@ -90,12 +112,14 @@ export async function createRenderer(host, sim) {
     let v = views.get(u.id);
     if (v) return v;
     const c = new Container();
-    const body = new Sprite(); body.anchor.set(0.5, 0.88); body.width = body.height = UNIT_PX;
-    const marker = new Sprite(tex[`marker_${u.side}`]); marker.anchor.set(0.3, 1); marker.width = marker.height = 18; marker.position.set(4, -UNIT_PX + 2);
+    const px = KIND_PX[u.kind] || UNIT_PX;
+    const body = new Sprite(); body.anchor.set(0.5, 0.88); body.width = body.height = px;
+    const marker = new Sprite(tex[`marker_${u.side}`]); marker.anchor.set(0.3, 1); marker.width = marker.height = 18; marker.position.set(4, -px + 2);
+    if (u.side === 'enemy' && mission) marker.alpha = 0; // 異星生物に旗は出さない
     const bar = new Graphics();
     c.addChild(body, marker, bar);
     units.addChild(c);
-    v = { c, body, marker, bar, hp: -1, cmd: null, flash: 0 };
+    v = { c, body, marker, bar, hp: -1, cmd: null, flash: 0, px };
     views.set(u.id, v);
     return v;
   }
@@ -143,10 +167,56 @@ export async function createRenderer(host, sim) {
         const a = 1 - age / 0.18, col = SIDE_COLOR[f.side];
         fxLayer.moveTo(f.x1, f.y1).lineTo(f.x2, f.y2).stroke({ width: f.kind === 'heavy' ? 3.5 : 2, color: col, alpha: a });
         fxLayer.circle(f.x2, f.y2, 4 + 6 * (1 - a)).fill({ color: 0xffffff, alpha: a * 0.8 });
+      } else if (f.type === 'deliver') {
+        const a = 1 - age / 0.8;
+        fxLayer.circle(f.x, f.y - 6, 10 + 40 * (1 - a)).stroke({ width: 4, color: 0x4ade80, alpha: a });
       } else if (f.type === 'boom') {
         if (f.side === 'enemy' && !sim.fog.isVisible(toTile(f.x), toTile(f.y))) continue;
         const a = 1 - age / 0.6;
         fxLayer.circle(f.x, f.y - 8, 8 + 22 * (1 - a)).fill({ color: 0xffa94d, alpha: a * 0.7 }).stroke({ width: 3, color: 0x121418, alpha: a });
+      }
+    }
+  }
+
+  // 回収の進み具合・集めている火花・脱出口の輪・異星生物の気づきのゲージ
+  function drawMission(now) {
+    markLayer.clear();
+    if (!mission) return;
+    for (const pl of piles) {
+      const p = pl.p, seen = sim.fog.isSeen(p.tx, p.ty);
+      pl.s.visible = seen; if (!seen) continue;
+      if (p.amount <= 0 && !pl.empty) { pl.empty = true; pl.s.texture = tex.salvage_empty; }
+      const x = tileCenter(p.tx), y = tileCenter(p.ty), r = Math.max(0, p.amount / p.max);
+      markLayer.circle(x, y, GATHER_RADIUS * TILE).stroke({ width: 2, color: 0xffd166, alpha: p.amount > 0 ? 0.35 : 0.12 });
+      if (p.amount > 0) {
+        markLayer.rect(x - 18, y + 18, 36, 6).fill({ color: 0x121418, alpha: 0.85 });
+        markLayer.rect(x - 17, y + 19, 34 * r, 4).fill({ color: 0xffd166 });
+      }
+    }
+    for (const s of sim.squads) {
+      if (s.side !== 'ally' || s.gathering == null) continue;
+      for (const u of squadUnits(sim, s)) {
+        const k = (now * 3 + u.id * 0.37) % 1;
+        markLayer.circle(u.x + Math.sin(u.id * 7 + now * 5) * 6, u.y - 20 - k * 16, 2.4 * (1 - k) + 0.6).fill({ color: 0xffd166, alpha: 1 - k });
+      }
+    }
+    const ex = mission.extraction, hx = tileCenter(ex.tx), hy = tileCenter(ex.ty), pulse = (now * 0.8) % 1;
+    markLayer.circle(hx, hy, EXTRACT_RADIUS * TILE).stroke({ width: 2.5, color: 0x4ade80, alpha: 0.55 });
+    markLayer.circle(hx, hy, EXTRACT_RADIUS * TILE * (0.4 + 0.6 * pulse)).stroke({ width: 2, color: 0x4ade80, alpha: 0.5 * (1 - pulse) });
+    for (const s of sim.squads) {
+      if (s.role !== 'patrol') continue;
+      const c = squadCommander(sim, s);
+      if (!c || !sim.fog.isVisible(toTile(c.x), toTile(c.y))) continue;
+      const x = c.x, y = c.y - 66;
+      if (s.ai === 'chase') {
+        const b = 1 + 0.12 * Math.sin(now * 14);
+        markLayer.circle(x, y - 4, 10 * b).fill({ color: 0xef4444 }).stroke({ width: 2.5, color: 0x121418 });
+        markLayer.roundRect(x - 2, y - 11, 4, 9, 1.5).fill({ color: 0xffffff });
+        markLayer.circle(x, y + 1.5, 2).fill({ color: 0xffffff });
+      } else if (s.alert > 0.01 || s.ai === 'return') {
+        markLayer.rect(x - 16, y, 32, 6).fill({ color: 0x121418, alpha: 0.9 });
+        markLayer.rect(x - 15, y + 1, 30 * s.alert, 4).fill({ color: s.alert > 0.66 ? 0xef4444 : 0xffb347 });
+        if (s.ai === 'return') markLayer.circle(x + 22, y + 3, 3).fill({ color: 0x9ca3af });
       }
     }
   }
@@ -157,7 +227,7 @@ export async function createRenderer(host, sim) {
     world.position.set(app.screen.width / 2 - cam.x * cam.zoom, app.screen.height / 2 - cam.y * cam.zoom);
     updateFog();
     fogSprite.visible = true;
-    hqs.enemy.visible = sim.fog.isSeen(map.hq.enemy.tx, map.hq.enemy.ty);
+    hqs.enemy.visible = !mission && sim.fog.isSeen(map.hq.enemy.tx, map.hq.enemy.ty);
     const alive = new Set();
     for (const u of sim.units) {
       alive.add(u.id);
@@ -173,7 +243,7 @@ export async function createRenderer(host, sim) {
       if (v.hp !== u.hp) {
         if (v.hp > u.hp && v.hp >= 0) v.flash = 0.12;
         v.hp = u.hp;
-        const w = 26, r = Math.max(0, u.hp / u.maxHp);
+        const w = u.kind === 'alien' ? 38 : 26, r = Math.max(0, u.hp / u.maxHp);
         v.bar.clear().rect(-w / 2, 4, w, 4).fill({ color: 0x121418 }).rect(-w / 2 + 0.8, 4.8, (w - 1.6) * r, 2.4).fill({ color: r > 0.5 ? 0x4ade80 : r > 0.25 ? 0xfacc15 : 0xef4444 });
       }
       v.flash = Math.max(0, v.flash - 1 / 60);
@@ -182,6 +252,7 @@ export async function createRenderer(host, sim) {
     for (const [id, v] of views) if (!alive.has(id)) { v.c.destroy({ children: true }); views.delete(id); }
     drawPaths(now);
     drawFx();
+    drawMission(now);
   }
 
   function destroy() { views.clear(); app.destroy({ removeView: true }, { children: true, texture: true, textureSource: true }); fogRT.destroy(true); }

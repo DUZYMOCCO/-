@@ -119,6 +119,112 @@ export function terrainSvg(kind, v = 0) {
   throw new Error('unknown terrain ' + kind);
 }
 
+
+/* ===== v0.2.0 ミッション用 ===== */
+
+/** ツギハギ号（スカベンジャー）: 大きな暗いリベット打ちの丸い頭（全高の約6割）・青く光る大きな丸い目2つ・細いアンテナ・ケーブル・小さな体。
+ *  ユーザーの設定画 ref/scavenger/scavenger_concept_01.jpg が基準。commander は頭の上に小さな黄色い灯り。 */
+function scav(commander) {
+  const metal = '#4a5059', metalShade = '#2a2e35', glow = '#5fd4ff';
+  const rivets = [14, 19.5, 25, 32, 39, 44.5, 50].map((x, i) => `<circle cx="${x}" cy="${i === 0 || i === 6 ? 29.5 : i === 1 || i === 5 ? 31.2 : 32}" r="1.15" fill="#8b929c" ${SW(0.7)}/>`).join('');
+  const eye = (x) => `<circle cx="${x}" cy="23" r="7.2" fill="#0d1118" ${S2}/>
+    <circle cx="${x}" cy="23" r="5.4" fill="${glow}" opacity=".35"/>
+    <circle cx="${x}" cy="23" r="4.2" fill="${glow}"/>
+    <circle cx="${x}" cy="23" r="2.2" fill="#d9f6ff"/>
+    <circle cx="${x - 1.8}" cy="21" r="1.1" fill="#fff"/>`;
+  const lamp = commander ? `<circle cx="32" cy="3.6" r="3" fill="#ffd166" ${S2}/>` : '';
+  return `
+  <ellipse cx="32" cy="61.5" rx="15" ry="2.6" fill="#000" opacity=".28"/>
+  <path d="M22 56 V60 H28 M42 56 V60 H36" ${SW(3.2)} fill="none"/><path d="M22 56 V60 H28 M42 56 V60 H36" stroke="#6b7280" stroke-width="1.6" fill="none"/>
+  <path d="M15 44 Q9 49 12 54" ${SW(3.4)} fill="none"/><path d="M15 44 Q9 49 12 54" stroke="#6b7280" stroke-width="1.6" fill="none"/>
+  <path d="M49 44 L56 47 L58 52" ${SW(3.4)} fill="none"/><path d="M49 44 L56 47 L58 52" stroke="#6b7280" stroke-width="1.6" fill="none"/>
+  <path d="M56 51 L60 54 M58 50 L61 51" stroke="#ffd166" stroke-width="1.6" stroke-linecap="round"/>
+  ${shadedBox('sb', 19, 41, 26, 16, 5, '#6b5a45', '#433829')}
+  <rect x="24" y="45" width="9" height="6" rx="1.4" fill="#2b2f38" ${S2}/><circle cx="37.5" cy="48" r="2.2" fill="#ffb347" ${S2}/>
+  <path d="M21 39 Q14 42 18 47" stroke="#c0392b" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+  <path d="M43 39 Q51 41 47 46" stroke="#2f6fb0" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+  <path d="M25 8 Q22 3 18 1.5" ${SW(1.6)} fill="none"/><circle cx="18" cy="1.8" r="1.8" fill="${glow}" ${SW(0.9)}/>
+  <path d="M39 8 Q43 4 47 3.5" ${SW(1.6)} fill="none"/><circle cx="47" cy="3.5" r="1.8" fill="#ffb347" ${SW(0.9)}/>
+  ${lamp}
+  ${shadedCircle('sh', 32, 23, 19.5, metal, metalShade)}
+  <path d="M12.8 29 Q32 35 51.2 29" fill="none" stroke="${O}" stroke-width="1.6"/>
+  ${rivets}
+  <path d="M20 9.5 Q32 4.8 44 9.5" fill="none" stroke="#6b7280" stroke-width="1.2" stroke-dasharray="1.5 2.2"/>
+  ${eye(24.5)}${eye(39.5)}`;
+}
+
+/** PONCO02（戦闘用）: 丸いフォルムの白・青・赤の三色、暗いバイザーの目、腕の短い銃 */
+function ponco(commander) {
+  const crest = commander ? `<path d="M27 9.5 L32 1 L37 9.5 Q32 7.5 27 9.5Z" fill="#ffd166" ${S2}/>` : `<path d="M41 9 L45 3.5" ${SW(2)}/><circle cx="45.4" cy="3.2" r="2" fill="#e74c3c" ${S2}/>`;
+  return `
+  <ellipse cx="32" cy="61.5" rx="16" ry="2.8" fill="#000" opacity=".26"/>
+  <rect x="21" y="50" width="9" height="9" rx="3.5" fill="#2f6fb0" ${S2}/><rect x="34" y="50" width="9" height="9" rx="3.5" fill="#2f6fb0" ${S2}/>
+  <path d="M19 60.5 Q19 56 25 56 Q31 56 31 60.5Z" fill="#e5e7eb" ${S2}/><path d="M33 60.5 Q33 56 39 56 Q45 56 45 60.5Z" fill="#e5e7eb" ${S2}/>
+  ${shadedBox('pb', 18, 36, 28, 17, 8, '#f4f6f8', '#c3cad3')}
+  <path d="M24 44 H40" stroke="#e74c3c" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="32" cy="44" r="2.6" fill="#2f6fb0" ${S2}/>
+  <circle cx="15.5" cy="43" r="4.6" fill="#2f6fb0" ${S2}/>
+  <path d="M45 40 H57 Q60 40 60 43.5 Q60 47 57 47 H45Z" fill="#3b4250" ${S2}/><circle cx="59.5" cy="43.5" r="1.4" fill="#7df9ff"/>
+  ${crest}
+  ${shadedCircle('ph', 32, 23, 15, '#f4f6f8', '#c3cad3')}
+  <path d="M19 21 Q32 14.5 45 21 L44.4 29 Q32 25 19.6 29Z" fill="#1b2230" ${S2}/>
+  <circle cx="26.5" cy="23.6" r="2.3" fill="#7df9ff"/><circle cx="37.5" cy="23.6" r="2.3" fill="#7df9ff"/>
+  <path d="M17 18 Q20 11 26 9" stroke="#2f6fb0" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+  <path d="M47 18 Q44 11 38 9" stroke="#e74c3c" stroke-width="2.6" fill="none" stroke-linecap="round"/>`;
+}
+
+/** 異星生物（巡回）: 動物と機械の融合。肉の膨らみ＋埋め込まれた金属板、不揃いに光る目、虫やカニのようなとげの脚、光る口 */
+function alien(commander) {
+  const flesh = '#8a3c55', fleshShade = '#552236', metal = '#3b3f46', glow = '#ffb347';
+  const leg = (x1, y1, x2, y2, x3, y3) => `<path d="M${x1} ${y1} Q${x2} ${y2} ${x3} ${y3}" ${SW(3.6)} fill="none"/><path d="M${x1} ${y1} Q${x2} ${y2} ${x3} ${y3}" stroke="#4a2433" stroke-width="2" fill="none"/><path d="M${x3} ${y3} l${x3 > 32 ? 2 : -2} 3" ${SW(1.6)}/>`;
+  const spikes = [[18, 26, 14, 17], [25, 21, 23, 12], [33, 20, 34, 10], [41, 22, 45, 13], [47, 28, 53, 21]].map(([a, b, c, d]) => `<path d="M${a - 2} ${b + 1} L${c} ${d} L${a + 2.5} ${b}Z" fill="#2e3036" ${S2}/>`).join('');
+  const crown = commander ? `<path d="M28 13 Q32 6 36 13" stroke="${glow}" stroke-width="2" fill="none"/>` : '';
+  return `
+  <ellipse cx="32" cy="61" rx="24" ry="3" fill="#000" opacity=".3"/>
+  ${leg(20, 44, 8, 46, 5, 59)}${leg(24, 46, 16, 53, 14, 61)}${leg(44, 44, 56, 46, 59, 59)}${leg(40, 46, 48, 53, 50, 61)}
+  ${spikes}${crown}
+  <path d="M10 38 Q9 22 24 20 Q32 16 41 20 Q56 22 54 38 Q55 50 40 50 Q32 54 24 50 Q9 50 10 38Z" fill="${fleshShade}" ${S}/>
+  <path d="M13 36 Q12 24 25 22.5 Q32 19.5 40 22.5 Q51 24 51 34 Q46 44 32 44 Q17 44 13 36Z" fill="${flesh}"/>
+  <path d="M19 27 Q24 24 29 27 L27 33 Q22 34 19 31Z" fill="${metal}" ${S2}/><circle cx="21.5" cy="29" r=".9" fill="#9aa1ab"/><circle cx="26" cy="28" r=".9" fill="#9aa1ab"/>
+  <path d="M39 24 L47 27 L45 33 L38 31Z" fill="${metal}" ${S2}/>
+  <path d="M15 41 Q20 39 22 43" stroke="#c76a86" stroke-width="1.4" fill="none" opacity=".8"/><path d="M44 42 Q48 40 50 43" stroke="#c76a86" stroke-width="1.4" fill="none" opacity=".8"/>
+  <circle cx="31" cy="30" r="4.6" fill="#1a0f14" ${S2}/><circle cx="31" cy="30" r="3.2" fill="${glow}"/><circle cx="32" cy="29" r="1.1" fill="#fff6d6"/>
+  <circle cx="37.5" cy="34.5" r="2.4" fill="#1a0f14" ${SW(1.2)}/><circle cx="37.5" cy="34.5" r="1.5" fill="${glow}"/>
+  <circle cx="24.5" cy="36" r="1.9" fill="#1a0f14" ${SW(1.1)}/><circle cx="24.5" cy="36" r="1.1" fill="#ffd166"/>
+  <circle cx="42" cy="29.5" r="1.4" fill="#ffd166" ${SW(0.8)}/>
+  <path d="M22 44 Q32 51 42 44 Q38 48.5 32 48.8 Q26 48.5 22 44Z" fill="#ff7a1a" ${S2}/>
+  <path d="M25 45.5 L26.5 48 M29 46.6 L29.8 49 M34 46.6 L33.4 49 M38.5 45.6 L37.2 48" stroke="#fff3c4" stroke-width="1.2" stroke-linecap="round"/>`;
+}
+
+/** 回収ポイント（ガラクタの山）。v=0/1 で形を変える。empty は掘りつくした跡 */
+function salvagePile(v, empty) {
+  if (empty) return wrap(`<ellipse cx="32" cy="50" rx="24" ry="7" fill="#3a3326" ${S2}/><path d="M18 49 L24 46 M36 51 L44 47" stroke="#6b6250" stroke-width="2" stroke-linecap="round"/>`);
+  const tire = `<circle cx="${v ? 44 : 20}" cy="44" r="8" fill="#22252b" ${S2}/><circle cx="${v ? 44 : 20}" cy="44" r="3.4" fill="#4b5160" ${SW(1)}/>`;
+  return wrap(`
+  <ellipse cx="32" cy="54" rx="27" ry="6" fill="#000" opacity=".25"/>
+  <path d="M6 54 Q10 34 24 30 Q34 22 44 30 Q58 36 58 54Z" fill="#5d5547" ${S}/>
+  <path d="M10 52 Q14 38 25 34 Q34 28 42 34 Q52 38 54 50Z" fill="#7a705e"/>
+  ${tire}
+  <rect x="${v ? 14 : 34}" y="34" width="14" height="11" rx="1.5" fill="#a0723c" ${S2} transform="rotate(${v ? -12 : 10} ${v ? 21 : 41} 40)"/>
+  <path d="M${v ? 30 : 26} 22 L${v ? 40 : 18} 46" ${SW(3.4)}/><path d="M${v ? 30 : 26} 22 L${v ? 40 : 18} 46" stroke="#9aa1ab" stroke-width="1.8"/>
+  <path d="M28 38 L34 31 L39 37Z" fill="#5f7d8c" ${S2}/>
+  <circle cx="${v ? 26 : 46}" cy="47" r="2" fill="#ffd166" ${SW(0.9)}/>`);
+}
+
+/** 脱出口（黄色と黒の縞の丸いハッチ＋信号弾の柱） */
+function hatch() {
+  const stripes = Array.from({ length: 12 }, (_, i) => { const a0 = i * 30 * Math.PI / 180, a1 = (i * 30 + 15) * Math.PI / 180; const p = (a, r) => `${48 + Math.cos(a) * r} ${62 + Math.sin(a) * r * 0.55}`; return `<path d="M${p(a0, 30)} L${p(a1, 30)} L${p(a1, 22)} L${p(a0, 22)}Z" fill="#121418"/>`; }).join('');
+  return wrap(`
+  <ellipse cx="48" cy="64" rx="34" ry="19" fill="#000" opacity=".3"/>
+  <ellipse cx="48" cy="62" rx="30" ry="16.5" fill="#f5c400" ${S}/>
+  ${stripes}
+  <ellipse cx="48" cy="62" rx="21" ry="11.5" fill="#3b4250" ${S}/>
+  <ellipse cx="48" cy="61" rx="15" ry="8" fill="#2a2f38" ${S2}/>
+  <path d="M38 61 H58 M48 55 V67" stroke="#5b6472" stroke-width="2.4"/>
+  <path d="M70 58 V14" ${SW(3.2)}/><path d="M70 58 V14" stroke="#d1d5db" stroke-width="1.4"/>
+  <circle cx="70" cy="12" r="6" fill="#ff5a36" ${S2}/><circle cx="70" cy="12" r="3" fill="#ffe0a3"/>`, '0 0 96 96');
+}
+
 /** 描画に使う SVG の一覧。キー → SVG 文字列 と、表示の大きさ（px, 元の viewBox との比） */
 export function artSources() {
   const out = {};
@@ -132,5 +238,11 @@ export function artSources() {
     out[`hq_${side}`] = hq(p);
   }
   for (const k of ['plain', 'forest', 'mountain', 'water']) for (const v of [0, 1]) out[`tile_${k}_${v}`] = terrainSvg(k, v);
+  // v0.2.0 ミッション用
+  out.scav_ally = wrap(scav(false)); out.scav_ally_cmd = wrap(scav(true));
+  out.ponco_ally = wrap(ponco(false)); out.ponco_ally_cmd = wrap(ponco(true));
+  out.alien_enemy = wrap(alien(false)); out.alien_enemy_cmd = wrap(alien(true));
+  out.salvage_0 = salvagePile(0); out.salvage_1 = salvagePile(1); out.salvage_empty = salvagePile(0, true);
+  out.hatch = hatch();
   return out;
 }

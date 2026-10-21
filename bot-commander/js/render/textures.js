@@ -1,5 +1,5 @@
 // SVG 文字列 → Pixi テクスチャ。起動時に一度だけ作る（ダダサバイバーの「起動時に一度だけ data URI 化」と同じ考え方）。
-import { Texture } from '../../vendor/pixi-8.22.0.min.mjs?v=3';
+import { Texture } from '../../vendor/pixi-8.22.0.min.mjs?v=4';
 
 async function svgToCanvas(svg, px) {
   const img = new Image();
@@ -18,7 +18,7 @@ async function svgToCanvas(svg, px) {
 export async function buildTextures(sources) {
   const out = {};
   await Promise.all(Object.entries(sources).map(async ([key, svg]) => {
-    const px = key.startsWith('tile_') ? 64 : key.startsWith('hq_') ? 192 : 128;
+    const px = key.startsWith('tile_') ? 64 : key.startsWith('hq_') || key === 'hatch' || key.startsWith('alien_') ? 192 : 128;
     const tex = Texture.from(await svgToCanvas(svg, px));
     tex.source.scaleMode = 'linear';
     out[key] = tex;
