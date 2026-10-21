@@ -3,6 +3,7 @@
 // 入口モジュールは default export で { init(container, onBackToHub), prepare?() } を返すこと。
 export const sections = [
   { id: 'main', label: 'IRON SQUAD · 雑兵立身出世録' },
+  { id: 'strategy', label: 'リアルタイム部隊シミュレーション（試作）' },
   { id: 'casual', label: 'カジュアル・パズル' },
   { id: 'kids', label: 'こどもの ゲーム' },
 ];
@@ -13,6 +14,12 @@ export const games = [
     icon: '🛡️', color: '#ffaa00',
     description: '自律行動する部隊と共に生き残れ！部隊と離れると危険だがソロ冒険も自由。伍長・隊長へ出世して初めて指揮権を掴み取れ。',
     load: () => import('../../iron-squad/js/index.js'),
+  },
+  {
+    id: 'bot-commander', section: 'strategy', title: 'ロボットコマンダー（かり）', subtitle: 'ゆびで なぞって 指揮する ロボット部隊',
+    icon: '🤖', color: '#5b93e6',
+    description: '部隊を タップして、ゆびで なぞって 進む道を 決めよう。霧の向こうの 敵ロボット部隊を 見つけて 倒せ！（試作版）',
+    load: () => import('../../bot-commander/js/index.js'),
   },
   {
     id: 'color-ants', section: 'casual', title: 'カラー・アント', subtitle: '色をたべつくす、わらわらあり軍団！',

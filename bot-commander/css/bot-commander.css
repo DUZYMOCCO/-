@@ -1,0 +1,30 @@
+/* ロボットコマンダー（仮）。すべて .bc-root の中だけに効かせる（工房やほかのゲームに影響させない） */
+.bc-root { --bc-ink: #121418; --bc-cyan: #7df9ff; --bc-panel: rgba(12, 16, 24, .82);
+  position: absolute; inset: 0; overflow: hidden; background: #0b0d10; color: #e5e7eb; overscroll-behavior: none;
+  font-family: system-ui, -apple-system, "Hiragino Sans", sans-serif; -webkit-user-select: none; user-select: none; }
+.bc-root * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+.bc-stage { position: absolute; inset: 0; touch-action: none; }
+.bc-stage canvas { display: block; touch-action: none; }
+.bc-top { position: absolute; left: 0; right: 0; top: 0; padding: calc(env(safe-area-inset-top) + 6px) 8px 6px; display: flex; gap: 6px; align-items: flex-start; pointer-events: none;
+  background: linear-gradient(#0b0d10e6, #0b0d1000); }
+.bc-squads { display: flex; gap: 5px; flex: 1; min-width: 0; }
+.bc-ctrl { display: flex; gap: 4px; }
+.bc-root button { pointer-events: auto; font: inherit; color: inherit; border: 2px solid var(--bc-ink); border-radius: 10px; background: var(--bc-panel); box-shadow: 0 2px 0 #000a; cursor: pointer; }
+.bc-ctrl button { width: 40px; height: 40px; font-weight: 700; font-size: 14px; }
+.bc-ctrl button.on { background: #1d4f6b; border-color: var(--bc-cyan); color: #fff; }
+.bc-chip { position: relative; flex: 1; min-width: 0; height: 42px; padding: 3px 5px 10px; /* ボタンは中身を上下中央に置くので下を空ける */ text-align: left; overflow: hidden; display: block; line-height: 1.15; }
+.bc-chip b { display: block; font-size: 12px; line-height: 14px; color: #9cc8ff; }
+.bc-chip span { display: block; font-size: 10px; line-height: 11px; opacity: .85; white-space: nowrap; }
+.bc-chip i { position: absolute; left: 4px; bottom: 3px; height: 3px; border-radius: 2px; background: #4ade80; }
+.bc-chip.on { border-color: var(--bc-cyan); background: #12324a; }
+.bc-chip.hot b { color: #ffb347; }
+.bc-bottom { position: absolute; left: 0; right: 0; bottom: 0; padding: 8px 10px calc(env(safe-area-inset-bottom) + 10px); display: flex; gap: 10px; align-items: center; font-size: 12px; pointer-events: none;
+  background: linear-gradient(#0b0d1000, #0b0d10d9); }
+.bc-back { height: 34px; padding: 0 10px; font-size: 12px; font-weight: 700; flex: none; }
+.bc-hint { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bc-fps { opacity: .5; }
+.bc-banner { position: absolute; left: 50%; top: 40%; transform: translate(-50%, -50%); padding: 14px 34px; font-size: 32px; font-weight: 800; border: 3px solid var(--bc-ink); border-radius: 14px; background: #1d4f6b; color: #fff; text-shadow: 0 2px 0 #000; }
+.bc-banner[hidden] { display: none; }
+.bc-paused-tag { position: absolute; left: 50%; top: calc(env(safe-area-inset-top) + 58px); transform: translateX(-50%); padding: 4px 10px; font-size: 12px; border-radius: 8px; background: #0008; display: none; pointer-events: none; white-space: nowrap; }
+.bc-root.paused .bc-paused-tag { display: block; }
+.bc-loading { position: absolute; inset: 0; display: grid; place-items: center; font-size: 14px; opacity: .8; }
