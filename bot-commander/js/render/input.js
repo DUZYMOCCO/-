@@ -1,6 +1,6 @@
 // タッチ／マウス操作: 部隊をタップで選ぶ → そのまま指でなぞると経路、離すと命令。何もない所はドラッグで移動、2本指でズーム。
-import { strokeToWaypoints } from '../sim/stroke.js?v=1';
-import { issueOrder, squadUnits } from '../sim/sim.js?v=1';
+import { strokeToWaypoints } from '../sim/stroke.js?v=2';
+import { issueOrder, squadUnits } from '../sim/sim.js?v=2';
 
 export function attachInput(canvas, sim, r, hooks = {}) {
   const pts = new Map(); // pointerId → {x,y}

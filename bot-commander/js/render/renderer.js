@@ -1,9 +1,9 @@
 // 描画（Pixi v8）。シミュレーションの state を読むだけで、書き換えない。
-import { Application, Container, Sprite, Graphics, Texture, RenderTexture, BlurFilter } from '../../vendor/pixi-8.22.0.min.mjs?v=1';
-import { TILE, TERRAIN, toTile, tileCenter } from '../sim/map.js?v=1';
-import { squadCommander, squadUnits } from '../sim/sim.js?v=1';
-import { artSources } from './art.js?v=1';
-import { buildTextures } from './textures.js?v=1';
+import { Application, Container, Sprite, Graphics, Texture, RenderTexture, BlurFilter } from '../../vendor/pixi-8.22.0.min.mjs?v=2';
+import { TILE, TERRAIN, toTile, tileCenter } from '../sim/map.js?v=2';
+import { squadCommander, squadUnits } from '../sim/sim.js?v=2';
+import { artSources } from './art.js?v=2';
+import { buildTextures } from './textures.js?v=2';
 
 const FOG_PAD = 2;            // 霧テクスチャの外周（ぼかしで端が明るくならないように）
 const FOG_RT_SCALE = 4;       // 1タイル＝霧テクスチャ4px（ぼかし後）

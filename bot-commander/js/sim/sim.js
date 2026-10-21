@@ -1,16 +1,16 @@
 // ゲームの中身（固定ステップ・決まった乱数）。DOM と Pixi は import しない。描画側は state を読むだけ。
-import { createRng } from './rng.js?v=1';
-import { generateMap, TILE, TERRAIN, tileAt, toTile, tileCenter, passable, nearestPassable } from './map.js?v=1';
-import { createSearch, stepSearch } from './path.js?v=1';
-import { FogGrid } from './fog.js?v=1';
+import { createRng } from './rng.js?v=2';
+import { generateMap, TILE, TERRAIN, tileAt, toTile, tileCenter, passable, nearestPassable } from './map.js?v=2';
+import { createSearch, stepSearch } from './path.js?v=2';
+import { FogGrid } from './fog.js?v=2';
 
 export const TICK = 1 / 30;          // 1ステップ＝1/30秒
 export const SEARCH_BUDGET = 250;    // 1部隊1ステップで広げる A* ノード数
 
 // 兵種（仮）。range/speed はワールド座標（1タイル=32）
 export const KINDS = Object.freeze({
-  gunner: { name: '射撃型', hp: 100, atk: 8, range: 112, cooldown: 0.9, speed: 44, sight: 4.5 },
-  heavy: { name: '重装型', hp: 160, atk: 13, range: 88, cooldown: 1.3, speed: 34, sight: 4 },
+  gunner: { name: '射撃型', hp: 100, atk: 8, range: 112, cooldown: 0.9, speed: 22, sight: 4.5 },
+  heavy: { name: '重装型', hp: 160, atk: 13, range: 88, cooldown: 1.3, speed: 17, sight: 4 },
 });
 const COMMANDER = { hpMul: 1.3, atkMul: 1.2, sight: 6 };
 // 部隊の並び（隊長を原点、前方が -y）

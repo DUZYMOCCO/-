@@ -2,16 +2,16 @@
 // ハブが動的 import し、prepare()（CSS読み込み）→ init(container, onBackToHub) の順に呼ぶ。
 // シミュレーション（js/sim）は DOM・Pixi に依存しない。描画（js/render）は sim の状態を読むだけ。
 import { loadCss } from '../../common/js/load-css.js';
-import { createSim, stepSim, TICK, squadUnits, squadCommander, applyCommandsNow } from './sim/sim.js?v=1';
-import { createRenderer } from './render/renderer.js?v=1';
-import { attachInput } from './render/input.js?v=1';
+import { createSim, stepSim, TICK, squadUnits, squadCommander, applyCommandsNow } from './sim/sim.js?v=2';
+import { createRenderer } from './render/renderer.js?v=2';
+import { attachInput } from './render/input.js?v=2';
 
 const BotCommanderGame = {
   id: 'bot-commander',
   title: 'ロボットコマンダー（仮）',
 
   prepare() {
-    return loadCss(new URL('../css/bot-commander.css?v=1', import.meta.url).href);
+    return loadCss(new URL('../css/bot-commander.css?v=2', import.meta.url).href);
   },
 
   init(container, onBackToHub) {
