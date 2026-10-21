@@ -1,10 +1,10 @@
 // ゲームの中身（固定ステップ・決まった乱数）。DOM と Pixi は import しない。描画側は state を読むだけ。
 // v0.2.0: ミッション（資材集め・巡回・脱出）を追加。createSim({ mission }) で有効になる。mission なしは従来の撃ち合い。
-import { createRng } from './rng.js?v=4';
-import { generateMap, TILE, TERRAIN, T, tileAt, toTile, tileCenter, passable, nearestPassable } from './map.js?v=4';
-import { createSearch, stepSearch } from './path.js?v=4';
-import { FogGrid } from './fog.js?v=4';
-import { ALERT, GATHER_RADIUS, EXTRACT_RADIUS } from './mission.js?v=4';
+import { createRng } from './rng.js?v=5';
+import { generateMap, TILE, TERRAIN, T, tileAt, toTile, tileCenter, passable, nearestPassable } from './map.js?v=5';
+import { createSearch, stepSearch } from './path.js?v=5';
+import { FogGrid } from './fog.js?v=5';
+import { ALERT, GATHER_RADIUS, EXTRACT_RADIUS, FIND } from './mission.js?v=5';
 
 export const TICK = 1 / 30;          // 1ステップ＝1/30秒
 export const SEARCH_BUDGET = 250;    // 1部隊1ステップで広げる A* ノード数
@@ -59,8 +59,8 @@ export function createSim({ seed = 1, mapSeed = 7, setup = SQUAD_SETUP, mission 
 function createMissionState(map, m) {
   const ex = nearestPassable(map, m.extraction.tx, m.extraction.ty);
   return {
-    id: m.id, timeLimit: m.timeLimit, target: m.target, delivered: 0, lost: 0,
-    salvage: m.salvage.map((p, i) => { const q = nearestPassable(map, p.tx, p.ty); return { id: i, tx: q.tx, ty: q.ty, amount: p.amount, max: p.amount }; }),
+    id: m.id, target: m.target, delivered: 0, lost: 0, finds: [],
+    salvage: m.salvage.map((p, i) => { const q = nearestPassable(map, p.tx, p.ty); return { id: i, tx: q.tx, ty: q.ty, amount: p.amount, max: p.amount, gathered: 0, nextFind: 0 }; }),
     extraction: { tx: ex.tx, ty: ex.ty },
   };
 }
@@ -363,7 +363,24 @@ function updateMission(sim, dt) {
         const take = Math.min(p.amount, near.reduce((a, u) => a + (KINDS[u.kind]?.gather || 0), 0) * dt);
         if (take <= 0) continue;
         p.amount = Math.max(0, p.amount - take); if (p.amount < 1e-6) p.amount = 0;
+        const before = p.gathered; p.gathered += take;
         s.cargo += take; s.gathering = p.id;
+        // 1つ集めるたびに「+1」（見た目用の fx）
+        if (Math.floor(p.gathered) > Math.floor(before)) {
+          const u = near[Math.floor(p.gathered) % near.length];
+          sim.fx.push({ type: 'gain', x: u.x, y: u.y, t: sim.time, side: 'ally', n: 1, pile: p.id });
+        }
+        // 掘り出し物（小さなおまけ。乱数は seed 付き）
+        while (p.nextFind < FIND.at.length && p.gathered >= FIND.at[p.nextFind]) {
+          p.nextFind++;
+          if (sim.rng() < FIND.chance) {
+            const name = FIND.names[Math.floor(sim.rng() * FIND.names.length)];
+            s.cargo += FIND.bonus;
+            m.finds.push({ name, t: sim.time, squadId: s.id, pile: p.id });
+            const c0 = squadCommander(sim, s) || near[0];
+            sim.fx.push({ type: 'find', x: c0.x, y: c0.y, t: sim.time, side: 'ally', name, n: FIND.bonus });
+          }
+        }
         break;
       }
     }
@@ -375,12 +392,12 @@ function updateMission(sim, dt) {
   }
 }
 
-/** ミッションの集計（HUD 用）: 届けた量・運んでいる量・残り時間 */
+/** ミッションの集計（HUD 用）: 届けた量・運んでいる量・経過時間・掘り出し物（制限時間はない） */
 export function missionStatus(sim) {
   const m = sim.mission; if (!m) return null;
   const carrying = sim.squads.filter(s => s.side === 'ally').reduce((a, s) => a + s.cargo, 0);
   const left = m.salvage.reduce((a, p) => a + p.amount, 0);
-  return { delivered: m.delivered, carrying, target: m.target, remaining: Math.max(0, m.timeLimit - sim.time), salvageLeft: left };
+  return { delivered: m.delivered, carrying, target: m.target, elapsed: sim.time, salvageLeft: left, finds: m.finds.length };
 }
 
 function updateFog(sim) {
@@ -411,7 +428,7 @@ function checkResult(sim) {
     const m = sim.mission;
     if (m.delivered >= m.target - 1e-6) { sim.result = 'win'; sim.resultReason = 'extracted'; }
     else if (!a) { sim.result = 'lose'; sim.resultReason = 'wiped'; }
-    else if (sim.time >= m.timeLimit) { sim.result = 'lose'; sim.resultReason = 'time'; }
+    // 制限時間はない（決定）。時間がたつだけでは負けない
     return;
   }
   const e = sim.units.some(u => u.side === 'enemy');
@@ -429,7 +446,7 @@ export function stepSim(sim) {
   for (const s of sim.squads) updateSquadMovement(sim, s, dt);
   updateMission(sim, dt);
   updateFog(sim);
-  sim.fx = sim.fx.filter(f => sim.time - f.t < 0.8);
+  sim.fx = sim.fx.filter(f => sim.time - f.t < (f.type === 'find' ? 2.2 : f.type === 'gain' ? 1 : 0.8));
   sim.tick++; sim.time = sim.tick * TICK;
   checkResult(sim);
 }
@@ -446,6 +463,7 @@ export function hashSim(sim) {
   if (sim.mission) {
     mix(Math.round(sim.mission.delivered * 1000));
     for (const p of sim.mission.salvage) mix(Math.round(p.amount * 1000));
+    mix(sim.mission.finds.length);
     for (const s of sim.squads) { mix(Math.round(s.cargo * 1000)); mix(Math.round((s.alert || 0) * 1000)); }
   }
   return h.toString(16);

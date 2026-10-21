@@ -3,10 +3,10 @@
 // シミュレーション（js/sim）は DOM・Pixi に依存しない。描画（js/render）は sim の状態を読むだけ。
 // v0.2.0: ミッション「資材集め・巡回・脱出」。上に資材のバーと残り時間、終わると結果画面（もう一度）。
 import { loadCss } from '../../common/js/load-css.js';
-import { createSim, stepSim, TICK, squadUnits, squadCommander, applyCommandsNow, missionStatus } from './sim/sim.js?v=4';
-import { MISSION_1 } from './sim/mission.js?v=4';
-import { createRenderer } from './render/renderer.js?v=4';
-import { attachInput } from './render/input.js?v=4';
+import { createSim, stepSim, TICK, squadUnits, squadCommander, applyCommandsNow, missionStatus } from './sim/sim.js?v=5';
+import { MISSION_1 } from './sim/mission.js?v=5';
+import { createRenderer } from './render/renderer.js?v=5';
+import { attachInput } from './render/input.js?v=5';
 
 const fmtTime = s => { const t = Math.ceil(s); return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`; };
 const HINT_IDLE = '部隊をタップして選ぶ。ツギハギ隊をガラクタの山で止めると資材を集める';
@@ -16,7 +16,7 @@ const BotCommanderGame = {
   title: 'ロボットコマンダー（仮）',
 
   prepare() {
-    return loadCss(new URL('../css/bot-commander.css?v=4', import.meta.url).href);
+    return loadCss(new URL('../css/bot-commander.css?v=5', import.meta.url).href);
   },
 
   init(container, onBackToHub) {
@@ -36,7 +36,7 @@ const BotCommanderGame = {
         </header>
         <div class="bc-mission">
           <div class="bc-mat"><i class="bc-mat-del"></i><i class="bc-mat-car"></i><span class="bc-mat-txt"></span></div>
-          <div class="bc-timer"></div>
+          <div class="bc-clock" title="経過時間（制限時間はありません）"></div>
         </div>
         <footer class="bc-bottom">
           <button class="bc-back" aria-label="工房へもどる">◀ 工房</button>
@@ -56,7 +56,7 @@ const BotCommanderGame = {
     const $ = s => container.querySelector(s);
     this.el = {
       root: $('.bc-root'), stage: $('.bc-stage'), squads: $('.bc-squads'), pause: $('.bc-pause'), hint: $('.bc-hint'), fps: $('.bc-fps'), loading: $('.bc-loading'),
-      matDel: $('.bc-mat-del'), matCar: $('.bc-mat-car'), matTxt: $('.bc-mat-txt'), timer: $('.bc-timer'),
+      matDel: $('.bc-mat-del'), matCar: $('.bc-mat-car'), matTxt: $('.bc-mat-txt'), clock: $('.bc-clock'),
       result: $('.bc-result'), resultTitle: $('.bc-result-title'), resultText: $('.bc-result-text'),
     };
     $('.bc-back').addEventListener('click', () => this.exit());
@@ -141,8 +141,7 @@ const BotCommanderGame = {
     this.el.matDel.style.width = `${pd}%`;
     this.el.matCar.style.left = `${pd}%`; this.el.matCar.style.width = `${pc}%`;
     this.el.matTxt.textContent = `資材 ${Math.floor(st.delivered)}／${st.target}（運搬中 ${Math.floor(st.carrying)}）`;
-    this.el.timer.textContent = `のこり ${fmtTime(st.remaining)}`;
-    this.el.timer.classList.toggle('warn', st.remaining < 60);
+    this.el.clock.textContent = `${fmtTime(st.elapsed)}${st.finds ? `　★${st.finds}` : ''}`;
   },
 
   showResult() {
@@ -151,8 +150,8 @@ const BotCommanderGame = {
     const left = sim.units.filter(u => u.side === 'ally').length;
     this.el.resultTitle.textContent = win ? '脱出成功' : '作戦失敗';
     this.el.resultTitle.classList.toggle('win', win);
-    const why = win ? '資材を脱出口へ届けた！' : sim.resultReason === 'time' ? '時間切れ…' : '全部隊が大破した…';
-    this.el.resultText.innerHTML = `${why}<br>届けた資材 ${Math.floor(st.delivered)}／${st.target}<br>残った機体 ${left}機　かかった時間 ${fmtTime(sim.time)}`;
+    const why = win ? '資材を脱出口へ届けた！' : '全部隊が大破した…';
+    this.el.resultText.innerHTML = `${why}<br>届けた資材 ${Math.floor(st.delivered)}／${st.target}<br>残った機体 ${left}機　かかった時間 ${fmtTime(sim.time)}${st.finds ? `<br>掘り出し物 ★${st.finds}（${[...new Set(sim.mission.finds.map(f => f.name))].join('・')}）` : ''}`;
     this.el.result.hidden = false;
   },
 

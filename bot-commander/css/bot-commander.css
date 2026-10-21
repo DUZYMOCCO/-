@@ -35,8 +35,7 @@
 .bc-mat-del { background: #3fae5a; }
 .bc-mat-car { background: repeating-linear-gradient(45deg, #ffd166aa 0 6px, #ffd16655 6px 12px); }
 .bc-mat-txt { position: relative; display: block; font-size: 11px; line-height: 18px; padding: 0 6px; white-space: nowrap; text-shadow: 0 1px 0 #000; }
-.bc-timer { flex: none; height: 22px; padding: 0 8px; border: 2px solid var(--bc-ink); border-radius: 8px; background: var(--bc-panel); font-size: 11px; line-height: 18px; font-weight: 700; }
-.bc-timer.warn { color: #ffb4b4; border-color: #ef4444; }
+.bc-clock { flex: none; padding: 0 4px; font-size: 10px; line-height: 22px; font-weight: 600; opacity: 0.55; font-variant-numeric: tabular-nums; }
 .bc-chip.scav b { color: #ffd166; }
 .bc-paused-tag { top: calc(env(safe-area-inset-top) + 84px); }
 .bc-result { position: absolute; inset: 0; display: grid; place-items: center; background: #000a; }

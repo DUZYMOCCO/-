@@ -1,5 +1,5 @@
 // SVG 文字列 → Pixi テクスチャ。起動時に一度だけ作る（ダダサバイバーの「起動時に一度だけ data URI 化」と同じ考え方）。
-import { Texture } from '../../vendor/pixi-8.22.0.min.mjs?v=4';
+import { Texture } from '../../vendor/pixi-8.22.0.min.mjs?v=5';
 
 async function svgToCanvas(svg, px) {
   const img = new Image();

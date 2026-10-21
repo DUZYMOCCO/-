@@ -1,10 +1,10 @@
 // 描画（Pixi v8）。シミュレーションの state を読むだけで、書き換えない。
-import { Application, Container, Sprite, Graphics, Texture, RenderTexture, BlurFilter } from '../../vendor/pixi-8.22.0.min.mjs?v=4';
-import { TILE, TERRAIN, toTile, tileCenter } from '../sim/map.js?v=4';
-import { squadCommander, squadUnits } from '../sim/sim.js?v=4';
-import { GATHER_RADIUS, EXTRACT_RADIUS } from '../sim/mission.js?v=4';
-import { artSources } from './art.js?v=4';
-import { buildTextures } from './textures.js?v=4';
+import { Application, Container, Sprite, Graphics, Text, Texture, RenderTexture, BlurFilter } from '../../vendor/pixi-8.22.0.min.mjs?v=5';
+import { TILE, TERRAIN, toTile, tileCenter } from '../sim/map.js?v=5';
+import { squadCommander, squadUnits } from '../sim/sim.js?v=5';
+import { GATHER_RADIUS, EXTRACT_RADIUS } from '../sim/mission.js?v=5';
+import { artSources } from './art.js?v=5';
+import { buildTextures } from './textures.js?v=5';
 
 const FOG_PAD = 2;            // 霧テクスチャの外周（ぼかしで端が明るくならないように）
 const FOG_RT_SCALE = 4;       // 1タイル＝霧テクスチャ4px（ぼかし後）
@@ -57,7 +57,7 @@ export async function createRenderer(host, sim) {
       const s = new Sprite(tex[`salvage_${p.id % 2}`]);
       s.anchor.set(0.5, 0.8); s.width = s.height = TILE * 1.9;
       s.position.set(tileCenter(p.tx), tileCenter(p.ty) + 8); s.zIndex = s.y - 20;
-      units.addChild(s); piles.push({ p, s, empty: false });
+      units.addChild(s); piles.push({ p, s, empty: false, base: s.scale.x, bump: -1 });
     }
     hatchSprite = new Sprite(tex.hatch);
     hatchSprite.anchor.set(0.5, 0.66); hatchSprite.width = hatchSprite.height = TILE * 3;
@@ -156,6 +156,35 @@ export async function createRenderer(host, sim) {
     }
   }
 
+  // 「+1」や「めずらしい部品！」の文字（使い回し）
+  const pops = new Container(); world.addChild(pops);
+  const popPool = [];
+  const POP_STYLE = { fontFamily: 'system-ui, sans-serif', fontWeight: '900', fontSize: 15, fill: 0xffd166, stroke: { color: 0x121418, width: 4 } };
+  const FIND_STYLE = { ...POP_STYLE, fontSize: 14, fill: 0xfff3b0 };
+  function drawPops(now) {
+    let k = 0;
+    for (const f of sim.fx) {
+      if (f.type !== 'gain' && f.type !== 'find') continue;
+      const life = f.type === 'find' ? 2.2 : 1, age = sim.time - f.t;
+      if (age > life) continue;
+      let t = popPool[k];
+      if (!t) { t = new Text({ text: '', style: POP_STYLE }); t.anchor.set(0.5); pops.addChild(t); popPool.push(t); }
+      k++;
+      const a = Math.min(1, (life - age) / (life * 0.4));
+      if (f.type === 'gain') {
+        if (t.text !== '+1') { t.text = '+1'; t.style = POP_STYLE; }
+        t.position.set(f.x, f.y - 30 - age * 26); t.scale.set(0.7 + 0.3 * Math.min(1, age * 8));
+      } else {
+        const label = `★ ${f.name}！ +${f.n}`;
+        if (t.text !== label) { t.text = label; t.style = FIND_STYLE; }
+        t.position.set(f.x, f.y - 54 - Math.min(age, 0.5) * 30); t.scale.set(age < 0.15 ? 0.6 + age / 0.15 * 0.6 : 1.2 - Math.min(0.2, (age - 0.15)));
+      }
+      t.alpha = a; t.visible = true;
+      if (f.type === 'gain') { const pl = piles.find(q => q.p.id === f.pile); if (pl && pl.lastPop !== f.t) { pl.lastPop = f.t; pl.bump = now; } }
+    }
+    for (; k < popPool.length; k++) popPool[k].visible = false;
+  }
+
   function drawFx() {
     fxLayer.clear();
     for (const f of sim.fx) {
@@ -170,6 +199,12 @@ export async function createRenderer(host, sim) {
       } else if (f.type === 'deliver') {
         const a = 1 - age / 0.8;
         fxLayer.circle(f.x, f.y - 6, 10 + 40 * (1 - a)).stroke({ width: 4, color: 0x4ade80, alpha: a });
+      } else if (f.type === 'find') {
+        const a = Math.max(0, 1 - age / 1.2);
+        for (let i = 0; i < 6; i++) {
+          const ang = i / 6 * Math.PI * 2 + age * 2, rr = 10 + age * 40;
+          fxLayer.star(f.x + Math.cos(ang) * rr, f.y - 30 + Math.sin(ang) * rr, 4, 5, 2).fill({ color: 0xfff3b0, alpha: a });
+        }
       } else if (f.type === 'boom') {
         if (f.side === 'enemy' && !sim.fog.isVisible(toTile(f.x), toTile(f.y))) continue;
         const a = 1 - age / 0.6;
@@ -185,7 +220,11 @@ export async function createRenderer(host, sim) {
     for (const pl of piles) {
       const p = pl.p, seen = sim.fog.isSeen(p.tx, p.ty);
       pl.s.visible = seen; if (!seen) continue;
-      if (p.amount <= 0 && !pl.empty) { pl.empty = true; pl.s.texture = tex.salvage_empty; }
+      if (p.amount <= 0 && !pl.empty) { pl.empty = true; pl.s.texture = tex.salvage_empty; pl.bump = now; }
+      // 山は集めるほど小さくなり、1つ取るたびに「ぷにっ」とつぶれる
+      const fill = pl.empty ? 0.8 : 0.62 + 0.38 * Math.max(0, p.amount / p.max);
+      const bt = now - pl.bump, sq = pl.bump >= 0 && bt < 0.25 ? Math.sin(bt / 0.25 * Math.PI) * 0.12 : 0;
+      pl.s.scale.set(pl.base * fill * (1 + sq), pl.base * fill * (1 - sq));
       const x = tileCenter(p.tx), y = tileCenter(p.ty), r = Math.max(0, p.amount / p.max);
       markLayer.circle(x, y, GATHER_RADIUS * TILE).stroke({ width: 2, color: 0xffd166, alpha: p.amount > 0 ? 0.35 : 0.12 });
       if (p.amount > 0) {
@@ -253,6 +292,7 @@ export async function createRenderer(host, sim) {
     drawPaths(now);
     drawFx();
     drawMission(now);
+    drawPops(now);
   }
 
   function destroy() { views.clear(); app.destroy({ removeView: true }, { children: true, texture: true, textureSource: true }); fogRT.destroy(true); }

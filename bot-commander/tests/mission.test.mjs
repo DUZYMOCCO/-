@@ -1,12 +1,12 @@
-// v0.2.0 ミッション（資材集め・巡回・脱出）のシミュレーションのテスト
+// v0.2.x ミッション（資材集め・巡回・脱出）のシミュレーションのテスト（v0.2.1: 制限時間なし・掘り出し物）
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createSim, runSim, stepSim, issueOrder, hashSim, missionStatus, squadUnits, squadCommander, groupSees, KINDS, TICK } from '../js/sim/sim.js?v=4';
-import { MISSION_1, ALERT } from '../js/sim/mission.js?v=4';
-import { reachable, tileAt, T, tileCenter } from '../js/sim/map.js?v=4';
+import { createSim, runSim, stepSim, issueOrder, hashSim, missionStatus, squadUnits, squadCommander, groupSees, KINDS, TICK } from '../js/sim/sim.js?v=5';
+import { MISSION_1, ALERT, FIND } from '../js/sim/mission.js?v=5';
+import { reachable, tileAt, T, tileCenter } from '../js/sim/map.js?v=5';
 
 const sec = s => Math.round(s / TICK);
-const base = over => ({ id: 't', title: 't', timeLimit: 600, target: 30, salvage: [{ tx: 20, ty: 50, amount: 40 }], extraction: { tx: 20, ty: 40 }, ally: [{ name: 'S', kind: 'scav', tx: 20, ty: 53, count: 4 }], aliens: [], ...over });
+const base = over => ({ id: 't', title: 't', target: 30, salvage: [{ tx: 20, ty: 50, amount: 40 }], extraction: { tx: 20, ty: 40 }, ally: [{ name: 'S', kind: 'scav', tx: 20, ty: 53, count: 4 }], aliens: [], ...over });
 const ally = (sim, i = 0) => sim.squads.filter(s => s.side === 'ally')[i];
 const patrol = sim => sim.squads.find(s => s.role === 'patrol');
 const place = (sim, squad, tx, ty) => squadUnits(sim, squad).forEach((u, i) => { u.x = tileCenter(tx) + (i % 2) * 10; u.y = tileCenter(ty) + (i >> 1) * 10; });
@@ -37,11 +37,13 @@ test('回収: 止まった部隊が資材を集め、ポイントは減って空
   assert.ok(runUntil(sim, () => s.cargo > 0, 60), '集め始める');
   assert.equal(s.gathering, 0);
   const p = sim.mission.salvage[0];
-  assert.ok(Math.abs(p.amount + s.cargo - 40) < 1e-6, '減った分だけ運んでいる');
+  const bonus = () => sim.mission.finds.length * FIND.bonus;
+  assert.ok(Math.abs(p.amount + p.gathered - 40) < 1e-6, '減った分だけ集めた');
+  assert.ok(Math.abs(s.cargo - p.gathered - bonus()) < 1e-6, '運んでいる＝集めた分＋掘り出し物');
   assert.ok(runUntil(sim, () => p.amount === 0, 120), '空になる');
-  assert.ok(Math.abs(s.cargo - 40) < 1e-6);
-  runSim(sim, sec(5));
-  assert.ok(Math.abs(s.cargo - 40) < 1e-6, '空のポイントからはもう増えない');
+  assert.ok(Math.abs(s.cargo - 40 - bonus()) < 1e-6);
+  const c1 = s.cargo; runSim(sim, sec(5));
+  assert.equal(s.cargo, c1, '空のポイントからはもう増えない');
   assert.equal(s.gathering, null);
 });
 
@@ -68,10 +70,35 @@ test('脱出: 資材を脱出口に届けて目標に届くと勝ち', () => {
   assert.ok(st.delivered >= 30 && st.carrying === 0);
 });
 
-test('負け: 時間切れ・全滅', () => {
-  const a = createSim({ seed: 4, mission: base({ timeLimit: 5 }) });
-  runSim(a, sec(6));
-  assert.equal(a.result, 'lose'); assert.equal(a.resultReason, 'time');
+test('制限時間なし: 何もしないで長い時間がたっても負けない（負けは全滅だけ）', () => {
+  const a = createSim({ seed: 4, mission: MISSION_1 });
+  runSim(a, sec(1800));
+  assert.equal(a.result, null, '30分たっても終わらない');
+  assert.ok(a.units.some(u => u.side === 'ally'));
+  assert.ok(!('timeLimit' in MISSION_1) && !('timeLimit' in a.mission), '制限時間の設定そのものがない');
+  assert.ok(!('remaining' in missionStatus(a)) && Math.abs(missionStatus(a).elapsed - a.time) < 1e-9, 'HUD 用は経過時間だけ');
+});
+
+test('回収のお楽しみ: 1つごとに +1 の fx、掘り出し物は seed で決まり、おまけが運搬量に足される', () => {
+  const run = seed => {
+    const sim = createSim({ seed, mission: base({ ally: [{ name: 'X', kind: 'scav', tx: 20, ty: 50, count: 4 }] }) });
+    const seen = new Set();
+    for (let i = 0; i < sec(40); i++) { stepSim(sim); for (const f of sim.fx) if (f.type === 'gain') seen.add(f); }
+    return { sim, gains: seen.size };
+  };
+  const { sim, gains } = run(11);
+  const p = sim.mission.salvage[0];
+  assert.equal(p.amount, 0);
+  assert.equal(gains, 40, '40集めたら +1 が40回');
+  assert.ok(sim.mission.finds.length <= FIND.at.length);
+  assert.ok(Math.abs(ally(sim).cargo - 40 - sim.mission.finds.length * FIND.bonus) < 1e-6);
+  for (const f of sim.mission.finds) assert.ok(FIND.names.includes(f.name));
+  assert.deepEqual(run(11).sim.mission.finds, sim.mission.finds, '同じ seed なら同じ掘り出し物');
+  let total = 0; for (let seed = 1; seed <= 12; seed++) total += run(seed).sim.mission.finds.length;
+  assert.ok(total > 0 && total < 12 * FIND.at.length, `いくつかの seed で見つかり、毎回全部ではない（${total}）`);
+});
+
+test('負け: 全滅', () => {
   const b = createSim({ seed: 4, mission: base() });
   for (const u of b.units) if (u.side === 'ally') u.hp = 0;
   stepSim(b);
