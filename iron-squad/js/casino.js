@@ -1,7 +1,7 @@
 import {CASINO_BET,casinoBaseBet,casinoMaxBet,casinoPageMaxBet,validCasinoBet,normalizeCasinoBet,CASINO_POLICY,POKER_PAYOUTS,SLOT_SYMBOLS,SLOT_LINES,SLOT_CHERRY_TWO,dealPoker,finishPoker,cardFace,rollSlots,pokerWinningCards,evaluatePoker,canDoubleUp,playDoubleUp,takeDoubleUp,DOUBLE_UP_MAX_WINS} from './casino-rules.js?v=322';
 import {mahjongHtml,bindMahjong,mahjongMethods,setMahjongHost,mahjongInProgress,mahjongOf,drive as driveMahjong,settleMahjong} from './mahjong.js?v=322';
 import {chooseArena,arenaCandidates,simulateArena,recordArena} from './casino-arena.js?v=322';
-import {atFacility} from './hq-facilities.js?v=322';
+import {atFacility} from './hq-facilities.js?v=359';
 import {drawSoldierPortrait} from './soldier-appearance.js?v=342';
 import {casinoQuip} from './soldier-dialogue.js?v=334';
 import {sound} from '../../common/js/audio.js?v=151';

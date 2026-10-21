@@ -4,7 +4,7 @@ import {standardEquipmentCost} from './armament-rules.js?v=354';
 import {tierDescription,tierNumber} from './equipment-tiers.js?v=231';
 import {equipmentName,compareEquipment} from './equipment-rules.js?v=354';
 import {equipmentRequirementText} from './weapon-requirements.js?v=338';
-import {atFacility} from './hq-facilities.js?v=322';
+import {atFacility} from './hq-facilities.js?v=359';
 import {sound} from '../../common/js/audio.js?v=151';
 
 export const WORKSHOP_STOCK=CRAFT_RECIPES.map(recipe=>({...recipe,name:recipe.armorStyle?recipe.name:recipe.type==='WEAPON'?{

@@ -11,8 +11,8 @@ import {configurePerfSettings} from './perf-diagnostics.js?v=327';
 import {gameText} from './game-text.js?v=341';
 import {talentTag} from './talent-labels.js?v=291';
 import {fieldDialogReturn} from './dialog-return.js?v=200';
-import {guildMethods} from './guild-contracts.js?v=322';
-import {guildUiMethods} from './guild-ui.js?v=322';
+import {guildMethods} from './guild-contracts.js?v=359';
+import {guildUiMethods} from './guild-ui.js?v=359';
 import {headquartersMoveTarget} from './hq-navigation.js?v=358';
 import {configureBattlefieldUI,quietBattlefieldContext} from './battlefield-ui.js?v=332';
 import {renderNavigationMap} from './navigation-map.js?v=354';
@@ -34,23 +34,23 @@ import {TANK,prepareTanks,tankEvalDistSq,tankSlowFactor,tankCover,tankStunSecond
 import {recordBattleLog,resetBattleLog,refreshCombatFieldNotes} from './battle-log.js?v=322';
 import {rollDropExclusive,applyDropExclusive,dropExclusiveLabel,markDirectionRelic,DIRECTION_RELICS} from './drop-exclusives.js?v=350';
 import {normalizeMaterials,applyCraftExclusive,craftExclusiveLabel,equipmentDropChance,materialDropChance,rollMaterialDrop,rollTreasureLoot} from './crafting-rules.js?v=354';
-import {workshopMethods} from './workshop.js?v=354';
-import {updateAmbientCrowd,ambientResidents,ambientSoldierPose,ambientFarmPosts,drawAmbientResident,configureAmbientSettings,resetAmbientCrowd} from './town-ambient.js?v=354';
-import {casinoMethods} from './casino.js?v=322';
+import {workshopMethods} from './workshop.js?v=359';
+import {updateAmbientCrowd,ambientResidents,ambientSoldierPose,ambientFarmPosts,drawAmbientResident,configureAmbientSettings,resetAmbientCrowd} from './town-ambient.js?v=359';
+import {casinoMethods} from './casino.js?v=359';
 import {normalizeCasino} from './casino-rules.js?v=322';
 import {latestEquipmentTier,recordMerchantEquipment,ensureMerchantCatalog,refreshWaveCatalogs,markMerchantPurchase} from './merchant-catalog.js?v=354';
 import {initializeMedicalPosts,updateMedicalPosts,serializeMedicalPosts,medicalPostLayout,nearestKnownMedicalPost,drawMedicalPost,drawMedicalMap,drawMedicalMarker,drawTownMedicalReception,drawRescueDirection} from './medical-posts.js?v=277';
 import {invasionMethods,initializeInvasions,serializeInvasions,shouldTriggerRandomRaid,makeEnemyRoom,drawInvasionRoute,raidHeldBySpectate} from './invasion-rules.js?v=333';
 import {gateMethods,serializeGatePosts,replenishTownGateGuards,initializeGateGuards,ensureTownGuards,serializeGateGuards,updateGateGuards,gateGuardVisible,applyFortifications,drawFortification,exitGateTown,townExitReached,wallBlocksAttack,attackBlocked as coverBlocked} from './gate-rules.js?v=358';
-import {nationMethods,normalizeNation,nationalIncome,nationalPayrollPlan,headquartersDamageMult,drawNationalDevelopment,DEVELOPMENT_STAGES} from './nation-rules.js?v=358';
+import {nationMethods,normalizeNation,nationalIncome,nationalPayrollPlan,headquartersDamageMult,drawNationalDevelopment,DEVELOPMENT_STAGES} from './nation-rules.js?v=359';
 import {equipmentUpgradeCost,salaryQuote,paySoldiers} from './payroll-rules.js?v=333';
 import {planSelfUpgrades,applySelfUpgradePlan,SELF_UPGRADE_SAFETY_LIMIT,REST_UPGRADES_PER_PHASE_MAX,REST_UPGRADES_PER_TICK_MAX} from './self-upgrade-rules.js?v=300';
 import {addFieldDrop,ageFieldDrops,attractFieldDrops,FIELD_DROP_PICKUP_RADIUS} from './field-drops.js?v=305';
 import {drawLootDrop,drawLootPullTrail} from './loot-visuals.js?v=354';
 import {drawOwnSquadRing,isOwnSquad} from './own-squad-marker.js?v=182';
 import {CAREER_RULES,newCareer,normalizeCareer,isEnlisted,ownCompanionCount,rankForCareer,recordCareerContribution,enlistCareer,canPromoteCareer,careerSummary,restartCareerExpedition} from './career-rules.js?v=291';
-import {tavernMethods,initializeTaverns,serializeTaverns,settleTravelerCompanions,drawFieldTavern,updateTavernPrompt,tavernWaveChanged,FIELD_TAVERN} from './tavern.js?v=333';
-import {headquartersFacilityMethods,HEADQUARTERS_FACILITIES,updateHeadquartersFacilityPrompt,drawHeadquartersFacilityGround,drawHeadquartersFacility,headquartersBuildingBlocks} from './hq-facilities.js?v=322';
+import {tavernMethods,initializeTaverns,serializeTaverns,settleTravelerCompanions,drawFieldTavern,updateTavernPrompt,tavernWaveChanged,FIELD_TAVERN} from './tavern.js?v=359';
+import {headquartersFacilityMethods,HEADQUARTERS_FACILITIES,updateHeadquartersFacilityPrompt,drawHeadquartersFacilityGround,drawHeadquartersFacility,headquartersBuildingBlocks} from './hq-facilities.js?v=359';
 import {drawNightlifeLights} from './nightlife-visuals.js?v=277';
 import {drawSceneDarkness,drawLanternLights,recordLanternActor,brightDungeon} from './scene-lighting.js?v=358';
 import {queueSquadName,flushSquadNames} from './squad-names.js?v=182';
@@ -97,7 +97,7 @@ import {supplyMethods, initializeSupplies, updateSupplies, takeRangedShot, ammoC
 import { bindPadTap } from './pad-tap.js?v=276';
 import { POCKET_POTION, pocketPotionLabel, tickPocketPotion } from './pocket-potion.js?v=333';
 import { updateSpectate, updateRaidGrace, spectateCameraTarget, clearSpectate, updateSpectateQueue, spectateSteps, spectateSpeed, fieldSpectating, expeditionSpectating, expeditionAvailability, expeditionStatusLine, startExpeditionSpectate, queueExpeditionSpectate, cancelSpectateQueue, endSpectate } from './hero-spectate.js?v=355';
-import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog, settingsHost, arrangeSettings } from './interface.js?v=333';
+import { configureInterface, compactSoldierCard, refreshInterface, setSubDialog, settingsHost, arrangeSettings } from './interface.js?v=359';
 import { renderTroopRankings, getSoldierRankerBadges, calcSoldierRankerBonus, setRankingFamilyLabels, RANKING_FAMILIES } from './troop-rankings.js?v=333';
 import { ensureSoldierAppearance, drawSoldierPortrait } from './soldier-appearance.js?v=342';
 import { aggregateDeathlineDynamics, tickDeathline, deathlineDamage, normalizeDeathlineSkills, chooseDeathlineSkill, deathlineRangedRange } from './deathline-rules.js?v=295';
@@ -1224,7 +1224,7 @@ export const IronSquadGame = {
 
   // 起動時にこのゲームのCSSを自分で読み込む（?v= はこのフォルダ内で管理）。ハブが init 前に await する
   prepare() {
-    return loadCss(['../css/iron-squad.css?v=267', '../css/iron-squad-interface.css?v=332'].map(p => new URL(p, import.meta.url).href));
+    return loadCss(['../css/iron-squad.css?v=267', '../css/iron-squad-interface.css?v=359'].map(p => new URL(p, import.meta.url).href));
   },
 
   init(container, onBackToHub) {

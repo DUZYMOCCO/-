@@ -144,7 +144,10 @@ export function configureInterface(game) {
   const commanderView=get('view-strat-commander')||overview;
   const commanderTabs=element('div','soldier-detail-tabs commander-tabs');commanderTabs.id='commander-tabs';commanderTabs.setAttribute('role','tablist');commanderTabs.setAttribute('aria-label','隊長の記録');
   for(const [key,label] of COMMANDER_TABS){const b=element('button','',label);b.type='button';b.setAttribute('role','tab');b.dataset.cmdTab=key;b.onclick=()=>{game._commanderTab=key;syncCommanderTabs(game);commanderView.closest?.('.dialog-body')?.scrollTo?.(0,0);};commanderTabs.append(b);}
-  const equipPane=element('section','commander-equip-pane');equipPane.dataset.cmdPane='equip';equipPane.append(get('player-equip-box'));
+  const equipPane=element('section','commander-equip-pane');equipPane.dataset.cmdPane='equip';
+  // v7.2.25: swapping the commander's gear happens in 部隊 › バッグ; the 装備 tab links straight there.
+  const equipSwapButton=element('button','commander-equip-swap','装備を付け替える');equipSwapButton.type='button';equipSwapButton.id='btn-commander-equip-swap';equipSwapButton.onclick=()=>{game.rosterManageTab='equip';game._selectStratTab('troops');};
+  equipPane.append(equipSwapButton,get('player-equip-box'));
   commanderView.append(commanderTabs,get('player-record-box'),equipPane);
   game._syncCommanderTabs=()=>syncCommanderTabs(game);syncCommanderTabs(game);
   const playerStatsButton=element('button','','隊長ステータス');playerStatsButton.type='button';playerStatsButton.id='btn-player-stats';

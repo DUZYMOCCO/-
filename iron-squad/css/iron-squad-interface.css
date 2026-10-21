@@ -1936,3 +1936,4 @@
 .iron-squad .strat-window-open .command-status { display: none; }
 .iron-squad .travel-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
 .iron-squad .travel-actions .travel-action { min-height: 52px; font-size: 15px; }
+.iron-squad .commander-equip-swap { display: block; width: 100%; min-height: 44px; margin: 0 0 10px; font-weight: bold; }
