@@ -5,8 +5,8 @@
 import { loadCss } from '../../common/js/load-css.js';
 import { createSim, stepSim, TICK, squadUnits, squadCommander, applyCommandsNow, missionStatus } from './sim/sim.js?v=5';
 import { MISSION_1 } from './sim/mission.js?v=5';
-import { createRenderer } from './render/renderer.js?v=5';
-import { attachInput } from './render/input.js?v=5';
+import { createRenderer } from './render/renderer.js?v=7';
+import { attachInput } from './render/input.js?v=7';
 
 const fmtTime = s => { const t = Math.ceil(s); return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`; };
 const HINT_IDLE = '部隊をタップして選ぶ。ツギハギ隊をガラクタの山で止めると資材を集める';
@@ -16,7 +16,7 @@ const BotCommanderGame = {
   title: 'ロボットコマンダー（仮）',
 
   prepare() {
-    return loadCss(new URL('../css/bot-commander.css?v=5', import.meta.url).href);
+    return loadCss(new URL('../css/bot-commander.css?v=7', import.meta.url).href);
   },
 
   init(container, onBackToHub) {

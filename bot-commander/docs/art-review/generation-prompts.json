@@ -1,0 +1,103 @@
+{
+  "tool": "built-in image_gen",
+  "purpose": "Reference-faithful v0.3.0 game art; user explicitly superseded SVG/size limits",
+  "assets": [
+    {
+      "name": "scavenger",
+      "refs": [
+        "D:/スマホゲーム工房/bot-commander/docs/ref/scavenger_concept_01.jpg"
+      ],
+      "prompt": "Use case: stylized-concept. Production game sprite, ONE isolated full-body scavenger companion robot, genuinely transparent background. The attached image is a design/material/lighting reference, NOT an edit target; borrow the little spherical-head robots, NOT the monster or scene or text. Closely match their worn dark olive gunmetal hemispherical riveted head, very large luminous cyan ROUND lens eyes (exactly two, both visible), tiny friendly utilitarian body, mismatched salvage armor plates, exposed thick cables, twin thin antennae, small backpack and short sturdy boots, one little tool claw. Cute squat SD proportions: head about 55% of height, short limbs, still believable dense assembled machinery. Camera: elevated 3/4 front view facing screen RIGHT, full body including feet, readable mobile RTS asset. This must look like an expensive lovingly painted / prerendered 3D miniature with dimensional curved metal, subtle reflected cyan on cheeks, crisp machined joints, broad warm amber edge lighting from upper left and cool fill. Rich brushed and chipped metal and restrained grime, NOT flat vector, NOT comic black outlines, NOT cel blocks, NOT a toy plastic icon. Strong broad silhouette and eye lights when reduced to 40px, rewarding finely painted panel detail when enlarged to 200px. Pose standing at rest with arms slightly away, no weapon, no other character, no typography or labels, no floor or cast ground shadow, no glow rectangle. Square image, robot centered horizontally, entire subject with generous transparent clearance, highest antenna near 7% height and bottom of boots at 88% height. High resolution sharp controlled edges, alpha transparent background.",
+      "source": "C:\\Users\\Yoshiyuki\\.codex\\generated_images\\01a15ee9-acb0-71c2-a6cc-99309692a6ad\\exec-5edb954a-05b1-49bb-81e2-dce915b061c9.png",
+      "asset": "assets/art-v2/scavenger.webp",
+      "original": "docs/art-review/sources/scavenger.png",
+      "shippedPixels": 768
+    },
+    {
+      "name": "ponco",
+      "refs": [
+        "C:/Users/Yoshiyuki/AppData/Local/Temp/フリーダムワークス.png"
+      ],
+      "prompt": "Use case: stylized-concept. Production game sprite: ONE isolated full-body PONCO02 companion combat robot, genuinely transparent background. The attached manufacturer sheet is design reference ONLY. Precisely follow the LEFTMOST TIER 1 PONCO02 robot, NOT the taller upgraded models. Squat friendly rounded cream-white weathered steel helmet, black horizontal rounded visor with exactly TWO luminous vertical cyan eyes, chunky short white arms and legs and wide boots, navy blue chest armor and tiny red accent panels. Layered mechanically credible joint rings, visible bolts, tasteful chipped paint and a few wires. A simple small white angular F badge on blue chest plate, no other text. Carry a short compact practical gun in the front/right hand, gun pointing screen RIGHT. Head takes about 45% height, appealing SD but with substantial armor volume. Elevated 3/4 front camera facing screen RIGHT, both eyes visible, same mobile RTS miniature camera. Premium finely painted / prerendered 3D game art, beautiful volumetric worn metal, warm amber upper-left edge lighting and soft cool cyan bounce light. High-end miniature material realism with gentle stylization, NOT flat vector, NOT thick black comic outlines, NOT cel blocks, NOT oversimplified emoji. Full body stands at rest, no dramatic action, strong readable silhouette at 42px and detailed machined surfaces on zoom at 200px. Square image, centered horizontally, full antenna near 7% height, soles at 88% height, transparent clearance around entire subject. No backdrop, no floor, no cast ground shadow, no other robot, no UI or labels. Sharp high resolution, genuine alpha transparency.",
+      "source": "C:\\Users\\Yoshiyuki\\.codex\\generated_images\\01a15ee9-acb0-71c2-a6cc-99309692a6ad\\exec-7af55cfa-ebdc-47f2-8b83-7d51ca1f0b57.png",
+      "asset": "assets/art-v2/ponco.webp",
+      "original": "docs/art-review/sources/ponco.png",
+      "shippedPixels": 768
+    },
+    {
+      "name": "alien",
+      "refs": [
+        "D:/スマホゲーム工房/bot-commander/docs/ref/scavenger_concept_01.jpg"
+      ],
+      "prompt": "Use case: stylized-concept. Production mobile RTS enemy sprite, ONE isolated full-body alien biomechanical scavenger predator on genuine transparent background. Attached concept is design and material reference: follow the dark spiky animal-machine monster on the upper RIGHT, NOT the little robots. Translate it into a compact squat game creature with a readable horizontal crouching silhouette, roughly crab / lizard hybrid, armored broad upper body with curved weathered black steel and dark organic carapace, amber-lit fissures between interlocking armor plates, four to six angular claw legs, jagged swept-back shoulder spikes, small asymmetrical amber eyes in a defined animal head pointing RIGHT, restrained amber glow in partially open jaw with a few ivory teeth. Has real layered anatomical volume and tactile steel/organic surfaces. Friendly enough for a family adventure: intimidating but no gore, blood, exposed meat, horror viscera. Elevated 3/4 front-side camera facing screen RIGHT, same premium prerendered 3D / handpainted miniature camera as companion robots. Volumetric warm amber upper-left rim light, cool muted fill, rich detail at zoom but clean silhouette at 64px. NOT a round cartoon bug, NOT flat vector, NOT heavy comic outlines, NOT a red robot dragon. Square image with all limbs fully inside transparent margins, body centered, highest spine around 12% height, claw feet at 88% height, width about 85% of image. No floor or ground shadow, no scenery, no text or symbols, no other creature. Beautiful high resolution clean alpha edges.",
+      "source": "C:\\Users\\Yoshiyuki\\.codex\\generated_images\\01a15ee9-acb0-71c2-a6cc-99309692a6ad\\exec-c1cf7122-2d56-4ce3-aa1d-e0563e1c849c.png",
+      "asset": "assets/art-v2/alien.webp",
+      "original": "docs/art-review/sources/alien.png",
+      "shippedPixels": 768
+    },
+    {
+      "name": "ground-plain",
+      "prompt": "Use case: stylized-concept. Production terrain texture for a high-quality 2.5D mobile RTS. The attached image is a WORLD / MATERIAL / AMBER LIGHTING reference only. Real richly textured ruined alien industrial world. Finely painted prerendered environment art, consistent with realistic worn-metal SD miniature characters. No cartoon outlines, no vector shapes, no text, no border. Square orthographic STRAIGHT DOWN ground surface covering every pixel, not a floating diamond, not an isometric diorama, no perspective horizon, no cast shadows outside tile. Absolutely seamlessly tileable on all four edges. At edges preserve uniform material colors with quiet small-scale texture, no big feature crossing edges. Broad restrained lighting and muted saturation so luminous robots stand out; detail rewarding at 4x zoom but no noisy high contrast speckles. Plain walkable terrain: warm grey-olive dusty shattered industrial concrete and ancient paving pieces, small rusty steel fragments half-buried and subtle hairline cracks, sparse dry moss, soft amber reflected light. Relatively bright muted beige/olive earth, open mostly bare readable surface, no giant rocks, plants, bright glowing objects or walls. Texture has irregular natural distribution, no repeated grid of square slabs. Quiet continuous material.",
+      "source": "C:\\Users\\Yoshiyuki\\.codex\\generated_images\\01a15ee9-acb0-71c2-a6cc-99309692a6ad\\exec-6601e7a8-27f7-4d42-81d2-c51ffd74936e.png",
+      "asset": "assets/art-v2/ground-plain.webp",
+      "original": "docs/art-review/sources/ground-plain.png",
+      "shippedPixels": 1024
+    },
+    {
+      "name": "ground-forest",
+      "prompt": "Use case: stylized-concept. Production terrain texture for a high-quality 2.5D mobile RTS. The attached image is a WORLD / MATERIAL / AMBER LIGHTING reference only. Real richly textured ruined alien industrial world. Finely painted prerendered environment art, consistent with realistic worn-metal SD miniature characters. No cartoon outlines, no vector shapes, no text, no border. Square orthographic STRAIGHT DOWN ground surface covering every pixel, not a floating diamond, not an isometric diorama, no perspective horizon, no cast shadows outside tile. Absolutely seamlessly tileable on all four edges. At edges preserve uniform material colors with quiet small-scale texture, no big feature crossing edges. Broad restrained lighting and muted saturation so luminous robots stand out; detail rewarding at 4x zoom but no noisy high contrast speckles. Alien undergrowth terrain: dark muted olive green moss and damp ruined ground with a modest sparse group of jellyfish-like alien bioluminescent plants, delicate hanging tendrils and translucent amber-gold softly glowing umbrella caps rooted into ground, between corroded pipes and wiry moss. All plant clusters are inset away from image edges, about three irregular clusters of varying scale with breathable dark spaces between. Top-down elevated camera, canopy depth painted into surface, luminous amber subtle not bright yellow. Darker than open terrain, no standard round green trees, no scenery or horizon.",
+      "source": "C:\\Users\\Yoshiyuki\\.codex\\generated_images\\01a15ee9-acb0-71c2-a6cc-99309692a6ad\\exec-a5ee318f-c59a-40b6-bc46-9234831f3735.png",
+      "asset": "assets/art-v2/ground-forest.webp",
+      "original": "docs/art-review/sources/ground-forest.png",
+      "shippedPixels": 1024
+    },
+    {
+      "name": "ground-mountain",
+      "prompt": "Use case: stylized-concept. Production terrain texture for a high-quality 2.5D mobile RTS. The attached image is a WORLD / MATERIAL / AMBER LIGHTING reference only. Real richly textured ruined alien industrial world. Finely painted prerendered environment art, consistent with realistic worn-metal SD miniature characters. No cartoon outlines, no vector shapes, no text, no border. Square orthographic STRAIGHT DOWN ground surface covering every pixel, not a floating diamond, not an isometric diorama, no perspective horizon, no cast shadows outside tile. Absolutely seamlessly tileable on all four edges. At edges preserve uniform material colors with quiet small-scale texture, no big feature crossing edges. Broad restrained lighting and muted saturation so luminous robots stand out; detail rewarding at 4x zoom but no noisy high contrast speckles. Difficult rubble terrain: layered broken weathered concrete slabs, angular grey-olive rocks, ruined rusted industrial beam fragments with exposed rebar. Closely grouped heavy rubble clusters but the whole tile remains a ground texture, no tall peaked mountains, no snow. Muted slate grey concrete lighter on top and dark crevices, amber reflected highlights, restrained medium contrast. Main big rubble pieces inset away from image edges; edges dusty continuous ground. Natural irregular shapes not geometric triangle icons.",
+      "source": "C:\\Users\\Yoshiyuki\\.codex\\generated_images\\01a15ee9-acb0-71c2-a6cc-99309692a6ad\\exec-ba336c4b-cd2e-434d-b32e-ab680ced5c93.png",
+      "asset": "assets/art-v2/ground-mountain.webp",
+      "original": "docs/art-review/sources/ground-mountain.png",
+      "shippedPixels": 1024
+    },
+    {
+      "name": "ground-water",
+      "prompt": "Use case: stylized-concept. Production terrain texture for a high-quality 2.5D mobile RTS. The attached image is a WORLD / MATERIAL / AMBER LIGHTING reference only. Real richly textured ruined alien industrial world. Finely painted prerendered environment art, consistent with realistic worn-metal SD miniature characters. No cartoon outlines, no vector shapes, no text, no border. Square orthographic STRAIGHT DOWN ground surface covering every pixel, not a floating diamond, not an isometric diorama, no perspective horizon, no cast shadows outside tile. Absolutely seamlessly tileable on all four edges. At edges preserve uniform material colors with quiet small-scale texture, no big feature crossing edges. Broad restrained lighting and muted saturation so luminous robots stand out; detail rewarding at 4x zoom but no noisy high contrast speckles. Impassable dark water terrain: very dark desaturated blue-teal oily shallow water with tiny ripples and a few subtle broken golden amber reflections from alien plants beyond camera. Quiet deep water, no shoreline, no land, no plants or giant objects, no bright blue cartoon waves, not turbulent. Dark broad translucent depth with muted teal highlights and sparse warm gold glints. Seamless repeat both axes without visible stripe or box boundaries.",
+      "source": "C:\\Users\\Yoshiyuki\\.codex\\generated_images\\01a15ee9-acb0-71c2-a6cc-99309692a6ad\\exec-be0f9244-c4b2-4690-9d2f-14cbb37a8146.png",
+      "asset": "assets/art-v2/ground-water.webp",
+      "original": "docs/art-review/sources/ground-water.png",
+      "shippedPixels": 1024
+    },
+    {
+      "name": "salvage",
+      "prompt": "Use case: stylized-concept. ONE production game environment prop on a genuinely transparent background, isolated full object, no typography, no UI, no scenery and no floor or cast ground shadow. Attached image is only an amber-lit ruined industrial world material reference. Match beautifully detailed prerendered / hand-painted 3D miniature game art, volumetric weathered real metal, dark steel with tasteful rust, subtle warm amber upper-left edge light and cool muted fill. Elevated 3/4 front camera looking down about 35 degrees, as for a mobile RTS. Dense believable functional construction and nuanced surfaces, NO flat vector, NO thick comic outlines or cel blocks. Square image, full object with transparent clearance around every side. Detail must stay attractive when zoomed in. A compact irregular low heap of valuable salvage machinery: one scrapped engine, curved corroded armor panel, heavy gear, short pipe elbow, damaged cylindrical power cell with a tiny warm gold illuminated core and a few exposed wires. About six clear larger readable parts, different metals and some faded olive paint. Visually recognizable as a rich RESOURCE PILE at 70px, not a blob of microscopic junk. Low triangular mound, widest near bottom, complete silhouette fits inside 85% width, bottom touching 80% image height. No magical gems, no treasure chest, no character or legs.",
+      "source": "C:\\Users\\Yoshiyuki\\.codex\\generated_images\\01a15ee9-acb0-71c2-a6cc-99309692a6ad\\exec-b9a68722-4fd6-4eb4-954e-31e021f6db47.png",
+      "asset": "assets/art-v2/salvage.webp",
+      "original": "docs/art-review/sources/salvage.png",
+      "shippedPixels": 1024
+    },
+    {
+      "name": "salvage-empty",
+      "prompt": "Use case: stylized-concept. ONE production game environment prop on a genuinely transparent background, isolated full object, no typography, no UI, no scenery and no floor or cast ground shadow. Attached image is only an amber-lit ruined industrial world material reference. Match beautifully detailed prerendered / hand-painted 3D miniature game art, volumetric weathered real metal, dark steel with tasteful rust, subtle warm amber upper-left edge light and cool muted fill. Elevated 3/4 front camera looking down about 35 degrees, as for a mobile RTS. Dense believable functional construction and nuanced surfaces, NO flat vector, NO thick comic outlines or cel blocks. Square image, full object with transparent clearance around every side. Detail must stay attractive when zoomed in. A depleted salvage patch: ONLY a very low scattered handful of dull dark twisted wire, tiny scrap fragments, bent washer and broken small flat metal plates. Subdued and clearly empty, no glow, no tall object, no valuable components. Almost flat horizontal oval silhouette, occupies about 75% width and 20% height, centered around y=76% with its base at y=80%. Transparent everywhere else.",
+      "source": "C:\\Users\\Yoshiyuki\\.codex\\generated_images\\01a15ee9-acb0-71c2-a6cc-99309692a6ad\\exec-3ccd1de9-43b2-48de-81aa-2d45101fb5d6.png",
+      "asset": "assets/art-v2/salvage-empty.webp",
+      "original": "docs/art-review/sources/salvage-empty.png",
+      "shippedPixels": 1024
+    },
+    {
+      "name": "hatch",
+      "prompt": "Use case: stylized-concept. ONE production game environment prop on a genuinely transparent background, isolated full object, no typography, no UI, no scenery and no floor or cast ground shadow. Attached image is only an amber-lit ruined industrial world material reference. Match beautifully detailed prerendered / hand-painted 3D miniature game art, volumetric weathered real metal, dark steel with tasteful rust, subtle warm amber upper-left edge light and cool muted fill. Elevated 3/4 front camera looking down about 35 degrees, as for a mobile RTS. Dense believable functional construction and nuanced surfaces, NO flat vector, NO thick comic outlines or cel blocks. Square image, full object with transparent clearance around every side. Detail must stay attractive when zoomed in. A round heavy industrial extraction HATCH set into a low circular beveled steel base, closed round segmented steel door viewed from above at 35 degree RTS angle, broad yellow and black diagonal hazard-striped rim, inset steel bolt heads, central locking wheel and ribbed hinge. A SINGLE slim signal post with a red/amber illuminated beacon on rear RIGHT side. Low olive gunmetal steel, tiny cool cyan status lamps near rim, warning stripes recognizable at 90px. Circular hatch appears as ellipse due camera, centered near x=50%, y=66%, width about 85% image, flat bottom base at y=70%. Beacon extends to y=12%. No text, no skull, no floor or extra machinery.",
+      "source": "C:\\Users\\Yoshiyuki\\.codex\\generated_images\\01a15ee9-acb0-71c2-a6cc-99309692a6ad\\exec-2aa8c1da-b4be-49f1-92df-85c2d052ba81.png",
+      "asset": "assets/art-v2/hatch.webp",
+      "original": "docs/art-review/sources/hatch.png",
+      "shippedPixels": 1024
+    },
+    {
+      "name": "hq",
+      "prompt": "Use case: stylized-concept. ONE production game environment prop on a genuinely transparent background, isolated full object, no typography, no UI, no scenery and no floor or cast ground shadow. Attached image is only an amber-lit ruined industrial world material reference. Match beautifully detailed prerendered / hand-painted 3D miniature game art, volumetric weathered real metal, dark steel with tasteful rust, subtle warm amber upper-left edge light and cool muted fill. Elevated 3/4 front camera looking down about 35 degrees, as for a mobile RTS. Dense believable functional construction and nuanced surfaces, NO flat vector, NO thick comic outlines or cel blocks. Square image, full object with transparent clearance around every side. Detail must stay attractive when zoomed in. A small friendly robot expedition field BASE: compact squat salvaged industrial dome bunker with layered rounded olive-grey armor, wide front inset doorway with soft cyan interior glow and small lights, pipes, ventilation grilles, bolts, reinforced landing-foot base and a short antenna. ONE short mast with a simple gold triangular pennant, no emblem or lettering, rises above dome. Warm cream/olive armor and navy steel detail, worn but functional safe home, similar chunky rounded design language as reference companion robots. Building occupies 88% width with base at y=82%, flag tip near y=8%. Beautiful substantial architecture at 100px, clearly readable wide doorway; not a cute emoji or cartoon house.",
+      "source": "C:\\Users\\Yoshiyuki\\.codex\\generated_images\\01a15ee9-acb0-71c2-a6cc-99309692a6ad\\exec-1648f6a8-d6a9-4fbf-9dab-472aa0ce0cf3.png",
+      "asset": "assets/art-v2/hq.webp",
+      "original": "docs/art-review/sources/hq.png",
+      "shippedPixels": 1024
+    }
+  ]
+}

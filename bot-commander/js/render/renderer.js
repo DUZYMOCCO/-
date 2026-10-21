@@ -1,15 +1,15 @@
 // 描画（Pixi v8）。シミュレーションの state を読むだけで、書き換えない。
-import { Application, Container, Sprite, Graphics, Text, Texture, RenderTexture, BlurFilter } from '../../vendor/pixi-8.22.0.min.mjs?v=5';
+import { Application, Container, Sprite, Graphics, Text, Texture, Rectangle, RenderTexture, BlurFilter } from '../../vendor/pixi-8.22.0.min.mjs?v=7';
 import { TILE, TERRAIN, toTile, tileCenter } from '../sim/map.js?v=5';
 import { squadCommander, squadUnits } from '../sim/sim.js?v=5';
 import { GATHER_RADIUS, EXTRACT_RADIUS } from '../sim/mission.js?v=5';
-import { artSources } from './art.js?v=5';
-import { buildTextures } from './textures.js?v=5';
+import { artSources } from './art.js?v=7';
+import { buildTextures } from './textures.js?v=7';
 
 const FOG_PAD = 2;            // 霧テクスチャの外周（ぼかしで端が明るくならないように）
 const FOG_RT_SCALE = 4;       // 1タイル＝霧テクスチャ4px（ぼかし後）
 const UNIT_PX = 34;           // 機体の表示サイズ（ワールド座標）
-const KIND_PX = { scav: 32, ponco: 34, alien: 54 }; // 兵種ごとの表示サイズ（ないものは UNIT_PX）
+const KIND_PX = { scav: 40, ponco: 42, alien: 64 }; // Clear at play scale, detailed up to 4.5x zoom.
 const SIDE_COLOR = { ally: 0x7df9ff, enemy: 0xffb347 };
 
 export async function createRenderer(host, sim) {
@@ -23,9 +23,18 @@ export async function createRenderer(host, sim) {
 
   // 地形（動かないので一度だけ並べる）
   const terrain = new Container();
+  // One artwork spans 4x4 map tiles: plants/rubble stay substantial at normal zoom.
+  // Frames share four GPU sources; no extra uploads or per-frame baking.
+  const terrainFrames = new Map();
   for (let ty = 0; ty < map.h; ty++) for (let tx = 0; tx < map.w; tx++) {
-    const k = TERRAIN[map.tiles[ty * map.w + tx]].key, v = (tx * 7 + ty * 13) % 3 === 0 ? 1 : 0;
-    const s = new Sprite(tex[`tile_${k}_${v}`]);
+    const k = TERRAIN[map.tiles[ty * map.w + tx]].key;
+    const frameKey = `${k}_${tx % 4}_${ty % 4}`;
+    if (!terrainFrames.has(frameKey)) {
+      const source = tex[`tile_${k}_0`].source, side = source.width / 4;
+      terrainFrames.set(frameKey, new Texture({ source, frame: new Rectangle(tx % 4 * side, ty % 4 * side, side, side) }));
+    }
+    const s = new Sprite(terrainFrames.get(frameKey));
+    s.tint = k === 'plain' ? 0xa9aaa3 : k === 'forest' ? 0xb1b8a9 : 0xb5b8b1;
     s.position.set(tx * TILE, ty * TILE); s.width = s.height = TILE;
     terrain.addChild(s);
   }
@@ -98,7 +107,7 @@ export async function createRenderer(host, sim) {
   if (mission) cam.y = tileCenter(map.hq.ally.ty) - 200;
   const minZoom = () => Math.max(app.screen.width / (map.w * TILE), app.screen.height / (map.h * TILE)) * 0.9;
   function clampCam() {
-    cam.zoom = Math.max(minZoom(), Math.min(2.4, cam.zoom));
+    cam.zoom = Math.max(minZoom(), Math.min(4.5, cam.zoom));
     const hw = app.screen.width / 2 / cam.zoom, hh = app.screen.height / 2 / cam.zoom, W = map.w * TILE, H = map.h * TILE;
     cam.x = hw * 2 >= W ? W / 2 : Math.max(hw, Math.min(W - hw, cam.x));
     cam.y = hh * 2 >= H ? H / 2 : Math.max(hh - 60 / cam.zoom, Math.min(H - hh + 90 / cam.zoom, cam.y)); // 上下のUIぶん少し余白
@@ -130,7 +139,7 @@ export async function createRenderer(host, sim) {
     pathLayer.clear(); selLayer.clear();
     const sq = sim.squads.find(s => s.id === ui.selected);
     if (sq) {
-      for (const u of squadUnits(sim, sq)) selLayer.ellipse(u.x, u.y - 1, 15, 7).fill({ color: 0x7df9ff, alpha: 0.28 }).stroke({ width: 2, color: 0x7df9ff, alpha: 0.9 });
+      for (const u of squadUnits(sim, sq)) selLayer.ellipse(u.x, u.y - 1, 15, 7).fill({ color: 0x7df9ff, alpha: 0.12 }).stroke({ width: 2 / Math.max(1, cam.zoom), color: 0x7df9ff, alpha: 0.85 });
       const c = squadCommander(sim, sq), o = sq.order;
       if (c && o) {
         const pts = o.planned.slice(o.pathIdx);
@@ -194,8 +203,10 @@ export async function createRenderer(host, sim) {
         const vis = f.side === 'ally' || sim.fog.isVisible(toTile(f.x1), toTile(f.y1)) || sim.fog.isVisible(toTile(f.x2), toTile(f.y2));
         if (!vis) continue;
         const a = 1 - age / 0.18, col = SIDE_COLOR[f.side];
+        fxLayer.moveTo(f.x1, f.y1).lineTo(f.x2, f.y2).stroke({ width: f.kind === 'heavy' ? 7 : 4, color: col, alpha: a * 0.16, cap: 'round' });
         fxLayer.moveTo(f.x1, f.y1).lineTo(f.x2, f.y2).stroke({ width: f.kind === 'heavy' ? 3.5 : 2, color: col, alpha: a });
-        fxLayer.circle(f.x2, f.y2, 4 + 6 * (1 - a)).fill({ color: 0xffffff, alpha: a * 0.8 });
+        fxLayer.circle(f.x2, f.y2, 4 + 6 * (1 - a)).fill({ color: col, alpha: a * 0.25 });
+        fxLayer.circle(f.x2, f.y2, 2.2).fill({ color: 0xfff5d8, alpha: a });
       } else if (f.type === 'deliver') {
         const a = 1 - age / 0.8;
         fxLayer.circle(f.x, f.y - 6, 10 + 40 * (1 - a)).stroke({ width: 4, color: 0x4ade80, alpha: a });
@@ -207,8 +218,10 @@ export async function createRenderer(host, sim) {
         }
       } else if (f.type === 'boom') {
         if (f.side === 'enemy' && !sim.fog.isVisible(toTile(f.x), toTile(f.y))) continue;
-        const a = 1 - age / 0.6;
-        fxLayer.circle(f.x, f.y - 8, 8 + 22 * (1 - a)).fill({ color: 0xffa94d, alpha: a * 0.7 }).stroke({ width: 3, color: 0x121418, alpha: a });
+        const a = Math.max(0, 1 - age / 0.6), r = 8 + 22 * (1 - a), col = SIDE_COLOR[f.side];
+        fxLayer.circle(f.x, f.y - 8, r * 1.2).fill({ color: col, alpha: a * 0.12 });
+        fxLayer.circle(f.x, f.y - 8, r).fill({ color: col, alpha: a * 0.6 }).stroke({ width: 2.5, color: 0x293632, alpha: a });
+        fxLayer.circle(f.x - r * 0.18, f.y - 8 - r * 0.2, r * 0.52).fill({ color: 0xffefc5, alpha: a * a });
       }
     }
   }
@@ -236,7 +249,8 @@ export async function createRenderer(host, sim) {
       if (s.side !== 'ally' || s.gathering == null) continue;
       for (const u of squadUnits(sim, s)) {
         const k = (now * 3 + u.id * 0.37) % 1;
-        markLayer.circle(u.x + Math.sin(u.id * 7 + now * 5) * 6, u.y - 20 - k * 16, 2.4 * (1 - k) + 0.6).fill({ color: 0xffd166, alpha: 1 - k });
+        const x = u.x + Math.sin(u.id * 7 + now * 5) * 6, y = u.y - 20 - k * 16;
+        markLayer.star(x, y, 4, 2.4 * (1 - k) + 0.6, 0.8).fill({ color: 0xffdf88, alpha: 1 - k });
       }
     }
     const ex = mission.extraction, hx = tileCenter(ex.tx), hy = tileCenter(ex.ty), pulse = (now * 0.8) % 1;
@@ -246,16 +260,16 @@ export async function createRenderer(host, sim) {
       if (s.role !== 'patrol') continue;
       const c = squadCommander(sim, s);
       if (!c || !sim.fog.isVisible(toTile(c.x), toTile(c.y))) continue;
-      const x = c.x, y = c.y - 66;
+      const ink = 1 / Math.max(1, cam.zoom), x = c.x, y = c.y - KIND_PX.alien * .80 - 14 * ink;
       if (s.ai === 'chase') {
         const b = 1 + 0.12 * Math.sin(now * 14);
-        markLayer.circle(x, y - 4, 10 * b).fill({ color: 0xef4444 }).stroke({ width: 2.5, color: 0x121418 });
-        markLayer.roundRect(x - 2, y - 11, 4, 9, 1.5).fill({ color: 0xffffff });
-        markLayer.circle(x, y + 1.5, 2).fill({ color: 0xffffff });
+        markLayer.circle(x, y - 4 * ink, 10 * b * ink).fill({ color: 0xef4444 }).stroke({ width: 2.5 * ink, color: 0x121418 });
+        markLayer.roundRect(x - 2 * ink, y - 11 * ink, 4 * ink, 9 * ink, 1.5 * ink).fill({ color: 0xffffff });
+        markLayer.circle(x, y + 1.5 * ink, 2 * ink).fill({ color: 0xffffff });
       } else if (s.alert > 0.01 || s.ai === 'return') {
-        markLayer.rect(x - 16, y, 32, 6).fill({ color: 0x121418, alpha: 0.9 });
-        markLayer.rect(x - 15, y + 1, 30 * s.alert, 4).fill({ color: s.alert > 0.66 ? 0xef4444 : 0xffb347 });
-        if (s.ai === 'return') markLayer.circle(x + 22, y + 3, 3).fill({ color: 0x9ca3af });
+        markLayer.rect(x - 16 * ink, y, 32 * ink, 6 * ink).fill({ color: 0x121418, alpha: 0.9 });
+        markLayer.rect(x - 15 * ink, y + ink, 30 * s.alert * ink, 4 * ink).fill({ color: s.alert > 0.66 ? 0xef4444 : 0xffb347 });
+        if (s.ai === 'return') markLayer.circle(x + 22 * ink, y + 3 * ink, 3 * ink).fill({ color: 0x9ca3af });
       }
     }
   }
@@ -279,6 +293,8 @@ export async function createRenderer(host, sim) {
       const bob = u.moving ? Math.abs(Math.sin(now * 12 + u.id)) * 2.2 : 0;
       v.c.position.set(u.x, u.y); v.c.zIndex = u.y;
       v.body.y = -bob; v.body.scale.x = Math.abs(v.body.scale.x) * u.facing;
+      v.bar.scale.y = 1 / Math.max(1, cam.zoom);
+      v.marker.width = v.marker.height = 18 * Math.min(1, 1.5 / cam.zoom);
       if (v.hp !== u.hp) {
         if (v.hp > u.hp && v.hp >= 0) v.flash = 0.12;
         v.hp = u.hp;

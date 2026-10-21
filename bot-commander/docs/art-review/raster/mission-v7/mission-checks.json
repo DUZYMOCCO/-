@@ -1,0 +1,41 @@
+{
+  "cardVersion": "v0.3.0",
+  "orderByTap": true,
+  "gathering": {
+    "t": 30,
+    "cargo": 8.1,
+    "gathering": 0
+  },
+  "find": [
+    "ピカピカのネジ"
+  ],
+  "chase": {
+    "group": "巡回1",
+    "ai": "chase",
+    "alert": 1,
+    "t": 71,
+    "ax": 848.5592857770379,
+    "ay": 1583.999954280059
+  },
+  "resultText": "脱出成功\n\n資材を脱出口へ届けた！\n届けた資材 100／100\n残った機体 12機　かかった時間 1:13\n掘り出し物 ★1（ピカピカのネジ）\n\nもう一度\n工房へ",
+  "retry": {
+    "time": 0.1,
+    "result": null,
+    "hidden": true
+  },
+  "lose": [
+    "lose",
+    "wiped"
+  ],
+  "fps": 59.880239520962,
+  "cache": {
+    "name": "game-bot-commander-v7",
+    "files": 28
+  },
+  "backToHub": true,
+  "offline": {
+    "online": false,
+    "units": 20
+  },
+  "logs": []
+}

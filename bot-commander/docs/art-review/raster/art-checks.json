@@ -1,0 +1,406 @@
+{
+  "viewport": [
+    390,
+    844
+  ],
+  "dpr": 2,
+  "renderer": "webgl",
+  "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 2070 SUPER (0x00001E84) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+  "textureCount": 30,
+  "checks": [
+    {
+      "key": "gunner_ally",
+      "type": "svg",
+      "valid": true,
+      "uniqueIds": true,
+      "portable": true,
+      "foot": null
+    },
+    {
+      "key": "gunner_ally_cmd",
+      "type": "svg",
+      "valid": true,
+      "uniqueIds": true,
+      "portable": true,
+      "foot": null
+    },
+    {
+      "key": "heavy_ally",
+      "type": "svg",
+      "valid": true,
+      "uniqueIds": true,
+      "portable": true,
+      "foot": null
+    },
+    {
+      "key": "heavy_ally_cmd",
+      "type": "svg",
+      "valid": true,
+      "uniqueIds": true,
+      "portable": true,
+      "foot": null
+    },
+    {
+      "key": "marker_ally",
+      "type": "svg",
+      "valid": true,
+      "uniqueIds": true,
+      "portable": true,
+      "foot": null
+    },
+    {
+      "key": "hq_ally",
+      "type": "raster",
+      "valid": true,
+      "uniqueIds": true,
+      "portable": true,
+      "foot": null
+    },
+    {
+      "key": "gunner_enemy",
+      "type": "svg",
+      "valid": true,
+      "uniqueIds": true,
+      "portable": true,
+      "foot": null
+    },
+    {
+      "key": "gunner_enemy_cmd",
+      "type": "svg",
+      "valid": true,
+      "uniqueIds": true,
+      "portable": true,
+      "foot": null
+    },
+    {
+      "key": "heavy_enemy",
+      "type": "svg",
+      "valid": true,
+      "uniqueIds": true,
+      "portable": true,
+      "foot": null
+    },
+    {
+      "key": "heavy_enemy_cmd",
+      "type": "svg",
+      "valid": true,
+      "uniqueIds": true,
+      "portable": true,
+      "foot": null
+    },
+    {
+      "key": "marker_enemy",
+      "type": "svg",
+      "valid": true,
+      "uniqueIds": true,
+      "portable": true,
+      "foot": null
+    },
+    {
+      "key": "hq_enemy",
+      "type": "raster",
+      "valid": true,
+      "uniqueIds": true,
+      "portable": true,
+      "foot": null
+    },
+    {
+      "key": "tile_plain_0",
+      "type": "raster",
+      "valid": true,
+      "uniqueIds": true,
+      "portable": true,
+      "foot": null
+    },
+    {
+      "key": "tile_plain_1",
+      "type": "raster",
+      "valid": true,
+      "uniqueIds": true,
+      "portable": true,
+      "foot": null
+    },
+    {
+      "key": "tile_forest_0",
+      "type": "raster",
+      "valid": true,
+      "uniqueIds": true,
+      "portable": true,
+      "foot": null
+    },
+    {
+      "key": "tile_forest_1",
+      "type": "raster",
+      "valid": true,
+      "uniqueIds": true,
+      "portable": true,
+      "foot": null
+    },
+    {
+      "key": "tile_mountain_0",
+      "type": "raster",
+      "valid": true,
+      "uniqueIds": true,
+      "portable": true,
+      "foot": null
+    },
+    {
+      "key": "tile_mountain_1",
+      "type": "raster",
+      "valid": true,
+      "uniqueIds": true,
+      "portable": true,
+      "foot": null
+    },
+    {
+      "key": "tile_water_0",
+      "type": "raster",
+      "valid": true,
+      "uniqueIds": true,
+      "portable": true,
+      "foot": null
+    },
+    {
+      "key": "tile_water_1",
+      "type": "raster",
+      "valid": true,
+      "uniqueIds": true,
+      "portable": true,
+      "foot": null
+    },
+    {
+      "key": "scav_ally",
+      "type": "raster",
+      "valid": true,
+      "uniqueIds": true,
+      "portable": true,
+      "foot": 55
+    },
+    {
+      "key": "scav_ally_cmd",
+      "type": "raster",
+      "valid": true,
+      "uniqueIds": true,
+      "portable": true,
+      "foot": 55
+    },
+    {
+      "key": "ponco_ally",
+      "type": "raster",
+      "valid": true,
+      "uniqueIds": true,
+      "portable": true,
+      "foot": 55
+    },
+    {
+      "key": "ponco_ally_cmd",
+      "type": "raster",
+      "valid": true,
+      "uniqueIds": true,
+      "portable": true,
+      "foot": 55
+    },
+    {
+      "key": "alien_enemy",
+      "type": "raster",
+      "valid": true,
+      "uniqueIds": true,
+      "portable": true,
+      "foot": 55
+    },
+    {
+      "key": "alien_enemy_cmd",
+      "type": "raster",
+      "valid": true,
+      "uniqueIds": true,
+      "portable": true,
+      "foot": 55
+    },
+    {
+      "key": "salvage_0",
+      "type": "raster",
+      "valid": true,
+      "uniqueIds": true,
+      "portable": true,
+      "foot": null
+    },
+    {
+      "key": "salvage_1",
+      "type": "raster",
+      "valid": true,
+      "uniqueIds": true,
+      "portable": true,
+      "foot": null
+    },
+    {
+      "key": "salvage_empty",
+      "type": "raster",
+      "valid": true,
+      "uniqueIds": true,
+      "portable": true,
+      "foot": null
+    },
+    {
+      "key": "hatch",
+      "type": "raster",
+      "valid": true,
+      "uniqueIds": true,
+      "portable": true,
+      "foot": null
+    }
+  ],
+  "seams": [
+    {
+      "kind": "plain",
+      "matchingVariantEdges": true
+    },
+    {
+      "kind": "forest",
+      "matchingVariantEdges": true
+    },
+    {
+      "kind": "mountain",
+      "matchingVariantEdges": true
+    },
+    {
+      "kind": "water",
+      "matchingVariantEdges": true
+    }
+  ],
+  "sizes": {
+    "gunner_ally": [
+      128,
+      128
+    ],
+    "gunner_ally_cmd": [
+      128,
+      128
+    ],
+    "heavy_ally": [
+      128,
+      128
+    ],
+    "heavy_ally_cmd": [
+      128,
+      128
+    ],
+    "marker_ally": [
+      128,
+      128
+    ],
+    "gunner_enemy": [
+      128,
+      128
+    ],
+    "gunner_enemy_cmd": [
+      128,
+      128
+    ],
+    "heavy_enemy": [
+      128,
+      128
+    ],
+    "heavy_enemy_cmd": [
+      128,
+      128
+    ],
+    "marker_enemy": [
+      128,
+      128
+    ],
+    "hq_ally": [
+      1024,
+      1024
+    ],
+    "hq_enemy": [
+      1024,
+      1024
+    ],
+    "tile_plain_0": [
+      1024,
+      1024
+    ],
+    "tile_plain_1": [
+      1024,
+      1024
+    ],
+    "tile_forest_0": [
+      1024,
+      1024
+    ],
+    "tile_forest_1": [
+      1024,
+      1024
+    ],
+    "tile_mountain_0": [
+      1024,
+      1024
+    ],
+    "tile_mountain_1": [
+      1024,
+      1024
+    ],
+    "tile_water_0": [
+      1024,
+      1024
+    ],
+    "tile_water_1": [
+      1024,
+      1024
+    ],
+    "scav_ally": [
+      512,
+      512
+    ],
+    "scav_ally_cmd": [
+      512,
+      512
+    ],
+    "ponco_ally": [
+      512,
+      512
+    ],
+    "ponco_ally_cmd": [
+      512,
+      512
+    ],
+    "alien_enemy": [
+      512,
+      512
+    ],
+    "alien_enemy_cmd": [
+      512,
+      512
+    ],
+    "salvage_0": [
+      1024,
+      1024
+    ],
+    "salvage_1": [
+      1024,
+      1024
+    ],
+    "salvage_empty": [
+      1024,
+      1024
+    ],
+    "hatch": [
+      1024,
+      1024
+    ]
+  },
+  "bakeMs": [
+    3.100000001490116,
+    3.5,
+    4.899999998509884,
+    5.299999997019768,
+    5.5,
+    6.899999998509884,
+    9.299999997019768
+  ],
+  "medianBakeMs": 5.299999997019768,
+  "fps": 59.9960002666489,
+  "p95FrameMs": 16.800000000000182,
+  "errors": [],
+  "gpuMode": "Chrome default"
+}

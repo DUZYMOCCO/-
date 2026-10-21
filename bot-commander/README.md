@@ -1,7 +1,16 @@
 # 🤖 ロボットコマンダー（仮）
 
-> 「スマホゲーム工房」で遊べるゲームの1つ（試作 v0.2.1 / ゲームキャッシュ v5）。起動方法・サーバー・ホーム画面追加はスタジオ側の [../README.md](../README.md) を参照。
+> 「スマホゲーム工房」で遊べるゲームの1つ（試作 v0.3.0 / ゲームキャッシュ v7、公開前の確認用）。起動方法・サーバー・ホーム画面追加はスタジオ側の [../README.md](../README.md) を参照。
 > SFC『バトルコマンダー』に着想を得た、スマホ縦持ちのリアルタイム部隊シミュレーション。キャラ・メカはすべてオリジナルのデフォルメロボット。
+
+## v0.3.0 設定画に寄せたアート・拡大表示
+
+- ツギハギ号、PONCO02、異星生物、回収物、ハッチ、本陣、地形を、設定画の金属感と琥珀色の照明に合わせて描き直した。ミッションの絵は高精細な画像、旧兵種と旗はSVG。新しい絵は組み込みの image_gen で制作。
+- 表示サイズはツギハギ号40px、PONCO02 42px、異星生物64px。ズーム上限は4.5倍。拡大時はHPバー・隊長旗・気づき表示を太くしすぎない。移動・戦闘・当たり判定の計算は変更していない。
+- 機体のテクスチャは512px、地形・大型物は1024px。起動時に一度だけ作り、縮小用の画像もGPU側で用意する。テクスチャ名は従来の30個を維持。地形は1枚の絵を4×4マスにまたがって使う。
+- 配信用画像11枚は `assets/art-v2/`（計約4.2MB）。元画像と生成指示は `docs/art-review/` に保存。公開前の確認結果・画面は [ART_REVIEW_V030.md](docs/ART_REVIEW_V030.md)。最終候補は `docs/art-review/raster/`。初回SVG案の `after/` は採用対象ではない。
+- 27テスト合格。390×844/DPR2と402×874のChrome画面、通常倍率・4倍ズーム、操作・勝敗表示・オフライン起動を確認。PCの通常GPU設定で約60fps。iPhone 17実機とSafariは未確認。
+- 今回はユーザーの確認前につき、コミット・push・公開は行っていない。
 
 ## v0.2.0〜 ミッション「資材集め・巡回・脱出」（試作。v0.2.1 で制限時間をなくした）
 - 自軍: **ツギハギ隊**（戦えないスカベンジャー。攻撃力は約1/10、資材を集めるのが速い）＋ **A隊・B隊**（PONCO02。戦えるが、異星生物はしぶとい）。
@@ -25,15 +34,19 @@ js/index.js        入口（export default { init(container, onBackToHub), prepa
 js/sim/            ゲームの中身。DOM・Pixi を import しない（Node でそのまま動く）。1/30秒の固定ステップ、決まった種の乱数
   rng.js map.js path.js fog.js stroke.js mission.js sim.js
 js/render/         描画と操作（sim の状態を読むだけ）
-  art.js        手書きSVG（ダダサバイバー art.js の作風: 暗い輪郭・セル塗り・細い目）
-  textures.js   SVG → Pixi テクスチャ（起動時に1回）
+  art.js        30個のキー一覧。旧SVGとミッション用画像をまとめる
+  raster-art.js 生成画像と切り出し位置、足元、隊長の印の定義
+  textures.js   SVG / 画像 → Pixi テクスチャ（起動時に1回）
   renderer.js   Pixi v8 の描画（地形・本陣・機体・HPバー・経路・弾・ぼかした霧）とカメラ
   input.js      タップ・なぞり・ドラッグ・ピンチ
 css/bot-commander.css   .bc-root の中だけに効くスタイル（prepare() で loadCss）
 vendor/pixi-8.22.0.min.mjs   PixiJS v8.22.0（同梱。オフラインで動く）
+assets/art-v2/   設定画に寄せた配信用WebP
 tests/             node --test bot-commander/tests/*.test.mjs
 tools/studio-shots.mjs   ハブ込みのスクショ（playwright-core＋Chrome）
 tools/mission-shots.mjs  v0.2.0 ミッションのスクショ
+tools/art-review.mjs     描画確認・拡大画面・簡易速度計測
+tools/pack-art.mjs       生成元PNGを保管し、配信用WebPを書き出す
 ```
 
 ## 版の上げ方（AGENTS.md 2章と同じ）
