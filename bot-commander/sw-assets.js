@@ -4,8 +4,8 @@
 // アートは js/render/art.js の中の手書きSVG文字列（起動時にテクスチャ化）なので、画像ファイルはない。
 self.GAME_ASSETS = self.GAME_ASSETS || {};
 self.GAME_ASSETS['bot-commander'] = {
-  version: 'v2',
-  gameVersion: '0.1.1', // ハブのカードに表示する版（キャッシュ用 version とは別。リリース時に上げる）
+  version: 'v3',
+  gameVersion: '0.1.2', // ハブのカードに表示する版（キャッシュ用 version とは別。リリース時に上げる）
   files: [
     'css/bot-commander.css',
     'js/index.js',

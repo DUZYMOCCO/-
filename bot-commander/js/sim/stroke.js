@@ -1,5 +1,5 @@
 // 指でなぞった線 → 経由点（最大4）。DOM に依存しない。
-import { toTile, nearestPassable } from './map.js?v=2';
+import { toTile, nearestPassable } from './map.js?v=3';
 
 function rdp(points, eps) {
   if (points.length < 3) return points.slice();

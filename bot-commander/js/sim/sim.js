@@ -1,8 +1,8 @@
 // ゲームの中身（固定ステップ・決まった乱数）。DOM と Pixi は import しない。描画側は state を読むだけ。
-import { createRng } from './rng.js?v=2';
-import { generateMap, TILE, TERRAIN, tileAt, toTile, tileCenter, passable, nearestPassable } from './map.js?v=2';
-import { createSearch, stepSearch } from './path.js?v=2';
-import { FogGrid } from './fog.js?v=2';
+import { createRng } from './rng.js?v=3';
+import { generateMap, TILE, TERRAIN, tileAt, toTile, tileCenter, passable, nearestPassable } from './map.js?v=3';
+import { createSearch, stepSearch } from './path.js?v=3';
+import { FogGrid } from './fog.js?v=3';
 
 export const TICK = 1 / 30;          // 1ステップ＝1/30秒
 export const SEARCH_BUDGET = 250;    // 1部隊1ステップで広げる A* ノード数

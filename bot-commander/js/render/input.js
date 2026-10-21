@@ -1,10 +1,13 @@
-// タッチ／マウス操作: 部隊をタップで選ぶ → そのまま指でなぞると経路、離すと命令。何もない所はドラッグで移動、2本指でズーム。
-import { strokeToWaypoints } from '../sim/stroke.js?v=2';
-import { issueOrder, squadUnits } from '../sim/sim.js?v=2';
+// タッチ／マウス操作（v0.1.2）: 味方の部隊をタップで選ぶ → 行き先をタップで移動。
+// ドラッグはどこでも画面移動、2本指でズーム。選んでいる部隊をもう一度タップすると選択解除。
+import { toTile } from '../sim/map.js?v=3';
+import { issueOrder, squadUnits } from '../sim/sim.js?v=3';
+
+const TAP_SLOP = 10; // これより指が動いたらタップではなくドラッグ（画面移動）
 
 export function attachInput(canvas, sim, r, hooks = {}) {
   const pts = new Map(); // pointerId → {x,y}
-  let mode = null, start = null, pinch = null, lastPan = null;
+  let mode = null, start = null, pinch = null, lastPan = null, dragged = false;
 
   const pos = e => { const b = canvas.getBoundingClientRect(); return { x: e.clientX - b.left, y: e.clientY - b.top }; };
 
@@ -21,16 +24,13 @@ export function attachInput(canvas, sim, r, hooks = {}) {
   canvas.addEventListener('pointerdown', e => {
     canvas.setPointerCapture?.(e.pointerId);
     const p = pos(e); pts.set(e.pointerId, p);
-    if (pts.size === 2) { // ピンチ開始（なぞり中なら取り消し）
+    if (pts.size === 2) {
       const [a, b] = [...pts.values()];
       pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), zoom: r.cam.zoom, mid: r.screenToWorld((a.x + b.x) / 2, (a.y + b.y) / 2) };
-      mode = 'pinch'; r.ui.stroke = null; return;
+      mode = 'pinch'; return;
     }
     if (pts.size > 2) return;
-    start = p; lastPan = p;
-    const s = squadAt(p.x, p.y);
-    if (s) { r.ui.selected = s.id; mode = 'draw'; r.ui.stroke = [r.screenToWorld(p.x, p.y)]; hooks.onSelect?.(s.id); }
-    else mode = 'pan';
+    start = p; lastPan = p; dragged = false; mode = 'pan';
   });
 
   canvas.addEventListener('pointermove', e => {
@@ -40,30 +40,32 @@ export function attachInput(canvas, sim, r, hooks = {}) {
       const [a, b] = [...pts.values()];
       const d = Math.hypot(a.x - b.x, a.y - b.y), mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
       r.cam.zoom = pinch.zoom * d / Math.max(10, pinch.d); r.clampCam();
-      // 指の中心にあったワールドの点が、指の中心に残るように
       const w = r.screenToWorld(mid.x, mid.y); r.cam.x += pinch.mid.x - w.x; r.cam.y += pinch.mid.y - w.y;
     } else if (mode === 'pan') {
-      r.cam.x -= (p.x - lastPan.x) / r.cam.zoom; r.cam.y -= (p.y - lastPan.y) / r.cam.zoom; lastPan = p;
-    } else if (mode === 'draw') {
-      const w = r.screenToWorld(p.x, p.y), last = r.ui.stroke.at(-1);
-      if (Math.hypot(w.x - last.x, w.y - last.y) > 6 / r.cam.zoom) r.ui.stroke.push(w);
+      if (!dragged && Math.hypot(p.x - start.x, p.y - start.y) > TAP_SLOP) dragged = true;
+      if (dragged) { r.cam.x -= (p.x - lastPan.x) / r.cam.zoom; r.cam.y -= (p.y - lastPan.y) / r.cam.zoom; }
+      lastPan = p;
     }
   });
+
+  function tap(p) {
+    const s = squadAt(p.x, p.y);
+    if (s) {
+      if (r.ui.selected === s.id) { r.ui.selected = null; hooks.onSelect?.(null); }
+      else { r.ui.selected = s.id; hooks.onSelect?.(s.id); }
+      return;
+    }
+    if (r.ui.selected == null) return;
+    const w = r.screenToWorld(p.x, p.y);
+    const wps = [{ tx: toTile(w.x), ty: toTile(w.y) }];
+    issueOrder(sim, r.ui.selected, wps); hooks.onOrder?.(r.ui.selected, wps);
+  }
 
   function end(e) {
     if (!pts.has(e.pointerId)) return;
     const p = pos(e); pts.delete(e.pointerId);
-    if (mode === 'pinch') { if (pts.size === 0) mode = null; else { mode = 'pan'; lastPan = [...pts.values()][0]; } return; }
-    if (mode === 'draw') {
-      const moved = start && Math.hypot(p.x - start.x, p.y - start.y) > 14;
-      if (moved && r.ui.stroke.length > 1) {
-        const wps = strokeToWaypoints(sim.map, r.ui.stroke);
-        if (wps.length) { issueOrder(sim, r.ui.selected, wps); hooks.onOrder?.(r.ui.selected, wps); }
-      }
-      r.ui.stroke = null;
-    } else if (mode === 'pan' && start && Math.hypot(p.x - start.x, p.y - start.y) < 8) {
-      r.ui.selected = null; hooks.onSelect?.(null); // 何もない所をタップ＝選択解除
-    }
+    if (mode === 'pinch') { if (pts.size === 0) mode = null; else { mode = 'pan'; dragged = true; lastPan = [...pts.values()][0]; } return; }
+    if (mode === 'pan' && !dragged && e.type === 'pointerup') tap(p);
     mode = null;
   }
   canvas.addEventListener('pointerup', end);

@@ -1,5 +1,5 @@
 // タイルマップ（平地・森・山・水）。DOM/Pixi に依存しない。
-import { createRng } from './rng.js?v=2';
+import { createRng } from './rng.js?v=3';
 
 export const TILE = 32; // 1タイルのワールド座標の大きさ
 export const T = Object.freeze({ PLAIN: 0, FOREST: 1, MOUNTAIN: 2, WATER: 3 });

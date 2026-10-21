@@ -2,16 +2,16 @@
 // ハブが動的 import し、prepare()（CSS読み込み）→ init(container, onBackToHub) の順に呼ぶ。
 // シミュレーション（js/sim）は DOM・Pixi に依存しない。描画（js/render）は sim の状態を読むだけ。
 import { loadCss } from '../../common/js/load-css.js';
-import { createSim, stepSim, TICK, squadUnits, squadCommander, applyCommandsNow } from './sim/sim.js?v=2';
-import { createRenderer } from './render/renderer.js?v=2';
-import { attachInput } from './render/input.js?v=2';
+import { createSim, stepSim, TICK, squadUnits, squadCommander, applyCommandsNow } from './sim/sim.js?v=3';
+import { createRenderer } from './render/renderer.js?v=3';
+import { attachInput } from './render/input.js?v=3';
 
 const BotCommanderGame = {
   id: 'bot-commander',
   title: 'ロボットコマンダー（仮）',
 
   prepare() {
-    return loadCss(new URL('../css/bot-commander.css?v=2', import.meta.url).href);
+    return loadCss(new URL('../css/bot-commander.css?v=3', import.meta.url).href);
   },
 
   init(container, onBackToHub) {
@@ -68,7 +68,7 @@ const BotCommanderGame = {
     this.el.pause.addEventListener('click', () => this.setPaused(!this.state.paused));
     this.container.querySelectorAll('[data-speed]').forEach(b => b.addEventListener('click', () => this.setSpeed(Number(b.dataset.speed))));
     attachInput(r.app.canvas, sim, r, {
-      onSelect: () => { this.renderChips(); this.el.hint.textContent = r.ui.selected ? '部隊から指でなぞって経路（経由点は最大4）' : '自軍の部隊をタップ'; },
+      onSelect: () => { this.renderChips(); this.el.hint.textContent = r.ui.selected ? '行き先をタップで移動（もう一度部隊をタップで解除）' : '自軍の部隊をタップ'; },
       onOrder: (id, wps) => { if (this.state.paused) applyCommandsNow(sim); this.el.hint.textContent = `命令: 経由点 ${wps.length}つ`; },
     });
     let chipTimer = 0;
