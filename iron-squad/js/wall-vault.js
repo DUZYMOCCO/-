@@ -1,7 +1,7 @@
 // v7.1.6 Classed-up units (passesWalls: the commander from Warlord on, advanced soldiers) keep their wall-passing ability,
 // but now hop over what they cross instead of walking through it: take off at the edge, a short arc, land on the far side.
 // The hop state (_vault, _jumpLift, _vaultCd, _vaultPX/PY) uses underscore keys, so persistentUnit never saves it.
-import {wallBlocksAttack} from './gate-rules.js?v=354';
+import {wallBlocksAttack} from './gate-rules.js?v=358';
 
 export const WALL_VAULT=Object.freeze({
   minTime:.3,maxTime:.45,     // seconds in the air for ordinary obstacles (walls, buildings, rocks, up to `wide` px)

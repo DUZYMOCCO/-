@@ -13,12 +13,12 @@ import {talentTag} from './talent-labels.js?v=291';
 import {fieldDialogReturn} from './dialog-return.js?v=200';
 import {guildMethods} from './guild-contracts.js?v=322';
 import {guildUiMethods} from './guild-ui.js?v=322';
-import {headquartersMoveTarget} from './hq-navigation.js?v=354';
+import {headquartersMoveTarget} from './hq-navigation.js?v=358';
 import {configureBattlefieldUI,quietBattlefieldContext} from './battlefield-ui.js?v=332';
 import {renderNavigationMap} from './navigation-map.js?v=354';
 import {soldierEquipmentValue,createEquipmentValueCache,observeEquipment,standardEquipmentCost,RESERVE_ARMAMENT_COUNT} from './armament-rules.js?v=354';
 import {initializeSealKeys,serializeSealKeys,updateSealShrines,recordSealGuardianKill,directionRelicRoll,drawSealShrine,drawSealMap,castleSealed,castleSealText,DEMON_CASTLE_ID as SEALED_CASTLE_ID} from './seal-keys.js?v=355';
-import {initializeTrueCastle,serializeTrueCastle,updateTrueCastle,drawTrueCastleMap,drawTrueCastleEntrance,shapeTrueDemonKing,updateTrueDemonKing,recordTrueKingDefeat,TRUE_KING_RULES} from './true-demon-castle.js?v=356';
+import {initializeTrueCastle,serializeTrueCastle,updateTrueCastle,drawTrueCastleMap,drawTrueCastleEntrance,shapeTrueDemonKing,updateTrueDemonKing,recordTrueKingDefeat,TRUE_KING_RULES} from './true-demon-castle.js?v=358';
 import {initializeWildernessSites,serializeWildernessSites,updateWildernessSites,recordWildernessGuardKill,drawWildernessSite,drawWildernessMap,WILDERNESS_RULES} from './wilderness-sites.js?v=281';
 import {enemyArtHeadHeight} from './enemy-art.js?v=280';
 import {selectBiomeEncounter,biomeEnemyStats,encounterSlots,updateBiomeCharge} from './biome-encounters.js?v=279';
@@ -41,8 +41,8 @@ import {normalizeCasino} from './casino-rules.js?v=322';
 import {latestEquipmentTier,recordMerchantEquipment,ensureMerchantCatalog,refreshWaveCatalogs,markMerchantPurchase} from './merchant-catalog.js?v=354';
 import {initializeMedicalPosts,updateMedicalPosts,serializeMedicalPosts,medicalPostLayout,nearestKnownMedicalPost,drawMedicalPost,drawMedicalMap,drawMedicalMarker,drawTownMedicalReception,drawRescueDirection} from './medical-posts.js?v=277';
 import {invasionMethods,initializeInvasions,serializeInvasions,shouldTriggerRandomRaid,makeEnemyRoom,drawInvasionRoute,raidHeldBySpectate} from './invasion-rules.js?v=333';
-import {gateMethods,serializeGatePosts,replenishTownGateGuards,initializeGateGuards,ensureTownGuards,serializeGateGuards,updateGateGuards,gateGuardVisible,applyFortifications,drawFortification,exitGateTown,townExitReached,wallBlocksAttack,attackBlocked as coverBlocked} from './gate-rules.js?v=354';
-import {nationMethods,normalizeNation,nationalIncome,nationalPayrollPlan,headquartersDamageMult,drawNationalDevelopment,DEVELOPMENT_STAGES} from './nation-rules.js?v=354';
+import {gateMethods,serializeGatePosts,replenishTownGateGuards,initializeGateGuards,ensureTownGuards,serializeGateGuards,updateGateGuards,gateGuardVisible,applyFortifications,drawFortification,exitGateTown,townExitReached,wallBlocksAttack,attackBlocked as coverBlocked} from './gate-rules.js?v=358';
+import {nationMethods,normalizeNation,nationalIncome,nationalPayrollPlan,headquartersDamageMult,drawNationalDevelopment,DEVELOPMENT_STAGES} from './nation-rules.js?v=358';
 import {equipmentUpgradeCost,salaryQuote,paySoldiers} from './payroll-rules.js?v=333';
 import {planSelfUpgrades,applySelfUpgradePlan,SELF_UPGRADE_SAFETY_LIMIT,REST_UPGRADES_PER_PHASE_MAX,REST_UPGRADES_PER_TICK_MAX} from './self-upgrade-rules.js?v=300';
 import {addFieldDrop,ageFieldDrops,attractFieldDrops,FIELD_DROP_PICKUP_RADIUS} from './field-drops.js?v=305';
@@ -52,13 +52,13 @@ import {CAREER_RULES,newCareer,normalizeCareer,isEnlisted,ownCompanionCount,rank
 import {tavernMethods,initializeTaverns,serializeTaverns,settleTravelerCompanions,drawFieldTavern,updateTavernPrompt,tavernWaveChanged,FIELD_TAVERN} from './tavern.js?v=333';
 import {headquartersFacilityMethods,HEADQUARTERS_FACILITIES,updateHeadquartersFacilityPrompt,drawHeadquartersFacilityGround,drawHeadquartersFacility,headquartersBuildingBlocks} from './hq-facilities.js?v=322';
 import {drawNightlifeLights} from './nightlife-visuals.js?v=277';
-import {drawSceneDarkness,drawLanternLights,recordLanternActor,brightDungeon} from './scene-lighting.js?v=357';
+import {drawSceneDarkness,drawLanternLights,recordLanternActor,brightDungeon} from './scene-lighting.js?v=358';
 import {queueSquadName,flushSquadNames} from './squad-names.js?v=182';
 import {syncGiveUpUI,resumeBGM} from './commander-giveup.js?v=206';
 import {bindFieldMusic,unbindFieldMusic,followFieldMusic} from './field-music.js?v=354';
 import {economicState,advanceRegionalEconomy,discoverEconomicRegions,recordEconomicKill,economicFieldBlocked} from './regional-economy.js?v=277';
-import {updateRegionalTraffic,nearestCommerceTarget,damageCommerce,persistTradeRaiders,restoreTradeRaiders} from './trade-routes.js?v=354';
-import {drawEconomicLandscape,drawCommerceActor,drawEconomicMinimap,drawCommerceWreck,drawCampTent} from './economic-visuals.js?v=354';
+import {updateRegionalTraffic,nearestCommerceTarget,damageCommerce,persistTradeRaiders,restoreTradeRaiders} from './trade-routes.js?v=358';
+import {drawEconomicLandscape,drawCommerceActor,drawEconomicMinimap,drawCommerceWreck,drawCampTent} from './economic-visuals.js?v=358';
 /**
  * ゲーム3: IRON SQUAD (アイアン・スクワッド: 雑兵立身出世録)
  * ローグライク・アクションRPG
@@ -74,7 +74,7 @@ import { sound } from '../../common/js/audio.js?v=151';
 import { loadCss } from '../../common/js/load-css.js';
 import { storage } from '../../common/js/storage.js';
 import { createStallRecorder, mountStallLog } from './stall-recorder.js?v=182';
-import { clearRestPoseArt, drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow, isRuinKeeper, ruinKeeperScale } from './visuals.js?v=354';
+import { clearRestPoseArt, drawFieldSoldier, drawFieldMob, drawFieldCommander, drawFieldBoss, drawRemains, contactShadow, isRuinKeeper, ruinKeeperScale, TRUE_KING_VISUAL_SCALE, TRUE_KING_ART_TOP } from './visuals.js?v=358';
 import { refreshCampQuiet, assignCampSeats, tryCampLeisure, YARD_TABLES, drawLeisureTable } from './camp-leisure.js?v=277';
 import { CAMP_PEACE_RADIUS, peaceContainment, pushOutsidePeace, relocatePeaceMonster } from './peace-zones.js?v=277';
 import { FARM_X, FARM_Y, farmPosts, farmOverlaps, reinforcementCount, reserveRosterLine, reserveRosterTitle } from './reserve-farm.js?v=277';
@@ -88,7 +88,7 @@ import {drawFieldCivilian} from './civilian-visuals.js?v=295';
 import { saveSlots,profileSaveCompletions,requestPersistentSaves } from './save-slots.js?v=311';
 import { soldierDialogue } from './soldier-dialogue.js?v=334';
 import { generateSoldierName, migrateSoldierName, rollGenderByKey, isGenderId, ensureSoldierGender, genderLabel } from './soldier-names.js?v=341';
-import { openCommanderEditor } from './commander-editor.js?v=354';
+import { openCommanderEditor } from './commander-editor.js?v=358';
 import { applyCommanderIdentity, normalizeCommanderIdentity, commanderFullName, GENDERS as COMMANDER_GENDERS } from './commander-identity.js?v=295';
 import {MAGIC_CLASSES,MAGIC_AFFINITIES,classHpScale,magicMethods,isMage,isMagicUser,ensureMana,initializeMagic,updateMagic,distributeMagicStones,castMedicBuff,castCasterStrength,updateMageAI,drawMagicBursts,spendMana,weaponMagicDamage,isPlayerCaster,castPlayerSpell,PLAYER_MAGIC_RULES} from './magic-rules.js?v=334';
 import {hazardMethods,updateHazards,drawHazards} from './hazard-fields.js?v=277';
@@ -102,8 +102,8 @@ import { renderTroopRankings, getSoldierRankerBadges, calcSoldierRankerBonus, se
 import { ensureSoldierAppearance, drawSoldierPortrait } from './soldier-appearance.js?v=342';
 import { aggregateDeathlineDynamics, tickDeathline, deathlineDamage, normalizeDeathlineSkills, chooseDeathlineSkill, deathlineRangedRange } from './deathline-rules.js?v=295';
 import {CAMPAIGN_SCALE_VERSION,migrateCampaignEnemy,campaignScalingV1,southEastAbyss} from './campaign-scaling.js?v=353';
-import {rangedCombatMethods,updatePiercingBolt,rangedDrawPose,rangedFrontlinePosition} from './ranged-combat.js?v=354';
-import {soldierMeleeMethods,tickSoldierMeleeSkill,soldierMeleeReach,soldierMeleePosition,soldierMeleeSkillLines,soldierMeleeDrawPose,updateSoldierSkillFx,drawSoldierSkillFx,MELEE_BALANCE} from './soldier-melee-skills.js?v=354';
+import {rangedCombatMethods,updatePiercingBolt,rangedDrawPose,rangedFrontlinePosition} from './ranged-combat.js?v=358';
+import {soldierMeleeMethods,tickSoldierMeleeSkill,soldierMeleeReach,soldierMeleePosition,soldierMeleeSkillLines,soldierMeleeDrawPose,updateSoldierSkillFx,drawSoldierSkillFx,MELEE_BALANCE} from './soldier-melee-skills.js?v=358';
 import { buildSoldierProfile, describeDeathlineEffect } from './soldier-profile.js?v=234';
 import { attachSurfaceEvents, detachSurfaceEvents, frameSurfaceReady, releaseSceneCaches, releaseCanvas, surfaceCanResume } from './canvas-surface.js?v=217';
 import { SETTLEMENTS, WORLD_SIZE, WORLD_VERSION, WorldTerrain, biomeAt, routeNameAt, eastWestRoadY, northSouthRoadX, riverCenterY, drawFieldDepth, drawOakCrown, fieldBlocks, settleUnit, fieldSpeedFactor, biomeMoveTarget, fieldRockExit } from './world.js?v=289';
@@ -147,7 +147,7 @@ import {
   nearestLivingMerchant, refreshMerchantStock, merchantBuyPrice, merchantSellTier,
   applyMerchantSave, serializeMerchants, MERCHANT_INTERACT_R,
   merchantHealingStatus, merchantHealWavesLeft, useMerchantHealing, MERCHANT_HEAL_COST, recalcEscortStats, finishEscortPhase, merchantEscortCover, noteEscortDamage
-} from './merchant-rules.js?v=354';
+} from './merchant-rules.js?v=358';
 
 import { daylightAt, advanceWorldClock, periodEnemy, enemyAvailable, PERIOD_ENEMIES } from './day-night.js?v=208';
 
@@ -155,7 +155,7 @@ import { clusterRescueMarkers } from './rescue-markers.js?v=182';
 import {visibleHeroMembers,heroMembers} from './hero-rules.js?v=302';
 import {updateHeroJournal} from './hero-journal.js?v=354';
 import {applyHeroEquipmentUpgrade} from './hero-equipment.js?v=295';
-import {initializeHeroJourney,rollHeroRevelation,serializeHeroJourney,updateHeroParty,updateHeroFollowing,awardHeroBattle,recordDemonKingDefeat,ensureHeroCastle,prepareCastleVisit,syncHeroCastle,renderHeroJourney,drawHeroMarks} from './hero-party.js?v=356';
+import {initializeHeroJourney,rollHeroRevelation,serializeHeroJourney,updateHeroParty,updateHeroFollowing,awardHeroBattle,recordDemonKingDefeat,ensureHeroCastle,prepareCastleVisit,syncHeroCastle,renderHeroJourney,drawHeroMarks} from './hero-party.js?v=358';
 import {DEMON_KING_RULES,demonKingStatsFor,shapeDemonKing,percentBaseDamage,gaugeDemonKing,commanderKingHp} from './demon-king-rules.js?v=356';
 import {updateSquadHpHud} from './squad-hp-hud.js?v=322';
 import {addBattleReport,normalizeBattleReport,renderBattleReport} from './battle-report.js?v=333';
@@ -176,7 +176,7 @@ import {
 } from './expedition-rules.js?v=256';
 
 import { viewport, circleInView, strokeVisibleRing, persistentUnit } from './render-support.js?v=324';
-import {stepWallVault,clearWallVault,restingPosition} from './wall-vault.js?v=354';
+import {stepWallVault,clearWallVault,restingPosition} from './wall-vault.js?v=358';
 
 export const DEPLOYMENT_CAPACITY=48; // was 50/72 — 本隊 soft cap for iPhone (v1.24.2)
 const SOLDIER_DETAIL_TABS = [['stats','能力'],['gear','装備'],['record','記録'],['person','人物']];
@@ -12476,7 +12476,8 @@ export const IronSquadGame = {
 
     const plant = Math.abs(Math.sin(now * 0.017 + (m.x || 0)));
     const big = !!m.isColossal;
-    contactShadow(ctx, big ? 2 : 1, big ? 8 : 2, m.radius * (big ? 1.02 : 0.92), m.radius * (big ? 0.34 : 0.3), plant);
+    const shadowR = m.radius * (m.type === 'true_demon_king' ? TRUE_KING_VISUAL_SCALE : 1); // v7.2.24: the shadow follows the larger true king
+    contactShadow(ctx, big ? 2 : 1, big ? 8 : 2, shadowR * (big ? 1.02 : 0.92), shadowR * (big ? 0.34 : 0.3), plant);
 
     // 左右反転コンテキスト
     ctx.save();
@@ -12748,7 +12749,7 @@ export const IronSquadGame = {
     ctx.translate(m.x, m.y);
     const barW = 100;
       // Keep the gauge above each dungeon boss's crown, horns and wings.
-      const headH = ({goblin_king:90,lich_elder:100,hellflame_drake:94,demon_king:112,true_demon_king:124})[m.type] || 75;
+      const headH = ({goblin_king:90,lich_elder:100,hellflame_drake:94,demon_king:112,true_demon_king:TRUE_KING_ART_TOP+22})[m.type] || 75; // v7.2.24: true king gauge above the larger body
       ctx.fillStyle = 'rgba(0,0,0,0.85)';
       ctx.fillRect(-barW / 2 - 2, -headH - 2, barW + 4, 8);
       ctx.fillStyle = '#ef4444';

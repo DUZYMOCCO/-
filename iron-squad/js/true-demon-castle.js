@@ -116,7 +116,7 @@ const ready=u=>!!u&&!u.dead&&!u.isDown&&u.hp>0;
 const SANCTUARY_CLASSES=['PALADIN','TEMPLAR','IMMORTAL_AEGIS'];
 /** 大技の割合：聖域の光（聖騎士の系統が近くにいる）なら半分。 */
 export function trueKingBlowPct(game,u,pct){const S=TRUE_KING_RULES.sanctuary;const lit=(game.squad||[]).some(s=>ready(s)&&SANCTUARY_CLASSES.includes(s.soldierClass)&&(!game.currentDungeon||!s.heroPartyId)&&Math.hypot(s.x-u.x,s.y-u.y)<=S.radius);return lit?pct*S.cut:pct;}
-const say=(game,m,text,color)=>game.spawnDamageText?.(m.x,m.y-70,text,color);
+const say=(game,m,text,color)=>game.spawnDamageText?.(m.x,m.y-120,text,color); // v7.2.24: above the larger body
 function alliesOf(game,units){return [game.player,...(units||[])].filter(u=>ready(u)&&!(u===game.player&&game.spectating));}
 /** 毎フレーム。true を返す間（大技の詠唱中・障壁中）は通常の移動・攻撃をしない。 */
 export function updateTrueDemonKing(game,m,dt,units){
