@@ -10,6 +10,9 @@ export const CAVE_DARKNESS=.992;
 export const LANTERN_RADIUS=215;
 export const NPC_LANTERN_RADIUS=110;
 const TAU=Math.PI*2,GRID=40,VISIBILITY=new WeakMap();
+// v7.2.23: 魔王城と真魔王城の中は明るい（暗さの膜もランタンの光もない）。ほかのダンジョンは今までどおり暗い。
+export const BRIGHT_DUNGEON_IDS=Object.freeze(['dungeon_demon_castle','dungeon_true_demon_castle']);
+export const brightDungeon=game=>BRIGHT_DUNGEON_IDS.includes(game?.currentDungeon?.id);
 const isCave=game=>game.currentDungeon?.kind==='dungeon';
 const onFloor=(l,x,y)=>x>=0&&y>=0&&x<l.width&&y<l.height&&!!l.floor[Math.floor(y/GRID)*l.cols+Math.floor(x/GRID)];
 
@@ -75,6 +78,7 @@ export function pooledLanternSources(lights,cave=false){
 }
 
 export function sceneLightSources(game,now=0,view=null){
+  if(brightDungeon(game))return [];
   const cave=isCave(game),strength=cave?1:daylightAt(game.worldTime).nightLight;
   if(strength<=0)return [];
   const lights=[],player=game.spectating?.viewer||game.player,layout=cave?explorationLayout(game.currentDungeon):null; // spectating: the light and sight follow the watched unit
@@ -98,7 +102,7 @@ export function sceneLightSources(game,now=0,view=null){
 
 /** Logical screen coordinates. One low-resolution surface reused across frames and rotations. */
 export function drawSceneDarkness(c,game,now=0,shakeX=0,shakeY=0){
-  const {width:W,height:H}=game;if(!(W>0&&H>0))return;
+  const {width:W,height:H}=game;if(!(W>0&&H>0)||brightDungeon(game))return;
   const cave=isCave(game),clock=daylightAt(game.worldTime),alpha=cave?CAVE_DARKNESS:clock.darkness;
   if(!cave&&clock.nightLight<=0){c.fillStyle=`rgba(8,14,35,${alpha})`;c.fillRect(0,0,W,H);return;}
   let canvas=game._lightingMask;

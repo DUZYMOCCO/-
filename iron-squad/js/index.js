@@ -52,7 +52,7 @@ import {CAREER_RULES,newCareer,normalizeCareer,isEnlisted,ownCompanionCount,rank
 import {tavernMethods,initializeTaverns,serializeTaverns,settleTravelerCompanions,drawFieldTavern,updateTavernPrompt,tavernWaveChanged,FIELD_TAVERN} from './tavern.js?v=333';
 import {headquartersFacilityMethods,HEADQUARTERS_FACILITIES,updateHeadquartersFacilityPrompt,drawHeadquartersFacilityGround,drawHeadquartersFacility,headquartersBuildingBlocks} from './hq-facilities.js?v=322';
 import {drawNightlifeLights} from './nightlife-visuals.js?v=277';
-import {drawSceneDarkness,drawLanternLights,recordLanternActor} from './scene-lighting.js?v=354';
+import {drawSceneDarkness,drawLanternLights,recordLanternActor,brightDungeon} from './scene-lighting.js?v=357';
 import {queueSquadName,flushSquadNames} from './squad-names.js?v=182';
 import {syncGiveUpUI,resumeBGM} from './commander-giveup.js?v=206';
 import {bindFieldMusic,unbindFieldMusic,followFieldMusic} from './field-music.js?v=354';
@@ -11501,6 +11501,7 @@ export const IronSquadGame = {
 
     for(const resident of ambientResidents(this))if(visible(resident))renderList.push({y:resident.y,k:10,ref:resident});
     renderList.sort((a, b) => a.y - b.y);
+    this._bossGaugeQueue = []; // v7.2.23: big boss gauges wait for drawBossGauges (above darkness and lights)
     for (let i = 0; i < renderList.length; i++) {
       const it = renderList[i];
       if(it.k>=3&&it.k!==4&&it.k!==10)recordLanternActor(this,it.k===9?it.ref.soldier:it.ref,it.ref.x,it.ref.y,['','','','soldier','','merchant','escort','civilian','traffic','reserve'][it.k]);
@@ -11576,6 +11577,7 @@ export const IronSquadGame = {
     this.ctx.scale(z, z);
     this.ctx.translate(-this.camera.x, -this.camera.y);
     this.drawNightLights(this.ctx, now);
+    this.drawBossGauges(this.ctx); // v7.2.23: after the darkness mask and the lantern glow, so the gauge is never hidden
     // Keep speech readable after night shading; unexplored fog still covers distant speakers.
     this.dialogue?.draw(this.ctx, this.camera, this.zoom, this.width);
 
@@ -12172,7 +12174,7 @@ export const IronSquadGame = {
 
   drawNightLights(ctx, now) {
     const strength=daylightAt(this.worldTime).nightLight;
-    if(strength<=0&&this.currentDungeon?.kind!=='dungeon')return;
+    if(strength<=0&&this.currentDungeon?.kind!=='dungeon'||brightDungeon(this))return; // v7.2.23: the demon castles are lit, no lantern glow
     const view=viewport(this.camera,this.width,this.height,this.zoom||1,0);
     ctx.save();
     try {
@@ -12720,8 +12722,31 @@ export const IronSquadGame = {
 
     // HPバー & 頭上ボス名表示
     if (m.isColossal) {
-      // 大ボス特大ゲージ
-      const barW = 100;
+      // v7.2.23: the big boss gauge is drawn after the darkness / lantern passes (drawBossGauges), so light effects never hide it.
+      if (this._bossGaugeQueue) this._bossGaugeQueue.push(m); else this.drawBossGauge(ctx, m);
+    } else {
+      const barW = Math.max(22, m.radius * 2);
+      const headH = enemyArtHeadHeight(m) || (isRuinKeeper(m) ? Math.round(46 * ruinKeeperScale(m) * (m.type === 'wyvern' ? .9 : 1)) : m.type === 'brute' ? 186 : (m.type === 'demon_front' || m.type === 'demon_rear' ? 52 : (m.activePeriod ? 43 : m.isBoss ? 46 : (m.type === 'orc' || m.type === 'wyvern' ? 44 : (m.type === 'goblin' ? 37 : 26)))));
+      ctx.fillStyle = 'rgba(0,0,0,0.65)';
+      ctx.fillRect(-barW / 2, -headH, barW, 4);
+      ctx.fillStyle = m.isBoss ? '#ef4444' : (m.isElite ? '#f59e0b' : '#34d399');
+      ctx.fillRect(-barW / 2, -headH, barW * (m.hp / m.maxHp), 4);
+      ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+      ctx.lineWidth = 0.6;
+      ctx.strokeRect(-barW / 2, -headH, barW, 4);
+      if(m.activePeriod){ctx.font='10px sans-serif';ctx.textAlign='center';ctx.fillStyle='#e4ddc5';ctx.fillText(`${m.activePeriod==='day'?'☀':'☾'} ${m.name}`,0,-headH-4);}
+      this.drawMonsterHpText(ctx,m,m.activePeriod?-headH-15:-headH-3);
+    }
+
+    ctx.restore();
+  },
+
+  /** v7.2.23 大ボス（魔王・真魔王・守護者・ダンジョンの主）の特大ゲージと名前。暗さ・灯りの重ねがけより後に描くので、光の効果で隠れない。 */
+  drawBossGauge(ctx, m) {
+    if (!m || !(m.maxHp > 0)) return;
+    ctx.save();
+    ctx.translate(m.x, m.y);
+    const barW = 100;
       // Keep the gauge above each dungeon boss's crown, horns and wings.
       const headH = ({goblin_king:90,lich_elder:100,hellflame_drake:94,demon_king:112,true_demon_king:124})[m.type] || 75;
       ctx.fillStyle = 'rgba(0,0,0,0.85)';
@@ -12741,21 +12766,14 @@ export const IronSquadGame = {
       ctx.fillText(`${m.title || ''}${m.name || '超巨大ボス'}`, 0, -headH - 6);
       ctx.shadowBlur = 0;
       this.drawMonsterHpText(ctx,m,-headH+17);
-    } else {
-      const barW = Math.max(22, m.radius * 2);
-      const headH = enemyArtHeadHeight(m) || (isRuinKeeper(m) ? Math.round(46 * ruinKeeperScale(m) * (m.type === 'wyvern' ? .9 : 1)) : m.type === 'brute' ? 186 : (m.type === 'demon_front' || m.type === 'demon_rear' ? 52 : (m.activePeriod ? 43 : m.isBoss ? 46 : (m.type === 'orc' || m.type === 'wyvern' ? 44 : (m.type === 'goblin' ? 37 : 26)))));
-      ctx.fillStyle = 'rgba(0,0,0,0.65)';
-      ctx.fillRect(-barW / 2, -headH, barW, 4);
-      ctx.fillStyle = m.isBoss ? '#ef4444' : (m.isElite ? '#f59e0b' : '#34d399');
-      ctx.fillRect(-barW / 2, -headH, barW * (m.hp / m.maxHp), 4);
-      ctx.strokeStyle = 'rgba(255,255,255,0.3)';
-      ctx.lineWidth = 0.6;
-      ctx.strokeRect(-barW / 2, -headH, barW, 4);
-      if(m.activePeriod){ctx.font='10px sans-serif';ctx.textAlign='center';ctx.fillStyle='#e4ddc5';ctx.fillText(`${m.activePeriod==='day'?'☀':'☾'} ${m.name}`,0,-headH-4);}
-      this.drawMonsterHpText(ctx,m,m.activePeriod?-headH-15:-headH-3);
-    }
-
     ctx.restore();
+  },
+  /** v7.2.23 この描画で後回しにしたボスのゲージを、カメラ座標のままいちばん上に描く。 */
+  drawBossGauges(ctx) {
+    const queue = this._bossGaugeQueue;
+    this._bossGaugeQueue = null;
+    if (!queue) return;
+    for (const m of queue) if (m && !m.dead && m.hp > 0) this.drawBossGauge(ctx, m);
   },
 
   /** v6.11.25: 敵HPの短縮数字。負傷中かボスで、文字が読める拡大率のときだけ。 */

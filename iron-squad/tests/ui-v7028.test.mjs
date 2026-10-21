@@ -88,7 +88,7 @@ let leaked = 0; game.container.addEventListener('pointerdown', () => leaked++); 
   game.drawPlayer = () => players++; game.drawSoldier = () => soldiers++; sp.selectSpectateTarget(game, p.members[0].id);
   p.members.forEach((u, i) => { u.x = 1500 + i * 20; u.y = d.height / 2; u.hp = u.maxHp; u.isDown = false; }); game.camera.x = 1500; game.camera.y = d.height / 2;
   assert.doesNotThrow(() => game.render(), 'rendering while spectating'); assert.equal(players, 0, 'the observer commander is invisible'); assert.ok(soldiers >= 6, 'hero party members are drawn');
-  const { sceneLightSources } = await import('../js/scene-lighting.js'); const lantern = sceneLightSources(game, 0, null).find(l => l.id === 'player-lantern');
+  const { sceneLightSources } = await import('../js/scene-lighting.js'); assert.deepEqual(sceneLightSources(game, 0, null), [], 'v7.2.23: the demon castle is lit, no lantern'); const dark = Object.create(game); dark.currentDungeon = { ...game.currentDungeon, id: 'dungeon_dark_copy' }; const lantern = sceneLightSources(dark, 0, null).find(l => l.id === 'player-lantern'); // the same rule in a dark dungeon
   assert.ok(lantern && Math.abs(lantern.x - game.spectating.viewer.x) < 1, 'the carried light is on the watched unit, not the observer');
     game.drawPlayer = drawPlayer; game.drawSoldier = drawSoldier; }
 // the on-screen controls are hidden while watching (CSS rule) and the panel is styled
