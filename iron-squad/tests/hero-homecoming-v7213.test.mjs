@@ -40,7 +40,7 @@ try{
  const start=toTrue(q);t=run(game,()=>q.space===TRUE_CASTLE_ID,3000);
  ok(q.space===TRUE_CASTLE_ID,`reached the true castle (${Math.round(start)} in ${Math.round(t)}s)`);console.log(`to the true castle: ${Math.round(start)} in ${Math.round(t)}s`);
  ok(game.toasts.some(s=>s.includes('真魔王城へ突入')),'entry is announced');
- const king=game.heroJourney.trueScene.monsters.find(m=>m.isTrueDemonKing);ok(king&&king.maxHp===TRUE_KING_RULES.hp,'the true king waits on his throne');
+ const king=game.heroJourney.trueScene.monsters.find(m=>m.isTrueDemonKing);ok(king&&king.maxHp===Math.max(1,Math.round(TRUE_KING_RULES.kingHpMultiple*hp.heroKingHp(game,q))),'the true king waits on his throne (v7.2.22: ten times the king these heroes met)');
  // 5) 真魔王と戦い、倒される（ほぼ必ず）
  t=run(game,()=>q.status==='fallen',900,.25);
  ok(q.status==='fallen'&&q.trueQuest==='fallen',`the party fell to the true king (${Math.round(t)}s)`);ok(game.toasts.some(s=>s.includes('真魔王にやぶれ')),'the defeat is announced');

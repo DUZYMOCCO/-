@@ -69,6 +69,11 @@ export function demonKingStatsFor(game) {
   if (profile?.hp > 0) return { hp: Math.max(DEMON_KING_RULES.minHp, profile.hp), atk: Math.max(DEMON_KING_RULES.minAtk, num(profile.atk)) };
   return { hp: DEMON_KING_RULES.defaultHp, atk: DEMON_KING_RULES.minAtk };
 }
+/** v7.2.22 その隊が今、魔王と戦うなら何HPか（記録した見積もりと今の見積もりの大きいほう。記録は書きかえない）。真魔王のHPの元。 */
+export function commanderKingHp(game) {
+  const f = estimateSortieForce(game), prof = num(game?.heroJourney?.kingProfile?.hp);
+  return Math.max(prof, demonKingStatsForDps(f.dps, f.ttkScale).hp);
+}
 /** Snapshot on castle entry. It only ever goes up, so swapping gear in and out of the castle cannot make the king weaker. */
 export function recordKingProfile(game) {
   const j = game?.heroJourney;

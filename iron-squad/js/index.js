@@ -18,7 +18,7 @@ import {configureBattlefieldUI,quietBattlefieldContext} from './battlefield-ui.j
 import {renderNavigationMap} from './navigation-map.js?v=354';
 import {soldierEquipmentValue,createEquipmentValueCache,observeEquipment,standardEquipmentCost,RESERVE_ARMAMENT_COUNT} from './armament-rules.js?v=354';
 import {initializeSealKeys,serializeSealKeys,updateSealShrines,recordSealGuardianKill,directionRelicRoll,drawSealShrine,drawSealMap,castleSealed,castleSealText,DEMON_CASTLE_ID as SEALED_CASTLE_ID} from './seal-keys.js?v=355';
-import {initializeTrueCastle,serializeTrueCastle,updateTrueCastle,drawTrueCastleMap,drawTrueCastleEntrance,shapeTrueDemonKing,updateTrueDemonKing,recordTrueKingDefeat,TRUE_KING_RULES} from './true-demon-castle.js?v=354';
+import {initializeTrueCastle,serializeTrueCastle,updateTrueCastle,drawTrueCastleMap,drawTrueCastleEntrance,shapeTrueDemonKing,updateTrueDemonKing,recordTrueKingDefeat,TRUE_KING_RULES} from './true-demon-castle.js?v=356';
 import {initializeWildernessSites,serializeWildernessSites,updateWildernessSites,recordWildernessGuardKill,drawWildernessSite,drawWildernessMap,WILDERNESS_RULES} from './wilderness-sites.js?v=281';
 import {enemyArtHeadHeight} from './enemy-art.js?v=280';
 import {selectBiomeEncounter,biomeEnemyStats,encounterSlots,updateBiomeCharge} from './biome-encounters.js?v=279';
@@ -155,8 +155,8 @@ import { clusterRescueMarkers } from './rescue-markers.js?v=182';
 import {visibleHeroMembers,heroMembers} from './hero-rules.js?v=302';
 import {updateHeroJournal} from './hero-journal.js?v=354';
 import {applyHeroEquipmentUpgrade} from './hero-equipment.js?v=295';
-import {initializeHeroJourney,rollHeroRevelation,serializeHeroJourney,updateHeroParty,updateHeroFollowing,awardHeroBattle,recordDemonKingDefeat,ensureHeroCastle,prepareCastleVisit,syncHeroCastle,renderHeroJourney,drawHeroMarks} from './hero-party.js?v=355';
-import {DEMON_KING_RULES,demonKingStatsFor,shapeDemonKing,percentBaseDamage,gaugeDemonKing} from './demon-king-rules.js?v=355';
+import {initializeHeroJourney,rollHeroRevelation,serializeHeroJourney,updateHeroParty,updateHeroFollowing,awardHeroBattle,recordDemonKingDefeat,ensureHeroCastle,prepareCastleVisit,syncHeroCastle,renderHeroJourney,drawHeroMarks} from './hero-party.js?v=356';
+import {DEMON_KING_RULES,demonKingStatsFor,shapeDemonKing,percentBaseDamage,gaugeDemonKing,commanderKingHp} from './demon-king-rules.js?v=356';
 import {updateSquadHpHud} from './squad-hp-hud.js?v=322';
 import {addBattleReport,normalizeBattleReport,renderBattleReport} from './battle-report.js?v=333';
 import {updateRescueAssistance,handleRescueAssistance} from './rescue-assistance.js?v=344';
@@ -8710,7 +8710,7 @@ export const IronSquadGame = {
       atkTimer: 0,
       hitPulse: 0
     };
-    if (bossDef.type === 'true_demon_king') shapeTrueDemonKing(boss); // v7.2.18: fixed HP/ATK, phases and big moves
+    if (bossDef.type === 'true_demon_king') shapeTrueDemonKing(boss, Math.max(TRUE_KING_RULES.hp, TRUE_KING_RULES.kingHpMultiple * commanderKingHp(this))); // v7.2.18: phases and big moves; v7.2.22: HP = this party's demon-king HP ×10 (floor 10B)
     if (bossDef.type === 'demon_king') shapeDemonKing(boss, demonKingStatsFor(this)); // v7.0.27: sized to the sortie force (or the strong default), %HP strike + meteor
     return boss;
   },

@@ -87,13 +87,14 @@ export function drawTrueCastleEntrance(ctx,def,time=0){
   return true;
 }
 
-// v7.2.18: 真魔王ゼルヴァーン。HPと攻撃は決まった値（挑む隊の強さでは変わらない）。
+// v7.2.18: 真魔王ゼルヴァーン。攻撃は決まった値。v7.2.22 から HP は挑む隊の魔王HP×10（下限100億）、勇者だけなら勇者が会った魔王HP×10。
 // ふだんの攻撃は防御で減る近接（周りも薙ぐ）と、魔法防御で減る「虚空の波動」。段階ごとに大技が増える：
 //  第2段（HP70%以下）「さばきの刻」：近くの全員に最大HPの割合ダメージ（防御無視）。聖域・身代わり・結界などの保護で減る。
 //  第3段（HP40%以下）「終わりの鐘」：数人に最大HPを大きく超える割合ダメージ。聖域と身代わりが重ならないと倒れ、蘇生が追いつかないと崩れる。
 // 段階が変わるときは数秒「虚空の障壁」で攻撃が通らない（一瞬で終わらないように）。調整はこの表だけ。
 export const TRUE_KING_RULES=Object.freeze({
   heroStrikePct:0.35, // v7.2.20: vs the hero party only (index.js damageTarget)
+  kingHpMultiple:10, // v7.2.22: HP = その隊が魔王と戦うときのHP×10（下限は hp）。勇者だけなら勇者が入ったときの魔王HP×10（下限なし）
   hp:TRUE_DEMON_KING_HP, atk:TRUE_DEMON_KING_ATK, strikeInterval:1.5, cleaveRadius:90, reach:96,
   wave:{interval:3.5,radius:320,atk:30_000},
   growthStrength:2_000_000, // 被弾成長はこの強さの敵として数える（決まった巨大ATKで成長が跳ねないように）
@@ -105,9 +106,9 @@ export const TRUE_KING_RULES=Object.freeze({
   sanctuary:{radius:300,cut:0.25},
   firstReward:{orbs:20,gems:5}
 });
-export function shapeTrueDemonKing(king){
-  const R=TRUE_KING_RULES;if(!king)return king;
-  Object.assign(king,{hp:R.hp,maxHp:R.hp,atk:R.atk,attackInterval:R.strikeInterval,cleaveRadius:R.cleaveRadius,attackReach:R.reach,skillCooldown:9999,skillTimer:9999,isTrueDemonKing:true,hitGrowthStrength:R.growthStrength});
+export function shapeTrueDemonKing(king,hp=TRUE_KING_RULES.hp){
+  const R=TRUE_KING_RULES;if(!king)return king;hp=Math.max(1,Math.round(Number(hp)||R.hp));
+  Object.assign(king,{hp,maxHp:hp,atk:R.atk,attackInterval:R.strikeInterval,cleaveRadius:R.cleaveRadius,attackReach:R.reach,skillCooldown:9999,skillTimer:9999,isTrueDemonKing:true,hitGrowthStrength:R.growthStrength});
   king.tk={phase:1,barrier:0,lockHp:0,wave:R.wave.interval,judgment:R.judgment.interval,requiem:R.requiem.interval,cast:null};
   return king;
 }

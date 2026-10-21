@@ -6,9 +6,9 @@ import {HERO_RULES,heroRevelationPhase,nextHeroRevelationPhase,heroPartyActive,h
 import {advanceHeroRoute,heroSegmentOpen,heroRouteCurrent} from './hero-navigation.js?v=354';
 import {WORLD_SIZE,settleUnit,fieldRockExit} from './world.js?v=289';
 import {DUNGEON_DEFS,dungeonBlocks} from './dungeon.js?v=354';
-import {DEMON_KING_RULES,recordKingProfile,shapeDemonKing,migrateDemonKing,gaugeDemonKingForHeroes} from './demon-king-rules.js?v=355';
+import {DEMON_KING_RULES,recordKingProfile,shapeDemonKing,migrateDemonKing,gaugeDemonKingForHeroes,heroPartyForce,classTier,demonKingStatsFor} from './demon-king-rules.js?v=356';
 import {nearestDungeonFloor} from './dungeon-layout.js?v=182';
-import {unlockTrueCastle,trueCastleOpen,trueCastleDef,TRUE_CASTLE_ID,updateTrueDemonKing,recordTrueKingDefeat} from './true-demon-castle.js?v=354';
+import {unlockTrueCastle,trueCastleOpen,trueCastleDef,TRUE_CASTLE_ID,updateTrueDemonKing,recordTrueKingDefeat,shapeTrueDemonKing,TRUE_KING_RULES} from './true-demon-castle.js?v=356';
 import {economicFieldBlocked} from './regional-economy.js?v=277';
 import {RECRUIT_CLASSES} from './recruitment.js?v=354';
 import {persistentUnit} from './render-support.js';
@@ -203,7 +203,7 @@ function stepHiddenEnemies(ctx,p,dt) {
     // v7.2.15 封印の守護者は祠から離れすぎない（見えない所でも、勇者が待つ祠へ戻る）。
     if(m.isSealGuardian&&Number.isFinite(m.homeX)&&Math.hypot(m.x-m.homeX,m.y-m.homeY)>900){move(ctx,ctx,m,{x:m.homeX,y:m.homeY},dt);continue;}
     if(m.isTrueDemonKing&&p.space===TRUE_CASTLE_ID&&updateTrueDemonKing(quietContext(ctx),m,dt,p.members))continue; // v7.2.20
-    if(m.isDemonKing&&p.space===castle().id)gaugeDemonKingForHeroes(m,p.members); // v7.2.21: heroes alone face a king sized to their own firepower
+    if(m.isDemonKing&&p.space===castle().id){const sized=gaugeDemonKingForHeroes(m,p.members);if(sized)p.kingHp=sized;else if(!(p.kingHp>0))p.kingHp=m.maxHp;} // v7.2.21: heroes alone face a king sized to their own firepower
     const hunt=(!!m.isDemonKing&&p.space===castle().id)||(!!m.isTrueDemonKing&&p.space===TRUE_CASTLE_ID),target=nearest(p.members,m,hunt?Infinity:800);if(!target)continue; // v7.0.27: the king hunts the party through the whole castle
     const ranged=RANGED_ENEMIES[m.rangedKind||m.type],reach=ranged?.range||m.attackReach||(m.radius||12)*.8,dist=Math.hypot(m.x-target.x,m.y-target.y);
     if(dist>reach){if(hunt){const speed=m.speed;m.speed=Math.max(speed||0,DEMON_KING_RULES.huntSpeed);move(ctx,ctx,m,target,dt);m.speed=speed;}else move(ctx,ctx,m,target,dt);}
@@ -344,10 +344,18 @@ function leaveHeroCastle(game,p,d=castle()) {
   announceHero(game,`勇者【${p.name}】のパーティが魔王城を後にし、南東の真魔王城へ向かった。`);
 }
 /** The hero's own view of the true castle: the true demon king on his throne (the castle guards do not trouble the heroes). */
+/** v7.2.22 the demon king's HP when these heroes entered his castle (sized for top-class heroes), or what they would have met. */
+export function heroKingHp(game,p){
+  if(p?.kingHp>0)return p.kingHp;
+  const alive=(p?.members||[]).filter(u=>u&&!u.dead);
+  if(alive.length&&alive.every(u=>classTier(u)>=3))return Math.max(1,Math.round(heroPartyForce(alive)*DEMON_KING_RULES.heroGaugeTtk));
+  return demonKingStatsFor(game).hp;
+}
 export function ensureHeroTrueCastle(game) {
   const j=game.heroJourney,t=trueCastleDef();
   if(j.trueScene?.monsters)return j.trueScene;
   const at=nearestDungeonFloor(t,{x:t.width-350,y:t.height/2}),king=game.createDungeonBoss(t.boss,at.x,at.y,t);
+  shapeTrueDemonKing(king,TRUE_KING_RULES.kingHpMultiple*heroKingHp(game,j.party)); // v7.2.22: ten times the king these heroes met
   j.trueScene={monsters:[king]};return j.trueScene;
 }
 function enterHeroTrueCastle(game,p) {
