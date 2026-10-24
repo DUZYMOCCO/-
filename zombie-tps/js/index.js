@@ -5,7 +5,9 @@
 import { loadCss } from '../../common/js/load-css.js';
 import { storage } from '../../common/js/storage.js';
 import { WEAPONS, WEAPON_ORDER, normalizeSave, SENS, VERSION, OUTFITS, outfitName, unlockOutfit,
-  GEAR_SLOTS, GEAR_STATS, GEAR_STAT_IDS, INV_CAP, rarityOf, gearColor, gearName, gearScore, gearAction, gearEffects, equippedItems } from './rules.js?v=4';
+  GEAR_SLOTS, GEAR_STATS, GEAR_STAT_IDS, INV_CAP, rarityOf, gearColor, gearName, gearScore, gearAction, gearEffects, equippedItems,
+  autoEquipBest, equipGain, autoPickup, bestLoadout, pickMapId, MAP_IDS } from './rules.js?v=5';
+import { MAPS, mapInfo } from './map.js?v=5';
 
 const hex6 = (n) => '#' + n.toString(16).padStart(6, '0');
 const slotOf = (id) => GEAR_SLOTS.find((s) => s.id === id);
@@ -17,31 +19,38 @@ function gearIcon(g, extra = '') {
 }
 // のうりょくの ならび（cur と くらべて ▲▼）
 function statLines(g, cur) {
-  const keys = GEAR_STAT_IDS.filter((k) => (g.stats[k] || 0) || (cur && cur.stats[k]));
+  // +0 の ぎょうは ださない（なくなる のうりょくは ▼で だす）
+  const keys = GEAR_STAT_IDS.filter((k) => (g.stats[k] || 0) > 0);
+  const lost = cur ? GEAR_STAT_IDS.filter((k) => !(g.stats[k] > 0) && cur.stats[k] > 0) : [];
   return keys.map((k) => {
     const v = g.stats[k] || 0, c = cur ? cur.stats[k] || 0 : 0, d = v - c, S = GEAR_STATS[k];
     const tag = !cur || d === 0 ? '' : d > 0 ? `<em class="up">▲${d}</em>` : `<em class="dn">▼${-d}</em>`;
-    return `<div class="${v ? '' : 'zero'}">${S.name} +${v}${S.unit}${tag}</div>`;
-  }).join('');
+    return `<div>${S.name} +${v}${S.unit}${tag}</div>`;
+  }).join('') + lost.map((k) => `<div class="zero">${GEAR_STATS[k].name} <em class="dn">▼${cur.stats[k]}</em></div>`).join('');
 }
-function verdict(g, cur) {
+function verdict(g, cur, gear) {
   if (!cur) return `<div class="zt-gv up">はじめての ${slotOf(g.slot).name}！</div>`;
+  if (gear) {
+    // うえげん（MAX）も かんがえた つよさで くらべる
+    const d = equipGain(gear, g);
+    return d > 0.05 ? '<div class="zt-gv up">いまより つよい！</div>' : d < -0.05 ? '<div class="zt-gv dn">いまの ほうが つよい</div>' : '<div class="zt-gv">おなじ くらい</div>';
+  }
   const a = gearScore(g), b = gearScore(cur);
   return a > b ? '<div class="zt-gv up">いまより つよい！</div>' : a < b ? '<div class="zt-gv dn">いまの ほうが つよい</div>' : '<div class="zt-gv">おなじ くらい</div>';
 }
-function gearCardHTML(g, cur) {
+function gearCardHTML(g, cur, gear) {
   const r = rarityOf(g.rarity);
   return `<div class="zt-gtop">${gearIcon(g, ' big')}<div><div class="zt-grar" style="color:${r.color}">${r.name}</div><b>${gearName(g)}</b></div></div>`
-    + `<div class="zt-gstats">${statLines(g, cur)}</div>${verdict(g, cur)}`;
+    + `<div class="zt-gstats">${statLines(g, cur)}</div>${verdict(g, cur, gear)}`;
 }
 function totalsText(gear) {
   const t = gearEffects(gear).totals;
   const parts = GEAR_STAT_IDS.filter((k) => t[k]).map((k) => `${GEAR_STATS[k].name} +${t[k]}${GEAR_STATS[k].unit}${t[k] >= GEAR_STATS[k].cap ? '（MAX）' : ''}`);
   return parts.length ? parts.join(' ・ ') : 'まだ なにも つけて いないよ';
 }
-import { Game } from './game.js?v=4';
-import { Input } from './input.js?v=4';
-import { Sfx } from './sfx.js?v=4';
+import { Game } from './game.js?v=5';
+import { Input } from './input.js?v=5';
+import { Sfx } from './sfx.js?v=5';
 
 const SAVE_KEY = 'zombie_tps_save';
 const OPT_LABEL = {
@@ -54,7 +63,7 @@ const OPT_CYCLE = { autoFire: [false, true], sens: ['low', 'mid', 'high'], quali
 
 export default {
   prepare() {
-    return loadCss(new URL('../css/zombie-tps.css?v=4', import.meta.url).href);
+    return loadCss(new URL('../css/zombie-tps.css?v=5', import.meta.url).href);
   },
 
   init(container, onBackToHub) {
@@ -117,7 +126,7 @@ export default {
           <button class="zt-btn zt-aim" data-act="aim"><span>ねらう</span></button>
           <button class="zt-btn zt-rl" data-act="reload"><span>リロード</span></button>
           <button class="zt-btn zt-jump" data-act="jump"><span>ジャンプ</span></button>
-          <div class="zt-keyhint">WASD いどう ・ マウス ねらう ・ ひだりクリック うつ ・ みぎクリック ねらう ・ R リロード ・ スペース ジャンプ ・ 1〜4 ぶき ・ ESC ポーズ</div>
+          <div class="zt-keyhint">WASD いどう ・ マウス ねらう ・ ひだりクリック うつ ・ みぎクリック ねらう ・ R リロード ・ スペース ジャンプ ・ 1〜5 ぶき ・ ESC ポーズ</div>
         </div>
       </div>
 
@@ -129,6 +138,7 @@ export default {
             <button data-stage="day">☀ ひるから</button>
             <button data-stage="night">🌙 よるから</button>
           </div>
+          <div class="zt-maps">${['rotate', ...MAP_IDS].map((id) => `<button data-map="${id}">${id === 'rotate' ? '🔀 おまかせ' : `${mapInfo(id).icon} ${mapInfo(id).name}`}</button>`).join('')}</div>
           <div class="zt-todhint">ウェーブごとに ひる → ゆうがた → よる</div>
           <div class="zt-startrow">
             <button class="zt-big" data-ui="start">スタート</button>
@@ -151,6 +161,7 @@ export default {
           <div><b>うつ</b> おしたまま れんしゃ（ドラッグも できる）</div>
           <div><b>あたま</b>を うつと ヘッドショット！</div>
           <div><b>4</b> ロケットで まとめて ふっとばせ！</div>
+          <div><b>5</b> ミニガンは まわってから ズダダダ！（おもい）</div>
           <div><b>ロケットだん</b>は ゾンビが おとす はこを ひろう</div>
           <div class="zt-ver">v${VERSION}</div>
         </div>
@@ -168,6 +179,7 @@ export default {
       <div class="zt-screen zt-soubi hidden">
         <div class="zt-kbox zt-sbox">
           <h2>そうび</h2>
+          <div class="zt-sauto"><button data-gearui="best">✨ つよいのを ぜんぶ そうび</button><button data-gearui="autotog">ひろったら じどう そうび <b></b></button></div>
           <div class="zt-sslots"></div>
           <div class="zt-stot"></div>
           <div class="zt-sbag"></div>
@@ -176,6 +188,7 @@ export default {
         </div>
       </div>
 
+      <div class="zt-autoeq hidden"><i></i><div><b>じどう そうび！</b><span></span></div></div>
       <div class="zt-gcard hidden">
         <div class="zt-gnew">そうびを ひろった！</div>
         <div class="zt-gbody"></div>
@@ -215,6 +228,9 @@ export default {
       const k = b.dataset.opt; b.querySelector('b').textContent = OPT_LABEL[k][String(this.save[k])];
     }
     for (const b of this.container.querySelectorAll('[data-stage]')) b.classList.toggle('sel', b.dataset.stage === this.save.stage);
+    for (const b of this.container.querySelectorAll('[data-map]')) b.classList.toggle('sel', b.dataset.map === this.save.map);
+    const nm = mapInfo(this.nextMapId());
+    this.el('.zt-sub').textContent = `${nm.icon} ${nm.name} ・ ${nm.desc}`;
     this.el('.zt-kigaebtn b').textContent = outfitName(this.save.outfit);
     this.el('.zt-soubibtn b').textContent = `${this.save.gear.inv.length} / ${INV_CAP}`;
     this.updateKigae();
@@ -243,6 +259,10 @@ export default {
       return `<button class="zt-sslot${g && g.id === this.selGear ? ' sel' : ''}" ${g ? `data-gsel="${g.id}"` : 'data-gsel=""'}>${gearIcon(g)}<span>${s.name}</span></button>`;
     }).join('');
     this.el('.zt-stot').textContent = totalsText(gear);
+    this.el('[data-gearui=autotog] b').textContent = this.save.autoEquip ? 'オン' : 'オフ';
+    this.el('[data-gearui=autotog]').classList.toggle('sel', !!this.save.autoEquip);
+    const bl = bestLoadout(gear), already = GEAR_SLOTS.every((s) => !bl.eq[s.id] || gear.eq[s.id] === bl.eq[s.id]);
+    this.el('[data-gearui=best]').classList.toggle('done', already);
     const bag = gear.inv.filter((g) => !eqs.includes(g));
     let cells = bag.map((g) => `<button class="zt-bagc${g.id === this.selGear ? ' sel' : ''}" data-gsel="${g.id}">${gearIcon(g)}</button>`).join('');
     for (let i = gear.inv.length; i < INV_CAP; i++) cells += '<span class="zt-bagc none"></span>';
@@ -252,12 +272,24 @@ export default {
     if (!sel) { det.innerHTML = '<div class="zt-shint">アイコンを タップして えらんでね ・ ゾンビが たまに おとすよ（ボスは かならず！）</div>'; return; }
     const cur = gear.inv.find((g) => g.id === gear.eq[sel.slot]);
     const on = cur && cur.id === sel.id;
-    det.innerHTML = `<div class="zt-gcardin">${gearCardHTML(sel, on ? null : cur || null)}</div><div class="zt-sbtns">`
+    det.innerHTML = `<div class="zt-gcardin">${gearCardHTML(sel, on ? null : cur || null, on ? null : gear)}</div><div class="zt-sbtns">`
       + (on ? '<button data-gearui="unequip">はずす</button>' : '<button data-gearui="equip">そうび</button>')
       + '<button data-gearui="drop">すてる</button></div>';
   },
   gearUi(act) {
-    const gear = this.save.gear, sel = gear.inv.find((g) => g.id === this.selGear);
+    const gear = this.save.gear;
+    if (act === 'autotog') { this.save.autoEquip = !this.save.autoEquip; this.persist(); this.updateSoubi(); this.sfx.swap(); return; }
+    if (act === 'best') {
+      const ch = autoEquipBest(gear);
+      this.persist(); this.updateTitle();
+      if (this.game) { this.game.settings = this.save; this.game.refreshGear(); this.game.setOutfit(this.save.outfit, ch.length > 0); }
+      const b = this.el('[data-gearui=best]');
+      b.dataset.msg = ch.length ? `${ch.length}こ つけかえた！` : 'もう いちばん つよいよ！';
+      b.classList.remove('flash'); void b.offsetWidth; b.classList.add('flash');
+      this.sfx.swap(); if (ch.length) this.sfx.pickup?.();
+      return;
+    }
+    const sel = gear.inv.find((g) => g.id === this.selGear);
     if (!sel) return;
     if (act === 'drop' && !this.dropArm) { this.dropArm = sel.id; this.el('[data-gearui=drop]').textContent = 'ほんとに すてる？'; return; }
     gearAction(gear, sel, act);
@@ -269,6 +301,17 @@ export default {
   },
   // あそんでる ときに ひろった そうびの カード
   gearFound(item) {
+    // じどう そうび: いまより つよい ときは カードを ださずに つける（ちいさい おしらせ）
+    if (this.save.autoEquip) {
+      const res = autoPickup(this.save.gear, item);
+      if (res.ok) {
+        this.persist(); this.updateTitle();
+        if (this.game) { this.game.settings = this.save; this.game.refreshGear(); this.game.setOutfit(this.save.outfit, true); this.game.hud.kill(`${gearName(item)}を じどう そうび！`, true); }
+        this.showAutoEq(item, res.replaced);
+        this.sfx.swap();
+        return;
+      }
+    }
     (this.gearQ ||= []).push(item);
     if (!this.gearCur) this.nextGearCard();
   },
@@ -279,7 +322,7 @@ export default {
     const gear = this.save.gear, cur = gear.inv.find((g) => g.id === gear.eq[item.slot]) || null;
     const r = rarityOf(item.rarity);
     card.style.setProperty('--rc', r.color); card.dataset.r = item.rarity;
-    this.el('.zt-gbody').innerHTML = gearCardHTML(item, cur);
+    this.el('.zt-gbody').innerHTML = gearCardHTML(item, cur, cur ? gear : null);
     const full = gear.inv.length >= INV_CAP;
     this.el('.zt-gfull').classList.toggle('hidden', !full);
     this.el('[data-gear=keep]').disabled = full;
@@ -306,8 +349,17 @@ export default {
     this.sfx.swap();
     this.nextGearCard();
   },
+  showAutoEq(item, prev) {
+    const el = this.el('.zt-autoeq'), r = rarityOf(item.rarity);
+    el.style.setProperty('--rc', r.color);
+    el.querySelector('i').outerHTML = gearIcon(item, ' big');
+    el.querySelector('span').textContent = `${r.name} ${gearName(item)}${prev ? `（まえ: ${gearName(prev)} → かばん）` : ''}`;
+    el.classList.remove('hidden', 'pop'); void el.offsetWidth; el.classList.add('pop');
+    this.autoEqT = 2.6;
+  },
   // まいフレーム: カードの じかん（きれたら しまう）
   tickGear(dt) {
+    if (this.autoEqT > 0 && (this.autoEqT -= dt) <= 0) this.el('.zt-autoeq').classList.add('hidden');
     if (!this.gearCur) return;
     if (this.game && this.game.state === 'pause') return;
     this.gearT -= dt;
@@ -326,7 +378,7 @@ export default {
 
   bind() {
     this.onClick = (e) => {
-      const b = e.target.closest('[data-ui],[data-opt],[data-stage],[data-outfit],[data-gear],[data-gsel],[data-gearui]'); if (!b) return;
+      const b = e.target.closest('[data-ui],[data-opt],[data-stage],[data-map],[data-outfit],[data-gear],[data-gsel],[data-gearui]'); if (!b) return;
       this.sfx.unlock();
       if (b.dataset.gear) { if (!b.disabled) this.resolveGear(b.dataset.gear); return; }
       if (b.dataset.gsel !== undefined) { if (b.dataset.gsel) { this.selGear = b.dataset.gsel; this.dropArm = null; this.updateSoubi(); this.sfx.swap(); } return; }
@@ -336,6 +388,12 @@ export default {
         if (!this.save.outfits.includes(id)) { this.sfx.empty?.(); return; }
         this.save.outfit = id; this.persist(); this.updateTitle();
         if (this.game) { this.game.settings = this.save; this.game.setOutfit(id, true); }
+        this.sfx.swap();
+        return;
+      }
+      if (b.dataset.map) {
+        this.save.map = b.dataset.map; this.persist(); this.updateTitle();
+        if (this.game) { this.game.settings = this.save; this.game.loadMap(this.nextMapId()); }
         this.sfx.swap();
         return;
       }
@@ -356,7 +414,7 @@ export default {
         return;
       }
       const ui = b.dataset.ui;
-      if (ui === 'start' || ui === 'retry') this.play();
+      if (ui === 'start' || ui === 'retry') this.play(ui === 'retry');
       else if (ui === 'resume') this.resume();
       else if (ui === 'title') this.toTitle();
       else if (ui === 'hub') this.back();
@@ -402,10 +460,14 @@ export default {
     this.input && (this.input.enabled = which === 'play');
   },
 
-  play() {
+  // つぎに あそぶ マップ（おまかせ なら じゅんばん）
+  nextMapId() { return pickMapId(this.save.map, this.save.mapNext); },
+  play(retry = false) {
     if (!this.game) return;
     this.flushGear();
     this.input.reset();
+    if (!retry) this.game.loadMap(this.nextMapId());
+    if (!retry && this.save.map === 'rotate') { this.save.mapNext = (this.save.mapNext + 1) % MAP_IDS.length; this.persist(); }
     this.game.startGame();
     this.show('play');
     if (!matchMedia('(pointer: coarse)').matches) this.canvas.requestPointerLock?.();

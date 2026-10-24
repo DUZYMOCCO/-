@@ -225,3 +225,26 @@
 .zt-gcard.zt-dim { display: none; }
 .zt-root:not(.zt-playing) .zt-gcard { display: none; }
 @media (max-height: 340px) { .zt-bagg { grid-template-columns: repeat(10, 1fr); gap: 2px; } .zt-sbox h2 { font-size: 18px; } .zt-sdet { min-height: 50px; } }
+
+/* v0.5.0: マップ えらび・じどう そうび・ミニガン */
+.zt-slot { width: 47px; }
+.zt-maps { display: flex; flex-wrap: wrap; gap: 4px; max-width: 330px; }
+.zt-maps button { padding: 3px 7px; font-size: 11px; font-weight: 900; color: #fff; background: rgba(0,0,0,.5); border: 2px solid rgba(255,255,255,.25); border-radius: 8px; }
+.zt-maps button.sel { border-color: #b6f36a; background: rgba(110,200,60,.35); color: #f2ffd8; }
+@media (max-height: 340px) { .zt-maps button { padding: 2px 6px; font-size: 10px; } .zt-title-box { gap: 5px; } }
+.zt-sauto { display: flex; gap: 6px; width: 100%; }
+.zt-sauto button { position: relative; flex: 1; padding: 5px 6px; font-size: 11px; font-weight: 900; color: #fff; background: rgba(0,0,0,.45); border: 2px solid rgba(255,255,255,.3); border-radius: 9px; }
+.zt-sauto [data-gearui=best] { color: #1b2a08; border: none; background: linear-gradient(#ffe88a, #f2b52a); box-shadow: 0 3px 0 #9a6a10; }
+.zt-sauto [data-gearui=best].done { filter: saturate(.4) brightness(.85); }
+.zt-sauto [data-gearui=best].flash::after { content: attr(data-msg); position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; white-space: nowrap; border-radius: 9px; background: linear-gradient(#8affa8, #2ec25a); color: #08300f; font-size: 12px; animation: zt-msg 1.6s ease-out forwards; }
+@keyframes zt-msg { 0% { opacity: 0; transform: scale(.85); } 12% { opacity: 1; transform: scale(1.04); } 20% { transform: scale(1); } 80% { opacity: 1; } 100% { opacity: 0; } }
+.zt-sauto [data-gearui=autotog] b { color: #ff9a7a; }
+.zt-sauto [data-gearui=autotog].sel { border-color: #7dff9a; }
+.zt-sauto [data-gearui=autotog].sel b { color: #7dff9a; }
+.zt-autoeq { --rc: #ddd; position: absolute; left: 50%; top: 74px; transform: translateX(-50%); z-index: 6; display: flex; align-items: center; gap: 6px; padding: 4px 10px 4px 5px; border-radius: 10px;
+  background: rgba(10,14,22,.82); border: 2px solid var(--rc); color: #fff; pointer-events: none; text-shadow: 0 1px 2px #000; }
+.zt-autoeq b { display: block; font-size: 12px; color: #7dff9a; }
+.zt-autoeq span { font-size: 10px; font-weight: 800; }
+.zt-autoeq.hidden { display: none; }
+.zt-autoeq.pop { animation: zt-apop .35s ease-out; }
+@keyframes zt-apop { 0% { transform: translateX(-50%) scale(.6); opacity: 0; } 100% { transform: translateX(-50%); opacity: 1; } }

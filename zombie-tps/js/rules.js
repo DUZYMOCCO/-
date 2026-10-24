@@ -1,7 +1,7 @@
 // ゾンビストライク — ゲームの きまり（DOM / three.js に いぞんしない。node のテストから よめる）
 // ぶき・ダメージ・ウェーブ・あたりはんてい（レイ×はこ）・いどうの ぶつかり・ゾンビの みちさがし（フローフィールド）
 
-export const VERSION = '0.4.0';
+export const VERSION = '0.5.0';
 
 // ---- ぶき ----
 // rpm: 1ぷんかんの はっしゃかず / mag: マガジン / reserve: よびだん / reload: びょう
@@ -37,8 +37,17 @@ export const WEAPONS = {
     recoilPitch: 0.085, recoilYaw: 0.012, shake: 0.4, range: 90, falloff: [0, 1, 1], knock: 0,
     projectile: true, speed: 34, blast: 4.5, power: 13, life: 3, noRefill: true,
   },
+  // ミニガン: おもい。うつまえに 0.5びょう まわして から、ものすごい はやさで うつ。うっている あいだは あるくのが おそい
+  minigun: {
+    id: 'minigun', name: 'ミニガン', short: 'ミニガン', slot: 5,
+    dmg: 17, head: 2, pellets: 1, rpm: 1050, auto: true,
+    mag: 150, reserve: 300, reload: 3.4,
+    spread: 0.028, spreadMove: 0.045, spreadAim: 0.018, bloom: 0.0012, bloomMax: 0.02,
+    recoilPitch: 0.0035, recoilYaw: 0.005, shake: 0.035, range: 80, falloff: [22, 65, 0.7], knock: 0.8,
+    spinUp: 0.5, spinDown: 0.9, moveMul: 0.55, carryMul: 0.9,
+  },
 };
-export const WEAPON_ORDER = ['rifle', 'pistol', 'shotgun', 'rocket'];
+export const WEAPON_ORDER = ['rifle', 'pistol', 'shotgun', 'rocket', 'minigun'];
 export const DEFAULT_WEAPON = 'rifle';
 
 export function fireInterval(w) { return 60 / w.rpm; }
@@ -84,12 +93,13 @@ export function timeOfDay(wave, start = 'day') {
 }
 // いろ・あかるさ（sky: そらの グラデーション 4いろ、うえ→した）
 export const TOD = {
-  day: { fog: 0xe9d6b4, near: 22, far: 70, hemiSky: 0xd4e6ff, hemiGround: 0x6b5a3c, hemiI: 1.5, sun: 0xfff0d0, sunI: 2.4, off: [14, 26, 9],
-    sky: [0x5d8fd6, 0xa9c7e6, 0xf2d9b0, 0xe8c79a], night: 0, moon: 0, lamps: 0, disk: 0, boost: 1 },
-  sunset: { fog: 0xd99a78, near: 18, far: 64, hemiSky: 0xffc8a0, hemiGround: 0x55405a, hemiI: 1.3, sun: 0xffa060, sunI: 1.9, off: [-24, 9, -14],
-    sky: [0x34407e, 0xb4647a, 0xf2955a, 0xf6c07a], night: 0.15, moon: 0.25, lamps: 0.7, disk: 1, boost: 1.5 },
-  night: { fog: 0x1d2a4e, near: 13, far: 56, hemiSky: 0x9fb3ee, hemiGround: 0x34344e, hemiI: 1.25, sun: 0xb4c8ff, sunI: 1.0, off: [-12, 24, -16],
-    sky: [0x0a1430, 0x1b2d5c, 0x34497e, 0x2a3a63], night: 1, moon: 1, lamps: 1, disk: 0, boost: 2.4 },
+  // v0.5.0: くらくて こわい ふんいき（くもりの ひる・ぶきみな ゆうがた・まっくらな よる）
+  day: { fog: 0x8e938c, near: 18, far: 66, hemiSky: 0xc4ccd0, hemiGround: 0x4e4636, hemiI: 1.35, sun: 0xeee4d0, sunI: 1.8, off: [14, 26, 9],
+    sky: [0x343c4c, 0x5e6a78, 0x8e8a80, 0x8a8172], night: 0, moon: 0, lamps: 0, disk: 0, boost: 1 },
+  sunset: { fog: 0x6e4a4e, near: 15, far: 58, hemiSky: 0xe0a8a0, hemiGround: 0x3a2c40, hemiI: 1.15, sun: 0xff8a50, sunI: 1.6, off: [-24, 9, -14],
+    sky: [0x161430, 0x48264a, 0xa04a3a, 0xc07040], night: 0.25, moon: 0.35, lamps: 0.75, disk: 0.8, boost: 1.6 },
+  night: { fog: 0x0e1426, near: 11, far: 50, hemiSky: 0x8a9ad8, hemiGround: 0x2a2a40, hemiI: 1.1, sun: 0xa0b4f0, sunI: 0.9, off: [-12, 24, -16],
+    sky: [0x04060e, 0x0c1226, 0x1a2240, 0x161c30], night: 1, moon: 1, lamps: 1, disk: 0, boost: 2.6 },
 };
 export function mixColor(a, b, k) {
   const r = ((a >> 16) & 255) + ((((b >> 16) & 255) - ((a >> 16) & 255)) * k);
@@ -166,7 +176,24 @@ export function currentSpread(w, { moving = false, aiming = false, airborne = fa
 // ---- ぶきの じょうたい（たま・リロード・れんしゃ） ----
 export function createGun(id) {
   const w = WEAPONS[id];
-  return { id, ammo: w.mag, reserve: w.reserve, cooldown: 0, reloading: 0, bloom: 0, triggerHeld: false, lastTrigger: false };
+  return { id, ammo: w.mag, reserve: w.reserve, cooldown: 0, reloading: 0, bloom: 0, triggerHeld: false, lastTrigger: false, spin: 0 };
+}
+
+// ミニガンの かいてん（0..1）。おしている あいだ spinUp びょうで 1 に なる。はなすと spinDown びょうで 0
+// リロードちゅうは とまっていく。もどりは いまの spin
+export function spinGun(g, held, dt) {
+  const w = WEAPONS[g.id];
+  if (!w.spinUp) return 0;
+  const want = held && g.reloading === 0;
+  g.spin = want ? Math.min(1, (g.spin || 0) + dt / w.spinUp) : Math.max(0, (g.spin || 0) - dt / w.spinDown);
+  return g.spin;
+}
+// いどうの はやさの ばいりつ（ミニガンは もつだけで すこし おそく、まわすと もっと おそい）
+export function weaponMoveMul(g) {
+  const w = WEAPONS[g.id];
+  if (!w.moveMul) return w.id === 'rocket' ? 0.92 : 1;
+  const s = g.spin || 0;
+  return (w.carryMul || 1) * (1 + (w.moveMul - 1) * s);
 }
 
 // dt すすめる。リロードが おわったら たまを うつす
@@ -211,6 +238,7 @@ export function tryFire(g, held) {
   if (g.reloading > 0) return 'none';
   if (g.cooldown > 0) return 'none';
   if (!w.auto && !pressedNow) return 'none';
+  if (w.spinUp && (g.spin || 0) < 1 && g.ammo > 0) return 'spin'; // まだ まわりきって いない
   if (g.ammo <= 0) {
     if (startReload(g)) return 'reload';
     return pressedNow ? 'empty' : 'none';
@@ -274,19 +302,13 @@ export function killScore(type, isHead) { return ZOMBIES[type].score + (isHead ?
 
 // ---- レイ × はこ（AABB）。あたれば きょり t、なければ -1 ----
 export function rayAABB(ox, oy, oz, dx, dy, dz, b, maxT = Infinity) {
-  let tmin = 0, tmax = maxT;
-  const o = [ox, oy, oz], d = [dx, dy, dz], lo = [b.minX, b.minY, b.minZ], hi = [b.maxX, b.maxY, b.maxZ];
-  for (let i = 0; i < 3; i++) {
-    if (Math.abs(d[i]) < 1e-9) {
-      if (o[i] < lo[i] || o[i] > hi[i]) return -1;
-    } else {
-      let t1 = (lo[i] - o[i]) / d[i], t2 = (hi[i] - o[i]) / d[i];
-      if (t1 > t2) { const t = t1; t1 = t2; t2 = t; }
-      if (t1 > tmin) tmin = t1;
-      if (t2 < tmax) tmax = t2;
-      if (tmin > tmax) return -1;
-    }
-  }
+  let tmin = 0, tmax = maxT, t1, t2, t;
+  if (dx > -1e-9 && dx < 1e-9) { if (ox < b.minX || ox > b.maxX) return -1; }
+  else { t1 = (b.minX - ox) / dx; t2 = (b.maxX - ox) / dx; if (t1 > t2) { t = t1; t1 = t2; t2 = t; } if (t1 > tmin) tmin = t1; if (t2 < tmax) tmax = t2; if (tmin > tmax) return -1; }
+  if (dy > -1e-9 && dy < 1e-9) { if (oy < b.minY || oy > b.maxY) return -1; }
+  else { t1 = (b.minY - oy) / dy; t2 = (b.maxY - oy) / dy; if (t1 > t2) { t = t1; t1 = t2; t2 = t; } if (t1 > tmin) tmin = t1; if (t2 < tmax) tmax = t2; if (tmin > tmax) return -1; }
+  if (dz > -1e-9 && dz < 1e-9) { if (oz < b.minZ || oz > b.maxZ) return -1; }
+  else { t1 = (b.minZ - oz) / dz; t2 = (b.maxZ - oz) / dz; if (t1 > t2) { t = t1; t1 = t2; t2 = t; } if (t1 > tmin) tmin = t1; if (t2 < tmax) tmax = t2; if (tmin > tmax) return -1; }
   return tmin;
 }
 
@@ -335,9 +357,29 @@ export function castShot(ox, oy, oz, dx, dy, dz, zombies, walls, range) {
   return best;
 }
 
+// ---- はこの さがしやすい ならび（ひろい マップでも かるい）----
+// cell m ごとの マスに、ちかくの はこ（pad m の よゆう つき）を いれておく。near(x,z) で その マスの はこ
+export function makeBoxIndex(boxes, half, cell = 4, pad = 2) {
+  const lo = -half - 8, n = Math.ceil((half * 2 + 16) / cell), cells = [];
+  for (let i = 0; i < n * n; i++) cells.push([]);
+  for (const b of boxes) {
+    const x0 = Math.max(0, Math.floor((b.minX - pad - lo) / cell)), x1 = Math.min(n - 1, Math.floor((b.maxX + pad - lo) / cell));
+    const z0 = Math.max(0, Math.floor((b.minZ - pad - lo) / cell)), z1 = Math.min(n - 1, Math.floor((b.maxZ + pad - lo) / cell));
+    for (let gz = z0; gz <= z1; gz++) for (let gx = x0; gx <= x1; gx++) cells[gz * n + gx].push(b);
+  }
+  return {
+    boxes, n, cell,
+    near(x, z) {
+      const gx = Math.min(n - 1, Math.max(0, Math.floor((x - lo) / cell))), gz = Math.min(n - 1, Math.max(0, Math.floor((z - lo) / cell)));
+      return cells[gz * n + gx];
+    },
+  };
+}
+
 // ---- いどうの ぶつかり（XZ の えん × はこ）----
 // たかさを みる: あしもと y が はこの うえ(top-step)より たかければ のれる＝かべに ならない
 export function collideCircle(px, pz, r, y, boxes, step = 0.3) {
+  if (boxes.near) boxes = boxes.near(px, pz);
   let x = px, z = pz;
   for (let pass = 0; pass < 2; pass++) {
     for (const b of boxes) {
@@ -363,6 +405,7 @@ export function collideCircle(px, pz, r, y, boxes, step = 0.3) {
 
 // あしもとの ゆかの たかさ（のれる はこの うえ。なければ 0）
 export function groundHeight(x, z, r, y, boxes, step = 0.3) {
+  if (boxes.near) boxes = boxes.near(x, z);
   let g = 0;
   for (const b of boxes) {
     if (x + r * 0.7 < b.minX || x - r * 0.7 > b.maxX || z + r * 0.7 < b.minZ || z - r * 0.7 > b.maxZ) continue;
@@ -395,6 +438,7 @@ export function boxGap(x, z, b) {
 // ゾンビ（x,z,あしもと zy, はんけい r）が さわっている はこで、のぼる さきを えらぶ。
 // targetY = プレイヤーの ゆかの たかさ。それより たかい はこには のぼらない。
 export function climbTarget(x, z, r, zy, targetY, boxes, reach = 0.15) {
+  if (boxes.near) boxes = boxes.near(x, z);
   let best = null;
   for (const b of boxes) {
     if (b.maxY <= zy + 0.3 || b.maxY > targetY + 0.05) continue;
@@ -423,6 +467,7 @@ export function climbLanding(x, z, b, inset = 0.35) {
 }
 // いま たっている はこ（あしもとの ゆか）
 export function supportBox(x, z, r, y, boxes) {
+  if (boxes.near) boxes = boxes.near(x, z);
   let best = null;
   for (const b of boxes) {
     if (x + r * 0.7 < b.minX || x - r * 0.7 > b.maxX || z + r * 0.7 < b.minZ || z - r * 0.7 > b.maxZ) continue;
@@ -538,6 +583,31 @@ export function gridLineClear(grid, x0, z0, x1, z1) {
   return true;
 }
 
+// ---- マップ（えらべる。'rotate' は あそぶ たびに つぎの マップ）----
+export const MAP_IDS = ['city', 'mall', 'base', 'hospital', 'camp', 'harbor'];
+export const MAP_CHOICES = ['rotate', ...MAP_IDS];
+// こんかい あそぶ マップ
+export function pickMapId(choice, next = 0) {
+  if (MAP_IDS.includes(choice)) return choice;
+  return MAP_IDS[((next | 0) % MAP_IDS.length + MAP_IDS.length) % MAP_IDS.length];
+}
+// ゾンビが でてくる ばしょ: プレイヤーから band[0]〜band[1] m の ゲートを えらぶ（ひろい マップでも まちくたびれない）
+// とおすぎる ゲートは つかわない。ちかすぎる（14m いない）ゲートは つかわない
+export function pickSpawnPoint(spawns, px, pz, r = Math.random(), band = [16, 34]) {
+  const list = spawns.map((s) => ({ s, d: Math.hypot(s.x - px, s.z - pz) })).filter((o) => o.d > 14);
+  if (!list.length) return spawns[Math.min(spawns.length - 1, Math.floor(r * spawns.length))];
+  list.sort((a, b) => a.d - b.d);
+  let ok = list.filter((o) => o.d >= band[0] && o.d <= band[1]);
+  if (ok.length < 2) ok = list.slice(0, 3);
+  return ok[Math.min(ok.length - 1, Math.floor(r * ok.length))].s;
+}
+// とおくの ゾンビは すこし いそぐ（ひろい マップで まちくたびれない）
+export const HURRY = { from: 24, to: 40, max: 1.6 };
+export function hurryMul(dist) {
+  if (dist <= HURRY.from) return 1;
+  return 1 + (HURRY.max - 1) * Math.min(1, (dist - HURRY.from) / (HURRY.to - HURRY.from));
+}
+
 // ---- セーブ ----
 export function normalizeSave(s) {
   const o = s && typeof s === 'object' ? s : {};
@@ -549,6 +619,9 @@ export function normalizeSave(s) {
     quality: ['auto', 'low', 'high'].includes(o.quality) ? o.quality : 'auto',
     stage: ['day', 'night'].includes(o.stage) ? o.stage : 'day',
     flashlight: o.flashlight === undefined ? true : !!o.flashlight,
+    autoEquip: o.autoEquip === undefined ? true : !!o.autoEquip,
+    map: MAP_CHOICES.includes(o.map) ? o.map : 'rotate',
+    mapNext: Number.isFinite(o.mapNext) ? Math.max(0, o.mapNext | 0) % MAP_IDS.length : 0,
     ...normalizeOutfits(o),
     gear: normalizeGear(o.gear),
   };
@@ -640,7 +713,7 @@ export function openCells(grid, limit = grid.half - 3) {
 
 // ---- そうび（ランダムで おちる。のうりょく つき）----
 export const GEAR_SLOTS = [
-  { id: 'head', name: 'ヘルメット', icon: '⛑' },
+  { id: 'head', name: 'ヘルメット', icon: '🪖' },
   { id: 'body', name: 'ベスト', icon: '🦺' },
   { id: 'feet', name: 'くつ', icon: '👟' },
   { id: 'arm', name: 'うでわ', icon: '💍' },
@@ -712,6 +785,74 @@ export function gearScore(g) {
   let t = 0; for (const [k, v] of Object.entries(g.stats || {})) t += (w[k] || 0) * v;
   return Math.round(t * 10) / 10;
 }
+// ---- じどう そうび ----
+// つよさの きめかた（ぶいごと）:
+//   のうりょくの おもさ  ぼうぎょ 1.6 / さいだいHP 0.6 / はやさ 1.6 / リロード 1.0（gearScore と おなじ）
+//   ＋ レアの ボーナス   ふつう 0 / レア 0.5 / すごいレア 1 / でんせつ 1.5（おなじ つよさ なら レアが うえ）
+//   ぜんぶ あわせる ときは うえげん（ぼうぎょ 30%・HP +50・はやさ 15%・リロード 25%）を こえた ぶんは 0 てん
+export const GEAR_WEIGHT = { def: 1.6, hp: 0.6, spd: 1.6, rel: 1 };
+export const RARITY_BONUS = { n: 0, r: 0.5, sr: 1, l: 1.5 };
+export function gearPower(g) {
+  if (!g) return 0;
+  return Math.round((gearScore(g) + (RARITY_BONUS[g.rarity] || 0)) * 10) / 10;
+}
+// そうび 4つ ぶんの つよさ（うえげん つき）
+export function loadoutValue(items) {
+  const t = gearTotals(items);
+  let v = 0;
+  for (const k of GEAR_STAT_IDS) v += GEAR_WEIGHT[k] * t[k];
+  for (const g of items) if (g) v += RARITY_BONUS[g.rarity] || 0;
+  return Math.round(v * 100) / 100;
+}
+// かばんの なかで いちばん つよい くみあわせ（ぶいごとに 1こ）。{ slot: id|null }
+export function bestLoadout(gear) {
+  const per = GEAR_SLOT_IDS.map((s) => {
+    const list = gear.inv.filter((g) => g.slot === s);
+    // いまの そうびを さきに（おなじ つよさ なら つけかえない）
+    list.sort((a, b) => (b.id === gear.eq[s]) - (a.id === gear.eq[s]) || gearPower(b) - gearPower(a));
+    return [...list, null];
+  });
+  let best = null, bestV = -1;
+  const cur = [null, null, null, null];
+  const rec = (i) => {
+    if (i === per.length) { const v = loadoutValue(cur); if (v > bestV + 1e-9) { bestV = v; best = cur.slice(); } return; }
+    for (const g of per[i]) { cur[i] = g; rec(i + 1); }
+  };
+  rec(0);
+  const eq = {};
+  GEAR_SLOT_IDS.forEach((s, i) => { eq[s] = best[i] ? best[i].id : null; });
+  return { eq, value: bestV };
+}
+// 「つよいのを ぜんぶ そうび」: かえた ぶいの かず を かえす
+export function autoEquipBest(gear) {
+  const { eq } = bestLoadout(gear);
+  const changed = [];
+  for (const s of GEAR_SLOT_IDS) if (gear.eq[s] !== eq[s] && eq[s]) { gear.eq[s] = eq[s]; changed.push(s); }
+  return changed;
+}
+// その そうびを つけると どれだけ つよく なるか（うえげん つき・ほかの ぶいは そのまま）
+export function equipGain(gear, item) {
+  const now = equippedItems(gear);
+  const i = GEAR_SLOT_IDS.indexOf(item.slot);
+  const next = now.slice(); next[i] = item;
+  return Math.round((loadoutValue(next) - loadoutValue(now)) * 100) / 100;
+}
+export function shouldAutoEquip(gear, item) { return equipGain(gear, item) > 0.05; }
+// ひろった そうびを じどうで つける。かばんが いっぱい なら、いちばん よわい（つけていない）そうびを すてて ばしょを つくる
+// もどり: { ok, replaced: まえの そうび, dropped: すてた そうび }
+export function autoPickup(gear, item) {
+  if (!shouldAutoEquip(gear, item)) return { ok: false };
+  const prev = gear.inv.find((g) => g.id === gear.eq[item.slot]) || null;
+  let dropped = null;
+  if (!gear.inv.some((g) => g.id === item.id) && gear.inv.length >= INV_CAP) {
+    const eqIds = new Set(Object.values(gear.eq));
+    const loose = gear.inv.filter((g) => !eqIds.has(g.id)).sort((a, b) => gearPower(a) - gearPower(b));
+    if (loose.length) { dropped = loose[0]; gear.inv = gear.inv.filter((g) => g.id !== dropped.id); }
+  }
+  const r = gearAction(gear, item, 'equip');
+  return { ok: r.ok, replaced: prev, dropped: dropped || (r.replaced || null) };
+}
+
 // そうびの ごうけい（うえげん つき）
 export function gearTotals(items) {
   const t = { def: 0, hp: 0, spd: 0, rel: 0 };

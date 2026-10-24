@@ -44,6 +44,11 @@ export class Sfx {
       this._noise(t, 0.11, { type: 'bandpass', freq: 1500 * p, q: 0.8, gain: 0.8 });
       this._tone(t, 0.09, { f0: 220 * p, f1: 70, gain: 0.6 });
       this._noise(t + 0.02, 0.25, { type: 'lowpass', freq: 600, gain: 0.15, attack: 0.02 });
+    } else if (kind === 'minigun') {
+      // ブロロロ（みじかい おとを はやく かさねる）
+      this._noise(t, 0.045, { type: 'highpass', freq: 2000 * p, gain: 0.32 });
+      this._noise(t, 0.08, { type: 'lowpass', freq: 1900 * p, gain: 0.5 });
+      this._tone(t, 0.07, { f0: 140 * p, f1: 50, gain: 0.45 });
     } else {
       this._noise(t, 0.1, { type: 'highpass', freq: 1200 * p, gain: 0.6 });
       this._noise(t, 0.3, { type: 'lowpass', freq: 1500 * p, gain: 1.0 });
@@ -102,6 +107,14 @@ export class Sfx {
     this.click(1800, 0.3, dur * 0.62);       // さす
     this.click(3000, 0.3, dur * 0.82);       // ガチャ
     this.click(2400, 0.28, dur * 0.9);
+  }
+  // ミニガンが まわる おと（ウィーン。よびすぎない）
+  spin(k = 1) {
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime;
+    if (this._spinT && t - this._spinT < 0.09) return;
+    this._spinT = t;
+    this._tone(t, 0.1, { type: 'triangle', f0: 220 + 380 * k, f1: 200 + 360 * k, gain: 0.05 + 0.05 * k });
   }
   swap() { this.click(2000, 0.2); this.click(2800, 0.18, 0.08); }
   hit(head) {

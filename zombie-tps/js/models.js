@@ -1,6 +1,6 @@
 // ブロックの キャラクターと ぶき（かくうの デザイン・ロゴなし）
 import * as THREE from '../vendor/three.module.min.js';
-import { zombieFaceTexture, playerFaceTexture, solidTexture, shirtTexture, camoTexture, ojisanTextures } from './textures.js?v=4';
+import { zombieFaceTexture, playerFaceTexture, solidTexture, shirtTexture, camoTexture, ojisanTextures } from './textures.js?v=5';
 
 const boxGeoCache = new Map();
 export function boxGeo(w, h, d) {
@@ -134,6 +134,37 @@ function makeRocket() {
   return { group: g, mag, muzzle, eject, back, magRest: mag.position.clone() };
 }
 
+// ミニガン（かくうの デザイン: 6ぽんの つつが まわる・おもい）
+function makeMinigun() {
+  const g = new THREE.Group(); g.name = 'minigun';
+  const M = GM;
+  part(g, M.metal, 0.16, 0.16, 0.36, 0, 0.02, 0.04);                 // ほんたい
+  part(g, M.poly, 0.17, 0.05, 0.3, 0, 0.12, 0.04);                   // うえの カバー
+  part(g, M.orange, 0.172, 0.025, 0.08, 0, 0.06, -0.08);             // オレンジの ライン
+  part(g, M.poly, 0.05, 0.13, 0.06, 0, -0.1, 0.12, -0.3);            // グリップ
+  part(g, M.steel, 0.03, 0.03, 0.22, 0, 0.2, 0.02);                  // うえの とって
+  part(g, M.steel, 0.03, 0.06, 0.03, 0, 0.165, -0.08); part(g, M.steel, 0.03, 0.06, 0.03, 0, 0.165, 0.12);
+  part(g, M.poly, 0.05, 0.1, 0.05, 0, -0.07, -0.22, -0.2);           // まえの グリップ
+  // まわる つつ（6ぽん）
+  const barrels = new THREE.Group(); barrels.position.set(0, 0.02, -0.14); g.add(barrels);
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2;
+    part(barrels, i === 0 ? M.steel : M.metal, 0.032, 0.032, 0.62, Math.cos(a) * 0.05, Math.sin(a) * 0.05, -0.31);
+  }
+  part(barrels, M.poly, 0.15, 0.15, 0.04, 0, 0, -0.08);              // つつを まとめる わ
+  part(barrels, M.poly, 0.14, 0.14, 0.04, 0, 0, -0.46);
+  part(barrels, M.steel, 0.15, 0.15, 0.04, 0, 0, -0.6);
+  // たまの はこ（よこ）と ベルト
+  const mag = new THREE.Group(); mag.position.set(-0.14, -0.06, 0.06); g.add(mag);
+  part(mag, M.olive, 0.12, 0.16, 0.2, 0, 0, 0);
+  part(mag, M.oliveD, 0.125, 0.03, 0.205, 0, 0.07, 0);
+  part(mag, M.tan, 0.06, 0.03, 0.12, 0.08, 0.08, -0.02, 0, 0, -0.5);
+  const muzzle = new THREE.Object3D(); muzzle.position.set(0, 0.02, -0.78); g.add(muzzle);
+  const eject = new THREE.Object3D(); eject.position.set(0.09, 0.0, 0.02); g.add(eject);
+  g.position.set(0, -0.02, 0.06);
+  return { group: g, mag, muzzle, eject, barrels, magRest: mag.position.clone() };
+}
+
 // とんでいく ロケット
 export function makeRocketProjectile() {
   const g = new THREE.Group();
@@ -146,7 +177,7 @@ export function makeRocketProjectile() {
 
 export function makeWeapons() {
   const rifle = makeRifle(); rifle.group.scale.setScalar(1.15);
-  return { rifle, pistol: makePistol(), shotgun: makeShotgun(), rocket: makeRocket() };
+  return { rifle, pistol: makePistol(), shotgun: makeShotgun(), rocket: makeRocket(), minigun: makeMinigun() };
 }
 export function makeMagMesh() {
   const g = new THREE.Group();
@@ -409,8 +440,8 @@ const zMats = {};
 function zombieMats(kind) {
   if (zMats[kind]) return zMats[kind];
   const c = ZLOOK[kind];
-  const skin = new THREE.MeshLambertMaterial({ map: solidTexture(c.skin, 0.16, 9) });
-  const face = new THREE.MeshLambertMaterial({ map: zombieFaceTexture(c.skin, kind) });
+  const skin = new THREE.MeshLambertMaterial({ map: solidTexture(c.skin, 0.16, 9), emissive: 0x0c2208 }); // くらくても みえる
+  const face = new THREE.MeshLambertMaterial({ map: zombieFaceTexture(c.skin, kind), emissive: 0x0c2208 });
   const shirt = new THREE.MeshLambertMaterial({ map: shirtTexture(c.shirt, kind.length) });
   const pants = new THREE.MeshLambertMaterial({ map: solidTexture(c.pants, 0.18, 12) });
   const hair = L(0x3f6b2c), helm = L(0x6d737c);

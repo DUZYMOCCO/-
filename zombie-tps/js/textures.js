@@ -113,6 +113,47 @@ export function buildTextures() {
     g.drawImage(noiseFill(0xffffff, 0.08, 131), 0, 0);
     g.fillStyle = 'rgba(0,0,0,0.3)'; g.fillRect(0, 2, 16, 1); g.fillRect(0, 13, 16, 1);
   }));
+  // v0.5.0: あたらしい マップの ざいしつ
+  T.asphalt = tex(noiseFill(0x55585e, 0.22, 141));
+  T.paint = tex(noiseFill(0xf2f2ea, 0.05, 142));
+  T.wall = tex(makeCanvas(16, 16, (g) => {
+    g.drawImage(noiseFill(0xeeeae2, 0.06, 143), 0, 0);
+    g.fillStyle = 'rgba(0,0,0,0.08)'; g.fillRect(0, 15, 16, 1); g.fillRect(0, 7, 16, 1);
+  }));
+  T.tile = tex(makeCanvas(16, 16, (g) => {
+    g.drawImage(noiseFill(0xf4f4f0, 0.05, 144), 0, 0);
+    g.fillStyle = 'rgba(0,0,0,0.14)'; g.fillRect(0, 0, 16, 1); g.fillRect(0, 0, 1, 16); g.fillRect(0, 8, 16, 1); g.fillRect(8, 0, 1, 16);
+  }));
+  T.container = tex(makeCanvas(16, 16, (g) => {
+    g.drawImage(noiseFill(0xe8e8e8, 0.06, 145), 0, 0);
+    for (let x = 0; x < 16; x += 2) { g.fillStyle = 'rgba(0,0,0,0.18)'; g.fillRect(x, 0, 1, 16); }
+    g.fillStyle = 'rgba(0,0,0,0.25)'; g.fillRect(0, 0, 16, 1);
+  }));
+  T.tent = tex(makeCanvas(16, 16, (g) => {
+    g.drawImage(noiseFill(0xf0f0f0, 0.08, 146), 0, 0);
+    g.fillStyle = 'rgba(0,0,0,0.1)'; g.fillRect(0, 5, 16, 1); g.fillRect(0, 11, 16, 1);
+  }));
+  T.hesco = tex(makeCanvas(16, 16, (g) => {
+    const r = rng(147); g.fillStyle = '#8c7a55'; g.fillRect(0, 0, 16, 16);
+    for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) if (r() < 0.4) { g.fillStyle = hex(shade(0xa89468, 0.85 + r() * 0.3)); g.fillRect(x, y, 1, 1); }
+    g.fillStyle = '#4a4a44'; for (let i = 0; i < 16; i += 4) { g.fillRect(i, 0, 1, 16); g.fillRect(0, i, 16, 1); }
+  }));
+  T.dirt = tex(makeCanvas(16, 16, (g) => {
+    const r = rng(148);
+    for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) { const v = r(); g.fillStyle = hex(v < 0.1 ? 0x6a5638 : v < 0.18 ? 0x9a8458 : shade(0x86704a, 0.9 + r() * 0.2)); g.fillRect(x, y, 1, 1); }
+  }));
+  T.water = tex(makeCanvas(16, 16, (g) => {
+    const r = rng(149); g.fillStyle = '#2a5a78'; g.fillRect(0, 0, 16, 16);
+    g.fillStyle = '#4a86a8'; for (let i = 0; i < 7; i++) g.fillRect((r() * 14) | 0, (r() * 16) | 0, 3, 1);
+  }));
+  T.stripe = tex(makeCanvas(16, 16, (g) => {
+    g.fillStyle = '#e8b830'; g.fillRect(0, 0, 16, 16); g.fillStyle = '#2a2a2a';
+    for (let i = -16; i < 16; i += 8) for (let k = 0; k < 4; k++) for (let y = 0; y < 16; y++) g.fillRect(i + y + k, y, 1, 1);
+  }));
+  T.roof = tex(makeCanvas(16, 16, (g) => {
+    g.drawImage(noiseFill(0xe0e0e0, 0.08, 150), 0, 0);
+    g.fillStyle = 'rgba(0,0,0,0.22)'; for (let y = 3; y < 16; y += 4) g.fillRect(0, y, 16, 1);
+  }));
   return T;
 }
 

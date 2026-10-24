@@ -1,6 +1,5 @@
 // マップの みため（はこを まとめて すくない ドローコールに する）
 import * as THREE from '../vendor/three.module.min.js';
-import { HALF } from './map.js?v=4';
 
 // はこを ざいしつごとに 1つの ジオメトリに まとめる（UV は 1m = テクスチャ 1まい）
 function mergeBoxes(list) {
@@ -44,14 +43,42 @@ function mergeBoxes(list) {
   return geo;
 }
 
+const LAM_KEYS = ['road', 'roadLine', 'cobble', 'brick', 'crate', 'concrete', 'metal', 'glass', 'dark', 'log', 'leaves', 'sandbag', 'barrel', 'plank',
+  'asphalt', 'paint', 'wall', 'tile', 'container', 'tent', 'hesco', 'dirt', 'water', 'stripe', 'roof'];
+
+// とおくの けしき（マップごと）
+function farBoxes(map) {
+  const half = map.half, kind = map.theme?.far || 'forest', tint = map.theme?.farTint ?? 0xbfd8b0;
+  const rr = (() => { let s = 99; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); })();
+  const out = [];
+  const push = (mat, x, z, w, d, h, t = tint, y0 = 0) => out.push({ mat, minX: x - w / 2, maxX: x + w / 2, minY: y0, maxY: y0 + h, minZ: z - d / 2, maxZ: z + d / 2, tint: t });
+  const n = 44;
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2, d = half + 10 + rr() * 14;
+    const x = Math.cos(a) * d, z = Math.sin(a) * d;
+    if (kind === 'harbor' && z < -half) { // うみの ふね
+      if (i % 3) continue;
+      const L = 10 + rr() * 10; push('metal', x, z - 10, L, 4, 2.2, [0x8a3a2a, 0x3a5a8a, 0x5a6a5a][i % 3]); push('container', x - 1, z - 10, L * 0.5, 3, 2.0, 0xa0a0a0, 2.2);
+      continue;
+    }
+    if (kind === 'city' || kind === 'hospital' || kind === 'harbor') { const w = 5 + rr() * 6; push(kind === 'hospital' ? 'wall' : 'concrete', x, z, w, w, 5 + rr() * (kind === 'city' ? 16 : 9)); }
+    else if (kind === 'mall') { const w = 8 + rr() * 8; push('concrete', x, z, w, w, 3 + rr() * 6); }
+    else if (kind === 'base') { const w = 6 + rr() * 8; push(rr() < 0.4 ? 'hesco' : 'leaves', x, z, w, w, 2 + rr() * 5); }
+    else { const w = 4 + rr() * 5; push('leaves', x, z, w, w, 4 + rr() * 8); }
+  }
+  return out;
+}
+
 export function buildWorld(scene, map, T, { shadows }) {
   const mats = {};
-  const lam = (map, extra = {}) => new THREE.MeshLambertMaterial({ map, vertexColors: true, ...extra });
-  mats.road = lam(T.road); mats.roadLine = lam(T.roadLine); mats.cobble = lam(T.cobble); mats.brick = lam(T.brick);
-  mats.crate = lam(T.crate); mats.concrete = lam(T.concrete); mats.metal = lam(T.metal); mats.glass = lam(T.glass);
-  mats.dark = lam(T.dark); mats.log = lam(T.log); mats.leaves = lam(T.leaves); mats.sandbag = lam(T.sandbag);
-  mats.barrel = lam(T.barrel); mats.plank = lam(T.plank);
-  mats.light = new THREE.MeshBasicMaterial({ color: 0xfff2b0 });
+  const lam = (tx, extra = {}) => new THREE.MeshLambertMaterial({ map: tx, vertexColors: true, ...extra });
+  const mat = (key) => {
+    if (mats[key]) return mats[key];
+    if (key === 'light') mats.light = new THREE.MeshBasicMaterial({ color: 0xfff2b0 });
+    else if (key === 'ember') mats.ember = new THREE.MeshBasicMaterial({ color: 0xff8a2a });
+    else mats[key] = lam(T[LAM_KEYS.includes(key) ? key : 'concrete']);
+    return mats[key];
+  };
 
   const byMat = new Map();
   for (const b of map.boxes) {
@@ -61,34 +88,48 @@ export function buildWorld(scene, map, T, { shadows }) {
   }
   const meshes = [];
   for (const [key, list] of byMat) {
-    const mesh = new THREE.Mesh(mergeBoxes(list), mats[key] || mats.concrete);
-    const flat = key === 'road' || key === 'roadLine' || key === 'cobble' && list.every((b) => b.maxY < 0.2);
-    mesh.castShadow = shadows && !flat && key !== 'light';
+    const mesh = new THREE.Mesh(mergeBoxes(list), mat(key));
+    const flat = list.every((b) => b.maxY < 0.2);
+    mesh.castShadow = shadows && !flat && key !== 'light' && key !== 'ember';
     mesh.receiveShadow = shadows;
     mesh.matrixAutoUpdate = false; mesh.updateMatrix();
     scene.add(mesh); meshes.push(mesh);
   }
 
-  // じめん（くさ）
-  const gsize = HALF * 2 + 40;
+  // じめん（マップごと）
+  const half = map.half;
+  const gsize = half * 2 + 60;
   const gg = new THREE.PlaneGeometry(gsize, gsize);
   gg.rotateX(-Math.PI / 2);
   const uvA = gg.attributes.uv; for (let i = 0; i < uvA.count; i++) uvA.setXY(i, uvA.getX(i) * gsize, uvA.getY(i) * gsize);
-  const ground = new THREE.Mesh(gg, new THREE.MeshLambertMaterial({ map: T.grass }));
+  const groundMat = new THREE.MeshLambertMaterial({ map: T[map.theme?.ground || 'grass'] || T.grass });
+  mats.__ground = groundMat;
+  const ground = new THREE.Mesh(gg, groundMat);
   ground.receiveShadow = shadows; ground.matrixAutoUpdate = false; ground.updateMatrix();
   scene.add(ground); meshes.push(ground);
-
-  // とおくの けしき（ブロックの おか・き）
-  const far = [];
-  const rr = (() => { let s = 99; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); })();
-  for (let i = 0; i < 40; i++) {
-    const a = (i / 40) * Math.PI * 2, d = HALF + 10 + rr() * 12;
-    const x = Math.cos(a) * d, z = Math.sin(a) * d, h = 2 + rr() * 6, w = 4 + rr() * 6;
-    far.push({ mat: 'leaves', minX: x - w / 2, maxX: x + w / 2, minY: 0, maxY: h, minZ: z - w / 2, maxZ: z + w / 2, tint: 0xbfd8b0 });
+  // みなと: きたの そとは うみ
+  if (map.theme?.water === 'north') {
+    const wg = new THREE.PlaneGeometry(gsize, 40); wg.rotateX(-Math.PI / 2);
+    const wu = wg.attributes.uv; for (let i = 0; i < wu.count; i++) wu.setXY(i, wu.getX(i) * gsize / 2, wu.getY(i) * 20);
+    const water = new THREE.Mesh(wg, mats.__water = new THREE.MeshLambertMaterial({ map: T.water }));
+    water.position.set(0, 0.02, -half - 1 - 20); water.updateMatrix(); water.matrixAutoUpdate = false;
+    scene.add(water); meshes.push(water);
   }
-  const farMesh = new THREE.Mesh(mergeBoxes(far), mats.leaves);
-  farMesh.matrixAutoUpdate = false; farMesh.updateMatrix();
-  scene.add(farMesh); meshes.push(farMesh);
+
+  // とおくの けしき
+  const farList = farBoxes(map);
+  const farKeys = [...new Set(farList.map((b) => b.mat))];
+  for (const key of farKeys) {
+    const farMesh = new THREE.Mesh(mergeBoxes(farList.filter((b) => b.mat === key)), mat(key));
+    farMesh.matrixAutoUpdate = false; farMesh.updateMatrix();
+    scene.add(farMesh); meshes.push(farMesh);
+  }
 
   return { meshes, mats };
+}
+
+// マップを かえるとき: ジオメトリと ざいしつを すてる（テクスチャは のこす）
+export function disposeWorld(scene, world) {
+  for (const m of world.meshes) { scene.remove(m); m.geometry.dispose(); }
+  for (const k in world.mats) world.mats[k].dispose();
 }
