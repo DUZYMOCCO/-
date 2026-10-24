@@ -1,0 +1,311 @@
+{
+ "character": "GIRL",
+ "standing_height_L": 300,
+ "motions": {
+  "getup": {
+   "frames": 2,
+   "sizes": {
+    "s30": {
+     "file": "getup_s30.png",
+     "frame_w": 52,
+     "frame_h": 33,
+     "anchor": [
+      26,
+      32.2
+     ],
+     "standing_height": 30
+    },
+    "m60": {
+     "file": "getup_m60.png",
+     "frame_w": 104,
+     "frame_h": 66,
+     "anchor": [
+      52,
+      64.4
+     ],
+     "standing_height": 60
+    }
+   },
+   "fps": 5,
+   "loop": false,
+   "sequence": [
+    0,
+    1
+   ],
+   "then": "idle",
+   "mirror_for_left": true,
+   "facing": "right"
+  },
+  "hurt": {
+   "frames": 3,
+   "sizes": {
+    "s30": {
+     "file": "hurt_s30.png",
+     "frame_w": 52,
+     "frame_h": 33,
+     "anchor": [
+      26,
+      32.2
+     ],
+     "standing_height": 30
+    },
+    "m60": {
+     "file": "hurt_m60.png",
+     "frame_w": 104,
+     "frame_h": 66,
+     "anchor": [
+      52,
+      64.4
+     ],
+     "standing_height": 60
+    }
+   },
+   "fps": 8,
+   "loop": false,
+   "sequence": [
+    0,
+    1,
+    2
+   ],
+   "then": "idle",
+   "mirror_for_left": true,
+   "facing": "right"
+  },
+  "idle": {
+   "frames": 4,
+   "sizes": {
+    "s30": {
+     "file": "idle_s30.png",
+     "frame_w": 52,
+     "frame_h": 33,
+     "anchor": [
+      26,
+      32.2
+     ],
+     "standing_height": 30
+    },
+    "m60": {
+     "file": "idle_m60.png",
+     "frame_w": 104,
+     "frame_h": 66,
+     "anchor": [
+      52,
+      64.4
+     ],
+     "standing_height": 60
+    }
+   },
+   "fps": 3,
+   "loop": true,
+   "sequence": [
+    0,
+    1,
+    2,
+    1,
+    0,
+    3
+   ],
+   "mirror_for_left": true,
+   "facing": "right"
+  },
+  "knockdown": {
+   "frames": 4,
+   "sizes": {
+    "s30": {
+     "file": "knockdown_s30.png",
+     "frame_w": 52,
+     "frame_h": 33,
+     "anchor": [
+      26,
+      32.2
+     ],
+     "standing_height": 30
+    },
+    "m60": {
+     "file": "knockdown_m60.png",
+     "frame_w": 104,
+     "frame_h": 66,
+     "anchor": [
+      52,
+      64.4
+     ],
+     "standing_height": 60
+    }
+   },
+   "fps": 8,
+   "loop": false,
+   "sequence": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "hold_last": true,
+   "mirror_for_left": true,
+   "facing": "right"
+  },
+  "run": {
+   "frames": 12,
+   "sizes": {
+    "s30": {
+     "file": "run_s30.png",
+     "frame_w": 52,
+     "frame_h": 33,
+     "anchor": [
+      26,
+      32.2
+     ],
+     "standing_height": 30
+    },
+    "m60": {
+     "file": "run_m60.png",
+     "frame_w": 104,
+     "frame_h": 66,
+     "anchor": [
+      52,
+      64.4
+     ],
+     "standing_height": 60
+    }
+   },
+   "fps": 12,
+   "loop": true,
+   "sequence": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11
+   ],
+   "cycle_distance_L": 360,
+   "mirror_for_left": true,
+   "facing": "right"
+  },
+  "sit": {
+   "frames": 3,
+   "sizes": {
+    "s30": {
+     "file": "sit_s30.png",
+     "frame_w": 52,
+     "frame_h": 33,
+     "anchor": [
+      26,
+      32.2
+     ],
+     "standing_height": 30
+    },
+    "m60": {
+     "file": "sit_m60.png",
+     "frame_w": 104,
+     "frame_h": 66,
+     "anchor": [
+      52,
+      64.4
+     ],
+     "standing_height": 60
+    }
+   },
+   "fps": 3,
+   "loop": true,
+   "sequence": [
+    1,
+    2
+   ],
+   "sequence_intro": [
+    0
+   ],
+   "mirror_for_left": true,
+   "facing": "right"
+  },
+  "walk": {
+   "frames": 12,
+   "sizes": {
+    "s30": {
+     "file": "walk_s30.png",
+     "frame_w": 52,
+     "frame_h": 33,
+     "anchor": [
+      26,
+      32.2
+     ],
+     "standing_height": 30
+    },
+    "m60": {
+     "file": "walk_m60.png",
+     "frame_w": 104,
+     "frame_h": 66,
+     "anchor": [
+      52,
+      64.4
+     ],
+     "standing_height": 60
+    }
+   },
+   "fps": 8,
+   "loop": true,
+   "sequence": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11
+   ],
+   "cycle_distance_L": 260,
+   "mirror_for_left": true,
+   "facing": "right"
+  },
+  "wave": {
+   "frames": 4,
+   "sizes": {
+    "s30": {
+     "file": "wave_s30.png",
+     "frame_w": 52,
+     "frame_h": 33,
+     "anchor": [
+      26,
+      32.2
+     ],
+     "standing_height": 30
+    },
+    "m60": {
+     "file": "wave_m60.png",
+     "frame_w": 104,
+     "frame_h": 66,
+     "anchor": [
+      52,
+      64.4
+     ],
+     "standing_height": 60
+    }
+   },
+   "fps": 5,
+   "loop": true,
+   "sequence": [
+    0,
+    1,
+    2,
+    1,
+    2,
+    1,
+    0,
+    3
+   ],
+   "mirror_for_left": true,
+   "facing": "right"
+  }
+ }
+}

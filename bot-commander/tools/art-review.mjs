@@ -72,7 +72,7 @@ await page.evaluate(async () => {
   const { artSources } = await import('/bot-commander/js/render/art.js');
   const { buildArtCanvases } = await import('/bot-commander/js/render/textures.js');
   const src = await buildArtCanvases(artSources());
-  const keys = ['scav_ally', 'scav_ally_cmd', 'ponco_ally', 'ponco_ally_cmd', 'alien_enemy', 'alien_enemy_cmd', 'salvage_0', 'salvage_1', 'salvage_empty', 'hatch', 'hq_ally', 'hq_enemy'];
+  const keys = ['scav_ally', 'ponco_ally', 'alien_enemy', 'salvage_0', 'salvage_1', 'salvage_empty', 'hatch', 'hq_ally', 'hq_enemy'];
   const sheet = document.createElement('div'); sheet.id = 'art-sheet';
   sheet.style = 'position:absolute;left:0;top:0;width:900px;background:#222b2a;color:#e6dbc3;padding:24px;box-sizing:border-box;font:14px system-ui;z-index:10000;display:grid;grid-template-columns:repeat(6,1fr);gap:18px';
   const add = async (key, size) => {
@@ -103,14 +103,14 @@ const startCam = await page.evaluate(() => ({ ...window.__botCommander.r.cam }))
 for (const zoom of [1, 1.4, .4, 4]) {
   await page.evaluate(({ z, cam }) => {
     const { r, sim } = window.__botCommander; Object.assign(r.cam, cam); r.cam.zoom = z;
-    if (z >= 3) { const c = sim.units.find(u => u.kind === 'scav' && u.commander); r.cam.x = c.x; r.cam.y = c.y + 20; }
+    if (z >= 3) { const c = sim.units.find(u => u.kind === 'scav'); r.cam.x = c.x; r.cam.y = c.y + 20; }
     r.sync(0); r.app.render();
   }, { z: zoom, cam: startCam });
   await page.screenshot({ path: resolve(out, `start-zoom-${zoom}.png`) });
 }
 await page.evaluate(() => {
   const { r, sim } = window.__botCommander;
-  const c = sim.units.find(u => u.kind === 'ponco' && u.commander);
+  const c = sim.units.find(u => u.kind === 'ponco');
   r.cam.x = c.x; r.cam.y = c.y + 20; r.cam.zoom = 4; r.sync(0); r.app.render();
 });
 await page.screenshot({ path: resolve(out, 'ponco-zoom-4.png') });

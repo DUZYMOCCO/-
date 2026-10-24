@@ -1,4 +1,4 @@
-import { rasterArtSources } from './raster-art.js?v=7';
+import { rasterArtSources } from './raster-art.js?v=10';
 
 /**
  * 琥珀の廃墟 / SD メカ。手書きSVG・暗い輪郭・2段のセル影と暖色の縁光。
@@ -35,9 +35,8 @@ export const PALETTES = Object.freeze({
 });
 
 /** 射撃型「ポッド」: まるい頭とひさし型バイザー、右腕が筒の銃、短いアンテナ */
-function gunner(p, commander) {
-  const crest = commander ? `<path d="M26 10 L32 -1 L38 10 Q32 7.5 26 10Z" fill="${p.accent}" ${S2}/><path d="M29.5 6 L32 1.5 L34.5 6Z" fill="#fff" opacity=".45"/>` :
-    `<path d="M40 9 L45 2" ${SW(2.4)}/><circle cx="45.5" cy="1.8" r="2.4" fill="${p.accent}" ${S2}/>`;
+function gunner(p) {
+  const crest = `<path d="M40 9 L45 2" ${SW(2.4)}/><circle cx="45.5" cy="1.8" r="2.4" fill="${p.accent}" ${S2}/>`;
   return `
   <ellipse cx="32" cy="61" rx="17" ry="3" fill="#000" opacity=".25"/>
   <rect x="20" y="49" width="9" height="10" rx="3" fill="${p.joint}" ${S2}/><rect x="35" y="49" width="9" height="10" rx="3" fill="${p.joint}" ${S2}/>
@@ -57,8 +56,8 @@ function gunner(p, commander) {
 }
 
 /** 重装型「ブロック」: 頭と胴が一体の箱、肩に2連の砲、太い足（キャタピラ風） */
-function heavy(p, commander) {
-  const crest = commander ? `<path d="M24 12 L32 2 L40 12Z" fill="${p.accent}" ${S2}/><path d="M28.5 10 L32 5.5 L35.5 10Z" fill="#fff" opacity=".4"/>` : '';
+function heavy(p) {
+  const crest = '';
   return `
   <ellipse cx="32" cy="61" rx="21" ry="3" fill="#000" opacity=".25"/>
   <rect x="11" y="51" width="16" height="10" rx="4" fill="${p.joint}" ${S2}/><rect x="37" y="51" width="16" height="10" rx="4" fill="${p.joint}" ${S2}/>
@@ -75,12 +74,6 @@ function heavy(p, commander) {
   <rect x="26" y="40" width="12" height="7" rx="2" fill="${p.accent}" ${S2}/>
   <path d="M29 43.5 H35" stroke="${O}" stroke-width="1.4"/>`;
 }
-
-/** 隊長マーカー（頭の上に出す旗つきの星） */
-const commanderMarker = (p) => wrap(`
-  <path d="M10 30 V4" ${SW(2.6)}/><path d="M10 30 V4" stroke="#d1d5db" stroke-width="1.2"/>
-  <path d="M11 5 H28 L23.5 10.5 L28 16 H11Z" fill="${p.main}" ${S2}/>
-  <path d="M16.5 7.4 L17.6 9.6 L20 9.8 L18.2 11.4 L18.8 13.8 L16.5 12.5 L14.2 13.8 L14.8 11.4 L13 9.8 L15.4 9.6Z" fill="${p.accent === '#2b2d33' ? '#ffe066' : p.accent}" ${SW(0.8)}/>`, '0 0 32 32');
 
 /** 本陣（ドームの格納庫＋旗） */
 function hq(p) {
@@ -154,9 +147,9 @@ export function terrainSvg(kind, v = 0) {
 /* ===== v0.2.0 ミッション用 ===== */
 
 /** ツギハギ号（スカベンジャー）: 大きな暗いリベット打ちの丸い頭（全高の約6割）・青く光る大きな丸い目2つ・細いアンテナ・ケーブル・小さな体。
- *  ユーザーの設定画 ref/scavenger/scavenger_concept_01.jpg が基準。commander は頭の上に小さな黄色い灯り。 */
+ *  ユーザーの設定画 ref/scavenger/scavenger_concept_01.jpg が基準。（v0.4.0-dev で隊長の灯りはなくした） */
 // Parts are local art options; no sim fields, randomness, or extra texture keys.
-function scav(commander, { glow = '#59daff', antenna = 'twin', armTool = 'claw', legs = 'boots', addon = 'pack' } = {}) {
+function scav({ glow = '#59daff', antenna = 'twin', armTool = 'claw', legs = 'boots', addon = 'pack' } = {}) {
   const eye = (x, y, r) => `<circle cx="${x}" cy="${y}" r="${r + 1.3}" fill="#142831" ${S2}/>
     <circle cx="${x}" cy="${y}" r="${r}" fill="${glow}"/>
     <circle cx="${x + .5}" cy="${y + .7}" r="${r * .62}" fill="#c5f5ff"/>
@@ -173,8 +166,7 @@ function scav(commander, { glow = '#59daff', antenna = 'twin', armTool = 'claw',
   const claw = armTool === 'claw' ? `<path d="M47 38 L53 43 L51 48" fill="none" stroke="#1b2526" stroke-width="6" stroke-linecap="round"/>
     <path d="M47 38 L53 43 L51 48" fill="none" stroke="#888d7c" stroke-width="3" stroke-linecap="round"/>
     <path d="M51 47 L56 49 L54 52 M51 47 L49 51 L51 53" fill="none" stroke="#c3b281" stroke-width="2.2" stroke-linecap="round"/>` : '';
-  const lamp = commander ? `<path d="M32 8 V3" stroke="#202a28" stroke-width="3"/>
-    <circle cx="32" cy="3.5" r="3.4" fill="#ffe4a1" opacity=".2"/><rect x="29.5" y="1" width="5" height="5" rx="2" fill="#ffcf62" ${SW(1.2)}/>` : '';
+  const lamp = '';
   return `
   <ellipse cx="32" cy="56.4" rx="18" ry="3.2" fill="#0c191c" opacity=".3"/>
   ${pack}${feet}
@@ -202,8 +194,8 @@ function scav(commander, { glow = '#59daff', antenna = 'twin', armTool = 'claw',
 }
 
 /** PONCO02（戦闘用）: 丸いフォルムの白・青・赤の三色、暗いバイザーの目、腕の短い銃 */
-function ponco(commander) {
-  const crest = commander ? `<path d="M27 11 L32 2 L37 11Z" fill="#ffd166" ${S2}/><path d="M31 8 L32 4 L34 8Z" fill="#fff1ba"/>` : `<path d="M42 13 L47 4" ${SW(1.9)}/><circle cx="47" cy="4" r="1.8" fill="#d8674b" ${SW(.9)}/>`;
+function ponco() {
+  const crest = `<path d="M42 13 L47 4" ${SW(1.9)}/><circle cx="47" cy="4" r="1.8" fill="#d8674b" ${SW(.9)}/>`;
   return `
   <ellipse cx="32" cy="56.3" rx="20" ry="3.4" fill="#102226" opacity=".3"/>
   <rect x="15" y="25" width="12" height="18" rx="3" fill="#405d68" ${S2}/><path d="M18 28 V36" stroke="#899f98" stroke-width="2"/>
@@ -240,7 +232,7 @@ function ponco(commander) {
 }
 
 /** 異星生物（巡回）: 動物と機械の融合。肉の膨らみ＋埋め込まれた金属板、不揃いに光る目、虫やカニのようなとげの脚、光る口 */
-function alien(commander) {
+function alien() {
   const glow = '#ffc268';
   const leg = (x, y, kneeX, kneeY, footX) => `<path d="M${x} ${y} L${kneeX} ${kneeY} L${footX} 55 L${footX + 3} 56 L${kneeX + 4} ${kneeY - 4} L${x + 3} ${y - 4}Z" fill="#433d3a" ${S2}/>
     <path d="M${x + 1} ${y - 2} L${kneeX + 2} ${kneeY - 2} L${footX + 1} 52" fill="none" stroke="#a39068" stroke-width="1.4"/>
@@ -267,8 +259,7 @@ function alien(commander) {
   <path d="M39 42 l2 3 l2 -2 M47 43 l2 2 l2 -3" fill="none" stroke="#ffe0a1" stroke-width="1.3"/>
   ${eye(41, 29, 3.7)}${eye(51, 27, 2.2)}${eye(32, 33, 1.7)}
   <path d="M24 35 L28 38 L25 42 M27 38 L32 39" fill="none" stroke="#e5ac5f" stroke-width="1.5" stroke-linecap="round"/>
-  ${leg(27, 43, 10, 45, 8)}${leg(43, 43, 49, 48, 47)}
-  ${commander ? '<path d="M32 19 L35 13 L39 17" fill="none" stroke="#ffcc76" stroke-width="2.1" stroke-linecap="round"/>' : ''}`;
+  ${leg(27, 43, 10, 45, 8)}${leg(43, 43, 49, 48, 47)}`;
 }
 
 /** 回収ポイント（ガラクタの山）。v=0/1 で形を変える。empty は掘りつくした跡 */
@@ -322,26 +313,39 @@ function hatch() {
   <rect x="62" y="20" width="16" height="4" rx="2" fill="#3b4e48" ${S2}/>`, '0 0 96 96');
 }
 
+/** 人間（仮の絵）。ロボットより小さく、明るい服で「守る相手」と一目でわかるように。v0.4.0-dev */
+function human(kind) {
+  const girl = kind === 'girl';
+  const cloth = girl ? '#ff9fb2' : '#ffd166', clothShade = girl ? '#c96a80' : '#c99a3a', hair = girl ? '#7a4a2a' : '#3b2a1e';
+  return wrap(`
+  <ellipse cx="32" cy="58" rx="11" ry="3.5" fill="#000" opacity=".28"/>
+  <path d="M27 46 L26 57 M37 46 L38 57" ${SW(4.2)}/><path d="M27 46 L26 56 M37 46 L38 56" stroke="#4b5563" stroke-width="2.4" stroke-linecap="round"/>
+  ${shadedBox('hb' + kind, 22, 31, 20, 17, 6, cloth, clothShade)}
+  <path d="M22 35 L17 44 M42 35 L47 44" ${SW(3.8)}/><path d="M22 35 L17 43 M42 35 L47 43" stroke="#f2c9a0" stroke-width="2" stroke-linecap="round"/>
+  ${shadedCircle('hh' + kind, 32, 21, 11, '#f6d2ad', '#d9a47c')}
+  <path d="M21 20 Q22 9 32 9 Q43 9 43 20 Q38 14 32 15 Q26 14 21 20Z" fill="${hair}" ${S2}/>
+  ${girl ? `<path d="M21 20 Q17 30 21 34 M43 20 Q47 30 43 34" stroke="${hair}" stroke-width="3.2" fill="none" stroke-linecap="round"/>` : `<path d="M36 10 L40 5" stroke="${hair}" stroke-width="2.6" stroke-linecap="round"/>`}
+  <circle cx="28" cy="22" r="1.6" fill="${O}"/><circle cx="36" cy="22" r="1.6" fill="${O}"/>
+  <path d="M30 27 Q32 28.5 34 27" stroke="${O}" stroke-width="1.3" fill="none" stroke-linecap="round"/>`);
+}
+
 /** 描画に使う SVG の一覧。キー → SVG 文字列 と、表示の大きさ（px, 元の viewBox との比） */
-export function artSources() {
+export function artSources(opts = {}) {
   const out = {};
   for (const side of ['ally', 'enemy']) {
     const p = PALETTES[side];
-    out[`gunner_${side}`] = wrap(gunner(p, false));
-    out[`gunner_${side}_cmd`] = wrap(gunner(p, true));
-    out[`heavy_${side}`] = wrap(heavy(p, false));
-    out[`heavy_${side}_cmd`] = wrap(heavy(p, true));
-    out[`marker_${side}`] = commanderMarker(p);
+    out[`gunner_${side}`] = wrap(gunner(p));
+    out[`heavy_${side}`] = wrap(heavy(p));
     out[`hq_${side}`] = hq(p);
   }
   for (const k of ['plain', 'forest', 'mountain', 'water']) for (const v of [0, 1]) out[`tile_${k}_${v}`] = terrainSvg(k, v);
   // v0.2.0 ミッション用
-  out.scav_ally = wrap(scav(false)); out.scav_ally_cmd = wrap(scav(true));
-  out.ponco_ally = wrap(ponco(false)); out.ponco_ally_cmd = wrap(ponco(true));
-  out.alien_enemy = wrap(alien(false)); out.alien_enemy_cmd = wrap(alien(true));
+  // v0.4.0-dev: 隊長の絵（隊長用の別の絵と頭上の旗）はなくした
+  out.scav_ally = wrap(scav()); out.ponco_ally = wrap(ponco()); out.alien_enemy = wrap(alien());
   out.salvage_0 = salvagePile(0); out.salvage_1 = salvagePile(1); out.salvage_empty = salvagePile(0, true);
   out.hatch = hatch();
+  out.boy_ally = human('boy'); out.girl_ally = human('girl'); // v0.4.0-dev 人間（仮の絵）
   // Final mission art uses reference-based raster miniatures. Legacy SVGs stay available above.
-  Object.assign(out, rasterArtSources());
+  Object.assign(out, rasterArtSources(opts));
   return out;
 }

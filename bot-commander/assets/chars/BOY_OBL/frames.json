@@ -1,0 +1,346 @@
+{
+ "character": "BOY",
+ "standing_height_L": 300,
+ "motions": {
+  "getup": {
+   "frames": 7,
+   "sizes": {
+    "s30": {
+     "file": "getup_s30.png",
+     "frame_w": 52,
+     "frame_h": 33,
+     "anchor": [
+      26,
+      32.2
+     ],
+     "standing_height": 30
+    },
+    "m60": {
+     "file": "getup_m60.png",
+     "frame_w": 104,
+     "frame_h": 66,
+     "anchor": [
+      52,
+      64.4
+     ],
+     "standing_height": 60
+    }
+   },
+   "fps": 8,
+   "loop": false,
+   "sequence": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ],
+   "then": "idle",
+   "mirror_for_left": true,
+   "facing": "right"
+  },
+  "hurt": {
+   "frames": 6,
+   "sizes": {
+    "s30": {
+     "file": "hurt_s30.png",
+     "frame_w": 52,
+     "frame_h": 33,
+     "anchor": [
+      26,
+      32.2
+     ],
+     "standing_height": 30
+    },
+    "m60": {
+     "file": "hurt_m60.png",
+     "frame_w": 104,
+     "frame_h": 66,
+     "anchor": [
+      52,
+      64.4
+     ],
+     "standing_height": 60
+    }
+   },
+   "fps": 8,
+   "loop": false,
+   "sequence": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "then": "idle",
+   "mirror_for_left": true,
+   "facing": "right"
+  },
+  "idle": {
+   "frames": 7,
+   "sizes": {
+    "s30": {
+     "file": "idle_s30.png",
+     "frame_w": 52,
+     "frame_h": 33,
+     "anchor": [
+      26,
+      32.2
+     ],
+     "standing_height": 30
+    },
+    "m60": {
+     "file": "idle_m60.png",
+     "frame_w": 104,
+     "frame_h": 66,
+     "anchor": [
+      52,
+      64.4
+     ],
+     "standing_height": 60
+    }
+   },
+   "fps": 4,
+   "loop": true,
+   "sequence": [
+    0,
+    1,
+    2,
+    3,
+    6,
+    4,
+    6,
+    5
+   ],
+   "mirror_for_left": true,
+   "facing": "right",
+   "note": "仮: 走りと同じ rig で作り直し (human-oblique/run/idle_obl.py)"
+  },
+  "knockdown": {
+   "frames": 7,
+   "sizes": {
+    "s30": {
+     "file": "knockdown_s30.png",
+     "frame_w": 52,
+     "frame_h": 33,
+     "anchor": [
+      26,
+      32.2
+     ],
+     "standing_height": 30
+    },
+    "m60": {
+     "file": "knockdown_m60.png",
+     "frame_w": 104,
+     "frame_h": 66,
+     "anchor": [
+      52,
+      64.4
+     ],
+     "standing_height": 60
+    }
+   },
+   "fps": 8,
+   "loop": false,
+   "sequence": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ],
+   "hold_last": true,
+   "mirror_for_left": true,
+   "facing": "right"
+  },
+  "run": {
+   "frames": 24,
+   "sizes": {
+    "s30": {
+     "file": "run_s30.png",
+     "frame_w": 52,
+     "frame_h": 33,
+     "anchor": [
+      26,
+      32.2
+     ],
+     "standing_height": 30
+    },
+    "m60": {
+     "file": "run_m60.png",
+     "frame_w": 104,
+     "frame_h": 66,
+     "anchor": [
+      52,
+      64.4
+     ],
+     "standing_height": 60
+    }
+   },
+   "fps": 30,
+   "loop": true,
+   "sequence": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23
+   ],
+   "cycle_distance_L": 269,
+   "mirror_for_left": true,
+   "facing": "right"
+  },
+  "sit": {
+   "frames": 7,
+   "sizes": {
+    "s30": {
+     "file": "sit_s30.png",
+     "frame_w": 52,
+     "frame_h": 33,
+     "anchor": [
+      26,
+      32.2
+     ],
+     "standing_height": 30
+    },
+    "m60": {
+     "file": "sit_m60.png",
+     "frame_w": 104,
+     "frame_h": 66,
+     "anchor": [
+      52,
+      64.4
+     ],
+     "standing_height": 60
+    }
+   },
+   "fps": 4,
+   "loop": true,
+   "sequence": [
+    4,
+    5,
+    6,
+    5
+   ],
+   "sequence_intro": [
+    0,
+    1,
+    2,
+    3
+   ],
+   "mirror_for_left": true,
+   "facing": "right"
+  },
+  "walk": {
+   "frames": 12,
+   "sizes": {
+    "s30": {
+     "file": "walk_s30.png",
+     "frame_w": 52,
+     "frame_h": 33,
+     "anchor": [
+      26,
+      32.2
+     ],
+     "standing_height": 30
+    },
+    "m60": {
+     "file": "walk_m60.png",
+     "frame_w": 104,
+     "frame_h": 66,
+     "anchor": [
+      52,
+      64.4
+     ],
+     "standing_height": 60
+    }
+   },
+   "fps": 8,
+   "loop": true,
+   "sequence": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11
+   ],
+   "cycle_distance_L": 260,
+   "mirror_for_left": true,
+   "facing": "right"
+  },
+  "wave": {
+   "frames": 8,
+   "sizes": {
+    "s30": {
+     "file": "wave_s30.png",
+     "frame_w": 52,
+     "frame_h": 33,
+     "anchor": [
+      26,
+      32.2
+     ],
+     "standing_height": 30
+    },
+    "m60": {
+     "file": "wave_m60.png",
+     "frame_w": 104,
+     "frame_h": 66,
+     "anchor": [
+      52,
+      64.4
+     ],
+     "standing_height": 60
+    }
+   },
+   "fps": 8,
+   "loop": true,
+   "sequence": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    4,
+    5,
+    6,
+    7,
+    1
+   ],
+   "mirror_for_left": true,
+   "facing": "right"
+  }
+ },
+ "note": "お試し: 斜め上(約45°)から見た少年。idle と run のキー3枚だけ差し替え。ほかは BOY のコピー（横向き） / run: 斜め rig 8キー+RIFE 24コマ@30fps（仮, human-oblique/run/） / run v2: 脇をしめた腕"
+}

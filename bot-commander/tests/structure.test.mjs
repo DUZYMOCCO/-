@@ -19,7 +19,7 @@ test('sw-assets.js: 版の形式と、配信するファイルが全部そろっ
   const sandbox = { GAME_ASSETS: {} };
   new Function('self', readFileSync(join(ROOT, 'sw-assets.js'), 'utf8'))(sandbox);
   const a = sandbox.GAME_ASSETS['bot-commander'];
-  assert.match(a.version, /^v\d+$/); assert.match(a.gameVersion, /^\d+\.\d+\.\d+$/);
+  assert.match(a.version, /^v\d+$/); assert.match(a.gameVersion, /^\d+\.\d+\.\d+(-dev)?$/); // 開発中は 0.4.0-dev のように -dev を付けてよい
   for (const f of a.files) assert.ok(existsSync(join(ROOT, f)), `ない: ${f}`);
   const shipped = [...walk(join(ROOT, 'js')), ...walk(join(ROOT, 'css')), ...walk(join(ROOT, 'vendor'))].map(p => relative(ROOT, p).split('\\').join('/'));
   for (const f of shipped) assert.ok(a.files.includes(f), `sw-assets.js に載っていない: ${f}`);

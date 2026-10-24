@@ -1,5 +1,30 @@
 // SVG / raster descriptors -> Pixi textures, baked once at boot. No per-frame image processing.
-import { Texture } from '../../vendor/pixi-8.22.0.min.mjs?v=7';
+import { Texture, Rectangle } from '../../vendor/pixi-8.22.0.min.mjs?v=7';
+
+/**
+ * 紙芝居式のキャラ絵（assets/chars/<フォルダ>/frames.json と横一列の絵）を読む。chars: { 種類: フォルダ }
+ * 返り値: { 種類: { def, tex: { '<motion>_<size>': [コマごとの Texture] }, sources: { size: [TextureSource] } } }
+ * 読めなかったキャラは入れない（その種類は前の絵のまま）。
+ */
+export async function loadCharSheets(chars) {
+  const out = {};
+  await Promise.all(Object.entries(chars).map(async ([kind, dir]) => {
+    try {
+      const base = new URL(`../../assets/chars/${dir}/`, import.meta.url);
+      const res = await fetch(new URL('frames.json', base));
+      if (!res.ok) throw new Error(`frames.json ${res.status}`);
+      const def = await res.json(), tex = {}, sources = {};
+      await Promise.all(Object.entries(def.motions).flatMap(([motion, m]) => Object.entries(m.sizes).map(async ([size, z]) => {
+        const img = new Image(); img.src = new URL(z.file, base).href; await img.decode();
+        const src = Texture.from(img).source; src.scaleMode = 'linear';
+        (sources[size] ||= []).push(src);
+        tex[`${motion}_${size}`] = Array.from({ length: m.frames }, (_, i) => new Texture({ source: src, frame: new Rectangle(i * z.frame_w, 0, z.frame_w, z.frame_h) }));
+      })));
+      out[kind] = { def, tex, sources };
+    } catch (e) { console.warn(`[bot-commander] ${dir} の絵を読めない（前の絵で出す）`, e); }
+  }));
+  return out;
+}
 
 async function svgToCanvas(svg, px) {
   const img = new Image();
@@ -12,21 +37,6 @@ async function svgToCanvas(svg, px) {
   c.width = Math.round(w * scale); c.height = Math.round(h * scale);
   c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
   return c;
-}
-
-function badge(g, badge, px) {
-  const x = badge.x * px, y = badge.y * px, r = px * .025;
-  g.save(); g.lineJoin = 'round'; g.strokeStyle = '#382b17'; g.lineWidth = px * .006;
-  const light = g.createLinearGradient(x - r, y - r * 2, x + r, y + r);
-  light.addColorStop(0, '#fff7cf'); light.addColorStop(.35, '#ffd773'); light.addColorStop(1, '#9c682b');
-  g.fillStyle = light;
-  if (badge.type === 'lamp') {
-    g.fillRect(x - r * .7, y, r * 1.4, r * 1.4);
-    g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill(); g.stroke();
-  } else {
-    g.beginPath(); g.moveTo(x - r * 1.4, y + r); g.lineTo(x, y - r * 2.5); g.lineTo(x + r * 1.4, y + r); g.closePath(); g.fill(); g.stroke();
-  }
-  g.restore();
 }
 
 async function rasterToCanvas(source, images) {
@@ -52,7 +62,6 @@ async function rasterToCanvas(source, images) {
     g.globalCompositeOperation = 'source-atop'; g.fillStyle = '#ad3e2540'; g.fillRect(0, 0, px, px);
     g.globalCompositeOperation = 'source-over';
   }
-  if (source.badge) badge(g, source.badge, px);
   return canvas;
 }
 

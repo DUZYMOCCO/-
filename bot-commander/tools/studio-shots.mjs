@@ -45,7 +45,7 @@ await page.screenshot({ path: OUT + 'studio_03_order_in_hub.png' });
 result.order = await page.evaluate(() => window.__botCommander.sim.squads.find(q => q.id === 'a2').order?.waypoints.length ?? 0);
 
 // 工房へ戻る
-await page.locator('.bc-back').click();
+await page.locator('.bc-menu-btn').click(); await page.locator('.bc-menu-hub').click(); await page.locator('.bc-confirm-leave').click();
 await page.waitForTimeout(300);
 result.backToHub = await page.evaluate(() => !document.getElementById('studio-hub').classList.contains('hidden') && !window.__botCommander);
 

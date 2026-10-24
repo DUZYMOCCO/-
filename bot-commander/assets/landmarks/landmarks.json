@@ -1,0 +1,317 @@
+{
+ "town-ruins_v1": {
+  "file": "town-ruins_v1.webp",
+  "w": 512,
+  "h": 269,
+  "anchor": [
+   0.4995,
+   0.9267
+  ],
+  "worldW": 273.9,
+  "states": {
+   "damaged": {
+    "file": "town-ruins_v1_damaged.webp",
+    "w": 512,
+    "h": 269,
+    "anchor": [
+     0.4936,
+     0.9268
+    ],
+    "worldW": 274.2
+   },
+   "destroyed": {
+    "file": "town-ruins_v1_destroyed.webp",
+    "w": 512,
+    "h": 251,
+    "anchor": [
+     0.493,
+     0.9214
+    ],
+    "worldW": 273.9
+   }
+  }
+ },
+ "town-ruins_v2": {
+  "file": "town-ruins_v2.webp",
+  "w": 512,
+  "h": 365,
+  "anchor": [
+   0.4989,
+   0.9473
+  ],
+  "worldW": 273.0,
+  "states": {
+   "damaged": {
+    "file": "town-ruins_v2_damaged.webp",
+    "w": 512,
+    "h": 367,
+    "anchor": [
+     0.4876,
+     0.9489
+    ],
+    "worldW": 272.2
+   },
+   "destroyed": {
+    "file": "town-ruins_v2_destroyed.webp",
+    "w": 512,
+    "h": 331,
+    "anchor": [
+     0.4822,
+     0.9417
+    ],
+    "worldW": 272.2
+   }
+  }
+ },
+ "housing-remains_v1": {
+  "file": "housing-remains_v1.webp",
+  "w": 512,
+  "h": 413,
+  "anchor": [
+   0.5005,
+   0.9497
+  ],
+  "worldW": 292.2,
+  "states": {
+   "damaged": {
+    "file": "housing-remains_v1_damaged.webp",
+    "w": 512,
+    "h": 412,
+    "anchor": [
+     0.4946,
+     0.9507
+    ],
+    "worldW": 291.9
+   },
+   "destroyed": {
+    "file": "housing-remains_v1_destroyed.webp",
+    "w": 512,
+    "h": 349,
+    "anchor": [
+     0.5,
+     0.9418
+    ],
+    "worldW": 291.9
+   }
+  }
+ },
+ "housing-remains_v2": {
+  "file": "housing-remains_v2.webp",
+  "w": 512,
+  "h": 333,
+  "anchor": [
+   0.5005,
+   0.939
+  ],
+  "worldW": 291.6,
+  "states": {
+   "damaged": {
+    "file": "housing-remains_v2_damaged.webp",
+    "w": 512,
+    "h": 340,
+    "anchor": [
+     0.4962,
+     0.9401
+    ],
+    "worldW": 290.9
+   },
+   "destroyed": {
+    "file": "housing-remains_v2_destroyed.webp",
+    "w": 512,
+    "h": 276,
+    "anchor": [
+     0.4952,
+     0.9261
+    ],
+    "worldW": 290.9
+   }
+  }
+ },
+ "highrise-remains_v1": {
+  "file": "highrise-remains_v1.webp",
+  "w": 512,
+  "h": 505,
+  "anchor": [
+   0.5016,
+   0.9607
+  ],
+  "worldW": 317.5,
+  "states": {
+   "damaged": {
+    "file": "highrise-remains_v1_damaged.webp",
+    "w": 512,
+    "h": 507,
+    "anchor": [
+     0.4951,
+     0.9619
+    ],
+    "worldW": 316.8
+   },
+   "destroyed": {
+    "file": "highrise-remains_v1_destroyed.webp",
+    "w": 512,
+    "h": 228,
+    "anchor": [
+     0.4854,
+     0.915
+    ],
+    "worldW": 316.8
+   }
+  }
+ },
+ "highrise-remains_v2": {
+  "file": "highrise-remains_v2.webp",
+  "w": 431,
+  "h": 512,
+  "anchor": [
+   0.5,
+   0.9615
+  ],
+  "worldW": 268.7,
+  "states": {
+   "damaged": {
+    "file": "highrise-remains_v2_damaged.webp",
+    "w": 431,
+    "h": 512,
+    "anchor": [
+     0.4968,
+     0.9615
+    ],
+    "worldW": 269.0
+   },
+   "destroyed": {
+    "file": "highrise-remains_v2_destroyed.webp",
+    "w": 512,
+    "h": 256,
+    "anchor": [
+     0.4911,
+     0.9084
+    ],
+    "worldW": 268.7
+   }
+  }
+ },
+ "tree-leafy_v1": {
+  "file": "tree-leafy_v1.webp",
+  "w": 237,
+  "h": 256,
+  "anchor": [
+   0.5,
+   0.9757
+  ],
+  "worldW": 155.9,
+  "states": {
+   "damaged": {
+    "file": "tree-leafy_v1_damaged.webp",
+    "w": 236,
+    "h": 256,
+    "anchor": [
+     0.5,
+     0.974
+    ],
+    "worldW": 158.1
+   },
+   "destroyed": {
+    "file": "tree-leafy_v1_destroyed.webp",
+    "w": 256,
+    "h": 148,
+    "anchor": [
+     0.5495,
+     0.9184
+    ],
+    "worldW": 157.3
+   }
+  }
+ },
+ "tree-sparse_v1": {
+  "file": "tree-sparse_v1.webp",
+  "w": 251,
+  "h": 256,
+  "anchor": [
+   0.5011,
+   0.9779
+  ],
+  "worldW": 165.1,
+  "states": {
+   "damaged": {
+    "file": "tree-sparse_v1_damaged.webp",
+    "w": 252,
+    "h": 256,
+    "anchor": [
+     0.4866,
+     0.978
+    ],
+    "worldW": 166.2
+   },
+   "destroyed": {
+    "file": "tree-sparse_v1_destroyed.webp",
+    "w": 256,
+    "h": 130,
+    "anchor": [
+     0.4208,
+     0.9067
+    ],
+    "worldW": 164.0
+   }
+  }
+ },
+ "tree-dead_v1": {
+  "file": "tree-dead_v1.webp",
+  "w": 213,
+  "h": 256,
+  "anchor": [
+   0.4987,
+   0.9736
+  ],
+  "worldW": 128.9,
+  "states": {
+   "damaged": {
+    "file": "tree-dead_v1_damaged.webp",
+    "w": 198,
+    "h": 256,
+    "anchor": [
+     0.5085,
+     0.976
+    ],
+    "worldW": 121.0
+   },
+   "destroyed": {
+    "file": "tree-dead_v1_destroyed.webp",
+    "w": 256,
+    "h": 146,
+    "anchor": [
+     0.5131,
+     0.9502
+    ],
+    "worldW": 156.5
+   }
+  }
+ },
+ "_icons": {
+  "repair-kit": {
+   "file": "icons/pickup-repair-kit.webp",
+   "w": 64,
+   "h": 64
+  },
+  "gun": {
+   "file": "icons/pickup-gun.webp",
+   "w": 64,
+   "h": 64
+  },
+  "cannon": {
+   "file": "icons/pickup-cannon.webp",
+   "w": 64,
+   "h": 64
+  },
+  "blade": {
+   "file": "icons/pickup-blade.webp",
+   "w": 64,
+   "h": 64
+  },
+  "grenade": {
+   "file": "icons/pickup-grenade.webp",
+   "w": 64,
+   "h": 64
+  }
+ }
+}
