@@ -14,8 +14,11 @@ import {
   MAX_CLIMB, JUMP_H, climbTime, climbTarget, climbLanding, supportBox, playerReachableTops, boxGap,
   spinGun, weaponMoveMul, makeBoxIndex, MAP_IDS, MAP_CHOICES, pickMapId, pickSpawnPoint, HURRY, hurryMul,
   GEAR_WEIGHT, RARITY_BONUS, gearPower, loadoutValue, bestLoadout, autoEquipBest, equipGain, shouldAutoEquip, autoPickup,
+  SPECIAL_UNLOCK, SPECIAL_IDS, unlockedSpecials, damageMul, frontHit, heavyOf,
 } from '../js/rules.js';
+import { makeNav } from '../js/nav.js';
 import { buildMap, playerColliders, zombieColliders, shotColliders, MAPS, MAP_IDS as MAP_IDS_MAP, mapInfo } from '../js/map.js';
+const FLAT_IDS = MAP_IDS_MAP.filter((id) => !buildMap(id).vertical); // たいらな マップ（たてに ひろい マップは nav.js で しらべる）
 
 test('さいしょの ぶきは アサルトライフル（30はつ フルオート）', () => {
   assert.equal(DEFAULT_WEAPON, 'rifle');
@@ -81,7 +84,7 @@ test('ウェーブは だんだん むずかしく、さいしょは あるく �
   let prev = 0;
   for (let n = 1; n <= 15; n++) {
     const s = waveSpec(n);
-    assert.equal(s.walkers + s.runners + s.brutes + s.boss, s.total);
+    assert.equal(s.walkers + s.runners + s.brutes + s.boss + s.specialCount, s.total);
     assert.ok(s.total >= prev); prev = s.total;
     const q = waveQueue(s, () => 0.3);
     assert.equal(q.length, s.total);
@@ -119,7 +122,7 @@ test('collideCircle: かべを すりぬけない、ひくい はこには の�
   assert.equal(groundHeight(3, 0, 0.35, 1.0, [box]), 0);
 });
 
-for (const MID of MAP_IDS_MAP) test(`[${MID}] マップ: スタートは あいていて、ぜんぶの ゲートから プレイヤーに たどりつける`, () => {
+for (const MID of FLAT_IDS) test(`[${MID}] マップ: スタートは あいていて、ぜんぶの ゲートから プレイヤーに たどりつける`, () => {
   const map = buildMap(MID); const HALF = map.half;
   const pc = playerColliders(map);
   const s = map.playerStart;
@@ -223,7 +226,7 @@ test('なめらか いどう: approach は フレームレートに よらない
 });
 
 test('バージョン と セーブの ステージ', () => {
-  assert.equal(VERSION, '0.5.0');
+  assert.equal(VERSION, '0.6.0');
   assert.equal(normalizeSave(null).stage, 'day');
   assert.equal(normalizeSave({ stage: 'night' }).stage, 'night');
   assert.equal(normalizeSave({ stage: 'mars' }).stage, 'day');
@@ -313,7 +316,7 @@ test('よじのぼり: くるまは 1〜1.5びょう、のぼる はこを え�
   assert.equal(supportBox(0, 0, 0.35, 1.72, [car, glass]), glass);
 });
 
-for (const MID of MAP_IDS_MAP) test(`[${MID}] あんぜんちたい なし: プレイヤーが のれる ところは ぜんぶ ゾンビも のぼって こられる`, () => {
+for (const MID of FLAT_IDS) test(`[${MID}] あんぜんちたい なし: プレイヤーが のれる ところは ぜんぶ ゾンビも のぼって こられる`, () => {
   const map = buildMap(MID); const HALF = map.half;
   const pc = playerColliders(map), zc = zombieColliders(map);
   const tops = playerReachableTops(pc);
@@ -554,20 +557,20 @@ test('そうび: つける・しまう・すてる・いっぱいの とき', ()
 function lcg(seed) { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); }
 
 test('v0.5.0 マップ: 6しゅるい・ひろい・おまかせ じゅんばん', () => {
-  assert.deepEqual(MAP_IDS, ['city', 'mall', 'base', 'hospital', 'camp', 'harbor']);
+  assert.deepEqual(MAP_IDS, ['city', 'mall', 'base', 'hospital', 'camp', 'harbor', 'rooftop', 'office']);
   assert.deepEqual(MAP_IDS_MAP, MAP_IDS, 'rules と map の いちらんが おなじ');
   assert.deepEqual(MAP_CHOICES, ['rotate', ...MAP_IDS]);
   for (const m of MAPS) {
-    assert.ok(m.half >= 40 && m.half <= 48, `${m.id} half ${m.half}`); // まえは 32
+    assert.ok(m.half >= (buildMap(m.id).vertical ? 32 : 40) && m.half <= 48, `${m.id} half ${m.half}`); // まえは 32（ビルの なかは たてに ひろい）
     assert.ok(m.name && m.icon && m.desc);
     assert.ok(!/[✚✙✛✜➕✝†☩]|\u271A/.test(m.icon + m.name + m.desc), 'じゅうじ マーク なし');
   }
   assert.equal(pickMapId('mall', 3), 'mall');
   assert.equal(pickMapId('rotate', 0), 'city');
-  assert.equal(pickMapId('rotate', 7), 'mall');
-  assert.equal(pickMapId('zzz', -1), 'harbor');
+  assert.equal(pickMapId('rotate', 9), 'mall');
+  assert.equal(pickMapId('zzz', -1), 'office');
   assert.equal(mapInfo('nope').id, 'city');
-  const s = normalizeSave({ map: 'camp', mapNext: 9, autoEquip: false });
+  const s = normalizeSave({ map: 'camp', mapNext: 11, autoEquip: false });
   assert.equal(s.map, 'camp'); assert.equal(s.mapNext, 3); assert.equal(s.autoEquip, false);
   assert.equal(normalizeSave({ map: 'moon' }).map, 'rotate');
 });
@@ -580,11 +583,13 @@ for (const MID of MAP_IDS_MAP) test(`[${MID}] v0.5.0 マップ: ちがう みた
   assert.ok(map.lamps.length >= 8, 'よるの がいとう');
   const mats = new Set(map.boxes.filter((b) => b.mat !== 'none').map((b) => b.mat));
   assert.ok(mats.size >= 6 && mats.size <= 22, `materials ${mats.size}`); // ざいしつ ごとに 1ドローコール
-  assert.ok(map.boxes.length < 1000, `boxes ${map.boxes.length}`);
+  assert.ok(map.boxes.length < (map.vertical ? 1600 : 1000), `boxes ${map.boxes.length}`);
   for (const b of map.boxes) assert.ok(b.maxX > b.minX && b.maxY > b.minY && b.maxZ > b.minZ, 'box size');
   // そとに でられない（ゲートの みえない かべは たかい）
   for (const b of map.boxes.filter((q) => q.barrier)) assert.ok(b.maxY >= 8);
-  for (const sp of map.spawns) assert.ok(Math.max(Math.abs(sp.x), Math.abs(sp.z)) > map.half - 1, 'ゲートは はしっこ');
+  const edge = map.spawns.filter((sp) => Math.max(Math.abs(sp.x), Math.abs(sp.z)) > map.half - 1);
+  assert.ok(edge.length >= 8, 'ゲートは はしっこ');
+  if (!map.vertical) assert.equal(edge.length, map.spawns.length, 'たいらな マップは ぜんぶ はしっこ');
 });
 
 test('v0.5.0 マップ: ぜんぶ ちがう', () => {
@@ -599,6 +604,7 @@ test('v0.5.0 はこの さくいん: ちかくの はこ だけ しらべても 
     for (let i = 0; i < 300; i++) {
       const x = (r() * 2 - 1) * map.half, z = (r() * 2 - 1) * map.half, y = r() < 0.5 ? 0 : r() * 3;
       const a = collideCircle(x, z, 0.35, y, pc), b = collideCircle(x, z, 0.35, y, idx);
+      if (Math.hypot(a.x - x, a.z - z) > 1.5) continue; // おおきな ビルの なかに うまった てん（ゲームでは おきない）
       assert.ok(Math.abs(a.x - b.x) < 1e-9 && Math.abs(a.z - b.z) < 1e-9, `collide ${id} ${x},${z}`);
       assert.equal(groundHeight(x, z, 0.35, y + 0.001, pc), groundHeight(x, z, 0.35, y + 0.001, idx));
       assert.equal(supportBox(x, z, 0.35, 1, pc), supportBox(x, z, 0.35, 1, idx));
@@ -612,15 +618,15 @@ test('v0.5.0 ゾンビの でぐち: ちかすぎず とおすぎない・とお
     for (const [px, pz] of [[0, 4], [20, 20], [-25, 10], [10, -30]]) {
       for (let i = 0; i < 20; i++) {
         const s = pickSpawnPoint(map.spawns, px, pz, i / 20);
-        const d = Math.hypot(s.x - px, s.z - pz);
+        const d = Math.hypot(s.x - px, s.z - pz, (s.y || 0) * 1.5);
         assert.ok(d > 14, `${id} too close ${d}`);
       }
     }
     // まんなかに いる ときは いちばん ちかい ゲート 3つの どれか（とおい ゲートを えらばない）
-    const ps = map.playerStart, ds = map.spawns.map((q) => Math.hypot(q.x - ps.x, q.z - ps.z)).sort((a, b) => a - b);
+    const ps = map.playerStart, ds = map.spawns.map((q) => Math.hypot(q.x - ps.x, q.z - ps.z, (q.y || 0) * 1.5)).filter((d) => d > 14).sort((a, b) => a - b);
     for (let i = 0; i < 10; i++) {
       const s0 = pickSpawnPoint(map.spawns, ps.x, ps.z, i / 10);
-      assert.ok(Math.hypot(s0.x - ps.x, s0.z - ps.z) <= ds[2] + 1e-9, `${id} start spawn far`);
+      assert.ok(Math.hypot(s0.x - ps.x, s0.z - ps.z, (s0.y || 0) * 1.5) <= Math.max(ds[2], 34) + 1e-9, `${id} start spawn far`);
     }
   }
   assert.equal(hurryMul(5), 1); assert.equal(hurryMul(HURRY.from), 1);
@@ -650,7 +656,7 @@ test('v0.5.0 シムボット: ひろい マップでも ゾンビが とどく �
     }
     return tot / 24;
   };
-  for (const id of MAP_IDS) {
+  for (const id of FLAT_IDS) {
     const map = buildMap(id), raw = walk(map, false), now = walk(map, true);
     assert.ok(now < raw, `${id}: よくなっている ${now} < ${raw}`);
     assert.ok(now <= BASE * 1.25, `${id}: ${now.toFixed(1)}s (まえ ${BASE}s)`);
@@ -748,4 +754,122 @@ test('v0.5.0 じゅうじ マークの えもじを つかわない', async () =
     const t = fs.readFileSync(path.join(root, f), 'utf8');
     assert.ok(!bad.test(t), f);
   }
+});
+
+// ================= v0.6.0 =================
+test('v0.6.0 ゾンビの しゅるい: 12しゅるい・すこしずつ ふえる・のぼるのは はやい ゾンビ だけ', () => {
+  assert.deepEqual(SPECIAL_IDS, ['guard', 'crawler', 'soldier', 'spitter', 'burning', 'riot', 'bloater', 'screamer', 'firefighter', 'electric', 'mutant', 'charger']);
+  for (const k of SPECIAL_IDS) {
+    const z = ZOMBIES[k];
+    assert.ok(z && z.hp > 0 && z.speed > 0 && z.dmg > 0, k);
+    assert.ok(DROP_CHANCE[k] !== undefined && GEAR_DROP[k] !== undefined, `${k} drops`);
+    assert.ok(killScore(k, false) > 0);
+    assert.ok(!canClimb(k), `${k} は のぼれない`);
+  }
+  assert.deepEqual(CLIMBERS, ['runner']);
+  assert.deepEqual(unlockedSpecials(1), []);
+  assert.equal(waveSpec(1).specialCount, 0);
+  const seen = new Set();
+  for (let n = 1; n <= 14; n++) {
+    const s = waveSpec(n), un = unlockedSpecials(n);
+    for (const k of Object.keys(s.specials)) assert.ok(un.includes(k), `${k} は まだ でない (wave ${n})`);
+    // はじめて でる しゅるいは かならず でる・すこしだけ
+    for (const [k, w] of SPECIAL_UNLOCK) if (w === n) { assert.ok(s.specials[k] >= 1 && s.specials[k] <= 2, `${k} wave ${n}`); }
+    Object.keys(s.specials).forEach((k) => seen.add(k));
+    assert.ok(s.walkers >= 3, 'ふつうの ゾンビも のこる');
+    assert.ok(s.specialCount <= Math.ceil((s.total - s.boss) * 0.62), `wave ${n} specials ${s.specialCount}`);
+    const q = waveQueue(s, lcg(n));
+    assert.equal(q.length, s.total);
+    for (const [k, c] of Object.entries(s.specials)) assert.equal(q.filter((x) => x === k).length, c);
+  }
+  assert.equal(seen.size, SPECIAL_IDS.length, 'ぜんぶ でてくる');
+});
+
+test('v0.6.0 たて・ベスト・ばくはつに つよい ふく・おもさ', () => {
+  // ゾンビ yaw=0 → まえは -Z。+Z むきに とぶ たまは まえから
+  assert.equal(frontHit(0, 0, 1), true);
+  assert.equal(frontHit(0, 0, -1), false);
+  assert.equal(frontHit(Math.PI / 2, 1, 0), true);
+  assert.ok(damageMul('riot', { front: true }) <= 0.15);
+  assert.equal(damageMul('riot', { front: false }), 1);
+  assert.equal(damageMul('riot', { front: true, head: true }), 1, 'あたまは たてで まもれない');
+  assert.ok(damageMul('soldier', {}) < 1 && damageMul('soldier', {}) > 0.4);
+  assert.equal(damageMul('firefighter', { blast: true }), 0.5);
+  assert.equal(damageMul('walker', { blast: true }), 1);
+  assert.equal(damageMul('walker', { front: true }), 1);
+  assert.ok(heavyOf('boss') < heavyOf('charger') && heavyOf('charger') < heavyOf('riot') && heavyOf('riot') < heavyOf('walker'));
+  assert.equal(heavyOf('runner'), 1);
+  assert.ok(ZOMBIES.charger.hp > ZOMBIES.brute.hp * 0.8 && ZOMBIES.charger.scale > 1);
+  assert.ok(ZOMBIES.crawler.hp < ZOMBIES.walker.hp);
+  assert.ok(ZOMBIES.spitter.spit.min > 2 && ZOMBIES.spitter.spit.max > ZOMBIES.spitter.spit.min);
+  assert.ok(ZOMBIES.bloater.gas.r > 2 && ZOMBIES.bloater.gas.fuse > 0.8, 'にげる じかんが ある');
+  assert.ok(ZOMBIES.screamer.scream.summon <= 2);
+});
+
+// たてに ひろい マップの シム（ゲームと おなじ: nav の むき・かべ・かいだんを のぼる・おりる）
+function simWalk(map, nav, zc, [px, pz, py], n, seed) {
+  nav.update(px, py, pz);
+  const r = lcg(seed), times = [];
+  for (let k = 0; k < n; k++) {
+    const o = pickSpawnPoint(map.spawns, px, pz, r(), [16, 34], py);
+    let x = o.x, z = o.z, y = o.y || 0, t = 0;
+    while (t < 120) {
+      const d = Math.hypot(x - px, z - pz); if (d < 2 && Math.abs(y - py) < 0.5) break;
+      let f = nav.dir(x, y, z);
+      if (!f || (Math.abs(py - y) < 0.4 && d < 3 && nav.lineClear(x, y, z, px, py, pz))) f = { x: (px - x) / d, z: (pz - z) / d };
+      const v = ZOMBIES.walker.speed * hurryMul(d) * 0.05;
+      const c = collideCircle(x + f.x * v, z + f.z * v, 0.3, y, zc, 0.36); x = c.x; z = c.z;
+      const g = groundHeight(x, z, 0.3, y + 0.36, zc, 0.36);
+      y = g > y ? g : Math.max(g, y - 0.6); t += 0.05;
+    }
+    times.push(t);
+  }
+  return times;
+}
+const VERT = { rooftop: [[0, 4, 0], [-2, -17, 5.5], [-25, 12, 5.5], [16, -18, 8]], office: [[0, 4, 0], [-12, 0, 4.2], [12, 0, 8.4], [0, 8, 12.6]] };
+for (const MID of Object.keys(VERT)) test(`[${MID}] v0.6.0 たてに ひろい マップ: かいだんで どこへでも・ゾンビが ちゃんと くる`, () => {
+  const map = buildMap(MID), zc = zombieColliders(map), pc = playerColliders(map);
+  assert.equal(map.vertical, true);
+  const nav = makeNav(zc, map);
+  assert.ok(nav.layered && nav.N > 5000 && nav.N < 60000, `nodes ${nav.N}`);
+  const s = map.playerStart;
+  const r0 = collideCircle(s.x, s.z, 0.35, 0, pc);
+  assert.ok(Math.hypot(r0.x - s.x, r0.z - s.z) < 1e-9, 'start inside a collider');
+  // たかさの ちがう ゆかが ある
+  const levels = new Set(); for (let k = 0; k < nav.N; k++) if (nav.h[k] > 2) levels.add(Math.round(nav.h[k]));
+  assert.ok(levels.size >= 3, 'たかい ゆか');
+  for (const tg of VERT[MID]) {
+    const [px, pz, py] = tg;
+    assert.ok(Math.abs(groundHeight(px, pz, 0.35, py + 0.2, pc) - py) < 0.05, `${tg} は ゆかの うえ`);
+    nav.update(px, py, pz);
+    for (const sp of map.spawns) {
+      const d = nav.distAt(sp.x - Math.sign(sp.x) * (Math.abs(sp.x) > map.half ? 3 : 0), sp.y || 0, sp.z - Math.sign(sp.z) * (Math.abs(sp.z) > map.half ? 3 : 0));
+      assert.ok(d >= 0 && d < nav.o.far, `${MID} ${tg}: gate ${sp.x},${sp.z} から とどかない`);
+    }
+    const t = simWalk(map, nav, zc, tg, 12, 7), mean = t.reduce((a, b) => a + b, 0) / t.length;
+    assert.ok(Math.max(...t) < 90, `${MID} ${tg}: とどかない ゾンビ ${Math.max(...t).toFixed(1)}s`);
+    assert.ok(mean < (py > 6 ? 55 : 38), `${MID} ${tg}: へいきん ${mean.toFixed(1)}s`);
+  }
+});
+
+test('v0.6.0 やねの まち: はしご・さか・かいだん、やねは「たかい」', () => {
+  const map = buildMap('rooftop'), pc = playerColliders(map);
+  assert.ok(map.ladders.length >= 2, 'はしご');
+  for (const L of map.ladders) { assert.ok(L.top - L.base > 2 && L.maxX > L.minX && L.maxZ > L.minZ); }
+  assert.ok(map.boxes.some((b) => b.slope), 'さか');
+  // やねの うえは walk じゃない（ずっと いると はやい ゾンビが くる）
+  const top = supportBox(-2, -17, 0.35, groundHeight(-2, -17, 0.35, 5.7, pc), pc);
+  assert.ok(top && !top.walk && top.maxY > 0.45);
+});
+
+test('v0.6.0 はいきょの ビル: 4かい・ゆかは ふつうの ゆか・やねは たかい・みえる かいだけ かく', () => {
+  const map = buildMap('office'), pc = playerColliders(map);
+  const I = map.interior;
+  assert.ok(I && I.levels === 4 && I.H > 3.5);
+  for (const [x, z, y] of [[-12, 0, 4.2], [12, 0, 8.4]]) { const b = supportBox(x, z, 0.35, groundHeight(x, z, 0.35, y + 0.1, pc), pc); assert.ok(b && b.walk, `${y}m の ゆかは walk`); }
+  const roof = supportBox(0, 8, 0.35, groundHeight(0, 8, 0.35, 12.7, pc), pc); assert.ok(roof && !roof.walk, 'やねは たかい');
+  const lv = new Set(map.boxes.filter((b) => b.lvl != null).map((b) => b.lvl));
+  assert.ok(lv.size >= 3, 'かいごとに わける（みえない かいは かかない）');
+  // エレベーターの あな: ゆかが ない
+  assert.ok(groundHeight(0, -3.6, 0.2, 8.5, pc) < 2.5, 'エレベーターの あなは かごの うえまで おちる');
 });

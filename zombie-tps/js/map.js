@@ -1,5 +1,6 @@
 // マップ（データだけ。three.js なし → テストで つかえる）
 // box: { mat, minX,minY,minZ,maxX,maxY,maxZ, collide, barrier?, tint?, rot? }
+// v0.6.0: やねの まち・はいきょの ビル（たかさの ある マップ）を ついか
 // v0.5.0: 6しゅるいの ひろい マップ（まち・ショッピングモール・きち・びょういん・もりの キャンプじょう・みなと）
 // ぜんぶ かくう（はた・マーク・ロゴ・あかい じゅうじ なし）
 export const HALF = 32; // むかしの まちの ひろさ（テストの くらべ よう）
@@ -11,6 +12,8 @@ export const MAPS = [
   { id: 'hospital', name: 'びょういん', icon: '🌷', half: 42, desc: 'しろい たてものと にわ' },
   { id: 'camp', name: 'もりの キャンプじょう', icon: '🌲', half: 46, desc: 'き・テント・こや・いけ' },
   { id: 'harbor', name: 'みなと', icon: '⚓', half: 44, desc: 'コンテナの まよいみち と うみ' },
+  { id: 'rooftop', name: 'やねの まち', icon: '🪜', half: 42, desc: 'かいだん・はしご・はしで やねへ のぼろう' },
+  { id: 'office', name: 'はいきょの ビル', icon: '🏢', half: 34, desc: '3かいだての ビル。かいだんで うえへ' },
 ];
 export const MAP_IDS = MAPS.map((m) => m.id);
 export const mapInfo = (id) => MAPS.find((m) => m.id === id) || MAPS[0];
@@ -122,11 +125,86 @@ function builder(half, seed) {
     deco('leaves', x, 4.1, z, 1.3, 1.2, 1.3, { tint: leafTint });
   };
   B.hedge = (x, z, along, len, h = 1.0) => add('leaves', x, 0, z, along === 'x' ? len : 0.9, h, along === 'x' ? 0.9 : len, { tint: 0x9fc890 });
-  B.lamp = (x, z, pole = 'dark') => {
-    add(pole, x, 0, z, 0.25, 4.2, 0.25);
-    deco('dark', x, 4.1, z, 0.9, 0.15, 0.3);
-    deco('light', x, 3.98, z, 0.5, 0.12, 0.22);
-    lamps.push({ x, z, h: 3.98 });
+  B.lamp = (x, z, pole = 'dark', y0 = 0, opt = {}) => {
+    add(pole, x, y0, z, 0.25, 4.2, 0.25, opt);
+    deco('dark', x, y0 + 4.1, z, 0.9, 0.15, 0.3, opt);
+    deco('light', x, y0 + 3.98, z, 0.5, 0.12, 0.22, opt);
+    lamps.push({ x, z, h: y0 + 3.98, y0 });
+  };
+  // ---- v0.6.0: かいだん・スロープ・はしご・ゆか ----
+  // かいだん: along の じくに dir むきに n だん（1だん 0.5m）。lat=[a,b] は よこの はんい
+  // y0 = いちばん したの ゆかの たかさ、だんの たかさ = y0 + rise*(k+1)
+  // thin: うかんだ ふみいた（した を とおれる）／ でなければ base から ささえる
+  B.flight = ({ along = 'z', from, dir = 1, lat, y0 = 0, rise = 0.25, n, base = y0, thin = false, mat = 'concrete', tint, lvl, walk = true }) => {
+    const out = [];
+    for (let k = 0; k < n; k++) {
+      const a0 = from + dir * 0.5 * k, a1 = from + dir * 0.5 * (k + 1);
+      const top = y0 + rise * (k + 1), bot = thin ? top - 0.3 : base;
+      const lo = Math.min(a0, a1), hi = Math.max(a0, a1);
+      const b = along === 'z'
+        ? { mat, minX: lat[0], maxX: lat[1], minZ: lo, maxZ: hi, minY: bot, maxY: top, collide: true }
+        : { mat, minX: lo, maxX: hi, minZ: lat[0], maxZ: lat[1], minY: bot, maxY: top, collide: true };
+      if (tint != null) b.tint = tint;
+      if (lvl != null) b.lvl = lvl;
+      if (walk) b.walk = true;
+      boxes.push(b); out.push(b);
+    }
+    return out;
+  };
+  // スロープ: みためは ななめの いた、ぶつかりは こまかい だん（みえない）
+  B.ramp = ({ along = 'x', from, to, lat, y0, y1, thin = false, mat = 'asphalt', tint, lvl, walk = true, rail = null }) => {
+    const len = Math.abs(to - from), n = Math.max(1, Math.round(len / 0.5)), dir = Math.sign(to - from);
+    B.flight({ along, from, dir, lat, y0, rise: (y1 - y0) / n, n, thin, mat: 'none', lvl, walk });
+    const lo = Math.min(from, to), hi = Math.max(from, to);
+    const vis = along === 'x'
+      ? { mat, minX: lo, maxX: hi, minZ: lat[0], maxZ: lat[1] }
+      : { mat, minX: lat[0], maxX: lat[1], minZ: lo, maxZ: hi };
+    Object.assign(vis, { minY: thin ? Math.max(y0, y1) - 0.25 : 0, maxY: Math.max(y0, y1) + 0.02, collide: false, slope: { axis: along, rise: dir * Math.sign(y1 - y0) || 1, lo: Math.min(y0, y1) + 0.02, hi: Math.max(y0, y1) + 0.02, all: thin } });
+    if (tint != null) vis.tint = tint;
+    if (lvl != null) vis.lvl = lvl;
+    boxes.push(vis);
+    if (rail) for (const s of [0, 1]) {
+      const rb = along === 'x'
+        ? { mat: rail, minX: lo, maxX: hi, minZ: lat[s] - (s ? 0 : 0.08), maxZ: lat[s] + (s ? 0.08 : 0) }
+        : { mat: rail, minX: lat[s] - (s ? 0 : 0.08), maxX: lat[s] + (s ? 0.08 : 0), minZ: lo, maxZ: hi };
+      Object.assign(rb, { minY: Math.max(y0, y1) + 0.02 - 0.05, maxY: Math.max(y0, y1) + 0.95, collide: false, slope: { ...vis.slope, all: true } });
+      boxes.push(rb);
+    }
+  };
+  // はしご（ladders ゾーンに はいって まえに すすむと のぼる）
+  const ladders = [];
+  B.ladders = ladders;
+  B.ladder = (x, z, face, top, base = 0) => {
+    // face: かべの どちらがわに つくか（'n' → z が ちいさい がわの かべの めん）
+    const ax = face === 'n' || face === 's', sg = face === 'n' || face === 'w' ? -1 : 1;
+    for (const p of [-0.4, 0.4]) deco('metal', x + (ax ? p : sg * 0.12), base, z + (ax ? sg * 0.12 : p), ax ? 0.08 : 0.08, top - base + 0.9, 0.08, { tint: 0x9aa0a6 });
+    for (let y = base + 0.3; y < top + 0.6; y += 0.4) deco('metal', x + (ax ? 0 : sg * 0.12), y, z + (ax ? sg * 0.12 : 0), ax ? 0.8 : 0.06, 0.06, ax ? 0.06 : 0.8, { tint: 0xb0b6bc });
+    const zone = ax
+      ? { minX: x - 0.6, maxX: x + 0.6, minZ: Math.min(z, z + sg * 0.8), maxZ: Math.max(z, z + sg * 0.8) }
+      : { minX: Math.min(x, x + sg * 0.8), maxX: Math.max(x, x + sg * 0.8), minZ: z - 0.6, maxZ: z + 0.6 };
+    ladders.push({ ...zone, base, top, face });
+  };
+  // あなの あいた ゆか（holes: [[x0,z0,x1,z1],...]）
+  B.slab = (x0, z0, x1, z1, top, holes = [], opt = {}) => {
+    const xs = [x0, x1], zs = [z0, z1];
+    for (const h of holes) { xs.push(Math.max(x0, Math.min(x1, h[0])), Math.max(x0, Math.min(x1, h[2]))); zs.push(Math.max(z0, Math.min(z1, h[1])), Math.max(z0, Math.min(z1, h[3]))); }
+    const ux = [...new Set(xs)].sort((a, b) => a - b), uz = [...new Set(zs)].sort((a, b) => a - b);
+    const inHole = (cx, cz) => holes.some((h) => cx > h[0] && cx < h[2] && cz > h[1] && cz < h[3]);
+    let prev = null; const rows = [];
+    for (let j = 0; j + 1 < uz.length; j++) {
+      const cz = (uz[j] + uz[j + 1]) / 2, spans = [];
+      let s0 = null;
+      for (let i = 0; i + 1 < ux.length; i++) {
+        const solid = !inHole((ux[i] + ux[i + 1]) / 2, cz);
+        if (solid && s0 == null) s0 = ux[i];
+        if (!solid && s0 != null) { spans.push([s0, ux[i]]); s0 = null; }
+      }
+      if (s0 != null) spans.push([s0, ux[ux.length - 1]]);
+      const key = JSON.stringify(spans);
+      if (prev && prev.key === key) prev.z1 = uz[j + 1];
+      else { prev = { key, spans, z0: uz[j], z1: uz[j + 1] }; rows.push(prev); }
+    }
+    for (const rw of rows) for (const [a, b] of rw.spans) boxes.push({ mat: 'concrete', minX: a, maxX: b, minZ: rw.z0, maxZ: rw.z1, minY: top - 0.3, maxY: top, collide: true, ...opt });
   };
   B.container = (x, z, along, tint, y0 = 0) => {
     const b = add('container', x, y0, z, along === 'x' ? 6 : 2.4, 2.6, along === 'x' ? 2.4 : 6, { tint });
@@ -420,7 +498,276 @@ function harbor() {
   return B.done({ ground: 'concrete', tint: 0x4a6a8a, k: 0.35, far: 'harbor', farTint: 0x7a8a9a, water: 'north' });
 }
 
-const BUILD = { city, mall, base, hospital, camp, harbor };
+
+// ================= v0.6.0: やねの まち（たかさの ちがう やね を かいだん・スロープ・はしご・はし で つなぐ）=================
+function rooftop() {
+  const B = builder(42, 6060), { half, add, deco, r } = B;
+  // うしろに つけた もの を うえへ ずらす（やねの うえの くるま など）
+  const lift = (dy, fn) => { const n0 = B.boxes.length; fn(); for (let i = n0; i < B.boxes.length; i++) { B.boxes[i].minY += dy; B.boxes[i].maxY += dy; } };
+  // みち
+  for (const c of [-6, 0 + 28]) deco('road', 0, 0.001, c, half * 2, 0.02, 7);
+  deco('road', 0, 0, 14, 7, 0.02, 40); deco('road', -40 + 26, 0, 0, 7, 0.02, 28);
+  for (let x = -half + 2; x < half; x += 4) deco('roadLine', x, 0.021, -6, 2, 0.005, 0.25, { rot: true });
+  B.perimeter({ mat: 'brick', gates: GATES3(24), tint: 0x8a7a72 });
+  // やねの たてもの（なかは はいれない・やねは のれる）
+  const roofB = (x0, z0, x1, z1, h, mat, tint) => {
+    const w = x1 - x0, d = z1 - z0, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+    add(mat, cx, 0, cz, w, h, d, { tint, roof: true });
+    for (let y = 1.0; y + 1.0 < h; y += 2.5) {
+      for (let x = x0 + 1.4; x < x1 - 1; x += 2.4) { deco('glass', x, y, z0 - 0.03, 1.2, 1.0, 0.06); deco('glass', x, y, z1 + 0.03, 1.2, 1.0, 0.06); }
+      for (let z = z0 + 1.4; z < z1 - 1; z += 2.4) { deco('glass', x0 - 0.03, y, z, 0.06, 1.0, 1.2); deco('glass', x1 + 0.03, y, z, 0.06, 1.0, 1.2); }
+    }
+    // ふち（みためだけ）
+    deco('dark', cx, h, z0 + 0.15, w, 0.2, 0.3); deco('dark', cx, h, z1 - 0.15, w, 0.2, 0.3);
+    deco('dark', x0 + 0.15, h, cz, 0.3, 0.2, d - 0.6); deco('dark', x1 - 0.15, h, cz, 0.3, 0.2, d - 0.6);
+    deco('roof', cx, h, cz, w - 0.6, 0.02, d - 0.6);
+  };
+  const ac = (x, z, y) => { add('metal', x, y, z, 1.3, 0.9, 1.0, { tint: 0xb8bcc0 }); deco('dark', x, y + 0.9, z, 0.8, 0.05, 0.6); };
+  const tank = (x, z, y) => { for (const a of [-0.8, 0.8]) for (const b of [-0.8, 0.8]) add('dark', x + a, y, z + b, 0.18, 1.2, 0.18); add('metal', x, y + 1.2, z, 2.2, 1.8, 2.2, { tint: 0x7a8a96 }); deco('dark', x, y + 3.0, z, 1.6, 0.15, 1.6); };
+  const antenna = (x, z, y) => { add('dark', x, y, z, 0.18, 3.4, 0.18); deco('dark', x, y + 2.6, z, 1.4, 0.06, 0.06); deco('light', x, y + 3.4, z, 0.16, 0.16, 0.16); };
+  // R1 ひくい（3m）
+  roofB(-20, -24, -8, -12, 3.0, 'brick', 0xa86a58);
+  // じめん → R1: みなみの かべに そった かいだん
+  B.flight({ along: 'x', from: -14, dir: 1, lat: [-12, -10], y0: 0, rise: 0.25, n: 12, mat: 'concrete', tint: 0x9a968c });
+  deco('metal', -11, 0.9, -9.95, 6, 0.06, 0.06, { tint: 0x5a5f66, slope: { axis: 'x', rise: 1, lo: 0.96, hi: 3.96, all: true } });
+  for (const x of [-13.5, -11, -8.5]) deco('metal', x, 0, -9.95, 0.06, 0.9 + (x + 14) * 0.5, 0.06, { tint: 0x5a5f66 });
+  // R2 ちゅうくらい（5.5m）
+  roofB(-8, -26, 4, -12, 5.5, 'concrete', 0x8a9098);
+  // R1 → R2: R1 の やねの うえの かいだん
+  B.flight({ along: 'x', from: -13, dir: 1, lat: [-16, -14], y0: 3.0, rise: 0.25, n: 10, mat: 'concrete', tint: 0x9a968c });
+  // R3 たかい（8m）
+  roofB(10, -26, 22, -12, 8.0, 'brick', 0x6a5a66);
+  // R2 → R3: いたの スロープ（うかんでる）
+  B.ramp({ along: 'x', from: 4, to: 10, lat: [-20, -18], y0: 5.5, y1: 8.0, thin: true, mat: 'plank', tint: 0xb08a5a, rail: 'metal' });
+  // じめん → R3: はしご
+  B.ladder(16, -12, 's', 8.0);
+  // R6（8m）と いたの はし
+  roofB(26, -26, 36, -12, 8.0, 'concrete', 0x7a7064);
+  add('plank', 24, 7.85, -19, 4.2, 0.15, 2.0, { tint: 0xa07a4a });
+  for (const s of [-1.05, 1.05]) deco('metal', 24, 8.0, -19 + s, 4.2, 0.9, 0.06, { tint: 0x5a5f66 });
+  // R4（5.5m）: ひがしがわの おりかえし かいだん
+  roofB(-34, 8, -22, 24, 5.5, 'brick', 0x8a6a8a);
+  B.flight({ along: 'z', from: 22, dir: -1, lat: [-22, -20], y0: 0, rise: 0.25, n: 11, mat: 'metal', tint: 0x6a7078 });
+  add('metal', -20, 0, 15.5, 4, 2.75, 2, { tint: 0x6a7078, walk: true }); // おどりば
+  B.flight({ along: 'z', from: 16.5, dir: 1, lat: [-20, -18], y0: 2.75, rise: 0.25, n: 11, base: 0, mat: 'metal', tint: 0x6a7078 });
+  add('metal', -20, 5.2, 23, 4, 0.3, 2, { tint: 0x6a7078, walk: true });
+  add('dark', -18.15, 0, 23.85, 0.3, 5.2, 0.3);
+  deco('metal', -17.95, 3.6, 19.25, 0.06, 0.06, 5.5, { tint: 0x5a5f66, slope: { axis: 'z', rise: 1, lo: 3.66, hi: 6.41, all: true } });
+  // ちゅうしゃじょうの たてもの: じめん → スロープ → 3m の デッキ
+  B.ramp({ along: 'x', from: 8, to: 20, lat: [6, 10], y0: 0, y1: 3.0, mat: 'asphalt', tint: 0x8a8a90 });
+  add('asphalt', 27, 2.7, 13, 14, 0.3, 18, { tint: 0x8a8a90 });
+  for (const x of [20.5, 27, 33.5]) for (const z of [4.5, 13, 21.5]) add('concrete', x, 0, z, 0.6, 2.7, 0.6);
+  // デッキの へい（スロープの いりぐち と R5 がわ は あける）
+  add('concrete', 20.15, 3.0, 5, 0.3, 0.9, 2); add('concrete', 20.15, 3.0, 16, 0.3, 0.9, 12);
+  add('concrete', 33.85, 3.0, 13, 0.3, 0.9, 18); add('concrete', 27, 3.0, 4.15, 14, 0.9, 0.3);
+  add('concrete', 21, 3.0, 21.85, 2, 0.9, 0.3);
+  for (let x = 22; x < 34; x += 3) deco('paint', x, 3.0, 13, 0.12, 0.01, 4);
+  lift(3.0, () => { B.car(23.5, 16, 'z', CAR_TINTS[1]); B.car(29.5, 8, 'z', CAR_TINTS[4]); });
+  B.car(24, 9, 'z', CAR_TINTS[5]); B.car(30, 17, 'z', CAR_TINTS[0]);
+  // R5（5.5m）: デッキから かいだん
+  roofB(22, 22, 34, 34, 5.5, 'concrete', 0x96908a);
+  B.flight({ along: 'z', from: 17, dir: 1, lat: [30, 32], y0: 3.0, rise: 0.25, n: 10, mat: 'concrete', tint: 0x9a968c });
+  // R7（3m）: はしご
+  roofB(-36, -36, -26, -28, 3.0, 'brick', 0x9a7a5a);
+  B.ladder(-26, -32, 'e', 3.0);
+  // やねの もの
+  ac(-17, -21, 3.0); ac(-11, -21, 3.0); antenna(-18.5, -14, 3.0);
+  tank(-3, -22, 5.5); ac(1.5, -15, 5.5); ac(-5, -15.5, 5.5);
+  ac(13, -23, 8.0); tank(19, -22, 8.0); antenna(20.5, -14, 8.0);
+  ac(30, -23, 8.0); ac(33, -15, 8.0); antenna(28, -14, 8.0);
+  ac(-31, 11, 5.5); tank(-27, 20, 5.5); ac(-31, 20, 5.5);
+  ac(25, 31, 5.5); tank(30, 30, 5.5); antenna(24, 24.5, 5.5);
+  ac(-33, -33, 3.0);
+  for (const [x, z, y] of [[-14, -19, 3.0], [16, -16, 8.0], [-28, 14, 5.5]]) { B.crate(x, z); B.boxes[B.boxes.length - 1].minY += y; B.boxes[B.boxes.length - 1].maxY += y; }
+  // じめんの もの
+  B.reserve(-14, -12, -8, -10); B.reserve(-22, 14, -18, 24); B.reserve(8, 6, 20, 10); B.reserve(14, -12, 18, -10); B.reserve(-26, -34, -24, -30);
+  B.reserve(20, 4, 34, 22); B.reserve(-36, -36, -26, -28); B.reserve(-34, 8, -22, 24); B.reserve(-20, -26, 36, -12); B.reserve(22, 22, 34, 34);
+  const cars = [[-3, -3.5, 'x'], [9, -8, 'x'], [-28, -8, 'x'], [2.5, 20, 'z'], [-2.5, 30, 'z'], [-14, 2, 'z'], [34, -4, 'x']];
+  cars.forEach(([x, z, a], i) => { if (B.free(x, z, 1.5)) B.car(x, z, a, CAR_TINTS[(i + 2) % CAR_TINTS.length]); });
+  for (const [x, z, a] of [[6, 2, 'z'], [-8, 8, 'x'], [12, 30, 'x'], [-30, 0, 'z'], [36, 10, 'z']]) if (B.free(x, z, 1.6)) B.bags(x, z, a);
+  B.scatter(14, 0.6, (x, z, i) => (i % 3 ? B.barrel(x, z, [0xc0392b, 0x2e86c1, 0x27ae60][i % 3]) : B.crate(x, z, 1 + (i % 2))));
+  for (const [x, z] of [[-6, 0], [6, 10], [-12, 28], [12, 22], [36, 0], [-36, 2], [0, -34], [-20, -4], [24, -6]]) if (B.free(x, z, 0.3)) B.lamp(x, z);
+  B.lamp(-12, -18, 'dark', 3.0); B.lamp(-6, -24, 'dark', 5.5); B.lamp(30, -14.5, 'dark', 8.0); B.lamp(-24, 12, 'dark', 5.5);
+  for (const sp of [{ x: -1, z: -19, y: 5.5 }, { x: 31, z: -19, y: 8.0 }, { x: -28, z: 16, y: 5.5 }, { x: 27, z: 28, y: 5.5 }]) B.spawns.push(sp);
+  return B.done({ ground: 'asphalt', tint: 0x5a5a66, k: 0.25, far: 'rooftop', farTint: 0x8a8aa0 }, { vertical: true, ladders: B.ladders });
+}
+
+// ================= v0.6.0: はいきょの ビル（3かい＋やね。かいだん・エレベーターの あな・ぬけた ゆか）=================
+export const OFFICE_H = 4.2;
+function office() {
+  const B = builder(34, 7070), { half, add, deco, r } = B;
+  const H = OFFICE_H, X = 22, Z = 16, T = 0.4, R = H / 17;
+  const WALL = 0xb8b4aa, IN = 0xd8d2c4;
+  B.perimeter({ mat: 'concrete', gates: GATES3(20), tint: 0x9a9890 });
+  deco('road', 0, 0.001, 25, half * 2, 0.02, 7); deco('road', 0, 0.001, -25, half * 2, 0.02, 7);
+  for (let x = -half + 2; x < half; x += 4) { deco('roadLine', x, 0.021, 25, 2, 0.005, 0.25, { rot: true }); deco('roadLine', x, 0.021, -25, 2, 0.005, 0.25, { rot: true }); }
+  B.reserve(-X - 1, -Z - 1, X + 1, Z + 1);
+  // ---- そとの かべ（1かいに いりぐち・まどは かざり）----
+  const top = 3 * H + 1.0;
+  const wallX = (z0, z1, x, gaps) => { // x = かべの まんなか、z0..z1
+    let a = z0;
+    const cuts = [...gaps].sort((p, q) => p[0] - q[0]);
+    for (const [g0, g1] of cuts) { if (g0 > a) add('wall', x, 0, (a + g0) / 2, T, top, g0 - a, { tint: WALL }); add('wall', x, 2.7, (g0 + g1) / 2, T, top - 2.7, g1 - g0, { tint: WALL }); a = g1; }
+    if (z1 > a) add('wall', x, 0, (a + z1) / 2, T, top, z1 - a, { tint: WALL });
+  };
+  const wallZ = (x0, x1, z, gaps) => {
+    let a = x0;
+    const cuts = [...gaps].sort((p, q) => p[0] - q[0]);
+    for (const [g0, g1] of cuts) { if (g0 > a) add('wall', (a + g0) / 2, 0, z, g0 - a, top, T, { tint: WALL }); add('wall', (g0 + g1) / 2, 2.7, z, g1 - g0, top - 2.7, T, { tint: WALL }); a = g1; }
+    if (x1 > a) add('wall', (a + x1) / 2, 0, z, x1 - a, top, T, { tint: WALL });
+  };
+  wallZ(-X - T, X + T, Z + T / 2, [[-1.6, 1.6], [-14.8, -12.2], [12.2, 14.8]]);
+  wallZ(-X - T, X + T, -Z - T / 2, [[-1.6, 1.6]]);
+  wallX(-Z, Z, -X - T / 2, [[-1.4, 1.4]]);
+  wallX(-Z, Z, X + T / 2, [[-1.4, 1.4]]);
+  for (let L = 0; L < 3; L++) {
+    const y = L * H + 1.2;
+    for (let x = -X + 2; x < X - 1; x += 3) for (const zz of [Z + T + 0.03, -Z - T - 0.03]) { if (L === 0 && (Math.abs(x) < 2.5 || Math.abs(Math.abs(x) - 13.5) < 2)) continue; deco('glass', x, y, zz, 1.6, 1.3, 0.06); }
+    for (let z = -Z + 2; z < Z - 1; z += 3) for (const xx of [X + T + 0.03, -X - T - 0.03]) { if (L === 0 && Math.abs(z) < 2.5) continue; deco('glass', xx, y, z, 0.06, 1.3, 1.6); }
+    deco('dark', 0, L * H + H - 0.15, Z + T + 0.05, 2 * X + 2 * T, 0.3, 0.1); deco('dark', 0, L * H + H - 0.15, -Z - T - 0.05, 2 * X + 2 * T, 0.3, 0.1);
+  }
+  // いりぐちの ひさし
+  deco('dark', 0, 2.75, Z + 1.2, 5, 0.18, 2);
+  // ---- ゆか ----
+  const stairHole = (sx) => (sx < 0 ? [-X, -8.5, -17.6, -2.5] : [17.6, -8.5, X, -2.5]);
+  const shaft = [-1.5, -5.4, 1.5, -1.9];
+  const broken = { 1: [[-6, 8.5, -3, 11.5]], 2: [[4, -12, 7, -9]], 3: [] };
+  deco('tile', 0, 0, 0, 2 * X, 0.04, 2 * Z, { lvl: 0, tint: 0xc8c2b4 });
+  for (let L = 1; L <= 3; L++) {
+    const holes = [stairHole(-1), stairHole(1), ...(L < 3 ? [shaft] : []), ...broken[L]];
+    B.slab(-X, -Z, X, Z, L * H, holes, L < 3 ? { lvl: L, walk: true, tint: 0xc8c2b4 } : { tint: 0x8a8880 });
+    // ぬけた ゆかの した: がれき
+    for (const [x0, z0, x1, z1] of broken[L]) {
+      const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, y0 = (L - 1) * H;
+      add('concrete', cx - 0.6, y0, cz + 0.3, 1.4, 0.45, 1.1, { lvl: L - 1, tint: 0x9a968c });
+      add('concrete', cx + 0.7, y0, cz - 0.4, 0.9, 0.3, 1.2, { lvl: L - 1, tint: 0x8a867c });
+      deco('dark', cx, y0 + 0.3, cz, 0.06, 0.06, 2.2, { lvl: L - 1 }); deco('dark', cx + 0.3, y0 + 0.2, cz, 1.8, 0.06, 0.06, { lvl: L - 1 });
+      deco('dark', cx, L * H - 0.31, cz, x1 - x0 + 0.2, 0.02, z1 - z0 + 0.2, { lvl: L });
+    }
+  }
+  // ---- かいだん（りょうはしの かいだんしつ・おりかえし）----
+  for (const sx of [-1, 1]) {
+    const lane1 = sx < 0 ? [-X, -19.8] : [19.8, X], lane2 = sx < 0 ? [-19.8, -17.6] : [17.6, 19.8];
+    for (let L = 0; L < 3; L++) {
+      const y0 = L * H, thin = L > 0;
+      B.flight({ along: 'z', from: -2.0, dir: -1, lat: lane1, y0, rise: R, n: 9, thin, mat: 'concrete', tint: 0xa8a49a, lvl: L });
+      const ly = y0 + 9 * R;
+      boxes_push(B, { mat: 'concrete', minX: Math.min(lane1[0], lane2[0]), maxX: Math.max(lane1[1], lane2[1]), minZ: -8.5, maxZ: -6.5, minY: thin ? ly - 0.3 : 0, maxY: ly, collide: true, walk: true, lvl: L, tint: 0xa8a49a });
+      B.flight({ along: 'z', from: -6.5, dir: 1, lat: lane2, y0: ly, rise: R, n: 8, thin, base: 0, mat: 'concrete', tint: 0xa8a49a, lvl: L });
+      // てすり（まんなか）
+      deco('metal', (lane1[1] + lane2[0]) / 2 + (sx < 0 ? 0 : 0), y0 + 0.9, -4.5, 0.06, 0.06, 4.0, { lvl: L, tint: 0x5a5f66, slope: { axis: 'z', rise: -1, lo: y0 + 0.9, hi: y0 + 9 * R + 0.9, all: true } });
+      // かいだんしつの かべ
+      add('wall', sx * 17.4, y0, -9.25, 0.4, H - 0.3, 13.5, { lvl: L, tint: IN });
+      add('wall', sx * 19.8, y0, -8.7, 4.4, H - 0.3, 0.4, { lvl: L, tint: IN });
+      deco('stripe', sx * 17.17 * 1, y0 + 1.0, -2.2, 0.04, 0.5, 0.5, { lvl: L });
+    }
+    // やねの かいだんごや
+    const y3 = 3 * H;
+    add('wall', sx * 17.4, y3, -5.55, 0.4, 2.8, 5.9, { tint: WALL });
+    add('wall', sx * 19.8, y3, -8.7, 4.4, 2.8, 0.4, { tint: WALL });
+    add('wall', sx * 19.8, y3, -0.2, 4.4, 2.8, 0.4, { tint: WALL });
+    add('wall', sx * (X + T / 2), top, -4.5, T, y3 + 2.8 - top, 9, { tint: WALL });
+    add('dark', sx * 19.9, y3 + 2.8, -4.45, 5.0, 0.2, 9.3);
+    deco('light', sx * 17.15, y3 + 2.2, -1.5, 0.05, 0.12, 1.2);
+  }
+  // ---- へや の かべ（まいかい おなじ・1かい は まんなかが ロビー）----
+  const wallSeg = (L, x0, z0, x1, z1, gaps = []) => {
+    const along = Math.abs(x1 - x0) > Math.abs(z1 - z0) ? 'x' : 'z', y0 = L * H, h = H - 0.3;
+    const a0 = along === 'x' ? x0 : z0, a1 = along === 'x' ? x1 : z1, c = along === 'x' ? (z0 + z1) / 2 : (x0 + x1) / 2;
+    let a = a0;
+    const put = (p, q) => { if (q - p < 0.05) return; if (along === 'x') add('wall', (p + q) / 2, y0, c, q - p, h, T, { lvl: L, tint: IN }); else add('wall', c, y0, (p + q) / 2, T, h, q - p, { lvl: L, tint: IN }); };
+    for (const [g0, g1] of [...gaps].sort((p, q) => p[0] - q[0])) { put(a, g0); if (along === 'x') deco('wall', (g0 + g1) / 2, y0 + 2.4, c, g1 - g0, h - 2.4, T, { lvl: L, tint: IN }); else deco('wall', c, y0 + 2.4, (g0 + g1) / 2, T, h - 2.4, g1 - g0, { lvl: L, tint: IN }); a = g1; }
+    put(a, a1);
+  };
+  const D = (c) => [c - 0.8, c + 0.8];
+  for (let L = 0; L < 3; L++) {
+    const lob = L === 0;
+    // ろうかの かべ（きた・みなみ）
+    if (lob) {
+      wallSeg(L, -17.2, -1.7, -9, -1.7, [D(-13)]); wallSeg(L, 9, -1.7, 17.2, -1.7, [D(13)]);
+      wallSeg(L, -X, 1.7, -9, 1.7, [D(-13)]); wallSeg(L, 9, 1.7, X, 1.7, [D(13)]);
+    } else {
+      wallSeg(L, -17.2, -1.7, 17.2, -1.7, [D(-13), D(-5.5), [-1.1, 1.1], D(5.5), D(13)]);
+      wallSeg(L, -X, 1.7, X, 1.7, [D(-13), D(-4.5), D(4.5), D(13)]);
+      wallSeg(L, 0, 1.9, 0, Z, [D(12)]);
+      wallSeg(L, -1.7, -16, -1.7, -5.4, [D(-10)]); wallSeg(L, 1.7, -16, 1.7, -5.4, []);
+    }
+    for (const sx of [-1, 1]) {
+      wallSeg(L, sx * 9, -Z, sx * 9, -1.9, [D(-9)]);
+      wallSeg(L, sx * 9, 1.9, sx * 9, Z, [D(9)]);
+      // エレベーターの あな（3めん）
+      add('metal', sx * 1.7, L * H, -3.65, 0.4, H - 0.3, 3.5, { lvl: L, tint: 0x6a7078 });
+    }
+    add('metal', 0, L * H, -5.6, 3.8, H - 0.3, 0.4, { lvl: L, tint: 0x6a7078 });
+    if (!lob) { for (const sx of [-1, 1]) deco('dark', sx * 1.25, L * H, -1.72, 0.5, 2.6, 0.06, { lvl: L }); deco('stripe', 0, L * H + 0.02, -1.4, 2.2, 0.02, 0.5, { lvl: L }); }
+    // てんじょうの あかり
+    for (const x of [-12, 0, 12]) { deco('light', x, (L + 1) * H - 0.36, 0, 1.6, 0.06, 0.5, { lvl: L }); B.lamps.push({ x, z: 0, h: (L + 1) * H - 0.36, y0: L * H + 0.04 }); }
+    for (const [x, z] of [[-13, -9], [-5.5, -9], [5.5, -9], [13, -9], [-13, 9], [-4.5, 9], [4.5, 9], [13, 9]]) deco('light', x, (L + 1) * H - 0.36, z, 1.4, 0.06, 0.5, { lvl: L });
+  }
+  // エレベーターの かご（いちばん したで とまってる）
+  add('metal', 0, 0, -3.65, 2.9, 2.4, 3.3, { lvl: 0, tint: 0x8a9096 });
+  deco('dark', 0, 0.2, -1.98, 1.6, 2.0, 0.04, { lvl: 0 });
+  // ---- かぐ ----
+  const holesAt = (L) => broken[L] || [];
+  const okAt = (L, x, z, rad) => !holesAt(L).some((h) => x + rad > h[0] - 0.4 && x - rad < h[2] + 0.4 && z + rad > h[1] - 0.4 && z - rad < h[3] + 0.4);
+  const spawnSpots = [[-13, -12, 1], [13, 12, 1], [13, -12, 2], [-13, 12, 2], [13, 12, 0], [-13, -12, 0]];
+  const nearSpawn = (L, x, z) => spawnSpots.some(([sx, sz, sl]) => sl === L && Math.hypot(x - sx, z - sz) < 2.6);
+  const desk = (L, x, z, rot) => {
+    if (!okAt(L, x, z, 1) || nearSpawn(L, x, z)) return;
+    const y = L * H;
+    add('plank', x, y, z, rot ? 0.8 : 1.5, 0.75, rot ? 1.5 : 0.8, { lvl: L, tint: 0xa0784a });
+    deco('dark', x + (rot ? 0 : 0.2), y + 0.75, z + (rot ? 0.2 : 0), 0.5, 0.35, 0.06, { lvl: L });
+    add('dark', x + (rot ? 0.75 : 0), y, z + (rot ? 0 : 0.75), 0.5, 0.5, 0.5, { lvl: L });
+  };
+  const cabinet = (L, x, z, alongX) => { if (okAt(L, x, z, 0.6)) add('metal', x, L * H, z, alongX ? 1.0 : 0.5, 1.8, alongX ? 0.5 : 1.0, { lvl: L, tint: 0x8a9096 }); };
+  const plant = (L, x, z) => { if (!okAt(L, x, z, 0.4)) return; add('barrel', x, L * H, z, 0.5, 0.5, 0.5, { lvl: L, tint: 0x8a5a3a }); deco('leaves', x, L * H + 0.5, z, 0.8, 0.8, 0.8, { lvl: L, tint: 0x6a9a5a }); };
+  const rooms = [[-17.2, -16, -9, -1.9, 'n'], [-9, -16, -1.9, -1.9, 'n'], [1.9, -16, 9, -1.9, 'n'], [9, -16, 17.2, -1.9, 'n'], [-X, 1.9, -9, Z, 's'], [-9, 1.9, 0, Z, 's'], [0, 1.9, 9, Z, 's'], [9, 1.9, X, Z, 's']];
+  for (let L = 0; L < 3; L++) {
+    rooms.forEach(([x0, z0, x1, z1, side], i) => {
+      if (L === 0 && Math.abs((x0 + x1) / 2) < 9) return; // ロビー
+      const far = side === 'n' ? z0 + 2.2 : z1 - 2.2, mid = side === 'n' ? z0 + 5.4 : z1 - 5.4;
+      const cx = (x0 + x1) / 2, w = x1 - x0;
+      if (L === 0) { // 1かい: そうこ
+        B.crate(cx - 2, far); B.crate(cx + 1.5, far); for (const b of B.boxes.slice(-2)) b.lvl = 0;
+        cabinet(0, x0 + 0.6, (z0 + z1) / 2, false); cabinet(0, x1 - 0.6, (z0 + z1) / 2 + 2, false);
+        return;
+      }
+      const n = Math.max(2, Math.floor((w - 2) / 2.6));
+      for (let k = 0; k < n; k++) { const x = x0 + 1.6 + k * ((w - 3.2) / Math.max(1, n - 1)); desk(L, x, far, false); if ((k + i + L) % 2 === 0) desk(L, x, mid, false); }
+      cabinet(L, x0 + 0.6, side === 'n' ? z0 + 0.6 + 4 : z1 - 0.6 - 4, false);
+      plant(L, x1 - 0.7, side === 'n' ? z1 - 0.9 : z0 + 0.9);
+    });
+    // ろうかの もの
+    plant(L, -8, 0); plant(L, 8, 0);
+    if (L > 0) { B.crate(-15, -0.6); const b = B.boxes[B.boxes.length - 1]; b.minY += L * H; b.maxY += L * H; b.lvl = L; }
+  }
+  // ロビー（1かい）
+  for (const [x, z] of [[-4.5, -8], [4.5, -8], [-4.5, 8], [4.5, 8]]) add('concrete', x, 0, z, 0.7, H - 0.3, 0.7, { lvl: 0, tint: 0xb8b4aa });
+  add('plank', 5, 0, 11.5, 3.2, 1.05, 0.8, { lvl: 0, tint: 0x8a6a4a }); add('plank', 6.2, 0, 12.6, 0.8, 1.05, 1.4, { lvl: 0, tint: 0x8a6a4a });
+  add('plank', -6.5, 0, -12, 2.2, 0.45, 0.6, { lvl: 0, tint: 0x6a5a4a }); add('plank', 6.5, 0, -12, 2.2, 0.45, 0.6, { lvl: 0, tint: 0x6a5a4a });
+  for (const [x, z] of [[-8, -15], [8, -15], [-2.5, 15], [2.5, 15]]) plant(0, x, z);
+  deco('stripe', 0, 0.045, 13.5, 3, 0.01, 1.8, { lvl: 0 });
+  // ---- にわ（そと）----
+  const cars = [[-28, 8, 'z'], [28, -6, 'z'], [-10, 21, 'x'], [12, -21, 'x'], [28, 20, 'x'], [-28, -20, 'z']];
+  cars.forEach(([x, z, a], i) => { if (B.free(x, z, 1.5)) B.car(x, z, a, CAR_TINTS[(i * 3 + 1) % CAR_TINTS.length]); });
+  for (const [x, z, a] of [[-6, 20, 'x'], [6, -20, 'x'], [26, 2, 'z'], [-26, -2, 'z']]) if (B.free(x, z, 1.6)) B.bags(x, z, a);
+  for (const [x, z] of [[-30, 28], [30, -28], [-30, -28], [30, 28]]) if (B.free(x, z, 2)) B.tree(x, z);
+  B.scatter(12, 0.6, (x, z, i) => (i % 2 ? B.barrel(x, z, [0xc0392b, 0x2e86c1, 0xe0b43a][i % 3]) : B.crate(x, z, 1 + (i % 2))));
+  for (const [x, z] of [[-14, 20], [14, 20], [-14, -20], [14, -20], [27, 12], [-27, -12]]) if (B.free(x, z, 0.3)) B.lamp(x, z);
+  // やねの もの
+  const y3 = 3 * H;
+  for (const [x, z] of [[-8, 8], [8, -10], [10, 10]]) { add('metal', x, y3, z, 1.3, 0.9, 1.0, { tint: 0xb8bcc0 }); }
+  for (const a of [-0.8, 0.8]) for (const b of [-0.8, 0.8]) add('dark', -6 + a, y3, -10 + b, 0.18, 1.2, 0.18);
+  add('metal', -6, y3 + 1.2, -10, 2.2, 1.8, 2.2, { tint: 0x7a8a96 });
+  add('dark', 3, y3, 6, 0.18, 3.4, 0.18); deco('light', 3, y3 + 3.4, 6, 0.16, 0.16, 0.16);
+  deco('glass', 0, y3, 8, 4, 0.12, 3); deco('roof', 0, y3 + 0.005, 0, 2 * X - 1, 0.02, 2 * Z - 1);
+  B.lamp(10, 2, 'dark', y3);
+  for (const [x, z, L] of spawnSpots) B.spawns.push({ x, z, y: L * H });
+  return B.done({ ground: 'concrete', tint: 0x5a5a62, k: 0.3, far: 'office', farTint: 0x8a8a9a }, { vertical: true, ladders: B.ladders, interior: { minX: -X - T, maxX: X + T, minZ: -Z - T, maxZ: Z + T, H, levels: 4 } });
+}
+function boxes_push(B, b) { B.boxes.push(b); return b; }
+
+const BUILD = { city, mall, base, hospital, camp, harbor, rooftop, office };
 export function buildMap(id = 'city') {
   const m = (BUILD[id] || city)();
   m.id = BUILD[id] ? id : 'city';

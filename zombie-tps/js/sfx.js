@@ -224,4 +224,51 @@ export class Sfx {
     const t = this.ctx.currentTime;
     this._tone(t, 0.5, { type: 'triangle', f0: 900, f1: 380, gain: 0.2 });
   }
+  // v0.6.0: あたらしい ゾンビの おと（こわすぎない）
+  spit(vol = 0.5) { // ペッ
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime;
+    this._noise(t, 0.12, { type: 'bandpass', freq: 1400, q: 2, gain: 0.35 * vol });
+    this._tone(t, 0.1, { type: 'triangle', f0: 420, f1: 180, gain: 0.12 * vol });
+  }
+  splash(vol = 0.5) { // ベチャ
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime;
+    this._noise(t, 0.2, { type: 'lowpass', freq: 900, gain: 0.35 * vol });
+  }
+  scream(vol = 0.5) { // キャーー（たかく ふるえる）
+    if (!this.ctx || this.muted) return;
+    const ctx = this.ctx, t = ctx.currentTime, dur = 0.9;
+    const o = ctx.createOscillator(); o.type = 'sawtooth';
+    o.frequency.setValueAtTime(520, t); o.frequency.linearRampToValueAtTime(760, t + 0.25); o.frequency.linearRampToValueAtTime(480, t + dur);
+    const lfo = ctx.createOscillator(); lfo.frequency.value = 11; const lg = ctx.createGain(); lg.gain.value = 30; lfo.connect(lg).connect(o.frequency);
+    const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 1100; f.Q.value = 1.5;
+    const g = ctx.createGain(); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.25 * vol, t + 0.08); g.gain.linearRampToValueAtTime(0, t + dur);
+    o.connect(f).connect(g).connect(this.comp); o.start(t); lfo.start(t); o.stop(t + dur + 0.05); lfo.stop(t + dur + 0.05);
+  }
+  zap(vol = 0.5) { // ビリッ
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime;
+    for (let i = 0; i < 4; i++) this._tone(t + i * 0.03, 0.03, { type: 'square', f0: 900 + Math.random() * 900, f1: 300, gain: 0.08 * vol });
+    this._noise(t, 0.14, { type: 'highpass', freq: 3000, gain: 0.25 * vol });
+  }
+  gas(vol = 0.5) { // プシューッ
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime;
+    this._noise(t, 0.9, { type: 'bandpass', freq: 1800, q: 0.8, gain: 0.3 * vol, attack: 0.05 });
+    this._tone(t, 0.2, { f0: 160, f1: 60, gain: 0.3 * vol });
+  }
+  clink(vol = 0.4) { // カン（たて・ヘルメット）
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime;
+    if (this._clinkT && t - this._clinkT < 0.06) return; this._clinkT = t;
+    this._tone(t, 0.12, { type: 'triangle', f0: 2300, f1: 2100, gain: 0.12 * vol });
+    this._tone(t, 0.08, { type: 'square', f0: 3400, f1: 3000, gain: 0.04 * vol });
+  }
+  fire(vol = 0.4) { // ボッ
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime;
+    this._noise(t, 0.45, { type: 'lowpass', freq: 800, gain: 0.5 * vol, attack: 0.01 });
+    this._tone(t, 0.2, { f0: 120, f1: 50, gain: 0.3 * vol });
+  }
 }

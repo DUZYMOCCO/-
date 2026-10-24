@@ -15,6 +15,8 @@ export const BACKDROPS = {
   hospital: { sil: '#121816', sil2: '#1a2420', glow: '#9aff9a', fires: 1, smoke: 2, search: 1, heli: false, bolt: 1, cloud: '#202a26', moon: 0xb0ffc0 },
   camp: { sil: '#0c140e', sil2: '#142018', glow: '#ff9a40', fires: 1, smoke: 1, search: 0, heli: true, bolt: 0.8, cloud: '#1c241e', flies: true, moon: 0x9aff9a },
   harbor: { sil: '#10141c', sil2: '#18202c', glow: '#ff7a30', fires: 2, smoke: 3, search: 1, heli: true, bolt: 0.6, cloud: '#20242e', beacon: true, moon: 0xc0a8ff },
+  rooftop: { sil: '#12141c', sil2: '#1a1e2a', glow: '#ff6a2a', fires: 6, smoke: 5, search: 3, heli: true, bolt: 0.45, cloud: '#26222c', moon: 0xd0a0ff },
+  office: { sil: '#101318', sil2: '#191d24', glow: '#ff5a20', fires: 4, smoke: 6, search: 1, heli: false, bolt: 0.7, cloud: '#241e22', moon: 0xffa890 },
 };
 
 function paintBase(id, cfg) {
@@ -41,6 +43,24 @@ function paintBase(id, cfg) {
     if (id === 'mall') { // こうそくどうろ と かんばん（もじは かくう）
       g.fillStyle = '#0c0c12'; g.fillRect(0, BASE - 26, W, 5); for (let x = 20; x < W; x += 90) g.fillRect(x, BASE - 21, 6, 24);
       for (const sx of [140, 620]) { g.fillStyle = '#0c0c12'; g.fillRect(sx, BASE - 70, 4, 50); g.fillRect(sx - 30, BASE - 92, 64, 24); }
+    }
+  } else if (id === 'rooftop') { // たかい ビルの まち: タンク・アンテナ
+    for (let x = 0; x < W;) { const w = 16 + R() * 30; tower(x, w, 50 + R() * 90, cfg.sil2, 0.05); x += w + R() * 8; }
+    for (let x = 0; x < W;) {
+      const w = 20 + R() * 36, h = 40 + R() * 80;
+      tower(x, w, h, cfg.sil, 0.16); g.fillStyle = cfg.sil;
+      if (R() < 0.35) { wrapRect(x + w * 0.3, BASE - h - 12, 10, 8); wrapRect(x + w * 0.3 + 1, BASE - h - 4, 2, 4); wrapRect(x + w * 0.3 + 7, BASE - h - 4, 2, 4); } // みずの タンク
+      else if (R() < 0.4) wrapRect(x + w / 2, BASE - h - 18, 2, 18);
+      x += w + R() * 14;
+    }
+  } else if (id === 'office') { // こわれた ビル: ぎざぎざの やね
+    for (let x = 0; x < W;) { const w = 18 + R() * 30; tower(x, w, 34 + R() * 70, cfg.sil2, 0.03); x += w + R() * 10; }
+    for (let x = 0; x < W;) {
+      const w = 24 + R() * 40, h = 30 + R() * 70;
+      tower(x, w, h, cfg.sil, 0.06); g.fillStyle = cfg.sil;
+      g.beginPath(); g.moveTo(x, BASE - h); for (let k = 0; k <= 6; k++) g.lineTo(x + w * k / 6, BASE - h - (k % 2 ? 4 + R() * 14 : R() * 4)); g.lineTo(x + w, BASE - h); g.fill();
+      if (R() < 0.3) { g.strokeStyle = cfg.sil; g.lineWidth = 1.5; g.beginPath(); g.moveTo(x + w * 0.7, BASE - h); g.lineTo(x + w * 0.9, BASE - h - 20); g.lineTo(x + w * 1.05, BASE - h - 26); g.stroke(); } // クレーンの のこり
+      x += w + R() * 20;
     }
   } else if (id === 'base') {
     for (const tx of [120, 380, 700, 900]) { g.fillStyle = cfg.sil; g.fillRect(tx, BASE - 46, 3, 46); g.fillRect(tx + 20, BASE - 46, 3, 46); g.fillRect(tx - 4, BASE - 56, 32, 12); g.strokeStyle = cfg.sil; g.lineWidth = 1.5; g.beginPath(); for (let y = BASE - 44; y < BASE; y += 14) { g.moveTo(tx, y); g.lineTo(tx + 22, y + 14); g.moveTo(tx + 22, y); g.lineTo(tx, y + 14); } g.stroke(); }

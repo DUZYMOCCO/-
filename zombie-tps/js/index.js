@@ -6,8 +6,8 @@ import { loadCss } from '../../common/js/load-css.js';
 import { storage } from '../../common/js/storage.js';
 import { WEAPONS, WEAPON_ORDER, normalizeSave, SENS, VERSION, OUTFITS, outfitName, unlockOutfit,
   GEAR_SLOTS, GEAR_STATS, GEAR_STAT_IDS, INV_CAP, rarityOf, gearColor, gearName, gearScore, gearAction, gearEffects, equippedItems,
-  autoEquipBest, equipGain, autoPickup, bestLoadout, pickMapId, MAP_IDS } from './rules.js?v=5';
-import { MAPS, mapInfo } from './map.js?v=5';
+  autoEquipBest, equipGain, autoPickup, bestLoadout, pickMapId, MAP_IDS } from './rules.js?v=6';
+import { MAPS, mapInfo } from './map.js?v=6';
 
 const hex6 = (n) => '#' + n.toString(16).padStart(6, '0');
 const slotOf = (id) => GEAR_SLOTS.find((s) => s.id === id);
@@ -48,9 +48,9 @@ function totalsText(gear) {
   const parts = GEAR_STAT_IDS.filter((k) => t[k]).map((k) => `${GEAR_STATS[k].name} +${t[k]}${GEAR_STATS[k].unit}${t[k] >= GEAR_STATS[k].cap ? '（MAX）' : ''}`);
   return parts.length ? parts.join(' ・ ') : 'まだ なにも つけて いないよ';
 }
-import { Game } from './game.js?v=5';
-import { Input } from './input.js?v=5';
-import { Sfx } from './sfx.js?v=5';
+import { Game } from './game.js?v=6';
+import { Input } from './input.js?v=6';
+import { Sfx } from './sfx.js?v=6';
 
 const SAVE_KEY = 'zombie_tps_save';
 const OPT_LABEL = {
@@ -63,7 +63,7 @@ const OPT_CYCLE = { autoFire: [false, true], sens: ['low', 'mid', 'high'], quali
 
 export default {
   prepare() {
-    return loadCss(new URL('../css/zombie-tps.css?v=5', import.meta.url).href);
+    return loadCss(new URL('../css/zombie-tps.css?v=6', import.meta.url).href);
   },
 
   init(container, onBackToHub) {

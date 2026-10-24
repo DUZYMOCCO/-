@@ -1,7 +1,7 @@
 // ゾンビストライク — ゲームの きまり（DOM / three.js に いぞんしない。node のテストから よめる）
 // ぶき・ダメージ・ウェーブ・あたりはんてい（レイ×はこ）・いどうの ぶつかり・ゾンビの みちさがし（フローフィールド）
 
-export const VERSION = '0.5.0';
+export const VERSION = '0.6.0';
 
 // ---- ぶき ----
 // rpm: 1ぷんかんの はっしゃかず / mag: マガジン / reserve: よびだん / reload: びょう
@@ -61,7 +61,9 @@ export function refillReserve(g) {
 }
 
 // ---- ロケットだんの ドロップ ----
-export const DROP_CHANCE = { walker: 0.06, runner: 0.08, brute: 0.25, boss: 1 };
+export const DROP_CHANCE = { walker: 0.06, runner: 0.08, brute: 0.25, boss: 1,
+  guard: 0.07, crawler: 0.07, soldier: 0.12, spitter: 0.09, burning: 0.08, riot: 0.14, bloater: 0.1, screamer: 0.12,
+  firefighter: 0.14, electric: 0.1, mutant: 0.16, charger: 0.25 };
 export const ROCKET_RESERVE_MAX = 6;   // よびは 6はつまで
 export const PICKUP_LIFE = 20;         // 20びょうで きえる
 export const PICKUP_BLINK = 5;         // さいごの 5びょうは ちかちか
@@ -251,12 +253,70 @@ export function tryFire(g, held) {
 
 // ---- ゾンビ ----
 export const ZOMBIES = {
-  walker: { id: 'walker', hp: 70, speed: 1.8, dmg: 10, atkRate: 1.0, scale: 1.0, score: 100 },
-  runner: { id: 'runner', hp: 45, speed: 3.9, dmg: 8, atkRate: 0.8, scale: 0.95, score: 150 },
-  brute: { id: 'brute', hp: 260, speed: 1.2, dmg: 22, atkRate: 1.4, scale: 1.35, score: 400 },
+  walker: { id: 'walker', hp: 70, speed: 1.8, dmg: 10, atkRate: 1.0, scale: 1.0, score: 100, name: 'ふつう' },
+  runner: { id: 'runner', hp: 45, speed: 3.9, dmg: 8, atkRate: 0.8, scale: 0.95, score: 150, name: 'はやい' },
+  brute: { id: 'brute', hp: 260, speed: 1.2, dmg: 22, atkRate: 1.4, scale: 1.35, score: 400, name: 'でかい' },
   // ボス: 3ウェーブごと。ちょっと でかい・かたい・ためてから ドスン！／とっしん
   boss: { id: 'boss', hp: 1500, speed: 1.35, dmg: 20, atkRate: 1.6, scale: 1.75, score: 2000, name: 'ボスゾンビ' },
+  // ---- v0.6.0: あたらしい ゾンビ（ぜんぶ かくうの みため・マークなし）----
+  // けいびいん: ぼうし。すこし はやくて かたい
+  guard: { id: 'guard', hp: 90, speed: 2.05, dmg: 10, atkRate: 1.0, scale: 1.0, score: 130, name: 'けいびいん' },
+  // はいはい: ひくくて あてにくい
+  crawler: { id: 'crawler', hp: 40, speed: 2.3, dmg: 7, atkRate: 0.8, scale: 1.0, score: 160, name: 'はいはい', low: true },
+  // へいたい: ヘルメットと ベスト → からだは かたい（あたまを ねらおう）
+  soldier: { id: 'soldier', hp: 120, speed: 1.9, dmg: 12, atkRate: 1.0, scale: 1.05, score: 180, name: 'へいたい', armor: 0.6 },
+  // はきだし: とおくから みどりの つばを とばす（よけられる）
+  spitter: { id: 'spitter', hp: 65, speed: 1.7, dmg: 8, atkRate: 1.2, scale: 1.0, score: 200, name: 'はきだし',
+    spit: { min: 5, max: 14, keep: 8, cd: 3.2, dmg: 9, speed: 11, puddle: 2.5 } },
+  // もえる: ほのおを まとう・はやい。さわると あちち・たおすと ボッ
+  burning: { id: 'burning', hp: 55, speed: 2.7, dmg: 7, atkRate: 0.9, scale: 1.0, score: 180, name: 'もえる',
+    burn: { dps: 4, time: 2.5 }, pop: { r: 2.4, dmg: 10 } },
+  // たて: まえからの たまを たてで ふせぐ（よこ・うしろ・あたま・ばくはつは きく）
+  riot: { id: 'riot', hp: 110, speed: 1.5, dmg: 12, atkRate: 1.1, scale: 1.05, score: 250, name: 'たて', shield: 0.12 },
+  // ぶくぶく: ちかづくか たおすと みどりの ガスが ひろがる
+  bloater: { id: 'bloater', hp: 90, speed: 1.25, dmg: 4, atkRate: 1.0, scale: 1.15, score: 220, name: 'ぶくぶく',
+    gas: { r: 3.6, dps: 7, time: 4, fuse: 1.6 } },
+  // さけび: とおくで さけぶ → まわりの ゾンビが はやく なる・なかまを よぶ
+  screamer: { id: 'screamer', hp: 60, speed: 2.0, dmg: 6, atkRate: 1.0, scale: 1.0, score: 260, name: 'さけび',
+    scream: { cd: 7, r: 12, buff: 1.35, time: 4, keep: 9, summon: 2 } },
+  // しょうぼうし: ぶあつい ふく → ばくはつ・ほのおに つよい
+  firefighter: { id: 'firefighter', hp: 150, speed: 1.7, dmg: 13, atkRate: 1.1, scale: 1.05, score: 260, name: 'しょうぼうし', blastMul: 0.5, fireproof: true },
+  // でんき: ちかくに いると ビリッ（すこし おそく なる）
+  electric: { id: 'electric', hp: 80, speed: 2.1, dmg: 9, atkRate: 1.0, scale: 1.0, score: 240, name: 'でんき',
+    zap: { r: 3.4, cd: 2.6, dmg: 6, slow: 0.6, time: 1.3 } },
+  // へんい: こぶが いっぱい・とびかかる
+  mutant: { id: 'mutant', hp: 150, speed: 2.2, dmg: 15, atkRate: 1.1, scale: 1.12, score: 300, name: 'へんい',
+    leap: { min: 2.6, max: 6.5, cd: 3.6, speed: 8, vy: 5 } },
+  // とっしん: おおきな うで・まっすぐ とっしん（ボスより みじかい）
+  charger: { id: 'charger', hp: 320, speed: 1.4, dmg: 18, atkRate: 1.3, scale: 1.3, score: 450, name: 'とっしん',
+    charge: { min: 5, max: 16, wind: 0.75, speed: 8.5, time: 1.0, dmg: 16, cd: 5 } },
 };
+// v0.6.0: あたらしい ゾンビが でてくる ウェーブ（すこしずつ ふえる）
+export const SPECIAL_UNLOCK = [
+  ['guard', 2], ['crawler', 3], ['soldier', 4], ['spitter', 5], ['burning', 5], ['riot', 6],
+  ['bloater', 7], ['screamer', 7], ['firefighter', 8], ['electric', 8], ['mutant', 9], ['charger', 10],
+];
+export const SPECIAL_IDS = SPECIAL_UNLOCK.map((u) => u[0]);
+export const unlockedSpecials = (n) => SPECIAL_UNLOCK.filter((u) => u[1] <= n).map((u) => u[0]);
+// まえから うたれたか（たてを もつ ゾンビ）: ゾンビの まえ = (-sin yaw, -cos yaw)。たまの むき dir が まえと はんたい なら まえから
+export function frontHit(yaw, dx, dz) {
+  const l = Math.hypot(dx, dz) || 1;
+  return (-Math.sin(yaw)) * (dx / l) + (-Math.cos(yaw)) * (dz / l) < -0.35;
+}
+// しゅるいごとの ダメージの かかりかた（たて・ベスト・しょうぼうしの ふく）
+export function damageMul(kind, { head = false, blast = false, front = false } = {}) {
+  const d = ZOMBIES[kind] || {};
+  if (blast) return d.blastMul || 1;
+  if (head) return 1;
+  let m = 1;
+  if (d.shield && front) m *= d.shield;
+  if (d.armor) m *= d.armor;
+  return m;
+}
+// ノックバックと よろけの おもさ
+export function heavyOf(kind) {
+  return { boss: 0.12, brute: 0.4, charger: 0.35, firefighter: 0.7, riot: 0.6, mutant: 0.7, bloater: 0.8 }[kind] ?? 1;
+}
 export const isBossWave = (n) => n > 0 && n % 3 === 0;
 // ボスの HP（ウェーブが すすむと かたく なる）
 export function bossHp(n) { return Math.round(ZOMBIES.boss.hp * (1 + Math.max(0, n / 3 - 1) * 0.4)); }
@@ -276,10 +336,25 @@ export function waveSpec(n) {
   const bruteCount = n < 4 ? 0 : Math.min(1 + Math.floor((n - 4) / 2), 6);
   // はやい ゾンビ（のぼれる のは この こだけ）は ウェーブ1から かならず 1たい いじょう
   const runners = Math.max(1, Math.round((total - bruteCount) * runnerShare));
-  const walkers = total - runners - bruteCount;
+  let walkers = total - runners - bruteCount;
+  // v0.6.0: あたらしい ゾンビ（ふつうの ゾンビの ぶんから すこしずつ）
+  const specials = {};
+  const un = unlockedSpecials(n);
+  if (un.length) {
+    const share = Math.min(0.2 + (n - 2) * 0.05, 0.6);
+    let cnt = Math.min(walkers - 3, Math.max(1, Math.round(walkers * share)));
+    // はじめて でる しゅるいは 1〜2たい だけ（ためしに）
+    const fresh = un.filter((k) => SPECIAL_UNLOCK.find((u) => u[0] === k)[1] === n);
+    const old = un.filter((k) => !fresh.includes(k));
+    for (const k of fresh) if (cnt > 0) { specials[k] = 1; cnt--; }
+    for (let i = 0; cnt > 0 && old.length; i++, cnt--) { const k = old[(n + i) % old.length]; specials[k] = (specials[k] || 0) + 1; }
+    for (let i = 0; cnt > 0 && fresh.length && i < fresh.length; i++, cnt--) specials[fresh[i]]++;
+  }
+  const sp = Object.values(specials).reduce((a, b) => a + b, 0);
+  walkers -= sp;
   const hpMul = 1 + Math.max(0, n - 5) * 0.08;
   return { n, total: total + (isBossWave(n) ? 1 : 0), walkers, runners, brutes: bruteCount, boss: isBossWave(n) ? 1 : 0,
-    maxAlive: Math.min(6 + n * 2, 16), spawnGap: Math.max(0.5, 1.8 - n * 0.12), hpMul };
+    specials, specialCount: sp, maxAlive: Math.min(6 + n * 2, 16), spawnGap: Math.max(0.5, 1.8 - n * 0.12), hpMul };
 }
 
 // しゅるいの ならびを つくる（rng: 0..1）
@@ -288,6 +363,7 @@ export function waveQueue(spec, rng = Math.random) {
   for (let i = 0; i < spec.walkers; i++) q.push('walker');
   for (let i = 0; i < spec.runners; i++) q.push('runner');
   for (let i = 0; i < spec.brutes; i++) q.push('brute');
+  for (const [k, c] of Object.entries(spec.specials || {})) for (let i = 0; i < c; i++) q.push(k);
   for (let i = q.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [q[i], q[j]] = [q[j], q[i]]; }
   // さいしょの 3たいは あるく ゾンビに（いきなり はしってこない）
   for (let i = 0; i < Math.min(3, q.length); i++) {
@@ -326,6 +402,13 @@ export function aabbNormal(px, py, pz, b) {
 // ゾンビの あたりばこ（あたま・からだ）。z は { x, z, scale, y?, crouch? }
 export function zombieBoxes(z) {
   const s = z.scale || 1, y0 = z.y || 0;
+  if (z.kind && ZOMBIES[z.kind] && ZOMBIES[z.kind].low) { // はいはい: ひくい・あたまは まえ
+    const fx = -Math.sin(z.yaw || 0) * 0.5 * s, fz = -Math.cos(z.yaw || 0) * 0.5 * s, hh = 0.24 * s;
+    return {
+      head: { minX: z.x + fx - hh, maxX: z.x + fx + hh, minY: y0 + 0.22 * s, maxY: y0 + 0.7 * s, minZ: z.z + fz - hh, maxZ: z.z + fz + hh },
+      body: { minX: z.x - 0.4 * s, maxX: z.x + 0.4 * s, minY: y0, maxY: y0 + 0.55 * s, minZ: z.z - 0.4 * s, maxZ: z.z + 0.4 * s },
+    };
+  }
   const hw = 0.3 * s, headH = 0.5 * s, bodyTop = 1.45 * s;
   return {
     head: { minX: z.x - hw, maxX: z.x + hw, minY: y0 + bodyTop, maxY: y0 + bodyTop + headH, minZ: z.z - hw, maxZ: z.z + hw },
@@ -584,7 +667,7 @@ export function gridLineClear(grid, x0, z0, x1, z1) {
 }
 
 // ---- マップ（えらべる。'rotate' は あそぶ たびに つぎの マップ）----
-export const MAP_IDS = ['city', 'mall', 'base', 'hospital', 'camp', 'harbor'];
+export const MAP_IDS = ['city', 'mall', 'base', 'hospital', 'camp', 'harbor', 'rooftop', 'office'];
 export const MAP_CHOICES = ['rotate', ...MAP_IDS];
 // こんかい あそぶ マップ
 export function pickMapId(choice, next = 0) {
@@ -593,8 +676,8 @@ export function pickMapId(choice, next = 0) {
 }
 // ゾンビが でてくる ばしょ: プレイヤーから band[0]〜band[1] m の ゲートを えらぶ（ひろい マップでも まちくたびれない）
 // とおすぎる ゲートは つかわない。ちかすぎる（14m いない）ゲートは つかわない
-export function pickSpawnPoint(spawns, px, pz, r = Math.random(), band = [16, 34]) {
-  const list = spawns.map((s) => ({ s, d: Math.hypot(s.x - px, s.z - pz) })).filter((o) => o.d > 14);
+export function pickSpawnPoint(spawns, px, pz, r = Math.random(), band = [16, 34], py = 0) {
+  const list = spawns.map((s) => ({ s, d: Math.hypot(s.x - px, s.z - pz, ((s.y || 0) - py) * 1.5) })).filter((o) => o.d > 14);
   if (!list.length) return spawns[Math.min(spawns.length - 1, Math.floor(r * spawns.length))];
   list.sort((a, b) => a.d - b.d);
   let ok = list.filter((o) => o.d >= band[0] && o.d <= band[1]);
@@ -747,7 +830,9 @@ export const GEAR_COLORS = [
 ];
 export const GEAR_COLOR_IDS = GEAR_COLORS.map((c) => c.id);
 export const gearColor = (id) => GEAR_COLORS.find((c) => c.id === id) || GEAR_COLORS[0];
-export const GEAR_DROP = { walker: 0.03, runner: 0.04, brute: 0.2, boss: 1 };
+export const GEAR_DROP = { walker: 0.03, runner: 0.04, brute: 0.2, boss: 1,
+  guard: 0.035, crawler: 0.035, soldier: 0.07, spitter: 0.05, burning: 0.045, riot: 0.08, bloater: 0.05, screamer: 0.07,
+  firefighter: 0.08, electric: 0.06, mutant: 0.1, charger: 0.2 };
 export const GEAR_FLOOR = { boss: 'sr', ojisan: 'r' };   // ボスは すごいレア いじょう、おじさんは レア いじょう
 export const INV_CAP = 20;
 export const GEAR_LIFE = 25;

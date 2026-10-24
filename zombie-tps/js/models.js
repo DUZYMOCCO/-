@@ -1,6 +1,6 @@
 // ブロックの キャラクターと ぶき（かくうの デザイン・ロゴなし）
 import * as THREE from '../vendor/three.module.min.js';
-import { zombieFaceTexture, playerFaceTexture, solidTexture, shirtTexture, camoTexture, ojisanTextures } from './textures.js?v=5';
+import { zombieFaceTexture, playerFaceTexture, solidTexture, shirtTexture, camoTexture, ojisanTextures } from './textures.js?v=6';
 
 const boxGeoCache = new Map();
 export function boxGeo(w, h, d) {
@@ -428,11 +428,27 @@ const ZLOOK = {
   runner: { skin: 0x7ccf55, shirt: 0xe07a2f, pants: 0x5a4a3a },
   brute: { skin: 0x5aa83f, shirt: 0x7b4fb0, pants: 0x3a3a46 },
   boss: { skin: 0x4e9a3a, shirt: 0x2f3e6b, pants: 0x2b2b33 },
+  // v0.6.0（ぜんぶ かくうの ふく・マークなし）
+  guard: { skin: 0x6fbf55, shirt: 0x3a4a6a, pants: 0x262a36 },
+  crawler: { skin: 0x8acb5a, shirt: 0x8a7a6a, pants: 0x4a4038 },
+  soldier: { skin: 0x62b048, shirt: 0x5a6a3a, pants: 0x4a5230 },
+  spitter: { skin: 0x9ad84a, shirt: 0x6a5a8a, pants: 0x3a3a4a },
+  burning: { skin: 0x4a6a30, shirt: 0x3a2a22, pants: 0x2a2220, emissive: 0x3a1400 },
+  riot: { skin: 0x64b04c, shirt: 0x2a2e38, pants: 0x22252e },
+  bloater: { skin: 0x8ab84a, shirt: 0x8a8a5a, pants: 0x4a4a3a },
+  screamer: { skin: 0x9ac85e, shirt: 0xa04a6a, pants: 0x3a2a3a },
+  firefighter: { skin: 0x62b04a, shirt: 0xa8862a, pants: 0x6a5a2a },
+  electric: { skin: 0x5aa8a0, shirt: 0x2a3a5a, pants: 0x23283a, emissive: 0x0a2a3a },
+  mutant: { skin: 0x7aa83a, shirt: 0x5a3a3a, pants: 0x3a2a2a },
+  charger: { skin: 0x5a9e3c, shirt: 0x6a4a3a, pants: 0x33302e },
 };
+// つけもの（ぼうし・たて など）の いろ
+const ZX = {};
+const zx = (k, c, e) => ZX[k] || (ZX[k] = L(c, e ? { emissive: e } : undefined));
 // ブロックに くだける ときの いろ（[いろ, ぶい] ぶい: 0=あし 1=からだ 2=あたま 3=うで）
 export function zombieChunkColors(kind) {
   const c = ZLOOK[kind] || ZLOOK.walker;
-  const extra = kind === 'boss' ? 0xf1c40f : kind === 'brute' ? 0x6d737c : 0x3f6b2c;
+  const extra = kind === 'boss' ? 0xf1c40f : kind === 'brute' || kind === 'soldier' || kind === 'riot' ? 0x6d737c : kind === 'firefighter' ? 0xd8b030 : 0x3f6b2c;
   return [[c.pants, 0], [c.pants, 0], [c.shirt, 1], [c.shirt, 1], [c.shirt, 1], [c.skin, 2], [c.skin, 2], [extra, 2], [c.skin, 3], [c.skin, 3]];
 }
 const BOSS_GOLD = L(0xf1c40f, { emissive: 0x3a2c00 }), BOSS_SPIKE = L(0x9aa3ad);
@@ -440,8 +456,9 @@ const zMats = {};
 function zombieMats(kind) {
   if (zMats[kind]) return zMats[kind];
   const c = ZLOOK[kind];
-  const skin = new THREE.MeshLambertMaterial({ map: solidTexture(c.skin, 0.16, 9), emissive: 0x0c2208 }); // くらくても みえる
-  const face = new THREE.MeshLambertMaterial({ map: zombieFaceTexture(c.skin, kind), emissive: 0x0c2208 });
+  const em = c.emissive ?? 0x0c2208;
+  const skin = new THREE.MeshLambertMaterial({ map: solidTexture(c.skin, 0.16, 9), emissive: em }); // くらくても みえる
+  const face = new THREE.MeshLambertMaterial({ map: zombieFaceTexture(c.skin, kind), emissive: em });
   const shirt = new THREE.MeshLambertMaterial({ map: shirtTexture(c.shirt, kind.length) });
   const pants = new THREE.MeshLambertMaterial({ map: solidTexture(c.pants, 0.18, 12) });
   const hair = L(0x3f6b2c), helm = L(0x6d737c);
@@ -465,6 +482,8 @@ export function makeZombie(kind) {
   const head = new THREE.Group(); head.position.y = 0.74; body.add(head);
   part(head, [m.skin, m.skin, m.hair, m.skin, m.skin, m.face], 0.5, 0.5, 0.5, 0, 0.25, 0);
   if (kind === 'brute') part(head, m.helm, 0.56, 0.14, 0.56, 0, 0.52, 0);
+  const extra = {};
+  dressZombie(kind, { inner, body, head, legs }, extra);
   if (kind === 'boss') {
     // おうかん・かたの トゲ・ベルト（ボスだと すぐ わかる）
     part(head, BOSS_GOLD, 0.54, 0.1, 0.54, 0, 0.55, 0);
@@ -479,8 +498,23 @@ export function makeZombie(kind) {
   for (const s of [-1, 1]) {
     const pivot = new THREE.Group(); pivot.position.set(s * 0.38, 0.64, 0); body.add(pivot);
     part(pivot, m.shirt, 0.23, 0.23, 0.22, 0, 0, -0.06);
-    part(pivot, m.skin, 0.2, 0.2, 0.5, 0, 0, -0.38);
+    if (kind === 'charger' && s > 0) { // とっしん: みぎうでが でっかい
+      part(pivot, m.skin, 0.36, 0.36, 0.62, 0, -0.02, -0.42);
+      part(pivot, m.skin, 0.42, 0.4, 0.22, 0, -0.02, -0.78);
+    } else part(pivot, m.skin, 0.2, 0.2, 0.5, 0, 0, -0.38);
+    if (kind === 'firefighter') part(pivot, zx('ffGlove', 0x3a3a34), 0.22, 0.22, 0.14, 0, 0, -0.66);
+    if (kind === 'riot' && s < 0) { // ひだりうでに たて（とうめいの いた・マークなし）
+      const sh = new THREE.Group(); sh.position.set(0.1, 0, -0.62); pivot.add(sh); extra.shield = sh;
+      part(sh, zx('riotShield', 0x8a9aaa, 0x101820), 0.72, 1.05, 0.06, 0.18, -0.12, 0);
+      part(sh, zx('riotRim', 0x3a3e46), 0.76, 0.06, 0.08, 0.18, 0.42, 0);
+      part(sh, zx('riotRim', 0x3a3e46), 0.76, 0.06, 0.08, 0.18, -0.66, 0);
+    }
     arms.push(pivot);
+  }
+  if (kind === 'crawler') { // はいはい: からだを まえに たおす・あしは うしろ
+    body.position.set(0, 0.36, 0.1); body.rotation.x = -1.25;
+    for (const l of legs) { l.position.y = 0.32; l.position.z = 0.35; l.rotation.x = 1.35; l.userData.base = 1.35; }
+    for (const a of arms) a.userData.base = 0.9;
   }
   const meshes = [];
   root.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.userData.mat = o.material; meshes.push(o); } });
@@ -488,7 +522,55 @@ export function makeZombie(kind) {
   const eyes = new THREE.Group(); eyes.visible = false; head.add(eyes);
   part(eyes, EYE_MAT, 0.13, 0.13, 0.02, 0.094, 0.25, -0.255);
   part(eyes, EYE_MAT, 0.1, 0.1, 0.02, -0.11, 0.266, -0.255);
-  return { root, inner, legs, body, head, arms, meshes, eyes, kind };
+  return { root, inner, legs, body, head, arms, meshes, eyes, kind, ...extra };
+}
+
+// v0.6.0: しゅるいごとの つけもの（かくうの デザイン・マーク／もじ なし）
+function dressZombie(kind, { inner, body, head }, extra) {
+  if (kind === 'guard') { // けいびいんの ぼうし＋ベルト
+    part(head, zx('cap', 0x22283a), 0.54, 0.12, 0.54, 0, 0.53, 0);
+    part(head, zx('cap', 0x22283a), 0.54, 0.04, 0.2, 0, 0.48, -0.34);
+    part(body, zx('belt', 0x1a1a1a), 0.54, 0.07, 0.32, 0, 0.05, 0);
+    part(body, zx('radio', 0x2a2a2a), 0.1, 0.14, 0.06, 0.16, 0.6, -0.17);
+  } else if (kind === 'soldier') { // ヘルメット＋ベスト（むじ）
+    part(head, zx('helmG', 0x4a5530), 0.58, 0.16, 0.58, 0, 0.54, 0);
+    part(head, zx('helmG', 0x4a5530), 0.6, 0.05, 0.62, 0, 0.46, 0);
+    part(body, zx('vest', 0x3a4228), 0.56, 0.46, 0.36, 0, 0.42, 0);
+    for (const x of [-0.14, 0.14]) part(body, zx('pouch', 0x2e3420), 0.14, 0.12, 0.06, x, 0.28, -0.2);
+  } else if (kind === 'riot') { // ヘルメット＋かお まもり
+    part(head, zx('helmR', 0x23262e), 0.58, 0.2, 0.58, 0, 0.52, 0);
+    part(head, zx('visor', 0x6a8aa0, 0x0a1a28), 0.52, 0.2, 0.03, 0, 0.32, -0.27);
+    part(body, zx('pad', 0x2a2e38), 0.58, 0.3, 0.36, 0, 0.55, 0);
+  } else if (kind === 'firefighter') { // しょうぼうの ヘルメット＋はんしゃテープ（むじ）
+    part(head, zx('ffHelm', 0x2a2a28), 0.58, 0.14, 0.58, 0, 0.53, 0);
+    part(head, zx('ffHelm', 0x2a2a28), 0.66, 0.04, 0.7, 0, 0.46, 0.04);
+    part(body, zx('tape', 0xd8e0c0, 0x2a2a1a), 0.54, 0.06, 0.32, 0, 0.18, 0);
+    part(body, zx('tape', 0xd8e0c0, 0x2a2a1a), 0.54, 0.06, 0.32, 0, 0.5, 0);
+    part(body, zx('tank', 0x8a8a80), 0.28, 0.5, 0.16, 0, 0.42, 0.24);
+  } else if (kind === 'bloater') { // おなかが ぷっくり
+    part(body, zx('belly', 0x9aca5a, 0x14280a), 0.7, 0.6, 0.56, 0, 0.32, -0.06);
+    for (const [x, y, z] of [[-0.24, 0.5, -0.32], [0.2, 0.2, -0.34], [0.3, 0.55, 0.1]]) part(body, zx('blister', 0xc8e06a, 0x283a0a), 0.14, 0.14, 0.14, x, y, z);
+  } else if (kind === 'mutant') { // こぶ（にく いろでは なく みどりの かたまり）
+    for (const [x, y, z, s] of [[0.28, 0.72, 0.05, 0.26], [-0.22, 0.55, 0.14, 0.2], [0.1, 0.3, 0.18, 0.18]]) part(body, zx('lump', 0x5a8a2a), s, s, s, x, y, z);
+    part(head, zx('lump', 0x5a8a2a), 0.22, 0.22, 0.22, 0.18, 0.5, 0.1);
+  } else if (kind === 'spitter') { // ふくらんだ のど
+    part(head, zx('throat', 0xb8e85a, 0x2a3a0a), 0.34, 0.16, 0.2, 0, -0.04, -0.22);
+  } else if (kind === 'screamer') { // ながい かみ
+    part(head, zx('hairS', 0x2a2a22), 0.54, 0.4, 0.14, 0, 0.18, 0.24);
+    part(head, zx('hairS', 0x2a2a22), 0.56, 0.1, 0.56, 0, 0.52, 0);
+  } else if (kind === 'burning') { // ひの こ（ひかる ブロック）
+    const fl = new THREE.Group(); body.add(fl); extra.flames = fl;
+    const mat = new THREE.MeshBasicMaterial({ color: 0xff7a1a, transparent: true, opacity: 0.85 });
+    const mat2 = new THREE.MeshBasicMaterial({ color: 0xffc23a, transparent: true, opacity: 0.85 });
+    for (const [x, y, z, s, m] of [[0.2, 0.8, 0, 0.16, mat], [-0.18, 0.9, 0.06, 0.13, mat2], [0, 1.4, 0.1, 0.18, mat], [0.26, 0.3, -0.1, 0.12, mat2], [-0.24, 0.4, 0.12, 0.14, mat]]) part(fl, m, s, s, s, x, y, z);
+    for (const o of fl.children) o.castShadow = false, o.userData.noFlash = true;
+  } else if (kind === 'electric') { // あたまの アンテナ＋あおい いなずま
+    const ar = new THREE.Group(); body.add(ar); extra.arcs = ar;
+    const mat = new THREE.MeshBasicMaterial({ color: 0x8ae8ff, transparent: true, opacity: 0.9 });
+    for (const [x, y, z, w, h, rz] of [[0.3, 0.6, -0.17, 0.04, 0.3, 0.6], [-0.28, 0.3, -0.17, 0.04, 0.26, -0.5], [0.1, 0.2, -0.17, 0.04, 0.22, 1.0]]) part(ar, mat, w, h, 0.02, x, y, z, 0, 0, rz);
+    for (const o of ar.children) o.castShadow = false, o.userData.noFlash = true;
+    part(head, zx('coil', 0x6a7a8a), 0.06, 0.24, 0.06, 0.12, 0.6, 0);
+  }
 }
 
 // ロケットだんの はこ（ひかる・ブロック）

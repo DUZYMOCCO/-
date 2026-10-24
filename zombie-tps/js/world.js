@@ -14,7 +14,15 @@ function mergeBoxes(list) {
     tmpC.set(b.tint ?? 0xffffff);
     const uvScale = b.mat === 'crate' ? null : 1;
     for (let i = 0; i < p.count; i++) {
-      pos.push(p.getX(i) + cx, p.getY(i) + cy, p.getZ(i) + cz);
+      let py = p.getY(i) + cy;
+      if (b.slope) { // ななめ（スロープ・てすり）: うえの めんを かたむける（all なら ぜんぶ ずらす）
+        const sl = b.slope, ax = sl.axis === 'x' ? p.getX(i) + cx : p.getZ(i) + cz;
+        const a0 = sl.axis === 'x' ? b.minX : b.minZ, a1 = sl.axis === 'x' ? b.maxX : b.maxZ;
+        let t = (ax - a0) / (a1 - a0 || 1); if (sl.rise < 0) t = 1 - t;
+        const surf = sl.lo + (sl.hi - sl.lo) * t, top = py > cy;
+        if (sl.all) py += surf - b.maxY; else if (top) py = surf;
+      }
+      pos.push(p.getX(i) + cx, py, p.getZ(i) + cz);
       const nx = n.getX(i), ny = n.getY(i), nz = n.getZ(i);
       nor.push(nx, ny, nz);
       let uu = u.getX(i), vv = u.getY(i);
@@ -25,7 +33,7 @@ function mergeBoxes(list) {
       }
       uv.push(uu, vv);
       // かんたんな AO: したの ほうを すこし くらく
-      const yy = p.getY(i) + cy;
+      const yy = py;
       const ao = ny < -0.5 ? 0.55 : (yy < 0.05 && Math.abs(ny) < 0.5 ? 0.78 : 1);
       col.push(tmpC.r * ao, tmpC.g * ao, tmpC.b * ao);
     }
@@ -61,6 +69,12 @@ function farBoxes(map) {
       const L = 10 + rr() * 10; push('metal', x, z - 10, L, 4, 2.2, [0x8a3a2a, 0x3a5a8a, 0x5a6a5a][i % 3]); push('container', x - 1, z - 10, L * 0.5, 3, 2.0, 0xa0a0a0, 2.2);
       continue;
     }
+    if (kind === 'rooftop' || kind === 'office') { // くらい ビルの まち（まどの あかりは すこし）
+      const w = 6 + rr() * 7, h = 8 + rr() * (kind === 'office' ? 22 : 14);
+      push('concrete', x, z, w, w, h, [0x6a6a78, 0x5a5e6a, 0x7a7470][i % 3]);
+      if (i % 3 === 0) push('light', x, z, w * 0.3, w + 0.1, 0.8, 0xffffff, h * (0.3 + rr() * 0.5));
+      continue;
+    }
     if (kind === 'city' || kind === 'hospital' || kind === 'harbor') { const w = 5 + rr() * 6; push(kind === 'hospital' ? 'wall' : 'concrete', x, z, w, w, 5 + rr() * (kind === 'city' ? 16 : 9)); }
     else if (kind === 'mall') { const w = 8 + rr() * 8; push('concrete', x, z, w, w, 3 + rr() * 6); }
     else if (kind === 'base') { const w = 6 + rr() * 8; push(rr() < 0.4 ? 'hesco' : 'leaves', x, z, w, w, 2 + rr() * 5); }
@@ -80,15 +94,19 @@ export function buildWorld(scene, map, T, { shadows }) {
     return mats[key];
   };
 
+  // v0.6.0: たてものの なかは かい（lvl）ごとに わける → みえない かいは けす
   const byMat = new Map();
   for (const b of map.boxes) {
     if (b.mat === 'none') continue;
-    if (!byMat.has(b.mat)) byMat.set(b.mat, []);
-    byMat.get(b.mat).push(b);
+    const k = b.lvl != null ? `${b.mat}|${b.lvl}` : b.mat;
+    if (!byMat.has(k)) byMat.set(k, []);
+    byMat.get(k).push(b);
   }
-  const meshes = [];
-  for (const [key, list] of byMat) {
+  const meshes = [], levels = new Map();
+  for (const [k, list] of byMat) {
+    const key = k.split('|')[0];
     const mesh = new THREE.Mesh(mergeBoxes(list), mat(key));
+    if (list[0].lvl != null) { const L = list[0].lvl; if (!levels.has(L)) levels.set(L, []); levels.get(L).push(mesh); }
     const flat = list.every((b) => b.maxY < 0.2);
     mesh.castShadow = shadows && !flat && key !== 'light' && key !== 'ember';
     mesh.receiveShadow = shadows;
@@ -125,7 +143,7 @@ export function buildWorld(scene, map, T, { shadows }) {
     scene.add(farMesh); meshes.push(farMesh);
   }
 
-  return { meshes, mats };
+  return { meshes, mats, levels };
 }
 
 // マップを かえるとき: ジオメトリと ざいしつを すてる（テクスチャは のこす）
