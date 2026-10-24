@@ -44,6 +44,14 @@ export class Sfx {
       this._noise(t, 0.11, { type: 'bandpass', freq: 1500 * p, q: 0.8, gain: 0.8 });
       this._tone(t, 0.09, { f0: 220 * p, f1: 70, gain: 0.6 });
       this._noise(t + 0.02, 0.25, { type: 'lowpass', freq: 600, gain: 0.15, attack: 0.02 });
+    } else if (kind === 'sniper') {
+      // ズドン（ながい こだま）＋ あとで ガチャッ（ボルト）
+      this._noise(t, 0.08, { type: 'highpass', freq: 1500 * p, gain: 0.7 });
+      this._noise(t, 0.22, { type: 'lowpass', freq: 2600 * p, gain: 1.0 });
+      this._tone(t, 0.2, { f0: 120 * p, f1: 34, gain: 1.0 });
+      this._noise(t + 0.04, 0.9, { type: 'lowpass', freq: 380, gain: 0.32, attack: 0.05 });
+      this._noise(t + 0.42, 0.05, { type: 'bandpass', freq: 2600, q: 3, gain: 0.25 });
+      this._noise(t + 0.62, 0.06, { type: 'bandpass', freq: 3200, q: 3, gain: 0.28 });
     } else if (kind === 'minigun') {
       // ブロロロ（みじかい おとを はやく かさねる）
       this._noise(t, 0.045, { type: 'highpass', freq: 2000 * p, gain: 0.32 });

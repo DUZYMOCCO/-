@@ -1,6 +1,6 @@
 // こうか: マズルフラッシュ・トレーサー・やっきょう・つぶ（みどりの しぶき／けむり）・しみ（みどり）・だんこん
 import * as THREE from '../vendor/three.module.min.js';
-import { makeMagMesh } from './models.js?v=9';
+import { makeMagMesh } from './models.js?v=10';
 
 const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _s = new THREE.Vector3(), _p = new THREE.Vector3(), _c = new THREE.Color();
 const UP = new THREE.Vector3(0, 1, 0), FWD = new THREE.Vector3(0, 0, 1);
@@ -44,7 +44,7 @@ export class FX {
     }
     this.bi = 0;
     // やっきょう
-    this.casingGeo = { rifle: new THREE.BoxGeometry(0.018, 0.018, 0.055), pistol: new THREE.BoxGeometry(0.016, 0.016, 0.03), shotgun: new THREE.BoxGeometry(0.03, 0.03, 0.07) };
+    this.casingGeo = { rifle: new THREE.BoxGeometry(0.018, 0.018, 0.055), pistol: new THREE.BoxGeometry(0.016, 0.016, 0.03), shotgun: new THREE.BoxGeometry(0.03, 0.03, 0.07), sniper: new THREE.BoxGeometry(0.022, 0.022, 0.08) };
     this.casingMat = { rifle: new THREE.MeshLambertMaterial({ color: 0xd9a63c, emissive: 0x3a2a08 }), pistol: new THREE.MeshLambertMaterial({ color: 0xd9a63c, emissive: 0x3a2a08 }), shotgun: new THREE.MeshLambertMaterial({ color: 0xc0392b }) };
     this.casings = [];
     for (let i = 0; i < 40; i++) { const m = new THREE.Mesh(this.casingGeo.rifle, this.casingMat.rifle); m.visible = false; scene.add(m); this.casings.push({ m, v: new THREE.Vector3(), spin: new THREE.Vector3(), life: 0 }); }

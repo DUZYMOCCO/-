@@ -1,6 +1,6 @@
 // ブロックの キャラクターと ぶき（かくうの デザイン・ロゴなし）
 import * as THREE from '../vendor/three.module.min.js';
-import { zombieFaceTexture, playerFaceTexture, solidTexture, shirtTexture, camoTexture, ojisanTextures } from './textures.js?v=9';
+import { zombieFaceTexture, playerFaceTexture, solidTexture, shirtTexture, camoTexture, ojisanTextures } from './textures.js?v=10';
 
 const boxGeoCache = new Map();
 export function boxGeo(w, h, d) {
@@ -175,9 +175,44 @@ export function makeRocketProjectile() {
   return { group: g, flame };
 }
 
+// v0.8.0: スナイパーライフル（かくうの デザイン・マークなし）。ながい つつ・スコープ・ボルト・2きゃく
+function makeSniper() {
+  const g = new THREE.Group(); g.name = 'sniper';
+  const M = GM, wood = M.oliveD;
+  part(g, M.metal, 0.066, 0.09, 0.34, 0, 0, 0);                     // レシーバー
+  part(g, wood, 0.07, 0.07, 0.5, 0, -0.07, -0.08);                  // ストック まえ
+  part(g, wood, 0.06, 0.12, 0.08, 0, -0.14, 0.12, -0.3);            // グリップ
+  part(g, M.poly, 0.012, 0.012, 0.07, 0, -0.13, 0.05);              // トリガーガード
+  part(g, wood, 0.07, 0.12, 0.26, 0, -0.06, 0.32);                  // ストック
+  part(g, wood, 0.05, 0.03, 0.16, 0, 0.02, 0.3);                    // ほお あて
+  part(g, M.rubber, 0.072, 0.15, 0.03, 0, -0.06, 0.46);             // パッド
+  part(g, M.metal, 0.026, 0.026, 0.62, 0, 0.01, -0.62);             // ながい バレル
+  part(g, M.steel, 0.042, 0.042, 0.1, 0, 0.01, -0.96);              // マズル
+  for (const s of [-1, 1]) part(g, M.poly, 0.004, 0.026, 0.05, s * 0.022, 0.01, -0.96);
+  // スコープ
+  part(g, M.poly, 0.03, 0.03, 0.03, 0, 0.065, -0.12); part(g, M.poly, 0.03, 0.03, 0.03, 0, 0.065, 0.06);
+  part(g, M.poly, 0.05, 0.05, 0.32, 0, 0.1, -0.03);
+  part(g, M.poly, 0.066, 0.066, 0.06, 0, 0.1, -0.2); part(g, M.poly, 0.06, 0.06, 0.05, 0, 0.1, 0.13);
+  part(g, M.lens, 0.05, 0.05, 0.004, 0, 0.1, -0.232);
+  part(g, M.metal, 0.02, 0.02, 0.02, 0, 0.135, -0.03); part(g, M.metal, 0.02, 0.02, 0.02, 0.033, 0.1, -0.03);
+  // 2きゃく（たたんだ）
+  for (const s of [-1, 1]) part(g, M.metal, 0.012, 0.012, 0.22, s * 0.025, -0.06, -0.42, 0, s * 0.1);
+  // ボルト（うつと うごく）
+  const bolt = new THREE.Group(); bolt.position.set(0.04, 0.02, 0.06); g.add(bolt);
+  part(bolt, M.steel, 0.02, 0.02, 0.07, 0, 0, 0);
+  part(bolt, M.steel, 0.05, 0.014, 0.014, 0.025, 0, 0.02);
+  part(bolt, M.metal, 0.026, 0.026, 0.026, 0.05, 0, 0.02);
+  // マガジン（ちいさい）
+  const mag = new THREE.Group(); mag.position.set(0, -0.09, -0.04); g.add(mag);
+  part(mag, M.poly, 0.05, 0.07, 0.08, 0, -0.035, 0);
+  const muzzle = new THREE.Object3D(); muzzle.position.set(0, 0.01, -1.02); g.add(muzzle);
+  const eject = new THREE.Object3D(); eject.position.set(0.045, 0.02, 0.0); g.add(eject);
+  return { group: g, mag, muzzle, eject, bolt, boltRest: bolt.position.z, gripLeft: new THREE.Vector3(0, -0.08, -0.36), magRest: mag.position.clone() };
+}
+
 export function makeWeapons() {
   const rifle = makeRifle(); rifle.group.scale.setScalar(1.15);
-  return { rifle, pistol: makePistol(), shotgun: makeShotgun(), rocket: makeRocket(), minigun: makeMinigun() };
+  return { rifle, pistol: makePistol(), shotgun: makeShotgun(), rocket: makeRocket(), minigun: makeMinigun(), sniper: makeSniper() };
 }
 export function makeMagMesh() {
   const g = new THREE.Group();

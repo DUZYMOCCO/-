@@ -1,7 +1,7 @@
 // ゾンビストライク — ゲームの きまり（DOM / three.js に いぞんしない。node のテストから よめる）
 // ぶき・ダメージ・ウェーブ・あたりはんてい（レイ×はこ）・いどうの ぶつかり・ゾンビの みちさがし（フローフィールド）
 
-export const VERSION = '0.7.1';
+export const VERSION = '0.8.0';
 
 // ---- ぶき ----
 // rpm: 1ぷんかんの はっしゃかず / mag: マガジン / reserve: よびだん / reload: びょう
@@ -46,8 +46,36 @@ export const WEAPONS = {
     recoilPitch: 0.0035, recoilYaw: 0.005, shake: 0.035, range: 80, falloff: [22, 65, 0.7], knock: 0.8,
     spinUp: 0.5, spinDown: 0.9, moveMul: 0.55, carryMul: 0.9,
   },
+  // v0.8.0: スナイパーライフル（かくうの デザイン）。1ぱつ ずつ ガチャッ（ボルト）。ふつうの ゾンビは 1ぱつ・2たいまで つらぬく
+  // ねらう と スコープ（この ぶき だけ）
+  sniper: {
+    id: 'sniper', name: 'スナイパーライフル', short: 'スナイパー', slot: 6,
+    dmg: 110, head: 2.5, pellets: 1, rpm: 46, auto: false,
+    mag: 5, reserve: 30, reload: 2.8,
+    spread: 0.03, spreadMove: 0.05, spreadAim: 0.0004, bloom: 0, bloomMax: 0,
+    recoilPitch: 0.05, recoilYaw: 0.008, shake: 0.12, range: 160, falloff: [70, 150, 0.85], knock: 1.3,
+    pierce: 2, pierceMul: 0.8, bolt: 0.9, scope: true,
+  },
 };
-export const WEAPON_ORDER = ['rifle', 'pistol', 'shotgun', 'rocket', 'minigun'];
+export const WEAPON_ORDER = ['rifle', 'pistol', 'shotgun', 'rocket', 'minigun', 'sniper'];
+
+// ---- v0.8.0: スコープ（スナイパーだけ）----
+// fov: ズーム・sens: うごかす はやさの ばいりつ・sway: ゆれ（ラジアン。7さいでも ねらえる くらい ちいさく）
+export const SCOPE = { fov: 22, sens: 0.35, sway: 0.0035, swayMove: 1.8, hz: 0.33, on: 0.8 };
+export const AIM_FOV = { hip: 70, aim: 46 };
+export const hasScope = (id) => !!(WEAPONS[id] && WEAPONS[id].scope);
+export const isScoped = (id, aim) => hasScope(id) && aim >= SCOPE.on;
+export function aimFov(id, aim) {
+  const to = hasScope(id) ? SCOPE.fov : AIM_FOV.aim;
+  return AIM_FOV.hip + (to - AIM_FOV.hip) * Math.max(0, Math.min(1, aim));
+}
+export function aimSensMul(id, aim) { return hasScope(id) ? 1 - (1 - SCOPE.sens) * Math.max(0, Math.min(1, aim)) : 1; }
+// ゆっくり まるく ゆれる（うごくと すこし おおきく）
+export function scopeSway(t, aim, moving = false) {
+  if (!isScoped('sniper', aim)) return { x: 0, y: 0 };
+  const a = SCOPE.sway * (moving ? SCOPE.swayMove : 1), w = t * Math.PI * 2 * SCOPE.hz;
+  return { x: Math.sin(w) * a, y: Math.sin(w * 2) * a * 0.5 };
+}
 export const DEFAULT_WEAPON = 'rifle';
 
 export function fireInterval(w) { return 60 / w.rpm; }
@@ -55,7 +83,7 @@ export function fireInterval(w) { return 60 / w.rpm; }
 // ウェーブの はじめに よびだんを ほじゅう（へっていたら もとの かずまで）
 // ロケットは ほじゅう しない（ゾンビが おとす たまを ひろう）
 export function refillReserve(g) {
-  const w = WEAPONS[g.id];
+  const w = gunStats(g);
   if (w.noRefill) return;
   if (w.reserve !== Infinity) g.reserve = Math.max(g.reserve, w.reserve);
 }
@@ -187,15 +215,56 @@ export function currentSpread(w, { moving = false, aiming = false, airborne = fa
 }
 
 // ---- ぶきの じょうたい（たま・リロード・れんしゃ） ----
-export function createGun(id) {
-  const w = WEAPONS[id];
-  return { id, ammo: w.mag, reserve: w.reserve, cooldown: 0, reloading: 0, bloom: 0, triggerHeld: false, lastTrigger: false, spin: 0 };
+export function createGun(id, lv = 1) {
+  const w = upgradedWeapon(id, lv);
+  return { id, lv: w.lv, w, ammo: w.mag, reserve: w.reserve, cooldown: 0, reloading: 0, bloom: 0, triggerHeld: false, lastTrigger: false, spin: 0 };
+}
+// その じゅうの いまの つよさ（つよく した ぶん こみ）
+export const gunStats = (g) => g.w || WEAPONS[g.id];
+// レベルを かえる（たまは へらさない。マガジンが ふえたら その ぶん いれる）
+export function setGunLevel(g, lv) {
+  const old = gunStats(g), w = upgradedWeapon(g.id, lv);
+  g.w = w; g.lv = w.lv;
+  if (w.mag > old.mag && g.reloading === 0) g.ammo = Math.min(w.mag, g.ammo + (w.mag - old.mag));
+  return g;
+}
+
+// ---- v0.8.0: ぶきを つよく する（スコアを つかう）----
+// レベル 1〜max。1レベル ごとに いりょく +10%・はやさ +5%・たま +10%（ロケットは Lv5 から 2はつ）
+// ねだん: base × 1.5^(レベル−1)（10の くらい で まるめ）
+export const UPGRADE = { max: 8, grow: 1.5, dmg: 0.10, rate: 0.05, mag: 0.10,
+  base: { rifle: 400, pistol: 250, shotgun: 400, rocket: 600, minigun: 600, sniper: 500 } };
+export const clampLv = (lv) => Math.max(1, Math.min(UPGRADE.max, Number.isFinite(lv) ? Math.floor(lv) : 1));
+export function upgradeCost(id, lv) {
+  const L = clampLv(lv);
+  if (L >= UPGRADE.max || !UPGRADE.base[id]) return Infinity;
+  return Math.round(UPGRADE.base[id] * Math.pow(UPGRADE.grow, L - 1) / 10) * 10;
+}
+export function upgradedWeapon(id, lv = 1) {
+  const b = WEAPONS[id], L = clampLv(lv), k = L - 1;
+  return { ...b, lv: L, dmg: Math.round(b.dmg * (1 + UPGRADE.dmg * k)), rpm: Math.round(b.rpm * (1 + UPGRADE.rate * k)),
+    mag: Math.round(b.mag * (1 + UPGRADE.mag * k)) };
+}
+export const weaponLevel = (save, id) => clampLv(save && save.wlv ? save.wlv[id] : 1);
+// かう: つかえる スコア（bank）から ひく。さいこう スコア（bestScore）は かわらない
+export function buyUpgrade(save, id) {
+  const lv = weaponLevel(save, id), cost = upgradeCost(id, lv);
+  if (cost === Infinity) return { ok: false, max: true, lv };
+  if ((save.bank | 0) < cost) return { ok: false, short: cost - (save.bank | 0), lv, cost };
+  save.bank -= cost; save.wlv = { ...(save.wlv || {}), [id]: lv + 1 };
+  return { ok: true, lv: lv + 1, cost };
+}
+export const BANK_MAX = 9999999;
+export function earnBank(save, n) {
+  if (!(n > 0)) return save.bank | 0;
+  save.bank = Math.min(BANK_MAX, (save.bank | 0) + Math.floor(n));
+  return save.bank;
 }
 
 // ミニガンの かいてん（0..1）。おしている あいだ spinUp びょうで 1 に なる。はなすと spinDown びょうで 0
 // リロードちゅうは とまっていく。もどりは いまの spin
 export function spinGun(g, held, dt) {
-  const w = WEAPONS[g.id];
+  const w = gunStats(g);
   if (!w.spinUp) return 0;
   const want = held && g.reloading === 0;
   g.spin = want ? Math.min(1, (g.spin || 0) + dt / w.spinUp) : Math.max(0, (g.spin || 0) - dt / w.spinDown);
@@ -203,7 +272,7 @@ export function spinGun(g, held, dt) {
 }
 // いどうの はやさの ばいりつ（ミニガンは もつだけで すこし おそく、まわすと もっと おそい）
 export function weaponMoveMul(g) {
-  const w = WEAPONS[g.id];
+  const w = gunStats(g);
   if (!w.moveMul) return w.id === 'rocket' ? 0.92 : 1;
   const s = g.spin || 0;
   return (w.carryMul || 1) * (1 + (w.moveMul - 1) * s);
@@ -211,7 +280,7 @@ export function weaponMoveMul(g) {
 
 // dt すすめる。リロードが おわったら たまを うつす
 export function updateGun(g, dt) {
-  const w = WEAPONS[g.id];
+  const w = gunStats(g);
   g.cooldown = Math.max(0, g.cooldown - dt);
   g.bloom = Math.max(0, g.bloom - dt * (w.bloomMax * 4 + 0.02));
   if (g.reloading > 0) {
@@ -229,13 +298,13 @@ export function updateGun(g, dt) {
 }
 
 export function canReload(g) {
-  const w = WEAPONS[g.id];
+  const w = gunStats(g);
   return g.reloading === 0 && g.ammo < w.mag && g.reserve > 0;
 }
 
 export function startReload(g) {
   if (!canReload(g)) return false;
-  g.reloading = WEAPONS[g.id].reload;
+  g.reloading = gunStats(g).reload;
   return true;
 }
 
@@ -244,7 +313,7 @@ export function cancelReload(g) { g.reloading = 0; }
 // ひきがね。held=おしている。うてたら true（オートでない ぶきは おしなおしが ひつよう）
 // れんだ しても fireInterval より はやくは うてない
 export function tryFire(g, held) {
-  const w = WEAPONS[g.id];
+  const w = gunStats(g);
   const pressedNow = held && !g.lastTrigger;
   g.lastTrigger = held;
   if (!held) return 'none';
@@ -428,7 +497,7 @@ export function zombieBoxes(z) {
 }
 
 // うった たまが なにに あたるか。zombies: [{x,z,scale,alive}], walls: AABB[]
-export function castShot(ox, oy, oz, dx, dy, dz, zombies, walls, range) {
+export function castShot(ox, oy, oz, dx, dy, dz, zombies, walls, range, skip = null) {
   let best = { t: range, kind: 'none', index: -1, head: false };
   for (let i = 0; i < walls.length; i++) {
     const t = rayAABB(ox, oy, oz, dx, dy, dz, walls[i], best.t);
@@ -440,7 +509,7 @@ export function castShot(ox, oy, oz, dx, dy, dz, zombies, walls, range) {
   }
   for (let i = 0; i < zombies.length; i++) {
     const z = zombies[i];
-    if (!z.alive) continue;
+    if (!z.alive || (skip && skip.has(i))) continue;
     const bx = zombieBoxes(z);
     const th = rayAABB(ox, oy, oz, dx, dy, dz, bx.head, best.t);
     if (th >= 0 && th < best.t) best = { t: th, kind: 'zombie', index: i, head: true };
@@ -449,6 +518,20 @@ export function castShot(ox, oy, oz, dx, dy, dz, zombies, walls, range) {
   }
   best.x = ox + dx * best.t; best.y = oy + dy * best.t; best.z = oz + dz * best.t;
   return best;
+}
+
+// v0.8.0: つらぬく たま。pierce たい まで ぬける（かべで とまる）。hits: [{ index, head, t, x, y, z, mul }]・end: さいごの あたり
+export function castPierce(ox, oy, oz, dx, dy, dz, zombies, walls, range, pierce = 0, mulStep = 0.8) {
+  const hits = [], skip = new Set();
+  let mul = 1, end;
+  for (;;) {
+    end = castShot(ox, oy, oz, dx, dy, dz, zombies, walls, range, skip);
+    if (end.kind !== 'zombie') break;
+    hits.push({ index: end.index, head: end.head, t: end.t, x: end.x, y: end.y, z: end.z, mul });
+    if (hits.length > pierce) break;
+    skip.add(end.index); mul *= mulStep;
+  }
+  return { hits, end };
 }
 
 // ---- はこの さがしやすい ならび（ひろい マップでも かるい）----
@@ -703,11 +786,22 @@ export function hurryMul(dist) {
 }
 
 // ---- セーブ ----
+export const BANK_START_MAX = 2000;
+export function normalizeLevels(x) {
+  const o = x && typeof x === 'object' ? x : {}, r = {};
+  for (const id of WEAPON_ORDER) r[id] = clampLv(o[id]);
+  return r;
+}
 export function normalizeSave(s) {
   const o = s && typeof s === 'object' ? s : {};
   return {
     bestWave: Number.isFinite(o.bestWave) ? Math.max(0, o.bestWave | 0) : 0,
     bestScore: Number.isFinite(o.bestScore) ? Math.max(0, o.bestScore | 0) : 0,
+    // v0.8.0: つかえる スコア（あそんだ スコアが たまる。つよく する／すてる で ふえる・へる）。はじめての ときは さいこう スコアから すこし おまけ
+    bank: Number.isFinite(o.bank) ? Math.max(0, Math.min(BANK_MAX, Math.floor(o.bank))) : Math.min(BANK_START_MAX, Number.isFinite(o.bestScore) ? Math.max(0, o.bestScore | 0) : 0),
+    wlv: normalizeLevels(o.wlv),
+    slv: normalizeSlotLevels(o.slv),
+    hlv: lvIn(o.hlv, HP_UP.max),
     autoFire: !!o.autoFire,
     sens: ['low', 'mid', 'high'].includes(o.sens) ? o.sens : 'mid',
     quality: ['auto', 'low', 'high'].includes(o.quality) ? o.quality : 'auto',
@@ -965,10 +1059,11 @@ export function autoPickup(gear, item) {
   if (!gear.inv.some((g) => g.id === item.id) && gear.inv.length >= INV_CAP) {
     const eqIds = new Set(Object.values(gear.eq));
     const loose = gear.inv.filter((g) => !eqIds.has(g.id)).sort((a, b) => gearPower(a) - gearPower(b));
-    if (loose.length) { dropped = loose[0]; gear.inv = gear.inv.filter((g) => g.id !== dropped.id); }
+    if (!loose.length) return { ok: false }; // つけている ものは ぜったい すてない
+    dropped = loose[0]; gear.inv = gear.inv.filter((g) => g.id !== dropped.id);
   }
   const r = gearAction(gear, item, 'equip');
-  return { ok: r.ok, replaced: prev, dropped: dropped || (r.replaced || null) };
+  return { ok: r.ok, replaced: prev, dropped };
 }
 
 // そうびの ごうけい（うえげん つき）
@@ -979,9 +1074,53 @@ export function gearTotals(items) {
   return t;
 }
 export function equippedItems(gear) { return GEAR_SLOT_IDS.map((s) => gear.inv.find((g) => g.id === gear.eq[s]) || null); }
-export function gearEffects(gear) {
-  const t = gearTotals(equippedItems(gear));
-  return { maxHp: 100 + t.hp, dmgMul: 1 - t.def / 100, speedMul: 1 + t.spd / 100, reloadMul: 1 / (1 - t.rel / 100), totals: t };
+// v0.8.0: ぶいの レベル（あたま Lv3 など）と たいりょく レベルは セーブに のこる（そうびを かえても すてても へらない）
+// ぶいの レベル: その ぶいに なにか つけて いれば、レベル 1つ ごとに ボーナス（そうびの うえげんとは べつに たす）
+export const SLOT_UP = { max: 5, grow: 1.5, base: { head: 200, body: 250, feet: 200, arm: 200 },
+  per: { head: { def: 1, rel: 1 }, body: { def: 2 }, feet: { spd: 1 }, arm: { rel: 2 } } };
+// たいりょく: さいしょの HP 100 に +12% ずつ（そうびの HP には かけない）
+export const HP_UP = { max: 6, grow: 1.6, base: 300, pct: 0.12 };
+const lvIn = (v, max) => (Number.isInteger(v) ? Math.max(1, Math.min(max, v)) : 1);
+export const slotLevel = (save, slot) => lvIn(save && save.slv ? save.slv[slot] : 1, SLOT_UP.max);
+export const hpLevel = (save) => lvIn(save ? save.hlv : 1, HP_UP.max);
+const r10 = (n) => Math.round(n / 10) * 10;
+export const slotUpCost = (slot, lv) => (lv >= SLOT_UP.max ? Infinity : r10((SLOT_UP.base[slot] || 200) * SLOT_UP.grow ** (lv - 1)));
+export const hpUpCost = (lv) => (lv >= HP_UP.max ? Infinity : r10(HP_UP.base * HP_UP.grow ** (lv - 1)));
+export const baseHpAt = (lv) => Math.round(100 * (1 + HP_UP.pct * (lvIn(lv, HP_UP.max) - 1)));
+export function slotBonus(slot, lv) {
+  const o = {}; for (const [k, v] of Object.entries(SLOT_UP.per[slot] || {})) o[k] = v * (lvIn(lv, SLOT_UP.max) - 1);
+  return o;
+}
+function spend(save, cost, apply) {
+  const bank = save.bank || 0;
+  if (bank < cost) return { ok: false, short: cost - bank, cost };
+  save.bank = bank - cost; apply(); return { ok: true, cost };
+}
+export function buySlotUpgrade(save, slot) {
+  if (!GEAR_SLOT_IDS.includes(slot)) return { ok: false };
+  const lv = slotLevel(save, slot);
+  if (lv >= SLOT_UP.max) return { ok: false, max: true, lv };
+  const r = spend(save, slotUpCost(slot, lv), () => { save.slv = { ...(save.slv || {}), [slot]: lv + 1 }; });
+  return { ...r, lv: r.ok ? lv + 1 : lv };
+}
+export function buyHpUpgrade(save) {
+  const lv = hpLevel(save);
+  if (lv >= HP_UP.max) return { ok: false, max: true, lv };
+  const r = spend(save, hpUpCost(lv), () => { save.hlv = lv + 1; });
+  return { ...r, lv: r.ok ? lv + 1 : lv };
+}
+export function normalizeSlotLevels(x) {
+  const o = x && typeof x === 'object' ? x : {}, r = {};
+  for (const s of GEAR_SLOT_IDS) r[s] = lvIn(o[s], SLOT_UP.max);
+  return r;
+}
+// save: { slv, hlv }（なければ ぜんぶ Lv1）
+export function gearEffects(gear, save = null) {
+  const eqs = equippedItems(gear), t = gearTotals(eqs), bonus = { def: 0, hp: 0, spd: 0, rel: 0 };
+  GEAR_SLOT_IDS.forEach((s, i) => { if (eqs[i]) for (const [k, v] of Object.entries(slotBonus(s, slotLevel(save, s)))) bonus[k] += v; });
+  const all = {}; for (const k of GEAR_STAT_IDS) all[k] = t[k] + bonus[k];
+  const base = baseHpAt(hpLevel(save));
+  return { maxHp: base + all.hp, baseHp: base, dmgMul: 1 - all.def / 100, speedMul: 1 + all.spd / 100, reloadMul: 1 / (1 - all.rel / 100), totals: all, gearTotals: t, bonus };
 }
 function cleanGear(g) {
   if (!g || typeof g !== 'object' || typeof g.id !== 'string' || !g.id || g.id.length > 40) return null;
@@ -1004,6 +1143,31 @@ export function normalizeGear(x) {
   for (const s of GEAR_SLOT_IDS) { const g = inv.find((i) => i.id === e0[s] && i.slot === s); eq[s] = g ? g.id : null; }
   return { inv, eq };
 }
+// ---- v0.8.0: すてると スコアが もどる ----
+// もどる スコア = レアの きほん ＋ つよさ（gearPower）× 5（10の くらいで まるめ）。つよく した レベルは ぶいに つくので すてても へらない
+export const REFUND = { n: 30, r: 80, sr: 200, l: 500, per: 5 };
+export function gearRefund(g) {
+  if (!g) return 0;
+  return Math.round(((REFUND[g.rarity] ?? REFUND.n) + gearPower(g) * REFUND.per) / 10) * 10;
+}
+export const isWorn = (gear, item) => !!item && GEAR_SLOT_IDS.some((s) => gear.eq[s] === item.id);
+export const needsDropConfirm = (item) => !!item && item.rarity === 'l';
+// すてる（つけている ものは すてられない）。もどった スコアは bank へ
+export function discardGear(save, item) {
+  const gear = save.gear;
+  if (!item) return { ok: false };
+  if (isWorn(gear, item)) return { ok: false, worn: true };
+  gearAction(gear, item, 'drop');
+  const refund = gearRefund(item);
+  earnBank(save, refund);
+  return { ok: true, refund };
+}
+// かばんが いっぱい の とき: いちばん よわい（つけていない）ものを すてて ばしょを あける
+export function weakestLoose(gear, except = null) {
+  const eqIds = new Set(Object.values(gear.eq));
+  return gear.inv.filter((g) => !eqIds.has(g.id) && g !== except && g.id !== (except && except.id)).sort((a, b) => gearPower(a) - gearPower(b))[0] || null;
+}
+
 // ひろった そうびを どうするか
 // 'equip': つける（かばんが いっぱいなら まえの そうびと いれかえ）/ 'keep': かばんへ / 'drop': すてる
 export function gearAction(gear, item, act) {

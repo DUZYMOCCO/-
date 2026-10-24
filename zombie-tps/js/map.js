@@ -184,6 +184,36 @@ function builder(half, seed) {
       : { minX: Math.min(x, x + sg * 0.8), maxX: Math.max(x, x + sg * 0.8), minZ: z - 0.6, maxZ: z + 0.6 };
     ladders.push({ ...zone, base, top, face });
   };
+  // ---- v0.8.0: スナイパーの みはりだい（はしごで のぼる。まんなかがわに はしご）----
+  // cands: [[x,z],...] の なかで あいている ところに n こ たてる
+  const perches = [];
+  B.perches = perches;
+  B.PERCH = { w: 2.6, top: 4.2 };
+  B.perch = (cands, n = 1, opt = {}) => {
+    const W = opt.w || B.PERCH.w, top = opt.top || B.PERCH.top, hw = W / 2;
+    for (const [x, z] of cands) {
+      if (perches.filter((p) => !p.roof).length >= n) break;
+      if (!B.free(x, z, hw + 1.2) || B.hit(x, z, hw + 1.4)) continue;
+      if (perches.some((p) => Math.hypot(p.x - x, p.z - z) < 14)) continue;
+      const face = Math.abs(x) > Math.abs(z) ? (x > 0 ? 'w' : 'e') : (z > 0 ? 'n' : 's');
+      const fv = { n: [0, -1], s: [0, 1], w: [-1, 0], e: [1, 0] }[face];
+      if (B.hit(x + fv[0] * (hw + 1.0), z + fv[1] * (hw + 1.0), 0.8)) continue; // はしごの まえが ふさがって いたら やめる
+      add('plank', x, 0, z, W, top, W, { tint: opt.tint ?? 0x8a6a4a, perch: true });
+      for (const a of [-1, 1]) for (const c of [-1, 1]) deco('log', x + a * (hw - 0.1), top, z + c * (hw - 0.1), 0.16, 2.0, 0.16);
+      deco('tent', x, top + 2.0, z, W + 0.5, 0.18, W + 0.5, { tint: opt.roof ?? 0x5a6a4a });
+      // てすり（はしごの がわ いがい）
+      const sides = { n: [0, -1], s: [0, 1], w: [-1, 0], e: [1, 0] };
+      for (const [k, [sx, sz]] of Object.entries(sides)) {
+        if (k === face) continue;
+        if (sx) deco('plank', x + sx * (hw - 0.06), top, z, 0.12, 0.75, W, { tint: 0xa0805a });
+        else deco('plank', x, top, z + sz * (hw - 0.06), W, 0.75, 0.12, { tint: 0xa0805a });
+      }
+      const [fx, fz] = sides[face];
+      B.ladder(x + fx * hw, z + fz * hw, face, top);
+      perches.push({ x, z, top, face, w: W });
+    }
+    return perches;
+  };
   // あなの あいた ゆか（holes: [[x0,z0,x1,z1],...]）
   B.slab = (x0, z0, x1, z1, top, holes = [], opt = {}) => {
     const xs = [x0, x1], zs = [z0, z1];
@@ -264,7 +294,7 @@ function builder(half, seed) {
   };
   // その ばしょに もう ぶつかる ものが あるか
   B.hit = (x, z, rad) => boxes.some((b) => b.collide && x + rad > b.minX && x - rad < b.maxX && z + rad > b.minZ && z - rad < b.maxZ);
-  B.done = (theme, extra = {}) => ({ boxes, spawns, lamps, playerStart: { x: 0, z: 4, yaw: 0 }, half, theme, ...extra });
+  B.done = (theme, extra = {}) => ({ boxes, spawns, lamps, playerStart: { x: 0, z: 4, yaw: 0 }, half, theme, ladders, perches, ...extra });
   // スタートと タイトルの けしき（プレイヤーの まわり）は あけておく
   reserve(-4, -1, 4, 8);
   return B;
@@ -274,6 +304,10 @@ const GATES3 = (g) => ({ n: [-g, 0, g], s: [-g, 0, g], w: [-g, 0, g], e: [-g, 0,
 const CAR_TINTS = [0xd84a3a, 0x3a7bd8, 0xe0b43a, 0x8fd0c8, 0xeeeeee, 0x5a5f66, 0x2f8a4a, 0x9a4ad8, 0x2a2a30];
 
 // ================= まち =================
+// v0.8.0: みはりだいを たてて みる ばしょ（まんなか より すこし そと。ゲートの ほうが よく みえる）
+const PERCH_CANDS = [[-17, -17], [17, 17], [17, -17], [-17, 17], [0, -18], [18, 0], [-18, 0], [0, 18],
+  [-14, -9], [14, 9], [9, -14], [-9, 14], [-22, -10], [22, 10], [10, -22], [-10, 22], [-6, -10], [6, 10], [-28, 0], [28, 0], [0, -28], [0, 28]];
+
 function city() {
   const B = builder(44, 2026), { half, deco, r } = B;
   const roads = [-24, 0, 24];
@@ -313,6 +347,7 @@ function city() {
   for (const [x, z, n] of [[6, 6, 2], [7, 6, 1], [-6, -7, 2], [-7.1, -7, 1], [14, -8, 2], [-20, 2, 1], [20, 28, 1], [-28, 20, 2], [28, -20, 1]]) B.crate(x, z, n);
   for (const [x, z, t] of [[8, -3.5, 0xc0392b], [8.9, -3.6, 0x2e86c1], [-8, 4.2, 0x27ae60], [21, 6, 0xc0392b], [-21, -6, 0x2e86c1]]) B.barrel(x, z, t);
   for (const c of roads) for (const a of [-30, -18, -6, 6, 18, 30]) { if (B.free(c + 5.5, a, 0.3)) B.lamp(c + 5.5, a); }
+  B.perch(PERCH_CANDS, 2);
   return B.done({ ground: 'grass', tint: 0x8a8070, k: 0.15, far: 'city', farTint: 0x9a9aa8 });
 }
 
@@ -359,6 +394,7 @@ function mall() {
   for (const [x, z] of [[-6, 14 + 4], [6, -9 + 4], [-28, -2], [28, 8]]) B.crate(x, z, 2);
   for (const [x, z, t] of [[-12, 8, 0x3a6fe0], [12, 8, 0x3ab84a], [-3, -21, 0xe04a3a]]) B.barrel(x, z, t);
   for (const [x, z] of [[-30, -13], [-10, -13], [10, -13], [30, -13], [-30, 18], [-10, 18], [10, 18], [-36, 6], [36, 6], [0, 10]]) B.lamp(x, z);
+  B.perch(PERCH_CANDS, 2);
   return B.done({ ground: 'asphalt', tint: 0x6a7a8a, k: 0.25, far: 'mall', farTint: 0x8a8f9a });
 }
 
@@ -394,6 +430,7 @@ function base() {
   for (let i = 0; i < 5; i++) add('plank', -30 + i * 3.5, 0, 25.5 + (i % 2) * 3.5, 2.4, 1.0, 0.6, { tint: 0xb89a6a });
   B.scatter(14, 0.8, (x, z, i) => (i % 3 === 0 ? B.barrel(x, z, [0x5f6640, 0x8a3a2a, 0x3a5a7a][i % 3]) : B.crate(x, z, 1 + (i % 2), 0xc8b890)));
   for (const [x, z] of [[-10, -10], [10, -10], [-10, 8], [10, 8], [-26, -26], [26, -26], [-26, 20], [26, 16], [0, 34], [0, -34]]) if (B.free(x, z, 0.3)) B.lamp(x, z);
+  B.perch(PERCH_CANDS, 2);
   return B.done({ ground: 'dirt', tint: 0x8a7a50, k: 0.3, far: 'base', farTint: 0x8a8470 });
 }
 
@@ -427,6 +464,7 @@ function hospital() {
   for (const [x, z] of [[16, 36], [-24, 36]]) B.tent(x, z, 'x', 0xf0f0ea, true);
   B.scatter(10, 0.6, (x, z, i) => (i % 2 ? B.crate(x, z, 1, 0xe8e8e8) : add('metal', x, 0, z, 0.7, 1.1, 1.8, { tint: 0xc8d0d8 })));
   for (const [x, z] of [[-20, -12], [0, -12], [20, -12], [-12, 10], [12, 10], [-12, 20], [12, 20], [-18, 30], [30, 0], [-30, -12]]) if (B.free(x, z, 0.3)) B.lamp(x, z);
+  B.perch(PERCH_CANDS, 2);
   return B.done({ ground: 'grass', tint: 0x7a9a8a, k: 0.3, far: 'hospital', farTint: 0x9aa8a0 });
 }
 
@@ -459,6 +497,7 @@ function camp() {
   // もり（き が たくさん）
   B.scatter(70, 1.6, (x, z) => (r() < 0.65 ? B.pine(x, z) : B.tree(x, z, undefined, 0xa8d098)), 10);
   for (const [x, z] of [[-4, -8], [4, 8], [-4, 26], [26, 4], [-26, -4], [26, -26], [-26, 26], [-26, -26], [26, 26], [4, -26], [-12, -26]]) if (B.free(x, z, 0.3)) B.lamp(x, z, 'log');
+  B.perch(PERCH_CANDS, 2);
   return B.done({ ground: 'grass', tint: 0x4a7a4a, k: 0.35, far: 'forest', farTint: 0x6a8a6a });
 }
 
@@ -495,6 +534,7 @@ function harbor() {
   for (const [x, z] of [[-4, 12], [4, 14], [10, -2], [-10, 0], [2, 22], [-16, -2]]) { deco('plank', x, 0, z, 1.2, 0.15, 1.2); B.crate(x, z, 1 + Math.floor(r() * 2)); }
   B.scatter(12, 0.6, (x, z, i) => (i % 2 ? B.barrel(x, z, tints[i % tints.length]) : B.crate(x, z, 1, 0x8ab0d0)));
   for (const [x, z] of [[-34, -30], [-4, -30], [4, -30], [34, -30], [-10, 4], [10, 0], [0, 18], [-16, 16], [26, 10], [36, 30], [-10, 36]]) if (B.free(x, z, 0.3)) B.lamp(x, z);
+  B.perch(PERCH_CANDS, 2);
   return B.done({ ground: 'concrete', tint: 0x4a6a8a, k: 0.35, far: 'harbor', farTint: 0x7a8a9a, water: 'north' });
 }
 
@@ -588,6 +628,7 @@ function rooftop() {
   B.scatter(14, 0.6, (x, z, i) => (i % 3 ? B.barrel(x, z, [0xc0392b, 0x2e86c1, 0x27ae60][i % 3]) : B.crate(x, z, 1 + (i % 2))));
   for (const [x, z] of [[-6, 0], [6, 10], [-12, 28], [12, 22], [36, 0], [-36, 2], [0, -34], [-20, -4], [24, -6]]) if (B.free(x, z, 0.3)) B.lamp(x, z);
   B.lamp(-12, -18, 'dark', 3.0); B.lamp(-6, -24, 'dark', 5.5); B.lamp(30, -14.5, 'dark', 8.0); B.lamp(-24, 12, 'dark', 5.5);
+  B.perches.push({ x: 16, z: -19, top: 8.0, face: 's', w: 4, roof: true, lx: 16, lz: -11.6 }); // v0.8.0: いちばん たかい やね（はしご 16,-12）が みはりだい
   for (const sp of [{ x: -1, z: -19, y: 5.5 }, { x: 31, z: -19, y: 8.0 }, { x: -28, z: 16, y: 5.5 }, { x: 27, z: 28, y: 5.5 }]) B.spawns.push(sp);
   return B.done({ ground: 'asphalt', tint: 0x5a5a66, k: 0.25, far: 'rooftop', farTint: 0x8a8aa0 }, { vertical: true, ladders: B.ladders });
 }

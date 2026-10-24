@@ -13,15 +13,17 @@ import {
   spinGun, weaponMoveMul, makeBoxIndex, pickSpawnPoint, hurryMul, pickMapId,
   rollGearDrop, rollGear, GEAR_FLOOR, GEAR_LIFE, gearEffects, equippedItems, gearColor, rarityOf, normalizeGear,
   damageMul, frontHit, heavyOf, unlockedSpecials, zombieTargetsRobot,
-} from './rules.js?v=9';
-import { RobotMixin } from './robot.js?v=9';
-import { makeNav } from './nav.js?v=9';
-import { buildMap, playerColliders, zombieColliders, shotColliders } from './map.js?v=9';
-import { buildTextures, fxTextures } from './textures.js?v=9';
-import { buildWorld, disposeWorld } from './world.js?v=9';
-import { Backdrop, BACKDROPS } from './backdrop.js?v=9';
-import { makePlayer, applyOutfit, applyGear, makeGearDrop, makeOjisan, makeWeapons, makeZombie, makeRocketProjectile, makeRocketCrate, zombieChunkColors, FLASH_MAT } from './models.js?v=9';
-import { FX } from './fx.js?v=9';
+  castPierce, aimFov, aimSensMul, scopeSway, isScoped, SCOPE, weaponLevel, setGunLevel,
+} from './rules.js?v=10';
+import { RobotMixin } from './robot.js?v=10';
+import { makeNav } from './nav.js?v=10';
+import { buildMap, playerColliders, zombieColliders, shotColliders } from './map.js?v=10';
+import { buildTextures, fxTextures } from './textures.js?v=10';
+import { buildWorld, disposeWorld } from './world.js?v=10';
+import { Backdrop, BACKDROPS } from './backdrop.js?v=10';
+import { makePlayer, applyOutfit, applyGear, makeGearDrop, makeOjisan, makeWeapons, makeZombie, makeRocketProjectile, makeRocketCrate, zombieChunkColors, FLASH_MAT } from './models.js?v=10';
+import { FX } from './fx.js?v=10';
+const A_RIGHT = new THREE.Vector3();
 
 const v3 = () => new THREE.Vector3();
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -114,6 +116,7 @@ export class Game {
     this.nav = makeNav(zc, map);
     this.nav.update(map.playerStart.x, 0, map.playerStart.z); this.flowT = 0;
     this.vertical = !!map.vertical; this.ladders = map.ladders || [];
+    this.buildPerchMarks();
     this.cullOn = !!(map.interior && this.world.levels && this.world.levels.size); this.cullKey = '';
     this.backdrop.setMap(map.id);
     if (!first) {
@@ -136,7 +139,7 @@ export class Game {
     for (const r of this.rockets || []) this.releaseRocket(r);
     if (this.rockets) this.rockets.length = 0;
     this.refreshGear(true); this.hp = this.maxHp; this.hurtT = 0; this.regenDelay = 0;
-    this.guns = {}; for (const id of WEAPON_ORDER) this.guns[id] = createGun(id);
+    this.guns = {}; for (const id of WEAPON_ORDER) this.guns[id] = createGun(id, weaponLevel(this.settings, id));
     this.cur = DEFAULT_WEAPON; this.swapT = 0; this.showWeapon(this.cur);
     this.wave = 0; this.queue = []; this.spawnT = 0; this.interT = 2.5; this.score = 0; this.kills = 0; this.heads = 0;
     this.kick = 0; this.shake = 0; this.walkPhase = 0; this.moveAmt = 0; this.aimAmt = 0; this.reloadWasOn = false; this.magDropped = false;
@@ -174,6 +177,35 @@ export class Game {
     this.state = 'play';
     this.hud.show('play');
     this.pushHud(true);
+  }
+
+  // v0.8.0: つよく した レベルを いまの じゅうに いれる（たまは そのまま）
+  applyUpgrades() {
+    if (!this.guns) return;
+    for (const id of WEAPON_ORDER) if (this.guns[id]) setGunLevel(this.guns[id], weaponLevel(this.settings, id));
+    if (this.p) this.refreshGear(); // v0.8.0: ぶいの レベル・たいりょく
+    this.pushHud?.(true);
+  }
+
+  // v0.8.0: みはりだいの しるし（ちいさい スコープの マーク。うすく）
+  buildPerchMarks() {
+    if (this.perchG) { this.scene.remove(this.perchG); this.perchG.traverse((o) => { if (o.material) o.material.dispose(); }); }
+    const g = this.perchG = new THREE.Group();
+    if (!this.perchTex) {
+      const c = document.createElement('canvas'); c.width = c.height = 64;
+      const x = c.getContext('2d');
+      x.fillStyle = 'rgba(20,28,36,0.55)'; x.beginPath(); x.arc(32, 32, 30, 0, Math.PI * 2); x.fill();
+      x.strokeStyle = '#e8f0f8'; x.lineWidth = 4; x.beginPath(); x.arc(32, 32, 17, 0, Math.PI * 2); x.stroke();
+      x.lineWidth = 3; x.beginPath(); x.moveTo(32, 8); x.lineTo(32, 24); x.moveTo(32, 40); x.lineTo(32, 56); x.moveTo(8, 32); x.lineTo(24, 32); x.moveTo(40, 32); x.lineTo(56, 32); x.stroke();
+      x.fillStyle = '#ff6a5a'; x.beginPath(); x.arc(32, 32, 3, 0, Math.PI * 2); x.fill();
+      this.perchTex = new THREE.CanvasTexture(c); this.perchTex.colorSpace = THREE.SRGBColorSpace;
+    }
+    for (const p of this.map.perches || []) {
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.perchTex, transparent: true, opacity: 0.6, depthWrite: false, fog: false }));
+      sp.position.set(p.x, p.top + (p.roof ? 1.6 : 2.75), p.z); sp.scale.setScalar(0.85);
+      g.add(sp);
+    }
+    this.scene.add(g);
   }
 
   showWeapon(id) {
@@ -1194,7 +1226,7 @@ export class Game {
 
   // ---- うつ ----
   fireShot() {
-    const id = this.cur, w = WEAPONS[id], gun = this.guns[id];
+    const id = this.cur, gun = this.guns[id], w = gun.w || WEAPONS[id];
     const cam = this.camera, A = this.tmp;
     const d = A.a.set(0, 0, -1).applyQuaternion(this.camBaseQ).normalize();
     // カメラと プレイヤーの あいだの かべに あたらない ように、プレイヤーの よこから うつ
@@ -1212,17 +1244,24 @@ export class Game {
       const r = Math.sqrt(Math.random()) * spread, a = Math.random() * Math.PI * 2;
       const up = new THREE.Vector3(0, 1, 0).applyQuaternion(this.camBaseQ), rt = new THREE.Vector3(1, 0, 0).applyQuaternion(this.camBaseQ);
       const dir = d.clone().addScaledVector(rt, Math.cos(a) * r).addScaledVector(up, Math.sin(a) * r).normalize();
-      const hit = castShot(o.x, o.y, o.z, dir.x, dir.y, dir.z, shotZ, this.sCol, w.range);
+      // v0.8.0: スナイパーは つらぬく（ならんだ ゾンビ pierce たい まで。うしろほど すこし よわく）
+      const pr = w.pierce ? castPierce(o.x, o.y, o.z, dir.x, dir.y, dir.z, shotZ, this.sCol, w.range, w.pierce, w.pierceMul || 0.8) : null;
+      const hit = pr ? pr.end : castShot(o.x, o.y, o.z, dir.x, dir.y, dir.z, shotZ, this.sCol, w.range);
       const hp = new THREE.Vector3(hit.x, hit.y, hit.z);
       if (pI < 3 && (id !== 'minigun' || (gun.shotN = (gun.shotN || 0) + 1) % 2 === 0)) this.fx.tracer(muzzle, hp);
+      const zh = pr ? pr.hits : hit.kind === 'zombie' ? [{ index: hit.index, head: hit.head, t: hit.t, x: hit.x, y: hit.y, z: hit.z, mul: 1 }] : [];
+      for (const zhit of zh) {
+        const z = shotZ[zhit.index];
+        const dist = zhit.t;
+        const zp = zhit === zh[zh.length - 1] ? hp : new THREE.Vector3(zhit.x, zhit.y, zhit.z);
+        const dmg = damageAt(w, dist, zhit.head) * zhit.mul;
+        const h = hitZ.get(z) || { dmg: 0, head: false, pos: zp, dir, knock: 0 };
+        h.dmg += dmg; h.head = h.head || zhit.head; h.knock += knockAt(w, dist) * zhit.mul; hitZ.set(z, h);
+        this.fx.greenHit(zp, dir, zhit.head);
+        anyHit = true; anyHead = anyHead || zhit.head;
+      }
       if (hit.kind === 'zombie') {
-        const z = shotZ[hit.index];
-        const dist = hit.t;
-        const dmg = damageAt(w, dist, hit.head);
-        const h = hitZ.get(z) || { dmg: 0, head: false, pos: hp, dir, knock: 0 };
-        h.dmg += dmg; h.head = h.head || hit.head; h.knock += knockAt(w, dist); hitZ.set(z, h);
-        this.fx.greenHit(hp, dir, hit.head);
-        anyHit = true; anyHead = anyHead || hit.head;
+        // （うえで しょり ずみ）
       } else if (hit.kind === 'wall') {
         const n = aabbNormal(hit.x, hit.y, hit.z, this.sCol[hit.index]);
         const nv = new THREE.Vector3(n.x, n.y, n.z);
@@ -1237,9 +1276,10 @@ export class Game {
     if (killed >= 2) this.multiKill(killed);
     if (anyHit) { this.hud.hitmarker(anyHead); this.sfx.hit(anyHead); }
     // みため
-    this.fx.muzzle(wObj.muzzle, id === 'shotgun' ? 1.5 : id === 'pistol' ? 0.8 : id === 'minigun' ? 0.95 : 1.15);
-    this.fx.casing(wObj.eject, id, right);
+    this.fx.muzzle(wObj.muzzle, id === 'shotgun' ? 1.5 : id === 'pistol' ? 0.8 : id === 'minigun' ? 0.95 : id === 'sniper' ? 1.3 : 1.15);
+    if (id !== 'sniper') this.fx.casing(wObj.eject, id, right);
     if (id === 'shotgun') this.pumpT = 0.55;
+    if (id === 'sniper') { this.boltT = w.bolt || 0.9; this.boltCase = true; } // ガチャッ（ボルトを ひく ときに からが でる）
     this.kick = 1;
     this.shake = Math.min(0.45, this.shake + w.shake * 0.9);
     const aimMul = this.aimAmt > 0.5 ? 0.6 : 1;
@@ -1251,7 +1291,7 @@ export class Game {
 
   // ---- ロケット ----
   fireRocket(o, d, spread, muzzle) {
-    const A = this.tmp, w = WEAPONS.rocket, wo = this.weapons.rocket;
+    const A = this.tmp, w = this.guns.rocket.w || WEAPONS.rocket, wo = this.weapons.rocket;
     const dir = d.clone().addScaledVector(_v.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5), spread).normalize();
     const hit = castShot(o.x, o.y, o.z, dir.x, dir.y, dir.z, this.zombies, this.sCol, w.range);
     const aimP = new THREE.Vector3(hit.x, hit.y, hit.z);
@@ -1282,7 +1322,7 @@ export class Game {
   releaseRocket(r) { this.scene.remove(r.mdl.group); this.rocketPool.push(r); }
 
   updateRockets(dt) {
-    const w = WEAPONS.rocket;
+    const w = (this.guns && this.guns.rocket.w) || WEAPONS.rocket;
     for (let i = this.rockets.length - 1; i >= 0; i--) {
       const r = this.rockets[i];
       r.life -= dt; r.age += dt;
@@ -1455,7 +1495,7 @@ export class Game {
     const items = equippedItems(gear).filter(Boolean).map((g) => ({ slot: g.slot, colorHex: gearColor(g.color).hex, rarity: g.rarity }));
     applyGear(this.p, items);
     const prevMax = this.maxHp || 100;
-    this.gearFx = gearEffects(gear);
+    this.gearFx = gearEffects(gear, this.settings);
     this.maxHp = this.gearFx.maxHp;
     if (!init && this.hp != null) {
       if (this.maxHp > prevMax) this.hp += this.maxHp - prevMax;
@@ -1513,7 +1553,7 @@ export class Game {
     if (this.state === 'pause') return;
     if (this.state === 'over') { this.updateOjiHud(); this.updateRobotHud(); this.updateRockets(dt); this.updateZombies(dt); this.updatePickups(dt); this.fx.update(dt); this.updateCamera(dt, false); this.updateNight(); return; }
 
-    const gun = this.guns[this.cur], w = WEAPONS[this.cur];
+    const gun = this.guns[this.cur], w = gun.w || WEAPONS[this.cur];
     // イベント
     for (const ev of inp.events) {
       if (ev === 'reload') { if (startReload(gun)) this.onReloadStart(); }
@@ -1527,7 +1567,7 @@ export class Game {
     // ねらい
     this.aimAmt = lerp(this.aimAmt, inp.aim ? 1 : 0, Math.min(1, dt * 12));
     const target = this.crosshairTarget();
-    const slow = (target >= 0 ? 0.65 : 1) * (1 - this.aimAmt * 0.45);
+    const slow = (target >= 0 ? 0.65 : 1) * (1 - this.aimAmt * 0.45) * aimSensMul(this.cur, this.aimAmt); // v0.8.0: スコープは もっと ゆっくり
     // しせん: めあての むきへ すこしだけ なめらかに（おくれない ていど）
     this.yawT -= inp.lx * slow; this.pitchT -= inp.ly * slow;
     this.pitchT = Math.max(-1.0, Math.min(1.05, this.pitchT));
@@ -1564,7 +1604,7 @@ export class Game {
     const vx = V.x, vz = V.z;
     this.moveAmt = Math.min(1, Math.hypot(vx, vz) / 4.7);
     // はしご: ゾーンの なかで まえに すすむと のぼる
-    const lad = this.vertical ? this.ladderAt(this.pos.x, this.pos.y, this.pos.z) : null;
+    const lad = this.ladders.length ? this.ladderAt(this.pos.x, this.pos.y, this.pos.z) : null; // v0.8.0: みはりだいの はしごは どの マップでも
     this.onLadder = !!(lad && inp.my > 0.2);
     const wasG = this.onGround;
     if (this.onLadder) { this.vy = 3.4; this.onGround = false; } else this.vy -= 20 * dt;
@@ -1630,7 +1670,7 @@ export class Game {
 
   onReloadStart() {
     this.magDropped = false;
-    this.sfx.reload(this.cur, WEAPONS[this.cur].reload);
+    this.sfx.reload(this.cur, this.guns[this.cur].w.reload);
     this.pushHud(true);
   }
 
@@ -1638,13 +1678,13 @@ export class Game {
     if (!this.camBaseQ) return -1;
     const A = this.tmp, d = A.a.set(0, 0, -1).applyQuaternion(this.camBaseQ);
     const o = A.b.copy(this.camera.position);
-    const hit = castShot(o.x, o.y, o.z, d.x, d.y, d.z, this.zombies, this.sCol, WEAPONS[this.cur].range);
+    const hit = castShot(o.x, o.y, o.z, d.x, d.y, d.z, this.zombies, this.sCol, this.guns[this.cur].w.range);
     this.hud.crossTarget(hit.kind === 'zombie');
     return hit.kind === 'zombie' ? hit.index : -1;
   }
 
   updatePlayerAnim(dt) {
-    const P = this.p, gun = this.guns[this.cur], w = WEAPONS[this.cur], wo = this.weapons[this.cur];
+    const P = this.p, gun = this.guns[this.cur], w = gun.w || WEAPONS[this.cur], wo = this.weapons[this.cur];
     P.root.position.copy(this.pos);
     P.root.rotation.y = this.yaw;
     if (wo.barrels) wo.barrels.rotation.z += (gun.spin || 0) * 42 * dt; // ミニガンの つつが まわる
@@ -1702,6 +1742,14 @@ export class Game {
       if (wo.pump) wo.pump.position.z = -0.36 + pull * 0.1;
       P.armL.position.z = pull * 0.1;
     }
+    // v0.8.0: スナイパーの ボルト（ひいて もどす・からが でる）
+    if (this.boltT > 0) {
+      this.boltT -= dt;
+      const B0 = w.bolt || 0.9, bt = 1 - this.boltT / B0;
+      const pull = bt > 0.3 ? Math.sin(((bt - 0.3) / 0.7) * Math.PI) : 0;
+      if (wo.bolt) wo.bolt.position.z = wo.boltRest + pull * 0.09;
+      if (this.boltCase && bt > 0.55) { this.boltCase = false; this.fx.casing(wo.eject, 'sniper', A_RIGHT.set(Math.cos(this.yaw), 0, -Math.sin(this.yaw))); }
+    }
     // ねらう ときは まんなかへ
     H.position.x = lerp(0.3, 0.22, this.aimAmt);
   }
@@ -1709,8 +1757,13 @@ export class Game {
   updateCamera(dt, playing) {
     const cam = this.camera, A = this.tmp;
     const aim = this.aimAmt;
-    cam.fov = lerp(70, 46, aim); cam.updateProjectionMatrix();
-    const yaw = this.yaw + this.recoilY, pitch = this.pitch + this.recoilP;
+    // v0.8.0: スナイパー だけ スコープ（ズーム・くろい まる・ゆっくり ゆれる）
+    const scoped = playing !== false && this.state === 'play' && isScoped(this.cur, aim);
+    if (scoped !== this.scopedOn) { this.scopedOn = scoped; this.hud.scope?.(scoped); }
+    cam.fov = scoped ? SCOPE.fov : Math.max(aimFov(this.cur, aim), this.cur === 'sniper' ? 46 : 0); cam.updateProjectionMatrix();
+    this.swayT = (this.swayT || 0) + dt;
+    const sw = scoped ? scopeSway(this.swayT, 1, this.moveAmt > 0.2) : { x: 0, y: 0 };
+    const yaw = this.yaw + this.recoilY + sw.x, pitch = this.pitch + this.recoilP + sw.y;
     this.recoilY *= Math.max(0, 1 - dt * 8);
     const fx = -Math.sin(yaw) * Math.cos(pitch), fy = Math.sin(pitch), fz = -Math.cos(yaw) * Math.cos(pitch);
     const rx = Math.cos(yaw), rz = -Math.sin(yaw);
@@ -1721,7 +1774,7 @@ export class Game {
     if (F.distanceToSquared(this.pos) > 4) F.copy(this.pos);
     const bob = this.onGround ? Math.sin(this.walkPhase * 2) * 0.022 * this.moveAmt * (1 - aim) - this.landT * 0.5 : 0;
     this.shoulder = (this.shoulder || v3()).set(F.x + rx * sh, F.y + lerp(2.02, 1.82, aim) + bob, F.z + rz * sh);
-    const want = lerp(3.2, 1.6, aim);
+    const want = scoped ? 0.02 : lerp(3.2, 1.6, aim);
     const back = A.e.set(-fx, -fy, -fz);
     const dist = cameraDistance(this.shoulder.x, this.shoulder.y, this.shoulder.z, back.x, back.y, back.z, want, this.camCol, 0.25);
     this.camDist = lerp(this.camDist || want, dist, dist < (this.camDist || want) ? 1 : Math.min(1, dt * 6));
@@ -1762,12 +1815,12 @@ export class Game {
   }
 
   pushHud(force) {
-    const g = this.guns[this.cur], w = WEAPONS[this.cur];
+    const g = this.guns[this.cur], w = g.w || WEAPONS[this.cur];
     this.hud.set({
       hp: Math.ceil(this.hp), maxHp: this.maxHp, ammo: g.ammo, mag: w.mag, reserve: g.reserve, weapon: this.cur,
       reloading: g.reloading > 0 ? 1 - g.reloading / w.reload : -1, wave: this.wave, left: this.remaining(), score: this.score,
       spread: currentSpread(w, { moving: this.moveAmt > 0.2, aiming: this.aimAmt > 0.5, airborne: !this.onGround, bloom: g.bloom }),
-      fov: this.camera.fov, aim: this.aimAmt, guns: this.guns,
+      fov: this.camera.fov, aim: this.aimAmt, guns: this.guns, lv: g.lv || 1,
     }, force);
   }
 

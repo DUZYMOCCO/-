@@ -148,7 +148,8 @@ for (const MID of FLAT_IDS) test(`[${MID}] マップ: スタートは あいて�
 test('セーブの よみこみ', () => {
   assert.deepEqual(normalizeSave(null), { bestWave: 0, bestScore: 0, autoFire: false, sens: 'mid', quality: 'auto', stage: 'day', flashlight: true,
     outfit: 'normal', outfits: ['normal'], gear: { inv: [], eq: { head: null, body: null, feet: null, arm: null } },
-    autoEquip: true, map: 'rotate', mapNext: 0 });
+    autoEquip: true, map: 'rotate', mapNext: 0, bank: 0, wlv: { rifle: 1, pistol: 1, shotgun: 1, rocket: 1, minigun: 1, sniper: 1 },
+    slv: { head: 1, body: 1, feet: 1, arm: 1 }, hlv: 1 });
   assert.equal(normalizeSave({ bestWave: 7, sens: 'zzz' }).sens, 'mid');
   assert.equal(normalizeSave({ bestWave: 7 }).bestWave, 7);
 });
@@ -228,7 +229,7 @@ test('なめらか いどう: approach は フレームレートに よらない
 });
 
 test('バージョン と セーブの ステージ', () => {
-  assert.equal(VERSION, '0.7.1');
+  assert.equal(VERSION, '0.8.0');
   assert.equal(normalizeSave(null).stage, 'day');
   assert.equal(normalizeSave({ stage: 'night' }).stage, 'night');
   assert.equal(normalizeSave({ stage: 'mars' }).stage, 'day');
@@ -1068,3 +1069,222 @@ test('v0.7.1 よる → ひる: ラベルが「ひる」なら みためも ひ�
   // TOD の キーは ぜんぶ おなじ（まぜる ときに のこりが でない）
   for (const k of ['sunset', 'night']) assert.deepEqual(Object.keys(TOD[k]).sort(), Object.keys(TOD.day).sort());
 });
+
+// ---- v0.8.0: ぶきを つよく・すてると スコア・スナイパー・みはりだい ----
+import * as R8 from '../js/rules.js';
+{
+  const { UPGRADE, upgradeCost, upgradedWeapon, buyUpgrade, earnBank, weaponLevel, setGunLevel, gearRefund, discardGear, REFUND, isWorn,
+    needsDropConfirm, weakestLoose, castPierce, aimFov, aimSensMul, scopeSway, isScoped, hasScope, SCOPE, AIM_FOV, BANK_START_MAX, gunStats } = R8;
+
+  const gen = (r, slot, rar) => { for (;;) { const g = rollGear(r, { slot, floor: rar }); if (g.rarity === rar) return g; } };
+  test('v0.8.0 つよく する: ねだんは だんだん たかく・さいこう レベルで おしまい', () => {
+    for (const id of WEAPON_ORDER) {
+      let prev = 0;
+      for (let lv = 1; lv < UPGRADE.max; lv++) { const c = upgradeCost(id, lv); assert.ok(Number.isFinite(c) && c > prev, `${id} Lv${lv}`); prev = c; }
+      assert.equal(upgradeCost(id, UPGRADE.max), Infinity);
+      assert.equal(upgradedWeapon(id, 99).lv, UPGRADE.max);
+    }
+    assert.deepEqual([1, 2, 3, 4, 5, 6, 7].map((l) => upgradeCost('rifle', l)), [400, 600, 900, 1350, 2030, 3040, 4560]);
+  });
+
+  test('v0.8.0 つよく する: いりょく・はやさ・たまが ふえる（へらない）', () => {
+    for (const id of WEAPON_ORDER) {
+      const a = upgradedWeapon(id, 1), b = upgradedWeapon(id, 2), z = upgradedWeapon(id, UPGRADE.max);
+      assert.equal(a.dmg, WEAPONS[id].dmg); assert.equal(a.rpm, WEAPONS[id].rpm); assert.equal(a.mag, WEAPONS[id].mag);
+      assert.ok(b.dmg > a.dmg && b.rpm >= a.rpm && b.mag >= a.mag, id);
+      assert.ok(z.dmg >= a.dmg * 1.6 && z.rpm > a.rpm && z.mag > a.mag, id);
+    }
+    assert.equal(upgradedWeapon('rocket', 5).mag, 1); assert.equal(upgradedWeapon('rocket', 6).mag, 2);
+    // じゅうは レベルの つよさで うつ
+    const g = createGun('rifle', 3);
+    assert.equal(g.lv, 3); assert.equal(g.ammo, upgradedWeapon('rifle', 3).mag); assert.equal(gunStats(g).dmg, upgradedWeapon('rifle', 3).dmg);
+    const g2 = createGun('rifle'); g2.ammo = 10; setGunLevel(g2, 8);
+    assert.equal(g2.w.lv, 8); assert.ok(g2.ammo > 10 && g2.ammo <= g2.w.mag, 'たまは へらない');
+  });
+
+  test('v0.8.0 つよく する: スコアが たりないと かえない・さいこう スコアは へらない', () => {
+    const s = normalizeSave({ bestScore: 50000, bestWave: 9, bank: 500 });
+    assert.equal(weaponLevel(s, 'rifle'), 1);
+    let r = buyUpgrade(s, 'rifle'); assert.ok(r.ok); assert.equal(s.bank, 100); assert.equal(weaponLevel(s, 'rifle'), 2);
+    r = buyUpgrade(s, 'rifle'); assert.ok(!r.ok); assert.equal(r.short, 500); assert.equal(s.bank, 100); assert.equal(weaponLevel(s, 'rifle'), 2);
+    assert.equal(s.bestScore, 50000); assert.equal(s.bestWave, 9);
+    s.bank = 9e6; for (let i = 0; i < 20; i++) buyUpgrade(s, 'pistol');
+    assert.equal(weaponLevel(s, 'pistol'), UPGRADE.max); assert.ok(buyUpgrade(s, 'pistol').max);
+    assert.equal(s.bestScore, 50000);
+    earnBank(s, -5); earnBank(s, NaN); const b = s.bank; earnBank(s, 120); assert.equal(s.bank, b + 120);
+  });
+
+  test('v0.8.0 セーブ: bank と wlv（ふるい セーブは さいこう スコアから すこし おまけ）', () => {
+    assert.equal(normalizeSave({ bestScore: 999999 }).bank, BANK_START_MAX);
+    assert.equal(normalizeSave({ bestScore: 700 }).bank, 700);
+    assert.equal(normalizeSave({ bestScore: 700, bank: 0 }).bank, 0);
+    assert.equal(normalizeSave({ bank: -5 }).bank, 0);
+    assert.equal(normalizeSave({ bank: 12.7 }).bank, 12);
+    const w = normalizeSave({ wlv: { rifle: 4, sniper: 99, shotgun: 'x', zzz: 3 } }).wlv;
+    assert.deepEqual(w, { rifle: 4, pistol: 1, shotgun: 1, rocket: 1, minigun: 1, sniper: UPGRADE.max });
+  });
+
+  test('v0.8.0 すてると スコア: レアほど おおい（n<r<sr<l）・つけている ものは すてない', () => {
+    assert.ok(REFUND.n < REFUND.r && REFUND.r < REFUND.sr && REFUND.sr < REFUND.l);
+    const r = lcg(3);
+    const avg = (rar) => { let t = 0; for (let i = 0; i < 40; i++) t += gearRefund(gen(r, 'head', rar)); return t / 40; };
+    const v = ['n', 'r', 'sr', 'l'].map(avg);
+    assert.ok(v[0] < v[1] && v[1] < v[2] && v[2] < v[3], v.join(','));
+    for (let i = 0; i < 30; i++) for (const rar of ['n', 'r', 'sr', 'l']) {
+      const g = gen(r, GEAR_SLOT_IDS[i % 4], rar), f = gearRefund(g);
+      assert.ok(f >= REFUND[rar] && f % 10 === 0);
+    }
+    const s = normalizeSave({ bank: 0 });
+    const a = gen(r, 'head', 'l'), b = gen(r, 'head', 'n');
+    gearAction(s.gear, a, 'equip'); gearAction(s.gear, b, 'keep');
+    assert.ok(isWorn(s.gear, a) && !isWorn(s.gear, b));
+    assert.deepEqual(discardGear(s, a), { ok: false, worn: true }); assert.equal(s.bank, 0);
+    assert.ok(s.gear.inv.includes(a));
+    const d = discardGear(s, b); assert.ok(d.ok); assert.equal(s.bank, gearRefund(b)); assert.ok(!s.gear.inv.includes(b));
+    assert.ok(needsDropConfirm(a)); assert.ok(!needsDropConfirm(b));
+    assert.equal(weakestLoose(s.gear), null, 'つけている ものは えらばない');
+  });
+
+  test('v0.8.0 じどう そうび: かばんが いっぱいでも つけている ものは すてない', () => {
+    const r = lcg(11);
+    for (let trial = 0; trial < 30; trial++) {
+      const gear = normalizeGear(null);
+      for (const sl of GEAR_SLOT_IDS) gearAction(gear, gen(r, sl, 'r'), 'equip');
+      while (gear.inv.length < INV_CAP) gearAction(gear, rollGear(r, GEAR_SLOT_IDS[gear.inv.length % 4], ['n', 'r', 'sr'][gear.inv.length % 3], 3), 'keep');
+      const worn = GEAR_SLOT_IDS.map((sl) => gear.eq[sl]).filter(Boolean);
+      const res = autoPickup(gear, gen(r, GEAR_SLOT_IDS[trial % 4], 'l'));
+      if (res.dropped) assert.ok(!worn.includes(res.dropped.id) || gear.eq[res.dropped.slot] !== res.dropped.id, 'つけていた ものを すてた');
+      for (const sl of GEAR_SLOT_IDS) if (gear.eq[sl]) assert.ok(gear.inv.some((g) => g.id === gear.eq[sl]), 'つけている ものが かばんに ある');
+      assert.ok(gear.inv.length <= INV_CAP);
+    }
+    // ぜんぶ つけていて かばんが いっぱい → なにも すてない
+    const g2 = normalizeGear(null);
+    for (let i = 0; i < INV_CAP; i++) { const it = gen(r, GEAR_SLOT_IDS[i % 4], 'n'); g2.inv.push(it); }
+    for (const sl of GEAR_SLOT_IDS) g2.eq[sl] = g2.inv.find((g) => g.slot === sl).id;
+    const nb = g2.inv.filter((g) => !isWorn(g2, g)); for (const g of nb) gearAction(g2, g, 'drop');
+    while (g2.inv.length < INV_CAP) g2.inv.push(gen(r, 'head', 'n'));
+    // かばんの ものを ぜんぶ つける ことは できないので、ここでは「すてるのは かばんの もの だけ」を みる
+    const before = GEAR_SLOT_IDS.map((sl) => g2.eq[sl]);
+    const res2 = autoPickup(g2, gen(r, 'head', 'l'));
+    if (res2.dropped) assert.ok(!before.includes(res2.dropped.id) || res2.dropped.slot === 'head');
+  });
+
+  test('v0.8.0 ぶいの レベル（あたま Lv3 など）: そうびを かえても すてても のこる・じどう そうびは もとの つよさで くらべる', () => {
+    const { SLOT_UP, slotLevel, slotUpCost, slotBonus, buySlotUpgrade, gearEffects: GE, bestLoadout: BL } = R8;
+    for (const sl of GEAR_SLOT_IDS) {
+      let prev = 0; for (let l = 1; l < SLOT_UP.max; l++) { const c = slotUpCost(sl, l); assert.ok(c > prev); prev = c; }
+      assert.equal(slotUpCost(sl, SLOT_UP.max), Infinity);
+    }
+    assert.deepEqual([1, 2, 3, 4].map((l) => slotUpCost('head', l)), [200, 300, 450, 680]);
+    const r = lcg(5), s = normalizeSave({ bank: 5000 });
+    const h1 = gen(r, 'head', 'n'), h2 = gen(r, 'head', 'sr'), b1 = gen(r, 'body', 'r');
+    gearAction(s.gear, h1, 'equip'); gearAction(s.gear, h2, 'keep'); gearAction(s.gear, b1, 'equip');
+    const e0 = GE(s.gear, s);
+    assert.ok(buySlotUpgrade(s, 'head').ok && buySlotUpgrade(s, 'head').ok); assert.equal(slotLevel(s, 'head'), 3);
+    assert.equal(s.bank, 5000 - 200 - 300); assert.equal(s.bestScore, 0);
+    const e1 = GE(s.gear, s);
+    assert.equal(e1.totals.def, e0.totals.def + slotBonus('head', 3).def); assert.equal(e1.totals.rel, e0.totals.rel + 2);
+    // つけかえても レベルは のこる
+    const best = BL(s.gear); assert.equal(best.eq.head, BL({ inv: s.gear.inv, eq: s.gear.eq }).eq.head, 'ボーナスで えらびかたは かわらない');
+    gearAction(s.gear, h2, 'equip'); assert.equal(slotLevel(s, 'head'), 3);
+    assert.equal(GE(s.gear, s).bonus.def, slotBonus('head', 3).def + slotBonus('body', 1).def);
+    // すてても へらない・もどる スコアは レアと もとの つよさ だけ
+    const ref = gearRefund(h1), d = discardGear(s, h1);
+    assert.ok(d.ok); assert.equal(d.refund, ref); assert.equal(slotLevel(s, 'head'), 3);
+    assert.equal(normalizeSave(JSON.parse(JSON.stringify(s))).slv.head, 3, 'セーブに のこる');
+    // なにも つけて いない ぶいには きかない
+    assert.equal(GE({ inv: [], eq: {} }, s).bonus.def, 0);
+    // ぶいが MAX
+    s.bank = 1e6; for (let i = 0; i < 10; i++) buySlotUpgrade(s, 'feet');
+    assert.equal(slotLevel(s, 'feet'), SLOT_UP.max); assert.ok(buySlotUpgrade(s, 'feet').max);
+    assert.equal(normalizeSave({ slv: { head: 99, body: -1, feet: 'x' } }).slv.head, SLOT_UP.max);
+  });
+
+  test('v0.8.0 たいりょく Lv: きほんの HP だけ +12%・そうびの HP は そのまま たす・やりすぎない', () => {
+    const { HP_UP, hpLevel, hpUpCost, baseHpAt, buyHpUpgrade, gearEffects: GE } = R8;
+    assert.deepEqual([1, 2, 3, 4, 5].map(hpUpCost), [300, 480, 770, 1230, 1970]);
+    assert.equal(hpUpCost(HP_UP.max), Infinity);
+    assert.deepEqual([1, 2, 3, 4, 5, 6].map(baseHpAt), [100, 112, 124, 136, 148, 160]);
+    const s = normalizeSave({ bank: 400, bestScore: 900 });
+    assert.equal(GE(s.gear, s).maxHp, 100);
+    assert.ok(buyHpUpgrade(s).ok); assert.equal(hpLevel(s), 2); assert.equal(s.bank, 100); assert.equal(s.bestScore, 900);
+    assert.ok(!buyHpUpgrade(s).ok); assert.equal(hpLevel(s), 2);
+    const hp = gen(lcg(9), 'body', 'r'); hp.stats = { hp: 20 }; gearAction(s.gear, hp, 'equip');
+    assert.equal(GE(s.gear, s).maxHp, 112 + 20, 'そうびの HP には かけない');
+    s.bank = 1e6; while (buyHpUpgrade(s).ok);
+    assert.equal(hpLevel(s), HP_UP.max);
+    // いちばん つよくても HP は 160 + そうび 50 = 210 まで（2ばい ちょっと）
+    assert.ok(baseHpAt(HP_UP.max) + GEAR_STATS.hp.cap <= 210);
+    assert.equal(normalizeSave({ hlv: 42 }).hlv, HP_UP.max);
+  });
+
+  test('v0.8.0 スナイパー: ふつうの ゾンビは 1ぱつ・おそい ボルト・ちいさい マガジン・キー6', () => {
+    const w = WEAPONS.sniper;
+    assert.equal(WEAPON_ORDER[5], 'sniper'); assert.equal(w.slot, 6); assert.equal(WEAPON_ORDER.length, 6);
+    assert.ok(!w.auto && w.rpm <= 60 && w.mag <= 6 && w.pierce >= 1 && w.pierce <= 2);
+    for (const d of [5, 40, 80, 130]) assert.ok(damageAt(w, d, false) >= ZOMBIES.walker.hp, `walker @${d}`);
+    for (const d of [5, 40]) assert.ok(damageAt(w, d, false) * 0.64 >= ZOMBIES.walker.hp, `3たいめ @${d}`);
+    for (const d of [5, 60]) { assert.ok(damageAt(w, d, false) >= ZOMBIES.runner.hp); }
+    assert.ok(damageAt(w, 20, true) >= ZOMBIES.brute.hp, 'でかいのも あたまなら 1ぱつ');
+    assert.ok(!Object.values(WEAPONS).some((x) => /[A-Z]{2,}|®|™/.test(x.name)), 'じつざいの なまえ なし');
+  });
+
+  test('v0.8.0 スナイパー: ならんだ ゾンビを つらぬく（かべで とまる）', () => {
+    const mk = (z) => ({ alive: true, x: 0, z, y: 0, scale: 1, kind: 'walker', crawl: 0, lean: 0, yaw: 0, fly: null });
+    const zs = [mk(-10), mk(-14), mk(-18), mk(-22)];
+    const p = castPierce(0, 1.2, 0, 0, 0, -1, zs, [], 100, 2, 0.8);
+    assert.deepEqual(p.hits.map((h) => h.index), [0, 1, 2]);
+    assert.deepEqual(p.hits.map((h) => +h.mul.toFixed(2)), [1, 0.8, 0.64]);
+    const wall = [{ minX: -2, maxX: 2, minY: 0, maxY: 3, minZ: -16, maxZ: -15.5 }];
+    const q = castPierce(0, 1.2, 0, 0, 0, -1, zs, wall, 100, 2, 0.8);
+    assert.deepEqual(q.hits.map((h) => h.index), [0, 1]); assert.equal(q.end.kind, 'wall');
+    const one = castPierce(0, 1.2, 0, 0, 0, -1, zs, [], 100, 0);
+    assert.equal(one.hits.length, 1);
+    // 3たいめでも ふつうの ゾンビを たおせる
+  });
+
+  test('v0.8.0 スコープは スナイパー だけ（ほかの ぶきは いつもの ねらい）', () => {
+    for (const id of WEAPON_ORDER) {
+      if (id === 'sniper') continue;
+      assert.equal(hasScope(id), false); assert.equal(isScoped(id, 1), false);
+      assert.equal(aimFov(id, 1), AIM_FOV.aim); assert.equal(aimFov(id, 0), AIM_FOV.hip); assert.equal(aimSensMul(id, 1), 1);
+    }
+    assert.ok(hasScope('sniper')); assert.ok(isScoped('sniper', 1)); assert.ok(!isScoped('sniper', 0.3));
+    assert.ok(SCOPE.fov >= 20 && SCOPE.fov <= 25); assert.equal(aimFov('sniper', 1), SCOPE.fov);
+    assert.ok(aimSensMul('sniper', 1) < 0.5 && aimSensMul('sniper', 0) === 1);
+    // ゆれは ちいさい（0.5ど いか）・ねらって いない ときは なし
+    let mx = 0; for (let t = 0; t < 10; t += 0.05) { const s = scopeSway(t, 1, true); mx = Math.max(mx, Math.hypot(s.x, s.y)); }
+    assert.ok(mx > 0 && mx < 0.5 * Math.PI / 180, String(mx));
+    assert.deepEqual(scopeSway(1, 0), { x: 0, y: 0 });
+  });
+
+  test('v0.8.0 みはりだい: ほとんどの マップに ある・はしごの まえは あるいて いける・たかい', () => {
+    let n = 0;
+    for (const id of MAP_IDS_MAP) {
+      const map = buildMap(id);
+      if (!map.perches.length) { assert.equal(id, 'office', `${id} に みはりだいが ない`); continue; }
+      n++;
+      const pc = playerColliders(map), zc = zombieColliders(map), s = map.playerStart;
+      for (const p of map.perches) {
+        assert.ok(p.top >= 3.5 && (p.roof || p.top <= MAX_CLIMB), `${id} たかさ`);
+        const lx = p.lx ?? p.x + ({ w: -1, e: 1 }[p.face] || 0) * (p.w / 2 + 0.4), lz = p.lz ?? p.z + ({ n: -1, s: 1 }[p.face] || 0) * (p.w / 2 + 0.4);
+        const L = map.ladders.find((l) => Math.abs((l.minX + l.maxX) / 2 - lx) < 0.7 && Math.abs((l.minZ + l.maxZ) / 2 - lz) < 0.7);
+        assert.ok(L, `${id} はしご`); assert.ok(L.top >= p.top - 0.05);
+        const fv = { n: [0, -1], s: [0, 1], w: [-1, 0], e: [1, 0] }[p.face];
+        const fx = lx + fv[0] * 0.8, fz = lz + fv[1] * 0.8;
+        const r = collideCircle(fx, fz, 0.35, 0, pc);
+        assert.ok(Math.hypot(r.x - fx, r.z - fz) < 1e-6, `${id} はしごの まえが かべ`);
+        if (map.vertical) continue;
+        const grid = buildGrid(zc, map.half + 4, 1, 0.4); updateFlow(grid, s.x, s.z);
+        assert.ok(grid.dist[cellOf(grid, fx, fz)] >= 0, `${id} はしごの まえに いけない`);
+        // ゾンビ（のぼれる こ）は みはりだいに のぼれる（あんぜんちたい なし）
+        const ztop = climbTarget(p.x + fv[0] * (p.w / 2 + 0.3), p.z + fv[1] * (p.w / 2 + 0.3), 0.3, 0, p.top, pc, 0.15);
+        assert.ok(ztop && Math.abs(ztop.maxY - p.top) < 0.01, `${id} ゾンビが のぼれない`);
+        // スポーン（ゲート）が すこし とおくに ある
+        assert.ok(map.spawns.some((sp) => Math.hypot(sp.x - p.x, sp.z - p.z) > 20));
+      }
+    }
+    assert.ok(n >= 7, `みはりだいの ある マップ ${n}`);
+    assert.ok(canClimb('runner'));
+  });
+}

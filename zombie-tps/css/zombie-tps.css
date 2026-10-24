@@ -266,3 +266,66 @@
 .zt-boticon { display: flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 900; text-shadow: 0 1px 2px #000; color: #bfe3ff; }
 .zt-boticon .zt-bothp { margin-top: 0; width: 40px; }
 .hidden.zt-bot, .hidden.zt-botarrow, .hidden.zt-boticon { display: none; }
+
+/* v0.8.0: ぶきを つよく する がめん（ボタンは 40×40 いじょう） */
+.zt-upbtn { background: rgba(170,100,30,.6); border-color: #ffd08a; }
+.zt-upg { justify-content: flex-start; background: linear-gradient(90deg, rgba(8,12,20,.9) 0%, rgba(8,12,20,.65) 52%, rgba(8,12,20,0) 70%); }
+.zt-ubox { width: min(60vw, 390px); gap: 6px; }
+.zt-ubox h2 { position: relative; color: #ffd08a; text-shadow: 0 3px 0 #6a3a0a; font-size: 22px; }
+.zt-ubox h2.flash::after { content: attr(data-msg); position: absolute; left: 105%; top: 4px; white-space: nowrap; font-size: 14px; color: #7dff9a; text-shadow: 0 1px 3px #000; animation: zt-msg 1.6s ease-out forwards; }
+.zt-ubank { font-size: 12px; font-weight: 900; color: #fff; text-shadow: 0 1px 2px #000; }
+.zt-ubank b { font-size: 18px; color: #ffe27a; margin-left: 4px; }
+.zt-utabs { display: flex; gap: 4px; flex-wrap: wrap; }
+.zt-utab { position: relative; width: 48px; height: 44px; padding: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; color: #dfe6ee;
+  background: rgba(0,0,0,.45); border: 2px solid rgba(255,255,255,.25); border-radius: 9px; }
+.zt-utab .zt-chip { width: 34px; height: 20px; border: 0; background: none; }
+.zt-utab .zt-chip svg { margin: 0; }
+.zt-utab em { font-style: normal; font-size: 10px; font-weight: 900; color: #ffe27a; line-height: 1; }
+.zt-utab.sel { border-color: #ffd84a; background: rgba(255,200,40,.28); color: #fff2b8; }
+.zt-udet { width: 100%; padding: 6px 8px; box-sizing: border-box; background: rgba(0,0,0,.45); border-radius: 10px; display: flex; flex-direction: column; gap: 4px; color: #fff; }
+.zt-uhead { display: flex; align-items: baseline; gap: 8px; }
+.zt-uhead b { font-size: 14px; }
+.zt-uhead span { font-size: 11px; font-weight: 900; color: #ffd9a8; }
+.zt-urows { display: grid; grid-template-columns: 1fr; gap: 1px; }
+.zt-urow { display: grid; grid-template-columns: 82px auto 18px auto; align-items: baseline; font-size: 12px; font-weight: 800; }
+.zt-urow span { color: #cfe; }
+.zt-urow b { font-size: 14px; }
+.zt-urow i { font-style: normal; text-align: center; color: #aab; }
+.zt-urow b.up { color: #7dff9a; }
+.zt-ubuy { align-self: flex-start; min-width: 150px; min-height: 44px; padding: 4px 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.1;
+  font-size: 17px; font-weight: 900; color: #fff; background: linear-gradient(#ffb347, #e07a10); border: 2px solid #ffe0a0; border-radius: 12px; box-shadow: 0 3px 0 #7a3a00; }
+.zt-ubuy small { font-size: 11px; color: #fff6d0; }
+.zt-ubuy:disabled { filter: grayscale(.85); opacity: .55; box-shadow: none; }
+.zt-ubuy.max { background: linear-gradient(#8affa8, #2ec25a); color: #08300f; opacity: 1; filter: none; }
+.zt-uneed { font-size: 11px; font-weight: 900; color: #ffb0a0; }
+.zt-uhint { font-size: 10px; font-weight: 800; color: #ffd9a8; text-shadow: 0 1px 2px #000; }
+@media (max-height: 340px) { .zt-ubox { gap: 3px; } .zt-ubox h2 { font-size: 18px; } .zt-urow { font-size: 11px; } .zt-urow b { font-size: 13px; } }
+/* すてると スコア */
+.zt-sbtns button small, .zt-gbtns button small { display: block; font-size: 9px; color: #ffe27a; }
+.zt-sbtns button.warn, .zt-gbtns button.warn { background: rgba(200,30,30,.9); border-color: #ffd84a; }
+.zt-snodrop { max-width: 90px; font-size: 9px; font-weight: 800; color: #ffd9a8; }
+.zt-refund { position: absolute; left: 50%; top: 28%; z-index: 9; transform: translateX(-50%); padding: 4px 14px; font-size: 18px; font-weight: 900; color: #ffe27a;
+  background: rgba(0,0,0,.6); border: 2px solid #ffd84a; border-radius: 12px; text-shadow: 0 2px 0 #6a3a0a; pointer-events: none; }
+.zt-refund.pop { animation: zt-refund 1.8s ease-out forwards; }
+@keyframes zt-refund { 0% { transform: translate(-50%, 10px) scale(.7); opacity: 0; } 15% { transform: translate(-50%, 0) scale(1.05); opacity: 1; } 75% { opacity: 1; } 100% { transform: translate(-50%, -18px); opacity: 0; } }
+/* v0.8.0: スコープ（スナイパー だけ） */
+.zt-scope { display: none; position: absolute; inset: 0; pointer-events: none; z-index: 0; }
+.zt-scoped .zt-scope { display: block; }
+.zt-scopering { position: absolute; inset: 0; background: radial-gradient(circle at 50% 50%, transparent 0, transparent calc(min(44vw, 44vh) - 2px), rgba(0,0,0,.9) calc(min(44vw, 44vh)), #000 calc(min(44vw, 44vh) + 6px)); }
+.zt-scope i { position: absolute; left: 50%; top: 50%; background: rgba(10,10,10,.85); }
+.zt-scope i.h { width: min(88vw, 88vh); height: 2px; transform: translate(-50%, -50%); }
+.zt-scope i.v { width: 2px; height: min(88vw, 88vh); transform: translate(-50%, -50%); }
+.zt-scope em { position: absolute; left: 50%; top: 50%; width: 5px; height: 5px; margin: -2.5px 0 0 -2.5px; border-radius: 50%; background: #ff3b2f; box-shadow: 0 0 4px #ff3b2f; }
+.zt-scoped .zt-cross, .zt-scoped .zt-hitm { opacity: .0; }
+.zt-scoped .zt-hitm.on { opacity: 1; }
+.zt-utabs { flex-direction: column; gap: 3px; }
+.zt-utrow { display: flex; gap: 4px; align-items: center; }
+.zt-utl { width: 34px; font-size: 10px; font-weight: 900; color: #ffd9a8; text-shadow: 0 1px 2px #000; }
+.zt-uico { font-style: normal; font-size: 17px; line-height: 1; }
+.zt-ubrow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.zt-unote { font-size: 10px; font-weight: 800; color: #bff0ff; max-width: 170px; }
+.zt-slv { display: block; font-style: normal; font-size: 9px; color: #ffe27a; }
+@media (max-height: 400px) { .zt-uhint { display: none; } .zt-utab { height: 42px; } }
+.zt-ubox [data-ui=uback] { min-height: 40px; min-width: 88px; }
+.zt-ubox { max-height: 100%; overflow-y: auto; }
+@media (max-height: 400px) { .zt-ubox h2 { font-size: 18px; margin: 0; } .zt-ubox { gap: 4px; } }

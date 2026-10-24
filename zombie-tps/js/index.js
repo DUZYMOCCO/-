@@ -6,8 +6,10 @@ import { loadCss } from '../../common/js/load-css.js';
 import { storage } from '../../common/js/storage.js';
 import { WEAPONS, WEAPON_ORDER, normalizeSave, SENS, VERSION, OUTFITS, outfitName, unlockOutfit,
   GEAR_SLOTS, GEAR_STATS, GEAR_STAT_IDS, INV_CAP, rarityOf, gearColor, gearName, gearScore, gearAction, gearEffects, equippedItems,
-  autoEquipBest, equipGain, autoPickup, bestLoadout, pickMapId, MAP_IDS } from './rules.js?v=9';
-import { MAPS, mapInfo } from './map.js?v=9';
+  autoEquipBest, equipGain, autoPickup, bestLoadout, pickMapId, MAP_IDS,
+  UPGRADE, upgradeCost, upgradedWeapon, weaponLevel, buyUpgrade, earnBank, gearRefund, discardGear, isWorn, needsDropConfirm, weakestLoose,
+  SLOT_UP, HP_UP, slotLevel, hpLevel, slotUpCost, hpUpCost, baseHpAt, slotBonus, buySlotUpgrade, buyHpUpgrade, GEAR_SLOT_IDS } from './rules.js?v=10';
+import { MAPS, mapInfo } from './map.js?v=10';
 
 const hex6 = (n) => '#' + n.toString(16).padStart(6, '0');
 // v0.7.0: がめんの そとを さす やじるしは ボタンに かぶらない たかさ（うえから 16%〜32%）
@@ -45,14 +47,15 @@ function gearCardHTML(g, cur, gear) {
   return `<div class="zt-gtop">${gearIcon(g, ' big')}<div><div class="zt-grar" style="color:${r.color}">${r.name}</div><b>${gearName(g)}</b></div></div>`
     + `<div class="zt-gstats">${statLines(g, cur)}</div>${verdict(g, cur, gear)}`;
 }
-function totalsText(gear) {
-  const t = gearEffects(gear).totals;
+const PART = { head: 'あたま', body: 'からだ', feet: 'あし', arm: 'うで' };
+function totalsText(gear, save) {
+  const t = gearEffects(gear, save).totals;
   const parts = GEAR_STAT_IDS.filter((k) => t[k]).map((k) => `${GEAR_STATS[k].name} +${t[k]}${GEAR_STATS[k].unit}${t[k] >= GEAR_STATS[k].cap ? '（MAX）' : ''}`);
   return parts.length ? parts.join(' ・ ') : 'まだ なにも つけて いないよ';
 }
-import { Game } from './game.js?v=9';
-import { Input } from './input.js?v=9';
-import { Sfx } from './sfx.js?v=9';
+import { Game } from './game.js?v=10';
+import { Input } from './input.js?v=10';
+import { Sfx } from './sfx.js?v=10';
 
 // v0.7.0: ぶきの ちいさい アイコン（かくうの シルエット）
 const svgI = (d) => `<svg viewBox="0 0 32 16" aria-hidden="true">${d}</svg>`;
@@ -62,7 +65,14 @@ const WEAPON_ICONS = {
   shotgun: svgI('<path d="M0 6l7-1v4l-6 2zM7 5h25v2.5H7zM17 8h9v2.5h-9zM8 8h3v4H8z"/>'),
   rocket: svgI('<path d="M1 5h25v5H1zM26 4l6 3.5-6 3.5zM12 10h3v5h-3zM8 2h4v3H8z"/>'),
   minigun: svgI('<path d="M2 3h11v10H2zM5 0h6v3H5zM13 3.5h19v2H13zM13 7h19v2H13zM13 10.5h19v2H13z"/>'),
+  sniper: svgI('<path d="M0 7l6-1v4l-5 1zM6 6h10v3H6zM16 7h16v1.4H16zM8 2h9v2.6H8zM10 4.6h1.5V6H10zM14 4.6h1.5V6H14zM9 9h2.5l-1 4H9z"/>'),
 };
+// v0.8.0: つよく する がめんの ことば
+const UP_ROWS = [
+  { k: 'dmg', name: 'いりょく', fmt: (w) => String(w.dmg * (w.pellets || 1)) },
+  { k: 'rpm', name: 'はやさ', fmt: (w) => (w.rpm / 60).toFixed(w.rpm < 120 ? 2 : 1) + ' /びょう' },
+  { k: 'mag', name: 'たまの かず', fmt: (w) => String(w.mag) },
+];
 
 const SAVE_KEY = 'zombie_tps_save';
 const OPT_LABEL = {
@@ -75,7 +85,7 @@ const OPT_CYCLE = { autoFire: [false, true], sens: ['low', 'mid', 'high'], quali
 
 export default {
   prepare() {
-    return loadCss(new URL('../css/zombie-tps.css?v=9', import.meta.url).href);
+    return loadCss(new URL('../css/zombie-tps.css?v=10', import.meta.url).href);
   },
 
   init(container, onBackToHub) {
@@ -119,6 +129,7 @@ export default {
       <div class="zt-touch">
         <div class="zt-stick"><div class="zt-knob"></div></div>
         <div class="zt-hud">
+            <div class="zt-scope"><div class="zt-scopering"></div><i class="h"></i><i class="v"></i><em></em></div>
           <div class="zt-top">
             <button class="zt-pause" data-act="pause">Ⅱ</button>
             <div class="zt-hp"><span>HP</span><div class="zt-hpbar"><div></div></div><em>100</em></div>
@@ -142,7 +153,7 @@ export default {
           <button class="zt-btn zt-aim" data-act="aim"><span>ねらう</span></button>
           <button class="zt-btn zt-rl" data-act="reload"><span>リロード</span></button>
           <button class="zt-btn zt-jump" data-act="jump"><span>ジャンプ</span></button>
-          <div class="zt-keyhint">WASD いどう ・ マウス ねらう ・ ひだりクリック うつ ・ みぎクリック ねらう ・ R リロード ・ スペース ジャンプ ・ 1〜5 ぶき ・ ESC ポーズ</div>
+          <div class="zt-keyhint">WASD いどう ・ マウス ねらう ・ ひだりクリック うつ ・ みぎクリック ねらう ・ R リロード ・ スペース ジャンプ ・ 1〜6 ぶき ・ ESC ポーズ</div>
         </div>
       </div>
 
@@ -155,11 +166,12 @@ export default {
             <button data-stage="night">🌙 よるから</button>
           </div>
           <div class="zt-maps">${['rotate', ...MAP_IDS].map((id) => `<button data-map="${id}">${id === 'rotate' ? '🔀 おまかせ' : `${mapInfo(id).icon} ${mapInfo(id).name}`}</button>`).join('')}</div>
-          <div class="zt-todhint">ウェーブごとに ゆうぐれ → ゆうやけ → よる</div>
+          <div class="zt-todhint">ウェーブごとに ひる → ゆうやけ → よる</div>
           <div class="zt-startrow">
             <button class="zt-big" data-ui="start">スタート</button>
             <button class="zt-kigaebtn" data-ui="kigae">👕 きがえ<b></b></button>
             <button class="zt-kigaebtn zt-soubibtn" data-ui="soubi">🛡 そうび<b></b></button>
+            <button class="zt-kigaebtn zt-upbtn" data-ui="upg">🔧 つよく する<b></b></button>
           </div>
           <div class="zt-opts">
             <button data-opt="autoFire">オートうち <b></b></button>
@@ -178,6 +190,7 @@ export default {
           <div><b>あたま</b>を うつと ヘッドショット！</div>
           <div><b>4</b> ロケットで まとめて ふっとばせ！</div>
           <div><b>5</b> ミニガンは まわってから ズダダダ！（おもい）</div>
+          <div><b>6</b> スナイパーは ねらうと スコープ！ 🔭の だいに のぼろう</div>
           <div><b>ロケットだん</b>は ゾンビが おとす はこを ひろう</div>
           <div class="zt-ver">v${VERSION}</div>
         </div>
@@ -204,6 +217,18 @@ export default {
         </div>
       </div>
 
+      <div class="zt-screen zt-upg hidden">
+        <div class="zt-kbox zt-ubox">
+          <h2>つよく する</h2>
+          <div class="zt-ubank">つかえる スコア <b>0</b></div>
+          <div class="zt-utabs"></div>
+          <div class="zt-udet"></div>
+          <div class="zt-uhint">あそんで あつめた スコアで つよく できるよ（さいこう スコアは へらないよ）</div>
+          <button class="zt-small" data-ui="uback">← もどる</button>
+        </div>
+      </div>
+
+      <div class="zt-refund hidden"></div>
       <div class="zt-autoeq hidden"><i></i><div><b>じどう そうび！</b><span></span></div></div>
       <div class="zt-gcard hidden">
         <div class="zt-gnew">そうびを ひろった！</div>
@@ -249,8 +274,10 @@ export default {
     this.el('.zt-sub').textContent = `${nm.icon} ${nm.name} ・ ${nm.desc}`;
     this.el('.zt-kigaebtn b').textContent = outfitName(this.save.outfit);
     this.el('.zt-soubibtn b').textContent = `${this.save.gear.inv.length} / ${INV_CAP}`;
+    this.el('.zt-upbtn b').textContent = `スコア ${this.save.bank}`;
     this.updateKigae();
     this.updateSoubi();
+    this.updateUpg();
     this.el('.zt-best').textContent = this.save.bestWave ? `さいこう ウェーブ ${this.save.bestWave} ・ スコア ${this.save.bestScore}` : '';
   },
 
@@ -266,15 +293,73 @@ export default {
     this.el('.zt-khint').textContent = n < all ? `あつめた ふく ${n} / ${all} ・ おそわれてる おじさんを たすけて もらおう` : `ぜんぶ あつめた！ ${n} / ${all}`;
   },
 
+  // v0.8.0: つよく する がめん。ぶき 6つ ＋ ぶい 4つ（あたま・からだ・あし・うで）＋ たいりょく。レベルは セーブに のこる（そうびを かえても すてても へらない）
+  updateUpg() {
+    const save = this.save, id = this.upSel || (this.upSel = 'rifle');
+    this.el('.zt-ubank b').textContent = String(save.bank);
+    const tab = (key, icon, lv, label) => `<button class="zt-utab${key === id ? ' sel' : ''}" data-upw="${key}" aria-label="${label}"><span class="zt-chip">${icon}</span><em>Lv${lv}</em></button>`;
+    this.el('.zt-utabs').innerHTML = `<div class="zt-utrow"><span class="zt-utl">ぶき</span>${WEAPON_ORDER.map((k) => tab(k, WEAPON_ICONS[k], weaponLevel(save, k), WEAPONS[k].name)).join('')}</div>`
+      + `<div class="zt-utrow"><span class="zt-utl">からだ</span>${GEAR_SLOTS.map((g) => tab('slot:' + g.id, `<i class="zt-uico">${g.icon}</i>`, slotLevel(save, g.id), PART[g.id])).join('')}`
+      + `${tab('hp', '<i class="zt-uico">❤️</i>', hpLevel(save), 'たいりょく')}</div>`;
+    let lv, max, cost, title, rows = [], note = '';
+    const row = (name, a, b) => ({ name, a, b });
+    if (id === 'hp') {
+      lv = hpLevel(save); max = lv >= HP_UP.max; cost = hpUpCost(lv);
+      const gearHp = gearEffects(save.gear, save).totals.hp;
+      title = `<b>たいりょく</b><span>たいりょく Lv${lv} / ${HP_UP.max}${max ? '（MAX）' : ` → Lv${lv + 1}`}</span>`;
+      rows.push(row('きほんの HP', String(baseHpAt(lv)), String(baseHpAt(lv + 1))));
+      rows.push(row('ぜんぶの HP', String(baseHpAt(lv) + gearHp), String(baseHpAt(lv + 1) + gearHp)));
+      note = gearHp ? `そうびの HP +${gearHp} も たしてるよ` : '';
+    } else if (id.startsWith('slot:')) {
+      const sl = id.slice(5), info = GEAR_SLOTS.find((g) => g.id === sl);
+      lv = slotLevel(save, sl); max = lv >= SLOT_UP.max; cost = slotUpCost(sl, lv);
+      title = `<b>${PART[sl]} Lv${lv}</b><span>（${info.name}）${max ? 'MAX' : `→ Lv${lv + 1}`}</span>`;
+      const a = slotBonus(sl, lv), b = slotBonus(sl, lv + 1);
+      for (const k of Object.keys(SLOT_UP.per[sl])) rows.push(row(GEAR_STATS[k].name, `+${a[k]}${GEAR_STATS[k].unit}`, `+${b[k]}${GEAR_STATS[k].unit}`));
+      note = save.gear.eq[sl] ? 'どの そうびを つけても きくよ（すてても へらない）' : `${info.name}を つけると きくよ`;
+    } else {
+      lv = weaponLevel(save, id); max = lv >= UPGRADE.max; cost = upgradeCost(id, lv);
+      title = `<b>${WEAPONS[id].name}</b><span>レベル ${lv} / ${UPGRADE.max}${max ? '（MAX）' : ` → ${lv + 1}`}</span>`;
+      const now = upgradedWeapon(id, lv), nxt = upgradedWeapon(id, Math.min(UPGRADE.max, lv + 1));
+      rows = UP_ROWS.map((r) => row(r.name, r.fmt(now), r.fmt(nxt)));
+    }
+    const rowsH = rows.map((r) => `<div class="zt-urow"><span>${r.name}</span><b>${r.a}</b>${max ? '' : `<i>→</i><b class="${r.a !== r.b ? 'up' : ''}">${r.b}</b>`}</div>`).join('');
+    const can = !max && save.bank >= cost;
+    const btn = max ? '<button class="zt-ubuy max" disabled>さいこう レベル！</button>'
+      : `<button class="zt-ubuy" data-upbuy="${id}" ${can ? '' : 'disabled'}>つよく する<small>${cost} スコア</small></button>`;
+    const need = !max && !can ? `<div class="zt-uneed">あと ${cost - save.bank} スコア たりないよ</div>` : '';
+    this.el('.zt-udet').innerHTML = `<div class="zt-uhead">${title}</div><div class="zt-urows">${rowsH}</div>`
+      + `<div class="zt-ubrow">${btn}${need}${note ? `<div class="zt-unote">${note}</div>` : ''}</div>`;
+  },
+  upgUi(id) {
+    const r = id === 'hp' ? buyHpUpgrade(this.save) : id.startsWith('slot:') ? buySlotUpgrade(this.save, id.slice(5)) : buyUpgrade(this.save, id);
+    if (!r.ok) { this.sfx.empty?.(); return; }
+    this.persist(); this.updateTitle();
+    if (this.game) { this.game.settings = this.save; this.game.applyUpgrades(); }
+    const b = this.el('.zt-ubox h2'); b.dataset.msg = `レベル ${r.lv} に なった！`;
+    b.classList.remove('flash'); void b.offsetWidth; b.classList.add('flash');
+    this.sfx.pickup?.(); this.sfx.swap();
+  },
+  // すてて スコアが もどった（ちいさい おしらせ）
+  refundToast(n) {
+    if (!(n > 0)) return;
+    const el = this.el('.zt-refund');
+    el.textContent = `+${n} スコア`;
+    el.classList.remove('hidden', 'pop'); void el.offsetWidth; el.classList.add('pop');
+    clearTimeout(this.refundTm); this.refundTm = setTimeout(() => el.classList.add('hidden'), 1800);
+    if (this.game && this.game.state === 'play') this.game.hud.kill(`すてた → +${n} スコア`);
+  },
+
   // そうび がめん: ぶい・ごうけい・かばん・えらんだ ものの くわしく
   updateSoubi() {
     const gear = this.save.gear, eqs = equippedItems(gear);
     if (this.selGear && !gear.inv.some((g) => g.id === this.selGear)) this.selGear = null;
     this.el('.zt-sslots').innerHTML = GEAR_SLOTS.map((s, i) => {
       const g = eqs[i];
-      return `<button class="zt-sslot${g && g.id === this.selGear ? ' sel' : ''}" ${g ? `data-gsel="${g.id}"` : 'data-gsel=""'}>${gearIcon(g)}<span>${s.name}</span></button>`;
+      const lv = slotLevel(this.save, s.id);
+      return `<button class="zt-sslot${g && g.id === this.selGear ? ' sel' : ''}" ${g ? `data-gsel="${g.id}"` : 'data-gsel=""'}>${gearIcon(g)}<span>${s.name}${lv > 1 ? `<em class="zt-slv">${PART[s.id]} Lv${lv}</em>` : ''}</span></button>`;
     }).join('');
-    this.el('.zt-stot').textContent = totalsText(gear);
+    this.el('.zt-stot').textContent = totalsText(gear, this.save);
     this.el('[data-gearui=autotog] b').textContent = this.save.autoEquip ? 'オン' : 'オフ';
     this.el('[data-gearui=autotog]').classList.toggle('sel', !!this.save.autoEquip);
     const bl = bestLoadout(gear), already = GEAR_SLOTS.every((s) => !bl.eq[s.id] || gear.eq[s.id] === bl.eq[s.id]);
@@ -290,7 +375,7 @@ export default {
     const on = cur && cur.id === sel.id;
     det.innerHTML = `<div class="zt-gcardin">${gearCardHTML(sel, on ? null : cur || null, on ? null : gear)}</div><div class="zt-sbtns">`
       + (on ? '<button data-gearui="unequip">はずす</button>' : '<button data-gearui="equip">そうび</button>')
-      + '<button data-gearui="drop">すてる</button></div>';
+      + (on ? '<div class="zt-snodrop">つけている ものは すてられないよ</div>' : `<button data-gearui="drop">すてる<small>+${gearRefund(sel)} スコア</small></button>`) + '</div>';
   },
   gearUi(act) {
     const gear = this.save.gear;
@@ -307,9 +392,26 @@ export default {
     }
     const sel = gear.inv.find((g) => g.id === this.selGear);
     if (!sel) return;
-    if (act === 'drop' && !this.dropArm) { this.dropArm = sel.id; this.el('[data-gearui=drop]').textContent = 'ほんとに すてる？'; return; }
+    if (act === 'drop') {
+      if (isWorn(gear, sel)) return; // つけている ものは すてない
+      // でんせつは 2かい きく（ほんとに？ → でんせつ だよ！）
+      const steps = needsDropConfirm(sel) ? 2 : 1;
+      this.dropN = this.dropArm === sel.id ? (this.dropN || 0) + 1 : 1; this.dropArm = sel.id;
+      if (this.dropN <= steps) {
+        const b = this.el('[data-gearui=drop]');
+        b.innerHTML = this.dropN === 1 ? `ほんとに すてる？<small>+${gearRefund(sel)} スコア</small>` : 'でんせつ だよ！ ほんとに すてる？';
+        b.classList.toggle('warn', this.dropN === 2);
+        return;
+      }
+      const r = discardGear(this.save, sel);
+      this.selGear = null; this.dropArm = null; this.dropN = 0;
+      this.persist(); this.updateTitle();
+      if (this.game) { this.game.settings = this.save; this.game.refreshGear(); this.game.setOutfit(this.save.outfit, false); }
+      if (r.ok) this.refundToast(r.refund);
+      this.sfx.swap();
+      return;
+    }
     gearAction(gear, sel, act);
-    if (act === 'drop') this.selGear = null;
     this.dropArm = null;
     this.persist(); this.updateTitle();
     if (this.game) { this.game.settings = this.save; this.game.refreshGear(); this.game.setOutfit(this.save.outfit, act === 'equip'); }
@@ -320,6 +422,7 @@ export default {
     // じどう そうび: いまより つよい ときは カードを ださずに つける（ちいさい おしらせ）
     if (this.save.autoEquip) {
       const res = autoPickup(this.save.gear, item);
+      if (res.ok && res.dropped) { const n = gearRefund(res.dropped); earnBank(this.save, n); this.refundToast(n); }
       if (res.ok) {
         this.persist(); this.updateTitle();
         if (this.game) { this.game.settings = this.save; this.game.refreshGear(); this.game.setOutfit(this.save.outfit, true); this.game.hud.kill(`${gearName(item)}を じどう そうび！`, true); }
@@ -343,19 +446,32 @@ export default {
     this.el('.zt-gfull').classList.toggle('hidden', !full);
     this.el('[data-gear=keep]').disabled = full;
     this.el('[data-gear=equip]').disabled = full && !cur;
+    this.gearDropN = 0;
+    const db = this.el('[data-gear=drop]'); db.classList.remove('warn');
+    db.innerHTML = `すてる<small>+${gearRefund(item)}</small>`;
     this.gearT = 9; this.gearT0 = 9;
     card.classList.remove('hidden', 'pop'); void card.offsetWidth; card.classList.add('pop');
   },
-  resolveGear(act) {
+  resolveGear(act, timeout = false) {
     const item = this.gearCur; if (!item) return;
     const gear = this.save.gear;
-    let res = gearAction(gear, item, act);
-    if (!res.ok && act !== 'drop') {
-      // かばんが いっぱい: いちばん よわい かばんの ものと いれかえ（あたらしい ほうが つよい ときだけ）
-      const eqs = equippedItems(gear), bag = gear.inv.filter((g) => !eqs.includes(g));
-      const worst = bag.sort((a, b) => gearScore(a) - gearScore(b))[0];
-      if (worst && gearScore(worst) < gearScore(item)) { gearAction(gear, worst, 'drop'); res = gearAction(gear, item, act); }
+    // でんせつを すてる ときは もういちど きく
+    if (act === 'drop' && !timeout && needsDropConfirm(item) && !this.gearDropN) {
+      this.gearDropN = 1;
+      const db = this.el('[data-gear=drop]'); db.classList.add('warn'); db.textContent = 'でんせつ だよ！ ほんとに？';
+      this.gearT = Math.max(this.gearT, 4);
+      return;
     }
+    let res = act === 'drop' ? { ok: true } : gearAction(gear, item, act);
+    let refund = 0;
+    if (act === 'drop') refund += gearRefund(item); // ひろわずに すてた → スコア
+    if (!res.ok && act !== 'drop') {
+      // かばんが いっぱい: いちばん よわい かばんの ものと いれかえ（あたらしい ほうが つよい ときだけ）。すてた ぶんは スコアに
+      const worst = weakestLoose(gear, item);
+      if (worst && gearScore(worst) < gearScore(item)) { const r = discardGear(this.save, worst); if (r.ok) refund += r.refund; res = gearAction(gear, item, act); }
+    }
+    if (act === 'drop') earnBank(this.save, refund);
+    if (refund) this.refundToast(refund);
     this.persist(); this.updateTitle();
     if (this.game) {
       this.game.settings = this.save;
@@ -380,9 +496,9 @@ export default {
     if (this.game && this.game.state === 'pause') return;
     this.gearT -= dt;
     this.el('.zt-gtime div').style.width = Math.max(0, this.gearT / this.gearT0 * 100).toFixed(1) + '%';
-    if (this.gearT <= 0) this.resolveGear('keep');
+    if (this.gearT <= 0) this.resolveGear('keep', true);
   },
-  flushGear() { while (this.gearCur) this.resolveGear('keep'); },
+  flushGear() { while (this.gearCur) this.resolveGear('keep', true); },
 
   applySens() {
     if (!this.input) return;
@@ -390,14 +506,17 @@ export default {
     this.input.lookScaleTouch = 0.0062 * s; this.input.lookScaleMouse = 0.0024 * s;
   },
 
-  persist() { storage.set(SAVE_KEY, this.save); },
+  persist() { storage.set(SAVE_KEY, this.save); this.bankDirty = false; },
+  saveBank() { if (this.bankDirty) this.persist(); },
 
   bind() {
     this.onClick = (e) => {
-      const b = e.target.closest('[data-ui],[data-opt],[data-stage],[data-map],[data-outfit],[data-gear],[data-gsel],[data-gearui]'); if (!b) return;
+      const b = e.target.closest('[data-ui],[data-opt],[data-stage],[data-map],[data-outfit],[data-gear],[data-gsel],[data-gearui],[data-upw],[data-upbuy]'); if (!b) return;
       this.sfx.unlock();
+      if (b.dataset.upw) { this.upSel = b.dataset.upw; this.updateUpg(); this.sfx.swap(); return; }
+      if (b.dataset.upbuy) { if (!b.disabled) this.upgUi(b.dataset.upbuy); return; }
       if (b.dataset.gear) { if (!b.disabled) this.resolveGear(b.dataset.gear); return; }
-      if (b.dataset.gsel !== undefined) { if (b.dataset.gsel) { this.selGear = b.dataset.gsel; this.dropArm = null; this.updateSoubi(); this.sfx.swap(); } return; }
+      if (b.dataset.gsel !== undefined) { if (b.dataset.gsel) { this.selGear = b.dataset.gsel; this.dropArm = null; this.dropN = 0; this.updateSoubi(); this.sfx.swap(); } return; }
       if (b.dataset.gearui) { this.gearUi(b.dataset.gearui); return; }
       if (b.dataset.outfit) {
         const id = b.dataset.outfit;
@@ -435,7 +554,8 @@ export default {
       else if (ui === 'title') this.toTitle();
       else if (ui === 'hub') this.back();
       else if (ui === 'kigae') { this.updateKigae(); this.show('kigae'); this.sfx.swap(); }
-      else if (ui === 'kback' || ui === 'sback') { this.show('title'); this.sfx.swap(); }
+      else if (ui === 'kback' || ui === 'sback' || ui === 'uback') { this.show('title'); this.sfx.swap(); }
+      else if (ui === 'upg') { this.updateUpg(); this.show('upg'); this.sfx.swap(); }
       else if (ui === 'soubi') { this.selGear = null; this.dropArm = null; this.updateSoubi(); this.show('soubi'); this.sfx.swap(); }
     };
     this.container.addEventListener('click', this.onClick);
@@ -467,7 +587,10 @@ export default {
     this.el('.zt-title').classList.toggle('hidden', which !== 'title');
     this.el('.zt-kigae').classList.toggle('hidden', which !== 'kigae');
     this.el('.zt-soubi').classList.toggle('hidden', which !== 'soubi');
-    if (this.game) this.game.kigae = which === 'kigae' || which === 'soubi';
+    this.el('.zt-upg').classList.toggle('hidden', which !== 'upg');
+    if (which !== 'play' && this.game && this.game.scopedOn) { this.game.scopedOn = false; this.el('.zt-root').classList.remove('zt-scoped'); }
+    if (which !== 'play') this.saveBank?.();
+    if (this.game) this.game.kigae = which === 'kigae' || which === 'soubi' || which === 'upg';
     if (which !== 'play' && which !== 'pause') this.flushGear?.();
     this.el('.zt-gcard').classList.toggle('zt-dim', which === 'pause');
     this.el('.zt-pausescr').classList.toggle('hidden', which !== 'pause');
@@ -485,6 +608,7 @@ export default {
     if (!retry) this.game.loadMap(this.nextMapId());
     if (!retry && this.save.map === 'rotate') { this.save.mapNext = (this.save.mapNext + 1) % MAP_IDS.length; this.persist(); }
     this.game.startGame();
+    this.runBank = 0; // v0.8.0: この ゲームで もう bank に いれた スコア
     this.show('play');
     if (!matchMedia('(pointer: coarse)').matches) this.canvas.requestPointerLock?.();
   },
@@ -528,9 +652,11 @@ export default {
         setText('wave', E.wave, s.wave ? `ウェーブ ${s.wave}` : 'じゅんび');
         setText('left', E.left, `のこり ${s.left}`);
         setText('score', E.score, String(s.score));
+        // v0.8.0: ふえた スコアは そのまま「つかえる スコア」へ（さいこう スコアとは べつ）
+        if (s.score > (app.runBank || 0)) { earnBank(app.save, s.score - (app.runBank || 0)); app.runBank = s.score; app.bankDirty = true; }
         setText('ammo', E.ammo, String(s.ammo));
         setText('res', E.res, '/ ' + (s.reserve === Infinity ? '∞' : s.reserve));
-        setText('wname', E.wname, WEAPONS[s.weapon].name);
+        setText('wname', E.wname, WEAPONS[s.weapon].name + (s.lv > 1 ? ` Lv${s.lv}` : ''));
         E.ammo.classList.toggle('low', s.ammo <= Math.ceil(s.mag * 0.25));
         if (last.weapon !== s.weapon) { last.weapon = s.weapon; for (const b of E.slots) b.classList.toggle('sel', b.dataset.w === s.weapon); }
         for (const b of E.slots) { const g = s.guns[b.dataset.w]; const e = g.ammo === 0 && !(g.reserve > 0); if (b._e !== e) { b._e = e; b.classList.toggle('empty', e); } }
@@ -591,6 +717,7 @@ export default {
         if (app.game) app.game.settings = app.save;
         return isNew;
       },
+      scope: (on) => { app.root.classList.toggle('zt-scoped', !!on); },
       crossTarget: (on) => { if (last.ct !== on) { last.ct = on; E.cross.classList.toggle('target', on); } },
       hitmarker: (head) => {
         E.hitm.classList.remove('on', 'head'); void E.hitm.offsetWidth; E.hitm.classList.add('on'); if (head) E.hitm.classList.add('head');
@@ -644,6 +771,9 @@ export default {
     const st = this.game.stats;
     st.frames++; st.cpu += cpu; st.frameSum = (st.frameSum || 0) + frameMs;
     if (this.game.state === 'play') this.game.adaptQuality(frameMs);
+    // v0.8.0: つかえる スコアを ときどき セーブ
+    this.bankT = (this.bankT || 0) + dt;
+    if (this.bankT > 5) { this.bankT = 0; this.saveBank(); }
   },
 
   destroy() {
