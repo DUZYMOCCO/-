@@ -39,5 +39,11 @@ export const games = [
     description: '青いゲートを通って足し算・かけ算で弾を大量増殖！立ちはだかるブロックや巨大ウォールを粉砕しよう！',
     load: () => import('../../math-runner/js/index.js'),
   },
+  {
+    id: 'zombie-tps', section: 'kids', title: 'ゾンビストライク', subtitle: 'ゾンビを うって まちを まもれ！',
+    icon: '🧟', color: '#4caf50',
+    description: 'アサルトライフルで ゾンビを うて！ あたまを ねらうと ヘッドショット。ウェーブを どこまで こえられるかな？',
+    load: () => import('../../zombie-tps/js/index.js'),
+  },
 ];
 export function getGameById(id) { return games.find(game => game.id === id); }
