@@ -1,6 +1,6 @@
 // こうか: マズルフラッシュ・トレーサー・やっきょう・つぶ（みどりの しぶき／けむり）・しみ（みどり）・だんこん
 import * as THREE from '../vendor/three.module.min.js';
-import { makeMagMesh } from './models.js?v=2';
+import { makeMagMesh } from './models.js?v=3';
 
 const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _s = new THREE.Vector3(), _p = new THREE.Vector3(), _c = new THREE.Color();
 const UP = new THREE.Vector3(0, 1, 0), FWD = new THREE.Vector3(0, 0, 1);
@@ -65,6 +65,14 @@ export class FX {
       }
       return arr;
     };
+    // ブロックの かけら（ばくはつで くだけた ゾンビ。InstancedMesh 1こ）
+    this.maxChunks = 160;
+    this.cMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshLambertMaterial({ color: 0xffffff }), this.maxChunks);
+    this.cMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    this.cMesh.setColorAt(0, _c.set(0xffffff));
+    this.cMesh.frustumCulled = false; this.cMesh.count = 0; this.cMesh.castShadow = false;
+    scene.add(this.cMesh);
+    this.chunkList = [];
     this.splats = mk(tex.splats, 24, 1); this.si = 0;
     this.holes = mk(tex.hole, 40, 0.12); this.hi = 0;
   }
@@ -163,6 +171,29 @@ export class FX {
     g.v.set((Math.random() - 0.5) * 0.4, -0.5, (Math.random() - 0.5) * 0.4); g.life = 3; g.m.visible = true; g.rest = false;
   }
 
+  // ---- ブロックに くだける（ばくはつ）----
+  // colors: [[いろ, ぶい]]（ぶい 0=あし 1=からだ 2=あたま 3=うで）、v: ふっとぶ はやさ {vx,vy,vz}
+  shatter(x, y, z, scale, yaw, colors, v, n = 16) {
+    const room = this.maxChunks - this.chunkList.length;
+    if (room < n) this.chunkList.splice(0, n - room); // ふるい ものから けす
+    const band = [[0.05, 0.7], [0.75, 1.4], [1.45, 1.95], [0.9, 1.4]];
+    for (let i = 0; i < n; i++) {
+      const [col, part] = colors[i % colors.length];
+      const [y0, y1] = band[part];
+      const lx = (Math.random() - 0.5) * (part === 3 ? 0.9 : 0.5), lz = (Math.random() - 0.5) * 0.35;
+      const c = Math.cos(yaw), sn = Math.sin(yaw);
+      const p = new THREE.Vector3(x + (lx * c + lz * sn) * scale, y + (y0 + Math.random() * (y1 - y0)) * scale, z + (-lx * sn + lz * c) * scale);
+      const k = 0.45 + Math.random() * 0.7;
+      const vel = new THREE.Vector3(v.vx * k + (Math.random() - 0.5) * 5, v.vy * (0.5 + Math.random() * 0.7) + Math.random() * 3, v.vz * k + (Math.random() - 0.5) * 5);
+      // うえの ぶぶんほど たかく とぶ
+      vel.y += (p.y - y) * 1.2;
+      const size = (part === 2 ? 0.2 : 0.15 + Math.random() * 0.12) * scale;
+      this.chunkList.push({ p, v: vel, q: new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.random() * 6, Math.random() * 6, 0)),
+        av: new THREE.Vector3((Math.random() - 0.5) * 16, (Math.random() - 0.5) * 16, (Math.random() - 0.5) * 16),
+        size, col, life: 2.2 + Math.random() * 1.0, bounces: 0, rest: false });
+    }
+  }
+
   // ---- しみ（じめん／かべ） ----
   splat(pos, normal = UP, size = 1) {
     const d = this.splats[this.si++ % this.splats.length];
@@ -200,6 +231,35 @@ export class FX {
     this.pMesh.count = n;
     this.pMesh.instanceMatrix.needsUpdate = true;
     if (this.pMesh.instanceColor) this.pMesh.instanceColor.needsUpdate = true;
+    // ブロックの かけら: じゅうりょく・はねる・くるくる・ちいさく なって きえる
+    if (this.chunkList.length || this.cMesh.count) {
+      let k = 0;
+      const _e2 = this._e2 || (this._e2 = new THREE.Euler()), _q2 = this._q2 || (this._q2 = new THREE.Quaternion());
+      for (let i = this.chunkList.length - 1; i >= 0; i--) {
+        const c = this.chunkList[i];
+        c.life -= dt;
+        if (c.life <= 0) { this.chunkList.splice(i, 1); continue; }
+        if (!c.rest) {
+          c.v.y -= 20 * dt; c.p.addScaledVector(c.v, dt);
+          const gy = this.groundAt(c.p.x, c.p.z, c.p.y + 0.3) + c.size * 0.5;
+          if (c.p.y < gy) {
+            c.p.y = gy;
+            if (c.bounces++ < 3 && c.v.y < -2) { c.v.y = -c.v.y * 0.38; c.v.x *= 0.6; c.v.z *= 0.6; c.av.multiplyScalar(0.6); }
+            else { c.v.set(0, 0, 0); c.rest = true; }
+          }
+          _q2.setFromEuler(_e2.set(c.av.x * dt, c.av.y * dt, c.av.z * dt)); c.q.multiply(_q2);
+        }
+      }
+      for (const c of this.chunkList) {
+        const sh = Math.min(1, c.life / 0.5);
+        _s.setScalar(c.size * sh);
+        _m.compose(c.p, c.q, _s);
+        this.cMesh.setMatrixAt(k, _m); this.cMesh.setColorAt(k, _c.set(c.col)); k++;
+      }
+      this.cMesh.count = k;
+      this.cMesh.instanceMatrix.needsUpdate = true;
+      if (this.cMesh.instanceColor) this.cMesh.instanceColor.needsUpdate = true;
+    }
     // トレーサー（はやく とぶ）
     for (const t of this.tracers) {
       if (t.life <= 0) continue;

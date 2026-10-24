@@ -5,6 +5,9 @@ import {
   ZOMBIES, waveSpec, waveQueue, killScore, HEADSHOT_BONUS, rayAABB, castShot, collideCircle, groundHeight,
   buildGrid, updateFlow, flowDir, cellOf, normalizeSave,
   blastFalloff, blastDamage, launchVelocity, knockAt, FLY_KNOCK, MAX_AIR, stickCurve, approach, refillReserve, VERSION,
+  rollRocketDrop, addRocketAmmo, pickupVisible, DROP_CHANCE, ROCKET_RESERVE_MAX, PICKUP_LIFE,
+  timeOfDay, mixTod, TOD, isBossWave, bossHp, BOSS,
+  MAX_CLIMB, JUMP_H, climbTime, climbTarget, climbLanding, supportBox, playerReachableTops, boxGap,
 } from '../js/rules.js';
 import { buildMap, playerColliders, zombieColliders, HALF } from '../js/map.js';
 
@@ -72,7 +75,7 @@ test('ウェーブは だんだん むずかしく、さいしょは あるく �
   let prev = 0;
   for (let n = 1; n <= 15; n++) {
     const s = waveSpec(n);
-    assert.equal(s.walkers + s.runners + s.brutes, s.total);
+    assert.equal(s.walkers + s.runners + s.brutes + s.boss, s.total);
     assert.ok(s.total >= prev); prev = s.total;
     const q = waveQueue(s, () => 0.3);
     assert.equal(q.length, s.total);
@@ -155,8 +158,9 @@ test('ロケットランチャー: スロット4、1はつずつ、よびだん 
   updateGun(g, w.reload + 0.01);
   assert.equal(g.ammo, 1);
   assert.equal(g.reserve, w.reserve - 1);
-  // ウェーブで ほじゅう
-  g.reserve = 0; refillReserve(g); assert.equal(g.reserve, w.reserve);
+  // ロケットは ウェーブで ほじゅう しない（ドロップで ひろう）
+  g.reserve = 0; refillReserve(g); assert.equal(g.reserve, 0);
+  const rf = createGun('rifle'); rf.reserve = 0; refillReserve(rf); assert.equal(rf.reserve, WEAPONS.rifle.reserve);
   const p = createGun('pistol'); refillReserve(p); assert.equal(p.reserve, Infinity);
 });
 
@@ -211,7 +215,7 @@ test('なめらか いどう: approach は フレームレートに よらない
 });
 
 test('バージョン と セーブの ステージ', () => {
-  assert.equal(VERSION, '0.2.0');
+  assert.equal(VERSION, '0.3.0');
   assert.equal(normalizeSave(null).stage, 'day');
   assert.equal(normalizeSave({ stage: 'night' }).stage, 'night');
   assert.equal(normalizeSave({ stage: 'mars' }).stage, 'day');
@@ -228,4 +232,113 @@ test('マップ: よるの がいとうは みちの うえで、かべに う�
     assert.ok(l.h > 3);
   }
   assert.ok(cols.length > 0);
+});
+
+test('じかん: ウェーブごとに ひる → ゆうがた → よる', () => {
+  assert.deepEqual([1, 2, 3, 4, 5, 6, 7].map((n) => timeOfDay(n)), ['day', 'sunset', 'night', 'day', 'sunset', 'night', 'day']);
+  // よるから はじめる
+  assert.deepEqual([1, 2, 3].map((n) => timeOfDay(n, 'night')), ['night', 'day', 'sunset']);
+  assert.equal(timeOfDay(0), 'day');
+  // まざりかた: はし は そのまま、まんなかは あいだ
+  assert.deepEqual(mixTod('day', 'night', 0).sky, TOD.day.sky);
+  assert.deepEqual(mixTod('day', 'night', 1).sky, TOD.night.sky);
+  const mid = mixTod('sunset', 'night', 0.5);
+  assert.ok(mid.lamps > TOD.sunset.lamps && mid.lamps < TOD.night.lamps);
+  assert.ok(TOD.day.lamps === 0 && TOD.sunset.lamps > 0 && TOD.night.night === 1);
+});
+
+test('ロケットだん: ゾンビが ときどき おとす・ボスは かならず・いっぱいなら ひろえない', () => {
+  assert.equal(rollRocketDrop('boss', 0.99), 2);
+  assert.equal(rollRocketDrop('walker', 0.99), 0);
+  assert.equal(rollRocketDrop('walker', 0.01), 1);
+  assert.ok(DROP_CHANCE.walker < 0.1 && DROP_CHANCE.brute > DROP_CHANCE.runner);
+  // 1ウェーブ あたり すこしだけ（ゾンビ 10たいに 1こ いか ＋ ボスの 2こ）
+  for (let n = 1; n <= 12; n++) {
+    const s = waveSpec(n);
+    const e = s.walkers * DROP_CHANCE.walker + s.runners * DROP_CHANCE.runner + s.brutes * DROP_CHANCE.brute + s.boss * 2;
+    assert.ok(e > 0.3 && e <= s.total * 0.1 + 2, `wave ${n}: ${e}`);
+  }
+  const g = createGun('rocket'); g.reserve = ROCKET_RESERVE_MAX - 1;
+  assert.equal(addRocketAmmo(g, 2), 1); assert.equal(g.reserve, ROCKET_RESERVE_MAX);
+  assert.equal(addRocketAmmo(g, 1), 0);
+  assert.equal(pickupVisible(1), true);
+  assert.equal(pickupVisible(PICKUP_LIFE + 0.1), false);
+  const blink = new Set(); for (let t = PICKUP_LIFE - 4; t < PICKUP_LIFE; t += 0.05) blink.add(pickupVisible(t));
+  assert.equal(blink.size, 2);
+});
+
+test('ボス: 3ウェーブごとに 1たい、でかくて かたい', () => {
+  for (let n = 1; n <= 12; n++) {
+    const s = waveSpec(n), q = waveQueue(s, () => 0.3);
+    assert.equal(s.boss, n % 3 === 0 ? 1 : 0);
+    assert.equal(isBossWave(n), n % 3 === 0);
+    assert.equal(q.filter((k) => k === 'boss').length, s.boss);
+    assert.equal(q.length, s.total);
+    assert.notEqual(q[0], 'boss');
+  }
+  assert.ok(ZOMBIES.boss.scale > ZOMBIES.brute.scale && ZOMBIES.boss.scale < 2.2);
+  assert.ok(ZOMBIES.boss.hp > ZOMBIES.brute.hp * 4);
+  assert.ok(bossHp(6) > bossHp(3));
+  assert.ok(BOSS.slamWind >= 0.6, 'ためが みえる');
+  assert.ok(/^[ぁ-んァ-ヶー]+$/.test(ZOMBIES.boss.name));
+});
+
+test('よじのぼり: くるまは 1〜1.5びょう、のぼる はこを えらぶ', () => {
+  const car = { minX: -1, maxX: 1, minZ: -2, maxZ: 2, minY: 0.35, maxY: 1.1 };
+  const glass = { minX: -0.9, maxX: 0.9, minZ: -1.2, maxZ: 1, minY: 1.1, maxY: 1.72 };
+  const t = climbTime(1.1);
+  assert.ok(t >= 1 && t <= 1.5, `car climb ${t}`);
+  assert.ok(climbTime(1.1, 'boss') > t);
+  // じめんの ゾンビが くるまの まえに いて、プレイヤーは やねの うえ → まず ボンネット
+  assert.equal(climbTarget(0, 2.35, 0.3, 0, 1.72, [car, glass]), car);
+  // くるまの よこは せまい（やねで ふさがる）→ そのまま やねへ のぼる
+  assert.equal(climbTarget(1.35, 0, 0.3, 0, 1.72, [car, glass]), glass);
+  // プレイヤーが ボンネットに いる ときは ボンネットまで
+  assert.equal(climbTarget(1.35, 0, 0.3, 0, 1.1, [car, glass]), car);
+  // ボディの うえ → ガラスの やねへ
+  assert.equal(climbTarget(0.8, 0, 0.3, 1.1, 1.72, [car, glass]), glass);
+  // とおい／プレイヤーより たかい はこは えらばない
+  assert.equal(climbTarget(3, 0, 0.3, 0, 1.72, [car]), null);
+  assert.equal(climbTarget(1.35, 0, 0.3, 0, 0.5, [car]), null);
+  const land = climbLanding(1.35, 0, car);
+  assert.ok(land.x <= car.maxX && land.x >= car.minX && land.y === car.maxY);
+  assert.equal(supportBox(0, 0, 0.35, 1.72, [car, glass]), glass);
+});
+
+test('あんぜんちたい なし: プレイヤーが のれる ところは ぜんぶ ゾンビも のぼって こられる', () => {
+  const map = buildMap();
+  const pc = playerColliders(map), zc = zombieColliders(map);
+  const tops = playerReachableTops(pc);
+  assert.ok(tops.length > 20);
+  const grid = buildGrid(zc, HALF + 4, 1, 0.4);
+  updateFlow(grid, map.spawns[0].x, map.spawns[0].z); // ゾンビが あるける マス
+  const open = [];
+  for (let i = 0; i < grid.n * grid.n; i++) if (grid.dist[i] >= 0) {
+    const gx = i % grid.n, gz = (i / grid.n) | 0;
+    open.push([-grid.half + (gx + 0.5) * grid.cell, -grid.half + (gz + 0.5) * grid.cell]);
+  }
+  // じめんから のぼれる はこ → となりの はこへ（だんだんに）
+  const climbable = new Set();
+  for (const b of zc) {
+    if (b.maxY > MAX_CLIMB) continue;
+    if (open.some(([x, z]) => boxGap(x, z, b) < 1.25)) climbable.add(b);
+  }
+  let grow = true;
+  while (grow) {
+    grow = false;
+    for (const b of zc) {
+      if (climbable.has(b)) continue;
+      for (const a of climbable) {
+        const dx = Math.max(b.minX - a.maxX, 0, a.minX - b.maxX), dz = Math.max(b.minZ - a.maxZ, 0, a.minZ - b.maxZ);
+        if (Math.hypot(dx, dz) < 0.45 && b.maxY - a.maxY <= MAX_CLIMB) { climbable.add(b); grow = true; break; }
+      }
+    }
+  }
+  for (const b of tops) {
+    assert.ok(zc.includes(b), `player-only top ${b.minX},${b.minZ}`);
+    assert.ok(b.maxY <= MAX_CLIMB, `too high ${b.maxY}`);
+    assert.ok(climbable.has(b), `safe spot at ${b.minX.toFixed(1)},${b.minZ.toFixed(1)} h${b.maxY.toFixed(2)}`);
+  }
+  // プレイヤーは ジャンプで たかい ところへ: じめんから 1.3m ちょっと まで
+  assert.ok(JUMP_H > 1.2 && JUMP_H < 1.4);
 });

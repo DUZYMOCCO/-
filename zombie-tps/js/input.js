@@ -1,4 +1,4 @@
-import { stickCurve } from './rules.js?v=2';
+import { stickCurve } from './rules.js?v=3';
 // そうさ: タッチ（ひだり スティック・みぎ ドラッグ・ボタン）と キーボード／マウス
 export class Input {
   constructor(touchLayer, canvas) {

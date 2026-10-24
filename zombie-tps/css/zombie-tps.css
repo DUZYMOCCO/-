@@ -101,6 +101,12 @@
 .zt-big { padding: 10px 34px; font-size: 20px; font-weight: 900; color: #1b2a08; border: none; border-radius: 12px; background: linear-gradient(#c9ff7a, #6fd23a); box-shadow: 0 4px 0 #3a7a1c, 0 6px 16px rgba(0,0,0,.4); }
 .zt-big:active { transform: translateY(3px); box-shadow: 0 1px 0 #3a7a1c; }
 .zt-small { padding: 6px 14px; font-size: 12px; font-weight: 800; color: #fff; background: rgba(255,255,255,.12); border: 2px solid rgba(255,255,255,.35); border-radius: 10px; }
+.zt-todhint { font-size: 11px; font-weight: 800; color: #ffd9a8; text-shadow: 0 1px 2px #000; margin-top: -2px; }
+.zt-boss { position: absolute; left: 50%; top: 44px; transform: translateX(-50%); width: min(46vw, 340px); text-align: center; text-shadow: 0 2px 3px #000; pointer-events: none; }
+.zt-boss b { display: block; font-size: 13px; letter-spacing: 2px; color: #ff9a6a; }
+.zt-bossbar { height: 9px; margin-top: 2px; background: rgba(0,0,0,.55); border: 2px solid rgba(255,255,255,.55); border-radius: 6px; overflow: hidden; }
+.zt-bossbar div { height: 100%; width: 100%; background: linear-gradient(#ff6a3a, #c0282a); transition: width .15s; }
+.zt-boss.hidden { display: none; }
 .zt-opts { display: flex; gap: 6px; }
 .zt-opts button { padding: 5px 9px; font-size: 11px; font-weight: 800; color: #fff; background: rgba(0,0,0,.4); border: 2px solid rgba(255,255,255,.3); border-radius: 9px; }
 .zt-opts b { color: #ffe27a; }

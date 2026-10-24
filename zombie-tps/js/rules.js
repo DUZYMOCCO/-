@@ -1,7 +1,7 @@
 // ゾンビストライク — ゲームの きまり（DOM / three.js に いぞんしない。node のテストから よめる）
 // ぶき・ダメージ・ウェーブ・あたりはんてい（レイ×はこ）・いどうの ぶつかり・ゾンビの みちさがし（フローフィールド）
 
-export const VERSION = '0.2.0';
+export const VERSION = '0.3.0';
 
 // ---- ぶき ----
 // rpm: 1ぷんかんの はっしゃかず / mag: マガジン / reserve: よびだん / reload: びょう
@@ -35,7 +35,7 @@ export const WEAPONS = {
     mag: 1, reserve: 3, reload: 2.6,
     spread: 0.004, spreadMove: 0.012, spreadAim: 0.002, bloom: 0, bloomMax: 0,
     recoilPitch: 0.085, recoilYaw: 0.012, shake: 0.4, range: 90, falloff: [0, 1, 1], knock: 0,
-    projectile: true, speed: 34, blast: 4.5, power: 13, life: 3,
+    projectile: true, speed: 34, blast: 4.5, power: 13, life: 3, noRefill: true,
   },
 };
 export const WEAPON_ORDER = ['rifle', 'pistol', 'shotgun', 'rocket'];
@@ -44,9 +44,69 @@ export const DEFAULT_WEAPON = 'rifle';
 export function fireInterval(w) { return 60 / w.rpm; }
 
 // ウェーブの はじめに よびだんを ほじゅう（へっていたら もとの かずまで）
+// ロケットは ほじゅう しない（ゾンビが おとす たまを ひろう）
 export function refillReserve(g) {
   const w = WEAPONS[g.id];
+  if (w.noRefill) return;
   if (w.reserve !== Infinity) g.reserve = Math.max(g.reserve, w.reserve);
+}
+
+// ---- ロケットだんの ドロップ ----
+export const DROP_CHANCE = { walker: 0.06, runner: 0.08, brute: 0.25, boss: 1 };
+export const ROCKET_RESERVE_MAX = 6;   // よびは 6はつまで
+export const PICKUP_LIFE = 20;         // 20びょうで きえる
+export const PICKUP_BLINK = 5;         // さいごの 5びょうは ちかちか
+export const MAX_PICKUPS = 4;
+// たおした ときに おとす かず（rnd: 0..1）
+export function rollRocketDrop(kind, rnd = Math.random()) {
+  if (kind === 'boss') return 2;
+  return rnd < (DROP_CHANCE[kind] || 0) ? 1 : 0;
+}
+// ひろう: はいった かずを かえす（いっぱいなら 0）
+export function addRocketAmmo(g, n = 1) {
+  const room = Math.max(0, ROCKET_RESERVE_MAX - g.reserve);
+  const k = Math.min(room, n);
+  g.reserve += k;
+  return k;
+}
+export function pickupVisible(age) {
+  const left = PICKUP_LIFE - age;
+  if (left <= 0) return false;
+  if (left > PICKUP_BLINK) return true;
+  return Math.floor(age * (left < 2 ? 10 : 5)) % 2 === 0;
+}
+
+// ---- じかん（ウェーブごとに ひる → ゆうがた → よる）----
+export const TOD_ORDER = ['day', 'sunset', 'night'];
+export function timeOfDay(wave, start = 'day') {
+  const s = Math.max(0, TOD_ORDER.indexOf(start));
+  return TOD_ORDER[(Math.max(1, wave) - 1 + s) % 3];
+}
+// いろ・あかるさ（sky: そらの グラデーション 4いろ、うえ→した）
+export const TOD = {
+  day: { fog: 0xe9d6b4, near: 22, far: 70, hemiSky: 0xd4e6ff, hemiGround: 0x6b5a3c, hemiI: 1.5, sun: 0xfff0d0, sunI: 2.4, off: [14, 26, 9],
+    sky: [0x5d8fd6, 0xa9c7e6, 0xf2d9b0, 0xe8c79a], night: 0, moon: 0, lamps: 0, disk: 0, boost: 1 },
+  sunset: { fog: 0xd99a78, near: 18, far: 64, hemiSky: 0xffc8a0, hemiGround: 0x55405a, hemiI: 1.3, sun: 0xffa060, sunI: 1.9, off: [-24, 9, -14],
+    sky: [0x34407e, 0xb4647a, 0xf2955a, 0xf6c07a], night: 0.15, moon: 0.25, lamps: 0.7, disk: 1, boost: 1.5 },
+  night: { fog: 0x1d2a4e, near: 13, far: 56, hemiSky: 0x9fb3ee, hemiGround: 0x34344e, hemiI: 1.25, sun: 0xb4c8ff, sunI: 1.0, off: [-12, 24, -16],
+    sky: [0x0a1430, 0x1b2d5c, 0x34497e, 0x2a3a63], night: 1, moon: 1, lamps: 1, disk: 0, boost: 2.4 },
+};
+export function mixColor(a, b, k) {
+  const r = ((a >> 16) & 255) + ((((b >> 16) & 255) - ((a >> 16) & 255)) * k);
+  const g = ((a >> 8) & 255) + ((((b >> 8) & 255) - ((a >> 8) & 255)) * k);
+  const bl = (a & 255) + (((b & 255) - (a & 255)) * k);
+  return (Math.round(r) << 16) | (Math.round(g) << 8) | Math.round(bl);
+}
+export function mixTod(from, to, k) {
+  const A = TOD[from] || TOD.day, B = TOD[to] || TOD.day, o = {};
+  for (const key in A) {
+    const a = A[key], b = B[key];
+    if (key === 'sky') o.sky = a.map((c, i) => mixColor(c, b[i], k));
+    else if (key === 'off') o.off = a.map((v, i) => v + (b[i] - v) * k);
+    else if (['fog', 'hemiSky', 'hemiGround', 'sun'].includes(key)) o[key] = mixColor(a, b, k);
+    else o[key] = a + (b - a) * k;
+  }
+  return o;
 }
 
 // ---- ばくはつ ----
@@ -166,6 +226,16 @@ export const ZOMBIES = {
   walker: { id: 'walker', hp: 70, speed: 1.8, dmg: 10, atkRate: 1.0, scale: 1.0, score: 100 },
   runner: { id: 'runner', hp: 45, speed: 3.9, dmg: 8, atkRate: 0.8, scale: 0.95, score: 150 },
   brute: { id: 'brute', hp: 260, speed: 1.2, dmg: 22, atkRate: 1.4, scale: 1.35, score: 400 },
+  // ボス: 3ウェーブごと。ちょっと でかい・かたい・ためてから ドスン！／とっしん
+  boss: { id: 'boss', hp: 1500, speed: 1.35, dmg: 20, atkRate: 1.6, scale: 1.75, score: 2000, name: 'ボスゾンビ' },
+};
+export const isBossWave = (n) => n > 0 && n % 3 === 0;
+// ボスの HP（ウェーブが すすむと かたく なる）
+export function bossHp(n) { return Math.round(ZOMBIES.boss.hp * (1 + Math.max(0, n / 3 - 1) * 0.4)); }
+// ボスの こうげき
+export const BOSS = {
+  slamRange: 3.0, slamWind: 0.9, slamRadius: 3.2, slamDmg: 24, slamCd: 2.2,
+  chargeMin: 6, chargeMax: 18, chargeWind: 1.0, chargeSpeed: 9.5, chargeTime: 1.2, chargeDmg: 22, chargeCd: 5,
 };
 export const HEADSHOT_BONUS = 50;
 export const ATTACK_RANGE = 1.25;
@@ -179,7 +249,8 @@ export function waveSpec(n) {
   const runners = Math.round((total - bruteCount) * runnerShare);
   const walkers = total - runners - bruteCount;
   const hpMul = 1 + Math.max(0, n - 5) * 0.08;
-  return { n, total, walkers, runners, brutes: bruteCount, maxAlive: Math.min(6 + n * 2, 16), spawnGap: Math.max(0.5, 1.8 - n * 0.12), hpMul };
+  return { n, total: total + (isBossWave(n) ? 1 : 0), walkers, runners, brutes: bruteCount, boss: isBossWave(n) ? 1 : 0,
+    maxAlive: Math.min(6 + n * 2, 16), spawnGap: Math.max(0.5, 1.8 - n * 0.12), hpMul };
 }
 
 // しゅるいの ならびを つくる（rng: 0..1）
@@ -193,6 +264,8 @@ export function waveQueue(spec, rng = Math.random) {
   for (let i = 0; i < Math.min(3, q.length); i++) {
     if (q[i] !== 'walker') { const k = q.indexOf('walker', 3); if (k >= 0) [q[i], q[k]] = [q[k], q[i]]; }
   }
+  // ボスは まんなかぐらいで とうじょう
+  if (spec.boss) q.splice(Math.floor(q.length * 0.4), 0, 'boss');
   return q;
 }
 
@@ -295,6 +368,74 @@ export function groundHeight(x, z, r, y, boxes, step = 0.3) {
     if (y >= b.maxY - step && b.maxY > g) g = b.maxY;
   }
   return g;
+}
+
+// ---- よじのぼり（くるま・はこ・ひくい かべ）----
+export const MAX_CLIMB = 4.5;          // これより たかい だんさは のぼれない（マップには ない）
+export const JUMP_H = 7.2 * 7.2 / (2 * 20); // プレイヤーの ジャンプの たかさ ≈ 1.3m
+// のぼる じかん（くるま 1.1m で ≈1.2びょう。でかい ゾンビは おそい）
+export function climbTime(h, kind = 'walker') {
+  const base = Math.max(0.8, Math.min(3.2, 0.55 + h * 0.6));
+  return base * (kind === 'brute' || kind === 'boss' ? 1.35 : kind === 'runner' ? 0.85 : 1);
+}
+// XZ の えんと はこの すきま
+export function boxGap(x, z, b) {
+  const dx = Math.max(b.minX - x, 0, x - b.maxX), dz = Math.max(b.minZ - z, 0, z - b.maxZ);
+  return Math.hypot(dx, dz);
+}
+// ゾンビ（x,z,あしもと zy, はんけい r）が さわっている はこで、のぼる さきを えらぶ。
+// targetY = プレイヤーの ゆかの たかさ。それより たかい はこには のぼらない。
+export function climbTarget(x, z, r, zy, targetY, boxes, reach = 0.15) {
+  let best = null;
+  for (const b of boxes) {
+    if (b.maxY <= zy + 0.3 || b.maxY > targetY + 0.05) continue;
+    if (b.maxY - zy > MAX_CLIMB) continue;
+    if (b.minY > zy + 0.6) continue; // うかんだ はこ（のりもの の まど など）は べつの はこから
+    if (boxGap(x, z, b) > r + reach) continue;
+    if (!best || b.maxY > best.maxY) best = b;
+  }
+  // のぼった さきが うえの はこ（くるまの やね など）で ふさがって せまい → そのまま うえの はこへ
+  for (let k = 0; best && k < 3; k++) {
+    const land = climbLanding(x, z, best, r);
+    let up = null;
+    for (const s of boxes) {
+      if (s === best || Math.abs(s.minY - best.maxY) > 0.08 || s.maxY > targetY + 0.05 || s.maxY - zy > MAX_CLIMB) continue;
+      if (land.x > s.minX - r && land.x < s.maxX + r && land.z > s.minZ - r && land.z < s.maxZ + r) { up = s; break; }
+    }
+    if (!up) break;
+    best = up;
+  }
+  return best;
+}
+// ゾンビが のぼりきって たつ ばしょ（はこの うえ・ふちから すこし うちがわ）
+export function climbLanding(x, z, b, inset = 0.35) {
+  const ix = Math.min(inset, (b.maxX - b.minX) / 2), iz = Math.min(inset, (b.maxZ - b.minZ) / 2);
+  return { x: Math.max(b.minX + ix, Math.min(b.maxX - ix, x)), z: Math.max(b.minZ + iz, Math.min(b.maxZ - iz, z)), y: b.maxY };
+}
+// いま たっている はこ（あしもとの ゆか）
+export function supportBox(x, z, r, y, boxes) {
+  let best = null;
+  for (const b of boxes) {
+    if (x + r * 0.7 < b.minX || x - r * 0.7 > b.maxX || z + r * 0.7 < b.minZ || z - r * 0.7 > b.maxZ) continue;
+    if (Math.abs(b.maxY - y) < 0.06 && (!best || b.maxY > best.maxY)) best = b;
+  }
+  return best;
+}
+// プレイヤーが のれる はこの うえ（じめんから ジャンプ・となりへ ジャンプで いける ところ）を ぜんぶ さがす
+export function playerReachableTops(boxes, { jump = JUMP_H, step = 0.3, gap = 2.2 } = {}) {
+  const reach = new Set(), q = [];
+  boxes.forEach((b, i) => { if (b.maxY - step <= jump) { reach.add(i); q.push(i); } });
+  while (q.length) {
+    const a = boxes[q.shift()];
+    boxes.forEach((b, j) => {
+      if (reach.has(j)) return;
+      const dx = Math.max(b.minX - a.maxX, 0, a.minX - b.maxX), dz = Math.max(b.minZ - a.maxZ, 0, a.minZ - b.maxZ);
+      if (Math.hypot(dx, dz) > gap) return;
+      if (b.maxY - step > a.maxY + jump) return;
+      reach.add(j); q.push(j);
+    });
+  }
+  return [...reach].map((i) => boxes[i]);
 }
 
 // カメラが かべに めりこまない きょり

@@ -6,12 +6,14 @@ import {
   waveSpec, waveQueue, killScore, castShot, aabbNormal, collideCircle, groundHeight, cameraDistance,
   buildGrid, updateFlow, flowDir, gridLineClear,
   blastDamage, blastFalloff, launchVelocity, knockAt, FLY_KNOCK, MAX_AIR, approach, refillReserve,
-} from './rules.js?v=2';
-import { buildMap, playerColliders, zombieColliders, shotColliders, HALF } from './map.js?v=2';
-import { buildTextures, fxTextures } from './textures.js?v=2';
-import { buildWorld } from './world.js?v=2';
-import { makePlayer, makeWeapons, makeZombie, makeRocketProjectile, FLASH_MAT } from './models.js?v=2';
-import { FX } from './fx.js?v=2';
+  TOD, timeOfDay, mixColor as mixC, rollRocketDrop, addRocketAmmo, pickupVisible, PICKUP_LIFE, MAX_PICKUPS,
+  isBossWave, bossHp, BOSS, climbTarget, climbLanding, climbTime, supportBox, boxGap,
+} from './rules.js?v=3';
+import { buildMap, playerColliders, zombieColliders, shotColliders, HALF } from './map.js?v=3';
+import { buildTextures, fxTextures } from './textures.js?v=3';
+import { buildWorld } from './world.js?v=3';
+import { makePlayer, makeWeapons, makeZombie, makeRocketProjectile, makeRocketCrate, zombieChunkColors, FLASH_MAT } from './models.js?v=3';
+import { FX } from './fx.js?v=3';
 
 const v3 = () => new THREE.Vector3();
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -20,11 +22,10 @@ const FLY_G = 22;                // ふっとんだ ゾンビの じゅうりょ
 const BODY_C = new THREE.Vector3(0, 0.9, 0); // からだの まんなか（くるくる まわる じく）
 const _e = new THREE.Euler(), _v = new THREE.Vector3();
 
-// ステージ（ひる／よる）の いろ
-const STAGES = {
-  day: { fog: 0xe9d6b4, near: 22, far: 70, hemi: [0xd4e6ff, 0x6b5a3c, 1.5], sun: [0xfff0d0, 2.4], off: [14, 26, 9] },
-  night: { fog: 0x1d2a4e, near: 13, far: 56, hemi: [0x9fb3ee, 0x34344e, 1.25], sun: [0xb4c8ff, 1.0], off: [-12, 24, -16] },
-};
+const TOD_LABEL = { day: 'ひるに なった', sunset: 'ゆうがたに なった…', night: 'よるに なった…' };
+const TOD_FADE = 3.5;           // じかんが かわる はやさ（びょう）
+const PICKUP_R = 1.1;           // ロケットだんを ひろう きょり
+const smooth = (t) => t * t * (3 - 2 * t);
 
 export class Game {
   constructor(canvas, hud, sfx, settings) {
@@ -74,7 +75,10 @@ export class Game {
     spot.visible = false; scene.add(spot); scene.add(spot.target);
     this.buildNight();
 
-    this.zombies = []; this.pool = { walker: [], runner: [], brute: [] };
+    this.zombies = []; this.pool = { walker: [], runner: [], brute: [], boss: [] };
+    this.pickups = []; this.cratePool = [];
+    this.pk = new THREE.Vector3(); // プレイヤーが ふっとばされる はやさ（ボスの ドスン）
+    this.chunkN = this.quality === 0 ? 10 : 16;
     this.tmp = { a: v3(), b: v3(), c: v3(), d: v3(), e: v3() };
     this.applyStage(settings.stage || 'day');
     this.stats = { frames: 0, cpu: 0, gpuish: 0, last: performance.now(), fps: 0, cpuAvg: 0, frameAvg: 0 };
@@ -100,6 +104,10 @@ export class Game {
     this.flowT = 0; this.groanT = 2; this.lastTarget = -1; this.pumpT = 0; this.landT = 0;
     for (const z of this.zombies) this.releaseZombie(z);
     this.zombies.length = 0;
+    for (const pu of this.pickups || []) this.releasePickup(pu);
+    if (this.pickups) this.pickups.length = 0;
+    if (this.pk) this.pk.set(0, 0, 0);
+    this.boss = null; this.hud.bossBar?.(null);
   }
 
   setupTitle() {
@@ -115,6 +123,7 @@ export class Game {
     for (const z of this.zombies) this.releaseZombie(z);
     this.zombies.length = 0;
     this.resetRun();
+    this.applyStage(this.todStart || 'day');
     this.state = 'play';
     this.hud.show('play');
     this.pushHud(true);
@@ -131,10 +140,10 @@ export class Game {
     const S = this.scene, tex = this.fxTex, lamps = this.map.lamps;
     const g = this.nightGroup = new THREE.Group(); g.visible = false; S.add(g);
     // つき
-    const moon = this.moon = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.moon, fog: false, depthWrite: false }));
+    const moon = this.moon = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.moon, fog: false, depthWrite: false, transparent: true }));
     moon.scale.setScalar(9); g.add(moon);
     const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.glow, color: 0x6f86c8, fog: false, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false }));
-    halo.scale.setScalar(30); moon.add(halo); halo.scale.set(3.3, 3.3, 1);
+    halo.scale.setScalar(30); moon.add(halo); halo.scale.set(3.3, 3.3, 1); this.moonHalo = halo;
     // ほし（Points 1こ）
     const n = 260, pos = new Float32Array(n * 3);
     for (let i = 0; i < n; i++) {
@@ -158,27 +167,89 @@ export class Game {
     });
     pool.renderOrder = 2; g.add(pool, cone);
     this.lampHalo = haloI; haloI.frustumCulled = false; g.add(haloI);
+    this.lampMats = [[pool.material, 0.55], [haloI.material, 0.9], [cone.material, 0.07]];
+    // ゆうひ（おおきな まるい ひかり）
+    const disk = this.sunDisk = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.glow, color: 0xffa860, fog: false, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+    disk.scale.setScalar(46);
+    const core = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.glow, color: 0xfff0c0, fog: false, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+    core.scale.set(0.3, 0.3, 1); disk.add(core); this.sunCore = core;
+    disk.visible = false; S.add(disk);
   }
 
+  // スタートの じかん（タイトルで えらぶ）。ウェーブごとに ひる → ゆうがた → よる
   applyStage(stage) {
-    const st = STAGES[stage] ? stage : 'day', c = STAGES[st];
-    this.stage = st; this.night = st === 'night';
-    this.scene.background = this.night ? this.fxTex.nightSky : this.fxTex.sky;
-    this.scene.fog.color.set(c.fog); this.scene.fog.near = c.near; this.scene.fog.far = c.far;
-    this.hemi.color.set(c.hemi[0]); this.hemi.groundColor.set(c.hemi[1]); this.hemi.intensity = c.hemi[2];
-    this.sun.color.set(c.sun[0]); this.sun.intensity = c.sun[1]; this.sunOff.set(...c.off);
-    this.nightGroup.visible = this.night;
-    this.fx.lightBoost = this.night ? 2.4 : 1;
-    this.spot.visible = this.night && this.settings.flashlight !== false;
-    this.spot.intensity = this.spot.visible ? 30 : 0;
-    if (this.world && this.world.mats && this.world.mats.light) this.world.mats.light.color.set(this.night ? 0xfff6d0 : 0xfff2b0);
-    for (const z of this.zombies) z.model.eyes.visible = this.night;
-    for (const k in this.pool) for (const md of this.pool[k]) md.eyes.visible = this.night;
+    const st = TOD[stage] ? stage : 'day';
+    this.stage = this.todStart = st; this.tod = st; this.todFade = null;
+    this.applyTod(TOD[st], true);
+  }
+
+  // じかんの いろを ぜんぶに あてる（p は TOD の 1つ、または mixTod の まぜた もの）
+  applyTod(p, sky = true) {
+    this.todP = p;
+    if (sky) { this.fxTex.drawSky(p.sky); this.scene.background = this.fxTex.skyTex; }
+    this.scene.fog.color.set(p.fog); this.scene.fog.near = p.near; this.scene.fog.far = p.far;
+    this.hemi.color.set(p.hemiSky); this.hemi.groundColor.set(p.hemiGround); this.hemi.intensity = p.hemiI;
+    this.sun.color.set(p.sun); this.sun.intensity = p.sunI; this.sunOff.set(...p.off);
+    const dark = Math.max(p.night, p.moon, p.lamps);
+    this.nightGroup.visible = dark > 0.02;
+    this.stars.material.opacity = 0.85 * p.night;
+    this.moon.material.opacity = p.moon; this.moonHalo.material.opacity = 0.6 * p.moon;
+    for (const [m, o] of this.lampMats) m.opacity = o * p.lamps;
+    this.sunDisk.visible = p.disk > 0.02;
+    this.sunDisk.material.opacity = p.disk; this.sunCore.material.opacity = p.disk;
+    this.fx.lightBoost = p.boost;
+    const night = p.night > 0.5;
+    if (night !== this.night) {
+      this.night = night;
+      for (const z of this.zombies) z.model.eyes.visible = night;
+      for (const k in this.pool) for (const md of this.pool[k]) md.eyes.visible = night;
+    }
+    this.spot.intensity = this.spot.visible ? 30 * Math.min(1, p.night * 1.4) : 0;
+    if (this.world && this.world.mats && this.world.mats.light) this.world.mats.light.color.set(p.lamps > 0.3 ? 0xfff6d0 : 0xfff2b0);
+    this.setSpot(p.night > 0.5);
+  }
+
+  // かいちゅうでんとう（よるは じどうで オン。せっていで けせる）
+  setSpot(on) {
+    const want = on && this.settings.flashlight !== false;
+    if (want !== this.spot.visible) {
+      this.spot.visible = want;
+      this.spot.intensity = want ? 30 : 0;
+      try { this.renderer.compile(this.scene, this.camera); } catch (e) { /* noop */ }
+    }
+  }
+
+  // つぎの じかんへ ゆっくり かわる
+  startTodFade(to) {
+    if (to === this.tod && !this.todFade) return false;
+    this.todFade = { from: this.todP, to, t: 0 };
+    // よるに なる ときは さきに ライトを つける（シェーダーの じゅんびを いま する）
+    if (TOD[to].night > 0.5) this.setSpot(true);
+    return true;
+  }
+  updateTod(dt) {
+    const f = this.todFade; if (!f) return;
+    f.t += dt;
+    const k = smooth(Math.min(1, f.t / TOD_FADE));
+    const A = f.from, B = TOD[f.to], o = {};
+    for (const key in B) {
+      const a = A[key], b = B[key];
+      if (key === 'sky') o.sky = a.map((c, i) => mixC(c, b[i], k));
+      else if (key === 'off') o.off = a.map((v, i) => v + (b[i] - v) * k);
+      else if (key === 'fog' || key === 'hemiSky' || key === 'hemiGround' || key === 'sun') o[key] = mixC(a, b, k);
+      else o[key] = a + (b - a) * k;
+    }
+    this.applyTod(o, true);
+    if (f.t >= TOD_FADE) { this.tod = f.to; this.todFade = null; this.applyTod(TOD[f.to], true); }
   }
 
   updateNight() {
-    if (!this.night) return;
     const p = this.pos;
+    if (this.sunDisk.visible) {
+      const o = this.sunOff, l = Math.hypot(o.x, o.y, o.z) || 1;
+      this.sunDisk.position.set(p.x + o.x / l * 120, Math.max(4, o.y / l * 120), p.z + o.z / l * 120);
+    }
+    if (!this.nightGroup.visible) return;
     this.moon.position.set(p.x - 50, 52, p.z - 95);
     this.stars.position.set(p.x, 0, p.z);
     // がいとうの ひかりの たま（カメラの ほうを むく）
@@ -216,13 +287,22 @@ export class Game {
       kind, model, x, z, y: 0, yaw: 0, hp: Math.round(def.hp * hpMul), maxHp: Math.round(def.hp * hpMul), alive: true, state: 'walk',
       t: 0, atkT: 0.6, stagger: 0, flash: 0, phase: Math.random() * 6, scale: def.scale, speed: def.speed * (0.9 + Math.random() * 0.2),
       deadT: 0, demo: false, stuck: 0, lastX: x, lastZ: z, kvx: 0, kvz: 0, vy: 0, fly: null, flown: false,
+      climb: null, slam: null, slamCd: 1.5 + Math.random(), charge: null, chargeCd: 3, shattered: false,
     };
+    if (kind === 'boss') {
+      zz.hp = zz.maxHp = bossHp(this.wave || 3);
+      this.boss = zz;
+      this.hud.bossBar?.({ name: def.name, hp: 1 });
+    }
     model.root.position.set(x, 0, z);
     this.zombies.push(zz);
     return zz;
   }
   releaseZombie(z) {
     this.scene.remove(z.model.root);
+    if (z.model.deco) { for (const d of Object.values(z.model.deco)) d.visible = false; }
+    z.model.root.visible = true;
+    if (this.boss === z) { this.boss = null; this.hud.bossBar?.(null); }
     this.pool[z.kind].push(z.model);
   }
 
@@ -243,8 +323,11 @@ export class Game {
         const spec = this.spec = waveSpec(this.wave);
         this.queue = waveQueue(spec);
         this.spawnT = 0.5;
-        for (const id of WEAPON_ORDER) refillReserve(this.guns[id]);
-        this.hud.banner(`ウェーブ ${this.wave}`, this.wave === 1 ? 'ゾンビが くるぞ！' : `ゾンビ ${spec.total}たい`);
+        for (const id of WEAPON_ORDER) refillReserve(this.guns[id]); // ロケットは ほじゅう なし（ドロップで ひろう）
+        const tod = timeOfDay(this.wave, this.todStart);
+        const sub = spec.boss ? 'ボスゾンビが くるぞ！' : this.wave === 1 ? 'ゾンビが くるぞ！' : `ゾンビ ${spec.total}たい`;
+        this.hud.banner(`ウェーブ ${this.wave}`, this.wave > 1 && this.todChanged ? `${TOD_LABEL[tod]}　${sub}` : sub);
+        this.todChanged = false;
         this.sfx.wave();
         this.pushHud(true);
       }
@@ -264,6 +347,7 @@ export class Game {
       this.hud.banner('ウェーブ クリア！', `+${this.wave * 200} ボーナス`);
       this.score += this.wave * 200;
       this.hp = Math.min(PLAYER_MAX_HP, this.hp + 30);
+      this.todChanged = this.startTodFade(timeOfDay(this.wave + 1, this.todStart));
       this.sfx.clear();
       this.pushHud(true);
     }
@@ -281,6 +365,7 @@ export class Game {
       z.flash -= dt;
       if (z.flash <= 0 && z.flashOn) { for (const mm of m.meshes) mm.material = mm.userData.mat; z.flashOn = false; }
       if (!z.alive) {
+        if (z.shattered) { this.releaseZombie(z); zs.splice(i, 1); continue; }
         if (z.fly) { this.updateFly(z, dt); continue; }
         z.deadT += dt;
         const t = z.deadT;
@@ -295,14 +380,32 @@ export class Game {
       const dx = this.pos.x - z.x, dz = this.pos.z - z.z, dist = Math.hypot(dx, dz);
       if (dist < nearest) nearest = dist;
       let mvx = 0, mvz = 0, moving = false;
+      if (z.climb) { this.updateClimb(z, dt); continue; }
       if (z.kvx || z.kvz || z.y > 0 || z.vy) this.slideZombie(z, dt);
+      const pdy = this.pos.y - z.y;            // プレイヤーが どれだけ うえに いるか
+      const higher = this.pFloor > z.y + 0.45;  // プレイヤーが はこの うえ → のぼる
+      const reachA = ATTACK_RANGE * (z.kind === 'boss' ? 1.45 : z.kind === 'brute' ? 1.1 : 1);
+      const big = z.kind === 'brute' || z.kind === 'boss';
+      z.slamCd -= dt; z.chargeCd -= dt;
       if (z.demo) { // タイトル: うろうろ
         z.t += dt; z.yaw += Math.sin(z.t * 0.5 + z.phase) * dt * 0.6;
         mvx = -Math.sin(z.yaw); mvz = -Math.cos(z.yaw); moving = true;
         if (Math.hypot(z.x - 0, z.z + 10) > 7) { z.yaw = Math.atan2(z.x - 0, z.z + 10); }
+      } else if (z.slam) {
+        this.updateSlam(z, dt);
+      } else if (z.charge) {
+        moving = this.updateCharge(z, dt);
       } else if (z.stagger > 0) {
         z.stagger -= dt;
-      } else if (dist < ATTACK_RANGE && Math.abs(this.pos.y) < 1.4) {
+      } else if (z.kind === 'boss' && z.slamCd <= 0 && dist < BOSS.slamRange && pdy > -1 && pdy < 2.6 && this.state === 'play') {
+        this.startSlam(z, false);
+      } else if (big && higher && z.slamCd <= 0 && this.pSupport && boxGap(z.x, z.z, this.pSupport) < 0.3 * z.scale + 0.45 && this.state === 'play') {
+        // でかい ゾンビは くるまを ドスン！ → プレイヤーが おちる
+        this.startSlam(z, true);
+      } else if (z.kind === 'boss' && z.chargeCd <= 0 && dist > BOSS.chargeMin && dist < BOSS.chargeMax && Math.abs(pdy) < 0.6
+        && gridLineClear(this.grid, z.x, z.z, this.pos.x, this.pos.z) && this.state === 'play') {
+        this.startCharge(z, dx / dist, dz / dist);
+      } else if (dist < reachA && Math.abs(pdy) < 0.9) {
         z.state = 'attack';
         z.atkT -= dt;
         z.yaw = Math.atan2(-dx, -dz);
@@ -313,40 +416,56 @@ export class Game {
       } else {
         z.state = 'walk'; z.atkT = Math.min(z.atkT, 0.45);
         let dir = null;
-        if (dist < 14 && gridLineClear(this.grid, z.x, z.z, this.pos.x, this.pos.z)) dir = { x: dx / dist, z: dz / dist };
+        if (higher && dist < 6) dir = { x: dx / (dist || 1), z: dz / (dist || 1) }; // はこの そばでは まっすぐ よる
+        else if (dist < 14 && gridLineClear(this.grid, z.x, z.z, this.pos.x, this.pos.z)) dir = { x: dx / dist, z: dz / dist };
         else dir = flowDir(this.grid, z.x, z.z) || { x: dx / (dist || 1), z: dz / (dist || 1) };
         mvx = dir.x; mvz = dir.z; moving = true;
         const want = Math.atan2(-mvx, -mvz);
         let dy = want - z.yaw; while (dy > Math.PI) dy -= Math.PI * 2; while (dy < -Math.PI) dy += Math.PI * 2;
         z.yaw += dy * Math.min(1, dt * 8);
       }
-      if (moving) {
+      if (moving && !z.charge) {
         // なかまと くっつかない
         for (const o of zs) {
-          if (o === z || !o.alive) continue;
-          const ox = z.x - o.x, oz = z.z - o.z, d2 = ox * ox + oz * oz;
-          if (d2 < 0.64 && d2 > 1e-6) { const d = Math.sqrt(d2); mvx += ox / d * (0.8 - d) * 1.5; mvz += oz / d * (0.8 - d) * 1.5; }
+          if (o === z || !o.alive || Math.abs(o.y - z.y) > 0.8) continue;
+          const ox = z.x - o.x, oz = z.z - o.z, d2 = ox * ox + oz * oz, md = 0.4 * (z.scale + o.scale);
+          if (d2 < md * md && d2 > 1e-6) { const d = Math.sqrt(d2); mvx += ox / d * (md - d) * 1.5; mvz += oz / d * (md - d) * 1.5; }
         }
         const sp = z.demo ? 0.8 : z.speed;
         let nx = z.x + mvx * sp * dt, nz = z.z + mvz * sp * dt;
-        const r = collideCircle(nx, nz, 0.3 * z.scale, 0, this.zCol);
+        const r = collideCircle(nx, nz, 0.3 * z.scale, z.y, this.zCol);
         nx = r.x; nz = r.z;
         // プレイヤーに めりこまない
-        const px = nx - this.pos.x, pz = nz - this.pos.z, pd = Math.hypot(px, pz), minD = 0.65;
-        if (pd < minD && pd > 1e-4 && !z.demo) { nx = this.pos.x + px / pd * minD; nz = this.pos.z + pz / pd * minD; }
+        const px = nx - this.pos.x, pz = nz - this.pos.z, pd = Math.hypot(px, pz), minD = 0.35 + 0.3 * z.scale;
+        if (pd < minD && pd > 1e-4 && !z.demo && Math.abs(pdy) < 1.2) { nx = this.pos.x + px / pd * minD; nz = this.pos.z + pz / pd * minD; }
         z.x = nx; z.z = nz;
         z.phase += dt * sp * (z.kind === 'runner' ? 3.2 : 4.2);
+        // はこに ぶつかったら よじのぼる（プレイヤーが うえに いる ときだけ）
+        if (higher && !z.demo && z.vy === 0) {
+          const b = climbTarget(z.x, z.z, 0.3 * z.scale, z.y, this.pFloor, this.pCol, 0.15);
+          if (b) this.startClimb(z, b);
+        }
       }
+      if (z.climb) continue;
       // アニメ
       const swing = moving ? Math.sin(z.phase) : 0;
-      const amp = z.kind === 'runner' ? 0.95 : 0.55;
+      const amp = z.kind === 'runner' ? 0.95 : z.charge ? 1.1 : 0.55;
       m.legs[0].rotation.x = swing * amp; m.legs[1].rotation.x = -swing * amp;
-      m.body.rotation.x = z.kind === 'runner' && moving ? -0.32 : -0.06;
+      m.body.rotation.x = (z.kind === 'runner' && moving) || z.charge ? -0.32 : -0.06;
       const atk = z.state === 'attack' ? Math.sin(performance.now() * 0.012) * 0.6 : 0;
       m.arms[0].rotation.x = 0.05 + Math.sin(z.phase * 0.5) * 0.08 + atk;
       m.arms[1].rotation.x = 0.05 - Math.sin(z.phase * 0.5) * 0.08 - atk;
+      if (z.slam) { // ためる: りょううでを たかく あげる → ふりおろす
+        const u = z.slam.t / z.slam.wind;
+        const up = u < 1 ? 2.6 * Math.min(1, u * 1.6) : 2.6 - Math.min(1, (u - 1) * 6) * 3.1;
+        m.arms[0].rotation.x = m.arms[1].rotation.x = up;
+        m.body.rotation.x = u < 1 ? 0.15 * u : -0.35;
+      } else if (z.chargeWind) {
+        m.body.rotation.x = -0.45; m.arms[0].rotation.x = m.arms[1].rotation.x = 0.6;
+      }
       m.head.rotation.z = Math.sin(z.phase * 0.5 + 1) * 0.08;
-      m.root.position.set(z.x, z.y + Math.abs(swing) * 0.04, z.z);
+      const shakeX = z.slam && z.slam.t < z.slam.wind ? (Math.random() - 0.5) * 0.06 : 0;
+      m.root.position.set(z.x + shakeX, z.y + Math.abs(swing) * 0.04, z.z);
       m.root.rotation.y = z.yaw;
     }
     // うめきごえ
@@ -366,9 +485,147 @@ export class Game {
     z.kvx *= k; z.kvz *= k;
     if (Math.abs(z.kvx) + Math.abs(z.kvz) < 0.05) z.kvx = z.kvz = 0;
     if (z.y > 0 || z.vy) {
-      z.vy -= FLY_G * dt; z.y += z.vy * dt;
-      if (z.y <= 0) { z.y = 0; z.vy = 0; }
+      const gy = groundHeight(z.x, z.z, 0.15, z.y + 0.001, this.pCol);
+      if (z.y > gy + 0.001 || z.vy) {
+        z.vy -= FLY_G * dt; z.y += z.vy * dt;
+        if (z.y <= gy) { z.y = gy; z.vy = 0; }
+      } else z.y = gy;
     }
+  }
+
+  // ---- よじのぼり（くるま・はこ・ひくい かべ）----
+  startClimb(z, b) {
+    const dur = climbTime(b.maxY - z.y, z.kind) * (0.9 + Math.random() * 0.2);
+    // はこの ふちへ よる ばしょ
+    const ex = Math.max(b.minX, Math.min(b.maxX, z.x)), ez = Math.max(b.minZ, Math.min(b.maxZ, z.z));
+    const land = climbLanding(z.x, z.z, b, Math.min(0.45, 0.25 * z.scale));
+    z.climb = { t: 0, dur, sx: z.x, sz: z.z, sy: z.y, ex: lerp(z.x, ex, 0.55), ez: lerp(z.z, ez, 0.55), land, b };
+    z.yaw = Math.atan2(-(ex - z.x), -(ez - z.z)) || z.yaw;
+    z.kvx = z.kvz = 0; z.vy = 0; z.state = 'climb';
+    if (Math.hypot(z.x - this.pos.x, z.z - this.pos.z) < 12) this.sfx.climb?.();
+  }
+  updateClimb(z, dt) {
+    const c = z.climb, m = z.model;
+    c.t += dt;
+    const u = Math.min(1, c.t / c.dur);
+    if (u < 0.72) { // ひっぱりあげる（うでを うえに）
+      const k = smooth(u / 0.72);
+      z.y = c.sy + (c.land.y - c.sy) * k;
+      z.x = lerp(c.sx, c.ex, k); z.z = lerp(c.sz, c.ez, k);
+    } else { // うえに のる
+      const k = smooth((u - 0.72) / 0.28);
+      z.y = c.land.y; z.x = lerp(c.ex, c.land.x, k); z.z = lerp(c.ez, c.land.z, k);
+    }
+    const pull = Math.sin(c.t * 9) * 0.25;
+    const armUp = u < 0.72 ? 1.35 + pull : lerp(1.35, 0.05, (u - 0.72) / 0.28);
+    m.arms[0].rotation.x = armUp; m.arms[1].rotation.x = u < 0.72 ? 1.35 - pull : armUp;
+    m.legs[0].rotation.x = u < 0.72 ? 0.35 + pull : 0; m.legs[1].rotation.x = u < 0.72 ? -0.2 - pull : 0;
+    m.body.rotation.x = u < 0.72 ? -0.35 : -0.06;
+    m.root.position.set(z.x, z.y, z.z); m.root.rotation.y = z.yaw;
+    if (u >= 1) { z.climb = null; z.state = 'walk'; z.y = c.land.y; z.vy = 0; }
+  }
+  // のぼってる とちゅうで うたれたら おちる
+  dropClimb(z) {
+    if (!z.climb) return;
+    z.climb = null; z.state = 'walk'; z.vy = 0.01;
+  }
+
+  // ---- ドスン！（ボス・でかい ゾンビ。carSlam: くるまを たたいて プレイヤーを おとす）----
+  startSlam(z, carSlam) {
+    const wind = z.kind === 'boss' ? BOSS.slamWind : 0.9;
+    z.slam = { t: 0, wind, car: carSlam, done: false };
+    z.yaw = Math.atan2(-(this.pos.x - z.x), -(this.pos.z - z.z));
+    if (z.kind === 'boss') {
+      const ring = this.decal(z, 'ring');
+      ring.position.set(z.x, z.y + 0.05, z.z); ring.scale.setScalar(0.1); ring.visible = true;
+    }
+    this.sfx.warn?.();
+  }
+  updateSlam(z, dt) {
+    const S = z.slam;
+    S.t += dt;
+    if (z.model.deco && z.model.deco.ring && z.model.deco.ring.visible) {
+      const k = Math.min(1, S.t / S.wind);
+      z.model.deco.ring.scale.setScalar(BOSS.slamRadius * (0.3 + 0.7 * k));
+      z.model.deco.ring.material.opacity = 0.35 + 0.45 * Math.abs(Math.sin(S.t * 14));
+    }
+    if (!S.done && S.t >= S.wind) {
+      S.done = true;
+      if (z.model.deco && z.model.deco.ring) z.model.deco.ring.visible = false;
+      const p = this.tmp.c.set(z.x - Math.sin(z.yaw) * 0.6 * z.scale, z.y + 0.05, z.z - Math.cos(z.yaw) * 0.6 * z.scale);
+      this.fx.burst(p, 26, { color: 0xbdb3a0, color2: 0x8a7f6a, speed: 6, up: 3, size: 0.2, life: 0.7, gravity: 12 });
+      const pd = Math.hypot(this.pos.x - z.x, this.pos.z - z.z);
+      this.sfx.slam?.(1.1 - pd / 30);
+      this.shake = Math.max(this.shake, Math.max(0.2, 0.8 - pd / 20));
+      if (this.state === 'play') {
+        const onTop = this.onGround && this.pos.y > z.y + 0.3;
+        const grounded = this.pos.y - this.pFloor < 0.35; // ジャンプ してれば よけられる
+        const rad = S.car ? 0.3 * z.scale + 3.5 : BOSS.slamRadius;
+        const hitIt = S.car ? (onTop && this.pSupport && boxGap(z.x, z.z, this.pSupport) < 0.3 * z.scale + 0.8)
+          : (pd < rad && grounded && this.pos.y - z.y < 2.6);
+        if (hitIt) {
+          const dl = pd || 1, ux = (this.pos.x - z.x) / dl, uz = (this.pos.z - z.z) / dl;
+          this.vy = 6.5; this.onGround = false;
+          this.pk.set(ux * 6, 0, uz * 6);
+          this.damagePlayer(S.car ? 8 : z.kind === 'boss' ? BOSS.slamDmg : 12, z);
+        }
+      }
+    }
+    if (S.t >= S.wind + 0.45) { z.slam = null; z.slamCd = z.kind === 'boss' ? BOSS.slamCd : 3.2; }
+  }
+
+  // ---- とっしん（ボス）----
+  startCharge(z, ux, uz) {
+    z.charge = { t: 0, wind: BOSS.chargeWind, ux, uz, hit: false };
+    z.chargeWind = true;
+    z.yaw = Math.atan2(-ux, -uz);
+    const lane = this.decal(z, 'lane');
+    lane.visible = true;
+    this.sfx.roar?.(0.45);
+  }
+  updateCharge(z, dt) {
+    const C = z.charge;
+    C.t += dt;
+    const lane = z.model.deco && z.model.deco.lane;
+    if (C.t < C.wind) { // ためる（じめんに あかい みち）
+      if (lane) {
+        const len = BOSS.chargeSpeed * BOSS.chargeTime;
+        lane.position.set(z.x + C.ux * len / 2, z.y + 0.04, z.z + C.uz * len / 2);
+        lane.rotation.y = Math.atan2(C.ux, C.uz); lane.scale.set(1.4 * z.scale, 1, len);
+        lane.material.opacity = 0.25 + 0.35 * Math.abs(Math.sin(C.t * 12));
+      }
+      return false;
+    }
+    z.chargeWind = false;
+    if (lane) lane.visible = false;
+    const sp = BOSS.chargeSpeed;
+    const nx = z.x + C.ux * sp * dt, nz = z.z + C.uz * sp * dt;
+    const r = collideCircle(nx, nz, 0.3 * z.scale, z.y, this.zCol);
+    const blocked = Math.hypot(r.x - nx, r.z - nz) > sp * dt * 0.5;
+    z.x = r.x; z.z = r.z; z.phase += dt * 14;
+    if (Math.random() < 0.4) this.fx.burst(this.tmp.c.set(z.x, z.y + 0.1, z.z), 2, { color: 0xbdb3a0, speed: 1.5, up: 1, size: 0.14, life: 0.4, gravity: 4 });
+    const pd = Math.hypot(this.pos.x - z.x, this.pos.z - z.z);
+    if (!C.hit && pd < 0.35 + 0.42 * z.scale && Math.abs(this.pos.y - z.y) < 1.6 && this.state === 'play') {
+      C.hit = true;
+      this.vy = 5; this.onGround = false; this.pk.set(C.ux * 9, 0, C.uz * 9);
+      this.damagePlayer(BOSS.chargeDmg, z);
+      this.sfx.slam?.(0.7);
+    }
+    if (blocked) { this.shake = Math.max(this.shake, 0.3); z.stagger = 0.8; this.sfx.slam?.(0.6); }
+    if (blocked || C.hit || C.t > C.wind + BOSS.chargeTime) { z.charge = null; z.chargeWind = false; z.chargeCd = BOSS.chargeCd; }
+    return true;
+  }
+
+  // ボスの まえぶれ マーク（わ・みち）
+  decal(z, kind) {
+    z.model.deco = z.model.deco || {};
+    if (!z.model.deco[kind]) {
+      const mat = new THREE.MeshBasicMaterial({ color: 0xff3020, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false, fog: false, side: THREE.DoubleSide });
+      const geo = kind === 'ring' ? new THREE.RingGeometry(0.82, 1, 40).rotateX(-Math.PI / 2) : new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
+      const m = new THREE.Mesh(geo, mat); m.renderOrder = 3; m.visible = false;
+      this.scene.add(m); z.model.deco[kind] = m;
+    }
+    return z.model.deco[kind];
   }
 
   // ふっとび（からだ まるごと くるくる → バウンド → ポン！）
@@ -572,6 +829,7 @@ export class Game {
       if (this.hitZombie(z, blastDamage(w, Math.max(0, d)), false, pos, dir, { launch: v, knock: w.power * f * 0.6, blast: true })) killed++;
     }
     if (killed >= 2) this.multiKill(killed);
+    if (this.crumbleSfx) { this.crumbleSfx = false; this.sfx.crumble?.(); }
   }
 
   // まとめて たおした！ → ちょっと スローモーション
@@ -587,31 +845,98 @@ export class Game {
     z.hp -= dmg;
     z.flash = 0.045; z.flashOn = true;
     for (const mm of z.model.meshes) mm.material = FLASH_MAT;
-    // ノックバック（ショットガンの ちかくは つよい・ライフルは すこし）
-    const heavy = z.kind === 'brute' ? 0.4 : 1;
+    // ノックバック（ショットガンの ちかくは つよい・ライフルは すこし。ボスは ほとんど うごかない）
+    const heavy = z.kind === 'boss' ? 0.12 : z.kind === 'brute' ? 0.4 : 1;
     const hl = Math.hypot(dir.x, dir.z) || 1;
     const kn = (opt.knock || 0) * heavy;
     z.kvx += dir.x / hl * kn; z.kvz += dir.z / hl * kn;
-    if (opt.blast && z.hp > 0) { z.vy = Math.max(z.vy, 3.5 * heavy); z.y = Math.max(z.y, 0.02); }
-    z.stagger = Math.max(z.stagger, opt.blast ? 0.7 : head ? 0.28 : 0.12 + kn * 0.03) * (z.kind === 'brute' ? 0.5 : 1);
-    if (Math.random() < 0.7) this.fx.splat(this.tmp.c.set(z.x + dir.x * 0.6 + (Math.random() - 0.5) * 0.7, 0.02, z.z + dir.z * 0.6 + (Math.random() - 0.5) * 0.7), undefined, 0.9 + Math.random() * 0.4);
+    if (z.climb && (opt.blast || kn > 1.5 || head)) this.dropClimb(z);
+    if (opt.blast && z.hp > 0 && z.kind !== 'boss' && !z.climb) { z.vy = Math.max(z.vy, 3.5 * heavy); z.y = Math.max(z.y, 0.02); }
+    if (!z.slam && !z.charge) z.stagger = Math.max(z.stagger, opt.blast ? 0.7 : head ? 0.28 : 0.12 + kn * 0.03) * (z.kind === 'boss' ? 0.25 : z.kind === 'brute' ? 0.5 : 1);
+    // ばくはつは みどりの しみ なし（ブロックに くだける）
+    if (!opt.blast && Math.random() < 0.7) this.fx.splat(this.tmp.c.set(z.x + dir.x * 0.6 + (Math.random() - 0.5) * 0.7, z.y + 0.02, z.z + dir.z * 0.6 + (Math.random() - 0.5) * 0.7), undefined, 0.9 + Math.random() * 0.4);
+    if (this.boss === z) this.hud.bossBar?.({ name: ZOMBIES.boss.name, hp: Math.max(0, z.hp / z.maxHp) });
     if (z.hp <= 0) {
       z.alive = false; z.deadT = 0; z.poofed = false;
+      z.climb = null; z.slam = null; z.charge = null; z.chargeWind = false;
+      if (z.model.deco) for (const d of Object.values(z.model.deco)) d.visible = false;
       this.kills++; if (head) this.heads++;
       const sc = killScore(z.kind, head); this.score += sc;
-      this.fx.splat(this.tmp.c.set(z.x, 0.02, z.z), undefined, 1.3 * z.scale);
-      this.fx.greenHit(pos, dir, true);
-      this.hud.kill(head ? `ヘッドショット！ +${sc}` : `+${sc}`, head);
+      const isBoss = z.kind === 'boss';
+      this.hud.kill(isBoss ? `ボスを たおした！ +${sc}` : head ? `ヘッドショット！ +${sc}` : `+${sc}`, head || isBoss);
+      // ロケットだんを おとす（ボスは かならず 2こ）
+      const n = rollRocketDrop(z.kind);
+      if (n) this.spawnPickup(z.x, z.y, z.z, n);
+      if (isBoss) { this.boss = null; this.hud.bossBar?.(null); this.slowT = Math.max(this.slowT, 0.6); this.sfx.roar?.(0.35); }
       this.pushHud(true);
-      // はでに ふっとぶ（ばくはつ・ショットガンの ちかく）
+      if (opt.blast) { // ブロックに くだけて とびちる（ちは でない）
+        this.shatterZombie(z, opt.launch || { vx: dir.x * 4, vy: 5, vz: dir.z * 4 });
+        return true;
+      }
+      this.fx.splat(this.tmp.c.set(z.x, z.y + 0.02, z.z), undefined, 1.3 * z.scale);
+      this.fx.greenHit(pos, dir, true);
+      // はでに ふっとぶ（ショットガンの ちかく）
       const canFly = this.airborne() < this.maxAir;
-      if (canFly && opt.launch) this.launchZombie(z, opt.launch);
-      else if (canFly && kn >= FLY_KNOCK) {
+      if (canFly && kn >= FLY_KNOCK && !isBoss) {
         this.launchZombie(z, { vx: dir.x / hl * kn * 0.85, vy: 3.2 + kn * 0.38, vz: dir.z / hl * kn * 0.85, spin: 5 + kn * 0.9 });
       }
       return true;
     }
     return false;
+  }
+
+  shatterZombie(z, v) {
+    z.shattered = true;
+    z.model.root.visible = false;
+    const n = z.kind === 'boss' ? this.chunkN * 2 : z.kind === 'brute' ? Math.round(this.chunkN * 1.4) : this.chunkN;
+    const heavy = z.kind === 'boss' ? 0.4 : z.kind === 'brute' ? 0.7 : 1;
+    this.fx.shatter(z.x, z.y, z.z, z.scale, z.yaw, zombieChunkColors(z.kind), { vx: v.vx * heavy, vy: Math.min(9, v.vy * heavy), vz: v.vz * heavy }, n);
+    this.fx.burst(this.tmp.c.set(z.x, z.y + 0.9 * z.scale, z.z), 6, { color: 0xbdb3a0, color2: 0xe8e0d0, speed: 2.5, up: 2, size: 0.18, life: 0.5, gravity: 4 });
+    this.crumbleSfx = true;
+  }
+
+  // ---- ロケットだんの はこ（ひろうと よびだん +1）----
+  spawnPickup(x, y, z, n) {
+    while (this.pickups.length >= MAX_PICKUPS) this.releasePickup(this.pickups.shift());
+    let pu = this.cratePool.pop();
+    if (!pu) pu = { mdl: makeRocketCrate(this.fxTex.glow) };
+    pu.x = x; pu.z = z; pu.y = groundHeight(x, z, 0.1, y + 0.3, this.pCol); pu.age = 0; pu.n = n; pu.fullT = 0;
+    pu.drop = 0.5; // ポンと とびだす
+    pu.mdl.group.position.set(x, pu.y + 1, z); pu.mdl.group.visible = true;
+    this.scene.add(pu.mdl.group);
+    this.pickups.push(pu);
+  }
+  releasePickup(pu) { this.scene.remove(pu.mdl.group); this.cratePool.push(pu); }
+  updatePickups(dt) {
+    const g = this.guns.rocket;
+    for (let i = this.pickups.length - 1; i >= 0; i--) {
+      const pu = this.pickups[i], M = pu.mdl;
+      pu.age += dt; pu.fullT -= dt;
+      if (pu.age >= PICKUP_LIFE) { this.releasePickup(pu); this.pickups.splice(i, 1); continue; }
+      const pop = Math.max(0, pu.drop - pu.age) / pu.drop; // さいしょ ポンと はねる
+      const bob = 0.15 + Math.sin(pu.age * 3) * 0.08 + Math.sin((1 - pop) * Math.PI) * 0.9 * (pu.age < pu.drop ? 1 : 0);
+      M.group.position.set(pu.x, pu.y + bob, pu.z);
+      M.spin.rotation.y += dt * 1.8;
+      M.ring.position.y = 0.03 - bob;
+      const pulse = 0.7 + Math.sin(pu.age * 6) * 0.25;
+      M.glow.material.opacity = pulse; M.ring.material.opacity = pulse * 0.8;
+      M.group.visible = pickupVisible(pu.age);
+      if (this.state !== 'play') continue;
+      const d = Math.hypot(this.pos.x - pu.x, this.pos.z - pu.z);
+      if (d < PICKUP_R && Math.abs(this.pos.y - pu.y) < 1.6) {
+        const got = addRocketAmmo(g, pu.n);
+        if (got > 0) {
+          pu.n -= got;
+          this.hud.kill(`ロケット +${got}`, true);
+          this.sfx.pickup?.();
+          this.fx.burst(this.tmp.c.set(pu.x, pu.y + 0.4, pu.z), 12, { color: 0xffd060, color2: 0xfff2b0, speed: 2.5, up: 2.5, size: 0.1, life: 0.5, gravity: 2 });
+          this.pushHud(true);
+          if (pu.n <= 0) { this.releasePickup(pu); this.pickups.splice(i, 1); continue; }
+        } else if (pu.fullT <= 0) {
+          this.hud.kill('ロケットは いっぱい', false); pu.fullT = 3;
+        }
+      }
+    }
   }
 
   // ---- まいフレーム ----
@@ -622,9 +947,9 @@ export class Game {
       if (this.hitstop > 0) { this.hitstop -= dt; dt *= 0.08; }
       else if (this.slowT > 0) { this.slowT -= dt; dt *= this.slowT > 0.18 ? 0.3 : lerp(1, 0.3, this.slowT / 0.18); }
     }
-    if (this.state === 'title') { this.titleT += dt; this.updateZombies(dt); this.updateTitleCam(dt); this.updateNight(); this.fx.update(dt); return; }
+    if (this.state === 'title') { this.titleT += dt; this.pFloor = 0; this.pSupport = null; this.updateZombies(dt); this.updateTitleCam(dt); this.updateNight(); this.fx.update(dt); return; }
     if (this.state === 'pause') return;
-    if (this.state === 'over') { this.updateRockets(dt); this.updateZombies(dt); this.fx.update(dt); this.updateCamera(dt, false); this.updateNight(); return; }
+    if (this.state === 'over') { this.updateRockets(dt); this.updateZombies(dt); this.updatePickups(dt); this.fx.update(dt); this.updateCamera(dt, false); this.updateNight(); return; }
 
     const gun = this.guns[this.cur], w = WEAPONS[this.cur];
     // イベント
@@ -665,8 +990,15 @@ export class Game {
       const r = collideCircle(nx + V.x * dt / nSub, nz + V.z * dt / nSub, PLAYER_R, this.pos.y, this.pCol);
       nx = Math.max(-HALF + 0.5, Math.min(HALF - 0.5, r.x)); nz = Math.max(-HALF + 0.5, Math.min(HALF - 0.5, r.z));
     }
+    // ボスに ふっとばされた ぶん
+    if (this.pk.x || this.pk.z) {
+      const r = collideCircle(nx + this.pk.x * dt, nz + this.pk.z * dt, PLAYER_R, this.pos.y, this.pCol);
+      nx = Math.max(-HALF + 0.5, Math.min(HALF - 0.5, r.x)); nz = Math.max(-HALF + 0.5, Math.min(HALF - 0.5, r.z));
+      const k = Math.exp(-4 * dt); this.pk.x *= k; this.pk.z *= k;
+      if (Math.abs(this.pk.x) + Math.abs(this.pk.z) < 0.1) this.pk.set(0, 0, 0);
+    }
     this.pos.x = nx; this.pos.z = nz;
-    if (dt > 0) { V.x = (nx - ox) / dt; V.z = (nz - oz) / dt; } // ほんとうに うごいた ぶんだけ（かべに おしつけない）
+    if (dt > 0) { V.x = (nx - ox - this.pk.x * dt) / dt; V.z = (nz - oz - this.pk.z * dt) / dt; } // ほんとうに うごいた ぶんだけ（かべに おしつけない）
     const vx = V.x, vz = V.z;
     this.moveAmt = Math.min(1, Math.hypot(vx, vz) / 4.7);
     this.vy -= 20 * dt; this.pos.y += this.vy * dt;
@@ -700,9 +1032,14 @@ export class Game {
     this.regenDelay -= dt;
     if (this.regenDelay <= 0 && this.hp < PLAYER_MAX_HP) { this.hp = Math.min(PLAYER_MAX_HP, this.hp + dt * 8); this.pushHud(); }
 
+    // いま たっている ゆか（ゾンビが のぼる めやす）
+    this.pFloor = groundHeight(this.pos.x, this.pos.z, PLAYER_R, this.pos.y + 0.001, this.pCol);
+    this.pSupport = this.pFloor > 0.3 ? supportBox(this.pos.x, this.pos.z, PLAYER_R, this.pFloor, this.pCol) : null;
     this.updateWaves(dt);
+    this.updateTod(dt);
     this.updateRockets(dt);
     this.updateZombies(dt);
+    this.updatePickups(dt);
     this.updatePlayerAnim(dt);
     this.updateCamera(dt, true);
     this.updateNight();

@@ -119,14 +119,14 @@ export function buildTextures() {
 // ゾンビの かお（かわいい・こわくない）
 export function zombieFaceTexture(skin, kind) {
   return tex(makeCanvas(16, 16, (g) => {
-    const r = rng(kind === 'brute' ? 7 : kind === 'runner' ? 5 : 3);
+    const r = rng(kind === 'brute' ? 7 : kind === 'runner' ? 5 : kind === 'boss' ? 11 : 3);
     for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) { g.fillStyle = hex(shade(skin, 0.92 + r() * 0.16)); g.fillRect(x, y, 1, 1); }
     // かみのけ
     g.fillStyle = hex(shade(skin, 0.55)); g.fillRect(0, 0, 16, 3); g.fillRect(0, 3, 2, 2); g.fillRect(13, 3, 3, 1);
     // め（しろめ＋くろめ・ちょっと ちぐはぐ）
     g.fillStyle = '#f4f4e8'; g.fillRect(3, 6, 4, 4); g.fillRect(10, 6, 3, 3);
     g.fillStyle = '#1b1b1b'; g.fillRect(4, 7, 2, 2); g.fillRect(11, 7, 1, 1);
-    if (kind === 'brute') { g.fillStyle = hex(shade(skin, 0.45)); g.fillRect(2, 5, 6, 1); g.fillRect(9, 5, 5, 1); }
+    if (kind === 'brute' || kind === 'boss') { g.fillStyle = hex(shade(skin, 0.45)); g.fillRect(2, 5, 6, 1); g.fillRect(9, 5, 5, 1); }
     // くち（ぬいめ）
     g.fillStyle = hex(shade(skin, 0.4)); g.fillRect(4, 12, 8, 1);
     g.fillStyle = hex(shade(skin, 0.6)); for (let x = 5; x < 12; x += 2) g.fillRect(x, 11, 1, 3);
@@ -216,5 +216,14 @@ export function fxTextures() {
     g.fillStyle = 'rgba(150,150,140,0.6)'; g.fillRect(4, 5, 3, 2); g.fillRect(9, 9, 2, 3); g.fillRect(6, 11, 2, 1);
   }));
   moon.magFilter = THREE.NearestFilter; moon.colorSpace = THREE.SRGBColorSpace;
-  return { flash, splats, hole, sky, nightSky, glow, moon };
+  // じかんで かわる そら（4いろを まぜて かきなおす）
+  const skyCanvas = makeCanvas(4, 128, () => {});
+  const skyTex = new THREE.CanvasTexture(skyCanvas); skyTex.colorSpace = THREE.SRGBColorSpace;
+  const drawSky = (cols) => {
+    const g = skyCanvas.getContext('2d'), grd = g.createLinearGradient(0, 0, 0, 128);
+    const h = (c) => '#' + c.toString(16).padStart(6, '0');
+    grd.addColorStop(0, h(cols[0])); grd.addColorStop(0.55, h(cols[1])); grd.addColorStop(0.75, h(cols[2])); grd.addColorStop(1, h(cols[3]));
+    g.fillStyle = grd; g.fillRect(0, 0, 4, 128); skyTex.needsUpdate = true;
+  };
+  return { flash, splats, hole, sky, nightSky, glow, moon, skyTex, drawSky };
 }

@@ -146,4 +146,49 @@ export class Sfx {
     const t = this.ctx.currentTime;
     [523, 659, 784, 1047].forEach((f, i) => this._tone(t + i * 0.1, 0.3, { type: 'triangle', f0: f, f1: f, gain: 0.12 }));
   }
+  // ロケットだんを ひろった（キラーン）
+  pickup() {
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime;
+    [784, 1047, 1319].forEach((f, i) => this._tone(t + i * 0.07, 0.22, { type: 'triangle', f0: f, f1: f, gain: 0.16 }));
+    this._noise(t, 0.04, { type: 'highpass', freq: 3000, gain: 0.15 });
+  }
+  // ブロックに くだける（ガラガラ）
+  crumble() {
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime;
+    for (let i = 0; i < 7; i++) this._noise(t + 0.05 + Math.random() * 0.5, 0.06, { type: 'bandpass', freq: 500 + Math.random() * 900, q: 2.5, gain: 0.22 });
+    this._tone(t, 0.12, { type: 'square', f0: 300, f1: 120, gain: 0.08 });
+  }
+  // ボスの さけび
+  roar(vol = 0.5) {
+    if (!this.ctx || this.muted) return;
+    const ctx = this.ctx, t = ctx.currentTime, dur = 1.3;
+    const o = ctx.createOscillator(); o.type = 'sawtooth';
+    o.frequency.setValueAtTime(70, t); o.frequency.linearRampToValueAtTime(110, t + 0.4); o.frequency.linearRampToValueAtTime(55, t + dur);
+    const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 700;
+    const g = ctx.createGain(); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + 0.15); g.gain.linearRampToValueAtTime(0, t + dur);
+    o.connect(f).connect(g).connect(this.comp); o.start(t); o.stop(t + dur + 0.05);
+    this._noise(t, dur, { type: 'bandpass', freq: 400, q: 1, gain: vol * 0.4, attack: 0.15 });
+  }
+  // ためる（ウィーン…）
+  warn() {
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime;
+    this._tone(t, 0.7, { type: 'square', f0: 180, f1: 420, gain: 0.06 });
+  }
+  // ドスン！
+  slam(vol = 1) {
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime, v = Math.max(0.3, Math.min(1, vol));
+    this._tone(t, 0.5, { f0: 80, f1: 28, gain: 1.1 * v });
+    this._noise(t, 0.6, { type: 'lowpass', freq: 500, gain: 0.8 * v });
+  }
+  // のぼる（よいしょ）
+  climb() {
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime;
+    this._noise(t, 0.08, { type: 'lowpass', freq: 700, gain: 0.18 });
+    this._noise(t + 0.25, 0.08, { type: 'lowpass', freq: 600, gain: 0.16 });
+  }
 }

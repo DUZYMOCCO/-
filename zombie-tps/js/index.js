@@ -4,23 +4,23 @@
  */
 import { loadCss } from '../../common/js/load-css.js';
 import { storage } from '../../common/js/storage.js';
-import { WEAPONS, WEAPON_ORDER, normalizeSave, SENS, VERSION } from './rules.js?v=2';
-import { Game } from './game.js?v=2';
-import { Input } from './input.js?v=2';
-import { Sfx } from './sfx.js?v=2';
+import { WEAPONS, WEAPON_ORDER, normalizeSave, SENS, VERSION } from './rules.js?v=3';
+import { Game } from './game.js?v=3';
+import { Input } from './input.js?v=3';
+import { Sfx } from './sfx.js?v=3';
 
 const SAVE_KEY = 'zombie_tps_save';
 const OPT_LABEL = {
   autoFire: { true: 'オン', false: 'オフ' },
   sens: { low: 'ひくい', mid: 'ふつう', high: 'たかい' },
   quality: { auto: 'じどう', low: 'かるい', high: 'きれい' },
-  flashlight: { true: 'オン', false: 'オフ' },
+  flashlight: { true: 'よるは オン', false: 'オフ' },
 };
 const OPT_CYCLE = { autoFire: [false, true], sens: ['low', 'mid', 'high'], quality: ['auto', 'low', 'high'], flashlight: [true, false] };
 
 export default {
   prepare() {
-    return loadCss(new URL('../css/zombie-tps.css?v=2', import.meta.url).href);
+    return loadCss(new URL('../css/zombie-tps.css?v=3', import.meta.url).href);
   },
 
   init(container, onBackToHub) {
@@ -73,6 +73,7 @@ export default {
           <div class="zt-cross"><i class="t"></i><i class="b"></i><i class="l"></i><i class="r"></i><em></em></div>
           <div class="zt-hitm"></div>
           <div class="zt-reload"><div></div><span>リロード</span></div>
+          <div class="zt-boss hidden"><b>ボスゾンビ</b><div class="zt-bossbar"><div></div></div></div>
           <div class="zt-feed"></div>
           <div class="zt-banner"><b></b><span></span></div>
           <div class="zt-ammo"><div class="zt-wname"></div><div><b>30</b><span>/ 210</span></div></div>
@@ -89,9 +90,10 @@ export default {
           <h1>ゾンビ<br>ストライク</h1>
           <p class="zt-sub">アサルトライフルと ロケットで まちを まもれ！</p>
           <div class="zt-stages">
-            <button data-stage="day">☀ ひるの まち</button>
-            <button data-stage="night">🌙 よるの まち</button>
+            <button data-stage="day">☀ ひるから</button>
+            <button data-stage="night">🌙 よるから</button>
           </div>
+          <div class="zt-todhint">ウェーブごとに ひる → ゆうがた → よる</div>
           <button class="zt-big" data-ui="start">スタート</button>
           <div class="zt-opts">
             <button data-opt="autoFire">オートうち <b></b></button>
@@ -109,6 +111,7 @@ export default {
           <div><b>うつ</b> おしたまま れんしゃ（ドラッグも できる）</div>
           <div><b>あたま</b>を うつと ヘッドショット！</div>
           <div><b>4</b> ロケットで まとめて ふっとばせ！</div>
+          <div><b>ロケットだん</b>は ゾンビが おとす はこを ひろう</div>
           <div class="zt-ver">v${VERSION}</div>
         </div>
       </div>
@@ -143,7 +146,6 @@ export default {
       const k = b.dataset.opt; b.querySelector('b').textContent = OPT_LABEL[k][String(this.save[k])];
     }
     for (const b of this.container.querySelectorAll('[data-stage]')) b.classList.toggle('sel', b.dataset.stage === this.save.stage);
-    const fl = this.el('[data-opt="flashlight"]'); if (fl) fl.style.display = this.save.stage === 'night' ? '' : 'none';
     this.el('.zt-best').textContent = this.save.bestWave ? `さいこう ウェーブ ${this.save.bestWave} ・ スコア ${this.save.bestScore}` : '';
   },
 
@@ -237,6 +239,7 @@ export default {
       ammo: q('.zt-ammo b'), res: q('.zt-ammo span'), wname: q('.zt-wname'), cross: q('.zt-cross'), hitm: q('.zt-hitm'),
       boom: q('.zt-boom'), feed: q('.zt-feed'), banner: q('.zt-banner'), reload: q('.zt-reload'), reloadBar: q('.zt-reload div'), hurt: q('.zt-hurt'),
       slots: [...this.container.querySelectorAll('.zt-slot')],
+      boss: q('.zt-boss'), bossName: q('.zt-boss b'), bossBar: q('.zt-bossbar div'),
     };
     const last = {};
     const setText = (k, el, v) => { if (last[k] !== v) { last[k] = v; el.textContent = v; } };
@@ -263,6 +266,14 @@ export default {
         const rl = s.reloading >= 0;
         if (last.rl !== rl) { last.rl = rl; E.reload.classList.toggle('on', rl); }
         if (rl) E.reloadBar.style.width = (s.reloading * 100).toFixed(0) + '%';
+      },
+      bossBar: (b) => {
+        const on = !!b;
+        if (last.bossOn !== on) { last.bossOn = on; E.boss.classList.toggle('hidden', !on); }
+        if (!b) return;
+        setText('bossName', E.bossName, b.name);
+        const w = (Math.max(0, b.hp) * 100).toFixed(1) + '%';
+        if (last.bossW !== w) { last.bossW = w; E.bossBar.style.width = w; }
       },
       crossTarget: (on) => { if (last.ct !== on) { last.ct = on; E.cross.classList.toggle('target', on); } },
       hitmarker: (head) => {

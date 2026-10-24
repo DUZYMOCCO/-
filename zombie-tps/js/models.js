@@ -1,6 +1,6 @@
 // ブロックの キャラクターと ぶき（かくうの デザイン・ロゴなし）
 import * as THREE from '../vendor/three.module.min.js';
-import { zombieFaceTexture, playerFaceTexture, solidTexture, shirtTexture } from './textures.js?v=2';
+import { zombieFaceTexture, playerFaceTexture, solidTexture, shirtTexture } from './textures.js?v=3';
 
 const boxGeoCache = new Map();
 export function boxGeo(w, h, d) {
@@ -203,7 +203,15 @@ const ZLOOK = {
   walker: { skin: 0x6abf4b, shirt: 0x2a9d8f, pants: 0x3d4f8f },
   runner: { skin: 0x7ccf55, shirt: 0xe07a2f, pants: 0x5a4a3a },
   brute: { skin: 0x5aa83f, shirt: 0x7b4fb0, pants: 0x3a3a46 },
+  boss: { skin: 0x4e9a3a, shirt: 0x2f3e6b, pants: 0x2b2b33 },
 };
+// ブロックに くだける ときの いろ（[いろ, ぶい] ぶい: 0=あし 1=からだ 2=あたま 3=うで）
+export function zombieChunkColors(kind) {
+  const c = ZLOOK[kind] || ZLOOK.walker;
+  const extra = kind === 'boss' ? 0xf1c40f : kind === 'brute' ? 0x6d737c : 0x3f6b2c;
+  return [[c.pants, 0], [c.pants, 0], [c.shirt, 1], [c.shirt, 1], [c.shirt, 1], [c.skin, 2], [c.skin, 2], [extra, 2], [c.skin, 3], [c.skin, 3]];
+}
+const BOSS_GOLD = L(0xf1c40f, { emissive: 0x3a2c00 }), BOSS_SPIKE = L(0x9aa3ad);
 const zMats = {};
 function zombieMats(kind) {
   if (zMats[kind]) return zMats[kind];
@@ -233,6 +241,16 @@ export function makeZombie(kind) {
   const head = new THREE.Group(); head.position.y = 0.74; body.add(head);
   part(head, [m.skin, m.skin, m.hair, m.skin, m.skin, m.face], 0.5, 0.5, 0.5, 0, 0.25, 0);
   if (kind === 'brute') part(head, m.helm, 0.56, 0.14, 0.56, 0, 0.52, 0);
+  if (kind === 'boss') {
+    // おうかん・かたの トゲ・ベルト（ボスだと すぐ わかる）
+    part(head, BOSS_GOLD, 0.54, 0.1, 0.54, 0, 0.55, 0);
+    for (const [x, z] of [[-0.2, -0.2], [0.2, -0.2], [-0.2, 0.2], [0.2, 0.2], [0, -0.22]]) part(head, BOSS_GOLD, 0.1, 0.14, 0.1, x, 0.67, z);
+    for (const s of [-1, 1]) {
+      part(body, BOSS_SPIKE, 0.26, 0.12, 0.3, s * 0.34, 0.76, 0);
+      part(body, BOSS_SPIKE, 0.07, 0.14, 0.07, s * 0.34, 0.88, 0);
+    }
+    part(body, BOSS_GOLD, 0.54, 0.08, 0.32, 0, 0.06, 0);
+  }
   const arms = [];
   for (const s of [-1, 1]) {
     const pivot = new THREE.Group(); pivot.position.set(s * 0.38, 0.64, 0); body.add(pivot);
@@ -247,4 +265,26 @@ export function makeZombie(kind) {
   part(eyes, EYE_MAT, 0.13, 0.13, 0.02, 0.094, 0.25, -0.255);
   part(eyes, EYE_MAT, 0.1, 0.1, 0.02, -0.11, 0.266, -0.255);
   return { root, inner, legs, body, head, arms, meshes, eyes, kind };
+}
+
+// ロケットだんの はこ（ひかる・ブロック）
+export function makeRocketCrate(glowTex) {
+  const g = new THREE.Group();
+  const spin = new THREE.Group(); g.add(spin);
+  const crate = L(0x6b7a3a, { emissive: 0x1c2408 }), stripe = L(0xffc21a, { emissive: 0x5a3c00 });
+  part(spin, crate, 0.62, 0.34, 0.42, 0, 0.17, 0);
+  part(spin, stripe, 0.64, 0.07, 0.44, 0, 0.2, 0);
+  part(spin, GM.oliveD, 0.66, 0.04, 0.1, 0, 0.36, 0);
+  // うえに ロケットの たま
+  const r = new THREE.Group(); r.position.set(0, 0.46, 0); r.rotation.y = Math.PI / 2; spin.add(r);
+  part(r, GM.warhead, 0.12, 0.12, 0.42, 0, 0, 0);
+  part(r, new THREE.MeshBasicMaterial({ color: 0xff8a1f }), 0.08, 0.08, 0.1, 0, 0, -0.25);
+  for (const rr of [0, Math.PI / 2]) part(r, GM.oliveD, 0.26, 0.02, 0.08, 0, 0, 0.18, 0, 0, rr);
+  // ひかり（あしもとの わ＋ぼんやり）
+  const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: 0xffb040, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false }));
+  glow.scale.set(1.9, 1.9, 1); glow.position.y = 0.35; g.add(glow);
+  const ring = new THREE.Mesh(new THREE.RingGeometry(0.45, 0.62, 20).rotateX(-Math.PI / 2),
+    new THREE.MeshBasicMaterial({ color: 0xffd060, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending, depthWrite: false }));
+  ring.position.y = 0.03; g.add(ring);
+  return { group: g, spin, glow, ring };
 }
