@@ -74,6 +74,9 @@
 .sa-kick  { right: calc(87px + env(safe-area-inset-right)); bottom: 6px; width: 46px; height: 46px; --rim: #b8743a; }
 .sa-punch { right: calc(57px + env(safe-area-inset-right)); bottom: 57px; width: 44px; height: 44px; --rim: #b89a3a; }
 .sa-shoot { right: calc(4px + env(safe-area-inset-right)); bottom: 86px; width: 48px; height: 48px; --rim: #c0302a; }
+.sa-charge { display: none; right: calc(66px + env(safe-area-inset-right)); bottom: 106px; width: 46px; height: 46px; --rim: #3ad8ff; color: #bff6ff; font-size: 10px; }
+.sa-charge.show { display: block; animation: sa-beamglow 1.2s ease-in-out infinite; }
+@keyframes sa-beamglow { 50% { box-shadow: inset 0 0 10px rgba(0,0,0,.8), 0 0 14px #3ad8ff; } }
 .sa-swap  { right: calc(8px + env(safe-area-inset-right)); bottom: 146px; width: 56px; height: 28px; border-radius: 4px; --rim: #666; font-size: 10px; }
 
 /* がめん */
@@ -83,6 +86,11 @@
 .sa-title h1 { margin: 0; font-size: 40px; font-weight: 900; letter-spacing: 4px; color: #d9d4cc; text-shadow: 0 0 2px #000, 3px 3px 0 #000, 0 0 18px rgba(200,20,20,.85), 0 0 40px rgba(140,0,0,.6); transform: skewX(-6deg); animation: sa-flick 4.2s infinite; }
 .sa-sub { margin: 0 0 4px; font-weight: 800; color: #b8433a; letter-spacing: 2px; text-shadow: 0 2px 0 #000, 0 0 8px #000; }
 .sa-scr h2 { margin: 0 0 6px; font-size: 28px; font-weight: 900; color: #d9d4cc; letter-spacing: 3px; text-shadow: 3px 3px 0 #000, 0 0 14px rgba(200,20,20,.7); }
+.sa-pager { display: flex; align-items: center; gap: 10px; margin: -2px 0 4px; }
+.sa-pg { width: 44px; height: 30px; border-radius: 4px; border: 1px solid #4a1c18; background: rgba(30,10,10,.9); color: #e6e2da; font-size: 16px; cursor: pointer; }
+.sa-pg:disabled { opacity: .3; cursor: default; }
+.sa-pgl { font-size: 12px; color: #d8c48a; min-width: 110px; text-align: center; font-weight: 800; }
+.sa-stage b small { font-size: 10px; color: #d8c48a; }
 .sa-stages { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; max-width: 640px; }
 .sa-stage { width: 118px; padding: 6px 7px; border-radius: 3px; border: 1px solid #4a1c18; border-left: 4px solid #a3261e; background: linear-gradient(90deg, rgba(30,10,10,.92), rgba(8,8,9,.92)); box-shadow: 0 0 14px rgba(0,0,0,.9), inset 0 0 20px rgba(0,0,0,.6); display: flex; flex-direction: column; gap: 2px; cursor: pointer; }
 .sa-stage b { font-size: 14px; color: #e6e2da; } .sa-stage span { font-size: 10px; color: #a69a92; } .sa-stage em { font-style: normal; font-size: 9.5px; color: #d8c48a; }

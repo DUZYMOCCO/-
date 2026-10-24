@@ -2,14 +2,26 @@
 import {
   H, GROUND, GRAV, PHYS, WEAPONS, MOVES, COMBO_WINDOW, CHAIN_GRACE, ENEMIES, BOSSES, STAGES, ALLIES, ALLY_DOWN_TIME,
   createArsenal, giveWeapon, addAmmo, nextWeapon, tickGun, pickMove, moveBox, overlap, knockOf, comboWord,
-  allyDecide, landOn, makePlatforms, scoreFor, GUN_GEOM, ZOOMS,
-} from './rules.js?v=5';
+  allyDecide, landOn, makePlatforms, scoreFor, GUN_GEOM, ZOOMS, tickBeam,
+} from './rules.js?v=6';
 
 export const BLOOD = {
   green: ['#63e64b', '#2fae3a', '#a6ff6e', '#1f7d2b'],
   purple: ['#b04aff', '#7a2fd0', '#e08bff', '#4e1a8c'],
 };
-const MAX_PARTS = 260, MAX_SPLATS = 90;
+const MAX_PARTS = 260, MAX_SPLATS = 90, MAX_BULLETS = 140, MAX_HAZ = 40, MAX_ENEMIES = 12;
+// はいれつを その ばで つめる（filter より ゴミが でない）
+function keep(arr, ok) { let j = 0; for (let i = 0; i < arr.length; i++) { const v = arr[i]; if (ok(v)) arr[j++] = v; } arr.length = j; return arr; }
+export const isHydra = (b) => !!b && b.kind === 'boss' && b.def.ai === 'hydra';
+// こうじょうの プレス：じかん から いまの ようすを だす（render.js も つかう）
+export function pressState(pr, time) {
+  const P = pr[1], t = time + pr[2], ph = t % P, cyc = Math.floor(t / P);
+  if (ph < 0.5) return { down: 1 - ph / 0.5, warn: false, hit: false, cyc };
+  if (ph < P - 1.1) return { down: 0, warn: false, hit: false, cyc };
+  if (ph < P - 0.15) return { down: 0.03, warn: true, hit: false, cyc };
+  const down = Math.min(1, (ph - (P - 0.15)) / 0.07);
+  return { down, warn: false, hit: down > 0.6, cyc };
+}
 
 function rng(seed) {
   let a = seed >>> 0;
@@ -18,7 +30,7 @@ function rng(seed) {
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 export const bodyBox = (e) => ({ x: e.x - e.w / 2, y: e.y - e.h, w: e.w, h: e.h });
 
-export const EMPTY_INPUT = { left: false, right: false, up: false, down: false, jump: false, jumpHeld: false, shoot: false, kick: false, punch: false, swap: false };
+export const EMPTY_INPUT = { left: false, right: false, up: false, down: false, jump: false, jumpHeld: false, shoot: false, kick: false, punch: false, swap: false, charge: false };
 
 export class Game {
   constructor(stageIdx = 0, opts = {}) {
@@ -46,6 +58,9 @@ export class Game {
     this.camX = 0;
     this.zoom = opts.zoom || 1; this.vx = undefined; this.vy = 0; this.look = 1;
     this.trainT = this.stage.train ? this.stage.train.first : 0;
+    const GM = this.stage.gimmick;
+    this.gimT = GM ? GM.first ?? 8 : 0; this.blackout = 0; this.tilt = 0; this.gust = 0; this.beams = []; this.tg = [];
+    this.pressHit = new Map();
     this.say(this.stage.name, this.stage.sub);
   }
   makeFighter(x, { hp, kind }) {
@@ -67,6 +82,7 @@ export class Game {
     if (this.state === 'over' || this.state === 'clear') return;
     this.time += dt;
     if (this.comboT > 0) { this.comboT -= dt; if (this.comboT <= 0) this.combo = 0; }
+    this.buildTargets();
     if (this.state === 'play') this.updatePlayer(dt, input);
     for (const a of this.allies) this.updateAlly(a, dt);
     for (const e of this.enemies) this.updateEnemy(e, dt);
@@ -74,8 +90,9 @@ export class Game {
     this.updateBullets(dt);
     this.updateHazards(dt);
     this.updateTrain(dt);
+    this.updateGimmick(dt);
     this.updatePickups(dt);
-    this.enemies = this.enemies.filter((e) => !e.gone);
+    keep(this.enemies, (e) => !e.gone);
     this.updateProgress(dt);
     this.updateCamera(dt);
   }
@@ -87,7 +104,7 @@ export class Game {
     p.recoil = Math.max(0, p.recoil - dt * 8); p.sinceMove += dt; p.shootT = Math.max(0, p.shootT - dt);
     if (p.hp <= 0) return this.updateDeadPlayer(p, dt);
     const dir = (inp.right ? 1 : 0) - (inp.left ? 1 : 0);
-    if (inp.swap) { const w = nextWeapon(p.ars); this.ev('swap', { w }); this.addText(p.x, p.y - 96, WEAPONS[w].name, '#fff', 15); }
+    if (inp.swap) { p.ars.charge = 0; p.ars.spin = 0; const w = nextWeapon(p.ars); this.ev('swap', { w }); this.addText(p.x, p.y - 96, WEAPONS[w].name, '#fff', 15); }
     if (inp.jump) p.jumpBuf = PHYS.jumpBuffer; else p.jumpBuf = Math.max(0, p.jumpBuf - dt);
     if (inp.kick) p.queued = 'kick';
     if (inp.punch) p.queued = 'punch';
@@ -108,10 +125,16 @@ export class Game {
       this.startMove(p, p.queued, inp, chain); p.queued = null;
     }
     if (!p.move) {
-      const acc = p.onGround ? PHYS.accel : PHYS.airAccel;
-      if (dir) { p.vx = clamp(p.vx + dir * acc * dt, -PHYS.speed, PHYS.speed); p.face = dir; p.runT += dt; }
-      else { p.runT = 0; const f = PHYS.friction * dt * (p.onGround ? 1 : 0.35); p.vx = Math.abs(p.vx) <= f ? 0 : p.vx - Math.sign(p.vx) * f; }
-      if (Math.abs(p.vx) > PHYS.speed) p.vx -= Math.sign(p.vx) * PHYS.friction * dt;
+      const CW = WEAPONS[p.ars.cur], cg = p.ars.guns[p.ars.cur];
+      let vmax = PHYS.speed;
+      if (CW.spin && inp.shoot && cg.ammo > 0) vmax *= CW.slow; // ミニガンは おもい
+      if (CW.charge && p.ars.charge > 0) vmax *= 0.7;
+      if (p.onGround && this.inGoo(p.x)) vmax *= 0.55;
+      const ice = this.stage.gimmick?.type === 'blizzard' && p.onGround ? 0.3 : 1;
+      const acc = (p.onGround ? PHYS.accel : PHYS.airAccel) * (ice < 1 ? 0.5 : 1);
+      if (dir) { p.vx = clamp(p.vx + dir * acc * dt, -Math.max(vmax, Math.abs(p.vx) * (ice < 1 ? 1 : 0)), Math.max(vmax, Math.abs(p.vx) * (ice < 1 ? 1 : 0))); if (Math.abs(p.vx) > vmax && Math.sign(p.vx) === dir) p.vx = dir * vmax; p.face = dir; p.runT += dt; }
+      else { p.runT = 0; const f = PHYS.friction * dt * (p.onGround ? ice : 0.35); p.vx = Math.abs(p.vx) <= f ? 0 : p.vx - Math.sign(p.vx) * f; }
+      if (Math.abs(p.vx) > vmax) p.vx -= Math.sign(p.vx) * PHYS.friction * dt * ice;
       // ジャンプ
       if (p.jumpBuf > 0) {
         if (inp.down && p.onGround && p.y < GROUND - 1) { p.dropT = 0.25; p.onGround = false; p.jumpBuf = 0; }
@@ -120,10 +143,21 @@ export class Game {
       }
       if (!inp.jumpHeld && p.vy < -260) p.vy += GRAV * 1.1 * dt; // みじかく おすと ひくい ジャンプ
       // うつ
-      const W = tickGun(p.ars, dt, inp.shoot);
-      if (W) { this.fire(p, W, 'p'); p.shootT = 0.18; if (!dir && p.onGround) p.vx -= p.face * W.knock * 0.25; }
-    }
+      if (CW.charge) {
+        const was = p.ars.charge || 0;
+        const out = tickBeam(p.ars, dt, inp.shoot, inp.charge);
+        if (!was && p.ars.charge > 0) this.ev('hum');
+        if (out === 'beam') this.fireBeam(p, CW);
+        else if (out === 'bolt') { this.fire(p, CW, 'p'); p.shootT = 0.18; }
+      } else {
+        const was = p.ars.spin || 0;
+        const W = tickGun(p.ars, dt, inp.shoot);
+        if (CW.spin && !was && p.ars.spin > 0) this.ev('spin');
+        if (W) { this.fire(p, W, 'p'); p.shootT = 0.18; if (!dir && p.onGround) p.vx -= p.face * W.knock * 0.25; if (W.spin) this.shake = Math.max(this.shake, 3.2); }
+      }
+    } else { p.ars.spin = 0; p.ars.charge = 0; }
     this.physics(p, dt);
+    this.envPush(p, dt);
     // カメラ ロック
     const minX = this.lock ? this.lock.l + 14 : 14;
     const maxX = this.lock ? this.lock.r - 14 : this.stage.length - 14;
@@ -171,8 +205,7 @@ export class Game {
     const box = moveBox(M, src.x, src.y, src.face);
     const boxB = M.both ? moveBox(M, src.x, src.y, -src.face) : null;
     let hit = false;
-    const targets = this.boss && this.boss.hp > 0 && this.boss.state !== 'intro' ? [...this.enemies, this.boss] : this.enemies;
-    for (const e of targets) {
+    for (const e of this.tg) {
       if (e.dead || src.hitSet.has(e)) continue;
       const hb = this.hurtBox(e);
       const inA = overlap(box, hb), inB = boxB && overlap(boxB, hb);
@@ -195,7 +228,7 @@ export class Game {
     return hit;
   }
   hurtBox(e) {
-    if (e.id === 'hydra') return { x: e.x - 70, y: e.lowered ? GROUND - 120 : GROUND - 175, w: 140, h: e.lowered ? 120 : 175 };
+    if (isHydra(e)) return { x: e.x - 70, y: e.lowered ? GROUND - 120 : GROUND - 175, w: 140, h: e.lowered ? 120 : 175 };
     return bodyBox(e);
   }
   // ダメージ（melee=true は パンチ・キック）
@@ -216,15 +249,15 @@ export class Game {
       if (e.helmetHp <= 0) { e.helmetHp = 0; this.addText(e.x, e.y - 100, 'ヘルメット とんだ！', '#ffe27a', 15); this.ev('break'); this.debris(e.x, e.y - e.h + 4, '#454a36', 6); }
     }
     let mult = 1;
-    if (isBoss && e.id !== 'hydra' && e.state === 'dazed') mult = 2;
+    if (isBoss && !isHydra(e) && e.state === 'dazed') mult = 2;
     if (isBoss && e.state === 'phase') mult = 0.2;
-    if (e.id === 'hydra') mult = e.lowered ? 1.6 : 0.45;
+    if (isHydra(e)) mult = e.lowered ? 1.6 : 0.45;
     const real = dmg * mult;
     e.hp -= real;
     e.flashT = 0.1;
     const def = e.def;
     const hb = this.hurtBox(e);
-    const hy = isBoss && e.id === 'hydra' ? hb.y + hb.h * 0.45 : e.y - e.h * 0.6;
+    const hy = isBoss && isHydra(e) ? hb.y + hb.h * 0.45 : e.y - e.h * 0.6;
     this.blood(e.x - face * 6, hy, face, def.blood, melee ? 9 : 4);
     if (melee && this.rand() < 0.35) this.splat(e.x + face * (10 + this.rand() * 40), hy - 10 + (this.rand() - 0.5) * 50, def.blood, true);
     if (!melee) this.sparks(e.x - face * 8, hy, '#fff1c4', 2);
@@ -296,9 +329,12 @@ export class Game {
       const a = clamp(ang, -0.35, 0.35);
       base = src.face > 0 ? a : Math.PI - a;
     }
+    src.shotN = (src.shotN || 0) + 1;
+    const tr = W.tracer ? src.shotN % W.tracer === 0 : false;
     for (let i = 0; i < W.pellets; i++) {
+      if (this.bullets.length >= MAX_BULLETS) break;
       const a = base + (this.rand() - 0.5) * W.spread * 2;
-      this.bullets.push({ owner, x: gx, y: gy, vx: Math.cos(a) * W.speed, vy: Math.sin(a) * W.speed, life: W.life * (0.85 + this.rand() * 0.3), dmg: W.dmg * dmgMul, knock: W.knock, w: W.id, blast: W.blast, r: W.id === 'bazooka' ? 7 : 3 });
+      this.bullets.push({ owner, tr, x: gx, y: gy, vx: Math.cos(a) * W.speed, vy: Math.sin(a) * W.speed, life: W.life * (0.85 + this.rand() * 0.3), dmg: W.dmg * dmgMul, knock: W.knock, w: W.id, blast: W.blast, r: W.id === 'bazooka' ? 7 : 3 });
     }
     src.recoil = 1; src.recoilW = W.id; src.flashN = (src.flashN || 0) + 1;
     if (G.shell && this.parts.length < MAX_PARTS) this.parts.push({ kind: 'shell', x: src.x + src.face * (16 + G.ex), y: src.y - 44 + G.ey, vx: -src.face * (50 + this.rand() * 70), vy: -190 - this.rand() * 90, life: 2.2, max: 2.2, size: G.shell[0], color: G.shell[1], g: 1, rot: this.rand() * 6, spin: (8 + this.rand() * 10) * -src.face, w: W.id });
@@ -309,8 +345,7 @@ export class Game {
   }
   nearestTarget(x, y, face, range) {
     let best = null, bd = range;
-    const list = this.boss && !this.boss.dead && this.boss.state !== 'intro' ? [...this.enemies, this.boss] : this.enemies;
-    for (const e of list) {
+    for (const e of this.tg) {
       if (e.dead || e.spawnT > 0) continue;
       const dx = (e.x - x) * face;
       if (dx < -10 || dx > bd) continue;
@@ -320,19 +355,19 @@ export class Game {
     return best;
   }
   updateBullets(dt) {
-    const targetsP = this.boss && !this.boss.dead && this.boss.state !== 'intro' ? [...this.enemies, this.boss] : this.enemies;
+    const targetsP = this.tg;
     for (const b of this.bullets) {
       b.life -= dt;
       if (b.grav) b.vy += GRAV * b.grav * dt;
       b.px = b.x; b.py = b.y;
       b.x += b.vx * dt; b.y += b.vy * dt;
       if (b.life <= 0) { if (b.blast) this.explode(b); continue; }
-      if (b.y > GROUND) { b.life = 0; if (b.acid) this.hazards.push({ kind: 'acid', x: b.x - 30, y: GROUND - 12, w: 60, h: 12, life: 2.6, warn: 0.15, dmg: 6, hit: new Set() }); if (b.blast) this.explode(b); else if (b.owner === 'e') this.blood(b.x, GROUND - 2, 0, 'purple', 3); else this.sparks(b.x, GROUND, '#ffd38a', 2); continue; }
+      if (b.y > GROUND) { b.life = 0; if (b.eblast) { this.eBlast(b.x, b.eblast); continue; } if (b.acid) this.hazards.push({ kind: 'acid', x: b.x - 30, y: GROUND - 12, w: 60, h: 12, life: 2.6, warn: 0.15, dmg: 6, hit: new Set() }); if (b.blast) this.explode(b); else if (b.owner === 'e') this.blood(b.x, GROUND - 2, 0, 'purple', 3); else this.sparks(b.x, GROUND, '#ffd38a', 2); continue; }
       const bb = { x: b.x - b.r, y: b.y - b.r, w: b.r * 2, h: b.r * 2 };
       if (b.owner === 'e') {
         for (const f of this.fighters()) {
           if (f.hp <= 0 || f.inv > 0 || (f.down > 0)) continue;
-          if (overlap(bb, bodyBox(f))) { b.life = 0; this.hurtFighter(f, b.dmg, Math.sign(b.vx) || 1, 180); break; }
+          if (overlap(bb, bodyBox(f))) { b.life = 0; if (b.eblast) this.eBlast(b.x, b.eblast); else this.hurtFighter(f, b.dmg, Math.sign(b.vx) || 1, 180); break; }
         }
         continue;
       }
@@ -348,15 +383,14 @@ export class Game {
       }
       if (b.life > 0) for (const c of this.crates) if (c.hp > 0 && overlap(bb, { x: c.x - 20, y: c.y - 40, w: 40, h: 40 })) { b.life = 0; this.hitCrate(c, b.dmg); if (b.blast) this.explode(b); break; }
     }
-    this.bullets = this.bullets.filter((b) => b.life > 0);
+    keep(this.bullets, (b) => b.life > 0);
   }
   explode(b) {
     const B = b.blast; b.blast = null;
     this.shake = Math.max(this.shake, 12); this.flash = 0.1; this.ev('boom');
     for (let i = 0; i < 14; i++) { const a = this.rand() * Math.PI * 2, s = 80 + this.rand() * 260; this.addPart({ kind: 'fire', x: b.x, y: b.y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 80, life: 0.5, max: 0.5, size: 10 + this.rand() * 10, color: i % 2 ? '#ffb43a' : '#ffe27a', g: -0.1 }); }
     this.smoke(b.x, b.y, 8); this.ring(b.x, b.y, '#ffd25a', B.r);
-    const targets = this.boss && !this.boss.dead && this.boss.state !== 'intro' ? [...this.enemies, this.boss] : this.enemies;
-    for (const e of targets) {
+    for (const e of this.tg) {
       if (e.dead) continue;
       const hb = this.hurtBox(e);
       const cx = clamp(b.x, hb.x, hb.x + hb.w), cy = clamp(b.y, hb.y, hb.y + hb.h);
@@ -428,13 +462,13 @@ export class Game {
     }
     if (a.onGround && this.hazards.some((h) => h.kind === 'trolley' && h.warn <= 0 && h.x > a.x - 30 && h.x - a.x < 170)) { a.vy = -PHYS.jumpV; a.onGround = false; }
     this.physics(a, dt);
+    this.envPush(a, dt);
     const minX = this.lock ? this.lock.l + 14 : 14, maxX = this.lock ? this.lock.r - 14 : this.stage.length - 14;
     a.x = clamp(a.x, minX, maxX);
   }
   nearestAny(x, y, range) {
     let best = null, bd = range;
-    const list = this.boss && !this.boss.dead && this.boss.state !== 'intro' ? [...this.enemies, this.boss] : this.enemies;
-    for (const e of list) { if (e.dead || e.spawnT > 0) continue; const d = Math.abs(e.x - x) + Math.abs(e.y - y) * 0.5; if (d < bd) { bd = d; best = e; } }
+    for (const e of this.tg) { if (e.dead || e.spawnT > 0) continue; const d = Math.abs(e.x - x) + Math.abs(e.y - y) * 0.5; if (d < bd) { bd = d; best = e; } }
     return best;
   }
 
@@ -457,16 +491,18 @@ export class Game {
   // ---------- てき ----------
   spawnEnemy(type, side, i) {
     const d = ENEMIES[type];
+    const hpMax = Math.round(d.hp * (this.stage.hpMul || 1));
     const x = side > 0 ? this.camX + this.viewW + 30 + i * 40 : this.camX - 30 - i * 40;
     const r = d.emerge ? this.rand() : 1;
     const fromTop = r < 0.25, fromWall = !fromTop && r < 0.7;
     const vx0 = this.vx ?? this.camX, vw = this.viewW / (this.zoom || 1);
     const near = clamp(this.player.x + (this.rand() < 0.5 ? -1 : 1) * (110 + this.rand() * 150), Math.max(this.camX + 50, vx0 + 40), Math.min(this.camX + this.viewW - 120, vx0 + vw - 60));
     const e = { kind: 'enemy', type, def: d, x: fromTop || fromWall ? near : x,
-      y: fromTop ? -30 : GROUND, vx: 0, vy: 0, w: d.w, h: d.h, face: -side, hp: d.hp, maxHp: d.hp, state: 'walk', t: 0, cool: 0.8 + this.rand(),
+      y: fromTop ? -30 : GROUND, vx: 0, vy: 0, w: d.w, h: d.h, face: -side, hp: hpMax, maxHp: hpMax, state: 'walk', t: 0, cool: 0.8 + this.rand(),
       onGround: !fromTop, anim: this.rand() * 5, shieldHp: d.shieldHp || 0, helmetHp: d.helmetHp || 0, seed: (this.spawnN = (this.spawnN || 0) + 1) * 37 + type.length, spawnT: fromWall ? 0.9 : 0, spawnMax: 0.9, wallY: GROUND - 70 - this.rand() * 60, flashT: 0, hitDone: false, dropT: 0 };
     if (fromWall) e.face = this.player.x > e.x ? 1 : -1;
     if (fromTop || fromWall) this.ev('creep');
+    if (d.mini) { this.say('つよい てき！', d.name, 2); this.ev('roar'); this.mini = e; }
     this.enemies.push(e);
     return e;
   }
@@ -497,7 +533,13 @@ export class Game {
       return;
     }
     this.physics(e, dt);
-    if (this.lock) e.x = clamp(e.x, this.lock.l - 40, this.lock.l + this.viewW + 40);
+    this.envPush(e, dt);
+    if (this.lock) {
+      // いちど なかに はいったら そとに にげない（とどかない ところで うちつづけない）
+      if (e.x > this.lock.l + 16 && e.x < this.lock.r - 16) e.inside = true;
+      else e.x += (e.x < this.lock.l + 16 ? 1 : -1) * 70 * dt; // そとに いる あいだは なかへ あるく
+      e.x = e.inside ? clamp(e.x, this.lock.l + 16, this.lock.r - 16) : clamp(e.x, this.lock.l - 40, this.lock.l + this.viewW + 40);
+    }
     if (e.state === 'hurt' || e.state === 'down') {
       e.vx *= Math.pow(0.004, dt); e.t -= dt;
       if (e.t <= 0) { e.state = 'walk'; e.cool = Math.max(e.cool, 0.4); }
@@ -581,26 +623,39 @@ export class Game {
     const bd = this.stage.boss, D = BOSSES[bd.id];
     const b = { kind: 'boss', id: bd.id, def: D, w: D.w, h: D.h, hp: D.hp, maxHp: D.hp, face: -1, vx: 0, vy: 0, t: 1.8, state: 'intro', anim: 0, stag: 0, flashT: 0, onGround: false, dropT: 99, n: 0 };
     b.phase = 1;
-    if (bd.id !== 'hydra') { b.x = this.lock.r - 140; b.y = -200; }
-    else { b.x = this.lock.r - 95; b.y = GROUND; b.lowered = false; b.rise = 0; this.shake = 10; }
+    if (D.ai === 'hydra') { b.x = this.lock.r - 95; b.y = GROUND; b.lowered = false; b.rise = 0; this.shake = 10; }
+    else if (D.kit === 'heli') { b.x = this.lock.r - 160; b.y = -120; b.fly = true; b.hoverY = GROUND - 150; b.landed = true; }
+    else { b.x = this.lock.r - (D.kit === 'tank' ? 120 : 140); b.y = -200; }
     this.boss = b;
     this.say('ボス！', D.name, 2.2); this.ev('roar');
   }
   updateBoss(b, dt) {
     b.anim += dt; b.flashT = Math.max(0, b.flashT - dt);
     if (b.dead) { b.t += dt; if (b.t > 0.2 && this.rand() < dt * 14) { this.smoke(b.x + (this.rand() - 0.5) * b.w, GROUND - this.rand() * b.h, 2); this.blood(b.x, GROUND - this.rand() * b.h, 0, 'purple', 3); } if (b.t > 1.8 && !b.poofed) { b.poofed = true; this.smoke(b.x, GROUND - b.h / 2, 20); this.splat(b.x, GROUND, 'purple'); this.splat(b.x - 50, GROUND, 'green'); this.ev('poof'); } return; }
-    if (b.id === 'hydra') this.updateHydra(b, dt); else this.updateMan(b, dt);
+    if (isHydra(b)) this.updateHydra(b, dt); else this.updateMan(b, dt);
   }
   // にんげんがたの ボス（agent / giant / mutant / king）。kit で わざが かわる
   updateMan(b, dt) {
     const p = this.player, D = b.def, kit = D.kit || 'agent';
     let rage = b.hp < b.maxHp * 0.5 ? 1.35 : 1;
     if (kit === 'king') rage = b.phase >= 2 ? 1.2 : 1;
-    if (kit === 'giant') rage = b.hp < b.maxHp * 0.5 ? 1.2 : 1;
+    if (kit === 'giant' || kit === 'tank' || kit === 'heli') rage = b.hp < b.maxHp * 0.5 ? 1.2 : 1;
+    if (kit === 'final') rage = b.phase >= 3 ? 1.25 : b.phase >= 2 ? 1.12 : 1;
     const T = p.hp > 0 ? p : this.allies.find((a) => !a.down) || p;
     const dx = T.x - b.x;
     if (b.fly) this.physicsFly(b, dt, T); else this.physicsBig(b, dt);
+    if (kit === 'heli') { b.rotor = (b.rotor || 0) + dt * 40; b.hoverY = b.state === 'dazed' || b.state === 'down' ? GROUND - 2 : GROUND - 150; }
     if (b.state === 'intro') { b.t -= dt; if (b.onGround && !b.landed) { b.landed = true; this.shake = 14; this.dust(b.x, GROUND, 10); this.ev('slam'); } if (b.t <= 0) { b.state = 'walk'; b.t = 1; } return; }
+    if (kit === 'final' && b.state !== 'intro') {
+      const ph = b.hp > b.maxHp * 0.66 ? 1 : b.hp > b.maxHp * 0.33 ? 2 : 3;
+      if (ph > b.phase) {
+        b.phase = ph; b.state = 'phase'; b.t = 1.8; b.vx = 0; b.fly = false; b.n = 0;
+        if (ph === 2) { b.w = 110; b.h = 150; } else { b.w = 120; b.h = 175; }
+        this.say(ph === 2 ? 'へんしん した！' : 'さいごの すがた！', ph === 2 ? 'すっぱい えきに きをつけろ' : 'まんなかの コアを ねらえ！', 2.4);
+        this.shake = 16; this.flash = 0.25; this.ev('roar'); this.ring(b.x, GROUND - 90, '#c06bff', 80);
+        for (const bl of this.bullets) if (bl.owner === 'e') bl.life = 0;
+      }
+    }
     if (kit === 'king') {
       const ph = b.hp > b.maxHp * 0.66 ? 1 : b.hp > b.maxHp * 0.33 ? 2 : 3;
       if (ph > b.phase) {
@@ -609,7 +664,7 @@ export class Game {
         this.shake = 14; this.flash = 0.2; this.ev('roar'); this.ring(b.x, GROUND - 90, '#ff4a6a', 70);
       }
     }
-    if (b.stag > (kit === 'giant' ? 190 : 150) && !['down', 'dazed', 'phase', 'float', 'fall'].includes(b.state)) { b.stag = 0; b.state = 'down'; b.t = 1.3; b.vx = -b.face * 160; this.addText(b.x, GROUND - 170, 'よろけた！', '#ffe14a', 20); this.ev('thud'); }
+    if (b.stag > (kit === 'giant' || kit === 'tank' || kit === 'heli' ? 190 : 150) && !['down', 'dazed', 'phase', 'float', 'fall', 'lowWind'].includes(b.state)) { b.stag = 0; b.state = 'down'; b.t = 1.3; b.vx = kit === 'tank' || kit === 'heli' ? 0 : -b.face * 160; this.addText(b.x, GROUND - 170, 'よろけた！', '#ffe14a', 20); this.ev('thud'); }
     b.stag = Math.max(0, b.stag - dt * 25);
     b.t -= dt;
     // さわると いたい
@@ -618,6 +673,8 @@ export class Game {
       case 'walk': {
         b.face = dx >= 0 ? 1 : -1;
         b.vx = Math.abs(dx) > 90 ? b.face * D.speed * rage : 0;
+        if (kit === 'heli') { const want = T.x - b.face * 170; b.vx = clamp((want - b.x) * 1.5, -D.speed, D.speed); }
+        if (kit === 'tank' && Math.abs(dx) < 200) b.vx = 0;
         if (b.t <= 0) {
           b.n++; b.vx = 0;
           this.pickBossMove(b, kit, Math.abs(dx) > 200, rage);
@@ -628,7 +685,7 @@ export class Game {
         const n = rage > 1 ? 2 : 1;
         for (let i = 0; i < n; i++) {
           const sx = b.x + b.face * 30, sy = GROUND - 190, tx = T.x + (i ? -b.face * 90 : 0), tt = 1.0 + i * 0.15;
-          this.bullets.push({ owner: 'e', x: sx, y: sy, vx: (tx - sx) / tt, vy: (GROUND - sy - 0.5 * GRAV * 0.7 * tt * tt) / tt, grav: 0.7, life: 3, dmg: 12, r: 13, w: 'rock', rot: 0 });
+          this.bullets.push({ owner: 'e', x: sx, y: sy, vx: (tx - sx) / tt, vy: (GROUND - sy - 0.5 * GRAV * 0.7 * tt * tt) / tt, grav: 0.7, life: 3, dmg: 12, r: 13, w: b.id === 'wreck' ? 'car' : kit === 'yeti' ? 'ice' : 'rock', rot: 0 });
         }
         this.ev('whoosh'); b.state = 'walk'; b.t = 1.1 / rage; } break;
       case 'spitWind': b.vx = 0; b.face = dx >= 0 ? 1 : -1; if (b.t <= 0) {
@@ -660,10 +717,50 @@ export class Game {
           b.state = 'dazed'; b.t = 2.4; this.addText(b.x, GROUND - 190, 'おちた！ チャンス！', '#ffe14a', 18);
         }
         break;
+      case 'knifeWind': b.vx = 0; b.face = dx >= 0 ? 1 : -1; if (b.t <= 0) { // メスを おうぎに なげる
+        const n = rage > 1 ? 5 : 3, sy = GROUND - 100, base = Math.atan2(T.y - 40 - sy, Math.abs(dx) + 1);
+        for (let i = 0; i < n; i++) { const a = base + (i - (n - 1) / 2) * 0.16; this.bullets.push({ owner: 'e', x: b.x + b.face * 30, y: sy, vx: Math.cos(a) * 470 * b.face, vy: Math.sin(a) * 470, life: 1.8, dmg: 9, r: 5, w: 'knife' }); }
+        this.ev('whoosh'); b.state = 'walk'; b.t = 1.0 / rage; } break;
+      case 'shellWind': b.vx = 0; b.face = dx >= 0 ? 1 : -1; if (b.t <= 0) { // ほうだん（おちた ところで ばくはつ）
+        const n = rage > 1 ? 3 : 2;
+        for (let i = 0; i < n; i++) {
+          const sx = b.x + b.face * 70, sy = GROUND - 92, tx = clamp(T.x + (i - (n - 1) / 2) * 120, this.lock.l + 20, this.lock.r - 20), tt = 1.05 + i * 0.12;
+          this.bullets.push({ owner: 'e', x: sx, y: sy, vx: (tx - sx) / tt, vy: (GROUND - sy - 0.5 * GRAV * 0.7 * tt * tt) / tt, grav: 0.7, life: 3, dmg: 12, r: 8, w: 'shell', eblast: 12 });
+          this.hazards.push({ kind: 'mark', x: tx - 40, y: GROUND - 6, w: 80, h: 6, life: tt, warn: tt, dmg: 0, hit: new Set() });
+        }
+        this.addPart({ kind: 'muzzle', x: b.x + b.face * 92, y: GROUND - 92, life: 0.1, max: 0.1, size: 22, face: b.face, color: '#ffd27a', style: 'bazooka' });
+        this.smoke(b.x + b.face * 90, GROUND - 92, 5); this.shake = Math.max(this.shake, 8); this.ev('boom'); b.state = 'walk'; b.t = 1.3 / rage; } break;
+      case 'flameWind': b.vx = 0; b.face = dx >= 0 ? 1 : -1; if (b.t <= 0) {
+        const w = 170, x0 = b.face > 0 ? b.x + 30 : b.x - 30 - w;
+        this.hazards.push({ kind: 'flame', x: x0, y: GROUND - 74, w, h: 64, life: 1.1, warn: 0, dmg: 10, hit: new Set(), face: b.face });
+        this.ev('hiss'); b.state = 'flame'; b.t = 1.1; } break;
+      case 'flame': b.vx = 0; if (b.t <= 0) { b.state = 'walk'; b.t = 0.9 / rage; } break;
+      case 'rainWind': b.vx = 0; if (b.t <= 0) { // さんの あめ
+        const n = rage > 1 ? 7 : 5;
+        for (let i = 0; i < n; i++) { const x = this.lock.l + 40 + this.rand() * (this.lock.r - this.lock.l - 80); this.bullets.push({ owner: 'e', x, y: -20 - this.rand() * 120, vx: 0, vy: 120, grav: 0.35, life: 4, dmg: 8, r: 8, w: 'blob', acid: true }); this.hazards.push({ kind: 'mark', x: x - 26, y: GROUND - 6, w: 52, h: 6, life: 1.1, warn: 1.1, dmg: 0, hit: new Set(), purple: true }); }
+        this.ev('spit'); b.state = 'walk'; b.t = 1.3; } break;
+      case 'bombWind': if (b.t <= 0) { b.state = 'bomb'; b.t = 0; b.shots = 0; b.vx = b.face * 220; } else b.vx = 0; break;
+      case 'bomb':
+        b.vx = b.face * 230;
+        if (b.t <= 0 && b.shots < 4) { b.t = 0.32; b.shots++; this.bullets.push({ owner: 'e', x: b.x, y: b.y - 10, vx: b.vx * 0.4, vy: 40, grav: 0.6, life: 3, dmg: 12, r: 8, w: 'bomb', eblast: 12 }); this.ev('whoosh'); }
+        if (b.shots >= 4 && b.t <= 0) { b.state = 'walk'; b.t = 1.2 / rage; }
+        if ((b.face > 0 && b.x > this.lock.r - b.w / 2 - 6) || (b.face < 0 && b.x < this.lock.l + b.w / 2 + 6)) b.face = -b.face;
+        break;
+      case 'lowWind': b.vx = 0; if (b.t <= 0) { b.state = 'dazed'; b.t = 3.0; this.addText(b.x, GROUND - 160, 'エンジン こしょう！ チャンス！', '#ffe14a', 18); this.ev('thud'); } break;
       case 'burstWind': b.vx = 0; b.face = dx >= 0 ? 1 : -1; if (b.t <= 0) { b.state = 'burst'; b.t = 0; b.shots = 0; } break;
       case 'burst':
         if (b.t <= 0) {
-          b.t = 0.13; b.shots++;
+          b.t = kit === 'tank' || kit === 'heli' ? 0.1 : 0.13; b.shots++;
+          if (kit === 'heli' || kit === 'tank') { // きじゅう：ひかる たま
+            const sx = b.x + b.face * (kit === 'heli' ? 50 : 80), sy = kit === 'heli' ? b.y - 8 : GROUND - 62;
+            const a = Math.atan2(T.y - 30 - sy, Math.abs(T.x - sx) + 1) + (this.rand() - 0.5) * 0.12;
+            this.bullets.push({ owner: 'e', x: sx, y: sy, vx: Math.cos(a) * 560 * b.face, vy: Math.sin(a) * 560, life: 1.6, dmg: 7, r: 3, w: 'tracer' });
+            this.addPart({ kind: 'muzzle', x: sx, y: sy, life: 0.05, max: 0.05, size: 10, face: b.face, color: '#ffd27a' });
+            this.ev('eshoot');
+            if (b.shots === 5) b.t = 0.5;
+            if (b.shots >= (rage > 1 ? 13 : 10)) { b.state = 'walk'; b.t = 1.1 / rage; }
+            break;
+          }
           const gy = GROUND - 56;
           this.bullets.push({ owner: 'e', x: b.x + b.face * 60, y: gy, vx: b.face * 420, vy: 0, life: 2.2, dmg: 9, r: 6, w: 'orb' });
           this.ev('eshoot');
@@ -673,7 +770,7 @@ export class Game {
         break;
       case 'chargeWind': b.vx = 0; b.face = dx >= 0 ? 1 : -1; if (b.t <= 0) { b.state = 'charge'; this.ev('charge'); } break;
       case 'charge':
-        b.vx = b.face * (kit === 'giant' ? 500 : 560) * rage;
+        b.vx = b.face * (kit === 'giant' || kit === 'tank' ? 500 : 560) * rage;
         if ((b.face > 0 && b.x > this.lock.r - b.w / 2 - 4) || (b.face < 0 && b.x < this.lock.l + b.w / 2 + 4)) { b.x = clamp(b.x, this.lock.l + b.w / 2, this.lock.r - b.w / 2); b.state = 'dazed'; b.t = 1.8; b.vx = -b.face * 120; this.shake = 14; this.ev('wall'); this.addText(b.x, GROUND - 170, 'ピヨピヨ… チャンス！', '#ffe14a', 18); this.debris(b.x + b.face * 40, GROUND - 100, '#6b7280', 10); }
         break;
       case 'dazed': b.vx *= Math.pow(0.02, dt); if (b.t <= 0) { b.state = 'walk'; b.t = 0.8; } break;
@@ -691,7 +788,8 @@ export class Game {
         if (b.onGround) {
           b.vx = 0; this.shake = 16; this.dust(b.x, GROUND, 12); this.ev('slam');
           for (const s of [-1, 1]) this.hazards.push({ kind: 'wave', x: b.x + s * 40, y: GROUND - 26, w: 34, h: 26, vx: s * 400, life: 1.5, warn: 0, dmg: 12, hit: new Set(), color: kit === 'mutant' ? '#9b5bff' : kit === 'king' ? '#ff4a6a' : '#c06bff' });
-          if (kit === 'mutant') this.hazards.push({ kind: 'acid', x: b.x - 50, y: GROUND - 12, w: 100, h: 12, life: 2.2, warn: 0.3, dmg: 6, hit: new Set() });
+          if (kit === 'mutant' || kit === 'queen' || (kit === 'final' && b.phase === 2)) this.hazards.push({ kind: 'acid', x: b.x - 50, y: GROUND - 12, w: 100, h: 12, life: 2.2, warn: 0.3, dmg: 6, hit: new Set() });
+          if (kit === 'yeti' || kit === 'beast') this.spikesUnder(kit === 'yeti' ? 'ice' : 'root', 0.7);
           b.state = 'walk'; b.t = 1.2 / rage;
         }
         break;
@@ -719,6 +817,66 @@ export class Game {
       else { if (r < 0.55) { b.state = 'punchWind'; b.t = 0.5; } else { b.state = 'slamWind'; b.t = 0.45; } }
       return;
     }
+    const giantPick = () => {
+      if (b.n % 4 === 0) { b.state = 'slamWind'; b.t = 0.6; }
+      else if (far) { if (r < 0.5) { b.state = 'throwWind'; b.t = 0.75 / rage; this.ev('aim'); } else { b.state = 'chargeWind'; b.t = 0.85 / rage; this.ev('aim'); } }
+      else { if (r < 0.6) { b.state = 'punchWind'; b.t = 0.6 / rage; } else { b.state = 'slamWind'; b.t = 0.55; } }
+    };
+    const mutantPick = (minion, nMin) => {
+      if (b.n % 5 === 0) { b.state = 'dazed'; b.t = 2.2; this.addText(b.x, GROUND - 170, 'ハァハァ… チャンス！', '#ffe14a', 18); return; }
+      if (b.n % 3 === 0 && alive < 3) { b.state = 'summon'; b.t = 0.9; this.ev('roar'); for (let i = 0; i < nMin; i++) this.spawnEnemy(minion, i % 2 ? -1 : 1, 0); return; }
+      if (far) { if (r < 0.55) { b.state = 'spitWind'; b.t = 0.55; this.ev('hiss'); } else { b.state = 'slamWind'; b.t = 0.5; } }
+      else { if (r < 0.55) { b.state = 'punchWind'; b.t = 0.5; } else { b.state = 'slamWind'; b.t = 0.45; } }
+    };
+    if (kit === 'surgeon') {
+      if (b.n % 4 === 0 && alive < 3) { b.state = 'summon'; b.t = 0.9; this.ev('roar'); this.spawnEnemy('patient', 1, 0); this.spawnEnemy('patient', -1, 0); return; }
+      if (b.n % 5 === 0) { b.state = 'dazed'; b.t = 1.8; this.addText(b.x, GROUND - 170, 'メスを おとした！ チャンス！', '#ffe14a', 16); return; }
+      if (far) { if (r < 0.55) { b.state = 'knifeWind'; b.t = 0.55 / rage; this.ev('aim'); } else { b.state = 'chargeWind'; b.t = 0.7 / rage; this.ev('aim'); } }
+      else { if (r < 0.6) { b.state = 'punchWind'; b.t = 0.45 / rage; } else { b.state = 'knifeWind'; b.t = 0.5; } }
+      return;
+    }
+    if (kit === 'tank') {
+      if (b.n % 3 === 0) { b.state = 'shellWind'; b.t = 0.8 / rage; this.ev('aim'); return; }
+      if (b.n % 5 === 1 && alive < 2) { this.spawnEnemy('soldierz', -1, 0); }
+      if (far && r < 0.55) { b.state = 'burstWind'; b.t = 0.6 / rage; b.shots = 0; this.ev('aim'); }
+      else { b.state = 'chargeWind'; b.t = 0.9 / rage; this.ev('aim'); }
+      return;
+    }
+    if (kit === 'beast') {
+      if (b.n % 4 === 0 && alive < 3) { b.state = 'summon'; b.t = 0.9; this.ev('roar'); this.spawnEnemy('hound', 1, 0); this.spawnEnemy('hound', -1, 0); return; }
+      if (b.n % 3 === 0) { b.state = 'spikes'; b.t = 1.3; this.spikesUnder('root', 0.9); this.ev('creep'); return; }
+      if (far) { if (r < 0.55) { b.state = 'slamWind'; b.t = 0.5; } else { b.state = 'chargeWind'; b.t = 0.75 / rage; this.ev('aim'); } }
+      else { if (r < 0.6) { b.state = 'punchWind'; b.t = 0.45 / rage; } else { b.state = 'slamWind'; b.t = 0.45; } }
+      return;
+    }
+    if (kit === 'welder') {
+      if (b.n % 4 === 0) { b.state = 'slamWind'; b.t = 0.55; return; }
+      if (far) { if (r < 0.5) { b.state = 'chargeWind'; b.t = 0.8 / rage; this.ev('aim'); } else { b.state = 'throwWind'; b.t = 0.7 / rage; } }
+      else { if (r < 0.55) { b.state = 'flameWind'; b.t = 0.6; this.ev('charge'); } else { b.state = 'punchWind'; b.t = 0.5 / rage; } }
+      return;
+    }
+    if (kit === 'giant' || kit === 'yeti') return giantPick();
+    if (kit === 'queen') {
+      if (b.n % 4 === 2) { b.state = 'rainWind'; b.t = 0.7; this.ev('hiss'); return; }
+      return mutantPick('swarm', 3);
+    }
+    if (kit === 'heli') {
+      if (b.n % 4 === 0) { b.state = 'lowWind'; b.t = 0.8; return; }
+      if (r < 0.55) { b.state = 'burstWind'; b.t = 0.5 / rage; b.shots = 0; this.ev('aim'); }
+      else { b.state = 'bombWind'; b.t = 0.4; b.face = this.player.x > b.x ? 1 : -1; this.ev('aim'); }
+      return;
+    }
+    if (kit === 'final') {
+      if (b.phase === 1) {
+        if (b.n % 4 === 0 && alive < 3) { b.state = 'summon'; b.t = 0.9; this.ev('roar'); this.spawnEnemy('labz', 1, 0); this.spawnEnemy('labz', -1, 0); return; }
+        if (far && r < 0.4) { b.state = 'knifeWind'; b.t = 0.55; this.ev('aim'); return; }
+        return agentPick();
+      }
+      if (b.phase === 2) { if (b.n % 4 === 2) { b.state = 'rainWind'; b.t = 0.7; this.ev('hiss'); return; } return mutantPick('leaper', 2); }
+      if (b.n % 2 === 1) { b.state = 'float'; b.fly = true; b.t = 3.8; b.shotT = 0.7; this.ev('roar'); return; }
+      if (b.n % 3 === 0) { b.state = 'spikes'; b.t = 1.3; this.spikesUnder('purple', 0.9); if (alive < 2) this.spawnEnemy('wraith', 1, 0); this.ev('creep'); return; }
+      return mutantPick('swarm', 2);
+    }
     // king
     if (b.phase >= 3 && b.n % 2 === 1) { b.state = 'float'; b.fly = true; b.t = 4.2; b.shotT = 0.7; this.ev('roar'); return; }
     if (b.phase >= 2 && b.n % 3 === 0) {
@@ -730,9 +888,12 @@ export class Game {
     }
     agentPick();
   }
+  spikesUnder(look, warn) {
+    for (const f of this.fighters()) if (f.hp > 0 && !(f.down > 0)) this.hazards.push({ kind: 'spike', look, x: clamp(f.x, this.lock.l + 30, this.lock.r - 30) - 24, y: GROUND - 120, w: 48, h: 120, life: warn + 0.55, warn, dmg: 11, hit: new Set() });
+  }
   physicsFly(b, dt) {
     b.x += b.vx * dt; b.vy = 0;
-    b.y += (GROUND - 95 - b.y) * Math.min(1, dt * 2.5); b.onGround = false;
+    b.y += ((b.hoverY ?? GROUND - 95) - b.y) * Math.min(1, dt * 2.5); b.onGround = false;
     if (this.lock) b.x = clamp(b.x, this.lock.l + b.w / 2, this.lock.r - b.w / 2);
   }
   physicsBig(b, dt) {
@@ -770,7 +931,7 @@ export class Game {
             }
             this.ev('spit');
           }
-          if (this.enemies.length < 2 && b.n % 2 === 0) { this.spawnEnemy('crawler', -1, 0); }
+          if (this.enemies.length < 2 && b.n % 2 === 0) { this.spawnEnemy(b.id === 'kraken' ? 'sailor' : 'crawler', -1, 0); }
         }
         break;
       case 'sweep':
@@ -782,16 +943,114 @@ export class Game {
   }
   updateHazards(dt) {
     for (const h of this.hazards) {
-      h.life -= dt; if (h.warn > 0) { h.warn -= dt; if (h.warn <= 0 && h.kind === 'spike') { this.ev('spike'); this.blood(h.x + h.w / 2, GROUND - 20, 0, 'purple', 4); } continue; }
+      h.life -= dt; if (h.warn > 0) { h.warn -= dt; if (h.warn <= 0) this.hazardStart(h); continue; }
       if (h.vx) h.x += h.vx * dt;
-      if (h.kind === 'trolley') {
-        if (!h.rolled) { h.rolled = true; this.ev('charge'); this.shake = Math.max(this.shake, 6); }
-        for (const e of this.enemies) if (!e.dead && !e.spawnT && !h.hitE.has(e) && overlap(h, bodyBox(e))) { h.hitE.add(e); this.damage(e, 45, { knock: 700, name: 'トロッコ', blast: true }, -1, 'x', false); }
+      if (h.hitE) for (const e of this.tg) if (!e.dead && !e.spawnT && e.kind !== 'boss' && !h.hitE.has(e) && overlap(h, bodyBox(e))) { h.hitE.add(e); this.damage(e, h.edmg || 45, { knock: 500, name: 'わな', blast: true }, e.x < h.x + h.w / 2 ? -1 : 1, 'x', false); }
+      if (h.kind === 'trolley' && !h.rolled) { h.rolled = true; this.ev('charge'); this.shake = Math.max(this.shake, 6); }
+      if (h.kind === 'turret' && !h.fired) { // かべの じゅう：よこに れんしゃ（ジャンプで よける）
+        h.shotT = (h.shotT || 0) - dt;
+        if (h.shotT <= 0) { h.shotT = 0.09; h.n = (h.n || 0) + 1; this.bullets.push({ owner: 'e', x: h.side > 0 ? this.lock ? this.lock.r : this.camX + this.viewW : this.lock ? this.lock.l : this.camX, y: h.gy, vx: -h.side * 640, vy: 0, life: 1.6, dmg: 6, r: 3, w: 'tracer' }); this.ev('eshoot'); if (h.n >= 7) h.fired = true; }
       }
       if (!h.dmg) continue;
       for (const f of this.fighters()) if (!h.hit.has(f) && overlap(h, bodyBox(f)) && this.hurtFighter(f, h.dmg, h.vx ? Math.sign(h.vx) : (f.x < h.x + h.w / 2 ? -1 : 1), 260)) h.hit.add(f);
     }
-    this.hazards = this.hazards.filter((h) => h.life > 0);
+    keep(this.hazards, (h) => h.life > 0);
+  }
+  hazardStart(h) {
+    if (h.kind === 'spike') { this.ev('spike'); this.blood(h.x + h.w / 2, GROUND - 20, 0, 'purple', 4); }
+    else if (h.kind === 'rubble') { this.shake = Math.max(this.shake, 7); this.ev('slam'); this.debris(h.x + h.w / 2, GROUND - 10, '#6b6660', 8); this.dust(h.x + h.w / 2, GROUND, 6); }
+    else if (h.kind === 'bolt') { this.flash = Math.max(this.flash, 0.18); this.shake = Math.max(this.shake, 8); this.ev('boom'); this.sparks(h.x + h.w / 2, GROUND - 4, '#cfe8ff', 10); }
+    else if (h.kind === 'gas') this.ev('hiss');
+  }
+  eBlast(x, dmg) { // てきの ばくだん：その ばで ちいさい ばくはつ
+    this.hazards.push({ kind: 'blast', x: x - 45, y: GROUND - 70, w: 90, h: 70, life: 0.25, warn: 0, dmg, hit: new Set() });
+    for (let i = 0; i < 8; i++) { const a = -this.rand() * Math.PI, sp = 80 + this.rand() * 200; this.addPart({ kind: 'fire', x, y: GROUND - 10, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 0.45, max: 0.45, size: 9 + this.rand() * 8, color: i % 2 ? '#ffb43a' : '#ffe27a', g: -0.1 }); }
+    this.smoke(x, GROUND - 20, 4); this.shake = Math.max(this.shake, 8); this.ev('boom');
+  }
+  addHaz(h) { if (this.hazards.length < MAX_HAZ) this.hazards.push(h); }
+  inGoo(x) { const G = this.stage.goo; if (!G) return false; for (const [gx, gw] of G) if (x > gx && x < gx + gw) return true; return false; }
+  // コンベア・かたむき・ふぶき で からだが ながされる
+  envPush(f, dt) {
+    let push = 0;
+    const C = this.stage.conveyors;
+    if (C && f.onGround && f.y >= GROUND - 1) for (const [cx, cw, dir] of C) if (f.x > cx && f.x < cx + cw) push += dir * 95;
+    if (this.tilt && f.onGround) push += this.tilt * 70;
+    if (this.gust) push += this.gust * (f.onGround ? 75 : 110);
+    if (!push) return;
+    f.x += push * dt;
+    if (this.lock) f.x = clamp(f.x, this.lock.l + 14, this.lock.r - 14); else f.x = clamp(f.x, 14, this.stage.length - 14);
+  }
+  // ステージ ごとの しかけ
+  updateGimmick(dt) {
+    const G = this.stage.gimmick;
+    // プレス（いつも うごいてる・みえる ところ だけ あたる）
+    if (this.stage.presses) for (const pr of this.stage.presses) {
+      if (pr[0] < this.camX - 100 || pr[0] > this.camX + this.viewW + 100) continue;
+      const st = pressState(pr, this.time);
+      if (!st.hit) continue;
+      const box = { x: pr[0] - 36, y: GROUND - 110, w: 72, h: 110 };
+      const key = pr[0] * 1000 + st.cyc;
+      if (!this.pressHit.has(key)) { this.pressHit.set(key, new Set()); this.shake = Math.max(this.shake, 6); this.ev('slam'); this.dust(pr[0], GROUND, 6); if (this.pressHit.size > 30) this.pressHit.delete(this.pressHit.keys().next().value); }
+      const hs = this.pressHit.get(key);
+      for (const f of this.fighters()) if (!hs.has(f) && overlap(box, bodyBox(f)) && this.hurtFighter(f, 14, f.x < pr[0] ? -1 : 1, 380)) hs.add(f);
+      for (const e of this.enemies) if (!e.dead && !e.spawnT && !hs.has(e) && overlap(box, bodyBox(e))) { hs.add(e); this.damage(e, 70, { knock: 400, name: 'プレス', blast: true }, e.x < pr[0] ? -1 : 1, 'x', false); }
+    }
+    if (!G || this.state !== 'play') { this.blackout = 0; this.gust = 0; return; }
+    const T = G.type, bossOn = this.boss && !this.boss.dead;
+    if (T === 'tilt') { const ph = Math.sin(this.time * Math.PI * 2 / G.period); this.tilt = Math.abs(ph) > 0.45 ? Math.sign(ph) * (Math.abs(ph) - 0.45) / 0.55 : 0; if (Math.abs(ph) > 0.97 && !this.tiltSaid) { this.tiltSaid = true; this.addText(this.player.x, this.player.y - 110, 'ふねが かたむく！', '#9fd8ff', 16); this.ev('thud'); } if (Math.abs(ph) < 0.5) this.tiltSaid = false; return; }
+    if (this.blackout > 0) this.blackout = Math.max(0, this.blackout - dt);
+    if (this.gustT > 0) { this.gustT -= dt; if (this.gustT <= 0) this.gust = 0; }
+    this.gimT -= dt;
+    if (this.gimT > 0) return;
+    const P = this.player;
+    const L = this.lock ? this.lock.l : this.camX, Rr = this.lock ? this.lock.r : this.camX + this.viewW;
+    if (T === 'blackout') { this.gimT = G.every; this.blackout = G.dur; this.say('ていでん！', 'くらやみに ちゅうい', 1.5); this.ev('thud'); }
+    else if (T === 'blizzard') { this.gimT = G.every; this.gustT = G.dur; this.gust = this.rand() < 0.5 ? -1 : 1; this.say('ふぶき！', this.gust < 0 ? '← ながされる' : 'ながされる →', 1.5); this.ev('hiss'); }
+    else if (T === 'turret') {
+      this.gimT = bossOn ? G.every * 1.6 : G.every;
+      if (!this.lock) { this.gimT = 2; return; }
+      const side = P.x < (L + Rr) / 2 ? 1 : -1, gy = GROUND - 34;
+      this.addHaz({ kind: 'turret', side, gy, x: L, y: gy - 3, w: Rr - L, h: 6, life: 1.3 + 0.9, warn: 1.3, dmg: 0, hit: new Set() });
+      this.say('かべの じゅう！', 'ジャンプで よけろ！', 1.4); this.ev('aim');
+    } else if (T === 'debris') {
+      this.gimT = bossOn ? G.every * 1.5 : G.every;
+      const x = clamp(P.x + (this.rand() - 0.5) * 220, L + 30, Rr - 30);
+      this.addHaz({ kind: 'rubble', x: x - 32, y: GROUND - 90, w: 64, h: 90, life: 1.0 + 0.3, warn: 1.0, dmg: 12, hit: new Set(), hitE: new Set(), edmg: 50 });
+      this.ev('creep');
+    } else if (T === 'lightning') {
+      this.gimT = bossOn ? G.every * 1.4 : G.every;
+      const x = clamp(P.x + (this.rand() - 0.5) * 160, L + 30, Rr - 30);
+      this.addHaz({ kind: 'bolt', x: x - 22, y: 0, w: 44, h: GROUND, life: 0.9 + 0.35, warn: 0.9, dmg: 13, hit: new Set(), hitE: new Set(), edmg: 60 });
+      this.ev('aim');
+    } else if (T === 'vents') {
+      this.gimT = bossOn ? G.every * 1.3 : G.every;
+      if (!this.lock) { this.gimT = 2; return; }
+      for (const f of [0.25, 0.75]) { const x = L + (Rr - L) * f + (this.rand() - 0.5) * 80; this.addHaz({ kind: 'gas', x: x - 45, y: GROUND - 60, w: 90, h: 60, life: 2.2, warn: 0.8, dmg: 6, hit: new Set() }); }
+      this.ev('hiss');
+    } else this.gimT = 99;
+  }
+  buildTargets() {
+    const t = this.tg; t.length = 0;
+    for (const e of this.enemies) t.push(e);
+    if (this.boss && !this.boss.dead && this.boss.state !== 'intro') t.push(this.boss);
+  }
+  // ビームブラスター：まっすぐ つきぬける ふとい ビーム
+  fireBeam(p, W) {
+    const G = GUN_GEOM.beam, B = W.beam;
+    const gx = p.x + p.face * (16 + G.mx), gy = p.y - 44 + G.my;
+    const box = { x: p.face > 0 ? gx : gx - B.len, y: gy - B.h / 2, w: B.len, h: B.h };
+    let n = 0;
+    for (const e of this.tg) {
+      if (e.dead || e.spawnT > 0) continue;
+      if (overlap(box, this.hurtBox(e))) { this.damage(e, B.dmg, { knock: B.knock, name: 'ビーム' }, p.face, 'p', false); n++; }
+    }
+    for (const c of this.crates) if (c.hp > 0 && overlap(box, { x: c.x - 20, y: c.y - 40, w: 40, h: 40 })) this.hitCrate(c, 99);
+    this.beams.push({ x0: gx, x1: gx + p.face * B.len, y: gy, life: 0.35, max: 0.35, face: p.face });
+    for (let i = 0; i < 10; i++) this.addPart({ kind: 'spark', x: gx + p.face * this.rand() * B.len, y: gy + (this.rand() - 0.5) * B.h, vx: (this.rand() - 0.5) * 200, vy: (this.rand() - 0.5) * 200, life: 0.3, max: 0.3, size: 2, color: '#9ff4ff', g: 0 });
+    p.recoil = 1; p.recoilW = 'beam'; p.shootT = 0.3; p.vx -= p.face * 170;
+    this.flash = Math.max(this.flash, 0.14); this.shake = Math.max(this.shake, 10); this.hitstop = Math.max(this.hitstop, 0.04);
+    if (n >= 3) this.addText(p.x, p.y - 120, `${n}たい つらぬいた！`, '#9ff4ff', 18);
+    this.ev('beam');
   }
 
   // ちかてつ：ぼうそう トロッコ
@@ -816,11 +1075,15 @@ export class Game {
         k.taken = true; this.ev('pickup');
         if (k.kind === 'heal') { p.hp = Math.min(p.maxHp, p.hp + 35); for (const a of this.allies) if (!a.down) a.hp = Math.min(a.maxHp, a.hp + 20); this.addText(k.x, k.y - 60, 'かいふく！', '#9dff6a', 16); }
         else if (k.kind === 'ammo') { addAmmo(p.ars); this.addText(k.x, k.y - 60, 'たま ゲット！', '#ffe27a', 16); }
-        else { const fresh = giveWeapon(p.ars, k.kind); this.addText(k.x, k.y - 60, fresh ? `${WEAPONS[k.kind].name}！` : 'たま ゲット！', '#ffe27a', 18); }
+        else {
+          const fresh = giveWeapon(p.ars, k.kind); this.addText(k.x, k.y - 60, fresh ? `${WEAPONS[k.kind].name}！` : 'たま ゲット！', '#ffe27a', 18);
+          if (fresh && k.kind === 'beam') this.say('ビームブラスター！', 'うつ＝れんしゃ ／ ためる＝ふとい ビーム', 3);
+          if (fresh && k.kind === 'minigun') this.say('ミニガン！', 'うつを おしっぱなし！ まわってから うつ', 3);
+        }
         this.sparks(k.x, k.y - 20, '#ffffff', 6);
       }
     }
-    this.pickups = this.pickups.filter((k) => !k.taken);
+    keep(this.pickups, (k) => !k.taken);
   }
 
   // ---------- すすみ かた ----------
@@ -917,11 +1180,13 @@ export class Game {
       if (q.kind === 'blood' && q.y >= GROUND && q.vy > 0) { q.life = 0; if (this.rand() < 0.3) this.splat(q.x, GROUND, q.splat); }
       if ((q.kind === 'chunk' || q.kind === 'shell') && q.y >= GROUND && q.vy > 0) { q.y = GROUND; q.vy *= -0.35; q.vx *= 0.6; }
     }
-    this.parts = this.parts.filter((q) => q.life > 0);
+    keep(this.parts, (q) => q.life > 0);
     for (const t of this.texts) { t.life -= dt; t.y -= dt * (t.pop ? 20 : 40); }
-    this.texts = this.texts.filter((t) => t.life > 0);
+    keep(this.texts, (t) => t.life > 0);
     for (const s of this.splats) s.life -= dt;
-    this.splats = this.splats.filter((s) => s.life > 0);
+    keep(this.splats, (s) => s.life > 0);
+    for (const b of this.beams) b.life -= dt;
+    keep(this.beams, (b) => b.life > 0);
   }
   drainEvents() { const e = this.events; this.events = []; return e; }
 }
@@ -936,21 +1201,28 @@ export function botInput(g, mem = {}) {
   // よける
   for (const h of g.hazards) {
     if (h.kind === 'trolley') { if (h.warn <= 0 && h.x > p.x - 20 && h.x - p.x < 150 && p.onGround) { inp.jump = true; inp.jumpHeld = true; } else if (h.warn <= 0 && h.x < p.x && h.x + h.w > p.x - 30) inp.jumpHeld = true; continue; }
-    const near = h.kind === 'wave' || h.kind === 'sweep' ? Math.abs(h.x + h.w / 2 - p.x) < 130 && Math.sign(h.vx) === Math.sign(p.x - h.x) : (h.kind === 'spike' || h.kind === 'gas') && p.x > h.x - 30 && p.x < h.x + h.w + 30 && (h.warn > 0 || h.kind === 'gas');
-    if (near) { if (h.kind === 'spike' || h.kind === 'gas') { inp.right = p.x < h.x + h.w / 2 ? false : true; inp.left = !inp.right; } else if (p.onGround) { inp.jump = true; inp.jumpHeld = true; } }
+    const side = h.kind === 'spike' || h.kind === 'gas' || h.kind === 'rubble' || h.kind === 'bolt' || h.kind === 'mark' || h.kind === 'flame' || h.kind === 'blast';
+    const near = h.kind === 'wave' || h.kind === 'sweep' ? Math.abs(h.x + h.w / 2 - p.x) < 130 && Math.sign(h.vx) === Math.sign(p.x - h.x) : side && p.x > h.x - 30 && p.x < h.x + h.w + 30 && (h.warn > 0 || h.kind === 'gas' || h.kind === 'flame' || h.kind === 'blast');
+    if (near) { if (side) { inp.right = p.x < h.x + h.w / 2 ? false : true; inp.left = !inp.right; } else if (p.onGround) { inp.jump = true; inp.jumpHeld = true; } }
   }
+  if (g.stage.presses) for (const pr of g.stage.presses) {
+    if (Math.abs(pr[0] - p.x) > 70) continue;
+    const st = pressState(pr, g.time);
+    if (st.warn || st.down > 0.3) { if (p.x < pr[0]) inp.left = true; else inp.right = true; }
+  }
+  for (const b of g.bullets) if (b.owner === 'e' && (b.w === 'tracer' || b.w === 'orb') && !b.grav && Math.abs(b.vy) < 120 && Math.abs(b.x - p.x) < 150 && Math.sign(b.vx) === Math.sign(p.x - b.x) && b.y > p.y - 70 && p.onGround && mem.t % 3 === 0) { inp.jump = true; inp.jumpHeld = true; }
   if (inp.left || inp.right || inp.jump) return inp;
-  const man = boss && boss.id !== 'hydra';
+  const man = boss && !isHydra(boss);
   if (man && (boss.state === 'burst' || boss.state === 'burstWind') && p.onGround && mem.t % 30 === 0) { inp.jump = true; inp.jumpHeld = true; }
   if (man && boss.state === 'chargeWind' && p.onGround) { inp.jump = true; inp.jumpHeld = true; }
-  if (man && (boss.state === 'float' || boss.state === 'phase')) {
+  if (man && (boss.state === 'float' || boss.state === 'phase' || (boss.def.kit === 'heli' && boss.state !== 'dazed' && boss.state !== 'down'))) {
     // そらに うかんだ おうは はなれて うつ
     const dx = boss.x - p.x, ad = Math.abs(dx);
     if (ad < 300) { if (dx > 0) inp.left = true; else inp.right = true; }
     else if (ad > 380) { if (dx > 0) inp.right = true; else inp.left = true; }
     else { p.face = Math.sign(dx) || 1; inp.shoot = true; }
     if (p.ars.cur === 'pistol' && Object.keys(p.ars.guns).length > 1 && mem.t % 60 === 0) inp.swap = true;
-    return inp;
+    return botBeam(p, inp, mem);
   }
   let tgt = null, bd = 1e9;
   for (const e of foes) { const d = Math.abs(e.x - p.x); if (d < bd) { bd = d; tgt = e; } }
@@ -960,12 +1232,21 @@ export function botInput(g, mem = {}) {
   if (p.onGround && p.y < GROUND - 1 && tgt.y >= GROUND - 1 && mem.t % 20 === 0) { inp.down = true; inp.jump = true; return inp; }
   if (Math.abs(dx) > reach) {
     if (dx > 0) inp.right = true; else inp.left = true;
-    if (Math.abs(dx) < 380 && (tgt.kind !== 'boss' || tgt.id !== 'hydra' || tgt.lowered)) { inp.shoot = Math.abs(dx) > 120; if (inp.shoot && Math.abs(dx) > 250) { inp.left = inp.right = false; p.face = Math.sign(dx); } }
-    if (tgt.kind === 'boss' && tgt.id === 'hydra' && !tgt.lowered) { inp.shoot = true; }
+    if (Math.abs(dx) < 380 && (!isHydra(tgt) || tgt.lowered)) { inp.shoot = Math.abs(dx) > 120; if (inp.shoot && Math.abs(dx) > 250) { inp.left = inp.right = false; p.face = Math.sign(dx); } }
+    if (isHydra(tgt) && !tgt.lowered) { inp.shoot = true; }
   } else {
     if ((dx > 0) !== (p.face > 0)) { if (dx > 0) inp.right = true; else inp.left = true; }
     if (mem.t % 7 === 0) { if ((mem.t / 7) % 4 < 3) inp.kick = true; else inp.punch = true; }
   }
   if (p.ars.cur === 'pistol' && Object.keys(p.ars.guns).length > 1 && mem.t % 120 === 0) inp.swap = true;
+  return botBeam(p, inp, mem);
+}
+// ボットの ビーム：ときどき ためて ふとい ビーム
+function botBeam(p, inp, mem) {
+  if (p.ars.cur !== 'beam' || !p.ars.guns.beam) return inp;
+  if (mem.charging || (inp.shoot && p.ars.guns.beam.ammo >= WEAPONS.beam.beamCost && mem.t % 150 < 5)) {
+    mem.charging = (mem.charging || 0) + 1;
+    if (mem.charging < 42) { inp.charge = true; inp.shoot = false; inp.left = inp.right = false; } else mem.charging = 0;
+  }
   return inp;
 }

@@ -1,5 +1,5 @@
 // バトル アクション の きまり（DOM なし・node で テストできる）
-export const VERSION = '0.5.0';
+export const VERSION = '0.6.0';
 export const H = 375;              // ろんり の たかさ
 export const GROUND = 318;         // じめん（あしの y）
 export const GRAV = 2000;
@@ -15,6 +15,10 @@ export const WEAPONS = {
   rifle:   { id: 'rifle',   name: 'アサルトライフル', short: 'ライフル', rate: 0.1,  dmg: 9,  pellets: 1, spread: 0.035, speed: 1300, life: 0.6,  knock: 80,  ammo: 150, color: '#6b6f76', accent: '#c9a24a' },
   shotgun: { id: 'shotgun', name: 'ショットガン',    short: 'ショット', rate: 0.55, dmg: 7,  pellets: 6, spread: 0.2,  speed: 1000, life: 0.24, knock: 210, ammo: 36,  color: '#7a4a2a', accent: '#3a3a3a' },
   bazooka: { id: 'bazooka', name: 'バズーカ',        short: 'バズーカ', rate: 0.85, dmg: 40, pellets: 1, spread: 0,    speed: 620,  life: 1.2,  knock: 0,   ammo: 8,   color: '#4f6b3a', accent: '#d8c04a', blast: { r: 95, dmg: 55, knock: 640 } },
+  // v0.6：ミニガン（6ほんの つつが まわる。0.5びょう まわしてから うつ・うってる あいだ おそく あるく）
+  minigun: { id: 'minigun', name: 'ミニガン',        short: 'ミニガン', rate: 0.04, dmg: 6,  pellets: 1, spread: 0.075, speed: 1250, life: 0.5, knock: 30,  ammo: 300, color: '#5a5e64', accent: '#c9a24a', spin: 0.5, slow: 0.45, tracer: 3 },
+  // v0.6：ビームブラスター（うつ を おしっぱなし＝ちいさい エネルギーだんを れんしゃ。ためる ボタン＝ためて はなすと ふとい ビーム）
+  beam:    { id: 'beam',    name: 'ビームブラスター', short: 'ビーム', rate: 0.11, dmg: 7, pellets: 1, spread: 0.03, speed: 950, life: 0.65, knock: 50, ammo: 60, color: '#3a4656', accent: '#6af0ff', charge: 0.6, beamCost: 8, beam: { dmg: 60, len: 620, h: 30, knock: 260 } },
 };
 // じゅうの かたち（つかむ て = 0,0 から）：mx,my=じゅうこう、ex,ey=やっきょう が でる ところ、kick=[うしろ, はねあがり]
 export const GUN_GEOM = {
@@ -23,11 +27,13 @@ export const GUN_GEOM = {
   rifle:   { mx: 49, my: -8.4, ex: -16, ey: -9,  kick: [5, 0.06], flash: 'rifle',   shell: [3.4, '#d0a848'] },
   shotgun: { mx: 52, my: -9.6, ex: 7,  ey: -9,  kick: [8, 0.22], flash: 'shotgun', shell: [4.2, '#2f4f86'] },
   bazooka: { mx: 46, my: -9,   ex: 0,  ey: 0,   kick: [9, 0.1],  flash: 'bazooka', shell: null },
+  beam:    { mx: 46, my: -8,   ex: 0,  ey: 0,   kick: [7, 0.07], flash: 'beam',   shell: null },
+  minigun: { mx: 52, my: -6.5, ex: 2,  ey: 2,   kick: [3, 0.035], flash: 'rifle',  shell: [3.2, '#d6ae4c'] },
   dark:    { mx: 33, my: -7, ex: 6,  ey: -9,  kick: [3, 0.1],  flash: 'smg',     shell: null },
 };
-export const WEAPON_ORDER = ['pistol', 'smg', 'rifle', 'shotgun', 'bazooka'];
-export const AMMO_PICK = { smg: 90, rifle: 75, shotgun: 18, bazooka: 4 };
-export const AMMO_MAX = { smg: 360, rifle: 300, shotgun: 72, bazooka: 16 };
+export const WEAPON_ORDER = ['pistol', 'smg', 'rifle', 'shotgun', 'minigun', 'beam', 'bazooka'];
+export const AMMO_PICK = { smg: 90, rifle: 75, shotgun: 18, bazooka: 4, minigun: 60, beam: 16 };
+export const AMMO_MAX = { smg: 360, rifle: 300, shotgun: 72, bazooka: 16, minigun: 500, beam: 120 };
 
 export function createArsenal(owned = ['pistol']) {
   const a = { cur: owned[0], cool: 0, guns: {} };
@@ -52,9 +58,30 @@ export function nextWeapon(a) {
   a.cur = o[(o.indexOf(a.cur) + 1) % o.length];
   return a.cur;
 }
+// ビームブラスター：shoot＝れんしゃ（'bolt'）。charge を おしてる あいだ ためて、はなした とき いっぱいなら 'beam'
+export function tickBeam(a, dt, shoot, charge) {
+  const W = WEAPONS.beam, g = a.guns.beam;
+  a.cool = Math.max(0, a.cool - dt);
+  if (!g) return null;
+  let out = null;
+  if (charge && g.ammo >= W.beamCost) { a.charge = Math.min(W.charge, (a.charge || 0) + dt); return null; }
+  if (a.charge > 0) {
+    const full = a.charge >= W.charge; a.charge = 0;
+    if (full && g.ammo >= W.beamCost) { g.ammo -= W.beamCost; a.cool = 0.25; out = 'beam'; }
+  } else if (shoot && a.cool <= 0 && g.ammo > 0) { g.ammo -= 1; a.cool = W.rate; out = 'bolt'; }
+  if (g.ammo <= 0) { g.ammo = 0; a.cur = 'pistol'; }
+  return out;
+}
 // まいフレーム。うてたら ぶきの スペックを かえす
 export function tickGun(a, dt, held) {
   a.cool = Math.max(0, a.cool - dt);
+  const SW = WEAPONS[a.cur];
+  if (SW.spin) { // ミニガン：おしてる あいだ つつが まわる（spin が たまるまで うてない）
+    const g0 = a.guns[a.cur];
+    a.spin = held && g0.ammo > 0 ? Math.min(SW.spin, (a.spin || 0) + dt) : Math.max(0, (a.spin || 0) - dt * 1.5);
+    a.spinPh = (a.spinPh || 0) + dt * 40 * (a.spin / SW.spin);
+    if (a.spin < SW.spin) return null;
+  } else a.spin = 0;
   if (!held || a.cool > 0) return null;
   const g = a.guns[a.cur];
   if (g.ammo <= 0) { a.cur = 'pistol'; return null; }
@@ -132,16 +159,35 @@ export const ENEMIES = {
   leaper:   { name: 'てなが ゾンビ',     hp: 30,  w: 34, h: 56, speed: 170, weight: 0.9, dmg: 8,  reach: 54, wind: 0.34, cool: 0.95, score: 180, blood: 'purple', ai: 'crawler', jumper: true, emerge: false },
   hulk:     { name: 'きょだい ゾンビ',   hp: 170, w: 54, h: 108, speed: 70, weight: 2.6, dmg: 17, reach: 66, wind: 0.8,  cool: 1.6,  score: 600, blood: 'purple', ai: 'grunt', armor: 0.45 },
   spitter:  { name: 'はきだし ゾンビ',   hp: 34,  w: 30, h: 72, speed: 84,  weight: 1,   dmg: 8,  reach: 0,  wind: 0.7,  cool: 2.0,  score: 240, blood: 'purple', ai: 'gunner', range: [170, 300], shotSpeed: 300, spit: true },
+  // v0.6 あたらしい ゾンビ と ちゅうボス（mini）
+  patient:  { name: 'かんじゃ ゾンビ',   hp: 30,  w: 30, h: 72, speed: 104, weight: 0.9, dmg: 8,  reach: 44, wind: 0.42, cool: 1.0,  score: 110, blood: 'green',  ai: 'grunt' },
+  hound:    { name: 'ゾンビ いぬ',       hp: 26,  w: 46, h: 34, speed: 270, weight: 0.8, dmg: 7,  reach: 44, wind: 0.28, cool: 0.85, score: 140, blood: 'green',  ai: 'crawler', jumper: true, emerge: false },
+  worker:   { name: 'さぎょういん ゾンビ', hp: 44, w: 30, h: 72, speed: 88,  weight: 1.2, dmg: 10, reach: 48, wind: 0.5,  cool: 1.15, score: 170, blood: 'green',  ai: 'grunt', helmetHp: 16 },
+  sailor:   { name: 'ふなのり ゾンビ',   hp: 38,  w: 30, h: 72, speed: 98,  weight: 1,   dmg: 9,  reach: 46, wind: 0.45, cool: 1.0,  score: 140, blood: 'green',  ai: 'grunt' },
+  frozen:   { name: 'こおり ゾンビ',     hp: 56,  w: 32, h: 74, speed: 66,  weight: 1.4, dmg: 11, reach: 50, wind: 0.6,  cool: 1.3,  score: 220, blood: 'purple', ai: 'grunt', armor: 0.25 },
+  sergeant: { name: 'ぐんそう ゾンビ',   hp: 320, w: 40, h: 90, speed: 72,  weight: 2.6, dmg: 7,  reach: 0,  wind: 0.7,  cool: 1.6,  score: 2000, blood: 'green', ai: 'gunner', range: [150, 300], shotSpeed: 540, inacc: 0.16, volley: 8, helmetHp: 50, armor: 0.35, mini: true },
+  patch:    { name: 'つぎはぎ ゾンビ',   hp: 380, w: 64, h: 124, speed: 76, weight: 3.2, dmg: 18, reach: 74, wind: 0.75, cool: 1.4,  score: 2200, blood: 'purple', ai: 'grunt', armor: 0.55, mini: true },
   wraith:  { name: 'ゆらぎ',       hp: 30,  w: 40, h: 40, speed: 240, weight: 0.8, dmg: 9,  reach: 40, wind: 0.32, cool: 0.9,  score: 180, blood: 'purple', ai: 'crawler', look: 'wraith', jumper: true, emerge: true },
 };
 for (const [k, d] of Object.entries(ENEMIES)) { d.ai = d.ai || k; d.look = d.look || k; if (d.emerge === undefined) d.emerge = k === 'crawler'; }
 export const BOSSES = {
   agent: { name: 'くろよろい エージェント', hp: 1400, w: 74, h: 148, speed: 110, weight: 4, dmg: 18, score: 5000, blood: 'purple', armor: 0.7 },
-  hydra: { name: 'ねじれ ばけもの',         hp: 1700, w: 110, h: 170, speed: 0, weight: 99, dmg: 16, score: 8000, blood: 'purple', armor: 1 },
+  hydra: { name: 'ねじれ ばけもの',         hp: 1700, w: 110, h: 170, speed: 0, weight: 99, dmg: 16, score: 8000, blood: 'purple', armor: 1, ai: 'hydra' },
   // v0.3：agent と おなじ「にんげんがた」の うごき＋ それぞれの わざ
   giant:  { name: 'てっかめん の きょじん',  hp: 1600, w: 96, h: 170, speed: 92,  weight: 6, dmg: 18, score: 9000,  blood: 'green',  armor: 0.8, kit: 'giant', scale: 2.4 },
   mutant: { name: 'どろどろ ミュータント',    hp: 1700, w: 104, h: 130, speed: 120, weight: 5, dmg: 16, score: 10000, blood: 'purple', armor: 0.8, kit: 'mutant' },
   king:   { name: 'あかい め の おう',        hp: 2400, w: 80, h: 160, speed: 120, weight: 5, dmg: 18, score: 15000, blood: 'purple', armor: 0.8, kit: 'king' },
+  // v0.6：ステージ 6〜15 の ボス
+  surgeon: { name: 'メスの せんせい',        hp: 1900, w: 70, h: 150, speed: 135, weight: 4, dmg: 16, score: 11000, blood: 'green',  armor: 0.7, kit: 'surgeon' },
+  tank:    { name: 'ぼうそう せんしゃ',      hp: 2150, w: 170, h: 110, speed: 95, weight: 99, dmg: 18, score: 12000, blood: 'green', armor: 0.85, kit: 'tank' },
+  beast:   { name: 'もりの ぬし',            hp: 2250, w: 100, h: 150, speed: 125, weight: 6, dmg: 17, score: 12000, blood: 'green',  armor: 0.8, kit: 'beast' },
+  welder:  { name: 'ようせつ ゾンビ',        hp: 2350, w: 80, h: 156, speed: 110, weight: 5, dmg: 17, score: 13000, blood: 'green',  armor: 0.8, kit: 'welder' },
+  wreck:   { name: 'がれきの きょじん',      hp: 2450, w: 96, h: 170, speed: 92,  weight: 6, dmg: 18, score: 13000, blood: 'green',  armor: 0.8, kit: 'giant', scale: 2.4 },
+  kraken:  { name: 'うみの ばけもの',        hp: 2300, w: 110, h: 170, speed: 0, weight: 99, dmg: 16, score: 13000, blood: 'purple', armor: 1, ai: 'hydra' },
+  yeti:    { name: 'こおりの きょじん',      hp: 2550, w: 104, h: 130, speed: 120, weight: 5, dmg: 17, score: 14000, blood: 'purple', armor: 0.8, kit: 'yeti' },
+  queen:   { name: 'むしの じょおう',        hp: 2600, w: 104, h: 130, speed: 115, weight: 5, dmg: 16, score: 14000, blood: 'purple', armor: 0.8, kit: 'queen' },
+  heli:    { name: 'ゾンビ ヘリ',            hp: 2400, w: 150, h: 70,  speed: 150, weight: 99, dmg: 14, score: 15000, blood: 'green', armor: 0.85, kit: 'heli' },
+  final:   { name: 'はじまりの ミュータント', hp: 3000, w: 74, h: 150, speed: 125, weight: 6, dmg: 18, score: 30000, blood: 'purple', armor: 0.8, kit: 'final' },
 };
 // ズーム（がめんの ちかさ）。ゲームの ひろさは かわらない
 export const ZOOMS = [
@@ -223,6 +269,118 @@ export const STAGES = [
     boss: { x: 4850, id: 'king' },
   },
 ];
+
+// ---- v0.6：ステージ 6〜15（あしば・はこ・アイテムは きまった たね から つくる）----
+function seeded(seed) { let s = seed >>> 0; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
+function mkStage(o) {
+  const R = seeded(o.id * 7919 + 13);
+  const platforms = [], crates = [], pickups = [];
+  const end = o.boss.x - 380;
+  let i = 0;
+  for (let x = 460; x < end; x += 300 + Math.floor(R() * 140), i++) {
+    const tier = i % 3 === 1 ? 196 : i % 3 === 2 && R() < 0.5 ? 168 : 230;
+    platforms.push([x, tier + Math.floor(R() * 10), 130 + Math.floor(R() * 50)]);
+  }
+  for (let x = 400 + Math.floor(R() * 80); x < end; x += 780 + Math.floor(R() * 260)) crates.push([x]);
+  for (const [x, kind] of o.weapons) pickups.push([x, kind]);
+  for (let x = 1150; x < end + 200; x += 1050) pickups.push([x + Math.floor(R() * 120), 'heal']);
+  for (let x = 1500; x < end + 200; x += 1250) pickups.push([x + Math.floor(R() * 120), 'ammo']);
+  pickups.sort((a, b) => a[0] - b[0]);
+  return {
+    id: o.id, name: `ステージ ${o.id}`, sub: o.sub, theme: o.theme, length: o.length, hpMul: o.hpMul,
+    gimmick: o.gimmick || null, presses: o.presses, conveyors: o.conveyors, goo: o.goo,
+    platforms, crates, pickups,
+    arenas: o.arenas.map(([x, ...waves]) => ({ x, waves })),
+    boss: o.boss,
+  };
+}
+const MORE = [
+  { id: 6, sub: 'すてられた びょういん', theme: 'hospital', length: 5200, hpMul: 1.12, gimmick: { type: 'blackout', every: 13, first: 8, dur: 3.2 },
+    weapons: [[820, 'smg'], [2000, 'shotgun'], [3050, 'rifle']],
+    arenas: [
+      [700, ['patient', 'patient', 'labz'], ['guard', 'patient', 'zombie', 'crawler']],
+      [1600, ['labz', 'labz', 'spitter', 'patient'], ['guard', 'guard', 'leaper']],
+      [2550, ['patient', 'patient', 'patient', 'zombie'], ['hulk', 'labz'], ['spitter', 'guard', 'leaper', 'patient']],
+      [3500, ['guard', 'labz', 'crawler', 'crawler'], ['bloatz', 'patient', 'spitter', 'guard']],
+    ], boss: { x: 4750, id: 'surgeon' } },
+  { id: 7, sub: 'のっとられた きち', theme: 'base', length: 5400, hpMul: 1.18, gimmick: { type: 'turret', every: 9, first: 7 },
+    weapons: [[650, 'rifle'], [2700, 'minigun'], [3700, 'bazooka']],
+    arenas: [
+      [700, ['soldierz', 'zombie', 'guard'], ['soldierz', 'soldierz', 'zombie']],
+      [1650, ['sniper', 'soldierz', 'guard', 'zombie'], ['hulk', 'soldierz']],
+      [2600, ['guard', 'guard', 'soldierz', 'leaper'], ['sniper', 'sniper', 'zombie', 'zombie'], ['soldierz', 'hulk', 'guard']],
+      [3650, ['soldierz', 'zombie', 'zombie'], ['sergeant']],
+    ], boss: { x: 4950, id: 'tank' } },
+  { id: 8, sub: 'きりの もり', theme: 'forest', length: 5400, hpMul: 1.22, gimmick: { type: 'fog' },
+    weapons: [[800, 'shotgun'], [1900, 'smg'], [3000, 'rifle']],
+    arenas: [
+      [700, ['hound', 'zombie', 'hound'], ['leaper', 'zombie', 'hound']],
+      [1650, ['wraith', 'hound', 'zombie', 'zombie'], ['leaper', 'leaper', 'hound']],
+      [2600, ['hound', 'hound', 'crawler', 'zombie'], ['hulk', 'hound'], ['wraith', 'leaper', 'zombie', 'hound']],
+      [3600, ['zombie', 'zombie', 'hound', 'hound', 'leaper'], ['hulk', 'wraith', 'hound']],
+    ], boss: { x: 4950, id: 'beast' } },
+  { id: 9, sub: 'うごく こうじょう', theme: 'factory', length: 5600, hpMul: 1.27, gimmick: { type: 'factory' },
+    presses: [[1020, 3.6, 0], [1260, 3.6, 1.8], [2230, 3.4, 0.6], [2480, 3.4, 2.3], [3240, 3.2, 1], [4250, 3.2, 0.3], [4500, 3.2, 1.9]],
+    conveyors: [[1480, 300, 1], [2900, 320, -1], [4380, 280, 1]],
+    weapons: [[650, 'smg'], [1800, 'shotgun'], [2500, 'rifle'], [3300, 'bazooka']],
+    arenas: [
+      [700, ['worker', 'worker', 'zombie'], ['worker', 'soldierz', 'zombie']],
+      [1700, ['bloatz', 'worker', 'worker'], ['soldierz', 'worker', 'leaper', 'zombie']],
+      [2700, ['worker', 'hulk', 'worker'], ['spitter', 'soldierz', 'worker', 'bloatz']],
+      [3700, ['worker', 'worker', 'zombie', 'soldierz'], ['patch']],
+    ], boss: { x: 5150, id: 'welder' } },
+  { id: 10, sub: 'くずれる はし', theme: 'bridge', length: 5800, hpMul: 1.32, gimmick: { type: 'debris', every: 3.6, first: 4 },
+    weapons: [[700, 'rifle'], [2000, 'minigun'], [3000, 'shotgun'], [4200, 'bazooka']],
+    arenas: [
+      [700, ['zombie', 'zombie', 'soldierz'], ['leaper', 'zombie', 'spitter', 'soldierz']],
+      [1700, ['soldierz', 'soldierz', 'zombie', 'guard'], ['hulk', 'leaper', 'zombie']],
+      [2750, ['spitter', 'spitter', 'zombie', 'leaper'], ['soldierz', 'sniper', 'zombie', 'zombie'], ['hulk', 'hulk']],
+      [3800, ['leaper', 'leaper', 'soldierz', 'zombie'], ['sergeant', 'zombie']],
+    ], boss: { x: 5300, id: 'wreck' } },
+  { id: 11, sub: 'しずむ ふね', theme: 'ship', length: 5600, hpMul: 1.36, gimmick: { type: 'tilt', period: 13 },
+    weapons: [[700, 'smg'], [1900, 'shotgun'], [3000, 'rifle'], [4000, 'bazooka']],
+    arenas: [
+      [700, ['sailor', 'sailor', 'zombie'], ['sailor', 'spitter', 'swarm', 'swarm']],
+      [1700, ['bloatz', 'sailor', 'sailor'], ['leaper', 'sailor', 'spitter', 'zombie']],
+      [2700, ['sailor', 'sailor', 'swarm', 'swarm', 'leaper'], ['hulk', 'sailor', 'spitter']],
+      [3700, ['bloatz', 'bloatz', 'sailor'], ['leaper', 'leaper', 'sailor', 'sailor', 'swarm']],
+    ], boss: { x: 5150, id: 'kraken' } },
+  { id: 12, sub: 'ゆきやまの けんきゅうきち', theme: 'snow', length: 5600, hpMul: 1.4, gimmick: { type: 'blizzard', every: 11, first: 6, dur: 3.5 },
+    weapons: [[700, 'rifle'], [1900, 'beam'], [2900, 'smg'], [4000, 'bazooka']],
+    arenas: [
+      [700, ['frozen', 'frozen', 'hound'], ['soldierz', 'frozen', 'hound']],
+      [1700, ['sniper', 'frozen', 'frozen', 'soldierz'], ['hulk', 'hound', 'hound']],
+      [2700, ['frozen', 'frozen', 'leaper', 'soldierz'], ['sniper', 'sniper', 'frozen'], ['hound', 'hound', 'hound', 'frozen']],
+      [3700, ['frozen', 'soldierz', 'soldierz', 'hound'], ['patch', 'frozen']],
+    ], boss: { x: 5150, id: 'yeti' } },
+  { id: 13, sub: 'ちかの むしの す', theme: 'hive', length: 5600, hpMul: 1.44, gimmick: { type: 'goo' },
+    goo: [[1100, 180], [2020, 160], [3120, 200], [4300, 180]],
+    weapons: [[700, 'shotgun'], [1700, 'smg'], [2800, 'rifle'], [3900, 'bazooka']],
+    arenas: [
+      [700, ['swarm', 'swarm', 'crawler', 'swarm'], ['spitter', 'leaper', 'swarm']],
+      [1700, ['bloatz', 'crawler', 'crawler'], ['wraith', 'swarm', 'swarm', 'leaper', 'spitter']],
+      [2700, ['leaper', 'leaper', 'crawler', 'swarm', 'swarm'], ['hulk', 'spitter', 'bloatz'], ['wraith', 'wraith', 'swarm', 'swarm']],
+      [3700, ['bloatz', 'bloatz', 'spitter', 'spitter'], ['hulk', 'leaper', 'leaper', 'swarm', 'swarm']],
+    ], boss: { x: 5150, id: 'queen' } },
+  { id: 14, sub: 'あらしの ひこうじょう', theme: 'airfield', length: 5800, hpMul: 1.48, gimmick: { type: 'lightning', every: 6, first: 5 },
+    weapons: [[650, 'rifle'], [1900, 'minigun'], [3000, 'bazooka'], [4000, 'shotgun']],
+    arenas: [
+      [700, ['soldierz', 'soldierz', 'zombie', 'hound'], ['sniper', 'soldierz', 'guard']],
+      [1700, ['hound', 'hound', 'soldierz', 'zombie'], ['sergeant']],
+      [2750, ['soldierz', 'sniper', 'hulk'], ['hound', 'leaper', 'soldierz', 'soldierz'], ['guard', 'guard', 'zombie', 'zombie', 'hound']],
+      [3800, ['sniper', 'sniper', 'soldierz', 'soldierz'], ['hulk', 'soldierz', 'hound']],
+    ], boss: { x: 5300, id: 'heli' } },
+  { id: 15, sub: 'さいごの けんきゅうじょ', theme: 'core', length: 6200, hpMul: 1.45, gimmick: { type: 'vents', every: 8, first: 6 },
+    weapons: [[650, 'beam'], [1600, 'shotgun'], [2600, 'minigun'], [3500, 'bazooka'], [4500, 'rifle']],
+    arenas: [
+      [700, ['labz', 'labz', 'guard', 'patient'], ['spitter', 'leaper', 'labz']],
+      [1700, ['soldierz', 'soldierz', 'hound', 'frozen'], ['bloatz', 'sailor', 'worker']],
+      [2700, ['wraith', 'leaper', 'leaper', 'swarm', 'swarm'], ['hulk', 'spitter', 'guard'], ['sniper', 'soldierz', 'hound', 'hound']],
+      [3700, ['patch'], ['leaper', 'leaper', 'spitter', 'crawler']],
+      [4600, ['hulk', 'hulk', 'swarm', 'swarm'], ['sergeant', 'labz', 'labz']],
+    ], boss: { x: 5700, id: 'final' } },
+];
+for (const o of MORE) STAGES.push(mkStage(o));
 
 // ---- なかま ----
 export const ALLIES = [

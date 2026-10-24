@@ -2,7 +2,7 @@
 // v0.3: パッドが はりついて うごきっぱなし に ならないように、ゆび（タッチ）ごとに しっかり おいかける
 const KEYMAP = {
   ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right', ArrowUp: 'up', KeyW: 'jump', ArrowDown: 'down', KeyS: 'down',
-  Space: 'jump', KeyZ: 'jump', KeyJ: 'shoot', KeyX: 'shoot', KeyK: 'kick', KeyC: 'kick', KeyL: 'punch', KeyV: 'punch', KeyQ: 'swap', KeyE: 'swap', KeyI: 'swap',
+  Space: 'jump', KeyZ: 'jump', KeyJ: 'shoot', KeyX: 'shoot', KeyK: 'kick', KeyC: 'kick', KeyL: 'punch', KeyV: 'punch', KeyQ: 'swap', KeyE: 'swap', KeyI: 'swap', KeyB: 'charge', KeyF: 'charge', KeyU: 'charge', ShiftLeft: 'charge', ShiftRight: 'charge',
 };
 export const STICK_R = 38;
 const NEAR = 6, LOST = 90, STALE = 0.6;
@@ -168,7 +168,7 @@ export class Input {
       left: this.has('left') || sx < -0.35, right: this.has('right') || sx > 0.35,
       up: this.has('up') || sy < -0.6, down: this.has('down') || sy > 0.55,
       jump: this.edges.has('jump') || this.edges.has('up'), jumpHeld: this.has('jump') || this.has('up'),
-      shoot: this.has('shoot'), kick: this.edges.has('kick'), punch: this.edges.has('punch'), swap: this.edges.has('swap'),
+      shoot: this.has('shoot'), kick: this.edges.has('kick'), punch: this.edges.has('punch'), swap: this.edges.has('swap'), charge: this.has('charge'),
     };
     this.edges.clear();
     return out;

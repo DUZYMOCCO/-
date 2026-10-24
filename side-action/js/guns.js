@@ -1,6 +1,6 @@
 // リアルな じゅう（ぜんぶ オリジナルの かくうの モデル）。たかい かいぞうどの スプライトを いちど だけ つくって つかう
 // もちて（グリップ）が 0,0、みぎむき。じゅうこうの いち は rules.js の GUN_GEOM と おなじ
-import { GUN_GEOM } from './rules.js?v=5';
+import { GUN_GEOM } from './rules.js?v=6';
 
 const OUT = '#0a0a0b';
 const BX = -32, BY = -28, BW = 96, BH = 48, RES = 7;
@@ -142,6 +142,35 @@ const BODY = {
     edge(x, -23.5, -14, 39.5, 0.45);
     wear(x, R, -24, -14.6, 64, 3, 30, 'rgba(230,230,190,0.45)'); wear(x, R, -24, -10, 64, 5, 16, 'rgba(230,230,190,0.25)');
   },
+  // 「ツムジカゼ」ミニガン：6ほんの つつ が まわる（つつは まいフレーム かく）・したに たまばこ・うえに とって
+  minigun(x, R) {
+    part(x, [-14, -14, -2, -14, 0, -12, 0, 2, -2, 4, -14, 4, -16, 2, -16, -12], GUNMETAL);
+    part(x, [-0.6, -2, 4.6, -2, 3.4, 9.6, -2.8, 9.6, -3.4, 8], POLY);
+    trigger(x, 6.6, -1.6);
+    part(x, [0, -15, 20, -15, 22, -13, 22, 1, 20, 3, 0, 3], OLIVE);
+    slots(x, 3, -11.5, 18, 3, 2, '#1c1f14');
+    rect(x, 2, 3, 16, 12, OLIVE, 0.8); x.fillStyle = '#e9e0b0'; x.font = '900 3px sans-serif'; x.fillText('たま', 6, 11);
+    x.strokeStyle = '#c9a14a'; x.lineWidth = 1.2; x.beginPath(); x.moveTo(17, 6); x.quadraticCurveTo(24, 10, 22, 2); x.stroke();
+    x.strokeStyle = OUT; x.lineWidth = 2.6; x.beginPath(); x.moveTo(2, -15); x.quadraticCurveTo(11, -24, 20, -15); x.stroke(); x.strokeStyle = '#4b5040'; x.lineWidth = 1.4; x.stroke();
+    rect(x, 22, -12.5, 4, 12, STEEL, 0.7); rect(x, 38, -11.5, 2.6, 10, STEEL, 0.6); rect(x, 49.5, -11.8, 3, 10.6, STEEL, 0.7);
+    bolts(x, [-12, -10, -12, 0, 19, -12, 19, 0], 0.5);
+    edge(x, 0, -14.5, 21.5, 0.45); wear(x, R, 0, -15, 22, 4, 16, 'rgba(230,230,190,0.4)'); wear(x, R, 2, 3, 16, 12, 10, 'rgba(230,230,190,0.25)');
+  },
+  // 「ホタルビ」ビームブラスター：しろい からだ・みずいろの コイル・エネルギー タンク
+  beam(x, R) {
+    const SHELL = ['#dfe6ee', '#a7b2bf', '#6a7684', '#3a4656'];
+    part(x, [-20, -12, -6, -13, -6, -2, -10, 1, -20, 2, -22, -3], SHELL);
+    part(x, [-0.6, -3, 4.6, -3, 3.6, 9, -2.6, 9, -3.4, 7.4], POLY);
+    trigger(x, 6.8, -2.4);
+    part(x, [-7, -15, 26, -15, 30, -12, 30, -3, 24, -1, -7, -1], SHELL);
+    x.fillStyle = '#0d1a22'; x.fillRect(2, -12.4, 18, 4.6);
+    rect(x, 8, -1, 9, 7, ['#3a4656', '#1d2530'], 0.7);
+    for (let i = 0; i < 5; i++) { rect(x, 30 + i * 2.8, -12.8, 1.8, 9.6, ['#8a96a6', '#4a5462'], 0.5); }
+    rect(x, 30, -9.6, 15, 3.2, ['#253040', '#121a24'], 0.5);
+    part(x, [44, -12.4, 47.6, -11, 47.6, -5, 44, -3.6], SHELL, 0.7);
+    rail(x, -2, -17, 20);
+    edge(x, -6, -14.4, 25.5, 0.7); wear(x, R, -7, -15, 36, 3, 12, 'rgba(255,255,255,0.4)');
+  },
   // てき の じゅう：くろい サブマシンガン（あかい ランプ）
   dark(x, R) {
     x.strokeStyle = OUT; x.lineWidth = 2; x.beginPath(); x.moveTo(-6, -9); x.lineTo(-18, -8); x.lineTo(-18.6, -2); x.lineTo(-6, -4); x.stroke(); x.strokeStyle = '#26262a'; x.lineWidth = 1; x.stroke();
@@ -166,15 +195,38 @@ function sprite(name) {
 }
 
 // rc = はんどう（0〜1）
-export function drawGun(ctx, id, x, y, ang, face, s = 1, rc = 0) {
+// fx：ミニガンは まわる かくど・ビームは ためる りょう（0〜1）
+export function drawGun(ctx, id, x, y, ang, face, s = 1, rc = 0, fx = 0) {
   if (!BODY[id]) id = 'pistol';
   ctx.save(); ctx.translate(x, y); ctx.scale(face * s, s); ctx.rotate(ang);
   const im = sprite(id);
   if (im) {
+    if (id === 'minigun') spinBarrels(ctx, fx);
     ctx.drawImage(im, BX, BY, BW, BH);
     if (id === 'pistol') ctx.drawImage(sprite('pistolSlide'), BX - rc * 4.5, BY, BW, BH);
     if (id === 'shotgun') ctx.drawImage(sprite('shotgunPump'), BX - Math.sin(Math.min(1, rc) * Math.PI) * 7, BY, BW, BH);
+    if (id === 'beam') beamGlow(ctx, fx);
   }
   ctx.restore();
+}
+// 6ほんの つつ（おくから じゅんに かく）
+const ORDER = [0, 1, 2, 3, 4, 5];
+function spinBarrels(ctx, ph) {
+  const cy = -6.5;
+  ORDER.sort((a, b) => Math.cos(ph + a * 1.0472) - Math.cos(ph + b * 1.0472));
+  for (const k of ORDER) {
+    const a = ph + k * 1.0472, yy = cy + Math.sin(a) * 3.4, d = Math.cos(a);
+    const v = Math.round(60 + 70 * (d + 1));
+    ctx.fillStyle = OUT; ctx.fillRect(22, yy - 1.5, 31, 3);
+    ctx.fillStyle = `rgb(${v},${v + 4},${v + 10})`; ctx.fillRect(22, yy - 1, 30.6, 2);
+    ctx.fillStyle = '#050505'; ctx.fillRect(52, yy - 0.6, 0.8, 1.2);
+  }
+}
+function beamGlow(ctx, ch) {
+  const t = (typeof performance !== 'undefined' ? performance.now() : 0) / 1000;
+  const a = 0.55 + 0.25 * Math.sin(t * 6) + ch * 0.4;
+  ctx.fillStyle = `rgba(106,240,255,${Math.min(1, a)})`; ctx.fillRect(2.6, -11.8, 16.8 * (0.4 + 0.6 * Math.max(ch, 0.5 + 0.5 * Math.sin(t * 3))), 3.4);
+  for (let i = 0; i < 5; i++) { ctx.fillStyle = `rgba(150,250,255,${Math.min(1, 0.35 + ch * 0.65 * (i / 4 <= ch ? 1 : 0.3))})`; ctx.fillRect(30.4 + i * 2.8, -9.2, 1, 2.4); }
+  if (ch > 0) { ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = `rgba(120,240,255,${0.3 + ch * 0.6})`; ctx.beginPath(); ctx.arc(48, -8, 2 + ch * 5 + Math.sin(t * 40) * 0.6, 0, 6.3); ctx.fill(); ctx.globalCompositeOperation = 'source-over'; }
 }
 export const GUN_IDS = Object.keys(GUN_GEOM);

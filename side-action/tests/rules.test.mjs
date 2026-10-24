@@ -18,11 +18,11 @@ test('わざ：パンチと キックの れんけい', () => {
   assert.ok(R.comboMult(30) > R.comboMult(6));
 });
 
-test('ステージは 5つ、それぞれ ちがう ボスつき', () => {
-  assert.equal(R.STAGES.length, 5);
+test('ステージは 15こ、それぞれ ちがう ボスつき', () => {
+  assert.equal(R.STAGES.length, 15);
   for (const s of R.STAGES) { assert.ok(R.BOSSES[s.boss.id]); assert.ok(s.boss.x < s.length); }
-  assert.equal(new Set(R.STAGES.map((s) => s.boss.id)).size, 5);
-  assert.equal(new Set(R.STAGES.map((s) => s.id)).size, 5);
+  assert.equal(new Set(R.STAGES.map((s) => s.boss.id)).size, 15);
+  assert.equal(new Set(R.STAGES.map((s) => s.id)).size, 15);
   for (const s of R.STAGES) for (const z of s.zones || []) for (const w of z.waves) for (const id of w) assert.ok(R.ENEMIES[id], id);
 });
 
@@ -54,4 +54,25 @@ test('セーブデータの ほせい', () => {
   assert.deepEqual(R.normalizeSave({ cleared: [1, 'x'], allies: false }).cleared, [1]);
   assert.equal(R.normalizeSave({ allies: false }).allies, false);
   assert.ok(R.rankOf({ hpLeft: 1, time: 60, maxCombo: 20 }).length === 3);
+});
+
+test('ビームブラスター：うつ＝れんしゃ、ためて はなすと ふとい ビーム', () => {
+  const a = R.createArsenal(); R.giveWeapon(a, 'beam'); const W = R.WEAPONS.beam, c0 = a.guns.beam.ammo;
+  assert.equal(R.tickBeam(a, 1 / 60, true, false), 'bolt');
+  let bolts = 1; for (let i = 0; i < 60; i++) if (R.tickBeam(a, 1 / 60, true, false) === 'bolt') bolts++;
+  assert.ok(bolts >= 5, 'れんしゃ ' + bolts);
+  a.cool = 0; for (let i = 0; i < 20; i++) assert.equal(R.tickBeam(a, 1 / 60, false, true), null);
+  assert.equal(R.tickBeam(a, 1 / 60, false, false), null, 'ためが たりないと でない');
+  for (let i = 0; i < 40; i++) R.tickBeam(a, 1 / 60, false, true);
+  const before = a.guns.beam.ammo;
+  assert.equal(R.tickBeam(a, 1 / 60, false, false), 'beam');
+  assert.equal(a.guns.beam.ammo, before - W.beamCost); assert.ok(c0 > before);
+});
+
+test('ミニガン：まわりきるまで うてない、そのあと はやい', () => {
+  const a = R.createArsenal(); R.giveWeapon(a, 'minigun'); a.cur = 'minigun';
+  let shots = 0, first = -1;
+  for (let i = 0; i < 120; i++) if (R.tickGun(a, 1 / 60, true)) { shots++; if (first < 0) first = i; }
+  assert.ok(first >= 25, 'まわる じかん ' + first);
+  assert.ok(shots >= 20, 'はやい ' + shots);
 });

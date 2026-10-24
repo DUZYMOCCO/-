@@ -104,3 +104,15 @@ test('lostpointercapture・blur・visibilitychange・あたらしい ゆび で 
   s5.inp.enabled = false; s5.inp.frame();
   assert.equal(s5.inp.stick.x, 0);
 });
+
+test('キーボード：B／F／シフト で ためる、J で うつ', () => {
+  const { inp, win } = setup();
+  for (const code of ['KeyB', 'KeyF', 'ShiftLeft']) {
+    win.fire('keydown', { code, preventDefault() {}, repeat: false });
+    assert.equal(inp.frame().charge, true, code);
+    win.fire('keyup', { code, preventDefault() {} });
+    assert.equal(inp.frame().charge, false, code);
+  }
+  win.fire('keydown', { code: 'KeyJ', preventDefault() {}, repeat: false });
+  const f = inp.frame(); assert.equal(f.shoot, true); assert.equal(f.charge, false);
+});

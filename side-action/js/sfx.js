@@ -1,5 +1,5 @@
 // おと（WebAudio で その場で つくる）
-import { MusicPlayer } from './music.js?v=5';
+import { MusicPlayer } from './music.js?v=6';
 
 export class Sfx {
   constructor(muted = false) {
@@ -79,7 +79,9 @@ export class Sfx {
       case 'shoot': {
         if (!this.gate('shoot' + ev.owner, ev.owner === 'a' ? 0.09 : 0.03)) return;
         const v = ev.owner === 'a' ? 0.45 : 1;
-        if (ev.w === 'shotgun') { this._noise(t, 0.28, { freq: 1600, gain: 0.9 * v }); this._tone(t, 0.2, { f0: 120 * p, f1: 35, gain: 0.9 * v }); }
+        if (ev.w === 'minigun') { if (!this.gate('mg', 0.05)) return; this._noise(t, 0.05, { type: 'bandpass', freq: 2300 * p, gain: 0.42 * v }); this._tone(t, 0.05, { f0: 160 * p, f1: 60, gain: 0.3 * v }); }
+        else if (ev.w === 'beam') { this._tone(t, 0.09, { type: 'square', f0: 1500 * p, f1: 500, gain: 0.07 * v }); this._tone(t, 0.07, { type: 'sine', f0: 2400, f1: 900, gain: 0.1 * v }); }
+        else if (ev.w === 'shotgun') { this._noise(t, 0.28, { freq: 1600, gain: 0.9 * v }); this._tone(t, 0.2, { f0: 120 * p, f1: 35, gain: 0.9 * v }); }
         else if (ev.w === 'bazooka') { this._noise(t, 0.5, { type: 'bandpass', freq: 700, gain: 0.7 }); this._tone(t, 0.3, { f0: 90, f1: 40, gain: 0.8 }); }
         else if (ev.w === 'rifle') { this._noise(t, 0.12, { freq: 2600 * p, gain: 0.6 * v }); this._tone(t, 0.1, { f0: 170 * p, f1: 45, gain: 0.6 * v }); }
         else if (ev.w === 'smg') { this._noise(t, 0.07, { type: 'bandpass', freq: 2000 * p, gain: 0.5 * v }); this._tone(t, 0.06, { f0: 200 * p, f1: 70, gain: 0.35 * v }); }
@@ -108,6 +110,9 @@ export class Sfx {
       case 'roar': this._tone(t, 1.1, { type: 'sawtooth', f0: 110, f1: 45, gain: 0.35 }); this._noise(t, 1.0, { freq: 400, gain: 0.5, attack: 0.1 }); break;
       case 'spit': case 'spike': this._noise(t, 0.3, { type: 'bandpass', freq: 400, q: 3, gain: 0.5 }); this._tone(t, 0.2, { f0: 200, f1: 60, gain: 0.4 }); break;
       case 'aim': this._tone(t, 0.12, { type: 'square', f0: 1400, f1: 1400, gain: 0.05 }); break;
+      case 'spin': this._tone(t, 0.5, { type: 'sawtooth', f0: 60, f1: 340, gain: 0.12 }); this._noise(t, 0.5, { type: 'bandpass', freq: 1200, q: 3, gain: 0.18, attack: 0.3 }); break;
+      case 'hum': this._tone(t, 0.6, { type: 'sine', f0: 140, f1: 520, gain: 0.16 }); this._tone(t, 0.6, { type: 'triangle', f0: 280, f1: 1040, gain: 0.05 }); break;
+      case 'beam': this._noise(t, 0.5, { type: 'bandpass', freq: 1800, q: 0.8, gain: 0.6 }); this._tone(t, 0.55, { type: 'sawtooth', f0: 900, f1: 120, gain: 0.25 }); this._tone(t, 0.4, { f0: 70, f1: 30, gain: 0.7 }); break;
       case 'charge': this._tone(t, 0.6, { type: 'sawtooth', f0: 80, f1: 200, gain: 0.25 }); break;
       case 'lock': this._tone(t, 0.15, { type: 'square', f0: 220, f1: 220, gain: 0.08 }); this._tone(t + 0.18, 0.2, { type: 'square', f0: 165, f1: 165, gain: 0.08 }); break;
       case 'go': [196, 233, 294].forEach((f, i) => this._tone(t + i * 0.1, 0.22, { type: 'sawtooth', f0: f, f1: f, gain: 0.07 })); break;

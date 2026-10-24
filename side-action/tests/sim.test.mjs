@@ -19,7 +19,7 @@ test('ちの いろは みどり／むらさき だけ', () => {
 function play(stage, allies, seed) {
   const g = new Game(stage, { viewW: 667, seed, allies }); const mem = {};
   let bossSeen = false, maxParts = 0;
-  for (let i = 0; i < 60 * 600 && g.state !== 'clear'; i++) {
+  for (let i = 0; i < 60 * 900 && g.state !== 'clear'; i++) {
     g.update(1 / 60, botInput(g, mem));
     for (const e of g.drainEvents()) assert.ok(e && e.type, 'event');
     if (g.boss) bossSeen = true;
@@ -29,13 +29,14 @@ function play(stage, allies, seed) {
   return { g, bossSeen, maxParts };
 }
 
-for (const stage of [0, 1, 2, 3, 4]) for (const allies of [true, false]) {
+for (let stage = 0; stage < 15; stage++) for (const allies of [true, false]) {
   test(`じどう プレイで ステージ${stage + 1} を クリア（なかま ${allies ? 'あり' : 'なし'}）`, () => {
     const { g, bossSeen, maxParts } = play(stage, allies, 11 + stage);
     assert.ok(bossSeen, 'ボスが でた');
     assert.equal(g.state, 'clear');
     assert.ok(g.result.score > 0 && g.result.kills > 5);
     assert.ok(maxParts <= 260, 'パーティクル じょうげん');
+    assert.ok(g.bullets.length < 400 && g.enemies.length < 40, 'じょうげん');
   });
 }
 

@@ -4,17 +4,18 @@
  */
 import { loadCss } from '../../common/js/load-css.js';
 import { storage } from '../../common/js/storage.js';
-import { VERSION, STAGES, WEAPONS, ZOOMS, normalizeSave, rankOf } from './rules.js?v=5';
-import { Game } from './game.js?v=5';
-import { Renderer } from './render.js?v=5';
-import { Input } from './input.js?v=5';
-import { Sfx } from './sfx.js?v=5';
+import { VERSION, STAGES, WEAPONS, ZOOMS, normalizeSave, rankOf } from './rules.js?v=6';
+import { Game } from './game.js?v=6';
+import { Renderer } from './render.js?v=6';
+import { Input } from './input.js?v=6';
+import { Sfx } from './sfx.js?v=6';
+const PER = 5;
 
 const SAVE_KEY = 'side_action_save';
 const TITLE = 'ガンキック ヒーローズ';
 
 export default {
-  prepare() { return loadCss(new URL('../css/side-action.css?v=5', import.meta.url).href); },
+  prepare() { return loadCss(new URL('../css/side-action.css?v=6', import.meta.url).href); },
 
   init(container, onBackToHub) {
     this.container = container; this.onBackToHub = onBackToHub;
@@ -53,6 +54,7 @@ export default {
         <button class="sa-btn sa-pause" data-btn="pause" aria-label="ポーズ">Ⅱ</button>
         <button class="sa-btn sa-swap" data-btn="swap">ぶきかえ</button>
         <button class="sa-btn sa-shoot" data-btn="shoot">うつ</button>
+        <button class="sa-btn sa-charge" data-btn="charge">ためる</button>
         <button class="sa-btn sa-punch" data-btn="punch">パンチ</button>
         <button class="sa-btn sa-kick" data-btn="kick">キック</button>
         <button class="sa-btn sa-jump" data-btn="jump">ジャンプ</button>
@@ -60,6 +62,7 @@ export default {
       <div class="sa-scr sa-title">
         <h1>${TITLE}</h1>
         <p class="sa-sub">やみに ひそむ ものたちを けちらせ</p>
+        <div class="sa-pager"><button class="sa-pg" data-act="pgPrev">◀</button><span class="sa-pgl"></span><button class="sa-pg" data-act="pgNext">▶</button></div>
         <div class="sa-stages"></div>
         <div class="sa-row">
           <button class="sa-small" data-act="allies"></button>
@@ -115,6 +118,7 @@ export default {
       if (!this.sfx.music.started) this.sfx.music.startRandom();
       const a = b.dataset.act;
       if (a === 'stage') this.start(+b.dataset.i);
+      else if (a === 'pgPrev' || a === 'pgNext') { this.page = Math.max(0, Math.min(Math.ceil(STAGES.length / PER) - 1, (this.page || 0) + (a === 'pgNext' ? 1 : -1))); this.renderTitle(); }
       else if (a === 'allies') { this.save.allies = !this.save.allies; this.persist(); this.renderTitle(); }
       else if (a === 'zoom') { this.save.zoom = (this.save.zoom + 1) % ZOOMS.length; this.persist(); this.applyZoom(); }
       else if (a === 'howto') this.show('howto');
@@ -195,8 +199,17 @@ export default {
     this.applyZoom();
   },
   renderTitle() {
+    // 5こずつ ページで みせる（さいしょは いちばん さきの あそべる ステージの ページ）
+    const isLocked = (i) => i > 0 && !this.save.cleared.includes(STAGES[i - 1].id) && !this.save.cleared.includes(STAGES[i].id);
+    const pages = Math.ceil(STAGES.length / PER);
+    if (this.page == null) { let top = 0; STAGES.forEach((_, i) => { if (!isLocked(i)) top = i; }); this.page = Math.floor(top / PER); }
+    this.page = Math.max(0, Math.min(pages - 1, this.page));
+    const p0 = this.page * PER;
+    this.el('.sa-pgl').textContent = `${p0 + 1}〜${Math.min(STAGES.length, p0 + PER)}  （${this.page + 1}/${pages}）`;
+    this.el('[data-act="pgPrev"]').disabled = this.page === 0; this.el('[data-act="pgNext"]').disabled = this.page >= pages - 1;
     this.el('.sa-stages').innerHTML = STAGES.map((s, i) => {
-      const locked = i > 0 && !this.save.cleared.includes(STAGES[i - 1].id) && !this.save.cleared.includes(s.id);
+      if (i < p0 || i >= p0 + PER) return '';
+      const locked = isLocked(i);
       const best = this.save.best[s.id];
       return `<button class="sa-stage ${locked ? 'locked' : ''}" data-act="${locked ? '' : 'stage'}" data-i="${i}" ${locked ? 'disabled' : ''}>
         <b>${s.name}</b><span>${s.sub}</span><em>${locked ? '🔒 まえを クリアしてね' : best ? `ベスト ${best.score} ${best.rank}` : 'ボスが まってる…'}</em></button>`;
@@ -204,6 +217,7 @@ export default {
     this.el('[data-act="allies"]').textContent = `なかま：${this.save.allies ? 'いっしょ' : 'ひとり'}`;
   },
   start(i) {
+    this.page = null;
     this.game = new Game(i, { viewW: this.viewW, allies: this.save.allies, zoom: this.zoomZ(), seed: (Math.random() * 1e9) | 0 });
     this.paused = false; this.show(null); this.overShown = false;
     this.renderHudStatic();
@@ -228,6 +242,7 @@ export default {
     set('score', g.score, (v) => { this.el('.sa-score').textContent = v.toLocaleString(); });
     const ammo = p.ars.guns[p.ars.cur].ammo;
     set('wpn', `${p.ars.cur}:${ammo}`, () => { this.el('.sa-wpn b').textContent = WEAPONS[p.ars.cur].name; this.el('.sa-wpn span').textContent = ammo === Infinity ? '∞' : ammo; });
+    set('beamBtn', p.ars.cur === 'beam', (v) => { this.el('.sa-charge').classList.toggle('show', v); });
     const bars = this.root.querySelectorAll('.sa-ally');
     g.allies.forEach((a, i) => set('a' + i, a.down > 0 ? -1 : Math.ceil(a.hp), (v) => { bars[i].classList.toggle('down', v < 0); bars[i].querySelector('i').style.width = `${Math.max(0, v / a.maxHp) * 100}%`; }));
   },
@@ -270,7 +285,7 @@ export default {
   },
   drawTitleBg(t) {
     // タイトルの うしろは デモ（じどう で うごく）
-    if (!this.demo) { this.demo = new Game(0, { viewW: this.viewW, seed: 99, zoom: this.zoomZ() }); this.demoMem = {}; this.demoBot = null; import('./game.js?v=5').then((m) => { this.demoBot = m.botInput; }); }
+    if (!this.demo) { this.demo = new Game(0, { viewW: this.viewW, seed: 99, zoom: this.zoomZ() }); this.demoMem = {}; this.demoBot = null; import('./game.js?v=6').then((m) => { this.demoBot = m.botInput; }); }
     const d = this.demo;
     if (this.demoBot) d.update(1 / 60, this.demoBot(d, this.demoMem)); d.drainEvents(); d.banner = null; d.texts && (d.texts.length = 0);
     if (d.state !== 'play' || d.time > 90) this.demo = null;
