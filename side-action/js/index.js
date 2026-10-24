@@ -4,17 +4,17 @@
  */
 import { loadCss } from '../../common/js/load-css.js';
 import { storage } from '../../common/js/storage.js';
-import { VERSION, STAGES, WEAPONS, normalizeSave, rankOf } from './rules.js?v=1';
-import { Game } from './game.js?v=1';
-import { Renderer } from './render.js?v=1';
-import { Input } from './input.js?v=1';
-import { Sfx } from './sfx.js?v=1';
+import { VERSION, STAGES, WEAPONS, normalizeSave, rankOf } from './rules.js?v=2';
+import { Game } from './game.js?v=2';
+import { Renderer } from './render.js?v=2';
+import { Input } from './input.js?v=2';
+import { Sfx } from './sfx.js?v=2';
 
 const SAVE_KEY = 'side_action_save';
 const TITLE = 'ガンキック ヒーローズ';
 
 export default {
-  prepare() { return loadCss(new URL('../css/side-action.css?v=1', import.meta.url).href); },
+  prepare() { return loadCss(new URL('../css/side-action.css?v=2', import.meta.url).href); },
 
   init(container, onBackToHub) {
     this.container = container; this.onBackToHub = onBackToHub;
@@ -57,7 +57,7 @@ export default {
       </div>
       <div class="sa-scr sa-title">
         <h1>${TITLE}</h1>
-        <p class="sa-sub">キック！ パンチ！ うって すすめ！</p>
+        <p class="sa-sub">やみに ひそむ ものたちを けちらせ</p>
         <div class="sa-stages"></div>
         <div class="sa-row">
           <button class="sa-small" data-act="allies"></button>
@@ -201,6 +201,9 @@ export default {
     const dt = Math.min(1 / 30, Math.max(0, (now - this.last) / 1000)); this.last = now;
     this.fps.n++; this.fps.t += dt; if (this.fps.t >= 1) { this.fps.v = this.fps.n / this.fps.t; this.fps.n = 0; this.fps.t = 0; }
     const g = this.game;
+    const P = g && g.player, bossOn = g && g.boss && !g.boss.dead && g.boss.state !== 'intro';
+    this.sfx.ambient(dt, { on: !g ? this.screen === 'title' || this.screen === 'howto' : (this.screen === null || this.screen === 'pause') && g.state === 'play', level: !g ? 0.7 : 1,
+      danger: g ? Math.max(bossOn ? 0.6 : 0, P ? 1 - P.hp / P.maxHp : 0) : 0 });
     if (!g) { this.drawTitleBg(now / 1000); return; }
     if (this.screen === null) {
       g.update(dt, this.input.frame());
@@ -214,7 +217,7 @@ export default {
   },
   drawTitleBg(t) {
     // タイトルの うしろは デモ（じどう で うごく）
-    if (!this.demo) { this.demo = new Game(0, { viewW: this.viewW, seed: 99 }); this.demoMem = {}; this.demoBot = null; import('./game.js?v=1').then((m) => { this.demoBot = m.botInput; }); }
+    if (!this.demo) { this.demo = new Game(0, { viewW: this.viewW, seed: 99 }); this.demoMem = {}; this.demoBot = null; import('./game.js?v=2').then((m) => { this.demoBot = m.botInput; }); }
     const d = this.demo;
     if (this.demoBot) d.update(1 / 60, this.demoBot(d, this.demoMem)); d.drainEvents(); d.banner = null; d.texts && (d.texts.length = 0);
     if (d.state !== 'play' || d.time > 90) this.demo = null;

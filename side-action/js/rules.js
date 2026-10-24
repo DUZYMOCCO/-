@@ -1,5 +1,5 @@
 // バトル アクション の きまり（DOM なし・node で テストできる）
-export const VERSION = '0.1.0';
+export const VERSION = '0.2.0';
 export const H = 375;              // ろんり の たかさ
 export const GROUND = 318;         // じめん（あしの y）
 export const GRAV = 2000;
@@ -103,11 +103,11 @@ export function knockOf(move, weight = 1, face = 1, armor = 0) {
 
 // ---- てき（こわめ・でも ちは みどり／むらさき） ----
 export const ENEMIES = {
-  grunt:   { name: 'マスクへい',   hp: 34,  w: 30, h: 70, speed: 120, weight: 1,   dmg: 8,  reach: 46, wind: 0.45, cool: 1.2, score: 100, blood: 'green' },
-  gunner:  { name: 'ガンへい',     hp: 30,  w: 30, h: 70, speed: 100, weight: 1,   dmg: 7,  reach: 0,  wind: 0.55, cool: 1.9, score: 150, blood: 'green', range: [190, 330], shotSpeed: 330 },
-  shield:  { name: 'タテへい',     hp: 50,  w: 34, h: 74, speed: 80,  weight: 1.4, dmg: 10, reach: 50, wind: 0.6,  cool: 1.6, score: 200, blood: 'green', shieldHp: 26 },
-  crawler: { name: 'カゲモドキ',   hp: 22,  w: 42, h: 30, speed: 230, weight: 0.8, dmg: 7,  reach: 40, wind: 0.3,  cool: 1.0, score: 120, blood: 'purple', jumper: true },
-  brute:   { name: 'デカマスク',   hp: 140, w: 52, h: 104, speed: 75, weight: 2.4, dmg: 16, reach: 64, wind: 0.75, cool: 1.8, score: 500, blood: 'green', armor: 0.45 },
+  grunt:   { name: 'マスクへい',   hp: 34,  w: 30, h: 70, speed: 132, weight: 1,   dmg: 8,  reach: 46, wind: 0.45, cool: 1.02, score: 100, blood: 'green' },
+  gunner:  { name: 'ガンへい',     hp: 30,  w: 30, h: 70, speed: 110, weight: 1,   dmg: 7,  reach: 0,  wind: 0.55, cool: 1.61, score: 150, blood: 'green', range: [190, 330], shotSpeed: 330 },
+  shield:  { name: 'タテへい',     hp: 50,  w: 34, h: 74, speed: 88,  weight: 1.4, dmg: 10, reach: 50, wind: 0.6,  cool: 1.36, score: 200, blood: 'green', shieldHp: 26 },
+  crawler: { name: 'カゲモドキ',   hp: 22,  w: 42, h: 30, speed: 253, weight: 0.8, dmg: 7,  reach: 40, wind: 0.3,  cool: 0.85, score: 120, blood: 'purple', jumper: true },
+  brute:   { name: 'デカマスク',   hp: 140, w: 52, h: 104, speed: 82, weight: 2.4, dmg: 16, reach: 64, wind: 0.75, cool: 1.53, score: 500, blood: 'green', armor: 0.45 },
 };
 export const BOSSES = {
   agent: { name: 'くろよろい エージェント', hp: 1400, w: 74, h: 148, speed: 110, weight: 4, dmg: 18, score: 5000, blood: 'purple', armor: 0.7 },
@@ -118,29 +118,29 @@ export const BOSSES = {
 // arenas: カメラが とまって てきが でる ばしょ。waves は じゅんばん（まえの が へったら つぎ）
 export const STAGES = [
   {
-    id: 1, name: 'ステージ 1', sub: 'くらい けんきゅうじょ', theme: 'lab', length: 4300,
+    id: 1, name: 'ステージ 1', sub: 'ほろびた けんきゅうじょ', theme: 'lab', length: 4300,
     platforms: [[620, 236, 150], [1180, 220, 170], [1500, 170, 120], [2300, 232, 160], [2960, 210, 150], [3290, 236, 130]],
     crates: [[480], [1060], [1880], [2600], [3420]],
     pickups: [[820, 'smg'], [1550, 'heal', 140], [2380, 'shotgun', 222], [3050, 'ammo'], [3560, 'heal']],
     arenas: [
-      { x: 700,  waves: [['grunt', 'grunt'], ['grunt', 'gunner']] },
-      { x: 1560, waves: [['grunt', 'crawler', 'grunt'], ['gunner', 'shield']] },
-      { x: 2450, waves: [['shield', 'grunt', 'crawler'], ['brute'], ['gunner', 'gunner', 'crawler']] },
-      { x: 3300, waves: [['grunt', 'grunt', 'gunner'], ['crawler', 'crawler', 'shield', 'grunt']] },
+      { x: 700,  waves: [['grunt', 'grunt', 'crawler'], ['grunt', 'gunner', 'grunt']] },
+      { x: 1560, waves: [['grunt', 'crawler', 'grunt', 'crawler'], ['gunner', 'shield', 'grunt']] },
+      { x: 2450, waves: [['shield', 'grunt', 'crawler', 'grunt'], ['brute', 'crawler'], ['gunner', 'gunner', 'crawler', 'crawler']] },
+      { x: 3300, waves: [['grunt', 'grunt', 'gunner', 'crawler'], ['crawler', 'crawler', 'shield', 'grunt', 'brute']] },
     ],
     boss: { x: 3900, id: 'agent' },
   },
   {
-    id: 2, name: 'ステージ 2', sub: 'やみの おやしき', theme: 'manor', length: 4700,
+    id: 2, name: 'ステージ 2', sub: 'あかい そらの おやしき', theme: 'manor', length: 4700,
     platforms: [[560, 226, 160], [1000, 200, 140], [1700, 230, 170], [2050, 180, 140], [2760, 224, 160], [3380, 200, 170], [3800, 236, 130]],
     crates: [[430], [1350], [2200], [3100]],
     pickups: [[700, 'rifle', 212], [1450, 'heal'], [2120, 'bazooka', 166], [2900, 'ammo'], [3500, 'heal', 186], [3900, 'ammo']],
     arenas: [
-      { x: 650,  waves: [['crawler', 'crawler', 'grunt'], ['gunner', 'grunt', 'grunt']] },
-      { x: 1500, waves: [['shield', 'shield', 'gunner'], ['crawler', 'crawler', 'crawler']] },
-      { x: 2350, waves: [['brute', 'grunt'], ['gunner', 'gunner', 'shield'], ['crawler', 'grunt', 'crawler', 'grunt']] },
-      { x: 3200, waves: [['brute', 'gunner'], ['shield', 'crawler', 'crawler', 'gunner']] },
-      { x: 3950, waves: [['grunt', 'grunt', 'grunt', 'crawler'], ['brute', 'brute']] },
+      { x: 650,  waves: [['crawler', 'crawler', 'grunt', 'grunt'], ['gunner', 'grunt', 'grunt', 'crawler']] },
+      { x: 1500, waves: [['shield', 'shield', 'gunner', 'crawler'], ['crawler', 'crawler', 'crawler', 'crawler']] },
+      { x: 2350, waves: [['brute', 'grunt', 'crawler'], ['gunner', 'gunner', 'shield', 'grunt'], ['crawler', 'grunt', 'crawler', 'grunt', 'crawler']] },
+      { x: 3200, waves: [['brute', 'gunner', 'grunt'], ['shield', 'crawler', 'crawler', 'gunner', 'grunt']] },
+      { x: 3950, waves: [['grunt', 'grunt', 'grunt', 'crawler', 'crawler'], ['brute', 'brute', 'crawler']] },
     ],
     boss: { x: 4300, id: 'hydra' },
   },
@@ -148,8 +148,8 @@ export const STAGES = [
 
 // ---- なかま ----
 export const ALLIES = [
-  { id: 'ao',   name: 'アオ', color: '#3d8bff', weapon: 'rifle', hp: 90, gunDmg: 0.42, kickDmg: 0.8, offset: -70 },
-  { id: 'momo', name: 'モモ', color: '#ff5fa2', weapon: 'smg',   hp: 80, gunDmg: 0.38, kickDmg: 1.0, offset: -120 },
+  { id: 'ao',   name: 'アオ', color: '#6f9fd8', weapon: 'rifle', hp: 90, gunDmg: 0.42, kickDmg: 0.8, offset: -70 },
+  { id: 'momo', name: 'モモ', color: '#c97a9a', weapon: 'smg',   hp: 80, gunDmg: 0.38, kickDmg: 1.0, offset: -120 },
 ];
 export const ALLY_DOWN_TIME = 7;
 // なかまの きめごと（なにを する か）

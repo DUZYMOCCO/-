@@ -3,13 +3,13 @@ import {
   H, GROUND, GRAV, PHYS, WEAPONS, MOVES, COMBO_WINDOW, CHAIN_GRACE, ENEMIES, BOSSES, STAGES, ALLIES, ALLY_DOWN_TIME,
   createArsenal, giveWeapon, addAmmo, nextWeapon, tickGun, pickMove, moveBox, overlap, knockOf, comboWord,
   allyDecide, landOn, makePlatforms, scoreFor,
-} from './rules.js';
+} from './rules.js?v=2';
 
 export const BLOOD = {
   green: ['#63e64b', '#2fae3a', '#a6ff6e', '#1f7d2b'],
   purple: ['#b04aff', '#7a2fd0', '#e08bff', '#4e1a8c'],
 };
-const MAX_PARTS = 260, MAX_SPLATS = 70;
+const MAX_PARTS = 260, MAX_SPLATS = 90;
 
 function rng(seed) {
   let a = seed >>> 0;
@@ -216,6 +216,8 @@ export class Game {
     const hb = this.hurtBox(e);
     const hy = isBoss && e.id === 'hydra' ? hb.y + hb.h * 0.45 : e.y - e.h * 0.6;
     this.blood(e.x - face * 6, hy, face, def.blood, melee ? 9 : 4);
+    if (melee && this.rand() < 0.35) this.splat(e.x + face * (10 + this.rand() * 40), hy - 10 + (this.rand() - 0.5) * 50, def.blood, true);
+    if (!melee) this.sparks(e.x - face * 8, hy, '#fff1c4', 2);
     if (owner === 'p' || owner === 'a') {
       if (owner === 'p') { this.combo++; this.comboT = COMBO_WINDOW; this.maxCombo = Math.max(this.maxCombo, this.combo); const w = comboWord(this.combo); if (w && [6, 12, 20, 30].includes(this.combo)) this.addText(this.player.x, this.player.y - 120, w, '#ffe14a', 22); }
     }
@@ -288,7 +290,7 @@ export class Game {
       this.bullets.push({ owner, x: gx, y: gy, vx: Math.cos(a) * W.speed, vy: Math.sin(a) * W.speed, life: W.life * (0.85 + this.rand() * 0.3), dmg: W.dmg * dmgMul, knock: W.knock, w: W.id, blast: W.blast, r: W.id === 'bazooka' ? 7 : 3 });
     }
     src.recoil = 1;
-    if (W.id !== 'bazooka' && this.parts.length < MAX_PARTS) this.parts.push({ kind: 'shell', x: gx - src.face * 20, y: gy - 4, vx: -src.face * (60 + this.rand() * 60), vy: -200 - this.rand() * 80, life: 0.6, max: 0.6, size: 3, color: '#e4b84a', g: 1 });
+    if (W.id !== 'bazooka' && this.parts.length < MAX_PARTS) this.parts.push({ kind: 'shell', x: gx - src.face * 20, y: gy - 4, vx: -src.face * (60 + this.rand() * 60), vy: -200 - this.rand() * 80, life: 2.2, max: 2.2, size: 3, color: '#b89a52', g: 1 });
     this.parts.push({ kind: 'muzzle', x: gx + src.face * 8, y: gy, life: 0.05, max: 0.05, size: W.id === 'shotgun' || W.id === 'bazooka' ? 16 : 10, face: src.face, color: '#fff3a0' });
     this.ev('shoot', { w: W.id, owner });
   }
@@ -442,11 +444,14 @@ export class Game {
   spawnEnemy(type, side, i) {
     const d = ENEMIES[type];
     const x = side > 0 ? this.camX + this.viewW + 30 + i * 40 : this.camX - 30 - i * 40;
-    const fromTop = type === 'crawler' && this.rand() < 0.6;
-    const e = { kind: 'enemy', type, def: d, x: fromTop ? clamp(this.player.x + (this.rand() - 0.5) * 300, this.camX + 40, this.camX + this.viewW - 40) : x,
+    const r = type === 'crawler' ? this.rand() : 1;
+    const fromTop = r < 0.25, fromWall = !fromTop && r < 0.7;
+    const near = clamp(this.player.x + (this.rand() < 0.5 ? -1 : 1) * (110 + this.rand() * 150), this.camX + 50, this.camX + this.viewW - 120);
+    const e = { kind: 'enemy', type, def: d, x: fromTop || fromWall ? near : x,
       y: fromTop ? -30 : GROUND, vx: 0, vy: 0, w: d.w, h: d.h, face: -side, hp: d.hp, maxHp: d.hp, state: 'walk', t: 0, cool: 0.8 + this.rand(),
-      onGround: !fromTop, anim: this.rand() * 5, shieldHp: d.shieldHp || 0, spawnT: 0, flashT: 0, hitDone: false, dropT: 0 };
-    if (fromTop) this.ev('creep');
+      onGround: !fromTop, anim: this.rand() * 5, shieldHp: d.shieldHp || 0, spawnT: fromWall ? 0.9 : 0, spawnMax: 0.9, wallY: GROUND - 70 - this.rand() * 60, flashT: 0, hitDone: false, dropT: 0 };
+    if (fromWall) e.face = this.player.x > e.x ? 1 : -1;
+    if (fromTop || fromWall) this.ev('creep');
     this.enemies.push(e);
     return e;
   }
@@ -460,6 +465,8 @@ export class Game {
       if ((e.onGround && e.deadT > 0.25) || e.deadT > 1.2) this.poof(e);
       return;
     }
+    // かべの しみから はいでて くる あいだ
+    if (e.spawnT > 0) { e.spawnT -= dt; e.vx = 0; if (e.spawnT <= 0) { e.spawnT = 0; this.ev('hiss'); this.dust(e.x, GROUND, 4); } return; }
     // ねらう あいて
     if (!e.tgt || e.tgt.hp <= 0 || e.tgt.down > 0 || this.rand() < dt * 0.4) {
       const opts = this.fighters().filter((f) => f.hp > 0 && !(f.down > 0));
@@ -511,6 +518,7 @@ export class Game {
           const ang = Math.atan2(ty - gy, Math.abs(dx));
           const s = d.shotSpeed;
           this.bullets.push({ owner: 'e', x: e.x + e.face * 26, y: gy, vx: Math.cos(ang) * s * e.face, vy: Math.sin(ang) * s, life: 2.2, dmg: d.dmg, r: 6, w: 'orb' });
+          this.addPart({ kind: 'muzzle', x: e.x + e.face * 30, y: gy, life: 0.07, max: 0.07, size: 12, face: e.face, color: '#e9a0ff' });
           this.ev('eshoot'); e.cool = d.cool; e.state = 'walk';
         } else { e.state = 'attack'; e.t = 0.22; }
       }
@@ -744,7 +752,7 @@ export class Game {
   }
   splat(x, y, kind, wall = false) {
     const cols = BLOOD[kind] || BLOOD.green;
-    this.splats.push({ x, y, r: 10 + this.rand() * 14, color: cols[Math.floor(this.rand() * 2)], life: 9, wall, seed: this.rand() });
+    this.splats.push({ x, y, r: 10 + this.rand() * 14, color: cols[Math.floor(this.rand() * 2)], life: wall ? 30 : 45, wall, seed: this.rand() });
     if (this.splats.length > MAX_SPLATS) this.splats.shift();
   }
   smoke(x, y, n) { for (let i = 0; i < n; i++) this.addPart({ kind: 'smoke', x: x + (this.rand() - 0.5) * 30, y: y + (this.rand() - 0.5) * 30, vx: (this.rand() - 0.5) * 120, vy: -30 - this.rand() * 80, life: 0.8 + this.rand() * 0.5, max: 1.3, size: 14 + this.rand() * 16, color: this.rand() < 0.5 ? '#2a2633' : '#4a4458', g: -0.05 }); }

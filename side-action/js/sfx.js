@@ -13,7 +13,30 @@ export class Sfx {
     this.noise = buf;
   }
   setMuted(m) { this.muted = m; if (this.master) this.master.gain.value = m ? 0 : 0.7; }
-  close() { try { this.ctx && this.ctx.close(); } catch (e) { /* なし */ } this.ctx = null; }
+  // ---- ふんいき：ひくい うなり と しんぞうの おと ----
+  ambient(dt, { on = false, level = 1, danger = 0 } = {}) {
+    if (!this.ctx || this.ctx.state !== 'running') return;
+    const ctx = this.ctx, t = ctx.currentTime;
+    if (!this.amb) {
+      const out = ctx.createGain(); out.gain.value = 0; out.connect(this.master);
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 150; lp.Q.value = 3; lp.connect(out);
+      const oscs = [41, 41.7, 61.5].map((f, i) => { const o = ctx.createOscillator(); o.type = i === 2 ? 'triangle' : 'sawtooth'; o.frequency.value = f; const g = ctx.createGain(); g.gain.value = i === 2 ? 0.25 : 0.5; o.connect(g).connect(lp); o.start(); return o; });
+      const lfo = ctx.createOscillator(); lfo.frequency.value = 0.09; const lg = ctx.createGain(); lg.gain.value = 70; lfo.connect(lg).connect(lp.frequency); lfo.start();
+      const n = ctx.createBufferSource(); n.buffer = this.noise; n.loop = true; const nf = ctx.createBiquadFilter(); nf.type = 'bandpass'; nf.frequency.value = 260; nf.Q.value = 0.6; const ng = ctx.createGain(); ng.gain.value = 0.16; n.connect(nf).connect(ng).connect(out); n.start();
+      this.amb = { out, nodes: [...oscs, lfo, n], beat: 0.5 };
+    }
+    const A = this.amb, want = on ? 0.13 * level : 0;
+    if (Math.abs((A.cur || 0) - want) > 0.002) { A.cur = want; A.out.gain.setTargetAtTime(want, t, 0.6); }
+    if (!on || this.muted) return;
+    A.beat -= dt;
+    if (A.beat <= 0) {
+      const gap = 1.25 - 0.6 * Math.min(1, danger), v = 0.25 + 0.45 * Math.min(1, danger);
+      A.beat = gap;
+      this._tone(t, 0.16, { f0: 62, f1: 34, gain: v }); this._tone(t + 0.2, 0.14, { f0: 52, f1: 30, gain: v * 0.7 });
+    }
+  }
+  close() { if (this.amb) { this.amb.nodes.forEach((n) => { try { n.stop(); } catch (e) { /* なし */ } }); this.amb = null; }
+    try { this.ctx && this.ctx.close(); } catch (e) { /* なし */ } this.ctx = null; }
   _noise(t, dur, { type = 'lowpass', freq = 1000, q = 0.7, gain = 0.5, attack = 0.001, rate = 1 } = {}) {
     const ctx = this.ctx, s = ctx.createBufferSource(); s.buffer = this.noise; s.playbackRate.value = rate;
     const f = ctx.createBiquadFilter(); f.type = type; f.frequency.value = freq; f.Q.value = q;
@@ -59,14 +82,15 @@ export class Sfx {
       case 'clang': this._tone(t, 0.25, { type: 'square', f0: 1200, f1: 1100, gain: 0.08 }); this._noise(t, 0.1, { type: 'highpass', freq: 3000, gain: 0.35 }); break;
       case 'ting': if (this.gate('ting', 0.06)) this._tone(t, 0.12, { type: 'triangle', f0: 2200, f1: 2000, gain: 0.1 }); break;
       case 'break': case 'wood': if (this.gate('wood', 0.05)) this._noise(t, ev.type === 'break' ? 0.3 : 0.08, { type: 'bandpass', freq: 700, q: 1, gain: 0.5 }); break;
-      case 'creep': case 'hiss': this._noise(t, 0.6, { type: 'bandpass', freq: 3000, q: 4, gain: 0.18, attack: 0.15 }); this._tone(t, 0.6, { type: 'sawtooth', f0: 70, f1: 55, gain: 0.08 }); break;
+      case 'creep': this._noise(t, 0.9, { type: 'bandpass', freq: 600, q: 6, gain: 0.3, attack: 0.3, rate: 0.5 }); this._tone(t, 0.9, { type: 'sawtooth', f0: 55, f1: 38, gain: 0.12 }); break;
+      case 'hiss': this._noise(t, 0.6, { type: 'bandpass', freq: 3000, q: 4, gain: 0.18, attack: 0.15 }); this._tone(t, 0.6, { type: 'sawtooth', f0: 70, f1: 55, gain: 0.08 }); break;
       case 'roar': this._tone(t, 1.1, { type: 'sawtooth', f0: 110, f1: 45, gain: 0.35 }); this._noise(t, 1.0, { freq: 400, gain: 0.5, attack: 0.1 }); break;
       case 'spit': case 'spike': this._noise(t, 0.3, { type: 'bandpass', freq: 400, q: 3, gain: 0.5 }); this._tone(t, 0.2, { f0: 200, f1: 60, gain: 0.4 }); break;
       case 'aim': this._tone(t, 0.12, { type: 'square', f0: 1400, f1: 1400, gain: 0.05 }); break;
       case 'charge': this._tone(t, 0.6, { type: 'sawtooth', f0: 80, f1: 200, gain: 0.25 }); break;
       case 'lock': this._tone(t, 0.15, { type: 'square', f0: 220, f1: 220, gain: 0.08 }); this._tone(t + 0.18, 0.2, { type: 'square', f0: 165, f1: 165, gain: 0.08 }); break;
-      case 'go': [523, 659, 784].forEach((f, i) => this._tone(t + i * 0.09, 0.12, { type: 'square', f0: f, f1: f, gain: 0.08 })); break;
-      case 'clear': [523, 659, 784, 1047].forEach((f, i) => this._tone(t + i * 0.12, 0.25, { type: 'square', f0: f, f1: f, gain: 0.1 })); break;
+      case 'go': [196, 233, 294].forEach((f, i) => this._tone(t + i * 0.1, 0.22, { type: 'sawtooth', f0: f, f1: f, gain: 0.07 })); break;
+      case 'clear': [262, 311, 392, 523].forEach((f, i) => this._tone(t + i * 0.16, 0.4, { type: 'sawtooth', f0: f, f1: f, gain: 0.08 })); this._tone(t, 1.2, { f0: 65, f1: 60, gain: 0.4 }); break;
       case 'bossDie': this._noise(t, 1.5, { freq: 600, gain: 1 }); this._tone(t, 1.4, { type: 'sawtooth', f0: 160, f1: 30, gain: 0.4 }); break;
       case 'down': case 'over': this._tone(t, 0.6, { type: 'triangle', f0: 440, f1: 110, gain: 0.2 }); break;
       case 'revive': this._tone(t, 0.3, { type: 'triangle', f0: 440, f1: 880, gain: 0.2 }); break;
