@@ -45,5 +45,11 @@ export const games = [
     description: 'アサルトライフルで ゾンビを うて！ ロケットで まとめて ふっとばせ！ ウェーブごとに ひる・ゆうがた・よると かわり、3ウェーブごとに ボスが くるよ。おそわれてる おじさんを たすけると ふくが もらえる！ ゾンビが おとす そうび（ヘルメット・ベスト・くつ・うでわ）で つよく なろう。',
     load: () => import('../../zombie-tps/js/index.js'),
   },
+  {
+    id: 'side-action', section: 'kids', title: 'ガンキック ヒーローズ', subtitle: 'キック！ パンチ！ うって すすめ！',
+    icon: '🥋', color: '#7c4dff',
+    description: 'よこに すすむ アクション！ はしって ジャンプ、とびげり・かいてんげり・アッパーで コンボを つなげよう。ハンドガン・サブマシンガン・ライフル・ショットガン・バズーカを ひろって うちまくれ！ なかまの アオと モモも いっしょに たたかうよ。こわ〜い けんきゅうじょと おやしきの ボスを たおせ！',
+    load: () => import('../../side-action/js/index.js'),
+  },
 ];
 export function getGameById(id) { return games.find(game => game.id === id); }
