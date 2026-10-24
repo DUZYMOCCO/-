@@ -122,8 +122,9 @@ export function buildMap() {
     deco('leaves', x, h + 1.0, z, 2.0, 1.0, 2.0);
   }
 
-  // がいとう
-  for (const [x, z] of [[-5.5, -12], [5.5, 12], [12, -5.5], [-12, 5.5], [5.5, -24], [-5.5, 24]]) {
+  // がいとう（よるは あかりの わに なる）
+  const lamps = [[-5.5, -12], [5.5, 12], [12, -5.5], [-12, 5.5], [5.5, -24], [-5.5, 24], [-5.5, 3], [24, 5.5], [-24, -5.5]];
+  for (const [x, z] of lamps) {
     add('dark', x, 0, z, 0.25, 4.2, 0.25);
     deco('dark', x, 4.1, z, 0.9, 0.15, 0.3);
     deco('light', x, 3.98, z, 0.5, 0.12, 0.22);
@@ -132,7 +133,7 @@ export function buildMap() {
   const spawns = [
     { x: 0, z: -HALF - 2 }, { x: 0, z: HALF + 2 }, { x: -HALF - 2, z: 0 }, { x: HALF + 2, z: 0 },
   ];
-  return { boxes, spawns, playerStart: { x: 0, z: 4, yaw: 0 }, half: HALF };
+  return { boxes, spawns, lamps: lamps.map(([x, z]) => ({ x, z, h: 3.98 })), playerStart: { x: 0, z: 4, yaw: 0 }, half: HALF };
 }
 
 export function colliders(map) { return map.boxes.filter((b) => b.collide); }

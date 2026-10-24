@@ -54,6 +54,40 @@ export class Sfx {
       this._noise(t + 0.45, 0.06, { type: 'bandpass', freq: 2400, q: 3, gain: 0.3 });
     }
   }
+  // ロケット はっしゃ（シュボッ＋シューッ）
+  rocket() {
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime;
+    this._noise(t, 0.12, { type: 'lowpass', freq: 1800, gain: 0.9 });
+    this._tone(t, 0.16, { f0: 120, f1: 40, gain: 0.8 });
+    const f = this._noise(t + 0.02, 0.8, { type: 'bandpass', freq: 900, q: 1.2, gain: 0.45, attack: 0.05 });
+    f.frequency.setValueAtTime(900, t); f.frequency.exponentialRampToValueAtTime(2600, t + 0.7);
+  }
+  // ドッカーン！（ちかいほど おおきい）
+  boom(vol = 1) {
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime, v = Math.max(0.25, Math.min(1, vol));
+    this._noise(t, 0.08, { type: 'highpass', freq: 900, gain: 0.7 * v });
+    this._noise(t, 1.3, { type: 'lowpass', freq: 700, gain: 1.2 * v, attack: 0.004 });
+    this._noise(t, 0.5, { type: 'lowpass', freq: 2200, gain: 0.6 * v });
+    this._tone(t, 0.7, { f0: 95, f1: 24, gain: 1.2 * v });
+    this._tone(t, 0.35, { type: 'triangle', f0: 60, f1: 30, gain: 0.8 * v });
+    for (let i = 0; i < 6; i++) this._noise(t + 0.15 + Math.random() * 0.6, 0.05, { type: 'bandpass', freq: 1500 + Math.random() * 2000, q: 2, gain: 0.18 * v }); // パチパチ
+    this._noise(t + 0.1, 1.6, { type: 'lowpass', freq: 300, gain: 0.35 * v, attack: 0.1 }); // ゴロゴロ
+  }
+  // あしおと（ちいさく）
+  step() {
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime;
+    this._noise(t, 0.05, { type: 'lowpass', freq: 500 + Math.random() * 200, gain: 0.09 });
+  }
+  // ゾンビが じめんで バウンド
+  thud() {
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime;
+    this._tone(t, 0.1, { f0: 140, f1: 50, gain: 0.35 });
+    this._noise(t, 0.08, { type: 'lowpass', freq: 600, gain: 0.25 });
+  }
   click(freq = 3200, gain = 0.25, delay = 0) {
     if (!this.ctx || this.muted) return;
     const t = this.ctx.currentTime + delay;
@@ -62,6 +96,7 @@ export class Sfx {
   }
   empty() { this.click(4200, 0.18); }
   reload(kind, dur) {
+    if (kind === 'rocket') { this.click(1600, 0.3, dur * 0.45); this.click(1200, 0.35, dur * 0.78); this.click(2600, 0.3, dur * 0.9); return; }
     if (kind === 'shotgun') { for (let i = 0; i < 4; i++) this.click(2600, 0.22, 0.25 + i * (dur - 0.6) / 4); this.click(2000, 0.3, dur - 0.25); this.click(2600, 0.3, dur - 0.12); return; }
     this.click(2200, 0.25, 0.12);            // マガジン ぬく
     this.click(1800, 0.3, dur * 0.62);       // さす

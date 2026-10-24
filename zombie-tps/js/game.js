@@ -5,16 +5,26 @@ import {
   createGun, updateGun, tryFire, startReload, cancelReload, damageAt, currentSpread,
   waveSpec, waveQueue, killScore, castShot, aabbNormal, collideCircle, groundHeight, cameraDistance,
   buildGrid, updateFlow, flowDir, gridLineClear,
-} from './rules.js?v=1';
-import { buildMap, playerColliders, zombieColliders, shotColliders, HALF } from './map.js?v=1';
-import { buildTextures, fxTextures } from './textures.js?v=1';
-import { buildWorld } from './world.js?v=1';
-import { makePlayer, makeWeapons, makeZombie, FLASH_MAT } from './models.js?v=1';
-import { FX } from './fx.js?v=1';
+  blastDamage, blastFalloff, launchVelocity, knockAt, FLY_KNOCK, MAX_AIR, approach, refillReserve,
+} from './rules.js?v=2';
+import { buildMap, playerColliders, zombieColliders, shotColliders, HALF } from './map.js?v=2';
+import { buildTextures, fxTextures } from './textures.js?v=2';
+import { buildWorld } from './world.js?v=2';
+import { makePlayer, makeWeapons, makeZombie, makeRocketProjectile, FLASH_MAT } from './models.js?v=2';
+import { FX } from './fx.js?v=2';
 
 const v3 = () => new THREE.Vector3();
 const lerp = (a, b, t) => a + (b - a) * t;
 const PLAYER_R = 0.35;
+const FLY_G = 22;                // ふっとんだ ゾンビの じゅうりょく
+const BODY_C = new THREE.Vector3(0, 0.9, 0); // からだの まんなか（くるくる まわる じく）
+const _e = new THREE.Euler(), _v = new THREE.Vector3();
+
+// ステージ（ひる／よる）の いろ
+const STAGES = {
+  day: { fog: 0xe9d6b4, near: 22, far: 70, hemi: [0xd4e6ff, 0x6b5a3c, 1.5], sun: [0xfff0d0, 2.4], off: [14, 26, 9] },
+  night: { fog: 0x1d2a4e, near: 13, far: 56, hemi: [0x9fb3ee, 0x34344e, 1.25], sun: [0xb4c8ff, 1.0], off: [-12, 24, -16] },
+};
 
 export class Game {
   constructor(canvas, hud, sfx, settings) {
@@ -46,7 +56,7 @@ export class Game {
 
     this.map = buildMap();
     this.T = buildTextures();
-    buildWorld(scene, this.map, this.T, { shadows: this.shadows });
+    this.world = buildWorld(scene, this.map, this.T, { shadows: this.shadows });
     this.pCol = playerColliders(this.map); this.zCol = zombieColliders(this.map); this.sCol = shotColliders(this.map);
     this.camCol = this.sCol.filter((b) => b.maxY > 0.6);
     this.grid = buildGrid(this.zCol, HALF + 4, 1, 0.4);
@@ -56,9 +66,17 @@ export class Game {
     this.weapons = makeWeapons();
     for (const id of WEAPON_ORDER) { this.weapons[id].group.visible = false; this.p.holder.add(this.weapons[id].group); }
     this.fx = new FX(scene, tex, { groundAt: (x, z, y) => groundHeight(x, z, 0.05, y, this.pCol) });
+    this.rockets = []; this.rocketPool = [];
+    this.maxAir = this.quality === 0 ? 4 : MAX_AIR;
+    this.slowT = 0; this.hitstop = 0;
+    // ライト（じゅうに ついた かいちゅうでんとう。よるだけ）
+    const spot = this.spot = new THREE.SpotLight(0xfff2d8, 0, 26, 0.42, 0.55, 1.2);
+    spot.visible = false; scene.add(spot); scene.add(spot.target);
+    this.buildNight();
 
     this.zombies = []; this.pool = { walker: [], runner: [], brute: [] };
     this.tmp = { a: v3(), b: v3(), c: v3(), d: v3(), e: v3() };
+    this.applyStage(settings.stage || 'day');
     this.stats = { frames: 0, cpu: 0, gpuish: 0, last: performance.now(), fps: 0, cpuAvg: 0, frameAvg: 0 };
     this.adapt = { t: 0, frames: 0, sum: 0, level: 0 };
     this.state = 'title';
@@ -70,7 +88,10 @@ export class Game {
   resetRun() {
     const s = this.map.playerStart;
     this.pos = new THREE.Vector3(s.x, 0, s.z); this.vy = 0; this.onGround = true;
-    this.yaw = s.yaw; this.pitch = -0.05; this.recoilP = 0; this.recoilY = 0;
+    this.yaw = this.yawT = s.yaw; this.pitch = this.pitchT = -0.05; this.recoilP = 0; this.recoilY = 0;
+    this.vel = new THREE.Vector3(); this.follow = null; this.stepPh = 0; this.slowT = 0; this.hitstop = 0;
+    for (const r of this.rockets || []) this.releaseRocket(r);
+    if (this.rockets) this.rockets.length = 0;
     this.hp = PLAYER_MAX_HP; this.hurtT = 0; this.regenDelay = 0;
     this.guns = {}; for (const id of WEAPON_ORDER) this.guns[id] = createGun(id);
     this.cur = DEFAULT_WEAPON; this.swapT = 0; this.showWeapon(this.cur);
@@ -102,7 +123,76 @@ export class Game {
   showWeapon(id) {
     for (const k of WEAPON_ORDER) this.weapons[k].group.visible = k === id;
     const w = this.weapons[id];
-    w.mag.visible = true; w.mag.position.copy(w.magRest);
+    w.mag.visible = id !== 'rocket' || !this.guns || this.guns.rocket.ammo > 0; w.mag.position.copy(w.magRest);
+  }
+
+  // ---- ステージ ----
+  buildNight() {
+    const S = this.scene, tex = this.fxTex, lamps = this.map.lamps;
+    const g = this.nightGroup = new THREE.Group(); g.visible = false; S.add(g);
+    // つき
+    const moon = this.moon = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.moon, fog: false, depthWrite: false }));
+    moon.scale.setScalar(9); g.add(moon);
+    const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.glow, color: 0x6f86c8, fog: false, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false }));
+    halo.scale.setScalar(30); moon.add(halo); halo.scale.set(3.3, 3.3, 1);
+    // ほし（Points 1こ）
+    const n = 260, pos = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2, e = 0.12 + Math.random() * 1.3, r = 130;
+      pos[i * 3] = Math.cos(a) * Math.cos(e) * r; pos[i * 3 + 1] = Math.sin(e) * r; pos[i * 3 + 2] = Math.sin(a) * Math.cos(e) * r;
+    }
+    const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    this.stars = new THREE.Points(sg, new THREE.PointsMaterial({ color: 0xffffff, size: 2.2, sizeAttenuation: false, fog: false, transparent: true, opacity: 0.85 }));
+    this.stars.frustumCulled = false; g.add(this.stars);
+    // がいとうの あかりの わ（じめんに うつる ひかり・ほんものの ライトは つかわない）
+    const pool = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2),
+      new THREE.MeshBasicMaterial({ map: tex.glow, color: 0xffc870, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false, fog: false, polygonOffset: true, polygonOffsetFactor: -1 }), lamps.length);
+    const haloI = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1),
+      new THREE.MeshBasicMaterial({ map: tex.glow, color: 0xffe2a0, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }), lamps.length);
+    const coneGeo = new THREE.ConeGeometry(2.1, 3.9, 14, 1, true); coneGeo.translate(0, -1.95, 0);
+    const cone = new THREE.InstancedMesh(coneGeo, new THREE.MeshBasicMaterial({ color: 0xffd890, transparent: true, opacity: 0.07, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }), lamps.length);
+    const m = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3();
+    lamps.forEach((l, i) => {
+      m.compose(_v.set(l.x, 0.04, l.z), q.identity(), sc.set(8.5, 1, 8.5)); pool.setMatrixAt(i, m);
+      m.compose(_v.set(l.x, l.h - 0.05, l.z), q.identity(), sc.set(1, 1, 1)); cone.setMatrixAt(i, m);
+    });
+    pool.renderOrder = 2; g.add(pool, cone);
+    this.lampHalo = haloI; haloI.frustumCulled = false; g.add(haloI);
+  }
+
+  applyStage(stage) {
+    const st = STAGES[stage] ? stage : 'day', c = STAGES[st];
+    this.stage = st; this.night = st === 'night';
+    this.scene.background = this.night ? this.fxTex.nightSky : this.fxTex.sky;
+    this.scene.fog.color.set(c.fog); this.scene.fog.near = c.near; this.scene.fog.far = c.far;
+    this.hemi.color.set(c.hemi[0]); this.hemi.groundColor.set(c.hemi[1]); this.hemi.intensity = c.hemi[2];
+    this.sun.color.set(c.sun[0]); this.sun.intensity = c.sun[1]; this.sunOff.set(...c.off);
+    this.nightGroup.visible = this.night;
+    this.fx.lightBoost = this.night ? 2.4 : 1;
+    this.spot.visible = this.night && this.settings.flashlight !== false;
+    this.spot.intensity = this.spot.visible ? 30 : 0;
+    if (this.world && this.world.mats && this.world.mats.light) this.world.mats.light.color.set(this.night ? 0xfff6d0 : 0xfff2b0);
+    for (const z of this.zombies) z.model.eyes.visible = this.night;
+    for (const k in this.pool) for (const md of this.pool[k]) md.eyes.visible = this.night;
+  }
+
+  updateNight() {
+    if (!this.night) return;
+    const p = this.pos;
+    this.moon.position.set(p.x - 50, 52, p.z - 95);
+    this.stars.position.set(p.x, 0, p.z);
+    // がいとうの ひかりの たま（カメラの ほうを むく）
+    const m = this.tmp.m || (this.tmp.m = new THREE.Matrix4());
+    const q = this.camera.quaternion, sc = _v.set(1.5, 1.5, 1.5);
+    this.map.lamps.forEach((l, i) => { m.compose(this.tmp.e.set(l.x, l.h + 0.05, l.z), q, sc); this.lampHalo.setMatrixAt(i, m); });
+    this.lampHalo.instanceMatrix.needsUpdate = true;
+    // かいちゅうでんとう
+    if (this.spot.visible) {
+      const wo = this.weapons[this.cur];
+      wo.muzzle.getWorldPosition(this.spot.position);
+      const d = this.tmp.c.set(0, 0, -1).applyQuaternion(this.camBaseQ || this.camera.quaternion);
+      this.spot.target.position.copy(this.camera.position).addScaledVector(d, 18);
+    }
   }
 
   switchWeapon(id) {
@@ -119,12 +209,13 @@ export class Game {
     let model = this.pool[kind].pop();
     if (!model) model = makeZombie(kind);
     model.root.visible = true; model.inner.rotation.set(0, 0, 0); model.inner.position.set(0, 0, 0); model.root.scale.setScalar(def.scale);
+    model.root.rotation.set(0, 0, 0); model.eyes.visible = !!this.night;
     for (const m of model.meshes) m.material = m.userData.mat;
     this.scene.add(model.root);
     const zz = {
       kind, model, x, z, y: 0, yaw: 0, hp: Math.round(def.hp * hpMul), maxHp: Math.round(def.hp * hpMul), alive: true, state: 'walk',
       t: 0, atkT: 0.6, stagger: 0, flash: 0, phase: Math.random() * 6, scale: def.scale, speed: def.speed * (0.9 + Math.random() * 0.2),
-      deadT: 0, demo: false, stuck: 0, lastX: x, lastZ: z,
+      deadT: 0, demo: false, stuck: 0, lastX: x, lastZ: z, kvx: 0, kvz: 0, vy: 0, fly: null, flown: false,
     };
     model.root.position.set(x, 0, z);
     this.zombies.push(zz);
@@ -152,7 +243,7 @@ export class Game {
         const spec = this.spec = waveSpec(this.wave);
         this.queue = waveQueue(spec);
         this.spawnT = 0.5;
-        for (const id of WEAPON_ORDER) { const g = this.guns[id]; const w = WEAPONS[id]; if (w.reserve !== Infinity) g.reserve = Math.max(g.reserve, w.reserve); }
+        for (const id of WEAPON_ORDER) refillReserve(this.guns[id]);
         this.hud.banner(`ウェーブ ${this.wave}`, this.wave === 1 ? 'ゾンビが くるぞ！' : `ゾンビ ${spec.total}たい`);
         this.sfx.wave();
         this.pushHud(true);
@@ -190,10 +281,13 @@ export class Game {
       z.flash -= dt;
       if (z.flash <= 0 && z.flashOn) { for (const mm of m.meshes) mm.material = mm.userData.mat; z.flashOn = false; }
       if (!z.alive) {
+        if (z.fly) { this.updateFly(z, dt); continue; }
         z.deadT += dt;
         const t = z.deadT;
-        m.inner.rotation.x = Math.min(1, t / 0.4) ** 2 * (Math.PI / 2) * 0.92;
-        if (t > 0.55 && !z.poofed) { z.poofed = true; this.fx.poof(this.tmp.a.set(z.x, 0.4, z.z), z.scale); this.sfx.poof(); }
+        if (!z.flown) m.inner.rotation.x = Math.min(1, t / 0.4) ** 2 * (Math.PI / 2) * 0.92;
+        if (z.kvx || z.kvz) this.slideZombie(z, dt);
+        m.root.position.set(z.x, z.y, z.z);
+        if (t > 0.55 && !z.poofed) { z.poofed = true; this.fx.poof(this.tmp.a.set(z.x, z.y + 0.4, z.z), z.scale); this.sfx.poof(); }
         if (t > 0.55) m.root.scale.setScalar(z.scale * Math.max(0.01, 1 - (t - 0.55) / 0.18));
         if (t > 0.75) { this.releaseZombie(z); zs.splice(i, 1); }
         continue;
@@ -201,6 +295,7 @@ export class Game {
       const dx = this.pos.x - z.x, dz = this.pos.z - z.z, dist = Math.hypot(dx, dz);
       if (dist < nearest) nearest = dist;
       let mvx = 0, mvz = 0, moving = false;
+      if (z.kvx || z.kvz || z.y > 0 || z.vy) this.slideZombie(z, dt);
       if (z.demo) { // タイトル: うろうろ
         z.t += dt; z.yaw += Math.sin(z.t * 0.5 + z.phase) * dt * 0.6;
         mvx = -Math.sin(z.yaw); mvz = -Math.cos(z.yaw); moving = true;
@@ -251,7 +346,7 @@ export class Game {
       m.arms[0].rotation.x = 0.05 + Math.sin(z.phase * 0.5) * 0.08 + atk;
       m.arms[1].rotation.x = 0.05 - Math.sin(z.phase * 0.5) * 0.08 - atk;
       m.head.rotation.z = Math.sin(z.phase * 0.5 + 1) * 0.08;
-      m.root.position.set(z.x, Math.abs(swing) * 0.04, z.z);
+      m.root.position.set(z.x, z.y + Math.abs(swing) * 0.04, z.z);
       m.root.rotation.y = z.yaw;
     }
     // うめきごえ
@@ -261,6 +356,70 @@ export class Game {
       this.groanT = 1.5 + Math.random() * 2.5;
     }
   }
+
+  // ノックバックで すべる（いきてる ゾンビ・たおれた ゾンビ）
+  slideZombie(z, dt) {
+    const k = Math.exp(-7 * dt);
+    const nx = z.x + z.kvx * dt, nz = z.z + z.kvz * dt;
+    const r = collideCircle(nx, nz, 0.3 * z.scale, z.y, this.zCol);
+    z.x = Math.max(-HALF - 3, Math.min(HALF + 3, r.x)); z.z = Math.max(-HALF - 3, Math.min(HALF + 3, r.z));
+    z.kvx *= k; z.kvz *= k;
+    if (Math.abs(z.kvx) + Math.abs(z.kvz) < 0.05) z.kvx = z.kvz = 0;
+    if (z.y > 0 || z.vy) {
+      z.vy -= FLY_G * dt; z.y += z.vy * dt;
+      if (z.y <= 0) { z.y = 0; z.vy = 0; }
+    }
+  }
+
+  // ふっとび（からだ まるごと くるくる → バウンド → ポン！）
+  launchZombie(z, v) {
+    const heavy = z.kind === 'brute' ? 0.72 : 1;
+    z.fly = { vx: v.vx * heavy, vy: v.vy * heavy, vz: v.vz * heavy, t: 0, bounces: 0,
+      sx: (Math.random() < 0.5 ? -1 : 1) * v.spin * (0.6 + Math.random() * 0.5), sz: (Math.random() - 0.5) * v.spin * 0.9,
+      sy: (Math.random() - 0.5) * 6 };
+    z.y = Math.max(z.y, 0.05); z.kvx = z.kvz = 0; z.flown = true;
+  }
+
+  updateFly(z, dt) {
+    const f = z.fly, m = z.model;
+    f.t += dt;
+    f.vy -= FLY_G * dt;
+    const nx = z.x + f.vx * dt, nz = z.z + f.vz * dt;
+    const r = collideCircle(nx, nz, 0.3 * z.scale, z.y, this.zCol, 0.1);
+    if (Math.abs(r.x - nx) > 1e-4) f.vx *= -0.45;
+    if (Math.abs(r.z - nz) > 1e-4) f.vz *= -0.45;
+    z.x = Math.max(-HALF - 3, Math.min(HALF + 3, r.x)); z.z = Math.max(-HALF - 3, Math.min(HALF + 3, r.z));
+    z.y += f.vy * dt;
+    // くるくる
+    const rot = m.inner.rotation;
+    rot.x += f.sx * dt; rot.z += f.sz * dt; z.yaw += f.sy * dt;
+    _v.copy(BODY_C).applyEuler(rot); m.inner.position.copy(BODY_C).sub(_v);
+    // てあしを バタバタ
+    const fl = Math.sin(f.t * 22) * 0.9;
+    m.legs[0].rotation.x = fl; m.legs[1].rotation.x = -fl;
+    m.arms[0].rotation.x = -1.6 + fl * 0.6; m.arms[1].rotation.x = -1.6 - fl * 0.6;
+    const gh = groundHeight(z.x, z.z, 0.1, z.y + 0.3, this.pCol);
+    if (z.y <= gh && f.vy < 0) {
+      z.y = gh;
+      const pos = this.tmp.c.set(z.x, gh + 0.03, z.z);
+      if (f.bounces < 2 && f.vy < -3.2) {
+        f.bounces++;
+        f.vy = -f.vy * 0.42; f.vx *= 0.55; f.vz *= 0.55; f.sx *= 0.6; f.sz *= 0.6;
+        this.fx.splat(pos, undefined, 1.1 * z.scale);
+        this.fx.burst(pos, 8, { color: 0xbdb3a0, color2: 0x45c932, speed: 2, up: 1.5, size: 0.12, life: 0.5, gravity: 8 });
+        this.sfx.thud();
+      } else {
+        // じめんに ついたら ポン！
+        z.fly = null; z.y = gh; z.deadT = 0.55;
+        this.fx.splat(pos, undefined, 1.5 * z.scale);
+      }
+    }
+    if (f.t > 4 && z.fly) { z.fly = null; z.deadT = 0.55; }
+    m.root.position.set(z.x, z.y, z.z);
+    m.root.rotation.y = z.yaw;
+  }
+
+  airborne() { let n = 0; for (const z of this.zombies) if (z.fly) n++; return n; }
 
   damagePlayer(d, z) {
     this.hp = Math.max(0, this.hp - d);
@@ -288,6 +447,7 @@ export class Game {
     const muzzle = wObj.muzzle.getWorldPosition(A.e);
     const right = A.d.set(Math.cos(this.yaw), 0, -Math.sin(this.yaw));
     const shotZ = this.zombies;
+    if (w.projectile) { this.fireRocket(o, d, spread, muzzle); return; }
     const hitZ = new Map();
     let anyHit = false, anyHead = false;
     for (let pI = 0; pI < w.pellets; pI++) {
@@ -302,8 +462,8 @@ export class Game {
         const z = shotZ[hit.index];
         const dist = hit.t;
         const dmg = damageAt(w, dist, hit.head);
-        const h = hitZ.get(z) || { dmg: 0, head: false, pos: hp, dir };
-        h.dmg += dmg; h.head = h.head || hit.head; hitZ.set(z, h);
+        const h = hitZ.get(z) || { dmg: 0, head: false, pos: hp, dir, knock: 0 };
+        h.dmg += dmg; h.head = h.head || hit.head; h.knock += knockAt(w, dist); hitZ.set(z, h);
         this.fx.greenHit(hp, dir, hit.head);
         anyHit = true; anyHead = anyHead || hit.head;
       } else if (hit.kind === 'wall') {
@@ -315,7 +475,9 @@ export class Game {
         this.fx.dust(hp, nv); this.fx.hole(hp, nv);
       }
     }
-    for (const [z, h] of hitZ) this.hitZombie(z, h.dmg, h.head, h.pos, h.dir);
+    let killed = 0;
+    for (const [z, h] of hitZ) { if (this.hitZombie(z, h.dmg, h.head, h.pos, h.dir, { knock: h.knock })) killed++; }
+    if (killed >= 2) this.multiKill(killed);
     if (anyHit) { this.hud.hitmarker(anyHead); this.sfx.hit(anyHead); }
     // みため
     this.fx.muzzle(wObj.muzzle, id === 'shotgun' ? 1.5 : id === 'pistol' ? 0.8 : 1.15);
@@ -325,20 +487,113 @@ export class Game {
     this.shake = Math.min(0.45, this.shake + w.shake * 0.9);
     const aimMul = this.aimAmt > 0.5 ? 0.6 : 1;
     const kickP = w.recoilPitch * aimMul * (0.8 + Math.random() * 0.4);
-    this.recoilP += kickP * 0.75; this.pitch = Math.min(1.05, this.pitch + kickP * 0.25); // 25% は のこる
+    this.recoilP += kickP * 0.75; this.pitch = Math.min(1.05, this.pitch + kickP * 0.25); this.pitchT = Math.min(1.05, this.pitchT + kickP * 0.25); // 25% は のこる
     this.recoilY += (Math.random() - 0.5) * 2 * w.recoilYaw * aimMul;
     this.sfx.shot(id);
   }
 
-  hitZombie(z, dmg, head, pos, dir) {
-    if (!z.alive) return;
+  // ---- ロケット ----
+  fireRocket(o, d, spread, muzzle) {
+    const A = this.tmp, w = WEAPONS.rocket, wo = this.weapons.rocket;
+    const dir = d.clone().addScaledVector(_v.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5), spread).normalize();
+    const hit = castShot(o.x, o.y, o.z, dir.x, dir.y, dir.z, this.zombies, this.sCol, w.range);
+    const aimP = new THREE.Vector3(hit.x, hit.y, hit.z);
+    const start = muzzle.clone();
+    const fdir = aimP.clone().sub(start);
+    if (fdir.length() < 2 || fdir.dot(dir) < 0) fdir.copy(dir); fdir.normalize();
+    let r = this.rocketPool.pop();
+    if (!r) { const mdl = makeRocketProjectile(); r = { mdl, pos: new THREE.Vector3(), vel: new THREE.Vector3() }; }
+    this.scene.add(r.mdl.group); r.mdl.group.visible = true;
+    r.pos.copy(start); r.vel.copy(fdir).multiplyScalar(w.speed); r.life = w.life; r.trailT = 0; r.age = 0;
+    r.mdl.group.position.copy(start); r.mdl.group.quaternion.setFromUnitVectors(_v.set(0, 0, -1), fdir);
+    this.rockets.push(r);
+    // うしろの ふきだし・ひかり
+    const back = wo.back.getWorldPosition(A.c), bdir = fdir.clone().negate();
+    // カメラに かからないよう、ひだり したへ にがす
+    bdir.x -= Math.cos(this.yaw) * 1.3; bdir.z += Math.sin(this.yaw) * 1.3; bdir.y -= 0.25; bdir.normalize();
+    this.fx.backblast(back, bdir);
+    this.fx.muzzle(wo.muzzle, 1.6);
+    wo.mag.visible = false;
+    this.kick = 1;
+    this.shake = Math.min(0.6, this.shake + w.shake);
+    const kickP = w.recoilPitch * (0.9 + Math.random() * 0.2);
+    this.recoilP += kickP * 0.75; this.pitch = Math.min(1.05, this.pitch + kickP * 0.25); this.pitchT = Math.min(1.05, this.pitchT + kickP * 0.25);
+    this.recoilY += (Math.random() - 0.5) * 2 * w.recoilYaw;
+    this.sfx.rocket();
+  }
+
+  releaseRocket(r) { this.scene.remove(r.mdl.group); this.rocketPool.push(r); }
+
+  updateRockets(dt) {
+    const w = WEAPONS.rocket;
+    for (let i = this.rockets.length - 1; i >= 0; i--) {
+      const r = this.rockets[i];
+      r.life -= dt; r.age += dt;
+      const sp = r.vel.length(), step = sp * dt;
+      const dx = r.vel.x / sp, dy = r.vel.y / sp, dz = r.vel.z / sp;
+      const hit = castShot(r.pos.x, r.pos.y, r.pos.z, dx, dy, dz, this.zombies, this.sCol, step);
+      if (hit.kind !== 'none' || r.life <= 0) {
+        const p = new THREE.Vector3(hit.x - dx * 0.15, Math.max(0.1, hit.y - dy * 0.15), hit.z - dz * 0.15);
+        this.explode(p, w);
+        this.rockets.splice(i, 1); this.releaseRocket(r);
+        continue;
+      }
+      r.pos.addScaledVector(r.vel, dt);
+      r.mdl.group.position.copy(r.pos);
+      r.mdl.flame.scale.setScalar(0.7 + Math.random() * 0.7);
+      r.trailT -= dt;
+      if (r.trailT <= 0) {
+        r.trailT = 0.018;
+        this.fx.trail(this.tmp.c.copy(r.pos).addScaledVector(r.vel, -0.3 / sp), this.tmp.d.copy(r.vel).multiplyScalar(-0.05 / sp));
+      }
+    }
+  }
+
+  // ドッカーン！ まわりの ゾンビを ふっとばす
+  explode(p, w) {
+    this.fx.explosion(p, w.blast);
+    const pd = Math.hypot(p.x - this.pos.x, p.z - this.pos.z);
+    this.sfx.boom(1.15 - pd / 40);
+    this.shake = Math.max(this.shake, Math.max(0.3, 1.0 - pd / 30));
+    this.hud.boom?.(Math.max(0.25, 1 - pd / 25));
+    let killed = 0;
+    const dir = new THREE.Vector3();
+    for (const z of this.zombies) {
+      if (!z.alive || z.demo) continue;
+      const cy = z.y + 0.8 * z.scale;
+      const dx = z.x - p.x, dz = z.z - p.z, dy = (cy - p.y) * 0.6;
+      const d = Math.hypot(dx, dy, dz) - 0.3 * z.scale;
+      const f = blastFalloff(Math.max(0, d), w.blast);
+      if (f <= 0) continue;
+      const dl = Math.hypot(dx, dz) || 1;
+      dir.set(dx / dl, 0.3, dz / dl);
+      const v = launchVelocity(dx, dz, Math.max(0, d), w.blast, w.power, Math.random());
+      const pos = this.tmp.c.set(z.x, cy, z.z).clone();
+      if (this.hitZombie(z, blastDamage(w, Math.max(0, d)), false, pos, dir, { launch: v, knock: w.power * f * 0.6, blast: true })) killed++;
+    }
+    if (killed >= 2) this.multiKill(killed);
+  }
+
+  // まとめて たおした！ → ちょっと スローモーション
+  multiKill(n) {
+    const bonus = n * 50;
+    this.score += bonus;
+    this.hud.kill(`まとめて ${n}たい！ +${bonus}`, true);
+    if (n >= 3) this.slowT = 0.55; else this.hitstop = 0.07;
+  }
+
+  hitZombie(z, dmg, head, pos, dir, opt = {}) {
+    if (!z.alive) return false;
     z.hp -= dmg;
     z.flash = 0.045; z.flashOn = true;
     for (const mm of z.model.meshes) mm.material = FLASH_MAT;
-    // ちょっと ひるむ・のけぞる
-    const kb = z.kind === 'brute' ? 0.05 : 0.14;
-    const r = collideCircle(z.x + dir.x * kb, z.z + dir.z * kb, 0.3, 0, this.zCol); z.x = r.x; z.z = r.z;
-    z.stagger = Math.max(z.stagger, head ? 0.28 : 0.12) * (z.kind === 'brute' ? 0.4 : 1);
+    // ノックバック（ショットガンの ちかくは つよい・ライフルは すこし）
+    const heavy = z.kind === 'brute' ? 0.4 : 1;
+    const hl = Math.hypot(dir.x, dir.z) || 1;
+    const kn = (opt.knock || 0) * heavy;
+    z.kvx += dir.x / hl * kn; z.kvz += dir.z / hl * kn;
+    if (opt.blast && z.hp > 0) { z.vy = Math.max(z.vy, 3.5 * heavy); z.y = Math.max(z.y, 0.02); }
+    z.stagger = Math.max(z.stagger, opt.blast ? 0.7 : head ? 0.28 : 0.12 + kn * 0.03) * (z.kind === 'brute' ? 0.5 : 1);
     if (Math.random() < 0.7) this.fx.splat(this.tmp.c.set(z.x + dir.x * 0.6 + (Math.random() - 0.5) * 0.7, 0.02, z.z + dir.z * 0.6 + (Math.random() - 0.5) * 0.7), undefined, 0.9 + Math.random() * 0.4);
     if (z.hp <= 0) {
       z.alive = false; z.deadT = 0; z.poofed = false;
@@ -348,15 +603,28 @@ export class Game {
       this.fx.greenHit(pos, dir, true);
       this.hud.kill(head ? `ヘッドショット！ +${sc}` : `+${sc}`, head);
       this.pushHud(true);
+      // はでに ふっとぶ（ばくはつ・ショットガンの ちかく）
+      const canFly = this.airborne() < this.maxAir;
+      if (canFly && opt.launch) this.launchZombie(z, opt.launch);
+      else if (canFly && kn >= FLY_KNOCK) {
+        this.launchZombie(z, { vx: dir.x / hl * kn * 0.85, vy: 3.2 + kn * 0.38, vz: dir.z / hl * kn * 0.85, spin: 5 + kn * 0.9 });
+      }
+      return true;
     }
+    return false;
   }
 
   // ---- まいフレーム ----
   update(dt, inp) {
     const playing = this.state === 'play';
-    if (this.state === 'title') { this.titleT += dt; this.updateZombies(dt); this.updateTitleCam(dt); this.fx.update(dt); return; }
+    // ヒットストップ・スローモーション（あそびの ときだけ）
+    if (playing) {
+      if (this.hitstop > 0) { this.hitstop -= dt; dt *= 0.08; }
+      else if (this.slowT > 0) { this.slowT -= dt; dt *= this.slowT > 0.18 ? 0.3 : lerp(1, 0.3, this.slowT / 0.18); }
+    }
+    if (this.state === 'title') { this.titleT += dt; this.updateZombies(dt); this.updateTitleCam(dt); this.updateNight(); this.fx.update(dt); return; }
     if (this.state === 'pause') return;
-    if (this.state === 'over') { this.updateZombies(dt); this.fx.update(dt); this.updateCamera(dt, false); return; }
+    if (this.state === 'over') { this.updateRockets(dt); this.updateZombies(dt); this.fx.update(dt); this.updateCamera(dt, false); this.updateNight(); return; }
 
     const gun = this.guns[this.cur], w = WEAPONS[this.cur];
     // イベント
@@ -373,25 +641,42 @@ export class Game {
     this.aimAmt = lerp(this.aimAmt, inp.aim ? 1 : 0, Math.min(1, dt * 12));
     const target = this.crosshairTarget();
     const slow = (target >= 0 ? 0.65 : 1) * (1 - this.aimAmt * 0.45);
-    this.yaw -= inp.lx * slow; this.pitch -= inp.ly * slow;
-    this.pitch = Math.max(-1.0, Math.min(1.05, this.pitch));
+    // しせん: めあての むきへ すこしだけ なめらかに（おくれない ていど）
+    this.yawT -= inp.lx * slow; this.pitchT -= inp.ly * slow;
+    this.pitchT = Math.max(-1.0, Math.min(1.05, this.pitchT));
+    const lk = inp.touch ? 30 : 48;
+    this.yaw = approach(this.yaw, this.yawT, lk, dt); this.pitch = approach(this.pitch, this.pitchT, lk, dt);
     // はんどうの もどり（80% もどる）
     const rec = Math.min(1, dt * 7);
     this.recoilP -= this.recoilP * rec;
     // いどう
     const fx = -Math.sin(this.yaw), fz = -Math.cos(this.yaw), rx = Math.cos(this.yaw), rz = -Math.sin(this.yaw);
-    const speed = lerp(4.7, 2.5, this.aimAmt) * (gun.reloading > 0 ? 0.85 : 1);
-    let vx = (fx * inp.my + rx * inp.mx) * speed, vz = (fz * inp.my + rz * inp.mx) * speed;
-    this.moveAmt = lerp(this.moveAmt, Math.min(1, Math.hypot(inp.mx, inp.my)), Math.min(1, dt * 10));
-    let nx = this.pos.x + vx * dt, nz = this.pos.z + vz * dt;
-    const r = collideCircle(nx, nz, PLAYER_R, this.pos.y, this.pCol);
-    nx = Math.max(-HALF + 0.5, Math.min(HALF - 0.5, r.x)); nz = Math.max(-HALF + 0.5, Math.min(HALF - 0.5, r.z));
+    const speed = lerp(4.7, 2.5, this.aimAmt) * (gun.reloading > 0 ? 0.85 : 1) * (this.cur === 'rocket' ? 0.92 : 1);
+    const tvx = (fx * inp.my + rx * inp.mx) * speed, tvz = (fz * inp.my + rz * inp.mx) * speed;
+    // かそく・げんそく（くうちゅうは ゆっくり）
+    const V = this.vel, speeding = tvx * tvx + tvz * tvz > V.x * V.x + V.z * V.z;
+    const rate = this.onGround ? (speeding ? 13 : 11) : 3;
+    V.x = approach(V.x, tvx, rate, dt); V.z = approach(V.z, tvz, rate, dt);
+    // ぶつかり: こまかく わけて うごかし、かべに そって すべる（がたがた しない）
+    const ox = this.pos.x, oz = this.pos.z;
+    const stepLen = Math.hypot(V.x, V.z) * dt, nSub = Math.max(1, Math.ceil(stepLen / 0.15));
+    let nx = ox, nz = oz;
+    for (let i = 0; i < nSub; i++) {
+      const r = collideCircle(nx + V.x * dt / nSub, nz + V.z * dt / nSub, PLAYER_R, this.pos.y, this.pCol);
+      nx = Math.max(-HALF + 0.5, Math.min(HALF - 0.5, r.x)); nz = Math.max(-HALF + 0.5, Math.min(HALF - 0.5, r.z));
+    }
     this.pos.x = nx; this.pos.z = nz;
+    if (dt > 0) { V.x = (nx - ox) / dt; V.z = (nz - oz) / dt; } // ほんとうに うごいた ぶんだけ（かべに おしつけない）
+    const vx = V.x, vz = V.z;
+    this.moveAmt = Math.min(1, Math.hypot(vx, vz) / 4.7);
     this.vy -= 20 * dt; this.pos.y += this.vy * dt;
     const gh = groundHeight(this.pos.x, this.pos.z, PLAYER_R, this.pos.y + 0.001, this.pCol);
     if (this.pos.y <= gh) { if (!this.onGround && this.vy < -4) this.landT = 0.15; this.pos.y = gh; this.vy = 0; this.onGround = true; }
     else if (this.pos.y > gh + 0.05) this.onGround = false;
     this.walkPhase += dt * Math.hypot(vx, vz) * 2.2;
+    // あしおと
+    const stepN = Math.floor(this.walkPhase / Math.PI);
+    if (stepN !== this.stepPh) { this.stepPh = stepN; if (this.onGround && this.moveAmt > 0.3) this.sfx.step?.(); }
 
     // ぶき
     if (this.swapT > 0) this.swapT -= dt;
@@ -405,7 +690,7 @@ export class Game {
     }
     if (this.swapT <= 0) {
       const res = tryFire(gun, held);
-      if (res === 'fire') { this.fireShot(); this.pushHud(); }
+      if (res === 'fire') { this.fireShot(); this.pushHud(true); }
       else if (res === 'reload') this.onReloadStart();
       else if (res === 'empty') this.sfx.empty();
     }
@@ -416,9 +701,11 @@ export class Game {
     if (this.regenDelay <= 0 && this.hp < PLAYER_MAX_HP) { this.hp = Math.min(PLAYER_MAX_HP, this.hp + dt * 8); this.pushHud(); }
 
     this.updateWaves(dt);
+    this.updateRockets(dt);
     this.updateZombies(dt);
     this.updatePlayerAnim(dt);
     this.updateCamera(dt, true);
+    this.updateNight();
     this.fx.update(dt);
     this.hudT = (this.hudT || 0) - dt;
     if (this.hudT <= 0) { this.pushHud(); this.hudT = 0.1; }
@@ -447,6 +734,7 @@ export class Game {
     P.legs[0].rotation.x = sw * 0.75; P.legs[1].rotation.x = -sw * 0.75;
     if (!this.onGround) { P.legs[0].rotation.x = 0.5; P.legs[1].rotation.x = -0.3; }
     P.torso.position.y = 0.74 + Math.abs(Math.sin(this.walkPhase)) * 0.04 * this.moveAmt - this.landT * 0.4;
+    P.torso.rotation.z = -Math.sin(this.walkPhase) * 0.03 * this.moveAmt;
     this.landT = Math.max(0, this.landT - dt);
     this.kick = Math.max(0, this.kick - dt * 14);
     const k = this.kick;
@@ -460,8 +748,17 @@ export class Game {
     // もちかえ
     if (this.swapT > 0) { const s = Math.sin((this.swapT / 0.32) * Math.PI); H.position.y -= s * 0.35; H.rotation.x = -s * 0.8; }
     // リロード
-    wo.mag.visible = true; wo.mag.position.copy(wo.magRest);
-    if (gun.reloading > 0) {
+    wo.mag.visible = this.cur !== 'rocket' || gun.ammo > 0; wo.mag.position.copy(wo.magRest);
+    if (gun.reloading > 0 && this.cur === 'rocket') {
+      // まえから あたらしい たまを いれる
+      const t = 1 - gun.reloading / w.reload;
+      const bell = Math.sin(Math.min(1, t * 1.1) * Math.PI);
+      H.rotation.x = -bell * 0.4; H.position.y -= bell * 0.06;
+      wo.mag.visible = t > 0.5;
+      if (t > 0.5 && t < 0.82) wo.mag.position.z -= (0.82 - t) / 0.32 * 0.45;
+      P.armL.rotation.x = -Math.sin(Math.min(1, Math.max(0, (t - 0.3) / 0.55)) * Math.PI) * 1.0;
+      P.armL.position.z = -bell * 0.15;
+    } else if (gun.reloading > 0) {
       const t = 1 - gun.reloading / w.reload;
       const bell = Math.sin(Math.min(1, t * 1.15) * Math.PI);
       H.rotation.z = bell * 0.55; H.rotation.x = bell * 0.25; H.position.y -= bell * 0.05;
@@ -500,7 +797,12 @@ export class Game {
     const fx = -Math.sin(yaw) * Math.cos(pitch), fy = Math.sin(pitch), fz = -Math.cos(yaw) * Math.cos(pitch);
     const rx = Math.cos(yaw), rz = -Math.sin(yaw);
     const sh = lerp(0.95, 0.68, aim);
-    this.shoulder = (this.shoulder || v3()).set(this.pos.x + rx * sh, this.pos.y + lerp(2.02, 1.82, aim), this.pos.z + rz * sh);
+    // カメラは プレイヤーを なめらかに おいかける（よこは すばやく・たては ゆっくり）
+    const F = this.follow || (this.follow = this.pos.clone());
+    F.x = approach(F.x, this.pos.x, 30, dt); F.z = approach(F.z, this.pos.z, 30, dt); F.y = approach(F.y, this.pos.y, 12, dt);
+    if (F.distanceToSquared(this.pos) > 4) F.copy(this.pos);
+    const bob = this.onGround ? Math.sin(this.walkPhase * 2) * 0.022 * this.moveAmt * (1 - aim) - this.landT * 0.5 : 0;
+    this.shoulder = (this.shoulder || v3()).set(F.x + rx * sh, F.y + lerp(2.02, 1.82, aim) + bob, F.z + rz * sh);
     const want = lerp(3.2, 1.6, aim);
     const back = A.e.set(-fx, -fy, -fz);
     const dist = cameraDistance(this.shoulder.x, this.shoulder.y, this.shoulder.z, back.x, back.y, back.z, want, this.camCol, 0.25);
@@ -522,7 +824,7 @@ export class Game {
 
   updateTitleCam(dt) {
     const t = this.titleT * 0.12;
-    this.pos.set(0, 0, 4); this.yaw = Math.PI * 0.08; this.pitch = 0.02;
+    this.pos.set(0, 0, 4); this.yaw = this.yawT = Math.PI * 0.08; this.pitch = this.pitchT = 0.02;
     this.updatePlayerAnim(dt);
     const cam = this.camera;
     cam.fov = 55; cam.updateProjectionMatrix();
@@ -563,7 +865,7 @@ export class Game {
       a.level++;
       if (a.level === 1) this.pixelRatio = Math.max(1, this.pixelRatio - 0.25);
       if (a.level === 2) this.pixelRatio = 1;
-      if (a.level === 3) { this.pixelRatio = 0.85; }
+      if (a.level === 3) { this.pixelRatio = 0.85; this.maxAir = 4; }
       this.renderer.setPixelRatio(this.pixelRatio);
       if (this.size) this.resize(...this.size);
     }

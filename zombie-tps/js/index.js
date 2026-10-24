@@ -4,21 +4,23 @@
  */
 import { loadCss } from '../../common/js/load-css.js';
 import { storage } from '../../common/js/storage.js';
-import { WEAPONS, WEAPON_ORDER, normalizeSave, SENS, VERSION } from './rules.js?v=1';
-import { Game } from './game.js?v=1';
-import { Input } from './input.js?v=1';
-import { Sfx } from './sfx.js?v=1';
+import { WEAPONS, WEAPON_ORDER, normalizeSave, SENS, VERSION } from './rules.js?v=2';
+import { Game } from './game.js?v=2';
+import { Input } from './input.js?v=2';
+import { Sfx } from './sfx.js?v=2';
 
 const SAVE_KEY = 'zombie_tps_save';
 const OPT_LABEL = {
   autoFire: { true: 'オン', false: 'オフ' },
   sens: { low: 'ひくい', mid: 'ふつう', high: 'たかい' },
   quality: { auto: 'じどう', low: 'かるい', high: 'きれい' },
+  flashlight: { true: 'オン', false: 'オフ' },
 };
+const OPT_CYCLE = { autoFire: [false, true], sens: ['low', 'mid', 'high'], quality: ['auto', 'low', 'high'], flashlight: [true, false] };
 
 export default {
   prepare() {
-    return loadCss(new URL('../css/zombie-tps.css?v=1', import.meta.url).href);
+    return loadCss(new URL('../css/zombie-tps.css?v=2', import.meta.url).href);
   },
 
   init(container, onBackToHub) {
@@ -57,6 +59,7 @@ export default {
     <div class="zt-root">
       <canvas class="zt-canvas"></canvas>
       <div class="zt-hurt"></div>
+      <div class="zt-boom"></div>
       <div class="zt-touch">
         <div class="zt-stick"><div class="zt-knob"></div></div>
         <div class="zt-hud">
@@ -77,19 +80,24 @@ export default {
           <button class="zt-btn zt-aim" data-act="aim"><span>ねらう</span></button>
           <button class="zt-btn zt-rl" data-act="reload"><span>リロード</span></button>
           <button class="zt-btn zt-jump" data-act="jump"><span>ジャンプ</span></button>
-          <div class="zt-keyhint">WASD いどう ・ マウス ねらう ・ ひだりクリック うつ ・ みぎクリック ねらう ・ R リロード ・ スペース ジャンプ ・ 1 2 3 ぶき ・ ESC ポーズ</div>
+          <div class="zt-keyhint">WASD いどう ・ マウス ねらう ・ ひだりクリック うつ ・ みぎクリック ねらう ・ R リロード ・ スペース ジャンプ ・ 1〜4 ぶき ・ ESC ポーズ</div>
         </div>
       </div>
 
       <div class="zt-screen zt-title">
         <div class="zt-title-box">
           <h1>ゾンビ<br>ストライク</h1>
-          <p class="zt-sub">アサルトライフルで まちを まもれ！</p>
+          <p class="zt-sub">アサルトライフルと ロケットで まちを まもれ！</p>
+          <div class="zt-stages">
+            <button data-stage="day">☀ ひるの まち</button>
+            <button data-stage="night">🌙 よるの まち</button>
+          </div>
           <button class="zt-big" data-ui="start">スタート</button>
           <div class="zt-opts">
             <button data-opt="autoFire">オートうち <b></b></button>
             <button data-opt="sens">かんど <b></b></button>
             <button data-opt="quality">がしつ <b></b></button>
+            <button data-opt="flashlight">ライト <b></b></button>
           </div>
           <div class="zt-best"></div>
           <button class="zt-small" data-ui="hub">← こうぼうへ もどる</button>
@@ -100,6 +108,7 @@ export default {
           <div><b>みぎ</b> ドラッグで ねらう</div>
           <div><b>うつ</b> おしたまま れんしゃ（ドラッグも できる）</div>
           <div><b>あたま</b>を うつと ヘッドショット！</div>
+          <div><b>4</b> ロケットで まとめて ふっとばせ！</div>
           <div class="zt-ver">v${VERSION}</div>
         </div>
       </div>
@@ -133,6 +142,8 @@ export default {
     for (const b of this.container.querySelectorAll('[data-opt]')) {
       const k = b.dataset.opt; b.querySelector('b').textContent = OPT_LABEL[k][String(this.save[k])];
     }
+    for (const b of this.container.querySelectorAll('[data-stage]')) b.classList.toggle('sel', b.dataset.stage === this.save.stage);
+    const fl = this.el('[data-opt="flashlight"]'); if (fl) fl.style.display = this.save.stage === 'night' ? '' : 'none';
     this.el('.zt-best').textContent = this.save.bestWave ? `さいこう ウェーブ ${this.save.bestWave} ・ スコア ${this.save.bestScore}` : '';
   },
 
@@ -146,15 +157,22 @@ export default {
 
   bind() {
     this.onClick = (e) => {
-      const b = e.target.closest('[data-ui],[data-opt]'); if (!b) return;
+      const b = e.target.closest('[data-ui],[data-opt],[data-stage]'); if (!b) return;
       this.sfx.unlock();
+      if (b.dataset.stage) {
+        this.save.stage = b.dataset.stage; this.persist(); this.updateTitle();
+        if (this.game) { this.game.settings = this.save; this.game.applyStage(this.save.stage); }
+        this.sfx.swap();
+        return;
+      }
       const opt = b.dataset.opt;
       if (opt) {
-        const cyc = { autoFire: [false, true], sens: ['low', 'mid', 'high'], quality: ['auto', 'low', 'high'] }[opt];
+        const cyc = OPT_CYCLE[opt];
         this.save[opt] = cyc[(cyc.indexOf(this.save[opt]) + 1) % cyc.length];
         this.persist(); this.updateTitle(); this.applySens();
         if (this.game) this.game.settings = this.save;
         if (opt === 'quality') this.rebuild3D();
+        if (opt === 'flashlight' && this.game) this.game.applyStage(this.save.stage);
         return;
       }
       const ui = b.dataset.ui;
@@ -217,7 +235,7 @@ export default {
     const E = {
       hpBar: q('.zt-hpbar div'), hpNum: q('.zt-hp em'), wave: q('.zt-wave b'), left: q('.zt-wave span'), score: q('.zt-score b'),
       ammo: q('.zt-ammo b'), res: q('.zt-ammo span'), wname: q('.zt-wname'), cross: q('.zt-cross'), hitm: q('.zt-hitm'),
-      feed: q('.zt-feed'), banner: q('.zt-banner'), reload: q('.zt-reload'), reloadBar: q('.zt-reload div'), hurt: q('.zt-hurt'),
+      boom: q('.zt-boom'), feed: q('.zt-feed'), banner: q('.zt-banner'), reload: q('.zt-reload'), reloadBar: q('.zt-reload div'), hurt: q('.zt-hurt'),
       slots: [...this.container.querySelectorAll('.zt-slot')],
     };
     const last = {};
@@ -259,6 +277,10 @@ export default {
       banner: (a, b) => {
         E.banner.querySelector('b').textContent = a; E.banner.querySelector('span').textContent = b || '';
         E.banner.classList.remove('on'); void E.banner.offsetWidth; E.banner.classList.add('on');
+      },
+      boom: (k) => {
+        E.boom.style.setProperty('--k', k.toFixed(2));
+        E.boom.classList.remove('on'); void E.boom.offsetWidth; E.boom.classList.add('on');
       },
       hurt: (ang) => { E.hurt.classList.remove('on'); void E.hurt.offsetWidth; E.hurt.classList.add('on'); },
       pause: () => app.pause(),

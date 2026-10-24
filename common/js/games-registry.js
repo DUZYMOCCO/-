@@ -42,7 +42,7 @@ export const games = [
   {
     id: 'zombie-tps', section: 'kids', title: 'ゾンビストライク', subtitle: 'ゾンビを うって まちを まもれ！',
     icon: '🧟', color: '#4caf50',
-    description: 'アサルトライフルで ゾンビを うて！ あたまを ねらうと ヘッドショット。ウェーブを どこまで こえられるかな？',
+    description: 'アサルトライフルで ゾンビを うて！ ロケットで まとめて ふっとばせ！ ひるの まちと よるの まちが あるよ。ウェーブを どこまで こえられるかな？',
     load: () => import('../../zombie-tps/js/index.js'),
   },
 ];

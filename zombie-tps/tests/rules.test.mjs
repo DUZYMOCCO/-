@@ -4,6 +4,7 @@ import {
   WEAPONS, WEAPON_ORDER, DEFAULT_WEAPON, fireInterval, damageAt, createGun, updateGun, tryFire, startReload,
   ZOMBIES, waveSpec, waveQueue, killScore, HEADSHOT_BONUS, rayAABB, castShot, collideCircle, groundHeight,
   buildGrid, updateFlow, flowDir, cellOf, normalizeSave,
+  blastFalloff, blastDamage, launchVelocity, knockAt, FLY_KNOCK, MAX_AIR, stickCurve, approach, refillReserve, VERSION,
 } from '../js/rules.js';
 import { buildMap, playerColliders, zombieColliders, HALF } from '../js/map.js';
 
@@ -131,7 +132,100 @@ test('マップ: スタートは あいていて、ぜんぶの ゲートから 
 });
 
 test('セーブの よみこみ', () => {
-  assert.deepEqual(normalizeSave(null), { bestWave: 0, bestScore: 0, autoFire: false, sens: 'mid', quality: 'auto' });
+  assert.deepEqual(normalizeSave(null), { bestWave: 0, bestScore: 0, autoFire: false, sens: 'mid', quality: 'auto', stage: 'day', flashlight: true });
   assert.equal(normalizeSave({ bestWave: 7, sens: 'zzz' }).sens, 'mid');
   assert.equal(normalizeSave({ bestWave: 7 }).bestWave, 7);
+});
+
+test('ロケットランチャー: スロット4、1はつずつ、よびだん すこし、ゆっくり リロード', () => {
+  const w = WEAPONS.rocket;
+  assert.equal(WEAPON_ORDER[3], 'rocket');
+  assert.equal(w.slot, 4);
+  assert.equal(DEFAULT_WEAPON, 'rifle');
+  assert.equal(w.mag, 1);
+  assert.ok(w.reserve >= 2 && w.reserve <= 5 && w.reserve !== Infinity);
+  assert.ok(w.reload >= 2, 'リロードは ゆっくり');
+  assert.ok(w.projectile && w.speed > 20 && w.blast > 3);
+  const g = createGun('rocket');
+  assert.equal(tryFire(g, true), 'fire');
+  assert.equal(g.ammo, 0);
+  updateGun(g, 2);
+  assert.equal(tryFire(g, false), 'none');
+  assert.equal(tryFire(g, true), 'reload');
+  updateGun(g, w.reload + 0.01);
+  assert.equal(g.ammo, 1);
+  assert.equal(g.reserve, w.reserve - 1);
+  // ウェーブで ほじゅう
+  g.reserve = 0; refillReserve(g); assert.equal(g.reserve, w.reserve);
+  const p = createGun('pistol'); refillReserve(p); assert.equal(p.reserve, Infinity);
+});
+
+test('ばくはつ: まんなかは フルダメージ、とおいほど よわく、そとは 0', () => {
+  const w = WEAPONS.rocket;
+  assert.equal(blastFalloff(0, w.blast), 1);
+  assert.equal(blastFalloff(w.blast * 0.3, w.blast), 1);
+  assert.ok(blastFalloff(w.blast * 0.7, w.blast) < 1 && blastFalloff(w.blast * 0.7, w.blast) > 0.25);
+  assert.ok(blastFalloff(w.blast - 0.001, w.blast) >= 0.25);
+  assert.equal(blastFalloff(w.blast, w.blast), 0);
+  assert.equal(blastFalloff(w.blast + 3, w.blast), 0);
+  assert.ok(blastDamage(w, 0) >= ZOMBIES.brute.hp, 'ちょくげきなら ブルートも いっぱつ');
+  assert.ok(blastDamage(w, w.blast * 0.9) > 0 && blastDamage(w, w.blast * 0.9) < ZOMBIES.walker.hp * 2);
+});
+
+test('ふっとび: たかく とび、ばくしんから はなれる むき', () => {
+  const v = launchVelocity(2, 0, 2, 4.5, WEAPONS.rocket.power, 0.5);
+  assert.ok(v.vy > 8, 'たかく まいあがる');
+  assert.ok(v.vx > 0 && Math.abs(v.vz) < 1e-9);
+  const near = launchVelocity(0.5, 0.5, 0.7, 4.5, 13, 0.5), far = launchVelocity(3, 3, 4.2, 4.5, 13, 0.5);
+  assert.ok(near.vy > far.vy);
+  const c = launchVelocity(0, 0, 0, 4.5, 13, 0.5);
+  assert.ok(Number.isFinite(c.vx) && c.vy > 0);
+  assert.ok(MAX_AIR >= 3 && MAX_AIR <= 10);
+});
+
+test('ノックバック: ショットガンの ちかくは つよく ふっとぶ、ライフルは すこし', () => {
+  const sg = WEAPONS.shotgun, rf = WEAPONS.rifle;
+  assert.ok(knockAt(sg, 3) * sg.pellets >= FLY_KNOCK, 'ちかくの ショットガンは ふっとばす');
+  assert.ok(knockAt(sg, 30) * sg.pellets < knockAt(sg, 3) * sg.pellets);
+  assert.ok(knockAt(rf, 5) < FLY_KNOCK && knockAt(rf, 5) > 0);
+  assert.ok(knockAt(rf, 5) < knockAt(sg, 5) * sg.pellets);
+});
+
+test('スティック: あそびの なかは 0、カーブで なめらか、さいだい 1', () => {
+  assert.deepEqual(stickCurve(0.05, 0.05), { x: 0, y: 0 });
+  const half = stickCurve(0.5, 0), full = stickCurve(1, 0), over = stickCurve(2, 0);
+  assert.ok(half.x > 0 && half.x < 0.5);
+  assert.ok(Math.abs(full.x - 1) < 1e-9);
+  assert.ok(Math.abs(over.x - 1) < 1e-9);
+  const d = stickCurve(0.6, 0.6); assert.ok(Math.abs(Math.atan2(d.y, d.x) - Math.PI / 4) < 1e-9, 'むきは かわらない');
+  let prev = 0;
+  for (let i = 13; i <= 100; i++) { const m = stickCurve(i / 100, 0).x; assert.ok(m >= prev); prev = m; }
+});
+
+test('なめらか いどう: approach は フレームレートに よらない', () => {
+  let a = 0; for (let i = 0; i < 60; i++) a = approach(a, 5, 12, 1 / 60);
+  let b = 0; for (let i = 0; i < 30; i++) b = approach(b, 5, 12, 1 / 30);
+  assert.ok(Math.abs(a - b) < 1e-9);
+  assert.ok(a > 4.9 && a < 5);
+  assert.equal(approach(3, 3, 12, 0.016), 3);
+});
+
+test('バージョン と セーブの ステージ', () => {
+  assert.equal(VERSION, '0.2.0');
+  assert.equal(normalizeSave(null).stage, 'day');
+  assert.equal(normalizeSave({ stage: 'night' }).stage, 'night');
+  assert.equal(normalizeSave({ stage: 'mars' }).stage, 'day');
+  assert.equal(normalizeSave(null).flashlight, true);
+  assert.equal(normalizeSave({ flashlight: false }).flashlight, false);
+});
+
+test('マップ: よるの がいとうは みちの うえで、かべに うまって いない', () => {
+  const map = buildMap();
+  assert.ok(map.lamps.length >= 6);
+  const cols = playerColliders(map);
+  for (const l of map.lamps) {
+    assert.ok(Math.abs(l.x) < HALF && Math.abs(l.z) < HALF);
+    assert.ok(l.h > 3);
+  }
+  assert.ok(cols.length > 0);
 });

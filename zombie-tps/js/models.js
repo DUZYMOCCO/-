@@ -1,6 +1,6 @@
 // ブロックの キャラクターと ぶき（かくうの デザイン・ロゴなし）
 import * as THREE from '../vendor/three.module.min.js';
-import { zombieFaceTexture, playerFaceTexture, solidTexture, shirtTexture } from './textures.js?v=1';
+import { zombieFaceTexture, playerFaceTexture, solidTexture, shirtTexture } from './textures.js?v=2';
 
 const boxGeoCache = new Map();
 export function boxGeo(w, h, d) {
@@ -20,6 +20,8 @@ const GM = {
   metal: L(0x3a3f47), poly: L(0x1d2024), tan: L(0xb29566), orange: L(0xff8a1f), steel: L(0x6d737c),
   wood: L(0x8a5a32), lens: new THREE.MeshBasicMaterial({ color: 0x9fe8ff }), dot: new THREE.MeshBasicMaterial({ color: 0xff3b2f }),
   rubber: L(0x121315), red: L(0xc0392b),
+  olive: L(0x5b6b3a), oliveD: L(0x434f2b), khaki: L(0xa89a6a), warhead: L(0x7d8a52), tip: L(0xff8a1f),
+  glow: new THREE.MeshBasicMaterial({ color: 0xfff6d8 }),
 };
 
 function makeRifle() {
@@ -53,6 +55,8 @@ function makeRifle() {
   part(g, M.dot, 0.006, 0.006, 0.004, 0, 0.122, -0.002);
   part(g, M.metal, 0.042, 0.012, 0.02, 0, 0.05, 0.14);              // チャージングハンドル
   part(g, M.poly, 0.004, 0.03, 0.065, 0.037, 0.012, -0.02);         // はいきょう こう
+  part(g, M.poly, 0.034, 0.034, 0.08, 0.058, 0.0, -0.36);           // ライト
+  part(g, M.glow, 0.028, 0.028, 0.004, 0.058, 0.0, -0.401);
   // マガジン（リロードで うごく）
   const mag = new THREE.Group(); mag.position.set(0, -0.12, -0.07); g.add(mag);
   part(mag, M.poly, 0.05, 0.12, 0.075, 0, -0.06, 0, 0.12);
@@ -99,9 +103,50 @@ function makeShotgun() {
   return { group: g, mag, muzzle, eject, pump, magRest: mag.position.clone() };
 }
 
+// ロケットランチャー（かくうの デザイン: オリーブいろの つつ＋オレンジの ライン）
+function makeRocket() {
+  const g = new THREE.Group(); g.name = 'rocket';
+  const M = GM;
+  part(g, M.olive, 0.15, 0.15, 1.05, 0, 0.06, -0.08);                // つつ
+  part(g, M.oliveD, 0.19, 0.19, 0.12, 0, 0.06, -0.62);               // まえの ふち
+  part(g, M.oliveD, 0.2, 0.2, 0.16, 0, 0.06, 0.48);                  // うしろの ふち（ベル）
+  part(g, M.rubber, 0.13, 0.13, 0.01, 0, 0.06, 0.565);
+  for (const z of [-0.4, 0.05, 0.3]) part(g, M.oliveD, 0.158, 0.158, 0.03, 0, 0.06, z); // バンド
+  part(g, M.orange, 0.156, 0.03, 0.1, 0, 0.12, -0.25);               // オレンジの ライン
+  part(g, M.khaki, 0.09, 0.05, 0.3, 0, -0.04, 0.12);                 // かたあて
+  part(g, M.poly, 0.05, 0.13, 0.06, 0, -0.07, -0.02, -0.3);          // グリップ
+  part(g, M.poly, 0.012, 0.012, 0.07, 0, -0.06, -0.08);              // トリガーガード
+  part(g, M.poly, 0.045, 0.1, 0.05, 0, -0.04, -0.34, -0.2);          // まえの グリップ
+  part(g, M.metal, 0.05, 0.06, 0.13, -0.1, 0.12, -0.12);             // スコープ
+  part(g, M.metal, 0.025, 0.04, 0.03, -0.085, 0.09, -0.12);
+  part(g, M.lens, 0.04, 0.04, 0.004, -0.1, 0.12, -0.186);
+  part(g, M.dot, 0.012, 0.012, 0.004, -0.1, 0.12, -0.054);
+  part(g, M.steel, 0.02, 0.05, 0.02, 0, 0.16, -0.5);                 // まえの サイト
+  // たま（リロードで まえから いれる）
+  const mag = new THREE.Group(); mag.position.set(0, 0.06, -0.68); g.add(mag);
+  part(mag, M.warhead, 0.11, 0.11, 0.16, 0, 0, -0.03);
+  part(mag, M.warhead, 0.07, 0.07, 0.08, 0, 0, -0.14);
+  part(mag, M.tip, 0.04, 0.04, 0.05, 0, 0, -0.2);
+  const muzzle = new THREE.Object3D(); muzzle.position.set(0, 0.06, -0.72); g.add(muzzle);
+  const back = new THREE.Object3D(); back.position.set(0, 0.06, 0.6); g.add(back);
+  const eject = new THREE.Object3D(); eject.position.set(0, 0.06, 0.6); g.add(eject);
+  g.position.set(-0.02, 0.07, 0.1);
+  return { group: g, mag, muzzle, eject, back, magRest: mag.position.clone() };
+}
+
+// とんでいく ロケット
+export function makeRocketProjectile() {
+  const g = new THREE.Group();
+  part(g, GM.warhead, 0.1, 0.1, 0.34, 0, 0, 0);
+  part(g, GM.tip, 0.06, 0.06, 0.08, 0, 0, -0.2);
+  for (const r of [0, Math.PI / 2]) part(g, GM.oliveD, 0.24, 0.02, 0.08, 0, 0, 0.16, 0, 0, r);
+  const flame = part(g, new THREE.MeshBasicMaterial({ color: 0xffc04a }), 0.07, 0.07, 0.12, 0, 0, 0.24);
+  return { group: g, flame };
+}
+
 export function makeWeapons() {
   const rifle = makeRifle(); rifle.group.scale.setScalar(1.15);
-  return { rifle, pistol: makePistol(), shotgun: makeShotgun() };
+  return { rifle, pistol: makePistol(), shotgun: makeShotgun(), rocket: makeRocket() };
 }
 export function makeMagMesh() {
   const g = new THREE.Group();
@@ -171,6 +216,7 @@ function zombieMats(kind) {
   return (zMats[kind] = { skin, face, shirt, pants, hair, helm });
 }
 export const FLASH_MAT = new THREE.MeshBasicMaterial({ color: 0xe6ffd0 });
+export const EYE_MAT = new THREE.MeshBasicMaterial({ color: 0xc8ff5a, fog: false });
 
 export function makeZombie(kind) {
   const m = zombieMats(kind);
@@ -196,5 +242,9 @@ export function makeZombie(kind) {
   }
   const meshes = [];
   root.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.userData.mat = o.material; meshes.push(o); } });
-  return { root, inner, legs, body, head, arms, meshes, kind };
+  // よるに ひかる め（ヒットの いろかえ・かげの たいしょうがい）
+  const eyes = new THREE.Group(); eyes.visible = false; head.add(eyes);
+  part(eyes, EYE_MAT, 0.13, 0.13, 0.02, 0.094, 0.25, -0.255);
+  part(eyes, EYE_MAT, 0.1, 0.1, 0.02, -0.11, 0.266, -0.255);
+  return { root, inner, legs, body, head, arms, meshes, eyes, kind };
 }

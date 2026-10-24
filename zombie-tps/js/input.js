@@ -1,3 +1,4 @@
+import { stickCurve } from './rules.js?v=2';
 // そうさ: タッチ（ひだり スティック・みぎ ドラッグ・ボタン）と キーボード／マウス
 export class Input {
   constructor(touchLayer, canvas) {
@@ -104,6 +105,7 @@ export class Input {
       if (c === 'Digit1') this.events.push('w:rifle');
       if (c === 'Digit2') this.events.push('w:pistol');
       if (c === 'Digit3') this.events.push('w:shotgun');
+      if (c === 'Digit4') this.events.push('w:rocket');
       if (c === 'KeyQ') this.events.push('next');
       if (c === 'Escape' || c === 'KeyP') this.events.push('pause');
     } else this.keys.delete(c);
@@ -115,10 +117,10 @@ export class Input {
   }
   // 1フレームぶんの にゅうりょく
   read() {
-    let mx = this.move.x, my = this.move.y;
-    if (this.kx || this.ky) { mx = this.kx; my = this.ky; }
-    const l = Math.hypot(mx, my); if (l > 1) { mx /= l; my /= l; }
-    const out = { mx, my, lx: this.look.x, ly: this.look.y, fire: this.fire, aim: this.aiming, events: this.events.splice(0) };
+    // スティックは あそび＋カーブで こまかく うごける
+    let { x: mx, y: my } = stickCurve(this.move.x, this.move.y, 0.12, 1.35);
+    if (this.kx || this.ky) { mx = this.kx; my = this.ky; const l = Math.hypot(mx, my); mx /= l; my /= l; }
+    const out = { mx, my, lx: this.look.x, ly: this.look.y, fire: this.fire, aim: this.aiming, touch: this.usingTouch, events: this.events.splice(0) };
     this.look.x = 0; this.look.y = 0;
     return out;
   }

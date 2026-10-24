@@ -1,7 +1,7 @@
 // ゾンビストライク — ゲームの きまり（DOM / three.js に いぞんしない。node のテストから よめる）
 // ぶき・ダメージ・ウェーブ・あたりはんてい（レイ×はこ）・いどうの ぶつかり・ゾンビの みちさがし（フローフィールド）
 
-export const VERSION = '0.1.0';
+export const VERSION = '0.2.0';
 
 // ---- ぶき ----
 // rpm: 1ぷんかんの はっしゃかず / mag: マガジン / reserve: よびだん / reload: びょう
@@ -12,27 +12,82 @@ export const WEAPONS = {
     dmg: 24, head: 2.5, pellets: 1, rpm: 640, auto: true,
     mag: 30, reserve: 210, reload: 1.9,
     spread: 0.010, spreadMove: 0.028, spreadAim: 0.003, bloom: 0.0045, bloomMax: 0.035,
-    recoilPitch: 0.012, recoilYaw: 0.006, shake: 0.06, range: 90, falloff: [25, 70, 0.7],
+    recoilPitch: 0.012, recoilYaw: 0.006, shake: 0.06, range: 90, falloff: [25, 70, 0.7], knock: 0.7,
   },
   pistol: {
     id: 'pistol', name: 'ハンドガン', short: 'ハンドガン', slot: 2,
     dmg: 34, head: 2.5, pellets: 1, rpm: 330, auto: false,
     mag: 12, reserve: Infinity, reload: 1.25,
     spread: 0.008, spreadMove: 0.02, spreadAim: 0.002, bloom: 0.012, bloomMax: 0.04,
-    recoilPitch: 0.03, recoilYaw: 0.006, shake: 0.05, range: 60, falloff: [15, 45, 0.6],
+    recoilPitch: 0.03, recoilYaw: 0.006, shake: 0.05, range: 60, falloff: [15, 45, 0.6], knock: 1.0,
   },
   shotgun: {
     id: 'shotgun', name: 'ショットガン', short: 'ショットガン', slot: 3,
     dmg: 16, head: 1.8, pellets: 8, rpm: 75, auto: false,
     mag: 6, reserve: 36, reload: 2.3,
     spread: 0.075, spreadMove: 0.09, spreadAim: 0.055, bloom: 0, bloomMax: 0,
-    recoilPitch: 0.07, recoilYaw: 0.01, shake: 0.18, range: 35, falloff: [6, 22, 0.35],
+    recoilPitch: 0.07, recoilYaw: 0.01, shake: 0.18, range: 35, falloff: [6, 22, 0.35], knock: 1.1,
+  },
+  // ロケットランチャー: たまは とんでいく（projectile）。ばくはつで まわりに ダメージ＋ふっとばし
+  rocket: {
+    id: 'rocket', name: 'ロケットランチャー', short: 'ロケット', slot: 4,
+    dmg: 260, head: 1, pellets: 1, rpm: 50, auto: false,
+    mag: 1, reserve: 3, reload: 2.6,
+    spread: 0.004, spreadMove: 0.012, spreadAim: 0.002, bloom: 0, bloomMax: 0,
+    recoilPitch: 0.085, recoilYaw: 0.012, shake: 0.4, range: 90, falloff: [0, 1, 1], knock: 0,
+    projectile: true, speed: 34, blast: 4.5, power: 13, life: 3,
   },
 };
-export const WEAPON_ORDER = ['rifle', 'pistol', 'shotgun'];
+export const WEAPON_ORDER = ['rifle', 'pistol', 'shotgun', 'rocket'];
 export const DEFAULT_WEAPON = 'rifle';
 
 export function fireInterval(w) { return 60 / w.rpm; }
+
+// ウェーブの はじめに よびだんを ほじゅう（へっていたら もとの かずまで）
+export function refillReserve(g) {
+  const w = WEAPONS[g.id];
+  if (w.reserve !== Infinity) g.reserve = Math.max(g.reserve, w.reserve);
+}
+
+// ---- ばくはつ ----
+// ばくしんちから d の ところの つよさ 0..1（まんなか 35% は フル、ふちで 0.25、そとは 0）
+export function blastFalloff(d, radius) {
+  if (d >= radius) return 0;
+  const core = radius * 0.35;
+  if (d <= core) return 1;
+  return 1 - 0.75 * (d - core) / (radius - core);
+}
+// ばくはつの ダメージ
+export function blastDamage(w, d) { return Math.round(w.dmg * blastFalloff(d, w.blast)); }
+// ふっとぶ はやさ（たかく まいあがる）。dx,dz: ばくしん→ゾンビ
+export function launchVelocity(dx, dz, d, radius, power, rnd = 0.5) {
+  const f = blastFalloff(d, radius);
+  const l = Math.hypot(dx, dz) || 1, ux = d < 0.05 ? 0 : dx / l, uz = d < 0.05 ? 0 : dz / l;
+  const hs = power * (0.45 + 0.55 * f);
+  return { vx: ux * hs * 0.7, vy: 6 + power * 0.55 * f + rnd * 2, vz: uz * hs * 0.7, spin: 6 + f * 10 + rnd * 4 };
+}
+// うたれた ときの ノックバック（m/s）。ちかいほど つよい
+export function knockAt(w, dist) {
+  const [near, far] = w.falloff;
+  const k = dist <= near ? 1 : dist >= far ? 0.25 : 1 - 0.75 * (dist - near) / (far - near);
+  return (w.knock || 0) * k;
+}
+// これより つよい ノックバックで たおすと ふっとぶ
+export const FLY_KNOCK = 4.5;
+// いちどに そらを とぶ ゾンビの かず（かるさの ため）
+export const MAX_AIR = 6;
+
+// ---- いどう（なめらか）----
+// スティック: あそび（デッドゾーン）＋ ゆるやかな カーブ。もどりは おおきさ 0..1 の ベクトル
+export function stickCurve(x, y, dead = 0.12, expo = 1.5) {
+  const l = Math.hypot(x, y);
+  if (l <= dead) return { x: 0, y: 0 };
+  const lc = Math.min(1, l);
+  const m = Math.pow((lc - dead) / (1 - dead), expo);
+  return { x: x / l * m, y: y / l * m };
+}
+// いまの はやさ v を ねらいの はやさ t へ ちかづける（かそく・げんそく。フレームレートに よらない）
+export function approach(v, t, rate, dt) { return t + (v - t) * Math.exp(-rate * dt); }
 
 // きょりで へる ダメージ（ちかいほど つよい）
 export function damageAt(w, dist, isHead) {
@@ -342,6 +397,8 @@ export function normalizeSave(s) {
     autoFire: !!o.autoFire,
     sens: ['low', 'mid', 'high'].includes(o.sens) ? o.sens : 'mid',
     quality: ['auto', 'low', 'high'].includes(o.quality) ? o.quality : 'auto',
+    stage: ['day', 'night'].includes(o.stage) ? o.stage : 'day',
+    flashlight: o.flashlight === undefined ? true : !!o.flashlight,
   };
 }
 export const SENS = { low: 0.6, mid: 1.0, high: 1.5 };

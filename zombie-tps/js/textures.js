@@ -193,5 +193,28 @@ export function fxTextures() {
     g.fillStyle = grd; g.fillRect(0, 0, 4, 256);
   }));
   sky.colorSpace = THREE.SRGBColorSpace;
-  return { flash, splats, hole, sky };
+  // よるの そら（こん → あおむらさき → ちへいせんは すこし あかるく）
+  const nightSky = new THREE.CanvasTexture(makeCanvas(4, 256, (g) => {
+    const grd = g.createLinearGradient(0, 0, 0, 256);
+    grd.addColorStop(0, '#0a1430'); grd.addColorStop(0.5, '#1b2d5c'); grd.addColorStop(0.75, '#34497e'); grd.addColorStop(1, '#2a3a63');
+    g.fillStyle = grd; g.fillRect(0, 0, 4, 256);
+  }));
+  nightSky.colorSpace = THREE.SRGBColorSpace;
+  // まるい ひかり（あかりの わ・ばくはつの ひかり）
+  const glow = new THREE.CanvasTexture(makeCanvas(64, 64, (g) => {
+    const grd = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    grd.addColorStop(0, 'rgba(255,255,255,1)'); grd.addColorStop(0.45, 'rgba(255,255,255,0.55)'); grd.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = grd; g.fillRect(0, 0, 64, 64);
+  }));
+  // つき（ブロックっぽい）
+  const moon = new THREE.CanvasTexture(makeCanvas(16, 16, (g) => {
+    const r = rng(77);
+    for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+      const dx = x - 7.5, dy = y - 7.5; if (dx * dx + dy * dy > 56) continue;
+      const v = 220 + (r() * 30 | 0); g.fillStyle = `rgb(${v},${v},${v - 20})`; g.fillRect(x, y, 1, 1);
+    }
+    g.fillStyle = 'rgba(150,150,140,0.6)'; g.fillRect(4, 5, 3, 2); g.fillRect(9, 9, 2, 3); g.fillRect(6, 11, 2, 1);
+  }));
+  moon.magFilter = THREE.NearestFilter; moon.colorSpace = THREE.SRGBColorSpace;
+  return { flash, splats, hole, sky, nightSky, glow, moon };
 }

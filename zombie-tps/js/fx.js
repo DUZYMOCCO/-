@@ -1,6 +1,6 @@
 // こうか: マズルフラッシュ・トレーサー・やっきょう・つぶ（みどりの しぶき／けむり）・しみ（みどり）・だんこん
 import * as THREE from '../vendor/three.module.min.js';
-import { makeMagMesh } from './models.js?v=1';
+import { makeMagMesh } from './models.js?v=2';
 
 const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _s = new THREE.Vector3(), _p = new THREE.Vector3(), _c = new THREE.Color();
 const UP = new THREE.Vector3(0, 1, 0), FWD = new THREE.Vector3(0, 0, 1);
@@ -9,7 +9,7 @@ export class FX {
   constructor(scene, tex, { groundAt }) {
     this.scene = scene; this.groundAt = groundAt;
     // つぶ（InstancedMesh 1こ）
-    this.maxP = 360;
+    this.maxP = 520;
     this.pMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ color: 0xffffff }), this.maxP);
     this.pMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     this.pMesh.setColorAt(0, _c.set(0xffffff));
@@ -31,6 +31,18 @@ export class FX {
     this.flash.visible = false; scene.add(this.flash);
     this.flashLife = 0;
     this.light = new THREE.PointLight(0xffc070, 0, 9, 1.6); scene.add(this.light);
+    this.lightDecay = 120; this.lightBoost = 1;
+    // ばくはつ: ひかりの たま・じめんの わ（プール）
+    this.booms = [];
+    const bMat = () => new THREE.SpriteMaterial({ map: tex.flash, color: 0xffd9a0, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false });
+    const rGeo = new THREE.RingGeometry(0.7, 1, 28); rGeo.rotateX(-Math.PI / 2);
+    for (let i = 0; i < 3; i++) {
+      const sp = new THREE.Sprite(bMat()); sp.visible = false; scene.add(sp);
+      const ring = new THREE.Mesh(rGeo, new THREE.MeshBasicMaterial({ color: 0xffe0a0, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+      ring.visible = false; scene.add(ring);
+      this.booms.push({ sp, ring, life: 0, r: 1 });
+    }
+    this.bi = 0;
     // やっきょう
     this.casingGeo = { rifle: new THREE.BoxGeometry(0.018, 0.018, 0.055), pistol: new THREE.BoxGeometry(0.016, 0.016, 0.03), shotgun: new THREE.BoxGeometry(0.03, 0.03, 0.07) };
     this.casingMat = { rifle: new THREE.MeshLambertMaterial({ color: 0xd9a63c, emissive: 0x3a2a08 }), pistol: new THREE.MeshLambertMaterial({ color: 0xd9a63c, emissive: 0x3a2a08 }), shotgun: new THREE.MeshLambertMaterial({ color: 0xc0392b }) };
@@ -58,13 +70,13 @@ export class FX {
   }
 
   // ---- つぶ ----
-  burst(pos, n, { color = 0x55d23a, color2 = null, speed = 3, up = 2, size = 0.07, life = 0.5, gravity = 12, dir = null, spread = 1 } = {}) {
+  burst(pos, n, { color = 0x55d23a, color2 = null, speed = 3, up = 2, size = 0.07, life = 0.5, gravity = 12, dir = null, spread = 1, grow = 0, drag = 0 } = {}) {
     for (let i = 0; i < n; i++) {
       if (this.parts.length >= this.maxP) this.parts.shift();
       const v = new THREE.Vector3((Math.random() - 0.5) * 2, Math.random() * 1.2, (Math.random() - 0.5) * 2).multiplyScalar(speed * spread);
       if (dir) v.addScaledVector(dir, speed * (0.6 + Math.random() * 0.8));
       v.y += up * Math.random();
-      this.parts.push({ p: pos.clone(), v, life: life * (0.6 + Math.random() * 0.6), max: life, size: size * (0.6 + Math.random() * 0.8), col: (color2 && Math.random() < 0.4) ? color2 : color, g: gravity });
+      this.parts.push({ p: pos.clone(), v, life: life * (0.6 + Math.random() * 0.6), max: life, size: size * (0.6 + Math.random() * 0.8), col: (color2 && Math.random() < 0.4) ? color2 : color, g: gravity, grow, drag });
     }
   }
 
@@ -79,6 +91,36 @@ export class FX {
   dust(pos, normal) {
     this.burst(pos, 6, { color: 0xbdb3a0, color2: 0x8d857a, speed: 1.2, up: 0.6, size: 0.05, life: 0.4, dir: normal, gravity: 4 });
     this.burst(pos, 2, { color: 0xffd27a, speed: 2.5, up: 0.5, size: 0.025, life: 0.15, dir: normal, gravity: 0 });
+  }
+
+  // ---- ばくはつ（はでに！）----
+  explosion(pos, radius = 4.5) {
+    const b = this.booms[this.bi++ % this.booms.length];
+    b.sp.position.copy(pos); b.sp.position.y = Math.max(0.8, pos.y);
+    b.ring.position.set(pos.x, this.groundAt(pos.x, pos.z, pos.y + 0.5) + 0.06, pos.z);
+    b.life = b.max = 0.42; b.r = radius; b.sp.visible = b.ring.visible = true;
+    const p = _p.copy(pos); p.y = Math.max(0.3, p.y);
+    this.burst(p, 34, { color: 0xffd060, color2: 0xff8a1f, speed: 5.5, up: 3, size: 0.42, life: 0.42, gravity: -3, drag: 3 });   // ほのお
+    this.burst(p, 10, { color: 0xfff4c8, speed: 3, up: 1.5, size: 0.6, life: 0.2, gravity: 0, drag: 4 });                         // まんなかの ひかり
+    this.burst(p, 18, { color: 0x6b6b6b, color2: 0x9a9a9a, speed: 2.4, up: 3, size: 0.5, life: 1.4, gravity: -2.2, grow: 1.6, drag: 2 }); // けむり
+    this.burst(p, 18, { color: 0x8a5a32, color2: 0x8d857a, speed: 6.5, up: 8, size: 0.17, life: 1.5, gravity: 18 });              // がれき（はこ・つち）
+    this.burst(p, 16, { color: 0xfff0a0, speed: 11, up: 3, size: 0.05, life: 0.35, gravity: 6 });                                  // ひばな
+    this.light.position.copy(p); this.light.position.y += 1;
+    this.light.distance = 18; this.light.intensity = 70 * this.lightBoost; this.lightDecay = 160;
+    // こげあと（すすの しみ）
+    const d = this.holes[this.hi++ % this.holes.length];
+    d.m.position.set(pos.x, this.groundAt(pos.x, pos.z, pos.y + 0.5) + 0.03, pos.z);
+    d.m.quaternion.setFromUnitVectors(FWD, UP); d.m.scale.setScalar(radius * 0.75);
+    d.life = d.max = 10; d.m.material.opacity = 0.8; d.m.visible = true;
+  }
+  // ロケットの けむりの すじ
+  trail(pos, dir) {
+    this.burst(pos, 1, { color: 0xb8b8b8, color2: 0xe0e0e0, speed: 0.25, up: 0.2, size: 0.2, life: 0.9, gravity: -0.6, grow: 1.4, drag: 1.5 });
+    this.burst(pos, 1, { color: 0xffb040, speed: 0.4, up: 0, size: 0.12, life: 0.12, gravity: 0, dir, spread: 0.3 });
+  }
+  // うしろの ふきだし（ロケット はっしゃ）
+  backblast(pos, dir) {
+    this.burst(pos, 7, { color: 0xd0d0d0, color2: 0x9a9a9a, speed: 3.2, up: 0.3, size: 0.2, life: 0.45, gravity: -0.5, grow: 0.9, drag: 4, dir, spread: 0.35 });
   }
 
   // ---- トレーサー ----
@@ -98,8 +140,10 @@ export class FX {
     this.flash.scale.setScalar(s);
     this.flash.children[0].rotation.z = Math.random() * Math.PI;
     this.flash.visible = true; this.flashLife = 0.045;
+    if (this.lightDecay > 120 && this.light.intensity > 8) return; // ばくはつの ひかりを けさない
     this.light.position.copy(this.flash.position);
-    this.light.intensity = 6 * scale;
+    this.light.distance = 9 * (this.lightBoost > 1 ? 1.4 : 1); this.lightDecay = 120;
+    this.light.intensity = 6 * scale * this.lightBoost;
   }
 
   casing(ejectObj, kind, rightDir) {
@@ -131,7 +175,7 @@ export class FX {
   hole(pos, normal) {
     const d = this.holes[this.hi++ % this.holes.length];
     d.m.position.copy(pos).addScaledVector(normal, 0.01);
-    d.m.quaternion.setFromUnitVectors(FWD, normal);
+    d.m.quaternion.setFromUnitVectors(FWD, normal); d.m.scale.setScalar(0.12);
     d.life = d.max = 8; d.m.material.opacity = 1; d.m.visible = true;
   }
 
@@ -142,11 +186,11 @@ export class FX {
       const q = this.parts[i];
       q.life -= dt;
       if (q.life <= 0) { this.parts.splice(i, 1); continue; }
-      q.v.y -= q.g * dt; q.p.addScaledVector(q.v, dt);
+      q.v.y -= q.g * dt; if (q.drag) q.v.multiplyScalar(Math.exp(-q.drag * dt)); q.p.addScaledVector(q.v, dt);
       if (q.p.y < 0.02 && q.g > 0) { q.p.y = 0.02; q.v.multiplyScalar(0.4); q.v.y = 0; }
     }
     for (const q of this.parts) {
-      const k = Math.min(1, q.life / (q.max * 0.5));
+      const k = q.grow ? Math.min(1, q.life / (q.max * 0.35)) * (1 + (1 - q.life / q.max) * q.grow) : Math.min(1, q.life / (q.max * 0.5));
       _s.setScalar(q.size * k);
       _m.compose(q.p, _q.identity(), _s);
       this.pMesh.setMatrixAt(n, _m);
@@ -168,7 +212,17 @@ export class FX {
     }
     // フラッシュ
     if (this.flashLife > 0) { this.flashLife -= dt; if (this.flashLife <= 0) { this.flash.visible = false; } }
-    this.light.intensity = Math.max(0, this.light.intensity - dt * 120);
+    this.light.intensity = Math.max(0, this.light.intensity - dt * this.lightDecay * Math.max(1, this.light.intensity / 20));
+    for (const b of this.booms) {
+      if (b.life <= 0) continue;
+      b.life -= dt;
+      if (b.life <= 0) { b.sp.visible = b.ring.visible = false; continue; }
+      const t = 1 - b.life / b.max;
+      const s = b.r * (0.9 + Math.sqrt(t) * 1.6);
+      b.sp.scale.set(s, s, 1); b.sp.material.opacity = (1 - t) * (1 - t);
+      b.sp.material.rotation = t * 0.6;
+      const rs = b.r * (0.3 + t * 1.3); b.ring.scale.set(rs, 1, rs); b.ring.material.opacity = (1 - t) * 0.8;
+    }
     // やっきょう
     for (const c of this.casings) {
       if (c.life <= 0) continue;
