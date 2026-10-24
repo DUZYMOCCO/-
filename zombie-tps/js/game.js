@@ -13,14 +13,14 @@ import {
   spinGun, weaponMoveMul, makeBoxIndex, pickSpawnPoint, hurryMul, pickMapId,
   rollGearDrop, rollGear, GEAR_FLOOR, GEAR_LIFE, gearEffects, equippedItems, gearColor, rarityOf, normalizeGear,
   damageMul, frontHit, heavyOf, unlockedSpecials,
-} from './rules.js?v=6';
-import { makeNav } from './nav.js?v=6';
-import { buildMap, playerColliders, zombieColliders, shotColliders } from './map.js?v=6';
-import { buildTextures, fxTextures } from './textures.js?v=6';
-import { buildWorld, disposeWorld } from './world.js?v=6';
-import { Backdrop, BACKDROPS } from './backdrop.js?v=6';
-import { makePlayer, applyOutfit, applyGear, makeGearDrop, makeOjisan, makeWeapons, makeZombie, makeRocketProjectile, makeRocketCrate, zombieChunkColors, FLASH_MAT } from './models.js?v=6';
-import { FX } from './fx.js?v=6';
+} from './rules.js?v=7';
+import { makeNav } from './nav.js?v=7';
+import { buildMap, playerColliders, zombieColliders, shotColliders } from './map.js?v=7';
+import { buildTextures, fxTextures } from './textures.js?v=7';
+import { buildWorld, disposeWorld } from './world.js?v=7';
+import { Backdrop, BACKDROPS } from './backdrop.js?v=7';
+import { makePlayer, applyOutfit, applyGear, makeGearDrop, makeOjisan, makeWeapons, makeZombie, makeRocketProjectile, makeRocketCrate, zombieChunkColors, FLASH_MAT } from './models.js?v=7';
+import { FX } from './fx.js?v=7';
 
 const v3 = () => new THREE.Vector3();
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -220,7 +220,7 @@ export class Game {
     disk.visible = false; S.add(disk);
   }
 
-  // スタートの じかん（タイトルで えらぶ）。ウェーブごとに ひる → ゆうがた → よる
+  // スタートの じかん（タイトルで えらぶ）。ウェーブごとに ゆうぐれ → ゆうやけ → よる
   applyStage(stage) {
     const st = TOD[stage] ? stage : 'day';
     this.stage = this.todStart = st; this.tod = st; this.todFade = null;
@@ -292,8 +292,7 @@ export class Game {
   updateNight() {
     const p = this.pos;
     // うごく はいけい と かみなり
-    const fl = this.backdrop.update(this.frameDt || 0.016, this.camera.position, this.darkAmt || 0);
-    this.backdrop.mat.opacity = 0.8 + 0.2 * (this.darkAmt || 0);
+    const fl = this.backdrop.update(this.frameDt || 0.016, this.camera.position, this.darkAmt || 0, this.scene.fog.far);
     this.hemi.intensity = (this.baseHemiI || 1) * (1 + fl * 0.9);
     if (this.sunDisk.visible) {
       const o = this.sunOff, l = Math.hypot(o.x, o.y, o.z) || 1;

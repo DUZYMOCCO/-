@@ -226,7 +226,7 @@ test('なめらか いどう: approach は フレームレートに よらない
 });
 
 test('バージョン と セーブの ステージ', () => {
-  assert.equal(VERSION, '0.6.0');
+  assert.equal(VERSION, '0.6.1');
   assert.equal(normalizeSave(null).stage, 'day');
   assert.equal(normalizeSave({ stage: 'night' }).stage, 'night');
   assert.equal(normalizeSave({ stage: 'mars' }).stage, 'day');
@@ -255,7 +255,7 @@ test('じかん: ウェーブごとに ひる → ゆうがた → よる', () =
   assert.deepEqual(mixTod('day', 'night', 1).sky, TOD.night.sky);
   const mid = mixTod('sunset', 'night', 0.5);
   assert.ok(mid.lamps > TOD.sunset.lamps && mid.lamps < TOD.night.lamps);
-  assert.ok(TOD.day.lamps === 0 && TOD.sunset.lamps > 0 && TOD.night.night === 1);
+  assert.ok(TOD.day.lamps < TOD.sunset.lamps && TOD.sunset.lamps < TOD.night.lamps && TOD.night.night === 1);
 });
 
 test('ロケットだん: ゾンビが ときどき おとす・ボスは かならず・いっぱいなら ひろえない', () => {
@@ -872,4 +872,20 @@ test('v0.6.0 はいきょの ビル: 4かい・ゆかは ふつうの ゆか・�
   assert.ok(lv.size >= 3, 'かいごとに わける（みえない かいは かかない）');
   // エレベーターの あな: ゆかが ない
   assert.ok(groundHeight(0, -3.6, 0.2, 8.5, pc) < 2.5, 'エレベーターの あなは かごの うえまで おちる');
+});
+
+test('v0.6.1 いつも くらい: どの じかんも くらい そら・こい きり・つき・かみなり・マップごとの はいけい', async () => {
+  const lum = (c) => 0.299 * ((c >> 16) & 255) + 0.587 * ((c >> 8) & 255) + 0.114 * (c & 255);
+  for (const k of ['day', 'sunset', 'night']) {
+    const t = TOD[k];
+    assert.ok(lum(t.fog) < 60, `${k} きり くらい`);
+    assert.ok(lum(t.sky[0]) < 25 && lum(t.sky[1]) < 50, `${k} そら くらい`);
+    assert.ok(t.far <= 54 && t.near <= 12, `${k} きり こい`);
+    assert.ok(t.moon >= 0.7, `${k} つきが みえる`);
+    assert.ok(Math.min(1, t.night + t.lamps * 0.35) > 0.5, `${k} かみなり・まどの あかり`);
+    assert.ok(t.hemiI >= 0.9 && t.hemiI <= 1.1, `${k} ゾンビは みえる`);
+    assert.equal(t.sky[3], t.fog, `${k} ちへいせんと きりが おなじ いろ`);
+  }
+  const { BACKDROPS } = await import('../js/backdrop.js');
+  for (const id of MAP_IDS_MAP) { const b = BACKDROPS[id]; assert.ok(b && b.fires >= 1 && b.smoke >= 1 && b.bolt > 0 && b.moon != null, id); }
 });

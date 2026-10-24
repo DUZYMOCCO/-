@@ -110,14 +110,17 @@ export class Backdrop {
   }
 
   // dark: 0（ひる）〜 1（よる）
-  update(dt, cam, dark) {
+  // far: きりの おわり。つつを その すこし てまえに おく（きりで みえない とおくの はこに かくれない）
+  update(dt, cam, dark, far = 60) {
     this.t += dt; this.dark = dark;
-    this.mesh.position.set(cam.x, 0, cam.z);
+    const sc = Math.min(1, Math.max(0.3, (far - 2) / 110));
+    this.mesh.scale.setScalar(sc);
+    this.mesh.position.set(cam.x, Math.max(0, cam.y - 1.6) * 0.8, cam.z);
     // かみなり
     this.flash = Math.max(0, this.flash - dt * 5);
     this.boltT -= dt;
     if (this.boltT <= 0) {
-      this.boltT = (6 + Math.random() * 10) / Math.max(0.2, this.cfg.bolt * (0.4 + dark));
+      this.boltT = (4 + Math.random() * 8) / Math.max(0.25, this.cfg.bolt * (0.8 + dark));
       if (dark > 0.25) { this.flash = 1; this.bolt = { x: Math.random() * W, life: 0.25, seed: (Math.random() * 1e6) | 0 }; this.acc = this.rate; }
     }
     if (this.bolt) { this.bolt.life -= dt; if (this.bolt.life <= 0) this.bolt = null; }
@@ -159,7 +162,7 @@ export class Backdrop {
       for (let i = 0; i < 7; i++) {
         const k = ((t * 0.12 + s.ph + i / 7) % 1);
         const y = BASE - 10 - k * 140, r = 8 + k * 26, x = s.x + Math.sin(k * 3 + s.ph) * 10 + k * 40;
-        g.fillStyle = `rgba(30,28,30,${0.5 * (1 - k)})`;
+        g.fillStyle = `rgba(${70 - k * 40},${44 - k * 20},${40 - k * 10},${0.6 * (1 - k)})`;
         for (const dx of [0, -W]) { g.beginPath(); g.arc(x + dx, y, r, 0, TAU); g.fill(); }
       }
     }
@@ -175,12 +178,12 @@ export class Backdrop {
     // ほのお（もえている まち）
     for (const f of this.fires) {
       const fl = 0.7 + 0.3 * Math.sin(t * 11 + f.ph) * Math.sin(t * 4.3 + f.ph * 2);
-      const r = 26 * f.s * fl;
+      const r = 34 * f.s * fl;
       for (const dx of [0, -W, W]) {
         const x = f.x + dx; if (x < -60 || x > W + 60) continue;
         const grd = g.createRadialGradient(x, BASE - 4, 2, x, BASE - 4, r * 1.8);
         grd.addColorStop(0, `rgba(255,200,120,${0.9 * fl})`); grd.addColorStop(0.35, cfg.glow); grd.addColorStop(1, 'rgba(255,90,20,0)');
-        g.globalAlpha = 0.75; g.fillStyle = grd; g.fillRect(x - r * 2, BASE - 4 - r * 2, r * 4, r * 2.2); g.globalAlpha = 1;
+        g.globalAlpha = 0.85; g.fillStyle = grd; g.fillRect(x - r * 2, BASE - 4 - r * 2, r * 4, r * 2.2); g.globalAlpha = 1;
         g.fillStyle = `rgba(255,170,70,${fl})`;
         for (let k = 0; k < 4; k++) { const fx = x - 8 * f.s + k * 5 * f.s, fh = (6 + 10 * Math.abs(Math.sin(t * 9 + k + f.ph))) * f.s; g.beginPath(); g.moveTo(fx - 3, BASE); g.lineTo(fx, BASE - fh); g.lineTo(fx + 3, BASE); g.fill(); }
       }

@@ -1,7 +1,7 @@
 // ゾンビストライク — ゲームの きまり（DOM / three.js に いぞんしない。node のテストから よめる）
 // ぶき・ダメージ・ウェーブ・あたりはんてい（レイ×はこ）・いどうの ぶつかり・ゾンビの みちさがし（フローフィールド）
 
-export const VERSION = '0.6.0';
+export const VERSION = '0.6.1';
 
 // ---- ぶき ----
 // rpm: 1ぷんかんの はっしゃかず / mag: マガジン / reserve: よびだん / reload: びょう
@@ -87,7 +87,7 @@ export function pickupVisible(age) {
   return Math.floor(age * (left < 2 ? 10 : 5)) % 2 === 0;
 }
 
-// ---- じかん（ウェーブごとに ひる → ゆうがた → よる）----
+// ---- じかん（ウェーブごとに ゆうぐれ → ゆうやけ → よる。v0.6.1: ぜんぶ くらい）----
 export const TOD_ORDER = ['day', 'sunset', 'night'];
 export function timeOfDay(wave, start = 'day') {
   const s = Math.max(0, TOD_ORDER.indexOf(start));
@@ -95,13 +95,13 @@ export function timeOfDay(wave, start = 'day') {
 }
 // いろ・あかるさ（sky: そらの グラデーション 4いろ、うえ→した）
 export const TOD = {
-  // v0.5.0: くらくて こわい ふんいき（くもりの ひる・ぶきみな ゆうがた・まっくらな よる）
-  day: { fog: 0x8e938c, near: 18, far: 66, hemiSky: 0xc4ccd0, hemiGround: 0x4e4636, hemiI: 1.35, sun: 0xeee4d0, sunI: 1.8, off: [14, 26, 9],
-    sky: [0x343c4c, 0x5e6a78, 0x8e8a80, 0x8a8172], night: 0, moon: 0, lamps: 0, disk: 0, boost: 1 },
-  sunset: { fog: 0x6e4a4e, near: 15, far: 58, hemiSky: 0xe0a8a0, hemiGround: 0x3a2c40, hemiI: 1.15, sun: 0xff8a50, sunI: 1.6, off: [-24, 9, -14],
-    sky: [0x161430, 0x48264a, 0xa04a3a, 0xc07040], night: 0.25, moon: 0.35, lamps: 0.75, disk: 0.8, boost: 1.6 },
-  night: { fog: 0x0e1426, near: 11, far: 50, hemiSky: 0x8a9ad8, hemiGround: 0x2a2a40, hemiI: 1.1, sun: 0xa0b4f0, sunI: 0.9, off: [-12, 24, -16],
-    sky: [0x04060e, 0x0c1226, 0x1a2240, 0x161c30], night: 1, moon: 1, lamps: 1, disk: 0, boost: 2.6 },
+  // v0.6.1: いつも くらい（むらさきの ゆうぐれ・ちいろの ゆうがた・みどりの よる）。とおくの もえる まちが みえる
+  day: { fog: 0x241e30, near: 8, far: 50, hemiSky: 0x7c74a4, hemiGround: 0x26222c, hemiI: 0.95, sun: 0xb8a0f0, sunI: 0.8, off: [14, 26, 9],
+    sky: [0x07050e, 0x1a1230, 0x30244a, 0x241e30], night: 0.55, moon: 0.85, lamps: 0.6, disk: 0, boost: 1.8 },
+  sunset: { fog: 0x2e1822, near: 8, far: 48, hemiSky: 0xc0909a, hemiGround: 0x281a28, hemiI: 0.95, sun: 0xff7a48, sunI: 0.95, off: [-24, 9, -14],
+    sky: [0x0a0614, 0x2a1030, 0x5a1e2c, 0x2e1822], night: 0.65, moon: 0.75, lamps: 0.85, disk: 0.45, boost: 2 },
+  night: { fog: 0x0a1612, near: 7, far: 44, hemiSky: 0x88b0b0, hemiGround: 0x1e2a2a, hemiI: 0.95, sun: 0x9ad0c0, sunI: 0.7, off: [-12, 24, -16],
+    sky: [0x010304, 0x04100e, 0x0c201c, 0x0a1612], night: 1, moon: 1, lamps: 1, disk: 0, boost: 2.6 },
 };
 export function mixColor(a, b, k) {
   const r = ((a >> 16) & 255) + ((((b >> 16) & 255) - ((a >> 16) & 255)) * k);

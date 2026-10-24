@@ -1,8 +1,8 @@
 // ゾンビストライク の Service Worker 用アセット一覧
 self.GAME_ASSETS = self.GAME_ASSETS || {};
 self.GAME_ASSETS['zombie-tps'] = {
-  version: 'v6',
-  gameVersion: '0.6.0',
+  version: 'v7',
+  gameVersion: '0.6.1',
   files: [
     'css/zombie-tps.css',
     'js/index.js',
