@@ -4,17 +4,17 @@
  */
 import { loadCss } from '../../common/js/load-css.js';
 import { storage } from '../../common/js/storage.js';
-import { VERSION, STAGES, WEAPONS, normalizeSave, rankOf } from './rules.js?v=3';
-import { Game } from './game.js?v=3';
-import { Renderer } from './render.js?v=3';
-import { Input } from './input.js?v=3';
-import { Sfx } from './sfx.js?v=3';
+import { VERSION, STAGES, WEAPONS, ZOOMS, normalizeSave, rankOf } from './rules.js?v=4';
+import { Game } from './game.js?v=4';
+import { Renderer } from './render.js?v=4';
+import { Input } from './input.js?v=4';
+import { Sfx } from './sfx.js?v=4';
 
 const SAVE_KEY = 'side_action_save';
 const TITLE = 'ガンキック ヒーローズ';
 
 export default {
-  prepare() { return loadCss(new URL('../css/side-action.css?v=3', import.meta.url).href); },
+  prepare() { return loadCss(new URL('../css/side-action.css?v=4', import.meta.url).href); },
 
   init(container, onBackToHub) {
     this.container = container; this.onBackToHub = onBackToHub;
@@ -63,6 +63,7 @@ export default {
         <div class="sa-stages"></div>
         <div class="sa-row">
           <button class="sa-small" data-act="allies"></button>
+          <button class="sa-small sa-zoombtn" data-act="zoom"></button>
           <button class="sa-small" data-act="howto">あそびかた</button>
           <button class="sa-small" data-act="hub">← もどる</button>
         </div>
@@ -87,6 +88,7 @@ export default {
         <h2>ポーズ</h2>
         <div class="sa-pause-bgm">♪ <b class="sa-bgm-name">---</b><button class="sa-small" data-act="nextbgm">つぎの きょく ⏭</button></div>
         <button class="sa-big" data-act="resume">つづける</button>
+        <button class="sa-small sa-zoombtn" data-act="zoom"></button>
         <button class="sa-small" data-act="restart">さいしょから</button>
         <button class="sa-small" data-act="title">タイトルへ</button>
       </div>
@@ -114,6 +116,7 @@ export default {
       const a = b.dataset.act;
       if (a === 'stage') this.start(+b.dataset.i);
       else if (a === 'allies') { this.save.allies = !this.save.allies; this.persist(); this.renderTitle(); }
+      else if (a === 'zoom') { this.save.zoom = (this.save.zoom + 1) % ZOOMS.length; this.persist(); this.applyZoom(); }
       else if (a === 'howto') this.show('howto');
       else if (a === 'hub') this.back();
       else if (a === 'title') { this.game = null; this.show('title'); }
@@ -157,6 +160,13 @@ export default {
     }
   },
   persist() { storage.set(SAVE_KEY, this.save); },
+  zoomZ() { return (ZOOMS[this.save.zoom] || ZOOMS[1]).z; },
+  applyZoom() {
+    const z = this.zoomZ();
+    for (const g of [this.game, this.demo]) if (g) { g.zoom = z; g.snapCam = true; }
+    const label = `ズーム：${(ZOOMS[this.save.zoom] || ZOOMS[1]).name}`;
+    this.root.querySelectorAll('.sa-zoombtn').forEach((b) => { b.textContent = label; });
+  },
   resize() {
     const r = this.root.getBoundingClientRect();
     const w = Math.max(320, r.width || window.innerWidth), h = Math.max(200, r.height || window.innerHeight);
@@ -182,26 +192,27 @@ export default {
       else if (name === 'clear') this.sfx.music.setVolume(0.15);
       else if (name === null) this.sfx.music.setVolume(0.32);
     }
+    this.applyZoom();
   },
   renderTitle() {
     this.el('.sa-stages').innerHTML = STAGES.map((s, i) => {
       const locked = i > 0 && !this.save.cleared.includes(STAGES[i - 1].id) && !this.save.cleared.includes(s.id);
       const best = this.save.best[s.id];
       return `<button class="sa-stage ${locked ? 'locked' : ''}" data-act="${locked ? '' : 'stage'}" data-i="${i}" ${locked ? 'disabled' : ''}>
-        <b>${s.name}</b><span>${s.sub}</span><em>${locked ? '🔒 まえの ステージを クリア' : best ? `ベスト ${best.score} ${best.rank}` : 'ボスが まってる…'}</em></button>`;
+        <b>${s.name}</b><span>${s.sub}</span><em>${locked ? '🔒 まえを クリアしてね' : best ? `ベスト ${best.score} ${best.rank}` : 'ボスが まってる…'}</em></button>`;
     }).join('');
     this.el('[data-act="allies"]').textContent = `なかま：${this.save.allies ? 'いっしょ' : 'ひとり'}`;
   },
   start(i) {
-    this.game = new Game(i, { viewW: this.viewW, allies: this.save.allies, seed: (Math.random() * 1e9) | 0 });
+    this.game = new Game(i, { viewW: this.viewW, allies: this.save.allies, zoom: this.zoomZ(), seed: (Math.random() * 1e9) | 0 });
     this.paused = false; this.show(null); this.overShown = false;
     this.renderHudStatic();
     if (this.sfx && this.sfx.music && !this.sfx.music.started) {
       this.sfx.music.startRandom();
     }
   },
-  pause() { if (!this.game || this.screen !== null || this.game.state !== 'play') return; this.show('pause'); },
-  resume() { this.show(null); this.last = performance.now(); },
+  pause() { if (!this.game || this.screen !== null || this.game.state !== 'play') return; this.input.reset(); this.show('pause'); },
+  resume() { this.input.reset(); this.show(null); this.last = performance.now(); },
   back() { this.destroy(); this.onBackToHub?.(); },
 
   renderHudStatic() {
@@ -259,7 +270,7 @@ export default {
   },
   drawTitleBg(t) {
     // タイトルの うしろは デモ（じどう で うごく）
-    if (!this.demo) { this.demo = new Game(0, { viewW: this.viewW, seed: 99 }); this.demoMem = {}; this.demoBot = null; import('./game.js?v=3').then((m) => { this.demoBot = m.botInput; }); }
+    if (!this.demo) { this.demo = new Game(0, { viewW: this.viewW, seed: 99, zoom: this.zoomZ() }); this.demoMem = {}; this.demoBot = null; import('./game.js?v=4').then((m) => { this.demoBot = m.botInput; }); }
     const d = this.demo;
     if (this.demoBot) d.update(1 / 60, this.demoBot(d, this.demoMem)); d.drainEvents(); d.banner = null; d.texts && (d.texts.length = 0);
     if (d.state !== 'play' || d.time > 90) this.demo = null;

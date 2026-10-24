@@ -2,8 +2,8 @@
 import {
   H, GROUND, GRAV, PHYS, WEAPONS, MOVES, COMBO_WINDOW, CHAIN_GRACE, ENEMIES, BOSSES, STAGES, ALLIES, ALLY_DOWN_TIME,
   createArsenal, giveWeapon, addAmmo, nextWeapon, tickGun, pickMove, moveBox, overlap, knockOf, comboWord,
-  allyDecide, landOn, makePlatforms, scoreFor,
-} from './rules.js?v=3';
+  allyDecide, landOn, makePlatforms, scoreFor, GUN_GEOM, ZOOMS,
+} from './rules.js?v=4';
 
 export const BLOOD = {
   green: ['#63e64b', '#2fae3a', '#a6ff6e', '#1f7d2b'],
@@ -44,6 +44,8 @@ export class Game {
     this.crates = this.stage.crates.map(([x]) => ({ x, y: GROUND, w: 40, h: 40, hp: 18, hit: 0 }));
     this.arenaIdx = 0; this.arena = null; this.lock = null;
     this.camX = 0;
+    this.zoom = opts.zoom || 1; this.vx = undefined; this.vy = 0; this.look = 1;
+    this.trainT = this.stage.train ? this.stage.train.first : 0;
     this.say(this.stage.name, this.stage.sub);
   }
   makeFighter(x, { hp, kind }) {
@@ -71,6 +73,7 @@ export class Game {
     if (this.boss) this.updateBoss(this.boss, dt);
     this.updateBullets(dt);
     this.updateHazards(dt);
+    this.updateTrain(dt);
     this.updatePickups(dt);
     this.enemies = this.enemies.filter((e) => !e.gone);
     this.updateProgress(dt);
@@ -207,7 +210,8 @@ export class Game {
       return;
     }
     let mult = 1;
-    if (e.id === 'agent' && e.state === 'dazed') mult = 2;
+    if (isBoss && e.id !== 'hydra' && e.state === 'dazed') mult = 2;
+    if (isBoss && e.state === 'phase') mult = 0.2;
     if (e.id === 'hydra') mult = e.lowered ? 1.6 : 0.45;
     const real = dmg * mult;
     e.hp -= real;
@@ -274,7 +278,8 @@ export class Game {
 
   // ---------- うつ ----------
   fire(src, W, owner, dmgMul = 1) {
-    const gx = src.x + src.face * 34, gy = src.y - 44 + (src.onGround ? 0 : 0);
+    const G = GUN_GEOM[W.id] || GUN_GEOM.pistol;
+    const gx = src.x + src.face * (16 + G.mx), gy = src.y - 44 + G.my;
     let base = src.face > 0 ? 0 : Math.PI;
     // すこし じどう ねらい
     const tgt = this.nearestTarget(src.x, src.y, src.face, 520);
@@ -289,9 +294,11 @@ export class Game {
       const a = base + (this.rand() - 0.5) * W.spread * 2;
       this.bullets.push({ owner, x: gx, y: gy, vx: Math.cos(a) * W.speed, vy: Math.sin(a) * W.speed, life: W.life * (0.85 + this.rand() * 0.3), dmg: W.dmg * dmgMul, knock: W.knock, w: W.id, blast: W.blast, r: W.id === 'bazooka' ? 7 : 3 });
     }
-    src.recoil = 1;
-    if (W.id !== 'bazooka' && this.parts.length < MAX_PARTS) this.parts.push({ kind: 'shell', x: gx - src.face * 20, y: gy - 4, vx: -src.face * (60 + this.rand() * 60), vy: -200 - this.rand() * 80, life: 2.2, max: 2.2, size: 3, color: '#b89a52', g: 1 });
-    this.parts.push({ kind: 'muzzle', x: gx + src.face * 8, y: gy, life: 0.05, max: 0.05, size: W.id === 'shotgun' || W.id === 'bazooka' ? 16 : 10, face: src.face, color: '#fff3a0' });
+    src.recoil = 1; src.recoilW = W.id; src.flashN = (src.flashN || 0) + 1;
+    if (G.shell && this.parts.length < MAX_PARTS) this.parts.push({ kind: 'shell', x: src.x + src.face * (16 + G.ex), y: src.y - 44 + G.ey, vx: -src.face * (50 + this.rand() * 70), vy: -190 - this.rand() * 90, life: 2.2, max: 2.2, size: G.shell[0], color: G.shell[1], g: 1, rot: this.rand() * 6, spin: (8 + this.rand() * 10) * -src.face, w: W.id });
+    this.parts.push({ kind: 'muzzle', x: gx, y: gy, life: G.flash === 'shotgun' || G.flash === 'bazooka' ? 0.07 : 0.05, max: 0.07, size: W.id === 'shotgun' || W.id === 'bazooka' ? 16 : 10, face: src.face, color: '#fff3a0', style: G.flash, seed: this.rand() });
+    if (G.flash === 'shotgun') for (let i = 0; i < 3; i++) this.addPart({ kind: 'smoke', x: gx + src.face * 10, y: gy, vx: src.face * (60 + this.rand() * 80), vy: -20 - this.rand() * 30, life: 0.5, max: 0.5, size: 6 + this.rand() * 6, color: '#8d8a96', g: -0.05 });
+    if (G.flash === 'bazooka') { for (let i = 0; i < 5; i++) this.addPart({ kind: 'smoke', x: src.x - src.face * 34, y: gy, vx: -src.face * (120 + this.rand() * 160), vy: (this.rand() - 0.5) * 60, life: 0.7, max: 0.7, size: 8 + this.rand() * 8, color: '#a7a1ad', g: -0.05 }); this.addPart({ kind: 'muzzle', x: src.x - src.face * 30, y: gy, life: 0.06, max: 0.06, size: 12, face: -src.face, color: '#ffd27a', style: 'back' }); }
     this.ev('shoot', { w: W.id, owner });
   }
   nearestTarget(x, y, face, range) {
@@ -314,7 +321,7 @@ export class Game {
       b.px = b.x; b.py = b.y;
       b.x += b.vx * dt; b.y += b.vy * dt;
       if (b.life <= 0) { if (b.blast) this.explode(b); continue; }
-      if (b.y > GROUND) { b.life = 0; if (b.blast) this.explode(b); else if (b.owner === 'e') this.blood(b.x, GROUND - 2, 0, 'purple', 3); else this.sparks(b.x, GROUND, '#ffd38a', 2); continue; }
+      if (b.y > GROUND) { b.life = 0; if (b.acid) this.hazards.push({ kind: 'acid', x: b.x - 30, y: GROUND - 12, w: 60, h: 12, life: 2.6, warn: 0.15, dmg: 6, hit: new Set() }); if (b.blast) this.explode(b); else if (b.owner === 'e') this.blood(b.x, GROUND - 2, 0, 'purple', 3); else this.sparks(b.x, GROUND, '#ffd38a', 2); continue; }
       const bb = { x: b.x - b.r, y: b.y - b.r, w: b.r * 2, h: b.r * 2 };
       if (b.owner === 'e') {
         for (const f of this.fighters()) {
@@ -413,6 +420,7 @@ export class Game {
         if (W) { this.fire(a, W, 'a', a.def.gunDmg); a.shootT = 0.18; a.ars.cool += W.rate * 0.6; }
       }
     }
+    if (a.onGround && this.hazards.some((h) => h.kind === 'trolley' && h.warn <= 0 && h.x > a.x - 30 && h.x - a.x < 170)) { a.vy = -PHYS.jumpV; a.onGround = false; }
     this.physics(a, dt);
     const minX = this.lock ? this.lock.l + 14 : 14, maxX = this.lock ? this.lock.r - 14 : this.stage.length - 14;
     a.x = clamp(a.x, minX, maxX);
@@ -444,9 +452,10 @@ export class Game {
   spawnEnemy(type, side, i) {
     const d = ENEMIES[type];
     const x = side > 0 ? this.camX + this.viewW + 30 + i * 40 : this.camX - 30 - i * 40;
-    const r = type === 'crawler' ? this.rand() : 1;
+    const r = d.emerge ? this.rand() : 1;
     const fromTop = r < 0.25, fromWall = !fromTop && r < 0.7;
-    const near = clamp(this.player.x + (this.rand() < 0.5 ? -1 : 1) * (110 + this.rand() * 150), this.camX + 50, this.camX + this.viewW - 120);
+    const vx0 = this.vx ?? this.camX, vw = this.viewW / (this.zoom || 1);
+    const near = clamp(this.player.x + (this.rand() < 0.5 ? -1 : 1) * (110 + this.rand() * 150), Math.max(this.camX + 50, vx0 + 40), Math.min(this.camX + this.viewW - 120, vx0 + vw - 60));
     const e = { kind: 'enemy', type, def: d, x: fromTop || fromWall ? near : x,
       y: fromTop ? -30 : GROUND, vx: 0, vy: 0, w: d.w, h: d.h, face: -side, hp: d.hp, maxHp: d.hp, state: 'walk', t: 0, cool: 0.8 + this.rand(),
       onGround: !fromTop, anim: this.rand() * 5, shieldHp: d.shieldHp || 0, spawnT: fromWall ? 0.9 : 0, spawnMax: 0.9, wallY: GROUND - 70 - this.rand() * 60, flashT: 0, hitDone: false, dropT: 0 };
@@ -492,18 +501,18 @@ export class Game {
     if (e.state === 'walk') {
       e.face = dx >= 0 ? 1 : -1;
       let want = 0;
-      if (e.type === 'gunner') {
+      if (d.ai === 'gunner') {
         if (adx < d.range[0]) want = -e.face; else if (adx > d.range[1]) want = e.face;
-        if (e.cool <= 0 && adx < 460 && Math.abs(T.y - e.y) < 120) { e.state = 'wind'; e.t = d.wind; this.ev('aim'); }
+        if (e.cool <= 0 && adx < Math.max(460, d.range[1] + 60) && Math.abs(T.y - e.y) < 120) { e.state = 'wind'; e.t = d.wind; this.ev('aim'); }
       } else {
         if (adx > d.reach * 0.8) want = e.face;
-        if (e.type === 'crawler' && e.onGround && adx < 170 && adx > 60 && e.cool <= 0) { e.vy = -560; e.vx = e.face * 330; e.onGround = false; e.cool = d.cool; e.state = 'leap'; e.hitDone = false; this.ev('hiss'); return; }
+        if (d.ai === 'crawler' && e.onGround && adx < 170 && adx > 60 && e.cool <= 0) { e.vy = d.small ? -460 : -560; e.vx = e.face * 330; e.onGround = false; e.cool = d.cool; e.state = 'leap'; e.hitDone = false; this.ev('hiss'); return; }
         if (adx <= d.reach && Math.abs(T.y - e.y) < 60 && e.cool <= 0) { e.state = 'wind'; e.t = d.wind; e.hitDone = false; }
       }
       // じめんの てきは あしばの うえの あいてに むかって ジャンプ
       if (e.onGround && T.y < e.y - 70 && adx < 140 && this.rand() < dt * 1.5) { e.vy = -700; e.onGround = false; }
       if (e.onGround && T.y > e.y + 40 && e.y < GROUND - 1 && this.rand() < dt * 2) { e.dropT = 0.25; e.onGround = false; }
-      const spd = d.speed * (e.shieldHp > 0 ? 1 : e.type === 'shield' ? 1.4 : 1);
+      const spd = d.speed * (e.shieldHp > 0 ? 1 : d.ai === 'shield' ? 1.4 : 1);
       e.vx += (want * spd - e.vx) * Math.min(1, dt * 8);
       // かさならない
       for (const o of this.enemies) if (o !== e && !o.dead && Math.abs(o.x - e.x) < 22 && Math.abs(o.y - e.y) < 20) e.vx += (e.x < o.x ? -1 : 1) * 60;
@@ -512,8 +521,9 @@ export class Game {
       if (e.onGround) { e.state = 'walk'; e.vx *= 0.3; }
     } else if (e.state === 'wind') {
       e.vx *= Math.pow(0.002, dt); e.t -= dt;
+      if (d.laser) { e.face = dx >= 0 ? 1 : -1; e.aimX = T.x; e.aimY = T.y - 40; }
       if (e.t <= 0) {
-        if (e.type === 'gunner') {
+        if (d.ai === 'gunner') {
           const gy = e.y - 46, ty = T.y - 40;
           const ang = Math.atan2(ty - gy, Math.abs(dx));
           const s = d.shotSpeed;
@@ -538,6 +548,7 @@ export class Game {
     this.splat(e.x, GROUND, e.def.blood);
     for (let i = 0; i < 4; i++) this.addPart({ kind: 'star', x: e.x, y: e.y - e.h / 2, vx: (this.rand() - 0.5) * 300, vy: -200 - this.rand() * 200, life: 0.7, max: 0.7, size: 7, color: '#ffe46a', g: 0.6 });
     this.ev('poof');
+    if (e.def.burst) { this.hazards.push({ kind: 'gas', x: e.x - 50, y: GROUND - 54, w: 100, h: 54, life: 2.0, warn: 0.45, dmg: 6, hit: new Set() }); this.addText(e.x, e.y - 90, 'ガスに ちゅうい！', '#d9a6ff', 14); }
     if (this.rand() < 0.14) this.pickups.push({ x: e.x, y: GROUND, kind: this.rand() < 0.6 ? 'heal' : 'ammo', t: 0, taken: false, vy: -320 });
   }
 
@@ -545,7 +556,8 @@ export class Game {
   spawnBoss() {
     const bd = this.stage.boss, D = BOSSES[bd.id];
     const b = { kind: 'boss', id: bd.id, def: D, w: D.w, h: D.h, hp: D.hp, maxHp: D.hp, face: -1, vx: 0, vy: 0, t: 1.8, state: 'intro', anim: 0, stag: 0, flashT: 0, onGround: false, dropT: 99, n: 0 };
-    if (bd.id === 'agent') { b.x = this.lock.r - 140; b.y = -200; }
+    b.phase = 1;
+    if (bd.id !== 'hydra') { b.x = this.lock.r - 140; b.y = -200; }
     else { b.x = this.lock.r - 95; b.y = GROUND; b.lowered = false; b.rise = 0; this.shake = 10; }
     this.boss = b;
     this.say('ボス！', D.name, 2.2); this.ev('roar');
@@ -553,15 +565,27 @@ export class Game {
   updateBoss(b, dt) {
     b.anim += dt; b.flashT = Math.max(0, b.flashT - dt);
     if (b.dead) { b.t += dt; if (b.t > 0.2 && this.rand() < dt * 14) { this.smoke(b.x + (this.rand() - 0.5) * b.w, GROUND - this.rand() * b.h, 2); this.blood(b.x, GROUND - this.rand() * b.h, 0, 'purple', 3); } if (b.t > 1.8 && !b.poofed) { b.poofed = true; this.smoke(b.x, GROUND - b.h / 2, 20); this.splat(b.x, GROUND, 'purple'); this.splat(b.x - 50, GROUND, 'green'); this.ev('poof'); } return; }
-    if (b.id === 'agent') this.updateAgent(b, dt); else this.updateHydra(b, dt);
+    if (b.id === 'hydra') this.updateHydra(b, dt); else this.updateMan(b, dt);
   }
-  updateAgent(b, dt) {
-    const p = this.player, D = b.def, rage = b.hp < b.maxHp * 0.5 ? 1.35 : 1;
+  // にんげんがたの ボス（agent / giant / mutant / king）。kit で わざが かわる
+  updateMan(b, dt) {
+    const p = this.player, D = b.def, kit = D.kit || 'agent';
+    let rage = b.hp < b.maxHp * 0.5 ? 1.35 : 1;
+    if (kit === 'king') rage = b.phase >= 2 ? 1.2 : 1;
+    if (kit === 'giant') rage = b.hp < b.maxHp * 0.5 ? 1.2 : 1;
     const T = p.hp > 0 ? p : this.allies.find((a) => !a.down) || p;
     const dx = T.x - b.x;
-    this.physicsBig(b, dt);
+    if (b.fly) this.physicsFly(b, dt, T); else this.physicsBig(b, dt);
     if (b.state === 'intro') { b.t -= dt; if (b.onGround && !b.landed) { b.landed = true; this.shake = 14; this.dust(b.x, GROUND, 10); this.ev('slam'); } if (b.t <= 0) { b.state = 'walk'; b.t = 1; } return; }
-    if (b.stag > 150 && b.state !== 'down' && b.state !== 'dazed') { b.stag = 0; b.state = 'down'; b.t = 1.3; b.vx = -b.face * 160; this.addText(b.x, GROUND - 170, 'よろけた！', '#ffe14a', 20); this.ev('thud'); }
+    if (kit === 'king') {
+      const ph = b.hp > b.maxHp * 0.66 ? 1 : b.hp > b.maxHp * 0.33 ? 2 : 3;
+      if (ph > b.phase) {
+        b.phase = ph; b.state = 'phase'; b.t = 1.6; b.vx = 0; b.fly = false; b.n = 0;
+        this.say(ph === 2 ? 'だい2 けいたい！' : 'さいごの けいたい！', ph === 2 ? 'したからの トゲに きをつけろ' : 'そらから うってくる！ おちたら チャンス', 2.2);
+        this.shake = 14; this.flash = 0.2; this.ev('roar'); this.ring(b.x, GROUND - 90, '#ff4a6a', 70);
+      }
+    }
+    if (b.stag > (kit === 'giant' ? 190 : 150) && !['down', 'dazed', 'phase', 'float', 'fall'].includes(b.state)) { b.stag = 0; b.state = 'down'; b.t = 1.3; b.vx = -b.face * 160; this.addText(b.x, GROUND - 170, 'よろけた！', '#ffe14a', 20); this.ev('thud'); }
     b.stag = Math.max(0, b.stag - dt * 25);
     b.t -= dt;
     // さわると いたい
@@ -571,15 +595,47 @@ export class Game {
         b.face = dx >= 0 ? 1 : -1;
         b.vx = Math.abs(dx) > 90 ? b.face * D.speed * rage : 0;
         if (b.t <= 0) {
-          b.n++;
-          const far = Math.abs(dx) > 200, r = this.rand();
-          if (b.n % 4 === 0) { b.state = 'slamWind'; b.t = 0.5; }
-          else if (far) { if (r < 0.55) { b.state = 'burstWind'; b.t = 0.55 / rage; b.shots = 0; } else { b.state = 'chargeWind'; b.t = 0.75 / rage; this.ev('aim'); } }
-          else { if (r < 0.6) { b.state = 'punchWind'; b.t = 0.5 / rage; } else { b.state = 'slamWind'; b.t = 0.45; } }
-          b.vx = 0;
+          b.n++; b.vx = 0;
+          this.pickBossMove(b, kit, Math.abs(dx) > 200, rage);
         }
         break;
       }
+      case 'throwWind': b.vx = 0; b.face = dx >= 0 ? 1 : -1; if (b.t <= 0) {
+        const n = rage > 1 ? 2 : 1;
+        for (let i = 0; i < n; i++) {
+          const sx = b.x + b.face * 30, sy = GROUND - 190, tx = T.x + (i ? -b.face * 90 : 0), tt = 1.0 + i * 0.15;
+          this.bullets.push({ owner: 'e', x: sx, y: sy, vx: (tx - sx) / tt, vy: (GROUND - sy - 0.5 * GRAV * 0.7 * tt * tt) / tt, grav: 0.7, life: 3, dmg: 12, r: 13, w: 'rock', rot: 0 });
+        }
+        this.ev('whoosh'); b.state = 'walk'; b.t = 1.1 / rage; } break;
+      case 'spitWind': b.vx = 0; b.face = dx >= 0 ? 1 : -1; if (b.t <= 0) {
+        const n = b.hp < b.maxHp * 0.5 ? 5 : 3;
+        for (let i = 0; i < n; i++) {
+          const tx = T.x + (i - (n - 1) / 2) * 80, sx = b.x + b.face * 40, sy = GROUND - 110;
+          const tt = 0.85 + i * 0.05, vx = (tx - sx) / tt, vy = (GROUND - sy - 0.5 * GRAV * 0.6 * tt * tt) / tt;
+          this.bullets.push({ owner: 'e', x: sx, y: sy, vx, vy, grav: 0.6, life: 3, dmg: 9, r: 8, w: 'blob', acid: true });
+        }
+        this.ev('spit'); b.state = 'walk'; b.t = 1.2; } break;
+      case 'summon': b.vx = 0; if (b.t <= 0) { b.state = 'walk'; b.t = 0.8; } break;
+      case 'spikes': b.vx = 0; if (b.t <= 0) { b.state = 'walk'; b.t = 0.9; } break;
+      case 'phase': b.vx = 0; if (b.t <= 0) { b.state = 'walk'; b.t = 0.6; } break;
+      case 'float':
+        b.vx = clamp((T.x - b.x) * 1.2, -160, 160); b.face = dx >= 0 ? 1 : -1;
+        b.shotT = (b.shotT ?? 0.6) - dt;
+        if (b.shotT <= 0 && b.y < GROUND - 60) {
+          b.shotT = 1.0;
+          const sx = b.x, sy = b.y - 70, base = Math.atan2(T.y - 40 - sy, T.x - sx);
+          for (const o of [-0.28, 0, 0.28]) this.bullets.push({ owner: 'e', x: sx, y: sy, vx: Math.cos(base + o) * 260, vy: Math.sin(base + o) * 260, life: 2.6, dmg: 9, r: 7, w: 'orb' });
+          this.ev('eshoot');
+        }
+        if (b.t <= 0) { b.state = 'fall'; b.fly = false; b.vy = 200; b.vx = 0; }
+        break;
+      case 'fall':
+        if (b.onGround) {
+          this.shake = 16; this.dust(b.x, GROUND, 12); this.ev('slam');
+          for (const s of [-1, 1]) this.hazards.push({ kind: 'wave', x: b.x + s * 40, y: GROUND - 26, w: 34, h: 26, vx: s * 360, life: 1.5, warn: 0, dmg: 10, hit: new Set(), color: '#ff4a6a' });
+          b.state = 'dazed'; b.t = 2.4; this.addText(b.x, GROUND - 190, 'おちた！ チャンス！', '#ffe14a', 18);
+        }
+        break;
       case 'burstWind': b.vx = 0; b.face = dx >= 0 ? 1 : -1; if (b.t <= 0) { b.state = 'burst'; b.t = 0; b.shots = 0; } break;
       case 'burst':
         if (b.t <= 0) {
@@ -593,7 +649,7 @@ export class Game {
         break;
       case 'chargeWind': b.vx = 0; b.face = dx >= 0 ? 1 : -1; if (b.t <= 0) { b.state = 'charge'; this.ev('charge'); } break;
       case 'charge':
-        b.vx = b.face * 560 * rage;
+        b.vx = b.face * (kit === 'giant' ? 500 : 560) * rage;
         if ((b.face > 0 && b.x > this.lock.r - b.w / 2 - 4) || (b.face < 0 && b.x < this.lock.l + b.w / 2 + 4)) { b.x = clamp(b.x, this.lock.l + b.w / 2, this.lock.r - b.w / 2); b.state = 'dazed'; b.t = 1.8; b.vx = -b.face * 120; this.shake = 14; this.ev('wall'); this.addText(b.x, GROUND - 170, 'ピヨピヨ… チャンス！', '#ffe14a', 18); this.debris(b.x + b.face * 40, GROUND - 100, '#6b7280', 10); }
         break;
       case 'dazed': b.vx *= Math.pow(0.02, dt); if (b.t <= 0) { b.state = 'walk'; b.t = 0.8; } break;
@@ -610,11 +666,50 @@ export class Game {
       case 'slam':
         if (b.onGround) {
           b.vx = 0; this.shake = 16; this.dust(b.x, GROUND, 12); this.ev('slam');
-          for (const s of [-1, 1]) this.hazards.push({ kind: 'wave', x: b.x + s * 40, y: GROUND - 26, w: 34, h: 26, vx: s * 400, life: 1.5, warn: 0, dmg: 12, hit: new Set(), color: '#c06bff' });
+          for (const s of [-1, 1]) this.hazards.push({ kind: 'wave', x: b.x + s * 40, y: GROUND - 26, w: 34, h: 26, vx: s * 400, life: 1.5, warn: 0, dmg: 12, hit: new Set(), color: kit === 'mutant' ? '#9b5bff' : kit === 'king' ? '#ff4a6a' : '#c06bff' });
+          if (kit === 'mutant') this.hazards.push({ kind: 'acid', x: b.x - 50, y: GROUND - 12, w: 100, h: 12, life: 2.2, warn: 0.3, dmg: 6, hit: new Set() });
           b.state = 'walk'; b.t = 1.2 / rage;
         }
         break;
     }
+  }
+  pickBossMove(b, kit, far, rage) {
+    const r = this.rand();
+    const agentPick = () => {
+      if (b.n % 4 === 0) { b.state = 'slamWind'; b.t = 0.5; }
+      else if (far) { if (r < 0.55) { b.state = 'burstWind'; b.t = 0.55 / rage; b.shots = 0; } else { b.state = 'chargeWind'; b.t = 0.75 / rage; this.ev('aim'); } }
+      else { if (r < 0.6) { b.state = 'punchWind'; b.t = 0.5 / rage; } else { b.state = 'slamWind'; b.t = 0.45; } }
+    };
+    const alive = this.enemies.filter((e) => !e.dead).length;
+    if (kit === 'agent') return agentPick();
+    if (kit === 'giant') {
+      if (b.n % 4 === 0) { b.state = 'slamWind'; b.t = 0.6; }
+      else if (far) { if (r < 0.5) { b.state = 'throwWind'; b.t = 0.75 / rage; this.ev('aim'); } else { b.state = 'chargeWind'; b.t = 0.85 / rage; this.ev('aim'); } }
+      else { if (r < 0.6) { b.state = 'punchWind'; b.t = 0.6 / rage; } else { b.state = 'slamWind'; b.t = 0.55; } }
+      return;
+    }
+    if (kit === 'mutant') {
+      if (b.n % 5 === 0) { b.state = 'dazed'; b.t = 2.2; this.addText(b.x, GROUND - 170, 'ハァハァ… チャンス！', '#ffe14a', 18); return; }
+      if (b.n % 3 === 0 && alive < 3) { b.state = 'summon'; b.t = 0.9; this.ev('roar'); this.spawnEnemy('swarm', 1, 0); this.spawnEnemy('swarm', -1, 0); return; }
+      if (far) { if (r < 0.55) { b.state = 'spitWind'; b.t = 0.55; this.ev('hiss'); } else { b.state = 'slamWind'; b.t = 0.5; } }
+      else { if (r < 0.55) { b.state = 'punchWind'; b.t = 0.5; } else { b.state = 'slamWind'; b.t = 0.45; } }
+      return;
+    }
+    // king
+    if (b.phase >= 3 && b.n % 2 === 1) { b.state = 'float'; b.fly = true; b.t = 4.2; b.shotT = 0.7; this.ev('roar'); return; }
+    if (b.phase >= 2 && b.n % 3 === 0) {
+      b.state = 'spikes'; b.t = 1.3;
+      const xs = this.fighters().filter((f) => f.hp > 0 && !(f.down > 0)).map((f) => f.x);
+      for (const x of xs) this.hazards.push({ kind: 'spike', x: clamp(x, this.lock.l + 30, this.lock.r - 30) - 24, y: GROUND - 120, w: 48, h: 120, life: 1.45, warn: 0.9, dmg: 11, hit: new Set() });
+      if (alive < 2) this.spawnEnemy('wraith', this.rand() < 0.5 ? 1 : -1, 0);
+      this.ev('creep'); return;
+    }
+    agentPick();
+  }
+  physicsFly(b, dt) {
+    b.x += b.vx * dt; b.vy = 0;
+    b.y += (GROUND - 95 - b.y) * Math.min(1, dt * 2.5); b.onGround = false;
+    if (this.lock) b.x = clamp(b.x, this.lock.l + b.w / 2, this.lock.r - b.w / 2);
   }
   physicsBig(b, dt) {
     b.vy = Math.min(b.vy + GRAV * dt, 1400);
@@ -665,10 +760,25 @@ export class Game {
     for (const h of this.hazards) {
       h.life -= dt; if (h.warn > 0) { h.warn -= dt; if (h.warn <= 0 && h.kind === 'spike') { this.ev('spike'); this.blood(h.x + h.w / 2, GROUND - 20, 0, 'purple', 4); } continue; }
       if (h.vx) h.x += h.vx * dt;
+      if (h.kind === 'trolley') {
+        if (!h.rolled) { h.rolled = true; this.ev('charge'); this.shake = Math.max(this.shake, 6); }
+        for (const e of this.enemies) if (!e.dead && !e.spawnT && !h.hitE.has(e) && overlap(h, bodyBox(e))) { h.hitE.add(e); this.damage(e, 45, { knock: 700, name: 'トロッコ', blast: true }, -1, 'x', false); }
+      }
       if (!h.dmg) continue;
       for (const f of this.fighters()) if (!h.hit.has(f) && overlap(h, bodyBox(f)) && this.hurtFighter(f, h.dmg, h.vx ? Math.sign(h.vx) : (f.x < h.x + h.w / 2 ? -1 : 1), 260)) h.hit.add(f);
     }
     this.hazards = this.hazards.filter((h) => h.life > 0);
+  }
+
+  // ちかてつ：ぼうそう トロッコ
+  updateTrain(dt) {
+    const T = this.stage.train;
+    if (!T || this.state !== 'play' || this.boss) return;
+    this.trainT -= dt;
+    if (this.trainT > 0) return;
+    this.trainT = T.every;
+    this.hazards.push({ kind: 'trolley', x: this.camX + this.viewW + 80, y: GROUND - 46, w: 420, h: 46, vx: -1100, life: 2.4 + 1.8, warn: 2.4, dmg: 10, hit: new Set(), hitE: new Set() });
+    this.say('ぼうそう トロッコ！', 'ジャンプで よけろ！', 2.2); this.ev('aim');
   }
 
   // ---------- ひろう ----------
@@ -731,7 +841,7 @@ export class Game {
     }
   }
   // みぎ はしは ボタンで かくれるので、たたかう はんいを すこし せまく する
-  lockW() { return this.viewW >= 560 ? this.viewW - 110 : this.viewW; }
+  lockW() { return this.viewW >= 560 ? this.viewW - 80 : this.viewW; }
   updateCamera(dt) {
     const p = this.player;
     let target = this.lock ? this.lock.l : p.x - this.viewW * 0.38;
@@ -739,6 +849,20 @@ export class Game {
     const k = this.lock ? 6 : 10;
     this.camX += (target - this.camX) * Math.min(1, dt * k);
     if (Math.abs(target - this.camX) < 0.3) this.camX = target;
+    // ズーム カメラ（えがく ときだけ ちかく する。ゲームの ひろさは おなじ）
+    const Z = this.zoom || 1, vw = this.viewW / Z, vh = H / Z;
+    this.look += (p.face - this.look) * Math.min(1, dt * 2.2);
+    if (Z <= 1.001) { this.vx = this.camX; this.vy = 0; }
+    else {
+      const b = this.boss && !this.boss.dead && this.boss.state !== 'intro' ? this.boss : null;
+      let tx = b ? (p.x + b.x) / 2 - vw / 2 : p.x - vw * (0.5 - 0.15 * this.look);
+      const lo = this.lock ? this.camX : 0, hi = this.lock ? this.camX + this.viewW - vw : this.stage.length - vw;
+      tx = clamp(tx, lo, Math.max(lo, hi));
+      const ty = clamp(p.y - vh * 0.8, 0, H - vh);
+      if (this.vx === undefined || this.snapCam) { this.vx = tx; this.vy = ty; this.snapCam = false; }
+      this.vx += (tx - this.vx) * Math.min(1, dt * 7); this.vy += (ty - this.vy) * Math.min(1, dt * 5);
+      this.vx = clamp(this.vx, lo - 1, Math.max(lo, hi) + 1);
+    }
     this.shake = Math.max(0, this.shake - dt * 40);
     this.flash = Math.max(0, this.flash - dt);
   }
@@ -787,12 +911,23 @@ export function botInput(g, mem = {}) {
   const boss = g.boss && !g.boss.dead && g.boss.state !== 'intro' ? g.boss : null;
   // よける
   for (const h of g.hazards) {
-    const near = h.kind === 'wave' || h.kind === 'sweep' ? Math.abs(h.x + h.w / 2 - p.x) < 130 && Math.sign(h.vx) === Math.sign(p.x - h.x) : h.kind === 'spike' && p.x > h.x - 30 && p.x < h.x + h.w + 30 && h.warn > 0;
-    if (near) { if (h.kind === 'spike') { inp.right = p.x < h.x + h.w / 2 ? false : true; inp.left = !inp.right; } else if (p.onGround) { inp.jump = true; inp.jumpHeld = true; } }
+    if (h.kind === 'trolley') { if (h.warn <= 0 && h.x > p.x - 20 && h.x - p.x < 150 && p.onGround) { inp.jump = true; inp.jumpHeld = true; } else if (h.warn <= 0 && h.x < p.x && h.x + h.w > p.x - 30) inp.jumpHeld = true; continue; }
+    const near = h.kind === 'wave' || h.kind === 'sweep' ? Math.abs(h.x + h.w / 2 - p.x) < 130 && Math.sign(h.vx) === Math.sign(p.x - h.x) : (h.kind === 'spike' || h.kind === 'gas') && p.x > h.x - 30 && p.x < h.x + h.w + 30 && (h.warn > 0 || h.kind === 'gas');
+    if (near) { if (h.kind === 'spike' || h.kind === 'gas') { inp.right = p.x < h.x + h.w / 2 ? false : true; inp.left = !inp.right; } else if (p.onGround) { inp.jump = true; inp.jumpHeld = true; } }
   }
   if (inp.left || inp.right || inp.jump) return inp;
-  if (boss && boss.id === 'agent' && (boss.state === 'burst' || boss.state === 'burstWind') && p.onGround && mem.t % 30 === 0) { inp.jump = true; inp.jumpHeld = true; }
-  if (boss && boss.id === 'agent' && boss.state === 'chargeWind' && p.onGround) { inp.jump = true; inp.jumpHeld = true; }
+  const man = boss && boss.id !== 'hydra';
+  if (man && (boss.state === 'burst' || boss.state === 'burstWind') && p.onGround && mem.t % 30 === 0) { inp.jump = true; inp.jumpHeld = true; }
+  if (man && boss.state === 'chargeWind' && p.onGround) { inp.jump = true; inp.jumpHeld = true; }
+  if (man && (boss.state === 'float' || boss.state === 'phase')) {
+    // そらに うかんだ おうは はなれて うつ
+    const dx = boss.x - p.x, ad = Math.abs(dx);
+    if (ad < 300) { if (dx > 0) inp.left = true; else inp.right = true; }
+    else if (ad > 380) { if (dx > 0) inp.right = true; else inp.left = true; }
+    else { p.face = Math.sign(dx) || 1; inp.shoot = true; }
+    if (p.ars.cur === 'pistol' && Object.keys(p.ars.guns).length > 1 && mem.t % 60 === 0) inp.swap = true;
+    return inp;
+  }
   let tgt = null, bd = 1e9;
   for (const e of foes) { const d = Math.abs(e.x - p.x); if (d < bd) { bd = d; tgt = e; } }
   if (!tgt && boss) { tgt = boss; bd = Math.abs(boss.x - p.x); }

@@ -1,5 +1,5 @@
 // バトル アクション の きまり（DOM なし・node で テストできる）
-export const VERSION = '0.3.0';
+export const VERSION = '0.4.0';
 export const H = 375;              // ろんり の たかさ
 export const GROUND = 318;         // じめん（あしの y）
 export const GRAV = 2000;
@@ -15,6 +15,15 @@ export const WEAPONS = {
   rifle:   { id: 'rifle',   name: 'アサルトライフル', short: 'ライフル', rate: 0.1,  dmg: 9,  pellets: 1, spread: 0.035, speed: 1300, life: 0.6,  knock: 80,  ammo: 150, color: '#6b6f76', accent: '#c9a24a' },
   shotgun: { id: 'shotgun', name: 'ショットガン',    short: 'ショット', rate: 0.55, dmg: 7,  pellets: 6, spread: 0.2,  speed: 1000, life: 0.24, knock: 210, ammo: 36,  color: '#7a4a2a', accent: '#3a3a3a' },
   bazooka: { id: 'bazooka', name: 'バズーカ',        short: 'バズーカ', rate: 0.85, dmg: 40, pellets: 1, spread: 0,    speed: 620,  life: 1.2,  knock: 0,   ammo: 8,   color: '#4f6b3a', accent: '#d8c04a', blast: { r: 95, dmg: 55, knock: 640 } },
+};
+// じゅうの かたち（つかむ て = 0,0 から）：mx,my=じゅうこう、ex,ey=やっきょう が でる ところ、kick=[うしろ, はねあがり]
+export const GUN_GEOM = {
+  pistol:  { mx: 25, my: -7.5, ex: 8,  ey: -9,  kick: [4, 0.32], flash: 'pistol',  shell: [2.6, '#c9a14a'] },
+  smg:     { mx: 35, my: -7, ex: 6,  ey: -9,  kick: [3, 0.08], flash: 'smg',     shell: [2.4, '#c9a14a'] },
+  rifle:   { mx: 49, my: -8.4, ex: -16, ey: -9,  kick: [5, 0.06], flash: 'rifle',   shell: [3.4, '#d0a848'] },
+  shotgun: { mx: 52, my: -9.6, ex: 7,  ey: -9,  kick: [8, 0.22], flash: 'shotgun', shell: [4.2, '#2f4f86'] },
+  bazooka: { mx: 46, my: -9,   ex: 0,  ey: 0,   kick: [9, 0.1],  flash: 'bazooka', shell: null },
+  dark:    { mx: 33, my: -7, ex: 6,  ey: -9,  kick: [3, 0.1],  flash: 'smg',     shell: null },
 };
 export const WEAPON_ORDER = ['pistol', 'smg', 'rifle', 'shotgun', 'bazooka'];
 export const AMMO_PICK = { smg: 90, rifle: 75, shotgun: 18, bazooka: 4 };
@@ -108,11 +117,30 @@ export const ENEMIES = {
   shield:  { name: 'タテへい',     hp: 50,  w: 34, h: 74, speed: 88,  weight: 1.4, dmg: 10, reach: 50, wind: 0.6,  cool: 1.36, score: 200, blood: 'green', shieldHp: 26 },
   crawler: { name: 'カゲモドキ',   hp: 22,  w: 42, h: 30, speed: 253, weight: 0.8, dmg: 7,  reach: 40, wind: 0.3,  cool: 0.85, score: 120, blood: 'purple', jumper: true },
   brute:   { name: 'デカマスク',   hp: 140, w: 52, h: 104, speed: 82, weight: 2.4, dmg: 16, reach: 64, wind: 0.75, cool: 1.53, score: 500, blood: 'green', armor: 0.45 },
+  // v0.3 の あたらしい てき（ai = うごきかた の もと、look = みため）
+  raider:  { name: 'ガスマスク',   hp: 38,  w: 30, h: 70, speed: 150, weight: 1,   dmg: 8,  reach: 46, wind: 0.42, cool: 0.95, score: 130, blood: 'green', ai: 'grunt', look: 'raider' },
+  sniper:  { name: 'ねらいへい',   hp: 30,  w: 30, h: 70, speed: 90,  weight: 1,   dmg: 9,  reach: 0,  wind: 1.0,  cool: 2.3,  score: 200, blood: 'green', ai: 'gunner', look: 'sniper', range: [250, 420], shotSpeed: 560, laser: true },
+  swarm:   { name: 'チビカゲ',     hp: 10,  w: 26, h: 20, speed: 230, weight: 0.6, dmg: 5,  reach: 32, wind: 0.32, cool: 0.9,  score: 60,  blood: 'purple', ai: 'crawler', look: 'swarm', jumper: true, emerge: true, small: true },
+  bloater: { name: 'ふくれマスク', hp: 70,  w: 40, h: 80, speed: 70,  weight: 1.8, dmg: 10, reach: 50, wind: 0.6,  cool: 1.5,  score: 260, blood: 'purple', ai: 'grunt', look: 'bloater', burst: true },
+  knight:  { name: 'くろきし',     hp: 70,  w: 34, h: 78, speed: 96,  weight: 1.6, dmg: 12, reach: 54, wind: 0.6,  cool: 1.3,  score: 300, blood: 'green', ai: 'shield', look: 'knight', shieldHp: 40 },
+  wraith:  { name: 'ゆらぎ',       hp: 30,  w: 40, h: 40, speed: 240, weight: 0.8, dmg: 9,  reach: 40, wind: 0.32, cool: 0.9,  score: 180, blood: 'purple', ai: 'crawler', look: 'wraith', jumper: true, emerge: true },
 };
+for (const [k, d] of Object.entries(ENEMIES)) { d.ai = d.ai || k; d.look = d.look || k; if (d.emerge === undefined) d.emerge = k === 'crawler'; }
 export const BOSSES = {
   agent: { name: 'くろよろい エージェント', hp: 1400, w: 74, h: 148, speed: 110, weight: 4, dmg: 18, score: 5000, blood: 'purple', armor: 0.7 },
   hydra: { name: 'ねじれ ばけもの',         hp: 1700, w: 110, h: 170, speed: 0, weight: 99, dmg: 16, score: 8000, blood: 'purple', armor: 1 },
+  // v0.3：agent と おなじ「にんげんがた」の うごき＋ それぞれの わざ
+  giant:  { name: 'てっかめん の きょじん',  hp: 1600, w: 96, h: 170, speed: 92,  weight: 6, dmg: 18, score: 9000,  blood: 'green',  armor: 0.8, kit: 'giant', scale: 2.4 },
+  mutant: { name: 'どろどろ ミュータント',    hp: 1700, w: 104, h: 130, speed: 120, weight: 5, dmg: 16, score: 10000, blood: 'purple', armor: 0.8, kit: 'mutant' },
+  king:   { name: 'あかい め の おう',        hp: 2400, w: 80, h: 160, speed: 120, weight: 5, dmg: 18, score: 15000, blood: 'purple', armor: 0.8, kit: 'king' },
 };
+// ズーム（がめんの ちかさ）。ゲームの ひろさは かわらない
+export const ZOOMS = [
+  { name: 'ふつう', z: 1 },
+  { name: 'ちかい', z: 1.4 },
+  { name: 'もっとちかい', z: 1.7 },
+];
+export const ZOOM_DEFAULT = 1;
 
 // ---- ステージ ----
 // arenas: カメラが とまって てきが でる ばしょ。waves は じゅんばん（まえの が へったら つぎ）
@@ -143,6 +171,47 @@ export const STAGES = [
       { x: 3950, waves: [['grunt', 'grunt', 'grunt', 'crawler', 'crawler'], ['brute', 'brute', 'crawler']] },
     ],
     boss: { x: 4300, id: 'hydra' },
+  },
+  {
+    id: 3, name: 'ステージ 3', sub: 'あめの はいきょとし', theme: 'city', length: 4900,
+    platforms: [[520, 230, 150], [900, 196, 130], [1300, 226, 170], [1640, 176, 150], [2150, 220, 160], [2500, 182, 140], [3050, 228, 170], [3500, 196, 150], [3900, 232, 140]],
+    crates: [[420], [1180], [1980], [2860], [3700]],
+    pickups: [[640, 'rifle', 222], [1380, 'heal', 218], [1700, 'smg', 168], [2580, 'shotgun', 174], [3120, 'ammo', 220], [3560, 'heal', 188], [4050, 'bazooka']],
+    arenas: [
+      { x: 700,  waves: [['raider', 'grunt', 'raider'], ['gunner', 'raider', 'grunt']] },
+      { x: 1550, waves: [['raider', 'raider', 'crawler'], ['sniper', 'grunt', 'raider']] },
+      { x: 2400, waves: [['shield', 'raider', 'sniper'], ['brute', 'raider'], ['crawler', 'crawler', 'raider', 'gunner']] },
+      { x: 3300, waves: [['raider', 'raider', 'sniper', 'grunt'], ['brute', 'sniper', 'raider']] },
+    ],
+    boss: { x: 4400, id: 'giant' },
+  },
+  {
+    id: 4, name: 'ステージ 4', sub: 'くらやみの ちかてつ', theme: 'subway', length: 5000,
+    train: { every: 15, first: 9 },
+    platforms: [[480, 226, 170], [820, 230, 160], [1180, 222, 180], [1560, 228, 170], [1880, 216, 160], [2260, 226, 180], [2640, 220, 170], [3000, 228, 170], [3360, 222, 170], [3720, 226, 180], [4100, 220, 160]],
+    crates: [[400], [1100], [2050], [2950], [3800]],
+    pickups: [[560, 'shotgun', 216], [1250, 'heal', 212], [1950, 'ammo', 206], [2700, 'heal', 210], [3080, 'rifle', 218], [3800, 'ammo', 216], [4150, 'heal', 210]],
+    arenas: [
+      { x: 700,  waves: [['swarm', 'swarm', 'grunt', 'swarm'], ['bloater', 'raider']] },
+      { x: 1600, waves: [['swarm', 'swarm', 'swarm', 'crawler'], ['bloater', 'gunner', 'swarm']] },
+      { x: 2500, waves: [['raider', 'bloater', 'swarm', 'swarm'], ['shield', 'sniper', 'swarm'], ['swarm', 'swarm', 'swarm', 'swarm', 'crawler']] },
+      { x: 3450, waves: [['bloater', 'bloater', 'swarm'], ['brute', 'swarm', 'swarm', 'gunner']] },
+    ],
+    boss: { x: 4500, id: 'mutant' },
+  },
+  {
+    id: 5, name: 'ステージ 5', sub: 'あかい そらの とう', theme: 'tower', length: 5300,
+    platforms: [[460, 232, 140], [700, 196, 130], [940, 160, 130], [1400, 226, 160], [1720, 190, 150], [2200, 230, 170], [2520, 186, 150], [2840, 150, 130], [3300, 226, 160], [3700, 200, 150], [4100, 232, 150], [4400, 196, 140]],
+    crates: [[380], [1250], [2080], [3150], [4000]],
+    pickups: [[720, 'rifle', 186], [960, 'heal', 150], [1500, 'shotgun', 216], [2560, 'bazooka', 176], [2880, 'heal', 140], [3400, 'ammo', 216], [4150, 'heal', 222], [4450, 'ammo', 186]],
+    arenas: [
+      { x: 650,  waves: [['knight', 'raider', 'wraith'], ['sniper', 'knight', 'wraith']] },
+      { x: 1600, waves: [['wraith', 'wraith', 'raider', 'raider'], ['brute', 'sniper', 'wraith']] },
+      { x: 2650, waves: [['knight', 'knight', 'wraith'], ['bloater', 'sniper', 'raider'], ['wraith', 'wraith', 'wraith', 'swarm', 'swarm']] },
+      { x: 3550, waves: [['knight', 'sniper', 'raider', 'wraith'], ['brute', 'knight', 'wraith']] },
+      { x: 4300, waves: [['raider', 'raider', 'wraith', 'wraith', 'sniper'], ['brute', 'brute', 'swarm', 'swarm']] },
+    ],
+    boss: { x: 4850, id: 'king' },
   },
 ];
 
@@ -183,11 +252,12 @@ export function rankOf(r) { // クリア ランク
 }
 
 export function normalizeSave(s) {
-  const d = { cleared: [], best: {}, allies: true, shake: true };
+  const d = { cleared: [], best: {}, allies: true, shake: true, zoom: ZOOM_DEFAULT };
   if (!s || typeof s !== 'object') return d;
   return {
     cleared: Array.isArray(s.cleared) ? s.cleared.filter((n) => Number.isInteger(n)) : [],
     best: s.best && typeof s.best === 'object' ? s.best : {},
     allies: s.allies !== false, shake: s.shake !== false,
+    zoom: Number.isInteger(s.zoom) && s.zoom >= 0 && s.zoom < ZOOMS.length ? s.zoom : ZOOM_DEFAULT,
   };
 }

@@ -8,8 +8,9 @@
 .sa-root.playing .sa-hud { display: block; }
 .sa-me { position: absolute; left: calc(52px + env(safe-area-inset-left)); top: 8px; display: flex; gap: 6px; align-items: center; }
 .sa-face { width: 26px; height: 26px; border-radius: 50%; background: #d6d2ca; border: 2px solid #050505; position: relative; box-shadow: inset -4px -5px 0 rgba(0,0,0,.2); }
-.sa-face::before { content: ''; position: absolute; left: 6px; right: -3px; top: 8px; height: 5px; border-radius: 1px 1px 4px 4px; background: #0b0b0c; }
-.sa-face::after { content: ''; position: absolute; left: 1px; bottom: -3px; width: 22px; height: 5px; background: #7a2e2a; border: 1px solid #050505; }
+/* かお：うすい じゅうじ だけ */
+.sa-face::before { content: ''; position: absolute; left: 9px; width: 11px; top: 14px; height: 1.5px; background: #1a1a1c; }
+.sa-face::after { content: ''; position: absolute; left: 14px; width: 1.5px; top: 10px; height: 9px; background: #1a1a1c; }
 .sa-hpbar { width: 130px; height: 9px; border: 2px solid #000; background: #1a1418; border-radius: 2px; overflow: hidden; box-shadow: 0 0 0 1px #3a2a2a; }
 .sa-hpbar i { display: block; height: 100%; width: 100%; background: linear-gradient(#8fd86a, #2f8a2a); transition: width .15s; }
 .sa-hpbar i.low { background: linear-gradient(#c08ae8, #6a2aa8); animation: sa-blink .6s infinite; }
@@ -62,17 +63,18 @@
 /* タッチ */
 .sa-touch { position: absolute; inset: 0; display: none; }
 .sa-root.playing .sa-touch { display: block; }
-.sa-pad { position: absolute; left: 110px; top: 70%; width: 104px; height: 104px; margin: -52px 0 0 -52px; border-radius: 50%; border: 2px solid rgba(200,190,180,.22); background: rgba(0,0,0,.25); opacity: .55; pointer-events: none; }
+.sa-pad { position: absolute; left: 110px; top: 70%; width: 84px; height: 84px; margin: -42px 0 0 -42px; border-radius: 50%; border: 2px solid rgba(200,190,180,.22); background: rgba(0,0,0,.25); opacity: .5; pointer-events: none; }
 .sa-pad.on { opacity: 1; }
-.sa-knob { position: absolute; left: 50%; top: 50%; width: 46px; height: 46px; margin: -23px 0 0 -23px; border-radius: 50%; background: rgba(210,200,190,.35); border: 2px solid rgba(0,0,0,.6); }
-.sa-btn { position: absolute; border-radius: 50%; border: 2px solid var(--rim, #555); background: rgba(10,9,10,.62); color: #e6e2da; font-weight: 900; font-size: 13px; text-shadow: 0 1px 0 #000; box-shadow: inset 0 0 12px rgba(0,0,0,.8), 0 0 6px var(--rim, transparent); opacity: .7; touch-action: none; padding: 0; }
+.sa-knob { position: absolute; left: 50%; top: 50%; width: 34px; height: 34px; margin: -17px 0 0 -17px; border-radius: 50%; background: rgba(210,200,190,.35); border: 2px solid rgba(0,0,0,.6); }
+.sa-btn { position: absolute; border-radius: 50%; border: 2px solid var(--rim, #555); background: rgba(10,9,10,.62); color: #e6e2da; font-weight: 900; font-size: 11px; letter-spacing: -.5px; text-shadow: 0 1px 0 #000; box-shadow: inset 0 0 10px rgba(0,0,0,.8), 0 0 6px var(--rim, transparent); opacity: .7; touch-action: none; padding: 0; }
 .sa-btn.on { transform: scale(.9); opacity: 1; background: rgba(40,30,30,.8); }
 .sa-pause { left: calc(8px + env(safe-area-inset-left)); top: 8px; width: 36px; height: 36px; border-radius: 4px; --rim: #444; font-size: 14px; }
-.sa-jump  { right: calc(14px + env(safe-area-inset-right)); bottom: 14px; width: 78px; height: 78px; --rim: #5f86b8; }
-.sa-kick  { right: calc(100px + env(safe-area-inset-right)); bottom: 10px; width: 70px; height: 70px; --rim: #b8743a; }
-.sa-punch { right: calc(118px + env(safe-area-inset-right)); bottom: 88px; width: 60px; height: 60px; --rim: #b89a3a; }
-.sa-shoot { right: calc(30px + env(safe-area-inset-right)); bottom: 102px; width: 66px; height: 66px; --rim: #c0302a; }
-.sa-swap  { right: calc(14px + env(safe-area-inset-right)); bottom: 178px; width: 60px; height: 34px; border-radius: 4px; --rim: #666; font-size: 11px; }
+/* みぎした に こぶりな ボタンを アーチじょうに（44px いじょう） */
+.sa-jump  { right: calc(12px + env(safe-area-inset-right)); bottom: 12px; width: 52px; height: 52px; --rim: #5f86b8; }
+.sa-kick  { right: calc(87px + env(safe-area-inset-right)); bottom: 6px; width: 46px; height: 46px; --rim: #b8743a; }
+.sa-punch { right: calc(57px + env(safe-area-inset-right)); bottom: 57px; width: 44px; height: 44px; --rim: #b89a3a; }
+.sa-shoot { right: calc(4px + env(safe-area-inset-right)); bottom: 86px; width: 48px; height: 48px; --rim: #c0302a; }
+.sa-swap  { right: calc(8px + env(safe-area-inset-right)); bottom: 146px; width: 56px; height: 28px; border-radius: 4px; --rim: #666; font-size: 10px; }
 
 /* がめん */
 .sa-scr { position: absolute; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 8px; background: radial-gradient(ellipse at center, rgba(10,4,4,.55), rgba(0,0,0,.88)); text-align: center; padding: 10px; }
@@ -81,9 +83,9 @@
 .sa-title h1 { margin: 0; font-size: 40px; font-weight: 900; letter-spacing: 4px; color: #d9d4cc; text-shadow: 0 0 2px #000, 3px 3px 0 #000, 0 0 18px rgba(200,20,20,.85), 0 0 40px rgba(140,0,0,.6); transform: skewX(-6deg); animation: sa-flick 4.2s infinite; }
 .sa-sub { margin: 0 0 4px; font-weight: 800; color: #b8433a; letter-spacing: 2px; text-shadow: 0 2px 0 #000, 0 0 8px #000; }
 .sa-scr h2 { margin: 0 0 6px; font-size: 28px; font-weight: 900; color: #d9d4cc; letter-spacing: 3px; text-shadow: 3px 3px 0 #000, 0 0 14px rgba(200,20,20,.7); }
-.sa-stages { display: flex; gap: 10px; }
-.sa-stage { width: 190px; padding: 8px 10px; border-radius: 3px; border: 1px solid #4a1c18; border-left: 4px solid #a3261e; background: linear-gradient(90deg, rgba(30,10,10,.92), rgba(8,8,9,.92)); box-shadow: 0 0 14px rgba(0,0,0,.9), inset 0 0 20px rgba(0,0,0,.6); display: flex; flex-direction: column; gap: 2px; cursor: pointer; }
-.sa-stage b { font-size: 18px; color: #e6e2da; } .sa-stage span { font-size: 13px; color: #a69a92; } .sa-stage em { font-style: normal; font-size: 11px; color: #d8c48a; }
+.sa-stages { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; max-width: 640px; }
+.sa-stage { width: 118px; padding: 6px 7px; border-radius: 3px; border: 1px solid #4a1c18; border-left: 4px solid #a3261e; background: linear-gradient(90deg, rgba(30,10,10,.92), rgba(8,8,9,.92)); box-shadow: 0 0 14px rgba(0,0,0,.9), inset 0 0 20px rgba(0,0,0,.6); display: flex; flex-direction: column; gap: 2px; cursor: pointer; }
+.sa-stage b { font-size: 14px; color: #e6e2da; } .sa-stage span { font-size: 10px; color: #a69a92; } .sa-stage em { font-style: normal; font-size: 9.5px; color: #d8c48a; }
 .sa-stage:active { transform: translateY(2px); filter: brightness(1.3); }
 .sa-stage.locked { opacity: .4; cursor: default; border-left-color: #333; }
 .sa-row { display: flex; gap: 8px; margin-top: 4px; }
