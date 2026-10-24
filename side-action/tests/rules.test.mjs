@@ -18,16 +18,16 @@ test('わざ：パンチと キックの れんけい', () => {
   assert.ok(R.comboMult(30) > R.comboMult(6));
 });
 
-test('ステージは 15こ、それぞれ ちがう ボスつき', () => {
-  assert.equal(R.STAGES.length, 15);
+test('ステージは 16こ、それぞれ ちがう ボスつき', () => {
+  assert.equal(R.STAGES.length, 16);
   for (const s of R.STAGES) { assert.ok(R.BOSSES[s.boss.id]); assert.ok(s.boss.x < s.length); }
-  assert.equal(new Set(R.STAGES.map((s) => s.boss.id)).size, 15);
-  assert.equal(new Set(R.STAGES.map((s) => s.id)).size, 15);
+  assert.equal(new Set(R.STAGES.map((s) => s.boss.id)).size, 16);
+  assert.equal(new Set(R.STAGES.map((s) => s.id)).size, 16);
   for (const s of R.STAGES) for (const z of s.zones || []) for (const w of z.waves) for (const id of w) assert.ok(R.ENEMIES[id], id);
 });
 
 test('ぶきの かたち：すべての じゅうに じゅうこう と はんどう', () => {
-  for (const id of R.WEAPON_ORDER) { const G = R.GUN_GEOM[id]; assert.ok(G, id); assert.ok(G.mx > 0 && Array.isArray(G.kick)); }
+  for (const id of R.WEAPON_ORDER) { if (R.WEAPONS[id].melee) continue; const G = R.GUN_GEOM[id]; assert.ok(G, id); assert.ok(G.mx > 0 && Array.isArray(G.kick)); }
 });
 
 test('ズーム：3だんかい、きほんは ちかい', () => {

@@ -1,5 +1,5 @@
 // バトル アクション の きまり（DOM なし・node で テストできる）
-export const VERSION = '0.6.0';
+export const VERSION = '0.7.0';
 export const H = 375;              // ろんり の たかさ
 export const GROUND = 318;         // じめん（あしの y）
 export const GRAV = 2000;
@@ -19,6 +19,8 @@ export const WEAPONS = {
   minigun: { id: 'minigun', name: 'ミニガン',        short: 'ミニガン', rate: 0.04, dmg: 6,  pellets: 1, spread: 0.075, speed: 1250, life: 0.5, knock: 30,  ammo: 300, color: '#5a5e64', accent: '#c9a24a', spin: 0.5, slow: 0.45, tracer: 3 },
   // v0.6：ビームブラスター（うつ を おしっぱなし＝ちいさい エネルギーだんを れんしゃ。ためる ボタン＝ためて はなすと ふとい ビーム）
   beam:    { id: 'beam',    name: 'ビームブラスター', short: 'ビーム', rate: 0.11, dmg: 7, pellets: 1, spread: 0.03, speed: 950, life: 0.65, knock: 50, ammo: 60, color: '#3a4656', accent: '#6af0ff', charge: 0.6, beamCost: 8, beam: { dmg: 60, len: 620, h: 30, knock: 260 } },
+  // v0.7：カタナ（うつ＝きる。おしっぱなしで 3れんぞく きり。たまは いらない）
+  katana:  { id: 'katana',  name: 'カタナ',          short: 'カタナ', rate: 0, dmg: 0, pellets: 0, spread: 0, speed: 0, life: 0, knock: 0, ammo: Infinity, color: '#d8dde2', accent: '#2a2a30', melee: true },
 };
 // じゅうの かたち（つかむ て = 0,0 から）：mx,my=じゅうこう、ex,ey=やっきょう が でる ところ、kick=[うしろ, はねあがり]
 export const GUN_GEOM = {
@@ -31,7 +33,7 @@ export const GUN_GEOM = {
   minigun: { mx: 52, my: -6.5, ex: 2,  ey: 2,   kick: [3, 0.035], flash: 'rifle',  shell: [3.2, '#d6ae4c'] },
   dark:    { mx: 33, my: -7, ex: 6,  ey: -9,  kick: [3, 0.1],  flash: 'smg',     shell: null },
 };
-export const WEAPON_ORDER = ['pistol', 'smg', 'rifle', 'shotgun', 'minigun', 'beam', 'bazooka'];
+export const WEAPON_ORDER = ['katana', 'pistol', 'smg', 'rifle', 'shotgun', 'minigun', 'beam', 'bazooka'];
 export const AMMO_PICK = { smg: 90, rifle: 75, shotgun: 18, bazooka: 4, minigun: 60, beam: 16 };
 export const AMMO_MAX = { smg: 360, rifle: 300, shotgun: 72, bazooka: 16, minigun: 500, beam: 120 };
 
@@ -104,12 +106,18 @@ export const MOVES = {
   flykick: { name: 'とびげり',        dur: 0.55, t0: 0.0,  t1: 0.55, box: [0, 6, 54, 34],   dmg: 17, kx: 560, ky: -240, stop: 0.07,  chain: 0.55, limb: 'fly', air: true },
   airjab:  { name: 'くうちゅうパンチ', dur: 0.22, t0: 0.04, t1: 0.12, box: [6, 30, 48, 26], dmg: 8,  kx: 150, ky: -200, stop: 0.04,  chain: 0.14, limb: 'hand', air: true },
   slide:   { name: 'スライディング',   dur: 0.42, t0: 0.02, t1: 0.36, box: [0, 0, 58, 20],  dmg: 12, kx: 140, ky: -620, stop: 0.05,  chain: 0.36, limb: 'slide', launch: true },
+  // v0.7 カタナ の きり（3れんぞく：よこぎり → かえし → ふりおろし）
+  slash1:  { name: 'よこぎり',        dur: 0.24, t0: 0.05, t1: 0.13, box: [-4, 14, 74, 62], dmg: 13, kx: 170, ky: -80,  stop: 0.045, chain: 0.14, limb: 'blade', blade: 1 },
+  slash2:  { name: 'かえしぎり',      dur: 0.26, t0: 0.05, t1: 0.14, box: [-4, 10, 76, 66], dmg: 14, kx: 190, ky: -120, stop: 0.05,  chain: 0.15, limb: 'blade', blade: 2 },
+  slash3:  { name: 'ふりおろし',      dur: 0.4,  t0: 0.1,  t1: 0.2,  box: [-6, 0, 84, 86],  dmg: 24, kx: 560, ky: -320, stop: 0.1,   chain: 0.3,  limb: 'blade', blade: 3, big: true },
+  airslash:{ name: 'くうちゅうぎり',  dur: 0.28, t0: 0.04, t1: 0.16, box: [-8, 0, 76, 70], dmg: 13, kx: 200, ky: -220, stop: 0.045, chain: 0.16, limb: 'blade', blade: 4, air: true },
 };
 export const COMBO_WINDOW = 1.3;   // この あいだに あてれば コンボが つづく
 export const CHAIN_GRACE = 0.28;   // わざの あと つぎを うけつける じかん
 
 // どの わざが でるか。step = いまの つなぎ（0,1,2）
 export function pickMove(kind, { air = false, step = 0, running = false, down = false } = {}) {
+  if (kind === 'slash') return air ? 'airslash' : ['slash1', 'slash2', 'slash3'][Math.min(2, step)];
   if (air) return kind === 'kick' ? 'flykick' : 'airjab';
   if (kind === 'kick' && (down || running && step === 0 && running > 0.35)) return 'slide';
   const s = Math.min(2, step);
@@ -167,6 +175,10 @@ export const ENEMIES = {
   frozen:   { name: 'こおり ゾンビ',     hp: 56,  w: 32, h: 74, speed: 66,  weight: 1.4, dmg: 11, reach: 50, wind: 0.6,  cool: 1.3,  score: 220, blood: 'purple', ai: 'grunt', armor: 0.25 },
   sergeant: { name: 'ぐんそう ゾンビ',   hp: 320, w: 40, h: 90, speed: 72,  weight: 2.6, dmg: 7,  reach: 0,  wind: 0.7,  cool: 1.6,  score: 2000, blood: 'green', ai: 'gunner', range: [150, 300], shotSpeed: 540, inacc: 0.16, volley: 8, helmetHp: 50, armor: 0.35, mini: true },
   patch:    { name: 'つぎはぎ ゾンビ',   hp: 380, w: 64, h: 124, speed: 76, weight: 3.2, dmg: 18, reach: 74, wind: 0.75, cool: 1.4,  score: 2200, blood: 'purple', ai: 'grunt', armor: 0.55, mini: true },
+  // v0.7 いせきの グール（ほねと あばらが みえる。ちは みどり）
+  ghoul:    { name: 'グール',            hp: 46,  w: 34, h: 58,  speed: 124, weight: 1.1, dmg: 9,  reach: 50, wind: 0.42, cool: 1.0,  score: 160, blood: 'green', ai: 'grunt', look: 'ghoul', lunge: 320 },
+  ghoulet:  { name: 'ちびグール',        hp: 22,  w: 32, h: 36,  speed: 230, weight: 0.8, dmg: 6,  reach: 40, wind: 0.3,  cool: 0.9,  score: 90,  blood: 'green', ai: 'crawler', look: 'ghoul', jumper: true, emerge: true, small: true },
+  bigghoul: { name: 'おおグール',        hp: 360, w: 58, h: 96,  speed: 92,  weight: 2.8, dmg: 16, reach: 70, wind: 0.6,  cool: 1.3,  score: 2200, blood: 'green', ai: 'grunt', look: 'ghoul', armor: 0.45, mini: true, lunge: 420 },
   wraith:  { name: 'ゆらぎ',       hp: 30,  w: 40, h: 40, speed: 240, weight: 0.8, dmg: 9,  reach: 40, wind: 0.32, cool: 0.9,  score: 180, blood: 'purple', ai: 'crawler', look: 'wraith', jumper: true, emerge: true },
 };
 for (const [k, d] of Object.entries(ENEMIES)) { d.ai = d.ai || k; d.look = d.look || k; if (d.emerge === undefined) d.emerge = k === 'crawler'; }
@@ -187,6 +199,7 @@ export const BOSSES = {
   yeti:    { name: 'こおりの きょじん',      hp: 2550, w: 104, h: 130, speed: 120, weight: 5, dmg: 17, score: 14000, blood: 'purple', armor: 0.8, kit: 'yeti' },
   queen:   { name: 'むしの じょおう',        hp: 2600, w: 104, h: 130, speed: 115, weight: 5, dmg: 16, score: 14000, blood: 'purple', armor: 0.8, kit: 'queen' },
   heli:    { name: 'ゾンビ ヘリ',            hp: 2400, w: 150, h: 70,  speed: 150, weight: 99, dmg: 14, score: 15000, blood: 'green', armor: 0.85, kit: 'heli' },
+  ghoulking: { name: 'いせきの グール',      hp: 3000, w: 100, h: 132, speed: 130, weight: 5, dmg: 17, score: 16000, blood: 'green',  armor: 0.75, kit: 'ghoul' },
   final:   { name: 'はじまりの ミュータント', hp: 3000, w: 74, h: 150, speed: 125, weight: 6, dmg: 18, score: 30000, blood: 'purple', armor: 0.8, kit: 'final' },
 };
 // ズーム（がめんの ちかさ）。ゲームの ひろさは かわらない
@@ -289,6 +302,7 @@ function mkStage(o) {
   return {
     id: o.id, name: `ステージ ${o.id}`, sub: o.sub, theme: o.theme, length: o.length, hpMul: o.hpMul,
     gimmick: o.gimmick || null, presses: o.presses, conveyors: o.conveyors, goo: o.goo,
+    free: !!o.free, start: o.start || null, heroLook: o.heroLook || null,
     platforms, crates, pickups,
     arenas: o.arenas.map(([x, ...waves]) => ({ x, waves })),
     boss: o.boss,
@@ -379,6 +393,16 @@ const MORE = [
       [3700, ['patch'], ['leaper', 'leaper', 'spitter', 'crawler']],
       [4600, ['hulk', 'hulk', 'swarm', 'swarm'], ['sergeant', 'labz', 'labz']],
     ], boss: { x: 5700, id: 'final' } },
+  // v0.7：いせきの どうくつ（さいしょから えらべる。カタナ で たたかう）
+  { id: 16, sub: 'いせきの どうくつ', theme: 'ruins', length: 5400, hpMul: 1.45, free: true, start: ['katana', 'pistol'], heroLook: 'plain',
+    gimmick: { type: 'debris', every: 6.5, first: 6, rock: true },
+    weapons: [],
+    arenas: [
+      [700, ['ghoul', 'ghoulet', 'ghoul'], ['ghoulet', 'ghoulet', 'ghoul']],
+      [1650, ['ghoul', 'ghoul', 'ghoulet', 'ghoulet'], ['ghoul', 'leaper', 'ghoulet']],
+      [2600, ['ghoulet', 'ghoulet', 'ghoulet', 'ghoul'], ['ghoul', 'ghoul', 'leaper'], ['ghoul', 'ghoulet', 'ghoulet', 'ghoul']],
+      [3600, ['ghoul', 'ghoul', 'ghoulet'], ['bigghoul', 'ghoulet']],
+    ], boss: { x: 4950, id: 'ghoulking' } },
 ];
 for (const o of MORE) STAGES.push(mkStage(o));
 

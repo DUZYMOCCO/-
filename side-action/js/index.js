@@ -4,18 +4,18 @@
  */
 import { loadCss } from '../../common/js/load-css.js';
 import { storage } from '../../common/js/storage.js';
-import { VERSION, STAGES, WEAPONS, ZOOMS, normalizeSave, rankOf } from './rules.js?v=6';
-import { Game } from './game.js?v=6';
-import { Renderer } from './render.js?v=6';
-import { Input } from './input.js?v=6';
-import { Sfx } from './sfx.js?v=6';
+import { VERSION, STAGES, WEAPONS, ZOOMS, normalizeSave, rankOf } from './rules.js?v=7';
+import { Game } from './game.js?v=7';
+import { Renderer } from './render.js?v=7';
+import { Input } from './input.js?v=7';
+import { Sfx } from './sfx.js?v=7';
 const PER = 5;
 
 const SAVE_KEY = 'side_action_save';
 const TITLE = 'ガンキック ヒーローズ';
 
 export default {
-  prepare() { return loadCss(new URL('../css/side-action.css?v=6', import.meta.url).href); },
+  prepare() { return loadCss(new URL('../css/side-action.css?v=7', import.meta.url).href); },
 
   init(container, onBackToHub) {
     this.container = container; this.onBackToHub = onBackToHub;
@@ -62,7 +62,7 @@ export default {
       <div class="sa-scr sa-title">
         <h1>${TITLE}</h1>
         <p class="sa-sub">やみに ひそむ ものたちを けちらせ</p>
-        <div class="sa-pager"><button class="sa-pg" data-act="pgPrev">◀</button><span class="sa-pgl"></span><button class="sa-pg" data-act="pgNext">▶</button></div>
+        <div class="sa-pager"><button class="sa-pg" data-act="pgPrev">◀</button><span class="sa-pgl"></span><button class="sa-pg" data-act="pgNext">▶</button><button class="sa-pg sa-newst" data-act="stage" data-i="0"></button></div>
         <div class="sa-stages"></div>
         <div class="sa-row">
           <button class="sa-small" data-act="allies"></button>
@@ -78,6 +78,7 @@ export default {
           <div><b>ひだりの パッド</b>：いどう（したで スライディング・あしばから おりる）</div>
           <div><b>ジャンプ</b>：2かい まで とべる</div>
           <div><b>うつ</b>：おしっぱなしで れんしゃ</div>
+          <div><b>カタナ</b>：うつ ボタンが きる に なる（おしっぱなしで 3れんぞく きり）</div>
           <div><b>キック</b>：まえげり → かいてんげり → まわしげり！ くうちゅうで とびげり、はしりながら スライディング</div>
           <div><b>パンチ</b>：パンチ → パンチ → アッパー！</div>
           <div><b>ぶきかえ</b>：ひろった ぶきに かえる</div>
@@ -200,19 +201,22 @@ export default {
   },
   renderTitle() {
     // 5こずつ ページで みせる（さいしょは いちばん さきの あそべる ステージの ページ）
-    const isLocked = (i) => i > 0 && !this.save.cleared.includes(STAGES[i - 1].id) && !this.save.cleared.includes(STAGES[i].id);
+    const isLocked = (i) => i > 0 && !STAGES[i].free && !this.save.cleared.includes(STAGES[i - 1].id) && !this.save.cleared.includes(STAGES[i].id);
     const pages = Math.ceil(STAGES.length / PER);
-    if (this.page == null) { let top = 0; STAGES.forEach((_, i) => { if (!isLocked(i)) top = i; }); this.page = Math.floor(top / PER); }
+    if (this.page == null) { let top = 0; STAGES.forEach((s, i) => { if (!isLocked(i) && !s.free) top = i; }); this.page = Math.floor(top / PER); }
     this.page = Math.max(0, Math.min(pages - 1, this.page));
     const p0 = this.page * PER;
     this.el('.sa-pgl').textContent = `${p0 + 1}〜${Math.min(STAGES.length, p0 + PER)}  （${this.page + 1}/${pages}）`;
     this.el('[data-act="pgPrev"]').disabled = this.page === 0; this.el('[data-act="pgNext"]').disabled = this.page >= pages - 1;
+    // あたらしい ステージへの ちかみち（すぐ あそべる ステージ）
+    const fi = STAGES.findIndex((s) => s.free), nb = this.el('.sa-newst');
+    if (nb) { nb.hidden = fi < 0; if (fi >= 0) { nb.dataset.i = fi; nb.textContent = `🆕 ${STAGES[fi].sub}`; } }
     this.el('.sa-stages').innerHTML = STAGES.map((s, i) => {
       if (i < p0 || i >= p0 + PER) return '';
       const locked = isLocked(i);
       const best = this.save.best[s.id];
       return `<button class="sa-stage ${locked ? 'locked' : ''}" data-act="${locked ? '' : 'stage'}" data-i="${i}" ${locked ? 'disabled' : ''}>
-        <b>${s.name}</b><span>${s.sub}</span><em>${locked ? '🔒 まえを クリアしてね' : best ? `ベスト ${best.score} ${best.rank}` : 'ボスが まってる…'}</em></button>`;
+        <b>${s.name}</b><span>${s.sub}</span><em>${locked ? '🔒 まえを クリアしてね' : !best && s.free ? '🆕 すぐ あそべる！ カタナで たたかえ' : best ? `ベスト ${best.score} ${best.rank}` : 'ボスが まってる…'}</em></button>`;
     }).join('');
     this.el('[data-act="allies"]').textContent = `なかま：${this.save.allies ? 'いっしょ' : 'ひとり'}`;
   },
@@ -242,6 +246,7 @@ export default {
     set('score', g.score, (v) => { this.el('.sa-score').textContent = v.toLocaleString(); });
     const ammo = p.ars.guns[p.ars.cur].ammo;
     set('wpn', `${p.ars.cur}:${ammo}`, () => { this.el('.sa-wpn b').textContent = WEAPONS[p.ars.cur].name; this.el('.sa-wpn span').textContent = ammo === Infinity ? '∞' : ammo; });
+    set('meleeBtn', !!WEAPONS[p.ars.cur].melee, (v) => { this.el('.sa-shoot').textContent = v ? 'きる' : 'うつ'; });
     set('beamBtn', p.ars.cur === 'beam', (v) => { this.el('.sa-charge').classList.toggle('show', v); });
     const bars = this.root.querySelectorAll('.sa-ally');
     g.allies.forEach((a, i) => set('a' + i, a.down > 0 ? -1 : Math.ceil(a.hp), (v) => { bars[i].classList.toggle('down', v < 0); bars[i].querySelector('i').style.width = `${Math.max(0, v / a.maxHp) * 100}%`; }));
@@ -285,7 +290,7 @@ export default {
   },
   drawTitleBg(t) {
     // タイトルの うしろは デモ（じどう で うごく）
-    if (!this.demo) { this.demo = new Game(0, { viewW: this.viewW, seed: 99, zoom: this.zoomZ() }); this.demoMem = {}; this.demoBot = null; import('./game.js?v=6').then((m) => { this.demoBot = m.botInput; }); }
+    if (!this.demo) { this.demo = new Game(0, { viewW: this.viewW, seed: 99, zoom: this.zoomZ() }); this.demoMem = {}; this.demoBot = null; import('./game.js?v=7').then((m) => { this.demoBot = m.botInput; }); }
     const d = this.demo;
     if (this.demoBot) d.update(1 / 60, this.demoBot(d, this.demoMem)); d.drainEvents(); d.banner = null; d.texts && (d.texts.length = 0);
     if (d.state !== 'play' || d.time > 90) this.demo = null;

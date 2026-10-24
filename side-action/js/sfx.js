@@ -1,5 +1,5 @@
 // おと（WebAudio で その場で つくる）
-import { MusicPlayer } from './music.js?v=6';
+import { MusicPlayer } from './music.js?v=7';
 
 export class Sfx {
   constructor(muted = false) {
@@ -90,6 +90,8 @@ export class Sfx {
       }
       case 'eshoot': this._tone(t, 0.25, { type: 'sawtooth', f0: 600, f1: 150, gain: 0.18 }); this._noise(t, 0.15, { type: 'bandpass', freq: 900, gain: 0.25 }); break;
       case 'whoosh': if (this.gate('wh', 0.05)) this._noise(t, 0.16, { type: 'bandpass', freq: 900 * p, q: 1.4, gain: ev.ally ? 0.15 : 0.35, attack: 0.05 }); break;
+      case 'slash': if (this.gate('sl', 0.05)) { this._noise(t, 0.14, { type: 'bandpass', freq: 2600 * p, q: 1.2, gain: 0.4, attack: 0.02 }); this._noise(t + 0.03, 0.1, { type: 'highpass', freq: 5000, gain: 0.18 }); } break;
+      case 'slashHit': if (this.gate('slh', 0.04)) { this._noise(t, 0.16, { type: 'bandpass', freq: 650, q: 1.6, gain: 0.55 }); this._tone(t, 0.12, { f0: 240 * p, f1: 70, gain: 0.45 }); this._noise(t + 0.02, 0.12, { type: 'lowpass', freq: 900, gain: 0.35 }); } break;
       case 'whoosh2': this._noise(t, 0.1, { type: 'bandpass', freq: 1400 * p, q: 1.4, gain: 0.25, attack: 0.03 }); break;
       case 'hit': if (!this.gate('hit', 0.03)) return; this._tone(t, ev.big ? 0.22 : 0.12, { f0: ev.big ? 140 : 190 * p, f1: 40, gain: ev.big ? 1 : 0.75 }); this._noise(t, ev.big ? 0.18 : 0.08, { freq: 2500, gain: ev.big ? 0.8 : 0.55 }); this._noise(t, 0.1, { type: 'bandpass', freq: 500, q: 2, gain: 0.35 }); break;
       case 'bhit': if (this.gate('bh', 0.05)) this._noise(t, 0.06, { type: 'bandpass', freq: 1100 * p, q: 2, gain: 0.3 }); break;

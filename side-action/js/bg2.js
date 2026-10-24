@@ -1,6 +1,6 @@
-// v0.6.0：ステージ 6〜15 の はいけい（くらくて こわい いろいろな ばしょ）
+// v0.7.0：ステージ 6〜16 の はいけい（くらくて こわい いろいろな ばしょ）
 // render.js から よばれる。lights(ctx, t, cam, vw, thunder, LIGHTS, GLOWS)
-import { H, GROUND } from './rules.js?v=6';
+import { H, GROUND } from './rules.js?v=7';
 
 const TAU = Math.PI * 2;
 function rng(seed) { let s = seed >>> 0; return () => { s = (s + 0x6D2B79F5) >>> 0; let t = s; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
@@ -249,6 +249,100 @@ function coreLights(ctx, t, cam, vw, th, L, G) {
   each(cam, vw, 440, 220, (i, x) => { const v = 0.5 + 0.5 * Math.sin(t * 5 + i); ctx.fillStyle = `rgba(190,120,255,${0.5 + 0.5 * v})`; ctx.fillRect(x - 12, 46, 24, 4); G.push(x, 48, 70, 0.7 * v, 'purple', 0); L.push(x, 110, 170, 0.45 + 0.2 * v); });
 }
 
+// ================= 16 いせきの どうくつ（あおじろい いしの いせき・ふとい りんかくせん） =================
+const RU = { line: '#232a3a', stone: '#a6b6d2', stone2: '#93a5c6', hi: '#d2dcee', shade: '#7486a8', deep: '#46516c', gap: '#37405a', floor: '#8b97ae', floor2: '#76829b' };
+function ruBlock(x, bx, by, bw, bh, R, col = RU.stone) {
+  x.fillStyle = RU.line; x.fillRect(bx - 1.5, by - 1.5, bw + 3, bh + 3);
+  x.fillStyle = col; x.fillRect(bx, by, bw, bh);
+  x.fillStyle = RU.hi; x.fillRect(bx, by, bw, 2.5);
+  x.fillStyle = 'rgba(60,70,95,0.28)'; x.fillRect(bx, by + bh - 4, bw, 4); x.fillRect(bx + bw - 3, by, 3, bh);
+  if (R() < 0.45) { x.strokeStyle = 'rgba(38,43,54,0.7)'; x.lineWidth = 1; x.beginPath(); const cx = bx + R() * bw; x.moveTo(cx, by); x.lineTo(cx + (R() - 0.5) * 10, by + bh * 0.5); x.lineTo(cx + (R() - 0.5) * 14, by + bh); x.stroke(); }
+  if (R() < 0.3) { x.fillStyle = 'rgba(70,80,100,0.35)'; x.beginPath(); x.ellipse(bx + R() * bw, by + R() * bh, 3 + R() * 5, 2 + R() * 3, 0, 0, TAU); x.fill(); }
+}
+function ruWall(x, x0, x1, y0, y1, R, bw = 46, bh = 26, col) {
+  for (let yy = y0, row = 0; yy < y1; yy += bh, row++) {
+    const off = row % 2 ? -bw / 2 : 0;
+    for (let xx = x0 + off; xx < x1; xx += bw) {
+      const a = Math.max(xx, x0), b = Math.min(xx + bw, x1) - 2, h = Math.min(bh, y1 - yy) - 2;
+      if (b - a > 3 && h > 3) ruBlock(x, a + 1, yy + 1, b - a, h, R, col || (R() < 0.3 ? RU.stone2 : RU.stone));
+    }
+  }
+}
+function ruBoulder(x, cx, cy, r, R, col = RU.stone) {
+  const n = 7 + Math.floor(R() * 3), pts = [];
+  for (let i = 0; i < n; i++) { const a = Math.PI + (i / (n - 1)) * Math.PI, rr = r * (0.75 + R() * 0.35); pts.push([cx + Math.cos(a) * rr * 1.25, cy + Math.sin(a) * rr * 0.9]); }
+  x.beginPath(); x.moveTo(cx - r * 1.3, cy + r * 0.25); for (const [px, py] of pts) x.lineTo(px, py); x.lineTo(cx + r * 1.3, cy + r * 0.25); x.closePath();
+  x.lineWidth = 3; x.strokeStyle = RU.line; x.lineJoin = 'round'; x.stroke(); x.fillStyle = col; x.fill();
+  // かげ（したがわ）と ハイライト（うえ）
+  x.save(); x.clip();
+  x.fillStyle = RU.shade; x.beginPath(); x.ellipse(cx + r * 0.3, cy + r * 0.2, r * 1.2, r * 0.55, -0.1, 0, TAU); x.fill();
+  x.fillStyle = RU.hi; x.beginPath(); x.ellipse(cx - r * 0.35, cy - r * 0.65, r * 0.55, r * 0.18, -0.25, 0, TAU); x.fill();
+  x.restore();
+  x.strokeStyle = RU.line; x.lineWidth = 1.6; x.beginPath(); x.moveTo(cx - r * 0.2, cy - r * 0.8); x.lineTo(cx + r * 0.1, cy - r * 0.2); x.lineTo(cx + r * 0.6, cy - r * 0.05); x.stroke();
+}
+function ruinsFar(x, w) { const R = rng(161);
+  // おくの あかるい どうくつ（あおしろ）
+  const gg = x.createLinearGradient(0, 0, 0, H); gg.addColorStop(0, '#b4c3dc'); gg.addColorStop(0.7, '#d4ddec'); gg.addColorStop(1, '#c0cbdf'); x.fillStyle = gg; x.fillRect(0, 0, w, H);
+  // てんじょうの いわ
+  x.fillStyle = '#8796b3'; x.beginPath(); x.moveTo(0, 0); for (let i = 0; i <= w; i += 30) x.lineTo(i, 26 + R() * 34); x.lineTo(w, 0); x.fill();
+  x.strokeStyle = RU.line; x.lineWidth = 1.5; x.stroke();
+  // とおくの はしら と いしがき（うすい）
+  for (let i = 0; i < w; i += 150 + R() * 80) { const bw = 40 + R() * 40, top = 70 + R() * 50; x.fillStyle = '#a1b0cb'; x.fillRect(i, top, bw, H - top); x.strokeStyle = 'rgba(38,43,54,0.5)'; x.lineWidth = 1.2; x.strokeRect(i, top, bw, H - top); for (let yy = top + 18; yy < H; yy += 18) { x.beginPath(); x.moveTo(i, yy); x.lineTo(i + bw, yy); x.stroke(); } }
+}
+function ruinsMid(x, w) { const R = rng(162);
+  // おおきな いしの かべ（ひだり）と アーチ の くらい いりぐち
+  ruWall(x, 0, 250, 20, GROUND, R, 44, 25);
+  // くらい いりぐち
+  x.fillStyle = RU.line; x.beginPath(); x.moveTo(52, GROUND); x.lineTo(52, 120); x.quadraticCurveTo(52, 70, 130, 64); x.quadraticCurveTo(208, 70, 208, 120); x.lineTo(208, GROUND); x.fill();
+  const dg = x.createLinearGradient(0, 70, 0, GROUND); dg.addColorStop(0, '#2c3344'); dg.addColorStop(1, '#4b5468'); x.fillStyle = dg;
+  x.beginPath(); x.moveTo(57, GROUND); x.lineTo(57, 121); x.quadraticCurveTo(58, 75, 130, 69); x.quadraticCurveTo(203, 75, 203, 121); x.lineTo(203, GROUND); x.fill();
+  // なかの ひかり（おくの へや）と ななめの かげ
+  x.fillStyle = 'rgba(160,172,196,0.35)'; x.beginPath(); x.moveTo(120, GROUND); x.lineTo(150, 110); x.lineTo(203, 118); x.lineTo(203, GROUND); x.fill();
+  x.strokeStyle = 'rgba(20,24,34,0.6)'; x.lineWidth = 1.2; x.beginPath(); x.moveTo(70, 100); x.lineTo(120, 150); x.moveTo(150, 90); x.lineTo(110, 200); x.stroke();
+  // アーチの いし
+  for (let i = 0; i <= 8; i++) { const a = Math.PI + (i / 8) * Math.PI, cx = 130 + Math.cos(a) * 86, cy = 118 + Math.sin(a) * 58; x.save(); x.translate(cx, cy); x.rotate(a + Math.PI / 2); ruBlock(x, -11, -9, 22, 16, R, RU.stone2); x.restore(); }
+  // かべの ランプ（ぼう と ちいさな かんばん）
+  x.fillStyle = RU.line; x.fillRect(228, 118, 7, 96); x.fillStyle = '#5a6680'; x.fillRect(229.5, 118, 4, 96);
+  x.fillStyle = RU.line; x.beginPath(); x.moveTo(221, 118); x.lineTo(242, 118); x.lineTo(239, 98); x.lineTo(224, 98); x.fill();
+  x.fillStyle = '#eef2f8'; x.fillRect(227, 102, 9, 12);
+  x.fillStyle = RU.line; x.fillRect(221, 93, 21, 6); x.beginPath(); x.moveTo(226, 93); x.lineTo(231.5, 86); x.lineTo(237, 93); x.fill();
+  // ちいさな かんばん（やじるし だけ）
+  x.fillStyle = RU.line; x.fillRect(213, 150, 22, 20); x.fillStyle = '#d8e0ec'; x.fillRect(215, 152, 18, 16);
+  x.strokeStyle = RU.line; x.lineWidth = 2; x.beginPath(); x.moveTo(219, 163); x.lineTo(228, 163); x.lineTo(228, 156); x.moveTo(225, 159); x.lineTo(228, 156); x.lineTo(231, 159); x.stroke();
+  // みぎの いしがき（こわれた かべ）
+  ruWall(x, 470, 640, 90, GROUND, R, 40, 24);
+  x.fillStyle = RU.line; x.fillRect(468, 90, 3, GROUND - 90);
+  // まんなかの いわの やま（がれき）
+  const pile = [[300, 286, 34], [352, 278, 40], [404, 288, 30], [330, 238, 30], [384, 236, 34], [440, 268, 36], [470, 228, 30], [420, 196, 28], [500, 278, 32], [358, 196, 22], [540, 236, 26], [600, 270, 30]];
+  for (const [cx, cy, r] of pile) ruBoulder(x, cx, cy, r, R, R() < 0.4 ? RU.stone2 : RU.stone);
+  // ちいさな いし
+  for (let i = 0; i < 16; i++) ruBoulder(x, 270 + R() * 360, GROUND - 2 - R() * 6, 4 + R() * 6, R);
+  // こけ のような しみ（うすい あお）
+  grime(x, R, w, 30, GROUND, 14, 'rgba(60,70,95,0.12)');
+}
+function ruinsFloor(x, w) { const R = rng(163);
+  const fg = x.createLinearGradient(0, GROUND - 4, 0, H); fg.addColorStop(0, '#9ca8be'); fg.addColorStop(1, '#7b87a0'); x.fillStyle = fg; x.fillRect(0, GROUND - 4, w, H - GROUND + 4);
+  x.fillStyle = RU.line; x.fillRect(0, GROUND - 1, w, 2.5);
+  // うすい ひびわれ
+  x.strokeStyle = 'rgba(40,46,60,0.45)'; x.lineWidth = 1; for (let i = 0; i < 10; i++) { const cx = R() * w, cy = GROUND + 8 + R() * 40; x.beginPath(); x.moveTo(cx, cy); x.lineTo(cx + 20 + R() * 30, cy + (R() - 0.5) * 8); x.lineTo(cx + 40 + R() * 40, cy + (R() - 0.5) * 12); x.stroke(); }
+  // いしの かけら（しろっぽい ちいさな いし）
+  for (let i = 0; i < 26; i++) {
+    const cx = R() * w, cy = GROUND + 5 + R() * 46, r = 2.5 + R() * 6;
+    x.fillStyle = RU.line; x.beginPath(); x.moveTo(cx - r - 1, cy + 1.5); x.lineTo(cx - r * 0.4, cy - r * 0.7 - 1); x.lineTo(cx + r * 0.7, cy - r * 0.5 - 1); x.lineTo(cx + r + 1, cy + 1.5); x.closePath(); x.fill();
+    x.fillStyle = R() < 0.5 ? '#ccd6e6' : '#adbad0'; x.beginPath(); x.moveTo(cx - r, cy + 0.5); x.lineTo(cx - r * 0.4, cy - r * 0.7); x.lineTo(cx + r * 0.7, cy - r * 0.5); x.lineTo(cx + r, cy + 0.5); x.closePath(); x.fill();
+  }
+}
+function ruinsFore(x) {
+  // てまえの つりさがる いわ（うえ）
+  x.fillStyle = '#6f7a8e'; x.strokeStyle = RU.line; x.lineWidth = 2.5;
+  for (const [cx, s] of [[120, 1], [560, 1.3], [930, 0.8]]) { x.beginPath(); x.moveTo(cx - 70 * s, -4); x.lineTo(cx - 40 * s, 22 * s); x.lineTo(cx - 10 * s, 14 * s); x.lineTo(cx + 8 * s, 40 * s); x.lineTo(cx + 30 * s, 18 * s); x.lineTo(cx + 66 * s, 26 * s); x.lineTo(cx + 90 * s, -4); x.closePath(); x.fill(); x.stroke(); }
+}
+function ruinsLights(ctx, t, cam, vw, th, L, G) {
+  // ひろく あかるい（あおじろい ひかり）
+  each(cam * 0.6, vw, 320, 160, (i, x) => { L.push(x, 160, 260, 0.75); });
+  each(cam * 0.6, vw, 640, 232, (i, x) => { const v = 0.85 + 0.15 * Math.sin(t * 7 + i * 3) * Math.sin(t * 2.3); L.push(x, 108, 90, 0.6 * v); G.push(x, 108, 24, 0.45 * v, 'white', 0); });
+}
+
 export const THEMES2 = {
   hospital: { far: hospitalFar, mid: hospitalMid, floor: hospitalFloor, fore: hospitalFore, lights: hospitalLights, wstep: 0, dark: 0.66, atmos: 'dust', plat: ['#262c2a', '#46504b'] },
   base:     { far: baseFar, mid: baseMid, floor: baseFloor, fore: baseFore, lights: baseLights, wstep: 0, dark: 0.64, atmos: 'dust', plat: ['#2c2c22', '#4a4a3a'] },
@@ -259,5 +353,6 @@ export const THEMES2 = {
   snow:     { far: snowFar, mid: snowMid, floor: snowFloor, fore: snowFore, lights: snowLights, wstep: 0, dark: 0.58, atmos: 'snow', plat: ['#2a323c', '#c8d4e2'] },
   hive:     { far: hiveFar, mid: hiveMid, floor: hiveFloor, fore: hiveFore, lights: hiveLights, wstep: 0, dark: 0.7, atmos: 'spores', plat: ['#2a1a2c', '#4a3050'] },
   airfield: { far: airFar, mid: airMid, floor: airFloor, fore: airFore, lights: airLights, wstep: 0, dark: 0.64, atmos: 'rain', thunder: true, plat: ['#24242a', '#40404a'] },
+  ruins:    { far: ruinsFar, mid: ruinsMid, floor: ruinsFloor, fore: ruinsFore, lights: ruinsLights, wstep: 0, dark: 0.26, atmos: 'dust', plat: ['#7c879b', '#c9d1dd'] },
   core:     { far: coreFar, mid: coreMid, floor: coreFloor, fore: coreFore, lights: coreLights, wstep: 0, dark: 0.66, atmos: 'sparks', plat: ['#221c2c', '#3e3250'] },
 };

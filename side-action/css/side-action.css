@@ -89,6 +89,8 @@
 .sa-pager { display: flex; align-items: center; gap: 10px; margin: -2px 0 4px; }
 .sa-pg { width: 44px; height: 30px; border-radius: 4px; border: 1px solid #4a1c18; background: rgba(30,10,10,.9); color: #e6e2da; font-size: 16px; cursor: pointer; }
 .sa-pg:disabled { opacity: .3; cursor: default; }
+.sa-newst { width: auto !important; padding: 0 10px !important; font-size: 12px !important; font-weight: 900; color: #10240c !important; background: linear-gradient(#b8f08a, #6cc84a) !important; border-color: #2c6a1c !important; animation: saNewPulse 1.2s ease-in-out infinite; margin-left: 8px; }
+@keyframes saNewPulse { 50% { transform: scale(1.06); } }
 .sa-pgl { font-size: 12px; color: #d8c48a; min-width: 110px; text-align: center; font-weight: 800; }
 .sa-stage b small { font-size: 10px; color: #d8c48a; }
 .sa-stages { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; max-width: 640px; }

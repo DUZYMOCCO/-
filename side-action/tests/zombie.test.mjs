@@ -5,8 +5,8 @@ import { ENEMIES, STAGES, VERSION } from '../js/rules.js';
 
 const Z = ['zombie', 'labz', 'guard', 'soldierz', 'bloatz', 'leaper', 'hulk', 'spitter'];
 
-test('v0.6.0：ゾンビ 8しゅるい（かな の なまえ・みどり／むらさき の ち）', () => {
-  assert.equal(VERSION, '0.6.0');
+test('v0.7.0：ゾンビ 8しゅるい（かな の なまえ・みどり／むらさき の ち）', () => {
+  assert.equal(VERSION, '0.7.0');
   for (const k of Z) {
     const d = ENEMIES[k];
     assert.ok(d, k);

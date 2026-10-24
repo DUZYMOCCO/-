@@ -3,7 +3,7 @@ import {
   H, GROUND, GRAV, PHYS, WEAPONS, MOVES, COMBO_WINDOW, CHAIN_GRACE, ENEMIES, BOSSES, STAGES, ALLIES, ALLY_DOWN_TIME,
   createArsenal, giveWeapon, addAmmo, nextWeapon, tickGun, pickMove, moveBox, overlap, knockOf, comboWord,
   allyDecide, landOn, makePlatforms, scoreFor, GUN_GEOM, ZOOMS, tickBeam,
-} from './rules.js?v=6';
+} from './rules.js?v=7';
 
 export const BLOOD = {
   green: ['#63e64b', '#2fae3a', '#a6ff6e', '#1f7d2b'],
@@ -45,7 +45,8 @@ export class Game {
     this.events = []; this.parts = []; this.splats = []; this.texts = []; this.bullets = []; this.hazards = [];
     this.enemies = []; this.boss = null; this.bossDone = 0; this.go = 0;
     this.player = this.makeFighter(90, { hp: 100, kind: 'player' });
-    this.player.ars = createArsenal(['pistol']);
+    this.player.ars = createArsenal(this.stage.start || ['pistol']);
+    this.player.bladeBlood = 0;
     this.player.lives = 3;
     this.allies = (opts.allies === false ? [] : ALLIES).map((d) => {
       const a = this.makeFighter(90 + d.offset, { hp: d.hp, kind: 'ally' });
@@ -108,6 +109,8 @@ export class Game {
     if (inp.jump) p.jumpBuf = PHYS.jumpBuffer; else p.jumpBuf = Math.max(0, p.jumpBuf - dt);
     if (inp.kick) p.queued = 'kick';
     if (inp.punch) p.queued = 'punch';
+    if (inp.shoot && WEAPONS[p.ars.cur].melee) p.queued = 'slash'; // カタナ：うつ＝きる
+    p.bladeBlood = Math.max(0, (p.bladeBlood || 0) - dt * 0.025);
 
     // わざ
     if (p.move) {
@@ -143,7 +146,8 @@ export class Game {
       }
       if (!inp.jumpHeld && p.vy < -260) p.vy += GRAV * 1.1 * dt; // みじかく おすと ひくい ジャンプ
       // うつ
-      if (CW.charge) {
+      if (CW.melee) { p.ars.spin = 0; p.ars.charge = 0; }
+      else if (CW.charge) {
         const was = p.ars.charge || 0;
         const out = tickBeam(p.ars, dt, inp.shoot, inp.charge);
         if (!was && p.ars.charge > 0) this.ev('hum');
@@ -196,8 +200,9 @@ export class Game {
     if (id === 'flykick') { p.vx = p.face * 470; p.vy = Math.max(p.vy, -120); }
     else if (id === 'slide') { p.vx = p.face * 470; }
     else if (id === 'airjab') { p.vy = Math.min(p.vy, -60); }
+    else if (M.blade) { p.vx = p.face * (id === 'slash3' ? 260 : 150); if (air) p.vy = Math.min(p.vy, -80); }
     else { p.vx = p.face * (id === 'high' ? 170 : id === 'spin' ? 90 : 120); }
-    this.ev(kind === 'kick' ? 'whoosh' : 'whoosh2', { id });
+    this.ev(kind === 'slash' ? 'slash' : kind === 'kick' ? 'whoosh' : 'whoosh2', { id });
   }
 
   // わざが あたる
@@ -214,6 +219,13 @@ export class Game {
       const face = inA ? src.face : -src.face;
       this.damage(e, M.dmg * mult, M, face, isPlayer ? 'p' : 'a', true);
       hit = true;
+      if (M.blade) { // カタナ：みどりの ちが はねて、かたなに つく（えだや うでは とばない）
+        src.bladeBlood = Math.min(1, (src.bladeBlood || 0) + 0.3);
+        const hb2 = this.hurtBox(e), bl = e.def?.blood === 'purple' ? 'purple' : 'green';
+        this.blood(e.x, hb2.y + hb2.h * 0.45, face, bl, M.big ? 10 : 5);
+        if (this.rand() < (M.big ? 0.9 : 0.4)) this.splat(e.x + face * (20 + this.rand() * 50), GROUND, bl, false, M.big ? 1.5 : 1);
+        this.ev('slashHit');
+      }
     }
     for (const c of this.crates) {
       if (c.hp <= 0 || src.hitSet.has(c)) continue;
@@ -554,6 +566,7 @@ export class Game {
         if (e.cool <= 0 && adx < Math.max(460, d.range[1] + 60) && Math.abs(T.y - e.y) < 120) { e.state = 'wind'; e.t = d.wind; this.ev('aim'); }
       } else {
         if (adx > d.reach * 0.8) want = e.face;
+        if (d.lunge && e.onGround && adx < 210 && adx > 80 && e.cool <= 0 && this.rand() < dt * 2.5) { e.vy = -320; e.vx = e.face * d.lunge; e.onGround = false; e.cool = d.cool; e.state = 'leap'; e.hitDone = false; this.ev('hiss'); return; }
         if (d.ai === 'crawler' && e.onGround && adx < 170 && adx > 60 && e.cool <= 0) { e.vy = d.small ? -460 : -560; e.vx = e.face * 330; e.onGround = false; e.cool = d.cool; e.state = 'leap'; e.hitDone = false; this.ev('hiss'); return; }
         if (adx <= d.reach && Math.abs(T.y - e.y) < 60 && e.cool <= 0) { e.state = 'wind'; e.t = d.wind; e.hitDone = false; }
       }
@@ -611,7 +624,7 @@ export class Game {
     e.gone = true;
     this.smoke(e.x, e.y - e.h / 2, 9);
     this.blood(e.x, e.y - e.h / 2, 0, e.def.blood, 12);
-    this.splat(e.x, GROUND, e.def.blood);
+    this.splat(e.x, GROUND, e.def.blood, false, e.def.mini ? 2 : 1.3);
     for (let i = 0; i < 4; i++) this.addPart({ kind: 'star', x: e.x, y: e.y - e.h / 2, vx: (this.rand() - 0.5) * 300, vy: -200 - this.rand() * 200, life: 0.7, max: 0.7, size: 7, color: '#ffe46a', g: 0.6 });
     this.ev('poof');
     if (e.def.burst) { this.hazards.push({ kind: 'gas', x: e.x - 50, y: GROUND - 54, w: 100, h: 54, life: 2.0, warn: 0.45, dmg: 6, hit: new Set() }); this.addText(e.x, e.y - 90, 'ガスに ちゅうい！', '#d9a6ff', 14); }
@@ -625,13 +638,16 @@ export class Game {
     b.phase = 1;
     if (D.ai === 'hydra') { b.x = this.lock.r - 95; b.y = GROUND; b.lowered = false; b.rise = 0; this.shake = 10; }
     else if (D.kit === 'heli') { b.x = this.lock.r - 160; b.y = -120; b.fly = true; b.hoverY = GROUND - 150; b.landed = true; }
-    else { b.x = this.lock.r - (D.kit === 'tank' ? 120 : 140); b.y = -200; }
+    else if (D.kit === 'ghoul') { // みどりの ちだまりから はいでてくる
+      b.x = this.lock.r - 150; b.y = GROUND; b.onGround = true; b.landed = true; b.dropT = 0; b.t = 2.2; b.emerge = true;
+      for (let i = 0; i < 4; i++) this.splat(b.x + (i - 1.5) * 46, GROUND, 'green', false, 2 + this.rand() * 0.6);
+    } else { b.x = this.lock.r - (D.kit === 'tank' ? 120 : 140); b.y = -200; }
     this.boss = b;
     this.say('ボス！', D.name, 2.2); this.ev('roar');
   }
   updateBoss(b, dt) {
     b.anim += dt; b.flashT = Math.max(0, b.flashT - dt);
-    if (b.dead) { b.t += dt; if (b.t > 0.2 && this.rand() < dt * 14) { this.smoke(b.x + (this.rand() - 0.5) * b.w, GROUND - this.rand() * b.h, 2); this.blood(b.x, GROUND - this.rand() * b.h, 0, 'purple', 3); } if (b.t > 1.8 && !b.poofed) { b.poofed = true; this.smoke(b.x, GROUND - b.h / 2, 20); this.splat(b.x, GROUND, 'purple'); this.splat(b.x - 50, GROUND, 'green'); this.ev('poof'); } return; }
+    if (b.dead) { b.t += dt; if (b.t > 0.2 && this.rand() < dt * 14) { this.smoke(b.x + (this.rand() - 0.5) * b.w, GROUND - this.rand() * b.h, 2); this.blood(b.x, GROUND - this.rand() * b.h, 0, b.def.kit === 'ghoul' ? 'green' : 'purple', 3); } if (b.t > 1.8 && !b.poofed) { b.poofed = true; this.smoke(b.x, GROUND - b.h / 2, 20); this.splat(b.x, GROUND, b.def.kit === 'ghoul' ? 'green' : 'purple', false, 2.2); this.splat(b.x - 50, GROUND, 'green', false, 1.6); this.ev('poof'); } return; }
     if (isHydra(b)) this.updateHydra(b, dt); else this.updateMan(b, dt);
   }
   // にんげんがたの ボス（agent / giant / mutant / king）。kit で わざが かわる
@@ -840,6 +856,13 @@ export class Game {
       if (b.n % 5 === 1 && alive < 2) { this.spawnEnemy('soldierz', -1, 0); }
       if (far && r < 0.55) { b.state = 'burstWind'; b.t = 0.6 / rage; b.shots = 0; this.ev('aim'); }
       else { b.state = 'chargeWind'; b.t = 0.9 / rage; this.ev('aim'); }
+      return;
+    }
+    if (kit === 'ghoul') { // いせきの グール：ちびグールを よぶ・とびかかり・ツメ・のしかかり
+      if (b.n % 4 === 0 && alive < 3) { b.state = 'summon'; b.t = 0.9; this.ev('roar'); this.spawnEnemy('ghoulet', 1, 0); this.spawnEnemy('ghoulet', -1, 0); this.splat(b.x, GROUND, 'green', false, 1.6); return; }
+      if (b.n % 5 === 0) { b.state = 'dazed'; b.t = 1.8; this.addText(b.x, GROUND - 170, 'ゼェゼェ… チャンス！', '#ffe14a', 18); return; }
+      if (far) { if (r < 0.6) { b.state = 'chargeWind'; b.t = 0.6 / rage; this.ev('hiss'); } else { b.state = 'slamWind'; b.t = 0.45; } }
+      else { if (r < 0.65) { b.state = 'punchWind'; b.t = 0.38 / rage; } else { b.state = 'slamWind'; b.t = 0.42; } }
       return;
     }
     if (kit === 'beast') {
@@ -1161,9 +1184,10 @@ export class Game {
     const cols = BLOOD[kind] || BLOOD.green;
     for (let i = 0; i < n; i++) this.addPart({ kind: 'blood', x, y, vx: (face || (this.rand() - 0.5) * 2) * (80 + this.rand() * 260) + (this.rand() - 0.5) * 120, vy: -120 - this.rand() * 280, life: 0.7 + this.rand() * 0.4, max: 1.1, size: 2.5 + this.rand() * 4, color: cols[i % cols.length], g: 1, splat: kind });
   }
-  splat(x, y, kind, wall = false) {
+  splat(x, y, kind, wall = false, big = 1) {
     const cols = BLOOD[kind] || BLOOD.green;
-    this.splats.push({ x, y, r: 10 + this.rand() * 14, color: cols[Math.floor(this.rand() * 2)], life: wall ? 30 : 45, wall, seed: this.rand() });
+    const sz = big * (this.stage.theme === 'ruins' && !wall ? 1.8 : 1); // いせき：おおきな みどりの しみ
+    this.splats.push({ x, y, r: (10 + this.rand() * 14) * sz, color: cols[Math.floor(this.rand() * 2)], life: wall ? 30 : 45, wall, seed: this.rand() });
     if (this.splats.length > MAX_SPLATS) this.splats.shift();
   }
   smoke(x, y, n) { for (let i = 0; i < n; i++) this.addPart({ kind: 'smoke', x: x + (this.rand() - 0.5) * 30, y: y + (this.rand() - 0.5) * 30, vx: (this.rand() - 0.5) * 120, vy: -30 - this.rand() * 80, life: 0.8 + this.rand() * 0.5, max: 1.3, size: 14 + this.rand() * 16, color: this.rand() < 0.5 ? '#2a2633' : '#4a4458', g: -0.05 }); }
@@ -1238,7 +1262,11 @@ export function botInput(g, mem = {}) {
     if ((dx > 0) !== (p.face > 0)) { if (dx > 0) inp.right = true; else inp.left = true; }
     if (mem.t % 7 === 0) { if ((mem.t / 7) % 4 < 3) inp.kick = true; else inp.punch = true; }
   }
-  if (p.ars.cur === 'pistol' && Object.keys(p.ars.guns).length > 1 && mem.t % 120 === 0) inp.swap = true;
+  if (p.ars.cur === 'pistol' && Object.keys(p.ars.guns).length > 1 && !p.ars.guns.katana && mem.t % 120 === 0) inp.swap = true;
+  if (WEAPONS[p.ars.cur].melee) { // カタナの ボット：ちかくで きる
+    inp.shoot = Math.abs(dx) <= reach + 30 && mem.t % 5 !== 0;
+    if (Math.abs(dx) > reach + 30) inp.kick = inp.punch = false; else if (mem.t % 21 === 0) inp.kick = true;
+  }
   return botBeam(p, inp, mem);
 }
 // ボットの ビーム：ときどき ためて ふとい ビーム

@@ -1,6 +1,6 @@
 // リアルな じゅう（ぜんぶ オリジナルの かくうの モデル）。たかい かいぞうどの スプライトを いちど だけ つくって つかう
 // もちて（グリップ）が 0,0、みぎむき。じゅうこうの いち は rules.js の GUN_GEOM と おなじ
-import { GUN_GEOM } from './rules.js?v=6';
+import { GUN_GEOM } from './rules.js?v=7';
 
 const OUT = '#0a0a0b';
 const BX = -32, BY = -28, BW = 96, BH = 48, RES = 7;
