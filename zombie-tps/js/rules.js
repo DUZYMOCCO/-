@@ -1,7 +1,7 @@
 // ゾンビストライク — ゲームの きまり（DOM / three.js に いぞんしない。node のテストから よめる）
 // ぶき・ダメージ・ウェーブ・あたりはんてい（レイ×はこ）・いどうの ぶつかり・ゾンビの みちさがし（フローフィールド）
 
-export const VERSION = '0.3.0';
+export const VERSION = '0.4.0';
 
 // ---- ぶき ----
 // rpm: 1ぷんかんの はっしゃかず / mag: マガジン / reserve: よびだん / reload: びょう
@@ -246,7 +246,8 @@ export function waveSpec(n) {
   const total = Math.min(6 + (n - 1) * 4, 60);
   const runnerShare = n < 2 ? 0 : Math.min(0.15 + (n - 2) * 0.07, 0.45);
   const bruteCount = n < 4 ? 0 : Math.min(1 + Math.floor((n - 4) / 2), 6);
-  const runners = Math.round((total - bruteCount) * runnerShare);
+  // はやい ゾンビ（のぼれる のは この こだけ）は ウェーブ1から かならず 1たい いじょう
+  const runners = Math.max(1, Math.round((total - bruteCount) * runnerShare));
   const walkers = total - runners - bruteCount;
   const hpMul = 1 + Math.max(0, n - 5) * 0.08;
   return { n, total: total + (isBossWave(n) ? 1 : 0), walkers, runners, brutes: bruteCount, boss: isBossWave(n) ? 1 : 0,
@@ -374,6 +375,14 @@ export function groundHeight(x, z, r, y, boxes, step = 0.3) {
 export const MAX_CLIMB = 4.5;          // これより たかい だんさは のぼれない（マップには ない）
 export const JUMP_H = 7.2 * 7.2 / (2 * 20); // プレイヤーの ジャンプの たかさ ≈ 1.3m
 // のぼる じかん（くるま 1.1m で ≈1.2びょう。でかい ゾンビは おそい）
+// のぼれる のは はやい ゾンビ だけ。ほかは まわりに あつまる（でかいのは ドスン！で おとす）
+export const CLIMBERS = ['runner'];
+export const canClimb = (kind) => CLIMBERS.includes(kind);
+// たかい ところに ずっと いると、のぼれる ゾンビが おいかけて くる
+export const PERCH = { time: 4.5, cooldown: 7 };
+export function perchRunnerNeeded(perchT, climbersAlive, cd) {
+  return perchT >= PERCH.time && climbersAlive === 0 && cd <= 0;
+}
 export function climbTime(h, kind = 'walker') {
   const base = Math.max(0.8, Math.min(3.2, 0.55 + h * 0.6));
   return base * (kind === 'brute' || kind === 'boss' ? 1.35 : kind === 'runner' ? 0.85 : 1);
@@ -540,6 +549,229 @@ export function normalizeSave(s) {
     quality: ['auto', 'low', 'high'].includes(o.quality) ? o.quality : 'auto',
     stage: ['day', 'night'].includes(o.stage) ? o.stage : 'day',
     flashlight: o.flashlight === undefined ? true : !!o.flashlight,
+    ...normalizeOutfits(o),
+    gear: normalizeGear(o.gear),
   };
 }
+
+// ---- ふく（みための きがえ。つよさは かわらない）----
+export const OUTFITS = [
+  { id: 'normal', name: 'ふつう' },
+  { id: 'camo', name: 'めいさいふく' },
+  { id: 'ninja', name: 'にんじゃ' },
+  { id: 'kaito', name: 'かいとう' },
+  { id: 'space', name: 'うちゅうふく' },
+  { id: 'gold', name: 'ゴールド' },
+  { id: 'robot', name: 'ロボット' },
+];
+export const OUTFIT_IDS = OUTFITS.map((o) => o.id);
+export function outfitName(id) { const o = OUTFITS.find((x) => x.id === id); return o ? o.name : 'ふつう'; }
+export function normalizeOutfits(o) {
+  const got = new Set(['normal']);
+  if (Array.isArray(o.outfits)) for (const id of o.outfits) if (OUTFIT_IDS.includes(id)) got.add(id);
+  const outfits = OUTFIT_IDS.filter((id) => got.has(id));
+  return { outfits, outfit: outfits.includes(o.outfit) ? o.outfit : 'normal' };
+}
+// まだ もっていない ふくを 1つ（ぜんぶ もっていたら null）
+export function nextOutfit(owned, r = Math.random()) {
+  const left = OUTFIT_IDS.filter((id) => id !== 'normal' && !owned.includes(id));
+  return left.length ? left[Math.min(left.length - 1, Math.floor(r * left.length))] : null;
+}
+export function unlockOutfit(save, id) {
+  if (!OUTFIT_IDS.includes(id)) return false;
+  const had = save.outfits.includes(id);
+  if (!had) save.outfits = OUTFIT_IDS.filter((x) => x === id || save.outfits.includes(x));
+  save.outfit = id;
+  return !had;
+}
+
+// ---- おそわれている おじさん（たすけると ふくを くれる）----
+export const OJISAN = {
+  hp: 100,
+  dmgMul: 0.35,     // ゾンビの こうげきは よわめに きく（たすけに いく じかんが ある）
+  firstWave: 2,
+  delay: [3, 9],    // ウェーブが はじまってから でてくるまで（びょう）
+  dist: [14, 30],   // プレイヤーからの きょり
+  thankTime: 3.5, fleeTime: 3.2,
+  runSpeed: 4.2, sideSpeed: 0.7,
+  bonus: 300, bonusAll: 500,
+};
+// こんかいの ウェーブに でるか（2〜3ウェーブに 1かい・ボスの ウェーブは でない）
+export function shouldSpawnOjisan(wave, lastWave, r = Math.random()) {
+  if (wave < OJISAN.firstWave || isBossWave(wave)) return false;
+  const gap = wave - (lastWave || 0);
+  if (gap >= 3) return true;
+  if (gap === 2) return r < 0.5;
+  return false;
+}
+export function ojisanAttackers(wave) { return Math.min(5, 2 + Math.ceil(wave / 3)); }
+// おじさんの ばしょ: あるける マス（cells: [[x,z],...]）から きょりで えらぶ
+export function pickOjisanSpot(cells, px, pz, r = Math.random(), [minD, maxD] = OJISAN.dist) {
+  const ok = cells.filter(([x, z]) => { const d = Math.hypot(x - px, z - pz); return d >= minD && d <= maxD; });
+  if (ok.length) return ok[Math.min(ok.length - 1, Math.floor(r * ok.length))];
+  let best = null, bd = -1;
+  for (const c of cells) { const d = Math.hypot(c[0] - px, c[1] - pz); if (d > bd) { bd = d; best = c; } }
+  return best;
+}
+// がめんの そとに いる とき、やじるしを がめんの ふちに おく（ndc: -1〜1、behind: カメラの うしろ）
+export function edgeArrow(nx, ny, behind, margin = 0.86) {
+  let x = nx, y = ny;
+  if (behind) { x = -x; y = -y; if (Math.abs(x) < 1e-3 && Math.abs(y) < 1e-3) y = -1; }
+  const k = margin / Math.max(Math.abs(x), Math.abs(y), 1e-6);
+  const onScreen = !behind && Math.abs(nx) <= 1 && Math.abs(ny) <= 1;
+  return { onScreen, x: onScreen ? nx : x * k, y: onScreen ? ny : y * k, ang: Math.atan2(-y, x) };
+}
 export const SENS = { low: 0.6, mid: 1.0, high: 1.5 };
+// プレイヤーから あるいて いける ひろい マス（まわり 8マスも あいている）
+export function openCells(grid, limit = grid.half - 3) {
+  const { n, half, cell, blocked, dist } = grid, out = [];
+  for (let gz = 1; gz < n - 1; gz++) for (let gx = 1; gx < n - 1; gx++) {
+    const i = gz * n + gx;
+    if (blocked[i] || dist[i] < 0) continue;
+    let ok = true;
+    for (let dz = -1; dz <= 1 && ok; dz++) for (let dx = -1; dx <= 1; dx++) if (blocked[i + dz * n + dx]) { ok = false; break; }
+    if (!ok) continue;
+    const x = -half + (gx + 0.5) * cell, z = -half + (gz + 0.5) * cell;
+    if (Math.abs(x) > limit || Math.abs(z) > limit) continue;
+    out.push([x, z]);
+  }
+  return out;
+}
+
+// ---- そうび（ランダムで おちる。のうりょく つき）----
+export const GEAR_SLOTS = [
+  { id: 'head', name: 'ヘルメット', icon: '⛑' },
+  { id: 'body', name: 'ベスト', icon: '🦺' },
+  { id: 'feet', name: 'くつ', icon: '👟' },
+  { id: 'arm', name: 'うでわ', icon: '💍' },
+];
+export const GEAR_SLOT_IDS = GEAR_SLOTS.map((s) => s.id);
+export const RARITIES = [
+  { id: 'n', name: 'ふつう', color: '#e4e4e4', w: 64, mult: 1, stats: 1 },
+  { id: 'r', name: 'レア', color: '#4aa8ff', w: 26, mult: 1.4, stats: 2 },
+  { id: 'sr', name: 'すごいレア', color: '#c070ff', w: 8, mult: 1.8, stats: 2 },
+  { id: 'l', name: 'でんせつ', color: '#ffc83a', w: 2, mult: 2.3, stats: 3 },
+];
+export const RARITY_IDS = RARITIES.map((r) => r.id);
+export const rarityOf = (id) => RARITIES.find((r) => r.id === id) || RARITIES[0];
+// のうりょく: [1こ あたりの さいしょう, さいだい（ふつう）]・ぜんぶ あわせた うえげん
+export const GEAR_STATS = {
+  def: { name: 'ぼうぎょ', unit: '%', range: [2, 5], cap: 30 },   // うける ダメージ −%
+  hp: { name: 'さいだいHP', unit: '', range: [5, 12], cap: 50 },   // HP +
+  spd: { name: 'はやさ', unit: '%', range: [2, 4], cap: 15 },      // あるく はやさ +%
+  rel: { name: 'リロード', unit: '%', range: [3, 7], cap: 25 },    // リロード じかん −%
+};
+export const GEAR_STAT_IDS = Object.keys(GEAR_STATS);
+// ぶいごとに つきやすい のうりょく（さいしょが メイン）
+export const SLOT_STATS = { head: ['def', 'hp', 'rel'], body: ['def', 'hp', 'spd'], feet: ['spd', 'def', 'hp'], arm: ['rel', 'hp', 'spd'] };
+// 1この そうびの うえげん（でんせつの さいだい）
+export const statItemMax = (k) => Math.ceil(GEAR_STATS[k].range[1] * RARITIES[RARITIES.length - 1].mult);
+export const GEAR_COLORS = [
+  { id: 'red', name: 'あか', hex: 0xe04a3a }, { id: 'blue', name: 'あお', hex: 0x3a6fe0 }, { id: 'green', name: 'みどり', hex: 0x3ab84a },
+  { id: 'yellow', name: 'きいろ', hex: 0xf0c830 }, { id: 'purple', name: 'むらさき', hex: 0x9a4ad8 }, { id: 'white', name: 'しろ', hex: 0xf0f0f0 },
+  { id: 'black', name: 'くろ', hex: 0x2a2a30 }, { id: 'pink', name: 'ピンク', hex: 0xff7ab8 }, { id: 'orange', name: 'オレンジ', hex: 0xff8a1f },
+  { id: 'sky', name: 'みずいろ', hex: 0x6ad8ff },
+];
+export const GEAR_COLOR_IDS = GEAR_COLORS.map((c) => c.id);
+export const gearColor = (id) => GEAR_COLORS.find((c) => c.id === id) || GEAR_COLORS[0];
+export const GEAR_DROP = { walker: 0.03, runner: 0.04, brute: 0.2, boss: 1 };
+export const GEAR_FLOOR = { boss: 'sr', ojisan: 'r' };   // ボスは すごいレア いじょう、おじさんは レア いじょう
+export const INV_CAP = 20;
+export const GEAR_LIFE = 25;
+
+export function rollGearDrop(kind, r = Math.random()) { return kind === 'boss' || r < (GEAR_DROP[kind] || 0); }
+export function rollRarity(r = Math.random(), floor = 'n') {
+  const fi = Math.max(0, RARITY_IDS.indexOf(floor));
+  const list = RARITIES.slice(fi), tot = list.reduce((a, x) => a + x.w, 0);
+  let t = r * tot;
+  for (const x of list) { if (t < x.w) return x.id; t -= x.w; }
+  return list[list.length - 1].id;
+}
+// rnd: () => 0..1
+export function rollGear(rnd = Math.random, { slot = null, floor = 'n' } = {}) {
+  const sl = slot && GEAR_SLOT_IDS.includes(slot) ? slot : GEAR_SLOT_IDS[Math.min(3, Math.floor(rnd() * 4))];
+  const rar = rarityOf(rollRarity(rnd(), floor));
+  const pool = SLOT_STATS[sl].slice(), stats = {};
+  for (let i = 0; i < rar.stats && pool.length; i++) {
+    const k = i === 0 ? pool.shift() : pool.splice(Math.min(pool.length - 1, Math.floor(rnd() * pool.length)), 1)[0];
+    const [a, b] = GEAR_STATS[k].range;
+    stats[k] = Math.max(1, Math.min(statItemMax(k), Math.round((a + rnd() * (b - a)) * rar.mult)));
+  }
+  const color = GEAR_COLOR_IDS[Math.min(GEAR_COLOR_IDS.length - 1, Math.floor(rnd() * GEAR_COLOR_IDS.length))];
+  const id = 'g' + Math.floor(rnd() * 2176782336).toString(36) + Date.now().toString(36).slice(-4);
+  return { id, slot: sl, rarity: rar.id, color, stats };
+}
+export function gearName(g) {
+  const s = GEAR_SLOTS.find((x) => x.id === g.slot);
+  return `${gearColor(g.color).name}の ${s ? s.name : ''}`;
+}
+// くらべる ための てんすう（ぼうぎょ・はやさ は すこし おもく）
+export function gearScore(g) {
+  if (!g) return 0;
+  const w = { def: 1.6, hp: 0.6, spd: 1.6, rel: 1 };
+  let t = 0; for (const [k, v] of Object.entries(g.stats || {})) t += (w[k] || 0) * v;
+  return Math.round(t * 10) / 10;
+}
+// そうびの ごうけい（うえげん つき）
+export function gearTotals(items) {
+  const t = { def: 0, hp: 0, spd: 0, rel: 0 };
+  for (const g of items) if (g) for (const k of GEAR_STAT_IDS) t[k] += g.stats[k] || 0;
+  for (const k of GEAR_STAT_IDS) t[k] = Math.min(GEAR_STATS[k].cap, t[k]);
+  return t;
+}
+export function equippedItems(gear) { return GEAR_SLOT_IDS.map((s) => gear.inv.find((g) => g.id === gear.eq[s]) || null); }
+export function gearEffects(gear) {
+  const t = gearTotals(equippedItems(gear));
+  return { maxHp: 100 + t.hp, dmgMul: 1 - t.def / 100, speedMul: 1 + t.spd / 100, reloadMul: 1 / (1 - t.rel / 100), totals: t };
+}
+function cleanGear(g) {
+  if (!g || typeof g !== 'object' || typeof g.id !== 'string' || !g.id || g.id.length > 40) return null;
+  if (!GEAR_SLOT_IDS.includes(g.slot)) return null;
+  const rarity = RARITY_IDS.includes(g.rarity) ? g.rarity : 'n';
+  const color = GEAR_COLOR_IDS.includes(g.color) ? g.color : 'white';
+  const stats = {};
+  const src = g.stats && typeof g.stats === 'object' ? g.stats : {};
+  for (const k of GEAR_STAT_IDS) if (Number.isFinite(src[k]) && src[k] > 0) stats[k] = Math.min(statItemMax(k), Math.round(src[k]));
+  return { id: g.id, slot: g.slot, rarity, color, stats };
+}
+export function normalizeGear(x) {
+  const o = x && typeof x === 'object' ? x : {};
+  const inv = [], seen = new Set();
+  for (const g of Array.isArray(o.inv) ? o.inv : []) {
+    const c = cleanGear(g); if (!c || seen.has(c.id)) continue;
+    seen.add(c.id); inv.push(c); if (inv.length >= INV_CAP) break;
+  }
+  const eq = {}, e0 = o.eq && typeof o.eq === 'object' ? o.eq : {};
+  for (const s of GEAR_SLOT_IDS) { const g = inv.find((i) => i.id === e0[s] && i.slot === s); eq[s] = g ? g.id : null; }
+  return { inv, eq };
+}
+// ひろった そうびを どうするか
+// 'equip': つける（かばんが いっぱいなら まえの そうびと いれかえ）/ 'keep': かばんへ / 'drop': すてる
+export function gearAction(gear, item, act) {
+  const inInv = gear.inv.some((g) => g.id === item.id);
+  if (act === 'drop') {
+    gear.inv = gear.inv.filter((g) => g.id !== item.id);
+    for (const s of GEAR_SLOT_IDS) if (gear.eq[s] === item.id) gear.eq[s] = null;
+    return { ok: true };
+  }
+  if (act === 'keep') {
+    if (inInv) return { ok: true };
+    if (gear.inv.length >= INV_CAP) return { ok: false, full: true };
+    gear.inv.push(item); return { ok: true };
+  }
+  if (act === 'equip') {
+    let replaced = null;
+    if (!inInv) {
+      if (gear.inv.length >= INV_CAP) {
+        const old = gear.inv.find((g) => g.id === gear.eq[item.slot]);
+        if (!old) return { ok: false, full: true };
+        gear.inv = gear.inv.filter((g) => g.id !== old.id); replaced = old;
+      }
+      gear.inv.push(item);
+    }
+    gear.eq[item.slot] = item.id;
+    return { ok: true, replaced };
+  }
+  if (act === 'unequip') { if (gear.eq[item.slot] === item.id) gear.eq[item.slot] = null; return { ok: true }; }
+  return { ok: false };
+}

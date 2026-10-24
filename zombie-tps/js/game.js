@@ -8,12 +8,15 @@ import {
   blastDamage, blastFalloff, launchVelocity, knockAt, FLY_KNOCK, MAX_AIR, approach, refillReserve,
   TOD, timeOfDay, mixColor as mixC, rollRocketDrop, addRocketAmmo, pickupVisible, PICKUP_LIFE, MAX_PICKUPS,
   isBossWave, bossHp, BOSS, climbTarget, climbLanding, climbTime, supportBox, boxGap,
-} from './rules.js?v=3';
-import { buildMap, playerColliders, zombieColliders, shotColliders, HALF } from './map.js?v=3';
-import { buildTextures, fxTextures } from './textures.js?v=3';
-import { buildWorld } from './world.js?v=3';
-import { makePlayer, makeWeapons, makeZombie, makeRocketProjectile, makeRocketCrate, zombieChunkColors, FLASH_MAT } from './models.js?v=3';
-import { FX } from './fx.js?v=3';
+  canClimb, perchRunnerNeeded, PERCH, OJISAN, shouldSpawnOjisan, ojisanAttackers, pickOjisanSpot, openCells, edgeArrow,
+  nextOutfit, outfitName, cellOf,
+  rollGearDrop, rollGear, GEAR_FLOOR, GEAR_LIFE, gearEffects, equippedItems, gearColor, rarityOf, normalizeGear,
+} from './rules.js?v=4';
+import { buildMap, playerColliders, zombieColliders, shotColliders, HALF } from './map.js?v=4';
+import { buildTextures, fxTextures } from './textures.js?v=4';
+import { buildWorld } from './world.js?v=4';
+import { makePlayer, applyOutfit, applyGear, makeGearDrop, makeOjisan, makeWeapons, makeZombie, makeRocketProjectile, makeRocketCrate, zombieChunkColors, FLASH_MAT } from './models.js?v=4';
+import { FX } from './fx.js?v=4';
 
 const v3 = () => new THREE.Vector3();
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -64,6 +67,10 @@ export class Game {
 
     // プレイヤー
     this.p = makePlayer(); scene.add(this.p.root);
+    applyOutfit(this.p, settings.outfit || 'normal');
+    this.refreshGear(true);
+    // おそわれている おじさん（1にんだけ。つかいまわし）
+    this.ojiM = makeOjisan(); this.ojiM.root.visible = false; scene.add(this.ojiM.root);
     this.weapons = makeWeapons();
     for (const id of WEAPON_ORDER) { this.weapons[id].group.visible = false; this.p.holder.add(this.weapons[id].group); }
     this.fx = new FX(scene, tex, { groundAt: (x, z, y) => groundHeight(x, z, 0.05, y, this.pCol) });
@@ -77,6 +84,7 @@ export class Game {
 
     this.zombies = []; this.pool = { walker: [], runner: [], brute: [], boss: [] };
     this.pickups = []; this.cratePool = [];
+    this.gearDrops = []; this.gearPool = [];
     this.pk = new THREE.Vector3(); // プレイヤーが ふっとばされる はやさ（ボスの ドスン）
     this.chunkN = this.quality === 0 ? 10 : 16;
     this.tmp = { a: v3(), b: v3(), c: v3(), d: v3(), e: v3() };
@@ -96,7 +104,7 @@ export class Game {
     this.vel = new THREE.Vector3(); this.follow = null; this.stepPh = 0; this.slowT = 0; this.hitstop = 0;
     for (const r of this.rockets || []) this.releaseRocket(r);
     if (this.rockets) this.rockets.length = 0;
-    this.hp = PLAYER_MAX_HP; this.hurtT = 0; this.regenDelay = 0;
+    this.refreshGear(true); this.hp = this.maxHp; this.hurtT = 0; this.regenDelay = 0;
     this.guns = {}; for (const id of WEAPON_ORDER) this.guns[id] = createGun(id);
     this.cur = DEFAULT_WEAPON; this.swapT = 0; this.showWeapon(this.cur);
     this.wave = 0; this.queue = []; this.spawnT = 0; this.interT = 2.5; this.score = 0; this.kills = 0; this.heads = 0;
@@ -105,9 +113,12 @@ export class Game {
     for (const z of this.zombies) this.releaseZombie(z);
     this.zombies.length = 0;
     for (const pu of this.pickups || []) this.releasePickup(pu);
+    for (const gd of this.gearDrops || []) this.releaseGear(gd);
+    this.gearDrops = [];
     if (this.pickups) this.pickups.length = 0;
     if (this.pk) this.pk.set(0, 0, 0);
     this.boss = null; this.hud.bossBar?.(null);
+    this.endOji(); this.ojiPlan = null; this.ojiLast = 0; this.perchT = 0; this.perchCd = 0;
   }
 
   setupTitle() {
@@ -328,6 +339,7 @@ export class Game {
         const sub = spec.boss ? 'ボスゾンビが くるぞ！' : this.wave === 1 ? 'ゾンビが くるぞ！' : `ゾンビ ${spec.total}たい`;
         this.hud.banner(`ウェーブ ${this.wave}`, this.wave > 1 && this.todChanged ? `${TOD_LABEL[tod]}　${sub}` : sub);
         this.todChanged = false;
+        this.ojiPlan = shouldSpawnOjisan(this.wave, this.ojiLast) ? { t: OJISAN.delay[0] + Math.random() * (OJISAN.delay[1] - OJISAN.delay[0]) } : null;
         this.sfx.wave();
         this.pushHud(true);
       }
@@ -342,15 +354,172 @@ export class Game {
         this.spawnT = this.spec.spawnGap * (0.7 + Math.random() * 0.6);
         this.pushHud(true);
       }
-    } else if (alive === 0 && !this.zombies.length) {
-      this.interT = 4.5;
+    } else if (alive === 0 && !this.zombies.length && !(this.oji && this.oji.state === 'thanks' && this.oji.t < 2.6)) {
+      this.interT = 4.5; this.ojiPlan = null;
       this.hud.banner('ウェーブ クリア！', `+${this.wave * 200} ボーナス`);
       this.score += this.wave * 200;
-      this.hp = Math.min(PLAYER_MAX_HP, this.hp + 30);
+      this.hp = Math.min(this.maxHp, this.hp + 30);
       this.todChanged = this.startTodFade(timeOfDay(this.wave + 1, this.todStart));
       this.sfx.clear();
       this.pushHud(true);
     }
+  }
+
+  // たかい ところに いすわると、のぼれる はやい ゾンビが くる（あんぜんちたい なし）
+  updatePerch(dt) {
+    if (this.interT > 0) { this.perchT = 0; return; }
+    this.perchT = this.pFloor > 0.45 ? this.perchT + dt : 0;
+    this.perchCd -= dt;
+    let alive = 0, climbers = 0;
+    for (const z of this.zombies) if (z.alive) { alive++; if (canClimb(z.kind)) climbers++; }
+    if (alive > 0 && perchRunnerNeeded(this.perchT, climbers, this.perchCd)) {
+      const s = this.pickSpawn();
+      const z = this.spawnZombie('runner', s.x, s.z, this.spec ? this.spec.hpMul : 1); z.extra = true;
+      this.perchCd = PERCH.cooldown;
+      this.hud.kill('はやい ゾンビが のぼって くるぞ！');
+      this.pushHud(true);
+    }
+  }
+
+  // ---- おそわれている おじさん ----
+  spawnOji() {
+    const cells = openCells(this.grid, HALF - 3);
+    if (!cells.length) return false;
+    const [x, z] = pickOjisanSpot(cells, this.pos.x, this.pos.z);
+    const y = groundHeight(x, z, 0.3, 0.6, this.pCol);
+    const m = this.ojiM;
+    m.root.visible = true; m.root.scale.setScalar(1); m.root.position.set(x, y, z);
+    this.oji = { x, z, y, hp: OJISAN.hp, state: 'help', t: 0, yaw: 0, hurtT: 0, helpT: 0.3, phase: 0, wave: this.wave };
+    const n = ojisanAttackers(this.wave);
+    for (let i = 0; i < n; i++) {
+      let zx = x, zz = z;
+      for (let k = 0; k < 12; k++) {
+        const a = Math.random() * Math.PI * 2, d = 3.5 + Math.random() * 2.2;
+        const cx = x + Math.cos(a) * d, cz = z + Math.sin(a) * d;
+        if (Math.abs(cx) > HALF - 1 || Math.abs(cz) > HALF - 1) continue;
+        if (this.grid.blocked[cellOf(this.grid, cx, cz)] || this.grid.dist[cellOf(this.grid, cx, cz)] < 0) continue;
+        zx = cx; zz = cz; break;
+      }
+      if (zx === x && zz === z) { zx = x + 4; zz = z; }
+      const kind = this.wave >= 4 && i === n - 1 ? 'runner' : 'walker';
+      const zb = this.spawnZombie(kind, zx, zz, this.spec ? this.spec.hpMul : 1);
+      zb.ojiT = true; zb.yaw = Math.atan2(zx - x, zz - z);
+    }
+    this.ojiLast = this.wave;
+    this.hud.kill('おじさんが おそわれてる！ たすけて あげよう');
+    this.sfx.help?.(0.8);
+    this.pushHud(true);
+    return true;
+  }
+  damageOji(d) {
+    const o = this.oji; if (!o || o.state !== 'help') return;
+    o.hp -= d * OJISAN.dmgMul; o.hurtT = 0.25;
+    if (o.hp <= 0) this.fleeOji();
+  }
+  fleeOji() {
+    const o = this.oji; o.hp = 0; o.state = 'flee'; o.t = 0;
+    for (const z of this.zombies) z.ojiT = false;
+    this.hud.kill('おじさんが にげちゃった… また こんど');
+    this.sfx.flee?.();
+  }
+  rescueOji() {
+    const o = this.oji; o.state = 'thanks'; o.t = 0;
+    const id = nextOutfit(this.settings.outfits || ['normal']);
+    if (id) {
+      this.hud.gift?.(id);
+      this.setOutfit(id, true);
+      this.score += OJISAN.bonus;
+      this.hud.banner('あたらしい ふくを もらった！', `「${outfitName(id)}」に きがえたよ ・ +${OJISAN.bonus}`);
+      o.gift = id;
+    } else {
+      this.score += OJISAN.bonusAll;
+      this.hud.banner('おじさんを たすけた！', `ありがとう！ +${OJISAN.bonusAll}`);
+    }
+    this.hud.kill('おじさん「ありがとう！」');
+    this.spawnGear(o.x + 0.6, o.y, o.z + 0.6, rollGear(Math.random, { floor: GEAR_FLOOR.ojisan })); // おまけの そうび
+    this.sfx.gift?.();
+    this.pushHud(true);
+  }
+  endOji() {
+    this.oji = null;
+    if (this.ojiM) this.ojiM.root.visible = false;
+    this.hud.oji?.(null);
+  }
+  // ふくを きがえる（キラキラ つき）
+  setOutfit(id, sparkle) {
+    applyOutfit(this.p, id);
+    if (sparkle && this.fx) {
+      const p = this.tmp.a.set(this.pos.x, this.pos.y + 1.1, this.pos.z);
+      this.fx.burst(p, 26, { color: 0xfff3a0, color2: 0xffffff, speed: 2.2, up: 2.2, size: 0.09, life: 0.8, gravity: 2 });
+    }
+  }
+  updateOji(dt) {
+    if (this.ojiPlan && !this.oji && this.state === 'play') {
+      this.ojiPlan.t -= dt;
+      if (this.ojiPlan.t <= 0) { this.ojiPlan = null; this.spawnOji(); }
+    }
+    const o = this.oji; if (!o) return;
+    const m = this.ojiM;
+    o.t += dt; o.hurtT -= dt;
+    let nearest = null, nd = Infinity, attackers = 0;
+    for (const z of this.zombies) {
+      if (!z.alive) continue;
+      if (z.ojiT) attackers++;
+      const d = Math.hypot(z.x - o.x, z.z - o.z);
+      if (d < nd) { nd = d; nearest = z; }
+    }
+    let mvx = 0, mvz = 0, speed = 0, wantYaw = o.yaw;
+    const toP = Math.atan2(o.x - this.pos.x, o.z - this.pos.z); // プレイヤーの ほうを むく yaw
+    const A = m.arms, ph = o.t;
+    m.inner.position.x = 0; m.inner.rotation.set(0, 0, 0);
+    if (o.state === 'help') {
+      if (attackers === 0 && this.state === 'play') { this.rescueOji(); return; }
+      if (nearest && nd < 4) { mvx = (o.x - nearest.x) / (nd || 1); mvz = (o.z - nearest.z) / (nd || 1); speed = OJISAN.sideSpeed; }
+      wantYaw = nearest ? Math.atan2(o.x - nearest.x, o.z - nearest.z) : toP;
+      // あわてて りょううでを ふる
+      A[0].rotation.x = 2.5 + Math.sin(ph * 9) * 0.45; A[1].rotation.x = 2.5 + Math.sin(ph * 9 + 2) * 0.45;
+      A[0].rotation.z = -0.2; A[1].rotation.z = 0.2;
+      m.inner.position.y = Math.abs(Math.sin(ph * 7)) * 0.08;
+      if (o.hurtT > 0) m.inner.position.x = (Math.random() - 0.5) * 0.08;
+      o.helpT -= dt;
+      if (o.helpT <= 0) { o.helpT = 3.5; const d = Math.hypot(o.x - this.pos.x, o.z - this.pos.z); if (d < 40) this.sfx.help?.(Math.max(0.2, 1 - d / 40)); }
+    } else if (o.state === 'thanks') {
+      wantYaw = toP;
+      A[1].rotation.x = 2.9; A[1].rotation.z = 0.35 + Math.sin(ph * 10) * 0.4; // てを ふる
+      A[0].rotation.x = 0.1; A[0].rotation.z = 0;
+      m.inner.position.y = Math.abs(Math.sin(ph * 5)) * 0.12;
+      if (o.t > OJISAN.thankTime) { this.fx.poof(this.tmp.a.set(o.x, o.y + 0.8, o.z), 1); this.sfx.poof(); this.endOji(); return; }
+    } else if (o.state === 'flee') {
+      if (nearest && nd < 12) { mvx = (o.x - nearest.x) / (nd || 1); mvz = (o.z - nearest.z) / (nd || 1); }
+      else { mvx = -Math.sin(o.yaw); mvz = -Math.cos(o.yaw); }
+      speed = OJISAN.runSpeed;
+      A[0].rotation.x = 2.6 + Math.sin(ph * 16) * 0.6; A[1].rotation.x = 2.6 - Math.sin(ph * 16) * 0.6;
+      m.inner.position.y = Math.abs(Math.sin(ph * 12)) * 0.1;
+      if (o.t > OJISAN.fleeTime) { this.fx.poof(this.tmp.a.set(o.x, o.y + 0.8, o.z), 1); this.sfx.poof(); this.endOji(); return; }
+    }
+    if (speed > 0) {
+      const r = collideCircle(o.x + mvx * speed * dt, o.z + mvz * speed * dt, 0.3, o.y, this.zCol);
+      o.x = Math.max(-HALF + 1, Math.min(HALF - 1, r.x)); o.z = Math.max(-HALF + 1, Math.min(HALF - 1, r.z));
+      o.y = groundHeight(o.x, o.z, 0.3, o.y + 0.5, this.pCol);
+      if (o.state === 'flee') wantYaw = Math.atan2(-mvx, -mvz);
+      o.phase += dt * speed * 3.5;
+    }
+    let dy = wantYaw - o.yaw; // yaw: -z が まえ while (dy > Math.PI) dy -= Math.PI * 2; while (dy < -Math.PI) dy += Math.PI * 2;
+    o.yaw += dy * Math.min(1, dt * 6);
+    const sw = speed > 0 ? Math.sin(o.phase) * 0.7 : 0;
+    m.legs[0].rotation.x = sw; m.legs[1].rotation.x = -sw;
+    m.root.position.set(o.x, o.y, o.z); m.root.rotation.y = o.yaw;
+  }
+  // ふきだし・やじるしの いち
+  updateOjiHud() {
+    const o = this.oji;
+    if (!o || this.state !== 'play') { if (this.ojiHudOn) { this.ojiHudOn = false; this.hud.oji?.(null); } return; }
+    const v = this.tmp.c.set(o.x, o.y + 2.05, o.z).project(this.camera);
+    const behind = v.z > 1;
+    const e = edgeArrow(v.x, v.y, behind);
+    this.ojiHudOn = true;
+    this.hud.oji?.({ onScreen: e.onScreen, x: e.x, y: e.y, ang: e.ang, hp: o.hp / OJISAN.hp, state: o.state,
+      text: o.state === 'help' ? 'たすけて！' : o.state === 'thanks' ? 'ありがとう！' : 'ひえ〜っ！' });
   }
 
   remaining() { return this.queue.length + this.zombies.filter((z) => z.alive).length; }
@@ -386,8 +555,26 @@ export class Game {
       const higher = this.pFloor > z.y + 0.45;  // プレイヤーが はこの うえ → のぼる
       const reachA = ATTACK_RANGE * (z.kind === 'boss' ? 1.45 : z.kind === 'brute' ? 1.1 : 1);
       const big = z.kind === 'brute' || z.kind === 'boss';
-      z.slamCd -= dt; z.chargeCd -= dt;
-      if (z.demo) { // タイトル: うろうろ
+      z.slamCd -= dt; z.chargeCd -= dt; z.reach = false;
+      // おじさんを おそう（プレイヤーが ちかく まで きたら プレイヤーへ）
+      const oj = z.ojiT && this.oji && this.oji.state === 'help' ? this.oji : null;
+      let ojx = 0, ojz = 0, ojd = Infinity;
+      if (oj) { ojx = oj.x - z.x; ojz = oj.z - z.z; ojd = Math.hypot(ojx, ojz); }
+      const goOji = oj && (dist > 3.2 || ojd < dist * 0.6) && this.state === 'play';
+      if (goOji) {
+        if (z.stagger > 0) z.stagger -= dt;
+        else if (ojd < ATTACK_RANGE * 0.95) {
+          z.state = 'attack'; z.atkT -= dt; z.yaw = Math.atan2(-ojx, -ojz);
+          if (z.atkT <= 0) { z.atkT = def.atkRate; this.damageOji(def.dmg); }
+        } else {
+          z.state = 'walk'; z.atkT = Math.min(z.atkT, 0.45);
+          const dir = ojd < 14 && gridLineClear(this.grid, z.x, z.z, oj.x, oj.z) ? { x: ojx / ojd, z: ojz / ojd } : { x: ojx / (ojd || 1), z: ojz / (ojd || 1) };
+          mvx = dir.x; mvz = dir.z; moving = true;
+          const want = Math.atan2(-mvx, -mvz);
+          let dy = want - z.yaw; while (dy > Math.PI) dy -= Math.PI * 2; while (dy < -Math.PI) dy += Math.PI * 2;
+          z.yaw += dy * Math.min(1, dt * 8);
+        }
+      } else if (z.demo) { // タイトル: うろうろ
         z.t += dt; z.yaw += Math.sin(z.t * 0.5 + z.phase) * dt * 0.6;
         mvx = -Math.sin(z.yaw); mvz = -Math.cos(z.yaw); moving = true;
         if (Math.hypot(z.x - 0, z.z + 10) > 7) { z.yaw = Math.atan2(z.x - 0, z.z + 10); }
@@ -416,7 +603,8 @@ export class Game {
       } else {
         z.state = 'walk'; z.atkT = Math.min(z.atkT, 0.45);
         let dir = null;
-        if (higher && dist < 6) dir = { x: dx / (dist || 1), z: dz / (dist || 1) }; // はこの そばでは まっすぐ よる
+        if (higher && dist < 6) dir = { x: dx / (dist || 1), z: dz / (dist || 1) }; // はこの そばでは まっすぐ よる（のぼれない こは まわりに あつまる）
+        if (higher && dist < 2.6 && !canClimb(z.kind)) z.reach = true;
         else if (dist < 14 && gridLineClear(this.grid, z.x, z.z, this.pos.x, this.pos.z)) dir = { x: dx / dist, z: dz / dist };
         else dir = flowDir(this.grid, z.x, z.z) || { x: dx / (dist || 1), z: dz / (dist || 1) };
         mvx = dir.x; mvz = dir.z; moving = true;
@@ -441,7 +629,7 @@ export class Game {
         z.x = nx; z.z = nz;
         z.phase += dt * sp * (z.kind === 'runner' ? 3.2 : 4.2);
         // はこに ぶつかったら よじのぼる（プレイヤーが うえに いる ときだけ）
-        if (higher && !z.demo && z.vy === 0) {
+        if (higher && !z.demo && z.vy === 0 && !goOji && canClimb(z.kind)) {
           const b = climbTarget(z.x, z.z, 0.3 * z.scale, z.y, this.pFloor, this.pCol, 0.15);
           if (b) this.startClimb(z, b);
         }
@@ -455,6 +643,9 @@ export class Game {
       const atk = z.state === 'attack' ? Math.sin(performance.now() * 0.012) * 0.6 : 0;
       m.arms[0].rotation.x = 0.05 + Math.sin(z.phase * 0.5) * 0.08 + atk;
       m.arms[1].rotation.x = 0.05 - Math.sin(z.phase * 0.5) * 0.08 - atk;
+      if (z.reach && !z.slam) { // のぼれない: うえに てを のばして ぴょんぴょん
+        m.arms[0].rotation.x = 2.4 + Math.sin(z.phase * 1.3) * 0.35; m.arms[1].rotation.x = 2.4 - Math.sin(z.phase * 1.3) * 0.35;
+      }
       if (z.slam) { // ためる: りょううでを たかく あげる → ふりおろす
         const u = z.slam.t / z.slam.wind;
         const up = u < 1 ? 2.6 * Math.min(1, u * 1.6) : 2.6 - Math.min(1, (u - 1) * 6) * 3.1;
@@ -679,6 +870,7 @@ export class Game {
   airborne() { let n = 0; for (const z of this.zombies) if (z.fly) n++; return n; }
 
   damagePlayer(d, z) {
+    d *= this.gearFx ? this.gearFx.dmgMul : 1;
     this.hp = Math.max(0, this.hp - d);
     this.regenDelay = 5; this.shake = Math.max(this.shake, 0.35);
     this.sfx.hurt();
@@ -867,6 +1059,7 @@ export class Game {
       // ロケットだんを おとす（ボスは かならず 2こ）
       const n = rollRocketDrop(z.kind);
       if (n) this.spawnPickup(z.x, z.y, z.z, n);
+      if (rollGearDrop(z.kind)) this.spawnGear(z.x + 0.5, z.y, z.z + 0.3, rollGear(Math.random, { floor: isBoss ? GEAR_FLOOR.boss : 'n' }));
       if (isBoss) { this.boss = null; this.hud.bossBar?.(null); this.slowT = Math.max(this.slowT, 0.6); this.sfx.roar?.(0.35); }
       this.pushHud(true);
       if (opt.blast) { // ブロックに くだけて とびちる（ちは でない）
@@ -939,6 +1132,58 @@ export class Game {
     }
   }
 
+  // ---- そうび ----
+  // settings.gear から みため と のうりょく を つくりなおす
+  refreshGear(init = false) {
+    const gear = this.settings.gear || (this.settings.gear = normalizeGear(null));
+    const items = equippedItems(gear).filter(Boolean).map((g) => ({ slot: g.slot, colorHex: gearColor(g.color).hex, rarity: g.rarity }));
+    applyGear(this.p, items);
+    const prevMax = this.maxHp || 100;
+    this.gearFx = gearEffects(gear);
+    this.maxHp = this.gearFx.maxHp;
+    if (!init && this.hp != null) {
+      if (this.maxHp > prevMax) this.hp += this.maxHp - prevMax;
+      this.hp = Math.min(this.maxHp, this.hp);
+      this.pushHud(true);
+    }
+  }
+  spawnGear(x, y, z, item) {
+    while (this.gearDrops.length >= 3) this.releaseGear(this.gearDrops.shift());
+    let gd = this.gearPool.pop();
+    if (!gd) gd = { mdl: makeGearDrop(this.fxTex.glow) };
+    const rar = rarityOf(item.rarity);
+    gd.mdl.set(gearColor(item.color).hex, parseInt(rar.color.slice(1), 16), item.rarity === 'l');
+    gd.item = item; gd.x = x; gd.z = z; gd.y = groundHeight(x, z, 0.1, y + 0.3, this.pCol); gd.age = 0;
+    gd.mdl.group.position.set(x, gd.y + 1, z); gd.mdl.group.visible = true;
+    this.scene.add(gd.mdl.group);
+    this.gearDrops.push(gd);
+    if (item.rarity !== 'n') this.hud.kill(`${rar.name}の そうびが おちた！`, true);
+  }
+  releaseGear(gd) { this.scene.remove(gd.mdl.group); this.gearPool.push(gd); }
+  updateGearDrops(dt) {
+    for (let i = this.gearDrops.length - 1; i >= 0; i--) {
+      const gd = this.gearDrops[i], M = gd.mdl;
+      gd.age += dt;
+      if (gd.age >= GEAR_LIFE) { this.releaseGear(gd); this.gearDrops.splice(i, 1); continue; }
+      const bob = 0.18 + Math.sin(gd.age * 3) * 0.08 + (gd.age < 0.5 ? Math.sin(gd.age / 0.5 * Math.PI) * 0.9 : 0);
+      M.group.position.set(gd.x, gd.y + bob, gd.z);
+      M.spin.rotation.y += dt * 2.2;
+      M.ring.position.y = 0.03 - bob; M.beam.position.y = 2 - bob;
+      const pulse = 0.7 + Math.sin(gd.age * 6) * 0.25;
+      M.glow.material.opacity = pulse; M.ring.material.opacity = pulse * 0.8;
+      M.group.visible = gd.age < GEAR_LIFE - 5 || Math.floor(gd.age * 6) % 2 === 0;
+      if (this.state !== 'play') continue;
+      const d = Math.hypot(this.pos.x - gd.x, this.pos.z - gd.z);
+      if (d < PICKUP_R && Math.abs(this.pos.y - gd.y) < 1.6) {
+        this.hud.gearFound?.(gd.item);
+        this.sfx.pickup?.();
+        const c = parseInt(rarityOf(gd.item.rarity).color.slice(1), 16);
+        this.fx.burst(this.tmp.c.set(gd.x, gd.y + 0.4, gd.z), 16, { color: c, color2: 0xffffff, speed: 2.8, up: 2.8, size: 0.11, life: 0.6, gravity: 2 });
+        this.releaseGear(gd); this.gearDrops.splice(i, 1);
+      }
+    }
+  }
+
   // ---- まいフレーム ----
   update(dt, inp) {
     const playing = this.state === 'play';
@@ -949,7 +1194,7 @@ export class Game {
     }
     if (this.state === 'title') { this.titleT += dt; this.pFloor = 0; this.pSupport = null; this.updateZombies(dt); this.updateTitleCam(dt); this.updateNight(); this.fx.update(dt); return; }
     if (this.state === 'pause') return;
-    if (this.state === 'over') { this.updateRockets(dt); this.updateZombies(dt); this.updatePickups(dt); this.fx.update(dt); this.updateCamera(dt, false); this.updateNight(); return; }
+    if (this.state === 'over') { this.updateOjiHud(); this.updateRockets(dt); this.updateZombies(dt); this.updatePickups(dt); this.fx.update(dt); this.updateCamera(dt, false); this.updateNight(); return; }
 
     const gun = this.guns[this.cur], w = WEAPONS[this.cur];
     // イベント
@@ -976,7 +1221,7 @@ export class Game {
     this.recoilP -= this.recoilP * rec;
     // いどう
     const fx = -Math.sin(this.yaw), fz = -Math.cos(this.yaw), rx = Math.cos(this.yaw), rz = -Math.sin(this.yaw);
-    const speed = lerp(4.7, 2.5, this.aimAmt) * (gun.reloading > 0 ? 0.85 : 1) * (this.cur === 'rocket' ? 0.92 : 1);
+    const speed = lerp(4.7, 2.5, this.aimAmt) * (gun.reloading > 0 ? 0.85 : 1) * (this.cur === 'rocket' ? 0.92 : 1) * this.gearFx.speedMul;
     const tvx = (fx * inp.my + rx * inp.mx) * speed, tvz = (fz * inp.my + rz * inp.mx) * speed;
     // かそく・げんそく（くうちゅうは ゆっくり）
     const V = this.vel, speeding = tvx * tvx + tvz * tvz > V.x * V.x + V.z * V.z;
@@ -1012,9 +1257,9 @@ export class Game {
 
     // ぶき
     if (this.swapT > 0) this.swapT -= dt;
-    const evr = updateGun(gun, dt);
+    const evr = updateGun(gun, gun.reloading > 0 ? dt * this.gearFx.reloadMul : dt);
     if (evr === 'reloaded') { this.pushHud(true); }
-    for (const id of WEAPON_ORDER) if (id !== this.cur) updateGun(this.guns[id], dt);
+    for (const id of WEAPON_ORDER) if (id !== this.cur) updateGun(this.guns[id], this.guns[id].reloading > 0 ? dt * this.gearFx.reloadMul : dt);
     let held = inp.fire;
     if (this.settings.autoFire && target >= 0) {
       held = true;
@@ -1030,7 +1275,7 @@ export class Game {
 
     // HP かいふく
     this.regenDelay -= dt;
-    if (this.regenDelay <= 0 && this.hp < PLAYER_MAX_HP) { this.hp = Math.min(PLAYER_MAX_HP, this.hp + dt * 8); this.pushHud(); }
+    if (this.regenDelay <= 0 && this.hp < this.maxHp) { this.hp = Math.min(this.maxHp, this.hp + dt * 8); this.pushHud(); }
 
     // いま たっている ゆか（ゾンビが のぼる めやす）
     this.pFloor = groundHeight(this.pos.x, this.pos.z, PLAYER_R, this.pos.y + 0.001, this.pCol);
@@ -1038,10 +1283,14 @@ export class Game {
     this.updateWaves(dt);
     this.updateTod(dt);
     this.updateRockets(dt);
+    this.updatePerch(dt);
     this.updateZombies(dt);
+    this.updateOji(dt);
     this.updatePickups(dt);
+    this.updateGearDrops(dt);
     this.updatePlayerAnim(dt);
     this.updateCamera(dt, true);
+    this.updateOjiHud();
     this.updateNight();
     this.fx.update(dt);
     this.hudT = (this.hudT || 0) - dt;
@@ -1165,8 +1414,12 @@ export class Game {
     this.updatePlayerAnim(dt);
     const cam = this.camera;
     cam.fov = 55; cam.updateProjectionMatrix();
-    cam.position.set(-1.1 + Math.sin(t) * 0.5, 1.65, 1.5);
-    cam.lookAt(-0.55, 1.3, 4.0);
+    this.kigaeK = approach(this.kigaeK || 0, this.kigae ? 1 : 0, 6, dt);
+    const k = this.kigaeK;
+    if (k > 0.001) { this.yaw = Math.PI * 0.08 * (1 - k) + k * Math.sin(this.titleT * 0.7) * 0.75; this.p.root.rotation.y = this.yaw; }
+    // きがえ／そうび: まえから ぜんしん（がめんの みぎがわ。ひだりは パネル）
+    cam.position.set(lerp(-1.1 + Math.sin(t) * 0.5, 0.95, k), lerp(1.65, 1.15, k), lerp(1.5, 0.95, k));
+    cam.lookAt(lerp(-0.55, 1.05, k), lerp(1.3, 1.0, k), 4.0);
     this.camBaseQ = (this.camBaseQ || new THREE.Quaternion()).copy(cam.quaternion);
     this.followSun();
   }
@@ -1179,7 +1432,7 @@ export class Game {
   pushHud(force) {
     const g = this.guns[this.cur], w = WEAPONS[this.cur];
     this.hud.set({
-      hp: Math.ceil(this.hp), maxHp: PLAYER_MAX_HP, ammo: g.ammo, mag: w.mag, reserve: g.reserve, weapon: this.cur,
+      hp: Math.ceil(this.hp), maxHp: this.maxHp, ammo: g.ammo, mag: w.mag, reserve: g.reserve, weapon: this.cur,
       reloading: g.reloading > 0 ? 1 - g.reloading / w.reload : -1, wave: this.wave, left: this.remaining(), score: this.score,
       spread: currentSpread(w, { moving: this.moveAmt > 0.2, aiming: this.aimAmt > 0.5, airborne: !this.onGround, bloom: g.bloom }),
       fov: this.camera.fov, aim: this.aimAmt, guns: this.guns,

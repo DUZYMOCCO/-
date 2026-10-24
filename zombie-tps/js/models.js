@@ -1,6 +1,6 @@
 // ブロックの キャラクターと ぶき（かくうの デザイン・ロゴなし）
 import * as THREE from '../vendor/three.module.min.js';
-import { zombieFaceTexture, playerFaceTexture, solidTexture, shirtTexture } from './textures.js?v=3';
+import { zombieFaceTexture, playerFaceTexture, solidTexture, shirtTexture, camoTexture, ojisanTextures } from './textures.js?v=4';
 
 const boxGeoCache = new Map();
 export function boxGeo(w, h, d) {
@@ -157,45 +157,238 @@ export function makeMagMesh() {
 }
 
 // ---- プレイヤー（かくうの へいたい・ブロック） ----
+// ふく（みためだけ）: やくわり → いろ。[いろ, ざらつき] は ドットの テクスチャ、camo は めいさい
+const OUTFIT_LOOK = {
+  normal: { uniform: [0x6b7a4a, 0.18], vest: [0x3e4632, 0.2], pants: [0x55603d, 0.18], boots: 0x2a2420, helmet: [0x4f5b3a, 0.2],
+    glove: 0x2b2b2b, mark: 0xff8a1f, skin: 0xd9a982, face: {} },
+  camo: { uniform: { camo: [0x8f9a5c, 0x5f6e38, 0x3e4a26, 0xa08a5a] }, vest: [0x6e6340, 0.2], pants: { camo: [0x7d8a4e, 0x4f5e2e, 0x34401f, 0x8f7a4e] },
+    boots: 0x3a2e22, helmet: { camo: [0x8f9a5c, 0x3e4a26, 0x5f6e38, 0xa08a5a] }, glove: 0x4a3f2a, mark: 0xffd84a, skin: 0xd9a982,
+    face: { top: '#5f6e38', band: '#2e3a1c', eye: '#b6f36a' } },
+  ninja: { uniform: [0x2a3148, 0.14], vest: [0x1d2234, 0.14], pants: [0x2a3148, 0.14], boots: 0x14161c, helmet: [0x2a3148, 0.1],
+    glove: 0x14161c, mark: 0xd63a3a, skin: 0x2a3148, face: { top: '#2a3148', band: null, eye: '#2b2522', mask: '#2a3148', skin: '#d9a982' },
+    noHelmet: true, extra: 'ninja' },
+  kaito: { uniform: [0xf2f2f2, 0.06], vest: [0x2d3a6b, 0.12], pants: [0xf2f2f2, 0.06], boots: 0x30303a, helmet: [0xf2f2f2, 0.05],
+    glove: 0xffffff, mark: 0xd63a3a, skin: 0xd9a982, face: { top: '#30303a', band: null, domino: '#ffffff', eye: '#2b2522' },
+    noHelmet: true, extra: 'kaito' },
+  space: { uniform: [0xf0f2f5, 0.06], vest: [0xd5dbe3, 0.08], pants: [0xf0f2f5, 0.06], boots: 0x8e99a6, helmet: [0xf8f8f8, 0.05],
+    glove: 0x8e99a6, mark: 0xff8a1f, skin: 0xd9a982, face: { top: '#f8f8f8', band: null, eye: '#2b2522', mouth: '#b06a50' }, extra: 'space' },
+  gold: { uniform: [0xe8b923, 0.12], vest: [0xc9961a, 0.12], pants: [0xd9a81f, 0.12], boots: 0x8a6a12, helmet: [0xf5cd30, 0.1],
+    glove: 0xfff0a0, mark: 0xffffff, skin: 0xd9a982, face: { top: '#f5cd30', band: '#7a5a10', eye: '#fff6c8' }, glow: 0x3a2800, extra: 'gold' },
+  robot: { uniform: [0xa3acb6, 0.1], vest: [0x5f6873, 0.12], pants: [0x808a95, 0.1], boots: 0x3a3f47, helmet: [0xc0c8d0, 0.08],
+    glove: 0x3a3f47, mark: 0x2fd4ff, skin: 0xb0b8c0, face: { skin: '#b0b8c0', top: '#c0c8d0', band: '#1c2530', eye: '#2fd4ff', grill: '#4a535e' },
+    glow: 0x0a0c10, extra: 'robot' },
+};
+const outfitMatCache = new Map();
+function outfitMats(id) {
+  if (outfitMatCache.has(id)) return outfitMatCache.get(id);
+  const o = OUTFIT_LOOK[id] || OUTFIT_LOOK.normal, glow = o.glow ? { emissive: o.glow } : {};
+  let seed = 3;
+  const mk = (v) => {
+    seed++;
+    if (typeof v === 'number') return L(v, glow);
+    if (v.camo) return new THREE.MeshLambertMaterial({ map: camoTexture(v.camo, seed * 7), ...glow });
+    return new THREE.MeshLambertMaterial({ map: solidTexture(v[0], v[1], seed), ...glow });
+  };
+  const m = { uniform: mk(o.uniform), vest: mk(o.vest), pants: mk(o.pants), boots: mk(o.boots), helmet: mk(o.helmet),
+    glove: mk(o.glove), mark: id === 'normal' ? GM.orange : mk(o.mark), skin: L(o.skin, glow) };
+  m.face = new THREE.MeshLambertMaterial({ map: playerFaceTexture(o.face), ...glow });
+  m.head = [m.skin, m.skin, m.skin, m.skin, m.skin, m.face];
+  outfitMatCache.set(id, m);
+  return m;
+}
+function makeOutfitExtras(headPivot, torso) {
+  const ex = {};
+  const add = (k) => { const g = new THREE.Group(); g.visible = false; ex[k] = g; return g; };
+  { // にんじゃ: あかい はちまき
+    const h = add('ninja'); headPivot.add(h); const red = L(0xd63a3a);
+    part(h, red, 0.5, 0.07, 0.5, 0, 0.4, 0);
+    part(h, red, 0.07, 0.06, 0.26, 0.07, 0.36, 0.34, 0.4, 0.25); part(h, red, 0.07, 0.06, 0.22, -0.05, 0.34, 0.33, 0.6, -0.2);
+  }
+  { // かいとう: シルクハットと マント
+    const h = add('kaito'); headPivot.add(h); const w = L(0xf6f6f6), bl = L(0x2d3a6b), rd = L(0xb8323a);
+    part(h, w, 0.62, 0.04, 0.62, 0, 0.5, 0);
+    part(h, w, 0.4, 0.36, 0.4, 0, 0.7, 0);
+    part(h, bl, 0.41, 0.06, 0.41, 0, 0.56, 0);
+    const c = add('kaitoCape'); torso.add(c);
+    part(c, bl, 0.62, 0.86, 0.04, 0, 0.3, 0.36, -0.08);
+    part(c, rd, 0.56, 0.8, 0.02, 0, 0.31, 0.335, -0.08);
+    part(c, bl, 0.66, 0.08, 0.2, 0, 0.7, 0.26);
+  }
+  { // うちゅうふく: ヘルメットの ガラス
+    const h = add('space'); headPivot.add(h);
+    const glass = new THREE.MeshLambertMaterial({ color: 0x9fe8ff, transparent: true, opacity: 0.35, emissive: 0x0a2430 });
+    part(h, glass, 0.52, 0.34, 0.04, 0, 0.24, -0.26);
+    part(h, L(0xf8f8f8), 0.56, 0.05, 0.06, 0, 0.43, -0.26);
+    part(h, L(0xff8a1f), 0.04, 0.16, 0.04, 0.2, 0.66, 0.1);
+  }
+  { // ゴールド: あたまの ほし
+    const h = add('gold'); headPivot.add(h);
+    const st = new THREE.MeshBasicMaterial({ color: 0xfff3a0 });
+    part(h, st, 0.12, 0.12, 0.04, 0, 0.47, -0.29, 0, 0, Math.PI / 4);
+  }
+  { // ロボット: アンテナと むねの ランプ
+    const h = add('robot'); headPivot.add(h); const lamp = new THREE.MeshBasicMaterial({ color: 0x2fd4ff });
+    part(h, L(0x5f6873), 0.04, 0.24, 0.04, 0, 0.68, 0);
+    part(h, lamp, 0.1, 0.1, 0.1, 0, 0.82, 0);
+    part(h, L(0x5f6873), 0.08, 0.14, 0.14, 0.27, 0.27, 0); part(h, L(0x5f6873), 0.08, 0.14, 0.14, -0.27, 0.27, 0);
+    const c = add('robotChest'); torso.add(c);
+    part(c, lamp, 0.14, 0.08, 0.02, 0.1, 0.5, -0.175); part(c, new THREE.MeshBasicMaterial({ color: 0xffd84a }), 0.06, 0.06, 0.02, -0.06, 0.5, -0.175);
+  }
+  return ex;
+}
+// ふくを きがえる（いろを かえる・かざりを だす）
+export function applyOutfit(P, id) {
+  if (!OUTFIT_LOOK[id]) id = 'normal';
+  const m = outfitMats(id), o = OUTFIT_LOOK[id];
+  for (const mesh of P.roleMeshes) mesh.material = m[mesh.userData.role];
+  P.helmet.visible = !o.noHelmet;
+  for (const [k, g] of Object.entries(P.extras)) g.visible = !!o.extra && k.startsWith(o.extra);
+  P.outfit = id;
+  applyGear(P, P.gearItems);
+}
+
+// そうびの いろ（レアほど ひかる）
+const RARE_GLOW = { n: 0, r: 0.14, sr: 0.28, l: 0.45 };
+const gearMatCache = new Map();
+function gearMat(color, rarity) {
+  const k = color + ':' + rarity;
+  if (!gearMatCache.has(k)) {
+    const c = new THREE.Color(color), e = c.clone().multiplyScalar(RARE_GLOW[rarity] || 0);
+    gearMatCache.set(k, new THREE.MeshLambertMaterial({ map: solidTexture(color, 0.12, 77), emissive: e }));
+  }
+  return gearMatCache.get(k);
+}
+// items: [{slot, colorHex, rarity}]（slot ごとに 1つ）
+export function applyGear(P, items) {
+  P.gearItems = items || [];
+  const by = {}; for (const it of P.gearItems) if (it) by[it.slot] = it;
+  const noHelmet = !!(OUTFIT_LOOK[P.outfit] || {}).noHelmet;
+  const feetGroups = P.gear.feet.userData.parts;
+  for (const slot of ['head', 'body', 'feet', 'arm']) {
+    const it = by[slot], on = !!it;
+    const meshes = slot === 'head' ? P.gearMeshes.head.concat(P.gearMeshes.headCrest) : P.gearMeshes[slot];
+    if (on) { const m = gearMat(it.colorHex, it.rarity); for (const me of meshes) me.material = m; }
+    if (slot === 'head') { P.gear.head.visible = on; P.gear.headCrest.visible = on && !noHelmet; }
+    else if (slot === 'feet') { for (const t of feetGroups) t.visible = on; }
+    else if (slot === 'arm') { for (const me of P.gearMeshes.arm) me.visible = on; }
+    else P.gear[slot].visible = on;
+  }
+}
+
+// ---- そうびの はこ（レアの いろで ひかる）----
+export function makeGearDrop(glowTex) {
+  const g = new THREE.Group();
+  const spin = new THREE.Group(); g.add(spin);
+  const box = new THREE.MeshLambertMaterial({ color: 0xffffff });
+  const band = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  part(spin, box, 0.42, 0.36, 0.42, 0, 0.18, 0);
+  part(spin, band, 0.44, 0.06, 0.44, 0, 0.26, 0);
+  part(spin, band, 0.08, 0.38, 0.44, 0, 0.18, 0);
+  part(spin, L(0xfff6c8), 0.1, 0.1, 0.03, 0, 0.18, -0.225, 0, 0, Math.PI / 4);
+  const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: 0xffffff, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false }));
+  glow.scale.set(1.7, 1.7, 1); glow.position.y = 0.3; g.add(glow);
+  const ring = new THREE.Mesh(new THREE.RingGeometry(0.4, 0.56, 20).rotateX(-Math.PI / 2),
+    new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending, depthWrite: false }));
+  ring.position.y = 0.03; g.add(ring);
+  // でんせつは ひかりの はしら
+  const beam = new THREE.Mesh(new THREE.BoxGeometry(0.16, 4, 0.16), new THREE.MeshBasicMaterial({ color: 0xffe27a, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false }));
+  beam.position.y = 2; g.add(beam);
+  return { group: g, spin, glow, ring, beam, box, band,
+    set(colorHex, rarityHex, legend) { box.color.setHex(colorHex); band.color.setHex(rarityHex); glow.material.color.setHex(rarityHex); ring.material.color.setHex(rarityHex); beam.visible = legend; } };
+}
+
 export function makePlayer() {
   const root = new THREE.Group();
-  const uniform = new THREE.MeshLambertMaterial({ map: solidTexture(0x6b7a4a, 0.18, 3) });
-  const vest = new THREE.MeshLambertMaterial({ map: solidTexture(0x3e4632, 0.2, 4) });
-  const pants = new THREE.MeshLambertMaterial({ map: solidTexture(0x55603d, 0.18, 5) });
-  const boots = L(0x2a2420), skin = L(0xd9a982), helmet = new THREE.MeshLambertMaterial({ map: solidTexture(0x4f5b3a, 0.2, 6) });
-  const glove = L(0x2b2b2b), orange = GM.orange;
-  const face = new THREE.MeshLambertMaterial({ map: playerFaceTexture() });
+  const roleMeshes = [];
+  const m0 = outfitMats('normal');
+  const R = (parent, role, ...a) => { const me = part(parent, m0[role], ...a); me.userData.role = role; roleMeshes.push(me); return me; };
 
   const legs = [];
   for (const s of [-1, 1]) {
     const pivot = new THREE.Group(); pivot.position.set(s * 0.13, 0.74, 0); root.add(pivot);
-    part(pivot, pants, 0.25, 0.6, 0.27, 0, -0.3, 0);
-    part(pivot, boots, 0.26, 0.15, 0.3, 0, -0.66, -0.02);
+    R(pivot, 'pants', 0.25, 0.6, 0.27, 0, -0.3, 0);
+    R(pivot, 'boots', 0.26, 0.15, 0.3, 0, -0.66, -0.02);
     legs.push(pivot);
   }
   const torso = new THREE.Group(); torso.position.y = 0.74; root.add(torso);
-  part(torso, uniform, 0.52, 0.7, 0.28, 0, 0.35, 0);
-  part(torso, vest, 0.56, 0.46, 0.33, 0, 0.42, 0);
-  for (const s of [-1, 1]) part(torso, vest, 0.1, 0.12, 0.06, s * 0.15, 0.32, -0.19); // ポーチ
-  part(torso, orange, 0.12, 0.04, 0.02, -0.16, 0.6, -0.17);  // かたの マーク（かくう）
-  part(torso, vest, 0.4, 0.42, 0.18, 0, 0.42, 0.24);         // リュック
-  part(torso, uniform, 0.3, 0.12, 0.16, 0, 0.66, 0.26);
+  R(torso, 'uniform', 0.52, 0.7, 0.28, 0, 0.35, 0);
+  R(torso, 'vest', 0.56, 0.46, 0.33, 0, 0.42, 0);
+  for (const s of [-1, 1]) R(torso, 'vest', 0.1, 0.12, 0.06, s * 0.15, 0.32, -0.19); // ポーチ
+  R(torso, 'mark', 0.12, 0.04, 0.02, -0.16, 0.6, -0.17);  // かたの マーク（かくう）
+  R(torso, 'vest', 0.4, 0.42, 0.18, 0, 0.42, 0.24);         // リュック
+  R(torso, 'uniform', 0.3, 0.12, 0.16, 0, 0.66, 0.26);
   const headPivot = new THREE.Group(); headPivot.position.y = 0.72; torso.add(headPivot);
-  part(headPivot, [skin, skin, skin, skin, skin, face], 0.46, 0.46, 0.46, 0, 0.25, 0);
-  part(headPivot, helmet, 0.54, 0.16, 0.54, 0, 0.5, 0.0);
-  part(headPivot, helmet, 0.56, 0.06, 0.6, 0, 0.42, -0.02);
-  part(headPivot, glove, 0.5, 0.06, 0.06, 0, 0.36, -0.25);
+  R(headPivot, 'head', 0.46, 0.46, 0.46, 0, 0.25, 0);
+  const helmet = new THREE.Group(); headPivot.add(helmet);
+  R(helmet, 'helmet', 0.54, 0.16, 0.54, 0, 0.5, 0.0);
+  R(helmet, 'helmet', 0.56, 0.06, 0.6, 0, 0.42, -0.02);
+  R(helmet, 'glove', 0.5, 0.06, 0.06, 0, 0.36, -0.25);
 
   const aim = new THREE.Group(); aim.position.set(0, 0.62, 0); torso.add(aim);
   const armR = new THREE.Group(); armR.position.set(0.33, 0, 0); aim.add(armR);
-  part(armR, uniform, 0.2, 0.2, 0.5, 0, -0.04, -0.2);
-  part(armR, glove, 0.21, 0.21, 0.14, 0, -0.04, -0.5);
+  R(armR, 'uniform', 0.2, 0.2, 0.5, 0, -0.04, -0.2);
+  R(armR, 'glove', 0.21, 0.21, 0.14, 0, -0.04, -0.5);
   const armL = new THREE.Group(); armL.position.set(-0.33, 0, 0); aim.add(armL);
-  part(armL, uniform, 0.2, 0.2, 0.62, 0, -0.04, -0.26);
-  part(armL, glove, 0.21, 0.21, 0.14, 0, -0.04, -0.62);
+  R(armL, 'uniform', 0.2, 0.2, 0.62, 0, -0.04, -0.26);
+  R(armL, 'glove', 0.21, 0.21, 0.14, 0, -0.04, -0.62);
   const holder = new THREE.Group(); holder.position.set(0.16, -0.06, -0.42); aim.add(holder);
+  const extras = makeOutfitExtras(headPivot, torso);
+  // そうびの かざり（いろは そうびごと。ふくの うえに つく）
+  const gm = L(0xffffff), gear = {}, mk = (k) => { const g = new THREE.Group(); g.visible = false; gear[k] = g; return g; };
+  { const h = mk('head'); headPivot.add(h);
+    for (const s of [-1, 1]) part(h, gm, 0.06, 0.17, 0.17, s * 0.25, 0.25, 0.02);   // みみあて
+    const c = mk('headCrest'); headPivot.add(c); part(c, gm, 0.1, 0.1, 0.34, 0, 0.6, 0.02); }
+  { const b = mk('body'); torso.add(b);
+    for (const s of [-1, 1]) part(b, gm, 0.22, 0.09, 0.32, s * 0.33, 0.69, 0);      // かたあて
+    part(b, gm, 0.42, 0.06, 0.02, 0, 0.53, -0.175); }
+  { const f = mk('feet'); root.add(f);
+    for (const lg of legs) { const t = new THREE.Group(); t.visible = true; lg.add(t); part(t, gm, 0.27, 0.08, 0.1, 0, -0.62, -0.17); part(t, gm, 0.27, 0.05, 0.31, 0, -0.56, -0.02); f.userData.parts = (f.userData.parts || []).concat(t); } }
+  { const a = mk('arm'); aim.add(a);
+    part(armR, gm, 0.23, 0.23, 0.07, 0, -0.04, -0.4).userData.gearArm = true;
+    part(armL, gm, 0.23, 0.23, 0.07, 0, -0.04, -0.52).userData.gearArm = true; }
+  const gearArm = []; for (const arm of [armR, armL]) for (const c of arm.children) if (c.userData.gearArm) { c.visible = false; gearArm.push(c); }
+  const gearMeshes = {};
+  for (const k of Object.keys(gear)) { gearMeshes[k] = []; gear[k].traverse((o) => { if (o.isMesh) gearMeshes[k].push(o); }); }
+  gearMeshes.feet = []; for (const t of gear.feet.userData.parts) t.traverse((o) => { if (o.isMesh) gearMeshes.feet.push(o); });
+  gearMeshes.arm = gearArm;
   root.traverse((o) => { if (o.isMesh) o.castShadow = true; });
-  return { root, legs, torso, headPivot, aim, armR, armL, holder };
+  return { root, legs, torso, headPivot, aim, armR, armL, holder, roleMeshes, helmet, extras, outfit: 'normal', gear, gearMeshes, gearItems: [] };
+}
+
+// ---- おじさん（はげ・めがね・くちひげ。よわいけど やさしい） ----
+export function makeOjisan() {
+  const T = ojisanTextures();
+  const root = new THREE.Group(), inner = new THREE.Group(); root.add(inner);
+  const skin = L(T.skin);
+  const shirt = new THREE.MeshLambertMaterial({ map: solidTexture(0x8cc6e8, 0.12, 41) });
+  const pants = new THREE.MeshLambertMaterial({ map: solidTexture(0x7a5a3c, 0.15, 42) });
+  const belt = L(0x3a2a20), shoe = L(0x4a3a30);
+  const head = [new THREE.MeshLambertMaterial({ map: T.side }), new THREE.MeshLambertMaterial({ map: T.side }),
+    new THREE.MeshLambertMaterial({ map: T.top }), skin, new THREE.MeshLambertMaterial({ map: T.back }), new THREE.MeshLambertMaterial({ map: T.face })];
+  const legs = [];
+  for (const s of [-1, 1]) {
+    const pv = new THREE.Group(); pv.position.set(s * 0.13, 0.66, 0); inner.add(pv);
+    part(pv, pants, 0.24, 0.54, 0.26, 0, -0.27, 0);
+    part(pv, shoe, 0.25, 0.12, 0.32, 0, -0.6, -0.03);
+    legs.push(pv);
+  }
+  const body = new THREE.Group(); body.position.y = 0.66; inner.add(body);
+  part(body, shirt, 0.56, 0.62, 0.36, 0, 0.31, 0);
+  part(body, shirt, 0.5, 0.3, 0.06, 0, 0.22, -0.2);          // おなか ぽっこり
+  part(body, belt, 0.57, 0.06, 0.37, 0, 0.04, 0);
+  part(body, L(0xffffff), 0.16, 0.08, 0.02, 0, 0.58, -0.185); // えり
+  part(body, L(0xe8c050), 0.05, 0.05, 0.02, 0.15, 0.45, -0.185); // むねポケットの ペン
+  const headPivot = new THREE.Group(); headPivot.position.y = 0.64; body.add(headPivot);
+  part(headPivot, head, 0.44, 0.44, 0.44, 0, 0.22, 0);
+  const arms = [];
+  for (const s of [-1, 1]) {
+    const pv = new THREE.Group(); pv.position.set(s * 0.36, 0.56, 0); body.add(pv);
+    part(pv, shirt, 0.18, 0.2, 0.2, 0, -0.06, 0);               // はんそで
+    part(pv, skin, 0.15, 0.36, 0.16, 0, -0.32, 0);
+    arms.push(pv);
+  }
+  root.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+  return { root, inner, legs, body, headPivot, arms };
 }
 
 // ---- ゾンビ（かわいい・みどり・ブロック） ----

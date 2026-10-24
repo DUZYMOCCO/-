@@ -7,6 +7,10 @@ import {
   blastFalloff, blastDamage, launchVelocity, knockAt, FLY_KNOCK, MAX_AIR, stickCurve, approach, refillReserve, VERSION,
   rollRocketDrop, addRocketAmmo, pickupVisible, DROP_CHANCE, ROCKET_RESERVE_MAX, PICKUP_LIFE,
   timeOfDay, mixTod, TOD, isBossWave, bossHp, BOSS,
+  OUTFITS, OUTFIT_IDS, outfitName, nextOutfit, unlockOutfit, OJISAN, shouldSpawnOjisan, ojisanAttackers, pickOjisanSpot, openCells, edgeArrow,
+  canClimb, CLIMBERS, PERCH, perchRunnerNeeded,
+  GEAR_SLOT_IDS, RARITIES, RARITY_IDS, GEAR_STATS, GEAR_STAT_IDS, SLOT_STATS, statItemMax, GEAR_COLOR_IDS, GEAR_DROP, GEAR_FLOOR, INV_CAP,
+  rollGearDrop, rollRarity, rollGear, gearName, gearScore, gearTotals, gearEffects, normalizeGear, gearAction, equippedItems,
   MAX_CLIMB, JUMP_H, climbTime, climbTarget, climbLanding, supportBox, playerReachableTops, boxGap,
 } from '../js/rules.js';
 import { buildMap, playerColliders, zombieColliders, HALF } from '../js/map.js';
@@ -81,7 +85,7 @@ test('ウェーブは だんだん むずかしく、さいしょは あるく �
     assert.equal(q.length, s.total);
     assert.deepEqual(q.slice(0, 3), ['walker', 'walker', 'walker']);
   }
-  assert.equal(waveSpec(1).runners, 0);
+  assert.equal(waveSpec(1).runners, 1); // のぼれる こが かならず いる
   assert.equal(waveSpec(1).brutes, 0);
   assert.ok(waveSpec(6).brutes >= 1);
 });
@@ -135,7 +139,8 @@ test('マップ: スタートは あいていて、ぜんぶの ゲートから 
 });
 
 test('セーブの よみこみ', () => {
-  assert.deepEqual(normalizeSave(null), { bestWave: 0, bestScore: 0, autoFire: false, sens: 'mid', quality: 'auto', stage: 'day', flashlight: true });
+  assert.deepEqual(normalizeSave(null), { bestWave: 0, bestScore: 0, autoFire: false, sens: 'mid', quality: 'auto', stage: 'day', flashlight: true,
+    outfit: 'normal', outfits: ['normal'], gear: { inv: [], eq: { head: null, body: null, feet: null, arm: null } } });
   assert.equal(normalizeSave({ bestWave: 7, sens: 'zzz' }).sens, 'mid');
   assert.equal(normalizeSave({ bestWave: 7 }).bestWave, 7);
 });
@@ -215,7 +220,7 @@ test('なめらか いどう: approach は フレームレートに よらない
 });
 
 test('バージョン と セーブの ステージ', () => {
-  assert.equal(VERSION, '0.3.0');
+  assert.equal(VERSION, '0.4.0');
   assert.equal(normalizeSave(null).stage, 'day');
   assert.equal(normalizeSave({ stage: 'night' }).stage, 'night');
   assert.equal(normalizeSave({ stage: 'mars' }).stage, 'day');
@@ -339,6 +344,205 @@ test('あんぜんちたい なし: プレイヤーが のれる ところは �
     assert.ok(b.maxY <= MAX_CLIMB, `too high ${b.maxY}`);
     assert.ok(climbable.has(b), `safe spot at ${b.minX.toFixed(1)},${b.minZ.toFixed(1)} h${b.maxY.toFixed(2)}`);
   }
+  // のぼれる のは はやい ゾンビ だけ → まいウェーブ かならず いる＋いすわると おいかけて くる
+  for (let n = 1; n <= 30; n++) assert.ok(waveSpec(n).runners >= 1, `wave ${n} has a climber`);
+  assert.ok(perchRunnerNeeded(PERCH.time, 0, 0));
+  assert.ok(!perchRunnerNeeded(PERCH.time, 1, 0), 'のぼれる こが もう いる');
+  assert.ok(!perchRunnerNeeded(PERCH.time - 0.1, 0, 0));
+  assert.ok(PERCH.time <= 6 && PERCH.cooldown <= 10);
   // プレイヤーは ジャンプで たかい ところへ: じめんから 1.3m ちょっと まで
   assert.ok(JUMP_H > 1.2 && JUMP_H < 1.4);
+});
+
+test('のぼれる のは はやい ゾンビ だけ（ふつう・でかい・ボスは まわりに あつまる）', () => {
+  assert.deepEqual(CLIMBERS, ['runner']);
+  assert.ok(canClimb('runner'));
+  for (const k of ['walker', 'brute', 'boss']) assert.ok(!canClimb(k), k);
+  // でかい ゾンビと ボスは ドスン！で くるまから おとせる（ボスの わは くるまの はばより ひろい）
+  assert.ok(BOSS.slamRadius >= 3);
+});
+
+test('ふく: 7しゅるい・かなの なまえ・セーブ ごかん', () => {
+  assert.equal(OUTFITS.length, 7);
+  assert.equal(OUTFIT_IDS[0], 'normal');
+  for (const o of OUTFITS) assert.match(o.name, /^[ぁ-んァ-ンー]+$/u, o.name);
+  assert.equal(outfitName('ninja'), 'にんじゃ');
+  // ふるい セーブ（v0.3）は ふつう だけ
+  const old = normalizeSave({ bestWave: 5, stage: 'night' });
+  assert.deepEqual(old.outfits, ['normal']); assert.equal(old.outfit, 'normal'); assert.equal(old.bestWave, 5);
+  // へんな あたいは けす・ならびは そろえる・もっていない ふくは きれない
+  const s = normalizeSave({ outfits: ['robot', 'zzz', 'ninja', 'ninja', 3], outfit: 'gold' });
+  assert.deepEqual(s.outfits, ['normal', 'ninja', 'robot']); assert.equal(s.outfit, 'normal');
+  assert.equal(normalizeSave({ outfits: ['camo'], outfit: 'camo' }).outfit, 'camo');
+  assert.equal(normalizeSave({ outfits: 'camo' }).outfits.length, 1);
+  // JSON で もどしても おなじ
+  const j = normalizeSave(JSON.parse(JSON.stringify(s))); assert.deepEqual(j, s);
+});
+
+test('ふくを もらう: まだ ない ふくから 1つ、ぜんぶ あれば null', () => {
+  const save = normalizeSave(null);
+  const got = new Set();
+  for (let i = 0; i < 6; i++) {
+    const id = nextOutfit(save.outfits, (i * 0.37) % 1);
+    assert.ok(id && id !== 'normal' && !save.outfits.includes(id));
+    assert.equal(unlockOutfit(save, id), true);
+    assert.equal(save.outfit, id, 'すぐ きがえる');
+    got.add(id);
+  }
+  assert.equal(got.size, 6);
+  assert.equal(nextOutfit(save.outfits, 0.5), null);
+  assert.deepEqual(save.outfits, OUTFIT_IDS);
+  assert.equal(unlockOutfit(save, 'camo'), false);
+  assert.equal(unlockOutfit(save, 'zzz'), false);
+  assert.equal(nextOutfit(['normal'], 0.9999), OUTFIT_IDS[6]);
+});
+
+test('おじさん: 2〜3ウェーブに 1かい・ボスの ウェーブは でない', () => {
+  let r = 1; const rnd = () => ((r = (r * 1664525 + 1013904223) >>> 0) / 4294967296);
+  const gaps = [];
+  for (let run = 0; run < 400; run++) {
+    let last = 0, prev = 0;
+    for (let w = 1; w <= 30; w++) {
+      if (shouldSpawnOjisan(w, last, rnd())) {
+        assert.ok(!isBossWave(w), `boss wave ${w}`);
+        assert.ok(w >= 2);
+        if (prev) gaps.push(w - prev);
+        prev = last = w;
+      }
+    }
+  }
+  for (const g of gaps) assert.ok(g >= 2 && g <= 4, `gap ${g}`);
+  const avg = gaps.reduce((a, b) => a + b, 0) / gaps.length;
+  assert.ok(avg >= 2.2 && avg <= 3.2, `avg gap ${avg}`);
+  assert.equal(shouldSpawnOjisan(3, 0, 0), false);       // ボス
+  assert.equal(shouldSpawnOjisan(2, 0, 0.9), false);      // 50%
+  assert.equal(shouldSpawnOjisan(2, 0, 0.1), true);
+  assert.equal(shouldSpawnOjisan(4, 2, 0.9), false);
+  assert.equal(shouldSpawnOjisan(5, 2, 0.99), true);      // 3ウェーブ あいたら かならず
+  assert.equal(shouldSpawnOjisan(1, 0, 0), false);
+  // おそう ゾンビは すこしだけ
+  assert.equal(ojisanAttackers(2), 3);
+  for (let w = 1; w <= 40; w++) assert.ok(ojisanAttackers(w) >= 3 && ojisanAttackers(w) <= 5);
+  assert.ok(OJISAN.dmgMul < 1 && OJISAN.hp >= 80);
+});
+
+test('おじさんの ばしょ: あるいて いける ひろい ところ・ちょうど いい きょり', () => {
+  const map = buildMap();
+  const grid = buildGrid(zombieColliders(map), HALF + 4, 1, 0.4);
+  const ps = map.playerStart;
+  updateFlow(grid, ps.x, ps.z);
+  const cells = openCells(grid, HALF - 3);
+  assert.ok(cells.length > 200, `cells ${cells.length}`);
+  for (let i = 0; i < 50; i++) {
+    const [x, z] = pickOjisanSpot(cells, ps.x, ps.z, i / 50);
+    const d = Math.hypot(x - ps.x, z - ps.z);
+    assert.ok(d >= OJISAN.dist[0] && d <= OJISAN.dist[1], `dist ${d}`);
+    assert.ok(Math.abs(x) <= HALF - 3 && Math.abs(z) <= HALF - 3);
+    assert.ok(grid.dist[cellOf(grid, x, z)] >= 0, 'とどく');
+  }
+  // ちかい ところが なければ いちばん とおい ところ
+  assert.deepEqual(pickOjisanSpot([[0, 0], [3, 0]], 0, 0, 0.5), [3, 0]);
+});
+
+test('やじるし: がめんの そとなら ふちに・うしろなら はんたいがわ', () => {
+  const a = edgeArrow(0.2, 0.3, false); assert.ok(a.onScreen); assert.equal(a.x, 0.2);
+  const b = edgeArrow(3, 0, false); assert.ok(!b.onScreen); assert.ok(Math.abs(b.x - 0.86) < 1e-9); assert.ok(Math.abs(b.ang) < 1e-9);
+  const c = edgeArrow(0.5, 0.1, true); assert.ok(!c.onScreen); assert.ok(c.x < 0, 'うしろの みぎは ひだりに');
+  const d = edgeArrow(0, 4, false); assert.ok(Math.abs(d.ang + Math.PI / 2) < 1e-9, 'うえ');
+});
+
+// ---- そうび ----
+function seeded(seed) { let x = seed >>> 0 || 1; return () => { x ^= x << 13; x >>>= 0; x ^= x >> 17; x ^= x << 5; x >>>= 0; return x / 4294967296; }; }
+
+test('そうび: ぶいは 4つ、レアは 4だん、なまえは かなだけ', () => {
+  assert.deepEqual(GEAR_SLOT_IDS, ['head', 'body', 'feet', 'arm']);
+  assert.deepEqual(RARITIES.map((r) => r.name), ['ふつう', 'レア', 'すごいレア', 'でんせつ']);
+  const r = seeded(7);
+  for (let i = 0; i < 200; i++) {
+    const g = rollGear(r);
+    assert.match(gearName(g), /^[\u3040-\u30ffー ]+$/);
+    for (const k of Object.keys(g.stats)) assert.ok(SLOT_STATS[g.slot].includes(k));
+  }
+  for (const k of GEAR_STAT_IDS) assert.match(GEAR_STATS[k].name, /^[\u3040-\u30ffーHP]+$/);
+});
+
+test('そうび: のうりょくは うえげん いない（1こ も ごうけい も）', () => {
+  const r = seeded(42);
+  const all = [];
+  for (let i = 0; i < 3000; i++) {
+    const g = rollGear(r);
+    const rar = RARITIES.find((x) => x.id === g.rarity);
+    assert.equal(Object.keys(g.stats).length, rar.stats);
+    for (const [k, v] of Object.entries(g.stats)) { assert.ok(Number.isInteger(v) && v >= 1 && v <= statItemMax(k), `${k}=${v}`); }
+    all.push(g);
+  }
+  // いちばん つよい そうびを 4つ つけても キャップで とまる
+  const best = GEAR_SLOT_IDS.map((s) => ({ slot: s, stats: Object.fromEntries(GEAR_STAT_IDS.map((k) => [k, statItemMax(k)])) }));
+  const t = gearTotals(best);
+  for (const k of GEAR_STAT_IDS) assert.ok(t[k] <= GEAR_STATS[k].cap);
+  assert.ok(GEAR_STATS.def.cap <= 30, 'ぼうぎょは 30%まで（むてきに ならない）');
+  assert.ok(GEAR_STATS.spd.cap <= 15 && GEAR_STATS.rel.cap <= 25 && GEAR_STATS.hp.cap <= 50);
+  const fx = gearEffects({ inv: best.map((b, i) => ({ ...b, id: 'x' + i })), eq: Object.fromEntries(GEAR_SLOT_IDS.map((s, i) => [s, 'x' + i])) });
+  assert.ok(fx.dmgMul >= 0.7 && fx.maxHp <= 150 && fx.speedMul <= 1.15 && fx.reloadMul <= 1 / 0.75 + 1e-9);
+  // なにも つけて いなければ かわらない
+  const none = gearEffects(normalizeGear(null));
+  assert.deepEqual([none.maxHp, none.dmgMul, none.speedMul, none.reloadMul], [100, 1, 1, 1]);
+});
+
+test('そうび: おちる かくりつ（ふつうは すこし、つよいのは おおめ、ボスは かならず）', () => {
+  assert.ok(GEAR_DROP.walker <= 0.05 && GEAR_DROP.runner <= 0.06);
+  assert.ok(GEAR_DROP.brute > GEAR_DROP.runner * 3);
+  assert.equal(rollGearDrop('boss', 0.999), true);
+  const r = seeded(3); let n = 0; const N = 20000;
+  for (let i = 0; i < N; i++) if (rollGearDrop('walker', r())) n++;
+  assert.ok(Math.abs(n / N - GEAR_DROP.walker) < 0.006);
+  // レアの わりあい
+  const cnt = { n: 0, r: 0, sr: 0, l: 0 };
+  for (let i = 0; i < N; i++) cnt[rollRarity(r())]++;
+  assert.ok(cnt.n > cnt.r && cnt.r > cnt.sr && cnt.sr > cnt.l && cnt.l > 0);
+  assert.ok(cnt.l / N < 0.04);
+  // ボスは すごいレア いじょう、おじさんは レア いじょう
+  for (let i = 0; i < 500; i++) {
+    assert.ok(RARITY_IDS.indexOf(rollGear(r, { floor: GEAR_FLOOR.boss }).rarity) >= 2);
+    assert.ok(RARITY_IDS.indexOf(rollGear(r, { floor: GEAR_FLOOR.ojisan }).rarity) >= 1);
+  }
+});
+
+test('そうび: セーブ（ふるい セーブ OK・へんな あたいは なおす・20こまで）', () => {
+  assert.deepEqual(normalizeSave({ bestWave: 3 }).gear, { inv: [], eq: { head: null, body: null, feet: null, arm: null } });
+  const r = seeded(9);
+  const inv = Array.from({ length: 30 }, () => rollGear(r));
+  inv.push({ id: 'bad', slot: 'tail', stats: {} }, { id: 'big', slot: 'head', rarity: 'l', color: 'red', stats: { def: 999, hp: -5, zz: 3 } }, null, 5);
+  const g = normalizeGear({ inv: [inv[30], ...inv], eq: { head: 'nope', body: inv[0].slot === 'body' ? inv[0].id : 'x' } });
+  assert.equal(g.inv.length, INV_CAP);
+  const big = normalizeGear({ inv: [inv[31]], eq: { head: 'big', feet: 'big' } });
+  assert.deepEqual(big.inv[0].stats, { def: statItemMax('def') });
+  assert.equal(big.eq.head, 'big'); assert.equal(big.eq.feet, null, 'ぶいが ちがうと つけられない');
+  assert.equal(g.eq.head, null);
+  const s = normalizeSave({ gear: big });
+  assert.deepEqual(normalizeSave(JSON.parse(JSON.stringify(s))), s);
+  for (const it of g.inv) assert.ok(GEAR_COLOR_IDS.includes(it.color));
+});
+
+test('そうび: つける・しまう・すてる・いっぱいの とき', () => {
+  const r = seeded(11);
+  const gear = normalizeGear(null);
+  const a = rollGear(r, { slot: 'head' }), b = rollGear(r, { slot: 'head' });
+  assert.ok(gearAction(gear, a, 'equip').ok);
+  assert.equal(gear.eq.head, a.id);
+  assert.ok(gearAction(gear, b, 'equip').ok);
+  assert.equal(gear.eq.head, b.id); assert.equal(gear.inv.length, 2, 'まえの は かばんに のこる');
+  assert.deepEqual(equippedItems(gear).map((x) => x && x.id), [b.id, null, null, null]);
+  gearAction(gear, b, 'unequip'); assert.equal(gear.eq.head, null);
+  gearAction(gear, b, 'equip'); gearAction(gear, b, 'drop');
+  assert.equal(gear.eq.head, null); assert.equal(gear.inv.length, 1);
+  while (gear.inv.length < INV_CAP) gearAction(gear, rollGear(r, { slot: 'body' }), 'keep');
+  const c = rollGear(r, { slot: 'feet' });
+  assert.deepEqual(gearAction(gear, c, 'keep'), { ok: false, full: true });
+  assert.equal(gearAction(gear, c, 'equip').ok, false, 'くつを つけてないので いれかえられない');
+  gearAction(gear, gear.inv.find((x) => x.slot === 'body'), 'equip');
+  const d = rollGear(r, { slot: 'body' });
+  const res = gearAction(gear, d, 'equip');
+  assert.ok(res.ok && res.replaced); assert.equal(gear.inv.length, INV_CAP);
+  assert.ok(gearScore(d) > 0);
 });

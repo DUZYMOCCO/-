@@ -1,6 +1,6 @@
 // マップの みため（はこを まとめて すくない ドローコールに する）
 import * as THREE from '../vendor/three.module.min.js';
-import { HALF } from './map.js?v=3';
+import { HALF } from './map.js?v=4';
 
 // はこを ざいしつごとに 1つの ジオメトリに まとめる（UV は 1m = テクスチャ 1まい）
 function mergeBoxes(list) {

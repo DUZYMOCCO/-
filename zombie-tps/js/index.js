@@ -4,10 +4,44 @@
  */
 import { loadCss } from '../../common/js/load-css.js';
 import { storage } from '../../common/js/storage.js';
-import { WEAPONS, WEAPON_ORDER, normalizeSave, SENS, VERSION } from './rules.js?v=3';
-import { Game } from './game.js?v=3';
-import { Input } from './input.js?v=3';
-import { Sfx } from './sfx.js?v=3';
+import { WEAPONS, WEAPON_ORDER, normalizeSave, SENS, VERSION, OUTFITS, outfitName, unlockOutfit,
+  GEAR_SLOTS, GEAR_STATS, GEAR_STAT_IDS, INV_CAP, rarityOf, gearColor, gearName, gearScore, gearAction, gearEffects, equippedItems } from './rules.js?v=4';
+
+const hex6 = (n) => '#' + n.toString(16).padStart(6, '0');
+const slotOf = (id) => GEAR_SLOTS.find((s) => s.id === id);
+// そうびの ちいさい アイコン（いろ＋レアの わく）
+function gearIcon(g, extra = '') {
+  if (!g) return `<i class="zt-gi empty${extra}"></i>`;
+  const r = rarityOf(g.rarity);
+  return `<i class="zt-gi r-${g.rarity}${extra}" style="--gc:${hex6(gearColor(g.color).hex)};--rc:${r.color}">${slotOf(g.slot).icon}</i>`;
+}
+// のうりょくの ならび（cur と くらべて ▲▼）
+function statLines(g, cur) {
+  const keys = GEAR_STAT_IDS.filter((k) => (g.stats[k] || 0) || (cur && cur.stats[k]));
+  return keys.map((k) => {
+    const v = g.stats[k] || 0, c = cur ? cur.stats[k] || 0 : 0, d = v - c, S = GEAR_STATS[k];
+    const tag = !cur || d === 0 ? '' : d > 0 ? `<em class="up">▲${d}</em>` : `<em class="dn">▼${-d}</em>`;
+    return `<div class="${v ? '' : 'zero'}">${S.name} +${v}${S.unit}${tag}</div>`;
+  }).join('');
+}
+function verdict(g, cur) {
+  if (!cur) return `<div class="zt-gv up">はじめての ${slotOf(g.slot).name}！</div>`;
+  const a = gearScore(g), b = gearScore(cur);
+  return a > b ? '<div class="zt-gv up">いまより つよい！</div>' : a < b ? '<div class="zt-gv dn">いまの ほうが つよい</div>' : '<div class="zt-gv">おなじ くらい</div>';
+}
+function gearCardHTML(g, cur) {
+  const r = rarityOf(g.rarity);
+  return `<div class="zt-gtop">${gearIcon(g, ' big')}<div><div class="zt-grar" style="color:${r.color}">${r.name}</div><b>${gearName(g)}</b></div></div>`
+    + `<div class="zt-gstats">${statLines(g, cur)}</div>${verdict(g, cur)}`;
+}
+function totalsText(gear) {
+  const t = gearEffects(gear).totals;
+  const parts = GEAR_STAT_IDS.filter((k) => t[k]).map((k) => `${GEAR_STATS[k].name} +${t[k]}${GEAR_STATS[k].unit}${t[k] >= GEAR_STATS[k].cap ? '（MAX）' : ''}`);
+  return parts.length ? parts.join(' ・ ') : 'まだ なにも つけて いないよ';
+}
+import { Game } from './game.js?v=4';
+import { Input } from './input.js?v=4';
+import { Sfx } from './sfx.js?v=4';
 
 const SAVE_KEY = 'zombie_tps_save';
 const OPT_LABEL = {
@@ -20,7 +54,7 @@ const OPT_CYCLE = { autoFire: [false, true], sens: ['low', 'mid', 'high'], quali
 
 export default {
   prepare() {
-    return loadCss(new URL('../css/zombie-tps.css?v=3', import.meta.url).href);
+    return loadCss(new URL('../css/zombie-tps.css?v=4', import.meta.url).href);
   },
 
   init(container, onBackToHub) {
@@ -76,6 +110,8 @@ export default {
           <div class="zt-boss hidden"><b>ボスゾンビ</b><div class="zt-bossbar"><div></div></div></div>
           <div class="zt-feed"></div>
           <div class="zt-banner"><b></b><span></span></div>
+          <div class="zt-oji hidden"><div class="zt-ojitxt">たすけて！</div><div class="zt-ojihp"><div></div></div></div>
+          <div class="zt-ojiarrow hidden"><i>➤</i><span>たすけて！</span></div>
           <div class="zt-ammo"><div class="zt-wname"></div><div><b>30</b><span>/ 210</span></div></div>
           <button class="zt-btn zt-fire" data-act="fire"><span>うつ</span></button>
           <button class="zt-btn zt-aim" data-act="aim"><span>ねらう</span></button>
@@ -94,7 +130,11 @@ export default {
             <button data-stage="night">🌙 よるから</button>
           </div>
           <div class="zt-todhint">ウェーブごとに ひる → ゆうがた → よる</div>
-          <button class="zt-big" data-ui="start">スタート</button>
+          <div class="zt-startrow">
+            <button class="zt-big" data-ui="start">スタート</button>
+            <button class="zt-kigaebtn" data-ui="kigae">👕 きがえ<b></b></button>
+            <button class="zt-kigaebtn zt-soubibtn" data-ui="soubi">🛡 そうび<b></b></button>
+          </div>
           <div class="zt-opts">
             <button data-opt="autoFire">オートうち <b></b></button>
             <button data-opt="sens">かんど <b></b></button>
@@ -114,6 +154,35 @@ export default {
           <div><b>ロケットだん</b>は ゾンビが おとす はこを ひろう</div>
           <div class="zt-ver">v${VERSION}</div>
         </div>
+      </div>
+
+      <div class="zt-screen zt-kigae hidden">
+        <div class="zt-kbox">
+          <h2>きがえ</h2>
+          <div class="zt-kcards"></div>
+          <div class="zt-khint"></div>
+          <button class="zt-small" data-ui="kback">← もどる</button>
+        </div>
+      </div>
+
+      <div class="zt-screen zt-soubi hidden">
+        <div class="zt-kbox zt-sbox">
+          <h2>そうび</h2>
+          <div class="zt-sslots"></div>
+          <div class="zt-stot"></div>
+          <div class="zt-sbag"></div>
+          <div class="zt-sdet"></div>
+          <button class="zt-small" data-ui="sback">← もどる</button>
+        </div>
+      </div>
+
+      <div class="zt-gcard hidden">
+        <div class="zt-gnew">そうびを ひろった！</div>
+        <div class="zt-gbody"></div>
+        <div class="zt-gfull hidden">かばんが いっぱい（${INV_CAP}こ）</div>
+        <div class="zt-gbtns"><button data-gear="equip">そうび</button><button data-gear="keep">しまう</button><button data-gear="drop">すてる</button></div>
+        <div class="zt-gkey">E そうび ・ G すてる</div>
+        <div class="zt-gtime"><div></div></div>
       </div>
 
       <div class="zt-screen zt-pausescr hidden">
@@ -146,8 +215,106 @@ export default {
       const k = b.dataset.opt; b.querySelector('b').textContent = OPT_LABEL[k][String(this.save[k])];
     }
     for (const b of this.container.querySelectorAll('[data-stage]')) b.classList.toggle('sel', b.dataset.stage === this.save.stage);
+    this.el('.zt-kigaebtn b').textContent = outfitName(this.save.outfit);
+    this.el('.zt-soubibtn b').textContent = `${this.save.gear.inv.length} / ${INV_CAP}`;
+    this.updateKigae();
+    this.updateSoubi();
     this.el('.zt-best').textContent = this.save.bestWave ? `さいこう ウェーブ ${this.save.bestWave} ・ スコア ${this.save.bestScore}` : '';
   },
+
+  // きがえの カード（もっていない ふくは ？）
+  updateKigae() {
+    const owned = this.save.outfits;
+    this.el('.zt-kcards').innerHTML = OUTFITS.map((o) => {
+      const have = owned.includes(o.id), sel = this.save.outfit === o.id;
+      return `<button class="zt-kcard${have ? '' : ' locked'}${sel ? ' sel' : ''}" data-outfit="${o.id}">`
+        + `<i class="zt-sw zt-sw-${have ? o.id : 'none'}"></i><span>${have ? o.name : '？'}</span></button>`;
+    }).join('');
+    const n = owned.length, all = OUTFITS.length;
+    this.el('.zt-khint').textContent = n < all ? `あつめた ふく ${n} / ${all} ・ おそわれてる おじさんを たすけて もらおう` : `ぜんぶ あつめた！ ${n} / ${all}`;
+  },
+
+  // そうび がめん: ぶい・ごうけい・かばん・えらんだ ものの くわしく
+  updateSoubi() {
+    const gear = this.save.gear, eqs = equippedItems(gear);
+    if (this.selGear && !gear.inv.some((g) => g.id === this.selGear)) this.selGear = null;
+    this.el('.zt-sslots').innerHTML = GEAR_SLOTS.map((s, i) => {
+      const g = eqs[i];
+      return `<button class="zt-sslot${g && g.id === this.selGear ? ' sel' : ''}" ${g ? `data-gsel="${g.id}"` : 'data-gsel=""'}>${gearIcon(g)}<span>${s.name}</span></button>`;
+    }).join('');
+    this.el('.zt-stot').textContent = totalsText(gear);
+    const bag = gear.inv.filter((g) => !eqs.includes(g));
+    let cells = bag.map((g) => `<button class="zt-bagc${g.id === this.selGear ? ' sel' : ''}" data-gsel="${g.id}">${gearIcon(g)}</button>`).join('');
+    for (let i = gear.inv.length; i < INV_CAP; i++) cells += '<span class="zt-bagc none"></span>';
+    this.el('.zt-sbag').innerHTML = `<div class="zt-baglbl">かばん ${gear.inv.length} / ${INV_CAP}</div><div class="zt-bagg">${cells}</div>`;
+    const sel = gear.inv.find((g) => g.id === this.selGear);
+    const det = this.el('.zt-sdet');
+    if (!sel) { det.innerHTML = '<div class="zt-shint">アイコンを タップして えらんでね ・ ゾンビが たまに おとすよ（ボスは かならず！）</div>'; return; }
+    const cur = gear.inv.find((g) => g.id === gear.eq[sel.slot]);
+    const on = cur && cur.id === sel.id;
+    det.innerHTML = `<div class="zt-gcardin">${gearCardHTML(sel, on ? null : cur || null)}</div><div class="zt-sbtns">`
+      + (on ? '<button data-gearui="unequip">はずす</button>' : '<button data-gearui="equip">そうび</button>')
+      + '<button data-gearui="drop">すてる</button></div>';
+  },
+  gearUi(act) {
+    const gear = this.save.gear, sel = gear.inv.find((g) => g.id === this.selGear);
+    if (!sel) return;
+    if (act === 'drop' && !this.dropArm) { this.dropArm = sel.id; this.el('[data-gearui=drop]').textContent = 'ほんとに すてる？'; return; }
+    gearAction(gear, sel, act);
+    if (act === 'drop') this.selGear = null;
+    this.dropArm = null;
+    this.persist(); this.updateTitle();
+    if (this.game) { this.game.settings = this.save; this.game.refreshGear(); this.game.setOutfit(this.save.outfit, act === 'equip'); }
+    this.sfx.swap();
+  },
+  // あそんでる ときに ひろった そうびの カード
+  gearFound(item) {
+    (this.gearQ ||= []).push(item);
+    if (!this.gearCur) this.nextGearCard();
+  },
+  nextGearCard() {
+    const item = this.gearQ.shift(); this.gearCur = item || null;
+    const card = this.el('.zt-gcard');
+    if (!item) { card.classList.add('hidden'); return; }
+    const gear = this.save.gear, cur = gear.inv.find((g) => g.id === gear.eq[item.slot]) || null;
+    const r = rarityOf(item.rarity);
+    card.style.setProperty('--rc', r.color); card.dataset.r = item.rarity;
+    this.el('.zt-gbody').innerHTML = gearCardHTML(item, cur);
+    const full = gear.inv.length >= INV_CAP;
+    this.el('.zt-gfull').classList.toggle('hidden', !full);
+    this.el('[data-gear=keep]').disabled = full;
+    this.el('[data-gear=equip]').disabled = full && !cur;
+    this.gearT = 9; this.gearT0 = 9;
+    card.classList.remove('hidden', 'pop'); void card.offsetWidth; card.classList.add('pop');
+  },
+  resolveGear(act) {
+    const item = this.gearCur; if (!item) return;
+    const gear = this.save.gear;
+    let res = gearAction(gear, item, act);
+    if (!res.ok && act !== 'drop') {
+      // かばんが いっぱい: いちばん よわい かばんの ものと いれかえ（あたらしい ほうが つよい ときだけ）
+      const eqs = equippedItems(gear), bag = gear.inv.filter((g) => !eqs.includes(g));
+      const worst = bag.sort((a, b) => gearScore(a) - gearScore(b))[0];
+      if (worst && gearScore(worst) < gearScore(item)) { gearAction(gear, worst, 'drop'); res = gearAction(gear, item, act); }
+    }
+    this.persist(); this.updateTitle();
+    if (this.game) {
+      this.game.settings = this.save;
+      if (act === 'equip' && res.ok) { this.game.refreshGear(); this.game.setOutfit(this.save.outfit, true); this.game.hud.kill(`${gearName(item)}を そうび！`, true); }
+      else if (act === 'keep' && res.ok) this.game.hud.kill('かばんに しまった');
+    }
+    this.sfx.swap();
+    this.nextGearCard();
+  },
+  // まいフレーム: カードの じかん（きれたら しまう）
+  tickGear(dt) {
+    if (!this.gearCur) return;
+    if (this.game && this.game.state === 'pause') return;
+    this.gearT -= dt;
+    this.el('.zt-gtime div').style.width = Math.max(0, this.gearT / this.gearT0 * 100).toFixed(1) + '%';
+    if (this.gearT <= 0) this.resolveGear('keep');
+  },
+  flushGear() { while (this.gearCur) this.resolveGear('keep'); },
 
   applySens() {
     if (!this.input) return;
@@ -159,8 +326,19 @@ export default {
 
   bind() {
     this.onClick = (e) => {
-      const b = e.target.closest('[data-ui],[data-opt],[data-stage]'); if (!b) return;
+      const b = e.target.closest('[data-ui],[data-opt],[data-stage],[data-outfit],[data-gear],[data-gsel],[data-gearui]'); if (!b) return;
       this.sfx.unlock();
+      if (b.dataset.gear) { if (!b.disabled) this.resolveGear(b.dataset.gear); return; }
+      if (b.dataset.gsel !== undefined) { if (b.dataset.gsel) { this.selGear = b.dataset.gsel; this.dropArm = null; this.updateSoubi(); this.sfx.swap(); } return; }
+      if (b.dataset.gearui) { this.gearUi(b.dataset.gearui); return; }
+      if (b.dataset.outfit) {
+        const id = b.dataset.outfit;
+        if (!this.save.outfits.includes(id)) { this.sfx.empty?.(); return; }
+        this.save.outfit = id; this.persist(); this.updateTitle();
+        if (this.game) { this.game.settings = this.save; this.game.setOutfit(id, true); }
+        this.sfx.swap();
+        return;
+      }
       if (b.dataset.stage) {
         this.save.stage = b.dataset.stage; this.persist(); this.updateTitle();
         if (this.game) { this.game.settings = this.save; this.game.applyStage(this.save.stage); }
@@ -182,8 +360,18 @@ export default {
       else if (ui === 'resume') this.resume();
       else if (ui === 'title') this.toTitle();
       else if (ui === 'hub') this.back();
+      else if (ui === 'kigae') { this.updateKigae(); this.show('kigae'); this.sfx.swap(); }
+      else if (ui === 'kback' || ui === 'sback') { this.show('title'); this.sfx.swap(); }
+      else if (ui === 'soubi') { this.selGear = null; this.dropArm = null; this.updateSoubi(); this.show('soubi'); this.sfx.swap(); }
     };
     this.container.addEventListener('click', this.onClick);
+    this.onKey = (e) => {
+      if (!this.gearCur || !this.game || this.game.state !== 'play') return;
+      const k = e.key.toLowerCase();
+      if (k === 'e') { const b = this.el('[data-gear=equip]'); if (!b.disabled) this.resolveGear('equip'); }
+      else if (k === 'g') this.resolveGear('drop');
+    };
+    window.addEventListener('keydown', this.onKey);
     this.onResize = this.onResize.bind(this);
     window.addEventListener('resize', this.onResize);
     window.addEventListener('orientationchange', this.onResize);
@@ -203,6 +391,11 @@ export default {
 
   show(which) {
     this.el('.zt-title').classList.toggle('hidden', which !== 'title');
+    this.el('.zt-kigae').classList.toggle('hidden', which !== 'kigae');
+    this.el('.zt-soubi').classList.toggle('hidden', which !== 'soubi');
+    if (this.game) this.game.kigae = which === 'kigae' || which === 'soubi';
+    if (which !== 'play' && which !== 'pause') this.flushGear?.();
+    this.el('.zt-gcard').classList.toggle('zt-dim', which === 'pause');
     this.el('.zt-pausescr').classList.toggle('hidden', which !== 'pause');
     this.el('.zt-over').classList.toggle('hidden', which !== 'over');
     this.root.classList.toggle('zt-playing', which === 'play' || which === 'pause' || which === 'over');
@@ -211,6 +404,7 @@ export default {
 
   play() {
     if (!this.game) return;
+    this.flushGear();
     this.input.reset();
     this.game.startGame();
     this.show('play');
@@ -240,6 +434,7 @@ export default {
       boom: q('.zt-boom'), feed: q('.zt-feed'), banner: q('.zt-banner'), reload: q('.zt-reload'), reloadBar: q('.zt-reload div'), hurt: q('.zt-hurt'),
       slots: [...this.container.querySelectorAll('.zt-slot')],
       boss: q('.zt-boss'), bossName: q('.zt-boss b'), bossBar: q('.zt-bossbar div'),
+      oji: q('.zt-oji'), ojiTxt: q('.zt-ojitxt'), ojiHp: q('.zt-ojihp div'), ojiArrow: q('.zt-ojiarrow'), ojiArrowI: q('.zt-ojiarrow i'), ojiArrowT: q('.zt-ojiarrow span'),
     };
     const last = {};
     const setText = (k, el, v) => { if (last[k] !== v) { last[k] = v; el.textContent = v; } };
@@ -274,6 +469,30 @@ export default {
         setText('bossName', E.bossName, b.name);
         const w = (Math.max(0, b.hp) * 100).toFixed(1) + '%';
         if (last.bossW !== w) { last.bossW = w; E.bossBar.style.width = w; }
+      },
+      // おじさんの ふきだし（がめんの なか）／やじるし（がめんの そと）
+      oji: (o) => {
+        const mode = !o ? 'none' : o.onScreen ? 'bubble' : 'arrow';
+        if (last.ojiMode !== mode) {
+          last.ojiMode = mode;
+          E.oji.classList.toggle('hidden', mode !== 'bubble'); E.ojiArrow.classList.toggle('hidden', mode !== 'arrow');
+        }
+        if (!o) return;
+        const x = ((o.x + 1) * 50).toFixed(2) + '%', y = ((1 - o.y) * 50).toFixed(2) + '%';
+        const el = mode === 'bubble' ? E.oji : E.ojiArrow;
+        el.style.left = x; el.style.top = y;
+        if (last.ojiTxt !== o.text) { last.ojiTxt = o.text; E.ojiTxt.textContent = o.text; E.ojiArrowT.textContent = o.text; E.oji.dataset.st = o.state; E.ojiArrow.dataset.st = o.state; }
+        const w = (Math.max(0, o.hp) * 100).toFixed(0) + '%';
+        if (last.ojiHp !== w) { last.ojiHp = w; E.ojiHp.style.width = w; E.ojiHp.classList.toggle('low', o.hp < 0.35); }
+        if (mode === 'arrow') E.ojiArrowI.style.transform = `rotate(${o.ang.toFixed(3)}rad)`;
+      },
+      // おじさんから ふくを もらった → セーブして すぐ きがえる
+      gearFound: (item) => app.gearFound(item),
+      gift: (id) => {
+        const isNew = unlockOutfit(app.save, id);
+        app.persist(); app.updateTitle();
+        if (app.game) app.game.settings = app.save;
+        return isNew;
       },
       crossTarget: (on) => { if (last.ct !== on) { last.ct = on; E.cross.classList.toggle('target', on); } },
       hitmarker: (head) => {
@@ -322,6 +541,7 @@ export default {
     const t0 = performance.now();
     const inp = this.input.read();
     this.game.update(dt, inp);
+    this.tickGear(dt);
     this.game.render();
     const cpu = performance.now() - t0;
     const st = this.game.stats;
@@ -337,6 +557,7 @@ export default {
     window.removeEventListener('orientationchange', this.onResize);
     document.removeEventListener('visibilitychange', this.onVis);
     document.removeEventListener('pointerlockchange', this.onLock);
+    window.removeEventListener('keydown', this.onKey);
     if (this.input) this.input.destroy();
     if (this.game) this.game.dispose();
     this.sfx.close();

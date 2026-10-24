@@ -148,14 +148,69 @@ export function shirtTexture(base, seed) {
 }
 
 // プレイヤーの かお（ヘルメット＋ゴーグル）
-export function playerFaceTexture() {
+// かお（ふくごとに かえる: top=ぼうし band=ゴーグル eye=め mask=くちもと domino=めの まわり）
+export function playerFaceTexture(o = {}) {
+  const c = (v) => (typeof v === 'number' ? hex(v) : v);
+  const skin = c(o.skin ?? '#d9a982');
   return tex(makeCanvas(16, 16, (g) => {
-    g.fillStyle = '#d9a982'; g.fillRect(0, 0, 16, 16);
-    g.fillStyle = '#4f5b3a'; g.fillRect(0, 0, 16, 5); g.fillRect(0, 5, 1, 4); g.fillRect(15, 5, 1, 4);
-    g.fillStyle = '#2b2f2a'; g.fillRect(2, 6, 12, 3);
-    g.fillStyle = '#7fd4ff'; g.fillRect(3, 7, 4, 1); g.fillRect(9, 7, 4, 1);
-    g.fillStyle = '#8c5a3c'; g.fillRect(6, 12, 4, 1);
+    g.fillStyle = skin; g.fillRect(0, 0, 16, 16);
+    if (o.top !== null) { g.fillStyle = c(o.top ?? '#4f5b3a'); g.fillRect(0, 0, 16, 5); g.fillRect(0, 5, 1, 4); g.fillRect(15, 5, 1, 4); }
+    if (o.domino) { g.fillStyle = c(o.domino); g.fillRect(1, 6, 14, 3); }
+    if (o.band !== null) { g.fillStyle = c(o.band ?? '#2b2f2a'); g.fillRect(2, 6, 12, 3); }
+    g.fillStyle = c(o.eye ?? '#7fd4ff'); g.fillRect(3, 7, 4, 1); g.fillRect(9, 7, 4, 1);
+    if (o.mask) { g.fillStyle = c(o.mask); g.fillRect(0, 10, 16, 6); }
+    else if (o.grill) { g.fillStyle = c(o.grill); for (let x = 4; x < 12; x += 2) g.fillRect(x, 11, 1, 3); }
+    else { g.fillStyle = c(o.mouth ?? '#8c5a3c'); g.fillRect(6, 12, 4, 1); }
   }), false);
+}
+
+// めいさいの もよう
+export function camoTexture(cols, seed) {
+  return tex(makeCanvas(16, 16, (g) => {
+    const r = rng(seed);
+    g.fillStyle = hex(cols[0]); g.fillRect(0, 0, 16, 16);
+    for (let i = 0; i < 14; i++) {
+      g.fillStyle = hex(cols[1 + (i % (cols.length - 1))]);
+      const x = (r() * 16) | 0, y = (r() * 16) | 0, w = 2 + ((r() * 4) | 0), h = 1 + ((r() * 3) | 0);
+      g.fillRect(x, y, w, h); g.fillRect((x + w) % 16, y, 2, h + 1);
+    }
+  }));
+}
+
+// おじさんの あたま（はげ・よこの しらが・めがね・くちひげ。やさしい かお）
+const OJI_SKIN = '#f0c39b', OJI_HAIR = '#b9b4ab';
+export function ojisanTextures() {
+  const face = tex(makeCanvas(16, 16, (g) => {
+    g.fillStyle = OJI_SKIN; g.fillRect(0, 0, 16, 16);
+    g.fillStyle = '#ffe2c6'; g.fillRect(5, 1, 4, 2);                       // おでこの ひかり
+    g.fillStyle = OJI_HAIR; g.fillRect(0, 5, 1, 6); g.fillRect(15, 5, 1, 6);  // よこの かみ
+    g.fillStyle = '#8a8378'; g.fillRect(3, 5, 3, 1); g.fillRect(10, 5, 3, 1); // まゆげ
+    g.fillStyle = '#3a3330';                                                 // めがね
+    g.fillRect(2, 6, 5, 1); g.fillRect(2, 9, 5, 1); g.fillRect(2, 6, 1, 4); g.fillRect(6, 6, 1, 4);
+    g.fillRect(9, 6, 5, 1); g.fillRect(9, 9, 5, 1); g.fillRect(9, 6, 1, 4); g.fillRect(13, 6, 1, 4);
+    g.fillRect(7, 7, 2, 1);
+    g.fillStyle = '#e8f6ff'; g.fillRect(3, 7, 3, 2); g.fillRect(10, 7, 3, 2);
+    g.fillStyle = '#2b2522'; g.fillRect(4, 8, 1, 1); g.fillRect(11, 8, 1, 1);  // め
+    g.fillStyle = '#e0a985'; g.fillRect(7, 9, 2, 2);                          // はな
+    g.fillStyle = '#7a6a5e'; g.fillRect(4, 11, 8, 1); g.fillRect(3, 12, 3, 1); g.fillRect(10, 12, 3, 1); // くちひげ
+    g.fillStyle = '#b45a4a'; g.fillRect(6, 13, 4, 1);                         // くち
+    g.fillStyle = '#f7a9a0'; g.fillRect(1, 11, 2, 1); g.fillRect(13, 11, 2, 1); // ほっぺ
+  }), false);
+  const side = tex(makeCanvas(16, 16, (g) => {
+    g.fillStyle = OJI_SKIN; g.fillRect(0, 0, 16, 16);
+    g.fillStyle = OJI_HAIR; g.fillRect(0, 5, 16, 6);
+    g.fillStyle = OJI_SKIN; g.fillRect(6, 7, 3, 3);                           // みみ
+    g.fillStyle = '#3a3330'; g.fillRect(0, 7, 6, 1);                          // めがねの つる
+  }), false);
+  const back = tex(makeCanvas(16, 16, (g) => {
+    g.fillStyle = OJI_SKIN; g.fillRect(0, 0, 16, 16);
+    g.fillStyle = OJI_HAIR; g.fillRect(0, 5, 16, 7);
+  }), false);
+  const top = tex(makeCanvas(16, 16, (g) => {
+    g.fillStyle = OJI_SKIN; g.fillRect(0, 0, 16, 16);
+    g.fillStyle = '#fff0de'; g.fillRect(4, 4, 5, 3); g.fillRect(5, 7, 2, 1);    // ぴかっ
+  }), false);
+  return { face, side, back, top, skin: 0xf0c39b };
 }
 
 // こうかの テクスチャ（マズルフラッシュ・みどりの しみ・だんこん）

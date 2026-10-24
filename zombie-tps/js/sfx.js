@@ -191,4 +191,24 @@ export class Sfx {
     this._noise(t, 0.08, { type: 'lowpass', freq: 700, gain: 0.18 });
     this._noise(t + 0.25, 0.08, { type: 'lowpass', freq: 600, gain: 0.16 });
   }
+  // おじさん「たすけて〜」（ふわっと 2おん）
+  help(vol = 0.5) {
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime;
+    this._tone(t, 0.22, { type: 'triangle', f0: 620, f1: 560, gain: 0.22 * vol });
+    this._tone(t + 0.24, 0.34, { type: 'triangle', f0: 760, f1: 520, gain: 0.22 * vol });
+  }
+  // ふくを もらった（キラキラ ファンファーレ）
+  gift() {
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime;
+    [523, 659, 784, 1047, 1319].forEach((f, i) => this._tone(t + i * 0.09, 0.35, { type: 'square', f0: f, f1: f * 0.99, gain: 0.08 }));
+    this._tone(t + 0.5, 0.6, { type: 'triangle', f0: 1568, f1: 1560, gain: 0.12 });
+  }
+  // おじさん にげる「ひえ〜っ」
+  flee() {
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime;
+    this._tone(t, 0.5, { type: 'triangle', f0: 900, f1: 380, gain: 0.2 });
+  }
 }
