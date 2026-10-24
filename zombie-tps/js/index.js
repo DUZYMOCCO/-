@@ -6,8 +6,8 @@ import { loadCss } from '../../common/js/load-css.js';
 import { storage } from '../../common/js/storage.js';
 import { WEAPONS, WEAPON_ORDER, normalizeSave, SENS, VERSION, OUTFITS, outfitName, unlockOutfit,
   GEAR_SLOTS, GEAR_STATS, GEAR_STAT_IDS, INV_CAP, rarityOf, gearColor, gearName, gearScore, gearAction, gearEffects, equippedItems,
-  autoEquipBest, equipGain, autoPickup, bestLoadout, pickMapId, MAP_IDS } from './rules.js?v=8';
-import { MAPS, mapInfo } from './map.js?v=8';
+  autoEquipBest, equipGain, autoPickup, bestLoadout, pickMapId, MAP_IDS } from './rules.js?v=9';
+import { MAPS, mapInfo } from './map.js?v=9';
 
 const hex6 = (n) => '#' + n.toString(16).padStart(6, '0');
 // v0.7.0: がめんの そとを さす やじるしは ボタンに かぶらない たかさ（うえから 16%〜32%）
@@ -50,9 +50,9 @@ function totalsText(gear) {
   const parts = GEAR_STAT_IDS.filter((k) => t[k]).map((k) => `${GEAR_STATS[k].name} +${t[k]}${GEAR_STATS[k].unit}${t[k] >= GEAR_STATS[k].cap ? '（MAX）' : ''}`);
   return parts.length ? parts.join(' ・ ') : 'まだ なにも つけて いないよ';
 }
-import { Game } from './game.js?v=8';
-import { Input } from './input.js?v=8';
-import { Sfx } from './sfx.js?v=8';
+import { Game } from './game.js?v=9';
+import { Input } from './input.js?v=9';
+import { Sfx } from './sfx.js?v=9';
 
 // v0.7.0: ぶきの ちいさい アイコン（かくうの シルエット）
 const svgI = (d) => `<svg viewBox="0 0 32 16" aria-hidden="true">${d}</svg>`;
@@ -75,7 +75,7 @@ const OPT_CYCLE = { autoFire: [false, true], sens: ['low', 'mid', 'high'], quali
 
 export default {
   prepare() {
-    return loadCss(new URL('../css/zombie-tps.css?v=8', import.meta.url).href);
+    return loadCss(new URL('../css/zombie-tps.css?v=9', import.meta.url).href);
   },
 
   init(container, onBackToHub) {
@@ -151,7 +151,7 @@ export default {
           <h1>ゾンビ<br>ストライク</h1>
           <p class="zt-sub">アサルトライフルと ロケットで まちを まもれ！</p>
           <div class="zt-stages">
-            <button data-stage="day">🌆 ゆうぐれから</button>
+            <button data-stage="day">☁️ ひるから</button>
             <button data-stage="night">🌙 よるから</button>
           </div>
           <div class="zt-maps">${['rotate', ...MAP_IDS].map((id) => `<button data-map="${id}">${id === 'rotate' ? '🔀 おまかせ' : `${mapInfo(id).icon} ${mapInfo(id).name}`}</button>`).join('')}</div>

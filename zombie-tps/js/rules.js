@@ -1,7 +1,7 @@
 // ゾンビストライク — ゲームの きまり（DOM / three.js に いぞんしない。node のテストから よめる）
 // ぶき・ダメージ・ウェーブ・あたりはんてい（レイ×はこ）・いどうの ぶつかり・ゾンビの みちさがし（フローフィールド）
 
-export const VERSION = '0.7.0';
+export const VERSION = '0.7.1';
 
 // ---- ぶき ----
 // rpm: 1ぷんかんの はっしゃかず / mag: マガジン / reserve: よびだん / reload: びょう
@@ -87,7 +87,7 @@ export function pickupVisible(age) {
   return Math.floor(age * (left < 2 ? 10 : 5)) % 2 === 0;
 }
 
-// ---- じかん（ウェーブごとに ゆうぐれ → ゆうやけ → よる。v0.6.1: ぜんぶ くらい）----
+// ---- じかん（ウェーブごとに ひる → ゆうやけ → よる → ひる …。v0.6.1: ぜんぶ くらい → v0.7.1: ひるは くもりの あかるさに もどる）----
 export const TOD_ORDER = ['day', 'sunset', 'night'];
 export function timeOfDay(wave, start = 'day') {
   const s = Math.max(0, TOD_ORDER.indexOf(start));
@@ -96,8 +96,9 @@ export function timeOfDay(wave, start = 'day') {
 // いろ・あかるさ（sky: そらの グラデーション 4いろ、うえ→した）
 export const TOD = {
   // v0.6.1: いつも くらい（むらさきの ゆうぐれ・ちいろの ゆうがた・みどりの よる）。とおくの もえる まちが みえる
-  day: { fog: 0x241e30, near: 8, far: 50, hemiSky: 0x7c74a4, hemiGround: 0x26222c, hemiI: 0.95, sun: 0xb8a0f0, sunI: 0.8, off: [14, 26, 9],
-    sky: [0x07050e, 0x1a1230, 0x30244a, 0x241e30], night: 0.55, moon: 0.85, lamps: 0.6, disk: 0, boost: 1.8 },
+  // v0.7.1: ひるは ちゃんと あかるく（くもりの はいいろの そら・うすい たいよう・ほしと つきは なし・ライトも けす）。でも まちは もえていて うすぐらい
+  day: { fog: 0x5a6068, near: 14, far: 80, hemiSky: 0xc8d0dc, hemiGround: 0x4a4640, hemiI: 1.25, sun: 0xfff0d8, sunI: 1.5, off: [14, 26, 9],
+    sky: [0x2e3644, 0x4a5464, 0x6a7280, 0x5a6068], night: 0, moon: 0, lamps: 0.1, disk: 0.3, boost: 1.1 },
   sunset: { fog: 0x2e1822, near: 8, far: 48, hemiSky: 0xc0909a, hemiGround: 0x281a28, hemiI: 0.95, sun: 0xff7a48, sunI: 0.95, off: [-24, 9, -14],
     sky: [0x0a0614, 0x2a1030, 0x5a1e2c, 0x2e1822], night: 0.65, moon: 0.75, lamps: 0.85, disk: 0.45, boost: 2 },
   night: { fog: 0x0a1612, near: 7, far: 44, hemiSky: 0x88b0b0, hemiGround: 0x1e2a2a, hemiI: 0.95, sun: 0x9ad0c0, sunI: 0.7, off: [-12, 24, -16],
@@ -109,16 +110,26 @@ export function mixColor(a, b, k) {
   const bl = (a & 255) + (((b & 255) - (a & 255)) * k);
   return (Math.round(r) << 16) | (Math.round(g) << 8) | Math.round(bl);
 }
-export function mixTod(from, to, k) {
-  const A = TOD[from] || TOD.day, B = TOD[to] || TOD.day, o = {};
-  for (const key in A) {
-    const a = A[key], b = B[key];
+// p（いまの いろ）から q へ k だけ まぜる。ゲームの じかんの うつりかわりも これを つかう
+export function blendTod(A, B, k) {
+  const o = {};
+  for (const key in B) {
+    const a = A[key] ?? B[key], b = B[key];
     if (key === 'sky') o.sky = a.map((c, i) => mixColor(c, b[i], k));
     else if (key === 'off') o.off = a.map((v, i) => v + (b[i] - v) * k);
     else if (['fog', 'hemiSky', 'hemiGround', 'sun'].includes(key)) o[key] = mixColor(a, b, k);
     else o[key] = a + (b - a) * k;
   }
   return o;
+}
+export function mixTod(from, to, k) {
+  return blendTod(TOD[from] || TOD.day, TOD[to] || TOD.day, k);
+}
+// みための あかるさ（テスト・チェック よう）: そら・きりの あかるさ、ひかりの つよさ、ほし・ライト
+export function todLook(p) {
+  const lum = (c) => 0.299 * ((c >> 16) & 255) + 0.587 * ((c >> 8) & 255) + 0.114 * (c & 255);
+  return { sky: p.sky.reduce((a, c) => a + lum(c), 0) / p.sky.length, fog: lum(p.fog), light: p.hemiI + p.sunI,
+    far: p.far, stars: p.night, moon: p.moon, flashlight: p.night > 0.5 };
 }
 
 // ---- ばくはつ ----

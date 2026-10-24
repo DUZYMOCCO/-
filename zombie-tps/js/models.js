@@ -1,6 +1,6 @@
 // ブロックの キャラクターと ぶき（かくうの デザイン・ロゴなし）
 import * as THREE from '../vendor/three.module.min.js';
-import { zombieFaceTexture, playerFaceTexture, solidTexture, shirtTexture, camoTexture, ojisanTextures } from './textures.js?v=8';
+import { zombieFaceTexture, playerFaceTexture, solidTexture, shirtTexture, camoTexture, ojisanTextures } from './textures.js?v=9';
 
 const boxGeoCache = new Map();
 export function boxGeo(w, h, d) {

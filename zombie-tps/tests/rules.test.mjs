@@ -6,7 +6,7 @@ import {
   buildGrid, updateFlow, flowDir, cellOf, normalizeSave,
   blastFalloff, blastDamage, launchVelocity, knockAt, FLY_KNOCK, MAX_AIR, stickCurve, approach, refillReserve, VERSION,
   rollRocketDrop, addRocketAmmo, pickupVisible, DROP_CHANCE, ROCKET_RESERVE_MAX, PICKUP_LIFE,
-  timeOfDay, mixTod, TOD, isBossWave, bossHp, BOSS,
+  timeOfDay, mixTod, blendTod, todLook, TOD, isBossWave, bossHp, BOSS,
   OUTFITS, OUTFIT_IDS, outfitName, nextOutfit, unlockOutfit, OJISAN, shouldSpawnOjisan, ojisanAttackers, pickOjisanSpot, openCells, edgeArrow,
   canClimb, CLIMBERS, PERCH, perchRunnerNeeded,
   GEAR_SLOT_IDS, RARITIES, RARITY_IDS, GEAR_STATS, GEAR_STAT_IDS, SLOT_STATS, statItemMax, GEAR_COLOR_IDS, GEAR_DROP, GEAR_FLOOR, INV_CAP,
@@ -228,7 +228,7 @@ test('なめらか いどう: approach は フレームレートに よらない
 });
 
 test('バージョン と セーブの ステージ', () => {
-  assert.equal(VERSION, '0.7.0');
+  assert.equal(VERSION, '0.7.1');
   assert.equal(normalizeSave(null).stage, 'day');
   assert.equal(normalizeSave({ stage: 'night' }).stage, 'night');
   assert.equal(normalizeSave({ stage: 'mars' }).stage, 'day');
@@ -876,9 +876,9 @@ test('v0.6.0 はいきょの ビル: 4かい・ゆかは ふつうの ゆか・�
   assert.ok(groundHeight(0, -3.6, 0.2, 8.5, pc) < 2.5, 'エレベーターの あなは かごの うえまで おちる');
 });
 
-test('v0.6.1 いつも くらい: どの じかんも くらい そら・こい きり・つき・かみなり・マップごとの はいけい', async () => {
+test('v0.6.1 いつも くらい: ゆうやけ・よるは くらい そら・こい きり・つき・かみなり・マップごとの はいけい（v0.7.1: ひるは べつ）', async () => {
   const lum = (c) => 0.299 * ((c >> 16) & 255) + 0.587 * ((c >> 8) & 255) + 0.114 * (c & 255);
-  for (const k of ['day', 'sunset', 'night']) {
+  for (const k of ['sunset', 'night']) {
     const t = TOD[k];
     assert.ok(lum(t.fog) < 60, `${k} きり くらい`);
     assert.ok(lum(t.sky[0]) < 25 && lum(t.sky[1]) < 50, `${k} そら くらい`);
@@ -1038,4 +1038,33 @@ test('v0.7.0 おじさん: すぐには たおれない（どの ウェーブで
   assert.ok(ojisanSurvivalTime(['runner', 'runner', 'runner', 'runner', 'runner'], ZOMBIES, ATTACK_RANGE) >= 45);
   // プレイヤーが ふつうに はしって いける（いちばん とおくても ~4m/s で 5びょう）
   assert.ok(OJISAN.dist[1] / 4 < 10);
+});
+
+// ---- v0.7.1 よるの あと ひるに もどる ----
+test('v0.7.1 よる → ひる: ラベルが「ひる」なら みためも ひるに もどる（そら・きり・ひかり・ほし・ライト）', () => {
+  const Ld = todLook(TOD.day), Ls = todLook(TOD.sunset), Ln = todLook(TOD.night);
+  // ひるは よる・ゆうやけ より はっきり あかるい（でも まっしろ では ない）
+  assert.ok(Ld.sky > Ln.sky + 40 && Ld.sky > Ls.sky + 25, 'ひるの そらは あかるい');
+  assert.ok(Ld.fog > Ln.fog + 50 && Ld.fog > Ls.fog + 40 && Ld.fog < 130, 'ひるの きりは あかるい はいいろ');
+  assert.ok(Ld.light > Ln.light * 1.4, 'ひるの ひかりは つよい');
+  assert.ok(Ld.far > Ln.far + 20, 'ひるは とおくまで みえる');
+  assert.equal(Ld.stars, 0); assert.equal(Ld.moon, 0); assert.equal(Ld.flashlight, false);
+  assert.equal(Ln.flashlight, true);
+  // ゲームと おなじ ながれ: よるから はじめて 3ウェーブ → ひる。いまの いろ（よる）から まぜて k=1 で ひるに なる
+  for (const start of ['day', 'night']) {
+    let cur = { ...TOD[timeOfDay(1, start)] }, seen = [];
+    for (let w = 2; w <= 9; w++) {
+      const to = timeOfDay(w, start);
+      for (const k of [0.25, 0.5, 0.75]) blendTod(cur, TOD[to], k); // とちゅう
+      cur = blendTod(cur, TOD[to], 1);
+      assert.deepEqual(todLook(cur), todLook(TOD[to]), `${start} ウェーブ${w} ${to}`);
+      seen.push(to);
+    }
+    assert.ok(seen.filter((t) => t === 'day').length >= 2, 'ひるが なんども くる');
+  }
+  // とちゅうの いろも ちゃんと まざる（よる→ひる の まんなかは あいだの あかるさ）
+  const mid = todLook(blendTod(TOD.night, TOD.day, 0.5));
+  assert.ok(mid.fog > Ln.fog && mid.fog < Ld.fog && mid.light > Ln.light && mid.light < Ld.light);
+  // TOD の キーは ぜんぶ おなじ（まぜる ときに のこりが でない）
+  for (const k of ['sunset', 'night']) assert.deepEqual(Object.keys(TOD[k]).sort(), Object.keys(TOD.day).sort());
 });

@@ -6,22 +6,22 @@ import {
   waveSpec, waveQueue, killScore, castShot, aabbNormal, collideCircle, groundHeight, cameraDistance,
   buildGrid, updateFlow, flowDir, gridLineClear,
   blastDamage, blastFalloff, launchVelocity, knockAt, FLY_KNOCK, MAX_AIR, approach, refillReserve,
-  TOD, timeOfDay, mixColor as mixC, rollRocketDrop, addRocketAmmo, pickupVisible, PICKUP_LIFE, MAX_PICKUPS,
+  TOD, timeOfDay, blendTod, mixColor as mixC, rollRocketDrop, addRocketAmmo, pickupVisible, PICKUP_LIFE, MAX_PICKUPS,
   isBossWave, bossHp, BOSS, climbTarget, climbLanding, climbTime, supportBox, boxGap,
   canClimb, perchRunnerNeeded, PERCH, OJISAN, shouldSpawnOjisan, ojisanAttackers, pickOjisanSpot, openCells, edgeArrow,
   nextOutfit, outfitName, cellOf,
   spinGun, weaponMoveMul, makeBoxIndex, pickSpawnPoint, hurryMul, pickMapId,
   rollGearDrop, rollGear, GEAR_FLOOR, GEAR_LIFE, gearEffects, equippedItems, gearColor, rarityOf, normalizeGear,
   damageMul, frontHit, heavyOf, unlockedSpecials, zombieTargetsRobot,
-} from './rules.js?v=8';
-import { RobotMixin } from './robot.js?v=8';
-import { makeNav } from './nav.js?v=8';
-import { buildMap, playerColliders, zombieColliders, shotColliders } from './map.js?v=8';
-import { buildTextures, fxTextures } from './textures.js?v=8';
-import { buildWorld, disposeWorld } from './world.js?v=8';
-import { Backdrop, BACKDROPS } from './backdrop.js?v=8';
-import { makePlayer, applyOutfit, applyGear, makeGearDrop, makeOjisan, makeWeapons, makeZombie, makeRocketProjectile, makeRocketCrate, zombieChunkColors, FLASH_MAT } from './models.js?v=8';
-import { FX } from './fx.js?v=8';
+} from './rules.js?v=9';
+import { RobotMixin } from './robot.js?v=9';
+import { makeNav } from './nav.js?v=9';
+import { buildMap, playerColliders, zombieColliders, shotColliders } from './map.js?v=9';
+import { buildTextures, fxTextures } from './textures.js?v=9';
+import { buildWorld, disposeWorld } from './world.js?v=9';
+import { Backdrop, BACKDROPS } from './backdrop.js?v=9';
+import { makePlayer, applyOutfit, applyGear, makeGearDrop, makeOjisan, makeWeapons, makeZombie, makeRocketProjectile, makeRocketCrate, zombieChunkColors, FLASH_MAT } from './models.js?v=9';
+import { FX } from './fx.js?v=9';
 
 const v3 = () => new THREE.Vector3();
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -280,14 +280,7 @@ export class Game {
     const f = this.todFade; if (!f) return;
     f.t += dt;
     const k = smooth(Math.min(1, f.t / TOD_FADE));
-    const A = f.from, B = TOD[f.to], o = {};
-    for (const key in B) {
-      const a = A[key], b = B[key];
-      if (key === 'sky') o.sky = a.map((c, i) => mixC(c, b[i], k));
-      else if (key === 'off') o.off = a.map((v, i) => v + (b[i] - v) * k);
-      else if (key === 'fog' || key === 'hemiSky' || key === 'hemiGround' || key === 'sun') o[key] = mixC(a, b, k);
-      else o[key] = a + (b - a) * k;
-    }
+    const o = blendTod(f.from, TOD[f.to], k);
     this.applyTod(o, true);
     if (f.t >= TOD_FADE) { this.tod = f.to; this.todFade = null; this.applyTod(TOD[f.to], true); }
   }
