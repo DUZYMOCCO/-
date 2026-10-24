@@ -23,6 +23,42 @@
 .sa-wpn b { display: block; font-size: 12px; }
 .sa-wpn span { font-size: 16px; font-weight: 900; color: #d8c48a; }
 
+/* BGM トースト */
+.sa-nowplaying {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-18px);
+  padding: 4px 14px;
+  border-radius: 14px;
+  background: rgba(12, 8, 10, 0.9);
+  border: 1px solid #8a2a22;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.85), 0 0 12px rgba(180,30,20,0.35);
+  color: #f2eae2;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .35s ease, transform .35s ease;
+  z-index: 25;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-shadow: 0 1px 2px #000;
+  white-space: nowrap;
+}
+.sa-nowplaying.on {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+.sa-nowplaying em {
+  font-style: normal;
+  color: #d8c48a;
+  font-size: 10px;
+  opacity: .85;
+}
+
 /* タッチ */
 .sa-touch { position: absolute; inset: 0; display: none; }
 .sa-root.playing .sa-touch { display: block; }
@@ -62,6 +98,29 @@
 .sa-result b { color: #d8c48a; }
 .sa-rank { grid-column: 1 / 3; font-size: 34px; color: #e8d090; text-shadow: 0 3px 0 #000, 0 0 16px rgba(200,40,20,.6); }
 .sa-rotate { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; text-align: center; background: #050506; font-size: 22px; font-weight: 900; line-height: 1.6; z-index: 10; }
+
+/* ポーズ画面のBGM表示・切り替え */
+.sa-pause-bgm {
+  margin: 4px 0;
+  padding: 6px 14px;
+  border-radius: 4px;
+  background: rgba(18, 14, 16, 0.85);
+  border: 1px solid #4a2220;
+  font-size: 12px;
+  color: #b0a49c;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.sa-pause-bgm b {
+  color: #f2eae2;
+  font-size: 13px;
+}
+.sa-pause-bgm button {
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
 @media (orientation: portrait) and (pointer: coarse) { .sa-rotate { display: flex; } }
 @media (max-height: 340px) { .sa-title h1 { font-size: 30px; } .sa-stage { padding: 5px 8px; } .sa-big { padding: 7px 28px; font-size: 17px; } }
 

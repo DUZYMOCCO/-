@@ -1,8 +1,19 @@
 // おと（WebAudio で その場で つくる）
+import { MusicPlayer } from './music.js?v=3';
+
 export class Sfx {
-  constructor(muted = false) { this.muted = muted; this.ctx = null; this.last = {}; }
+  constructor(muted = false) {
+    this.muted = muted;
+    this.ctx = null;
+    this.last = {};
+    this.music = new MusicPlayer(muted);
+  }
   unlock() {
-    if (this.ctx) { if (this.ctx.state === 'suspended') this.ctx.resume(); return; }
+    if (this.ctx) {
+      if (this.ctx.state === 'suspended') this.ctx.resume();
+      this.music.init(this.ctx);
+      return;
+    }
     const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
     const ctx = this.ctx = new AC();
     this.comp = ctx.createDynamicsCompressor(); this.comp.threshold.value = -14; this.comp.ratio.value = 6;
@@ -11,8 +22,13 @@ export class Sfx {
     const len = ctx.sampleRate; const buf = ctx.createBuffer(1, len, ctx.sampleRate); const d = buf.getChannelData(0);
     for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
     this.noise = buf;
+    this.music.init(ctx);
   }
-  setMuted(m) { this.muted = m; if (this.master) this.master.gain.value = m ? 0 : 0.7; }
+  setMuted(m) {
+    this.muted = m;
+    if (this.master) this.master.gain.value = m ? 0 : 0.7;
+    this.music.setMuted(m);
+  }
   // ---- ふんいき：ひくい うなり と しんぞうの おと ----
   ambient(dt, { on = false, level = 1, danger = 0 } = {}) {
     if (!this.ctx || this.ctx.state !== 'running') return;
@@ -25,7 +41,9 @@ export class Sfx {
       const n = ctx.createBufferSource(); n.buffer = this.noise; n.loop = true; const nf = ctx.createBiquadFilter(); nf.type = 'bandpass'; nf.frequency.value = 260; nf.Q.value = 0.6; const ng = ctx.createGain(); ng.gain.value = 0.16; n.connect(nf).connect(ng).connect(out); n.start();
       this.amb = { out, nodes: [...oscs, lfo, n], beat: 0.5 };
     }
-    const A = this.amb, want = on ? 0.13 * level : 0;
+    const hasBgm = this.music && this.music.started && this.music.source;
+    const want = on ? (hasBgm ? 0.035 : 0.13) * level : 0;
+    const A = this.amb;
     if (Math.abs((A.cur || 0) - want) > 0.002) { A.cur = want; A.out.gain.setTargetAtTime(want, t, 0.6); }
     if (!on || this.muted) return;
     A.beat -= dt;
@@ -35,8 +53,11 @@ export class Sfx {
       this._tone(t, 0.16, { f0: 62, f1: 34, gain: v }); this._tone(t + 0.2, 0.14, { f0: 52, f1: 30, gain: v * 0.7 });
     }
   }
-  close() { if (this.amb) { this.amb.nodes.forEach((n) => { try { n.stop(); } catch (e) { /* なし */ } }); this.amb = null; }
-    try { this.ctx && this.ctx.close(); } catch (e) { /* なし */ } this.ctx = null; }
+  close() {
+    this.music && this.music.stop();
+    if (this.amb) { this.amb.nodes.forEach((n) => { try { n.stop(); } catch (e) { /* なし */ } }); this.amb = null; }
+    try { this.ctx && this.ctx.close(); } catch (e) { /* なし */ } this.ctx = null;
+  }
   _noise(t, dur, { type = 'lowpass', freq = 1000, q = 0.7, gain = 0.5, attack = 0.001, rate = 1 } = {}) {
     const ctx = this.ctx, s = ctx.createBufferSource(); s.buffer = this.noise; s.playbackRate.value = rate;
     const f = ctx.createBiquadFilter(); f.type = type; f.frequency.value = freq; f.Q.value = q;

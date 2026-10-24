@@ -1,6 +1,6 @@
 // えがく（Canvas 2D）。けいさんは game.js、ここは みためだけ
 // v0.2.0: くらくて こわい せかい（あかい ひじょうとう・きり・ちり・ひかりの あな）
-import { H, GROUND, WEAPONS } from './rules.js?v=2';
+import { H, GROUND, WEAPONS } from './rules.js?v=3';
 
 const OUT = '#0a0a0b';
 const TAU = Math.PI * 2;

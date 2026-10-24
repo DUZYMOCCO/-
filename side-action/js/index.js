@@ -4,17 +4,17 @@
  */
 import { loadCss } from '../../common/js/load-css.js';
 import { storage } from '../../common/js/storage.js';
-import { VERSION, STAGES, WEAPONS, normalizeSave, rankOf } from './rules.js?v=2';
-import { Game } from './game.js?v=2';
-import { Renderer } from './render.js?v=2';
-import { Input } from './input.js?v=2';
-import { Sfx } from './sfx.js?v=2';
+import { VERSION, STAGES, WEAPONS, normalizeSave, rankOf } from './rules.js?v=3';
+import { Game } from './game.js?v=3';
+import { Renderer } from './render.js?v=3';
+import { Input } from './input.js?v=3';
+import { Sfx } from './sfx.js?v=3';
 
 const SAVE_KEY = 'side_action_save';
 const TITLE = 'ガンキック ヒーローズ';
 
 export default {
-  prepare() { return loadCss(new URL('../css/side-action.css?v=2', import.meta.url).href); },
+  prepare() { return loadCss(new URL('../css/side-action.css?v=3', import.meta.url).href); },
 
   init(container, onBackToHub) {
     this.container = container; this.onBackToHub = onBackToHub;
@@ -22,6 +22,7 @@ export default {
     this.alive = true; this.game = null; this.paused = false;
     this.buildDOM();
     this.sfx = new Sfx(storage.getSoundMuted());
+    this.sfx.music.onTrackToast = (track) => this.showNowPlaying(track);
     this.renderer = new Renderer(this.canvas);
     this.input = new Input(this.el('.sa-touch'));
     this.input.onPause = () => this.pause();
@@ -40,6 +41,7 @@ export default {
     root.className = 'sa-root';
     root.innerHTML = `
       <canvas class="sa-cv"></canvas>
+      <div class="sa-nowplaying"></div>
       <div class="sa-hud">
         <div class="sa-me"><div class="sa-face"></div><div><div class="sa-hpbar"><i></i></div><div class="sa-lives"></div></div></div>
         <div class="sa-allies"></div>
@@ -83,6 +85,7 @@ export default {
       </div>
       <div class="sa-scr sa-pausescr">
         <h2>ポーズ</h2>
+        <div class="sa-pause-bgm">♪ <b class="sa-bgm-name">---</b><button class="sa-small" data-act="nextbgm">つぎの きょく ⏭</button></div>
         <button class="sa-big" data-act="resume">つづける</button>
         <button class="sa-small" data-act="restart">さいしょから</button>
         <button class="sa-small" data-act="title">タイトルへ</button>
@@ -107,6 +110,7 @@ export default {
     this.onClick = (e) => {
       const b = e.target.closest('[data-act]'); if (!b) return;
       this.sfx.unlock();
+      if (!this.sfx.music.started) this.sfx.music.startRandom();
       const a = b.dataset.act;
       if (a === 'stage') this.start(+b.dataset.i);
       else if (a === 'allies') { this.save.allies = !this.save.allies; this.persist(); this.renderTitle(); }
@@ -117,15 +121,40 @@ export default {
       else if (a === 'restart') this.start(this.game.stageIdx);
       else if (a === 'continue') { this.game.continueGame(); this.show(null); }
       else if (a === 'next') { const n = this.game.stageIdx + 1; if (n < STAGES.length) this.start(n); else { this.game = null; this.show('title'); } }
+      else if (a === 'nextbgm') { this.sfx.music.next(); this.updatePauseBgm(); }
     };
     this.root.addEventListener('click', this.onClick);
     this.onResize = () => this.resize();
     window.addEventListener('resize', this.onResize); window.addEventListener('orientationchange', this.onResize);
     this.onVis = () => { if (document.hidden && this.game && this.screen === null) this.pause(); };
     document.addEventListener('visibilitychange', this.onVis);
-    this.onKey = (e) => { if (e.code === 'Enter' && this.screen === 'title') { this.sfx.unlock(); this.start(0); } };
+    this.onKey = (e) => {
+      if (e.code === 'Enter' && this.screen === 'title') {
+        this.sfx.unlock();
+        if (!this.sfx.music.started) this.sfx.music.startRandom();
+        this.start(0);
+      }
+    };
     window.addEventListener('keydown', this.onKey);
-    this.root.addEventListener('pointerdown', () => this.sfx.unlock(), { passive: true });
+    this.root.addEventListener('pointerdown', () => {
+      this.sfx.unlock();
+      if (!this.sfx.music.started) this.sfx.music.startRandom();
+    }, { passive: true });
+  },
+  showNowPlaying(track) {
+    const el = this.el('.sa-nowplaying');
+    if (!el || !track) return;
+    el.innerHTML = `♪ <b>${track.name}</b> <em>${track.sub}</em>`;
+    el.classList.add('on');
+    clearTimeout(this.toastTimer);
+    this.toastTimer = setTimeout(() => el && el.classList.remove('on'), 3500);
+    this.updatePauseBgm();
+  },
+  updatePauseBgm() {
+    const el = this.el('.sa-bgm-name');
+    if (el && this.sfx && this.sfx.music && this.sfx.music.currentTrack) {
+      el.textContent = this.sfx.music.currentTrack.name;
+    }
   },
   persist() { storage.set(SAVE_KEY, this.save); },
   resize() {
@@ -143,6 +172,16 @@ export default {
     this.input.enabled = playing;
     if (!playing) this.input.reset();
     if (name === 'title') this.renderTitle();
+    if (name === 'pause') this.updatePauseBgm();
+
+    // 画面にあわせた BGM おんりょう ちょうせい
+    if (this.sfx && this.sfx.music) {
+      if (name === 'title' || name === 'howto') this.sfx.music.setVolume(0.18);
+      else if (name === 'pause') this.sfx.music.setVolume(0.20);
+      else if (name === 'over') this.sfx.music.setVolume(0.12);
+      else if (name === 'clear') this.sfx.music.setVolume(0.15);
+      else if (name === null) this.sfx.music.setVolume(0.32);
+    }
   },
   renderTitle() {
     this.el('.sa-stages').innerHTML = STAGES.map((s, i) => {
@@ -157,6 +196,9 @@ export default {
     this.game = new Game(i, { viewW: this.viewW, allies: this.save.allies, seed: (Math.random() * 1e9) | 0 });
     this.paused = false; this.show(null); this.overShown = false;
     this.renderHudStatic();
+    if (this.sfx && this.sfx.music && !this.sfx.music.started) {
+      this.sfx.music.startRandom();
+    }
   },
   pause() { if (!this.game || this.screen !== null || this.game.state !== 'play') return; this.show('pause'); },
   resume() { this.show(null); this.last = performance.now(); },
@@ -217,7 +259,7 @@ export default {
   },
   drawTitleBg(t) {
     // タイトルの うしろは デモ（じどう で うごく）
-    if (!this.demo) { this.demo = new Game(0, { viewW: this.viewW, seed: 99 }); this.demoMem = {}; this.demoBot = null; import('./game.js?v=2').then((m) => { this.demoBot = m.botInput; }); }
+    if (!this.demo) { this.demo = new Game(0, { viewW: this.viewW, seed: 99 }); this.demoMem = {}; this.demoBot = null; import('./game.js?v=3').then((m) => { this.demoBot = m.botInput; }); }
     const d = this.demo;
     if (this.demoBot) d.update(1 / 60, this.demoBot(d, this.demoMem)); d.drainEvents(); d.banner = null; d.texts && (d.texts.length = 0);
     if (d.state !== 'play' || d.time > 90) this.demo = null;
