@@ -1,7 +1,7 @@
 // ゾンビストライク — ゲームの きまり（DOM / three.js に いぞんしない。node のテストから よめる）
 // ぶき・ダメージ・ウェーブ・あたりはんてい（レイ×はこ）・いどうの ぶつかり・ゾンビの みちさがし（フローフィールド）
 
-export const VERSION = '0.6.1';
+export const VERSION = '0.7.0';
 
 // ---- ぶき ----
 // rpm: 1ぷんかんの はっしゃかず / mag: マガジン / reserve: よびだん / reload: びょう
@@ -744,10 +744,15 @@ export function unlockOutfit(save, id) {
 // ---- おそわれている おじさん（たすけると ふくを くれる）----
 export const OJISAN = {
   hp: 100,
-  dmgMul: 0.35,     // ゾンビの こうげきは よわめに きく（たすけに いく じかんが ある）
+  dmgMul: 0.065,     // v0.7.0: ゾンビの こうげきは とても よわく きく（たすけに いく じかんが たっぷり）
+  slack: 1.4,        // みつもり よう: よこに にげる おじさんを おいかけ なおすと はやく たたく ぶん（じっそくで やく 1.4ばい）
+  maxBiters: 2,     // いちどに おじさんを たたける ゾンビは 2たいまで（ほかは まわりで まつ）
+  waitR: 2.1,       // まっている ゾンビの きょり
+  ring: [5, 7],     // おそう ゾンビが でてくる きょり（おじさんから）
+  minSurvive: 50,   // テストで まもる「すくなくとも これだけ いきのびる」びょう
   firstWave: 2,
   delay: [3, 9],    // ウェーブが はじまってから でてくるまで（びょう）
-  dist: [14, 30],   // プレイヤーからの きょり
+  dist: [9, 18],    // プレイヤーからの きょり（v0.7.0: ちかく した・でも すぐ となりでは ない）
   thankTime: 3.5, fleeTime: 3.2,
   runSpeed: 4.2, sideSpeed: 0.7,
   bonus: 300, bonusAll: 500,
@@ -761,6 +766,23 @@ export function shouldSpawnOjisan(wave, lastWave, r = Math.random()) {
   return false;
 }
 export function ojisanAttackers(wave) { return Math.min(5, 2 + Math.ceil(wave / 3)); }
+// おじさんが たおれるまでの じかん（びょう）の みつもり。kinds: おそう ゾンビの しゅるい、zs: ZOMBIES
+// いちばん ちかい ring から あるいて きて、maxBiters たいだけ たたく（はやい ゾンビから さきに つく）
+export function ojisanSurvivalTime(kinds, zs = ZOMBIES, ringD = OJISAN.ring[0]) {
+  const arr = kinds.map((k) => zs[k]).map((d) => ({ t: Math.max(0, ringD - ATTACK_RANGE) / d.speed, dps: d.dmg / d.atkRate * OJISAN.dmgMul * (OJISAN.slack || 1) }))
+    .sort((p, q) => p.t - q.t || q.dps - p.dps);
+  const bite = arr.slice(0, OJISAN.maxBiters);
+  let hp = OJISAN.hp, t = 0, dps = 0;
+  for (let i = 0; i < bite.length; i++) {
+    const next = i + 1 < bite.length ? bite[i + 1].t : Infinity;
+    if (bite[i].t > t) t = bite[i].t;
+    dps += bite[i].dps;
+    const span = next - t;
+    if (hp <= dps * span) return t + hp / dps;
+    hp -= dps * span; t = next;
+  }
+  return t + hp / dps;
+}
 // おじさんの ばしょ: あるける マス（cells: [[x,z],...]）から きょりで えらぶ
 export function pickOjisanSpot(cells, px, pz, r = Math.random(), [minD, maxD] = OJISAN.dist) {
   const ok = cells.filter(([x, z]) => { const d = Math.hypot(x - px, z - pz); return d >= minD && d <= maxD; });
@@ -1001,3 +1023,76 @@ export function gearAction(gear, item, act) {
   if (act === 'unequip') { if (gear.eq[item.slot] === item.id) gear.eq[item.slot] = null; return { ok: true }; }
   return { ok: false };
 }
+
+// ---- v0.7.0: けいさつロボ（なかまに なって ライフルで たすけてくれる）----
+// みため は かくう（しろ と こん・あおい ライト・ほしの マーク）。ほんものの マークや もじは なし
+export const ROBOT = {
+  hp: 240,
+  dmgMul: 0.5,        // ゾンビの こうげきは はんぶん きく
+  dmg: 10, fireRate: 0.5, range: 17, spread: 0.035, // ライフル（プレイヤーより ずっと よわい）
+  back: 0.3, side: 1.5, // プレイヤーの ひだり うしろに つく（カメラの じゃまに ならない）
+  speed: 4.9, runSpeed: 6.8, near: 0.45,
+  touchR: 1.35,        // さわると なかまに なる
+  spot: [10, 22],      // スタートからの きょり（みつけやすい けど スタートでは ない）
+  teleport: 13, teleportDy: 2.6, stuckTime: 2.5,
+  scale: 0.86,         // みためは すこし ちいさめ（カメラの じゃまを へらす）
+  aggroR: 3.2,         // ゾンビが ロボを ねらう きょり
+  behindW: 0.75,       // うしろ・よこの ゾンビを どれだけ ゆうせん するか
+};
+// プレイヤーの まえ (-sin yaw, -cos yaw) / みぎ (cos yaw, -sin yaw)
+export function robotFollowPoint(px, pz, yaw, back = ROBOT.back, side = ROBOT.side) {
+  const fx = -Math.sin(yaw), fz = -Math.cos(yaw), rx = Math.cos(yaw), rz = -Math.sin(yaw);
+  return { x: px - fx * back - rx * side, z: pz - fz * back - rz * side };
+}
+// 0 = プレイヤーの まっすぐ まえ、0.5 = まよこ、1 = まうしろ
+export function blindness(px, pz, yaw, x, z) {
+  const dx = x - px, dz = z - pz, d = Math.hypot(dx, dz);
+  if (d < 1e-6) return 0.5;
+  const c = (dx * -Math.sin(yaw) + dz * -Math.cos(yaw)) / d;
+  return (1 - c) / 2;
+}
+// ちいさい ほど ねらう。プレイヤーに ちかい・うしろ・よこ ほど さきに うつ
+export function robotTargetScore(dPlayer, blind) {
+  return dPlayer * (1 - ROBOT.behindW * blind);
+}
+// zs: [{x,z,y,alive}], canSee(z): みえるか（なければ ぜんぶ みえる）
+export function pickRobotTarget(zs, px, pz, yaw, rx, rz, canSee, range = ROBOT.range) {
+  let best = -1, bs = Infinity;
+  for (let i = 0; i < zs.length; i++) {
+    const z = zs[i];
+    if (!z.alive || z.demo) continue;
+    if (Math.hypot(z.x - rx, z.z - rz) > range) continue;
+    const s = robotTargetScore(Math.hypot(z.x - px, z.z - pz), blindness(px, pz, yaw, z.x, z.z));
+    if (s >= bs) continue;
+    if (canSee && !canSee(z)) continue;
+    bs = s; best = i;
+  }
+  return best;
+}
+// ロボの ばしょ: スタートから 10〜22m の ひろい マス（なければ いちばん ちかい ほう）
+export function pickRobotSpot(cells, sx, sz, r = Math.random(), [minD, maxD] = ROBOT.spot) {
+  const ok = cells.filter(([x, z]) => { const d = Math.hypot(x - sx, z - sz); return d >= minD && d <= maxD; });
+  if (ok.length) return ok[Math.min(ok.length - 1, Math.floor(r * ok.length))];
+  let best = null, bd = Infinity;
+  for (const c of cells) { const d = Math.abs(Math.hypot(c[0] - sx, c[1] - sz) - minD); if (d < bd) { bd = d; best = c; } }
+  return best;
+}
+export function robotTouched(dx, dz, dy) { return Math.hypot(dx, dz) < ROBOT.touchR && Math.abs(dy) < 1.3; }
+// とおすぎる／べつの かい／うごけない → みえない ときに プレイヤーの そばへ ワープ
+export function shouldTeleportRobot(dist, dy, onScreen, stuckT) {
+  if (onScreen) return false;
+  return dist > ROBOT.teleport || Math.abs(dy) > ROBOT.teleportDy || stuckT > ROBOT.stuckTime;
+}
+// ゾンビが プレイヤー より ロボを ねらうか
+export function zombieTargetsRobot(distPlayer, distRobot, dy = 0) {
+  return Math.abs(dy) < 0.9 && distRobot < ROBOT.aggroR && distRobot < distPlayer * 0.7;
+}
+// ロボの HP（0 で こわれる）
+export function damageRobot(r, d) {
+  if (!r || r.state !== 'on') return false;
+  r.hp = Math.max(0, r.hp - d * ROBOT.dmgMul);
+  if (r.hp <= 0) { r.state = 'broken'; return true; }
+  return false;
+}
+// ぶき ボタン（v0.7.0: ちいさく。でも ゆびで おせる 40px いじょう）
+export const WEAPON_BAR = { slotW: 40, slotH: 40, chipW: 34, chipH: 26, gap: 0 };

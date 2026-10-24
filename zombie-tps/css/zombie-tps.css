@@ -21,11 +21,15 @@
 .zt-score { font-weight: 900; font-size: 12px; text-shadow: 0 1px 2px #000; }
 .zt-score b { font-size: 17px; color: #ffe27a; }
 
-.zt-slots { position: absolute; top: calc(max(6px, env(safe-area-inset-top)) + 36px); right: max(8px, env(safe-area-inset-right)); display: flex; gap: 4px; }
-.zt-slot { display: flex; flex-direction: column; align-items: center; width: 52px; padding: 2px 0 3px; border-radius: 7px; border: 2px solid rgba(255,255,255,.3); background: rgba(0,0,0,.35); color: #fff; font-size: 9px; font-weight: 800; line-height: 1.15; }
-.zt-slot b { font-size: 9px; opacity: .6; }
-.zt-slot i { font-style: normal; font-size: 11px; color: #ffe27a; }
-.zt-slot.sel { border-color: #ffd84a; background: rgba(255,200,40,.28); }
+.zt-slots { position: absolute; top: calc(max(6px, env(safe-area-inset-top)) + 32px); right: max(5px, calc(env(safe-area-inset-right) - 3px)); display: flex; gap: 0; }
+/* v0.7.0: ちいさい アイコンの ならび。みえる ところは 34×26、おせる ところは 40×40 */
+.zt-slot { position: relative; display: flex; align-items: flex-start; justify-content: center; width: 40px; height: 40px; padding: 0; margin: 0; border: 0; background: none; color: #fff; -webkit-tap-highlight-color: transparent; }
+.zt-chip { position: relative; display: flex; align-items: center; justify-content: center; width: 34px; height: 26px; box-sizing: border-box; border-radius: 6px; border: 1.5px solid rgba(255,255,255,.28); background: rgba(0,0,0,.36); color: #dfe6ee; }
+.zt-chip b { position: absolute; left: 2px; top: 1px; font-size: 8px; line-height: 1; opacity: .6; }
+.zt-chip svg { width: 25px; height: 12.5px; margin: 3px 0 0 3px; fill: currentColor; }
+.zt-slot.empty .zt-chip { opacity: .4; }
+.zt-slot.sel .zt-chip { border-color: #ffd84a; background: rgba(255,200,40,.3); color: #fff2b8; }
+.zt-slot.sel .zt-chip b { opacity: 1; color: #ffe27a; }
 
 /* クロスヘア */
 .zt-cross { --gap: 8px; position: absolute; left: 50%; top: 50%; width: 0; height: 0; }
@@ -227,7 +231,6 @@
 @media (max-height: 340px) { .zt-bagg { grid-template-columns: repeat(10, 1fr); gap: 2px; } .zt-sbox h2 { font-size: 18px; } .zt-sdet { min-height: 50px; } }
 
 /* v0.5.0: マップ えらび・じどう そうび・ミニガン */
-.zt-slot { width: 47px; }
 .zt-maps { display: flex; flex-wrap: wrap; gap: 4px; max-width: 330px; }
 .zt-maps button { padding: 3px 7px; font-size: 11px; font-weight: 900; color: #fff; background: rgba(0,0,0,.5); border: 2px solid rgba(255,255,255,.25); border-radius: 8px; }
 .zt-maps button.sel { border-color: #b6f36a; background: rgba(110,200,60,.35); color: #f2ffd8; }
@@ -248,3 +251,18 @@
 .zt-autoeq.hidden { display: none; }
 .zt-autoeq.pop { animation: zt-apop .35s ease-out; }
 @keyframes zt-apop { 0% { transform: translateX(-50%) scale(.6); opacity: 0; } 100% { transform: translateX(-50%); opacity: 1; } }
+
+/* v0.7.0: けいさつロボ（なまえ・HP・やじるし） */
+.zt-bot { position: absolute; transform: translate(-50%, -100%); display: flex; flex-direction: column; align-items: center; pointer-events: none; }
+.zt-bot span { font-size: 11px; font-weight: 900; color: #fff; background: rgba(28,62,150,.88); padding: 1px 7px 2px; border-radius: 7px; white-space: nowrap; text-shadow: 0 1px 2px #000; animation: zt-ojibob .5s ease-in-out infinite alternate; }
+.zt-bot[data-m="on"] span { display: none; }
+.zt-bot[data-m="idle"] .zt-bothp { display: none; }
+.zt-bothp { width: 44px; height: 6px; margin-top: 2px; background: rgba(0,0,0,.55); border: 1.5px solid rgba(255,255,255,.85); border-radius: 3px; overflow: hidden; }
+.zt-bothp div { height: 100%; width: 100%; background: linear-gradient(#9ad6ff, #3a8cff); transition: width .15s; }
+.zt-bothp div.low { background: linear-gradient(#ffb36b, #ff6a2a); }
+.zt-botarrow { position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 1px; pointer-events: none; text-shadow: 0 1px 3px #000; }
+.zt-botarrow i { display: block; font-style: normal; font-size: 24px; line-height: 1; color: #7cc8ff; animation: zt-ojipulse .6s ease-in-out infinite alternate; }
+.zt-botarrow span { font-size: 10px; font-weight: 900; color: #fff; background: rgba(28,62,150,.88); padding: 1px 6px; border-radius: 7px; white-space: nowrap; }
+.zt-boticon { display: flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 900; text-shadow: 0 1px 2px #000; color: #bfe3ff; }
+.zt-boticon .zt-bothp { margin-top: 0; width: 40px; }
+.hidden.zt-bot, .hidden.zt-botarrow, .hidden.zt-boticon { display: none; }

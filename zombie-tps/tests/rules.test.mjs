@@ -15,6 +15,8 @@ import {
   spinGun, weaponMoveMul, makeBoxIndex, MAP_IDS, MAP_CHOICES, pickMapId, pickSpawnPoint, HURRY, hurryMul,
   GEAR_WEIGHT, RARITY_BONUS, gearPower, loadoutValue, bestLoadout, autoEquipBest, equipGain, shouldAutoEquip, autoPickup,
   SPECIAL_UNLOCK, SPECIAL_IDS, unlockedSpecials, damageMul, frontHit, heavyOf,
+  ROBOT, robotFollowPoint, blindness, robotTargetScore, pickRobotTarget, pickRobotSpot, robotTouched, shouldTeleportRobot,
+  zombieTargetsRobot, damageRobot, WEAPON_BAR, ojisanSurvivalTime, ATTACK_RANGE,
 } from '../js/rules.js';
 import { makeNav } from '../js/nav.js';
 import { buildMap, playerColliders, zombieColliders, shotColliders, MAPS, MAP_IDS as MAP_IDS_MAP, mapInfo } from '../js/map.js';
@@ -226,7 +228,7 @@ test('なめらか いどう: approach は フレームレートに よらない
 });
 
 test('バージョン と セーブの ステージ', () => {
-  assert.equal(VERSION, '0.6.1');
+  assert.equal(VERSION, '0.7.0');
   assert.equal(normalizeSave(null).stage, 'day');
   assert.equal(normalizeSave({ stage: 'night' }).stage, 'night');
   assert.equal(normalizeSave({ stage: 'mars' }).stage, 'day');
@@ -888,4 +890,152 @@ test('v0.6.1 いつも くらい: どの じかんも くらい そら・こい 
   }
   const { BACKDROPS } = await import('../js/backdrop.js');
   for (const id of MAP_IDS_MAP) { const b = BACKDROPS[id]; assert.ok(b && b.fires >= 1 && b.smoke >= 1 && b.bolt > 0 && b.moon != null, id); }
+});
+
+// ---- v0.7.0 けいさつロボ ----
+test('v0.7.0 けいさつロボ: さわると なかま・プレイヤーの ひだり うしろに つく', () => {
+  assert.equal(robotTouched(0.8, 0.6, 0), true);
+  assert.equal(robotTouched(2, 0, 0), false);
+  assert.equal(robotTouched(0.5, 0, 2.5), false, 'ちがう かいでは さわれない');
+  for (const yaw of [0, 1, -2, 3]) {
+    const fp = robotFollowPoint(5, 5, yaw);
+    const fx = -Math.sin(yaw), fz = -Math.cos(yaw), rx = -fz, rz = fx;
+    const along = (fp.x - 5) * fx + (fp.z - 5) * fz, side = (fp.x - 5) * rx + (fp.z - 5) * rz;
+    assert.ok(along < 0, 'うしろ'); assert.ok(side < -1, 'ひだり（カメラは みぎかた）');
+    assert.ok(Math.hypot(fp.x - 5, fp.z - 5) < 2.5, 'そばに いる');
+  }
+});
+
+test('v0.7.0 けいさつロボ: うしろ・よこの ゾンビを さきに ねらう', () => {
+  // yaw 0: まえは -z
+  assert.ok(blindness(0, 0, 0, 0, -5) < 0.05 && blindness(0, 0, 0, 0, 5) > 0.95 && Math.abs(blindness(0, 0, 0, 5, 0) - 0.5) < 0.05);
+  assert.ok(robotTargetScore(6, 1) < robotTargetScore(4, 0), 'うしろの 6m は まえの 4m より さき');
+  const z = (x, zz, o = {}) => ({ alive: true, x, z: zz, ...o });
+  const zs = [z(0, -4), z(0, 7), z(-6, 0), z(0, 3, { alive: false }), z(1, 2, { demo: true })];
+  assert.equal(pickRobotTarget(zs, 0, 0, 0, -1.5, 0.3, null), 1, 'うしろの ゾンビ');
+  assert.equal(pickRobotTarget(zs, 0, 0, 0, -1.5, 0.3, (q) => q !== zs[1]), 2, 'みえない ときは よこ');
+  assert.equal(pickRobotTarget([z(40, 40)], 0, 0, 0, 0, 0, null), -1, 'とおすぎ');
+  assert.equal(pickRobotTarget([], 0, 0, 0, 0, 0, null), -1);
+});
+
+test('v0.7.0 けいさつロボ: HP・こわれる・ワープ・ゾンビに ねらわれる', () => {
+  const r = { hp: ROBOT.hp, state: 'on' };
+  assert.ok(ROBOT.hp >= 150 && ROBOT.dmgMul < 1);
+  assert.equal(damageRobot(r, 10), false); assert.equal(r.hp, ROBOT.hp - 10 * ROBOT.dmgMul);
+  let n = 0; while (!damageRobot(r, 22)) n++;
+  assert.equal(r.state, 'broken'); assert.equal(r.hp, 0);
+  assert.ok(n > 15, `でかい ゾンビ ${n}かいで こわれる（すぐには こわれない）`);
+  assert.equal(damageRobot(r, 10), false, 'こわれたら おわり（かいふく しない）');
+  assert.equal(damageRobot({ hp: 100, state: 'idle' }, 50), false, 'なかまに なる まえは きずつかない');
+  assert.equal(shouldTeleportRobot(30, 0, true, 0), false, 'みえて いる ときは ワープ しない');
+  assert.equal(shouldTeleportRobot(30, 0, false, 0), true);
+  assert.equal(shouldTeleportRobot(3, 4, false, 0), true, 'べつの かい');
+  assert.equal(shouldTeleportRobot(3, 0, false, 3), true, 'うごけない');
+  assert.equal(shouldTeleportRobot(3, 0, false, 0), false);
+  assert.equal(zombieTargetsRobot(6, 1.5, 0), true);
+  assert.equal(zombieTargetsRobot(1.2, 1.5, 0), false, 'プレイヤーが ちかい');
+  assert.equal(zombieTargetsRobot(6, 1.5, 3), false, 'べつの かい');
+  assert.equal(zombieTargetsRobot(9, 5, 0), false);
+});
+
+for (const MID of MAP_IDS_MAP) test(`[${MID}] v0.7.0 けいさつロボの ばしょ: スタートの そばでは ない・あるいて いける`, () => {
+  const map = buildMap(MID), zc = zombieColliders(map);
+  const nav = makeNav(zc, map), ps = map.playerStart;
+  nav.update(ps.x, 0, ps.z);
+  const cells = nav.openCells(map.half - 3).filter((c) => Math.abs(c[2] || 0) < 0.5);
+  for (let i = 0; i < 20; i++) {
+    const [x, z] = pickRobotSpot(cells, ps.x, ps.z, i / 20);
+    const d = Math.hypot(x - ps.x, z - ps.z);
+    assert.ok(d >= ROBOT.spot[0] && d <= ROBOT.spot[1], `dist ${d}`);
+    assert.ok(nav.free(x, 0, z), 'あるける');
+  }
+});
+
+// ロボの うごき（ゲームと おなじ: おなじ かいで みとおしが よければ まっすぐ・ほかは nav）
+function simRobot(map, nav, pc, [px, pz, py], from) {
+  nav.update(px, py, pz);
+  let [x, z, y] = from, t = 0;
+  while (t < 60) {
+    const fp = robotFollowPoint(px, pz, 0); const dF = Math.hypot(fp.x - x, fp.z - z);
+    if (Math.hypot(px - x, pz - z) < 3 && Math.abs(py - y) < 0.4) return { t, y };
+    let f;
+    if (Math.abs(py - y) < 0.4 && nav.lineClear(x, y, z, fp.x, py, fp.z)) f = { x: (fp.x - x) / dF, z: (fp.z - z) / dF };
+    else f = nav.dir(x, y, z) || { x: (fp.x - x) / dF, z: (fp.z - z) / dF };
+    for (let i = 0; i < 3; i++) { const c = collideCircle(x + f.x * ROBOT.runSpeed * 0.05 / 3, z + f.z * ROBOT.runSpeed * 0.05 / 3, 0.32, y, pc); x = c.x; z = c.z; }
+    const g = groundHeight(x, z, 0.15, y + 0.001, pc);
+    y = g >= y - 0.001 ? g : Math.max(g, y - 0.5); t += 0.05;
+  }
+  return { t, y };
+}
+for (const MID of Object.keys(VERT)) test(`[${MID}] v0.7.0 けいさつロボ: かいだんで うえの かいへ ついていく`, () => {
+  const map = buildMap(MID), zc = zombieColliders(map), pc = playerColliders(map);
+  const nav = makeNav(zc, map), s = map.playerStart;
+  for (const tg of VERT[MID].slice(1)) {
+    const r = simRobot(map, nav, pc, tg, [s.x - 1.5, s.z + 0.5, 0]);
+    // あるいて とどくか、とどかない ときは ワープの ルールで そばへ くる
+    const walked = r.t < 60;
+    assert.ok(walked || shouldTeleportRobot(20, tg[2] - r.y, false, 0), `${MID} ${tg}: t=${r.t.toFixed(1)} y=${r.y.toFixed(2)}`);
+    if (tg[2] <= 8.5) assert.ok(walked, `${MID} ${tg}: かいだんで のぼれない t=${r.t.toFixed(1)} y=${r.y.toFixed(2)}`);
+  }
+});
+
+// バランス: ロボが いると たすかる けど、かんたんに なりすぎない
+test('v0.7.0 けいさつロボ: バランス シム（うしろの ダメージが へる・クリアは はやく なりすぎない）', () => {
+  const run = (bot, seed) => {
+    const rnd = lcg(seed); const zs = []; let hurt = 0, t = 0, spawnT = 0, left = 40, pf = 0, bf = 0, yaw = 0, tg = null;
+    const robot = bot ? { hp: ROBOT.hp, state: 'on', x: 0, z: 0 } : null;
+    const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
+    while ((left > 0 || zs.some((q) => q.alive)) && t < 600) {
+      t += 0.05; spawnT -= 0.05;
+      if (left > 0 && spawnT <= 0) { const a = rnd() * Math.PI * 2; zs.push({ alive: true, x: Math.sin(a) * 18, z: Math.cos(a) * 18, hp: ZOMBIES.walker.hp, atk: 0 }); left--; spawnT = 0.55; }
+      // プレイヤー: いちばん ちかい ゾンビへ ふりむいて（6 rad/s）ライフルで うつ（こどもの うで: あたり 45%）
+      if (!tg || !tg.alive) tg = zs.filter((q) => q.alive && Math.hypot(q.x, q.z) < 25).sort((p, q) => Math.hypot(p.x, p.z) - Math.hypot(q.x, q.z))[0] || null;
+      pf -= 0.05;
+      if (tg) {
+        const want = Math.atan2(-tg.x, -tg.z), dy = wrap(want - yaw); yaw = wrap(yaw + Math.sign(dy) * Math.min(Math.abs(dy), 6 * 0.05));
+        if (Math.abs(dy) < 0.15 && pf <= 0) { pf = WEAPONS.rifle ? fireInterval(WEAPONS.rifle) : 0.1; if (rnd() < 0.45) { tg.hp -= 21; if (tg.hp <= 0) tg.alive = false; } }
+      }
+      if (robot && robot.state === 'on') {
+        const fp = robotFollowPoint(0, 0, yaw); robot.x = fp.x; robot.z = fp.z;
+        bf -= 0.05;
+        if (bf <= 0) { const i = pickRobotTarget(zs, 0, 0, yaw, robot.x, robot.z, null); if (i >= 0) { const q = zs[i]; bf = ROBOT.fireRate; if (rnd() < 0.85) { q.hp -= ROBOT.dmg; if (q.hp <= 0) q.alive = false; } } }
+      }
+      for (const q of zs) {
+        if (!q.alive) continue;
+        const dp = Math.hypot(q.x, q.z), dr = robot && robot.state === 'on' ? Math.hypot(q.x - robot.x, q.z - robot.z) : Infinity;
+        const goR = robot && robot.state === 'on' && zombieTargetsRobot(dp, dr, 0);
+        const tx = goR ? robot.x : 0, tz = goR ? robot.z : 0, d = goR ? dr : dp;
+        if (d > ATTACK_RANGE * 0.95) { q.x += (tx - q.x) / d * ZOMBIES.walker.speed * 0.05; q.z += (tz - q.z) / d * ZOMBIES.walker.speed * 0.05; }
+        else { q.atk -= 0.05; if (q.atk <= 0) { q.atk = ZOMBIES.walker.atkRate; if (goR) damageRobot(robot, ZOMBIES.walker.dmg); else hurt += ZOMBIES.walker.dmg; } }
+      }
+    }
+    return { hurt, t, robot };
+  };
+  let h0 = 0, h1 = 0, t0 = 0, t1 = 0;
+  for (let s = 1; s <= 6; s++) { const a = run(false, s), b = run(true, s); if (process.env.SIMLOG) console.log("run", s, a.hurt, b.hurt, b.robot.state, b.robot.hp.toFixed(0)); h0 += a.hurt; h1 += b.hurt; t0 += a.t; t1 += b.t; }
+  if (process.env.SIMLOG) console.log("balance", h0, h1, t0 / 6, t1 / 6);
+  assert.ok(h1 < h0 * 0.75, `ロボで うしろの ダメージが へる ${h0} → ${h1}`);
+  assert.ok(h1 > 0, 'ロボが いても ダメージは うける（かんたんすぎない）');
+  assert.ok(t1 > t0 * 0.6, `クリア じかん ${(t0 / 6).toFixed(0)}s → ${(t1 / 6).toFixed(0)}s`);
+});
+
+test('v0.7.0 ぶき ボタン: ちいさく・でも ゆびで おせる', () => {
+  assert.ok(WEAPON_BAR.slotW >= 40 && WEAPON_BAR.slotH >= 40, 'タッチ 40px いじょう');
+  assert.ok(WEAPON_BAR.chipW * WEAPON_BAR.chipH <= 47 * 44 * 0.5, 'みえる ボタンは まえの はんぶん いか');
+  assert.ok(WEAPON_BAR.slotW * 5 + WEAPON_BAR.gap * 4 <= 210, '5つ ならべても みぎうえ だけ');
+});
+
+test('v0.7.0 おじさん: すぐには たおれない（どの ウェーブでも 45びょう いじょう）', () => {
+  assert.ok(OJISAN.maxBiters <= 2);
+  assert.ok(OJISAN.dist[0] >= 8 && OJISAN.dist[1] <= 20, 'プレイヤーの ちかく（でも となりでは ない）');
+  for (let w = OJISAN.firstWave; w <= 30; w++) {
+    const n = ojisanAttackers(w);
+    const kinds = Array.from({ length: n }, (_, i) => (w >= 4 && i === n - 1 ? 'runner' : 'walker'));
+    const t = ojisanSurvivalTime(kinds);
+    assert.ok(t >= Math.max(45, OJISAN.minSurvive), `wave ${w}: ${t.toFixed(1)}s`);
+  }
+  // さいあくでも（はやい ゾンビ ばかり・すぐ そばから）
+  assert.ok(ojisanSurvivalTime(['runner', 'runner', 'runner', 'runner', 'runner'], ZOMBIES, ATTACK_RANGE) >= 45);
+  // プレイヤーが ふつうに はしって いける（いちばん とおくても ~4m/s で 5びょう）
+  assert.ok(OJISAN.dist[1] / 4 < 10);
 });

@@ -12,15 +12,16 @@ import {
   nextOutfit, outfitName, cellOf,
   spinGun, weaponMoveMul, makeBoxIndex, pickSpawnPoint, hurryMul, pickMapId,
   rollGearDrop, rollGear, GEAR_FLOOR, GEAR_LIFE, gearEffects, equippedItems, gearColor, rarityOf, normalizeGear,
-  damageMul, frontHit, heavyOf, unlockedSpecials,
-} from './rules.js?v=7';
-import { makeNav } from './nav.js?v=7';
-import { buildMap, playerColliders, zombieColliders, shotColliders } from './map.js?v=7';
-import { buildTextures, fxTextures } from './textures.js?v=7';
-import { buildWorld, disposeWorld } from './world.js?v=7';
-import { Backdrop, BACKDROPS } from './backdrop.js?v=7';
-import { makePlayer, applyOutfit, applyGear, makeGearDrop, makeOjisan, makeWeapons, makeZombie, makeRocketProjectile, makeRocketCrate, zombieChunkColors, FLASH_MAT } from './models.js?v=7';
-import { FX } from './fx.js?v=7';
+  damageMul, frontHit, heavyOf, unlockedSpecials, zombieTargetsRobot,
+} from './rules.js?v=8';
+import { RobotMixin } from './robot.js?v=8';
+import { makeNav } from './nav.js?v=8';
+import { buildMap, playerColliders, zombieColliders, shotColliders } from './map.js?v=8';
+import { buildTextures, fxTextures } from './textures.js?v=8';
+import { buildWorld, disposeWorld } from './world.js?v=8';
+import { Backdrop, BACKDROPS } from './backdrop.js?v=8';
+import { makePlayer, applyOutfit, applyGear, makeGearDrop, makeOjisan, makeWeapons, makeZombie, makeRocketProjectile, makeRocketCrate, zombieChunkColors, FLASH_MAT } from './models.js?v=8';
+import { FX } from './fx.js?v=8';
 
 const v3 = () => new THREE.Vector3();
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -72,6 +73,7 @@ export class Game {
     this.refreshGear(true);
     // おそわれている おじさん（1にんだけ。つかいまわし）
     this.ojiM = makeOjisan(); this.ojiM.root.visible = false; scene.add(this.ojiM.root);
+    this.initRobot();
     this.weapons = makeWeapons();
     for (const id of WEAPON_ORDER) { this.weapons[id].group.visible = false; this.p.holder.add(this.weapons[id].group); }
     this.fx = new FX(scene, tex, { groundAt: (x, z, y) => groundHeight(x, z, 0.05, y, this.pCol) });
@@ -147,7 +149,7 @@ export class Game {
     if (this.pickups) this.pickups.length = 0;
     if (this.pk) this.pk.set(0, 0, 0);
     this.boss = null; this.hud.bossBar?.(null);
-    this.endOji(); this.ojiPlan = null; this.ojiLast = 0; this.perchT = 0; this.perchCd = 0;
+    this.endOji(); this.endRobot?.(); this.ojiPlan = null; this.ojiLast = 0; this.perchT = 0; this.perchCd = 0;
     for (const sp of this.spits || []) this.releaseSpit(sp);
     this.spits = []; for (const h of this.hazards || []) this.releaseHazard(h);
     this.hazards = []; this.burnT = 0; this.zapT = 0; this.softAcc = 0; this.onLadder = false; this.pReach = false;
@@ -168,6 +170,7 @@ export class Game {
     this.zombies.length = 0;
     this.resetRun();
     this.applyStage(this.todStart || 'day');
+    this.spawnRobot();
     this.state = 'play';
     this.hud.show('play');
     this.pushHud(true);
@@ -435,12 +438,12 @@ export class Game {
     const y = groundHeight(x, z, 0.3, (cy || 0) + 0.6, this.pCol);
     const m = this.ojiM;
     m.root.visible = true; m.root.scale.setScalar(1); m.root.position.set(x, y, z);
-    this.oji = { x, z, y, hp: OJISAN.hp, state: 'help', t: 0, yaw: 0, hurtT: 0, helpT: 0.3, phase: 0, wave: this.wave };
+    this.oji = { x, z, y, hp: OJISAN.hp, state: 'help', t: 0, yaw: 0, hurtT: 0, helpT: 0.3, phase: 0, wave: this.wave, biters: [] };
     const n = ojisanAttackers(this.wave);
     for (let i = 0; i < n; i++) {
       let zx = x, zz = z;
       for (let k = 0; k < 12; k++) {
-        const a = Math.random() * Math.PI * 2, d = 3.5 + Math.random() * 2.2;
+        const a = Math.random() * Math.PI * 2, d = OJISAN.ring[0] + Math.random() * (OJISAN.ring[1] - OJISAN.ring[0]);
         const cx = x + Math.cos(a) * d, cz = z + Math.sin(a) * d;
         if (Math.abs(cx) > this.half - 1 || Math.abs(cz) > this.half - 1) continue;
         if (!this.nav.free(cx, y, cz)) continue;
@@ -456,6 +459,14 @@ export class Game {
     this.sfx.help?.(0.8);
     this.pushHud(true);
     return true;
+  }
+  // おじさんを たたいて いい ゾンビか（いちどに OJISAN.maxBiters たいまで）
+  ojiBiter(z) {
+    const o = this.oji; if (!o) return false;
+    const b = o.biters || (o.biters = []);
+    if (b.includes(z)) return true;
+    if (b.length < OJISAN.maxBiters && Math.hypot(z.x - o.x, z.z - o.z) < OJISAN.waitR + 0.6) { b.push(z); return true; } // ちかづいた じゅんに よやく
+    return false;
   }
   damageOji(d) {
     const o = this.oji; if (!o || o.state !== 'help') return;
@@ -507,6 +518,7 @@ export class Game {
     const o = this.oji; if (!o) return;
     const m = this.ojiM;
     o.t += dt; o.hurtT -= dt;
+    if (o.biters) o.biters = o.biters.filter((z) => z.alive && z.ojiT && Math.hypot(z.x - o.x, z.z - o.z) < OJISAN.waitR + 1.5);
     let nearest = null, nd = Infinity, attackers = 0;
     for (const z of this.zombies) {
       if (!z.alive) continue;
@@ -611,11 +623,30 @@ export class Game {
       let ojx = 0, ojz = 0, ojd = Infinity;
       if (oj) { ojx = oj.x - z.x; ojz = oj.z - z.z; ojd = Math.hypot(ojx, ojz); }
       const goOji = oj && (dist > 3.2 || ojd < dist * 0.6) && this.state === 'play';
-      if (goOji) {
+      // v0.7.0: なかまの けいさつロボが ちかければ ロボを おそう
+      const rb = this.robot && this.robot.state === 'on' && this.state === 'play' && !z.demo ? this.robot : null;
+      let rbx = 0, rbz = 0, rbd = Infinity;
+      if (rb) { rbx = rb.x - z.x; rbz = rb.z - z.z; rbd = Math.hypot(rbx, rbz); }
+      const goBot = !goOji && rb && !z.slam && !z.charge && !z.leap && !(z.fuse > 0) && !(z.scream > 0) && zombieTargetsRobot(dist, rbd, rb.y - z.y);
+      if (goBot) {
         if (z.stagger > 0) z.stagger -= dt;
-        else if (ojd < ATTACK_RANGE * 0.95) {
+        else if (rbd < reachA * 0.95) {
+          z.state = 'attack'; z.atkT -= dt; z.yaw = Math.atan2(-rbx, -rbz);
+          if (z.atkT <= 0) { z.atkT = def.atkRate; this.hurtRobot(def.dmg); }
+        } else {
+          z.state = 'walk'; z.atkT = Math.min(z.atkT, 0.45);
+          mvx = rbx / (rbd || 1); mvz = rbz / (rbd || 1); moving = true;
+          const want = Math.atan2(-mvx, -mvz);
+          let dy = want - z.yaw; while (dy > Math.PI) dy -= Math.PI * 2; while (dy < -Math.PI) dy += Math.PI * 2;
+          z.yaw += dy * Math.min(1, dt * 8);
+        }
+      } else if (goOji) {
+        if (z.stagger > 0) z.stagger -= dt;
+        else if ((z.ojiB = this.ojiBiter(z)) && ojd < ATTACK_RANGE * 0.95) {
           z.state = 'attack'; z.atkT -= dt; z.yaw = Math.atan2(-ojx, -ojz);
           if (z.atkT <= 0) { z.atkT = def.atkRate; this.damageOji(def.dmg); }
+        } else if (ojd < OJISAN.waitR && !z.ojiB) { // じゅんばん まち（いちどに 2たいまで）
+          z.state = 'idle'; z.yaw = Math.atan2(-ojx, -ojz);
         } else {
           z.state = 'walk'; z.atkT = Math.min(z.atkT, 0.45);
           const dir = ojd < 14 && nav.lineClear(z.x, z.y, z.z, oj.x, oj.y, oj.z) ? { x: ojx / ojd, z: ojz / ojd } : { x: ojx / (ojd || 1), z: ojz / (ojd || 1) };
@@ -687,6 +718,10 @@ export class Game {
         // プレイヤーに めりこまない
         const px = nx - this.pos.x, pz = nz - this.pos.z, pd = Math.hypot(px, pz), minD = 0.35 + 0.3 * z.scale;
         if (pd < minD && pd > 1e-4 && !z.demo && Math.abs(pdy) < 1.2) { nx = this.pos.x + px / pd * minD; nz = this.pos.z + pz / pd * minD; }
+        if (rb) { // ロボにも めりこまない
+          const qx = nx - rb.x, qz = nz - rb.z, qd = Math.hypot(qx, qz), qm = 0.32 + 0.3 * z.scale;
+          if (qd < qm && qd > 1e-4 && Math.abs(rb.y - z.y) < 1.2) { nx = rb.x + qx / qd * qm; nz = rb.z + qz / qd * qm; }
+        }
         z.x = nx; z.z = nz;
         if (this.vertical && !z.fly) { // かいだん: 1だんずつ のぼる・おりる
           const gy = groundHeight(z.x, z.z, 0.15, z.y + 0.001, this.pCol);
@@ -1343,7 +1378,7 @@ export class Game {
       this.kills++; if (head) this.heads++;
       const sc = z.selfPop ? 0 : killScore(z.kind, head); this.score += sc; if (z.selfPop) this.kills--;
       const isBoss = z.kind === 'boss';
-      if (z.selfPop) this.hud.kill('ガスが でた！ はなれて！', true); else this.hud.kill(isBoss ? `ボスを たおした！ +${sc}` : head ? `ヘッドショット！ +${sc}` : `+${sc}`, head || isBoss);
+      if (z.selfPop) this.hud.kill('ガスが でた！ はなれて！', true); else this.hud.kill(isBoss ? `ボスを たおした！ +${sc}` : opt.bot ? `ロボが たおした！ +${sc}` : head ? `ヘッドショット！ +${sc}` : `+${sc}`, head || isBoss);
       // ロケットだんを おとす（ボスは かならず 2こ）
       const n = rollRocketDrop(z.kind);
       if (n) this.spawnPickup(z.x, z.y, z.z, n);
@@ -1483,7 +1518,7 @@ export class Game {
     }
     if (this.state === 'title') { this.titleT += dt; this.pFloor = 0; this.pSupport = null; this.updateCull(); this.updateZombies(dt); this.updateTitleCam(dt); this.updateNight(); this.fx.update(dt); return; }
     if (this.state === 'pause') return;
-    if (this.state === 'over') { this.updateOjiHud(); this.updateRockets(dt); this.updateZombies(dt); this.updatePickups(dt); this.fx.update(dt); this.updateCamera(dt, false); this.updateNight(); return; }
+    if (this.state === 'over') { this.updateOjiHud(); this.updateRobotHud(); this.updateRockets(dt); this.updateZombies(dt); this.updatePickups(dt); this.fx.update(dt); this.updateCamera(dt, false); this.updateNight(); return; }
 
     const gun = this.guns[this.cur], w = WEAPONS[this.cur];
     // イベント
@@ -1586,12 +1621,14 @@ export class Game {
     this.updatePerch(dt);
     this.updateZombies(dt);
     this.updateOji(dt);
+    this.updateRobot(dt);
     this.updatePickups(dt);
     this.updateGearDrops(dt);
     this.updateCull();
     this.updatePlayerAnim(dt);
     this.updateCamera(dt, true);
     this.updateOjiHud();
+    this.updateRobotHud();
     this.updateNight();
     this.fx.update(dt);
     this.hudT = (this.hudT || 0) - dt;
@@ -1773,3 +1810,4 @@ export class Game {
     this.renderer.forceContextLoss?.();
   }
 }
+Object.assign(Game.prototype, RobotMixin);

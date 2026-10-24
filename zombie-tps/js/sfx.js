@@ -212,6 +212,27 @@ export class Sfx {
     this._tone(t + 0.24, 0.34, { type: 'triangle', f0: 760, f1: 520, gain: 0.22 * vol });
   }
   // ふくを もらった（キラキラ ファンファーレ）
+  // v0.7.0: けいさつロボ
+  robotOn() { // ピポパ♪
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime;
+    [659, 880, 1175, 1568].forEach((f, i) => this._tone(t + i * 0.08, 0.14, { type: 'square', f0: f, f1: f, gain: 0.07 }));
+    this._tone(t + 0.34, 0.4, { type: 'triangle', f0: 1760, f1: 1700, gain: 0.1 });
+  }
+  robotShot(vol = 0.5) { // パスッ（プレイヤーより かるい）
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime, p = 0.95 + Math.random() * 0.1;
+    this._noise(t, 0.05, { type: 'highpass', freq: 2600 * p, gain: 0.35 * vol });
+    this._noise(t, 0.1, { type: 'lowpass', freq: 2000 * p, gain: 0.45 * vol });
+    this._tone(t, 0.08, { f0: 240 * p, f1: 70, gain: 0.4 * vol });
+  }
+  robotBreak() { // ガシャーン（こわれる）
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime;
+    this._noise(t, 0.5, { type: 'bandpass', freq: 1800, gain: 0.5 });
+    this._tone(t, 0.6, { type: 'square', f0: 700, f1: 90, gain: 0.08 });
+    [0.08, 0.17, 0.27].forEach((d, i) => this._tone(t + d, 0.07, { type: 'triangle', f0: 2400 - i * 500, f1: 1800 - i * 400, gain: 0.08 }));
+  }
   gift() {
     if (!this.ctx || this.muted) return;
     const t = this.ctx.currentTime;

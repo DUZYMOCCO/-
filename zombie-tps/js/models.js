@@ -1,6 +1,6 @@
 // ブロックの キャラクターと ぶき（かくうの デザイン・ロゴなし）
 import * as THREE from '../vendor/three.module.min.js';
-import { zombieFaceTexture, playerFaceTexture, solidTexture, shirtTexture, camoTexture, ojisanTextures } from './textures.js?v=7';
+import { zombieFaceTexture, playerFaceTexture, solidTexture, shirtTexture, camoTexture, ojisanTextures } from './textures.js?v=8';
 
 const boxGeoCache = new Map();
 export function boxGeo(w, h, d) {
@@ -420,6 +420,73 @@ export function makeOjisan() {
   }
   root.traverse((o) => { if (o.isMesh) o.castShadow = true; });
   return { root, inner, legs, body, headPivot, arms };
+}
+
+// ---- v0.7.0: けいさつロボ（かくうの デザイン: しろ と こん・あおい ライト・ほしの たて。ほんものの マーク・もじは なし）----
+export const ROBOT_CHUNKS = [[0xf2f4f8, 0], [0x1f2f5c, 0], [0xf2f4f8, 1], [0x1f2f5c, 1], [0xf2f4f8, 2], [0x3aa0ff, 2], [0x1f2f5c, 3], [0xf2c94c, 1]];
+function starShape(r0, r1) {
+  const s = new THREE.Shape();
+  for (let i = 0; i < 10; i++) {
+    const a = Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? r1 : r0;
+    if (i) s.lineTo(Math.cos(a) * r, Math.sin(a) * r); else s.moveTo(Math.cos(a) * r, Math.sin(a) * r);
+  }
+  return s;
+}
+export function makePoliceRobot(glowTex) {
+  const root = new THREE.Group(), inner = new THREE.Group(); root.add(inner);
+  const white = L(0xf2f4f8), navy = L(0x1f2f5c), dark = L(0x2a2f38), gold = L(0xf2c94c, { emissive: 0x3a2a00 });
+  const visor = new THREE.MeshBasicMaterial({ color: 0x6fe3ff });
+  const lamp = new THREE.MeshBasicMaterial({ color: 0x3aa0ff });
+  const legs = [];
+  for (const s of [-1, 1]) {
+    const pv = new THREE.Group(); pv.position.set(s * 0.15, 0.64, 0); inner.add(pv);
+    part(pv, navy, 0.24, 0.5, 0.26, 0, -0.25, 0);
+    part(pv, white, 0.27, 0.1, 0.27, 0, -0.26, 0);          // ひざの わ
+    part(pv, white, 0.29, 0.16, 0.34, 0, -0.58, -0.03);     // あし
+    legs.push(pv);
+  }
+  const body = new THREE.Group(); body.position.y = 0.64; inner.add(body);
+  part(body, white, 0.62, 0.64, 0.4, 0, 0.34, 0);
+  part(body, navy, 0.64, 0.12, 0.42, 0, 0.06, 0);             // こしの ベルト
+  part(body, navy, 0.5, 0.08, 0.42, 0, 0.6, 0);               // むねの ライン
+  part(body, navy, 0.26, 0.28, 0.03, 0, 0.34, -0.21);         // たて（むね）
+  const star = new THREE.Mesh(new THREE.ShapeGeometry(starShape(0.085, 0.036)), gold);
+  star.position.set(0, 0.34, -0.226); star.rotation.y = Math.PI; body.add(star);
+  part(body, dark, 0.3, 0.3, 0.12, 0, 0.36, 0.25);            // せなかの バッテリー
+  part(body, lamp, 0.06, 0.06, 0.02, 0.08, 0.44, 0.315);
+  const headPivot = new THREE.Group(); headPivot.position.y = 0.66; body.add(headPivot);
+  part(headPivot, white, 0.44, 0.36, 0.42, 0, 0.2, 0);
+  part(headPivot, navy, 0.48, 0.1, 0.46, 0, 0.4, 0);          // ぼうしの つば みたいな ふち
+  part(headPivot, navy, 0.36, 0.14, 0.04, 0, 0.21, -0.215);
+  part(headPivot, visor, 0.3, 0.06, 0.02, 0, 0.21, -0.24);    // め（バイザー）
+  for (const s of [-1, 1]) part(headPivot, dark, 0.04, 0.14, 0.14, s * 0.24, 0.2, 0); // みみ
+  const light = part(headPivot, lamp, 0.16, 0.11, 0.16, 0, 0.5, 0); // あたまの あおい ライト
+  part(headPivot, dark, 0.2, 0.03, 0.2, 0, 0.45, 0);
+  const aim = new THREE.Group(); aim.position.set(0, 0.52, 0); body.add(aim);
+  const arms = [];
+  for (const s of [-1, 1]) {
+    const pv = new THREE.Group(); pv.position.set(s * 0.38, 0, 0); aim.add(pv);
+    part(pv, navy, 0.22, 0.22, 0.22, 0, 0.02, 0);             // かた
+    part(pv, white, 0.17, 0.17, s > 0 ? 0.46 : 0.58, 0, -0.04, s > 0 ? -0.2 : -0.26);
+    part(pv, dark, 0.19, 0.19, 0.12, 0, -0.04, s > 0 ? -0.46 : -0.58);
+    arms.push(pv);
+  }
+  const holder = new THREE.Group(); holder.position.set(0.18, -0.06, -0.44); aim.add(holder);
+  const gun = makeRifle(); holder.add(gun.group);
+  // まだ なかまに なっていない ときの めじるし（あおい ひかりの わ と はしら）
+  const marker = new THREE.Group(); root.add(marker);
+  const ring = new THREE.Mesh(new THREE.RingGeometry(0.62, 0.82, 28).rotateX(-Math.PI / 2),
+    new THREE.MeshBasicMaterial({ color: 0x5ab8ff, transparent: true, opacity: 0.75, blending: THREE.AdditiveBlending, depthWrite: false }));
+  ring.position.y = 0.04; marker.add(ring);
+  const beam = new THREE.Mesh(new THREE.BoxGeometry(0.22, 5, 0.22), new THREE.MeshBasicMaterial({ color: 0x6fc4ff, transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending, depthWrite: false }));
+  beam.position.y = 2.5; marker.add(beam);
+  let glow = null;
+  if (glowTex) {
+    glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: 0x5ab8ff, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false }));
+    glow.scale.set(1.3, 1.3, 1); glow.position.y = 2.05; root.add(glow);
+  }
+  root.traverse((o) => { if (o.isMesh && o.material !== ring.material && o.material !== beam.material) o.castShadow = true; });
+  return { root, inner, legs, body, headPivot, aim, arms, holder, gun, muzzle: gun.muzzle, light, lamp, marker, ring, beam, glow };
 }
 
 // ---- ゾンビ（かわいい・みどり・ブロック） ----

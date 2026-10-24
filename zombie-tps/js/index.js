@@ -6,10 +6,12 @@ import { loadCss } from '../../common/js/load-css.js';
 import { storage } from '../../common/js/storage.js';
 import { WEAPONS, WEAPON_ORDER, normalizeSave, SENS, VERSION, OUTFITS, outfitName, unlockOutfit,
   GEAR_SLOTS, GEAR_STATS, GEAR_STAT_IDS, INV_CAP, rarityOf, gearColor, gearName, gearScore, gearAction, gearEffects, equippedItems,
-  autoEquipBest, equipGain, autoPickup, bestLoadout, pickMapId, MAP_IDS } from './rules.js?v=7';
-import { MAPS, mapInfo } from './map.js?v=7';
+  autoEquipBest, equipGain, autoPickup, bestLoadout, pickMapId, MAP_IDS } from './rules.js?v=8';
+import { MAPS, mapInfo } from './map.js?v=8';
 
 const hex6 = (n) => '#' + n.toString(16).padStart(6, '0');
+// v0.7.0: がめんの そとを さす やじるしは ボタンに かぶらない たかさ（うえから 16%〜32%）
+const arrowTop = (ny) => Math.min(32, Math.max(16, (1 - ny) * 50)).toFixed(2) + '%';
 const slotOf = (id) => GEAR_SLOTS.find((s) => s.id === id);
 // そうびの ちいさい アイコン（いろ＋レアの わく）
 function gearIcon(g, extra = '') {
@@ -48,9 +50,19 @@ function totalsText(gear) {
   const parts = GEAR_STAT_IDS.filter((k) => t[k]).map((k) => `${GEAR_STATS[k].name} +${t[k]}${GEAR_STATS[k].unit}${t[k] >= GEAR_STATS[k].cap ? '（MAX）' : ''}`);
   return parts.length ? parts.join(' ・ ') : 'まだ なにも つけて いないよ';
 }
-import { Game } from './game.js?v=7';
-import { Input } from './input.js?v=7';
-import { Sfx } from './sfx.js?v=7';
+import { Game } from './game.js?v=8';
+import { Input } from './input.js?v=8';
+import { Sfx } from './sfx.js?v=8';
+
+// v0.7.0: ぶきの ちいさい アイコン（かくうの シルエット）
+const svgI = (d) => `<svg viewBox="0 0 32 16" aria-hidden="true">${d}</svg>`;
+const WEAPON_ICONS = {
+  rifle: svgI('<path d="M0 5h4v6l-3 1zM4 5h20v4H4zM24 6h8v2h-8zM9 9h3l-1 5H9zM14 9h3v5h-2z"/>'),
+  pistol: svgI('<path d="M7 4h18v4H7zM8 8h5l-1 7H8zM25 5h2v2h-2z"/>'),
+  shotgun: svgI('<path d="M0 6l7-1v4l-6 2zM7 5h25v2.5H7zM17 8h9v2.5h-9zM8 8h3v4H8z"/>'),
+  rocket: svgI('<path d="M1 5h25v5H1zM26 4l6 3.5-6 3.5zM12 10h3v5h-3zM8 2h4v3H8z"/>'),
+  minigun: svgI('<path d="M2 3h11v10H2zM5 0h6v3H5zM13 3.5h19v2H13zM13 7h19v2H13zM13 10.5h19v2H13z"/>'),
+};
 
 const SAVE_KEY = 'zombie_tps_save';
 const OPT_LABEL = {
@@ -63,7 +75,7 @@ const OPT_CYCLE = { autoFire: [false, true], sens: ['low', 'mid', 'high'], quali
 
 export default {
   prepare() {
-    return loadCss(new URL('../css/zombie-tps.css?v=7', import.meta.url).href);
+    return loadCss(new URL('../css/zombie-tps.css?v=8', import.meta.url).href);
   },
 
   init(container, onBackToHub) {
@@ -97,7 +109,8 @@ export default {
   el(sel) { return this.container.querySelector(sel); },
 
   buildDOM() {
-    const slots = WEAPON_ORDER.map((id) => `<button class="zt-slot" data-act="w:${id}" data-w="${id}"><b>${WEAPONS[id].slot}</b><span>${WEAPONS[id].short}</span><i></i></button>`).join('');
+    // v0.7.0: ちいさい アイコンの ボタン（みえる ぶぶんは ちいさく・おせる ところは 40px）
+    const slots = WEAPON_ORDER.map((id) => `<button class="zt-slot" data-act="w:${id}" data-w="${id}" aria-label="${WEAPONS[id].name}" title="${WEAPONS[id].slot} ${WEAPONS[id].short}"><span class="zt-chip"><b>${WEAPONS[id].slot}</b>${WEAPON_ICONS[id] || ''}</span></button>`).join('');
     this.container.innerHTML = `
     <div class="zt-root">
       <canvas class="zt-canvas"></canvas>
@@ -109,6 +122,7 @@ export default {
           <div class="zt-top">
             <button class="zt-pause" data-act="pause">Ⅱ</button>
             <div class="zt-hp"><span>HP</span><div class="zt-hpbar"><div></div></div><em>100</em></div>
+            <div class="zt-boticon hidden"><b>ロボ</b><div class="zt-bothp"><div></div></div></div>
             <div class="zt-wave"><b>ウェーブ 1</b><span>のこり 0</span></div>
             <div class="zt-score">スコア <b>0</b></div>
           </div>
@@ -121,6 +135,8 @@ export default {
           <div class="zt-banner"><b></b><span></span></div>
           <div class="zt-oji hidden"><div class="zt-ojitxt">たすけて！</div><div class="zt-ojihp"><div></div></div></div>
           <div class="zt-ojiarrow hidden"><i>➤</i><span>たすけて！</span></div>
+          <div class="zt-bot hidden"><span>けいさつロボ・さわってね</span><div class="zt-bothp"><div></div></div></div>
+          <div class="zt-botarrow hidden"><i>➤</i><span>けいさつロボ</span></div>
           <div class="zt-ammo"><div class="zt-wname"></div><div><b>30</b><span>/ 210</span></div></div>
           <button class="zt-btn zt-fire" data-act="fire"><span>うつ</span></button>
           <button class="zt-btn zt-aim" data-act="aim"><span>ねらう</span></button>
@@ -496,6 +512,8 @@ export default {
       boom: q('.zt-boom'), feed: q('.zt-feed'), banner: q('.zt-banner'), reload: q('.zt-reload'), reloadBar: q('.zt-reload div'), hurt: q('.zt-hurt'),
       slots: [...this.container.querySelectorAll('.zt-slot')],
       boss: q('.zt-boss'), bossName: q('.zt-boss b'), bossBar: q('.zt-bossbar div'),
+      bot: q('.zt-bot'), botTxt: q('.zt-bot span'), botHp: q('.zt-bot .zt-bothp div'), botArrow: q('.zt-botarrow'), botArrowI: q('.zt-botarrow i'),
+      botIcon: q('.zt-boticon'), botIconHp: q('.zt-boticon .zt-bothp div'),
       oji: q('.zt-oji'), ojiTxt: q('.zt-ojitxt'), ojiHp: q('.zt-ojihp div'), ojiArrow: q('.zt-ojiarrow'), ojiArrowI: q('.zt-ojiarrow i'), ojiArrowT: q('.zt-ojiarrow span'),
     };
     const last = {};
@@ -515,7 +533,7 @@ export default {
         setText('wname', E.wname, WEAPONS[s.weapon].name);
         E.ammo.classList.toggle('low', s.ammo <= Math.ceil(s.mag * 0.25));
         if (last.weapon !== s.weapon) { last.weapon = s.weapon; for (const b of E.slots) b.classList.toggle('sel', b.dataset.w === s.weapon); }
-        for (const b of E.slots) { const g = s.guns[b.dataset.w]; const t = `${g.ammo}`; const i = b.querySelector('i'); if (i.textContent !== t) i.textContent = t; }
+        for (const b of E.slots) { const g = s.guns[b.dataset.w]; const e = g.ammo === 0 && !(g.reserve > 0); if (b._e !== e) { b._e = e; b.classList.toggle('empty', e); } }
         // クロスヘア（ばらつきに あわせて ひらく）
         const h = app.canvas.clientHeight || 375;
         const gap = Math.round(5 + (s.spread / Math.tan((s.fov * Math.PI / 180) / 2)) * (h / 2));
@@ -532,6 +550,23 @@ export default {
         const w = (Math.max(0, b.hp) * 100).toFixed(1) + '%';
         if (last.bossW !== w) { last.bossW = w; E.bossBar.style.width = w; }
       },
+      // v0.7.0: けいさつロボ（まだ: なまえ＋やじるし／なかま: あたまの うえの HP と うえの アイコン）
+      robot: (r) => {
+        const mode = !r ? 'none' : r.mode === 'idle' ? (r.onScreen ? 'idle' : 'arrow') : r.onScreen ? 'on' : 'off';
+        if (last.botMode !== mode) {
+          last.botMode = mode;
+          E.bot.classList.toggle('hidden', mode !== 'idle' && mode !== 'on'); E.bot.dataset.m = mode;
+          E.botArrow.classList.toggle('hidden', mode !== 'arrow');
+          E.botIcon.classList.toggle('hidden', mode !== 'on' && mode !== 'off');
+        }
+        if (!r) return;
+        const x = ((r.x + 1) * 50).toFixed(2) + '%', y = ((1 - r.y) * 50).toFixed(2) + '%';
+        const el = mode === 'arrow' ? E.botArrow : E.bot;
+        if (mode !== 'off') { el.style.left = x; el.style.top = mode === 'arrow' ? arrowTop(r.y) : y; }
+        if (mode === 'arrow') E.botArrowI.style.transform = `rotate(${r.ang.toFixed(3)}rad)`;
+        const w = (Math.max(0, r.hp) * 100).toFixed(0) + '%';
+        if (last.botHp !== w) { last.botHp = w; for (const b of [E.botHp, E.botIconHp]) { b.style.width = w; b.classList.toggle('low', r.hp < 0.35); } }
+      },
       // おじさんの ふきだし（がめんの なか）／やじるし（がめんの そと）
       oji: (o) => {
         const mode = !o ? 'none' : o.onScreen ? 'bubble' : 'arrow';
@@ -542,7 +577,7 @@ export default {
         if (!o) return;
         const x = ((o.x + 1) * 50).toFixed(2) + '%', y = ((1 - o.y) * 50).toFixed(2) + '%';
         const el = mode === 'bubble' ? E.oji : E.ojiArrow;
-        el.style.left = x; el.style.top = y;
+        el.style.left = x; el.style.top = mode === 'arrow' ? arrowTop(o.y) : y;
         if (last.ojiTxt !== o.text) { last.ojiTxt = o.text; E.ojiTxt.textContent = o.text; E.ojiArrowT.textContent = o.text; E.oji.dataset.st = o.state; E.ojiArrow.dataset.st = o.state; }
         const w = (Math.max(0, o.hp) * 100).toFixed(0) + '%';
         if (last.ojiHp !== w) { last.ojiHp = w; E.ojiHp.style.width = w; E.ojiHp.classList.toggle('low', o.hp < 0.35); }
