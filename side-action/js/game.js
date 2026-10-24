@@ -3,7 +3,7 @@ import {
   H, GROUND, GRAV, PHYS, WEAPONS, MOVES, COMBO_WINDOW, CHAIN_GRACE, ENEMIES, BOSSES, STAGES, ALLIES, ALLY_DOWN_TIME,
   createArsenal, giveWeapon, addAmmo, nextWeapon, tickGun, pickMove, moveBox, overlap, knockOf, comboWord,
   allyDecide, landOn, makePlatforms, scoreFor, GUN_GEOM, ZOOMS,
-} from './rules.js?v=4';
+} from './rules.js?v=5';
 
 export const BLOOD = {
   green: ['#63e64b', '#2fae3a', '#a6ff6e', '#1f7d2b'],
@@ -208,6 +208,12 @@ export class Game {
       if (e.shieldHp <= 0) { e.shieldHp = 0; this.addText(e.x, e.y - 100, 'タテ こわれた！', '#ffe27a', 16); this.ev('break'); this.debris(e.x + e.face * 18, e.y - 40, '#8a93a0', 8); e.state = 'hurt'; e.t = 0.5; e.vx = face * 200; }
       else if (melee) { e.vx = face * 160; }
       return;
+    }
+    if (e.helmetHp > 0 && !M.blast && !(e.state === 'down')) { // ヘルメット が すこし ふせぐ
+      const ab = dmg * (melee ? 0.3 : 0.7);
+      e.helmetHp -= ab; dmg -= ab;
+      this.sparks(e.x + e.face * 4, e.y - e.h + 8, '#ffe27a', melee ? 4 : 2); this.ev('ting');
+      if (e.helmetHp <= 0) { e.helmetHp = 0; this.addText(e.x, e.y - 100, 'ヘルメット とんだ！', '#ffe27a', 15); this.ev('break'); this.debris(e.x, e.y - e.h + 4, '#454a36', 6); }
     }
     let mult = 1;
     if (isBoss && e.id !== 'hydra' && e.state === 'dazed') mult = 2;
@@ -458,7 +464,7 @@ export class Game {
     const near = clamp(this.player.x + (this.rand() < 0.5 ? -1 : 1) * (110 + this.rand() * 150), Math.max(this.camX + 50, vx0 + 40), Math.min(this.camX + this.viewW - 120, vx0 + vw - 60));
     const e = { kind: 'enemy', type, def: d, x: fromTop || fromWall ? near : x,
       y: fromTop ? -30 : GROUND, vx: 0, vy: 0, w: d.w, h: d.h, face: -side, hp: d.hp, maxHp: d.hp, state: 'walk', t: 0, cool: 0.8 + this.rand(),
-      onGround: !fromTop, anim: this.rand() * 5, shieldHp: d.shieldHp || 0, spawnT: fromWall ? 0.9 : 0, spawnMax: 0.9, wallY: GROUND - 70 - this.rand() * 60, flashT: 0, hitDone: false, dropT: 0 };
+      onGround: !fromTop, anim: this.rand() * 5, shieldHp: d.shieldHp || 0, helmetHp: d.helmetHp || 0, seed: (this.spawnN = (this.spawnN || 0) + 1) * 37 + type.length, spawnT: fromWall ? 0.9 : 0, spawnMax: 0.9, wallY: GROUND - 70 - this.rand() * 60, flashT: 0, hitDone: false, dropT: 0 };
     if (fromWall) e.face = this.player.x > e.x ? 1 : -1;
     if (fromTop || fromWall) this.ev('creep');
     this.enemies.push(e);
@@ -523,7 +529,13 @@ export class Game {
       e.vx *= Math.pow(0.002, dt); e.t -= dt;
       if (d.laser) { e.face = dx >= 0 ? 1 : -1; e.aimX = T.x; e.aimY = T.y - 40; }
       if (e.t <= 0) {
-        if (d.ai === 'gunner') {
+        if (d.spit) { // むらさきの さん を なげる
+          const sx = e.x + e.face * 14, sy = e.y - 60, tt = clamp(adx / 330, 0.55, 1.1);
+          const tx = T.x + (this.rand() - 0.5) * 40;
+          this.bullets.push({ owner: 'e', x: sx, y: sy, vx: (tx - sx) / tt, vy: (GROUND - sy - 0.5 * GRAV * 0.6 * tt * tt) / tt, grav: 0.6, life: 3, dmg: d.dmg, r: 7, w: 'blob', acid: true });
+          this.ev('spit'); e.cool = d.cool; e.state = 'walk';
+        } else if (d.volley) { e.state = 'burst'; e.n = d.volley; e.t = 0; }
+        else if (d.ai === 'gunner') {
           const gy = e.y - 46, ty = T.y - 40;
           const ang = Math.atan2(ty - gy, Math.abs(dx));
           const s = d.shotSpeed;
@@ -531,6 +543,18 @@ export class Game {
           this.addPart({ kind: 'muzzle', x: e.x + e.face * 30, y: gy, life: 0.07, max: 0.07, size: 12, face: e.face, color: '#e9a0ff' });
           this.ev('eshoot'); e.cool = d.cool; e.state = 'walk';
         } else { e.state = 'attack'; e.t = 0.22; }
+      }
+    } else if (e.state === 'burst') { // ぐんじん ゾンビ：ねらいの あまい れんしゃ
+      e.vx *= Math.pow(0.002, dt); e.t -= dt;
+      if (e.t <= 0) {
+        if (e.n-- <= 0) { e.state = 'walk'; e.cool = d.cool * (0.8 + this.rand() * 0.5); }
+        else {
+          e.t = 0.11;
+          const gy = e.y - 44, ang = Math.atan2(T.y - 40 - gy, Math.abs(dx)) + (this.rand() - 0.5) * 2 * d.inacc;
+          this.bullets.push({ owner: 'e', x: e.x + e.face * 40, y: gy - 6, vx: Math.cos(ang) * d.shotSpeed * e.face, vy: Math.sin(ang) * d.shotSpeed, life: 1.4, dmg: d.dmg, r: 3, w: 'tracer' });
+          this.addPart({ kind: 'muzzle', x: e.x + e.face * 44, y: gy - 6, life: 0.06, max: 0.06, size: 10, face: e.face, color: '#ffd27a' });
+          this.ev('eshoot');
+        }
       }
     } else if (e.state === 'attack') {
       e.t -= dt; e.vx = e.face * 60;

@@ -1,5 +1,5 @@
 // バトル アクション の きまり（DOM なし・node で テストできる）
-export const VERSION = '0.4.0';
+export const VERSION = '0.5.0';
 export const H = 375;              // ろんり の たかさ
 export const GROUND = 318;         // じめん（あしの y）
 export const GRAV = 2000;
@@ -123,6 +123,15 @@ export const ENEMIES = {
   swarm:   { name: 'チビカゲ',     hp: 10,  w: 26, h: 20, speed: 230, weight: 0.6, dmg: 5,  reach: 32, wind: 0.32, cool: 0.9,  score: 60,  blood: 'purple', ai: 'crawler', look: 'swarm', jumper: true, emerge: true, small: true },
   bloater: { name: 'ふくれマスク', hp: 70,  w: 40, h: 80, speed: 70,  weight: 1.8, dmg: 10, reach: 50, wind: 0.6,  cool: 1.5,  score: 260, blood: 'purple', ai: 'grunt', look: 'bloater', burst: true },
   knight:  { name: 'くろきし',     hp: 70,  w: 34, h: 78, speed: 96,  weight: 1.6, dmg: 12, reach: 54, wind: 0.6,  cool: 1.3,  score: 300, blood: 'green', ai: 'shield', look: 'knight', shieldHp: 40 },
+  // v0.5 ゾンビ たち（ちは みどり／むらさき）
+  zombie:   { name: 'ふつうの ゾンビ',   hp: 36,  w: 30, h: 72, speed: 78,  weight: 1,   dmg: 8,  reach: 44, wind: 0.5,  cool: 1.1,  score: 100, blood: 'green',  ai: 'grunt' },
+  labz:     { name: 'はくい ゾンビ',     hp: 32,  w: 30, h: 72, speed: 92,  weight: 1,   dmg: 8,  reach: 44, wind: 0.46, cool: 1.0,  score: 110, blood: 'green',  ai: 'grunt' },
+  guard:    { name: 'けいびいん ゾンビ', hp: 60,  w: 32, h: 74, speed: 96,  weight: 1.3, dmg: 11, reach: 52, wind: 0.55, cool: 1.2,  score: 220, blood: 'green',  ai: 'grunt', armor: 0.2 },
+  soldierz: { name: 'ぐんじん ゾンビ',   hp: 44,  w: 30, h: 72, speed: 92,  weight: 1.1, dmg: 6,  reach: 0,  wind: 0.6,  cool: 1.9,  score: 260, blood: 'green',  ai: 'gunner', range: [160, 320], shotSpeed: 520, inacc: 0.22, volley: 3, helmetHp: 24 },
+  bloatz:   { name: 'ふくれ ゾンビ',     hp: 80,  w: 42, h: 80, speed: 60,  weight: 1.9, dmg: 10, reach: 50, wind: 0.65, cool: 1.5,  score: 280, blood: 'purple', ai: 'grunt', burst: true },
+  leaper:   { name: 'てなが ゾンビ',     hp: 30,  w: 34, h: 56, speed: 170, weight: 0.9, dmg: 8,  reach: 54, wind: 0.34, cool: 0.95, score: 180, blood: 'purple', ai: 'crawler', jumper: true, emerge: false },
+  hulk:     { name: 'きょだい ゾンビ',   hp: 170, w: 54, h: 108, speed: 70, weight: 2.6, dmg: 17, reach: 66, wind: 0.8,  cool: 1.6,  score: 600, blood: 'purple', ai: 'grunt', armor: 0.45 },
+  spitter:  { name: 'はきだし ゾンビ',   hp: 34,  w: 30, h: 72, speed: 84,  weight: 1,   dmg: 8,  reach: 0,  wind: 0.7,  cool: 2.0,  score: 240, blood: 'purple', ai: 'gunner', range: [170, 300], shotSpeed: 300, spit: true },
   wraith:  { name: 'ゆらぎ',       hp: 30,  w: 40, h: 40, speed: 240, weight: 0.8, dmg: 9,  reach: 40, wind: 0.32, cool: 0.9,  score: 180, blood: 'purple', ai: 'crawler', look: 'wraith', jumper: true, emerge: true },
 };
 for (const [k, d] of Object.entries(ENEMIES)) { d.ai = d.ai || k; d.look = d.look || k; if (d.emerge === undefined) d.emerge = k === 'crawler'; }
@@ -151,10 +160,10 @@ export const STAGES = [
     crates: [[480], [1060], [1880], [2600], [3420]],
     pickups: [[820, 'smg'], [1550, 'heal', 140], [2380, 'shotgun', 222], [3050, 'ammo'], [3560, 'heal']],
     arenas: [
-      { x: 700,  waves: [['grunt', 'grunt', 'crawler'], ['grunt', 'gunner', 'grunt']] },
-      { x: 1560, waves: [['grunt', 'crawler', 'grunt', 'crawler'], ['gunner', 'shield', 'grunt']] },
-      { x: 2450, waves: [['shield', 'grunt', 'crawler', 'grunt'], ['brute', 'crawler'], ['gunner', 'gunner', 'crawler', 'crawler']] },
-      { x: 3300, waves: [['grunt', 'grunt', 'gunner', 'crawler'], ['crawler', 'crawler', 'shield', 'grunt', 'brute']] },
+      { x: 700,  waves: [['zombie', 'labz', 'zombie'], ['guard', 'labz', 'crawler']] },
+      { x: 1560, waves: [['labz', 'zombie', 'crawler', 'labz'], ['guard', 'gunner', 'zombie']] },
+      { x: 2450, waves: [['guard', 'zombie', 'crawler', 'labz'], ['hulk', 'labz'], ['gunner', 'guard', 'crawler', 'zombie']] },
+      { x: 3300, waves: [['zombie', 'zombie', 'guard', 'labz'], ['crawler', 'bloatz', 'guard', 'zombie', 'hulk']] },
     ],
     boss: { x: 3900, id: 'agent' },
   },
@@ -164,11 +173,11 @@ export const STAGES = [
     crates: [[430], [1350], [2200], [3100]],
     pickups: [[700, 'rifle', 212], [1450, 'heal'], [2120, 'bazooka', 166], [2900, 'ammo'], [3500, 'heal', 186], [3900, 'ammo']],
     arenas: [
-      { x: 650,  waves: [['crawler', 'crawler', 'grunt', 'grunt'], ['gunner', 'grunt', 'grunt', 'crawler']] },
-      { x: 1500, waves: [['shield', 'shield', 'gunner', 'crawler'], ['crawler', 'crawler', 'crawler', 'crawler']] },
-      { x: 2350, waves: [['brute', 'grunt', 'crawler'], ['gunner', 'gunner', 'shield', 'grunt'], ['crawler', 'grunt', 'crawler', 'grunt', 'crawler']] },
-      { x: 3200, waves: [['brute', 'gunner', 'grunt'], ['shield', 'crawler', 'crawler', 'gunner', 'grunt']] },
-      { x: 3950, waves: [['grunt', 'grunt', 'grunt', 'crawler', 'crawler'], ['brute', 'brute', 'crawler']] },
+      { x: 650,  waves: [['zombie', 'zombie', 'crawler'], ['leaper', 'zombie', 'grunt']] },
+      { x: 1500, waves: [['shield', 'guard', 'zombie', 'crawler'], ['leaper', 'leaper', 'crawler', 'zombie']] },
+      { x: 2350, waves: [['hulk', 'zombie', 'crawler'], ['gunner', 'guard', 'shield', 'zombie'], ['leaper', 'zombie', 'crawler', 'labz', 'leaper']] },
+      { x: 3200, waves: [['brute', 'gunner', 'zombie'], ['shield', 'leaper', 'crawler', 'guard', 'zombie']] },
+      { x: 3950, waves: [['zombie', 'zombie', 'guard', 'leaper', 'crawler'], ['hulk', 'brute', 'crawler']] },
     ],
     boss: { x: 4300, id: 'hydra' },
   },
@@ -178,10 +187,10 @@ export const STAGES = [
     crates: [[420], [1180], [1980], [2860], [3700]],
     pickups: [[640, 'rifle', 222], [1380, 'heal', 218], [1700, 'smg', 168], [2580, 'shotgun', 174], [3120, 'ammo', 220], [3560, 'heal', 188], [4050, 'bazooka']],
     arenas: [
-      { x: 700,  waves: [['raider', 'grunt', 'raider'], ['gunner', 'raider', 'grunt']] },
-      { x: 1550, waves: [['raider', 'raider', 'crawler'], ['sniper', 'grunt', 'raider']] },
-      { x: 2400, waves: [['shield', 'raider', 'sniper'], ['brute', 'raider'], ['crawler', 'crawler', 'raider', 'gunner']] },
-      { x: 3300, waves: [['raider', 'raider', 'sniper', 'grunt'], ['brute', 'sniper', 'raider']] },
+      { x: 700,  waves: [['zombie', 'soldierz', 'zombie'], ['raider', 'zombie', 'soldierz']] },
+      { x: 1550, waves: [['zombie', 'zombie', 'guard', 'soldierz'], ['sniper', 'soldierz', 'zombie']] },
+      { x: 2400, waves: [['guard', 'soldierz', 'sniper'], ['hulk', 'zombie'], ['leaper', 'zombie', 'soldierz', 'raider']] },
+      { x: 3300, waves: [['soldierz', 'soldierz', 'sniper', 'zombie'], ['hulk', 'soldierz', 'zombie', 'guard']] },
     ],
     boss: { x: 4400, id: 'giant' },
   },
@@ -192,10 +201,10 @@ export const STAGES = [
     crates: [[400], [1100], [2050], [2950], [3800]],
     pickups: [[560, 'shotgun', 216], [1250, 'heal', 212], [1950, 'ammo', 206], [2700, 'heal', 210], [3080, 'rifle', 218], [3800, 'ammo', 216], [4150, 'heal', 210]],
     arenas: [
-      { x: 700,  waves: [['swarm', 'swarm', 'grunt', 'swarm'], ['bloater', 'raider']] },
-      { x: 1600, waves: [['swarm', 'swarm', 'swarm', 'crawler'], ['bloater', 'gunner', 'swarm']] },
-      { x: 2500, waves: [['raider', 'bloater', 'swarm', 'swarm'], ['shield', 'sniper', 'swarm'], ['swarm', 'swarm', 'swarm', 'swarm', 'crawler']] },
-      { x: 3450, waves: [['bloater', 'bloater', 'swarm'], ['brute', 'swarm', 'swarm', 'gunner']] },
+      { x: 700,  waves: [['zombie', 'swarm', 'swarm', 'zombie'], ['bloatz', 'spitter']] },
+      { x: 1600, waves: [['leaper', 'swarm', 'swarm', 'zombie'], ['bloatz', 'spitter', 'swarm']] },
+      { x: 2500, waves: [['leaper', 'bloatz', 'swarm', 'swarm'], ['spitter', 'spitter', 'zombie', 'soldierz'], ['swarm', 'swarm', 'leaper', 'leaper', 'swarm']] },
+      { x: 3450, waves: [['bloatz', 'bloatz', 'spitter'], ['hulk', 'leaper', 'swarm', 'spitter']] },
     ],
     boss: { x: 4500, id: 'mutant' },
   },
@@ -205,11 +214,11 @@ export const STAGES = [
     crates: [[380], [1250], [2080], [3150], [4000]],
     pickups: [[720, 'rifle', 186], [960, 'heal', 150], [1500, 'shotgun', 216], [2560, 'bazooka', 176], [2880, 'heal', 140], [3400, 'ammo', 216], [4150, 'heal', 222], [4450, 'ammo', 186]],
     arenas: [
-      { x: 650,  waves: [['knight', 'raider', 'wraith'], ['sniper', 'knight', 'wraith']] },
-      { x: 1600, waves: [['wraith', 'wraith', 'raider', 'raider'], ['brute', 'sniper', 'wraith']] },
-      { x: 2650, waves: [['knight', 'knight', 'wraith'], ['bloater', 'sniper', 'raider'], ['wraith', 'wraith', 'wraith', 'swarm', 'swarm']] },
-      { x: 3550, waves: [['knight', 'sniper', 'raider', 'wraith'], ['brute', 'knight', 'wraith']] },
-      { x: 4300, waves: [['raider', 'raider', 'wraith', 'wraith', 'sniper'], ['brute', 'brute', 'swarm', 'swarm']] },
+      { x: 650,  waves: [['soldierz', 'knight', 'leaper'], ['sniper', 'soldierz', 'wraith']] },
+      { x: 1600, waves: [['leaper', 'leaper', 'spitter', 'zombie'], ['hulk', 'sniper', 'wraith']] },
+      { x: 2650, waves: [['knight', 'soldierz', 'spitter'], ['bloatz', 'sniper', 'soldierz'], ['wraith', 'leaper', 'leaper', 'swarm', 'swarm']] },
+      { x: 3550, waves: [['knight', 'spitter', 'soldierz', 'wraith'], ['hulk', 'knight', 'leaper']] },
+      { x: 4300, waves: [['soldierz', 'soldierz', 'leaper', 'spitter', 'sniper'], ['hulk', 'hulk', 'swarm', 'swarm']] },
     ],
     boss: { x: 4850, id: 'king' },
   },
