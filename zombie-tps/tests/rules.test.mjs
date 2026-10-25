@@ -232,7 +232,7 @@ test('なめらか いどう: approach は フレームレートに よらない
 });
 
 test('バージョン と セーブの ステージ', () => {
-  assert.equal(VERSION, '0.9.0');
+  assert.equal(VERSION, '0.10.0');
   assert.equal(normalizeSave(null).stage, 'day');
   assert.equal(normalizeSave({ stage: 'night' }).stage, 'night');
   assert.equal(normalizeSave({ stage: 'mars' }).stage, 'day');
@@ -1410,4 +1410,120 @@ test('v0.9.0 マグナム: ハンドガンの やく 3ばい・1たい つらぬ
   const g = createGun('magnum'); assert.equal(g.ammo, 6);
   let n = 0; for (let i = 0; i < 6; i++) { if (tryFire(g, true) === 'fire') n++; tryFire(g, false); updateGun(g, 0.51); }
   assert.equal(n, 6); assert.equal(g.ammo, 0);
+});
+
+// ---- v0.10.0: パワードスーツ ----
+import { SUIT, SUIT_ORDER, SUIT_WEAPONS, suitWeaponAt, wearSuit, tickSuit, suitLabel, routeSuitDamage, suitNextWave,
+  pickSuitSpot, suitTouched, flameHits, punchTargets, punchLaunch, flightAt, dropSpot, burnTick } from '../js/rules.js';
+
+test('v0.10.0 パワードスーツ: 45びょう で ぬげる・タイマーの もじ', () => {
+  const s = wearSuit();
+  assert.equal(s.t, 45); assert.equal(SUIT.time, 45);
+  assert.equal(suitLabel(s.t), 'パワードスーツ のこり 45');
+  let t = 0, r = null;
+  while (!r && t < 60) { r = tickSuit(s, 1 / 60); t += 1 / 60; }
+  assert.equal(r, 'eject');
+  assert.ok(Math.abs(t - 45) < 0.05, `t ${t}`);
+  assert.equal(suitLabel(9.2), 'パワードスーツ のこり 10');
+  assert.equal(suitLabel(0), 'パワードスーツ のこり 0');
+  assert.equal(tickSuit(null, 1), null);
+  assert.ok(SUIT.grace > 0, 'ぬいだ あと むてき');
+  assert.equal(suitNextWave(4), 4 + SUIT.every);
+  assert.ok(SUIT.every >= 2 && SUIT.every <= 4, 'すうウェーブ ごと');
+});
+
+test('v0.10.0 パワードスーツ: きている あいだ と ぬいだ すぐあと は プレイヤーが へらない', () => {
+  const s = wearSuit();
+  for (let i = 0; i < 50; i++) assert.equal(routeSuitDamage(s, 0, 30).player, 0);
+  assert.ok(s.armor > 0 && s.armor < SUIT.armor, 'よろいが すこし へる');
+  assert.equal(routeSuitDamage(null, 1.2, 50).player, 0, 'ぬいだ あとの むてき');
+  assert.equal(routeSuitDamage(null, 0, 50).player, 50, 'ふつう');
+  // ボスの いちげき（60）でも 45びょう もつ くらい つよい
+  assert.ok(SUIT.armor / (60 * SUIT.armorMul) > 150);
+});
+
+test('v0.10.0 パワードスーツ: ぶきは 4つ（マシンキャノン・かえんほうしゃ・キャノン・パンチ）', () => {
+  assert.deepEqual(SUIT_ORDER, ['mcannon', 'flamer', 'cannon', 'punch']);
+  assert.equal(SUIT_WEAPONS.mcannon.name, 'マシンキャノン');
+  assert.equal(SUIT_WEAPONS.flamer.name, 'かえんほうしゃ');
+  assert.equal(SUIT_WEAPONS.cannon.name, 'キャノン');
+  assert.equal(SUIT_WEAPONS.punch.name, 'パンチ');
+  assert.equal(suitWeaponAt(0), 'mcannon'); assert.equal(suitWeaponAt(5), 'flamer'); assert.equal(suitWeaponAt(-1), 'punch');
+  // ふつうの ぶきより ずっと つよい
+  assert.ok(SUIT_WEAPONS.mcannon.dmg / SUIT_WEAPONS.mcannon.interval > 3 * WEAPONS.minigun.dmg * WEAPONS.minigun.rpm / 60, 'ミニガンの 3ばい いじょう');
+  assert.ok(SUIT_WEAPONS.mcannon.dmg >= 60);
+  assert.ok(SUIT_WEAPONS.cannon.dmg > WEAPONS.rocket.dmg && SUIT_WEAPONS.cannon.blast > 5);
+  assert.ok(SUIT_WEAPONS.punch.dmg >= 1000);
+  assert.ok(SUIT.maxFlames <= 64 && SUIT.maxFly <= 10, 'iPhone SE の じょうげん');
+});
+
+test('v0.10.0 かえんほうしゃ: まえの コーンだけ・もえる ダメージ', () => {
+  const T = [{ x: 0, z: -5 }, { x: 0, z: 5 }, { x: 4, z: -1 }, { x: 0, z: -15 }, { x: 1, z: -8 }, { x: 0, z: -3, alive: false }];
+  const hit = flameHits(0, 0, 0, -1, T).map((h) => h.i).sort();
+  assert.deepEqual(hit, [0, 4]);
+  const z = { burnT: 3 };
+  let dmg = 0; for (let i = 0; i < 300; i++) dmg += burnTick(z, 1 / 60);
+  assert.ok(Math.abs(dmg - 3 * SUIT_WEAPONS.flamer.burnDps) < 1e-6);
+  assert.equal(z.burnT, 0); assert.equal(burnTick(z, 1), 0);
+});
+
+test('v0.10.0 パンチ: ちかい じゅんに さいだい4たい・がめんの そとへ ふっとぶ', () => {
+  const T = [];
+  for (let i = 0; i < 8; i++) T.push({ x: (i - 3.5) * 0.4, z: -1.5 - i * 0.1 });
+  T.push({ x: 0, z: 3 }); // うしろ
+  T.push({ x: 0, z: -9 }); // とおい
+  const p = punchTargets(0, 0, 0, -1, T);
+  assert.equal(p.length, SUIT_WEAPONS.punch.max);
+  for (let i = 1; i < p.length; i++) assert.ok(p[i].d >= p[i - 1].d);
+  assert.ok(!p.some((h) => h.i >= 8));
+  for (const r of [0, 0.5, 1]) {
+    const v = punchLaunch(0, -1, r);
+    assert.ok(v.vz < 0 && Math.abs(v.vx) < 1e-9, 'まえへ');
+    assert.ok(Math.abs(v.spin) > 8, 'くるくる');
+    // カメラ（うしろ 6.4m・たかさ 3.2m・たて 70° の はんぶん 35°）から みて がめんの うえへ でる
+    const f = flightAt(v, SUIT.flyTime);
+    const camD = f.d + SUIT.cam.dist, camY = f.y - SUIT.cam.height;
+    assert.ok(Math.atan2(camY, camD) > 35 * Math.PI / 180, `elev ${(Math.atan2(camY, camD) * 180 / Math.PI).toFixed(1)}`);
+    assert.ok(f.d > 30, 'とおくへ');
+  }
+});
+
+test('v0.10.0 アイテムは あたった ばしょに おちる（とんでいった さき では ない）', () => {
+  const hitAt = { x: 3, y: 0, z: -2 };
+  const z = { x: 3, y: 0, z: -2 };
+  const at = { ...hitAt };
+  // ふっとぶ
+  const v = punchLaunch(0, -1, 0.5);
+  z.x += v.vx * 1.2; z.y += 20; z.z += v.vz * 1.2;
+  const d = dropSpot(z, at);
+  assert.deepEqual(d, { x: 3, y: 0, z: -2 });
+  assert.ok(Math.hypot(z.x - d.x, z.z - d.z) > 20);
+  assert.deepEqual(dropSpot({ x: 1, y: -0.3, z: 2 }), { x: 1, y: 0, z: 2 }, 'じめんの うえ');
+});
+
+test('v0.10.0 キャノンの ばくはつ: プレイヤー・なかま・おじさんに きかない', () => {
+  const p = { x: 0, y: 0.5, z: 0 }, R = SUIT_WEAPONS.cannon.blast;
+  const T = [{ team: 'player', x: 0, y: 0, z: 0 }, { team: 'ally', x: 1, y: 0, z: 0 }, { team: 'npc', x: 0, y: 0, z: 1 },
+    { team: 'zombie', x: 2, y: 0, z: 0 }, { team: 'zombie', x: 30, y: 0, z: 0 }];
+  const h = blastHits(p, R, T);
+  assert.equal(h.length, 1); assert.equal(h[0].t, T[3]);
+});
+
+for (const MID of MAP_IDS_MAP) test(`[${MID}] v0.10.0 パワードスーツの ばしょ: あるいて いける・ロボと かさならない`, () => {
+  const map = buildMap(MID), zc = zombieColliders(map);
+  const nav = makeNav(zc, map), ps = map.playerStart;
+  nav.update(ps.x, 0, ps.z);
+  const cells = nav.openCells(map.half - 3).filter((c) => Math.abs(c[2] || 0) < 0.5);
+  const robot = { x: cells[0][0], z: cells[0][1] };
+  const seen = new Set();
+  for (let i = 0; i < 20; i++) {
+    const [x, z] = pickSuitSpot(cells, ps.x, ps.z, i / 20, robot);
+    const d = Math.hypot(x - ps.x, z - ps.z);
+    assert.ok(d >= SUIT.spot[0] - 0.01 && d <= SUIT.spot[1] + 0.01 || cells.length < 30, `dist ${d}`);
+    assert.ok(nav.free(x, 0, z), 'あるける');
+    assert.ok(Math.hypot(x - robot.x, z - robot.z) > 6, 'ロボから はなれる');
+    seen.add(`${x},${z}`);
+  }
+  assert.ok(seen.size >= 5, 'ランダムな ばしょ');
+  assert.ok(suitTouched(0.5, 0.5, 0) && !suitTouched(3, 0, 0));
 });

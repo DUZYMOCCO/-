@@ -5,8 +5,8 @@ import * as THREE from '../vendor/three.module.min.js';
 // v0.9.0: たおした かずで レベルアップ（Lv1〜5）。うごき は ally.js と きょうつう
 import {
   ROBOT, pickRobotSpot, robotTouched, damageRobot, robotStats, robotAddKill, groundHeight, edgeArrow,
-} from './rules.js?v=11';
-import { makePoliceRobot, ROBOT_CHUNKS } from './models.js?v=11';
+} from './rules.js?v=12';
+import { makePoliceRobot, ROBOT_CHUNKS } from './models.js?v=12';
 
 const _o = new THREE.Vector3(), _p = new THREE.Vector3();
 

@@ -1,7 +1,7 @@
 // ゾンビストライク — ゲームの きまり（DOM / three.js に いぞんしない。node のテストから よめる）
 // ぶき・ダメージ・ウェーブ・あたりはんてい（レイ×はこ）・いどうの ぶつかり・ゾンビの みちさがし（フローフィールド）
 
-export const VERSION = '0.9.0';
+export const VERSION = '0.10.0';
 
 // ---- ぶき ----
 // rpm: 1ぷんかんの はっしゃかず / mag: マガジン / reserve: よびだん / reload: びょう
@@ -1393,4 +1393,98 @@ export function damageAlly(a, d, S) {
   a.hp = Math.max(0, a.hp - d * S.dmgMul);
   if (a.hp <= 0) { a.state = 'down'; return true; }
   return false;
+}
+
+// ---- v0.10.0: パワードスーツ（45びょう だけ とんでもなく つよい）----
+// みため は かくう の ロボット スーツ（マーク・はた なし）。マップの どこかに 1つ おちていて、さわると きる
+export const SUIT = {
+  time: 45,            // きていられる じかん（びょう）
+  grace: 2,            // ぬいだ あと むてき（びょう）
+  armor: 4000,         // よろいの HP（プレイヤーの HP は へらない）
+  armorMul: 0.25,      // ゾンビの こうげきは 1/4 だけ よろいに きく（ほぼ むてき）
+  speedMul: 1.45, jump: 9.2,
+  touchR: 1.6,
+  spot: [10, 34],      // スタートからの きょり
+  every: 3,            // つかった あと この ウェーブ かず で また でる
+  cam: { dist: 6.4, height: 3.2, side: 1.25 }, // カメラを うしろへ ひく
+  camPitch: 0.13,      // カメラを すこし したへ（まんなかの ねらいが ゾンビの むねの たかさに くる）
+  assist: 0.075,       // ねらいの おてつだい（この かくど いないの ゾンビに あてる）
+  scale: 1,
+  maxFlames: 48,       // ほのおの つぶ（iPhone SE でも かるく）
+  maxFly: 8,           // パンチで とんでいる ゾンビの かず（これより おおいと その ばで たおれる）
+  flyG: 10,            // パンチで とんだ ゾンビの じゅうりょく（ゆっくり おちる → がめんの そとへ）
+  flyTime: 1.35,       // これだけ とんだら きえる（キラーン）
+};
+export const SUIT_ORDER = ['mcannon', 'flamer', 'cannon', 'punch'];
+export const SUIT_WEAPONS = {
+  mcannon: { id: 'mcannon', name: 'マシンキャノン', short: 'キャノンじゅう', icon: '🔫', interval: 0.075, dmg: 70, pierce: 2, pierceMul: 0.75, spread: 0.02, range: 90, knock: 1.6 },
+  flamer: { id: 'flamer', name: 'かえんほうしゃ', short: 'ほのお', icon: '🔥', range: 9, cone: 0.42, dps: 90, burn: 3, burnDps: 35, tick: 0.1 },
+  cannon: { id: 'cannon', name: 'キャノン', short: 'たいほう', icon: '💣', interval: 0.9, dmg: 480, blast: 7.5, power: 17, speed: 48, gravity: 6, life: 3, projectile: true },
+  punch: { id: 'punch', name: 'パンチ', short: 'パンチ', icon: '👊', interval: 0.45, range: 3.6, arc: 1.0, dmg: 1200, max: 4, h: 28, v: 34, spin: 16, bossDmg: 260, bossKnock: 16 },
+};
+export function suitWeaponAt(i) { return SUIT_ORDER[((i % SUIT_ORDER.length) + SUIT_ORDER.length) % SUIT_ORDER.length]; }
+// きる（あたらしい スーツの じょうたい）
+export function wearSuit() { return { t: SUIT.time, armor: SUIT.armor, weapon: 'mcannon', cd: 0, flameT: 0 }; }
+// じかんを すすめる → 'eject'（じかん ぎれ）
+export function tickSuit(s, dt) {
+  if (!s) return null;
+  s.t = Math.max(0, s.t - dt);
+  if (s.cd > 0) s.cd = Math.max(0, s.cd - dt);
+  return s.t <= 0 ? 'eject' : null;
+}
+export function suitLabel(t) { return `パワードスーツ のこり ${Math.max(0, Math.ceil(t))}`; }
+// ダメージの ゆくえ。スーツ: よろいだけ へる／ぬいだ すぐあと: むてき／ふつう: プレイヤー
+export function routeSuitDamage(s, graceT, d) {
+  if (s) { s.armor = Math.max(0, s.armor - d * SUIT.armorMul); return { player: 0, armor: d * SUIT.armorMul, eject: s.armor <= 0 }; }
+  if (graceT > 0) return { player: 0, armor: 0, eject: false };
+  return { player: d, armor: 0, eject: false };
+}
+// つぎに スーツが でる ウェーブ
+export function suitNextWave(usedWave) { return usedWave + SUIT.every; }
+export function pickSuitSpot(cells, sx, sz, r = Math.random(), avoid = null) {
+  let c = cells;
+  if (avoid) { const f = cells.filter(([x, z]) => Math.hypot(x - avoid.x, z - avoid.z) > 6); if (f.length) c = f; }
+  return pickRobotSpot(c, sx, sz, r, SUIT.spot);
+}
+export function suitTouched(dx, dz, dy) { return Math.hypot(dx, dz) < SUIT.touchR && Math.abs(dy) < 1.6; }
+// かえんほうしゃ: まえの コーンの なかの ゾンビ（ひだり みぎ ±cone・きょり range）
+export function flameHits(ox, oz, fx, fz, targets, range = SUIT_WEAPONS.flamer.range, cone = SUIT_WEAPONS.flamer.cone) {
+  const out = [], fl = Math.hypot(fx, fz) || 1, ux = fx / fl, uz = fz / fl, cc = Math.cos(cone);
+  for (let i = 0; i < targets.length; i++) {
+    const t = targets[i]; if (!t || t.alive === false) continue;
+    const dx = t.x - ox, dz = t.z - oz, d = Math.hypot(dx, dz), r = 0.35 * (t.scale || 1);
+    if (d > range + r) continue;
+    if (d > 0.6 && (dx * ux + dz * uz) / d < cc - r / Math.max(d, 1)) continue;
+    out.push({ i, d });
+  }
+  return out;
+}
+// パンチ: まえの ちかくの ゾンビ（ちかい じゅん・さいだい max）
+export function punchTargets(px, pz, fx, fz, targets, W = SUIT_WEAPONS.punch) {
+  const fl = Math.hypot(fx, fz) || 1, ux = fx / fl, uz = fz / fl, out = [];
+  for (let i = 0; i < targets.length; i++) {
+    const t = targets[i]; if (!t || t.alive === false) continue;
+    const dx = t.x - px, dz = t.z - pz, d = Math.hypot(dx, dz);
+    if (d > W.range + 0.35 * (t.scale || 1)) continue;
+    if (d > 0.8 && Math.acos(Math.max(-1, Math.min(1, (dx * ux + dz * uz) / d))) > W.arc) continue;
+    out.push({ i, d });
+  }
+  return out.sort((a, b) => a.d - b.d).slice(0, W.max);
+}
+// パンチで ふっとぶ はやさ（まえ ＋ そらへ たかく → がめんの そとへ）
+export function punchLaunch(fx, fz, rnd = 0.5, W = SUIT_WEAPONS.punch) {
+  const fl = Math.hypot(fx, fz) || 1;
+  const h = W.h * (0.9 + rnd * 0.2);
+  return { vx: fx / fl * h, vy: W.v * (0.92 + rnd * 0.16), vz: fz / fl * h, spin: W.spin * (0.8 + rnd * 0.4) };
+}
+// とんだ いち（t びょう あと）
+export function flightAt(v, t, g = SUIT.flyG) { return { d: Math.hypot(v.vx, v.vz) * t, y: v.vy * t - 0.5 * g * t * t }; }
+// たおした ときに アイテムが おちる ばしょ = あたった ばしょ（とんでいった さき では ない）
+export function dropSpot(z, at = null) { const p = at || z; return { x: p.x, y: Math.max(0, p.y || 0), z: p.z }; }
+// もえている ゾンビ: のこり じかん と この フレームの ダメージ
+export function burnTick(z, dt, dps = SUIT_WEAPONS.flamer.burnDps) {
+  if (!(z.burnT > 0)) return 0;
+  const used = Math.min(dt, z.burnT);
+  z.burnT = Math.max(0, z.burnT - dt);
+  return dps * used;
 }

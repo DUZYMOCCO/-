@@ -1,6 +1,6 @@
 // ブロックの キャラクターと ぶき（かくうの デザイン・ロゴなし）
 import * as THREE from '../vendor/three.module.min.js';
-import { zombieFaceTexture, playerFaceTexture, solidTexture, shirtTexture, camoTexture, ojisanTextures } from './textures.js?v=11';
+import { zombieFaceTexture, playerFaceTexture, solidTexture, shirtTexture, camoTexture, ojisanTextures } from './textures.js?v=12';
 
 const boxGeoCache = new Map();
 export function boxGeo(w, h, d) {
@@ -762,3 +762,94 @@ export function makeRocketCrate(glowTex) {
   ring.position.y = 0.03; g.add(ring);
   return { group: g, spin, glow, ring };
 }
+
+// ---- v0.10.0: パワードスーツ（かくうの デザイン・マーク／はた なし）----
+// みぎうで: マシンキャノン・ひだりうで: おおきな こぶし ＋ かえんほうしゃ・みぎかた: キャノン
+export function makePowerSuit(glowTex) {
+  const root = new THREE.Group(), inner = new THREE.Group(); root.add(inner);
+  const orange = L(0xf08a24), gray = L(0x5d6672), dark = L(0x2b3038), yellow = L(0xf2c94c, { emissive: 0x2a1c00 });
+  const glass = new THREE.MeshLambertMaterial({ color: 0x7fd8ff, emissive: 0x1d5a78, transparent: true, opacity: 0.85 });
+  const eye = new THREE.MeshBasicMaterial({ color: 0x7af0ff });
+  const hot = new THREE.MeshBasicMaterial({ color: 0xffb040 });
+  const legs = [];
+  for (const s of [-1, 1]) {
+    const pv = new THREE.Group(); pv.position.set(s * 0.4, 1.25, 0); inner.add(pv);
+    part(pv, gray, 0.36, 0.6, 0.42, 0, -0.3, 0);               // ふともも
+    part(pv, orange, 0.46, 0.62, 0.52, 0, -0.86, 0.02);        // すね
+    part(pv, yellow, 0.48, 0.08, 0.54, 0, -0.62, 0.02);        // ひざの ライン
+    part(pv, dark, 0.54, 0.18, 0.84, 0, -1.16, -0.1);          // あし
+    legs.push(pv);
+  }
+  const body = new THREE.Group(); body.position.y = 1.28; inner.add(body);
+  part(body, dark, 0.92, 0.34, 0.66, 0, 0.06, 0);              // こし
+  part(body, orange, 1.34, 0.92, 0.92, 0, 0.62, 0);            // むね
+  part(body, yellow, 1.36, 0.08, 0.94, 0, 0.26, 0);
+  part(body, gray, 0.7, 0.5, 0.06, 0, 0.66, -0.47);            // コックピットの わく
+  const cockpit = part(body, glass, 0.58, 0.38, 0.04, 0, 0.68, -0.5);
+  part(body, dark, 1.0, 0.76, 0.42, 0, 0.66, 0.62);            // せなかの エンジン
+  for (const s of [-1, 1]) part(body, hot, 0.16, 0.1, 0.06, s * 0.28, 0.42, 0.85); // ふんしゃこう
+  const head = new THREE.Group(); head.position.y = 1.16; body.add(head);
+  part(head, gray, 0.46, 0.28, 0.46, 0, 0.08, 0);
+  part(head, eye, 0.34, 0.07, 0.04, 0, 0.1, -0.24);
+  part(head, dark, 0.05, 0.3, 0.05, 0.18, 0.32, 0.1);         // アンテナ
+  // みぎかた: キャノン
+  const cannon = new THREE.Group(); cannon.position.set(0.56, 1.14, 0.05); body.add(cannon);
+  part(cannon, dark, 0.34, 0.3, 0.5, 0, 0, 0.1);
+  const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.15, 1.15, 10).rotateX(Math.PI / 2), gray);
+  tube.position.set(0, 0.02, -0.55); cannon.add(tube);
+  part(cannon, yellow, 0.34, 0.06, 0.06, 0, 0.02, -1.06);
+  const cannonMuzzle = new THREE.Object3D(); cannonMuzzle.position.set(0, 0.02, -1.2); cannon.add(cannonMuzzle);
+  const arms = [];
+  let gatling = null, gunMuzzle = null, fist = null, flameMuzzle = null, pilot = null;
+  for (const s of [-1, 1]) {
+    const pv = new THREE.Group(); pv.position.set(s * 0.86, 0.86, 0); body.add(pv);
+    part(pv, orange, 0.46, 0.46, 0.5, 0, 0.08, 0);             // かた
+    part(pv, gray, 0.32, 0.32, 0.6, 0, -0.06, -0.3);           // うえうで（まえ むき）
+    const fore = new THREE.Group(); fore.position.set(0, -0.06, -0.62); pv.add(fore);
+    part(fore, orange, 0.42, 0.42, 0.62, 0, 0, -0.26);
+    if (s > 0) { // マシンキャノン
+      gatling = new THREE.Group(); gatling.position.set(0, 0, -0.62); fore.add(gatling);
+      for (let i = 0; i < 6; i++) {
+        const a = i / 6 * Math.PI * 2;
+        const b = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.72, 6).rotateX(Math.PI / 2), dark);
+        b.position.set(Math.cos(a) * 0.12, Math.sin(a) * 0.12, -0.3); gatling.add(b);
+      }
+      part(gatling, gray, 0.36, 0.36, 0.08, 0, 0, -0.04);
+      part(gatling, gray, 0.34, 0.34, 0.06, 0, 0, -0.6);
+      gunMuzzle = new THREE.Object3D(); gunMuzzle.position.set(0, 0, -0.75); gatling.add(gunMuzzle);
+    } else { // こぶし ＋ かえんほうしゃ
+      fist = new THREE.Group(); fist.position.set(0, 0, -0.66); fore.add(fist);
+      part(fist, gray, 0.56, 0.52, 0.5, 0, 0, -0.18);
+      part(fist, dark, 0.58, 0.14, 0.12, 0, 0.12, -0.44);       // ゆびの ふし
+      part(fist, dark, 0.58, 0.14, 0.12, 0, -0.08, -0.44);
+      const noz = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.1, 0.5, 8).rotateX(Math.PI / 2), dark);
+      noz.position.set(0, -0.32, -0.1); fore.add(noz);
+      pilot = part(fore, hot, 0.06, 0.06, 0.06, 0, -0.32, -0.38);
+      flameMuzzle = new THREE.Object3D(); flameMuzzle.position.set(0, -0.32, -0.42); fore.add(flameMuzzle);
+    }
+    arms.push(pv);
+  }
+  // めじるし（オレンジの わ と はしら）
+  const marker = new THREE.Group(); root.add(marker);
+  const ring = new THREE.Mesh(new THREE.RingGeometry(1.2, 1.5, 32).rotateX(-Math.PI / 2),
+    new THREE.MeshBasicMaterial({ color: 0xffa040, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false }));
+  ring.position.y = 0.05; marker.add(ring);
+  const beam = new THREE.Mesh(new THREE.BoxGeometry(0.34, 9, 0.34), new THREE.MeshBasicMaterial({ color: 0xffb050, transparent: true, opacity: 0.32, blending: THREE.AdditiveBlending, depthWrite: false }));
+  beam.position.y = 4.5; marker.add(beam);
+  let glow = null;
+  if (glowTex) {
+    glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: 0xffa040, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false }));
+    glow.scale.set(2.4, 2.4, 1); glow.position.y = 3.4; root.add(glow);
+  }
+  root.traverse((o) => { if (o.isMesh && o.material !== ring.material && o.material !== beam.material && o.material !== glass) o.castShadow = true; });
+  return { root, inner, legs, body, head, arms, cannon, cannonMuzzle, gatling, gunMuzzle, fist, flameMuzzle, pilot, cockpit, marker, ring, beam, glow };
+}
+// キャノンの たま
+export function makeSuitShell() {
+  const g = new THREE.Group();
+  part(g, L(0x2b3038), 0.26, 0.26, 0.46, 0, 0, 0);
+  part(g, L(0xf2c94c, { emissive: 0x3a2a00 }), 0.28, 0.06, 0.28, 0, 0, 0.06);
+  const flame = part(g, new THREE.MeshBasicMaterial({ color: 0xffc04a }), 0.16, 0.16, 0.2, 0, 0, 0.3);
+  return { group: g, flame };
+}
+export const SUIT_CHUNKS = [[0xf08a24, 0], [0x5d6672, 0], [0xf08a24, 1], [0x2b3038, 1], [0xf2c94c, 2], [0x7fd8ff, 2], [0x5d6672, 3], [0xf08a24, 3]];

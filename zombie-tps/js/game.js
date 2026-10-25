@@ -13,20 +13,21 @@ import {
   spinGun, weaponMoveMul, makeBoxIndex, pickSpawnPoint, hurryMul, pickMapId,
   rollGearDrop, rollGear, GEAR_FLOOR, GEAR_LIFE, gearEffects, equippedItems, gearColor, rarityOf, normalizeGear,
   damageMul, frontHit, heavyOf, unlockedSpecials, zombieTargetsRobot,
-  castPierce, aimFov, aimSensMul, scopeSway, isScoped, SCOPE, weaponLevel, setGunLevel,
+  castPierce, SUIT, dropSpot, aimFov, aimSensMul, scopeSway, isScoped, SCOPE, weaponLevel, setGunLevel,
   VEHICLE, BLAST_FX, blastHits, blastReachesVehicle,
-} from './rules.js?v=11';
-import { RobotMixin } from './robot.js?v=11';
-import { AllyMixin } from './ally.js?v=11';
-import { CopMixin } from './cop.js?v=11';
-import { VehicleMixin } from './vehicles.js?v=11';
-import { makeNav } from './nav.js?v=11';
-import { buildMap, playerColliders, zombieColliders, shotColliders } from './map.js?v=11';
-import { buildTextures, fxTextures } from './textures.js?v=11';
-import { buildWorld, disposeWorld } from './world.js?v=11';
-import { Backdrop, BACKDROPS } from './backdrop.js?v=11';
-import { makePlayer, applyOutfit, applyGear, makeGearDrop, makeOjisan, makeWeapons, makeZombie, makeRocketProjectile, makeRocketCrate, zombieChunkColors, FLASH_MAT } from './models.js?v=11';
-import { FX } from './fx.js?v=11';
+} from './rules.js?v=12';
+import { RobotMixin } from './robot.js?v=12';
+import { AllyMixin } from './ally.js?v=12';
+import { CopMixin } from './cop.js?v=12';
+import { VehicleMixin } from './vehicles.js?v=12';
+import { SuitMixin } from './suit.js?v=12';
+import { makeNav } from './nav.js?v=12';
+import { buildMap, playerColliders, zombieColliders, shotColliders } from './map.js?v=12';
+import { buildTextures, fxTextures } from './textures.js?v=12';
+import { buildWorld, disposeWorld } from './world.js?v=12';
+import { Backdrop, BACKDROPS } from './backdrop.js?v=12';
+import { makePlayer, applyOutfit, applyGear, makeGearDrop, makeOjisan, makeWeapons, makeZombie, makeRocketProjectile, makeRocketCrate, zombieChunkColors, FLASH_MAT } from './models.js?v=12';
+import { FX } from './fx.js?v=12';
 const A_RIGHT = new THREE.Vector3();
 
 const v3 = () => new THREE.Vector3();
@@ -81,6 +82,7 @@ export class Game {
     this.ojiM = makeOjisan(); this.ojiM.root.visible = false; scene.add(this.ojiM.root);
     this.initRobot();
     this.initCop();
+    this.initSuit();
     this.weapons = makeWeapons();
     for (const id of WEAPON_ORDER) { this.weapons[id].group.visible = false; this.p.holder.add(this.weapons[id].group); }
     this.fx = new FX(scene, tex, { groundAt: (x, z, y) => groundHeight(x, z, 0.05, y, this.pCol) });
@@ -158,6 +160,7 @@ export class Game {
     if (this.pickups) this.pickups.length = 0;
     if (this.pk) this.pk.set(0, 0, 0);
     this.boss = null; this.hud.bossBar?.(null);
+    if (this.suitM) this.endSuit(); // v0.10.0
     this.endOji(); this.endRobot?.(); this.endCop?.(); this.copLast = 0; this.resetVehicles?.(); this.ojiPlan = null; this.ojiLast = 0; this.perchT = 0; this.perchCd = 0;
     for (const sp of this.spits || []) this.releaseSpit(sp);
     this.spits = []; for (const h of this.hazards || []) this.releaseHazard(h);
@@ -180,6 +183,7 @@ export class Game {
     this.resetRun();
     this.applyStage(this.todStart || 'day');
     this.spawnRobot();
+    this.placeSuit(); // v0.10.0: パワードスーツを どこかに おく
     this.state = 'play';
     this.hud.show('play');
     this.pushHud(true);
@@ -1180,6 +1184,7 @@ export class Game {
   updateFly(z, dt) {
     const f = z.fly, m = z.model;
     f.t += dt;
+    if (f.ghost) { this.updateGhostFly(z, dt); return; } // v0.10.0: パンチ
     f.vy -= FLY_G * dt;
     const nx = z.x + f.vx * dt, nz = z.z + f.vz * dt;
     const r = collideCircle(nx, nz, 0.3 * z.scale, z.y, this.zCol, 0.1);
@@ -1219,6 +1224,7 @@ export class Game {
   airborne() { let n = 0; for (const z of this.zombies) if (z.fly) n++; return n; }
 
   damagePlayer(d, z) {
+    if (this.suitBlocksDamage(d)) return; // v0.10.0: スーツ・ぬいだ すぐあと
     d *= this.gearFx ? this.gearFx.dmgMul : 1;
     this.hp = Math.max(0, this.hp - d);
     this.regenDelay = 5; this.shake = Math.max(this.shake, 0.35);
@@ -1416,8 +1422,7 @@ export class Game {
       this.sfx.clink?.(0.5);
     }
     z.hp -= dmg;
-    z.flash = 0.045; z.flashOn = true;
-    for (const mm of z.model.meshes) mm.material = FLASH_MAT;
+    if (!opt.fire) { z.flash = 0.045; z.flashOn = true; for (const mm of z.model.meshes) mm.material = FLASH_MAT; }
     // ノックバック（ショットガンの ちかくは つよい・ライフルは すこし。ボスは ほとんど うごかない）
     const heavy = heavyOf(z.kind);
     const hl = Math.hypot(dir.x, dir.z) || 1;
@@ -1427,7 +1432,7 @@ export class Game {
     if (opt.blast && z.hp > 0 && z.kind !== 'boss' && !z.climb) { z.vy = Math.max(z.vy, 3.5 * heavy); z.y = Math.max(z.y, 0.02); }
     if (!z.slam && !z.charge) z.stagger = Math.max(z.stagger, opt.blast ? 0.7 : head ? 0.28 : 0.12 + kn * 0.03) * Math.min(1, heavyOf(z.kind) * 1.25);
     // ばくはつは みどりの しみ なし（ブロックに くだける）
-    if (!opt.blast && Math.random() < 0.7) this.fx.splat(this.tmp.c.set(z.x + dir.x * 0.6 + (Math.random() - 0.5) * 0.7, z.y + 0.02, z.z + dir.z * 0.6 + (Math.random() - 0.5) * 0.7), undefined, 0.9 + Math.random() * 0.4);
+    if (!opt.blast && !opt.fire && Math.random() < 0.7) this.fx.splat(this.tmp.c.set(z.x + dir.x * 0.6 + (Math.random() - 0.5) * 0.7, z.y + 0.02, z.z + dir.z * 0.6 + (Math.random() - 0.5) * 0.7), undefined, 0.9 + Math.random() * 0.4);
     if (this.boss === z) this.hud.bossBar?.({ name: ZOMBIES.boss.name, hp: Math.max(0, z.hp / z.maxHp) });
     if (z.hp <= 0) {
       z.alive = false; z.deadT = 0; z.poofed = false;
@@ -1439,15 +1444,19 @@ export class Game {
       const isBoss = z.kind === 'boss';
       if (z.selfPop) this.hud.kill('ガスが でた！ はなれて！', true); else this.hud.kill(isBoss ? `ボスを たおした！ +${sc}` : opt.bot === 'cop' ? `けいさつおじさんが たおした！ +${sc}` : opt.bot ? `ロボが たおした！ +${sc}` : head ? `ヘッドショット！ +${sc}` : `+${sc}`, head || isBoss);
       // ロケットだんを おとす（ボスは かならず 2こ）
+      // v0.10.0: アイテムは あたった ばしょに おちる（ふっとんだ さき では ない）
+      const dp = dropSpot(z, opt.dropAt);
       const n = rollRocketDrop(z.kind);
-      if (n) this.spawnPickup(z.x, z.y, z.z, n);
-      if (rollGearDrop(z.kind)) this.spawnGear(z.x + 0.5, z.y, z.z + 0.3, rollGear(Math.random, { floor: isBoss ? GEAR_FLOOR.boss : 'n' }));
+      if (n) this.spawnPickup(dp.x, dp.y, dp.z, n);
+      if (rollGearDrop(z.kind)) this.spawnGear(dp.x + 0.5, dp.y, dp.z + 0.3, rollGear(Math.random, { floor: isBoss ? GEAR_FLOOR.boss : 'n' }));
       if (isBoss) { this.boss = null; this.hud.bossBar?.(null); this.slowT = Math.max(this.slowT, 0.6); this.sfx.roar?.(0.35); }
       this.pushHud(true);
       if (opt.blast) { // ブロックに くだけて とびちる（ちは でない）
         this.shatterZombie(z, opt.launch || { vx: dir.x * 4, vy: 5, vz: dir.z * 4 });
         return true;
       }
+      if (opt.fire) { this.charZombie(z); return true; } // こげて たおれる（ちは でない）
+      if (opt.punch && !isBoss && this.punchFly(z, opt.punch)) { this.fx.greenHit(pos, dir, true); return true; }
       this.fx.splat(this.tmp.c.set(z.x, z.y + 0.02, z.z), undefined, 1.3 * z.scale);
       this.fx.greenHit(pos, dir, true);
       // はでに ふっとぶ（ショットガンの ちかく）
@@ -1577,11 +1586,12 @@ export class Game {
     }
     if (this.state === 'title') { this.titleT += dt; this.pFloor = 0; this.pSupport = null; this.updateCull(); this.updateZombies(dt); this.updateTitleCam(dt); this.updateNight(); this.fx.update(dt); return; }
     if (this.state === 'pause') return;
-    if (this.state === 'over') { this.updateOjiHud(); this.updateRobotHud(); this.updateCopHud(); this.updateVehicles(dt); this.updateRockets(dt); this.updateZombies(dt); this.updatePickups(dt); this.fx.update(dt); this.updateCamera(dt, false); this.updateNight(); return; }
+    if (this.state === 'over') { this.updateOjiHud(); this.updateRobotHud(); this.updateCopHud(); this.updateSuitHud(); this.updateShells(dt); this.updateVehicles(dt); this.updateRockets(dt); this.updateZombies(dt); this.updatePickups(dt); this.fx.update(dt); this.updateCamera(dt, false); this.updateNight(); return; }
 
     const gun = this.guns[this.cur], w = gun.w || WEAPONS[this.cur];
     // イベント
     for (const ev of inp.events) {
+      if (this.suit && this.suitEvent(ev)) continue; // v0.10.0
       if (ev === 'reload') { if (startReload(gun)) this.onReloadStart(); }
       else if (ev === 'jump') { if (this.onGround) { this.vy = 7.2; this.onGround = false; } }
       else if (ev.startsWith('w:')) this.switchWeapon(ev.slice(2));
@@ -1591,7 +1601,7 @@ export class Game {
       } else if (ev === 'pause') { this.hud.pause(); return; }
     }
     // ねらい
-    this.aimAmt = lerp(this.aimAmt, inp.aim ? 1 : 0, Math.min(1, dt * 12));
+    this.aimAmt = lerp(this.aimAmt, inp.aim && !this.suit ? 1 : 0, Math.min(1, dt * 12));
     const target = this.crosshairTarget();
     const slow = (target >= 0 ? 0.65 : 1) * (1 - this.aimAmt * 0.45) * aimSensMul(this.cur, this.aimAmt); // v0.8.0: スコープは もっと ゆっくり
     // しせん: めあての むきへ すこしだけ なめらかに（おくれない ていど）
@@ -1604,7 +1614,7 @@ export class Game {
     this.recoilP -= this.recoilP * rec;
     // いどう
     const fx = -Math.sin(this.yaw), fz = -Math.cos(this.yaw), rx = Math.cos(this.yaw), rz = -Math.sin(this.yaw);
-    const speed = lerp(4.7, 2.5, this.aimAmt) * (gun.reloading > 0 ? 0.85 : 1) * weaponMoveMul(gun) * this.gearFx.speedMul * (this.zapT > 0 ? ZOMBIES.electric.zap.slow : 1);
+    const speed = lerp(4.7, 2.5, this.aimAmt) * (gun.reloading > 0 ? 0.85 : 1) * weaponMoveMul(gun) * this.gearFx.speedMul * (this.zapT > 0 && !this.suit ? ZOMBIES.electric.zap.slow : 1) * (this.suit ? SUIT.speedMul : 1);
     const tvx = (fx * inp.my + rx * inp.mx) * speed, tvz = (fz * inp.my + rz * inp.mx) * speed;
     // かそく・げんそく（くうちゅうは ゆっくり）
     const V = this.vel, speeding = tvx * tvx + tvz * tvz > V.x * V.x + V.z * V.z;
@@ -1618,6 +1628,7 @@ export class Game {
       const r = collideCircle(nx + V.x * dt / nSub, nz + V.z * dt / nSub, PLAYER_R, this.pos.y, this.pCol);
       nx = Math.max(-this.half + 0.5, Math.min(this.half - 0.5, r.x)); nz = Math.max(-this.half + 0.5, Math.min(this.half - 0.5, r.z));
     }
+    if (this.suit) this.pk.set(0, 0, 0); // スーツは ふっとばされない
     // ボスに ふっとばされた ぶん
     if (this.pk.x || this.pk.z) {
       const r = collideCircle(nx + this.pk.x * dt, nz + this.pk.z * dt, PLAYER_R, this.pos.y, this.pCol);
@@ -1658,13 +1669,14 @@ export class Game {
     // ミニガン: まわしてから うつ（うってない ぶきは とまる）
     for (const id of WEAPON_ORDER) if (WEAPONS[id].spinUp) spinGun(this.guns[id], id === this.cur && held && this.swapT <= 0, dt);
     if (w.spinUp) { const sp = gun.spin; if (sp > 0.02 && held) this.sfx.spin?.(sp); }
-    if (this.swapT <= 0) {
+    if (this.suit) this.updateSuitFire(dt, held); // v0.10.0: スーツの ぶき
+    else if (this.swapT <= 0) {
       const res = tryFire(gun, held);
       if (res === 'fire') { this.fireShot(); this.pushHud(true); }
       else if (res === 'reload') this.onReloadStart();
       else if (res === 'empty') this.sfx.empty();
     }
-    if (gun.ammo === 0 && gun.reloading === 0 && gun.reserve > 0 && !held) { if (startReload(gun)) this.onReloadStart(); }
+    if (!this.suit && gun.ammo === 0 && gun.reloading === 0 && gun.reserve > 0 && !held) { if (startReload(gun)) this.onReloadStart(); }
 
     // HP かいふく
     this.updateHazards(dt);
@@ -1682,6 +1694,7 @@ export class Game {
     this.updateOji(dt);
     this.updateRobot(dt);
     this.updateCop(dt);
+    this.updateSuit(dt);
     this.updateVehicles(dt);
     this.updatePickups(dt);
     this.updateGearDrops(dt);
@@ -1691,6 +1704,7 @@ export class Game {
     this.updateOjiHud();
     this.updateRobotHud();
     this.updateCopHud();
+    this.updateSuitHud();
     this.updateNight();
     this.fx.update(dt);
     this.hudT = (this.hudT || 0) - dt;
@@ -1793,23 +1807,25 @@ export class Game {
     const cam = this.camera, A = this.tmp;
     const aim = this.aimAmt;
     // v0.8.0: スナイパー だけ スコープ（ズーム・くろい まる・ゆっくり ゆれる）
-    const scoped = playing !== false && this.state === 'play' && isScoped(this.cur, aim);
+    const scoped = playing !== false && this.state === 'play' && !this.suit && isScoped(this.cur, aim);
+    // v0.10.0: スーツの ときは カメラを うしろへ ひく
+    const sk = this.suitCamK = approach(this.suitCamK || 0, this.suit ? 1 : 0, 3, dt);
     if (scoped !== this.scopedOn) { this.scopedOn = scoped; this.hud.scope?.(scoped); }
     cam.fov = scoped ? SCOPE.fov : Math.max(aimFov(this.cur, aim), this.cur === 'sniper' ? 46 : 0); cam.updateProjectionMatrix();
     this.swayT = (this.swayT || 0) + dt;
     const sw = scoped ? scopeSway(this.swayT, 1, this.moveAmt > 0.2) : { x: 0, y: 0 };
-    const yaw = this.yaw + this.recoilY + sw.x, pitch = this.pitch + this.recoilP + sw.y;
+    const yaw = this.yaw + this.recoilY + sw.x, pitch = this.pitch + this.recoilP + sw.y - SUIT.camPitch * sk; // スーツ: たかい ところから すこし したを みる
     this.recoilY *= Math.max(0, 1 - dt * 8);
     const fx = -Math.sin(yaw) * Math.cos(pitch), fy = Math.sin(pitch), fz = -Math.cos(yaw) * Math.cos(pitch);
     const rx = Math.cos(yaw), rz = -Math.sin(yaw);
-    const sh = lerp(0.95, 0.68, aim);
+    const sh = lerp(lerp(0.95, 0.68, aim), SUIT.cam.side, sk);
     // カメラは プレイヤーを なめらかに おいかける（よこは すばやく・たては ゆっくり）
     const F = this.follow || (this.follow = this.pos.clone());
     F.x = approach(F.x, this.pos.x, 30, dt); F.z = approach(F.z, this.pos.z, 30, dt); F.y = approach(F.y, this.pos.y, 12, dt);
     if (F.distanceToSquared(this.pos) > 4) F.copy(this.pos);
     const bob = this.onGround ? Math.sin(this.walkPhase * 2) * 0.022 * this.moveAmt * (1 - aim) - this.landT * 0.5 : 0;
-    this.shoulder = (this.shoulder || v3()).set(F.x + rx * sh, F.y + lerp(2.02, 1.82, aim) + bob, F.z + rz * sh);
-    const want = scoped ? 0.02 : lerp(3.2, 1.6, aim);
+    this.shoulder = (this.shoulder || v3()).set(F.x + rx * sh, F.y + lerp(lerp(2.02, 1.82, aim), SUIT.cam.height, sk) + bob, F.z + rz * sh);
+    const want = scoped ? 0.02 : lerp(lerp(3.2, 1.6, aim), SUIT.cam.dist, sk);
     const back = A.e.set(-fx, -fy, -fz);
     const dist = cameraDistance(this.shoulder.x, this.shoulder.y, this.shoulder.z, back.x, back.y, back.z, want, this.camCol, 0.25);
     this.camDist = lerp(this.camDist || want, dist, dist < (this.camDist || want) ? 1 : Math.min(1, dt * 6));
@@ -1824,7 +1840,7 @@ export class Game {
       cam.rotation.x += (Math.random() - 0.5) * s; cam.rotation.y += (Math.random() - 0.5) * s; cam.rotation.z = (Math.random() - 0.5) * s * 0.6;
     }
     // ちかすぎる ときは じぶんを うすく（かくす）
-    this.p.root.visible = this.camDist > 0.55;
+    this.p.root.visible = this.camDist > 0.55 && !this.suit;
     this.followSun();
   }
 
@@ -1855,7 +1871,7 @@ export class Game {
       hp: Math.ceil(this.hp), maxHp: this.maxHp, ammo: g.ammo, mag: w.mag, reserve: g.reserve, weapon: this.cur,
       reloading: g.reloading > 0 ? 1 - g.reloading / w.reload : -1, wave: this.wave, left: this.remaining(), score: this.score,
       spread: currentSpread(w, { moving: this.moveAmt > 0.2, aiming: this.aimAmt > 0.5, airborne: !this.onGround, bloom: g.bloom }),
-      fov: this.camera.fov, aim: this.aimAmt, guns: this.guns, lv: g.lv || 1,
+      fov: this.camera.fov, aim: this.aimAmt, guns: this.guns, lv: g.lv || 1, suit: this.suit ? this.suit.weapon : null,
     }, force);
   }
 
@@ -1891,4 +1907,4 @@ export class Game {
     this.renderer.forceContextLoss?.();
   }
 }
-Object.assign(Game.prototype, AllyMixin, RobotMixin, CopMixin, VehicleMixin);
+Object.assign(Game.prototype, AllyMixin, RobotMixin, CopMixin, VehicleMixin, SuitMixin);

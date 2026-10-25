@@ -344,3 +344,29 @@
 .zt-ubox [data-ui=uback] { min-height: 40px; min-width: 88px; }
 .zt-ubox { max-height: 100%; overflow-y: auto; }
 @media (max-height: 400px) { .zt-ubox h2 { font-size: 18px; margin: 0; } .zt-ubox { gap: 4px; } }
+
+/* v0.10.0: パワードスーツ */
+.zt-suitbar, .zt-suittime { display: none; }
+.zt-suited .zt-slots, .zt-suited .zt-rl { display: none; }
+.zt-suited .zt-boss { top: 92px; }
+.zt-suited .zt-suitbar { display: flex; position: absolute; top: calc(max(6px, env(safe-area-inset-top)) + 32px); right: max(6px, env(safe-area-inset-right)); gap: 4px; }
+.zt-sbtn { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; width: 58px; height: 48px; padding: 0; box-sizing: border-box;
+  border-radius: 10px; border: 2px solid rgba(255,255,255,.4); background: rgba(20,24,32,.6); color: #fff; -webkit-tap-highlight-color: transparent; }
+.zt-sbtn b { position: absolute; left: 4px; top: 2px; font-size: 9px; opacity: .65; }
+.zt-sbtn i { font-style: normal; font-size: 20px; line-height: 1; }
+.zt-sbtn span { font-size: 10px; font-weight: 900; line-height: 1.1; margin-top: 2px; text-shadow: 0 1px 2px #000; white-space: nowrap; }
+.zt-sbtn em { position: absolute; left: 5px; right: 5px; bottom: 3px; height: 3px; background: rgba(0,0,0,.4); border-radius: 2px; overflow: hidden; }
+.zt-sbtn em u { display: block; height: 100%; width: 100%; background: #ffd84a; }
+.zt-sbtn.sel { border-color: #ffb02a; background: rgba(255,140,20,.45); box-shadow: 0 0 10px rgba(255,160,40,.7); }
+.zt-suited .zt-suittime { display: block; position: absolute; top: calc(max(6px, env(safe-area-inset-top)) + 36px); left: max(8px, env(safe-area-inset-left)); width: min(42vw, 280px); text-shadow: 0 2px 3px #000; pointer-events: none; }
+.zt-suittime b { display: block; font-size: 17px; font-weight: 900; letter-spacing: 1px; color: #ffcf5a; }
+.zt-suittbar { height: 14px; margin-top: 2px; background: rgba(0,0,0,.5); border: 2px solid rgba(255,255,255,.85); border-radius: 5px; overflow: hidden; }
+.zt-suittbar div { height: 100%; width: 100%; background: linear-gradient(#ffd56a, #ff8a1a); }
+.zt-suittime.low b { color: #ff6a5a; animation: zt-ojipulse .35s ease-in-out infinite alternate; }
+.zt-suittime.low .zt-suittbar div { background: linear-gradient(#ff8a7a, #e0342a); }
+.zt-suittag { position: absolute; transform: translate(-50%, -100%); pointer-events: none; }
+.zt-suittag span { display: block; font-size: 11px; font-weight: 900; color: #fff; background: rgba(200,100,10,.9); padding: 1px 7px 2px; border-radius: 7px; white-space: nowrap; text-shadow: 0 1px 2px #000; animation: zt-ojibob .5s ease-in-out infinite alternate; }
+.zt-suitarrow { position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 1px; pointer-events: none; text-shadow: 0 1px 3px #000; }
+.zt-suitarrow i { display: block; font-style: normal; font-size: 26px; line-height: 1; color: #ffa63a; }
+.zt-suitarrow span { font-size: 10px; font-weight: 900; color: #fff; background: rgba(200,100,10,.9); padding: 1px 6px; border-radius: 7px; white-space: nowrap; }
+.hidden.zt-suittag, .hidden.zt-suitarrow { display: none; }
