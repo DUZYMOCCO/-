@@ -232,7 +232,7 @@ test('なめらか いどう: approach は フレームレートに よらない
 });
 
 test('バージョン と セーブの ステージ', () => {
-  assert.equal(VERSION, '0.11.0');
+  assert.equal(VERSION, '0.12.0');
   assert.equal(normalizeSave(null).stage, 'day');
   assert.equal(normalizeSave({ stage: 'night' }).stage, 'night');
   assert.equal(normalizeSave({ stage: 'mars' }).stage, 'day');
@@ -1621,4 +1621,124 @@ test('v0.11.0 ボタン: 8つの ぶき・5つの スーツぶき が iPhone SE�
   assert.ok(SUIT_BAR.w >= 40 && SUIT_BAR.h >= 40);
   const SW = SUIT_BAR.w * SUIT_ORDER.length + SUIT_BAR.gap * (SUIT_ORDER.length - 1);
   assert.ok(SUIT_BAR.timerL + SUIT_BAR.timerW + 8 + SW + SUIT_BAR.right <= 667, `スーツ ボタン ${SW}px`);
+});
+
+// ===== v0.12.0: たくさんの ゾンビ・かるく する しくみ =====
+import { SpatialGrid, Pool, thinkInterval, THINK, lodPlan, QualityGovernor, GOV_LEVELS, govPixelRatio, crowdDmgMul, CROWD } from '../js/rules.js';
+
+test('v0.12.0 ます目: ちかくの さがしかたが ぜんぶ しらべた ときと おなじ', () => {
+  let seed = 7; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  const g = new SpatialGrid(1.2), pts = [];
+  for (let round = 0; round < 3; round++) {
+    g.clear(); pts.length = 0;
+    for (let i = 0; i < 300; i++) { const p = { id: i, x: (rnd() - 0.5) * 60, z: (rnd() - 0.5) * 60 }; pts.push(p); g.insert(p, p.x, p.z); }
+    assert.equal(g.count, 300);
+    const out = [];
+    for (let k = 0; k < 80; k++) {
+      const qx = (rnd() - 0.5) * 64, qz = (rnd() - 0.5) * 64, r = 0.3 + rnd() * 2.5;
+      g.query(qx, qz, r, out);
+      const got = out.filter((p) => Math.hypot(p.x - qx, p.z - qz) <= r).map((p) => p.id).sort((a, b) => a - b);
+      const want = pts.filter((p) => Math.hypot(p.x - qx, p.z - qz) <= r).map((p) => p.id).sort((a, b) => a - b);
+      assert.deepEqual(got, want);
+      assert.equal(new Set(out).size, out.length); // おなじ ものは 1かいだけ
+    }
+  }
+  // マイナスの ざひょう・さかいめ
+  g.clear(); g.insert('a', -0.01, -0.01); g.insert('b', 0, 0); g.insert('c', 1.2, 0);
+  assert.deepEqual(g.query(0, 0, 0.05, []).sort(), ['a', 'b']);
+  g.clear(); assert.equal(g.query(0, 0, 5, []).length, 0);
+});
+
+test('v0.12.0 ます目: clear しても はいれつを つかいまわす（ふえつづけない）', () => {
+  const g = new SpatialGrid(1);
+  for (let r = 0; r < 20; r++) { g.clear(); for (let i = 0; i < 50; i++) g.insert(i, i % 10, Math.floor(i / 10)); }
+  assert.equal(g.used.length + g.free.length, 50);
+});
+
+test('v0.12.0 つかいまわし: get/put で もれない・ふえすぎない', () => {
+  let made = 0; const p = new Pool(() => ({ n: made++ }));
+  const live = [];
+  for (let frame = 0; frame < 500; frame++) {
+    for (let i = 0; i < 10; i++) live.push(p.get());
+    while (live.length > 40) p.put(live.shift());
+  }
+  assert.equal(p.live, live.length);
+  assert.ok(p.made <= 50, 'made ' + p.made);
+  for (const o of live.splice(0)) p.put(o);
+  assert.equal(p.live, 0);
+  const a = p.get(); assert.ok(a.n < p.made); // ふるいのを つかう
+});
+
+test('v0.12.0 かんがえる 回数: ちかい ほど まいフレーム・とおいと 5かい/びょう', () => {
+  assert.equal(thinkInterval(0), 0);
+  assert.equal(thinkInterval(THINK.near - 0.01), 0);
+  assert.equal(thinkInterval(THINK.near + 1), THINK.midDt);
+  assert.equal(thinkInterval(60), THINK.farDt);
+  let last = 0; for (let d = 0; d < 80; d += 0.5) { const v = thinkInterval(d); assert.ok(v >= last); last = v; }
+  assert.ok(THINK.farDt <= 0.2 && THINK.midDt >= 0.1 - 1e-9); // 5〜10かい/びょう
+});
+
+test('v0.12.0 とおくの かんたんモデル: ちかい じゅんに nearMax たい・とくべつは いつも ちゃんと', () => {
+  const items = [30, 2, 9, 4, 25, 6, 1, 17, 12].map((d) => ({ d, force: false }));
+  items[0].force = true; // とおくても とくべつ（ボス など）
+  const n = lodPlan(items, 3, 15);
+  assert.equal(n, 4);
+  assert.deepEqual(items.filter((i) => i.full).map((i) => i.d).sort((a, b) => a - b), [1, 2, 4, 30]);
+  // lodDist より とおい ものは nearMax が あまっても かんたん
+  for (const it of items) it.force = false;
+  lodPlan(items, 50, 10);
+  assert.ok(items.every((i) => i.full === i.d < 10));
+  assert.equal(lodPlan([], 5, 10), 0);
+});
+
+test('v0.12.0 がしつ ちょうせい: おもいと だんだん さげる → いちどに でる かずも へる → かるく なると もどる', () => {
+  const g = new QualityGovernor();
+  const run = (ms, sec) => { let ch = 0; for (let t = 0; t < sec * 1000; t += ms) if (g.sample(ms)) ch++; return ch; };
+  assert.equal(g.level, 0); assert.equal(g.capFor(40), 40);
+  run(16, 10); assert.equal(g.level, 0); // かるい: そのまま
+  run(40, 30); // 25fps: おもい
+  assert.equal(g.level, GOV_LEVELS.length - 1);
+  assert.ok(g.capFor(40) < 40 && g.capFor(40) >= 26, 'cap ' + g.capFor(40));
+  assert.equal(g.capFor(8), 6); // さいていでも 6たい
+  for (let i = 1; i < GOV_LEVELS.length; i++) {
+    const a = GOV_LEVELS[i - 1], b = GOV_LEVELS[i];
+    assert.ok(b.lod <= a.lod && b.near <= a.near && b.shadow <= a.shadow && b.cap <= a.cap, 'level ' + i);
+  }
+  // かいぞうどを さきに さげて、かずは さいごに さげる
+  const firstCap = GOV_LEVELS.findIndex((l) => l.cap < 1);
+  assert.ok(firstCap >= 3);
+  assert.ok(govPixelRatio(firstCap - 1, 1.5) < 1.5);
+  run(12, 60); assert.equal(g.level, 0); // かるく なったら もどる
+  // 30fps に きまっている ばあい（33ms）: がしつは さげるが かずは へらさない
+  const lp = new QualityGovernor(); for (let i = 0; i < 2000; i++) lp.sample(33.4);
+  assert.equal(lp.capFor(40), 40); assert.ok(lp.level >= 3);
+  // ながい フレーム 1つ（タブ きりかえ）では さがらない
+  const h = new QualityGovernor(); h.sample(5000); for (let i = 0; i < 200; i++) h.sample(16); assert.equal(h.level, 0);
+});
+
+test('v0.12.0 かいぞうど: auto の だんかい', () => {
+  assert.equal(govPixelRatio(0, 1.5), 1.5);
+  assert.equal(govPixelRatio(1, 1.5), 1.25);
+  assert.equal(govPixelRatio(1, 1), 1);
+  assert.equal(govPixelRatio(2, 1.5), 1);
+  assert.equal(govPixelRatio(3, 1.5), 0.85);
+});
+
+test('v0.12.0 ゾンビが ふえた: いちどに でる かず 2ばい いじょう・7さいでも だいじょうぶ', () => {
+  assert.ok(CROWD.maxAlive >= 2 * CROWD.oldMaxAlive);
+  assert.equal(waveSpec(1).maxAlive <= 12, true); // さいしょは すくなめ
+  assert.ok(waveSpec(1).total <= 10);
+  const late = waveSpec(12);
+  assert.equal(late.maxAlive, CROWD.maxAlive);
+  assert.ok(late.total >= 2 * 42); // まえの ウェーブ12 は 50
+  for (let n = 1; n < 40; n++) {
+    const s = waveSpec(n), t = waveSpec(n + 1);
+    assert.ok(t.total - t.boss >= s.total - s.boss && t.maxAlive >= s.maxAlive && t.spawnGap <= s.spawnGap);
+    assert.ok(s.spawnGap >= CROWD.gapMin);
+    assert.ok(s.dmgMul > 0.7 && s.dmgMul <= 1);
+    // いちどに でる かず × こうげき は まえ（16たい）の 2ばい ていどまで
+    assert.ok(s.maxAlive * s.dmgMul <= 16 * 2, 'n=' + n);
+  }
+  assert.equal(crowdDmgMul(16), 1); assert.equal(crowdDmgMul(8), 1);
+  assert.ok(crowdDmgMul(40) >= 0.72);
 });

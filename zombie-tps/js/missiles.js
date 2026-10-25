@@ -2,8 +2,8 @@
 // すこし うえに ひろがって でて → いちばん ちかい まえの ゾンビへ まがって とぶ → ばくはつ（ゾンビ だけ）
 // とべる かずと けむりの かずには じょうげん（iPhone SE でも かるく）
 import * as THREE from '../vendor/three.module.min.js';
-import { MISSILE, missileTargets, salvoDirs, steerMissile, salvoRoom, castShot } from './rules.js?v=13';
-import { makeMissile } from './models.js?v=13';
+import { MISSILE, missileTargets, salvoDirs, steerMissile, salvoRoom, castShot } from './rules.js?v=14';
+import { makeMissile } from './models.js?v=14';
 
 const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _c = new THREE.Vector3();
 const FWD = new THREE.Vector3(0, 0, -1);

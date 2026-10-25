@@ -1,7 +1,7 @@
 // ゾンビストライク — ゲームの きまり（DOM / three.js に いぞんしない。node のテストから よめる）
 // ぶき・ダメージ・ウェーブ・あたりはんてい（レイ×はこ）・いどうの ぶつかり・ゾンビの みちさがし（フローフィールド）
 
-export const VERSION = '0.11.0';
+export const VERSION = '0.12.0';
 
 // ---- ぶき ----
 // rpm: 1ぷんかんの はっしゃかず / mag: マガジン / reserve: よびだん / reload: びょう
@@ -430,9 +430,14 @@ export const HEADSHOT_BONUS = 50;
 export const ATTACK_RANGE = 1.25;
 export const PLAYER_MAX_HP = 100;
 
+// v0.12.0: ゾンビの かず（まえ: ぜんぶ 6＋4ずつ〜60・いちどに 8〜16）
+export const CROWD = { total0: 10, totalStep: 7, maxTotal: 130, alive0: 8, aliveStep: 4, maxAlive: 40, gapMin: 0.35, oldMaxAlive: 16 };
+// おおぜい くる ときは 1たいの こうげきを すこし よわく（7さいでも だいじょうぶ）
+export function crowdDmgMul(maxAlive) { return Math.max(0.72, Math.min(1, 1 - (maxAlive - CROWD.oldMaxAlive) * 0.012)); }
+
 // ウェーブの なかみ（ぜんぶで なんたい・どのしゅるい・いちどに なんたいまで）
 export function waveSpec(n) {
-  const total = Math.min(6 + (n - 1) * 4, 60);
+  const total = Math.min(CROWD.total0 + (n - 1) * CROWD.totalStep, CROWD.maxTotal); // v0.12.0: ふえた（まえは 6＋4ずつ・60まで）
   const runnerShare = n < 2 ? 0 : Math.min(0.15 + (n - 2) * 0.07, 0.45);
   const bruteCount = n < 4 ? 0 : Math.min(1 + Math.floor((n - 4) / 2), 6);
   // はやい ゾンビ（のぼれる のは この こだけ）は ウェーブ1から かならず 1たい いじょう
@@ -455,7 +460,8 @@ export function waveSpec(n) {
   walkers -= sp;
   const hpMul = 1 + Math.max(0, n - 5) * 0.08;
   return { n, total: total + (isBossWave(n) ? 1 : 0), walkers, runners, brutes: bruteCount, boss: isBossWave(n) ? 1 : 0,
-    specials, specialCount: sp, maxAlive: Math.min(6 + n * 2, 16), spawnGap: Math.max(0.5, 1.8 - n * 0.12), hpMul };
+    specials, specialCount: sp, maxAlive: Math.min(CROWD.alive0 + n * CROWD.aliveStep, CROWD.maxAlive), spawnGap: Math.max(CROWD.gapMin, 1.6 - n * 0.12), hpMul,
+    dmgMul: crowdDmgMul(Math.min(CROWD.alive0 + n * CROWD.aliveStep, CROWD.maxAlive)) };
 }
 
 // しゅるいの ならびを つくる（rng: 0..1）
@@ -1548,3 +1554,80 @@ export function steerMissile(vx, vy, vz, tx, ty, tz, maxAng) {
 }
 // 1かいで うてる かず（とんでいる かずの じょうげん）
 export const salvoRoom = (flying, want) => Math.max(0, Math.min(want, MISSILE.max - flying));
+
+// ===== v0.12.0: かるく する しくみ（たくさんの ゾンビ） =====
+// ちかくの ものを さがす ます目（O(n^2) の かわり）
+export class SpatialGrid {
+  constructor(cell = 1.2) { this.cell = cell; this.map = new Map(); this.used = []; this.free = []; this.count = 0; }
+  key(ix, iz) { return (ix + 32768) * 65536 + (iz + 32768); }
+  clear() { for (const a of this.used) { a.length = 0; this.free.push(a); } this.used.length = 0; this.map.clear(); this.count = 0; }
+  insert(o, x, z) {
+    const k = this.key(Math.floor(x / this.cell), Math.floor(z / this.cell));
+    let a = this.map.get(k);
+    if (!a) { a = this.free.pop() || []; this.map.set(k, a); this.used.push(a); }
+    a.push(o); this.count++;
+  }
+  // x,z から r いないの ますに いる もの（きょりの チェックは よぶ ほうで）
+  query(x, z, r, out = []) {
+    out.length = 0; const c = this.cell;
+    const x0 = Math.floor((x - r) / c), x1 = Math.floor((x + r) / c), z0 = Math.floor((z - r) / c), z1 = Math.floor((z + r) / c);
+    for (let ix = x0; ix <= x1; ix++) for (let iz = z0; iz <= z1; iz++) { const a = this.map.get(this.key(ix, iz)); if (a) for (const o of a) out.push(o); }
+    return out;
+  }
+}
+// つかいまわし（まいフレーム new しない → GC で カクッと しない）
+export class Pool {
+  constructor(make) { this.make = make; this.free = []; this.made = 0; }
+  get() { if (this.free.length) return this.free.pop(); this.made++; return this.make(); }
+  put(o) { this.free.push(o); }
+  get live() { return this.made - this.free.length; }
+}
+// とおくの ゾンビは かんがえる（みちさがし）回数を へらす: ちかい=まいフレーム・まんなか 10かい/びょう・とおい 5かい/びょう
+export const THINK = { near: 12, mid: 28, midDt: 0.1, farDt: 0.2 };
+export function thinkInterval(dist) { return dist < THINK.near ? 0 : dist < THINK.mid ? THINK.midDt : THINK.farDt; }
+// どの ゾンビを ちゃんとした モデルで かくか（ちかい じゅんに nearMax たい・lodDist いない）。force は いつも ちゃんと
+// items: [{ d, force }] → item.full を きめる。 かえりち: full の かず
+export function lodPlan(items, nearMax, lodDist, order = []) {
+  order.length = 0;
+  for (let i = 0; i < items.length; i++) { const it = items[i]; it.full = !!it.force; if (!it.force && it.d < lodDist) order.push(i); }
+  order.sort((a, b) => items[a].d - items[b].d);
+  let n = 0;
+  for (const it of items) if (it.full) n++;
+  for (let k = 0; k < order.length && k < nearMax; k++) { items[order[k]].full = true; n++; }
+  return n;
+}
+// がしつの だんかい（おもいと じゅんに: かいぞうど → とおくの かんたんモデル → かげ → いちどに でる かず）
+export const GOV_LEVELS = [
+  { pr: 'base', lod: 20, near: 14, shadow: 8, cap: 1, fx: 1 },
+  { pr: 'minus', lod: 16, near: 12, shadow: 6, cap: 1, fx: 1 },
+  { pr: 1, lod: 13, near: 10, shadow: 4, cap: 1, fx: 0.8 },
+  { pr: 0.85, lod: 10, near: 8, shadow: 2, cap: 1, fx: 0.6, air: 4 },
+  { pr: 0.85, lod: 9, near: 7, shadow: 1, cap: 0.8, fx: 0.5, air: 4 },
+  { pr: 0.85, lod: 8, near: 6, shadow: 0, cap: 0.65, fx: 0.4, air: 3 },
+];
+export function govPixelRatio(lv, base) {
+  const p = GOV_LEVELS[lv].pr;
+  return p === 'base' ? base : p === 'minus' ? Math.max(1, base - 0.25) : Math.min(base, p);
+}
+// FPS を みて がしつを さげる／もどす
+export class QualityGovernor {
+  // capMs: かずを へらす だんかいへは もっと おもい とき だけ（30fps に きまっている「ていでんりょくモード」でも かずは へらさない）
+  constructor({ hiMs = 26, capMs = 37, loMs = 17, win = 2000, upWins = 4, maxLevel = GOV_LEVELS.length - 1 } = {}) {
+    Object.assign(this, { hiMs, capMs, loMs, win, upWins, maxLevel }); this.reset();
+  }
+  reset() { this.level = 0; this.t = 0; this.sum = 0; this.n = 0; this.good = 0; this.avg = 0; }
+  get cfg() { return GOV_LEVELS[this.level]; }
+  get capMul() { return this.cfg.cap; }
+  capFor(maxAlive) { return Math.max(6, Math.round(maxAlive * this.cfg.cap)); }
+  // 1フレームの じかん（ms）。だんかいが かわったら true
+  sample(ms) {
+    ms = Math.min(ms, 100); // タブの きりかえ などの ながい フレームは 100ms あつかい
+    this.t += ms; this.sum += ms; this.n++;
+    if (this.t < this.win) return false;
+    const avg = this.avg = this.sum / this.n; this.t = 0; this.sum = 0; this.n = 0;
+    if (this.level < this.maxLevel && avg > (GOV_LEVELS[this.level + 1].cap < 1 ? this.capMs : this.hiMs)) { this.level++; this.good = 0; return true; }
+    if (avg < this.loMs) { if (++this.good >= this.upWins && this.level > 0) { this.level--; this.good = 0; return true; } }
+    else this.good = 0;
+    return false;
+  }
+}

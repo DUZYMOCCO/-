@@ -1,6 +1,6 @@
 // ブロックの キャラクターと ぶき（かくうの デザイン・ロゴなし）
 import * as THREE from '../vendor/three.module.min.js';
-import { zombieFaceTexture, playerFaceTexture, solidTexture, shirtTexture, camoTexture, ojisanTextures } from './textures.js?v=13';
+import { zombieFaceTexture, playerFaceTexture, solidTexture, shirtTexture, camoTexture, ojisanTextures } from './textures.js?v=14';
 
 const boxGeoCache = new Map();
 export function boxGeo(w, h, d) {
@@ -14,6 +14,45 @@ function part(parent, mat, w, h, d, x, y, z, rx = 0, ry = 0, rz = 0) {
   parent.add(m); return m;
 }
 const L = (c, extra) => new THREE.MeshLambertMaterial({ color: c, ...extra });
+
+// v0.12.0: いくつかの はこを 1つの かたちに まとめる（ドローコールを へらす）
+// items: [{ geo, matrix, color? }]  color が あれば ちょうてんの いろも つける
+export function mergeGeos(items, withColor = false) {
+  let nv = 0; const parts = [];
+  for (const it of items) { const g = it.geo.index ? it.geo.toNonIndexed() : it.geo; parts.push([g, it]); nv += g.attributes.position.count; }
+  const pos = new Float32Array(nv * 3), nor = new Float32Array(nv * 3), uv = new Float32Array(nv * 2), col = withColor ? new Float32Array(nv * 3) : null;
+  const nm = new THREE.Matrix3(), v = new THREE.Vector3(), c = new THREE.Color();
+  let o = 0;
+  for (const [g, it] of parts) {
+    const P = g.attributes.position, N = g.attributes.normal, U = g.attributes.uv; nm.getNormalMatrix(it.matrix);
+    for (let i = 0; i < P.count; i++) {
+      v.fromBufferAttribute(P, i).applyMatrix4(it.matrix); pos.set([v.x, v.y, v.z], (o + i) * 3);
+      v.fromBufferAttribute(N, i).applyMatrix3(nm).normalize(); nor.set([v.x, v.y, v.z], (o + i) * 3);
+      if (U) uv.set([U.getX(i), U.getY(i)], (o + i) * 2);
+      if (col) { const cc = typeof it.color === 'function' ? it.color(i) : it.color; c.set(cc ?? 0xffffff); col.set([c.r, c.g, c.b], (o + i) * 3); }
+    }
+    o += P.count;
+  }
+  const out = new THREE.BufferGeometry();
+  out.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  out.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+  out.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+  if (col) out.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  out.computeBoundingSphere();
+  return out;
+}
+// あたま: 6めん → 3グループ（はだ 4めん・かみ・かお）で 3かい だけ かく
+const headGeoCache = new Map();
+function headGeo(w, h, d) {
+  const k = w + ',' + h + ',' + d;
+  if (headGeoCache.has(k)) return headGeoCache.get(k);
+  const g = new THREE.BoxGeometry(w, h, d), I = g.index.array;
+  const face = (f) => Array.from(I.slice(f * 6, f * 6 + 6));
+  g.setIndex([0, 1, 3, 4, 2, 5].flatMap(face));
+  g.clearGroups(); g.addGroup(0, 24, 0); g.addGroup(24, 6, 1); g.addGroup(30, 6, 2);
+  headGeoCache.set(k, g); return g;
+}
+let eyeGeo = null;
 
 // ---- ぶき ----
 const GM = {
@@ -668,6 +707,7 @@ function zombieMats(kind) {
   const shirt = new THREE.MeshLambertMaterial({ map: shirtTexture(c.shirt, kind.length) });
   const pants = new THREE.MeshLambertMaterial({ map: solidTexture(c.pants, 0.18, 12) });
   const hair = L(0x3f6b2c), helm = L(0x6d737c);
+  skin.userData.lod = c.skin; face.userData.lod = c.skin; shirt.userData.lod = c.shirt; pants.userData.lod = c.pants; // v0.12.0: とおくの かんたんモデルの いろ
   return (zMats[kind] = { skin, face, shirt, pants, hair, helm });
 }
 export const FLASH_MAT = new THREE.MeshBasicMaterial({ color: 0xe6ffd0 });
@@ -686,7 +726,7 @@ export function makeZombie(kind) {
   const body = new THREE.Group(); body.position.y = 0.72; inner.add(body);
   part(body, m.shirt, kind === 'runner' ? 0.48 : 0.52, 0.74, 0.3, 0, 0.37, 0);
   const head = new THREE.Group(); head.position.y = 0.74; body.add(head);
-  part(head, [m.skin, m.skin, m.hair, m.skin, m.skin, m.face], 0.5, 0.5, 0.5, 0, 0.25, 0);
+  { const hm = new THREE.Mesh(headGeo(0.5, 0.5, 0.5), [m.skin, m.hair, m.face]); hm.position.set(0, 0.25, 0); head.add(hm); } // v0.12.0: 3グループ
   if (kind === 'brute') part(head, m.helm, 0.56, 0.14, 0.56, 0, 0.52, 0);
   const extra = {};
   dressZombie(kind, { inner, body, head, legs }, extra);
@@ -726,10 +766,37 @@ export function makeZombie(kind) {
   root.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.userData.mat = o.material; meshes.push(o); } });
   // よるに ひかる め（ヒットの いろかえ・かげの たいしょうがい）
   const eyes = new THREE.Group(); eyes.visible = false; head.add(eyes);
-  part(eyes, EYE_MAT, 0.13, 0.13, 0.02, 0.094, 0.25, -0.255);
-  part(eyes, EYE_MAT, 0.1, 0.1, 0.02, -0.11, 0.266, -0.255);
+  // v0.12.0: ふたつの め を 1つの かたちに（1かいで かく）
+  eyeGeo = eyeGeo || mergeGeos([
+    { geo: boxGeo(0.13, 0.13, 0.02), matrix: new THREE.Matrix4().makeTranslation(0.094, 0.25, -0.255) },
+    { geo: boxGeo(0.1, 0.1, 0.02), matrix: new THREE.Matrix4().makeTranslation(-0.11, 0.266, -0.255) }]);
+  eyes.add(new THREE.Mesh(eyeGeo, EYE_MAT));
   return { root, inner, legs, body, head, arms, meshes, eyes, kind, ...extra };
 }
+
+// v0.12.0: とおくの ゾンビ用の かんたんモデル（ぜんぶの はこを 1つに・いろは ちょうてんカラー）
+// → InstancedMesh で しゅるいごとに 1かい だけ かく。め は べつ（よるに ひかる）
+const lodCache = {};
+export function zombieLod(kind) {
+  if (lodCache[kind]) return lodCache[kind];
+  const z = makeZombie(kind);
+  z.root.updateMatrixWorld(true);
+  const items = []; let eyeM = null;
+  const colOf = (mt) => (mt.userData && mt.userData.lod != null ? mt.userData.lod : mt.color ? mt.color.getHex() : 0x888888);
+  z.root.traverse((o) => {
+    if (!o.isMesh) return;
+    for (let q = o; q; q = q.parent) if (!q.visible && q !== z.eyes) return;
+    if (o.parent === z.eyes) { eyeM = o.matrixWorld.clone(); return; }
+    if (Array.isArray(o.material)) {
+      const g = o.geometry.toNonIndexed(), cols = new Array(g.attributes.position.count).fill(0x888888);
+      for (const gr of g.groups) for (let i = gr.start; i < gr.start + gr.count; i++) cols[i] = colOf(o.material[gr.materialIndex]);
+      // かお の めんは すこし くらく（め・くち の かわり）
+      items.push({ geo: g, matrix: o.matrixWorld.clone(), color: (i) => cols[i] });
+    } else items.push({ geo: o.geometry, matrix: o.matrixWorld.clone(), color: colOf(o.material) });
+  });
+  return (lodCache[kind] = { geo: mergeGeos(items, true), eyeM: eyeM || new THREE.Matrix4(), parts: items.length });
+}
+export function zombieEyeGeo() { if (!eyeGeo) makeZombie('walker'); return eyeGeo; }
 
 // v0.6.0: しゅるいごとの つけもの（かくうの デザイン・マーク／もじ なし）
 function dressZombie(kind, { inner, body, head }, extra) {

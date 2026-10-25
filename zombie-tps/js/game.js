@@ -15,20 +15,22 @@ import {
   damageMul, frontHit, heavyOf, unlockedSpecials, zombieTargetsRobot,
   castPierce, SUIT, dropSpot, aimFov, aimSensMul, scopeSway, isScoped, SCOPE, weaponLevel, setGunLevel,
   VEHICLE, BLAST_FX, blastHits, blastReachesVehicle,
-} from './rules.js?v=13';
-import { RobotMixin } from './robot.js?v=13';
-import { AllyMixin } from './ally.js?v=13';
-import { CopMixin } from './cop.js?v=13';
-import { VehicleMixin } from './vehicles.js?v=13';
-import { SuitMixin } from './suit.js?v=13';
-import { MissileMixin } from './missiles.js?v=13';
-import { makeNav } from './nav.js?v=13';
-import { buildMap, playerColliders, zombieColliders, shotColliders } from './map.js?v=13';
-import { buildTextures, fxTextures } from './textures.js?v=13';
-import { buildWorld, disposeWorld } from './world.js?v=13';
-import { Backdrop, BACKDROPS } from './backdrop.js?v=13';
-import { makePlayer, applyOutfit, applyGear, makeGearDrop, makeOjisan, makeWeapons, makeZombie, makeRocketProjectile, makeRocketCrate, zombieChunkColors, FLASH_MAT } from './models.js?v=13';
-import { FX } from './fx.js?v=13';
+  SpatialGrid, thinkInterval, QualityGovernor, govPixelRatio,
+} from './rules.js?v=14';
+import { Crowd } from './crowd.js?v=14';
+import { RobotMixin } from './robot.js?v=14';
+import { AllyMixin } from './ally.js?v=14';
+import { CopMixin } from './cop.js?v=14';
+import { VehicleMixin } from './vehicles.js?v=14';
+import { SuitMixin } from './suit.js?v=14';
+import { MissileMixin } from './missiles.js?v=14';
+import { makeNav } from './nav.js?v=14';
+import { buildMap, playerColliders, zombieColliders, shotColliders } from './map.js?v=14';
+import { buildTextures, fxTextures } from './textures.js?v=14';
+import { buildWorld, disposeWorld } from './world.js?v=14';
+import { Backdrop, BACKDROPS } from './backdrop.js?v=14';
+import { makePlayer, applyOutfit, applyGear, makeGearDrop, makeOjisan, makeWeapons, makeZombie, makeRocketProjectile, makeRocketCrate, zombieChunkColors, FLASH_MAT } from './models.js?v=14';
+import { FX } from './fx.js?v=14';
 const A_RIGHT = new THREE.Vector3();
 
 const v3 = () => new THREE.Vector3();
@@ -105,6 +107,9 @@ export class Game {
     this.applyStage(settings.stage || 'day');
     this.stats = { frames: 0, cpu: 0, gpuish: 0, last: performance.now(), fps: 0, cpuAvg: 0, frameAvg: 0 };
     this.adapt = { t: 0, frames: 0, sum: 0, level: 0 };
+    // v0.12.0: たくさんの ゾンビを かるく（とおくは かんたんモデル・ます目で ぶつかり・かんがえる回数を へらす・がしつの じどう ちょうせい）
+    this.gov = new QualityGovernor(); this.basePR = this.pixelRatio; this.baseAir = this.maxAir;
+    this.zGrid = new SpatialGrid(1.2); this.zNear = []; this.allyArr = [null, null];
     this.state = 'title';
     this.resetRun();
     this.setupTitle();
@@ -372,6 +377,7 @@ export class Game {
     if (!model) model = makeZombie(kind);
     model.root.visible = true; model.inner.rotation.set(0, 0, 0); model.inner.position.set(0, 0, 0); model.inner.scale.set(1, 1, 1); model.root.scale.setScalar(def.scale);
     model.root.rotation.set(0, 0, 0); model.eyes.visible = true;
+    if (!this.crowd) { this.crowd = new Crowd(this.scene); this.crowd.blobsOn = this.shadows; }
     for (const m of model.meshes) m.material = m.userData.mat;
     this.scene.add(model.root);
     const zz = {
@@ -381,6 +387,8 @@ export class Game {
       climb: null, slam: null, slamCd: 1.5 + Math.random(), charge: null, chargeCd: 3, shattered: false,
       // v0.6.0: とくべつな ゾンビの タイマー
       spCd: 1.5 + Math.random() * 1.5, buffT: 0, fuse: 0, leap: null, scream: 0, screams: 0,
+      // v0.12.0: かんがえる タイマー（ばらばらに して いちどに あつまらない）・みちの むき
+      thinkT: Math.random() * 0.2, dirX: 0, dirZ: 0, d: 0, full: true, force: false, lodOn: false, vis: true,
     };
     if (kind === 'boss') {
       zz.hp = zz.maxHp = bossHp(this.wave || 3);
@@ -431,10 +439,10 @@ export class Game {
       }
       return;
     }
-    const alive = this.zombies.filter((z) => z.alive).length;
+    let alive = 0; for (const z of this.zombies) if (z.alive) alive++;
     if (this.queue.length) {
       this.spawnT -= dt;
-      if (this.spawnT <= 0 && alive < this.spec.maxAlive) {
+      if (this.spawnT <= 0 && alive < this.aliveCap()) {
         const k = this.queue.shift(); const s = this.pickSpawn();
         this.spawnZombie(k, s.x, s.z, this.spec.hpMul, s.y);
         this.spawnT = this.spec.spawnGap * (0.7 + Math.random() * 0.6);
@@ -620,7 +628,10 @@ export class Game {
       text: o.state === 'help' ? 'たすけて！' : o.state === 'thanks' ? 'ありがとう！' : 'ひえ〜っ！' });
   }
 
-  remaining() { return this.queue.length + this.zombies.filter((z) => z.alive).length; }
+  remaining() { let n = this.queue.length; for (const z of this.zombies) if (z.alive) n++; return n; }
+  // v0.12.0: いちどに でる かず（おもい ときは がしつ ちょうせいで すこし へる）
+  aliveCap() { return this.spec ? this.gov.capFor(this.spec.maxAlive) : 6; }
+  zDmg(def) { const k = this.spec && this.spec.dmgMul || 1; return k >= 1 ? def.dmg : Math.max(1, Math.round(def.dmg * k)); }
 
   updateZombies(dt) {
     this.flowT -= dt;
@@ -631,6 +642,10 @@ export class Game {
     const nav = this.nav, PF = this.pFloor ?? 0;
     const zs = this.zombies;
     let nearest = Infinity;
+    // v0.12.0: ます目に いれる（なかまと くっつかない けいさんを ちかくだけに）
+    const grid = this.zGrid; grid.clear(); let maxSc = 1;
+    for (const o of zs) if (o.alive) { grid.insert(o, o.x, o.z); if (o.scale > maxSc) maxSc = o.scale; }
+    const near = this.zNear, allies = this.allyArr; allies[0] = this.robot; allies[1] = this.cop;
     for (let i = zs.length - 1; i >= 0; i--) {
       const z = zs[i], m = z.model, def = ZOMBIES[z.kind];
       z.flash -= dt;
@@ -672,7 +687,7 @@ export class Game {
         if (z.stagger > 0) z.stagger -= dt;
         else if (rbd < reachA * 0.95) {
           z.state = 'attack'; z.atkT -= dt; z.yaw = Math.atan2(-rbx, -rbz);
-          if (z.atkT <= 0) { z.atkT = def.atkRate; this.hurtAlly(rb, def.dmg); }
+          if (z.atkT <= 0) { z.atkT = def.atkRate; this.hurtAlly(rb, this.zDmg(def)); }
         } else {
           z.state = 'walk'; z.atkT = Math.min(z.atkT, 0.45);
           mvx = rbx / (rbd || 1); mvz = rbz / (rbd || 1); moving = true;
@@ -684,13 +699,12 @@ export class Game {
         if (z.stagger > 0) z.stagger -= dt;
         else if ((z.ojiB = this.ojiBiter(z)) && ojd < ATTACK_RANGE * 0.95) {
           z.state = 'attack'; z.atkT -= dt; z.yaw = Math.atan2(-ojx, -ojz);
-          if (z.atkT <= 0) { z.atkT = def.atkRate; this.damageOji(def.dmg); }
+          if (z.atkT <= 0) { z.atkT = def.atkRate; this.damageOji(this.zDmg(def)); }
         } else if (ojd < OJISAN.waitR && !z.ojiB) { // じゅんばん まち（いちどに 2たいまで）
           z.state = 'idle'; z.yaw = Math.atan2(-ojx, -ojz);
         } else {
           z.state = 'walk'; z.atkT = Math.min(z.atkT, 0.45);
-          const dir = ojd < 14 && nav.lineClear(z.x, z.y, z.z, oj.x, oj.y, oj.z) ? { x: ojx / ojd, z: ojz / ojd } : { x: ojx / (ojd || 1), z: ojz / (ojd || 1) };
-          mvx = dir.x; mvz = dir.z; moving = true;
+          mvx = ojx / (ojd || 1); mvz = ojz / (ojd || 1); moving = true;
           const want = Math.atan2(-mvx, -mvz);
           let dy = want - z.yaw; while (dy > Math.PI) dy -= Math.PI * 2; while (dy < -Math.PI) dy += Math.PI * 2;
           z.yaw += dy * Math.min(1, dt * 8);
@@ -727,26 +741,35 @@ export class Game {
         z.yaw = Math.atan2(-dx, -dz);
         if (z.atkT <= 0 && this.state === 'play') {
           z.atkT = def.atkRate;
-          this.damagePlayer(def.dmg, z);
+          this.damagePlayer(this.zDmg(def), z);
           if (def.burn) { this.burnT = Math.max(this.burnT, def.burn.time); this.burnDps = def.burn.dps; }
         }
       } else {
         z.state = 'walk'; z.atkT = Math.min(z.atkT, 0.45);
-        let dir = null;
-        if (higher && dist < 6) dir = { x: dx / (dist || 1), z: dz / (dist || 1) }; // はこの そばでは まっすぐ よる（のぼれない こは まわりに あつまる）
+        let dX = 0, dZ = 0;
+        if (higher && dist < 6) { dX = dx / (dist || 1); dZ = dz / (dist || 1); } // はこの そばでは まっすぐ よる（のぼれない こは まわりに あつまる）
         if (higher && dist < 2.6 && !canClimb(z.kind)) z.reach = true;
-        else if (dist < 14 && nav.lineClear(z.x, z.y, z.z, this.pos.x, PF, this.pos.z)) dir = { x: dx / dist, z: dz / dist };
-        else dir = nav.dir(z.x, z.y, z.z) || { x: dx / (dist || 1), z: dz / (dist || 1) };
+        else {
+          // v0.12.0: とおくの ゾンビは みちを かんがえる 回数を へらす（ちかい=まいフレーム・とおい=5かい/びょう）
+          z.thinkT -= dt;
+          if (z.thinkT <= 0 || (!z.dirX && !z.dirZ)) {
+            z.thinkT += thinkInterval(dist); if (z.thinkT < 0) z.thinkT = 0;
+            if (dist < 14 && nav.lineClear(z.x, z.y, z.z, this.pos.x, PF, this.pos.z)) { z.dirX = dx / dist; z.dirZ = dz / dist; }
+            else { const nd = nav.dir(z.x, z.y, z.z); if (nd) { z.dirX = nd.x; z.dirZ = nd.z; } else { z.dirX = dx / (dist || 1); z.dirZ = dz / (dist || 1); } }
+          }
+          dX = z.dirX; dZ = z.dirZ;
+        }
         // つばを はく ゾンビは すこし はなれて とまる
-        if (def.spit && dist < def.spit.keep && dist > 3 && Math.abs(pdy) < 2.5 && !higher) { dir = { x: 0, z: 0 }; z.yaw = Math.atan2(-dx, -dz); }
-        mvx = dir.x; mvz = dir.z; moving = true;
+        if (def.spit && dist < def.spit.keep && dist > 3 && Math.abs(pdy) < 2.5 && !higher) { dX = 0; dZ = 0; z.yaw = Math.atan2(-dx, -dz); }
+        mvx = dX; mvz = dZ; moving = true;
         const want = Math.atan2(-mvx, -mvz);
         let dy = want - z.yaw; while (dy > Math.PI) dy -= Math.PI * 2; while (dy < -Math.PI) dy += Math.PI * 2;
         z.yaw += dy * Math.min(1, dt * 8);
       }
       if (moving && !z.charge) {
         // なかまと くっつかない
-        for (const o of zs) {
+        grid.query(z.x, z.z, 0.4 * (z.scale + maxSc) + 0.3, near);
+        for (const o of near) {
           if (o === z || !o.alive || Math.abs(o.y - z.y) > 0.8) continue;
           const ox = z.x - o.x, oz = z.z - o.z, d2 = ox * ox + oz * oz, md = 0.4 * (z.scale + o.scale);
           if (d2 < md * md && d2 > 1e-6) { const d = Math.sqrt(d2); mvx += ox / d * (md - d) * 1.5; mvz += oz / d * (md - d) * 1.5; }
@@ -758,7 +781,7 @@ export class Game {
         // プレイヤーに めりこまない
         const px = nx - this.pos.x, pz = nz - this.pos.z, pd = Math.hypot(px, pz), minD = 0.35 + 0.3 * z.scale;
         if (pd < minD && pd > 1e-4 && !z.demo && Math.abs(pdy) < 1.2) { nx = this.pos.x + px / pd * minD; nz = this.pos.z + pz / pd * minD; }
-        for (const ab of rb ? [this.robot, this.cop] : []) { // ロボ・おじさんにも めりこまない
+        if (rb) for (const ab of allies) { // ロボ・おじさんにも めりこまない
           if (!ab || ab.state !== 'on') continue;
           const qx = nx - ab.x, qz = nz - ab.z, qd = Math.hypot(qx, qz), qm = 0.32 + 0.3 * z.scale;
           if (qd < qm && qd > 1e-4 && Math.abs(ab.y - z.y) < 1.2) { nx = ab.x + qx / qd * qm; nz = ab.z + qz / qd * qm; }
@@ -776,6 +799,7 @@ export class Game {
         }
       }
       if (z.climb) continue;
+      if (z.lodOn) { z.vis = !this.cullOn || this.levelVisible(z.x, z.y, z.z); m.root.position.set(z.x, z.y, z.z); m.root.rotation.y = z.yaw; continue; } // v0.12.0: とおくの かんたんモデル（てあしの アニメは なし）
       // アニメ
       const swing = moving ? Math.sin(z.phase) : 0;
       const amp = z.kind === 'runner' ? 0.95 : z.charge ? 1.1 : 0.55;
@@ -806,7 +830,7 @@ export class Game {
       const shakeX = z.slam && z.slam.t < z.slam.wind ? (Math.random() - 0.5) * 0.06 : 0;
       m.root.position.set(z.x + shakeX, z.y + Math.abs(swing) * 0.04, z.z);
       m.root.rotation.y = z.yaw;
-      if (this.cullOn) m.root.visible = this.levelVisible(z.x, z.y, z.z);
+      if (this.cullOn) m.root.visible = z.vis = this.levelVisible(z.x, z.y, z.z);
     }
     // うめきごえ
     this.groanT -= dt;
@@ -841,7 +865,7 @@ export class Game {
           this.fx.burst(this.tmp.c.set(o.x, o.y + 1.9 * o.scale, o.z), 3, { color: 0xff5040, speed: 1, up: 1.5, size: 0.06, life: 0.4, gravity: 0 });
         }
         // なかまを よぶ（1かいめと 2かいめ だけ・おおすぎない）
-        if (z.screams <= 2 && this.zombies.filter((o) => o.alive).length < (this.spec ? this.spec.maxAlive : 12) + 4) {
+        if (z.screams <= 2 && this.remaining() - this.queue.length < this.aliveCap() + 4) {
           for (let i = 0; i < S.summon; i++) { const s = this.pickSpawn(); const n = this.spawnZombie('walker', s.x, s.z, this.spec ? this.spec.hpMul : 1, s.y); n.extra = true; }
           this.hud.kill('さけぶ ゾンビが なかまを よんだ！');
         }
@@ -1906,23 +1930,24 @@ export class Game {
     this.size = [w, h];
   }
 
-  // かるさの じどう ちょうせい
+  // かるさの じどう ちょうせい（v0.12.0: かいぞうど → とおくの かんたんモデル → かげ → いちどに でる かず の じゅんに さげる）
   adaptQuality(frameMs) {
-    if (this.settings.quality !== 'auto') return;
-    const a = this.adapt; a.frames++; a.sum += frameMs; a.t += frameMs;
-    if (a.t < 2500) return;
-    const avg = a.sum / a.frames; a.t = 0; a.sum = 0; a.frames = 0;
-    if (avg > 24 && a.level < 3) {
-      a.level++;
-      if (a.level === 1) this.pixelRatio = Math.max(1, this.pixelRatio - 0.25);
-      if (a.level === 2) this.pixelRatio = 1;
-      if (a.level === 3) { this.pixelRatio = 0.85; this.maxAir = 4; }
-      this.renderer.setPixelRatio(this.pixelRatio);
-      if (this.size) this.resize(...this.size);
+    if (!this.gov.sample(frameMs)) return;
+    this.applyGov();
+  }
+  applyGov() {
+    const lv = this.gov.level, cfg = this.gov.cfg;
+    if (this.crowd) this.crowd.cfg = cfg;
+    this.fx.mul = cfg.fx;
+    this.maxAir = Math.min(this.baseAir, cfg.air || this.baseAir);
+    if (this.settings.quality === 'auto') {
+      const pr = govPixelRatio(lv, this.basePR);
+      if (pr !== this.pixelRatio) { this.pixelRatio = pr; this.renderer.setPixelRatio(pr); if (this.size) this.resize(...this.size); }
     }
   }
 
   render() {
+    if (this.crowd) this.crowd.update(this.zombies, this.camera, this.pos.x, this.pos.z, this.scene.fog ? this.scene.fog.far : 70);
     this.renderer.render(this.scene, this.camera);
   }
 

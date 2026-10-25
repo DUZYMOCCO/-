@@ -1,6 +1,7 @@
 // こうか: マズルフラッシュ・トレーサー・やっきょう・つぶ（みどりの しぶき／けむり）・しみ（みどり）・だんこん
 import * as THREE from '../vendor/three.module.min.js';
-import { makeMagMesh } from './models.js?v=13';
+import { makeMagMesh } from './models.js?v=14';
+import { Pool } from './rules.js?v=14';
 
 const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _s = new THREE.Vector3(), _p = new THREE.Vector3(), _c = new THREE.Color();
 const UP = new THREE.Vector3(0, 1, 0), FWD = new THREE.Vector3(0, 0, 1);
@@ -16,6 +17,9 @@ export class FX {
     this.pMesh.frustumCulled = false; this.pMesh.count = 0;
     scene.add(this.pMesh);
     this.parts = [];
+    // v0.12.0: つぶは つかいまわし（まいかい new しない）・かずの じょうげん
+    this.pPool = new Pool(() => ({ p: new THREE.Vector3(), v: new THREE.Vector3(), life: 0, max: 1, size: 0.1, col: 0, g: 0, grow: 0, drag: 0 }));
+    this.mul = 1; this.ri = 0;
     // トレーサー
     const trMat = new THREE.MeshBasicMaterial({ color: 0xffe9a0, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false });
     const trGeo = new THREE.BoxGeometry(0.035, 0.035, 1); trGeo.translate(0, 0, -0.5);
@@ -79,12 +83,17 @@ export class FX {
 
   // ---- つぶ ----
   burst(pos, n, { color = 0x55d23a, color2 = null, speed = 3, up = 2, size = 0.07, life = 0.5, gravity = 12, dir = null, spread = 1, grow = 0, drag = 0 } = {}) {
+    if (this.mul < 1) n = Math.max(1, Math.round(n * this.mul));
+    const cap = Math.round(this.maxP * Math.max(0.5, this.mul));
     for (let i = 0; i < n; i++) {
-      if (this.parts.length >= this.maxP) this.parts.shift();
-      const v = new THREE.Vector3((Math.random() - 0.5) * 2, Math.random() * 1.2, (Math.random() - 0.5) * 2).multiplyScalar(speed * spread);
+      let q;
+      if (this.parts.length >= cap) q = this.parts[this.ri++ % this.parts.length]; // いっぱい → ふるい つぶを つかう
+      else { q = this.pPool.get(); this.parts.push(q); }
+      const v = q.v.set((Math.random() - 0.5) * 2, Math.random() * 1.2, (Math.random() - 0.5) * 2).multiplyScalar(speed * spread);
       if (dir) v.addScaledVector(dir, speed * (0.6 + Math.random() * 0.8));
       v.y += up * Math.random();
-      this.parts.push({ p: pos.clone(), v, life: life * (0.6 + Math.random() * 0.6), max: life, size: size * (0.6 + Math.random() * 0.8), col: (color2 && Math.random() < 0.4) ? color2 : color, g: gravity, grow, drag });
+      q.p.copy(pos); q.life = life * (0.6 + Math.random() * 0.6); q.max = life; q.size = size * (0.6 + Math.random() * 0.8);
+      q.col = (color2 && Math.random() < 0.4) ? color2 : color; q.g = gravity; q.grow = grow; q.drag = drag;
     }
   }
 
@@ -217,7 +226,7 @@ export class FX {
     for (let i = this.parts.length - 1; i >= 0; i--) {
       const q = this.parts[i];
       q.life -= dt;
-      if (q.life <= 0) { this.parts.splice(i, 1); continue; }
+      if (q.life <= 0) { const last = this.parts.pop(); if (last !== q) this.parts[i] = last; this.pPool.put(q); continue; }
       q.v.y -= q.g * dt; if (q.drag) q.v.multiplyScalar(Math.exp(-q.drag * dt)); q.p.addScaledVector(q.v, dt);
       if (q.p.y < 0.02 && q.g > 0) { q.p.y = 0.02; q.v.multiplyScalar(0.4); q.v.y = 0; }
     }

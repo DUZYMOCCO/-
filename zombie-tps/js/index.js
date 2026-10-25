@@ -9,8 +9,8 @@ import { WEAPONS, WEAPON_ORDER, normalizeSave, SENS, VERSION, OUTFITS, outfitNam
   autoEquipBest, equipGain, autoPickup, bestLoadout, pickMapId, MAP_IDS,
   UPGRADE, upgradeCost, upgradedWeapon, weaponLevel, buyUpgrade, earnBank, gearRefund, discardGear, isWorn, needsDropConfirm, weakestLoose,
   SLOT_UP, HP_UP, slotLevel, hpLevel, slotUpCost, hpUpCost, baseHpAt, slotBonus, buySlotUpgrade, buyHpUpgrade, GEAR_SLOT_IDS,
-  SUIT_ORDER, SUIT_WEAPONS, suitLabel, SUIT } from './rules.js?v=13';
-import { MAPS, mapInfo } from './map.js?v=13';
+  SUIT_ORDER, SUIT_WEAPONS, suitLabel, SUIT } from './rules.js?v=14';
+import { MAPS, mapInfo } from './map.js?v=14';
 
 const hex6 = (n) => '#' + n.toString(16).padStart(6, '0');
 // v0.7.0: がめんの そとを さす やじるしは ボタンに かぶらない たかさ（うえから 16%〜32%）
@@ -54,9 +54,9 @@ function totalsText(gear, save) {
   const parts = GEAR_STAT_IDS.filter((k) => t[k]).map((k) => `${GEAR_STATS[k].name} +${t[k]}${GEAR_STATS[k].unit}${t[k] >= GEAR_STATS[k].cap ? '（MAX）' : ''}`);
   return parts.length ? parts.join(' ・ ') : 'まだ なにも つけて いないよ';
 }
-import { Game } from './game.js?v=13';
-import { Input } from './input.js?v=13';
-import { Sfx } from './sfx.js?v=13';
+import { Game } from './game.js?v=14';
+import { Input } from './input.js?v=14';
+import { Sfx } from './sfx.js?v=14';
 
 // v0.7.0: ぶきの ちいさい アイコン（かくうの シルエット）
 const svgI = (d) => `<svg viewBox="0 0 32 16" aria-hidden="true">${d}</svg>`;
@@ -88,7 +88,7 @@ const OPT_CYCLE = { autoFire: [false, true], sens: ['low', 'mid', 'high'], quali
 
 export default {
   prepare() {
-    return loadCss(new URL('../css/zombie-tps.css?v=13', import.meta.url).href);
+    return loadCss(new URL('../css/zombie-tps.css?v=14', import.meta.url).href);
   },
 
   init(container, onBackToHub) {
