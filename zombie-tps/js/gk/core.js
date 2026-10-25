@@ -7,8 +7,22 @@ export { GK_CATALOG };
 export const GK_COUNT = GK_CATALOG.length;
 export const gkMeta = (no) => GK_CATALOG.find((s) => s.no === no) || null;
 export const gkStageFile = (no) => `./stages/s${String(no).padStart(2, '0')}.js`;
-export const gkLoadStage = (no) => import(`${gkStageFile(no)}?v=19`).then((m) => m.STAGE);
-export const gkLoadMap = (no) => (GK_READY[no] ? import(`./maps/${GK_READY[no].mod}.js?v=19`) : Promise.reject(new Error('not ready')));
+export const gkLoadStage = (no) => import(`${gkStageFile(no)}?v=18`).then((m) => m.STAGE);
+// v0.17.0: セグメント（js/gk/seg/<mod>.js）。すすむと 1つずつ よむ
+export const gkLoadSeg = (mod) => import(`./seg/${mod}.js?v=18`);
+// idxs の セグメントを よむ → { idx: モジュール }
+export function gkLoadSegs(info, idxs) {
+  const list = idxs.filter((i) => info.segs && info.segs[i]);
+  return Promise.all(list.map((i) => gkLoadSeg(info.segs[i].mod))).then((ms) => Object.fromEntries(list.map((i, k) => [i, ms[k]])));
+}
+// ステージ ぜんぶを 1まいの マップに（テスト・ふるい よみかた）。mod が なければ セグメントを つなぐ
+export function gkLoadMap(no) {
+  const info = GK_READY[no];
+  if (!info) return Promise.reject(new Error('not ready'));
+  if (info.mod) return import(`./maps/${info.mod}.js?v=18`);
+  return Promise.all([gkLoadSegs(info, info.segs.map((_, i) => i)), import('./seg.js?v=18')])
+    .then(([ms, S]) => ({ build: (builder) => S.joinSegs(S.chainSegs(info.segs.map((_, i) => ms[i].build(builder)))) }));
+}
 // ワールド（ステージ せんたく の カードの まとまり）
 export const GK_WORLDS = [
   { id: 'w1', tab: 'ワールド1', name: 'ワールド1　はじまりの たたかい', stages: [1, 2, 3, 4, 5] },
@@ -17,8 +31,9 @@ export const GK_WORLDS = [
   { id: 'w4', tab: 'とくべつ', name: 'とくべつ ステージ', stages: [16, 17, 18] },
 ];
 // あそべる ステージ（3D マップが できた もの）。map: マップ id、mod: js/gk/maps/<mod>.js を あとから よむ
+// v0.17.0: segs = セグメントの くさり（mod: js/gk/seg/<mod>.js、rooms: へやの かず）→ すすむと よむ・とおると すてる
 export const GK_READY = {
-  1: { map: 'gk_lab', mod: 'lab', tod: 'night' },
+  1: { map: 'gk_lab', mod: 'lab', tod: 'night', segs: [{ mod: 'lab_a', rooms: 2 }, { mod: 'lab_b', rooms: 2 }] },
 };
 export const isGkReady = (no) => !!GK_READY[no];
 // つぎの あそべる ステージ（なければ null）
@@ -85,8 +100,9 @@ export const gkClearBonus = (no) => 1500 + no * 250;
 
 // ---- へやの すすみ（v0.16.0: いっぽんみち）----
 // rooms[i].b = [x0, z0, x1, z1]。どの へやに いるか（-1 = どこでも ない）
+// v0.17.0: よんで いない セグメントの へやは ない（rooms[i] が からっぽ）
 export function gkRoomAt(rooms, x, z) {
-  for (let i = 0; i < rooms.length; i++) { const [x0, z0, x1, z1] = rooms[i].b; if (x > x0 && x < x1 && z > z0 && z < z1) return i; }
+  for (let i = 0; i < rooms.length; i++) { if (!rooms[i] || !rooms[i].b) continue; const [x0, z0, x1, z1] = rooms[i].b; if (x > x0 && x < x1 && z > z0 && z < z1) return i; }
   return -1;
 }
 // へやの でぐちから 1つ（ちかすぎない ところ・ランダム）
@@ -106,8 +122,8 @@ export function gkEntered(gm, room, x, z) {
 // v0.16.1: スーツ・なかまロボを おく ばしょは 「いまの へや」だけ（まだ しまっている へやには おかない・ドアの まえも さける）
 export function gkSpotCells(gm, room, cells, margin = 1.5, doorClear = 3.5) {
   if (!gm) return cells;
-  const inside = (c, i) => { const [x0, z0, x1, z1] = gm.rooms[i].b; return c[0] > x0 + margin && c[0] < x1 - margin && c[1] > z0 + margin && c[1] < z1 - margin; };
-  const clearOfDoors = (c) => gm.doors.every((d) => Math.hypot(c[0] - d.x, c[1] - d.z) >= doorClear);
+  const inside = (c, i) => { if (!gm.rooms[i] || !gm.rooms[i].b) return false; const [x0, z0, x1, z1] = gm.rooms[i].b; return c[0] > x0 + margin && c[0] < x1 - margin && c[1] > z0 + margin && c[1] < z1 - margin; };
+  const clearOfDoors = (c) => gm.doors.every((d) => !d || Math.hypot(c[0] - d.x, c[1] - d.z) >= doorClear);
   const here = cells.filter((c) => inside(c, room) && clearOfDoors(c));
   if (here.length) return here;
   const back = cells.filter((c) => { const i = gkRoomAt(gm.rooms, c[0], c[1]); return i >= 0 && i <= room && clearOfDoors(c); });

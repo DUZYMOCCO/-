@@ -718,18 +718,19 @@ export function castPierce(ox, oy, oz, dx, dy, dz, zombies, walls, range, pierce
 
 // ---- はこの さがしやすい ならび（ひろい マップでも かるい）----
 // cell m ごとの マスに、ちかくの はこ（pad m の よゆう つき）を いれておく。near(x,z) で その マスの はこ
-export function makeBoxIndex(boxes, half, cell = 4, pad = 2) {
-  const lo = -half - 8, n = Math.ceil((half * 2 + 16) / cell), cells = [];
+// v0.17.0: cx, cz = ます目の まんなか（ガンキックの セグメントは げんてん から はなれる）
+export function makeBoxIndex(boxes, half, cell = 4, pad = 2, cx = 0, cz = 0) {
+  const lo = -half - 8, n = Math.ceil((half * 2 + 16) / cell), cells = [], lx = lo + cx, lz = lo + cz;
   for (let i = 0; i < n * n; i++) cells.push([]);
   for (const b of boxes) {
-    const x0 = Math.max(0, Math.floor((b.minX - pad - lo) / cell)), x1 = Math.min(n - 1, Math.floor((b.maxX + pad - lo) / cell));
-    const z0 = Math.max(0, Math.floor((b.minZ - pad - lo) / cell)), z1 = Math.min(n - 1, Math.floor((b.maxZ + pad - lo) / cell));
+    const x0 = Math.max(0, Math.floor((b.minX - pad - lx) / cell)), x1 = Math.min(n - 1, Math.floor((b.maxX + pad - lx) / cell));
+    const z0 = Math.max(0, Math.floor((b.minZ - pad - lz) / cell)), z1 = Math.min(n - 1, Math.floor((b.maxZ + pad - lz) / cell));
     for (let gz = z0; gz <= z1; gz++) for (let gx = x0; gx <= x1; gx++) cells[gz * n + gx].push(b);
   }
   return {
     boxes, n, cell,
     near(x, z) {
-      const gx = Math.min(n - 1, Math.max(0, Math.floor((x - lo) / cell))), gz = Math.min(n - 1, Math.max(0, Math.floor((z - lo) / cell)));
+      const gx = Math.min(n - 1, Math.max(0, Math.floor((x - lx) / cell))), gz = Math.min(n - 1, Math.max(0, Math.floor((z - lz) / cell)));
       return cells[gz * n + gx];
     },
   };

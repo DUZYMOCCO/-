@@ -215,3 +215,22 @@ export class LayerNav {
 export function makeNav(boxes, map) {
   return map.vertical ? new LayerNav(boxes, map.half + 2) : new FlatNav(boxes, map.half);
 }
+
+// v0.17.0: ガンキックの セグメント: げんてん から はなれた ところの みちさがし
+// はこを (cx, cz) だけ ずらして つくり、きく ときも ずらす（なかみは FlatNav / LayerNav そのまま）
+export class ShiftNav {
+  constructor(inner, cx, cz) { this.in = inner; this.cx = cx; this.cz = cz; this.layered = inner.layered; }
+  update(x, y, z) { this.in.update(x - this.cx, y, z - this.cz); }
+  dir(x, y, z) { return this.in.dir(x - this.cx, y, z - this.cz); }
+  lineClear(x0, y0, z0, x1, y1, z1) { return this.in.lineClear(x0 - this.cx, y0, z0 - this.cz, x1 - this.cx, y1, z1 - this.cz); }
+  reachable(x, y, z) { return this.in.reachable(x - this.cx, y, z - this.cz); }
+  free(x, y, z) { return this.in.free(x - this.cx, y, z - this.cz); }
+  distAt(x, y, z) { return this.in.distAt ? this.in.distAt(x - this.cx, y, z - this.cz) : -1; }
+  openCells(limit) { return this.in.openCells(limit).map(([x, z, y]) => [x + this.cx, z + this.cz, y]); }
+}
+// region = { cx, cz, half }（seg.js の segRegion）
+export function makeNavAt(boxes, map, region) {
+  const { cx, cz, half } = region;
+  const moved = boxes.map((b) => ({ ...b, minX: b.minX - cx, maxX: b.maxX - cx, minZ: b.minZ - cz, maxZ: b.maxZ - cz }));
+  return new ShiftNav(makeNav(moved, { vertical: map.vertical, half }), cx, cz);
+}

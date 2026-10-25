@@ -2410,3 +2410,140 @@ test('v0.16.1 ガンキック: スーツ・なかまロボは まだ しまっ�
   const src = ['js/suit.js', 'js/robot.js', 'js/army.js'].map((f) => fs.readFileSync(path.join(root, f), 'utf8'));
   for (const s of src) assert.ok(s.includes('gkSpotFilter(cells)') && s.includes('gkSpotFrom()'));
 });
+
+// ================= v0.17.0: セグメント（ステージを くぎって すすむと よむ・とおると すてる）=================
+import { SEG, segStarts, segTotalRooms, segOfRoom, segResume, segDoorIndex, segOffset, segNear, segPassed, placeSeg, joinSegs, chainSegs, segRegion, segOverlap, segShouldLoad, segSeals, segCpSpot, inBounds } from '../js/gk/seg.js';
+import { gkLoadSeg, gkLoadSegs } from '../js/gk/core.js';
+import { mapBuilder } from '../js/map.js';
+import { makeNavAt } from '../js/nav.js';
+const segBuildAll = async (no) => { const info = GK_READY[no]; const ms = await gkLoadSegs(info, info.segs.map((_, i) => i)); return info.segs.map((_, i) => ms[i].build(mapBuilder)); };
+
+test('v0.17.0 セグメント: へやの ばんごう ↔ セグメント・ドアの ばんごう', () => {
+  const segs = [{ mod: 'a', rooms: 2 }, { mod: 'b', rooms: 3 }, { mod: 'c', rooms: 1 }];
+  assert.deepEqual(segStarts(segs), [0, 2, 5]); assert.equal(segTotalRooms(segs), 6);
+  assert.deepEqual(segOfRoom(segs, 0), { seg: 0, local: 0, r0: 0 });
+  assert.deepEqual(segOfRoom(segs, 3), { seg: 1, local: 1, r0: 2 });
+  assert.deepEqual(segOfRoom(segs, 5), { seg: 2, local: 0, r0: 5 });
+  assert.equal(segOfRoom(segs, 99).seg, 2, 'はみだしても さいごの セグメント');
+  assert.equal(segResume(segs, 2), 1, 'チェックポイント（へや2）は 2ばんめの セグメントから よむ');
+  assert.equal(segDoorIndex(2, 3, 'in'), 1); assert.equal(segDoorIndex(2, 3, 'out'), 4); assert.equal(segDoorIndex(2, 3, 1), 3);
+  assert.deepEqual(segOffset({ x: 30, z: 12 }, { x: 0, z: 36 }), { x: 30, z: -24 });
+});
+
+test('v0.17.0 セグメント: よむ・すてる の きまり（12m・ドアを すぎた）', () => {
+  const p = { exit: { x: 0, z: 0, axis: 'x' } };
+  assert.equal(SEG.ahead, 12);
+  assert.ok(segNear(p, 0, 11.9)); assert.ok(!segNear(p, 0, 12.1)); assert.ok(!segNear({ exit: null }, 0, 0), 'さいごの セグメントは つぎが ない');
+  const live = new Set([0]);
+  assert.ok(segShouldLoad({ cur: 0, total: 2, live, want: true }));
+  assert.ok(!segShouldLoad({ cur: 0, total: 2, live, want: false }), 'ちかく なければ まだ');
+  assert.ok(!segShouldLoad({ cur: 1, total: 2, live: new Set([1]), want: true }), 'さいごの セグメント');
+  assert.ok(!segShouldLoad({ cur: 0, total: 3, live: new Set([0, 1]), want: true }), 'もう ある');
+  assert.ok(!segShouldLoad({ cur: 0, total: 3, live, busy: true, want: true }), 'つくって いる さいちゅう');
+  assert.ok(!segShouldLoad({ cur: 1, total: 3, live: new Set([0, 1]), want: true }), 'まえを すてるまで まつ（3つ いじょう もたない）');
+  // ドアを すぎた（z=12 の ドア・へやは z が ちいさい がわ）
+  const door = { x: 30, z: 12, axis: 'x' }, room = { b: [-36, -12, 36, 12] };
+  assert.ok(!segPassed(door, room, 30, 11)); assert.ok(segPassed(door, room, 30, 9.4));
+  const dz = { x: 0, z: 24, axis: 'z' }, rz = { b: [0, 12, 36, 36] };
+  assert.ok(!segPassed(dz, rz, 1, 24)); assert.ok(segPassed(dz, rz, 3, 24));
+});
+
+test('v0.17.0 ステージ1: 2つの セグメント（いりぐち+サーバーしつ / タンク+ちか）・つなぎめ', async () => {
+  const info = GK_READY[1];
+  assert.deepEqual(info.segs.map((s) => s.mod), ['lab_a', 'lab_b']);
+  const st = await gkLoadStage(1);
+  assert.equal(segTotalRooms(info.segs), st.arenas.length, 'へやの かず = アリーナの かず');
+  const built = await segBuildAll(1);
+  built.forEach((b, i) => {
+    assert.equal(b.seg.rooms.length, info.segs[i].rooms, 'へやの かず ' + i);
+    assert.equal(b.seg.doors.length, b.seg.rooms.length - 1, 'なかの ドア');
+    assert.equal(!!b.seg.entry, i > 0, 'いりぐち'); assert.equal(!!b.seg.exit, i < built.length - 1, 'でぐち');
+    const db = b.boxes.filter((x) => x.door !== undefined);
+    assert.equal(db.length, b.seg.doors.length + (b.seg.entry ? 1 : 0) + (b.seg.exit ? 1 : 0), 'ドアの みえない かべ');
+    for (const x of db) assert.ok(x.barrier);
+    for (const x of b.boxes.filter((y) => y.edge === 'in')) assert.ok(b.seg.entry, 'いりぐちの かべは いりぐちが ある セグメントだけ');
+    for (const rm of b.seg.rooms) assert.ok(rm.spawns.length >= 4, rm.name);
+  });
+  const placed = chainSegs(built);
+  const [A, B] = placed;
+  assert.deepEqual([A.exit.x, A.exit.z, A.exit.axis, A.exit.g], [B.entry.x, B.entry.z, B.entry.axis, B.entry.g], 'でぐち = つぎの いりぐち');
+  assert.ok(!segOverlap(A.bounds, B.bounds), 'となりの セグメントは かさならない');
+  // まえの セグメントが ある → いりぐちの かべは つかわない（ドアの かべは 1つ）
+  const both = joinSegs(placed);
+  assert.equal(both.boxes.filter((x) => x.door === 1).length, 1);
+  assert.equal(both.boxes.length, A.boxes.length + B.boxes.filter((x) => x.edge !== 'in').length);
+  assert.ok(both.boxes.length <= 700, 'SE2: はこ ' + both.boxes.length);
+  // B だけ（まえを すてた あと）→ いりぐちの かべで ふさがる
+  const onlyB = joinSegs([B]);
+  assert.equal(onlyB.boxes.filter((x) => x.door === 1).length, 1, 'B の いりぐちの ドア');
+  assert.ok(onlyB.boxes.some((x) => x.edge === 'in' && x.collide && x.mat === 'wall'), 'B の いりぐちの かべ');
+  assert.ok(!onlyB.gk.rooms[0] && !onlyB.gk.rooms[1] && onlyB.gk.rooms[2] && onlyB.gk.rooms[3], 'へやの ばんごうは ステージ ぜんたいの まま');
+  assert.equal(gkRoomAt(onlyB.gk.rooms, -20, 30), -1, 'すてた へやは ない');
+  assert.equal(gkRoomAt(onlyB.gk.rooms, 0, 0), 2);
+});
+
+test('v0.17.0 セグメント: とおくに おいても ずれる（はこ・へや・ドア・あかり・ナビ・ぶつかり）', async () => {
+  const mod = await gkLoadSeg('lab_b');
+  const b0 = mod.build(mapBuilder), b1 = mod.build(mapBuilder);
+  const p = placeSeg(b1, { idx: 1, r0: 2, ox: 500, oz: -300 });
+  assert.equal(p.boxes.length, b0.boxes.length);
+  assert.equal(p.boxes[5].minX, b0.boxes[5].minX + 500); assert.equal(p.boxes[5].minZ, b0.boxes[5].minZ - 300);
+  assert.deepEqual(p.rooms[0].b, [b0.seg.rooms[0].b[0] + 500, b0.seg.rooms[0].b[1] - 300, b0.seg.rooms[0].b[2] + 500, b0.seg.rooms[0].b[3] - 300]);
+  assert.equal(p.lamps[0].x, b0.lamps[0].x + 500);
+  assert.equal(p.entry.g, 1); assert.equal(p.doors[0].g, 2);
+  assert.ok(p.boxes.every((x) => x.seg === 1 && x.veh === undefined));
+  for (const s of p.rooms.flatMap((r) => r.spawns)) assert.ok(inBounds(p.bounds, s.x, s.z));
+  const m = joinSegs([p]), R = segRegion([p]);
+  for (const [x, z] of [[p.bounds[0], p.bounds[1]], [p.bounds[2], p.bounds[3]]]) assert.ok(Math.abs(x - R.cx) <= R.half && Math.abs(z - R.cz) <= R.half);
+  const idx = makeBoxIndex(playerColliders(m), R.half, 4, 2, R.cx, R.cz);
+  const wall = m.boxes.find((x) => x.mat === 'wall' && x.collide);
+  assert.ok(idx.near((wall.minX + wall.maxX) / 2, (wall.minZ + wall.maxZ) / 2).includes(wall), 'ずれた ます目で みつかる');
+  const nav = makeNavAt(zombieColliders(m).concat(segSeals(m)), m, R);
+  const start = segCpSpot(m.gk.doors, m.gk.rooms, 2);
+  assert.equal(gkRoomAt(m.gk.rooms, start.x, start.z), 2, 'チェックポイントは へや2の なか');
+  nav.update(start.x, 0, start.z);
+  const boss = m.gk.rooms[3].spawns[0];
+  assert.ok(nav.dir(boss.x, 0, boss.z), 'ボスの へやから プレイヤーへ みちが ある');
+  const cells = nav.openCells(SEG.far);
+  assert.ok(cells.length > 50);
+  for (const [x, z] of cells) assert.ok(gkRoomAt(m.gk.rooms, x, z) >= 0 || Math.abs(z + 312) < 1.5, `ナビは セグメントの そとに でない ${x},${z}`);
+});
+
+test('v0.17.0 チェックポイント: ドアの 3m さき・へやの なか・まんなかを むく', async () => {
+  const placed = chainSegs(await segBuildAll(1)), m = joinSegs(placed);
+  for (let from = 1; from < 4; from++) {
+    const c = segCpSpot(m.gk.doors, m.gk.rooms, from), d = m.gk.doors[from - 1];
+    assert.equal(gkRoomAt(m.gk.rooms, c.x, c.z), from, 'へや ' + from);
+    assert.ok(Math.abs(Math.hypot(c.x - d.x, c.z - d.z) - 3) < 1e-9);
+    const [x0, z0, x1, z1] = m.gk.rooms[from].b, fx = -Math.sin(c.yaw), fz = -Math.cos(c.yaw);
+    assert.ok(fx * ((x0 + x1) / 2 - c.x) + fz * ((z0 + z1) / 2 - c.z) > 0, 'へやの ほうを むく');
+  }
+  // さいかいは その セグメント だけ（ドアの むこうに へやが ない → しまった まま・ゾンビも とおれない）
+  assert.deepEqual(segSeals(joinSegs([placed[1]])).map((b) => b.door), [1]);
+  assert.deepEqual(segSeals(joinSegs([placed[0]])).map((b) => b.door), [1], 'でぐちの さきが まだ ない');
+  assert.deepEqual(segSeals(joinSegs(placed)).map((b) => b.door), [], 'りょうがわ ある ときは ふさがない');
+});
+
+test('v0.17.0 ファイル: セグメントは あとから よむ・きどうの キャッシュは seg.js と stream.js だけ', async () => {
+  const fs = await import('node:fs'), path = await import('node:path'), url = await import('node:url');
+  const root = path.dirname(path.dirname(url.fileURLToPath(import.meta.url)));
+  const sw = fs.readFileSync(path.join(root, 'sw-assets.js'), 'utf8');
+  for (const f of ['js/gk/seg.js', 'js/gk/stream.js']) assert.ok(sw.includes(f), f);
+  assert.ok(!sw.includes('js/gk/seg/') && !sw.includes('js/gk/maps/'), 'セグメント・マップは あとから');
+  for (const info of Object.values(GK_READY)) for (const s of info.segs || []) {
+    const f = path.join(root, 'js/gk/seg', s.mod + '.js');
+    assert.ok(fs.existsSync(f), f);
+    assert.ok(fs.statSync(f).size < 10240, 'セグメントは 10KB より ちいさい ' + s.mod);
+    assert.ok(!/[⛑🏥🚑✚✙✛✜➕✝☩]|\p{Regional_Indicator}/u.test(fs.readFileSync(f, 'utf8')), s.mod);
+  }
+  for (const f of ['js/gk/seg.js', 'js/gk/stream.js']) assert.ok(fs.statSync(path.join(root, f)).size < 14000, f);
+});
+
+test('v0.17.0 makeBoxIndex: まんなかを ずらしても いままでと おなじ', () => {
+  const boxes = [{ minX: -3, maxX: -1, minZ: 2, maxZ: 4 }, { minX: 10, maxX: 12, minZ: -8, maxZ: -6 }];
+  const a = makeBoxIndex(boxes, 20), b = makeBoxIndex(boxes, 20, 4, 2, 0, 0);
+  for (const [x, z] of [[-2, 3], [11, -7], [0, 0]]) assert.deepEqual(a.near(x, z), b.near(x, z));
+  const moved = boxes.map((o) => ({ minX: o.minX + 300, maxX: o.maxX + 300, minZ: o.minZ - 900, maxZ: o.maxZ - 900 }));
+  const c = makeBoxIndex(moved, 20, 4, 2, 300, -900);
+  assert.ok(c.near(298, -897).includes(moved[0])); assert.ok(c.near(311, -907).includes(moved[1]));
+});

@@ -844,6 +844,8 @@ const BUILD = { city, mall, base, hospital, camp, harbor, rooftop, office };
 // v0.16.0: あとから よむ マップ（ガンキック ステージ）。fn(builder) → B.done(...)
 const EXTRA = {};
 export function registerMap(id, fn) { EXTRA[id] = () => fn(builder); }
+// v0.17.0: セグメント（js/gk/seg/*.js）を その ばで つくる
+export const mapBuilder = (half, seed) => builder(half, seed);
 export const hasMap = (id) => !!(BUILD[id] || EXTRA[id]);
 export function buildMap(id = 'city') {
   if (EXTRA[id]) { const m = EXTRA[id](); m.id = id; return m; }

@@ -79,12 +79,13 @@ export function wreckVehicleBoxes(boxes, id, on = true) {
 const LAM_KEYS = ['road', 'roadLine', 'cobble', 'brick', 'crate', 'concrete', 'metal', 'glass', 'dark', 'log', 'leaves', 'sandbag', 'barrel', 'plank',
   'asphalt', 'paint', 'wall', 'tile', 'container', 'tent', 'hesco', 'dirt', 'water', 'stripe', 'roof'];
 
-// とおくの けしき（マップごと）
-function farBoxes(map) {
+// とおくの けしき（マップごと）。v0.17.0: at = { cx, cz, skip(x,z) }（セグメントの まわり・へやの なかには おかない）
+export function farBoxes(map, at = null) {
   const half = map.half, kind = map.theme?.far || 'forest', tint = map.theme?.farTint ?? 0xbfd8b0;
+  const cx = at ? at.cx : 0, cz = at ? at.cz : 0;
   const rr = (() => { let s = 99; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); })();
   const out = [];
-  const push = (mat, x, z, w, d, h, t = tint, y0 = 0) => out.push({ mat, minX: x - w / 2, maxX: x + w / 2, minY: y0, maxY: y0 + h, minZ: z - d / 2, maxZ: z + d / 2, tint: t });
+  const push = (mat, x, z, w, d, h, t = tint, y0 = 0) => { x += cx; z += cz; if (!at || !at.skip(x, z)) out.push({ mat, minX: x - w / 2, maxX: x + w / 2, minY: y0, maxY: y0 + h, minZ: z - d / 2, maxZ: z + d / 2, tint: t }); };
   const n = 44;
   for (let i = 0; i < n; i++) {
     const a = (i / n) * Math.PI * 2, d = half + 10 + rr() * 14;
@@ -108,7 +109,8 @@ function farBoxes(map) {
   return out;
 }
 
-export function buildWorld(scene, map, T, { shadows }) {
+// ざいしつ（おなじ ステージの セグメントは おなじ ものを つかう → シェーダーも ふえない）
+export function makeMats(T) {
   const mats = {};
   const lam = (tx, extra = {}) => new THREE.MeshLambertMaterial({ map: tx, vertexColors: true, ...extra });
   const mat = (key) => {
@@ -118,37 +120,66 @@ export function buildWorld(scene, map, T, { shadows }) {
     else mats[key] = lam(T[LAM_KEYS.includes(key) ? key : 'concrete']);
     return mats[key];
   };
+  return { mats, mat };
+}
 
+// はこを ざいしつごとに まとめて シーンへ（v0.17.0: edge:'in' の はこは べつの メッシュ → あとで けせる）
+export function boxMeshes(scene, boxes, mat, shadows) {
   // v0.6.0: たてものの なかは かい（lvl）ごとに わける → みえない かいは けす
   const byMat = new Map();
-  for (const b of map.boxes) {
+  for (const b of boxes) {
     if (b.mat === 'none') continue;
-    const k = b.lvl != null ? `${b.mat}|${b.lvl}` : b.mat;
+    let k = b.lvl != null ? `${b.mat}|${b.lvl}` : b.mat;
+    if (b.edge) k += '|' + b.edge;
     if (!byMat.has(k)) byMat.set(k, []);
     byMat.get(k).push(b);
   }
-  const meshes = [], levels = new Map();
+  const meshes = [], levels = new Map(), edges = [];
   for (const [k, list] of byMat) {
     const key = k.split('|')[0];
     const mesh = new THREE.Mesh(mergeBoxes(list), mat(key));
     if (list[0].lvl != null) { const L = list[0].lvl; if (!levels.has(L)) levels.set(L, []); levels.get(L).push(mesh); }
+    if (list[0].edge) edges.push(mesh);
     const flat = list.every((b) => b.maxY < 0.2);
     mesh.castShadow = shadows && !flat && key !== 'light' && key !== 'ember';
     mesh.receiveShadow = shadows;
     mesh.matrixAutoUpdate = false; mesh.updateMatrix();
     scene.add(mesh); meshes.push(mesh);
   }
+  return { meshes, levels, edges };
+}
+
+// じめん（gsize の ましかく・1m = テクスチャ 1まい → せいすうで ずらしても つなぎめが でない）
+export function groundMesh(theme, T, mats, gsize, shadows) {
+  const gg = new THREE.PlaneGeometry(gsize, gsize);
+  gg.rotateX(-Math.PI / 2);
+  const uvA = gg.attributes.uv; for (let i = 0; i < uvA.count; i++) uvA.setXY(i, uvA.getX(i) * gsize, uvA.getY(i) * gsize);
+  const groundMat = mats.__ground || (mats.__ground = new THREE.MeshLambertMaterial({ map: T[theme?.ground || 'grass'] || T.grass }));
+  const ground = new THREE.Mesh(gg, groundMat);
+  ground.receiveShadow = shadows; ground.matrixAutoUpdate = false; ground.updateMatrix();
+  return ground;
+}
+
+// とおくの けしきの メッシュ（ざいしつごと）
+export function farMeshes(scene, farList, mat) {
+  const out = [];
+  const farKeys = [...new Set(farList.map((b) => b.mat))];
+  for (const key of farKeys) {
+    const farMesh = new THREE.Mesh(mergeBoxes(farList.filter((b) => b.mat === key)), mat(key));
+    farMesh.matrixAutoUpdate = false; farMesh.updateMatrix();
+    scene.add(farMesh); out.push(farMesh);
+  }
+  return out;
+}
+
+export function buildWorld(scene, map, T, { shadows }) {
+  const { mats, mat } = makeMats(T);
+  const { meshes, levels } = boxMeshes(scene, map.boxes, mat, shadows);
 
   // じめん（マップごと）
   const half = map.half;
   const gsize = half * 2 + 60;
-  const gg = new THREE.PlaneGeometry(gsize, gsize);
-  gg.rotateX(-Math.PI / 2);
-  const uvA = gg.attributes.uv; for (let i = 0; i < uvA.count; i++) uvA.setXY(i, uvA.getX(i) * gsize, uvA.getY(i) * gsize);
-  const groundMat = new THREE.MeshLambertMaterial({ map: T[map.theme?.ground || 'grass'] || T.grass });
-  mats.__ground = groundMat;
-  const ground = new THREE.Mesh(gg, groundMat);
-  ground.receiveShadow = shadows; ground.matrixAutoUpdate = false; ground.updateMatrix();
+  const ground = groundMesh(map.theme, T, mats, gsize, shadows);
   scene.add(ground); meshes.push(ground);
   // みなと: きたの そとは うみ
   if (map.theme?.water === 'north') {
@@ -160,13 +191,7 @@ export function buildWorld(scene, map, T, { shadows }) {
   }
 
   // とおくの けしき
-  const farList = farBoxes(map);
-  const farKeys = [...new Set(farList.map((b) => b.mat))];
-  for (const key of farKeys) {
-    const farMesh = new THREE.Mesh(mergeBoxes(farList.filter((b) => b.mat === key)), mat(key));
-    farMesh.matrixAutoUpdate = false; farMesh.updateMatrix();
-    scene.add(farMesh); meshes.push(farMesh);
-  }
+  meshes.push(...farMeshes(scene, farBoxes(map), mat));
 
   return { meshes, mats, levels };
 }

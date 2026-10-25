@@ -11,10 +11,11 @@ import { WEAPONS, WEAPON_ORDER, normalizeSave, SENS, VERSION, OUTFITS, outfitNam
   SLOT_UP, HP_UP, slotLevel, hpLevel, slotUpCost, hpUpCost, baseHpAt, slotBonus, buySlotUpgrade, buyHpUpgrade, GEAR_SLOT_IDS,
   SUIT_ORDER, SUIT_WEAPONS, suitLabel, SUIT,
   MELEE, MELEE_ORDER, MELEE_UP, meleeLevel, meleeUpCost, meleeStats, buyMelee, isMelee, DEFAULT_MELEE,
-  LOADOUT_SIZE, normalizeLoadout, toggleLoadout, loadoutReady, unlockedWeapons, upgradeRows, GAUGE_LABEL } from './rules.js?v=19';
-import { MAPS, mapInfo, registerMap, hasMap } from './map.js?v=19';
-import { recordGkClear } from './rules.js?v=19';
-import { GK_CATALOG, GK_WORLDS, GK_READY, isGkReady, gkMeta, gkNext, gkLoadStage, gkLoadMap, gkWaves, gkClearBonus } from './gk/core.js?v=19';
+  LOADOUT_SIZE, normalizeLoadout, toggleLoadout, loadoutReady, unlockedWeapons, upgradeRows, GAUGE_LABEL } from './rules.js?v=18';
+import { MAPS, mapInfo, registerMap, hasMap } from './map.js?v=18';
+import { recordGkClear } from './rules.js?v=18';
+import { GK_CATALOG, GK_WORLDS, GK_READY, isGkReady, gkMeta, gkNext, gkLoadStage, gkLoadMap, gkLoadSegs, gkWaves, gkClearBonus } from './gk/core.js?v=18';
+import { segResume } from './gk/seg.js?v=18';
 
 const hex6 = (n) => '#' + n.toString(16).padStart(6, '0');
 // v0.7.0: がめんの そとを さす やじるしは ボタンに かぶらない たかさ（うえから 16%〜32%）
@@ -772,12 +773,14 @@ export default {
     const info = GK_READY[no]; if (!info) return;
     this.gkBusy = true;
     try {
-      const [stage, mod] = await Promise.all([gkLoadStage(no), gkLoadMap(no)]);
+      // v0.17.0: セグメントの ステージは チェックポイントの セグメント だけ よむ（つぎは すすむと よむ）
+      const s0 = info.segs ? segResume(info.segs, from) : 0;
+      const [stage, mod] = await Promise.all([gkLoadStage(no), info.segs ? gkLoadSegs(info, [s0]) : gkLoadMap(no)]);
       if (!this.alive || !this.game) return;
-      if (!hasMap(info.map)) registerMap(info.map, mod.build);
+      if (!info.segs && !hasMap(info.map)) registerMap(info.map, mod.build);
       this.flushGear(); this.input.reset();
       this.curGk = no; this.pendGk = null;
-      this.game.loadMap(info.map);
+      if (info.segs) this.game.gkStreamLoad(no, info, mod, s0); else this.game.loadMap(info.map);
       this.game.startGk(stage, gkWaves(stage), from, { tod: info.tod, score });
       this.runBank = from ? score : 0;
       this.show('play');

@@ -25,19 +25,20 @@ import { CopMixin } from './cop.js?v=19';
 import { ArmyMixin } from './army.js?v=19';
 import { DrunkMixin } from './drunk.js?v=19';
 const BOT_NAME = { cop: 'けいさつおじさん', army: 'アーミーロボ', drunk: 'よっぱらいおじさん' }; // v0.14.0
-import { VehicleMixin } from './vehicles.js?v=19';
-import { SuitMixin } from './suit.js?v=19';
-import { MissileMixin } from './missiles.js?v=19';
-import { MeleeMixin } from './melee.js?v=19';
-import { GkMixin } from './gk/play.js?v=19';
-import { EnergyMixin } from './beams.js?v=19';
-import { makeNav } from './nav.js?v=19';
-import { buildMap, playerColliders, zombieColliders, shotColliders } from './map.js?v=19';
-import { buildTextures, fxTextures } from './textures.js?v=19';
-import { buildWorld, disposeWorld } from './world.js?v=19';
-import { Backdrop, BACKDROPS } from './backdrop.js?v=19';
-import { makePlayer, applyOutfit, applyGear, makeGearDrop, makeOjisan, makeWeapons, makeZombie, makeRocketProjectile, makeRocketCrate, zombieChunkColors, FLASH_MAT } from './models.js?v=19';
-import { FX } from './fx.js?v=19';
+import { VehicleMixin } from './vehicles.js?v=18';
+import { SuitMixin } from './suit.js?v=18';
+import { MissileMixin } from './missiles.js?v=18';
+import { MeleeMixin } from './melee.js?v=18';
+import { GkMixin } from './gk/play.js?v=18';
+import { StreamMixin } from './gk/stream.js?v=18';
+import { EnergyMixin } from './beams.js?v=18';
+import { makeNav } from './nav.js?v=18';
+import { buildMap, playerColliders, zombieColliders, shotColliders } from './map.js?v=18';
+import { buildTextures, fxTextures } from './textures.js?v=18';
+import { buildWorld, disposeWorld } from './world.js?v=18';
+import { Backdrop, BACKDROPS } from './backdrop.js?v=18';
+import { makePlayer, applyOutfit, applyGear, makeGearDrop, makeOjisan, makeWeapons, makeZombie, makeRocketProjectile, makeRocketCrate, zombieChunkColors, FLASH_MAT } from './models.js?v=18';
+import { FX } from './fx.js?v=18';
 const A_RIGHT = new THREE.Vector3();
 
 const v3 = () => new THREE.Vector3();
@@ -129,6 +130,7 @@ export class Game {
   loadMap(id, first = false) {
     if (!first && this.map && this.map.id === id) return false;
     if (this.world) disposeWorld(this.scene, this.world);
+    this.gs = null; // v0.17.0: ガンキックの セグメントは おわり
     const map = this.map = buildMap(id);
     this.half = map.half;
     this.world = buildWorld(this.scene, map, this.T, { shadows: this.shadows });
@@ -251,7 +253,7 @@ export class Game {
 
   // ---- ステージ ----
   buildNight() {
-    const S = this.scene, tex = this.fxTex, lamps = this.map.lamps;
+    const S = this.scene, tex = this.fxTex;
     const g = this.nightGroup = new THREE.Group(); g.visible = false; S.add(g);
     // つき
     const moon = this.moon = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.moon, fog: false, depthWrite: false, transparent: true }));
@@ -267,7 +269,17 @@ export class Game {
     const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.BufferAttribute(pos, 3));
     this.stars = new THREE.Points(sg, new THREE.PointsMaterial({ color: 0xffffff, size: 2.2, sizeAttenuation: false, fog: false, transparent: true, opacity: 0.85 }));
     this.stars.frustumCulled = false; g.add(this.stars);
-    // がいとうの あかりの わ（じめんに うつる ひかり・ほんものの ライトは つかわない）
+    this.buildLamps(g);
+    // ゆうひ（おおきな まるい ひかり）
+    const disk = this.sunDisk = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.glow, color: 0xffa860, fog: false, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+    disk.scale.setScalar(46);
+    const core = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.glow, color: 0xfff0c0, fog: false, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+    core.scale.set(0.3, 0.3, 1); disk.add(core); this.sunCore = core;
+    disk.visible = false; S.add(disk);
+  }
+  // がいとうの あかりの わ（じめんに うつる ひかり・ほんものの ライトは つかわない）。v0.17.0: セグメントで かずが かわる → つくりなおせる
+  buildLamps(g) {
+    const tex = this.fxTex, lamps = this.map.lamps;
     const pool = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2),
       new THREE.MeshBasicMaterial({ map: tex.glow, color: 0xffc870, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false, fog: false, polygonOffset: true, polygonOffsetFactor: -1 }), lamps.length);
     const haloI = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1),
@@ -282,12 +294,11 @@ export class Game {
     pool.renderOrder = 2; g.add(pool, cone);
     this.lampHalo = haloI; haloI.frustumCulled = false; g.add(haloI);
     this.lampMats = [[pool.material, 0.55], [haloI.material, 0.9], [cone.material, 0.07]];
-    // ゆうひ（おおきな まるい ひかり）
-    const disk = this.sunDisk = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.glow, color: 0xffa860, fog: false, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
-    disk.scale.setScalar(46);
-    const core = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.glow, color: 0xfff0c0, fog: false, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
-    core.scale.set(0.3, 0.3, 1); disk.add(core); this.sunCore = core;
-    disk.visible = false; S.add(disk);
+    this.lampMeshes = [pool, haloI, cone];
+  }
+  dropLamps() {
+    for (const m of this.lampMeshes || []) { m.parent && m.parent.remove(m); m.geometry.dispose(); m.material.dispose(); m.dispose?.(); }
+    this.lampMeshes = null;
   }
 
   // スタートの じかん（タイトルで えらぶ）。ウェーブごとに ゆうぐれ → ゆうやけ → よる
@@ -2003,4 +2014,4 @@ export class Game {
     this.renderer.forceContextLoss?.();
   }
 }
-Object.assign(Game.prototype, GkMixin, AllyMixin, RobotMixin, CopMixin, ArmyMixin, DrunkMixin, VehicleMixin, SuitMixin, MissileMixin, MeleeMixin, EnergyMixin);
+Object.assign(Game.prototype, GkMixin, StreamMixin, AllyMixin, RobotMixin, CopMixin, ArmyMixin, DrunkMixin, VehicleMixin, SuitMixin, MissileMixin, MeleeMixin, EnergyMixin);

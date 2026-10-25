@@ -31,6 +31,8 @@ self.GAME_ASSETS['zombie-tps'] = {
     'js/gk/core.js',
     'js/gk/catalog.js',
     'js/gk/play.js',
+    'js/gk/seg.js',
+    'js/gk/stream.js',
     'vendor/three.module.min.js',
   ]
 };
