@@ -130,7 +130,7 @@ export class Game {
   loadMap(id, first = false) {
     if (!first && this.map && this.map.id === id) return false;
     if (this.world) disposeWorld(this.scene, this.world);
-    this.gs = null; // v0.17.0: ガンキックの セグメントは おわり
+    this.gs = null; this.gkGimEnd(); // v0.17.0: ガンキックの セグメント・ギミックは おわり
     const map = this.map = buildMap(id);
     this.half = map.half;
     this.world = buildWorld(this.scene, map, this.T, { shadows: this.shadows });
@@ -161,7 +161,7 @@ export class Game {
   // ---- じょうたい ----
   resetRun() {
     const s = this.map.playerStart;
-    this.pos = new THREE.Vector3(s.x, 0, s.z); this.vy = 0; this.onGround = true;
+    this.pos = new THREE.Vector3(s.x, s.y || 0, s.z); this.vy = 0; this.onGround = true;
     this.yaw = this.yawT = s.yaw; this.pitch = this.pitchT = -0.05; this.recoilP = 0; this.recoilY = 0;
     this.resetMelee?.();
     this.vel = new THREE.Vector3(); this.follow = null; this.stepPh = 0; this.slowT = 0; this.hitstop = 0;

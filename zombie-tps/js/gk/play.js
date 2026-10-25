@@ -4,7 +4,7 @@
 // v0.17.0: セグメント（stream.js）: ドアの ばんごうは ステージ ぜんたいで かぞえる。セグメントの さかいめの ドアは
 //   つぎの セグメントが できるまで ひらかない（'gate'）・とおったら しまる（うしろの セグメントを すてる）
 import * as THREE from '../../vendor/three.module.min.js';
-import { WEAPON_ORDER, refillReserve, TOD, bossHp } from '../rules.js?v=18';
+import { WEAPON_ORDER, refillReserve, TOD, bossHp, groundHeight } from '../rules.js?v=18';
 import { gkRoomAt, gkEntered, gkSpotCells, gkPickRoomSpawn, gkDoorOpenBox } from './core.js?v=18';
 import { segCpSpot } from './seg.js?v=18';
 
@@ -41,7 +41,7 @@ export const GkMixin = {
       if (!d) { if (o) { grp.remove(o.g); this.gkDoors[i] = undefined; } continue; }
       if (!o) {
         const ax = d.axis === 'x', G = doorGeo(ax, W, H);
-        const g = new THREE.Group(); g.position.set(d.x, 0, d.z);
+        const g = new THREE.Group(); g.position.set(d.x, d.y || 0, d.z); // v0.17.0: たかい ゆかの ドア
         const panel = new THREE.Mesh(G.panel, DOOR_MAT); panel.position.y = H / 2;
         const st = new THREE.Mesh(G.stripe, DOOR_STRIPE); st.position.y = 1.2;
         const lamp = new THREE.Mesh(G.lamp, LAMP_RED); lamp.position.set(0, H + 0.05, 0);
@@ -78,15 +78,16 @@ export const GkMixin = {
     let cp = null;
     if (from > 0 && gm) { // チェックポイント: ドアの すぐ さき から
       cp = this.gkCheckpointPos(from);
+      cp.y = groundHeight(cp.x, cp.z, 0.35, cp.y + 3.4, this.pCol); // v0.17.0: さかの とちゅう でも あしもとの たかさ
       if (this.gs) { this.gs.start = cp; this.map.playerStart = cp; } // v0.17.0: なかま・スーツも ここの ちかくに
     }
-    if (gm) this.gk.start = cp ? { x: cp.x, z: cp.z } : { x: this.map.playerStart.x, z: this.map.playerStart.z }; // v0.16.1: なかま・スーツは ここの へやに
+    if (gm) this.gk.start = cp ? { x: cp.x, z: cp.z, y: cp.y || 0 } : { x: this.map.playerStart.x, z: this.map.playerStart.z, y: this.map.playerStart.y || 0 }; // v0.16.1: なかま・スーツは ここの へやに
     this.startGame();
     this.tod = this.gk.tod; this.todFade = null; this.applyTod(TOD[this.gk.tod] || TOD.night, true);
     // うしろの ドアは あける（v0.17.0: うしろの へやが ない ＝ まえの セグメント → しめた まま）
     for (let i = 0; i < (this.gkDoors || []).length; i++) this.gkSetDoor(i, i < from && !!(gm.rooms[i] && gm.rooms[i + 1]), true);
     if (cp) {
-      this.pos.set(cp.x, 0, cp.z); this.yaw = this.yawT = cp.yaw;
+      this.pos.set(cp.x, cp.y || 0, cp.z); this.yaw = this.yawT = cp.yaw;
       this.score = this.gk.cpScore;
     }
     this.gk.start = null;
@@ -94,12 +95,13 @@ export const GkMixin = {
   },
   gkCheckpointPos(from) { const gm = this.map.gk; return segCpSpot(gm.doors, gm.rooms, from); },
   // v0.16.1: なかまロボ・スーツを おく とき（robot.js / army.js / suit.js から）
-  gkSpotFrom() { const g = this.gk; return g.start || { x: this.pos.x, z: this.pos.z }; },
+  gkSpotFrom() { const g = this.gk; return g.start || { x: this.pos.x, z: this.pos.z, y: this.pos.y }; },
   gkSpotFilter(cells) { return gkSpotCells(this.map.gk, this.gk.room, cells); },
   // へやの すすみ（updateWaves の かわり）
   gkUpdate(dt) {
     const g = this.gk, n = g.waves.length;
     this.gkTickDoors(dt);
+    for (const gi of this.gkGims || []) gi.tick(dt); // v0.17.0: ギミック（あめ・でんしゃ）
     if (this.gs) this.gkStreamTick(dt); // v0.17.0: セグメントを よむ・すてる
     const gm = this.map.gk;
     if (g.phase === 'gate') { // へやは きれい・つぎの セグメントを つくって いる
@@ -157,6 +159,9 @@ export const GkMixin = {
     this.sfx.clear();
     this.pushHud(true);
   },
+  // v0.17.0: ステージの ギミック（js/gk/gim/<id>.js の create(game) → { tick, remap, dispose }）
+  gkGimStart(mods) { this.gkGimEnd(); this.gkGims = mods.map((m) => m.create(this)); },
+  gkGimEnd() { for (const gi of this.gkGims || []) gi.dispose(); this.gkGims = null; },
   // v0.17.0: セグメントで ない ステージ（いちまいの マップ）でも つかえる ように
   gkSegReady(room) { return !this.gs || this.gsReady(room); },
   gkCrossed(room) { return !this.gs || this.gsCrossed(room); },

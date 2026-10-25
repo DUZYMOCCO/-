@@ -2547,3 +2547,99 @@ test('v0.17.0 makeBoxIndex: まんなかを ずらしても いままでと お�
   const c = makeBoxIndex(moved, 20, 4, 2, 300, -900);
   assert.ok(c.near(298, -897).includes(moved[0])); assert.ok(c.near(311, -907).includes(moved[1]));
 });
+
+// ================= v0.17.0: ワールド1 ステージ2〜5（おやしき・あめの まち・ちかてつ・とう）=================
+import { TRAIN, trainNew, trainStep, trainSpan, trainHit, trainSide, trainTimes, gkLoadGims } from '../js/gk/core.js';
+
+test('v0.17.0 ワールド1: ステージ1〜5 が あそべる（カードの 🔒 が はずれる）', () => {
+  for (const no of [1, 2, 3, 4, 5]) assert.ok(isGkReady(no), 'ステージ ' + no);
+  assert.equal(gkNext(1), 2); assert.equal(gkNext(4), 5);
+  assert.deepEqual(Object.keys(GK_READY).map(Number).filter((n) => n <= 5), [1, 2, 3, 4, 5]);
+  for (const [no, info] of Object.entries(GK_READY)) {
+    assert.ok(['day', 'sunset', 'night'].includes(info.tod), 'tod ' + no);
+    assert.ok(info.map.startsWith('gk_') && !MAP_IDS.includes(info.map), 'いつもの マップ リストに はいらない ' + no);
+    assert.ok(info.segs && info.segs.length >= 2, 'セグメント ' + no);
+  }
+});
+
+test('v0.17.0 GK マップ: へや・ドア・でぐち・ナビ（ドアを あけて さいごの へやまで）・はこ', async () => {
+  for (const no of Object.keys(GK_READY).map(Number)) {
+    const st = await gkLoadStage(no), info = GK_READY[no];
+    const placed = chainSegs(await segBuildAll(no)), m = joinSegs(placed), gm = m.gk;
+    const n = st.arenas.length, tag = `ステージ${no}`;
+    assert.equal(gm.rooms.length, n, tag + ' へや = アリーナ'); assert.equal(segTotalRooms(info.segs), n);
+    assert.equal(gm.doors.filter(Boolean).length, n - 1, tag + ' ドア = へや-1');
+    assert.equal(gkRoomAt(gm.rooms, m.playerStart.x, m.playerStart.z), 0, tag + ' スタートは へや0');
+    for (const [i, rm] of gm.rooms.entries()) {
+      assert.ok(rm.spawns.length >= 4, `${tag} へや${i} の でぐち`);
+      for (const s of rm.spawns) assert.equal(gkRoomAt(gm.rooms, s.x, s.z), i, `${tag} でぐちは その へやの なか`);
+      assert.ok(!/\p{Script=Han}/u.test(rm.name) && rm.name.length <= 12, `${tag} へやの なまえ「${rm.name}」`);
+    }
+    // ドアの りょうがわは となりの へや
+    gm.doors.forEach((d, g) => {
+      const ax = d.axis === 'x', p = (s) => (ax ? [d.x, d.z + s * 2] : [d.x + s * 2, d.z]);
+      assert.deepEqual([gkRoomAt(gm.rooms, ...p(-1)), gkRoomAt(gm.rooms, ...p(1))].sort((a, b) => a - b), [g, g + 1], `${tag} ドア${g}`);
+    });
+    const db = m.boxes.filter((b) => b.door !== undefined);
+    assert.equal(db.length, n - 1, tag + ' ドアの みえない かべ'); for (const b of db) assert.ok(b.barrier);
+    assert.ok(!zombieColliders(m).some((b) => b.door !== undefined), tag + ' ゾンビは ドアを とおれる');
+    // となりあう 2つ（ゲームが いっしょに もつ ぶん）で SE2 の はこ 700 まで・かさならない
+    for (let i = 1; i < placed.length; i++) {
+      assert.ok(!segOverlap(placed[i - 1].bounds, placed[i].bounds), `${tag} セグメント${i - 1}と${i}`);
+      const k = joinSegs([placed[i - 1], placed[i]]).boxes.length;
+      assert.ok(k <= 700, `${tag} セグメント${i - 1}+${i} の はこ ${k}`);
+    }
+    // ドアを あけた じょうたいで スタートから さいごの へやの でぐちへ
+    const nav = makeNavAt(zombieColliders(m), m, segRegion(placed));
+    nav.update(m.playerStart.x, m.playerStart.y || 0, m.playerStart.z);
+    const reach = (s) => (nav.layered ? nav.distAt(s.x, s.y || 0, s.z) >= 0 : nav.free(s.x, s.y || 0, s.z));
+    for (const [i, rm] of gm.rooms.entries()) assert.ok(rm.spawns.filter(reach).length >= Math.min(4, rm.spawns.length), `${tag} へや${i} へ いける`);
+  }
+});
+
+test('v0.17.0 とう（ステージ5）: いっかいずつ たかく・ドアは したの ゆか・さかで のぼる', async () => {
+  const placed = chainSegs(await segBuildAll(5)), m = joinSegs(placed), gm = m.gk;
+  assert.ok(m.vertical, 'たかさの ある みちさがし');
+  assert.deepEqual(gm.rooms.map((r) => r.y), [0, 3, 6, 9, 12]);
+  gm.doors.forEach((d, g) => assert.equal(d.y || 0, gm.rooms[g].y, 'ドア' + g + ' は したの へやの ゆか'));
+  for (const rm of gm.rooms) for (const s of rm.spawns) assert.equal(s.y || 0, rm.y, 'でぐちは その へやの ゆか');
+  // チェックポイントは ドアの さきの さかの うえ（ゆかに めりこまない）
+  const pc = makeBoxIndex(playerColliders(m), 200);
+  for (let from = 1; from < 5; from++) {
+    const c = segCpSpot(gm.doors, gm.rooms, from), y = groundHeight(c.x, c.z, 0.35, c.y + 3.4, pc);
+    assert.ok(y >= gm.rooms[from - 1].y && y <= gm.rooms[from].y, `へや${from} の さいかい たかさ ${y}`);
+  }
+});
+
+test('v0.17.0 でんしゃ（ステージ4）: よこく 0.8びょう いじょう → とおる → まつ・あたりは とおる あいだ だけ', () => {
+  const L = { room: 0, axis: 'z', at: -20, from: -26, to: 26, w: 3.2 };
+  assert.ok(TRAIN.warn >= 0.8, 'よこくは 0.8びょう いじょう'); assert.ok(TRAIN.dmg <= 25, 'いたさは 25 まで');
+  const tt = trainTimes(L); assert.equal(tt.warn, TRAIN.warn); assert.ok(tt.pass > 1 && tt.pass < 6, 'とおる じかん ' + tt.pass);
+  const st = trainNew(() => 0);
+  const seq = [];
+  let tWarn = 0, tPass = 0;
+  for (let i = 0; i < 2000 && seq.length < 4; i++) {
+    const ch = trainStep(st, L, 0.02, () => 0.3);
+    if (st.phase === 'warn') tWarn += 0.02; if (st.phase === 'pass') tPass += 0.02;
+    assert.equal(trainHit(st, L, -20, 0), st.phase === 'pass' && trainSpan(st)[0] < 0.35 && trainSpan(st)[1] > -0.35, 'せんろの うえ');
+    assert.ok(!trainHit(st, L, -20 + L.w / 2 + 1, 0), 'せんろの そとは あたらない');
+    if (ch) seq.push(ch);
+  }
+  assert.deepEqual(seq.slice(0, 3), ['warn', 'pass', 'wait']);
+  assert.ok(Math.abs(tWarn - TRAIN.warn) < 0.05, 'よこく じかん ' + tWarn);
+  assert.ok(tPass > tt.pass - 0.1 && tPass < tt.pass + 0.1, 'とおる じかん ' + tPass);
+  assert.equal(trainSide(L, -19, 0), 1); assert.equal(trainSide(L, -21, 0), -1);
+});
+
+test('v0.17.0 でんしゃ: せんろは へやを よこぎる・でぐちは せんろに ない・ギミックの ファイル', async () => {
+  const placed = chainSegs(await segBuildAll(4)), m = joinSegs(placed), gm = m.gk;
+  assert.deepEqual(GK_READY[4].gim, ['train']); assert.ok(gm.trains.length >= 2);
+  for (const L of gm.trains) {
+    const [x0, z0, x1, z1] = gm.rooms[L.room].b, ax = L.axis === 'x';
+    const lo = Math.min(L.from, L.to), hi = Math.max(L.from, L.to);
+    assert.ok(ax ? lo <= x0 && hi >= x1 : lo <= z0 && hi >= z1, 'へやの はしから はしまで');
+    for (const s of gm.rooms[L.room].spawns) assert.ok(Math.abs((ax ? s.z : s.x) - L.at) > L.w / 2, 'でぐちは せんろの そと');
+  }
+  for (const no of Object.keys(GK_READY)) { const mods = await gkLoadGims(GK_READY[no]); for (const g of mods) assert.equal(typeof g.create, 'function'); }
+  assert.deepEqual(GK_READY[3].gim, ['rain']);
+});

@@ -34,6 +34,10 @@ export const GK_WORLDS = [
 // v0.17.0: segs = セグメントの くさり（mod: js/gk/seg/<mod>.js、rooms: へやの かず）→ すすむと よむ・とおると すてる
 export const GK_READY = {
   1: { map: 'gk_lab', mod: 'lab', tod: 'night', segs: [{ mod: 'lab_a', rooms: 2 }, { mod: 'lab_b', rooms: 2 }] },
+  2: { map: 'gk_manor', tod: 'sunset', segs: [{ mod: 'manor_a', rooms: 2 }, { mod: 'manor_b', rooms: 2 }, { mod: 'manor_c', rooms: 1 }] },
+  3: { map: 'gk_city', tod: 'night', gim: ['rain'], segs: [{ mod: 'city_a', rooms: 2 }, { mod: 'city_b', rooms: 2 }] },
+  4: { map: 'gk_subway', tod: 'night', gim: ['train'], segs: [{ mod: 'subway_a', rooms: 2 }, { mod: 'subway_b', rooms: 2 }] },
+  5: { map: 'gk_tower', tod: 'sunset', segs: [{ mod: 'tower_a', rooms: 2 }, { mod: 'tower_b', rooms: 2 }, { mod: 'tower_c', rooms: 1 }] },
 };
 export const isGkReady = (no) => !!GK_READY[no];
 // つぎの あそべる ステージ（なければ null）
@@ -131,3 +135,32 @@ export function gkSpotCells(gm, room, cells, margin = 1.5, doorClear = 3.5) {
 }
 // ひらいた ドアの みえない かべは ちかの したへ（ぶつからない）
 export const gkDoorOpenBox = () => [-60, -50];
+
+// ---- v0.17.0: ギミック（ステージごと・js/gk/gim/<id>.js を あとから よむ）----
+export const gkLoadGims = (info) => Promise.all((info.gim || []).map((id) => import(`./gim/${id}.js?v=18`)));
+// でんしゃ（ステージ4）: まつ → よこく（せんろの ライトが ちかちか・おと）→ とおる。とおる あいだ せんろに いると おされる（すこし いたい）
+// lane = { room, axis:'x'|'z'（はしる むき）, at（せんろの まんなか）, from, to, w }
+export const TRAIN = { wait: [7, 12], warn: 1.8, speed: 24, len: 18, dmg: 8, push: 10, zDmg: 60 };
+export const trainNew = (r = Math.random) => ({ phase: 'wait', t: 3 + r() * 3, head: 0, dir: 1 });
+const laneLo = (L) => Math.min(L.from, L.to), laneHi = (L) => Math.max(L.from, L.to);
+// よこくから とおりおわる までの じかん
+export const trainTimes = (L) => ({ warn: TRAIN.warn, pass: (laneHi(L) - laneLo(L) + 2 + TRAIN.len) / TRAIN.speed });
+// 1こま すすめる。かわった ときは あたらしい phase を かえす
+export function trainStep(st, L, dt, r = Math.random) {
+  if (st.phase === 'wait') { if ((st.t -= dt) <= 0) { st.phase = 'warn'; st.t = TRAIN.warn; st.dir = r() < 0.5 ? 1 : -1; return 'warn'; } return null; }
+  if (st.phase === 'warn') { if ((st.t -= dt) <= 0) { st.phase = 'pass'; st.head = st.dir > 0 ? laneLo(L) - 1 : laneHi(L) + 1; return 'pass'; } return null; }
+  st.head += st.dir * TRAIN.speed * dt;
+  const tail = st.head - st.dir * TRAIN.len;
+  if ((st.dir > 0 && tail > laneHi(L) + 1) || (st.dir < 0 && tail < laneLo(L) - 1)) { st.phase = 'wait'; st.t = TRAIN.wait[0] + r() * (TRAIN.wait[1] - TRAIN.wait[0]); return 'wait'; }
+  return null;
+}
+// でんしゃの はんい（はしる むきの [a0, a1]）
+export const trainSpan = (st) => (st.dir > 0 ? [st.head - TRAIN.len, st.head] : [st.head, st.head + TRAIN.len]);
+// あたった か（とおって いる ときだけ）
+export function trainHit(st, L, x, z, r = 0.35) {
+  if (st.phase !== 'pass') return false;
+  const ax = L.axis === 'x', along = ax ? x : z, cross = ax ? z : x, [a0, a1] = trainSpan(st);
+  return Math.abs(cross - L.at) < L.w / 2 + r && along > a0 - r && along < a1 + r;
+}
+// おされる むき（せんろの よこ・ちかい がわへ）
+export const trainSide = (L, x, z) => (((L.axis === 'x' ? z : x) - L.at) >= 0 ? 1 : -1);

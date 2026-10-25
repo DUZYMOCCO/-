@@ -16,6 +16,7 @@ export const StreamMixin = {
   // ステージの はじめ（チェックポイントなら その セグメント）: s0 を いま つくる
   gkStreamLoad(no, info, mods, s0) {
     if (this.world) disposeWorld(this.scene, this.world);
+    this.gkGimEnd();
     if (this.gkDoorGroup) { this.scene.remove(this.gkDoorGroup); this.gkDoorGroup = null; this.gkDoors = []; }
     const { mats, mat } = makeMats(this.T);
     this.world = { meshes: [], mats, levels: new Map() };
@@ -120,7 +121,7 @@ export const StreamMixin = {
     this.nav.update(P.x, this.state === 'play' ? this.pFloor ?? 0 : 0, P.z); this.flowT = 0.25;
     this.vertical = !!m.vertical; this.ladders = m.ladders || [];
     this.buildPerchMarks();
-    if (!S.boot) { this.gkSyncDoors(); this.gkLamps(); }
+    if (!S.boot) { this.gkSyncDoors(); this.gkLamps(); for (const gi of this.gkGims || []) gi.remap(); }
     // じめん・とおくの けしき
     S.ground && (S.ground.position.set(R.cx, 0, R.cz), S.ground.updateMatrix());
     for (const f of S.far) { this.scene.remove(f); f.geometry.dispose(); }

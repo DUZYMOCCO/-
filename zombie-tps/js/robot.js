@@ -20,7 +20,7 @@ export const RobotMixin = {
   // ラウンドの はじめに まだ うごいていない ロボを おく
   spawnRobot(r1 = Math.random()) {
     this.endRobot();
-    const s = this.gk && this.map.gk ? this.gkSpotFrom() : this.map.playerStart, sy = 0; // v0.16.1: ガンキックは いまの へや
+    const s = this.gk && this.map.gk ? this.gkSpotFrom() : this.map.playerStart, sy = s.y || 0; // v0.16.1: ガンキックは いまの へや・v0.17.0: たかい ゆか
     this.nav.update(s.x, sy, s.z);
     let cells = this.nav.openCells(this.half - 3);
     const same = cells.filter((c) => Math.abs((c[2] || 0) - sy) < 0.5); // おなじ たかさ（みつけやすい）

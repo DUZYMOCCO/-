@@ -1,6 +1,6 @@
 // v0.17.0: ステージ1 セグメント B（へや2 タンクの ホール → へや3 ちかの じっけんしつ・ボス）
 // いりぐち（z=12 の かべの ドア）は セグメント A の でぐちと おなじ ばしょ → A が ある あいだは A の かべを つかう（edge:'in'）
-import { segWall, segOuter, segDoor, roomSpawns } from '../seg.js?v=18';
+import { segWall, segOuter, segDoor, roomSpawns } from './kit.js?v=18';
 import { WALL, STEEL, GOO, H, DW, THEME } from './lab_a.js?v=18';
 
 export function build(builder) {
