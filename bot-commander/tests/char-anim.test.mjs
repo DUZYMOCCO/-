@@ -4,12 +4,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { CHAR_FRAMES, CHAR_H, LOCO_BY_DISTANCE, heightOf, SIT_AFTER, hasFrames, newAnim, stepAnim, frameAt, finished, strideOf, pickSize, durOf, downFrame, carriedFrame } from '../js/render/char-anim.js?v=4';
+import { CHAR_FRAMES, CHAR_H, LOCO_BY_DISTANCE, heightOf, SIT_AFTER, hasFrames, newAnim, stepAnim, frameAt, finished, strideOf, pickSize, durOf, downFrame, carriedFrame } from '../js/render/char-anim.js?v=8';
 import { hitReact, reactStep, REACT } from '../js/fx/react.js?v=2';
-import { createSim, runSim, issueOrder, KINDS, TICK, unitById } from '../js/sim/sim.js?v=1';
-import { toTile } from '../js/sim/map.js?v=5';
-import { MISSION_1 } from '../js/sim/mission.js?v=9';
-import { artSources } from '../js/render/art.js?v=10';
+import { createSim, runSim, issueOrder, KINDS, TICK, unitById } from '../js/sim/sim.js?v=23';
+import { toTile } from '../js/sim/map.js?v=6';
+import { MISSION_1 } from '../js/sim/mission.js?v=10';
+import { artSources } from '../js/render/art.js?v=12';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const BOY = JSON.parse(readFileSync(join(ROOT, 'assets/chars/BOY/frames.json'), 'utf8'));

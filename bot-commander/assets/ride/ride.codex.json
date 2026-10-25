@@ -1,0 +1,20 @@
+{
+  "base": "ponco.png",
+  "canvas": [
+    768,
+    768
+  ],
+  "frames": 4,
+  "fps": 6,
+  "loop": true,
+  "riders": {
+    "BOY": "PONCO02_BOY_{i}.png",
+    "GIRL": "PONCO02_GIRL_{i}.png",
+    "WOLF": "PONCO02_WOLF_{i}.png"
+  },
+  "seat_anchor": [
+    150,
+    240
+  ],
+  "note": "同じ768枠でロボの上に重ねる。bobはロボと人に共通。独立bobを追加しない。背中乗りで水中不可。"
+}

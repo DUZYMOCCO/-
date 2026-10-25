@@ -1,0 +1,36 @@
+{
+  "sand": {
+    "target_mean": 62,
+    "brightness_factor": 0.8511090833635532,
+    "color": 0.86,
+    "seam_finish": "periodic smooth decomposition, no procedural texture"
+  },
+  "rock": {
+    "target_mean": 52,
+    "brightness_factor": 1.0060489934445682,
+    "color": 0.86,
+    "seam_finish": "periodic smooth decomposition, no procedural texture"
+  },
+  "kelp": {
+    "target_mean": 48,
+    "brightness_factor": 1.1529902440243536,
+    "color": 0.86,
+    "seam_finish": "periodic smooth decomposition, no procedural texture"
+  },
+  "trench": {
+    "target_mean": 18,
+    "brightness_factor": 0.8548430211086945,
+    "color": 0.86,
+    "seam_finish": "periodic smooth decomposition, no procedural texture"
+  },
+  "overlay": {
+    "source": "generated alpha",
+    "alpha_transform": "periodic then clip((alpha-20)*1.25,0,140)",
+    "alpha_edge_difference": [
+      0.1669921875,
+      0.123046875
+    ],
+    "alpha_max": 140,
+    "alpha_positive_fraction": 0.3874979019165039
+  }
+}

@@ -1,0 +1,19 @@
+/* チュートリアル（?tutorial=1・☰ メニュー）。.bc-root の中だけに効かせる。重ねは pointer-events なし（吹き出しのボタンだけ押せる） */
+.bc-root .bc-tut { position: absolute; inset: 0; z-index: 30; pointer-events: none; overflow: hidden; }
+.bc-tut-hole { position: absolute; border: 3px solid #ffe066; border-radius: 12px; box-shadow: 0 0 0 2400px #000a, 0 0 14px 2px #ffe066aa; animation: bc-tut-pulse 1.2s ease-in-out infinite; }
+.bc-tut-hole[hidden] { display: none; }
+@keyframes bc-tut-pulse { 50% { border-color: #fff4b8; box-shadow: 0 0 0 2400px #000a, 0 0 22px 5px #ffe066cc; } }
+.bc-tut-bubble { position: absolute; left: 8px; top: 8px; padding: 10px 12px; border: 3px solid #ffe066; border-radius: 14px; background: #141a24f2; color: #f3f4f6; box-shadow: 0 4px 0 #000a; pointer-events: auto; }
+.bc-tut-text { margin: 0 0 8px; font-size: 14px; line-height: 20px; font-weight: 700; }
+.bc-tut-row { display: flex; align-items: center; gap: 8px; }
+.bc-tut-n { flex: 1; font-size: 11px; opacity: .6; font-variant-numeric: tabular-nums; }
+.bc-root .bc-tut-row button { height: 44px; min-width: 64px; padding: 0 14px; font-size: 14px; font-weight: 800; }
+.bc-root .bc-tut-skip { font-size: 12px; font-weight: 700; color: #d1d5db; }
+.bc-root .bc-tut-cont { font-size: 12px; }
+.bc-root .bc-tut-next { background: #1d6b4a; color: #fff; }
+.bc-root .bc-tut-row button[hidden] { display: none; }
+.bc-tut-probe { position: absolute; left: 0; top: 0; width: 0; height: 0; padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom); visibility: hidden; }
+
+/* v1.0.0 Codex gfx3 I_UI_ICONS: 今あるボタン・見出しの文字の前に小さなアイコン（assets/icons/ui/<名前>@24・@48・@72.png を画面の倍率で選ぶ）。新しいボタンは作らない。文字を書きかえても消えないよう ::before で出す */
+.bc-root .bc-tut-next::before { content: ''; display: inline-block; flex: none; width: 16px; height: 16px; margin-right: 4px; vertical-align: -5px; pointer-events: none; background: url('../assets/icons/ui/next@24.png') center / contain no-repeat; background-image: -webkit-image-set(url('../assets/icons/ui/next@24.png') 1x, url('../assets/icons/ui/next@48.png') 2x, url('../assets/icons/ui/next@72.png') 3x); background-image: image-set(url('../assets/icons/ui/next@24.png') 1x, url('../assets/icons/ui/next@48.png') 2x, url('../assets/icons/ui/next@72.png') 3x); }
+.bc-root .bc-tut-skip::before { content: ''; display: inline-block; flex: none; width: 16px; height: 16px; margin-right: 4px; vertical-align: -5px; pointer-events: none; background: url('../assets/icons/ui/skip@24.png') center / contain no-repeat; background-image: -webkit-image-set(url('../assets/icons/ui/skip@24.png') 1x, url('../assets/icons/ui/skip@48.png') 2x, url('../assets/icons/ui/skip@72.png') 3x); background-image: image-set(url('../assets/icons/ui/skip@24.png') 1x, url('../assets/icons/ui/skip@48.png') 2x, url('../assets/icons/ui/skip@72.png') 3x); }

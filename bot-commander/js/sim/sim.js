@@ -7,17 +7,101 @@
 //   AI で動く味方（5-5）はどの枠にも数えない。人間を捕まえた異星生物は、その場に残らず巣へ運んでいく。
 // v0.4.0-dev（10/23 23:29 の決定）: 遮蔽物（js/sim/cover.js）。弾を止める・撃たれて壊れる・壊れたら物を落とす。見通しと通行は変えない。
 // v0.4.0-dev（10/24 0:07 の決定）: 落とし物の武器パーツをやめて「武器が手に入る」。拾った機体は、持てて強ければそのミッションの間その武器に持ちかえる（u.weapon / u.wmul）。
+// v0.4.1（10/24）: 敵の攻撃ペースを少し遅く。ENEMY_ATTACK_INTERVAL_MULT（下）で敵の攻撃間隔だけ×1.33。味方・移動・全体のテンポは同じ。
+// v0.4.2（10/24）: 兵種「リペアラー」（cls: 'repairer'。サポーターから分けた新しい兵種）の能力をデータで持つ（UNIT_CLASS_CAPS）。KINDS に cls: 'repairer' の機体を足せば、
+//   近くの味方にもキットを使い（回復が多い）、届けた資材からキットを作る。いまの試作にリペアラーの機体はまだない（PONCO・射撃型・重装型・ツギハギ号・人間）。
+// v0.4.4（10/24）: シールド。味方ロボットは開始時に1枚（耐久＝最大HP×SHIELD_HP_FRAC）。攻撃は確率で盾が受ける（受けた一撃はよろけない。
+//   盾が壊れる一撃のあまりは捨てる＝体には通らない）。撤退など DEFENSIVE_ORDERS の間は撃たずに盾で守る（盾があれば全部受ける）。
+//   兵種ごとの盾の得意（UNIT_CLASS_CAPS.*.shield）: ガンナーは受ける確率 0.5・すり減り 0.7 倍。サポーターは資材から盾を作って壊れた機体に渡し、
+//   リペアラーは盾を少しずつ直す（資材なし）。作る物（キット・盾）に使える資材は1回の出撃で CRAFT_SPEND_CAP まで（目標の100を割らないため）。
+//   ミッションの機体に兵種を付けた（MISSION_1.ally の cls）: PONCO 8機＝ガンナー6・リペアラー1・サポーター1、ツギハギ号4機＝スカベンジャー。
+// v0.4.3（10/24）: 兵種の一覧 UNIT_CLASSES（design_robot_identity_v3.md 11章 unitClasses。キーは小文字）。KINDS の cls で兵種を付ける。
+//   KINDS（体の種類）には兵種を付けない。v0.4.4 からミッションの機体ごとに付ける（MISSION_1.ally の cls → makeUnit の extra.cls）。
+// v0.4.2（10/24）: リペアキット。味方ロボットは開始時に START_REPAIR_KITS 個持ち、HP が AUTO_REPAIR_HP_FRAC を切ると勝手に使う。使い切ると fx 'kitEmpty'。
+// v0.4.1（10/24）: よろけは強い一撃だけ（STUN_MIN_HP_FRAC・STUN_HEAVY_KINDS）。よろけた後は STUN_IMMUNE_SEC 秒よろけない。敵味方どちらも同じ。
 import { createRng } from './rng.js?v=5';
-import { generateMap, TILE, TERRAIN, T, tileAt, toTile, tileCenter, passable, nearestPassable } from './map.js?v=5';
-import { createSearch, stepSearch } from './path.js?v=5';
+import { generateMap, TILE, TERRAIN, T, tileAt, toTile, tileCenter, passable, nearestPassable, costAt } from './map.js?v=6';
+import { createSearch, stepSearch } from './path.js?v=6';
+// v0.4.7-dev 高さ（10/24 13:18・13:21 の決定）: 機体は z（既定 0）と動き方の一覧 moves（既定は地上だけ）を持つ。
+//   狙う相手・当たるか・遮蔽物・地形の守りは altitude.js の表で決める。両方地上なら今までと同じ（結果も1つも変わらない）。
+import { ALT_KINDS, ALT_SUBMERGED_WEAPON } from './alt-units.js?v=3'; // 飛ぶ機体・水陸両用機（?altunits=1 のお試しだけ。本編のミッションには出さない）
+import { canHit, coverApplies, terrainDefApplies, altDistance, rangeVs, settleZ, DEFAULT_MOVES } from './altitude.js?v=1';
+import { reaches, groupReaches } from './targeting.js?v=2'; // 敵の群れが追う相手を「届くか」で選ぶ（両方地上なら今までと同じ）
+import { stepFuel, isRefueling } from './fuel.js?v=1'; // 飛ぶ機体の燃料（FUEL_TABLE にある種類だけ。本編の機体には何もしない）
+import { SHIELD_TABLE } from './shield-table.js?v=2'; // 機体ごとの盾と体の表（v0.4.12-dev）。createSim({ shieldTable }) で差しかえられる
 import { FogGrid } from './fog.js?v=5';
-import { ALERT, GATHER_RADIUS, EXTRACT_RADIUS, FIND, CAPTURE, LEASH } from './mission.js?v=9';
-import { weaponById, KIND_WEAPON } from './weapons.js?v=2';
+import { ALERT, GATHER_RADIUS, EXTRACT_RADIUS, FIND, CAPTURE, LEASH } from './mission.js?v=10';
+import { weaponById, KIND_WEAPON } from './weapons.js?v=5';
 import { classify, hitReact, reactStep } from '../fx/react.js?v=2';
-import { COVER, COVER_LAYOUT, DROPS, ITEMS, PICKUP, createCover, findCover, damageCover, rollDrop, canPickUp, applyItem, atkOf, gearTier, rollWeapon } from './cover.js?v=2';
+import { COVER, COVER_LAYOUT, DROPS, ITEMS, PICKUP, createCover, findCover, damageCover, rollDrop, canPickUp, applyItem, atkOf, gearTier, rollWeapon } from './cover.js?v=6';
+import { applyLoadout } from '../armory/loadout.js?v=4'; // 武器庫の装備を出撃の時に機体へ反映（省いた・空なら何もしない）
+import { pickShot, healByLoadout, withLoadoutShield } from './loadout-effects.js?v=3'; // 武器庫の装備の効き目（u.loadoutFx のある機体だけ。ない機体では何も起こらない）
+import { stepRide, onHostHit, cannotBeCaptured, riderCannotShoot } from './ride.js?v=2'; // 人間がロボの背中・中に乗る（js/sim/ride.js）。だれも乗らない時（sim.ride なし）は何もしない
 
 export const TICK = 1 / 30;          // 1ステップ＝1/30秒
 export const SEARCH_BUDGET = 250;    // 1機1ステップで広げる A* ノード数
+/** 敵の攻撃の間隔にかける倍率（v0.4.1）。1＝元のまま、1.33＝攻撃が約3/4の頻度。近接・射撃の連射間隔だけ変わる（弾の速さ・移動・味方は変えない） */
+export const ENEMY_ATTACK_INTERVAL_MULT = 1.0; // v0.4.5: 1.33→1.0 に戻した（調整用に定数は残す）
+/** よろけ（撃てない・動けない）は強い一撃だけ（v0.4.1）。1発のダメージが相手の最大HPのこの割合以上か、重い・爆発の武器なら。ふつうの弾は小さくのけぞるだけ */
+export const STUN_MIN_HP_FRAC = 0.25;
+/** よろけた後、この秒数はよろけない（よろけの連続で何もできなくなるのを防ぐ）。よろけが終わってから数える */
+export const STUN_IMMUNE_SEC = 1.5;
+/** 重い・爆発の武器（js/fx/react.js の classify の kind）。これはダメージが小さくてもよろける */
+export const STUN_HEAVY_KINDS = Object.freeze(['heavy', 'explosion', 'shock']);
+/** リペアキット（v0.4.2）。味方のロボット（人間以外）が出た時に持っている数 */
+export const START_REPAIR_KITS = 1;
+/** HP がこの割合を切ったら、持っているキットを勝手に1つ使う（撃つ・動くは止めない） */
+export const AUTO_REPAIR_HP_FRAC = 0.40;
+/** キット1つで回復する量（最大HPの割合）。落とし物の修理キット（cover.js の ITEMS.repair.heal）と同じ値 */
+export const REPAIR_KIT_HEAL_FRAC = ITEMS.repair.heal;
+/** 持てるキットの数の上限 */
+export const MAX_CARRIED_KITS = 2;
+/** リペアラー（兵種 cls: 'repairer'）: 持てる数・ほかの味方に使う時の回復量・届く距離 px・使う間隔 秒 */
+export const REPAIRER_MAX_KITS = 3;
+export const REPAIRER_KIT_HEAL_FRAC = 0.75;
+export const REPAIRER_HEAL_RANGE = 80;
+export const REPAIRER_HEAL_CD = 1;
+/** リペアラーはキットを資材から作る: 1つ REPAIRER_KIT_BUILD_SEC 秒・REPAIRER_KIT_COST 資材（届けた資材「資材 n／100」から、作り始めに払う） */
+export const REPAIRER_KIT_BUILD_SEC = 10;
+export const REPAIRER_KIT_COST = 5;
+/** 兵種の一覧（設計書 11章 unitClasses。データで足す）。key は KINDS の cls・UNIT_CLASS_CAPS・描画の CLASS_ICONS と同じ */
+export const UNIT_CLASSES = Object.freeze([
+  { key: 'rookie', name: '新入り', mark: '新' },
+  { key: 'gunner', name: 'ガンナー', mark: 'ガ' },
+  { key: 'scout', name: 'スカウト', mark: 'ス' },
+  { key: 'supporter', name: 'サポーター', mark: 'サ' },
+  { key: 'scavenger', name: 'スカベンジャー', mark: 'カ' },
+  { key: 'stealth', name: 'ストーカー', mark: 'ト' },
+  { key: 'repairer', name: 'リペアラー', mark: 'リ' },
+  { key: 'giant', name: '巨大機', mark: '巨', giantOnly: true },
+].map(c => Object.freeze(c)));
+/** シールド（v0.4.4）: 耐久＝最大HPのこの割合・攻撃を盾が受ける確率（決まった乱数）。盾が壊れる一撃のあまりは捨てる */
+export const SHIELD_HP_FRAC = 0.40;
+export const SHIELD_BLOCK_CHANCE = 0.35;
+/** 盾で守る命令（order.mode）。この間は撃たず、盾があれば DEFENSIVE_BLOCK_CHANCE で受ける。「防御」の命令を足すならここに足す */
+export const DEFENSIVE_ORDERS = Object.freeze(['retreat']);
+export const DEFENSIVE_BLOCK_CHANCE = 1.0;
+/** ガンナーは盾が得意: 受ける確率・すり減り（受けたダメージ×この倍率だけ耐久が減る） */
+export const GUNNER_SHIELD_BLOCK_CHANCE = 0.50;
+export const GUNNER_SHIELD_WEAR_MULT = 0.7;
+/** サポーター: 資材から盾を作り（SUPPORTER_SHIELD_BUILD_SEC 秒・SUPPORTER_SHIELD_COST 資材・予備は SUPPORTER_MAX_SHIELDS 枚まで）、
+ *  SUPPORTER_GIVE_RANGE px 以内の盾が壊れた味方ロボット（自分も）に渡す。歩いては行かない */
+export const SUPPORTER_SHIELD_BUILD_SEC = 15;
+export const SUPPORTER_SHIELD_COST = 8;
+export const SUPPORTER_MAX_SHIELDS = 1;
+export const SUPPORTER_GIVE_RANGE = 80;
+/** リペアラー: REPAIRER_SHIELD_RANGE px 以内のいちばん傷んだ盾（壊れた盾も。自分も）を、毎秒 盾の耐久×REPAIRER_SHIELD_REPAIR_FRAC ずつ直す（資材なし） */
+export const REPAIRER_SHIELD_RANGE = 80;
+export const REPAIRER_SHIELD_REPAIR_FRAC = 0.06;
+/** 作る物（リペアキット・盾）に使える資材の上限（1回の出撃）。資材の山は計160・目標100で余りは60。上限 40 なら作り切っても 120 届く */
+export const CRAFT_SPEND_CAP = 40;
+/** 兵種ごとの能力（データ）。機体の cls で引く。repairOthers＝ほかの味方にキットを使う、kitCraft＝資材からキットを作る、maxKits＝持てる数、
+ *  shieldRepair＝盾を直す、shieldCraft＝盾を作って渡す、shield＝盾の得意（blockChance 受ける確率・wearMult すり減りの倍率） */
+export const UNIT_CLASS_CAPS = Object.freeze({
+  repairer: Object.freeze({ repairOthers: true, kitCraft: true, maxKits: REPAIRER_MAX_KITS, shieldRepair: true }),
+  supporter: Object.freeze({ shieldCraft: true }),
+  gunner: Object.freeze({ shield: Object.freeze({ blockChance: GUNNER_SHIELD_BLOCK_CHANCE, wearMult: GUNNER_SHIELD_WEAR_MULT }) }),
+});
 
 /** 一度に出せる数。ロボット12機（決定）と人間3人（決定 09:25）は別枠。AI の味方（aiAlly）はどちらにも数えない */
 export const FIELD_CAP = Object.freeze({ robots: 12, humans: 3 });
@@ -35,6 +119,7 @@ export const KINDS = Object.freeze({
   girl: { name: '少女', short: '少女', hp: 30, atk: 0, range: 0, cooldown: 1, speed: 30, sight: 4.5, gather: 0.2, noFight: true, human: true },
   // v0.4.0-dev 巨大機（ラストタイタン・ZA-25 などの代わりの仮の数値。絵はまだない。ミッションには出していない）
   giant: { name: '巨大機（仮）', short: '巨大機', hp: 900, atk: 40, range: 128, cooldown: 1.6, speed: 12, sight: 5, gather: 0, giant: true },
+  ...ALT_KINDS, // flyer（飛ぶ機体）・amph（水陸両用機）: js/sim/alt-units.js
 });
 export const isHuman = kind => !!KINDS[kind]?.human;
 export const isGiant = kind => !!KINDS[kind]?.giant;
@@ -56,13 +141,17 @@ export const UNIT_SETUP = Object.freeze({
 });
 
 // cover: 遮蔽物の置き場所（COVER_LAYOUT の形）。省くと、ミッションありなら COVER_LAYOUT、なしなら置かない
-export function createSim({ seed = 1, mapSeed = 7, setup = UNIT_SETUP, mission = null, cover } = {}) {
+// mapEdit: 生成したマップを書き換える関数（テスト・お試し用。高さのお試しの池など）。本編では使わない
+// loadout: 武器庫で選んだ装備 { 機体の名前: entry }（armory/loadout.js の applyLoadout）。省く・空なら今までと1つも変わらない
+// shieldTable: 機体ごとの盾と体の表（shield-table.js の形）。省くと SHIELD_TABLE。SHIELD_TABLE_V0411 を渡すと v0.4.11 までの結果に戻る
+export function createSim({ seed = 1, mapSeed = 7, setup = UNIT_SETUP, mission = null, cover, mapEdit = null, loadout = null, shieldTable = SHIELD_TABLE } = {}) {
   const map = generateMap(mapSeed);
+  if (mapEdit) mapEdit(map);
   const sim = {
     seed, tick: 0, time: 0, rng: createRng(seed), map,
     fog: new FogGrid(map.w, map.h),
     units: [], groups: [], commands: [], fx: [], result: null, resultReason: null, nextId: 1,
-    mission: null, benched: [],
+    mission: null, benched: [], shieldTable,
     cover: createCover(cover ?? (mission ? COVER_LAYOUT : [])), items: [], nextItemId: 1, loot: [], // loot: このミッションで拾った武器の id（拾った順）
   };
   if (mission) {
@@ -74,13 +163,15 @@ export function createSim({ seed = 1, mapSeed = 7, setup = UNIT_SETUP, mission =
   }
   for (const def of setup.ally) {
     const n = Math.max(1, def.count ?? 1);
-    const spots = spreadTiles(map, def.tx, def.ty, n);
+    const spots = spreadTiles(map, def.tx, def.ty, n, 4, def.moves);
     for (let j = 0; j < n; j++) {
-      const u = deployUnit(sim, def.kind, spots[j], { label: n === 1 ? def.name : null, cd: j * 0.2, aiAlly: !!def.ai });
+      const cls = Array.isArray(def.cls) ? def.cls[j] ?? null : def.cls ?? null; // 兵種は機体ごと（配列なら j 機目）
+      const u = deployUnit(sim, def.kind, spots[j], { label: n === 1 ? def.name : null, cd: j * 0.2, aiAlly: !!def.ai, cls, z: def.z, moves: def.moves });
       if (!u) sim.benched.push(def.kind); // 上限を超えた分は出さない（控え）
     }
   }
   setup.enemy.forEach((def, i) => spawnGroup(sim, def, i));
+  if (loadout) applyLoadout(sim, loadout);
   updateFog(sim);
   return sim;
 }
@@ -97,15 +188,15 @@ function createMissionState(map, m) {
 }
 
 /** (tx,ty) の近くの、歩いてつながっているマスを近い順に n 個（足りなければ最後を繰り返す） */
-export function spreadTiles(map, tx, ty, n, radius = 4) {
-  const c = nearestPassable(map, tx, ty);
+export function spreadTiles(map, tx, ty, n, radius = 4, moves) {
+  const c = nearestPassable(map, tx, ty, moves);
   if (!c) return Array(n).fill({ tx, ty });
   const seen = new Set([c.ty * map.w + c.tx]), q = [c], out = [];
   for (let i = 0; i < q.length; i++) {
     const p = q[i];
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
       const x = p.tx + dx, y = p.ty + dy, k = y * map.w + x;
-      if (seen.has(k) || Math.abs(x - c.tx) > radius || Math.abs(y - c.ty) > radius || !passable(map, x, y)) continue;
+      if (seen.has(k) || Math.abs(x - c.tx) > radius || Math.abs(y - c.ty) > radius || !passable(map, x, y, moves)) continue;
       seen.add(k); q.push({ tx: x, ty: y });
     }
   }
@@ -118,13 +209,21 @@ export function spreadTiles(map, tx, ty, n, radius = 4) {
 
 function makeUnit(sim, side, kind, tile, extra = {}) {
   const k = KINDS[kind];
+  const sr = side === 'ally' && !k.human ? sim.shieldTable?.[kind] : null; // 機体ごとの盾と体の表の行（なければ既定）
+  const hp0 = sr?.hp ?? k.hp, shield0 = side === 'ally' && !k.human ? Math.round(hp0 * (sr?.shieldFrac ?? SHIELD_HP_FRAC)) : 0;
   return {
     id: sim.nextId++, side, kind, label: extra.label || null, human: !!k.human, groupId: extra.groupId ?? null,
-    x: tileCenter(tile.tx), y: tileCenter(tile.ty), hp: k.hp, maxHp: k.hp, atk: k.atk, range: k.range,
+    x: tileCenter(tile.tx), y: tileCenter(tile.ty), hp: hp0, maxHp: hp0, atk: k.atk, range: k.range,
     cooldown: k.cooldown, cd: (extra.cd || 0) % k.cooldown, speed: k.speed, sight: k.sight,
     facing: side === 'ally' ? 1 : -1, moving: false, targetId: null, lastHit: -99,
+    kits: side === 'ally' && !k.human ? START_REPAIR_KITS : 0, // リペアキットの数（v0.4.2）
+    shieldMax: shield0, // シールド（v0.4.4）。shieldHp 0＝壊れている。耐久は機体の表（v0.4.12-dev）
+    shieldHp: shield0,
+    shieldBlock: sr?.blockChance ?? SHIELD_BLOCK_CHANCE, shieldWear: sr?.wearMult ?? 1, armor: sr?.armor ?? 0, // 受ける確率・すり減り・体の装甲（機体の表。shieldStats と updateCombat が読む）
+    cls: extra.cls || k.cls || null, // 兵種（'repairer' など。UNIT_CLASS_CAPS）。ミッションの機体ごと（MISSION_1.ally の cls）
     order: null, engaged: false, stance: extra.stance || 'hold', anchor: null, cargo: 0, gathering: null, speedMul: 1,
     captured: null, carrying: null, aiAlly: !!extra.aiAlly, home: { tx: tile.tx, ty: tile.ty },
+    z: extra.z ?? k.z ?? 0, moves: extra.moves || k.moves || DEFAULT_MOVES, // 高さ（altitude.js）。今の機体はみな 0・地上だけ
   };
 }
 
@@ -145,10 +244,11 @@ export function canDeploy(sim, kind, { aiAlly = false } = {}) {
 }
 
 /** 味方を1機出す。上限を超えるなら null（出さない）。aiAlly: true は AI で動く味方（枠に数えない・プレイヤーは選べない） */
-export function deployUnit(sim, kind, tile, { label = null, cd = 0, aiAlly = false } = {}) {
+export function deployUnit(sim, kind, tile, { label = null, cd = 0, aiAlly = false, cls = null, z, moves } = {}) {
   if (!KINDS[kind] || !canDeploy(sim, kind, { aiAlly })) return null;
-  const t = nearestPassable(sim.map, tile.tx, tile.ty) || tile;
-  const u = makeUnit(sim, 'ally', kind, t, { cd, stance: sim.mission && !aiAlly ? 'hold' : 'free', aiAlly });
+  const t = nearestPassable(sim.map, tile.tx, tile.ty, moves) || tile;
+  const u = makeUnit(sim, 'ally', kind, t, { cd, stance: sim.mission && !aiAlly ? 'hold' : 'free', aiAlly, cls, z, moves });
+  if (u.moves !== DEFAULT_MOVES) u.z = settleZ(u, TERRAIN[tileAt(sim.map, t.tx, t.ty)].key);
   const same = sim.units.filter(v => v.side === 'ally' && v.kind === kind).length;
   u.label = label || (KINDS[kind].human ? KINDS[kind].short : `${KINDS[kind].short}${same + 1}`);
   if (aiAlly && !label) u.label = `仲間の${u.label}`;
@@ -166,9 +266,10 @@ function spawnGroup(sim, def, index) {
     Object.assign(g, { routeIdx: 0, ai: 'patrol', alert: 0, lostTimer: 0, targetId: null, lastSeen: null, provokedBy: null });
   }
   const n = Math.max(1, def.count ?? 4);
-  const spots = spreadTiles(sim.map, def.tx, def.ty, n);
+  const spots = spreadTiles(sim.map, def.tx, def.ty, n, 4, def.moves);
   for (let j = 0; j < n; j++) {
-    const u = makeUnit(sim, 'enemy', def.kind, spots[j], { groupId: g.id, cd: j * 0.2, stance: g.role === 'patrol' ? 'hold' : 'free' });
+    const u = makeUnit(sim, 'enemy', def.kind, spots[j], { groupId: g.id, cd: j * 0.2, stance: g.role === 'patrol' ? 'hold' : 'free', z: def.z, moves: def.moves });
+    if (u.moves !== DEFAULT_MOVES) u.z = settleZ(u, TERRAIN[tileAt(sim.map, spots[j].tx, spots[j].ty)].key);
     u.label = def.name;
     sim.units.push(u); g.unitIds.push(u.id);
   }
@@ -197,7 +298,7 @@ export function issueStop(sim, unitIds) { sim.commands.push({ type: 'stop', unit
 export function issueRetreat(sim, unitIds) { sim.commands.push({ type: 'retreat', unitIds: ids(unitIds) }); }
 
 function applyOrder(sim, u, waypoints, mode = 'fight', attackId = null) {
-  const wps = waypoints.slice(0, 4).map(w => nearestPassable(sim.map, w.tx, w.ty)).filter(Boolean);
+  const wps = waypoints.slice(0, 4).map(w => nearestPassable(sim.map, w.tx, w.ty, u.moves)).filter(Boolean);
   if (!wps.length) { u.order = null; return; }
   // 新しい経路ができるまでは、前の経路のまま進む（命令を続けて出しても止まらないように）
   const old = u.order, prev = old && (old.planned.length ? old : old.prev) || null;
@@ -210,10 +311,12 @@ function applyOrder(sim, u, waypoints, mode = 'fight', attackId = null) {
 /** 何機かに同じ場所を命令したとき: 目的地のまわりに1マスずつ散らす（固まって範囲攻撃を受けないように） */
 function applyGroupMove(sim, units, waypoints, mode) {
   if (!units.length || !waypoints.length) return;
-  const last = nearestPassable(sim.map, waypoints[waypoints.length - 1].tx, waypoints[waypoints.length - 1].ty);
+  // 動き方がみな同じなら、その動き方で散らす（水陸両用機だけの組なら深い水の中にも散る）。混ざっていれば地上で散らし、各機が自分の通れる所へ寄せる
+  const mv = units.every(u => u.moves === units[0].moves) ? units[0].moves : undefined;
+  const last = nearestPassable(sim.map, waypoints[waypoints.length - 1].tx, waypoints[waypoints.length - 1].ty, mv);
   if (!last) return;
   if (units.length === 1) { applyOrder(sim, units[0], waypoints, mode); return; }
-  const free = spreadTiles(sim.map, last.tx, last.ty, units.length);
+  const free = spreadTiles(sim.map, last.tx, last.ty, units.length, 4, mv);
   const lx = tileCenter(last.tx), ly = tileCenter(last.ty);
   const order = units.slice().sort((a, b) => Math.hypot(a.x - lx, a.y - ly) - Math.hypot(b.x - lx, b.y - ly) || a.id - b.id);
   for (const u of order) {
@@ -232,7 +335,7 @@ function advancePlanning(sim, u) {
     o.planIndex ??= 0; o.segments ??= [];
     if (o.planIndex >= o.waypoints.length) break;
     const from = o.planIndex === 0 ? o.from : o.waypoints[o.planIndex - 1], to = o.waypoints[o.planIndex];
-    o.search ??= createSearch(sim.map, from.tx, from.ty, to.tx, to.ty);
+    o.search ??= createSearch(sim.map, from.tx, from.ty, to.tx, to.ty, u.moves);
     const before = o.search.expanded, st = stepSearch(o.search, budget);
     budget -= Math.max(1, o.search.expanded - before);
     if (st === 'running') return;
@@ -257,15 +360,38 @@ export function weaponInfoById(id) {
   return WCLASS.get(id);
 }
 /** その機体がいま撃つ武器（拾った武器があればそれ） */
-export const unitWeaponInfo = u => (u.weapon && weaponInfoById(u.weapon)) || weaponInfo(u.kind);
+// v1.0.0: 水陸両用機は潜っている間（z<0）は魚雷（W3-12。altitude.js の WEAPON_TAGS で torpedo）を使う → 水中の相手も、水中から水面の相手も撃てる
+const submergedWeapon = u => (u.z < 0 && ALT_SUBMERGED_WEAPON[u.kind] ? weaponInfoById(ALT_SUBMERGED_WEAPON[u.kind]) : null);
+export const unitWeaponInfo = u => submergedWeapon(u) || (u.weapon && weaponInfoById(u.weapon)) || weaponInfo(u.kind);
+/** 届くかの判定に渡す武器の行（446 行目・updateCombat と同じ。武器なしは null） */
+const weaponRowOf = u => unitWeaponInfo(u)?.row ?? null;
 const inMap = (sim, x, y) => x >= 0 && y >= 0 && x < sim.map.w * TILE && y < sim.map.h * TILE;
-const canStand = (sim, x, y) => inMap(sim, x, y) && passable(sim.map, toTile(x), toTile(y));
+const canStand = (sim, x, y, moves) => inMap(sim, x, y) && passable(sim.map, toTile(x), toTile(y), moves);
 /** 押し戻し: 水・マップの外へは押されない。まっすぐ行けなければ横か縦だけ動く（壁ぞいに滑る） */
 export function pushUnit(sim, u, mx, my) {
   if (!mx && !my) return;
-  if (canStand(sim, u.x + mx, u.y + my)) { u.x += mx; u.y += my; }
-  else if (mx && canStand(sim, u.x + mx, u.y)) u.x += mx;
-  else if (my && canStand(sim, u.x, u.y + my)) u.y += my;
+  if (canStand(sim, u.x + mx, u.y + my, u.moves)) { u.x += mx; u.y += my; }
+  else if (mx && canStand(sim, u.x + mx, u.y, u.moves)) u.x += mx;
+  else if (my && canStand(sim, u.x, u.y + my, u.moves)) u.y += my;
+}
+/** 強い一撃か（よろけてよいか）。よろけの後の無敵の間は強くてもよろけない */
+export const isStrongHit = (sim, target, wi, dmg) =>
+  !((target.stunImmuneUntil ?? -1) > sim.time) && (dmg >= STUN_MIN_HP_FRAC * target.maxHp || STUN_HEAVY_KINDS.includes(wi.kind));
+/** 当たった時の反応。強い一撃はいままでどおり（のけぞる・押される・よろける）。ふつうの一撃は小さくのけぞる＋押し戻し（距離はそのまま）だけで、撃つ・動くは止めない。押し戻しを消すと異星生物が密着して3体で囲み、かえって早くやられた（10/24 計測） */
+function applyHitReact(sim, best, wi, dir, dmg) {
+  const o = { w: wi.w, dir, human: best.human, mass: massOf(best.kind), kind: wi.kind, dead: best.hp <= 0 };
+  if (isStrongHit(sim, best, wi, dmg)) {
+    const r = hitReact(best, o);
+    if ((best._hr?.stun || 0) > 0) best.stunImmuneUntil = sim.time + best._hr.stun + STUN_IMMUNE_SEC;
+    return r;
+  }
+  const R = best._hr, keep = R ? { stun: R.stun, hold: R.hold, T: R.T, res: R.res, down: R.down, hurt: R.hurt, hurtHold: R.hurtHold } : null;
+  const tv0 = R ? R.tv : 0;
+  const r = hitReact(best, o), H = best._hr;
+  if (keep) Object.assign(H, keep);
+  else Object.assign(H, { stun: 0, hold: 0, T: 0, res: 0, down: null, hurt: -1, hurtHold: 0 });
+  H.tv = tv0 + (H.tv - tv0) * 0.3; H.tier = 0; // 小さくのけぞるだけ
+  return { ...r, tier: 0, stun: 0, knockdown: false };
 }
 function updateReactions(sim, dt) {
   for (const u of sim.units) {
@@ -276,14 +402,14 @@ function updateReactions(sim, dt) {
   }
 }
 
-function terrainSpeed(sim, x, y) { return 1 / TERRAIN[tileAt(sim.map, toTile(x), toTile(y))].cost; }
+function terrainSpeed(sim, x, y, moves) { return 1 / costAt(sim.map, toTile(x), toTile(y), moves); }
 
 function moveToward(sim, u, tx, ty, speedMul, dt) {
   const dx = tx - u.x, dy = ty - u.y, d = Math.hypot(dx, dy);
   if (d < 0.5) { u.moving = false; return true; }
-  const step = Math.min(d, u.speed * speedMul * terrainSpeed(sim, u.x, u.y) * dt);
+  const step = Math.min(d, u.speed * speedMul * terrainSpeed(sim, u.x, u.y, u.moves) * dt);
   const nx = u.x + dx / d * step, ny = u.y + dy / d * step;
-  if (passable(sim.map, toTile(nx), toTile(ny))) { u.x = nx; u.y = ny; }
+  if (passable(sim.map, toTile(nx), toTile(ny), u.moves)) { u.x = nx; u.y = ny; }
   if (Math.abs(dx) > 1) u.facing = dx > 0 ? 1 : -1;
   u.moving = true;
   return d - step < 0.5;
@@ -293,7 +419,7 @@ function moveToward(sim, u, tx, ty, speedMul, dt) {
 export const isPassive = u => !!u.order && (u.order.mode !== 'fight' || !!KINDS[u.kind]?.noFight);
 
 function updateUnitMovement(sim, u, dt) {
-  if (u.captured != null || isStunned(u)) { u.moving = false; return; }
+  if (u.captured != null || isStunned(u) || isRefueling(u)) { u.moving = false; return; } // 燃料をためている飛ぶ機体は動けない
   const o = u.order, mul = (u.speedMul || 1) * (u.carrying != null ? CAPTURE.carryMul : 1);
   let stopped = u.engaged && !isPassive(u);
   if (o && o.attackId != null) {
@@ -335,6 +461,7 @@ function updateUnitMovement(sim, u, dt) {
     let near = null, nd = u.sight * TILE;
     for (const e of sim.units) {
       if (e.side === u.side || (u.side === 'enemy' && e.human)) continue;
+      if (!canHit(u, e, unitWeaponInfo(u)?.row)) continue; // 届かない帯の相手（地上の近接 → 空など）には寄らない
       const d = Math.hypot(e.x - u.x, e.y - u.y);
       if (d < nd && Math.hypot(e.x - a.x, e.y - a.y) <= leash + u.range) { nd = d; near = e; }
     }
@@ -349,17 +476,17 @@ const SEP = { robot: 14, alien: 24, human: 10 };
 function separate(sim) {
   const us = sim.units;
   for (let i = 0; i < us.length; i++) {
-    const a = us[i]; if (a.captured != null) continue;
+    const a = us[i]; if (a.captured != null || a.ride) continue; // 乗っている人はロボと同じ場所（押し合わない）
     for (let j = i + 1; j < us.length; j++) {
-      const b = us[j]; if (b.captured != null || a.side !== b.side) continue;
+      const b = us[j]; if (b.captured != null || b.ride || a.side !== b.side) continue;
       if (a.moving && b.moving) continue;
       const r = Math.max(a.kind === 'alien' ? SEP.alien : a.human ? SEP.human : SEP.robot, b.kind === 'alien' ? SEP.alien : b.human ? SEP.human : SEP.robot);
       let dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy);
       if (d >= r) continue;
       if (d < 0.01) { const ang = (a.id * 7 + b.id * 13) % 628 / 100; dx = Math.cos(ang); dy = Math.sin(ang); d = 1; }
       const push = (r - d) * 0.15, px = dx / d * push, py = dy / d * push;
-      if (!a.moving && passable(sim.map, toTile(a.x - px), toTile(a.y - py))) { a.x -= px; a.y -= py; }
-      if (!b.moving && passable(sim.map, toTile(b.x + px), toTile(b.y + py))) { b.x += px; b.y += py; }
+      if (!a.moving && passable(sim.map, toTile(a.x - px), toTile(a.y - py), a.moves)) { a.x -= px; a.y -= py; }
+      if (!b.moving && passable(sim.map, toTile(b.x + px), toTile(b.y + py), b.moves)) { b.x += px; b.y += py; }
     }
   }
 }
@@ -368,39 +495,122 @@ function updateCombat(sim, dt) {
   for (const u of sim.units) u.engaged = false;
   for (const u of sim.units) {
     u.cd = Math.max(0, u.cd - dt);
-    if (u.captured != null || u.atk <= 0 || u.range <= 0) { u.targetId = null; continue; }
-    if (isStunned(u)) { u.engaged = u.targetId != null; continue; } // よろけ中は撃たない（狙いはそのまま）
+    if (u.captured != null || u.atk <= 0 || u.range <= 0 || riderCannotShoot(u)) { u.targetId = null; continue; } // v1.0.0: 乗っている人（背中・中）は撃てない
+    if (isStunned(u)) { u.engaged = u.targetId != null && !isPassive(u); continue; } // よろけ中は撃たない（狙いはそのまま）。走っている機体は交戦扱いにしない（v0.4.1）
     const want = u.order?.attackId != null ? unitById(sim, u.order.attackId) : null;
+    const wrow = unitWeaponInfo(u)?.row ?? null; // 帯をまたいで届くかは武器で決まる（altitude.js の REACH）
     let best = null, bd = Infinity;
-    if (want && Math.hypot(want.x - u.x, want.y - u.y) <= u.range) best = want;
+    if (want && canHit(u, want, wrow) && altDistance(u, want) <= rangeVs(u, want, u.range)) best = want;
     else for (const e of sim.units) {
       if (e.side === u.side || e.hp <= 0) continue;
       if (u.side === 'enemy' && e.human) continue; // 人間は撃たない（捕まえる）
-      const d = Math.hypot(e.x - u.x, e.y - u.y);
-      if (d <= u.range && d < bd) { bd = d; best = e; }
+      if (!canHit(u, e, wrow)) continue;
+      const d = altDistance(u, e);
+      if (d <= rangeVs(u, e, u.range) && d < bd) { bd = d; best = e; }
     }
+    const lfs = u.loadoutFx ? pickShot(sim, u, best, want) : null; // 武器庫: 2つ目以降の武器のほうが強い・1つ目が届かない相手に届く時だけ値が返る
+    if (lfs) best = lfs.target;
     u.targetId = best ? best.id : null;
     if (!best) continue;
     if (isPassive(u)) continue; // 走っている間は撃たない
     u.engaged = true;
     if (Math.abs(best.x - u.x) > 1) u.facing = best.x > u.x ? 1 : -1;
     if (u.cd > 0) continue;
-    u.cd = u.cooldown;
-    const def = TERRAIN[tileAt(sim.map, toTile(best.x), toTile(best.y))].def;
-    const dmg = Math.max(1, Math.round(atkOf(u) * def * (0.85 + 0.3 * sim.rng())));
+    u.cd = u.side === 'enemy' ? u.cooldown * ENEMY_ATTACK_INTERVAL_MULT : u.cooldown;
+    const def = terrainDefApplies(best) ? TERRAIN[tileAt(sim.map, toTile(best.x), toTile(best.y))].def : 1; // 空の相手には森・山の守りは効かない
+    let dmg = Math.max(1, Math.round((lfs ? lfs.atk : atkOf(u)) * def * (0.85 + 0.3 * sim.rng())));
     // 撃たれた異星生物の群れは、撃ってきた相手にすぐ気づく（遮蔽物に止められても）
     const g = best.groupId ? groupById(sim, best.groupId) : null;
     if (g && g.role === 'patrol') g.provokedBy = u.id;
     // 遮蔽物: 相手が遮蔽物の中かすぐ横にいて、間にあれば、確率で弾を止める（乱数はそのときだけ引く）
-    const cv = sim.cover.length ? findCover(sim.cover, u.x, u.y, best.x, best.y) : null;
+    // 空・水中の相手には地上の遮蔽物は効かない（altitude.js の COVER_APPLIES）
+    const cv = sim.cover.length && !(lfs && lfs.indirect) && coverApplies(u, best) ? findCover(sim.cover, u.x, u.y, best.x, best.y) : null; // 曲射(indirect)の武器は遮蔽物を越える
     if (cv && sim.rng() < COVER.kinds[cv.cover.kind].block) { hitCover(sim, u, best, cv, dmg); continue; }
+    if (shieldBlocks(sim, best)) { hitShield(sim, u, best, dmg); continue; }
+    if (best.armor > 0) dmg = Math.max(1, dmg - best.armor); // 体の装甲（機体の表）。体に当たる一撃だけ減らす。0 なら今までと同じ数
     best.hp -= dmg; best.lastHit = sim.time;
-    const wi = unitWeaponInfo(u);
-    const react = wi ? hitReact(best, { w: wi.w, dir: Math.atan2(best.y - u.y, best.x - u.x), human: best.human, mass: massOf(best.kind), kind: wi.kind, dead: best.hp <= 0 }) : null;
+    if (sim.ride) onHostHit(sim, best, dmg); // 背中に人が乗っていれば、確率でその人にも当たる
+    if (best.hp > 0) autoRepair(sim, best);
+    const wi = lfs ? weaponInfoById(lfs.row.id) : unitWeaponInfo(u);
+    const react = wi ? applyHitReact(sim, best, wi, Math.atan2(best.y - u.y, best.x - u.x), dmg) : null;
     sim.fx.push({ type: 'shot', side: u.side, kind: u.kind, x1: u.x, y1: u.y - 10, x2: best.x, y2: best.y - 8, t: sim.time, dmg,
       weapon: wi?.row.id ?? null, from: u.id, to: best.id, toKind: best.kind, toSide: best.side, tier: react ? react.tier : -1, kill: best.hp <= 0 });
   }
   removeDead(sim);
+}
+
+// ---- シールド（v0.4.4） ----
+/** 盾で守る命令の最中か（撤退など。DEFENSIVE_ORDERS） */
+export const isDefensive = u => !!u.order && DEFENSIVE_ORDERS.includes(u.order.mode);
+/** その機体の盾の得意: 機体の表（u.shieldBlock・u.shieldWear）の上に、兵種の得意（ガンナー: 受ける確率が既定より +0.15・すり減り ×0.7）を掛ける。
+ *  守る命令の間の確率は 1.0。表が既定（0.35・1）の機体は、兵種の値そのもの（ガンナー 0.5・0.7）になる */
+export function shieldStats(u) {
+  const c = capsOf(u).shield || {};
+  const base = u.shieldBlock ?? SHIELD_BLOCK_CHANCE;
+  const lifted = c.blockChance == null ? base : Math.min(1, base + (c.blockChance - SHIELD_BLOCK_CHANCE));
+  const s = { blockChance: isDefensive(u) ? DEFENSIVE_BLOCK_CHANCE : lifted, wearMult: (u.shieldWear ?? 1) * (c.wearMult ?? 1) };
+  return u.loadoutFx ? withLoadoutShield(s, u) : s; // 武器庫のバリアの道具: 受ける確率を上から足す（loadout-effects.js）
+}
+/** この一撃を盾が受けるか。盾がなければ乱数を引かない。確率 1 以上なら引かない */
+function shieldBlocks(sim, u) {
+  if (!(u.shieldHp > 0)) return false;
+  const p = shieldStats(u).blockChance;
+  return p >= 1 || (p > 0 && sim.rng() < p);
+}
+/** 盾が受けた: 耐久が減る（よろけない・体は無傷）。壊れたら shieldBreak（あまりは捨てる） */
+function hitShield(sim, u, best, dmg) {
+  const wi = unitWeaponInfo(u);
+  best.shieldHp = Math.max(0, best.shieldHp - dmg * shieldStats(best).wearMult); best.lastHit = sim.time;
+  sim.fx.push({ type: 'shot', side: u.side, kind: u.kind, x1: u.x, y1: u.y - 10, x2: best.x, y2: best.y - 8, t: sim.time, dmg,
+    weapon: wi?.row.id ?? null, from: u.id, to: best.id, toKind: best.kind, toSide: best.side, tier: -1, kill: false, shield: true });
+  sim.fx.push({ type: 'shieldHit', unit: best.id, x: best.x, y: best.y, t: sim.time, dmg, left: best.shieldHp });
+  if (best.shieldHp > 0) return;
+  sim.fx.push({ type: 'shieldBreak', unit: best.id, unitKind: best.kind, label: unitName(best), x: best.x, y: best.y, t: sim.time });
+}
+/** 作る物に資材を払えるか（届けた資材が足りて、出撃ごとの上限 CRAFT_SPEND_CAP を超えない）。払えたら払う */
+function payCraft(sim, cost) {
+  const m = sim.mission;
+  if (!m || m.delivered < cost || (m.spentOnCraft || 0) + cost > CRAFT_SPEND_CAP) return false;
+  m.delivered -= cost; m.spentOnCraft = (m.spentOnCraft || 0) + cost;
+  return true;
+}
+const shieldUser = u => carriesKits(u) && u.shieldMax > 0 && u.hp > 0 && u.captured == null;
+/** サポーター: 盾を作り（予備が上限未満で資材があれば）、近くの盾が壊れた機体に渡す */
+function supporterShield(sim, s, dt) {
+  if (s.hp <= 0 || s.captured != null) return;
+  if (s.shieldBuild != null) {
+    s.shieldBuild += dt;
+    if (s.shieldBuild >= SUPPORTER_SHIELD_BUILD_SEC - 1e-6) { s.shieldBuild = null; s.spareShields = (s.spareShields || 0) + 1; sim.fx.push({ type: 'shieldBuilt', unit: s.id, label: unitName(s), x: s.x, y: s.y, t: sim.time }); }
+  }
+  if ((s.spareShields || 0) > 0) {
+    let best = null, bd = Infinity;
+    for (const u of sim.units) {
+      if (!shieldUser(u) || u.shieldHp > 0) continue;
+      const d = Math.hypot(u.x - s.x, u.y - s.y);
+      if (d <= SUPPORTER_GIVE_RANGE && d < bd) { bd = d; best = u; }
+    }
+    if (best) {
+      s.spareShields--; best.shieldHp = best.shieldMax;
+      sim.fx.push({ type: 'shieldGive', unit: best.id, label: unitName(best), by: s.id, x: best.x, y: best.y, bx: s.x, by2: s.y, t: sim.time });
+    }
+  }
+  if (s.shieldBuild == null && (s.spareShields || 0) < SUPPORTER_MAX_SHIELDS && payCraft(sim, SUPPORTER_SHIELD_COST)) s.shieldBuild = 0;
+}
+/** リペアラー: 近くでいちばん傷んだ盾（壊れた盾も・自分も）を少しずつ直す。直している相手は s.shieldFix */
+function repairerShield(sim, s, dt) {
+  s.shieldFix = null;
+  if (s.hp <= 0 || s.captured != null) return;
+  let best = null;
+  for (const u of sim.units) {
+    if (!shieldUser(u) || u.shieldHp >= u.shieldMax) continue;
+    if (Math.hypot(u.x - s.x, u.y - s.y) > REPAIRER_SHIELD_RANGE) continue;
+    if (!best || u.shieldHp / u.shieldMax < best.shieldHp / best.shieldMax) best = u;
+  }
+  if (!best) return;
+  const was = best.shieldHp;
+  best.shieldHp = Math.min(best.shieldMax, best.shieldHp + best.shieldMax * REPAIRER_SHIELD_REPAIR_FRAC * dt);
+  s.shieldFix = best.id;
+  if (was <= 0) sim.fx.push({ type: 'shieldRestored', unit: best.id, label: unitName(best), by: s.id, x: best.x, y: best.y, t: sim.time });
 }
 
 // 弾が遮蔽物に止められた: 遮蔽物が代わりに傷む。壊れたら落とし物の抽選
@@ -425,17 +635,82 @@ function hitCover(sim, u, best, { cover: c, t }, dmg) {
   sim.fx.push({ type: 'drop', item: type, weapon: it.weapon ?? null, itemId: it.id, x: it.x, y: it.y, t: sim.time });
 }
 
+/** キットを持てる機体か（味方のロボット。人間はまだ持たない） */
+export const carriesKits = u => u.side === 'ally' && !u.human;
+const unitName = u => u.label || KINDS[u.kind]?.name || '味方';
+/** その機体の兵種の能力（なければ空） */
+export const capsOf = u => (u.side === 'ally' && UNIT_CLASS_CAPS[u.cls]) || {};
+export const maxKits = u => capsOf(u).maxKits ?? MAX_CARRIED_KITS;
+/** キットを1つ使って回復する（by が使う機体。自分かリペアラー）。使い切ったら kitEmpty を出す */
+function useKit(sim, u, auto, by = u) {
+  const before = u.hp, frac = by !== u ? REPAIRER_KIT_HEAL_FRAC : REPAIR_KIT_HEAL_FRAC;
+  by.kits--; u.hp = Math.min(u.maxHp, u.hp + u.maxHp * frac);
+  sim.fx.push({ type: 'kitUse', auto, unit: u.id, unitKind: u.kind, label: unitName(u), by: by.id, byLabel: unitName(by), heal: Math.round(u.hp - before), kits: by.kits,
+    x: u.x, y: u.y, bx: by.x, by_: by.y, t: sim.time });
+  if (by.kits === 0) sim.fx.push({ type: 'kitEmpty', unit: by.id, unitKind: by.kind, label: unitName(by), x: by.x, y: by.y, t: sim.time });
+}
+/** リペアラー: 近くの味方ロボット（自分以外）で HP が AUTO_REPAIR_HP_FRAC を切っている機体に、キットを使う（いちばん減っている機体から）。歩いては行かない */
+function repairerHeal(sim, s) {
+  if (s.hp <= 0 || s.captured != null || !(s.kits > 0) || (s.healCd || 0) > 0) return;
+  let best = null;
+  for (const u of sim.units) {
+    if (u === s || !carriesKits(u) || u.hp <= 0 || u.captured != null || u.hp >= u.maxHp * AUTO_REPAIR_HP_FRAC) continue;
+    if ((u.kits || 0) > 0 && u.hp >= s.hp) continue; // 自分のキットがあれば自分で使う
+    if (Math.hypot(u.x - s.x, u.y - s.y) > REPAIRER_HEAL_RANGE) continue;
+    if (!best || u.hp / u.maxHp < best.hp / best.maxHp) best = u;
+  }
+  if (!best) return;
+  useKit(sim, best, true, s); s.healCd = REPAIRER_HEAL_CD;
+}
+/** リペアラー: キットが上限未満で、届けた資材が足りれば、キットを作る（作り始めに資材を払う） */
+function repairerBuild(sim, s, dt) {
+  if (s.kitBuild != null) {
+    s.kitBuild += dt;
+    if (s.kitBuild >= REPAIRER_KIT_BUILD_SEC - 1e-6) { s.kitBuild = null; s.kits = (s.kits || 0) + 1; sim.fx.push({ type: 'kitBuilt', unit: s.id, label: unitName(s), kits: s.kits, x: s.x, y: s.y, t: sim.time }); }
+    return;
+  }
+  if (s.hp <= 0 || s.captured != null || (s.kits || 0) >= maxKits(s)) return;
+  if (payCraft(sim, REPAIRER_KIT_COST)) s.kitBuild = 0;
+}
+function updateKits(sim, dt) {
+  if (sim.result) return;
+  for (const u of sim.units) {
+    const c = capsOf(u);
+    if (c.repairOthers) { u.healCd = Math.max(0, (u.healCd || 0) - dt); repairerHeal(sim, u); }
+    if (c.kitCraft) repairerBuild(sim, u, dt);
+    if (c.shieldRepair) repairerShield(sim, u, dt);
+    if (c.shieldCraft) supporterShield(sim, u, dt);
+  }
+  healByLoadout(sim, dt); // 武器庫の修理の道具（u.loadoutFx.heal のある機体だけ）
+}
+/** HP が AUTO_REPAIR_HP_FRAC を切っていて、キットがあれば勝手に使う */
+export function autoRepair(sim, u) {
+  if (u.hp <= 0 || u.captured != null || !(u.kits > 0) || u.hp >= u.maxHp * AUTO_REPAIR_HP_FRAC) return false;
+  useKit(sim, u, true);
+  return true;
+}
+/** 落ちている修理キットを拾うか。HP が減っていれば拾ってその場で使う。減っていなければ持ち物に足す（MAX_CARRIED_KITS まで）。どちらでもなければ拾わない */
+function canTake(u, it) {
+  if (it.type !== 'repair') return canPickUp(u, it);
+  if (u.hp < u.maxHp) return canPickUp(u, it);
+  if (!carriesKits(u) || (u.kits || 0) >= maxKits(u)) return false;
+  return canPickUp({ ...u, hp: u.maxHp - 1 }, it); // 満タンでも持ち物に足せる（距離などはいつもの判定）
+}
+
 // 落とし物: 味方が足元を通ると拾う。時間がたつと消える
 function updatePickups(sim) {
   if (!sim.items.length) return;
   sim.items = sim.items.filter(it => sim.time - it.t < PICKUP.life);
   for (const it of sim.items) {
-    const u = sim.units.find(v => canPickUp(v, it));
+    const u = sim.units.find(v => canTake(v, it));
     if (!u) continue;
-    const { equipped } = applyItem(u, it); it.taken = true;
+    let stored = false, equipped = false;
+    if (it.type === 'repair' && u.hp >= u.maxHp) { u.kits = (u.kits || 0) + 1; stored = true; } // 減っていなければ持ち物へ
+    else ({ equipped } = applyItem(u, it));
+    it.taken = true;
     const w = it.weapon ? weaponById(it.weapon) : null;
     if (w) sim.loot.push(w.id);
-    sim.fx.push({ type: 'pickup', item: it.type, name: w ? w.name : ITEMS[it.type].name, weapon: w?.id ?? null, equipped, unit: u.id, unitKind: u.kind, label: u.label, x: u.x, y: u.y, t: sim.time });
+    sim.fx.push({ type: 'pickup', item: it.type, name: w ? w.name : ITEMS[it.type].name, weapon: w?.id ?? null, equipped, stored, kits: u.kits || 0, unit: u.id, unitKind: u.kind, label: u.label, x: u.x, y: u.y, t: sim.time });
   }
   sim.items = sim.items.filter(it => !it.taken);
 }
@@ -476,7 +751,7 @@ export function carryTarget(sim, e) {
 // 巣に着くと人間は巣に置かれ、運んだ個体は巣に残る（仮）。ロボが巣に入り、巣のまわりに敵がいなくなると助かる（仮）。
 function updateCaptures(sim) {
   for (const h of sim.units) {
-    if (h.side !== 'ally' || !h.human || h.captured != null) continue;
+    if (h.side !== 'ally' || !h.human || h.captured != null || cannotBeCaptured(h)) continue; // v1.0.0: 乗り終わっている人は背中でも中でも捕まらない（乗る途中・降りる途中は外にいる）
     for (const e of sim.units) {
       if (e.side !== 'enemy' || e.carrying != null || isStunned(e)) continue; // 1体で運べるのは1人。よろけ中は捕まえない
       if (Math.hypot(e.x - h.x, e.y - h.y) > CAPTURE.radius) continue;
@@ -530,9 +805,10 @@ function updateEnemyAI(sim, dt) {
     if (g.role === 'patrol') continue;
     g.aiTimer -= dt; if (g.aiTimer > 0) continue;
     g.aiTimer = 3 + sim.rng() * 2;
-    const c = groupUnits(sim, g)[0]; if (!c) continue;
+    const members = groupUnits(sim, g), c = members[0]; if (!c) continue;
     let near = null, nd = 7 * TILE;
-    for (const u of sim.units) if (u.side === 'ally') { const d = Math.hypot(u.x - c.x, u.y - c.y); if (d < nd) { nd = d; near = u; } }
+    // 群れの誰か1体でも届く相手だけ追う（空・水中の相手に届かない群れは、近くにいても追わない＝「近くに味方がいない」時と同じ動き）
+    for (const u of sim.units) if (u.side === 'ally') { const d = Math.hypot(u.x - c.x, u.y - c.y); if (d < nd && groupReaches(members, u, weaponRowOf)) { nd = d; near = u; } }
     if (near) { groupMove(sim, g, { tx: toTile(near.x), ty: toTile(near.y) }); continue; }
     if (groupHasOrder(sim, g)) continue;
     const m = sim.map, hq = m.hq.enemy;
@@ -552,7 +828,7 @@ export function groupSees(sim, g) {
       const inForest = tileAt(sim.map, toTile(u.x), toTile(u.y)) === T.FOREST;
       const range = a.sight * TILE * (inForest ? ALERT.forestSight : 1);
       const d = Math.hypot(u.x - a.x, u.y - a.y);
-      if (d <= range && d < bd) { bd = d; best = u; closeness = 1 - d / range; }
+      if (d <= range && d < bd && reaches(a, u, weaponRowOf)) { bd = d; best = u; closeness = 1 - d / range; } // 見ている本人が届く相手だけ（届かない相手では気づきのゲージも上がらない）
     }
   }
   return best ? { unit: best, closeness } : null;
@@ -567,7 +843,7 @@ function updatePatrols(sim, dt) {
     if (g.provokedBy != null) {
       const p = unitById(sim, g.provokedBy);
       g.provokedBy = null;
-      if (p) { g.alert = 1; g.lastSeen = { tx: toTile(p.x), ty: toTile(p.y) }; if (g.ai !== 'chase') { g.ai = 'chase'; g.targetId = p.id; g.aiTimer = 0; } }
+      if (p && groupReaches(members, p, weaponRowOf)) { g.alert = 1; g.lastSeen = { tx: toTile(p.x), ty: toTile(p.y) }; if (g.ai !== 'chase') { g.ai = 'chase'; g.targetId = p.id; g.aiTimer = 0; } }
     }
     if (seen) {
       g.lostTimer = 0;
@@ -614,22 +890,24 @@ function updateRegen(sim, dt) {
 }
 
 // 回収と脱出: 止まっている機体は回収ポイントの近くで資材を集める（1機ずつ自分で運ぶ）。脱出口に入った機体が届ける。
+// v1.0.0: ロボに乗っている人も集められる（決定）。狼の獣人（KINDS にない 'wolf'）はふつうの人間と同じ速さで集める
+const gatherOf = u => KINDS[u.kind]?.gather ?? (u.human ? KINDS.boy.gather : 0);
 function updateMission(sim, dt) {
   const m = sim.mission; if (!m) return;
   const allies = sim.units.filter(u => u.side === 'ally');
   for (const u of allies) u.gathering = null;
-  const free = new Set(allies.filter(u => !u.order && !u.engaged && u.captured == null && !isStunned(u) && (KINDS[u.kind]?.gather || 0) > 0));
+  const free = new Set(allies.filter(u => !u.order && !u.engaged && u.captured == null && !isStunned(u) && gatherOf(u) > 0));
   for (const p of m.salvage) {
     if (p.amount <= 0 || !free.size) continue;
     const px = tileCenter(p.tx), py = tileCenter(p.ty), r = GATHER_RADIUS * TILE;
     const near = [...free].filter(u => Math.hypot(u.x - px, u.y - py) <= r);
     if (!near.length) continue;
-    const rate = near.reduce((a, u) => a + KINDS[u.kind].gather, 0);
+    const rate = near.reduce((a, u) => a + gatherOf(u), 0);
     const take = Math.min(p.amount, rate * dt);
     if (take <= 0) continue;
     p.amount = Math.max(0, p.amount - take); if (p.amount < 1e-6) p.amount = 0;
     const before = p.gathered; p.gathered += take;
-    for (const u of near) { u.cargo += take * KINDS[u.kind].gather / rate; u.gathering = p.id; free.delete(u); }
+    for (const u of near) { u.cargo += take * gatherOf(u) / rate; u.gathering = p.id; free.delete(u); }
     if (Math.floor(p.gathered) > Math.floor(before)) {
       const u = near[Math.floor(p.gathered) % near.length];
       sim.fx.push({ type: 'gain', x: u.x, y: u.y, t: sim.time, side: 'ally', n: 1, pile: p.id });
@@ -734,14 +1012,23 @@ export function stepSim(sim) {
   updateReactions(sim, dt);
   for (const u of sim.units) updateUnitMovement(sim, u, dt);
   separate(sim);
+  updateAltitude(sim);
+  stepFuel(sim, dt, u => TERRAIN[tileAt(sim.map, toTile(u.x), toTile(u.y))].key === 'water'); // 飛ぶ機体だけ（表にない機体は何もしない）
   updateCaptures(sim);
   updateCarry(sim);
+  stepRide(sim, dt); // 乗っている人をロボに合わせて動かす・乗り降り・壊れたら降ろす（sim.ride がなければ何もしない）
   updatePickups(sim);
+  updateKits(sim, dt);
   updateMission(sim, dt);
   updateFog(sim);
-  sim.fx = sim.fx.filter(f => sim.time - f.t < (f.type === 'find' || f.type === 'captured' || f.type === 'rescue' || f.type === 'nested' || f.type === 'pickup' || f.type === 'coverBreak' ? 2.2 : f.type === 'gain' ? 1 : 0.8));
+  sim.fx = sim.fx.filter(f => sim.time - f.t < (f.type === 'find' || f.type === 'captured' || f.type === 'rescue' || f.type === 'nested' || f.type === 'pickup' || f.type === 'coverBreak' || f.type === 'shieldGive' || f.type === 'shieldRestored' ? 2.2 : f.type === 'gain' ? 1 : 0.8));
   sim.tick++; sim.time = sim.tick * TICK;
   checkResult(sim);
+}
+
+/** 足元の地形に合わせて z を決める（水陸両用機が深い水に入ると潜る）。既定の動き方（地上だけ）の機体は何もしない */
+function updateAltitude(sim) {
+  for (const u of sim.units) if (u.moves !== DEFAULT_MOVES && u.captured == null) u.z = settleZ(u, TERRAIN[tileAt(sim.map, toTile(u.x), toTile(u.y))].key);
 }
 
 export function runSim(sim, steps) { for (let i = 0; i < steps; i++) stepSim(sim); return sim; }
@@ -762,5 +1049,20 @@ export function hashSim(sim) {
   for (const c of sim.cover) mix(Math.round(c.hp * 100));
   for (const it of sim.items) { mix(it.id); mix(Math.round(it.x)); mix(Math.round(it.y)); }
   for (const u of sim.units) if (u.weapon) mix(Math.round((u.wmul || 1) * 1000));
+  for (const u of sim.units) if (u.z) { mix(u.id); mix(Math.round(u.z * 100)); } // 高さ（0 の機体は混ぜない＝今までのハッシュと同じ）
+  return h.toString(16);
+}
+
+/** hashSim が混ぜていない値（盾・キット・構え・撃つ間隔・命令の進み・群れの状態・作る資材の枠）も混ぜた深いハッシュ（テスト用）。今の hashSim の値は変えない */
+export function hashSimDeep(sim) {
+  let h = parseInt(hashSim(sim), 16) >>> 0;
+  const mix = v => { h ^= v & 0xffffffff; h = Math.imul(h, 16777619) >>> 0; };
+  for (const u of sim.units) {
+    mix(u.id); mix(Math.round((u.shieldHp || 0) * 100)); mix(u.kits || 0); mix(u.stance === 'free' ? 1 : 0); mix(Math.round((u.cd || 0) * 1000));
+    mix(u.order ? Math.round(u.order.pathIdx || 0) + 1 : 0); mix(u.order ? (u.order.planIndex || 0) + 1 : 0); mix(u.order ? (u.order.wpIndex || 0) + 1 : 0);
+    mix(u.engaged ? 1 : 0); mix(Math.round((u.speedMul || 1) * 1000));
+  }
+  for (const g of sim.groups) { mix(g.ai === 'chase' ? 2 : g.ai === 'return' ? 1 : 0); mix(g.routeIdx || 0); }
+  if (sim.mission) mix(Math.round((sim.mission.spentOnCraft || 0) * 1000));
   return h.toString(16);
 }

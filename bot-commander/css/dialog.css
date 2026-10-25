@@ -1,0 +1,87 @@
+/* 会話（立ち絵＋セリフ）の画面。js/dialog/dialog-view.js が使うときに読み込む。.bc-root の中だけに効かせる */
+/* 重なり: 地図・上下のバーより上、ゲームのメニュー（19）・戻る確認（20）より下（ブラウザの「戻る」の確認が上に出るように） */
+.bc-root .dlg { position: absolute; inset: 0; z-index: 18; overflow: hidden; touch-action: none; cursor: pointer; opacity: 0; transition: opacity .2s ease-out; }
+.bc-root .dlg.dlg-open { opacity: 1; }
+.bc-root .dlg.dlg-closing { opacity: 0; pointer-events: none; }
+.dlg-stage { position: absolute; inset: 0; }
+
+/* 背景: 画面いっぱい（cover。縦長で端が切れてよい・中心より少し上が基準）。暗い重ね（::after）は背景の上・立ち絵の下。背景がなくても重ねは同じ */
+.dlg-bg { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.dlg-bg::after { content: ''; position: absolute; inset: 0; background: linear-gradient(#05070a73 0%, #05070a8c 45%, #05070ae0 100%); }
+.dlg-bg-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 40%; display: block; opacity: 1; transition: opacity .4s ease-in-out; -webkit-user-drag: none; }
+.dlg-bg-img.dlg-bg-in, .dlg-bg-img.dlg-bg-out { opacity: 0; }
+
+/* 立ち絵: 左右反転はしない。話していない人は暗く・少し下げる */
+.dlg-por { position: absolute; isolation: isolate; transition: filter .25s ease-out, transform .25s ease-out, opacity .32s ease-out; will-change: transform, filter; }
+.dlg-por.dlg-dim { filter: brightness(.6); transform: translateY(12px); }
+.dlg-por.dlg-front { z-index: 2; }
+.dlg-por.dlg-out { opacity: 0; transition: filter .25s ease-out, transform .32s ease-out, opacity .32s ease-out; }
+.dlg-por.left.dlg-out { transform: translateX(-36px); }
+.dlg-por.right.dlg-out { transform: translateX(36px); }
+.dlg-por.dlg-dim.left.dlg-out { transform: translate(-36px, 12px); }
+.dlg-por.dlg-dim.right.dlg-out { transform: translate(36px, 12px); }
+.dlg-body { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; -webkit-user-drag: none; transition: opacity .16s linear; }
+.dlg-body.dlg-face-in { opacity: 0; }
+
+/* ロボの目の光: 白〜グレーの目のレイヤーを「型」にして、ロボごとの色（--eye）をかける。
+   tint: 描いてある目の色合いだけを替える（明るさの細かい所は絵のまま）。glow: ぼかして足す光。shut: まばたき（一瞬消える） */
+.dlg-eyes { position: absolute; pointer-events: none; }
+.dlg-eyes i { position: absolute; inset: 0; display: block; }
+.dlg-eye-tint, .dlg-eye-glow > i, .dlg-eye-shut {
+  -webkit-mask-image: var(--mask); mask-image: var(--mask); -webkit-mask-size: 100% 100%; mask-size: 100% 100%; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; }
+.dlg-eye-tint { background: var(--eye); mix-blend-mode: color; }
+.dlg-eye-glow { filter: blur(3px); mix-blend-mode: screen; opacity: .7; animation: dlg-glow 2.8s ease-in-out infinite; }
+.dlg-eye-glow > i { background: var(--eye); }
+.dlg-eye-shut { background: #06090d; opacity: 0; animation: dlg-blink 5.2s linear infinite; animation-delay: var(--blink-delay, 0s); }
+.dlg-eyes.fx-flicker { animation: dlg-flicker 1.7s steps(1, end) infinite; }
+@keyframes dlg-glow { 0%, 100% { opacity: .55; } 50% { opacity: .85; } }
+@keyframes dlg-blink { 0%, 95.5% { opacity: 0; } 96.5%, 98.5% { opacity: .92; } 99.5%, 100% { opacity: 0; } }
+@keyframes dlg-flicker { 0% { opacity: 1; } 7% { opacity: .35; } 9% { opacity: 1; } 31% { opacity: .7; } 33% { opacity: 1; } 58% { opacity: .2; } 61% { opacity: .9; } 64% { opacity: 1; } 83% { opacity: .55; } 85% { opacity: 1; } }
+
+/* 文字の枠（下に画面の高さの約22%）と名札。幅と高さは JS が portrait-layout.js の数字で決める */
+.dlg-box { position: absolute; bottom: 0; padding: 22px 18px calc(env(safe-area-inset-bottom) + 14px); z-index: 3;
+  border: 3px solid var(--bc-ink, #121418); border-bottom: 0; border-radius: 18px 18px 0 0; background: linear-gradient(#18202c, #10151d); box-shadow: 0 -4px 0 #0006; }
+.dlg-name { position: absolute; left: 14px; top: -17px; max-width: calc(100% - 28px); padding: 4px 14px; font-size: 15px; line-height: 22px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  border: 2px solid var(--bc-ink, #121418); border-radius: 10px; background: #1d4f6b; color: #fff; text-shadow: 0 1px 0 #000; box-shadow: 0 2px 0 #000a; }
+.dlg-name.right { left: auto; right: 14px; }
+.dlg-name[hidden] { display: none; }
+.dlg-text { margin: 0; font-size: 16px; line-height: 1.65; letter-spacing: .02em; white-space: pre-wrap; overflow-wrap: anywhere; color: #eef2f6; text-shadow: 0 1px 0 #000; }
+.dlg-rest { color: transparent; text-shadow: none; }
+.dlg-next { position: absolute; right: 16px; bottom: calc(env(safe-area-inset-bottom) + 10px); font-size: 12px; color: var(--bc-cyan, #7df9ff); opacity: 0; }
+.dlg-box.dlg-ready .dlg-next { opacity: 1; animation: dlg-next .9s ease-in-out infinite; }
+@keyframes dlg-next { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(3px); } }
+
+/* 小さなメニューの入り口（ゲームの ☰ メニュー と同じ形・同じ場所） */
+.bc-root .dlg-menu-btn { position: absolute; top: calc(env(safe-area-inset-top) + 6px); right: 8px; z-index: 4; width: 52px; height: 40px; padding: 2px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 16px; line-height: 18px; font-weight: 700; touch-action: manipulation; }
+.dlg-menu-btn small { font-size: 9px; line-height: 11px; font-weight: 700; }
+.bc-root .dlg-menu { position: absolute; inset: 0; z-index: 5; display: grid; place-items: center; background: #0009; cursor: default; }
+.bc-root .dlg-menu[hidden] { display: none; }
+.dlg-menu-box { width: min(84%, 300px); padding: 16px; border: 3px solid var(--bc-ink, #121418); border-radius: 16px; background: #141a24; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 6px 0 #000a; }
+.dlg-menu-title { margin: 0 0 4px; font-size: 16px; text-align: center; }
+.bc-root .dlg-menu-box button { height: 44px; font-size: 15px; font-weight: 700; }
+.bc-root .dlg-menu-box .dlg-close { height: 48px; font-size: 16px; font-weight: 800; background: #1d6b4a; color: #fff; }
+
+@media (prefers-reduced-motion: reduce) {
+  .dlg-eye-glow, .dlg-eye-shut, .dlg-eyes.fx-flicker, .dlg-box.dlg-ready .dlg-next { animation: none; }
+  .dlg-por, .dlg-body, .dlg-bg-img { transition: none; }
+}
+
+/* 会話が出ている間は、ゲームの上下のバー・知らせ・「一時停止中」は隠す（画面に出すのは文字の枠・名札・立ち絵・☰ だけ） */
+.bc-root.bc-dialog-open .bc-top, .bc-root.bc-dialog-open .bc-mission, .bc-root.bc-dialog-open .bc-bottom, .bc-root.bc-dialog-open .bc-paused-tag,
+.bc-root.bc-dialog-open .bc-act, .bc-root.bc-dialog-open .bc-alert, .bc-root.bc-dialog-open .bc-toast { visibility: hidden; }
+
+/* ?dialogdemo=1（お試し）: ミッションの上下のバーは出さない。後ろは暗い色だけ */
+.bc-root.bc-dialog-demo .bc-top, .bc-root.bc-dialog-demo .bc-mission, .bc-root.bc-dialog-demo .bc-bottom, .bc-root.bc-dialog-demo .bc-paused-tag,
+.bc-root.bc-dialog-demo .bc-act, .bc-root.bc-dialog-demo .bc-alert { display: none; }
+.bc-root.bc-dialog-demo .bc-stage { background: radial-gradient(ellipse at 50% 38%, #2a3442 0%, #161c25 55%, #0b0d10 100%); }
+.bc-root .dlg-end { position: absolute; inset: 0; z-index: 18; display: grid; place-items: center; background: #000a; }
+.bc-root .dlg-end[hidden] { display: none; }
+.dlg-end-box { width: min(84%, 300px); padding: 18px 16px 16px; border: 3px solid var(--bc-ink, #121418); border-radius: 16px; background: #141a24; text-align: center; box-shadow: 0 6px 0 #000a; }
+.dlg-end-title { margin: 0 0 14px; font-size: 20px; line-height: 26px; }
+.dlg-end-btns { display: flex; gap: 12px; justify-content: center; align-items: center; }
+.bc-root .dlg-end-btns .dlg-again { flex: 1; height: 48px; font-size: 16px; font-weight: 800; background: #1d6b4a; color: #fff; }
+.bc-root .dlg-end-btns .dlg-end-hub { height: 40px; padding: 0 12px; font-size: 13px; font-weight: 700; }
+
+/* v1.0.0 Codex gfx3 I_UI_ICONS: 今あるボタン・見出しの文字の前に小さなアイコン（assets/icons/ui/<名前>@24・@48・@72.png を画面の倍率で選ぶ）。新しいボタンは作らない。文字を書きかえても消えないよう ::before で出す */
+.bc-root .dlg-skip::before { content: ''; display: inline-block; flex: none; width: 20px; height: 20px; margin-right: 4px; vertical-align: -5px; pointer-events: none; background: url('../assets/icons/ui/skip@24.png') center / contain no-repeat; background-image: -webkit-image-set(url('../assets/icons/ui/skip@24.png') 1x, url('../assets/icons/ui/skip@48.png') 2x, url('../assets/icons/ui/skip@72.png') 3x); background-image: image-set(url('../assets/icons/ui/skip@24.png') 1x, url('../assets/icons/ui/skip@48.png') 2x, url('../assets/icons/ui/skip@72.png') 3x); }

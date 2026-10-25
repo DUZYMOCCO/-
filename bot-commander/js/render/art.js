@@ -1,4 +1,4 @@
-import { rasterArtSources } from './raster-art.js?v=10';
+import { rasterArtSources } from './raster-art.js?v=11';
 
 /**
  * 琥珀の廃墟 / SD メカ。手書きSVG・暗い輪郭・2段のセル影と暖色の縁光。
@@ -330,7 +330,8 @@ function human(kind) {
 }
 
 /** 描画に使う SVG の一覧。キー → SVG 文字列 と、表示の大きさ（px, 元の viewBox との比） */
-export function artSources(opts = {}) {
+/** 手描きの SVG だけの絵の一覧（本番の絵 rasterArtSources が読めなかったときの代わり。artSources の下ごしらえでもある） */
+export function svgArtSources() {
   const out = {};
   for (const side of ['ally', 'enemy']) {
     const p = PALETTES[side];
@@ -345,6 +346,10 @@ export function artSources(opts = {}) {
   out.salvage_0 = salvagePile(0); out.salvage_1 = salvagePile(1); out.salvage_empty = salvagePile(0, true);
   out.hatch = hatch();
   out.boy_ally = human('boy'); out.girl_ally = human('girl'); // v0.4.0-dev 人間（仮の絵）
+  return out;
+}
+export function artSources(opts = {}) {
+  const out = svgArtSources();
   // Final mission art uses reference-based raster miniatures. Legacy SVGs stay available above.
   Object.assign(out, rasterArtSources(opts));
   return out;

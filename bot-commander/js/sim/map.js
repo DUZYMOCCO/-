@@ -1,14 +1,20 @@
 // タイルマップ（平地・森・山・水）。DOM/Pixi に依存しない。
+// v0.4.7-dev 高さ（js/sim/altitude.js、10/24 13:18・13:21 の決定）: 水は2種類。
+//   WATER＝深い水（今までの水。水中の帯を持つ水陸両用機だけが入れる）、SHALLOW＝浅瀬（足がつく。どの機体も入れる・少し重い）。
+//   今のマップ生成（generateMap）は浅瀬を置かない（同じ seed で今までと同じ地形）。浅瀬はテスト・お試しのマップだけ。
+//   passable / costAt / nearestPassable は、機体の「動き方の一覧」（u.moves）を渡せる。渡さなければ今までどおり（地上だけ）。
 import { createRng } from './rng.js?v=5';
+import { moveCost } from './altitude.js?v=1';
 
 export const TILE = 32; // 1タイルのワールド座標の大きさ
-export const T = Object.freeze({ PLAIN: 0, FOREST: 1, MOUNTAIN: 2, WATER: 3 });
+export const T = Object.freeze({ PLAIN: 0, FOREST: 1, MOUNTAIN: 2, WATER: 3, SHALLOW: 4 });
 // cost: 経路のコスト（＝移動の遅さ）。def: 受けるダメージの倍率（小さいほど固い）
 export const TERRAIN = Object.freeze([
   { key: 'plain', name: '平地', cost: 1, def: 1 },
   { key: 'forest', name: '森', cost: 1.6, def: 0.8 },
   { key: 'mountain', name: '山', cost: 2.6, def: 0.65 },
-  { key: 'water', name: '水', cost: Infinity, def: 1 },
+  { key: 'water', name: '深い水', cost: Infinity, def: 1 },
+  { key: 'shallow', name: '浅瀬', cost: 1.8, def: 1 }, // 【仮】足がつく水。コストは altitude.js の MOVE_COST.shallow と同じ値にする
 ]);
 
 export function createMap(w, h, fill = T.PLAIN) {
@@ -17,8 +23,10 @@ export function createMap(w, h, fill = T.PLAIN) {
 export const inBounds = (map, tx, ty) => tx >= 0 && ty >= 0 && tx < map.w && ty < map.h;
 export const tileAt = (map, tx, ty) => (inBounds(map, tx, ty) ? map.tiles[ty * map.w + tx] : T.WATER);
 export const setTile = (map, tx, ty, t) => { if (inBounds(map, tx, ty)) map.tiles[ty * map.w + tx] = t; };
-export const passable = (map, tx, ty) => inBounds(map, tx, ty) && map.tiles[ty * map.w + tx] !== T.WATER;
-export const costAt = (map, tx, ty) => TERRAIN[tileAt(map, tx, ty)].cost;
+/** 通れるか。moves（動き方の一覧）を省くと今までどおり＝地上だけ（深い水は通れない） */
+export const passable = (map, tx, ty, moves) => inBounds(map, tx, ty) && (moves ? moveCost(TERRAIN[map.tiles[ty * map.w + tx]].key, moves) < Infinity : map.tiles[ty * map.w + tx] !== T.WATER);
+/** 経路のコスト。moves を省くと今までどおり（TERRAIN の cost） */
+export const costAt = (map, tx, ty, moves) => (moves ? moveCost(TERRAIN[tileAt(map, tx, ty)].key, moves) : TERRAIN[tileAt(map, tx, ty)].cost);
 export const toTile = v => Math.floor(v / TILE);
 export const tileCenter = t => t * TILE + TILE / 2;
 
@@ -85,11 +93,11 @@ export function generateMap(seed = 7, w = 40, h = 60) {
 }
 
 /** (tx,ty) に一番近い通れるタイル */
-export function nearestPassable(map, tx, ty) {
+export function nearestPassable(map, tx, ty, moves) {
   tx = Math.max(0, Math.min(map.w - 1, tx)); ty = Math.max(0, Math.min(map.h - 1, ty));
-  if (passable(map, tx, ty)) return { tx, ty };
+  if (passable(map, tx, ty, moves)) return { tx, ty };
   for (let r = 1; r < Math.max(map.w, map.h); r++)
     for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++)
-      if (Math.max(Math.abs(dx), Math.abs(dy)) === r && passable(map, tx + dx, ty + dy)) return { tx: tx + dx, ty: ty + dy };
+      if (Math.max(Math.abs(dx), Math.abs(dy)) === r && passable(map, tx + dx, ty + dy, moves)) return { tx: tx + dx, ty: ty + dy };
   return null;
 }

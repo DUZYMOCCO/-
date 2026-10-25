@@ -3,7 +3,8 @@
 //   ・二分ヒープの push/pop と「1回の呼び出しで決まった数のノードだけ調べ、続きは次のフレーム」という作りを流用。
 //   ・変更: 256px 格子＋壁判定 → タイル格子＋地形コスト（森・山は高い、水は通れない）。
 //           キーを文字列から数値インデックスに、ノードを型付き配列に。斜めは角の水を抜けない。
-import { passable, costAt } from './map.js?v=5';
+// v0.4.7-dev: moves（機体の動き方の一覧。altitude.js）を渡すと、その機体が通れる地形で探す。省くと今までどおり（地上だけ）。
+import { passable, costAt } from './map.js?v=6';
 
 const SQ2 = Math.SQRT2;
 const DIRS = [[1, 0, 1], [0, 1, 1], [-1, 0, 1], [0, -1, 1], [1, 1, SQ2], [1, -1, SQ2], [-1, 1, SQ2], [-1, -1, SQ2]];
@@ -14,10 +15,10 @@ function pop(heap) { const out = heap[0], last = heap.pop(); if (heap.length) { 
 // 八方向距離（最小コスト1なので過大評価しない）
 const octile = (dx, dy) => { dx = Math.abs(dx); dy = Math.abs(dy); return Math.max(dx, dy) + (SQ2 - 1) * Math.min(dx, dy); };
 
-export function createSearch(map, sx, sy, gx, gy) {
+export function createSearch(map, sx, sy, gx, gy, moves) {
   const n = map.w * map.h;
-  const s = { map, sx, sy, gx, gy, g: new Float64Array(n).fill(Infinity), parent: new Int32Array(n).fill(-1), closed: new Uint8Array(n), heap: [], expanded: 0, status: 'running', path: null };
-  if (!passable(map, sx, sy) || !passable(map, gx, gy)) { s.status = 'fail'; return s; }
+  const s = { map, sx, sy, gx, gy, g: new Float64Array(n).fill(Infinity), parent: new Int32Array(n).fill(-1), closed: new Uint8Array(n), heap: [], expanded: 0, status: 'running', path: null, moves };
+  if (!passable(map, sx, sy, moves) || !passable(map, gx, gy, moves)) { s.status = 'fail'; return s; }
   const i = sy * map.w + sx; s.g[i] = 0; push(s.heap, { i, f: octile(gx - sx, gy - sy) });
   return s;
 }
@@ -25,7 +26,7 @@ export function createSearch(map, sx, sy, gx, gy) {
 /** budget 個までノードを広げる。'running' | 'found' | 'fail' を返す。見つかったら s.path = [{tx,ty}...] */
 export function stepSearch(s, budget = 200) {
   if (s.status !== 'running') return s.status;
-  const { map, gx, gy } = s, w = map.w, goal = gy * w + gx;
+  const { map, gx, gy, moves } = s, w = map.w, goal = gy * w + gx;
   while (s.heap.length && budget-- > 0) {
     const { i } = pop(s.heap);
     if (s.closed[i]) continue;
@@ -37,10 +38,10 @@ export function stepSearch(s, budget = 200) {
     const x = i % w, y = (i / w) | 0;
     for (const [dx, dy, len] of DIRS) {
       const nx = x + dx, ny = y + dy;
-      if (!passable(map, nx, ny)) continue;
-      if (dx && dy && (!passable(map, x + dx, y) || !passable(map, x, y + dy))) continue; // 角の水は抜けない
+      if (!passable(map, nx, ny, moves)) continue;
+      if (dx && dy && (!passable(map, x + dx, y, moves) || !passable(map, x, y + dy, moves))) continue; // 角の水は抜けない
       const ni = ny * w + nx; if (s.closed[ni]) continue;
-      const g = s.g[i] + len * costAt(map, nx, ny);
+      const g = s.g[i] + len * costAt(map, nx, ny, moves);
       if (g < s.g[ni]) { s.g[ni] = g; s.parent[ni] = i; push(s.heap, { i: ni, f: g + octile(gx - nx, gy - ny) }); }
     }
   }
@@ -49,8 +50,8 @@ export function stepSearch(s, budget = 200) {
 }
 
 /** 一度に最後まで探す（テスト・初期配置用） */
-export function findPath(map, sx, sy, gx, gy) {
-  const s = createSearch(map, sx, sy, gx, gy);
+export function findPath(map, sx, sy, gx, gy, moves) {
+  const s = createSearch(map, sx, sy, gx, gy, moves);
   while (stepSearch(s, 1e9) === 'running');
   return s.status === 'found' ? s.path : null;
 }

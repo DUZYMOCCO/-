@@ -2,11 +2,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { COVER, COVER_LAYOUT, DROPS, ITEMS, PICKUP, WEAPON_DROP, createCover, insideCover, segmentEnters, coverBlocks, findCover, damageCover, rollDrop, atkOf,
-  gearTier, weaponPool, rollWeapon, canEquip, weaponMul, addOwned, applyItem } from '../js/sim/cover.js?v=2';
-import { WEAPONS, weaponById, weaponPower } from '../js/sim/weapons.js?v=2';
-import { createSim, stepSim, runSim, issueOrder, hashSim, TICK } from '../js/sim/sim.js?v=13';
-import { MISSION_1 } from '../js/sim/mission.js?v=9';
-import { generateMap, passable, toTile } from '../js/sim/map.js?v=5';
+  gearTier, weaponPool, rollWeapon, canEquip, weaponMul, addOwned, applyItem } from '../js/sim/cover.js?v=6';
+import { WEAPONS, weaponById, weaponPower } from '../js/sim/weapons.js?v=5';
+import { createSim, stepSim, runSim, issueOrder, hashSim, TICK } from '../js/sim/sim.js?v=23';
+import { MISSION_1 } from '../js/sim/mission.js?v=10';
+import { generateMap, passable, toTile } from '../js/sim/map.js?v=6';
 
 const one = (kind, x, y) => createCover([{ kind, x, y }])[0];
 
@@ -149,11 +149,12 @@ test('撃ち合い: 壊れると止めなくなり、落とし物が出る。味
   }
 });
 
-test('落とし物: 修理キットは満タンの機体は拾わない・時間で消える・異星生物は拾わない', () => {
+test('落とし物: リペアキットは満タンで持ち物も上限（2つ）の機体は拾わない・時間で消える・異星生物は拾わない', () => {
   const { sim, a, e } = duel('tree');
+  a.kits = 2; // v0.4.2: 満タンでも持ち物が上限未満なら持ち物に足す（tests/repair-kit.test.mjs）
   sim.items.push({ id: 99, type: 'repair', x: a.x, y: a.y, t: sim.time });
   stepSim(sim);
-  assert.equal(sim.items.length, 1, '満タンなら拾わない');
+  assert.equal(sim.items.length, 1, '満タン・持ち物が上限なら拾わない');
   sim.items.push({ id: 100, type: 'weapon', weapon: 'W2-03', x: e.x, y: e.y, t: sim.time });
   stepSim(sim);
   assert.ok(sim.items.some(i => i.id === 100), '異星生物は拾わない');

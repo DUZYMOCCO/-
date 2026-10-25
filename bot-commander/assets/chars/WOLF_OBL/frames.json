@@ -1,0 +1,477 @@
+{
+  "character": "WOLF",
+  "standing_height_L": 305,
+  "motions": {
+    "getup": {
+      "frames": 31,
+      "sizes": {
+        "s30": {
+          "file": "getup_s30.png",
+          "frame_w": 80,
+          "frame_h": 60,
+          "anchor": [
+            40,
+            40
+          ],
+          "standing_height": 37.4
+        },
+        "m60": {
+          "file": "getup_m60.png",
+          "frame_w": 160,
+          "frame_h": 120,
+          "anchor": [
+            80,
+            80
+          ],
+          "standing_height": 74.8
+        }
+      },
+      "fps": 5,
+      "loop": false,
+      "sequence": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30
+      ],
+      "then": "idle",
+      "mirror_for_left": true,
+      "facing": "right"
+    },
+    "hurt": {
+      "frames": 26,
+      "sizes": {
+        "s30": {
+          "file": "hurt_s30.png",
+          "frame_w": 64,
+          "frame_h": 48,
+          "anchor": [
+            32,
+            40
+          ],
+          "standing_height": 37.4
+        },
+        "m60": {
+          "file": "hurt_m60.png",
+          "frame_w": 128,
+          "frame_h": 96,
+          "anchor": [
+            64,
+            80
+          ],
+          "standing_height": 74.8
+        }
+      },
+      "fps": 30,
+      "loop": false,
+      "sequence": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25
+      ],
+      "then": "idle",
+      "mirror_for_left": true,
+      "facing": "right"
+    },
+    "idle": {
+      "frames": 27,
+      "sizes": {
+        "s30": {
+          "file": "idle_s30.png",
+          "frame_w": 64,
+          "frame_h": 48,
+          "anchor": [
+            32,
+            40
+          ],
+          "standing_height": 37.4
+        },
+        "m60": {
+          "file": "idle_m60.png",
+          "frame_w": 128,
+          "frame_h": 96,
+          "anchor": [
+            64,
+            80
+          ],
+          "standing_height": 74.8
+        }
+      },
+      "fps": 6,
+      "loop": true,
+      "sequence": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26
+      ],
+      "mirror_for_left": true,
+      "facing": "right"
+    },
+    "knockdown": {
+      "frames": 25,
+      "sizes": {
+        "s30": {
+          "file": "knockdown_s30.png",
+          "frame_w": 80,
+          "frame_h": 60,
+          "anchor": [
+            40,
+            40
+          ],
+          "standing_height": 37.4
+        },
+        "m60": {
+          "file": "knockdown_m60.png",
+          "frame_w": 160,
+          "frame_h": 120,
+          "anchor": [
+            80,
+            80
+          ],
+          "standing_height": 74.8
+        }
+      },
+      "fps": 10,
+      "loop": false,
+      "sequence": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24
+      ],
+      "hold_last": true,
+      "mirror_for_left": true,
+      "facing": "right"
+    },
+    "run": {
+      "frames": 26,
+      "sizes": {
+        "s30": {
+          "file": "run_s30.png",
+          "frame_w": 64,
+          "frame_h": 48,
+          "anchor": [
+            32,
+            40
+          ],
+          "standing_height": 37.4
+        },
+        "m60": {
+          "file": "run_m60.png",
+          "frame_w": 128,
+          "frame_h": 96,
+          "anchor": [
+            64,
+            80
+          ],
+          "standing_height": 74.8
+        }
+      },
+      "fps": 30,
+      "loop": true,
+      "sequence": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25
+      ],
+      "cycle_distance_L": 0,
+      "mirror_for_left": true,
+      "facing": "right"
+    },
+    "sit": {
+      "frames": 21,
+      "sizes": {
+        "s30": {
+          "file": "sit_s30.png",
+          "frame_w": 64,
+          "frame_h": 48,
+          "anchor": [
+            32,
+            40
+          ],
+          "standing_height": 37.4
+        },
+        "m60": {
+          "file": "sit_m60.png",
+          "frame_w": 128,
+          "frame_h": 96,
+          "anchor": [
+            64,
+            80
+          ],
+          "standing_height": 74.8
+        }
+      },
+      "fps": 15,
+      "loop": true,
+      "sequence": [
+        20
+      ],
+      "sequence_intro": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19
+      ],
+      "mirror_for_left": true,
+      "facing": "right"
+    },
+    "walk": {
+      "frames": 23,
+      "sizes": {
+        "s30": {
+          "file": "walk_s30.png",
+          "frame_w": 64,
+          "frame_h": 48,
+          "anchor": [
+            32,
+            40
+          ],
+          "standing_height": 37.4
+        },
+        "m60": {
+          "file": "walk_m60.png",
+          "frame_w": 128,
+          "frame_h": 96,
+          "anchor": [
+            64,
+            80
+          ],
+          "standing_height": 74.8
+        }
+      },
+      "fps": 30,
+      "loop": true,
+      "sequence": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22
+      ],
+      "cycle_distance_L": 0,
+      "mirror_for_left": true,
+      "facing": "right"
+    },
+    "wave": {
+      "frames": 36,
+      "sizes": {
+        "s30": {
+          "file": "wave_s30.png",
+          "frame_w": 64,
+          "frame_h": 52,
+          "anchor": [
+            32,
+            44
+          ],
+          "standing_height": 37.4
+        },
+        "m60": {
+          "file": "wave_m60.png",
+          "frame_w": 128,
+          "frame_h": 104,
+          "anchor": [
+            64,
+            88
+          ],
+          "standing_height": 74.8
+        }
+      },
+      "fps": 15,
+      "loop": true,
+      "sequence": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35
+      ],
+      "mirror_for_left": true,
+      "facing": "right"
+    }
+  },
+  "note": "v3 Codex 内蔵画像生成。8動作を各12キー新規生成、共通倍率と胸・足元を基準に登録。"
+}

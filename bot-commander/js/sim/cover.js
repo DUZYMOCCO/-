@@ -3,7 +3,7 @@
 //   見通しは切らない。通り抜けられる（経路探索は変えない）。敵・味方どちらにも効く。
 // データと計算だけ（DOM・Pixi・Math.random なし）。乱数は sim.rng() を呼ぶ側が渡す。数値はすべてここで調整する。
 // v0.4.0-dev（10/24 0:07 の決定）: 落とし物の「武器パーツ（攻撃 ×1.3・30秒）」をやめて「新しい武器が手に入る」にした。
-import { WEAPONS, weaponById, KIND_WEAPON, weaponPower } from './weapons.js?v=2';
+import { WEAPONS, weaponById, KIND_WEAPON, weaponPower } from './weapons.js?v=5';
 
 /** 調整用のつまみ（ここだけ見れば数値がわかる） */
 export const COVER = Object.freeze({
@@ -20,7 +20,7 @@ export const COVER = Object.freeze({
 
 /** 落とし物の中身 */
 export const ITEMS = Object.freeze({
-  repair: Object.freeze({ name: '修理キット', heal: 0.5 }),               // 最大HPのこの割合だけ回復（満タンの機体は拾わない）
+  repair: Object.freeze({ name: 'リペアキット', heal: 0.5 }),             // 最大HPのこの割合だけ回復（満タンのロボットは持ち物に足す。sim.js の MAX_CARRIED_KITS まで）
   weapon: Object.freeze({ name: '武器' }),                                // 武器の表から1つ（WEAPON_DROP）。中身は落ちた時に決まる
 });
 

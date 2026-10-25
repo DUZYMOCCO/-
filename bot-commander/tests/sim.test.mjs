@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { generateMap, T, setTile, createMap, passable, reachable } from '../js/sim/map.js?v=1';
-import { findPath, createSearch, stepSearch, pathCost } from '../js/sim/path.js?v=1';
-import { FogGrid } from '../js/sim/fog.js?v=1';
+import { generateMap, T, setTile, createMap, passable, reachable } from '../js/sim/map.js?v=6';
+import { findPath, createSearch, stepSearch, pathCost } from '../js/sim/path.js?v=6';
+import { FogGrid } from '../js/sim/fog.js?v=5';
 import { strokeToWaypoints } from '../js/sim/stroke.js?v=1';
-import { createSim, runSim, issueOrder, issueAttack, issueStance, issueStop, issueRetreat, hashSim, TICK, applyCommandsNow, deployUnit, canDeploy, fieldCount, FIELD_CAP, unitById, slotCost, isGiant, KINDS } from '../js/sim/sim.js?v=1';
+import { createSim, runSim, issueOrder, issueAttack, issueStance, issueStop, issueRetreat, hashSim, TICK, applyCommandsNow, deployUnit, canDeploy, fieldCount, FIELD_CAP, unitById, slotCost, isGiant, KINDS } from '../js/sim/sim.js?v=23';
 
 test('マップ: 40x60・同じseedで同じ・本陣どうしがつながる', () => {
   const a = generateMap(7), b = generateMap(7), c = generateMap(8);
@@ -196,7 +196,7 @@ test('枠: 巨大機もロボットの枠を1つだけ使う', () => {
 });
 
 test('枠: AI で動く味方（5-5）はどの枠にも数えない・プレイヤーは選べない', async () => {
-  const { selectKind, allyAt } = await import('../js/sim/select.js?v=1');
+  const { selectKind, allyAt } = await import('../js/sim/select.js?v=10');
   const enemy = [{ name: 'E', kind: 'gunner', tx: 2, ty: 2, role: 'guard', count: 1 }];
   const sim = createSim({ seed: 1, setup: { ally: [{ kind: 'gunner', tx: 20, ty: 50, count: 12 }, { kind: 'boy', tx: 17, ty: 52 }, { kind: 'girl', tx: 18, ty: 52 }, { kind: 'girl', tx: 19, ty: 52 }, { kind: 'heavy', tx: 26, ty: 46, count: 4, ai: true }], enemy } });
   let c = fieldCount(sim);

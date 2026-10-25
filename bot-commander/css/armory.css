@@ -1,0 +1,87 @@
+/* 武器庫の画面（?armory=1）。.bc-root の中の .bca だけに効かせる。スマホの縦画面（390×844）で片手で押せる大きさ（ボタンは高さ 44px 以上） */
+.bc-root .bca { position: absolute; inset: 0; z-index: 30; display: flex; flex-direction: column; background: #0d1118; color: #e5e7eb; touch-action: pan-y; }
+.bc-root .bca-head { flex: none; display: flex; align-items: center; gap: 8px; padding: calc(env(safe-area-inset-top) + 6px) 10px 6px; border-bottom: 2px solid #1c2533; }
+.bc-root .bca-title { flex: 1; min-width: 0; margin: 0; font-size: 18px; line-height: 24px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bc-root .bca-back, .bc-root .bca-menu-btn { flex: none; width: 48px; height: 44px; font-size: 18px; font-weight: 700; }
+.bc-root .bca-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding: 8px 10px 14px; }
+.bc-root .bca-foot { flex: none; padding: 8px 10px calc(env(safe-area-inset-bottom) + 10px); border-top: 2px solid #1c2533; background: #0d1118; }
+.bc-root .bca-foot[hidden] { display: none; }
+.bc-root .bca-go { width: 100%; height: 54px; font-size: 20px; font-weight: 800; letter-spacing: .2em; background: #1d6b4a; color: #fff; border-color: #34d399; }
+
+/* 小さい絵の枠（武器の絵。つぶさず、全体が入るように contain） */
+.bc-root .bca-thumb { flex: none; display: grid; place-items: center; width: 52px; height: 52px; border-radius: 8px; background: #151c28; border: 1px solid #263246; overflow: hidden; }
+.bc-root .bca-thumb img { width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
+.bc-root .bca-thumb.empty { border: 1px dashed #3a475c; background: transparent; }
+.bc-root .bca-thumb.mini { width: 36px; height: 36px; border-radius: 6px; }
+.bc-root .bca-thumb.mini.support { box-shadow: 0 0 0 1px #4ade8066; }
+
+/* 兵種の記号（丸）。リペアラーは緑 */
+.bc-root .bca-mark { flex: none; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: #1d2a3d; border: 2px solid #3b4f6b; font-size: 15px; font-weight: 800; color: #e8eef5; }
+.bc-root .bca-mark.c-repairer { color: #4ade80; border-color: #2f8f58; }
+.bc-root .bca-mark.c-scavenger { color: #ffd166; border-color: #8c6d22; }
+.bc-root .bca-who { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.25; }
+.bc-root .bca-who b { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bc-root .bca-who small { font-size: 11px; color: #9aa7ba; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* 一覧: 1機1行 */
+.bc-root .bca-list { display: flex; flex-direction: column; gap: 5px; }
+.bc-root .bca-row { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 54px; padding: 5px 8px; text-align: left; }
+.bc-root .bca-row .bca-who { flex: 0 0 96px; }
+.bc-root .bca-slots { flex: 1; display: flex; gap: 4px; justify-content: flex-end; flex-wrap: nowrap; }
+
+/* 1機の枠 */
+.bc-root .bca-unit { display: flex; flex-direction: column; gap: 8px; }
+.bc-root .bca-info { display: flex; align-items: center; gap: 10px; padding: 4px 2px 6px; }
+.bc-root .bca-now { margin: 0; padding: 0 2px 2px; font-size: 12px; line-height: 16px; color: #cfe3ff; }
+.bc-root .bca-counts { flex: none; max-width: 150px; font-size: 11px; line-height: 15px; color: #9aa7ba; text-align: right; }
+.bc-root .bca-slot, .bc-root .bca-it { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 76px; padding: 8px 10px; text-align: left; }
+.bc-root .bca-slot.has { border-color: #3b6a8f; }
+.bc-root .bca-slot-lab { flex: none; width: 46px; font-size: 12px; line-height: 15px; font-weight: 800; color: #9cc8ff; }
+.bc-root .bca-slot .bca-thumb, .bc-root .bca-it .bca-thumb { width: 60px; height: 60px; }
+.bc-root .bca-slot-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.bc-root .bca-slot-main b { font-size: 15px; line-height: 20px; }
+.bc-root .bca-slot-main b.dim { color: #7d8aa0; font-weight: 600; }
+.bc-root .bca-thumb.std img { opacity: 0.45; filter: grayscale(0.4); } /* v1.0.0: 標準装備（選んでいない元の武器）は薄く */
+.bc-root .bca-slot-main small { font-size: 12px; color: #aeb9ca; line-height: 16px; }
+.bc-root .bca-note { font-style: normal; font-size: 11px; line-height: 15px; }
+.bc-root .bca-note.warn { color: #ffb347; }
+.bc-root .bca-note.ok { color: #6ee7a0; }
+.bc-root .bca-it { min-height: 68px; border: 2px dashed #3a475c; border-radius: 10px; background: #111823; }
+.bc-root .bca-it.go { border-style: solid; border-color: #34d399; background: #12301f; color: inherit; }
+
+/* カードの一覧 */
+.bc-root .bca-filter { position: sticky; top: -8px; z-index: 2; margin: -8px -10px 8px; padding: 8px 10px 6px; background: #0d1118f2; border-bottom: 1px solid #1c2533; display: flex; flex-direction: column; gap: 6px; }
+.bc-root .bca-seg { display: flex; }
+.bc-root .bca-seg button { flex: 1; min-width: 0; height: 44px; padding: 0 6px; font-size: 13px; font-weight: 700; border-radius: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bc-root .bca-seg button:first-child { flex: 2.2; border-radius: 10px 0 0 10px; }
+.bc-root .bca-seg button:last-child { border-radius: 0 10px 10px 0; border-left-width: 0; }
+.bc-root .bca-seg button.on { background: #1d4f6b; border-color: #7df9ff; color: #fff; }
+.bc-root .bca-chips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
+.bc-root .bca-chips::-webkit-scrollbar { display: none; }
+.bc-root .bca-chip { flex: none; height: 38px; padding: 0 12px; font-size: 13px; font-weight: 700; border-radius: 19px; white-space: nowrap; }
+.bc-root .bca-chip.on { background: #1d4f6b; border-color: #7df9ff; color: #fff; }
+.bc-root .bca-cards { display: flex; flex-direction: column; gap: 6px; }
+.bc-root .bca-card { display: flex; align-items: flex-start; gap: 10px; width: 100%; padding: 8px 10px; text-align: left; }
+.bc-root .bca-card.on { border-color: #34d399; background: #12301f; }
+.bc-root .bca-card .bca-thumb { width: 68px; height: 68px; }
+.bc-root .bca-card-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.bc-root .bca-card-main b { font-size: 15px; line-height: 20px; }
+.bc-root .bca-card-main small { font-size: 12px; color: #aeb9ca; line-height: 16px; }
+.bc-root .bca-tag { font-style: normal; margin-left: 6px; padding: 1px 6px; border-radius: 8px; font-size: 11px; background: #1f7a52; color: #fff; vertical-align: 1px; }
+.bc-root .bca-stats { display: flex; flex-wrap: wrap; gap: 2px 10px; font-size: 12px; line-height: 16px; font-variant-numeric: tabular-nums; color: #e5e7eb; }
+.bc-root .bca-sp { font-size: 11px; line-height: 15px; color: #ffd166; }
+.bc-root .bca-cl { font-size: 11px; line-height: 15px; color: #8d9ab0; }
+.bc-root .bca-warn { margin: 0 0 8px; padding: 6px 8px; font-size: 12px; line-height: 17px; color: #ffb347; border: 1px solid #8c5a1a; border-radius: 8px; background: #2a1d0a; }
+.bc-root .bca-empty { padding: 24px 0; text-align: center; font-size: 13px; color: #8d9ab0; }
+
+/* ☰ メニュー */
+.bc-root .bca-menu { position: absolute; inset: 0; z-index: 3; display: grid; place-items: center; background: #0009; }
+.bc-root .bca-menu[hidden] { display: none; }
+.bc-root .bca-menu-box { width: min(84%, 300px); padding: 16px; border: 3px solid var(--bc-ink); border-radius: 16px; background: #141a24; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 6px 0 #000a; }
+.bc-root .bca-menu-box h2 { margin: 0 0 4px; font-size: 16px; text-align: center; }
+.bc-root .bca-menu-box button { height: 48px; font-size: 14px; font-weight: 700; }
+.bc-root .bca-menu-box .bca-menu-close { background: #1d6b4a; color: #fff; font-size: 16px; font-weight: 800; }
+
+/* ☰ メニューの「武器庫（出撃前にもどる）」（?armory=1 の時だけ出る。index.js） */
+.bc-root .bc-menu-armory { height: 40px; font-size: 13px; font-weight: 700; }
+.bc-root .bc-menu-armory[hidden] { display: none; }

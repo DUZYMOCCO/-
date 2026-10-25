@@ -1,0 +1,370 @@
+{
+  "_説明": [
+    "tools/make-portraits.py の設定（手で直すところ）。ここを直して make-portraits.py を流し直すと assets/portraits/portraits.json が作り直される。",
+    "name: 名札（仮の名前は（仮）付き）。side: 立つ側（left / right。左右反転はしない）。speaks: false なら名札を出さない（少年）。robot: 目の光のレイヤーを使う。",
+    "manual: 測った値（auto）を上書きする値。scale: 大きさ（1 = 原本のキャンバスの高さが立ち絵の高さ）。nudge: [右へ, 下へ] のずらし（立ち絵の高さに対する割合）。",
+    "  ロボは背の低いデフォルメなので、人間より少し小さく・目を少し低く（nudge の下へ）して、足もとを文字の枠の後ろに隠す。",
+    "  eye: 目の中心 [x, y]（原本の px）。人間は目の光のレイヤーがないので手で測って書く。ロボは目の光のレイヤーから測る。2人の目の高さはこれでそろえる。",
+    "  face_x: 顔（頭）のまん中の x（原本の px）。左右の置き場所はこれで決める（なければ eye の x）。ロボは目が頭の片側に寄っているので頭のまん中を書く。",
+    "  cut: 下の端がまっすぐ切れている胸像の、その y（原本の px。null で切れ目なし）。ふつうは測った値でよい。",
+    "eye_color: 目の光の色（コアの色）。eye_color_by_face: 表情ごとの色（警戒 alert は橙〜赤寄り。PORTRAIT_PLAN.md 2章）。eye_fx_by_face: 表情ごとの目の動き（flicker = ちらつく）。",
+    "色の出どころ: ネジ＝青（設定画）、ポンコ02＝シアン（ally-art）。ジェミニの色は資料にないので（仮）でネジに近い水色。",
+    "export.defringe: 体の絵の縁の掃除（体から離れた薄い灰色の輪を消し、縁の白いにじみを内側の色より明るくしない）。少年の髪のまわりのもや対策。全員にかける。",
+    "robot_auto: manual がないロボの大きさ・ずらし・頭のまん中を測る決まり。見えている高さ visible_h px くらいの大きさで、足もと（絵の下の端）が画面の上から bottom（文字の枠の上の線 0.78 の少し下）に来るようにずらす。",
+    "  ずらしは 0〜nudge_max（テストの決まり: ロボの目は目の線から 0〜12% 下）。大きさは scale_min〜scale_max。layout は js/dialog/portrait-layout.js の DIALOG_LAYOUT と同じ数字にしておく。",
+    "  eye_color を書かないロボは、目の光が当たる所の絵の色合いから測る（notes.md の目の色とほぼ同じになることを確かめた）。警戒 alert の目は全員 橙（notes.md: 警戒は橙横線）、損傷 damaged はちらつく。",
+    "2段目・3段目（ネジ・少年・少女・獣人・ポンコ02・ジェミニ以外）の名前は REQUEST.md の表から。資料に名前がないものは（仮）。ロボは全員 左向きに描いてあるので右に立つ。",
+    "ゴーストイーグルは空を飛ぶ横長の機体で、足もとを枠の後ろに隠すと大きくなりすぎる（2倍以上）ので、大きさ 1.8 にして下の端（cut=絵の下の端）をぼかして消す。",
+    "ALT_FLYER・ALT_AMPHI（v1.0.0 Codex gfx3 F_ALT_UNITS）: 設定は Codex の portraits_config_proposal.json（ポンコ02 と同じ数字）。ALT_AMPHI の体の原本は胸の窓のガラスを閉じた装甲板に描き直したもの（gfx3_work/amphi_fixed。佳之さんの決まり: 操縦席の人は見せない）。"
+  ],
+  "export": {
+    "base_scale": 0.5,
+    "max_scale": 0.8,
+    "quality": 85,
+    "margin": 6,
+    "defringe": {
+      "ghost_r": 3,
+      "band_r": 3,
+      "blur": 4
+    }
+  },
+  "face_order": [
+    "neutral",
+    "smile",
+    "happy",
+    "surprised",
+    "worried",
+    "serious",
+    "alert",
+    "angry",
+    "sad",
+    "pain",
+    "hurt",
+    "smug",
+    "damaged",
+    "off"
+  ],
+  "chars": {
+    "NEJI": {
+      "name": "ネジ",
+      "side": "left",
+      "robot": true,
+      "eye_color": "#3c9bff",
+      "eye_color_by_face": {
+        "alert": "#ff7a26"
+      },
+      "eye_fx_by_face": {
+        "damaged": "flicker"
+      },
+      "manual": {
+        "scale": 1.25,
+        "face_x": 470,
+        "nudge": [
+          0,
+          0.11
+        ]
+      }
+    },
+    "BOY": {
+      "name": "少年",
+      "side": "left",
+      "speaks": false,
+      "manual": {
+        "eye": [
+          628,
+          465
+        ],
+        "face_x": 600,
+        "scale": 1.18
+      }
+    },
+    "GIRL": {
+      "name": "ミント",
+      "side": "right",
+      "manual": {
+        "eye": [
+          557,
+          465
+        ],
+        "scale": 1.45,
+        "nudge": [
+          0,
+          0.05
+        ]
+      }
+    },
+    "WOLF": {
+      "name": "ロウ",
+      "side": "right",
+      "manual": {
+        "eye": [
+          470,
+          455
+        ],
+        "face_x": 500,
+        "scale": 1.0
+      }
+    },
+    "PONCO02": {
+      "name": "ポンコ02（仮）",
+      "side": "right",
+      "robot": true,
+      "eye_color": "#26e3ff",
+      "eye_color_by_face": {
+        "alert": "#ff7a26"
+      },
+      "eye_fx_by_face": {
+        "damaged": "flicker"
+      },
+      "manual": {
+        "scale": 1.2,
+        "face_x": 515,
+        "nudge": [
+          0,
+          0.08
+        ]
+      }
+    },
+    "JEMINI": {
+      "name": "ジェミニ",
+      "side": "right",
+      "robot": true,
+      "eye_color": "#4cc2ff",
+      "eye_color_by_face": {
+        "alert": "#ff7a26"
+      },
+      "eye_fx_by_face": {
+        "damaged": "flicker"
+      },
+      "manual": {
+        "scale": 1.25,
+        "face_x": 545,
+        "nudge": [
+          0,
+          0.09
+        ]
+      }
+    },
+    "PONCO07": {
+      "name": "PONCO07",
+      "side": "right",
+      "robot": true
+    },
+    "ONBO_R02": {
+      "name": "ONBO R02",
+      "side": "right",
+      "robot": true
+    },
+    "DOTERAINER": {
+      "name": "ドテライナー",
+      "side": "right",
+      "robot": true
+    },
+    "BACA": {
+      "name": "BA-CA",
+      "side": "right",
+      "robot": true
+    },
+    "SCOUTMATE": {
+      "name": "スカウトメイト",
+      "side": "right",
+      "robot": true
+    },
+    "LASTTITAN": {
+      "name": "ラストタイタン",
+      "side": "right",
+      "robot": true
+    },
+    "ZA25": {
+      "name": "ZA-25",
+      "side": "right",
+      "robot": true
+    },
+    "PONCO13": {
+      "name": "PONCO13",
+      "side": "right",
+      "robot": true
+    },
+    "PONCO17C": {
+      "name": "PONCO17カスタム",
+      "side": "right",
+      "robot": true
+    },
+    "PONCO44": {
+      "name": "PONCO44",
+      "side": "right",
+      "robot": true
+    },
+    "PONCO91": {
+      "name": "PONCO91",
+      "side": "right",
+      "robot": true
+    },
+    "ONBO_PL": {
+      "name": "ONBOパワーローダー",
+      "side": "right",
+      "robot": true
+    },
+    "ONBO_R01": {
+      "name": "ONBO R01",
+      "side": "right",
+      "robot": true
+    },
+    "ONBO_R03": {
+      "name": "ONBO R03",
+      "side": "right",
+      "robot": true
+    },
+    "ONBO_R07": {
+      "name": "ONBO R07",
+      "side": "right",
+      "robot": true
+    },
+    "ONBO_R08": {
+      "name": "ONBO R08",
+      "side": "right",
+      "robot": true
+    },
+    "BULLDOZER_G": {
+      "name": "ブルドーザー・ガンマ",
+      "side": "right",
+      "robot": true
+    },
+    "IRONCLAD": {
+      "name": "アイアンクラッド",
+      "side": "right",
+      "robot": true
+    },
+    "TITANFRAME": {
+      "name": "タイタンフレーム",
+      "side": "right",
+      "robot": true
+    },
+    "GRANDCRUSHER": {
+      "name": "グランドクラッシャーMk-II",
+      "side": "right",
+      "robot": true
+    },
+    "IF_HEAVY": {
+      "name": "ヘビーフレーム（仮）",
+      "side": "right",
+      "robot": true
+    },
+    "GUARDIAN_DA": {
+      "name": "GUARDIAN DA",
+      "side": "right",
+      "robot": true
+    },
+    "EA07": {
+      "name": "EA-07",
+      "side": "right",
+      "robot": true
+    },
+    "SPIDER8": {
+      "name": "SPIDER 8",
+      "side": "right",
+      "robot": true
+    },
+    "ZA01": {
+      "name": "ZA-01",
+      "side": "right",
+      "robot": true
+    },
+    "CE_MISSILE": {
+      "name": "EA-25ミサイルキャリア（仮）",
+      "side": "right",
+      "robot": true
+    },
+    "WHIPTAIL": {
+      "name": "ウィップテイル",
+      "side": "right",
+      "robot": true
+    },
+    "SHADOWRUNNER": {
+      "name": "シャドウランナー",
+      "side": "right",
+      "robot": true
+    },
+    "PHANTOMSTRIKER": {
+      "name": "ファントムストライカー",
+      "side": "right",
+      "robot": true
+    },
+    "GHOSTEAGLE": {
+      "name": "ゴーストイーグルMk-I",
+      "side": "right",
+      "robot": true,
+      "manual": {
+        "scale": 1.8,
+        "nudge": [
+          0,
+          0.12
+        ],
+        "face_x": 330,
+        "cut": 814
+      }
+    },
+    "MIRAGEBLADEZ": {
+      "name": "ミラージュブレイドZ",
+      "side": "right",
+      "robot": true
+    },
+    "ALT_FLYER": {
+      "name": "スカイポンコ（仮）",
+      "side": "right",
+      "robot": true,
+      "eye_color": "#26e3ff",
+      "eye_color_by_face": {
+        "alert": "#ff7a26"
+      },
+      "eye_fx_by_face": {
+        "damaged": "flicker"
+      },
+      "manual": {
+        "scale": 1.2,
+        "face_x": 515,
+        "nudge": [
+          0,
+          0.08
+        ]
+      }
+    },
+    "ALT_AMPHI": {
+      "name": "アビスポンコ（仮）",
+      "side": "right",
+      "robot": true,
+      "eye_color": "#26e3ff",
+      "eye_color_by_face": {
+        "alert": "#ff7a26"
+      },
+      "eye_fx_by_face": {
+        "damaged": "flicker"
+      },
+      "manual": {
+        "scale": 1.2,
+        "face_x": 515,
+        "nudge": [
+          0,
+          0.08
+        ]
+      }
+    }
+  },
+  "robot_auto": {
+    "visible_h": 1200,
+    "bottom": 0.785,
+    "nudge_max": 0.12,
+    "scale_min": 0.9,
+    "scale_max": 2.4,
+    "layout": {
+      "portraitH": 0.48,
+      "eyeLine": 0.5
+    },
+    "eye_color_by_face": {
+      "alert": "#ff7a26"
+    },
+    "eye_fx_by_face": {
+      "damaged": "flicker"
+    }
+  }
+}

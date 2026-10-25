@@ -1,0 +1,24 @@
+{
+  "dive": {
+    "file": "portal_dive_{i}.webp",
+    "frames": 6,
+    "fps": 8,
+    "loop": true
+  },
+  "exit": {
+    "file": "portal_exit_{i}.webp",
+    "frames": 6,
+    "fps": 8,
+    "loop": true
+  },
+  "size": [
+    512,
+    512
+  ],
+  "anchor": [
+    0.5,
+    0.5
+  ],
+  "world_tiles": 2,
+  "note": "地図の2x2マスを想定。深海は別地図。潜れる機体と密閉席の人のみ。背中乗り不可。"
+}

@@ -1,0 +1,3401 @@
+{
+ "_説明": "tools/make-portraits.py が作る（手で直さない。直すのは tools/portraits-config.json）。座標は原本の px。",
+ "canvas": [
+  1024,
+  1536
+ ],
+ "chars": {
+  "NEJI": {
+   "name": "ネジ",
+   "side": "left",
+   "speaks": true,
+   "robot": true,
+   "crop": [
+    173,
+    84,
+    858,
+    1054
+   ],
+   "eye": [
+    658,
+    462
+   ],
+   "face_x": 470,
+   "cut": null,
+   "scale": 1.25,
+   "nudge": [
+    0,
+    0.11
+   ],
+   "eye_color": "#3c9bff",
+   "eye_color_by_face": {
+    "alert": "#ff7a26"
+   },
+   "eye_fx_by_face": {
+    "damaged": "flicker"
+   },
+   "faces": {
+    "neutral": {
+     "src": "NEJI/NEJI__neutral.webp",
+     "eyes": "NEJI/NEJI__neutral__eyes.webp",
+     "eyes_rect": [
+      537,
+      401,
+      779,
+      521
+     ]
+    },
+    "happy": {
+     "src": "NEJI/NEJI__happy.webp",
+     "eyes": "NEJI/NEJI__happy__eyes.webp",
+     "eyes_rect": [
+      537,
+      401,
+      779,
+      521
+     ]
+    },
+    "surprised": {
+     "src": "NEJI/NEJI__surprised.webp",
+     "eyes": "NEJI/NEJI__surprised__eyes.webp",
+     "eyes_rect": [
+      537,
+      401,
+      779,
+      521
+     ]
+    },
+    "worried": {
+     "src": "NEJI/NEJI__worried.webp",
+     "eyes": "NEJI/NEJI__worried__eyes.webp",
+     "eyes_rect": [
+      537,
+      401,
+      779,
+      521
+     ]
+    },
+    "alert": {
+     "src": "NEJI/NEJI__alert.webp",
+     "eyes": "NEJI/NEJI__alert__eyes.webp",
+     "eyes_rect": [
+      537,
+      401,
+      779,
+      521
+     ]
+    },
+    "sad": {
+     "src": "NEJI/NEJI__sad.webp",
+     "eyes": "NEJI/NEJI__sad__eyes.webp",
+     "eyes_rect": [
+      537,
+      401,
+      779,
+      521
+     ]
+    },
+    "damaged": {
+     "src": "NEJI/NEJI__damaged.webp",
+     "eyes": "NEJI/NEJI__damaged__eyes.webp",
+     "eyes_rect": [
+      537,
+      401,
+      779,
+      521
+     ]
+    },
+    "off": {
+     "src": "NEJI/NEJI__off.webp"
+    }
+   },
+   "auto": {
+    "bbox": [
+     179,
+     90,
+     852,
+     1048
+    ],
+    "cut": null,
+    "eye": [
+     658,
+     462
+    ],
+    "scale": 1.253,
+    "nudge": [
+     0,
+     0.116
+    ],
+    "face_x": 540,
+    "eye_color": "#33e7ff"
+   },
+   "manual": {
+    "scale": 1.25,
+    "face_x": 470,
+    "nudge": [
+     0,
+     0.11
+    ]
+   }
+  },
+  "BOY": {
+   "name": "少年",
+   "side": "left",
+   "speaks": false,
+   "robot": false,
+   "crop": [
+    115,
+    95,
+    917,
+    1264
+   ],
+   "eye": [
+    628,
+    465
+   ],
+   "face_x": 600,
+   "cut": 1258,
+   "scale": 1.18,
+   "nudge": [
+    0,
+    0
+   ],
+   "faces": {
+    "neutral": {
+     "src": "BOY/BOY__neutral.webp"
+    },
+    "smile": {
+     "src": "BOY/BOY__smile.webp"
+    },
+    "surprised": {
+     "src": "BOY/BOY__surprised.webp"
+    },
+    "worried": {
+     "src": "BOY/BOY__worried.webp"
+    },
+    "serious": {
+     "src": "BOY/BOY__serious.webp"
+    },
+    "pain": {
+     "src": "BOY/BOY__pain.webp"
+    },
+    "hurt": {
+     "src": "BOY/BOY__hurt.webp"
+    }
+   },
+   "auto": {
+    "bbox": [
+     121,
+     101,
+     911,
+     1258
+    ],
+    "cut": 1258,
+    "eye": [
+     516,
+     461
+    ]
+   },
+   "manual": {
+    "eye": [
+     628,
+     465
+    ],
+    "face_x": 600,
+    "scale": 1.18
+   }
+  },
+  "GIRL": {
+   "name": "ミント",
+   "side": "right",
+   "speaks": true,
+   "robot": false,
+   "crop": [
+    174,
+    86,
+    789,
+    959
+   ],
+   "eye": [
+    557,
+    465
+   ],
+   "face_x": 557,
+   "cut": 953,
+   "scale": 1.45,
+   "nudge": [
+    0,
+    0.05
+   ],
+   "faces": {
+    "neutral": {
+     "src": "GIRL/GIRL__neutral.webp"
+    },
+    "smile": {
+     "src": "GIRL/GIRL__smile.webp"
+    },
+    "surprised": {
+     "src": "GIRL/GIRL__surprised.webp"
+    },
+    "worried": {
+     "src": "GIRL/GIRL__worried.webp"
+    },
+    "angry": {
+     "src": "GIRL/GIRL__angry.webp"
+    },
+    "sad": {
+     "src": "GIRL/GIRL__sad.webp"
+    },
+    "pain": {
+     "src": "GIRL/GIRL__pain.webp"
+    },
+    "hurt": {
+     "src": "GIRL/GIRL__hurt.webp"
+    },
+    "smug": {
+     "src": "GIRL/GIRL__smug.webp"
+    }
+   },
+   "auto": {
+    "bbox": [
+     180,
+     92,
+     783,
+     953
+    ],
+    "cut": 953,
+    "eye": [
+     482,
+     461
+    ]
+   },
+   "manual": {
+    "eye": [
+     557,
+     465
+    ],
+    "scale": 1.45,
+    "nudge": [
+     0,
+     0.05
+    ]
+   }
+  },
+  "WOLF": {
+   "name": "ロウ",
+   "side": "right",
+   "speaks": true,
+   "robot": false,
+   "crop": [
+    130,
+    97,
+    1024,
+    1412
+   ],
+   "eye": [
+    470,
+    455
+   ],
+   "face_x": 500,
+   "cut": 1406,
+   "scale": 1.0,
+   "nudge": [
+    0,
+    0
+   ],
+   "faces": {
+    "neutral": {
+     "src": "WOLF/WOLF__neutral.webp"
+    },
+    "smile": {
+     "src": "WOLF/WOLF__smile.webp"
+    },
+    "surprised": {
+     "src": "WOLF/WOLF__surprised.webp"
+    },
+    "serious": {
+     "src": "WOLF/WOLF__serious.webp"
+    },
+    "angry": {
+     "src": "WOLF/WOLF__angry.webp"
+    },
+    "sad": {
+     "src": "WOLF/WOLF__sad.webp"
+    },
+    "pain": {
+     "src": "WOLF/WOLF__pain.webp"
+    },
+    "hurt": {
+     "src": "WOLF/WOLF__hurt.webp"
+    }
+   },
+   "auto": {
+    "bbox": [
+     136,
+     103,
+     1021,
+     1406
+    ],
+    "cut": 1406,
+    "eye": [
+     578,
+     461
+    ]
+   },
+   "manual": {
+    "eye": [
+     470,
+     455
+    ],
+    "face_x": 500,
+    "scale": 1.0
+   }
+  },
+  "PONCO02": {
+   "name": "ポンコ02（仮）",
+   "side": "right",
+   "speaks": true,
+   "robot": true,
+   "crop": [
+    34,
+    138,
+    946,
+    1123
+   ],
+   "eye": [
+    438,
+    460
+   ],
+   "face_x": 515,
+   "cut": null,
+   "scale": 1.2,
+   "nudge": [
+    0,
+    0.08
+   ],
+   "eye_color": "#26e3ff",
+   "eye_color_by_face": {
+    "alert": "#ff7a26"
+   },
+   "eye_fx_by_face": {
+    "damaged": "flicker"
+   },
+   "faces": {
+    "neutral": {
+     "src": "PONCO02/PONCO02__neutral.webp",
+     "eyes": "PONCO02/PONCO02__neutral__eyes.webp",
+     "eyes_rect": [
+      346,
+      398,
+      526,
+      512
+     ]
+    },
+    "alert": {
+     "src": "PONCO02/PONCO02__alert.webp",
+     "eyes": "PONCO02/PONCO02__alert__eyes.webp",
+     "eyes_rect": [
+      347,
+      398,
+      534,
+      510
+     ]
+    },
+    "damaged": {
+     "src": "PONCO02/PONCO02__damaged.webp",
+     "eyes": "PONCO02/PONCO02__damaged__eyes.webp",
+     "eyes_rect": [
+      349,
+      398,
+      528,
+      511
+     ]
+    },
+    "off": {
+     "src": "PONCO02/PONCO02__off.webp"
+    }
+   },
+   "auto": {
+    "bbox": [
+     40,
+     144,
+     940,
+     1117
+    ],
+    "cut": null,
+    "eye": [
+     438,
+     460
+    ],
+    "scale": 1.233,
+    "nudge": [
+     0,
+     0.066
+    ],
+    "face_x": 566,
+    "eye_color": "#33e4ff"
+   },
+   "manual": {
+    "scale": 1.2,
+    "face_x": 515,
+    "nudge": [
+     0,
+     0.08
+    ]
+   }
+  },
+  "JEMINI": {
+   "name": "ジェミニ",
+   "side": "right",
+   "speaks": true,
+   "robot": true,
+   "crop": [
+    171,
+    85,
+    870,
+    1079
+   ],
+   "eye": [
+    397,
+    456
+   ],
+   "face_x": 545,
+   "cut": null,
+   "scale": 1.25,
+   "nudge": [
+    0,
+    0.09
+   ],
+   "eye_color": "#4cc2ff",
+   "eye_color_by_face": {
+    "alert": "#ff7a26"
+   },
+   "eye_fx_by_face": {
+    "damaged": "flicker"
+   },
+   "faces": {
+    "neutral": {
+     "src": "JEMINI/JEMINI__neutral.webp",
+     "eyes": "JEMINI/JEMINI__neutral__eyes.webp",
+     "eyes_rect": [
+      282,
+      399,
+      513,
+      514
+     ]
+    },
+    "alert": {
+     "src": "JEMINI/JEMINI__alert.webp",
+     "eyes": "JEMINI/JEMINI__alert__eyes.webp",
+     "eyes_rect": [
+      284,
+      434,
+      507,
+      474
+     ]
+    },
+    "damaged": {
+     "src": "JEMINI/JEMINI__damaged.webp",
+     "eyes": "JEMINI/JEMINI__damaged__eyes.webp",
+     "eyes_rect": [
+      282,
+      399,
+      513,
+      514
+     ]
+    },
+    "off": {
+     "src": "JEMINI/JEMINI__off.webp"
+    }
+   },
+   "auto": {
+    "bbox": [
+     177,
+     91,
+     864,
+     1073
+    ],
+    "cut": null,
+    "eye": [
+     397,
+     456
+    ],
+    "scale": 1.222,
+    "nudge": [
+     0,
+     0.103
+    ],
+    "face_x": 524,
+    "eye_color": "#33e6ff"
+   },
+   "manual": {
+    "scale": 1.25,
+    "face_x": 545,
+    "nudge": [
+     0,
+     0.09
+    ]
+   }
+  },
+  "PONCO07": {
+   "name": "PONCO07",
+   "side": "right",
+   "speaks": true,
+   "robot": true,
+   "crop": [
+    72,
+    172,
+    952,
+    1142
+   ],
+   "eye": [
+    470,
+    460
+   ],
+   "face_x": 586,
+   "cut": null,
+   "scale": 1.253,
+   "nudge": [
+    0,
+    0.042
+   ],
+   "eye_color": "#33e9ff",
+   "eye_color_by_face": {
+    "alert": "#ff7a26"
+   },
+   "eye_fx_by_face": {
+    "damaged": "flicker"
+   },
+   "faces": {
+    "neutral": {
+     "src": "PONCO07/PONCO07__neutral.webp",
+     "eyes": "PONCO07/PONCO07__neutral__eyes.webp",
+     "eyes_rect": [
+      389,
+      411,
+      551,
+      509
+     ]
+    },
+    "alert": {
+     "src": "PONCO07/PONCO07__alert.webp",
+     "eyes": "PONCO07/PONCO07__alert__eyes.webp",
+     "eyes_rect": [
+      388,
+      437,
+      552,
+      490
+     ]
+    },
+    "damaged": {
+     "src": "PONCO07/PONCO07__damaged.webp",
+     "eyes": "PONCO07/PONCO07__damaged__eyes.webp",
+     "eyes_rect": [
+      392,
+      404,
+      548,
+      508
+     ]
+    },
+    "off": {
+     "src": "PONCO07/PONCO07__off.webp"
+    }
+   },
+   "auto": {
+    "bbox": [
+     78,
+     178,
+     946,
+     1136
+    ],
+    "cut": null,
+    "eye": [
+     470,
+     460
+    ],
+    "scale": 1.253,
+    "nudge": [
+     0,
+     0.042
+    ],
+    "face_x": 586,
+    "eye_color": "#33e9ff"
+   },
+   "manual": {}
+  },
+  "ONBO_R02": {
+   "name": "ONBO R02",
+   "side": "right",
+   "speaks": true,
+   "robot": true,
+   "crop": [
+    85,
+    167,
+    940,
+    1137
+   ],
+   "eye": [
+    474,
+    460
+   ],
+   "face_x": 600,
+   "cut": null,
+   "scale": 1.253,
+   "nudge": [
+    0,
+    0.047
+   ],
+   "eye_color": "#ffaa33",
+   "eye_color_by_face": {
+    "alert": "#ff7a26"
+   },
+   "eye_fx_by_face": {
+    "damaged": "flicker"
+   },
+   "faces": {
+    "neutral": {
+     "src": "ONBO_R02/ONBO_R02__neutral.webp",
+     "eyes": "ONBO_R02/ONBO_R02__neutral__eyes.webp",
+     "eyes_rect": [
+      425,
+      403,
+      519,
+      525
+     ]
+    },
+    "alert": {
+     "src": "ONBO_R02/ONBO_R02__alert.webp",
+     "eyes": "ONBO_R02/ONBO_R02__alert__eyes.webp",
+     "eyes_rect": [
+      432,
+      445,
+      507,
+      486
+     ]
+    },
+    "damaged": {
+     "src": "ONBO_R02/ONBO_R02__damaged.webp",
+     "eyes": "ONBO_R02/ONBO_R02__damaged__eyes.webp",
+     "eyes_rect": [
+      423,
+      403,
+      519,
+      525
+     ]
+    },
+    "off": {
+     "src": "ONBO_R02/ONBO_R02__off.webp"
+    }
+   },
+   "auto": {
+    "bbox": [
+     91,
+     173,
+     934,
+     1131
+    ],
+    "cut": null,
+    "eye": [
+     474,
+     460
+    ],
+    "scale": 1.253,
+    "nudge": [
+     0,
+     0.047
+    ],
+    "face_x": 600,
+    "eye_color": "#ffaa33"
+   },
+   "manual": {}
+  },
+  "DOTERAINER": {
+   "name": "ドテライナー",
+   "side": "right",
+   "speaks": true,
+   "robot": true,
+   "crop": [
+    11,
+    198,
+    1013,
+    1165
+   ],
+   "eye": [
+    470,
+    456
+   ],
+   "face_x": 555,
+   "cut": null,
+   "scale": 1.257,
+   "nudge": [
+    0,
+    0.019
+   ],
+   "eye_color": "#ff8333",
+   "eye_color_by_face": {
+    "alert": "#ff7a26"
+   },
+   "eye_fx_by_face": {
+    "damaged": "flicker"
+   },
+   "faces": {
+    "neutral": {
+     "src": "DOTERAINER/DOTERAINER__neutral.webp",
+     "eyes": "DOTERAINER/DOTERAINER__neutral__eyes.webp",
+     "eyes_rect": [
+      378,
+      420,
+      559,
+      492
+     ]
+    },
+    "alert": {
+     "src": "DOTERAINER/DOTERAINER__alert.webp",
+     "eyes": "DOTERAINER/DOTERAINER__alert__eyes.webp",
+     "eyes_rect": [
+      385,
+      430,
+      546,
+      480
+     ]
+    },
+    "damaged": {
+     "src": "DOTERAINER/DOTERAINER__damaged.webp",
+     "eyes": "DOTERAINER/DOTERAINER__damaged__eyes.webp",
+     "eyes_rect": [
+      378,
+      420,
+      559,
+      492
+     ]
+    },
+    "off": {
+     "src": "DOTERAINER/DOTERAINER__off.webp"
+    }
+   },
+   "auto": {
+    "bbox": [
+     17,
+     204,
+     1007,
+     1159
+    ],
+    "cut": null,
+    "eye": [
+     470,
+     456
+    ],
+    "scale": 1.257,
+    "nudge": [
+     0,
+     0.019
+    ],
+    "face_x": 555,
+    "eye_color": "#ff8333"
+   },
+   "manual": {}
+  },
+  "BACA": {
+   "name": "BA-CA",
+   "side": "right",
+   "speaks": true,
+   "robot": true,
+   "crop": [
+    99,
+    134,
+    925,
+    1104
+   ],
+   "eye": [
+    524,
+    459
+   ],
+   "face_x": 596,
+   "cut": null,
+   "scale": 1.253,
+   "nudge": [
+    0,
+    0.073
+   ],
+   "eye_color": "#dc33ff",
+   "eye_color_by_face": {
+    "alert": "#ff7a26"
+   },
+   "eye_fx_by_face": {
+    "damaged": "flicker"
+   },
+   "faces": {
+    "neutral": {
+     "src": "BACA/BACA__neutral.webp",
+     "eyes": "BACA/BACA__neutral__eyes.webp",
+     "eyes_rect": [
+      388,
+      413,
+      663,
+      510
+     ]
+    },
+    "alert": {
+     "src": "BACA/BACA__alert.webp",
+     "eyes": "BACA/BACA__alert__eyes.webp",
+     "eyes_rect": [
+      399,
+      427,
+      650,
+      492
+     ]
+    },
+    "damaged": {
+     "src": "BACA/BACA__damaged.webp",
+     "eyes": "BACA/BACA__damaged__eyes.webp",
+     "eyes_rect": [
+      388,
+      413,
+      663,
+      506
+     ]
+    },
+    "off": {
+     "src": "BACA/BACA__off.webp"
+    }
+   },
+   "auto": {
+    "bbox": [
+     105,
+     140,
+     919,
+     1098
+    ],
+    "cut": null,
+    "eye": [
+     524,
+     459
+    ],
+    "scale": 1.253,
+    "nudge": [
+     0,
+     0.073
+    ],
+    "face_x": 596,
+    "eye_color": "#dc33ff"
+   },
+   "manual": {}
+  },
+  "SCOUTMATE": {
+   "name": "スカウトメイト",
+   "side": "right",
+   "speaks": true,
+   "robot": true,
+   "crop": [
+    116,
+    99,
+    908,
+    1069
+   ],
+   "eye": [
+    246,
+    459
+   ],
+   "face_x": 316,
+   "cut": null,
+   "scale": 1.253,
+   "nudge": [
+    0,
+    0.101
+   ],
+   "eye_color": "#33ff48",
+   "eye_color_by_face": {
+    "alert": "#ff7a26"
+   },
+   "eye_fx_by_face": {
+    "damaged": "flicker"
+   },
+   "faces": {
+    "neutral": {
+     "src": "SCOUTMATE/SCOUTMATE__neutral.webp",
+     "eyes": "SCOUTMATE/SCOUTMATE__neutral__eyes.webp",
+     "eyes_rect": [
+      138,
+      405,
+      356,
+      513
+     ]
+    },
+    "alert": {
+     "src": "SCOUTMATE/SCOUTMATE__alert.webp",
+     "eyes": "SCOUTMATE/SCOUTMATE__alert__eyes.webp",
+     "eyes_rect": [
+      150,
+      441,
+      338,
+      481
+     ]
+    },
+    "damaged": {
+     "src": "SCOUTMATE/SCOUTMATE__damaged.webp",
+     "eyes": "SCOUTMATE/SCOUTMATE__damaged__eyes.webp",
+     "eyes_rect": [
+      139,
+      405,
+      356,
+      513
+     ]
+    },
+    "off": {
+     "src": "SCOUTMATE/SCOUTMATE__off.webp"
+    }
+   },
+   "auto": {
+    "bbox": [
+     122,
+     105,
+     902,
+     1063
+    ],
+    "cut": null,
+    "eye": [
+     246,
+     459
+    ],
+    "scale": 1.253,
+    "nudge": [
+     0,
+     0.101
+    ],
+    "face_x": 316,
+    "eye_color": "#33ff48"
+   },
+   "manual": {}
+  },
+  "LASTTITAN": {
+   "name": "ラストタイタン",
+   "side": "right",
+   "speaks": true,
+   "robot": true,
+   "crop": [
+    0,
+    135,
+    1024,
+    1536
+   ],
+   "eye": [
+    436,
+    462
+   ],
+   "face_x": 654,
+   "cut": 1532,
+   "scale": 0.9,
+   "nudge": [
+    0,
+    0
+   ],
+   "eye_color": "#ff7e33",
+   "eye_color_by_face": {
+    "alert": "#ff7a26"
+   },
+   "eye_fx_by_face": {
+    "damaged": "flicker"
+   },
+   "faces": {
+    "neutral": {
+     "src": "LASTTITAN/LASTTITAN__neutral.webp",
+     "eyes": "LASTTITAN/LASTTITAN__neutral__eyes.webp",
+     "eyes_rect": [
+      344,
+      423,
+      531,
+      499
+     ]
+    },
+    "alert": {
+     "src": "LASTTITAN/LASTTITAN__alert.webp",
+     "eyes": "LASTTITAN/LASTTITAN__alert__eyes.webp",
+     "eyes_rect": [
+      347,
+      431,
+      520,
+      483
+     ]
+    },
+    "damaged": {
+     "src": "LASTTITAN/LASTTITAN__damaged.webp",
+     "eyes": "LASTTITAN/LASTTITAN__damaged__eyes.webp",
+     "eyes_rect": [
+      342,
+      423,
+      531,
+      499
+     ]
+    },
+    "off": {
+     "src": "LASTTITAN/LASTTITAN__off.webp"
+    }
+   },
+   "auto": {
+    "bbox": [
+     0,
+     141,
+     1024,
+     1532
+    ],
+    "cut": 1532,
+    "eye": [
+     436,
+     462
+    ],
+    "scale": 0.9,
+    "nudge": [
+     0,
+     0
+    ],
+    "face_x": 654,
+    "eye_color": "#ff7e33"
+   },
+   "manual": {}
+  },
+  "ZA25": {
+   "name": "ZA-25",
+   "side": "right",
+   "speaks": true,
+   "robot": true,
+   "crop": [
+    0,
+    0,
+    1024,
+    1179
+   ],
+   "eye": [
+    338,
+    461
+   ],
+   "face_x": 618,
+   "cut": null,
+   "scale": 1.023,
+   "nudge": [
+    0,
+    0.12
+   ],
+   "eye_color": "#33d8ff",
+   "eye_color_by_face": {
+    "alert": "#ff7a26"
+   },
+   "eye_fx_by_face": {
+    "damaged": "flicker"
+   },
+   "faces": {
+    "neutral": {
+     "src": "ZA25/ZA25__neutral.webp",
+     "eyes": "ZA25/ZA25__neutral__eyes.webp",
+     "eyes_rect": [
+      216,
+      315,
+      467,
+      606
+     ]
+    },
+    "alert": {
+     "src": "ZA25/ZA25__alert.webp",
+     "eyes": "ZA25/ZA25__alert__eyes.webp",
+     "eyes_rect": [
+      253,
+      413,
+      431,
+      488
+     ]
+    },
+    "damaged": {
+     "src": "ZA25/ZA25__damaged.webp",
+     "eyes": "ZA25/ZA25__damaged__eyes.webp",
+     "eyes_rect": [
+      216,
+      315,
+      467,
+      606
+     ]
+    },
+    "off": {
+     "src": "ZA25/ZA25__off.webp"
+    }
+   },
+   "auto": {
+    "bbox": [
+     0,
+     0,
+     1024,
+     1173
+    ],
+    "cut": null,
+    "eye": [
+     338,
+     461
+    ],
+    "scale": 1.023,
+    "nudge": [
+     0,
+     0.12
+    ],
+    "face_x": 618,
+    "eye_color": "#33d8ff"
+   },
+   "manual": {}
+  },
+  "PONCO13": {
+   "name": "PONCO13",
+   "side": "right",
+   "speaks": true,
+   "robot": true,
+   "crop": [
+    77,
+    185,
+    947,
+    1155
+   ],
+   "eye": [
+    505,
+    460
+   ],
+   "face_x": 592,
+   "cut": null,
+   "scale": 1.253,
+   "nudge": [
+    0,
+    0.032
+   ],
+   "eye_color": "#33fffc",
+   "eye_color_by_face": {
+    "alert": "#ff7a26"
+   },
+   "eye_fx_by_face": {
+    "damaged": "flicker"
+   },
+   "faces": {
+    "neutral": {
+     "src": "PONCO13/PONCO13__neutral.webp",
+     "eyes": "PONCO13/PONCO13__neutral__eyes.webp",
+     "eyes_rect": [
+      406,
+      414,
+      592,
+      509
+     ]
+    },
+    "alert": {
+     "src": "PONCO13/PONCO13__alert.webp",
+     "eyes": "PONCO13/PONCO13__alert__eyes.webp",
+     "eyes_rect": [
+      423,
+      445,
+      592,
+      483
+     ]
+    },
+    "damaged": {
+     "src": "PONCO13/PONCO13__damaged.webp",
+     "eyes": "PONCO13/PONCO13__damaged__eyes.webp",
+     "eyes_rect": [
+      407,
+      417,
+      584,
+      506
+     ]
+    },
+    "off": {
+     "src": "PONCO13/PONCO13__off.webp"
+    }
+   },
+   "auto": {
+    "bbox": [
+     83,
+     191,
+     941,
+     1149
+    ],
+    "cut": null,
+    "eye": [
+     505,
+     460
+    ],
+    "scale": 1.253,
+    "nudge": [
+     0,
+     0.032
+    ],
+    "face_x": 592,
+    "eye_color": "#33fffc"
+   },
+   "manual": {}
+  },
+  "PONCO17C": {
+   "name": "PONCO17カスタム",
+   "side": "right",
+   "speaks": true,
+   "robot": true,
+   "crop": [
+    72,
+    171,
+    952,
+    1141
+   ],
+   "eye": [
+    474,
+    467
+   ],
+   "face_x": 594,
+   "cut": null,
+   "scale": 1.253,
+   "nudge": [
+    0,
+    0.049
+   ],
+   "eye_color": "#eef6ff",
+   "eye_color_by_face": {
+    "alert": "#ff7a26"
+   },
+   "eye_fx_by_face": {
+    "damaged": "flicker"
+   },
+   "faces": {
+    "neutral": {
+     "src": "PONCO17C/PONCO17C__neutral.webp",
+     "eyes": "PONCO17C/PONCO17C__neutral__eyes.webp",
+     "eyes_rect": [
+      380,
+      424,
+      545,
+      510
+     ]
+    },
+    "alert": {
+     "src": "PONCO17C/PONCO17C__alert.webp",
+     "eyes": "PONCO17C/PONCO17C__alert__eyes.webp",
+     "eyes_rect": [
+      399,
+      452,
+      550,
+      487
+     ]
+    },
+    "damaged": {
+     "src": "PONCO17C/PONCO17C__damaged.webp",
+     "eyes": "PONCO17C/PONCO17C__damaged__eyes.webp",
+     "eyes_rect": [
+      380,
+      426,
+      542,
+      507
+     ]
+    },
+    "off": {
+     "src": "PONCO17C/PONCO17C__off.webp"
+    }
+   },
+   "auto": {
+    "bbox": [
+     78,
+     177,
+     946,
+     1135
+    ],
+    "cut": null,
+    "eye": [
+     474,
+     467
+    ],
+    "scale": 1.253,
+    "nudge": [
+     0,
+     0.049
+    ],
+    "face_x": 594,
+    "eye_color": "#eef6ff"
+   },
+   "manual": {}
+  },
+  "PONCO44": {
+   "name": "PONCO44",
+   "side": "right",
+   "speaks": true,
+   "robot": true,
+   "crop": [
+    69,
+    212,
+    955,
+    1182
+   ],
+   "eye": [
+    485,
+    466
+   ],
+   "face_x": 575,
+   "cut": null,
+   "scale": 1.253,
+   "nudge": [
+    0,
+    0.015
+   ],
+   "eye_color": "#ffe833",
+   "eye_color_by_face": {
+    "alert": "#ff7a26"
+   },
+   "eye_fx_by_face": {
+    "damaged": "flicker"
+   },
+   "faces": {
+    "neutral": {
+     "src": "PONCO44/PONCO44__neutral.webp",
+     "eyes": "PONCO44/PONCO44__neutral__eyes.webp",
+     "eyes_rect": [
+      409,
+      416,
+      559,
+      509
+     ]
+    },
+    "alert": {
+     "src": "PONCO44/PONCO44__alert.webp",
+     "eyes": "PONCO44/PONCO44__alert__eyes.webp",
+     "eyes_rect": [
+      414,
+      448,
+      557,
+      486
+     ]
+    },
+    "damaged": {
+     "src": "PONCO44/PONCO44__damaged.webp",
+     "eyes": "PONCO44/PONCO44__damaged__eyes.webp",
+     "eyes_rect": [
+      408,
+      416,
+      556,
+      510
+     ]
+    },
+    "off": {
+     "src": "PONCO44/PONCO44__off.webp"
+    }
+   },
+   "auto": {
+    "bbox": [
+     75,
+     218,
+     949,
+     1176
+    ],
+    "cut": null,
+    "eye": [
+     485,
+     466
+    ],
+    "scale": 1.253,
+    "nudge": [
+     0,
+     0.015
+    ],
+    "face_x": 575,
+    "eye_color": "#ffe833"
+   },
+   "manual": {}
+  },
+  "PONCO91": {
+   "name": "PONCO91",
+   "side": "right",
+   "speaks": true,
+   "robot": true,
+   "crop": [
+    78,
+    172,
+    947,
+    1142
+   ],
+   "eye": [
+    493,
+    470
+   ],
+   "face_x": 588,
+   "cut": null,
+   "scale": 1.253,
+   "nudge": [
+    0,
+    0.051
+   ],
+   "eye_color": "#7933ff",
+   "eye_color_by_face": {
+    "alert": "#ff7a26"
+   },
+   "eye_fx_by_face": {
+    "damaged": "flicker"
+   },
+   "faces": {
+    "neutral": {
+     "src": "PONCO91/PONCO91__neutral.webp",
+     "eyes": "PONCO91/PONCO91__neutral__eyes.webp",
+     "eyes_rect": [
+      418,
+      426,
+      571,
+      514
+     ]
+    },
+    "alert": {
+     "src": "PONCO91/PONCO91__alert.webp",
+     "eyes": "PONCO91/PONCO91__alert__eyes.webp",
+     "eyes_rect": [
+      417,
+      452,
+      569,
+      493
+     ]
+    },
+    "damaged": {
+     "src": "PONCO91/PONCO91__damaged.webp",
+     "eyes": "PONCO91/PONCO91__damaged__eyes.webp",
+     "eyes_rect": [
+      419,
+      427,
+      571,
+      513
+     ]
+    },
+    "off": {
+     "src": "PONCO91/PONCO91__off.webp"
+    }
+   },
+   "auto": {
+    "bbox": [
+     84,
+     178,
+     941,
+     1136
+    ],
+    "cut": null,
+    "eye": [
+     493,
+     470
+    ],
+    "scale": 1.253,
+    "nudge": [
+     0,
+     0.051
+    ],
+    "face_x": 588,
+    "eye_color": "#7933ff"
+   },
+   "manual": {}
+  },
+  "ONBO_PL": {
+   "name": "ONBOパワーローダー",
+   "side": "right",
+   "speaks": true,
+   "robot": true,
+   "crop": [
+    38,
+    226,
+    986,
+    1196
+   ],
+   "eye": [
+    426,
+    460
+   ],
+   "face_x": 540,
+   "cut": null,
+   "scale": 1.249,
+   "nudge": [
+    0,
+    0.0
+   ],
+   "eye_color": "#ffa733",
+   "eye_color_by_face": {
+    "alert": "#ff7a26"
+   },
+   "eye_fx_by_face": {
+    "damaged": "flicker"
+   },
+   "faces": {
+    "neutral": {
+     "src": "ONBO_PL/ONBO_PL__neutral.webp",
+     "eyes": "ONBO_PL/ONBO_PL__neutral__eyes.webp",
+     "eyes_rect": [
+      389,
+      416,
+      467,
+      514
+     ]
+    },
+    "alert": {
+     "src": "ONBO_PL/ONBO_PL__alert.webp",
+     "eyes": "ONBO_PL/ONBO_PL__alert__eyes.webp",
+     "eyes_rect": [
+      387,
+      455,
+      453,
+      478
+     ]
+    },
+    "damaged": {
+     "src": "ONBO_PL/ONBO_PL__damaged.webp",
+     "eyes": "ONBO_PL/ONBO_PL__damaged__eyes.webp",
+     "eyes_rect": [
+      388,
+      416,
+      468,
+      514
+     ]
+    },
+    "off": {
+     "src": "ONBO_PL/ONBO_PL__off.webp"
+    }
+   },
+   "auto": {
+    "bbox": [
+     44,
+     232,
+     980,
+     1190
+    ],
+    "cut": null,
+    "eye": [
+     426,
+     460
+    ],
+    "scale": 1.249,
+    "nudge": [
+     0,
+     0.0
+    ],
+    "face_x": 540,
+    "eye_color": "#ffa733"
+   },
+   "manual": {}
+  },
+  "ONBO_R01": {
+   "name": "ONBO R01",
+   "side": "right",
+   "speaks": true,
+   "robot": true,
+   "crop": [
+    79,
+    162,
+    946,
+    1132
+   ],
+   "eye": [
+    426,
+    476
+   ],
+   "face_x": 584,
+   "cut": null,
+   "scale": 1.253,
+   "nudge": [
+    0,
+    0.064
+   ],
+   "eye_color": "#ffb933",
+   "eye_color_by_face": {
+    "alert": "#ff7a26"
+   },
+   "eye_fx_by_face": {
+    "damaged": "flicker"
+   },
+   "faces": {
+    "neutral": {
+     "src": "ONBO_R01/ONBO_R01__neutral.webp",
+     "eyes": "ONBO_R01/ONBO_R01__neutral__eyes.webp",
+     "eyes_rect": [
+      386,
+      423,
+      470,
+      520
+     ]
+    },
+    "alert": {
+     "src": "ONBO_R01/ONBO_R01__alert.webp",
+     "eyes": "ONBO_R01/ONBO_R01__alert__eyes.webp",
+     "eyes_rect": [
+      394,
+      458,
+      464,
+      478
+     ]
+    },
+    "damaged": {
+     "src": "ONBO_R01/ONBO_R01__damaged.webp",
+     "eyes": "ONBO_R01/ONBO_R01__damaged__eyes.webp",
+     "eyes_rect": [
+      386,
+      424,
+      470,
+      520
+     ]
+    },
+    "off": {
+     "src": "ONBO_R01/ONBO_R01__off.webp"
+    }
+   },
+   "auto": {
+    "bbox": [
+     85,
+     168,
+     940,
+     1126
+    ],
+    "cut": null,
+    "eye": [
+     426,
+     476
+    ],
+    "scale": 1.253,
+    "nudge": [
+     0,
+     0.064
+    ],
+    "face_x": 584,
+    "eye_color": "#ffb933"
+   },
+   "manual": {}
+  },
+  "ONBO_R03": {
+   "name": "ONBO R03",
+   "side": "right",
+   "speaks": true,
+   "robot": true,
+   "crop": [
+    55,
+    162,
+    970,
+    1132
+   ],
+   "eye": [
+    473,
+    475
+   ],
+   "face_x": 608,
+   "cut": null,
+   "scale": 1.253,
+   "nudge": [
+    0,
+    0.063
+   ],
+   "eye_color": "#ffac33",
+   "eye_color_by_face": {
+    "alert": "#ff7a26"
+   },
+   "eye_fx_by_face": {
+    "damaged": "flicker"
+   },
+   "faces": {
+    "neutral": {
+     "src": "ONBO_R03/ONBO_R03__neutral.webp",
+     "eyes": "ONBO_R03/ONBO_R03__neutral__eyes.webp",
+     "eyes_rect": [
+      425,
+      417,
+      517,
+      522
+     ]
+    },
+    "alert": {
+     "src": "ONBO_R03/ONBO_R03__alert.webp",
+     "eyes": "ONBO_R03/ONBO_R03__alert__eyes.webp",
+     "eyes_rect": [
+      429,
+      460,
+      514,
+      476
+     ]
+    },
+    "damaged": {
+     "src": "ONBO_R03/ONBO_R03__damaged.webp",
+     "eyes": "ONBO_R03/ONBO_R03__damaged__eyes.webp",
+     "eyes_rect": [
+      425,
+      417,
+      517,
+      521
+     ]
+    },
+    "off": {
+     "src": "ONBO_R03/ONBO_R03__off.webp"
+    }
+   },
+   "auto": {
+    "bbox": [
+     61,
+     168,
+     964,
+     1126
+    ],
+    "cut": null,
+    "eye": [
+     473,
+     475
+    ],
+    "scale": 1.253,
+    "nudge": [
+     0,
+     0.063
+    ],
+    "face_x": 608,
+    "eye_color": "#ffac33"
+   },
+   "manual": {}
+  },
+  "ONBO_R07": {
+   "name": "ONBO R07",
+   "side": "right",
+   "speaks": true,
+   "robot": true,
+   "crop": [
+    27,
+    189,
+    997,
+    1159
+   ],
+   "eye": [
+    446,
+    469
+   ],
+   "face_x": 576,
+   "cut": null,
+   "scale": 1.253,
+   "nudge": [
+    0,
+    0.036
+   ],
+   "eye_color": "#ffb133",
+   "eye_color_by_face": {
+    "alert": "#ff7a26"
+   },
+   "eye_fx_by_face": {
+    "damaged": "flicker"
+   },
+   "faces": {
+    "neutral": {
+     "src": "ONBO_R07/ONBO_R07__neutral.webp",
+     "eyes": "ONBO_R07/ONBO_R07__neutral__eyes.webp",
+     "eyes_rect": [
+      405,
+      425,
+      481,
+      508
+     ]
+    },
+    "alert": {
+     "src": "ONBO_R07/ONBO_R07__alert.webp",
+     "eyes": "ONBO_R07/ONBO_R07__alert__eyes.webp",
+     "eyes_rect": [
+      407,
+      457,
+      480,
+      477
+     ]
+    },
+    "damaged": {
+     "src": "ONBO_R07/ONBO_R07__damaged.webp",
+     "eyes": "ONBO_R07/ONBO_R07__damaged__eyes.webp",
+     "eyes_rect": [
+      405,
+      426,
+      481,
+      508
+     ]
+    },
+    "off": {
+     "src": "ONBO_R07/ONBO_R07__off.webp"
+    }
+   },
+   "auto": {
+    "bbox": [
+     33,
+     195,
+     991,
+     1153
+    ],
+    "cut": null,
+    "eye": [
+     446,
+     469
+    ],
+    "scale": 1.253,
+    "nudge": [
+     0,
+     0.036
+    ],
+    "face_x": 576,
+    "eye_color": "#ffb133"
+   },
+   "manual": {}
+  },
+  "ONBO_R08": {
+   "name": "ONBO R08",
+   "side": "right",
+   "speaks": true,
+   "robot": true,
+   "crop": [
+    11,
+    143,
+    1013,
+    1104
+   ],
+   "eye": [
+    481,
+    474
+   ],
+   "face_x": 622,
+   "cut": null,
+   "scale": 1.264,
+   "nudge": [
+    0,
+    0.08
+   ],
+   "eye_color": "#ffa833",
+   "eye_color_by_face": {
+    "alert": "#ff7a26"
+   },
+   "eye_fx_by_face": {
+    "damaged": "flicker"
+   },
+   "faces": {
+    "neutral": {
+     "src": "ONBO_R08/ONBO_R08__neutral.webp",
+     "eyes": "ONBO_R08/ONBO_R08__neutral__eyes.webp",
+     "eyes_rect": [
+      429,
+      413,
+      526,
+      524
+     ]
+    },
+    "alert": {
+     "src": "ONBO_R08/ONBO_R08__alert.webp",
+     "eyes": "ONBO_R08/ONBO_R08__alert__eyes.webp",
+     "eyes_rect": [
+      435,
+      456,
+      524,
+      479
+     ]
+    },
+    "damaged": {
+     "src": "ONBO_R08/ONBO_R08__damaged.webp",
+     "eyes": "ONBO_R08/ONBO_R08__damaged__eyes.webp",
+     "eyes_rect": [
+      429,
+      413,
+      526,
+      524
+     ]
+    },
+    "off": {
+     "src": "ONBO_R08/ONBO_R08__off.webp"
+    }
+   },
+   "auto": {
+    "bbox": [
+     17,
+     149,
+     1007,
+     1098
+    ],
+    "cut": null,
+    "eye": [
+     481,
+     474
+    ],
+    "scale": 1.264,
+    "nudge": [
+     0,
+     0.08
+    ],
+    "face_x": 622,
+    "eye_color": "#ffa833"
+   },
+   "manual": {}
+  },
+  "BULLDOZER_G": {
+   "name": "ブルドーザー・ガンマ",
+   "side": "right",
+   "speaks": true,
+   "robot": true,
+   "crop": [
+    26,
+    212,
+    998,
+    1182
+   ],
+   "eye": [
+    455,
+    466
+   ],
+   "face_x": 560,
+   "cut": null,
+   "scale": 1.253,
+   "nudge": [
+    0,
+    0.015
+   ],
+   "eye_color": "#ff8133",
+   "eye_color_by_face": {
+    "alert": "#ff7a26"
+   },
+   "eye_fx_by_face": {
+    "damaged": "flicker"
+   },
+   "faces": {
+    "neutral": {
+     "src": "BULLDOZER_G/BULLDOZER_G__neutral.webp",
+     "eyes": "BULLDOZER_G/BULLDOZER_G__neutral__eyes.webp",
+     "eyes_rect": [
+      374,
+      431,
+      533,
+      498
+     ]
+    },
+    "alert": {
+     "src": "BULLDOZER_G/BULLDOZER_G__alert.webp",
+     "eyes": "BULLDOZER_G/BULLDOZER_G__alert__eyes.webp",
+     "eyes_rect": [
+      380,
+      437,
+      528,
+      482
+     ]
+    },
+    "damaged": {
+     "src": "BULLDOZER_G/BULLDOZER_G__damaged.webp",
+     "eyes": "BULLDOZER_G/BULLDOZER_G__damaged__eyes.webp",
+     "eyes_rect": [
+      374,
+      431,
+      533,
+      498
+     ]
+    },
+    "off": {
+     "src": "BULLDOZER_G/BULLDOZER_G__off.webp"
+    }
+   },
+   "auto": {
+    "bbox": [
+     32,
+     218,
+     992,
+     1176
+    ],
+    "cut": null,
+    "eye": [
+     455,
+     466
+    ],
+    "scale": 1.253,
+    "nudge": [
+     0,
+     0.015
+    ],
+    "face_x": 560,
+    "eye_color": "#ff8133"
+   },
+   "manual": {}
+  },
+  "IRONCLAD": {
+   "name": "アイアンクラッド",
+   "side": "right",
+   "speaks": true,
+   "robot": true,
+   "crop": [
+    47,
+    222,
+    978,
+    1192
+   ],
+   "eye": [
+    506,
+    466
+   ],
+   "face_x": 594,
+   "cut": null,
+   "scale": 1.253,
+   "nudge": [
+    0,
+    0.007
+   ],
+   "eye_color": "#ff7d33",
+   "eye_color_by_face": {
+    "alert": "#ff7a26"
+   },
+   "eye_fx_by_face": {
+    "damaged": "flicker"
+   },
+   "faces": {
+    "neutral": {
+     "src": "IRONCLAD/IRONCLAD__neutral.webp",
+     "eyes": "IRONCLAD/IRONCLAD__neutral__eyes.webp",
+     "eyes_rect": [
+      428,
+      431,
+      586,
+      499
+     ]
+    },
+    "alert": {
+     "src": "IRONCLAD/IRONCLAD__alert.webp",
+     "eyes": "IRONCLAD/IRONCLAD__alert__eyes.webp",
+     "eyes_rect": [
+      430,
+      437,
+      581,
+      484
+     ]
+    },
+    "damaged": {
+     "src": "IRONCLAD/IRONCLAD__damaged.webp",
+     "eyes": "IRONCLAD/IRONCLAD__damaged__eyes.webp",
+     "eyes_rect": [
+      428,
+      431,
+      586,
+      499
+     ]
+    },
+    "off": {
+     "src": "IRONCLAD/IRONCLAD__off.webp"
+    }
+   },
+   "auto": {
+    "bbox": [
+     53,
+     228,
+     972,
+     1186
+    ],
+    "cut": null,
+    "eye": [
+     506,
+     466
+    ],
+    "scale": 1.253,
+    "nudge": [
+     0,
+     0.007
+    ],
+    "face_x": 594,
+    "eye_color": "#ff7d33"
+   },
+   "manual": {}
+  },
+  "TITANFRAME": {
+   "name": "タイタンフレーム",
+   "side": "right",
+   "speaks": true,
+   "robot": true,
+   "crop": [
+    41,
+    262,
+    983,
+    1232
+   ],
+   "eye": [
+    494,
+    468
+   ],
+   "face_x": 604,
+   "cut": null,
+   "scale": 1.203,
+   "nudge": [
+    0,
+    0.0
+   ],
+   "eye_color": "#ff8133",
+   "eye_color_by_face": {
+    "alert": "#ff7a26"
+   },
+   "eye_fx_by_face": {
+    "damaged": "flicker"
+   },
+   "faces": {
+    "neutral": {
+     "src": "TITANFRAME/TITANFRAME__neutral.webp",
+     "eyes": "TITANFRAME/TITANFRAME__neutral__eyes.webp",
+     "eyes_rect": [
+      426,
+      438,
+      563,
+      497
+     ]
+    },
+    "alert": {
+     "src": "TITANFRAME/TITANFRAME__alert.webp",
+     "eyes": "TITANFRAME/TITANFRAME__alert__eyes.webp",
+     "eyes_rect": [
+      432,
+      444,
+      557,
+      488
+     ]
+    },
+    "damaged": {
+     "src": "TITANFRAME/TITANFRAME__damaged.webp",
+     "eyes": "TITANFRAME/TITANFRAME__damaged__eyes.webp",
+     "eyes_rect": [
+      426,
+      438,
+      563,
+      497
+     ]
+    },
+    "off": {
+     "src": "TITANFRAME/TITANFRAME__off.webp"
+    }
+   },
+   "auto": {
+    "bbox": [
+     47,
+     268,
+     977,
+     1226
+    ],
+    "cut": null,
+    "eye": [
+     494,
+     468
+    ],
+    "scale": 1.203,
+    "nudge": [
+     0,
+     0.0
+    ],
+    "face_x": 604,
+    "eye_color": "#ff8133"
+   },
+   "manual": {}
+  },
+  "GRANDCRUSHER": {
+   "name": "グランドクラッシャーMk-II",
+   "side": "right",
+   "speaks": true,
+   "robot": true,
+   "crop": [
+    24,
+    252,
+    1001,
+    1222
+   ],
+   "eye": [
+    450,
+    466
+   ],
+   "face_x": 572,
+   "cut": null,
+   "scale": 1.216,
+   "nudge": [
+    0,
+    0.0
+   ],
+   "eye_color": "#ff7f33",
+   "eye_color_by_face": {
+    "alert": "#ff7a26"
+   },
+   "eye_fx_by_face": {
+    "damaged": "flicker"
+   },
+   "faces": {
+    "neutral": {
+     "src": "GRANDCRUSHER/GRANDCRUSHER__neutral.webp",
+     "eyes": "GRANDCRUSHER/GRANDCRUSHER__neutral__eyes.webp",
+     "eyes_rect": [
+      366,
+      432,
+      536,
+      499
+     ]
+    },
+    "alert": {
+     "src": "GRANDCRUSHER/GRANDCRUSHER__alert.webp",
+     "eyes": "GRANDCRUSHER/GRANDCRUSHER__alert__eyes.webp",
+     "eyes_rect": [
+      373,
+      439,
+      526,
+      486
+     ]
+    },
+    "damaged": {
+     "src": "GRANDCRUSHER/GRANDCRUSHER__damaged.webp",
+     "eyes": "GRANDCRUSHER/GRANDCRUSHER__damaged__eyes.webp",
+     "eyes_rect": [
+      366,
+      432,
+      536,
+      499
+     ]
+    },
+    "off": {
+     "src": "GRANDCRUSHER/GRANDCRUSHER__off.webp"
+    }
+   },
+   "auto": {
+    "bbox": [
+     30,
+     258,
+     995,
+     1216
+    ],
+    "cut": null,
+    "eye": [
+     450,
+     466
+    ],
+    "scale": 1.216,
+    "nudge": [
+     0,
+     0.0
+    ],
+    "face_x": 572,
+    "eye_color": "#ff7f33"
+   },
+   "manual": {}
+  },
+  "IF_HEAVY": {
+   "name": "ヘビーフレーム（仮）",
+   "side": "right",
+   "speaks": true,
+   "robot": true,
+   "crop": [
+    11,
+    289,
+    1013,
+    1227
+   ],
+   "eye": [
+    451,
+    466
+   ],
+   "face_x": 564,
+   "cut": null,
+   "scale": 1.208,
+   "nudge": [
+    0,
+    0.0
+   ],
+   "eye_color": "#ff8133",
+   "eye_color_by_face": {
+    "alert": "#ff7a26"
+   },
+   "eye_fx_by_face": {
+    "damaged": "flicker"
+   },
+   "faces": {
+    "neutral": {
+     "src": "IF_HEAVY/IF_HEAVY__neutral.webp",
+     "eyes": "IF_HEAVY/IF_HEAVY__neutral__eyes.webp",
+     "eyes_rect": [
+      371,
+      432,
+      535,
+      498
+     ]
+    },
+    "alert": {
+     "src": "IF_HEAVY/IF_HEAVY__alert.webp",
+     "eyes": "IF_HEAVY/IF_HEAVY__alert__eyes.webp",
+     "eyes_rect": [
+      377,
+      438,
+      527,
+      482
+     ]
+    },
+    "damaged": {
+     "src": "IF_HEAVY/IF_HEAVY__damaged.webp",
+     "eyes": "IF_HEAVY/IF_HEAVY__damaged__eyes.webp",
+     "eyes_rect": [
+      371,
+      432,
+      535,
+      498
+     ]
+    },
+    "off": {
+     "src": "IF_HEAVY/IF_HEAVY__off.webp"
+    }
+   },
+   "auto": {
+    "bbox": [
+     17,
+     295,
+     1007,
+     1221
+    ],
+    "cut": null,
+    "eye": [
+     451,
+     466
+    ],
+    "scale": 1.208,
+    "nudge": [
+     0,
+     0.0
+    ],
+    "face_x": 564,
+    "eye_color": "#ff8133"
+   },
+   "manual": {}
+  },
+  "GUARDIAN_DA": {
+   "name": "GUARDIAN DA",
+   "side": "right",
+   "speaks": true,
+   "robot": true,
+   "crop": [
+    58,
+    145,
+    966,
+    1115
+   ],
+   "eye": [
+    468,
+    472
+   ],
+   "face_x": 572,
+   "cut": null,
+   "scale": 1.253,
+   "nudge": [
+    0,
+    0.074
+   ],
+   "eye_color": "#33ddff",
+   "eye_color_by_face": {
+    "alert": "#ff7a26"
+   },
+   "eye_fx_by_face": {
+    "damaged": "flicker"
+   },
+   "faces": {
+    "neutral": {
+     "src": "GUARDIAN_DA/GUARDIAN_DA__neutral.webp",
+     "eyes": "GUARDIAN_DA/GUARDIAN_DA__neutral__eyes.webp",
+     "eyes_rect": [
+      395,
+      385,
+      547,
+      551
+     ]
+    },
+    "alert": {
+     "src": "GUARDIAN_DA/GUARDIAN_DA__alert.webp",
+     "eyes": "GUARDIAN_DA/GUARDIAN_DA__alert__eyes.webp",
+     "eyes_rect": [
+      397,
+      449,
+      539,
+      478
+     ]
+    },
+    "damaged": {
+     "src": "GUARDIAN_DA/GUARDIAN_DA__damaged.webp",
+     "eyes": "GUARDIAN_DA/GUARDIAN_DA__damaged__eyes.webp",
+     "eyes_rect": [
+      395,
+      385,
+      547,
+      551
+     ]
+    },
+    "off": {
+     "src": "GUARDIAN_DA/GUARDIAN_DA__off.webp"
+    }
+   },
+   "auto": {
+    "bbox": [
+     64,
+     151,
+     960,
+     1109
+    ],
+    "cut": null,
+    "eye": [
+     468,
+     472
+    ],
+    "scale": 1.253,
+    "nudge": [
+     0,
+     0.074
+    ],
+    "face_x": 572,
+    "eye_color": "#33ddff"
+   },
+   "manual": {}
+  },
+  "EA07": {
+   "name": "EA-07",
+   "side": "right",
+   "speaks": true,
+   "robot": true,
+   "crop": [
+    40,
+    255,
+    984,
+    1225
+   ],
+   "eye": [
+    650,
+    462
+   ],
+   "face_x": 750,
+   "cut": null,
+   "scale": 1.205,
+   "nudge": [
+    0,
+    0.0
+   ],
+   "eye_color": "#33dbff",
+   "eye_color_by_face": {
+    "alert": "#ff7a26"
+   },
+   "eye_fx_by_face": {
+    "damaged": "flicker"
+   },
+   "faces": {
+    "neutral": {
+     "src": "EA07/EA07__neutral.webp",
+     "eyes": "EA07/EA07__neutral__eyes.webp",
+     "eyes_rect": [
+      585,
+      382,
+      715,
+      544
+     ]
+    },
+    "alert": {
+     "src": "EA07/EA07__alert.webp",
+     "eyes": "EA07/EA07__alert__eyes.webp",
+     "eyes_rect": [
+      607,
+      447,
+      692,
+      470
+     ]
+    },
+    "damaged": {
+     "src": "EA07/EA07__damaged.webp",
+     "eyes": "EA07/EA07__damaged__eyes.webp",
+     "eyes_rect": [
+      585,
+      382,
+      715,
+      544
+     ]
+    },
+    "off": {
+     "src": "EA07/EA07__off.webp"
+    }
+   },
+   "auto": {
+    "bbox": [
+     46,
+     261,
+     978,
+     1219
+    ],
+    "cut": null,
+    "eye": [
+     650,
+     462
+    ],
+    "scale": 1.205,
+    "nudge": [
+     0,
+     0.0
+    ],
+    "face_x": 750,
+    "eye_color": "#33dbff"
+   },
+   "manual": {}
+  },
+  "SPIDER8": {
+   "name": "SPIDER 8",
+   "side": "right",
+   "speaks": true,
+   "robot": true,
+   "crop": [
+    61,
+    42,
+    963,
+    900
+   ],
+   "eye": [
+    368,
+    472
+   ],
+   "face_x": 525,
+   "cut": null,
+   "scale": 1.724,
+   "nudge": [
+    0,
+    0.12
+   ],
+   "eye_color": "#33dbff",
+   "eye_color_by_face": {
+    "alert": "#ff7a26"
+   },
+   "eye_fx_by_face": {
+    "damaged": "flicker"
+   },
+   "faces": {
+    "neutral": {
+     "src": "SPIDER8/SPIDER8__neutral.webp",
+     "eyes": "SPIDER8/SPIDER8__neutral__eyes.webp",
+     "eyes_rect": [
+      294,
+      388,
+      441,
+      553
+     ]
+    },
+    "alert": {
+     "src": "SPIDER8/SPIDER8__alert.webp",
+     "eyes": "SPIDER8/SPIDER8__alert__eyes.webp",
+     "eyes_rect": [
+      305,
+      452,
+      430,
+      478
+     ]
+    },
+    "damaged": {
+     "src": "SPIDER8/SPIDER8__damaged.webp",
+     "eyes": "SPIDER8/SPIDER8__damaged__eyes.webp",
+     "eyes_rect": [
+      294,
+      388,
+      441,
+      553
+     ]
+    },
+    "off": {
+     "src": "SPIDER8/SPIDER8__off.webp"
+    }
+   },
+   "auto": {
+    "bbox": [
+     67,
+     48,
+     957,
+     894
+    ],
+    "cut": null,
+    "eye": [
+     368,
+     472
+    ],
+    "scale": 1.724,
+    "nudge": [
+     0,
+     0.12
+    ],
+    "face_x": 525,
+    "eye_color": "#33dbff"
+   },
+   "manual": {}
+  },
+  "ZA01": {
+   "name": "ZA-01",
+   "side": "right",
+   "speaks": true,
+   "robot": true,
+   "crop": [
+    11,
+    236,
+    1013,
+    1102
+   ],
+   "eye": [
+    475,
+    469
+   ],
+   "face_x": 525,
+   "cut": null,
+   "scale": 1.405,
+   "nudge": [
+    0,
+    0.02
+   ],
+   "eye_color": "#33d8ff",
+   "eye_color_by_face": {
+    "alert": "#ff7a26"
+   },
+   "eye_fx_by_face": {
+    "damaged": "flicker"
+   },
+   "faces": {
+    "neutral": {
+     "src": "ZA01/ZA01__neutral.webp",
+     "eyes": "ZA01/ZA01__neutral__eyes.webp",
+     "eyes_rect": [
+      374,
+      415,
+      579,
+      522
+     ]
+    },
+    "alert": {
+     "src": "ZA01/ZA01__alert.webp",
+     "eyes": "ZA01/ZA01__alert__eyes.webp",
+     "eyes_rect": [
+      436,
+      451,
+      500,
+      483
+     ]
+    },
+    "damaged": {
+     "src": "ZA01/ZA01__damaged.webp",
+     "eyes": "ZA01/ZA01__damaged__eyes.webp",
+     "eyes_rect": [
+      374,
+      415,
+      575,
+      521
+     ]
+    },
+    "off": {
+     "src": "ZA01/ZA01__off.webp"
+    }
+   },
+   "auto": {
+    "bbox": [
+     17,
+     242,
+     1007,
+     1096
+    ],
+    "cut": null,
+    "eye": [
+     475,
+     469
+    ],
+    "scale": 1.405,
+    "nudge": [
+     0,
+     0.02
+    ],
+    "face_x": 525,
+    "eye_color": "#33d8ff"
+   },
+   "manual": {}
+  },
+  "CE_MISSILE": {
+   "name": "EA-25ミサイルキャリア（仮）",
+   "side": "right",
+   "speaks": true,
+   "robot": true,
+   "crop": [
+    64,
+    112,
+    961,
+    1082
+   ],
+   "eye": [
+    396,
+    470
+   ],
+   "face_x": 534,
+   "cut": null,
+   "scale": 1.253,
+   "nudge": [
+    0,
+    0.1
+   ],
+   "eye_color": "#33ceff",
+   "eye_color_by_face": {
+    "alert": "#ff7a26"
+   },
+   "eye_fx_by_face": {
+    "damaged": "flicker"
+   },
+   "faces": {
+    "neutral": {
+     "src": "CE_MISSILE/CE_MISSILE__neutral.webp",
+     "eyes": "CE_MISSILE/CE_MISSILE__neutral__eyes.webp",
+     "eyes_rect": [
+      332,
+      400,
+      459,
+      540
+     ]
+    },
+    "alert": {
+     "src": "CE_MISSILE/CE_MISSILE__alert.webp",
+     "eyes": "CE_MISSILE/CE_MISSILE__alert__eyes.webp",
+     "eyes_rect": [
+      344,
+      455,
+      452,
+      484
+     ]
+    },
+    "damaged": {
+     "src": "CE_MISSILE/CE_MISSILE__damaged.webp",
+     "eyes": "CE_MISSILE/CE_MISSILE__damaged__eyes.webp",
+     "eyes_rect": [
+      335,
+      409,
+      459,
+      538
+     ]
+    },
+    "off": {
+     "src": "CE_MISSILE/CE_MISSILE__off.webp"
+    }
+   },
+   "auto": {
+    "bbox": [
+     70,
+     118,
+     955,
+     1076
+    ],
+    "cut": null,
+    "eye": [
+     396,
+     470
+    ],
+    "scale": 1.253,
+    "nudge": [
+     0,
+     0.1
+    ],
+    "face_x": 534,
+    "eye_color": "#33ceff"
+   },
+   "manual": {}
+  },
+  "WHIPTAIL": {
+   "name": "ウィップテイル",
+   "side": "right",
+   "speaks": true,
+   "robot": true,
+   "crop": [
+    19,
+    125,
+    1006,
+    1095
+   ],
+   "eye": [
+    406,
+    470
+   ],
+   "face_x": 443,
+   "cut": null,
+   "scale": 1.253,
+   "nudge": [
+    0,
+    0.089
+   ],
+   "eye_color": "#ff3a33",
+   "eye_color_by_face": {
+    "alert": "#ff7a26"
+   },
+   "eye_fx_by_face": {
+    "damaged": "flicker"
+   },
+   "faces": {
+    "neutral": {
+     "src": "WHIPTAIL/WHIPTAIL__neutral.webp",
+     "eyes": "WHIPTAIL/WHIPTAIL__neutral__eyes.webp",
+     "eyes_rect": [
+      356,
+      427,
+      459,
+      513
+     ]
+    },
+    "alert": {
+     "src": "WHIPTAIL/WHIPTAIL__alert.webp",
+     "eyes": "WHIPTAIL/WHIPTAIL__alert__eyes.webp",
+     "eyes_rect": [
+      371,
+      446,
+      447,
+      487
+     ]
+    },
+    "damaged": {
+     "src": "WHIPTAIL/WHIPTAIL__damaged.webp",
+     "eyes": "WHIPTAIL/WHIPTAIL__damaged__eyes.webp",
+     "eyes_rect": [
+      356,
+      427,
+      459,
+      513
+     ]
+    },
+    "off": {
+     "src": "WHIPTAIL/WHIPTAIL__off.webp"
+    }
+   },
+   "auto": {
+    "bbox": [
+     25,
+     131,
+     1000,
+     1089
+    ],
+    "cut": null,
+    "eye": [
+     406,
+     470
+    ],
+    "scale": 1.253,
+    "nudge": [
+     0,
+     0.089
+    ],
+    "face_x": 443,
+    "eye_color": "#ff3a33"
+   },
+   "manual": {}
+  },
+  "SHADOWRUNNER": {
+   "name": "シャドウランナー",
+   "side": "right",
+   "speaks": true,
+   "robot": true,
+   "crop": [
+    57,
+    224,
+    968,
+    1194
+   ],
+   "eye": [
+    352,
+    476
+   ],
+   "face_x": 404,
+   "cut": null,
+   "scale": 1.253,
+   "nudge": [
+    0,
+    0.013
+   ],
+   "eye_color": "#ff4233",
+   "eye_color_by_face": {
+    "alert": "#ff7a26"
+   },
+   "eye_fx_by_face": {
+    "damaged": "flicker"
+   },
+   "faces": {
+    "neutral": {
+     "src": "SHADOWRUNNER/SHADOWRUNNER__neutral.webp",
+     "eyes": "SHADOWRUNNER/SHADOWRUNNER__neutral__eyes.webp",
+     "eyes_rect": [
+      286,
+      433,
+      414,
+      519
+     ]
+    },
+    "alert": {
+     "src": "SHADOWRUNNER/SHADOWRUNNER__alert.webp",
+     "eyes": "SHADOWRUNNER/SHADOWRUNNER__alert__eyes.webp",
+     "eyes_rect": [
+      345,
+      453,
+      396,
+      485
+     ]
+    },
+    "damaged": {
+     "src": "SHADOWRUNNER/SHADOWRUNNER__damaged.webp",
+     "eyes": "SHADOWRUNNER/SHADOWRUNNER__damaged__eyes.webp",
+     "eyes_rect": [
+      286,
+      433,
+      414,
+      519
+     ]
+    },
+    "off": {
+     "src": "SHADOWRUNNER/SHADOWRUNNER__off.webp"
+    }
+   },
+   "auto": {
+    "bbox": [
+     63,
+     230,
+     962,
+     1188
+    ],
+    "cut": null,
+    "eye": [
+     352,
+     476
+    ],
+    "scale": 1.253,
+    "nudge": [
+     0,
+     0.013
+    ],
+    "face_x": 404,
+    "eye_color": "#ff4233"
+   },
+   "manual": {}
+  },
+  "PHANTOMSTRIKER": {
+   "name": "ファントムストライカー",
+   "side": "right",
+   "speaks": true,
+   "robot": true,
+   "crop": [
+    84,
+    142,
+    940,
+    1112
+   ],
+   "eye": [
+    484,
+    466
+   ],
+   "face_x": 585,
+   "cut": null,
+   "scale": 1.253,
+   "nudge": [
+    0,
+    0.072
+   ],
+   "eye_color": "#ff3a33",
+   "eye_color_by_face": {
+    "alert": "#ff7a26"
+   },
+   "eye_fx_by_face": {
+    "damaged": "flicker"
+   },
+   "faces": {
+    "neutral": {
+     "src": "PHANTOMSTRIKER/PHANTOMSTRIKER__neutral.webp",
+     "eyes": "PHANTOMSTRIKER/PHANTOMSTRIKER__neutral__eyes.webp",
+     "eyes_rect": [
+      374,
+      410,
+      596,
+      522
+     ]
+    },
+    "alert": {
+     "src": "PHANTOMSTRIKER/PHANTOMSTRIKER__alert.webp",
+     "eyes": "PHANTOMSTRIKER/PHANTOMSTRIKER__alert__eyes.webp",
+     "eyes_rect": [
+      391,
+      448,
+      572,
+      491
+     ]
+    },
+    "damaged": {
+     "src": "PHANTOMSTRIKER/PHANTOMSTRIKER__damaged.webp",
+     "eyes": "PHANTOMSTRIKER/PHANTOMSTRIKER__damaged__eyes.webp",
+     "eyes_rect": [
+      374,
+      410,
+      595,
+      522
+     ]
+    },
+    "off": {
+     "src": "PHANTOMSTRIKER/PHANTOMSTRIKER__off.webp"
+    }
+   },
+   "auto": {
+    "bbox": [
+     90,
+     148,
+     934,
+     1106
+    ],
+    "cut": null,
+    "eye": [
+     484,
+     466
+    ],
+    "scale": 1.253,
+    "nudge": [
+     0,
+     0.072
+    ],
+    "face_x": 585,
+    "eye_color": "#ff3a33"
+   },
+   "manual": {}
+  },
+  "GHOSTEAGLE": {
+   "name": "ゴーストイーグルMk-I",
+   "side": "right",
+   "speaks": true,
+   "robot": true,
+   "crop": [
+    11,
+    104,
+    1013,
+    820
+   ],
+   "eye": [
+    302,
+    479
+   ],
+   "face_x": 330,
+   "cut": 814,
+   "scale": 1.8,
+   "nudge": [
+    0,
+    0.12
+   ],
+   "eye_color": "#ff4333",
+   "eye_color_by_face": {
+    "alert": "#ff7a26"
+   },
+   "eye_fx_by_face": {
+    "damaged": "flicker"
+   },
+   "faces": {
+    "neutral": {
+     "src": "GHOSTEAGLE/GHOSTEAGLE__neutral.webp",
+     "eyes": "GHOSTEAGLE/GHOSTEAGLE__neutral__eyes.webp",
+     "eyes_rect": [
+      271,
+      453,
+      331,
+      504
+     ]
+    },
+    "alert": {
+     "src": "GHOSTEAGLE/GHOSTEAGLE__alert.webp",
+     "eyes": "GHOSTEAGLE/GHOSTEAGLE__alert__eyes.webp",
+     "eyes_rect": [
+      288,
+      468,
+      321,
+      490
+     ]
+    },
+    "damaged": {
+     "src": "GHOSTEAGLE/GHOSTEAGLE__damaged.webp",
+     "eyes": "GHOSTEAGLE/GHOSTEAGLE__damaged__eyes.webp",
+     "eyes_rect": [
+      271,
+      453,
+      331,
+      504
+     ]
+    },
+    "off": {
+     "src": "GHOSTEAGLE/GHOSTEAGLE__off.webp"
+    }
+   },
+   "auto": {
+    "bbox": [
+     17,
+     110,
+     1007,
+     814
+    ],
+    "cut": null,
+    "eye": [
+     302,
+     479
+    ],
+    "scale": 2.172,
+    "nudge": [
+     0,
+     0.12
+    ],
+    "face_x": 305,
+    "eye_color": "#ff4333"
+   },
+   "manual": {
+    "scale": 1.8,
+    "nudge": [
+     0,
+     0.12
+    ],
+    "face_x": 330,
+    "cut": 814
+   }
+  },
+  "MIRAGEBLADEZ": {
+   "name": "ミラージュブレイドZ",
+   "side": "right",
+   "speaks": true,
+   "robot": true,
+   "crop": [
+    93,
+    132,
+    932,
+    1102
+   ],
+   "eye": [
+    502,
+    458
+   ],
+   "face_x": 559,
+   "cut": null,
+   "scale": 1.253,
+   "nudge": [
+    0,
+    0.073
+   ],
+   "eye_color": "#ff4633",
+   "eye_color_by_face": {
+    "alert": "#ff7a26"
+   },
+   "eye_fx_by_face": {
+    "damaged": "flicker"
+   },
+   "faces": {
+    "neutral": {
+     "src": "MIRAGEBLADEZ/MIRAGEBLADEZ__neutral.webp",
+     "eyes": "MIRAGEBLADEZ/MIRAGEBLADEZ__neutral__eyes.webp",
+     "eyes_rect": [
+      436,
+      414,
+      572,
+      504
+     ]
+    },
+    "alert": {
+     "src": "MIRAGEBLADEZ/MIRAGEBLADEZ__alert.webp",
+     "eyes": "MIRAGEBLADEZ/MIRAGEBLADEZ__alert__eyes.webp",
+     "eyes_rect": [
+      441,
+      433,
+      557,
+      491
+     ]
+    },
+    "damaged": {
+     "src": "MIRAGEBLADEZ/MIRAGEBLADEZ__damaged.webp",
+     "eyes": "MIRAGEBLADEZ/MIRAGEBLADEZ__damaged__eyes.webp",
+     "eyes_rect": [
+      437,
+      414,
+      572,
+      504
+     ]
+    },
+    "off": {
+     "src": "MIRAGEBLADEZ/MIRAGEBLADEZ__off.webp"
+    }
+   },
+   "auto": {
+    "bbox": [
+     99,
+     138,
+     926,
+     1096
+    ],
+    "cut": null,
+    "eye": [
+     502,
+     458
+    ],
+    "scale": 1.253,
+    "nudge": [
+     0,
+     0.073
+    ],
+    "face_x": 559,
+    "eye_color": "#ff4633"
+   },
+   "manual": {}
+  },
+  "ALT_FLYER": {
+   "name": "スカイポンコ（仮）",
+   "side": "right",
+   "speaks": true,
+   "robot": true,
+   "crop": [
+    71,
+    59,
+    952,
+    1159
+   ],
+   "eye": [
+    370,
+    460
+   ],
+   "face_x": 515,
+   "cut": null,
+   "scale": 1.2,
+   "nudge": [
+    0,
+    0.08
+   ],
+   "eye_color": "#26e3ff",
+   "eye_color_by_face": {
+    "alert": "#ff7a26"
+   },
+   "eye_fx_by_face": {
+    "damaged": "flicker"
+   },
+   "faces": {
+    "neutral": {
+     "src": "ALT_FLYER/ALT_FLYER__neutral.webp",
+     "eyes": "ALT_FLYER/ALT_FLYER__neutral__eyes.webp",
+     "eyes_rect": [
+      265,
+      413,
+      476,
+      507
+     ]
+    },
+    "alert": {
+     "src": "ALT_FLYER/ALT_FLYER__alert.webp",
+     "eyes": "ALT_FLYER/ALT_FLYER__alert__eyes.webp",
+     "eyes_rect": [
+      231,
+      412,
+      415,
+      508
+     ]
+    },
+    "damaged": {
+     "src": "ALT_FLYER/ALT_FLYER__damaged.webp",
+     "eyes": "ALT_FLYER/ALT_FLYER__damaged__eyes.webp",
+     "eyes_rect": [
+      243,
+      419,
+      448,
+      501
+     ]
+    },
+    "off": {
+     "src": "ALT_FLYER/ALT_FLYER__off.webp"
+    }
+   },
+   "auto": {
+    "bbox": [
+     77,
+     65,
+     946,
+     1153
+    ],
+    "cut": null,
+    "eye": [
+     370,
+     460
+    ],
+    "scale": 1.103,
+    "nudge": [
+     0,
+     0.096
+    ],
+    "face_x": 516,
+    "eye_color": "#33f6ff"
+   },
+   "manual": {
+    "scale": 1.2,
+    "face_x": 515,
+    "nudge": [
+     0,
+     0.08
+    ]
+   }
+  },
+  "ALT_AMPHI": {
+   "name": "アビスポンコ（仮）",
+   "side": "right",
+   "speaks": true,
+   "robot": true,
+   "crop": [
+    35,
+    51,
+    990,
+    1494
+   ],
+   "eye": [
+    389,
+    460
+   ],
+   "face_x": 515,
+   "cut": null,
+   "scale": 1.2,
+   "nudge": [
+    0,
+    0.08
+   ],
+   "eye_color": "#26e3ff",
+   "eye_color_by_face": {
+    "alert": "#ff7a26"
+   },
+   "eye_fx_by_face": {
+    "damaged": "flicker"
+   },
+   "faces": {
+    "neutral": {
+     "src": "ALT_AMPHI/ALT_AMPHI__neutral.webp",
+     "eyes": "ALT_AMPHI/ALT_AMPHI__neutral__eyes.webp",
+     "eyes_rect": [
+      288,
+      413,
+      489,
+      509
+     ]
+    },
+    "alert": {
+     "src": "ALT_AMPHI/ALT_AMPHI__alert.webp",
+     "eyes": "ALT_AMPHI/ALT_AMPHI__alert__eyes.webp",
+     "eyes_rect": [
+      277,
+      411,
+      450,
+      509
+     ]
+    },
+    "damaged": {
+     "src": "ALT_AMPHI/ALT_AMPHI__damaged.webp",
+     "eyes": "ALT_AMPHI/ALT_AMPHI__damaged__eyes.webp",
+     "eyes_rect": [
+      248,
+      400,
+      460,
+      504
+     ]
+    },
+    "off": {
+     "src": "ALT_AMPHI/ALT_AMPHI__off.webp"
+    }
+   },
+   "auto": {
+    "bbox": [
+     41,
+     57,
+     984,
+     1488
+    ],
+    "cut": null,
+    "eye": [
+     389,
+     460
+    ],
+    "scale": 0.9,
+    "nudge": [
+     0,
+     0
+    ],
+    "face_x": 538,
+    "eye_color": "#33f8ff"
+   },
+   "manual": {
+    "scale": 1.2,
+    "face_x": 515,
+    "nudge": [
+     0,
+     0.08
+    ]
+   }
+  }
+ }
+}

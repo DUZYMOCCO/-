@@ -70,6 +70,7 @@
 /* v0.4.0-dev（10/24）武器を拾った知らせ */
 .bc-toast { position: absolute; left: 50%; top: calc(env(safe-area-inset-top) + 112px); transform: translateX(-50%); padding: 7px 16px; font-size: 14px; font-weight: 800; white-space: nowrap; border: 2px solid var(--bc-ink); border-radius: 10px; background: #3a2a10e6; color: #ffd38a; text-shadow: 0 1px 0 #000; pointer-events: none; z-index: 5; }
 .bc-toast[hidden] { display: none; }
+.bc-toast.warn { background: #4a1418e6; color: #ffb4b4; border-color: #c0444f; } /* v0.4.2 リペアキット切れ */
 .bc-toast.show { animation: bc-toast-in .18s ease-out; }
 @keyframes bc-toast-in { from { opacity: 0; transform: translate(-50%, -8px); } to { opacity: 1; transform: translate(-50%, 0); } }
 
@@ -95,4 +96,23 @@
 .bc-root .bc-menu-row button { width: 56px; height: 40px; font-weight: 700; }
 .bc-root .bc-menu-row button.on { background: #1d4f6b; border-color: var(--bc-cyan); color: #fff; }
 .bc-root .bc-menu-close { height: 48px; font-size: 16px; font-weight: 800; background: #1d6b4a; color: #fff; }
+.bc-root .bc-menu-records { height: 44px; font-size: 14px; font-weight: 700; }
+.bc-root .bc-menu-pair { display: flex; gap: 8px; }
+.bc-root .bc-menu-pair button { flex: 1; min-width: 0; height: 44px; padding: 0 4px; font-size: 13px; line-height: 16px; font-weight: 700; }
 .bc-root .bc-menu-hub { height: 36px; margin-top: 8px; font-size: 13px; font-weight: 700; }
+
+/* v0.4.6: 速さの3択（つながったボタン）と、1x 以外のときだけ出る小さな表示 */
+.bc-seg { display: flex; }
+.bc-root .bc-seg button { width: 52px; border-radius: 0; margin: 0; }
+.bc-root .bc-seg button + button { border-left-width: 0; }
+.bc-root .bc-seg button:first-child { border-radius: 8px 0 0 8px; }
+.bc-root .bc-seg button:last-child { border-radius: 0 8px 8px 0; }
+.bc-speed { flex: none; padding: 0 3px; font-size: 10px; line-height: 22px; font-weight: 700; color: var(--bc-cyan); font-variant-numeric: tabular-nums; }
+.bc-speed[hidden] { display: none; }
+
+/* v1.0.0 Codex gfx3 I_UI_ICONS: 今あるボタン・見出しの文字の前に小さなアイコン（assets/icons/ui/<名前>@24・@48・@72.png を画面の倍率で選ぶ）。新しいボタンは作らない。文字を書きかえても消えないよう ::before で出す */
+.bc-root .bc-menu-tutorial::before { content: ''; display: inline-block; flex: none; width: 20px; height: 20px; margin-right: 4px; vertical-align: -5px; pointer-events: none; background: url('../assets/icons/ui/hint@24.png') center / contain no-repeat; background-image: -webkit-image-set(url('../assets/icons/ui/hint@24.png') 1x, url('../assets/icons/ui/hint@48.png') 2x, url('../assets/icons/ui/hint@72.png') 3x); background-image: image-set(url('../assets/icons/ui/hint@24.png') 1x, url('../assets/icons/ui/hint@48.png') 2x, url('../assets/icons/ui/hint@72.png') 3x); }
+.bc-root .bc-menu-records::before { content: ''; display: inline-block; flex: none; width: 20px; height: 20px; margin-right: 4px; vertical-align: -5px; pointer-events: none; background: url('../assets/icons/ui/record_book@24.png') center / contain no-repeat; background-image: -webkit-image-set(url('../assets/icons/ui/record_book@24.png') 1x, url('../assets/icons/ui/record_book@48.png') 2x, url('../assets/icons/ui/record_book@72.png') 3x); background-image: image-set(url('../assets/icons/ui/record_book@24.png') 1x, url('../assets/icons/ui/record_book@48.png') 2x, url('../assets/icons/ui/record_book@72.png') 3x); }
+.bc-root .bc-result-rec::before { content: ''; display: inline-block; flex: none; width: 20px; height: 20px; margin-right: 4px; vertical-align: -5px; pointer-events: none; background: url('../assets/icons/ui/rewind@24.png') center / contain no-repeat; background-image: -webkit-image-set(url('../assets/icons/ui/rewind@24.png') 1x, url('../assets/icons/ui/rewind@48.png') 2x, url('../assets/icons/ui/rewind@72.png') 3x); background-image: image-set(url('../assets/icons/ui/rewind@24.png') 1x, url('../assets/icons/ui/rewind@48.png') 2x, url('../assets/icons/ui/rewind@72.png') 3x); }
+.bc-root .bc-pick.flyer b::before { content: ''; display: inline-block; flex: none; width: 14px; height: 14px; margin-right: 4px; vertical-align: -5px; pointer-events: none; background: url('../assets/icons/ui/alt_air@24.png') center / contain no-repeat; background-image: -webkit-image-set(url('../assets/icons/ui/alt_air@24.png') 1x, url('../assets/icons/ui/alt_air@48.png') 2x, url('../assets/icons/ui/alt_air@72.png') 3x); background-image: image-set(url('../assets/icons/ui/alt_air@24.png') 1x, url('../assets/icons/ui/alt_air@48.png') 2x, url('../assets/icons/ui/alt_air@72.png') 3x); }
+.bc-root .bc-pick.amph b::before { content: ''; display: inline-block; flex: none; width: 14px; height: 14px; margin-right: 4px; vertical-align: -5px; pointer-events: none; background: url('../assets/icons/ui/alt_underwater@24.png') center / contain no-repeat; background-image: -webkit-image-set(url('../assets/icons/ui/alt_underwater@24.png') 1x, url('../assets/icons/ui/alt_underwater@48.png') 2x, url('../assets/icons/ui/alt_underwater@72.png') 3x); background-image: image-set(url('../assets/icons/ui/alt_underwater@24.png') 1x, url('../assets/icons/ui/alt_underwater@48.png') 2x, url('../assets/icons/ui/alt_underwater@72.png') 3x); }

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createBackConfirm, requestBack, cancelBack } from '../js/ui/back-confirm.js';
+import { createBackConfirm, requestBack, cancelBack } from '../js/ui/back-confirm.js?v=1';
 test('ミッション中は確認を開き、続けるで元の一時停止状態に戻る', () => {
   const c = createBackConfirm();
   assert.equal(requestBack(c, { inMission: true, paused: false }), 'open');

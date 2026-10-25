@@ -1,6 +1,7 @@
 // 武器の表（68 種）。new-game-rts/weapons/weapons.json（10/23）から演出に要る列だけ写したもの。数字を変えるときは元の表を直して写し直す。
 // v0.4.0-dev（10/24）: 落とし物の武器のために slot（weapon/support/carry/default）と bonus_group の列、強さの式（weaponPower）を足した。
 // 演出（js/fx）は行をそのまま classify() に渡して「着弾の種類・弾・強さ」を決める。
+import { ALT_KIND_WEAPON } from './alt-units.js?v=3';
 export const WEAPONS = [
   {"id": "W0-01", "name": "素手（パンチ）", "stage": 0, "type": "melee", "tier": 0, "motion_s": 0.8, "pellets": 1, "splash": 0, "slot": "default"},
   {"id": "W0-02", "name": "投石", "stage": 0, "type": "throw", "tier": 0, "motion_s": 1.5, "pellets": 1, "splash": 0, "slot": "default"},
@@ -81,6 +82,7 @@ export const KIND_WEAPON = Object.freeze({
   ponco: 'W2-01',   // PONCO の制式ライフル
   alien: 'W3-03',   // 杭打ち角
   giant: 'W2-03',   // アイアンフィストの砲身
+  ...ALT_KIND_WEAPON, // flyer・amph（js/sim/alt-units.js）
 });
 export const weaponOfKind = kind => weaponById(KIND_WEAPON[kind]);
 

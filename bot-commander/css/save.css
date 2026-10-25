@@ -1,0 +1,24 @@
+/* 記録の画面（☰ メニューの「記録」）。.bc-root の中の .bcs だけに効かせる。縦画面 390×844 で、ボタンは高さ 44px 以上 */
+.bc-root .bcs { position: absolute; inset: 0; z-index: 25; display: grid; place-items: center; background: #000c; touch-action: pan-y; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+.bc-root .bcs-box { width: min(92%, 340px); max-height: 86%; display: flex; flex-direction: column; gap: 10px; padding: 14px; border: 3px solid var(--bc-ink); border-radius: 16px; background: #141a24; box-shadow: 0 6px 0 #000a; color: #e5e7eb; }
+.bc-root .bcs-title { margin: 0; font-size: 18px; text-align: center; }
+.bc-root .bcs-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+.bc-root .bcs-list { list-style: none; margin: 0 0 10px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.bc-root .bcs-m { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; padding: 8px 10px; border: 1px solid #263246; border-radius: 10px; background: #0f1520; font-size: 13px; line-height: 18px; }
+.bc-root .bcs-m b { font-size: 14px; min-width: 0; }
+.bc-root .bcs-st { font-weight: 800; color: #9aa7ba; }
+.bc-root .bcs-st.clear { color: #4ade80; }
+.bc-root .bcs-n, .bc-root .bcs-best { grid-column: 1 / -1; color: #c3ccd9; font-variant-numeric: tabular-nums; }
+.bc-root .bcs-best { color: var(--bc-cyan); }
+.bc-root .bcs-sum { margin: 0; display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+.bc-root .bcs-sum div { display: flex; justify-content: space-between; gap: 8px; padding: 4px 4px; border-bottom: 1px solid #1c2533; }
+.bc-root .bcs-sum dt, .bc-root .bcs-sum dd { margin: 0; }
+.bc-root .bcs-sum dd { font-weight: 800; font-variant-numeric: tabular-nums; }
+.bc-root .bcs-btns { display: flex; gap: 8px; }
+.bc-root .bcs-btns button { flex: 1; height: 46px; font-size: 14px; font-weight: 800; }
+.bc-root .bcs-close { background: #1d6b4a; color: #fff; }
+.bc-root .bcs-reset[data-armed] { background: #7f1d1d; border-color: #f87171; color: #fff; }
+
+/* v1.0.0 Codex gfx3 I_UI_ICONS: 今あるボタン・見出しの文字の前に小さなアイコン（assets/icons/ui/<名前>@24・@48・@72.png を画面の倍率で選ぶ）。新しいボタンは作らない。文字を書きかえても消えないよう ::before で出す */
+.bc-root .bcs-title::before { content: ''; display: inline-block; flex: none; width: 22px; height: 22px; margin-right: 4px; vertical-align: -5px; pointer-events: none; background: url('../assets/icons/ui/trophy@24.png') center / contain no-repeat; background-image: -webkit-image-set(url('../assets/icons/ui/trophy@24.png') 1x, url('../assets/icons/ui/trophy@48.png') 2x, url('../assets/icons/ui/trophy@72.png') 3x); background-image: image-set(url('../assets/icons/ui/trophy@24.png') 1x, url('../assets/icons/ui/trophy@48.png') 2x, url('../assets/icons/ui/trophy@72.png') 3x); }
+.bc-root .bcs-sum dt::before { content: ''; display: inline-block; flex: none; width: 16px; height: 16px; margin-right: 4px; vertical-align: -5px; pointer-events: none; background: url('../assets/icons/ui/unlock@24.png') center / contain no-repeat; background-image: -webkit-image-set(url('../assets/icons/ui/unlock@24.png') 1x, url('../assets/icons/ui/unlock@48.png') 2x, url('../assets/icons/ui/unlock@72.png') 3x); background-image: image-set(url('../assets/icons/ui/unlock@24.png') 1x, url('../assets/icons/ui/unlock@48.png') 2x, url('../assets/icons/ui/unlock@72.png') 3x); }

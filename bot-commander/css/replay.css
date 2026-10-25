@@ -1,0 +1,52 @@
+/* 記録と再生（js/replay/replay-view.js, js/sim/replay.js）。すべて .bc-root の中だけに効かせる。スマホの縦画面（390×844）で、ボタンは高さ 44px 以上 */
+
+/* ☰ メニューの「記録を書き出す」「記録を読み込む」（横に2つ） */
+.bc-root .bc-menu-rec { display: flex; gap: 8px; }
+.bc-root .bc-menu-rec button { flex: 1; min-width: 0; height: 44px; padding: 0 4px; font-size: 13px; line-height: 16px; font-weight: 700; }
+
+/* 結果の画面の「この記録を書き出す」（2行目） */
+.bc-root .bc-result-rec-row { margin-top: 8px; }
+.bc-root .bc-result-rec-row button { height: 44px; font-size: 13px; }
+
+/* 再生中は、命令のバーと選択の説明を出さない（見るだけ） */
+.bc-root.replaying .bc-act { display: none; }
+.bc-root.replaying .bc-groups { visibility: hidden; }
+
+/* 再生中の目印と進み具合（下の命令バーのあった場所） */
+.bcr-bar { position: absolute; left: 8px; right: 8px; bottom: calc(env(safe-area-inset-bottom) + 58px); display: flex; align-items: center; gap: 8px; padding: 6px 10px; border: 2px solid var(--bc-ink); border-radius: 12px; background: #0b111bdd; pointer-events: none; }
+.bcr-bar b { flex: none; font-size: 13px; color: var(--bc-cyan); }
+.bcr-bar span { flex: none; font-size: 12px; font-variant-numeric: tabular-nums; }
+.bcr-track { flex: 1; height: 8px; border-radius: 4px; background: #263246; overflow: hidden; }
+.bcr-track i { display: block; height: 100%; width: 0; background: var(--bc-cyan); }
+
+/* 書き出し・読み込み・再生の結果の枠（全部この形） */
+.bcr-sheet { position: absolute; inset: 0; z-index: 24; display: grid; place-items: center; background: #000b; touch-action: none; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+.bcr-box { width: min(92%, 340px); max-height: 92%; display: flex; flex-direction: column; gap: 10px; padding: 14px; border: 3px solid var(--bc-ink); border-radius: 16px; background: #141a24; box-shadow: 0 6px 0 #000a; touch-action: auto; }
+.bcr-title { margin: 0; font-size: 18px; line-height: 24px; text-align: center; }
+.bcr-title.ok { color: #7df9a0; }
+.bcr-title.ng { color: #ffb4b4; }
+.bcr-text { margin: 0; font-size: 13px; line-height: 19px; opacity: .92; }
+.bcr-text.err { color: #ffb4b4; opacity: 1; font-weight: 700; }
+.bcr-note { margin: 0; font-size: 12px; line-height: 17px; color: #ffd38a; }
+.bc-root .bcr-area { width: 100%; height: 110px; resize: none; padding: 8px; border: 2px solid #263246; border-radius: 10px; background: #0b111b; color: #e5e7eb; font: 12px/16px ui-monospace, Menlo, monospace; -webkit-user-select: text; user-select: text; touch-action: auto; }
+.bcr-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+.bc-root .bcr-btns button { flex: 1 1 40%; min-width: 0; height: 46px; padding: 0 6px; font-size: 14px; line-height: 18px; font-weight: 700; }
+.bc-root .bcr-btns button.main { background: #1d6b4a; border-color: #34d399; color: #fff; }
+.bc-root .bcr-btns button.wide { flex-basis: 100%; }
+.bc-root .bcr-btns button:disabled { opacity: .45; }
+.bcr-file { display: none; }
+
+/* 再生の結果: この端末のハッシュの一覧（長ければ中でスクロール） */
+.bcr-list { margin: 0; padding: 4px 8px; max-height: 190px; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; border: 2px solid #263246; border-radius: 10px; background: #0b111b; font: 12px/20px ui-monospace, Menlo, monospace; font-variant-numeric: tabular-nums; list-style: none; touch-action: pan-y; }
+.bcr-list li { display: flex; gap: 8px; white-space: nowrap; }
+.bcr-list li b { flex: none; width: 40px; text-align: right; font-weight: 700; }
+.bcr-list li s { text-decoration: none; margin-left: auto; }
+.bcr-list li.ok s { color: #7df9a0; }
+.bcr-list li.ng { color: #ffb4b4; }
+.bcr-list li.ng s { color: #ffb4b4; font-weight: 800; }
+.bcr-list li.dim { opacity: .55; }
+
+/* v1.0.0 Codex gfx3 I_UI_ICONS: 今あるボタン・見出しの文字の前に小さなアイコン（assets/icons/ui/<名前>@24・@48・@72.png を画面の倍率で選ぶ）。新しいボタンは作らない。文字を書きかえても消えないよう ::before で出す */
+.bc-root .bc-menu-recsave::before { content: ''; display: inline-block; flex: none; width: 20px; height: 20px; margin-right: 4px; vertical-align: -5px; pointer-events: none; background: url('../assets/icons/ui/rec@24.png') center / contain no-repeat; background-image: -webkit-image-set(url('../assets/icons/ui/rec@24.png') 1x, url('../assets/icons/ui/rec@48.png') 2x, url('../assets/icons/ui/rec@72.png') 3x); background-image: image-set(url('../assets/icons/ui/rec@24.png') 1x, url('../assets/icons/ui/rec@48.png') 2x, url('../assets/icons/ui/rec@72.png') 3x); }
+.bc-root .bc-menu-recload::before { content: ''; display: inline-block; flex: none; width: 20px; height: 20px; margin-right: 4px; vertical-align: -5px; pointer-events: none; background: url('../assets/icons/ui/play@24.png') center / contain no-repeat; background-image: -webkit-image-set(url('../assets/icons/ui/play@24.png') 1x, url('../assets/icons/ui/play@48.png') 2x, url('../assets/icons/ui/play@72.png') 3x); background-image: image-set(url('../assets/icons/ui/play@24.png') 1x, url('../assets/icons/ui/play@48.png') 2x, url('../assets/icons/ui/play@72.png') 3x); }
+.bc-root .bcr-go::before { content: ''; display: inline-block; flex: none; width: 20px; height: 20px; margin-right: 4px; vertical-align: -5px; pointer-events: none; background: url('../assets/icons/ui/play@24.png') center / contain no-repeat; background-image: -webkit-image-set(url('../assets/icons/ui/play@24.png') 1x, url('../assets/icons/ui/play@48.png') 2x, url('../assets/icons/ui/play@72.png') 3x); background-image: image-set(url('../assets/icons/ui/play@24.png') 1x, url('../assets/icons/ui/play@48.png') 2x, url('../assets/icons/ui/play@72.png') 3x); }

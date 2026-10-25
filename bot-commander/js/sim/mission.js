@@ -54,9 +54,10 @@ export const MISSION_1 = Object.freeze({
   nest: { tx: 4, ty: 22 },
   // ロボット12機（上限ちょうど）＋人間2人（別枠。上限3）。tx,ty の近くに1マスずつ散らして置く
   ally: [
-    { kind: 'scav', tx: 20, ty: 53, count: 4 },
-    { kind: 'ponco', tx: 15, ty: 55, count: 4 },
-    { kind: 'ponco', tx: 25, ty: 55, count: 4 },
+    // cls: 兵種（機体ごと。配列なら1機ずつ）。v0.4.4 で決めた: PONCO 8機＝ガンナー6・リペアラー1・サポーター1、ツギハギ号4機＝スカベンジャー
+    { kind: 'scav', tx: 20, ty: 53, count: 4, cls: 'scavenger' },
+    { kind: 'ponco', tx: 15, ty: 55, count: 4, cls: ['gunner', 'gunner', 'gunner', 'repairer'] },
+    { kind: 'ponco', tx: 25, ty: 55, count: 4, cls: ['gunner', 'gunner', 'gunner', 'supporter'] },
     { kind: 'boy', tx: 18, ty: 58 },
     { kind: 'girl', tx: 22, ty: 58 },
   ],

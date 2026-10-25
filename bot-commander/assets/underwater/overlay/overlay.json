@@ -1,0 +1,7 @@
+{
+  "file": "underwater-caustics.webp",
+  "blend": "screen",
+  "opacity": 0.5,
+  "tint": "#0b2a44",
+  "note": "提案。地図全体に濃い青のtint、その上に模様をscreenで重ねる案。ゲームの担当が採否と重ね方を決める。"
+}

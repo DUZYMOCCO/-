@@ -1,0 +1,230 @@
+{
+ "js/armory/armory-view.js": {
+  "v": 5,
+  "sha1": "9067da331924fbeee80e13e6d14a2e4b27c88c12"
+ },
+ "js/armory/loadout.js": {
+  "v": 4,
+  "sha1": "d60ea6824636bf60593f87edadd73946173f022e"
+ },
+ "js/dialog/dialog-all.js": {
+  "v": 2,
+  "sha1": "24358e374721f1f7e4fced5f5f64772ebcc9686a"
+ },
+ "js/dialog/dialog-bg.js": {
+  "v": 2,
+  "sha1": "0d8463eaa0fbd7fc3ae2e3a450f455629b918613"
+ },
+ "js/dialog/dialog-demo.js": {
+  "v": 5,
+  "sha1": "9466df1fc7ebd728de8658c8383210473dab232c"
+ },
+ "js/dialog/dialog-script.js": {
+  "v": 3,
+  "sha1": "2e30973f9284b824677b6e310be093cfc4dbb296"
+ },
+ "js/dialog/dialog-view.js": {
+  "v": 3,
+  "sha1": "2598696eb9b15e11bcbed38ec21f47e9c52f8c54"
+ },
+ "js/dialog/portrait-layout.js": {
+  "v": 1,
+  "sha1": "052f4464bfecb57e500f1373ec7d1885db33b563"
+ },
+ "js/fx/fx.js": {
+  "v": 2,
+  "sha1": "1a92d4b7032be869538005b2c6b214e2df0ba948"
+ },
+ "js/fx/react.js": {
+  "v": 2,
+  "sha1": "f6623c75b8e358efd963df8c874e9111a877b7e6"
+ },
+ "js/render/art.js": {
+  "v": 12,
+  "sha1": "f12981845001548bef67dd94f1c7620f719e2669"
+ },
+ "js/render/char-anim.js": {
+  "v": 8,
+  "sha1": "d582e19a52f1b2a71a19759aeb18955710db004f"
+ },
+ "js/render/char-demo.js": {
+  "v": 6,
+  "sha1": "dc53a423fdaef0e34e59e9c4abd5ebea28997e39"
+ },
+ "js/render/class-icons.js": {
+  "v": 5,
+  "sha1": "188c763a7e323c10004d68833302176b50251fae"
+ },
+ "js/render/cover-view.js": {
+  "v": 7,
+  "sha1": "01e5bcaa54a5b12863a16cffce7a6825ab1eae2e"
+ },
+ "js/render/fx-events.js": {
+  "v": 9,
+  "sha1": "982615036cf79690c5b9d59b360318bffe9833f4"
+ },
+ "js/render/ground-edges.js": {
+  "v": 2,
+  "sha1": "efe420c0167c91f4b1b14b641bf81e4093ac2022"
+ },
+ "js/render/ground-field.js": {
+  "v": 2,
+  "sha1": "f7c1a818db722b79a00c0c3b97fcbc981c516107"
+ },
+ "js/render/input.js": {
+  "v": 15,
+  "sha1": "47627aa23b6f69f47ac5265b29efbcada972b1c1"
+ },
+ "js/render/piece-cache.js": {
+  "v": 1,
+  "sha1": "d4db713f0a2b33a51ce0fab0399beed7370f9ad2"
+ },
+ "js/render/raster-art.js": {
+  "v": 11,
+  "sha1": "a838e3519192ae93bbe145f21cd06a0ccaed2b99"
+ },
+ "js/render/renderer.js": {
+  "v": 34,
+  "sha1": "a249e37e52e545f78b63f0df3a5b66269b308b56"
+ },
+ "js/render/ride-view.js": {
+  "v": 3,
+  "sha1": "61af8095f4af11edbb67b38a59a1df9887c6524a"
+ },
+ "js/render/textures.js": {
+  "v": 11,
+  "sha1": "45c9978abcfddf8edfb692363cde18ed33311d46"
+ },
+ "js/replay/replay-view.js": {
+  "v": 3,
+  "sha1": "22a7930cae4784db7e311f5030bb6ff59ab8def5"
+ },
+ "js/save/records-view.js": {
+  "v": 3,
+  "sha1": "7a763fa9fab32a8359189907cf0f630336f9b733"
+ },
+ "js/save/save.js": {
+  "v": 3,
+  "sha1": "d0664a9ec76a6c512965130e06a5dbeed17f624b"
+ },
+ "js/sim/alt-units-demo.js": {
+  "v": 3,
+  "sha1": "126feaab2b839182fe1c6183b3b139548e09e36f"
+ },
+ "js/sim/alt-units.js": {
+  "v": 3,
+  "sha1": "8c7c3b08db75a58d098600c1b39c706c817ac36f"
+ },
+ "js/sim/altitude-demo.js": {
+  "v": 2,
+  "sha1": "09bee5d90758ec0573fb9d298ab7dadc69c9449c"
+ },
+ "js/sim/altitude.js": {
+  "v": 1,
+  "sha1": "992f67885a9c17575762e5e474472ee72a5a4bf9"
+ },
+ "js/sim/cover.js": {
+  "v": 6,
+  "sha1": "186f993f2a88423767ee01092dcbf8667adbd7bb"
+ },
+ "js/sim/fog.js": {
+  "v": 5,
+  "sha1": "bb38569d9f8cbfd0325f697121b30142c9bf8290"
+ },
+ "js/sim/fuel.js": {
+  "v": 1,
+  "sha1": "e2e515c9ea03b21cc16ce1a36c91eb9b77dd6d3b"
+ },
+ "js/sim/loadout-effects.js": {
+  "v": 3,
+  "sha1": "5fd8e5649d35f5c987453cd098b70f16d9abf1cc"
+ },
+ "js/sim/map.js": {
+  "v": 6,
+  "sha1": "aca487f91f6057832ea27169fd3c6ad3c9d2f624"
+ },
+ "js/sim/mission.js": {
+  "v": 10,
+  "sha1": "d5ff7e9022c338a4ff94a67c1e2020eee8b1eeea"
+ },
+ "js/sim/path.js": {
+  "v": 6,
+  "sha1": "2a035368ff3738c8ef7c9b521486eb9f5a589ddd"
+ },
+ "js/sim/replay.js": {
+  "v": 3,
+  "sha1": "2bba4a1b673e35bdae35fbb0f8a2e410128433d8"
+ },
+ "js/sim/ride-demo.js": {
+  "v": 3,
+  "sha1": "fe6f3f985f3c414f2bfeaa7897f704130ab5e889"
+ },
+ "js/sim/ride.js": {
+  "v": 2,
+  "sha1": "a2fcd952443fd27f8ee062c896ef604d8d789556"
+ },
+ "js/sim/rng.js": {
+  "v": 5,
+  "sha1": "882e187eba827343192dc403fbe41eb861086089"
+ },
+ "js/sim/select.js": {
+  "v": 10,
+  "sha1": "eb56ebc69d2c9c950d1061b8f3aa03b38edaa6c5"
+ },
+ "js/sim/shield-table.js": {
+  "v": 2,
+  "sha1": "2dd5edfc2e941934f871cd7463f54b845c53e7d6"
+ },
+ "js/sim/sim.js": {
+  "v": 23,
+  "sha1": "8f7f118a951564dc8413ef04a26f89161e48ae9c"
+ },
+ "js/sim/stroke.js": {
+  "v": null,
+  "sha1": "2f72ecce16bd09985e8914486ffd6b704cad2559"
+ },
+ "js/sim/targeting.js": {
+  "v": 2,
+  "sha1": "007218c16d0c25e4ec78dbb85295f3d739340483"
+ },
+ "js/sim/weapons.js": {
+  "v": 5,
+  "sha1": "4050e5b5b850f7af46e72375c9535a66ab52821d"
+ },
+ "js/story/story-1.js": {
+  "v": 1,
+  "sha1": "c64a1d0a7945fd1d40b87842699b5b47c9e4995d"
+ },
+ "js/story/story-mission.js": {
+  "v": 2,
+  "sha1": "21c00e55b541da90bff463e8a4c57c467b25bd47"
+ },
+ "js/tutorial/tutorial-flow.js": {
+  "v": 2,
+  "sha1": "87959791a628f7e66b9e1d70403742148f1bd5bd"
+ },
+ "js/tutorial/tutorial-steps.js": {
+  "v": 3,
+  "sha1": "992e31773e3661a665c06571c73ccac01197abba"
+ },
+ "js/tutorial/tutorial.js": {
+  "v": 3,
+  "sha1": "8b96bdb9ffa4e0c0e739009ed6ab3850b579505d"
+ },
+ "js/ui/back-confirm.js": {
+  "v": 1,
+  "sha1": "579bf6b2c46a3c471d720cf028c18731d5612b57"
+ },
+ "js/ui/ride-panel.js": {
+  "v": 3,
+  "sha1": "d42aa93d9d6d1e42c6ca568bf9d6267339d9c8c7"
+ },
+ "js/ui/speed.js": {
+  "v": 1,
+  "sha1": "d4ca3f6814a8d61c274d3b8c5d77a130a700b1bd"
+ },
+ "js/ui/toast-merge.js": {
+  "v": 1,
+  "sha1": "3b892da0cf64f06ea22f2c0b405d99aba548263f"
+ }
+}

@@ -37,7 +37,7 @@
    "facing": "right"
   },
   "hurt": {
-   "frames": 3,
+   "frames": 6,
    "sizes": {
     "s30": {
      "file": "hurt_s30.png",
@@ -65,7 +65,10 @@
    "sequence": [
     0,
     1,
-    2
+    2,
+    3,
+    4,
+    5
    ],
    "then": "idle",
    "mirror_for_left": true,

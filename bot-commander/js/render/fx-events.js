@@ -1,7 +1,8 @@
 // fx-events.js — sim の出来事（shot / boom）を演出 fx.js に渡す。どの演出・ゆれ・止めを出すかはここで決める。
 // Pixi・DOM を使わない（tests/fx.test.mjs から直接呼ぶ）。
-import { weaponInfo, weaponInfoById } from '../sim/sim.js?v=13';
+import { weaponInfo, weaponInfoById } from '../sim/sim.js?v=23';
 // v0.4.0-dev（10/24）: 拾った武器を持っている機体の弾は、その武器の演出（shot の weapon）
+// v0.4.4: シールドが受けた弾（shot の shield）は青いバリアの光（surface 'barrier'）
 // v0.4.0-dev: 遮蔽物に止められた弾（shot の cover）は遮蔽物に当たる演出、壊れた（coverBreak）は破片とけむり
 
 export const FX_MAX = { normal: 1200, low: 600 }; // 演出の粒の上限
@@ -27,6 +28,10 @@ export function spawnFxEvents(fx, sim, seen, view) {
       const gate = { shake: near, stop: ally && near >= 0.5 && wi.w >= FX_STOP_W };
       const face = f.x2 >= f.x1 ? 1 : -1;
       const x0 = f.x1 + face * spx * 0.3, y0 = sFoot - spx * 0.5, x1 = f.x2, y1 = tFoot - tpx * 0.45;
+      if (f.shield) { // 盾が受けた: いつもの着弾の代わりに、相手の手前に小さな青いバリアの光（体は隠さない）
+        fx.hit('barrier', x1 - face * tpx * 0.3, y1, { w: Math.min(0.3, wi.w), surface: 'barrier', medium: 'land', gy: tFoot, gate: { shake: near * 0.4, stop: false } });
+        continue;
+      }
       if (f.toKind === 'boy' || f.toKind === 'girl') { fx.hit('human', x1, y1, { w: wi.w, gate, dir: Math.atan2(y1 - y0, x1 - x0) }); continue; }
       fx.fromWeapon(wi.row, x0, y0, x1, y1, { surface: f.cover != null ? 'armor' : f.toKind === 'alien' ? 'flesh' : 'armor', medium: 'land', s: 1, gy: tFoot, gate });
     } else if (f.type === 'coverBreak') {
