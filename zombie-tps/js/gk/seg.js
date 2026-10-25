@@ -30,6 +30,8 @@ export function segOfRoom(segs, room) {
 }
 // チェックポイント（へや）から さいかい: その セグメントから よむ
 export const segResume = (segs, room) => segOfRoom(segs, room).seg;
+// セグメントが もつ てんの リスト（ずらして ステージの へや ばんごうに する）: でてくる ドア（ステージ18）・ガスの あな（ステージ15）
+export const SEG_POINTS = ['spawnDoors', 'vents'];
 // ローカルの ドア → ステージの ドア ばんごう（ドア g は へや g と g+1 の あいだ）
 export const segDoorIndex = (r0, n, d) => (d === 'in' ? r0 - 1 : d === 'out' ? r0 + n - 1 : r0 + d);
 // つぎの セグメントを おく ずれ（まえの でぐち＝つぎの いりぐち）
@@ -87,10 +89,13 @@ export function placeSeg(built, { idx, r0, ox = 0, oz = 0 }) {
     const ax = t.axis === 'x', a = ax ? ox : oz, c = ax ? oz : ox;
     return { ...t, room: r0 + t.room, at: t.at + c, from: t.from + a, to: t.to + a };
   });
+  // てんの リスト（でてくる ドア・ガスの あな）: { x, z, room, … }
+  const pts = {};
+  for (const k of SEG_POINTS) if (sg[k]) pts[k] = sg[k].map((o) => ({ ...o, x: o.x + ox, z: o.z + oz, room: r0 + o.room }));
   const ps = built.playerStart;
   return {
     idx, r0, n, ox, oz, boxes: built.boxes, lamps: built.lamps, perches: built.perches || [], ladders: built.ladders || [],
-    rooms, doors: sg.doors.map((d, k) => door(d, k)), entry: door(sg.entry, 'in'), exit: door(sg.exit, 'out'), trains,
+    rooms, doors: sg.doors.map((d, k) => door(d, k)), entry: door(sg.entry, 'in'), exit: door(sg.exit, 'out'), trains, pts,
     bounds: segBounds(built.boxes, rooms), theme: built.theme, backdrop: built.backdrop,
     playerStart: ps ? { ...ps, x: ps.x + ox, z: ps.z + oz } : null, doorW: sg.doorW, doorH: sg.doorH, vertical: !!built.vertical,
   };
@@ -122,11 +127,12 @@ export function segRegion(list, pad = SEG.pad) {
 export function joinSegs(list) {
   list = [...list].sort((a, b) => a.idx - b.idx);
   const has = new Set(list.map((p) => p.idx));
-  const boxes = [], lamps = [], perches = [], ladders = [], spawns = [], rooms = [], doors = [], trains = [];
+  const boxes = [], lamps = [], perches = [], ladders = [], spawns = [], rooms = [], doors = [], trains = [], pts = {};
   for (const p of list) {
     const prev = has.has(p.idx - 1);
     for (const b of p.boxes) if (!(prev && b.edge === 'in')) boxes.push(b);
     lamps.push(...p.lamps); perches.push(...p.perches); ladders.push(...p.ladders); trains.push(...(p.trains || []));
+    for (const k in p.pts || {}) (pts[k] || (pts[k] = [])).push(...p.pts[k]);
     p.rooms.forEach((r, k) => { rooms[p.r0 + k] = r; spawns.push(...r.spawns); });
     for (const d of p.doors) doors[d.g] = d;
     if (p.exit) doors[p.exit.g] = p.exit;
@@ -138,7 +144,7 @@ export function joinSegs(list) {
   return {
     boxes, spawns, lamps, perches, ladders, vehicles: [], half: Math.ceil(m), theme: f.theme, backdrop: f.backdrop,
     playerStart: f.playerStart || { x: 0, z: 0, yaw: 0 }, vertical: list.some((p) => p.vertical),
-    gk: { rooms, doors, trains, doorW: f.doorW, doorH: f.doorH, segs: list.map((p) => p.idx) },
+    gk: { rooms, doors, trains, ...pts, doorW: f.doorW, doorH: f.doorH, segs: list.map((p) => p.idx) },
   };
 }
 // ぜんぶの セグメントを いっぺんに おく（テスト・ふるい よみかた よう）。builts[i] = build(builder) の けっか

@@ -38,6 +38,9 @@ export const GK_READY = {
   3: { map: 'gk_city', tod: 'night', gim: ['rain'], segs: [{ mod: 'city_a', rooms: 2 }, { mod: 'city_b', rooms: 2 }] },
   4: { map: 'gk_subway', tod: 'night', gim: ['train'], segs: [{ mod: 'subway_a', rooms: 2 }, { mod: 'subway_b', rooms: 2 }] },
   5: { map: 'gk_tower', tod: 'sunset', segs: [{ mod: 'tower_a', rooms: 2 }, { mod: 'tower_b', rooms: 2 }, { mod: 'tower_c', rooms: 1 }] },
+  15: { map: 'gk_core', tod: 'night', gim: ['vents'], segs: [{ mod: 'core_a', rooms: 2 }, { mod: 'core_b', rooms: 2 }, { mod: 'core_c', rooms: 1 }] },
+  17: { map: 'gk_dawn', tod: 'night', gim: ['dawn'], segs: [{ mod: 'dawn_a', rooms: 2 }, { mod: 'dawn_b', rooms: 2 }] },
+  18: { map: 'gk_doors', tod: 'night', gim: ['doors'], segs: [{ mod: 'doors_a', rooms: 2 }, { mod: 'doors_b', rooms: 2 }, { mod: 'doors_c', rooms: 1 }] },
 };
 export const isGkReady = (no) => !!GK_READY[no];
 // つぎの あそべる ステージ（なければ null）
@@ -49,22 +52,27 @@ export function gkNext(no) {
 // 2D の てき → 3D の ゾンビ（うごき）＋ みため。'walker@lab' = ふつうの うごき・しろい はくい
 export const GK_ENEMY = {
   zombie: 'walker', labz: 'walker@lab', patient: 'walker@lab', grunt: 'walker', sailor: 'walker', frozen: 'walker',
-  ghoul: 'walker', nomad: 'walker', suit: 'walker',
+  ghoul: 'walker', nomad: 'walker', suit: 'walker@suit',
   guard: 'guard', worker: 'guard',
   crawler: 'crawler', ghoulet: 'crawler', scorp: 'crawler',
-  gunner: 'spitter', sniper: 'spitter', spitter: 'spitter', suitp: 'spitter',
+  gunner: 'spitter', sniper: 'spitter', spitter: 'spitter', suitp: 'spitter@suit',
   hulk: 'brute', brute: 'brute', bigghoul: 'brute', rockz: 'brute', heavy: 'brute',
   bloatz: 'bloater', bloater: 'bloater',
   shield: 'riot', knight: 'riot',
-  raider: 'runner', swarm: 'runner', hound: 'runner', suitk: 'runner', wraith: 'runner',
-  soldierz: 'soldier', outlaw: 'soldier', suitsg: 'soldier',
+  raider: 'runner', swarm: 'runner', hound: 'runner', suitk: 'runner@suit', wraith: 'runner',
+  soldierz: 'soldier', outlaw: 'soldier', suitsg: 'soldier@suit',
   leaper: 'mutant',
   sergeant: 'charger', patch: 'charger',
 };
 export const gkKind = (id) => GK_ENEMY[id] || 'walker';
 export const baseKind = (k) => k.split('@')[0];
 // ボスの みため（できた もの だけ。ほかは いつもの ボス）
-export const GK_BOSS_LOOK = { agent: 'agent' };
+// v0.17.0: ボスごとの わざ（js/gk/bosses/<id>.js）が ある ボス。みためは BOSS.look を とうろく
+export const GK_BOSS_AI = ['agent', 'hydra', 'giant', 'mutant', 'king', 'surgeon', 'tank', 'beast', 'welder', 'wreck', 'kraken', 'yeti', 'queen', 'heli', 'final', 'ghoulking', 'sunscorp', 'doorboss'];
+export const GK_BOSS_LOOK = Object.fromEntries(GK_BOSS_AI.map((id) => [id, id]));
+export const gkLoadBoss = (id) => (GK_BOSS_AI.includes(id)
+  ? Promise.all([import(`./bosses/${id}.js?v=18`), import('./bosses/rt.js?v=18')]).then(([m, rt]) => ({ def: m.BOSS, rt })).catch((e) => { console.warn(e); return null; })
+  : Promise.resolve(null));
 const HEAVY = new Set(['brute', 'bloater', 'riot', 'charger', 'mutant']);
 
 // 1つの アリーナ（2D の ちいさい なみ いくつか）→ 3D の 1ウェーブ
@@ -164,3 +172,37 @@ export function trainHit(st, L, x, z, r = 0.35) {
 }
 // おされる むき（せんろの よこ・ちかい がわへ）
 export const trainSide = (L, x, z) => (((L.axis === 'x' ? z : x) - L.at) >= 0 ? 1 : -1);
+
+// よあけ（ステージ17）: すすんだ ぶん t（0〜1）で よる → あさやけ → あさ。0.25びょう ごと・1% いじょう かわった ときだけ ぬりなおす
+export const DAWN = { every: 0.25, min: 0.01 };
+export const dawnTod = (t) => (t < 0.5 ? { a: 'night', b: 'sunset', k: Math.max(0, t) * 2 } : { a: 'sunset', b: 'day', k: Math.min(1, (t - 0.5) * 2) });
+export const dawnNeed = (last, t) => last == null || Math.abs(t - last) >= DAWN.min;
+// すすみぐあい: へや i の いりぐち → でぐち の あいだの どこか（ドアの まんなかを むすぶ せん）。いりぐちが ない へやは start から
+export function gkProgress(gm, x, z, start, n) {
+  const i = gkRoomAt(gm.rooms, x, z); if (i < 0) return null;
+  const r = gm.rooms[i], c = [(r.b[0] + r.b[2]) / 2, (r.b[1] + r.b[3]) / 2];
+  const a = i > 0 && gm.doors[i - 1] ? [gm.doors[i - 1].x, gm.doors[i - 1].z] : start ? [start.x, start.z] : c;
+  const b = gm.doors[i] ? [gm.doors[i].x, gm.doors[i].z] : c;
+  const vx = b[0] - a[0], vz = b[1] - a[1], L = vx * vx + vz * vz;
+  const f = L < 1e-6 ? 1 : Math.max(0, Math.min(1, ((x - a[0]) * vx + (z - a[1]) * vz) / L));
+  return Math.min(1, (i + f) / n);
+}
+// ガスの あな（ステージ15）: まつ → ひかる（よこく）→ ふきだす（なかに いると すこし いたい・ゾンビにも）
+export const VENT = { period: 7, warn: 1.2, puff: 2.2, dps: 6, zDps: 25, r: 1.8 };
+export function ventPhase(t, off = 0) {
+  const u = (((t + off) % VENT.period) + VENT.period) % VENT.period, w0 = VENT.period - VENT.warn - VENT.puff;
+  return u < w0 ? 'idle' : u < w0 + VENT.warn ? 'warn' : 'puff';
+}
+// でてくる ドア（ステージ18）: ランプが あかく ちかちか（よこく）→ ドアが あく → 1〜2たい でる → しまる。いちどに あくのは 3つ まで
+export const DOORS = { warn: 0.9, open: 0.35, hold: 0.7, close: 0.4, maxOpen: 3, per: 2, near: 6 };
+export const doorFront = (d, k = 1.2) => ({ x: d.x - Math.sin(d.yaw) * k, z: d.z - Math.cos(d.yaw) * k });
+export const doorsBusy = (list) => list.filter((o) => o.st !== 'idle').length;
+// あいて いる ドアから 1つ（プレイヤーから はなれた ところ）。いっぱい なら null
+export function doorPick(list, room, px, pz, r = Math.random) {
+  if (doorsBusy(list) >= DOORS.maxOpen) return null;
+  const free = list.filter((o) => o.st === 'idle' && o.d.room === room);
+  if (!free.length) return null;
+  const far = free.filter((o) => { const f = doorFront(o.d); return Math.hypot(f.x - px, f.z - pz) >= DOORS.near; });
+  const L = far.length ? far : free;
+  return L[Math.min(L.length - 1, Math.floor(r() * L.length))];
+}

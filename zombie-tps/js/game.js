@@ -336,6 +336,13 @@ export class Game {
     this.setSpot(p.night > 0.5);
   }
 
+  // v0.17.0: 2つの じかんの あいだ（k = 0〜1）。ガンキック ステージ17 の よあけ（すすむと あかるく なる）
+  applyTodLerp(a, b, k) {
+    const p = blendTod(TOD[a] || TOD.night, TOD[b] || TOD.day, Math.max(0, Math.min(1, k)));
+    this.applyTod(p, true);
+    this.tod = k < 0.5 ? a : b; this.todFade = null;
+  }
+
   // かいちゅうでんとう（よるは じどうで オン。せっていで けせる）
   setSpot(on) {
     const want = on && this.settings.flashlight !== false;
@@ -425,6 +432,7 @@ export class Game {
       zz.hp = zz.maxHp = this.gk ? this.gkBossHp() : bossHp(this.wave || 3);
       this.boss = zz;
       this.hud.bossBar?.({ name: this.bossName(), hp: 1 });
+      if (this.gk && this.gkBossRt) this.gkBossRt.attach(zz); // v0.17.0: ボスごとの わざ
     }
     model.root.position.set(x, y, z);
     this.zombies.push(zz);
@@ -662,7 +670,7 @@ export class Game {
       text: o.state === 'help' ? 'たすけて！' : o.state === 'thanks' ? 'ありがとう！' : 'ひえ〜っ！' });
   }
 
-  remaining() { let n = this.queue.length; for (const z of this.zombies) if (z.alive) n++; return n; }
+  remaining() { let n = this.queue.length + (this.gkPending || 0); for (const z of this.zombies) if (z.alive) n++; return n; }
   // v0.12.0: いちどに でる かず（おもい ときは がしつ ちょうせいで すこし へる）
   aliveCap() { return this.spec ? this.gov.capFor(this.spec.maxAlive) : 6; }
   zDmg(def) { const k = this.spec && this.spec.dmgMul || 1; return k >= 1 ? def.dmg : Math.max(1, Math.round(def.dmg * k)); }
@@ -708,6 +716,7 @@ export class Game {
       const reachA = ATTACK_RANGE * (z.kind === 'boss' ? 1.45 : z.kind === 'brute' ? 1.1 : 1);
       const big = z.kind === 'brute' || z.kind === 'boss';
       z.slamCd -= dt; z.chargeCd -= dt; z.reach = false; z.spCd -= dt; if (z.buffT > 0) z.buffT -= dt;
+      if (z.ai) z.ai.pre(this, z, dt); // v0.17.0: ガンキックの ボス（js/gk/bosses）
       if (z.smokeT > 0) z.smokeT -= dt; // v0.15.0: けむり
       // おじさんを おそう（プレイヤーが ちかく まで きたら プレイヤーへ）
       const oj = z.ojiT && this.oji && this.oji.state === 'help' ? this.oji : null;
@@ -719,7 +728,10 @@ export class Game {
       let rbx = 0, rbz = 0, rbd = Infinity;
       if (rb) { rbx = rb.x - z.x; rbz = rb.z - z.z; rbd = Math.hypot(rbx, rbz); }
       const goBot = !goOji && rb && !z.slam && !z.charge && !z.leap && !(z.fuse > 0) && !(z.scream > 0) && zombieTargetsRobot(dist, rbd, rb.y - z.y);
-      if (goBot) {
+      const aiA = z.ai && !z.demo && this.state === 'play' ? z.ai.act(this, z, dt, dist, dx, dz, pdy) : false; // v0.17.0: ボスの わざ（よこく → こうげき）
+      if (aiA) {
+        moving = aiA === 'move';
+      } else if (goBot) {
         if (z.stagger > 0) z.stagger -= dt;
         else if (rbd < reachA * 0.95) {
           z.state = 'attack'; z.atkT -= dt; z.yaw = Math.atan2(-rbx, -rbz);
@@ -1510,6 +1522,7 @@ export class Game {
     // v0.6.0: たて（まえから）・ベスト・しょうぼうしの ふく
     const mul = damageMul(z.kind, { head, blast: !!opt.blast, front: !opt.blast && !opt.noShield && !opt.quiet && frontHit(z.yaw, dir.x, dir.z) }); // v0.13.0: ハンマーは たても わる
     dmg *= mul;
+    if (z.ai && z.ai.hitMul) dmg *= z.ai.hitMul(z, dir, opt); // v0.17.0: ボスの よわい ところ（せんしゃの うしろ など）
     if (mul < 0.5 && !opt.blast && !opt.quiet) { // カン！ ひばな
       this.fx.burst(pos, 4, { color: 0xffe080, color2: 0xffffff, speed: 3.5, up: 1.5, size: 0.05, life: 0.25, gravity: 8 });
       this.sfx.clink?.(0.5);
@@ -1526,7 +1539,7 @@ export class Game {
     if (!z.slam && !z.charge && !opt.quiet) z.stagger = Math.max(z.stagger, opt.blast ? 0.7 : head ? 0.28 : 0.12 + kn * 0.03) * Math.min(1, heavyOf(z.kind) * 1.25);
     // ばくはつは みどりの しみ なし（ブロックに くだける）
     if (!opt.blast && !opt.fire && !opt.quiet && Math.random() < 0.7) this.fx.splat(this.tmp.c.set(z.x + dir.x * 0.6 + (Math.random() - 0.5) * 0.7, z.y + 0.02, z.z + dir.z * 0.6 + (Math.random() - 0.5) * 0.7), undefined, 0.9 + Math.random() * 0.4);
-    if (this.boss === z) this.hud.bossBar?.({ name: this.bossName(), hp: Math.max(0, z.hp / z.maxHp) });
+    if (this.boss === z) this.hud.bossBar?.({ name: this.bossName(), hp: Math.max(0, z.hp / z.maxHp), color: z.barColor });
     if (z.hp <= 0) {
       z.alive = false; z.deadT = 0; z.poofed = false;
       z.climb = null; z.slam = null; z.charge = null; z.chargeWind = false; z.leap = null; z.scream = 0;

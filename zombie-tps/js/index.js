@@ -14,7 +14,7 @@ import { WEAPONS, WEAPON_ORDER, normalizeSave, SENS, VERSION, OUTFITS, outfitNam
   LOADOUT_SIZE, normalizeLoadout, toggleLoadout, loadoutReady, unlockedWeapons, upgradeRows, GAUGE_LABEL } from './rules.js?v=18';
 import { MAPS, mapInfo, registerMap, hasMap } from './map.js?v=18';
 import { recordGkClear } from './rules.js?v=18';
-import { GK_CATALOG, GK_WORLDS, GK_READY, isGkReady, gkMeta, gkNext, gkLoadStage, gkLoadMap, gkLoadSegs, gkLoadGims, gkWaves, gkClearBonus } from './gk/core.js?v=18';
+import { GK_CATALOG, GK_WORLDS, GK_READY, isGkReady, gkMeta, gkNext, gkLoadStage, gkLoadMap, gkLoadSegs, gkLoadGims, gkLoadBoss, gkWaves, gkClearBonus } from './gk/core.js?v=18';
 import { segResume } from './gk/seg.js?v=18';
 
 const hex6 = (n) => '#' + n.toString(16).padStart(6, '0');
@@ -776,6 +776,7 @@ export default {
       // v0.17.0: セグメントの ステージは チェックポイントの セグメント だけ よむ（つぎは すすむと よむ）
       const s0 = info.segs ? segResume(info.segs, from) : 0;
       const [stage, mod, gims] = await Promise.all([gkLoadStage(no), info.segs ? gkLoadSegs(info, [s0]) : gkLoadMap(no), gkLoadGims(info)]);
+      const boss = await gkLoadBoss(stage.boss.id); // v0.17.0: ボスの わざ（なくても いつもの ボスで あそべる）
       if (!this.alive || !this.game) return;
       if (!info.segs && !hasMap(info.map)) registerMap(info.map, mod.build);
       this.flushGear(); this.input.reset();
@@ -783,6 +784,7 @@ export default {
       if (info.segs) this.game.gkStreamLoad(no, info, mod, s0); else this.game.loadMap(info.map);
       this.game.startGk(stage, gkWaves(stage), from, { tod: info.tod, score });
       this.game.gkGimStart(gims); // v0.17.0: あめ・でんしゃ など
+      this.game.gkBossStart(boss);
       this.runBank = from ? score : 0;
       this.show('play');
       if (!matchMedia('(pointer: coarse)').matches) this.canvas.requestPointerLock?.();
@@ -900,6 +902,8 @@ export default {
         setText('bossName', E.bossName, b.name);
         const w = (Math.max(0, b.hp) * 100).toFixed(1) + '%';
         if (last.bossW !== w) { last.bossW = w; E.bossBar.style.width = w; }
+        const c = b.color != null ? '#' + b.color.toString(16).padStart(6, '0') : ''; // v0.17.0: さいごの ボスは だんかいで いろが かわる
+        if (last.bossC !== c) { last.bossC = c; E.bossBar.style.background = c; }
       },
       // v0.7.0: けいさつロボ（まだ: なまえ＋やじるし／なかま: あたまの うえの HP と うえの アイコン）
       robot: (r) => botHud(E.bots.police, 'p', r),

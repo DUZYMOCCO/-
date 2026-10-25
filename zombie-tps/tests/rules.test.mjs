@@ -2643,3 +2643,154 @@ test('v0.17.0 でんしゃ: せんろは へやを よこぎる・でぐちは �
   for (const no of Object.keys(GK_READY)) { const mods = await gkLoadGims(GK_READY[no]); for (const g of mods) assert.equal(typeof g.create, 'function'); }
   assert.deepEqual(GK_READY[3].gim, ['rain']);
 });
+
+// ================= v0.17.0: ボスごとの わざ（よこく → よけられる）=================
+import { RULE as BR, KINDS as BKINDS, actTime, teleTime, brainNew, brainCool, brainStep, brainStart, pickMove, inCircle, inLine, inCone, circleSpots, fanDirs, checkBoss, allMoves, bossPhase, phaseMoves } from '../js/gk/bosses/brain.js';
+import { GK_BOSS_AI, GK_BOSS_LOOK } from '../js/gk/core.js';
+const loadBossDef = (id) => import(`../js/gk/bosses/${id}.js`).then((m) => m.BOSS);
+
+test('v0.17.0 ボス: 18たい ぜんぶの わざ・よこく 0.8びょう いじょう・いたさ 25 まで・HP', async () => {
+  const want = [];
+  for (const m of GKC) { const st = await gkLoadStage(m.no); want.push([st.boss.id, st.boss.hp]); }
+  assert.deepEqual([...GK_BOSS_AI].sort(), want.map(([id]) => id).sort(), 'ステージの ボス ぜんぶ');
+  for (const [id, hp] of want) {
+    const B = await loadBossDef(id);
+    assert.ok(hp > 0, id + ' HP');
+    assert.deepEqual(checkBoss(B), [], id);
+    assert.equal(B.id, id); assert.equal(GK_BOSS_LOOK[id], B.look.id || id, id + ' みため');
+    for (const mv of allMoves(B)) {
+      assert.ok(BKINDS.includes(mv.kind), `${id}.${mv.id}`);
+      assert.ok(mv.tele >= 0.8, `${id}.${mv.id} よこく ${mv.tele}`);
+      assert.ok((mv.dmg || 0) <= 25, `${id}.${mv.id} いたさ ${mv.dmg}`);
+      if (mv.fxColor != null) { const r = mv.fxColor >> 16, g = (mv.fxColor >> 8) & 255; assert.ok(!(r > 180 && g < 60), `${id}.${mv.id} あかい しぶき なし`); }
+    }
+    if (B.extraLooks) for (const lk of Object.values(B.extraLooks)) assert.ok(lk.colors, id + ' にせものの みため');
+  }
+  assert.ok(BR.fxMax <= 30, 'よこく・たまは 30 まで（SE2）');
+});
+
+test('v0.17.0 ボスの あたま: よこく → こうげき → やすみ → つぎ・クールダウンと きょり', async () => {
+  const B = await loadBossDef('agent');
+  const st = brainNew(B);
+  assert.equal(pickMove(B, st, 8), null, 'さいしょは すこし まつ');
+  for (let i = 0; i < 400; i++) brainCool(st, 0.05);
+  const m = pickMove(B, st, 8, () => 0.99);
+  assert.ok(m && m.range[0] <= 8 && m.range[1] >= 8);
+  assert.equal(pickMove(B, st, 99), null, 'とおすぎ');
+  brainStart(st, m);
+  assert.equal(st.phase, 'tele'); assert.ok(st.cd[m.id] > 0, 'つかったら クールダウン');
+  const seq = []; let tTele = 0;
+  for (let i = 0; i < 1000 && st.phase !== 'idle'; i++) { if (st.phase === 'tele') tTele += 0.01; const c = brainStep(st, 0.01); if (c) seq.push(c); }
+  assert.deepEqual(seq, ['act', 'rest', 'idle']);
+  assert.ok(Math.abs(tTele - teleTime(m)) < 0.02 && tTele >= 0.8, 'よこくの じかん ' + tTele);
+  assert.ok(st.gap > 0, 'つぎの わざまで すこし あける');
+  assert.equal(pickMove(B, st, 8), null);
+});
+
+test('v0.17.0 ボスの あたり: まる・おび・おうぎ・たまの おうぎ', () => {
+  assert.ok(inCircle(1, 1, 0, 0, 1.5)); assert.ok(!inCircle(2, 2, 0, 0, 1.5));
+  assert.ok(inLine(0, 5, 0, 0, 0, 1, 10, 2)); assert.ok(!inLine(1.5, 5, 0, 0, 0, 1, 10, 2)); assert.ok(!inLine(0, -3, 0, 0, 0, 1, 10, 2)); assert.ok(!inLine(0, 11, 0, 0, 0, 1, 10, 2));
+  assert.ok(inCone(5, 1, 0, 0, 1, 0, 6, 60)); assert.ok(!inCone(1, 5, 0, 0, 1, 0, 6, 60)); assert.ok(!inCone(7, 0, 0, 0, 1, 0, 6, 60));
+  const d = fanDirs(1, 0, 5, 60);
+  assert.equal(d.length, 5); assert.ok(Math.abs(d[2][0] - 1) < 1e-9 && Math.abs(d[0][1] + d[4][1]) < 1e-9, 'まんなか まっすぐ・りょうがわ おなじ');
+  assert.equal(circleSpots({ n: 3, at: 'player' }, 0, 0, 10, 10).length, 3);
+  assert.deepEqual(circleSpots({ n: 1, at: 'self' }, 2, 3, 10, 10), [[2, 3]]);
+  for (const [x, z] of circleSpots({ n: 4, at: 'around', spread: 3 }, 0, 0, 10, 10)) assert.ok(Math.hypot(x - 10, z - 10) < 5);
+  assert.ok(actTime({ kind: 'line', dash: true, len: 12, speed: 12 }) > 0.9);
+});
+
+test('v0.17.0 ボスの みため: とうろく できる・ファイルは あとから よむ', async () => {
+  const fs = await import('node:fs'), path = await import('node:path'), url = await import('node:url');
+  const root = path.dirname(path.dirname(url.fileURLToPath(import.meta.url)));
+  const md = fs.readFileSync(path.join(root, 'js/models.js'), 'utf8');
+  assert.ok(md.includes('export function registerLook') && md.includes('LOOK_PARTS[look]'));
+  const sw = fs.readFileSync(path.join(root, 'sw-assets.js'), 'utf8');
+  assert.ok(!sw.includes('js/gk/bosses/') && !sw.includes('js/gk/gim/'), 'ボス・ギミックは あとから');
+  for (const id of GK_BOSS_AI) {
+    const f = path.join(root, 'js/gk/bosses', id + '.js');
+    assert.ok(fs.statSync(f).size < 6200, id + ' ちいさい');
+    assert.ok(!/[⛑🏥🚑✚✙✛✜➕✝☩]|\p{Regional_Indicator}/u.test(fs.readFileSync(f, 'utf8')), id);
+  }
+});
+
+// ================= v0.17.0: ステージ18 でてくる ドア・ステージ17 よあけ・ステージ15 さいごの ボスと ガス =================
+import { DOORS, doorFront, doorsBusy, doorPick, DAWN, dawnTod, dawnNeed, gkProgress, VENT, ventPhase } from '../js/gk/core.js';
+
+test('v0.17.0 ステージ18: でてくる ドアは へやの なか・かべに めんする・へやごとに 4〜6・スーツの みため', async () => {
+  const placed = chainSegs(await segBuildAll(18)), m = joinSegs(placed), gm = m.gk;
+  assert.deepEqual(GK_READY[18].gim, ['doors']);
+  const inR = (r, x, z) => x > r.b[0] && x < r.b[2] && z > r.b[1] && z < r.b[3];
+  const hit = (x, z, rad) => m.boxes.some((b) => b.collide && !b.barrier && b.maxY > 0.5 && x + rad > b.minX && x - rad < b.maxX && z + rad > b.minZ && z - rad < b.maxZ);
+  const per = {};
+  for (const d of gm.spawnDoors) {
+    const r = gm.rooms[d.room], f = doorFront(d, 1.2), back = doorFront(d, -0.7);
+    per[d.room] = (per[d.room] || 0) + 1;
+    assert.ok(inR(r, f.x, f.z) && !hit(f.x, f.z, 0.4), `ドアの まえは へやの なかで あいている (${d.x},${d.z})`);
+    assert.ok(!inR(r, back.x, back.z) || hit(back.x, back.z, 0.1), `ドアの うしろは かべ (${d.x},${d.z})`);
+  }
+  gm.rooms.forEach((r, i) => assert.ok(per[i] >= 4 && per[i] <= 6, `へや${i} の ドア ${per[i]}`));
+  assert.ok(DOORS.warn >= 0.8, 'よこくは 0.8びょう いじょう'); assert.ok(DOORS.maxOpen <= 3, 'いちどに あくのは 3つ まで');
+  assert.equal(GK_ENEMY.suit, 'walker@suit'); assert.equal(GK_ENEMY.suitk, 'runner@suit');
+  const fs = await import('node:fs'), path = await import('node:path'), url = await import('node:url');
+  const md = fs.readFileSync(path.join(path.dirname(path.dirname(url.fileURLToPath(import.meta.url))), 'js/models.js'), 'utf8');
+  assert.ok(md.includes('suit:'), 'GK_LOOKS に @suit');
+});
+
+test('v0.17.0 でてくる ドア: えらびかた（はなれた ドア・3つ まで・ないと null）', () => {
+  const mk = (x, room = 0, st = 'idle') => ({ d: { x, z: 0, yaw: Math.PI, room }, st });
+  const list = [mk(1), mk(10), mk(20), mk(30), mk(40, 1)];
+  for (let i = 0; i < 10; i++) { const o = doorPick(list, 0, 0, 0, () => i / 10); assert.ok(o && o.d.room === 0 && o.d.x >= 10, 'ちかすぎない ドア'); }
+  list[1].st = list[2].st = list[3].st = 'warn';
+  assert.equal(doorsBusy(list), 3); assert.equal(doorPick(list, 0, 0, 0), null, '3つ あいて いたら まつ');
+  list[3].st = 'idle'; assert.equal(doorPick(list, 0, 0, 0, () => 0).d.x, 30);
+  assert.equal(doorPick([mk(1, 1)], 0, 0, 0), null, 'ほかの へやの ドアは つかわない');
+  const f = doorFront({ x: 0, z: 0, yaw: Math.PI }, 1.2); assert.ok(Math.abs(f.z - 1.2) < 1e-9 && Math.abs(f.x) < 1e-9, 'yaw の まえ');
+});
+
+test('v0.17.0 ステージ17 よあけ: t=0 よる・t=1 あさ・だんだん あかるく・0.25びょう ごと 1% いじょう', async () => {
+  const look = (t) => { const { a, b, k } = dawnTod(t); return blendTod(TOD[a], TOD[b], k); };
+  assert.deepEqual(look(0), blendTod(TOD.night, TOD.sunset, 0)); assert.equal(look(0).night, TOD.night.night);
+  assert.equal(look(1).night, TOD.day.night); assert.equal(look(1).sunI, TOD.day.sunI);
+  let prev = look(0);
+  for (let t = 0.05; t <= 1.0001; t += 0.05) {
+    const p = look(t);
+    assert.ok(p.night <= prev.night + 1e-9 && p.sunI >= prev.sunI - 1e-9, 'よるが へって ひが つよく ' + t.toFixed(2));
+    for (const c of [p.fog, p.hemiSky, p.sun, ...p.sky]) assert.ok(c >= 0 && c <= 0xffffff && Number.isInteger(c), 'いろ');
+    prev = p;
+  }
+  assert.equal(DAWN.every, 0.25); assert.ok(dawnNeed(null, 0)); assert.ok(!dawnNeed(0.5, 0.505)); assert.ok(dawnNeed(0.5, 0.511));
+  // すすみぐあい: ドアを とおる たびに ふえる・さいごの へやの まんなかで 1
+  const placed = chainSegs(await segBuildAll(17)), m = joinSegs(placed), gm = m.gk, n = gm.rooms.length;
+  assert.equal(gkProgress(gm, m.playerStart.x, m.playerStart.z, m.playerStart, n), 0);
+  let last = -1;
+  gm.doors.forEach((d, g) => { const p = gkProgress(gm, ...[d.axis === 'x' ? [d.x, d.z + (gm.rooms[g + 1].b[1] + gm.rooms[g + 1].b[3] > 2 * d.z ? 1 : -1)] : [d.x + (gm.rooms[g + 1].b[0] + gm.rooms[g + 1].b[2] > 2 * d.x ? 1 : -1), d.z]].flat(), m.playerStart, n); assert.ok(p > last, 'ドア' + g); last = p; });
+  const rl = gm.rooms[n - 1]; assert.equal(gkProgress(gm, (rl.b[0] + rl.b[2]) / 2, (rl.b[1] + rl.b[3]) / 2, m.playerStart, n), 1);
+  assert.deepEqual(GK_READY[17].gim, ['dawn']); assert.equal(GK_READY[17].tod, 'night');
+});
+
+test('v0.17.0 ステージ15: 5へや・ガスの あな・さいごの ボスの 2だんかい', async () => {
+  const st = await gkLoadStage(15), placed = chainSegs(await segBuildAll(15)), m = joinSegs(placed), gm = m.gk;
+  assert.equal(gm.rooms.length, 5); assert.equal(st.boss.id, 'final'); assert.equal(st.boss.hp, 3000);
+  assert.deepEqual(GK_READY[15].gim, ['vents']); assert.ok(isGkReady(15));
+  assert.ok(gm.vents.length >= 4);
+  for (const v of gm.vents) assert.equal(gkRoomAt(gm.rooms, v.x, v.z), v.room, 'ガスの あなは その へやの なか');
+  assert.ok(gm.vents.some((v) => v.room === 4), 'ボスの へやにも');
+  // ガス: まつ → ひかる（よこく 0.8びょう いじょう）→ ふきだす → まつ
+  assert.ok(VENT.warn >= 0.8 && VENT.dps <= 10);
+  const seq = []; let prev = null;
+  for (let t = 0; t < VENT.period * 2; t += 0.05) { const ph = ventPhase(t); if (ph !== prev) seq.push(ph); prev = ph; }
+  assert.deepEqual(seq.slice(0, 4), ['idle', 'warn', 'puff', 'idle']);
+  assert.notEqual(ventPhase(1, 0), ventPhase(1, 3.5), 'あなごとに ずれる');
+  // ボス: HP 50% で 2だんかい（わざが かわる・てきを よぶのは 4たい まで・わは ジャンプで よける）
+  const B = await loadBossDef('final');
+  assert.deepEqual(checkBoss(B), []);
+  assert.equal(bossPhase(B, 1), 0); assert.equal(bossPhase(B, 0.51), 0); assert.equal(bossPhase(B, 0.5), 1); assert.equal(bossPhase(B, 0.1), 1);
+  assert.notDeepEqual(phaseMoves(B, 0).map((x) => x.id), phaseMoves(B, 1).map((x) => x.id));
+  const sm = phaseMoves(B, 1).find((x) => x.kind === 'summon'); assert.ok(sm && sm.cap <= 4);
+  assert.ok(phaseMoves(B, 1).some((x) => x.kind === 'wave'), 'ジャンプの わ');
+  assert.ok(B.phases[1].color !== B.phases[0].color && B.phases[1].bar !== B.phases[0].bar, 'いろが かわる');
+  const st2 = brainNew(B); st2.ph = 1; for (let i = 0; i < 400; i++) brainCool(st2, 0.05);
+  const mv = pickMove(B, st2, 8, () => 0); assert.ok(phaseMoves(B, 1).includes(mv), '2だんかいの わざを えらぶ');
+  // チェックポイントは ボスの へやの まえの ドア
+  assert.ok(gm.doors[3], 'ボスの へやの まえの ドア');
+});

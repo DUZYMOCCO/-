@@ -5,8 +5,9 @@
 //   つぎの セグメントが できるまで ひらかない（'gate'）・とおったら しまる（うしろの セグメントを すてる）
 import * as THREE from '../../vendor/three.module.min.js';
 import { WEAPON_ORDER, refillReserve, TOD, bossHp, groundHeight } from '../rules.js?v=18';
-import { gkRoomAt, gkEntered, gkSpotCells, gkPickRoomSpawn, gkDoorOpenBox } from './core.js?v=18';
+import { gkRoomAt, gkEntered, gkSpotCells, gkPickRoomSpawn, gkDoorOpenBox, gkLoadBoss } from './core.js?v=18';
 import { segCpSpot } from './seg.js?v=18';
+import { registerLook } from '../models.js?v=18';
 
 const DOOR_MAT = new THREE.MeshLambertMaterial({ color: 0x59626e });
 const DOOR_STRIPE = new THREE.MeshBasicMaterial({ color: 0xe0b020 });
@@ -130,12 +131,14 @@ export const GkMixin = {
       this.pushHud(true);
       return;
     }
-    let alive = 0; for (const z of this.zombies) if (z.alive) alive++;
+    let alive = this.gkPending || 0; for (const z of this.zombies) if (z.alive) alive++; // gkPending: ドアの むこうで まっている てき
     if (this.queue.length) {
       this.spawnT -= dt;
       if (this.spawnT <= 0 && alive < this.aliveCap()) {
-        const k = this.queue.shift(); const s = this.pickSpawn();
-        this.spawnZombie(k, s.x, s.z, this.spec.hpMul, s.y);
+        const via = this.gkSpawnVia ? this.gkSpawnVia(this.queue[0]) : false; // v0.17.0: ドアから でる（ステージ18）
+        if (via === 'wait') { this.spawnT = 0.25; return; }
+        const k = this.queue.shift();
+        if (!via) { const s = this.pickSpawn(); this.spawnZombie(k, s.x, s.z, this.spec.hpMul, s.y); }
         this.spawnT = this.spec.spawnGap * (0.7 + Math.random() * 0.6);
         this.pushHud(true);
       }
@@ -161,7 +164,27 @@ export const GkMixin = {
   },
   // v0.17.0: ステージの ギミック（js/gk/gim/<id>.js の create(game) → { tick, remap, dispose }）
   gkGimStart(mods) { this.gkGimEnd(); this.gkGims = mods.map((m) => m.create(this)); },
-  gkGimEnd() { for (const gi of this.gkGims || []) gi.dispose(); this.gkGims = null; },
+  gkGimEnd() { for (const gi of this.gkGims || []) gi.dispose(); this.gkGims = null; this.gkBossRt = null; },
+  // v0.17.0: ボスの わざ（bosses/<id>.js の BOSS と rt.js）。みためを とうろく → でたら rt が うごかす
+  gkBossStart(boss) {
+    if (!boss) return;
+    registerLook(boss.def.look.id || boss.def.id, boss.def.look);
+    for (const [id, lk] of Object.entries(boss.def.extraLooks || {})) registerLook(id, lk); // にせもの など
+    this.gkBossRt = boss.rt.create(this, boss.def);
+    (this.gkGims || (this.gkGims = [])).push(this.gkBossRt);
+  },
+  // v0.17.0: デバッグ: __ztps.game.gkDebugBoss('hydra') → いまの ガンキック ステージの プレイヤーの まえに その ボスを だす
+  async gkDebugBoss(id, d = 9) {
+    if (!this.gk) return 'ガンキックの ステージで つかってね';
+    const boss = await gkLoadBoss(id); if (!boss) return 'ない: ' + id;
+    for (const gi of this.gkGims || []) if (gi === this.gkBossRt) gi.dispose();
+    this.gkGims = (this.gkGims || []).filter((gi) => gi !== this.gkBossRt);
+    this.gkBossStart(boss);
+    if (this.spec) this.spec.bossName = id;
+    const fx = -Math.sin(this.yaw), fz = -Math.cos(this.yaw);
+    const z = this.spawnZombie('boss@' + (boss.def.look.id || id), this.pos.x + fx * d, this.pos.z + fz * d, 1, this.pFloor ?? this.pos.y);
+    return { id, hp: z.hp, ai: !!z.ai };
+  },
   // v0.17.0: セグメントで ない ステージ（いちまいの マップ）でも つかえる ように
   gkSegReady(room) { return !this.gs || this.gsReady(room); },
   gkCrossed(room) { return !this.gs || this.gsCrossed(room); },
@@ -174,7 +197,11 @@ export const GkMixin = {
   stageClear() {
     const g = this.gk;
     this.state = 'clear';
-    this.hud.banner('ステージ クリア！', `${g.stage.sub}`);
+    if (g.stage.no === 15) { // v0.17.0: さいごの ボスを たおした → よあけの ひかり
+      this.applyTod(TOD.day, true); this.tod = 'day';
+      this.fx.burst(this.tmp.c.set(this.pos.x, this.pos.y + 3, this.pos.z), 40, { color: 0xfff0b0, color2: 0xffffff, speed: 6, up: 4, size: 0.12, life: 1.2, gravity: 1 });
+      this.hud.banner('ありがとう！', 'せかいに あさが きた');
+    } else this.hud.banner('ステージ クリア！', `${g.stage.sub}`);
     this.sfx.clear();
     this.hud.clear?.({ no: g.stage.no, score: this.score, kills: this.kills, heads: this.heads });
   },

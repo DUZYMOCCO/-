@@ -782,7 +782,16 @@ const zMats = {};
 export const GK_LOOKS = {
   lab: { shirt: 0xe6eaee, pants: 0x8a96a2 },                  // しろい はくい（けんきゅうじょ）
   agent: { skin: 0x58606e, shirt: 0x1c1f26, pants: 0x14161a, emissive: 0x140a24 }, // くろよろい エージェント（かくう）
+  suit: { shirt: 0x1a1c22, pants: 0x16181c }, // v0.17.0: くろい スーツの わるもの（かくう・ぶきなし）
 };
+// v0.17.0: あとから よむ みため（ガンキックの ボス など）。parts: [[where('head'|'body'|'inner'), いろ, sx, sy, sz, x, y, z, { glow, r: [rx, ry, rz] }], …]
+const LOOK_PARTS = {
+  // v0.17.0: スーツ: サングラス・しろい シャツ・ネクタイ
+  suit: [['head', 0x0a0a0e, 0.44, 0.1, 0.04, 0, 0.3, -0.26], ['body', 0xe8e8e8, 0.16, 0.5, 0.02, 0, 0.45, -0.155], ['body', 0x7a1c2a, 0.06, 0.42, 0.02, 0, 0.42, -0.17]],
+}, lookMats = {};
+export function registerLook(id, look) { if (look.colors) GK_LOOKS[id] = look.colors; if (look.parts) LOOK_PARTS[id] = look.parts; }
+export const hasLook = (id) => !!GK_LOOKS[id];
+const lookMat = (c, o) => { const k = c + (o && o.glow ? 'g' : ''); return lookMats[k] || (lookMats[k] = o && o.glow ? new THREE.MeshBasicMaterial({ color: c }) : L(c)); };
 export function splitLook(key) { const i = key.indexOf('@'); return i < 0 ? [key, null] : [key.slice(0, i), key.slice(i + 1)]; }
 function zombieMats(kind, look = null) {
   const key = look ? kind + '@' + look : kind;
@@ -825,6 +834,8 @@ export function makeZombie(kind, look = null) {
     for (const s of [-1, 1]) part(body, AGENT_ARMOR, 0.3, 0.12, 0.36, s * 0.34, 0.76, 0);
     part(body, AGENT_VISOR, 0.5, 0.05, 0.31, 0, 0.06, 0);
     part(body, AGENT_ARMOR, 0.4, 0.3, 0.06, 0, 0.42, -0.17);
+  } else if (look && LOOK_PARTS[look]) {
+    for (const [w, c, sx, sy, sz, x, y, z, o] of LOOK_PARTS[look]) part(w === 'head' ? head : w === 'body' ? body : inner, lookMat(c, o), sx, sy, sz, x, y, z, ...((o && o.r) || []));
   } else if (kind === 'boss') {
     // おうかん・かたの トゲ・ベルト（ボスだと すぐ わかる）
     part(head, BOSS_GOLD, 0.54, 0.1, 0.54, 0, 0.55, 0);
