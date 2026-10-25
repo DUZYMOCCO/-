@@ -1,5 +1,5 @@
 // バトル アクション の きまり（DOM なし・node で テストできる）
-export const VERSION = '0.7.0';
+export const VERSION = '0.8.0';
 export const H = 375;              // ろんり の たかさ
 export const GROUND = 318;         // じめん（あしの y）
 export const GRAV = 2000;
@@ -179,6 +179,11 @@ export const ENEMIES = {
   ghoul:    { name: 'グール',            hp: 46,  w: 34, h: 58,  speed: 124, weight: 1.1, dmg: 9,  reach: 50, wind: 0.42, cool: 1.0,  score: 160, blood: 'green', ai: 'grunt', look: 'ghoul', lunge: 320 },
   ghoulet:  { name: 'ちびグール',        hp: 22,  w: 32, h: 36,  speed: 230, weight: 0.8, dmg: 6,  reach: 40, wind: 0.3,  cool: 0.9,  score: 90,  blood: 'green', ai: 'crawler', look: 'ghoul', jumper: true, emerge: true, small: true },
   bigghoul: { name: 'おおグール',        hp: 360, w: 58, h: 96,  speed: 92,  weight: 2.8, dmg: 16, reach: 70, wind: 0.6,  cool: 1.3,  score: 2200, blood: 'green', ai: 'grunt', look: 'ghoul', armor: 0.45, mini: true, lunge: 420 },
+  // v0.8 よあけの こうや（ポンチョ・ならずもの・すなさそり。ちは みどり）
+  nomad:    { name: 'こうやの ゾンビ',   hp: 40,  w: 30, h: 72, speed: 100, weight: 1.05, dmg: 9, reach: 46, wind: 0.46, cool: 1.05, score: 130, blood: 'green', ai: 'grunt', look: 'nomad' },
+  outlaw:   { name: 'ならずもの ゾンビ', hp: 38,  w: 30, h: 72, speed: 96,  weight: 1,   dmg: 6,  reach: 0,  wind: 0.55, cool: 1.8,  score: 240, blood: 'green', ai: 'gunner', look: 'outlaw', range: [160, 310], shotSpeed: 540, inacc: 0.2, volley: 2, helmetHp: 14 },
+  scorp:    { name: 'すなさそり',        hp: 20,  w: 42, h: 26,  speed: 230, weight: 0.7, dmg: 6,  reach: 40, wind: 0.3,  cool: 0.9,  score: 90,  blood: 'green', ai: 'crawler', look: 'scorp', jumper: true, emerge: true, small: true },
+  rockz:    { name: 'いわおとこ ゾンビ', hp: 380, w: 62, h: 118, speed: 74, weight: 3.2, dmg: 17, reach: 72, wind: 0.75, cool: 1.4,  score: 2300, blood: 'green', ai: 'grunt', look: 'rockz', armor: 0.5, mini: true },
   wraith:  { name: 'ゆらぎ',       hp: 30,  w: 40, h: 40, speed: 240, weight: 0.8, dmg: 9,  reach: 40, wind: 0.32, cool: 0.9,  score: 180, blood: 'purple', ai: 'crawler', look: 'wraith', jumper: true, emerge: true },
 };
 for (const [k, d] of Object.entries(ENEMIES)) { d.ai = d.ai || k; d.look = d.look || k; if (d.emerge === undefined) d.emerge = k === 'crawler'; }
@@ -200,6 +205,7 @@ export const BOSSES = {
   queen:   { name: 'むしの じょおう',        hp: 2600, w: 104, h: 130, speed: 115, weight: 5, dmg: 16, score: 14000, blood: 'purple', armor: 0.8, kit: 'queen' },
   heli:    { name: 'ゾンビ ヘリ',            hp: 2400, w: 150, h: 70,  speed: 150, weight: 99, dmg: 14, score: 15000, blood: 'green', armor: 0.85, kit: 'heli' },
   ghoulking: { name: 'いせきの グール',      hp: 3000, w: 100, h: 132, speed: 130, weight: 5, dmg: 17, score: 16000, blood: 'green',  armor: 0.75, kit: 'ghoul' },
+  sunscorp:  { name: 'よあけの おおさそり', hp: 3100, w: 170, h: 96, speed: 150, weight: 6, dmg: 17, score: 17000, blood: 'green', armor: 0.78, kit: 'scorpion' },
   final:   { name: 'はじまりの ミュータント', hp: 3000, w: 74, h: 150, speed: 125, weight: 6, dmg: 18, score: 30000, blood: 'purple', armor: 0.8, kit: 'final' },
 };
 // ズーム（がめんの ちかさ）。ゲームの ひろさは かわらない
@@ -403,8 +409,44 @@ const MORE = [
       [2600, ['ghoulet', 'ghoulet', 'ghoulet', 'ghoul'], ['ghoul', 'ghoul', 'leaper'], ['ghoul', 'ghoulet', 'ghoulet', 'ghoul']],
       [3600, ['ghoul', 'ghoul', 'ghoulet'], ['bigghoul', 'ghoulet']],
     ], boss: { x: 4950, id: 'ghoulking' } },
+  // v0.8：よあけの こうや（さいしょは まっくら → あさやけ → あおぞら。すすむ ほど あかるく なる）
+  { id: 17, sub: 'よあけの こうや', theme: 'dawn', length: 5600, hpMul: 1.45, free: true, start: ['katana', 'pistol'], heroLook: 'plain',
+    weapons: [[900, 'shotgun'], [2100, 'rifle'], [3300, 'smg'], [4300, 'bazooka']],
+    arenas: [
+      [700, ['nomad', 'nomad', 'scorp'], ['nomad', 'scorp', 'scorp']],
+      [1700, ['outlaw', 'nomad', 'zombie'], ['scorp', 'scorp', 'scorp', 'nomad']],
+      [2700, ['nomad', 'outlaw', 'outlaw', 'scorp'], ['hound', 'hound', 'nomad'], ['outlaw', 'nomad', 'scorp', 'scorp']],
+      [3800, ['nomad', 'nomad', 'scorp'], ['rockz', 'scorp', 'scorp']],
+    ], boss: { x: 5150, id: 'sunscorp' } },
 ];
 for (const o of MORE) STAGES.push(mkStage(o));
+
+// ---- v0.8：よあけ の あかるさ（p = すすみぐあい 0〜1 → そら・たいよう・くらさ・きり・いろみ を なめらかに）----
+// キー：まよなか → よあけまえ（むらさき）→ ひので（オレンジ）→ あさ → あおぞら
+export const DAWN_KEYS = [
+  { p: 0.00, top: [6, 8, 22],    hor: [24, 28, 58],    dark: 0.6,  vig: 0.9,  fog: 0.65, tint: [120, 132, 200], stars: 1 },
+  { p: 0.28, top: [22, 20, 58],  hor: [112, 58, 96],   dark: 0.46, vig: 0.85, fog: 0.6,  tint: [150, 120, 180], stars: 0.6 },
+  { p: 0.52, top: [64, 72, 140], hor: [255, 140, 70],  dark: 0.3,  vig: 0.7,  fog: 0.7,  tint: [255, 190, 150], stars: 0.1 },
+  { p: 0.76, top: [80, 150, 220], hor: [255, 214, 150], dark: 0.12, vig: 0.45, fog: 0.45, tint: [255, 238, 214], stars: 0 },
+  { p: 1.00, top: [52, 138, 232], hor: [190, 228, 255], dark: 0.0,  vig: 0.28, fog: 0.28, tint: [255, 255, 255], stars: 0 },
+];
+const smooth = (u) => u * u * (3 - 2 * u);
+const mixA = (a, b, u) => a.map((v, i) => Math.round(v + (b[i] - v) * u));
+export function dawnAt(p) {
+  p = Math.max(0, Math.min(1, +p || 0));
+  let i = 0; while (i < DAWN_KEYS.length - 2 && p > DAWN_KEYS[i + 1].p) i++;
+  const A = DAWN_KEYS[i], B = DAWN_KEYS[i + 1], u = smooth((p - A.p) / (B.p - A.p));
+  const m = (k) => A[k] + (B[k] - A[k]) * u;
+  const dark = m('dark');
+  return {
+    p, dark, vig: m('vig'), fog: m('fog'), stars: m('stars'),
+    top: mixA(A.top, B.top, u), hor: mixA(A.hor, B.hor, u), tint: mixA(A.tint, B.tint, u),
+    sunY: 300 - 230 * smooth(Math.min(1, p / 0.95)), // ちへいせん の した → たかい ところ
+    light: 1 - dark / DAWN_KEYS[0].dark,
+  };
+}
+// ステージの どこまで すすんだか（スタート 0 → ボス 1）
+export function stageProgress(stage, x) { return Math.max(0, Math.min(1, (x - 300) / Math.max(1, stage.boss.x - 300))); }
 
 // ---- なかま ----
 export const ALLIES = [

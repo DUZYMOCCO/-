@@ -1,6 +1,6 @@
 // リアルな じゅう（ぜんぶ オリジナルの かくうの モデル）。たかい かいぞうどの スプライトを いちど だけ つくって つかう
 // もちて（グリップ）が 0,0、みぎむき。じゅうこうの いち は rules.js の GUN_GEOM と おなじ
-import { GUN_GEOM } from './rules.js?v=7';
+import { GUN_GEOM } from './rules.js?v=8';
 
 const OUT = '#0a0a0b';
 const BX = -32, BY = -28, BW = 96, BH = 48, RES = 7;
@@ -172,6 +172,20 @@ const BODY = {
     edge(x, -6, -14.4, 25.5, 0.7); wear(x, R, -7, -15, 36, 3, 12, 'rgba(255,255,255,0.4)');
   },
   // てき の じゅう：くろい サブマシンガン（あかい ランプ）
+  // v0.8「コヨーテ」リボルバー（かくう）：きの グリップ・まわる シリンダー・ながい バレル（ならずもの ゾンビ よう）
+  revolver(x, R) {
+    part(x, [-1, -4.6, 4.6, -4.6, 3.4, 4, 1.6, 9.8, -4.6, 9.8, -3.6, 4.2, -2.8, -2], WOOD);
+    x.strokeStyle = 'rgba(0,0,0,0.35)'; x.lineWidth = 0.35; for (let i = 0; i < 4; i++) { x.beginPath(); x.moveTo(-2.6 + i * 0.2, 1 + i * 2); x.lineTo(2.6 - i * 0.3, 1 + i * 2); x.stroke(); }
+    part(x, [-3.4, -9.6, 6, -9.6, 6.6, -3.2, 4.6, -3.2, 3.4, -1.4, -1.6, -1.4, -3.4, -4.4], GUNMETAL);
+    trigger(x, 3.4, -1.8);
+    rect(x, 5.6, -10.4, 7.8, 6.6, STEEL, 0.8);
+    x.strokeStyle = 'rgba(0,0,0,0.55)'; x.lineWidth = 0.5; for (let i = 0; i < 3; i++) { x.beginPath(); x.moveTo(6.2 + i * 2.4, -10); x.lineTo(6.2 + i * 2.4, -4.2); x.stroke(); }
+    part(x, [13.2, -9.8, 30, -9.6, 30, -6.2, 13.2, -6], STEEL);
+    rect(x, 13.4, -6.4, 12, 1.6, GUNMETAL, 0.5);
+    rect(x, 28.4, -11.4, 1.2, 1.8, GUNMETAL, 0.4);
+    part(x, [-3.6, -9.6, -6.2, -12.4, -5.2, -13, -2.2, -10.4], GUNMETAL, 0.6);
+    edge(x, 13.4, -9.4, 29.8, 0.6); wear(x, R, 6, -10, 24, 2, 12);
+  },
   dark(x, R) {
     x.strokeStyle = OUT; x.lineWidth = 2; x.beginPath(); x.moveTo(-6, -9); x.lineTo(-18, -8); x.lineTo(-18.6, -2); x.lineTo(-6, -4); x.stroke(); x.strokeStyle = '#26262a'; x.lineWidth = 1; x.stroke();
     part(x, [9, -3.4, 13.6, -3.4, 16, 12.8, 11, 13.4], ['#2a2a2e', '#141416', '#0a0a0b']);

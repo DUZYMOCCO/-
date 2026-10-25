@@ -4,18 +4,18 @@
  */
 import { loadCss } from '../../common/js/load-css.js';
 import { storage } from '../../common/js/storage.js';
-import { VERSION, STAGES, WEAPONS, ZOOMS, normalizeSave, rankOf } from './rules.js?v=7';
-import { Game } from './game.js?v=7';
-import { Renderer } from './render.js?v=7';
-import { Input } from './input.js?v=7';
-import { Sfx } from './sfx.js?v=7';
+import { VERSION, STAGES, WEAPONS, ZOOMS, normalizeSave, rankOf } from './rules.js?v=8';
+import { Game } from './game.js?v=8';
+import { Renderer } from './render.js?v=8';
+import { Input } from './input.js?v=8';
+import { Sfx } from './sfx.js?v=8';
 const PER = 5;
 
 const SAVE_KEY = 'side_action_save';
 const TITLE = 'ガンキック ヒーローズ';
 
 export default {
-  prepare() { return loadCss(new URL('../css/side-action.css?v=7', import.meta.url).href); },
+  prepare() { return loadCss(new URL('../css/side-action.css?v=8', import.meta.url).href); },
 
   init(container, onBackToHub) {
     this.container = container; this.onBackToHub = onBackToHub;
@@ -209,7 +209,7 @@ export default {
     this.el('.sa-pgl').textContent = `${p0 + 1}〜${Math.min(STAGES.length, p0 + PER)}  （${this.page + 1}/${pages}）`;
     this.el('[data-act="pgPrev"]').disabled = this.page === 0; this.el('[data-act="pgNext"]').disabled = this.page >= pages - 1;
     // あたらしい ステージへの ちかみち（すぐ あそべる ステージ）
-    const fi = STAGES.findIndex((s) => s.free), nb = this.el('.sa-newst');
+    const fi = STAGES.map((s) => !!s.free).lastIndexOf(true), nb = this.el('.sa-newst');
     if (nb) { nb.hidden = fi < 0; if (fi >= 0) { nb.dataset.i = fi; nb.textContent = `🆕 ${STAGES[fi].sub}`; } }
     this.el('.sa-stages').innerHTML = STAGES.map((s, i) => {
       if (i < p0 || i >= p0 + PER) return '';
@@ -290,7 +290,7 @@ export default {
   },
   drawTitleBg(t) {
     // タイトルの うしろは デモ（じどう で うごく）
-    if (!this.demo) { this.demo = new Game(0, { viewW: this.viewW, seed: 99, zoom: this.zoomZ() }); this.demoMem = {}; this.demoBot = null; import('./game.js?v=7').then((m) => { this.demoBot = m.botInput; }); }
+    if (!this.demo) { this.demo = new Game(0, { viewW: this.viewW, seed: 99, zoom: this.zoomZ() }); this.demoMem = {}; this.demoBot = null; import('./game.js?v=8').then((m) => { this.demoBot = m.botInput; }); }
     const d = this.demo;
     if (this.demoBot) d.update(1 / 60, this.demoBot(d, this.demoMem)); d.drainEvents(); d.banner = null; d.texts && (d.texts.length = 0);
     if (d.state !== 'play' || d.time > 90) this.demo = null;

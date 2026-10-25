@@ -2,8 +2,8 @@
 import {
   H, GROUND, GRAV, PHYS, WEAPONS, MOVES, COMBO_WINDOW, CHAIN_GRACE, ENEMIES, BOSSES, STAGES, ALLIES, ALLY_DOWN_TIME,
   createArsenal, giveWeapon, addAmmo, nextWeapon, tickGun, pickMove, moveBox, overlap, knockOf, comboWord,
-  allyDecide, landOn, makePlatforms, scoreFor, GUN_GEOM, ZOOMS, tickBeam,
-} from './rules.js?v=7';
+  allyDecide, landOn, makePlatforms, scoreFor, GUN_GEOM, ZOOMS, tickBeam, dawnAt, stageProgress,
+} from './rules.js?v=8';
 
 export const BLOOD = {
   green: ['#63e64b', '#2fae3a', '#a6ff6e', '#1f7d2b'],
@@ -62,6 +62,8 @@ export class Game {
     const GM = this.stage.gimmick;
     this.gimT = GM ? GM.first ?? 8 : 0; this.blackout = 0; this.tilt = 0; this.gust = 0; this.beams = []; this.tg = [];
     this.pressHit = new Map();
+    // v0.8：よあけ ステージ（すすむ ほど あかるく）
+    this.dawnP = 0; this.dawn = this.stage.theme === 'dawn' ? dawnAt(0) : null;
     this.say(this.stage.name, this.stage.sub);
   }
   makeFighter(x, { hp, kind }) {
@@ -638,7 +640,10 @@ export class Game {
     b.phase = 1;
     if (D.ai === 'hydra') { b.x = this.lock.r - 95; b.y = GROUND; b.lowered = false; b.rise = 0; this.shake = 10; }
     else if (D.kit === 'heli') { b.x = this.lock.r - 160; b.y = -120; b.fly = true; b.hoverY = GROUND - 150; b.landed = true; }
-    else if (D.kit === 'ghoul') { // みどりの ちだまりから はいでてくる
+    else if (D.kit === 'scorpion') { // すなの なかから でてくる
+      b.x = this.lock.r - 170; b.y = GROUND; b.onGround = true; b.landed = true; b.dropT = 0; b.t = 2.2; b.emerge = true; this.shake = 14;
+      for (let i = 0; i < 3; i++) this.dust(b.x + (i - 1) * 60, GROUND, 10);
+    } else if (D.kit === 'ghoul') { // みどりの ちだまりから はいでてくる
       b.x = this.lock.r - 150; b.y = GROUND; b.onGround = true; b.landed = true; b.dropT = 0; b.t = 2.2; b.emerge = true;
       for (let i = 0; i < 4; i++) this.splat(b.x + (i - 1.5) * 46, GROUND, 'green', false, 2 + this.rand() * 0.6);
     } else { b.x = this.lock.r - (D.kit === 'tank' ? 120 : 140); b.y = -200; }
@@ -647,7 +652,7 @@ export class Game {
   }
   updateBoss(b, dt) {
     b.anim += dt; b.flashT = Math.max(0, b.flashT - dt);
-    if (b.dead) { b.t += dt; if (b.t > 0.2 && this.rand() < dt * 14) { this.smoke(b.x + (this.rand() - 0.5) * b.w, GROUND - this.rand() * b.h, 2); this.blood(b.x, GROUND - this.rand() * b.h, 0, b.def.kit === 'ghoul' ? 'green' : 'purple', 3); } if (b.t > 1.8 && !b.poofed) { b.poofed = true; this.smoke(b.x, GROUND - b.h / 2, 20); this.splat(b.x, GROUND, b.def.kit === 'ghoul' ? 'green' : 'purple', false, 2.2); this.splat(b.x - 50, GROUND, 'green', false, 1.6); this.ev('poof'); } return; }
+    if (b.dead) { b.t += dt; if (b.t > 0.2 && this.rand() < dt * 14) { this.smoke(b.x + (this.rand() - 0.5) * b.w, GROUND - this.rand() * b.h, 2); this.blood(b.x, GROUND - this.rand() * b.h, 0, (b.def.blood === 'green' ? 'green' : 'purple'), 3); } if (b.t > 1.8 && !b.poofed) { b.poofed = true; this.smoke(b.x, GROUND - b.h / 2, 20); this.splat(b.x, GROUND, (b.def.blood === 'green' ? 'green' : 'purple'), false, 2.2); this.splat(b.x - 50, GROUND, 'green', false, 1.6); this.ev('poof'); } return; }
     if (isHydra(b)) this.updateHydra(b, dt); else this.updateMan(b, dt);
   }
   // にんげんがたの ボス（agent / giant / mutant / king）。kit で わざが かわる
@@ -856,6 +861,14 @@ export class Game {
       if (b.n % 5 === 1 && alive < 2) { this.spawnEnemy('soldierz', -1, 0); }
       if (far && r < 0.55) { b.state = 'burstWind'; b.t = 0.6 / rage; b.shots = 0; this.ev('aim'); }
       else { b.state = 'chargeWind'; b.t = 0.9 / rage; this.ev('aim'); }
+      return;
+    }
+    if (kit === 'scorpion') { // よあけの おおさそり：さそりを よぶ・すなから しっぽ・どく・とっしん・ハサミ
+      if (b.n % 4 === 0 && alive < 3) { b.state = 'summon'; b.t = 0.9; this.ev('roar'); this.spawnEnemy('scorp', 1, 0); this.spawnEnemy('scorp', -1, 0); this.dust(b.x, GROUND, 8); return; }
+      if (b.n % 5 === 0) { b.state = 'dazed'; b.t = 1.8; this.addText(b.x, GROUND - 150, 'ハサミが つかれた！ チャンス！', '#ffe14a', 18); return; }
+      if (b.n % 3 === 0) { b.state = 'spikes'; b.t = 1.2; this.spikesUnder('sand', 0.85); this.ev('creep'); this.addText(b.x, GROUND - 150, 'すなの したから しっぽ！', '#ffcf6a', 15); return; }
+      if (far) { if (r < 0.5) { b.state = 'spitWind'; b.t = 0.6 / rage; this.ev('hiss'); } else { b.state = 'chargeWind'; b.t = 0.65 / rage; this.ev('aim'); } }
+      else { if (r < 0.6) { b.state = 'punchWind'; b.t = 0.4 / rage; } else { b.state = 'slamWind'; b.t = 0.45; } }
       return;
     }
     if (kit === 'ghoul') { // いせきの グール：ちびグールを よぶ・とびかかり・ツメ・のしかかり
@@ -1159,6 +1172,11 @@ export class Game {
     const k = this.lock ? 6 : 10;
     this.camX += (target - this.camX) * Math.min(1, dt * k);
     if (Math.abs(target - this.camX) < 0.3) this.camX = target;
+    if (this.dawn) { // あかるさ は もどらない（よるが あける）。なめらかに おいかける
+      const want = stageProgress(this.stage, this.camX + this.viewW * 0.5);
+      if (want > this.dawnP) this.dawnP = Math.min(want, this.dawnP + Math.max(0.0004, (want - this.dawnP) * Math.min(1, dt * 1.5)));
+      this.dawn = dawnAt(this.dawnP);
+    }
     // ズーム カメラ（えがく ときだけ ちかく する。ゲームの ひろさは おなじ）
     const Z = this.zoom || 1, vw = this.viewW / Z, vh = H / Z;
     this.look += (p.face - this.look) * Math.min(1, dt * 2.2);

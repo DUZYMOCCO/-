@@ -5,7 +5,7 @@ import { STAGES, ENEMIES, BOSSES, WEAPONS, WEAPON_ORDER, MOVES, pickMove, create
 
 const S = STAGES[15];
 test('ステージ16：いせき・すぐ あそべる・カタナ スタート', () => {
-  assert.equal(STAGES.length, 16);
+  assert.ok(STAGES.length >= 16);
   assert.equal(S.id, 16); assert.equal(S.theme, 'ruins'); assert.equal(S.free, true);
   assert.equal(S.boss.id, 'ghoulking'); assert.ok(S.start.includes('katana')); assert.equal(S.heroLook, 'plain');
 });

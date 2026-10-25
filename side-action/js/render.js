@@ -1,9 +1,11 @@
 // えがく（Canvas 2D）。けいさんは game.js、ここは みためだけ
 // v0.2.0: くらくて こわい せかい（あかい ひじょうとう・きり・ちり・ひかりの あな）
-import { H, GROUND, WEAPONS, GUN_GEOM } from './rules.js?v=7';
-import { drawGun } from './guns.js?v=7';
-import { THEMES2 } from './bg2.js?v=7';
-import { pressState } from './game.js?v=7';
+import { H, GROUND, WEAPONS, GUN_GEOM, dawnAt } from './rules.js?v=8';
+import { drawGun } from './guns.js?v=8';
+import { THEMES2 } from './bg2.js?v=8';
+import { DAWN_THEME, setDawn } from './dawn.js?v=8';
+import { pressState } from './game.js?v=8';
+// v0.8.0: ステージ 17「よあけの こうや」（すすむ ほど あかるく なる そら・こうやの ゾンビ・おおさそり）
 // v0.6.0: ステージ 6〜15・ミニガン・ビームブラスター・しかけ（ていでん・かたむき・ふぶき・プレス）
 // v0.4.0: ズーム カメラ・あたらしい ステージ 3〜5・リアルな じゅう・じゅうじの かお
 
@@ -64,8 +66,24 @@ export class Renderer {
     const x = c.getContext('2d'); x.scale(k, k); x.translate(0, -y0); draw(x, w);
     return (this.layers[key] = { c, w, y0, h });
   }
+  // v0.8：3まい（よる・あさやけ・ひる）の レイヤー を すすみぐあい で まぜて えがく
+  blendLayer(ctx, th, T, name, w, off, vw, p, y0 = 0, h = H) {
+    const n = T.pals.length, f = Math.max(0, Math.min(1, p)) * (n - 1), i0 = Math.min(n - 2, Math.floor(f)), u = f - i0;
+    const L = (k) => this.layer(th, name + k, w, (x, ww) => T[name](x, ww, T.pals[k]), y0, h);
+    if (u < 0.997) blitLoop(ctx, L(i0), off, vw);
+    if (u > 0.003) { ctx.globalAlpha = u; blitLoop(ctx, L(i0 + 1), off, vw); ctx.globalAlpha = 1; }
+  }
+  drawDyn(ctx, g, th, T, cam, vw) {
+    const D = g.dawn || dawnAt(0), t = g.time; setDawn(D);
+    T.sky(ctx, vw, D, t, cam);
+    this.blendLayer(ctx, th, T, 'far', 900, cam * 0.15, vw, D.p, 140, GROUND - 136);
+    this.blendLayer(ctx, th, T, 'mid', 640, cam * 0.6, vw, D.p, 80, GROUND - 76);
+    T.lights(ctx, t, cam, vw, 0, LIGHTS, GLOWS);
+    this.blendLayer(ctx, th, T, 'floor', 640, cam, vw, D.p, GROUND - 4, H - GROUND + 4);
+  }
   drawBg(ctx, g, cam, vw) {
     const th = THEMES[g.stage.theme] ? g.stage.theme : 'lab', T = THEMES[th], t = g.time, lab = th === 'lab';
+    if (T.dyn) return this.drawDyn(ctx, g, th, T, cam, vw);
     const far = this.layer(th, 'far', 900, T.far);
     const mid = this.layer(th, 'mid', 640, T.mid);
     blitLoop(ctx, far, cam * 0.15, vw);
@@ -151,10 +169,13 @@ export class Renderer {
     }
     // てまえの ケーブル（すこし はやく うごく）
     const T = THEMES[th] || THEMES.lab;
-    const fore = this.layer(th, 'fore', 1100, T.fore, 0, 96);
     ctx.translate(cam, 0);
-    blitLoop(ctx, fore, cam * 1.25, wvw);
+    if (T.dyn) this.blendLayer(ctx, th, T, 'fore', 1100, cam * 1.25, wvw, (g.dawn || dawnAt(0)).p, 0, 96);
+    else blitLoop(ctx, this.layer(th, 'fore', 1100, T.fore, 0, 96), cam * 1.25, wvw);
     ctx.restore();
+    // v0.8：あさの いろみ（よるは あおく・ひのでは オレンジ・ひるは そのまま）
+    const DW = T.dyn ? (g.dawn || dawnAt(0)) : null;
+    if (DW && DW.p < 0.995) { ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = `rgb(${DW.tint[0]},${DW.tint[1]},${DW.tint[2]})`; ctx.fillRect(0, 0, vw, H); ctx.globalCompositeOperation = 'source-over'; }
     ctx.setTransform(k, 0, 0, k, 0, 0);
     // ---- くらやみ と ひかりの あな ----
     const hw = Math.ceil(vw * k / 2), hh = Math.ceil(H * k / 2);
@@ -162,13 +183,13 @@ export class Renderer {
     const dc = this.dctx; dc.setTransform(k / 2, 0, 0, k / 2, 0, 0);
     dc.globalCompositeOperation = 'source-over'; dc.globalAlpha = 1;
     dc.clearRect(-50, -50, vw + 100, H + 100);
-    const darkA = Math.min(0.93, Math.max(0.25, (T.dark || 0.64) - g.flash * 2.5) + (g.blackout > 0 ? Math.min(1, g.blackout * 2) * 0.24 : 0));
+    const darkA = DW ? Math.max(0, DW.dark - g.flash * 2.5) : Math.min(0.93, Math.max(0.25, (T.dark || 0.64) - g.flash * 2.5) + (g.blackout > 0 ? Math.min(1, g.blackout * 2) * 0.24 : 0));
     dc.fillStyle = `rgba(3,2,4,${darkA})`; dc.fillRect(-50, -50, vw + 100, H + 100);
     dc.setTransform(k / 2 * Z, 0, 0, k / 2 * Z, sx * k / 2, (sy - vy * Z) * k / 2);
     dc.globalCompositeOperation = 'destination-out';
     for (let i = 0; i < LIGHTS.length; i += 4) { const r = LIGHTS[i + 2]; if (LIGHTS[i] + r < -10 || LIGHTS[i] - r > wvw + 10) continue; dc.globalAlpha = Math.min(1, LIGHTS[i + 3]); dc.drawImage(this.hole, LIGHTS[i] - r, LIGHTS[i + 1] - r, r * 2, r * 2); }
     dc.globalAlpha = 1; dc.globalCompositeOperation = 'source-over';
-    ctx.drawImage(this.dark, 0, 0, vw, H);
+    if (!DW || darkA > 0.01) ctx.drawImage(this.dark, 0, 0, vw, H);
     // ---- いろつきの ひかり（め・ひじょうとう・マズル） ----
     ctx.globalCompositeOperation = 'lighter';
     for (let i = 0; i < GLOWS.length; i += 6) {
@@ -193,7 +214,7 @@ export class Renderer {
       const tb = x.createLinearGradient(0, 0, 0, H); tb.addColorStop(0, 'rgba(0,0,0,0.55)'); tb.addColorStop(0.18, 'rgba(0,0,0,0)'); tb.addColorStop(0.85, 'rgba(0,0,0,0)'); tb.addColorStop(1, 'rgba(0,0,0,0.5)'); x.fillStyle = tb; x.fillRect(0, 0, vw, H);
       this.vig = c; this.vigW = vw;
     }
-    ctx.drawImage(this.vig, 0, 0, vw, H);
+    ctx.globalAlpha = DW ? DW.vig : 1; ctx.drawImage(this.vig, 0, 0, vw, H); ctx.globalAlpha = 1;
     // ざらざら
     if (!this.grainPat) this.grainPat = ctx.createPattern(this.grain, 'repeat');
     ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 0.055; const ox = (hash(this.frame >> 1) * 128) | 0, oy = (hash((this.frame >> 1) + 7) * 128) | 0;
@@ -231,11 +252,12 @@ export class Renderer {
     const fw = 512;
     const AT = (THEMES[th] || {}).atmos;
     ctx.globalAlpha = th === 'subway' ? 0.5 : AT ? Math.min(0.8, 0.34 * (THEMES[th].fog || 0.4) / 0.4) : 0.42;
+    if (g.dawn) ctx.globalAlpha = 0.5 * g.dawn.fog; // よあけ：きりは だんだん はれる
     for (const [sp, par, y] of [[9, 0.8, GROUND - 92], [-6, 1.15, GROUND - 70]]) {
       let x = -(((cam * par + t * sp) % fw) + fw) % fw;
       for (; x < vw; x += fw) ctx.drawImage(this.fog, x, y, fw, 120);
     }
-    ctx.globalAlpha = 0.18; ctx.drawImage(this.fog, -((cam * 0.3 + t * 4) % fw), 10, fw * 2, 160);
+    ctx.globalAlpha = g.dawn ? 0.18 * g.dawn.fog : 0.18; ctx.drawImage(this.fog, -((cam * 0.3 + t * 4) % fw), 10, fw * 2, 160);
     ctx.globalAlpha = 1;
     if (AT) drawAtmos2(ctx, g, AT, cam, vw);
     else if (th === 'manor' || th === 'city') {
@@ -898,9 +920,9 @@ function xMouth(ctx, x0, x1, y, h = 2.5) {
   ctx.stroke();
 }
 // ---------- ゾンビ たち（ちは みどり／むらさき・バラバラ なし） ----------
-const ZLOOK = new Set(['zombie', 'labz', 'guard', 'soldierz', 'bloatz', 'leaper', 'hulk', 'spitter', 'patient', 'worker', 'sailor', 'frozen']);
+const ZLOOK = new Set(['zombie', 'labz', 'guard', 'soldierz', 'bloatz', 'leaper', 'hulk', 'spitter', 'patient', 'worker', 'sailor', 'frozen', 'nomad', 'outlaw']);
 const ZSHIRT = ['#3d4858', '#55473a', '#4a3f4c', '#3f4a3c', '#5a5246'];
-const ZSKIN = { zombie: '#7b8771', labz: '#848c7c', guard: '#76826d', soldierz: '#717c68', bloatz: '#83788a', leaper: '#857a8c', hulk: '#6f6878', spitter: '#7f7488', patient: '#8f9a86', worker: '#7a8670', sailor: '#78846e', frozen: '#9fb6c4' };
+const ZSKIN = { zombie: '#7b8771', labz: '#848c7c', guard: '#76826d', soldierz: '#717c68', bloatz: '#83788a', leaper: '#857a8c', hulk: '#6f6878', spitter: '#7f7488', patient: '#8f9a86', worker: '#7a8670', sailor: '#78846e', frozen: '#9fb6c4', nomad: '#808a6c', outlaw: '#76826a' };
 function zHand(ctx, x, y, col, r = 3.8) {
   ctx.fillStyle = OUT; ctx.beginPath(); ctx.arc(x, y, r + 1.6, 0, TAU); ctx.fill();
   ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill();
@@ -974,6 +996,16 @@ function zHead(ctx, L, hx, hy, skin, flash, hot, e, t) {
   } else if (L === 'labz') {
     ctx.strokeStyle = '#2a2a2a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(hx - 6, hy - 8); ctx.quadraticCurveTo(hx - 12, hy - 4, hx - 9, hy + 2); ctx.stroke();
     ctx.strokeStyle = '#111'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(hx + 3.5, hy - 2, 3, 0, TAU); ctx.moveTo(hx + 6.5, hy - 2); ctx.lineTo(hx + 7, hy - 2); ctx.arc(hx + 9, hy - 1.7, 2.3, Math.PI, Math.PI * 3); ctx.moveTo(hx + 1.5, hy - 4); ctx.lineTo(hx + 5, hy); ctx.stroke();
+  } else if ((L === 'nomad' || L === 'outlaw') && (L === 'nomad' || e.helmetHp > 0)) { // つばの ひろい ぼうし
+    const hc = flash ? '#fff' : L === 'nomad' ? '#c8a86a' : '#4a3426', hb = flash ? '#fff' : L === 'nomad' ? '#a8884a' : '#2e2018';
+    const bw = L === 'nomad' ? 19 : 16;
+    ctx.fillStyle = OUT; ctx.beginPath(); ctx.ellipse(hx, hy - 7, bw + 1.6, 4.4, -0.06, 0, TAU); ctx.fill();
+    ctx.fillStyle = hb; ctx.beginPath(); ctx.ellipse(hx, hy - 7, bw, 3, -0.06, 0, TAU); ctx.fill();
+    ctx.fillStyle = OUT; roundRect(ctx, hx - 9, hy - 19, 18, 13, 5); ctx.fill();
+    ctx.fillStyle = hc; roundRect(ctx, hx - 7.6, hy - 17.6, 15.2, 11, 4); ctx.fill();
+    ctx.fillStyle = L === 'nomad' ? '#6a4a2a' : '#8a6a3a'; ctx.fillRect(hx - 7.6, hy - 9.6, 15.2, 2.2);
+    if (L === 'outlaw') { const dmg = 1 - e.helmetHp / (e.def.helmetHp || 1); if (dmg > 0.3) { ctx.fillStyle = '#1a120c'; ctx.beginPath(); ctx.arc(hx + 2, hy - 13, 1.6, 0, TAU); ctx.fill(); } }
+    if (L === 'outlaw' && !flash) { ctx.fillStyle = '#6a2a24'; ctx.beginPath(); ctx.moveTo(hx - 4, hy + 6); ctx.lineTo(hx + 11, hy + 5); ctx.lineTo(hx + 4, hy + 12); ctx.closePath(); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.beginPath(); ctx.arc(hx + 4, hy + 7.5, 0.8, 0, TAU); ctx.arc(hx + 7, hy + 7, 0.8, 0, TAU); ctx.fill(); }
   } else if (L === 'zombie' || L === 'soldierz') {
     ctx.strokeStyle = '#1e1c1a'; ctx.lineWidth = 1.4; ctx.beginPath(); for (let i = 0; i < 5; i++) { const a = Math.PI * (1.05 + i * 0.16); ctx.moveTo(hx + Math.cos(a) * r, hy + Math.sin(a) * r); ctx.lineTo(hx + Math.cos(a) * (r + 3.5) - 2, hy + Math.sin(a) * (r + 3) + 1 + hash(e.seed + i) * 2); } ctx.stroke();
   }
@@ -986,7 +1018,7 @@ function drawZombie(ctx, e, g, L, flash, walk, ph, wind, atk) {
   const zp = ph * 0.75;
   let lean = 0.2 + Math.sin(zp * 0.5) * 0.05;
   if (L === 'hulk') lean = 0.28;
-  if (L === 'soldierz' || L === 'spitter') lean = 0.08;
+  if (L === 'soldierz' || L === 'spitter' || L === 'outlaw') lean = 0.08;
   if (wind) lean = L === 'guard' ? -0.12 : L === 'spitter' ? -0.25 : -0.05;
   if (atk) lean = 0.42;
   if (hurt) lean = -0.32;
@@ -997,13 +1029,13 @@ function drawZombie(ctx, e, g, L, flash, walk, ph, wind, atk) {
   else { F1 = [6, 0]; F2 = [-6, 0]; }
   const big = L === 'hulk', fat = L === 'bloatz';
   if (big) ctx.scale(1.45, 1.45); else if (fat) ctx.scale(1.12, 1.12);
-  const pants = flash ? '#fff' : L === 'patient' ? '#7d8676' : L === 'worker' ? '#2e3440' : L === 'sailor' ? '#22283a' : L === 'frozen' ? '#3c4a58' : L === 'guard' ? '#1b2232' : L === 'soldierz' ? '#3e3d2c' : L === 'labz' ? '#34363a' : big ? '#2c2a30' : '#2b2d31';
-  const shoe = flash ? '#fff' : L === 'guard' || L === 'soldierz' ? '#121212' : '#2a2520';
+  const pants = flash ? '#fff' : L === 'nomad' ? '#5a4632' : L === 'outlaw' ? '#2e2a30' : L === 'patient' ? '#7d8676' : L === 'worker' ? '#2e3440' : L === 'sailor' ? '#22283a' : L === 'frozen' ? '#3c4a58' : L === 'guard' ? '#1b2232' : L === 'soldierz' ? '#3e3d2c' : L === 'labz' ? '#34363a' : big ? '#2c2a30' : '#2b2d31';
+  const shoe = flash ? '#fff' : L === 'guard' || L === 'soldierz' ? '#121212' : L === 'outlaw' || L === 'nomad' ? '#4a2e1c' : '#2a2520';
   const lw = big ? 9.5 : fat ? 8.5 : 7;
   zLeg(ctx, -2, -34, F2[0], F2[1], flash ? '#fff' : shade(pants), shoe, lw);
   zLeg(ctx, 1, -34, F1[0], F1[1], pants, shoe, lw);
   ctx.save(); ctx.translate(0, -34); ctx.rotate(lean); ctx.translate(0, 34);
-  const shirt = L === 'patient' ? '#8fb0aa' : L === 'worker' ? '#b8661c' : L === 'sailor' ? '#c8c8c0' : L === 'frozen' ? '#52687a' : L === 'guard' ? '#26324a' : L === 'labz' ? '#b9bcb4' : L === 'soldierz' ? '#4b4a35' : big ? '#3a3440' : fat ? '#4a4050' : L === 'spitter' ? '#3c3644' : ZSHIRT[seed % ZSHIRT.length];
+  const shirt = L === 'nomad' ? '#a8683a' : L === 'outlaw' ? '#7a6248' : L === 'patient' ? '#8fb0aa' : L === 'worker' ? '#b8661c' : L === 'sailor' ? '#c8c8c0' : L === 'frozen' ? '#52687a' : L === 'guard' ? '#26324a' : L === 'labz' ? '#b9bcb4' : L === 'soldierz' ? '#4b4a35' : big ? '#3a3440' : fat ? '#4a4050' : L === 'spitter' ? '#3c3644' : ZSHIRT[seed % ZSHIRT.length];
   const sleeve = flash ? '#fff' : L === 'hulk' || L === 'spitter' ? skin : shirt;
   // うで の めあて
   const sway = Math.sin(t * 2.4 + seed) * 3, sway2 = Math.cos(t * 2.1 + seed) * 3;
@@ -1013,6 +1045,7 @@ function drawZombie(ctx, e, g, L, flash, walk, ph, wind, atk) {
   if (hurt) { far = [-4, -60]; near = [2, -62]; }
   if (L === 'spitter' && !hurt) { far = [8, -30]; near = [12, -31]; }
   if (L === 'soldierz' && !hurt) { const ga = wind || e.state === 'burst' ? 0 : 0.35 + Math.sin(t * 2 + seed) * 0.08; far = [14 + 22 * Math.cos(ga), -44 + 22 * Math.sin(ga) - 3]; near = [15, -43]; e._ga = ga; }
+  if (L === 'outlaw' && !hurt) { const ga = wind || e.state === 'burst' ? 0 : 0.5 + Math.sin(t * 2 + seed) * 0.1; far = [14 + 22 * Math.cos(ga), -44 + 22 * Math.sin(ga) - 3]; near = [6, -36]; e._ga = ga; }
   if (L === 'guard' && !hurt) { far = [18 + sway * 0.4, -47]; near = atk ? [32, -42] : wind ? [-2, -70] : [16, -40]; }
   const aw = big ? 9 : 5.2, al = big ? 17 : fat ? 14 : 15, hr = big ? 6.5 : 3.8;
   const [fx, fy] = zArm(ctx, 4, -53, far[0], far[1], flash ? '#fff' : shade(sleeve), flash ? '#fff' : shade(ZSKIN[L]), aw, al, hr);
@@ -1040,6 +1073,7 @@ function drawZombie(ctx, e, g, L, flash, walk, ph, wind, atk) {
       ctx.fillStyle = shirt; ctx.beginPath(); ctx.moveTo(-11.5, -42); ctx.lineTo(13.5, -46); ctx.lineTo(13.5, -31); ctx.lineTo(-11.5, -31); ctx.fill();
       ctx.strokeStyle = '#7a3aa8'; ctx.lineWidth = 1.3; ctx.beginPath(); ctx.moveTo(4, -60); ctx.quadraticCurveTo(10, -54, 6, -48); ctx.moveTo(-5, -58); ctx.lineTo(-2, -50); ctx.stroke();
       ctx.fillStyle = '#9a5ad0'; ctx.beginPath(); ctx.arc(-6, -56, 2.6, 0, TAU); ctx.arc(9, -52, 2, 0, TAU); ctx.fill();
+      if (e.def.look === 'rockz') rockPlates(ctx, [[-8, -60, 8, 5, -0.3], [7, -61, 7, 5, 0.3], [2, -45, 9, 6, 0.1], [-9, -44, 5, 6, 0.2]]);
     }
   } else {
     const bot = L === 'labz' ? -14 : L === 'patient' ? -18 : -31;
@@ -1061,6 +1095,18 @@ function drawZombie(ctx, e, g, L, flash, walk, ph, wind, atk) {
         ctx.fillStyle = 'rgba(70,140,50,0.5)'; ctx.beginPath(); ctx.ellipse(2, -51, 3, 2, 0, 0, TAU); ctx.fill();
         ctx.fillStyle = OUT; ctx.fillRect(-10, -36, 20, 4);
       }
+      if (L === 'nomad') { // ぼろぼろの ポンチョ（しまもよう）
+        ctx.fillStyle = OUT; ctx.beginPath(); ctx.moveTo(-13, -40); ctx.lineTo(-6, -60); ctx.lineTo(8, -60); ctx.lineTo(15, -40); ctx.lineTo(10, -36); ctx.lineTo(4, -41); ctx.lineTo(-2, -35); ctx.lineTo(-8, -40); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#9a5e34'; ctx.beginPath(); ctx.moveTo(-11.5, -41); ctx.lineTo(-5, -58.5); ctx.lineTo(7, -58.5); ctx.lineTo(13.5, -41); ctx.lineTo(10, -38); ctx.lineTo(4, -43); ctx.lineTo(-2, -37); ctx.lineTo(-8, -42); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#d8b878'; ctx.fillRect(-9, -50, 20, 2); ctx.fillStyle = '#5a7a6a'; ctx.fillRect(-10, -46, 22, 2); ctx.fillStyle = '#d8b878'; for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.moveTo(-8 + i * 4.4, -53); ctx.lineTo(-6 + i * 4.4, -55.6); ctx.lineTo(-4 + i * 4.4, -53); ctx.fill(); }
+        zStains(ctx, seed + 3, -8, 10, -56, -42, 2);
+      }
+      if (L === 'outlaw') { // かわの ベスト と ベルト
+        ctx.fillStyle = '#3a2a20'; ctx.beginPath(); ctx.moveTo(-10, -57); ctx.lineTo(-1, -57); ctx.lineTo(-3, -33); ctx.lineTo(-10, -33); ctx.fill(); ctx.beginPath(); ctx.moveTo(4, -57); ctx.lineTo(10, -57); ctx.lineTo(10, -33); ctx.lineTo(2, -33); ctx.fill();
+        ctx.fillStyle = '#c8b070'; ctx.beginPath(); ctx.arc(-6, -50, 1, 0, TAU); ctx.arc(-6, -44, 1, 0, TAU); ctx.fill();
+        ctx.fillStyle = OUT; ctx.fillRect(-10, -35, 20, 4); ctx.fillStyle = '#5a3a24'; ctx.fillRect(-10, -34.4, 20, 2.6); ctx.fillStyle = '#b8a060'; ctx.fillRect(-1.5, -35, 4, 4);
+        ctx.fillStyle = '#5a3a24'; ctx.fillRect(-12, -34, 6, 9); ctx.fillStyle = OUT; ctx.fillRect(-12, -26, 6, 1.2);
+      }
       if (L === 'spitter') { // のどの ふくろ
         const pu = 0.7 + 0.3 * Math.sin(t * 7 + seed) + (wind ? 0.4 : 0);
         ctx.fillStyle = '#9a5ad0'; ctx.beginPath(); ctx.ellipse(7, -57, 5 * pu, 4 * pu, 0, 0, TAU); ctx.fill(); glowAt(ctx, 7, -57, 16 * pu, 'purple', 0.6);
@@ -1069,8 +1115,9 @@ function drawZombie(ctx, e, g, L, flash, walk, ph, wind, atk) {
   }
   // あたま（まえ に つきだす）
   const hTilt = hurt ? -0.35 : wind && L === 'spitter' ? -0.4 : 0.15 + Math.sin(t * 1.7 + seed) * 0.1;
-  ctx.save(); ctx.translate(3, -58); ctx.rotate(hTilt); zHead(ctx, L, big ? 5 : 4, -9, ZSKIN[L], flash, hot, e, t); ctx.restore();
+  ctx.save(); ctx.translate(3, -58); ctx.rotate(hTilt); zHead(ctx, L, big ? 5 : 4, -9, ZSKIN[L], flash, hot, e, t); if (!flash && e.def.look === 'rockz') rockPlates(ctx, [[3, -17, 9, 4.6, -0.1]]); ctx.restore();
   if (L === 'soldierz' && !hurt) drawGun(ctx, 'dark', 15, -44, e._ga || 0, 1, 1);
+  if (L === 'outlaw' && !hurt) drawGun(ctx, 'revolver', 15, -44, e._ga || 0, 1, 1);
   const [nx, ny] = zArm(ctx, 0, -53, near[0], near[1], sleeve, skin, aw, al, hr);
   if (L === 'guard' && !hurt) { // けいぼう
     const ba = atk ? 0.3 : wind ? -2.4 : -0.9;
@@ -1123,10 +1170,12 @@ function drawEnemy(ctx, e, g) {
   if (L === 'ghoul') drawGhoul(ctx, e.h / 58, ghoulPoseEnemy(e, g));
   else if (L === 'sergeant') { ctx.scale(1.25, 1.25); drawZombie(ctx, e, g, 'soldierz', flash, walk, ph, wind, atk); }
   else if (L === 'patch') { ctx.scale(1.12, 1.12); drawZombie(ctx, e, g, 'hulk', flash, walk, ph, wind, atk); if (!flash) { ctx.strokeStyle = '#2a2024'; ctx.lineWidth = 1.6; ctx.beginPath(); for (const [x0, y0, x1, y1] of [[-14, -80, 14, -70], [-10, -60, 16, -64], [-16, -74, -6, -50]]) { ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); for (let k = 0; k <= 4; k++) { const x = x0 + (x1 - x0) * k / 4, y = y0 + (y1 - y0) * k / 4; ctx.moveTo(x - 2, y - 3); ctx.lineTo(x + 2, y + 3); } } ctx.stroke(); } }
+  else if (L === 'rockz') { ctx.scale(1.18, 1.18); drawZombie(ctx, e, g, 'hulk', flash, walk, ph, wind, atk); }
   else if (ZLOOK.has(L)) drawZombie(ctx, e, g, L, flash, walk, ph, wind, atk);
   else if (L === 'hound') drawHound(ctx, e, ph, wind || e.state === 'leap', flash, g.time);
   else if (A === 'crawler') {
     if (L === 'swarm') { ctx.scale(0.62, 0.62); drawCrawler(ctx, e, ph * 1.3, wind || e.state === 'leap', flash); }
+    else if (L === 'scorp') drawScorp(ctx, ph, wind || e.state === 'leap', flash, 1);
     else if (L === 'wraith') drawWraith(ctx, e, ph, wind || e.state === 'leap', flash, g.time);
     else drawCrawler(ctx, e, ph, wind || e.state === 'leap', flash);
   } else {
@@ -1250,6 +1299,7 @@ function drawWraith(ctx, e, ph, mad, flash, t) {
 // かべの しみから はいでる カゲモドキ
 function drawEmerge(ctx, e, g) {
   if (e.def.look === 'ghoul') return drawGhoulEmerge(ctx, e, g);
+  if (e.def.look === 'scorp') return drawSandEmerge(ctx, e, g);
   const p = 1 - e.spawnT / (e.spawnMax || 0.9), wy = e.wallY || GROUND - 90;
   ctx.save(); ctx.translate(e.x, wy);
   ctx.fillStyle = 'rgba(4,2,6,0.92)'; ctx.beginPath(); ctx.ellipse(0, 0, 8 + 26 * Math.min(1, p * 2), 12 + 16 * Math.min(1, p * 2), 0, 0, TAU); ctx.fill();
@@ -1260,6 +1310,69 @@ function drawEmerge(ctx, e, g) {
     const q = (p - 0.35) / 0.65, y = wy + (GROUND - wy) * q * q;
     ctx.save(); ctx.globalAlpha = 0.4 + 0.6 * q; ctx.translate(e.x, y); ctx.scale(e.face, 1); ctx.rotate((1 - q) * -1.3);
     const L = e.def.look; if (L === 'swarm') ctx.scale(0.62, 0.62); if (L === 'wraith') drawWraith(ctx, e, e.anim * 10, true, false, 0); else drawCrawler(ctx, e, e.anim * 10, true, false); ctx.restore(); ctx.globalAlpha = 1;
+  }
+}
+// v0.8 すなさそり（くろい こうら・みどりに ひかる め・まがった しっぽ）
+function drawScorp(ctx, ph, mad, flash, k) {
+  const shell = flash ? '#fff' : '#3a2a1e', hi = flash ? '#fff' : '#8a6a44', dk = flash ? '#fff' : '#22160e';
+  ctx.lineCap = 'round';
+  // あし
+  ctx.strokeStyle = OUT; ctx.lineWidth = 3.2;
+  for (let i = 0; i < 4; i++) { const bx = -12 + i * 7, sw = Math.sin(ph * 1.8 + i * 1.4) * 4; ctx.beginPath(); ctx.moveTo(bx, -10); ctx.lineTo(bx - 4 + sw, -16); ctx.lineTo(bx - 7 + sw * 1.3, 0); ctx.stroke(); }
+  ctx.strokeStyle = dk; ctx.lineWidth = 1.6;
+  for (let i = 0; i < 4; i++) { const bx = -12 + i * 7, sw = Math.sin(ph * 1.8 + i * 1.4) * 4; ctx.beginPath(); ctx.moveTo(bx, -10); ctx.lineTo(bx - 4 + sw, -16); ctx.lineTo(bx - 7 + sw * 1.3, 0); ctx.stroke(); }
+  // しっぽ（せなかの うえに まがる）
+  const curl = mad ? 0.5 : Math.sin(ph * 0.6) * 0.12;
+  let x = -16, y = -12, a = -2.2 - curl;
+  const segs = [];
+  for (let i = 0; i < 5; i++) { segs.push([x, y, 5.2 - i * 0.5]); x += Math.cos(a) * 7; y += Math.sin(a) * 7; a += 0.55 + curl * 0.4; }
+  for (const [sx, sy, r] of segs) { ctx.fillStyle = OUT; ctx.beginPath(); ctx.arc(sx, sy, r + 1.4, 0, TAU); ctx.fill(); }
+  for (const [sx, sy, r] of segs) { ctx.fillStyle = shell; ctx.beginPath(); ctx.arc(sx, sy, r, 0, TAU); ctx.fill(); ctx.fillStyle = hi; ctx.beginPath(); ctx.arc(sx - r * 0.3, sy - r * 0.4, r * 0.35, 0, TAU); ctx.fill(); }
+  ctx.fillStyle = OUT; ctx.beginPath(); ctx.moveTo(x - 3, y - 2); ctx.quadraticCurveTo(x + 8, y - 2, x + 6, y + 8); ctx.quadraticCurveTo(x + 3, y + 2, x - 3, y + 3); ctx.fill();
+  ctx.fillStyle = flash ? '#fff' : '#9ad060'; ctx.beginPath(); ctx.moveTo(x - 1.5, y - 0.6); ctx.quadraticCurveTo(x + 6, y - 0.6, x + 5, y + 5.4); ctx.quadraticCurveTo(x + 2.4, y + 1.6, x - 1.5, y + 1.8); ctx.fill();
+  if (!flash) glowAt(ctx, x + 3, y + 2, 10, 'green', 0.5);
+  // からだ
+  ctx.fillStyle = OUT; ctx.beginPath(); ctx.ellipse(-2, -9, 17, 8.4, 0, 0, TAU); ctx.fill();
+  ctx.fillStyle = shell; ctx.beginPath(); ctx.ellipse(-2, -9, 15.4, 6.8, 0, 0, TAU); ctx.fill();
+  if (!flash) { ctx.strokeStyle = dk; ctx.lineWidth = 1; ctx.beginPath(); for (let i = -2; i <= 2; i++) { ctx.moveTo(-2 + i * 5, -15); ctx.lineTo(-2 + i * 5, -4); } ctx.stroke(); ctx.fillStyle = hi; ctx.beginPath(); ctx.ellipse(-4, -13, 8, 1.6, 0, 0, TAU); ctx.fill(); }
+  // ハサミ
+  const op = mad ? 0.6 : 0.25 + Math.sin(ph) * 0.12, rx = mad ? 8 : 0;
+  for (const [yy, s2] of [[-6, 1], [-11, 0.85]]) {
+    ctx.strokeStyle = OUT; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(10, -9); ctx.lineTo(18 + rx * 0.5, yy - 4); ctx.lineTo(24 + rx, yy); ctx.stroke();
+    ctx.strokeStyle = shell; ctx.lineWidth = 2.2; ctx.stroke();
+    ctx.save(); ctx.translate(26 + rx, yy); ctx.scale(s2, s2);
+    ctx.fillStyle = OUT; ctx.beginPath(); ctx.ellipse(0, 0, 6.4, 4.4, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = shell; ctx.beginPath(); ctx.ellipse(0, 0, 5, 3.2, 0, 0, TAU); ctx.fill();
+    ctx.strokeStyle = OUT; ctx.lineWidth = 2.6; ctx.beginPath(); ctx.moveTo(4, -1); ctx.lineTo(10, -2 - op * 6); ctx.moveTo(4, 1); ctx.lineTo(10, 2 + op * 4); ctx.stroke();
+    ctx.strokeStyle = hi; ctx.lineWidth = 1.2; ctx.stroke();
+    ctx.restore();
+  }
+  eyesGlow(ctx, [[11, -12], [8, -13]], mad ? '#f4ffd0' : '#b8f070', 1.3, 'green');
+}
+function drawSandEmerge(ctx, e, g) {
+  const p = 1 - e.spawnT / (e.spawnMax || 0.9);
+  ctx.save(); ctx.translate(e.x, GROUND);
+  const r = 8 + 20 * Math.min(1, p * 2);
+  ctx.fillStyle = '#6a4a2e'; ctx.beginPath(); ctx.ellipse(0, 0, r + 3, 5 + r * 0.1, 0, Math.PI, TAU); ctx.fill();
+  ctx.fillStyle = '#b08a5a'; ctx.beginPath(); ctx.ellipse(0, 0, r, 3.4 + r * 0.12, 0, Math.PI, TAU); ctx.fill();
+  for (let i = 0; i < 5; i++) { const k = (g.time * 2.4 + i * 0.2) % 1; ctx.fillStyle = 'rgba(190,150,100,0.8)'; ctx.beginPath(); ctx.arc((i - 2) * r * 0.4 + Math.sin(i * 3) * 4, -k * 18, 2.2 * (1 - k) + 0.6, 0, TAU); ctx.fill(); }
+  if (p > 0.3) {
+    const q = (p - 0.3) / 0.7;
+    ctx.beginPath(); ctx.rect(-80, -120, 160, 119); ctx.clip();
+    ctx.translate(0, (1 - q) * 26); ctx.scale(e.face, 1); ctx.rotate(-(1 - q) * 0.4);
+    drawScorp(ctx, e.anim * 10, true, false, 1);
+  }
+  ctx.restore();
+}
+// いわおとこ：かたと むね と あたまに いわの よろい
+function rockPlates(ctx, R) {
+  for (const [x, y, w, h, a] of R) {
+    ctx.save(); ctx.translate(x, y); ctx.rotate(a);
+    ctx.fillStyle = OUT; ctx.beginPath(); ctx.moveTo(-w - 1.5, 1); ctx.lineTo(-w * 0.5, -h - 1.5); ctx.lineTo(w * 0.6, -h - 1); ctx.lineTo(w + 1.5, 0); ctx.lineTo(w * 0.5, h + 1.5); ctx.lineTo(-w * 0.6, h + 1); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#9a7a58'; ctx.beginPath(); ctx.moveTo(-w, 1); ctx.lineTo(-w * 0.5, -h); ctx.lineTo(w * 0.6, -h + 0.5); ctx.lineTo(w, 0); ctx.lineTo(w * 0.5, h); ctx.lineTo(-w * 0.6, h - 0.5); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#c4a47a'; ctx.beginPath(); ctx.moveTo(-w * 0.8, 0); ctx.lineTo(-w * 0.45, -h * 0.8); ctx.lineTo(w * 0.3, -h * 0.75); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = '#5a4430'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(-w * 0.2, -h * 0.5); ctx.lineTo(w * 0.1, h * 0.2); ctx.lineTo(w * 0.5, h * 0.4); ctx.stroke();
+    ctx.restore();
   }
 }
 function drawCrawler(ctx, e, ph, mad, flash) {
@@ -1294,6 +1407,7 @@ function drawBoss(ctx, b, g) {
   if (kit === 'beast' || kit === 'yeti' || kit === 'queen') return drawBeast(ctx, b, g, kit);
   if (kit === 'tank') return drawTank(ctx, b, g);
   if (kit === 'ghoul') return drawGhoulBoss(ctx, b, g);
+  if (kit === 'scorpion') return drawScorpBoss(ctx, b, g);
   if (kit === 'heli') return drawHeli(ctx, b, g);
   if (kit === 'final') return (b.phase || 1) === 2 ? drawBeast(ctx, b, g, 'final') : drawMan(ctx, b, g, 'final');
   return drawAgent(ctx, b, g);
@@ -1553,13 +1667,14 @@ function drawHazard(ctx, h, g) {
     ctx.fillStyle = 'rgba(160,120,170,0.5)'; for (let x = h.x + 10; x < ex; x += 26) { ctx.beginPath(); ctx.arc(x, GROUND - 10, 3, 0, TAU); ctx.fill(); }
   } else if (h.kind === 'spike') {
     if (h.warn > 0) {
-      const a = 0.4 + Math.sin(t * 30) * 0.3; ctx.fillStyle = h.look === 'ice' ? `rgba(150,210,255,${a})` : h.look === 'root' ? `rgba(120,160,60,${a})` : `rgba(150,60,210,${a})`; ctx.beginPath(); ctx.ellipse(h.x + h.w / 2, GROUND - 2, h.w / 2 + 6, 6, 0, 0, TAU); ctx.fill();
-      glowAt(ctx, h.x + h.w / 2, GROUND - 4, 30, 'purple', a);
+      const a = 0.4 + Math.sin(t * 30) * 0.3; ctx.fillStyle = h.look === 'ice' ? `rgba(150,210,255,${a})` : h.look === 'root' ? `rgba(120,160,60,${a})` : h.look === 'sand' ? `rgba(200,160,100,${a})` : `rgba(150,60,210,${a})`; ctx.beginPath(); ctx.ellipse(h.x + h.w / 2, GROUND - 2, h.w / 2 + 6, 6, 0, 0, TAU); ctx.fill();
+      glowAt(ctx, h.x + h.w / 2, GROUND - 4, 30, h.look === 'sand' ? 'warm' : 'purple', a);
       ctx.fillStyle = '#e0b0ff'; ctx.font = '900 14px system-ui'; ctx.textAlign = 'center'; ctx.fillText('！', h.x + h.w / 2, GROUND - 14);
     } else {
       const up = Math.min(1, (0.6 - h.life) * 8 + 0.2), hh = h.h * Math.max(0.2, Math.min(1, h.life * 3)) * up;
       ctx.fillStyle = OUT; ctx.beginPath(); ctx.moveTo(h.x, GROUND); ctx.lineTo(h.x + h.w * 0.3, GROUND - hh * 0.7); ctx.lineTo(h.x + h.w * 0.5, GROUND - hh); ctx.lineTo(h.x + h.w * 0.7, GROUND - hh * 0.75); ctx.lineTo(h.x + h.w, GROUND); ctx.fill();
-      ctx.fillStyle = h.look === 'ice' ? '#a8d8f0' : h.look === 'root' ? '#4a3a28' : '#2a1e33'; ctx.beginPath(); ctx.moveTo(h.x + 5, GROUND); ctx.lineTo(h.x + h.w * 0.5, GROUND - hh + 6); ctx.lineTo(h.x + h.w - 5, GROUND); ctx.fill();
+      ctx.fillStyle = h.look === 'ice' ? '#a8d8f0' : h.look === 'root' ? '#4a3a28' : h.look === 'sand' ? '#3c2c22' : '#2a1e33'; ctx.beginPath(); ctx.moveTo(h.x + 5, GROUND); ctx.lineTo(h.x + h.w * 0.5, GROUND - hh + 6); ctx.lineTo(h.x + h.w - 5, GROUND); ctx.fill();
+      if (h.look === 'sand') { ctx.fillStyle = '#9ad060'; ctx.beginPath(); ctx.moveTo(h.x + h.w * 0.42, GROUND - hh + 12); ctx.lineTo(h.x + h.w * 0.5, GROUND - hh - 4); ctx.lineTo(h.x + h.w * 0.58, GROUND - hh + 12); ctx.fill(); ctx.fillStyle = 'rgba(176,138,90,0.9)'; ctx.beginPath(); ctx.ellipse(h.x + h.w / 2, GROUND - 1, h.w / 2 + 8, 5, 0, Math.PI, TAU); ctx.fill(); }
     }
   }
 }
@@ -2074,6 +2189,106 @@ function drawGhoulBoss(ctx, b, g) {
   bossFx(ctx, b, g, b.y - 66 * sc);
 }
 
+// v0.8 よあけの おおさそり（ゾンビ化した おおきな さそり・かおに じゅうじの ぬいあと）
+function drawScorpBoss(ctx, b, g) {
+  const st = b.state, t = g.time, flash = b.flashT > 0.06, rage = b.hp < b.maxHp * 0.5;
+  const shell = flash ? '#fff' : rage ? '#4a2a22' : '#3c2c22', hi = flash ? '#fff' : '#9a7a52', dk = flash ? '#fff' : '#20140e', vein = rage ? '#9cff5a' : '#6ad040';
+  ctx.save(); ctx.translate(b.x, b.y);
+  ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.beginPath(); ctx.ellipse(0, GROUND - b.y, 96, 9, 0, 0, TAU); ctx.fill();
+  deadFade(ctx, b);
+  ctx.scale(b.face, 1);
+  if (b.emerge && st === 'intro') {
+    const rise = clamp((2.2 - b.t) / 1.7, 0, 1);
+    ctx.fillStyle = '#6a4a2e'; ctx.beginPath(); ctx.ellipse(0, 0, 110, 12, 0, Math.PI, TAU); ctx.fill();
+    ctx.beginPath(); ctx.rect(-300, -400, 600, 400); ctx.clip();
+    ctx.translate(0, (1 - rise) * 110); ctx.rotate(-(1 - rise) * 0.18);
+  }
+  const walk = b.onGround && Math.abs(b.vx) > 20, ph = b.anim * 9;
+  const dazed = st === 'dazed' || st === 'down';
+  if (st === 'chargeWind') ctx.translate(Math.sin(t * 50) * 2, 0);
+  if (st === 'charge') ctx.rotate(0.06);
+  if (dazed) ctx.rotate(-0.08 + Math.sin(t * 3) * 0.04);
+  const bob = walk ? Math.abs(Math.sin(ph)) * 3 : Math.sin(t * 2) * 1.5;
+  ctx.translate(0, -bob);
+  // あし（4つい）
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  for (let pass = 0; pass < 2; pass++) for (let i = 0; i < 4; i++) {
+    const bx = -40 + i * 22, sw = walk ? Math.sin(ph + i * 1.3 + pass * Math.PI) * 12 : 0, back = pass === 0;
+    const kx = bx - 14 + sw * 0.4, ky = -64 - (back ? 4 : 0), fx = bx - 26 + sw, fy = back ? -2 : 0;
+    ctx.strokeStyle = OUT; ctx.lineWidth = back ? 9 : 11; ctx.beginPath(); ctx.moveTo(bx, -36); ctx.lineTo(kx, ky); ctx.lineTo(fx, fy); ctx.stroke();
+    ctx.strokeStyle = back ? dk : shell; ctx.lineWidth = back ? 5 : 7; ctx.stroke();
+    if (pass === 1) { ctx.fillStyle = hi; ctx.beginPath(); ctx.arc(kx, ky, 2.4, 0, TAU); ctx.fill(); }
+  }
+  // しっぽ
+  const tailUp = st === 'spitWind' || st === 'summon' ? 1 : st === 'spit' ? 0.6 : 0;
+  const stab = st === 'slam' || st === 'slamWind' ? 1 : 0;
+  let x = -62, y = -46, a = -2.5 - tailUp * 0.15 + Math.sin(t * 1.6) * 0.05;
+  const segs = [];
+  for (let i = 0; i < 7; i++) { const r = 15 - i * 1.3; segs.push([x, y, r]); x += Math.cos(a) * (r * 1.45); y += Math.sin(a) * (r * 1.45); a += 0.36 + stab * 0.12 - tailUp * 0.04; }
+  for (const [sx, sy, r] of segs) { ctx.fillStyle = OUT; ctx.beginPath(); ctx.arc(sx, sy, r + 2.5, 0, TAU); ctx.fill(); }
+  for (const [sx, sy, r] of segs) {
+    ctx.fillStyle = shell; ctx.beginPath(); ctx.arc(sx, sy, r, 0, TAU); ctx.fill();
+    if (!flash) { ctx.fillStyle = hi; ctx.beginPath(); ctx.ellipse(sx - r * 0.25, sy - r * 0.45, r * 0.5, r * 0.22, -0.4, 0, TAU); ctx.fill(); ctx.strokeStyle = vein; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(sx - r * 0.4, sy + r * 0.3); ctx.lineTo(sx + r * 0.3, sy + r * 0.1); ctx.stroke(); }
+  }
+  // どくばり
+  const ang = a + 0.6;
+  ctx.save(); ctx.translate(x, y); ctx.rotate(ang);
+  ctx.fillStyle = OUT; ctx.beginPath(); ctx.ellipse(0, 0, 12, 9, 0, 0, TAU); ctx.fill(); ctx.beginPath(); ctx.moveTo(6, -6); ctx.quadraticCurveTo(28, -2, 30, 14); ctx.quadraticCurveTo(20, 4, 6, 6); ctx.fill();
+  ctx.fillStyle = flash ? '#fff' : '#6aa040'; ctx.beginPath(); ctx.ellipse(0, 0, 9.5, 7, 0, 0, TAU); ctx.fill();
+  ctx.fillStyle = flash ? '#fff' : '#d8e8a0'; ctx.beginPath(); ctx.moveTo(7, -3.6); ctx.quadraticCurveTo(24, -1, 27, 10); ctx.quadraticCurveTo(18, 3, 7, 3.6); ctx.fill();
+  ctx.restore();
+  if (!flash) glowAt(ctx, x, y, 30 + tailUp * 20, 'green', 0.6 + tailUp * 0.3);
+  if (st === 'spitWind' && !flash) { ctx.fillStyle = '#9cff5a'; for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.arc(x + Math.sin(t * 20 + i) * 4, y + 6 + ((t * 30 + i * 5) % 14), 2.4, 0, TAU); ctx.fill(); } }
+  // こうら（どう）
+  ctx.fillStyle = OUT; ctx.beginPath(); ctx.ellipse(-6, -46, 64, 27, -0.04, 0, TAU); ctx.fill();
+  ctx.fillStyle = shell; ctx.beginPath(); ctx.ellipse(-6, -46, 61, 24, -0.04, 0, TAU); ctx.fill();
+  if (!flash) {
+    ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.beginPath(); ctx.ellipse(-6, -36, 58, 12, 0, 0, Math.PI); ctx.fill();
+    ctx.strokeStyle = dk; ctx.lineWidth = 2; ctx.beginPath(); for (let i = -3; i <= 3; i++) { ctx.moveTo(-6 + i * 15, -69); ctx.quadraticCurveTo(-4 + i * 15, -46, -6 + i * 15, -24); } ctx.stroke();
+    ctx.fillStyle = hi; ctx.beginPath(); ctx.ellipse(-12, -62, 40, 5, -0.05, 0, TAU); ctx.fill();
+    ctx.strokeStyle = vein; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(-40, -48); ctx.quadraticCurveTo(-24, -40, -14, -52); ctx.moveTo(6, -44); ctx.quadraticCurveTo(18, -36, 28, -48); ctx.stroke();
+    const pu = 0.6 + 0.4 * Math.sin(t * 5);
+    for (const [px, py, r] of [[-30, -44, 3.4], [16, -50, 2.8], [-4, -38, 2.4]]) { ctx.fillStyle = vein; ctx.beginPath(); ctx.arc(px, py, r * (0.8 + pu * 0.3), 0, TAU); ctx.fill(); glowAt(ctx, px, py, r * 5, 'green', 0.5 * pu); }
+  }
+  // ハサミ（2ほん）
+  const pinch = st === 'punch' || st === 'charge' ? 1 : st === 'punchWind' ? -1 : 0;
+  const op = st === 'punchWind' || st === 'intro' || st === 'summon' ? 1 : st === 'punch' ? 0.1 : 0.35 + Math.sin(t * 3) * 0.15;
+  for (const [oy, sc, col] of [[-8, 0.9, dk], [8, 1, shell]]) {
+    const sx = 46, sy = -50 + oy * 0.4, ex = 74 + pinch * 18, ey = -64 + oy + (pinch < 0 ? -26 : pinch > 0 ? 14 : 0), hx = 100 + pinch * 34, hy = -50 + oy + (pinch < 0 ? -40 : pinch > 0 ? 10 : 0);
+    ctx.strokeStyle = OUT; ctx.lineWidth = 14 * sc; ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.lineTo(hx, hy); ctx.stroke();
+    ctx.strokeStyle = col; ctx.lineWidth = 9 * sc; ctx.stroke();
+    ctx.save(); ctx.translate(hx, hy); ctx.rotate(pinch < 0 ? -0.5 : 0.1); ctx.scale(sc, sc);
+    ctx.fillStyle = OUT; ctx.beginPath(); ctx.ellipse(6, 0, 20, 14, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = col; ctx.beginPath(); ctx.ellipse(6, 0, 17, 11.5, 0, 0, TAU); ctx.fill();
+    if (!flash) { ctx.fillStyle = hi; ctx.beginPath(); ctx.ellipse(2, -5, 10, 3, -0.1, 0, TAU); ctx.fill(); }
+    ctx.save(); ctx.translate(20, -4); ctx.rotate(-op * 0.5);
+    ctx.fillStyle = OUT; ctx.beginPath(); ctx.moveTo(0, -6); ctx.quadraticCurveTo(22, -10, 28, 4); ctx.quadraticCurveTo(14, 0, 0, 4); ctx.fill();
+    ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(1, -3.6); ctx.quadraticCurveTo(19, -7, 24, 2.4); ctx.quadraticCurveTo(13, -0.6, 1, 2); ctx.fill();
+    ctx.restore();
+    ctx.save(); ctx.translate(20, 6); ctx.rotate(op * 0.4);
+    ctx.fillStyle = OUT; ctx.beginPath(); ctx.moveTo(0, -4); ctx.quadraticCurveTo(18, -2, 22, 8); ctx.quadraticCurveTo(10, 6, 0, 5); ctx.fill();
+    ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(1, -2); ctx.quadraticCurveTo(15, -0.6, 18.6, 5.6); ctx.quadraticCurveTo(9, 4, 1, 3); ctx.fill();
+    ctx.restore();
+    ctx.restore();
+  }
+  // あたま（じゅうじの ぬいあと と みどりの め）
+  ctx.fillStyle = OUT; ctx.beginPath(); ctx.ellipse(50, -46, 22, 19, 0.1, 0, TAU); ctx.fill();
+  ctx.fillStyle = shell; ctx.beginPath(); ctx.ellipse(50, -46, 19.4, 16.4, 0.1, 0, TAU); ctx.fill();
+  if (!flash) {
+    ctx.strokeStyle = '#d8c8a0'; ctx.lineWidth = 2.6; ctx.beginPath(); ctx.moveTo(42, -58); ctx.lineTo(58, -36); ctx.moveTo(58, -58); ctx.lineTo(42, -36); ctx.stroke();
+    ctx.strokeStyle = OUT; ctx.lineWidth = 1; ctx.beginPath(); for (const [px, py] of [[45, -54], [55, -40], [55, -54], [45, -40]]) { ctx.moveTo(px - 2.4, py - 2.4); ctx.lineTo(px + 2.4, py + 2.4); } ctx.stroke();
+  }
+  const eye = dazed ? '#8a9a70' : rage ? '#f4ffb0' : '#b8f070';
+  eyesGlow(ctx, [[62, -54], [66, -48], [60, -46]], eye, dazed ? 1.6 : 2.6, dazed ? null : 'green');
+  // くち（きば）
+  ctx.fillStyle = OUT; ctx.beginPath(); ctx.ellipse(66, -34, 7, 4 + (op > 0.6 ? 3 : 0), 0, 0, TAU); ctx.fill();
+  ctx.fillStyle = '#d8d0b0'; for (const dx of [-3, 2]) { ctx.beginPath(); ctx.moveTo(64 + dx, -36); ctx.lineTo(66 + dx, -28); ctx.lineTo(68 + dx, -36); ctx.fill(); }
+  if (dazed) { for (let i = 0; i < 3; i++) { const aa = t * 4 + i * 2.1; ctx.fillStyle = '#ffe680'; ctx.font = '900 14px system-ui'; ctx.fillText('★', 50 + Math.cos(aa) * 22, -80 + Math.sin(aa) * 6); } }
+  if (st === 'charge' && !flash) { ctx.fillStyle = 'rgba(190,150,100,0.6)'; for (let i = 0; i < 6; i++) { const k = (t * 3 + i * 0.17) % 1; ctx.beginPath(); ctx.arc(-80 - k * 60, -6 - k * 14, 6 * (1 - k) + 2, 0, TAU); ctx.fill(); } }
+  ctx.restore();
+  bossFx(ctx, b, g, b.y - 110);
+}
+
 // みどりの ちだまり から はいあがる ちびグール
 function drawGhoulEmerge(ctx, e, g) {
   const p = 1 - e.spawnT / (e.spawnMax || 0.9);
@@ -2342,5 +2557,6 @@ const THEMES = {
   subway: { far: subwayFar, mid: subwayMid, floor: subwayFloor, fore: subwayFore, lights: subwayLights, wstep: 0, dark: 0.7 },
   tower:  { far: towerFar, mid: towerMid, floor: towerFloor, fore: towerFore, lights: towerLights, wstep: 320, wx0: 160, wy: 150, wkey: 'ember', dark: 0.6 },
   ...THEMES2,
+  dawn: DAWN_THEME,
 };
 export { WEAPONS, drawGun };

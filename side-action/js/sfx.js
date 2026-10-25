@@ -1,5 +1,5 @@
 // おと（WebAudio で その場で つくる）
-import { MusicPlayer } from './music.js?v=7';
+import { MusicPlayer } from './music.js?v=8';
 
 export class Sfx {
   constructor(muted = false) {
