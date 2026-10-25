@@ -3,13 +3,17 @@ import {
   H, GROUND, GRAV, PHYS, WEAPONS, MOVES, COMBO_WINDOW, CHAIN_GRACE, ENEMIES, BOSSES, STAGES, ALLIES, ALLY_DOWN_TIME,
   createArsenal, giveWeapon, addAmmo, nextWeapon, tickGun, pickMove, moveBox, overlap, knockOf, comboWord,
   allyDecide, landOn, makePlatforms, scoreFor, GUN_GEOM, ZOOMS, tickBeam, dawnAt, stageProgress,
-} from './rules.js?v=8';
+} from './rules.js?v=9';
+import { initHorde, updateHorde, hordeCall, bossDoor } from './horde.js?v=9';
 
 export const BLOOD = {
   green: ['#63e64b', '#2fae3a', '#a6ff6e', '#1f7d2b'],
   purple: ['#b04aff', '#7a2fd0', '#e08bff', '#4e1a8c'],
 };
 const MAX_PARTS = 260, MAX_SPLATS = 90, MAX_BULLETS = 140, MAX_HAZ = 40, MAX_ENEMIES = 12;
+// つかいまわす てきの のこりを けす（かたちは そのまま）
+const ENEMY_EXTRA = ['wallBounce', 'stag', 'inside', 'dead', 'gone', 'deadT', 'aimX', 'aimY', 'tgt', 'n', 'doorIn', 'doorMax', 'door', 'dom'];
+function resetEnemy(e) { for (const k of ENEMY_EXTRA) if (e[k] !== undefined) e[k] = undefined; return e; }
 // はいれつを その ばで つめる（filter より ゴミが でない）
 function keep(arr, ok) { let j = 0; for (let i = 0; i < arr.length; i++) { const v = arr[i]; if (ok(v)) arr[j++] = v; } arr.length = j; return arr; }
 export const isHydra = (b) => !!b && b.kind === 'boss' && b.def.ai === 'hydra';
@@ -64,6 +68,9 @@ export class Game {
     this.pressHit = new Map();
     // v0.8：よあけ ステージ（すすむ ほど あかるく）
     this.dawnP = 0; this.dawn = this.stage.theme === 'dawn' ? dawnAt(0) : null;
+    // v0.9：ドアの へや（てきは つかいまわす・ちの あとは のこる）
+    this.horde = initHorde(this); this.pool = this.horde ? [] : null; this.reused = 0;
+    this.partCap = this.horde ? 190 : MAX_PARTS; this.splatCap = this.horde ? 150 : MAX_SPLATS;
     this.say(this.stage.name, this.stage.sub);
   }
   makeFighter(x, { hp, kind }) {
@@ -95,7 +102,8 @@ export class Game {
     this.updateTrain(dt);
     this.updateGimmick(dt);
     this.updatePickups(dt);
-    keep(this.enemies, (e) => !e.gone);
+    if (this.pool) keep(this.enemies, (e) => { if (!e.gone) return true; if (this.pool.length < 40) this.pool.push(e); return false; });
+    else keep(this.enemies, (e) => !e.gone);
     this.updateProgress(dt);
     this.updateCamera(dt);
   }
@@ -274,6 +282,7 @@ export class Game {
     const hy = isBoss && isHydra(e) ? hb.y + hb.h * 0.45 : e.y - e.h * 0.6;
     this.blood(e.x - face * 6, hy, face, def.blood, melee ? 9 : 4);
     if (melee && this.rand() < 0.35) this.splat(e.x + face * (10 + this.rand() * 40), hy - 10 + (this.rand() - 0.5) * 50, def.blood, true);
+    else if (this.horde && this.rand() < (melee ? 0.25 : 0.3)) this.splat(e.x + face * (16 + this.rand() * 60), hy - 20 + (this.rand() - 0.5) * 70, def.blood, true, 1.2);
     if (!melee) this.sparks(e.x - face * 8, hy, '#fff1c4', 2);
     if (owner === 'p' || owner === 'a') {
       if (owner === 'p') { this.combo++; this.comboT = COMBO_WINDOW; this.maxCombo = Math.max(this.maxCombo, this.combo); const w = comboWord(this.combo); if (w && [6, 12, 20, 30].includes(this.combo)) this.addText(this.player.x, this.player.y - 120, w, '#ffe14a', 22); }
@@ -302,6 +311,7 @@ export class Game {
       const pts = scoreFor(def.score, this.combo);
       this.score += pts; this.addText(e.x, e.y - e.h - 10, `+${pts}`, '#fff', 14);
       this.ev('kill');
+      if (this.horde) { this.splat(e.x + face * (30 + this.rand() * 50), hy - 30 - this.rand() * 40, def.blood, true, 1.6 + this.rand() * 0.6); this.splat(e.x + face * 40, GROUND, def.blood, false, 1.5); }
     }
   }
   impact(x, y, M) {
@@ -511,9 +521,11 @@ export class Game {
     const fromTop = r < 0.25, fromWall = !fromTop && r < 0.7;
     const vx0 = this.vx ?? this.camX, vw = this.viewW / (this.zoom || 1);
     const near = clamp(this.player.x + (this.rand() < 0.5 ? -1 : 1) * (110 + this.rand() * 150), Math.max(this.camX + 50, vx0 + 40), Math.min(this.camX + this.viewW - 120, vx0 + vw - 60));
-    const e = { kind: 'enemy', type, def: d, x: fromTop || fromWall ? near : x,
+    let e0 = { kind: 'enemy', type, def: d, x: fromTop || fromWall ? near : x,
       y: fromTop ? -30 : GROUND, vx: 0, vy: 0, w: d.w, h: d.h, face: -side, hp: hpMax, maxHp: hpMax, state: 'walk', t: 0, cool: 0.8 + this.rand(),
       onGround: !fromTop, anim: this.rand() * 5, shieldHp: d.shieldHp || 0, helmetHp: d.helmetHp || 0, seed: (this.spawnN = (this.spawnN || 0) + 1) * 37 + type.length, spawnT: fromWall ? 0.9 : 0, spawnMax: 0.9, wallY: GROUND - 70 - this.rand() * 60, flashT: 0, hitDone: false, dropT: 0 };
+    if (this.pool && this.pool.length) { e0 = Object.assign(resetEnemy(this.pool.pop()), e0); this.reused++; }
+    const e = e0;
     if (fromWall) e.face = this.player.x > e.x ? 1 : -1;
     if (fromTop || fromWall) this.ev('creep');
     if (d.mini) { this.say('つよい てき！', d.name, 2); this.ev('roar'); this.mini = e; }
@@ -526,10 +538,13 @@ export class Game {
     if (e.dead) {
       e.deadT += dt;
       this.physics(e, dt);
+      if (this.horde) this.domino(e);
       if (this.lock && (e.x < this.lock.l || e.x > this.lock.r)) { e.x = clamp(e.x, this.lock.l, this.lock.r); e.vx *= -0.4; }
       if ((e.onGround && e.deadT > 0.25) || e.deadT > 1.2) this.poof(e);
       return;
     }
+    // ドアから でてくる あいだ（ちょっと まえに あるく）
+    if (e.doorIn > 0) { e.doorIn -= dt; e.x += e.face * 70 * dt; e.vx = 0; return; }
     // かべの しみから はいでて くる あいだ
     if (e.spawnT > 0) { e.spawnT -= dt; e.vx = 0; if (e.spawnT <= 0) { e.spawnT = 0; this.ev('hiss'); this.dust(e.x, GROUND, 4); } return; }
     // ねらう あいて
@@ -541,6 +556,7 @@ export class Game {
     const dx = T.x - e.x, adx = Math.abs(dx);
     if (e.state === 'air') {
       this.physics(e, dt);
+      if (this.horde) this.domino(e);
       e.vx *= Math.pow(0.6, dt);
       if (this.lock && e.wallBounce && (e.x < this.lock.l + 10 || e.x > this.lock.r - 10)) { e.vx = -e.vx * 0.6; e.wallBounce = false; this.shake = Math.max(this.shake, 6); this.blood(e.x, e.y - 40, Math.sign(e.vx), d.blood, 6); this.ev('wall'); this.addText(e.x, e.y - 80, 'ガン！', '#fff', 16, true); this.splat(e.x < this.camX + this.viewW / 2 ? this.lock.l : this.lock.r, e.y - 40, d.blood, true); }
       if (e.onGround) { e.state = 'down'; e.t = 0.5; e.wallBounce = false; this.dust(e.x, e.y, 4); this.ev('thud'); }
@@ -592,7 +608,15 @@ export class Game {
           this.bullets.push({ owner: 'e', x: sx, y: sy, vx: (tx - sx) / tt, vy: (GROUND - sy - 0.5 * GRAV * 0.6 * tt * tt) / tt, grav: 0.6, life: 3, dmg: d.dmg, r: 7, w: 'blob', acid: true });
           this.ev('spit'); e.cool = d.cool; e.state = 'walk';
         } else if (d.volley) { e.state = 'burst'; e.n = d.volley; e.t = 0; }
-        else if (d.ai === 'gunner') {
+        else if (d.ai === 'gunner' && d.look === 'suit') { // くろスーツ：ほんものっぽい たま（ショットガンは ばらける）
+          const gy = e.y - 46, ang = Math.atan2(T.y - 40 - gy, Math.abs(dx)), n = d.pellets || 1;
+          for (let k = 0; k < n; k++) {
+            const a = ang + (n > 1 ? (k / (n - 1) - 0.5) * 0.32 : 0) + (this.rand() - 0.5) * 0.06, sp = d.shotSpeed * (0.9 + this.rand() * 0.2);
+            this.bullets.push({ owner: 'e', x: e.x + e.face * 30, y: gy, vx: Math.cos(a) * sp * e.face, vy: Math.sin(a) * sp, life: n > 1 ? 0.75 : 1.6, dmg: d.dmg, r: 3, w: 'tracer' });
+          }
+          this.addPart({ kind: 'muzzle', x: e.x + e.face * 34, y: gy, life: 0.07, max: 0.07, size: n > 1 ? 15 : 11, face: e.face, color: '#ffd27a' });
+          this.ev(n > 1 ? 'eshotgun' : 'eshoot'); e.cool = d.cool * (0.8 + this.rand() * 0.5); e.state = 'walk';
+        } else if (d.ai === 'gunner') {
           const gy = e.y - 46, ty = T.y - 40;
           const ang = Math.atan2(ty - gy, Math.abs(dx));
           const s = d.shotSpeed;
@@ -622,6 +646,20 @@ export class Game {
       if (e.t <= 0) { e.state = 'walk'; e.cool = d.cool * (0.8 + this.rand() * 0.5); }
     }
   }
+  // けとばした てきが ほかの てきに ぶつかって ドミノ（3たい まで）
+  domino(e) {
+    if ((e.dom || 0) >= 3 || Math.abs(e.vx) < 230) return;
+    const f = Math.sign(e.vx);
+    for (const o of this.enemies) {
+      if (o === e || o.dead || o.state === 'air' || o.doorIn > 0 || Math.abs(o.x - e.x) > 26 || Math.abs(o.y - e.y) > 50) continue;
+      e.dom = (e.dom || 0) + 1; o.dom = e.dom;
+      this.damage(o, 9, MOVES.kick, f, 'p', true);
+      o.vx = f * Math.max(Math.abs(o.vx), Math.abs(e.vx) * 0.8); o.vy = Math.min(o.vy, -240); o.onGround = false; if (!o.dead) o.state = 'air';
+      e.vx *= 0.7;
+      if (e.dom === 2) this.addText(o.x, o.y - 100, 'ドミノ！', '#ffe14a', 18, true);
+      if (e.dom >= 3) break;
+    }
+  }
   poof(e) {
     e.gone = true;
     this.smoke(e.x, e.y - e.h / 2, 9);
@@ -630,7 +668,8 @@ export class Game {
     for (let i = 0; i < 4; i++) this.addPart({ kind: 'star', x: e.x, y: e.y - e.h / 2, vx: (this.rand() - 0.5) * 300, vy: -200 - this.rand() * 200, life: 0.7, max: 0.7, size: 7, color: '#ffe46a', g: 0.6 });
     this.ev('poof');
     if (e.def.burst) { this.hazards.push({ kind: 'gas', x: e.x - 50, y: GROUND - 54, w: 100, h: 54, life: 2.0, warn: 0.45, dmg: 6, hit: new Set() }); this.addText(e.x, e.y - 90, 'ガスに ちゅうい！', '#d9a6ff', 14); }
-    if (this.rand() < 0.14) this.pickups.push({ x: e.x, y: GROUND, kind: this.rand() < 0.6 ? 'heal' : 'ammo', t: 0, taken: false, vy: -320 });
+    if (this.horde && e.type === 'heavy') this.pickups.push({ x: e.x, y: GROUND, kind: 'ammo', t: 0, taken: false, vy: -320 });
+    else if (this.rand() < (this.horde ? 0.09 : 0.14)) this.pickups.push({ x: e.x, y: GROUND, kind: this.rand() < 0.6 ? 'heal' : 'ammo', t: 0, taken: false, vy: -320 });
   }
 
   // ---------- ボス ----------
@@ -646,6 +685,10 @@ export class Game {
     } else if (D.kit === 'ghoul') { // みどりの ちだまりから はいでてくる
       b.x = this.lock.r - 150; b.y = GROUND; b.onGround = true; b.landed = true; b.dropT = 0; b.t = 2.2; b.emerge = true;
       for (let i = 0; i < 4; i++) this.splat(b.x + (i - 1.5) * 46, GROUND, 'green', false, 2 + this.rand() * 0.6);
+    } else if (D.kit === 'doors') { // おおきな てつの ドアを けやぶって でてくる
+      const d = bossDoor(this); b.x = d ? d.x : this.lock.r - 140; b.y = GROUND; b.onGround = true; b.landed = true; b.dropT = 0; b.t = 2.0; b.doorIn = 0.6;
+      if (d) { d.st = 'bang'; d.t = 0.3; d.kicked = true; this.ev('kickdoor'); }
+      this.shake = 10;
     } else { b.x = this.lock.r - (D.kit === 'tank' ? 120 : 140); b.y = -200; }
     this.boss = b;
     this.say('ボス！', D.name, 2.2); this.ev('roar');
@@ -666,7 +709,7 @@ export class Game {
     const dx = T.x - b.x;
     if (b.fly) this.physicsFly(b, dt, T); else this.physicsBig(b, dt);
     if (kit === 'heli') { b.rotor = (b.rotor || 0) + dt * 40; b.hoverY = b.state === 'dazed' || b.state === 'down' ? GROUND - 2 : GROUND - 150; }
-    if (b.state === 'intro') { b.t -= dt; if (b.onGround && !b.landed) { b.landed = true; this.shake = 14; this.dust(b.x, GROUND, 10); this.ev('slam'); } if (b.t <= 0) { b.state = 'walk'; b.t = 1; } return; }
+    if (b.state === 'intro') { b.t -= dt; if (kit === 'doors' && b.t < 1.5 && b.t > 0.5) { b.x -= 70 * dt; b.face = -1; } if (b.onGround && !b.landed) { b.landed = true; this.shake = 14; this.dust(b.x, GROUND, 10); this.ev('slam'); } if (b.t <= 0) { b.state = 'walk'; b.t = 1; } return; }
     if (kit === 'final' && b.state !== 'intro') {
       const ph = b.hp > b.maxHp * 0.66 ? 1 : b.hp > b.maxHp * 0.33 ? 2 : 3;
       if (ph > b.phase) {
@@ -825,6 +868,10 @@ export class Game {
     };
     const alive = this.enemies.filter((e) => !e.dead).length;
     if (kit === 'agent') return agentPick();
+    if (kit === 'doors') { // サングラスの ボス：ゆびを ならして ドアから なかまを よぶ
+      if (b.n % 3 === 1 && this.horde && this.horde.bossLeft > 0 && alive < 9) { b.state = 'summon'; b.t = 1.0; this.ev('snap'); this.addText(b.x, GROUND - 180, 'でてこい！', '#fff', 18, true); hordeCall(this, rage > 1 ? 5 : 4); return; }
+      return agentPick();
+    }
     if (kit === 'giant') {
       if (b.n % 4 === 0) { b.state = 'slamWind'; b.t = 0.6; }
       else if (far) { if (r < 0.5) { b.state = 'throwWind'; b.t = 0.75 / rage; this.ev('aim'); } else { b.state = 'chargeWind'; b.t = 0.85 / rage; this.ev('aim'); } }
@@ -1126,6 +1173,7 @@ export class Game {
   updateProgress(dt) {
     const p = this.player, st = this.stage;
     if (this.go > 0) this.go -= dt;
+    if (this.horde) return updateHorde(this, dt);
     if (this.state === 'win') return;
     if (this.arena) {
       const A = this.arena;
@@ -1196,7 +1244,7 @@ export class Game {
   }
 
   // ---------- エフェクト ----------
-  addPart(o) { if (this.parts.length < MAX_PARTS) this.parts.push(o); }
+  addPart(o) { if (this.parts.length < (this.partCap || MAX_PARTS)) this.parts.push(o); }
   addText(x, y, text, color = '#fff', size = 16, pop = false) { if (this.texts.length < 24) this.texts.push({ x, y, text, color, size, life: pop ? 0.6 : 1.0, max: pop ? 0.6 : 1.0, pop }); }
   blood(x, y, face, kind, n) {
     const cols = BLOOD[kind] || BLOOD.green;
@@ -1205,6 +1253,11 @@ export class Game {
   splat(x, y, kind, wall = false, big = 1) {
     const cols = BLOOD[kind] || BLOOD.green;
     const sz = big * (this.stage.theme === 'ruins' && !wall ? 1.8 : 1); // いせき：おおきな みどりの しみ
+    if (this.horde) { // v0.9：ちの あとは きえない（ふるい ものから けす）
+      this.splats.push({ x, y, r: (10 + this.rand() * 12) * sz, color: cols[Math.floor(this.rand() * 2)], life: 9999, wall, seed: this.rand(), keep: true, age: 0 });
+      if (this.splats.length > this.splatCap) this.splats.shift();
+      return;
+    }
     this.splats.push({ x, y, r: (10 + this.rand() * 14) * sz, color: cols[Math.floor(this.rand() * 2)], life: wall ? 30 : 45, wall, seed: this.rand() });
     if (this.splats.length > MAX_SPLATS) this.splats.shift();
   }
@@ -1225,7 +1278,7 @@ export class Game {
     keep(this.parts, (q) => q.life > 0);
     for (const t of this.texts) { t.life -= dt; t.y -= dt * (t.pop ? 20 : 40); }
     keep(this.texts, (t) => t.life > 0);
-    for (const s of this.splats) s.life -= dt;
+    for (const s of this.splats) if (s.keep) s.age += dt; else s.life -= dt;
     keep(this.splats, (s) => s.life > 0);
     for (const b of this.beams) b.life -= dt;
     keep(this.beams, (b) => b.life > 0);

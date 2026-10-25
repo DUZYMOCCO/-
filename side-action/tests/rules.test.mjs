@@ -19,10 +19,10 @@ test('わざ：パンチと キックの れんけい', () => {
 });
 
 test('ステージは 17こ、それぞれ ちがう ボスつき', () => {
-  assert.equal(R.STAGES.length, 17);
+  assert.equal(R.STAGES.length, 18);
   for (const s of R.STAGES) { assert.ok(R.BOSSES[s.boss.id]); assert.ok(s.boss.x < s.length); }
-  assert.equal(new Set(R.STAGES.map((s) => s.boss.id)).size, 17);
-  assert.equal(new Set(R.STAGES.map((s) => s.id)).size, 17);
+  assert.equal(new Set(R.STAGES.map((s) => s.boss.id)).size, 18);
+  assert.equal(new Set(R.STAGES.map((s) => s.id)).size, 18);
   for (const s of R.STAGES) for (const z of s.zones || []) for (const w of z.waves) for (const id of w) assert.ok(R.ENEMIES[id], id);
 });
 

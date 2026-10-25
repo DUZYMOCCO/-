@@ -1,5 +1,5 @@
 // バトル アクション の きまり（DOM なし・node で テストできる）
-export const VERSION = '0.8.0';
+export const VERSION = '0.9.0';
 export const H = 375;              // ろんり の たかさ
 export const GROUND = 318;         // じめん（あしの y）
 export const GRAV = 2000;
@@ -184,6 +184,12 @@ export const ENEMIES = {
   outlaw:   { name: 'ならずもの ゾンビ', hp: 38,  w: 30, h: 72, speed: 96,  weight: 1,   dmg: 6,  reach: 0,  wind: 0.55, cool: 1.8,  score: 240, blood: 'green', ai: 'gunner', look: 'outlaw', range: [160, 310], shotSpeed: 540, inacc: 0.2, volley: 2, helmetHp: 14 },
   scorp:    { name: 'すなさそり',        hp: 20,  w: 42, h: 26,  speed: 230, weight: 0.7, dmg: 6,  reach: 40, wind: 0.3,  cool: 0.9,  score: 90,  blood: 'green', ai: 'crawler', look: 'scorp', jumper: true, emerge: true, small: true },
   rockz:    { name: 'いわおとこ ゾンビ', hp: 380, w: 62, h: 118, speed: 74, weight: 3.2, dmg: 17, reach: 72, wind: 0.75, cool: 1.4,  score: 2300, blood: 'green', ai: 'grunt', look: 'rockz', armor: 0.5, mini: true },
+  // v0.9 そうこの くろスーツ たち（ちは みどり。ドアから どんどん でてくる）
+  suit:     { name: 'くろスーツ',         hp: 20,  w: 30, h: 72, speed: 150, weight: 0.9, dmg: 7,  reach: 44, wind: 0.42, cool: 1.0,  score: 60,  blood: 'green', ai: 'grunt', look: 'suit', gear: 'fist' },
+  suitk:    { name: 'ナイフの スーツ',     hp: 18,  w: 30, h: 72, speed: 175, weight: 0.85, dmg: 9, reach: 48, wind: 0.36, cool: 0.95, score: 80,  blood: 'green', ai: 'grunt', look: 'suit', gear: 'knife', lunge: 300 },
+  suitp:    { name: 'ピストルの スーツ',   hp: 18,  w: 30, h: 72, speed: 120, weight: 0.9, dmg: 6,  reach: 0,  wind: 0.6,  cool: 1.7,  score: 90,  blood: 'green', ai: 'gunner', look: 'suit', gear: 'pistol', range: [170, 320], shotSpeed: 340 },
+  suitsg:   { name: 'ショットガンの スーツ', hp: 24, w: 30, h: 72, speed: 110, weight: 1,  dmg: 5,  reach: 0,  wind: 0.75, cool: 2.1,  score: 130, blood: 'green', ai: 'gunner', look: 'suit', gear: 'shotgun', range: [110, 220], shotSpeed: 360, pellets: 4 },
+  heavy:    { name: 'おおがら スーツ',     hp: 110, w: 40, h: 86, speed: 92,  weight: 2.2, dmg: 13, reach: 56, wind: 0.6,  cool: 1.3,  score: 450, blood: 'green', ai: 'grunt', look: 'suit', gear: 'fist', armor: 0.35, scale: 1.2 },
   wraith:  { name: 'ゆらぎ',       hp: 30,  w: 40, h: 40, speed: 240, weight: 0.8, dmg: 9,  reach: 40, wind: 0.32, cool: 0.9,  score: 180, blood: 'purple', ai: 'crawler', look: 'wraith', jumper: true, emerge: true },
 };
 for (const [k, d] of Object.entries(ENEMIES)) { d.ai = d.ai || k; d.look = d.look || k; if (d.emerge === undefined) d.emerge = k === 'crawler'; }
@@ -206,6 +212,7 @@ export const BOSSES = {
   heli:    { name: 'ゾンビ ヘリ',            hp: 2400, w: 150, h: 70,  speed: 150, weight: 99, dmg: 14, score: 15000, blood: 'green', armor: 0.85, kit: 'heli' },
   ghoulking: { name: 'いせきの グール',      hp: 3000, w: 100, h: 132, speed: 130, weight: 5, dmg: 17, score: 16000, blood: 'green',  armor: 0.75, kit: 'ghoul' },
   sunscorp:  { name: 'よあけの おおさそり', hp: 3100, w: 170, h: 96, speed: 150, weight: 6, dmg: 17, score: 17000, blood: 'green', armor: 0.78, kit: 'scorpion' },
+  doorboss:  { name: 'サングラスの ボス',   hp: 2600, w: 80, h: 156, speed: 120, weight: 5, dmg: 17, score: 18000, blood: 'green', armor: 0.72, kit: 'doors' },
   final:   { name: 'はじまりの ミュータント', hp: 3000, w: 74, h: 150, speed: 125, weight: 6, dmg: 18, score: 30000, blood: 'purple', armor: 0.8, kit: 'final' },
 };
 // ズーム（がめんの ちかさ）。ゲームの ひろさは かわらない
@@ -310,8 +317,10 @@ function mkStage(o) {
     gimmick: o.gimmick || null, presses: o.presses, conveyors: o.conveyors, goo: o.goo,
     free: !!o.free, start: o.start || null, heroLook: o.heroLook || null,
     platforms, crates, pickups,
-    arenas: o.arenas.map(([x, ...waves]) => ({ x, waves })),
+    arenas: o.rooms ? o.rooms.map((r) => ({ x: r.x, waves: [r.mix.slice(0, 3)] })) : o.arenas.map(([x, ...waves]) => ({ x, waves })),
     boss: o.boss,
+    rooms: o.rooms || null, horde: o.horde || null, cap: o.cap || null,
+    bossDoors: o.bossDoors || null, bossMix: o.bossMix || null, bossCalls: o.bossCalls || 0,
   };
 }
 const MORE = [
@@ -418,6 +427,20 @@ const MORE = [
       [2700, ['nomad', 'outlaw', 'outlaw', 'scorp'], ['hound', 'hound', 'nomad'], ['outlaw', 'nomad', 'scorp', 'scorp']],
       [3800, ['nomad', 'nomad', 'scorp'], ['rockz', 'scorp', 'scorp']],
     ], boss: { x: 5150, id: 'sunscorp' } },
+  // v0.9：とびらの そうこ（ドア・シャッターが バーン！と ひらいて くろスーツが どっと でてくる。ちは みどり）
+  { id: 18, sub: 'とびらの そうこ', theme: 'doors', length: 6600, hpMul: 1.3, free: true, start: ['shotgun', 'pistol'], heroLook: 'plain', cap: 18,
+    weapons: [[420, 'shotgun'], [1250, 'shotgun'], [2300, 'smg'], [3350, 'shotgun'], [4400, 'rifle'], [5450, 'shotgun']],
+    // へや：x（まんなか）・でてくる かず・ドア（へやの まんなか から の ずれ と しゅるい）・まぜかた
+    horde: { total: [150, 250] },
+    rooms: [
+      { x: 700,  quota: 26, doors: [[-170, 'door'], [130, 'door']], mix: ['suit', 'suit', 'suit', 'suitk', 'suitp'] },
+      { x: 1750, quota: 36, doors: [[-200, 'door'], [-20, 'shutter'], [190, 'door']], mix: ['suit', 'suit', 'suitk', 'suitk', 'suitp', 'suitp', 'suitsg'] },
+      { x: 2800, quota: 40, doors: [[-205, 'shutter'], [0, 'steel'], [200, 'shutter']], mix: ['suit', 'suit', 'suit', 'suitk', 'suitp', 'suitsg'], tough: ['heavy', 'suitsg'] },
+      { x: 3850, quota: 44, doors: [[-215, 'door'], [-85, 'door'], [65, 'shutter'], [205, 'door']], mix: ['suit', 'suit', 'suitk', 'suitk', 'suitp', 'suitp', 'suitsg'] },
+      { x: 4900, quota: 50, doors: [[-210, 'steel'], [-60, 'shutter'], [90, 'door'], [215, 'shutter']], mix: ['suit', 'suit', 'suitk', 'suitp', 'suitsg', 'suitsg'], tough: ['heavy', 'heavy', 'suitsg'] },
+    ],
+    bossDoors: [[-220, 'shutter'], [0, 'steel'], [215, 'shutter']], bossMix: ['suit', 'suit', 'suitk', 'suitp', 'suitsg'], bossCalls: 36,
+    boss: { x: 5950, id: 'doorboss' } },
 ];
 for (const o of MORE) STAGES.push(mkStage(o));
 

@@ -6,7 +6,7 @@ import { Game, botInput } from '../js/game.js';
 
 const I = STAGES.findIndex((s) => s.theme === 'dawn'), S = STAGES[I];
 test('ステージ17：よあけ・すぐ あそべる', () => {
-  assert.equal(STAGES.length, 17); assert.equal(I, 16);
+  assert.ok(STAGES.length >= 17); assert.equal(I, 16);
   assert.equal(S.id, 17); assert.equal(S.free, true); assert.equal(S.boss.id, 'sunscorp');
   assert.equal(BOSSES.sunscorp.kit, 'scorpion'); assert.equal(BOSSES.sunscorp.blood, 'green');
 });

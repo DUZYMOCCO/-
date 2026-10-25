@@ -6,7 +6,7 @@ import { ENEMIES, STAGES, VERSION } from '../js/rules.js';
 const Z = ['zombie', 'labz', 'guard', 'soldierz', 'bloatz', 'leaper', 'hulk', 'spitter'];
 
 test('v0.8.0：ゾンビ 8しゅるい（かな の なまえ・みどり／むらさき の ち）', () => {
-  assert.equal(VERSION, '0.8.0');
+  assert.equal(VERSION, '0.9.0');
   for (const k of Z) {
     const d = ENEMIES[k];
     assert.ok(d, k);
@@ -22,7 +22,7 @@ test('ゾンビは 5つの ステージ ぜんぶに でる', () => {
   for (const s of STAGES) {
     const ids = s.arenas.flatMap((a) => a.waves.flat());
     for (const id of ids) assert.ok(ENEMIES[id], id);
-    assert.ok(ids.some((id) => Z.includes(id)), s.name);
+    if (!s.horde) assert.ok(ids.some((id) => Z.includes(id)), s.name); // v0.9：とびらの そうこ は スーツの てき
   }
   const ids = (n) => STAGES[n].arenas.flatMap((a) => a.waves.flat());
   assert.ok(ids(0).includes('guard') && ids(0).includes('labz'));

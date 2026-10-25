@@ -1,10 +1,11 @@
 // えがく（Canvas 2D）。けいさんは game.js、ここは みためだけ
 // v0.2.0: くらくて こわい せかい（あかい ひじょうとう・きり・ちり・ひかりの あな）
-import { H, GROUND, WEAPONS, GUN_GEOM, dawnAt } from './rules.js?v=8';
-import { drawGun } from './guns.js?v=8';
-import { THEMES2 } from './bg2.js?v=8';
-import { DAWN_THEME, setDawn } from './dawn.js?v=8';
-import { pressState } from './game.js?v=8';
+import { drawPnaBg, drawPnaFore, drawPnaPlatforms, drawPnaCrate, drawPnaSplat, drawSuitEnemy, drawDoorBoss } from './pna.js?v=9';
+import { H, GROUND, WEAPONS, GUN_GEOM, dawnAt } from './rules.js?v=9';
+import { drawGun } from './guns.js?v=9';
+import { THEMES2 } from './bg2.js?v=9';
+import { DAWN_THEME, setDawn } from './dawn.js?v=9';
+import { pressState } from './game.js?v=9';
 // v0.8.0: ステージ 17「よあけの こうや」（すすむ ほど あかるく なる そら・こうやの ゾンビ・おおさそり）
 // v0.6.0: ステージ 6〜15・ミニガン・ビームブラスター・しかけ（ていでん・かたむき・ふぶき・プレス）
 // v0.4.0: ズーム カメラ・あたらしい ステージ 3〜5・リアルな じゅう・じゅうじの かお
@@ -84,6 +85,7 @@ export class Renderer {
   drawBg(ctx, g, cam, vw) {
     const th = THEMES[g.stage.theme] ? g.stage.theme : 'lab', T = THEMES[th], t = g.time, lab = th === 'lab';
     if (T.dyn) return this.drawDyn(ctx, g, th, T, cam, vw);
+    if (T.pna) return drawPnaBg(ctx, g, cam, vw); // v0.9：とびらの そうこ
     const far = this.layer(th, 'far', 900, T.far);
     const mid = this.layer(th, 'mid', 640, T.mid);
     blitLoop(ctx, far, cam * 0.15, vw);
@@ -112,6 +114,7 @@ export class Renderer {
     }
   }
   drawPlatforms(ctx, g, cam, vw) {
+    if ((THEMES[g.stage.theme] || {}).pna) return drawPnaPlatforms(ctx, g, cam, vw);
     const lab = g.stage.theme !== 'manor', PC = (THEMES[g.stage.theme] || {}).plat;
     for (const p of g.platforms) {
       const x = p.x; if (x - cam > vw + 20 || x + p.w - cam < -20) continue;
@@ -147,8 +150,8 @@ export class Renderer {
     const vis = (x, m = 120) => x > cam - m && x < cam + wvw + m;
     this.drawPlatforms(ctx, g, cam, wvw);
     drawGoo(ctx, g); drawConveyors(ctx, g);
-    for (const s of g.splats) if (vis(s.x)) drawSplat(ctx, s);
-    for (const c of g.crates) if (c.hp > 0 && vis(c.x)) drawCrate(ctx, c);
+    for (const s of g.splats) if (vis(s.x)) { if (s.keep) drawPnaSplat(ctx, s); else drawSplat(ctx, s); }
+    for (const c of g.crates) if (c.hp > 0 && vis(c.x)) { if (g.horde) drawPnaCrate(ctx, c); else drawCrate(ctx, c); }
     for (const k2 of g.pickups) if (vis(k2.x)) { drawPickup(ctx, k2, t); LIGHTS.push(k2.x - cam, k2.y - 22, 70, 0.7); }
     for (const h of g.hazards) drawHazard(ctx, h, g);
     if (g.boss) drawBoss(ctx, g.boss, g);
@@ -170,7 +173,8 @@ export class Renderer {
     // てまえの ケーブル（すこし はやく うごく）
     const T = THEMES[th] || THEMES.lab;
     ctx.translate(cam, 0);
-    if (T.dyn) this.blendLayer(ctx, th, T, 'fore', 1100, cam * 1.25, wvw, (g.dawn || dawnAt(0)).p, 0, 96);
+    if (T.pna) drawPnaFore(ctx, g, cam, wvw);
+    else if (T.dyn) this.blendLayer(ctx, th, T, 'fore', 1100, cam * 1.25, wvw, (g.dawn || dawnAt(0)).p, 0, 96);
     else blitLoop(ctx, this.layer(th, 'fore', 1100, T.fore, 0, 96), cam * 1.25, wvw);
     ctx.restore();
     // v0.8：あさの いろみ（よるは あおく・ひのでは オレンジ・ひるは そのまま）
@@ -183,7 +187,7 @@ export class Renderer {
     const dc = this.dctx; dc.setTransform(k / 2, 0, 0, k / 2, 0, 0);
     dc.globalCompositeOperation = 'source-over'; dc.globalAlpha = 1;
     dc.clearRect(-50, -50, vw + 100, H + 100);
-    const darkA = DW ? Math.max(0, DW.dark - g.flash * 2.5) : Math.min(0.93, Math.max(0.25, (T.dark || 0.64) - g.flash * 2.5) + (g.blackout > 0 ? Math.min(1, g.blackout * 2) * 0.24 : 0));
+    const darkA = DW ? Math.max(0, DW.dark - g.flash * 2.5) : Math.min(0.93, Math.max(T.darkMin ?? 0.25, (T.dark ?? 0.64) - g.flash * 2.5) + (g.blackout > 0 ? Math.min(1, g.blackout * 2) * 0.24 : 0));
     dc.fillStyle = `rgba(3,2,4,${darkA})`; dc.fillRect(-50, -50, vw + 100, H + 100);
     dc.setTransform(k / 2 * Z, 0, 0, k / 2 * Z, sx * k / 2, (sy - vy * Z) * k / 2);
     dc.globalCompositeOperation = 'destination-out';
@@ -214,7 +218,7 @@ export class Renderer {
       const tb = x.createLinearGradient(0, 0, 0, H); tb.addColorStop(0, 'rgba(0,0,0,0.55)'); tb.addColorStop(0.18, 'rgba(0,0,0,0)'); tb.addColorStop(0.85, 'rgba(0,0,0,0)'); tb.addColorStop(1, 'rgba(0,0,0,0.5)'); x.fillStyle = tb; x.fillRect(0, 0, vw, H);
       this.vig = c; this.vigW = vw;
     }
-    ctx.globalAlpha = DW ? DW.vig : 1; ctx.drawImage(this.vig, 0, 0, vw, H); ctx.globalAlpha = 1;
+    ctx.globalAlpha = DW ? DW.vig : T.vig ?? 1; ctx.drawImage(this.vig, 0, 0, vw, H); ctx.globalAlpha = 1;
     // ざらざら
     if (!this.grainPat) this.grainPat = ctx.createPattern(this.grain, 'repeat');
     ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 0.055; const ox = (hash(this.frame >> 1) * 128) | 0, oy = (hash((this.frame >> 1) + 7) * 128) | 0;
@@ -250,6 +254,7 @@ export class Renderer {
     const t = g.time;
     // ゆかの きり
     const fw = 512;
+    if ((THEMES[th] || {}).pna) return; // そうこ：きり なし（ひらたい えのぐ）
     const AT = (THEMES[th] || {}).atmos;
     ctx.globalAlpha = th === 'subway' ? 0.5 : AT ? Math.min(0.8, 0.34 * (THEMES[th].fog || 0.4) / 0.4) : 0.42;
     if (g.dawn) ctx.globalAlpha = 0.5 * g.dawn.fog; // よあけ：きりは だんだん はれる
@@ -1171,6 +1176,7 @@ function drawEnemy(ctx, e, g) {
   else if (L === 'sergeant') { ctx.scale(1.25, 1.25); drawZombie(ctx, e, g, 'soldierz', flash, walk, ph, wind, atk); }
   else if (L === 'patch') { ctx.scale(1.12, 1.12); drawZombie(ctx, e, g, 'hulk', flash, walk, ph, wind, atk); if (!flash) { ctx.strokeStyle = '#2a2024'; ctx.lineWidth = 1.6; ctx.beginPath(); for (const [x0, y0, x1, y1] of [[-14, -80, 14, -70], [-10, -60, 16, -64], [-16, -74, -6, -50]]) { ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); for (let k = 0; k <= 4; k++) { const x = x0 + (x1 - x0) * k / 4, y = y0 + (y1 - y0) * k / 4; ctx.moveTo(x - 2, y - 3); ctx.lineTo(x + 2, y + 3); } } ctx.stroke(); } }
   else if (L === 'rockz') { ctx.scale(1.18, 1.18); drawZombie(ctx, e, g, 'hulk', flash, walk, ph, wind, atk); }
+  else if (L === 'suit') drawSuitEnemy(ctx, e, g, flash, walk, ph, wind, atk);
   else if (ZLOOK.has(L)) drawZombie(ctx, e, g, L, flash, walk, ph, wind, atk);
   else if (L === 'hound') drawHound(ctx, e, ph, wind || e.state === 'leap', flash, g.time);
   else if (A === 'crawler') {
@@ -1409,6 +1415,7 @@ function drawBoss(ctx, b, g) {
   if (kit === 'ghoul') return drawGhoulBoss(ctx, b, g);
   if (kit === 'scorpion') return drawScorpBoss(ctx, b, g);
   if (kit === 'heli') return drawHeli(ctx, b, g);
+  if (kit === 'doors') return drawDoorBoss(ctx, b, g);
   if (kit === 'final') return (b.phase || 1) === 2 ? drawBeast(ctx, b, g, 'final') : drawMan(ctx, b, g, 'final');
   return drawAgent(ctx, b, g);
 }
@@ -2558,5 +2565,6 @@ const THEMES = {
   tower:  { far: towerFar, mid: towerMid, floor: towerFloor, fore: towerFore, lights: towerLights, wstep: 320, wx0: 160, wy: 150, wkey: 'ember', dark: 0.6 },
   ...THEMES2,
   dawn: DAWN_THEME,
+  doors: { pna: true, dark: 0.06, darkMin: 0, vig: 0.3 },
 };
 export { WEAPONS, drawGun };

@@ -1,5 +1,5 @@
 // おと（WebAudio で その場で つくる）
-import { MusicPlayer } from './music.js?v=8';
+import { MusicPlayer } from './music.js?v=9';
 
 export class Sfx {
   constructor(muted = false) {
@@ -111,6 +111,14 @@ export class Sfx {
       case 'hiss': this._noise(t, 0.6, { type: 'bandpass', freq: 3000, q: 4, gain: 0.18, attack: 0.15 }); this._tone(t, 0.6, { type: 'sawtooth', f0: 70, f1: 55, gain: 0.08 }); break;
       case 'roar': this._tone(t, 1.1, { type: 'sawtooth', f0: 110, f1: 45, gain: 0.35 }); this._noise(t, 1.0, { freq: 400, gain: 0.5, attack: 0.1 }); break;
       case 'spit': case 'spike': this._noise(t, 0.3, { type: 'bandpass', freq: 400, q: 3, gain: 0.5 }); this._tone(t, 0.2, { f0: 200, f1: 60, gain: 0.4 }); break;
+      // v0.9：ドア・シャッター
+      case 'knock': if (this.gate('knock', 0.08)) { [0, 0.12].forEach((d) => this._tone(t + d, 0.08, { f0: 160, f1: 90, gain: 0.45 })); } break;
+      case 'door': if (this.gate('door', 0.06)) { this._noise(t, 0.22, { type: 'bandpass', freq: 380, q: 1.2, gain: 0.7 }); this._tone(t, 0.2, { f0: 120, f1: 50, gain: 0.55 }); } break;
+      case 'kickdoor': this._noise(t, 0.35, { freq: 520, gain: 0.9 }); this._tone(t, 0.3, { f0: 100, f1: 36, gain: 0.8 }); break;
+      case 'shutter': if (this.gate('shut', 0.1)) { this._noise(t, 0.7, { type: 'bandpass', freq: 1500, q: 0.9, gain: 0.32, attack: 0.04, rate: 2 }); this._tone(t + 0.6, 0.18, { f0: 140, f1: 60, gain: 0.4 }); } break;
+      case 'doorShut': if (this.gate('dsh', 0.1)) this._tone(t, 0.14, { f0: 150, f1: 70, gain: 0.3 }); break;
+      case 'snap': this._noise(t, 0.05, { type: 'bandpass', freq: 3200, q: 2, gain: 0.7 }); break;
+      case 'eshotgun': if (this.gate('esg', 0.05)) { this._noise(t, 0.3, { freq: 800, gain: 0.6 }); this._tone(t, 0.2, { f0: 160, f1: 50, gain: 0.35 }); } break;
       case 'aim': this._tone(t, 0.12, { type: 'square', f0: 1400, f1: 1400, gain: 0.05 }); break;
       case 'spin': this._tone(t, 0.5, { type: 'sawtooth', f0: 60, f1: 340, gain: 0.12 }); this._noise(t, 0.5, { type: 'bandpass', freq: 1200, q: 3, gain: 0.18, attack: 0.3 }); break;
       case 'hum': this._tone(t, 0.6, { type: 'sine', f0: 140, f1: 520, gain: 0.16 }); this._tone(t, 0.6, { type: 'triangle', f0: 280, f1: 1040, gain: 0.05 }); break;

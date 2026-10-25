@@ -29,7 +29,7 @@ function play(stage, allies, seed) {
   return { g, bossSeen, maxParts };
 }
 
-for (let stage = 0; stage < 17; stage++) for (const allies of [true, false]) {
+for (let stage = 0; stage < 18; stage++) for (const allies of [true, false]) {
   test(`じどう プレイで ステージ${stage + 1} を クリア（なかま ${allies ? 'あり' : 'なし'}）`, () => {
     const { g, bossSeen, maxParts } = play(stage, allies, 11 + stage);
     assert.ok(bossSeen, 'ボスが でた');
