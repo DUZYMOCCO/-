@@ -1,7 +1,7 @@
 // ゾンビストライク — ゲームの きまり（DOM / three.js に いぞんしない。node のテストから よめる）
 // ぶき・ダメージ・ウェーブ・あたりはんてい（レイ×はこ）・いどうの ぶつかり・ゾンビの みちさがし（フローフィールド）
 
-export const VERSION = '0.10.0';
+export const VERSION = '0.11.0';
 
 // ---- ぶき ----
 // rpm: 1ぷんかんの はっしゃかず / mag: マガジン / reserve: よびだん / reload: びょう
@@ -66,8 +66,19 @@ export const WEAPONS = {
     recoilPitch: 0.085, recoilYaw: 0.014, shake: 0.2, range: 75, falloff: [20, 55, 0.7], knock: 1.6,
     pierce: 1, pierceMul: 0.75, revolver: true,
   },
+  // v0.11.0: ミサイルランチャー（かくうの デザイン・3れんの つつ）。1かい おすと ちいさな ミサイルが 3ぱつ
+  // まえの いちばん ちかい ゾンビへ とんでいく（ホーミング）。ばくはつは ちいさめ。くるまは 1ぱつで ばくはつ
+  // たまは 「1かいぶん（3ぱつ）」で かぞえる: マガジン 2・よびだん 8・リロード 3.2びょう
+  mlauncher: {
+    id: 'mlauncher', name: 'ミサイルランチャー', short: 'ミサイル', slot: 8,
+    dmg: 95, head: 1, pellets: 1, rpm: 60, auto: false,
+    mag: 2, reserve: 8, reload: 3.2,
+    spread: 0.004, spreadMove: 0.012, spreadAim: 0.002, bloom: 0, bloomMax: 0,
+    recoilPitch: 0.06, recoilYaw: 0.01, shake: 0.25, range: 90, falloff: [0, 1, 1], knock: 0,
+    projectile: true, homing: true, salvo: 3, speed: 26, blast: 3.2, power: 9, life: 2.6,
+  },
 };
-export const WEAPON_ORDER = ['rifle', 'pistol', 'shotgun', 'rocket', 'minigun', 'sniper', 'magnum'];
+export const WEAPON_ORDER = ['rifle', 'pistol', 'shotgun', 'rocket', 'minigun', 'sniper', 'magnum', 'mlauncher'];
 
 // ---- v0.8.0: スコープ（スナイパーだけ）----
 // fov: ズーム・sens: うごかす はやさの ばいりつ・sway: ゆれ（ラジアン。7さいでも ねらえる くらい ちいさく）
@@ -243,7 +254,7 @@ export function setGunLevel(g, lv) {
 // レベル 1〜max。1レベル ごとに いりょく +10%・はやさ +5%・たま +10%（ロケットは Lv5 から 2はつ）
 // ねだん: base × 1.5^(レベル−1)（10の くらい で まるめ）
 export const UPGRADE = { max: 8, grow: 1.5, dmg: 0.10, rate: 0.05, mag: 0.10,
-  base: { rifle: 400, pistol: 250, shotgun: 400, rocket: 600, minigun: 600, sniper: 500, magnum: 320 } };
+  base: { rifle: 400, pistol: 250, shotgun: 400, rocket: 600, minigun: 600, sniper: 500, magnum: 320, mlauncher: 560 } };
 export const clampLv = (lv) => Math.max(1, Math.min(UPGRADE.max, Number.isFinite(lv) ? Math.floor(lv) : 1));
 export function upgradeCost(id, lv) {
   const L = clampLv(lv);
@@ -1281,6 +1292,8 @@ export function damageRobot(r, d) {
 }
 // ぶき ボタン（v0.7.0: ちいさく。でも ゆびで おせる 40px いじょう）
 export const WEAPON_BAR = { slotW: 40, slotH: 40, chipW: 34, chipH: 26, gap: 0 };
+// v0.11.0: パワードスーツの ぶきボタン（5つ・css と おなじ）と のこりじかんの はば
+export const SUIT_BAR = { w: 54, h: 48, gap: 3, right: 6, timerL: 8, timerW: 280 };
 
 // ---- v0.9.0: けいさつロボの レベル（たおした かずで あがる・Lv1〜5）----
 // すこしずつ つよく なる（もともと つよいので やりすぎない）。レベルが あがると HP ぜんかい
@@ -1415,11 +1428,13 @@ export const SUIT = {
   flyG: 10,            // パンチで とんだ ゾンビの じゅうりょく（ゆっくり おちる → がめんの そとへ）
   flyTime: 1.35,       // これだけ とんだら きえる（キラーン）
 };
-export const SUIT_ORDER = ['mcannon', 'flamer', 'cannon', 'punch'];
+export const SUIT_ORDER = ['mcannon', 'flamer', 'cannon', 'missile', 'punch'];
 export const SUIT_WEAPONS = {
   mcannon: { id: 'mcannon', name: 'マシンキャノン', short: 'キャノンじゅう', icon: '🔫', interval: 0.075, dmg: 70, pierce: 2, pierceMul: 0.75, spread: 0.02, range: 90, knock: 1.6 },
   flamer: { id: 'flamer', name: 'かえんほうしゃ', short: 'ほのお', icon: '🔥', range: 9, cone: 0.42, dps: 90, burn: 3, burnDps: 35, tick: 0.1 },
   cannon: { id: 'cannon', name: 'キャノン', short: 'たいほう', icon: '💣', interval: 0.9, dmg: 480, blast: 7.5, power: 17, speed: 48, gravity: 6, life: 3, projectile: true },
+  // v0.11.0: かたの ミサイル（1かいで 6ぱつ・ホーミング・つぎまで 1.6びょう）
+  missile: { id: 'missile', name: 'ミサイル', short: 'ミサイル', icon: '🚀', interval: 1.6, salvo: 6, dmg: 220, blast: 4.2, power: 13, speed: 30, life: 2.8, projectile: true, homing: true, big: true },
   punch: { id: 'punch', name: 'パンチ', short: 'パンチ', icon: '👊', interval: 0.45, range: 3.6, arc: 1.0, dmg: 1200, max: 4, h: 28, v: 34, spin: 16, bossDmg: 260, bossKnock: 16 },
 };
 export function suitWeaponAt(i) { return SUIT_ORDER[((i % SUIT_ORDER.length) + SUIT_ORDER.length) % SUIT_ORDER.length]; }
@@ -1488,3 +1503,48 @@ export function burnTick(z, dt, dps = SUIT_WEAPONS.flamer.burnDps) {
   z.burnT = Math.max(0, z.burnT - dt);
   return dps * used;
 }
+
+// ---- v0.11.0: ホーミング ミサイル（スーツの ミサイル・ミサイルランチャー で つかう）----
+// max: いちどに とべる かず（iPhone SE でも かるく）・turn: まがる はやさ（ラジアン/びょう）・arm: まっすぐ とぶ じかん
+// fan: よこに ひろがる・arcUp: うえむきに でる（すこし やまなりに とぶ）・cone/range: ねらえる ゾンビ（まえ だけ）
+// trailDt: けむりの かんかく・maxTrail: 1フレームの けむりの かず
+export const MISSILE = { max: 18, turn: 5.0, arm: 0.14, accel: 40, fan: 0.2, arcUp: 0.32, cone: 0.75, range: 55, trailDt: 0.05, maxTrail: 10, near: 0.9 };
+// まえの ゾンビを ちかい じゅんに n こ（すくなければ くりかえす）。いなければ []（まっすぐ とぶ）
+export function missileTargets(px, pz, fx, fz, zombies, n, range = MISSILE.range, cone = MISSILE.cone) {
+  const fl = Math.hypot(fx, fz) || 1, ux = fx / fl, uz = fz / fl, cc = Math.cos(cone), c = [];
+  for (let i = 0; i < zombies.length; i++) {
+    const z = zombies[i];
+    if (!z || !z.alive || z.demo || z.fly) continue;
+    const dx = z.x - px, dz = z.z - pz, d = Math.hypot(dx, dz);
+    if (d > range || d < 0.5) continue;
+    if ((dx * ux + dz * uz) / d < cc) continue;
+    c.push([d, i]);
+  }
+  c.sort((a, b) => a[0] - b[0]);
+  if (!c.length) return [];
+  const r = [];
+  for (let k = 0; k < n; k++) r.push(c[k % c.length][1]);
+  return r;
+}
+// はっしゃの むき: すこし うえ ＋ よこに ひろげる（やまなり）
+export function salvoDirs(fx, fy, fz, n, fan = MISSILE.fan, up = MISSILE.arcUp) {
+  const r = [], hl = Math.hypot(fx, fz) || 1, rx = -fz / hl, rz = fx / hl;
+  for (let k = 0; k < n; k++) {
+    const t = n > 1 ? k / (n - 1) - 0.5 : 0;
+    let x = fx + rx * t * 2 * fan, y = fy + up * (0.8 + 0.4 * ((k * 0.618) % 1)), z = fz + rz * t * 2 * fan;
+    const l = Math.hypot(x, y, z); r.push([x / l, y / l, z / l]);
+  }
+  return r;
+}
+// むきを ターゲットの ほうへ maxAng（ラジアン）まで まげる。はやさは かえない
+export function steerMissile(vx, vy, vz, tx, ty, tz, maxAng) {
+  const sp = Math.hypot(vx, vy, vz) || 1, tl = Math.hypot(tx, ty, tz) || 1;
+  const ax = vx / sp, ay = vy / sp, az = vz / sp, bx = tx / tl, by = ty / tl, bz = tz / tl;
+  const dot = Math.max(-1, Math.min(1, ax * bx + ay * by + az * bz)), ang = Math.acos(dot);
+  if (ang <= maxAng || ang < 1e-6) return [bx * sp, by * sp, bz * sp];
+  // a から b へ maxAng だけ（slerp）
+  const s = Math.sin(ang), k0 = Math.sin(ang - maxAng) / s, k1 = Math.sin(maxAng) / s;
+  return [(ax * k0 + bx * k1) * sp, (ay * k0 + by * k1) * sp, (az * k0 + bz * k1) * sp];
+}
+// 1かいで うてる かず（とんでいる かずの じょうげん）
+export const salvoRoom = (flying, want) => Math.max(0, Math.min(want, MISSILE.max - flying));

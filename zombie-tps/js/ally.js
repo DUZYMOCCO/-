@@ -2,7 +2,7 @@
 // a: { x,y,z,yaw,vy, stuckT, fireT, aimT, target, onScreen, phase, moving, kick, hurtT }
 // m: モデル（root, inner, legs, aim, holder, muzzle, headPivot）／ S: すうち（back, side, speed, runSpeed, near, range, spread, fireRate, dmg）
 import * as THREE from '../vendor/three.module.min.js';
-import { robotFollowPoint, pickRobotTarget, castShot, collideCircle, groundHeight } from './rules.js?v=12';
+import { robotFollowPoint, pickRobotTarget, castShot, collideCircle, groundHeight } from './rules.js?v=13';
 
 const PLAYER_R = 0.35, ROBOT_BACK = 0.3;
 const _o = new THREE.Vector3(), _t = new THREE.Vector3(), _m = new THREE.Vector3(), _p = new THREE.Vector3();

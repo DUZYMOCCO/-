@@ -9,8 +9,8 @@ import { WEAPONS, WEAPON_ORDER, normalizeSave, SENS, VERSION, OUTFITS, outfitNam
   autoEquipBest, equipGain, autoPickup, bestLoadout, pickMapId, MAP_IDS,
   UPGRADE, upgradeCost, upgradedWeapon, weaponLevel, buyUpgrade, earnBank, gearRefund, discardGear, isWorn, needsDropConfirm, weakestLoose,
   SLOT_UP, HP_UP, slotLevel, hpLevel, slotUpCost, hpUpCost, baseHpAt, slotBonus, buySlotUpgrade, buyHpUpgrade, GEAR_SLOT_IDS,
-  SUIT_ORDER, SUIT_WEAPONS, suitLabel, SUIT } from './rules.js?v=12';
-import { MAPS, mapInfo } from './map.js?v=12';
+  SUIT_ORDER, SUIT_WEAPONS, suitLabel, SUIT } from './rules.js?v=13';
+import { MAPS, mapInfo } from './map.js?v=13';
 
 const hex6 = (n) => '#' + n.toString(16).padStart(6, '0');
 // v0.7.0: がめんの そとを さす やじるしは ボタンに かぶらない たかさ（うえから 16%〜32%）
@@ -54,9 +54,9 @@ function totalsText(gear, save) {
   const parts = GEAR_STAT_IDS.filter((k) => t[k]).map((k) => `${GEAR_STATS[k].name} +${t[k]}${GEAR_STATS[k].unit}${t[k] >= GEAR_STATS[k].cap ? '（MAX）' : ''}`);
   return parts.length ? parts.join(' ・ ') : 'まだ なにも つけて いないよ';
 }
-import { Game } from './game.js?v=12';
-import { Input } from './input.js?v=12';
-import { Sfx } from './sfx.js?v=12';
+import { Game } from './game.js?v=13';
+import { Input } from './input.js?v=13';
+import { Sfx } from './sfx.js?v=13';
 
 // v0.7.0: ぶきの ちいさい アイコン（かくうの シルエット）
 const svgI = (d) => `<svg viewBox="0 0 32 16" aria-hidden="true">${d}</svg>`;
@@ -68,6 +68,7 @@ const WEAPON_ICONS = {
   magnum: svgI('<path d="M12 4h19v3.2H12zM7 3h6v6H7zM10 5.5h7v4.5h-7zM4 1h3v2H4zM5 8.5h5l-2 6.5H3zM11 10h3l-1.5 2h-2z"/>'),
   minigun: svgI('<path d="M2 3h11v10H2zM5 0h6v3H5zM13 3.5h19v2H13zM13 7h19v2H13zM13 10.5h19v2H13z"/>'),
   sniper: svgI('<path d="M0 7l6-1v4l-5 1zM6 6h10v3H6zM16 7h16v1.4H16zM8 2h9v2.6H8zM10 4.6h1.5V6H10zM14 4.6h1.5V6H14zM9 9h2.5l-1 4H9z"/>'),
+  mlauncher: svgI('<path d="M3 3h19v9H3zM22 3.5h3v2.4h-3zM22 6.6h3v2.4h-3zM22 9.6h3v2.4h-3zM27 6.2h4l1 1.3-1 1.3h-4zM9 12h3v4H9zM14 1h5v2h-5z"/>'),
 };
 // v0.8.0: つよく する がめんの ことば
 const UP_ROWS = [
@@ -87,7 +88,7 @@ const OPT_CYCLE = { autoFire: [false, true], sens: ['low', 'mid', 'high'], quali
 
 export default {
   prepare() {
-    return loadCss(new URL('../css/zombie-tps.css?v=12', import.meta.url).href);
+    return loadCss(new URL('../css/zombie-tps.css?v=13', import.meta.url).href);
   },
 
   init(container, onBackToHub) {

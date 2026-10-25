@@ -15,19 +15,20 @@ import {
   damageMul, frontHit, heavyOf, unlockedSpecials, zombieTargetsRobot,
   castPierce, SUIT, dropSpot, aimFov, aimSensMul, scopeSway, isScoped, SCOPE, weaponLevel, setGunLevel,
   VEHICLE, BLAST_FX, blastHits, blastReachesVehicle,
-} from './rules.js?v=12';
-import { RobotMixin } from './robot.js?v=12';
-import { AllyMixin } from './ally.js?v=12';
-import { CopMixin } from './cop.js?v=12';
-import { VehicleMixin } from './vehicles.js?v=12';
-import { SuitMixin } from './suit.js?v=12';
-import { makeNav } from './nav.js?v=12';
-import { buildMap, playerColliders, zombieColliders, shotColliders } from './map.js?v=12';
-import { buildTextures, fxTextures } from './textures.js?v=12';
-import { buildWorld, disposeWorld } from './world.js?v=12';
-import { Backdrop, BACKDROPS } from './backdrop.js?v=12';
-import { makePlayer, applyOutfit, applyGear, makeGearDrop, makeOjisan, makeWeapons, makeZombie, makeRocketProjectile, makeRocketCrate, zombieChunkColors, FLASH_MAT } from './models.js?v=12';
-import { FX } from './fx.js?v=12';
+} from './rules.js?v=13';
+import { RobotMixin } from './robot.js?v=13';
+import { AllyMixin } from './ally.js?v=13';
+import { CopMixin } from './cop.js?v=13';
+import { VehicleMixin } from './vehicles.js?v=13';
+import { SuitMixin } from './suit.js?v=13';
+import { MissileMixin } from './missiles.js?v=13';
+import { makeNav } from './nav.js?v=13';
+import { buildMap, playerColliders, zombieColliders, shotColliders } from './map.js?v=13';
+import { buildTextures, fxTextures } from './textures.js?v=13';
+import { buildWorld, disposeWorld } from './world.js?v=13';
+import { Backdrop, BACKDROPS } from './backdrop.js?v=13';
+import { makePlayer, applyOutfit, applyGear, makeGearDrop, makeOjisan, makeWeapons, makeZombie, makeRocketProjectile, makeRocketCrate, zombieChunkColors, FLASH_MAT } from './models.js?v=13';
+import { FX } from './fx.js?v=13';
 const A_RIGHT = new THREE.Vector3();
 
 const v3 = () => new THREE.Vector3();
@@ -83,6 +84,7 @@ export class Game {
     this.initRobot();
     this.initCop();
     this.initSuit();
+    this.initMissiles();
     this.weapons = makeWeapons();
     for (const id of WEAPON_ORDER) { this.weapons[id].group.visible = false; this.p.holder.add(this.weapons[id].group); }
     this.fx = new FX(scene, tex, { groundAt: (x, z, y) => groundHeight(x, z, 0.05, y, this.pCol) });
@@ -146,6 +148,7 @@ export class Game {
     this.vel = new THREE.Vector3(); this.follow = null; this.stepPh = 0; this.slowT = 0; this.hitstop = 0;
     for (const r of this.rockets || []) this.releaseRocket(r);
     if (this.rockets) this.rockets.length = 0;
+    if (this.missiles) this.clearMissiles();
     this.refreshGear(true); this.hp = this.maxHp; this.hurtT = 0; this.regenDelay = 0;
     this.guns = {}; for (const id of WEAPON_ORDER) this.guns[id] = createGun(id, weaponLevel(this.settings, id));
     this.cur = DEFAULT_WEAPON; this.swapT = 0; this.showWeapon(this.cur);
@@ -1251,7 +1254,7 @@ export class Game {
     const muzzle = wObj.muzzle.getWorldPosition(A.e);
     const right = A.d.set(Math.cos(this.yaw), 0, -Math.sin(this.yaw));
     const shotZ = this.zombies;
-    if (w.projectile) { this.fireRocket(o, d, spread, muzzle); return; }
+    if (w.projectile) { if (w.homing) this.fireMissiles(o, d, muzzle, w); else this.fireRocket(o, d, spread, muzzle); return; }
     const hitZ = new Map();
     let anyHit = false, anyHead = false;
     for (let pI = 0; pI < w.pellets; pI++) {
@@ -1336,6 +1339,26 @@ export class Game {
     this.sfx.rocket();
   }
 
+  // v0.11.0: ミサイルランチャー: 3ぱつ まとめて（まえの ちかい ゾンビへ）
+  fireMissiles(o, d, muzzle, w) {
+    const A = this.tmp, wo = this.weapons[this.cur];
+    const hit = castShot(o.x, o.y, o.z, d.x, d.y, d.z, this.zombies, this.sCol, w.range);
+    const start = muzzle.clone();
+    const fdir = new THREE.Vector3(hit.x, hit.y, hit.z).sub(start);
+    if (fdir.length() < 2 || fdir.dot(d) < 0) fdir.copy(d); fdir.normalize();
+    this.launchSalvo(start, fdir, w, hit);
+    const back = wo.back.getWorldPosition(A.c), bdir = fdir.clone().negate();
+    bdir.x -= Math.cos(this.yaw) * 1.3; bdir.z += Math.sin(this.yaw) * 1.3; bdir.y -= 0.25; bdir.normalize();
+    this.fx.backblast(back, bdir);
+    this.fx.muzzle(wo.muzzle, 1.3);
+    this.kick = 1;
+    this.shake = Math.min(0.5, this.shake + w.shake);
+    const kickP = w.recoilPitch * (0.9 + Math.random() * 0.2);
+    this.recoilP += kickP * 0.75; this.pitch = Math.min(1.05, this.pitch + kickP * 0.25); this.pitchT = Math.min(1.05, this.pitchT + kickP * 0.25);
+    this.recoilY += (Math.random() - 0.5) * 2 * w.recoilYaw;
+    this.sfx.rocket();
+  }
+
   releaseRocket(r) { this.scene.remove(r.mdl.group); this.rocketPool.push(r); }
 
   updateRockets(dt) {
@@ -1374,13 +1397,14 @@ export class Game {
     return T;
   }
   explode(p, w, opt = {}) {
-    this.fx.explosion(p, w.blast);
+    this.fx.explosion(p, w.blast, opt.soft ? 0.45 : 1);
     const pd = Math.hypot(p.x - this.pos.x, p.z - this.pos.z);
-    this.sfx.boom(1.15 - pd / 40);
+    const vm = opt.vol ?? 1; // v0.11.0: ミサイルは まとめて なるので すこし ちいさく
+    this.sfx.boom((1.15 - pd / 40) * vm);
     // ゆれ・ひかりは ひかえめ（iPhone SE でも みやすく）
     const cap = opt.vehicle ? VEHICLE : BLAST_FX;
-    this.shake = Math.max(this.shake, cap.shake * Math.max(0.3, 1.0 - pd / 30));
-    this.hud.boom?.(cap.flash * Math.max(0.25, 1 - pd / 25));
+    this.shake = Math.max(this.shake, cap.shake * vm * Math.max(0.3, 1.0 - pd / 30));
+    this.hud.boom?.(cap.flash * vm * Math.max(0.25, 1 - pd / 25));
     let killed = 0;
     const dir = new THREE.Vector3();
     for (const { t, d } of blastHits(p, w.blast, this.blastTargets())) {
@@ -1586,7 +1610,7 @@ export class Game {
     }
     if (this.state === 'title') { this.titleT += dt; this.pFloor = 0; this.pSupport = null; this.updateCull(); this.updateZombies(dt); this.updateTitleCam(dt); this.updateNight(); this.fx.update(dt); return; }
     if (this.state === 'pause') return;
-    if (this.state === 'over') { this.updateOjiHud(); this.updateRobotHud(); this.updateCopHud(); this.updateSuitHud(); this.updateShells(dt); this.updateVehicles(dt); this.updateRockets(dt); this.updateZombies(dt); this.updatePickups(dt); this.fx.update(dt); this.updateCamera(dt, false); this.updateNight(); return; }
+    if (this.state === 'over') { this.updateOjiHud(); this.updateRobotHud(); this.updateCopHud(); this.updateSuitHud(); this.updateShells(dt); this.updateVehicles(dt); this.updateRockets(dt); this.updateMissiles(dt); this.updateZombies(dt); this.updatePickups(dt); this.fx.update(dt); this.updateCamera(dt, false); this.updateNight(); return; }
 
     const gun = this.guns[this.cur], w = gun.w || WEAPONS[this.cur];
     // イベント
@@ -1689,6 +1713,7 @@ export class Game {
     this.updateWaves(dt);
     this.updateTod(dt);
     this.updateRockets(dt);
+    this.updateMissiles(dt);
     this.updatePerch(dt);
     this.updateZombies(dt);
     this.updateOji(dt);
@@ -1907,4 +1932,4 @@ export class Game {
     this.renderer.forceContextLoss?.();
   }
 }
-Object.assign(Game.prototype, AllyMixin, RobotMixin, CopMixin, VehicleMixin, SuitMixin);
+Object.assign(Game.prototype, AllyMixin, RobotMixin, CopMixin, VehicleMixin, SuitMixin, MissileMixin);

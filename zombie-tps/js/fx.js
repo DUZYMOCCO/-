@@ -1,6 +1,6 @@
 // こうか: マズルフラッシュ・トレーサー・やっきょう・つぶ（みどりの しぶき／けむり）・しみ（みどり）・だんこん
 import * as THREE from '../vendor/three.module.min.js';
-import { makeMagMesh } from './models.js?v=12';
+import { makeMagMesh } from './models.js?v=13';
 
 const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _s = new THREE.Vector3(), _p = new THREE.Vector3(), _c = new THREE.Color();
 const UP = new THREE.Vector3(0, 1, 0), FWD = new THREE.Vector3(0, 0, 1);
@@ -102,17 +102,18 @@ export class FX {
   }
 
   // ---- ばくはつ（はでに！）----
-  explosion(pos, radius = 4.5) {
+  explosion(pos, radius = 4.5, k = 1) { // k: つぶの かず（v0.11.0 ミサイルは すくなめ）
+    const N = (n) => Math.max(1, Math.round(n * k));
     const b = this.booms[this.bi++ % this.booms.length];
     b.sp.position.copy(pos); b.sp.position.y = Math.max(0.8, pos.y);
     b.ring.position.set(pos.x, this.groundAt(pos.x, pos.z, pos.y + 0.5) + 0.06, pos.z);
     b.life = b.max = 0.42; b.r = radius; b.sp.visible = b.ring.visible = true;
     const p = _p.copy(pos); p.y = Math.max(0.3, p.y);
-    this.burst(p, 34, { color: 0xffd060, color2: 0xff8a1f, speed: 5.5, up: 3, size: 0.42, life: 0.42, gravity: -3, drag: 3 });   // ほのお
-    this.burst(p, 10, { color: 0xfff4c8, speed: 3, up: 1.5, size: 0.6, life: 0.2, gravity: 0, drag: 4 });                         // まんなかの ひかり
-    this.burst(p, 18, { color: 0x6b6b6b, color2: 0x9a9a9a, speed: 2.4, up: 3, size: 0.5, life: 1.4, gravity: -2.2, grow: 1.6, drag: 2 }); // けむり
-    this.burst(p, 18, { color: 0x8a5a32, color2: 0x8d857a, speed: 6.5, up: 8, size: 0.17, life: 1.5, gravity: 18 });              // がれき（はこ・つち）
-    this.burst(p, 16, { color: 0xfff0a0, speed: 11, up: 3, size: 0.05, life: 0.35, gravity: 6 });                                  // ひばな
+    this.burst(p, N(34), { color: 0xffd060, color2: 0xff8a1f, speed: 5.5, up: 3, size: 0.42, life: 0.42, gravity: -3, drag: 3 });   // ほのお
+    this.burst(p, N(10), { color: 0xfff4c8, speed: 3, up: 1.5, size: 0.6, life: 0.2, gravity: 0, drag: 4 });                         // まんなかの ひかり
+    this.burst(p, N(18), { color: 0x6b6b6b, color2: 0x9a9a9a, speed: 2.4, up: 3, size: 0.5, life: 1.4, gravity: -2.2, grow: 1.6, drag: 2 }); // けむり
+    this.burst(p, N(18), { color: 0x8a5a32, color2: 0x8d857a, speed: 6.5, up: 8, size: 0.17, life: 1.5, gravity: 18 });              // がれき（はこ・つち）
+    this.burst(p, N(16), { color: 0xfff0a0, speed: 11, up: 3, size: 0.05, life: 0.35, gravity: 6 });                                  // ひばな
     this.light.position.copy(p); this.light.position.y += 1;
     this.light.distance = 18; this.light.intensity = 70 * this.lightBoost; this.lightDecay = 160;
     // こげあと（すすの しみ）

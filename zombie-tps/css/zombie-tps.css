@@ -283,9 +283,8 @@
 
 /* v0.8.0: ぶきを つよく する がめん（ボタンは 40×40 いじょう） */
 .zt-upbtn { background: rgba(170,100,30,.6); border-color: #ffd08a; }
-.zt-upg { justify-content: flex-start; background: linear-gradient(90deg, rgba(8,12,20,.9) 0%, rgba(8,12,20,.65) 52%, rgba(8,12,20,0) 70%); }
-.zt-ubox { width: min(66vw, 420px); gap: 6px; } /* v0.9.0: ぶき 7こ ならぶ */
-@media (max-width: 620px) { .zt-utab { width: 42px; } }
+.zt-upg { justify-content: flex-start; background: linear-gradient(90deg, rgba(8,12,20,.9) 0%, rgba(8,12,20,.65) 60%, rgba(8,12,20,0) 78%); }
+.zt-ubox { width: min(71vw, 470px); gap: 6px; } /* v0.11.0: ぶき 8こ ならぶ（48×8＋すきま＋ラベル＝450） */
 .zt-ubox h2 { position: relative; color: #ffd08a; text-shadow: 0 3px 0 #6a3a0a; font-size: 22px; }
 .zt-ubox h2.flash::after { content: attr(data-msg); position: absolute; left: 105%; top: 4px; white-space: nowrap; font-size: 14px; color: #7dff9a; text-shadow: 0 1px 3px #000; animation: zt-msg 1.6s ease-out forwards; }
 .zt-ubank { font-size: 12px; font-weight: 900; color: #fff; text-shadow: 0 1px 2px #000; }
@@ -349,8 +348,8 @@
 .zt-suitbar, .zt-suittime { display: none; }
 .zt-suited .zt-slots, .zt-suited .zt-rl { display: none; }
 .zt-suited .zt-boss { top: 92px; }
-.zt-suited .zt-suitbar { display: flex; position: absolute; top: calc(max(6px, env(safe-area-inset-top)) + 32px); right: max(6px, env(safe-area-inset-right)); gap: 4px; }
-.zt-sbtn { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; width: 58px; height: 48px; padding: 0; box-sizing: border-box;
+.zt-suited .zt-suitbar { display: flex; position: absolute; top: calc(max(6px, env(safe-area-inset-top)) + 32px); right: max(6px, env(safe-area-inset-right)); gap: 3px; }
+.zt-sbtn { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; width: 54px; height: 48px; padding: 0; box-sizing: border-box;
   border-radius: 10px; border: 2px solid rgba(255,255,255,.4); background: rgba(20,24,32,.6); color: #fff; -webkit-tap-highlight-color: transparent; }
 .zt-sbtn b { position: absolute; left: 4px; top: 2px; font-size: 9px; opacity: .65; }
 .zt-sbtn i { font-style: normal; font-size: 20px; line-height: 1; }
@@ -370,3 +369,6 @@
 .zt-suitarrow i { display: block; font-style: normal; font-size: 26px; line-height: 1; color: #ffa63a; }
 .zt-suitarrow span { font-size: 10px; font-weight: 900; color: #fff; background: rgba(200,100,10,.9); padding: 1px 6px; border-radius: 7px; white-space: nowrap; }
 .hidden.zt-suittag, .hidden.zt-suitarrow { display: none; }
+
+/* v0.11.0: ミサイルランチャー（ぶき 8こ）・スーツの ぶき 5こ */
+@media (max-width: 620px) { .zt-utab { width: 42px; } .zt-utrow { gap: 3px; } .zt-ubox { width: min(74vw, 470px); } }

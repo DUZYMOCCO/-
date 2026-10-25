@@ -1,12 +1,12 @@
 // v0.10.0: パワードスーツ（45びょう だけ とんでもなく つよい）
-// マップの どこかに 1つ。さわると きる → マシンキャノン・かえんほうしゃ・キャノン・パンチ。
+// マップの どこかに 1つ。さわると きる → マシンキャノン・かえんほうしゃ・キャノン・ミサイル（v0.11.0）・パンチ。
 // じかんが きれると ぬいで、すこしの あいだ むてき。つかったら 3ウェーブ あとに べつの ばしょへ また でる。
 import * as THREE from '../vendor/three.module.min.js';
 import {
   SUIT, SUIT_WEAPONS, SUIT_ORDER, wearSuit, tickSuit, routeSuitDamage, suitNextWave, pickSuitSpot, suitTouched,
   flameHits, punchTargets, punchLaunch, burnTick, groundHeight, edgeArrow, castShot, castPierce, aabbNormal, WEAPON_ORDER,
-} from './rules.js?v=12';
-import { makePowerSuit, makeSuitShell, SUIT_CHUNKS } from './models.js?v=12';
+} from './rules.js?v=13';
+import { makePowerSuit, makeSuitShell, SUIT_CHUNKS } from './models.js?v=13';
 
 const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _c = new THREE.Vector3(), _d = new THREE.Vector3(), _e = new THREE.Vector3();
 const UP = new THREE.Vector3(0, 1, 0);
@@ -148,6 +148,7 @@ export const SuitMixin = {
     const pitch = this.pitch;
     m.head.rotation.set(pitch * 0.5, 0, 0);
     m.cannon.rotation.x = pitch;
+    m.pod.rotation.x = pitch * 0.7;
     const pt = this.punchT > 0 ? this.punchT / 0.22 : 0;
     // みぎうで: キャノンじゅう（ねらう）・ひだりうで: パンチ／ほのお
     m.arms[1].rotation.x = pitch * 0.9;
@@ -174,6 +175,8 @@ export const SuitMixin = {
       if (held) this.suitFlame(dt, W); else s.flameT = 0;
     } else if (s.weapon === 'cannon') {
       if (held && s.cd <= 0) { s.cd = W.interval; this.suitCannon(W); }
+    } else if (s.weapon === 'missile') {
+      if (held && s.cd <= 0) { s.cd = W.interval; this.suitMissiles(W); }
     } else if (s.weapon === 'punch') {
       if (held && s.cd <= 0) { s.cd = W.interval; this.suitPunch(W); }
     }
@@ -302,6 +305,20 @@ export const SuitMixin = {
     this.sfx.rocket();
     this.shake = Math.min(0.5, this.shake + 0.25);
     this.recoilP += 0.03;
+  },
+  // v0.11.0: かたの ミサイル: 6ぱつ（まえの ちかい ゾンビへ ホーミング）
+  suitMissiles(W) {
+    const { o, d: d0 } = this.suitAimRay(), m = this.suitM;
+    const d = this.suitAssist(o, d0, 60);
+    const hit = castShot(o.x, o.y, o.z, d.x, d.y, d.z, this.zombies, this.sCol, 120);
+    const start = m.podMuzzle.getWorldPosition(new THREE.Vector3());
+    const fdir = new THREE.Vector3(hit.x, hit.y, hit.z).sub(start);
+    if (fdir.length() < 3 || fdir.dot(d) < 0) fdir.copy(d);
+    fdir.normalize();
+    this.launchSalvo(start, fdir, W, hit);
+    this.fx.burst(start, 6, { color: 0xbdb3a0, color2: 0xe8e0d0, speed: 1.2, up: 1.2, size: 0.25, life: 0.6, gravity: -1 });
+    this.sfx.rocket();
+    this.shake = Math.min(0.4, this.shake + 0.12);
   },
   releaseShell(s) { this.scene.remove(s.mdl.group); this.shellPool.push(s); },
   updateShells(dt) {
