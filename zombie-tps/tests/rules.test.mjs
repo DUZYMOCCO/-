@@ -234,7 +234,7 @@ test('なめらか いどう: approach は フレームレートに よらない
 });
 
 test('バージョン と セーブの ステージ', () => {
-  assert.equal(VERSION, '0.16.0');
+  assert.equal(VERSION, '0.16.1');
   assert.equal(normalizeSave(null).stage, 'day');
   assert.equal(normalizeSave({ stage: 'night' }).stage, 'night');
   assert.equal(normalizeSave({ stage: 'mars' }).stage, 'day');
@@ -2041,7 +2041,7 @@ test('v0.14 ファイル: army.js・drunk.js が キャッシュに ある', asy
   const root = path.dirname(path.dirname(url.fileURLToPath(import.meta.url)));
   const sw = fs.readFileSync(path.join(root, 'sw-assets.js'), 'utf8');
   for (const f of ['js/army.js', 'js/drunk.js']) { assert.ok(sw.includes(f), f); assert.ok(fs.existsSync(path.join(root, f))); }
-  assert.match(sw, /0\.1[5-9]\.0/); assert.ok(sw.includes('js/beams.js') && fs.existsSync(path.join(root, 'js/beams.js')), 'v0.15.0: beams.js');
+  assert.match(sw, /0\.1[5-9]\.\d/); assert.ok(sw.includes('js/beams.js') && fs.existsSync(path.join(root, 'js/beams.js')), 'v0.15.0: beams.js');
   const dr = fs.readFileSync(path.join(root, 'js/drunk.js'), 'utf8');
   assert.ok(dr.includes('drunkShouldCome') && dr.includes('planCop') && !dr.includes('uncleForWave'));
 });
@@ -2337,4 +2337,76 @@ test('v0.16.0 みため: けんきゅうじょの ゾンビ・くろよろい', 
   const md = fs.readFileSync(path.join(root, 'js/models.js'), 'utf8');
   assert.ok(md.includes('GK_LOOKS') && md.includes('lab') && md.includes('agent') && md.includes('splitLook'));
   for (const k of Object.values(GK_ENEMY)) { const lk = k.split('@')[1]; if (lk) assert.ok(md.includes(`${lk}:`), lk); }
+});
+
+// ================= v0.16.1: ドアを あるいて とおれる・スーツと なかまは いまの へや =================
+import { gkEntered, gkSpotCells, GK_ENTER_R } from '../js/gk/core.js';
+import { collideCircle as cc161 } from '../js/rules.js';
+const lab161 = async () => { const mod = await gkLoadMap(1); if (!hasMap('gk_lab')) registerMap('gk_lab', mod.build); return buildMap('gk_lab'); };
+// ゲームと おなじ うごき（0.35m の まる・4.7 m/s・0.15m ずつ・かべに そって すべる）
+function walk161(boxes, sx, sz, pts, maxT = 12) {
+  let x = sx, z = sz, k = 0; const dt = 1 / 60, sp = 4.7;
+  for (let t = 0; t < maxT && k < pts.length; t += dt) {
+    const [wx, wz] = pts[k], dx = wx - x, dz = wz - z, d = Math.hypot(dx, dz);
+    if (d < 0.8) { k++; continue; }
+    const vx = dx / d * sp, vz = dz / d * sp, n = Math.max(1, Math.ceil(sp * dt / 0.15));
+    for (let i = 0; i < n; i++) { const r = cc161(x + vx * dt / n, z + vz * dt / n, 0.35, 0, boxes); x = r.x; z = r.z; }
+  }
+  return { x, z, done: k >= pts.length };
+}
+test('v0.16.1 ガンキック ドア: ひらいた ドアは どの むき・ずれ でも あるいて とおれて つぎの へやに はいる', async () => {
+  const m = await lab161(), gm = m.gk;
+  for (let i = 0; i < gm.doors.length; i++) {
+    const d = gm.doors[i], ax = d.axis === 'x';
+    const c = (r) => { const [x0, z0, x1, z1] = gm.rooms[r].b; return [(x0 + x1) / 2, (z0 + z1) / 2]; };
+    const sgn = Math.sign(ax ? c(i + 1)[1] - d.z : c(i + 1)[0] - d.x); // つぎの へやの ほう
+    const pt = (along, side) => (ax ? [d.x + side, d.z + sgn * along] : [d.x + sgn * along, d.z + side]);
+    const boxes = (open) => playerColliders(m).map((b) => (b.door === undefined ? b : open.includes(b.door) ? { ...b, minY: -60, maxY: -50 } : b));
+    const openB = boxes(Array.from({ length: i + 1 }, (_, k) => k)), shutB = boxes(Array.from({ length: i }, (_, k) => k));
+    for (const off of [-1.6, -0.8, 0, 0.8, 1.6]) for (const aim of [-2.5, 0, 2.5]) {
+      const [sx, sz] = pt(-4, off), goal = pt(4, aim);
+      // まっすぐ ドアの ほうへ（ななめ・はしっこ でも すべって とおる）
+      const r = walk161(openB, sx, sz, [goal]);
+      assert.ok(gkRoomAt(gm.rooms, r.x, r.z) === i + 1 && gkEntered(gm, i + 1, r.x, r.z), `ドア${i} off ${off} aim ${aim} → ${r.x.toFixed(1)},${r.z.toFixed(1)}`);
+      // しまって いる ときは とおれない
+      const s = walk161(shutB, sx, sz, [goal], 4);
+      assert.notEqual(gkRoomAt(gm.rooms, s.x, s.z), i + 1, `しまった ドア${i} は とおれない`);
+    }
+    // ゆるめ: ドアの まんなか・すこし てまえ でも はいった ことに
+    assert.ok(gkEntered(gm, i + 1, d.x, d.z) && gkEntered(gm, i + 1, ...pt(-GK_ENTER_R + 0.2, 0)));
+    assert.ok(!gkEntered(gm, i + 1, ...pt(-GK_ENTER_R - 2, 0)), 'まえの へやの おくでは まだ');
+  }
+  assert.ok(GK_ENTER_R >= 2.5);
+});
+test('v0.16.1 ガンキック ドア: スタートから ボスの へやまで あるいて いける（ドアを じゅんばんに あける）', async () => {
+  const m = await lab161(), gm = m.gk;
+  const route = [[[-6, 24], [6, 24], [9, 22]], [[17, 22], [30, 21], [30, 4], [26, 0]], [[20, -2], [-24, -2], [-30, -2], [-30, -18]]];
+  let x = m.playerStart.x, z = m.playerStart.z;
+  for (let i = 0; i < route.length; i++) {
+    const open = Array.from({ length: i + 1 }, (_, k) => k);
+    const boxes = playerColliders(m).map((b) => (b.door !== undefined && open.includes(b.door) ? { ...b, minY: -60, maxY: -50 } : b));
+    const r = walk161(boxes, x, z, route[i], 30);
+    assert.ok(r.done, `ルート ${i}`); x = r.x; z = r.z;
+    assert.ok(gkEntered(gm, i + 1, x, z), `へや ${i + 1} に はいった`);
+  }
+  assert.equal(gkRoomAt(gm.rooms, x, z), 3, 'ボスの へや');
+});
+test('v0.16.1 ガンキック: スーツ・なかまロボは まだ しまっている へやに でない', async () => {
+  const m = await lab161(), gm = m.gk;
+  const nav = makeNav(zombieColliders(m), m); nav.update(m.playerStart.x, 0, m.playerStart.z);
+  const cells = nav.openCells(m.half - 3);
+  assert.ok(cells.some((c) => gkRoomAt(gm.rooms, c[0], c[1]) === 3), 'なにも しないと おくの へやも はいって しまう（なおす まえの バグ）');
+  for (let r = 0; r < gm.rooms.length; r++) {
+    const f = gkSpotCells(gm, r, cells);
+    assert.ok(f.length > 20, 'へや ' + r);
+    for (const c of f) {
+      assert.equal(gkRoomAt(gm.rooms, c[0], c[1]), r, 'いまの へや だけ');
+      for (const d of gm.doors) assert.ok(Math.hypot(c[0] - d.x, c[1] - d.z) >= 3.5, 'ドアの まえには おかない');
+    }
+  }
+  assert.deepEqual(gkSpotCells(null, 0, [[1, 2, 0]]), [[1, 2, 0]], 'ふつうの マップは そのまま');
+  const fs = await import('node:fs'), path = await import('node:path'), url = await import('node:url');
+  const root = path.dirname(path.dirname(url.fileURLToPath(import.meta.url)));
+  const src = ['js/suit.js', 'js/robot.js', 'js/army.js'].map((f) => fs.readFileSync(path.join(root, f), 'utf8'));
+  for (const s of src) assert.ok(s.includes('gkSpotFilter(cells)') && s.includes('gkSpotFrom()'));
 });

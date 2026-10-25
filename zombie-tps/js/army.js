@@ -5,8 +5,8 @@
 import * as THREE from '../vendor/three.module.min.js';
 import {
   ARMY, pickRobotSpot, armyTouched, damageArmy, robotStats, robotAddKill, groundHeight, edgeArrow, castShot, laserHits, pickArmyTarget,
-} from './rules.js?v=18';
-import { makeArmyRobot, ARMY_CHUNKS } from './models.js?v=18';
+} from './rules.js?v=19';
+import { makeArmyRobot, ARMY_CHUNKS } from './models.js?v=19';
 
 const _o = new THREE.Vector3(), _p = new THREE.Vector3(), _d = new THREE.Vector3(), _m = new THREE.Vector3(), _e = new THREE.Vector3();
 const NO_Z = [];
@@ -32,11 +32,12 @@ export const ArmyMixin = {
   },
   spawnArmy(r1 = Math.random()) {
     this.endArmy();
-    const s = this.map.playerStart, sy = 0;
+    const s = this.gk && this.map.gk ? this.gkSpotFrom() : this.map.playerStart, sy = 0; // v0.16.1: ガンキックは いまの へや
     this.nav.update(s.x, sy, s.z);
     let cells = this.nav.openCells(this.half - 3);
     const same = cells.filter((c) => Math.abs((c[2] || 0) - sy) < 0.5);
     if (same.length) cells = same;
+    if (this.gk && this.map.gk) cells = this.gkSpotFilter(cells); // v0.16.1: しまった へやには おかない
     // けいさつロボから はなれた ばしょ（ちがう ほうこうで みつけられる）
     const R = this.robot;
     if (R) { const far = cells.filter((c) => Math.hypot(c[0] - R.x, c[1] - R.z) > 8); if (far.length) cells = far; }

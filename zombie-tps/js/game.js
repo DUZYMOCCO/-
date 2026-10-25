@@ -17,27 +17,27 @@ import {
   VEHICLE, BLAST_FX, blastHits, blastReachesVehicle,
   SpatialGrid, thinkInterval, QualityGovernor, govPixelRatio,
   normalizeLoadout, loadoutSlot, cycleLoadout, applyCrate, SMOKE, smokeAffects,
-} from './rules.js?v=18';
-import { Crowd } from './crowd.js?v=18';
-import { RobotMixin } from './robot.js?v=18';
-import { AllyMixin } from './ally.js?v=18';
-import { CopMixin } from './cop.js?v=18';
-import { ArmyMixin } from './army.js?v=18';
-import { DrunkMixin } from './drunk.js?v=18';
+} from './rules.js?v=19';
+import { Crowd } from './crowd.js?v=19';
+import { RobotMixin } from './robot.js?v=19';
+import { AllyMixin } from './ally.js?v=19';
+import { CopMixin } from './cop.js?v=19';
+import { ArmyMixin } from './army.js?v=19';
+import { DrunkMixin } from './drunk.js?v=19';
 const BOT_NAME = { cop: 'けいさつおじさん', army: 'アーミーロボ', drunk: 'よっぱらいおじさん' }; // v0.14.0
-import { VehicleMixin } from './vehicles.js?v=18';
-import { SuitMixin } from './suit.js?v=18';
-import { MissileMixin } from './missiles.js?v=18';
-import { MeleeMixin } from './melee.js?v=18';
-import { GkMixin } from './gk/play.js?v=18';
-import { EnergyMixin } from './beams.js?v=18';
-import { makeNav } from './nav.js?v=18';
-import { buildMap, playerColliders, zombieColliders, shotColliders } from './map.js?v=18';
-import { buildTextures, fxTextures } from './textures.js?v=18';
-import { buildWorld, disposeWorld } from './world.js?v=18';
-import { Backdrop, BACKDROPS } from './backdrop.js?v=18';
-import { makePlayer, applyOutfit, applyGear, makeGearDrop, makeOjisan, makeWeapons, makeZombie, makeRocketProjectile, makeRocketCrate, zombieChunkColors, FLASH_MAT } from './models.js?v=18';
-import { FX } from './fx.js?v=18';
+import { VehicleMixin } from './vehicles.js?v=19';
+import { SuitMixin } from './suit.js?v=19';
+import { MissileMixin } from './missiles.js?v=19';
+import { MeleeMixin } from './melee.js?v=19';
+import { GkMixin } from './gk/play.js?v=19';
+import { EnergyMixin } from './beams.js?v=19';
+import { makeNav } from './nav.js?v=19';
+import { buildMap, playerColliders, zombieColliders, shotColliders } from './map.js?v=19';
+import { buildTextures, fxTextures } from './textures.js?v=19';
+import { buildWorld, disposeWorld } from './world.js?v=19';
+import { Backdrop, BACKDROPS } from './backdrop.js?v=19';
+import { makePlayer, applyOutfit, applyGear, makeGearDrop, makeOjisan, makeWeapons, makeZombie, makeRocketProjectile, makeRocketCrate, zombieChunkColors, FLASH_MAT } from './models.js?v=19';
+import { FX } from './fx.js?v=19';
 const A_RIGHT = new THREE.Vector3();
 
 const v3 = () => new THREE.Vector3();

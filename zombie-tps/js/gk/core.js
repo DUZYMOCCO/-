@@ -1,14 +1,14 @@
 // v0.16.0: ガンキック ワールド の ルール（データ だけ・three.js なし → テスト できる）
 // ステージの なかみ（てきの ならび）は stages/sNN.js、3D マップは maps/<mod>.js に わけて あとから よむ
 // → ステージが ふえても さいしょに よむ ぶんは ふえない（めくじ catalog.js だけ）
-import { GK_CATALOG } from './catalog.js?v=18';
+import { GK_CATALOG } from './catalog.js?v=19';
 
 export { GK_CATALOG };
 export const GK_COUNT = GK_CATALOG.length;
 export const gkMeta = (no) => GK_CATALOG.find((s) => s.no === no) || null;
 export const gkStageFile = (no) => `./stages/s${String(no).padStart(2, '0')}.js`;
-export const gkLoadStage = (no) => import(`${gkStageFile(no)}?v=18`).then((m) => m.STAGE);
-export const gkLoadMap = (no) => (GK_READY[no] ? import(`./maps/${GK_READY[no].mod}.js?v=18`) : Promise.reject(new Error('not ready')));
+export const gkLoadStage = (no) => import(`${gkStageFile(no)}?v=19`).then((m) => m.STAGE);
+export const gkLoadMap = (no) => (GK_READY[no] ? import(`./maps/${GK_READY[no].mod}.js?v=19`) : Promise.reject(new Error('not ready')));
 // ワールド（ステージ せんたく の カードの まとまり）
 export const GK_WORLDS = [
   { id: 'w1', tab: 'ワールド1', name: 'ワールド1　はじまりの たたかい', stages: [1, 2, 3, 4, 5] },
@@ -94,6 +94,24 @@ export function gkPickRoomSpawn(spawns, px, pz, r = Math.random(), near = 9) {
   const far = spawns.filter((s) => Math.hypot(s.x - px, s.z - pz) >= near);
   const list = far.length ? far : spawns;
   return list[Math.min(list.length - 1, Math.floor(r * list.length))];
+}
+// v0.16.1: へやに はいった？（ゆるめ）。へやの なか か、ひらいた ドアの まわり 3m に いれば はいった ことに する
+export const GK_ENTER_R = 3;
+export function gkEntered(gm, room, x, z) {
+  if (!gm) return true;
+  if (gkRoomAt(gm.rooms, x, z) >= room) return true;
+  const d = room > 0 && gm.doors[room - 1];
+  return !!d && Math.hypot(x - d.x, z - d.z) <= GK_ENTER_R;
+}
+// v0.16.1: スーツ・なかまロボを おく ばしょは 「いまの へや」だけ（まだ しまっている へやには おかない・ドアの まえも さける）
+export function gkSpotCells(gm, room, cells, margin = 1.5, doorClear = 3.5) {
+  if (!gm) return cells;
+  const inside = (c, i) => { const [x0, z0, x1, z1] = gm.rooms[i].b; return c[0] > x0 + margin && c[0] < x1 - margin && c[1] > z0 + margin && c[1] < z1 - margin; };
+  const clearOfDoors = (c) => gm.doors.every((d) => Math.hypot(c[0] - d.x, c[1] - d.z) >= doorClear);
+  const here = cells.filter((c) => inside(c, room) && clearOfDoors(c));
+  if (here.length) return here;
+  const back = cells.filter((c) => { const i = gkRoomAt(gm.rooms, c[0], c[1]); return i >= 0 && i <= room && clearOfDoors(c); });
+  return back.length ? back : cells.filter((c) => { const i = gkRoomAt(gm.rooms, c[0], c[1]); return i >= 0 && i <= room; });
 }
 // ひらいた ドアの みえない かべは ちかの したへ（ぶつからない）
 export const gkDoorOpenBox = () => [-60, -50];

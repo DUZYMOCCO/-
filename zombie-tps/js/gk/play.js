@@ -2,8 +2,8 @@
 // ウェーブ では なく 「へや → ドア → へや」。へやに はいると てきが でる → ぜんぶ たおすと ドアが ひらく（チェックポイント）。
 // さいごの へやに ボス → たおすと ステージ クリア。ロードアウト・なかま・スーツ・パンチは いつもと おなじ。
 import * as THREE from '../../vendor/three.module.min.js';
-import { WEAPON_ORDER, refillReserve, TOD, bossHp } from '../rules.js?v=18';
-import { gkRoomAt, gkPickRoomSpawn, gkDoorOpenBox } from './core.js?v=18';
+import { WEAPON_ORDER, refillReserve, TOD, bossHp } from '../rules.js?v=19';
+import { gkEntered, gkSpotCells, gkPickRoomSpawn, gkDoorOpenBox } from './core.js?v=19';
 
 const DOOR_MAT = new THREE.MeshLambertMaterial({ color: 0x59626e });
 const DOOR_STRIPE = new THREE.MeshBasicMaterial({ color: 0xe0b020 });
@@ -41,21 +41,31 @@ export const GkMixin = {
 
   // ステージを はじめる（from = チェックポイントの へや）
   startGk(stage, waves, from = 0, opt = {}) {
-    this.gk = { stage, waves, room: from, phase: 'wait', from, tod: opt.tod || 'night', cpScore: opt.score || 0, waitT: 0.6, nextRoomFlash: 0 };
+    this.gk = { stage, waves, room: from, phase: 'wait', from, tod: opt.tod || 'night', cpScore: opt.score || 0, waitT: 0.6, nextRoomFlash: 0, start: null };
+    const gm0 = this.map.gk;
+    if (gm0) this.gk.start = from > 0 ? this.gkCheckpointPos(from) : { x: this.map.playerStart.x, z: this.map.playerStart.z }; // v0.16.1: なかま・スーツは ここの へやに
     this.startGame();
     this.tod = this.gk.tod; this.todFade = null; this.applyTod(TOD[this.gk.tod] || TOD.night, true);
     const gm = this.map.gk;
     for (let i = 0; i < (this.gkDoors || []).length; i++) this.gkSetDoor(i, i < from, true);
     if (from > 0 && gm) { // チェックポイント: ドアの すぐ さき から
-      const d = gm.doors[from - 1], [x0, z0, x1, z1] = gm.rooms[from].b;
-      const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
-      const ax = d.axis === 'x';
-      const px = ax ? d.x : d.x + Math.sign(cx - d.x) * 3, pz = ax ? d.z + Math.sign(cz - d.z) * 3 : d.z;
-      this.pos.set(px, 0, pz); this.yaw = this.yawT = Math.atan2(-(cx - px), -(cz - pz));
+      const c = this.gkCheckpointPos(from);
+      this.pos.set(c.x, 0, c.z); this.yaw = this.yawT = c.yaw;
       this.score = this.gk.cpScore;
     }
+    this.gk.start = null;
     this.wave = from; this.interT = 1;
   },
+  gkCheckpointPos(from) {
+    const gm = this.map.gk, d = gm.doors[from - 1], [x0, z0, x1, z1] = gm.rooms[from].b;
+    const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+    const ax = d.axis === 'x';
+    const px = ax ? d.x : d.x + Math.sign(cx - d.x) * 3, pz = ax ? d.z + Math.sign(cz - d.z) * 3 : d.z;
+    return { x: px, z: pz, yaw: Math.atan2(-(cx - px), -(cz - pz)) };
+  },
+  // v0.16.1: なかまロボ・スーツを おく とき（robot.js / army.js / suit.js から）
+  gkSpotFrom() { const g = this.gk; return g.start || { x: this.pos.x, z: this.pos.z }; },
+  gkSpotFilter(cells) { return gkSpotCells(this.map.gk, this.gk.room, cells); },
   // へやの すすみ（updateWaves の かわり）
   gkUpdate(dt) {
     const g = this.gk, gm = this.map.gk, n = g.waves.length;
@@ -63,7 +73,7 @@ export const GkMixin = {
     if (g.phase === 'wait') {
       this.interT = 1;
       g.waitT -= dt;
-      const inRoom = gm ? gkRoomAt(gm.rooms, this.pos.x, this.pos.z) === g.room : true;
+      const inRoom = gkEntered(gm, g.room, this.pos.x, this.pos.z); // v0.16.1: ゆるめ（ドアの まわりでも はいった ことに）
       if (g.waitT > 0 || !inRoom) return;
       // へやに はいった → てきが でる
       const spec = this.spec = g.waves[g.room];

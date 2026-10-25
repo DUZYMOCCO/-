@@ -5,8 +5,8 @@ import * as THREE from '../vendor/three.module.min.js';
 // v0.9.0: たおした かずで レベルアップ（Lv1〜5）。うごき は ally.js と きょうつう
 import {
   ROBOT, pickRobotSpot, robotTouched, damageRobot, robotStats, robotAddKill, groundHeight, edgeArrow,
-} from './rules.js?v=18';
-import { makePoliceRobot, ROBOT_CHUNKS } from './models.js?v=18';
+} from './rules.js?v=19';
+import { makePoliceRobot, ROBOT_CHUNKS } from './models.js?v=19';
 
 const _o = new THREE.Vector3(), _p = new THREE.Vector3();
 
@@ -20,11 +20,12 @@ export const RobotMixin = {
   // ラウンドの はじめに まだ うごいていない ロボを おく
   spawnRobot(r1 = Math.random()) {
     this.endRobot();
-    const s = this.map.playerStart, sy = 0;
+    const s = this.gk && this.map.gk ? this.gkSpotFrom() : this.map.playerStart, sy = 0; // v0.16.1: ガンキックは いまの へや
     this.nav.update(s.x, sy, s.z);
     let cells = this.nav.openCells(this.half - 3);
     const same = cells.filter((c) => Math.abs((c[2] || 0) - sy) < 0.5); // おなじ たかさ（みつけやすい）
     if (same.length) cells = same;
+    if (this.gk && this.map.gk) cells = this.gkSpotFilter(cells); // v0.16.1: しまった へやには おかない
     if (!cells.length) return null;
     const [x, z, cy] = pickRobotSpot(cells, s.x, s.z, r1);
     const y = groundHeight(x, z, 0.3, (cy || 0) + 0.6, this.pCol);

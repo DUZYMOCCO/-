@@ -5,8 +5,8 @@ import * as THREE from '../vendor/three.module.min.js';
 import {
   SUIT, SUIT_WEAPONS, SUIT_ORDER, wearSuit, tickSuit, suitClockRuns, tickGrace, routeSuitDamage, suitNextWave, pickSuitSpot, suitTouched,
   flameHits, punchTargets, punchLaunch, burnTick, groundHeight, edgeArrow, castShot, castPierce, aabbNormal, WEAPON_ORDER,
-} from './rules.js?v=18';
-import { makePowerSuit, makeSuitShell, SUIT_CHUNKS } from './models.js?v=18';
+} from './rules.js?v=19';
+import { makePowerSuit, makeSuitShell, SUIT_CHUNKS } from './models.js?v=19';
 
 const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _c = new THREE.Vector3(), _d = new THREE.Vector3(), _e = new THREE.Vector3();
 const UP = new THREE.Vector3(0, 1, 0);
@@ -30,11 +30,12 @@ export const SuitMixin = {
   },
   // あるいて いける ばしょに おく（ロボの ばしょ とは はなす）
   placeSuit(r1 = Math.random()) {
-    const s = this.map.playerStart, sy = 0;
+    const s = this.gk && this.map.gk ? this.gkSpotFrom() : this.map.playerStart, sy = 0; // v0.16.1: ガンキックは いまの へや
     this.nav.update(s.x, sy, s.z);
     let cells = this.nav.openCells(this.half - 3);
     const same = cells.filter((c) => Math.abs((c[2] || 0) - sy) < 0.5);
     if (same.length) cells = same;
+    if (this.gk && this.map.gk) cells = this.gkSpotFilter(cells); // v0.16.1: しまった へやには おかない
     const A = this.army; // v0.14.0: アーミーロボとも かさならない
     if (A) { const f = cells.filter((c) => Math.hypot(c[0] - A.x, c[1] - A.z) > 4); if (f.length) cells = f; }
     if (!cells.length) return null;
