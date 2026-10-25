@@ -64,7 +64,7 @@
 @keyframes zt-banner { 0% { opacity: 0; transform: scale(1.5); } 12% { opacity: 1; transform: scale(1); } 80% { opacity: 1; } 100% { opacity: 0; } }
 
 /* たま */
-.zt-ammo { position: absolute; right: calc(max(10px, env(safe-area-inset-right)) + 176px); bottom: 14px; text-align: right; text-shadow: 0 2px 3px #000; font-weight: 900; }
+.zt-ammo { position: absolute; right: calc(max(10px, env(safe-area-inset-right)) + 202px); bottom: 14px; text-align: right; text-shadow: 0 2px 3px #000; font-weight: 900; }
 .zt-wname { font-size: 11px; opacity: .9; }
 .zt-ammo b { font-size: 30px; } .zt-ammo b.low { color: #ff8a3c; }
 .zt-ammo span { font-size: 14px; margin-left: 3px; opacity: .85; }
@@ -346,7 +346,7 @@
 
 /* v0.10.0: パワードスーツ */
 .zt-suitbar, .zt-suittime { display: none; }
-.zt-suited .zt-slots, .zt-suited .zt-rl { display: none; }
+.zt-suited .zt-slots, .zt-suited .zt-rl, .zt-suited .zt-melee { display: none; }
 .zt-suited .zt-boss { top: 92px; }
 .zt-suited .zt-suitbar { display: flex; position: absolute; top: calc(max(6px, env(safe-area-inset-top)) + 32px); right: max(6px, env(safe-area-inset-right)); gap: 3px; }
 .zt-sbtn { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; width: 54px; height: 48px; padding: 0; box-sizing: border-box;
@@ -372,3 +372,13 @@
 
 /* v0.11.0: ミサイルランチャー（ぶき 8こ）・スーツの ぶき 5こ */
 @media (max-width: 620px) { .zt-utab { width: 42px; } .zt-utrow { gap: 3px; } .zt-ubox { width: min(74vw, 470px); } }
+/* v0.13.0: なぐる ボタン（うつ の ひだり した。ねらう・たまの かずと かさならない） */
+.zt-melee { right: calc(max(10px, env(safe-area-inset-right)) + 128px); bottom: 14px; width: 62px; height: 62px; flex-direction: column; gap: 0; background: rgba(150,90,30,.42); border-color: rgba(255,210,150,.8); font-size: 11px; }
+.zt-melee.on { background: rgba(255,170,60,.6); border-color: #ffd08a; }
+.zt-mico { display: block; width: 36px; height: 18px; line-height: 0; }
+.zt-mico svg { width: 36px; height: 18px; fill: #ffe9c8; }
+.zt-melee span { margin-top: 1px; }
+.zt-utab.using::after { content: '✊'; position: absolute; top: -5px; right: -4px; font-size: 12px; line-height: 1; }
+.zt-msel { display: inline-block; margin-left: 8px; min-height: 40px; min-width: 96px; padding: 0 10px; border-radius: 10px; border: 2px solid #ffd84a; background: rgba(255,200,40,.25); color: #fff2b8; font-weight: 900; font-size: 13px; }
+.zt-msel.sel { border-color: #7dff9a; background: rgba(60,200,100,.25); color: #c8ffd6; }
+.zt-mnote { white-space: nowrap; }

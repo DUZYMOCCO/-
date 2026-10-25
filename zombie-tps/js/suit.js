@@ -5,8 +5,8 @@ import * as THREE from '../vendor/three.module.min.js';
 import {
   SUIT, SUIT_WEAPONS, SUIT_ORDER, wearSuit, tickSuit, routeSuitDamage, suitNextWave, pickSuitSpot, suitTouched,
   flameHits, punchTargets, punchLaunch, burnTick, groundHeight, edgeArrow, castShot, castPierce, aabbNormal, WEAPON_ORDER,
-} from './rules.js?v=14';
-import { makePowerSuit, makeSuitShell, SUIT_CHUNKS } from './models.js?v=14';
+} from './rules.js?v=15';
+import { makePowerSuit, makeSuitShell, SUIT_CHUNKS } from './models.js?v=15';
 
 const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _c = new THREE.Vector3(), _d = new THREE.Vector3(), _e = new THREE.Vector3();
 const UP = new THREE.Vector3(0, 1, 0);

@@ -152,7 +152,7 @@ test('セーブの よみこみ', () => {
   assert.deepEqual(normalizeSave(null), { bestWave: 0, bestScore: 0, autoFire: false, sens: 'mid', quality: 'auto', stage: 'day', flashlight: true,
     outfit: 'normal', outfits: ['normal'], gear: { inv: [], eq: { head: null, body: null, feet: null, arm: null } },
     autoEquip: true, map: 'rotate', mapNext: 0, bank: 0, wlv: { rifle: 1, pistol: 1, shotgun: 1, rocket: 1, minigun: 1, sniper: 1, magnum: 1, mlauncher: 1 },
-    slv: { head: 1, body: 1, feet: 1, arm: 1 }, hlv: 1 });
+    slv: { head: 1, body: 1, feet: 1, arm: 1 }, hlv: 1, mlv: { bat: 1, hammer: 1, katana: 1 }, melee: 'bat' });
   assert.equal(normalizeSave({ bestWave: 7, sens: 'zzz' }).sens, 'mid');
   assert.equal(normalizeSave({ bestWave: 7 }).bestWave, 7);
 });
@@ -232,7 +232,7 @@ test('なめらか いどう: approach は フレームレートに よらない
 });
 
 test('バージョン と セーブの ステージ', () => {
-  assert.equal(VERSION, '0.12.0');
+  assert.equal(VERSION, '0.13.0');
   assert.equal(normalizeSave(null).stage, 'day');
   assert.equal(normalizeSave({ stage: 'night' }).stage, 'night');
   assert.equal(normalizeSave({ stage: 'mars' }).stage, 'day');
@@ -1741,4 +1741,183 @@ test('v0.12.0 ゾンビが ふえた: いちどに でる かず 2ばい いじ�
   }
   assert.equal(crowdDmgMul(16), 1); assert.equal(crowdDmgMul(8), 1);
   assert.ok(crowdDmgMul(40) >= 0.72);
+});
+
+// ---- v0.13.0: なぐる ----
+import {
+  MELEE, MELEE_ORDER, MELEE_UP, DEFAULT_MELEE, meleeStats, meleeLevel, meleeUpCost, buyMelee, normalizeMelee,
+  meleeDamage, meleeKnock, meleeRawKnock, meleeDur, meleeDown, meleeTargets, meleeAim, meleeBlocked, bumpTransfer, BUMP,
+  newMeleeState, meleePress, meleeTick, swingPose, UPGRADE as UPG13,
+} from '../js/rules.js';
+
+test('v0.13.0 なぐる: 3しゅるい（くぎバット・ハンマー・かたな）', () => {
+  assert.deepEqual(MELEE_ORDER, ['bat', 'hammer', 'katana']);
+  assert.equal(DEFAULT_MELEE, 'bat');
+  const { bat, hammer, katana } = MELEE;
+  assert.ok(hammer.dur > bat.dur && bat.dur > katana.dur, 'はやさ: かたな > バット > ハンマー');
+  assert.ok(hammer.dmg > bat.dmg && hammer.dmg > katana.dmg, 'ハンマーが いちばん いたい');
+  assert.ok(katana.arc > bat.arc && bat.arc > hammer.arc, 'かたなは ひろく きる');
+  assert.equal(katana.combo, 3); assert.equal(bat.combo, 1); assert.equal(hammer.combo, 1);
+  assert.ok(bat.bleed && bat.bleed.dps > 0 && bat.bleed.time > 0, 'くぎバットは すこし じわじわ');
+  assert.ok(hammer.shock && hammer.shock.r >= 3, 'ハンマーは じめんを たたいて まわりも ころばせる');
+  for (const id of MELEE_ORDER) {
+    const W = MELEE[id];
+    assert.ok(W.range >= 2 && W.range <= 2.8, id + ' みじかい きょりだけ');
+    assert.ok(W.hitAt > W.wind * 0.9 && W.hitAt < W.strike, id + ' ふりおろしの とちゅうで あたる');
+    assert.ok(W.shake <= 0.3, id + ' がめんの ゆれは ひかえめ');
+  }
+});
+
+test('v0.13.0 なぐる: まえの おうぎがた と きょり', () => {
+  const W = MELEE.bat; // range 2.3 arc 1.05
+  const z = (x, zz, o = {}) => ({ x, z: zz, y: 0, scale: 1, alive: true, ...o });
+  const cands = [z(0, -1.5), z(0, -2.5), z(0, -3.5), z(1.5, -1.0), z(3, 0.2), z(0, 1.5), z(0, -1, { alive: false }), z(0, -1, { y: 2.5 })];
+  const hit = meleeTargets(0, 0, 0, 0, -1, cands, W).map((h) => cands.indexOf(h.z));
+  assert.deepEqual(hit, [0, 3, 1]); // まえ 1.5・ななめ 1.8・まえ 2.5（2.3+0.35 いない）。うしろ・とおい・しんだ・うえの かいは だめ
+  assert.ok(meleeTargets(0, 0, 0, 0, -1, cands, MELEE.katana).length >= 3);
+  // せなかの すぐ うしろ（0.7 いない）は あたる（くっつかれた とき）
+  assert.equal(meleeTargets(0, 0, 0, 0, -1, [z(0, 0.5)], W).length, 1);
+  // ちかい じゅん・max まで
+  const many = Array.from({ length: 8 }, (_, i) => z(0.1 * i, -0.8 - i * 0.15));
+  const r = meleeTargets(0, 0, 0, 0, -1, many, W);
+  assert.equal(r.length, W.max);
+  assert.ok(r[0].d <= r[1].d && r[1].d <= r[2].d);
+});
+
+test('v0.13.0 なぐる: みかた（ロボ・おまわりさん・おじさん）には ぜったい あたらない', () => {
+  const allies = [{ x: 0, z: -1, y: 0, ally: true, alive: true }, { x: 0.3, z: -1.2, y: 0, ally: true }, { x: -0.3, z: -0.9, y: 0, ally: true }];
+  for (const id of MELEE_ORDER) {
+    assert.equal(meleeTargets(0, 0, 0, 0, -1, allies, meleeStats(id, 5)).length, 0);
+    assert.equal(meleeAim(0, 0, 0, 0, allies, MELEE[id]).target, null);
+  }
+});
+
+test('v0.13.0 なぐる: すこしだけ じどうで ねらう', () => {
+  const z1 = { x: 1.2, z: -1.6, y: 0, alive: true }, far = { x: 0, z: -6, y: 0, alive: true }, back = { x: 0, z: 2, y: 0, alive: true };
+  const a = meleeAim(0, 0, 0, 0, [far, z1, back], MELEE.bat);
+  assert.equal(a.target, z1);
+  assert.ok(a.turn < 0 && a.turn > -1.0); // みぎへ すこし（yaw は ひだりまわりが +）
+  const fx = -Math.sin(a.yaw), fz = -Math.cos(a.yaw);
+  assert.ok(Math.abs(fx - 1.2 / 2) < 1e-6 && Math.abs(fz + 1.6 / 2) < 1e-6);
+  assert.equal(meleeAim(0, 0, 0, 0, [far, back], MELEE.bat).turn, 0); // ちかくに いなければ むきは そのまま
+});
+
+test('v0.13.0 なぐる: ぶきごとの ふっとばし・おもい ゾンビは あまり うごかない', () => {
+  const H = MELEE.hammer, B = MELEE.bat, K = MELEE.katana;
+  // ハンマー > バット > かたな（1かいめ）
+  assert.ok(meleeKnock(H, 'walker') > meleeKnock(B, 'walker'));
+  assert.ok(meleeKnock(B, 'walker') > meleeKnock(K, 'walker', 0));
+  assert.ok(meleeKnock(K, 'walker', 2) > meleeKnock(K, 'walker', 0) * 2, 'かたな 3かいめは つよく ふっとばす');
+  for (const id of MELEE_ORDER) {
+    const W = MELEE[id];
+    const w = meleeKnock(W, 'walker');
+    for (const heavy of ['brute', 'charger', 'riot', 'firefighter', 'mutant', 'bloater']) assert.ok(meleeKnock(W, heavy) < w, id + ' ' + heavy);
+    assert.ok(meleeKnock(W, 'boss') < meleeKnock(W, 'brute'), 'ボスが いちばん うごかない');
+    assert.ok(meleeKnock(W, 'boss') / meleeRawKnock(W) <= 0.15);
+  }
+  // すべる きょり（kv が exp(-7t) で へる → kv/7）: ハンマーで ふつうの ゾンビは 2m くらい・ボスは 0.3m くらい
+  assert.ok(meleeKnock(H, 'walker') / 7 > 1.8 && meleeKnock(H, 'boss') / 7 < 0.35);
+});
+
+test('v0.13.0 なぐる: かるい ゾンビは ころぶ（ボス・おもい ゾンビは ころばない）', () => {
+  for (const id of MELEE_ORDER) assert.equal(meleeDown(MELEE[id], 'boss', 2), 0);
+  assert.ok(meleeDown(MELEE.bat, 'walker') > 0 && meleeDown(MELEE.bat, 'runner') > 0);
+  assert.equal(meleeDown(MELEE.bat, 'brute'), 0);
+  assert.equal(meleeDown(MELEE.bat, 'riot'), 0);
+  assert.ok(meleeDown(MELEE.hammer, 'riot') > 0, 'ハンマーなら たても ころぶ');
+  assert.equal(meleeDown(MELEE.hammer, 'brute'), 0);
+  assert.equal(meleeDown(MELEE.katana, 'walker', 0), 0); // かたなは 3かいめ だけ
+  assert.equal(meleeDown(MELEE.katana, 'walker', 1), 0);
+  assert.ok(meleeDown(MELEE.katana, 'walker', 2) > 0);
+});
+
+test('v0.13.0 なぐる: かべごしには あたらない', () => {
+  const wall = { minX: -2, maxX: 2, minY: 0, maxY: 3, minZ: -1.2, maxZ: -1.0 };
+  assert.equal(meleeBlocked(0, 1.1, 0, 0, 0.9, -2, [wall]), true);
+  assert.equal(meleeBlocked(0, 1.1, 0, 0, 0.9, -0.8, [wall]), false); // かべの てまえ
+  assert.equal(meleeBlocked(0, 1.1, 0, 3, 0.9, -2, [wall]), true);
+  assert.equal(meleeBlocked(0, 1.1, 0, 0, 0.9, -2, []), false);
+  // ひくい はこ（とまりぎ）の うえから したの ゾンビの あたま は みえる
+  const box = { minX: -1, maxX: 1, minY: 0, maxY: 1.2, minZ: -1, maxZ: 1 };
+  assert.equal(meleeBlocked(0, 2.3, 0, 0, 1.7, -2, [box]), false);
+});
+
+test('v0.13.0 なぐる: かたなの 3れんぞく コンボ', () => {
+  const W = meleeStats('katana', 1), st = newMeleeState(), dt = 1 / 60;
+  assert.equal(meleePress(st, W), true); assert.equal(st.step, 0);
+  assert.equal(meleePress(st, W), false); // ふりはじめに おしても よやく しない（あたる まえ）
+  assert.equal(st.queued, false);
+  const evs = [];
+  const run = (sec, press = false) => { for (let t = 0; t < sec; t += dt) { if (press) meleePress(st, W); const e = meleeTick(st, W, dt); if (e) evs.push(e + st.step); } };
+  run(meleeDur(W, 0) * 0.6); // あたった あと
+  assert.deepEqual(evs, ['hit0']);
+  meleePress(st, W); assert.equal(st.queued, true);
+  run(meleeDur(W, 0) * 0.5);
+  assert.equal(st.step, 1); assert.ok(evs.includes('chain1'));
+  // おしっぱなし → 3かいめ → また 1かいめ
+  run(meleeDur(W, 1) + meleeDur(W, 2) + 0.05, true);
+  assert.ok(evs.includes('hit2'));
+  assert.ok(meleeDamage(W, 2) > meleeDamage(W, 0) * 1.5, '3かいめは つよい');
+  assert.ok(meleeDur(W, 2) > meleeDur(W, 0));
+  // まが あくと 1かいめから
+  const s2 = newMeleeState(); meleePress(s2, W); for (let i = 0; i < 40; i++) meleeTick(s2, W, dt);
+  meleePress(s2, W); assert.equal(s2.step, 1); // すぐ なら 2かいめ
+  for (let i = 0; i < 80; i++) meleeTick(s2, W, dt);
+  meleePress(s2, W); assert.equal(s2.step, 0); // 0.4びょう いじょう あくと リセット
+  // バット・ハンマーは いつも 1かいめ
+  const s3 = newMeleeState(), B = MELEE.bat; meleePress(s3, B); for (let i = 0; i < 30; i++) meleeTick(s3, B, dt); meleePress(s3, B); assert.equal(s3.step, 0);
+});
+
+test('v0.13.0 なぐる: ふりの かたち（ふりかぶる → ふりきる → もどる）', () => {
+  const B = MELEE.bat, H = MELEE.hammer;
+  assert.ok(swingPose('h', B.wind, B).yaw < -1.2); // みぎに ふりかぶる
+  assert.ok(swingPose('h', B.strike, B).yaw > 1.2); // ひだりへ ふりきる
+  assert.ok(swingPose('hr', B.strike, B).yaw < -1.2);
+  assert.ok(Math.abs(swingPose('h', 1, B).yaw) < 1e-6);
+  assert.ok(swingPose('v', H.wind, H).pitch > 2); // あたまの うえ
+  assert.ok(swingPose('v', H.strike, H).pitch < -0.5); // じめんへ
+  assert.ok(Math.abs(swingPose('v', 1, H).pitch) < 1e-6 && Math.abs(swingPose('v', 0, H).pitch) < 1e-6);
+});
+
+test('v0.13.0 なぐる: ふっとんだ ゾンビが ほかの ゾンビに ぶつかる', () => {
+  assert.equal(bumpTransfer(BUMP.min - 0.1, 'walker'), null);
+  const w = bumpTransfer(12, 'walker'), b = bumpTransfer(12, 'brute'), boss = bumpTransfer(12, 'boss');
+  assert.ok(w.knock > b.knock && b.knock > boss.knock);
+  assert.ok(w.knock < 12, 'ぶつかると すこし よわく なる（どこまでも つづかない）');
+  assert.ok(w.dmg > 0 && w.dmg <= BUMP.dmg * 2);
+  // れんさ しても すぐ とまる
+  let v = meleeKnock(MELEE.hammer, 'walker'), n = 0;
+  while (true) { const t = bumpTransfer(v, 'walker'); if (!t) break; v = t.knock; n++; }
+  assert.ok(n >= 1 && n <= 3);
+});
+
+test('v0.13.0 なぐる: スコアで つよく（じゅうより やすい・セーブ される）', () => {
+  assert.equal(MELEE_UP.max, 5);
+  for (const id of MELEE_ORDER) {
+    assert.ok(MELEE_UP.base[id] < Math.min(...Object.values(UPG13.base)), id + ' じゅうより やすい');
+    let prev = 0;
+    for (let lv = 1; lv < MELEE_UP.max; lv++) { const c = meleeUpCost(id, lv); assert.ok(c > prev && c % 10 === 0); prev = c; }
+    assert.equal(meleeUpCost(id, MELEE_UP.max), Infinity);
+    const a = meleeStats(id, 1), b = meleeStats(id, 5);
+    assert.ok(b.dmg > a.dmg * 1.5 && b.dur < a.dur && b.knock > a.knock);
+    if (a.bleed) assert.ok(b.bleed.dps > a.bleed.dps);
+    if (a.shock) assert.ok(b.shock.dmg > a.shock.dmg);
+    assert.equal(a.range, b.range); // とどく きょりは かわらない
+  }
+  const save = normalizeSave({ bank: 400 });
+  assert.deepEqual(save.mlv, { bat: 1, hammer: 1, katana: 1 });
+  assert.equal(save.melee, 'bat');
+  const r = buyMelee(save, 'bat');
+  assert.deepEqual(r, { ok: true, lv: 2, cost: 150 });
+  assert.equal(save.bank, 250); assert.equal(meleeLevel(save, 'bat'), 2);
+  assert.equal(buyMelee(save, 'hammer').ok, true); assert.equal(save.bank, 50);
+  const no = buyMelee(save, 'katana'); assert.equal(no.ok, false); assert.equal(no.short, 170);
+  assert.equal(buyMelee(save, 'rifle').ok, false);
+  // セーブして よみなおしても のこる・えらんだ ぶきも のこる
+  save.melee = 'katana';
+  const back = normalizeSave(JSON.parse(JSON.stringify(save)));
+  assert.deepEqual(back.mlv, { bat: 2, hammer: 2, katana: 1 });
+  assert.equal(back.melee, 'katana');
+  assert.deepEqual(normalizeMelee({ mlv: { bat: 99, hammer: -3, katana: 'x' }, melee: 'chainsaw' }), { mlv: { bat: 5, hammer: 1, katana: 1 }, melee: 'bat' });
+  assert.equal(back.wlv.rifle, 1); // じゅうの レベルとは べつ
 });

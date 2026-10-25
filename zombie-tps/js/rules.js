@@ -1,7 +1,7 @@
 // ゾンビストライク — ゲームの きまり（DOM / three.js に いぞんしない。node のテストから よめる）
 // ぶき・ダメージ・ウェーブ・あたりはんてい（レイ×はこ）・いどうの ぶつかり・ゾンビの みちさがし（フローフィールド）
 
-export const VERSION = '0.12.0';
+export const VERSION = '0.13.0';
 
 // ---- ぶき ----
 // rpm: 1ぷんかんの はっしゃかず / mag: マガジン / reserve: よびだん / reload: びょう
@@ -839,6 +839,7 @@ export function normalizeSave(s) {
     mapNext: Number.isFinite(o.mapNext) ? Math.max(0, o.mapNext | 0) % MAP_IDS.length : 0,
     ...normalizeOutfits(o),
     gear: normalizeGear(o.gear),
+    ...normalizeMelee(o), // v0.13.0: なぐる ぶきの レベル（mlv）と えらんだ もの（melee）
   };
 }
 
@@ -1630,4 +1631,133 @@ export class QualityGovernor {
     else this.good = 0;
     return false;
   }
+}
+
+// ---- v0.13.0: なぐる（くぎバット・ハンマー・かたな）----
+// じゅうを もったまま 「なぐる」ボタンで ちかくの ゾンビを なぐって ふっとばす。みかた（ロボ・おまわりさん・おじさん）には あたらない
+// dur=1かいの じかん / wind,strike=ふりかぶり・ふりおろしの おわり（0..1）/ hitAt=あたる しゅんかん / arc=まえの はんぶんの かくど
+export const MELEE_ORDER = ['bat', 'hammer', 'katana'];
+export const MELEE = {
+  bat: { id: 'bat', name: 'くぎバット', dur: 0.42, wind: 0.3, strike: 0.56, hitAt: 0.43, range: 2.3, arc: 1.05, max: 3,
+    dmg: 45, knock: 9, down: 0.95, downT: 1.1, bleed: { dps: 6, time: 3 }, shake: 0.16, hitstop: 0.05, combo: 1, style: ['h'], moveMul: 0.9 },
+  hammer: { id: 'hammer', name: 'ハンマー', dur: 0.8, wind: 0.5, strike: 0.66, hitAt: 0.6, range: 2.4, arc: 0.85, max: 4,
+    dmg: 130, knock: 15, down: 0.6, downT: 1.5, shock: { r: 3.4, dmg: 35, knock: 8 }, shake: 0.3, hitstop: 0.08, noShield: true,
+    combo: 1, style: ['v'], moveMul: 0.65 },
+  katana: { id: 'katana', name: 'かたな', dur: 0.26, wind: 0.22, strike: 0.55, hitAt: 0.4, range: 2.6, arc: 1.35, max: 4,
+    dmg: 40, knock: 3, down: 0.95, downT: 0.9, downOn: [false, false, true], shake: 0.1, hitstop: 0.035,
+    combo: 3, comboMul: [1, 1, 1.75], comboKnock: [1, 1, 2.4], durMul: [1, 1, 1.4], comboWin: 0.4, style: ['h', 'hr', 'v'], moveMul: 1 },
+};
+export const MELEE_UP = { max: 5, grow: 1.5, dmg: 0.15, rate: 0.05, knock: 0.06, base: { bat: 150, hammer: 200, katana: 220 } };
+export const DEFAULT_MELEE = 'bat';
+export const isMelee = (id) => MELEE_ORDER.includes(id);
+export const meleeLevel = (save, id) => lvIn(save && save.mlv ? save.mlv[id] : 1, MELEE_UP.max);
+export function meleeUpCost(id, lv) {
+  const L = lvIn(lv, MELEE_UP.max);
+  if (L >= MELEE_UP.max || !MELEE_UP.base[id]) return Infinity;
+  return r10(MELEE_UP.base[id] * Math.pow(MELEE_UP.grow, L - 1));
+}
+// レベルで つよく: いりょく +15%・はやさ +5%・ふっとばし +6%（1レベル ごと）
+export function meleeStats(id, lv = 1) {
+  const b = MELEE[id] || MELEE[DEFAULT_MELEE], L = lvIn(lv, MELEE_UP.max), k = L - 1;
+  const W = { ...b, lv: L, dmg: Math.round(b.dmg * (1 + MELEE_UP.dmg * k)), dur: b.dur / (1 + MELEE_UP.rate * k), knock: b.knock * (1 + MELEE_UP.knock * k) };
+  if (b.bleed) W.bleed = { ...b.bleed, dps: b.bleed.dps * (1 + MELEE_UP.dmg * k) };
+  if (b.shock) W.shock = { ...b.shock, dmg: Math.round(b.shock.dmg * (1 + MELEE_UP.dmg * k)), knock: b.shock.knock * (1 + MELEE_UP.knock * k) };
+  return W;
+}
+export function buyMelee(save, id) {
+  if (!isMelee(id)) return { ok: false };
+  const lv = meleeLevel(save, id), cost = meleeUpCost(id, lv);
+  if (cost === Infinity) return { ok: false, max: true, lv };
+  if ((save.bank | 0) < cost) return { ok: false, short: cost - (save.bank | 0), lv, cost };
+  save.bank -= cost; save.mlv = { ...(save.mlv || {}), [id]: lv + 1 };
+  return { ok: true, lv: lv + 1, cost };
+}
+export function normalizeMelee(o) {
+  const src = o && o.mlv && typeof o.mlv === 'object' ? o.mlv : {}, mlv = {};
+  for (const id of MELEE_ORDER) mlv[id] = lvIn(src[id], MELEE_UP.max);
+  return { mlv, melee: isMelee(o && o.melee) ? o.melee : DEFAULT_MELEE };
+}
+// コンボの なんばんめ（0..）の いりょく・ふっとばし・じかん
+export const meleeDamage = (W, step = 0) => Math.round(W.dmg * (W.comboMul ? W.comboMul[step % W.combo] : 1));
+export const meleeRawKnock = (W, step = 0) => W.knock * (W.comboKnock ? W.comboKnock[step % W.combo] : 1);
+export const meleeKnock = (W, kind, step = 0) => meleeRawKnock(W, step) * heavyOf(kind); // おもい ゾンビ・ボスは すこししか うごかない
+export const meleeDur = (W, step = 0) => W.dur * (W.durMul ? W.durMul[step % W.combo] : 1);
+export const meleeStyle = (W, step = 0) => W.style[step % W.style.length];
+// たおれる（ダウン）じかん。かるい ゾンビだけ（ボスは ぜったい たおれない）。0 = たおれない
+export function meleeDown(W, kind, step = 0) {
+  if (kind === 'boss') return 0;
+  if (W.downOn && !W.downOn[step % W.combo]) return 0;
+  return heavyOf(kind) >= W.down ? W.downT : 0;
+}
+// まえの おうぎがたに いる ゾンビ（ちかい じゅん）。cands は ゾンビだけ（みかたは ally:true で はじく）
+export function meleeTargets(px, py, pz, fx, fz, cands, W) {
+  const fl = Math.hypot(fx, fz) || 1, ux = fx / fl, uz = fz / fl, out = [];
+  for (const t of cands) {
+    if (!t || t.alive === false || t.ally || t.demo) continue;
+    if (Math.abs((t.y || 0) - py) > 1.6) continue;
+    const dx = t.x - px, dz = t.z - pz, d = Math.hypot(dx, dz);
+    if (d > W.range + 0.35 * (t.scale || 1)) continue;
+    if (d > 0.7 && Math.acos(Math.max(-1, Math.min(1, (dx * ux + dz * uz) / d))) > W.arc) continue;
+    out.push({ z: t, d });
+  }
+  return out.sort((a, b) => a.d - b.d).slice(0, W.max);
+}
+// すこしだけ じどうで ねらう: まえ ±cone いないで いちばん ちかい ゾンビの ほうへ むく（いなければ そのまま）
+export function meleeAim(px, py, pz, yaw, cands, W, cone = 1.0) {
+  let best = null, bd = W.range + 0.9;
+  const fx = -Math.sin(yaw), fz = -Math.cos(yaw);
+  for (const t of cands) {
+    if (!t || t.alive === false || t.ally || t.demo || Math.abs((t.y || 0) - py) > 1.6) continue;
+    const dx = t.x - px, dz = t.z - pz, d = Math.hypot(dx, dz);
+    if (d >= bd || d < 1e-3) continue;
+    if (Math.acos(Math.max(-1, Math.min(1, (dx * fx + dz * fz) / d))) > cone) continue;
+    bd = d; best = t;
+  }
+  if (!best) return { yaw, target: null, turn: 0 };
+  const want = Math.atan2(-(best.x - px), -(best.z - pz));
+  let turn = want - yaw; while (turn > Math.PI) turn -= Math.PI * 2; while (turn < -Math.PI) turn += Math.PI * 2;
+  return { yaw: yaw + turn, target: best, turn };
+}
+// かべごしには あたらない（むねの たかさ → あいての むね／あたま。どちらかが みえれば OK）
+export function meleeBlocked(ax, ay, az, bx, by, bz, walls) {
+  const dx = bx - ax, dy = by - ay, dz = bz - az, L = Math.hypot(dx, dy, dz);
+  if (L < 1e-4) return false;
+  for (const w of walls) { const t = rayAABB(ax, ay, az, dx / L, dy / L, dz / L, w, L); if (t >= 0 && t < L) return true; }
+  return false;
+}
+// ふっとんだ ゾンビが ほかの ゾンビに ぶつかる: speed=ぶつかった はやさ → もらう ふっとばし・ダメージ
+export const BUMP = { min: 3.5, share: 0.55, dmg: 10, r: 0.5 };
+export function bumpTransfer(speed, kind) {
+  if (!(speed >= BUMP.min)) return null;
+  return { knock: speed * BUMP.share * heavyOf(kind), dmg: Math.round(BUMP.dmg * Math.min(2, speed / 8)) };
+}
+// なぐる じょうたい（コンボ つき）
+export function newMeleeState() { return { active: false, t: 0, step: 0, hit: false, queued: false, since: 99, n: 0 }; }
+// おした: ふれる なら true。ふっている あいだに おすと（あたった あと）つぎの コンボを よやく
+export function meleePress(st, W) {
+  if (st.active) { if (W.combo > 1 && st.t >= meleeDur(W, st.step) * W.hitAt) st.queued = true; return false; }
+  st.step = W.combo > 1 && st.since <= W.comboWin ? (st.step + 1) % W.combo : 0;
+  st.active = true; st.t = 0; st.hit = false; st.queued = false; st.n++;
+  return true;
+}
+// 1フレーム: 'hit'（あたる しゅんかん）/ 'end' / 'chain'（よやくした つぎの コンボが はじまった）/ null
+export function meleeTick(st, W, dt) {
+  if (!st.active) { st.since += dt; return null; }
+  st.t += dt;
+  const D = meleeDur(W, st.step);
+  let ev = null;
+  if (!st.hit && st.t >= D * W.hitAt) { st.hit = true; ev = 'hit'; }
+  if (st.t >= D) {
+    st.active = false; st.since = 0;
+    if (st.queued) { st.queued = false; meleePress(st, W); ev = ev || 'chain'; } else ev = ev || 'end';
+  }
+  return ev;
+}
+// ふりの かたち（0..1 → よこ yaw・たて pitch）。h=みぎ→ひだり / hr=ひだり→みぎ / v=うえ→した
+export function swingPose(style, u, W) {
+  const a = W.wind, b = W.strike, e = (x) => x * x * (3 - 2 * x);
+  const k = u < a ? -e(u / a) : u < b ? -1 + 2 * e((u - a) / (b - a)) : 1 - e((u - b) / (1 - b)); // -1 ふりかぶり → +1 ふりきり → 0
+  if (style === 'v') return { yaw: 0, pitch: k < 0 ? -k * 2.3 : -k * 0.75, roll: 0 };
+  const s = style === 'hr' ? -1 : 1;
+  return { yaw: k * 1.35 * s, pitch: 0.15 + (1 - Math.abs(k)) * 0.15, roll: k * 0.5 * s };
 }

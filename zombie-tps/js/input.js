@@ -1,16 +1,18 @@
-import { stickCurve } from './rules.js?v=14';
+import { stickCurve } from './rules.js?v=15';
 // そうさ: タッチ（ひだり スティック・みぎ ドラッグ・ボタン）と キーボード／マウス
 export class Input {
   constructor(touchLayer, canvas) {
     this.layer = touchLayer; this.canvas = canvas;
     this.move = { x: 0, y: 0 }; this.look = { x: 0, y: 0 };
     this.fireTouch = false; this.fireMouse = false; this.aimHold = false; this.aimToggle = false;
+    this.meleeTouch = false; this.meleeTap = false; // v0.13.0: なぐる
     this.events = []; this.keys = new Set(); this.pointers = new Map();
     this.stickEl = touchLayer.querySelector('.zt-stick'); this.knobEl = touchLayer.querySelector('.zt-knob');
     this.usingTouch = false; this.enabled = false; this.lookScaleMouse = 0.0024; this.lookScaleTouch = 0.0062;
     this._bind();
   }
   get fire() { return this.fireTouch || this.fireMouse || this.keys.has('KeyF'); }
+  get melee() { return this.meleeTouch || this.meleeTap || this.keys.has('KeyV'); }
   get aiming() { return this.aimHold || this.aimToggle; }
   _bind() {
     const L = this.layer;
@@ -27,7 +29,7 @@ export class Input {
       mu: (e) => { if (e.button === 0) this.fireMouse = false; if (e.button === 2) this.aimHold = false; },
       wheel: (e) => { if (this.enabled) this.events.push(e.deltaY > 0 ? 'next' : 'prev'); },
       ctx: (e) => e.preventDefault(),
-      blur: () => { this.keys.clear(); this.fireMouse = false; this.fireTouch = false; this.aimHold = false; this.pointers.clear(); this.move.x = this.move.y = 0; this._hideStick(); },
+      blur: () => { this.keys.clear(); this.fireMouse = false; this.fireTouch = false; this.meleeTouch = false; this.aimHold = false; this.pointers.clear(); this.move.x = this.move.y = 0; this._hideStick(); },
     };
     L.addEventListener('pointerdown', this.h.down); window.addEventListener('pointermove', this.h.move, { passive: false });
     window.addEventListener('pointerup', this.h.up); window.addEventListener('pointercancel', this.h.up);
@@ -57,6 +59,7 @@ export class Input {
     if (act) {
       btn.classList.add('on');
       if (act === 'fire') { this.fireTouch = true; this.pointers.set(e.pointerId, { kind: 'fire', x: e.clientX, y: e.clientY, btn }); return; }
+      if (act === 'melee') { this.meleeTouch = this.meleeTap = true; this.pointers.set(e.pointerId, { kind: 'melee', x: e.clientX, y: e.clientY, btn }); return; } // おしたまま ドラッグで むきも かえられる
       if (act === 'aim') { this.aimToggle = !this.aimToggle; this.pointers.set(e.pointerId, { kind: 'look', x: e.clientX, y: e.clientY, btn }); return; }
       this.events.push(act);
       this.pointers.set(e.pointerId, { kind: 'btn', btn });
@@ -80,7 +83,7 @@ export class Input {
       }
       this.move.x = dx / R; this.move.y = -dy / R;
       if (this.knobEl) this.knobEl.style.transform = `translate(${dx}px, ${dy}px)`;
-    } else if (p.kind === 'look' || p.kind === 'fire') {
+    } else if (p.kind === 'look' || p.kind === 'fire' || p.kind === 'melee') {
       this.look.x += (e.clientX - p.x) * this.lookScaleTouch; this.look.y += (e.clientY - p.y) * this.lookScaleTouch;
       p.x = e.clientX; p.y = e.clientY;
     }
@@ -91,6 +94,7 @@ export class Input {
     if (p.btn) p.btn.classList.remove('on');
     if (p.kind === 'stick') { this.move.x = this.move.y = 0; this._hideStick(); }
     if (p.kind === 'fire') this.fireTouch = [...this.pointers.values()].some((q) => q.kind === 'fire');
+    if (p.kind === 'melee') this.meleeTouch = [...this.pointers.values()].some((q) => q.kind === 'melee');
   }
   _showStick(x, y) { if (!this.stickEl) return; this.stickEl.style.display = 'block'; this.stickEl.style.left = x + 'px'; this.stickEl.style.top = y + 'px'; this.knobEl.style.transform = 'translate(0,0)'; }
   _hideStick() { if (this.stickEl) this.stickEl.style.display = 'none'; }
@@ -101,6 +105,7 @@ export class Input {
       if (this.keys.has(c)) return;
       this.keys.add(c);
       if (c === 'KeyR') this.events.push('reload');
+      if (c === 'KeyV') this.meleeTap = true;
       if (c === 'Space') { this.events.push('jump'); e.preventDefault(); }
       if (c === 'Digit1') this.events.push('w:rifle');
       if (c === 'Digit2') this.events.push('w:pistol');
@@ -124,8 +129,8 @@ export class Input {
     // スティックは あそび＋カーブで こまかく うごける
     let { x: mx, y: my } = stickCurve(this.move.x, this.move.y, 0.12, 1.35);
     if (this.kx || this.ky) { mx = this.kx; my = this.ky; const l = Math.hypot(mx, my); mx /= l; my /= l; }
-    const out = { mx, my, lx: this.look.x, ly: this.look.y, fire: this.fire, aim: this.aiming, touch: this.usingTouch, events: this.events.splice(0) };
-    this.look.x = 0; this.look.y = 0;
+    const out = { mx, my, lx: this.look.x, ly: this.look.y, fire: this.fire, melee: this.melee, aim: this.aiming, touch: this.usingTouch, events: this.events.splice(0) };
+    this.look.x = 0; this.look.y = 0; this.meleeTap = false; // みじかい タップも 1かいは とどく
     return out;
   }
   reset() { this.h.blur(); this.aimToggle = false; this.events.length = 0; this.look.x = this.look.y = 0; this.kx = this.ky = 0; }

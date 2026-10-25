@@ -9,8 +9,9 @@ import { WEAPONS, WEAPON_ORDER, normalizeSave, SENS, VERSION, OUTFITS, outfitNam
   autoEquipBest, equipGain, autoPickup, bestLoadout, pickMapId, MAP_IDS,
   UPGRADE, upgradeCost, upgradedWeapon, weaponLevel, buyUpgrade, earnBank, gearRefund, discardGear, isWorn, needsDropConfirm, weakestLoose,
   SLOT_UP, HP_UP, slotLevel, hpLevel, slotUpCost, hpUpCost, baseHpAt, slotBonus, buySlotUpgrade, buyHpUpgrade, GEAR_SLOT_IDS,
-  SUIT_ORDER, SUIT_WEAPONS, suitLabel, SUIT } from './rules.js?v=14';
-import { MAPS, mapInfo } from './map.js?v=14';
+  SUIT_ORDER, SUIT_WEAPONS, suitLabel, SUIT,
+  MELEE, MELEE_ORDER, MELEE_UP, meleeLevel, meleeUpCost, meleeStats, buyMelee, isMelee, DEFAULT_MELEE } from './rules.js?v=15';
+import { MAPS, mapInfo } from './map.js?v=15';
 
 const hex6 = (n) => '#' + n.toString(16).padStart(6, '0');
 // v0.7.0: がめんの そとを さす やじるしは ボタンに かぶらない たかさ（うえから 16%〜32%）
@@ -54,9 +55,9 @@ function totalsText(gear, save) {
   const parts = GEAR_STAT_IDS.filter((k) => t[k]).map((k) => `${GEAR_STATS[k].name} +${t[k]}${GEAR_STATS[k].unit}${t[k] >= GEAR_STATS[k].cap ? '（MAX）' : ''}`);
   return parts.length ? parts.join(' ・ ') : 'まだ なにも つけて いないよ';
 }
-import { Game } from './game.js?v=14';
-import { Input } from './input.js?v=14';
-import { Sfx } from './sfx.js?v=14';
+import { Game } from './game.js?v=15';
+import { Input } from './input.js?v=15';
+import { Sfx } from './sfx.js?v=15';
 
 // v0.7.0: ぶきの ちいさい アイコン（かくうの シルエット）
 const svgI = (d) => `<svg viewBox="0 0 32 16" aria-hidden="true">${d}</svg>`;
@@ -70,6 +71,13 @@ const WEAPON_ICONS = {
   sniper: svgI('<path d="M0 7l6-1v4l-5 1zM6 6h10v3H6zM16 7h16v1.4H16zM8 2h9v2.6H8zM10 4.6h1.5V6H10zM14 4.6h1.5V6H14zM9 9h2.5l-1 4H9z"/>'),
   mlauncher: svgI('<path d="M3 3h19v9H3zM22 3.5h3v2.4h-3zM22 6.6h3v2.4h-3zM22 9.6h3v2.4h-3zM27 6.2h4l1 1.3-1 1.3h-4zM9 12h3v4H9zM14 1h5v2h-5z"/>'),
 };
+// v0.13.0: なぐる ぶきの アイコン（かくうの デザイン）
+const MELEE_ICONS = {
+  bat: svgI('<path d="M1 7h11v2H1zM12 6.2l18-2.4v8.4L12 9.8z"/><path d="M17 2.6h1.4v3H17zM22 1.8h1.4v3H22zM27 1h1.4v3H27zM19.5 11h1.4v3h-1.4zM25 11.6h1.4v3H25z"/>'),
+  hammer: svgI('<path d="M1 7h20v2.2H1zM20 1h8v14h-8z"/>'),
+  katana: svgI('<path d="M1 6.4h8v3.2H1zM9 3.5h2v9H9zM11 6.9h16.5l3.5 1.1-3.5 1.1H11z"/>'),
+};
+const MELEE_NOTE = { bat: 'くぎで じわじわ ダメージ', hammer: 'じめん ドーン！ まわりも ころぶ', katana: '3れんぞく！ 3かいめ つよい' };
 // v0.8.0: つよく する がめんの ことば
 const UP_ROWS = [
   { k: 'dmg', name: 'いりょく', fmt: (w) => String(w.dmg * (w.pellets || 1)) },
@@ -88,14 +96,14 @@ const OPT_CYCLE = { autoFire: [false, true], sens: ['low', 'mid', 'high'], quali
 
 export default {
   prepare() {
-    return loadCss(new URL('../css/zombie-tps.css?v=14', import.meta.url).href);
+    return loadCss(new URL('../css/zombie-tps.css?v=15', import.meta.url).href);
   },
 
   init(container, onBackToHub) {
     this.container = container; this.onBackToHub = onBackToHub;
     this.save = normalizeSave(storage.get(SAVE_KEY, null));
     this.alive = true;
-    this.buildDOM();
+    this.buildDOM(); this.updateMeleeBtn();
     this.sfx = new Sfx(storage.getSoundMuted());
     this.startGame3D();
     this.bind();
@@ -163,7 +171,8 @@ export default {
           <button class="zt-btn zt-aim" data-act="aim"><span>ねらう</span></button>
           <button class="zt-btn zt-rl" data-act="reload"><span>リロード</span></button>
           <button class="zt-btn zt-jump" data-act="jump"><span>ジャンプ</span></button>
-          <div class="zt-keyhint">WASD いどう ・ マウス ねらう ・ ひだりクリック うつ ・ みぎクリック ねらう ・ R リロード ・ スペース ジャンプ ・ 1〜6 ぶき ・ ESC ポーズ</div>
+          <button class="zt-btn zt-melee" data-act="melee" aria-label="なぐる"><i class="zt-mico"></i><span>なぐる</span></button>
+          <div class="zt-keyhint">WASD いどう ・ マウス ねらう ・ ひだりクリック うつ ・ みぎクリック ねらう ・ R リロード ・ V なぐる ・ スペース ジャンプ ・ 1〜6 ぶき ・ ESC ポーズ</div>
         </div>
       </div>
 
@@ -310,7 +319,8 @@ export default {
     const tab = (key, icon, lv, label) => `<button class="zt-utab${key === id ? ' sel' : ''}" data-upw="${key}" aria-label="${label}"><span class="zt-chip">${icon}</span><em>Lv${lv}</em></button>`;
     this.el('.zt-utabs').innerHTML = `<div class="zt-utrow"><span class="zt-utl">ぶき</span>${WEAPON_ORDER.map((k) => tab(k, WEAPON_ICONS[k], weaponLevel(save, k), WEAPONS[k].name)).join('')}</div>`
       + `<div class="zt-utrow"><span class="zt-utl">からだ</span>${GEAR_SLOTS.map((g) => tab('slot:' + g.id, `<i class="zt-uico">${g.icon}</i>`, slotLevel(save, g.id), PART[g.id])).join('')}`
-      + `${tab('hp', '<i class="zt-uico">❤️</i>', hpLevel(save), 'たいりょく')}</div>`;
+      + `${tab('hp', '<i class="zt-uico">❤️</i>', hpLevel(save), 'たいりょく')}</div>`
+      + `<div class="zt-utrow"><span class="zt-utl">なぐる</span>${MELEE_ORDER.map((k) => tab('melee:' + k, MELEE_ICONS[k], meleeLevel(save, k), MELEE[k].name).replace('class="zt-utab', `class="zt-utab${save.melee === k ? ' using' : ''}`)).join('')}</div>`;
     let lv, max, cost, title, rows = [], note = '';
     const row = (name, a, b) => ({ name, a, b });
     if (id === 'hp') {
@@ -327,6 +337,15 @@ export default {
       const a = slotBonus(sl, lv), b = slotBonus(sl, lv + 1);
       for (const k of Object.keys(SLOT_UP.per[sl])) rows.push(row(GEAR_STATS[k].name, `+${a[k]}${GEAR_STATS[k].unit}`, `+${b[k]}${GEAR_STATS[k].unit}`));
       note = save.gear.eq[sl] ? 'どの そうびを つけても きくよ（すてても へらない）' : `${info.name}を つけると きくよ`;
+    } else if (id.startsWith('melee:')) { // v0.13.0: なぐる ぶき（じゅうより やすい）
+      const mid = id.slice(6), M = MELEE[mid];
+      lv = meleeLevel(save, mid); max = lv >= MELEE_UP.max; cost = meleeUpCost(mid, lv);
+      title = `<b>${M.name}</b><span>レベル ${lv} / ${MELEE_UP.max}${max ? '（MAX）' : ` → ${lv + 1}`}</span>`;
+      const a = meleeStats(mid, lv), b = meleeStats(mid, Math.min(MELEE_UP.max, lv + 1));
+      const dm = (w) => w.combo > 1 ? `${w.dmg}×${w.combo}` : String(w.dmg);
+      rows.push(row('いりょく', dm(a), dm(b)), row('はやさ', (1 / a.dur).toFixed(1) + ' /びょう', (1 / b.dur).toFixed(1) + ' /びょう'), row('ふっとばし', a.knock.toFixed(1), b.knock.toFixed(1)));
+      const using = save.melee === mid;
+      note = `<span class="zt-mnote">${MELEE_NOTE[mid]}</span><button class="zt-msel${using ? ' sel' : ''}" data-msel="${mid}" ${using ? 'disabled' : ''}>${using ? 'つかってる' : 'これで なぐる'}</button>`;
     } else {
       lv = weaponLevel(save, id); max = lv >= UPGRADE.max; cost = upgradeCost(id, lv);
       title = `<b>${WEAPONS[id].name}</b><span>レベル ${lv} / ${UPGRADE.max}${max ? '（MAX）' : ` → ${lv + 1}`}</span>`;
@@ -342,13 +361,19 @@ export default {
       + `<div class="zt-ubrow">${btn}${need}${note ? `<div class="zt-unote">${note}</div>` : ''}</div>`;
   },
   upgUi(id) {
-    const r = id === 'hp' ? buyHpUpgrade(this.save) : id.startsWith('slot:') ? buySlotUpgrade(this.save, id.slice(5)) : buyUpgrade(this.save, id);
+    const r = id === 'hp' ? buyHpUpgrade(this.save) : id.startsWith('melee:') ? buyMelee(this.save, id.slice(6)) : id.startsWith('slot:') ? buySlotUpgrade(this.save, id.slice(5)) : buyUpgrade(this.save, id);
     if (!r.ok) { this.sfx.empty?.(); return; }
     this.persist(); this.updateTitle();
     if (this.game) { this.game.settings = this.save; this.game.applyUpgrades(); }
     const b = this.el('.zt-ubox h2'); b.dataset.msg = `レベル ${r.lv} に なった！`;
     b.classList.remove('flash'); void b.offsetWidth; b.classList.add('flash');
     this.sfx.pickup?.(); this.sfx.swap();
+  },
+  // v0.13.0: なぐる ボタンの アイコン ＝ えらんだ ぶき
+  updateMeleeBtn() {
+    const el = this.container && this.container.querySelector('.zt-mico'); if (!el) return;
+    const id = isMelee(this.save.melee) ? this.save.melee : DEFAULT_MELEE;
+    el.innerHTML = MELEE_ICONS[id]; el.parentElement.dataset.w = id;
   },
   // すてて スコアが もどった（ちいさい おしらせ）
   refundToast(n) {
@@ -521,10 +546,11 @@ export default {
 
   bind() {
     this.onClick = (e) => {
-      const b = e.target.closest('[data-ui],[data-opt],[data-stage],[data-map],[data-outfit],[data-gear],[data-gsel],[data-gearui],[data-upw],[data-upbuy]'); if (!b) return;
+      const b = e.target.closest('[data-ui],[data-opt],[data-stage],[data-map],[data-outfit],[data-gear],[data-gsel],[data-gearui],[data-upw],[data-upbuy],[data-msel]'); if (!b) return;
       this.sfx.unlock();
       if (b.dataset.upw) { this.upSel = b.dataset.upw; this.updateUpg(); this.sfx.swap(); return; }
       if (b.dataset.upbuy) { if (!b.disabled) this.upgUi(b.dataset.upbuy); return; }
+      if (b.dataset.msel) { if (isMelee(b.dataset.msel)) { this.save.melee = b.dataset.msel; this.persist(); this.updateUpg(); this.updateMeleeBtn(); if (this.game) { this.game.settings = this.save; this.game.applyUpgrades(); } this.sfx.swap(); } return; }
       if (b.dataset.gear) { if (!b.disabled) this.resolveGear(b.dataset.gear); return; }
       if (b.dataset.gsel !== undefined) { if (b.dataset.gsel) { this.selGear = b.dataset.gsel; this.dropArm = null; this.dropN = 0; this.updateSoubi(); this.sfx.swap(); } return; }
       if (b.dataset.gearui) { this.gearUi(b.dataset.gearui); return; }

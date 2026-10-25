@@ -1,6 +1,6 @@
 // ブロックの キャラクターと ぶき（かくうの デザイン・ロゴなし）
 import * as THREE from '../vendor/three.module.min.js';
-import { zombieFaceTexture, playerFaceTexture, solidTexture, shirtTexture, camoTexture, ojisanTextures } from './textures.js?v=14';
+import { zombieFaceTexture, playerFaceTexture, solidTexture, shirtTexture, camoTexture, ojisanTextures } from './textures.js?v=15';
 
 const boxGeoCache = new Map();
 export function boxGeo(w, h, d) {
@@ -964,3 +964,35 @@ export function makeSuitShell() {
   return { group: g, flame };
 }
 export const SUIT_CHUNKS = [[0xf08a24, 0], [0x5d6672, 0], [0xf08a24, 1], [0x2b3038, 1], [0xf2c94c, 2], [0x7fd8ff, 2], [0x5d6672, 3], [0xf08a24, 3]];
+
+// ---- v0.13.0: なぐる ぶき（かくうの デザイン・ロゴなし）。にぎる ところが 0、さきは -Z。1つの かたちに まとめて 1ドローコール ----
+export function makeMeleeWeapons() {
+  const mat = new THREE.MeshLambertMaterial({ vertexColors: true });
+  const M = new THREE.Matrix4(), Q = new THREE.Quaternion(), E = new THREE.Euler(), S = new THREE.Vector3(1, 1, 1), P = new THREE.Vector3();
+  const it = (w, h, d, x, y, z, color, rx = 0, ry = 0, rz = 0) => ({ geo: boxGeo(w, h, d), matrix: new THREE.Matrix4().compose(P.set(x, y, z), Q.setFromEuler(E.set(rx, ry, rz)), S), color });
+  const mk = (items) => { const m = new THREE.Mesh(mergeGeos(items, true), mat); m.castShadow = true; const g = new THREE.Group(); g.add(m); return g; };
+  // くぎバット: きの バット ＋ グリップの テープ ＋ くぎ（ぎんいろ）
+  const WOOD = 0xb5814a, WOOD2 = 0x9a6a3a, TAPE = 0x2c2c30, NAIL = 0xb9c0c6;
+  const bat = [
+    it(0.06, 0.06, 0.05, 0, 0, 0.12, TAPE), it(0.045, 0.045, 0.32, 0, 0, -0.02, TAPE),
+    it(0.06, 0.06, 0.2, 0, 0, -0.27, WOOD2), it(0.075, 0.075, 0.2, 0, 0, -0.46, WOOD), it(0.09, 0.09, 0.24, 0, 0, -0.67, WOOD), it(0.085, 0.085, 0.04, 0, 0, -0.8, WOOD2),
+  ];
+  for (const [a, z] of [[0, -0.55], [1.3, -0.6], [2.5, -0.66], [3.6, -0.72], [4.8, -0.58], [0.7, -0.75], [2, -0.78], [5.6, -0.7]]) {
+    bat.push(it(0.016, 0.016, 0.14, Math.cos(a) * 0.05, Math.sin(a) * 0.05, z, NAIL, 0, 0, 0)); // まんなか
+    const m = bat[bat.length - 1]; m.matrix.compose(P.set(Math.cos(a) * 0.06, Math.sin(a) * 0.06, z), Q.setFromEuler(E.set(0, 0, a)).multiply(new THREE.Quaternion().setFromEuler(E.set(0, Math.PI / 2, 0))), S);
+  }
+  // ハンマー: ながい え ＋ おもい てつの あたま（たたく めんは した）
+  const STEEL = 0x6f777e, STEEL2 = 0xa3abb2, GRIP = 0x2f5d8a;
+  const hammer = [
+    it(0.05, 0.05, 1.0, 0, 0, -0.36, 0x8a6038), it(0.062, 0.062, 0.3, 0, 0, 0.0, GRIP),
+    it(0.17, 0.3, 0.17, 0, -0.03, -0.9, STEEL), it(0.19, 0.05, 0.19, 0, -0.19, -0.9, STEEL2), it(0.19, 0.05, 0.19, 0, 0.13, -0.9, STEEL2),
+  ];
+  // かたな: つか（こい むらさき）＋ つば（きんいろの いた）＋ ぎんの は
+  const kat = [
+    it(0.05, 0.055, 0.3, 0, 0, 0.0, 0x3a2f58), it(0.055, 0.06, 0.04, 0, 0, 0.16, 0xb89a3a),
+    it(0.14, 0.14, 0.02, 0, 0, -0.16, 0xc8a842), it(0.06, 0.065, 0.05, 0, 0, -0.19, 0xc8a842),
+    it(0.014, 0.05, 0.78, 0, 0.005, -0.6, 0xc9d1d8), it(0.008, 0.016, 0.78, 0, -0.027, -0.6, 0xf4f8fb),
+    it(0.013, 0.045, 0.08, 0, -0.005, -1.02, 0xe6ecf1, 0.5, 0, 0),
+  ];
+  return { bat: mk(bat), hammer: mk(hammer), katana: mk(kat) };
+}

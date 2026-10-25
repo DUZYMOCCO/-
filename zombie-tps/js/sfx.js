@@ -307,4 +307,27 @@ export class Sfx {
     this._noise(t, 0.45, { type: 'lowpass', freq: 800, gain: 0.5 * vol, attack: 0.01 });
     this._tone(t, 0.2, { f0: 120, f1: 50, gain: 0.3 * vol });
   }
+  // v0.13.0: なぐる — ブンッ（ふる おと）
+  swish(kind = 'bat') {
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime, k = kind === 'hammer' ? 0.6 : kind === 'katana' ? 1.8 : 1;
+    const f = this._noise(t, 0.16 / Math.sqrt(k), { type: 'bandpass', freq: 500 * k, q: 1.4, gain: 0.22, attack: 0.03 });
+    f.frequency.exponentialRampToValueAtTime(1800 * k, t + 0.12 / Math.sqrt(k));
+  }
+  // ボコッ / ドゴッ / ザシュッ（あたった おと）
+  smack(kind = 'bat', vol = 1) {
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime;
+    if (this._smackT && t - this._smackT < 0.04) return; this._smackT = t;
+    if (kind === 'katana') {
+      this._noise(t, 0.12, { type: 'highpass', freq: 2600, gain: 0.3 * vol });
+      this._tone(t, 0.07, { f0: 260, f1: 90, gain: 0.25 * vol });
+    } else if (kind === 'hammer') {
+      this._tone(t, 0.28, { f0: 120, f1: 35, gain: 0.9 * vol });
+      this._noise(t, 0.22, { type: 'lowpass', freq: 700, gain: 0.55 * vol });
+    } else {
+      this._tone(t, 0.14, { f0: 190, f1: 60, gain: 0.6 * vol });
+      this._noise(t, 0.1, { type: 'lowpass', freq: 1100, gain: 0.4 * vol });
+    }
+  }
 }

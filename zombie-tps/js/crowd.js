@@ -2,8 +2,8 @@
 // とおくの ゾンビ → しゅるいごとに 1つの InstancedMesh（てあしは うごかさず ゆらゆら だけ）
 // ちかくの ゾンビ → いままでどおりの モデル（ちかい じゅんに すこしだけ ほんものの かげ・ほかは まるい かげ）
 import * as THREE from '../vendor/three.module.min.js';
-import { zombieLod, zombieEyeGeo, EYE_MAT } from './models.js?v=14';
-import { lodPlan, GOV_LEVELS } from './rules.js?v=14';
+import { zombieLod, zombieEyeGeo, EYE_MAT } from './models.js?v=15';
+import { lodPlan, GOV_LEVELS } from './rules.js?v=15';
 
 const CAP = 64;            // しゅるいごとの かず（こえたら ちゃんとした モデルで かく）
 const BLOB_CAP = 160;
@@ -14,7 +14,7 @@ const _order = [], _full = [];
 // いつも ちゃんとした モデルで かく ばあい（うごきが だいじ・ちかくで みえる）
 export function needsFull(z) {
   return !z.alive || !!z.fly || !!z.climb || !!z.flashOn || !!z.slam || !!z.charge || !!z.chargeWind || !!z.leap || z.fuse > 0 || z.scream > 0
-    || z.kind === 'boss' || z.state === 'attack' || !!z.demo;
+    || z.kind === 'boss' || z.state === 'attack' || !!z.demo || z.down > 0;
 }
 
 export class Crowd {
