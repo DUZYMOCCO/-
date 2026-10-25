@@ -17,6 +17,9 @@ import {
   SPECIAL_UNLOCK, SPECIAL_IDS, unlockedSpecials, damageMul, frontHit, heavyOf,
   ROBOT, robotFollowPoint, blindness, robotTargetScore, pickRobotTarget, pickRobotSpot, robotTouched, shouldTeleportRobot,
   zombieTargetsRobot, damageRobot, WEAPON_BAR, ojisanSurvivalTime, ATTACK_RANGE,
+  ROBOT_LV, ROBOT_MAX_LV, robotLevel, robotStats, robotAddKill,
+  VEHICLE, BLAST_FX, vehicleMaxHp, makeVehicleState, damageVehicle, vehicleStage, vehicleGap, chainTargets, blastReachesVehicle, blastHits,
+  COP, copShouldCome, damageAlly,
 } from '../js/rules.js';
 import { makeNav } from '../js/nav.js';
 import { buildMap, playerColliders, zombieColliders, shotColliders, MAPS, MAP_IDS as MAP_IDS_MAP, mapInfo } from '../js/map.js';
@@ -148,7 +151,7 @@ for (const MID of FLAT_IDS) test(`[${MID}] マップ: スタートは あいて�
 test('セーブの よみこみ', () => {
   assert.deepEqual(normalizeSave(null), { bestWave: 0, bestScore: 0, autoFire: false, sens: 'mid', quality: 'auto', stage: 'day', flashlight: true,
     outfit: 'normal', outfits: ['normal'], gear: { inv: [], eq: { head: null, body: null, feet: null, arm: null } },
-    autoEquip: true, map: 'rotate', mapNext: 0, bank: 0, wlv: { rifle: 1, pistol: 1, shotgun: 1, rocket: 1, minigun: 1, sniper: 1 },
+    autoEquip: true, map: 'rotate', mapNext: 0, bank: 0, wlv: { rifle: 1, pistol: 1, shotgun: 1, rocket: 1, minigun: 1, sniper: 1, magnum: 1 },
     slv: { head: 1, body: 1, feet: 1, arm: 1 }, hlv: 1 });
   assert.equal(normalizeSave({ bestWave: 7, sens: 'zzz' }).sens, 'mid');
   assert.equal(normalizeSave({ bestWave: 7 }).bestWave, 7);
@@ -229,7 +232,7 @@ test('なめらか いどう: approach は フレームレートに よらない
 });
 
 test('バージョン と セーブの ステージ', () => {
-  assert.equal(VERSION, '0.8.0');
+  assert.equal(VERSION, '0.9.0');
   assert.equal(normalizeSave(null).stage, 'day');
   assert.equal(normalizeSave({ stage: 'night' }).stage, 'night');
   assert.equal(normalizeSave({ stage: 'mars' }).stage, 'day');
@@ -1024,6 +1027,7 @@ test('v0.7.0 ぶき ボタン: ちいさく・でも ゆびで おせる', () =>
   assert.ok(WEAPON_BAR.slotW >= 40 && WEAPON_BAR.slotH >= 40, 'タッチ 40px いじょう');
   assert.ok(WEAPON_BAR.chipW * WEAPON_BAR.chipH <= 47 * 44 * 0.5, 'みえる ボタンは まえの はんぶん いか');
   assert.ok(WEAPON_BAR.slotW * 5 + WEAPON_BAR.gap * 4 <= 210, '5つ ならべても みぎうえ だけ');
+  assert.ok(WEAPON_BAR.slotW * WEAPON_ORDER.length + WEAPON_BAR.gap * (WEAPON_ORDER.length - 1) <= 300, '7つ でも iPhone SE の はばに はいる');
 });
 
 test('v0.7.0 おじさん: すぐには たおれない（どの ウェーブでも 45びょう いじょう）', () => {
@@ -1092,7 +1096,7 @@ import * as R8 from '../js/rules.js';
       const a = upgradedWeapon(id, 1), b = upgradedWeapon(id, 2), z = upgradedWeapon(id, UPGRADE.max);
       assert.equal(a.dmg, WEAPONS[id].dmg); assert.equal(a.rpm, WEAPONS[id].rpm); assert.equal(a.mag, WEAPONS[id].mag);
       assert.ok(b.dmg > a.dmg && b.rpm >= a.rpm && b.mag >= a.mag, id);
-      assert.ok(z.dmg >= a.dmg * 1.6 && z.rpm > a.rpm && z.mag > a.mag, id);
+      assert.ok(z.dmg >= a.dmg * 1.6 && z.rpm > a.rpm && (WEAPONS[id].revolver ? z.mag === 6 : z.mag > a.mag), id);
     }
     assert.equal(upgradedWeapon('rocket', 5).mag, 1); assert.equal(upgradedWeapon('rocket', 6).mag, 2);
     // じゅうは レベルの つよさで うつ
@@ -1121,7 +1125,7 @@ import * as R8 from '../js/rules.js';
     assert.equal(normalizeSave({ bank: -5 }).bank, 0);
     assert.equal(normalizeSave({ bank: 12.7 }).bank, 12);
     const w = normalizeSave({ wlv: { rifle: 4, sniper: 99, shotgun: 'x', zzz: 3 } }).wlv;
-    assert.deepEqual(w, { rifle: 4, pistol: 1, shotgun: 1, rocket: 1, minigun: 1, sniper: UPGRADE.max });
+    assert.deepEqual(w, { rifle: 4, pistol: 1, shotgun: 1, rocket: 1, minigun: 1, sniper: UPGRADE.max, magnum: 1 });
   });
 
   test('v0.8.0 すてると スコア: レアほど おおい（n<r<sr<l）・つけている ものは すてない', () => {
@@ -1220,7 +1224,7 @@ import * as R8 from '../js/rules.js';
 
   test('v0.8.0 スナイパー: ふつうの ゾンビは 1ぱつ・おそい ボルト・ちいさい マガジン・キー6', () => {
     const w = WEAPONS.sniper;
-    assert.equal(WEAPON_ORDER[5], 'sniper'); assert.equal(w.slot, 6); assert.equal(WEAPON_ORDER.length, 6);
+    assert.equal(WEAPON_ORDER[5], 'sniper'); assert.equal(w.slot, 6); assert.equal(WEAPON_ORDER.length, 7);
     assert.ok(!w.auto && w.rpm <= 60 && w.mag <= 6 && w.pierce >= 1 && w.pierce <= 2);
     for (const d of [5, 40, 80, 130]) assert.ok(damageAt(w, d, false) >= ZOMBIES.walker.hp, `walker @${d}`);
     for (const d of [5, 40]) assert.ok(damageAt(w, d, false) * 0.64 >= ZOMBIES.walker.hp, `3たいめ @${d}`);
@@ -1288,3 +1292,122 @@ import * as R8 from '../js/rules.js';
     assert.ok(canClimb('runner'));
   });
 }
+
+// ---- v0.9.0 ----
+test('けいさつロボの レベル: 10/25/50/90 たいで Lv2〜5', () => {
+  assert.equal(robotLevel(0), 1); assert.equal(robotLevel(9), 1); assert.equal(robotLevel(10), 2);
+  assert.equal(robotLevel(24), 2); assert.equal(robotLevel(25), 3); assert.equal(robotLevel(49), 3);
+  assert.equal(robotLevel(50), 4); assert.equal(robotLevel(89), 4); assert.equal(robotLevel(90), 5); assert.equal(robotLevel(999), 5);
+  assert.equal(ROBOT_MAX_LV, 5);
+  const s1 = robotStats(1), s5 = robotStats(5);
+  assert.equal(s1.dmg, ROBOT.dmg); assert.equal(s1.maxHp, ROBOT.hp); assert.equal(s1.fireRate, ROBOT.fireRate);
+  for (let lv = 2; lv <= 5; lv++) { // すこしずつ つよく
+    const a = robotStats(lv - 1), b = robotStats(lv);
+    assert.ok(b.dmg > a.dmg && b.fireRate < a.fireRate && b.maxHp > a.maxHp);
+  }
+  const dps = (s) => s.dmg / s.fireRate;
+  assert.ok(dps(s5) / dps(s1) < 1.6, 'Lv5 でも つよすぎない'); // バランス
+  assert.equal(robotStats(1).next, 10); assert.equal(robotStats(5).next, null);
+});
+test('ロボ: レベルアップで HP ぜんかい', () => {
+  const r = { kills: 9, lv: 1, hp: 30, maxHp: ROBOT.hp };
+  assert.equal(robotAddKill(r), true);
+  assert.equal(r.lv, 2); assert.equal(r.hp, robotStats(2).maxHp); assert.equal(r.maxHp, robotStats(2).maxHp);
+  r.hp = 10; assert.equal(robotAddKill(r), false); assert.equal(r.hp, 10);
+  r.kills = 89; r.lv = 4; assert.equal(robotAddKill(r), true); assert.equal(r.lv, 5);
+});
+test('のりもの: ライフルで 8〜12はつ・ロケットは 1ぱつ', () => {
+  const rifle = WEAPONS.rifle.dmg;
+  for (const k of ['car', 'van', 'truck']) {
+    const n = Math.ceil(vehicleMaxHp(k) / rifle);
+    assert.ok(n >= 8 && n <= 12, `${k}: ${n}はつ`);
+    const [v] = makeVehicleState([{ id: 0, kind: k, minX: 0, maxX: 4, minZ: 0, maxZ: 2, minY: 0, maxY: 1.6 }]);
+    let shots = 0, boom = false;
+    while (!boom && shots < 50) { shots++; boom = damageVehicle(v, rifle); }
+    assert.equal(shots, n); assert.equal(v.dead, true);
+    assert.equal(damageVehicle(v, rifle), false, '2かいは ばくはつ しない');
+    const [w] = makeVehicleState([{ id: 1, kind: k, minX: 0, maxX: 4, minZ: 0, maxZ: 2, minY: 0, maxY: 1.6 }]);
+    assert.equal(damageVehicle(w, 0, { rocket: true }), true, 'ロケット 1ぱつ');
+  }
+});
+test('のりもの: けむり → ひ → こげ', () => {
+  const [v] = makeVehicleState([{ id: 0, kind: 'car', minX: 0, maxX: 4, minZ: 0, maxZ: 2, minY: 0, maxY: 1.6 }]);
+  assert.equal(vehicleStage(v), 0);
+  damageVehicle(v, v.maxHp * 0.45); assert.equal(vehicleStage(v), 1);
+  damageVehicle(v, v.maxHp * 0.3); assert.equal(vehicleStage(v), 2);
+  damageVehicle(v, 999); assert.equal(vehicleStage(v), 3);
+});
+test('のりもの: ちかくの くるまは ゆうばく（とおい・ちがう かいは しない）', () => {
+  const box = (id, x, y = 0) => ({ id, kind: 'car', minX: x, maxX: x + 4, minZ: 0, maxZ: 2, minY: y, maxY: y + 1.6, x: x + 2, z: 1 });
+  const vs = makeVehicleState([box(0, 0), box(1, 5), box(2, 30), box(3, 6, 8)]);
+  const c = chainTargets(vs, vs[0]);
+  assert.deepEqual(c.map((v) => v.id), [1]);
+  vs[1].fuse = 0.3; assert.equal(chainTargets(vs, vs[0]).length, 0, 'もう ひが ついた くるまは 1かい だけ');
+  assert.ok(vehicleGap(vs[0], vs[1]) <= VEHICLE.chainR);
+  assert.ok(blastReachesVehicle({ x: 2, y: 1, z: -0.5 }, 1.5, vs[0]));
+  assert.ok(!blastReachesVehicle({ x: 2, y: 1, z: -5 }, 1.5, vs[0]));
+});
+test('ばくはつは ゾンビ だけ（じばく なし・なかま・おじさんも だいじょうぶ）', () => {
+  const p = { x: 0, y: 1, z: 0 };
+  const T = [
+    { team: 'zombie', x: 1, y: 0, z: 0, scale: 1, id: 'z' },
+    { team: 'zombie', x: 30, y: 0, z: 0, scale: 1, id: 'far' },
+    { team: 'zombie', x: 0.5, y: 0, z: 0, scale: 1, alive: false, id: 'dead' },
+    { team: 'player', x: 0, y: 0, z: 0 }, { team: 'ally', x: 0.3, y: 0, z: 0 }, { team: 'ally', x: -0.3, y: 0, z: 0 }, { team: 'npc', x: 0, y: 0, z: 0.4 },
+  ];
+  for (const r of [WEAPONS.rocket.blast, VEHICLE.blast]) {
+    const h = blastHits(p, r, T);
+    assert.deepEqual(h.map((x) => x.t.id), ['z']);
+    assert.ok(h.every((x) => x.t.team === 'zombie'));
+  }
+  assert.ok(VEHICLE.blast > WEAPONS.rocket.blast, 'くるまの ばくはつは おおきい');
+  assert.ok(VEHICLE.shake <= 0.6 && VEHICLE.flash <= 0.6 && BLAST_FX.shake <= 0.6 && BLAST_FX.flash <= 0.6, 'ゆれ・ひかりは ひかえめ');
+});
+test('けいさつおじさん: ウェーブ3から・30%・つづけて こない', () => {
+  assert.equal(copShouldCome(1, 0, 0), false); assert.equal(copShouldCome(2, 0, 0), false);
+  assert.equal(copShouldCome(3, 0, 0.1), true); assert.equal(copShouldCome(3, 0, 0.5), false);
+  assert.equal(copShouldCome(4, 3, 0), false, 'つづけて こない');
+  assert.equal(copShouldCome(5, 3, 0.29), true);
+  let n = 0; for (let i = 0; i < 1000; i++) if (copShouldCome(10, 0, i / 1000)) n++;
+  assert.equal(n, 300);
+  assert.ok(COP.dmg < ROBOT.dmg && COP.hp < ROBOT.hp, 'ロボより すこし よわい');
+  const c = { state: 'on', hp: COP.hp };
+  assert.equal(damageAlly(c, 10, COP), false); assert.ok(c.hp < COP.hp);
+  assert.equal(damageAlly(c, 9999, COP), true); assert.equal(c.state, 'down');
+  assert.equal(damageAlly(c, 10, COP), false);
+});
+test('マップ: のりものが ある（すくない マップにも たした）', () => {
+  for (const id of MAP_IDS_MAP) {
+    const m = buildMap(id);
+    assert.ok(Array.isArray(m.vehicles), id);
+    if (['camp', 'harbor', 'base', 'city'].includes(id)) assert.ok(m.vehicles.length >= 3, `${id}: ${m.vehicles.length}`);
+    for (const v of m.vehicles) assert.ok(['car', 'van', 'truck'].includes(v.kind) && v.maxX > v.minX && v.maxZ > v.minZ, id);
+  }
+});
+
+test('v0.9.0 マグナム: ハンドガンの やく 3ばい・1たい つらぬく・1びょう 2はつ・6はつ・キー7', async () => {
+  const R = await import('../js/rules.js');
+  const w = WEAPONS.magnum, p = WEAPONS.pistol;
+  assert.equal(WEAPON_ORDER[6], 'magnum'); assert.equal(w.slot, 7);
+  assert.ok(w.dmg / p.dmg >= 2.7 && w.dmg / p.dmg <= 3.3, 'やく 3ばい');
+  assert.equal(w.pierce, 1); assert.equal(w.mag, 6); assert.ok(!w.auto && !w.scope && !w.projectile);
+  assert.ok(Math.abs(60 / w.rpm - 0.5) < 0.01, '1びょうに 2はつ');
+  assert.ok(w.reload > p.reload && w.reload >= 2 && w.reload <= 2.8, 'リロードは すこし ながい');
+  assert.ok(w.recoilPitch > p.recoilPitch * 2 && w.shake > p.shake, 'はんどうが つよい');
+  assert.equal(R.hasScope('magnum'), false); assert.equal(R.aimFov('magnum', 1), R.AIM_FOV.aim);
+  assert.ok(damageAt(w, 10, false) >= ZOMBIES.walker.hp && damageAt(w, 10, false) * w.pierceMul >= ZOMBIES.walker.hp * 0.9, 'うしろの 1たいも ほぼ たおせる');
+  // つらぬく: 2たい まで（3たいめは あたらない）
+  const zs = [0, 1, 2].map((i) => ({ x: 0, y: 0, z: -5 - i * 1.5, alive: true, scale: 1, kind: 'walker', yaw: 0 }));
+  const r = R.castPierce(0, 1.2, 0, 0, 0, -1, zs, [], 60, w.pierce, w.pierceMul);
+  assert.ok(r.hits.length <= 2);
+  // つよく する: Lv1〜8・ねだんは ハンドガンと ライフルの あいだ
+  for (let lv = 1; lv < R.UPGRADE.max; lv++) {
+    const c = R.upgradeCost('magnum', lv);
+    assert.ok(c > R.upgradeCost('pistol', lv) && c < R.upgradeCost('rifle', lv), `Lv${lv}: ${c}`);
+  }
+  assert.equal(R.upgradedWeapon('magnum', 8).mag, 6); assert.ok(R.upgradedWeapon('magnum', 8).dmg > w.dmg);
+  assert.equal(R.normalizeSave({}).wlv.magnum, 1);
+  const g = createGun('magnum'); assert.equal(g.ammo, 6);
+  let n = 0; for (let i = 0; i < 6; i++) { if (tryFire(g, true) === 'fire') n++; tryFire(g, false); updateGun(g, 0.51); }
+  assert.equal(n, 6); assert.equal(g.ammo, 0);
+});

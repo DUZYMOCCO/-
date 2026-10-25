@@ -1,6 +1,6 @@
 // ブロックの キャラクターと ぶき（かくうの デザイン・ロゴなし）
 import * as THREE from '../vendor/three.module.min.js';
-import { zombieFaceTexture, playerFaceTexture, solidTexture, shirtTexture, camoTexture, ojisanTextures } from './textures.js?v=10';
+import { zombieFaceTexture, playerFaceTexture, solidTexture, shirtTexture, camoTexture, ojisanTextures } from './textures.js?v=11';
 
 const boxGeoCache = new Map();
 export function boxGeo(w, h, d) {
@@ -80,6 +80,26 @@ function makePistol() {
   part(mag, M.poly, 0.026, 0.1, 0.045, 0, -0.03, 0, -0.25);
   const muzzle = new THREE.Object3D(); muzzle.position.set(0, 0.02, -0.16); g.add(muzzle);
   const eject = new THREE.Object3D(); eject.position.set(0.025, 0.03, -0.02); g.add(eject);
+  return { group: g, mag, muzzle, eject, magRest: mag.position.clone() };
+}
+
+// v0.9.0: マグナム（かくうの リボルバー。ぎんいろの わく・ながい つつ・きの グリップ。マーク・もじ なし）
+function makeMagnum() {
+  const g = new THREE.Group(); g.name = 'magnum';
+  const M = GM;
+  part(g, M.steel, 0.04, 0.07, 0.12, 0, 0.0, 0.0);                  // わく
+  part(g, M.steel, 0.034, 0.04, 0.24, 0, 0.022, -0.17);             // ながい つつ
+  part(g, M.metal, 0.02, 0.012, 0.24, 0, 0.047, -0.17);             // うえの リブ
+  part(g, M.metal, 0.03, 0.02, 0.2, 0, -0.01, -0.15);               // したの おもり
+  part(g, M.orange, 0.012, 0.02, 0.02, 0, 0.06, -0.28);             // まえの しょうじゅん（オレンジ）
+  part(g, M.metal, 0.02, 0.025, 0.02, 0, 0.048, 0.06);              // ハンマー
+  part(g, M.wood, 0.038, 0.12, 0.05, 0, -0.08, 0.06, -0.3);         // きの グリップ
+  part(g, M.metal, 0.008, 0.04, 0.04, 0, -0.045, -0.005);           // トリガーガード
+  const mag = new THREE.Group(); mag.position.set(0, 0.005, -0.02); g.add(mag); // シリンダー（リロードで よこに でる）
+  part(mag, M.metal, 0.06, 0.06, 0.07, 0, 0, 0);
+  for (let i = 0; i < 3; i++) part(mag, M.poly, 0.062, 0.008, 0.072, 0, -0.02 + i * 0.02, 0);
+  const muzzle = new THREE.Object3D(); muzzle.position.set(0, 0.022, -0.3); g.add(muzzle);
+  const eject = new THREE.Object3D(); eject.position.set(0.04, 0.0, -0.02); g.add(eject);
   return { group: g, mag, muzzle, eject, magRest: mag.position.clone() };
 }
 
@@ -212,7 +232,7 @@ function makeSniper() {
 
 export function makeWeapons() {
   const rifle = makeRifle(); rifle.group.scale.setScalar(1.15);
-  return { rifle, pistol: makePistol(), shotgun: makeShotgun(), rocket: makeRocket(), minigun: makeMinigun(), sniper: makeSniper() };
+  return { rifle, pistol: makePistol(), shotgun: makeShotgun(), rocket: makeRocket(), minigun: makeMinigun(), sniper: makeSniper(), magnum: makeMagnum() };
 }
 export function makeMagMesh() {
   const g = new THREE.Group();
@@ -455,6 +475,52 @@ export function makeOjisan() {
   }
   root.traverse((o) => { if (o.isMesh) o.castShadow = true; });
   return { root, inner, legs, body, headPivot, arms };
+}
+
+// ---- v0.9.0: けいさつおじさん（かくうの せいふく: こんの うわぎ・みずいろの シャツ・ぼうし。マーク・もじ・バッジ なし）----
+export const COP_CHUNKS = [[0x23345e, 0], [0x8cc6e8, 1], [0x1a1f2a, 2]];
+export function makePoliceOfficer() {
+  const T = ojisanTextures();
+  const root = new THREE.Group(), inner = new THREE.Group(); root.add(inner);
+  const skin = L(T.skin);
+  const coat = new THREE.MeshLambertMaterial({ map: solidTexture(0x23345e, 0.12, 51) });
+  const shirt = new THREE.MeshLambertMaterial({ map: solidTexture(0x8cc6e8, 0.1, 52) });
+  const pants = new THREE.MeshLambertMaterial({ map: solidTexture(0x1f2a44, 0.12, 53) });
+  const belt = L(0x1a1a1a), shoe = L(0x1a1f2a), cap = L(0x1f2c52), brim = L(0x111418), band = L(0x5a6e9a);
+  const head = [new THREE.MeshLambertMaterial({ map: T.side }), new THREE.MeshLambertMaterial({ map: T.side }),
+    new THREE.MeshLambertMaterial({ map: T.top }), skin, new THREE.MeshLambertMaterial({ map: T.back }), new THREE.MeshLambertMaterial({ map: T.face })];
+  const legs = [];
+  for (const s of [-1, 1]) {
+    const pv = new THREE.Group(); pv.position.set(s * 0.13, 0.66, 0); inner.add(pv);
+    part(pv, pants, 0.24, 0.54, 0.26, 0, -0.27, 0);
+    part(pv, shoe, 0.25, 0.12, 0.32, 0, -0.6, -0.03);
+    legs.push(pv);
+  }
+  const body = new THREE.Group(); body.position.y = 0.66; inner.add(body);
+  part(body, coat, 0.56, 0.62, 0.36, 0, 0.31, 0);
+  part(body, shirt, 0.16, 0.2, 0.02, 0, 0.5, -0.185);        // えりもと の シャツ
+  part(body, coat, 0.06, 0.2, 0.02, 0, 0.47, -0.19);          // ネクタイ みたいな せん（こん）
+  part(body, belt, 0.57, 0.07, 0.37, 0, 0.04, 0);
+  part(body, L(0x2a2a2a), 0.12, 0.14, 0.08, 0.22, 0.06, 0.12); // こしの ポーチ（むじ）
+  const headPivot = new THREE.Group(); headPivot.position.y = 0.64; body.add(headPivot);
+  part(headPivot, head, 0.44, 0.44, 0.44, 0, 0.22, 0);
+  part(headPivot, cap, 0.47, 0.13, 0.47, 0, 0.47, 0);          // ぼうし（むじ）
+  part(headPivot, band, 0.48, 0.04, 0.48, 0, 0.42, 0);
+  part(headPivot, brim, 0.4, 0.03, 0.16, 0, 0.42, -0.28);      // つば
+  const aim = new THREE.Group(); aim.position.set(0, 0.52, 0); body.add(aim);
+  const arms = [];
+  for (const s of [-1, 1]) {
+    const pv = new THREE.Group(); pv.position.set(s * 0.36, 0.04, 0); aim.add(pv);
+    part(pv, coat, 0.18, 0.18, 0.2, 0, 0, 0);
+    part(pv, coat, 0.15, 0.15, 0.42, 0, -0.03, -0.2);
+    part(pv, skin, 0.13, 0.13, 0.1, 0, -0.03, -0.45);
+    pv.rotation.y = -s * 0.32;                                   // りょうてで ハンドガン
+    arms.push(pv);
+  }
+  const holder = new THREE.Group(); holder.position.set(0, -0.02, -0.52); aim.add(holder);
+  const gun = makePistol(); gun.group.scale.setScalar(1.6); holder.add(gun.group);
+  root.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+  return { root, inner, legs, body, headPivot, aim, arms, holder, gun, muzzle: gun.muzzle };
 }
 
 // ---- v0.7.0: けいさつロボ（かくうの デザイン: しろ と こん・あおい ライト・ほしの たて。ほんものの マーク・もじは なし）----

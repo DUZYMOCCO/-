@@ -265,12 +265,27 @@
 .zt-botarrow span { font-size: 10px; font-weight: 900; color: #fff; background: rgba(28,62,150,.88); padding: 1px 6px; border-radius: 7px; white-space: nowrap; }
 .zt-boticon { display: flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 900; text-shadow: 0 1px 2px #000; color: #bfe3ff; }
 .zt-boticon .zt-bothp { margin-top: 0; width: 40px; }
-.hidden.zt-bot, .hidden.zt-botarrow, .hidden.zt-boticon { display: none; }
+.hidden.zt-bot, .hidden.zt-botarrow, .hidden.zt-boticon, .hidden.zt-cop { display: none; }
+/* v0.9.0: ロボの レベル・けいさつおじさん */
+.zt-botrow { display: flex; align-items: center; gap: 3px; margin-top: 2px; }
+.zt-botrow .zt-bothp { margin-top: 0; }
+.zt-botlv { font-style: normal; font-size: 10px; font-weight: 900; color: #ffe14a; text-shadow: 0 1px 2px #000; line-height: 1; }
+.zt-boticon .zt-botlv { margin-left: 3px; }
+.zt-bot[data-m="idle"] .zt-botrow { display: none; }
+.zt-lvup { display: none; font-style: normal; font-size: 13px; font-weight: 900; color: #ffe14a; text-shadow: 0 0 6px #ff9a00, 0 1px 2px #000; }
+.zt-bot.lvup .zt-lvup { display: block; animation: zt-lvup .5s ease-in-out infinite alternate; }
+.zt-boticon.lvup .zt-botlv { animation: zt-lvup .5s ease-in-out infinite alternate; }
+@keyframes zt-lvup { from { transform: scale(1); } to { transform: scale(1.25); } }
+.zt-cop { position: absolute; transform: translate(-50%, -100%); display: flex; flex-direction: column; align-items: center; pointer-events: none; }
+.zt-cop span { font-size: 10px; font-weight: 900; color: #fff; background: rgba(30,46,90,.85); padding: 1px 6px 2px; border-radius: 7px; white-space: nowrap; }
+.zt-cop .zt-bothp { width: 38px; }
+.zt-cop .zt-bothp div { background: linear-gradient(#ffe9a0, #f0b020); }
 
 /* v0.8.0: ぶきを つよく する がめん（ボタンは 40×40 いじょう） */
 .zt-upbtn { background: rgba(170,100,30,.6); border-color: #ffd08a; }
 .zt-upg { justify-content: flex-start; background: linear-gradient(90deg, rgba(8,12,20,.9) 0%, rgba(8,12,20,.65) 52%, rgba(8,12,20,0) 70%); }
-.zt-ubox { width: min(60vw, 390px); gap: 6px; }
+.zt-ubox { width: min(66vw, 420px); gap: 6px; } /* v0.9.0: ぶき 7こ ならぶ */
+@media (max-width: 620px) { .zt-utab { width: 42px; } }
 .zt-ubox h2 { position: relative; color: #ffd08a; text-shadow: 0 3px 0 #6a3a0a; font-size: 22px; }
 .zt-ubox h2.flash::after { content: attr(data-msg); position: absolute; left: 105%; top: 4px; white-space: nowrap; font-size: 14px; color: #7dff9a; text-shadow: 0 1px 3px #000; animation: zt-msg 1.6s ease-out forwards; }
 .zt-ubank { font-size: 12px; font-weight: 900; color: #fff; text-shadow: 0 1px 2px #000; }

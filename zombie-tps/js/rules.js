@@ -1,7 +1,7 @@
 // ゾンビストライク — ゲームの きまり（DOM / three.js に いぞんしない。node のテストから よめる）
 // ぶき・ダメージ・ウェーブ・あたりはんてい（レイ×はこ）・いどうの ぶつかり・ゾンビの みちさがし（フローフィールド）
 
-export const VERSION = '0.8.0';
+export const VERSION = '0.9.0';
 
 // ---- ぶき ----
 // rpm: 1ぷんかんの はっしゃかず / mag: マガジン / reserve: よびだん / reload: びょう
@@ -56,8 +56,18 @@ export const WEAPONS = {
     recoilPitch: 0.05, recoilYaw: 0.008, shake: 0.12, range: 160, falloff: [70, 150, 0.85], knock: 1.3,
     pierce: 2, pierceMul: 0.8, bolt: 0.9, scope: true,
   },
+  // v0.9.0: マグナム（かくうの デザインの リボルバー）。おもい ハンドガン: 1ぱつが つよい（ハンドガンの やく 3ばい）・1たい つらぬく
+  // ゆっくり（1びょうに 2はつ）・6はつ（シリンダー）・リロードは すこし ながい・はんどうが つよい。スコープ なし
+  magnum: {
+    id: 'magnum', name: 'マグナム', short: 'マグナム', slot: 7,
+    dmg: 100, head: 2.5, pellets: 1, rpm: 120, auto: false,
+    mag: 6, reserve: 48, reload: 2.4,
+    spread: 0.012, spreadMove: 0.03, spreadAim: 0.0025, bloom: 0.02, bloomMax: 0.05,
+    recoilPitch: 0.085, recoilYaw: 0.014, shake: 0.2, range: 75, falloff: [20, 55, 0.7], knock: 1.6,
+    pierce: 1, pierceMul: 0.75, revolver: true,
+  },
 };
-export const WEAPON_ORDER = ['rifle', 'pistol', 'shotgun', 'rocket', 'minigun', 'sniper'];
+export const WEAPON_ORDER = ['rifle', 'pistol', 'shotgun', 'rocket', 'minigun', 'sniper', 'magnum'];
 
 // ---- v0.8.0: スコープ（スナイパーだけ）----
 // fov: ズーム・sens: うごかす はやさの ばいりつ・sway: ゆれ（ラジアン。7さいでも ねらえる くらい ちいさく）
@@ -233,7 +243,7 @@ export function setGunLevel(g, lv) {
 // レベル 1〜max。1レベル ごとに いりょく +10%・はやさ +5%・たま +10%（ロケットは Lv5 から 2はつ）
 // ねだん: base × 1.5^(レベル−1)（10の くらい で まるめ）
 export const UPGRADE = { max: 8, grow: 1.5, dmg: 0.10, rate: 0.05, mag: 0.10,
-  base: { rifle: 400, pistol: 250, shotgun: 400, rocket: 600, minigun: 600, sniper: 500 } };
+  base: { rifle: 400, pistol: 250, shotgun: 400, rocket: 600, minigun: 600, sniper: 500, magnum: 320 } };
 export const clampLv = (lv) => Math.max(1, Math.min(UPGRADE.max, Number.isFinite(lv) ? Math.floor(lv) : 1));
 export function upgradeCost(id, lv) {
   const L = clampLv(lv);
@@ -243,7 +253,7 @@ export function upgradeCost(id, lv) {
 export function upgradedWeapon(id, lv = 1) {
   const b = WEAPONS[id], L = clampLv(lv), k = L - 1;
   return { ...b, lv: L, dmg: Math.round(b.dmg * (1 + UPGRADE.dmg * k)), rpm: Math.round(b.rpm * (1 + UPGRADE.rate * k)),
-    mag: Math.round(b.mag * (1 + UPGRADE.mag * k)) };
+    mag: b.revolver ? b.mag : Math.round(b.mag * (1 + UPGRADE.mag * k)) }; // リボルバーは いつも 6はつ
 }
 export const weaponLevel = (save, id) => clampLv(save && save.wlv ? save.wlv[id] : 1);
 // かう: つかえる スコア（bank）から ひく。さいこう スコア（bestScore）は かわらない
@@ -1271,3 +1281,116 @@ export function damageRobot(r, d) {
 }
 // ぶき ボタン（v0.7.0: ちいさく。でも ゆびで おせる 40px いじょう）
 export const WEAPON_BAR = { slotW: 40, slotH: 40, chipW: 34, chipH: 26, gap: 0 };
+
+// ---- v0.9.0: けいさつロボの レベル（たおした かずで あがる・Lv1〜5）----
+// すこしずつ つよく なる（もともと つよいので やりすぎない）。レベルが あがると HP ぜんかい
+export const ROBOT_LV = {
+  kills: [0, 10, 25, 50, 90],          // Lv1..5 に なる たおした かず
+  dmg: [1, 1.07, 1.14, 1.22, 1.3],     // こうげき ばいりつ
+  rate: [1, 0.97, 0.93, 0.89, 0.85],  // うつ かんかく ばいりつ（ちいさい ほど はやい）
+  hp: [1, 1.08, 1.16, 1.25, 1.35],     // さいだい HP ばいりつ
+};
+export const ROBOT_MAX_LV = ROBOT_LV.kills.length;
+export function robotLevel(kills) {
+  let lv = 1;
+  for (let i = 1; i < ROBOT_LV.kills.length; i++) if (kills >= ROBOT_LV.kills[i]) lv = i + 1;
+  return lv;
+}
+export function robotStats(lv, S = ROBOT) {
+  const i = Math.max(0, Math.min(ROBOT_MAX_LV, lv | 0 || 1) - 1);
+  return { lv: i + 1, dmg: Math.round(S.dmg * ROBOT_LV.dmg[i] * 10) / 10, fireRate: Math.round(S.fireRate * ROBOT_LV.rate[i] * 1000) / 1000,
+    maxHp: Math.round(S.hp * ROBOT_LV.hp[i]), next: ROBOT_LV.kills[i + 1] ?? null };
+}
+// たおした かずを たす。レベルが あがったら HP ぜんかい → true
+export function robotAddKill(r, n = 1) {
+  r.kills = (r.kills || 0) + n;
+  const lv = robotLevel(r.kills), old = r.lv || 1;
+  if (lv <= old) return false;
+  const st = robotStats(lv);
+  r.lv = lv; r.maxHp = st.maxHp; r.hp = st.maxHp;
+  return true;
+}
+
+// ---- v0.9.0: のりものが ばくはつ（かくうの くるま・バン・トラック）----
+// ふつうの じゅうでは なんぱつも（ライフルで 10〜12はつ）。ロケットは 1ぱつで ドカン。
+// ばくはつは ゾンビ だけに きく（プレイヤー・ロボ・けいさつおじさん・おじさんは だいじょうぶ）
+export const VEHICLE = {
+  hp: { car: 240, van: 260, truck: 280 },
+  smoke: 0.6, fire: 0.3,               // のこり HP が これより すくないと けむり／ひ
+  blast: 6, dmg: 240, power: 12,       // ばくはつの おおきさ・ダメージ
+  chainR: 3.2,                          // この きょり（はこと はこの すきま）の のりものは いっしょに ばくはつ
+  chainDelay: [0.3, 0.5],
+  shake: 0.5, flash: 0.5,               // がめんの ゆれ・ひかり の さいだい（iPhone SE でも やさしく）
+};
+export const BLAST_FX = { shake: 0.6, flash: 0.6 };
+export function vehicleMaxHp(kind) { return VEHICLE.hp[kind] || VEHICLE.hp.car; }
+export function makeVehicleState(list) {
+  return list.map((v) => ({ ...v, hp: vehicleMaxHp(v.kind), maxHp: vehicleMaxHp(v.kind), dead: false, fuse: -1 }));
+}
+// ダメージ。opt.rocket: ロケットは いっぱつ。ばくはつ したら true（1かい だけ）
+export function damageVehicle(v, dmg, opt = {}) {
+  if (!v || v.dead || v.fuse >= 0) return false;
+  v.hp = opt.rocket ? 0 : Math.max(0, v.hp - dmg);
+  if (v.hp <= 0) { v.dead = true; return true; }
+  return false;
+}
+// 0: ぶじ 1: けむり 2: ひ
+export function vehicleStage(v) {
+  if (v.dead) return 3;
+  const k = v.hp / v.maxHp;
+  return k <= VEHICLE.fire ? 2 : k <= VEHICLE.smoke ? 1 : 0;
+}
+// はこ と はこの すきま（xz）
+export function vehicleGap(a, b) {
+  const dx = Math.max(0, a.minX - b.maxX, b.minX - a.maxX), dz = Math.max(0, a.minZ - b.maxZ, b.minZ - a.maxZ);
+  return Math.hypot(dx, dz);
+}
+// v が ばくはつ → いっしょに ばくはつ する のりもの（まだ ぶじな もの）
+export function chainTargets(vs, v, r = VEHICLE.chainR) {
+  return vs.filter((o) => o !== v && !o.dead && o.fuse < 0 && Math.abs((o.minY || 0) - (v.minY || 0)) < 2 && vehicleGap(o, v) <= r);
+}
+// ばくはつ p が のりもの に とどくか（ロケット・ばくはつの まきこみ）
+export function blastReachesVehicle(p, radius, v) {
+  const dx = Math.max(0, v.minX - p.x, p.x - v.maxX), dz = Math.max(0, v.minZ - p.z, p.z - v.maxZ);
+  const dy = Math.max(0, (v.minY || 0) - p.y, p.y - (v.maxY || 2));
+  return Math.hypot(dx, dy, dz) <= radius;
+}
+// ばくはつの あいて: team が 'zombie' の ものだけ（じばく なし・なかまにも きかない）
+// targets: [{ team: 'zombie'|'player'|'ally'|'npc', x, y, z, scale, alive }] → [{ t, d }]
+export function blastHits(p, radius, targets) {
+  const out = [];
+  for (const t of targets) {
+    if (!t || t.team !== 'zombie' || t.alive === false) continue;
+    const s = t.scale || 1;
+    const d = Math.hypot(t.x - p.x, ((t.y || 0) + 0.8 * s - p.y) * 0.6, t.z - p.z) - 0.3 * s;
+    if (d < radius) out.push({ t, d: Math.max(0, d) });
+  }
+  return out;
+}
+
+// ---- v0.9.0: けいさつおじさん（ときどき たすけに くる なかま・その ウェーブ だけ）----
+// みため は かくう（こんの せいふく・ぼうし・マークなし）。ロボより すこし よわい
+export const COP = {
+  hp: 170, dmgMul: 0.5,
+  dmg: 8, fireRate: 0.42, range: 16, spread: 0.04,   // ハンドガン
+  back: 1.0, side: 2.8,                                // ひだり うしろ（ロボより そと）
+  speed: 4.9, runSpeed: 6.8, near: 0.5,
+  teleport: 14, teleportDy: 2.6, stuckTime: 2.5,
+  scale: 0.9,
+  chance: 0.3, firstWave: 3,
+  arrive: [4, 7],     // プレイヤーから この きょりに くる
+  leaveTime: 2.2,     // ウェーブの おわりに てを ふって きえる じかん
+  downTime: 1.6,      // たおれたら さがって きえる じかん
+};
+// こんかいの ウェーブに くるか（ウェーブ3から・やく 30%・つづけて こない）
+export function copShouldCome(wave, lastWave, r = Math.random()) {
+  if (wave < COP.firstWave) return false;
+  if (lastWave && wave - lastWave <= 1) return false;
+  return r < COP.chance;
+}
+export function damageAlly(a, d, S) {
+  if (!a || a.state !== 'on') return false;
+  a.hp = Math.max(0, a.hp - d * S.dmgMul);
+  if (a.hp <= 0) { a.state = 'down'; return true; }
+  return false;
+}

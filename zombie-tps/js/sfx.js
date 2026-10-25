@@ -44,6 +44,13 @@ export class Sfx {
       this._noise(t, 0.11, { type: 'bandpass', freq: 1500 * p, q: 0.8, gain: 0.8 });
       this._tone(t, 0.09, { f0: 220 * p, f1: 70, gain: 0.6 });
       this._noise(t + 0.02, 0.25, { type: 'lowpass', freq: 600, gain: 0.15, attack: 0.02 });
+    } else if (kind === 'magnum') {
+      // ドォン（ふかい おと・ながめの こだま）
+      this._noise(t, 0.07, { type: 'highpass', freq: 1300 * p, gain: 0.65 });
+      this._noise(t, 0.2, { type: 'lowpass', freq: 1900 * p, gain: 1.0 });
+      this._tone(t, 0.24, { f0: 95 * p, f1: 30, gain: 1.05 });
+      this._tone(t, 0.12, { f0: 180 * p, f1: 60, gain: 0.5 });
+      this._noise(t + 0.03, 0.7, { type: 'lowpass', freq: 340, gain: 0.32, attack: 0.04 });
     } else if (kind === 'sniper') {
       // ズドン（ながい こだま）＋ あとで ガチャッ（ボルト）
       this._noise(t, 0.08, { type: 'highpass', freq: 1500 * p, gain: 0.7 });

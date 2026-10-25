@@ -109,6 +109,14 @@ function builder(half, seed) {
     add('tent', cx - s(0.9, 0), 1.0, cz - s(0, 0.9), s(5, 2.4), 1.6, s(2.4, 5), { tint: cover });
     for (const p of [-2.6, -0.6, 2.6]) for (const q of [-1, 1]) deco('dark', cx + s(p, q * 1.1), 0, cz + s(q * 1.1, p), s(0.9, 0.3), 0.9, s(0.3, 0.9));
   };
+  // v0.9.0: のりもの は ばくはつ する。つくった はこ に veh（ばんごう）を つける（いちは B.done で はかる → lift でも OK）
+  B.vehN = 0; B.vehKind = [];
+  const tagVeh = (kind, fn) => (...a) => {
+    const n0 = boxes.length; fn(...a);
+    const id = B.vehN++; B.vehKind.push(kind);
+    for (let i = n0; i < boxes.length; i++) boxes[i].veh = id;
+  };
+  B.car = tagVeh('car', B.car); B.van = tagVeh('van', B.van); B.truck = tagVeh('truck', B.truck);
   B.crate = (x, z, n = 1, tint) => { for (let k = 0; k < n; k++) add('crate', x, k, z, 1, 1, 1, tint != null ? { tint } : {}); };
   B.bags = (x, z, along, len = 3) => add('sandbag', x, 0, z, along === 'x' ? len : 0.9, 0.95, along === 'x' ? 0.9 : len);
   B.barrel = (x, z, tint) => add('barrel', x, 0, z, 0.75, 1.0, 0.75, { tint });
@@ -294,7 +302,7 @@ function builder(half, seed) {
   };
   // その ばしょに もう ぶつかる ものが あるか
   B.hit = (x, z, rad) => boxes.some((b) => b.collide && x + rad > b.minX && x - rad < b.maxX && z + rad > b.minZ && z - rad < b.maxZ);
-  B.done = (theme, extra = {}) => ({ boxes, spawns, lamps, playerStart: { x: 0, z: 4, yaw: 0 }, half, theme, ladders, perches, ...extra });
+  B.done = (theme, extra = {}) => ({ boxes, spawns, lamps, playerStart: { x: 0, z: 4, yaw: 0 }, half, theme, ladders, perches, vehicles: vehicleList(boxes, B.vehKind), ...extra });
   // スタートと タイトルの けしき（プレイヤーの まわり）は あけておく
   reserve(-4, -1, 4, 8);
   return B;
@@ -423,6 +431,7 @@ function base() {
   B.reserve(18.5, 22.5, 29.5, 33.5);
   // トラック
   for (const [x, z, a] of [[-6, 12, 'x'], [-28, 30, 'x'], [10, -12, 'z'], [36, 22, 'z']]) B.truck(x, z, a, 0x5f6640);
+  { let n = 0; for (const [x, z, a] of [[-12, 20, 'x'], [24, -20, 'z'], [-30, -16, 'x'], [16, 30, 'x'], [-36, 0, 'z'], [30, 4, 'z'], [-18, -32, 'x'], [8, -30, 'x'], [-6, -20, 'x'], [20, 12, 'x']]) if (n < 3 && B.free(x, z, 2) && !B.hit(x, z, 2.6)) { B.car(x, z, a, 0x6a7046); n++; } } // v0.9.0: マーク なしの くるま
   // どのうの じんち・ジャージーかべ
   for (const [x, z] of [[-10, -4], [10, 2], [0, 22], [-14, 30], [14, -32]]) { B.bags(x - 1.8, z, 'z'); B.bags(x + 1.8, z, 'z'); B.bags(x, z - 1.8, 'x'); }
   for (let x = -20; x <= 20; x += 2.6) if (Math.abs(x) > 6 && B.free(x, -14, 0.8)) add('concrete', x, 0, -14, 2.2, 0.85, 0.7, { tint: 0xb8b4a8 });
@@ -494,6 +503,11 @@ function camp() {
   // ピクニックテーブル・まきの やま
   for (const [x, z] of [[-6, 6], [8, -6], [-22, -4], [20, -4], [-30, -20]]) { add('plank', x, 0, z, 1.8, 0.75, 0.9); add('plank', x, 0, z - 0.9, 1.8, 0.42, 0.35); add('plank', x, 0, z + 0.9, 1.8, 0.42, 0.35); }
   for (const [x, z] of [[-20, 24], [10, -34], [36, -18]]) { add('log', x, 0, z, 2.6, 0.5, 1.2); add('log', x, 0.5, z, 2.6, 0.45, 0.8); }
+  // v0.9.0: ちゅうしゃじょう（かくうの くるま・バン）
+  for (const [x, z, a, k] of [[-10, -14, 'x', 'car'], [-10, -19.5, 'x', 'car'], [4, -16, 'x', 'van'], [34, 22, 'z', 'car'], [-34, -12, 'z', 'truck']]) {
+    if (!B.free(x, z, 2) || B.hit(x, z, 3)) continue;
+    if (k === 'car') B.car(x, z, a, CAR_TINTS[Math.floor(r() * CAR_TINTS.length)]); else if (k === 'van') B.van(x, z, a, 0x5a8ac0, 0xf0c830); else B.truck(x, z, a, 0x8a6a4a, 0x6a7a5a);
+  }
   // もり（き が たくさん）
   B.scatter(70, 1.6, (x, z) => (r() < 0.65 ? B.pine(x, z) : B.tree(x, z, undefined, 0xa8d098)), 10);
   for (const [x, z] of [[-4, -8], [4, 8], [-4, 26], [26, 4], [-26, -4], [26, -26], [-26, 26], [-26, -26], [26, 26], [4, -26], [-12, -26]]) if (B.free(x, z, 0.3)) B.lamp(x, z, 'log');
@@ -528,6 +542,11 @@ function harbor() {
   deco('stripe', -29, 0, 31.03, 6, 4.2, 0.05);
   // トラックと トレーラー（みなみひがし）
   for (const [x, z] of [[18, 20], [30, 20], [18, 32]]) { B.container(x, z, 'z', tints[Math.floor(r() * tints.length)], 0.9); add('dark', x, 0, z, 2.2, 0.9, 6); }
+  // v0.9.0: ばくはつ する のりもの（かくうの トラック・くるま）
+  for (const [x, z, a, k] of [[30, 33, 'x', 'truck'], [2, 30, 'x', 'car'], [-6, 30, 'x', 'car'], [-34, 8, 'z', 'van'], [34, -2, 'z', 'truck']]) {
+    if (!B.free(x, z, 2) || B.hit(x, z, 3)) continue;
+    if (k === 'car') B.car(x, z, a, CAR_TINTS[Math.floor(r() * CAR_TINTS.length)]); else if (k === 'van') B.van(x, z, a, 0xe0e0e0, 0x2e86c1); else B.truck(x, z, a, 0x2e6a9a, 0x7f8c8d);
+  }
   // フォークリフト
   for (const [x, z] of [[-6, -2], [8, 6], [-14, 10]]) { add('metal', x, 0.2, z, 1.2, 1.3, 2, { tint: 0xff8a1f }); add('dark', x, 0, z - 1.2, 1.0, 2.6, 0.2); deco('dark', x, 0.15, z - 1.8, 1.0, 0.08, 1.2); }
   // パレット・はこ・ロープ
@@ -805,6 +824,19 @@ function office() {
   B.lamp(10, 2, 'dark', y3);
   for (const [x, z, L] of spawnSpots) B.spawns.push({ x, z, y: L * H });
   return B.done({ ground: 'concrete', tint: 0x5a5a62, k: 0.3, far: 'office', farTint: 0x8a8a9a }, { vertical: true, ladders: B.ladders, interior: { minX: -X - T, maxX: X + T, minZ: -Z - T, maxZ: Z + T, H, levels: 4 } });
+}
+// v0.9.0: のりもの の いちらん（veh の ついた ぶつかる はこ の おおきさ）
+export function vehicleList(boxes, kinds) {
+  const out = kinds.map((kind, id) => ({ id, kind, minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity, minZ: Infinity, maxZ: -Infinity }));
+  for (const b of boxes) {
+    if (b.veh == null) continue;
+    const v = out[b.veh]; if (!v) continue;
+    if (!b.collide && b.mat !== 'metal') continue;
+    v.minX = Math.min(v.minX, b.minX); v.maxX = Math.max(v.maxX, b.maxX); v.minY = Math.min(v.minY, b.minY); v.maxY = Math.max(v.maxY, b.maxY);
+    v.minZ = Math.min(v.minZ, b.minZ); v.maxZ = Math.max(v.maxZ, b.maxZ);
+  }
+  for (const v of out) { v.x = (v.minX + v.maxX) / 2; v.z = (v.minZ + v.maxZ) / 2; v.y = v.minY; }
+  return out.filter((v) => Number.isFinite(v.minX));
 }
 function boxes_push(B, b) { B.boxes.push(b); return b; }
 

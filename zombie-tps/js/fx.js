@@ -1,6 +1,6 @@
 // こうか: マズルフラッシュ・トレーサー・やっきょう・つぶ（みどりの しぶき／けむり）・しみ（みどり）・だんこん
 import * as THREE from '../vendor/three.module.min.js';
-import { makeMagMesh } from './models.js?v=10';
+import { makeMagMesh } from './models.js?v=11';
 
 const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _s = new THREE.Vector3(), _p = new THREE.Vector3(), _c = new THREE.Color();
 const UP = new THREE.Vector3(0, 1, 0), FWD = new THREE.Vector3(0, 0, 1);
@@ -147,7 +147,7 @@ export class FX {
     const s = (0.35 + Math.random() * 0.25) * scale;
     this.flash.scale.setScalar(s);
     this.flash.children[0].rotation.z = Math.random() * Math.PI;
-    this.flash.visible = true; this.flashLife = 0.045;
+    this.flash.visible = true; this.flashLife = 0.045 * Math.max(1, scale * 0.8); // v0.9.0: マグナムは すこし ながく ひかる
     if (this.lightDecay > 120 && this.light.intensity > 8) return; // ばくはつの ひかりを けさない
     this.light.position.copy(this.flash.position);
     this.light.distance = 9 * (this.lightBoost > 1 ? 1.4 : 1); this.lightDecay = 120;

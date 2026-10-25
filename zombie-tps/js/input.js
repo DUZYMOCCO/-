@@ -1,4 +1,4 @@
-import { stickCurve } from './rules.js?v=10';
+import { stickCurve } from './rules.js?v=11';
 // そうさ: タッチ（ひだり スティック・みぎ ドラッグ・ボタン）と キーボード／マウス
 export class Input {
   constructor(touchLayer, canvas) {
@@ -108,6 +108,7 @@ export class Input {
       if (c === 'Digit4') this.events.push('w:rocket');
       if (c === 'Digit5') this.events.push('w:minigun');
       if (c === 'Digit6') this.events.push('w:sniper');
+      if (c === 'Digit7') this.events.push('w:magnum');
       if (c === 'KeyQ') this.events.push('next');
       if (c === 'Escape' || c === 'KeyP') this.events.push('pause');
     } else this.keys.delete(c);

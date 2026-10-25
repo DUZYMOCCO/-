@@ -11,6 +11,7 @@ function mergeBoxes(list) {
     const g = new THREE.BoxGeometry(sx, sy, sz);
     const p = g.attributes.position, n = g.attributes.normal, u = g.attributes.uv;
     const base = pos.length / 3;
+    if (b.veh != null) b._vr = [base, p.count]; // v0.9.0: のりもの の ちょうてん（こげる・こわれる）
     tmpC.set(b.tint ?? 0xffffff);
     const uvScale = b.mat === 'crate' ? null : 1;
     for (let i = 0; i < p.count; i++) {
@@ -48,7 +49,31 @@ function mergeBoxes(list) {
   geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
   geo.setIndex(idx);
   geo.computeBoundingSphere();
+  for (const b of list) if (b._vr) b._geo = geo;
   return geo;
+}
+
+// v0.9.0: ばくはつ した のりもの を くろこげに（on=false で もとどおり）。ライトは きえる
+export function wreckVehicleBoxes(boxes, id, on = true) {
+  const touched = new Set();
+  for (const b of boxes) {
+    if (b.veh !== id || !b._geo || !b._vr) continue;
+    const g = b._geo, [s0, n] = b._vr;
+    const P = g.attributes.position, C = g.attributes.color;
+    if (!b._orig) b._orig = { p: P.array.slice(s0 * 3, (s0 + n) * 3), c: C.array.slice(s0 * 3, (s0 + n) * 3) };
+    if (!on) { P.array.set(b._orig.p, s0 * 3); C.array.set(b._orig.c, s0 * 3); }
+    else if (b.mat === 'light') { for (let i = 0; i < n; i++) P.array[(s0 + i) * 3 + 1] = -60; }
+    else {
+      const k = b.mat === 'glass' ? 0.12 : 0.22;
+      for (let i = 0; i < n; i++) {
+        const j = (s0 + i) * 3, o = b._orig.c;
+        C.array[j] = o[i * 3] * k + 0.04; C.array[j + 1] = o[i * 3 + 1] * k + 0.035; C.array[j + 2] = o[i * 3 + 2] * k + 0.03;
+      }
+    }
+    P.needsUpdate = true; C.needsUpdate = true; touched.add(g);
+  }
+  for (const g of touched) g.computeBoundingSphere();
+  return touched.size;
 }
 
 const LAM_KEYS = ['road', 'roadLine', 'cobble', 'brick', 'crate', 'concrete', 'metal', 'glass', 'dark', 'log', 'leaves', 'sandbag', 'barrel', 'plank',
