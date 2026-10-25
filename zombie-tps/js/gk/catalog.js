@@ -1,0 +1,21 @@
+// v0.16.0: ガンキック ステージの めくじ（カードに だす ぶん だけ・ちいさい）。なかみ は stages/sNN.js を あとから よむ
+export const GK_CATALOG = [
+  {"no":1,"sub":"ほろびた けんきゅうじょ","theme":"lab","world":"w1","icon":"🧪","desc":"くらい けんきゅうじょを すすめ","boss":"くろよろい エージェント"},
+  {"no":2,"sub":"あかい そらの おやしき","theme":"manor","world":"w1","icon":"🏚","desc":"あかい そらの おやしきへ","boss":"ねじれ ばけもの"},
+  {"no":3,"sub":"あめの はいきょとし","theme":"city","world":"w1","icon":"🌧","desc":"あめの まちを かけぬけろ","boss":"てっかめん の きょじん"},
+  {"no":4,"sub":"くらやみの ちかてつ","theme":"subway","world":"w1","icon":"🚇","desc":"くらやみの てつろを すすめ","boss":"どろどろ ミュータント"},
+  {"no":5,"sub":"あかい そらの とう","theme":"tower","world":"w1","icon":"🗼","desc":"そらの とうを のぼろう","boss":"あかい め の おう"},
+  {"no":6,"sub":"すてられた びょういん","theme":"hospital","world":"w2","icon":"🩺","desc":"びょういんを かけぬけよう","boss":"メスの せんせい"},
+  {"no":7,"sub":"のっとられた きち","theme":"base","world":"w2","icon":"🪖","desc":"くんれんじょうを とりもどそう","boss":"ぼうそう せんしゃ"},
+  {"no":8,"sub":"きりの もり","theme":"forest","world":"w2","icon":"🌫","desc":"きりの もりを すすもう","boss":"もりの ぬし"},
+  {"no":9,"sub":"うごく こうじょう","theme":"factory","world":"w2","icon":"🏭","desc":"うごく こうじょうを ぬけろ","boss":"ようせつ ゾンビ"},
+  {"no":10,"sub":"くずれる はし","theme":"bridge","world":"w2","icon":"🌉","desc":"くずれる はしを わたろう","boss":"がれきの きょじん"},
+  {"no":11,"sub":"しずむ ふね","theme":"ship","world":"w3","icon":"🚢","desc":"しずむ ふねから にげよう","boss":"うみの ばけもの"},
+  {"no":12,"sub":"ゆきやまの けんきゅうきち","theme":"snow","world":"w3","icon":"❄️","desc":"ゆきの やまを こえよう","boss":"こおりの きょじん"},
+  {"no":13,"sub":"ちかの むしの す","theme":"hive","world":"w3","icon":"🪲","desc":"むしの すを くぐりぬけろ","boss":"むしの じょおう"},
+  {"no":14,"sub":"あらしの ひこうじょう","theme":"airfield","world":"w3","icon":"⛈","desc":"あらしの ひこうじょうを かけぬけろ","boss":"ゾンビ ヘリ"},
+  {"no":15,"sub":"さいごの けんきゅうじょ","theme":"core","world":"w3","icon":"☢️","desc":"さいごの へやへ いそげ","boss":"はじまりの ミュータント"},
+  {"no":16,"sub":"いせきの どうくつ","theme":"ruins","world":"w4","icon":"🗿","desc":"いせきの どうくつを さがそう","boss":"いせきの グール"},
+  {"no":17,"sub":"よあけの こうや","theme":"dawn","world":"w4","icon":"🌅","desc":"よあけの こうやを はしろう","boss":"よあけの おおさそり"},
+  {"no":18,"sub":"とびらの そうこ","theme":"doors","world":"w4","icon":"🚪","desc":"とびらを あけて すすもう","boss":"サングラスの ボス"},
+];

@@ -2,8 +2,8 @@
 // とおくの ゾンビ → しゅるいごとに 1つの InstancedMesh（てあしは うごかさず ゆらゆら だけ）
 // ちかくの ゾンビ → いままでどおりの モデル（ちかい じゅんに すこしだけ ほんものの かげ・ほかは まるい かげ）
 import * as THREE from '../vendor/three.module.min.js';
-import { zombieLod, zombieEyeGeo, EYE_MAT } from './models.js?v=17';
-import { lodPlan, GOV_LEVELS } from './rules.js?v=17';
+import { zombieLod, zombieEyeGeo, EYE_MAT } from './models.js?v=18';
+import { lodPlan, GOV_LEVELS } from './rules.js?v=18';
 
 const CAP = 64;            // しゅるいごとの かず（こえたら ちゃんとした モデルで かく）
 const BLOB_CAP = 160;
@@ -59,7 +59,7 @@ export class Crowd {
     for (const z of zs) {
       const m = z.model;
       if (!z.full) {
-        const k = this.kindMesh(z.kind);
+        const k = this.kindMesh(z.lk || z.kind);
         if (k.n >= CAP) z.full = true; // いっぱい → ちゃんとした モデルで
       }
       if (z.full) {
@@ -75,7 +75,7 @@ export class Crowd {
       if (dx * dx + dz * dz > far2) { stats.culled++; continue; } // きりの むこう: みえない
       _sp.center.set(z.x, z.y + 0.9 * z.scale, z.z); _sp.radius = 1.3 * z.scale;
       if (!_fr.intersectsSphere(_sp)) { stats.culled++; continue; }
-      const k = this.byKind[z.kind];
+      const k = this.byKind[z.lk || z.kind];
       const moving = z.state === 'walk';
       const sw = moving ? Math.sin(z.phase) : 0;
       _eu.set(z.kind === 'crawler' ? 0 : -0.06, z.yaw, sw * 0.07 + (z.state === 'idle' ? Math.sin(t * 2 + z.phase) * 0.03 : 0));

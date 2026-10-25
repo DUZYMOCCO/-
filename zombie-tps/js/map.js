@@ -841,7 +841,12 @@ export function vehicleList(boxes, kinds) {
 function boxes_push(B, b) { B.boxes.push(b); return b; }
 
 const BUILD = { city, mall, base, hospital, camp, harbor, rooftop, office };
+// v0.16.0: あとから よむ マップ（ガンキック ステージ）。fn(builder) → B.done(...)
+const EXTRA = {};
+export function registerMap(id, fn) { EXTRA[id] = () => fn(builder); }
+export const hasMap = (id) => !!(BUILD[id] || EXTRA[id]);
 export function buildMap(id = 'city') {
+  if (EXTRA[id]) { const m = EXTRA[id](); m.id = id; return m; }
   const m = (BUILD[id] || city)();
   m.id = BUILD[id] ? id : 'city';
   return m;

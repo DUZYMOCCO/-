@@ -3,8 +3,8 @@
 // ・ロボと おなじ ように ついてきて、うしろ・よこを まもる（ハンドガン・ロボより すこし よわい）
 // ・たおれたら さがって かえる（こわい ひょうげん なし）・ばくはつ では ダメージ なし
 import * as THREE from '../vendor/three.module.min.js';
-import { COP, copShouldCome, damageAlly, edgeArrow } from './rules.js?v=17';
-import { makePoliceOfficer } from './models.js?v=17';
+import { COP, copShouldCome, damageAlly, edgeArrow } from './rules.js?v=18';
+import { makePoliceOfficer } from './models.js?v=18';
 
 const _p = new THREE.Vector3(), _o = new THREE.Vector3();
 

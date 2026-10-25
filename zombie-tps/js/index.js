@@ -11,8 +11,10 @@ import { WEAPONS, WEAPON_ORDER, normalizeSave, SENS, VERSION, OUTFITS, outfitNam
   SLOT_UP, HP_UP, slotLevel, hpLevel, slotUpCost, hpUpCost, baseHpAt, slotBonus, buySlotUpgrade, buyHpUpgrade, GEAR_SLOT_IDS,
   SUIT_ORDER, SUIT_WEAPONS, suitLabel, SUIT,
   MELEE, MELEE_ORDER, MELEE_UP, meleeLevel, meleeUpCost, meleeStats, buyMelee, isMelee, DEFAULT_MELEE,
-  LOADOUT_SIZE, normalizeLoadout, toggleLoadout, loadoutReady, unlockedWeapons, upgradeRows, GAUGE_LABEL } from './rules.js?v=17';
-import { MAPS, mapInfo } from './map.js?v=17';
+  LOADOUT_SIZE, normalizeLoadout, toggleLoadout, loadoutReady, unlockedWeapons, upgradeRows, GAUGE_LABEL } from './rules.js?v=18';
+import { MAPS, mapInfo, registerMap, hasMap } from './map.js?v=18';
+import { recordGkClear } from './rules.js?v=18';
+import { GK_CATALOG, GK_WORLDS, GK_READY, isGkReady, gkMeta, gkNext, gkLoadStage, gkLoadMap, gkWaves, gkClearBonus } from './gk/core.js?v=18';
 
 const hex6 = (n) => '#' + n.toString(16).padStart(6, '0');
 // v0.7.0: がめんの そとを さす やじるしは ボタンに かぶらない たかさ（うえから 16%〜32%）
@@ -56,9 +58,9 @@ function totalsText(gear, save) {
   const parts = GEAR_STAT_IDS.filter((k) => t[k]).map((k) => `${GEAR_STATS[k].name} +${t[k]}${GEAR_STATS[k].unit}${t[k] >= GEAR_STATS[k].cap ? '（MAX）' : ''}`);
   return parts.length ? parts.join(' ・ ') : 'まだ なにも つけて いないよ';
 }
-import { Game } from './game.js?v=17';
-import { Input } from './input.js?v=17';
-import { Sfx } from './sfx.js?v=17';
+import { Game } from './game.js?v=18';
+import { Input } from './input.js?v=18';
+import { Sfx } from './sfx.js?v=18';
 
 // v0.7.0: ぶきの ちいさい アイコン（かくうの シルエット）
 const svgI = (d) => `<svg viewBox="0 0 32 16" aria-hidden="true">${d}</svg>`;
@@ -102,7 +104,7 @@ const OPT_CYCLE = { autoFire: [false, true], sens: ['low', 'mid', 'high'], quali
 
 export default {
   prepare() {
-    return loadCss(new URL('../css/zombie-tps.css?v=17', import.meta.url).href);
+    return loadCss(new URL('../css/zombie-tps.css?v=18', import.meta.url).href);
   },
 
   init(container, onBackToHub) {
@@ -187,42 +189,42 @@ export default {
       </div>
 
       <div class="zt-screen zt-title">
-        <div class="zt-title-box">
-          <h1>ゾンビ<br>ストライク</h1>
-          <p class="zt-sub">アサルトライフルと ロケットで まちを まもれ！</p>
-          <div class="zt-stages">
-            <button data-stage="day">☁️ ひるから</button>
-            <button data-stage="night">🌙 よるから</button>
+        <!-- v0.16.0: ステージ せんたく（タブ ＝ まとまり・おおきい カード）。ステージが ふえても タブと カードが ふえる だけ -->
+        <div class="zt-sel">
+          <div class="zt-selhead">
+            <h1>ゾンビ<br>ストライク</h1>
+            <div class="zt-tabs">${[{ id: 'zs', tab: 'ゾンビ ストライク' }, ...GK_WORLDS].map((g) => `<button data-tab="${g.id}">${g.tab}</button>`).join('')}</div>
           </div>
-          <div class="zt-maps">${['rotate', ...MAP_IDS].map((id) => `<button data-map="${id}">${id === 'rotate' ? '🔀 おまかせ' : `${mapInfo(id).icon} ${mapInfo(id).name}`}</button>`).join('')}</div>
-          <div class="zt-todhint">ウェーブごとに ひる → ゆうやけ → よる</div>
-          <div class="zt-startrow">
-            <button class="zt-big" data-ui="start">スタート</button>
-            <button class="zt-kigaebtn" data-ui="kigae">👕 きがえ<b></b></button>
-            <button class="zt-kigaebtn zt-soubibtn" data-ui="soubi">🛡 そうび<b></b></button>
-            <button class="zt-kigaebtn zt-upbtn" data-ui="upg">🔧 つよく する<b></b></button>
+          <div class="zt-selinfo"><span class="zt-sub"></span><div class="zt-stages"><button data-stage="day">☁️ ひるから</button><button data-stage="night">🌙 よるから</button></div></div>
+          <div class="zt-cards"></div>
+          <div class="zt-selfoot">
+            <button class="zt-fbtn zt-kigaebtn" data-ui="kigae">👕 きがえ<b></b></button>
+            <button class="zt-fbtn zt-soubibtn" data-ui="soubi">🛡 そうび<b></b></button>
+            <button class="zt-fbtn zt-upbtn" data-ui="upg">🔧 つよく する<b></b></button>
+            <button class="zt-fbtn zt-optbtn" data-ui="opts">⚙ せってい<b></b></button>
+            <button class="zt-fbtn zt-hubbtn" data-ui="hub">← こうぼう<b></b></button>
           </div>
-          <div class="zt-opts">
-            <button data-opt="autoFire">オートうち <b></b></button>
-            <button data-opt="sens">かんど <b></b></button>
-            <button data-opt="quality">がしつ <b></b></button>
-            <button data-opt="flashlight">ライト <b></b></button>
-          </div>
-          <div class="zt-best"></div>
-          <button class="zt-small" data-ui="hub">← こうぼうへ もどる</button>
           <div class="zt-title-err"></div>
         </div>
-        <div class="zt-help">
-          <div><b>ひだり</b> ゆびで いどう</div>
-          <div><b>みぎ</b> ドラッグで ねらう</div>
-          <div><b>うつ</b> おしたまま れんしゃ（ドラッグも できる）</div>
-          <div><b>あたま</b>を うつと ヘッドショット！</div>
-          <div><b>ロケット</b>で まとめて ふっとばせ！</div>
-          <div><b>レーザー・ほのお・ビーム</b>は たまの かわりに ゲージ</div>
-          <div><b>けむり</b>を なげると ゾンビが みうしなう</div>
-          <div><b>ロケットだん</b>は ゾンビが おとす はこを ひろう</div>
-          <div><b>スタート</b>の あとで もっていく ぶきを 3つ えらぶよ</div>
-          <div class="zt-ver">v${VERSION}</div>
+        <div class="zt-optpanel hidden">
+          <div class="zt-panel zt-optbox">
+            <h2>せってい</h2>
+            <div class="zt-opts">
+              <button data-opt="autoFire">オートうち <b></b></button>
+              <button data-opt="sens">かんど <b></b></button>
+              <button data-opt="quality">がしつ <b></b></button>
+              <button data-opt="flashlight">ライト <b></b></button>
+            </div>
+            <div class="zt-help">
+              <div><b>ひだり</b> ゆびで いどう ・ <b>みぎ</b> ドラッグで ねらう</div>
+              <div><b>うつ</b> おしたまま れんしゃ ・ <b>あたま</b>を うつと ヘッドショット！</div>
+              <div><b>ロケット</b>で まとめて ふっとばせ ・ <b>けむり</b>で ゾンビが みうしなう</div>
+              <div><b>ガンキック</b>の ステージは へやの てきを ぜんぶ たおすと ドアが ひらくよ</div>
+            </div>
+            <div class="zt-best"></div>
+            <div class="zt-ver">v${VERSION}</div>
+            <button class="zt-big" data-ui="optclose">とじる</button>
+          </div>
         </div>
       </div>
 
@@ -279,7 +281,7 @@ export default {
         <div class="zt-panel">
           <h2>ポーズ</h2>
           <button class="zt-big" data-ui="resume">つづける</button>
-          <button class="zt-small" data-ui="title">タイトルへ</button>
+          <button class="zt-small" data-ui="title">ステージ せんたく</button>
         </div>
       </div>
 
@@ -287,8 +289,23 @@ export default {
         <div class="zt-panel">
           <h2>やられた…</h2>
           <div class="zt-res"></div>
-          <button class="zt-big" data-ui="retry">もういちど</button>
-          <button class="zt-small" data-ui="title">タイトルへ</button>
+          <div class="zt-overbtns">
+            <button class="zt-big zt-cpbtn hidden" data-ui="cpretry">ドアの まえから</button>
+            <button class="zt-big zt-retrybtn" data-ui="retry">もういちど</button>
+          </div>
+          <button class="zt-small" data-ui="title">ステージ せんたく</button>
+        </div>
+      </div>
+
+      <div class="zt-screen zt-clear hidden">
+        <div class="zt-panel">
+          <h2>ステージ クリア！</h2>
+          <div class="zt-cres"></div>
+          <div class="zt-overbtns">
+            <button class="zt-big zt-nextbtn" data-ui="gknext">つぎの ステージへ</button>
+            <button class="zt-big zt-small2" data-ui="gkagain">もういちど</button>
+          </div>
+          <button class="zt-small" data-ui="title">ステージ せんたく</button>
         </div>
       </div>
 
@@ -305,9 +322,7 @@ export default {
       const k = b.dataset.opt; b.querySelector('b').textContent = OPT_LABEL[k][String(this.save[k])];
     }
     for (const b of this.container.querySelectorAll('[data-stage]')) b.classList.toggle('sel', b.dataset.stage === this.save.stage);
-    for (const b of this.container.querySelectorAll('[data-map]')) b.classList.toggle('sel', b.dataset.map === this.save.map);
-    const nm = mapInfo(this.nextMapId());
-    this.el('.zt-sub').textContent = `${nm.icon} ${nm.name} ・ ${nm.desc}`;
+    this.updateCards();
     this.el('.zt-kigaebtn b').textContent = outfitName(this.save.outfit);
     this.el('.zt-soubibtn b').textContent = `${this.save.gear.inv.length} / ${INV_CAP}`;
     this.el('.zt-upbtn b').textContent = `スコア ${this.save.bank}`;
@@ -315,6 +330,33 @@ export default {
     this.updateSoubi();
     this.updateUpg();
     this.el('.zt-best').textContent = this.save.bestWave ? `さいこう ウェーブ ${this.save.bestWave} ・ スコア ${this.save.bestScore}` : '';
+  },
+
+  // v0.16.0: ステージ せんたくの カード（えらんだ タブの ぶん だけ つくる）
+  updateCards() {
+    const tab = this.save.tab === 'zs' || GK_WORLDS.some((w) => w.id === this.save.tab) ? this.save.tab : 'zs';
+    for (const b of this.container.querySelectorAll('[data-tab]')) b.classList.toggle('sel', b.dataset.tab === tab);
+    const zs = tab === 'zs';
+    this.el('.zt-stages').classList.toggle('hidden', !zs);
+    let html = '';
+    if (zs) {
+      html = ['rotate', ...MAP_IDS].map((id) => {
+        const m = id === 'rotate' ? { icon: '🔀', name: 'おまかせ', desc: 'まいかい ちがう マップ' } : mapInfo(id);
+        return `<button class="zt-card${this.save.map === id ? ' sel' : ''}" data-map="${id}"><i>${m.icon}</i><b>${m.name}</b><span>${m.desc}</span></button>`;
+      }).join('');
+      this.el('.zt-sub').textContent = 'ウェーブを たえぬけ！ ひる → ゆうやけ → よる';
+    } else {
+      const w = GK_WORLDS.find((x) => x.id === tab), g = this.save.gk || { clear: [], best: {} };
+      html = w.stages.map((no) => {
+        const m = gkMeta(no), ok = isGkReady(no), cl = g.clear.includes(no);
+        return `<button class="zt-card zt-gkcard${ok ? '' : ' locked'}${cl ? ' cleared' : ''}" data-gk="${no}"><em>ステージ ${no}</em><i>${ok ? m.icon : '🔒'}</i><b>${m.sub}</b>`
+          + `<span>${ok ? m.desc : 'じゅんびちゅう'}</span>${cl ? `<u>クリア ${g.best[no] ? '・ ' + g.best[no] : ''}</u>` : ''}</button>`;
+      }).join('');
+      this.el('.zt-sub').textContent = `ガンキック ${w.name}`;
+    }
+    const box = this.el('.zt-cards');
+    if (box.dataset.tab !== tab) { box.dataset.tab = tab; box.scrollLeft = 0; }
+    box.innerHTML = html;
   },
 
   // きがえの カード（もっていない ふくは ？）
@@ -564,7 +606,7 @@ export default {
 
   bind() {
     this.onClick = (e) => {
-      const b = e.target.closest('[data-ui],[data-opt],[data-stage],[data-map],[data-outfit],[data-gear],[data-gsel],[data-gearui],[data-upw],[data-upbuy],[data-msel],[data-lo]'); if (!b) return;
+      const b = e.target.closest('[data-ui],[data-opt],[data-stage],[data-map],[data-tab],[data-gk],[data-outfit],[data-gear],[data-gsel],[data-gearui],[data-upw],[data-upbuy],[data-msel],[data-lo]'); if (!b) return;
       this.sfx.unlock();
       if (b.dataset.upw) { this.upSel = b.dataset.upw; this.updateUpg(); this.sfx.swap(); return; }
       if (b.dataset.upbuy) { if (!b.disabled) this.upgUi(b.dataset.upbuy); return; }
@@ -580,10 +622,17 @@ export default {
         this.sfx.swap();
         return;
       }
-      if (b.dataset.map) {
+      if (b.dataset.tab) { this.save.tab = b.dataset.tab; this.persist(); this.updateCards(); this.sfx.swap(); return; }
+      if (b.dataset.gk) { // v0.16.0: ガンキック ステージの カード → ぶきを えらぶ
+        const no = +b.dataset.gk;
+        if (!isGkReady(no)) { this.sfx.empty?.(); return; }
+        this.pendGk = no; this.openLoadout();
+        return;
+      }
+      if (b.dataset.map) { // v0.16.0: マップの カード → そのまま ぶきを えらぶ
         this.save.map = b.dataset.map; this.persist(); this.updateTitle();
-        if (this.game) { this.game.settings = this.save; this.game.loadMap(this.nextMapId()); }
-        this.sfx.swap();
+        if (this.game) { this.game.settings = this.save; this.game.gk = null; this.game.loadMap(this.nextMapId()); }
+        this.pendGk = null; this.openLoadout();
         return;
       }
       if (b.dataset.stage) {
@@ -610,7 +659,12 @@ export default {
       if (ui === 'start') this.openLoadout();
       else if (ui === 'lgo') this.goLoadout();
       else if (ui === 'lback') { this.show('title'); this.sfx.swap(); }
-      else if (ui === 'retry') this.play(true);
+      else if (ui === 'retry') { if (this.curGk) this.playGk(this.curGk, 0); else this.play(true); }
+      else if (ui === 'cpretry') { if (this.curGk) this.playGk(this.curGk, this.cpRoom || 0, this.cpScore || 0); }
+      else if (ui === 'gkagain') { if (this.curGk) this.playGk(this.curGk, 0); }
+      else if (ui === 'gknext') { const n = this.curGk && gkNext(this.curGk); if (n) { this.pendGk = n; this.openLoadout(); } }
+      else if (ui === 'opts') { this.el('.zt-optpanel').classList.remove('hidden'); this.sfx.swap(); }
+      else if (ui === 'optclose') { this.el('.zt-optpanel').classList.add('hidden'); this.sfx.swap(); }
       else if (ui === 'resume') this.resume();
       else if (ui === 'title') this.toTitle();
       else if (ui === 'hub') this.back();
@@ -657,7 +711,9 @@ export default {
     this.el('.zt-gcard').classList.toggle('zt-dim', which === 'pause');
     this.el('.zt-pausescr').classList.toggle('hidden', which !== 'pause');
     this.el('.zt-over').classList.toggle('hidden', which !== 'over');
-    this.root.classList.toggle('zt-playing', which === 'play' || which === 'pause' || which === 'over');
+    this.el('.zt-clear').classList.toggle('hidden', which !== 'clear');
+    if (which !== 'title') this.el('.zt-optpanel').classList.add('hidden');
+    this.root.classList.toggle('zt-playing', which === 'play' || which === 'pause' || which === 'over' || which === 'clear');
     this.input && (this.input.enabled = which === 'play');
   },
 
@@ -683,7 +739,7 @@ export default {
     if (!loadoutReady(this.loSel)) { this.sfx.empty?.(); return; }
     this.save.loadout = this.loSel.slice(); this.persist();
     if (this.game) this.game.settings = this.save;
-    this.play(false);
+    if (this.pendGk) this.playGk(this.pendGk, 0); else this.play(false);
   },
   // HUD の 3つの ボタン（アイコンを いれかえる）
   renderSlots(lo) {
@@ -702,12 +758,35 @@ export default {
     if (!this.game) return;
     this.flushGear();
     this.input.reset();
+    this.game.gk = null; this.curGk = null; // v0.16.0: いつもの ウェーブ
     if (!retry) this.game.loadMap(this.nextMapId());
     if (!retry && this.save.map === 'rotate') { this.save.mapNext = (this.save.mapNext + 1) % MAP_IDS.length; this.persist(); }
     this.game.startGame();
     this.runBank = 0; // v0.8.0: この ゲームで もう bank に いれた スコア
     this.show('play');
     if (!matchMedia('(pointer: coarse)').matches) this.canvas.requestPointerLock?.();
+  },
+  // v0.16.0: ガンキック ステージ（データと マップは あとから よむ）。from = チェックポイントの へや
+  async playGk(no, from = 0, score = 0) {
+    if (!this.game || this.gkBusy) return;
+    const info = GK_READY[no]; if (!info) return;
+    this.gkBusy = true;
+    try {
+      const [stage, mod] = await Promise.all([gkLoadStage(no), gkLoadMap(no)]);
+      if (!this.alive || !this.game) return;
+      if (!hasMap(info.map)) registerMap(info.map, mod.build);
+      this.flushGear(); this.input.reset();
+      this.curGk = no; this.pendGk = null;
+      this.game.loadMap(info.map);
+      this.game.startGk(stage, gkWaves(stage), from, { tod: info.tod, score });
+      this.runBank = from ? score : 0;
+      this.show('play');
+      if (!matchMedia('(pointer: coarse)').matches) this.canvas.requestPointerLock?.();
+    } catch (err) {
+      console.error(err);
+      this.el('.zt-title-err').textContent = 'ステージを よみこめなかった… でんぱを たしかめてね';
+      this.show('title');
+    } finally { this.gkBusy = false; }
   },
   pause() {
     if (!this.game || this.game.state !== 'play') return;
@@ -722,6 +801,7 @@ export default {
   toTitle() {
     if (!this.game) return;
     if (document.pointerLockElement) document.exitPointerLock();
+    this.game.gk = null;
     this.game.setupTitle(); this.show('title'); this.updateTitle();
   },
 
@@ -773,7 +853,7 @@ export default {
       set: (s) => {
         const hpp = Math.max(0, s.hp / s.maxHp);
         if (last.hp !== s.hp) { last.hp = s.hp; E.hpBar.style.width = (hpp * 100).toFixed(1) + '%'; E.hpBar.classList.toggle('low', hpp < 0.35); E.hpNum.textContent = s.hp; }
-        setText('wave', E.wave, s.wave ? `ウェーブ ${s.wave}` : 'じゅんび');
+        setText('wave', E.wave, s.area || (s.wave ? `ウェーブ ${s.wave}` : 'じゅんび'));
         setText('left', E.left, `のこり ${s.left}`);
         setText('score', E.score, String(s.score));
         // v0.8.0: ふえた スコアは そのまま「つかえる スコア」へ（さいこう スコアとは べつ）
@@ -911,10 +991,29 @@ export default {
       },
       hurt: (ang) => { E.hurt.classList.remove('on'); void E.hurt.offsetWidth; E.hurt.classList.add('on'); },
       pause: () => app.pause(),
+      // v0.16.0: ステージ クリア
+      clear: (r) => {
+        const bonus = gkClearBonus(r.no); earnBank(app.save, bonus);
+        const nb = recordGkClear(app.save, r.no, r.score + bonus); app.persist();
+        const nx = gkNext(r.no);
+        app.el('.zt-cres').innerHTML = `<div>ステージ ${r.no} ・ ${gkMeta(r.no).sub}</div><div>スコア <b>${r.score}</b> ＋ クリア ボーナス <b>${bonus}</b></div><div>たおした ゾンビ <b>${r.kills}</b>（ヘッドショット ${r.heads}）</div>${nb ? '<div class="zt-new">しんきろく！</div>' : ''}${nx ? '' : '<div class="zt-soon">つぎの ステージは じゅんびちゅう！</div>'}`;
+        app.el('.zt-nextbtn').classList.toggle('hidden', !nx);
+        if (document.pointerLockElement) document.exitPointerLock();
+        setTimeout(() => app.alive && app.game && app.game.state === 'clear' && app.show('clear'), 1400);
+        app.input.reset(); app.input.enabled = false;
+      },
       over: (r) => {
+        if (r.gk) { // v0.16.0: ガンキック ステージ → ドアの まえ（チェックポイント）から やりなおせる
+          app.cpRoom = r.gk.room; app.cpScore = r.gk.score;
+          app.el('.zt-res').innerHTML = `<div>ステージ ${r.gk.no} ・ エリア <b>${r.gk.room + 1} / ${r.gk.rooms}</b></div><div>スコア <b>${r.score}</b></div><div>たおした ゾンビ <b>${r.kills}</b></div>`;
+          app.el('.zt-cpbtn').classList.toggle('hidden', !(r.gk.room > 0));
+          app.el('.zt-retrybtn').textContent = r.gk.room > 0 ? 'さいしょから' : 'もういちど';
+        } else {
+        app.el('.zt-cpbtn').classList.add('hidden'); app.el('.zt-retrybtn').textContent = 'もういちど';
         const best = r.wave > app.save.bestWave || r.score > app.save.bestScore;
         app.save.bestWave = Math.max(app.save.bestWave, r.wave); app.save.bestScore = Math.max(app.save.bestScore, r.score); app.persist();
         app.el('.zt-res').innerHTML = `<div>ウェーブ <b>${r.wave}</b></div><div>スコア <b>${r.score}</b></div><div>たおした ゾンビ <b>${r.kills}</b>（ヘッドショット ${r.heads}）</div>${best ? '<div class="zt-new">しんきろく！</div>' : ''}`;
+        }
         if (document.pointerLockElement) document.exitPointerLock();
         setTimeout(() => app.alive && app.game && app.game.state === 'over' && app.show('over'), 900);
         app.input.reset(); app.input.enabled = false;

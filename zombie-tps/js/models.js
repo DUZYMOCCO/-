@@ -1,6 +1,6 @@
 // ブロックの キャラクターと ぶき（かくうの デザイン・ロゴなし）
 import * as THREE from '../vendor/three.module.min.js';
-import { zombieFaceTexture, playerFaceTexture, solidTexture, shirtTexture, camoTexture, ojisanTextures, drunkTextures } from './textures.js?v=17';
+import { zombieFaceTexture, playerFaceTexture, solidTexture, shirtTexture, camoTexture, ojisanTextures, drunkTextures } from './textures.js?v=18';
 
 const boxGeoCache = new Map();
 export function boxGeo(w, h, d) {
@@ -776,10 +776,18 @@ export function zombieChunkColors(kind) {
   return [[c.pants, 0], [c.pants, 0], [c.shirt, 1], [c.shirt, 1], [c.shirt, 1], [c.skin, 2], [c.skin, 2], [extra, 2], [c.skin, 3], [c.skin, 3]];
 }
 const BOSS_GOLD = L(0xf1c40f, { emissive: 0x3a2c00 }), BOSS_SPIKE = L(0x9aa3ad);
+const AGENT_ARMOR = L(0x23262e, { emissive: 0x08080c }), AGENT_VISOR = new THREE.MeshBasicMaterial({ color: 0xb46bff });
 const zMats = {};
-function zombieMats(kind) {
-  if (zMats[kind]) return zMats[kind];
-  const c = ZLOOK[kind];
+// v0.16.0: ガンキック ステージの みため（おなじ うごきの ゾンビに べつの ふく）。key = 'walker@lab' など
+export const GK_LOOKS = {
+  lab: { shirt: 0xe6eaee, pants: 0x8a96a2 },                  // しろい はくい（けんきゅうじょ）
+  agent: { skin: 0x58606e, shirt: 0x1c1f26, pants: 0x14161a, emissive: 0x140a24 }, // くろよろい エージェント（かくう）
+};
+export function splitLook(key) { const i = key.indexOf('@'); return i < 0 ? [key, null] : [key.slice(0, i), key.slice(i + 1)]; }
+function zombieMats(kind, look = null) {
+  const key = look ? kind + '@' + look : kind;
+  if (zMats[key]) return zMats[key];
+  const c = look && GK_LOOKS[look] ? { ...ZLOOK[kind], ...GK_LOOKS[look] } : ZLOOK[kind];
   const em = c.emissive ?? 0x0c2208;
   const skin = new THREE.MeshLambertMaterial({ map: solidTexture(c.skin, 0.16, 9), emissive: em }); // くらくても みえる
   const face = new THREE.MeshLambertMaterial({ map: zombieFaceTexture(c.skin, kind), emissive: em });
@@ -787,13 +795,14 @@ function zombieMats(kind) {
   const pants = new THREE.MeshLambertMaterial({ map: solidTexture(c.pants, 0.18, 12) });
   const hair = L(0x3f6b2c), helm = L(0x6d737c);
   skin.userData.lod = c.skin; face.userData.lod = c.skin; shirt.userData.lod = c.shirt; pants.userData.lod = c.pants; // v0.12.0: とおくの かんたんモデルの いろ
-  return (zMats[kind] = { skin, face, shirt, pants, hair, helm });
+  return (zMats[key] = { skin, face, shirt, pants, hair, helm });
 }
 export const FLASH_MAT = new THREE.MeshBasicMaterial({ color: 0xe6ffd0 });
 export const EYE_MAT = new THREE.MeshBasicMaterial({ color: 0xc8ff5a, fog: false });
 
-export function makeZombie(kind) {
-  const m = zombieMats(kind);
+export function makeZombie(kind, look = null) {
+  if (!look && kind.includes('@')) [kind, look] = splitLook(kind);
+  const m = zombieMats(kind, look);
   const root = new THREE.Group();
   const inner = new THREE.Group(); root.add(inner); // しぬときに たおれる ため
   const legs = [];
@@ -809,7 +818,14 @@ export function makeZombie(kind) {
   if (kind === 'brute') part(head, m.helm, 0.56, 0.14, 0.56, 0, 0.52, 0);
   const extra = {};
   dressZombie(kind, { inner, body, head, legs }, extra);
-  if (kind === 'boss') {
+  if (kind === 'boss' && look === 'agent') {
+    // v0.16.0: くろよろい エージェント（くろい ヘルメット・むらさきの バイザー・かたの いた。かくうの デザイン）
+    part(head, AGENT_ARMOR, 0.56, 0.2, 0.56, 0, 0.5, 0);
+    part(head, AGENT_VISOR, 0.46, 0.09, 0.04, 0, 0.3, -0.27);
+    for (const s of [-1, 1]) part(body, AGENT_ARMOR, 0.3, 0.12, 0.36, s * 0.34, 0.76, 0);
+    part(body, AGENT_VISOR, 0.5, 0.05, 0.31, 0, 0.06, 0);
+    part(body, AGENT_ARMOR, 0.4, 0.3, 0.06, 0, 0.42, -0.17);
+  } else if (kind === 'boss') {
     // おうかん・かたの トゲ・ベルト（ボスだと すぐ わかる）
     part(head, BOSS_GOLD, 0.54, 0.1, 0.54, 0, 0.55, 0);
     for (const [x, z] of [[-0.2, -0.2], [0.2, -0.2], [-0.2, 0.2], [0.2, 0.2], [0, -0.22]]) part(head, BOSS_GOLD, 0.1, 0.14, 0.1, x, 0.67, z);
@@ -856,7 +872,7 @@ export function makeZombie(kind) {
 // v0.12.0: とおくの ゾンビ用の かんたんモデル（ぜんぶの はこを 1つに・いろは ちょうてんカラー）
 // → InstancedMesh で しゅるいごとに 1かい だけ かく。め は べつ（よるに ひかる）
 const lodCache = {};
-export function zombieLod(kind) {
+export function zombieLod(kind) { // kind は 'walker@lab' でも よい（v0.16.0）
   if (lodCache[kind]) return lodCache[kind];
   const z = makeZombie(kind);
   z.root.updateMatrixWorld(true);

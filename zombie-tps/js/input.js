@@ -1,4 +1,4 @@
-import { stickCurve, digitEvent } from './rules.js?v=17';
+import { stickCurve, digitEvent } from './rules.js?v=18';
 // そうさ: タッチ（ひだり スティック・みぎ ドラッグ・ボタン）と キーボード／マウス
 export class Input {
   constructor(touchLayer, canvas) {

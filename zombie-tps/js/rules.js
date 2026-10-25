@@ -1,7 +1,7 @@
 // ゾンビストライク — ゲームの きまり（DOM / three.js に いぞんしない。node のテストから よめる）
 // ぶき・ダメージ・ウェーブ・あたりはんてい（レイ×はこ）・いどうの ぶつかり・ゾンビの みちさがし（フローフィールド）
 
-export const VERSION = '0.15.0';
+export const VERSION = '0.16.0';
 
 // ---- ぶき ----
 // rpm: 1ぷんかんの はっしゃかず / mag: マガジン / reserve: よびだん / reload: びょう
@@ -996,7 +996,23 @@ export function normalizeSave(s) {
     gear: normalizeGear(o.gear),
     ...normalizeMelee(o), // v0.13.0: なぐる ぶきの レベル（mlv）と えらんだ もの（melee）
     loadout: normalizeLoadout(o.loadout), // v0.15.0: もっていく 3つの ぶき（まえに えらんだ もの）
+    gk: normalizeGkSave(o.gk), // v0.16.0: ガンキック ステージ（クリア・さいこう スコア）
+    tab: typeof o.tab === 'string' && /^(zs|w[1-9])$/.test(o.tab) ? o.tab : 'zs', // v0.16.0: ステージ せんたくの タブ
   };
+}
+// v0.16.0: ガンキック ステージの きろく { clear: [1, 2], best: { 1: 5200 } }
+export function normalizeGkSave(g) {
+  const o = g && typeof g === 'object' ? g : {};
+  const clear = [...new Set((Array.isArray(o.clear) ? o.clear : []).filter((n) => Number.isInteger(n) && n >= 1 && n <= 99))].sort((a, b) => a - b);
+  const best = {};
+  if (o.best && typeof o.best === 'object') for (const [k, v] of Object.entries(o.best)) { const n = +k; if (Number.isInteger(n) && n >= 1 && n <= 99 && Number.isFinite(v) && v > 0) best[n] = Math.floor(v); }
+  return { clear, best };
+}
+export function recordGkClear(save, no, score) {
+  const g = save.gk = normalizeGkSave(save.gk);
+  if (!g.clear.includes(no)) { g.clear.push(no); g.clear.sort((a, b) => a - b); }
+  const nb = score > (g.best[no] || 0); if (nb) g.best[no] = Math.floor(score);
+  return nb;
 }
 
 // ---- ふく（みための きがえ。つよさは かわらない）----

@@ -17,26 +17,27 @@ import {
   VEHICLE, BLAST_FX, blastHits, blastReachesVehicle,
   SpatialGrid, thinkInterval, QualityGovernor, govPixelRatio,
   normalizeLoadout, loadoutSlot, cycleLoadout, applyCrate, SMOKE, smokeAffects,
-} from './rules.js?v=17';
-import { Crowd } from './crowd.js?v=17';
-import { RobotMixin } from './robot.js?v=17';
-import { AllyMixin } from './ally.js?v=17';
-import { CopMixin } from './cop.js?v=17';
-import { ArmyMixin } from './army.js?v=17';
-import { DrunkMixin } from './drunk.js?v=17';
+} from './rules.js?v=18';
+import { Crowd } from './crowd.js?v=18';
+import { RobotMixin } from './robot.js?v=18';
+import { AllyMixin } from './ally.js?v=18';
+import { CopMixin } from './cop.js?v=18';
+import { ArmyMixin } from './army.js?v=18';
+import { DrunkMixin } from './drunk.js?v=18';
 const BOT_NAME = { cop: 'けいさつおじさん', army: 'アーミーロボ', drunk: 'よっぱらいおじさん' }; // v0.14.0
-import { VehicleMixin } from './vehicles.js?v=17';
-import { SuitMixin } from './suit.js?v=17';
-import { MissileMixin } from './missiles.js?v=17';
-import { MeleeMixin } from './melee.js?v=17';
-import { EnergyMixin } from './beams.js?v=17';
-import { makeNav } from './nav.js?v=17';
-import { buildMap, playerColliders, zombieColliders, shotColliders } from './map.js?v=17';
-import { buildTextures, fxTextures } from './textures.js?v=17';
-import { buildWorld, disposeWorld } from './world.js?v=17';
-import { Backdrop, BACKDROPS } from './backdrop.js?v=17';
-import { makePlayer, applyOutfit, applyGear, makeGearDrop, makeOjisan, makeWeapons, makeZombie, makeRocketProjectile, makeRocketCrate, zombieChunkColors, FLASH_MAT } from './models.js?v=17';
-import { FX } from './fx.js?v=17';
+import { VehicleMixin } from './vehicles.js?v=18';
+import { SuitMixin } from './suit.js?v=18';
+import { MissileMixin } from './missiles.js?v=18';
+import { MeleeMixin } from './melee.js?v=18';
+import { GkMixin } from './gk/play.js?v=18';
+import { EnergyMixin } from './beams.js?v=18';
+import { makeNav } from './nav.js?v=18';
+import { buildMap, playerColliders, zombieColliders, shotColliders } from './map.js?v=18';
+import { buildTextures, fxTextures } from './textures.js?v=18';
+import { buildWorld, disposeWorld } from './world.js?v=18';
+import { Backdrop, BACKDROPS } from './backdrop.js?v=18';
+import { makePlayer, applyOutfit, applyGear, makeGearDrop, makeOjisan, makeWeapons, makeZombie, makeRocketProjectile, makeRocketCrate, zombieChunkColors, FLASH_MAT } from './models.js?v=18';
+import { FX } from './fx.js?v=18';
 const A_RIGHT = new THREE.Vector3();
 
 const v3 = () => new THREE.Vector3();
@@ -142,7 +143,8 @@ export class Game {
     this.vertical = !!map.vertical; this.ladders = map.ladders || [];
     this.buildPerchMarks();
     this.cullOn = !!(map.interior && this.world.levels && this.world.levels.size); this.cullKey = '';
-    this.backdrop.setMap(map.id);
+    this.backdrop.setMap(map.backdrop || map.id); // v0.16.0: ガンキック マップは にている けしきを かりる
+    this.gkBuildDoors();
     if (!first) {
       // よるの あかり（がいとうの かず）を つくりなおす
       this.scene.remove(this.nightGroup); this.scene.remove(this.sunDisk);
@@ -306,7 +308,7 @@ export class Game {
     this.hemi.color.set(p.hemiSky); this.hemi.groundColor.set(tk ? mixC(p.hemiGround, tt, tk * 0.4) : p.hemiGround); this.hemi.intensity = p.hemiI;
     this.baseHemiI = p.hemiI;
     this.darkAmt = Math.min(1, p.night + p.lamps * 0.35);
-    const mc = BACKDROPS[this.map.id]?.moon; if (mc != null) { this.moon.material.color.set(mc); this.moonHalo.material.color.set(mc); }
+    const mc = BACKDROPS[this.map.backdrop || this.map.id]?.moon; if (mc != null) { this.moon.material.color.set(mc); this.moonHalo.material.color.set(mc); }
     this.sun.color.set(p.sun); this.sun.intensity = p.sunI; this.sunOff.set(...p.off);
     const dark = Math.max(p.night, p.moon, p.lamps);
     this.nightGroup.visible = dark > 0.02;
@@ -387,17 +389,19 @@ export class Game {
 
   // ---- ゾンビ ----
   spawnZombie(kind, x, z, hpMul = 1, y = 0) {
+    // v0.16.0: 'walker@lab' = うごきは walker・みためは けんきゅうじょ（ガンキック ステージ）
+    const lk = kind.includes('@') ? kind : null; if (lk) kind = kind.slice(0, kind.indexOf('@'));
     const def = ZOMBIES[kind];
-    const pl = this.pool[kind] || (this.pool[kind] = []);
+    const pl = this.pool[lk || kind] || (this.pool[lk || kind] = []);
     let model = pl.pop();
-    if (!model) model = makeZombie(kind);
+    if (!model) model = makeZombie(lk || kind);
     model.root.visible = true; model.inner.rotation.set(0, 0, 0); model.inner.position.set(0, 0, 0); model.inner.scale.set(1, 1, 1); model.root.scale.setScalar(def.scale);
     model.root.rotation.set(0, 0, 0); model.eyes.visible = true;
     if (!this.crowd) { this.crowd = new Crowd(this.scene); this.crowd.blobsOn = this.shadows; }
     for (const m of model.meshes) m.material = m.userData.mat;
     this.scene.add(model.root);
     const zz = {
-      kind, model, x, z, y, yaw: 0, hp: Math.round(def.hp * hpMul), maxHp: Math.round(def.hp * hpMul), alive: true, state: 'walk',
+      kind, lk, model, x, z, y, yaw: 0, hp: Math.round(def.hp * hpMul), maxHp: Math.round(def.hp * hpMul), alive: true, state: 'walk',
       t: 0, atkT: 0.6, stagger: 0, flash: 0, phase: Math.random() * 6, scale: def.scale, speed: def.speed * (0.9 + Math.random() * 0.2),
       deadT: 0, demo: false, stuck: 0, lastX: x, lastZ: z, kvx: 0, kvz: 0, vy: 0, fly: null, flown: false, down: 0, downT0: 0, bleedT: 0, bleedDps: 0, bleedAcc: 0, bumpT: 0, bumpId: 0,
       climb: null, slam: null, slamCd: 1.5 + Math.random(), charge: null, chargeCd: 3, shattered: false,
@@ -407,9 +411,9 @@ export class Game {
       thinkT: Math.random() * 0.2, dirX: 0, dirZ: 0, d: 0, full: true, force: false, lodOn: false, vis: true,
     };
     if (kind === 'boss') {
-      zz.hp = zz.maxHp = bossHp(this.wave || 3);
+      zz.hp = zz.maxHp = this.gk ? this.gkBossHp() : bossHp(this.wave || 3);
       this.boss = zz;
-      this.hud.bossBar?.({ name: def.name, hp: 1 });
+      this.hud.bossBar?.({ name: this.bossName(), hp: 1 });
     }
     model.root.position.set(x, y, z);
     this.zombies.push(zz);
@@ -420,10 +424,12 @@ export class Game {
     if (z.model.deco) { for (const d of Object.values(z.model.deco)) d.visible = false; }
     z.model.root.visible = true;
     if (this.boss === z) { this.boss = null; this.hud.bossBar?.(null); }
-    (this.pool[z.kind] || (this.pool[z.kind] = [])).push(z.model);
+    (this.pool[z.lk || z.kind] || (this.pool[z.lk || z.kind] = [])).push(z.model);
   }
 
+  bossName() { return (this.gk && this.spec && this.spec.bossName) || ZOMBIES.boss.name; }
   pickSpawn() {
+    if (this.gk) return this.gkPickSpawn(); // v0.16.0: いまの へやの でぐち から
     // ひろい マップでも まちくたびれない: ちかすぎず とおすぎない ゲートから
     const o = pickSpawnPoint(this.map.spawns, this.pos.x, this.pos.z, Math.random(), undefined, this.pos.y);
     const y = o.y || 0;
@@ -436,6 +442,7 @@ export class Game {
 
   // ---- ウェーブ ----
   updateWaves(dt) {
+    if (this.gk) { this.gkUpdate(dt); return; } // v0.16.0: ガンキック ステージは へや → ドア → へや
     if (this.interT > 0) {
       this.interT -= dt;
       if (this.interT <= 0) {
@@ -1290,7 +1297,7 @@ export class Game {
 
   gameOver() {
     this.state = 'over';
-    this.hud.over({ wave: this.wave, score: this.score, kills: this.kills, heads: this.heads });
+    this.hud.over({ wave: this.wave, score: this.score, kills: this.kills, heads: this.heads, gk: this.gk ? { no: this.gk.stage.no, room: this.gk.room, rooms: this.gk.waves.length, score: this.gk.cpScore } : null });
   }
 
   // ---- うつ ----
@@ -1508,7 +1515,7 @@ export class Game {
     if (!z.slam && !z.charge && !opt.quiet) z.stagger = Math.max(z.stagger, opt.blast ? 0.7 : head ? 0.28 : 0.12 + kn * 0.03) * Math.min(1, heavyOf(z.kind) * 1.25);
     // ばくはつは みどりの しみ なし（ブロックに くだける）
     if (!opt.blast && !opt.fire && !opt.quiet && Math.random() < 0.7) this.fx.splat(this.tmp.c.set(z.x + dir.x * 0.6 + (Math.random() - 0.5) * 0.7, z.y + 0.02, z.z + dir.z * 0.6 + (Math.random() - 0.5) * 0.7), undefined, 0.9 + Math.random() * 0.4);
-    if (this.boss === z) this.hud.bossBar?.({ name: ZOMBIES.boss.name, hp: Math.max(0, z.hp / z.maxHp) });
+    if (this.boss === z) this.hud.bossBar?.({ name: this.bossName(), hp: Math.max(0, z.hp / z.maxHp) });
     if (z.hp <= 0) {
       z.alive = false; z.deadT = 0; z.poofed = false;
       z.climb = null; z.slam = null; z.charge = null; z.chargeWind = false; z.leap = null; z.scream = 0;
@@ -1662,7 +1669,7 @@ export class Game {
     }
     if (this.state === 'title') { this.titleT += dt; this.pFloor = 0; this.pSupport = null; this.updateCull(); this.updateZombies(dt); this.updateTitleCam(dt); this.updateNight(); this.fx.update(dt); return; }
     if (this.state === 'pause') return;
-    if (this.state === 'over') { this.updateOjiHud(); this.updateRobotHud(); this.updateCopHud(); this.updateArmyHud(); this.updateDrunkHud(); this.updateSuitHud(); this.updateShells(dt); this.updateVehicles(dt); this.updateRockets(dt); this.updateMissiles(dt); this.updateSmoke(dt); this.updateLasers?.(dt); this.hideBeam?.(); this.updateZombies(dt); this.updatePickups(dt); this.fx.update(dt); this.updateCamera(dt, false); this.updateNight(); return; }
+    if (this.state === 'over' || this.state === 'clear') { this.updateOjiHud(); this.updateRobotHud(); this.updateCopHud(); this.updateArmyHud(); this.updateDrunkHud(); this.updateSuitHud(); this.updateShells(dt); this.updateVehicles(dt); this.updateRockets(dt); this.updateMissiles(dt); this.updateSmoke(dt); this.updateLasers?.(dt); this.hideBeam?.(); this.updateZombies(dt); this.updatePickups(dt); this.fx.update(dt); this.updateCamera(dt, false); this.updateNight(); return; }
 
     const gun = this.guns[this.cur], w = gun.w || WEAPONS[this.cur];
     // イベント
@@ -1957,7 +1964,7 @@ export class Game {
     const g = this.guns[this.cur], w = g.w || WEAPONS[this.cur];
     this.hud.set({
       hp: Math.ceil(this.hp), maxHp: this.maxHp, ammo: g.ammo, mag: w.mag, reserve: g.reserve, weapon: this.cur,
-      reloading: g.reloading > 0 ? 1 - g.reloading / w.reload : -1, wave: this.wave, left: this.remaining(), score: this.score,
+      reloading: g.reloading > 0 ? 1 - g.reloading / w.reload : -1, wave: this.wave, area: this.gk ? `エリア ${this.gk.room + 1}/${this.gk.waves.length}` : null, left: this.remaining(), score: this.score,
       spread: currentSpread(w, { moving: this.moveAmt > 0.2, aiming: this.aimAmt > 0.5, airborne: !this.onGround, bloom: g.bloom }),
       fov: this.camera.fov, aim: this.aimAmt, guns: this.guns, lv: g.lv || 1, suit: this.suit ? this.suit.weapon : null, loadout: this.loadout || null,
     }, force);
@@ -1996,4 +2003,4 @@ export class Game {
     this.renderer.forceContextLoss?.();
   }
 }
-Object.assign(Game.prototype, AllyMixin, RobotMixin, CopMixin, ArmyMixin, DrunkMixin, VehicleMixin, SuitMixin, MissileMixin, MeleeMixin, EnergyMixin);
+Object.assign(Game.prototype, GkMixin, AllyMixin, RobotMixin, CopMixin, ArmyMixin, DrunkMixin, VehicleMixin, SuitMixin, MissileMixin, MeleeMixin, EnergyMixin);

@@ -154,7 +154,7 @@ test('セーブの よみこみ', () => {
   assert.deepEqual(normalizeSave(null), { bestWave: 0, bestScore: 0, autoFire: false, sens: 'mid', quality: 'auto', stage: 'day', flashlight: true,
     outfit: 'normal', outfits: ['normal'], gear: { inv: [], eq: { head: null, body: null, feet: null, arm: null } },
     autoEquip: true, map: 'rotate', mapNext: 0, bank: 0, wlv: { rifle: 1, pistol: 1, shotgun: 1, rocket: 1, minigun: 1, sniper: 1, magnum: 1, mlauncher: 1, laser: 1, flamer: 1, beam: 1, smoke: 1 }, loadout: ['rifle', 'shotgun', 'rocket'],
-    slv: { head: 1, body: 1, feet: 1, arm: 1 }, hlv: 1, mlv: { bat: 1, hammer: 1, katana: 1 }, melee: 'bat' });
+    slv: { head: 1, body: 1, feet: 1, arm: 1 }, hlv: 1, mlv: { bat: 1, hammer: 1, katana: 1 }, melee: 'bat', gk: { clear: [], best: {} }, tab: 'zs' });
   assert.equal(normalizeSave({ bestWave: 7, sens: 'zzz' }).sens, 'mid');
   assert.equal(normalizeSave({ bestWave: 7 }).bestWave, 7);
 });
@@ -234,7 +234,7 @@ test('なめらか いどう: approach は フレームレートに よらない
 });
 
 test('バージョン と セーブの ステージ', () => {
-  assert.equal(VERSION, '0.15.0');
+  assert.equal(VERSION, '0.16.0');
   assert.equal(normalizeSave(null).stage, 'day');
   assert.equal(normalizeSave({ stage: 'night' }).stage, 'night');
   assert.equal(normalizeSave({ stage: 'mars' }).stage, 'day');
@@ -2041,7 +2041,7 @@ test('v0.14 ファイル: army.js・drunk.js が キャッシュに ある', asy
   const root = path.dirname(path.dirname(url.fileURLToPath(import.meta.url)));
   const sw = fs.readFileSync(path.join(root, 'sw-assets.js'), 'utf8');
   for (const f of ['js/army.js', 'js/drunk.js']) { assert.ok(sw.includes(f), f); assert.ok(fs.existsSync(path.join(root, f))); }
-  assert.match(sw, /0\.15\.0/); assert.ok(sw.includes('js/beams.js') && fs.existsSync(path.join(root, 'js/beams.js')), 'v0.15.0: beams.js');
+  assert.match(sw, /0\.1[5-9]\.0/); assert.ok(sw.includes('js/beams.js') && fs.existsSync(path.join(root, 'js/beams.js')), 'v0.15.0: beams.js');
   const dr = fs.readFileSync(path.join(root, 'js/drunk.js'), 'utf8');
   assert.ok(dr.includes('drunkShouldCome') && dr.includes('planCop') && !dr.includes('uncleForWave'));
 });
@@ -2218,4 +2218,123 @@ test('v0.15.0 スーツの パンチ: なぐる ボタン・ぶきバーに な�
   st.weapon = 'missile'; st.cd = SUIT_WEAPONS.missile.interval; st.punchCd = SUIT_WEAPONS.punch.interval;
   tickSuit(st, 0.45); assert.equal(st.punchCd, 0); assert.ok(st.cd > 0 || SUIT_WEAPONS.missile.interval <= 0.45);
   tickSuit(st, 1); assert.equal(st.punchCd, 0);
+});
+
+// ================= v0.16.0: ガンキック ヒーローズの せかい（ステージを ふやす）＋ ステージ せんたく =================
+import { GK_CATALOG as GKC, GK_COUNT, GK_WORLDS, GK_READY, isGkReady, gkMeta, gkNext, GK_ENEMY, gkKind, baseKind, gkWaves, gkArenaList, gkClearBonus, gkRoomAt, gkPickRoomSpawn, gkDoorOpenBox, gkLoadStage, gkLoadMap, gkStageFile } from '../js/gk/core.js';
+import { registerMap, hasMap } from '../js/map.js';
+import { normalizeGkSave, recordGkClear } from '../js/rules.js';
+const gkAllIds = (st) => st.arenas.flat(2);
+
+test('v0.16.0 ガンキック: 18 ステージの めくじ・ワールドに ぜんぶ はいる', () => {
+  assert.equal(GK_COUNT, 18);
+  assert.deepEqual(GKC.map((s) => s.no), Array.from({ length: 18 }, (_, i) => i + 1));
+  const inWorld = GK_WORLDS.flatMap((w) => w.stages).sort((a, b) => a - b);
+  assert.deepEqual(inWorld, GKC.map((s) => s.no), 'どの ステージも 1つの ワールドに');
+  for (const w of GK_WORLDS) { assert.ok(w.id && w.tab && w.name, w.id); assert.ok(w.tab.length <= 6, 'タブに はいる ' + w.tab); }
+  for (const s of GKC) { assert.ok(s.sub && s.icon && s.desc && s.boss, s.no); assert.ok(s.sub.length <= 13, 'カードに はいる ' + s.sub); }
+  assert.ok(isGkReady(1) && GK_READY[1].map === 'gk_lab');
+  assert.equal(gkMeta(1).world, 'w1'); assert.equal(gkMeta(99), null);
+  assert.equal(gkNext(18), null); assert.equal(gkClearBonus(2) > gkClearBonus(1), true);
+});
+
+test('v0.16.0 ガンキック: ステージは 1つずつ べつの ファイル（あとから よむ）・めくじと おなじ', async () => {
+  const fs = await import('node:fs'), path = await import('node:path'), url = await import('node:url');
+  const root = path.dirname(path.dirname(url.fileURLToPath(import.meta.url)));
+  let total = 0;
+  for (const m of GKC) {
+    const f = path.join(root, 'js/gk', gkStageFile(m.no));
+    assert.ok(fs.existsSync(f), f); total += fs.statSync(f).size;
+    const st = await gkLoadStage(m.no);
+    assert.equal(st.no, m.no); assert.equal(st.sub, m.sub); assert.equal(st.world, m.world); assert.equal(st.boss.name, m.boss);
+    assert.ok(st.arenas.length >= 2 && st.boss.hp > 0, m.no);
+    for (const id of gkAllIds(st)) assert.ok(GK_ENEMY[id], `てき ${id} → 3D (${m.no})`);
+  }
+  assert.ok(total < 40000, 'ステージ データ ぜんぶで 40KB より ちいさい ' + total);
+  const cat = fs.statSync(path.join(root, 'js/gk/catalog.js')).size;
+  assert.ok(cat < 6000, 'めくじは ちいさい ' + cat);
+});
+
+test('v0.16.0 ガンキック: てきは ゾンビストライクの ゾンビに おきかわる', () => {
+  for (const [id, k] of Object.entries(GK_ENEMY)) assert.ok(ZOMBIES[baseKind(k)], `${id} → ${k}`);
+  assert.equal(gkKind('labz'), 'walker@lab'); assert.equal(baseKind('walker@lab'), 'walker');
+  assert.equal(gkKind('???'), 'walker');
+});
+
+test('v0.16.0 ガンキック: へや ごとの てき・さいごの へやに ボス・まいかい おなじ', async () => {
+  const st = await gkLoadStage(1);
+  const w = gkWaves(st);
+  assert.equal(w.length, st.arenas.length);
+  assert.deepEqual(w.map((x) => x.total), [12, 17, 22, 28]);
+  assert.deepEqual(w.map((x) => x.boss), [0, 0, 0, 1]);
+  assert.equal(w[3].list.filter((k) => k === 'boss').length, 1);
+  assert.equal(w[3].bossName, st.boss.name); assert.equal(w[3].bossLook, 'agent');
+  assert.deepEqual(gkWaves(st), w, 'おなじ ステージは おなじ ならび');
+  for (const x of w) { assert.ok(x.maxAlive <= 18 && x.spawnGap >= 0.5, 'SE2 でも おもくない'); for (const k of x.list) assert.ok(k === 'boss' || ZOMBIES[baseKind(k)], k); }
+  for (const m of GKC) { const s = await gkLoadStage(m.no); const ws = gkWaves(s); assert.equal(ws.at(-1).boss, 1); assert.ok(ws.every((x) => x.total <= 45), m.no); }
+  const l = gkArenaList([['zombie', 'brute']], 10);
+  assert.equal(l.length, 10); assert.equal(l.filter((k) => k === GK_ENEMY.brute).length, 1);
+});
+
+test('v0.16.0 ガンキック マップ: いっぽんみちの へや・ドア・へやの なかから でる', async () => {
+  const mod = await gkLoadMap(1);
+  if (!hasMap('gk_lab')) registerMap('gk_lab', mod.build);
+  const m = buildMap('gk_lab');
+  const { rooms, doors } = m.gk;
+  assert.equal(rooms.length, 4); assert.equal(doors.length, rooms.length - 1, 'へやの あいだに ドア');
+  assert.equal(gkRoomAt(rooms, m.playerStart.x, m.playerStart.z), 0, 'さいしょの へやから');
+  for (const s of m.spawns) assert.ok(gkRoomAt(rooms, s.x, s.z) >= 0, 'でぐちは どこかの へや');
+  for (let i = 0; i < rooms.length; i++) assert.ok(m.spawns.filter((s) => gkRoomAt(rooms, s.x, s.z) === i).length >= 4, 'へや ' + i);
+  const db = m.boxes.filter((b) => b.door !== undefined);
+  assert.equal(db.length, doors.length);
+  for (const b of db) assert.ok(b.barrier, 'ドアは みえない かべ');
+  assert.ok(playerColliders(m).some((b) => b.door !== undefined), 'しまった ドアは とおれない');
+  assert.ok(!zombieColliders(m).some((b) => b.door !== undefined));
+  assert.deepEqual(gkDoorOpenBox(), [-60, -50]);
+  assert.ok(!MAP_IDS_MAP.includes('gk_lab'), 'いつもの マップ リストには はいらない');
+});
+
+test('v0.16.0 ガンキック: へやの でぐちは ちかすぎない ところ', () => {
+  const sp = [{ x: 0, z: 0 }, { x: 20, z: 0 }, { x: 30, z: 0 }];
+  for (let r = 0; r < 1; r += 0.1) assert.notEqual(gkPickRoomSpawn(sp, 0, 0, r), sp[0]);
+  assert.equal(gkPickRoomSpawn([{ x: 1, z: 1 }], 0, 0, 0.5).x, 1, 'ちかくしか なければ そこ');
+  assert.equal(gkRoomAt([{ b: [0, 0, 10, 10] }], 20, 5), -1);
+});
+
+test('v0.16.0 いつもの マップと モードは そのまま', () => {
+  assert.deepEqual(MAP_IDS_MAP, MAP_IDS);
+  assert.equal(MAP_IDS.length, 8);
+  assert.ok(!MAP_IDS.some((id) => id.startsWith('gk')));
+});
+
+test('v0.16.0 セーブ: クリアと さいこう スコア・タブ', () => {
+  assert.deepEqual(normalizeGkSave(null), { clear: [], best: {} });
+  assert.deepEqual(normalizeGkSave({ clear: [3, 1, 1, 'x', 120, -2], best: { 1: 500, 3: 'a', 177: 4 } }), { clear: [1, 3], best: { 1: 500 } });
+  const s = normalizeSave(null);
+  assert.equal(s.tab, 'zs'); assert.equal(normalizeSave({ tab: 'w2' }).tab, 'w2'); assert.equal(normalizeSave({ tab: 'zzz' }).tab, 'zs');
+  assert.equal(recordGkClear(s, 1, 1000), true); assert.deepEqual(s.gk.clear, [1]);
+  assert.equal(recordGkClear(s, 1, 800), false); assert.equal(s.gk.best[1], 1000);
+  assert.equal(recordGkClear(s, 1, 1200), true); assert.equal(s.gk.best[1], 1200); assert.deepEqual(s.gk.clear, [1]);
+});
+
+test('v0.16.0 ファイル: キャッシュ・えもじ・ステージ せんたく', async () => {
+  const fs = await import('node:fs'), path = await import('node:path'), url = await import('node:url');
+  const root = path.dirname(path.dirname(url.fileURLToPath(import.meta.url)));
+  const sw = fs.readFileSync(path.join(root, 'sw-assets.js'), 'utf8');
+  for (const f of ['js/gk/core.js', 'js/gk/catalog.js', 'js/gk/play.js']) assert.ok(sw.includes(f), f);
+  assert.ok(!sw.includes('js/gk/stages/'), 'ステージは あとから よむ（さいしょの キャッシュに いれない）');
+  const bad = /[⛑🏥🚑✚✙✛✜➕✝☩]|\p{Regional_Indicator}/u;
+  const files = ['js/gk/core.js', 'js/gk/catalog.js', 'js/gk/play.js', 'js/gk/maps/lab.js', ...GKC.map((m) => 'js/gk' + gkStageFile(m.no).slice(1))];
+  for (const f of files) assert.ok(!bad.test(fs.readFileSync(path.join(root, f), 'utf8')), f);
+  const ix = fs.readFileSync(path.join(root, 'js/index.js'), 'utf8');
+  assert.ok(ix.includes('zt-tabs') && ix.includes('zt-cards') && ix.includes('data-gk') && ix.includes('cpretry') && ix.includes('zt-clear'));
+  for (const f of ['js/game.js', 'js/gk/play.js', 'js/index.js']) assert.ok(!/blood\s*:\s*0x[89a-f][0-9a-f]0000/i.test(fs.readFileSync(path.join(root, f), 'utf8')), 'あかい ちは なし ' + f);
+});
+
+test('v0.16.0 みため: けんきゅうじょの ゾンビ・くろよろい', async () => {
+  const fs = await import('node:fs'), path = await import('node:path'), url = await import('node:url');
+  const root = path.dirname(path.dirname(url.fileURLToPath(import.meta.url)));
+  const md = fs.readFileSync(path.join(root, 'js/models.js'), 'utf8');
+  assert.ok(md.includes('GK_LOOKS') && md.includes('lab') && md.includes('agent') && md.includes('splitLook'));
+  for (const k of Object.values(GK_ENEMY)) { const lk = k.split('@')[1]; if (lk) assert.ok(md.includes(`${lk}:`), lk); }
 });
