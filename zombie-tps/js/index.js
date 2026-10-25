@@ -10,8 +10,8 @@ import { WEAPONS, WEAPON_ORDER, normalizeSave, SENS, VERSION, OUTFITS, outfitNam
   UPGRADE, upgradeCost, upgradedWeapon, weaponLevel, buyUpgrade, earnBank, gearRefund, discardGear, isWorn, needsDropConfirm, weakestLoose,
   SLOT_UP, HP_UP, slotLevel, hpLevel, slotUpCost, hpUpCost, baseHpAt, slotBonus, buySlotUpgrade, buyHpUpgrade, GEAR_SLOT_IDS,
   SUIT_ORDER, SUIT_WEAPONS, suitLabel, SUIT,
-  MELEE, MELEE_ORDER, MELEE_UP, meleeLevel, meleeUpCost, meleeStats, buyMelee, isMelee, DEFAULT_MELEE } from './rules.js?v=15';
-import { MAPS, mapInfo } from './map.js?v=15';
+  MELEE, MELEE_ORDER, MELEE_UP, meleeLevel, meleeUpCost, meleeStats, buyMelee, isMelee, DEFAULT_MELEE } from './rules.js?v=16';
+import { MAPS, mapInfo } from './map.js?v=16';
 
 const hex6 = (n) => '#' + n.toString(16).padStart(6, '0');
 // v0.7.0: がめんの そとを さす やじるしは ボタンに かぶらない たかさ（うえから 16%〜32%）
@@ -55,9 +55,9 @@ function totalsText(gear, save) {
   const parts = GEAR_STAT_IDS.filter((k) => t[k]).map((k) => `${GEAR_STATS[k].name} +${t[k]}${GEAR_STATS[k].unit}${t[k] >= GEAR_STATS[k].cap ? '（MAX）' : ''}`);
   return parts.length ? parts.join(' ・ ') : 'まだ なにも つけて いないよ';
 }
-import { Game } from './game.js?v=15';
-import { Input } from './input.js?v=15';
-import { Sfx } from './sfx.js?v=15';
+import { Game } from './game.js?v=16';
+import { Input } from './input.js?v=16';
+import { Sfx } from './sfx.js?v=16';
 
 // v0.7.0: ぶきの ちいさい アイコン（かくうの シルエット）
 const svgI = (d) => `<svg viewBox="0 0 32 16" aria-hidden="true">${d}</svg>`;
@@ -96,7 +96,7 @@ const OPT_CYCLE = { autoFire: [false, true], sens: ['low', 'mid', 'high'], quali
 
 export default {
   prepare() {
-    return loadCss(new URL('../css/zombie-tps.css?v=15', import.meta.url).href);
+    return loadCss(new URL('../css/zombie-tps.css?v=16', import.meta.url).href);
   },
 
   init(container, onBackToHub) {
@@ -146,7 +146,7 @@ export default {
           <div class="zt-top">
             <button class="zt-pause" data-act="pause">Ⅱ</button>
             <div class="zt-hp"><span>HP</span><div class="zt-hpbar"><div></div></div><em>100</em></div>
-            <div class="zt-boticon hidden"><b>ロボ<i class="zt-botlv">Lv1</i></b><div class="zt-bothp"><div></div></div></div>
+            <div class="zt-boticons"><div class="zt-boticon zt-police hidden"><b>けいさつ<i class="zt-botlv">Lv1</i></b><div class="zt-bothp"><div></div></div></div><div class="zt-boticon zt-army hidden"><b>アーミー<i class="zt-botlv">Lv1</i></b><div class="zt-bothp"><div></div></div></div></div>
             <div class="zt-wave"><b>ウェーブ 1</b><span>のこり 0</span></div>
             <div class="zt-score">スコア <b>0</b></div>
           </div>
@@ -163,9 +163,12 @@ export default {
           <div class="zt-banner"><b></b><span></span></div>
           <div class="zt-oji hidden"><div class="zt-ojitxt">たすけて！</div><div class="zt-ojihp"><div></div></div></div>
           <div class="zt-ojiarrow hidden"><i>➤</i><span>たすけて！</span></div>
-          <div class="zt-bot hidden"><span>けいさつロボ・さわってね</span><em class="zt-lvup">Lv UP!</em><div class="zt-botrow"><i class="zt-botlv">Lv1</i><div class="zt-bothp"><div></div></div></div></div>
+          <div class="zt-bot zt-police hidden"><span>けいさつロボ・さわってね</span><em class="zt-lvup">Lv UP!</em><div class="zt-botrow"><i class="zt-botlv">Lv1</i><div class="zt-bothp"><div></div></div></div></div>
           <div class="zt-cop hidden"><span>けいさつおじさん</span><div class="zt-bothp"><div></div></div></div>
-          <div class="zt-botarrow hidden"><i>➤</i><span>けいさつロボ</span></div>
+          <div class="zt-botarrow zt-police hidden"><i>➤</i><span>けいさつロボ</span></div>
+          <div class="zt-bot zt-army hidden"><span>アーミーロボ・さわってね</span><em class="zt-lvup">Lv UP!</em><div class="zt-botrow"><i class="zt-botlv">Lv1</i><div class="zt-bothp"><div></div></div></div></div>
+          <div class="zt-botarrow zt-army hidden"><i>➤</i><span>アーミーロボ</span></div>
+          <div class="zt-drunk hidden"><em class="zt-hic"></em><span>よっぱらいおじさん</span><div class="zt-bothp"><div></div></div></div>
           <div class="zt-ammo"><div class="zt-wname"></div><div><b>30</b><span>/ 210</span></div></div>
           <button class="zt-btn zt-fire" data-act="fire"><span>うつ</span></button>
           <button class="zt-btn zt-aim" data-act="aim"><span>ねらう</span></button>
@@ -666,21 +669,44 @@ export default {
 
   makeHud() {
     const q = (s) => this.el(s);
+    const botEls = (k) => ({ bot: q('.zt-bot' + k), botHp: q('.zt-bot' + k + ' .zt-bothp div'), botArrow: q('.zt-botarrow' + k), botArrowI: q('.zt-botarrow' + k + ' i'),
+      botIcon: q('.zt-boticon' + k), botIconHp: q('.zt-boticon' + k + ' .zt-bothp div'), botLv: [q('.zt-bot' + k + ' .zt-botlv'), q('.zt-boticon' + k + ' .zt-botlv')] });
     const E = {
       hpBar: q('.zt-hpbar div'), hpNum: q('.zt-hp em'), wave: q('.zt-wave b'), left: q('.zt-wave span'), score: q('.zt-score b'),
       ammo: q('.zt-ammo b'), res: q('.zt-ammo span'), wname: q('.zt-wname'), cross: q('.zt-cross'), hitm: q('.zt-hitm'),
       boom: q('.zt-boom'), feed: q('.zt-feed'), banner: q('.zt-banner'), reload: q('.zt-reload'), reloadBar: q('.zt-reload div'), hurt: q('.zt-hurt'),
       slots: [...this.container.querySelectorAll('.zt-slot')],
       boss: q('.zt-boss'), bossName: q('.zt-boss b'), bossBar: q('.zt-bossbar div'),
-      bot: q('.zt-bot'), botTxt: q('.zt-bot span'), botHp: q('.zt-bot .zt-bothp div'), botArrow: q('.zt-botarrow'), botArrowI: q('.zt-botarrow i'),
-      botIcon: q('.zt-boticon'), botIconHp: q('.zt-boticon .zt-bothp div'),
-      botLv: [...this.container.querySelectorAll('.zt-botlv')], cop: q('.zt-cop'), copHp: q('.zt-cop .zt-bothp div'),
+      bots: { police: botEls('.zt-police'), army: botEls('.zt-army') }, // v0.14.0: けいさつロボ と アーミーロボ
+      drunk: q('.zt-drunk'), drunkHp: q('.zt-drunk .zt-bothp div'), drunkHic: q('.zt-drunk .zt-hic'),
+      cop: q('.zt-cop'), copHp: q('.zt-cop .zt-bothp div'),
       suitTime: q('.zt-suittime b'), suitBar: q('.zt-suittbar div'), suitTimeBox: q('.zt-suittime'), sbtns: [...this.container.querySelectorAll('.zt-sbtn')],
       suitTag: q('.zt-suittag'), suitArrow: q('.zt-suitarrow'), suitArrowI: q('.zt-suitarrow i'),
       oji: q('.zt-oji'), ojiTxt: q('.zt-ojitxt'), ojiHp: q('.zt-ojihp div'), ojiArrow: q('.zt-ojiarrow'), ojiArrowI: q('.zt-ojiarrow i'), ojiArrowT: q('.zt-ojiarrow span'),
     };
     const last = {};
     const setText = (k, el, v) => { if (last[k] !== v) { last[k] = v; el.textContent = v; } };
+    // v0.7.0: なかまの ロボ（まだ: なまえ＋やじるし／なかま: あたまの うえの HP と うえの アイコン）v0.14.0: けいさつ・アーミー きょうつう
+    const botHud = (B, k, r) => {
+      const mode = !r ? 'none' : r.mode === 'idle' ? (r.onScreen ? 'idle' : 'arrow') : r.onScreen ? 'on' : 'off';
+      if (last[k + 'Mode'] !== mode) {
+        last[k + 'Mode'] = mode;
+        B.bot.classList.toggle('hidden', mode !== 'idle' && mode !== 'on'); B.bot.dataset.m = mode;
+        B.botArrow.classList.toggle('hidden', mode !== 'arrow');
+        B.botIcon.classList.toggle('hidden', mode !== 'on' && mode !== 'off');
+      }
+      if (!r) return;
+      const x = ((r.x + 1) * 50).toFixed(2) + '%', y = ((1 - r.y) * 50).toFixed(2) + '%';
+      const el = mode === 'arrow' ? B.botArrow : B.bot;
+      if (mode !== 'off') { el.style.left = x; el.style.top = mode === 'arrow' ? arrowTop(r.y) : y; }
+      if (mode === 'arrow') B.botArrowI.style.transform = `rotate(${r.ang.toFixed(3)}rad)`;
+      const w = (Math.max(0, r.hp) * 100).toFixed(0) + '%';
+      if (last[k + 'Hp'] !== w) { last[k + 'Hp'] = w; for (const b of [B.botHp, B.botIconHp]) { b.style.width = w; b.classList.toggle('low', r.hp < 0.35); } }
+      const lv = 'Lv' + (r.lv || 1);
+      if (last[k + 'Lv'] !== lv) { last[k + 'Lv'] = lv; for (const b of B.botLv) b.textContent = lv; }
+      const up = !!r.lvUp;
+      if (last[k + 'Up'] !== up) { last[k + 'Up'] = up; B.bot.classList.toggle('lvup', up); B.botIcon.classList.toggle('lvup', up); }
+    };
     let feedN = 0;
     const app = this;
     return {
@@ -717,25 +743,19 @@ export default {
         if (last.bossW !== w) { last.bossW = w; E.bossBar.style.width = w; }
       },
       // v0.7.0: けいさつロボ（まだ: なまえ＋やじるし／なかま: あたまの うえの HP と うえの アイコン）
-      robot: (r) => {
-        const mode = !r ? 'none' : r.mode === 'idle' ? (r.onScreen ? 'idle' : 'arrow') : r.onScreen ? 'on' : 'off';
-        if (last.botMode !== mode) {
-          last.botMode = mode;
-          E.bot.classList.toggle('hidden', mode !== 'idle' && mode !== 'on'); E.bot.dataset.m = mode;
-          E.botArrow.classList.toggle('hidden', mode !== 'arrow');
-          E.botIcon.classList.toggle('hidden', mode !== 'on' && mode !== 'off');
-        }
-        if (!r) return;
-        const x = ((r.x + 1) * 50).toFixed(2) + '%', y = ((1 - r.y) * 50).toFixed(2) + '%';
-        const el = mode === 'arrow' ? E.botArrow : E.bot;
-        if (mode !== 'off') { el.style.left = x; el.style.top = mode === 'arrow' ? arrowTop(r.y) : y; }
-        if (mode === 'arrow') E.botArrowI.style.transform = `rotate(${r.ang.toFixed(3)}rad)`;
-        const w = (Math.max(0, r.hp) * 100).toFixed(0) + '%';
-        if (last.botHp !== w) { last.botHp = w; for (const b of [E.botHp, E.botIconHp]) { b.style.width = w; b.classList.toggle('low', r.hp < 0.35); } }
-        const lv = 'Lv' + (r.lv || 1);
-        if (last.botLv !== lv) { last.botLv = lv; for (const b of E.botLv) b.textContent = lv; }
-        const up = !!r.lvUp;
-        if (last.botUp !== up) { last.botUp = up; E.bot.classList.toggle('lvup', up); E.botIcon.classList.toggle('lvup', up); }
+      robot: (r) => botHud(E.bots.police, 'p', r),
+      army: (r) => botHud(E.bots.army, 'a', r), // v0.14.0: アーミーロボ（べつの アイコン・Lv）
+      // v0.14.0: よっぱらいおじさん（あたまの うえの なまえ・HP・「ひっく」）
+      drunk: (c) => {
+        const on = !!c && c.onScreen && c.state !== 'gone';
+        if (last.drOn !== on) { last.drOn = on; E.drunk.classList.toggle('hidden', !on); }
+        if (!on) return;
+        E.drunk.style.left = ((c.x + 1) * 50).toFixed(2) + '%'; E.drunk.style.top = ((1 - c.y) * 50).toFixed(2) + '%';
+        const w = (Math.max(0, c.hp) * 100).toFixed(0) + '%';
+        if (last.drHp !== w) { last.drHp = w; E.drunkHp.style.width = w; E.drunkHp.classList.toggle('low', c.hp < 0.35); }
+        setText('drSay', E.drunkHic, c.say || '');
+        const sh = !!c.say;
+        if (last.drSh !== sh) { last.drSh = sh; E.drunkHic.classList.toggle('on', sh); }
       },
       // v0.10.0: パワードスーツ（まだ: なまえ／やじるし・きている: のこり じかん と ぶきの ボタン）
       suit: (r) => {
@@ -747,7 +767,7 @@ export default {
         }
         if (!r) return;
         if (mode === 'ride') {
-          setText('suitT', E.suitTime, suitLabel(r.t));
+          setText('suitT', E.suitTime, suitLabel(r.t, r.frozen));
           const w = (Math.max(0, r.frac) * 100).toFixed(1) + '%';
           if (last.suitW !== w) { last.suitW = w; E.suitBar.style.width = w; }
           const low = r.t < 10;

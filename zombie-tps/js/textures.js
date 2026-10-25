@@ -254,6 +254,36 @@ export function ojisanTextures() {
   return { face, side, back, top, skin: 0xf0c39b };
 }
 
+// v0.14.0: よっぱらいおじさんの あたま（まっかな かお・とろんとした め・あかい はな・ぼさぼさ かみ。こわくない）
+const YO_SKIN = '#f2a08c', YO_RED = '#ec6a5c', YO_HAIR = '#4a3f38';
+export function drunkTextures() {
+  const face = tex(makeCanvas(16, 16, (g) => {
+    g.fillStyle = YO_SKIN; g.fillRect(0, 0, 16, 16);
+    g.fillStyle = YO_HAIR; g.fillRect(0, 0, 16, 3); g.fillRect(0, 3, 2, 4); g.fillRect(14, 3, 2, 4); g.fillRect(5, 3, 2, 1);
+    g.fillStyle = '#5a4a40'; g.fillRect(3, 5, 3, 1); g.fillRect(10, 5, 3, 1);            // まゆげ（はの じ）
+    g.fillStyle = '#2b2522'; g.fillRect(3, 7, 3, 1); g.fillRect(10, 7, 3, 1);            // とろんとした め（ほそい せん）
+    g.fillStyle = '#ffd0c4'; g.fillRect(3, 6, 3, 1); g.fillRect(10, 6, 3, 1);
+    g.fillStyle = YO_RED; g.fillRect(1, 9, 4, 2); g.fillRect(11, 9, 4, 2);               // まっかな ほっぺ
+    g.fillStyle = '#e24a44'; g.fillRect(7, 8, 2, 3);                                      // あかい はな
+    g.fillStyle = '#ff9c90'; g.fillRect(7, 8, 1, 1);
+    g.fillStyle = '#8a3a34'; g.fillRect(5, 12, 6, 1); g.fillRect(6, 13, 4, 1);           // にこにこ くち
+  }), false);
+  const side = tex(makeCanvas(16, 16, (g) => {
+    g.fillStyle = YO_SKIN; g.fillRect(0, 0, 16, 16);
+    g.fillStyle = YO_HAIR; g.fillRect(0, 0, 16, 6); g.fillRect(0, 6, 4, 3);
+    g.fillStyle = YO_RED; g.fillRect(7, 7, 3, 3);                                         // あかい みみ
+  }), false);
+  const back = tex(makeCanvas(16, 16, (g) => {
+    g.fillStyle = YO_SKIN; g.fillRect(0, 0, 16, 16);
+    g.fillStyle = YO_HAIR; g.fillRect(0, 0, 16, 10);
+  }), false);
+  const top = tex(makeCanvas(16, 16, (g) => {
+    g.fillStyle = YO_HAIR; g.fillRect(0, 0, 16, 16);
+    g.fillStyle = '#6a5a4e'; g.fillRect(3, 3, 3, 2); g.fillRect(9, 8, 4, 2); g.fillRect(5, 11, 2, 2); // ぼさぼさ
+  }), false);
+  return { face, side, back, top, skin: 0xf2a08c };
+}
+
 // こうかの テクスチャ（マズルフラッシュ・みどりの しみ・だんこん）
 export function fxTextures() {
   const flash = new THREE.CanvasTexture(makeCanvas(64, 64, (g) => {

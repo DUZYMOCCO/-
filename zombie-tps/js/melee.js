@@ -4,8 +4,8 @@ import * as THREE from '../vendor/three.module.min.js';
 import {
   meleeStats, meleeLevel, newMeleeState, meleePress, meleeTick, meleeDur, meleeStyle, swingPose,
   meleeTargets, meleeAim, meleeBlocked, meleeDamage, meleeRawKnock, meleeDown, bumpTransfer, BUMP, isMelee, DEFAULT_MELEE,
-} from './rules.js?v=15';
-import { makeMeleeWeapons } from './models.js?v=15';
+} from './rules.js?v=16';
+import { makeMeleeWeapons } from './models.js?v=16';
 
 const _p = new THREE.Vector3(), _d = new THREE.Vector3();
 const TRAIL_C = { bat: 0xfff0c0, hammer: 0xffd890, katana: 0xd6f0ff };
@@ -93,12 +93,12 @@ export const MeleeMixin = {
     this.mLastHits = n;
   },
   // 1たいに あてる。たおしたら true
-  meleeStrike(z, dmg, knock, down, pos, dir, seq, W) {
+  meleeStrike(z, dmg, knock, down, pos, dir, seq, W, bot = null) { // v0.14.0: bot = 'drunk'（よっぱらいおじさん）
     const c = SPARK[W.id] || SPARK.bat;
     this.fx.burst(pos, W.id === 'hammer' ? 10 : 7, { color: c[0], color2: c[1], speed: 4.5, up: 1.2, size: 0.055, life: 0.22, gravity: 5 });
     this.fx.greenHit(pos, dir, false); // みどりの ちだけ
     z.bumpT = 0.5; z.bumpId = seq;
-    const killed = this.hitZombie(z, dmg, false, pos, dir, { knock, melee: W.id, noShield: !!W.noShield });
+    const killed = this.hitZombie(z, dmg, false, pos, dir, { knock, melee: W.id, noShield: !!W.noShield, bot });
     if (!killed) {
       if (down > 0) { // ころぶ（かるい ゾンビだけ）
         z.down = z.downT0 = down; z.stagger = Math.max(z.stagger, down); z.leap = null; z.scream = 0;

@@ -16,22 +16,25 @@ import {
   castPierce, SUIT, dropSpot, aimFov, aimSensMul, scopeSway, isScoped, SCOPE, weaponLevel, setGunLevel,
   VEHICLE, BLAST_FX, blastHits, blastReachesVehicle,
   SpatialGrid, thinkInterval, QualityGovernor, govPixelRatio,
-} from './rules.js?v=15';
-import { Crowd } from './crowd.js?v=15';
-import { RobotMixin } from './robot.js?v=15';
-import { AllyMixin } from './ally.js?v=15';
-import { CopMixin } from './cop.js?v=15';
-import { VehicleMixin } from './vehicles.js?v=15';
-import { SuitMixin } from './suit.js?v=15';
-import { MissileMixin } from './missiles.js?v=15';
-import { MeleeMixin } from './melee.js?v=15';
-import { makeNav } from './nav.js?v=15';
-import { buildMap, playerColliders, zombieColliders, shotColliders } from './map.js?v=15';
-import { buildTextures, fxTextures } from './textures.js?v=15';
-import { buildWorld, disposeWorld } from './world.js?v=15';
-import { Backdrop, BACKDROPS } from './backdrop.js?v=15';
-import { makePlayer, applyOutfit, applyGear, makeGearDrop, makeOjisan, makeWeapons, makeZombie, makeRocketProjectile, makeRocketCrate, zombieChunkColors, FLASH_MAT } from './models.js?v=15';
-import { FX } from './fx.js?v=15';
+} from './rules.js?v=16';
+import { Crowd } from './crowd.js?v=16';
+import { RobotMixin } from './robot.js?v=16';
+import { AllyMixin } from './ally.js?v=16';
+import { CopMixin } from './cop.js?v=16';
+import { ArmyMixin } from './army.js?v=16';
+import { DrunkMixin } from './drunk.js?v=16';
+const BOT_NAME = { cop: 'けいさつおじさん', army: 'アーミーロボ', drunk: 'よっぱらいおじさん' }; // v0.14.0
+import { VehicleMixin } from './vehicles.js?v=16';
+import { SuitMixin } from './suit.js?v=16';
+import { MissileMixin } from './missiles.js?v=16';
+import { MeleeMixin } from './melee.js?v=16';
+import { makeNav } from './nav.js?v=16';
+import { buildMap, playerColliders, zombieColliders, shotColliders } from './map.js?v=16';
+import { buildTextures, fxTextures } from './textures.js?v=16';
+import { buildWorld, disposeWorld } from './world.js?v=16';
+import { Backdrop, BACKDROPS } from './backdrop.js?v=16';
+import { makePlayer, applyOutfit, applyGear, makeGearDrop, makeOjisan, makeWeapons, makeZombie, makeRocketProjectile, makeRocketCrate, zombieChunkColors, FLASH_MAT } from './models.js?v=16';
+import { FX } from './fx.js?v=16';
 const A_RIGHT = new THREE.Vector3();
 
 const v3 = () => new THREE.Vector3();
@@ -86,6 +89,7 @@ export class Game {
     this.ojiM = makeOjisan(); this.ojiM.root.visible = false; scene.add(this.ojiM.root);
     this.initRobot();
     this.initCop();
+    this.initArmy(); this.initDrunk(); // v0.14.0
     this.initSuit();
     this.initMissiles();
     this.initMelee(); // v0.13.0: なぐる
@@ -111,7 +115,7 @@ export class Game {
     this.adapt = { t: 0, frames: 0, sum: 0, level: 0 };
     // v0.12.0: たくさんの ゾンビを かるく（とおくは かんたんモデル・ます目で ぶつかり・かんがえる回数を へらす・がしつの じどう ちょうせい）
     this.gov = new QualityGovernor(); this.basePR = this.pixelRatio; this.baseAir = this.maxAir;
-    this.zGrid = new SpatialGrid(1.2); this.zNear = []; this.allyArr = [null, null];
+    this.zGrid = new SpatialGrid(1.2); this.zNear = [];
     this.state = 'title';
     this.resetRun();
     this.setupTitle();
@@ -172,7 +176,7 @@ export class Game {
     if (this.pk) this.pk.set(0, 0, 0);
     this.boss = null; this.hud.bossBar?.(null);
     if (this.suitM) this.endSuit(); // v0.10.0
-    this.endOji(); this.endRobot?.(); this.endCop?.(); this.copLast = 0; this.resetVehicles?.(); this.ojiPlan = null; this.ojiLast = 0; this.perchT = 0; this.perchCd = 0;
+    this.endOji(); this.endRobot?.(); this.endCop?.(); this.endArmy?.(); this.endDrunk?.(); this.copLast = 0; this.drunkLast = 0; this.resetVehicles?.(); this.ojiPlan = null; this.ojiLast = 0; this.perchT = 0; this.perchCd = 0;
     for (const sp of this.spits || []) this.releaseSpit(sp);
     this.spits = []; for (const h of this.hazards || []) this.releaseHazard(h);
     this.hazards = []; this.burnT = 0; this.zapT = 0; this.softAcc = 0; this.onLadder = false; this.pReach = false;
@@ -194,6 +198,7 @@ export class Game {
     this.resetRun();
     this.applyStage(this.todStart || 'day');
     this.spawnRobot();
+    this.spawnArmy(); // v0.14.0: アーミーロボ（べつの ばしょ）
     this.placeSuit(); // v0.10.0: パワードスーツを どこかに おく
     this.state = 'play';
     this.hud.show('play');
@@ -437,7 +442,7 @@ export class Game {
         this.hud.banner(`ウェーブ ${this.wave}`, this.wave > 1 && this.todChanged ? `${TOD_LABEL[tod]}　${sub}` : sub);
         this.todChanged = false;
         this.ojiPlan = shouldSpawnOjisan(this.wave, this.ojiLast) ? { t: OJISAN.delay[0] + Math.random() * (OJISAN.delay[1] - OJISAN.delay[0]) } : null;
-        this.planCop(this.forceCop ? 0 : Math.random()); // v0.9.0: けいさつおじさん（ウェーブ3〜・30%・つづけて こない）
+        this.planUncles(); // v0.9.0/v0.14.0: けいさつおじさん・よっぱらいおじさん（それぞれ ウェーブ3〜・30%・つづけて こない。いっしょの ことも ある）
         this.sfx.wave();
         this.pushHud(true);
       }
@@ -454,7 +459,7 @@ export class Game {
       }
     } else if (alive === 0 && !this.zombies.length && !(this.oji && this.oji.state === 'thanks' && this.oji.t < 2.6)) {
       this.interT = 4.5; this.ojiPlan = null;
-      this.copLeave(); // ウェーブ おわり → てを ふって かえる
+      this.copLeave(); this.drunkLeave(); // ウェーブ おわり → てを ふって かえる
       this.hud.banner('ウェーブ クリア！', `+${this.wave * 200} ボーナス`);
       this.score += this.wave * 200;
       this.hp = Math.min(this.maxHp, this.hp + 30);
@@ -649,7 +654,7 @@ export class Game {
     // v0.12.0: ます目に いれる（なかまと くっつかない けいさんを ちかくだけに）
     const grid = this.zGrid; grid.clear(); let maxSc = 1;
     for (const o of zs) if (o.alive) { grid.insert(o, o.x, o.z); if (o.scale > maxSc) maxSc = o.scale; }
-    const near = this.zNear, allies = this.allyArr; allies[0] = this.robot; allies[1] = this.cop;
+    const near = this.zNear, allies = this.allyList();
     for (let i = zs.length - 1; i >= 0; i--) {
       const z = zs[i], m = z.model, def = ZOMBIES[z.kind];
       z.flash -= dt;
@@ -1426,7 +1431,7 @@ export class Game {
     const T = this._bt || (this._bt = []); T.length = 0;
     for (const z of this.zombies) if (z.alive && !z.demo) T.push({ team: 'zombie', ref: z, x: z.x, y: z.y, z: z.z, scale: z.scale });
     T.push({ team: 'player', x: this.pos.x, y: this.pos.y, z: this.pos.z });
-    for (const a of [this.robot, this.cop]) if (a) T.push({ team: 'ally', x: a.x, y: a.y, z: a.z });
+    for (const a of this.allyList()) if (a) T.push({ team: 'ally', x: a.x, y: a.y, z: a.z });
     if (this.oji) T.push({ team: 'npc', x: this.oji.x, y: this.oji.y || 0, z: this.oji.z });
     return T;
   }
@@ -1500,7 +1505,7 @@ export class Game {
       this.kills++; if (head) this.heads++;
       const sc = z.selfPop ? 0 : killScore(z.kind, head); this.score += sc; if (z.selfPop) this.kills--;
       const isBoss = z.kind === 'boss';
-      if (z.selfPop) this.hud.kill('ガスが でた！ はなれて！', true); else this.hud.kill(isBoss ? `ボスを たおした！ +${sc}` : opt.bot === 'cop' ? `けいさつおじさんが たおした！ +${sc}` : opt.bot ? `ロボが たおした！ +${sc}` : head ? `ヘッドショット！ +${sc}` : `+${sc}`, head || isBoss);
+      if (z.selfPop) this.hud.kill('ガスが でた！ はなれて！', true); else this.hud.kill(isBoss ? `ボスを たおした！ +${sc}` : opt.bot ? `${BOT_NAME[opt.bot] || 'ロボ'}が たおした！ +${sc}` : head ? `ヘッドショット！ +${sc}` : `+${sc}`, head || isBoss);
       // ロケットだんを おとす（ボスは かならず 2こ）
       // v0.10.0: アイテムは あたった ばしょに おちる（ふっとんだ さき では ない）
       const dp = dropSpot(z, opt.dropAt);
@@ -1644,7 +1649,7 @@ export class Game {
     }
     if (this.state === 'title') { this.titleT += dt; this.pFloor = 0; this.pSupport = null; this.updateCull(); this.updateZombies(dt); this.updateTitleCam(dt); this.updateNight(); this.fx.update(dt); return; }
     if (this.state === 'pause') return;
-    if (this.state === 'over') { this.updateOjiHud(); this.updateRobotHud(); this.updateCopHud(); this.updateSuitHud(); this.updateShells(dt); this.updateVehicles(dt); this.updateRockets(dt); this.updateMissiles(dt); this.updateZombies(dt); this.updatePickups(dt); this.fx.update(dt); this.updateCamera(dt, false); this.updateNight(); return; }
+    if (this.state === 'over') { this.updateOjiHud(); this.updateRobotHud(); this.updateCopHud(); this.updateArmyHud(); this.updateDrunkHud(); this.updateSuitHud(); this.updateShells(dt); this.updateVehicles(dt); this.updateRockets(dt); this.updateMissiles(dt); this.updateZombies(dt); this.updatePickups(dt); this.fx.update(dt); this.updateCamera(dt, false); this.updateNight(); return; }
 
     const gun = this.guns[this.cur], w = gun.w || WEAPONS[this.cur];
     // イベント
@@ -1754,6 +1759,8 @@ export class Game {
     this.updateOji(dt);
     this.updateRobot(dt);
     this.updateCop(dt);
+    this.updateArmy(dt);
+    this.updateDrunk(dt);
     this.updateSuit(dt);
     this.updateVehicles(dt);
     this.updatePickups(dt);
@@ -1764,6 +1771,8 @@ export class Game {
     this.updateOjiHud();
     this.updateRobotHud();
     this.updateCopHud();
+    this.updateArmyHud();
+    this.updateDrunkHud();
     this.updateSuitHud();
     this.updateNight();
     this.fx.update(dt);
@@ -1969,4 +1978,4 @@ export class Game {
     this.renderer.forceContextLoss?.();
   }
 }
-Object.assign(Game.prototype, AllyMixin, RobotMixin, CopMixin, VehicleMixin, SuitMixin, MissileMixin, MeleeMixin);
+Object.assign(Game.prototype, AllyMixin, RobotMixin, CopMixin, ArmyMixin, DrunkMixin, VehicleMixin, SuitMixin, MissileMixin, MeleeMixin);

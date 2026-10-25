@@ -1,8 +1,9 @@
 // v0.9.0: なかま（けいさつロボ・けいさつおじさん）の きょうつうの うごき
+// v0.14.0: アーミーロボ・よっぱらいおじさん も いっしょ（allyList）
 // a: { x,y,z,yaw,vy, stuckT, fireT, aimT, target, onScreen, phase, moving, kick, hurtT }
 // m: モデル（root, inner, legs, aim, holder, muzzle, headPivot）／ S: すうち（back, side, speed, runSpeed, near, range, spread, fireRate, dmg）
 import * as THREE from '../vendor/three.module.min.js';
-import { robotFollowPoint, pickRobotTarget, castShot, collideCircle, groundHeight } from './rules.js?v=15';
+import { robotFollowPoint, pickRobotTarget, castShot, collideCircle, groundHeight } from './rules.js?v=16';
 
 const PLAYER_R = 0.35, ROBOT_BACK = 0.3;
 const _o = new THREE.Vector3(), _t = new THREE.Vector3(), _m = new THREE.Vector3(), _p = new THREE.Vector3();
@@ -104,7 +105,7 @@ export const AllyMixin = {
         const px = nx - this.pos.x, pz = nz - this.pos.z, pd = Math.hypot(px, pz), minD = PLAYER_R + 0.4;
         if (pd < minD && pd > 1e-4 && Math.abs(this.pos.y - a.y) < 1.2) { nx = this.pos.x + px / pd * minD; nz = this.pos.z + pz / pd * minD; }
         // なかま どうしも めりこまない
-        for (const o of [this.robot, this.cop]) {
+        for (const o of this.allyList()) {
           if (!o || o === a || o.state !== 'on') continue;
           const qx = nx - o.x, qz = nz - o.z, qd = Math.hypot(qx, qz);
           if (qd < 0.7 && qd > 1e-4 && Math.abs(o.y - a.y) < 1.2) { nx = o.x + qx / qd * 0.7; nz = o.z + qz / qd * 0.7; }
@@ -122,11 +123,11 @@ export const AllyMixin = {
     a.phase += dt * moved / Math.max(dt, 1e-4) * 3.2;
   },
   // ねらって うつ。shoot(z) は うった ときに よばれる
-  allyAimFire(a, m, S, dt, mv, fireRate, shoot) {
+  allyAimFire(a, m, S, dt, mv, fireRate, shoot, pick = null) {
     a.aimT -= dt; a.fireT -= dt;
     if (a.aimT <= 0) {
       a.aimT = 0.2;
-      a.target = this.state === 'play' ? pickRobotTarget(this.zombies, this.pos.x, this.pos.z, this.yaw, a.x, a.z, (z) => this.allyCanSee(a, z), S.range) : -1;
+      a.target = this.state !== 'play' ? -1 : pick ? pick(a) : pickRobotTarget(this.zombies, this.pos.x, this.pos.z, this.yaw, a.x, a.z, (z) => this.allyCanSee(a, z), S.range);
     }
     const tz = a.target >= 0 ? this.zombies[a.target] : null;
     let wantYaw;
@@ -161,14 +162,21 @@ export const AllyMixin = {
   allyFor(z) {
     if (this.state !== 'play' || z.demo) return null;
     let best = null, bd = Infinity;
-    for (const o of [this.robot, this.cop]) {
+    for (const o of this.allyList()) {
       if (!o || o.state !== 'on') continue;
       const d = Math.hypot(o.x - z.x, o.z - z.z);
       if (d < bd) { bd = d; best = o; }
     }
     return best;
   },
+  // なかまの リスト（まいフレーム つかう ので おなじ はいれつを つかいまわす）
+  allyList() {
+    const L = this._allyL || (this._allyL = [null, null, null, null]);
+    L[0] = this.robot; L[1] = this.army; L[2] = this.cop; L[3] = this.drunk;
+    return L;
+  },
   hurtAlly(a, d) {
-    if (a === this.robot) this.hurtRobot(d); else if (a === this.cop) this.hurtCop(d);
+    if (a === this.robot) this.hurtRobot(d); else if (a === this.army) this.hurtArmy(d);
+    else if (a === this.cop) this.hurtCop(d); else if (a === this.drunk) this.hurtDrunk(d);
   },
 };

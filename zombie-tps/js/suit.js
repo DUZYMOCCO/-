@@ -3,10 +3,10 @@
 // じかんが きれると ぬいで、すこしの あいだ むてき。つかったら 3ウェーブ あとに べつの ばしょへ また でる。
 import * as THREE from '../vendor/three.module.min.js';
 import {
-  SUIT, SUIT_WEAPONS, SUIT_ORDER, wearSuit, tickSuit, routeSuitDamage, suitNextWave, pickSuitSpot, suitTouched,
+  SUIT, SUIT_WEAPONS, SUIT_ORDER, wearSuit, tickSuit, suitClockRuns, tickGrace, routeSuitDamage, suitNextWave, pickSuitSpot, suitTouched,
   flameHits, punchTargets, punchLaunch, burnTick, groundHeight, edgeArrow, castShot, castPierce, aabbNormal, WEAPON_ORDER,
-} from './rules.js?v=15';
-import { makePowerSuit, makeSuitShell, SUIT_CHUNKS } from './models.js?v=15';
+} from './rules.js?v=16';
+import { makePowerSuit, makeSuitShell, SUIT_CHUNKS } from './models.js?v=16';
 
 const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _c = new THREE.Vector3(), _d = new THREE.Vector3(), _e = new THREE.Vector3();
 const UP = new THREE.Vector3(0, 1, 0);
@@ -35,6 +35,8 @@ export const SuitMixin = {
     let cells = this.nav.openCells(this.half - 3);
     const same = cells.filter((c) => Math.abs((c[2] || 0) - sy) < 0.5);
     if (same.length) cells = same;
+    const A = this.army; // v0.14.0: アーミーロボとも かさならない
+    if (A) { const f = cells.filter((c) => Math.hypot(c[0] - A.x, c[1] - A.z) > 4); if (f.length) cells = f; }
     if (!cells.length) return null;
     const [x, z, cy] = pickSuitSpot(cells, s.x, s.z, r1, this.robot);
     const y = groundHeight(x, z, 0.3, (cy || 0) + 0.6, this.pCol);
@@ -114,7 +116,9 @@ export const SuitMixin = {
   },
 
   updateSuit(dt) {
-    if (this.suitGraceT > 0) this.suitGraceT -= dt;
+    const frozen = !suitClockRuns(this.interT); // v0.14.0: ウェーブの あいだは とまる
+    this.suitFrozen = frozen;
+    this.suitGraceT = tickGrace(this.suitGraceT, dt, frozen);
     // つぎの スーツ
     if (!this.suit && !this.suitPick && this.state === 'play' && this.wave >= this.suitNext && this.wave > 0) {
       if (this.placeSuit()) { this.hud.kill('パワードスーツが どこかに あらわれた！', true); this.sfx.robotOn?.(); }
@@ -129,7 +133,7 @@ export const SuitMixin = {
       if (this.state === 'play' && suitTouched(this.pos.x - p.x, this.pos.z - p.z, this.pos.y - p.y)) this.wearSuitNow();
     }
     if (this.suit) {
-      if (tickSuit(this.suit, dt) === 'eject') this.ejectSuit();
+      if (tickSuit(this.suit, dt, frozen) === 'eject') this.ejectSuit();
       else this.poseSuit(dt);
     }
     this.updateBurning(dt);
@@ -402,7 +406,7 @@ export const SuitMixin = {
     this.suitHudOn = true;
     if (this.suit) {
       const s = this.suit, W = SUIT_WEAPONS[s.weapon];
-      this.hud.suit?.({ mode: 'ride', t: s.t, frac: s.t / SUIT.time, armor: s.armor / SUIT.armor, weapon: s.weapon,
+      this.hud.suit?.({ mode: 'ride', t: s.t, frozen: !!this.suitFrozen, frac: s.t / SUIT.time, armor: s.armor / SUIT.armor, weapon: s.weapon,
         ready: W.interval ? 1 - Math.min(1, s.cd / W.interval) : 1 });
       return;
     }

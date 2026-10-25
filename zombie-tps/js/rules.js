@@ -1,7 +1,7 @@
 // ゾンビストライク — ゲームの きまり（DOM / three.js に いぞんしない。node のテストから よめる）
 // ぶき・ダメージ・ウェーブ・あたりはんてい（レイ×はこ）・いどうの ぶつかり・ゾンビの みちさがし（フローフィールド）
 
-export const VERSION = '0.13.0';
+export const VERSION = '0.14.0';
 
 // ---- ぶき ----
 // rpm: 1ぷんかんの はっしゃかず / mag: マガジン / reserve: よびだん / reload: びょう
@@ -1322,13 +1322,78 @@ export function robotStats(lv, S = ROBOT) {
     maxHp: Math.round(S.hp * ROBOT_LV.hp[i]), next: ROBOT_LV.kills[i + 1] ?? null };
 }
 // たおした かずを たす。レベルが あがったら HP ぜんかい → true
-export function robotAddKill(r, n = 1) {
+export function robotAddKill(r, n = 1, S = ROBOT) {
   r.kills = (r.kills || 0) + n;
   const lv = robotLevel(r.kills), old = r.lv || 1;
   if (lv <= old) return false;
-  const st = robotStats(lv);
+  const st = robotStats(lv, S);
   r.lv = lv; r.maxHp = st.maxHp; r.hp = st.maxHp;
   return true;
+}
+
+// ---- v0.14.0: アーミーロボ（2たいめの なかま・レーザー）----
+// かくうの デザイン（オリーブいろ・めいさい・マークなし）。けいさつロボの はんたい（みぎ うしろ）に つく。
+// レーザーは おそいけど まっすぐ 3たいまで つらぬく（けいさつロボは はやい 1ぱつずつ）。
+export const ARMY = {
+  hp: 280,
+  dmgMul: 0.5,
+  dmg: 18, fireRate: 1.15, range: 21, spread: 0.008, pierce: 3, pierceFall: 0.8, // つらぬく たびに 0.8ばい
+  laserW: 0.45,        // レーザーの ふとさ（あたり）
+  back: 0.6, side: -1.6, // プレイヤーの みぎ うしろ
+  speed: 4.7, runSpeed: 6.6, near: 0.45,
+  touchR: 1.35,
+  spot: [12, 26],
+  teleport: 13, teleportDy: 2.6, stuckTime: 2.5,
+  scale: 0.9,
+  aggroR: 3.2,
+  behindW: 0.5,        // まえの ほうも うつ（けいさつロボは うしろ・よこ ゆうせん）
+  sharePenalty: 6,     // けいさつロボと おなじ ゾンビは ねらいにくく（めあてを わける）
+};
+// レーザーが あたる ゾンビ（ちかい じゅん・maxT は かべ までの きょり）→ [{ i, t }]
+// zs: [{x,y,z,scale,alive,demo}]。なかま・プレイヤーは いれない（あたらない）
+export function laserHits(ox, oy, oz, dx, dy, dz, zs, maxT, pierce = ARMY.pierce, w = ARMY.laserW) {
+  const out = [];
+  for (let i = 0; i < zs.length; i++) {
+    const z = zs[i]; if (!z || !z.alive || z.demo) continue;
+    const sc = z.scale || 1, r = w * 0.5 + 0.32 * sc;
+    const cy = (z.y || 0) + 0.9 * sc;
+    const t = (z.x - ox) * dx + (cy - oy) * dy + (z.z - oz) * dz;
+    if (t < 0 || t > maxT) continue;
+    const px = ox + dx * t, py = oy + dy * t, pz = oz + dz * t;
+    if (Math.hypot(px - z.x, pz - z.z) > r) continue;
+    if (py < (z.y || 0) - 0.1 || py > (z.y || 0) + 1.9 * sc) continue;
+    out.push({ i, t });
+  }
+  out.sort((a, b) => a.t - b.t);
+  if (out.length > pierce) out.length = pierce;
+  return out;
+}
+// アーミーロボの めあて: けいさつロボが ねらっている ゾンビは あとまわし（めあてを わける）
+export function pickArmyTarget(zs, px, pz, yaw, rx, rz, canSee, avoid = -1, range = ARMY.range) {
+  let best = -1, bs = Infinity;
+  for (let i = 0; i < zs.length; i++) {
+    const z = zs[i];
+    if (!z.alive || z.demo) continue;
+    if (Math.hypot(z.x - rx, z.z - rz) > range) continue;
+    let s = Math.hypot(z.x - px, z.z - pz) * (1 - ARMY.behindW * blindness(px, pz, yaw, z.x, z.z));
+    if (i === avoid) s += ARMY.sharePenalty;
+    if (s >= bs) continue;
+    if (canSee && !canSee(z)) continue;
+    bs = s; best = i;
+  }
+  return best;
+}
+export function armyTouched(dx, dz, dy) { return Math.hypot(dx, dz) < ARMY.touchR && Math.abs(dy) < 1.3; }
+export function damageArmy(r, d) {
+  if (!r || r.state !== 'on') return false;
+  r.hp = Math.max(0, r.hp - d * ARMY.dmgMul);
+  if (r.hp <= 0) { r.state = 'broken'; return true; }
+  return false;
+}
+// ふたつの なかまの ついていく ばしょが かさならない（ひだり うしろ と みぎ うしろ）
+export function allySlotsApart(A = ROBOT, B = ARMY) {
+  const a = robotFollowPoint(0, 0, 0, A.back, A.side), b = robotFollowPoint(0, 0, 0, B.back, B.side);
+  return Math.hypot(a.x - b.x, a.z - b.z);
 }
 
 // ---- v0.9.0: のりものが ばくはつ（かくうの くるま・バン・トラック）----
@@ -1415,6 +1480,48 @@ export function damageAlly(a, d, S) {
   return false;
 }
 
+// ---- v0.14.0: よっぱらいおじさん（けいさつおじさんと おなじ なかま。その ウェーブ だけ・バットで なぐる）----
+// かおが あかくて ふらふら・「ひっく」。おさけの びん・のむ ばめんは ださない（こどもむけ）
+export const DRUNK = {
+  hp: 200, dmgMul: 0.5,
+  back: 1.0, side: -2.8,               // みぎ うしろ（けいさつおじさんは ひだり うしろ → ふたり いても かさならない）
+  chance: 0.3, firstWave: 3,
+  speed: 4.3, runSpeed: 6.5, near: 0.6,
+  teleport: 14, teleportDy: 2.6, stuckTime: 2.5,
+  scale: 0.9,
+  engage: 6.5,        // この きょりの ゾンビに むかっていく
+  leash: 9,           // プレイヤーから これより はなれない
+  wobble: 0.55,       // ふらふら（すすむ むきが ゆれる・ラジアン）
+  leaveTime: 2.2, downTime: 1.6,
+  // ふつうの バット（くぎ なし）。プレイヤーの くぎバットより すこし よわい・じわじわ なし
+  bat: { id: 'bat', name: 'バット', dur: 0.7, wind: 0.3, strike: 0.56, hitAt: 0.45, range: 2.1, arc: 1.0, max: 2,
+    dmg: 30, knock: 8, down: 0.95, downT: 1.0, bleed: null, combo: 1, style: ['h'] },
+  hicT: [2.5, 5],     // 「ひっく」の あいだ（びょう）
+};
+export const DRUNK_LINES = ['ひっく', 'ひっく！', 'うぃ〜', 'まかせろ〜 ひっく', 'ういっく', 'あれ〜？ どっちだっけ〜'];
+// ふらふら: すすむ むきの ずれ（ラジアン・-wobble..wobble）
+export function drunkWobble(t, seed = 0, W = DRUNK.wobble) {
+  return W * (0.65 * Math.sin(t * 2.3 + seed) + 0.35 * Math.sin(t * 5.1 + seed * 2.7));
+}
+// ねらう ゾンビ: じぶんから engage いない・プレイヤーから leash いない で いちばん ちかい（-1 = いない）
+export function drunkPickTarget(zs, ax, az, px, pz, S = DRUNK) {
+  let best = -1, bd = Infinity;
+  for (let i = 0; i < zs.length; i++) {
+    const z = zs[i]; if (!z || !z.alive || z.demo) continue;
+    const d = Math.hypot(z.x - ax, z.z - az);
+    if (d > S.engage || Math.hypot(z.x - px, z.z - pz) > S.leash) continue;
+    if (d < bd) { bd = d; best = i; }
+  }
+  return best;
+}
+// v0.14.0: よっぱらいおじさんが くるか（けいさつおじさんとは べつべつに きめる → ふたり いっしょに くる ことも ある）
+// ウェーブ3から・やく 30%・つづけての ウェーブには こない（けいさつおじさんと おなじ きまり）
+export function drunkShouldCome(wave, lastWave, r = Math.random()) {
+  if (wave < DRUNK.firstWave) return false;
+  if (lastWave && wave - lastWave <= 1) return false;
+  return r < DRUNK.chance;
+}
+
 // ---- v0.10.0: パワードスーツ（45びょう だけ とんでもなく つよい）----
 // みため は かくう の ロボット スーツ（マーク・はた なし）。マップの どこかに 1つ おちていて、さわると きる
 export const SUIT = {
@@ -1448,13 +1555,17 @@ export function suitWeaponAt(i) { return SUIT_ORDER[((i % SUIT_ORDER.length) + S
 // きる（あたらしい スーツの じょうたい）
 export function wearSuit() { return { t: SUIT.time, armor: SUIT.armor, weapon: 'mcannon', cd: 0, flameT: 0 }; }
 // じかんを すすめる → 'eject'（じかん ぎれ）
-export function tickSuit(s, dt) {
+// v0.14.0: ウェーブの あいだ（きゅうけい）は スーツの とけいが とまる
+export function suitClockRuns(interT) { return !(interT > 0); }
+export function tickSuit(s, dt, frozen = false) {
   if (!s) return null;
-  s.t = Math.max(0, s.t - dt);
+  if (!frozen) s.t = Math.max(0, s.t - dt);
   if (s.cd > 0) s.cd = Math.max(0, s.cd - dt);
   return s.t <= 0 ? 'eject' : null;
 }
-export function suitLabel(t) { return `パワードスーツ のこり ${Math.max(0, Math.ceil(t))}`; }
+export function suitLabel(t, frozen = false) { return `パワードスーツ のこり ${Math.max(0, Math.ceil(t))}${frozen ? ' ⏸ きゅうけい' : ''}`; }
+// ぬいだ あとの むてき（きゅうけい ちゅうは へらない）
+export function tickGrace(g, dt, frozen = false) { return g > 0 && !frozen ? Math.max(0, g - dt) : (g > 0 ? g : 0); }
 // ダメージの ゆくえ。スーツ: よろいだけ へる／ぬいだ すぐあと: むてき／ふつう: プレイヤー
 export function routeSuitDamage(s, graceT, d) {
   if (s) { s.armor = Math.max(0, s.armor - d * SUIT.armorMul); return { player: 0, armor: d * SUIT.armorMul, eject: s.armor <= 0 }; }

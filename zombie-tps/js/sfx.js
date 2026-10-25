@@ -241,6 +241,19 @@ export class Sfx {
     this._noise(t, 0.1, { type: 'lowpass', freq: 2000 * p, gain: 0.45 * vol });
     this._tone(t, 0.08, { f0: 240 * p, f1: 70, gain: 0.4 * vol });
   }
+  // v0.14.0: アーミーロボの レーザー（ビーッ）
+  laser(vol = 0.5) {
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime, p = 0.95 + Math.random() * 0.1;
+    this._tone(t, 0.18, { type: 'sawtooth', f0: 1400 * p, f1: 380 * p, gain: 0.08 * vol });
+    this._tone(t, 0.12, { type: 'square', f0: 2100 * p, f1: 900 * p, gain: 0.035 * vol });
+  }
+  // v0.14.0: よっぱらいおじさん「ひっく」（ぴょこっ と 1おん）
+  hic(vol = 0.5) {
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime, p = 0.9 + Math.random() * 0.2;
+    this._tone(t, 0.09, { type: 'triangle', f0: 380 * p, f1: 900 * p, gain: 0.25 * vol });
+  }
   robotBreak() { // ガシャーン（こわれる）
     if (!this.ctx || this.muted) return;
     const t = this.ctx.currentTime;

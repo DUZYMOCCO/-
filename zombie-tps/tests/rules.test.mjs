@@ -232,7 +232,7 @@ test('なめらか いどう: approach は フレームレートに よらない
 });
 
 test('バージョン と セーブの ステージ', () => {
-  assert.equal(VERSION, '0.13.0');
+  assert.equal(VERSION, '0.14.0');
   assert.equal(normalizeSave(null).stage, 'day');
   assert.equal(normalizeSave({ stage: 'night' }).stage, 'night');
   assert.equal(normalizeSave({ stage: 'mars' }).stage, 'day');
@@ -1920,4 +1920,125 @@ test('v0.13.0 なぐる: スコアで つよく（じゅうより やすい・�
   assert.equal(back.melee, 'katana');
   assert.deepEqual(normalizeMelee({ mlv: { bat: 99, hammer: -3, katana: 'x' }, melee: 'chainsaw' }), { mlv: { bat: 5, hammer: 1, katana: 1 }, melee: 'bat' });
   assert.equal(back.wlv.rifle, 1); // じゅうの レベルとは べつ
+});
+
+// ---- v0.14.0 ----
+import * as R14 from '../js/rules.js';
+const zAt = (x, z, o = {}) => ({ x, y: 0, z, scale: 1, alive: true, demo: false, ...o });
+
+test('v0.14 スーツ: ウェーブの あいだ（きゅうけい）は 45びょうの とけいが とまる', () => {
+  assert.equal(R14.suitClockRuns(0), true);
+  assert.equal(R14.suitClockRuns(-0.1), true);
+  assert.equal(R14.suitClockRuns(4.5), false);
+  assert.equal(R14.suitClockRuns(2.5), false);
+  const s = R14.wearSuit(); s.cd = 0.5;
+  for (let i = 0; i < 600; i++) assert.equal(R14.tickSuit(s, 1 / 60, true), null); // 10びょう きゅうけい
+  assert.equal(s.t, R14.SUIT.time);
+  assert.equal(s.cd, 0);                          // ぶきの クールダウンは すすむ（ずるく ならない・こまらない）
+  R14.tickSuit(s, 10, false);
+  assert.ok(Math.abs(s.t - (R14.SUIT.time - 10)) < 1e-9);
+  assert.equal(R14.tickSuit(s, 100, true), null); // きゅうけい ちゅうは じかんぎれ しない
+  assert.equal(R14.tickSuit(s, 100, false), 'eject');
+  assert.equal(R14.tickSuit(null, 1, false), null);
+});
+test('v0.14 スーツ: ぬいだ あとの むてき も きゅうけいで とまる・ラベル', () => {
+  assert.equal(R14.tickGrace(2, 1, true), 2);
+  assert.equal(R14.tickGrace(2, 0.5, false), 1.5);
+  assert.equal(R14.tickGrace(0.2, 1, false), 0);
+  assert.equal(R14.tickGrace(0, 1, true), 0);
+  assert.equal(R14.suitLabel(30.2), 'パワードスーツ のこり 31');
+  assert.match(R14.suitLabel(30.2, true), /のこり 31 ⏸ きゅうけい$/);
+  assert.equal(R14.suitLabel(-1), 'パワードスーツ のこり 0');
+});
+test('v0.14 アーミーロボ: レーザーは ちかい じゅんに 3たいまで つらぬく・かべで とまる', () => {
+  const zs = [zAt(0, -9), zAt(0, -3), zAt(0.2, -6), zAt(0, -12), zAt(3, -5), zAt(0, -4.5, { alive: false }), zAt(0, -5, { demo: true }), zAt(0, 4)];
+  const h = R14.laserHits(0, 1, 0, 0, 0, -1, zs, 50);
+  assert.deepEqual(h.map((x) => x.i), [1, 2, 0]);           // 3たい・ちかい じゅん（しんだ／デモ／よこ／うしろ は なし）
+  assert.equal(h.length, R14.ARMY.pierce);
+  assert.ok(h[0].t < h[1].t && h[1].t < h[2].t);
+  assert.deepEqual(R14.laserHits(0, 1, 0, 0, 0, -1, zs, 4).map((x) => x.i), [1]);  // かべ（4m）の むこうは あたらない
+  assert.deepEqual(R14.laserHits(0, 1, 0, 0, 0, -1, zs, 50, 1).map((x) => x.i), [1]);
+  assert.deepEqual(R14.laserHits(0, 5, 0, 0, 0, -1, zs, 50), []);   // たかすぎる
+  assert.equal(R14.ARMY.pierce, 3);
+  assert.ok(R14.ARMY.pierceFall > 0 && R14.ARMY.pierceFall < 1);
+});
+test('v0.14 アーミーロボ: けいさつロボの めあてを さけて わける', () => {
+  const zs = [zAt(0, -5), zAt(1, -6)];
+  assert.equal(R14.pickArmyTarget(zs, 0, 0, 0, 0, 0, null), 0);
+  assert.equal(R14.pickArmyTarget(zs, 0, 0, 0, 0, 0, null, 0), 1);       // 0ばんは けいさつロボが ねらっている
+  assert.equal(R14.pickArmyTarget([zAt(0, -5)], 0, 0, 0, 0, 0, null, 0), 0); // ほかに いなければ おなじでも うつ
+  assert.equal(R14.pickArmyTarget([zAt(0, -40)], 0, 0, 0, 0, 0, null), -1); // とおすぎ
+  assert.equal(R14.pickArmyTarget(zs, 0, 0, 0, 0, 0, () => false), -1);     // みえない
+});
+test('v0.14 アーミーロボ: レベル（けいさつロボと おなじ かず）・HP ぜんかい・こわれる', () => {
+  const s1 = R14.robotStats(1, R14.ARMY), s5 = R14.robotStats(5, R14.ARMY);
+  assert.equal(s1.dmg, 18); assert.equal(s1.maxHp, 280); assert.equal(s1.fireRate, 1.15);
+  assert.equal(s5.dmg, 23.4); assert.equal(s5.maxHp, 378); assert.ok(s5.fireRate < s1.fireRate);
+  assert.equal(R14.robotStats(9, R14.ARMY).lv, 5);
+  const r = { kills: 9, lv: 1, hp: 40, maxHp: 280, state: 'on' };
+  assert.equal(R14.robotAddKill(r, 1, R14.ARMY), true);
+  assert.equal(r.lv, 2); assert.equal(r.hp, r.maxHp); assert.equal(r.maxHp, R14.robotStats(2, R14.ARMY).maxHp);
+  assert.equal(R14.robotAddKill(r, 1, R14.ARMY), false);
+  assert.equal(R14.robotAddKill(r, 500, R14.ARMY), true); assert.equal(r.lv, 5);
+  // けいさつロボの もとの きまりは かわらない
+  assert.equal(R14.robotStats(1).dmg, R14.ROBOT.dmg);
+  const a = { state: 'on', hp: 10 };
+  assert.equal(R14.damageArmy(a, 4), false); assert.equal(a.hp, 10 - 4 * R14.ARMY.dmgMul);
+  assert.equal(R14.damageArmy(a, 1000), true); assert.equal(a.state, 'broken'); assert.equal(a.hp, 0);
+  assert.equal(R14.damageArmy({ state: 'idle', hp: 10 }, 5), false);
+  assert.ok(R14.armyTouched(0.5, 0.5, 0)); assert.ok(!R14.armyTouched(3, 0, 0));
+});
+test('v0.14 なかまの ばしょが かさならない（ロボ ふたり・おじさん ふたり）', () => {
+  assert.ok(R14.allySlotsApart() > 2.5);
+  assert.ok(Math.sign(R14.ROBOT.side) !== Math.sign(R14.ARMY.side));
+  assert.ok(R14.allySlotsApart(R14.COP, R14.DRUNK) > 4);
+  for (const [A, B] of [[R14.ROBOT, R14.COP], [R14.ROBOT, R14.DRUNK], [R14.ARMY, R14.COP], [R14.ARMY, R14.DRUNK]]) assert.ok(R14.allySlotsApart(A, B) > 1, `${A.side} ${B.side}`);
+  assert.notEqual(R14.ARMY.hp, R14.ROBOT.hp);
+});
+test('v0.14 よっぱらいおじさん: ふらふら・ねらい・バット', () => {
+  for (let t = 0; t < 30; t += 0.07) assert.ok(Math.abs(R14.drunkWobble(t, 1.3)) <= R14.DRUNK.wobble + 1e-9);
+  assert.notEqual(R14.drunkWobble(1, 0), R14.drunkWobble(2, 0));
+  const zs = [zAt(0, -10), zAt(3, 0), zAt(1, 1, { alive: false }), zAt(5, 0)];
+  assert.equal(R14.drunkPickTarget(zs, 0, 0, 0, 0), 1);
+  assert.equal(R14.drunkPickTarget([zAt(0, -10)], 0, 0, 0, 0), -1);          // とおい
+  assert.equal(R14.drunkPickTarget([zAt(0, -14)], 0, -10, 0, 0), -1);        // プレイヤーから はなれすぎ（leash）
+  const b = R14.DRUNK.bat;
+  assert.equal(b.bleed, null);
+  assert.ok(b.knock > 0 && b.max <= 2);
+  assert.ok(b.dmg <= R14.MELEE.bat.dmg);
+  assert.ok(R14.DRUNK_LINES.length >= 3 && R14.DRUNK_LINES.some((s) => s.includes('ひっく')));
+  for (const s of R14.DRUNK_LINES) assert.ok(!/(さけ|酒|ビール|のむ)/.test(s));
+});
+test('v0.14 おじさん ふたり: それぞれ べつの かくりつ・つづけて こない・いっしょの ことも ある', () => {
+  // よっぱらい: ウェーブ3〜・30%・つづけて こない
+  assert.equal(R14.drunkShouldCome(2, 0, 0), false);
+  assert.equal(R14.drunkShouldCome(3, 0, 0), true);
+  assert.equal(R14.drunkShouldCome(3, 0, 0.29), true);
+  assert.equal(R14.drunkShouldCome(3, 0, 0.31), false);
+  assert.equal(R14.drunkShouldCome(6, 5, 0), false);
+  assert.equal(R14.drunkShouldCome(7, 5, 0), true);
+  assert.equal(R14.DRUNK.chance, 0.3); assert.equal(R14.DRUNK.firstWave, 3);
+  // けいさつおじさんが きても よっぱらいは べつに きめる（ふたり いっしょ OK）
+  assert.equal(R14.copShouldCome(5, 0, 0) && R14.drunkShouldCome(5, 0, 0), true);
+  // シミュレーション: それぞれ つづけて こない・いっしょの ウェーブも ある
+  let seed = 7; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  let cl = 0, dl = 0, both = 0, cops = 0, drunks = 0;
+  for (let w = 1; w <= 3000; w++) {
+    const c = R14.copShouldCome(w, cl, rnd()), d = R14.drunkShouldCome(w, dl, rnd());
+    if (c) { assert.ok(!cl || w - cl > 1); cl = w; cops++; }
+    if (d) { assert.ok(!dl || w - dl > 1); dl = w; drunks++; }
+    if (c && d) both++;
+  }
+  assert.ok(both > 50, `both ${both}`);
+  assert.ok(cops > 400 && drunks > 400);
+  assert.ok(Math.abs(cops - drunks) < 200);
+});
+test('v0.14 ファイル: army.js・drunk.js が キャッシュに ある', async () => {
+  const fs = await import('node:fs'), path = await import('node:path'), url = await import('node:url');
+  const root = path.dirname(path.dirname(url.fileURLToPath(import.meta.url)));
+  const sw = fs.readFileSync(path.join(root, 'sw-assets.js'), 'utf8');
+  for (const f of ['js/army.js', 'js/drunk.js']) { assert.ok(sw.includes(f), f); assert.ok(fs.existsSync(path.join(root, f))); }
+  assert.match(sw, /0\.14\.0/);
+  const dr = fs.readFileSync(path.join(root, 'js/drunk.js'), 'utf8');
+  assert.ok(dr.includes('drunkShouldCome') && dr.includes('planCop') && !dr.includes('uncleForWave'));
 });
