@@ -1,5 +1,5 @@
 // バトル アクション の きまり（DOM なし・node で テストできる）
-export const VERSION = '0.9.0';
+export const VERSION = '0.10.0';
 export const H = 375;              // ろんり の たかさ
 export const GROUND = 318;         // じめん（あしの y）
 export const GRAV = 2000;
@@ -21,6 +21,19 @@ export const WEAPONS = {
   beam:    { id: 'beam',    name: 'ビームブラスター', short: 'ビーム', rate: 0.11, dmg: 7, pellets: 1, spread: 0.03, speed: 950, life: 0.65, knock: 50, ammo: 60, color: '#3a4656', accent: '#6af0ff', charge: 0.6, beamCost: 8, beam: { dmg: 60, len: 620, h: 30, knock: 260 } },
   // v0.7：カタナ（うつ＝きる。おしっぱなしで 3れんぞく きり。たまは いらない）
   katana:  { id: 'katana',  name: 'カタナ',          short: 'カタナ', rate: 0, dmg: 0, pellets: 0, spread: 0, speed: 0, life: 0, knock: 0, ammo: Infinity, color: '#d8dde2', accent: '#2a2a30', melee: true },
+  // v0.10：あたらしい 4つ（gear.js が うごかす。gear=しゅるい）
+  // かえんほうしゃき：ちかくを もやす。ねんりょうは うたないと もどる。もえた てきは すこし ずつ へる
+  flame:   { id: 'flame',   name: 'かえんほうしゃき', short: 'かえん', rate: 0.1, dmg: 4, pellets: 0, spread: 0, speed: 0, life: 0, knock: 25, ammo: Infinity, color: '#8a3a22', accent: '#e8a23a', gear: 'flame',
+    flame: { fuel: 100, use: 26, regen: 22, regenDelay: 0.6, restart: 30, range: 150, tick: 0.1, burn: 2.2, burnDps: 7 } },
+  // じげんばくだん：あしもとに おく。てきが ふむか 8びょうで ドカーン（じぶんと なかまは へいき）
+  tbomb:   { id: 'tbomb',   name: 'じげんばくだん',   short: 'ばくだん', rate: 0.35, dmg: 0, pellets: 0, spread: 0, speed: 0, life: 0, knock: 0, ammo: 5, color: '#3c4a36', accent: '#ff3a3a', gear: 'tbomb',
+    bomb: { fuse: 8, arm: 0.5, max: 3, trig: 20, blast: { r: 110, dmg: 75, knock: 640 } } },
+  // スモークグレネード：なげると けむりが 6びょう。なかの てきは こちらが みえない
+  smoke:   { id: 'smoke',   name: 'スモークグレネード', short: 'スモーク', rate: 0.8, dmg: 0, pellets: 0, spread: 0, speed: 0, life: 0, knock: 0, ammo: 4, color: '#6e7680', accent: '#d8dde2', gear: 'smoke',
+    smoke: { dur: 6, r: 108, max: 2, vx: 330, vy: -430 } },
+  // レーザーガン：いっしゅんで とどく ひかり。4たい まで つらぬく。うちすぎると あつくなって すこし やすみ
+  laser:   { id: 'laser',   name: 'レーザーガン',     short: 'レーザー', rate: 0.24, dmg: 16, pellets: 0, spread: 0, speed: 0, life: 0, knock: 110, ammo: Infinity, color: '#e9e6f0', accent: '#ff3ad2', gear: 'laser',
+    laser: { len: 640, pierce: 4, heat: 17, cool: 38, unlock: 35 } },
 };
 // じゅうの かたち（つかむ て = 0,0 から）：mx,my=じゅうこう、ex,ey=やっきょう が でる ところ、kick=[うしろ, はねあがり]
 export const GUN_GEOM = {
@@ -32,19 +45,32 @@ export const GUN_GEOM = {
   beam:    { mx: 46, my: -8,   ex: 0,  ey: 0,   kick: [7, 0.07], flash: 'beam',   shell: null },
   minigun: { mx: 52, my: -6.5, ex: 2,  ey: 2,   kick: [3, 0.035], flash: 'rifle',  shell: [3.2, '#d6ae4c'] },
   dark:    { mx: 33, my: -7, ex: 6,  ey: -9,  kick: [3, 0.1],  flash: 'smg',     shell: null },
+  flame:   { mx: 50, my: -6,   ex: 0,  ey: 0,   kick: [1.5, 0.02], flash: 'flame', shell: null },
+  laser:   { mx: 44, my: -8,   ex: 0,  ey: 0,   kick: [4, 0.05], flash: 'laser',  shell: null },
+  tbomb:   { mx: 14, my: -6,   ex: 0,  ey: 0,   kick: [1, 0.02], flash: 'none',   shell: null },
+  smoke:   { mx: 12, my: -8,   ex: 0,  ey: 0,   kick: [1, 0.02], flash: 'none',   shell: null },
 };
-export const WEAPON_ORDER = ['katana', 'pistol', 'smg', 'rifle', 'shotgun', 'minigun', 'beam', 'bazooka'];
-export const AMMO_PICK = { smg: 90, rifle: 75, shotgun: 18, bazooka: 4, minigun: 60, beam: 16 };
-export const AMMO_MAX = { smg: 360, rifle: 300, shotgun: 72, bazooka: 16, minigun: 500, beam: 120 };
+export const WEAPON_ORDER = ['katana', 'pistol', 'smg', 'rifle', 'shotgun', 'minigun', 'beam', 'laser', 'flame', 'bazooka', 'tbomb', 'smoke'];
+export const AMMO_PICK = { smg: 90, rifle: 75, shotgun: 18, bazooka: 4, minigun: 60, beam: 16, tbomb: 3, smoke: 2 };
+export const AMMO_MAX = { smg: 360, rifle: 300, shotgun: 72, bazooka: 16, minigun: 500, beam: 120, tbomb: 9, smoke: 8 };
+// ぶきの なかみ（かえん＝ねんりょう、レーザー＝ねつ）
+function gunState(id) {
+  const W = WEAPONS[id], g = { ammo: W.ammo };
+  if (W.flame) { g.fuel = W.flame.fuel; g.idle = 0; g.out = false; }
+  if (W.laser) { g.heat = 0; g.over = false; }
+  return g;
+}
 
 export function createArsenal(owned = ['pistol']) {
   const a = { cur: owned[0], cool: 0, guns: {} };
-  for (const id of owned) a.guns[id] = { ammo: WEAPONS[id].ammo };
+  for (const id of owned) a.guns[id] = gunState(id);
   return a;
 }
 export function giveWeapon(a, id) {
   const fresh = !a.guns[id];
-  if (fresh) a.guns[id] = { ammo: WEAPONS[id].ammo };
+  if (fresh) a.guns[id] = gunState(id);
+  else if (id === 'flame') { a.guns.flame.fuel = WEAPONS.flame.flame.fuel; a.guns.flame.out = false; }
+  else if (id === 'laser') { a.guns.laser.heat = 0; a.guns.laser.over = false; }
   else a.guns[id].ammo = Math.min(AMMO_MAX[id] ?? Infinity, a.guns[id].ammo + (AMMO_PICK[id] || 0));
   if (fresh) a.cur = id;
   return fresh;
@@ -74,6 +100,79 @@ export function tickBeam(a, dt, shoot, charge) {
   if (g.ammo <= 0) { g.ammo = 0; a.cur = 'pistol'; }
   return out;
 }
+// ---- v0.10：あたらしい ぶきの なかみ（DOM なし・テスト できる） ----
+// まいフレーム：かえんの ねんりょうが もどる・レーザーが さめる（えらんで なくても）
+export function tickGear(a, dt) {
+  const f = a.guns.flame, F = WEAPONS.flame.flame;
+  if (f) {
+    f.idle += dt;
+    if (f.idle >= F.regenDelay) f.fuel = Math.min(F.fuel, f.fuel + F.regen * dt);
+    if (f.out && f.fuel >= F.restart) f.out = false;
+  }
+  const l = a.guns.laser, L = WEAPONS.laser.laser;
+  if (l) {
+    l.heat = Math.max(0, l.heat - L.cool * dt);
+    if (l.over && l.heat <= L.unlock) l.over = false;
+  }
+}
+// かえん：おしてる あいだ もえる（true）。からっぽ に なったら 'out'
+export function tickFlame(a, dt, held) {
+  const g = a.guns.flame, F = WEAPONS.flame.flame;
+  if (!g || !held || g.out) return false;
+  g.idle = 0;
+  g.fuel -= F.use * dt;
+  if (g.fuel <= 0) { g.fuel = 0; g.out = true; return 'out'; }
+  return true;
+}
+// レーザー：うてたら true、あつすぎたら 'over'
+export function tickLaser(a, dt, held) {
+  a.cool = Math.max(0, a.cool - dt);
+  const g = a.guns.laser, W = WEAPONS.laser;
+  if (!g || !held || g.over || a.cool > 0) return false;
+  a.cool = W.rate;
+  g.heat += W.laser.heat;
+  if (g.heat >= 100) { g.heat = 100; g.over = true; return 'over'; }
+  return true;
+}
+// なげる・おく ぶき（ばくだん・スモーク）：can=おける かどうか。つかえたら true、いっぱいなら 'full'
+export function tickToss(a, dt, held, can = true) {
+  a.cool = Math.max(0, a.cool - dt);
+  const id = a.cur, g = a.guns[id], W = WEAPONS[id];
+  if (!g || !held || a.cool > 0) return false;
+  if (g.ammo <= 0) { a.cur = 'pistol'; return false; }
+  if (!can) { a.cool = 0.6; return 'full'; }
+  g.ammo -= 1; a.cool = W.rate;
+  if (g.ammo <= 0) { g.ammo = 0; a.cur = 'pistol'; }
+  return true;
+}
+// レーザーの まっすぐな せん と はこ：あたった きょり（なければ -1）
+export function rayBox(x, y, dx, dy, b, len) {
+  let t0 = 0, t1 = len;
+  for (const [o, d, lo, hi] of [[x, dx, b.x, b.x + b.w], [y, dy, b.y, b.y + b.h]]) {
+    if (Math.abs(d) < 1e-9) { if (o < lo || o > hi) return -1; continue; }
+    let a = (lo - o) / d, c = (hi - o) / d; if (a > c) [a, c] = [c, a];
+    t0 = Math.max(t0, a); t1 = Math.min(t1, c); if (t0 > t1) return -1;
+  }
+  return t0;
+}
+// かえんの とどく ところ（まえ むき・ちかいほど ほそい）
+export function inFlame(gx, gy, face, b, range) {
+  const near = face > 0 ? b.x - gx : gx - (b.x + b.w), far = face > 0 ? b.x + b.w - gx : gx - b.x;
+  if (far < -6 || near > range) return false;
+  const d = Math.max(0, near), half = 16 + d * 0.32;
+  return b.y <= gy + half && b.y + b.h >= gy - half;
+}
+// スモーク：けむりの なか？（でてすぐ ふくらむ・きえる まえは うすい）
+export function inSmoke(clouds, x, y) {
+  for (const c of clouds) {
+    if (c.t > c.dur - 0.4) continue;
+    const k = Math.min(1, 0.35 + c.t / 0.5), rx = c.r * k, ry = c.r * 0.62 * k, cy = c.y - ry * 0.85;
+    const u = (x - c.x) / rx, v = (y - cy) / ry;
+    if (u * u + v * v <= 1) return true;
+  }
+  return false;
+}
+
 // まいフレーム。うてたら ぶきの スペックを かえす
 export function tickGun(a, dt, held) {
   a.cool = Math.max(0, a.cool - dt);
@@ -230,7 +329,7 @@ export const STAGES = [
     id: 1, name: 'ステージ 1', sub: 'ほろびた けんきゅうじょ', theme: 'lab', length: 4300,
     platforms: [[620, 236, 150], [1180, 220, 170], [1500, 170, 120], [2300, 232, 160], [2960, 210, 150], [3290, 236, 130]],
     crates: [[480], [1060], [1880], [2600], [3420]],
-    pickups: [[820, 'smg'], [1550, 'heal', 140], [2380, 'shotgun', 222], [3050, 'ammo'], [3560, 'heal']],
+    pickups: [[820, 'smg'], [1250, 'flame'], [1550, 'heal', 140], [2380, 'shotgun', 222], [3050, 'ammo'], [3560, 'heal']],
     arenas: [
       { x: 700,  waves: [['zombie', 'labz', 'zombie'], ['guard', 'labz', 'crawler']] },
       { x: 1560, waves: [['labz', 'zombie', 'crawler', 'labz'], ['guard', 'gunner', 'zombie']] },
@@ -243,7 +342,7 @@ export const STAGES = [
     id: 2, name: 'ステージ 2', sub: 'あかい そらの おやしき', theme: 'manor', length: 4700,
     platforms: [[560, 226, 160], [1000, 200, 140], [1700, 230, 170], [2050, 180, 140], [2760, 224, 160], [3380, 200, 170], [3800, 236, 130]],
     crates: [[430], [1350], [2200], [3100]],
-    pickups: [[700, 'rifle', 212], [1450, 'heal'], [2120, 'bazooka', 166], [2900, 'ammo'], [3500, 'heal', 186], [3900, 'ammo']],
+    pickups: [[700, 'rifle', 212], [1450, 'heal'], [1700, 'tbomb'], [2120, 'bazooka', 166], [2900, 'ammo'], [3500, 'heal', 186], [3900, 'ammo']],
     arenas: [
       { x: 650,  waves: [['zombie', 'zombie', 'crawler'], ['leaper', 'zombie', 'grunt']] },
       { x: 1500, waves: [['shield', 'guard', 'zombie', 'crawler'], ['leaper', 'leaper', 'crawler', 'zombie']] },
@@ -257,7 +356,7 @@ export const STAGES = [
     id: 3, name: 'ステージ 3', sub: 'あめの はいきょとし', theme: 'city', length: 4900,
     platforms: [[520, 230, 150], [900, 196, 130], [1300, 226, 170], [1640, 176, 150], [2150, 220, 160], [2500, 182, 140], [3050, 228, 170], [3500, 196, 150], [3900, 232, 140]],
     crates: [[420], [1180], [1980], [2860], [3700]],
-    pickups: [[640, 'rifle', 222], [1380, 'heal', 218], [1700, 'smg', 168], [2580, 'shotgun', 174], [3120, 'ammo', 220], [3560, 'heal', 188], [4050, 'bazooka']],
+    pickups: [[640, 'rifle', 222], [1100, 'smoke'], [1380, 'heal', 218], [1700, 'smg', 168], [2580, 'shotgun', 174], [3120, 'ammo', 220], [3560, 'heal', 188], [4050, 'bazooka']],
     arenas: [
       { x: 700,  waves: [['zombie', 'soldierz', 'zombie'], ['raider', 'zombie', 'soldierz']] },
       { x: 1550, waves: [['zombie', 'zombie', 'guard', 'soldierz'], ['sniper', 'soldierz', 'zombie']] },
@@ -271,7 +370,7 @@ export const STAGES = [
     train: { every: 15, first: 9 },
     platforms: [[480, 226, 170], [820, 230, 160], [1180, 222, 180], [1560, 228, 170], [1880, 216, 160], [2260, 226, 180], [2640, 220, 170], [3000, 228, 170], [3360, 222, 170], [3720, 226, 180], [4100, 220, 160]],
     crates: [[400], [1100], [2050], [2950], [3800]],
-    pickups: [[560, 'shotgun', 216], [1250, 'heal', 212], [1950, 'ammo', 206], [2700, 'heal', 210], [3080, 'rifle', 218], [3800, 'ammo', 216], [4150, 'heal', 210]],
+    pickups: [[560, 'shotgun', 216], [1250, 'heal', 212], [1600, 'laser'], [1950, 'ammo', 206], [2700, 'heal', 210], [3080, 'rifle', 218], [3800, 'ammo', 216], [4150, 'heal', 210]],
     arenas: [
       { x: 700,  waves: [['zombie', 'swarm', 'swarm', 'zombie'], ['bloatz', 'spitter']] },
       { x: 1600, waves: [['leaper', 'swarm', 'swarm', 'zombie'], ['bloatz', 'spitter', 'swarm']] },
@@ -325,7 +424,7 @@ function mkStage(o) {
 }
 const MORE = [
   { id: 6, sub: 'すてられた びょういん', theme: 'hospital', length: 5200, hpMul: 1.12, gimmick: { type: 'blackout', every: 13, first: 8, dur: 3.2 },
-    weapons: [[820, 'smg'], [2000, 'shotgun'], [3050, 'rifle']],
+    weapons: [[820, 'smg'], [1400, 'tbomb'], [2000, 'shotgun'], [3050, 'rifle']],
     arenas: [
       [700, ['patient', 'patient', 'labz'], ['guard', 'patient', 'zombie', 'crawler']],
       [1600, ['labz', 'labz', 'spitter', 'patient'], ['guard', 'guard', 'leaper']],
@@ -333,7 +432,7 @@ const MORE = [
       [3500, ['guard', 'labz', 'crawler', 'crawler'], ['bloatz', 'patient', 'spitter', 'guard']],
     ], boss: { x: 4750, id: 'surgeon' } },
   { id: 7, sub: 'のっとられた きち', theme: 'base', length: 5400, hpMul: 1.18, gimmick: { type: 'turret', every: 9, first: 7 },
-    weapons: [[650, 'rifle'], [2700, 'minigun'], [3700, 'bazooka']],
+    weapons: [[650, 'rifle'], [1700, 'laser'], [2700, 'minigun'], [3700, 'bazooka']],
     arenas: [
       [700, ['soldierz', 'zombie', 'guard'], ['soldierz', 'soldierz', 'zombie']],
       [1650, ['sniper', 'soldierz', 'guard', 'zombie'], ['hulk', 'soldierz']],
@@ -341,7 +440,7 @@ const MORE = [
       [3650, ['soldierz', 'zombie', 'zombie'], ['sergeant']],
     ], boss: { x: 4950, id: 'tank' } },
   { id: 8, sub: 'きりの もり', theme: 'forest', length: 5400, hpMul: 1.22, gimmick: { type: 'fog' },
-    weapons: [[800, 'shotgun'], [1900, 'smg'], [3000, 'rifle']],
+    weapons: [[800, 'shotgun'], [1900, 'smg'], [2400, 'smoke'], [3000, 'rifle']],
     arenas: [
       [700, ['hound', 'zombie', 'hound'], ['leaper', 'zombie', 'hound']],
       [1650, ['wraith', 'hound', 'zombie', 'zombie'], ['leaper', 'leaper', 'hound']],
@@ -351,7 +450,7 @@ const MORE = [
   { id: 9, sub: 'うごく こうじょう', theme: 'factory', length: 5600, hpMul: 1.27, gimmick: { type: 'factory' },
     presses: [[1020, 3.6, 0], [1260, 3.6, 1.8], [2230, 3.4, 0.6], [2480, 3.4, 2.3], [3240, 3.2, 1], [4250, 3.2, 0.3], [4500, 3.2, 1.9]],
     conveyors: [[1480, 300, 1], [2900, 320, -1], [4380, 280, 1]],
-    weapons: [[650, 'smg'], [1800, 'shotgun'], [2500, 'rifle'], [3300, 'bazooka']],
+    weapons: [[650, 'smg'], [1200, 'flame'], [1800, 'shotgun'], [2500, 'rifle'], [3300, 'bazooka']],
     arenas: [
       [700, ['worker', 'worker', 'zombie'], ['worker', 'soldierz', 'zombie']],
       [1700, ['bloatz', 'worker', 'worker'], ['soldierz', 'worker', 'leaper', 'zombie']],
@@ -359,7 +458,7 @@ const MORE = [
       [3700, ['worker', 'worker', 'zombie', 'soldierz'], ['patch']],
     ], boss: { x: 5150, id: 'welder' } },
   { id: 10, sub: 'くずれる はし', theme: 'bridge', length: 5800, hpMul: 1.32, gimmick: { type: 'debris', every: 3.6, first: 4 },
-    weapons: [[700, 'rifle'], [2000, 'minigun'], [3000, 'shotgun'], [4200, 'bazooka']],
+    weapons: [[700, 'rifle'], [1500, 'tbomb'], [2000, 'minigun'], [3000, 'shotgun'], [3600, 'smoke'], [4200, 'bazooka']],
     arenas: [
       [700, ['zombie', 'zombie', 'soldierz'], ['leaper', 'zombie', 'spitter', 'soldierz']],
       [1700, ['soldierz', 'soldierz', 'zombie', 'guard'], ['hulk', 'leaper', 'zombie']],
@@ -367,7 +466,7 @@ const MORE = [
       [3800, ['leaper', 'leaper', 'soldierz', 'zombie'], ['sergeant', 'zombie']],
     ], boss: { x: 5300, id: 'wreck' } },
   { id: 11, sub: 'しずむ ふね', theme: 'ship', length: 5600, hpMul: 1.36, gimmick: { type: 'tilt', period: 13 },
-    weapons: [[700, 'smg'], [1900, 'shotgun'], [3000, 'rifle'], [4000, 'bazooka']],
+    weapons: [[700, 'smg'], [1900, 'shotgun'], [2500, 'laser'], [3000, 'rifle'], [4000, 'bazooka']],
     arenas: [
       [700, ['sailor', 'sailor', 'zombie'], ['sailor', 'spitter', 'swarm', 'swarm']],
       [1700, ['bloatz', 'sailor', 'sailor'], ['leaper', 'sailor', 'spitter', 'zombie']],
@@ -375,7 +474,7 @@ const MORE = [
       [3700, ['bloatz', 'bloatz', 'sailor'], ['leaper', 'leaper', 'sailor', 'sailor', 'swarm']],
     ], boss: { x: 5150, id: 'kraken' } },
   { id: 12, sub: 'ゆきやまの けんきゅうきち', theme: 'snow', length: 5600, hpMul: 1.4, gimmick: { type: 'blizzard', every: 11, first: 6, dur: 3.5 },
-    weapons: [[700, 'rifle'], [1900, 'beam'], [2900, 'smg'], [4000, 'bazooka']],
+    weapons: [[700, 'rifle'], [1900, 'beam'], [2400, 'flame'], [2900, 'smg'], [4000, 'bazooka']],
     arenas: [
       [700, ['frozen', 'frozen', 'hound'], ['soldierz', 'frozen', 'hound']],
       [1700, ['sniper', 'frozen', 'frozen', 'soldierz'], ['hulk', 'hound', 'hound']],
@@ -384,7 +483,7 @@ const MORE = [
     ], boss: { x: 5150, id: 'yeti' } },
   { id: 13, sub: 'ちかの むしの す', theme: 'hive', length: 5600, hpMul: 1.44, gimmick: { type: 'goo' },
     goo: [[1100, 180], [2020, 160], [3120, 200], [4300, 180]],
-    weapons: [[700, 'shotgun'], [1700, 'smg'], [2800, 'rifle'], [3900, 'bazooka']],
+    weapons: [[700, 'shotgun'], [1700, 'smg'], [2300, 'smoke'], [2800, 'rifle'], [3900, 'bazooka']],
     arenas: [
       [700, ['swarm', 'swarm', 'crawler', 'swarm'], ['spitter', 'leaper', 'swarm']],
       [1700, ['bloatz', 'crawler', 'crawler'], ['wraith', 'swarm', 'swarm', 'leaper', 'spitter']],
@@ -392,7 +491,7 @@ const MORE = [
       [3700, ['bloatz', 'bloatz', 'spitter', 'spitter'], ['hulk', 'leaper', 'leaper', 'swarm', 'swarm']],
     ], boss: { x: 5150, id: 'queen' } },
   { id: 14, sub: 'あらしの ひこうじょう', theme: 'airfield', length: 5800, hpMul: 1.48, gimmick: { type: 'lightning', every: 6, first: 5 },
-    weapons: [[650, 'rifle'], [1900, 'minigun'], [3000, 'bazooka'], [4000, 'shotgun']],
+    weapons: [[650, 'rifle'], [1900, 'minigun'], [2500, 'laser'], [3000, 'bazooka'], [3500, 'tbomb'], [4000, 'shotgun']],
     arenas: [
       [700, ['soldierz', 'soldierz', 'zombie', 'hound'], ['sniper', 'soldierz', 'guard']],
       [1700, ['hound', 'hound', 'soldierz', 'zombie'], ['sergeant']],
@@ -400,7 +499,7 @@ const MORE = [
       [3800, ['sniper', 'sniper', 'soldierz', 'soldierz'], ['hulk', 'soldierz', 'hound']],
     ], boss: { x: 5300, id: 'heli' } },
   { id: 15, sub: 'さいごの けんきゅうじょ', theme: 'core', length: 6200, hpMul: 1.45, gimmick: { type: 'vents', every: 8, first: 6 },
-    weapons: [[650, 'beam'], [1600, 'shotgun'], [2600, 'minigun'], [3500, 'bazooka'], [4500, 'rifle']],
+    weapons: [[650, 'beam'], [1600, 'shotgun'], [2100, 'flame'], [2600, 'minigun'], [3500, 'bazooka'], [4000, 'smoke'], [4500, 'rifle']],
     arenas: [
       [700, ['labz', 'labz', 'guard', 'patient'], ['spitter', 'leaper', 'labz']],
       [1700, ['soldierz', 'soldierz', 'hound', 'frozen'], ['bloatz', 'sailor', 'worker']],
@@ -420,7 +519,7 @@ const MORE = [
     ], boss: { x: 4950, id: 'ghoulking' } },
   // v0.8：よあけの こうや（さいしょは まっくら → あさやけ → あおぞら。すすむ ほど あかるく なる）
   { id: 17, sub: 'よあけの こうや', theme: 'dawn', length: 5600, hpMul: 1.45, free: true, start: ['katana', 'pistol'], heroLook: 'plain',
-    weapons: [[900, 'shotgun'], [2100, 'rifle'], [3300, 'smg'], [4300, 'bazooka']],
+    weapons: [[900, 'shotgun'], [1500, 'flame'], [2100, 'rifle'], [2700, 'tbomb'], [3300, 'smg'], [3800, 'smoke'], [4300, 'bazooka'], [4800, 'laser']],
     arenas: [
       [700, ['nomad', 'nomad', 'scorp'], ['nomad', 'scorp', 'scorp']],
       [1700, ['outlaw', 'nomad', 'zombie'], ['scorp', 'scorp', 'scorp', 'nomad']],
@@ -429,7 +528,7 @@ const MORE = [
     ], boss: { x: 5150, id: 'sunscorp' } },
   // v0.9：とびらの そうこ（ドア・シャッターが バーン！と ひらいて くろスーツが どっと でてくる。ちは みどり）
   { id: 18, sub: 'とびらの そうこ', theme: 'doors', length: 6600, hpMul: 1.3, free: true, start: ['shotgun', 'pistol'], heroLook: 'plain', cap: 18,
-    weapons: [[420, 'shotgun'], [1250, 'shotgun'], [2300, 'smg'], [3350, 'shotgun'], [4400, 'rifle'], [5450, 'shotgun']],
+    weapons: [[420, 'shotgun'], [600, 'smoke'], [1250, 'shotgun'], [1350, 'tbomb'], [2300, 'smg'], [2450, 'laser'], [3350, 'shotgun'], [3500, 'flame'], [4400, 'rifle'], [5450, 'shotgun']],
     // へや：x（まんなか）・でてくる かず・ドア（へやの まんなか から の ずれ と しゅるい）・まぜかた
     horde: { total: [150, 250] },
     rooms: [

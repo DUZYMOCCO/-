@@ -1,11 +1,11 @@
 // えがく（Canvas 2D）。けいさんは game.js、ここは みためだけ
 // v0.2.0: くらくて こわい せかい（あかい ひじょうとう・きり・ちり・ひかりの あな）
-import { drawPnaBg, drawPnaFore, drawPnaPlatforms, drawPnaCrate, drawPnaSplat, drawSuitEnemy, drawDoorBoss } from './pna.js?v=9';
-import { H, GROUND, WEAPONS, GUN_GEOM, dawnAt } from './rules.js?v=9';
-import { drawGun } from './guns.js?v=9';
-import { THEMES2 } from './bg2.js?v=9';
-import { DAWN_THEME, setDawn } from './dawn.js?v=9';
-import { pressState } from './game.js?v=9';
+import { drawPnaBg, drawPnaFore, drawPnaPlatforms, drawPnaCrate, drawPnaSplat, drawSuitEnemy, drawDoorBoss } from './pna.js?v=10';
+import { H, GROUND, WEAPONS, GUN_GEOM, dawnAt } from './rules.js?v=10';
+import { drawGun } from './guns.js?v=10';
+import { THEMES2 } from './bg2.js?v=10';
+import { DAWN_THEME, setDawn } from './dawn.js?v=10';
+import { pressState } from './game.js?v=10';
 // v0.8.0: ステージ 17「よあけの こうや」（すすむ ほど あかるく なる そら・こうやの ゾンビ・おおさそり）
 // v0.6.0: ステージ 6〜15・ミニガン・ビームブラスター・しかけ（ていでん・かたむき・ふぶき・プレス）
 // v0.4.0: ズーム カメラ・あたらしい ステージ 3〜5・リアルな じゅう・じゅうじの かお
@@ -26,7 +26,7 @@ function flicker(t, i, bad) {
   if (bad) { const a = Math.sin(t * 31 + i * 7) + Math.sin(t * 17.3 + i) * 0.8; return a > 0.6 ? 0 : Math.sin(t * 2.1 + i * 3) > 0.55 ? 0.15 : 0.85 + Math.sin(t * 60) * 0.1; }
   return Math.sin(t * 0.9 + i * 2.3) > 0.93 ? 0.1 : 0.72 + Math.sin(t * 3.4 + i) * 0.22;
 }
-const GLOW_COL = { red: [255, 40, 28], warm: [255, 170, 90], purple: [180, 70, 255], cold: [140, 185, 255], white: [235, 235, 255], green: [110, 255, 120], ember: [255, 90, 40] };
+const GLOW_COL = { red: [255, 40, 28], warm: [255, 170, 90], purple: [180, 70, 255], cold: [140, 185, 255], white: [235, 235, 255], green: [110, 255, 120], ember: [255, 90, 40], pink: [255, 70, 210] };
 
 export class Renderer {
   constructor(canvas) {
@@ -154,19 +154,25 @@ export class Renderer {
     for (const c of g.crates) if (c.hp > 0 && vis(c.x)) { if (g.horde) drawPnaCrate(ctx, c); else drawCrate(ctx, c); }
     for (const k2 of g.pickups) if (vis(k2.x)) { drawPickup(ctx, k2, t); LIGHTS.push(k2.x - cam, k2.y - 22, 70, 0.7); }
     for (const h of g.hazards) drawHazard(ctx, h, g);
+    if (g.bombs && g.bombs.length) drawBombs(ctx, g, cam);
     if (g.boss) drawBoss(ctx, g.boss, g);
     for (const e of g.enemies) if (vis(e.x)) { drawEnemy(ctx, e, g); if (e.state === 'wind' && e.aimX !== undefined && e.def.laser && !e.dead) drawLaser(ctx, e, t); }
     for (const a of g.allies) if (vis(a.x)) { drawFighter(ctx, a, g, STYLES[a.def.id] || STYLES.ao); LIGHTS.push(a.x - cam, a.y - 45, 110, 0.55); }
+    if (g.clouds && g.clouds.length) drawClouds(ctx, g, cam);
+    drawStatus(ctx, g, cam, vis);
     const P = g.player;
     drawFighter(ctx, P, g, g.stage.heroLook === 'plain' ? STYLES.plain : STYLES.me);
     LIGHTS.push(P.x - cam, P.y - 45, 160, 0.8);
-    drawChargeFx(ctx, P, g, cam);
+    drawChargeFx(ctx, P, g, cam); drawGearHeld(ctx, P, g, cam);
     drawPresses(ctx, g, cam);
     for (const b of g.bullets) { if (!vis(b.x, 40)) continue; drawBullet(ctx, b); if (b.owner === 'e') LIGHTS.push(b.x - cam, b.y, 60, 0.7); else if (b.w === 'bazooka') LIGHTS.push(b.x - cam, b.y, 70, 0.8); else if (b.w === 'beam') LIGHTS.push(b.x - cam, b.y, 80, 0.7); else if (b.tr) LIGHTS.push(b.x - cam, b.y, 90, 0.75); }
     if (g.beams && g.beams.length) drawBeams(ctx, g, cam);
+    if (g.lasers && g.lasers.length) drawLasers(ctx, g, cam);
+    if (g.nades && g.nades.length) drawNades(ctx, g);
     for (const q of g.parts) {
       drawPart(ctx, q);
-      if (q.kind === 'muzzle') { const s = q.size / 10; LIGHTS.push(q.x - cam, q.y, 150 * s, 1); GLOWS.push(q.x - cam, q.y, 70 * s, 0.9, q.color === '#e9a0ff' ? 'purple' : q.style === 'beam' ? 'cold' : 'warm', 0); }
+      if (q.kind === 'muzzle') { const s = q.size / 10; LIGHTS.push(q.x - cam, q.y, 150 * s, 1); GLOWS.push(q.x - cam, q.y, 70 * s, 0.9, q.color === '#e9a0ff' ? 'purple' : q.style === 'beam' ? 'cold' : q.style === 'laser' ? 'pink' : 'warm', 0); }
+      else if (q.kind === 'flame') { if (q.seed < 0.3) { const a = q.life / q.max; LIGHTS.push(q.x - cam, q.y, 60 + q.size * 6, 0.7 * a); GLOWS.push(q.x - cam, q.y, 26 + q.size * 3, 0.45 * a, 'ember', 0); } }
       else if (q.kind === 'fire') { const a = q.life / q.max; LIGHTS.push(q.x - cam, q.y, q.size * 5, 0.8 * a); GLOWS.push(q.x - cam, q.y, q.size * 3, 0.5 * a, 'ember', 0); }
       else if (q.kind === 'spark' && (this.frame & 1)) GLOWS.push(q.x - cam, q.y, 14, 0.6, 'warm', 0);
     }
@@ -1754,6 +1760,13 @@ function drawPart(ctx, q) {
   switch (q.kind) {
     case 'blood': ctx.fillStyle = q.color; ctx.beginPath(); ctx.arc(q.x, q.y, q.size * (0.6 + a * 0.4), 0, TAU); ctx.fill(); break;
     case 'smoke': ctx.globalAlpha = a * 0.8; ctx.fillStyle = q.color; ctx.beginPath(); ctx.arc(q.x, q.y, q.size, 0, TAU); ctx.fill(); ctx.globalAlpha = 1; break;
+    case 'flame': {
+      // v0.10 かえんほうしゃき の ほのお：しろ → きいろ → オレンジ → くろい けむり
+      const r = q.size * (1 + (1 - a) * 2.4);
+      ctx.globalAlpha = a > 0.28 ? Math.min(1, a * 1.5) : a * 1.8;
+      ctx.fillStyle = a > 0.75 ? '#fff4b8' : a > 0.52 ? '#ffc23a' : a > 0.28 ? '#ff6a1a' : '#5a3a30';
+      ctx.beginPath(); ctx.arc(q.x, q.y, r, 0, TAU); ctx.fill(); ctx.globalAlpha = 1; break;
+    }
     case 'fire': ctx.globalAlpha = a; ctx.fillStyle = q.color; ctx.beginPath(); ctx.arc(q.x, q.y, q.size * a, 0, TAU); ctx.fill(); ctx.globalAlpha = 1; break;
     case 'spark': ctx.strokeStyle = q.color; ctx.lineWidth = 1.8; ctx.beginPath(); ctx.moveTo(q.x, q.y); ctx.lineTo(q.x - q.vx * 0.03, q.y - q.vy * 0.03); ctx.stroke(); break;
     case 'shell': {
@@ -1772,9 +1785,12 @@ function drawPart(ctx, q) {
       const s = q.size, f = q.face, sd = q.seed || 0.5, st = q.style;
       if (st) {
         ctx.save(); ctx.translate(q.x, q.y); ctx.scale(f, 1);
-        glowAt(ctx, 0, 0, s * (st === 'shotgun' || st === 'bazooka' ? 5 : 3.5), st === 'beam' ? 'cold' : 'warm', a);
+        glowAt(ctx, 0, 0, s * (st === 'shotgun' || st === 'bazooka' ? 5 : 3.5), st === 'beam' ? 'cold' : st === 'laser' ? 'pink' : 'warm', a);
         ctx.globalAlpha = Math.min(1, a * 1.4);
-        if (st === 'beam') {
+        if (st === 'laser') {
+          ctx.fillStyle = '#ff6ae0'; ctx.beginPath(); ctx.arc(s * 0.3, 0, s * 0.7, 0, TAU); ctx.fill(); ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(s * 0.3, 0, s * 0.3, 0, TAU); ctx.fill();
+          ctx.strokeStyle = 'rgba(255,150,240,0.9)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(-s * 0.2, -s * 1.1); ctx.lineTo(s * 0.8, s * 1.1); ctx.moveTo(-s * 0.2, s * 1.1); ctx.lineTo(s * 0.8, -s * 1.1); ctx.stroke();
+        } else if (st === 'beam') {
           ctx.fillStyle = '#9ff0ff'; ctx.beginPath(); ctx.arc(s * 0.4, 0, s * 0.8, 0, TAU); ctx.fill(); ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(s * 0.4, 0, s * 0.35, 0, TAU); ctx.fill();
           ctx.strokeStyle = 'rgba(160,240,255,0.8)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.ellipse(s * 0.4, 0, s * 0.4, s * 1.1, 0, 0, TAU); ctx.stroke();
         } else if (st === 'rifle') {
@@ -1886,6 +1902,111 @@ function drawBeams(ctx, g, cam) {
     ctx.stroke();
     ctx.fillStyle = `rgba(220,250,255,${a})`; ctx.beginPath(); ctx.arc(x0, y, w * 0.7, 0, TAU); ctx.fill();
     for (let s = 0; s <= len; s += 110) { LIGHTS.push(x0 + dir * s - cam, y, 170, a); GLOWS.push(x0 + dir * s - cam, y, 90, 0.8 * a, 'cold', 0); }
+  }
+}
+// ---------- v0.10 あたらしい ぶき の みため ----------
+let PUFF = null;
+function puffSprite() {
+  if (PUFF) return PUFF;
+  const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d');
+  const gr = x.createRadialGradient(32, 30, 0, 32, 32, 32);
+  gr.addColorStop(0, 'rgba(226,229,234,0.95)'); gr.addColorStop(0.5, 'rgba(200,204,212,0.75)'); gr.addColorStop(0.8, 'rgba(160,165,175,0.3)'); gr.addColorStop(1, 'rgba(150,155,165,0)');
+  x.fillStyle = gr; x.fillRect(0, 0, 64, 64);
+  return (PUFF = c);
+}
+// スモーク：もくもく の くも（9まい の スプライト だけ・かるい）
+function drawClouds(ctx, g, cam) {
+  const P = puffSprite();
+  for (const c of g.clouds) {
+    const grow = Math.min(1, 0.35 + c.t / 0.5), A = Math.min(1, c.t / 0.15) * Math.max(0, Math.min(1, (c.dur - c.t) / 0.8));
+    const rx = c.r * grow, ry = c.r * 0.62 * grow, cy = c.y - ry * 0.85;
+    for (let i = 0; i < 9; i++) {
+      const h1 = hash(c.seed + i * 7), h2 = hash(c.seed + i * 13 + 1), h3 = hash(c.seed + i * 29 + 2);
+      const px = c.x + (h1 - 0.5) * rx * 1.4 + Math.sin(g.time * 0.7 + i) * 6;
+      const py = cy + (h2 - 0.5) * ry * 1.0 + Math.cos(g.time * 0.5 + i * 2) * 4 - c.t * 2;
+      const pr = rx * (0.45 + h3 * 0.3);
+      ctx.globalAlpha = A * 0.88; ctx.drawImage(P, px - pr, py - pr, pr * 2, pr * 2);
+    }
+    ctx.globalAlpha = 1;
+    LIGHTS.push(c.x - cam, cy, c.r * 1.2, 0.4 * A);
+  }
+}
+// じげんばくだん：みどりの はこ・あかい ランプ（のこり 3びょう から はやく ひかる）・うえに すうじ
+function drawBombs(ctx, g, cam) {
+  for (const b of g.bombs) {
+    if (b.done) continue;
+    const rem = Math.max(0, b.fuse - b.t), armed = b.t >= 0.5, per = rem > 3 ? 0.5 : rem > 1.5 ? 0.25 : 0.12, on = armed && (b.t % per) < per * 0.5;
+    const x = b.x, y = b.y;
+    ctx.fillStyle = OUT; ctx.fillRect(x - 14, y - 14, 28, 14);
+    ctx.fillStyle = '#4a5636'; ctx.fillRect(x - 12.5, y - 12.5, 25, 12);
+    ctx.fillStyle = '#66744c'; ctx.fillRect(x - 12.5, y - 12.5, 25, 2);
+    ctx.fillStyle = '#d8b24a'; ctx.fillRect(x - 12.5, y - 5, 25, 1.6);
+    ctx.fillStyle = '#0c0d0e'; ctx.fillRect(x - 8, y - 11, 11, 5);
+    ctx.fillStyle = on ? '#ff4a3a' : '#7a1a14'; ctx.fillRect(x - 7, y - 10, 2.8, 3); ctx.fillRect(x - 3, y - 10, 2.8, 3);
+    ctx.fillStyle = on ? '#ff2a1a' : '#5a1410'; ctx.beginPath(); ctx.arc(x + 7.5, y - 8.5, 2.4, 0, TAU); ctx.fill();
+    if (on) { glowAt(ctx, x + 7.5, y - 8.5, 30, 'red', 1); LIGHTS.push(x + 7.5 - cam, y - 9, 60, 0.7); }
+    const sec = Math.ceil(rem), big = rem <= 3;
+    ctx.font = `900 ${big ? 17 : 13}px system-ui`; ctx.textAlign = 'center';
+    ctx.lineWidth = 3.5; ctx.strokeStyle = OUT; ctx.strokeText(String(sec), x, y - 20);
+    ctx.fillStyle = big ? '#ff5a4a' : '#ffffff'; ctx.fillText(String(sec), x, y - 20);
+  }
+}
+// スモークグレネード：くるくる まわる はいいろの つつ
+function drawNades(ctx, g) {
+  for (const n of g.nades) {
+    ctx.save(); ctx.translate(n.x, n.y); ctx.rotate(n.rot || 0);
+    ctx.fillStyle = OUT; ctx.fillRect(-5.5, -8.5, 11, 17);
+    ctx.fillStyle = '#868d96'; ctx.fillRect(-4, -7, 8, 14);
+    ctx.fillStyle = '#d8dde2'; ctx.fillRect(-4, -2, 8, 2.4);
+    ctx.fillStyle = '#3a3f45'; ctx.fillRect(-4.5, -8, 9, 2.4);
+    ctx.restore();
+    ctx.globalAlpha = 0.5; ctx.fillStyle = '#c9ccd2'; ctx.beginPath(); ctx.arc(n.x - n.vx * 0.02, n.y - n.vy * 0.02, 4, 0, TAU); ctx.fill(); ctx.globalAlpha = 1;
+  }
+}
+// レーザーガン：ピンクの ほそい ひかり（つらぬく）
+function drawLasers(ctx, g, cam) {
+  ctx.lineCap = 'round';
+  for (const l of g.lasers) {
+    const a = Math.max(0, l.life / l.max);
+    ctx.beginPath(); ctx.moveTo(l.x0, l.y0); ctx.lineTo(l.x1, l.y1);
+    ctx.strokeStyle = `rgba(255,60,200,${0.35 * a})`; ctx.lineWidth = 9 * a + 2; ctx.stroke();
+    ctx.strokeStyle = `rgba(255,140,235,${0.9 * a})`; ctx.lineWidth = 3.5; ctx.stroke();
+    ctx.strokeStyle = `rgba(255,255,255,${a})`; ctx.lineWidth = 1.2; ctx.stroke();
+    ctx.fillStyle = `rgba(255,200,245,${a})`; ctx.beginPath(); ctx.arc(l.x1, l.y1, 3 + 4 * a, 0, TAU); ctx.fill();
+    const len = Math.hypot(l.x1 - l.x0, l.y1 - l.y0) || 1, ux = (l.x1 - l.x0) / len, uy = (l.y1 - l.y0) / len;
+    for (let s = 0; s <= len; s += 130) { LIGHTS.push(l.x0 + ux * s - cam, l.y0 + uy * s, 120, 0.8 * a); GLOWS.push(l.x0 + ux * s - cam, l.y0 + uy * s, 55, 0.6 * a, 'pink', 0); }
+  }
+}
+// もえてる てき（ちいさな ほのお）・けむりで みえない てき（？）
+function drawStatus(ctx, g, cam, vis) {
+  const t = g.time;
+  for (const e of g.enemies) {
+    if (e.dead || !vis(e.x)) continue;
+    const h = e.h || 80;
+    if (e.burnT > 0) {
+      for (let i = 0; i < 3; i++) {
+        const fx = e.x + (i - 1) * (e.w || 30) * 0.3, fy = e.y - h * (0.3 + 0.22 * ((i * 0.37 + 0.2) % 1)), f = 0.65 + 0.35 * Math.sin(t * 20 + i * 2.1);
+        ctx.fillStyle = 'rgba(255,120,30,0.85)'; ctx.beginPath(); ctx.moveTo(fx - 5 * f, fy); ctx.quadraticCurveTo(fx, fy - 16 * f, fx + 5 * f, fy); ctx.arc(fx, fy, 5 * f, 0, Math.PI); ctx.fill();
+        ctx.fillStyle = 'rgba(255,230,120,0.9)'; ctx.beginPath(); ctx.arc(fx, fy + 1, 2.4 * f, 0, TAU); ctx.fill();
+      }
+      glowAt(ctx, e.x, e.y - h * 0.45, 44, 'ember', 0.7); LIGHTS.push(e.x - cam, e.y - h * 0.45, 90, 0.6);
+    }
+    if (e.blind) {
+      const yy = e.y - h - 16 + Math.sin(t * 6 + e.x) * 3;
+      ctx.font = '900 17px system-ui'; ctx.textAlign = 'center'; ctx.lineWidth = 3.5; ctx.strokeStyle = OUT; ctx.strokeText('？', e.x, yy); ctx.fillStyle = '#eef1f5'; ctx.fillText('？', e.x, yy);
+    }
+  }
+}
+// もっている ぶきの ひかり（かえん の くち火・ほのお の あかり・レーザー の ねつ）
+function drawGearHeld(ctx, P, g, cam) {
+  const cur = P.ars && P.ars.cur; if (!cur || P.hp <= 0) return;
+  if (cur === 'flame') {
+    const G = GUN_GEOM.flame, mx = P.x + P.face * (16 + G.mx), my = P.y - 44 + G.my, st = P.ars.guns.flame || {};
+    if (P.flaming) { glowAt(ctx, mx + P.face * 60, my, 110, 'ember', 0.9); LIGHTS.push(mx + P.face * 70 - cam, my, 200, 0.95); }
+    else if (!st.out) { const f = 0.7 + 0.3 * Math.sin(g.time * 30); ctx.fillStyle = 'rgba(120,180,255,0.9)'; ctx.beginPath(); ctx.ellipse(mx + P.face * 2, my, 3 * f, 2, 0, 0, TAU); ctx.fill(); glowAt(ctx, mx, my, 12, 'cold', 0.6); }
+  } else if (cur === 'laser') {
+    const st = P.ars.guns.laser || {}, h = (st.heat || 0) / 100;
+    if (h > 0.35) { glowAt(ctx, P.x + P.face * 44, P.y - 53, 14 + 14 * h, st.over ? 'red' : 'pink', h); }
   }
 }
 function drawChargeFx(ctx, f, g, cam) {

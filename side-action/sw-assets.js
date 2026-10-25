@@ -1,8 +1,8 @@
 // ガンキック ヒーローズ の Service Worker 用アセット一覧
 self.GAME_ASSETS = self.GAME_ASSETS || {};
 self.GAME_ASSETS['side-action'] = {
-  version: 'v9',
-  gameVersion: '0.9.0',
+  version: 'v10',
+  gameVersion: '0.10.0',
   files: [
     'css/side-action.css',
     'js/index.js',
@@ -14,6 +14,7 @@ self.GAME_ASSETS['side-action'] = {
     'js/bg2.js',
     'js/dawn.js',
     'js/horde.js',
+    'js/gear.js',
     'js/pna.js',
     'js/sfx.js',
     'js/music.js',

@@ -4,18 +4,18 @@
  */
 import { loadCss } from '../../common/js/load-css.js';
 import { storage } from '../../common/js/storage.js';
-import { VERSION, STAGES, WEAPONS, ZOOMS, normalizeSave, rankOf } from './rules.js?v=9';
-import { Game } from './game.js?v=9';
-import { Renderer } from './render.js?v=9';
-import { Input } from './input.js?v=9';
-import { Sfx } from './sfx.js?v=9';
+import { VERSION, STAGES, WEAPONS, ZOOMS, normalizeSave, rankOf } from './rules.js?v=10';
+import { Game } from './game.js?v=10';
+import { Renderer } from './render.js?v=10';
+import { Input } from './input.js?v=10';
+import { Sfx } from './sfx.js?v=10';
 const PER = 5;
 
 const SAVE_KEY = 'side_action_save';
 const TITLE = 'ガンキック ヒーローズ';
 
 export default {
-  prepare() { return loadCss(new URL('../css/side-action.css?v=9', import.meta.url).href); },
+  prepare() { return loadCss(new URL('../css/side-action.css?v=10', import.meta.url).href); },
 
   init(container, onBackToHub) {
     this.container = container; this.onBackToHub = onBackToHub;
@@ -47,7 +47,7 @@ export default {
         <div class="sa-me"><div class="sa-face"></div><div><div class="sa-hpbar"><i></i></div><div class="sa-lives"></div></div></div>
         <div class="sa-allies"></div>
         <div class="sa-score">0</div>
-        <div class="sa-wpn"><b></b><span></span></div>
+        <div class="sa-wpn"><b></b><span></span><em class="sa-gauge"><i></i></em></div>
       </div>
       <div class="sa-touch">
         <div class="sa-pad"><div class="sa-knob"></div></div>
@@ -82,6 +82,10 @@ export default {
           <div><b>キック</b>：まえげり → かいてんげり → まわしげり！ くうちゅうで とびげり、はしりながら スライディング</div>
           <div><b>パンチ</b>：パンチ → パンチ → アッパー！</div>
           <div><b>ぶきかえ</b>：ひろった ぶきに かえる</div>
+          <div><b>かえんほうしゃき</b>：おしっぱなしで ほのお！ ちかくの てきを もやす（ゲージが なくなったら ひと やすみ）</div>
+          <div><b>じげんばくだん</b>：おく ボタンで セット。てきが ふむか 8びょうで ドカーン！（じぶんと なかまは へいき）</div>
+          <div><b>スモーク</b>：なげると けむりが でて、てきが きみを みうしなう</div>
+          <div><b>レーザーガン</b>：てきを 4たい まで つらぬく。うちすぎると あつくなって ちょっと まつ</div>
           <div>キックと パンチを まぜると コンボが つながるよ</div>
           <div>タテへいは キックで タテを こわそう</div>
           <div class="sa-keys">キーボード：A D いどう ／ スペース ジャンプ ／ J うつ ／ K キック ／ L パンチ ／ Q ぶきかえ ／ Esc ポーズ</div>
@@ -246,7 +250,16 @@ export default {
     set('score', g.score, (v) => { this.el('.sa-score').textContent = v.toLocaleString(); });
     const ammo = p.ars.guns[p.ars.cur].ammo;
     set('wpn', `${p.ars.cur}:${ammo}`, () => { this.el('.sa-wpn b').textContent = WEAPONS[p.ars.cur].name; this.el('.sa-wpn span').textContent = ammo === Infinity ? '∞' : ammo; });
-    set('meleeBtn', !!WEAPONS[p.ars.cur].melee, (v) => { this.el('.sa-shoot').textContent = v ? 'きる' : 'うつ'; });
+    const cw = p.ars.cur, gs = p.ars.guns[cw];
+    set('shootLbl', WEAPONS[cw].melee ? 'きる' : cw === 'tbomb' ? 'おく' : cw === 'smoke' ? 'なげる' : 'うつ', (v) => { this.el('.sa-shoot').textContent = v; });
+    // v0.10 ねんりょう（かえん）・ねつ（レーザー）の ゲージ（5% きざみ）
+    const gv = cw === 'flame' ? `f${Math.round(gs.fuel / 5) * 5}${gs.out ? 'x' : ''}` : cw === 'laser' ? `h${Math.round(gs.heat / 5) * 5}${gs.over ? 'x' : ''}` : '';
+    set('gauge', gv, (v) => {
+      const el = this.el('.sa-gauge'); el.classList.toggle('show', !!v);
+      if (!v) return;
+      el.classList.toggle('heat', v[0] === 'h'); el.classList.toggle('bad', v.endsWith('x'));
+      el.querySelector('i').style.width = `${parseInt(v.slice(1), 10)}%`;
+    });
     set('beamBtn', p.ars.cur === 'beam', (v) => { this.el('.sa-charge').classList.toggle('show', v); });
     const bars = this.root.querySelectorAll('.sa-ally');
     g.allies.forEach((a, i) => set('a' + i, a.down > 0 ? -1 : Math.ceil(a.hp), (v) => { bars[i].classList.toggle('down', v < 0); bars[i].querySelector('i').style.width = `${Math.max(0, v / a.maxHp) * 100}%`; }));
@@ -290,7 +303,7 @@ export default {
   },
   drawTitleBg(t) {
     // タイトルの うしろは デモ（じどう で うごく）
-    if (!this.demo) { this.demo = new Game(0, { viewW: this.viewW, seed: 99, zoom: this.zoomZ() }); this.demoMem = {}; this.demoBot = null; import('./game.js?v=9').then((m) => { this.demoBot = m.botInput; }); }
+    if (!this.demo) { this.demo = new Game(0, { viewW: this.viewW, seed: 99, zoom: this.zoomZ() }); this.demoMem = {}; this.demoBot = null; import('./game.js?v=10').then((m) => { this.demoBot = m.botInput; }); }
     const d = this.demo;
     if (this.demoBot) d.update(1 / 60, this.demoBot(d, this.demoMem)); d.drainEvents(); d.banner = null; d.texts && (d.texts.length = 0);
     if (d.state !== 'play' || d.time > 90) this.demo = null;

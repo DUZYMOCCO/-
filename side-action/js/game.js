@@ -2,9 +2,10 @@
 import {
   H, GROUND, GRAV, PHYS, WEAPONS, MOVES, COMBO_WINDOW, CHAIN_GRACE, ENEMIES, BOSSES, STAGES, ALLIES, ALLY_DOWN_TIME,
   createArsenal, giveWeapon, addAmmo, nextWeapon, tickGun, pickMove, moveBox, overlap, knockOf, comboWord,
-  allyDecide, landOn, makePlatforms, scoreFor, GUN_GEOM, ZOOMS, tickBeam, dawnAt, stageProgress,
-} from './rules.js?v=9';
-import { initHorde, updateHorde, hordeCall, bossDoor } from './horde.js?v=9';
+  allyDecide, landOn, makePlatforms, scoreFor, GUN_GEOM, ZOOMS, tickBeam, dawnAt, stageProgress, tickGear,
+} from './rules.js?v=10';
+import { initHorde, updateHorde, hordeCall, bossDoor } from './horde.js?v=10';
+import { initGear, gearShoot, updateGear, blindTo, blindWalk } from './gear.js?v=10';
 
 export const BLOOD = {
   green: ['#63e64b', '#2fae3a', '#a6ff6e', '#1f7d2b'],
@@ -12,7 +13,7 @@ export const BLOOD = {
 };
 const MAX_PARTS = 260, MAX_SPLATS = 90, MAX_BULLETS = 140, MAX_HAZ = 40, MAX_ENEMIES = 12;
 // つかいまわす てきの のこりを けす（かたちは そのまま）
-const ENEMY_EXTRA = ['wallBounce', 'stag', 'inside', 'dead', 'gone', 'deadT', 'aimX', 'aimY', 'tgt', 'n', 'doorIn', 'doorMax', 'door', 'dom'];
+const ENEMY_EXTRA = ['wallBounce', 'stag', 'inside', 'dead', 'gone', 'deadT', 'aimX', 'aimY', 'tgt', 'n', 'doorIn', 'doorMax', 'door', 'dom', 'blind', 'burnT', 'burnK', 'wDir', 'wT'];
 function resetEnemy(e) { for (const k of ENEMY_EXTRA) if (e[k] !== undefined) e[k] = undefined; return e; }
 // はいれつを その ばで つめる（filter より ゴミが でない）
 function keep(arr, ok) { let j = 0; for (let i = 0; i < arr.length; i++) { const v = arr[i]; if (ok(v)) arr[j++] = v; } arr.length = j; return arr; }
@@ -65,6 +66,7 @@ export class Game {
     this.trainT = this.stage.train ? this.stage.train.first : 0;
     const GM = this.stage.gimmick;
     this.gimT = GM ? GM.first ?? 8 : 0; this.blackout = 0; this.tilt = 0; this.gust = 0; this.beams = []; this.tg = [];
+    initGear(this); // v0.10：ばくだん・けむり・レーザー
     this.pressHit = new Map();
     // v0.8：よあけ ステージ（すすむ ほど あかるく）
     this.dawnP = 0; this.dawn = this.stage.theme === 'dawn' ? dawnAt(0) : null;
@@ -98,6 +100,7 @@ export class Game {
     for (const e of this.enemies) this.updateEnemy(e, dt);
     if (this.boss) this.updateBoss(this.boss, dt);
     this.updateBullets(dt);
+    updateGear(this, dt);
     this.updateHazards(dt);
     this.updateTrain(dt);
     this.updateGimmick(dt);
@@ -113,6 +116,7 @@ export class Game {
     const p = this.player;
     p.anim += dt; p.inv = Math.max(0, p.inv - dt); p.hurtT = Math.max(0, p.hurtT - dt);
     p.recoil = Math.max(0, p.recoil - dt * 8); p.sinceMove += dt; p.shootT = Math.max(0, p.shootT - dt);
+    p.flaming = false; tickGear(p.ars, dt);
     if (p.hp <= 0) return this.updateDeadPlayer(p, dt);
     const dir = (inp.right ? 1 : 0) - (inp.left ? 1 : 0);
     if (inp.swap) { p.ars.charge = 0; p.ars.spin = 0; const w = nextWeapon(p.ars); this.ev('swap', { w }); this.addText(p.x, p.y - 96, WEAPONS[w].name, '#fff', 15); }
@@ -157,6 +161,7 @@ export class Game {
       if (!inp.jumpHeld && p.vy < -260) p.vy += GRAV * 1.1 * dt; // みじかく おすと ひくい ジャンプ
       // うつ
       if (CW.melee) { p.ars.spin = 0; p.ars.charge = 0; }
+      else if (CW.gear) { p.ars.spin = 0; p.ars.charge = 0; gearShoot(this, p, CW, dt, inp.shoot); }
       else if (CW.charge) {
         const was = p.ars.charge || 0;
         const out = tickBeam(p.ars, dt, inp.shoot, inp.charge);
@@ -573,6 +578,13 @@ export class Game {
     if (e.state === 'hurt' || e.state === 'down') {
       e.vx *= Math.pow(0.004, dt); e.t -= dt;
       if (e.t <= 0) { e.state = 'walk'; e.cool = Math.max(e.cool, 0.4); }
+      return;
+    }
+    // v0.10：スモークの なか（または あいてが なか）だと みえない → うたない・うろうろ
+    e.blind = blindTo(this, e, T);
+    if (e.blind && (e.state === 'walk' || e.state === 'wind' || e.state === 'burst')) {
+      if (e.state !== 'walk') { e.state = 'walk'; e.cool = Math.max(e.cool, 0.8); }
+      e.cool -= dt; blindWalk(this, e, dt);
       return;
     }
     e.cool -= dt;
@@ -1162,6 +1174,10 @@ export class Game {
           const fresh = giveWeapon(p.ars, k.kind); this.addText(k.x, k.y - 60, fresh ? `${WEAPONS[k.kind].name}！` : 'たま ゲット！', '#ffe27a', 18);
           if (fresh && k.kind === 'beam') this.say('ビームブラスター！', 'うつ＝れんしゃ ／ ためる＝ふとい ビーム', 3);
           if (fresh && k.kind === 'minigun') this.say('ミニガン！', 'うつを おしっぱなし！ まわってから うつ', 3);
+          if (fresh && k.kind === 'flame') this.say('かえんほうしゃき！', 'ちかくの てきを もやす ／ ねんりょうは まつと もどる', 3);
+          if (fresh && k.kind === 'tbomb') this.say('じげんばくだん！', 'おく で セット ／ てきが ふむと ドカーン（じぶんは へいき）', 3);
+          if (fresh && k.kind === 'smoke') this.say('スモークグレネード！', 'なげる と けむり ／ なかの てきは こっちが みえない', 3);
+          if (fresh && k.kind === 'laser') this.say('レーザーガン！', 'てきを つらぬく ひかり ／ うちすぎると あつく なる', 3);
         }
         this.sparks(k.x, k.y - 20, '#ffffff', 6);
       }
@@ -1334,6 +1350,11 @@ export function botInput(g, mem = {}) {
     if (mem.t % 7 === 0) { if ((mem.t / 7) % 4 < 3) inp.kick = true; else inp.punch = true; }
   }
   if (p.ars.cur === 'pistol' && Object.keys(p.ars.guns).length > 1 && !p.ars.guns.katana && mem.t % 120 === 0) inp.swap = true;
+  const GW = WEAPONS[p.ars.cur].gear;
+  if (GW === 'flame') inp.shoot = Math.abs(dx) < 150 && !p.ars.guns.flame.out; // ちかくで もやす
+  else if (GW === 'tbomb') inp.shoot = Math.abs(dx) < 220 && mem.t % 45 === 0; // ちかい とき ときどき おく
+  else if (GW === 'smoke') inp.shoot = Math.abs(dx) < 320 && mem.t % 150 === 0;
+  if (GW && GW !== 'laser' && Math.abs(dx) > reach) { inp.left = dx < 0; inp.right = dx > 0; } // うたない ぶきは ちかづく
   if (WEAPONS[p.ars.cur].melee) { // カタナの ボット：ちかくで きる
     inp.shoot = Math.abs(dx) <= reach + 30 && mem.t % 5 !== 0;
     if (Math.abs(dx) > reach + 30) inp.kick = inp.punch = false; else if (mem.t % 21 === 0) inp.kick = true;

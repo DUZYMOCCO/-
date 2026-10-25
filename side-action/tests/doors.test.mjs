@@ -9,7 +9,7 @@ const I = STAGES.findIndex((s) => s.theme === 'doors'), S = STAGES[I];
 const types = () => [...new Set([...S.rooms.flatMap((r) => [...r.mix, ...(r.tough || [])]), ...S.bossMix])];
 
 test('ステージ18：すぐ あそべる・てきの かず', () => {
-  assert.equal(VERSION, '0.9.0');
+  assert.equal(VERSION, '0.10.0');
   assert.equal(I, 17); assert.equal(S.id, 18); assert.equal(S.free, true); assert.equal(S.boss.id, 'doorboss');
   const total = S.rooms.reduce((s, r) => s + r.quota, 0) + S.bossCalls;
   assert.ok(total >= 150 && total <= 250, `total ${total}`);

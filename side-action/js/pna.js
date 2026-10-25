@@ -1,7 +1,7 @@
 // v0.9：とびらの そうこ の みため（グレーの ひらたい えのぐ・ふとい くろせん・みどりの ち）
 // ドア・シャッター・くろスーツ・きえない ちの あと
-import { H, GROUND } from './rules.js?v=9';
-import { drawGun } from './guns.js?v=9';
+import { H, GROUND } from './rules.js?v=10';
+import { drawGun } from './guns.js?v=10';
 
 const OUT = '#141416';
 const TAU = Math.PI * 2;

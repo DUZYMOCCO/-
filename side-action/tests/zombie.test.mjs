@@ -6,7 +6,7 @@ import { ENEMIES, STAGES, VERSION } from '../js/rules.js';
 const Z = ['zombie', 'labz', 'guard', 'soldierz', 'bloatz', 'leaper', 'hulk', 'spitter'];
 
 test('v0.8.0：ゾンビ 8しゅるい（かな の なまえ・みどり／むらさき の ち）', () => {
-  assert.equal(VERSION, '0.9.0');
+  assert.equal(VERSION, '0.10.0');
   for (const k of Z) {
     const d = ENEMIES[k];
     assert.ok(d, k);

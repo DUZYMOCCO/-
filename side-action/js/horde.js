@@ -1,6 +1,6 @@
 // v0.9：とびらの そうこ（ドア・シャッターが ひらいて くろスーツが どっと でてくる）
 // へやごとに すすむ：その へやの ドアが ぜんぶ でおわって、てきが いなくなったら つぎの へやへ
-import { GROUND } from './rules.js?v=9';
+import { GROUND } from './rules.js?v=10';
 
 export const DOOR_KINDS = {
   door:    { w: 46,  h: 96,  speed: 7,   bang: 0.42, burst: [1, 3], sfx: 'door' },

@@ -23,6 +23,11 @@
 .sa-wpn { position: absolute; right: calc(10px + env(safe-area-inset-right)); top: 8px; padding: 3px 10px; border-radius: 3px; background: rgba(8,6,6,.72); border: 1px solid #5a2622; border-left: 3px solid #a3261e; text-align: right; line-height: 1.15; }
 .sa-wpn b { display: block; font-size: 12px; }
 .sa-wpn span { font-size: 16px; font-weight: 900; color: #d8c48a; }
+.sa-gauge { display: none; width: 64px; height: 5px; margin: 2px 0 1px auto; background: rgba(255,255,255,.12); border-radius: 2px; overflow: hidden; }
+.sa-gauge.show { display: block; }
+.sa-gauge i { display: block; height: 100%; width: 100%; background: #ffae3a; }
+.sa-gauge.heat i { background: #ff5ad8; }
+.sa-gauge.bad i { background: #e8352a; }
 
 /* BGM トースト */
 .sa-nowplaying {
