@@ -4,7 +4,7 @@ export const GK_CATALOG = [
   {"no":2,"sub":"あかい そらの おやしき","theme":"manor","world":"w1","icon":"🏚","desc":"あかい そらの おやしきへ","boss":"ねじれ ばけもの"},
   {"no":3,"sub":"あめの はいきょとし","theme":"city","world":"w1","icon":"🌧","desc":"あめの まちを かけぬけろ","boss":"てっかめん の きょじん"},
   {"no":4,"sub":"くらやみの ちかてつ","theme":"subway","world":"w1","icon":"🚇","desc":"くらやみの てつろを すすめ","boss":"どろどろ ミュータント"},
-  {"no":5,"sub":"あかい そらの とう","theme":"tower","world":"w1","icon":"🗼","desc":"そらの とうを のぼろう","boss":"あかい め の おう"},
+  {"no":5,"sub":"あかい そらの とう","theme":"tower","world":"w1","icon":"🏙️","desc":"そらの とうを のぼろう","boss":"あかい め の おう"},
   {"no":6,"sub":"すてられた びょういん","theme":"hospital","world":"w2","icon":"🩺","desc":"びょういんを かけぬけよう","boss":"メスの せんせい"},
   {"no":7,"sub":"のっとられた きち","theme":"base","world":"w2","icon":"🪖","desc":"くんれんじょうを とりもどそう","boss":"ぼうそう せんしゃ"},
   {"no":8,"sub":"きりの もり","theme":"forest","world":"w2","icon":"🌫","desc":"きりの もりを すすもう","boss":"もりの ぬし"},

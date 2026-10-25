@@ -17,28 +17,29 @@ import {
   VEHICLE, BLAST_FX, blastHits, blastReachesVehicle,
   SpatialGrid, thinkInterval, QualityGovernor, govPixelRatio,
   normalizeLoadout, loadoutSlot, cycleLoadout, applyCrate, SMOKE, smokeAffects,
-} from './rules.js?v=19';
-import { Crowd } from './crowd.js?v=19';
-import { RobotMixin } from './robot.js?v=19';
-import { AllyMixin } from './ally.js?v=19';
-import { CopMixin } from './cop.js?v=19';
-import { ArmyMixin } from './army.js?v=19';
-import { DrunkMixin } from './drunk.js?v=19';
+  rescueSample, rescuePick, rescueSpot, RESCUE,
+} from './rules.js?v=20';
+import { Crowd } from './crowd.js?v=20';
+import { RobotMixin } from './robot.js?v=20';
+import { AllyMixin } from './ally.js?v=20';
+import { CopMixin } from './cop.js?v=20';
+import { ArmyMixin } from './army.js?v=20';
+import { DrunkMixin } from './drunk.js?v=20';
 const BOT_NAME = { cop: 'けいさつおじさん', army: 'アーミーロボ', drunk: 'よっぱらいおじさん' }; // v0.14.0
-import { VehicleMixin } from './vehicles.js?v=18';
-import { SuitMixin } from './suit.js?v=18';
-import { MissileMixin } from './missiles.js?v=18';
-import { MeleeMixin } from './melee.js?v=18';
-import { GkMixin } from './gk/play.js?v=18';
-import { StreamMixin } from './gk/stream.js?v=18';
-import { EnergyMixin } from './beams.js?v=18';
-import { makeNav } from './nav.js?v=18';
-import { buildMap, playerColliders, zombieColliders, shotColliders } from './map.js?v=18';
-import { buildTextures, fxTextures } from './textures.js?v=18';
-import { buildWorld, disposeWorld } from './world.js?v=18';
-import { Backdrop, BACKDROPS } from './backdrop.js?v=18';
-import { makePlayer, applyOutfit, applyGear, makeGearDrop, makeOjisan, makeWeapons, makeZombie, makeRocketProjectile, makeRocketCrate, zombieChunkColors, FLASH_MAT } from './models.js?v=18';
-import { FX } from './fx.js?v=18';
+import { VehicleMixin } from './vehicles.js?v=20';
+import { SuitMixin } from './suit.js?v=20';
+import { MissileMixin } from './missiles.js?v=20';
+import { MeleeMixin } from './melee.js?v=20';
+import { GkMixin } from './gk/play.js?v=20';
+import { StreamMixin } from './gk/stream.js?v=20';
+import { EnergyMixin } from './beams.js?v=20';
+import { makeNav } from './nav.js?v=20';
+import { buildMap, playerColliders, zombieColliders, shotColliders } from './map.js?v=20';
+import { buildTextures, fxTextures } from './textures.js?v=20';
+import { buildWorld, disposeWorld } from './world.js?v=20';
+import { Backdrop, BACKDROPS } from './backdrop.js?v=20';
+import { makePlayer, applyOutfit, applyGear, makeGearDrop, makeOjisan, makeWeapons, makeZombie, makeRocketProjectile, makeRocketCrate, zombieChunkColors, FLASH_MAT } from './models.js?v=20';
+import { FX } from './fx.js?v=20';
 const A_RIGHT = new THREE.Vector3();
 
 const v3 = () => new THREE.Vector3();
@@ -460,7 +461,37 @@ export class Game {
   }
 
   // ---- ウェーブ ----
+  // v0.17.0: たおせない ゾンビ（かべの むこうで まよう・とどかない ところ）を プレイヤーの ちかくへ よぶ
+  // → へやが かならず クリアできて ドアが ひらく（ガンキック・ウェーブ りょうほう）
+  rescueTick(dt) {
+    const r = this.rsq || (this.rsq = { t: 1, since: 0, kills: this.kills, n: 0 });
+    if (this.kills !== r.kills) { r.kills = this.kills; r.since = 0; } else r.since += dt;
+    if (this.interT > 0 || (this.gk && this.gk.phase !== 'fight')) { r.since = 0; r.t = 1; for (const z of this.zombies) z.noProg = 0; return; }
+    r.t -= dt; if (r.t > 0) return; r.t = 1;
+    for (const z of this.zombies) {
+      if (!z.alive || z.demo) continue;
+      if (z.fly || z.climb || z.leap || z.slam || z.charge || z.down > 0 || z.state === 'emerge') { z.rsX = z.x; z.rsZ = z.z; z.noProg = 0; continue; }
+      rescueSample(z, this.pos.x, this.pos.z, this.nav && !this.nav.free(z.x, z.y || 0, z.z));
+    }
+    const pick = rescuePick(this.zombies, r.since, this.queue.length + (this.gkPending || 0));
+    if (!pick.length) return;
+    let cells = this.nav ? this.nav.openCells() : [];
+    if (this.gk && this.map.gk) cells = this.gkSpotFilter(cells);
+    const ok = (x, z, y) => { const c = collideCircle(x, z, 0.5, y + 0.05, this.zCol || this.pCol); return Math.abs(c.x - x) < 0.02 && Math.abs(c.z - z) < 0.02; };
+    for (const z of pick) {
+      const s = rescueSpot(cells, this.pos.x, this.pos.z, this.pos.y, ok, z.kind === 'boss');
+      if (!s) continue;
+      this.fx.poof?.(this.tmp.c.set(z.x, (z.y || 0) + 1, z.z), z.scale);
+      z.x = z.lastX = z.rsX = s.x; z.z = z.lastZ = z.rsZ = s.z; z.y = s.y; z.vy = 0; z.kvx = z.kvz = 0; z.stuck = 0; z.noProg = 0; z.thinkT = 0;
+      z.model.root.position.set(s.x, s.y, s.z);
+      this.fx.poof?.(this.tmp.c.set(s.x, s.y + 1, s.z), z.scale);
+      r.n++;
+    }
+    r.since = RESCUE.idle - RESCUE.again; // まだ たおせなければ すこし あとで もういちど
+  }
+
   updateWaves(dt) {
+    this.rescueTick(dt);
     if (this.gk) { this.gkUpdate(dt); return; } // v0.16.0: ガンキック ステージは へや → ドア → へや
     if (this.interT > 0) {
       this.interT -= dt;

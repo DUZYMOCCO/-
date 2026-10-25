@@ -4,7 +4,7 @@ export const STAGE = {
  "sub": "あかい そらの とう",
  "theme": "tower",
  "world": "w1",
- "icon": "🗼",
+ "icon": "🏙️",
  "desc": "そらの とうを のぼろう",
  "length": 5300,
  "hpMul": 1,

@@ -4,10 +4,10 @@
 // v0.17.0: セグメント（stream.js）: ドアの ばんごうは ステージ ぜんたいで かぞえる。セグメントの さかいめの ドアは
 //   つぎの セグメントが できるまで ひらかない（'gate'）・とおったら しまる（うしろの セグメントを すてる）
 import * as THREE from '../../vendor/three.module.min.js';
-import { WEAPON_ORDER, refillReserve, TOD, bossHp, groundHeight } from '../rules.js?v=18';
-import { gkRoomAt, gkEntered, gkSpotCells, gkPickRoomSpawn, gkDoorOpenBox, gkLoadBoss } from './core.js?v=18';
-import { segCpSpot } from './seg.js?v=18';
-import { registerLook } from '../models.js?v=18';
+import { WEAPON_ORDER, refillReserve, TOD, bossHp, groundHeight } from '../rules.js?v=20';
+import { gkRoomAt, gkEntered, gkSpotCells, gkPickRoomSpawn, gkDoorOpenBox, gkLoadBoss } from './core.js?v=20';
+import { segCpSpot } from './seg.js?v=20';
+import { registerLook } from '../models.js?v=20';
 
 const DOOR_MAT = new THREE.MeshLambertMaterial({ color: 0x59626e });
 const DOOR_STRIPE = new THREE.MeshBasicMaterial({ color: 0xe0b020 });

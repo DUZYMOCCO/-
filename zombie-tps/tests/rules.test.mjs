@@ -234,7 +234,7 @@ test('なめらか いどう: approach は フレームレートに よらない
 });
 
 test('バージョン と セーブの ステージ', () => {
-  assert.equal(VERSION, '0.16.1');
+  assert.equal(VERSION, '0.17.0');
   assert.equal(normalizeSave(null).stage, 'day');
   assert.equal(normalizeSave({ stage: 'night' }).stage, 'night');
   assert.equal(normalizeSave({ stage: 'mars' }).stage, 'day');
@@ -2793,4 +2793,48 @@ test('v0.17.0 ステージ15: 5へや・ガスの あな・さいごの ボス�
   const mv = pickMove(B, st2, 8, () => 0); assert.ok(phaseMoves(B, 1).includes(mv), '2だんかいの わざを えらぶ');
   // チェックポイントは ボスの へやの まえの ドア
   assert.ok(gm.doors[3], 'ボスの へやの まえの ドア');
+});
+
+test('v0.17.0 まよった ゾンビを よぶ: えらびかた・ばしょ・ゲームに つながっている', async () => {
+  const R = await import('../js/rules.js');
+  const { rescueSample, rescuePick, rescueSpot, RESCUE } = R; const fs = await import('node:fs');
+  assert.ok(RESCUE.idle >= 15 && RESCUE.idle <= 30 && RESCUE.minD >= 3 && RESCUE.maxD <= 10);
+  // うごかない＆はなれている → noProg が ふえる・うごいたら 0
+  const z = { x: 10, z: 0, alive: true, kind: 'walker' };
+  rescueSample(z, 0, 0, false); // はじめは うごいた ことに
+  assert.equal(z.noProg, 0);
+  for (let i = 0; i < RESCUE.stuck; i++) rescueSample(z, 0, 0, false);
+  assert.equal(z.noProg, RESCUE.stuck);
+  z.x = 9; rescueSample(z, 0, 0, false); assert.equal(z.noProg, 0, 'うごいたら リセット');
+  // ちかくで こうげき している ゾンビは まよって いない
+  const near = { x: 2, z: 0, alive: true, kind: 'walker' }; for (let i = 0; i < 20; i++) rescueSample(near, 0, 0, false); assert.equal(near.noProg, 0);
+  // いけない ところ（lost）は はやく ふえる
+  const lost = { x: 30, z: 0, alive: true, kind: 'walker' }; for (let i = 0; i < 5; i++) rescueSample(lost, 0, 0, true); assert.ok(lost.noProg >= RESCUE.stuck);
+  // えらびかた
+  const a = { alive: true, kind: 'walker', noProg: RESCUE.stuck }, b = { alive: true, kind: 'walker', noProg: 0 }, d = { alive: false, kind: 'walker', noProg: 99 };
+  assert.deepEqual(rescuePick([a, b, d], 0, 0), [a], 'まよった ゾンビだけ・しんだのは よばない');
+  assert.deepEqual(rescuePick([a, b], RESCUE.idle, 0), [a, b], '20びょう たおせない＆のこり すくない → ぜんぶ よぶ');
+  assert.deepEqual(rescuePick([b], RESCUE.idle, 3), [], 'まだ キューが ある ときは idle で よばない');
+  const many = Array.from({ length: RESCUE.few + 1 }, () => ({ alive: true, kind: 'walker', noProg: 0 }));
+  assert.deepEqual(rescuePick(many, RESCUE.idle, 0), [], 'のこりが おおい ときは idle で よばない');
+  const boss = { alive: true, kind: 'boss', noProg: 99, lostN: 0 };
+  assert.deepEqual(rescuePick([boss], 99, 0), [], 'ボスは ふつうは よばない');
+  boss.lostN = RESCUE.stuck / 2; assert.deepEqual(rescuePick([boss], 0, 0), [boss], 'いけない ところの ボスは よぶ');
+  boss.y = 6; assert.deepEqual(rescuePick([boss], 0, 0), [], 'とんでいる ボスは よばない');
+  // ばしょ: minD〜maxD・かべ（ok=false）を さける・たかさが ちがう ところは だめ
+  const cells = []; for (let x = -12; x <= 12; x++) for (let zz = -12; zz <= 12; zz++) cells.push([x, zz, 0]);
+  const s = rescueSpot(cells, 0, 0, 0, () => true);
+  const ds = Math.hypot(s.x, s.z); assert.ok(ds >= RESCUE.minD && ds <= RESCUE.maxD, 'ちかすぎず とおすぎない ' + ds);
+  const s2 = rescueSpot(cells, 0, 0, 0, (x) => x < 0); assert.ok(s2.x < 0, 'かべの なかは さける');
+  assert.equal(rescueSpot(cells, 0, 0, 0, () => false), null);
+  assert.equal(rescueSpot(cells.map((c) => [c[0], c[1], 5]), 0, 0, 0, () => true), null, 'ちがう かいは だめ');
+  const sb = rescueSpot(cells, 0, 0, 0, () => true, true); assert.ok(Math.hypot(sb.x, sb.z) >= RESCUE.minD + 2, 'ボスは すこし とおく');
+  // ゲームに つながっている: updateWaves の さいしょで rescueTick・ガンキックは へやの なか（gkSpotFilter）だけ
+  const src = fs.readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
+  assert.match(src, /updateWaves\(dt\) \{\s+this\.rescueTick\(dt\);\s+if \(this\.gk\)/);
+  const body = src.slice(src.indexOf('  rescueTick(dt) {'), src.indexOf('  updateWaves(dt) {'));
+  assert.match(body, /gkSpotFilter\(cells\)/);
+  assert.match(body, /openCells\(\)/);
+  assert.match(body, /collideCircle\(/);
+  assert.match(body, /phase !== 'fight'/);
 });

@@ -1,7 +1,7 @@
 // ゾンビストライク — ゲームの きまり（DOM / three.js に いぞんしない。node のテストから よめる）
 // ぶき・ダメージ・ウェーブ・あたりはんてい（レイ×はこ）・いどうの ぶつかり・ゾンビの みちさがし（フローフィールド）
 
-export const VERSION = '0.16.1';
+export const VERSION = '0.17.0';
 
 // ---- ぶき ----
 // rpm: 1ぷんかんの はっしゃかず / mag: マガジン / reserve: よびだん / reload: びょう
@@ -2046,4 +2046,47 @@ export function swingPose(style, u, W) {
   if (style === 'v') return { yaw: 0, pitch: k < 0 ? -k * 2.3 : -k * 0.75, roll: 0 };
   const s = style === 'hr' ? -1 : 1;
   return { yaw: k * 1.35 * s, pitch: 0.15 + (1 - Math.abs(k)) * 0.15, roll: k * 0.5 * s };
+}
+
+// ---- v0.17.0: とれない・まよった ゾンビを よびよせる（へやが かならず クリアできる）----
+// idle: たおせない じかん（びょう）・few: のこりが これいかなら idle で よぶ・stuck: うごけない じかん
+// minD/maxD: プレイヤーから なんメートルの ところに よぶか（ボスは +2）
+export const RESCUE = { idle: 20, few: 3, stuck: 8, near: 3.5, minD: 4, maxD: 8, again: 8 };
+// 1びょうごとに よぶ: z.noProg を ふやす・へらす。うごけて いない（0.3m みまん）＆ プレイヤーから はなれている ＝ まよっている
+// lost: その ばしょが ナビで いけない（かべの なか・とじた へや）→ はやく ふえる
+export function rescueSample(z, px, pz, lost, cfg = RESCUE) {
+  const moved = Math.hypot(z.x - (z.rsX ?? z.x + 9), z.z - (z.rsZ ?? z.z + 9));
+  const d = Math.hypot(z.x - px, z.z - pz);
+  z.rsX = z.x; z.rsZ = z.z;
+  z.lostN = lost ? (z.lostN || 0) + 1 : 0;
+  if (lost) z.noProg = (z.noProg || 0) + 2;
+  else if (moved < 0.3 && d > cfg.near) z.noProg = (z.noProg || 0) + 1;
+  else z.noProg = 0;
+  return z.noProg;
+}
+// だれを よぶ？ ルール: (1) noProg >= stuck ／ (2) sinceKill >= idle かつ のこり <= few（キューが からの とき）
+// ボスは HPが おおくて ながく たたかうので (1)(2) では よばない。いけない ところに stuck/2 びょう いた ときだけ
+// とんでいる てき（y > 3・ヘリ）は よばない
+export function rescuePick(zs, sinceKill, queueLeft, cfg = RESCUE) {
+  const live = zs.filter((z) => z.alive && !z.demo);
+  const idle = !queueLeft && sinceKill >= cfg.idle && live.length > 0 && live.length <= cfg.few;
+  return live.filter((z) => {
+    if ((z.y || 0) > 3 && z.kind === 'boss') return false;
+    if (z.kind === 'boss') return (z.lostN || 0) >= cfg.stuck / 2;
+    return (z.noProg || 0) >= cfg.stuck || idle;
+  });
+}
+// どこに よぶ？ cells: [x,z,y]（いける ところ）・ok(x,z,y): かべに めりこまない か
+// プレイヤーから minD〜maxD・たかさが ちかい ところ・まんなか（6m）に ちかい じゅん
+export function rescueSpot(cells, px, pz, py, ok, boss = false, cfg = RESCUE) {
+  const lo = cfg.minD + (boss ? 2 : 0), hi = cfg.maxD + (boss ? 2 : 0), mid = (lo + hi) / 2;
+  const c = [];
+  for (const cl of cells) {
+    const d = Math.hypot(cl[0] - px, cl[1] - pz), dy = Math.abs((cl[2] || 0) - (py || 0));
+    if (d < lo || d > hi || dy > 1.5) continue;
+    c.push([Math.abs(d - mid) + dy, cl]);
+  }
+  c.sort((a, b) => a[0] - b[0]);
+  for (const [, cl] of c) if (ok(cl[0], cl[1], cl[2] || 0)) return { x: cl[0], z: cl[1], y: cl[2] || 0 };
+  return null;
 }

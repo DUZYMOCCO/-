@@ -1,7 +1,7 @@
 // ステージ3 セグメント B（へや2 ちゅうしゃじょう → へや3 ひろば・ボス）
 // いりぐち（z=12 の かべの ドア）は A の でぐちと おなじ ばしょ → edge:'in'
-import { segWall, segOuter, segDoor, roomSpawns } from './kit.js?v=18';
-import { WALL, STEEL, H, DW, THEME, puddle } from './city_a.js?v=18';
+import { segWall, segOuter, segDoor, roomSpawns } from './kit.js?v=20';
+import { WALL, STEEL, H, DW, THEME, puddle } from './city_a.js?v=20';
 
 export function build(builder) {
   const B = builder(36, 3302), { add, deco, half } = B;
