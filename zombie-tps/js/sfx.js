@@ -320,6 +320,35 @@ export class Sfx {
     this._noise(t, 0.45, { type: 'lowpass', freq: 800, gain: 0.5 * vol, attack: 0.01 });
     this._tone(t, 0.2, { f0: 120, f1: 50, gain: 0.3 * vol });
   }
+  // v0.15.0: ビームじゅう — ためる（キュイーン）・でている（ブーン）
+  charge(k = 0) {
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime;
+    this._tone(t, 0.12, { type: 'sine', f0: 500 + k * 900, f1: 600 + k * 1000, gain: 0.06 });
+  }
+  beam(vol = 0.5) {
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime;
+    this._tone(t, 0.14, { type: 'sawtooth', f0: 110, f1: 95, gain: 0.07 * vol });
+    this._noise(t, 0.12, { type: 'bandpass', freq: 900, q: 1.2, gain: 0.12 * vol });
+  }
+  overheat() { // プシュー（ねつ／ねんりょう／エネルギー が なくなった）
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime;
+    this._noise(t, 0.5, { type: 'highpass', freq: 2500, gain: 0.22, attack: 0.02 });
+    this._tone(t, 0.15, { type: 'square', f0: 700, f1: 300, gain: 0.05 });
+  }
+  toss() { // ヒュッ
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime;
+    this._noise(t, 0.16, { type: 'bandpass', freq: 1400, q: 1, gain: 0.2, attack: 0.03 });
+  }
+  smoke() { // ポン・シューッ
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime;
+    this._tone(t, 0.08, { f0: 300, f1: 120, gain: 0.25 });
+    this._noise(t + 0.03, 1.4, { type: 'lowpass', freq: 1500, gain: 0.3, attack: 0.08 });
+  }
   // v0.13.0: なぐる — ブンッ（ふる おと）
   swish(kind = 'bat') {
     if (!this.ctx || this.muted) return;

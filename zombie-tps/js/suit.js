@@ -5,8 +5,8 @@ import * as THREE from '../vendor/three.module.min.js';
 import {
   SUIT, SUIT_WEAPONS, SUIT_ORDER, wearSuit, tickSuit, suitClockRuns, tickGrace, routeSuitDamage, suitNextWave, pickSuitSpot, suitTouched,
   flameHits, punchTargets, punchLaunch, burnTick, groundHeight, edgeArrow, castShot, castPierce, aabbNormal, WEAPON_ORDER,
-} from './rules.js?v=16';
-import { makePowerSuit, makeSuitShell, SUIT_CHUNKS } from './models.js?v=16';
+} from './rules.js?v=17';
+import { makePowerSuit, makeSuitShell, SUIT_CHUNKS } from './models.js?v=17';
 
 const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _c = new THREE.Vector3(), _d = new THREE.Vector3(), _e = new THREE.Vector3();
 const UP = new THREE.Vector3(0, 1, 0);
@@ -97,6 +97,7 @@ export const SuitMixin = {
     const s = this.suit; if (!s) return false;
     if (ev === 'reload') return true;
     if (ev === 'jump') { if (this.onGround) { this.vy = SUIT.jump; this.onGround = false; } return true; }
+    if (ev.startsWith('ws:')) { const nid = SUIT_ORDER[+ev.slice(3)]; if (nid) this.switchSuitWeapon(nid); return true; } // v0.15.0: すうじ キー
     if (ev.startsWith('w:')) {
       const id = ev.slice(2);
       const nid = SUIT_WEAPONS[id] ? id : SUIT_ORDER[WEAPON_ORDER.indexOf(id)];
@@ -157,7 +158,7 @@ export const SuitMixin = {
     // みぎうで: キャノンじゅう（ねらう）・ひだりうで: パンチ／ほのお
     m.arms[1].rotation.x = pitch * 0.9;
     const ext = pt > 0 ? Math.sin(pt * Math.PI) : 0;
-    m.arms[0].rotation.x = s.weapon === 'punch' && !pt ? -0.35 : pitch * 0.9;
+    m.arms[0].rotation.x = pitch * 0.9;
     m.arms[0].position.z = -ext * 0.85; m.arms[0].rotation.y = ext * 0.25;
     m.body.rotation.y = -ext * 0.3;
     if (this.punchT > 0) this.punchT = Math.max(0, this.punchT - dt);
@@ -181,9 +182,12 @@ export const SuitMixin = {
       if (held && s.cd <= 0) { s.cd = W.interval; this.suitCannon(W); }
     } else if (s.weapon === 'missile') {
       if (held && s.cd <= 0) { s.cd = W.interval; this.suitMissiles(W); }
-    } else if (s.weapon === 'punch') {
-      if (held && s.cd <= 0) { s.cd = W.interval; this.suitPunch(W); }
     }
+  },
+  // v0.15.0: なぐる ボタン（V）→ スーツの パンチ。いまの ぶきは そのまま（うちながら なぐれる）
+  suitMelee(held) {
+    const s = this.suit; if (!s || !held || this.state !== 'play') return;
+    if (!(s.punchCd > 0)) { const W = SUIT_WEAPONS.punch; s.punchCd = W.interval; this.suitPunch(W); }
   },
   suitAimRay() {
     const cam = this.camera;
@@ -263,7 +267,7 @@ export const SuitMixin = {
       for (const { i } of flameHits(this.pos.x, this.pos.z, fxv, fzv, this.zombies)) {
         const z = this.zombies[i]; if (!z || !z.alive || z.demo) continue;
         if (Math.abs(z.y - this.pos.y) > 3) continue;
-        z.burnT = W.burn;
+        z.burnT = W.burn; z.burnDps = W.burnDps;
         if (this.hitZombie(z, W.dps * W.tick, false, _c.set(z.x, z.y + 1, z.z), dir, { fire: true, knock: 0.4 })) killed++;
       }
       if (killed >= 2) this.multiKill(killed);
@@ -275,7 +279,7 @@ export const SuitMixin = {
     let fxN = 0;
     for (const z of this.zombies) {
       if (!z.alive || !(z.burnT > 0)) continue;
-      z.burnAcc = (z.burnAcc || 0) + burnTick(z, dt);
+      z.burnAcc = (z.burnAcc || 0) + burnTick(z, dt, z.burnDps || undefined); // v0.15.0: ほのおの しゅるいで ちがう
       if (fxN < 8 && Math.random() < 0.35) { fxN++; this.fx.burst(_c.set(z.x + (Math.random() - 0.5) * 0.4, z.y + (0.5 + Math.random()) * z.scale, z.z), 1, { color: 0xff8a20, color2: 0xffe070, speed: 0.6, up: 1.8, size: 0.26, life: 0.45, gravity: -3, grow: 1.2 }); }
       if (z.burnAcc >= 6 || z.burnT <= 0) {
         const d = z.burnAcc; z.burnAcc = 0;

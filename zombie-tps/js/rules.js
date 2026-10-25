@@ -1,7 +1,7 @@
 // ゾンビストライク — ゲームの きまり（DOM / three.js に いぞんしない。node のテストから よめる）
 // ぶき・ダメージ・ウェーブ・あたりはんてい（レイ×はこ）・いどうの ぶつかり・ゾンビの みちさがし（フローフィールド）
 
-export const VERSION = '0.14.0';
+export const VERSION = '0.15.0';
 
 // ---- ぶき ----
 // rpm: 1ぷんかんの はっしゃかず / mag: マガジン / reserve: よびだん / reload: びょう
@@ -77,8 +77,149 @@ export const WEAPONS = {
     recoilPitch: 0.06, recoilYaw: 0.01, shake: 0.25, range: 90, falloff: [0, 1, 1], knock: 0,
     projectile: true, homing: true, salvo: 3, speed: 26, blast: 3.2, power: 9, life: 2.6,
   },
+  // ---- v0.15.0: あたらしい ぶき（ぜんぶ かくうの デザイン）----
+  // ゲージの ぶき（gauge）: たまの かわりに ゲージ（en 1=まんたん）。つかうと へる・やすむと regenDelay びょう あとから もどる
+  // 0 に なると「オーバーヒート／からっぽ」→ en が unlockAt まで もどるまで うてない（リロードは いらない）
+  // レーザーじゅう: ほそい ひかりが いっしゅんで とどく（ヒットスキャン）・4たいまで つらぬく・うつと ねつが たまる
+  laser: {
+    id: 'laser', name: 'レーザーじゅう', short: 'レーザー', slot: 9,
+    dmg: 26, head: 1.5, pellets: 1, rpm: 360, auto: true,
+    mag: 1, reserve: Infinity, reload: 0.1,
+    spread: 0.003, spreadMove: 0.012, spreadAim: 0.001, bloom: 0, bloomMax: 0,
+    recoilPitch: 0.006, recoilYaw: 0.003, shake: 0.03, range: 60, falloff: [40, 60, 0.85], knock: 0.25,
+    gauge: 'heat', use: 0.085, regen: 0.55, regenDelay: 0.25, unlockAt: 0.7, pierce: 4, beamW: 0.3,
+  },
+  // かえんほうしゃき: ちかくの まえに ほのお（コーン）・もえて じわじわ ダメージ。dmg = 1びょうの ダメージ
+  // スーツの かえんほうしゃ より ちいさく よわい（ねんりょうが ある）
+  flamer: {
+    id: 'flamer', name: 'かえんほうしゃき', short: 'ほのお', slot: 10,
+    dmg: 55, head: 1, pellets: 1, rpm: 600, auto: true,
+    mag: 1, reserve: Infinity, reload: 0.1,
+    spread: 0, spreadMove: 0, spreadAim: 0, bloom: 0, bloomMax: 0,
+    recoilPitch: 0, recoilYaw: 0, shake: 0.02, range: 7, falloff: [0, 1, 1], knock: 0.3,
+    gauge: 'fuel', drain: 0.2, regen: 0.3, regenDelay: 0.6, unlockAt: 0.3, stream: true,
+    cone: 0.38, tick: 0.1, burn: 2.5, burnDps: 18,
+  },
+  // ビームじゅう: おしっぱなしで 0.6びょう ためて → ふとい ビームが でつづける（ながい あいだ ぜんぶ つらぬく）。dmg = 1びょうの ダメージ
+  beam: {
+    id: 'beam', name: 'ビームじゅう', short: 'ビーム', slot: 11,
+    dmg: 150, head: 1, pellets: 1, rpm: 600, auto: true,
+    mag: 1, reserve: Infinity, reload: 0.1,
+    spread: 0, spreadMove: 0, spreadAim: 0, bloom: 0, bloomMax: 0,
+    recoilPitch: 0, recoilYaw: 0, shake: 0.05, range: 45, falloff: [0, 1, 1], knock: 0.6,
+    gauge: 'energy', drain: 0.3, regen: 0.25, regenDelay: 0.8, unlockAt: 0.5, stream: true,
+    charge: 0.6, tick: 0.1, pierce: 12, beamW: 0.9,
+  },
+  // スモークグレネード: やまなりに なげる → けむり（6びょう）。なかの ゾンビは プレイヤーを みうしなって うろうろ・おそく なる（ボスには きかない）
+  // ダメージ なし。1こずつ なげる（よびは ウェーブで ほじゅう）
+  smoke: {
+    id: 'smoke', name: 'スモークグレネード', short: 'けむり', slot: 12,
+    dmg: 0, head: 1, pellets: 1, rpm: 60, auto: false,
+    mag: 1, reserve: 3, reload: 0.6,
+    spread: 0, spreadMove: 0, spreadAim: 0, bloom: 0, bloomMax: 0,
+    recoilPitch: 0, recoilYaw: 0, shake: 0, range: 30, falloff: [0, 1, 1], knock: 0,
+    throw: true, speed: 13, up: 5.5, gravity: 18, fuse: 1.6, time: 6,
+  },
 };
-export const WEAPON_ORDER = ['rifle', 'pistol', 'shotgun', 'rocket', 'minigun', 'sniper', 'magnum', 'mlauncher'];
+export const WEAPON_ORDER = ['rifle', 'pistol', 'shotgun', 'rocket', 'minigun', 'sniper', 'magnum', 'mlauncher', 'laser', 'flamer', 'beam', 'smoke'];
+export const isGauge = (id) => !!(WEAPONS[id] && WEAPONS[id].gauge);
+export const GAUGE_LABEL = { heat: 'ねつ', fuel: 'ねんりょう', energy: 'エネルギー' };
+// v0.15.0: スモークの けむり（いちどに 2つ まで・ふるい ものから きえる）。slow: なかの ゾンビの はやさ・linger: でた あとも すこし まよう
+export const SMOKE = { max: 2, r: 4.2, time: 6, slow: 0.45, linger: 0.8, puffs: 9, fade: 1.2 };
+// けむりの なかに いるか（ボスには きかない）
+export function inSmoke(clouds, x, z) {
+  for (const c of clouds) if (c.t > 0 && Math.hypot(x - c.x, z - c.z) < c.r) return true;
+  return false;
+}
+export const smokeAffects = (kind) => kind !== 'boss';
+// あたらしい けむり（max を こえたら いちばん ふるい ものを けす）→ けした もの（なければ null）
+export function addSmokeCloud(clouds, x, z, time = SMOKE.time, max = SMOKE.max) {
+  let gone = null;
+  if (clouds.length >= max) gone = clouds.shift();
+  clouds.push({ x, z, r: SMOKE.r, t: time, t0: time });
+  return gone;
+}
+// なげた グレネードの とぶ みち（t びょう あと）
+export function throwArc(ox, oy, oz, dx, dz, w, t) {
+  const l = Math.hypot(dx, dz) || 1;
+  return { x: ox + dx / l * w.speed * t, y: oy + w.up * t - 0.5 * w.gravity * t * t, z: oz + dz / l * w.speed * t };
+}
+// ゲージの ぶき: 1フレーム。held=おしている → 'none' | 'fire'（レーザー 1ぱつ）| 'stream'（でている）| 'charge'（ためちゅう）
+// | 'overheat'（いま 0 に なった）| 'locked'（もどるまで うてない）
+export function useGauge(g, held, dt) {
+  const w = gunStats(g);
+  if (g.en === undefined) g.en = 1;
+  g.cooldown = Math.max(0, (g.cooldown || 0) - dt);
+  let used = false, res = 'none';
+  if (held && g.lock) res = 'locked';
+  else if (held) {
+    if (w.gauge === 'heat') {
+      if (g.cooldown <= 0) { g.en -= w.use; g.cooldown = fireInterval(w); used = true; res = 'fire'; }
+      else used = true; // うちつづけて いる あいだは さめない
+    } else if (w.charge && (g.charge || 0) < 1) {
+      g.charge = Math.min(1, (g.charge || 0) + dt / w.charge); used = true; res = 'charge';
+    } else { g.en -= w.drain * dt; used = true; res = 'stream'; }
+    if (g.en <= 0) { g.en = 0; g.lock = true; g.charge = 0; res = res === 'fire' ? 'fire' : 'overheat'; g.over = true; }
+  }
+  if (!held || g.lock) g.charge = 0;
+  if (used) g.idle = 0;
+  else {
+    g.idle = (g.idle || 0) + dt;
+    if (g.idle >= w.regenDelay) g.en = Math.min(1, g.en + w.regen * dt);
+    if (g.lock && g.en >= w.unlockAt) g.lock = false;
+  }
+  return res;
+}
+// ゲージで うてる じかん（びょう）。レーザーは うてる かず
+export function gaugeLasts(w) { return w.gauge === 'heat' ? Math.ceil(1 / w.use - 1e-9) : +(1 / w.drain).toFixed(1); }
+
+// ---- v0.15.0: もっていく ぶき（ロードアウト）: ステージの まえに 3つ えらぶ（なぐるは べつ・スーツの ぶきも べつ）----
+export const LOADOUT_SIZE = 3;
+export const DEFAULT_LOADOUT = ['rifle', 'shotgun', 'rocket'];
+// えらべる ぶき（いまは はじめから ぜんぶ つかえる）
+export const unlockedWeapons = (save) => WEAPON_ORDER.slice();
+// ただしい 3つに する（おなじ ものは 1つ・しらない ものは すてる・たりなければ デフォルトから たす）
+export function normalizeLoadout(x, avail = WEAPON_ORDER) {
+  const out = [];
+  if (Array.isArray(x)) for (const id of x) if (avail.includes(id) && !out.includes(id) && out.length < LOADOUT_SIZE) out.push(id);
+  for (const id of [...DEFAULT_LOADOUT, ...avail]) { if (out.length >= LOADOUT_SIZE) break; if (avail.includes(id) && !out.includes(id)) out.push(id); }
+  return out;
+}
+// カードを おした: えらんで いれば はずす・まだ なら いれる（3つ いっぱい なら いちばん ふるい ものと いれかえ）
+export function toggleLoadout(lo, id) {
+  if (!WEAPONS[id]) return lo.slice();
+  if (lo.includes(id)) return lo.filter((k) => k !== id);
+  return lo.length >= LOADOUT_SIZE ? [...lo.slice(1), id] : [...lo, id];
+}
+export const loadoutReady = (lo) => Array.isArray(lo) && lo.length === LOADOUT_SIZE && new Set(lo).size === LOADOUT_SIZE && lo.every((k) => WEAPONS[k]);
+// キーボードの すうじ → 'ws:0'…（1〜9。ふつうは 1〜3 だけ つかう・スーツは 1〜5）
+export function digitEvent(code) { const m = /^Digit([1-9])$/.exec(code || ''); return m ? 'ws:' + (+m[1] - 1) : null; }
+// 1〜3 キー / ボタン → ぶき
+export const loadoutSlot = (lo, i) => (i >= 0 && i < lo.length ? lo[i] : null);
+// Q（つぎ）・まえ
+export function cycleLoadout(lo, cur, dir = 1) {
+  const i = lo.indexOf(cur), n = lo.length;
+  return i < 0 ? lo[0] : lo[(i + (dir < 0 ? n - 1 : 1)) % n];
+}
+// ゾンビが おとす はこ: もっている ぶきの たまに かわる。ロケット → ミサイル → けむり → ほかの たま → スコア
+export const CRATE_SCORE = 150;
+export function crateReward(lo, guns) {
+  if (lo.includes('rocket')) { const g = guns.rocket; if (g && g.reserve < ROCKET_RESERVE_MAX) return { kind: 'rocket', id: 'rocket' }; }
+  for (const id of ['mlauncher', 'smoke', 'minigun', 'shotgun', 'sniper', 'magnum', 'rifle']) {
+    if (!lo.includes(id)) continue;
+    const g = guns[id], w = g && gunStats(g);
+    if (g && w.reserve !== Infinity && g.reserve < w.reserve) return { kind: 'ammo', id, n: id === 'mlauncher' || id === 'smoke' ? 1 : Math.max(1, Math.round(w.mag * 0.5)) };
+  }
+  return { kind: 'score', n: CRATE_SCORE };
+}
+// はこを ひろった（うけとった ものを かえす）
+export function applyCrate(lo, guns, n = 1) {
+  const r = crateReward(lo, guns);
+  if (r.kind === 'rocket') { r.n = addRocketAmmo(guns.rocket, n); }
+  else if (r.kind === 'ammo') { const g = guns[r.id], w = gunStats(g); r.n = Math.min(r.n * n, w.reserve - g.reserve); g.reserve += r.n; }
+  else r.n *= n;
+  return r;
+}
 
 // ---- v0.8.0: スコープ（スナイパーだけ）----
 // fov: ズーム・sens: うごかす はやさの ばいりつ・sway: ゆれ（ラジアン。7さいでも ねらえる くらい ちいさく）
@@ -238,7 +379,8 @@ export function currentSpread(w, { moving = false, aiming = false, airborne = fa
 // ---- ぶきの じょうたい（たま・リロード・れんしゃ） ----
 export function createGun(id, lv = 1) {
   const w = upgradedWeapon(id, lv);
-  return { id, lv: w.lv, w, ammo: w.mag, reserve: w.reserve, cooldown: 0, reloading: 0, bloom: 0, triggerHeld: false, lastTrigger: false, spin: 0 };
+  return { id, lv: w.lv, w, ammo: w.mag, reserve: w.reserve, cooldown: 0, reloading: 0, bloom: 0, triggerHeld: false, lastTrigger: false, spin: 0,
+    en: 1, lock: false, idle: 0, charge: 0 }; // v0.15.0: ゲージ（レーザー・ほのお・ビーム）
 }
 // その じゅうの いまの つよさ（つよく した ぶん こみ）
 export const gunStats = (g) => g.w || WEAPONS[g.id];
@@ -254,7 +396,8 @@ export function setGunLevel(g, lv) {
 // レベル 1〜max。1レベル ごとに いりょく +10%・はやさ +5%・たま +10%（ロケットは Lv5 から 2はつ）
 // ねだん: base × 1.5^(レベル−1)（10の くらい で まるめ）
 export const UPGRADE = { max: 8, grow: 1.5, dmg: 0.10, rate: 0.05, mag: 0.10,
-  base: { rifle: 400, pistol: 250, shotgun: 400, rocket: 600, minigun: 600, sniper: 500, magnum: 320, mlauncher: 560 } };
+  base: { rifle: 400, pistol: 250, shotgun: 400, rocket: 600, minigun: 600, sniper: 500, magnum: 320, mlauncher: 560,
+    laser: 520, flamer: 480, beam: 640, smoke: 300 } };
 export const clampLv = (lv) => Math.max(1, Math.min(UPGRADE.max, Number.isFinite(lv) ? Math.floor(lv) : 1));
 export function upgradeCost(id, lv) {
   const L = clampLv(lv);
@@ -263,8 +406,20 @@ export function upgradeCost(id, lv) {
 }
 export function upgradedWeapon(id, lv = 1) {
   const b = WEAPONS[id], L = clampLv(lv), k = L - 1;
-  return { ...b, lv: L, dmg: Math.round(b.dmg * (1 + UPGRADE.dmg * k)), rpm: Math.round(b.rpm * (1 + UPGRADE.rate * k)),
-    mag: b.revolver ? b.mag : Math.round(b.mag * (1 + UPGRADE.mag * k)) }; // リボルバーは いつも 6はつ
+  const o = { ...b, lv: L, dmg: Math.round(b.dmg * (1 + UPGRADE.dmg * k)), rpm: Math.round(b.rpm * (1 + UPGRADE.rate * k)),
+    mag: b.revolver || b.gauge || b.throw ? b.mag : Math.round(b.mag * (1 + UPGRADE.mag * k)) }; // リボルバーは いつも 6はつ
+  // v0.15.0: ゲージの ぶきは ながく うてる（へりかたが すくなく）・スモークは ながく のこる＋よびが ふえる
+  if (b.gauge) { const m = 1 + UPGRADE.mag * k; if (b.use) o.use = +(b.use / m).toFixed(4); if (b.drain) o.drain = +(b.drain / m).toFixed(4); }
+  if (b.throw) { o.time = +(b.time + 0.5 * k).toFixed(1); o.reserve = b.reserve + Math.floor(k / 3); }
+  return o;
+}
+// v0.15.0: つよく する がめんの ぎょう（ぶきの しゅるいで かわる）
+export function upgradeRows(w) {
+  const rate = (x) => (x.rpm / 60).toFixed(x.rpm < 120 ? 2 : 1) + ' /びょう';
+  if (w.throw) return [{ name: 'けむりの じかん', v: w.time + ' びょう' }, { name: 'もてる かず', v: String(w.mag + w.reserve) }];
+  if (w.gauge === 'heat') return [{ name: 'いりょく', v: String(w.dmg) }, { name: 'はやさ', v: rate(w) }, { name: 'つづけて うてる', v: gaugeLasts(w) + ' ぱつ' }];
+  if (w.gauge) return [{ name: 'いりょく', v: w.dmg + ' /びょう' }, { name: 'つづけて うてる', v: gaugeLasts(w) + ' びょう' }];
+  return [{ name: 'いりょく', v: String(w.dmg * (w.pellets || 1)) }, { name: 'はやさ', v: rate(w) }, { name: 'たまの かず', v: String(w.mag) }];
 }
 export const weaponLevel = (save, id) => clampLv(save && save.wlv ? save.wlv[id] : 1);
 // かう: つかえる スコア（bank）から ひく。さいこう スコア（bestScore）は かわらない
@@ -840,6 +995,7 @@ export function normalizeSave(s) {
     ...normalizeOutfits(o),
     gear: normalizeGear(o.gear),
     ...normalizeMelee(o), // v0.13.0: なぐる ぶきの レベル（mlv）と えらんだ もの（melee）
+    loadout: normalizeLoadout(o.loadout), // v0.15.0: もっていく 3つの ぶき（まえに えらんだ もの）
   };
 }
 
@@ -1542,7 +1698,8 @@ export const SUIT = {
   flyG: 10,            // パンチで とんだ ゾンビの じゅうりょく（ゆっくり おちる → がめんの そとへ）
   flyTime: 1.35,       // これだけ とんだら きえる（キラーン）
 };
-export const SUIT_ORDER = ['mcannon', 'flamer', 'cannon', 'missile', 'punch'];
+// v0.15.0: パンチは「なぐる」ボタン（V）へ。ぶきバーは 4つ
+export const SUIT_ORDER = ['mcannon', 'flamer', 'cannon', 'missile'];
 export const SUIT_WEAPONS = {
   mcannon: { id: 'mcannon', name: 'マシンキャノン', short: 'キャノンじゅう', icon: '🔫', interval: 0.075, dmg: 70, pierce: 2, pierceMul: 0.75, spread: 0.02, range: 90, knock: 1.6 },
   flamer: { id: 'flamer', name: 'かえんほうしゃ', short: 'ほのお', icon: '🔥', range: 9, cone: 0.42, dps: 90, burn: 3, burnDps: 35, tick: 0.1 },
@@ -1553,7 +1710,7 @@ export const SUIT_WEAPONS = {
 };
 export function suitWeaponAt(i) { return SUIT_ORDER[((i % SUIT_ORDER.length) + SUIT_ORDER.length) % SUIT_ORDER.length]; }
 // きる（あたらしい スーツの じょうたい）
-export function wearSuit() { return { t: SUIT.time, armor: SUIT.armor, weapon: 'mcannon', cd: 0, flameT: 0 }; }
+export function wearSuit() { return { t: SUIT.time, armor: SUIT.armor, weapon: 'mcannon', cd: 0, flameT: 0, punchCd: 0 }; }
 // じかんを すすめる → 'eject'（じかん ぎれ）
 // v0.14.0: ウェーブの あいだ（きゅうけい）は スーツの とけいが とまる
 export function suitClockRuns(interT) { return !(interT > 0); }
@@ -1561,6 +1718,7 @@ export function tickSuit(s, dt, frozen = false) {
   if (!s) return null;
   if (!frozen) s.t = Math.max(0, s.t - dt);
   if (s.cd > 0) s.cd = Math.max(0, s.cd - dt);
+  if (s.punchCd > 0) s.punchCd = Math.max(0, s.punchCd - dt); // v0.15.0: パンチは べつの クールダウン（うちながら なぐれる）
   return s.t <= 0 ? 'eject' : null;
 }
 export function suitLabel(t, frozen = false) { return `パワードスーツ のこり ${Math.max(0, Math.ceil(t))}${frozen ? ' ⏸ きゅうけい' : ''}`; }

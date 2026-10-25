@@ -1,6 +1,6 @@
 // ブロックの キャラクターと ぶき（かくうの デザイン・ロゴなし）
 import * as THREE from '../vendor/three.module.min.js';
-import { zombieFaceTexture, playerFaceTexture, solidTexture, shirtTexture, camoTexture, ojisanTextures, drunkTextures } from './textures.js?v=16';
+import { zombieFaceTexture, playerFaceTexture, solidTexture, shirtTexture, camoTexture, ojisanTextures, drunkTextures } from './textures.js?v=17';
 
 const boxGeoCache = new Map();
 export function boxGeo(w, h, d) {
@@ -307,9 +307,88 @@ export function makeMissile(big = false) {
   return { group: g, flame };
 }
 
+// ---- v0.15.0: あたらしい ぶき（かくうの デザイン・マークなし）----
+const GM2 = {
+  white: L(0xdfe5ea), cyan: new THREE.MeshBasicMaterial({ color: 0x5ff2ff }), red: new THREE.MeshBasicMaterial({ color: 0xff4a3a }),
+  tank: L(0xc8452e), brass: L(0xb8913a), purple: L(0x6a4fb0), violet: new THREE.MeshBasicMaterial({ color: 0xd88cff }),
+  can: L(0x8a9298), canTop: L(0x4c5257), smokeBand: L(0xd8dde2),
+};
+// レーザーじゅう: しろくて ほそながい・あおく ひかる ライン
+function makeLaserGun() {
+  const g = new THREE.Group(); g.name = 'laser';
+  const M = GM, N = GM2;
+  part(g, N.white, 0.07, 0.1, 0.42, 0, 0, -0.04);                   // からだ
+  part(g, M.poly, 0.05, 0.05, 0.26, 0, 0.01, -0.36);                // つつ
+  part(g, N.cyan, 0.072, 0.014, 0.34, 0, 0.035, -0.04);             // ひかる ライン
+  part(g, N.red, 0.03, 0.03, 0.012, 0, 0.01, -0.495);               // さきの レンズ
+  part(g, M.poly, 0.05, 0.12, 0.06, 0, -0.11, 0.08, -0.3);          // グリップ
+  part(g, M.poly, 0.012, 0.012, 0.07, 0, -0.08, 0.02);              // トリガーガード
+  part(g, N.white, 0.045, 0.06, 0.16, 0, -0.01, 0.24);              // ストック
+  const mag = new THREE.Group(); mag.position.set(0, -0.07, -0.08); g.add(mag);
+  part(mag, M.poly, 0.06, 0.04, 0.1, 0, 0, 0);                      // バッテリー
+  part(mag, N.cyan, 0.062, 0.01, 0.06, 0, -0.02, 0);
+  const muzzle = new THREE.Object3D(); muzzle.position.set(0, 0.01, -0.51); g.add(muzzle);
+  const eject = new THREE.Object3D(); eject.position.set(0.04, 0.02, 0); g.add(eject);
+  return { group: g, mag, muzzle, eject, magRest: mag.position.clone() };
+}
+// かえんほうしゃき: したに あかい タンク・まえに ノズル
+function makeFlamerGun() {
+  const g = new THREE.Group(); g.name = 'flamer';
+  const M = GM, N = GM2;
+  part(g, M.metal, 0.08, 0.09, 0.4, 0, 0, -0.05);                   // からだ
+  part(g, M.steel, 0.06, 0.06, 0.26, 0, 0.0, -0.37);                // ノズル
+  part(g, N.brass, 0.075, 0.075, 0.04, 0, 0.0, -0.5);               // ノズルの さき
+  part(g, M.orange, 0.02, 0.02, 0.02, 0, -0.045, -0.5);             // くちびの ひ
+  part(g, M.poly, 0.05, 0.12, 0.06, 0, -0.11, 0.1, -0.3);           // グリップ
+  part(g, M.poly, 0.045, 0.1, 0.05, 0, -0.08, -0.26, -0.15);        // まえの グリップ
+  const mag = new THREE.Group(); mag.position.set(0, -0.1, -0.06); g.add(mag);
+  part(mag, N.tank, 0.1, 0.1, 0.26, 0, 0, 0);                       // タンク
+  part(mag, M.steel, 0.104, 0.02, 0.03, 0, 0, -0.08);
+  part(mag, M.steel, 0.104, 0.02, 0.03, 0, 0, 0.08);
+  const muzzle = new THREE.Object3D(); muzzle.position.set(0, 0.0, -0.53); g.add(muzzle);
+  const eject = new THREE.Object3D(); eject.position.set(0.04, 0.02, 0); g.add(eject);
+  return { group: g, mag, muzzle, eject, magRest: mag.position.clone() };
+}
+// ビームじゅう: ふとくて むらさき・まえに ひかる わ
+function makeBeamGun() {
+  const g = new THREE.Group(); g.name = 'beam';
+  const M = GM, N = GM2;
+  part(g, N.purple, 0.12, 0.13, 0.46, 0, 0.01, -0.06);              // からだ
+  part(g, M.metal, 0.13, 0.03, 0.4, 0, 0.09, -0.06);                // うえ
+  part(g, N.violet, 0.124, 0.02, 0.3, 0, 0.03, -0.06);              // ひかる ライン
+  for (const z of [-0.33, -0.4, -0.47]) part(g, M.steel, 0.15, 0.15, 0.025, 0, 0.01, z); // まえの わ
+  part(g, N.violet, 0.07, 0.07, 0.01, 0, 0.01, -0.49);              // ひかる さき
+  part(g, M.poly, 0.05, 0.12, 0.06, 0, -0.12, 0.1, -0.3);           // グリップ
+  part(g, M.poly, 0.05, 0.1, 0.05, 0, -0.09, -0.24, -0.15);         // まえの グリップ
+  const mag = new THREE.Group(); mag.position.set(0, 0.01, 0.22); g.add(mag);
+  part(mag, M.poly, 0.1, 0.1, 0.1, 0, 0, 0);                        // エネルギーの はこ
+  part(mag, N.violet, 0.102, 0.03, 0.06, 0, 0.0, 0);
+  const muzzle = new THREE.Object3D(); muzzle.position.set(0, 0.01, -0.5); g.add(muzzle);
+  const eject = new THREE.Object3D(); eject.position.set(0.05, 0.02, 0); g.add(eject);
+  return { group: g, mag, muzzle, eject, magRest: mag.position.clone() };
+}
+// スモークグレネード（てに もつ かん）
+export function makeSmokeCan() {
+  const g = new THREE.Group();
+  part(g, GM2.can, 0.075, 0.13, 0.075, 0, 0, 0);
+  part(g, GM2.smokeBand, 0.078, 0.025, 0.078, 0, 0.02, 0);
+  part(g, GM2.canTop, 0.05, 0.03, 0.05, 0, 0.08, 0);
+  part(g, GM.steel, 0.012, 0.05, 0.03, 0.03, 0.06, 0);              // レバー
+  return g;
+}
+function makeSmokeHand() {
+  const g = new THREE.Group(); g.name = 'smoke';
+  const mag = new THREE.Group(); mag.position.set(0, -0.02, -0.05); g.add(mag);
+  mag.add(makeSmokeCan());
+  const muzzle = new THREE.Object3D(); muzzle.position.set(0, 0.05, -0.1); g.add(muzzle);
+  const eject = new THREE.Object3D(); eject.position.set(0, 0, 0); g.add(eject);
+  return { group: g, mag, muzzle, eject, magRest: mag.position.clone() };
+}
+
 export function makeWeapons() {
   const rifle = makeRifle(); rifle.group.scale.setScalar(1.15);
-  return { rifle, pistol: makePistol(), shotgun: makeShotgun(), rocket: makeRocket(), minigun: makeMinigun(), sniper: makeSniper(), magnum: makeMagnum(), mlauncher: makeMLauncher() };
+  return { rifle, pistol: makePistol(), shotgun: makeShotgun(), rocket: makeRocket(), minigun: makeMinigun(), sniper: makeSniper(), magnum: makeMagnum(), mlauncher: makeMLauncher(),
+    laser: makeLaserGun(), flamer: makeFlamerGun(), beam: makeBeamGun(), smoke: makeSmokeHand() };
 }
 export function makeMagMesh() {
   const g = new THREE.Group();

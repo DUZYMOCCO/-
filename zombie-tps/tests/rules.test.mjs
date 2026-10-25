@@ -20,6 +20,8 @@ import {
   ROBOT_LV, ROBOT_MAX_LV, robotLevel, robotStats, robotAddKill,
   VEHICLE, BLAST_FX, vehicleMaxHp, makeVehicleState, damageVehicle, vehicleStage, vehicleGap, chainTargets, blastReachesVehicle, blastHits,
   COP, copShouldCome, damageAlly,
+  LOADOUT_SIZE, DEFAULT_LOADOUT, normalizeLoadout, toggleLoadout, loadoutReady, loadoutSlot, cycleLoadout, unlockedWeapons, crateReward, applyCrate, CRATE_SCORE,
+  isGauge, GAUGE_LABEL, SMOKE, inSmoke, smokeAffects, addSmokeCloud, throwArc, useGauge, gaugeLasts, upgradeRows, digitEvent,
 } from '../js/rules.js';
 import { makeNav } from '../js/nav.js';
 import { buildMap, playerColliders, zombieColliders, shotColliders, MAPS, MAP_IDS as MAP_IDS_MAP, mapInfo } from '../js/map.js';
@@ -151,7 +153,7 @@ for (const MID of FLAT_IDS) test(`[${MID}] マップ: スタートは あいて�
 test('セーブの よみこみ', () => {
   assert.deepEqual(normalizeSave(null), { bestWave: 0, bestScore: 0, autoFire: false, sens: 'mid', quality: 'auto', stage: 'day', flashlight: true,
     outfit: 'normal', outfits: ['normal'], gear: { inv: [], eq: { head: null, body: null, feet: null, arm: null } },
-    autoEquip: true, map: 'rotate', mapNext: 0, bank: 0, wlv: { rifle: 1, pistol: 1, shotgun: 1, rocket: 1, minigun: 1, sniper: 1, magnum: 1, mlauncher: 1 },
+    autoEquip: true, map: 'rotate', mapNext: 0, bank: 0, wlv: { rifle: 1, pistol: 1, shotgun: 1, rocket: 1, minigun: 1, sniper: 1, magnum: 1, mlauncher: 1, laser: 1, flamer: 1, beam: 1, smoke: 1 }, loadout: ['rifle', 'shotgun', 'rocket'],
     slv: { head: 1, body: 1, feet: 1, arm: 1 }, hlv: 1, mlv: { bat: 1, hammer: 1, katana: 1 }, melee: 'bat' });
   assert.equal(normalizeSave({ bestWave: 7, sens: 'zzz' }).sens, 'mid');
   assert.equal(normalizeSave({ bestWave: 7 }).bestWave, 7);
@@ -232,7 +234,7 @@ test('なめらか いどう: approach は フレームレートに よらない
 });
 
 test('バージョン と セーブの ステージ', () => {
-  assert.equal(VERSION, '0.14.0');
+  assert.equal(VERSION, '0.15.0');
   assert.equal(normalizeSave(null).stage, 'day');
   assert.equal(normalizeSave({ stage: 'night' }).stage, 'night');
   assert.equal(normalizeSave({ stage: 'mars' }).stage, 'day');
@@ -1027,7 +1029,7 @@ test('v0.7.0 ぶき ボタン: ちいさく・でも ゆびで おせる', () =>
   assert.ok(WEAPON_BAR.slotW >= 40 && WEAPON_BAR.slotH >= 40, 'タッチ 40px いじょう');
   assert.ok(WEAPON_BAR.chipW * WEAPON_BAR.chipH <= 47 * 44 * 0.5, 'みえる ボタンは まえの はんぶん いか');
   assert.ok(WEAPON_BAR.slotW * 5 + WEAPON_BAR.gap * 4 <= 210, '5つ ならべても みぎうえ だけ');
-  assert.ok(WEAPON_BAR.slotW * WEAPON_ORDER.length + WEAPON_BAR.gap * (WEAPON_ORDER.length - 1) <= 330, '8つ でも iPhone SE（667）の みぎ はんぶんに はいる');
+  assert.ok(WEAPON_BAR.slotW * LOADOUT_SIZE + WEAPON_BAR.gap * (LOADOUT_SIZE - 1) <= 130, 'v0.15.0: もっていく 3つ だけ（みぎうえ すこし）');
 });
 
 test('v0.7.0 おじさん: すぐには たおれない（どの ウェーブでも 45びょう いじょう）', () => {
@@ -1095,8 +1097,9 @@ import * as R8 from '../js/rules.js';
     for (const id of WEAPON_ORDER) {
       const a = upgradedWeapon(id, 1), b = upgradedWeapon(id, 2), z = upgradedWeapon(id, UPGRADE.max);
       assert.equal(a.dmg, WEAPONS[id].dmg); assert.equal(a.rpm, WEAPONS[id].rpm); assert.equal(a.mag, WEAPONS[id].mag);
-      assert.ok(b.dmg > a.dmg && b.rpm >= a.rpm && b.mag >= a.mag, id);
-      assert.ok(z.dmg >= a.dmg * 1.6 && z.rpm > a.rpm && (WEAPONS[id].revolver ? z.mag === 6 : z.mag > a.mag), id);
+      const fixedMag = WEAPONS[id].revolver || WEAPONS[id].gauge || WEAPONS[id].throw; // v0.15.0: ゲージ・なげる ぶきは マガジン そのまま
+      assert.ok((WEAPONS[id].throw ? b.time > a.time : b.dmg > a.dmg) && b.rpm >= a.rpm && b.mag >= a.mag, id);
+      assert.ok((WEAPONS[id].throw || z.dmg >= a.dmg * 1.6) && z.rpm > a.rpm && (fixedMag ? z.mag === a.mag : z.mag > a.mag), id);
     }
     assert.equal(upgradedWeapon('rocket', 5).mag, 1); assert.equal(upgradedWeapon('rocket', 6).mag, 2);
     // じゅうは レベルの つよさで うつ
@@ -1125,7 +1128,7 @@ import * as R8 from '../js/rules.js';
     assert.equal(normalizeSave({ bank: -5 }).bank, 0);
     assert.equal(normalizeSave({ bank: 12.7 }).bank, 12);
     const w = normalizeSave({ wlv: { rifle: 4, sniper: 99, shotgun: 'x', zzz: 3 } }).wlv;
-    assert.deepEqual(w, { rifle: 4, pistol: 1, shotgun: 1, rocket: 1, minigun: 1, sniper: UPGRADE.max, magnum: 1, mlauncher: 1 });
+    assert.deepEqual(w, { rifle: 4, pistol: 1, shotgun: 1, rocket: 1, minigun: 1, sniper: UPGRADE.max, magnum: 1, mlauncher: 1, laser: 1, flamer: 1, beam: 1, smoke: 1 });
   });
 
   test('v0.8.0 すてると スコア: レアほど おおい（n<r<sr<l）・つけている ものは すてない', () => {
@@ -1224,7 +1227,7 @@ import * as R8 from '../js/rules.js';
 
   test('v0.8.0 スナイパー: ふつうの ゾンビは 1ぱつ・おそい ボルト・ちいさい マガジン・キー6', () => {
     const w = WEAPONS.sniper;
-    assert.equal(WEAPON_ORDER[5], 'sniper'); assert.equal(w.slot, 6); assert.equal(WEAPON_ORDER.length, 8);
+    assert.equal(WEAPON_ORDER[5], 'sniper'); assert.equal(w.slot, 6); assert.equal(WEAPON_ORDER.length, 12);
     assert.ok(!w.auto && w.rpm <= 60 && w.mag <= 6 && w.pierce >= 1 && w.pierce <= 2);
     for (const d of [5, 40, 80, 130]) assert.ok(damageAt(w, d, false) >= ZOMBIES.walker.hp, `walker @${d}`);
     for (const d of [5, 40]) assert.ok(damageAt(w, d, false) * 0.64 >= ZOMBIES.walker.hp, `3たいめ @${d}`);
@@ -1442,13 +1445,13 @@ test('v0.10.0 パワードスーツ: きている あいだ と ぬいだ すぐ
   assert.ok(SUIT.armor / (60 * SUIT.armorMul) > 150);
 });
 
-test('v0.10.0 パワードスーツ: ぶきは 5つ（マシンキャノン・かえんほうしゃ・キャノン・ミサイル・パンチ）', () => {
-  assert.deepEqual(SUIT_ORDER, ['mcannon', 'flamer', 'cannon', 'missile', 'punch']);
+test('v0.10.0 パワードスーツ: ぶきは 4つ（v0.15.0: パンチは なぐる ボタンへ）', () => {
+  assert.deepEqual(SUIT_ORDER, ['mcannon', 'flamer', 'cannon', 'missile']);
   assert.equal(SUIT_WEAPONS.mcannon.name, 'マシンキャノン');
   assert.equal(SUIT_WEAPONS.flamer.name, 'かえんほうしゃ');
   assert.equal(SUIT_WEAPONS.cannon.name, 'キャノン');
   assert.equal(SUIT_WEAPONS.punch.name, 'パンチ');
-  assert.equal(suitWeaponAt(0), 'mcannon'); assert.equal(suitWeaponAt(6), 'flamer'); assert.equal(suitWeaponAt(-1), 'punch');
+  assert.equal(suitWeaponAt(0), 'mcannon'); assert.equal(suitWeaponAt(5), 'flamer'); assert.equal(suitWeaponAt(-1), 'missile');
   // ふつうの ぶきより ずっと つよい
   assert.ok(SUIT_WEAPONS.mcannon.dmg / SUIT_WEAPONS.mcannon.interval > 3 * WEAPONS.minigun.dmg * WEAPONS.minigun.rpm / 60, 'ミニガンの 3ばい いじょう');
   assert.ok(SUIT_WEAPONS.mcannon.dmg >= 60);
@@ -2038,7 +2041,181 @@ test('v0.14 ファイル: army.js・drunk.js が キャッシュに ある', asy
   const root = path.dirname(path.dirname(url.fileURLToPath(import.meta.url)));
   const sw = fs.readFileSync(path.join(root, 'sw-assets.js'), 'utf8');
   for (const f of ['js/army.js', 'js/drunk.js']) { assert.ok(sw.includes(f), f); assert.ok(fs.existsSync(path.join(root, f))); }
-  assert.match(sw, /0\.14\.0/);
+  assert.match(sw, /0\.15\.0/); assert.ok(sw.includes('js/beams.js') && fs.existsSync(path.join(root, 'js/beams.js')), 'v0.15.0: beams.js');
   const dr = fs.readFileSync(path.join(root, 'js/drunk.js'), 'utf8');
   assert.ok(dr.includes('drunkShouldCome') && dr.includes('planCop') && !dr.includes('uncleForWave'));
+});
+
+// ---- v0.15.0: レーザー・ほのお・ビーム・けむり ＋ もっていく ぶき 3つ ----
+import { laserHits, upgradedWeapon, gunStats, UPGRADE as UPG15 } from '../js/rules.js';
+test('v0.15.0 あたらしい ぶき 4つ: ある・ばんごう・なまえ', () => {
+  for (const id of ['laser', 'flamer', 'beam', 'smoke']) {
+    assert.ok(WEAPONS[id] && WEAPON_ORDER.includes(id), id);
+    assert.ok(WEAPONS[id].short.length <= 6, 'カードに はいる なまえ ' + id);
+  }
+  assert.deepEqual(WEAPON_ORDER.slice(8), ['laser', 'flamer', 'beam', 'smoke']);
+  assert.ok(isGauge('laser') && isGauge('flamer') && isGauge('beam') && !isGauge('smoke') && !isGauge('rifle'));
+  assert.equal(WEAPONS.laser.gauge, 'heat'); assert.equal(WEAPONS.flamer.gauge, 'fuel'); assert.equal(WEAPONS.beam.gauge, 'energy');
+  for (const k of ['heat', 'fuel', 'energy']) assert.ok(GAUGE_LABEL[k]);
+  for (const id of WEAPON_ORDER) assert.ok(WEAPONS[id].short && WEAPONS[id].name, id);
+});
+
+test('v0.15.0 レーザー: いっしゅんで とどく・つらぬく・ねつで オーバーヒート → さめると また うてる', () => {
+  const w = WEAPONS.laser;
+  assert.ok(w.pierce >= 3 && w.auto && w.range >= 50);
+  const g = createGun('laser');
+  let shots = 0, res, t = 0;
+  for (; t < 20 && !g.lock; t += 1 / 60) { res = useGauge(g, true, 1 / 60); if (res === 'fire') shots++; }
+  assert.ok(g.lock && g.over, 'オーバーヒート');
+  assert.equal(shots, gaugeLasts(w), 'ゲージ ぶん うてる');
+  assert.ok(shots >= 8 && shots <= 16);
+  assert.equal(useGauge(g, true, 1 / 60), 'locked', 'あついと うてない');
+  let cool = 0; while (g.lock && cool < 10) { useGauge(g, false, 0.05); cool += 0.05; }
+  assert.ok(!g.lock && cool > 0.5 && cool < 2.5, 'すこし まつと うてる ' + cool.toFixed(2));
+  assert.equal(useGauge(g, true, 1 / 60), 'fire');
+  // ならんだ ゾンビを つらぬく（4たいまで）
+  const zs = Array.from({ length: 6 }, (_, i) => ({ x: 0, y: 0, z: -3 - i * 2, alive: true, scale: 1 }));
+  const hits = laserHits(0, 1.0, 0, 0, 0, -1, zs, w.range, w.pierce, w.beamW);
+  assert.equal(hits.length, w.pierce); assert.deepEqual(hits.map((h) => h.i), [0, 1, 2, 3]);
+  // かべの まえで とまる
+  assert.equal(laserHits(0, 1.0, 0, 0, 0, -1, zs, 6, w.pierce, w.beamW).length, 2);
+});
+
+test('v0.15.0 かえんほうしゃき: ちかい コーン・もえる・ねんりょうは とめると もどる', () => {
+  const w = WEAPONS.flamer;
+  assert.ok(w.range <= 9 && w.cone > 0.2 && w.burn > 0 && w.burnDps > 0 && w.burnDps < 35, 'スーツの ほのおより よわい');
+  const tgt = [{ x: 0, z: -4, alive: true }, { x: 0, z: -12, alive: true }, { x: 4, z: 0, alive: true }];
+  assert.deepEqual(flameHits(0, 0, 0, -1, tgt, w.range, w.cone).map((h) => h.i), [0]);
+  const g = createGun('flamer');
+  let t = 0; while (!g.lock && t < 30) { useGauge(g, true, 0.05); t += 0.05; }
+  assert.ok(Math.abs(t - gaugeLasts(w)) < 0.2, 'ねんりょう ' + t.toFixed(2));
+  let r = 0; while (g.en < 1 && r < 30) { useGauge(g, false, 0.05); r += 0.05; }
+  assert.ok(r < 6, 'とめると もどる');
+  const z = { hp: 100, burnT: w.burn, burnDps: w.burnDps };
+  const d = burnTick(z, 0.5, z.burnDps);
+  assert.ok(Math.abs(d - w.burnDps * 0.5) < 1e-6);
+});
+
+test('v0.15.0 ビーム: ためてから ふとい ビーム・レーザーと ちがう', () => {
+  const w = WEAPONS.beam, L = WEAPONS.laser;
+  assert.ok(w.charge >= 0.3 && w.beamW > L.beamW * 2 && w.pierce > L.pierce && w.stream && !L.stream);
+  const g = createGun('beam');
+  const seq = [];
+  for (let i = 0; i < 20; i++) seq.push(useGauge(g, true, 0.05));
+  assert.equal(seq[0], 'charge'); assert.ok(seq.includes('stream'));
+  assert.ok(seq.indexOf('stream') * 0.05 >= w.charge - 0.06, 'ためる じかん');
+  useGauge(g, false, 0.05); assert.equal(g.charge, 0, 'はなすと ためなおし');
+  let t = 0; g.en = 1; while (!g.lock && t < 30) { useGauge(g, true, 0.05); t += 0.05; }
+  assert.ok(t >= 2 && t <= 6, 'エネルギー ' + t.toFixed(2));
+  assert.ok(w.dmg * 1 >= ZOMBIES.walker.hp, '1びょうで ふつうの ゾンビを たおせる');
+});
+
+test('v0.15.0 けむり: やまなり・2つ まで・ボスには きかない・ダメージ なし', () => {
+  const w = WEAPONS.smoke;
+  assert.equal(w.dmg, 0); assert.ok(w.throw && w.time >= 5 && w.time <= 7 && w.reserve >= 2);
+  const p0 = throwArc(0, 1.5, 0, 0, -1, w, 0), p1 = throwArc(0, 1.5, 0, 0, -1, w, 0.3), p2 = throwArc(0, 1.5, 0, 0, -1, w, 1.0);
+  assert.ok(p1.y > p0.y && p2.y < p1.y && p2.z < p1.z, 'やまなり');
+  const cl = [];
+  assert.equal(addSmokeCloud(cl, 0, 0), null);
+  addSmokeCloud(cl, 10, 0);
+  const old = addSmokeCloud(cl, 20, 0);
+  assert.equal(cl.length, SMOKE.max); assert.equal(old.x, 0, 'ふるい ものが きえる');
+  assert.ok(inSmoke(cl, 10.5, 1) && !inSmoke(cl, 0, 0) && !inSmoke(cl, 15, 0));
+  assert.ok(smokeAffects('walker') && smokeAffects('brute') && !smokeAffects('boss'));
+  assert.ok(SMOKE.slow > 0 && SMOKE.slow < 1 && SMOKE.r >= 3);
+  const ups = upgradedWeapon('smoke', 8);
+  assert.ok(ups.time > w.time && ups.reserve >= w.reserve && ups.mag === 1);
+});
+
+test('v0.15.0 つよく する: ゲージ ぶきは ながく うてる・ひょうの ことば', () => {
+  for (const id of ['laser', 'flamer', 'beam']) {
+    assert.ok(gaugeLasts(upgradedWeapon(id, UPG15.max)) > gaugeLasts(upgradedWeapon(id, 1)), id);
+    assert.ok(UPG15.base[id] > 0);
+  }
+  assert.ok(UPG15.base.smoke > 0);
+  for (const id of WEAPON_ORDER) {
+    const rows = upgradeRows(upgradedWeapon(id, 3));
+    assert.ok(rows.length >= 2 && rows.length <= 3 && rows.every((r) => r.name && typeof r.v === 'string'), id);
+  }
+  assert.deepEqual(upgradeRows(upgradedWeapon('rifle', 1)).map((r) => r.name), ['いりょく', 'はやさ', 'たまの かず']);
+  const s = normalizeSave({ wlv: { laser: 5, smoke: 2 } });
+  assert.equal(s.wlv.laser, 5); assert.equal(s.wlv.smoke, 2); assert.equal(s.wlv.beam, 1);
+});
+
+test('v0.15.0 ロードアウト: 3つ・はじめは ライフル ショットガン ロケット・セーブに のこる', () => {
+  assert.equal(LOADOUT_SIZE, 3);
+  assert.deepEqual(DEFAULT_LOADOUT, ['rifle', 'shotgun', 'rocket']);
+  assert.deepEqual(normalizeSave({}).loadout, DEFAULT_LOADOUT);
+  assert.deepEqual(normalizeSave(null).loadout, DEFAULT_LOADOUT);
+  assert.deepEqual(normalizeSave({ loadout: ['laser', 'smoke', 'beam'] }).loadout, ['laser', 'smoke', 'beam']);
+  // こわれた セーブ: へんな なまえ・おなじ もの・おおすぎ → なおす
+  assert.deepEqual(normalizeLoadout(['zzz', 'laser', 'laser']), ['laser', 'rifle', 'shotgun']);
+  assert.deepEqual(normalizeLoadout(['a', 'b', 'c', 'd', 'magnum', 'pistol', 'sniper', 'minigun']), ['magnum', 'pistol', 'sniper']);
+  assert.deepEqual(normalizeLoadout('x'), DEFAULT_LOADOUT);
+  assert.ok(loadoutReady(DEFAULT_LOADOUT) && !loadoutReady(['rifle', 'rifle', 'rocket']) && !loadoutReady(['rifle']));
+  assert.deepEqual(unlockedWeapons(normalizeSave({})), WEAPON_ORDER);
+});
+
+test('v0.15.0 ロードアウト: カードを おす（はずす・いれる・いっぱいなら いちばん ふるいと いれかえ）', () => {
+  let lo = ['rifle', 'shotgun', 'rocket'];
+  lo = toggleLoadout(lo, 'shotgun'); assert.deepEqual(lo, ['rifle', 'rocket']);
+  lo = toggleLoadout(lo, 'laser'); assert.deepEqual(lo, ['rifle', 'rocket', 'laser']);
+  lo = toggleLoadout(lo, 'smoke'); assert.deepEqual(lo, ['rocket', 'laser', 'smoke']);
+  assert.equal(lo.length, LOADOUT_SIZE);
+  const before = ['rifle', 'shotgun', 'rocket']; toggleLoadout(before, 'beam');
+  assert.deepEqual(before, ['rifle', 'shotgun', 'rocket'], 'もとの はいれつは かえない');
+});
+
+test('v0.15.0 ロードアウト: 1〜3 キー・つぎの ぶき', () => {
+  const lo = ['laser', 'flamer', 'smoke'];
+  assert.equal(digitEvent('Digit1'), 'ws:0'); assert.equal(digitEvent('Digit3'), 'ws:2'); assert.equal(digitEvent('Digit9'), 'ws:8');
+  assert.equal(digitEvent('Digit0'), null); assert.equal(digitEvent('KeyQ'), null);
+  assert.equal(loadoutSlot(lo, 0), 'laser'); assert.equal(loadoutSlot(lo, 2), 'smoke'); assert.equal(loadoutSlot(lo, 3), null, '4は なにも ない');
+  assert.equal(cycleLoadout(lo, 'laser', 1), 'flamer'); assert.equal(cycleLoadout(lo, 'smoke', 1), 'laser'); assert.equal(cycleLoadout(lo, 'laser', -1), 'smoke');
+  assert.equal(cycleLoadout(lo, 'rifle', 1), 'laser', 'もっていない ぶき なら 1ばん');
+});
+
+test('v0.15.0 はこ: もっている ぶきの たま → ないなら スコア', () => {
+  const guns = Object.fromEntries(WEAPON_ORDER.map((id) => [id, createGun(id)]));
+  // ロケットを もっている
+  guns.rocket.reserve = 0;
+  let r = applyCrate(['rifle', 'shotgun', 'rocket'], guns); assert.equal(r.kind, 'rocket'); assert.ok(guns.rocket.reserve > 0);
+  // ロケット なし → ミサイル
+  guns.mlauncher.reserve = 0;
+  r = applyCrate(['mlauncher', 'laser', 'rifle'], guns); assert.equal(r.kind, 'ammo'); assert.equal(r.id, 'mlauncher'); assert.equal(guns.mlauncher.reserve, 1);
+  // けむり
+  guns.smoke.reserve = 0;
+  r = applyCrate(['laser', 'smoke', 'beam'], guns); assert.equal(r.id, 'smoke'); assert.equal(guns.smoke.reserve, 1);
+  // ふつうの たま（いっぱい なら こえない）
+  guns.shotgun.reserve = gunStats(guns.shotgun).reserve - 1;
+  r = applyCrate(['shotgun', 'laser', 'beam'], guns); assert.equal(r.id, 'shotgun'); assert.equal(r.n, 1); assert.equal(guns.shotgun.reserve, gunStats(guns.shotgun).reserve);
+  // ぜんぶ ゲージ（たま なし）→ スコア
+  r = applyCrate(['laser', 'flamer', 'beam'], guns); assert.equal(r.kind, 'score'); assert.equal(r.n, CRATE_SCORE);
+  // ロケット いっぱい・ほかも いっぱい → スコア
+  guns.rocket.reserve = ROCKET_RESERVE_MAX;
+  r = applyCrate(['rocket', 'pistol', 'laser'], guns); assert.equal(r.kind, 'score');
+});
+
+test('v0.15.0 SE2: ロードアウトの カード・ボタンは 40×40 いじょうで 667×375 に はいる', () => {
+  const W = 667, H = 375, cols = 6, gap = 6, boxW = Math.min(W * 0.94, 620);
+  const cardW = (boxW - 12 - gap * (cols - 1)) / cols, cardH = 64;
+  assert.ok(cardW >= 40 && cardH >= 40, 'カード ' + cardW.toFixed(0));
+  const rows = Math.ceil(WEAPON_ORDER.length / cols);
+  const total = 12 + 40 + 6 + rows * cardH + (rows - 1) * gap + 6 + 52;
+  assert.ok(total <= H, 'たかさ ' + total);
+});
+
+test('v0.15.0 スーツの パンチ: なぐる ボタン・ぶきバーに ない・うちながら なぐれる', () => {
+  assert.ok(!SUIT_ORDER.includes('punch'), 'ぶきバーに パンチは ない');
+  assert.equal(SUIT_ORDER.length, 4);
+  assert.equal(SUIT_WEAPONS.punch.dmg, 1200, 'つよさは そのまま');
+  assert.equal(SUIT_WEAPONS.punch.interval, 0.45);
+  // キー 1〜4 → スーツの ぶき・5 は なし
+  const ids = ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5'].map((c) => SUIT_ORDER[+digitEvent(c).slice(3)]);
+  assert.deepEqual(ids, ['mcannon', 'flamer', 'cannon', 'missile', undefined]);
+  // パンチの クールダウンは ぶきと べつ（ミサイルを うった すぐ あとでも なぐれる）
+  const st = wearSuit(); assert.equal(st.punchCd, 0);
+  st.weapon = 'missile'; st.cd = SUIT_WEAPONS.missile.interval; st.punchCd = SUIT_WEAPONS.punch.interval;
+  tickSuit(st, 0.45); assert.equal(st.punchCd, 0); assert.ok(st.cd > 0 || SUIT_WEAPONS.missile.interval <= 0.45);
+  tickSuit(st, 1); assert.equal(st.punchCd, 0);
 });

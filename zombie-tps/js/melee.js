@@ -4,8 +4,8 @@ import * as THREE from '../vendor/three.module.min.js';
 import {
   meleeStats, meleeLevel, newMeleeState, meleePress, meleeTick, meleeDur, meleeStyle, swingPose,
   meleeTargets, meleeAim, meleeBlocked, meleeDamage, meleeRawKnock, meleeDown, bumpTransfer, BUMP, isMelee, DEFAULT_MELEE,
-} from './rules.js?v=16';
-import { makeMeleeWeapons } from './models.js?v=16';
+} from './rules.js?v=17';
+import { makeMeleeWeapons } from './models.js?v=17';
 
 const _p = new THREE.Vector3(), _d = new THREE.Vector3();
 const TRAIL_C = { bat: 0xfff0c0, hammer: 0xffd890, katana: 0xd6f0ff };
@@ -47,7 +47,7 @@ export const MeleeMixin = {
   updateMelee(dt, held) {
     const st = this.mSt, W = this.mW;
     this.updateMeleeFx(dt);
-    if (this.suit || this.state !== 'play') { if (st.active) this.resetMelee(); return; } // スーツは パンチが ある
+    if (this.suit || this.state !== 'play') { if (st.active) this.resetMelee(); if (this.suit) this.suitMelee?.(held); return; } // v0.15.0: スーツの ときは なぐる＝スーツの パンチ
     if (held) meleePress(st, W);
     const ev = meleeTick(st, W, dt);
     if (ev === 'hit') this.meleeHit(st.step);

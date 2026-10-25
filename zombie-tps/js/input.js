@@ -1,4 +1,4 @@
-import { stickCurve } from './rules.js?v=16';
+import { stickCurve, digitEvent } from './rules.js?v=17';
 // そうさ: タッチ（ひだり スティック・みぎ ドラッグ・ボタン）と キーボード／マウス
 export class Input {
   constructor(touchLayer, canvas) {
@@ -107,14 +107,7 @@ export class Input {
       if (c === 'KeyR') this.events.push('reload');
       if (c === 'KeyV') this.meleeTap = true;
       if (c === 'Space') { this.events.push('jump'); e.preventDefault(); }
-      if (c === 'Digit1') this.events.push('w:rifle');
-      if (c === 'Digit2') this.events.push('w:pistol');
-      if (c === 'Digit3') this.events.push('w:shotgun');
-      if (c === 'Digit4') this.events.push('w:rocket');
-      if (c === 'Digit5') this.events.push('w:minigun');
-      if (c === 'Digit6') this.events.push('w:sniper');
-      if (c === 'Digit7') this.events.push('w:magnum');
-      if (c === 'Digit8') this.events.push('w:mlauncher');
+      { const ev = digitEvent(c); if (ev) this.events.push(ev); } // v0.15.0: 1〜3 = もっていく ぶきの ばんごう（スーツの ときは スーツの ぶき）
       if (c === 'KeyQ') this.events.push('next');
       if (c === 'Escape' || c === 'KeyP') this.events.push('pause');
     } else this.keys.delete(c);
