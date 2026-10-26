@@ -9,9 +9,9 @@ import { createSim, runSim, stepSim, issueOrder, hashSim, missionStatus, TICK } 
 import { MISSION_1 } from '../js/sim/mission.js?v=10';
 import { reachable, toTile, tileCenter } from '../js/sim/map.js?v=6';
 import { STORY_1 } from '../js/story/story-mission.js?v=3';
-import { STORY1_SCRIPT_FILES, STORY1_MID_SCENES, storyScriptUrl, newStoryState, endingKind, midScene } from '../js/story/story-1.js?v=2';
+import { STORY1_SCRIPT_FILES, STORY1_MID_SCENES, storyScriptUrl, newStoryState, endingKind, midScene } from '../js/story/story-1.js?v=3';
 import { issueStrike, launcherOf, nejiOf } from '../js/sim/strike.js?v=1';
-import { toggleRide, toggleTow, storyHud, storyMenuState, storyResultText, STORY_OPS_LABELS } from '../js/story/story-ops.js?v=2';
+import { toggleRide, toggleTow, storyHud, storyMenuState, storyResultText, STORY_OPS_LABELS } from '../js/story/story-ops.js?v=3';
 
 const path = rel => fileURLToPath(new URL(rel, import.meta.url));
 const json = rel => JSON.parse(readFileSync(path(rel), 'utf8'));
@@ -52,7 +52,7 @@ test('物語の台本（v1.0.2）: 少年は話さない（…… だけ）・�
     for (const id of Object.keys(sc.cast || {})) assert.ok(ok.has(id), `${k}: cast ${id}`);
   }
   const all = Object.values(SCRIPTS).flatMap(sc => sc.lines.map(l => l.text || '')).join('\n');
-  assert.match(all, /☰/, '乗り降り・撃つのは ☰ から、と出撃前に言う');
+  assert.doesNotMatch(all, /☰/, '乗り降り・撃つなどの操作説明（☰）はセリフに入れない');
   assert.match(all, /せっけいず/);
 });
 

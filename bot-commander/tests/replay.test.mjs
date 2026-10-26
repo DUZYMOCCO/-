@@ -6,7 +6,7 @@ import { MISSION_1 } from '../js/sim/mission.js?v=10';
 import {
   createRecorder, openReplay, parseReplay, stringifyReplay, makeStart, packCommand, unpackCommand, deviceRecord, compareRecords,
   REPLAY_VERSION, MARK_EVERY,
-} from '../js/sim/replay.js?v=9';
+} from '../js/sim/replay.js?v=10';
 
 const robots = sim => sim.units.filter(u => u.side === 'ally' && !u.human).map(u => u.id);
 const enemies = sim => sim.units.filter(u => u.side === 'enemy').map(u => u.id);

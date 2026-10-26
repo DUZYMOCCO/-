@@ -2,27 +2,29 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { SPEEDS, DEFAULT_SPEED, normalizeSpeed, hudSpeedText, advance } from '../js/ui/speed.js?v=1';
+import { SPEEDS, DEFAULT_SPEED, normalizeSpeed, hudSpeedText, advance } from '../js/ui/speed.js?v=2';
 import { createSim, stepSim, TICK } from '../js/sim/sim.js?v=27';
 import { MISSION_1 } from '../js/sim/mission.js?v=10';
 const read = rel => readFileSync(fileURLToPath(new URL(rel, import.meta.url)), 'utf8');
 
-test('速さは 0.5/1/2 の3択・始まりは 1x・HUD は 1x 以外だけ', () => {
-  assert.deepEqual(SPEEDS, [0.5, 1, 2]);
+test('速さは 0.5/1/2/3 の4択・始まりは 1x・HUD は 1x 以外だけ', () => {
+  assert.deepEqual(SPEEDS, [0.5, 1, 2, 3]);
   assert.equal(DEFAULT_SPEED, 1);
   assert.equal(normalizeSpeed('0.5'), 0.5);
-  assert.equal(normalizeSpeed(3), 1);
+  assert.equal(normalizeSpeed(3), 3);
+  assert.equal(normalizeSpeed(4), 1);
   assert.equal(hudSpeedText(1), '');
   assert.equal(hudSpeedText(0.5), '0.5x');
   assert.equal(hudSpeedText(2), '2x');
+  assert.equal(hudSpeedText(3), '3x');
 });
 
-test('メニューに3つのボタンがあり、ゲーム画面にボタンは増えていない', () => {
+test('メニューに4つのボタンがあり、ゲーム画面にボタンは増えていない', () => {
   const src = read('../js/index.js');
-  for (const v of ['0.5', '1', '2']) assert.ok(src.includes(`data-speed="${v}"`), v);
+  for (const v of ['0.5', '1', '2', '3']) assert.ok(src.includes(`data-speed="${v}"`), v);
   const menu = src.slice(src.indexOf('class="bc-menu"'), src.indexOf('class="bc-confirm"'));
-  assert.equal((menu.match(/data-speed=/g) || []).length, 3);
-  assert.equal((src.match(/data-speed=/g) || []).length, 3);
+  assert.equal((menu.match(/data-speed=/g) || []).length, 4);
+  assert.equal((src.match(/data-speed=/g) || []).length, 4);
   assert.ok(read('../sw-assets.js').includes("'js/ui/speed.js'"));
 });
 

@@ -99,7 +99,7 @@ export function mountLauncherMenu({ root, sim, r, view, toast, menu, hooks }) {
     view.setRange(l.id); view.setPreview(null);
     r.cam.x = l.x; r.cam.y = l.y; r.cam.zoom = Math.min(r.cam.zoom, 0.55); r.clampCam(); // 届く距離の円が入るように引く
     pick.hidden = false; bar.hidden = false; go.disabled = true;
-    msg.textContent = `撃つ地点をタップ（青い円の中だけ届く。爆発は半径 3 タイル・味方には当たらない）`;
+    msg.textContent = `狙う場所をタップ（青い円の中に届く。爆発は半径 3 タイル・味方には当たらない）`;
   }
   function endPick(restore) {
     if (!picking) return;
@@ -153,7 +153,7 @@ export function mountLauncherMenu({ root, sim, r, view, toast, menu, hooks }) {
 
   refresh();
   return {
-    refresh, scan,
+    refresh, scan, startPick,
     get picking() { return !!picking; },
     destroy() { mo.disconnect(); sec.remove(); pick.remove(); bar.remove(); },
   };
@@ -171,6 +171,7 @@ export async function mountLauncher(ctx) {
   return {
     sync(now) { view.sync(now); menu.scan(); },
     refresh: menu.refresh,
+    startPick: menu.startPick,
     get picking() { return menu.picking; },
     destroy() { menu.destroy(); view.destroy(); },
   };

@@ -18,8 +18,8 @@
 ## 2. 1 章からのつながり
 
 ### 1 章の終わり（今ある）
-- 1 章（`js/story/story-mission.js` の `STORY_1`）は、ネジと少年だけ → 埋もれたミサイルを発射台で撃つ → 住居跡で **PONCO02 の設計図**。勝つと `save.story.flags.ponco02Blueprint = true`。
-- `assets/story/story1_win.json` の最後のネジ: 「これは つかいきり。1まいで 1たい だけ」「ざいりょうも たりない けど……それは あした かんがえよう」。**この「材料が足りない」を、そのまま 2 章の最初の目的にする。**
+- 1 章（`js/story/story-mission.js` の `STORY_1`）は、ネジと少年だけでガラクタ拾い → 途中で見つけたミサイルを発射台で撃つ → 静かになった住居跡の地下で **PONCO02 の設計図**。勝つと `save.story.flags.ponco02Blueprint = true`。
+- `assets/story/story1_win.json` の最後のネジ: 「ここに、つかいきり って かいてある。1まいで 1たい だけ」「ざいりょうも たりない けど……それは あした かんがえよう」。**この「材料が足りない」を、そのまま 2 章の最初の目的にする。**
 
 ### PONCO02 をいつ・どう作るか（案）
 - **2-1「ポンコ02を つくる」の終わりに作る。** 1 章の直後に作らない理由: 材料が足りないとネジが言っていて、設計図は 1 枚で 1 体だけ【決定】。だから「材料を集めて届ける」小さなミッションを 1 本はさむ。1 章で覚えた「掘る・見つからないように動く」をもう一度使える。
@@ -73,6 +73,8 @@
 [NEJI alert]    ほりながら、もりの かげを とおるよ。ぼくの せなかに のっててね。おちないでね？
 [exit NEJI] [enter BOY serious]
 [BOY]           ……
+[exit BOY] [enter NEJI alert]
+[NEJI neutral]  ざいりょうを 20 ほど つんだら、みなみの かくれがへ はこぼう。ぜんぶで 60 あつめようね。
 ```
 
 `story2_core`（bg: `ruins_town`）
@@ -137,6 +139,9 @@
 [exit NEJI] [enter BOY serious]
 [BOY]            ……
 [PONCO02 neutral] 少年、後ろに。
+[exit BOY] [enter NEJI alert]
+[PONCO02 alert]  敵は 1体ずつ。森と 残骸を 使いましょう。
+[NEJI alert]     きたの ほうに みえるのが むせんとうの あと だよ。あそこまで いって、なにが あるか しらべて みよう。てきが ちかくに いると あぶないから、きを つけてね。
 ```
 
 `story2_after`（bg: `wasteland`、cast: NEJI）
@@ -158,8 +163,7 @@
 `story2_lose`（bg: `hideout`、cast: NEJI damaged）
 ```
 [NEJI damaged]   ……ごめん。ぼくたち だけじゃ、にげても つかまる……。
-[NEJI sad]       ポンコ02が いなく なったら、ひとは ほんとに むりょく なんだ。
-[NEJI neutral]   ……もしもの はなし。もう いちど。こんどは、もりの かげを とおろう。
+[NEJI sad]       もりの かげを とおって、にげきれれば よかったのに……。
 [NEJI alert]     てきが ひとを つかまえる ときは、うでを みて。かごみたいな あご だよ。
 ```
 
@@ -216,14 +220,17 @@
 
 `story3_intro`（bg: `ruins_town`、cast: NEJI、右に PONCO02）
 ```
+[NEJI worried]    キミが サバイバルスーツを かいぞうして つくった、スーツ A。ぶひん、ちゃんと ついたね。
 [NEJI worried]    ほんとに それで いくんだね。ぼくの せなか、まだ あいてるよ？
 [PONCO02 neutral] スーツ、起動確認。少年、姿勢が良いです。
 [NEJI happy]      ……かっこいい、かも。ちょっとだけ ね！
-[NEJI alert]      ☰の なかに 「きる」と「ぬぐ」が ある。ぬいでから ぼくの せなかに のってね。
+[NEJI alert]      あぶなく なったら スーツを ぬいで、ぼくの せなかに のってね。
 [NEJI worried]    ぬげたら すぐ ぼくの うしろに！ スーツは なおせる けど、キミの からだは なおせない！
-[exit NEJI] [enter BOY_SUIT serious]
-[BOY_SUIT]        ……
-[PONCO02 alert]   前方に反応。少年、撃てます。
+[NEJI alert]      なおせる のは、はじめの ばしょに もどった とき だけ。いまは リペアの ロボは いないよ。
+[exit NEJI]
+[PONCO02 alert]   前方に反応。少年、撃てます。ネジは 戦えません。わたしと 少年で 1たいずつ。
+[enter NEJI alert]
+[NEJI alert]      いこう、となりまちの もんまで！（仮）
 ```
 
 `story3_gate`（bg: `ruins_town`、cast: NEJI）
@@ -302,8 +309,8 @@
 ```
 [NEJI damaged]   ……ごめん。あの こ、まもれなかった。
 [NEJI sad]       つかまった ひとは、すに はこばれる。すに ついたら、もう ぼくたち だけじゃ……
-[NEJI neutral]   ……もしもの はなし。もう いちど。こんどは、はこんでる てきを ねらって。
-[NEJI alert]     はこぶ てきは おそい。キミの スーツなら、おいつける！
+[NEJI alert]     はこんでる てきを ねらえば、たすけられる かも しれない。
+[NEJI alert]     はこぶ てきは おそい。キミの スーツなら、おいつける！（仮）
 ```
 
 **3 章で手に入る物のまとめ**: スーツ A（使える）・ミント（仲間）・ロウ（章の終わりに同行する案）。

@@ -4,8 +4,8 @@
 // SVG + reference-based WebP art, baked once at boot.
 self.GAME_ASSETS = self.GAME_ASSETS || {};
 self.GAME_ASSETS['bot-commander'] = {
-  version: 'v45',
-  gameVersion: '1.0.6', // ハブのカードに表示する版（キャッシュ用 version とは別。リリース時に上げる）
+  version: 'v46',
+  gameVersion: '1.0.7', // ハブのカードに表示する版（キャッシュ用 version とは別。リリース時に上げる）
   files: [
     'js/story/story3-ops.js',
     'js/story/story-3.js',
@@ -46,7 +46,9 @@ self.GAME_ASSETS['bot-commander'] = {
     'css/launcher.css', // v1.0.4 ?launcher=1（発射台の試作）
     'js/index.js',
     'js/ui/back-confirm.js',
+    'js/ui/fire-button.js',
     'js/ui/speed.js',
+    'js/ui/spot-report.js',
     'js/ui/toast-merge.js',
     'js/ui/demo-result.js', // ミッションのないお試しの結果の文字（showResult が使う）
     'js/ui/ride-panel.js', // ?ridedemo=1（お試し）
@@ -569,6 +571,7 @@ self.GAME_ASSETS['bot-commander'] = {
     'assets/chars/WOLF/wave_m60.png',
     // 会話（立ち絵＋セリフ）v0.4.7。お試しの台本 assets/dialog/demo.json は入れない
     'css/dialog.css',
+    'js/dialog/dialog-read.js',
     'js/dialog/dialog-script.js',
     'js/dialog/portrait-layout.js',
     'js/dialog/dialog-view.js',

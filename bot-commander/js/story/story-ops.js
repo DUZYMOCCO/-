@@ -93,7 +93,7 @@ export function mountStoryOps(host) {
     const el = document.createElement('div');
     el.className = 'bc-aim';
     el.style.cssText = 'position:absolute;inset:0;z-index:30;touch-action:none';
-    el.innerHTML = `<div style="position:absolute;left:12px;right:12px;top:calc(env(safe-area-inset-top,0px) + 64px);padding:8px 12px;border-radius:10px;background:rgba(18,20,24,.88);color:#ffe6c7;font:700 14px system-ui,sans-serif;text-align:center;pointer-events:none" class="bc-aim-msg">撃つ場所をタップ（発射台から${STRIKE.rangeTiles}マスまで・敵だけに当たる）</div>
+    el.innerHTML = `<div style="position:absolute;left:12px;right:12px;top:calc(env(safe-area-inset-top,0px) + 64px);padding:8px 12px;border-radius:10px;background:rgba(18,20,24,.88);color:#ffe6c7;font:700 14px system-ui,sans-serif;text-align:center;pointer-events:none" class="bc-aim-msg">狙う場所をタップ（黄色い円の中に届く・敵だけに当たる）</div>
       <div style="position:absolute;left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 70px);display:flex;gap:10px">
         <button class="bc-aim-cancel" style="flex:1;height:48px;border-radius:12px;font:800 15px system-ui,sans-serif;background:#2a2f36;color:#e5e7eb;border:2px solid #4b5563">やめる</button>
         <button class="bc-aim-fire" disabled style="flex:1.4;height:48px;border-radius:12px;font:800 15px system-ui,sans-serif;background:#b91c1c;color:#fff;border:2px solid #fca5a5;opacity:.5">ここに撃つ</button>

@@ -4,11 +4,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createSim, stepSim, issueOrder, hashSim, hashSimDeep, applyCommandsNow, TICK } from '../js/sim/sim.js?v=27';
 import { tileCenter } from '../js/sim/map.js?v=6';
-import { createRecorder, makeStart, openReplay, registerMission, stringifyReplay } from '../js/sim/replay.js?v=9';
+import { createRecorder, makeStart, openReplay, registerMission, stringifyReplay } from '../js/sim/replay.js?v=10';
 import { issueBoard, issueAlight, RIDE_MODE } from '../js/sim/ride.js?v=3';
 import { STORY_1 } from '../js/story/story-mission.js?v=3';
 import { issueStrike, nejiOf } from '../js/sim/strike.js?v=1';
-import { toggleRide } from '../js/story/story-ops.js?v=2';
+import { toggleRide } from '../js/story/story-ops.js?v=3';
 
 registerMission(STORY_1); // index.js と同じ
 

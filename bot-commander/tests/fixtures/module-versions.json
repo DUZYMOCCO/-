@@ -16,16 +16,20 @@
   "sha1": "0d8463eaa0fbd7fc3ae2e3a450f455629b918613"
  },
  "js/dialog/dialog-demo.js": {
-  "v": 5,
-  "sha1": "9466df1fc7ebd728de8658c8383210473dab232c"
+  "v": 6,
+  "sha1": "7c29fa586fe19b5277725624c0584d13c411367f"
+ },
+ "js/dialog/dialog-read.js": {
+  "v": 1,
+  "sha1": "4ad01cd06e63db1cdeac48850222c153b637a4c9"
  },
  "js/dialog/dialog-script.js": {
   "v": 3,
   "sha1": "2e30973f9284b824677b6e310be093cfc4dbb296"
  },
  "js/dialog/dialog-view.js": {
-  "v": 3,
-  "sha1": "2598696eb9b15e11bcbed38ec21f47e9c52f8c54"
+  "v": 4,
+  "sha1": "540b5ade03c3551e2b10adc023832978e259c80c"
  },
  "js/dialog/portrait-layout.js": {
   "v": 1,
@@ -144,8 +148,8 @@
   "sha1": "9d7c6ecea74ea7421bc4004f3933f2f1224f458e"
  },
  "js/replay/replay-view.js": {
-  "v": 9,
-  "sha1": "4f769976e74beaef3bd171ae6e08dc4b5f5c24f8"
+  "v": 10,
+  "sha1": "823f7db113348ca003ae5b5958fc37bb929413bf"
  },
  "js/save/records-view.js": {
   "v": 5,
@@ -212,8 +216,8 @@
   "sha1": "62141bdbec7779b882e25af995eb5fea48d780e4"
  },
  "js/sim/replay.js": {
-  "v": 9,
-  "sha1": "98aa7cf851bcc261c682cf2c60c014f938930fae"
+  "v": 10,
+  "sha1": "b352dd801a0aa6e2f38584880dbe22473e8d10a2"
  },
  "js/sim/ride-demo.js": {
   "v": 7,
@@ -272,8 +276,8 @@
   "sha1": "b20a2cfc8bd64d44d1d3b52dea291b2b793e7818"
  },
  "js/story/story-1.js": {
-  "v": 2,
-  "sha1": "eae93de20c6deb6e097fdb5dabce5cf69f0006c0"
+  "v": 3,
+  "sha1": "b84f19e0138caefde1a609afb43db12a1f58895a"
  },
  "js/story/story-2.js": {
   "v": 1,
@@ -288,8 +292,8 @@
   "sha1": "fcd7bd632f7f64ef3044c44ca287478726157568"
  },
  "js/story/story-ops.js": {
-  "v": 2,
-  "sha1": "c0d44ff406ca8377332dc7501a2a0985c04b3e0f"
+  "v": 3,
+  "sha1": "3725aaec8483671f4d243a59a4735f84aad7443b"
  },
  "js/story/story2-missions.js": {
   "v": 1,
@@ -323,9 +327,13 @@
   "v": 1,
   "sha1": "cf8b83013a11bd95045dc8372d27ac2fd288d40b"
  },
+ "js/ui/fire-button.js": {
+  "v": 1,
+  "sha1": "c4149a4abdd08581f96b30b47a9071bb31ea0abe"
+ },
  "js/ui/launcher-menu.js": {
-  "v": 3,
-  "sha1": "6b552b7d18e3b8e4dfc06b88a9baff6384e1cedd"
+  "v": 4,
+  "sha1": "2ba7de35b1d1dd42fc82ea16e821cfe0d55ae7d2"
  },
  "js/ui/powersuit-menu.js": {
   "v": 2,
@@ -336,8 +344,12 @@
   "sha1": "6622d42d7ccdba7601af390e95db988176263c91"
  },
  "js/ui/speed.js": {
+  "v": 2,
+  "sha1": "562e0e1b40e48d26ed3cbc104de899c8f98e67e0"
+ },
+ "js/ui/spot-report.js": {
   "v": 1,
-  "sha1": "d4ca3f6814a8d61c274d3b8c5d77a130a700b1bd"
+  "sha1": "fde8ce82a0723a64f57672a98156087b9dbd0c65"
  },
  "js/ui/toast-merge.js": {
   "v": 1,

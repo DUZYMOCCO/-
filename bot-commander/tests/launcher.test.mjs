@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { createSim, stepSim, runSim, hashSim, hashSimDeep, unitById, fieldCount, KINDS, TICK, issueOrder } from '../js/sim/sim.js?v=27';
 import { MISSION_1 } from '../js/sim/mission.js?v=10';
 import { TILE, TERRAIN, tileAt, toTile } from '../js/sim/map.js?v=6';
-import { createRecorder, makeStart, openReplay, stringifyReplay, parseReplay } from '../js/sim/replay.js?v=9';
+import { createRecorder, makeStart, openReplay, stringifyReplay, parseReplay } from '../js/sim/replay.js?v=10';
 import { selectKind } from '../js/sim/select.js?v=11';
 import {
   LAUNCHER, TOW_KINDS, LAUNCHER_KINDS, launcherBlastDamage, blast, issueLauncherBuild, issueLauncherHitch, issueLauncherUnhitch, issueLauncherFire,
@@ -449,7 +449,7 @@ test('入口: URL の ?launcher=1 の時だけ有効（index.js の呼び出し�
   assert.ok(!/import[^\n]*launcher-(menu|view)/.test(src.split('\n').filter(l => l.startsWith('import ')).join('\n')), '最初の import には入れない（付けない時は読み込まない）');
   const sw = readFileSync(new URL('../sw-assets.js', import.meta.url), 'utf8');
   for (const f of ['js/sim/launcher.js', 'js/render/launcher-view.js', 'js/ui/launcher-menu.js', 'css/launcher.css']) assert.ok(sw.includes(`'${f}'`), `sw-assets.js に ${f}`);
-  assert.equal(/version: 'v45'/.test(sw) && /gameVersion: '1\.0\.6'/.test(sw), true, 'v1.0.6 / キャッシュ v45（v1.0.5 / v44 の次）');
+  assert.equal(/version: 'v46'/.test(sw) && /gameVersion: '1\.0\.7'/.test(sw), true, 'v1.0.7 / キャッシュ v46（v1.0.6 / v45 の次）');
   assert.ok(!('strike' in createSim({ seed: 1, mission: MISSION_1, launcher: true })), 'sim.strike は作らない');
 });
 

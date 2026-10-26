@@ -3,7 +3,7 @@
 import { writeFileSync } from 'node:fs';
 import { createSim, issueOrder, issueStance, issueStop, issueRetreat, issueAttack } from '../js/sim/sim.js?v=27';
 import { MISSION_1 } from '../js/sim/mission.js?v=10';
-import { createRecorder, makeStart, stringifyReplay } from '../js/sim/replay.js?v=9';
+import { createRecorder, makeStart, stringifyReplay } from '../js/sim/replay.js?v=10';
 
 const [outFile, seedArg = '1', tickArg = '3000'] = process.argv.slice(2);
 if (!outFile) { console.log('使い方: node tools/replay-sample.mjs <出力.json> [seed] [tick]'); process.exit(2); }

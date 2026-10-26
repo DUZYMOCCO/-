@@ -64,7 +64,7 @@ test('R-07: 結果のカードに「記録を残せません」が出る（保�
 });
 
 // ---- R-05: リプレイも withAltUnits を通す ----
-import * as R from '../js/sim/replay.js?v=9';
+import * as R from '../js/sim/replay.js?v=10';
 import { MISSION_1 } from '../js/sim/mission.js?v=10';
 import { withAltUnits, ALT_MISSION_ROWS, ALT_IN_MISSIONS } from '../js/sim/alt-units.js?v=3';
 

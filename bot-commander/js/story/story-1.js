@@ -36,3 +36,11 @@ export function midScene(fxType, seen) {
 export function endingKind(result) {
   return result === 'win' ? 'win' : result === 'lose' ? 'lose' : null;
 }
+
+/** v1.0.7: 操作の案内（セリフから画面の知らせへ移した案内文） */
+export const STORY1_HINTS = Object.freeze({
+  intro: 'ネジで ガラクタの山を掘る（山のそばで止まる）。少年の乗り降りは ☰',
+  found: '発射台をつないで運び、選んで『発射』（☰→ミサイルを撃つ でも可）。1発だけ',
+  after: '住居跡を調べる（敵が5マス以内にいると進まない）',
+  lose: 'ヒント: はぐれは北の残骸を回る。発射台を運ぶときは南回りで',
+});

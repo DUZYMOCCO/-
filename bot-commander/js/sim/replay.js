@@ -11,7 +11,7 @@ import { withAltUnits, ALT_MISSION_ROWS, ALT_IN_MISSIONS } from './alt-units.js?
 export const REPLAY_VERSION = 1;
 export const REPLAY_GAME = 'bot-commander';
 /** 記録を取った時のゲームの版（sw-assets.js の gameVersion と同じ値。取り込む時にそろえる）。違う版の記録は、読めるが「版がちがう」と知らせる */
-export const REPLAY_GAME_VERSION = '1.0.6';
+export const REPLAY_GAME_VERSION = '1.0.7';
 export const MARK_EVERY = 300;            // 途中のハッシュを残す間隔（step）。10 秒ごと
 export const MAX_REPLAY_TICKS = 216000;   // 再生してよい最大の長さ（2 時間ぶん）
 export const MAX_REPLAY_CMDS = 50000;

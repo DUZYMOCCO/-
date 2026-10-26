@@ -8,6 +8,7 @@ import { loadCss } from '../../../common/js/load-css.js';
 import { startDialog, nextLine, skipToEnd, shownCount, typeDuration, tapAction, facesUsed, chars, bgsUsed, upcomingBg } from './dialog-script.js?v=3';
 import { bgUrl } from './dialog-bg.js?v=2';
 import { portraitRect, eyesRect, boxRect, eyeColor } from './portrait-layout.js?v=1';
+import { isRead, markRead } from './dialog-read.js?v=1';
 
 const PORTRAITS_URL = new URL('../../assets/portraits/portraits.json', import.meta.url).href;
 const PORTRAIT_DIR = new URL('../../assets/portraits/', import.meta.url).href;
@@ -38,12 +39,14 @@ function preload(urls) {
 }
 
 export async function playDialog(host, script, opts = {}) {
-  await loadCss(new URL('../../css/dialog.css?v=2', import.meta.url).href);
+  await loadCss(new URL('../../css/dialog.css?v=3', import.meta.url).href);
   if (typeof script === 'string') {
     const r = await fetch(script);
     if (!r.ok) throw new Error(`台本を読めない: ${script}`);
     script = await r.json();
   }
+  const scriptId = script?.id || null;
+  const alreadyRead = isRead(scriptId);
   const portraits = await loadPortraits();
   let st = startDialog(script, portraits); // 台本に誤りがあればここで止まる
   const urls = [];
@@ -66,6 +69,7 @@ export async function playDialog(host, script, opts = {}) {
       <p class="dlg-text" aria-live="polite"><span class="dlg-shown"></span><span class="dlg-rest"></span></p>
       <span class="dlg-next" aria-hidden="true">▼</span>
     </div>
+    <button class="dlg-top-skip"${alreadyRead ? '' : ' hidden'} aria-label="会話をスキップ">スキップ</button>
     <button class="dlg-menu-btn" aria-label="会話のメニューを開く"><span aria-hidden="true">☰</span><small>メニュー</small></button>
     <div class="dlg-menu" hidden>
       <div class="dlg-menu-box" role="dialog" aria-label="会話のメニュー">
@@ -248,6 +252,7 @@ export async function playDialog(host, script, opts = {}) {
     if (finished) return;
     finished = true; skipped = skip;
     cancelAnimationFrame(raf);
+    if (scriptId) markRead(scriptId);
     bgSeq++;
     for (const im of bgWait) { im.onload = im.onerror = null; im.src = ''; }
     bgWait.clear();
@@ -267,6 +272,7 @@ export async function playDialog(host, script, opts = {}) {
   let down = null;
   el.addEventListener('pointerdown', e => { down = { x: e.clientX, y: e.clientY }; });
   el.addEventListener('click', e => {
+    if (e.target.closest('.dlg-top-skip')) { ctl.skip(); return; }
     if (e.target.closest('.dlg-menu-btn')) { openMenu(); return; }
     if (e.target.closest('.dlg-menu')) {
       if (e.target.closest('.dlg-skip')) { closeMenu(); st = skipToEnd(st); finish(true); }
