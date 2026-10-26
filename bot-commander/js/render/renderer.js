@@ -1,11 +1,12 @@
+import { drawStory2 } from './story2-view.js?v=1';
 // 描画（Pixi v8）。シミュレーションの state を読むだけで、書き換えない。
 // v0.4.0-dev: 部隊の表示をやめ、選んだ機体ごとに輪と経路。人間（少年・少女）と「捕まった」の表示。
 // v0.4.0-dev（10/23）: 撃つ・当たる・倒れるの演出は js/fx（Canvas2D）。Pixi の上に重ねた透明 canvas に、同じカメラで描く。
 //   画面のゆれは world ごとずらす。止め（hit-stop）は index.js が fx.update の戻り値でシミュレーションを止める。
 // v0.4.0-dev（10/23 夜）: 遮蔽物と落とし物の見た目（js/render/cover-view.js）。
 import { Application, Container, Sprite, Graphics, Text, Texture, Rectangle, RenderTexture, BlurFilter, CanvasSource, TexturePool } from '../../vendor/pixi-8.22.0.min.mjs?v=7';
-import { TILE, TERRAIN, toTile, tileCenter } from '../sim/map.js?v=6';
-import { groupUnits, unitById, REPAIRER_KIT_BUILD_SEC, SUPPORTER_SHIELD_BUILD_SEC, isDefensive, unitWeaponInfo } from '../sim/sim.js?v=23';
+import { TILE, TERRAIN, T as TILE_T, tileAt, toTile, tileCenter } from '../sim/map.js?v=6';
+import { groupUnits, unitById, REPAIRER_KIT_BUILD_SEC, SUPPORTER_SHIELD_BUILD_SEC, isDefensive, unitWeaponInfo } from '../sim/sim.js?v=27';
 import { fuelRatio, isRefueling } from '../sim/fuel.js?v=1'; // 飛ぶ機体の燃料の小さなゲージ（v1.0.0）
 import { unreachableTarget } from '../sim/targeting.js?v=2'; // 敵が届かない相手（空・水中）を前にした時の小さな印（v1.0.0）
 // v0.4.2: リペアキットを使い切った味方ロボットは、HPバーの右に小さな赤い点（キット切れ）
@@ -23,15 +24,17 @@ function drawBars(g, u, w) {
   }
 }
 const drawNoKit = (g, x) => g.circle(x + 3.6, 6, 2.6).fill({ color: 0x121418 }).circle(x + 3.6, 6, 1.8).fill({ color: 0xef4444 });
-import { FX_MAX, FX_SHAKE_MAX, FX_MARGIN, spawnFxEvents } from './fx-events.js?v=9';
-import { loadLandmarks, createCoverView } from './cover-view.js?v=7';
+import { FX_MAX, FX_SHAKE_MAX, FX_MARGIN, spawnFxEvents } from './fx-events.js?v=14';
+import { loadLandmarks, createCoverView } from './cover-view.js?v=10';
 import { create as createFx } from '../fx/fx.js?v=2';
 import { GATHER_RADIUS, EXTRACT_RADIUS, CAPTURE } from '../sim/mission.js?v=10';
-import { artSources, svgArtSources } from './art.js?v=12';
+import { artSources, svgArtSources } from './art.js?v=15';
+import { popMinY } from './pop-bounds.js?v=1';
+import { initialArtSources } from './art-lazy.js?v=1'; // v1.0.4 磨き: 飛ぶ機体・水陸両用機の体の絵は、いる時だけ最初に読む
 import { buildTextures, loadCharSheets, disposeTexture, disposeChars, canvasOf as textureCanvasOf } from './textures.js?v=11';
 import { createPieceCache, releaseSharedListeners } from './piece-cache.js?v=1';
 import { EDGE_PAIRS, EDGE_NAMES, MIX3_FILES, pairDir, edgePieces } from './ground-edges.js?v=2';
-import { FIELD_ORDER, createField, bakeChunk } from './ground-field.js?v=2';
+import { FIELD_ORDER, createField, bakeChunk, groundVariant } from './ground-field.js?v=3';
 // v0.4.8: 地面をなめらかな場で焼く（js/render/ground-field.js）。?smooth=0 で v0.4.8 の境界の絵（edges2）に戻す
 const SMOOTH_GROUND = typeof location === 'undefined' || new URLSearchParams(location.search).get('smooth') !== '0';
 import { ALT_UNIT_LOOK } from '../sim/alt-units.js?v=3'; // 飛ぶ機体・水陸両用機の絵（v1.0.0 gfx3 の専用の絵。前はポンコの色違い）
@@ -47,14 +50,23 @@ async function loadBadges() {
   }));
   return out;
 }
-import { syncRide, drawRide } from './ride-view.js?v=3';
-import { rideArtSources } from './raster-art.js?v=11'; // v1.0.0 背中の乗り姿の絵（だれかが乗った時だけ読む） // 人間がロボに乗る（?ridedemo=1）。sim.ride があるときだけ使う
+import { syncRide, drawRide } from './ride-view.js?v=7';
+import { rideArtSources, nestArtSources, NEST_DISPLAY_PX, NEST_ANCHOR, altMotionArtSources, shadowWorldSize, ALT_BODY_RECT, ALT_SHADOW_RECT, TORPEDO_ART, enemyArtSources, shallowGroundSources, wreckArtSources, gfx5GallerySources, WRECK_ART } from './raster-art.js?v=14';
+import { NE_PX, neWreckScale, newEnemyArtSources, createMineView } from './new-enemies-view.js?v=2'; // 新しい敵 G01〜G12・A01・A08（?newenemies=1 の試作。見た目だけ）
+import { isNewEnemy } from '../sim/new-enemies.js?v=2';
+import { damagedKey, wreckKey, wreckAlpha, trimWrecks, WRECK_SEC } from './wreck-view.js?v=3'; // v1.0.3 Codex gfx5 傷んだ姿・残骸 // v1.0.0 背中の乗り姿の絵（だれかが乗った時だけ読む） // 人間がロボに乗る（?ridedemo=1）。sim.ride があるときだけ使う
+import { altMotion, torpedoDuration } from './alt-motion-view.js?v=1'; // v1.0.1 Codex gfx4 飛ぶ機体の影・燃料をためる姿・潜る／浮かぶ・魚雷（見た目だけ）
+import { buildEnemyGallery, buildGfx5Gallery } from './enemy-gallery.js?v=3'; // v1.0.1 Codex gfx4 ?enemydemo=1 の新しい敵の見本（見た目だけ。sim には入れない）
+import { createHpNumbers, popPose, DMG_COLOR } from './hp-numbers.js?v=1'; // v1.0.6 戦闘中のダメージの数・HP の数（見るだけ。sim は変えない）
+import { drawStory3 } from './story3-view.js?v=1'; // 第 3 章（?storych=3）: 門の張り紙を調べる輪・ビルの印（sim.story3 がある時だけ）
+import { drawLauncherCanvas, drawStrike, LAUNCHER_PX } from './strike-view.js?v=1'; // v1.0.2 物語の最初のミッション: 発射台・着弾マーカー・ミサイル・調べる場所（sim.strike がある時だけ）
+import { syncSuitView } from './powersuit-view.js?v=1'; // ?powersuit=1 の試作: スーツの殻・仮面・残骸（sim.powersuit がある時だけ）
 import { CHAR_FRAMES, CHAR_FRAMES_OBLIQUE, heightOf, CORPSE_SEC, WAVE_SEC, hasFrames, newAnim, pickSize, stepAnim } from './char-anim.js?v=8';
 
 const FOG_PAD = 2;            // 霧テクスチャの外周（ぼかしで端が明るくならないように）
 const FOG_RT_SCALE = 4;       // 1タイル＝霧テクスチャ4px（ぼかし後）
 const UNIT_PX = 34;           // 機体の表示サイズ（ワールド座標）
-const KIND_PX = { scav: 40, ponco: 42, alien: 64, boy: 28, girl: 28, ...Object.fromEntries(Object.entries(ALT_UNIT_LOOK).map(([k, l]) => [k, l.px])) }; // Clear at play scale, detailed up to 4.5x zoom.
+const KIND_PX = { scav: 40, ponco: 42, alien: 64, boy: 28, girl: 28, launcher: LAUNCHER_PX, ...NE_PX, ...Object.fromEntries(Object.entries(ALT_UNIT_LOOK).map(([k, l]) => [k, l.px])) }; // Clear at play scale, detailed up to 4.5x zoom.
 const SIDE_COLOR = { ally: 0x7df9ff, enemy: 0xffb347 };
 
 // v0.4.8-dev（10/24）地面の色（各地形の絵に掛ける tint）と、境界の絵・焼き込み
@@ -64,6 +76,12 @@ const EDGE_ART_ALPHA = 0.4; // 境界: 切り抜いた隣の地面の上に、�
 const TERRAIN_CHUNK = 8;      // 地面を焼く単位（8x8マス = 256 ワールドpx。焼いた絵は 2 倍 = 512px 四方）
 const TERRAIN_BAKE_RES = 2;   // 焼き込みの解像度（ワールド1px = 2px）。40x60マスで約 39MB（ミップマップ込みで約 52MB）
 const SHALLOW_GROUND_URL = new URL('../../assets/art-v2/ground-shallow.webp', import.meta.url).href; // 浅瀬の地面（4x4マス分、他の地面と同じ作り）
+// v1.0.3 Codex gfx5: 地面の絵が読めない時の代わり。版 1（2つ目の地面）は代わりを作らない（版 0 の絵で出す）。浅瀬は深い水の手描き、斜めの浅瀬は真上の浅瀬
+function groundFallbacks(svg, ground) {
+  const out = { ...svg, tile_shallow_0: ground === 'oblique' ? { url: SHALLOW_GROUND_URL, px: 1024, tile: true } : svg.tile_water_0 };
+  for (const k of Object.keys(out)) if (/^tile_.+_1$/.test(k)) delete out[k];
+  return out;
+}
 /** 境界の絵（assets/ground-edges/<上>_on_<下>/<名前>.png と mix3/<上>-<下>/<名前>.png・mask/<名前>.png, 128px = 1マス）の Image。
  *  キーは '<上>_on_<下>/<名前>'・'mix3/<上>-<下>/<名前>'・'mix3/<上>-<下>/mask/<名前>'。読めなければ null（境界なしで出す） */
 async function loadGroundEdges() {
@@ -112,7 +130,7 @@ export async function createRenderer(host, sim, opts = {}) {
     throw err;
   }
 }
-async function buildRenderer(host, sim, { fxQuality = 'normal', ground, human } = {}, made) {
+async function buildRenderer(host, sim, { fxQuality = 'normal', ground, human, enemyDemo = false, newEnemies = false } = {}, made) {
   const app = new Application(); made.app = app;
   await app.init({ resizeTo: host, background: '#0b0d10', antialias: true, resolution: Math.min(window.devicePixelRatio || 1, 2), autoDensity: true, preference: 'webgl' });
   const appCanvas = app.canvas; // destroy のあとでは app.canvas を読めないので持っておく
@@ -124,8 +142,9 @@ async function buildRenderer(host, sim, { fxQuality = 'normal', ground, human } 
   const fxCtx = fxCanvas.getContext('2d');
   const fx = createFx({ max: FX_MAX[fxQuality] || FX_MAX.normal, shakeMax: FX_SHAKE_MAX });
   const fxSeen = new WeakSet();
-  const [tex, chars, landmarks, edgeImg] = await Promise.all([buildTextures({ ...artSources({ ground }), tile_shallow_0: { url: SHALLOW_GROUND_URL, px: 1024, tile: true } }, (svg => ({ ...svg, tile_shallow_0: svg.tile_water_0 }))(svgArtSources())), loadCharSheets(human === 'oblique' ? CHAR_FRAMES_OBLIQUE : CHAR_FRAMES), sim.cover?.length ? loadLandmarks() : {}, SMOOTH_GROUND ? null : loadGroundEdges()]);
+  const [tex, chars, landmarks, edgeImg] = await Promise.all([buildTextures({ ...initialArtSources(artSources({ ground }), sim), ...(sim.mission?.nest ? nestArtSources() : {}), ...(enemyDemo ? { ...enemyArtSources(), ...gfx5GallerySources() } : newEnemies ? newEnemyArtSources() : {}), ...shallowGroundSources({ ground }) }, groundFallbacks(svgArtSources(), ground)), loadCharSheets(human === 'oblique' ? CHAR_FRAMES_OBLIQUE : CHAR_FRAMES), sim.cover?.length ? loadLandmarks() : {}, SMOOTH_GROUND ? null : loadGroundEdges()]);
   made.assets = { tex, chars, landmarks };
+  if (sim.strike) { const lt = Texture.from(drawLauncherCanvas(128), true); lt.source.scaleMode = 'linear'; tex.launcher_ally = lt; } // v1.0.2 発射台の仮の絵（コードで描く）
   const badges = await loadBadges(); made.assets.badges = badges; // v0.4.10 兵種・キット切れのアイコンの絵（捨てる時は disposeAssets で）
   const map = sim.map;
   const world = new Container();
@@ -137,13 +156,14 @@ async function buildRenderer(host, sim, { fxQuality = 'normal', ground, human } 
   const terrain = new Container();
   // One artwork spans 4x4 map tiles: plants/rubble stay substantial at normal zoom.
   const terrainFrames = new Map(), keyAt = (tx, ty) => (tx < 0 || ty < 0 || tx >= map.w || ty >= map.h ? null : TERRAIN[map.tiles[ty * map.w + tx]].key);
-  const groundTex = k => tex[`tile_${k}_0`] || tex.tile_plain_0;
+  // v1.0.3 Codex gfx5: 地面の絵 1 枚（4x4 マス）ごとに版 0 / 1 を選ぶ（groundVariant。版 1 の絵が無ければ版 0）
+  const groundTex = (k, tx = 0, ty = 0) => (groundVariant(Math.floor(tx / 4), Math.floor(ty / 4), FIELD_ORDER.indexOf(k)) && tex[`tile_${k}_1`]) || tex[`tile_${k}_0`] || tex.tile_plain_0;
   const tintOf = k => TERRAIN_TINT[k] ?? TERRAIN_TINT.other;
   const tileSprite = (tx, ty, ox, oy) => {
     const k = keyAt(tx, ty);
-    const frameKey = `${k}_${tx % 4}_${ty % 4}`;
+    const gt = groundTex(k, tx, ty), frameKey = `${k}_${gt === tex[`tile_${k}_1`] ? 1 : 0}_${tx % 4}_${ty % 4}`;
     if (!terrainFrames.has(frameKey)) {
-      const source = groundTex(k).source, side = source.width / 4;
+      const source = gt.source, side = source.width / 4;
       terrainFrames.set(frameKey, new Texture({ source, frame: new Rectangle(tx % 4 * side, ty % 4 * side, side, side) }));
     }
     const s = new Sprite(terrainFrames.get(frameKey));
@@ -158,9 +178,9 @@ async function buildRenderer(host, sim, { fxQuality = 'normal', ground, human } 
   const hex = n => `#${n.toString(16).padStart(6, '0')}`;
   const groundCache = new Map();
   const groundAt = (k, tx, ty) => { // 地形 k の地面（このマスの位置のコマ、tint 済み、不透明）
-    const key = `${k}_${tx % 4}_${ty % 4}`;
+    const gt = groundTex(k, tx, ty), key = `${k}_${gt === tex[`tile_${k}_1`] ? 1 : 0}_${tx % 4}_${ty % 4}`;
     if (!groundCache.has(key)) {
-      const src = groundTex(k).source.resource, side = src.width / 4, [c, g] = canvasOf();
+      const src = gt.source.resource, side = src.width / 4, [c, g] = canvasOf();
       g.drawImage(src, tx % 4 * side, ty % 4 * side, side, side, 0, 0, EDGE_PX, EDGE_PX);
       g.globalCompositeOperation = 'multiply'; g.fillStyle = hex(tintOf(k)); g.fillRect(0, 0, EDGE_PX, EDGE_PX);
       groundCache.set(key, c);
@@ -174,7 +194,7 @@ async function buildRenderer(host, sim, { fxQuality = 'normal', ground, human } 
   // 境界の絵は、焼き終えたかたまりごとに edgeCache.drop() で GPU からも canvas からも捨てる（次のかたまりで要れば作り直す。同時に生きる枚数が、全部ではなく 1 かたまりぶんになる）
   const edgeCache = createPieceCache(disposeTexture);
   const edgePieceTex = (p, tx, ty) => {
-    const id = p.mix3 ? `mix3/${p.mix3}` : `${p.dir}/${p.name}`, key = `${id}_${tx % 4}_${ty % 4}`;
+    const id = p.mix3 ? `mix3/${p.mix3}` : `${p.dir}/${p.name}`, key = `${id}_${tx % 4}_${ty % 4}_${Math.floor(tx / 4)}_${Math.floor(ty / 4)}`; // v1.0.3: 地面の版は 4x4 マスごとなので、その区画も鍵に
     return edgeCache.get(key, () => {
       const art = edgeImg[id], [c, g] = canvasOf();
       if (p.mix3) {
@@ -191,13 +211,16 @@ async function buildRenderer(host, sim, { fxQuality = 'normal', ground, human } 
   if (SMOOTH_GROUND) {
     // マスの四角をやめ、なめらかな地形の場から 1 ピクセルずつ地面を選んで焼く（区画・解像度・メモリは今までと同じ）
     const ppt = TILE * bakeRes, field = createField(Array.from(map.tiles, t => TERRAIN[t].key), map.w, map.h);
-    const groundPx = FIELD_ORDER.map(k => { // 地形の地面を 4x4マス = ppt*4 px に縮め、tint を掛けた画素
+    const shrink = (k, t) => { // 地形の地面を 4x4マス = ppt*4 px に縮め、tint を掛けた画素
       const size = ppt * 4, c = document.createElement('canvas'); c.width = c.height = size;
       const g = c.getContext('2d', { willReadFrequently: true }); g.imageSmoothingQuality = 'high';
-      g.drawImage(groundTex(k).source.resource, 0, 0, size, size);
+      g.drawImage(t.source.resource, 0, 0, size, size);
       g.globalCompositeOperation = 'multiply'; g.fillStyle = hex(tintOf(k)); g.fillRect(0, 0, size, size);
-      return { data: g.getImageData(0, 0, size, size).data, size };
-    });
+      const data = g.getImageData(0, 0, size, size).data; c.width = c.height = 0;
+      return { data, size };
+    };
+    // v1.0.3 Codex gfx5: 2つ目の版の地面があれば alt に（bakeChunk が groundVariant で選ぶ）
+    const groundPx = FIELD_ORDER.map(k => { const t0 = tex[`tile_${k}_0`] || tex.tile_plain_0, t1 = tex[`tile_${k}_1`], p = shrink(k, t0); if (t1) p.alt = shrink(k, t1); return p; });
     const cnv = document.createElement('canvas'), cg = cnv.getContext('2d');
     for (let cy = 0; cy < map.h; cy += CH) for (let cx = 0; cx < map.w; cx += CH) {
       const w = Math.min(CH, map.w - cx), h = Math.min(CH, map.h - cy);
@@ -276,11 +299,19 @@ async function buildRenderer(host, sim, { fxQuality = 'normal', ground, human } 
     hatchSprite.anchor.set(0.5, 0.66); hatchSprite.width = hatchSprite.height = TILE * 3;
     hatchSprite.position.set(tileCenter(mission.extraction.tx), tileCenter(mission.extraction.ty)); hatchSprite.zIndex = hatchSprite.y - 30;
     units.addChild(hatchSprite);
+    if (sim.strike || sim.story2?.step === 2) hatchSprite.visible = false; // v1.0.2 物語: 脱出口は使わない（勝ちは「設計図のありか」を調べること）
   }
 
   // 巣（仮の絵）: 捕まった人間が運ばれていく先。見つけるまで出さない
+  // v1.0.1 Codex gfx4 NEST: 絵（nest_idle。人が捕まっている間は nest_captive）があれば絵で出す。読めない時だけ前の図形
   let nestG = null;
-  if (mission?.nest) {
+  if (mission?.nest && tex.nest_idle) {
+    const n = mission.nest;
+    nestG = new Sprite(tex.nest_idle);
+    nestG.anchor.set(NEST_ANCHOR[0], NEST_ANCHOR[1]); nestG.width = nestG.height = NEST_DISPLAY_PX;
+    nestG.position.set(tileCenter(n.tx), tileCenter(n.ty)); nestG.zIndex = nestG.y - 40; nestG.visible = false;
+    units.addChild(nestG);
+  } else if (mission?.nest) {
     const n = mission.nest, x = tileCenter(n.tx), y = tileCenter(n.ty);
     nestG = new Graphics();
     nestG.ellipse(0, 6, 40, 14).fill({ color: 0x161e20, alpha: 0.35 });
@@ -309,6 +340,9 @@ async function buildRenderer(host, sim, { fxQuality = 'normal', ground, human } 
   const fogSprite = new Sprite(fogRT);
   fogSprite.position.set(-FOG_PAD * TILE, -FOG_PAD * TILE); fogSprite.width = fw * TILE; fogSprite.height = fh * TILE;
   world.addChild(fogSprite);
+  const story3Layer = sim.story3 ? world.addChild(new Graphics()) : null; // 第 3 章（?storych=3）の輪・印
+  const story2Layer = sim.story2 ? world.addChild(new Graphics()) : null;
+  const strikeLayer = sim.strike ? world.addChild(new Graphics()) : null; // v1.0.2 物語: 着弾マーカー・調べる場所は霧の上に描く（霧の中を撃っても見える）
   let fogRev = -1;
   const FOG_ALPHA = [238, 140, 0]; // 未探索・見たことがある・見えている
   function updateFog() {
@@ -362,7 +396,7 @@ async function buildRenderer(host, sim, { fxQuality = 'normal', ground, human } 
   }
 
   // selected: 選んでいる機体の id の並び。mode: 地面タップの移動のしかた（'fight' 戦闘移動 / 'rush' 急行）
-  const ui = { selected: [], stroke: null, mode: 'fight', box: null, mark: null };
+  const ui = { selected: [], stroke: null, mode: 'fight', box: null, mark: null, aim: null }; // aim: v1.0.2 物語のミサイルの狙い（{ x, y } か null）
 
   function drawPaths(now) {
     pathLayer.clear(); selLayer.clear();
@@ -408,6 +442,46 @@ async function buildRenderer(host, sim, { fxQuality = 'normal', ground, human } 
 
   // 「+1」や「めずらしい部品！」の文字（使い回し）
   const pops = new Container(); world.addChild(pops);
+  // v1.0.6 戦闘中の数字（js/render/hp-numbers.js）: 浮かぶダメージの数と HP の数。いちばん上に、画面の上で同じ大きさで描く
+  const hpNums = new Container(); world.addChild(hpNums);
+  const hpTrack = createHpNumbers(), dmgPool = [], hpPool = [];
+  const DMG_STYLE = { fontFamily: 'system-ui, sans-serif', fontWeight: '900', fontSize: 15, fill: 0xffffff, stroke: { color: 0x121418, width: 4 } };
+  const HPN_STYLE = { fontFamily: 'system-ui, sans-serif', fontWeight: '700', fontSize: 10, fill: 0xe5e7eb, stroke: { color: 0x121418, width: 3 } };
+  function hpPoolText(pool, style, anchorX) {
+    const t = new Text({ text: '', style: { ...style } }); t.anchor.set(anchorX, 0.5); hpNums.addChild(t); pool.push(t); return t;
+  }
+  function drawHpNumbers(now) {
+    const sel = new Set(ui.selected);
+    const seen = u => !!views.get(u.id)?.c.visible && (u.side === 'ally' || sim.fog.isVisible(toTile(u.x), toTile(u.y)));
+    const r = hpTrack.update(sim, now, { selected: sel, visible: seen });
+    const hide = !!host.closest('.bc-root')?.classList.contains('bc-dialog-open'); // 会話の間は出さない
+    const list = hide ? [] : r.pops, labels = hide ? [] : r.labels;
+    const inv = 1 / Math.max(0.01, cam.zoom);
+    let k = 0;
+    for (const p of list) {
+      const pose = popPose(p, now - p.born); if (!pose) continue;
+      const t = dmgPool[k] || hpPoolText(dmgPool, DMG_STYLE, 0.5); k++;
+      if (t.text !== p.text) t.text = p.text;
+      const col = DMG_COLOR[p.side] ?? DMG_COLOR.enemy; if (t.style.fill !== col) t.style.fill = col;
+      t.position.set(pose.x, pose.y); t.scale.set(pose.scale * inv); t.alpha = pose.alpha; t.visible = true;
+    }
+    for (; k < dmgPool.length; k++) dmgPool[k].visible = false;
+    k = 0;
+    const taken = []; // 画面の上で重なる HP の数は、あとの方を出さない（選んでいる味方を先に置く）
+    for (const l of [...labels].sort((a, b) => b.selected - a.selected)) {
+      const v = views.get(l.u.id); if (!v) continue;
+      const w = v.sheet || l.u.human ? 18 : l.u.kind === 'alien' ? 38 : 26;
+      const x = v.c.x + w / 2 + 3 * inv, y = v.c.y + v.bar.y + 6 * inv;
+      const box = { x: x * cam.zoom, y: y * cam.zoom, w: l.text.length * 6.2, h: 12 };
+      if (taken.some(o => box.x < o.x + o.w && o.x < box.x + box.w && Math.abs(box.y - o.y) < box.h)) continue;
+      taken.push(box);
+      const t = hpPool[k] || hpPoolText(hpPool, HPN_STYLE, 0); k++;
+      if (t.text !== l.text) t.text = l.text;
+      const col = l.u.hp <= l.u.maxHp * 0.3 ? 0xfca5a5 : l.selected ? 0xfde68a : 0xe5e7eb; if (t.style.fill !== col) t.style.fill = col;
+      t.position.set(x, y); t.scale.set(inv); t.alpha = 0.95; t.visible = true;
+    }
+    for (; k < hpPool.length; k++) hpPool[k].visible = false;
+  }
   const popPool = [];
   const POP_STYLE = { fontFamily: 'system-ui, sans-serif', fontWeight: '900', fontSize: 15, fill: 0xffd166, stroke: { color: 0x121418, width: 4 } };
   const FIND_STYLE = { ...POP_STYLE, fontSize: 14, fill: 0xfff3b0 };
@@ -421,7 +495,19 @@ async function buildRenderer(host, sim, { fxQuality = 'normal', ground, human } 
     const lo = cam.x - half + hw + m, hi = cam.x + half - hw - m;
     t.x = lo > hi ? cam.x : Math.max(lo, Math.min(hi, t.x));
   }
+  /** v1.0.4 磨き: 文字の縦の位置も、上の帯（人数・資材）の下へ寄せる（画面のいちばん上の機体の「シールド修理中」などが、帯のうしろに隠れないように） */
+  const missionBar = host.parentElement?.querySelector('.bc-mission');
+  let popTopPx = 92;
+  function drawPopTop() {
+    // CSS の安全域を含む実寸を読む。文字が出るフレームで一度だけ測る。
+    if (missionBar) popTopPx = Math.max(92, missionBar.getBoundingClientRect().bottom - host.getBoundingClientRect().top + 16);
+  }
+  function clampPopY(t) {
+    const lo = popMinY(cam.y, app.screen.height, cam.zoom, popTopPx, t.height);
+    if (t.y < lo) t.y = lo;
+  }
   function drawPops(now) {
+    if (sim.fx.length) drawPopTop();
     let k = 0;
     for (const f of sim.fx) {
       if (f.type !== 'gain' && f.type !== 'find' && f.type !== 'captured' && f.type !== 'rescue' && f.type !== 'nested' && f.type !== 'pickup' && f.type !== 'kitUse' && f.type !== 'shieldGive' && f.type !== 'shieldRestored') continue;
@@ -455,7 +541,7 @@ async function buildRenderer(host, sim, { fxQuality = 'normal', ground, human } 
         if (t.text !== label) { t.text = label; t.style = FIND_STYLE; }
         t.position.set(f.x, f.y - 54 - Math.min(age, 0.5) * 30); t.scale.set(age < 0.15 ? 0.6 + age / 0.15 * 0.6 : 1.2 - Math.min(0.2, (age - 0.15)));
       }
-      clampPopX(t); // v1.0.0: 画面の左右の端で切れないように、文字を画面の中へ寄せる（「シールド修理中」など）
+      clampPopY(t); clampPopX(t); // v1.0.0: 画面の左右の端で切れないように、文字を画面の中へ寄せる（「シールド修理中」など）
       t.alpha = a; t.visible = true;
       if (f.type === 'gain') { const pl = piles.find(q => q.p.id === f.pile); if (pl && pl.lastPop !== f.t) { pl.lastPop = f.t; pl.bump = now; } }
     }
@@ -557,6 +643,7 @@ async function buildRenderer(host, sim, { fxQuality = 'normal', ground, human } 
       nestG.visible = sim.fog.isSeen(n.tx, n.ty);
       if (nestG.visible) {
         const x = tileCenter(n.tx), y = tileCenter(n.ty), held = sim.units.some(u => u.captured === 'nest'), pulse = (now * 0.7) % 1;
+        if (nestG.texture && tex.nest_captive) { const t = held ? tex.nest_captive : tex.nest_idle; if (nestG.texture !== t) nestG.texture = t; }
         markLayer.circle(x, y, CAPTURE.nestRescueRadius * TILE).stroke({ width: 2, color: 0xef4444, alpha: held ? 0.5 : 0.18 });
         if (held) markLayer.circle(x, y, CAPTURE.nestRescueRadius * TILE * (0.3 + 0.7 * pulse)).stroke({ width: 2, color: 0xef4444, alpha: 0.45 * (1 - pulse) });
       }
@@ -583,8 +670,13 @@ async function buildRenderer(host, sim, { fxQuality = 'normal', ground, human } 
       }
     }
     const ex = mission.extraction, hx = tileCenter(ex.tx), hy = tileCenter(ex.ty), pulse = (now * 0.8) % 1;
-    markLayer.circle(hx, hy, EXTRACT_RADIUS * TILE).stroke({ width: 2.5, color: 0x4ade80, alpha: 0.55 });
-    markLayer.circle(hx, hy, EXTRACT_RADIUS * TILE * (0.4 + 0.6 * pulse)).stroke({ width: 2, color: 0x4ade80, alpha: 0.5 * (1 - pulse) });
+    if (sim.story3) { story3Layer.clear(); drawStory3(story3Layer, sim, cam, now); } // 第 3 章（?storych=3）。脱出口の輪はふつうどおり描く
+    if (story2Layer) { story2Layer.clear(); if (!host.closest('.bc-root')?.classList.contains('bc-dialog-open')) drawStory2(story2Layer, sim, cam); }
+    if (sim.strike) { strikeLayer.clear(); drawStrike(strikeLayer, sim, cam, now, ui); } // v1.0.2 物語: 脱出口の輪の代わりに、発射台・着弾マーカー・調べる場所
+    else if (sim.story2?.step !== 2) {
+      markLayer.circle(hx, hy, EXTRACT_RADIUS * TILE).stroke({ width: 2.5, color: 0x4ade80, alpha: 0.55 });
+      markLayer.circle(hx, hy, EXTRACT_RADIUS * TILE * (0.4 + 0.6 * pulse)).stroke({ width: 2, color: 0x4ade80, alpha: 0.5 * (1 - pulse) });
+    }
     for (const s of sim.groups) {
       if (s.role !== 'patrol') continue;
       // 群れの中で、いま見えている先頭の1体の上にゲージを出す
@@ -618,9 +710,15 @@ async function buildRenderer(host, sim, { fxQuality = 'normal', ground, human } 
       markLayer.rect(x - ink, y - ink, w + 2 * ink, h + 2 * ink).fill({ color: 0x121418, alpha: 0.55 });
       markLayer.rect(x, y, w * fr, h).fill({ color: col, alpha: down ? 0.5 + 0.3 * Math.sin(now * 6) : 0.75 });
     }
+    for (const e of sim.units) { // ?newenemies=1: 好物（人間・ツギハギ号）を追っている敵から獲物へ細い線と、獲物の足元の赤い輪
+      if (e.neHunt == null || e.hp <= 0 || e.side !== 'enemy' || !sim.fog.isVisible(toTile(e.x), toTile(e.y))) continue;
+      const p = sim.units.find(q => q.id === e.neHunt); if (!p || p.hp <= 0) continue;
+      markLayer.moveTo(e.x, e.y).lineTo(p.x, p.y).stroke({ width: 1 * ink, color: 0xff5a4a, alpha: 0.28 });
+      markLayer.ellipse(p.x, p.y + 8 * ink, (13 + 2 * Math.sin(now * 7)) * ink, 5.5 * ink).stroke({ width: 1.6 * ink, color: 0xff5a4a, alpha: 0.8 });
+    }
     for (const e of sim.units) {
       if (e.side !== 'enemy' || !sim.fog.isVisible(toTile(e.x), toTile(e.y))) continue;
-      if (!unreachableTarget(sim, e, weaponRowOfUnit, TILE)) continue;
+      if (e.neBur === 'under' || !unreachableTarget(sim, e, weaponRowOfUnit, TILE)) continue; // 地中の G12 は、もぐっているだけなので「届かない」印は出さない
       const r = 5 * ink, x = e.x + 15 * ink, y = e.y - 36 * ink;
       markLayer.circle(x, y, r + ink).fill({ color: 0x121418, alpha: 0.45 });
       markLayer.moveTo(x - r * 0.55, y - r * 0.55).lineTo(x + r * 0.55, y + r * 0.55).moveTo(x + r * 0.55, y - r * 0.55).lineTo(x - r * 0.55, y + r * 0.55)
@@ -660,8 +758,10 @@ async function buildRenderer(host, sim, { fxQuality = 'normal', ground, human } 
       v.c.visible = visible;
       if (!visible) continue;
       if (v.sheet) { syncFramed(v, u, simDt, waves.get(u.id) || 0, charSize[u.kind], false); continue; }
-      const look = ALT_UNIT_LOOK[u.kind], key = `${look?.art ?? u.kind}_${u.side}`; // 仮の絵の機体は借りた絵を使う
-      if (v.key !== key) { v.body.texture = tex[key] || tex[`gunner_${u.side}`]; v.key = key; }
+      if (!wreckAsked.has(u.kind) && WRECK_KINDS.has(u.kind)) loadWreckArt(u.kind);
+      const look = ALT_UNIT_LOOK[u.kind], dk = damagedKey(u), key = dk && tex[dk] ? dk : isNewEnemy(u.kind) ? `enemy_${u.kind}` : `${look?.art ?? u.kind}_${u.side}`; // 仮の絵の機体は借りた絵を使う。v1.0.3 HP が半分以下なら傷んだ姿
+      if (look && !tex[key] && !altBodyAsked.has(key)) loadAltBody(key); // v1.0.4 最初に読まなかった体の絵は、出てきた時に読む（読めるまでは仮の絵）
+      if (v.key !== key) { v.body.texture = tex[key] || tex[`gunner_${u.side}`]; v.key = tex[key] || !look ? key : null; }
       const bob = u.moving ? Math.abs(Math.sin(now * 12 + u.id)) * 2.2 : 0;
       // 運ばれている人間は運んでいる異星生物の手前に描く
       v.c.position.set(u.x, u.y); v.c.zIndex = typeof u.captured === 'number' ? u.y + 4 : u.y;
@@ -682,9 +782,15 @@ async function buildRenderer(host, sim, { fxQuality = 'normal', ground, human } 
       v.flash = Math.max(0, v.flash - 1 / 60);
       v.body.tint = hr && hr.flash > 0.3 ? 0xffe0d0 : v.flash > 0 ? 0xffb4b4 : look?.tint ?? 0xffffff;
       syncAltitude(v, u, now);
+      if (look) syncAltMotion(v, u, now);
     }
+    syncTorpedoes(simDt);
+    if (mineView) mineView.sync(sim, (tx, ty) => sim.fog.isVisible(tx, ty), TILE); // 新しい敵 G10 の地雷
+    if (gallery) gallery.sync(now); if (gallery5) gallery5.sync(now);
     if (sim.ride) { // 乗っている人を、ロボの背中・中の見た目にする
       if (!riderArt) riderArt = buildTextures(rideArtSources()).then(t => { if (dead) Object.values(t).forEach(disposeTexture); else Object.assign(tex, t); }).catch(e => console.warn('[bot-commander] 乗り姿の絵を読めない（小さな人の絵で出す）', e));
+      // v1.0.1 Codex gfx4 SCAV_RIDE: ツギハギ号の背中の絵は、ツギハギ号に乗った時だけ読む
+      if (!scavRiderArt && sim.units.some(u => u.ride && unitById(sim, u.ride.host)?.kind === 'scav')) scavRiderArt = buildTextures(rideArtSources('scav')).then(t => { if (dead) Object.values(t).forEach(disposeTexture); else Object.assign(tex, t); }).catch(e => console.warn('[bot-commander] ツギハギ号の乗り姿の絵を読めない', e));
       syncRiderArt(syncRide(sim, views, cam.zoom, now, tex));
     } else if (riderShown) syncRiderArt(new Map());
     for (const [id, v] of views) {
@@ -696,8 +802,12 @@ async function buildRenderer(host, sim, { fxQuality = 'normal', ground, human } 
         v.bar.visible = false; v.c.alpha = Math.min(1, CORPSE_SEC + 1 - v.corpse); v.c.zIndex = v.u.y - 6;
         continue;
       }
-      v.c.destroy({ children: true }); views.delete(id);
+      views.delete(id);
+      const wk = !v.sheet && v.c.visible ? wreckKey(v.u) : null;
+      if (wk && tex[wk]) { leaveWreck(v, tex[wk]); continue; } // v1.0.3 残骸・休眠体を残す
+      v.c.destroy({ children: true });
     }
+    syncWrecks(simDt);
     drawPaths(now);
     drawFx();
     coverView.sync(now, fxLayer, cam.zoom);
@@ -705,6 +815,7 @@ async function buildRenderer(host, sim, { fxQuality = 'normal', ground, human } 
     if (sim.ride) drawRide(sim, markLayer, cam.zoom, now); // 中の人数の印・乗り降りの輪・気絶の星
     drawAltMarks(now); // 飛ぶ機体の燃料・届かない印（その機体がいない時は何も描かない）
     drawPops(now);
+    drawHpNumbers(now); // v1.0.6 戦闘中のダメージの数・HP の数
     spawnFxEvents(fx, sim, fxSeen, fxView);
     drawFxCanvas();
   }
@@ -742,6 +853,7 @@ async function buildRenderer(host, sim, { fxQuality = 'normal', ground, human } 
     if (!dead) syncClassIcon(v, u, 18); else v.icon.visible = v.badge.visible = v.kit.visible = v.state.visible = false;
     v.flash = Math.max(0, v.flash - 1 / 60);
     v.body.tint = hr && hr.flash > 0.3 ? 0xffe0d0 : v.flash > 0 ? 0xffb4b4 : 0xffffff;
+    if (!dead && sim.powersuit && u.human) syncSuitView(v, u, sim, frameNow); // パワードスーツ（?powersuit=1 だけ）
     if (!dead) syncAltitude(v, u, frameNow);
   }
 
@@ -769,7 +881,12 @@ async function buildRenderer(host, sim, { fxQuality = 'normal', ground, human } 
       const k = 1 - Math.min(0.4, lift / 150);
       v.altShadow.scale.set(k); v.altShadow.alpha = Math.min(1, 0.55 + 0.45 * k);
     }
-    if (z < 0) {
+    if (u.neBur === 'under') { // ?newenemies=1 の G12: 地中。体はほとんど見えず、足元に土の盛り上がりだけ（水中の青い見た目にはしない）
+      v.body.alpha = 0.2; v.bar.visible = false; if (v.shadow) v.shadow.visible = false;
+      if (!v.mound) { v.mound = new Graphics().ellipse(0, 4, 17, 7).fill({ color: 0x4b3a28, alpha: 0.9 }).ellipse(0, 2, 11, 4.5).fill({ color: 0x7a6044, alpha: 0.95 }); v.c.addChildAt(v.mound, 0); }
+      v.mound.visible = true;
+    } else if (v.mound && v.mound.visible) { v.mound.visible = false; v.body.alpha = 1; v.bar.visible = true; if (v.shadow) v.shadow.visible = !air; }
+    if (u.neBur === 'under') { /* 上で描いた */ } else if (z < 0) {
       v.c.alpha = 0.55;
       if (v.body.tint === 0xffffff || v.body.tint === ALT_UNIT_LOOK[u.kind]?.tint) v.body.tint = 0x5f8fd0; // 被弾のちらつきは残す
       if (v.shadow) v.shadow.visible = false;
@@ -817,6 +934,7 @@ async function buildRenderer(host, sim, { fxQuality = 'normal', ground, human } 
   const fxView = {
     px: kind => KIND_PX[kind] || UNIT_PX,
     visible: (x, y) => sim.fog.isVisible(toTile(x), toTile(y)),
+    torpedo: (x0, y0, x1, y1) => startTorpedo(x0, y0, x1, y1),
     onScreen(x, y) {
       const sx = (x - cam.x) * cam.zoom, sy = (y - cam.y) * cam.zoom, hw = app.screen.width / 2, hh = app.screen.height / 2;
       const out = Math.max(Math.abs(sx) - hw, Math.abs(sy) - hh, 0);
@@ -834,7 +952,127 @@ async function buildRenderer(host, sim, { fxQuality = 'normal', ground, human } 
   }
 
   // v1.0.0 背中の乗り姿（Codex gfx3 R_RIDE）: ロボの体の絵と同じ位置・大きさ・向き・傾き・揺れで、上に重ねる（ロボと人の揺れは共通）
-  let riderArt = null, riderShown = false, dead = false;
+  let riderArt = null, scavRiderArt = null, riderShown = false, dead = false;
+
+  // v1.0.3 Codex gfx5 ALLY_WRECK: 傷んだ姿・残骸の絵（wreck-view.js）。その種類の機体が初めて出た時に読む。見た目だけ
+  const WRECK_KINDS = new Set(Object.values(WRECK_ART).map(a => a.kind)), wreckAsked = new Set(), wrecks = [];
+  const altBodyAsked = new Set();
+  function loadAltBody(key) {
+    altBodyAsked.add(key);
+    const src = artSources({ ground })[key]; if (!src) return;
+    buildTextures({ [key]: src }).then(t => { if (dead) Object.values(t).forEach(disposeTexture); else Object.assign(tex, t); }).catch(e => console.warn(`[bot-commander] ${key} の体の絵を読めない（仮の絵で出す）`, e));
+  }
+  function loadWreckArt(kind) {
+    wreckAsked.add(kind);
+    buildTextures(wreckArtSources([kind])).then(t => { if (dead) Object.values(t).forEach(disposeTexture); else Object.assign(tex, t); }).catch(e => console.warn(`[bot-commander] ${kind} の傷んだ姿・残骸の絵を読めない（前の見た目で出す）`, e));
+  }
+  function leaveWreck(v, t) {
+    const u = v.u, b = v.body;
+    for (const o of [v.bar, v.icon, v.badge, v.kit, v.state, v.rider, v.shadow, v.altShadow, v.motionShadow, v.waterGlow, v.motionOver]) if (o) o.visible = false;
+    b.texture = t; b.position.set(0, 0); b.rotation = 0; b.tint = 0xffffff; b.alpha = 1;
+    const nk = neWreckScale(u.kind); // 新しい敵の休眠体は切り抜きが小さい絵の分だけ縮める（それ以外は 1）
+    b.scale.set(v.px * nk / (t.orig.width || 1) * (u.facing < 0 ? -1 : 1), v.px * nk / (t.orig.height || 1));
+    v.c.position.set(u.x, u.y); v.c.zIndex = u.y - 8; v.c.alpha = 0;
+    wrecks.push({ v, t: 0, ally: u.side === 'ally' });
+    trimWrecks(wrecks);
+  }
+  function syncWrecks(dt) {
+    for (let i = wrecks.length - 1; i >= 0; i--) {
+      const w = wrecks[i]; w.t += dt;
+      const a = wreckAlpha(w.t), c = w.v.c;
+      if (a <= 0 && w.t > WRECK_SEC) { c.destroy({ children: true }); wrecks.splice(i, 1); continue; }
+      c.alpha = a; c.visible = w.ally || sim.fog.isVisible(toTile(c.x), toTile(c.y));
+    }
+  }
+
+  // v1.0.1 Codex gfx4 SKY_VIS・ALT_MOTION: 飛ぶ機体・水陸両用機の絵の動き（alt-motion-view.js が決める。絵は、その機体がいる時に初めて読む）
+  let altMotionArt = null, altMotionReady = false;
+  const ALT_SHADOW_ALPHA = { flyer_shadow: 1, amph_underwater: 1 };
+  function syncAltMotion(v, u, now) {
+    if (!altMotionArt) altMotionArt = buildTextures(altMotionArtSources()).then(t => { if (dead) Object.values(t).forEach(disposeTexture); else { Object.assign(tex, t); altMotionReady = true; } }).catch(e => console.warn('[bot-commander] 飛ぶ機体・水陸両用機の動きの絵を読めない（前の見た目で出す）', e));
+    if (u.kind === 'amph' && !torpArt) loadTorpArt(); // 魚雷の絵は、水陸両用機がいる時に先に読んでおく
+    const m = altMotion(v.motion || (v.motion = {}), u, now);
+    if (!altMotionReady) return;
+    const bodyKey = m?.body && tex[m.body] ? m.body : null;
+    if (bodyKey) { v.body.texture = tex[bodyKey]; v.key = 'motion:' + bodyKey; } // 次のフレームで、いつもの絵に戻す（v.key がちがうので）
+    v.body.alpha = m?.faint ?? 1;
+    const sk = m?.shadow && tex[m.shadow] ? m.shadow : null;
+    if (sk && !v.motionShadow) { v.motionShadow = new Sprite(); v.motionShadow.anchor.set(0.5); v.c.addChildAt(v.motionShadow, 0); }
+    if (v.waterGlow && !sk) v.waterGlow.visible = false;
+    if (v.motionShadow) {
+      v.motionShadow.visible = !!sk;
+      if (sk) {
+        const t = tex[sk], [ww, wh] = shadowWorldSize(ALT_BODY_RECT[u.kind], ALT_SHADOW_RECT[sk], v.px), drawnW = t.orig.width || 1; // 影の絵は横長なので、焼いた枠の幅いっぱい（fit 1）
+        const k = sk === 'flyer_shadow' && v.altShadow ? v.altShadow.scale.x : 1; // 高いほど小さく（前の楕円と同じ割合）
+        if (v.motionShadow.texture !== t) v.motionShadow.texture = t;
+        v.motionShadow.scale.set(ww / drawnW * k * u.facing, ww / drawnW * k);
+        v.motionShadow.position.set(0, sk === 'flyer_shadow' ? 0 : -wh * 0.2);
+        v.motionShadow.alpha = ALT_SHADOW_ALPHA[sk] * (sk === 'flyer_shadow' ? Math.min(1, 0.55 + 0.45 * k) : 1);
+        // v1.0.4 磨き: 深い水の上は地面が暗くて黒い影が見えないので、影のうしろにうすい明るい水面の輪をしく
+        const wet = sk === 'flyer_shadow' && tileAt(map, toTile(u.x), toTile(u.y)) === TILE_T.WATER;
+        if (wet && !v.waterGlow) {
+          v.waterGlow = new Graphics().ellipse(0, 0, 12, 4.6).fill({ color: 0x8fc4e0, alpha: 0.2 }).ellipse(0, 0, 12, 4.6).stroke({ width: 0.6, color: 0xbfe3f7, alpha: 0.3 });
+          v.c.addChildAt(v.waterGlow, 0);
+        }
+        if (v.waterGlow) {
+          v.waterGlow.visible = wet;
+          if (wet) { const g = ww * k / 24; v.waterGlow.scale.set(g, g); v.waterGlow.position.copyFrom(v.motionShadow.position); }
+        }
+        if (v.altShadow && sk === 'flyer_shadow') v.altShadow.visible = false;
+      }
+    }
+    const ok = m?.overlay && tex[m.overlay] ? m.overlay : null;
+    if (ok && !v.motionOver) { v.motionOver = new Sprite(); v.motionOver.anchor.set(0.5, 0.88); v.c.addChildAt(v.motionOver, v.c.getChildIndex(v.body) + 1); }
+    if (v.motionOver) {
+      v.motionOver.visible = !!ok;
+      if (ok) {
+        const b = v.body; v.motionOver.texture = tex[ok];
+        v.motionOver.position.copyFrom(b.position); v.motionOver.scale.copyFrom(b.scale); v.motionOver.alpha = m.overlayAlpha ?? 1;
+      }
+    }
+  }
+
+  // v1.0.1 Codex gfx4 ALT_MOTION: 魚雷（W3-12）。撃った所から相手の足元まで水の中を進む魚雷の絵と、うしろの航跡。着いたら fx-events.js が水の爆発
+  const torpLayer = new Container(); world.addChildAt(torpLayer, world.getChildIndex(units));
+  const torps = [];
+  let torpArt = null;
+  const loadTorpArt = () => (torpArt = Promise.all(Object.entries(TORPEDO_ART).map(async ([k, a]) => {
+    const im = new Image(); im.src = a.url; await im.decode();
+    const cv = document.createElement('canvas'); cv.width = im.width; cv.height = im.height; cv.getContext('2d').drawImage(im, 0, 0);
+    const t = Texture.from(cv, true); t.source.scaleMode = 'linear'; return [k, t];
+  })).then(list => { for (const [k, t] of list) { if (dead) disposeTexture(t); else tex[`torp_${k}`] = t; } }).catch(e => console.warn('[bot-commander] 魚雷の絵を読めない（いつもの弾で出す）', e)));
+  const TORP_LEN = 15, TORP_WAKE_LEN = 40;
+  function startTorpedo(x0, y0, x1, y1) {
+    if (!torpArt) loadTorpArt();
+    if (!tex.torp_torpedo || !tex.torp_wake) return 0;
+    const dur = torpedoDuration(x0, y0, x1, y1), ang = Math.atan2(y1 - y0, x1 - x0);
+    const a = TORPEDO_ART.torpedo, w = TORPEDO_ART.wake;
+    const wake = new Sprite(tex.torp_wake); wake.anchor.set(w.head[0] / w.size[0], w.head[1] / w.size[1]);
+    wake.scale.set(TORP_WAKE_LEN / w.visW); wake.rotation = ang; wake.alpha = 0.85;
+    const body = new Sprite(tex.torp_torpedo); body.anchor.set(a.nose[0] / a.size[0], a.nose[1] / a.size[1]);
+    body.scale.set(TORP_LEN / a.bodyW); body.rotation = ang;
+    torpLayer.addChild(wake, body);
+    torps.push({ x0, y0, x1, y1, dur, t: 0, body, wake });
+    return dur;
+  }
+  function syncTorpedoes(dt) {
+    for (let i = torps.length - 1; i >= 0; i--) {
+      const p = torps[i]; p.t += dt;
+      const k = Math.min(1, p.t / p.dur), x = p.x0 + (p.x1 - p.x0) * k, y = p.y0 + (p.y1 - p.y0) * k;
+      p.body.position.set(x, y); p.wake.position.set(x, y);
+      p.wake.scale.x = (TORP_WAKE_LEN / TORPEDO_ART.wake.visW) * Math.min(1, 0.3 + k * 2);
+      p.body.visible = p.wake.visible = sim.fog.isVisible(toTile(x), toTile(y));
+      if (k >= 1) { p.body.destroy(); p.wake.destroy(); torps.splice(i, 1); }
+    }
+  }
+
+  // v1.0.1 Codex gfx4 ?enemydemo=1: 新しい敵（地上 G01〜G04・空 A01・A08）の見本の列。見た目だけ（sim に入れない・本編には出さない）
+  // 見本は霧の上に置く（?enemydemo=1 だけ。霧で見えないと見本にならないため。sim には触らない）
+  const mineView = newEnemies ? createMineView({ Sprite }, tex, units) : null; // ?newenemies=1: G10 の地雷の絵（units の中。y 順）
+  let galleryLayer = null;
+  if (enemyDemo) { galleryLayer = new Container(); galleryLayer.sortableChildren = true; world.addChildAt(galleryLayer, world.getChildIndex(fogSprite) + 1); }
+  const gallery = enemyDemo ? buildEnemyGallery({ Sprite, Container, Text }, tex, map, galleryLayer, { tile: TILE }) : null;
+  const gallery5 = enemyDemo ? buildGfx5Gallery({ Sprite, Container, Text }, tex, map, galleryLayer, { tile: TILE }) : null; // v1.0.3 Codex gfx5 の見本
   function syncRiderArt(drawn) {
     riderShown = drawn.size > 0;
     for (const [id, v] of views) {

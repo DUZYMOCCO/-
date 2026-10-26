@@ -176,6 +176,12 @@
     "serious": {
      "src": "BOY/BOY__serious.webp"
     },
+    "angry": {
+     "src": "BOY/BOY__angry.webp"
+    },
+    "sad": {
+     "src": "BOY/BOY__sad.webp"
+    },
     "pain": {
      "src": "BOY/BOY__pain.webp"
     },
@@ -312,6 +318,9 @@
     },
     "surprised": {
      "src": "WOLF/WOLF__surprised.webp"
+    },
+    "worried": {
+     "src": "WOLF/WOLF__worried.webp"
     },
     "serious": {
      "src": "WOLF/WOLF__serious.webp"

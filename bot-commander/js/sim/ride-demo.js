@@ -1,7 +1,7 @@
 // 人間がロボに乗るお試し（?ridedemo=1 とテストだけ。本編のミッション MISSION_1 には入れない）
 // 今のマップ（seed 7）に、少年・少女（ミント）・獣人（ロウ）と、乗れるロボ（PONCO02・空を飛ぶ PONCO02・ツギハギ号・巨大機）、少し離れた所に異星生物を置く。ミッションなし。
 // v1.0.0: PONCO とツギハギ号は背中に1人、巨大機は中（操縦席）に2人（ride.js の RIDE_TABLE）。中に乗る様子を見せるため巨大機を1体足した
-import { createSim, deployUnit } from './sim.js?v=23';
+import { createSim, deployUnit } from './sim.js?v=27';
 import { ALT_TEST_UNITS } from './altitude.js?v=1';
 
 export const RIDE_DEMO_SETUP = Object.freeze({

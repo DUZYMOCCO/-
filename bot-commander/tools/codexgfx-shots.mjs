@@ -39,7 +39,7 @@ for (const zoom of [1, 1.6, 2.4]) {
     p[0].shieldMax = 10; p[0].shieldHp = 10; p[3].shieldMax = 10; p[3].shieldHp = 4; p[4].shieldMax = 10; p[4].shieldHp = 7;
     const boy = sim.units.find(u => u.human); if (boy) { boy.x = 10.6 * 32; boy.y = 54.2 * 32; }
     sim.fog.seen.fill(0); sim.fog.revision++;
-    const S = await import('/bot-commander/js/sim/sim.js?v=19'); for (let k = 0; k < 3; k++) S.stepSim(sim);
+    const S = await import('/bot-commander/js/sim/sim.js?v=26'); for (let k = 0; k < 3; k++) S.stepSim(sim);
     r.cam.zoom = zoom; r.cam.x = 9.8 * 32; r.cam.y = 51.6 * 32; r.clampCam();
     return { zoom: r.cam.zoom, row: row.map(([u, c]) => `${u.label || u.kind}:${c}:kits${u.kits}:sh${u.shieldHp || 0}`) };
   }, zoom);

@@ -4,17 +4,19 @@
 //   再生 = 同じ条件で createSim → 記録どおりの step で命令を入れ直す → ハッシュを記録と比べる。
 // シム（sim.js）は1行も変えない。記録は stepSim を呼ぶ前に sim.commands を写すだけ、一時停止中の命令（applyCommandsNow）は
 // 呼ぶ前に写して「paused」の印をつける（R-12 の注意1: 一時停止中は経路を先に作るので、結果が変わるため）。
-import { createSim, stepSim, applyCommandsNow, hashSim, hashSimDeep } from './sim.js?v=23';
+import { createSim, stepSim, applyCommandsNow, hashSim, hashSimDeep } from './sim.js?v=27';
 import { MISSION_1 } from './mission.js?v=10';
+import { withAltUnits, ALT_MISSION_ROWS, ALT_IN_MISSIONS } from './alt-units.js?v=3'; // R-05: 本編と同じ「飛ぶ機体・水陸両用機を足すか」の通し方で再生する
 
 export const REPLAY_VERSION = 1;
 export const REPLAY_GAME = 'bot-commander';
 /** 記録を取った時のゲームの版（sw-assets.js の gameVersion と同じ値。取り込む時にそろえる）。違う版の記録は、読めるが「版がちがう」と知らせる */
-export const REPLAY_GAME_VERSION = '1.0.0';
+export const REPLAY_GAME_VERSION = '1.0.6';
 export const MARK_EVERY = 300;            // 途中のハッシュを残す間隔（step）。10 秒ごと
 export const MAX_REPLAY_TICKS = 216000;   // 再生してよい最大の長さ（2 時間ぶん）
 export const MAX_REPLAY_CMDS = 50000;
 export const MAX_REPLAY_BYTES = 4 * 1024 * 1024;
+const REC_BYTES_LIMIT = Math.floor(MAX_REPLAY_BYTES * 0.9); // R-08: 記録側は余裕を見て 9 割で閉じる（marks・見出しの分）
 
 /** ミッションの名前（記録の start.mission）→ ミッション。新しいミッションを足したら registerMission で足す */
 const MISSIONS = { [MISSION_1.id]: MISSION_1 };
@@ -49,13 +51,17 @@ export function unpackCommand(p) {
 // ---- 始まりの条件 ----
 /** 記録の start から、同じシムを作る。ミッションの名前が分からなければ例外 */
 export function createSimFromStart(start) {
-  const mission = MISSIONS[start.mission];
-  if (!mission) throw new Error(`知らないミッション: ${start.mission}`);
-  return createSim({ seed: start.seed, mapSeed: start.mapSeed, mission, loadout: start.loadout ? JSON.parse(JSON.stringify(start.loadout)) : null });
+  const base = MISSIONS[start.mission];
+  if (!base) throw new Error(`知らないミッション: ${start.mission}`);
+  const mission = base.id === MISSION_1.id ? withAltUnits(base, ALT_MISSION_ROWS) : base; // R-05: 遊ぶ時（index.js）と同じ。スイッチが全部 false なら base そのまま
+  return createSim({ seed: start.seed, mapSeed: start.mapSeed, mission, loadout: start.loadout ? JSON.parse(JSON.stringify(start.loadout)) : null, launcher: !!start.launcher, powersuit: !!start.powersuit });
 }
 /** いまのシムを作った時の条件（記録の start の形）。loadout は JSON にできる物だけ */
-export const makeStart = ({ seed = 1, mapSeed = 7, mission = MISSION_1, loadout = null } = {}) =>
-  ({ seed, mapSeed, mission: mission.id, loadout: loadout ? JSON.parse(JSON.stringify(loadout)) : null });
+const altSwitches = () => ({ flyer: !!ALT_IN_MISSIONS.flyer, amph: !!ALT_IN_MISSIONS.amph });
+const anyAlt = a => !!(a && (a.flyer || a.amph));
+/** R-05: 本編に飛ぶ機体・水陸両用機を足すスイッチが入っている時だけ start.alt に残す（全部 false の今は、記録の形は前と同じ） */
+export const makeStart = ({ seed = 1, mapSeed = 7, mission = MISSION_1, loadout = null, launcher = false, powersuit = false } = {}) =>
+  ({ seed, mapSeed, mission: mission.id, loadout: loadout ? JSON.parse(JSON.stringify(loadout)) : null, ...(launcher ? { launcher: true } : {}), ...(powersuit ? { powersuit: true } : {}), ...(mission.id === MISSION_1.id && anyAlt(altSwitches()) ? { alt: altSwitches() } : {}) }); // launcher: 発射台（?launcher=1）の時だけ印をつける（ふつうの記録の形は変えない）
 
 const deepOf = sim => ({ hash: hashSim(sim), deep: hashSimDeep(sim) });
 
@@ -68,8 +74,25 @@ const deepOf = sim => ({ hash: hashSim(sim), deep: hashSimDeep(sim) });
 export function createRecorder(sim, start, meta = null) {
   const cmds = [], marks = [];
   let end = null; // 終わった時に決まる
+  let bytes = 0; // R-08: 書き出した時の大きさの見積もり（命令の JSON の長さの合計）
   const closeIfDone = () => { if (!end && sim.result) end = { tick: sim.tick, ...deepOf(sim), result: sim.result }; };
-  const note = paused => { if (!end && (paused || sim.commands.length)) cmds.push([sim.tick, paused ? 1 : 0, sim.commands.map(packCommand)]); };
+  // 点検 R-02: 乗り降りの命令を issueBoard／issueAlight で直接出すと、sim.commands ではなく sim.ride.cmds に入る（stepSim の中の stepRide で使われる）。
+  // それも step の頭でだけ写す（印 _ride をつけ、再生では sim.ride.cmds へ戻す）。sim.commands の 'board'／'alight'（物語の ☰）が
+  // 一時停止中の applyNow で sim.ride.cmds に積んだ物は、もう sim.commands の側で記録したので写さない（二重にしない）
+  const fromCmds = new WeakSet();
+  const rideCmds = () => (sim.ride && sim.ride.cmds.length ? sim.ride.cmds.filter(c => !fromCmds.has(c)).map(c => ['?', { ...JSON.parse(JSON.stringify(c)), _ride: 1 }]) : []);
+  // R-08: 読み込み側の上限（MAX_REPLAY_TICKS・MAX_REPLAY_CMDS・MAX_REPLAY_BYTES）を超える前に、「ここまでの記録」として閉じる。
+  // 閉じたあとも遊びは続くが、命令・ハッシュはもう写さない（読み込めない記録を作らないため）。シムには触らない。
+  const seal = () => { if (!end) end = { tick: sim.tick, ...deepOf(sim), result: sim.result || null }; };
+  const note = paused => {
+    if (end) return;
+    const pk = sim.commands.map(packCommand).concat(paused ? [] : rideCmds());
+    if (!(paused || pk.length)) return;
+    const entry = [sim.tick, paused ? 1 : 0, pk];
+    const size = JSON.stringify(entry).length + 2;
+    if (cmds.length >= MAX_REPLAY_CMDS || bytes + size > REC_BYTES_LIMIT) { seal(); return; }
+    cmds.push(entry); bytes += size;
+  };
   const rec = {
     sim,
     /** 1 step 進める（命令は次の step の頭で使われるので、その前に写す） */
@@ -78,9 +101,10 @@ export function createRecorder(sim, start, meta = null) {
       stepSim(sim);
       if (!end && sim.tick % MARK_EVERY === 0) { const d = deepOf(sim); marks.push([sim.tick, d.hash, d.deep]); }
       closeIfDone();
+      if (!end && sim.tick >= MAX_REPLAY_TICKS) seal(); // R-08: 長さの上限
     },
     /** 一時停止中の命令: すぐ使う（applyCommandsNow）。命令が 0 個でも経路づくりが進むので、必ず記録する */
-    applyNow() { note(true); applyCommandsNow(sim); },
+    applyNow() { note(true); const before = new Set(sim.ride ? sim.ride.cmds : []); applyCommandsNow(sim); if (sim.ride) for (const c of sim.ride.cmds) if (!before.has(c)) fromCmds.add(c); }, // sim.commands から作られた分だけ印（直接出した分は次の step で記録）
     get done() { return !!end; },
     /** 記録の形にして返す（途中でも書き出せる。途中の時は、いまの tick までの記録で、end.result は null） */
     snapshot() {
@@ -161,6 +185,10 @@ export function parseReplay(input) {
     if (!Array.isArray(rec.marks)) return bad('途中のハッシュの一覧（marks）がありません');
     for (const m of rec.marks) if (!Array.isArray(m) || !isInt(m[0]) || m[0] <= 0 || !isHash(m[1]) || !isHash(m[2])) return bad('途中のハッシュ（marks）の形がおかしい');
     const notes = [];
+    if (s.mission === MISSION_1.id) { // R-05: 記録を取った時とスイッチの入れ方がちがうと、足した機体がちがってずれる
+      const was = s.alt || {}, now = altSwitches();
+      if (!!was.flyer !== now.flyer || !!was.amph !== now.amph) notes.push('リプレイを取った時と、飛ぶ機体・水陸両用機の出し方がちがいます。ずれます');
+    }
     if (rec.gameVersion !== REPLAY_GAME_VERSION) notes.push(`リプレイを取ったゲームの版は ${rec.gameVersion ?? '?'}（いまは ${REPLAY_GAME_VERSION}）。シムが変わっていると、ハッシュがずれます`);
     return { ok: true, rec, notes };
   } catch (err) {
@@ -177,7 +205,10 @@ export function parseReplay(input) {
 export function createPlayer(rec, sim) {
   const cmds = rec.cmds, want = new Map(rec.marks.map(m => [m[0], m]));
   const got = []; let i = 0, done = false, first = null, lastGood = 0, endGot = null;
-  const push = c => { sim.commands.length = 0; for (const p of c[2]) sim.commands.push(unpackCommand(p)); };
+  const push = c => { // 乗り降りの命令（印 _ride）は sim.ride.cmds へ、ほかは sim.commands へ（記録した時と同じ入れ物。点検 R-02）
+    sim.commands.length = 0;
+    for (const p of c[2]) { const u = unpackCommand(p); if (u._ride) { delete u._ride; (sim.ride ??= { cmds: [] }).cmds.push(u); } else sim.commands.push(u); }
+  };
   const skipStale = () => { while (i < cmds.length && cmds[i][0] < sim.tick) i++; };
   const flushPaused = () => { skipStale(); while (i < cmds.length && cmds[i][0] === sim.tick && cmds[i][1] === 1) { push(cmds[i++]); applyCommandsNow(sim); } };
   const finish = () => {

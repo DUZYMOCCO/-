@@ -1,0 +1,36 @@
+{
+  "id": "story2_core",
+  "title": "2章 町はずれの声（仮）",
+  "bg": "ruins_town",
+  "cast": {
+    "NEJI": "happy"
+  },
+  "lines": [
+    {
+      "who": "NEJI",
+      "text": "あれ……これ、ロボットの こわれた むね だ。まんなかに、まるい ものが ある！",
+      "face": "surprised"
+    },
+    {
+      "who": "NEJI",
+      "text": "コアだ！ まだ ひかってる。ポンコ02の コアに できる かも！",
+      "face": "happy"
+    },
+    {
+      "who": "NEJI",
+      "text": "……でも、ひとの ものだったかも しれない。ちゃんと おれいを いおう。",
+      "face": "worried"
+    },
+    {
+      "exit": "NEJI"
+    },
+    {
+      "enter": "BOY",
+      "face": "sad"
+    },
+    {
+      "who": "BOY",
+      "text": "……"
+    }
+  ]
+}

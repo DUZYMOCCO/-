@@ -1,0 +1,42 @@
+{
+ "id": "story3_1_win",
+ "title": "第3章 3-1 スーツの はつじん：勝った時（仮）",
+ "bg": "ruins_town",
+ "cast": {
+  "NEJI": "surprised"
+ },
+ "lines": [
+  {
+   "who": "NEJI",
+   "text": "……ほんとに、うてた。キミが。",
+   "face": "surprised"
+  },
+  {
+   "who": "NEJI",
+   "text": "でも、うたれた とき、ぼく、いきが とまった。ほんとに とまった。",
+   "face": "worried"
+  },
+  {
+   "exit": "NEJI"
+  },
+  {
+   "enter": "NEJI",
+   "face": "neutral"
+  },
+  {
+   "who": "NEJI",
+   "text": "……うん。キミは、ぼくが おもってる より つよい。むり は ぜったい だめ だけど。",
+   "face": "neutral"
+  },
+  {
+   "who": "NEJI",
+   "text": "あ、ほら、はりがみ。「となりまち、ビルの なか、ひとり」。この じ、まえの と おなじ！",
+   "face": "happy"
+  },
+  {
+   "who": "NEJI",
+   "text": "ビルの なかに、ひとが いる。たすけに いこう！（仮）",
+   "face": "alert"
+  }
+ ]
+}

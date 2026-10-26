@@ -1,0 +1,81 @@
+{
+  "id": "story2_intro",
+  "title": "2章 町はずれの声（仮）",
+  "bg": "hideout",
+  "cast": {
+    "NEJI": "happy"
+  },
+  "lines": [
+    {
+      "who": "NEJI",
+      "text": "おはよう！ きのうは ミサイル、すごかったね。ぼく、まだ ドキドキ してる。",
+      "face": "happy"
+    },
+    {
+      "who": "NEJI",
+      "text": "……あ、ちゃんと ねた？ て、いたく ない？ ごはんは？",
+      "face": "worried"
+    },
+    {
+      "exit": "NEJI"
+    },
+    {
+      "enter": "BOY",
+      "face": "smile"
+    },
+    {
+      "who": "BOY",
+      "text": "……"
+    },
+    {
+      "exit": "BOY"
+    },
+    {
+      "enter": "NEJI",
+      "face": "happy"
+    },
+    {
+      "who": "NEJI",
+      "text": "うん、「だいじょうぶ」の かお だね。じゃあ、きょうの はなし。",
+      "face": "neutral"
+    },
+    {
+      "who": "NEJI",
+      "text": "せっけいずの ポンコ02、つくるには ざいりょうが 60 いる。いまは 12 しか ない。",
+      "face": "neutral"
+    },
+    {
+      "who": "NEJI",
+      "text": "まちはずれの がれきの やまを ほりに いこう。てきが いたら、ぼくが にげる から。",
+      "face": "worried"
+    },
+    {
+      "who": "NEJI",
+      "text": "ほりながら、もりの かげを とおるよ。ぼくの せなかに のっててね。おちないでね？",
+      "face": "alert"
+    },
+    {
+      "exit": "NEJI"
+    },
+    {
+      "enter": "BOY",
+      "face": "serious"
+    },
+    {
+      "who": "BOY",
+      "text": "……"
+    },
+    {
+      "exit": "BOY"
+    },
+    {
+      "enter": "NEJI",
+      "face": "alert"
+    },
+    {
+      "who": "NEJI",
+      "face": "neutral",
+      "text": "やまの そばで とまると ほれる。20 ほど つんだら、みなみの かくれがへ はこんでね。60 とどけよう。"
+    }
+  ]
+}

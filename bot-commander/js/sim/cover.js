@@ -3,7 +3,7 @@
 //   見通しは切らない。通り抜けられる（経路探索は変えない）。敵・味方どちらにも効く。
 // データと計算だけ（DOM・Pixi・Math.random なし）。乱数は sim.rng() を呼ぶ側が渡す。数値はすべてここで調整する。
 // v0.4.0-dev（10/24 0:07 の決定）: 落とし物の「武器パーツ（攻撃 ×1.3・30秒）」をやめて「新しい武器が手に入る」にした。
-import { WEAPONS, weaponById, KIND_WEAPON, weaponPower } from './weapons.js?v=5';
+import { WEAPONS, weaponById, KIND_WEAPON, weaponPower } from './weapons.js?v=7';
 
 /** 調整用のつまみ（ここだけ見れば数値がわかる） */
 export const COVER = Object.freeze({

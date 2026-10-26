@@ -7,6 +7,7 @@
 // 帯は unitBand(乗せているロボ) になるので、altitude.js の canHit・coverApplies はそのまま使える。
 import { BAND, ALT, unitBand } from './altitude.js?v=1';
 import { nearestPassable, toTile, tileCenter } from './map.js?v=6';
+import { blocksBoarding } from './powersuit.js?v=1'; // パワードスーツ（?powersuit=1）: 着ている間は乗れない。着ていなければ今までと同じ
 
 export const RIDE_MODE = Object.freeze({ BACK: 'back', INSIDE: 'inside' });
 
@@ -45,6 +46,7 @@ export const RIDE_MESSAGES = Object.freeze({
   air: '空の上では降りられない',
   sealedWater: '水の中では降りられない',
   notRiding: '乗っていない',
+  suited: 'スーツを脱いでから乗ろう',
 });
 
 const byId = (sim, id) => sim.units.find(u => u.id === id) || null;
@@ -71,6 +73,7 @@ export function canBoard(sim, h, host, mode, { pending = 0 } = {}) {
   if (!h || !h.human || h.side !== 'ally' || h.hp <= 0) return { ok: false, reason: 'noHuman' };
   if (!host || !isHostKind(host)) return { ok: false, reason: 'noHost' };
   if (!modeOk(mode) || rideCapacity(host, mode) <= 0) return { ok: false, reason: 'cannot' };
+  if (blocksBoarding(h)) return { ok: false, reason: 'suited' }; // 決定 6: スーツは脱いでからロボに乗る
   if (h.ride || h.captured != null || (h.dazed || 0) > 0) return { ok: false, reason: 'busy' };
   if (Math.hypot(h.x - host.x, h.y - host.y) > RIDE.boardRange) return { ok: false, reason: 'far' };
   if (mode === RIDE_MODE.BACK && unitBand(host) === BAND.UNDERWATER) return { ok: false, reason: 'water' };

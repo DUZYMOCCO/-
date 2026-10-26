@@ -3,9 +3,9 @@
 // 武器の資料は assets/weapons/armory-data.json（tools_claude/build_armory_assets.py が refs/weapons の weapons.json・weapons.js から写して作る）。
 //   data = { SLOTS, SLOT_EXPANDER, weapons: [武器の行] }。数値は資料のまま（丸めない・足さない）。
 // 装備を選ばない時（loadout を省く・空）は、シムの機体を1つも変えない（乱数を引かない・プロパティを足さない）。
-import { weaponById } from '../sim/weapons.js?v=5';
-import { WEAPON_DROP, weaponMul } from '../sim/cover.js?v=6';
-import { buildLoadoutFx, RANGE_PX, traitsOf } from '../sim/loadout-effects.js?v=3'; // 2つ目以降の武器・修理・バリアの効き目（戦闘の計算は向こう）
+import { weaponById } from '../sim/weapons.js?v=7';
+import { WEAPON_DROP, weaponMul } from '../sim/cover.js?v=8';
+import { buildLoadoutFx, RANGE_PX, traitsOf } from '../sim/loadout-effects.js?v=5'; // 2つ目以降の武器・修理・バリアの効き目（戦闘の計算は向こう）
 
 /** 機体の種類 → 体の大きさ（data.SLOTS のキー）。PONCO02 は全高 2.4m（design_robot_identity_v3 の 5-1）＝ mid。
  *  ツギハギ号（設定上の新しい名前はジェミニ）は「改0 のジェミニ」＝ kai0（最初の体）。どちらも【仮】 */

@@ -3,9 +3,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createSim, stepSim, runSim, autoRepair, capsOf, maxKits, KINDS, TICK, UNIT_CLASS_CAPS,
   START_REPAIR_KITS, AUTO_REPAIR_HP_FRAC, REPAIR_KIT_HEAL_FRAC, MAX_CARRIED_KITS,
-  REPAIRER_MAX_KITS, REPAIRER_KIT_HEAL_FRAC, REPAIRER_HEAL_RANGE, REPAIRER_KIT_BUILD_SEC, REPAIRER_KIT_COST } from '../js/sim/sim.js?v=23';
+  REPAIRER_MAX_KITS, REPAIRER_KIT_HEAL_FRAC, REPAIRER_HEAL_RANGE, REPAIRER_KIT_BUILD_SEC, REPAIRER_KIT_COST } from '../js/sim/sim.js?v=27';
 import { MISSION_1 } from '../js/sim/mission.js?v=10';
-import { ITEMS } from '../js/sim/cover.js?v=6';
+import { ITEMS } from '../js/sim/cover.js?v=8';
 
 // ミッションの機体の兵種（v0.4.4）とシールドは外して、キットだけを見る（兵種はテストの中で付ける）
 const mission = () => { const sim = createSim({ seed: 2, mission: MISSION_1 }); for (const u of sim.units) { u.cls = null; u.shieldHp = 0; } return sim; };

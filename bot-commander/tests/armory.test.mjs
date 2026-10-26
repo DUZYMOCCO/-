@@ -7,10 +7,10 @@ import { fileURLToPath } from 'node:url';
 import {
   BODY_OF_KIND, bodyOf, slotCounts, slotAccepts, isBackItem, classFits, candidates, simEffect, emptyEntry, entryIsEmpty, normalizeEntry, setSlot, toggleSlot,
   attachIt01, buildRoster, sanitizeLoadout, applyLoadout,
-} from '../js/armory/loadout.js?v=4';
-import { WEAPONS, weaponById } from '../js/sim/weapons.js?v=5';
-import { weaponMul, WEAPON_DROP } from '../js/sim/cover.js?v=6';
-import { createSim, runSim, hashSim, KINDS, UNIT_CLASSES } from '../js/sim/sim.js?v=23';
+} from '../js/armory/loadout.js?v=6';
+import { WEAPONS, weaponById } from '../js/sim/weapons.js?v=7';
+import { weaponMul, WEAPON_DROP } from '../js/sim/cover.js?v=8';
+import { createSim, runSim, hashSim, KINDS, UNIT_CLASSES } from '../js/sim/sim.js?v=27';
 import { MISSION_1 } from '../js/sim/mission.js?v=10';
 
 const HERE = dirname(fileURLToPath(import.meta.url));

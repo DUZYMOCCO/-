@@ -2,7 +2,7 @@
 // 本編のミッションの機体には何も足さないこと。届かない印（targeting.js の unreachableTarget）と、本編に出すスイッチ（alt-units.js）も。
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import * as S from '../js/sim/sim.js?v=23';
+import * as S from '../js/sim/sim.js?v=27';
 import * as M from '../js/sim/mission.js?v=10';
 import * as F from '../js/sim/fuel.js?v=1';
 import { ALT, BAND, unitBand } from '../js/sim/altitude.js?v=1';

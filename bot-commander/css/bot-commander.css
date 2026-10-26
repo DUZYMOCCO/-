@@ -34,6 +34,8 @@
 .bc-result { position: absolute; inset: 0; display: grid; place-items: center; background: #000a; }
 .bc-result[hidden] { display: none; }
 .bc-result-box { width: min(86%, 320px); padding: 18px 16px 16px; border: 3px solid var(--bc-ink); border-radius: 16px; background: #141a24; text-align: center; box-shadow: 0 6px 0 #000a; }
+.bc-result-banner { display: block; width: calc(100% + 32px); max-width: none; margin: -18px -16px 10px; aspect-ratio: 720 / 400; object-fit: cover; border-radius: 13px 13px 0 0; pointer-events: none; user-select: none; } /* v1.0.1 gfx4 結果のカードの上の絵（文字なし・下はカードの色に溶ける） */
+.bc-result-banner[hidden] { display: none; }
 .bc-result-title { margin: 0 0 8px; font-size: 26px; line-height: 32px; color: #ffb4b4; text-shadow: 0 2px 0 #000; }
 .bc-result-title.win { color: #7df9a0; }
 .bc-result-text { margin: 0 0 14px; font-size: 13px; line-height: 20px; opacity: .92; }
@@ -68,7 +70,7 @@
 .bc-bottom .bc-hint { font-size: 11px; white-space: normal; line-height: 14px; max-height: 28px; }
 .bc-root.alerting .bc-paused-tag { top: calc(env(safe-area-inset-top) + 116px); }
 /* v0.4.0-dev（10/24）武器を拾った知らせ */
-.bc-toast { position: absolute; left: 50%; top: calc(env(safe-area-inset-top) + 112px); transform: translateX(-50%); padding: 7px 16px; font-size: 14px; font-weight: 800; white-space: nowrap; border: 2px solid var(--bc-ink); border-radius: 10px; background: #3a2a10e6; color: #ffd38a; text-shadow: 0 1px 0 #000; pointer-events: none; z-index: 5; }
+.bc-toast { position: absolute; left: 50%; top: calc(env(safe-area-inset-top) + 112px); transform: translateX(-50%); padding: 7px 16px; font-size: 14px; font-weight: 800; width: max-content; max-width: calc(100% - 24px); text-align: center; line-height: 1.35; border: 2px solid var(--bc-ink); border-radius: 10px; background: #3a2a10e6; color: #ffd38a; text-shadow: 0 1px 0 #000; pointer-events: none; z-index: 5; }
 .bc-toast[hidden] { display: none; }
 .bc-toast.warn { background: #4a1418e6; color: #ffb4b4; border-color: #c0444f; } /* v0.4.2 リペアキット切れ */
 .bc-toast.show { animation: bc-toast-in .18s ease-out; }
@@ -116,3 +118,29 @@
 .bc-root .bc-result-rec::before { content: ''; display: inline-block; flex: none; width: 20px; height: 20px; margin-right: 4px; vertical-align: -5px; pointer-events: none; background: url('../assets/icons/ui/rewind@24.png') center / contain no-repeat; background-image: -webkit-image-set(url('../assets/icons/ui/rewind@24.png') 1x, url('../assets/icons/ui/rewind@48.png') 2x, url('../assets/icons/ui/rewind@72.png') 3x); background-image: image-set(url('../assets/icons/ui/rewind@24.png') 1x, url('../assets/icons/ui/rewind@48.png') 2x, url('../assets/icons/ui/rewind@72.png') 3x); }
 .bc-root .bc-pick.flyer b::before { content: ''; display: inline-block; flex: none; width: 14px; height: 14px; margin-right: 4px; vertical-align: -5px; pointer-events: none; background: url('../assets/icons/ui/alt_air@24.png') center / contain no-repeat; background-image: -webkit-image-set(url('../assets/icons/ui/alt_air@24.png') 1x, url('../assets/icons/ui/alt_air@48.png') 2x, url('../assets/icons/ui/alt_air@72.png') 3x); background-image: image-set(url('../assets/icons/ui/alt_air@24.png') 1x, url('../assets/icons/ui/alt_air@48.png') 2x, url('../assets/icons/ui/alt_air@72.png') 3x); }
 .bc-root .bc-pick.amph b::before { content: ''; display: inline-block; flex: none; width: 14px; height: 14px; margin-right: 4px; vertical-align: -5px; pointer-events: none; background: url('../assets/icons/ui/alt_underwater@24.png') center / contain no-repeat; background-image: -webkit-image-set(url('../assets/icons/ui/alt_underwater@24.png') 1x, url('../assets/icons/ui/alt_underwater@48.png') 2x, url('../assets/icons/ui/alt_underwater@72.png') 3x); background-image: image-set(url('../assets/icons/ui/alt_underwater@24.png') 1x, url('../assets/icons/ui/alt_underwater@48.png') 2x, url('../assets/icons/ui/alt_underwater@72.png') 3x); }
+/* v1.0.6 ロボごとの成績とランキング（結果の画面・☰ の「今の成績」） */
+.bc-result-box { max-height: 92%; overflow-y: auto; }
+.bc-result-stats:empty { display: none; }
+.bc-result-stats { margin: 0 0 12px; }
+.bc-st { text-align: left; }
+.bc-st-title { margin: 0 0 6px; font-size: 13px; text-align: center; color: #fde68a; }
+.bc-st-sub { margin: 8px 0 4px; font-size: 12px; opacity: .85; }
+.bc-st-mvp { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.bc-st-chip { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: 4px; padding: 4px 6px; border-radius: 8px; background: #1f2937; border: 1px solid #fbbf2455; font-size: 11px; line-height: 15px; min-width: 0; }
+.bc-st-chip.none { opacity: .45; border-color: #4b5563; }
+.bc-st-chip .bc-st-ic { grid-row: span 2; font-size: 16px; align-self: center; }
+.bc-st-chip .bc-st-lab { opacity: .75; font-size: 10px; }
+.bc-st-chip .bc-st-n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bc-st-chip .bc-st-val { color: #fde68a; margin-left: 3px; }
+.bc-st-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.bc-st-row { display: grid; grid-template-columns: 30px 1fr auto; grid-template-rows: auto auto; column-gap: 4px; padding: 4px 6px; border-radius: 8px; background: #0f1520; font-size: 12px; line-height: 16px; }
+.bc-st-row.down { opacity: .6; }
+.bc-st-rank { grid-row: span 2; font-size: 16px; align-self: center; text-align: center; font-weight: 700; font-size: 13px; }
+.bc-st-who { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bc-st-who small { font-weight: 400; opacity: .75; }
+.bc-st-score { color: #fde68a; font-weight: 700; }
+.bc-st-parts { grid-column: 2 / span 2; font-size: 10.5px; opacity: .85; letter-spacing: -.2px; }
+.bc-stats { position: absolute; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; background: #000a; }
+.bc-stats[hidden] { display: none; }
+.bc-stats-box { width: min(90%, 340px); max-height: 86%; overflow-y: auto; padding: 14px 12px; border: 3px solid var(--bc-ink); border-radius: 16px; background: #141a24; color: #f3f4f6; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 6px 0 #000a; }
+.bc-st-empty { margin: 0; font-size: 13px; text-align: center; opacity: .8; }

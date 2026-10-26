@@ -1,0 +1,47 @@
+{
+ "id": "story1_found",
+ "title": "物語の最初のミッション：ミサイルを掘り出した（仮）",
+ "bg": "ruins_town",
+ "cast": {
+  "NEJI": "surprised"
+ },
+ "lines": [
+  {
+   "who": "NEJI",
+   "text": "でた！ ほんとに あった！ さびてるけど、はっしゃだいも ついてる！",
+   "face": "surprised"
+  },
+  {
+   "who": "NEJI",
+   "text": "ぼくの こしに ロープを つないだ よ。ここから は ぼくが ひっぱる。",
+   "face": "happy"
+  },
+  {
+   "who": "NEJI",
+   "text": "……おもい。いつもより ずっと おそく なる。はぐれに みつからない ように いこう。",
+   "face": "worried"
+  },
+  {
+   "exit": "NEJI"
+  },
+  {
+   "enter": "BOY",
+   "face": "serious"
+  },
+  {
+   "who": "BOY",
+   "text": "……"
+  },
+  {
+   "exit": "BOY"
+  },
+  {
+   "enter": "NEJI",
+   "face": "neutral"
+  },
+  {
+   "who": "NEJI",
+   "text": "うつ ときは ☰ の 「ミサイルを うつ」。とどく ところまで はこんでから ね。（仮）"
+  }
+ ]
+}

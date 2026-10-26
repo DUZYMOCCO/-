@@ -1,7 +1,7 @@
 // 地面の「なめらかな場」（js/render/ground-field.js）: 境が本当のマスの境から 0.5 マス以内・中心の芯・同じ地図なら同じ・1マスの島と穴の大きさ・3 つの地形が会う角
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { FIELD_ORDER, CORE, CORNER_R, BORDER_MAX, createField, bakeChunk } from '../js/render/ground-field.js?v=2';
+import { FIELD_ORDER, CORE, CORNER_R, BORDER_MAX, createField, bakeChunk } from '../js/render/ground-field.js?v=3';
 
 const KEY = { '.': 'plain', s: 'shallow', w: 'water', m: 'mountain', f: 'forest' };
 const KEYS = '.swmf';

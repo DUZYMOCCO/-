@@ -1,0 +1,25 @@
+{
+  "id": "story2_wolf",
+  "title": "塔から とびだした影",
+  "bg": "wasteland",
+  "cast": {
+    "WOLF": "serious"
+  },
+  "lines": [
+    {
+      "who": "WOLF",
+      "text": "……川の むこうへ。ここに 長く いるな。"
+    },
+    {
+      "exit": "WOLF"
+    },
+    {
+      "enter": "NEJI",
+      "face": "surprised"
+    },
+    {
+      "who": "NEJI",
+      "text": "だれ！？ アリが あの ひとを おっていく！ いまの うちに しらべよう。"
+    }
+  ]
+}

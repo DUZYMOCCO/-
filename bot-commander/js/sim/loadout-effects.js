@@ -3,8 +3,8 @@
 // 装備を選んだ機体（applyLoadout が u.loadoutFx を付けた機体）だけで動く。付けていない機体・省いた loadout では、
 // ここの関数は何も起こさない（sim.js からは「u.loadoutFx があれば呼ぶ」だけ）。
 // 1つ目の武器（u.weapon・u.wmul・u.range）のふるまいは変えない。
-import { weaponById, weaponPower, TIER_BASE } from './weapons.js?v=5';
-import { WEAPON_DROP, weaponMul, weaponOfUnit } from './cover.js?v=6';
+import { weaponById, weaponPower, TIER_BASE } from './weapons.js?v=7';
+import { WEAPON_DROP, weaponMul, weaponOfUnit } from './cover.js?v=8';
 import { canHit, altDistance, rangeVs, unitBand, BAND } from './altitude.js?v=1';
 
 // ---- 射程（マス） ----

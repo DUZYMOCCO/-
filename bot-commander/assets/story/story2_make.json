@@ -1,0 +1,65 @@
+{
+  "id": "story2_make",
+  "title": "2章 町はずれの声（仮）",
+  "bg": "hideout",
+  "cast": {
+    "NEJI": "happy"
+  },
+  "lines": [
+    {
+      "who": "NEJI",
+      "text": "ぜんぶ そろった。いくよ、キミ。せっけいずの とおりに……",
+      "face": "happy"
+    },
+    {
+      "who": "NEJI",
+      "text": "……コアを つないで。ここを まわして。",
+      "face": "neutral"
+    },
+    {
+      "enter": "PONCO02",
+      "face": "off"
+    },
+    {
+      "who": "NEJI",
+      "text": "ひかった！",
+      "face": "surprised"
+    },
+    {
+      "who": "PONCO02",
+      "text": "ポンコ02、起動。よろしく。",
+      "face": "neutral"
+    },
+    {
+      "who": "NEJI",
+      "text": "しゃべった！ しゃべったよ！ ねえ、キミ、きこえた？",
+      "face": "happy"
+    },
+    {
+      "who": "PONCO02",
+      "text": "ネジ先輩、ですか。名前を、教えてください。",
+      "face": "alert"
+    },
+    {
+      "who": "NEJI",
+      "text": "せんぱい！？ ……ぼく、せんぱい なんだ！",
+      "face": "happy"
+    },
+    {
+      "exit": "NEJI"
+    },
+    {
+      "enter": "BOY",
+      "face": "smile"
+    },
+    {
+      "who": "BOY",
+      "text": "……"
+    },
+    {
+      "who": "PONCO02",
+      "text": "少年が、笑っています。",
+      "face": "neutral"
+    }
+  ]
+}

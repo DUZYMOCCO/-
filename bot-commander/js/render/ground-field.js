@@ -171,7 +171,15 @@ export const RIM = {
  * field: createField の返り値。tex: 地形の番号 → { data: Uint8ClampedArray, size }（地形の地面を ppt*4 px 四方に縮めて tint 済み。4x4マスで1周）。
  * (cx,cy) 区画の左上のマス、(cw,ch) マス数、ppt = 1マスのpx。返り値 out(RGBA, cw*ppt x ch*ppt)
  */
+/**
+ * v1.0.3 Codex gfx5 GROUND_TILE: 地面の絵の 2つの版のどちらを使うか（0 / 1）。地面の絵は 4x4 マスで 1 枚なので、その 1 枚の区画 (bx, by) ごとに決める。
+ * 座標と地形の番号 k だけの整数ハッシュ（sim の乱数は使わない。同じ場所なら いつも同じ）。2 つの版はつなぎ目なしで並ぶように描いてある
+ */
+export function groundVariant(bx, by, k) { return hash2(bx, by, 7919 + k * 104729) < 0.5 ? 0 : 1; }
+
 export function bakeChunk(field, tex, cx, cy, cw, ch, ppt, out) {
+  // v1.0.3: tex[k].alt があれば（2つ目の版の地面）、地面の絵 1 枚ぶん（size px 四方）ごとに groundVariant で選ぶ。同じ大きさの絵
+  const texAt = (k, gx, gy) => { const t = tex[k]; return t.alt && groundVariant(Math.floor(gx / t.size), Math.floor(gy / t.size), k) ? t.alt : t; };
   const W = cw * ppt, H = ch * ppt, P = W + 2;
   const uni = new Int8Array((cw + 2) * (ch + 2));
   for (let ty = -1; ty <= ch; ty++) for (let tx = -1; tx <= cw; tx++) uni[(ty + 1) * (cw + 2) + tx + 1] = field.uniform(cx + tx, cy + ty);
@@ -226,7 +234,7 @@ export function bakeChunk(field, tex, cx, cy, cw, ch, ppt, out) {
   for (let tty = 0; tty < ch; tty++) for (let ttx = 0; ttx < cw; ttx++) {
     const un = uniAt(ttx, tty), X0 = ttx * ppt, Y0 = tty * ppt;
     if (un >= 0) {
-      const t = tex[un], gx = ((cx + ttx) * ppt) % t.size;
+      const t = texAt(un, (cx + ttx) * ppt, (cy + tty) * ppt), gx = ((cx + ttx) * ppt) % t.size; // マスは地面の絵 1 枚の中に収まる（ppt は size を割り切る）
       for (let y = Y0; y < Y0 + ppt; y++) { const gy = (cy * ppt + y) % t.size, so = (gy * t.size + gx) * 4; out.set(t.data.subarray(so, so + ppt * 4), (y * W + X0) * 4); }
       continue;
     }
@@ -234,11 +242,11 @@ export function bakeChunk(field, tex, cx, cy, cw, ch, ppt, out) {
       const i = (y + 1) * P + x + 1, o = (y * W + x) * 4, k1 = K1[i];
       if (M[i] >= 1.5) { // 境から遠い所: 同じ地形が続くかぎり、地面の行をまとめて写す（マスの中なので地面は折り返さない）
         let e = x + 1; while (e < X0 + ppt && M[i + e - x] >= 1.5 && K1[i + e - x] === k1) e++;
-        const t = tex[k1], so = (((cy * ppt + y) % t.size) * t.size + (cx * ppt + x) % t.size) * 4;
+        const t = texAt(k1, cx * ppt + x, cy * ppt + y), so = (((cy * ppt + y) % t.size) * t.size + (cx * ppt + x) % t.size) * 4;
         out.set(t.data.subarray(so, so + (e - x) * 4), o); x = e - 1; continue;
       }
       const gx = (cx * ppt + x), gy = (cy * ppt + y);
-      const t1 = tex[k1], ti = ((gy % t1.size) * t1.size + gx % t1.size) * 4;
+      const t1 = texAt(k1, gx, gy), ti = ((gy % t1.size) * t1.size + gx % t1.size) * 4;
       let r = t1.data[ti], g = t1.data[ti + 1], b = t1.data[ti + 2];
       const m = M[i];
       if (m < 1.5) {
@@ -247,7 +255,7 @@ export function bakeChunk(field, tex, cx, cy, cw, ch, ppt, out) {
         const grad = Math.max(Math.sqrt(ddx * ddx + ddy * ddy) / 2, 0.004), d = m / grad;
         const k2 = K2[i];
         if (d < 1.5) { // ぼかしすぎない線（境の上で半々、1.5px で元の地形）
-          const t2 = tex[k2], tj = ((gy % t2.size) * t2.size + gx % t2.size) * 4, al = 0.5 + 0.5 * (d / 1.5);
+          const t2 = texAt(k2, gx, gy), tj = ((gy % t2.size) * t2.size + gx % t2.size) * 4, al = 0.5 + 0.5 * (d / 1.5);
           r = r * al + t2.data[tj] * (1 - al); g = g * al + t2.data[tj + 1] * (1 - al); b = b * al + t2.data[tj + 2] * (1 - al);
         }
         let f = 1;

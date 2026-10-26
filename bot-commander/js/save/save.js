@@ -2,7 +2,7 @@
 // シム（js/sim）は記録のことを知らない。ここは画面（DOM）にも依存しない（Node のテストで動く）。
 // 武器庫の bc-armory-v1 と、拾った武器の botcommander_owned_weapons は「読むだけ」。書きかえない（v1.0.0: 「記録を消す」の時だけ、いっしょに消す）。
 // v1.0.0: チュートリアルの印（古いキー botcommander_tutorial）を bc-save-v1 の tutorial にまとめた。最初に読んだ時に 1 回だけ移して、古いキーを消す。
-import { WEAPONS } from '../sim/weapons.js?v=5';
+import { WEAPONS } from '../sim/weapons.js?v=7';
 
 export const SAVE_KEY = 'bc-save-v1';
 export const BROKEN_KEY = 'bc-save-v1-broken'; // こわれたデータは、上書きする前に元の文字列を 1 つだけここへ残す
@@ -183,13 +183,18 @@ export function createSaveStore(io = browserIo()) {
     /** 今の中身を書く。書けない時は false（ゲームは止まらず、この回の間だけ覚えている） */
     saveNow() {
       if (!cache) return false;
-      try { return io.set(SAVE_KEY, JSON.stringify(cache)) !== false; } catch { return false; }
+      let ok = false;
+      try { ok = io.set(SAVE_KEY, JSON.stringify(cache)) !== false; } catch { ok = false; }
+      store.lastSaveOk = ok; // R-07: 最後の保存の成否（画面が「保存できません」を出すのに使う）
+      return ok;
     },
-    /** ミッションの結果を記録して保存する。返り値は applyMissionResult と同じ { save, firstClear, newBest } */
+    lastSaveOk: true,
+    /** ミッションの結果を記録して保存する。返り値は applyMissionResult と同じ { save, firstClear, newBest } に、保存できたか saved を足した物（R-07。書けなかった時は false） */
     recordMissionResult(result) {
       const r = applyMissionResult(store.load(), result);
-      if (r.save !== cache) { cache = r.save; store.saveNow(); }
-      return r;
+      let saved = true;
+      if (r.save !== cache) { cache = r.save; saved = store.saveNow(); }
+      return { ...r, saved };
     },
     getMissionRecord(id) { const m = store.load().missions[id]; return m ? { ...m, best: m.best ? { ...m.best } : null } : null; },
     // --- 解放 ---
@@ -269,6 +274,8 @@ let main = null;
 const st = () => main || (main = createSaveStore());
 export const loadSave = fresh => st().load(fresh);
 export const saveNow = () => st().saveNow();
+/** R-07: 結果の画面に出す一言（保存先がいっぱい・書き込み禁止の時） */
+export const SAVE_FAIL_TEXT = 'この端末では記録を残せません（この回だけ）';
 export const recordMissionResult = r => st().recordMissionResult(r);
 export const getMissionRecord = id => st().getMissionRecord(id);
 export const isUnlocked = (type, id) => st().isUnlocked(type, id);

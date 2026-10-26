@@ -312,6 +312,16 @@
    "file": "icons/pickup-grenade.webp",
    "w": 64,
    "h": 64
+  },
+  "repair-tool": {
+   "file": "icons/pickup-repair-tool.webp",
+   "w": 64,
+   "h": 64
+  },
+  "barrier": {
+   "file": "icons/pickup-barrier.webp",
+   "w": 64,
+   "h": 64
   }
  }
 }

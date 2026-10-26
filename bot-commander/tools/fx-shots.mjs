@@ -29,7 +29,7 @@ await page.waitForTimeout(500);
 // 戦闘の用意: PONCO 8機とツギハギ4機で、いちばん近い異星生物の群れへ戦闘移動。最初の一発の少し前まで早送り
 const setup = await page.evaluate(async () => {
   const B = window.__botCommander, { sim, r } = B;
-  const S = await import('/bot-commander/js/sim/sim.js?v=13');
+  const S = await import('/bot-commander/js/sim/sim.js?v=26');
   B.setPaused(true);
   const allies = sim.units.filter(u => u.side === 'ally' && !u.human);
   const cx = allies.reduce((a, u) => a + u.x, 0) / allies.length, cy = allies.reduce((a, u) => a + u.y, 0) / allies.length;

@@ -6,7 +6,7 @@ import { Application, Container, Graphics, Sprite } from '../../vendor/pixi-8.22
 import { loadCharSheets, disposeChars } from './textures.js?v=11';
 import { CHAR_FRAMES, CHAR_FRAMES_OBLIQUE, SIT_AFTER, WAVE_SEC, heightOf, newAnim, pickSize, stepAnim, frameAt, finished } from './char-anim.js?v=8';
 import { hitReact, reactStep } from '../fx/react.js?v=2';
-import { TICK } from '../sim/sim.js?v=23';
+import { TICK } from '../sim/sim.js?v=27';
 
 /** 見られる状態。auto は「順に流す」ときの長さ（秒） */
 export const DEMO_STATES = Object.freeze([

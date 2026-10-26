@@ -1,0 +1,112 @@
+{
+  "base": "scavenger.png",
+  "canvas": [
+    768,
+    768
+  ],
+  "frames": 4,
+  "fps": 6,
+  "loop": true,
+  "riders": {
+    "BOY": "back/SCAV_BOY_{i}.png",
+    "GIRL": "back/SCAV_GIRL_{i}.png",
+    "WOLF": "back/SCAV_WOLF_{i}.png"
+  },
+  "seat_anchor": [
+    210,
+    330
+  ],
+  "rider_anchors": {
+    "BOY": {
+      "seat_anchor": [
+        210,
+        330
+      ],
+      "source_hip": [
+        335,
+        735
+      ],
+      "source_scale": 0.26,
+      "source_paste": [
+        123,
+        139
+      ],
+      "motion_center": [
+        270,
+        179
+      ],
+      "motion_radii": [
+        60,
+        25
+      ],
+      "max_motion_px": 2.2,
+      "rect": [
+        186,
+        154,
+        385,
+        444
+      ]
+    },
+    "GIRL": {
+      "seat_anchor": [
+        210,
+        330
+      ],
+      "source_hip": [
+        420,
+        825
+      ],
+      "source_scale": 0.25,
+      "source_paste": [
+        105,
+        124
+      ],
+      "motion_center": [
+        312,
+        303
+      ],
+      "motion_radii": [
+        30,
+        35
+      ],
+      "max_motion_px": 2.2,
+      "rect": [
+        185,
+        132,
+        366,
+        423
+      ]
+    },
+    "WOLF": {
+      "seat_anchor": [
+        210,
+        330
+      ],
+      "source_hip": [
+        530,
+        800
+      ],
+      "source_scale": 0.28,
+      "source_paste": [
+        62,
+        106
+      ],
+      "motion_center": [
+        96,
+        409
+      ],
+      "motion_radii": [
+        25,
+        36
+      ],
+      "max_motion_px": 2.2,
+      "rect": [
+        72,
+        163,
+        411,
+        443
+      ]
+    }
+  },
+  "note": "同じ768枠の外側の背中席。独立bobなし。体と座点は4コマ固定。髪や尾先だけ局所変形。水中不可。"
+}

@@ -1,0 +1,25 @@
+{
+ "id": "story3_broken",
+ "title": "第3章：スーツが壊れて脱げた時（仮）",
+ "bg": "ruins_town",
+ "cast": {
+  "NEJI": "surprised"
+ },
+ "lines": [
+  {
+   "who": "NEJI",
+   "text": "スーツが こわれた！ ぬげたよ！",
+   "face": "surprised"
+  },
+  {
+   "who": "NEJI",
+   "text": "いまの キミは ふつうの からだ。ぼくの うしろに かくれて！",
+   "face": "worried"
+  },
+  {
+   "who": "NEJI",
+   "text": "なおせるのは、はじめの ばしょの みどりの わ の なか か、リペアの ロボが いる とき だけ。ここには いないから、むずかしい なら やりなおした ほうが いいかも。（仮）",
+   "face": "alert"
+  }
+ ]
+}

@@ -3,10 +3,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { rasterArtSources, rideArtSources, RIDER_IDS, RIDER_FRAMES } from '../js/render/raster-art.js?v=11';
-import { riderArtKey } from '../js/render/ride-view.js?v=3';
+import { rasterArtSources, rideArtSources, RIDER_IDS, RIDER_FRAMES } from '../js/render/raster-art.js?v=14';
+import { riderArtKey } from '../js/render/ride-view.js?v=7';
 import { ALT_UNIT_LOOK } from '../js/sim/alt-units.js?v=3';
-import { RIDE_TABLE, RIDE_MODE } from '../js/sim/ride.js?v=2';
+import { RIDE_TABLE, RIDE_MODE } from '../js/sim/ride.js?v=3';
 
 const path = rel => fileURLToPath(new URL(rel, import.meta.url));
 const fileOf = url => fileURLToPath(url.split('?')[0]);
@@ -22,11 +22,11 @@ test('gfx3 背中の乗り姿: 3 人 × 4 こまの絵があり、ポンコと�
   }
 });
 
-test('gfx3 背中の乗り姿: 出すのは「ポンコの背中・乗り終わり・絵のある人」だけ（中の席は人を見せない）', () => {
+test('gfx3 背中の乗り姿: 出すのは「ポンコ（v1.0.1 からツギハギ号も）の背中・乗り終わり・絵のある人」だけ（中の席は人を見せない）', () => {
   const on = (mode, phase = 'on') => ({ kind: 'boy', ride: { mode, phase } });
   assert.equal(riderArtKey(on(RIDE_MODE.BACK), { kind: 'ponco' }, 0), 'ride_boy_0');
   assert.equal(riderArtKey(on(RIDE_MODE.BACK), { kind: 'ponco' }, 0.5), 'ride_boy_3');
-  assert.equal(riderArtKey(on(RIDE_MODE.BACK), { kind: 'scav' }, 0), null);
+  assert.equal(riderArtKey(on(RIDE_MODE.BACK), { kind: 'scav' }, 0), 'ride_scav_boy_0'); // v1.0.1 gfx4 でツギハギ号の背中の絵が入った
   assert.equal(riderArtKey(on(RIDE_MODE.BACK, 'boarding'), { kind: 'ponco' }, 0), null);
   assert.equal(riderArtKey(on(RIDE_MODE.INSIDE), { kind: 'giant' }, 0), null);
   assert.equal(riderArtKey({ kind: 'gunner', ride: { mode: RIDE_MODE.BACK, phase: 'on' } }, { kind: 'ponco' }, 0), null);

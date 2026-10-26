@@ -4,14 +4,14 @@
 //   v1.0.0: その操作を教える段まで、その操作はできない（地図の操作は game.tutorial.allows を input.js が見る・画面のボタンはここで止める）。
 //   sim の値は書きかえない（選ぶ・戦闘移動にもどす・速さ 1x は、ふだんの操作の入口 game.select / r.ui.mode / game.setSpeed を使う）。
 import { loadCss } from '../../../common/js/load-css.js';
-import { tutorialMarkStore } from '../save/save.js?v=3';
+import { tutorialMarkStore } from '../save/save.js?v=5';
 import { toTile } from '../sim/map.js?v=6';
 import { createFlow, createWatcher, saveMark, allowedOps, opOfElement } from './tutorial-flow.js?v=2';
-import { STEPS, aheadPoint, ponco, startView } from './tutorial-steps.js?v=3';
+import { STEPS, aheadPoint, ponco, startView } from './tutorial-steps.js?v=7';
 
 await loadCss(new URL('../../css/tutorial.css?v=2', import.meta.url).href); // 読み込み終わってから使えるように（import した側が待つ）
 
-export { createTutorialSim } from './tutorial-steps.js?v=3';
+export { createTutorialSim } from './tutorial-steps.js?v=7';
 
 const PAD = 6;          // 光らせる枠を、対象より外へ広げる量 px
 const GAP = 10;         // 吹き出しと光らせる所のすき間 px

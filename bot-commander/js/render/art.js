@@ -1,4 +1,4 @@
-import { rasterArtSources } from './raster-art.js?v=11';
+import { rasterArtSources } from './raster-art.js?v=14';
 
 /**
  * 琥珀の廃墟 / SD メカ。手書きSVG・暗い輪郭・2段のセル影と暖色の縁光。

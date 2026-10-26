@@ -31,7 +31,7 @@ const info = { normal: await page.evaluate(() => ({ t: window.__botCommander.sim
 // 撃ち合いの場: 町の残骸（8,45）に異星生物2体（その場から動かない）、南から PONCO 4機が撃つ。木（16,47）は無傷のまま
 info.stage = await page.evaluate(async () => {
   const B = window.__botCommander, { sim, r } = B;
-  const S = await import('/bot-commander/js/sim/sim.js?v=13');
+  const S = await import('/bot-commander/js/sim/sim.js?v=26');
   const ruins = sim.cover.find(c => c.art === 'town-ruins_v1');
   const aliens = sim.units.filter(u => u.side === 'enemy').slice(0, 2);
   aliens.forEach((a, i) => { a.x = ruins.cx - 40 + i * 80; a.y = ruins.cy + 4; a.speed = 0; a.atk = 0; a.hp = a.maxHp = 2000; });
@@ -55,7 +55,7 @@ if (process.env.DEBUG) console.log(await page.evaluate(() => { const { sim, r } 
 // 02: 壊れるまで進めて、壊れた直後から少し流す（土けむり）。落とし物が出るまで、別の木も壊す
 info.broke = await page.evaluate(async () => {
   const B = window.__botCommander, { sim } = B;
-  const S = await import('/bot-commander/js/sim/sim.js?v=13');
+  const S = await import('/bot-commander/js/sim/sim.js?v=26');
   const ruins = sim.cover.find(c => c.art === 'town-ruins_v1');
   let i = 0; for (; i < 30 * 90 && ruins.state !== 'rubble'; i++) S.stepSim(sim);
   return { steps: i, state: ruins.state, items: sim.items.map(it => it.type) };
@@ -69,8 +69,8 @@ info.final = await page.evaluate(() => { const { sim } = window.__botCommander; 
 // 03: 落ちた武器。抽選が修理キット・なしだったときは、スクショのために落とし物を武器に置きかえる（中身は rollWeapon で、PONCO が持てる物）
 info.weapon = await page.evaluate(async () => {
   const B = window.__botCommander, { sim, r } = B;
-  const C = await import('/bot-commander/js/sim/cover.js?v=2');
-  const W = await import('/bot-commander/js/sim/weapons.js?v=2');
+  const C = await import('/bot-commander/js/sim/cover.js?v=7');
+  const W = await import('/bot-commander/js/sim/weapons.js?v=7');
   localStorage.removeItem('game_studio_botcommander_owned_weapons');
   const ruins = sim.cover.find(c => c.art === 'town-ruins_v1');
   let it = sim.items.find(i => i.type === 'weapon'), forced = false;

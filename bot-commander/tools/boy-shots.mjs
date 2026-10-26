@@ -26,7 +26,7 @@ await page.waitForTimeout(500);
 
 const info = await page.evaluate(async () => {
   const B = window.__botCommander, { sim, r } = B;
-  window.__S = await import('/bot-commander/js/sim/sim.js?v=13');
+  window.__S = await import('/bot-commander/js/sim/sim.js?v=26');
   window.__R = await import('/bot-commander/js/fx/react.js?v=2');
   const u = sim.units.find(x => x.kind === 'boy'); window.__boy = u.id;
   r.cam.zoom = 4; r.cam.x = u.x; r.cam.y = u.y - 8; r.clampCam();

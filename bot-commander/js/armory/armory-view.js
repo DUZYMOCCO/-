@@ -3,15 +3,15 @@
 // お試しの画面: 持っている武器の仕組みがまだないので、選べる物は全部出す（【仮】）。選んだ装備は localStorage の bc-armory-v1 に保存する。
 import { storage } from '../../../common/js/storage.js';
 import { loadCss } from '../../../common/js/load-css.js';
-import { KINDS, UNIT_CLASSES } from '../sim/sim.js?v=23';
+import { KINDS, UNIT_CLASSES } from '../sim/sim.js?v=27';
 import { MISSION_1 } from '../sim/mission.js?v=10';
-import { WEAPON_DROP } from '../sim/cover.js?v=6';
-import { KIND_WEAPON } from '../sim/weapons.js?v=5';
-import { rangeTiles } from '../sim/loadout-effects.js?v=3';
+import { WEAPON_DROP } from '../sim/cover.js?v=8';
+import { KIND_WEAPON } from '../sim/weapons.js?v=7';
+import { rangeTiles } from '../sim/loadout-effects.js?v=5';
 import {
   buildRoster, sanitizeLoadout, normalizeEntry, emptyEntry, entryIsEmpty, slotCounts, candidates, simEffect, toggleSlot, attachIt01,
   JSON_CLASS_NAME,
-} from './loadout.js?v=4';
+} from './loadout.js?v=6';
 
 export const STORE_KEY = 'bc-armory-v1';
 const DATA_URL = new URL('../../assets/weapons/armory-data.json', import.meta.url).href;
@@ -24,6 +24,12 @@ const clsName = key => UNIT_CLASSES.find(c => c.key === key)?.name || '兵種な
 const clsMark = key => UNIT_CLASSES.find(c => c.key === key)?.mark || '・';
 /** 射程が 0 の物は、資料の range_key の読み方（roster の射程の列）で出す */
 const RANGE_ZERO = { self: '自分だけ', place: '置く場所' };
+
+/** 絵を先に読み込む（失敗・遅れは待たない）。同じ URL は 1 回だけ */
+export function preloadImages(urls, maxMs = 1200) {
+  const jobs = [...new Set(urls)].map(u => new Promise(res => { const im = new Image(); im.onload = im.onerror = () => res(); im.src = u; }));
+  return Promise.race([Promise.all(jobs), new Promise(res => setTimeout(res, maxMs))]);
+}
 
 /** 武器庫を開く。opts: { it01: &it01=1 の時 1（IT-01 を1個持っている【仮】）, onDeploy(loadout) }。返り値: { destroy() } */
 export async function openArmory(game, opts = {}) {
@@ -210,6 +216,11 @@ export async function openArmory(game, opts = {}) {
   // 地図へタップ・ドラッグを通さない（武器庫の下には、まだ何も出していない）
   for (const evn of ['pointerdown', 'pointermove', 'pointerup', 'touchstart', 'touchmove', 'touchend', 'wheel']) root.addEventListener(evn, e => e.stopPropagation(), { passive: true });
 
+  // v1.0.4 磨き: 最初の一覧に出す絵（持っている武器・標準の武器）を先に読み込んでから描く（読み込み前の「空き」に見える枠をなくす。長くても 1.2 秒で待つのをやめる）
+  await preloadImages(roster.flatMap(u => {
+    const e = entryOf(u), n = slotCounts(data, u.body, e.it01);
+    return ['weapon', 'back', 'support'].flatMap(k => Array.from({ length: n[k] }, (_, i) => byId.get(e[k][i]) || stdRow(u, k, i))).filter(r => r && r.image).map(r => imgUrl(r.image));
+  }), 1200);
   render();
   return {
     el: root, data, roster,

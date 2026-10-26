@@ -1,0 +1,25 @@
+{
+  "id": "story2_suit",
+  "title": "2章 町はずれの声（仮）",
+  "bg": "hideout",
+  "cast": {
+    "NEJI": "worried"
+  },
+  "lines": [
+    {
+      "who": "NEJI",
+      "face": "worried",
+      "text": "ぶひんを つかって、キミの スーツを なおすんだね。むり しないで。"
+    },
+    {
+      "who": "NEJI",
+      "face": "neutral",
+      "text": "ひざに モーターを つけたよ。ヘルメットの まえは、ちゃんと しめてね。"
+    },
+    {
+      "who": "NEJI",
+      "face": "happy",
+      "text": "きょうは ここまで。スーツで でかけるのは、つぎの おはなし。ぼくも いっしょだよ。"
+    }
+  ]
+}

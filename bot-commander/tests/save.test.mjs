@@ -7,9 +7,9 @@ import { fileURLToPath } from 'node:url';
 import {
   SAVE_KEY, BROKEN_KEY, START_UNLOCKED, emptySave, sanitizeSave, parseSave, isBetterBest, applyMissionResult, createSaveStore, shouldRecord,
   cleanOwned, ownedSummary, planLegacyMove, OWNED_KEY_READONLY, ARMORY_KEY_READONLY, LEGACY_TUTORIAL_KEY,
-} from '../js/save/save.js?v=3';
-import { recordsHtml, fmtClock } from '../js/save/records-view.js?v=3';
-import { WEAPONS } from '../js/sim/weapons.js?v=5';
+} from '../js/save/save.js?v=5';
+import { recordsHtml, fmtClock } from '../js/save/records-view.js?v=5';
+import { WEAPONS } from '../js/sim/weapons.js?v=7';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -235,7 +235,7 @@ test('つなぎこみ: sim は記録を知らない。index.js は結果の時�
   const sim = readFileSync(join(ROOT, 'js/sim/sim.js'), 'utf8');
   assert.doesNotMatch(sim, /bc-save|js\/save|recordMissionResult/);
   const idx = readFileSync(join(ROOT, 'js/index.js'), 'utf8');
-  assert.match(idx, /import \{ recordMissionResult, shouldRecord, tutorialMarkStore \} from '\.\/save\/save\.js\?v=\d+'/);
+  assert.match(idx, /import \{ recordMissionResult, shouldRecord, tutorialMarkStore, SAVE_FAIL_TEXT \} from '\.\/save\/save\.js\?v=\d+'/);
   assert.match(idx, /class="bc-menu-records">記録</);
   assert.match(idx, /this\.recordedSim === sim/);
   const sw = readFileSync(join(ROOT, 'sw-assets.js'), 'utf8');

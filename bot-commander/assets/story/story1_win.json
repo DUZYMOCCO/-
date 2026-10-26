@@ -2,39 +2,93 @@
  "id": "story1_win",
  "title": "物語の最初のミッション：勝った時（仮）",
  "bg": "ruins_town",
- "cast": {"NEJI": "happy", "PONCO02": "neutral"},
+ "cast": {
+  "NEJI": "happy"
+ },
  "lines": [
-  {"who": "NEJI", "face": "happy", "text": "やった！ しざい 40、ぜんぶ もちかえれた！（仮）"},
-  {"who": "NEJI", "text": "みんな ぶじ？ ポンコ！ 1・2・3！ ぜんいん いる！"},
-  {"who": "PONCO02", "face": "neutral", "text": "ポンコ02、3たい。ぜんいん ぶじ。"},
-  {"who": "NEJI", "face": "worried", "text": "……ほんとはね、ずっと ドキドキ してたんだ。てきが ちかづく たびに、からだが ぎゅっと なって。"},
-  {"exit": "NEJI"},
-  {"enter": "BOY", "face": "smile"},
-  {"who": "BOY", "text": "……"},
-  {"exit": "BOY"},
-  {"enter": "NEJI", "face": "happy"},
-  {"who": "NEJI", "text": "うん。キミも よく がんばったね。えらい えらい！"},
-  {"who": "NEJI", "face": "alert", "text": "……ん？ いま、なにか きこえなかった？"},
-  {"who": "NEJI", "face": "surprised", "text": "だれかの こえだ！ ガレキの むこうから！"},
-  {"enter": "GIRL", "face": "worried"},
-  {"who": "GIRL", "text": "だれか……！ だれか いませんかー！ ここ！ ガレキの なか！"},
-  {"who": "NEJI", "face": "surprised", "text": "ひとだ！ 人間の 子だ！"},
-  {"who": "GIRL", "face": "surprised", "text": "わっ、ほんとに ひと いた！ しかも ロボットも！"},
-  {"who": "GIRL", "face": "smile", "text": "あたし ミント！ そっちは？ なまえは？ ロボットの うしろの 子は、しゃべらないの？ だんまり？"},
-  {"who": "NEJI", "face": "worried", "text": "ぼくは ネジ。この子は しゃべらないけど、とっても いい子なんだ。"},
-  {"who": "GIRL", "face": "smug", "text": "ふふーん、わかった！ しゃべらない かわりに、かおで はなす タイプだ！"},
-  {"exit": "NEJI"},
-  {"enter": "BOY", "face": "smile"},
-  {"who": "BOY", "text": "……"},
-  {"who": "GIRL", "face": "smile", "text": "ほら ね！ ぜったい そう！"},
-  {"exit": "BOY"},
-  {"enter": "NEJI", "face": "worried"},
-  {"who": "NEJI", "face": "worried", "text": "いますぐ ガレキを どかしたいけど、しざいを はこんで みんな くたくた なんだ。"},
-  {"who": "NEJI", "text": "あした、ちゃんと たすけに くる。ぜったい！"},
-  {"who": "GIRL", "face": "sad", "text": "……うん。まってる。でも はやく きてね。ここ、ちょっと くらいの。"},
-  {"who": "NEJI", "text": "おみずと ビスケットを、すきまから わたすね。"},
-  {"who": "GIRL", "face": "smile", "text": "ビスケット！？ ネジ、だいすき！"},
-  {"who": "NEJI", "face": "happy", "text": "……だいすきって いわれた。ぼく ロボットなのに、むねが ほかほか する。"},
-  {"who": "NEJI", "face": "neutral", "text": "さあ、いったん かえって やすもう。あしたの ために ね。（仮）"}
+  {
+   "who": "NEJI",
+   "text": "あった……！ ちかしつの たなの おく。ほこりだらけの つつ！",
+   "face": "surprised"
+  },
+  {
+   "who": "NEJI",
+   "text": "ひらく よ……せっけいず だ！ ポンコ02！ ほんもの！",
+   "face": "happy"
+  },
+  {
+   "who": "NEJI",
+   "text": "1まいの かみに、からだも、うでも、コアの つなぎかたも ぜんぶ かいてある。"
+  },
+  {
+   "exit": "NEJI"
+  },
+  {
+   "enter": "BOY",
+   "face": "smile"
+  },
+  {
+   "who": "BOY",
+   "text": "……"
+  },
+  {
+   "exit": "BOY"
+  },
+  {
+   "enter": "NEJI",
+   "face": "happy"
+  },
+  {
+   "who": "NEJI",
+   "text": "キミの め、きらきら してる。ガラクタを みつけた ときの かお だ！"
+  },
+  {
+   "who": "NEJI",
+   "text": "……ほんとはね、ずっと ドキドキ してたんだ。はっしゃだいを ひっぱってる とき、うしろが こわくて。",
+   "face": "worried"
+  },
+  {
+   "who": "NEJI",
+   "text": "でも キミが せなかに いて くれたから、まっすぐ あるけた。"
+  },
+  {
+   "exit": "NEJI"
+  },
+  {
+   "enter": "BOY",
+   "face": "serious"
+  },
+  {
+   "who": "BOY",
+   "text": "……"
+  },
+  {
+   "exit": "BOY"
+  },
+  {
+   "enter": "NEJI",
+   "face": "neutral"
+  },
+  {
+   "who": "NEJI",
+   "text": "うん、わかってる。これは つかいきり。1まいで 1たい だけ。"
+  },
+  {
+   "who": "NEJI",
+   "text": "だから だいじに つくろう。キミを まもる、さいしょの なかま。"
+  },
+  {
+   "who": "NEJI",
+   "text": "ざいりょうも たりない けど……それは あした かんがえよう。",
+   "face": "happy"
+  },
+  {
+   "who": "NEJI",
+   "text": "さあ、かくれがに かえろう。おなか すいた でしょ？ ぼくは すいてない けど！"
+  },
+  {
+   "who": "NEJI",
+   "text": "……ふふ。かえったら、ごはんと おみず。それから ゆっくり ねる こと。やくそく だよ。（仮）"
+  }
  ]
 }

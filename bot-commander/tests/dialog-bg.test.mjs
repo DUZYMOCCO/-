@@ -30,10 +30,10 @@ test('背景の表: 13 の名前が、WebP のファイルと 1 対 1 で合う�
   assert.equal(isBgName('hideout'), true); assert.equal(isBgName('constructor'), false);
 });
 
-test('sw-assets: いつも読み込む一覧に入れた背景の絵は多くても 1 枚・一覧のファイルはある', () => {
+test('sw-assets: いつも読み込む一覧に入れた背景の絵は多くても 3 枚（物語の台本が使う hideout・ruins_town・第 2 章の wasteland）・一覧のファイルはある', () => {
   const src = readFileSync(path('../sw-assets.js'), 'utf8');
   const bgs = [...src.matchAll(/'(assets\/dialog\/bg\/[^']+)'/g)].map(m => m[1]);
-  assert.ok(bgs.length <= 1, `背景の絵が ${bgs.length} 枚`);
+  assert.ok(bgs.length <= 3, `背景の絵が ${bgs.length} 枚`);
   for (const f of bgs) assert.ok(existsSync(path('../' + f)), f);
   assert.match(src, /'js\/dialog\/dialog-bg\.js'/);
 });

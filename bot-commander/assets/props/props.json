@@ -1,0 +1,99 @@
+{
+ "_note": "v1.0.3 Codex gfx5 MAP_PROPS（地図の小物）。まだ本編では使わない（?enemydemo=1 の見本だけ。js/render/raster-art.js の PROP_ART）。w・h はこのフォルダの webp の大きさ（px）、anchor は足元、worldW は地図での幅（ワールド px、1 マス 32）。Codex の props.json（PNG・512 幅）を webp に合わせて直した物",
+ "rock_v1": {
+  "file": "rock_v1.webp",
+  "w": 256,
+  "h": 250,
+  "anchor": [
+   0.5,
+   0.95
+  ],
+  "worldW": 150,
+  "states": {
+   "damaged": {
+    "file": "rock_v1_damaged.webp",
+    "w": 256,
+    "h": 244,
+    "anchor": [
+     0.5,
+     0.95
+    ],
+    "worldW": 150
+   },
+   "destroyed": {
+    "file": "rock_v1_destroyed.webp",
+    "w": 256,
+    "h": 152,
+    "anchor": [
+     0.5,
+     0.95
+    ],
+    "worldW": 150
+   }
+  }
+ },
+ "tank-wreck_v1": {
+  "file": "tank-wreck_v1.webp",
+  "w": 512,
+  "h": 342,
+  "anchor": [
+   0.5,
+   0.95
+  ],
+  "worldW": 260,
+  "states": {
+   "damaged": {
+    "file": "tank-wreck_v1_damaged.webp",
+    "w": 512,
+    "h": 342,
+    "anchor": [
+     0.5,
+     0.95
+    ],
+    "worldW": 260
+   },
+   "destroyed": {
+    "file": "tank-wreck_v1_destroyed.webp",
+    "w": 512,
+    "h": 247,
+    "anchor": [
+     0.5,
+     0.95
+    ],
+    "worldW": 260
+   }
+  }
+ },
+ "jelly-plant_v1": {
+  "file": "jelly-plant_v1.webp",
+  "w": 226,
+  "h": 256,
+  "anchor": [
+   0.5,
+   0.95
+  ],
+  "worldW": 140,
+  "states": {
+   "damaged": {
+    "file": "jelly-plant_v1_damaged.webp",
+    "w": 230,
+    "h": 256,
+    "anchor": [
+     0.5,
+     0.95
+    ],
+    "worldW": 140
+   },
+   "destroyed": {
+    "file": "jelly-plant_v1_destroyed.webp",
+    "w": 256,
+    "h": 168,
+    "anchor": [
+     0.5,
+     0.95
+    ],
+    "worldW": 140
+   }
+  }
+ }
+}

@@ -2,7 +2,7 @@
 // 1機タップ・枠で囲む・同じ種類・保存した組（①②③）。選べるのは味方で、捕まっていない・AI で動いていない機体だけ。
 
 // AI で動く味方（5-5。aiAlly）はプレイヤーが選べない
-const selectable = u => u.side === 'ally' && u.captured == null && !u.aiAlly && !u.ride; // 乗っている人（背中・中）は選べない（ロボを選んで降りる）
+const selectable = u => u.side === 'ally' && u.captured == null && !u.aiAlly && !u.ride && !u.object; // 物（発射台）も選べない // 乗っている人（背中・中）は選べない（ロボを選んで降りる）
 
 /** ワールド座標 (x,y) に一番近い味方（reach 以内）。見た目の中心は足元より少し上（dy） */
 export function allyAt(units, x, y, reach, dy = 12) {

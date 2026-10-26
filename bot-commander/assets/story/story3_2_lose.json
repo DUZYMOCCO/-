@@ -1,0 +1,30 @@
+{
+ "id": "story3_2_lose",
+ "title": "第3章 3-2 最初のひとり：負けた時（仮）",
+ "bg": "ruins_town",
+ "cast": {
+  "NEJI": "damaged"
+ },
+ "lines": [
+  {
+   "who": "NEJI",
+   "text": "……ごめん。あの こ、まもれなかった。",
+   "face": "damaged"
+  },
+  {
+   "who": "NEJI",
+   "text": "つかまった ひとは、すに はこばれる。すに ついたら、もう ぼくたち だけじゃ……",
+   "face": "sad"
+  },
+  {
+   "who": "NEJI",
+   "text": "……もしもの はなし。もう いちど。こんどは、はこんでる てきを ねらって。",
+   "face": "neutral"
+  },
+  {
+   "who": "NEJI",
+   "text": "はこぶ てきは おそい。キミの スーツなら、おいつける！（仮）",
+   "face": "alert"
+  }
+ ]
+}

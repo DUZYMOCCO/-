@@ -10,14 +10,15 @@ const read = p => readFileSync(join(ROOT, p), 'utf8');
 const index = read('js/index.js');
 
 test('index.js: シムの 1 step は記録・再生をはさむ関数を通る（生の stepSim は記録なしのお試しだけ）', () => {
-  assert.match(index, /const step = this\.player \? \(\) => this\.player\.step\(\) : this\.rec \? \(\) => this\.rec\.step\(\) : \(\) => stepSim\(sim\)/);
+  assert.match(index, /const step0 = this\.player \? \(\) => this\.player\.step\(\) : this\.rec \? \(\) => this\.rec\.step\(\) : \(\) => stepSim\(sim\)/); // v1.0.6: 成績を数える step がこれを包む
+  assert.match(index, /const step = \(\) => \{ step0\(\); unitStats\.observe\(sim\); \}/);
   assert.match(index, /while \(st\.acc >= TICK && n < 10\) \{ step\(\)/);
   assert.equal((index.match(/stepSim\(sim\)/g) || []).length, 1, 'stepSim(sim) は step の定義の 1 か所だけ');
 });
 
 test('index.js: 一時停止中の命令は applyNow（記録つき）を通り、applyCommandsNow を直接呼ぶのはそこだけ', () => {
   assert.equal((index.match(/applyCommandsNow\(sim\)/g) || []).length, 1);
-  assert.equal((index.match(/this\.applyNow\(sim\)/g) || []).length, 2); // onOrder と onAction
+  assert.equal((index.match(/this\.applyNow\(sim\)/g) || []).length, 3); // onOrder と onAction と、v1.0.2 物語の ☰ のボタン（story-ops.js へ渡す）
   assert.match(index, /applyNow\(sim\) \{ if \(this\.player\) return; if \(this\.rec\) this\.rec\.applyNow\(\); else applyCommandsNow\(sim\); \}/);
 });
 

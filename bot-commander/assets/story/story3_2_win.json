@@ -1,0 +1,100 @@
+{
+ "id": "story3_2_win",
+ "title": "第3章 3-2 最初のひとり：勝った時（仮）",
+ "bg": "ruins_town",
+ "cast": {
+  "NEJI": "surprised",
+  "GIRL": "smile"
+ },
+ "lines": [
+  {
+   "who": "GIRL",
+   "text": "たすけてくれて、ありがとう！ わたし、ここで さんにち、ひとりで しゃべってたんだよ！",
+   "face": "smile"
+  },
+  {
+   "who": "NEJI",
+   "text": "さんにち！？ ひとりで！？",
+   "face": "surprised"
+  },
+  {
+   "who": "GIRL",
+   "text": "すごい でしょ？ ひとりごとの じょうず さ、じしん あるんだ。",
+   "face": "smug"
+  },
+  {
+   "who": "NEJI",
+   "text": "……それは、ちょっと、しんぱい だなあ。",
+   "face": "worried"
+  },
+  {
+   "exit": "NEJI"
+  },
+  {
+   "who": "GIRL",
+   "text": "あ、きみが たすけて くれたの？ なに、はなさないの？",
+   "face": "surprised"
+  },
+  {
+   "who": "GIRL",
+   "text": "ふーん。じゃあ、わたしが ふたりぶん はなすね！",
+   "face": "smile"
+  },
+  {
+   "who": "GIRL",
+   "text": "……って、ちょっと、きいてる？",
+   "face": "angry"
+  },
+  {
+   "enter": "NEJI",
+   "face": "neutral"
+  },
+  {
+   "who": "NEJI",
+   "text": "……あのね。「わかった」って かお、してたよ。",
+   "face": "happy"
+  },
+  {
+   "who": "GIRL",
+   "text": "ほんと！？ ……ふふ。ちょっと うれしい。",
+   "face": "smile"
+  },
+  {
+   "who": "NEJI",
+   "text": "……ね、キミ。もし、ぼくの からだが こわれても、キミは にげてね。やくそく。",
+   "face": "worried"
+  },
+  {
+   "exit": "NEJI"
+  },
+  {
+   "who": "GIRL",
+   "text": "あれ……あの おおかみ、ずっと こっち みてる。",
+   "face": "surprised"
+  },
+  {
+   "exit": "GIRL"
+  },
+  {
+   "enter": "WOLF",
+   "face": "serious"
+  },
+  {
+   "who": "WOLF",
+   "text": "……",
+   "face": "serious"
+  },
+  {
+   "exit": "WOLF"
+  },
+  {
+   "enter": "GIRL",
+   "face": "smile"
+  },
+  {
+   "who": "GIRL",
+   "text": "ついて くる みたい。ミントの うしろに、ずっと。いい ひと、かも！（仮）",
+   "face": "smile"
+  }
+ ]
+}

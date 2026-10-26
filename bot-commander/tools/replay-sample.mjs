@@ -1,9 +1,9 @@
 // 決まった遊び方（動いている時と一時停止中の命令を混ぜる）を記録して、記録の JSON を書き出す。見本・確かめ用。
 //   node tools/replay-sample.mjs <出力.json> [seed=1] [tick=3000]
 import { writeFileSync } from 'node:fs';
-import { createSim, issueOrder, issueStance, issueStop, issueRetreat, issueAttack } from '../js/sim/sim.js?v=23';
+import { createSim, issueOrder, issueStance, issueStop, issueRetreat, issueAttack } from '../js/sim/sim.js?v=27';
 import { MISSION_1 } from '../js/sim/mission.js?v=10';
-import { createRecorder, makeStart, stringifyReplay } from '../js/sim/replay.js?v=3';
+import { createRecorder, makeStart, stringifyReplay } from '../js/sim/replay.js?v=9';
 
 const [outFile, seedArg = '1', tickArg = '3000'] = process.argv.slice(2);
 if (!outFile) { console.log('使い方: node tools/replay-sample.mjs <出力.json> [seed] [tick]'); process.exit(2); }

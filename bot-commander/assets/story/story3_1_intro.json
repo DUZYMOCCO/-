@@ -1,0 +1,63 @@
+{
+ "id": "story3_1_intro",
+ "title": "第3章 3-1 スーツの はつじん：出撃前（仮）",
+ "bg": "ruins_town",
+ "cast": {
+  "NEJI": "worried",
+  "PONCO02": "neutral"
+ },
+ "lines": [
+  {
+   "who": "NEJI",
+   "face": "worried",
+   "text": "キミが サバイバルスーツを かいぞうして つくった、スーツ A。ぶひん、ちゃんと ついたね。"
+  },
+  {
+   "who": "NEJI",
+   "text": "ほんとに それで いくんだね。ぼくの せなか、まだ あいてるよ？",
+   "face": "worried"
+  },
+  {
+   "who": "PONCO02",
+   "text": "スーツ、起動確認。少年、姿勢が良いです。",
+   "face": "neutral"
+  },
+  {
+   "who": "NEJI",
+   "text": "……かっこいい、かも。ちょっとだけ ね！",
+   "face": "happy"
+  },
+  {
+   "who": "NEJI",
+   "text": "☰の なかに 「きる」と「ぬぐ」が ある。ぬいでから ぼくの せなかに のってね。",
+   "face": "alert"
+  },
+  {
+   "who": "NEJI",
+   "text": "ぬげたら すぐ ぼくの うしろに！ スーツは なおせる けど、キミの からだは なおせない！",
+   "face": "worried"
+  },
+  {
+   "who": "NEJI",
+   "text": "なおせる のは、はじめの ばしょの みどりの わ の なか だけ。いまは リペアの ロボは いないよ。",
+   "face": "alert"
+  },
+  {
+   "exit": "NEJI"
+  },
+  {
+   "who": "PONCO02",
+   "text": "前方に反応。少年、撃てます。ネジは 戦えません。わたしと 少年で 1たいずつ。",
+   "face": "alert"
+  },
+  {
+   "enter": "NEJI",
+   "face": "alert"
+  },
+  {
+   "who": "NEJI",
+   "text": "てきを タップして ねらってね。いこう、となりまちの もんまで！（仮）",
+   "face": "alert"
+  }
+ ]
+}

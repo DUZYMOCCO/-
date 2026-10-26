@@ -59,7 +59,7 @@ const SCENE = `(() => {
 // 1) 盾が受けた瞬間
 info.block = await page.evaluate(async ([setup, scene]) => {
   const B = window.__botCommander, { sim } = B; eval(setup); const { me, e } = eval(scene);
-  const S = await import('/bot-commander/js/sim/sim.js?v=17');
+  const S = await import('/bot-commander/js/sim/sim.js?v=26');
   for (let k = 0; k < 4; k++) S.stepSim(sim);
   me.shieldHp = me.shieldMax * 0.75;
   let hit = null;
@@ -79,7 +79,7 @@ await page.waitForFunction(() => window.__botCommander?.ready, null, { timeout: 
 await page.waitForTimeout(800);
 info.broken = await page.evaluate(async ([setup, scene]) => {
   const B = window.__botCommander, { sim } = B; eval(setup); const { me, e } = eval(scene);
-  const S = await import('/bot-commander/js/sim/sim.js?v=17');
+  const S = await import('/bot-commander/js/sim/sim.js?v=26');
   for (let k = 0; k < 4; k++) S.stepSim(sim);
   me.shieldHp = 2; // 次に受けたら壊れる
   let br = null;
@@ -101,7 +101,7 @@ await page.waitForFunction(() => window.__botCommander?.ready, null, { timeout: 
 await page.waitForTimeout(800);
 info.guard = await page.evaluate(async ([setup, scene]) => {
   const B = window.__botCommander, { sim } = B; eval(setup); const { me, e } = eval(scene);
-  const S = await import('/bot-commander/js/sim/sim.js?v=17');
+  const S = await import('/bot-commander/js/sim/sim.js?v=26');
   for (let k = 0; k < 4; k++) S.stepSim(sim);
   me.atk = 12; // 本当なら撃てる
   S.issueRetreat(sim, [me.id]); S.applyCommandsNow(sim);

@@ -2,12 +2,12 @@
 // ロボが壊れたら降ろされる、背中と中の撃たれ方、捕まり方、だれも乗らない時は何も変わらないこと。画面は使わない。
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import * as S from '../js/sim/sim.js?v=23';
+import * as S from '../js/sim/sim.js?v=27';
 import * as M from '../js/sim/mission.js?v=10';
-import * as R from '../js/sim/ride.js?v=2';
-import { createRideDemoSim, addDemoWolf } from '../js/sim/ride-demo.js?v=3';
+import * as R from '../js/sim/ride.js?v=3';
+import { createRideDemoSim, addDemoWolf } from '../js/sim/ride-demo.js?v=7';
 import { ALT, ALT_TEST_UNITS } from '../js/sim/altitude.js?v=1';
-import { selectKind, pruneSelection, allyAt } from '../js/sim/select.js?v=10';
+import { selectKind, pruneSelection, allyAt } from '../js/sim/select.js?v=11';
 import { toTile, passable, T } from '../js/sim/map.js?v=6';
 
 const demo = () => createRideDemoSim({ seed: 1 });

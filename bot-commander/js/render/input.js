@@ -5,8 +5,8 @@
 //   ドラッグはどこでも画面移動、2本指でズーム。
 //   hooks.allow(op) が false の操作はしない（v1.0.0: チュートリアルで、教える段までしめす。op は tutorial-flow.js の ALL_OPS）
 import { toTile } from '../sim/map.js?v=6';
-import { issueOrder, issueAttack } from '../sim/sim.js?v=23';
-import { allyAt, enemyAt, unitsInRect, selectKind, tapSelect } from '../sim/select.js?v=10';
+import { issueOrder, issueAttack } from '../sim/sim.js?v=27';
+import { allyAt, enemyAt, unitsInRect, selectKind, tapSelect } from '../sim/select.js?v=11';
 
 const TAP_SLOP = 10;   // これより指が動いたらタップではなくドラッグ（画面移動）
 const LONG_MS = 420;   // 長押しの長さ（仮）

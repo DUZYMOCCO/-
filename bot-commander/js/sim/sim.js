@@ -28,15 +28,21 @@ import { ALT_KINDS, ALT_SUBMERGED_WEAPON } from './alt-units.js?v=3'; // 飛ぶ�
 import { canHit, coverApplies, terrainDefApplies, altDistance, rangeVs, settleZ, DEFAULT_MOVES } from './altitude.js?v=1';
 import { reaches, groupReaches } from './targeting.js?v=2'; // 敵の群れが追う相手を「届くか」で選ぶ（両方地上なら今までと同じ）
 import { stepFuel, isRefueling } from './fuel.js?v=1'; // 飛ぶ機体の燃料（FUEL_TABLE にある種類だけ。本編の機体には何もしない）
+import { initStory3, stepStory3, checkStory3Result, story3HashValues, story3Status } from './story3-sim.js?v=1'; // 第 3 章（?storych=3）のミッション 3-1・3-2 の仕掛け。sim.story3 がなければ何もしない
+import { initStrike, stepStrike, applyStrikeCommand, STRIKE_COMMANDS, strikeHashValues, strikeStatus } from './strike.js?v=1'; // 物語の最初のミッション（v1.0.2）: ミサイル・発射台・調べる。sim.strike がなければ何もしない
+import { NEW_ENEMY_KINDS, newEnemiesMission, initNewEnemies, stepNewEnemies, newEnemiesHashValues } from './new-enemies.js?v=2'; // 新しい敵 14 種（?newenemies=1 の試作）。createSim({ newEnemies: true }) でなければ何もしない
+import { initStory2, stepStory2, checkStory2Result, story2Status, story2HashValues, story2PatrolTarget } from './story2-rules.js?v=1'; // 物語 第 2 章（?storych=2 の試作）: ミッションに story2 がある時だけ動く。ロウ（wolf）は KINDS に隠して足す
 import { SHIELD_TABLE } from './shield-table.js?v=2'; // 機体ごとの盾と体の表（v0.4.12-dev）。createSim({ shieldTable }) で差しかえられる
 import { FogGrid } from './fog.js?v=5';
 import { ALERT, GATHER_RADIUS, EXTRACT_RADIUS, FIND, CAPTURE, LEASH } from './mission.js?v=10';
-import { weaponById, KIND_WEAPON } from './weapons.js?v=5';
+import { weaponById, KIND_WEAPON } from './weapons.js?v=7';
 import { classify, hitReact, reactStep } from '../fx/react.js?v=2';
-import { COVER, COVER_LAYOUT, DROPS, ITEMS, PICKUP, createCover, findCover, damageCover, rollDrop, canPickUp, applyItem, atkOf, gearTier, rollWeapon } from './cover.js?v=6';
-import { applyLoadout } from '../armory/loadout.js?v=4'; // 武器庫の装備を出撃の時に機体へ反映（省いた・空なら何もしない）
-import { pickShot, healByLoadout, withLoadoutShield } from './loadout-effects.js?v=3'; // 武器庫の装備の効き目（u.loadoutFx のある機体だけ。ない機体では何も起こらない）
-import { stepRide, onHostHit, cannotBeCaptured, riderCannotShoot } from './ride.js?v=2'; // 人間がロボの背中・中に乗る（js/sim/ride.js）。だれも乗らない時（sim.ride なし）は何もしない
+import { COVER, COVER_LAYOUT, DROPS, ITEMS, PICKUP, createCover, findCover, damageCover, rollDrop, canPickUp, applyItem, atkOf, gearTier, rollWeapon } from './cover.js?v=8';
+import { applyLoadout } from '../armory/loadout.js?v=6'; // 武器庫の装備を出撃の時に機体へ反映（省いた・空なら何もしない）
+import { pickShot, healByLoadout, withLoadoutShield } from './loadout-effects.js?v=5'; // 武器庫の装備の効き目（u.loadoutFx のある機体だけ。ない機体では何も起こらない）
+import { LAUNCHER_KINDS, bindLauncher, createLauncherState, applyLauncherCommand, stepLauncher, hashLauncher } from './launcher.js?v=3'; // 発射台（?launcher=1 の試作）。sim.launcher が無ければ何もしない
+import { initPowersuit, stepPowersuit, applyPowersuitCommand, breakSuit, isSuitSafe, powersuitHashValues, POWERSUIT_COMMANDS } from './powersuit.js?v=1'; // パワードスーツ（?powersuit=1 のお試し）。sim.powersuit がなければ何もしない・乱数も引かない
+import { stepRide, onHostHit, cannotBeCaptured, riderCannotShoot, issueBoard, issueAlight, RIDE_MODE } from './ride.js?v=3'; // 人間がロボの背中・中に乗る（js/sim/ride.js）。だれも乗らない時（sim.ride なし）は何もしない
 
 export const TICK = 1 / 30;          // 1ステップ＝1/30秒
 export const SEARCH_BUDGET = 250;    // 1機1ステップで広げる A* ノード数
@@ -119,12 +125,17 @@ export const KINDS = Object.freeze({
   girl: { name: '少女', short: '少女', hp: 30, atk: 0, range: 0, cooldown: 1, speed: 30, sight: 4.5, gather: 0.2, noFight: true, human: true },
   // v0.4.0-dev 巨大機（ラストタイタン・ZA-25 などの代わりの仮の数値。絵はまだない。ミッションには出していない）
   giant: { name: '巨大機（仮）', short: '巨大機', hp: 900, atk: 40, range: 128, cooldown: 1.6, speed: 12, sight: 5, gather: 0, giant: true },
+  // v1.0.2 物語の発射台（掘り出したミサイルの台）。動かない物（object）: 盾・キットなし・ロボの枠に数えない・選べない。ネジがひっぱって動かす（strike.js）
+  launcher: { name: 'ミサイル発射台', short: '発射台', hp: 150, atk: 0, range: 0, cooldown: 1, speed: 0, sight: 2, gather: 0, noFight: true, object: true },
   ...ALT_KINDS, // flyer（飛ぶ機体）・amph（水陸両用機）: js/sim/alt-units.js
-});
+}); // 新しい敵 14 種（js/sim/new-enemies.js の NEW_ENEMY_KINDS）は KINDS には足さない。?newenemies=1（createSim({ newEnemies: true })）の時だけ、そのシムの sim.neKinds に入れて引く（kindOf）
+/** 種類の数値を引く。KINDS → 新しい敵（そのシムが ?newenemies=1 の時だけ）の順 */
+const kindOf = (sim, kind) => KINDS[kind] || sim?.neKinds?.[kind];
 export const isHuman = kind => !!KINDS[kind]?.human;
 export const isGiant = kind => !!KINDS[kind]?.giant;
 /** その機体がロボットの枠をいくつ使うか。巨大機も1枠（決定 09:23）。人間は別枠なので 0 */
-export const slotCost = kind => (isHuman(kind) ? 0 : 1);
+export const isObject = kind => !!KINDS[kind]?.object;
+export const slotCost = kind => (isHuman(kind) || isObject(kind) ? 0 : 1); // 発射台（物）も 0
 
 // 従来の撃ち合い（ミッションなし）の配置。count 機を1マスずつ散らして置く
 export const UNIT_SETUP = Object.freeze({
@@ -144,7 +155,9 @@ export const UNIT_SETUP = Object.freeze({
 // mapEdit: 生成したマップを書き換える関数（テスト・お試し用。高さのお試しの池など）。本編では使わない
 // loadout: 武器庫で選んだ装備 { 機体の名前: entry }（armory/loadout.js の applyLoadout）。省く・空なら今までと1つも変わらない
 // shieldTable: 機体ごとの盾と体の表（shield-table.js の形）。省くと SHIELD_TABLE。SHIELD_TABLE_V0411 を渡すと v0.4.11 までの結果に戻る
-export function createSim({ seed = 1, mapSeed = 7, setup = UNIT_SETUP, mission = null, cover, mapEdit = null, loadout = null, shieldTable = SHIELD_TABLE } = {}) {
+// newEnemies: true なら、ミッションの異星生物を新しい敵 14 種（js/sim/new-enemies.js）に入れ替える（?newenemies=1）。省く・false なら今までと1つも変わらない
+export function createSim({ seed = 1, mapSeed = 7, setup = UNIT_SETUP, mission = null, cover, mapEdit = null, loadout = null, shieldTable = SHIELD_TABLE, launcher = false, powersuit = false, newEnemies = false } = {}) {
+  if (mission && newEnemies && !mission.ownAliens) mission = newEnemiesMission(mission); // ownAliens: 物語 2 章は自分で敵を決める（入れ替えない）
   const map = generateMap(mapSeed);
   if (mapEdit) mapEdit(map);
   const sim = {
@@ -152,13 +165,14 @@ export function createSim({ seed = 1, mapSeed = 7, setup = UNIT_SETUP, mission =
     fog: new FogGrid(map.w, map.h),
     units: [], groups: [], commands: [], fx: [], result: null, resultReason: null, nextId: 1,
     mission: null, benched: [], shieldTable,
+    ...(newEnemies || mission?.story2 ? { neKinds: NEW_ENEMY_KINDS } : {}), // ?newenemies=1 の時だけ、新しい敵 14 種をこのシムの種類の表に足す（ふつうは作らない。第 2 章のミッションも新しい敵を使うので入れる）
     cover: createCover(cover ?? (mission ? COVER_LAYOUT : [])), items: [], nextItemId: 1, loot: [], // loot: このミッションで拾った武器の id（拾った順）
   };
   if (mission) {
     sim.mission = createMissionState(map, mission);
     setup = {
       ally: mission.ally,
-      enemy: mission.aliens.map(a => ({ ...a, role: 'patrol', tx: a.route[0].tx, ty: a.route[0].ty })),
+      enemy: mission.aliens.map(a => ({ ...a, role: a.role || 'patrol', tx: a.tx ?? a.route[0].tx, ty: a.ty ?? a.route[0].ty })),
     };
   }
   for (const def of setup.ally) {
@@ -171,7 +185,13 @@ export function createSim({ seed = 1, mapSeed = 7, setup = UNIT_SETUP, mission =
     }
   }
   setup.enemy.forEach((def, i) => spawnGroup(sim, def, i));
-  if (loadout) applyLoadout(sim, loadout);
+  if (newEnemies || mission?.story2) sim.ne = initNewEnemies(sim); // 新しい敵の状態（地雷など）と装甲
+  if (loadout && !mission?.story2) applyLoadout(sim, loadout);
+  if (mission?.survey) initStrike(sim, mission); // 物語の最初のミッション（v1.0.2）だけ
+  if (launcher && sim.mission) sim.launcher = createLauncherState(); // 発射台（?launcher=1）。省く・false なら sim.launcher は作らない＝今までと1つも変わらない
+  if (powersuit || mission?.suit) initPowersuit(sim); // ?powersuit=1（と、第 3 章のミッション）: 持ち主（少年）に殻が 1 着。ふつうは何もしない
+  if (mission?.story3) initStory3(sim, mission); // 第 3 章（?storych=3）だけ
+  if (mission?.story2) initStory2(sim, mission); // 物語 第 2 章（?storych=2）だけ
   updateFog(sim);
   return sim;
 }
@@ -208,15 +228,15 @@ export function spreadTiles(map, tx, ty, n, radius = 4, moves) {
 }
 
 function makeUnit(sim, side, kind, tile, extra = {}) {
-  const k = KINDS[kind];
+  const k = KINDS[kind] || LAUNCHER_KINDS[kind] || sim.neKinds?.[kind]; // 新しい敵は ?newenemies=1 のシムだけ（sim.neKinds）。 発射台（?launcher=1）は KINDS には入れない（機体の表の数を変えない）
   const sr = side === 'ally' && !k.human ? sim.shieldTable?.[kind] : null; // 機体ごとの盾と体の表の行（なければ既定）
-  const hp0 = sr?.hp ?? k.hp, shield0 = side === 'ally' && !k.human ? Math.round(hp0 * (sr?.shieldFrac ?? SHIELD_HP_FRAC)) : 0;
+  const hp0 = sr?.hp ?? k.hp, shield0 = side === 'ally' && !k.human && !k.object ? Math.round(hp0 * (sr?.shieldFrac ?? SHIELD_HP_FRAC)) : 0;
   return {
     id: sim.nextId++, side, kind, label: extra.label || null, human: !!k.human, groupId: extra.groupId ?? null,
     x: tileCenter(tile.tx), y: tileCenter(tile.ty), hp: hp0, maxHp: hp0, atk: k.atk, range: k.range,
     cooldown: k.cooldown, cd: (extra.cd || 0) % k.cooldown, speed: k.speed, sight: k.sight,
     facing: side === 'ally' ? 1 : -1, moving: false, targetId: null, lastHit: -99,
-    kits: side === 'ally' && !k.human ? START_REPAIR_KITS : 0, // リペアキットの数（v0.4.2）
+    kits: side === 'ally' && !k.human && !k.object ? START_REPAIR_KITS : 0, // リペアキットの数（v0.4.2）
     shieldMax: shield0, // シールド（v0.4.4）。shieldHp 0＝壊れている。耐久は機体の表（v0.4.12-dev）
     shieldHp: shield0,
     shieldBlock: sr?.blockChance ?? SHIELD_BLOCK_CHANCE, shieldWear: sr?.wearMult ?? 1, armor: sr?.armor ?? 0, // 受ける確率・すり減り・体の装甲（機体の表。shieldStats と updateCombat が読む）
@@ -224,6 +244,7 @@ function makeUnit(sim, side, kind, tile, extra = {}) {
     order: null, engaged: false, stance: extra.stance || 'hold', anchor: null, cargo: 0, gathering: null, speedMul: 1,
     captured: null, carrying: null, aiAlly: !!extra.aiAlly, home: { tx: tile.tx, ty: tile.ty },
     z: extra.z ?? k.z ?? 0, moves: extra.moves || k.moves || DEFAULT_MOVES, // 高さ（altitude.js）。今の機体はみな 0・地上だけ
+    ...(k.object ? { object: true } : {}), // 物（発射台）だけ
   };
 }
 
@@ -245,12 +266,12 @@ export function canDeploy(sim, kind, { aiAlly = false } = {}) {
 
 /** 味方を1機出す。上限を超えるなら null（出さない）。aiAlly: true は AI で動く味方（枠に数えない・プレイヤーは選べない） */
 export function deployUnit(sim, kind, tile, { label = null, cd = 0, aiAlly = false, cls = null, z, moves } = {}) {
-  if (!KINDS[kind] || !canDeploy(sim, kind, { aiAlly })) return null;
+  if (!(KINDS[kind] || LAUNCHER_KINDS[kind]) || !canDeploy(sim, kind, { aiAlly })) return null;
   const t = nearestPassable(sim.map, tile.tx, tile.ty, moves) || tile;
   const u = makeUnit(sim, 'ally', kind, t, { cd, stance: sim.mission && !aiAlly ? 'hold' : 'free', aiAlly, cls, z, moves });
   if (u.moves !== DEFAULT_MOVES) u.z = settleZ(u, TERRAIN[tileAt(sim.map, t.tx, t.ty)].key);
   const same = sim.units.filter(v => v.side === 'ally' && v.kind === kind).length;
-  u.label = label || (KINDS[kind].human ? KINDS[kind].short : `${KINDS[kind].short}${same + 1}`);
+  u.label = label || ((KINDS[kind] || LAUNCHER_KINDS[kind]).human ? KINDS[kind].short : `${(KINDS[kind] || LAUNCHER_KINDS[kind]).short}${same + 1}`);
   if (aiAlly && !label) u.label = `仲間の${u.label}`;
   sim.units.push(u);
   return u;
@@ -258,19 +279,19 @@ export function deployUnit(sim, kind, tile, { label = null, cd = 0, aiAlly = fal
 
 function spawnGroup(sim, def, index) {
   const g = {
-    id: `e${index + 1}`, side: 'enemy', name: def.name, kind: def.kind, role: def.role || null, unitIds: [],
+    id: `e${index + 1}`, side: 'enemy', name: def.name, kind: def.kind ?? def.kinds?.[0], role: def.role || null, unitIds: [],
     aiTimer: index * 1.3, speedMul: 1,
   };
   if (g.role === 'patrol') {
     g.route = def.route.map(w => nearestPassable(sim.map, w.tx, w.ty));
     Object.assign(g, { routeIdx: 0, ai: 'patrol', alert: 0, lostTimer: 0, targetId: null, lastSeen: null, provokedBy: null });
   }
-  const n = Math.max(1, def.count ?? 4);
+  const n = def.kinds ? def.kinds.length : Math.max(1, def.count ?? 4); // kinds: 1体ずつ種類がちがう群れ（新しい敵）
   const spots = spreadTiles(sim.map, def.tx, def.ty, n, 4, def.moves);
   for (let j = 0; j < n; j++) {
-    const u = makeUnit(sim, 'enemy', def.kind, spots[j], { groupId: g.id, cd: j * 0.2, stance: g.role === 'patrol' ? 'hold' : 'free', z: def.z, moves: def.moves });
+    const u = makeUnit(sim, 'enemy', def.kinds ? def.kinds[j] : def.kind, spots[j], { groupId: g.id, cd: j * 0.2, stance: g.role === 'patrol' ? 'hold' : 'free', z: def.z, moves: def.moves });
     if (u.moves !== DEFAULT_MOVES) u.z = settleZ(u, TERRAIN[tileAt(sim.map, spots[j].tx, spots[j].ty)].key);
-    u.label = def.name;
+    u.label = def.kinds ? kindOf(sim, u.kind).name : def.name;
     sim.units.push(u); g.unitIds.push(u.id);
   }
   sim.groups.push(g);
@@ -416,7 +437,7 @@ function moveToward(sim, u, tx, ty, speedMul, dt) {
 }
 
 /** 走っている間は撃たない・止まらない機体（急行・撤退中、戦わない機体の移動中） */
-export const isPassive = u => !!u.order && (u.order.mode !== 'fight' || !!KINDS[u.kind]?.noFight);
+export const isPassive = u => !!u.order && (u.order.mode !== 'fight' || (!!KINDS[u.kind]?.noFight && !u.suitOn)); // スーツを着ている人間は戦闘移動で撃てる
 
 function updateUnitMovement(sim, u, dt) {
   if (u.captured != null || isStunned(u) || isRefueling(u)) { u.moving = false; return; } // 燃料をためている飛ぶ機体は動けない
@@ -454,13 +475,13 @@ function updateUnitMovement(sim, u, dt) {
       if (wp && p.tx === wp.tx && p.ty === wp.ty) ord.wpIndex++;
       if (ord.pathIdx >= ord.planned.length && ord.planIndex >= ord.waypoints.length) { u.order = null; u.anchor = { x: u.x, y: u.y }; }
     }
-  } else if (!ord && !u.engaged && u.stance === 'free' && !KINDS[u.kind]?.noFight && u.atk > 0) {
+  } else if (!ord && !u.engaged && u.stance === 'free' && (!KINDS[u.kind]?.noFight || u.suitOn) && u.atk > 0) {
     // 迎撃: 視界に入った敵へ自分から近づく。ミッションでは最後に止まった場所から LEASH マスまで
     const a = u.anchor || (u.anchor = { x: u.x, y: u.y });
     const leash = sim.mission ? LEASH * TILE : Infinity;
     let near = null, nd = u.sight * TILE;
     for (const e of sim.units) {
-      if (e.side === u.side || (u.side === 'enemy' && e.human)) continue;
+      if (e.side === u.side || (u.side === 'enemy' && e.human && !e.suitOn)) continue;
       if (!canHit(u, e, unitWeaponInfo(u)?.row)) continue; // 届かない帯の相手（地上の近接 → 空など）には寄らない
       const d = Math.hypot(e.x - u.x, e.y - u.y);
       if (d < nd && Math.hypot(e.x - a.x, e.y - a.y) <= leash + u.range) { nd = d; near = e; }
@@ -503,7 +524,7 @@ function updateCombat(sim, dt) {
     if (want && canHit(u, want, wrow) && altDistance(u, want) <= rangeVs(u, want, u.range)) best = want;
     else for (const e of sim.units) {
       if (e.side === u.side || e.hp <= 0) continue;
-      if (u.side === 'enemy' && e.human) continue; // 人間は撃たない（捕まえる）
+      if (u.side === 'enemy' && e.human && !e.suitOn) continue; // 人間は撃たない（捕まえる）。スーツを着ている人は撃つ（捕まらない）
       if (!canHit(u, e, wrow)) continue;
       const d = altDistance(u, e);
       if (d <= rangeVs(u, e, u.range) && d < bd) { bd = d; best = e; }
@@ -529,6 +550,7 @@ function updateCombat(sim, dt) {
     if (shieldBlocks(sim, best)) { hitShield(sim, u, best, dmg); continue; }
     if (best.armor > 0) dmg = Math.max(1, dmg - best.armor); // 体の装甲（機体の表）。体に当たる一撃だけ減らす。0 なら今までと同じ数
     best.hp -= dmg; best.lastHit = sim.time;
+    if (best.hp <= 0 && best.suitOn) breakSuit(sim, best); // 殻が壊れた: 脱げて人間に戻る（あまりは捨てる）
     if (sim.ride) onHostHit(sim, best, dmg); // 背中に人が乗っていれば、確率でその人にも当たる
     if (best.hp > 0) autoRepair(sim, best);
     const wi = lfs ? weaponInfoById(lfs.row.id) : unitWeaponInfo(u);
@@ -624,6 +646,11 @@ function hitCover(sim, u, best, { cover: c, t }, dmg) {
   sim.fx.push({ type: 'coverHit', id: c.id, kind: c.kind, x: hx, y: hy, t: sim.time, dmg, state: c.state });
   if (res !== 'broke') return;
   sim.fx.push({ type: 'coverBreak', id: c.id, kind: c.kind, x: c.x, y: c.y, cx: c.cx, cy: c.cy, rx: c.rx, ry: c.ry, t: sim.time });
+  dropFromCover(sim, c);
+}
+
+/** 壊れた遮蔽物の落とし物の抽選（弾で壊れた時と、発射台の爆発で壊れた時。乱数を引くのは壊れた時だけ） */
+function dropFromCover(sim, c) {
   const type = rollDrop(DROPS[COVER.kinds[c.kind].drop], sim.rng());
   if (!type) return;
   const it = { id: sim.nextItemId++, type, x: c.x, y: c.y + 4, t: sim.time, from: c.id };
@@ -691,6 +718,7 @@ export function autoRepair(sim, u) {
 }
 /** 落ちている修理キットを拾うか。HP が減っていれば拾ってその場で使う。減っていなければ持ち物に足す（MAX_CARRIED_KITS まで）。どちらでもなければ拾わない */
 function canTake(u, it) {
+  if (u.suitOn) return false; // スーツを着ている間は拾えない（修理キットで殻は直らない・武器は小銃で固定）
   if (it.type !== 'repair') return canPickUp(u, it);
   if (u.hp < u.maxHp) return canPickUp(u, it);
   if (!carriesKits(u) || (u.kits || 0) >= maxKits(u)) return false;
@@ -751,9 +779,9 @@ export function carryTarget(sim, e) {
 // 巣に着くと人間は巣に置かれ、運んだ個体は巣に残る（仮）。ロボが巣に入り、巣のまわりに敵がいなくなると助かる（仮）。
 function updateCaptures(sim) {
   for (const h of sim.units) {
-    if (h.side !== 'ally' || !h.human || h.captured != null || cannotBeCaptured(h)) continue; // v1.0.0: 乗り終わっている人は背中でも中でも捕まらない（乗る途中・降りる途中は外にいる）
+    if (h.side !== 'ally' || !h.human || h.captured != null || cannotBeCaptured(h) || isSuitSafe(sim, h) || h.noCatch) continue; // スーツを着ている間・脱げて1.5秒は捕まらない。noCatch: 2 章のロウ。v1.0.0: 乗り終わっている人は背中でも中でも捕まらない（乗る途中・降りる途中は外にいる）
     for (const e of sim.units) {
-      if (e.side !== 'enemy' || e.carrying != null || isStunned(e)) continue; // 1体で運べるのは1人。よろけ中は捕まえない
+      if (e.side !== 'enemy' || e.carrying != null || isStunned(e) || (e.z || 0) > 0) continue; // 1体で運べるのは1人。よろけ中は捕まえない。空の敵（z>0）は捕まえない
       if (Math.hypot(e.x - h.x, e.y - h.y) > CAPTURE.radius) continue;
       h.captured = e.id; h.heldAt = null; h.order = null; h.gathering = null; h.moving = false;
       if (sim.mission && h.cargo > 0) { sim.mission.lost += h.cargo; h.cargo = 0; }
@@ -790,7 +818,7 @@ function updateCarry(sim) {
   for (const h of sim.units) {
     if (h.captured !== 'nest') continue;
     const r = CAPTURE.nestRescueRadius * TILE;
-    const robot = sim.units.some(u => u.side === 'ally' && !u.human && Math.hypot(u.x - h.x, u.y - h.y) <= r);
+    const robot = sim.units.some(u => u.side === 'ally' && !u.human && !u.object && Math.hypot(u.x - h.x, u.y - h.y) <= r);
     const guard = sim.units.some(u => u.side === 'enemy' && Math.hypot(u.x - h.x, u.y - h.y) <= r);
     if (robot && !guard) freeHuman(sim, h);
   }
@@ -839,7 +867,7 @@ function updatePatrols(sim, dt) {
   for (const g of sim.groups) {
     if (g.role !== 'patrol') continue;
     const members = groupUnits(sim, g), c = members[0]; if (!c) continue;
-    const seen = groupSees(sim, g);
+    const seen = (sim.story2 && story2PatrolTarget(sim, g)) || groupSees(sim, g);
     if (g.provokedBy != null) {
       const p = unitById(sim, g.provokedBy);
       g.provokedBy = null;
@@ -883,15 +911,19 @@ function updatePatrols(sim, dt) {
 
 function updateRegen(sim, dt) {
   for (const u of sim.units) {
-    if (!KINDS[u.kind]?.regen || u.hp >= u.maxHp) continue;
+    const rg = kindOf(sim, u.kind)?.regen;
+    if (!rg || u.hp >= u.maxHp) continue;
     if (sim.time - u.lastHit < ALERT.regenDelay) continue;
-    u.hp = Math.min(u.maxHp, u.hp + u.maxHp * ALERT.regenRate * dt);
+    u.hp = Math.min(u.maxHp, u.hp + u.maxHp * (ALERT.regenRate * (rg === true ? 1 : rg)) * dt); // rg が数なら回復力の倍率（新しい敵の 低0.5・中1・高2。異星生物は true＝1）
   }
 }
 
 // 回収と脱出: 止まっている機体は回収ポイントの近くで資材を集める（1機ずつ自分で運ぶ）。脱出口に入った機体が届ける。
 // v1.0.0: ロボに乗っている人も集められる（決定）。狼の獣人（KINDS にない 'wolf'）はふつうの人間と同じ速さで集める
-const gatherOf = u => KINDS[u.kind]?.gather ?? (u.human ? KINDS.boy.gather : 0);
+const STRIKE_API = Object.freeze({ deployUnit: (...a) => deployUnit(...a), removeDead: s => removeDead(s), gatherOf: u => gatherOf(u), isStunned: u => isStunned(u) });
+const NE_API = Object.freeze({ reaches: (a, b) => reaches(a, b, weaponRowOf), applyOrder: (...a) => applyOrder(...a), removeDead: s => removeDead(s), autoRepair: (s, u) => autoRepair(s, u), cannotBeCaptured: h => cannotBeCaptured(h) || !!h.noCatch, isStunned: u => isStunned(u) });
+const STORY2_API = Object.freeze({ deployUnit: (...a) => deployUnit(...a), applyOrder: (...a) => applyOrder(...a), removeDead: s => removeDead(s), gatherOf: u => gatherOf(u), isStunned: u => isStunned(u) }); // 物語 2 章（story2-rules.js）が使う
+const gatherOf = u => (u.suitOn ? u.suitGather : KINDS[u.kind]?.gather ?? (u.human ? KINDS.boy.gather : 0));
 function updateMission(sim, dt) {
   const m = sim.mission; if (!m) return;
   const allies = sim.units.filter(u => u.side === 'ally');
@@ -945,6 +977,9 @@ export function missionStatus(sim) {
     ...fieldCount(sim), captured: humans.filter(h => h.captured != null).length,
     boyCaptured: humans.some(h => h.kind === 'boy' && h.captured != null),
     carried: humans.filter(h => typeof h.captured === 'number').length, atNest: humans.filter(h => h.captured === 'nest').length,
+    ...(sim.strike ? { strike: strikeStatus(sim) } : {}), // 物語のミサイル・調べる（v1.0.2）
+    ...(sim.story3 ? { story3: story3Status(sim) } : {}), // 第 3 章（?storych=3）
+    ...(sim.story2 ? { story2: story2Status(sim) } : {}), // 物語 2 章
   };
 }
 
@@ -958,13 +993,18 @@ function updateFog(sim) {
 
 function applyCommands(sim) {
   for (const cmd of sim.commands.splice(0)) {
-    const us = (cmd.unitIds || []).map(id => unitById(sim, id)).filter(u => u && u.side === 'ally' && u.captured == null);
+    if (cmd.type?.startsWith('launcher')) { applyLauncherCommand(sim, cmd); continue; } // 発射台の命令（sim.launcher が無ければ何もしない）
+    if (STRIKE_COMMANDS.includes(cmd.type)) { applyStrikeCommand(sim, cmd); continue; } // v1.0.2 物語: つなぐ・はずす・撃つ
+    if (POWERSUIT_COMMANDS.includes(cmd.type)) { applyPowersuitCommand(sim, cmd); continue; } // ?powersuit=1: 着る・脱ぐ
+    if (cmd.type === 'board') { issueBoard(sim, cmd.humanId, cmd.hostId, cmd.mode || RIDE_MODE.BACK); continue; } // v1.0.2: 乗り降りもリプレイに残る命令にする（効くのは同じステップの stepRide）
+    if (cmd.type === 'alight') { issueAlight(sim, cmd.humanIds || []); continue; }
+    const us = (cmd.unitIds || []).map(id => unitById(sim, id)).filter(u => u && u.side === 'ally' && u.captured == null && !u.object);
     if (!us.length) continue;
     if (cmd.type === 'move') applyGroupMove(sim, us, cmd.waypoints, cmd.mode === 'rush' ? 'rush' : 'fight');
     else if (cmd.type === 'attack') {
       const t = unitById(sim, cmd.targetId);
       if (!t || t.side === 'ally') continue;
-      for (const u of us) if (u.atk > 0 && !KINDS[u.kind]?.noFight) applyOrder(sim, u, [{ tx: toTile(t.x), ty: toTile(t.y) }], 'fight', t.id);
+      for (const u of us) if (u.atk > 0 && (!KINDS[u.kind]?.noFight || u.suitOn)) applyOrder(sim, u, [{ tx: toTile(t.x), ty: toTile(t.y) }], 'fight', t.id);
     } else if (cmd.type === 'stance') {
       for (const u of us) { u.stance = cmd.stance === 'free' ? 'free' : 'hold'; u.anchor = { x: u.x, y: u.y }; }
     } else if (cmd.type === 'stop') {
@@ -987,7 +1027,10 @@ function checkResult(sim) {
   const allies = sim.units.filter(u => u.side === 'ally');
   if (sim.mission) {
     const m = sim.mission;
-    const robots = allies.filter(u => !u.human && !u.aiAlly).length; // AI の味方だけ残っても続けられない
+    if (sim.strike) { checkStoryResult(sim, allies); return; }
+    if (sim.story3) { checkStory3Result(sim, allies); return; } // 第 3 章（?storych=3）
+    if (sim.story2) { checkStory2Result(sim, allies); return; } // 物語 2 章
+    const robots = allies.filter(u => !u.human && !u.aiAlly && !u.object).length; // AI の味方だけ残っても続けられない（v1.0.4: 発射台＝物も数えない）
     const freeHumans = allies.filter(u => u.human && !u.aiAlly && u.captured == null).length;
     const boyCaptured = allies.some(u => u.kind === 'boy' && u.captured != null);
     // 少年が捕まったままでは、脱出（勝ち）にならない（5-4。仮）
@@ -1001,6 +1044,15 @@ function checkResult(sim) {
   if (!e) sim.result = 'win'; else if (!allies.length) sim.result = 'lose';
 }
 
+// v1.0.2 物語の最初のミッション: 設計図のありかを調べ終えたら勝ち。ネジが壊れる・少年が捕まる・少年が倒れたら負け（発射台が壊れても負けにはしない）
+function checkStoryResult(sim, allies) {
+  const S = sim.strike, boy = allies.find(u => u.kind === 'boy');
+  if (!allies.some(u => u.id === S.nejiId)) { sim.result = 'lose'; sim.resultReason = 'nejiDown'; }
+  else if (!boy) { sim.result = 'lose'; sim.resultReason = 'boyDown'; }
+  else if (boy.captured != null) { sim.result = 'lose'; sim.resultReason = 'boyCaptured'; }
+  else if (S.survey.done) { sim.result = 'win'; sim.resultReason = 'blueprint'; }
+}
+
 /** 1ステップ進める */
 export function stepSim(sim) {
   const dt = TICK;
@@ -1008,6 +1060,7 @@ export function stepSim(sim) {
   updateEnemyAI(sim, dt);
   updatePatrols(sim, dt);
   updateCombat(sim, dt);
+  stepNewEnemies(sim, dt, NE_API); // 新しい敵の特別な動き（sim.ne がなければ何もしない）
   updateRegen(sim, dt);
   updateReactions(sim, dt);
   for (const u of sim.units) updateUnitMovement(sim, u, dt);
@@ -1016,12 +1069,17 @@ export function stepSim(sim) {
   stepFuel(sim, dt, u => TERRAIN[tileAt(sim.map, toTile(u.x), toTile(u.y))].key === 'water'); // 飛ぶ機体だけ（表にない機体は何もしない）
   updateCaptures(sim);
   updateCarry(sim);
+  if (sim.launcher) stepLauncher(sim, dt); // 発射台の建造・引く・構え・着弾（?launcher=1 の時だけ）
+  stepPowersuit(sim, dt); // スーツの着る・脱ぐ・直す（sim.powersuit がなければ何もしない）
   stepRide(sim, dt); // 乗っている人をロボに合わせて動かす・乗り降り・壊れたら降ろす（sim.ride がなければ何もしない）
   updatePickups(sim);
   updateKits(sim, dt);
   updateMission(sim, dt);
+  stepStrike(sim, dt, STRIKE_API); // 物語のミサイル・調べる（sim.strike がなければ何もしない）
+  stepStory3(sim, dt, STRIKE_API); // 第 3 章（?storych=3）の仕掛け（sim.story3 がなければ何もしない）
+  stepStory2(sim, dt, STORY2_API); // 物語 2 章（sim.story2 がなければ何もしない）
   updateFog(sim);
-  sim.fx = sim.fx.filter(f => sim.time - f.t < (f.type === 'find' || f.type === 'captured' || f.type === 'rescue' || f.type === 'nested' || f.type === 'pickup' || f.type === 'coverBreak' || f.type === 'shieldGive' || f.type === 'shieldRestored' ? 2.2 : f.type === 'gain' ? 1 : 0.8));
+  sim.fx = sim.fx.filter(f => sim.time - f.t < (f.type === 'find' || f.type === 'captured' || f.type === 'rescue' || f.type === 'nested' || f.type === 'pickup' || f.type === 'coverBreak' || f.type === 'shieldGive' || f.type === 'shieldRestored' || f.type === 'missileFound' || f.type === 'strikeHit' || f.type === 'strikeLaunch' || f.type === 'launcherLost' || f.type === 'surveyDone' || f.type === 'strikeArm' || f.type === 'mintFound' || f.type === 'gateDone' ? 2.2 : f.type === 'gain' ? 1 : 0.8));
   sim.tick++; sim.time = sim.tick * TICK;
   checkResult(sim);
 }
@@ -1050,6 +1108,12 @@ export function hashSim(sim) {
   for (const it of sim.items) { mix(it.id); mix(Math.round(it.x)); mix(Math.round(it.y)); }
   for (const u of sim.units) if (u.weapon) mix(Math.round((u.wmul || 1) * 1000));
   for (const u of sim.units) if (u.z) { mix(u.id); mix(Math.round(u.z * 100)); } // 高さ（0 の機体は混ぜない＝今までのハッシュと同じ）
+  if (sim.powersuit) for (const v of powersuitHashValues(sim)) mix(v); // スーツ入りの局面だけ（ふつうは混ぜない＝今までのハッシュと同じ）
+  if (sim.ne) for (const v of newEnemiesHashValues(sim)) mix(v); // 新しい敵（?newenemies=1 だけ。ほかでは混ぜない＝今までのハッシュと同じ）
+  if (sim.strike) for (const v of strikeHashValues(sim)) mix(v); // 物語のミサイル（ほかのミッションでは混ぜない＝今までのハッシュと同じ）
+  if (sim.launcher) h = hashLauncher(sim, h); // 発射台（使っていない間は何も混ぜない）
+  if (sim.story3) for (const v of story3HashValues(sim)) mix(v); // 第 3 章（?storych=3）だけ
+  if (sim.story2) for (const v of story2HashValues(sim)) mix(v); // 物語 2 章（ほかでは混ぜない）
   return h.toString(16);
 }
 
@@ -1066,3 +1130,6 @@ export function hashSimDeep(sim) {
   if (sim.mission) mix(Math.round((sim.mission.spentOnCraft || 0) * 1000));
   return h.toString(16);
 }
+
+// 発射台（js/sim/launcher.js）に、機体を出す・探す・移動命令を渡す（launcher.js は sim.js を import しない）
+bindLauncher({ deployUnit, issueOrder, dropFromCover }); // dropFromCover: 爆発で壊れた遮蔽物も、弾で壊れた時と同じ落とし物の抽選（佳之さんの決定 10/26）

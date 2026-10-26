@@ -1,8 +1,8 @@
 // 人間がロボに乗るお試し（?ridedemo=1）の操作パネル。選んだ人・ロボに合わせて「背中に乗る」「中に乗る」「降りる」「こわす」を出す。
 // 乗る・降りるの決まりは js/sim/ride.js。ここは画面（DOM）と、出来事（sim.fx）を短い知らせにするところだけ。
 import { loadCss } from '../../../common/js/load-css.js';
-import { RIDE_MODE, RIDE_MESSAGES, isHostKind, canBoard, canAlight, issueBoard, issueAlight, ridersOf, rideCapacity } from '../sim/ride.js?v=2';
-import { unitById } from '../sim/sim.js?v=23';
+import { RIDE_MODE, RIDE_MESSAGES, isHostKind, canBoard, canAlight, issueBoard, issueAlight, ridersOf, rideCapacity } from '../sim/ride.js?v=3';
+import { unitById } from '../sim/sim.js?v=27';
 
 export const loadRideCss = () => loadCss(new URL('../../css/ride.css?v=2', import.meta.url).href);
 

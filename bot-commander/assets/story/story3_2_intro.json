@@ -1,0 +1,39 @@
+{
+ "id": "story3_2_intro",
+ "title": "第3章 3-2 最初のひとり：出撃前（仮）",
+ "bg": "ruins_town",
+ "cast": {
+  "NEJI": "alert",
+  "PONCO02": "alert"
+ },
+ "lines": [
+  {
+   "who": "NEJI",
+   "text": "ビルの なかから こえが する……！ だれか いる！",
+   "face": "alert"
+  },
+  {
+   "who": "PONCO02",
+   "text": "ビルの入口に、敵の反応。大きいです。",
+   "face": "alert"
+  },
+  {
+   "who": "NEJI",
+   "text": "あの せなかの しかく……せんしゃの とう？ たべた の？ ロボットの ぶひんを……",
+   "face": "worried"
+  },
+  {
+   "who": "NEJI",
+   "text": "ぼくは せめられない。ポンコ02、おねがい！ キミは すこし うしろ から！",
+   "face": "alert"
+  },
+  {
+   "exit": "NEJI"
+  },
+  {
+   "who": "PONCO02",
+   "text": "了解。前に出ます。入口の敵を 倒せば、ビルに 近づけます。（仮）",
+   "face": "neutral"
+  }
+ ]
+}

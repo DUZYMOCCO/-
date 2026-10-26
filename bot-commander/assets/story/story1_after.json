@@ -1,0 +1,47 @@
+{
+ "id": "story1_after",
+ "title": "物語の最初のミッション：着弾のあと（仮）",
+ "bg": "ruins_town",
+ "cast": {
+  "NEJI": "alert"
+ },
+ "lines": [
+  {
+   "who": "NEJI",
+   "text": "……あたった！ けむりで よく みえない けど……",
+   "face": "alert"
+  },
+  {
+   "who": "NEJI",
+   "text": "すまいあとの あたりが しずか に なった。いまの うちに しらべに いこう！",
+   "face": "happy"
+  },
+  {
+   "who": "NEJI",
+   "text": "てきが 5マスより ちかくに いると、こわくて しらべられない。のこりが いたら きを つけて。",
+   "face": "worried"
+  },
+  {
+   "exit": "NEJI"
+  },
+  {
+   "enter": "BOY",
+   "face": "serious"
+  },
+  {
+   "who": "BOY",
+   "text": "……"
+  },
+  {
+   "exit": "BOY"
+  },
+  {
+   "enter": "NEJI",
+   "face": "neutral"
+  },
+  {
+   "who": "NEJI",
+   "text": "うん。いっしょに さがそう。（仮）"
+  }
+ ]
+}

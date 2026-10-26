@@ -1,0 +1,17 @@
+/* 発射台（?launcher=1 の試作）の ☰ メニューの項目と、撃つ地点を選ぶ時の重ね。すべて .bc-root の中だけに効かせる。?launcher=1 でない時は読み込まない */
+.bc-root .bc-lm { display: flex; flex-direction: column; gap: 6px; padding: 8px; border: 2px solid #b4741f; border-radius: 12px; background: #2a1d0c; }
+.bc-lm-title { font-size: 13px; font-weight: 800; color: #ffd38a; }
+.bc-lm-status { min-height: 34px; font-size: 12px; line-height: 17px; font-weight: 700; color: #e5e7eb; }
+.bc-root .bc-lm button { height: 42px; padding: 0 4px; font-size: 13px; font-weight: 800; line-height: 16px; background: #3b2a12; border-color: #b4741f; color: #ffe9a8; }
+.bc-root .bc-lm button[data-lm="fire"] { background: #5a1f1f; border-color: #ef4444; color: #fff; }
+.bc-root .bc-lm button:disabled { opacity: .4; }
+.bc-root .bc-lm .bc-lm-pair { display: flex; gap: 6px; }
+.bc-root .bc-lm .bc-lm-pair button { flex: 1; min-width: 0; }
+.bc-lpick { position: absolute; inset: 0; z-index: 6; touch-action: none; cursor: crosshair; }
+.bc-lbar { position: absolute; left: 6px; right: 6px; bottom: calc(env(safe-area-inset-bottom) + 6px); z-index: 7; display: flex; flex-direction: column; gap: 6px; padding: 8px; border: 2px solid var(--bc-ink); border-radius: 12px; background: #0b111bf0; }
+.bc-lbar[hidden], .bc-lpick[hidden] { display: none; }
+.bc-lbar-msg { min-height: 34px; padding: 0 4px; font-size: 13px; line-height: 17px; font-weight: 800; color: #ffe9a8; }
+.bc-lbar-btns { display: flex; gap: 6px; }
+.bc-root .bc-lbar button { flex: 1; min-width: 0; height: 46px; padding: 0 4px; font-size: 14px; font-weight: 800; }
+.bc-root .bc-lbar button[data-lb="go"] { background: #5a1f1f; border-color: #ef4444; color: #fff; }
+.bc-root .bc-lbar button:disabled { opacity: .4; }

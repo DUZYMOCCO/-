@@ -1,0 +1,74 @@
+{
+  "id": "story2_tower",
+  "title": "2章 町はずれの声（仮）",
+  "bg": "wasteland",
+  "cast": {
+    "NEJI": "worried",
+    "PONCO02": "neutral"
+  },
+  "lines": [
+    {
+      "who": "NEJI",
+      "text": "よる、へんな おとが きこえたでしょ？ ざー、ざー、って。むせんの ノイズ。",
+      "face": "worried"
+    },
+    {
+      "who": "NEJI",
+      "text": "むせんとうの ほうから だ。あそこに だれか いるのかも しれない。",
+      "face": "neutral"
+    },
+    {
+      "who": "PONCO02",
+      "text": "警戒。この先に、敵の反応があります。",
+      "face": "alert"
+    },
+    {
+      "who": "NEJI",
+      "text": "わかってる。ぼくが ほりに いく ときは、ポンコ02が まえに でて。",
+      "face": "alert"
+    },
+    {
+      "who": "PONCO02",
+      "text": "了解。ネジ先輩を、守ります。",
+      "face": "neutral"
+    },
+    {
+      "who": "NEJI",
+      "text": "ぼくが ……まもられるの？ ……あ、ちがう。キミを まもって ほしいの！",
+      "face": "worried"
+    },
+    {
+      "exit": "NEJI"
+    },
+    {
+      "enter": "BOY",
+      "face": "serious"
+    },
+    {
+      "who": "BOY",
+      "text": "……"
+    },
+    {
+      "who": "PONCO02",
+      "text": "少年、後ろに。",
+      "face": "neutral"
+    },
+    {
+      "exit": "BOY"
+    },
+    {
+      "enter": "NEJI",
+      "face": "alert"
+    },
+    {
+      "who": "PONCO02",
+      "face": "alert",
+      "text": "敵は 1体ずつ。森と 残骸を 使いましょう。"
+    },
+    {
+      "who": "NEJI",
+      "face": "alert",
+      "text": "きたの あおい しるしが むせんとうの あと。☰で おりて、少年だけを えらんで ちかくへ。とまって 15びょう しらべよう。てきが 5マスいない ときだけだよ。"
+    }
+  ]
+}

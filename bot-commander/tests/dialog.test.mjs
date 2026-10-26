@@ -131,9 +131,9 @@ test('お試しの台本: 誤りがない・決まり（4-4）を全部見せる
 test('portraits.json: 決まった人と表情がそろい、絵のファイルがある', () => {
   const want = {
     NEJI: ['neutral', 'happy', 'worried', 'surprised', 'alert', 'sad', 'damaged', 'off'],
-    BOY: ['neutral', 'smile', 'surprised', 'worried', 'serious', 'pain', 'hurt'],
+    BOY: ['neutral', 'smile', 'surprised', 'worried', 'serious', 'pain', 'hurt', 'angry', 'sad'], // v1.0.3 gfx5: angry・sad を足した
     GIRL: ['neutral', 'smile', 'surprised', 'worried', 'angry', 'sad', 'pain', 'hurt', 'smug'],
-    WOLF: ['neutral', 'smile', 'surprised', 'serious', 'angry', 'sad', 'pain', 'hurt'],
+    WOLF: ['neutral', 'smile', 'surprised', 'serious', 'angry', 'sad', 'pain', 'hurt', 'worried'], // v1.0.3 gfx5: worried を足した
     PONCO02: ['neutral', 'alert', 'damaged', 'off'],
   };
   for (const [id, faces] of Object.entries(want)) {

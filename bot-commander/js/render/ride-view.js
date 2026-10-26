@@ -5,8 +5,9 @@
 //   絵があるのは「背中」だけ（中＝操縦席の人は描かない。佳之さんの決まり: 操縦席の人は見せない）。絵がまだ読めていない時は今までの小さな人の絵。
 //   中: 人間の絵は消して、ロボの上に小さな人のマーク（乗っている人数。空いている席はうすく）を出す。
 //   乗る・降りる途中の進み具合の輪、気絶の星。
-import { RIDE, RIDE_MODE, rideCapacity } from '../sim/ride.js?v=2';
-import { RIDER_IDS, RIDER_FRAMES, RIDER_FPS } from './raster-art.js?v=11';
+import { RIDE, RIDE_MODE, rideCapacity } from '../sim/ride.js?v=3';
+import { RIDER_IDS, RIDER_FRAMES, RIDER_FPS, RIDE_HOSTS } from './raster-art.js?v=14';
+// v1.0.1（Codex gfx4 SCAV_RIDE）: ツギハギ号（scav）の背中にも専用の乗り姿の絵（ride_scav_<人>_<コマ>）。背中だけ（中の席は今までどおり人を見せない）
 
 /** ロボの種類ごとの、背中の高さ（ワールド px。ロボの足元から人の足元まで）と人の大きさの倍率 */
 export const RIDE_LIFT = Object.freeze({ giant: 36, ponco: 25, scav: 20 });
@@ -16,11 +17,11 @@ const BODY_PX = Object.freeze({ giant: 34, ponco: 42, scav: 40 }); // renderer.j
 const clamp01 = v => Math.max(0, Math.min(1, v));
 const hostOf = (sim, id) => sim.units.find(u => u.id === id) || null;
 
-/** 背中の乗り姿の絵のキー（なければ null）。乗り終わっている・背中・ポンコ・絵のある人だけ。now は秒 */
+/** 背中の乗り姿の絵のキー（なければ null）。乗り終わっている・背中・ポンコかツギハギ号・絵のある人だけ。now は秒 */
 export function riderArtKey(u, host, now) {
-  const rd = u.ride;
-  if (!rd || rd.mode !== RIDE_MODE.BACK || rd.phase !== 'on' || host?.kind !== 'ponco' || !RIDER_IDS[u.kind]) return null;
-  return `ride_${u.kind}_${Math.floor(now * RIDER_FPS) % RIDER_FRAMES}`;
+  const rd = u.ride, h = RIDE_HOSTS[host?.kind];
+  if (!rd || rd.mode !== RIDE_MODE.BACK || rd.phase !== 'on' || !h || !RIDER_IDS[u.kind]) return null;
+  return `${h.prefix}${u.kind}_${Math.floor(now * RIDER_FPS) % RIDER_FRAMES}`;
 }
 
 /** 乗り降りの進み具合 0〜1（1＝背中の上・ロボの中にいる） */

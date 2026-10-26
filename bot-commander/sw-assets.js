@@ -4,9 +4,36 @@
 // SVG + reference-based WebP art, baked once at boot.
 self.GAME_ASSETS = self.GAME_ASSETS || {};
 self.GAME_ASSETS['bot-commander'] = {
-  version: 'v39',
-  gameVersion: '1.0.0', // ハブのカードに表示する版（キャッシュ用 version とは別。リリース時に上げる）
+  version: 'v45',
+  gameVersion: '1.0.6', // ハブのカードに表示する版（キャッシュ用 version とは別。リリース時に上げる）
   files: [
+    'js/story/story3-ops.js',
+    'js/story/story-3.js',
+    'js/story/chapters.js',
+    'js/sim/story3-sim.js',
+    'js/render/story3-view.js',
+    'assets/story/story3_broken.json',
+    'assets/story/story3_2_win.json',
+    'assets/story/story3_2_taken.json',
+    'assets/story/story3_2_lose.json',
+    'assets/story/story3_2_intro.json',
+    'assets/story/story3_2_found.json',
+    'assets/story/story3_1_win.json',
+    'assets/story/story3_1_lose.json',
+    'assets/story/story3_1_intro.json',
+    'assets/story/story2_after.json',
+    'assets/story/story2_core.json',
+    'assets/story/story2_intro.json',
+    'assets/story/story2_lose.json',
+    'assets/story/story2_make.json',
+    'assets/story/story2_suit.json',
+    'assets/story/story2_tower.json',
+    'assets/story/story2_wolf.json',
+    'js/render/story2-view.js',
+    'js/sim/story2-rules.js',
+    'js/story/story-2.js',
+    'js/story/story2-missions.js',
+    'js/story/story2-ops.js',
     'css/bot-commander.css',
     'css/armory.css', // ?armory=1（お試し）
     'css/save.css', // ☰ メニューの「記録」
@@ -16,10 +43,12 @@ self.GAME_ASSETS['bot-commander'] = {
     'js/tutorial/tutorial-steps.js',
     'js/tutorial/tutorial.js',
     'css/ride.css', // ?ridedemo=1（お試し）
+    'css/launcher.css', // v1.0.4 ?launcher=1（発射台の試作）
     'js/index.js',
     'js/ui/back-confirm.js',
     'js/ui/speed.js',
     'js/ui/toast-merge.js',
+    'js/ui/demo-result.js', // ミッションのないお試しの結果の文字（showResult が使う）
     'js/ui/ride-panel.js', // ?ridedemo=1（お試し）
     'js/sim/rng.js',
     'js/sim/weapons.js',
@@ -29,6 +58,7 @@ self.GAME_ASSETS['bot-commander'] = {
     'js/sim/altitude-demo.js',
     'js/sim/alt-units.js', // 飛ぶ機体・水陸両用機の種類（?altunits=1）
     'js/sim/alt-units-demo.js', // ?altunits=1（お試し）
+    'js/sim/new-enemies.js', // 新しい敵 G01〜G12・A01・A08 を本編のミッションに出す試作（?newenemies=1）
     'js/sim/fuel.js', // 飛ぶ機体の燃料（sim.js が使う・v1.0.0）
     'js/sim/ride.js', // 人間がロボに乗る（sim.js が使う）
     'js/sim/ride-demo.js', // ?ridedemo=1（お試し）
@@ -275,7 +305,15 @@ self.GAME_ASSETS['bot-commander'] = {
     'js/render/char-anim.js',
     'js/render/char-demo.js', // ?chardemo=1（お試し）
     'js/render/ride-view.js', // 乗っている人の見た目（?ridedemo=1）
+    'js/render/alt-motion-view.js', // v1.0.1 gfx4 飛ぶ機体の影・燃料をためる姿・潜る／浮かぶ・魚雷
+    'js/render/enemy-gallery.js', // v1.0.1 gfx4 ?enemydemo=1（お試し）の新しい敵の見本
+    'js/render/new-enemies-view.js', // 新しい敵の絵・地雷の表示（?newenemies=1）
+    'js/render/pop-bounds.js', // 文字を上の帯の下へ寄せる計算
+    'js/render/art-lazy.js', // v1.0.4 磨き 最初に読む絵の選び方
+    'js/render/wreck-view.js', // v1.0.3 gfx5 傷んだ姿・残骸
     'js/render/renderer.js',
+    'js/render/hp-numbers.js',
+    'js/stats/unit-stats.js',
     'js/render/ground-field.js',
     'js/render/input.js',
     'assets/landmarks/landmarks.json',
@@ -311,6 +349,8 @@ self.GAME_ASSETS['bot-commander'] = {
     'assets/landmarks/icons/pickup-cannon.webp',
     'assets/landmarks/icons/pickup-blade.webp',
     'assets/landmarks/icons/pickup-grenade.webp',
+    'assets/landmarks/icons/pickup-repair-tool.webp', // v1.0.3 gfx5 修理の道具・バリアの拾い物の印（前はキット・銃の印を借りていた）
+    'assets/landmarks/icons/pickup-barrier.webp',
     'assets/art-v2/scavenger.webp',
     'assets/art-v2/ponco.webp',
     'assets/art-v2/alien.webp',
@@ -319,15 +359,86 @@ self.GAME_ASSETS['bot-commander'] = {
     'assets/art-v2/ground-mountain.webp',
     'assets/art-v2/ground-water.webp',
     'assets/art-v2/ground-shallow.webp', // 浅瀬の地面（edges2）
+    'assets/art-v2/ground-plain_v2.webp', // v1.0.3 gfx5 2つ目の地面（4x4 マスごとに座標で選ぶ）
+    'assets/art-v2/ground-forest_v2.webp',
+    'assets/art-v2/ground-mountain_v2.webp',
+    'assets/art-v2/ground-water_v2.webp',
+    'assets/art-v2/ground-shallow_v2.webp',
     'assets/art-v2-oblique/ground-plain.webp', // ?ground=oblique（お試し）
     'assets/art-v2-oblique/ground-forest.webp',
     'assets/art-v2-oblique/ground-mountain.webp',
     'assets/art-v2-oblique/ground-water.webp',
+    'assets/art-v2-oblique/ground-shallow.webp', // v1.0.3 gfx5 斜めの浅瀬
     'assets/art-v2/salvage.webp',
     'assets/art-v2/salvage-empty.webp',
     'assets/art-v2/hatch.webp',
     'assets/art-v2/hq.webp',
-    'assets/art-v2/alt-flyer.webp', // ?altunits=1（お試し）の飛ぶ機体・水陸両用機（v1.0.0 gfx3。前はポンコの色違い）
+    'assets/art-v2/alt-flyer-bright.webp', // ?altunits=1（お試し）の飛ぶ機体（v1.0.1 gfx4 の明るい版。alt-flyer.webp はしまっただけ）・水陸両用機（v1.0.0 gfx3）
+    'assets/art-v2/ponco_damaged.webp', // v1.0.3 gfx5 傷んだ姿（HP 半分以下）・やられた後の残骸（その機体がいる時に読む）
+    'assets/art-v2/scavenger_damaged.webp',
+    'assets/art-v2/ponco_wreck.webp',
+    'assets/art-v2/scavenger_wreck.webp',
+    'assets/art-v2/alt-flyer_wreck-bright.webp', // v1.0.4 磨き: 体の絵（alt-flyer-bright）と色をそろえた残骸
+    'assets/art-v2/alt-amphi_wreck.webp',
+    'assets/enemies/alien_dormant.webp', // 異星生物の休眠体（倒した後に残る）
+    'assets/art-v2/nest-idle.webp', // v1.0.1 gfx4 巣の絵（ふだん・人が捕まっている間。nest-broken.webp はしまっただけ）
+    'assets/art-v2/nest-captive.webp',
+    'assets/alt-motion/alt-flyer-shadow.webp', // v1.0.1 gfx4 飛ぶ機体・水陸両用機の動き（その機体がいる時だけ読む）
+    'assets/alt-motion/alt-flyer-charge-ground.webp',
+    'assets/alt-motion/alt-flyer-charge-water.webp',
+    'assets/alt-motion/alt-amphi-dive-0.webp',
+    'assets/alt-motion/alt-amphi-dive-1.webp',
+    'assets/alt-motion/alt-amphi-dive-2.webp',
+    'assets/alt-motion/alt-amphi-dive-3.webp',
+    'assets/alt-motion/alt-amphi-splash.webp',
+    'assets/alt-motion/alt-amphi-underwater.webp',
+    'assets/alt-motion/torpedo.webp',
+    'assets/alt-motion/torpedo-wake.webp',
+    'assets/result/result-success.webp', // v1.0.1 gfx4 結果のカードの上の絵
+    'assets/result/result-fail.webp',
+    'assets/enemies/G01.webp', // v1.0.1 gfx4 新しい敵（?enemydemo=1 の見本だけ。本編には出さない）
+    'assets/enemies/G01_dormant.webp',
+    'assets/enemies/G02.webp',
+    'assets/enemies/G02_dormant.webp',
+    'assets/enemies/G03.webp',
+    'assets/enemies/G03_dormant.webp',
+    'assets/enemies/G04.webp',
+    'assets/enemies/G04_dormant.webp',
+    'assets/enemies/A01.webp',
+    'assets/enemies/A01_down.webp',
+    'assets/enemies/A01_shadow.webp',
+    'assets/enemies/A08.webp',
+    'assets/enemies/A08_down.webp',
+    'assets/enemies/A08_shadow.webp',
+    'assets/enemies/G05.webp', // v1.0.3 gfx5 新しい敵・巨大機・小物（?enemydemo=1 の見本だけ。本編には出さない）
+    'assets/enemies/G05_dormant.webp',
+    'assets/enemies/G06.webp',
+    'assets/enemies/G06_dormant.webp',
+    'assets/enemies/G07.webp',
+    'assets/enemies/G07_dormant.webp',
+    'assets/enemies/G08.webp',
+    'assets/enemies/G08_dormant.webp',
+    'assets/enemies/G09.webp',
+    'assets/enemies/G09_dormant.webp',
+    'assets/enemies/G10.webp',
+    'assets/enemies/G10_dormant.webp',
+    'assets/enemies/G10_mine.webp',
+    'assets/enemies/G11.webp',
+    'assets/enemies/G11_dormant.webp',
+    'assets/enemies/G12.webp',
+    'assets/enemies/G12_dormant.webp',
+    'assets/giant/LASTTITAN_map.webp',
+    'assets/giant/LASTTITAN_map_damaged.webp',
+    'assets/giant/LASTTITAN_map_wreck.webp',
+    'assets/props/rock_v1.webp',
+    'assets/props/rock_v1_damaged.webp',
+    'assets/props/rock_v1_destroyed.webp',
+    'assets/props/tank-wreck_v1.webp',
+    'assets/props/tank-wreck_v1_damaged.webp',
+    'assets/props/tank-wreck_v1_destroyed.webp',
+    'assets/props/jelly-plant_v1.webp',
+    'assets/props/jelly-plant_v1_damaged.webp',
+    'assets/props/jelly-plant_v1_destroyed.webp',
     'assets/art-v2/alt-amphi.webp',
     'assets/ride/PONCO02_BOY_0.webp', // ?ridedemo=1（お試し）の背中の乗り姿（v1.0.0 gfx3。12 枚で 279KB。乗った時に読む）
     'assets/ride/PONCO02_BOY_1.webp',
@@ -341,6 +452,18 @@ self.GAME_ASSETS['bot-commander'] = {
     'assets/ride/PONCO02_WOLF_1.webp',
     'assets/ride/PONCO02_WOLF_2.webp',
     'assets/ride/PONCO02_WOLF_3.webp',
+    'assets/ride/SCAV_BOY_0.webp', // v1.0.1 gfx4 ツギハギ号の背中の乗り姿（ツギハギ号に乗った時に読む）
+    'assets/ride/SCAV_BOY_1.webp',
+    'assets/ride/SCAV_BOY_2.webp',
+    'assets/ride/SCAV_BOY_3.webp',
+    'assets/ride/SCAV_GIRL_0.webp',
+    'assets/ride/SCAV_GIRL_1.webp',
+    'assets/ride/SCAV_GIRL_2.webp',
+    'assets/ride/SCAV_GIRL_3.webp',
+    'assets/ride/SCAV_WOLF_0.webp',
+    'assets/ride/SCAV_WOLF_1.webp',
+    'assets/ride/SCAV_WOLF_2.webp',
+    'assets/ride/SCAV_WOLF_3.webp',
     'assets/chars/BOY/frames.json',
     'assets/chars/BOY/getup_s30.png',
     'assets/chars/BOY/getup_m60.png',
@@ -452,11 +575,24 @@ self.GAME_ASSETS['bot-commander'] = {
     'js/dialog/dialog-demo.js',
     'js/dialog/dialog-all.js',
     'js/dialog/dialog-bg.js', // 会話の背景の名前 → 絵の表
-    'assets/dialog/bg/hideout.webp', // 会話の背景。いつも入れるのはこの 1 枚だけ（ほかの 12 枚は見たときにブラウザが覚える。v1.0.0 gfx3 の 6 枚もそう）
+    'assets/dialog/bg/hideout.webp', // 会話の背景。いつも入れるのは、物語の台本（assets/story）が使う 2 枚だけ（ほかの 11 枚は見たときにブラウザが覚える。v1.0.0 gfx3 の 6 枚もそう）
+    'assets/dialog/bg/wasteland.webp', // 第 2 章（?storych=2）の台本が使う背景（R-06）
+    'assets/dialog/bg/ruins_town.webp', // R-06: 物語の台本（found・after・win）の背景。オフラインで先に遊んでも出るように（約 240KB）
     // 物語の最初のミッション（試作）?story=1 と ☰ メニュー。台本は会話で読むので一緒に入れる
     'js/story/story-1.js',
     'js/story/story-mission.js',
+    'js/story/story-ops.js', // v1.0.2 ☰ の中の「少年をおろす／乗せる」「発射台をつなぐ」「ミサイルを撃つ」と撃つ場所えらび
+    'js/sim/strike.js', // v1.0.2 ミサイル・発射台・設計図のありかを調べる
+    'js/render/strike-view.js', // v1.0.2 着弾マーカー・発射台の絵（コードで描く）・ミサイル
+    'js/sim/launcher.js', // v1.0.4 ?launcher=1 発射台（建造・引く・撃つ・爆発。ふつうのミッション）
+    'js/render/launcher-view.js', // v1.0.4 ?launcher=1 発射台の絵・着弾の印・爆発
+    'js/ui/launcher-menu.js', // v1.0.4 ?launcher=1 ☰ の中の発射台の項目と撃つ地点えらび
+    'js/sim/powersuit.js', // ?powersuit=1（お試し）パワードスーツの決まりと計算（sim.js が使う）
+    'js/render/powersuit-view.js', // ?powersuit=1（お試し）スーツの殻・仮面・残骸（コードで描く）
+    'js/ui/powersuit-menu.js', // ?powersuit=1（お試し）☰ の中の「スーツを着る／脱ぐ」「ロボに乗る」
     'assets/story/story1_intro.json',
+    'assets/story/story1_found.json', // v1.0.2 ミサイルを掘り出した時の会話
+    'assets/story/story1_after.json', // v1.0.2 ミサイルが落ちた時の会話
     'assets/story/story1_win.json',
     'assets/story/story1_lose.json',
     'assets/portraits/portraits.json',
@@ -482,6 +618,8 @@ self.GAME_ASSETS['bot-commander'] = {
     'assets/portraits/BOY/BOY__serious.webp',
     'assets/portraits/BOY/BOY__pain.webp',
     'assets/portraits/BOY/BOY__hurt.webp',
+    'assets/portraits/BOY/BOY__angry.webp', // v1.0.3 gfx5
+    'assets/portraits/BOY/BOY__sad.webp',
     'assets/portraits/GIRL/GIRL__neutral.webp',
     'assets/portraits/GIRL/GIRL__smile.webp',
     'assets/portraits/GIRL/GIRL__surprised.webp',
@@ -499,6 +637,7 @@ self.GAME_ASSETS['bot-commander'] = {
     'assets/portraits/WOLF/WOLF__sad.webp',
     'assets/portraits/WOLF/WOLF__pain.webp',
     'assets/portraits/WOLF/WOLF__hurt.webp',
+    'assets/portraits/WOLF/WOLF__worried.webp', // v1.0.3 gfx5
     'assets/portraits/PONCO02/PONCO02__neutral.webp',
     'assets/portraits/PONCO02/PONCO02__neutral__eyes.webp',
     'assets/portraits/PONCO02/PONCO02__alert.webp',

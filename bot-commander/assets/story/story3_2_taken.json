@@ -1,0 +1,20 @@
+{
+ "id": "story3_2_taken",
+ "title": "第3章 3-2 最初のひとり：ミントが捕まった（仮）",
+ "bg": "ruins_town",
+ "cast": {
+  "NEJI": "alert"
+ },
+ "lines": [
+  {
+   "who": "NEJI",
+   "text": "ミントが つかまった！ はこんで いく てきを ねらって！",
+   "face": "alert"
+  },
+  {
+   "who": "NEJI",
+   "text": "はこぶ てきは おそい。キミの スーツなら、おいつける！ ポンコ02も！（仮）",
+   "face": "worried"
+  }
+ ]
+}

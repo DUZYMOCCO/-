@@ -22,7 +22,7 @@ await page.waitForFunction(() => window.__botCommander?.ready, null, { timeout: 
 const info = await page.evaluate(async () => {
   const { sim, r, setPaused } = window.__botCommander;
   setPaused(true);
-  const S = await import('/bot-commander/js/sim/sim.js?v=18');
+  const S = await import('/bot-commander/js/sim/sim.js?v=26');
   for (let i = 0; i < 30 * 4; i++) S.stepSim(sim); // 少し撃ち合わせる
   for (const u of sim.units) if (u.side === 'ally') u.sight = 9; // スクショ用: 池と敵がみな見えるように（お試しの場だけ）
   r.cam.zoom = 1.0; r.cam.x = 20 * 32; r.cam.y = 41.5 * 32; r.clampCam();

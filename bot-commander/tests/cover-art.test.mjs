@@ -4,7 +4,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { WEAPONS } from '../js/sim/weapons.js?v=5';
+import { WEAPONS } from '../js/sim/weapons.js?v=7';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const LM = JSON.parse(readFileSync(join(ROOT, 'assets/landmarks/landmarks.json'), 'utf8'));
@@ -37,13 +37,14 @@ test('落とし物アイコン: 5種類が landmarks.json・ファイル・キ�
   }
 });
 
-test('落とし物アイコンの選び方: 修理キット / 銃 / 筒 / 刃 / 爆弾、ほかは銃', async () => {
+test('落とし物アイコンの選び方: 修理キット / 銃 / 筒 / 刃 / 爆弾 / 修理道具 / バリア、ほかは銃', async () => {
   globalThis.navigator ??= { userAgent: 'node' }; // Pixi を読むため
-  const { pickupIconName } = await import('../js/render/cover-view.js?v=7');
+  const { pickupIconName } = await import('../js/render/cover-view.js?v=10');
   const byType = t => pickupIconName({ type: 'weapon' }, { type: t });
   assert.equal(pickupIconName({ type: 'repair' }), 'repair-kit');
   assert.equal(byType('shoot'), 'gun'); assert.equal(byType('cannon'), 'cannon');
   assert.equal(byType('melee'), 'blade'); assert.equal(byType('throw'), 'grenade');
-  assert.equal(byType('barrier'), 'gun'); assert.equal(pickupIconName({ type: 'weapon' }, undefined), 'gun');
-  for (const w of WEAPONS) assert.ok(['gun', 'cannon', 'blade', 'grenade'].includes(byType(w.type)));
+  assert.equal(byType('barrier'), 'barrier'); assert.equal(byType('repair'), 'repair-tool'); // v1.0.3 gfx5（前は どちらも銃）
+  assert.equal(pickupIconName({ type: 'weapon' }, undefined), 'gun');
+  for (const w of WEAPONS) assert.ok(['gun', 'cannon', 'blade', 'grenade', 'repair-tool', 'barrier'].includes(byType(w.type)));
 });

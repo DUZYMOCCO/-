@@ -2,29 +2,86 @@
  "id": "story1_lose",
  "title": "物語の最初のミッション：負けた時（仮）",
  "bg": "hideout",
- "cast": {"NEJI": "sad", "PONCO02": "damaged"},
+ "cast": {
+  "NEJI": "damaged"
+ },
  "lines": [
-  {"who": "NEJI", "face": "sad", "text": "……ごめん。ぼくの さくせんが、ぜんぜん だめだった。（仮）"},
-  {"who": "PONCO02", "face": "damaged", "text": "ポンコ02、ひしょう。いきてる。こわれた ぶぶん、おおい。"},
-  {"who": "NEJI", "face": "worried", "text": "ポンコ……にげて きたんだね。しざいは ほとんど おとしちゃった……"},
-  {"exit": "NEJI"},
-  {"enter": "BOY", "face": "pain"},
-  {"who": "BOY", "text": "……"},
-  {"exit": "BOY"},
-  {"enter": "NEJI", "face": "worried"},
-  {"who": "NEJI", "text": "ケガ！ ほんとだ ケガしてる！ はやく てあて！ どこ！？ ここ！？ いたい！？"},
-  {"who": "PONCO02", "face": "damaged", "text": "きゅうきゅうばこ、たなの 2だんめ。"},
-  {"who": "NEJI", "face": "alert", "text": "ありがと、ポンコ！ ……あった！ ほうたいと、しょうどくえき！"},
-  {"who": "NEJI", "face": "neutral", "text": "しみるよ。ちょっとだけ がまん してね。"},
-  {"exit": "NEJI"},
-  {"enter": "BOY", "face": "pain"},
-  {"who": "BOY", "text": "……"},
-  {"exit": "BOY"},
-  {"enter": "NEJI", "face": "happy"},
-  {"who": "NEJI", "text": "……よし。ふかくは ないよ。ねたら なおる。みずも のんでね。"},
-  {"who": "NEJI", "face": "neutral", "text": "ちゃんと にげて きたのは えらいよ。いきてれば、やりなおせる。"},
-  {"who": "NEJI", "face": "alert", "text": "あいつら、まえより つよく なってた。しざいを ひろうだけじゃ、にげきれない。"},
-  {"who": "NEJI", "face": "alert", "text": "もう いっかい いこう。こんどは、ロボで てきを 1たい ずつ たおしながら。まちがえない よ。"},
-  {"who": "NEJI", "face": "happy", "text": "キミが いてくれるなら、ぼくは なんど でも やりなおせる。（仮）"}
+  {
+   "who": "NEJI",
+   "text": "……ごめん。ここ まで みたい。",
+   "face": "damaged"
+  },
+  {
+   "who": "NEJI",
+   "text": "ぼくの からだ、もう うごかない。キミを まもれなかった。",
+   "face": "sad"
+  },
+  {
+   "exit": "NEJI"
+  },
+  {
+   "enter": "BOY",
+   "face": "hurt"
+  },
+  {
+   "who": "BOY",
+   "text": "……"
+  },
+  {
+   "exit": "BOY"
+  },
+  {
+   "enter": "NEJI",
+   "face": "damaged"
+  },
+  {
+   "who": "NEJI",
+   "text": "……なかないで。キミが ぶじなら、それで いい。"
+  },
+  {
+   "who": "NEJI",
+   "text": "……いまのは、もしもの はなし。ほんとうは まだ おわってない。",
+   "face": "neutral"
+  },
+  {
+   "who": "NEJI",
+   "text": "はぐれの うごきを よく みて。はっしゃだいを ひっぱる ときは、みなみ まわりで。",
+   "face": "alert"
+  },
+  {
+   "who": "NEJI",
+   "text": "ミサイルは、みはりの まんなかを ねらって。すこし ずれても、ばくはつは ひろい から。"
+  },
+  {
+   "who": "NEJI",
+   "text": "それに ばくはつは てきに しか あたらない。こわがらずに うって。"
+  },
+  {
+   "exit": "NEJI"
+  },
+  {
+   "enter": "BOY",
+   "face": "serious"
+  },
+  {
+   "who": "BOY",
+   "text": "……"
+  },
+  {
+   "exit": "BOY"
+  },
+  {
+   "enter": "NEJI",
+   "face": "neutral"
+  },
+  {
+   "who": "NEJI",
+   "text": "うん。もう いちど いこう。こんどは きっと うまく いく。"
+  },
+  {
+   "who": "NEJI",
+   "text": "ぼくは しんぱいしょう だから、なんどでも つきあう よ。（仮）",
+   "face": "happy"
+  }
  ]
 }

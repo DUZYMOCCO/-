@@ -1,0 +1,76 @@
+{
+  "id": "story2_after",
+  "title": "2章 町はずれの声（仮）",
+  "bg": "wasteland",
+  "cast": {
+    "NEJI": "happy"
+  },
+  "lines": [
+    {
+      "who": "NEJI",
+      "text": "……あれ？ いま、だれか はしって いった？ ひとの かたち、してた！",
+      "face": "surprised"
+    },
+    {
+      "who": "NEJI",
+      "text": "けもの みたいな みみ。しっぽ も あった。……ぼくの ききまちがい？",
+      "face": "worried"
+    },
+    {
+      "exit": "NEJI"
+    },
+    {
+      "enter": "BOY",
+      "face": "surprised"
+    },
+    {
+      "who": "BOY",
+      "text": "……"
+    },
+    {
+      "exit": "BOY"
+    },
+    {
+      "enter": "NEJI",
+      "face": "neutral"
+    },
+    {
+      "who": "NEJI",
+      "text": "あ、ここ、はりがみ だ。「まだ、いる。かわの むこう」……だれが かいたの？",
+      "face": "happy"
+    },
+    {
+      "who": "NEJI",
+      "text": "それと、この ぶひん。ひざの モーター みたい。つかえる かも！",
+      "face": "neutral"
+    },
+    {
+      "who": "NEJI",
+      "text": "……ね、キミ。いま、サバイバルスーツを みてた でしょ。まさか……",
+      "face": "worried"
+    },
+    {
+      "exit": "NEJI"
+    },
+    {
+      "enter": "BOY",
+      "face": "serious"
+    },
+    {
+      "who": "BOY",
+      "text": "……"
+    },
+    {
+      "exit": "BOY"
+    },
+    {
+      "enter": "NEJI",
+      "face": "worried"
+    },
+    {
+      "who": "NEJI",
+      "text": "だめ！ あぶない！ ……って いっても、きく かお じゃ ないよね。",
+      "face": "worried"
+    }
+  ]
+}

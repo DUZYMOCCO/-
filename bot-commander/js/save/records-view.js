@@ -1,7 +1,7 @@
 // 記録の画面（☰ メニューの「記録」）。.bc-root の上に重ねる小さな画面。ミッションごとのクリア・回数・一番よい記録、解放した数、拾った武器の数。
 // 「記録を消す」は 2 回押す確かめ（1 回目で文字が変わり、4 秒以内にもう一度押すと消える）。消すのは bc-save-v1 と、武器庫の選び（bc-armory-v1）・拾った武器（v1.0.0 の決定）。
 import { loadCss } from '../../../common/js/load-css.js';
-import { loadSave, unlockedLists, readOwnedWeapons, resetSave, ownedSummary, START_UNLOCKED } from './save.js?v=3';
+import { loadSave, unlockedLists, readOwnedWeapons, resetSave, ownedSummary, START_UNLOCKED } from './save.js?v=5';
 
 const CSS_URL = new URL('../../css/save.css?v=2', import.meta.url).href;
 const ARM_MS = 4000;

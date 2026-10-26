@@ -7,11 +7,11 @@ import { fileURLToPath } from 'node:url';
 import { BAND, ALT, bandOf, unitBand, canHit, weaponTags, REACH, coverApplies, terrainDefApplies, altDistance, rangeVs,
   MOVE, MOVE_COST, DEFAULT_MOVES, moveCost, canMoveOn, settleZ, ALT_TEST_UNITS, carveDemoPond } from '../js/sim/altitude.js?v=1';
 import { ALT_DEMO_SETUP, ALT_DEMO_POND, altDemoMapEdit } from '../js/sim/altitude-demo.js?v=2';
-import * as S from '../js/sim/sim.js?v=23';
+import * as S from '../js/sim/sim.js?v=27';
 import * as M from '../js/sim/mission.js?v=10';
 import { generateMap, passable, costAt, nearestPassable, TERRAIN, T, tileAt, toTile, tileCenter } from '../js/sim/map.js?v=6';
 import { findPath } from '../js/sim/path.js?v=6';
-import { weaponById } from '../js/sim/weapons.js?v=5';
+import { weaponById } from '../js/sim/weapons.js?v=7';
 import { runScenarios } from './fixtures/altitude-scenarios.mjs';
 
 const at = (z, extra = {}) => ({ z, x: 0, y: 0, ...extra });

@@ -1,0 +1,31 @@
+{
+ "id": "story3_2_found",
+ "title": "第3章 3-2 最初のひとり：ミントが見つかった（仮）",
+ "bg": "ruins_town",
+ "cast": {
+  "NEJI": "surprised",
+  "GIRL": "worried"
+ },
+ "lines": [
+  {
+   "who": "GIRL",
+   "text": "だれか いるの！？ ここ！ がれきの なか！ たすけて！",
+   "face": "worried"
+  },
+  {
+   "who": "NEJI",
+   "text": "ひとが いた……！ ほんとに ひとが いた！",
+   "face": "surprised"
+  },
+  {
+   "who": "NEJI",
+   "text": "とおくで おおかみの ほえる こえ……？ ハサミアリの 1たいが そっちへ いったよ。",
+   "face": "worried"
+  },
+  {
+   "who": "NEJI",
+   "text": "でも もう 1たいが こっちへ くる！ ミントを まもって！（仮）",
+   "face": "alert"
+  }
+ ]
+}

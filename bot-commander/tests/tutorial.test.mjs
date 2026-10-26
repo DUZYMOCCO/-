@@ -5,8 +5,8 @@ import { fileURLToPath } from 'node:url';
 import {
   TUTORIAL_AUTOSTART, TUTORIAL_MARK_KEY, makeMark, isMarked, loadMark, saveMark, wantsTutorial, createFlow, createWatcher, allowedOps, opOfElement, ALL_OPS,
 } from '../js/tutorial/tutorial-flow.js?v=2';
-import { STEPS, TUTORIAL_MISSION, TUTORIAL_ALIEN_HP, createTutorialSim, aheadPoint } from '../js/tutorial/tutorial-steps.js?v=3';
-import { createSim, runSim, hashSim } from '../js/sim/sim.js?v=23';
+import { STEPS, TUTORIAL_MISSION, TUTORIAL_ALIEN_HP, createTutorialSim, aheadPoint } from '../js/tutorial/tutorial-steps.js?v=7';
+import { createSim, runSim, hashSim } from '../js/sim/sim.js?v=27';
 import { MISSION_1 } from '../js/sim/mission.js?v=10';
 const read = rel => readFileSync(fileURLToPath(new URL(rel, import.meta.url)), 'utf8');
 const fakeStore = () => { const m = new Map(); return { get: (k, d = null) => (m.has(k) ? JSON.parse(m.get(k)) : d), set: (k, v) => { m.set(k, JSON.stringify(v)); return true; }, raw: m }; };

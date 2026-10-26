@@ -4,8 +4,8 @@
 // その絵が読めなかったときだけ、その場で作る: 傷んだ＝暗く＋ひび、壊れた＝低くつぶして瓦礫の山（土けむりはどちらでも出す）。
 // 落とし物は Codex のアイコン（assets/landmarks/icons/）を、暗い丸の台＋細い明るい縁にのせて、画面で約 22px に描く。
 import { Container, Sprite, Graphics, Texture, Text } from '../../vendor/pixi-8.22.0.min.mjs?v=7';
-import { PICKUP } from '../sim/cover.js?v=6';
-import { weaponById } from '../sim/weapons.js?v=5';
+import { PICKUP } from '../sim/cover.js?v=8';
+import { weaponById } from '../sim/weapons.js?v=7';
 // v0.4.0-dev（10/24）: 武器パーツの見た目をやめて、落ちた武器の種類ごとの絵＋名前を出す。
 // v0.4.0-dev（10/24 朝）: 状態別の絵と落とし物アイコン（Codex）に切りかえ。前の手描き・その場の効果は読めないときの代わり。
 
@@ -19,6 +19,8 @@ const BADGE_R = 12, ICON_W = 22;  // 台の半径・アイコンの幅（ワー�
 export function pickupIconName(it, weapon) {
   if (it.type === 'repair') return 'repair-kit';
   const t = weapon?.type;
+  if (t === 'repair') return 'repair-tool'; // v1.0.3 Codex gfx5 PICKUP_ICON: 修理の武器（溶接トーチなど）とバリア発生器の専用アイコン（前は銃のアイコン）
+  if (t === 'barrier') return 'barrier';
   return t === 'cannon' ? 'cannon' : (t === 'melee' || t === 'blade') ? 'blade' : t === 'throw' ? 'grenade' : 'gun';
 }
 const NAME_STYLE = { fontFamily: 'system-ui, sans-serif', fontWeight: '800', fontSize: 11, fill: 0xffe0a8, stroke: { color: 0x121418, width: 3 } };

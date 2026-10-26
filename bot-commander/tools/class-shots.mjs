@@ -35,7 +35,7 @@ info.set = await page.evaluate(async () => {
   p[1].kits = 0; p[2].hp = p[2].maxHp * 0.45; // キット切れの赤い点（右端）と並ぶ所も見る
   const boy = sim.units.find(u => u.human); if (boy) { boy.x = 10.6 * 32; boy.y = 54.2 * 32; }
   sim.fog.seen.fill(0); sim.fog.revision++;
-  const S = await import('/bot-commander/js/sim/sim.js?v=17'); for (let k = 0; k < 3; k++) S.stepSim(sim); // 見える所を作り直す
+  const S = await import('/bot-commander/js/sim/sim.js?v=26'); for (let k = 0; k < 3; k++) S.stepSim(sim); // 見える所を作り直す
   r.cam.x = 9.8 * 32; r.cam.y = 52 * 32; r.clampCam();
   return { zoom: r.cam.zoom, row: row.map(([u, c]) => `${u.label || u.kind}:${c}`) };
 });

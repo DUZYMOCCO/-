@@ -2,9 +2,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { COVER, COVER_LAYOUT, DROPS, ITEMS, PICKUP, WEAPON_DROP, createCover, insideCover, segmentEnters, coverBlocks, findCover, damageCover, rollDrop, atkOf,
-  gearTier, weaponPool, rollWeapon, canEquip, weaponMul, addOwned, applyItem } from '../js/sim/cover.js?v=6';
-import { WEAPONS, weaponById, weaponPower } from '../js/sim/weapons.js?v=5';
-import { createSim, stepSim, runSim, issueOrder, hashSim, TICK } from '../js/sim/sim.js?v=23';
+  gearTier, weaponPool, rollWeapon, canEquip, weaponMul, addOwned, applyItem } from '../js/sim/cover.js?v=8';
+import { WEAPONS, weaponById, weaponPower } from '../js/sim/weapons.js?v=7';
+import { createSim, stepSim, runSim, issueOrder, hashSim, TICK } from '../js/sim/sim.js?v=27';
 import { MISSION_1 } from '../js/sim/mission.js?v=10';
 import { generateMap, passable, toTile } from '../js/sim/map.js?v=6';
 

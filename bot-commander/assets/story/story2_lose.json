@@ -1,0 +1,25 @@
+{
+  "id": "story2_lose",
+  "title": "2章 町はずれの声（仮）",
+  "bg": "hideout",
+  "cast": {
+    "NEJI": "worried"
+  },
+  "lines": [
+    {
+      "who": "NEJI",
+      "text": "……ごめん。ぼくたち だけじゃ、にげても つかまる……。",
+      "face": "damaged"
+    },
+    {
+      "who": "NEJI",
+      "text": "……もしもの はなし。もう いちど。こんどは、もりの かげを とおろう。",
+      "face": "neutral"
+    },
+    {
+      "who": "NEJI",
+      "text": "てきが ひとを つかまえる ときは、うでを みて。かごみたいな あご だよ。",
+      "face": "alert"
+    }
+  ]
+}

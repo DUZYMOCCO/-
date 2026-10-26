@@ -1,0 +1,25 @@
+{
+ "id": "story3_1_lose",
+ "title": "第3章 3-1 スーツの はつじん：負けた時（仮）",
+ "bg": "ruins_town",
+ "cast": {
+  "NEJI": "damaged"
+ },
+ "lines": [
+  {
+   "who": "NEJI",
+   "text": "……ごめん。うまく いかなかった。",
+   "face": "damaged"
+  },
+  {
+   "who": "NEJI",
+   "text": "スーツで てきを 1たいずつ ねらって、ポンコ02と いっしょに たたかおう。",
+   "face": "worried"
+  },
+  {
+   "who": "NEJI",
+   "text": "あぶなく なったら、はじめの ばしょの みどりの わ まで もどって スーツを なおして から！（仮）",
+   "face": "alert"
+  }
+ ]
+}

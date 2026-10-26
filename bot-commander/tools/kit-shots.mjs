@@ -41,7 +41,7 @@ const SETUP = `(() => {
 // 1) 自分で使う
 info.auto = await page.evaluate(async setup => {
   const B = window.__botCommander, { sim } = B; eval(setup);
-  const S = await import('/bot-commander/js/sim/sim.js?v=17');
+  const S = await import('/bot-commander/js/sim/sim.js?v=26');
   const p = sim.units.filter(u => u.kind === 'ponco');
   const me = p[0], buddy = p[1];
   me.x = 9 * 32; me.y = 52 * 32; buddy.x = 11 * 32; buddy.y = 52.3 * 32; me.atk = 0; buddy.atk = 0;
@@ -61,7 +61,7 @@ await page.screenshot({ path: OUT + 'kit_autouse.png' });
 // 2) 使い切りの知らせ（上の PONCO が 0 個。赤い点がつく）。少し流して輪が消えてから
 info.empty = await page.evaluate(async () => {
   const { sim } = window.__botCommander;
-  const S = await import('/bot-commander/js/sim/sim.js?v=17');
+  const S = await import('/bot-commander/js/sim/sim.js?v=26');
   for (let k = 0; k < 40; k++) S.stepSim(sim);
   const me = sim.units.find(u => u.kind === 'ponco'); me.hp = me.maxHp * 0.3; S.autoRepair(sim, me); // 最後の1つ
   for (let k = 0; k < 6; k++) S.stepSim(sim); // 知らせは次の描画で出る（fx が消える前に）
@@ -77,7 +77,7 @@ await page.waitForFunction(() => window.__botCommander?.ready, null, { timeout: 
 await page.waitForTimeout(800);
 info.repairer = await page.evaluate(async setup => {
   const B = window.__botCommander, { sim } = B; eval(setup);
-  const S = await import('/bot-commander/js/sim/sim.js?v=17');
+  const S = await import('/bot-commander/js/sim/sim.js?v=26');
   const p = sim.units.filter(u => u.kind === 'ponco');
   const rep = p[0], hurt = p[1], maker = p[2];
   rep.cls = 'repairer'; rep.label = 'リペアラー'; rep.kits = 3; rep.x = 9 * 32; rep.y = 52 * 32;
