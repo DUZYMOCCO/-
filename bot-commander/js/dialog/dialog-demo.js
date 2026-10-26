@@ -1,7 +1,7 @@
 // ?dialogdemo=1（お試し）: 会話画面だけを見る。ミッションは始めない（本編はフラグがなければ今までどおり）。
 // 台本は assets/dialog/demo.json（セリフはすべて仮）。最後まで進むと「お試しはここまで」→ もう一度見る／工房へ戻る。
 // ?dialogdemo=all: portraits.json の全員を全部の表情で順に出す（dialog-all.js）。&from=ID でその人から始める。
-import { playDialog, loadPortraits } from './dialog-view.js?v=4';
+import { playDialog, loadPortraits } from './dialog-view.js?v=5';
 import { buildAllScript } from './dialog-all.js?v=2';
 
 const DEMO_URL = new URL('../../assets/dialog/demo.json', import.meta.url).href;

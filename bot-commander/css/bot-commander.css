@@ -15,6 +15,8 @@
 .bc-bottom { position: absolute; left: 0; right: 0; bottom: 0; padding: 8px 10px calc(env(safe-area-inset-bottom) + 10px); display: flex; gap: 10px; align-items: center; font-size: 12px; pointer-events: none;
   background: linear-gradient(#0b0d1000, #0b0d10d9); }
 .bc-back { height: 34px; padding: 0 10px; font-size: 12px; font-weight: 700; flex: none; }
+/* R-09: these two HUD regions intercept map input, leaving the rest of the overlay transparent. */
+.bc-hint, .bc-mat { pointer-events: auto; }
 .bc-hint { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bc-fps { opacity: .5; }
 .bc-banner { position: absolute; left: 50%; top: 40%; transform: translate(-50%, -50%); padding: 14px 34px; font-size: 32px; font-weight: 800; border: 3px solid var(--bc-ink); border-radius: 14px; background: #1d4f6b; color: #fff; text-shadow: 0 2px 0 #000; }

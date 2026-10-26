@@ -7,7 +7,7 @@
 // 終了コード: 0＝全部同じ / 1＝ずれあり / 2＝読めない・使い方のまちがい。最後の行は REPLAY_COMPARE_RESULT: 0 OK か NG（英数字だけ）
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { openReplay, parseReplay, compareRecords, deviceRecord, stringifyReplay } from '../js/sim/replay.js?v=10';
+import { openReplay, parseReplay, compareRecords, deviceRecord, stringifyReplay } from '../js/sim/replay.js?v=11';
 
 const args = process.argv.slice(2);
 const oi = args.indexOf('--out');

@@ -6,7 +6,7 @@
 //     受けたダメージ … 自分の HP の減り（弾・範囲攻撃・スーツの殻、どれでも）
 //     運んだ資材     … 脱出口で降ろした荷物（荷物が 0 になった step に deliver があった時）
 //     守った・助けた … 応急キットを使った・盾を渡した・連れていかれる人を運んでいた敵を倒して取り返した、の回数
-//   発射台・ミサイル（物）の範囲攻撃は誰の手柄か決められないので、与えたダメージには数えない。
+//   ミサイルの着弾は発射台を引いていた機体（物語はネジ）の手柄にする。
 export const STAT_CATEGORIES = Object.freeze([
   { id: 'dealt',   icon: '⚔️', label: '与えたダメージ', short: '与ダメ', unit: '' },
   { id: 'kills',   icon: '💥', label: '撃破',           short: '撃破',   unit: '体' },
@@ -34,13 +34,13 @@ export function createUnitStats({ nameOf = u => u.label || u.kind || '味方' } 
   return {
     /** 1 step 進めた後に呼ぶ。sim を読むだけ */
     observe(sim) {
-      const byId = new Map(sim.units.map(u => [u.id, u]));
-      for (const u of sim.units) if (isMember(u)) rec(u); // 初めて見た機体の行を先に作る（最初の step の弾も数える）
+      const byId = new Set();
+      for (const u of sim.units) { byId.add(u.id); if (isMember(u)) rec(u); } // 初めて見た機体の行を先に作る（最初の step の弾も数える）
       const fresh = (sim.fx || []).filter(f => !seen.has(f));
       for (const f of fresh) seen.add(f);
       let delivered = false;
       for (const f of fresh) {
-        if (f.type === 'shot' && f.to != null && f.toSide === 'enemy' && rows.has(f.from)) {
+        if ((f.type === 'missileHit' || (f.type === 'shot' && f.toSide === 'enemy')) && f.to != null && rows.has(f.from)) {
           const r = rows.get(f.from); r.dealt += f.dmg || 0;
           if (f.kill) { r.kills++; killedBy.set(f.to, f.from); }
         } else if (f.type === 'kitUse' && rows.has(f.by)) rows.get(f.by).saves++;

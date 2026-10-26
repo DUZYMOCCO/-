@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { BAND, unitBand, canHit, canMoveOn, MOVE, ALT, DEFAULT_MOVES } from '../js/sim/altitude.js?v=1';
 import { ALT_KINDS, ALT_KIND_WEAPON, ALT_UNIT_LOOK, ALT_SUBMERGED_WEAPON, ALT_IN_MISSIONS, ALT_MISSION_ROWS, withAltUnits } from '../js/sim/alt-units.js?v=3';
 import { ALT_UNITS_SETUP, ALT_DEMO_POND, altUnitsMapEdit } from '../js/sim/alt-units-demo.js?v=3';
-import * as S from '../js/sim/sim.js?v=27';
+import * as S from '../js/sim/sim.js?v=28';
 import * as M from '../js/sim/mission.js?v=10';
 import { generateMap, passable, tileAt, toTile, T } from '../js/sim/map.js?v=6';
 import { weaponById, KIND_WEAPON } from '../js/sim/weapons.js?v=7';
@@ -106,6 +106,6 @@ test('本編のミッションには2つの機体は出ない・普通の始ま�
   const sim = S.createSim({ seed: 1, mission: M.MISSION_1 });
   assert.ok(!sim.units.some(u => u.kind === 'flyer' || u.kind === 'amph'));
   assert.ok(!JSON.stringify(M.MISSION_1).includes('flyer') && !JSON.stringify(M.MISSION_1).includes('amph'));
-  const html = readFileSync(fileURLToPath(new URL('../js/index.js?v=1', import.meta.url)), 'utf8');
+  const html = readFileSync(fileURLToPath(new URL('../js/index.js?v=2', import.meta.url)), 'utf8');
   assert.ok(html.includes("params.get('altunits') === '1'") && html.includes("params.get('altdemo') === '1'"), '両方のお試しの入口がある');
 });

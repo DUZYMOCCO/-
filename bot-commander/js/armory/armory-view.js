@@ -3,7 +3,7 @@
 // お試しの画面: 持っている武器の仕組みがまだないので、選べる物は全部出す（【仮】）。選んだ装備は localStorage の bc-armory-v1 に保存する。
 import { storage } from '../../../common/js/storage.js';
 import { loadCss } from '../../../common/js/load-css.js';
-import { KINDS, UNIT_CLASSES } from '../sim/sim.js?v=27';
+import { KINDS, UNIT_CLASSES } from '../sim/sim.js?v=28';
 import { MISSION_1 } from '../sim/mission.js?v=10';
 import { WEAPON_DROP } from '../sim/cover.js?v=8';
 import { KIND_WEAPON } from '../sim/weapons.js?v=7';

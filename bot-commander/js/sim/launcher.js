@@ -146,7 +146,7 @@ function freeLauncherFor(sim, t) {
 }
 
 function attach(sim, l, t) {
-  l.launch.towId = t.id; t.tow = l.id; t.speedMul = LAUNCHER.towMul; // 引くロボの速さ × 0.6
+  l.launch.towId = t.id; l.launch.lastTowId = t.id; t.tow = l.id; t.speedMul = LAUNCHER.towMul; // 引くロボの速さ × 0.6
   sim.fx.push({ type: 'launcherHitch', unit: l.id, by: t.id, x: l.x, y: l.y, t: sim.time });
 }
 function detach(sim, l, silent = false) {
@@ -200,7 +200,7 @@ function spawnLauncher(sim) {
 }
 
 /** 爆発: 敵に（距離で）ダメージ。味方（ロボ・人間・発射台どれも）には当たらない。遮蔽物は壊れる（落とし物は弾で壊れた時と同じ抽選＝その時だけ乱数を引く。佳之さんの決定 10/26）。ダメージの計算に乱数は使わない */
-export function blast(sim, x, y) {
+export function blast(sim, x, y, by = null) {
   const hits = [];
   for (const u of sim.units) {
     if (u.side === 'ally' || u.hp <= 0 || unitBand(u) === BAND.UNDERWATER) continue;
@@ -216,6 +216,7 @@ export function blast(sim, x, y) {
     dmg = Math.round(dmg);
     u.hp -= dmg; u.lastHit = sim.time;
     hits.push({ id: u.id, dmg });
+    if (by != null) sim.fx.push({ type: 'missileHit', from: by, to: u.id, dmg, kill: u.hp <= 0, t: sim.time });
   }
   for (const c of sim.cover) {
     const raw = launcherBlastDamage(Math.hypot(c.cx - x, c.cy - y));
@@ -256,7 +257,7 @@ export function stepLauncher(sim, dt) {
     if (st.phase === 'aim') {
       st.left -= dt;
       if (st.left <= 1e-6) { // 撃った: 発射台ごとなくなる（1 台 1 発）。ミサイルは飛んでいく
-        L.shots.push({ x0: l.x, y0: l.y, x: st.x, y: st.y, left: LAUNCHER.flightSec, total: LAUNCHER.flightSec });
+        L.shots.push({ x0: l.x, y0: l.y, x: st.x, y: st.y, left: LAUNCHER.flightSec, total: LAUNCHER.flightSec, by: st.lastTowId ?? null });
         sim.fx.push({ type: 'launcherLaunch', x: l.x, y: l.y, tx: st.x, ty: st.y, t: sim.time });
         L.fired++;
         l.hp = 0; l.launch.phase = 'gone';
@@ -281,7 +282,7 @@ export function stepLauncher(sim, dt) {
   for (let i = L.shots.length - 1; i >= 0; i--) {
     const s = L.shots[i];
     s.left -= dt;
-    if (s.left <= 1e-6) { L.shots.splice(i, 1); blast(sim, s.x, s.y); provokeNear(sim, s); }
+    if (s.left <= 1e-6) { L.shots.splice(i, 1); blast(sim, s.x, s.y, s.by); provokeNear(sim, s); }
   }
 }
 

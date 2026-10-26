@@ -19,31 +19,31 @@
 // v1.0.5 claude4c（10/26）: Claude の 4 つの結果の取り込み。点検の残り R-05〜R-14（review2_rest）・?powersuit=1 のパワードスーツのお試し（js/sim/powersuit.js ほか。物語は対象外）・?newenemies=1 の新しい敵 14 種（js/sim/new-enemies.js ほか。種類は KINDS に足さず、フラグの時だけ sim.neKinds）。付けない時は今のまま（ハッシュ同じ）。物語 2〜3 章の案は docs/STORY_CH2_3.md。
 // v1.0.6 handoff4（10/26）: Codex の 4 つの結果の取り込み（?newenemies=1 の仕上げ・G12 の地中と範囲攻撃／磨き P-01〜P-05／?storych=2 物語2章の試作／?storych=3 物語3章の試作）と、戦闘中のダメージの数字・HP の数字（js/render/hp-numbers.js。見た目だけ）。
 // v1.0.7 gem107（10/27）: 下の行動の帯に「発射」（発射台・物語のミサイル。js/ui/fire-button.js）、3倍速、敵の群れを見つけたら「○○：敵を発見！」とカメラを寄せて止める（js/ui/spot-report.js。☰「発見で止める」で入/切）、読んだ会話のスキップボタン（js/dialog/dialog-read.js）。ネジのセリフを普段の話し方にし、操作の案内は会話の後の吹き出しへ。sim は変えない（ハッシュ同じ）。
+// v1.0.8 batch5（10/27）: Codex の 4 つの結果の取り込み。発射台を選んで「発射」・発射台の HP と選択の輪・ミサイルの命中を成績に（launcher_unit）／点検 review3（R-09 ヒントのタップで移動しない・初回の会話はスキップ不可・成績の数え方）／物語 1〜3 章を 1 つの表に（js/story/chapters.js。☰の章の一覧・解放・全章のリプレイ記録）／2・3 章の仕上げ（3 章は本物の新しい敵 G01/G02/G08/G09。遊ぶ時もリプレイも newEnemies。「（仮）」を外す）。旗なしの sim は変えない（ハッシュ同じ）。
 // v1.0.0 gfx3（10/26）: Codex の絵の取り込み（獣人の斜めの清書・飛ぶ機体と水陸両用機の専用の絵・背中の乗り姿・会話の背景 6 枚・ボタンのアイコン）。タイトル・水の中の絵はしまっただけ（README）。
 // v0.4.7（10/24）: 会話（立ち絵＋セリフ）の呼び出し口 playDialog(script) と、?dialogdemo=1 の会話のお試し（js/dialog）。
 import { loadCss } from '../../common/js/load-css.js';
 import { storage } from '../../common/js/storage.js';
-import { createSim, stepSim, TICK, applyCommandsNow, missionStatus, unitById, issueStop, issueRetreat, issueStance, KINDS } from './sim/sim.js?v=27';
-import { createUnitStats, statsHtml } from './stats/unit-stats.js?v=1'; // v1.0.6 ロボごとの成績とランキング（見るだけ。sim は変えない）
+import { createSim, stepSim, TICK, applyCommandsNow, missionStatus, unitById, issueStop, issueRetreat, issueStance, KINDS } from './sim/sim.js?v=28';
+import { createUnitStats, statsHtml } from './stats/unit-stats.js?v=2'; // v1.0.6 ロボごとの成績とランキング（見るだけ。sim は変えない）
 import { MISSION_1 } from './sim/mission.js?v=10';
 import { withAltUnits, ALT_MISSION_ROWS } from './sim/alt-units.js?v=3'; // 本編に出すかのスイッチ（ALT_IN_MISSIONS。今は全部 false）
-import { createRecorder, makeStart, openReplay, parseReplay, registerMission } from './sim/replay.js?v=10';
+import { createRecorder, makeStart, openReplay, parseReplay, registerMission } from './sim/replay.js?v=11';
 import { STORY_1 } from './story/story-mission.js?v=3';
 import { newStoryState, endingKind, storyScriptUrl, midScene, STORY1_HINTS } from './story/story-1.js?v=3';
-import { mountPowersuitMenu } from './ui/powersuit-menu.js?v=2'; // ?powersuit=1 の試作: ☰ の中の「スーツを着る／脱ぐ」「ロボに乗る」（sim.powersuit がある時だけ）
-import { mountStoryOps, storyHud, storyResultText } from './story/story-ops.js?v=3'; // v1.0.2: 物語の最初のミッションの ☰ の中のボタン（乗り降り・発射台・ミサイル）と撃つ場所えらび
-import { CHAPTERS, chapterFlag, stageOf, newChapterStory, nextStage } from './story/chapters.js?v=1'; // 第 3 章など（?storych=3 の時だけ使う。章の表）
-import { story3Hud, story3ResultText } from './story/story3-ops.js?v=1'; // 第 3 章（?storych=3）の上の帯と結果の文字
-import { STORY_2, story2Requested, newStory2State, nextStory2, saveStory2Reward, story2Hud, story2ResultText } from './story/story-2.js?v=1';
+import { mountPowersuitMenu } from './ui/powersuit-menu.js?v=3'; // ?powersuit=1 の試作: ☰ の中の「スーツを着る／脱ぐ」「ロボに乗る」（sim.powersuit がある時だけ）
+import { mountStoryOps, storyHud, storyResultText } from './story/story-ops.js?v=4'; // v1.0.2: 物語の最初のミッションの ☰ の中のボタン（乗り降り・発射台・ミサイル）と撃つ場所えらび
+import { CHAPTERS, chapterFlag, stageOf, newChapterStory, nextStage, chaptersRequested, loadUnlocked, unlockAfter, stageForStory } from './story/chapters.js?v=2'; // 第 3 章など（?storych=3 の時だけ使う。章の表）
+import { story3Hud, story3ResultText } from './story/story3-ops.js?v=2'; // 第 3 章（?storych=3）の上の帯と結果の文字
+import { STORY_2, story2Requested, newStory2State, nextStory2, saveStory2Reward, story2Hud, story2ResultText } from './story/story-2.js?v=2';
 import { mountStory2Ops } from './story/story2-ops.js?v=1';
-const STORY_CHAPTERS = { 1: { mission: () => STORY_1, scriptUrl: kind => storyScriptUrl(kind) }, 2: STORY_2 };
-registerMission(STORY_1); // 物語のミッションもリプレイで再生できるように
-import { selectKind, pruneSelection, createGroups } from './sim/select.js?v=11';
-import { createRenderer } from './render/renderer.js?v=40';
-import { attachInput } from './render/input.js?v=19';
+for (const chapter of Object.values(CHAPTERS)) for (const stage of Object.values(chapter.stages)) registerMission(stage.mission); // 章の記録をフラグなしでも読める
+import { selectKind, pruneSelection, createGroups } from './sim/select.js?v=12';
+import { createRenderer } from './render/renderer.js?v=41';
+import { attachInput } from './render/input.js?v=20';
 import { addOwned } from './sim/cover.js?v=8';
 import { DEFAULT_SPEED, normalizeSpeed, hudSpeedText } from './ui/speed.js?v=2';
-import { fireButtonState } from './ui/fire-button.js?v=1';
+import { fireButtonState } from './ui/fire-button.js?v=2';
 import { newSpots } from './ui/spot-report.js?v=1';
 import { createBackConfirm, requestBack, cancelBack } from './ui/back-confirm.js?v=1';
 import { mergeWarn, warnWho } from './ui/toast-merge.js?v=1';
@@ -77,7 +77,7 @@ const BotCommanderGame = {
   title: 'ロボットコマンダー（仮）',
 
   prepare() {
-    return loadCss([new URL('../css/bot-commander.css?v=18', import.meta.url).href, new URL('../css/replay.css?v=2', import.meta.url).href]);
+    return loadCss([new URL('../css/bot-commander.css?v=19', import.meta.url).href, new URL('../css/replay.css?v=2', import.meta.url).href]);
   },
 
   init(container, onBackToHub) {
@@ -93,7 +93,7 @@ const BotCommanderGame = {
     this.story = story2Requested(location.search) ? newStory2State() : new URLSearchParams(location.search).get('story') === '1' ? newStoryState() : null;
     // 物語の章（?storych=N の時だけ。付けなければ null のまま＝今までどおり）。表にある章の最初のミッションの会話から始まる。ミッションはリプレイにも登録
     this.storyCh = chapterFlag(location.search);
-    if (this.storyCh) { for (const c of Object.values(CHAPTERS)) for (const st of Object.values(c.stages)) registerMission(st.mission); if (!this.story) this.story = newChapterStory(this.storyCh); }
+    if (this.storyCh === 3 && !this.story) this.story = newChapterStory(3);
     this.loadout = undefined; this.armoryDone = false; this.armory = null; this.demo = null; this.r = null; this.sim = null; this.records = null;
     this.replayRec = null; this.replayNotes = []; this.replayUrlDone = false; this.replayError = null; this.player = null; this.rec = null; this.rview = null; this.replayUi = null; // 記録と再生
     this.tutorial = null; this.tutorialOn = false; // チュートリアルは ☰ メニューからだけ始める（v1.0.0: ?tutorial=1 と自動の始まりはなし）
@@ -144,7 +144,7 @@ const BotCommanderGame = {
             <div class="bc-menu-row"><span>発見で止める</span><div class="bc-seg" role="radiogroup" aria-label="発見で止める"><button data-spotpause="1" role="radio">入</button><button data-spotpause="0" role="radio">切</button></div></div>
             <button class="bc-menu-close">ゲームにもどる</button>
             <button class="bc-menu-armory" hidden>武器庫（出撃前にもどる）</button>
-            ${story2Requested(location.search) ? '<button class="bc-menu-story2" style="height:44px">物語（試作）2章 町はずれの声</button>' : ''}
+            
             <button class="bc-menu-story" style="height:40px;font-size:13px;font-weight:700">物語（試作）</button>
             <button class="bc-menu-stats">今の成績（ロボごと）</button>
             <div class="bc-menu-pair"><button class="bc-menu-tutorial">チュートリアル</button><button class="bc-menu-records">記録</button></div>
@@ -206,33 +206,18 @@ const BotCommanderGame = {
     $('.bc-menu-tutorial').addEventListener('click', async e => {
       const btn = e.target;
       let m;
-      try { m = await import('./tutorial/tutorial.js?v=7'); }
+      try { m = await import('./tutorial/tutorial.js?v=8'); }
       catch (err) { console.warn('tutorial load failed', err); this.toast('チュートリアルを開けませんでした（この端末では使えないかもしれません）', 'warn'); return; } // R-12: 古い iPhone では読めない。黙って何も起きないのをやめる
       m.pressMenuButton(btn, () => { this.closeMenu(); this.tutorialOn = true; this.story = null; this.replayRec = null; this.restart(); }); // 点検 R-04: 再生中に押した時、replayRec が残ると再生をやり直すだけになり、tutorialOn も残る
     });
     // 「物語（試作）」: 物語の最初（出撃前の会話）から始める。誤タップ対策に2回押し
-    $('.bc-menu-story2')?.addEventListener('click', () => this.startStory(2));
     const storyBtn = $('.bc-menu-story');
     storyBtn.addEventListener('click', () => {
+      if (chaptersRequested(location.search)) { this.showChapterChoices(); return; }
       if (storyBtn.dataset.armed) { delete storyBtn.dataset.armed; storyBtn.textContent = '物語（試作）'; this.startStory(); return; }
       storyBtn.dataset.armed = '1'; storyBtn.textContent = '押すと物語を始める（進み具合は消える）';
       setTimeout(() => { delete storyBtn.dataset.armed; storyBtn.textContent = '物語（試作）'; }, 4000);
     });
-    // ?storych=N の時だけ、☰ の「物語（試作）」の下に章のミッションを選ぶボタンを足す（付けなければ何も足さない）。誤タップ対策に2回押し
-    if (this.storyCh) {
-      const row = document.createElement('div'); row.className = 'bc-menu-chapters'; row.style.cssText = 'display:flex;flex-direction:column;gap:6px';
-      const menuBox = this.el.menu.querySelector('.bc-menu-box');
-      menuBox.style.cssText = 'max-height:calc(100dvh - 40px);overflow-y:auto';
-      for (const [ch, c] of Object.entries(CHAPTERS).filter(([ch]) => Number(ch) === this.storyCh)) for (const name of c.order) {
-        const b = document.createElement('button'); b.dataset.chapter = ch; b.dataset.stage = name; b.style.cssText = 'height:40px;font-size:13px;font-weight:700'; b.textContent = stageOf(Number(ch), name).label; row.appendChild(b);
-        b.addEventListener('click', () => {
-          if (b.dataset.armed) { delete b.dataset.armed; b.textContent = stageOf(Number(ch), name).label; this.startChapter(Number(ch), name); return; }
-          b.dataset.armed = '1'; b.textContent = '押すと始める（進み具合は消える）';
-          setTimeout(() => { delete b.dataset.armed; b.textContent = stageOf(Number(ch), name).label; }, 4000);
-        });
-      }
-      storyBtn.insertAdjacentElement('afterend', row);
-    }
     for (const ev of ['pointerdown', 'pointermove', 'pointerup', 'touchstart', 'touchmove', 'touchend', 'wheel']) this.el.menu.addEventListener(ev, e => e.stopPropagation());
     this.el.menu.addEventListener('click', e => { e.stopPropagation(); if (e.target === this.el.menu) this.closeMenu(); });
     $('.bc-confirm-stay').addEventListener('click', () => this.cancelBack());
@@ -333,7 +318,7 @@ const BotCommanderGame = {
     this.suitMenu?.destroy(); this.suitMenu = null; // ?powersuit=1 の ☰ の項目（作り直しのたびに外す）
     this.el.nextStage?.remove(); this.el.nextStage = null; if (this.story?.ch) this.story.mid = {}; // 第 3 章: 結果の「つぎへ」を外す・途中の会話をもう一度出せるように
     // ?dialogdemo=1（お試し）: 会話画面だけを見る。ミッションは始めない。=all は全員の立ち絵を全部の表情で
-    if (['1', 'all'].includes(params.get('dialogdemo'))) { const { runDialogDemo } = await import('./dialog/dialog-demo.js?v=6'); return runDialogDemo(this, params.get('dialogdemo')); }
+    if (['1', 'all'].includes(params.get('dialogdemo'))) { const { runDialogDemo } = await import('./dialog/dialog-demo.js?v=7'); return runDialogDemo(this, params.get('dialogdemo')); }
     // ?chardemo=1（お試し）: 少年・少女・獣人の紙芝居の絵を全部の状態で見る画面。ミッション・sim は使わない
     if (params.get('chardemo') === '1') return this.startCharDemo(params);
     // ?replay=<URL か名前>（記録の再生。見るだけ）: 取りに行って調べる。読めなければ理由を出して、ふつうの始まりへ（this.replayRec が入れば再生）
@@ -347,30 +332,29 @@ const BotCommanderGame = {
     // ?altunits=1（お試し）: 飛ぶ機体・水陸両用機（js/sim/alt-units.js）。?altdemo=1 と同じ池に置く。ミッションなし
     const altUnits = params.get('altunits') === '1' ? await import('./sim/alt-units-demo.js?v=3') : null;
     // ?ridedemo=1（お試し）: 人間がロボの背中・中に乗る。少年・少女・獣人、乗れるロボ、離れた所に異星生物。ミッションなし
-    const rideMod = params.get('ridedemo') === '1' && !altUnits ? await import('./ui/ride-panel.js?v=7') : null;
-    const rideDemo = rideMod ? await import('./sim/ride-demo.js?v=7') : null;
+    const rideMod = params.get('ridedemo') === '1' && !altUnits ? await import('./ui/ride-panel.js?v=8') : null;
+    const rideDemo = rideMod ? await import('./sim/ride-demo.js?v=8') : null;
     if (rideMod) await rideMod.loadRideCss();
     const demoSetup = rideDemo ? { rideDemo } : altUnits ? { setup: altUnits.ALT_UNITS_SETUP, mapEdit: altUnits.altUnitsMapEdit } : altDemo ? { setup: altDemo.ALT_DEMO_SETUP, mapEdit: altDemo.altDemoMapEdit } : null; // お試しの配置（記録・チュートリアル・再生なし）
     // チュートリアル（☰ メニューから）の時だけ、練習の場面を使う。再生が頼まれている時は再生を先にする
-    const tutMod = !this.replayRec && !demoSetup && wantsTutorial({ on: this.tutorialOn, search: location.search, mark: loadMark(tutorialMarkStore) }) ? await import('./tutorial/tutorial.js?v=7') : null;
+    const tutMod = !this.replayRec && !demoSetup && wantsTutorial({ on: this.tutorialOn, search: location.search, mark: loadMark(tutorialMarkStore) }) ? await import('./tutorial/tutorial.js?v=8') : null;
     if (tutMod || this.replayRec) this.story = null; // チュートリアル・再生の時は物語の会話を出さない
     const newEnemies = params.get('newenemies') === '1' && !this.story && !demoSetup && !tutMod && !this.replayRec; // ?newenemies=1（試作）: ふつうのミッションに新しい敵 G01〜G12・A01・A08（js/sim/new-enemies.js）。付けなければ今までと同じ
-    let mission = this.story ? STORY_1 : withAltUnits(MISSION_1, ALT_MISSION_ROWS); // 1章と通常ミッションの入口は従来どおり
-    if (this.story?.ch) mission = stageOf(this.story.ch, this.story.stage).mission;
-    const chapterMission = this.story?.chapter === 2 ? STORY_CHAPTERS[2].mission(this.story) : mission; // 第 2 章（?storych=2）は story-2.js のミッション。ほかは今までどおり
+    const chapterMission = this.story ? stageForStory(this.story).mission : withAltUnits(MISSION_1, ALT_MISSION_ROWS);
+    const chapterNE = !!chapterMission?.story3; // v1.0.8: 第 3 章は実際の新しい敵（G01・G02・G08・G09）を使う。createSim に newEnemies: true を渡す（リプレイ側は replay.js の createSimFromStart が同じ判断をする）
     const rp = this.replayRec && !demoSetup ? openReplay(this.replayRec) : null; // 記録の再生: 記録の始まりの条件で、新しいシムを作る
     if (rp && !rp.ok) { this.replayError = rp.reason; this.replayRec = null; }
     const sim = rp?.ok ? rp.sim : tutMod ? tutMod.createTutorialSim({ seed, mapSeed }) : rideDemo
       ? rideDemo.createRideDemoSim({ seed, mapSeed }) : demoSetup
       ? createSim({ seed, mapSeed, ...demoSetup })
-      : createSim({ seed, mapSeed, mission: chapterMission, loadout: this.loadout, launcher: params.get('launcher') === '1' && !this.story, powersuit: params.get('powersuit') === '1' && !this.story, newEnemies }); // ?launcher=1（発射台の試作）・?powersuit=1（スーツのお試し）。どちらも物語は対象外
+      : createSim({ seed, mapSeed, mission: chapterMission, loadout: this.loadout, launcher: params.get('launcher') === '1' && !this.story, powersuit: params.get('powersuit') === '1' && !this.story, newEnemies: newEnemies || chapterNE }); // ?launcher=1（発射台の試作）・?powersuit=1（スーツのお試し）。どちらも物語は対象外
     // ふつうのミッション（物語も）は、いつも裏で記録する（命令の写しとハッシュだけ。小さい）。再生中・お試し・チュートリアルの画面では取らない
     this.player = rp?.ok ? rp.player : null;
-    this.rec = this.player || demoSetup || tutMod ? null : createRecorder(sim, makeStart({ seed, mapSeed, mission, loadout: this.loadout, launcher: !!sim.launcher, powersuit: !!sim.powersuit }));
-    if (newEnemies || this.story?.chapter === 2) this.rec = null; // ?newenemies=1（試作）は記録しない（再生は新しい敵のフラグを持たないので、ハッシュが合わなくなる）
-    if (this.player) this.rview = await import('./replay/replay-view.js?v=10');
+    this.rec = this.player || demoSetup || tutMod ? null : createRecorder(sim, makeStart({ seed, mapSeed, mission: chapterMission, chapter: this.story?.ch || this.story?.chapter || (this.story ? 1 : null), loadout: this.loadout, launcher: !!sim.launcher, powersuit: !!sim.powersuit }));
+    if (newEnemies) this.rec = null; // ?newenemies=1（試作）は記録しない（再生は新しい敵のフラグを持たないので、ハッシュが合わなくなる）
+    if (this.player) this.rview = await import('./replay/replay-view.js?v=11');
     if (stale()) return; // ここまでの読み込み中に離れた（入り直した）なら、新しい画面へ描画を作らない
-    const r = await createRenderer(this.el.stage, sim, { fxQuality: params.get('fx') === 'low' ? 'low' : 'normal', ground: params.get('ground') === 'oblique' ? 'oblique' : undefined, human: params.get('human') === 'oblique' ? 'oblique' : undefined, enemyDemo: params.get('enemydemo') === '1', newEnemies: newEnemies || !!sim.story2 });
+    const r = await createRenderer(this.el.stage, sim, { fxQuality: params.get('fx') === 'low' ? 'low' : 'normal', ground: params.get('ground') === 'oblique' ? 'oblique' : undefined, human: params.get('human') === 'oblique' ? 'oblique' : undefined, enemyDemo: params.get('enemydemo') === '1', newEnemies: newEnemies || !!sim.story2 || !!sim.story3 });
     if (stale()) { r.destroy(); return; }
     this.sim = sim; this.r = r;
     this.picks = altUnits ? [...PICKS.filter(p => p.key !== 'human'), { key: 'flyer', label: '飛行' }, { key: 'amph', label: '水陸' }] : PICKS; // ?altunits=1 は 2 つの機体の選ぶボタンを足す
@@ -448,7 +432,7 @@ const BotCommanderGame = {
         closeMenu: () => this.closeMenu(), isPaused: () => !!this.state.paused, setPaused: v => this.setPaused(v), applyNow: () => this.applyNow(sim), toast: (t, tone) => this.toast(t, tone) };
       this.storyOps = sim.story2 ? mountStory2Ops(host) : mountStoryOps(host);
     }
-    if (sim.launcher) this.launcherUi = await (await import('./ui/launcher-menu.js?v=4')).mountLauncher({ root: this.el.root, sim, r, menu: this.el.menu, toast: (t, tone) => this.toast(t, tone), hooks: { closeMenu: () => this.closeMenu(), setPaused: v => this.setPaused(v), isPaused: () => !!this.state.paused, applyNow: () => this.applyNow(this.sim) } }); // ?launcher=1（発射台の試作）の時だけ
+    if (sim.launcher) this.launcherUi = await (await import('./ui/launcher-menu.js?v=5')).mountLauncher({ root: this.el.root, sim, r, menu: this.el.menu, toast: (t, tone) => this.toast(t, tone), hooks: { closeMenu: () => this.closeMenu(), setPaused: v => this.setPaused(v), isPaused: () => !!this.state.paused, applyNow: () => this.applyNow(this.sim) } }); // ?launcher=1（発射台の試作）の時だけ
     // ?powersuit=1: ☰ の中に「スーツを着る／脱ぐ」「ロボに乗る」（再生中は出さない）
     if (sim.powersuit && !this.player) this.suitMenu = mountPowersuitMenu({ menuBox: this.el.menu.querySelector('.bc-menu-box'), sim, r, isPaused: () => !!this.state.paused, applyNow: () => this.applyNow(this.sim), toast: (t, tone) => this.toast(t, tone), onChange: () => this.refreshSel() });
     if (rideMod) this.ridePanel = rideMod.mountRidePanel({ root: this.el.root, sim, r, toast: (t, tone) => this.toast(t, tone), onChange: () => this.refreshSel() });
@@ -474,7 +458,7 @@ const BotCommanderGame = {
   /** ?replay= の記録を取りに行く。調べて、読めたら this.replayRec へ。読めなければ理由を this.replayError へ（止まらない） */
   async loadReplayUrl(value) {
     try {
-      const view = await import('./replay/replay-view.js?v=10');
+      const view = await import('./replay/replay-view.js?v=11');
       const text = await view.fetchReplayText(value, import.meta.url);
       const p = parseReplay(text);
       if (!p.ok) throw new Error(p.reason);
@@ -500,7 +484,7 @@ const BotCommanderGame = {
   },
   /** 読めなかった記録の知らせ（閉じるとふつうの画面。出ている間は一時停止） */
   async showReplayError(reason) {
-    const view = await import('./replay/replay-view.js?v=10');
+    const view = await import('./replay/replay-view.js?v=11');
     if (!this.alive) return;
     const prev = !!this.state?.paused; this.setPaused(true);
     view.showReplayError(this.el.root, reason, { onClose: () => { if (this.alive) this.setPaused(prev); } });
@@ -509,7 +493,7 @@ const BotCommanderGame = {
   async exportRecord() {
     const rec = this.player ? this.player.rec : this.rec?.snapshot();
     if (!rec) { this.toast('この画面ではリプレイを取っていません'); return; }
-    const view = await import('./replay/replay-view.js?v=10');
+    const view = await import('./replay/replay-view.js?v=11');
     if (!this.alive) return;
     const withDevice = { ...rec, meta: { ...(rec.meta || {}), recordedOn: view.deviceName() } };
     view.openRecordExport(this.el.root, withDevice);
@@ -522,7 +506,7 @@ const BotCommanderGame = {
   },
   /** 「記録を読み込む」の枠。読めたら、その記録を再生する（作り直す。ふつうの進み具合は消える） */
   async openLoadReplay() {
-    const view = await import('./replay/replay-view.js?v=10');
+    const view = await import('./replay/replay-view.js?v=11');
     if (!this.alive) return;
     view.openLoadSheet(this.el.root, { onLoad: (rec, notes) => this.startReplay(rec, notes) });
   },
@@ -538,7 +522,7 @@ const BotCommanderGame = {
    * 終わると前の一時停止の状態に戻る。返り値は Promise<{ skipped }>（メニューの「会話をとばす」で終えたら skipped: true）
    */
   async playDialog(script, opts = {}) {
-    const { playDialog } = await import('./dialog/dialog-view.js?v=4');
+    const { playDialog } = await import('./dialog/dialog-view.js?v=5');
     const prev = !!this.state?.paused;
     this.setPaused(true);
     try { return await playDialog(this.el.root, script, opts); }
@@ -547,7 +531,7 @@ const BotCommanderGame = {
 
   /** 物語の会話（kind: 'intro' | 'win' | 'lose'）を出す。台本が読めなくても、ゲームは止めずに先へ進む */
   async playStoryScene(kind) {
-    try { await this.playDialog(this.story?.ch ? stageOf(this.story.ch, this.story.stage).scriptUrl(kind) : STORY_CHAPTERS[this.story?.chapter || 1].scriptUrl(kind, this.story)); }
+    try { await this.playDialog(stageForStory(this.story).scriptUrl(kind)); }
     catch (err) { console.error('bot-commander story dialog failed', err); }
     if (kind === 'intro' && this.alive && this.sim && !this.menuOpen) this.setPaused(false);
     if (kind === 'intro' && this.alive && this.sim?.story3 && this.story?.ch) this.toast(stageOf(this.story.ch, this.story.stage).hint); // 第 3 章: 会話のあとに短いしめし（吹き出し）
@@ -560,7 +544,7 @@ const BotCommanderGame = {
     for (const f of sim.story2 ? sim.story2.cues.map(type => ({ type })) : sim.fx) {
       if (this.seenMidFx?.has(f)) continue;
       (this.seenMidFx ||= new WeakSet()).add(f);
-      const kind = this.story.ch ? stageOf(this.story.ch, this.story.stage).midScene(f, this.story.mid) : sim.story2 ? (this.story.mid[f.type] ? null : (this.story.mid[f.type] = true, f.type)) : midScene(f.type, this.story.mid); if (!kind) continue;
+      const kind = stageForStory(this.story).midScene(f, this.story.mid); if (!kind) continue;
       this.midBusy = true;
       const play = async () => { if (this.alive && this.sim === sim && !sim.result) await this.playStoryScene(kind); this.midBusy = false; };
       if (f.type === 'strikeHit') this.midTimer = setTimeout(play, 1400); else play(); // 落ちた時は爆発を見せてから
@@ -575,6 +559,11 @@ const BotCommanderGame = {
     this.story.ending = true;
     const sim = this.sim;
     if (kind === 'win' && this.story.ch) CHAPTERS[this.story.ch].markClear(this.story.stage); // 第 3 章: クリアの印（別のキー。フラグ付きの時だけ）
+    if (kind === 'win' && chaptersRequested(location.search)) {
+      const ch = this.story.ch || this.story.chapter || 1;
+      const last = ch === 1 || (ch === 2 && this.story.step === 2) || (ch === 3 && !nextStage(ch, this.story.stage));
+      if (last) unlockAfter(ch);
+    }
     await this.playStoryScene(kind);
     if (this.story?.chapter === 2 && sim.result === 'win') {
       saveStory2Reward(this.story.step, localStorage);
@@ -582,6 +571,25 @@ const BotCommanderGame = {
     }
     if (this.alive && this.sim === sim && this.el.result.hidden) this.showResult();
   },
+  /** ☰ の中で章を選ぶ。開いていない章は押せない。 */
+  showChapterChoices() {
+    let row = this.el.menu.querySelector('.bc-menu-chapters');
+    if (row) { row.remove(); return; }
+    row = document.createElement('div'); row.className = 'bc-menu-chapters';
+    row.style.cssText = 'display:flex;flex-direction:column;gap:6px';
+    const menuBox = this.el.menu.querySelector('.bc-menu-box');
+    menuBox.style.cssText = 'max-height:calc(100dvh - 40px);overflow-y:auto';
+    const unlocked = loadUnlocked();
+    for (const c of Object.values(CHAPTERS)) {
+      const b = document.createElement('button'); b.dataset.chapter = c.id;
+      b.style.cssText = 'min-height:44px;font-size:13px;font-weight:700';
+      b.disabled = c.id > unlocked; b.textContent = `${b.disabled ? '🔒 ' : ''}${c.title}`;
+      b.addEventListener('click', () => { row.remove(); if (c.id === 3) this.startChapter(3); else this.startStory(c.id); });
+      row.appendChild(b);
+    }
+    this.el.menu.querySelector('.bc-menu-story').insertAdjacentElement('afterend', row);
+  },
+
   /** ☰ メニューの「物語（試作）」: いまのミッションをやめて、物語の最初（出撃前の会話）から始める */
   async startStory(chapter = 1) {
     this.closeMenu();
@@ -590,7 +598,8 @@ const BotCommanderGame = {
     this.r = null; this.sim = null;
     this.el.result.hidden = true;
     this.clearReplayUi(); this.tutorial?.destroy(); this.tutorial = null; this.tutorialOn = false; this.replayRec = null; // 再生・チュートリアルの後片づけ
-    this.story = chapter === 2 && story2Requested(location.search) ? newStory2State() : newStoryState();
+    this.loadout = null; // 章は毎回まっさらな編成から始める
+    this.story = chapter === 2 ? newStory2State() : newStoryState();
     await this.startOrShowFailure();
   },
 
@@ -602,13 +611,14 @@ const BotCommanderGame = {
     this.r = null; this.sim = null;
     this.el.result.hidden = true;
     this.clearReplayUi(); this.tutorial?.destroy(); this.tutorial = null; this.tutorialOn = false; this.replayRec = null;
+    this.loadout = null; // 章をまたいで装備を持ち越さない
     this.story = newChapterStory(ch, stage);
     await this.startOrShowFailure();
   },
 
   /** 武器庫（js/armory）を開く。出撃で deployFromArmory へ。ミッション・sim はまだ作らない */
   async startArmory(params) {
-    const { openArmory } = await import('./armory/armory-view.js?v=9');
+    const { openArmory } = await import('./armory/armory-view.js?v=10');
     const view = await openArmory(this, { it01: params.get('it01') === '1' ? 1 : 0, onDeploy: loadout => this.deployFromArmory(loadout) });
     if (!this.alive) { view.destroy(); return; }
     this.armory = view;
@@ -634,7 +644,7 @@ const BotCommanderGame = {
   },
 
   async startCharDemo(params) {
-    const mod = await import('./render/char-demo.js?v=10');
+    const mod = await import('./render/char-demo.js?v=11');
     const menuBtn = this.el.root.querySelector('.bc-menu-btn'), fresh = menuBtn.cloneNode(true);  // ミッション用のメニューの代わりに、お試しのパネルを開閉する
     menuBtn.replaceWith(fresh);
     const demo = await mod.createCharDemo({ host: this.el.stage, root: this.el.root, menuBtn: fresh, human: params.get('human') === 'oblique' ? 'oblique' : undefined, onBack: () => this.exit() });
@@ -734,6 +744,7 @@ const BotCommanderGame = {
     if (!us.length) { this.el.hint.textContent = HINT_IDLE; return; }
     if (us.length === 1) {
       const u = us[0];
+      if (u.launch) { this.el.hint.textContent = '発射台: 自分では動けません。ロボで引いて運びます'; return; }
       // v0.4.2: 持っているリペアキットの数。v0.4.4: シールドの残り（10% 刻み）・サポーターの盾作り
       const sh = u.shieldMax > 0 ? `・シールド ${u.shieldHp > 0 ? `${shieldPct(u)}%${shieldTrait(u)}` : '壊れ'}${bodyTrait(u)}${u.shieldBuild != null ? '・盾を作成中' : ''}${u.spareShields > 0 ? `・予備の盾${u.spareShields}` : ''}` : '';
       const kit = u.human ? '' : `（キット ${u.kits || 0}${u.kitBuild != null ? '・作成中' : ''}${sh}）`;
@@ -761,7 +772,9 @@ const BotCommanderGame = {
     const n = r.ui.selected.length;
     this.el.act.hidden = n === 0;
     this.el.root.classList.toggle('has-sel', n > 0);
-    this.el.actN.textContent = `${n}機`;
+    const onlyLauncher = n > 0 && r.ui.selected.every(id => !!unitById(sim, id)?.launch);
+    for (const act of ['mode', 'stop', 'stance', 'retreat']) this.el.act.querySelector(`[data-act="${act}"]`).hidden = onlyLauncher;
+    this.el.actN.textContent = onlyLauncher ? `${n}台` : `${n}機`;
     this.el.mode.textContent = r.ui.mode === 'rush' ? '急行' : '戦闘移動';
     this.el.mode.classList.toggle('rush', r.ui.mode === 'rush');
     const st = this.selStance();

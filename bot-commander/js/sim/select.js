@@ -2,7 +2,7 @@
 // 1機タップ・枠で囲む・同じ種類・保存した組（①②③）。選べるのは味方で、捕まっていない・AI で動いていない機体だけ。
 
 // AI で動く味方（5-5。aiAlly）はプレイヤーが選べない
-const selectable = u => u.side === 'ally' && u.captured == null && !u.aiAlly && !u.ride && !u.object; // 物（発射台）も選べない // 乗っている人（背中・中）は選べない（ロボを選んで降りる）
+const selectable = u => u.side === 'ally' && u.captured == null && (!u.aiAlly || !!u.launch) && !u.ride && (!u.object || !!u.launch); // 通常発射台だけ選べる。物語の発射台と乗っている人は選べない
 
 /** ワールド座標 (x,y) に一番近い味方（reach 以内）。見た目の中心は足元より少し上（dy） */
 export function allyAt(units, x, y, reach, dy = 12) {
@@ -34,7 +34,7 @@ export function unitsInRect(units, a, b) {
 
 /** 同じ種類をまとめて。kind が 'human' なら人間全員、'all' ならロボット全員 */
 export function selectKind(units, kind) {
-  return units.filter(u => selectable(u) && (kind === 'all' ? !u.human : kind === 'human' ? u.human : u.kind === kind)).map(u => u.id);
+  return units.filter(u => selectable(u) && (kind === 'all' ? !u.human && !u.launch : kind === 'human' ? u.human : u.kind === kind)).map(u => u.id);
 }
 
 /** 選択の掃除: いなくなった・捕まった機体を外す */

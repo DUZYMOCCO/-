@@ -2,7 +2,7 @@
 // 乗る・降りるの決まりは js/sim/ride.js。ここは画面（DOM）と、出来事（sim.fx）を短い知らせにするところだけ。
 import { loadCss } from '../../../common/js/load-css.js';
 import { RIDE_MODE, RIDE_MESSAGES, isHostKind, canBoard, canAlight, issueBoard, issueAlight, ridersOf, rideCapacity } from '../sim/ride.js?v=3';
-import { unitById } from '../sim/sim.js?v=27';
+import { unitById } from '../sim/sim.js?v=28';
 
 export const loadRideCss = () => loadCss(new URL('../../css/ride.css?v=2', import.meta.url).href);
 

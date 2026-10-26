@@ -1,15 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { createSim, stepSim, runSim, hashSim, fieldCount, deployUnit, TICK } from '../js/sim/sim.js?v=27';
+import { createSim as baseCreateSim, stepSim, runSim, hashSim, fieldCount, deployUnit, TICK } from '../js/sim/sim.js?v=28';
 import { MISSION_1 } from '../js/sim/mission.js?v=10';
 import { STORY_1 } from '../js/story/story-mission.js?v=3';
-import { STORY_3_1, STORY_3_2, STORY3_SCRIPT_FILES, markStageClear, loadChapterMarks } from '../js/story/story-3.js?v=1';
-import { chapterFlag, newChapterStory, stageOf, nextStage } from '../js/story/chapters.js?v=1';
+import { STORY_3_1, STORY_3_2, STORY3_SCRIPT_FILES, markStageClear, loadChapterMarks } from '../js/story/story-3.js?v=2';
+import { chapterFlag, newChapterStory, stageOf, nextStage } from '../js/story/chapters.js?v=2';
 import { breakSuit, isSuitSafe, repairRate, canDon, issueDoff } from '../js/sim/powersuit.js?v=1';
 import { canBoard, RIDE_MODE } from '../js/sim/ride.js?v=3';
 import { checkScript, startDialog, skipToEnd } from '../js/dialog/dialog-script.js?v=3';
-import { story3Hud, story3ResultText } from '../js/story/story3-ops.js?v=1';
+import { story3Hud, story3ResultText } from '../js/story/story3-ops.js?v=2';
+const createSim = options => baseCreateSim({ ...options, newEnemies: !!options?.mission?.story3 });
 const get = (s,k) => s.units.find(u=>u.side==='ally' && u.kind===k);
 const json = p => JSON.parse(readFileSync(new URL(p,import.meta.url),'utf8'));
 
@@ -43,12 +44,12 @@ test('3章: フラグなし seed1〜5 のハッシュ・1章の編成と仕掛�
   for(let seed=1;seed<=5;seed++) { const s=createSim({seed,mission:MISSION_1}); runSim(s,300); assert.equal(hashSim(s),hashes[seed-1]); assert.equal(s.story3,undefined); assert.equal(s.powersuit,undefined); }
   const one=createSim({mission:STORY_1}); assert.equal(one.story3,undefined); assert.equal(one.powersuit,undefined); assert.equal(get(one,'boy').ride.phase,'on');
 });
-test('3章: URLは3だけを選ぶ・2章の不在でエラーにならない・章と次の表',()=>{
-  assert.equal(chapterFlag(''),null); assert.equal(chapterFlag('?storych=2'),null); assert.equal(chapterFlag('?storych=3'),3);
+test('3章: 共通の章表から URL とミッションと次の段を引く',()=>{
+  assert.equal(chapterFlag(''),null); assert.equal(chapterFlag('?storych=2'),2); assert.equal(chapterFlag('?storych=3'),3);
   const s=newChapterStory(3); assert.equal(s.stage,'3-1'); assert.equal(stageOf(3,s.stage).mission,STORY_3_1);
-  assert.equal(stageOf(2,'2-1'),null); assert.equal(nextStage(3,'3-1'),'3-2'); assert.equal(nextStage(3,'3-2'),null);
+  assert.equal(stageOf(2,'2-1').mission.id,'story2_1'); assert.equal(nextStage(3,'3-1'),'3-2'); assert.equal(nextStage(3,'3-2'),null);
   const src=readFileSync(new URL('../js/index.js',import.meta.url),'utf8');
-  assert.match(src,/if \(this.storyCh\) \{/); assert.match(src,/storyBtn.insertAdjacentElement\('afterend', row\)/);
+  assert.match(src,/this.storyCh === 3/); assert.match(src,/showChapterChoices/);
 });
 test('3章: 全9台本が検証を通り最後まで読める・着た少年の素顔を出さない',()=>{
   const P=json('../assets/portraits/portraits.json').chars;

@@ -4,10 +4,10 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
-import { TICK } from '../js/sim/sim.js?v=27';
+import { TICK } from '../js/sim/sim.js?v=28';
 
 globalThis.navigator ??= { userAgent: 'node' }; // Pixi を読むため（Node 20 には navigator がない）
-const { DEMO_STATES, makeFigure, enterState, stepFigure } = await import('../js/render/char-demo.js?v=10');
+const { DEMO_STATES, makeFigure, enterState, stepFigure } = await import('../js/render/char-demo.js?v=11');
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const DEFS = Object.fromEntries([['boy', 'BOY_OBL'], ['girl', 'GIRL_OBL'], ['wolf', 'WOLF_OBL']].map(([k, d]) => [k, JSON.parse(readFileSync(join(ROOT, 'assets/chars', d, 'frames.json'), 'utf8'))]));
 const run = (kind, state, sec, opt, flip = 1) => {

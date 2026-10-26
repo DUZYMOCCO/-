@@ -6,7 +6,7 @@ import { drawStory2 } from './story2-view.js?v=1';
 // v0.4.0-dev（10/23 夜）: 遮蔽物と落とし物の見た目（js/render/cover-view.js）。
 import { Application, Container, Sprite, Graphics, Text, Texture, Rectangle, RenderTexture, BlurFilter, CanvasSource, TexturePool } from '../../vendor/pixi-8.22.0.min.mjs?v=7';
 import { TILE, TERRAIN, T as TILE_T, tileAt, toTile, tileCenter } from '../sim/map.js?v=6';
-import { groupUnits, unitById, REPAIRER_KIT_BUILD_SEC, SUPPORTER_SHIELD_BUILD_SEC, isDefensive, unitWeaponInfo } from '../sim/sim.js?v=27';
+import { groupUnits, unitById, REPAIRER_KIT_BUILD_SEC, SUPPORTER_SHIELD_BUILD_SEC, isDefensive, unitWeaponInfo } from '../sim/sim.js?v=28';
 import { fuelRatio, isRefueling } from '../sim/fuel.js?v=1'; // 飛ぶ機体の燃料の小さなゲージ（v1.0.0）
 import { unreachableTarget } from '../sim/targeting.js?v=2'; // 敵が届かない相手（空・水中）を前にした時の小さな印（v1.0.0）
 // v0.4.2: リペアキットを使い切った味方ロボットは、HPバーの右に小さな赤い点（キット切れ）
@@ -24,7 +24,7 @@ function drawBars(g, u, w) {
   }
 }
 const drawNoKit = (g, x) => g.circle(x + 3.6, 6, 2.6).fill({ color: 0x121418 }).circle(x + 3.6, 6, 1.8).fill({ color: 0xef4444 });
-import { FX_MAX, FX_SHAKE_MAX, FX_MARGIN, spawnFxEvents } from './fx-events.js?v=14';
+import { FX_MAX, FX_SHAKE_MAX, FX_MARGIN, spawnFxEvents } from './fx-events.js?v=15';
 import { loadLandmarks, createCoverView } from './cover-view.js?v=10';
 import { create as createFx } from '../fx/fx.js?v=2';
 import { GATHER_RADIUS, EXTRACT_RADIUS, CAPTURE } from '../sim/mission.js?v=10';
@@ -57,9 +57,9 @@ import { isNewEnemy } from '../sim/new-enemies.js?v=2';
 import { damagedKey, wreckKey, wreckAlpha, trimWrecks, WRECK_SEC } from './wreck-view.js?v=3'; // v1.0.3 Codex gfx5 傷んだ姿・残骸 // v1.0.0 背中の乗り姿の絵（だれかが乗った時だけ読む） // 人間がロボに乗る（?ridedemo=1）。sim.ride があるときだけ使う
 import { altMotion, torpedoDuration } from './alt-motion-view.js?v=1'; // v1.0.1 Codex gfx4 飛ぶ機体の影・燃料をためる姿・潜る／浮かぶ・魚雷（見た目だけ）
 import { buildEnemyGallery, buildGfx5Gallery } from './enemy-gallery.js?v=3'; // v1.0.1 Codex gfx4 ?enemydemo=1 の新しい敵の見本（見た目だけ。sim には入れない）
-import { createHpNumbers, popPose, DMG_COLOR } from './hp-numbers.js?v=1'; // v1.0.6 戦闘中のダメージの数・HP の数（見るだけ。sim は変えない）
+import { createHpNumbers, popPose, DMG_COLOR } from './hp-numbers.js?v=2'; // v1.0.6 戦闘中のダメージの数・HP の数（見るだけ。sim は変えない）
 import { drawStory3 } from './story3-view.js?v=1'; // 第 3 章（?storych=3）: 門の張り紙を調べる輪・ビルの印（sim.story3 がある時だけ）
-import { drawLauncherCanvas, drawStrike, LAUNCHER_PX } from './strike-view.js?v=1'; // v1.0.2 物語の最初のミッション: 発射台・着弾マーカー・ミサイル・調べる場所（sim.strike がある時だけ）
+import { drawLauncherCanvas, drawStrike, LAUNCHER_PX } from './strike-view.js?v=2'; // v1.0.2 物語の最初のミッション: 発射台・着弾マーカー・ミサイル・調べる場所（sim.strike がある時だけ）
 import { syncSuitView } from './powersuit-view.js?v=1'; // ?powersuit=1 の試作: スーツの殻・仮面・残骸（sim.powersuit がある時だけ）
 import { CHAR_FRAMES, CHAR_FRAMES_OBLIQUE, heightOf, CORPSE_SEC, WAVE_SEC, hasFrames, newAnim, pickSize, stepAnim } from './char-anim.js?v=8';
 
@@ -452,7 +452,7 @@ async function buildRenderer(host, sim, { fxQuality = 'normal', ground, human, e
   }
   function drawHpNumbers(now) {
     const sel = new Set(ui.selected);
-    const seen = u => !!views.get(u.id)?.c.visible && (u.side === 'ally' || sim.fog.isVisible(toTile(u.x), toTile(u.y)));
+    const seen = u => (!!u.launch || !!views.get(u.id)?.c.visible) && (u.side === 'ally' || sim.fog.isVisible(toTile(u.x), toTile(u.y)));
     const r = hpTrack.update(sim, now, { selected: sel, visible: seen });
     const hide = !!host.closest('.bc-root')?.classList.contains('bc-dialog-open'); // 会話の間は出さない
     const list = hide ? [] : r.pops, labels = hide ? [] : r.labels;

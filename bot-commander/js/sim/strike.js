@@ -177,6 +177,7 @@ function impact(sim, api) {
     const def = (e.z || 0) > 0 ? 1 : TERRAIN[tileAt(sim.map, toTile(e.x), toTile(e.y))].def; // 森・山の守りは効く
     const dmg = Math.max(1, Math.round(base * def));
     e.hp -= dmg; e.lastHit = sim.time;
+    if (S.nejiId != null) sim.fx.push({ type: 'missileHit', from: S.nejiId, to: e.id, dmg, kill: e.hp <= 0, t: sim.time });
     if (e.hp <= 0) kills++;
   }
   const neji = nejiOf(sim), pr = STRIKE.provokeTiles * TILE;

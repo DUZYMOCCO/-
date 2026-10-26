@@ -2,9 +2,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { createSim, stepSim, hashSim, TICK } from '../js/sim/sim.js?v=27';
+import { createSim, stepSim, hashSim, TICK } from '../js/sim/sim.js?v=28';
 import { MISSION_1 } from '../js/sim/mission.js?v=10';
-import { createUnitStats, statsHtml, scoreOf, STAT_CATEGORIES, MEDALS } from '../js/stats/unit-stats.js?v=1';
+import { createUnitStats, statsHtml, scoreOf, STAT_CATEGORIES, MEDALS } from '../js/stats/unit-stats.js?v=2';
 
 const A = (id, extra = {}) => ({ id, side: 'ally', kind: 'scav', hp: 100, maxHp: 100, x: 0, y: 0, cargo: 0, ...extra });
 const E = (id, extra = {}) => ({ id, side: 'enemy', kind: 'alien', hp: 50, maxHp: 50, x: 0, y: 0, ...extra });

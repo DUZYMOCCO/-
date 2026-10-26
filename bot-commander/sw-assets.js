@@ -4,8 +4,8 @@
 // SVG + reference-based WebP art, baked once at boot.
 self.GAME_ASSETS = self.GAME_ASSETS || {};
 self.GAME_ASSETS['bot-commander'] = {
-  version: 'v46',
-  gameVersion: '1.0.7', // ハブのカードに表示する版（キャッシュ用 version とは別。リリース時に上げる）
+  version: 'v47',
+  gameVersion: '1.0.8', // ハブのカードに表示する版（キャッシュ用 version とは別。リリース時に上げる）
   files: [
     'js/story/story3-ops.js',
     'js/story/story-3.js',

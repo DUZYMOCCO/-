@@ -2,15 +2,15 @@
 // 建造・引く・構え・飛ぶ・ダメージの下がり方・味方に当たらない・撃つ前に壊されると消える・1台1発・同じ結果になること。
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createSim, stepSim, runSim, hashSim, hashSimDeep, unitById, fieldCount, KINDS, TICK, issueOrder } from '../js/sim/sim.js?v=27';
+import { createSim, stepSim, runSim, hashSim, hashSimDeep, unitById, fieldCount, KINDS, TICK, issueOrder } from '../js/sim/sim.js?v=28';
 import { MISSION_1 } from '../js/sim/mission.js?v=10';
 import { TILE, TERRAIN, tileAt, toTile } from '../js/sim/map.js?v=6';
-import { createRecorder, makeStart, openReplay, stringifyReplay, parseReplay } from '../js/sim/replay.js?v=10';
-import { selectKind } from '../js/sim/select.js?v=11';
+import { createRecorder, makeStart, openReplay, stringifyReplay, parseReplay } from '../js/sim/replay.js?v=11';
+import { selectKind } from '../js/sim/select.js?v=12';
 import {
   LAUNCHER, TOW_KINDS, LAUNCHER_KINDS, launcherBlastDamage, blast, issueLauncherBuild, issueLauncherHitch, issueLauncherUnhitch, issueLauncherFire,
   launchersOf, canBuild, canFire, heldCount, provokeNear,
-} from '../js/sim/launcher.js?v=3';
+} from '../js/sim/launcher.js?v=4';
 
 const SEC = Math.round(1 / TICK); // 1 秒＝30 step
 const secs = (sim, s) => runSim(sim, Math.round(s * SEC));
@@ -346,7 +346,7 @@ test('撃つ前に壊されると、発射台もミサイルも消える（ま�
   assert.equal(launchersOf(sim).length, 0, '発射台は消える');
   secs(sim, 1);
   assert.equal(sim.launcher.lost, 1);
-  assert.ok(sim.fx.some(f => f.type === 'launcherLost') || sim.launcher.lost === 1);
+  assert.equal(sim.fx.filter(f => f.type === 'launcherLost').length, 1); assert.equal(sim.launcher.lost, 1);
   secs(sim, 10);
   assert.equal(sim.launcher.shots.length, 0, 'ミサイルも消える（飛ばない）');
   assert.equal(sim.launcher.fired, 0);
@@ -449,7 +449,7 @@ test('入口: URL の ?launcher=1 の時だけ有効（index.js の呼び出し�
   assert.ok(!/import[^\n]*launcher-(menu|view)/.test(src.split('\n').filter(l => l.startsWith('import ')).join('\n')), '最初の import には入れない（付けない時は読み込まない）');
   const sw = readFileSync(new URL('../sw-assets.js', import.meta.url), 'utf8');
   for (const f of ['js/sim/launcher.js', 'js/render/launcher-view.js', 'js/ui/launcher-menu.js', 'css/launcher.css']) assert.ok(sw.includes(`'${f}'`), `sw-assets.js に ${f}`);
-  assert.equal(/version: 'v46'/.test(sw) && /gameVersion: '1\.0\.7'/.test(sw), true, 'v1.0.7 / キャッシュ v46（v1.0.6 / v45 の次）');
+  assert.equal(/version: 'v47'/.test(sw) && /gameVersion: '1\.0\.8'/.test(sw), true, 'v1.0.8 / キャッシュ v47（v1.0.7 / v46 の次）');
   assert.ok(!('strike' in createSim({ seed: 1, mission: MISSION_1, launcher: true })), 'sim.strike は作らない');
 });
 
@@ -462,4 +462,30 @@ test('ロボと人が全部いなくなったら、発射台が残っていて�
   stepSim(sim);
   assert.equal(sim.result, 'lose');
   assert.equal(sim.resultReason, 'wiped');
+});
+
+
+test('通常発射台はタップで選べ、HPと発射ボタンが出るがロボ枠と残数に入らない', async () => {
+  const { allyAt, pruneSelection } = await import('../js/sim/select.js?v=12');
+  const { createHpNumbers } = await import('../js/render/hp-numbers.js?v=2');
+  const { fireButtonState } = await import('../js/ui/fire-button.js?v=2');
+  const sim = mk(); clearEnemies(sim); const l = withLauncher(sim);
+  assert.equal(allyAt([l], l.x, l.y - 12, 20), l);
+  assert.deepEqual(pruneSelection(sim.units, [l.id]), [l.id]);
+  assert.equal(fireButtonState(sim, [l.id]).visible, true);
+  assert.equal(createHpNumbers().update(sim, 0, {selected: new Set([l.id])}).labels.find(x => x.u === l).text, '150/150');
+  assert.equal(l.object, true); assert.ok(!sim.units.filter(u => u.side === 'ally' && !u.human && !u.object).includes(l));
+});
+
+test('引いた機体にミサイルの与ダメージと撃破を計上し構えの命令は取り消せない', async () => {
+  const { createUnitStats } = await import('../js/stats/unit-stats.js?v=2');
+  const sim = mk(); const l = withLauncher(sim), t = sim.units.find(u => u.kind === 'scav');
+  const stat = createUnitStats(); stat.observe(sim);
+  t.x = l.x + 10; t.y = l.y; assert.ok(issueLauncherHitch(sim, t.id).ok); stepSim(sim);
+  const target = sim.units.find(u => u.side === 'enemy'); target.x = l.x + 20; target.y = l.y; target.hp = 10000;
+  assert.ok(issueLauncherFire(sim, l.id, target.x, target.y).ok); stepSim(sim);
+  assert.equal(l.launch.phase, 'aim'); assert.equal(issueLauncherFire(sim, l.id, target.x, target.y).ok, false);
+  target.hp = 1; const hits = blast(sim, target.x, target.y, l.launch.lastTowId); stat.observe(sim); stat.observe(sim);
+  const row = stat.summary().rows.find(r => r.id === t.id);
+  assert.ok(hits.some(h => h.id === target.id)); assert.ok(row.dealt > 0); assert.ok(row.kills >= 1);
 });

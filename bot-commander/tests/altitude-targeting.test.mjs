@@ -2,7 +2,7 @@
 // 小さい場面で、届かない相手を追わない・届く相手を選ぶ・通れないマスへ向かわない・今のミッションの結果が変わらないことを確かめる。
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import * as S from '../js/sim/sim.js?v=27';
+import * as S from '../js/sim/sim.js?v=28';
 import { ALT_TEST_UNITS, BAND, unitBand } from '../js/sim/altitude.js?v=1';
 import { reaches, groupReaches } from '../js/sim/targeting.js?v=2';
 import { ALT_DEMO_SETUP, ALT_DEMO_POND, altDemoMapEdit } from '../js/sim/altitude-demo.js?v=2';

@@ -3,8 +3,8 @@
 // 代用した絵の一覧は out/CHANGES.md の 4 章（あとで Codex が描く）。
 import { Container, Graphics, Sprite, Text, Texture } from '../../vendor/pixi-8.22.0.min.mjs?v=7';
 import { tileCenter } from '../sim/map.js?v=6';
-import { unitById } from '../sim/sim.js?v=27';
-import { LAUNCHER, launchersOf } from '../sim/launcher.js?v=3';
+import { unitById } from '../sim/sim.js?v=28';
+import { LAUNCHER, launchersOf } from '../sim/launcher.js?v=4';
 
 const ART_URL = new URL('../../assets/weapons/W1-06.webp', import.meta.url).href; // 代用: 使い捨てロケット砲（発射台の上に載せる）
 const ART_W = 40;      // 画面に出す幅（world px）
@@ -81,8 +81,7 @@ export function createLauncherView(r, sim) {
           r.fx.after(0.45, () => r.fx.hit('heavy', f.x, y, { ...o, w: 0.9, s: 2 }));
           rings.push({ x: f.x, y: f.y, t: performance.now() / 1000 });
           scorch.push({ x: f.x, y: f.y, t: performance.now() / 1000 });
-        } else if (f.type === 'launcherLost') {
-          r.fx.hit('explosion', f.x, f.y - 8, { surface: 'armor', medium: 'land', gy: f.y, w: 0.4, s: 1.1, variant: 'rocket', gate: { shake: 0.3, stop: false } }); // 小さな爆発（まわりにダメージなし）
+        // launcherLost は共通の fx-events が一度だけ描く。
         } else if (f.type === 'launcherLaunch') {
           r.fx.hit('explosion', f.x, f.y - 10, { surface: 'ground', medium: 'land', gy: f.y, w: 0.35, s: 1.2, variant: 'rocket', gate: { shake: 0.4, stop: false } }); // 発射の炎とけむり
         }
@@ -124,6 +123,7 @@ export function createLauncherView(r, sim) {
       v.art.rotation = f * -ease(Math.min(1, k * 1.5)) * 0.62 + (u.moving ? Math.sin(now * 14) * 0.03 : 0); // 構えるとミサイルが立つ
       v.art.tint = aim && Math.sin(now * 16) > 0.3 ? 0xffb080 : 0xffffff; // 構え中は点滅
       v.cart.alpha = 1;
+      if (r.ui.selected.includes(u.id)) ground.ellipse(u.x, u.y, 22, 10).fill({ color: 0x7df9ff, alpha: 0.14 }).stroke({ width: 2.2 * ink, color: 0x7df9ff, alpha: 0.95 });
       // HP バー
       const w = 26, y = u.y - 28, frac = Math.max(0, u.hp / u.maxHp);
       air.rect(u.x - w / 2, y, w, 3.4).fill({ color: 0x000000, alpha: 0.7 }).rect(u.x - w / 2, y, w * frac, 3.4).fill({ color: frac > 0.5 ? 0x4ade80 : frac > 0.25 ? 0xfacc15 : 0xef4444 });

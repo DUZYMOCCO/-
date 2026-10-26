@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 import { CHAR_FRAMES, CHAR_FRAMES_OBLIQUE, DOWN_LONG, isLongDown, downFrame, durOf, finished, newAnim, stepAnim, heightOf } from '../js/render/char-anim.js?v=8';
 import { REACT, hitReact, reactStep } from '../js/fx/react.js?v=2';
-import { TICK } from '../js/sim/sim.js?v=27';
+import { TICK } from '../js/sim/sim.js?v=28';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const load = d => JSON.parse(readFileSync(join(ROOT, 'assets/chars', d, 'frames.json'), 'utf8'));

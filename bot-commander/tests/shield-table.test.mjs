@@ -4,12 +4,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { createSim, runSim, stepSim, hashSim, deployUnit, shieldStats, issueRetreat, applyCommandsNow, KINDS, SHIELD_HP_FRAC, SHIELD_BLOCK_CHANCE } from '../js/sim/sim.js?v=27';
+import { createSim, runSim, stepSim, hashSim, deployUnit, shieldStats, issueRetreat, applyCommandsNow, KINDS, SHIELD_HP_FRAC, SHIELD_BLOCK_CHANCE } from '../js/sim/sim.js?v=28';
 import { MISSION_1 } from '../js/sim/mission.js?v=10';
 import { SHIELD_TABLE, SHIELD_TABLE_V0411, SHIELD_TABLE_IDEAS } from '../js/sim/shield-table.js?v=2';
 import { statusBadgeOf, shieldBarFrac, STATUS_BADGES } from '../js/render/class-icons.js?v=5';
 import { runScenarios } from './fixtures/altitude-scenarios.mjs';
-import * as S from '../js/sim/sim.js?v=27';
+import * as S from '../js/sim/sim.js?v=28';
 import * as M from '../js/sim/mission.js?v=10';
 
 const ROBOT_KINDS = Object.keys(KINDS).filter(k => !KINDS[k].human && !KINDS[k].object && k !== 'alien'); // v1.0.2: 物（物語の発射台・object）は機体の表に載せない（盾なし）

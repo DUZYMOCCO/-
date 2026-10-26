@@ -1,6 +1,6 @@
 // 記録と再生の画面まわり（書き出し・読み込み・再生中の進み具合・再生の結果）。シムは触らない（js/sim/replay.js が本体）。
 // 全部 .bc-root の中の 1 つの枠（.bcr-sheet）か、細い帯（.bcr-bar）。閉じたら DOM から外す（物を増やし続けない）。
-import { stringifyReplay, deviceRecord, parseReplay, MAX_REPLAY_BYTES } from '../sim/replay.js?v=10';
+import { stringifyReplay, deviceRecord, parseReplay, MAX_REPLAY_BYTES } from '../sim/replay.js?v=11';
 
 const TICKS_PER_SEC = 30; // sim.js の TICK = 1/30
 

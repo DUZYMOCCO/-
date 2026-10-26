@@ -4,7 +4,7 @@
 // 決まりは js/sim/powersuit.js。ここは画面（DOM）と、出来事（sim.fx）を短い知らせにするところだけ。sim.powersuit がある時だけ index.js が付ける。
 import { SUIT_MESSAGES, canDon, canDoff, issueDon, issueDoff, suitStatus, blocksBoarding, POWERSUIT } from '../sim/powersuit.js?v=1';
 import { RIDE_MODE, RIDE_MESSAGES, isHostKind, canBoard, canAlight, issueBoard, issueAlight } from '../sim/ride.js?v=3';
-import { unitById } from '../sim/sim.js?v=27';
+import { unitById } from '../sim/sim.js?v=28';
 
 export const SUIT_MENU_LABELS = Object.freeze({ don: 'スーツを着る', doff: 'スーツを脱ぐ', board: 'ロボに乗る', alight: 'ロボからおりる' });
 const PHASE_TEXT = { off: '', donning: '着ている途中…', on: '着ている', doffing: '脱いでいる途中…' };

@@ -1,7 +1,7 @@
 // strike-view.js — 物語の最初のミッション（v1.0.2）の見た目: 発射台の仮の絵・ロープ・着弾マーカー・飛んでいくミサイル・爆風の輪・調べる場所の輪。
 // 絵の素材はまだ無いので、すべてコードで描く（仮）。sim.strike が無い時は何もしない（ふつうのミッションの見た目は変わらない）。
 import { TILE, tileCenter } from '../sim/map.js?v=6';
-import { STRIKE, SURVEY, launcherOf, nejiOf } from '../sim/strike.js?v=1';
+import { STRIKE, SURVEY, launcherOf, nejiOf } from '../sim/strike.js?v=2';
 
 /** 発射台の仮の絵（台車＋斜めの筒＋ミサイル）。canvas を返す（renderer が Texture にする） */
 export function drawLauncherCanvas(size = 96) {

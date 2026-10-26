@@ -6,7 +6,7 @@ import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { CHAR_FRAMES, CHAR_H, LOCO_BY_DISTANCE, heightOf, SIT_AFTER, hasFrames, newAnim, stepAnim, frameAt, finished, strideOf, pickSize, durOf, downFrame, carriedFrame } from '../js/render/char-anim.js?v=8';
 import { hitReact, reactStep, REACT } from '../js/fx/react.js?v=2';
-import { createSim, runSim, issueOrder, KINDS, TICK, unitById } from '../js/sim/sim.js?v=27';
+import { createSim, runSim, issueOrder, KINDS, TICK, unitById } from '../js/sim/sim.js?v=28';
 import { toTile } from '../js/sim/map.js?v=6';
 import { MISSION_1 } from '../js/sim/mission.js?v=10';
 import { artSources } from '../js/render/art.js?v=15';

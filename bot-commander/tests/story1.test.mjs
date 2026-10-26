@@ -5,13 +5,13 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { checkScript, startDialog, skipToEnd } from '../js/dialog/dialog-script.js?v=3';
-import { createSim, runSim, stepSim, issueOrder, hashSim, missionStatus, TICK } from '../js/sim/sim.js?v=27';
+import { createSim, runSim, stepSim, issueOrder, hashSim, missionStatus, TICK } from '../js/sim/sim.js?v=28';
 import { MISSION_1 } from '../js/sim/mission.js?v=10';
 import { reachable, toTile, tileCenter } from '../js/sim/map.js?v=6';
 import { STORY_1 } from '../js/story/story-mission.js?v=3';
 import { STORY1_SCRIPT_FILES, STORY1_MID_SCENES, storyScriptUrl, newStoryState, endingKind, midScene } from '../js/story/story-1.js?v=3';
-import { issueStrike, launcherOf, nejiOf } from '../js/sim/strike.js?v=1';
-import { toggleRide, toggleTow, storyHud, storyMenuState, storyResultText, STORY_OPS_LABELS } from '../js/story/story-ops.js?v=3';
+import { issueStrike, launcherOf, nejiOf } from '../js/sim/strike.js?v=2';
+import { toggleRide, toggleTow, storyHud, storyMenuState, storyResultText, STORY_OPS_LABELS } from '../js/story/story-ops.js?v=4';
 
 const path = rel => fileURLToPath(new URL(rel, import.meta.url));
 const json = rel => JSON.parse(readFileSync(path(rel), 'utf8'));
@@ -226,7 +226,7 @@ test('ふつうの始まりは今のまま: MISSION_1 に物語の仕掛けは�
 test('入口: 物語は ?story=1 か ☰ メニューのボタンだけ。物語の操作ボタンは ☰ の中（地図の上には出さない）', () => {
   const src = readFileSync(path('../js/index.js'), 'utf8');
   assert.match(src, /get\('story'\) === '1' \? newStoryState\(\) : null/);
-  assert.match(src, /mission = this\.story \? STORY_1 : withAltUnits\(MISSION_1, ALT_MISSION_ROWS\)/);
+  assert.match(src, /chapterMission = this\.story \? stageForStory\(this\.story\)\.mission : withAltUnits\(MISSION_1, ALT_MISSION_ROWS\)/);
   assert.match(src, /class="bc-menu-story"/);
   assert.match(src, /if \(this\.story\?\.intro\)/, '出撃前の会話は物語の時だけ');
   assert.match(src, /const kind = this\.story \? endingKind\(this\.sim\.result\) : null;\n\s*if \(!kind\) return this\.showResult\(\);/, '物語でなければ今までどおり結果の画面');

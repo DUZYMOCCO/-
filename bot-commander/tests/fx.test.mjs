@@ -5,8 +5,8 @@ import { readFileSync } from 'node:fs';
 import { create } from '../js/fx/fx.js?v=2';
 import { classify, hitReact, reactStep } from '../js/fx/react.js?v=2';
 import { WEAPONS, KIND_WEAPON } from '../js/sim/weapons.js?v=7';
-import { spawnFxEvents, FX_SHAKE_MAX, FX_STOP_W } from '../js/render/fx-events.js?v=14';
-import { createSim, stepSim, runSim, issueOrder, pushUnit, isStunned, weaponInfo, massOf, TICK } from '../js/sim/sim.js?v=27';
+import { spawnFxEvents, FX_SHAKE_MAX, FX_STOP_W } from '../js/render/fx-events.js?v=15';
+import { createSim, stepSim, runSim, issueOrder, pushUnit, isStunned, weaponInfo, massOf, TICK } from '../js/sim/sim.js?v=28';
 import { T, setTile, tileCenter, toTile, TILE } from '../js/sim/map.js?v=6';
 
 const run = (fx, sec, dt = 1 / 60) => { let stopped = 0, maxShake = 0; for (let t = 0; t < sec; t += dt) { if (fx.update(dt) === 0) stopped++; maxShake = Math.max(maxShake, Math.hypot(...fx.shake)); } return { stopped, maxShake }; };

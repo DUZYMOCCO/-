@@ -74,7 +74,7 @@ export async function playDialog(host, script, opts = {}) {
     <div class="dlg-menu" hidden>
       <div class="dlg-menu-box" role="dialog" aria-label="会話のメニュー">
         <h2 class="dlg-menu-title">メニュー</h2>
-        <button class="dlg-skip">会話をとばす</button>
+        <button class="dlg-skip"${alreadyRead ? '' : ' hidden'}>会話をとばす</button>
         ${opts.onHub ? '<button class="dlg-hub">工房へ戻る</button>' : ''}
         <button class="dlg-close">会話にもどる</button>
       </div>
@@ -252,7 +252,7 @@ export async function playDialog(host, script, opts = {}) {
     if (finished) return;
     finished = true; skipped = skip;
     cancelAnimationFrame(raf);
-    if (scriptId) markRead(scriptId);
+    if (scriptId && !skip) markRead(scriptId);
     bgSeq++;
     for (const im of bgWait) { im.onload = im.onerror = null; im.src = ''; }
     bgWait.clear();
@@ -272,10 +272,10 @@ export async function playDialog(host, script, opts = {}) {
   let down = null;
   el.addEventListener('pointerdown', e => { down = { x: e.clientX, y: e.clientY }; });
   el.addEventListener('click', e => {
-    if (e.target.closest('.dlg-top-skip')) { ctl.skip(); return; }
+    if (e.target.closest('.dlg-top-skip')) { if (alreadyRead) ctl.skip(); return; }
     if (e.target.closest('.dlg-menu-btn')) { openMenu(); return; }
     if (e.target.closest('.dlg-menu')) {
-      if (e.target.closest('.dlg-skip')) { closeMenu(); st = skipToEnd(st); finish(true); }
+      if (e.target.closest('.dlg-skip') && alreadyRead) { closeMenu(); st = skipToEnd(st); finish(true); }
       else if (e.target.closest('.dlg-hub')) { closeMenu(); finish(true); opts.onHub(); }
       else if (e.target.closest('.dlg-close') || e.target === menu) closeMenu();
       return;

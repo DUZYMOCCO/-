@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { SPEEDS, DEFAULT_SPEED, normalizeSpeed, hudSpeedText, advance } from '../js/ui/speed.js?v=2';
-import { createSim, stepSim, TICK } from '../js/sim/sim.js?v=27';
+import { createSim, stepSim, TICK } from '../js/sim/sim.js?v=28';
 import { MISSION_1 } from '../js/sim/mission.js?v=10';
 const read = rel => readFileSync(fileURLToPath(new URL(rel, import.meta.url)), 'utf8');
 

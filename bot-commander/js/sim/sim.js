@@ -29,9 +29,9 @@ import { canHit, coverApplies, terrainDefApplies, altDistance, rangeVs, settleZ,
 import { reaches, groupReaches } from './targeting.js?v=2'; // 敵の群れが追う相手を「届くか」で選ぶ（両方地上なら今までと同じ）
 import { stepFuel, isRefueling } from './fuel.js?v=1'; // 飛ぶ機体の燃料（FUEL_TABLE にある種類だけ。本編の機体には何もしない）
 import { initStory3, stepStory3, checkStory3Result, story3HashValues, story3Status } from './story3-sim.js?v=1'; // 第 3 章（?storych=3）のミッション 3-1・3-2 の仕掛け。sim.story3 がなければ何もしない
-import { initStrike, stepStrike, applyStrikeCommand, STRIKE_COMMANDS, strikeHashValues, strikeStatus } from './strike.js?v=1'; // 物語の最初のミッション（v1.0.2）: ミサイル・発射台・調べる。sim.strike がなければ何もしない
+import { initStrike, stepStrike, applyStrikeCommand, STRIKE_COMMANDS, strikeHashValues, strikeStatus } from './strike.js?v=2'; // 物語の最初のミッション（v1.0.2）: ミサイル・発射台・調べる。sim.strike がなければ何もしない
 import { NEW_ENEMY_KINDS, newEnemiesMission, initNewEnemies, stepNewEnemies, newEnemiesHashValues } from './new-enemies.js?v=2'; // 新しい敵 14 種（?newenemies=1 の試作）。createSim({ newEnemies: true }) でなければ何もしない
-import { initStory2, stepStory2, checkStory2Result, story2Status, story2HashValues, story2PatrolTarget } from './story2-rules.js?v=1'; // 物語 第 2 章（?storych=2 の試作）: ミッションに story2 がある時だけ動く。ロウ（wolf）は KINDS に隠して足す
+import { initStory2, stepStory2, checkStory2Result, story2Status, story2HashValues, story2PatrolTarget } from './story2-rules.js?v=2'; // 物語 第 2 章（?storych=2 の試作）: ミッションに story2 がある時だけ動く。ロウ（wolf）は KINDS に隠して足す
 import { SHIELD_TABLE } from './shield-table.js?v=2'; // 機体ごとの盾と体の表（v0.4.12-dev）。createSim({ shieldTable }) で差しかえられる
 import { FogGrid } from './fog.js?v=5';
 import { ALERT, GATHER_RADIUS, EXTRACT_RADIUS, FIND, CAPTURE, LEASH } from './mission.js?v=10';
@@ -40,7 +40,7 @@ import { classify, hitReact, reactStep } from '../fx/react.js?v=2';
 import { COVER, COVER_LAYOUT, DROPS, ITEMS, PICKUP, createCover, findCover, damageCover, rollDrop, canPickUp, applyItem, atkOf, gearTier, rollWeapon } from './cover.js?v=8';
 import { applyLoadout } from '../armory/loadout.js?v=6'; // 武器庫の装備を出撃の時に機体へ反映（省いた・空なら何もしない）
 import { pickShot, healByLoadout, withLoadoutShield } from './loadout-effects.js?v=5'; // 武器庫の装備の効き目（u.loadoutFx のある機体だけ。ない機体では何も起こらない）
-import { LAUNCHER_KINDS, bindLauncher, createLauncherState, applyLauncherCommand, stepLauncher, hashLauncher } from './launcher.js?v=3'; // 発射台（?launcher=1 の試作）。sim.launcher が無ければ何もしない
+import { LAUNCHER_KINDS, bindLauncher, createLauncherState, applyLauncherCommand, stepLauncher, hashLauncher } from './launcher.js?v=4'; // 発射台（?launcher=1 の試作）。sim.launcher が無ければ何もしない
 import { initPowersuit, stepPowersuit, applyPowersuitCommand, breakSuit, isSuitSafe, powersuitHashValues, POWERSUIT_COMMANDS } from './powersuit.js?v=1'; // パワードスーツ（?powersuit=1 のお試し）。sim.powersuit がなければ何もしない・乱数も引かない
 import { stepRide, onHostHit, cannotBeCaptured, riderCannotShoot, issueBoard, issueAlight, RIDE_MODE } from './ride.js?v=3'; // 人間がロボの背中・中に乗る（js/sim/ride.js）。だれも乗らない時（sim.ride なし）は何もしない
 

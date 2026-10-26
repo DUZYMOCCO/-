@@ -7,8 +7,8 @@ export function story3Hud(sim) {
   if (st.gate) {
     const pct = Math.floor(st.gate.progress * 100);
     if (st.gate.done) return { text: '門の はりがみを みつけた！', frac: 1, warn: false };
-    if (st.gate.blocked) return { text: `門の はりがみを しらべる ${pct}%（敵が近い。のこり${st.enemies}体）`, frac: st.gate.progress, warn: true };
-    return { text: `門の はりがみを しらべる ${pct}%`, frac: st.gate.progress, warn: false };
+    if (st.gate.blocked) return { text: `門をしらべる ${pct}%（敵が近い）`, frac: st.gate.progress, warn: true };
+    return { text: `門をしらべる ${pct}%`, frac: st.gate.progress, warn: false };
   }
   const m = st.mint;
   if (m.phase === 'guard') return { text: 'ビルの入口の センシャヤドカリを たおす', frac: m.guardAlive ? 0.1 : 0.2, warn: false };
@@ -18,7 +18,7 @@ export function story3Hud(sim) {
   if (m.phase === 'escort') {
     const ex = sim.mission.extraction, mint = sim.units.find(u => u.id === sim.story3.mint.id);
     const d = mint ? Math.hypot(mint.x - (ex.tx + 0.5) * 32, mint.y - (ex.ty + 0.5) * 32) / 32 : 0;
-    return { text: m.riding ? 'ミントを 門まで おくる（PONCO02に乗っている）' : 'ミントを PONCO02に のせて 門まで おくる', frac: 0.5 + 0.5 * Math.max(0, 1 - d / 22), warn: false };
+    return { text: m.riding ? 'ミントを 門まで おくる（乗車中）' : 'ミントを のせて 門へ', frac: 0.5 + 0.5 * Math.max(0, 1 - d / 22), warn: false };
   }
   return { text: 'ミントを たすけた！', frac: 1, warn: false };
 }

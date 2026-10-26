@@ -1,7 +1,7 @@
 {
  "js/armory/armory-view.js": {
-  "v": 9,
-  "sha1": "5326b94bd616a7b4c578917d4d0661874382ddd1"
+  "v": 10,
+  "sha1": "4e5aa416f67c26cc7da257dcd987301814a78aac"
  },
  "js/armory/loadout.js": {
   "v": 6,
@@ -16,8 +16,8 @@
   "sha1": "0d8463eaa0fbd7fc3ae2e3a450f455629b918613"
  },
  "js/dialog/dialog-demo.js": {
-  "v": 6,
-  "sha1": "7c29fa586fe19b5277725624c0584d13c411367f"
+  "v": 7,
+  "sha1": "163848cb92e5590f327fa4c7f62e32869f0f23b8"
  },
  "js/dialog/dialog-read.js": {
   "v": 1,
@@ -28,8 +28,8 @@
   "sha1": "2e30973f9284b824677b6e310be093cfc4dbb296"
  },
  "js/dialog/dialog-view.js": {
-  "v": 4,
-  "sha1": "540b5ade03c3551e2b10adc023832978e259c80c"
+  "v": 5,
+  "sha1": "a2e5a481214bdecf2388924bde9b2fca457c12b9"
  },
  "js/dialog/portrait-layout.js": {
   "v": 1,
@@ -60,8 +60,8 @@
   "sha1": "d582e19a52f1b2a71a19759aeb18955710db004f"
  },
  "js/render/char-demo.js": {
-  "v": 10,
-  "sha1": "b6c1395919f3a6dee87471dab53c37472b1d92f3"
+  "v": 11,
+  "sha1": "7738ae7462f286b698acbf1262d69ba80c090c68"
  },
  "js/render/class-icons.js": {
   "v": 5,
@@ -76,8 +76,8 @@
   "sha1": "40a7448f73ee52bdba1c468356160b418c7dc2b2"
  },
  "js/render/fx-events.js": {
-  "v": 14,
-  "sha1": "6c10e533585ef88766708edaf4d317cf6e107d99"
+  "v": 15,
+  "sha1": "dc995628fdb681c4a2ef51f97392dccfdd877f45"
  },
  "js/render/ground-edges.js": {
   "v": 2,
@@ -88,16 +88,16 @@
   "sha1": "f5d63129bf9a41f827273cf778ed05302ae33935"
  },
  "js/render/hp-numbers.js": {
-  "v": 1,
-  "sha1": "816635e365350580758ddc6a5b9e7bff06433897"
+  "v": 2,
+  "sha1": "c13534839c9d154c62a9cf8966e08de25ab40404"
  },
  "js/render/input.js": {
-  "v": 19,
-  "sha1": "ec31d6f385d9affa7461fa18836886dbc51a6fe8"
+  "v": 20,
+  "sha1": "3086dbef24150d4b0957ddcf6bbc797dd84af728"
  },
  "js/render/launcher-view.js": {
-  "v": 3,
-  "sha1": "5b068067e1f043b419f80f218b865e7054c56a6b"
+  "v": 4,
+  "sha1": "4b0d1f5cbcb7673ab1c5652cc6e0eecbc73c5d55"
  },
  "js/render/new-enemies-view.js": {
   "v": 2,
@@ -120,8 +120,8 @@
   "sha1": "df0c24017b1666162ea47079ca5746172a51d8da"
  },
  "js/render/renderer.js": {
-  "v": 40,
-  "sha1": "a58120f453190e7ff1ee461604a56cebe41706ea"
+  "v": 41,
+  "sha1": "0ceeec03d6f1ca334b11874f8627f009148bb238"
  },
  "js/render/ride-view.js": {
   "v": 7,
@@ -136,8 +136,8 @@
   "sha1": "38ad219dc9f8271be04e643097c47237c4ecb258"
  },
  "js/render/strike-view.js": {
-  "v": 1,
-  "sha1": "2ca1c81f03d6c3a3b03b6bf1f0921842db185830"
+  "v": 2,
+  "sha1": "839a62c915666ca31046181778ac7dfdebc40802"
  },
  "js/render/textures.js": {
   "v": 11,
@@ -148,8 +148,8 @@
   "sha1": "9d7c6ecea74ea7421bc4004f3933f2f1224f458e"
  },
  "js/replay/replay-view.js": {
-  "v": 10,
-  "sha1": "823f7db113348ca003ae5b5958fc37bb929413bf"
+  "v": 11,
+  "sha1": "7a9fefcb292822a40536685e59a478038d3be13c"
  },
  "js/save/records-view.js": {
   "v": 5,
@@ -188,8 +188,8 @@
   "sha1": "e2e515c9ea03b21cc16ce1a36c91eb9b77dd6d3b"
  },
  "js/sim/launcher.js": {
-  "v": 3,
-  "sha1": "58f738f20d574bc207bbf82c1491f49a9964c66b"
+  "v": 4,
+  "sha1": "df6c820647afaa2ca03fea369a947d45bf51f289"
  },
  "js/sim/loadout-effects.js": {
   "v": 5,
@@ -216,12 +216,12 @@
   "sha1": "62141bdbec7779b882e25af995eb5fea48d780e4"
  },
  "js/sim/replay.js": {
-  "v": 10,
-  "sha1": "b352dd801a0aa6e2f38584880dbe22473e8d10a2"
+  "v": 11,
+  "sha1": "d6ac1448342840ec77d7b752aa282acfccc957a5"
  },
  "js/sim/ride-demo.js": {
-  "v": 7,
-  "sha1": "15c4e9d3d3aa0de04d868779b4542431fc976a2e"
+  "v": 8,
+  "sha1": "0f8fc89e117fe372849274e6bc890c0a9d6dd9ee"
  },
  "js/sim/ride.js": {
   "v": 3,
@@ -232,28 +232,28 @@
   "sha1": "882e187eba827343192dc403fbe41eb861086089"
  },
  "js/sim/select.js": {
-  "v": 11,
-  "sha1": "6680d24cb2e5d10682ad0bd9b991059462dbb378"
+  "v": 12,
+  "sha1": "ad301d27138849f83fbe11f5dc27f8680d31cb44"
  },
  "js/sim/shield-table.js": {
   "v": 2,
   "sha1": "2dd5edfc2e941934f871cd7463f54b845c53e7d6"
  },
  "js/sim/sim.js": {
-  "v": 27,
-  "sha1": "a7af58977a6d949941ff8acceccfce904b0d7bcf"
+  "v": 28,
+  "sha1": "137da33af38299d34fd5309e6abb72e25a176f85"
  },
  "js/sim/story2-rules.js": {
-  "v": 1,
-  "sha1": "d44b8a2d44cf83f50523231e17efaebd9ad2f458"
+  "v": 2,
+  "sha1": "ed4a692132a0416ba2d649e4de1dc5d57bfcab16"
  },
  "js/sim/story3-sim.js": {
   "v": 1,
   "sha1": "f466e31ab62320076f870b0284a88fd43640a659"
  },
  "js/sim/strike.js": {
-  "v": 1,
-  "sha1": "13b02965e510d5d950e8b2a5c43b23ca6aabb543"
+  "v": 2,
+  "sha1": "7093f5bba071ef5ac68b01b7c1dcdc912f09bf67"
  },
  "js/sim/stroke.js": {
   "v": null,
@@ -268,56 +268,56 @@
   "sha1": "d1280e8e091c07d43bef83c65f652e596a12294f"
  },
  "js/stats/unit-stats.js": {
-  "v": 1,
-  "sha1": "c93f37caa4ad48ec50fd9a84daca2e3339317222"
+  "v": 2,
+  "sha1": "60dc8d8b2eddb7ec6257beb0d2f0cc32cb8af9d3"
  },
  "js/story/chapters.js": {
-  "v": 1,
-  "sha1": "b20a2cfc8bd64d44d1d3b52dea291b2b793e7818"
+  "v": 2,
+  "sha1": "2bd958c0d00f548af064b7bd2535f42e1b31a59e"
  },
  "js/story/story-1.js": {
   "v": 3,
   "sha1": "b84f19e0138caefde1a609afb43db12a1f58895a"
  },
  "js/story/story-2.js": {
-  "v": 1,
-  "sha1": "94f5c56bf5b321515a17546f324628344c213835"
+  "v": 2,
+  "sha1": "af6270c2ded271731a8ef601cd4f087a88587f7e"
  },
  "js/story/story-3.js": {
-  "v": 1,
-  "sha1": "3abcb68c76f5afd7840695c42af0d2bade605ba2"
+  "v": 2,
+  "sha1": "c077defd1132982d6c69865a9141cdc1aeaf412b"
  },
  "js/story/story-mission.js": {
   "v": 3,
   "sha1": "fcd7bd632f7f64ef3044c44ca287478726157568"
  },
  "js/story/story-ops.js": {
-  "v": 3,
-  "sha1": "3725aaec8483671f4d243a59a4735f84aad7443b"
+  "v": 4,
+  "sha1": "dd0e31af448dd8821d4d60fd1a03ea31b30e26cd"
  },
  "js/story/story2-missions.js": {
-  "v": 1,
-  "sha1": "ad22654e6e1e8a88b3160893eda98446b2847e4f"
+  "v": 2,
+  "sha1": "eaac4a88291d21a9189240df78cdf8d77d028408"
  },
  "js/story/story2-ops.js": {
   "v": 1,
   "sha1": "e324e64774289a3cdaf52d0180af2a0471a0c3a2"
  },
  "js/story/story3-ops.js": {
-  "v": 1,
-  "sha1": "4681d6825ea6c2f6c25622180a3ad504300f4b8f"
+  "v": 2,
+  "sha1": "0c8b6c494140003a1b8786d2075b3094fd190617"
  },
  "js/tutorial/tutorial-flow.js": {
   "v": 2,
   "sha1": "87959791a628f7e66b9e1d70403742148f1bd5bd"
  },
  "js/tutorial/tutorial-steps.js": {
-  "v": 7,
-  "sha1": "d75aaef3ab7ff475d62d753883df32e8f1da07f9"
+  "v": 8,
+  "sha1": "52182f4376647628d49203e2beb3a34e339b7e50"
  },
  "js/tutorial/tutorial.js": {
-  "v": 7,
-  "sha1": "9f90fd268a09ac5fe659ed0570a856b0ebd4527a"
+  "v": 8,
+  "sha1": "28d52521b5c7c2a195c25493a70db0ab2d6e52fe"
  },
  "js/ui/back-confirm.js": {
   "v": 1,
@@ -328,20 +328,20 @@
   "sha1": "cf8b83013a11bd95045dc8372d27ac2fd288d40b"
  },
  "js/ui/fire-button.js": {
-  "v": 1,
-  "sha1": "c4149a4abdd08581f96b30b47a9071bb31ea0abe"
+  "v": 2,
+  "sha1": "e2e0894546093eab55426bcddac326a5f1944414"
  },
  "js/ui/launcher-menu.js": {
-  "v": 4,
-  "sha1": "2ba7de35b1d1dd42fc82ea16e821cfe0d55ae7d2"
+  "v": 5,
+  "sha1": "03c65c4513b04fa159fef0e09ea47e96fc32893c"
  },
  "js/ui/powersuit-menu.js": {
-  "v": 2,
-  "sha1": "c75cce2e2afd29c683f6cc2729ca8e9246f6c96a"
+  "v": 3,
+  "sha1": "c5a6af441a66e8d78a7f968b0de74fb9332917a9"
  },
  "js/ui/ride-panel.js": {
-  "v": 7,
-  "sha1": "6622d42d7ccdba7601af390e95db988176263c91"
+  "v": 8,
+  "sha1": "5b1ffa30154d65e192039ee295110ea6d6881b2f"
  },
  "js/ui/speed.js": {
   "v": 2,

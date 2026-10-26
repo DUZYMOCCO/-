@@ -1,7 +1,7 @@
 // v0.4.1: 敵の攻撃ペース・よろけは強い一撃だけ。（ENEMY_ATTACK_INTERVAL_MULT）。敵だけ攻撃の間隔が長く、味方と移動は変わらない
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createSim, stepSim, groupUnits, ENEMY_ATTACK_INTERVAL_MULT, KINDS, isStunned, isStrongHit, weaponInfo, STUN_MIN_HP_FRAC, STUN_IMMUNE_SEC, STUN_HEAVY_KINDS } from '../js/sim/sim.js?v=27';
+import { createSim, stepSim, groupUnits, ENEMY_ATTACK_INTERVAL_MULT, KINDS, isStunned, isStrongHit, weaponInfo, STUN_MIN_HP_FRAC, STUN_IMMUNE_SEC, STUN_HEAVY_KINDS } from '../js/sim/sim.js?v=28';
 import { MISSION_1 } from '../js/sim/mission.js?v=10';
 
 test('敵の攻撃ペース: 倍率は 1〜2・敵は cooldown×倍率、味方は cooldown のまま・移動の速さは同じ', () => {

@@ -3,7 +3,7 @@
 // （stepStory2・checkStory2Result・story2HashValues は呼ばれず、乱数も引かない＝今までのシムの結果と同じ）。数値はすべて【仮】でここで調整する。
 // 第 1 章の js/sim/strike.js（ミサイル・発射台）には触らず、同じ形（initXxx / stepXxx / hashValues）で別に置く。
 import { TILE, tileCenter } from './map.js?v=6';
-import { SURVEY } from './strike.js?v=1';
+import { SURVEY } from './strike.js?v=2';
 
 /** 第 2 章で使う調整値 */
 export const STORY2 = Object.freeze({

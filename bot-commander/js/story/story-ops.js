@@ -1,7 +1,7 @@
 // 物語の最初のミッション（v1.0.2）の操作: ☰ メニューの中のボタン（少年の乗り降り・発射台をつなぐ／はずす・ミサイルを撃つ）と、
 // 撃つ場所を決める画面（地図をタップ → 「ここに撃つ」）、上の目的の文字。sim.strike がある時だけ index.js が付ける。
 // 命令はすべて sim.commands に入れる（リプレイに残る）。一時停止中に押したら applyNow ですぐ効かせる。
-import { STRIKE, STRIKE_MESSAGES, canHitch, canStrike, issueHitch, issueUnhitch, issueStrike, nejiOf, launcherOf, strikeStatus } from '../sim/strike.js?v=1';
+import { STRIKE, STRIKE_MESSAGES, canHitch, canStrike, issueHitch, issueUnhitch, issueStrike, nejiOf, launcherOf, strikeStatus } from '../sim/strike.js?v=2';
 import { canBoard, canAlight, RIDE_MODE } from '../sim/ride.js?v=3';
 
 export const STORY_OPS_LABELS = Object.freeze({

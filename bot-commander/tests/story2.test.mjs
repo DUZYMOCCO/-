@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync,readdirSync} from 'node:fs';
-import {createSim,stepSim,runSim,issueOrder,hashSim,KINDS,applyCommandsNow,TICK} from '../js/sim/sim.js?v=27';
+import {createSim,stepSim,runSim,issueOrder,hashSim,KINDS,applyCommandsNow,TICK} from '../js/sim/sim.js?v=28';
 import {MISSION_1} from '../js/sim/mission.js?v=10';
-import {STORY_2_1,STORY_2_2} from '../js/story/story2-missions.js?v=1';
+import {STORY_2_1,STORY_2_2} from '../js/story/story2-missions.js?v=2';
 import {toggleStory2Ride} from '../js/story/story2-ops.js?v=1';
-import {STORY_2,story2Requested,newStory2State,nextStory2,story2Rewards,saveStory2Reward} from '../js/story/story-2.js?v=1';
+import {STORY_2,story2Requested,newStory2State,nextStory2,story2Rewards,saveStory2Reward} from '../js/story/story-2.js?v=2';
 import {checkScript,startDialog,skipToEnd} from '../js/dialog/dialog-script.js?v=3';
 const file = f => new URL(f,import.meta.url);
 const make = (step=1) => createSim({seed:1,mission:step===1?STORY_2_1:STORY_2_2});
@@ -54,7 +54,7 @@ test('2章: フラグなしのseed1〜5は不変、ロウは共通表にいな�
 test('2章: URL入口はstorych=2だけ、通常の☰には出さない',()=>{
  for(const q of ['', '?story=1','?storych=1','?storych=3','?storych=20'])assert.equal(story2Requested(q),false);
  assert.equal(story2Requested('?storych=2'),true);
- const src=readFileSync(file('../js/index.js'),'utf8');assert.match(src,/story2Requested\(location.search\) \? '<button class="bc-menu-story2"/);
+ const src=readFileSync(file('../js/index.js'),'utf8');assert.match(src,/chaptersRequested\(location.search\).*showChapterChoices/);
  const st=newStory2State();assert.equal(STORY_2.mission(st).id,'story2_1');assert.equal(nextStory2(st),true);assert.equal(STORY_2.mission(st).id,'story2_2');assert.equal(nextStory2(st),false);
 });
 test('2章: 既存の顔と背景による台本8本が最後まで流れる',()=>{

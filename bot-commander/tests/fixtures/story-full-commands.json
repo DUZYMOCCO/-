@@ -1,0 +1,2983 @@
+{
+  "2-1": [
+    {
+      "tick": 0,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          1
+        ],
+        "waypoints": [
+          {
+            "tx": 14,
+            "ty": 52
+          }
+        ],
+        "mode": "rush"
+      }
+    },
+    {
+      "tick": 298,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          1
+        ],
+        "waypoints": [
+          {
+            "tx": 14,
+            "ty": 52
+          }
+        ],
+        "mode": "rush"
+      },
+      "end": 1134
+    },
+    {
+      "tick": 1135,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          1
+        ],
+        "waypoints": [
+          {
+            "tx": 20,
+            "ty": 55
+          }
+        ],
+        "mode": "rush"
+      }
+    },
+    {
+      "tick": 1451,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          1
+        ],
+        "waypoints": [
+          {
+            "tx": 29,
+            "ty": 52
+          }
+        ],
+        "mode": "rush"
+      }
+    },
+    {
+      "tick": 1900,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          1
+        ],
+        "waypoints": [
+          {
+            "tx": 29,
+            "ty": 52
+          }
+        ],
+        "mode": "rush"
+      },
+      "end": 2736
+    },
+    {
+      "tick": 2737,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          1
+        ],
+        "waypoints": [
+          {
+            "tx": 20,
+            "ty": 55
+          }
+        ],
+        "mode": "rush"
+      }
+    },
+    {
+      "tick": 3184,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          1
+        ],
+        "waypoints": [
+          {
+            "tx": 23,
+            "ty": 49
+          }
+        ],
+        "mode": "rush"
+      }
+    },
+    {
+      "tick": 3500,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          1
+        ],
+        "waypoints": [
+          {
+            "tx": 23,
+            "ty": 49
+          }
+        ],
+        "mode": "rush"
+      },
+      "end": 4334
+    },
+    {
+      "tick": 4335,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          1
+        ],
+        "waypoints": [
+          {
+            "tx": 20,
+            "ty": 55
+          }
+        ],
+        "mode": "rush"
+      }
+    }
+  ],
+  "2-2": [
+    {
+      "tick": 0,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 28,
+            "ty": 29
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 30,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 28,
+            "ty": 29
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 60,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 29,
+            "ty": 28
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 90,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 30,
+            "ty": 28
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 120,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 30,
+            "ty": 28
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 150,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 31,
+            "ty": 27
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 180,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 31,
+            "ty": 27
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 210,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 31,
+            "ty": 27
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 240,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 31,
+            "ty": 27
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 270,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 30,
+            "ty": 27
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 300,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 30,
+            "ty": 27
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 330,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 30,
+            "ty": 27
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 360,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 29,
+            "ty": 28
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 390,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 29,
+            "ty": 28
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 420,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 28,
+            "ty": 29
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 450,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 28,
+            "ty": 29
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 480,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 28,
+            "ty": 29
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 510,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 29,
+            "ty": 28
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 540,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 30,
+            "ty": 28
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 570,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 30,
+            "ty": 28
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 600,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 31,
+            "ty": 27
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 630,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 31,
+            "ty": 27
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 660,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 31,
+            "ty": 27
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 690,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 31,
+            "ty": 27
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 720,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 30,
+            "ty": 27
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 750,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 30,
+            "ty": 27
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 780,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 30,
+            "ty": 27
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 810,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 30,
+            "ty": 28
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 840,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 30,
+            "ty": 28
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 870,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 30,
+            "ty": 28
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 900,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 30,
+            "ty": 28
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 930,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 30,
+            "ty": 28
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 960,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 30,
+            "ty": 28
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 990,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 30,
+            "ty": 28
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1020,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 30,
+            "ty": 28
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1050,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 30,
+            "ty": 28
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1080,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 30,
+            "ty": 28
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1110,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 30,
+            "ty": 27
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1140,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 30,
+            "ty": 27
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1170,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 30,
+            "ty": 27
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1200,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 30,
+            "ty": 27
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1230,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 30,
+            "ty": 27
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1260,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 30,
+            "ty": 27
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1290,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 30,
+            "ty": 27
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1320,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 30,
+            "ty": 27
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1350,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 30,
+            "ty": 27
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1380,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 30,
+            "ty": 27
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1410,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 30,
+            "ty": 27
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1440,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 17,
+            "ty": 24
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1470,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 16,
+            "ty": 24
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1500,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 15,
+            "ty": 23
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1530,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 14,
+            "ty": 22
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1560,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 14,
+            "ty": 23
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1590,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 15,
+            "ty": 23
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1620,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 16,
+            "ty": 22
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1650,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 17,
+            "ty": 21
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1680,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 17,
+            "ty": 21
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1710,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 18,
+            "ty": 21
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1740,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 19,
+            "ty": 21
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1770,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 20,
+            "ty": 20
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1800,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 21,
+            "ty": 20
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1830,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 22,
+            "ty": 20
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1860,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 22,
+            "ty": 20
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1890,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 23,
+            "ty": 19
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1920,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 24,
+            "ty": 19
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1950,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 24,
+            "ty": 19
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1980,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 25,
+            "ty": 19
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 2010,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 20
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 2040,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 20
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 2070,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 27,
+            "ty": 20
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 2100,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 27,
+            "ty": 21
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 2130,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 22
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 2160,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 22
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 2190,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 22
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 2220,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 22
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 2250,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 22
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 2280,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 22
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 2310,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 22
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 2340,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 22
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 2370,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 25,
+            "ty": 22
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 2400,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 25,
+            "ty": 22
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 2430,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 25,
+            "ty": 22
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 2460,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 25,
+            "ty": 22
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 2490,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 25,
+            "ty": 22
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 2520,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 25,
+            "ty": 22
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 2550,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 25,
+            "ty": 22
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 2580,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 25,
+            "ty": 22
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 2610,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2
+        ],
+        "waypoints": [
+          {
+            "tx": 25,
+            "ty": 22
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 2640,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          1
+        ],
+        "waypoints": [
+          {
+            "tx": 24,
+            "ty": 24
+          }
+        ],
+        "mode": "rush"
+      }
+    },
+    {
+      "tick": 2640,
+      "ride": true
+    },
+    {
+      "tick": 2670,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 24,
+            "ty": 23
+          }
+        ],
+        "mode": "rush"
+      }
+    },
+    {
+      "tick": 3300,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 24,
+            "ty": 23
+          }
+        ],
+        "mode": "rush"
+      }
+    },
+    {
+      "tick": 3330,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 24,
+            "ty": 23
+          }
+        ],
+        "mode": "rush"
+      }
+    },
+    {
+      "tick": 3360,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 24,
+            "ty": 23
+          }
+        ],
+        "mode": "rush"
+      }
+    },
+    {
+      "tick": 3390,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 24,
+            "ty": 23
+          }
+        ],
+        "mode": "rush"
+      }
+    },
+    {
+      "tick": 3420,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 24,
+            "ty": 23
+          }
+        ],
+        "mode": "rush"
+      }
+    },
+    {
+      "tick": 3450,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 24,
+            "ty": 23
+          }
+        ],
+        "mode": "rush"
+      }
+    },
+    {
+      "tick": 3480,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 24,
+            "ty": 23
+          }
+        ],
+        "mode": "rush"
+      }
+    },
+    {
+      "tick": 3510,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 24,
+            "ty": 23
+          }
+        ],
+        "mode": "rush"
+      }
+    },
+    {
+      "tick": 3540,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 24,
+            "ty": 23
+          }
+        ],
+        "mode": "rush"
+      }
+    },
+    {
+      "tick": 3570,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 24,
+            "ty": 23
+          }
+        ],
+        "mode": "rush"
+      }
+    },
+    {
+      "tick": 3600,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 24,
+            "ty": 23
+          }
+        ],
+        "mode": "rush"
+      }
+    },
+    {
+      "tick": 3630,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 24,
+            "ty": 23
+          }
+        ],
+        "mode": "rush"
+      }
+    },
+    {
+      "tick": 3660,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 24,
+            "ty": 23
+          }
+        ],
+        "mode": "rush"
+      }
+    },
+    {
+      "tick": 3690,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 24,
+            "ty": 23
+          }
+        ],
+        "mode": "rush"
+      }
+    },
+    {
+      "tick": 3720,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 24,
+            "ty": 23
+          }
+        ],
+        "mode": "rush"
+      }
+    }
+  ],
+  "3-1": [
+    {
+      "tick": 0,
+      "cmd": {
+        "type": "attack",
+        "unitIds": [
+          2,
+          3
+        ],
+        "targetId": 4
+      }
+    },
+    {
+      "tick": 555,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2,
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 41
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 735,
+      "cmd": {
+        "type": "attack",
+        "unitIds": [
+          2,
+          3
+        ],
+        "targetId": 5
+      }
+    },
+    {
+      "tick": 795,
+      "cmd": {
+        "type": "attack",
+        "unitIds": [
+          2,
+          3
+        ],
+        "targetId": 6
+      }
+    },
+    {
+      "tick": 975,
+      "cmd": {
+        "type": "attack",
+        "unitIds": [
+          2,
+          3
+        ],
+        "targetId": 5
+      }
+    },
+    {
+      "tick": 1335,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2,
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 38
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1515,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2,
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 38
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1530,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2,
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 38
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1545,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2,
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 38
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1560,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2,
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 38
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1575,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2,
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 38
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1590,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2,
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 38
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1605,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2,
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 38
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1620,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2,
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 38
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1635,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2,
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 38
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1650,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2,
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 38
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1665,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2,
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 38
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1680,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2,
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 38
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1695,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2,
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 38
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1710,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2,
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 38
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1725,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2,
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 38
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1740,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2,
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 38
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1755,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2,
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 38
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1770,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2,
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 38
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1785,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2,
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 38
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1800,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2,
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 38
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1815,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2,
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 38
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1830,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2,
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 38
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1845,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2,
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 38
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1860,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2,
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 38
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1875,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2,
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 38
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1890,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2,
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 38
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1905,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2,
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 38
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1920,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2,
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 38
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1935,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2,
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 38
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1950,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2,
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 38
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1965,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2,
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 38
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1980,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2,
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 38
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1995,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2,
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 38
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 2010,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2,
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 38
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 2025,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2,
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 38
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 2040,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2,
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 38
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 2055,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2,
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 38
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 2070,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2,
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 38
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 2085,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2,
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 38
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 2100,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2,
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 38
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 2115,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2,
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 38
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 2130,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2,
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 38
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 2145,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2,
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 38
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 2160,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2,
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 38
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 2175,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2,
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 38
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 2190,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2,
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 38
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 2205,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2,
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 38
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 2220,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2,
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 38
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 2235,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2,
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 38
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 2250,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2,
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 38
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 2265,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2,
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 38
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 2280,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2,
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 38
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 2295,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2,
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 38
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 2310,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2,
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 38
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 2325,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2,
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 38
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 2340,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2,
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 38
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 2355,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2,
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 38
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 2370,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2,
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 38
+          }
+        ],
+        "mode": "fight"
+      }
+    }
+  ],
+  "3-2": [
+    {
+      "tick": 0,
+      "cmd": {
+        "type": "attack",
+        "unitIds": [
+          2,
+          3
+        ],
+        "targetId": 7
+      }
+    },
+    {
+      "tick": 45,
+      "cmd": {
+        "type": "attack",
+        "unitIds": [
+          2,
+          3
+        ],
+        "targetId": 4
+      }
+    },
+    {
+      "tick": 900,
+      "cmd": {
+        "type": "attack",
+        "unitIds": [
+          2,
+          3
+        ],
+        "targetId": 7
+      }
+    },
+    {
+      "tick": 1215,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2,
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 24,
+            "ty": 27
+          }
+        ],
+        "mode": "fight"
+      }
+    },
+    {
+      "tick": 1455,
+      "cmd": {
+        "type": "attack",
+        "unitIds": [
+          2,
+          3
+        ],
+        "targetId": 5
+      }
+    },
+    {
+      "tick": 1575,
+      "cmd": {
+        "type": "move",
+        "unitIds": [
+          2,
+          3
+        ],
+        "waypoints": [
+          {
+            "tx": 26,
+            "ty": 37
+          }
+        ],
+        "mode": "fight"
+      }
+    }
+  ]
+}

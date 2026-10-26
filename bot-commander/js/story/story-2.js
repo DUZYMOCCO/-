@@ -1,5 +1,5 @@
 // 第2章の台本・進行。保存は任意の専用キーだけ。既存の story/save は変えない。
-import { STORY2_MISSIONS } from './story2-missions.js?v=1';
+import { STORY2_MISSIONS } from './story2-missions.js?v=2';
 export const story2Requested = search => new URLSearchParams(search).get('storych') === '2';
 export const newStory2State = () => ({ chapter: 2, step: 1, intro: true, ending: false, mid: {} });
 export const STORY_2 = Object.freeze({

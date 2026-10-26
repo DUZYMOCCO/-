@@ -50,7 +50,7 @@ export function createHpNumbers() {
       }
       const alive = new Set();
       for (const u of sim.units) {
-        if (u.object) continue; // 発射台など「物」は数を出さない
+        if (u.object && !u.launch) continue; // 通常発射台を除き「物」は数を出さない
         alive.add(u.id);
         const p = prev.get(u.id), hp = u.hp, max = u.maxHp;
         if (p && p.max === max && hp < p.hp - 1e-6 && visible(u)) { spawn(u, p.hp - Math.max(0, hp), now); until.set(u.id, now + HP_SHOW_SEC); }
@@ -63,7 +63,7 @@ export function createHpNumbers() {
       pops = pops.filter(p => now - p.born <= DMG_LIFE);
       const labels = [];
       if (!over) for (const u of sim.units) {
-        if (u.object || !(u.hp > 0) || !(u.maxHp > 0) || !visible(u)) continue;
+        if ((u.object && !u.launch) || !(u.hp > 0) || !(u.maxHp > 0) || !visible(u)) continue;
         const sel = u.side === 'ally' && selected.has(u.id);
         if (sel || (until.get(u.id) || 0) > now) labels.push({ u, text: hpText(u), selected: sel });
       }

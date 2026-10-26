@@ -5,18 +5,19 @@
 // スーツ（js/sim/powersuit.js）は mission.suit が true のミッションの中だけ、?powersuit=1 なしで使える。
 
 /** 敵の HP の倍率（名前 → 倍率）。異星生物の HP 360 のままでは、ロボ 1 台とスーツの少年では勝てない（実測は CHANGES.md）ので、第 3 章の中だけ下げる。G09 は重いので他より大きい。【仮】 */
-const HP_MUL = Object.freeze({ 'ガトリングガエル': 0.20, 'ホノオミジンコ': 0.20, 'ハサミアリ': 0.20, 'ハサミアリ（とおく）': 0.20, 'センシャヤドカリ': 0.50 });
+const HP_MUL = Object.freeze({ 'ガトリングガエル': 0.18, 'ホノオミジンコ': 0.18, 'ハサミアリ': 0.18, 'ハサミアリ（とおく）': 0.18, 'センシャヤドカリ': 0.45 });
 
 /** 3-1「スーツの はつじん」: 川の北の道を通って隣町の門へ。途中の見張りを倒して、門の張り紙を調べる。
- *  敵は今ある 'alien' で代用（G01 ガトリングガエル・G02 ホノオミジンコ・G08 ハサミアリ。新しい敵を使うなら CHANGES.md の案） */
+ *  敵は章専用の G01・G02・G08。最初は各1体。 */
 export const STORY_3_1 = Object.freeze({
   id: 'story3-1',
-  title: 'スーツの はつじん（仮）',
+  title: 'スーツの はつじん',
   win: 'gate',
   target: 1,             // 使わない（張り紙を調べ終えたら勝ち）。MISSION_1 と同じ形にするため
   salvage: [],
   extraction: { tx: 20, ty: 56 }, // 拠点（はじめの場所）。スーツはここで直る（powersuit.js の repairRate）
   nest: { tx: 4, ty: 22 },
+  ownAliens: true,
   suit: true,             // この中ではスーツを使える（?powersuit=1 は要らない）
   story3: { stage: '3-1', gate: { tx: 26, ty: 38, amount: 8, name: '門の はりがみ' }, hpMul: HP_MUL },
   ally: [
@@ -25,9 +26,9 @@ export const STORY_3_1 = Object.freeze({
     { kind: 'boy', tx: 21, ty: 57 },
   ],
   aliens: [
-    { name: 'ガトリングガエル', kind: 'alien', count: 2, route: [{ tx: 15, ty: 49 }, { tx: 26, ty: 47 }] },   // 道の途中を行き来する（G01）
-    { name: 'ホノオミジンコ', kind: 'alien', count: 1, route: [{ tx: 29, ty: 39 }, { tx: 30, ty: 38 }] },     // 門のそば（G02）
-    { name: 'ハサミアリ', kind: 'alien', count: 1, route: [{ tx: 25, ty: 36 }, { tx: 28, ty: 37 }] },        // 門の見張り（G08）
+    { name: 'ガトリングガエル', kind: 'G01', count: 1, route: [{ tx: 15, ty: 49 }, { tx: 26, ty: 47 }] },   // 道の途中を行き来する（G01）
+    { name: 'ホノオミジンコ', kind: 'G02', count: 1, route: [{ tx: 29, ty: 39 }, { tx: 30, ty: 38 }] },     // 門のそば（G02）
+    { name: 'ハサミアリ', kind: 'G08', count: 1, route: [{ tx: 25, ty: 36 }, { tx: 28, ty: 37 }] },        // 門の見張り（G08）
   ],
 });
 
@@ -35,12 +36,13 @@ export const STORY_3_1 = Object.freeze({
  *  人間の枠（3）: 少年・ミント（途中で加わる）。ロウは姿を出さず声だけ（遠ぼえで G08 の 1 体を引き離した）。 */
 export const STORY_3_2 = Object.freeze({
   id: 'story3-2',
-  title: '最初のひとり（仮）',
+  title: '最初のひとり',
   win: 'mintHome',
   target: 1,
   salvage: [],
   extraction: { tx: 26, ty: 37 }, // 隣町の門（脱出口。拠点としてスーツも直る）
   nest: { tx: 4, ty: 22 },
+  ownAliens: true,
   suit: true,
   story3: { stage: '3-2', mint: { tower: { tx: 24, ty: 25 }, guard: 'センシャヤドカリ', carrier: 'ハサミアリ' }, rubble: 4, hpMul: HP_MUL }, // rubble＝COVER_LAYOUT の 4 番（ビル）を倒れた状態に
   ally: [
@@ -49,10 +51,10 @@ export const STORY_3_2 = Object.freeze({
     { kind: 'boy', tx: 27, ty: 39 },
   ],
   aliens: [
-    { name: 'センシャヤドカリ', kind: 'alien', count: 1, route: [{ tx: 24, ty: 28 }, { tx: 25, ty: 28 }] },  // ビルの入口（G09。ほかの代用敵よりHPが2.5倍）
-    { name: 'ハサミアリ', kind: 'alien', count: 1, route: [{ tx: 12, ty: 27 }, { tx: 14, ty: 26 }] },       // ミントを運ぶ（G08）
-    { name: 'ハサミアリ（とおく）', kind: 'alien', count: 1, route: [{ tx: 36, ty: 20 }, { tx: 36, ty: 25 }] }, // ロウが引き離した 1 体（G08）
-    { name: 'ガトリングガエル', kind: 'alien', count: 1, route: [{ tx: 30, ty: 31 }, { tx: 33, ty: 29 }] },  // 帰り道のじゃま（G01）
+    { name: 'センシャヤドカリ', kind: 'G09', count: 1, route: [{ tx: 24, ty: 28 }, { tx: 25, ty: 28 }] },  // ビルの入口（G09。ほかの代用敵よりHPが2.5倍）
+    { name: 'ハサミアリ', kind: 'G08', count: 1, route: [{ tx: 12, ty: 27 }, { tx: 14, ty: 26 }] },       // ミントを運ぶ（G08）
+    { name: 'ハサミアリ（とおく）', kind: 'G08', count: 1, route: [{ tx: 36, ty: 20 }, { tx: 36, ty: 25 }] }, // ロウが引き離した 1 体（G08）
+    { name: 'ガトリングガエル', kind: 'G01', count: 1, route: [{ tx: 30, ty: 31 }, { tx: 33, ty: 29 }] },  // 帰り道のじゃま（G01）
   ],
 });
 

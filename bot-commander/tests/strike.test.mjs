@@ -3,13 +3,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { createSim, runSim, stepSim, hashSim, KINDS, TICK } from '../js/sim/sim.js?v=27';
+import { createSim, runSim, stepSim, hashSim, KINDS, TICK } from '../js/sim/sim.js?v=28';
 import { MISSION_1 } from '../js/sim/mission.js?v=10';
 import { TILE } from '../js/sim/map.js?v=6';
 import { STORY_1 } from '../js/story/story-mission.js?v=3';
-import { STRIKE, SURVEY, STRIKE_COMMANDS, STRIKE_MESSAGES, canHitch, canStrike, issueStrike, issueUnhitch, launcherOf, nejiOf, strikeStatus, strikeHashValues } from '../js/sim/strike.js?v=1';
-import { strikeCountdown, missilePos } from '../js/render/strike-view.js?v=1';
-import { spawnFxEvents, STRIKE_BURSTS } from '../js/render/fx-events.js?v=14';
+import { STRIKE, SURVEY, STRIKE_COMMANDS, STRIKE_MESSAGES, canHitch, canStrike, issueStrike, issueUnhitch, launcherOf, nejiOf, strikeStatus, strikeHashValues } from '../js/sim/strike.js?v=2';
+import { strikeCountdown, missilePos } from '../js/render/strike-view.js?v=2';
+import { spawnFxEvents, STRIKE_BURSTS } from '../js/render/fx-events.js?v=15';
 
 const dug = () => { const sim = createSim({ seed: 2, mission: STORY_1 }); sim.mission.salvage[sim.strike.pile].amount = 0; stepSim(sim); return sim; };
 
@@ -91,10 +91,22 @@ test('演出: 撃った・落ちた・壊された の合図で爆発を出す�
 });
 
 test('描画: 発射台の絵はコードで描く（renderer が strike-view を読む）・コックピットの中の絵は使わない', () => {
-  const src = readFileSync(fileURLToPath(new URL('../js/render/renderer.js?v=39', import.meta.url)), 'utf8');
+  const src = readFileSync(fileURLToPath(new URL('../js/render/renderer.js?v=41', import.meta.url)), 'utf8');
   assert.match(src, /strike-view\.js\?v=\d+/);
   assert.match(src, /launcher: LAUNCHER_PX/);
   assert.match(src, /drawStrike\(/);
   const ops = readFileSync(fileURLToPath(new URL('../js/story/story-ops.js', import.meta.url)), 'utf8');
   assert.doesNotMatch(ops, /cockpit/i);
+});
+
+
+test('第1章の着弾の与ダメージと撃破をネジの成績に数える', async () => {
+  const { createUnitStats } = await import('../js/stats/unit-stats.js?v=2');
+  const sim = dug(), neji = nejiOf(sim);
+  const e = sim.units.find(u => u.side === 'enemy');
+  e.atk = 0; e.hp = 1; e.x = neji.x + 150; e.y = neji.y;
+  sim.strike.phase = 'flying'; sim.strike.target = {x: e.x, y: e.y}; sim.strike.flightT = STRIKE.flightSec - TICK / 2;
+  const stats = createUnitStats(); stats.observe(sim); stepSim(sim); stats.observe(sim); stats.observe(sim);
+  const row = stats.summary().rows.find(r => r.id === neji.id);
+  assert.ok(row.dealt > 0); assert.ok(row.kills >= 1);
 });

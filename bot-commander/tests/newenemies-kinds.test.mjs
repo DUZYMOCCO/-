@@ -2,7 +2,7 @@
 // 表はモジュールの中の状態なので、ほかのテストと混ざらないよう、このファイルだけで確かめる（node --test は 1 ファイル 1 プロセス）。
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import * as S from '../js/sim/sim.js?v=27';
+import * as S from '../js/sim/sim.js?v=28';
 import * as M from '../js/sim/mission.js?v=10';
 import * as NE from '../js/sim/new-enemies.js?v=2';
 

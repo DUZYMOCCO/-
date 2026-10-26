@@ -2,7 +2,7 @@
 // 今の hashSim の値は変わらない（主局面の 300 tick 後の値を固定）。
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createSim, runSim, hashSim, hashSimDeep } from '../js/sim/sim.js?v=27';
+import { createSim, runSim, hashSim, hashSimDeep } from '../js/sim/sim.js?v=28';
 import { MISSION_1 } from '../js/sim/mission.js?v=10';
 
 const sample = (seed = 3) => { const sim = createSim({ seed, mission: MISSION_1 }); runSim(sim, 300); return sim; };

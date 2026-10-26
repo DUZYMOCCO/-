@@ -2,9 +2,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { createSim, stepSim, hashSim, TICK } from '../js/sim/sim.js?v=27';
+import { createSim, stepSim, hashSim, TICK } from '../js/sim/sim.js?v=28';
 import { MISSION_1 } from '../js/sim/mission.js?v=10';
-import { createHpNumbers, popPose, stackOffset, DMG_LIFE, HP_SHOW_SEC, DMG_COLOR } from '../js/render/hp-numbers.js?v=1';
+import { createHpNumbers, popPose, stackOffset, DMG_LIFE, HP_SHOW_SEC, DMG_COLOR } from '../js/render/hp-numbers.js?v=2';
 
 const fakeSim = units => ({ units, fx: [], result: null });
 const U = (id, side, hp, maxHp = 100, x = 100, y = 100) => ({ id, side, hp, maxHp, x, y });

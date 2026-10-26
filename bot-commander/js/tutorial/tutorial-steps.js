@@ -1,6 +1,6 @@
 // チュートリアルの「段」と、練習の場面（データと、その場面を作る関数だけ。画面は触らない）。
 // 今の MISSION_1 や sim の数値は変えない。練習の場面は createSim({ mission }) に別のミッションを渡して作る。数値はすべて（仮）。
-import { createSim, unitById } from '../sim/sim.js?v=27';
+import { createSim, unitById } from '../sim/sim.js?v=28';
 import { nearestPassable, tileCenter } from '../sim/map.js?v=6';
 
 /**

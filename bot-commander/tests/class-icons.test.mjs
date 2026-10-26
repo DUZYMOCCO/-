@@ -1,7 +1,7 @@
 // v0.4.3: 兵種のアイコン（データ CLASS_ICONS）。兵種の一覧 UNIT_CLASSES のすべてに行があるか・リペアラーは緑の十字か
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { UNIT_CLASSES, UNIT_CLASS_CAPS, KINDS, createSim } from '../js/sim/sim.js?v=27';
+import { UNIT_CLASSES, UNIT_CLASS_CAPS, KINDS, createSim } from '../js/sim/sim.js?v=28';
 import { MISSION_1 } from '../js/sim/mission.js?v=10';
 import { CLASS_ICONS, GLYPH_NAMES, classIconOf, drawClassIcon, ICON_R } from '../js/render/class-icons.js?v=5';
 

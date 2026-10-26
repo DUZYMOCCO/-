@@ -2,12 +2,12 @@
 // フラグがない時のシムの結果が 1 つも変わらないこと、同じ seed・同じ命令なら同じ結果になることも。画面は使わない。
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import * as S from '../js/sim/sim.js?v=27';
+import * as S from '../js/sim/sim.js?v=28';
 import * as M from '../js/sim/mission.js?v=10';
 import * as R from '../js/sim/ride.js?v=3';
 import * as P from '../js/sim/powersuit.js?v=1';
-import { createRecorder, openReplay, makeStart, stringifyReplay, parseReplay } from '../js/sim/replay.js?v=10';
-import { suitMenuState, suitActor, suitToggleWear, suitToggleRide } from '../js/ui/powersuit-menu.js?v=2';
+import { createRecorder, openReplay, makeStart, stringifyReplay, parseReplay } from '../js/sim/replay.js?v=11';
+import { suitMenuState, suitActor, suitToggleWear, suitToggleRide } from '../js/ui/powersuit-menu.js?v=3';
 import { tileCenter, nearestPassable } from '../js/sim/map.js?v=6';
 
 const A = P.SUIT_TYPES.A;

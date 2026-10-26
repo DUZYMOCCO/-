@@ -13,7 +13,7 @@ const NEJI_TILE = { tx: 20, ty: 54 };
 
 export const STORY_2_1 = Object.freeze({
   id: 'story2_1',
-  title: 'ポンコ02を つくる（仮）',
+  title: 'ポンコ02を つくる',
   target: 60,
   salvage: [
     { tx: 14, ty: 52, amount: 20 },  // 西のがれきの山
@@ -36,7 +36,7 @@ export const STORY_2_1 = Object.freeze({
 
 export const STORY_2_2 = Object.freeze({
   id: 'story2_2',
-  title: 'むせんとうの あと（仮）',
+  title: 'むせんとうの あと',
   win: 'survey',
   target: 1,                          // 使わない（塔の跡を調べ終えたら勝ち）。MISSION_1 と同じ形にするため
   salvage: [],
