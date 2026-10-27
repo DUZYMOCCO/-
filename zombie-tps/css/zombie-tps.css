@@ -511,3 +511,9 @@
 .zt-soon { color: #ffd9a8; font-size: 12px; }
 @media (max-height: 400px) { .zt-card { width: 136px; } .zt-card i { font-size: 38px; } .zt-card b { font-size: 15px; } .zt-tabs button { min-height: 36px; font-size: 13px; padding: 0 10px; } .zt-fbtn { min-height: 40px; font-size: 12px; } .zt-sel { gap: 4px; } }
 @media (max-height: 330px) { .zt-card i { font-size: 30px; } .zt-card span { display: none; } }
+
+/* アオとモモは なかまに なってからも なまえを ひょうじ */
+.zt-bot.zt-guest[data-m="on"] span { display: block; animation: none; }
+.zt-guest.zt-momo span { background: rgba(128,52,91,.92); }
+.zt-botarrow.zt-momo i { color: #ffaad3; }
+.zt-momo .zt-bothp div { background: linear-gradient(#ffd0e3, #e47cae); }

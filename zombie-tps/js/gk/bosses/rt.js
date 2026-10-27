@@ -2,8 +2,8 @@
 // よこく: じめんに あかい まる・おび・おうぎ（なかが だんだん ぬりつぶされる → ぬりおわると こうげき）
 // たま（おそい）・たまご→てき・にせもの・きえて とびかかる・さんの みずたまり・こおりの ゆか。ぜんぶ 30こ まで（SE2）
 import * as THREE from '../../../vendor/three.module.min.js';
-import { RULE, brainNew, brainCool, brainStep, brainStart, pickMove, actTime, teleTime, inCircle, inLine, inCone, circleSpots, fanDirs, bossPhase } from './brain.js?v=24';
-import { collideCircle, groundHeight } from '../../rules.js?v=24';
+import { RULE, brainNew, brainCool, brainStep, brainStart, pickMove, actTime, teleTime, inCircle, inLine, inCone, circleSpots, fanDirs, bossPhase } from './brain.js?v=25';
+import { collideCircle, groundHeight } from '../../rules.js?v=25';
 
 const SH = { r: 0.35, life: 5 };
 export function create(game, B) {

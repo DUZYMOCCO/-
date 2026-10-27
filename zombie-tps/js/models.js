@@ -1,6 +1,6 @@
 // ブロックの キャラクターと ぶき（かくうの デザイン・ロゴなし）
 import * as THREE from '../vendor/three.module.min.js';
-import { zombieFaceTexture, playerFaceTexture, solidTexture, shirtTexture, camoTexture, ojisanTextures, drunkTextures } from './textures.js?v=24';
+import { zombieFaceTexture, playerFaceTexture, solidTexture, shirtTexture, camoTexture, ojisanTextures, drunkTextures } from './textures.js?v=25';
 
 const boxGeoCache = new Map();
 export function boxGeo(w, h, d) {
@@ -595,6 +595,34 @@ export function makePlayer() {
   gearMeshes.arm = gearArm;
   root.traverse((o) => { if (o.isMesh) o.castShadow = true; });
   return { root, legs, torso, headPivot, aim, armR, armL, holder, roleMeshes, helmet, extras, outfit: 'normal', gear, gearMeshes, gearItems: [] };
+}
+
+// ガンキックの なかま: コンバットスーツと うでの いろで みわける。
+export function makeGuestFighter(id, glowTex) {
+  const p = makePlayer(), root = new THREE.Group(), inner = p.root;
+  root.add(inner);
+  const ao = id === 'ao', accent = ao ? 0x6fa8e8 : 0xe88cb4;
+  const colors = ao
+    ? { uniform:0x4a5236, pants:0x353b27, vest:0x59633f, helmet:0x475035, glove:0x2a2b24, boots:0x1e1a15, mark:accent }
+    : { uniform:0x5a5d61, pants:0x404347, vest:0x34373b, helmet:0x4e5155, glove:0x27282a, boots:0x18181a, mark:accent };
+  const materials = {};
+  for (const [role,color] of Object.entries(colors)) materials[role] = L(color);
+  for (const mesh of p.roleMeshes) if (materials[mesh.userData.role]) mesh.material = materials[mesh.userData.role];
+  const band = L(accent, { emissive: ao ? 0x092038 : 0x380c20 });
+  for (const arm of [p.armR,p.armL]) part(arm, band, 0.22, 0.22, 0.09, 0, -0.04, -0.27);
+  part(p.headPivot, band, 0.18, 0.08, 0.03, 0, 0.48, -0.28);
+  const gun = makeRifle(); if (!ao) gun.group.scale.z = 0.72;
+  p.holder.add(gun.group);
+  const marker = new THREE.Group(); root.add(marker);
+  const ring = new THREE.Mesh(new THREE.RingGeometry(0.62, 0.82, 28).rotateX(-Math.PI/2),
+    new THREE.MeshBasicMaterial({color:accent,transparent:true,opacity:0.75,blending:THREE.AdditiveBlending,depthWrite:false}));
+  ring.position.y = 0.04; marker.add(ring);
+  const beam = new THREE.Mesh(new THREE.BoxGeometry(0.18,4,0.18),
+    new THREE.MeshBasicMaterial({color:accent,transparent:true,opacity:0.25,blending:THREE.AdditiveBlending,depthWrite:false}));
+  beam.position.y=2; marker.add(beam);
+  let glow = null;
+  if (glowTex) { glow = new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex,color:accent,transparent:true,opacity:0.8,blending:THREE.AdditiveBlending,depthWrite:false})); glow.position.y=2.05; glow.scale.set(1.2,1.2,1); marker.add(glow); }
+  return { root, inner, legs:p.legs, headPivot:p.headPivot, aim:p.aim, holder:p.holder, muzzle:gun.muzzle, marker, ring, beam, glow };
 }
 
 // ---- おじさん（はげ・めがね・くちひげ。よわいけど やさしい） ----

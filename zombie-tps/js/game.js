@@ -18,29 +18,30 @@ import {
   SpatialGrid, thinkInterval, QualityGovernor, govPixelRatio,
   normalizeLoadout, loadoutSlot, cycleLoadout, applyCrate, SMOKE, smokeAffects,
   rescueSample, rescuePick, rescueSpot, RESCUE,
-} from './rules.js?v=24';
-import { RIDE, ridePoint, createRideScene } from './ride.js?v=24';
-import { Crowd } from './crowd.js?v=24';
-import { RobotMixin } from './robot.js?v=24';
-import { AllyMixin } from './ally.js?v=24';
-import { CopMixin } from './cop.js?v=24';
-import { ArmyMixin } from './army.js?v=24';
-import { DrunkMixin } from './drunk.js?v=24';
-const BOT_NAME = { cop: 'けいさつおじさん', army: 'アーミーロボ', drunk: 'よっぱらいおじさん' }; // v0.14.0
-import { VehicleMixin } from './vehicles.js?v=24';
-import { SuitMixin } from './suit.js?v=24';
-import { MissileMixin } from './missiles.js?v=24';
-import { MeleeMixin } from './melee.js?v=24';
-import { GkMixin } from './gk/play.js?v=24';
-import { StreamMixin } from './gk/stream.js?v=24';
-import { EnergyMixin } from './beams.js?v=24';
-import { makeNav } from './nav.js?v=24';
-import { buildMap, playerColliders, zombieColliders, shotColliders } from './map.js?v=24';
-import { buildTextures, fxTextures } from './textures.js?v=24';
-import { buildWorld, disposeWorld } from './world.js?v=24';
-import { Backdrop, BACKDROPS } from './backdrop.js?v=24';
-import { makePlayer, applyOutfit, applyGear, makeGearDrop, makeOjisan, makeWeapons, makeZombie, makeRocketProjectile, makeRocketCrate, zombieChunkColors, FLASH_MAT } from './models.js?v=24';
-import { FX } from './fx.js?v=24';
+} from './rules.js?v=25';
+import { RIDE, ridePoint, createRideScene } from './ride.js?v=25';
+import { Crowd } from './crowd.js?v=25';
+import { RobotMixin } from './robot.js?v=25';
+import { AllyMixin } from './ally.js?v=25';
+import { GuestMixin } from './guests.js?v=25';
+import { CopMixin } from './cop.js?v=25';
+import { ArmyMixin } from './army.js?v=25';
+import { DrunkMixin } from './drunk.js?v=25';
+const BOT_NAME = { ao: 'アオ', momo: 'モモ', cop: 'けいさつおじさん', army: 'アーミーロボ', drunk: 'よっぱらいおじさん' }; // v0.14.0
+import { VehicleMixin } from './vehicles.js?v=25';
+import { SuitMixin } from './suit.js?v=25';
+import { MissileMixin } from './missiles.js?v=25';
+import { MeleeMixin } from './melee.js?v=25';
+import { GkMixin } from './gk/play.js?v=25';
+import { StreamMixin } from './gk/stream.js?v=25';
+import { EnergyMixin } from './beams.js?v=25';
+import { makeNav } from './nav.js?v=25';
+import { buildMap, playerColliders, zombieColliders, shotColliders } from './map.js?v=25';
+import { buildTextures, fxTextures } from './textures.js?v=25';
+import { buildWorld, disposeWorld } from './world.js?v=25';
+import { Backdrop, BACKDROPS } from './backdrop.js?v=25';
+import { makePlayer, applyOutfit, applyGear, makeGearDrop, makeOjisan, makeWeapons, makeZombie, makeRocketProjectile, makeRocketCrate, zombieChunkColors, FLASH_MAT } from './models.js?v=25';
+import { FX } from './fx.js?v=25';
 const A_RIGHT = new THREE.Vector3();
 
 const v3 = () => new THREE.Vector3();
@@ -102,6 +103,7 @@ export class Game {
     // おそわれている おじさん（1にんだけ。つかいまわし）
     this.ojiM = makeOjisan(); this.ojiM.root.visible = false; scene.add(this.ojiM.root);
     this.initRobot();
+    this.initGuests();
     this.initCop();
     this.initArmy(); this.initDrunk(); // v0.14.0
     this.initSuit();
@@ -200,7 +202,7 @@ export class Game {
     if (this.pk) this.pk.set(0, 0, 0);
     this.boss = null; this.hud.bossBar?.(null);
     if (this.suitM) this.endSuit(); // v0.10.0
-    this.endOji(); this.endRobot?.(); this.endCop?.(); this.endArmy?.(); this.endDrunk?.(); this.copLast = 0; this.drunkLast = 0; this.resetVehicles?.(); this.ojiPlan = null; this.ojiLast = 0; this.perchT = 0; this.perchCd = 0;
+    this.endOji(); this.endRobot?.(); this.endGuests?.(); this.endCop?.(); this.endArmy?.(); this.endDrunk?.(); this.copLast = 0; this.drunkLast = 0; this.resetVehicles?.(); this.ojiPlan = null; this.ojiLast = 0; this.perchT = 0; this.perchCd = 0;
     for (const sp of this.spits || []) this.releaseSpit(sp);
     this.spits = []; for (const h of this.hazards || []) this.releaseHazard(h);
     this.hazards = []; this.burnT = 0; this.zapT = 0; this.softAcc = 0; this.onLadder = false; this.pReach = false;
@@ -221,7 +223,7 @@ export class Game {
     this.zombies.length = 0;
     this.resetRun();
     this.applyStage(this.todStart || 'day');
-    if (!this.map.ride && !this.map.specialStage) { this.spawnRobot(); this.spawnArmy(); }
+    if (!this.map.ride && !this.map.specialStage) { this.spawnRobot(); this.spawnArmy(); this.spawnGuests(); }
     if (!this.map.ride && !this.map.specialStage) this.placeSuit(); // v0.10.0: パワードスーツを どこかに おく
     this.state = 'play';
     this.hud.show('play');
@@ -1795,7 +1797,7 @@ export class Game {
     }
     if (this.state === 'title') { this.titleT += dt; this.pFloor = 0; this.pSupport = null; this.updateCull(); this.updateZombies(dt); this.updateTitleCam(dt); this.updateNight(); this.fx.update(dt); return; }
     if (this.state === 'pause') return;
-    if (this.state === 'over' || this.state === 'clear') { this.updateOjiHud(); this.updateRobotHud(); this.updateCopHud(); this.updateArmyHud(); this.updateDrunkHud(); this.updateSuitHud(); this.updateShells(dt); this.updateVehicles(dt); this.updateRockets(dt); this.updateMissiles(dt); this.updateSmoke(dt); this.updateLasers?.(dt); this.hideBeam?.(); this.updateZombies(dt); this.updatePickups(dt); this.fx.update(dt); this.updateCamera(dt, false); this.updateNight(); return; }
+    if (this.state === 'over' || this.state === 'clear') { this.updateOjiHud(); this.updateRobotHud(); this.updateGuestHud(); this.updateCopHud(); this.updateArmyHud(); this.updateDrunkHud(); this.updateSuitHud(); this.updateShells(dt); this.updateVehicles(dt); this.updateRockets(dt); this.updateMissiles(dt); this.updateSmoke(dt); this.updateLasers?.(dt); this.hideBeam?.(); this.updateZombies(dt); this.updatePickups(dt); this.fx.update(dt); this.updateCamera(dt, false); this.updateNight(); return; }
 
     const gun = this.guns[this.cur], w = gun.w || WEAPONS[this.cur];
     // イベント
@@ -1914,6 +1916,7 @@ export class Game {
     this.updateZombies(dt);
     this.updateOji(dt);
     this.updateRobot(dt);
+    this.updateGuests(dt);
     this.updateCop(dt);
     this.updateArmy(dt);
     this.updateDrunk(dt);
@@ -1926,6 +1929,7 @@ export class Game {
     this.updateCamera(dt, true);
     this.updateOjiHud();
     this.updateRobotHud();
+    this.updateGuestHud();
     this.updateCopHud();
     this.updateArmyHud();
     this.updateDrunkHud();
@@ -2139,4 +2143,4 @@ export class Game {
     this.renderer.forceContextLoss?.();
   }
 }
-Object.assign(Game.prototype, GkMixin, StreamMixin, AllyMixin, RobotMixin, CopMixin, ArmyMixin, DrunkMixin, VehicleMixin, SuitMixin, MissileMixin, MeleeMixin, EnergyMixin);
+Object.assign(Game.prototype, GkMixin, StreamMixin, AllyMixin, GuestMixin, RobotMixin, CopMixin, ArmyMixin, DrunkMixin, VehicleMixin, SuitMixin, MissileMixin, MeleeMixin, EnergyMixin);

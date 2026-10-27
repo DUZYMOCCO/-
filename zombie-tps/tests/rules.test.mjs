@@ -237,7 +237,7 @@ test('なめらか いどう: approach は フレームレートに よらない
 });
 
 test('バージョン と セーブの ステージ', () => {
-  assert.equal(VERSION, '0.20.0');
+  assert.equal(VERSION, '0.21.0');
   assert.equal(normalizeSave(null).stage, 'day');
   assert.equal(normalizeSave({ stage: 'night' }).stage, 'night');
   assert.equal(normalizeSave({ stage: 'mars' }).stage, 'day');
@@ -2921,4 +2921,15 @@ test('moving stages: route height, start and train aisle', async () => {
   assert.ok(ridePoint('airride',0).y > 3);
   const train=buildMap('trainride'); assert.equal(train.specialStage,'trainride');
   for (let z=-34;z<=34;z+=2) { const c=collideCircle(0,z,0.35,0,playerColliders(train)); assert.ok(Math.abs(c.x)<0.01 && Math.abs(c.z-z)<0.01, `train aisle ${z}`); }
+});
+
+
+test('アオとモモ: それぞれ 低確率で 登場し、元の武器と色を持つ', async () => {
+  const { GUESTS, GUEST_CHANCE, guestAppears } = await import('../js/guests.js');
+  assert.equal(GUEST_CHANCE, 0.08); assert.equal(guestAppears(0),true);
+  assert.equal(guestAppears(0.079999),true); assert.equal(guestAppears(0.08),false); assert.equal(guestAppears(1),false);
+  assert.equal(GUESTS.ao.name,'アオ'); assert.equal(GUESTS.momo.name,'モモ');
+  assert.equal(GUESTS.ao.color,0x6fa8e8); assert.equal(GUESTS.momo.color,0xe88cb4);
+  assert.ok(GUESTS.momo.fireRate < GUESTS.ao.fireRate);
+  assert.ok(GUESTS.ao.side * GUESTS.momo.side < 0);
 });

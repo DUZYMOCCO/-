@@ -3,7 +3,7 @@
 // a: { x,y,z,yaw,vy, stuckT, fireT, aimT, target, onScreen, phase, moving, kick, hurtT }
 // m: モデル（root, inner, legs, aim, holder, muzzle, headPivot）／ S: すうち（back, side, speed, runSpeed, near, range, spread, fireRate, dmg）
 import * as THREE from '../vendor/three.module.min.js';
-import { robotFollowPoint, pickRobotTarget, castShot, collideCircle, groundHeight } from './rules.js?v=24';
+import { robotFollowPoint, pickRobotTarget, castShot, collideCircle, groundHeight } from './rules.js?v=25';
 
 const PLAYER_R = 0.35, ROBOT_BACK = 0.3;
 const _o = new THREE.Vector3(), _t = new THREE.Vector3(), _m = new THREE.Vector3(), _p = new THREE.Vector3();
@@ -171,12 +171,13 @@ export const AllyMixin = {
   },
   // なかまの リスト（まいフレーム つかう ので おなじ はいれつを つかいまわす）
   allyList() {
-    const L = this._allyL || (this._allyL = [null, null, null, null]);
-    L[0] = this.robot; L[1] = this.army; L[2] = this.cop; L[3] = this.drunk;
+    const L = this._allyL || (this._allyL = [null, null, null, null, null, null]);
+    L[0] = this.robot; L[1] = this.army; L[2] = this.cop; L[3] = this.drunk; L[4] = this.guests?.ao || null; L[5] = this.guests?.momo || null;
     return L;
   },
   hurtAlly(a, d) {
     if (a === this.robot) this.hurtRobot(d); else if (a === this.army) this.hurtArmy(d);
     else if (a === this.cop) this.hurtCop(d); else if (a === this.drunk) this.hurtDrunk(d);
+    else if (a && (a === this.guests?.ao || a === this.guests?.momo)) this.hurtGuest(a, d);
   },
 };

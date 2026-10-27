@@ -11,11 +11,11 @@ import { WEAPONS, WEAPON_ORDER, normalizeSave, SENS, VERSION, OUTFITS, outfitNam
   SLOT_UP, HP_UP, slotLevel, hpLevel, slotUpCost, hpUpCost, baseHpAt, slotBonus, buySlotUpgrade, buyHpUpgrade, GEAR_SLOT_IDS,
   SUIT_ORDER, SUIT_WEAPONS, suitLabel, SUIT,
   MELEE, MELEE_ORDER, MELEE_UP, meleeLevel, meleeUpCost, meleeStats, buyMelee, isMelee, DEFAULT_MELEE,
-  LOADOUT_SIZE, normalizeLoadout, toggleLoadout, loadoutReady, unlockedWeapons, upgradeRows, GAUGE_LABEL } from './rules.js?v=24';
-import { MAPS, mapInfo, registerMap, hasMap } from './map.js?v=24';
-import { recordGkClear } from './rules.js?v=24';
-import { GK_CATALOG, GK_WORLDS, GK_READY, isGkReady, gkMeta, gkNext, gkLoadStage, gkLoadMap, gkLoadSegs, gkLoadGims, gkLoadBoss, gkWaves, gkClearBonus } from './gk/core.js?v=24';
-import { segResume } from './gk/seg.js?v=24';
+  LOADOUT_SIZE, normalizeLoadout, toggleLoadout, loadoutReady, unlockedWeapons, upgradeRows, GAUGE_LABEL } from './rules.js?v=25';
+import { MAPS, mapInfo, registerMap, hasMap } from './map.js?v=25';
+import { recordGkClear } from './rules.js?v=25';
+import { GK_CATALOG, GK_WORLDS, GK_READY, isGkReady, gkMeta, gkNext, gkLoadStage, gkLoadMap, gkLoadSegs, gkLoadGims, gkLoadBoss, gkWaves, gkClearBonus } from './gk/core.js?v=25';
+import { segResume } from './gk/seg.js?v=25';
 
 const hex6 = (n) => '#' + n.toString(16).padStart(6, '0');
 // v0.7.0: がめんの そとを さす やじるしは ボタンに かぶらない たかさ（うえから 16%〜32%）
@@ -59,9 +59,9 @@ function totalsText(gear, save) {
   const parts = GEAR_STAT_IDS.filter((k) => t[k]).map((k) => `${GEAR_STATS[k].name} +${t[k]}${GEAR_STATS[k].unit}${t[k] >= GEAR_STATS[k].cap ? '（MAX）' : ''}`);
   return parts.length ? parts.join(' ・ ') : 'まだ なにも つけて いないよ';
 }
-import { Game } from './game.js?v=24';
-import { Input } from './input.js?v=24';
-import { Sfx } from './sfx.js?v=24';
+import { Game } from './game.js?v=25';
+import { Input } from './input.js?v=25';
+import { Sfx } from './sfx.js?v=25';
 
 // v0.7.0: ぶきの ちいさい アイコン（かくうの シルエット）
 const svgI = (d) => `<svg viewBox="0 0 32 16" aria-hidden="true">${d}</svg>`;
@@ -105,7 +105,7 @@ const OPT_CYCLE = { autoFire: [false, true], sens: ['low', 'mid', 'high'], quali
 
 export default {
   prepare() {
-    return loadCss(new URL('../css/zombie-tps.css?v=24', import.meta.url).href);
+    return loadCss(new URL('../css/zombie-tps.css?v=25', import.meta.url).href);
   },
 
   init(container, onBackToHub) {
@@ -179,6 +179,10 @@ export default {
           <div class="zt-bot zt-army hidden"><em class="zt-botsay"></em><span>アーミーロボ・さわってね</span><em class="zt-lvup">Lv UP!</em><div class="zt-botrow"><i class="zt-botlv">Lv1</i><div class="zt-bothp"><div></div></div></div></div>
           <div class="zt-botarrow zt-army hidden"><i>➤</i><span>アーミーロボ</span></div>
           <div class="zt-drunk hidden"><em class="zt-hic"></em><span>よっぱらいおじさん</span><div class="zt-bothp"><div></div></div></div>
+          <div class="zt-bot zt-guest zt-ao hidden"><span>アオ・さわってね</span><div class="zt-bothp"><div></div></div></div>
+          <div class="zt-botarrow zt-guest zt-ao hidden"><i>➤</i><span>アオ</span></div>
+          <div class="zt-bot zt-guest zt-momo hidden"><span>モモ・さわってね</span><div class="zt-bothp"><div></div></div></div>
+          <div class="zt-botarrow zt-guest zt-momo hidden"><i>➤</i><span>モモ</span></div>
           <div class="zt-ammo"><div class="zt-wname"></div><div class="zt-anum"><b>30</b><span>/ 210</span></div><div class="zt-gauge hidden"><em></em><div><i></i></div></div></div>
           <button class="zt-btn zt-fire" data-act="fire"><span>うつ</span></button>
           <button class="zt-btn zt-aim" data-act="aim"><span>ねらう</span></button>
@@ -825,6 +829,7 @@ export default {
       anum: q('.zt-anum'), gauge: q('.zt-gauge'), gLbl: q('.zt-gauge em'), gBar: q('.zt-gauge i'),
       boss: q('.zt-boss'), bossName: q('.zt-boss b'), bossBar: q('.zt-bossbar div'),
       bots: { police: botEls('.zt-police'), army: botEls('.zt-army') }, // v0.14.0: けいさつロボ と アーミーロボ
+      guests: Object.fromEntries(['ao','momo'].map(id => [id, { tag:q('.zt-bot.zt-'+id), hp:q('.zt-bot.zt-'+id+' .zt-bothp div'), arrow:q('.zt-botarrow.zt-'+id), arrowIcon:q('.zt-botarrow.zt-'+id+' i') }])),
       drunk: q('.zt-drunk'), drunkHp: q('.zt-drunk .zt-bothp div'), drunkHic: q('.zt-drunk .zt-hic'),
       cop: q('.zt-cop'), copHp: q('.zt-cop .zt-bothp div'),
       suitTime: q('.zt-suittime b'), suitBar: q('.zt-suittbar div'), suitTimeBox: q('.zt-suittime'), sbtns: [...this.container.querySelectorAll('.zt-sbtn')],
@@ -909,6 +914,18 @@ export default {
       },
       // v0.7.0: けいさつロボ（まだ: なまえ＋やじるし／なかま: あたまの うえの HP と うえの アイコン）
       robot: (r) => botHud(E.bots.police, 'p', r),
+      guest: (id, r) => {
+        const g=E.guests[id]; if (!g) return;
+        const tag=!!r && r.onScreen, arrow=!!r && !r.onScreen && r.mode === 'idle';
+        g.tag.classList.toggle('hidden',!tag); g.arrow.classList.toggle('hidden',!arrow);
+        if (!r) return;
+        g.tag.dataset.m=r.mode;
+        g.tag.querySelector('span').textContent=(id === 'ao' ? 'アオ' : 'モモ') + (r.mode === 'idle' ? '・さわってね' : '');
+        const el=arrow ? g.arrow : g.tag;
+        el.style.left=((r.x+1)*50).toFixed(2)+'%'; el.style.top=(arrow ? arrowTop(r.y) : ((1-r.y)*50).toFixed(2)+'%');
+        if (arrow) g.arrowIcon.style.transform=`rotate(${r.ang.toFixed(3)}rad)`;
+        g.hp.style.width=(Math.max(0,r.hp)*100).toFixed(0)+'%'; g.hp.classList.toggle('low',r.hp<0.35);
+      },
       army: (r) => botHud(E.bots.army, 'a', r), // v0.14.0: アーミーロボ（べつの アイコン・Lv）
       // v0.14.0: よっぱらいおじさん（あたまの うえの なまえ・HP・「ひっく」）
       drunk: (c) => {
