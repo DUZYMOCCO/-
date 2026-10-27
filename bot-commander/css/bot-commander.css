@@ -67,6 +67,8 @@
 .bc-act button[data-act="fire"] { flex: 1.1; background: #b91c1c; border-color: #ef4444; color: #fff; font-weight: 800; }
 .bc-act button[data-act="fire"][hidden] { display: none; }
 .bc-act button[data-act="clear"] { flex: none; width: 40px; }
+.bc-lasso { width: 56px; height: 34px; flex: none; font-weight: 700; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.bc-lasso.on { background: #1d4f6b; border-color: var(--bc-cyan); color: #fff; }
 .bc-groups { display: flex; gap: 4px; flex: none; }
 .bc-groups button { position: relative; width: 36px; height: 34px; font-size: 16px; font-weight: 700; opacity: .6; }
 .bc-groups button.full { opacity: 1; border-color: #9cc8ff; }
@@ -157,4 +159,4 @@
 .bc-st-chip .bc-st-n, .bc-st-who { overflow: visible; white-space: normal; text-overflow: clip; min-width: 0; overflow-wrap: anywhere; }
 .bc-st-chip { grid-template-columns: auto minmax(0, 1fr); }
 .bc-st-row { grid-template-columns: 30px minmax(0, 1fr) auto; }
-.bc-bottom .bc-hint { max-height: none; overflow: visible; text-overflow: clip; }
+.bc-bottom .bc-hint { max-height: 28px; overflow: hidden; text-overflow: ellipsis; }

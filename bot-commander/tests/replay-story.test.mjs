@@ -2,9 +2,9 @@
 // issueBoard／issueAlight を直接出した乗り降り（sim.ride.cmds）が記録に入り、再生で同じ結果になること（一時停止中も・二重に入らないこと）
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createSim, stepSim, issueOrder, hashSim, hashSimDeep, applyCommandsNow, TICK } from '../js/sim/sim.js?v=29';
+import { createSim, stepSim, issueOrder, hashSim, hashSimDeep, applyCommandsNow, TICK } from '../js/sim/sim.js?v=30';
 import { tileCenter } from '../js/sim/map.js?v=6';
-import { createRecorder, makeStart, openReplay, registerMission, stringifyReplay } from '../js/sim/replay.js?v=12';
+import { createRecorder, makeStart, openReplay, registerMission, stringifyReplay } from '../js/sim/replay.js?v=17';
 import { issueBoard, issueAlight, RIDE_MODE } from '../js/sim/ride.js?v=3';
 import { STORY_1 } from '../js/story/story-mission.js?v=3';
 import { issueStrike, nejiOf } from '../js/sim/strike.js?v=2';

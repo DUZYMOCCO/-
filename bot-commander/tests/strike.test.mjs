@@ -3,13 +3,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { createSim, runSim, stepSim, hashSim, KINDS, TICK } from '../js/sim/sim.js?v=29';
+import { createSim, runSim, stepSim, hashSim, KINDS, TICK } from '../js/sim/sim.js?v=30';
 import { MISSION_1 } from '../js/sim/mission.js?v=10';
 import { TILE } from '../js/sim/map.js?v=6';
 import { STORY_1 } from '../js/story/story-mission.js?v=3';
 import { STRIKE, SURVEY, STRIKE_COMMANDS, STRIKE_MESSAGES, canHitch, canStrike, issueStrike, issueUnhitch, launcherOf, nejiOf, strikeStatus, strikeHashValues } from '../js/sim/strike.js?v=2';
 import { strikeCountdown, missilePos } from '../js/render/strike-view.js?v=2';
-import { spawnFxEvents, STRIKE_BURSTS } from '../js/render/fx-events.js?v=16';
+import { spawnFxEvents, STRIKE_BURSTS } from '../js/render/fx-events.js?v=17';
 
 const dug = () => { const sim = createSim({ seed: 2, mission: STORY_1 }); sim.mission.salvage[sim.strike.pile].amount = 0; stepSim(sim); return sim; };
 
@@ -91,7 +91,7 @@ test('演出: 撃った・落ちた・壊された の合図で爆発を出す�
 });
 
 test('描画: 発射台の絵はコードで描く（renderer が strike-view を読む）・コックピットの中の絵は使わない', () => {
-  const src = readFileSync(fileURLToPath(new URL('../js/render/renderer.js?v=42', import.meta.url)), 'utf8');
+  const src = readFileSync(fileURLToPath(new URL('../js/render/renderer.js?v=47', import.meta.url)), 'utf8');
   assert.match(src, /strike-view\.js\?v=\d+/);
   assert.match(src, /launcher: LAUNCHER_PX/);
   assert.match(src, /drawStrike\(/);
@@ -101,7 +101,7 @@ test('描画: 発射台の絵はコードで描く（renderer が strike-view �
 
 
 test('第1章の着弾の与ダメージと撃破をネジの成績に数える', async () => {
-  const { createUnitStats } = await import('../js/stats/unit-stats.js?v=3');
+  const { createUnitStats } = await import('../js/stats/unit-stats.js?v=4');
   const sim = dug(), neji = nejiOf(sim);
   const e = sim.units.find(u => u.side === 'enemy');
   e.atk = 0; e.hp = 1; e.x = neji.x + 150; e.y = neji.y;

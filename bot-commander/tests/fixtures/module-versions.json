@@ -1,7 +1,7 @@
 {
  "js/armory/armory-view.js": {
-  "v": 11,
-  "sha1": "2857214398c21e4b97d5d1e82252337f5d6436b7"
+  "v": 12,
+  "sha1": "4279ba412ae03c589105d1cad5e9f74a72152172"
  },
  "js/armory/loadout.js": {
   "v": 6,
@@ -76,8 +76,8 @@
   "sha1": "d582e19a52f1b2a71a19759aeb18955710db004f"
  },
  "js/render/char-demo.js": {
-  "v": 12,
-  "sha1": "4c7899221a8e49f7288b7735e3008289ff2878b9"
+  "v": 13,
+  "sha1": "08b92008107684ab3c61c41047f8776c0c7f69ed"
  },
  "js/render/class-icons.js": {
   "v": 5,
@@ -92,8 +92,8 @@
   "sha1": "40a7448f73ee52bdba1c468356160b418c7dc2b2"
  },
  "js/render/fx-events.js": {
-  "v": 16,
-  "sha1": "b425387534831a182f82e8036392b3a7e76c4de3"
+  "v": 17,
+  "sha1": "fc13a0484160b6e86680bdb0e373f75de313c001"
  },
  "js/render/gfx6-view.js": {
   "v": 4,
@@ -112,12 +112,12 @@
   "sha1": "c13534839c9d154c62a9cf8966e08de25ab40404"
  },
  "js/render/input.js": {
-  "v": 21,
-  "sha1": "7f77a8a13fc95bf7052ae9c434ac6fc7bcce4ae9"
+  "v": 23,
+  "sha1": "d0eff195ac6df4d3541d7f27524b6dfba924ebb8"
  },
  "js/render/launcher-view.js": {
-  "v": 9,
-  "sha1": "28badf5d6ba7bcb7c7621f931f204bed22ad9805"
+  "v": 10,
+  "sha1": "ad3af32bc53a924ce1cdabf5407b9d4212b40021"
  },
  "js/render/new-enemies-view.js": {
   "v": 2,
@@ -140,8 +140,8 @@
   "sha1": "df0c24017b1666162ea47079ca5746172a51d8da"
  },
  "js/render/renderer.js": {
-  "v": 46,
-  "sha1": "15aab37b9a3f36b19cc402401a34667beae8c2b0"
+  "v": 47,
+  "sha1": "0098c4d17abf138a3ff383b85b450ac5d4d7b996"
  },
  "js/render/ride-view.js": {
   "v": 7,
@@ -168,8 +168,8 @@
   "sha1": "9d7c6ecea74ea7421bc4004f3933f2f1224f458e"
  },
  "js/replay/replay-view.js": {
-  "v": 15,
-  "sha1": "1b2acbe876b34f07cb3e7f0dc6ac102d95441e50"
+  "v": 17,
+  "sha1": "540c90661930f424c79c08e782016f868962447b"
  },
  "js/save/records-view.js": {
   "v": 5,
@@ -236,12 +236,12 @@
   "sha1": "62141bdbec7779b882e25af995eb5fea48d780e4"
  },
  "js/sim/replay.js": {
-  "v": 15,
-  "sha1": "5403923f02c2b5a0fe70e44e5f1852f7815ed46c"
+  "v": 17,
+  "sha1": "c5232b0b6cbd5f11c5732173fe6aec95530ac2ab"
  },
  "js/sim/ride-demo.js": {
-  "v": 9,
-  "sha1": "c0677dbb505d71afcfab8c84845ba51c8654798e"
+  "v": 10,
+  "sha1": "505f819fbf99893cf1a7c05d5ed5c9ae6cf73f2c"
  },
  "js/sim/ride.js": {
   "v": 3,
@@ -260,8 +260,8 @@
   "sha1": "2dd5edfc2e941934f871cd7463f54b845c53e7d6"
  },
  "js/sim/sim.js": {
-  "v": 29,
-  "sha1": "49300777cfe5214bdfcf8663382c8d4c65e61082"
+  "v": 30,
+  "sha1": "819ac0e483594bdb024e01a6b743126c687d6224"
  },
  "js/sim/story2-rules.js": {
   "v": 2,
@@ -283,13 +283,17 @@
   "v": 2,
   "sha1": "007218c16d0c25e4ec78dbb85295f3d739340483"
  },
+ "js/sim/unit-classes.js": {
+  "v": 1,
+  "sha1": "0781a54e54b870873a24eefd619ecc81a5b51e1e"
+ },
  "js/sim/weapons.js": {
   "v": 7,
   "sha1": "d1280e8e091c07d43bef83c65f652e596a12294f"
  },
  "js/stats/unit-stats.js": {
-  "v": 3,
-  "sha1": "83524ccdb977f106ac617cded234301987aa4d32"
+  "v": 4,
+  "sha1": "cf72284d2538ae566a1e4ae8b6a662899c7d6dfd"
  },
  "js/story/chapters.js": {
   "v": 2,
@@ -328,16 +332,16 @@
   "sha1": "0c8b6c494140003a1b8786d2075b3094fd190617"
  },
  "js/tutorial/tutorial-flow.js": {
-  "v": 2,
-  "sha1": "87959791a628f7e66b9e1d70403742148f1bd5bd"
+  "v": 3,
+  "sha1": "d701aa5b4df9a447ad0b3b0c3acdc7738c295be9"
  },
  "js/tutorial/tutorial-steps.js": {
-  "v": 9,
-  "sha1": "fbeb896250a568d5186f58badfdf9a7bfb470765"
+  "v": 11,
+  "sha1": "7c2c279c9a454721ed668cbd0a95dc658f38d0b3"
  },
  "js/tutorial/tutorial.js": {
-  "v": 9,
-  "sha1": "ceaff88d630f94bc1122110b24d1147692cedaaf"
+  "v": 11,
+  "sha1": "a5b8ea0413322af900d9b13bdac5db09ed2f91cf"
  },
  "js/ui/back-confirm.js": {
   "v": 1,
@@ -352,16 +356,16 @@
   "sha1": "e2e0894546093eab55426bcddac326a5f1944414"
  },
  "js/ui/launcher-menu.js": {
-  "v": 10,
-  "sha1": "9f9adbd08c031a283868cf2c83ff5b907b657faa"
+  "v": 11,
+  "sha1": "3c56cb925a762e41531d9dc7562abf9957ff078b"
  },
  "js/ui/powersuit-menu.js": {
-  "v": 4,
-  "sha1": "d9fd71e11a6d8bea5a3241170846891327a7c867"
+  "v": 5,
+  "sha1": "14db532f5150927ad8e8684745a664534d757287"
  },
  "js/ui/ride-panel.js": {
-  "v": 9,
-  "sha1": "df80565ac1694872843951c3f2ba9e4c18437b9f"
+  "v": 10,
+  "sha1": "dea3ce0da5afc851fbe58b0a2e7fd7ac97fb3df4"
  },
  "js/ui/speed.js": {
   "v": 2,

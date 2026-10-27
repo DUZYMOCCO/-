@@ -8,7 +8,7 @@ import { drawStory2 } from './story2-view.js?v=2';
 // v0.4.0-dev（10/23 夜）: 遮蔽物と落とし物の見た目（js/render/cover-view.js）。
 import { Application, Container, Sprite, Graphics, Text, Texture, Rectangle, RenderTexture, BlurFilter, CanvasSource, TexturePool } from '../../vendor/pixi-8.22.0.min.mjs?v=7';
 import { TILE, TERRAIN, T as TILE_T, tileAt, toTile, tileCenter } from '../sim/map.js?v=6';
-import { groupUnits, unitById, REPAIRER_KIT_BUILD_SEC, SUPPORTER_SHIELD_BUILD_SEC, isDefensive, unitWeaponInfo } from '../sim/sim.js?v=29';
+import { groupUnits, unitById, REPAIRER_KIT_BUILD_SEC, SUPPORTER_SHIELD_BUILD_SEC, isDefensive, unitWeaponInfo } from '../sim/sim.js?v=30';
 import { fuelRatio, isRefueling } from '../sim/fuel.js?v=1'; // 飛ぶ機体の燃料の小さなゲージ（v1.0.0）
 import { unreachableTarget } from '../sim/targeting.js?v=2'; // 敵が届かない相手（空・水中）を前にした時の小さな印（v1.0.0）
 // v0.4.2: リペアキットを使い切った味方ロボットは、HPバーの右に小さな赤い点（キット切れ）
@@ -26,7 +26,7 @@ function drawBars(g, u, w) {
   }
 }
 const drawNoKit = (g, x) => g.circle(x + 3.6, 6, 2.6).fill({ color: 0x121418 }).circle(x + 3.6, 6, 1.8).fill({ color: 0xef4444 });
-import { FX_MAX, FX_SHAKE_MAX, FX_MARGIN, spawnFxEvents } from './fx-events.js?v=16';
+import { FX_MAX, FX_SHAKE_MAX, FX_MARGIN, spawnFxEvents } from './fx-events.js?v=17';
 import { loadLandmarks, createCoverView } from './cover-view.js?v=10';
 import { create as createFx } from '../fx/fx.js?v=2';
 import { GATHER_RADIUS, EXTRACT_RADIUS, CAPTURE } from '../sim/mission.js?v=10';

@@ -1,9 +1,9 @@
 // input.js の指の数え方（R-07・R-08）。偽の canvas に pointer イベントを流す（ブラウザ不要）。
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { attachInput } from '../js/render/input.js?v=21';
+import { attachInput } from '../js/render/input.js?v=23';
 
-function setup() {
+function setup(hooks = {}) {
   const canvas = new EventTarget();
   canvas.getBoundingClientRect = () => ({ left: 0, top: 0, width: 390, height: 844 });
   canvas.setPointerCapture = () => {};
@@ -11,9 +11,9 @@ function setup() {
   const r = { cam, ui: { selected: [1], mode: 'fight', box: null, mark: null }, clampCam() {}, screenToWorld: (sx, sy) => ({ x: (sx - 195) / cam.zoom + cam.x, y: (sy - 422) / cam.zoom + cam.y }) };
   const sim = { units: [{ id: 1, side: 'ally', x: 9999, y: 9999, hp: 10, captured: null }], commands: [], fog: { isVisible: () => true } };
   const orders = [];
-  const input = attachInput(canvas, sim, r, { onOrder: () => orders.push(1) });
+  const input = attachInput(canvas, sim, r, { onOrder: () => orders.push(1), ...hooks });
   const ev = (type, id, x, y, isPrimary) => { const e = new Event(type); Object.assign(e, { pointerId: id, clientX: x, clientY: y, isPrimary, preventDefault() {} }); canvas.dispatchEvent(e); };
-  return { ev, cam, orders, input };
+  return { ev, cam, orders, input, r, sim };
 }
 
 test('2本→1本で離したあと、残った指で画面移動でき、離してもタップにならない', () => {
@@ -68,4 +68,38 @@ test('ゴーストを捨てたあと、ふつうのタップで命令が出る',
   ev('pointerdown', 2, 100, 500, true); ev('pointerup', 2, 100, 500);
   assert.equal(orders.length, 1);
   input.destroy();
+});
+
+
+test('囲む: isPrimary が偽でも枠を作り選択、画面は移動しない', () => {
+  const { ev, cam, input, r, sim } = setup();
+  sim.units.push({ id: 2, side: 'ally', x: 640, y: 1500, hp: 10, captured: null });
+  input.setLasso(true); ev('pointerdown', 2, 170, 390, false); ev('pointermove', 2, 220, 450, false);
+  assert.ok(r.ui.box); assert.equal(cam.x, 640); assert.equal(cam.y, 1500);
+  input.setLasso(false); ev('pointerup', 2, 220, 450, false); assert.deepEqual(r.ui.selected, [2]); input.destroy();
+});
+
+test('囲む: 小さな枠は選択も命令も解除もしない', () => {
+  let nothing = 0; const { ev, orders, input, r } = setup({ onNothing: () => nothing++ });
+  input.setLasso(true); ev('pointerdown', 2, 100, 400, false); ev('pointerup', 2, 103, 403, false);
+  assert.equal(r.ui.box, null); assert.deepEqual(r.ui.selected, [1]); assert.equal(orders.length, 0); assert.equal(nothing, 0); input.destroy();
+});
+
+test('囲む: 地図上の2本指はピンチが優先される', () => {
+  const { ev, cam, input, r } = setup(); input.setLasso(true);
+  ev('pointerdown', 1, 150, 400, false); ev('pointerdown', 2, 250, 400, false);
+  assert.equal(r.ui.box, null); const z = cam.zoom; ev('pointermove', 2, 350, 400, false);
+  assert.ok(cam.zoom > z); input.destroy();
+});
+
+test('囲む: group が禁止なら通常の画面移動', () => {
+  const { ev, cam, input, r } = setup({ allow: op => op !== 'group' }); input.setLasso(true);
+  ev('pointerdown', 1, 150, 400, false); ev('pointermove', 1, 200, 400, false);
+  assert.equal(r.ui.box, null); assert.ok(cam.x < 640); input.destroy();
+});
+
+test('囲む: 旗を下ろすと通常の画面移動', () => {
+  const { ev, cam, input, r } = setup(); input.setLasso(true); input.setLasso(false);
+  ev('pointerdown', 1, 150, 400, false); ev('pointermove', 1, 200, 400, false);
+  assert.equal(r.ui.box, null); assert.ok(cam.x < 640); input.destroy();
 });

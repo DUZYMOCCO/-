@@ -1,7 +1,7 @@
 // v0.4.0-dev 1機ずつ選ぶ・まとめて選ぶ・組の保存（入力の決まりだけ）
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createSim, runSim, issueOrder, TICK } from '../js/sim/sim.js?v=29';
+import { createSim, runSim, issueOrder, TICK } from '../js/sim/sim.js?v=30';
 import { allyAt, enemyAt, unitsInRect, selectKind, pruneSelection, tapSelect, createGroups } from '../js/sim/select.js?v=12';
 import { MISSION_1 } from '../js/sim/mission.js?v=10';
 

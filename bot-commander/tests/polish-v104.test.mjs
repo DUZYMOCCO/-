@@ -6,7 +6,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { initialArtSources, ALT_BODY_KEYS } from '../js/render/art-lazy.js?v=1';
 import { WRECK_ART } from '../js/render/raster-art.js?v=14';
-import { preloadImages } from '../js/armory/armory-view.js?v=11';
+import { preloadImages } from '../js/armory/armory-view.js?v=12';
 import { popMinY } from '../js/render/pop-bounds.js?v=1';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');

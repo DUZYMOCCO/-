@@ -4,10 +4,10 @@ import assert from 'node:assert/strict';
 // Node 20 には navigator が無く、pixi が読み込み時に止まるので、先に仮のものを置いてから読む
 if (typeof globalThis.navigator === 'undefined') globalThis.navigator = { userAgent: 'node' };
 const { default: Game } = await import('../js/index.js');
-import * as S from '../js/sim/sim.js?v=29';
+import * as S from '../js/sim/sim.js?v=30';
 import { ALT_UNITS_SETUP, altUnitsMapEdit } from '../js/sim/alt-units-demo.js?v=3';
 import { ALT_DEMO_SETUP, altDemoMapEdit } from '../js/sim/altitude-demo.js?v=2';
-import { createRideDemoSim } from '../js/sim/ride-demo.js?v=9';
+import { createRideDemoSim } from '../js/sim/ride-demo.js?v=10';
 import { demoResultView } from '../js/ui/demo-result.js?v=1';
 
 // ---- ALTUNITS-RESULT: ミッションのないお試しの結果の画面 ----
@@ -64,7 +64,7 @@ test('R-07: 結果のカードに「記録を残せません」が出る（保�
 });
 
 // ---- R-05: リプレイも withAltUnits を通す ----
-import * as R from '../js/sim/replay.js?v=12';
+import * as R from '../js/sim/replay.js?v=17';
 import { MISSION_1 } from '../js/sim/mission.js?v=10';
 import { withAltUnits, ALT_MISSION_ROWS, ALT_IN_MISSIONS } from '../js/sim/alt-units.js?v=3';
 

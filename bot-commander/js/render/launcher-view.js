@@ -4,7 +4,7 @@
 import { createGfx6, launchFlightPose } from './gfx6-view.js?v=4';
 import { Container, Graphics, Sprite, Text, Texture } from '../../vendor/pixi-8.22.0.min.mjs?v=7';
 import { tileCenter } from '../sim/map.js?v=6';
-import { unitById } from '../sim/sim.js?v=29';
+import { unitById } from '../sim/sim.js?v=30';
 import { LAUNCHER, launchersOf } from '../sim/launcher.js?v=4';
 
 const ART_URL = new URL('../../assets/weapons/W1-06.webp', import.meta.url).href; // 代用: 使い捨てロケット砲（発射台の上に載せる）

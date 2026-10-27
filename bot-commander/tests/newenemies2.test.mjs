@@ -1,7 +1,7 @@
 // 新しい敵の続き（?newenemies=1）: G12 の地中・範囲ダメージの輪・人間／ツギハギ号を優先して追う動き・強さの調整・資源集めだけでは勝てない。
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import * as S from '../js/sim/sim.js?v=29';
+import * as S from '../js/sim/sim.js?v=30';
 import * as M from '../js/sim/mission.js?v=10';
 import { NEW_ENEMY_KINDS } from '../js/sim/new-enemies.js?v=2';
 import { ALT, BAND, unitBand, canHit } from '../js/sim/altitude.js?v=1';

@@ -4,14 +4,14 @@
 //   再生 = 同じ条件で createSim → 記録どおりの step で命令を入れ直す → ハッシュを記録と比べる。
 // シム（sim.js）は1行も変えない。記録は stepSim を呼ぶ前に sim.commands を写すだけ、一時停止中の命令（applyCommandsNow）は
 // 呼ぶ前に写して「paused」の印をつける（R-12 の注意1: 一時停止中は経路を先に作るので、結果が変わるため）。
-import { createSim, stepSim, applyCommandsNow, hashSim, hashSimDeep } from './sim.js?v=29';
+import { createSim, stepSim, applyCommandsNow, hashSim, hashSimDeep } from './sim.js?v=30';
 import { MISSION_1 } from './mission.js?v=10';
 import { withAltUnits, ALT_MISSION_ROWS, ALT_IN_MISSIONS } from './alt-units.js?v=3'; // R-05: 本編と同じ「飛ぶ機体・水陸両用機を足すか」の通し方で再生する
 
 export const REPLAY_VERSION = 1;
 export const REPLAY_GAME = 'bot-commander';
 /** 記録を取った時のゲームの版（sw-assets.js の gameVersion と同じ値。取り込む時にそろえる）。違う版の記録は、読めるが「版がちがう」と知らせる */
-export const REPLAY_GAME_VERSION = '1.0.12';
+export const REPLAY_GAME_VERSION = '1.0.14';
 export const MARK_EVERY = 300;            // 途中のハッシュを残す間隔（step）。10 秒ごと
 export const MAX_REPLAY_TICKS = 216000;   // 再生してよい最大の長さ（2 時間ぶん）
 export const MAX_REPLAY_CMDS = 50000;
@@ -54,14 +54,14 @@ export function createSimFromStart(start) {
   const base = MISSIONS[start.mission];
   if (!base) throw new Error(`知らないミッション: ${start.mission}`);
   const mission = base.id === MISSION_1.id ? withAltUnits(base, ALT_MISSION_ROWS) : base; // R-05: 遊ぶ時（index.js）と同じ。スイッチが全部 false なら base そのまま
-  return createSim({ seed: start.seed, mapSeed: start.mapSeed, mission, loadout: start.loadout ? JSON.parse(JSON.stringify(start.loadout)) : null, launcher: !!start.launcher, powersuit: !!start.powersuit, newEnemies: !!mission.story3 }); // v1.0.8: 第 3 章のミッションは遊ぶ時（index.js）と同じく新しい敵の種類で作る（ownAliens なので入れ替えはしない）
+  return createSim({ seed: start.seed, mapSeed: start.mapSeed, mission, loadout: start.loadout ? JSON.parse(JSON.stringify(start.loadout)) : null, launcher: !!start.launcher, powersuit: !!start.powersuit, classes: !!start.classes, newEnemies: !!mission.story3 }); // v1.0.8: 第 3 章のミッションは遊ぶ時（index.js）と同じく新しい敵の種類で作る（ownAliens なので入れ替えはしない）
 }
 /** いまのシムを作った時の条件（記録の start の形）。loadout は JSON にできる物だけ */
 const altSwitches = () => ({ flyer: !!ALT_IN_MISSIONS.flyer, amph: !!ALT_IN_MISSIONS.amph });
 const anyAlt = a => !!(a && (a.flyer || a.amph));
 /** R-05: 本編に飛ぶ機体・水陸両用機を足すスイッチが入っている時だけ start.alt に残す（全部 false の今は、記録の形は前と同じ） */
-export const makeStart = ({ seed = 1, mapSeed = 7, mission = MISSION_1, chapter = null, loadout = null, launcher = false, powersuit = false } = {}) =>
-  ({ seed, mapSeed, mission: mission.id, ...(chapter ? { chapter } : {}), loadout: loadout ? JSON.parse(JSON.stringify(loadout)) : null, ...(launcher ? { launcher: true } : {}), ...(powersuit ? { powersuit: true } : {}), ...(mission.id === MISSION_1.id && anyAlt(altSwitches()) ? { alt: altSwitches() } : {}) }); // launcher: 発射台（?launcher=1）の時だけ印をつける（ふつうの記録の形は変えない）
+export const makeStart = ({ seed = 1, mapSeed = 7, mission = MISSION_1, chapter = null, loadout = null, launcher = false, powersuit = false, classes = false } = {}) =>
+  ({ seed, mapSeed, mission: mission.id, ...(chapter ? { chapter } : {}), loadout: loadout ? JSON.parse(JSON.stringify(loadout)) : null, ...(launcher ? { launcher: true } : {}), ...(powersuit ? { powersuit: true } : {}), ...(classes ? { classes: true } : {}), ...(mission.id === MISSION_1.id && anyAlt(altSwitches()) ? { alt: altSwitches() } : {}) }); // launcher: 発射台（?launcher=1）の時だけ印をつける（ふつうの記録の形は変えない）
 
 const deepOf = sim => ({ hash: hashSim(sim), deep: hashSimDeep(sim) });
 

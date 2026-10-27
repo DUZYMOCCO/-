@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { createSim as baseCreateSim, stepSim, fieldCount } from '../js/sim/sim.js?v=29';
+import { createSim as baseCreateSim, stepSim, fieldCount } from '../js/sim/sim.js?v=30';
 import { STORY_2_1, STORY_2_2 } from '../js/story/story2-missions.js?v=2';
 import { STORY_3_1, STORY_3_2 } from '../js/story/story-3.js?v=2';
 import { toggleStory2Ride } from '../js/story/story2-ops.js?v=1';

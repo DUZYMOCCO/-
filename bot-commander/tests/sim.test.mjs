@@ -4,7 +4,7 @@ import { generateMap, T, setTile, createMap, passable, reachable } from '../js/s
 import { findPath, createSearch, stepSearch, pathCost } from '../js/sim/path.js?v=6';
 import { FogGrid } from '../js/sim/fog.js?v=5';
 import { strokeToWaypoints } from '../js/sim/stroke.js?v=1';
-import { createSim, runSim, issueOrder, issueAttack, issueStance, issueStop, issueRetreat, hashSim, TICK, applyCommandsNow, deployUnit, canDeploy, fieldCount, FIELD_CAP, unitById, slotCost, isGiant, KINDS } from '../js/sim/sim.js?v=29';
+import { createSim, runSim, issueOrder, issueAttack, issueStance, issueStop, issueRetreat, hashSim, TICK, applyCommandsNow, deployUnit, canDeploy, fieldCount, FIELD_CAP, unitById, slotCost, isGiant, KINDS } from '../js/sim/sim.js?v=30';
 
 test('マップ: 40x60・同じseedで同じ・本陣どうしがつながる', () => {
   const a = generateMap(7), b = generateMap(7), c = generateMap(8);

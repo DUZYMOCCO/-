@@ -6,12 +6,12 @@
 import { loadCss } from '../../../common/js/load-css.js';
 import { tutorialMarkStore } from '../save/save.js?v=5';
 import { toTile } from '../sim/map.js?v=6';
-import { createFlow, createWatcher, saveMark, allowedOps, opOfElement } from './tutorial-flow.js?v=2';
-import { STEPS, aheadPoint, ponco, startView } from './tutorial-steps.js?v=9';
+import { createFlow, createWatcher, saveMark, allowedOps, opOfElement } from './tutorial-flow.js?v=3';
+import { STEPS, aheadPoint, ponco, startView } from './tutorial-steps.js?v=11';
 
 await loadCss(new URL('../../css/tutorial.css?v=2', import.meta.url).href); // 読み込み終わってから使えるように（import した側が待つ）
 
-export { createTutorialSim } from './tutorial-steps.js?v=9';
+export { createTutorialSim } from './tutorial-steps.js?v=11';
 
 const PAD = 6;          // 光らせる枠を、対象より外へ広げる量 px
 const GAP = 10;         // 吹き出しと光らせる所のすき間 px

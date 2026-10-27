@@ -21,13 +21,14 @@ export const MEDALS = Object.freeze(['🥇', '🥈', '🥉']);
 
 export const scoreOf = r => Math.round(STAT_CATEGORIES.reduce((a, c) => a + (r[c.id] || 0) * SCORE_WEIGHTS[c.id], 0));
 
-export function createUnitStats({ nameOf = u => u.label || u.kind || '味方' } = {}) {
+export function createUnitStats({ nameOf = u => u.label || u.kind || '味方', clsNameOf = null } = {}) {
   const rows = new Map(), prevHp = new Map(), prevCargo = new Map(), prevCaptured = new Map(), killedBy = new Map(), seen = new WeakSet();
   const isMember = u => u && u.side === 'ally' && !u.object;
   function rec(u) {
     let r = rows.get(u.id);
     if (!r) {
       r = { id: u.id, kind: u.kind, human: !!u.human, name: nameOf(u), order: rows.size, dealt: 0, kills: 0, taken: 0, carried: 0, saves: 0, down: false, suit: false };
+      if (clsNameOf) r.clsName = clsNameOf(u);
       rows.set(u.id, r);
     }
     return r;
@@ -87,7 +88,7 @@ export function createUnitStats({ nameOf = u => u.label || u.kind || '味方' } 
 }
 
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
-const who = r => `${r.human ? '🧑' : '🤖'}${robotNameHtml(r.name)}${r.suit ? '<small>（スーツ）</small>' : ''}`;
+const who = r => `${r.human ? '🧑' : '🤖'}${robotNameHtml(r.name)}${r.clsName ? `<small>（${esc(r.clsName)}）</small>` : ''}${r.suit ? '<small>（スーツ）</small>' : ''}`;
 
 /** 結果の画面と ☰ の「今の成績」で使う HTML（縦長のスマホで読めるよう、MVP の札と順位の行だけ） */
 export function statsHtml(sum, { title = 'ロボごとの成績' } = {}) {

@@ -1,3 +1,4 @@
+// v1.0.14: ?classes=1 の兵種ごとの視界・能力（旗なしは従来どおり）。
 // ゲームの中身（固定ステップ・決まった乱数）。DOM と Pixi は import しない。描画側は state を読むだけ。
 // v0.2.0: ミッション（資材集め・巡回・脱出）を追加。createSim({ mission }) で有効になる。mission なしは従来の撃ち合い。
 // v0.4.0-dev: 部隊をやめた。味方は1機ずつ命令する。人間（少年・少女）は別枠で出せる。
@@ -19,6 +20,7 @@
 //   KINDS（体の種類）には兵種を付けない。v0.4.4 からミッションの機体ごとに付ける（MISSION_1.ally の cls → makeUnit の extra.cls）。
 // v0.4.2（10/24）: リペアキット。味方ロボットは開始時に START_REPAIR_KITS 個持ち、HP が AUTO_REPAIR_HP_FRAC を切ると勝手に使う。使い切ると fx 'kitEmpty'。
 // v0.4.1（10/24）: よろけは強い一撃だけ（STUN_MIN_HP_FRAC・STUN_HEAVY_KINDS）。よろけた後は STUN_IMMUNE_SEC 秒よろけない。敵味方どちらも同じ。
+import { classAssignFor, applyClassToUnit, classHashValues } from './unit-classes.js?v=1';
 import { registerRobotName } from '../names/robot-names.js?v=1';
 import { createRng } from './rng.js?v=5';
 import { generateMap, TILE, TERRAIN, T, tileAt, toTile, tileCenter, passable, nearestPassable, costAt } from './map.js?v=6';
@@ -157,7 +159,7 @@ export const UNIT_SETUP = Object.freeze({
 // loadout: 武器庫で選んだ装備 { 機体の名前: entry }（armory/loadout.js の applyLoadout）。省く・空なら今までと1つも変わらない
 // shieldTable: 機体ごとの盾と体の表（shield-table.js の形）。省くと SHIELD_TABLE。SHIELD_TABLE_V0411 を渡すと v0.4.11 までの結果に戻る
 // newEnemies: true なら、ミッションの異星生物を新しい敵 14 種（js/sim/new-enemies.js）に入れ替える（?newenemies=1）。省く・false なら今までと1つも変わらない
-export function createSim({ seed = 1, mapSeed = 7, setup = UNIT_SETUP, mission = null, cover, mapEdit = null, loadout = null, shieldTable = SHIELD_TABLE, launcher = false, powersuit = false, newEnemies = false } = {}) {
+export function createSim({ seed = 1, mapSeed = 7, setup = UNIT_SETUP, mission = null, cover, mapEdit = null, loadout = null, shieldTable = SHIELD_TABLE, launcher = false, powersuit = false, newEnemies = false, classes = false } = {}) {
   if (mission && newEnemies && !mission.ownAliens) mission = newEnemiesMission(mission); // ownAliens: 物語 2 章は自分で敵を決める（入れ替えない）
   const map = generateMap(mapSeed);
   if (mapEdit) mapEdit(map);
@@ -169,6 +171,7 @@ export function createSim({ seed = 1, mapSeed = 7, setup = UNIT_SETUP, mission =
     ...(newEnemies || mission?.story2 ? { neKinds: NEW_ENEMY_KINDS } : {}), // ?newenemies=1 の時だけ、新しい敵 14 種をこのシムの種類の表に足す（ふつうは作らない。第 2 章のミッションも新しい敵を使うので入れる）
     cover: createCover(cover ?? (mission ? COVER_LAYOUT : [])), items: [], nextItemId: 1, loot: [], // loot: このミッションで拾った武器の id（拾った順）
   };
+  if (classes) sim.classes = true;
   if (mission) {
     sim.mission = createMissionState(map, mission);
     setup = {
@@ -180,13 +183,15 @@ export function createSim({ seed = 1, mapSeed = 7, setup = UNIT_SETUP, mission =
     const n = Math.max(1, def.count ?? 1);
     const spots = spreadTiles(map, def.tx, def.ty, n, 4, def.moves);
     for (let j = 0; j < n; j++) {
-      const cls = Array.isArray(def.cls) ? def.cls[j] ?? null : def.cls ?? null; // 兵種は機体ごと（配列なら j 機目）
+      let cls = Array.isArray(def.cls) ? def.cls[j] ?? null : def.cls ?? null; // 兵種は機体ごと（配列なら j 機目）
+      if (classes && !KINDS[def.kind]?.human && !KINDS[def.kind]?.object && !KINDS[def.kind]?.giant) cls = classAssignFor(sim.mission?.id, def, j, cls);
       const u = deployUnit(sim, def.kind, spots[j], { label: n === 1 ? def.name : null, cd: j * 0.2, aiAlly: !!def.ai, cls, z: def.z, moves: def.moves });
       if (!u) sim.benched.push(def.kind); // 上限を超えた分は出さない（控え）
     }
   }
   setup.enemy.forEach((def, i) => spawnGroup(sim, def, i));
   if (newEnemies || mission?.story2) sim.ne = initNewEnemies(sim); // 新しい敵の状態（地雷など）と装甲
+  if (classes) for (const u of sim.units) applyClassToUnit(u);
   if (loadout && !mission?.story2) applyLoadout(sim, loadout);
   if (mission?.survey) initStrike(sim, mission); // 物語の最初のミッション（v1.0.2）だけ
   if (launcher && sim.mission) sim.launcher = createLauncherState(); // 発射台（?launcher=1）。省く・false なら sim.launcher は作らない＝今までと1つも変わらない
@@ -481,7 +486,7 @@ function updateUnitMovement(sim, u, dt) {
     // 迎撃: 視界に入った敵へ自分から近づく。ミッションでは最後に止まった場所から LEASH マスまで
     const a = u.anchor || (u.anchor = { x: u.x, y: u.y });
     const leash = sim.mission ? LEASH * TILE : Infinity;
-    let near = null, nd = u.sight * TILE;
+    let near = null, nd = (u.engageSight ?? u.sight) * TILE;
     for (const e of sim.units) {
       if (e.side === u.side || (u.side === 'enemy' && e.human && !e.suitOn)) continue;
       if (!canHit(u, e, unitWeaponInfo(u)?.row)) continue; // 届かない帯の相手（地上の近接 → 空など）には寄らない
@@ -1113,6 +1118,7 @@ export function hashSim(sim) {
   if (sim.powersuit) for (const v of powersuitHashValues(sim)) mix(v); // スーツ入りの局面だけ（ふつうは混ぜない＝今までのハッシュと同じ）
   if (sim.ne) for (const v of newEnemiesHashValues(sim)) mix(v); // 新しい敵（?newenemies=1 だけ。ほかでは混ぜない＝今までのハッシュと同じ）
   if (sim.strike) for (const v of strikeHashValues(sim)) mix(v); // 物語のミサイル（ほかのミッションでは混ぜない＝今までのハッシュと同じ）
+  if (sim.classes) for (const v of classHashValues(sim)) mix(v);
   if (sim.launcher) h = hashLauncher(sim, h); // 発射台（使っていない間は何も混ぜない）
   if (sim.story3) for (const v of story3HashValues(sim)) mix(v); // 第 3 章（?storych=3）だけ
   if (sim.story2) for (const v of story2HashValues(sim)) mix(v); // 物語 2 章（ほかでは混ぜない）

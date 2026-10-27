@@ -58,7 +58,7 @@ export function opOfElement(el) {
   if (el.closest('[data-speed]')) return 'speed';
   if (el.closest('.bc-menu-btn')) return 'menu';
   if (el.closest('.bc-pause')) return 'pause';
-  if (el.closest('.bc-picks')) return 'group';
+  if (el.closest('.bc-picks') || el.closest('.bc-lasso')) return 'group';
   if (el.closest('.bc-act [data-act="mode"]')) return 'mode';
   if (el.closest('.bc-act') || el.closest('.bc-groups')) return 'other';
   return null;

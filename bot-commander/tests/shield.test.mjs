@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createSim, stepSim, runSim, issueRetreat, applyCommandsNow, isDefensive, shieldStats, TICK, UNIT_CLASS_CAPS, DEFENSIVE_ORDERS,
   SHIELD_HP_FRAC, SHIELD_BLOCK_CHANCE, DEFENSIVE_BLOCK_CHANCE, GUNNER_SHIELD_BLOCK_CHANCE, GUNNER_SHIELD_WEAR_MULT,
-  SUPPORTER_SHIELD_BUILD_SEC, SUPPORTER_SHIELD_COST, SUPPORTER_GIVE_RANGE, REPAIRER_SHIELD_RANGE, REPAIRER_SHIELD_REPAIR_FRAC, CRAFT_SPEND_CAP } from '../js/sim/sim.js?v=29';
+  SUPPORTER_SHIELD_BUILD_SEC, SUPPORTER_SHIELD_COST, SUPPORTER_GIVE_RANGE, REPAIRER_SHIELD_RANGE, REPAIRER_SHIELD_REPAIR_FRAC, CRAFT_SPEND_CAP } from '../js/sim/sim.js?v=30';
 import { MISSION_1 } from '../js/sim/mission.js?v=10';
 import { SHIELD_TABLE } from '../js/sim/shield-table.js?v=2';
 

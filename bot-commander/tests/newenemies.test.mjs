@@ -5,7 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import * as S from '../js/sim/sim.js?v=29';
+import * as S from '../js/sim/sim.js?v=30';
 import * as M from '../js/sim/mission.js?v=10';
 import { NE_IDS, NEW_ENEMY_KINDS, NEW_ENEMY_WEAPON, newEnemiesMission, neWreckArt, isNewEnemy } from '../js/sim/new-enemies.js?v=2';
 import { NE_PX, newEnemyArtSources, neWreckScale } from '../js/render/new-enemies-view.js?v=2';

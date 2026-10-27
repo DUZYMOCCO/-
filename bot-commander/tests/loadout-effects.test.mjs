@@ -13,7 +13,7 @@ import { weaponById, weaponPower } from '../js/sim/weapons.js?v=7';
 import { weaponMul } from '../js/sim/cover.js?v=8';
 import { ALT_TEST_UNITS } from '../js/sim/altitude.js?v=1';
 import { MISSION_1 } from '../js/sim/mission.js?v=10';
-import { createSim, stepSim, runSim, shieldStats, KINDS, SHIELD_BLOCK_CHANCE } from '../js/sim/sim.js?v=29';
+import { createSim, stepSim, runSim, shieldStats, KINDS, SHIELD_BLOCK_CHANCE } from '../js/sim/sim.js?v=30';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const data = JSON.parse(readFileSync(join(HERE, '../assets/weapons/armory-data.json'), 'utf8'));

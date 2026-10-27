@@ -49,5 +49,5 @@ test('index.js は入り直しで前回の状態を捨て、作り直しの失�
   assert.match(src, /async startOrShowFailure\(\)/);
   assert.match(src, /作り直せませんでした/);
   assert.doesNotMatch(src, /^\s*await this\.start\(\);/m, '作り直し・武器庫からの出撃は startOrShowFailure を通す');
-  assert.match(src, /destroy\(\) \{\s*this\.alive = false;\s*try \{ window\.__dialog\?\.skip\(\)/);
+  assert.match(src, /destroy\(\) \{\s*this\.alive = false;\s*this\.releaseLasso\?\.\(\);[^\n]*\n[^\n]*\n\s*try \{ window\.__dialog\?\.skip\(\)/);
 });

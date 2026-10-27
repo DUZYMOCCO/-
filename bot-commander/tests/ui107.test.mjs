@@ -4,7 +4,7 @@ import { SPEEDS, normalizeSpeed, advance } from '../js/ui/speed.js?v=2';
 import { newSpots } from '../js/ui/spot-report.js?v=1';
 import { isRead, markRead, DIALOG_READ_KEY } from '../js/dialog/dialog-read.js?v=1';
 import { fireButtonState } from '../js/ui/fire-button.js?v=2';
-import { TICK } from '../js/sim/sim.js?v=29';
+import { TICK } from '../js/sim/sim.js?v=30';
 
 // 1. speed.js: SPEEDS に 3 があり normalizeSpeed(3)===3、advance が 3x で正しく刻む
 test('speed.js: SPEEDS に 3 があり normalizeSpeed(3)===3、advance が 3x で正しく刻む', () => {

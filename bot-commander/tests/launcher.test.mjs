@@ -2,10 +2,10 @@
 // 建造・引く・構え・飛ぶ・ダメージの下がり方・味方に当たらない・撃つ前に壊されると消える・1台1発・同じ結果になること。
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createSim, stepSim, runSim, hashSim, hashSimDeep, unitById, fieldCount, KINDS, TICK, issueOrder } from '../js/sim/sim.js?v=29';
+import { createSim, stepSim, runSim, hashSim, hashSimDeep, unitById, fieldCount, KINDS, TICK, issueOrder } from '../js/sim/sim.js?v=30';
 import { MISSION_1 } from '../js/sim/mission.js?v=10';
 import { TILE, TERRAIN, tileAt, toTile } from '../js/sim/map.js?v=6';
-import { createRecorder, makeStart, openReplay, stringifyReplay, parseReplay } from '../js/sim/replay.js?v=12';
+import { createRecorder, makeStart, openReplay, stringifyReplay, parseReplay } from '../js/sim/replay.js?v=17';
 import { selectKind } from '../js/sim/select.js?v=12';
 import {
   LAUNCHER, TOW_KINDS, LAUNCHER_KINDS, launcherBlastDamage, blast, issueLauncherBuild, issueLauncherHitch, issueLauncherUnhitch, issueLauncherFire,
@@ -449,7 +449,7 @@ test('入口: URL の ?launcher=1 の時だけ有効（index.js の呼び出し�
   assert.ok(!/import[^\n]*launcher-(menu|view)/.test(src.split('\n').filter(l => l.startsWith('import ')).join('\n')), '最初の import には入れない（付けない時は読み込まない）');
   const sw = readFileSync(new URL('../sw-assets.js', import.meta.url), 'utf8');
   for (const f of ['js/sim/launcher.js', 'js/render/launcher-view.js', 'js/ui/launcher-menu.js', 'css/launcher.css']) assert.ok(sw.includes(`'${f}'`), `sw-assets.js に ${f}`);
-  assert.equal(/version: 'v51'/.test(sw) && /gameVersion: '1\.0\.12'/.test(sw), true, 'v1.0.12 / キャッシュ v51');
+  assert.equal(/version: 'v53'/.test(sw) && /gameVersion: '1\.0\.14'/.test(sw), true, 'v1.0.14 / キャッシュ v53');
   assert.ok(!('strike' in createSim({ seed: 1, mission: MISSION_1, launcher: true })), 'sim.strike は作らない');
 });
 
@@ -478,7 +478,7 @@ test('通常発射台はタップで選べ、HPと発射ボタンが出るがロ
 });
 
 test('引いた機体にミサイルの与ダメージと撃破を計上し構えの命令は取り消せない', async () => {
-  const { createUnitStats } = await import('../js/stats/unit-stats.js?v=3');
+  const { createUnitStats } = await import('../js/stats/unit-stats.js?v=4');
   const sim = mk(); const l = withLauncher(sim), t = sim.units.find(u => u.kind === 'scav');
   const stat = createUnitStats(); stat.observe(sim);
   t.x = l.x + 10; t.y = l.y; assert.ok(issueLauncherHitch(sim, t.id).ok); stepSim(sim);

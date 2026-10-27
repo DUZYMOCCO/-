@@ -1,6 +1,6 @@
 // チュートリアルの「段」と、練習の場面（データと、その場面を作る関数だけ。画面は触らない）。
 // 今の MISSION_1 や sim の数値は変えない。練習の場面は createSim({ mission }) に別のミッションを渡して作る。数値はすべて（仮）。
-import { createSim, unitById } from '../sim/sim.js?v=29';
+import { createSim, unitById } from '../sim/sim.js?v=30';
 import { nearestPassable, tileCenter } from '../sim/map.js?v=6';
 
 /**
@@ -65,7 +65,7 @@ export const firstOf = (sim, id) => unitById(sim, id);
  */
 export const STEPS = Object.freeze([
   { id: 'select', text: 'ロボをタップして選ぼう。もう一度タップすると外せる。', target: { units: 'ponco' }, prep: ['clearSel'], until: { type: 'select', test: ev => ev.ids.length >= 1 } },
-  { id: 'group', text: '上のボタンか長押しで、同じ種類をまとめて選べる。地面を長押ししてなぞると、囲んだロボを選べる。', target: { css: '.bc-picks' }, prep: ['clearSel'], until: { type: 'select', test: ev => ev.ids.length >= 2 } },
+  { id: 'group', text: '上のボタンか長押しで同じ種類を選べる。「囲む」を押さえて地図をなぞると、囲んだロボも選べる。', target: { css: '.bc-picks' }, prep: ['clearSel'], until: { type: 'select', test: ev => ev.ids.length >= 2 } },
   { id: 'move', text: '光っている所の地面をタップすると、選んだロボがそこへ動く。', target: { point: 'ahead' }, prep: ['view', 'selectPonco'], until: { type: 'order' } },
   { id: 'mode', text: '下のボタンで、戦闘移動（敵がいたら撃つ）と急行（撃たずに走る）を切り替える。', target: { css: '.bc-act [data-act="mode"]' }, prep: ['selectPonco'], until: { type: 'mode' } },
   { id: 'attack', text: '見えている敵をタップすると狙う。見えないときは、ロボを前へ進めよう。', target: { units: 'enemy' }, prep: ['selectPonco', 'fight'], until: { type: 'attack' }, skipIf: ctx => !ctx.sim.units.some(u => u.side === 'enemy' && u.hp > 0) },
