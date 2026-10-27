@@ -1,7 +1,7 @@
 // ゾンビストライク — ゲームの きまり（DOM / three.js に いぞんしない。node のテストから よめる）
 // ぶき・ダメージ・ウェーブ・あたりはんてい（レイ×はこ）・いどうの ぶつかり・ゾンビの みちさがし（フローフィールド）
 
-export const VERSION = '0.17.0';
+export const VERSION = '0.18.0';
 
 // ---- ぶき ----
 // rpm: 1ぷんかんの はっしゃかず / mag: マガジン / reserve: よびだん / reload: びょう
@@ -2089,4 +2089,159 @@ export function rescueSpot(cells, px, pz, py, ok, boss = false, cfg = RESCUE) {
   c.sort((a, b) => a[0] - b[0]);
   for (const [, cl] of c) if (ok(cl[0], cl[1], cl[2] || 0)) return { x: cl[0], z: cl[1], y: cl[2] || 0 };
   return null;
+}
+
+// ---- v0.18.0: けいさつロボ・アーミーロボの セリフ ----
+export const POLICE_LINES = {
+  join: [
+    'パトロール かいし！ まかせて！',
+    'ぼくが うしろを まもるよ！',
+    'たいほ するぞ！ いっしょに いこう！',
+  ],
+  joinPartner: [
+    'アーミー！ いっしょに まちを まもろう！',
+    '心強い なかまが できた！',
+  ],
+  kill: [
+    'ゾンビを たいほ！',
+    'はい、おとなしく して！',
+    'うしろの てき、たおしたよ！',
+    'ナイス ショット！',
+  ],
+  waveStart: [
+    'つぎの ウェーブだ！ きをつけて！',
+    'ゾンビが くるよ！ じゅんび よし！',
+  ],
+  waveStartNight: [
+    'まっくらだ… ライトを つけて いこう！',
+  ],
+  bossWave: [
+    'で、でかいのが きたーっ！ あたまを ねらおう！',
+    'ボスゾンビ はっけん！ まけないぞ！',
+  ],
+  waveClear: [
+    'ふぅ〜！ やったね！',
+    'この ちょうしで いこう！',
+    'まちは ぼくたちが まもる！',
+  ],
+  levelUp: [
+    'Lv UP！ パワーがあがったよ！',
+    'もっと つよくなったよ！ まかせて！',
+  ],
+  hurt: [
+    'いたっ！ まだまだ！',
+    '装甲に ダメージ！ でも たたかうよ！',
+  ],
+  lowHp: [
+    'うぅ… きびしいけど… まけない！',
+    'ちょっと ピンチ…！ でも がんばる！',
+  ],
+  break: [
+    'エネルギーが… あとは たのんだよ…！',
+    'ここまでか… まちを… まもってね…',
+  ],
+  breakPartner: [
+    'アーミー… あとは… まかせたよ…',
+  ],
+  partnerDown: [
+    'アーミー！ そんな…！ ぼくが かたきを うつ！',
+  ],
+  idle: [
+    'パトロールちゅう… いじょう なし！',
+    'あやしい ゾンビは いないかな？',
+  ],
+  playerHurt: [
+    'あぶない！ ぼくの うしろに きて！',
+  ],
+};
+
+export const ARMY_LINES = {
+  join: [
+    'アーミーロボ、きどう。りょうかい！',
+    'レーザー システム オールグリーン。いくぞ',
+    'ミッション かいし。てきを はいじょする',
+  ],
+  joinPartner: [
+    'けいさつロボか。ツーマンセルで いくぞ',
+    'フォーメーション 完了。援護する',
+  ],
+  kill: [
+    'ターゲット はいじょ。',
+    'めいちゅう。つぎへ',
+    'クリア。',
+  ],
+  pierce: [
+    'まとめて ゲキハ！',
+    'レーザー つらぬいたぞ！',
+    'いっきに はいじょ！',
+  ],
+  waveStart: [
+    'てきが くるぞ。ゲイゲキ たいせいに はいれ',
+    'ゾンビ軍団を かくにん。戦闘かいし！',
+  ],
+  waveStartNight: [
+    '暗視モード 作動。ゆだんするな',
+  ],
+  bossWave: [
+    'きょだい てきを かくにん！ レーザー 最大しゅつりょく！',
+    'ボスゾンビだ！ 集中砲火を あびせろ！',
+  ],
+  waveClear: [
+    'エリア クリア。ざんこう は なし',
+    'いい 戦闘だった。つぎに そなえろ',
+    'レーザー 冷却完了。いつでも こい',
+  ],
+  levelUp: [
+    'Lv UP。レーザーしゅつりょく ぞうか！',
+    'システム アップグレード。殲滅りょく 向上',
+  ],
+  hurt: [
+    '被弾かくにん。モンダイ ない',
+    '装甲 損傷。戦闘 けいぞく！',
+  ],
+  lowHp: [
+    '警告、HP低下… だが たおれん！',
+    '損傷 大… しかし 退くわけには いかん！',
+  ],
+  break: [
+    'システム… ダウン… ミッションを… たのむ…',
+    '装甲 げんかい… ここまでか…',
+  ],
+  breakPartner: [
+    'けいさつロボ… プレイヤーを… まもれ…',
+  ],
+  partnerDown: [
+    'けいさつロボ…！ かたきは 必ず とる！',
+  ],
+  idle: [
+    '周囲 警戒中。てき影 なし',
+    '銃器 点検完了。異常なし',
+  ],
+  playerHurt: [
+    'プレイヤー、たいひ しろ！ カバーする！',
+  ],
+};
+
+export function pickBotLine(kind, ev, ctx = {}, rng = Math.random) {
+  const dict = kind === 'army' ? ARMY_LINES : POLICE_LINES;
+  let pool = null;
+  if (ev === 'join' && ctx.hasPartner) pool = dict.joinPartner;
+  else if (ev === 'break' && ctx.hasPartner) pool = dict.breakPartner;
+  else if (ev === 'waveStart') {
+    if (ctx.isBoss) pool = dict.bossWave;
+    else if (ctx.isNight && dict.waveStartNight) pool = dict.waveStartNight;
+    else pool = dict.waveStart;
+  } else if (ev === 'kill' && ctx.pierce && dict.pierce) {
+    pool = dict.pierce;
+  } else {
+    pool = dict[ev];
+  }
+  if (!pool || !pool.length) pool = dict[ev] || dict.kill;
+  const idx = Math.floor(rng() * pool.length);
+  return pool[idx];
+}
+
+export function formatBotLine(kind, line) {
+  const name = kind === 'army' ? 'アーミーロボ' : 'けいさつロボ';
+  return `${name}「${line}」`;
 }

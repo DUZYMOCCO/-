@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  POLICE_LINES, ARMY_LINES, pickBotLine, formatBotLine,
   WEAPONS, WEAPON_ORDER, DEFAULT_WEAPON, fireInterval, damageAt, createGun, updateGun, tryFire, startReload,
   ZOMBIES, waveSpec, waveQueue, killScore, HEADSHOT_BONUS, rayAABB, castShot, collideCircle, groundHeight,
   buildGrid, updateFlow, flowDir, cellOf, normalizeSave,
@@ -234,7 +235,7 @@ test('なめらか いどう: approach は フレームレートに よらない
 });
 
 test('バージョン と セーブの ステージ', () => {
-  assert.equal(VERSION, '0.17.0');
+  assert.equal(VERSION, '0.18.0');
   assert.equal(normalizeSave(null).stage, 'day');
   assert.equal(normalizeSave({ stage: 'night' }).stage, 'night');
   assert.equal(normalizeSave({ stage: 'mars' }).stage, 'day');
@@ -2837,4 +2838,40 @@ test('v0.17.0 まよった ゾンビを よぶ: えらびかた・ばしょ・�
   assert.match(body, /openCells\(\)/);
   assert.match(body, /collideCircle\(/);
   assert.match(body, /phase !== 'fight'/);
+});
+
+test('v0.18.0 ロボットのセリフ: けいさつロボとアーミーロボのセリフと状況選択', () => {
+  // セリフ辞書の網羅性
+  assert.ok(POLICE_LINES.join.length >= 2);
+  assert.ok(POLICE_LINES.kill.length >= 3);
+  assert.ok(POLICE_LINES.bossWave.length >= 1);
+  assert.ok(ARMY_LINES.join.length >= 2);
+  assert.ok(ARMY_LINES.pierce.length >= 2);
+  assert.ok(ARMY_LINES.partnerDown.length >= 1);
+
+  // 単独 join vs 相方あり join
+  const pJoinAlone = pickBotLine('police', 'join', { hasPartner: false }, () => 0);
+  assert.ok(POLICE_LINES.join.includes(pJoinAlone));
+  const pJoinPartner = pickBotLine('police', 'join', { hasPartner: true }, () => 0);
+  assert.ok(POLICE_LINES.joinPartner.includes(pJoinPartner));
+
+  // アーミーロボの貫通セリフ
+  const aPierce = pickBotLine('army', 'kill', { pierce: true }, () => 0);
+  assert.ok(ARMY_LINES.pierce.includes(aPierce));
+
+  // ボスウェーブセリフ
+  const pBoss = pickBotLine('police', 'waveStart', { isBoss: true }, () => 0);
+  assert.ok(POLICE_LINES.bossWave.includes(pBoss));
+  const aBoss = pickBotLine('army', 'waveStart', { isBoss: true }, () => 0);
+  assert.ok(ARMY_LINES.bossWave.includes(aBoss));
+
+  // 夜ウェーブセリフ
+  const pNight = pickBotLine('police', 'waveStart', { isNight: true }, () => 0);
+  assert.ok(POLICE_LINES.waveStartNight.includes(pNight));
+  const aNight = pickBotLine('army', 'waveStart', { isNight: true }, () => 0);
+  assert.ok(ARMY_LINES.waveStartNight.includes(aNight));
+
+  // フォーマット（名前「セリフ」）
+  assert.equal(formatBotLine('police', 'たいほ！'), 'けいさつロボ「たいほ！」');
+  assert.equal(formatBotLine('army', 'クリア。'), 'アーミーロボ「クリア。」');
 });

@@ -11,11 +11,11 @@ import { WEAPONS, WEAPON_ORDER, normalizeSave, SENS, VERSION, OUTFITS, outfitNam
   SLOT_UP, HP_UP, slotLevel, hpLevel, slotUpCost, hpUpCost, baseHpAt, slotBonus, buySlotUpgrade, buyHpUpgrade, GEAR_SLOT_IDS,
   SUIT_ORDER, SUIT_WEAPONS, suitLabel, SUIT,
   MELEE, MELEE_ORDER, MELEE_UP, meleeLevel, meleeUpCost, meleeStats, buyMelee, isMelee, DEFAULT_MELEE,
-  LOADOUT_SIZE, normalizeLoadout, toggleLoadout, loadoutReady, unlockedWeapons, upgradeRows, GAUGE_LABEL } from './rules.js?v=20';
-import { MAPS, mapInfo, registerMap, hasMap } from './map.js?v=20';
-import { recordGkClear } from './rules.js?v=20';
-import { GK_CATALOG, GK_WORLDS, GK_READY, isGkReady, gkMeta, gkNext, gkLoadStage, gkLoadMap, gkLoadSegs, gkLoadGims, gkLoadBoss, gkWaves, gkClearBonus } from './gk/core.js?v=20';
-import { segResume } from './gk/seg.js?v=20';
+  LOADOUT_SIZE, normalizeLoadout, toggleLoadout, loadoutReady, unlockedWeapons, upgradeRows, GAUGE_LABEL } from './rules.js?v=21';
+import { MAPS, mapInfo, registerMap, hasMap } from './map.js?v=21';
+import { recordGkClear } from './rules.js?v=21';
+import { GK_CATALOG, GK_WORLDS, GK_READY, isGkReady, gkMeta, gkNext, gkLoadStage, gkLoadMap, gkLoadSegs, gkLoadGims, gkLoadBoss, gkWaves, gkClearBonus } from './gk/core.js?v=21';
+import { segResume } from './gk/seg.js?v=21';
 
 const hex6 = (n) => '#' + n.toString(16).padStart(6, '0');
 // v0.7.0: がめんの そとを さす やじるしは ボタンに かぶらない たかさ（うえから 16%〜32%）
@@ -59,9 +59,9 @@ function totalsText(gear, save) {
   const parts = GEAR_STAT_IDS.filter((k) => t[k]).map((k) => `${GEAR_STATS[k].name} +${t[k]}${GEAR_STATS[k].unit}${t[k] >= GEAR_STATS[k].cap ? '（MAX）' : ''}`);
   return parts.length ? parts.join(' ・ ') : 'まだ なにも つけて いないよ';
 }
-import { Game } from './game.js?v=20';
-import { Input } from './input.js?v=20';
-import { Sfx } from './sfx.js?v=20';
+import { Game } from './game.js?v=21';
+import { Input } from './input.js?v=21';
+import { Sfx } from './sfx.js?v=21';
 
 // v0.7.0: ぶきの ちいさい アイコン（かくうの シルエット）
 const svgI = (d) => `<svg viewBox="0 0 32 16" aria-hidden="true">${d}</svg>`;
@@ -105,7 +105,7 @@ const OPT_CYCLE = { autoFire: [false, true], sens: ['low', 'mid', 'high'], quali
 
 export default {
   prepare() {
-    return loadCss(new URL('../css/zombie-tps.css?v=20', import.meta.url).href);
+    return loadCss(new URL('../css/zombie-tps.css?v=21', import.meta.url).href);
   },
 
   init(container, onBackToHub) {
@@ -173,10 +173,10 @@ export default {
           <div class="zt-banner"><b></b><span></span></div>
           <div class="zt-oji hidden"><div class="zt-ojitxt">たすけて！</div><div class="zt-ojihp"><div></div></div></div>
           <div class="zt-ojiarrow hidden"><i>➤</i><span>たすけて！</span></div>
-          <div class="zt-bot zt-police hidden"><span>けいさつロボ・さわってね</span><em class="zt-lvup">Lv UP!</em><div class="zt-botrow"><i class="zt-botlv">Lv1</i><div class="zt-bothp"><div></div></div></div></div>
+          <div class="zt-bot zt-police hidden"><em class="zt-botsay"></em><span>けいさつロボ・さわってね</span><em class="zt-lvup">Lv UP!</em><div class="zt-botrow"><i class="zt-botlv">Lv1</i><div class="zt-bothp"><div></div></div></div></div>
           <div class="zt-cop hidden"><span>けいさつおじさん</span><div class="zt-bothp"><div></div></div></div>
           <div class="zt-botarrow zt-police hidden"><i>➤</i><span>けいさつロボ</span></div>
-          <div class="zt-bot zt-army hidden"><span>アーミーロボ・さわってね</span><em class="zt-lvup">Lv UP!</em><div class="zt-botrow"><i class="zt-botlv">Lv1</i><div class="zt-bothp"><div></div></div></div></div>
+          <div class="zt-bot zt-army hidden"><em class="zt-botsay"></em><span>アーミーロボ・さわってね</span><em class="zt-lvup">Lv UP!</em><div class="zt-botrow"><i class="zt-botlv">Lv1</i><div class="zt-bothp"><div></div></div></div></div>
           <div class="zt-botarrow zt-army hidden"><i>➤</i><span>アーミーロボ</span></div>
           <div class="zt-drunk hidden"><em class="zt-hic"></em><span>よっぱらいおじさん</span><div class="zt-bothp"><div></div></div></div>
           <div class="zt-ammo"><div class="zt-wname"></div><div class="zt-anum"><b>30</b><span>/ 210</span></div><div class="zt-gauge hidden"><em></em><div><i></i></div></div></div>
@@ -814,7 +814,7 @@ export default {
   makeHud() {
     const q = (s) => this.el(s);
     const botEls = (k) => ({ bot: q('.zt-bot' + k), botHp: q('.zt-bot' + k + ' .zt-bothp div'), botArrow: q('.zt-botarrow' + k), botArrowI: q('.zt-botarrow' + k + ' i'),
-      botIcon: q('.zt-boticon' + k), botIconHp: q('.zt-boticon' + k + ' .zt-bothp div'), botLv: [q('.zt-bot' + k + ' .zt-botlv'), q('.zt-boticon' + k + ' .zt-botlv')] });
+      botIcon: q('.zt-boticon' + k), botIconHp: q('.zt-boticon' + k + ' .zt-bothp div'), botLv: [q('.zt-bot' + k + ' .zt-botlv'), q('.zt-boticon' + k + ' .zt-botlv')], botSay: q('.zt-bot' + k + ' .zt-botsay') });
     const E = {
       hpBar: q('.zt-hpbar div'), hpNum: q('.zt-hp em'), wave: q('.zt-wave b'), left: q('.zt-wave span'), score: q('.zt-score b'),
       ammo: q('.zt-ammo b'), res: q('.zt-ammo span'), wname: q('.zt-wname'), cross: q('.zt-cross'), hitm: q('.zt-hitm'),

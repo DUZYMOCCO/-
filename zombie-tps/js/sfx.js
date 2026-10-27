@@ -254,6 +254,19 @@ export class Sfx {
     const t = this.ctx.currentTime, p = 0.9 + Math.random() * 0.2;
     this._tone(t, 0.09, { type: 'triangle', f0: 380 * p, f1: 900 * p, gain: 0.25 * vol });
   }
+
+  // v0.18.0: ロボットが しゃべった（ピポッ／ピピッ）
+  robotSay(kind = 'police') {
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime;
+    if (kind === 'police') {
+      this._tone(t, 0.04, { type: 'square', f0: 1320, f1: 1320, gain: 0.035 });
+      this._tone(t + 0.045, 0.06, { type: 'square', f0: 1760, f1: 1760, gain: 0.035 });
+    } else {
+      this._tone(t, 0.04, { type: 'square', f0: 880, f1: 880, gain: 0.04 });
+      this._tone(t + 0.045, 0.05, { type: 'square', f0: 1100, f1: 1100, gain: 0.04 });
+    }
+  }
   robotBreak() { // ガシャーン（こわれる）
     if (!this.ctx || this.muted) return;
     const t = this.ctx.currentTime;

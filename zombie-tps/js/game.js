@@ -18,28 +18,28 @@ import {
   SpatialGrid, thinkInterval, QualityGovernor, govPixelRatio,
   normalizeLoadout, loadoutSlot, cycleLoadout, applyCrate, SMOKE, smokeAffects,
   rescueSample, rescuePick, rescueSpot, RESCUE,
-} from './rules.js?v=20';
-import { Crowd } from './crowd.js?v=20';
-import { RobotMixin } from './robot.js?v=20';
-import { AllyMixin } from './ally.js?v=20';
-import { CopMixin } from './cop.js?v=20';
-import { ArmyMixin } from './army.js?v=20';
-import { DrunkMixin } from './drunk.js?v=20';
+} from './rules.js?v=21';
+import { Crowd } from './crowd.js?v=21';
+import { RobotMixin } from './robot.js?v=21';
+import { AllyMixin } from './ally.js?v=21';
+import { CopMixin } from './cop.js?v=21';
+import { ArmyMixin } from './army.js?v=21';
+import { DrunkMixin } from './drunk.js?v=21';
 const BOT_NAME = { cop: 'けいさつおじさん', army: 'アーミーロボ', drunk: 'よっぱらいおじさん' }; // v0.14.0
-import { VehicleMixin } from './vehicles.js?v=20';
-import { SuitMixin } from './suit.js?v=20';
-import { MissileMixin } from './missiles.js?v=20';
-import { MeleeMixin } from './melee.js?v=20';
-import { GkMixin } from './gk/play.js?v=20';
-import { StreamMixin } from './gk/stream.js?v=20';
-import { EnergyMixin } from './beams.js?v=20';
-import { makeNav } from './nav.js?v=20';
-import { buildMap, playerColliders, zombieColliders, shotColliders } from './map.js?v=20';
-import { buildTextures, fxTextures } from './textures.js?v=20';
-import { buildWorld, disposeWorld } from './world.js?v=20';
-import { Backdrop, BACKDROPS } from './backdrop.js?v=20';
-import { makePlayer, applyOutfit, applyGear, makeGearDrop, makeOjisan, makeWeapons, makeZombie, makeRocketProjectile, makeRocketCrate, zombieChunkColors, FLASH_MAT } from './models.js?v=20';
-import { FX } from './fx.js?v=20';
+import { VehicleMixin } from './vehicles.js?v=21';
+import { SuitMixin } from './suit.js?v=21';
+import { MissileMixin } from './missiles.js?v=21';
+import { MeleeMixin } from './melee.js?v=21';
+import { GkMixin } from './gk/play.js?v=21';
+import { StreamMixin } from './gk/stream.js?v=21';
+import { EnergyMixin } from './beams.js?v=21';
+import { makeNav } from './nav.js?v=21';
+import { buildMap, playerColliders, zombieColliders, shotColliders } from './map.js?v=21';
+import { buildTextures, fxTextures } from './textures.js?v=21';
+import { buildWorld, disposeWorld } from './world.js?v=21';
+import { Backdrop, BACKDROPS } from './backdrop.js?v=21';
+import { makePlayer, applyOutfit, applyGear, makeGearDrop, makeOjisan, makeWeapons, makeZombie, makeRocketProjectile, makeRocketCrate, zombieChunkColors, FLASH_MAT } from './models.js?v=21';
+import { FX } from './fx.js?v=21';
 const A_RIGHT = new THREE.Vector3();
 
 const v3 = () => new THREE.Vector3();
@@ -1348,6 +1348,50 @@ export class Game {
     if (this.hp <= 0) this.gameOver();
     this.pushHud(true);
   }
+
+
+  // v0.18.0: ウェーブ開始・クリア時のロボットの掛け合い
+  botWaveStart(wave, isBoss, isNight) {
+    const pOn = this.robot && this.robot.state === 'on';
+    const aOn = this.army && this.army.state === 'on';
+    if (!pOn && !aOn) return;
+    const ctx = { isBoss, isNight, wave };
+    if (isBoss || Math.random() < 0.75) {
+      if (pOn && aOn) {
+        if (Math.random() < 0.5) {
+          this.sayRobot?.('waveStart', ctx, isBoss);
+          setTimeout(() => { if (this.army && this.army.state === 'on') this.sayArmy?.('waveStart', ctx, isBoss); }, 850);
+        } else {
+          this.sayArmy?.('waveStart', ctx, isBoss);
+          setTimeout(() => { if (this.robot && this.robot.state === 'on') this.sayRobot?.('waveStart', ctx, isBoss); }, 850);
+        }
+      } else if (pOn) {
+        this.sayRobot?.('waveStart', ctx, isBoss);
+      } else if (aOn) {
+        this.sayArmy?.('waveStart', ctx, isBoss);
+      }
+    }
+  },
+  botWaveClear() {
+    const pOn = this.robot && this.robot.state === 'on';
+    const aOn = this.army && this.army.state === 'on';
+    if (!pOn && !aOn) return;
+    if (Math.random() < 0.75) {
+      if (pOn && aOn) {
+        if (Math.random() < 0.5) {
+          this.sayRobot?.('waveClear', {}, true);
+          setTimeout(() => { if (this.army && this.army.state === 'on') this.sayArmy?.('waveClear', {}, true); }, 750);
+        } else {
+          this.sayArmy?.('waveClear', {}, true);
+          setTimeout(() => { if (this.robot && this.robot.state === 'on') this.sayRobot?.('waveClear', {}, true); }, 750);
+        }
+      } else if (pOn) {
+        this.sayRobot?.('waveClear', {}, true);
+      } else if (aOn) {
+        this.sayArmy?.('waveClear', {}, true);
+      }
+    }
+  },
 
   gameOver() {
     this.state = 'over';

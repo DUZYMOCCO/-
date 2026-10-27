@@ -1,7 +1,7 @@
 // ステージ5 セグメント C（おくじょう・ボス）。いりぐち（z=24 の かべ）は B の でぐちと おなじ ばしょ
 // ゆか 12m。まわりは ひくい てすり。あかい そらの した
-import { segWall, segOuter, segDoor, roomSpawns } from './kit.js?v=20';
-import { WALL, STEEL, H, DW, THEME, SLAB, wallOpt, banner, pillar, crates, torch } from './tower_a.js?v=20';
+import { segWall, segOuter, segDoor, roomSpawns } from './kit.js?v=21';
+import { WALL, STEEL, H, DW, THEME, SLAB, wallOpt, banner, pillar, crates, torch } from './tower_a.js?v=21';
 
 export function build(builder) {
   const B = builder(26, 5103), { add, deco } = B, X = 24;
