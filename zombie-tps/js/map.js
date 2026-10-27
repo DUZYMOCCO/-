@@ -14,6 +14,7 @@ export const MAPS = [
   { id: 'harbor', name: 'みなと', icon: '⚓', half: 44, desc: 'コンテナの まよいみち と うみ' },
   { id: 'rooftop', name: 'やねの まち', icon: '🪜', half: 42, desc: 'かいだん・はしご・はしで やねへ のぼろう' },
   { id: 'office', name: 'はいきょの ビル', icon: '🏢', half: 34, desc: '3かいだての ビル。かいだんで うえへ' },
+  { id: 'flood', name: 'しずんだ あそびば', icon: '🚤', half: 42, desc: 'くらい みずの うえを ふねで すすもう' },
 ];
 export const MAP_IDS = MAPS.map((m) => m.id);
 export const mapInfo = (id) => MAPS.find((m) => m.id === id) || MAPS[0];
@@ -840,7 +841,26 @@ export function vehicleList(boxes, kinds) {
 }
 function boxes_push(B, b) { B.boxes.push(b); return b; }
 
-const BUILD = { city, mall, base, hospital, camp, harbor, rooftop, office };
+function flood() {
+  const B = builder(42, 9117), { add, deco } = B;
+  B.perimeter({ mat: 'concrete', gates: { n: [-24, 0, 24], s: [-24, 0, 24], w: [-20, 12], e: [-12, 20] }, h: () => 3, tint: 0x394a49 });
+  // Abandoned attraction: broken piers, posts, and dim marker lights.
+  for (const [x, z] of [[-25,-25],[22,-24],[-24,22],[23,23],[-8,-18],[12,15]]) {
+    add('log', x, 0, z, 0.8, 3.2, 0.8);
+    deco('plank', x, 2.4, z, 4, 0.25, 1.3, { tint: 0x53483a });
+    B.lamp(x + 1.4, z);
+  }
+  for (const [x,z] of [[-15,4],[17,-5],[-3,-28],[30,4]]) {
+    add('metal', x, 0, z, 3.4, 1.5, 2.2, { tint: 0x394d46 });
+    deco('plank', x, 1.45, z, 4, 0.18, 2.8, { tint: 0x655443 });
+  }
+  for (const [x,z] of [[-35,-10],[-30,10],[-15,30],[0,32],[15,30],[32,10],[32,-10],[0,-35]]) B.lamp(x,z);
+  for (let x = -30; x <= 30; x += 10) for (const z of [-30, 30]) B.crate(x,z,1,0x63594a);
+  B.perch([[-30, 0], [30, 0]], 1);
+  return B.done({ ground: 'dirt', tint: 0x1a383a, k: 0.8, far: 'harbor', farTint: 0x273d3b, water: 'flood' }, { backdrop: 'harbor' });
+}
+
+const BUILD = { city, mall, base, hospital, camp, harbor, rooftop, office, flood };
 // v0.16.0: あとから よむ マップ（ガンキック ステージ）。fn(builder) → B.done(...)
 const EXTRA = {};
 export function registerMap(id, fn) { EXTRA[id] = () => fn(builder); }

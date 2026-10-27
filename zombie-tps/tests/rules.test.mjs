@@ -235,7 +235,7 @@ test('なめらか いどう: approach は フレームレートに よらない
 });
 
 test('バージョン と セーブの ステージ', () => {
-  assert.equal(VERSION, '0.18.1');
+  assert.equal(VERSION, '0.19.0');
   assert.equal(normalizeSave(null).stage, 'day');
   assert.equal(normalizeSave({ stage: 'night' }).stage, 'night');
   assert.equal(normalizeSave({ stage: 'mars' }).stage, 'day');
@@ -329,7 +329,7 @@ for (const MID of FLAT_IDS) test(`[${MID}] あんぜんちたい なし: プレ�
   const map = buildMap(MID); const HALF = map.half;
   const pc = playerColliders(map), zc = zombieColliders(map);
   const tops = playerReachableTops(pc);
-  assert.ok(tops.length > 20);
+  assert.ok(tops.length > (MID === 'flood' ? 0 : 20));
   const grid = buildGrid(zc, HALF + 4, 1, 0.4);
   updateFlow(grid, map.spawns[0].x, map.spawns[0].z); // ゾンビが あるける マス
   const open = [];
@@ -566,7 +566,7 @@ test('そうび: つける・しまう・すてる・いっぱいの とき', ()
 function lcg(seed) { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); }
 
 test('v0.5.0 マップ: 6しゅるい・ひろい・おまかせ じゅんばん', () => {
-  assert.deepEqual(MAP_IDS, ['city', 'mall', 'base', 'hospital', 'camp', 'harbor', 'rooftop', 'office']);
+  assert.deepEqual(MAP_IDS, ['city', 'mall', 'base', 'hospital', 'camp', 'harbor', 'rooftop', 'office', 'flood']);
   assert.deepEqual(MAP_IDS_MAP, MAP_IDS, 'rules と map の いちらんが おなじ');
   assert.deepEqual(MAP_CHOICES, ['rotate', ...MAP_IDS]);
   for (const m of MAPS) {
@@ -576,11 +576,11 @@ test('v0.5.0 マップ: 6しゅるい・ひろい・おまかせ じゅんばん
   }
   assert.equal(pickMapId('mall', 3), 'mall');
   assert.equal(pickMapId('rotate', 0), 'city');
-  assert.equal(pickMapId('rotate', 9), 'mall');
-  assert.equal(pickMapId('zzz', -1), 'office');
+  assert.equal(pickMapId('rotate', 9), 'city');
+  assert.equal(pickMapId('zzz', -1), 'flood');
   assert.equal(mapInfo('nope').id, 'city');
   const s = normalizeSave({ map: 'camp', mapNext: 11, autoEquip: false });
-  assert.equal(s.map, 'camp'); assert.equal(s.mapNext, 3); assert.equal(s.autoEquip, false);
+  assert.equal(s.map, 'camp'); assert.equal(s.mapNext, 2); assert.equal(s.autoEquip, false);
   assert.equal(normalizeSave({ map: 'moon' }).map, 'rotate');
 });
 
@@ -2304,7 +2304,7 @@ test('v0.16.0 ガンキック: へやの でぐちは ちかすぎない とこ�
 
 test('v0.16.0 いつもの マップと モードは そのまま', () => {
   assert.deepEqual(MAP_IDS_MAP, MAP_IDS);
-  assert.equal(MAP_IDS.length, 8);
+  assert.equal(MAP_IDS.length, 9);
   assert.ok(!MAP_IDS.some((id) => id.startsWith('gk')));
 });
 

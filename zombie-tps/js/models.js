@@ -1,6 +1,6 @@
 // ブロックの キャラクターと ぶき（かくうの デザイン・ロゴなし）
 import * as THREE from '../vendor/three.module.min.js';
-import { zombieFaceTexture, playerFaceTexture, solidTexture, shirtTexture, camoTexture, ojisanTextures, drunkTextures } from './textures.js?v=22';
+import { zombieFaceTexture, playerFaceTexture, solidTexture, shirtTexture, camoTexture, ojisanTextures, drunkTextures } from './textures.js?v=23';
 
 const boxGeoCache = new Map();
 export function boxGeo(w, h, d) {
@@ -748,6 +748,7 @@ export function makePoliceRobot(glowTex) {
 
 // ---- ゾンビ（かわいい・みどり・ブロック） ----
 const ZLOOK = {
+  fish: { skin: 0x709b83, shirt: 0x365f59, pants: 0x263e3d, emissive: 0x0b211b },
   walker: { skin: 0x6abf4b, shirt: 0x2a9d8f, pants: 0x3d4f8f },
   runner: { skin: 0x7ccf55, shirt: 0xe07a2f, pants: 0x5a4a3a },
   brute: { skin: 0x5aa83f, shirt: 0x7b4fb0, pants: 0x3a3a46 },
@@ -867,6 +868,14 @@ export function makeZombie(kind, look = null) {
     body.position.set(0, 0.36, 0.1); body.rotation.x = -1.25;
     for (const l of legs) { l.position.y = 0.32; l.position.z = 0.35; l.rotation.x = 1.35; l.userData.base = 1.35; }
     for (const a of arms) a.userData.base = 0.9;
+  }
+  if (kind === 'fish') {
+    // A ragged fish head, dorsal fin and tail remain above the flood water.
+    const fin = zx('fishFin', 0x315d54), flesh = zx('fishFlesh', 0x6d9581);
+    part(head, flesh, 0.62, 0.46, 0.7, 0, 0.22, -0.16);
+    part(head, fin, 0.12, 0.35, 0.55, 0, 0.58, 0.05);
+    part(body, fin, 0.13, 0.48, 0.55, 0, 0.6, 0.3);
+    part(body, fin, 0.65, 0.35, 0.12, 0, 0.28, 0.55);
   }
   const meshes = [];
   root.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.userData.mat = o.material; meshes.push(o); } });

@@ -18,28 +18,28 @@ import {
   SpatialGrid, thinkInterval, QualityGovernor, govPixelRatio,
   normalizeLoadout, loadoutSlot, cycleLoadout, applyCrate, SMOKE, smokeAffects,
   rescueSample, rescuePick, rescueSpot, RESCUE,
-} from './rules.js?v=22';
-import { Crowd } from './crowd.js?v=22';
-import { RobotMixin } from './robot.js?v=22';
-import { AllyMixin } from './ally.js?v=22';
-import { CopMixin } from './cop.js?v=22';
-import { ArmyMixin } from './army.js?v=22';
-import { DrunkMixin } from './drunk.js?v=22';
+} from './rules.js?v=23';
+import { Crowd } from './crowd.js?v=23';
+import { RobotMixin } from './robot.js?v=23';
+import { AllyMixin } from './ally.js?v=23';
+import { CopMixin } from './cop.js?v=23';
+import { ArmyMixin } from './army.js?v=23';
+import { DrunkMixin } from './drunk.js?v=23';
 const BOT_NAME = { cop: 'けいさつおじさん', army: 'アーミーロボ', drunk: 'よっぱらいおじさん' }; // v0.14.0
-import { VehicleMixin } from './vehicles.js?v=22';
-import { SuitMixin } from './suit.js?v=22';
-import { MissileMixin } from './missiles.js?v=22';
-import { MeleeMixin } from './melee.js?v=22';
-import { GkMixin } from './gk/play.js?v=22';
-import { StreamMixin } from './gk/stream.js?v=22';
-import { EnergyMixin } from './beams.js?v=22';
-import { makeNav } from './nav.js?v=22';
-import { buildMap, playerColliders, zombieColliders, shotColliders } from './map.js?v=22';
-import { buildTextures, fxTextures } from './textures.js?v=22';
-import { buildWorld, disposeWorld } from './world.js?v=22';
-import { Backdrop, BACKDROPS } from './backdrop.js?v=22';
-import { makePlayer, applyOutfit, applyGear, makeGearDrop, makeOjisan, makeWeapons, makeZombie, makeRocketProjectile, makeRocketCrate, zombieChunkColors, FLASH_MAT } from './models.js?v=22';
-import { FX } from './fx.js?v=22';
+import { VehicleMixin } from './vehicles.js?v=23';
+import { SuitMixin } from './suit.js?v=23';
+import { MissileMixin } from './missiles.js?v=23';
+import { MeleeMixin } from './melee.js?v=23';
+import { GkMixin } from './gk/play.js?v=23';
+import { StreamMixin } from './gk/stream.js?v=23';
+import { EnergyMixin } from './beams.js?v=23';
+import { makeNav } from './nav.js?v=23';
+import { buildMap, playerColliders, zombieColliders, shotColliders } from './map.js?v=23';
+import { buildTextures, fxTextures } from './textures.js?v=23';
+import { buildWorld, disposeWorld } from './world.js?v=23';
+import { Backdrop, BACKDROPS } from './backdrop.js?v=23';
+import { makePlayer, applyOutfit, applyGear, makeGearDrop, makeOjisan, makeWeapons, makeZombie, makeRocketProjectile, makeRocketCrate, zombieChunkColors, FLASH_MAT } from './models.js?v=23';
+import { FX } from './fx.js?v=23';
 const A_RIGHT = new THREE.Vector3();
 
 const v3 = () => new THREE.Vector3();
@@ -88,6 +88,14 @@ export class Game {
 
     // プレイヤー
     this.p = makePlayer(); scene.add(this.p.root);
+    const boat = this.boat = new THREE.Group(); this.p.root.add(boat);
+    const hull = new THREE.MeshLambertMaterial({ color: 0x514638 });
+    const trim = new THREE.MeshLambertMaterial({ color: 0x82715a });
+    const plank = (x,y,z,w,h,d,mat) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), mat); m.position.set(x,y,z); boat.add(m); };
+    plank(0,0.32,0,1.8,0.28,3.2,hull);
+    for (const x of [-0.82,0.82]) plank(x,0.67,0,0.16,0.55,3.1,trim);
+    for (const z of [-1.48,1.48]) plank(0,0.67,z,1.7,0.55,0.16,trim);
+
     applyOutfit(this.p, settings.outfit || 'normal');
     this.refreshGear(true);
     // おそわれている おじさん（1にんだけ。つかいまわし）
@@ -304,7 +312,7 @@ export class Game {
 
   // スタートの じかん（タイトルで えらぶ）。ウェーブごとに ゆうぐれ → ゆうやけ → よる
   applyStage(stage) {
-    const st = TOD[stage] ? stage : 'day';
+    const st = this.map.id === 'flood' ? 'night' : (TOD[stage] ? stage : 'day');
     this.stage = this.todStart = st; this.tod = st; this.todFade = null;
     this.applyTod(TOD[st], true);
   }
@@ -516,7 +524,7 @@ export class Game {
     if (this.queue.length) {
       this.spawnT -= dt;
       if (this.spawnT <= 0 && alive < this.aliveCap()) {
-        const k = this.queue.shift(); const s = this.pickSpawn();
+        let k = this.queue.shift(); if (this.map.id === 'flood' && (k === 'walker' || k === 'runner')) k = 'fish'; const s = this.pickSpawn();
         this.spawnZombie(k, s.x, s.z, this.spec.hpMul, s.y);
         this.spawnT = this.spec.spawnGap * (0.7 + Math.random() * 0.6);
         this.pushHud(true);
@@ -527,7 +535,7 @@ export class Game {
       this.hud.banner('ウェーブ クリア！', `+${this.wave * 200} ボーナス`);
       this.score += this.wave * 200;
       this.hp = Math.min(this.maxHp, this.hp + 30);
-      this.todChanged = this.startTodFade(timeOfDay(this.wave + 1, this.todStart));
+      this.todChanged = this.startTodFade(this.map.id === 'flood' ? 'night' : timeOfDay(this.wave + 1, this.todStart));
       this.sfx.clear();
       this.pushHud(true);
     }
@@ -1920,6 +1928,7 @@ export class Game {
   updatePlayerAnim(dt) {
     const P = this.p, gun = this.guns[this.cur], w = gun.w || WEAPONS[this.cur], wo = this.weapons[this.cur];
     P.root.position.copy(this.pos);
+    this.boat.visible = this.map.id === 'flood' && !this.suit;
     P.root.rotation.y = this.yaw;
     if (wo.barrels) wo.barrels.rotation.z += (gun.spin || 0) * 42 * dt; // ミニガンの つつが まわる
     const sw = Math.sin(this.walkPhase) * this.moveAmt;

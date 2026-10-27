@@ -190,6 +190,13 @@ export function buildWorld(scene, map, T, { shadows }) {
     scene.add(water); meshes.push(water);
   }
 
+  if (map.theme?.water === 'flood') {
+    const geo = new THREE.PlaneGeometry(gsize, gsize); geo.rotateX(-Math.PI / 2);
+    const uv = geo.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * gsize / 3, uv.getY(i) * gsize / 3);
+    const water = new THREE.Mesh(geo, mats.__flood = new THREE.MeshLambertMaterial({ map: T.water, color: 0x315c57, transparent: true, opacity: 0.82, depthWrite: false }));
+    water.position.y = 0.65; scene.add(water); meshes.push(water);
+  }
+
   // とおくの けしき
   meshes.push(...farMeshes(scene, farBoxes(map), mat));
 

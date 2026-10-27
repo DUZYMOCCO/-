@@ -1,7 +1,7 @@
 // ゾンビストライク — ゲームの きまり（DOM / three.js に いぞんしない。node のテストから よめる）
 // ぶき・ダメージ・ウェーブ・あたりはんてい（レイ×はこ）・いどうの ぶつかり・ゾンビの みちさがし（フローフィールド）
 
-export const VERSION = '0.18.1';
+export const VERSION = '0.19.0';
 
 // ---- ぶき ----
 // rpm: 1ぷんかんの はっしゃかず / mag: マガジン / reserve: よびだん / reload: びょう
@@ -509,6 +509,7 @@ export function tryFire(g, held) {
 
 // ---- ゾンビ ----
 export const ZOMBIES = {
+  fish: { id: 'fish', hp: 55, speed: 3.1, dmg: 9, atkRate: 0.85, scale: 1, score: 150, name: 'ゾンビざかな' },
   walker: { id: 'walker', hp: 70, speed: 1.8, dmg: 10, atkRate: 1.0, scale: 1.0, score: 100, name: 'ふつう' },
   runner: { id: 'runner', hp: 45, speed: 3.9, dmg: 8, atkRate: 0.8, scale: 0.95, score: 150, name: 'はやい' },
   brute: { id: 'brute', hp: 260, speed: 1.2, dmg: 22, atkRate: 1.4, scale: 1.35, score: 400, name: 'でかい' },
@@ -944,7 +945,7 @@ export function gridLineClear(grid, x0, z0, x1, z1) {
 }
 
 // ---- マップ（えらべる。'rotate' は あそぶ たびに つぎの マップ）----
-export const MAP_IDS = ['city', 'mall', 'base', 'hospital', 'camp', 'harbor', 'rooftop', 'office'];
+export const MAP_IDS = ['city', 'mall', 'base', 'hospital', 'camp', 'harbor', 'rooftop', 'office', 'flood'];
 export const MAP_CHOICES = ['rotate', ...MAP_IDS];
 // こんかい あそぶ マップ
 export function pickMapId(choice, next = 0) {

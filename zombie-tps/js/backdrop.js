@@ -14,6 +14,7 @@ export const BACKDROPS = {
   base: { sil: '#121510', sil2: '#1b2018', glow: '#ffa040', fires: 3, smoke: 3, search: 3, heli: true, bolt: 0.3, cloud: '#22261e', flares: true, moon: 0xa8ffb0 },
   hospital: { sil: '#121816', sil2: '#1a2420', glow: '#9aff9a', fires: 1, smoke: 2, search: 1, heli: false, bolt: 1, cloud: '#202a26', moon: 0xb0ffc0 },
   camp: { sil: '#0c140e', sil2: '#142018', glow: '#ff9a40', fires: 1, smoke: 1, search: 0, heli: true, bolt: 0.8, cloud: '#1c241e', flies: true, moon: 0x9aff9a },
+  flood: { sil: '#10191a', sil2: '#1b2b29', glow: '#87a66a', fires: 1, smoke: 2, search: 0, heli: false, bolt: 0.3, cloud: '#172622', beacon: true, moon: 0x9ac7a9 },
   harbor: { sil: '#10141c', sil2: '#18202c', glow: '#ff7a30', fires: 2, smoke: 3, search: 1, heli: true, bolt: 0.6, cloud: '#20242e', beacon: true, moon: 0xc0a8ff },
   rooftop: { sil: '#12141c', sil2: '#1a1e2a', glow: '#ff6a2a', fires: 6, smoke: 5, search: 3, heli: true, bolt: 0.45, cloud: '#26222c', moon: 0xd0a0ff },
   office: { sil: '#101318', sil2: '#191d24', glow: '#ff5a20', fires: 4, smoke: 6, search: 1, heli: false, bolt: 0.7, cloud: '#241e22', moon: 0xffa890 },

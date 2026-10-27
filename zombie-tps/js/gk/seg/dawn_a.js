@@ -1,6 +1,6 @@
 // ステージ17「よあけの こうや」 セグメント A（へや0 いわの たにま → へや1 サボテンの みち）。ぜんぶ -z（きた）へ すすむ
 // でぐち（z=-34 の かべの ドア x=-6）で セグメント B に つながる。たにの かべは すないろの いわ
-import { segWall, segOuter, segDoor, roomSpawns } from './kit.js?v=22';
+import { segWall, segOuter, segDoor, roomSpawns } from './kit.js?v=23';
 
 export const ROCK = 0xb07a4a, ROCK2 = 0x9a6a40, SAND = 0xc4a26a, GREEN = 0x4a7a3a, H = 3.8, DW = 4.4, WH = 4.6, DOOR = 0x6a4a30;
 export const THEME = { ground: 'dirt', tint: 0xa0703a, k: 0.25, far: 'base' };
