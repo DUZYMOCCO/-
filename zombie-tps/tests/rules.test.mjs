@@ -237,7 +237,7 @@ test('なめらか いどう: approach は フレームレートに よらない
 });
 
 test('バージョン と セーブの ステージ', () => {
-  assert.equal(VERSION, '0.21.0');
+  assert.equal(VERSION, '0.21.1');
   assert.equal(normalizeSave(null).stage, 'day');
   assert.equal(normalizeSave({ stage: 'night' }).stage, 'night');
   assert.equal(normalizeSave({ stage: 'mars' }).stage, 'day');
@@ -2932,4 +2932,20 @@ test('アオとモモ: それぞれ 低確率で 登場し、元の武器と色�
   assert.equal(GUESTS.ao.color,0x6fa8e8); assert.equal(GUESTS.momo.color,0xe88cb4);
   assert.ok(GUESTS.momo.fireRate < GUESTS.ao.fireRate);
   assert.ok(GUESTS.ao.side * GUESTS.momo.side < 0);
+});
+
+
+test('ヘリの よびだんは ぜんぶ むげん、リロードは ひつよう', () => {
+  for (const id of WEAPON_ORDER) {
+    const normal = createGun(id), g = createGun(id, 1, { unlimitedReserve: true });
+    assert.equal(g.reserve, Infinity, id);
+    assert.equal(normal.reserve, WEAPONS[id].reserve, `${id} normal reserve`);
+    if (WEAPONS[id].gauge) continue;
+    for (let i = 0; i < 3; i++) {
+      g.ammo = 0; assert.equal(startReload(g), true, id);
+      updateGun(g, g.w.reload + 0.01);
+      assert.equal(g.ammo, g.w.mag, id); assert.equal(g.reserve, Infinity, id);
+    }
+    if (id === 'rocket' || id === 'smoke') assert.equal(crateReward([id], { [id]: g }).kind, 'score');
+  }
 });

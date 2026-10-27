@@ -18,30 +18,30 @@ import {
   SpatialGrid, thinkInterval, QualityGovernor, govPixelRatio,
   normalizeLoadout, loadoutSlot, cycleLoadout, applyCrate, SMOKE, smokeAffects,
   rescueSample, rescuePick, rescueSpot, RESCUE,
-} from './rules.js?v=25';
-import { RIDE, ridePoint, createRideScene } from './ride.js?v=25';
-import { Crowd } from './crowd.js?v=25';
-import { RobotMixin } from './robot.js?v=25';
-import { AllyMixin } from './ally.js?v=25';
-import { GuestMixin } from './guests.js?v=25';
-import { CopMixin } from './cop.js?v=25';
-import { ArmyMixin } from './army.js?v=25';
-import { DrunkMixin } from './drunk.js?v=25';
+} from './rules.js?v=26';
+import { RIDE, ridePoint, createRideScene } from './ride.js?v=26';
+import { Crowd } from './crowd.js?v=26';
+import { RobotMixin } from './robot.js?v=26';
+import { AllyMixin } from './ally.js?v=26';
+import { GuestMixin } from './guests.js?v=26';
+import { CopMixin } from './cop.js?v=26';
+import { ArmyMixin } from './army.js?v=26';
+import { DrunkMixin } from './drunk.js?v=26';
 const BOT_NAME = { ao: 'アオ', momo: 'モモ', cop: 'けいさつおじさん', army: 'アーミーロボ', drunk: 'よっぱらいおじさん' }; // v0.14.0
-import { VehicleMixin } from './vehicles.js?v=25';
-import { SuitMixin } from './suit.js?v=25';
-import { MissileMixin } from './missiles.js?v=25';
-import { MeleeMixin } from './melee.js?v=25';
-import { GkMixin } from './gk/play.js?v=25';
-import { StreamMixin } from './gk/stream.js?v=25';
-import { EnergyMixin } from './beams.js?v=25';
-import { makeNav } from './nav.js?v=25';
-import { buildMap, playerColliders, zombieColliders, shotColliders } from './map.js?v=25';
-import { buildTextures, fxTextures } from './textures.js?v=25';
-import { buildWorld, disposeWorld } from './world.js?v=25';
-import { Backdrop, BACKDROPS } from './backdrop.js?v=25';
-import { makePlayer, applyOutfit, applyGear, makeGearDrop, makeOjisan, makeWeapons, makeZombie, makeRocketProjectile, makeRocketCrate, zombieChunkColors, FLASH_MAT } from './models.js?v=25';
-import { FX } from './fx.js?v=25';
+import { VehicleMixin } from './vehicles.js?v=26';
+import { SuitMixin } from './suit.js?v=26';
+import { MissileMixin } from './missiles.js?v=26';
+import { MeleeMixin } from './melee.js?v=26';
+import { GkMixin } from './gk/play.js?v=26';
+import { StreamMixin } from './gk/stream.js?v=26';
+import { EnergyMixin } from './beams.js?v=26';
+import { makeNav } from './nav.js?v=26';
+import { buildMap, playerColliders, zombieColliders, shotColliders } from './map.js?v=26';
+import { buildTextures, fxTextures } from './textures.js?v=26';
+import { buildWorld, disposeWorld } from './world.js?v=26';
+import { Backdrop, BACKDROPS } from './backdrop.js?v=26';
+import { makePlayer, applyOutfit, applyGear, makeGearDrop, makeOjisan, makeWeapons, makeZombie, makeRocketProjectile, makeRocketCrate, zombieChunkColors, FLASH_MAT } from './models.js?v=26';
+import { FX } from './fx.js?v=26';
 const A_RIGHT = new THREE.Vector3();
 
 const v3 = () => new THREE.Vector3();
@@ -184,7 +184,7 @@ export class Game {
     if (this.rockets) this.rockets.length = 0;
     if (this.missiles) this.clearMissiles();
     this.refreshGear(true); this.hp = this.maxHp; this.hurtT = 0; this.regenDelay = 0;
-    this.guns = {}; for (const id of WEAPON_ORDER) this.guns[id] = createGun(id, weaponLevel(this.settings, id));
+    this.guns = {}; for (const id of WEAPON_ORDER) this.guns[id] = createGun(id, weaponLevel(this.settings, id), { unlimitedReserve: this.map.ride === 'airride' });
     // v0.15.0: もっていく 3つ（えらんだ もの）。はじめは 1ばんめ
     this.loadout = normalizeLoadout(this.settings && this.settings.loadout);
     if (this.map.ride === 'airride') this.loadout = ['sniper', ...this.loadout.filter((id) => id !== 'sniper')].slice(0, 3);

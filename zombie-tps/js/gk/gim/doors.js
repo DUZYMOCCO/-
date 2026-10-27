@@ -2,7 +2,7 @@
 // へやの てきは でぐちでは なく かべの ドアから でる: ランプが あかく ちかちか（0.9びょう）→ ドアが よこに スライド → 1〜2たい → しまる
 // いちどに あくのは 3つ まで。ボスも ドアを つかう（game.gkDoorsApi）
 import * as THREE from '../../../vendor/three.module.min.js';
-import { DOORS, doorFront, doorsBusy, doorPick } from '../core.js?v=25';
+import { DOORS, doorFront, doorsBusy, doorPick } from '../core.js?v=26';
 
 export function create(game) {
   const grp = new THREE.Group(); game.scene.add(grp);

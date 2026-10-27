@@ -1,6 +1,6 @@
 // v0.17.0: ステージ1「ほろびた けんきゅうじょ」 セグメント A（へや0 いりぐち → へや1 サーバーしつ）。かくうの しせつ
 // v0.16.0 の maps/lab.js の きたがわ はんぶん。でぐち（z=12 の かべの ドア）で セグメント B に つながる
-import { segWall, segOuter, segDoor, roomSpawns } from './kit.js?v=25';
+import { segWall, segOuter, segDoor, roomSpawns } from './kit.js?v=26';
 
 export const WALL = 0xb8c2cc, WHITE = 0xe4e8ec, STEEL = 0x8e98a4, GOO = 0x4cff6a, H = 3.8, DW = 4.4;
 export const THEME = { ground: 'concrete', tint: 0x6a8a7a, k: 0.32, far: 'hospital', farTint: 0x8a9a94 };

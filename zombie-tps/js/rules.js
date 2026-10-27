@@ -1,7 +1,7 @@
 // ゾンビストライク — ゲームの きまり（DOM / three.js に いぞんしない。node のテストから よめる）
 // ぶき・ダメージ・ウェーブ・あたりはんてい（レイ×はこ）・いどうの ぶつかり・ゾンビの みちさがし（フローフィールド）
 
-export const VERSION = '0.21.0';
+export const VERSION = '0.21.1';
 
 // ---- ぶき ----
 // rpm: 1ぷんかんの はっしゃかず / mag: マガジン / reserve: よびだん / reload: びょう
@@ -377,9 +377,9 @@ export function currentSpread(w, { moving = false, aiming = false, airborne = fa
 }
 
 // ---- ぶきの じょうたい（たま・リロード・れんしゃ） ----
-export function createGun(id, lv = 1) {
+export function createGun(id, lv = 1, { unlimitedReserve = false } = {}) {
   const w = upgradedWeapon(id, lv);
-  return { id, lv: w.lv, w, ammo: w.mag, reserve: w.reserve, cooldown: 0, reloading: 0, bloom: 0, triggerHeld: false, lastTrigger: false, spin: 0,
+  return { id, lv: w.lv, w, ammo: w.mag, reserve: unlimitedReserve ? Infinity : w.reserve, cooldown: 0, reloading: 0, bloom: 0, triggerHeld: false, lastTrigger: false, spin: 0,
     en: 1, lock: false, idle: 0, charge: 0 }; // v0.15.0: ゲージ（レーザー・ほのお・ビーム）
 }
 // その じゅうの いまの つよさ（つよく した ぶん こみ）
