@@ -235,7 +235,7 @@ test('なめらか いどう: approach は フレームレートに よらない
 });
 
 test('バージョン と セーブの ステージ', () => {
-  assert.equal(VERSION, '0.18.0');
+  assert.equal(VERSION, '0.18.1');
   assert.equal(normalizeSave(null).stage, 'day');
   assert.equal(normalizeSave({ stage: 'night' }).stage, 'night');
   assert.equal(normalizeSave({ stage: 'mars' }).stage, 'day');
@@ -2874,4 +2874,30 @@ test('v0.18.0 ロボットのセリフ: けいさつロボとアーミーロボ�
   // フォーマット（名前「セリフ」）
   assert.equal(formatBotLine('police', 'たいほ！'), 'けいさつロボ「たいほ！」');
   assert.equal(formatBotLine('army', 'クリア。'), 'アーミーロボ「クリア。」');
+});
+
+test('v0.18.1 全モジュールの構文チェック (node -c による網羅検証)', async () => {
+  const fs = await import('node:fs');
+  const path = await import('node:path');
+  const { execFileSync } = await import('node:child_process');
+  const { fileURLToPath } = await import('node:url');
+  const base = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../js');
+
+  function walk(dir) {
+    const list = [];
+    for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, ent.name);
+      if (ent.isDirectory()) list.push(...walk(full));
+      else if (ent.name.endsWith('.js') && !ent.name.includes('three.module.min')) list.push(full);
+    }
+    return list;
+  }
+
+  const jsFiles = walk(base);
+  assert.ok(jsFiles.length >= 40);
+  for (const f of jsFiles) {
+    assert.doesNotThrow(() => {
+      execFileSync(process.execPath, ['-c', f], { stdio: 'pipe' });
+    }, `構文エラー検出: ${f}`);
+  }
 });

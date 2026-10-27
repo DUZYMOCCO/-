@@ -1,7 +1,7 @@
 // v0.18.0: ステージ15 セグメント C（へや4 はじまりの ホール・ボス）。12かくけいの まるい ホール（はんけい 20）
 // いりぐちは にしがわ（x=-20）の たいらな かべの ドア（B の でぐちと おなじ ばしょ）
-import { segWall, segDoor } from './kit.js?v=21';
-import { WALL, STEEL, H, DW, THEME, tank, vent } from './core_a.js?v=21';
+import { segWall, segDoor } from './kit.js?v=22';
+import { WALL, STEEL, H, DW, THEME, tank, vent } from './core_a.js?v=22';
 
 export function build(builder) {
   const B = builder(32, 1703), { add, deco } = B;

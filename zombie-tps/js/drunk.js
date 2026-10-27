@@ -6,9 +6,9 @@ import * as THREE from '../vendor/three.module.min.js';
 import {
   DRUNK, DRUNK_LINES, drunkWobble, drunkPickTarget, drunkShouldCome, damageAlly, edgeArrow, robotFollowPoint,
   meleeTargets, meleeBlocked, meleeDown, swingPose,
-} from './rules.js?v=21';
-import { makeDrunkUncle } from './models.js?v=21';
-import { allyShouldTeleport, wrapA } from './ally.js?v=21';
+} from './rules.js?v=22';
+import { makeDrunkUncle } from './models.js?v=22';
+import { allyShouldTeleport, wrapA } from './ally.js?v=22';
 
 const _p = new THREE.Vector3(), _o = new THREE.Vector3(), _d = new THREE.Vector3();
 const W = DRUNK.bat;

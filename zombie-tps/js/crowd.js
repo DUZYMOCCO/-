@@ -2,8 +2,8 @@
 // とおくの ゾンビ → しゅるいごとに 1つの InstancedMesh（てあしは うごかさず ゆらゆら だけ）
 // ちかくの ゾンビ → いままでどおりの モデル（ちかい じゅんに すこしだけ ほんものの かげ・ほかは まるい かげ）
 import * as THREE from '../vendor/three.module.min.js';
-import { zombieLod, zombieEyeGeo, EYE_MAT } from './models.js?v=21';
-import { lodPlan, GOV_LEVELS } from './rules.js?v=21';
+import { zombieLod, zombieEyeGeo, EYE_MAT } from './models.js?v=22';
+import { lodPlan, GOV_LEVELS } from './rules.js?v=22';
 
 const CAP = 64;            // しゅるいごとの かず（こえたら ちゃんとした モデルで かく）
 const BLOB_CAP = 160;
