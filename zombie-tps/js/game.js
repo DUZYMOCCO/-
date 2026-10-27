@@ -18,28 +18,29 @@ import {
   SpatialGrid, thinkInterval, QualityGovernor, govPixelRatio,
   normalizeLoadout, loadoutSlot, cycleLoadout, applyCrate, SMOKE, smokeAffects,
   rescueSample, rescuePick, rescueSpot, RESCUE,
-} from './rules.js?v=23';
-import { Crowd } from './crowd.js?v=23';
-import { RobotMixin } from './robot.js?v=23';
-import { AllyMixin } from './ally.js?v=23';
-import { CopMixin } from './cop.js?v=23';
-import { ArmyMixin } from './army.js?v=23';
-import { DrunkMixin } from './drunk.js?v=23';
+} from './rules.js?v=24';
+import { RIDE, ridePoint, createRideScene } from './ride.js?v=24';
+import { Crowd } from './crowd.js?v=24';
+import { RobotMixin } from './robot.js?v=24';
+import { AllyMixin } from './ally.js?v=24';
+import { CopMixin } from './cop.js?v=24';
+import { ArmyMixin } from './army.js?v=24';
+import { DrunkMixin } from './drunk.js?v=24';
 const BOT_NAME = { cop: 'けいさつおじさん', army: 'アーミーロボ', drunk: 'よっぱらいおじさん' }; // v0.14.0
-import { VehicleMixin } from './vehicles.js?v=23';
-import { SuitMixin } from './suit.js?v=23';
-import { MissileMixin } from './missiles.js?v=23';
-import { MeleeMixin } from './melee.js?v=23';
-import { GkMixin } from './gk/play.js?v=23';
-import { StreamMixin } from './gk/stream.js?v=23';
-import { EnergyMixin } from './beams.js?v=23';
-import { makeNav } from './nav.js?v=23';
-import { buildMap, playerColliders, zombieColliders, shotColliders } from './map.js?v=23';
-import { buildTextures, fxTextures } from './textures.js?v=23';
-import { buildWorld, disposeWorld } from './world.js?v=23';
-import { Backdrop, BACKDROPS } from './backdrop.js?v=23';
-import { makePlayer, applyOutfit, applyGear, makeGearDrop, makeOjisan, makeWeapons, makeZombie, makeRocketProjectile, makeRocketCrate, zombieChunkColors, FLASH_MAT } from './models.js?v=23';
-import { FX } from './fx.js?v=23';
+import { VehicleMixin } from './vehicles.js?v=24';
+import { SuitMixin } from './suit.js?v=24';
+import { MissileMixin } from './missiles.js?v=24';
+import { MeleeMixin } from './melee.js?v=24';
+import { GkMixin } from './gk/play.js?v=24';
+import { StreamMixin } from './gk/stream.js?v=24';
+import { EnergyMixin } from './beams.js?v=24';
+import { makeNav } from './nav.js?v=24';
+import { buildMap, playerColliders, zombieColliders, shotColliders } from './map.js?v=24';
+import { buildTextures, fxTextures } from './textures.js?v=24';
+import { buildWorld, disposeWorld } from './world.js?v=24';
+import { Backdrop, BACKDROPS } from './backdrop.js?v=24';
+import { makePlayer, applyOutfit, applyGear, makeGearDrop, makeOjisan, makeWeapons, makeZombie, makeRocketProjectile, makeRocketCrate, zombieChunkColors, FLASH_MAT } from './models.js?v=24';
+import { FX } from './fx.js?v=24';
 const A_RIGHT = new THREE.Vector3();
 
 const v3 = () => new THREE.Vector3();
@@ -138,11 +139,13 @@ export class Game {
   // ---- マップ（v0.5.0: 6しゅるい）----
   loadMap(id, first = false) {
     if (!first && this.map && this.map.id === id) return false;
+    if (this.rideScene) { this.rideScene.dispose(); this.rideScene = null; }
     if (this.world) disposeWorld(this.scene, this.world);
     this.gs = null; this.gkGimEnd(); // v0.17.0: ガンキックの セグメント・ギミックは おわり
     const map = this.map = buildMap(id);
     this.half = map.half;
     this.world = buildWorld(this.scene, map, this.T, { shadows: this.shadows });
+    this.rideScene = createRideScene(this.scene, map);
     const pc = playerColliders(map), zc = zombieColliders(map);
     this.pCol = makeBoxIndex(pc, map.half); this.zCol = makeBoxIndex(zc, map.half);
     this.sCol = shotColliders(map);
@@ -171,7 +174,8 @@ export class Game {
   resetRun() {
     const s = this.map.playerStart;
     this.pos = new THREE.Vector3(s.x, s.y || 0, s.z); this.vy = 0; this.onGround = true;
-    this.yaw = this.yawT = s.yaw; this.pitch = this.pitchT = -0.05; this.recoilP = 0; this.recoilY = 0;
+    this.yaw = this.yawT = s.yaw; this.pitch = this.pitchT = this.map.ride === 'airride' ? -0.32 : -0.05;
+    if (this.rideScene) { this.rideScene.time = 0; this.rideScene.angle = 0; if (this.map.ride) { const p = ridePoint(this.map.ride, 0); this.pos.set(p.x,p.y,p.z); } this.rideScene.update(0, this.pos); } this.recoilP = 0; this.recoilY = 0;
     this.resetMelee?.();
     this.vel = new THREE.Vector3(); this.follow = null; this.stepPh = 0; this.slowT = 0; this.hitstop = 0;
     for (const r of this.rockets || []) this.releaseRocket(r);
@@ -181,6 +185,7 @@ export class Game {
     this.guns = {}; for (const id of WEAPON_ORDER) this.guns[id] = createGun(id, weaponLevel(this.settings, id));
     // v0.15.0: もっていく 3つ（えらんだ もの）。はじめは 1ばんめ
     this.loadout = normalizeLoadout(this.settings && this.settings.loadout);
+    if (this.map.ride === 'airride') this.loadout = ['sniper', ...this.loadout.filter((id) => id !== 'sniper')].slice(0, 3);
     this.cur = this.loadout[0] || DEFAULT_WEAPON; this.swapT = 0; this.showWeapon(this.cur);
     this.resetEnergy?.();
     this.wave = 0; this.queue = []; this.spawnT = 0; this.interT = 2.5; this.score = 0; this.kills = 0; this.heads = 0;
@@ -216,9 +221,8 @@ export class Game {
     this.zombies.length = 0;
     this.resetRun();
     this.applyStage(this.todStart || 'day');
-    this.spawnRobot();
-    this.spawnArmy(); // v0.14.0: アーミーロボ（べつの ばしょ）
-    this.placeSuit(); // v0.10.0: パワードスーツを どこかに おく
+    if (!this.map.ride && !this.map.specialStage) { this.spawnRobot(); this.spawnArmy(); }
+    if (!this.map.ride && !this.map.specialStage) this.placeSuit(); // v0.10.0: パワードスーツを どこかに おく
     this.state = 'play';
     this.hud.show('play');
     this.pushHud(true);
@@ -312,7 +316,7 @@ export class Game {
 
   // スタートの じかん（タイトルで えらぶ）。ウェーブごとに ゆうぐれ → ゆうやけ → よる
   applyStage(stage) {
-    const st = this.map.id === 'flood' ? 'night' : (TOD[stage] ? stage : 'day');
+    const st = (this.map.id === 'flood' || this.map.ride || this.map.specialStage) ? 'night' : (TOD[stage] ? stage : 'day');
     this.stage = this.todStart = st; this.tod = st; this.todFade = null;
     this.applyTod(TOD[st], true);
   }
@@ -457,7 +461,20 @@ export class Game {
 
   bossName() { return (this.gk && this.spec && this.spec.bossName) || ZOMBIES.boss.name; }
   pickSpawn() {
-    if (this.gk) return this.gkPickSpawn(); // v0.16.0: いまの へやの でぐち から
+    if (this.gk) return this.gkPickSpawn();
+    if (this.map.ride) {
+      for (let i = 0; i < 16; i++) {
+        const a = Math.random() * Math.PI * 2, d = 9 + Math.random() * 6;
+        const x = this.pos.x + Math.sin(a) * d, z = this.pos.z + Math.cos(a) * d;
+        if (Math.abs(x) > this.half - 2 || Math.abs(z) > this.half - 2) continue;
+        const c = collideCircle(x,z,0.5,0,this.zCol);
+        if (Math.hypot(c.x-x,c.z-z) < 0.05) return {x,z,y:0};
+      }
+    }
+    if (this.map.specialStage === 'trainride') {
+      const z = this.pos.z > 0 ? Math.max(-36, this.pos.z - 13) : Math.min(36, this.pos.z + 13);
+      return { x: (Math.random()-0.5)*1.2, z, y:0 };
+    } // v0.16.0: いまの へやの でぐち から
     // ひろい マップでも まちくたびれない: ちかすぎず とおすぎない ゲートから
     const o = pickSpawnPoint(this.map.spawns, this.pos.x, this.pos.z, Math.random(), undefined, this.pos.y);
     const y = o.y || 0;
@@ -485,6 +502,7 @@ export class Game {
     if (!pick.length) return;
     let cells = this.nav ? this.nav.openCells() : [];
     if (this.gk && this.map.gk) cells = this.gkSpotFilter(cells);
+    if (this.map.specialStage === 'trainride') cells = cells.filter(([x,z]) => Math.abs(x) < 2 && Math.abs(z) < 36);
     const ok = (x, z, y) => { const c = collideCircle(x, z, 0.5, y + 0.05, this.zCol || this.pCol); return Math.abs(c.x - x) < 0.02 && Math.abs(c.z - z) < 0.02; };
     for (const z of pick) {
       const s = rescueSpot(cells, this.pos.x, this.pos.z, this.pos.y, ok, z.kind === 'boss');
@@ -510,11 +528,11 @@ export class Game {
         this.spawnT = 0.5;
         for (const id of WEAPON_ORDER) refillReserve(this.guns[id]); // ロケットは ほじゅう なし（ドロップで ひろう）
         const tod = timeOfDay(this.wave, this.todStart);
-        const sub = spec.boss ? 'ボスゾンビが くるぞ！' : this.wave === 1 ? 'ゾンビが くるぞ！' : `ゾンビ ${spec.total}たい`;
+        const sub = spec.boss ? 'ボスゾンビが くるぞ！' : this.wave === 1 ? (this.map.ride ? 'じどうで すすむ！ ねらって うとう！' : this.map.specialStage ? 'しゃないを すすもう！' : 'ゾンビが くるぞ！') : `ゾンビ ${spec.total}たい`;
         this.hud.banner(`ウェーブ ${this.wave}`, this.wave > 1 && this.todChanged ? `${TOD_LABEL[tod]}　${sub}` : sub);
         this.todChanged = false;
-        this.ojiPlan = shouldSpawnOjisan(this.wave, this.ojiLast) ? { t: OJISAN.delay[0] + Math.random() * (OJISAN.delay[1] - OJISAN.delay[0]) } : null;
-        this.planUncles(); // v0.9.0/v0.14.0: けいさつおじさん・よっぱらいおじさん（それぞれ ウェーブ3〜・30%・つづけて こない。いっしょの ことも ある）
+        this.ojiPlan = !this.map.ride && !this.map.specialStage && shouldSpawnOjisan(this.wave, this.ojiLast) ? { t: OJISAN.delay[0] + Math.random() * (OJISAN.delay[1] - OJISAN.delay[0]) } : null;
+        if (!this.map.ride && !this.map.specialStage) this.planUncles(); // v0.9.0/v0.14.0: けいさつおじさん・よっぱらいおじさん（それぞれ ウェーブ3〜・30%・つづけて こない。いっしょの ことも ある）
         this.sfx.wave();
         this.pushHud(true);
       }
@@ -524,7 +542,7 @@ export class Game {
     if (this.queue.length) {
       this.spawnT -= dt;
       if (this.spawnT <= 0 && alive < this.aliveCap()) {
-        let k = this.queue.shift(); if (this.map.id === 'flood' && (k === 'walker' || k === 'runner')) k = 'fish'; const s = this.pickSpawn();
+        let k = this.queue.shift(); if (this.map.ride === 'airride' && k !== 'boss') k = 'spitter'; if (this.map.ride === 'minecart' && k === 'runner') k = 'spitter'; if (this.map.id === 'flood' && (k === 'walker' || k === 'runner')) k = 'fish'; const s = this.pickSpawn();
         this.spawnZombie(k, s.x, s.z, this.spec.hpMul, s.y);
         this.spawnT = this.spec.spawnGap * (0.7 + Math.random() * 0.6);
         this.pushHud(true);
@@ -535,7 +553,7 @@ export class Game {
       this.hud.banner('ウェーブ クリア！', `+${this.wave * 200} ボーナス`);
       this.score += this.wave * 200;
       this.hp = Math.min(this.maxHp, this.hp + 30);
-      this.todChanged = this.startTodFade(this.map.id === 'flood' ? 'night' : timeOfDay(this.wave + 1, this.todStart));
+      this.todChanged = this.startTodFade((this.map.id === 'flood' || this.map.ride || this.map.specialStage) ? 'night' : timeOfDay(this.wave + 1, this.todStart));
       this.sfx.clear();
       this.pushHud(true);
     }
@@ -1784,7 +1802,7 @@ export class Game {
     for (const ev of inp.events) {
       if (this.suit && this.suitEvent(ev)) continue; // v0.10.0
       if (ev === 'reload') { if (startReload(gun)) this.onReloadStart(); }
-      else if (ev === 'jump') { if (this.onGround) { this.vy = 7.2; this.onGround = false; } }
+      else if (ev === 'jump') { if (!this.map.ride && this.onGround) { this.vy = 7.2; this.onGround = false; } }
       else if (ev.startsWith('ws:')) { const id = loadoutSlot(this.loadout, +ev.slice(3)); if (id) this.switchWeapon(id); } // v0.15.0: 1〜3 キー
       else if (ev.startsWith('w:')) this.switchWeapon(ev.slice(2));
       else if (ev === 'next' || ev === 'prev' || ev === 'swap') this.switchWeapon(cycleLoadout(this.loadout, this.cur, ev === 'prev' ? -1 : 1)); else if (ev === 'pause') { this.hud.pause(); return; }
@@ -1804,7 +1822,7 @@ export class Game {
     // いどう
     const fx = -Math.sin(this.yaw), fz = -Math.cos(this.yaw), rx = Math.cos(this.yaw), rz = -Math.sin(this.yaw);
     const speed = lerp(4.7, 2.5, this.aimAmt) * (gun.reloading > 0 ? 0.85 : 1) * (this.mSt.active ? this.mW.moveMul : weaponMoveMul(gun)) * this.gearFx.speedMul * (this.zapT > 0 && !this.suit ? ZOMBIES.electric.zap.slow : 1) * (this.suit ? SUIT.speedMul : 1);
-    const tvx = (fx * inp.my + rx * inp.mx) * speed, tvz = (fz * inp.my + rz * inp.mx) * speed;
+    const tvx = this.map.ride ? 0 : (fx * inp.my + rx * inp.mx) * speed, tvz = this.map.ride ? 0 : (fz * inp.my + rz * inp.mx) * speed;
     // かそく・げんそく（くうちゅうは ゆっくり）
     const V = this.vel, speeding = tvx * tvx + tvz * tvz > V.x * V.x + V.z * V.z;
     const rate = this.onGround ? (speeding ? 13 : 11) : 3;
@@ -1840,6 +1858,14 @@ export class Game {
     else if (wasG && this.vy <= 0 && this.pos.y - gh < 0.36) { this.pos.y = gh; this.vy = 0; this.onGround = true; } // かいだんを おりる（ぴょんぴょん しない）
     else if (this.pos.y > gh + 0.05) this.onGround = false;
     if (lad && !this.onLadder && this.vy < 0 && inp.my > -0.2 && this.pos.y > lad.base + 0.2) this.vy = Math.max(this.vy, -1.2); // はしごに つかまって ゆっくり おりる
+    if (this.map.ride && this.rideScene) {
+      const route = RIDE[this.map.ride], oldX = this.pos.x, oldZ = this.pos.z;
+      this.rideScene.angle += dt * route.speed / route.radius;
+      const p = ridePoint(this.map.ride, this.rideScene.angle);
+      this.pos.set(p.x,p.y,p.z); this.vy = 0; this.onGround = true;
+      if (dt > 0) { V.x = (p.x-oldX)/dt; V.z = (p.z-oldZ)/dt; }
+      this.moveAmt = 0; this.rideScene.update(dt, this.pos);
+    } else if (this.rideScene) this.rideScene.update(dt, this.pos);
     this.walkPhase += dt * Math.hypot(vx, vz) * 2.2;
     // あしおと
     const stepN = Math.floor(this.walkPhase / Math.PI);
@@ -1877,7 +1903,7 @@ export class Game {
     if (this.regenDelay <= 0 && this.hp < this.maxHp) { this.hp = Math.min(this.maxHp, this.hp + dt * 8); this.pushHud(); }
 
     // いま たっている ゆか（ゾンビが のぼる めやす）
-    this.pFloor = groundHeight(this.pos.x, this.pos.z, PLAYER_R, this.pos.y + 0.001, this.pCol);
+    this.pFloor = this.map.ride ? 0 : groundHeight(this.pos.x, this.pos.z, PLAYER_R, this.pos.y + 0.001, this.pCol);
     this.pSupport = this.pFloor > 0.3 ? supportBox(this.pos.x, this.pos.z, PLAYER_R, this.pFloor, this.pCol) : null;
     this.updateWaves(dt);
     this.updateTod(dt);
@@ -2107,6 +2133,7 @@ export class Game {
   }
 
   dispose() {
+    if (this.rideScene) { this.rideScene.dispose(); this.rideScene = null; }
     this.renderer.dispose();
     this.scene.traverse((o) => { if (o.geometry) o.geometry.dispose?.(); });
     this.renderer.forceContextLoss?.();

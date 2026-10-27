@@ -5,8 +5,8 @@ import * as THREE from '../vendor/three.module.min.js';
 import {
   SUIT, SUIT_WEAPONS, SUIT_ORDER, wearSuit, tickSuit, suitClockRuns, tickGrace, routeSuitDamage, suitNextWave, pickSuitSpot, suitTouched,
   flameHits, punchTargets, punchLaunch, burnTick, groundHeight, edgeArrow, castShot, castPierce, aabbNormal, WEAPON_ORDER,
-} from './rules.js?v=23';
-import { makePowerSuit, makeSuitShell, SUIT_CHUNKS } from './models.js?v=23';
+} from './rules.js?v=24';
+import { makePowerSuit, makeSuitShell, SUIT_CHUNKS } from './models.js?v=24';
 
 const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _c = new THREE.Vector3(), _d = new THREE.Vector3(), _e = new THREE.Vector3();
 const UP = new THREE.Vector3(0, 1, 0);
@@ -30,6 +30,7 @@ export const SuitMixin = {
   },
   // あるいて いける ばしょに おく（ロボの ばしょ とは はなす）
   placeSuit(r1 = Math.random()) {
+    if (this.map.ride || this.map.specialStage) return null;
     const s = this.gk && this.map.gk ? this.gkSpotFrom() : this.map.playerStart, sy = s.y || 0; // v0.16.1: ガンキックは いまの へや・v0.17.0: たかい ゆか
     this.nav.update(s.x, sy, s.z);
     let cells = this.nav.openCells(this.half - 3);

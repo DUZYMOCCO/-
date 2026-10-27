@@ -11,11 +11,11 @@ import { WEAPONS, WEAPON_ORDER, normalizeSave, SENS, VERSION, OUTFITS, outfitNam
   SLOT_UP, HP_UP, slotLevel, hpLevel, slotUpCost, hpUpCost, baseHpAt, slotBonus, buySlotUpgrade, buyHpUpgrade, GEAR_SLOT_IDS,
   SUIT_ORDER, SUIT_WEAPONS, suitLabel, SUIT,
   MELEE, MELEE_ORDER, MELEE_UP, meleeLevel, meleeUpCost, meleeStats, buyMelee, isMelee, DEFAULT_MELEE,
-  LOADOUT_SIZE, normalizeLoadout, toggleLoadout, loadoutReady, unlockedWeapons, upgradeRows, GAUGE_LABEL } from './rules.js?v=23';
-import { MAPS, mapInfo, registerMap, hasMap } from './map.js?v=23';
-import { recordGkClear } from './rules.js?v=23';
-import { GK_CATALOG, GK_WORLDS, GK_READY, isGkReady, gkMeta, gkNext, gkLoadStage, gkLoadMap, gkLoadSegs, gkLoadGims, gkLoadBoss, gkWaves, gkClearBonus } from './gk/core.js?v=23';
-import { segResume } from './gk/seg.js?v=23';
+  LOADOUT_SIZE, normalizeLoadout, toggleLoadout, loadoutReady, unlockedWeapons, upgradeRows, GAUGE_LABEL } from './rules.js?v=24';
+import { MAPS, mapInfo, registerMap, hasMap } from './map.js?v=24';
+import { recordGkClear } from './rules.js?v=24';
+import { GK_CATALOG, GK_WORLDS, GK_READY, isGkReady, gkMeta, gkNext, gkLoadStage, gkLoadMap, gkLoadSegs, gkLoadGims, gkLoadBoss, gkWaves, gkClearBonus } from './gk/core.js?v=24';
+import { segResume } from './gk/seg.js?v=24';
 
 const hex6 = (n) => '#' + n.toString(16).padStart(6, '0');
 // v0.7.0: がめんの そとを さす やじるしは ボタンに かぶらない たかさ（うえから 16%〜32%）
@@ -59,9 +59,9 @@ function totalsText(gear, save) {
   const parts = GEAR_STAT_IDS.filter((k) => t[k]).map((k) => `${GEAR_STATS[k].name} +${t[k]}${GEAR_STATS[k].unit}${t[k] >= GEAR_STATS[k].cap ? '（MAX）' : ''}`);
   return parts.length ? parts.join(' ・ ') : 'まだ なにも つけて いないよ';
 }
-import { Game } from './game.js?v=23';
-import { Input } from './input.js?v=23';
-import { Sfx } from './sfx.js?v=23';
+import { Game } from './game.js?v=24';
+import { Input } from './input.js?v=24';
+import { Sfx } from './sfx.js?v=24';
 
 // v0.7.0: ぶきの ちいさい アイコン（かくうの シルエット）
 const svgI = (d) => `<svg viewBox="0 0 32 16" aria-hidden="true">${d}</svg>`;
@@ -105,7 +105,7 @@ const OPT_CYCLE = { autoFire: [false, true], sens: ['low', 'mid', 'high'], quali
 
 export default {
   prepare() {
-    return loadCss(new URL('../css/zombie-tps.css?v=23', import.meta.url).href);
+    return loadCss(new URL('../css/zombie-tps.css?v=24', import.meta.url).href);
   },
 
   init(container, onBackToHub) {
@@ -763,6 +763,7 @@ export default {
     if (!retry) this.game.loadMap(this.nextMapId());
     if (!retry && this.save.map === 'rotate') { this.save.mapNext = (this.save.mapNext + 1) % MAP_IDS.length; this.persist(); }
     this.game.startGame();
+    this.root.classList.toggle('zt-guided', !!this.game.map.ride);
     this.runBank = 0; // v0.8.0: この ゲームで もう bank に いれた スコア
     this.show('play');
     if (!matchMedia('(pointer: coarse)').matches) this.canvas.requestPointerLock?.();
@@ -782,6 +783,7 @@ export default {
       this.flushGear(); this.input.reset();
       this.curGk = no; this.pendGk = null;
       if (info.segs) this.game.gkStreamLoad(no, info, mod, s0); else this.game.loadMap(info.map);
+      this.root.classList.remove('zt-guided');
       this.game.startGk(stage, gkWaves(stage), from, { tod: info.tod, score });
       this.game.gkGimStart(gims); // v0.17.0: あめ・でんしゃ など
       this.game.gkBossStart(boss);

@@ -2,12 +2,12 @@
 // - いまの セグメントと つぎの セグメントだけ メモリに おく（ドアを とおると うしろの ドアを しめて まえを すてる）
 // - でぐちの ドアに 12m ちかづく（または さいごの へやを きれいに する）と つぎを よむ。おもいので 3フレームに わける
 // - ぶつかり・みちさがし（ナビ）・あかり・ドア・みはりだいは セグメントが かわる たびに つくりなおす
-import { makeMats, boxMeshes, groundMesh, farBoxes, farMeshes, disposeWorld } from '../world.js?v=23';
-import { mapBuilder, playerColliders, zombieColliders, shotColliders } from '../map.js?v=23';
-import { makeBoxIndex, ROBOT, ARMY } from '../rules.js?v=23';
-import { makeNavAt } from '../nav.js?v=23';
-import { SEG, placeSeg, joinSegs, segRegion, segOffset, segOfRoom, segStarts, segNear, segPassed, inBounds, segShouldLoad, segSeals } from './seg.js?v=23';
-import { gkLoadSeg, gkRoomAt } from './core.js?v=23';
+import { makeMats, boxMeshes, groundMesh, farBoxes, farMeshes, disposeWorld } from '../world.js?v=24';
+import { mapBuilder, playerColliders, zombieColliders, shotColliders } from '../map.js?v=24';
+import { makeBoxIndex, ROBOT, ARMY } from '../rules.js?v=24';
+import { makeNavAt } from '../nav.js?v=24';
+import { SEG, placeSeg, joinSegs, segRegion, segOffset, segOfRoom, segStarts, segNear, segPassed, inBounds, segShouldLoad, segSeals } from './seg.js?v=24';
+import { gkLoadSeg, gkRoomAt } from './core.js?v=24';
 
 const GROUND = 300; // じめんの いた（いまの セグメントの まんなかに うごかす）
 const inRooms = (rooms, o) => !!o && rooms.some((r) => o.x > r.b[0] && o.x < r.b[2] && o.z > r.b[1] && o.z < r.b[3]);
@@ -15,6 +15,7 @@ const inRooms = (rooms, o) => !!o && rooms.some((r) => o.x > r.b[0] && o.x < r.b
 export const StreamMixin = {
   // ステージの はじめ（チェックポイントなら その セグメント）: s0 を いま つくる
   gkStreamLoad(no, info, mods, s0) {
+    if (this.rideScene) { this.rideScene.dispose(); this.rideScene = null; }
     if (this.world) disposeWorld(this.scene, this.world);
     this.gkGimEnd();
     if (this.gkDoorGroup) { this.scene.remove(this.gkDoorGroup); this.gkDoorGroup = null; this.gkDoors = []; }

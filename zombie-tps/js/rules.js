@@ -1,7 +1,7 @@
 // ゾンビストライク — ゲームの きまり（DOM / three.js に いぞんしない。node のテストから よめる）
 // ぶき・ダメージ・ウェーブ・あたりはんてい（レイ×はこ）・いどうの ぶつかり・ゾンビの みちさがし（フローフィールド）
 
-export const VERSION = '0.19.0';
+export const VERSION = '0.20.0';
 
 // ---- ぶき ----
 // rpm: 1ぷんかんの はっしゃかず / mag: マガジン / reserve: よびだん / reload: びょう
@@ -945,7 +945,7 @@ export function gridLineClear(grid, x0, z0, x1, z1) {
 }
 
 // ---- マップ（えらべる。'rotate' は あそぶ たびに つぎの マップ）----
-export const MAP_IDS = ['city', 'mall', 'base', 'hospital', 'camp', 'harbor', 'rooftop', 'office', 'flood'];
+export const MAP_IDS = ['city', 'mall', 'base', 'hospital', 'camp', 'harbor', 'rooftop', 'office', 'flood', 'minecart', 'trainride', 'roadride', 'airride'];
 export const MAP_CHOICES = ['rotate', ...MAP_IDS];
 // こんかい あそぶ マップ
 export function pickMapId(choice, next = 0) {

@@ -78,6 +78,7 @@
 .zt-aim { right: calc(max(10px, env(safe-area-inset-right)) + 124px); bottom: 92px; width: 56px; height: 56px; }
 .zt-root .zt-aim.on, .zt-aimon .zt-aim { background: rgba(80,180,255,.45); border-color: #8fd0ff; }
 .zt-rl { right: calc(max(10px, env(safe-area-inset-right)) + 60px); bottom: 134px; width: 54px; height: 54px; font-size: 10px; }
+.zt-guided .zt-jump { display: none; }
 .zt-jump { right: max(6px, env(safe-area-inset-right)); bottom: 130px; width: 48px; height: 48px; font-size: 10px; }
 .zt-keyhint { position: absolute; left: 8px; bottom: 4px; font-size: 9px; opacity: .55; text-shadow: 0 1px 2px #000; }
 @media (pointer: coarse) { .zt-keyhint { display: none; } }

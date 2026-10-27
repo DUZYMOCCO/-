@@ -15,6 +15,10 @@ export const MAPS = [
   { id: 'rooftop', name: 'やねの まち', icon: '🪜', half: 42, desc: 'かいだん・はしご・はしで やねへ のぼろう' },
   { id: 'office', name: 'はいきょの ビル', icon: '🏢', half: 34, desc: '3かいだての ビル。かいだんで うえへ' },
   { id: 'flood', name: 'しずんだ あそびば', icon: '🚤', half: 42, desc: 'くらい みずの うえを ふねで すすもう' },
+  { id: 'minecart', name: 'こうざん トロッコ', icon: '🛤️', half: 42, desc: 'たかい レールを はしりながら うて！' },
+  { id: 'trainride', name: 'しそう でんしゃ', icon: '🚆', half: 42, desc: 'でんしゃの なかを すすもう' },
+  { id: 'roadride', name: 'くるまの だっしゅつ', icon: '🚙', half: 42, desc: 'はしる くるまから ゾンビを うて！' },
+  { id: 'airride', name: 'ヘリの そげき', icon: '🚁', half: 42, desc: 'そらから ゾンビを ねらえ！' },
 ];
 export const MAP_IDS = MAPS.map((m) => m.id);
 export const mapInfo = (id) => MAPS.find((m) => m.id === id) || MAPS[0];
@@ -860,7 +864,61 @@ function flood() {
   return B.done({ ground: 'dirt', tint: 0x1a383a, k: 0.8, far: 'harbor', farTint: 0x273d3b, water: 'flood' }, { backdrop: 'harbor' });
 }
 
-const BUILD = { city, mall, base, hospital, camp, harbor, rooftop, office, flood };
+// Moving stages use an open arena so the guided route never intersects scenery.
+function rideArena(kind) {
+  const B = builder(42, 6218), { add, deco } = B;
+  B.perimeter({ mat: 'concrete', gates: GATES3(24), h: () => 2.7, tint: 0x505555 });
+  for (const [x,z] of [[-34,-32],[-34,0],[-34,32],[34,-32],[34,0],[34,32],[0,-34],[0,34]]) B.lamp(x,z);
+  if (kind === 'minecart') {
+    for (const [x,z] of [[-32,-25],[-32,25],[32,-25],[32,25],[-6,-34],[6,34]]) {
+      add('log',x,0,z,1.4,5,1.4,{tint:0x554737});
+      deco('plank',x,4.8,z,5,0.3,1.4,{tint:0x71634d});
+    }
+  } else if (kind === 'roadride') {
+    for (const x of [-33,33]) for (const z of [-28,-14,0,14,28]) {
+      add('concrete',x,0,z,4,3 + (Math.abs(z)%3),5,{tint:0x565b59});
+      deco('light',x,2,z,4.05,0.3,0.7,{tint:0xb4a26b});
+    }
+    deco('road',0,0.02,0,68,0.03,68);
+  } else {
+    for (const [x,z] of [[-30,-30],[30,-30],[-30,30],[30,30],[-32,0],[32,0]]) {
+      add('concrete',x,0,z,7,4,7,{tint:0x5b6064});
+      deco('light',x,2,z,7.05,0.35,1.5,{tint:0xb6ab7d});
+    }
+  }
+  // Scenery remains outside the route; ground enemies can pursue the vehicle.
+  for (const [x,z] of [[-7,-7],[7,-7],[-7,7],[7,7]]) B.crate(x,z,1,0x6e6354);
+  return B.done({ ground: kind === 'roadride' ? 'asphalt' : 'dirt', tint: 0x37494b, k: 0.55, far: 'city', farTint: 0x596162 },
+    { ride: kind, backdrop: 'city', playerStart: { x: 0, z: kind === 'airride' ? 17 : 22, yaw: 0 } });
+}
+
+function trainride() {
+  const B = builder(42, 7782), { add, deco, spawns } = B;
+  // Three connected carriages; gaps between seats leave the centre aisle clear.
+  B.perimeter({ mat: 'concrete', gates: GATES3(24), h: () => 2.5, tint: 0x333b3e });
+  for (const x of [-4,4]) {
+    add('metal',x,0,0,0.25,1.0,76,{tint:0x596268,noTop:true});
+    add('none',x,0,0,0.25,3.7,76,{barrier:true,noTop:true});
+    deco('metal',x,2.6,0,0.25,0.9,76,{tint:0x596268});
+    for (let z=-34; z<=34; z+=6) deco('metal',x,1.0,z,0.28,1.7,0.3,{tint:0x67737a});
+    for (let z=-30; z<=30; z+=6) {
+      add('metal',x * 0.72,0,z,1.6,0.65,1.7,{tint:0x43545c});
+      deco('metal',x * 0.8,0.65,z,0.4,0.8,1.7,{tint:0x485e67});
+    }
+  }
+  deco('metal',0,3.7,0,8.2,0.2,76,{tint:0x657076});
+  for (const z of [-38,38]) add('metal',0,0,z,8,3.8,0.3,{tint:0x596268,noTop:true});
+  for (const z of [-12,12]) {
+    deco('metal',0,3.35,z,8,0.24,0.45,{tint:0x899496});
+    for (const x of [-3.8,3.8]) deco('metal',x,0,z,0.3,3.5,0.45,{tint:0x899496});
+  }
+  for (let z=-34;z<=34;z+=8) { deco('light',0,3.4,z,1.5,0.12,0.5,{tint:0xc7d0b2}); B.lamp(8,z); }
+  spawns.length = 0; for (const z of [-36,-33,33,36]) for (const x of [-1,1]) spawns.push({x,z});
+  return B.done({ground:'concrete',tint:0x536a6b,k:0.5,far:'city',farTint:0x4b555b},
+    { specialStage:'trainride', backdrop:'city', playerStart:{x:0,z:25,yaw:0} });
+}
+
+const BUILD = { city, mall, base, hospital, camp, harbor, rooftop, office, flood, minecart: () => rideArena('minecart'), trainride, roadride: () => rideArena('roadride'), airride: () => rideArena('airride') };
 // v0.16.0: あとから よむ マップ（ガンキック ステージ）。fn(builder) → B.done(...)
 const EXTRA = {};
 export function registerMap(id, fn) { EXTRA[id] = () => fn(builder); }

@@ -26,7 +26,9 @@ import {
 } from '../js/rules.js';
 import { makeNav } from '../js/nav.js';
 import { buildMap, playerColliders, zombieColliders, shotColliders, MAPS, MAP_IDS as MAP_IDS_MAP, mapInfo } from '../js/map.js';
-const FLAT_IDS = MAP_IDS_MAP.filter((id) => !buildMap(id).vertical); // たいらな マップ（たてに ひろい マップは nav.js で しらべる）
+const SPECIAL_STAGE_IDS = ['minecart', 'trainride', 'roadride', 'airride'];
+const LEGACY_MAP_IDS = MAP_IDS_MAP.filter((id) => !SPECIAL_STAGE_IDS.includes(id));
+const FLAT_IDS = LEGACY_MAP_IDS.filter((id) => !buildMap(id).vertical); // たいらな マップ（たてに ひろい マップは nav.js で しらべる）
 
 test('さいしょの ぶきは アサルトライフル（30はつ フルオート）', () => {
   assert.equal(DEFAULT_WEAPON, 'rifle');
@@ -235,7 +237,7 @@ test('なめらか いどう: approach は フレームレートに よらない
 });
 
 test('バージョン と セーブの ステージ', () => {
-  assert.equal(VERSION, '0.19.0');
+  assert.equal(VERSION, '0.20.0');
   assert.equal(normalizeSave(null).stage, 'day');
   assert.equal(normalizeSave({ stage: 'night' }).stage, 'night');
   assert.equal(normalizeSave({ stage: 'mars' }).stage, 'day');
@@ -243,7 +245,7 @@ test('バージョン と セーブの ステージ', () => {
   assert.equal(normalizeSave({ flashlight: false }).flashlight, false);
 });
 
-for (const MID of MAP_IDS_MAP) test(`[${MID}] マップ: よるの がいとうは みちの うえで、かべに うまって いない`, () => {
+for (const MID of LEGACY_MAP_IDS) test(`[${MID}] マップ: よるの がいとうは みちの うえで、かべに うまって いない`, () => {
   const map = buildMap(MID); const HALF = map.half;
   assert.ok(map.lamps.length >= 6);
   const cols = playerColliders(map);
@@ -441,7 +443,7 @@ test('おじさん: 2〜3ウェーブに 1かい・ボスの ウェーブは で
   assert.ok(OJISAN.dmgMul < 1 && OJISAN.hp >= 80);
 });
 
-for (const MID of MAP_IDS_MAP) test(`[${MID}] おじさんの ばしょ: あるいて いける ひろい ところ・ちょうど いい きょり`, () => {
+for (const MID of LEGACY_MAP_IDS) test(`[${MID}] おじさんの ばしょ: あるいて いける ひろい ところ・ちょうど いい きょり`, () => {
   const map = buildMap(MID); const HALF = map.half;
   const grid = buildGrid(zombieColliders(map), HALF + 4, 1, 0.4);
   const ps = map.playerStart;
@@ -566,7 +568,7 @@ test('そうび: つける・しまう・すてる・いっぱいの とき', ()
 function lcg(seed) { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); }
 
 test('v0.5.0 マップ: 6しゅるい・ひろい・おまかせ じゅんばん', () => {
-  assert.deepEqual(MAP_IDS, ['city', 'mall', 'base', 'hospital', 'camp', 'harbor', 'rooftop', 'office', 'flood']);
+  assert.deepEqual(MAP_IDS, ['city', 'mall', 'base', 'hospital', 'camp', 'harbor', 'rooftop', 'office', 'flood', ...SPECIAL_STAGE_IDS]);
   assert.deepEqual(MAP_IDS_MAP, MAP_IDS, 'rules と map の いちらんが おなじ');
   assert.deepEqual(MAP_CHOICES, ['rotate', ...MAP_IDS]);
   for (const m of MAPS) {
@@ -576,15 +578,15 @@ test('v0.5.0 マップ: 6しゅるい・ひろい・おまかせ じゅんばん
   }
   assert.equal(pickMapId('mall', 3), 'mall');
   assert.equal(pickMapId('rotate', 0), 'city');
-  assert.equal(pickMapId('rotate', 9), 'city');
-  assert.equal(pickMapId('zzz', -1), 'flood');
+  assert.equal(pickMapId('rotate', 9), 'minecart');
+  assert.equal(pickMapId('zzz', -1), 'airride');
   assert.equal(mapInfo('nope').id, 'city');
   const s = normalizeSave({ map: 'camp', mapNext: 11, autoEquip: false });
-  assert.equal(s.map, 'camp'); assert.equal(s.mapNext, 2); assert.equal(s.autoEquip, false);
+  assert.equal(s.map, 'camp'); assert.equal(s.mapNext, 11); assert.equal(s.autoEquip, false);
   assert.equal(normalizeSave({ map: 'moon' }).map, 'rotate');
 });
 
-for (const MID of MAP_IDS_MAP) test(`[${MID}] v0.5.0 マップ: ちがう みため・すくない ざいしつ・ゲート・がいとう`, () => {
+for (const MID of LEGACY_MAP_IDS) test(`[${MID}] v0.5.0 マップ: ちがう みため・すくない ざいしつ・ゲート・がいとう`, () => {
   const map = buildMap(MID);
   assert.equal(map.id, MID);
   assert.ok(map.theme && map.theme.ground && map.theme.far, 'theme');
@@ -602,8 +604,8 @@ for (const MID of MAP_IDS_MAP) test(`[${MID}] v0.5.0 マップ: ちがう みた
 });
 
 test('v0.5.0 マップ: ぜんぶ ちがう', () => {
-  const sig = MAP_IDS.map((id) => { const m = buildMap(id); return m.boxes.length + ':' + m.theme.ground + ':' + m.theme.far; });
-  assert.equal(new Set(sig).size, MAP_IDS.length);
+  const sig = LEGACY_MAP_IDS.map((id) => { const m = buildMap(id); return m.boxes.length + ':' + m.theme.ground + ':' + m.theme.far; });
+  assert.equal(new Set(sig).size, LEGACY_MAP_IDS.length);
 });
 
 test('v0.5.0 はこの さくいん: ちかくの はこ だけ しらべても けっかが おなじ', () => {
@@ -896,7 +898,7 @@ test('v0.6.1 いつも くらい: ゆうやけ・よるは くらい そら・�
     assert.equal(t.sky[3], t.fog, `${k} ちへいせんと きりが おなじ いろ`);
   }
   const { BACKDROPS } = await import('../js/backdrop.js');
-  for (const id of MAP_IDS_MAP) { const b = BACKDROPS[id]; assert.ok(b && b.fires >= 1 && b.smoke >= 1 && b.bolt > 0 && b.moon != null, id); }
+  for (const id of LEGACY_MAP_IDS) { const b = BACKDROPS[id]; assert.ok(b && b.fires >= 1 && b.smoke >= 1 && b.bolt > 0 && b.moon != null, id); }
 });
 
 // ---- v0.7.0 けいさつロボ ----
@@ -945,7 +947,7 @@ test('v0.7.0 けいさつロボ: HP・こわれる・ワープ・ゾンビに �
   assert.equal(zombieTargetsRobot(9, 5, 0), false);
 });
 
-for (const MID of MAP_IDS_MAP) test(`[${MID}] v0.7.0 けいさつロボの ばしょ: スタートの そばでは ない・あるいて いける`, () => {
+for (const MID of LEGACY_MAP_IDS) test(`[${MID}] v0.7.0 けいさつロボの ばしょ: スタートの そばでは ない・あるいて いける`, () => {
   const map = buildMap(MID), zc = zombieColliders(map);
   const nav = makeNav(zc, map), ps = map.playerStart;
   nav.update(ps.x, 0, ps.z);
@@ -1268,7 +1270,7 @@ import * as R8 from '../js/rules.js';
 
   test('v0.8.0 みはりだい: ほとんどの マップに ある・はしごの まえは あるいて いける・たかい', () => {
     let n = 0;
-    for (const id of MAP_IDS_MAP) {
+    for (const id of LEGACY_MAP_IDS) {
       const map = buildMap(id);
       if (!map.perches.length) { assert.equal(id, 'office', `${id} に みはりだいが ない`); continue; }
       n++;
@@ -1513,7 +1515,7 @@ test('v0.10.0 キャノンの ばくはつ: プレイヤー・なかま・おじ
   assert.equal(h.length, 1); assert.equal(h[0].t, T[3]);
 });
 
-for (const MID of MAP_IDS_MAP) test(`[${MID}] v0.10.0 パワードスーツの ばしょ: あるいて いける・ロボと かさならない`, () => {
+for (const MID of LEGACY_MAP_IDS) test(`[${MID}] v0.10.0 パワードスーツの ばしょ: あるいて いける・ロボと かさならない`, () => {
   const map = buildMap(MID), zc = zombieColliders(map);
   const nav = makeNav(zc, map), ps = map.playerStart;
   nav.update(ps.x, 0, ps.z);
@@ -2042,7 +2044,7 @@ test('v0.14 ファイル: army.js・drunk.js が キャッシュに ある', asy
   const root = path.dirname(path.dirname(url.fileURLToPath(import.meta.url)));
   const sw = fs.readFileSync(path.join(root, 'sw-assets.js'), 'utf8');
   for (const f of ['js/army.js', 'js/drunk.js']) { assert.ok(sw.includes(f), f); assert.ok(fs.existsSync(path.join(root, f))); }
-  assert.match(sw, /0\.1[5-9]\.\d/); assert.ok(sw.includes('js/beams.js') && fs.existsSync(path.join(root, 'js/beams.js')), 'v0.15.0: beams.js');
+  assert.match(sw, /0\.(?:1[5-9]|2\d)\.\d/); assert.ok(sw.includes('js/beams.js') && fs.existsSync(path.join(root, 'js/beams.js')), 'v0.15.0: beams.js');
   const dr = fs.readFileSync(path.join(root, 'js/drunk.js'), 'utf8');
   assert.ok(dr.includes('drunkShouldCome') && dr.includes('planCop') && !dr.includes('uncleForWave'));
 });
@@ -2304,7 +2306,7 @@ test('v0.16.0 ガンキック: へやの でぐちは ちかすぎない とこ�
 
 test('v0.16.0 いつもの マップと モードは そのまま', () => {
   assert.deepEqual(MAP_IDS_MAP, MAP_IDS);
-  assert.equal(MAP_IDS.length, 9);
+  assert.equal(MAP_IDS.length, 13);
   assert.ok(!MAP_IDS.some((id) => id.startsWith('gk')));
 });
 
@@ -2900,4 +2902,23 @@ test('v0.18.1 全モジュールの構文チェック (node -c による網羅�
       execFileSync(process.execPath, ['-c', f], { stdio: 'pipe' });
     }, `構文エラー検出: ${f}`);
   }
+});
+
+
+test('moving stages: route height, start and train aisle', async () => {
+  const { RIDE, ridePoint } = await import('../js/ride.js');
+  for (const id of ['minecart','roadride','airride']) {
+    const map = buildMap(id); assert.equal(map.ride,id); assert.ok(RIDE[id].speed > 0);
+    const a = ridePoint(id, 0), b = ridePoint(id, Math.PI / 2);
+    assert.equal(a.x,map.playerStart.x); assert.equal(a.z,map.playerStart.z);
+    assert.ok(Math.hypot(a.x-b.x,a.z-b.z) > 15);
+    for (let i=0;i<64;i++) {
+      const p=ridePoint(id,i*Math.PI/32); assert.ok(Math.abs(p.x)<map.half-2 && Math.abs(p.z)<map.half-2);
+      const c=collideCircle(p.x,p.z,0.5,0,zombieColliders(map)); assert.ok(Math.hypot(c.x-p.x,c.z-p.z)<0.01, `${id} route blocked`);
+    }
+  }
+  assert.notEqual(ridePoint('minecart',0).y,ridePoint('minecart',Math.PI/4).y);
+  assert.ok(ridePoint('airride',0).y > 3);
+  const train=buildMap('trainride'); assert.equal(train.specialStage,'trainride');
+  for (let z=-34;z<=34;z+=2) { const c=collideCircle(0,z,0.35,0,playerColliders(train)); assert.ok(Math.abs(c.x)<0.01 && Math.abs(c.z-z)<0.01, `train aisle ${z}`); }
 });
