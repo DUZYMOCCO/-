@@ -19,6 +19,7 @@
 //   KINDS（体の種類）には兵種を付けない。v0.4.4 からミッションの機体ごとに付ける（MISSION_1.ally の cls → makeUnit の extra.cls）。
 // v0.4.2（10/24）: リペアキット。味方ロボットは開始時に START_REPAIR_KITS 個持ち、HP が AUTO_REPAIR_HP_FRAC を切ると勝手に使う。使い切ると fx 'kitEmpty'。
 // v0.4.1（10/24）: よろけは強い一撃だけ（STUN_MIN_HP_FRAC・STUN_HEAVY_KINDS）。よろけた後は STUN_IMMUNE_SEC 秒よろけない。敵味方どちらも同じ。
+import { registerRobotName } from '../names/robot-names.js?v=1';
 import { createRng } from './rng.js?v=5';
 import { generateMap, TILE, TERRAIN, T, tileAt, toTile, tileCenter, passable, nearestPassable, costAt } from './map.js?v=6';
 import { createSearch, stepSearch } from './path.js?v=6';
@@ -273,6 +274,7 @@ export function deployUnit(sim, kind, tile, { label = null, cd = 0, aiAlly = fal
   const same = sim.units.filter(v => v.side === 'ally' && v.kind === kind).length;
   u.label = label || ((KINDS[kind] || LAUNCHER_KINDS[kind]).human ? KINDS[kind].short : `${(KINDS[kind] || LAUNCHER_KINDS[kind]).short}${same + 1}`);
   if (aiAlly && !label) u.label = `仲間の${u.label}`;
+  registerRobotName(sim, u, label); // 表示名はシム外だけに保存
   sim.units.push(u);
   return u;
 }

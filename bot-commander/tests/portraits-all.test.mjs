@@ -11,21 +11,23 @@ const json = rel => JSON.parse(readFileSync(path(rel), 'utf8'));
 const PJ = json('../assets/portraits/portraits.json');
 const P = PJ.chars;
 const CONF = json('../tools/portraits-config.json');
+// v1.0.10: SUIT_BOY は スーツ着用中の少年の会話用に、portraits.json へ手で足した別キャラ（絵は neutral / serious の2枚を表情に割り当て）。make-portraits.py の設定には入れない（作り直すと消える）。
+const HAND = ['SUIT_BOY'];
 
 test('portraits.json: 設定の全員が入っていて、全員に neutral がある・絵のファイルが全部ある', () => {
-  assert.deepEqual(Object.keys(P), Object.keys(CONF.chars), '設定（tools/portraits-config.json）と同じ人・同じ順');
+  assert.deepEqual(Object.keys(P).filter(id => !HAND.includes(id)), Object.keys(CONF.chars), '設定（tools/portraits-config.json）と同じ人・同じ順');
   assert.ok(Object.keys(P).length >= 37, `全員（${Object.keys(P).length}人）`);
   const [W, H] = PJ.canvas;
   for (const [id, p] of Object.entries(P)) {
     assert.ok(p.faces.neutral, `${id}: neutral がない`);
-    assert.equal(p.name, CONF.chars[id].name, `${id}: 名札`);
+    if (!HAND.includes(id)) assert.equal(p.name, CONF.chars[id].name, `${id}: 名札`);
     assert.ok(p.name && typeof p.name === 'string', `${id}: 名札が空`);
     assert.ok(['left', 'right'].includes(p.side), `${id}: side`);
     const [x0, y0, x1, y1] = p.crop;
     assert.ok(x0 >= 0 && y0 >= 0 && x1 <= W && y1 <= H && x0 < x1 && y0 < y1, `${id}: 切り抜きがキャンバスの中`);
     assert.ok(p.scale > 0 && Array.isArray(p.nudge), `${id}: 大きさ・ずらし`);
     for (const [k, f] of Object.entries(p.faces)) {
-      assert.equal(f.src, `${id}/${id}__${k}.webp`);
+      if (!HAND.includes(id)) assert.equal(f.src, `${id}/${id}__${k}.webp`);
       assert.ok(existsSync(path(`../assets/portraits/${f.src}`)), `ない: ${f.src}`);
       if (p.robot && k !== 'off') {
         assert.ok(f.eyes && existsSync(path(`../assets/portraits/${f.eyes}`)), `${id} ${k} の目の光がない`);
@@ -43,13 +45,14 @@ test('portraits.json: 設定の全員が入っていて、全員に neutral が�
     }
   }
   // 左に立つのはネジと少年だけ（ロボはみな左向きに描いてあるので右）
-  assert.deepEqual(Object.keys(P).filter(id => P[id].side === 'left'), ['NEJI', 'BOY']);
+  assert.deepEqual(Object.keys(P).filter(id => P[id].side === 'left'), ['NEJI', 'SUIT_BOY', 'BOY']);
 });
 
 test('portraits.json: 絵のファイルがほかのキャラと混ざらない・同じファイルを2回使わない', () => {
   const seen = new Set();
   for (const [id, p] of Object.entries(P)) for (const f of Object.values(p.faces)) for (const s of [f.src, f.eyes].filter(Boolean)) {
     assert.ok(s.startsWith(`${id}/`), s);
+    if (HAND.includes(id)) continue; // SUIT_BOY は同じ絵を複数の表情に使う
     assert.ok(!seen.has(s), `2回: ${s}`); seen.add(s);
   }
 });

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import * as S from '../js/sim/sim.js?v=28';
+import * as S from '../js/sim/sim.js?v=29';
 import { MISSION_1 } from '../js/sim/mission.js?v=10';
 import { stepNewEnemies } from '../js/sim/new-enemies.js?v=2';
 import { cannotBeCaptured } from '../js/sim/ride.js?v=3';

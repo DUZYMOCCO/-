@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { checkScript, startDialog, skipToEnd } from '../js/dialog/dialog-script.js?v=3';
-import { createSim, runSim, stepSim, issueOrder, hashSim, missionStatus, TICK } from '../js/sim/sim.js?v=28';
+import { createSim, runSim, stepSim, issueOrder, hashSim, missionStatus, TICK } from '../js/sim/sim.js?v=29';
 import { MISSION_1 } from '../js/sim/mission.js?v=10';
 import { reachable, toTile, tileCenter } from '../js/sim/map.js?v=6';
 import { STORY_1 } from '../js/story/story-mission.js?v=3';

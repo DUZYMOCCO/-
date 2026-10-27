@@ -20,18 +20,22 @@
 // v1.0.6 handoff4（10/26）: Codex の 4 つの結果の取り込み（?newenemies=1 の仕上げ・G12 の地中と範囲攻撃／磨き P-01〜P-05／?storych=2 物語2章の試作／?storych=3 物語3章の試作）と、戦闘中のダメージの数字・HP の数字（js/render/hp-numbers.js。見た目だけ）。
 // v1.0.7 gem107（10/27）: 下の行動の帯に「発射」（発射台・物語のミサイル。js/ui/fire-button.js）、3倍速、敵の群れを見つけたら「○○：敵を発見！」とカメラを寄せて止める（js/ui/spot-report.js。☰「発見で止める」で入/切）、読んだ会話のスキップボタン（js/dialog/dialog-read.js）。ネジのセリフを普段の話し方にし、操作の案内は会話の後の吹き出しへ。sim は変えない（ハッシュ同じ）。
 // v1.0.8 batch5（10/27）: Codex の 4 つの結果の取り込み。発射台を選んで「発射」・発射台の HP と選択の輪・ミサイルの命中を成績に（launcher_unit）／点検 review3（R-09 ヒントのタップで移動しない・初回の会話はスキップ不可・成績の数え方）／物語 1〜3 章を 1 つの表に（js/story/chapters.js。☰の章の一覧・解放・全章のリプレイ記録）／2・3 章の仕上げ（3 章は本物の新しい敵 G01/G02/G08/G09。遊ぶ時もリプレイも newEnemies。「（仮）」を外す）。旗なしの sim は変えない（ハッシュ同じ）。
+// v1.0.10: gfx6 artwork integration.
+// v1.0.12: スーツの歩きを調整。
+// v1.0.11: 塔・発射・着弾会話・スーツ・建造表示を調整。
+// v1.0.9（10/27）: ロボの名前（Codex。一般名称＋型番「スピードスターAZ-7」。表示だけで sim の label は同じ。js/names）／荒野の BGM（曲は Gemini、鳴らす仕組みは js/audio。☰ の「音楽」入/切。sim は読むだけ）。旗なしの sim は変えない（ハッシュ同じ）。
 // v1.0.0 gfx3（10/26）: Codex の絵の取り込み（獣人の斜めの清書・飛ぶ機体と水陸両用機の専用の絵・背中の乗り姿・会話の背景 6 枚・ボタンのアイコン）。タイトル・水の中の絵はしまっただけ（README）。
 // v0.4.7（10/24）: 会話（立ち絵＋セリフ）の呼び出し口 playDialog(script) と、?dialogdemo=1 の会話のお試し（js/dialog）。
 import { loadCss } from '../../common/js/load-css.js';
 import { storage } from '../../common/js/storage.js';
-import { createSim, stepSim, TICK, applyCommandsNow, missionStatus, unitById, issueStop, issueRetreat, issueStance, KINDS } from './sim/sim.js?v=28';
-import { createUnitStats, statsHtml } from './stats/unit-stats.js?v=2'; // v1.0.6 ロボごとの成績とランキング（見るだけ。sim は変えない）
+import { createSim, stepSim, TICK, applyCommandsNow, missionStatus, unitById, issueStop, issueRetreat, issueStance, KINDS } from './sim/sim.js?v=29';
+import { createUnitStats, statsHtml } from './stats/unit-stats.js?v=3'; // v1.0.6 ロボごとの成績とランキング（見るだけ。sim は変えない）
 import { MISSION_1 } from './sim/mission.js?v=10';
 import { withAltUnits, ALT_MISSION_ROWS } from './sim/alt-units.js?v=3'; // 本編に出すかのスイッチ（ALT_IN_MISSIONS。今は全部 false）
-import { createRecorder, makeStart, openReplay, parseReplay, registerMission } from './sim/replay.js?v=11';
+import { createRecorder, makeStart, openReplay, parseReplay, registerMission } from './sim/replay.js?v=15';
 import { STORY_1 } from './story/story-mission.js?v=3';
 import { newStoryState, endingKind, storyScriptUrl, midScene, STORY1_HINTS } from './story/story-1.js?v=3';
-import { mountPowersuitMenu } from './ui/powersuit-menu.js?v=3'; // ?powersuit=1 の試作: ☰ の中の「スーツを着る／脱ぐ」「ロボに乗る」（sim.powersuit がある時だけ）
+import { mountPowersuitMenu } from './ui/powersuit-menu.js?v=4'; // ?powersuit=1 の試作: ☰ の中の「スーツを着る／脱ぐ」「ロボに乗る」（sim.powersuit がある時だけ）
 import { mountStoryOps, storyHud, storyResultText } from './story/story-ops.js?v=4'; // v1.0.2: 物語の最初のミッションの ☰ の中のボタン（乗り降り・発射台・ミサイル）と撃つ場所えらび
 import { CHAPTERS, chapterFlag, stageOf, newChapterStory, nextStage, chaptersRequested, loadUnlocked, unlockAfter, stageForStory } from './story/chapters.js?v=2'; // 第 3 章など（?storych=3 の時だけ使う。章の表）
 import { story3Hud, story3ResultText } from './story/story3-ops.js?v=2'; // 第 3 章（?storych=3）の上の帯と結果の文字
@@ -39,8 +43,8 @@ import { STORY_2, story2Requested, newStory2State, nextStory2, saveStory2Reward,
 import { mountStory2Ops } from './story/story2-ops.js?v=1';
 for (const chapter of Object.values(CHAPTERS)) for (const stage of Object.values(chapter.stages)) registerMission(stage.mission); // 章の記録をフラグなしでも読める
 import { selectKind, pruneSelection, createGroups } from './sim/select.js?v=12';
-import { createRenderer } from './render/renderer.js?v=41';
-import { attachInput } from './render/input.js?v=20';
+import { createRenderer } from './render/renderer.js?v=46';
+import { attachInput } from './render/input.js?v=21';
 import { addOwned } from './sim/cover.js?v=8';
 import { DEFAULT_SPEED, normalizeSpeed, hudSpeedText } from './ui/speed.js?v=2';
 import { fireButtonState } from './ui/fire-button.js?v=2';
@@ -50,6 +54,10 @@ import { mergeWarn, warnWho } from './ui/toast-merge.js?v=1';
 import { demoResultView } from './ui/demo-result.js?v=1'; // ミッションのないお試しの結果の文字
 import { recordMissionResult, shouldRecord, tutorialMarkStore, SAVE_FAIL_TEXT } from './save/save.js?v=5';
 import { wantsTutorial, loadMark } from './tutorial/tutorial-flow.js?v=2'; // チュートリアルを始めるかの判断だけ（本体は始める時に読み込む）
+import { robotNameOf, robotEventName, robotTextHtml } from './names/robot-names.js?v=1'; // v1.0.9 ロボの名前（表示だけ。sim の label は変えない）
+import { sound } from '../../common/js/audio.js?v=151'; // ハブと同じ音の仕組み（?v= はハブの app.js と同じにする。tests/bgm.test.mjs で確かめる）
+import { WastelandBGM } from './audio/bgm-player.js?v=1'; // v1.0.9 荒野の BGM（音だけ。sim は読むだけ）
+import { ModeGate, pickBgmMode } from './audio/bgm-mode.js?v=1';
 
 // 持っている武器の一覧（武器の id → 拾った数。かぶっても数える）。ハブと同じ localStorage（game_studio_ が前につく）
 export const OWNED_KEY = 'botcommander_owned_weapons';
@@ -63,6 +71,7 @@ const KIT_WARN_MERGE = 2; // リペアキット切れの知らせ: この秒数�
 
 const fmtTime = s => { const t = Math.ceil(s); return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`; };
 const HINT_IDLE = 'ロボをタップで選ぶ。長押しで同じ種類、地面を長押しして囲むとまとめて選ぶ';
+const CHAPTER_BANNERS = { 2: new URL('../assets/result/result-success-ch2.webp', import.meta.url).href, 3: new URL('../assets/result/result-success-ch3.webp', import.meta.url).href };
 const RESULT_BANNER_URL = { win: new URL('../assets/result/result-success.webp', import.meta.url).href, lose: new URL('../assets/result/result-fail.webp', import.meta.url).href }; // v1.0.1 gfx4
 const GROUP_HOLD_MS = 500; // 組ボタンの長押し＝いまの選択を覚える
 const PICKS = [
@@ -77,7 +86,7 @@ const BotCommanderGame = {
   title: 'ロボットコマンダー（仮）',
 
   prepare() {
-    return loadCss([new URL('../css/bot-commander.css?v=19', import.meta.url).href, new URL('../css/replay.css?v=2', import.meta.url).href]);
+    return loadCss([new URL('../css/bot-commander.css?v=20', import.meta.url).href, new URL('../css/replay.css?v=2', import.meta.url).href]);
   },
 
   init(container, onBackToHub) {
@@ -142,6 +151,7 @@ const BotCommanderGame = {
             <h2 class="bc-menu-title">メニュー（一時停止中）</h2>
             <div class="bc-menu-row"><span>速さ</span><div class="bc-seg" role="radiogroup" aria-label="ゲームの速さ"><button data-speed="0.5" role="radio">0.5x</button><button data-speed="1" role="radio">1x</button><button data-speed="2" role="radio">2x</button><button data-speed="3" role="radio">3x</button></div></div>
             <div class="bc-menu-row"><span>発見で止める</span><div class="bc-seg" role="radiogroup" aria-label="発見で止める"><button data-spotpause="1" role="radio">入</button><button data-spotpause="0" role="radio">切</button></div></div>
+            <div class="bc-menu-row"><span>音楽</span><div class="bc-seg" role="radiogroup" aria-label="音楽"><button data-bgm="1" role="radio">入</button><button data-bgm="0" role="radio">切</button></div></div>
             <button class="bc-menu-close">ゲームにもどる</button>
             <button class="bc-menu-armory" hidden>武器庫（出撃前にもどる）</button>
             
@@ -206,7 +216,7 @@ const BotCommanderGame = {
     $('.bc-menu-tutorial').addEventListener('click', async e => {
       const btn = e.target;
       let m;
-      try { m = await import('./tutorial/tutorial.js?v=8'); }
+      try { m = await import('./tutorial/tutorial.js?v=9'); }
       catch (err) { console.warn('tutorial load failed', err); this.toast('チュートリアルを開けませんでした（この端末では使えないかもしれません）', 'warn'); return; } // R-12: 古い iPhone では読めない。黙って何も起きないのをやめる
       m.pressMenuButton(btn, () => { this.closeMenu(); this.tutorialOn = true; this.story = null; this.replayRec = null; this.restart(); }); // 点検 R-04: 再生中に押した時、replayRec が残ると再生をやり直すだけになり、tutorialOn も残る
     });
@@ -247,6 +257,10 @@ const BotCommanderGame = {
     container.querySelectorAll('[data-speed]').forEach(b => b.addEventListener('click', () => this.setSpeed(Number(b.dataset.speed))));
     container.querySelectorAll('[data-spotpause]').forEach(b => b.addEventListener('click', () => this.setSpotPause(b.dataset.spotpause === '1')));
     this.setSpotPause(storage.get('bc-spotpause', true) !== false);
+    // v1.0.9 BGM: 音はハブのタップで解錠された後だけ鳴る（消音・BGM 音量・画面が隠れた時はプレイヤー側で止める）
+    this.bgm = new WastelandBGM(sound, { enabled: () => this.bgmOn !== false });
+    container.querySelectorAll('[data-bgm]').forEach(b => b.addEventListener('click', () => this.setBgmOn(b.dataset.bgm === '1')));
+    this.setBgmOn(storage.get('bc-bgm', true) !== false);
     // iOS の2本指ジェスチャー（ページ拡大）をゲーム内では止める
     this.stopGesture = e => e.preventDefault();
     for (const ev of ['gesturestart', 'gesturechange', 'gestureend']) this.el.root.addEventListener(ev, this.stopGesture, { passive: false });
@@ -296,12 +310,12 @@ const BotCommanderGame = {
       const i = Number(b.dataset.group), ids = this.groups.recall(i, this.sim.units);
       if (ids.length) this.select(ids, true);
       else if (this.r.ui.selected.length) this.saveGroup(i);
-      else this.el.hint.textContent = `${'①②③'[i]} は空。機体を選んでからタップ（長押しで上書き）`;
+      else this.el.hint.innerHTML = robotTextHtml(`${'①②③'[i]} は空。機体を選んでからタップ（長押しで上書き）`);
     });
   },
   saveGroup(i) {
     const ids = this.groups.save(i, this.r?.ui.selected || []);
-    this.el.hint.textContent = ids.length ? `${'①②③'[i]} に ${ids.length}機を覚えた` : `${'①②③'[i]} を空にした`;
+    this.el.hint.innerHTML = robotTextHtml(ids.length ? `${'①②③'[i]} に ${ids.length}機を覚えた` : `${'①②③'[i]} を空にした`);
     this.renderGroups();
   },
 
@@ -318,7 +332,7 @@ const BotCommanderGame = {
     this.suitMenu?.destroy(); this.suitMenu = null; // ?powersuit=1 の ☰ の項目（作り直しのたびに外す）
     this.el.nextStage?.remove(); this.el.nextStage = null; if (this.story?.ch) this.story.mid = {}; // 第 3 章: 結果の「つぎへ」を外す・途中の会話をもう一度出せるように
     // ?dialogdemo=1（お試し）: 会話画面だけを見る。ミッションは始めない。=all は全員の立ち絵を全部の表情で
-    if (['1', 'all'].includes(params.get('dialogdemo'))) { const { runDialogDemo } = await import('./dialog/dialog-demo.js?v=7'); return runDialogDemo(this, params.get('dialogdemo')); }
+    if (['1', 'all'].includes(params.get('dialogdemo'))) { const { runDialogDemo } = await import('./dialog/dialog-demo.js?v=9'); return runDialogDemo(this, params.get('dialogdemo')); }
     // ?chardemo=1（お試し）: 少年・少女・獣人の紙芝居の絵を全部の状態で見る画面。ミッション・sim は使わない
     if (params.get('chardemo') === '1') return this.startCharDemo(params);
     // ?replay=<URL か名前>（記録の再生。見るだけ）: 取りに行って調べる。読めなければ理由を出して、ふつうの始まりへ（this.replayRec が入れば再生）
@@ -332,12 +346,12 @@ const BotCommanderGame = {
     // ?altunits=1（お試し）: 飛ぶ機体・水陸両用機（js/sim/alt-units.js）。?altdemo=1 と同じ池に置く。ミッションなし
     const altUnits = params.get('altunits') === '1' ? await import('./sim/alt-units-demo.js?v=3') : null;
     // ?ridedemo=1（お試し）: 人間がロボの背中・中に乗る。少年・少女・獣人、乗れるロボ、離れた所に異星生物。ミッションなし
-    const rideMod = params.get('ridedemo') === '1' && !altUnits ? await import('./ui/ride-panel.js?v=8') : null;
-    const rideDemo = rideMod ? await import('./sim/ride-demo.js?v=8') : null;
+    const rideMod = params.get('ridedemo') === '1' && !altUnits ? await import('./ui/ride-panel.js?v=9') : null;
+    const rideDemo = rideMod ? await import('./sim/ride-demo.js?v=9') : null;
     if (rideMod) await rideMod.loadRideCss();
     const demoSetup = rideDemo ? { rideDemo } : altUnits ? { setup: altUnits.ALT_UNITS_SETUP, mapEdit: altUnits.altUnitsMapEdit } : altDemo ? { setup: altDemo.ALT_DEMO_SETUP, mapEdit: altDemo.altDemoMapEdit } : null; // お試しの配置（記録・チュートリアル・再生なし）
     // チュートリアル（☰ メニューから）の時だけ、練習の場面を使う。再生が頼まれている時は再生を先にする
-    const tutMod = !this.replayRec && !demoSetup && wantsTutorial({ on: this.tutorialOn, search: location.search, mark: loadMark(tutorialMarkStore) }) ? await import('./tutorial/tutorial.js?v=8') : null;
+    const tutMod = !this.replayRec && !demoSetup && wantsTutorial({ on: this.tutorialOn, search: location.search, mark: loadMark(tutorialMarkStore) }) ? await import('./tutorial/tutorial.js?v=9') : null;
     if (tutMod || this.replayRec) this.story = null; // チュートリアル・再生の時は物語の会話を出さない
     const newEnemies = params.get('newenemies') === '1' && !this.story && !demoSetup && !tutMod && !this.replayRec; // ?newenemies=1（試作）: ふつうのミッションに新しい敵 G01〜G12・A01・A08（js/sim/new-enemies.js）。付けなければ今までと同じ
     const chapterMission = this.story ? stageForStory(this.story).mission : withAltUnits(MISSION_1, ALT_MISSION_ROWS);
@@ -352,7 +366,7 @@ const BotCommanderGame = {
     this.player = rp?.ok ? rp.player : null;
     this.rec = this.player || demoSetup || tutMod ? null : createRecorder(sim, makeStart({ seed, mapSeed, mission: chapterMission, chapter: this.story?.ch || this.story?.chapter || (this.story ? 1 : null), loadout: this.loadout, launcher: !!sim.launcher, powersuit: !!sim.powersuit }));
     if (newEnemies) this.rec = null; // ?newenemies=1（試作）は記録しない（再生は新しい敵のフラグを持たないので、ハッシュが合わなくなる）
-    if (this.player) this.rview = await import('./replay/replay-view.js?v=11');
+    if (this.player) this.rview = await import('./replay/replay-view.js?v=15');
     if (stale()) return; // ここまでの読み込み中に離れた（入り直した）なら、新しい画面へ描画を作らない
     const r = await createRenderer(this.el.stage, sim, { fxQuality: params.get('fx') === 'low' ? 'low' : 'normal', ground: params.get('ground') === 'oblique' ? 'oblique' : undefined, human: params.get('human') === 'oblique' ? 'oblique' : undefined, enemyDemo: params.get('enemydemo') === '1', newEnemies: newEnemies || !!sim.story2 || !!sim.story3 });
     if (stale()) { r.destroy(); return; }
@@ -369,15 +383,15 @@ const BotCommanderGame = {
     attachInput(r.app.canvas, sim, r, {
       allow: op => !this.tutorial || this.tutorial.allows(op), // チュートリアル中は、教える段まで使えない操作がある
       onSelect: () => this.refreshSel(),
-      onLong: kind => { if (kind === 'box') this.el.hint.textContent = 'なぞって囲む → 指をはなすと選ぶ'; },
+      onLong: kind => { if (kind === 'box') this.el.hint.innerHTML = robotTextHtml('なぞって囲む → 指をはなすと選ぶ'); },
       onNothing: () => {
         if (this.spotPaused && this.state?.paused) { this.setPaused(false); this.spotPaused = false; }
-        this.el.hint.textContent = HINT_IDLE;
+        this.el.hint.innerHTML = robotTextHtml(HINT_IDLE);
       },
       onOrder: (ids, wps, enemy) => {
         if (this.player) { sim.commands.length = 0; return; } // 再生中は命令を受けない（見るだけ）
         if (this.state.paused) this.applyNow(sim);
-        this.el.hint.textContent = enemy ? `${ids.length}機: ${enemy.label || '敵'}を狙う` : `${ids.length}機: ${r.ui.mode === 'rush' ? '急行（撃たずに走る）' : '戦闘移動（敵がいたら撃つ）'}`;
+        this.el.hint.innerHTML = robotTextHtml(enemy ? `${ids.length}機: ${enemy.label || '敵'}を狙う` : `${ids.length}機: ${r.ui.mode === 'rush' ? '急行（撃たずに走る）' : '戦闘移動（敵がいたら撃つ）'}`);
       },
     });
     let uiTimer = 0;
@@ -385,18 +399,23 @@ const BotCommanderGame = {
     this.kitWarn = null; this.shieldWarn = null; this.kitSig = null; // 「もう一度」でゲーム内の時間が 0 に戻る。前の知らせのまとめを捨てる
     let lastFps = '';
     const step0 = this.player ? () => this.player.step() : this.rec ? () => this.rec.step() : () => stepSim(sim); // 記録・再生をつけたまま 1 step 進める
-    // v1.0.6 ロボごとの成績: 1 step ごとに見るだけ（sim は変えない）。同じ名前のロボは 2 機目から番号をつける
-    const nameCount = {};
-    const unitStats = this.unitStats = createUnitStats({ nameOf: u => {
-      if (u.label) return u.label;
-      const base = KINDS[u.kind]?.name || '味方'; nameCount[base] = (nameCount[base] || 0) + 1;
-      return nameCount[base] > 1 ? `${base}${nameCount[base]}` : base;
-    } });
+    // v1.0.6 ロボごとの成績: 1 step ごとに見るだけ（sim は変えない）。表示名は出撃時からずっと同じ
+    const unitStats = this.unitStats = createUnitStats({ nameOf: u => robotNameOf(sim, u) });
     unitStats.observe(sim);
     this.el.stats.hidden = true;
     const step = () => { step0(); unitStats.observe(sim); };
+    const bgmGate = new ModeGate('explore'); this.bgm?.start('explore'); // v1.0.9 ミッションの曲（ゲームの速さには合わせない）
+    const bgmVisible = e => !!sim.fog?.isVisible?.(Math.floor(e.x / 32), Math.floor(e.y / 32));
+    let bgmTimer = 0;
     this.tick = t => {
       const t0 = performance.now(), dt = Math.min(t.deltaMS / 1000, 0.25), st = this.state;
+      bgmTimer -= dt;
+      if (bgmTimer <= 0) { // 0.25 秒ごとに読むだけ（sim は変えない）。終わった後は、物語の会話の間だけ曲を替える
+        bgmTimer = 0.25;
+        const dialog = this.el.root.classList.contains('bc-dialog-open');
+        if (!sim.result || dialog)
+        this.bgm?.setMode(bgmGate.update(pickBgmMode(sim, { dialog, visible: bgmVisible }), 0.25));
+      }
       // 演出を進める。止め（hit-stop）の間は 0 が返り、シミュレーションも止まる
       const ts = r.fx.update(st.paused ? 0 : dt * st.speed);
       if (!st.paused && !sim.result && !this.player?.done) {
@@ -432,7 +451,7 @@ const BotCommanderGame = {
         closeMenu: () => this.closeMenu(), isPaused: () => !!this.state.paused, setPaused: v => this.setPaused(v), applyNow: () => this.applyNow(sim), toast: (t, tone) => this.toast(t, tone) };
       this.storyOps = sim.story2 ? mountStory2Ops(host) : mountStoryOps(host);
     }
-    if (sim.launcher) this.launcherUi = await (await import('./ui/launcher-menu.js?v=5')).mountLauncher({ root: this.el.root, sim, r, menu: this.el.menu, toast: (t, tone) => this.toast(t, tone), hooks: { closeMenu: () => this.closeMenu(), setPaused: v => this.setPaused(v), isPaused: () => !!this.state.paused, applyNow: () => this.applyNow(this.sim) } }); // ?launcher=1（発射台の試作）の時だけ
+    if (sim.launcher) this.launcherUi = await (await import('./ui/launcher-menu.js?v=10')).mountLauncher({ root: this.el.root, sim, r, menu: this.el.menu, toast: (t, tone) => this.toast(t, tone), hooks: { closeMenu: () => this.closeMenu(), setPaused: v => this.setPaused(v), isPaused: () => !!this.state.paused, applyNow: () => this.applyNow(this.sim) } }); // ?launcher=1（発射台の試作）の時だけ
     // ?powersuit=1: ☰ の中に「スーツを着る／脱ぐ」「ロボに乗る」（再生中は出さない）
     if (sim.powersuit && !this.player) this.suitMenu = mountPowersuitMenu({ menuBox: this.el.menu.querySelector('.bc-menu-box'), sim, r, isPaused: () => !!this.state.paused, applyNow: () => this.applyNow(this.sim), toast: (t, tone) => this.toast(t, tone), onChange: () => this.refreshSel() });
     if (rideMod) this.ridePanel = rideMod.mountRidePanel({ root: this.el.root, sim, r, toast: (t, tone) => this.toast(t, tone), onChange: () => this.refreshSel() });
@@ -446,6 +465,7 @@ const BotCommanderGame = {
       recorder: this.rec, player: this.player, // 記録と再生（確かめ用）
       storyOps: this.storyOps, suitMenu: this.suitMenu, openMenu: () => this.openMenu(), closeMenu: () => this.closeMenu(),
       unitStats: this.unitStats, openStatsView: () => this.openStatsView(), // v1.0.6 ロボごとの成績（確かめ用）
+      bgm: () => this.bgm, // v1.0.9 BGM（確かめ用。今の曲 bgm().cur?.id）
     };
     if (this.replayError) { const reason = this.replayError; this.replayError = null; this.showReplayError(reason); }
     if (tutMod) this.tutorial = tutMod.runTutorial(this);
@@ -458,7 +478,7 @@ const BotCommanderGame = {
   /** ?replay= の記録を取りに行く。調べて、読めたら this.replayRec へ。読めなければ理由を this.replayError へ（止まらない） */
   async loadReplayUrl(value) {
     try {
-      const view = await import('./replay/replay-view.js?v=11');
+      const view = await import('./replay/replay-view.js?v=15');
       const text = await view.fetchReplayText(value, import.meta.url);
       const p = parseReplay(text);
       if (!p.ok) throw new Error(p.reason);
@@ -484,7 +504,7 @@ const BotCommanderGame = {
   },
   /** 読めなかった記録の知らせ（閉じるとふつうの画面。出ている間は一時停止） */
   async showReplayError(reason) {
-    const view = await import('./replay/replay-view.js?v=11');
+    const view = await import('./replay/replay-view.js?v=15');
     if (!this.alive) return;
     const prev = !!this.state?.paused; this.setPaused(true);
     view.showReplayError(this.el.root, reason, { onClose: () => { if (this.alive) this.setPaused(prev); } });
@@ -493,7 +513,7 @@ const BotCommanderGame = {
   async exportRecord() {
     const rec = this.player ? this.player.rec : this.rec?.snapshot();
     if (!rec) { this.toast('この画面ではリプレイを取っていません'); return; }
-    const view = await import('./replay/replay-view.js?v=11');
+    const view = await import('./replay/replay-view.js?v=15');
     if (!this.alive) return;
     const withDevice = { ...rec, meta: { ...(rec.meta || {}), recordedOn: view.deviceName() } };
     view.openRecordExport(this.el.root, withDevice);
@@ -506,7 +526,7 @@ const BotCommanderGame = {
   },
   /** 「記録を読み込む」の枠。読めたら、その記録を再生する（作り直す。ふつうの進み具合は消える） */
   async openLoadReplay() {
-    const view = await import('./replay/replay-view.js?v=11');
+    const view = await import('./replay/replay-view.js?v=15');
     if (!this.alive) return;
     view.openLoadSheet(this.el.root, { onLoad: (rec, notes) => this.startReplay(rec, notes) });
   },
@@ -522,16 +542,16 @@ const BotCommanderGame = {
    * 終わると前の一時停止の状態に戻る。返り値は Promise<{ skipped }>（メニューの「会話をとばす」で終えたら skipped: true）
    */
   async playDialog(script, opts = {}) {
-    const { playDialog } = await import('./dialog/dialog-view.js?v=5');
+    const { playDialog } = await import('./dialog/dialog-view.js?v=7');
     const prev = !!this.state?.paused;
     this.setPaused(true);
-    try { return await playDialog(this.el.root, script, opts); }
+    try { return await playDialog(this.el.root, script, { ...opts, suitBoy: !!this.sim?.powersuit?.suit && this.sim.powersuit.suit.phase === 'on' && this.sim.units.some(u => u.kind === 'boy' && u.id === this.sim.powersuit.suit.ownerId) }); }
     finally { if (this.alive) this.setPaused(prev); }
   },
 
   /** 物語の会話（kind: 'intro' | 'win' | 'lose'）を出す。台本が読めなくても、ゲームは止めずに先へ進む */
-  async playStoryScene(kind) {
-    try { await this.playDialog(stageForStory(this.story).scriptUrl(kind)); }
+  async playStoryScene(kind, opts = {}) {
+    try { await this.playDialog(stageForStory(this.story).scriptUrl(kind), opts); }
     catch (err) { console.error('bot-commander story dialog failed', err); }
     if (kind === 'intro' && this.alive && this.sim && !this.menuOpen) this.setPaused(false);
     if (kind === 'intro' && this.alive && this.sim?.story3 && this.story?.ch) this.toast(stageOf(this.story.ch, this.story.stage).hint); // 第 3 章: 会話のあとに短いしめし（吹き出し）
@@ -546,8 +566,21 @@ const BotCommanderGame = {
       (this.seenMidFx ||= new WeakSet()).add(f);
       const kind = stageForStory(this.story).midScene(f, this.story.mid); if (!kind) continue;
       this.midBusy = true;
-      const play = async () => { if (this.alive && this.sim === sim && !sim.result) await this.playStoryScene(kind); this.midBusy = false; };
-      if (f.type === 'strikeHit') this.midTimer = setTimeout(play, 1400); else play(); // 落ちた時は爆発を見せてから
+      const play = async () => {
+        if (!this.alive || this.sim !== sim || sim.result) { this.midBusy = false; return; }
+        const r = this.r, impact = f.type === 'strikeHit' && r?.cam;
+        const prev = impact ? { x: r.cam.x, y: r.cam.y, paused: !!this.state.paused } : null;
+        if (impact) { // 立ち絵と下22%の会話枠を避け、着弾点を画面上部22%へ
+          r.cam.x = f.x; r.cam.y = f.y + r.app.screen.height * .28 / r.cam.zoom;
+          this.setPaused(true); // 爆発を残したまま会話素材を読み込む
+        }
+        try { await this.playStoryScene(kind, impact ? { showImpact: true } : {}); }
+        finally {
+          if (prev && this.alive && this.sim === sim && this.r === r) { r.cam.x = prev.x; r.cam.y = prev.y; this.setPaused(prev.paused); }
+          this.midBusy = false;
+        }
+      };
+      play();
       return;
     }
   },
@@ -618,8 +651,8 @@ const BotCommanderGame = {
 
   /** 武器庫（js/armory）を開く。出撃で deployFromArmory へ。ミッション・sim はまだ作らない */
   async startArmory(params) {
-    const { openArmory } = await import('./armory/armory-view.js?v=10');
-    const view = await openArmory(this, { it01: params.get('it01') === '1' ? 1 : 0, onDeploy: loadout => this.deployFromArmory(loadout) });
+    const { openArmory } = await import('./armory/armory-view.js?v=11');
+    const view = await openArmory(this, { seed: Number(params.get('seed')) || 1, mapSeed: Number(params.get('map')) || 7, it01: params.get('it01') === '1' ? 1 : 0, onDeploy: loadout => this.deployFromArmory(loadout) });
     if (!this.alive) { view.destroy(); return; }
     this.armory = view;
     this.el.loading?.remove(); this.el.loading = null;
@@ -644,7 +677,7 @@ const BotCommanderGame = {
   },
 
   async startCharDemo(params) {
-    const mod = await import('./render/char-demo.js?v=11');
+    const mod = await import('./render/char-demo.js?v=12');
     const menuBtn = this.el.root.querySelector('.bc-menu-btn'), fresh = menuBtn.cloneNode(true);  // ミッション用のメニューの代わりに、お試しのパネルを開閉する
     menuBtn.replaceWith(fresh);
     const demo = await mod.createCharDemo({ host: this.el.stage, root: this.el.root, menuBtn: fresh, human: params.get('human') === 'oblique' ? 'oblique' : undefined, onBack: () => this.exit() });
@@ -662,17 +695,17 @@ const BotCommanderGame = {
       if (f.type !== 'pickup' || !f.weapon || this.seenFx.has(f)) continue;
       this.seenFx.add(f);
       storage.set(OWNED_KEY, addOwned(storage.get(OWNED_KEY, {}), f.weapon));
-      this.toast(f.equipped ? `${f.label || '味方'} が ${f.name} を装備！` : `${f.name} を入手（保管）`);
+      this.toast(f.equipped ? `${robotEventName(sim, f.unit, f.label || '味方')} が ${f.name} を装備！` : `${f.name} を入手（保管）`);
     }
   },
   /** 注意の知らせ: リペアキットを使い切った（v0.4.2）・シールドが壊れた（v0.4.4）。種類ごとに、2秒以内に続いたら1つの知らせにまとめる */
   warnToast(key, f, text) {
-    this[key] = mergeWarn(this[key], f, KIT_WARN_MERGE); // 決まりは js/ui/toast-merge.js（Node のテストあり）
+    this[key] = mergeWarn(this[key], { ...f, label: robotEventName(this.sim, f.unit, f.label || '味方') }, KIT_WARN_MERGE); // 決まりは js/ui/toast-merge.js（Node のテストあり）
     this.toast(`${warnWho(this[key])}${text}`, 'warn');
   },
   toast(text, tone = '') {
     const el = this.el.toast; if (!el) return;
-    el.textContent = text; el.hidden = false; el.classList.toggle('warn', tone === 'warn');
+    el.innerHTML = robotTextHtml(text); el.hidden = false; el.classList.toggle('warn', tone === 'warn');
     el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
     clearTimeout(this.toastTimer);
     this.toastTimer = setTimeout(() => { el.hidden = true; el.classList.remove('show'); }, TOAST_MS);
@@ -703,11 +736,11 @@ const BotCommanderGame = {
   onAction(act) {
     const { sim, r } = this; if (!sim || !act) return;
     const ids = r.ui.selected;
-    if (act === 'mode') { r.ui.mode = r.ui.mode === 'fight' ? 'rush' : 'fight'; this.el.hint.textContent = r.ui.mode === 'rush' ? '急行: 撃たずに走る（逃げる・回り込む用）' : '戦闘移動: 敵がいたら止まって撃つ'; }
+    if (act === 'mode') { r.ui.mode = r.ui.mode === 'fight' ? 'rush' : 'fight'; this.el.hint.innerHTML = robotTextHtml(r.ui.mode === 'rush' ? '急行: 撃たずに走る（逃げる・回り込む用）' : '戦闘移動: 敵がいたら止まって撃つ'); }
     else if (act === 'clear') { r.ui.selected = []; this.refreshSel(); return; }
     else if (!ids.length) return;
-    else if (act === 'stop') { issueStop(sim, ids); this.el.hint.textContent = `${ids.length}機: その場で止まる`; }
-    else if (act === 'retreat') { issueRetreat(sim, ids); this.el.hint.textContent = `${ids.length}機: 本陣へ撤退（撃たずに走る）`; }
+    else if (act === 'stop') { issueStop(sim, ids); this.el.hint.innerHTML = robotTextHtml(`${ids.length}機: その場で止まる`); }
+    else if (act === 'retreat') { issueRetreat(sim, ids); this.el.hint.innerHTML = robotTextHtml(`${ids.length}機: 本陣へ撤退（撃たずに走る）`); }
     else if (act === 'fire') {
       const fState = fireButtonState(sim, ids);
       if (fState.kind === 'launcher' && this.launcherUi?.startPick) {
@@ -720,7 +753,7 @@ const BotCommanderGame = {
     else if (act === 'stance') {
       const next = this.selStance() === 'hold' ? 'free' : 'hold';
       issueStance(sim, ids, next);
-      this.el.hint.textContent = next === 'free' ? '迎撃: 見えた敵へ少し寄って撃つ（遠くまでは追わない）' : 'その場: 持ち場から動かず、届く敵だけ撃つ';
+      this.el.hint.innerHTML = robotTextHtml(next === 'free' ? '迎撃: 見えた敵へ少し寄って撃つ（遠くまでは追わない）' : 'その場: 持ち場から動かず、届く敵だけ撃つ');
     }
     if (this.state.paused) this.applyNow(sim);
     this.renderAct();
@@ -739,21 +772,21 @@ const BotCommanderGame = {
   updateHint() {
     this.kitSig = this.sim ? this.kitSigOf(this.r.ui.selected) : null;
     const { sim, r } = this; if (!sim) return;
-    if (this.player) { this.el.hint.textContent = '再生中（見るだけ）。地図の移動・拡大はできます'; return; }
+    if (this.player) { this.el.hint.innerHTML = robotTextHtml('再生中（見るだけ）。地図の移動・拡大はできます'); return; }
     const us = r.ui.selected.map(id => unitById(sim, id)).filter(Boolean);
-    if (!us.length) { this.el.hint.textContent = HINT_IDLE; return; }
+    if (!us.length) { this.el.hint.innerHTML = robotTextHtml(HINT_IDLE); return; }
     if (us.length === 1) {
       const u = us[0];
-      if (u.launch) { this.el.hint.textContent = '発射台: 自分では動けません。ロボで引いて運びます'; return; }
+      if (u.launch) { this.el.hint.innerHTML = robotTextHtml('発射台: 自分では動けません。ロボで引いて運びます'); return; }
       // v0.4.2: 持っているリペアキットの数。v0.4.4: シールドの残り（10% 刻み）・サポーターの盾作り
       const sh = u.shieldMax > 0 ? `・シールド ${u.shieldHp > 0 ? `${shieldPct(u)}%${shieldTrait(u)}` : '壊れ'}${bodyTrait(u)}${u.shieldBuild != null ? '・盾を作成中' : ''}${u.spareShields > 0 ? `・予備の盾${u.spareShields}` : ''}` : '';
       const kit = u.human ? '' : `（キット ${u.kits || 0}${u.kitBuild != null ? '・作成中' : ''}${sh}）`;
-      this.el.hint.textContent = u.suitOn ? `${u.label}（スーツ）: 行き先をタップ。見えている敵を撃てる・着ている間は捕まらない・殻が壊れると脱げる` : u.human ? `${u.label}: 行き先をタップ。戦えない・異星生物に近づくと捕まる` : u.kind === 'scav' ? `${u.label}${kit}: 行き先をタップ。山で止まると資材を集める` : `${u.label}${kit}: 地面で移動、見えている敵で狙う`;
+      this.el.hint.innerHTML = robotTextHtml(u.suitOn ? `${u.label}（スーツ）: 行き先をタップ。見えている敵を撃てる・着ている間は捕まらない・殻が壊れると脱げる` : u.human ? `${u.label}: 行き先をタップ。戦えない・異星生物に近づくと捕まる` : u.kind === 'scav' ? `${robotNameOf(sim, u)}${kit}: 行き先をタップ。山で止まると資材を集める` : `${robotNameOf(sim, u)}${kit}: 地面で移動、見えている敵で狙う`);
       return;
     }
     const kits = us.reduce((a, u) => a + (u.kits || 0), 0), empty = us.filter(u => !u.human && !(u.kits > 0)).length;
     const broken = us.filter(u => u.shieldMax > 0 && !(u.shieldHp > 0)).length;
-    this.el.hint.textContent = `${us.length}機を選択中（キット計${kits}${empty ? `・切れ${empty}機` : ''}${broken ? `・シールド壊れ${broken}機` : ''}）: 地面をタップで移動（ばらけて並ぶ）`;
+    this.el.hint.innerHTML = robotTextHtml(`${us.length}機を選択中（キット計${kits}${empty ? `・切れ${empty}機` : ''}${broken ? `・シールド壊れ${broken}機` : ''}）: 地面をタップで移動（ばらけて並ぶ）`);
   },
 
   renderPicks() {
@@ -843,7 +876,7 @@ const BotCommanderGame = {
     const t = story2ResultText(sim), win = sim.result === 'win';
     this.el.result.querySelector('.bc-result-rec-row').style.display = 'none';
     this.el.resultTitle.textContent = t.title; this.el.resultTitle.classList.toggle('win', win);
-    this.el.resultBanner.src = RESULT_BANNER_URL[win ? 'win' : 'lose']; this.el.resultBanner.hidden = false;
+    this.el.resultBanner.onerror = () => { this.el.resultBanner.onerror = () => { this.el.resultBanner.hidden = true; }; this.el.resultBanner.src = RESULT_BANNER_URL[win ? 'win' : 'lose']; }; this.el.resultBanner.src = win && sim.story2.step === 2 ? CHAPTER_BANNERS[2] : RESULT_BANNER_URL[win ? 'win' : 'lose']; this.el.resultBanner.hidden = false;
     this.el.resultText.textContent = `${t.why} かかった時間 ${fmtTime(sim.time)}`;
     this.el.result.hidden = false;
     if (win && sim.story2.step === 1 && !this.el.root.querySelector('.bc-story2-next')) {
@@ -857,6 +890,7 @@ const BotCommanderGame = {
   showResult() {
     BotCommanderGame.showResultMain.call(this);
     BotCommanderGame.renderResultStats.call(this); // v1.0.6: どの結果の画面でも、下にロボごとの成績とランキング
+    this.bgm?.stinger(this.sim?.result === 'win' ? 'win' : 'lose'); // v1.0.9 勝ち・負けの短い一節
   },
 
   /** v1.0.6 結果の画面の「ロボごとの成績」（数えていない時は何も出さない） */
@@ -922,7 +956,7 @@ const BotCommanderGame = {
     const win = sim.result === 'win', t = story3ResultText(sim);
     this.el.resultTitle.textContent = t.title;
     const banner = this.el.resultBanner;
-    banner.onerror = () => { banner.hidden = true; }; banner.src = RESULT_BANNER_URL[win ? 'win' : 'lose']; banner.hidden = false;
+    banner.onerror = () => { banner.onerror = () => { banner.hidden = true; }; banner.src = RESULT_BANNER_URL[win ? 'win' : 'lose']; }; banner.src = win && !nextStage(3, sim.story3.stage) ? CHAPTER_BANNERS[3] : RESULT_BANNER_URL[win ? 'win' : 'lose']; banner.hidden = false;
     this.el.resultTitle.classList.toggle('win', win);
     this.el.resultText.innerHTML = `${t.why}<br>倒した敵 ${t.killed}体<br>かかった時間 ${fmtTime(sim.time)}`;
     const nx = win && this.story?.ch ? nextStage(this.story.ch, this.story.stage) : null;
@@ -987,6 +1021,18 @@ const BotCommanderGame = {
     this.el.root.classList.toggle('paused', v);
   },
 
+  /** v1.0.9 ☰ の「音楽」入/切（bc-bgm に保存）。ハブの消音・BGM 音量はそのまま効く */
+  setBgmOn(v) {
+    this.bgmOn = !!v;
+    storage.set('bc-bgm', this.bgmOn);
+    this.container.querySelectorAll('[data-bgm]').forEach(b => {
+      const on = (b.dataset.bgm === '1') === this.bgmOn;
+      b.classList.toggle('on', on);
+      b.setAttribute('aria-checked', String(on));
+    });
+    this.bgm?.tick();
+  },
+
   setSpotPause(v) {
     this.spotPause = !!v;
     storage.set('bc-spotpause', this.spotPause);
@@ -1004,7 +1050,7 @@ const BotCommanderGame = {
     const busy = sim.time <= 1 || this.tutorial || this.tutorialOn || this.menuOpen || this.storyOps?.aiming || this.launcherUi?.picking || this.el.root.classList.contains('bc-dialog-open') || !!this.el.root.querySelector('.dlg');
     if (busy) return; // 始まりの 1 秒（最初から見えている敵）・チュートリアル・会話・メニュー・狙い中は、群れを覚えるだけ
     const { enemy, spotter } = spots[0];
-    const who = spotter?.label || '味方';
+    const who = robotNameOf(sim, spotter);
     this.toast(`${who}：敵を発見！`, 'warn');
     if (this.r?.cam) {
       this.r.cam.x = enemy.x; this.r.cam.y = enemy.y; this.r.clampCam?.();
@@ -1013,7 +1059,7 @@ const BotCommanderGame = {
       if (this.state.speed > 1) this.setSpeed(1);
       this.setPaused(true);
       this.spotPaused = true;
-      this.el.hint.textContent = '敵を発見！ ▶で再開（タップで命令できます）';
+      this.el.hint.innerHTML = robotTextHtml('敵を発見！ ▶で再開（タップで命令できます）');
     }
   },
 
@@ -1059,6 +1105,7 @@ const BotCommanderGame = {
     this.demo?.destroy(); this.demo = null;
     this.armory?.destroy(); this.armory = null;
     this.records?.close?.(); this.records = null;
+    this.bgm?.stop(); this.bgm = null; // v1.0.9 BGM を止める
     delete window.__botCommander;
   },
 

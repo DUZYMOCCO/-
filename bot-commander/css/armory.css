@@ -85,3 +85,6 @@
 /* ☰ メニューの「武器庫（出撃前にもどる）」（?armory=1 の時だけ出る。index.js） */
 .bc-root .bc-menu-armory { height: 40px; font-size: 13px; font-weight: 700; }
 .bc-root .bc-menu-armory[hidden] { display: none; }
+
+/* 表示名の型番を省略せず、狭い一覧は一般名称と分けて折り返す。 */
+.bc-root .bca-title, .bc-root .bca-who b { white-space: normal; overflow: visible; text-overflow: clip; }

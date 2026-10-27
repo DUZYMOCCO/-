@@ -1,4 +1,6 @@
-import { drawStory2 } from './story2-view.js?v=1';
+import { robotEventName, splitRobotName } from '../names/robot-names.js?v=1';
+import { createGfx6 } from './gfx6-view.js?v=4';
+import { drawStory2 } from './story2-view.js?v=2';
 // 描画（Pixi v8）。シミュレーションの state を読むだけで、書き換えない。
 // v0.4.0-dev: 部隊の表示をやめ、選んだ機体ごとに輪と経路。人間（少年・少女）と「捕まった」の表示。
 // v0.4.0-dev（10/23）: 撃つ・当たる・倒れるの演出は js/fx（Canvas2D）。Pixi の上に重ねた透明 canvas に、同じカメラで描く。
@@ -6,7 +8,7 @@ import { drawStory2 } from './story2-view.js?v=1';
 // v0.4.0-dev（10/23 夜）: 遮蔽物と落とし物の見た目（js/render/cover-view.js）。
 import { Application, Container, Sprite, Graphics, Text, Texture, Rectangle, RenderTexture, BlurFilter, CanvasSource, TexturePool } from '../../vendor/pixi-8.22.0.min.mjs?v=7';
 import { TILE, TERRAIN, T as TILE_T, tileAt, toTile, tileCenter } from '../sim/map.js?v=6';
-import { groupUnits, unitById, REPAIRER_KIT_BUILD_SEC, SUPPORTER_SHIELD_BUILD_SEC, isDefensive, unitWeaponInfo } from '../sim/sim.js?v=28';
+import { groupUnits, unitById, REPAIRER_KIT_BUILD_SEC, SUPPORTER_SHIELD_BUILD_SEC, isDefensive, unitWeaponInfo } from '../sim/sim.js?v=29';
 import { fuelRatio, isRefueling } from '../sim/fuel.js?v=1'; // 飛ぶ機体の燃料の小さなゲージ（v1.0.0）
 import { unreachableTarget } from '../sim/targeting.js?v=2'; // 敵が届かない相手（空・水中）を前にした時の小さな印（v1.0.0）
 // v0.4.2: リペアキットを使い切った味方ロボットは、HPバーの右に小さな赤い点（キット切れ）
@@ -24,7 +26,7 @@ function drawBars(g, u, w) {
   }
 }
 const drawNoKit = (g, x) => g.circle(x + 3.6, 6, 2.6).fill({ color: 0x121418 }).circle(x + 3.6, 6, 1.8).fill({ color: 0xef4444 });
-import { FX_MAX, FX_SHAKE_MAX, FX_MARGIN, spawnFxEvents } from './fx-events.js?v=15';
+import { FX_MAX, FX_SHAKE_MAX, FX_MARGIN, spawnFxEvents } from './fx-events.js?v=16';
 import { loadLandmarks, createCoverView } from './cover-view.js?v=10';
 import { create as createFx } from '../fx/fx.js?v=2';
 import { GATHER_RADIUS, EXTRACT_RADIUS, CAPTURE } from '../sim/mission.js?v=10';
@@ -59,7 +61,7 @@ import { altMotion, torpedoDuration } from './alt-motion-view.js?v=1'; // v1.0.1
 import { buildEnemyGallery, buildGfx5Gallery } from './enemy-gallery.js?v=3'; // v1.0.1 Codex gfx4 ?enemydemo=1 の新しい敵の見本（見た目だけ。sim には入れない）
 import { createHpNumbers, popPose, DMG_COLOR } from './hp-numbers.js?v=2'; // v1.0.6 戦闘中のダメージの数・HP の数（見るだけ。sim は変えない）
 import { drawStory3 } from './story3-view.js?v=1'; // 第 3 章（?storych=3）: 門の張り紙を調べる輪・ビルの印（sim.story3 がある時だけ）
-import { drawLauncherCanvas, drawStrike, LAUNCHER_PX } from './strike-view.js?v=2'; // v1.0.2 物語の最初のミッション: 発射台・着弾マーカー・ミサイル・調べる場所（sim.strike がある時だけ）
+import { drawLauncherCanvas, drawStrike, LAUNCHER_PX } from './strike-view.js?v=3'; // v1.0.2 物語の最初のミッション: 発射台・着弾マーカー・ミサイル・調べる場所（sim.strike がある時だけ）
 import { syncSuitView } from './powersuit-view.js?v=1'; // ?powersuit=1 の試作: スーツの殻・仮面・残骸（sim.powersuit がある時だけ）
 import { CHAR_FRAMES, CHAR_FRAMES_OBLIQUE, heightOf, CORPSE_SEC, WAVE_SEC, hasFrames, newAnim, pickSize, stepAnim } from './char-anim.js?v=8';
 
@@ -374,6 +376,7 @@ async function buildRenderer(host, sim, { fxQuality = 'normal', ground, human, e
 
   // 機体
   const views = new Map();
+  const gfx6 = (sim.strike || sim.story2 || sim.powersuit || sim.ne) ? createGfx6(world, sim, views) : null;
   function unitView(u) {
     let v = views.get(u.id);
     if (v) return v;
@@ -506,6 +509,31 @@ async function buildRenderer(host, sim, { fxQuality = 'normal', ground, human, e
     const lo = popMinY(cam.y, app.screen.height, cam.zoom, popTopPx, t.height);
     if (t.y < lo) t.y = lo;
   }
+  // ポップも一般名称だけを縮める。型番は独立した Text で全桁を描く。
+  function makePopText() {
+    const box = new Container(), pool = [];
+    let text = '', style = POP_STYLE;
+    function layout() {
+      const chunks = text.split(/([ァ-ヶー]+[A-HJ-NP-Z]{2}-[1-9][0-9]?)/g);
+      const runs = chunks.flatMap(chunk => {
+        const p = splitRobotName(chunk);
+        return p ? [{ text: p.common, small: p.long }, { text: ' ' + p.code }] : [{ text: chunk }];
+      }).filter(r => r.text);
+      let width = 0;
+      runs.forEach((run, i) => {
+        const t = pool[i] || (pool[i] = box.addChild(new Text({ text: '', style: POP_STYLE })));
+        t.text = run.text; t.style = { ...style, fontSize: style.fontSize * (run.small ? .8 : 1) };
+        t.anchor.set(0, .5); t.visible = true; t.x = width; width += t.width;
+      });
+      for (let i = runs.length; i < pool.length; i++) pool[i].visible = false;
+      for (let i = 0; i < runs.length; i++) pool[i].x -= width / 2;
+    }
+    Object.defineProperties(box, {
+      text: { get: () => text, set: v => { text = v; layout(); } },
+      style: { get: () => style, set: v => { style = v; layout(); } },
+    });
+    return box;
+  }
   function drawPops(now) {
     if (sim.fx.length) drawPopTop();
     let k = 0;
@@ -514,14 +542,14 @@ async function buildRenderer(host, sim, { fxQuality = 'normal', ground, human, e
       const life = f.type === 'gain' ? 1 : 2.2, age = sim.time - f.t;
       if (age > life) continue;
       let t = popPool[k];
-      if (!t) { t = new Text({ text: '', style: POP_STYLE }); t.anchor.set(0.5); pops.addChild(t); popPool.push(t); }
+      if (!t) { t = makePopText(); pops.addChild(t); popPool.push(t); }
       k++;
       const a = Math.min(1, (life - age) / (life * 0.4));
       if (f.type === 'gain') {
         if (t.text !== '+1') { t.text = '+1'; t.style = POP_STYLE; }
         t.position.set(f.x, f.y - 30 - age * 26); t.scale.set(0.7 + 0.3 * Math.min(1, age * 8));
       } else if (f.type === 'kitUse') {
-        const label = f.by !== f.unit && f.byLabel ? `リペアキット +${f.heal}（${f.byLabel}）` : `リペアキット +${f.heal}`;
+        const label = f.by !== f.unit && f.byLabel ? `リペアキット +${f.heal}（${robotEventName(sim, f.by, f.byLabel)}）` : `リペアキット +${f.heal}`;
         if (t.text !== label) { t.text = label; t.style = HEAL_STYLE; }
         t.position.set(f.x, f.y - 50 - Math.min(age, 0.5) * 24); t.scale.set(age < 0.15 ? 0.6 + age / 0.15 * 0.4 : 1);
       } else if (f.type === 'shieldGive' || f.type === 'shieldRestored') { // v0.4.4 盾が戻った（サポーターが渡した・リペアラーが直し始めた）
@@ -671,8 +699,8 @@ async function buildRenderer(host, sim, { fxQuality = 'normal', ground, human, e
     }
     const ex = mission.extraction, hx = tileCenter(ex.tx), hy = tileCenter(ex.ty), pulse = (now * 0.8) % 1;
     if (sim.story3) { story3Layer.clear(); drawStory3(story3Layer, sim, cam, now); } // 第 3 章（?storych=3）。脱出口の輪はふつうどおり描く
-    if (story2Layer) { story2Layer.clear(); if (!host.closest('.bc-root')?.classList.contains('bc-dialog-open')) drawStory2(story2Layer, sim, cam); }
-    if (sim.strike) { strikeLayer.clear(); drawStrike(strikeLayer, sim, cam, now, ui); } // v1.0.2 物語: 脱出口の輪の代わりに、発射台・着弾マーカー・調べる場所
+    if (story2Layer) { story2Layer.clear(); if (!host.closest('.bc-root')?.classList.contains('bc-dialog-open')) drawStory2(story2Layer, sim, cam, gfx6); }
+    if (sim.strike) { strikeLayer.clear(); drawStrike(strikeLayer, sim, cam, now, ui, gfx6); } // v1.0.2 物語: 脱出口の輪の代わりに、発射台・着弾マーカー・調べる場所
     else if (sim.story2?.step !== 2) {
       markLayer.circle(hx, hy, EXTRACT_RADIUS * TILE).stroke({ width: 2.5, color: 0x4ade80, alpha: 0.55 });
       markLayer.circle(hx, hy, EXTRACT_RADIUS * TILE * (0.4 + 0.6 * pulse)).stroke({ width: 2, color: 0x4ade80, alpha: 0.5 * (1 - pulse) });
@@ -784,6 +812,7 @@ async function buildRenderer(host, sim, { fxQuality = 'normal', ground, human, e
       syncAltitude(v, u, now);
       if (look) syncAltMotion(v, u, now);
     }
+    gfx6?.sync(now);
     syncTorpedoes(simDt);
     if (mineView) mineView.sync(sim, (tx, ty) => sim.fog.isVisible(tx, ty), TILE); // 新しい敵 G10 の地雷
     if (gallery) gallery.sync(now); if (gallery5) gallery5.sync(now);
@@ -1087,6 +1116,7 @@ async function buildRenderer(host, sim, { fxQuality = 'normal', ground, human, e
 
   function destroy() {
     dead = true;
+    gfx6?.destroy();
     views.clear(); fx.clear(); fxCanvas.remove();
     const canv = gatherCanvases({ tex, chars, landmarks, badges });
     clearSharedPool();

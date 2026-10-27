@@ -1,7 +1,7 @@
 /**
  * スマホゲーム工房 メインアプリケーション
  */
-import { games, sections, getGameById } from './games-registry.js?v=217';
+import { games, sections, getGameById } from './games-registry.js?v=218';
 import { sound } from './audio.js?v=151';
 import { storage } from './storage.js';
 import { initKanaMode, bindKanaButton } from './kana-mode.js?v=175';

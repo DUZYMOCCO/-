@@ -4,14 +4,14 @@
 //   再生 = 同じ条件で createSim → 記録どおりの step で命令を入れ直す → ハッシュを記録と比べる。
 // シム（sim.js）は1行も変えない。記録は stepSim を呼ぶ前に sim.commands を写すだけ、一時停止中の命令（applyCommandsNow）は
 // 呼ぶ前に写して「paused」の印をつける（R-12 の注意1: 一時停止中は経路を先に作るので、結果が変わるため）。
-import { createSim, stepSim, applyCommandsNow, hashSim, hashSimDeep } from './sim.js?v=28';
+import { createSim, stepSim, applyCommandsNow, hashSim, hashSimDeep } from './sim.js?v=29';
 import { MISSION_1 } from './mission.js?v=10';
 import { withAltUnits, ALT_MISSION_ROWS, ALT_IN_MISSIONS } from './alt-units.js?v=3'; // R-05: 本編と同じ「飛ぶ機体・水陸両用機を足すか」の通し方で再生する
 
 export const REPLAY_VERSION = 1;
 export const REPLAY_GAME = 'bot-commander';
 /** 記録を取った時のゲームの版（sw-assets.js の gameVersion と同じ値。取り込む時にそろえる）。違う版の記録は、読めるが「版がちがう」と知らせる */
-export const REPLAY_GAME_VERSION = '1.0.8';
+export const REPLAY_GAME_VERSION = '1.0.12';
 export const MARK_EVERY = 300;            // 途中のハッシュを残す間隔（step）。10 秒ごと
 export const MAX_REPLAY_TICKS = 216000;   // 再生してよい最大の長さ（2 時間ぶん）
 export const MAX_REPLAY_CMDS = 50000;

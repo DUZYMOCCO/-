@@ -1,7 +1,7 @@
 // input.js の指の数え方（R-07・R-08）。偽の canvas に pointer イベントを流す（ブラウザ不要）。
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { attachInput } from '../js/render/input.js?v=20';
+import { attachInput } from '../js/render/input.js?v=21';
 
 function setup() {
   const canvas = new EventTarget();

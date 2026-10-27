@@ -1,9 +1,10 @@
 // 発射台（?launcher=1 の試作）を描く所。新しい絵は作らず、今ある絵（W1-06 使い捨てロケット砲）とコード（円・線・三角）で描く。
 // sim の状態（sim.launcher・発射台の機体 u.launch・sim.fx）を読むだけ。renderer.js には触らず、r（createRenderer の返り値）の views・cam・fx・app を使う。
 // 代用した絵の一覧は out/CHANGES.md の 4 章（あとで Codex が描く）。
+import { createGfx6, launchFlightPose } from './gfx6-view.js?v=4';
 import { Container, Graphics, Sprite, Text, Texture } from '../../vendor/pixi-8.22.0.min.mjs?v=7';
 import { tileCenter } from '../sim/map.js?v=6';
-import { unitById } from '../sim/sim.js?v=28';
+import { unitById } from '../sim/sim.js?v=29';
 import { LAUNCHER, launchersOf } from '../sim/launcher.js?v=4';
 
 const ART_URL = new URL('../../assets/weapons/W1-06.webp', import.meta.url).href; // 代用: 使い捨てロケット砲（発射台の上に載せる）
@@ -23,8 +24,10 @@ export function createLauncherView(r, sim) {
   const ground = new Graphics(), air = new Graphics(), label = new Text({ text: '', style: { fontSize: 12, fontWeight: '800', fill: '#ffe9a8', stroke: { color: '#000000', width: 3 }, fontFamily: 'system-ui, sans-serif' } });
   label.anchor.set(0.5, 1); label.visible = false;
   ground.zIndex = 0; air.zIndex = 5000; label.zIndex = 6000;
-  root.addChild(ground, air, label);
+  root.addChild(ground, air);
   world.addChild(root);
+  const gfx6 = createGfx6(world, sim, r.views);
+  world.addChild(label); // 絵のレイヤーより手前に表示
   const views = new Map();           // 発射台の id → { c, cart, art }
   const seen = new WeakSet();
   const rings = [];                  // 爆発の衝撃の輪 { x, y, t }
@@ -93,21 +96,22 @@ export function createLauncherView(r, sim) {
     const L = sim.launcher; if (!L || st.dead) return;
     const cam = r.cam, ink = 1 / Math.max(1, cam.zoom), real = performance.now() / 1000;
     fxEvents();
-    ground.clear(); air.clear(); label.visible = false;
+    ground.clear(); air.clear(); label.visible = false; gfx6.begin();
     // 焦げ跡（着弾のあと、薄れていく）
     for (let i = scorch.length - 1; i >= 0; i--) {
       const s = scorch[i], a = 1 - (real - s.t) / SCORCH_SEC;
       if (a <= 0) { scorch.splice(i, 1); continue; }
-      ground.ellipse(s.x, s.y, 58, 30).fill({ color: 0x120d08, alpha: 0.42 * a }).ellipse(s.x, s.y, 30, 15).fill({ color: 0x000000, alpha: 0.3 * a });
+      if (!gfx6.put('scorch-'+i, 'missile_scorch', s.x, s.y, 120, .5, .56, a)) ground.ellipse(s.x, s.y, 58, 30).fill({ color: 0x120d08, alpha: 0.42 * a }).ellipse(s.x, s.y, 30, 15).fill({ color: 0x000000, alpha: 0.3 * a });
     }
     // 建造中（資材の届け先＝仮の拠点）: 台と進み具合
     const ex = sim.mission?.extraction;
     if (ex && L.builds.length) {
       const b = L.builds[0], x = tileCenter(ex.tx), y = tileCenter(ex.ty), k = 1 - b.left / b.total;
-      ground.roundRect(x - 22, y - 8, 44, 18, 3).fill({ color: 0x24190b, alpha: 0.85 }).stroke({ width: 1.5 * ink + 0.5, color: 0xb4741f, alpha: 0.95 });
-      for (let i = 0; i < 4; i++) ground.moveTo(x - 20 + i * 12, y + 10).lineTo(x - 14 + i * 12, y - 8).stroke({ width: 1.2, color: 0xb4741f, alpha: 0.5 }); // 足場のしま
+      const builtArt = gfx6.put('build', 'launcher_build', x, y, 54, .5, 676/768);
+      if (!builtArt) ground.roundRect(x - 22, y - 8, 44, 18, 3).fill({ color: 0x24190b, alpha: 0.85 }).stroke({ width: 1.5 * ink + 0.5, color: 0xb4741f, alpha: 0.95 });
+      if (!builtArt) for (let i = 0; i < 4; i++) ground.moveTo(x - 20 + i * 12, y + 10).lineTo(x - 14 + i * 12, y - 8).stroke({ width: 1.2, color: 0xb4741f, alpha: 0.5 }); // 足場のしま
       ground.rect(x - 20, y + 12, 40 * k, 4).fill({ color: 0xffd166 }).rect(x - 20, y + 12, 40, 4).stroke({ width: 1, color: 0x000000, alpha: 0.7 });
-      label.text = `発射台を作成中 あと${Math.ceil(b.left)}秒`; label.position.set(x, y - 12); label.scale.set(1 / Math.max(0.65, cam.zoom)); label.visible = true;
+      label.text = `発射台を作成中 あと${Math.ceil(b.left)}秒`; label.position.set(x, builtArt ? y - 54 * 676 / 768 - 5 : y - 14); label.scale.set(1 / Math.max(0.65, cam.zoom)); label.visible = true;
     }
     // 発射台
     const alive = new Set();
@@ -122,6 +126,10 @@ export function createLauncherView(r, sim) {
       v.art.position.set(0, -4);
       v.art.rotation = f * -ease(Math.min(1, k * 1.5)) * 0.62 + (u.moving ? Math.sin(now * 14) * 0.03 : 0); // 構えるとミサイルが立つ
       v.art.tint = aim && Math.sin(now * 16) > 0.3 ? 0xffb080 : 0xffffff; // 構え中は点滅
+      const fire = sim.fx.some(f => f.type === 'launcherLaunch' && sim.time-f.t < .4 && Math.hypot(f.x-u.x,f.y-u.y)<20);
+      const imageKey = fire ? 'launcher_fire' : aim ? 'launcher_armed' : stt.towId != null ? 'launcher_tow' : 'launcher';
+      const hasImage = gfx6.put('launcher-'+u.id, imageKey, u.x, u.y, 54, .5, 676/768, 1, 0, u.facing || 1);
+      v.cart.visible = !hasImage; if(hasImage) v.art.visible = false;
       v.cart.alpha = 1;
       if (r.ui.selected.includes(u.id)) ground.ellipse(u.x, u.y, 22, 10).fill({ color: 0x7df9ff, alpha: 0.14 }).stroke({ width: 2.2 * ink, color: 0x7df9ff, alpha: 0.95 });
       // HP バー
@@ -143,6 +151,7 @@ export function createLauncherView(r, sim) {
       }
     }
     for (const [id, v] of views) if (!alive.has(id)) { v.c.destroy({ children: true }); views.delete(id); }
+    for (const [i, f] of sim.fx.entries()) if (f.type === 'launcherLaunch' && sim.time-f.t >= 0 && sim.time-f.t < .4) gfx6.put('launch-fire-'+i, 'launcher_fire', f.x, f.y, 54, .5, 676/768, 1, 0, f.tx < f.x ? -1 : 1);
     // 飛んでいるミサイル・着弾の印
     for (const s of L.shots) {
       const k = 1 - s.left / s.total, H = Math.min(150, 20 + 0.45 * Math.hypot(s.x - s.x0, s.y - s.y0)), x = s.x0 + (s.x - s.x0) * k, arc = Math.sin(Math.PI * k) * H, y = s.y0 + (s.y - s.y0) * k - arc; // 山なりに飛ぶ（高さは距離に合わせる）
@@ -153,9 +162,12 @@ export function createLauncherView(r, sim) {
       const nx = s.x0 + (s.x - s.x0) * Math.min(1, k + 0.02), ny = s.y0 + (s.y - s.y0) * Math.min(1, k + 0.02) - Math.sin(Math.PI * Math.min(1, k + 0.02)) * H;
       const ang = Math.atan2(ny - y, nx - x), ca = Math.cos(ang), sa = Math.sin(ang), P = (a, b) => [x + a * ca - b * sa, y + a * sa + b * ca];
       const [n0, n1] = P(9, 0), [l0, l1] = P(-6, -3.2), [r0, r1] = P(-6, 3.2), [f0, f1] = P(-15 - 3 * Math.sin(now * 40), 0), [m0, m1] = P(-6, 0);
-      air.poly([m0, m1, P(-6, -2)[0], P(-6, -2)[1], f0, f1, P(-6, 2)[0], P(-6, 2)[1]]).fill({ color: 0xffa23a, alpha: 0.9 });
-      air.poly([n0, n1, l0, l1, r0, r1]).fill({ color: 0xe5e7eb }).stroke({ width: 1, color: 0x222222 });
-      air.circle(n0, n1, 2).fill({ color: 0xef4444 });
+      const liftoff = (s.total - s.left) < .4 && gfx6.has('missile_flight') && gfx6.has('launcher_fire'); // 発射の絵（launcher_fire）にミサイルが入っている間は、飛ぶ絵を重ねない
+      const p = gfx6.has('launcher_fire') ? launchFlightPose({x:s.x0,y:s.y0}, {x:s.x,y:s.y}, s.total-s.left, {x,y}, ang) : {x,y,ang:ang+.18};
+      const flightArt = liftoff || gfx6.put('flight-'+L.shots.indexOf(s), 'missile_flight', p.x, p.y, 36, 165/256, 120/256, 1, p.ang);
+      if (!flightArt) air.poly([m0, m1, P(-6, -2)[0], P(-6, -2)[1], f0, f1, P(-6, 2)[0], P(-6, 2)[1]]).fill({ color: 0xffa23a, alpha: 0.9 });
+      if (!flightArt) air.poly([n0, n1, l0, l1, r0, r1]).fill({ color: 0xe5e7eb }).stroke({ width: 1, color: 0x222222 });
+      if (!flightArt) air.circle(n0, n1, 2).fill({ color: 0xef4444 });
       ground.ellipse(x, y + arc, 6, 2.4).fill({ color: 0x000000, alpha: 0.28 }); // 地面の影（高いほど離れる）
     }
     // 撃つ地点の仮の印（タップした所。まだ撃っていない）
@@ -168,9 +180,11 @@ export function createLauncherView(r, sim) {
     for (let i = rings.length - 1; i >= 0; i--) {
       const g = rings[i], a = (real - g.t) / 0.7;
       if (a >= 1) { rings.splice(i, 1); continue; }
+      if (a < .5/.7) gfx6.put('impact-'+i, 'missile_impact_'+Math.min(3, Math.floor(a*.7/.125)), g.x, g.y, 80);
       const rad = LAUNCHER.radius * (0.2 + 0.9 * ease(a));
       air.circle(g.x, g.y, rad).fill({ color: 0xffb04a, alpha: 0.28 * (1 - a) }).stroke({ width: 3.5 * (1 - a) + 0.5, color: 0xfff1c9, alpha: 0.9 * (1 - a) });
     }
+    gfx6.end();
   }
 
   return {
@@ -180,7 +194,8 @@ export function createLauncherView(r, sim) {
     /** タップした地点の仮の印（null で消す） */
     setPreview(p) { st.preview = p ? { x: p.x, y: p.y } : null; },
     destroy() {
-      st.dead = true;
+      st.dead = true; gfx6.destroy();
+      try { label.parent?.removeChild(label); label.destroy(); } catch {}
       try { if (!root.destroyed) { root.parent?.removeChild(root); root.destroy({ children: true }); } } catch { /* 描画ごと捨てられた後 */ }
       try { if (st.tex) { st.tex.destroy(true); st.tex = null; } } catch { /* 同上 */ }
       views.clear();

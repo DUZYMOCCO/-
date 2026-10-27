@@ -47,7 +47,8 @@ export async function playDialog(host, script, opts = {}) {
   }
   const scriptId = script?.id || null;
   const alreadyRead = isRead(scriptId);
-  const portraits = await loadPortraits();
+  const allPortraits = await loadPortraits();
+  const portraits = opts.suitBoy && allPortraits.SUIT_BOY ? { ...allPortraits, BOY: allPortraits.SUIT_BOY } : allPortraits;
   let st = startDialog(script, portraits); // 台本に誤りがあればここで止まる
   const urls = [];
   for (const { id, face } of facesUsed(script)) {
@@ -83,6 +84,7 @@ export async function playDialog(host, script, opts = {}) {
   host.classList.add('bc-dialog-open'); // ゲームの上下のバー・知らせは隠す（css/dialog.css）
   const $ = s => el.querySelector(s);
   const bgEl = $('.dlg-bg'), stageEl = $('.dlg-stage'), box = $('.dlg-box'), nameEl = $('.dlg-name'), shownEl = $('.dlg-shown'), restEl = $('.dlg-rest'), menu = $('.dlg-menu');
+  if (opts.showImpact) bgEl.style.display = 'none'; // 着弾の会話だけ、地図の爆発が見えるよう背景を消す
   for (const ev of BLOCK) el.addEventListener(ev, e => e.stopPropagation()); // 地図に通さない
   el.addEventListener('contextmenu', e => e.preventDefault());
 
@@ -159,6 +161,7 @@ export async function playDialog(host, script, opts = {}) {
     node.dataset.id = id;
     const body = new Image(); body.className = 'dlg-body'; body.alt = p.name; body.draggable = false;
     body.src = PORTRAIT_DIR + p.faces[face].src;
+    if (id === 'BOY' && opts.suitBoy) body.onerror = () => { body.onerror = null; body.src = PORTRAIT_DIR + allPortraits.BOY.faces[face].src; };
     node.appendChild(body);
     const s = { side, id, face, node, body, eyes: null };
     stageEl.appendChild(node);
@@ -172,6 +175,7 @@ export async function playDialog(host, script, opts = {}) {
     const old = s.body, body = new Image();
     body.className = 'dlg-body dlg-face-in'; body.alt = p.name; body.draggable = false;
     body.src = PORTRAIT_DIR + p.faces[face].src;
+    if (s.id === 'BOY' && opts.suitBoy) body.onerror = () => { body.onerror = null; body.src = PORTRAIT_DIR + allPortraits.BOY.faces[face].src; };
     old.after(body);
     requestAnimationFrame(() => body.classList.remove('dlg-face-in'));
     setTimeout(() => old.remove(), FACE_FADE_MS + 40);

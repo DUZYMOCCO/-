@@ -45,7 +45,7 @@ export function missilePos(S, k) {
 /**
  * 毎フレーム呼ぶ。g は markLayer（Graphics。毎フレーム clear される）。ui.aim = { x, y } は狙いを決めている途中の点（index 側で入れる）
  */
-export function drawStrike(g, sim, cam, now, ui) {
+export function drawStrike(g, sim, cam, now, ui, gfx6) {
   const S = sim.strike; if (!S) return;
   const ink = 1 / Math.max(1, cam.zoom), l = launcherOf(sim), n = nejiOf(sim);
   // 調べる場所（設計図のありか）: 青い輪と、進み具合の弧。敵が近い時は赤
@@ -90,8 +90,8 @@ export function drawStrike(g, sim, cam, now, ui) {
       g.circle(p.x, p.y, 3 + i * 1.1).fill({ color: 0xd1d5db, alpha: 0.35 * (1 - i / 9) });
     }
     const p = missilePos(S, k), ca = Math.cos(p.ang), sa = Math.sin(p.ang);
-    g.moveTo(p.x + ca * 9, p.y + sa * 9).lineTo(p.x - ca * 7 - sa * 3, p.y - sa * 7 + ca * 3).lineTo(p.x - ca * 7 + sa * 3, p.y - sa * 7 - ca * 3).closePath().fill({ color: 0xd94a3d }).stroke({ width: 1.2, color: 0x121418 });
-    g.circle(p.x - ca * 9, p.y - sa * 9, 3 + Math.random() * 1.5).fill({ color: 0xffc14d, alpha: 0.9 });
+    if (!gfx6?.has('missile_flight')) g.moveTo(p.x + ca * 9, p.y + sa * 9).lineTo(p.x - ca * 7 - sa * 3, p.y - sa * 7 + ca * 3).lineTo(p.x - ca * 7 + sa * 3, p.y - sa * 7 - ca * 3).closePath().fill({ color: 0xd94a3d }).stroke({ width: 1.2, color: 0x121418 });
+    if (!gfx6?.has('missile_flight')) g.circle(p.x - ca * 9, p.y - sa * 9, 3 + Math.random() * 1.5).fill({ color: 0xffc14d, alpha: 0.9 });
   }
   // 爆風の輪（落ちてから 1.2 秒）
   if (S.impactAt != null && S.target) {

@@ -138,6 +138,66 @@
     ]
    }
   },
+  "SUIT_BOY": {
+    "name": "少年",
+    "side": "left",
+    "speaks": false,
+    "robot": false,
+    "crop": [
+      0,
+      0,
+      1024,
+      1536
+    ],
+    "eye": [
+      628,
+      465
+    ],
+    "face_x": 600,
+    "cut": 1258,
+    "scale": 1.18,
+    "nudge": [
+      0,
+      0
+    ],
+    "manual": {
+      "eye": [
+        628,
+        465
+      ],
+      "face_x": 600,
+      "scale": 1.18
+    },
+    "faces": {
+      "neutral": {
+        "src": "SUIT_BOY/SUIT_BOY__neutral.webp"
+      },
+      "smile": {
+        "src": "SUIT_BOY/SUIT_BOY__neutral.webp"
+      },
+      "surprised": {
+        "src": "SUIT_BOY/SUIT_BOY__neutral.webp"
+      },
+      "worried": {
+        "src": "SUIT_BOY/SUIT_BOY__serious.webp"
+      },
+      "serious": {
+        "src": "SUIT_BOY/SUIT_BOY__serious.webp"
+      },
+      "angry": {
+        "src": "SUIT_BOY/SUIT_BOY__serious.webp"
+      },
+      "sad": {
+        "src": "SUIT_BOY/SUIT_BOY__neutral.webp"
+      },
+      "pain": {
+        "src": "SUIT_BOY/SUIT_BOY__serious.webp"
+      },
+      "hurt": {
+        "src": "SUIT_BOY/SUIT_BOY__serious.webp"
+      }
+    }
+  },
   "BOY": {
    "name": "少年",
    "side": "left",

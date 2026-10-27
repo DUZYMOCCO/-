@@ -1,6 +1,6 @@
 // fx-events.js — sim の出来事（shot / boom）を演出 fx.js に渡す。どの演出・ゆれ・止めを出すかはここで決める。
 // Pixi・DOM を使わない（tests/fx.test.mjs から直接呼ぶ）。
-import { weaponInfo, weaponInfoById } from '../sim/sim.js?v=28';
+import { weaponInfo, weaponInfoById } from '../sim/sim.js?v=29';
 import { isNewEnemy } from '../sim/new-enemies.js?v=2'; // 新しい敵（?newenemies=1）は異星生物と同じ「肉」の当たり・やられ方
 // v0.4.0-dev（10/24）: 拾った武器を持っている機体の弾は、その武器の演出（shot の weapon）
 // v0.4.4: シールドが受けた弾（shot の shield）は青いバリアの光（surface 'barrier'）

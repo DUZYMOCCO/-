@@ -1,3 +1,4 @@
+import { robotNameHtml } from '../names/robot-names.js?v=1';
 // v1.0.6 ロボごとの成績とランキング（Iron Squad の「武勲ランキング」の考え方: 項目ごとに 1 位＝MVP、上位 3 つに 🥇🥈🥉、総合の順位）。
 //   数えるのは見るだけ: sim.fx の記録と、1 step ごとの HP・荷物の差を読むだけで、sim には何も書かない（ハッシュは変わらない・フラグなしで動く）。
 //   数えるもの（本当に数えられるものだけ）:
@@ -86,14 +87,14 @@ export function createUnitStats({ nameOf = u => u.label || u.kind || '味方' } 
 }
 
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
-const who = r => `${r.human ? '🧑' : '🤖'}${esc(r.name)}${r.suit ? '<small>（スーツ）</small>' : ''}`;
+const who = r => `${r.human ? '🧑' : '🤖'}${robotNameHtml(r.name)}${r.suit ? '<small>（スーツ）</small>' : ''}`;
 
 /** 結果の画面と ☰ の「今の成績」で使う HTML（縦長のスマホで読めるよう、MVP の札と順位の行だけ） */
 export function statsHtml(sum, { title = 'ロボごとの成績' } = {}) {
   if (!sum.rows.length) return '';
   const chips = STAT_CATEGORIES.map(c => {
     const m = sum.mvp[c.id];
-    return `<li class="bc-st-chip${m ? '' : ' none'}"><span class="bc-st-ic">${c.icon}</span><span class="bc-st-lab">${c.short}MVP</span><span class="bc-st-n"><b>${m ? esc(m.name) : '—'}</b><span class="bc-st-val">${m ? `${m.value}${c.unit}` : ''}</span></span></li>`;
+    return `<li class="bc-st-chip${m ? '' : ' none'}"><span class="bc-st-ic">${c.icon}</span><span class="bc-st-lab">${c.short}MVP</span><span class="bc-st-n"><b>${m ? robotNameHtml(m.name) : '—'}</b><span class="bc-st-val">${m ? `${m.value}${c.unit}` : ''}</span></span></li>`;
   }).join('');
   const rows = sum.rows.map(r => {
     const medal = MEDALS[r.rank - 1] || `${r.rank}位`;

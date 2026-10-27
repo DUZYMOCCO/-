@@ -2,7 +2,7 @@
 // v0.4.0-dev: 部隊なし。味方は1機ずつ・人間は別枠（捕まる・助ける）
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createSim, runSim, stepSim, issueOrder, hashSim, missionStatus, groupUnits, groupSees, unitById, fieldCount, KINDS, TICK, FIELD_CAP } from '../js/sim/sim.js?v=28';
+import { createSim, runSim, stepSim, issueOrder, hashSim, missionStatus, groupUnits, groupSees, unitById, fieldCount, KINDS, TICK, FIELD_CAP } from '../js/sim/sim.js?v=29';
 import { MISSION_1, ALERT, FIND, CAPTURE } from '../js/sim/mission.js?v=10';
 import { reachable, tileAt, T, tileCenter } from '../js/sim/map.js?v=6';
 

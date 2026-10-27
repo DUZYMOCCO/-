@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { createSim, stepSim, hashSim, TICK } from '../js/sim/sim.js?v=28';
+import { createSim, stepSim, hashSim, TICK } from '../js/sim/sim.js?v=29';
 import { MISSION_1 } from '../js/sim/mission.js?v=10';
 import { createHpNumbers, popPose, stackOffset, DMG_LIFE, HP_SHOW_SEC, DMG_COLOR } from '../js/render/hp-numbers.js?v=2';
 

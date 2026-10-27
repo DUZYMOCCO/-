@@ -8,7 +8,7 @@ import { rasterArtSources, rideArtSources, nestArtSources, altMotionArtSources, 
 import { altMotion, DIVE_FPS, DIVE_FRAMES, torpedoDuration, UNDERWATER_BODY_ALPHA } from '../js/render/alt-motion-view.js?v=1';
 import { galleryLayout, GALLERY_IDS } from '../js/render/enemy-gallery.js?v=3';
 import { riderArtKey } from '../js/render/ride-view.js?v=7';
-import { spawnFxEvents, TORPEDO_WEAPON } from '../js/render/fx-events.js?v=15';
+import { spawnFxEvents, TORPEDO_WEAPON } from '../js/render/fx-events.js?v=16';
 import { ALT_SUBMERGED_WEAPON } from '../js/sim/alt-units.js?v=3';
 import { RIDE_MODE } from '../js/sim/ride.js?v=3';
 import { MISSION_1 } from '../js/sim/mission.js?v=10';

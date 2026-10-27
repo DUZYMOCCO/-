@@ -4,9 +4,48 @@
 // SVG + reference-based WebP art, baked once at boot.
 self.GAME_ASSETS = self.GAME_ASSETS || {};
 self.GAME_ASSETS['bot-commander'] = {
-  version: 'v47',
-  gameVersion: '1.0.8', // ハブのカードに表示する版（キャッシュ用 version とは別。リリース時に上げる）
+  version: 'v51',
+  gameVersion: '1.0.12', // ハブのカードに表示する版（キャッシュ用 version とは別。リリース時に上げる）
   files: [
+    'js/render/gfx6-view.js',
+    'assets/launcher/launcher.webp',
+    'assets/launcher/launcher_armed.webp',
+    'assets/launcher/launcher_build.webp',
+    'assets/launcher/launcher_fire.webp',
+    'assets/launcher/launcher_tow.webp',
+    'assets/launcher/missile_buried.webp',
+    'assets/launcher/missile_dug.webp',
+    'assets/launcher/missile_flight.webp',
+    'assets/launcher/missile_impact_0.webp',
+    'assets/launcher/missile_impact_1.webp',
+    'assets/launcher/missile_impact_2.webp',
+    'assets/launcher/missile_impact_3.webp',
+    'assets/launcher/missile_scorch.webp',
+    'assets/landmarks/icons/pickup-blueprint-ponco02.webp',
+    'assets/suit/suit-debris.webp',
+    'assets/portraits/SUIT_BOY/SUIT_BOY__neutral.webp',
+    'assets/portraits/SUIT_BOY/SUIT_BOY__serious.webp',
+    'assets/suit/suit_break.webp',
+    'assets/suit/suit_idle.webp',
+    'assets/suit/suit_shoot.webp',
+    'assets/suit/suit_walk_0.webp',
+    'assets/suit/suit_walk_1.webp',
+    'assets/landmarks/icons/core.webp',
+    'assets/enemies/G12_dig_0.webp',
+    'assets/enemies/G12_dig_1.webp',
+    'assets/enemies/G12_emerge_0.webp',
+    'assets/enemies/G12_emerge_1.webp',
+    'assets/enemies/G12_mound.webp',
+    'assets/landmarks/icons/pickup-core.webp',
+    'assets/landmarks/radio-tower-remains_v1.webp',
+    'assets/landmarks/radio-tower-remains_v1_damaged.webp',
+    'assets/result/result-success-ch2.webp',
+    'assets/result/result-success-ch3.webp',
+
+    'js/names/robot-names.js', // v1.0.9 ロボの固有の表示名
+    'js/audio/bgm-songs.js', // v1.0.9 荒野の BGM（曲のデータ・鳴らす仕組み・曲の選び方）
+    'js/audio/bgm-player.js',
+    'js/audio/bgm-mode.js',
     'js/story/story3-ops.js',
     'js/story/story-3.js',
     'js/story/chapters.js',

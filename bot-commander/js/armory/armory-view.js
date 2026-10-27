@@ -1,9 +1,10 @@
+import { robotNameOf, robotNameHtml, robotTextHtml } from '../names/robot-names.js?v=1';
 // 武器庫の画面（?armory=1）。出撃の前に、ロボット1機ずつの武器と修理・バリアの道具を選ぶ。計算は loadout.js（DOM なし）。
 // 一覧（12機）→ 1機の枠 → カードの一覧、の3つの画面を .bca の中で切りかえる。出撃で onDeploy(loadout) を呼ぶだけ（ミッションは index.js が始める）。
 // お試しの画面: 持っている武器の仕組みがまだないので、選べる物は全部出す（【仮】）。選んだ装備は localStorage の bc-armory-v1 に保存する。
 import { storage } from '../../../common/js/storage.js';
 import { loadCss } from '../../../common/js/load-css.js';
-import { KINDS, UNIT_CLASSES } from '../sim/sim.js?v=28';
+import { createSim, KINDS, UNIT_CLASSES } from '../sim/sim.js?v=29';
 import { MISSION_1 } from '../sim/mission.js?v=10';
 import { WEAPON_DROP } from '../sim/cover.js?v=8';
 import { KIND_WEAPON } from '../sim/weapons.js?v=7';
@@ -16,7 +17,7 @@ import {
 export const STORE_KEY = 'bc-armory-v1';
 const DATA_URL = new URL('../../assets/weapons/armory-data.json', import.meta.url).href;
 const imgUrl = name => new URL(`../../assets/weapons/${name}.webp`, import.meta.url).href;
-const CSS_URL = new URL('../../css/armory.css?v=2', import.meta.url).href;
+const CSS_URL = new URL('../../css/armory.css?v=3', import.meta.url).href;
 
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const SLOT_LABEL = { weapon: '武器', back: '背中', support: '修理・バリア' };
@@ -37,6 +38,9 @@ export async function openArmory(game, opts = {}) {
   const data = await (await fetch(DATA_URL)).json();
   const byId = new Map(data.weapons.map(r => [r.id, r]));
   const roster = buildRoster(MISSION_1, KINDS);
+  // 装備の保存キーは旧 label のまま。出撃と同じ条件で表示名だけをプレビュー。
+  const preview = createSim({ seed: opts.seed ?? 1, mapSeed: opts.mapSeed ?? 7, mission: MISSION_1 });
+  const displayName = u => robotNameOf(preview, preview.units.find(x => x.side === 'ally' && x.label === u.label));
   const it01Total = opts.it01 ? 1 : 0;
   let loadout = sanitizeLoadout(data, roster, (storage.get(STORE_KEY, null) || {}).loadout);
   const st = { screen: 'list', label: null, slotKind: null, index: 0, classOnly: true, type: '', stage: null, scroll: 0 };
@@ -81,7 +85,7 @@ export async function openArmory(game, opts = {}) {
       for (const k of ['weapon', 'back', 'support']) for (let i = 0; i < n[k]; i++) { const row = byId.get(e[k][i]), std = row ? null : stdRow(u, k, i); cells.push(thumb(row || std, `mini ${k}${std ? ' std' : ''}`)); }
       return `<button class="bca-row" data-a="unit" data-label="${esc(u.label)}">
         <span class="bca-mark c-${u.cls}">${esc(clsMark(u.cls))}</span>
-        <span class="bca-who"><b>${esc(u.label)}</b><small>${esc(clsName(u.cls))}</small></span>
+        <span class="bca-who"><b>${robotNameHtml(displayName(u))}</b><small>${esc(clsName(u.cls))}</small></span>
         <span class="bca-slots">${cells.join('')}</span></button>`;
     }).join('')}</div>`;
   }
@@ -103,7 +107,7 @@ export async function openArmory(game, opts = {}) {
   }
   function renderUnit() {
     const u = unitOf(st.label), e = entryOf(u), n = slotCounts(data, u.body, e.it01), s = data.SLOTS[u.body];
-    title.textContent = u.label;
+    title.innerHTML = robotNameHtml(displayName(u));
     backBtn.style.visibility = 'visible';
     foot.hidden = true;
     const slotBtn = (kind, index, label) => {
@@ -141,7 +145,7 @@ export async function openArmory(game, opts = {}) {
     if (st.type && !types.some(([t]) => t === st.type)) st.type = '';
     if (st.stage != null && !stages.includes(st.stage)) st.stage = null;
     const list = candidates(data, { slotKind: kind, cls: u.cls, classOnly: st.classOnly, type: st.type, stage: st.stage });
-    title.textContent = `${u.label}　${kind === 'weapon' ? `武器${st.index + 1}` : SLOT_LABEL[kind]}`;
+    title.innerHTML = robotTextHtml(`${displayName(u)}　${kind === 'weapon' ? `武器${st.index + 1}` : SLOT_LABEL[kind]}`);
     backBtn.style.visibility = 'visible';
     foot.hidden = true;
     const accepts = WEAPON_DROP.accepts[u.kind];

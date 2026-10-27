@@ -1,12 +1,12 @@
 // 記録と再生（js/sim/replay.js）。同じ seed・同じ命令（動いている時・一時停止中）を記録 → 再生で、毎 marks と end の hashSim・hashSimDeep が同じ。
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createSim, stepSim, hashSim, hashSimDeep, issueOrder, issueAttack, issueStance, issueStop, issueRetreat, applyCommandsNow } from '../js/sim/sim.js?v=28';
+import { createSim, stepSim, hashSim, hashSimDeep, issueOrder, issueAttack, issueStance, issueStop, issueRetreat, applyCommandsNow } from '../js/sim/sim.js?v=29';
 import { MISSION_1 } from '../js/sim/mission.js?v=10';
 import {
   createRecorder, openReplay, parseReplay, stringifyReplay, makeStart, packCommand, unpackCommand, deviceRecord, compareRecords,
   REPLAY_VERSION, MARK_EVERY,
-} from '../js/sim/replay.js?v=11';
+} from '../js/sim/replay.js?v=12';
 
 const robots = sim => sim.units.filter(u => u.side === 'ally' && !u.human).map(u => u.id);
 const enemies = sim => sim.units.filter(u => u.side === 'enemy').map(u => u.id);

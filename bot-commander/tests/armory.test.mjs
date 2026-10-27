@@ -10,7 +10,7 @@ import {
 } from '../js/armory/loadout.js?v=6';
 import { WEAPONS, weaponById } from '../js/sim/weapons.js?v=7';
 import { weaponMul, WEAPON_DROP } from '../js/sim/cover.js?v=8';
-import { createSim, runSim, hashSim, KINDS, UNIT_CLASSES } from '../js/sim/sim.js?v=28';
+import { createSim, runSim, hashSim, KINDS, UNIT_CLASSES } from '../js/sim/sim.js?v=29';
 import { MISSION_1 } from '../js/sim/mission.js?v=10';
 
 const HERE = dirname(fileURLToPath(import.meta.url));

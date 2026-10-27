@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { BAND, ALT, bandOf, unitBand, canHit, weaponTags, REACH, coverApplies, terrainDefApplies, altDistance, rangeVs,
   MOVE, MOVE_COST, DEFAULT_MOVES, moveCost, canMoveOn, settleZ, ALT_TEST_UNITS, carveDemoPond } from '../js/sim/altitude.js?v=1';
 import { ALT_DEMO_SETUP, ALT_DEMO_POND, altDemoMapEdit } from '../js/sim/altitude-demo.js?v=2';
-import * as S from '../js/sim/sim.js?v=28';
+import * as S from '../js/sim/sim.js?v=29';
 import * as M from '../js/sim/mission.js?v=10';
 import { generateMap, passable, costAt, nearestPassable, TERRAIN, T, tileAt, toTile, tileCenter } from '../js/sim/map.js?v=6';
 import { findPath } from '../js/sim/path.js?v=6';

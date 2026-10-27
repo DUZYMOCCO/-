@@ -1,11 +1,23 @@
 {
  "js/armory/armory-view.js": {
-  "v": 10,
-  "sha1": "4e5aa416f67c26cc7da257dcd987301814a78aac"
+  "v": 11,
+  "sha1": "2857214398c21e4b97d5d1e82252337f5d6436b7"
  },
  "js/armory/loadout.js": {
   "v": 6,
   "sha1": "7a8492243a0adc3e8c40ecff995ce7f804a458b1"
+ },
+ "js/audio/bgm-mode.js": {
+  "v": 1,
+  "sha1": "2eb6e5e68ae75074590522dfbc1314275944ff2d"
+ },
+ "js/audio/bgm-player.js": {
+  "v": 1,
+  "sha1": "06e4aa39c49df847f0236db1e236dd16c855cbe8"
+ },
+ "js/audio/bgm-songs.js": {
+  "v": 1,
+  "sha1": "da7ab553030a79a097cd162afef0a2b48ccc708b"
  },
  "js/dialog/dialog-all.js": {
   "v": 2,
@@ -16,8 +28,8 @@
   "sha1": "0d8463eaa0fbd7fc3ae2e3a450f455629b918613"
  },
  "js/dialog/dialog-demo.js": {
-  "v": 7,
-  "sha1": "163848cb92e5590f327fa4c7f62e32869f0f23b8"
+  "v": 9,
+  "sha1": "68930703a5eadbf1ba90eabcec56026bd55a8bb0"
  },
  "js/dialog/dialog-read.js": {
   "v": 1,
@@ -28,8 +40,8 @@
   "sha1": "2e30973f9284b824677b6e310be093cfc4dbb296"
  },
  "js/dialog/dialog-view.js": {
-  "v": 5,
-  "sha1": "a2e5a481214bdecf2388924bde9b2fca457c12b9"
+  "v": 7,
+  "sha1": "96374b6f49e2af6c73ed6f011adcdfaa080c22dd"
  },
  "js/dialog/portrait-layout.js": {
   "v": 1,
@@ -42,6 +54,10 @@
  "js/fx/react.js": {
   "v": 2,
   "sha1": "f6623c75b8e358efd963df8c874e9111a877b7e6"
+ },
+ "js/names/robot-names.js": {
+  "v": 1,
+  "sha1": "a7e5860a5c62b373aea8244add4f7a212a4407a8"
  },
  "js/render/alt-motion-view.js": {
   "v": 1,
@@ -60,8 +76,8 @@
   "sha1": "d582e19a52f1b2a71a19759aeb18955710db004f"
  },
  "js/render/char-demo.js": {
-  "v": 11,
-  "sha1": "7738ae7462f286b698acbf1262d69ba80c090c68"
+  "v": 12,
+  "sha1": "4c7899221a8e49f7288b7735e3008289ff2878b9"
  },
  "js/render/class-icons.js": {
   "v": 5,
@@ -76,8 +92,12 @@
   "sha1": "40a7448f73ee52bdba1c468356160b418c7dc2b2"
  },
  "js/render/fx-events.js": {
-  "v": 15,
-  "sha1": "dc995628fdb681c4a2ef51f97392dccfdd877f45"
+  "v": 16,
+  "sha1": "b425387534831a182f82e8036392b3a7e76c4de3"
+ },
+ "js/render/gfx6-view.js": {
+  "v": 4,
+  "sha1": "7660f6bfd6f9a76ad020b9e62f89eb06e7e5b09a"
  },
  "js/render/ground-edges.js": {
   "v": 2,
@@ -92,12 +112,12 @@
   "sha1": "c13534839c9d154c62a9cf8966e08de25ab40404"
  },
  "js/render/input.js": {
-  "v": 20,
-  "sha1": "3086dbef24150d4b0957ddcf6bbc797dd84af728"
+  "v": 21,
+  "sha1": "7f77a8a13fc95bf7052ae9c434ac6fc7bcce4ae9"
  },
  "js/render/launcher-view.js": {
-  "v": 4,
-  "sha1": "4b0d1f5cbcb7673ab1c5652cc6e0eecbc73c5d55"
+  "v": 9,
+  "sha1": "28badf5d6ba7bcb7c7621f931f204bed22ad9805"
  },
  "js/render/new-enemies-view.js": {
   "v": 2,
@@ -120,24 +140,24 @@
   "sha1": "df0c24017b1666162ea47079ca5746172a51d8da"
  },
  "js/render/renderer.js": {
-  "v": 41,
-  "sha1": "0ceeec03d6f1ca334b11874f8627f009148bb238"
+  "v": 46,
+  "sha1": "15aab37b9a3f36b19cc402401a34667beae8c2b0"
  },
  "js/render/ride-view.js": {
   "v": 7,
   "sha1": "3161f6cced6638817aab4a2051341f4e4493574c"
  },
  "js/render/story2-view.js": {
-  "v": 1,
-  "sha1": "41c976ebc58cd80fc2ffec2b8e79de049ef9e1d9"
+  "v": 2,
+  "sha1": "0d3e448ef3b23680a205d0938166361b8a678796"
  },
  "js/render/story3-view.js": {
   "v": 1,
   "sha1": "38ad219dc9f8271be04e643097c47237c4ecb258"
  },
  "js/render/strike-view.js": {
-  "v": 2,
-  "sha1": "839a62c915666ca31046181778ac7dfdebc40802"
+  "v": 3,
+  "sha1": "9c66fdc20e8197270764189cfd8f3855a0374ee0"
  },
  "js/render/textures.js": {
   "v": 11,
@@ -148,8 +168,8 @@
   "sha1": "9d7c6ecea74ea7421bc4004f3933f2f1224f458e"
  },
  "js/replay/replay-view.js": {
-  "v": 11,
-  "sha1": "7a9fefcb292822a40536685e59a478038d3be13c"
+  "v": 15,
+  "sha1": "1b2acbe876b34f07cb3e7f0dc6ac102d95441e50"
  },
  "js/save/records-view.js": {
   "v": 5,
@@ -216,12 +236,12 @@
   "sha1": "62141bdbec7779b882e25af995eb5fea48d780e4"
  },
  "js/sim/replay.js": {
-  "v": 11,
-  "sha1": "d6ac1448342840ec77d7b752aa282acfccc957a5"
+  "v": 15,
+  "sha1": "5403923f02c2b5a0fe70e44e5f1852f7815ed46c"
  },
  "js/sim/ride-demo.js": {
-  "v": 8,
-  "sha1": "0f8fc89e117fe372849274e6bc890c0a9d6dd9ee"
+  "v": 9,
+  "sha1": "c0677dbb505d71afcfab8c84845ba51c8654798e"
  },
  "js/sim/ride.js": {
   "v": 3,
@@ -240,8 +260,8 @@
   "sha1": "2dd5edfc2e941934f871cd7463f54b845c53e7d6"
  },
  "js/sim/sim.js": {
-  "v": 28,
-  "sha1": "137da33af38299d34fd5309e6abb72e25a176f85"
+  "v": 29,
+  "sha1": "49300777cfe5214bdfcf8663382c8d4c65e61082"
  },
  "js/sim/story2-rules.js": {
   "v": 2,
@@ -268,8 +288,8 @@
   "sha1": "d1280e8e091c07d43bef83c65f652e596a12294f"
  },
  "js/stats/unit-stats.js": {
-  "v": 2,
-  "sha1": "60dc8d8b2eddb7ec6257beb0d2f0cc32cb8af9d3"
+  "v": 3,
+  "sha1": "83524ccdb977f106ac617cded234301987aa4d32"
  },
  "js/story/chapters.js": {
   "v": 2,
@@ -312,12 +332,12 @@
   "sha1": "87959791a628f7e66b9e1d70403742148f1bd5bd"
  },
  "js/tutorial/tutorial-steps.js": {
-  "v": 8,
-  "sha1": "52182f4376647628d49203e2beb3a34e339b7e50"
+  "v": 9,
+  "sha1": "fbeb896250a568d5186f58badfdf9a7bfb470765"
  },
  "js/tutorial/tutorial.js": {
-  "v": 8,
-  "sha1": "28d52521b5c7c2a195c25493a70db0ab2d6e52fe"
+  "v": 9,
+  "sha1": "ceaff88d630f94bc1122110b24d1147692cedaaf"
  },
  "js/ui/back-confirm.js": {
   "v": 1,
@@ -332,16 +352,16 @@
   "sha1": "e2e0894546093eab55426bcddac326a5f1944414"
  },
  "js/ui/launcher-menu.js": {
-  "v": 5,
-  "sha1": "03c65c4513b04fa159fef0e09ea47e96fc32893c"
+  "v": 10,
+  "sha1": "9f9adbd08c031a283868cf2c83ff5b907b657faa"
  },
  "js/ui/powersuit-menu.js": {
-  "v": 3,
-  "sha1": "c5a6af441a66e8d78a7f968b0de74fb9332917a9"
+  "v": 4,
+  "sha1": "d9fd71e11a6d8bea5a3241170846891327a7c867"
  },
  "js/ui/ride-panel.js": {
-  "v": 8,
-  "sha1": "5b1ffa30154d65e192039ee295110ea6d6881b2f"
+  "v": 9,
+  "sha1": "df80565ac1694872843951c3f2ba9e4c18437b9f"
  },
  "js/ui/speed.js": {
   "v": 2,

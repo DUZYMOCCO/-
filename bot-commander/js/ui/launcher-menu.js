@@ -1,8 +1,9 @@
+import { robotNameOf } from '../names/robot-names.js?v=1';
 // 発射台（?launcher=1 の試作）の ☰ メニューの項目と、撃つ地点を選ぶ画面。地図の上にボタンは増やさない（☰ の中だけ）。
 // 決まり・計算は js/sim/launcher.js。ここは画面（DOM）と、出来事（sim.fx）を短い知らせにするところだけ。
 // ☰ は一時停止中なので、命令は applyNow（一時停止中の命令の入れ方）で入れる。
 import { loadCss } from '../../../common/js/load-css.js';
-import { unitById } from '../sim/sim.js?v=28';
+import { unitById } from '../sim/sim.js?v=29';
 import {
   LAUNCHER, LAUNCHER_MESSAGES, canBuild, canTow, canFire, launchersOf, issueLauncherBuild, issueLauncherHitch, issueLauncherUnhitch, issueLauncherFire,
 } from '../sim/launcher.js?v=4';
@@ -80,7 +81,7 @@ export function mountLauncherMenu({ root, sim, r, view, toast, menu, hooks }) {
     const res = issueLauncherHitch(sim, t.id);
     if (!res.ok) { toast(LAUNCHER_MESSAGES[res.reason] || LAUNCHER_MESSAGES.busy, 'warn'); return; }
     hit(); hooks.closeMenu();
-    toast(Math.hypot(t.x - free.x, t.y - free.y) > LAUNCHER.hitchRange ? `${t.label}が発射台へ向かいます` : `${t.label}が発射台をつなぎました`);
+    toast(Math.hypot(t.x - free.x, t.y - free.y) > LAUNCHER.hitchRange ? `${robotNameOf(sim, t)}が発射台へ向かいます` : `${robotNameOf(sim, t)}が発射台をつなぎました`);
   });
   btn.unhitch.addEventListener('click', () => {
     const t = selectedTowing()[0] || unitById(sim, towedLauncher()?.launch.towId);
@@ -165,7 +166,7 @@ export function mountLauncherMenu({ root, sim, r, view, toast, menu, hooks }) {
  */
 export async function mountLauncher(ctx) {
   await loadLauncherCss();
-  const { createLauncherView } = await import('../render/launcher-view.js?v=4');
+  const { createLauncherView } = await import('../render/launcher-view.js?v=9');
   const view = createLauncherView(ctx.r, ctx.sim);
   const menu = mountLauncherMenu({ ...ctx, view });
   return {

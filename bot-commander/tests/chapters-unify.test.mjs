@@ -5,8 +5,8 @@ import { CHAPTERS, stageForStory, chapterFlag, chaptersRequested, loadUnlocked, 
 import { newStoryState } from '../js/story/story-1.js?v=3';
 import { newStory2State } from '../js/story/story-2.js?v=2';
 import { newChapterStory } from '../js/story/chapters.js?v=2';
-import { createSim } from '../js/sim/sim.js?v=28';
-import { createRecorder, makeStart, openReplay, registerMission, createSimFromStart } from '../js/sim/replay.js?v=11';
+import { createSim } from '../js/sim/sim.js?v=29';
+import { createRecorder, makeStart, openReplay, registerMission, createSimFromStart } from '../js/sim/replay.js?v=12';
 import { issueAlight, issueBoard, RIDE_MODE } from '../js/sim/ride.js?v=3';
 
 for (const c of Object.values(CHAPTERS)) for (const st of Object.values(c.stages)) registerMission(st.mission);

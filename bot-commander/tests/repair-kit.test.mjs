@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createSim, stepSim, runSim, autoRepair, capsOf, maxKits, KINDS, TICK, UNIT_CLASS_CAPS,
   START_REPAIR_KITS, AUTO_REPAIR_HP_FRAC, REPAIR_KIT_HEAL_FRAC, MAX_CARRIED_KITS,
-  REPAIRER_MAX_KITS, REPAIRER_KIT_HEAL_FRAC, REPAIRER_HEAL_RANGE, REPAIRER_KIT_BUILD_SEC, REPAIRER_KIT_COST } from '../js/sim/sim.js?v=28';
+  REPAIRER_MAX_KITS, REPAIRER_KIT_HEAL_FRAC, REPAIRER_HEAL_RANGE, REPAIRER_KIT_BUILD_SEC, REPAIRER_KIT_COST } from '../js/sim/sim.js?v=29';
 import { MISSION_1 } from '../js/sim/mission.js?v=10';
 import { ITEMS } from '../js/sim/cover.js?v=8';
 

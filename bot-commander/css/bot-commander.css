@@ -148,3 +148,13 @@
 .bc-stats[hidden] { display: none; }
 .bc-stats-box { width: min(90%, 340px); max-height: 86%; overflow-y: auto; padding: 14px 12px; border: 3px solid var(--bc-ink); border-radius: 16px; background: #141a24; color: #f3f4f6; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 6px 0 #000a; }
 .bc-st-empty { margin: 0; font-size: 13px; text-align: center; opacity: .8; }
+
+/* 固有名: 長い一般名称を小さく、型番は全桁を表示。札やヒントも折り返す。 */
+.bc-robot-name { display: inline-flex; flex-wrap: wrap; align-items: baseline; column-gap: .25em; max-width: 100%; vertical-align: baseline; white-space: normal; }
+.bc-robot-common { overflow-wrap: anywhere; min-width: 0; }
+.bc-robot-name.long .bc-robot-common { font-size: .8em; }
+.bc-robot-code { flex: none; white-space: nowrap; }
+.bc-st-chip .bc-st-n, .bc-st-who { overflow: visible; white-space: normal; text-overflow: clip; min-width: 0; overflow-wrap: anywhere; }
+.bc-st-chip { grid-template-columns: auto minmax(0, 1fr); }
+.bc-st-row { grid-template-columns: 30px minmax(0, 1fr) auto; }
+.bc-bottom .bc-hint { max-height: none; overflow: visible; text-overflow: clip; }
