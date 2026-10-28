@@ -8,8 +8,8 @@ import * as THREE from '../vendor/three.module.min.js';
 import {
   WEAPONS, WEAPON_ORDER, SMOKE, useGauge, gunStats, laserHits, flameHits, castShot, damageAt, knockAt, groundHeight,
   addSmokeCloud, smokeAffects,
-} from './rules.js?v=35';
-import { makeSmokeCan } from './models.js?v=35';
+} from './rules.js?v=36';
+import { makeSmokeCan } from './models.js?v=36';
 
 const _o = new THREE.Vector3(), _d = new THREE.Vector3(), _e = new THREE.Vector3(), _p = new THREE.Vector3(), _m = new THREE.Vector3(), _c = new THREE.Vector3();
 const NO_Z = [];
@@ -162,7 +162,7 @@ export const EnergyMixin = {
       if (room < 24) continue;
       const dir = _e.set(0, 0, -1).applyQuaternion(this.camBaseQ);
       dir.y = Math.max(-0.3, dir.y + 0.05);
-      this.fx.burst(nz, 2, { color: 0xff8a18, color2: 0xffe060, speed: 11, up: 0.6, size: 0.3, life: 0.42 * R / w.range, gravity: -3, dir, spread: 0.1, grow: 2.2, drag: 1.6 });
+      this.fx.burst(nz, 2, { color: 0xff8a18, color2: 0xffe060, speed: 16, up: 0.6, size: 0.3, life: 0.42 * R / 7, gravity: -3, dir, spread: 0.16, grow: 2.2, drag: 1.6 });
     }
     g.tickT = (g.tickT || 0) - dt;
     if (g.tickT > 0) return;

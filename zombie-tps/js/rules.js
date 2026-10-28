@@ -1,7 +1,7 @@
 // ゾンビストライク — ゲームの きまり（DOM / three.js に いぞんしない。node のテストから よめる）
 // ぶき・ダメージ・ウェーブ・あたりはんてい（レイ×はこ）・いどうの ぶつかり・ゾンビの みちさがし（フローフィールド）
 
-export const VERSION = '0.27.0';
+export const VERSION = '0.28.0';
 
 // ---- ぶき ----
 // rpm: 1ぷんかんの はっしゃかず / mag: マガジン / reserve: よびだん / reload: びょう
@@ -90,15 +90,15 @@ export const WEAPONS = {
     gauge: 'heat', use: 0.085, regen: 0.55, regenDelay: 0.25, unlockAt: 0.7, pierce: 4, beamW: 0.3,
   },
   // かえんほうしゃき: ちかくの まえに ほのお（コーン）・もえて じわじわ ダメージ。dmg = 1びょうの ダメージ
-  // スーツの かえんほうしゃ より ちいさく よわい（ねんりょうが ある）
+  // スーツの かえんほうしゃ より いりょくが ひくい（ねんりょうが ある）
   flamer: {
     id: 'flamer', name: 'かえんほうしゃき', short: 'ほのお', slot: 10,
     dmg: 55, head: 1, pellets: 1, rpm: 600, auto: true,
     mag: 1, reserve: Infinity, reload: 0.1,
     spread: 0, spreadMove: 0, spreadAim: 0, bloom: 0, bloomMax: 0,
-    recoilPitch: 0, recoilYaw: 0, shake: 0.02, range: 7, falloff: [0, 1, 1], knock: 0.3,
+    recoilPitch: 0, recoilYaw: 0, shake: 0.02, range: 10, falloff: [0, 1, 1], knock: 0.3,
     gauge: 'fuel', drain: 0.2, regen: 0.3, regenDelay: 0.6, unlockAt: 0.3, stream: true,
-    cone: 0.38, tick: 0.1, burn: 2.5, burnDps: 18,
+    cone: 0.48, tick: 0.1, burn: 2.5, burnDps: 18,
   },
   // ビームじゅう: おしっぱなしで 0.6びょう ためて → ふとい ビームが でつづける（ながい あいだ ぜんぶ つらぬく）。dmg = 1びょうの ダメージ
   beam: {

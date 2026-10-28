@@ -237,7 +237,7 @@ test('なめらか いどう: approach は フレームレートに よらない
 });
 
 test('バージョン と セーブの ステージ', () => {
-  assert.equal(VERSION, '0.27.0');
+  assert.equal(VERSION, '0.28.0');
   assert.equal(normalizeSave(null).stage, 'day');
   assert.equal(normalizeSave({ stage: 'night' }).stage, 'night');
   assert.equal(normalizeSave({ stage: 'mars' }).stage, 'day');
@@ -2086,9 +2086,10 @@ test('v0.15.0 レーザー: いっしゅんで とどく・つらぬく・ねつ
 
 test('v0.15.0 かえんほうしゃき: ちかい コーン・もえる・ねんりょうは とめると もどる', () => {
   const w = WEAPONS.flamer;
-  assert.ok(w.range <= 9 && w.cone > 0.2 && w.burn > 0 && w.burnDps > 0 && w.burnDps < 35, 'スーツの ほのおより よわい');
-  const tgt = [{ x: 0, z: -4, alive: true }, { x: 0, z: -12, alive: true }, { x: 4, z: 0, alive: true }];
-  assert.deepEqual(flameHits(0, 0, 0, -1, tgt, w.range, w.cone).map((h) => h.i), [0]);
+  assert.ok(w.range === 10 && w.cone === 0.48 && w.burn > 0 && w.burnDps > 0 && w.burnDps < 35, '10mまで届き、威力はスーツより低い');
+  const tgt = [{ x: 0, z: -4, alive: true }, { x: 0, z: -9.5, alive: true }, { x: 4.47, z: -7.81, alive: true }, { x: 0, z: -11, alive: true }, { x: 4, z: 0, alive: true }];
+  assert.deepEqual(flameHits(0, 0, 0, -1, tgt, w.range, w.cone).map((h) => h.i), [0, 1, 2]);
+  assert.ok(!flameHits(0, 0, 0, -1, [tgt[2]], w.range, 0.38).length, '以前の角度より広い');
   const g = createGun('flamer');
   let t = 0; while (!g.lock && t < 30) { useGauge(g, true, 0.05); t += 0.05; }
   assert.ok(Math.abs(t - gaugeLasts(w)) < 0.2, 'ねんりょう ' + t.toFixed(2));

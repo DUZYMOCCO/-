@@ -6,8 +6,8 @@ import * as THREE from '../vendor/three.module.min.js';
 import {
   ROBOT, pickRobotSpot, robotTouched, damageRobot, robotStats, robotAddKill, groundHeight, edgeArrow,
   pickBotLine, formatBotLine,
-} from './rules.js?v=35';
-import { makePoliceRobot, ROBOT_CHUNKS } from './models.js?v=35';
+} from './rules.js?v=36';
+import { makePoliceRobot, ROBOT_CHUNKS } from './models.js?v=36';
 
 const _o = new THREE.Vector3(), _p = new THREE.Vector3();
 
