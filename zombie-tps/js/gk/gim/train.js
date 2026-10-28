@@ -2,7 +2,7 @@
 // せんろ（map.gk.trains）ごとに: まつ → よこく（せんろの ふちが あかく ちかちか・おと）→ でんしゃが とおる
 // とおる あいだ せんろに いると よこへ おされて すこし いたい。ゾンビも はねとばされる。いまの へやと となりの へやだけ うごく
 import * as THREE from '../../../vendor/three.module.min.js';
-import { TRAIN, trainNew, trainStep, trainSpan, trainHit, trainSide } from '../core.js?v=33';
+import { TRAIN, trainNew, trainStep, trainSpan, trainHit, trainSide } from '../core.js?v=34';
 
 export function create(game) {
   const grp = new THREE.Group(); game.scene.add(grp);

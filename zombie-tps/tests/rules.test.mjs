@@ -237,7 +237,7 @@ test('なめらか いどう: approach は フレームレートに よらない
 });
 
 test('バージョン と セーブの ステージ', () => {
-  assert.equal(VERSION, '0.25.0');
+  assert.equal(VERSION, '0.26.0');
   assert.equal(normalizeSave(null).stage, 'day');
   assert.equal(normalizeSave({ stage: 'night' }).stage, 'night');
   assert.equal(normalizeSave({ stage: 'mars' }).stage, 'day');
@@ -3058,4 +3058,18 @@ test('ショットガンは近距離で高い一撃を持ち、距離で威力�
   assert.ok(damageAt(w, 5, false) * w.pellets * 2 >= ZOMBIES.brute.hp);
   assert.ok(damageAt(w, 20, false) < damageAt(w, 5, false));
   assert.equal(w.knock, 1.1);
+});
+
+
+test('スナイパーはスコープ中のヘッドショットのみ10倍', () => {
+  const w = WEAPONS.sniper;
+  assert.equal(damageAt(w, 20, true, true), 1100);
+  assert.equal(damageAt(w, 20, true, false), 275);
+  assert.equal(damageAt(w, 20, false, true), 110);
+  assert.equal(damageAt(WEAPONS.rifle, 20, true, true), 60);
+  assert.equal(damageAt(w, 150, true, true), 935);
+  const upgraded = upgradedWeapon('sniper', 3);
+  assert.equal(damageAt(upgraded, 20, true, true), upgraded.dmg * 10);
+  assert.equal(R8.isScoped('sniper', R8.SCOPE.on - 0.01), false);
+  assert.equal(R8.isScoped('sniper', R8.SCOPE.on), true);
 });

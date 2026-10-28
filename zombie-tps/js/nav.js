@@ -3,7 +3,7 @@
 // - LayerNav: なんかいも ある たてもの・やね（かいだん・スロープを のぼる）
 //   マスごとに「たてる たかさ」（じめん＋はこの うえ）を もち、となりへ のぼれるか（だんさ ≤ step）／おりられるか で つなぐ。
 //   プレイヤーの いる ところから ぎゃくむきに BFS → ゾンビは きょりが へる ほうへ すすむ。
-import { buildGrid, updateFlow, flowDir, gridLineClear, cellOf, openCells } from './rules.js?v=33';
+import { buildGrid, updateFlow, flowDir, gridLineClear, cellOf, openCells } from './rules.js?v=34';
 
 export const NAV = { cell: 0.5, step: 0.33, drop: 4.6, head: 1.55, inflate: 0.3, far: 100000, near: 3.2 };
 

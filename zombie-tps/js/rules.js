@@ -1,7 +1,7 @@
 // ゾンビストライク — ゲームの きまり（DOM / three.js に いぞんしない。node のテストから よめる）
 // ぶき・ダメージ・ウェーブ・あたりはんてい（レイ×はこ）・いどうの ぶつかり・ゾンビの みちさがし（フローフィールド）
 
-export const VERSION = '0.25.0';
+export const VERSION = '0.26.0';
 
 // ---- ぶき ----
 // rpm: 1ぷんかんの はっしゃかず / mag: マガジン / reserve: よびだん / reload: びょう
@@ -54,7 +54,7 @@ export const WEAPONS = {
     mag: 5, reserve: 30, reload: 2.8,
     spread: 0.03, spreadMove: 0.05, spreadAim: 0.0004, bloom: 0, bloomMax: 0,
     recoilPitch: 0.05, recoilYaw: 0.008, shake: 0.12, range: 160, falloff: [70, 150, 0.85], knock: 1.3,
-    pierce: 2, pierceMul: 0.8, bolt: 0.9, scope: true,
+    pierce: 2, pierceMul: 0.8, bolt: 0.9, scope: true, scopeHead: 10,
   },
   // v0.9.0: マグナム（かくうの デザインの リボルバー）。おもい ハンドガン: 1ぱつが つよい（ハンドガンの やく 3ばい）・1たい つらぬく
   // ゆっくり（1びょうに 2はつ）・6はつ（シリンダー）・リロードは すこし ながい・はんどうが つよい。スコープ なし
@@ -372,11 +372,11 @@ export function stickCurve(x, y, dead = 0.12, expo = 1.5) {
 export function approach(v, t, rate, dt) { return t + (v - t) * Math.exp(-rate * dt); }
 
 // きょりで へる ダメージ（ちかいほど つよい）
-export function damageAt(w, dist, isHead) {
+export function damageAt(w, dist, isHead, scoped = false) {
   const [near, far, minMul] = w.falloff;
   let mul = 1;
   if (dist > near) mul = dist >= far ? minMul : 1 - (1 - minMul) * (dist - near) / (far - near);
-  return Math.round(w.dmg * mul * (isHead ? w.head : 1));
+  return Math.round(w.dmg * mul * (isHead ? (scoped && w.scopeHead ? w.scopeHead : w.head) : 1));
 }
 
 export function currentSpread(w, { moving = false, aiming = false, airborne = false, bloom = 0 } = {}) {
