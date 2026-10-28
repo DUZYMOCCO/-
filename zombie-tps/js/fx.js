@@ -1,7 +1,7 @@
 // こうか: マズルフラッシュ・トレーサー・やっきょう・つぶ（みどりの しぶき／けむり）・しみ（みどり）・だんこん
 import * as THREE from '../vendor/three.module.min.js';
-import { makeMagMesh } from './models.js?v=28';
-import { Pool } from './rules.js?v=28';
+import { makeMagMesh } from './models.js?v=29';
+import { Pool } from './rules.js?v=29';
 
 const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _s = new THREE.Vector3(), _p = new THREE.Vector3(), _c = new THREE.Color();
 const UP = new THREE.Vector3(0, 1, 0), FWD = new THREE.Vector3(0, 0, 1);
@@ -47,6 +47,13 @@ export class FX {
       this.booms.push({ sp, ring, life: 0, r: 1 });
     }
     this.bi = 0;
+    // Short, pooled contact flashes for bullets (no new geometry per hit).
+    this.impacts = [];
+    for (let i = 0; i < 8; i++) {
+      const m = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.flash, color: 0xd5ffb0, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending, depthWrite: false }));
+      m.visible = false; scene.add(m); this.impacts.push({ m, life: 0, max: 0.14, size: 0.4 });
+    }
+    this.impactIndex = 0;
     // やっきょう
     this.casingGeo = { rifle: new THREE.BoxGeometry(0.018, 0.018, 0.055), pistol: new THREE.BoxGeometry(0.016, 0.016, 0.03), shotgun: new THREE.BoxGeometry(0.03, 0.03, 0.07), sniper: new THREE.BoxGeometry(0.022, 0.022, 0.08) };
     this.casingMat = { rifle: new THREE.MeshLambertMaterial({ color: 0xd9a63c, emissive: 0x3a2a08 }), pistol: new THREE.MeshLambertMaterial({ color: 0xd9a63c, emissive: 0x3a2a08 }), shotgun: new THREE.MeshLambertMaterial({ color: 0xc0392b }) };
@@ -100,6 +107,13 @@ export class FX {
   // みどりの しぶき（ヒット）
   greenHit(pos, dir, head) {
     this.burst(pos, head ? 22 : 14, { color: 0x45c932, color2: 0xa6f26e, speed: head ? 2.8 : 2.2, up: 2.4, size: head ? 0.12 : 0.1, life: 0.6, dir, spread: 0.75 });
+  }
+  // A compact flash separates the moment of impact from the slower green particles.
+  bulletImpact(pos, head = false) {
+    const p = this.impacts[this.impactIndex++ % this.impacts.length];
+    p.m.position.copy(pos); p.m.material.color.setHex(head ? 0xffeb9c : 0xd7ffb6);
+    p.size = head ? 0.52 : 0.36; p.max = head ? 0.16 : 0.13; p.life = p.max;
+    p.m.scale.set(p.size, p.size, 1); p.m.material.opacity = 0.75; p.m.visible = true;
   }
   // ポン！と きえる（しんだ ゾンビ）
   poof(pos, scale = 1) {
@@ -292,6 +306,13 @@ export class FX {
       b.sp.scale.set(s, s, 1); b.sp.material.opacity = (1 - t) * (1 - t);
       b.sp.material.rotation = t * 0.6;
       const rs = b.r * (0.3 + t * 1.3); b.ring.scale.set(rs, 1, rs); b.ring.material.opacity = (1 - t) * 0.8;
+    }
+    for (const p of this.impacts) {
+      if (p.life <= 0) continue;
+      p.life -= dt;
+      if (p.life <= 0) { p.m.visible = false; continue; }
+      const k = p.life / p.max; p.m.material.opacity = 0.75 * k;
+      const size = p.size * (1 + (1 - k) * 0.3); p.m.scale.set(size, size, 1);
     }
     // やっきょう
     for (const c of this.casings) {

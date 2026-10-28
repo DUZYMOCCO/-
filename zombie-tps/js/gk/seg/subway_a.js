@@ -1,6 +1,6 @@
 // ステージ4「くらやみの ちかてつ」セグメント A（へや0 ホーム → へや1 せんろの トンネル）。かくうの えき
 // でぐち（x=32 の かべの ドア）で B に つながる。へや0・1 には でんしゃが よこぎる せんろ（trains）
-import { segWall, segOuter, segDoor, roomSpawns } from './kit.js?v=28';
+import { segWall, segOuter, segDoor, roomSpawns } from './kit.js?v=29';
 
 export const WALL = 0x4a525a, STEEL = 0x5a646e, RAIL = 0x9aa4ae, H = 3.8, DW = 4.4;
 export const THEME = { ground: 'concrete', tint: 0x2a3036, k: 0.35, far: 'office', farTint: 0x20262c };

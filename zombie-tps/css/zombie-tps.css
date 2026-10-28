@@ -41,7 +41,7 @@
 .zt-cross em { position: absolute; width: 3px; height: 3px; left: -1.5px; top: -1.5px; background: #fff; border-radius: 50%; box-shadow: 0 0 2px #000; }
 .zt-cross.target i, .zt-cross.target em { background: #ff5a3c; }
 .zt-hitm { position: absolute; left: 50%; top: 50%; width: 26px; height: 26px; margin: -13px 0 0 -13px; opacity: 0; }
-.zt-hitm::before, .zt-hitm::after { content: ''; position: absolute; left: 12px; top: -2px; width: 2px; height: 30px; background: linear-gradient(#fff 0 35%, transparent 35% 65%, #fff 65%); }
+.zt-hitm::before, .zt-hitm::after { content: ''; position: absolute; left: 12px; top: -2px; width: 2.5px; height: 30px; filter: drop-shadow(0 1px 2px #000); background: linear-gradient(#fff 0 35%, transparent 35% 65%, #fff 65%); }
 .zt-hitm::before { transform: rotate(45deg); } .zt-hitm::after { transform: rotate(-45deg); }
 .zt-hitm.on { animation: zt-hit .22s ease-out; }
 .zt-hitm.head::before, .zt-hitm.head::after { background: linear-gradient(#ffd23a 0 35%, transparent 35% 65%, #ffd23a 65%); }

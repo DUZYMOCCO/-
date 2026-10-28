@@ -237,7 +237,7 @@ test('なめらか いどう: approach は フレームレートに よらない
 });
 
 test('バージョン と セーブの ステージ', () => {
-  assert.equal(VERSION, '0.22.1');
+  assert.equal(VERSION, '0.22.2');
   assert.equal(normalizeSave(null).stage, 'day');
   assert.equal(normalizeSave({ stage: 'night' }).stage, 'night');
   assert.equal(normalizeSave({ stage: 'mars' }).stage, 'day');
@@ -3011,4 +3011,15 @@ test('せんしゃ: 生き残った敵は飛んだあと到達可能な場所に
   TankMixin.updateTankLiveFly.call(g,z,0.5); assert.ok(z.fly && z.x>10 && z.alive);
   TankMixin.updateTankLiveFly.call(g,z,1); assert.equal(z.fly,null); assert.equal(z.alive,true); assert.deepEqual([z.x,z.z],[30,1]);
   assert.equal(z.ramDropAt,null); assert.ok(z.y<=5);
+});
+
+
+test('着弾音: 連射時の音を制限し、ミュートを守る', async () => {
+  const { Sfx } = await import('../js/sfx.js'); const s=new Sfx(), calls=[];
+  s.ctx={currentTime:0}; s._tone=(...a)=>calls.push(['tone',...a]); s._noise=(...a)=>calls.push(['noise',...a]);
+  s.bulletHit(false); assert.equal(calls.length,2);
+  s.ctx.currentTime=0.03; s.bulletHit(false); assert.equal(calls.length,2);
+  s.ctx.currentTime=0.07; s.bulletHit(true); assert.equal(calls.length,5);
+  s.bulletSurface(); assert.equal(calls.length,7); s.ctx.currentTime=0.1; s.bulletSurface(); assert.equal(calls.length,7);
+  s.muted=true; s.ctx.currentTime=1; s.bulletHit(true); s.bulletSurface(); assert.equal(calls.length,7);
 });

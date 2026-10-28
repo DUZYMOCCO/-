@@ -5,8 +5,8 @@ import * as THREE from '../vendor/three.module.min.js';
 import {
   SUIT, SUIT_WEAPONS, SUIT_ORDER, powerupAppears, wearSuit, tickSuit, suitClockRuns, tickGrace, routeSuitDamage, suitNextWave, pickSuitSpot, suitTouched,
   flameHits, punchTargets, punchLaunch, burnTick, groundHeight, edgeArrow, castShot, castPierce, aabbNormal, WEAPON_ORDER,
-} from './rules.js?v=28';
-import { makePowerSuit, makeSuitShell, SUIT_CHUNKS } from './models.js?v=28';
+} from './rules.js?v=29';
+import { makePowerSuit, makeSuitShell, SUIT_CHUNKS } from './models.js?v=29';
 
 const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _c = new THREE.Vector3(), _d = new THREE.Vector3(), _e = new THREE.Vector3();
 const UP = new THREE.Vector3(0, 1, 0);
@@ -234,7 +234,7 @@ export const SuitMixin = {
     for (const zh of pr.hits) {
       const z = this.zombies[zh.index]; if (!z) continue;
       const zp = new THREE.Vector3(zh.x, zh.y, zh.z);
-      this.fx.greenHit(zp, dir, zh.head);
+      this.fx.greenHit(zp, dir, zh.head); this.fx.bulletImpact(zp, zh.head);
       any = true;
       if (this.hitZombie(z, W.dmg * zh.mul * (zh.head ? 1.6 : 1), zh.head, zp, dir, { knock: W.knock })) killed++;
     }
@@ -246,7 +246,8 @@ export const SuitMixin = {
       if (vb && vb.veh != null) this.hitVehicle(vb.veh, W.dmg, hp);
     } else if (hit.kind === 'ground') { this.fx.dust(hp, UP); this.fx.hole(hp, UP); }
     if (killed >= 2) this.multiKill(killed);
-    if (any) { this.hud.hitmarker(false); this.sfx.hit(false); }
+    if (any) { this.hud.hitmarker(false); this.sfx.bulletHit(false); }
+    else if (hit.kind === 'wall' || hit.kind === 'ground') this.sfx.bulletSurface();
     this.fx.muzzle(m.gunMuzzle, 1.7);
     this.sfx.shot('minigun');
     s.spin = 1;

@@ -1,5 +1,5 @@
 import * as THREE from '../vendor/three.module.min.js';
-import { TANK, SUIT, powerupAppears, pickSuitSpot, groundHeight, collideCircle, edgeArrow, castShot, tankRamHit, tickGrace, punchLaunch } from './rules.js?v=28';
+import { TANK, SUIT, powerupAppears, pickSuitSpot, groundHeight, collideCircle, edgeArrow, castShot, tankRamHit, tickGrace, punchLaunch } from './rules.js?v=29';
 
 const A=new THREE.Vector3(), B=new THREE.Vector3(), C=new THREE.Vector3();
 function makeTank(glowTex) {
@@ -73,8 +73,9 @@ export const TankMixin={
     if(t.weapon==='cannon'){this.suitCannon(W,this.tankM.cannonMuzzle);return;}
     const {o,d}=this.suitAimRay(),dir=this.suitAssist(o,d,W.range),hit=castShot(o.x,o.y,o.z,dir.x,dir.y,dir.z,this.zombies,this.sCol,W.range);
     const muzzle=this.tankM.mgMuzzle.getWorldPosition(A),hp=new THREE.Vector3(hit.x,hit.y,hit.z);this.fx.tracer(muzzle,hp);this.fx.muzzle(this.tankM.mgMuzzle,1.1);this.sfx.shot('minigun');
-    if(hit.kind==='zombie'){const z=this.zombies[hit.index];this.fx.greenHit(hp,dir,hit.head);this.hitZombie(z,W.dmg*(hit.head?1.6:1),hit.head,hp,dir,{knock:0.8});this.hud.hitmarker(hit.head);}
-    else if(hit.kind==='wall'){const box=this.sCol[hit.index];if(box?.veh!=null)this.hitVehicle(box.veh,W.dmg,hp);}
+    if(hit.kind==='zombie'){const z=this.zombies[hit.index];this.fx.greenHit(hp,dir,hit.head);this.fx.bulletImpact(hp,hit.head);this.sfx.bulletHit(hit.head);this.hitZombie(z,W.dmg*(hit.head?1.6:1),hit.head,hp,dir,{knock:0.8});this.hud.hitmarker(hit.head);}
+    else if(hit.kind==='wall'){this.sfx.bulletSurface();const box=this.sCol[hit.index];if(box?.veh!=null)this.hitVehicle(box.veh,W.dmg,hp);}
+    else if(hit.kind==='ground')this.sfx.bulletSurface();
   },
   tankRam(x0,z0,dt){
     if(!this.tank||dt<=0)return;const dx=this.pos.x-x0,dz=this.pos.z-z0,dist=Math.hypot(dx,dz);if(dist/dt<0.8)return;

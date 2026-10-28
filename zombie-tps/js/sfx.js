@@ -5,6 +5,7 @@ export class Sfx {
     if (this.ctx) { if (this.ctx.state === 'suspended') this.ctx.resume(); return; }
     const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
     const ctx = this.ctx = new AC();
+    this._bulletHitT = this._bulletSurfaceT = null;
     this.comp = ctx.createDynamicsCompressor();
     this.comp.threshold.value = -14; this.comp.ratio.value = 6; this.comp.attack.value = 0.002; this.comp.release.value = 0.12;
     this.master = ctx.createGain(); this.master.gain.value = this.muted ? 0 : 0.8;
@@ -138,6 +139,24 @@ export class Sfx {
     this._tone(t, 0.08, { f0: 260, f1: 90, gain: 0.35 });
     this._noise(t, 0.06, { type: 'lowpass', freq: 900, gain: 0.3 });
     if (head) { this._tone(t, 0.12, { f0: 1500, f1: 1400, gain: 0.18 }); this._tone(t + 0.04, 0.14, { f0: 2100, f1: 2000, gain: 0.12 }); }
+  }
+  // A brief contact sound, bounded during rapid fire. Headshots retain a higher cue.
+  bulletHit(head = false) {
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime;
+    if (this._bulletHitT != null && t - this._bulletHitT < 0.055) return;
+    this._bulletHitT = t;
+    this._tone(t, 0.085, { f0: head ? 360 : 220, f1: 70, gain: 0.38 });
+    this._noise(t, 0.065, { type: 'bandpass', freq: head ? 1900 : 1100, q: 0.9, gain: 0.36 });
+    if (head) this._tone(t, 0.10, { type: 'triangle', f0: 1650, f1: 1350, gain: 0.12 });
+  }
+  bulletSurface() {
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime;
+    if (this._bulletSurfaceT != null && t - this._bulletSurfaceT < 0.09) return;
+    this._bulletSurfaceT = t;
+    this._noise(t, 0.045, { type: 'bandpass', freq: 2100, q: 1.3, gain: 0.16 });
+    this._tone(t, 0.04, { f0: 360, f1: 140, gain: 0.12 });
   }
   poof() {
     if (!this.ctx || this.muted) return;

@@ -1,7 +1,7 @@
 // ステージ17 セグメント B（へや2 すてられた キャンプ → へや3 すなの ひろば・ボス）
 // いりぐち（z=34 の かべの ドア x=-6）は A の でぐちと おなじ ばしょ（edge:'in'）
-import { segWall, segOuter, segDoor, roomSpawns } from './kit.js?v=28';
-import { ROCK, ROCK2, SAND, H, DW, WH, DOOR, THEME, W, rock, cactus, bush, canyon } from './dawn_a.js?v=28';
+import { segWall, segOuter, segDoor, roomSpawns } from './kit.js?v=29';
+import { ROCK, ROCK2, SAND, H, DW, WH, DOOR, THEME, W, rock, cactus, bush, canyon } from './dawn_a.js?v=29';
 
 export function build(builder) {
   const B = builder(36, 1702), { add, deco } = B;
