@@ -1,7 +1,7 @@
 // ステージ2 セグメント B（へや2 しょくどう → へや3 しょさい）
 // いりぐち（z=12 の かべの ドア）は セグメント A の でぐちと おなじ ばしょ（edge:'in'）。でぐちは z=-34
-import { segWall, segOuter, segDoor, roomSpawns } from './kit.js?v=29';
-import { WALL, WOOD, GOLD, RUG, H, DW, THEME, candle, frame, doorCap, shelf, chandelier } from './manor_a.js?v=29';
+import { segWall, segOuter, segDoor, roomSpawns } from './kit.js?v=30';
+import { WALL, WOOD, GOLD, RUG, H, DW, THEME, candle, frame, doorCap, shelf, chandelier } from './manor_a.js?v=30';
 
 export function build(builder) {
   const B = builder(36, 2202), { add, deco } = B;

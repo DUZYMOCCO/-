@@ -237,7 +237,7 @@ test('なめらか いどう: approach は フレームレートに よらない
 });
 
 test('バージョン と セーブの ステージ', () => {
-  assert.equal(VERSION, '0.22.2');
+  assert.equal(VERSION, '0.23.0');
   assert.equal(normalizeSave(null).stage, 'day');
   assert.equal(normalizeSave({ stage: 'night' }).stage, 'night');
   assert.equal(normalizeSave({ stage: 'mars' }).stage, 'day');
@@ -1366,7 +1366,7 @@ test('ばくはつは ゾンビ だけ（じばく なし・なかま・おじ�
     assert.deepEqual(h.map((x) => x.t.id), ['z']);
     assert.ok(h.every((x) => x.t.team === 'zombie'));
   }
-  assert.ok(VEHICLE.blast > WEAPONS.rocket.blast, 'くるまの ばくはつは おおきい');
+  assert.equal(VEHICLE.blast, 6, 'くるまの ばくはつ範囲はそのまま');
   assert.ok(VEHICLE.shake <= 0.6 && VEHICLE.flash <= 0.6 && BLAST_FX.shake <= 0.6 && BLAST_FX.flash <= 0.6, 'ゆれ・ひかりは ひかえめ');
 });
 test('けいさつおじさん: ウェーブ3から・30%・つづけて こない', () => {
@@ -3022,4 +3022,14 @@ test('着弾音: 連射時の音を制限し、ミュートを守る', async () 
   s.ctx.currentTime=0.07; s.bulletHit(true); assert.equal(calls.length,5);
   s.bulletSurface(); assert.equal(calls.length,7); s.ctx.currentTime=0.1; s.bulletSurface(); assert.equal(calls.length,7);
   s.muted=true; s.ctx.currentTime=1; s.bulletHit(true); s.bulletSurface(); assert.equal(calls.length,7);
+});
+
+
+test('ロケット: 爆発半径1.5倍、基礎威力は維持', () => {
+  const w=WEAPONS.rocket; assert.equal(w.blast,4.5*1.5); assert.equal(w.dmg,260);
+  assert.equal(blastDamage(w,0),260); assert.equal(blastDamage(w,w.blast),0);
+  for (const d of [0,1.5,2.5,4,4.49]) assert.equal(blastDamage(w,d),Math.round(260*blastFalloff(d,4.5)), `従来範囲の威力 ${d}`);
+  assert.ok(blastDamage(w,5)>0, '以前の範囲外にも当たる');
+  assert.ok(blastDamage(w,5)>blastDamage(w,6), '広がった外側は距離で弱まる');
+  assert.equal(WEAPONS.mlauncher.blast,3.2); assert.equal(WEAPONS.mlauncher.dmg,95);
 });

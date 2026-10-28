@@ -1,7 +1,7 @@
 // ステージ5 セグメント B（3かい → 4かい）。いりぐち（z=12 の かべ）は A の でぐちと おなじ ばしょ
 // 3かい ゆか 6m、4かい ゆか 9m。でぐち（z=-36 の かべ）で C（おくじょう）に つながる
-import { segWall, segOuter, segDoor, roomSpawns } from './kit.js?v=29';
-import { WALL, STEEL, H, DW, THEME, SLAB, wallOpt, windowAt, banner, pillar, crates, torch } from './tower_a.js?v=29';
+import { segWall, segOuter, segDoor, roomSpawns } from './kit.js?v=30';
+import { WALL, STEEL, H, DW, THEME, SLAB, wallOpt, windowAt, banner, pillar, crates, torch } from './tower_a.js?v=30';
 
 export function build(builder) {
   const B = builder(36, 5102), { half } = B;

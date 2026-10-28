@@ -1,7 +1,7 @@
 // こうか: マズルフラッシュ・トレーサー・やっきょう・つぶ（みどりの しぶき／けむり）・しみ（みどり）・だんこん
 import * as THREE from '../vendor/three.module.min.js';
-import { makeMagMesh } from './models.js?v=29';
-import { Pool } from './rules.js?v=29';
+import { makeMagMesh } from './models.js?v=30';
+import { Pool } from './rules.js?v=30';
 
 const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _s = new THREE.Vector3(), _p = new THREE.Vector3(), _c = new THREE.Color();
 const UP = new THREE.Vector3(0, 1, 0), FWD = new THREE.Vector3(0, 0, 1);
@@ -47,6 +47,21 @@ export class FX {
       this.booms.push({ sp, ring, life: 0, r: 1 });
     }
     this.bi = 0;
+    // Rocket-only mushroom clouds. Two reusable groups bound the cost of rapid fire.
+    this.rocketClouds = [];
+    for (let i = 0; i < 2; i++) {
+      const group = new THREE.Group();
+      const smoke = new THREE.SpriteMaterial({ map: tex.smokePuff, color: 0xc0b7a8, transparent: true, opacity: 0.82, depthWrite: false });
+      const ember = new THREE.SpriteMaterial({ map: tex.flash, color: 0xffb14e, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false });
+      const puff = (mat,x,y,z,w,h) => { const p = new THREE.Sprite(mat); p.position.set(x,y,z); p.scale.set(w,h,1); group.add(p); };
+      // Stem, then an uneven, broad cap with layered smoke.
+      puff(smoke,0,0.65,0,2.1,2.0); puff(smoke,0.2,1.65,0,2.4,2.4); puff(smoke,-0.15,2.7,0,2.8,2.5);
+      for (const [x,y,z,w,h] of [[-2.2,4.0,0,3.1,2.5],[-1.2,4.55,-0.2,3.5,3.0],[0,4.8,0.2,4.0,3.2],[1.3,4.5,-0.1,3.5,3.0],[2.2,4.0,0,3.1,2.5],[0,3.7,0.45,4.6,2.8]]) puff(smoke,x,y,z,w,h);
+      puff(ember,0,2.0,0.1,3.2,4.5); puff(ember,0,4.2,0.2,5.6,2.8);
+      group.visible = false; scene.add(group);
+      this.rocketClouds.push({group,smoke,ember,life:0,max:1.9});
+    }
+    this.rocketCloudIndex = 0;
     // Short, pooled contact flashes for bullets (no new geometry per hit).
     this.impacts = [];
     for (let i = 0; i < 8; i++) {
@@ -144,6 +159,11 @@ export class FX {
     d.m.position.set(pos.x, this.groundAt(pos.x, pos.z, pos.y + 0.5) + 0.03, pos.z);
     d.m.quaternion.setFromUnitVectors(FWD, UP); d.m.scale.setScalar(radius * 0.75);
     d.life = d.max = 10; d.m.material.opacity = 0.8; d.m.visible = true;
+  }
+  rocketCloud(pos) {
+    const c = this.rocketClouds[this.rocketCloudIndex++ % this.rocketClouds.length];
+    c.group.position.copy(pos); c.group.scale.setScalar(0.25); c.group.visible = true;
+    c.life = c.max; c.smoke.opacity = 0.82; c.ember.opacity = 0.55;
   }
   // ロケットの けむりの すじ
   trail(pos, dir) {
@@ -306,6 +326,15 @@ export class FX {
       b.sp.scale.set(s, s, 1); b.sp.material.opacity = (1 - t) * (1 - t);
       b.sp.material.rotation = t * 0.6;
       const rs = b.r * (0.3 + t * 1.3); b.ring.scale.set(rs, 1, rs); b.ring.material.opacity = (1 - t) * 0.8;
+    }
+    for (const c of this.rocketClouds) {
+      if (c.life <= 0) continue;
+      c.life -= dt;
+      if (c.life <= 0) { c.group.visible = false; continue; }
+      const t = 1 - c.life / c.max, grow = 0.25 + 0.75 * Math.min(1, Math.sqrt(t * 2.4));
+      c.group.scale.setScalar(grow);
+      const fade = Math.min(1, c.life / 0.55);
+      c.smoke.opacity = 0.82 * fade; c.ember.opacity = 0.55 * Math.max(0, 1 - t * 2.3) * fade;
     }
     for (const p of this.impacts) {
       if (p.life <= 0) continue;

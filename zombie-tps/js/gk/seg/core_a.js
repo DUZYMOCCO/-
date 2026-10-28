@@ -1,7 +1,7 @@
 // v0.18.0: ステージ15「さいごの けんきゅうじょ」 セグメント A（へや0 さいごの いりぐち → へや1 びょうとうの ろうか）
 // よこに ならぶ 2へや。でぐちは x=36 の かべの ドア（z=0）。ガスの あな（vents）は ゆかの こうし
-import { segWall, segOuter, segDoor, roomSpawns } from './kit.js?v=29';
-import { bench, WALL, WHITE, STEEL, GOO, H, DW } from './lab_a.js?v=29';
+import { segWall, segOuter, segDoor, roomSpawns } from './kit.js?v=30';
+import { bench, WALL, WHITE, STEEL, GOO, H, DW } from './lab_a.js?v=30';
 export { WALL, STEEL, H, DW };
 export const THEME = { ground: 'concrete', tint: 0x4a6a5a, k: 0.35, far: 'hospital', farTint: 0x6a8a7a };
 // みどりの えきの タンク（c = えきの いろ）

@@ -332,6 +332,17 @@ export function fxTextures() {
     grd.addColorStop(0, 'rgba(255,255,255,1)'); grd.addColorStop(0.45, 'rgba(255,255,255,0.55)'); grd.addColorStop(1, 'rgba(255,255,255,0)');
     g.fillStyle = grd; g.fillRect(0, 0, 64, 64);
   }));
+  // Cloud silhouette, shared by all rocket smoke puffs.
+  const smokePuff = new THREE.CanvasTexture(makeCanvas(96, 96, (g) => {
+    g.clearRect(0, 0, 96, 96);
+    const blob = (x, y, rx, ry, color) => { g.fillStyle=color; g.beginPath(); g.ellipse(x,y,rx,ry,0,0,Math.PI*2); g.fill(); };
+    const parts=[[23,55,18,17],[34,38,18,18],[53,33,21,19],[71,48,18,18],[50,60,32,22]];
+    for (const [x,y,rx,ry] of parts) blob(x,y,rx+3,ry+3,'rgba(135,130,122,0.23)');
+    for (const [x,y,rx,ry] of parts) blob(x,y,rx,ry,'rgba(215,208,194,0.75)');
+    blob(34,40,13,11,'rgba(248,236,211,0.28)'); blob(60,34,14,10,'rgba(248,236,211,0.25)');
+    blob(49,68,25,10,'rgba(105,99,92,0.20)');
+  }));
+  smokePuff.colorSpace = THREE.SRGBColorSpace;
   // つき（ブロックっぽい）
   const moon = new THREE.CanvasTexture(makeCanvas(16, 16, (g) => {
     const r = rng(77);
@@ -351,5 +362,5 @@ export function fxTextures() {
     grd.addColorStop(0, h(cols[0])); grd.addColorStop(0.55, h(cols[1])); grd.addColorStop(0.75, h(cols[2])); grd.addColorStop(1, h(cols[3]));
     g.fillStyle = grd; g.fillRect(0, 0, 4, 128); skyTex.needsUpdate = true;
   };
-  return { flash, splats, hole, sky, nightSky, glow, moon, skyTex, drawSky };
+  return { flash, splats, hole, sky, nightSky, glow, smokePuff, moon, skyTex, drawSky };
 }

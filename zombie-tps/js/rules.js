@@ -1,7 +1,7 @@
 // ゾンビストライク — ゲームの きまり（DOM / three.js に いぞんしない。node のテストから よめる）
 // ぶき・ダメージ・ウェーブ・あたりはんてい（レイ×はこ）・いどうの ぶつかり・ゾンビの みちさがし（フローフィールド）
 
-export const VERSION = '0.22.2';
+export const VERSION = '0.23.0';
 
 // ---- ぶき ----
 // rpm: 1ぷんかんの はっしゃかず / mag: マガジン / reserve: よびだん / reload: びょう
@@ -35,7 +35,7 @@ export const WEAPONS = {
     mag: 1, reserve: 3, reload: 2.6,
     spread: 0.004, spreadMove: 0.012, spreadAim: 0.002, bloom: 0, bloomMax: 0,
     recoilPitch: 0.085, recoilYaw: 0.012, shake: 0.4, range: 90, falloff: [0, 1, 1], knock: 0,
-    projectile: true, speed: 34, blast: 4.5, power: 13, life: 3, noRefill: true,
+    projectile: true, speed: 34, blast: 6.75, damageRadius: 4.5, power: 13, life: 3, noRefill: true,
   },
   // ミニガン: おもい。うつまえに 0.5びょう まわして から、ものすごい はやさで うつ。うっている あいだは あるくのが おそい
   minigun: {
@@ -331,7 +331,16 @@ export function blastFalloff(d, radius) {
   return 1 - 0.75 * (d - core) / (radius - core);
 }
 // ばくはつの ダメージ
-export function blastDamage(w, d) { return Math.round(w.dmg * blastFalloff(d, w.blast)); }
+export function blastDamage(w, d) {
+  // Rocket: preserve the former damage at the same distance; fade out across the new outer ring.
+  if (w.damageRadius && w.damageRadius < w.blast) {
+    if (d >= w.blast) return 0;
+    const f = d < w.damageRadius ? blastFalloff(d, w.damageRadius)
+      : 0.25 * (w.blast - d) / (w.blast - w.damageRadius);
+    return Math.round(w.dmg * f);
+  }
+  return Math.round(w.dmg * blastFalloff(d, w.blast));
+}
 // ふっとぶ はやさ（たかく まいあがる）。dx,dz: ばくしん→ゾンビ
 export function launchVelocity(dx, dz, d, radius, power, rnd = 0.5) {
   const f = blastFalloff(d, radius);
