@@ -1,7 +1,7 @@
 // ゾンビストライク — ゲームの きまり（DOM / three.js に いぞんしない。node のテストから よめる）
 // ぶき・ダメージ・ウェーブ・あたりはんてい（レイ×はこ）・いどうの ぶつかり・ゾンビの みちさがし（フローフィールド）
 
-export const VERSION = '0.23.0';
+export const VERSION = '0.24.0';
 
 // ---- ぶき ----
 // rpm: 1ぷんかんの はっしゃかず / mag: マガジン / reserve: よびだん / reload: びょう
@@ -710,6 +710,27 @@ export function castShot(ox, oy, oz, dx, dy, dz, zombies, walls, range, skip = n
   }
   best.x = ox + dx * best.t; best.y = oy + dy * best.t; best.z = oz + dz * best.t;
   return best;
+}
+
+// Handgun: nearest visible enemy within 7m, even to the side or behind.
+// Body-centre aim avoids granting automatic headshots and uses the same shot/wall collision.
+export const HANDGUN_ASSIST_RANGE = 7;
+export function handgunAutoAim(px, py, pz, zombies, walls, range = HANDGUN_ASSIST_RANGE) {
+  const oy = py + 1.05, candidates = [], ignored = new Set();
+  for (let i = 0; i < zombies.length; i++) {
+    const z = zombies[i]; if (!z || !z.alive || z.demo) { if (z && z.demo) ignored.add(i); continue; }
+    const body = zombieBoxes(z).body;
+    const x = (body.minX + body.maxX) / 2, y = (body.minY + body.maxY) / 2, zz = (body.minZ + body.maxZ) / 2;
+    const dx = x-px, dy = y-oy, dz = zz-pz, dist = Math.hypot(dx,dy,dz);
+    if (dist > range || dist < 1e-5) continue;
+    candidates.push({ index:i, distance:dist, dx:dx/dist, dy:dy/dist, dz:dz/dist });
+  }
+  candidates.sort((a,b) => a.distance - b.distance || a.index - b.index);
+  for (const a of candidates) {
+    const hit = castShot(px,oy,pz,a.dx,a.dy,a.dz,zombies,walls,a.distance+0.01,ignored);
+    if (hit.kind === 'zombie' && hit.index === a.index) return a;
+  }
+  return null;
 }
 
 // v0.8.0: つらぬく たま。pierce たい まで ぬける（かべで とまる）。hits: [{ index, head, t, x, y, z, mul }]・end: さいごの あたり

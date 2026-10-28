@@ -3,7 +3,7 @@ import * as THREE from '../vendor/three.module.min.js';
 import {
   WEAPONS, WEAPON_ORDER, DEFAULT_WEAPON, ZOMBIES, ATTACK_RANGE, PLAYER_MAX_HP,
   createGun, updateGun, tryFire, startReload, cancelReload, damageAt, currentSpread,
-  waveSpec, waveQueue, killScore, castShot, aabbNormal, collideCircle, groundHeight, cameraDistance,
+  waveSpec, waveQueue, killScore, castShot, handgunAutoAim, aabbNormal, collideCircle, groundHeight, cameraDistance,
   buildGrid, updateFlow, flowDir, gridLineClear,
   blastDamage, blastFalloff, launchVelocity, knockAt, FLY_KNOCK, MAX_AIR, approach, refillReserve,
   TOD, timeOfDay, blendTod, mixColor as mixC, rollRocketDrop, addRocketAmmo, pickupVisible, PICKUP_LIFE, MAX_PICKUPS,
@@ -18,31 +18,31 @@ import {
   SpatialGrid, thinkInterval, QualityGovernor, govPixelRatio,
   normalizeLoadout, loadoutSlot, cycleLoadout, applyCrate, SMOKE, smokeAffects,
   rescueSample, rescuePick, rescueSpot, RESCUE,
-} from './rules.js?v=30';
-import { RIDE, ridePoint, createRideScene } from './ride.js?v=30';
-import { Crowd } from './crowd.js?v=30';
-import { RobotMixin } from './robot.js?v=30';
-import { AllyMixin } from './ally.js?v=30';
-import { GuestMixin } from './guests.js?v=30';
-import { CopMixin } from './cop.js?v=30';
-import { ArmyMixin } from './army.js?v=30';
-import { DrunkMixin } from './drunk.js?v=30';
+} from './rules.js?v=31';
+import { RIDE, ridePoint, createRideScene } from './ride.js?v=31';
+import { Crowd } from './crowd.js?v=31';
+import { RobotMixin } from './robot.js?v=31';
+import { AllyMixin } from './ally.js?v=31';
+import { GuestMixin } from './guests.js?v=31';
+import { CopMixin } from './cop.js?v=31';
+import { ArmyMixin } from './army.js?v=31';
+import { DrunkMixin } from './drunk.js?v=31';
 const BOT_NAME = { ao: 'アオ', momo: 'モモ', cop: 'けいさつおじさん', army: 'アーミーロボ', drunk: 'よっぱらいおじさん' }; // v0.14.0
-import { VehicleMixin } from './vehicles.js?v=30';
-import { SuitMixin } from './suit.js?v=30';
-import { TankMixin } from './tank.js?v=30';
-import { MissileMixin } from './missiles.js?v=30';
-import { MeleeMixin } from './melee.js?v=30';
-import { GkMixin } from './gk/play.js?v=30';
-import { StreamMixin } from './gk/stream.js?v=30';
-import { EnergyMixin } from './beams.js?v=30';
-import { makeNav } from './nav.js?v=30';
-import { buildMap, playerColliders, zombieColliders, shotColliders } from './map.js?v=30';
-import { buildTextures, fxTextures } from './textures.js?v=30';
-import { buildWorld, disposeWorld } from './world.js?v=30';
-import { Backdrop, BACKDROPS } from './backdrop.js?v=30';
-import { makePlayer, applyOutfit, applyGear, makeGearDrop, makeOjisan, makeWeapons, makeZombie, makeRocketProjectile, makeRocketCrate, zombieChunkColors, FLASH_MAT } from './models.js?v=30';
-import { FX } from './fx.js?v=30';
+import { VehicleMixin } from './vehicles.js?v=31';
+import { SuitMixin } from './suit.js?v=31';
+import { TankMixin } from './tank.js?v=31';
+import { MissileMixin } from './missiles.js?v=31';
+import { MeleeMixin } from './melee.js?v=31';
+import { GkMixin } from './gk/play.js?v=31';
+import { StreamMixin } from './gk/stream.js?v=31';
+import { EnergyMixin } from './beams.js?v=31';
+import { makeNav } from './nav.js?v=31';
+import { buildMap, playerColliders, zombieColliders, shotColliders } from './map.js?v=31';
+import { buildTextures, fxTextures } from './textures.js?v=31';
+import { buildWorld, disposeWorld } from './world.js?v=31';
+import { Backdrop, BACKDROPS } from './backdrop.js?v=31';
+import { makePlayer, applyOutfit, applyGear, makeGearDrop, makeOjisan, makeWeapons, makeZombie, makeRocketProjectile, makeRocketCrate, zombieChunkColors, FLASH_MAT } from './models.js?v=31';
+import { FX } from './fx.js?v=31';
 const A_RIGHT = new THREE.Vector3();
 
 const v3 = () => new THREE.Vector3();
@@ -178,7 +178,7 @@ export class Game {
   resetRun() {
     const s = this.map.playerStart;
     this.pos = new THREE.Vector3(s.x, s.y || 0, s.z); this.vy = 0; this.onGround = true;
-    this.yaw = this.yawT = s.yaw; this.pitch = this.pitchT = this.map.ride === 'airride' ? -0.32 : -0.05;
+    this.yaw = this.yawT = s.yaw; this.pitch = this.pitchT = this.map.ride === 'airride' ? -0.32 : -0.05; this.handgunPose = null;
     if (this.rideScene) { this.rideScene.time = 0; this.rideScene.angle = 0; if (this.map.ride) { const p = ridePoint(this.map.ride, 0); this.pos.set(p.x,p.y,p.z); } this.rideScene.update(0, this.pos); } this.recoilP = 0; this.recoilY = 0;
     this.resetMelee?.();
     this.vel = new THREE.Vector3(); this.follow = null; this.stepPh = 0; this.slowT = 0; this.hitstop = 0;
@@ -1439,7 +1439,15 @@ export class Game {
     const d = A.a.set(0, 0, -1).applyQuaternion(this.camBaseQ).normalize();
     // カメラと プレイヤーの あいだの かべに あたらない ように、プレイヤーの よこから うつ
     const o = A.b.copy(cam.position).addScaledVector(d, Math.max(0, A.c.copy(this.shoulder).sub(cam.position).dot(d)));
-    const spread = currentSpread(w, { moving: this.moveAmt > 0.2, aiming: this.aimAmt > 0.5, airborne: !this.onGround, bloom: gun.bloom });
+    const assist = id === 'pistol' ? handgunAutoAim(this.pos.x, this.pos.y, this.pos.z, this.zombies, this.sCol) : null;
+    if (assist) {
+      o.set(this.pos.x, this.pos.y + 1.05, this.pos.z); d.set(assist.dx, assist.dy, assist.dz);
+      // Turn only the character's pose toward the target; leave the camera and controls alone.
+      this.handgunPose = { yaw: Math.atan2(-assist.dx, -assist.dz), pitch: Math.asin(assist.dy), t: 0.22 };
+      this.p.root.rotation.y = this.handgunPose.yaw; this.p.aim.rotation.x = this.handgunPose.pitch;
+      this.p.root.updateMatrixWorld(true);
+    }
+    const spread = assist ? 0 : currentSpread(w, { moving: this.moveAmt > 0.2, aiming: this.aimAmt > 0.5, airborne: !this.onGround, bloom: gun.bloom });
     const wObj = this.weapons[id];
     const muzzle = wObj.muzzle.getWorldPosition(A.e);
     const right = A.d.set(Math.cos(this.yaw), 0, -Math.sin(this.yaw));
@@ -1820,7 +1828,11 @@ export class Game {
     }
     // ねらい
     this.aimAmt = lerp(this.aimAmt, inp.aim && !this.suit && !this.tank ? 1 : 0, Math.min(1, dt * 12));
-    const target = this.crosshairTarget();
+    let target = this.crosshairTarget();
+    if (this.settings.autoFire && this.cur === 'pistol' && !this.suit && !this.tank) {
+      const assist = handgunAutoAim(this.pos.x, this.pos.y, this.pos.z, this.zombies, this.sCol);
+      if (assist) target = assist.index;
+    }
     const slow = (target >= 0 ? 0.65 : 1) * (1 - this.aimAmt * 0.45) * aimSensMul(this.cur, this.aimAmt); // v0.8.0: スコープは もっと ゆっくり
     // しせん: めあての むきへ すこしだけ なめらかに（おくれない ていど）
     this.yawT -= inp.lx * slow; this.pitchT -= inp.ly * slow;
@@ -1972,7 +1984,9 @@ export class Game {
     const P = this.p, gun = this.guns[this.cur], w = gun.w || WEAPONS[this.cur], wo = this.weapons[this.cur];
     P.root.position.copy(this.pos);
     this.boat.visible = this.map.id === 'flood' && !this.suit && !this.tank;
-    P.root.rotation.y = this.yaw;
+    const autoPose = this.cur === 'pistol' && !this.suit && !this.tank && this.handgunPose?.t > 0 ? this.handgunPose : null;
+    if (this.handgunPose) this.handgunPose.t = Math.max(0, this.handgunPose.t - dt);
+    P.root.rotation.y = autoPose ? autoPose.yaw : this.yaw;
     if (wo.barrels) wo.barrels.rotation.z += (gun.spin || 0) * 42 * dt; // ミニガンの つつが まわる
     const sw = Math.sin(this.walkPhase) * this.moveAmt;
     P.legs[0].rotation.x = sw * 0.75; P.legs[1].rotation.x = -sw * 0.75;
@@ -1982,8 +1996,8 @@ export class Game {
     this.landT = Math.max(0, this.landT - dt);
     this.kick = Math.max(0, this.kick - dt * 14);
     const k = this.kick;
-    P.aim.rotation.x = this.pitch + k * 0.05;
-    P.headPivot.rotation.x = this.pitch * 0.4;
+    P.aim.rotation.x = (autoPose ? autoPose.pitch : this.pitch) + k * 0.05;
+    P.headPivot.rotation.x = (autoPose ? autoPose.pitch : this.pitch) * 0.4;
     const H = P.holder;
     H.position.set(0.3, 0.02, -0.34 + k * 0.08);
     H.rotation.set(0, 0, 0);

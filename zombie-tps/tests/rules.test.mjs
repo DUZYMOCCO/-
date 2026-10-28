@@ -237,7 +237,7 @@ test('なめらか いどう: approach は フレームレートに よらない
 });
 
 test('バージョン と セーブの ステージ', () => {
-  assert.equal(VERSION, '0.23.0');
+  assert.equal(VERSION, '0.24.0');
   assert.equal(normalizeSave(null).stage, 'day');
   assert.equal(normalizeSave({ stage: 'night' }).stage, 'night');
   assert.equal(normalizeSave({ stage: 'mars' }).stage, 'day');
@@ -3032,4 +3032,22 @@ test('ロケット: 爆発半径1.5倍、基礎威力は維持', () => {
   assert.ok(blastDamage(w,5)>0, '以前の範囲外にも当たる');
   assert.ok(blastDamage(w,5)>blastDamage(w,6), '広がった外側は距離で弱まる');
   assert.equal(WEAPONS.mlauncher.blast,3.2); assert.equal(WEAPONS.mlauncher.dmg,95);
+});
+
+
+test('ハンドガン近距離補助: 近くの見える敵を方向に関係なく選び、壁を越えない', async () => {
+  const { handgunAutoAim, HANDGUN_ASSIST_RANGE, castShot } = await import('../js/rules.js');
+  const z=(x,z,y=0,extra={})=>({x,y,z,kind:'walker',alive:true,scale:1,...extra});
+  const near=z(0,3), far=z(0,-6), dead=z(0,1,0,{alive:false}), demo=z(0,2,0,{demo:true});
+  let a=handgunAutoAim(0,0,0,[far,near,dead,demo],[]);
+  assert.equal(HANDGUN_ASSIST_RANGE,7); assert.equal(a.index,1, '後方でも近い敵');
+  const hit=castShot(0,1.05,0,a.dx,a.dy,a.dz,[far,near,dead],[],7);
+  assert.equal(hit.kind,'zombie'); assert.equal(hit.index,1); assert.equal(hit.head,false);
+  const wall={minX:-1,maxX:1,minY:0,maxY:3,minZ:1,maxZ:2};
+  a=handgunAutoAim(0,0,0,[far,near],[wall]); assert.equal(a.index,0, '壁越しを避け別の敵');
+  assert.equal(handgunAutoAim(0,0,0,[near],[wall]),null);
+  assert.equal(handgunAutoAim(0,0,0,[z(0,8)],[]),null);
+  assert.equal(handgunAutoAim(0,0,0,[z(0,1,8)],[]),null, '離れた階は対象外');
+  a=handgunAutoAim(0,0,0,[z(0,4,0,{kind:'crawler'})],[]);
+  assert.ok(a); assert.equal(castShot(0,1.05,0,a.dx,a.dy,a.dz,[z(0,4,0,{kind:'crawler'})],[],7).kind,'zombie');
 });
