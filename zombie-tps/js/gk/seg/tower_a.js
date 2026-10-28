@@ -1,6 +1,6 @@
 // ステージ5「あかい そらの とう」 セグメント A（とうの 1かい → 2かい）。かくうの とう
 // 1かいは じめん、2かいは ゆか 3m。2かいの いりぐちの うしろに スロープ。でぐち（z=12 の かべ）で B に つながる
-import { segWall, segOuter, segDoor, roomSpawns } from './kit.js?v=40';
+import { segWall, segOuter, segDoor, roomSpawns } from './kit.js?v=41';
 
 export const WALL = 0x5a4a60, STONE = 0x6e5e72, RED = 0x7a1a2a, STEEL = 0x4a4252, H = 3.8, DW = 4.4;
 export const THEME = { ground: 'concrete', tint: 0x8a2a2a, k: 0.45, far: 'rooftop', farTint: 0x6a3040 };

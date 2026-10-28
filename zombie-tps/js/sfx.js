@@ -151,6 +151,16 @@ export class Sfx {
     this._noise(t, 0.065, { type: 'bandpass', freq: head ? 1900 : 1100, q: 0.9, gain: 0.36 });
     if (head) this._tone(t, 0.10, { type: 'triangle', f0: 1650, f1: 1350, gain: 0.12 });
   }
+  // スナイパーの ヘッドショット: はじける しゅんかん + きんぞくの よいん
+  sniperHeadHit() {
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime + 0.025;
+    this._noise(t, 0.075, { type: 'highpass', freq: 2200, gain: 0.48 });
+    this._noise(t, 0.12, { type: 'bandpass', freq: 1550, q: 1.4, gain: 0.38 });
+    this._tone(t, 0.11, { f0: 480, f1: 110, gain: 0.32 });
+    this._tone(t, 0.32, { type: 'triangle', f0: 2400, f1: 2050, gain: 0.19 });
+    this._tone(t + 0.012, 0.25, { type: 'triangle', f0: 3350, f1: 2950, gain: 0.09 });
+  }
   // One heavier contact cue per shotgun blast, even when several pellets hit.
   shotgunHit(head = false) {
     if (!this.ctx || this.muted) return;

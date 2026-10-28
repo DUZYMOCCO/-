@@ -1,6 +1,6 @@
 // ステージ2「あかい そらの おやしき」 セグメント A（へや0 げんかん ホール → へや1 ながい ろうか）。かくうの やしき
 // でぐち（z=-24 の かべの ドア）で セグメント B に つながる
-import { segWall, segOuter, segDoor, roomSpawns } from './kit.js?v=40';
+import { segWall, segOuter, segDoor, roomSpawns } from './kit.js?v=41';
 
 export const WALL = 0x6a4a52, WOOD = 0x5a3a2a, GOLD = 0xb08a3a, RUG = 0x7a1a24, H = 3.8, DW = 4.4;
 export const THEME = { ground: 'plank', tint: 0x8a2a2a, k: 0.4, far: 'city', farTint: 0x6a3a3a };

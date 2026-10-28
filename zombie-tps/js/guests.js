@@ -1,7 +1,7 @@
 // Rare visitors from Gun Kick Heroes. Each is rolled independently once per run.
 import * as THREE from '../vendor/three.module.min.js';
-import { ROBOT, pickRobotSpot, robotTouched, groundHeight, damageAlly, edgeArrow } from './rules.js?v=40';
-import { makeGuestFighter } from './models.js?v=40';
+import { ROBOT, pickRobotSpot, robotTouched, groundHeight, damageAlly, edgeArrow } from './rules.js?v=41';
+import { makeGuestFighter } from './models.js?v=41';
 
 export const GUEST_CHANCE = 0.08;
 export const GUESTS = {

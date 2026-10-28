@@ -237,7 +237,7 @@ test('なめらか いどう: approach は フレームレートに よらない
 });
 
 test('バージョン と セーブの ステージ', () => {
-  assert.equal(VERSION, '0.31.1');
+  assert.equal(VERSION, '0.31.2');
   assert.equal(normalizeSave(null).stage, 'day');
   assert.equal(normalizeSave({ stage: 'night' }).stage, 'night');
   assert.equal(normalizeSave({ stage: 'mars' }).stage, 'day');
@@ -3022,7 +3022,8 @@ test('着弾音: 連射時の音を制限し、ミュートを守る', async () 
   s.ctx.currentTime=0.03; s.bulletHit(false); assert.equal(calls.length,2);
   s.ctx.currentTime=0.07; s.bulletHit(true); assert.equal(calls.length,5);
   s.bulletSurface(); assert.equal(calls.length,7); s.ctx.currentTime=0.1; s.bulletSurface(); assert.equal(calls.length,7);
-  s.muted=true; s.ctx.currentTime=1; s.bulletHit(true); s.bulletSurface(); assert.equal(calls.length,7);
+  s.sniperHeadHit(); assert.equal(calls.length,12);
+  s.muted=true; s.ctx.currentTime=1; s.bulletHit(true); s.bulletSurface(); s.sniperHeadHit(); assert.equal(calls.length,12);
 });
 
 
