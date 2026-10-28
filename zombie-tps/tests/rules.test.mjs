@@ -237,7 +237,7 @@ test('なめらか いどう: approach は フレームレートに よらない
 });
 
 test('バージョン と セーブの ステージ', () => {
-  assert.equal(VERSION, '0.31.2');
+  assert.equal(VERSION, '0.31.3');
   assert.equal(normalizeSave(null).stage, 'day');
   assert.equal(normalizeSave({ stage: 'night' }).stage, 'night');
   assert.equal(normalizeSave({ stage: 'mars' }).stage, 'day');
@@ -3141,4 +3141,24 @@ test('装備取得: 弱い物はすぐスコア化し、強い物は設定に従
   assert.equal(fullOn.bank, pickupRefund(worn)); assert.ok(fullOn.gear.inv.some(g => g.id === 'spare0'));
   const after = full.bank; collectGear(full, weak);
   assert.equal(full.bank - after, pickupRefund(weak)); assert.equal(full.gear.inv.length, INV_CAP);
+});
+
+test('乗り物: 装備と弾薬箱を自動取得し、歩ける電車は落とす', async () => {
+  const { Game } = await import('../js/game.js');
+  const received = [], notices = [];
+  const g = { map: { ride: 'minecart' }, loadout: ['rocket'], guns: { rocket: createGun('rocket') }, score: 0,
+    hud: { gearFound: item => received.push(item), kill: message => notices.push(message) }, sfx: { pickup() {} }, pushHud() {} };
+  g.guns.rocket.reserve = 5;
+  Game.prototype.spawnPickup.call(g, 100, 0, 100, 2);
+  assert.equal(g.guns.rocket.reserve, 6);
+  assert.equal(g.score, 150);
+  Game.prototype.spawnGear.call(g, 100, 0, 100, { id: 'gear' });
+  assert.deepEqual(received, [{ id: 'gear' }]);
+  for (const ride of ['roadride', 'airride']) {
+    g.map.ride = ride;
+    Game.prototype.spawnGear.call(g, 100, 0, 100, { id: ride });
+  }
+  assert.deepEqual(received.map(x => x.id), ['gear', 'roadride', 'airride']);
+  g.map = { specialStage: 'trainride' }; g.gearDrops = []; g.gearPool = { pop() { throw new Error('normal drop'); } };
+  assert.throws(() => Game.prototype.spawnGear.call(g, 0, 0, 0, { id: 'train' }), /normal drop/);
 });

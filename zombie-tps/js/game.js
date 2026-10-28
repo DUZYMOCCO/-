@@ -18,31 +18,31 @@ import {
   SpatialGrid, thinkInterval, QualityGovernor, govPixelRatio,
   normalizeLoadout, loadoutSlot, cycleLoadout, applyCrate, SMOKE, smokeAffects,
   rescueSample, rescuePick, rescueSpot, RESCUE,
-} from './rules.js?v=41';
-import { RIDE, ridePoint, createRideScene } from './ride.js?v=41';
-import { Crowd } from './crowd.js?v=41';
-import { RobotMixin } from './robot.js?v=41';
-import { AllyMixin } from './ally.js?v=41';
-import { GuestMixin } from './guests.js?v=41';
-import { CopMixin } from './cop.js?v=41';
-import { ArmyMixin } from './army.js?v=41';
-import { DrunkMixin } from './drunk.js?v=41';
+} from './rules.js?v=42';
+import { RIDE, ridePoint, createRideScene } from './ride.js?v=42';
+import { Crowd } from './crowd.js?v=42';
+import { RobotMixin } from './robot.js?v=42';
+import { AllyMixin } from './ally.js?v=42';
+import { GuestMixin } from './guests.js?v=42';
+import { CopMixin } from './cop.js?v=42';
+import { ArmyMixin } from './army.js?v=42';
+import { DrunkMixin } from './drunk.js?v=42';
 const BOT_NAME = { ao: 'アオ', momo: 'モモ', cop: 'けいさつおじさん', army: 'アーミーロボ', drunk: 'よっぱらいおじさん' }; // v0.14.0
-import { VehicleMixin } from './vehicles.js?v=41';
-import { SuitMixin } from './suit.js?v=41';
-import { TankMixin } from './tank.js?v=41';
-import { MissileMixin } from './missiles.js?v=41';
-import { MeleeMixin } from './melee.js?v=41';
-import { GkMixin } from './gk/play.js?v=41';
-import { StreamMixin } from './gk/stream.js?v=41';
-import { EnergyMixin } from './beams.js?v=41';
-import { makeNav } from './nav.js?v=41';
-import { buildMap, playerColliders, zombieColliders, shotColliders } from './map.js?v=41';
-import { buildTextures, fxTextures } from './textures.js?v=41';
-import { buildWorld, disposeWorld } from './world.js?v=41';
-import { Backdrop, BACKDROPS } from './backdrop.js?v=41';
-import { makePlayer, applyOutfit, applyGear, makeGearDrop, makeOjisan, makeWeapons, makeZombie, makeRocketProjectile, makeRocketCrate, zombieChunkColors, FLASH_MAT } from './models.js?v=41';
-import { FX } from './fx.js?v=41';
+import { VehicleMixin } from './vehicles.js?v=42';
+import { SuitMixin } from './suit.js?v=42';
+import { TankMixin } from './tank.js?v=42';
+import { MissileMixin } from './missiles.js?v=42';
+import { MeleeMixin } from './melee.js?v=42';
+import { GkMixin } from './gk/play.js?v=42';
+import { StreamMixin } from './gk/stream.js?v=42';
+import { EnergyMixin } from './beams.js?v=42';
+import { makeNav } from './nav.js?v=42';
+import { buildMap, playerColliders, zombieColliders, shotColliders } from './map.js?v=42';
+import { buildTextures, fxTextures } from './textures.js?v=42';
+import { buildWorld, disposeWorld } from './world.js?v=42';
+import { Backdrop, BACKDROPS } from './backdrop.js?v=42';
+import { makePlayer, applyOutfit, applyGear, makeGearDrop, makeOjisan, makeWeapons, makeZombie, makeRocketProjectile, makeRocketCrate, zombieChunkColors, FLASH_MAT } from './models.js?v=42';
+import { FX } from './fx.js?v=42';
 const A_RIGHT = new THREE.Vector3();
 
 const v3 = () => new THREE.Vector3();
@@ -1713,6 +1713,19 @@ export class Game {
 
   // ---- ロケットだんの はこ（ひろうと よびだん +1）----
   spawnPickup(x, y, z, n) {
+    // 自由に移動できない乗り物では、箱ごとに通常の報酬を自動取得する。
+    if (this.map.ride) {
+      for (let i = 0; i < n; i++) {
+        const r = applyCrate(this.loadout, this.guns, 1);
+        if (r.kind === 'score') this.score += r.n;
+        if (r.n > 0) {
+          this.hud.kill(r.kind === 'rocket' ? `ロケット +${r.n}` : r.kind === 'ammo' ? `${WEAPONS[r.id].short} +${r.n}` : `はこ: スコア +${r.n}`, true);
+          this.sfx.pickup?.();
+        }
+      }
+      this.pushHud(true);
+      return;
+    }
     while (this.pickups.length >= MAX_PICKUPS) this.releasePickup(this.pickups.shift());
     let pu = this.cratePool.pop();
     if (!pu) pu = { mdl: makeRocketCrate(this.fxTex.glow) };
@@ -1772,6 +1785,11 @@ export class Game {
     }
   }
   spawnGear(x, y, z, item) {
+    if (this.map.ride) {
+      this.hud.gearFound?.(item);
+      this.sfx.pickup?.();
+      return;
+    }
     while (this.gearDrops.length >= 3) this.releaseGear(this.gearDrops.shift());
     let gd = this.gearPool.pop();
     if (!gd) gd = { mdl: makeGearDrop(this.fxTex.glow) };
