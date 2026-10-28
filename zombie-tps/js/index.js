@@ -11,11 +11,11 @@ import { WEAPONS, WEAPON_ORDER, normalizeSave, SENS, VERSION, OUTFITS, outfitNam
   SLOT_UP, HP_UP, slotLevel, hpLevel, slotUpCost, hpUpCost, baseHpAt, slotBonus, buySlotUpgrade, buyHpUpgrade, GEAR_SLOT_IDS,
   SUIT_ORDER, SUIT_WEAPONS, suitLabel, SUIT,
   MELEE, MELEE_ORDER, MELEE_UP, meleeLevel, meleeUpCost, meleeStats, buyMelee, isMelee, DEFAULT_MELEE,
-  LOADOUT_SIZE, normalizeLoadout, toggleLoadout, loadoutReady, unlockedWeapons, upgradeRows, GAUGE_LABEL } from './rules.js?v=38';
-import { MAPS, mapInfo, registerMap, hasMap } from './map.js?v=38';
-import { recordGkClear } from './rules.js?v=38';
-import { GK_CATALOG, GK_WORLDS, GK_READY, isGkReady, gkMeta, gkNext, gkLoadStage, gkLoadMap, gkLoadSegs, gkLoadGims, gkLoadBoss, gkWaves, gkClearBonus } from './gk/core.js?v=38';
-import { segResume } from './gk/seg.js?v=38';
+  LOADOUT_SIZE, normalizeLoadout, toggleLoadout, loadoutReady, unlockedWeapons, upgradeRows, GAUGE_LABEL } from './rules.js?v=39';
+import { MAPS, mapInfo, registerMap, hasMap } from './map.js?v=39';
+import { recordGkClear } from './rules.js?v=39';
+import { GK_CATALOG, GK_WORLDS, GK_READY, isGkReady, gkMeta, gkNext, gkLoadStage, gkLoadMap, gkLoadSegs, gkLoadGims, gkLoadBoss, gkWaves, gkClearBonus } from './gk/core.js?v=39';
+import { segResume } from './gk/seg.js?v=39';
 
 const hex6 = (n) => '#' + n.toString(16).padStart(6, '0');
 // v0.7.0: がめんの そとを さす やじるしは ボタンに かぶらない たかさ（うえから 16%〜32%）
@@ -59,9 +59,9 @@ function totalsText(gear, save) {
   const parts = GEAR_STAT_IDS.filter((k) => t[k]).map((k) => `${GEAR_STATS[k].name} +${t[k]}${GEAR_STATS[k].unit}${t[k] >= GEAR_STATS[k].cap ? '（MAX）' : ''}`);
   return parts.length ? parts.join(' ・ ') : 'まだ なにも つけて いないよ';
 }
-import { Game } from './game.js?v=38';
-import { Input } from './input.js?v=38';
-import { Sfx } from './sfx.js?v=38';
+import { Game } from './game.js?v=39';
+import { Input } from './input.js?v=39';
+import { Sfx } from './sfx.js?v=39';
 
 // v0.7.0: ぶきの ちいさい アイコン（かくうの シルエット）
 const svgI = (d) => `<svg viewBox="0 0 32 16" aria-hidden="true">${d}</svg>`;
@@ -105,7 +105,7 @@ const OPT_CYCLE = { autoFire: [false, true], sens: ['low', 'mid', 'high'], quali
 
 export default {
   prepare() {
-    return loadCss(new URL('../css/zombie-tps.css?v=38', import.meta.url).href);
+    return loadCss(new URL('../css/zombie-tps.css?v=39', import.meta.url).href);
   },
 
   init(container, onBackToHub) {
@@ -160,6 +160,7 @@ export default {
             <div class="zt-wave"><b>ウェーブ 1</b><span>のこり 0</span></div>
             <div class="zt-score">スコア <b>0</b></div>
           </div>
+          <canvas class="zt-radar" width="120" height="120" aria-label="レーダー：周囲30メートルの敵"></canvas>
           <div class="zt-slots">${slots}</div>
           <div class="zt-suitbar">${sbtns}</div>
           <div class="zt-tankbar"><button class="zt-sbtn" data-act="w:tankmg" data-tank="mg"><b>1</b><i>🔫</i><span>マシンガン</span></button><button class="zt-sbtn" data-act="w:tankcannon" data-tank="cannon"><b>2</b><i>💥</i><span>しゅほう</span></button></div>
@@ -761,6 +762,7 @@ export default {
       oji: q('.zt-oji'), ojiTxt: q('.zt-ojitxt'), ojiHp: q('.zt-ojihp div'), ojiArrow: q('.zt-ojiarrow'), ojiArrowI: q('.zt-ojiarrow i'), ojiArrowT: q('.zt-ojiarrow span'),
     };
     const last = {};
+    const radar = q('.zt-radar').getContext('2d');
     const setText = (k, el, v) => { if (last[k] !== v) { last[k] = v; el.textContent = v; } };
     // v0.7.0: なかまの ロボ（まだ: なまえ＋やじるし／なかま: あたまの うえの HP と うえの アイコン）v0.14.0: けいさつ・アーミー きょうつう
     const botHud = (B, k, r) => {
@@ -789,6 +791,22 @@ export default {
       show: (w) => app.show(w),
       set: (s) => {
         const hpp = Math.max(0, s.hp / s.maxHp);
+        app.el('.zt-root').classList.toggle('zt-combat', !s.between);
+        // カメラの向きが上。30mより遠い敵は表示しない。
+        radar.clearRect(0, 0, 120, 120);
+        radar.strokeStyle = 'rgba(210,255,225,.25)'; radar.lineWidth = 1;
+        radar.beginPath(); radar.arc(60, 60, 55, 0, Math.PI * 2); radar.arc(60, 60, 27.5, 0, Math.PI * 2); radar.stroke();
+        const co = Math.cos(s.yaw), si = Math.sin(s.yaw);
+        for (const z of s.enemies) {
+          if (!z.alive) continue;
+          const dx = z.x - s.px, dz = z.z - s.pz;
+          if (dx * dx + dz * dz > 900) continue;
+          const x = 60 + (dx * co - dz * si) * 55 / 30;
+          const y = 60 + (dx * si + dz * co) * 55 / 30;
+          radar.fillStyle = z === s.boss ? '#ffcf67' : '#ff7770';
+          radar.beginPath(); radar.arc(x, y, z === s.boss ? 3.5 : 2.5, 0, Math.PI * 2); radar.fill();
+        }
+        radar.fillStyle = '#e8fff0'; radar.beginPath(); radar.moveTo(60, 54); radar.lineTo(56, 64); radar.lineTo(64, 64); radar.closePath(); radar.fill();
         if (last.hp !== s.hp) { last.hp = s.hp; E.hpBar.style.width = (hpp * 100).toFixed(1) + '%'; E.hpBar.classList.toggle('low', hpp < 0.35); E.hpNum.textContent = s.hp; }
         setText('wave', E.wave, s.area || (s.wave ? `ウェーブ ${s.wave}` : 'じゅんび'));
         setText('left', E.left, `のこり ${s.left}`);

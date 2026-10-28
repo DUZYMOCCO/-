@@ -512,3 +512,12 @@
 .zt-tankarrow { position:absolute; transform:translate(-50%,-50%); display:flex; flex-direction:column; align-items:center; pointer-events:none; }
 .zt-tankarrow i { color:#b5e779; font-size:26px; font-style:normal; }
 .hidden.zt-tanktag, .hidden.zt-tankarrow { display:none; }
+
+/* 戦闘中はプレイ画面を広く見せる */
+.zt-radar { position: absolute; top: calc(max(6px, env(safe-area-inset-top)) + 42px); left: max(8px, env(safe-area-inset-left)); width: 96px; height: 96px; border-radius: 50%; background: rgba(5, 20, 17, .25); pointer-events: none; }
+.zt-combat .zt-wave, .zt-combat .zt-score, .zt-combat .zt-keyhint { visibility: hidden; }
+.zt-combat .zt-btn, .zt-combat .zt-pause, .zt-combat .zt-chip, .zt-combat .zt-boticons { opacity: .5; }
+.zt-combat .zt-btn.on, .zt-combat .zt-aim.on, .zt-combat.zt-aimon .zt-aim { opacity: .85; }
+.zt-combat .zt-bot, .zt-combat .zt-cop, .zt-combat .zt-drunk { opacity: .65; }
+.zt-autoeq { left: calc(max(8px, env(safe-area-inset-left)) + 104px); } /* そうびの おしらせは レーダーの みぎに */
+@media (max-height: 400px) { .zt-radar { width: 76px; height: 76px; } .zt-autoeq { left: calc(max(8px, env(safe-area-inset-left)) + 84px); } }

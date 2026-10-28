@@ -1,6 +1,6 @@
 // ステージ18 セグメント C（へや4 ボスの へや）。いりぐち（z=18）は B の でぐちと おなじ ばしょ（edge:'in'）
-import { segWall, segDoor, roomSpawns } from './kit.js?v=38';
-import { WALL, STEEL, H, DW, THEME, ring, sdoors } from './doors_a.js?v=38';
+import { segWall, segDoor, roomSpawns } from './kit.js?v=39';
+import { WALL, STEEL, H, DW, THEME, ring, sdoors } from './doors_a.js?v=39';
 
 export function build(builder) {
   const B = builder(36, 1803), { deco } = B;
