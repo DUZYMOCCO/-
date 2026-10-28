@@ -200,8 +200,7 @@
 .zt-gcardin { flex: 1; padding: 4px 6px; background: rgba(0,0,0,.45); border-radius: 9px; }
 .zt-sbtns { display: flex; flex-direction: column; gap: 4px; }
 .zt-sbtns button, .zt-gbtns button { padding: 6px 10px; font-size: 12px; font-weight: 900; color: #fff; background: rgba(40,140,80,.75); border: 2px solid #9ff0b8; border-radius: 9px; }
-.zt-sbtns button[data-gearui=drop], .zt-gbtns button[data-gear=drop] { background: rgba(150,50,40,.7); border-color: #ffb0a0; }
-.zt-gbtns button[data-gear=keep] { background: rgba(40,90,150,.75); border-color: #a8d4ff; }
+.zt-sbtns button[data-gearui=drop] { background: rgba(150,50,40,.7); border-color: #ffb0a0; }
 .zt-gbtns button:disabled { opacity: .35; }
 .zt-gtop { display: flex; gap: 6px; align-items: center; }
 .zt-gtop b { font-size: 13px; }
@@ -212,23 +211,6 @@
 .zt-gstats em { margin-left: 2px; font-size: 10px; }
 .zt-gstats .up, .zt-gv.up { color: #7dff9a; } .zt-gstats .dn, .zt-gv.dn { color: #ff8a7a; }
 .zt-gv { font-size: 10px; margin-top: 1px; }
-/* ひろった ときの カード */
-.zt-gcard { --rc: #ddd; position: absolute; left: max(10px, env(safe-area-inset-left)); top: 50px; z-index: 6; width: 200px; padding: 6px 8px 7px; color: #fff;
-  background: rgba(10,14,24,.82); border: 2px solid var(--rc); border-radius: 12px; box-shadow: 0 0 14px color-mix(in srgb, var(--rc) 60%, transparent); }
-.zt-gcard.pop { animation: zt-gpop .35s ease-out; }
-@keyframes zt-gpop { 0% { transform: scale(.6) translateX(-30px); opacity: 0; } 100% { transform: none; opacity: 1; } }
-.zt-gcard[data-r=l] { animation: zt-gpop .35s ease-out, zt-legc 1s ease-in-out infinite alternate; }
-@keyframes zt-legc { to { box-shadow: 0 0 24px var(--rc); } }
-.zt-gnew { font-size: 10px; font-weight: 900; color: #ffe27a; }
-.zt-gfull { font-size: 10px; font-weight: 900; color: #ffb0a0; }
-.zt-gbtns { display: flex; gap: 4px; margin-top: 4px; }
-.zt-gbtns button { flex: 1; padding: 6px 2px; }
-.zt-gkey { font-size: 9px; color: #aab; margin-top: 2px; }
-@media (pointer: coarse) { .zt-gkey { display: none; } }
-.zt-gtime { height: 3px; margin-top: 4px; background: rgba(255,255,255,.15); border-radius: 2px; overflow: hidden; }
-.zt-gtime div { height: 100%; width: 100%; background: var(--rc); }
-.zt-gcard.zt-dim { display: none; }
-.zt-root:not(.zt-playing) .zt-gcard { display: none; }
 @media (max-height: 340px) { .zt-bagg { grid-template-columns: repeat(10, 1fr); gap: 2px; } .zt-sbox h2 { font-size: 18px; } .zt-sdet { min-height: 50px; } }
 
 /* v0.5.0: マップ えらび・じどう そうび・ミニガン */
@@ -245,13 +227,14 @@
 .zt-sauto [data-gearui=autotog] b { color: #ff9a7a; }
 .zt-sauto [data-gearui=autotog].sel { border-color: #7dff9a; }
 .zt-sauto [data-gearui=autotog].sel b { color: #7dff9a; }
-.zt-autoeq { --rc: #ddd; position: absolute; left: 50%; top: 74px; transform: translateX(-50%); z-index: 6; display: flex; align-items: center; gap: 6px; padding: 4px 10px 4px 5px; border-radius: 10px;
-  background: rgba(10,14,22,.82); border: 2px solid var(--rc); color: #fff; pointer-events: none; text-shadow: 0 1px 2px #000; }
-.zt-autoeq b { display: block; font-size: 12px; color: #7dff9a; }
-.zt-autoeq span { font-size: 10px; font-weight: 800; }
+.zt-autoeq { --rc: #ddd; position: absolute; left: max(12px, env(safe-area-inset-left)); top: 52px; z-index: 6; display: flex; align-items: center; gap: 6px;
+  width: 200px; max-width: calc(100% - 32px); box-sizing: border-box; padding: 4px 7px; border-radius: 8px; background: rgba(10,14,22,.78); border-left: 3px solid var(--rc);
+  color: #fff; pointer-events: none; text-shadow: 0 1px 2px #000; }
+.zt-autoeq > div { min-width: 0; }
+.zt-autoeq b { display: block; font-size: 11px; color: #d6efcf; }
+.zt-autoeq span { display: block; font-size: 10px; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.zt-autoeq .zt-gi { width: 24px; height: 24px; font-size: 13px; box-shadow: none; animation: none; }
 .zt-autoeq.hidden { display: none; }
-.zt-autoeq.pop { animation: zt-apop .35s ease-out; }
-@keyframes zt-apop { 0% { transform: translateX(-50%) scale(.6); opacity: 0; } 100% { transform: translateX(-50%); opacity: 1; } }
 
 /* v0.7.0: けいさつロボ（なまえ・HP・やじるし） */
 

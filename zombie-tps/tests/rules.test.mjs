@@ -237,7 +237,7 @@ test('なめらか いどう: approach は フレームレートに よらない
 });
 
 test('バージョン と セーブの ステージ', () => {
-  assert.equal(VERSION, '0.29.0');
+  assert.equal(VERSION, '0.30.0');
   assert.equal(normalizeSave(null).stage, 'day');
   assert.equal(normalizeSave({ stage: 'night' }).stage, 'night');
   assert.equal(normalizeSave({ stage: 'mars' }).stage, 'day');
@@ -2044,7 +2044,7 @@ test('v0.14 ファイル: army.js・drunk.js が キャッシュに ある', asy
   const root = path.dirname(path.dirname(url.fileURLToPath(import.meta.url)));
   const sw = fs.readFileSync(path.join(root, 'sw-assets.js'), 'utf8');
   for (const f of ['js/army.js', 'js/drunk.js']) { assert.ok(sw.includes(f), f); assert.ok(fs.existsSync(path.join(root, f))); }
-  assert.match(sw, /0\.(?:1[5-9]|2\d)\.\d/); assert.ok(sw.includes('js/beams.js') && fs.existsSync(path.join(root, 'js/beams.js')), 'v0.15.0: beams.js');
+  assert.ok(sw.includes(`gameVersion: '${VERSION}'`)); assert.ok(sw.includes('js/beams.js') && fs.existsSync(path.join(root, 'js/beams.js')), 'v0.15.0: beams.js');
   const dr = fs.readFileSync(path.join(root, 'js/drunk.js'), 'utf8');
   assert.ok(dr.includes('drunkShouldCome') && dr.includes('planCop') && !dr.includes('uncleForWave'));
 });
@@ -3104,4 +3104,40 @@ test('増援は序盤を維持し、同時48体・総数180体に収まり、重
   assert.equal(g.capFor(48), 48);
   g.level = 4; assert.equal(g.capFor(48), 32);
   g.level = 5; assert.equal(g.capFor(48), 26);
+});
+
+
+import { collectGear, gearRefund as pickupRefund } from '../js/rules.js';
+test('装備取得: 弱い物はすぐスコア化し、強い物は設定に従い、装備中の物を守る', () => {
+  const worn = G('head', 'r', { def: 8 }, 'worn');
+  const make = (autoEquip = true) => ({ autoEquip, bank: 0, gear: { inv: [worn], eq: { head: worn.id, body: null, feet: null, arm: null } } });
+  const weak = G('head', 'n', { def: 2 }, 'weak');
+  for (const auto of [true, false]) {
+    const save = make(auto), r = collectGear(save, weak);
+    assert.equal(r.action, 'recycled'); assert.equal(save.bank, pickupRefund(weak));
+    assert.deepEqual(save.gear.inv, [worn]); assert.equal(save.gear.eq.head, worn.id);
+  }
+  const strong = G('head', 'sr', { def: 12 }, 'strong');
+  const on = make(), r = collectGear(on, strong);
+  assert.equal(r.action, 'equipped'); assert.equal(on.gear.eq.head, strong.id);
+  assert.equal(on.bank, pickupRefund(worn)); assert.deepEqual(on.gear.inv, [strong]);
+  const off = make(false); assert.equal(collectGear(off, strong).action, 'stored');
+  assert.equal(off.gear.eq.head, worn.id); assert.equal(off.gear.inv.length, 2); assert.equal(off.bank, 0);
+  const same = G('head', 'r', { def: 8 }, 'same');
+  assert.equal(collectGear(off, same).action, 'stored');
+  assert.equal(collectGear(off, worn).action, 'owned'); assert.equal(off.bank, 0);
+  const full = make(false);
+  for (let i = 0; i < INV_CAP - 1; i++) full.gear.inv.push(G('arm', 'n', { rel: i === 0 ? 1 : 5 }, 'loose' + i));
+  const discarded = full.gear.inv[1], feet = G('feet', 'r', { spd: 4 }, 'newfeet');
+  assert.equal(collectGear(full, feet).action, 'stored');
+  assert.equal(full.gear.inv.length, INV_CAP); assert.equal(full.bank, pickupRefund(discarded));
+  assert.ok(full.gear.inv.some(g => g.id === worn.id)); assert.ok(full.gear.inv.some(g => g.id === feet.id));
+  assert.ok(!full.gear.inv.some(g => g.id === discarded.id));
+  const fullOn = make(true);
+  for (let i = 0; i < INV_CAP - 1; i++) fullOn.gear.inv.push(G('arm', 'r', { rel: 5 }, 'spare' + i));
+  const upgrade = collectGear(fullOn, strong);
+  assert.equal(upgrade.action, 'equipped'); assert.equal(fullOn.gear.inv.length, INV_CAP);
+  assert.equal(fullOn.bank, pickupRefund(worn)); assert.ok(fullOn.gear.inv.some(g => g.id === 'spare0'));
+  const after = full.bank; collectGear(full, weak);
+  assert.equal(full.bank - after, pickupRefund(weak)); assert.equal(full.gear.inv.length, INV_CAP);
 });

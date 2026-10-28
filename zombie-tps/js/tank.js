@@ -1,5 +1,5 @@
 import * as THREE from '../vendor/three.module.min.js';
-import { TANK, SUIT, powerupAppears, pickSuitSpot, groundHeight, collideCircle, edgeArrow, castShot, tankRamHit, tickGrace, punchLaunch } from './rules.js?v=37';
+import { TANK, SUIT, powerupAppears, pickSuitSpot, groundHeight, collideCircle, edgeArrow, castShot, tankRamHit, tickGrace, punchLaunch } from './rules.js?v=38';
 
 const A=new THREE.Vector3(), B=new THREE.Vector3(), C=new THREE.Vector3();
 function makeTank(glowTex) {

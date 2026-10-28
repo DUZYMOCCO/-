@@ -6,16 +6,16 @@ import { loadCss } from '../../common/js/load-css.js';
 import { storage } from '../../common/js/storage.js';
 import { WEAPONS, WEAPON_ORDER, normalizeSave, SENS, VERSION, OUTFITS, outfitName, unlockOutfit,
   GEAR_SLOTS, GEAR_STATS, GEAR_STAT_IDS, INV_CAP, rarityOf, gearColor, gearName, gearScore, gearAction, gearEffects, equippedItems,
-  autoEquipBest, equipGain, autoPickup, bestLoadout, pickMapId, MAP_IDS,
-  UPGRADE, upgradeCost, upgradedWeapon, weaponLevel, buyUpgrade, earnBank, gearRefund, discardGear, isWorn, needsDropConfirm, weakestLoose,
+  autoEquipBest, equipGain, collectGear, bestLoadout, pickMapId, MAP_IDS,
+  UPGRADE, upgradeCost, upgradedWeapon, weaponLevel, buyUpgrade, earnBank, gearRefund, discardGear, isWorn, needsDropConfirm,
   SLOT_UP, HP_UP, slotLevel, hpLevel, slotUpCost, hpUpCost, baseHpAt, slotBonus, buySlotUpgrade, buyHpUpgrade, GEAR_SLOT_IDS,
   SUIT_ORDER, SUIT_WEAPONS, suitLabel, SUIT,
   MELEE, MELEE_ORDER, MELEE_UP, meleeLevel, meleeUpCost, meleeStats, buyMelee, isMelee, DEFAULT_MELEE,
-  LOADOUT_SIZE, normalizeLoadout, toggleLoadout, loadoutReady, unlockedWeapons, upgradeRows, GAUGE_LABEL } from './rules.js?v=37';
-import { MAPS, mapInfo, registerMap, hasMap } from './map.js?v=37';
-import { recordGkClear } from './rules.js?v=37';
-import { GK_CATALOG, GK_WORLDS, GK_READY, isGkReady, gkMeta, gkNext, gkLoadStage, gkLoadMap, gkLoadSegs, gkLoadGims, gkLoadBoss, gkWaves, gkClearBonus } from './gk/core.js?v=37';
-import { segResume } from './gk/seg.js?v=37';
+  LOADOUT_SIZE, normalizeLoadout, toggleLoadout, loadoutReady, unlockedWeapons, upgradeRows, GAUGE_LABEL } from './rules.js?v=38';
+import { MAPS, mapInfo, registerMap, hasMap } from './map.js?v=38';
+import { recordGkClear } from './rules.js?v=38';
+import { GK_CATALOG, GK_WORLDS, GK_READY, isGkReady, gkMeta, gkNext, gkLoadStage, gkLoadMap, gkLoadSegs, gkLoadGims, gkLoadBoss, gkWaves, gkClearBonus } from './gk/core.js?v=38';
+import { segResume } from './gk/seg.js?v=38';
 
 const hex6 = (n) => '#' + n.toString(16).padStart(6, '0');
 // v0.7.0: がめんの そとを さす やじるしは ボタンに かぶらない たかさ（うえから 16%〜32%）
@@ -59,9 +59,9 @@ function totalsText(gear, save) {
   const parts = GEAR_STAT_IDS.filter((k) => t[k]).map((k) => `${GEAR_STATS[k].name} +${t[k]}${GEAR_STATS[k].unit}${t[k] >= GEAR_STATS[k].cap ? '（MAX）' : ''}`);
   return parts.length ? parts.join(' ・ ') : 'まだ なにも つけて いないよ';
 }
-import { Game } from './game.js?v=37';
-import { Input } from './input.js?v=37';
-import { Sfx } from './sfx.js?v=37';
+import { Game } from './game.js?v=38';
+import { Input } from './input.js?v=38';
+import { Sfx } from './sfx.js?v=38';
 
 // v0.7.0: ぶきの ちいさい アイコン（かくうの シルエット）
 const svgI = (d) => `<svg viewBox="0 0 32 16" aria-hidden="true">${d}</svg>`;
@@ -105,7 +105,7 @@ const OPT_CYCLE = { autoFire: [false, true], sens: ['low', 'mid', 'high'], quali
 
 export default {
   prepare() {
-    return loadCss(new URL('../css/zombie-tps.css?v=37', import.meta.url).href);
+    return loadCss(new URL('../css/zombie-tps.css?v=38', import.meta.url).href);
   },
 
   init(container, onBackToHub) {
@@ -277,15 +277,6 @@ export default {
 
       <div class="zt-refund hidden"></div>
       <div class="zt-autoeq hidden"><i></i><div><b>じどう そうび！</b><span></span></div></div>
-      <div class="zt-gcard hidden">
-        <div class="zt-gnew">そうびを ひろった！</div>
-        <div class="zt-gbody"></div>
-        <div class="zt-gfull hidden">かばんが いっぱい（${INV_CAP}こ）</div>
-        <div class="zt-gbtns"><button data-gear="equip">そうび</button><button data-gear="keep">しまう</button><button data-gear="drop">すてる</button></div>
-        <div class="zt-gkey">E そうび ・ G すてる</div>
-        <div class="zt-gtime"><div></div></div>
-      </div>
-
       <div class="zt-screen zt-pausescr hidden">
         <div class="zt-panel">
           <h2>ポーズ</h2>
@@ -521,88 +512,27 @@ export default {
     if (this.game) { this.game.settings = this.save; this.game.refreshGear(); this.game.setOutfit(this.save.outfit, act === 'equip'); }
     this.sfx.swap();
   },
-  // あそんでる ときに ひろった そうびの カード
+  // Collect immediately and show a small, non-interactive receipt.
   gearFound(item) {
-    // じどう そうび: いまより つよい ときは カードを ださずに つける（ちいさい おしらせ）
-    if (this.save.autoEquip) {
-      const res = autoPickup(this.save.gear, item);
-      if (res.ok && res.dropped) { const n = gearRefund(res.dropped); earnBank(this.save, n); this.refundToast(n); }
-      if (res.ok) {
-        this.persist(); this.updateTitle();
-        if (this.game) { this.game.settings = this.save; this.game.refreshGear(); this.game.setOutfit(this.save.outfit, true); this.game.hud.kill(`${gearName(item)}を じどう そうび！`, true); }
-        this.showAutoEq(item, res.replaced);
-        this.sfx.swap();
-        return;
-      }
-    }
-    (this.gearQ ||= []).push(item);
-    if (!this.gearCur) this.nextGearCard();
-  },
-  nextGearCard() {
-    const item = this.gearQ.shift(); this.gearCur = item || null;
-    const card = this.el('.zt-gcard');
-    if (!item) { card.classList.add('hidden'); return; }
-    const gear = this.save.gear, cur = gear.inv.find((g) => g.id === gear.eq[item.slot]) || null;
-    const r = rarityOf(item.rarity);
-    card.style.setProperty('--rc', r.color); card.dataset.r = item.rarity;
-    this.el('.zt-gbody').innerHTML = gearCardHTML(item, cur, cur ? gear : null);
-    const full = gear.inv.length >= INV_CAP;
-    this.el('.zt-gfull').classList.toggle('hidden', !full);
-    this.el('[data-gear=keep]').disabled = full;
-    this.el('[data-gear=equip]').disabled = full && !cur;
-    this.gearDropN = 0;
-    const db = this.el('[data-gear=drop]'); db.classList.remove('warn');
-    db.innerHTML = `すてる<small>+${gearRefund(item)}</small>`;
-    this.gearT = 9; this.gearT0 = 9;
-    card.classList.remove('hidden', 'pop'); void card.offsetWidth; card.classList.add('pop');
-  },
-  resolveGear(act, timeout = false) {
-    const item = this.gearCur; if (!item) return;
-    const gear = this.save.gear;
-    // でんせつを すてる ときは もういちど きく
-    if (act === 'drop' && !timeout && needsDropConfirm(item) && !this.gearDropN) {
-      this.gearDropN = 1;
-      const db = this.el('[data-gear=drop]'); db.classList.add('warn'); db.textContent = 'でんせつ だよ！ ほんとに？';
-      this.gearT = Math.max(this.gearT, 4);
-      return;
-    }
-    let res = act === 'drop' ? { ok: true } : gearAction(gear, item, act);
-    let refund = 0;
-    if (act === 'drop') refund += gearRefund(item); // ひろわずに すてた → スコア
-    if (!res.ok && act !== 'drop') {
-      // かばんが いっぱい: いちばん よわい かばんの ものと いれかえ（あたらしい ほうが つよい ときだけ）。すてた ぶんは スコアに
-      const worst = weakestLoose(gear, item);
-      if (worst && gearScore(worst) < gearScore(item)) { const r = discardGear(this.save, worst); if (r.ok) refund += r.refund; res = gearAction(gear, item, act); }
-    }
-    if (act === 'drop') earnBank(this.save, refund);
-    if (refund) this.refundToast(refund);
+    const res = collectGear(this.save, item);
+    if (res.action === 'owned') return;
     this.persist(); this.updateTitle();
     if (this.game) {
       this.game.settings = this.save;
-      if (act === 'equip' && res.ok) { this.game.refreshGear(); this.game.setOutfit(this.save.outfit, true); this.game.hud.kill(`${gearName(item)}を そうび！`, true); }
-      else if (act === 'keep' && res.ok) this.game.hud.kill('かばんに しまった');
+      if (res.action === 'equipped') this.game.refreshGear();
     }
-    this.sfx.swap();
-    this.nextGearCard();
-  },
-  showAutoEq(item, prev) {
     const el = this.el('.zt-autoeq'), r = rarityOf(item.rarity);
     el.style.setProperty('--rc', r.color);
-    el.querySelector('i').outerHTML = gearIcon(item, ' big');
-    el.querySelector('span').textContent = `${r.name} ${gearName(item)}${prev ? `（まえ: ${gearName(prev)} → かばん）` : ''}`;
-    el.classList.remove('hidden', 'pop'); void el.offsetWidth; el.classList.add('pop');
-    this.autoEqT = 2.6;
+    el.querySelector('i').outerHTML = gearIcon(item);
+    const label = res.action === 'equipped' ? 'じどう そうび' : res.action === 'stored' ? 'かばんに しまった' : 'よわい そうびを せいり';
+    el.querySelector('b').textContent = label;
+    el.querySelector('span').textContent = res.action === 'recycled' ? `+${res.refund} スコア` : `${r.name} ${gearName(item)}${res.refund ? ` / +${res.refund}` : ''}`;
+    el.classList.remove('hidden');
+    this.autoEqT = 1.8;
   },
-  // まいフレーム: カードの じかん（きれたら しまう）
   tickGear(dt) {
     if (this.autoEqT > 0 && (this.autoEqT -= dt) <= 0) this.el('.zt-autoeq').classList.add('hidden');
-    if (!this.gearCur) return;
-    if (this.game && this.game.state === 'pause') return;
-    this.gearT -= dt;
-    this.el('.zt-gtime div').style.width = Math.max(0, this.gearT / this.gearT0 * 100).toFixed(1) + '%';
-    if (this.gearT <= 0) this.resolveGear('keep', true);
   },
-  flushGear() { while (this.gearCur) this.resolveGear('keep', true); },
 
   applySens() {
     if (!this.input) return;
@@ -615,12 +545,11 @@ export default {
 
   bind() {
     this.onClick = (e) => {
-      const b = e.target.closest('[data-ui],[data-opt],[data-stage],[data-map],[data-tab],[data-gk],[data-outfit],[data-gear],[data-gsel],[data-gearui],[data-upw],[data-upbuy],[data-msel],[data-lo]'); if (!b) return;
+      const b = e.target.closest('[data-ui],[data-opt],[data-stage],[data-map],[data-tab],[data-gk],[data-outfit],[data-gsel],[data-gearui],[data-upw],[data-upbuy],[data-msel],[data-lo]'); if (!b) return;
       this.sfx.unlock();
       if (b.dataset.upw) { this.upSel = b.dataset.upw; this.updateUpg(); this.sfx.swap(); return; }
       if (b.dataset.upbuy) { if (!b.disabled) this.upgUi(b.dataset.upbuy); return; }
       if (b.dataset.msel) { if (isMelee(b.dataset.msel)) { this.save.melee = b.dataset.msel; this.persist(); this.updateUpg(); this.updateMeleeBtn(); if (this.game) { this.game.settings = this.save; this.game.applyUpgrades(); } this.sfx.swap(); } return; }
-      if (b.dataset.gear) { if (!b.disabled) this.resolveGear(b.dataset.gear); return; }
       if (b.dataset.gsel !== undefined) { if (b.dataset.gsel) { this.selGear = b.dataset.gsel; this.dropArm = null; this.dropN = 0; this.updateSoubi(); this.sfx.swap(); } return; }
       if (b.dataset.gearui) { this.gearUi(b.dataset.gearui); return; }
       if (b.dataset.outfit) {
@@ -683,13 +612,6 @@ export default {
       else if (ui === 'soubi') { this.selGear = null; this.dropArm = null; this.updateSoubi(); this.show('soubi'); this.sfx.swap(); }
     };
     this.container.addEventListener('click', this.onClick);
-    this.onKey = (e) => {
-      if (!this.gearCur || !this.game || this.game.state !== 'play') return;
-      const k = e.key.toLowerCase();
-      if (k === 'e') { const b = this.el('[data-gear=equip]'); if (!b.disabled) this.resolveGear('equip'); }
-      else if (k === 'g') this.resolveGear('drop');
-    };
-    window.addEventListener('keydown', this.onKey);
     this.onResize = this.onResize.bind(this);
     window.addEventListener('resize', this.onResize);
     window.addEventListener('orientationchange', this.onResize);
@@ -714,10 +636,8 @@ export default {
     this.el('.zt-upg').classList.toggle('hidden', which !== 'upg');
     this.el('.zt-loadout').classList.toggle('hidden', which !== 'loadout');
     if (which !== 'play' && this.game && this.game.scopedOn) { this.game.scopedOn = false; this.el('.zt-root').classList.remove('zt-scoped'); }
-    if (which !== 'play') this.saveBank?.();
+    if (which !== 'play') { this.saveBank?.(); this.autoEqT = 0; this.el('.zt-autoeq').classList.add('hidden'); }
     if (this.game) this.game.kigae = which === 'kigae' || which === 'soubi' || which === 'upg';
-    if (which !== 'play' && which !== 'pause') this.flushGear?.();
-    this.el('.zt-gcard').classList.toggle('zt-dim', which === 'pause');
     this.el('.zt-pausescr').classList.toggle('hidden', which !== 'pause');
     this.el('.zt-over').classList.toggle('hidden', which !== 'over');
     this.el('.zt-clear').classList.toggle('hidden', which !== 'clear');
@@ -765,7 +685,6 @@ export default {
   nextMapId() { return pickMapId(this.save.map, this.save.mapNext); },
   play(retry = false) {
     if (!this.game) return;
-    this.flushGear();
     this.input.reset();
     this.game.gk = null; this.curGk = null; // v0.16.0: いつもの ウェーブ
     if (!retry) this.game.loadMap(this.nextMapId());
@@ -788,7 +707,7 @@ export default {
       const boss = await gkLoadBoss(stage.boss.id); // v0.17.0: ボスの わざ（なくても いつもの ボスで あそべる）
       if (!this.alive || !this.game) return;
       if (!info.segs && !hasMap(info.map)) registerMap(info.map, mod.build);
-      this.flushGear(); this.input.reset();
+      this.input.reset();
       this.curGk = no; this.pendGk = null;
       if (info.segs) this.game.gkStreamLoad(no, info, mod, s0); else this.game.loadMap(info.map);
       this.root.classList.remove('zt-guided');
@@ -1103,7 +1022,6 @@ export default {
     window.removeEventListener('orientationchange', this.onResize);
     document.removeEventListener('visibilitychange', this.onVis);
     document.removeEventListener('pointerlockchange', this.onLock);
-    window.removeEventListener('keydown', this.onKey);
     if (this.input) this.input.destroy();
     if (this.game) this.game.dispose();
     this.sfx.close();

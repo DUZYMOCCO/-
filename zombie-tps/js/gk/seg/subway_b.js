@@ -1,7 +1,7 @@
 // ステージ4 セグメント B（へや2 しゃこ → へや3 へんでんしょ・ボス）
 // いりぐち（x=-32 の かべの ドア）は A の でぐちと おなじ ばしょ → A が ある あいだは A の かべを つかう（edge:'in'）
-import { segWall, segOuter, segDoor, roomSpawns } from './kit.js?v=37';
-import { WALL, STEEL, H, DW, THEME } from './subway_a.js?v=37';
+import { segWall, segOuter, segDoor, roomSpawns } from './kit.js?v=38';
+import { WALL, STEEL, H, DW, THEME } from './subway_a.js?v=38';
 
 export function build(builder) {
   const B = builder(36, 4002), { add, deco } = B;

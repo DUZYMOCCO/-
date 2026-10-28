@@ -1,7 +1,7 @@
 // ゾンビストライク — ゲームの きまり（DOM / three.js に いぞんしない。node のテストから よめる）
 // ぶき・ダメージ・ウェーブ・あたりはんてい（レイ×はこ）・いどうの ぶつかり・ゾンビの みちさがし（フローフィールド）
 
-export const VERSION = '0.29.0';
+export const VERSION = '0.30.0';
 
 // ---- ぶき ----
 // rpm: 1ぷんかんの はっしゃかず / mag: マガジン / reserve: よびだん / reload: びょう
@@ -1300,6 +1300,41 @@ export function autoPickup(gear, item) {
   }
   const r = gearAction(gear, item, 'equip');
   return { ok: r.ok, replaced: prev, dropped };
+}
+
+// Combat pickups never request input. Worse gear becomes score immediately.
+export function collectGear(save, item) {
+  const gear = save.gear;
+  if (gear.inv.some((g) => g.id === item.id)) return { action: 'owned', refund: 0 };
+  let refund = 0;
+  const recycleNew = (g) => { const n = gearRefund(g); earnBank(save, n); refund += n; };
+  if (equipGain(gear, item) < -0.05) {
+    recycleNew(item); return { action: 'recycled', refund };
+  }
+  if (save.autoEquip && shouldAutoEquip(gear, item)) {
+    const prev = gear.inv.find((g) => g.id === gear.eq[item.slot]);
+    if (gear.inv.length >= INV_CAP && !prev) {
+      const worst = weakestLoose(gear);
+      if (!worst) { recycleNew(item); return { action: 'recycled', refund }; }
+      const r = discardGear(save, worst); if (r.ok) refund += r.refund;
+    }
+    const res = gearAction(gear, item, 'equip');
+    if (prev) {
+      if (res.replaced) recycleNew(prev);
+      else { const r = discardGear(save, prev); if (r.ok) refund += r.refund; }
+    }
+    return { action: 'equipped', refund };
+  }
+
+  if (gear.inv.length >= INV_CAP) {
+    const worst = weakestLoose(gear);
+    if (!worst || gearPower(item) <= gearPower(worst)) {
+      recycleNew(item); return { action: 'recycled', refund };
+    }
+    const r = discardGear(save, worst); if (r.ok) refund += r.refund;
+  }
+  gearAction(gear, item, 'keep');
+  return { action: 'stored', refund };
 }
 
 // そうびの ごうけい（うえげん つき）
