@@ -1,6 +1,6 @@
 // ブロックの キャラクターと ぶき（かくうの デザイン・ロゴなし）
 import * as THREE from '../vendor/three.module.min.js';
-import { zombieFaceTexture, playerFaceTexture, solidTexture, shirtTexture, camoTexture, ojisanTextures, drunkTextures } from './textures.js?v=34';
+import { zombieFaceTexture, playerFaceTexture, solidTexture, shirtTexture, camoTexture, ojisanTextures, drunkTextures } from './textures.js?v=35';
 
 const boxGeoCache = new Map();
 export function boxGeo(w, h, d) {
@@ -782,6 +782,7 @@ const ZLOOK = {
   runner: { skin: 0x7ccf55, shirt: 0xe07a2f, pants: 0x5a4a3a },
   brute: { skin: 0x5aa83f, shirt: 0x7b4fb0, pants: 0x3a3a46 },
   boss: { skin: 0x4e9a3a, shirt: 0x2f3e6b, pants: 0x2b2b33 },
+  armored: { skin: 0x84a86a, shirt: 0x494c51, pants: 0x303236 },
   // v0.6.0（ぜんぶ かくうの ふく・マークなし）
   guard: { skin: 0x6fbf55, shirt: 0x3a4a6a, pants: 0x262a36 },
   crawler: { skin: 0x8acb5a, shirt: 0x8a7a6a, pants: 0x4a4038 },
@@ -854,6 +855,12 @@ export function makeZombie(kind, look = null) {
   part(body, m.shirt, kind === 'runner' ? 0.48 : 0.52, 0.74, 0.3, 0, 0.37, 0);
   const head = new THREE.Group(); head.position.y = 0.74; body.add(head);
   { const hm = new THREE.Mesh(headGeo(0.5, 0.5, 0.5), [m.skin, m.hair, m.face]); hm.position.set(0, 0.25, 0); head.add(hm); } // v0.12.0: 3グループ
+  if (kind === 'armored') {
+    const plate = zx('armoredPlate', 0x414953), trim = zx('armoredTrim', 0xa47535), mark = zx('armoredMark', 0xe8b64b, 0x49300a);
+    part(body, plate, 0.65, 0.66, 0.42, 0, 0.38, 0);
+    for (const s of [-1, 1]) part(body, trim, 0.28, 0.15, 0.4, s * 0.34, 0.72, 0);
+    part(head, mark, 0.22, 0.07, 0.03, 0, 0.47, -0.26);
+  }
   if (kind === 'brute') part(head, m.helm, 0.56, 0.14, 0.56, 0, 0.52, 0);
   const extra = {};
   dressZombie(kind, { inner, body, head, legs }, extra);

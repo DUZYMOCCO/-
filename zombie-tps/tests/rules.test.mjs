@@ -237,7 +237,7 @@ test('なめらか いどう: approach は フレームレートに よらない
 });
 
 test('バージョン と セーブの ステージ', () => {
-  assert.equal(VERSION, '0.26.0');
+  assert.equal(VERSION, '0.27.0');
   assert.equal(normalizeSave(null).stage, 'day');
   assert.equal(normalizeSave({ stage: 'night' }).stage, 'night');
   assert.equal(normalizeSave({ stage: 'mars' }).stage, 'day');
@@ -769,7 +769,7 @@ test('v0.5.0 じゅうじ マークの えもじを つかわない', async () =
 
 // ================= v0.6.0 =================
 test('v0.6.0 ゾンビの しゅるい: 12しゅるい・すこしずつ ふえる・のぼるのは はやい ゾンビ だけ', () => {
-  assert.deepEqual(SPECIAL_IDS, ['guard', 'crawler', 'soldier', 'spitter', 'burning', 'riot', 'bloater', 'screamer', 'firefighter', 'electric', 'mutant', 'charger']);
+  assert.deepEqual(SPECIAL_IDS, ['guard', 'crawler', 'soldier', 'spitter', 'burning', 'riot', 'bloater', 'screamer', 'firefighter', 'electric', 'mutant', 'charger', 'armored']);
   for (const k of SPECIAL_IDS) {
     const z = ZOMBIES[k];
     assert.ok(z && z.hp > 0 && z.speed > 0 && z.dmg > 0, k);
@@ -3072,4 +3072,19 @@ test('スナイパーはスコープ中のヘッドショットのみ10倍', () 
   assert.equal(damageAt(upgraded, 20, true, true), upgraded.dmg * 10);
   assert.equal(R8.isScoped('sniper', R8.SCOPE.on - 0.01), false);
   assert.equal(R8.isScoped('sniper', R8.SCOPE.on), true);
+});
+
+
+test('よろいゾンビは頭が弱点で、後半に少数出現する', () => {
+  assert.equal(damageMul('armored', { head: true }), 1);
+  assert.equal(damageMul('armored', {}), 0.25);
+  assert.equal(damageMul('armored', { blast: true }), 0.5);
+  assert.equal(waveSpec(7).specials.armored, undefined);
+  assert.ok(waveSpec(8).specials.armored >= 1);
+  for (let n = 8; n <= 100; n++) {
+    const w = waveSpec(n);
+    assert.ok((w.specials.armored || 0) <= 2);
+    assert.equal(waveQueue(w, () => 0.3).length, w.total);
+  }
+  assert.ok(damageAt(WEAPONS.sniper, 20, true, true) >= ZOMBIES.armored.hp);
 });

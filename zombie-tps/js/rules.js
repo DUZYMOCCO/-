@@ -1,7 +1,7 @@
 // ゾンビストライク — ゲームの きまり（DOM / three.js に いぞんしない。node のテストから よめる）
 // ぶき・ダメージ・ウェーブ・あたりはんてい（レイ×はこ）・いどうの ぶつかり・ゾンビの みちさがし（フローフィールド）
 
-export const VERSION = '0.26.0';
+export const VERSION = '0.27.0';
 
 // ---- ぶき ----
 // rpm: 1ぷんかんの はっしゃかず / mag: マガジン / reserve: よびだん / reload: びょう
@@ -253,7 +253,7 @@ export function refillReserve(g) {
 // ---- ロケットだんの ドロップ ----
 export const DROP_CHANCE = { walker: 0.06, runner: 0.08, brute: 0.25, boss: 1,
   guard: 0.07, crawler: 0.07, soldier: 0.12, spitter: 0.09, burning: 0.08, riot: 0.14, bloater: 0.1, screamer: 0.12,
-  firefighter: 0.14, electric: 0.1, mutant: 0.16, charger: 0.25 };
+  firefighter: 0.14, electric: 0.1, mutant: 0.16, charger: 0.25, armored: 0.25 };
 export const ROCKET_RESERVE_MAX = 6;   // よびは 6はつまで
 export const PICKUP_LIFE = 20;         // 20びょうで きえる
 export const PICKUP_BLINK = 5;         // さいごの 5びょうは ちかちか
@@ -522,6 +522,8 @@ export const ZOMBIES = {
   walker: { id: 'walker', hp: 70, speed: 1.8, dmg: 10, atkRate: 1.0, scale: 1.0, score: 100, name: 'ふつう' },
   runner: { id: 'runner', hp: 45, speed: 3.9, dmg: 8, atkRate: 0.8, scale: 0.95, score: 150, name: 'はやい' },
   brute: { id: 'brute', hp: 260, speed: 1.2, dmg: 22, atkRate: 1.4, scale: 1.35, score: 400, name: 'でかい' },
+  // からだが かたい。あたまを ねらうと ふつうに きく。
+  armored: { id: 'armored', hp: 350, speed: 1.0, dmg: 18, atkRate: 1.4, scale: 1.25, score: 500, name: 'よろいゾンビ', armor: 0.25, blastMul: 0.5 },
   // ボス: 3ウェーブごと。ちょっと でかい・かたい・ためてから ドスン！／とっしん
   boss: { id: 'boss', hp: 1500, speed: 1.35, dmg: 20, atkRate: 1.6, scale: 1.75, score: 2000, name: 'ボスゾンビ' },
   // ---- v0.6.0: あたらしい ゾンビ（ぜんぶ かくうの みため・マークなし）----
@@ -560,7 +562,7 @@ export const ZOMBIES = {
 // v0.6.0: あたらしい ゾンビが でてくる ウェーブ（すこしずつ ふえる）
 export const SPECIAL_UNLOCK = [
   ['guard', 2], ['crawler', 3], ['soldier', 4], ['spitter', 5], ['burning', 5], ['riot', 6],
-  ['bloater', 7], ['screamer', 7], ['firefighter', 8], ['electric', 8], ['mutant', 9], ['charger', 10],
+  ['bloater', 7], ['screamer', 7], ['firefighter', 8], ['electric', 8], ['mutant', 9], ['charger', 10], ['armored', 8],
 ];
 export const SPECIAL_IDS = SPECIAL_UNLOCK.map((u) => u[0]);
 export const unlockedSpecials = (n) => SPECIAL_UNLOCK.filter((u) => u[1] <= n).map((u) => u[0]);
@@ -581,7 +583,7 @@ export function damageMul(kind, { head = false, blast = false, front = false } =
 }
 // ノックバックと よろけの おもさ
 export function heavyOf(kind) {
-  return { boss: 0.12, brute: 0.4, charger: 0.35, firefighter: 0.7, riot: 0.6, mutant: 0.7, bloater: 0.8 }[kind] ?? 1;
+  return { boss: 0.12, brute: 0.4, armored: 0.45, charger: 0.35, firefighter: 0.7, riot: 0.6, mutant: 0.7, bloater: 0.8 }[kind] ?? 1;
 }
 export const isBossWave = (n) => n > 0 && n % 3 === 0;
 // ボスの HP（ウェーブが すすむと かたく なる）
@@ -621,6 +623,8 @@ export function waveSpec(n) {
     for (let i = 0; cnt > 0 && old.length; i++, cnt--) { const k = old[(n + i) % old.length]; specials[k] = (specials[k] || 0) + 1; }
     for (let i = 0; cnt > 0 && fresh.length && i < fresh.length; i++, cnt--) specials[fresh[i]]++;
   }
+  // Keep this durable enemy rare while preserving the total wave count.
+  if (specials.armored > 2) specials.armored = 2;
   const sp = Object.values(specials).reduce((a, b) => a + b, 0);
   walkers -= sp;
   const hpMul = 1 + Math.max(0, n - 5) * 0.08;
@@ -1191,7 +1195,7 @@ export const GEAR_COLOR_IDS = GEAR_COLORS.map((c) => c.id);
 export const gearColor = (id) => GEAR_COLORS.find((c) => c.id === id) || GEAR_COLORS[0];
 export const GEAR_DROP = { walker: 0.03, runner: 0.04, brute: 0.2, boss: 1,
   guard: 0.035, crawler: 0.035, soldier: 0.07, spitter: 0.05, burning: 0.045, riot: 0.08, bloater: 0.05, screamer: 0.07,
-  firefighter: 0.08, electric: 0.06, mutant: 0.1, charger: 0.2 };
+  firefighter: 0.08, electric: 0.06, mutant: 0.1, charger: 0.2, armored: 0.2 };
 export const GEAR_FLOOR = { boss: 'sr', ojisan: 'r' };   // ボスは すごいレア いじょう、おじさんは レア いじょう
 export const INV_CAP = 20;
 export const GEAR_LIFE = 25;

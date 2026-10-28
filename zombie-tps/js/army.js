@@ -7,8 +7,8 @@ import * as THREE from '../vendor/three.module.min.js';
 import {
   ARMY, pickRobotSpot, armyTouched, damageArmy, robotStats, robotAddKill, groundHeight, edgeArrow, castShot, laserHits, pickArmyTarget,
   pickBotLine, formatBotLine,
-} from './rules.js?v=34';
-import { makeArmyRobot, ARMY_CHUNKS } from './models.js?v=34';
+} from './rules.js?v=35';
+import { makeArmyRobot, ARMY_CHUNKS } from './models.js?v=35';
 
 const _o = new THREE.Vector3(), _p = new THREE.Vector3(), _d = new THREE.Vector3(), _m = new THREE.Vector3(), _e = new THREE.Vector3();
 const NO_Z = [];

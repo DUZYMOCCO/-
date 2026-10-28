@@ -18,31 +18,31 @@ import {
   SpatialGrid, thinkInterval, QualityGovernor, govPixelRatio,
   normalizeLoadout, loadoutSlot, cycleLoadout, applyCrate, SMOKE, smokeAffects,
   rescueSample, rescuePick, rescueSpot, RESCUE,
-} from './rules.js?v=34';
-import { RIDE, ridePoint, createRideScene } from './ride.js?v=34';
-import { Crowd } from './crowd.js?v=34';
-import { RobotMixin } from './robot.js?v=34';
-import { AllyMixin } from './ally.js?v=34';
-import { GuestMixin } from './guests.js?v=34';
-import { CopMixin } from './cop.js?v=34';
-import { ArmyMixin } from './army.js?v=34';
-import { DrunkMixin } from './drunk.js?v=34';
+} from './rules.js?v=35';
+import { RIDE, ridePoint, createRideScene } from './ride.js?v=35';
+import { Crowd } from './crowd.js?v=35';
+import { RobotMixin } from './robot.js?v=35';
+import { AllyMixin } from './ally.js?v=35';
+import { GuestMixin } from './guests.js?v=35';
+import { CopMixin } from './cop.js?v=35';
+import { ArmyMixin } from './army.js?v=35';
+import { DrunkMixin } from './drunk.js?v=35';
 const BOT_NAME = { ao: 'アオ', momo: 'モモ', cop: 'けいさつおじさん', army: 'アーミーロボ', drunk: 'よっぱらいおじさん' }; // v0.14.0
-import { VehicleMixin } from './vehicles.js?v=34';
-import { SuitMixin } from './suit.js?v=34';
-import { TankMixin } from './tank.js?v=34';
-import { MissileMixin } from './missiles.js?v=34';
-import { MeleeMixin } from './melee.js?v=34';
-import { GkMixin } from './gk/play.js?v=34';
-import { StreamMixin } from './gk/stream.js?v=34';
-import { EnergyMixin } from './beams.js?v=34';
-import { makeNav } from './nav.js?v=34';
-import { buildMap, playerColliders, zombieColliders, shotColliders } from './map.js?v=34';
-import { buildTextures, fxTextures } from './textures.js?v=34';
-import { buildWorld, disposeWorld } from './world.js?v=34';
-import { Backdrop, BACKDROPS } from './backdrop.js?v=34';
-import { makePlayer, applyOutfit, applyGear, makeGearDrop, makeOjisan, makeWeapons, makeZombie, makeRocketProjectile, makeRocketCrate, zombieChunkColors, FLASH_MAT } from './models.js?v=34';
-import { FX } from './fx.js?v=34';
+import { VehicleMixin } from './vehicles.js?v=35';
+import { SuitMixin } from './suit.js?v=35';
+import { TankMixin } from './tank.js?v=35';
+import { MissileMixin } from './missiles.js?v=35';
+import { MeleeMixin } from './melee.js?v=35';
+import { GkMixin } from './gk/play.js?v=35';
+import { StreamMixin } from './gk/stream.js?v=35';
+import { EnergyMixin } from './beams.js?v=35';
+import { makeNav } from './nav.js?v=35';
+import { buildMap, playerColliders, zombieColliders, shotColliders } from './map.js?v=35';
+import { buildTextures, fxTextures } from './textures.js?v=35';
+import { buildWorld, disposeWorld } from './world.js?v=35';
+import { Backdrop, BACKDROPS } from './backdrop.js?v=35';
+import { makePlayer, applyOutfit, applyGear, makeGearDrop, makeOjisan, makeWeapons, makeZombie, makeRocketProjectile, makeRocketCrate, zombieChunkColors, FLASH_MAT } from './models.js?v=35';
+import { FX } from './fx.js?v=35';
 const A_RIGHT = new THREE.Vector3();
 
 const v3 = () => new THREE.Vector3();
@@ -1471,9 +1471,9 @@ export class Game {
         const dist = zhit.t;
         const zp = zhit === zh[zh.length - 1] ? hp : new THREE.Vector3(zhit.x, zhit.y, zhit.z);
         const dmg = damageAt(w, dist, zhit.head, !this.suit && !this.tank && isScoped(id, this.aimAmt)) * zhit.mul;
-        const h = hitZ.get(z) || { dmg: 0, head: false, pos: zp, impactPos: new THREE.Vector3(zhit.x, zhit.y, zhit.z), dir, knock: 0 };
+        const h = hitZ.get(z) || { dmg: 0, head: false, pos: zp, impactPos: new THREE.Vector3(zhit.x, zhit.y, zhit.z), dir, knock: 0, bodyDmg: 0 };
         if (zhit.head) h.impactPos.set(zhit.x, zhit.y, zhit.z);
-        h.dmg += dmg; h.head = h.head || zhit.head; h.knock += knockAt(w, dist) * zhit.mul; hitZ.set(z, h);
+        h.dmg += dmg; if (!zhit.head) h.bodyDmg += dmg; h.head = h.head || zhit.head; h.knock += knockAt(w, dist) * zhit.mul; hitZ.set(z, h);
         this.fx.greenHit(zp, dir, zhit.head);
         anyHit = true; anyHead = anyHead || zhit.head;
       }
@@ -1491,7 +1491,11 @@ export class Game {
       }
     }
     let killed = 0;
-    for (const [z, h] of hitZ) { this.fx.bulletImpact(h.impactPos, h.head); if (this.hitZombie(z, h.dmg, h.head, h.pos, h.dir, { knock: h.knock })) killed++; }
+    for (const [z, h] of hitZ) {
+      // A mixed shotgun blast must not let body pellets bypass the new armor.
+      const dmg = z.kind === 'armored' && h.head ? h.dmg - h.bodyDmg * (1 - ZOMBIES.armored.armor) : h.dmg;
+      this.fx.bulletImpact(h.impactPos, h.head); if (this.hitZombie(z, dmg, h.head, h.pos, h.dir, { knock: h.knock })) killed++;
+    }
     if (killed >= 2) this.multiKill(killed);
     if (anyHit) { this.hud.hitmarker(anyHead); if (id === 'shotgun') this.sfx.shotgunHit(anyHead); else this.sfx.bulletHit(anyHead); }
     else if (hitSurface) this.sfx.bulletSurface();
