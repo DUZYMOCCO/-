@@ -11,11 +11,11 @@ import { WEAPONS, WEAPON_ORDER, normalizeSave, SENS, VERSION, OUTFITS, outfitNam
   SLOT_UP, HP_UP, slotLevel, hpLevel, slotUpCost, hpUpCost, baseHpAt, slotBonus, buySlotUpgrade, buyHpUpgrade, GEAR_SLOT_IDS,
   SUIT_ORDER, SUIT_WEAPONS, suitLabel, SUIT,
   MELEE, MELEE_ORDER, MELEE_UP, meleeLevel, meleeUpCost, meleeStats, buyMelee, isMelee, DEFAULT_MELEE,
-  LOADOUT_SIZE, normalizeLoadout, toggleLoadout, loadoutReady, unlockedWeapons, upgradeRows, GAUGE_LABEL } from './rules.js?v=26';
-import { MAPS, mapInfo, registerMap, hasMap } from './map.js?v=26';
-import { recordGkClear } from './rules.js?v=26';
-import { GK_CATALOG, GK_WORLDS, GK_READY, isGkReady, gkMeta, gkNext, gkLoadStage, gkLoadMap, gkLoadSegs, gkLoadGims, gkLoadBoss, gkWaves, gkClearBonus } from './gk/core.js?v=26';
-import { segResume } from './gk/seg.js?v=26';
+  LOADOUT_SIZE, normalizeLoadout, toggleLoadout, loadoutReady, unlockedWeapons, upgradeRows, GAUGE_LABEL } from './rules.js?v=27';
+import { MAPS, mapInfo, registerMap, hasMap } from './map.js?v=27';
+import { recordGkClear } from './rules.js?v=27';
+import { GK_CATALOG, GK_WORLDS, GK_READY, isGkReady, gkMeta, gkNext, gkLoadStage, gkLoadMap, gkLoadSegs, gkLoadGims, gkLoadBoss, gkWaves, gkClearBonus } from './gk/core.js?v=27';
+import { segResume } from './gk/seg.js?v=27';
 
 const hex6 = (n) => '#' + n.toString(16).padStart(6, '0');
 // v0.7.0: がめんの そとを さす やじるしは ボタンに かぶらない たかさ（うえから 16%〜32%）
@@ -59,9 +59,9 @@ function totalsText(gear, save) {
   const parts = GEAR_STAT_IDS.filter((k) => t[k]).map((k) => `${GEAR_STATS[k].name} +${t[k]}${GEAR_STATS[k].unit}${t[k] >= GEAR_STATS[k].cap ? '（MAX）' : ''}`);
   return parts.length ? parts.join(' ・ ') : 'まだ なにも つけて いないよ';
 }
-import { Game } from './game.js?v=26';
-import { Input } from './input.js?v=26';
-import { Sfx } from './sfx.js?v=26';
+import { Game } from './game.js?v=27';
+import { Input } from './input.js?v=27';
+import { Sfx } from './sfx.js?v=27';
 
 // v0.7.0: ぶきの ちいさい アイコン（かくうの シルエット）
 const svgI = (d) => `<svg viewBox="0 0 32 16" aria-hidden="true">${d}</svg>`;
@@ -105,7 +105,7 @@ const OPT_CYCLE = { autoFire: [false, true], sens: ['low', 'mid', 'high'], quali
 
 export default {
   prepare() {
-    return loadCss(new URL('../css/zombie-tps.css?v=26', import.meta.url).href);
+    return loadCss(new URL('../css/zombie-tps.css?v=27', import.meta.url).href);
   },
 
   init(container, onBackToHub) {
@@ -162,6 +162,10 @@ export default {
           </div>
           <div class="zt-slots">${slots}</div>
           <div class="zt-suitbar">${sbtns}</div>
+          <div class="zt-tankbar"><button class="zt-sbtn" data-act="w:tankmg" data-tank="mg"><b>1</b><i>🔫</i><span>マシンガン</span></button><button class="zt-sbtn" data-act="w:tankcannon" data-tank="cannon"><b>2</b><i>💥</i><span>しゅほう</span></button></div>
+          <div class="zt-tanktime"><b></b><div class="zt-suittbar"><div></div></div></div>
+          <div class="zt-tanktag hidden"><span>せんしゃ・さわってね</span></div>
+          <div class="zt-tankarrow hidden"><i>➤</i><span>せんしゃ</span></div>
           <div class="zt-suittime"><b>${suitLabel(SUIT.time)}</b><div class="zt-suittbar"><div></div></div></div>
           <div class="zt-suittag hidden"><span>パワードスーツ・さわってね</span></div>
           <div class="zt-suitarrow hidden"><i>➤</i><span>パワードスーツ</span></div>
@@ -833,6 +837,7 @@ export default {
       drunk: q('.zt-drunk'), drunkHp: q('.zt-drunk .zt-bothp div'), drunkHic: q('.zt-drunk .zt-hic'),
       cop: q('.zt-cop'), copHp: q('.zt-cop .zt-bothp div'),
       suitTime: q('.zt-suittime b'), suitBar: q('.zt-suittbar div'), suitTimeBox: q('.zt-suittime'), sbtns: [...this.container.querySelectorAll('.zt-sbtn')],
+      tankTag:q('.zt-tanktag'), tankArrow:q('.zt-tankarrow'), tankArrowI:q('.zt-tankarrow i'), tankTime:q('.zt-tanktime b'), tankBar:q('.zt-tanktime .zt-suittbar div'), tankBtns:[...this.container.querySelectorAll('[data-tank]')],
       suitTag: q('.zt-suittag'), suitArrow: q('.zt-suitarrow'), suitArrowI: q('.zt-suitarrow i'),
       oji: q('.zt-oji'), ojiTxt: q('.zt-ojitxt'), ojiHp: q('.zt-ojihp div'), ojiArrow: q('.zt-ojiarrow'), ojiArrowI: q('.zt-ojiarrow i'), ojiArrowT: q('.zt-ojiarrow span'),
     };
@@ -873,7 +878,7 @@ export default {
         if (s.score > (app.runBank || 0)) { earnBank(app.save, s.score - (app.runBank || 0)); app.runBank = s.score; app.bankDirty = true; }
         if (s.loadout) app.renderSlots(s.loadout);
         // v0.15.0: ゲージの ぶき（ねつ・ねんりょう・エネルギー）は かずの かわりに ゲージ
-        const gg = !s.suit && WEAPONS[s.weapon].gauge ? s.guns[s.weapon] : null;
+        const gg = !s.suit && !s.tank && WEAPONS[s.weapon].gauge ? s.guns[s.weapon] : null;
         if (last.gOn !== !!gg) { last.gOn = !!gg; E.gauge.classList.toggle('hidden', !gg); E.anum.classList.toggle('hidden', !!gg); }
         if (gg) {
           const kind = WEAPONS[s.weapon].gauge, heat = kind === 'heat', v = heat ? 1 - gg.en : gg.en;
@@ -882,11 +887,11 @@ export default {
           const cls = kind + (gg.lock ? ' lock' : '') + (!heat && gg.en < 0.25 ? ' low' : '') + (heat && gg.en < 0.3 ? ' low' : '');
           if (last.gC !== cls) { last.gC = cls; E.gauge.className = 'zt-gauge ' + cls; }
         }
-        setText('ammo', E.ammo, s.suit ? '∞' : String(s.ammo));
-        setText('res', E.res, s.suit ? '' : '/ ' + (s.reserve === Infinity ? '∞' : s.reserve));
-        setText('wname', E.wname, s.suit ? SUIT_WEAPONS[s.suit].name : WEAPONS[s.weapon].name + (s.lv > 1 ? ` Lv${s.lv}` : ''));
+        setText('ammo', E.ammo, (s.suit || s.tank) ? '∞' : String(s.ammo));
+        setText('res', E.res, (s.suit || s.tank) ? '' : '/ ' + (s.reserve === Infinity ? '∞' : s.reserve));
+        setText('wname', E.wname, s.tank ? (s.tank === 'mg' ? 'マシンガン' : 'しゅほう') : s.suit ? SUIT_WEAPONS[s.suit].name : WEAPONS[s.weapon].name + (s.lv > 1 ? ` Lv${s.lv}` : ''));
         if (last.sw !== s.suit) { last.sw = s.suit; for (const b of E.sbtns) b.classList.toggle('sel', b.dataset.s === s.suit); }
-        E.ammo.classList.toggle('low', s.ammo <= Math.ceil(s.mag * 0.25));
+        E.ammo.classList.toggle('low', !s.suit && !s.tank && s.ammo <= Math.ceil(s.mag * 0.25));
         if (last.lo !== app.slotKey) { last.lo = app.slotKey; last.weapon = null; }
         if (last.weapon !== s.weapon) { last.weapon = s.weapon; for (const b of E.slots) b.classList.toggle('sel', b.dataset.w === s.weapon); }
         for (const b of E.slots) {
@@ -963,6 +968,21 @@ export default {
         el.style.left = ((r.x + 1) * 50).toFixed(2) + '%';
         el.style.top = mode === 'arrow' ? arrowTop(r.y) : ((1 - r.y) * 50).toFixed(2) + '%';
         if (mode === 'arrow') E.suitArrowI.style.transform = `rotate(${r.ang.toFixed(3)}rad)`;
+      },
+      tank: (r) => {
+        const mode=!r ? 'none' : r.mode === 'ride' ? 'ride' : r.onScreen ? 'tag' : 'arrow';
+        app.root.classList.toggle('zt-tanked',mode==='ride');
+        E.tankTag.classList.toggle('hidden',mode!=='tag'); E.tankArrow.classList.toggle('hidden',mode!=='arrow');
+        if(!r)return;
+        if(mode==='ride'){
+          E.tankTime.textContent=`せんしゃ のこり ${Math.max(0,Math.ceil(r.time))}${r.frozen ? ' ⏸ きゅうけい' : ''}`;
+          E.tankBar.style.width=(Math.max(0,r.frac)*100).toFixed(1)+'%';
+          for(const b of E.tankBtns)b.classList.toggle('sel',b.dataset.tank===r.weapon);
+        } else {
+          const el=mode==='tag'?E.tankTag:E.tankArrow;el.style.left=((r.x+1)*50).toFixed(2)+'%';
+          el.style.top=mode==='arrow'?arrowTop(r.y):((1-r.y)*50).toFixed(2)+'%';
+          if(mode==='arrow')E.tankArrowI.style.transform=`rotate(${r.ang.toFixed(3)}rad)`;
+        }
       },
       // v0.9.0: けいさつおじさん（あたまの うえの HP だけ）
       cop: (c) => {

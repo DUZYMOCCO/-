@@ -1,6 +1,6 @@
 // ステージ3「あめの はいきょとし」 セグメント A（へや0 あめの ろじ → へや1 しょうてんがい）。かくうの まち・よる・あめ
 // でぐち（z=12 の かべの ドア x=30）で セグメント B に つながる
-import { segWall, segOuter, segDoor, roomSpawns } from './kit.js?v=26';
+import { segWall, segOuter, segDoor, roomSpawns } from './kit.js?v=27';
 
 export const WALL = 0x5a6270, BRICK = 0x6a5a58, STEEL = 0x6a7684, H = 3.8, DW = 4.4, WET = 0x4a6078;
 export const THEME = { ground: 'asphalt', tint: 0x3a4656, k: 0.3, far: 'city', farTint: 0x56647a, rain: true };

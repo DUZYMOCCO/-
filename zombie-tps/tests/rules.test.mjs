@@ -237,7 +237,7 @@ test('なめらか いどう: approach は フレームレートに よらない
 });
 
 test('バージョン と セーブの ステージ', () => {
-  assert.equal(VERSION, '0.21.1');
+  assert.equal(VERSION, '0.22.0');
   assert.equal(normalizeSave(null).stage, 'day');
   assert.equal(normalizeSave({ stage: 'night' }).stage, 'night');
   assert.equal(normalizeSave({ stage: 'mars' }).stage, 'day');
@@ -2948,4 +2948,41 @@ test('ヘリの よびだんは ぜんぶ むげん、リロードは ひつよ�
     }
     if (id === 'rocket' || id === 'smoke') assert.equal(crateReward([id], { [id]: g }).kind, 'score');
   }
+});
+
+
+test('せんしゃ: 通り道に いる敵だけ ひく・パワーアップは独立抽選', async () => {
+  const { TANK, SUIT, powerupAppears, tankRamHit } = await import('../js/rules.js');
+  assert.equal(SUIT.chance,0.7); assert.ok(powerupAppears(0.69)); assert.equal(powerupAppears(0.7),false);
+  assert.equal(tankRamHit(0,0,0,-5,0,-2),true);
+  assert.equal(tankRamHit(0,0,0,-5,TANK.ramRadius+0.1,-2),false);
+  assert.equal(tankRamHit(0,0,0,-5,0,-7),false);
+  assert.ok(TANK.weapons.mg.interval < TANK.weapons.cannon.interval);
+});
+
+
+test('パワーアップ: 独立抽選と3ウェーブ後の再抽選', async () => {
+  const { SuitMixin } = await import('../js/suit.js');
+  const { TankMixin } = await import('../js/tank.js');
+  const g = { map: {}, wave: 4, suit: null, suitPick: null, tank: null, tankPick: null,
+    placeSuit() { this.suitPick = { x: 1, z: 0 }; return this.suitPick; },
+    placeTank() { this.tankPick = { x: 9, z: 0 }; return this.tankPick; } };
+  assert.equal(SuitMixin.trySpawnSuit.call(g,0.1),true);
+  assert.equal(TankMixin.trySpawnTank.call(g,0.1),true);
+  assert.ok(g.suitPick && g.tankPick, '同時出現');
+  g.suitPick=null; g.tankPick=null;
+  assert.equal(SuitMixin.trySpawnSuit.call(g,0.9),false);
+  assert.equal(TankMixin.trySpawnTank.call(g,0.9),false);
+  assert.equal(g.suitNext,7); assert.equal(g.tankNext,7);
+  g.map.ride='airride'; assert.equal(TankMixin.trySpawnTank.call(g,0),false);
+});
+
+test('せんしゃ: 移動中だけ当たり、同じ敵への連続接触を制限', async () => {
+  const { TankMixin } = await import('../js/tank.js');
+  const z={x:0,z:-2,y:0,scale:1,alive:true,kind:'walker'}, ally={x:0,z:-2,y:0};
+  let hits=0;const g={tank:{},pos:{x:0,y:0,z:-4},zombies:[z],allyList:()=>[ally],
+    hitZombie() { hits++; return false; }, fx:{burst(){}},sfx:{hit(){}}};
+  TankMixin.tankRam.call(g,0,0,1); assert.equal(hits,1); assert.ok(z.tankHitT>0);
+  TankMixin.tankRam.call(g,0,0,1); assert.equal(hits,1);
+  z.tankHitT=0; TankMixin.tankRam.call(g,0,-4,1); assert.equal(hits,1, '停止中は当たらない');
 });

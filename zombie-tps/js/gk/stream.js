@@ -2,12 +2,12 @@
 // - いまの セグメントと つぎの セグメントだけ メモリに おく（ドアを とおると うしろの ドアを しめて まえを すてる）
 // - でぐちの ドアに 12m ちかづく（または さいごの へやを きれいに する）と つぎを よむ。おもいので 3フレームに わける
 // - ぶつかり・みちさがし（ナビ）・あかり・ドア・みはりだいは セグメントが かわる たびに つくりなおす
-import { makeMats, boxMeshes, groundMesh, farBoxes, farMeshes, disposeWorld } from '../world.js?v=26';
-import { mapBuilder, playerColliders, zombieColliders, shotColliders } from '../map.js?v=26';
-import { makeBoxIndex, ROBOT, ARMY } from '../rules.js?v=26';
-import { makeNavAt } from '../nav.js?v=26';
-import { SEG, placeSeg, joinSegs, segRegion, segOffset, segOfRoom, segStarts, segNear, segPassed, inBounds, segShouldLoad, segSeals } from './seg.js?v=26';
-import { gkLoadSeg, gkRoomAt } from './core.js?v=26';
+import { makeMats, boxMeshes, groundMesh, farBoxes, farMeshes, disposeWorld } from '../world.js?v=27';
+import { mapBuilder, playerColliders, zombieColliders, shotColliders } from '../map.js?v=27';
+import { makeBoxIndex, ROBOT, ARMY } from '../rules.js?v=27';
+import { makeNavAt } from '../nav.js?v=27';
+import { SEG, placeSeg, joinSegs, segRegion, segOffset, segOfRoom, segStarts, segNear, segPassed, inBounds, segShouldLoad, segSeals } from './seg.js?v=27';
+import { gkLoadSeg, gkRoomAt } from './core.js?v=27';
 
 const GROUND = 300; // じめんの いた（いまの セグメントの まんなかに うごかす）
 const inRooms = (rooms, o) => !!o && rooms.some((r) => o.x > r.b[0] && o.x < r.b[2] && o.z > r.b[1] && o.z < r.b[3]);
@@ -143,6 +143,7 @@ export const StreamMixin = {
     if (r && inRooms(rooms, r)) { if (r.state === 'on') this.allyTeleport(r, ROBOT, r.warpColor); else this.spawnRobot(); }
     if (a && inRooms(rooms, a)) { if (a.state === 'on') this.allyTeleport(a, ARMY, a.warpColor); else this.spawnArmy(); }
     if (this.suitPick && inRooms(rooms, this.suitPick)) this.placeSuit();
+    if (this.tankPick && inRooms(rooms, this.tankPick)) this.placeTank();
     if (this.cop && inRooms(rooms, this.cop)) this.endCop();
     if (this.drunk && inRooms(rooms, this.drunk)) this.endDrunk();
     if (this.oji && inRooms(rooms, this.oji)) this.endOji();

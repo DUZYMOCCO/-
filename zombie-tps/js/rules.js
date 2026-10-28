@@ -1,7 +1,7 @@
 // ゾンビストライク — ゲームの きまり（DOM / three.js に いぞんしない。node のテストから よめる）
 // ぶき・ダメージ・ウェーブ・あたりはんてい（レイ×はこ）・いどうの ぶつかり・ゾンビの みちさがし（フローフィールド）
 
-export const VERSION = '0.21.1';
+export const VERSION = '0.22.0';
 
 // ---- ぶき ----
 // rpm: 1ぷんかんの はっしゃかず / mag: マガジン / reserve: よびだん / reload: びょう
@@ -1707,6 +1707,7 @@ export const SUIT = {
   touchR: 1.6,
   spot: [10, 34],      // スタートからの きょり
   every: 3,            // つかった あと この ウェーブ かず で また でる
+  chance: 0.7,         // 3ウェーブごとの どくりつした ちゅうせん
   cam: { dist: 6.4, height: 3.2, side: 1.25 }, // カメラを うしろへ ひく
   camPitch: 0.13,      // カメラを すこし したへ（まんなかの ねらいが ゾンビの むねの たかさに くる）
   assist: 0.075,       // ねらいの おてつだい（この かくど いないの ゾンビに あてる）
@@ -1716,6 +1717,18 @@ export const SUIT = {
   flyG: 10,            // パンチで とんだ ゾンビの じゅうりょく（ゆっくり おちる → がめんの そとへ）
   flyTime: 1.35,       // これだけ とんだら きえる（キラーン）
 };
+// Both power-ups roll separately; a failed roll is retried after the cooldown.
+export function powerupAppears(r = Math.random()) { return r >= 0 && r < SUIT.chance; }
+export const TANK = { time:45, armor:4000, armorMul:0.25, grace:2, every:3, touchR:2,
+  speedMul:1.2, radius:0.8, ramRadius:1.55, ramDamage:220, ramBossDamage:130, ramCooldown:1.0,
+  weapons: { mg:{ id:'tankmg', name:'マシンガン', icon:'🔫', interval:0.12, dmg:42, range:75 },
+    cannon:{ id:'tankcannon', name:'しゅほう', icon:'💥', interval:1.2, dmg:480, blast:7.5, power:17, speed:48, gravity:6, life:3, projectile:true } } };
+// Squared distance from an enemy to the travelled segment, including its ends.
+export function tankRamHit(x0,z0,x1,z1,x,z,radius=TANK.ramRadius) {
+  const dx=x1-x0,dz=z1-z0, len=dx*dx+dz*dz;
+  const t=len ? Math.max(0,Math.min(1,((x-x0)*dx+(z-z0)*dz)/len)) : 0;
+  return (x-x0-dx*t)**2+(z-z0-dz*t)**2 <= radius*radius;
+}
 // v0.15.0: パンチは「なぐる」ボタン（V）へ。ぶきバーは 4つ
 export const SUIT_ORDER = ['mcannon', 'flamer', 'cannon', 'missile'];
 export const SUIT_WEAPONS = {

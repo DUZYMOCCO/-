@@ -1,6 +1,6 @@
 // ステージ2 セグメント C（へや4 なかにわ・ボス）。いりぐち（z=12 の かべの ドア）は B の でぐちと おなじ ばしょ（edge:'in'）
-import { segWall, segOuter, segDoor, roomSpawns } from './kit.js?v=26';
-import { WOOD, GOLD, H, DW, COURT, candle, doorCap } from './manor_a.js?v=26';
+import { segWall, segOuter, segDoor, roomSpawns } from './kit.js?v=27';
+import { WOOD, GOLD, H, DW, COURT, candle, doorCap } from './manor_a.js?v=27';
 
 export function build(builder) {
   const B = builder(36, 2203), { add, deco } = B;

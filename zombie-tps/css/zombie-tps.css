@@ -517,3 +517,15 @@
 .zt-guest.zt-momo span { background: rgba(128,52,91,.92); }
 .zt-botarrow.zt-momo i { color: #ffaad3; }
 .zt-momo .zt-bothp div { background: linear-gradient(#ffd0e3, #e47cae); }
+
+.zt-tankbar, .zt-tanktime { display: none; }
+.zt-tanked .zt-slots, .zt-tanked .zt-rl, .zt-tanked .zt-jump, .zt-tanked .zt-melee { display:none; }
+.zt-tanked .zt-boss { top:92px; }
+.zt-tanked .zt-tankbar { display:flex; position:absolute; top:calc(max(6px, env(safe-area-inset-top)) + 32px); right:max(6px, env(safe-area-inset-right)); gap:3px; }
+.zt-tanked .zt-tanktime { display:block; position:absolute; top:calc(max(6px, env(safe-area-inset-top)) + 36px); left:max(8px, env(safe-area-inset-left)); width:min(42vw,280px); text-shadow:0 2px 3px #000; pointer-events:none; }
+.zt-tanktime b { display:block; font-size:17px; font-weight:900; color:#cde994; }
+.zt-tanktag { position:absolute; transform:translate(-50%,-100%); pointer-events:none; }
+.zt-tanktag span, .zt-tankarrow span { font-size:11px; font-weight:900; color:#fff; background:rgba(65,100,38,.92); padding:1px 7px 2px; border-radius:7px; white-space:nowrap; }
+.zt-tankarrow { position:absolute; transform:translate(-50%,-50%); display:flex; flex-direction:column; align-items:center; pointer-events:none; }
+.zt-tankarrow i { color:#b5e779; font-size:26px; font-style:normal; }
+.hidden.zt-tanktag, .hidden.zt-tankarrow { display:none; }

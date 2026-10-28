@@ -13,35 +13,36 @@ import {
   spinGun, weaponMoveMul, makeBoxIndex, pickSpawnPoint, hurryMul, pickMapId,
   rollGearDrop, rollGear, GEAR_FLOOR, GEAR_LIFE, gearEffects, equippedItems, gearColor, rarityOf, normalizeGear,
   damageMul, frontHit, heavyOf, unlockedSpecials, zombieTargetsRobot,
-  castPierce, SUIT, dropSpot, aimFov, aimSensMul, scopeSway, isScoped, SCOPE, weaponLevel, setGunLevel,
+  castPierce, SUIT, TANK, dropSpot, aimFov, aimSensMul, scopeSway, isScoped, SCOPE, weaponLevel, setGunLevel,
   VEHICLE, BLAST_FX, blastHits, blastReachesVehicle,
   SpatialGrid, thinkInterval, QualityGovernor, govPixelRatio,
   normalizeLoadout, loadoutSlot, cycleLoadout, applyCrate, SMOKE, smokeAffects,
   rescueSample, rescuePick, rescueSpot, RESCUE,
-} from './rules.js?v=26';
-import { RIDE, ridePoint, createRideScene } from './ride.js?v=26';
-import { Crowd } from './crowd.js?v=26';
-import { RobotMixin } from './robot.js?v=26';
-import { AllyMixin } from './ally.js?v=26';
-import { GuestMixin } from './guests.js?v=26';
-import { CopMixin } from './cop.js?v=26';
-import { ArmyMixin } from './army.js?v=26';
-import { DrunkMixin } from './drunk.js?v=26';
+} from './rules.js?v=27';
+import { RIDE, ridePoint, createRideScene } from './ride.js?v=27';
+import { Crowd } from './crowd.js?v=27';
+import { RobotMixin } from './robot.js?v=27';
+import { AllyMixin } from './ally.js?v=27';
+import { GuestMixin } from './guests.js?v=27';
+import { CopMixin } from './cop.js?v=27';
+import { ArmyMixin } from './army.js?v=27';
+import { DrunkMixin } from './drunk.js?v=27';
 const BOT_NAME = { ao: 'アオ', momo: 'モモ', cop: 'けいさつおじさん', army: 'アーミーロボ', drunk: 'よっぱらいおじさん' }; // v0.14.0
-import { VehicleMixin } from './vehicles.js?v=26';
-import { SuitMixin } from './suit.js?v=26';
-import { MissileMixin } from './missiles.js?v=26';
-import { MeleeMixin } from './melee.js?v=26';
-import { GkMixin } from './gk/play.js?v=26';
-import { StreamMixin } from './gk/stream.js?v=26';
-import { EnergyMixin } from './beams.js?v=26';
-import { makeNav } from './nav.js?v=26';
-import { buildMap, playerColliders, zombieColliders, shotColliders } from './map.js?v=26';
-import { buildTextures, fxTextures } from './textures.js?v=26';
-import { buildWorld, disposeWorld } from './world.js?v=26';
-import { Backdrop, BACKDROPS } from './backdrop.js?v=26';
-import { makePlayer, applyOutfit, applyGear, makeGearDrop, makeOjisan, makeWeapons, makeZombie, makeRocketProjectile, makeRocketCrate, zombieChunkColors, FLASH_MAT } from './models.js?v=26';
-import { FX } from './fx.js?v=26';
+import { VehicleMixin } from './vehicles.js?v=27';
+import { SuitMixin } from './suit.js?v=27';
+import { TankMixin } from './tank.js?v=27';
+import { MissileMixin } from './missiles.js?v=27';
+import { MeleeMixin } from './melee.js?v=27';
+import { GkMixin } from './gk/play.js?v=27';
+import { StreamMixin } from './gk/stream.js?v=27';
+import { EnergyMixin } from './beams.js?v=27';
+import { makeNav } from './nav.js?v=27';
+import { buildMap, playerColliders, zombieColliders, shotColliders } from './map.js?v=27';
+import { buildTextures, fxTextures } from './textures.js?v=27';
+import { buildWorld, disposeWorld } from './world.js?v=27';
+import { Backdrop, BACKDROPS } from './backdrop.js?v=27';
+import { makePlayer, applyOutfit, applyGear, makeGearDrop, makeOjisan, makeWeapons, makeZombie, makeRocketProjectile, makeRocketCrate, zombieChunkColors, FLASH_MAT } from './models.js?v=27';
+import { FX } from './fx.js?v=27';
 const A_RIGHT = new THREE.Vector3();
 
 const v3 = () => new THREE.Vector3();
@@ -107,6 +108,7 @@ export class Game {
     this.initCop();
     this.initArmy(); this.initDrunk(); // v0.14.0
     this.initSuit();
+    this.initTank();
     this.initMissiles();
     this.initMelee(); // v0.13.0: なぐる
     this.weapons = makeWeapons();
@@ -201,7 +203,8 @@ export class Game {
     if (this.pickups) this.pickups.length = 0;
     if (this.pk) this.pk.set(0, 0, 0);
     this.boss = null; this.hud.bossBar?.(null);
-    if (this.suitM) this.endSuit(); // v0.10.0
+    if (this.suitM) this.endSuit();
+    if (this.tankM) this.endTank(); // v0.10.0
     this.endOji(); this.endRobot?.(); this.endGuests?.(); this.endCop?.(); this.endArmy?.(); this.endDrunk?.(); this.copLast = 0; this.drunkLast = 0; this.resetVehicles?.(); this.ojiPlan = null; this.ojiLast = 0; this.perchT = 0; this.perchCd = 0;
     for (const sp of this.spits || []) this.releaseSpit(sp);
     this.spits = []; for (const h of this.hazards || []) this.releaseHazard(h);
@@ -222,9 +225,10 @@ export class Game {
     for (const z of this.zombies) this.releaseZombie(z);
     this.zombies.length = 0;
     this.resetRun();
+    if (this.gk) this.wave = this.gk.from || 0;
     this.applyStage(this.todStart || 'day');
     if (!this.map.ride && !this.map.specialStage) { this.spawnRobot(); this.spawnArmy(); this.spawnGuests(); }
-    if (!this.map.ride && !this.map.specialStage) this.placeSuit(); // v0.10.0: パワードスーツを どこかに おく
+    if (!this.map.ride && !this.map.specialStage) { this.trySpawnSuit(); this.trySpawnTank(); } // v0.10.0: パワードスーツを どこかに おく
     this.state = 'play';
     this.hud.show('play');
     this.pushHud(true);
@@ -1367,7 +1371,7 @@ export class Game {
   airborne() { let n = 0; for (const z of this.zombies) if (z.fly) n++; return n; }
 
   damagePlayer(d, z) {
-    if (this.suitBlocksDamage(d)) return; // v0.10.0: スーツ・ぬいだ すぐあと
+    if (this.tankBlocksDamage(d) || this.suitBlocksDamage(d)) return; // v0.10.0: スーツ・ぬいだ すぐあと
     d *= this.gearFx ? this.gearFx.dmgMul : 1;
     this.hp = Math.max(0, this.hp - d);
     this.regenDelay = 5; this.shake = Math.max(this.shake, 0.35);
@@ -1797,11 +1801,12 @@ export class Game {
     }
     if (this.state === 'title') { this.titleT += dt; this.pFloor = 0; this.pSupport = null; this.updateCull(); this.updateZombies(dt); this.updateTitleCam(dt); this.updateNight(); this.fx.update(dt); return; }
     if (this.state === 'pause') return;
-    if (this.state === 'over' || this.state === 'clear') { this.updateOjiHud(); this.updateRobotHud(); this.updateGuestHud(); this.updateCopHud(); this.updateArmyHud(); this.updateDrunkHud(); this.updateSuitHud(); this.updateShells(dt); this.updateVehicles(dt); this.updateRockets(dt); this.updateMissiles(dt); this.updateSmoke(dt); this.updateLasers?.(dt); this.hideBeam?.(); this.updateZombies(dt); this.updatePickups(dt); this.fx.update(dt); this.updateCamera(dt, false); this.updateNight(); return; }
+    if (this.state === 'over' || this.state === 'clear') { this.updateOjiHud(); this.updateRobotHud(); this.updateGuestHud(); this.updateCopHud(); this.updateArmyHud(); this.updateDrunkHud(); this.updateSuitHud(); this.updateTankHud(); this.updateShells(dt); this.updateVehicles(dt); this.updateRockets(dt); this.updateMissiles(dt); this.updateSmoke(dt); this.updateLasers?.(dt); this.hideBeam?.(); this.updateZombies(dt); this.updatePickups(dt); this.fx.update(dt); this.updateCamera(dt, false); this.updateNight(); return; }
 
     const gun = this.guns[this.cur], w = gun.w || WEAPONS[this.cur];
     // イベント
     for (const ev of inp.events) {
+      if (this.tank && this.tankEvent(ev)) continue;
       if (this.suit && this.suitEvent(ev)) continue; // v0.10.0
       if (ev === 'reload') { if (startReload(gun)) this.onReloadStart(); }
       else if (ev === 'jump') { if (!this.map.ride && this.onGround) { this.vy = 7.2; this.onGround = false; } }
@@ -1810,7 +1815,7 @@ export class Game {
       else if (ev === 'next' || ev === 'prev' || ev === 'swap') this.switchWeapon(cycleLoadout(this.loadout, this.cur, ev === 'prev' ? -1 : 1)); else if (ev === 'pause') { this.hud.pause(); return; }
     }
     // ねらい
-    this.aimAmt = lerp(this.aimAmt, inp.aim && !this.suit ? 1 : 0, Math.min(1, dt * 12));
+    this.aimAmt = lerp(this.aimAmt, inp.aim && !this.suit && !this.tank ? 1 : 0, Math.min(1, dt * 12));
     const target = this.crosshairTarget();
     const slow = (target >= 0 ? 0.65 : 1) * (1 - this.aimAmt * 0.45) * aimSensMul(this.cur, this.aimAmt); // v0.8.0: スコープは もっと ゆっくり
     // しせん: めあての むきへ すこしだけ なめらかに（おくれない ていど）
@@ -1823,7 +1828,7 @@ export class Game {
     this.recoilP -= this.recoilP * rec;
     // いどう
     const fx = -Math.sin(this.yaw), fz = -Math.cos(this.yaw), rx = Math.cos(this.yaw), rz = -Math.sin(this.yaw);
-    const speed = lerp(4.7, 2.5, this.aimAmt) * (gun.reloading > 0 ? 0.85 : 1) * (this.mSt.active ? this.mW.moveMul : weaponMoveMul(gun)) * this.gearFx.speedMul * (this.zapT > 0 && !this.suit ? ZOMBIES.electric.zap.slow : 1) * (this.suit ? SUIT.speedMul : 1);
+    const speed = this.tank ? 4.7 * TANK.speedMul : lerp(4.7, 2.5, this.aimAmt) * (gun.reloading > 0 ? 0.85 : 1) * (this.mSt.active ? this.mW.moveMul : weaponMoveMul(gun)) * this.gearFx.speedMul * (this.zapT > 0 && !this.suit ? ZOMBIES.electric.zap.slow : 1) * (this.suit ? SUIT.speedMul : 1);
     const tvx = this.map.ride ? 0 : (fx * inp.my + rx * inp.mx) * speed, tvz = this.map.ride ? 0 : (fz * inp.my + rz * inp.mx) * speed;
     // かそく・げんそく（くうちゅうは ゆっくり）
     const V = this.vel, speeding = tvx * tvx + tvz * tvz > V.x * V.x + V.z * V.z;
@@ -1834,10 +1839,10 @@ export class Game {
     const stepLen = Math.hypot(V.x, V.z) * dt, nSub = Math.max(1, Math.ceil(stepLen / 0.15));
     let nx = ox, nz = oz;
     for (let i = 0; i < nSub; i++) {
-      const r = collideCircle(nx + V.x * dt / nSub, nz + V.z * dt / nSub, PLAYER_R, this.pos.y, this.pCol);
+      const r = collideCircle(nx + V.x * dt / nSub, nz + V.z * dt / nSub, this.tank ? TANK.radius : PLAYER_R, this.pos.y, this.pCol);
       nx = Math.max(-this.half + 0.5, Math.min(this.half - 0.5, r.x)); nz = Math.max(-this.half + 0.5, Math.min(this.half - 0.5, r.z));
     }
-    if (this.suit) this.pk.set(0, 0, 0); // スーツは ふっとばされない
+    if (this.suit || this.tank) this.pk.set(0, 0, 0); // スーツは ふっとばされない
     // ボスに ふっとばされた ぶん
     if (this.pk.x || this.pk.z) {
       const r = collideCircle(nx + this.pk.x * dt, nz + this.pk.z * dt, PLAYER_R, this.pos.y, this.pCol);
@@ -1868,6 +1873,7 @@ export class Game {
       if (dt > 0) { V.x = (p.x-oldX)/dt; V.z = (p.z-oldZ)/dt; }
       this.moveAmt = 0; this.rideScene.update(dt, this.pos);
     } else if (this.rideScene) this.rideScene.update(dt, this.pos);
+    if (this.tank) this.tankRam(ox, oz, dt);
     this.walkPhase += dt * Math.hypot(vx, vz) * 2.2;
     // あしおと
     const stepN = Math.floor(this.walkPhase / Math.PI);
@@ -1886,10 +1892,11 @@ export class Game {
     // ミニガン: まわしてから うつ（うってない ぶきは とまる）
     for (const id of WEAPON_ORDER) if (WEAPONS[id].spinUp) spinGun(this.guns[id], id === this.cur && held && this.swapT <= 0, dt);
     if (w.spinUp) { const sp = gun.spin; if (sp > 0.02 && held) this.sfx.spin?.(sp); }
-    this.updateMelee(dt, !!inp.melee); // v0.13.0: なぐる（じゅうは もったまま）
+    this.updateMelee(dt, !!inp.melee && !this.tank); // v0.13.0: なぐる（じゅうは もったまま）
     // v0.15.0: ゲージの ぶき（レーザー・ほのお・ビーム）。つかって いない ものは もどる
-    this.updateEnergy(dt, !this.suit && w.gauge ? held && this.swapT <= 0 && !this.mSt.active : false);
-    if (this.suit) this.updateSuitFire(dt, held); // v0.10.0: スーツの ぶき
+    this.updateEnergy(dt, !this.suit && !this.tank && w.gauge ? held && this.swapT <= 0 && !this.mSt.active : false);
+    if (this.tank) this.updateTankFire(held);
+    else if (this.suit) this.updateSuitFire(dt, held); // v0.10.0: スーツの ぶき
     else if (w.gauge) { /* うえで しょり */ }
     else if (this.swapT <= 0 && !this.mSt.active) {
       const res = tryFire(gun, held);
@@ -1897,7 +1904,7 @@ export class Game {
       else if (res === 'reload') this.onReloadStart();
       else if (res === 'empty') this.sfx.empty();
     }
-    if (!this.suit && gun.ammo === 0 && gun.reloading === 0 && gun.reserve > 0 && !held) { if (startReload(gun)) this.onReloadStart(); }
+    if (!this.suit && !this.tank && gun.ammo === 0 && gun.reloading === 0 && gun.reserve > 0 && !held) { if (startReload(gun)) this.onReloadStart(); }
 
     // HP かいふく
     this.updateHazards(dt);
@@ -1921,6 +1928,7 @@ export class Game {
     this.updateArmy(dt);
     this.updateDrunk(dt);
     this.updateSuit(dt);
+    this.updateTank(dt);
     this.updateVehicles(dt);
     this.updatePickups(dt);
     this.updateGearDrops(dt);
@@ -1934,6 +1942,7 @@ export class Game {
     this.updateArmyHud();
     this.updateDrunkHud();
     this.updateSuitHud();
+    this.updateTankHud();
     this.updateNight();
     this.fx.update(dt);
     this.hudT = (this.hudT || 0) - dt;
@@ -1958,7 +1967,7 @@ export class Game {
   updatePlayerAnim(dt) {
     const P = this.p, gun = this.guns[this.cur], w = gun.w || WEAPONS[this.cur], wo = this.weapons[this.cur];
     P.root.position.copy(this.pos);
-    this.boat.visible = this.map.id === 'flood' && !this.suit;
+    this.boat.visible = this.map.id === 'flood' && !this.suit && !this.tank;
     P.root.rotation.y = this.yaw;
     if (wo.barrels) wo.barrels.rotation.z += (gun.spin || 0) * 42 * dt; // ミニガンの つつが まわる
     const sw = Math.sin(this.walkPhase) * this.moveAmt;
@@ -2041,9 +2050,9 @@ export class Game {
     const cam = this.camera, A = this.tmp;
     const aim = this.aimAmt;
     // v0.8.0: スナイパー だけ スコープ（ズーム・くろい まる・ゆっくり ゆれる）
-    const scoped = playing !== false && this.state === 'play' && !this.suit && isScoped(this.cur, aim);
+    const scoped = playing !== false && this.state === 'play' && !this.suit && !this.tank && isScoped(this.cur, aim);
     // v0.10.0: スーツの ときは カメラを うしろへ ひく
-    const sk = this.suitCamK = approach(this.suitCamK || 0, this.suit ? 1 : 0, 3, dt);
+    const sk = this.suitCamK = approach(this.suitCamK || 0, (this.suit || this.tank) ? 1 : 0, 3, dt);
     if (scoped !== this.scopedOn) { this.scopedOn = scoped; this.hud.scope?.(scoped); }
     cam.fov = scoped ? SCOPE.fov : Math.max(aimFov(this.cur, aim), this.cur === 'sniper' ? 46 : 0); cam.updateProjectionMatrix();
     this.swayT = (this.swayT || 0) + dt;
@@ -2074,7 +2083,7 @@ export class Game {
       cam.rotation.x += (Math.random() - 0.5) * s; cam.rotation.y += (Math.random() - 0.5) * s; cam.rotation.z = (Math.random() - 0.5) * s * 0.6;
     }
     // ちかすぎる ときは じぶんを うすく（かくす）
-    this.p.root.visible = this.camDist > 0.55 && !this.suit;
+    this.p.root.visible = this.camDist > 0.55 && !this.suit && !this.tank;
     this.followSun();
   }
 
@@ -2105,7 +2114,7 @@ export class Game {
       hp: Math.ceil(this.hp), maxHp: this.maxHp, ammo: g.ammo, mag: w.mag, reserve: g.reserve, weapon: this.cur,
       reloading: g.reloading > 0 ? 1 - g.reloading / w.reload : -1, wave: this.wave, area: this.gk ? `エリア ${this.gk.room + 1}/${this.gk.waves.length}` : null, left: this.remaining(), score: this.score,
       spread: currentSpread(w, { moving: this.moveAmt > 0.2, aiming: this.aimAmt > 0.5, airborne: !this.onGround, bloom: g.bloom }),
-      fov: this.camera.fov, aim: this.aimAmt, guns: this.guns, lv: g.lv || 1, suit: this.suit ? this.suit.weapon : null, loadout: this.loadout || null,
+      fov: this.camera.fov, aim: this.aimAmt, guns: this.guns, lv: g.lv || 1, suit: this.suit ? this.suit.weapon : null, tank: this.tank ? this.tank.weapon : null, loadout: this.loadout || null,
     }, force);
   }
 
@@ -2143,4 +2152,4 @@ export class Game {
     this.renderer.forceContextLoss?.();
   }
 }
-Object.assign(Game.prototype, GkMixin, StreamMixin, AllyMixin, GuestMixin, RobotMixin, CopMixin, ArmyMixin, DrunkMixin, VehicleMixin, SuitMixin, MissileMixin, MeleeMixin, EnergyMixin);
+Object.assign(Game.prototype, GkMixin, StreamMixin, AllyMixin, GuestMixin, TankMixin, RobotMixin, CopMixin, ArmyMixin, DrunkMixin, VehicleMixin, SuitMixin, MissileMixin, MeleeMixin, EnergyMixin);

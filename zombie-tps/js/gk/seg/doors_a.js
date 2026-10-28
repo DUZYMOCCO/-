@@ -1,6 +1,6 @@
 // ステージ18「とびらの そうこ」 セグメント A（へや0 そうこの いりぐち → へや1 ながい つうろ）。かくうの くらい そうこ
 // でてくる ドア: へやの そとの かべに あけた あな（ふさいで ある）。ゲームが とびらと ランプを かく
-import { segWall, segDoor, roomSpawns } from './kit.js?v=26';
+import { segWall, segDoor, roomSpawns } from './kit.js?v=27';
 
 export const WALL = 0x6e6e78, STEEL = 0x8e98a4, YEL = 0xe0b020, H = 3.8, DW = 4.4, OH = 4.2;
 export const THEME = { ground: 'concrete', tint: 0x5a5a62, k: 0.3, far: 'office', farTint: 0x6a6a74 };

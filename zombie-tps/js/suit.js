@@ -3,10 +3,10 @@
 // じかんが きれると ぬいで、すこしの あいだ むてき。つかったら 3ウェーブ あとに べつの ばしょへ また でる。
 import * as THREE from '../vendor/three.module.min.js';
 import {
-  SUIT, SUIT_WEAPONS, SUIT_ORDER, wearSuit, tickSuit, suitClockRuns, tickGrace, routeSuitDamage, suitNextWave, pickSuitSpot, suitTouched,
+  SUIT, SUIT_WEAPONS, SUIT_ORDER, powerupAppears, wearSuit, tickSuit, suitClockRuns, tickGrace, routeSuitDamage, suitNextWave, pickSuitSpot, suitTouched,
   flameHits, punchTargets, punchLaunch, burnTick, groundHeight, edgeArrow, castShot, castPierce, aabbNormal, WEAPON_ORDER,
-} from './rules.js?v=26';
-import { makePowerSuit, makeSuitShell, SUIT_CHUNKS } from './models.js?v=26';
+} from './rules.js?v=27';
+import { makePowerSuit, makeSuitShell, SUIT_CHUNKS } from './models.js?v=27';
 
 const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _c = new THREE.Vector3(), _d = new THREE.Vector3(), _e = new THREE.Vector3();
 const UP = new THREE.Vector3(0, 1, 0);
@@ -28,6 +28,11 @@ export const SuitMixin = {
     if (this.shells) this.shells.length = 0;
     if (this.suitHudOn) { this.suitHudOn = false; this.hud.suit?.(null); }
   },
+  trySpawnSuit(roll = Math.random()) {
+    if (this.map.ride || this.map.specialStage || this.suit || this.suitPick) return false;
+    if (!powerupAppears(roll) || !this.placeSuit()) { this.suitNext = Math.max(0, this.wave) + SUIT.every; return false; }
+    return true;
+  },
   // あるいて いける ばしょに おく（ロボの ばしょ とは はなす）
   placeSuit(r1 = Math.random()) {
     if (this.map.ride || this.map.specialStage) return null;
@@ -37,6 +42,7 @@ export const SuitMixin = {
     const same = cells.filter((c) => Math.abs((c[2] || 0) - sy) < 0.5);
     if (same.length) cells = same;
     if (this.gk && this.map.gk) cells = this.gkSpotFilter(cells); // v0.16.1: しまった へやには おかない
+    if (this.tankPick) { const f = cells.filter(c => Math.hypot(c[0]-this.tankPick.x,c[1]-this.tankPick.z) > 5); if (f.length) cells=f; }
     const A = this.army; // v0.14.0: アーミーロボとも かさならない
     if (A) { const f = cells.filter((c) => Math.hypot(c[0] - A.x, c[1] - A.z) > 4); if (f.length) cells = f; }
     if (!cells.length) return null;
@@ -62,7 +68,7 @@ export const SuitMixin = {
     m.head.rotation.y = Math.sin(t * 0.8) * 0.4;
   },
   wearSuitNow() {
-    const p = this.suitPick; if (!p) return;
+    const p = this.suitPick; if (!p || this.tank) return;
     this.suit = wearSuit(); this.suitPick = null; this.suitWave = this.wave;
     const m = this.suitM; m.marker.visible = false; if (m.glow) m.glow.visible = false;
     this.burnT = 0; this.zapT = 0; this.pk.set(0, 0, 0);
@@ -82,7 +88,7 @@ export const SuitMixin = {
     this.fx.poof(_a.set(P.x, P.y + 1.4, P.z), 1.6);
     this.suitM.root.visible = false;
     this.vy = 6; this.onGround = false;
-    this.hud.banner('スーツの じかん おわり！', `また ${SUIT.every}ウェーブ あとに どこかに でるよ`);
+    this.hud.banner('スーツの じかん おわり！', `${SUIT.every}ウェーブ あとから また さがそう`);
     this.sfx.robotBreak?.();
     this.pushHud(true);
   },
@@ -123,8 +129,8 @@ export const SuitMixin = {
     this.suitFrozen = frozen;
     this.suitGraceT = tickGrace(this.suitGraceT, dt, frozen);
     // つぎの スーツ
-    if (!this.suit && !this.suitPick && this.state === 'play' && this.wave >= this.suitNext && this.wave > 0) {
-      if (this.placeSuit()) { this.hud.kill('パワードスーツが どこかに あらわれた！', true); this.sfx.robotOn?.(); }
+    if (!this.map.ride && !this.map.specialStage && !this.suit && !this.suitPick && this.state === 'play' && this.wave >= this.suitNext && this.wave > 0) {
+      if (this.trySpawnSuit()) { this.hud.kill('パワードスーツが どこかに あらわれた！', true); this.sfx.robotOn?.(); }
     }
     const m = this.suitM;
     if (this.suitPick) {
@@ -133,7 +139,7 @@ export const SuitMixin = {
       m.ring.scale.setScalar(1 + k * 0.15); m.ring.material.opacity = 0.5 + k * 0.4; m.beam.material.opacity = 0.18 + k * 0.2;
       if (m.glow) m.glow.material.opacity = 0.6 + k * 0.4;
       this.poseSuitIdle(p.t);
-      if (this.state === 'play' && suitTouched(this.pos.x - p.x, this.pos.z - p.z, this.pos.y - p.y)) this.wearSuitNow();
+      if (this.state === 'play' && !this.tank && suitTouched(this.pos.x - p.x, this.pos.z - p.z, this.pos.y - p.y)) this.wearSuitNow();
     }
     if (this.suit) {
       if (tickSuit(this.suit, dt, frozen) === 'eject') this.ejectSuit();
@@ -295,11 +301,11 @@ export const SuitMixin = {
     z.flashOn = false; z.flash = 0;
     this.fx.burst(_c.set(z.x, z.y + 1 * z.scale, z.z), 6, { color: 0x6b625a, color2: 0xff9a30, speed: 1, up: 2, size: 0.2, life: 0.7, gravity: -2 });
   },
-  suitCannon(W) {
+  suitCannon(W, muzzle = this.suitM.cannonMuzzle) {
     const { o, d: d0 } = this.suitAimRay(), m = this.suitM;
     const d = this.suitAssist(o, d0, 60);
     const hit = castShot(o.x, o.y, o.z, d.x, d.y, d.z, this.zombies, this.sCol, 120);
-    const start = m.cannonMuzzle.getWorldPosition(new THREE.Vector3());
+    const start = muzzle.getWorldPosition(new THREE.Vector3());
     const aimP = new THREE.Vector3(hit.x, hit.y, hit.z);
     const fdir = aimP.sub(start), dist = fdir.length();
     if (dist < 3 || fdir.dot(d) < 0) fdir.copy(d);
@@ -307,10 +313,10 @@ export const SuitMixin = {
     let sh = this.shellPool.pop();
     if (!sh) sh = { mdl: makeSuitShell(), pos: new THREE.Vector3(), vel: new THREE.Vector3() };
     this.scene.add(sh.mdl.group); sh.mdl.group.visible = true;
-    sh.pos.copy(start); sh.vel.copy(fdir).multiplyScalar(W.speed); sh.vel.y += 0.5 * W.gravity * Math.min(1.5, Math.max(3, dist) / W.speed); sh.life = W.life; sh.trailT = 0;
+    sh.w = W; sh.pos.copy(start); sh.vel.copy(fdir).multiplyScalar(W.speed); sh.vel.y += 0.5 * W.gravity * Math.min(1.5, Math.max(3, dist) / W.speed); sh.life = W.life; sh.trailT = 0;
     sh.mdl.group.position.copy(start);
     this.shells.push(sh);
-    this.fx.muzzle(m.cannonMuzzle, 2.4);
+    this.fx.muzzle(muzzle, 2.4);
     this.fx.burst(start, 8, { color: 0xbdb3a0, color2: 0xe8e0d0, speed: 1.5, up: 1, size: 0.25, life: 0.6, gravity: -1 });
     this.sfx.rocket();
     this.shake = Math.min(0.5, this.shake + 0.25);
@@ -332,9 +338,8 @@ export const SuitMixin = {
   },
   releaseShell(s) { this.scene.remove(s.mdl.group); this.shellPool.push(s); },
   updateShells(dt) {
-    const W = SUIT_WEAPONS.cannon;
     for (let i = this.shells.length - 1; i >= 0; i--) {
-      const s = this.shells[i];
+      const s = this.shells[i], W = s.w || SUIT_WEAPONS.cannon;
       s.life -= dt;
       s.vel.y -= W.gravity * dt;
       const sp = s.vel.length(), step = sp * dt;
