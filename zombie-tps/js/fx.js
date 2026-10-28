@@ -1,7 +1,7 @@
 // こうか: マズルフラッシュ・トレーサー・やっきょう・つぶ（みどりの しぶき／けむり）・しみ（みどり）・だんこん
 import * as THREE from '../vendor/three.module.min.js';
-import { makeMagMesh } from './models.js?v=31';
-import { Pool } from './rules.js?v=31';
+import { makeMagMesh } from './models.js?v=32';
+import { Pool } from './rules.js?v=32';
 
 const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _s = new THREE.Vector3(), _p = new THREE.Vector3(), _c = new THREE.Color();
 const UP = new THREE.Vector3(0, 1, 0), FWD = new THREE.Vector3(0, 0, 1);
@@ -185,17 +185,24 @@ export class FX {
     t.m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, -1), t.dir);
   }
 
-  muzzle(muzzleObj, scale = 1) {
+  muzzle(muzzleObj, scale = 1, minLife = 0) {
     muzzleObj.getWorldPosition(this.flash.position);
     muzzleObj.getWorldQuaternion(this.flash.quaternion);
     const s = (0.35 + Math.random() * 0.25) * scale;
     this.flash.scale.setScalar(s);
     this.flash.children[0].rotation.z = Math.random() * Math.PI;
-    this.flash.visible = true; this.flashLife = 0.045 * Math.max(1, scale * 0.8); // v0.9.0: マグナムは すこし ながく ひかる
+    this.flash.visible = true; this.flashLife = Math.max(minLife, 0.045 * Math.max(1, scale * 0.8)); // v0.9.0: マグナムは すこし ながく ひかる
     if (this.lightDecay > 120 && this.light.intensity > 8) return; // ばくはつの ひかりを けさない
     this.light.position.copy(this.flash.position);
     this.light.distance = 9 * (this.lightBoost > 1 ? 1.4 : 1); this.lightDecay = 120;
     this.light.intensity = 6 * scale * this.lightBoost;
+  }
+
+  // Short forward sparks, pooled with the existing particles and quality cap.
+  minigunSparks(muzzleObj) {
+    const pos = muzzleObj.getWorldPosition(_p);
+    const direction = _s.set(0, 0, -1).applyQuaternion(muzzleObj.getWorldQuaternion(_q));
+    this.burst(pos, 3, { color: 0xffa522, color2: 0xfff0a0, speed: 5, up: 0.2, size: 0.07, life: 0.16, gravity: 3, dir: direction, spread: 0.22 });
   }
 
   casing(ejectObj, kind, rightDir) {

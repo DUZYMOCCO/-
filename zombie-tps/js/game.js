@@ -18,31 +18,31 @@ import {
   SpatialGrid, thinkInterval, QualityGovernor, govPixelRatio,
   normalizeLoadout, loadoutSlot, cycleLoadout, applyCrate, SMOKE, smokeAffects,
   rescueSample, rescuePick, rescueSpot, RESCUE,
-} from './rules.js?v=31';
-import { RIDE, ridePoint, createRideScene } from './ride.js?v=31';
-import { Crowd } from './crowd.js?v=31';
-import { RobotMixin } from './robot.js?v=31';
-import { AllyMixin } from './ally.js?v=31';
-import { GuestMixin } from './guests.js?v=31';
-import { CopMixin } from './cop.js?v=31';
-import { ArmyMixin } from './army.js?v=31';
-import { DrunkMixin } from './drunk.js?v=31';
+} from './rules.js?v=32';
+import { RIDE, ridePoint, createRideScene } from './ride.js?v=32';
+import { Crowd } from './crowd.js?v=32';
+import { RobotMixin } from './robot.js?v=32';
+import { AllyMixin } from './ally.js?v=32';
+import { GuestMixin } from './guests.js?v=32';
+import { CopMixin } from './cop.js?v=32';
+import { ArmyMixin } from './army.js?v=32';
+import { DrunkMixin } from './drunk.js?v=32';
 const BOT_NAME = { ao: 'アオ', momo: 'モモ', cop: 'けいさつおじさん', army: 'アーミーロボ', drunk: 'よっぱらいおじさん' }; // v0.14.0
-import { VehicleMixin } from './vehicles.js?v=31';
-import { SuitMixin } from './suit.js?v=31';
-import { TankMixin } from './tank.js?v=31';
-import { MissileMixin } from './missiles.js?v=31';
-import { MeleeMixin } from './melee.js?v=31';
-import { GkMixin } from './gk/play.js?v=31';
-import { StreamMixin } from './gk/stream.js?v=31';
-import { EnergyMixin } from './beams.js?v=31';
-import { makeNav } from './nav.js?v=31';
-import { buildMap, playerColliders, zombieColliders, shotColliders } from './map.js?v=31';
-import { buildTextures, fxTextures } from './textures.js?v=31';
-import { buildWorld, disposeWorld } from './world.js?v=31';
-import { Backdrop, BACKDROPS } from './backdrop.js?v=31';
-import { makePlayer, applyOutfit, applyGear, makeGearDrop, makeOjisan, makeWeapons, makeZombie, makeRocketProjectile, makeRocketCrate, zombieChunkColors, FLASH_MAT } from './models.js?v=31';
-import { FX } from './fx.js?v=31';
+import { VehicleMixin } from './vehicles.js?v=32';
+import { SuitMixin } from './suit.js?v=32';
+import { TankMixin } from './tank.js?v=32';
+import { MissileMixin } from './missiles.js?v=32';
+import { MeleeMixin } from './melee.js?v=32';
+import { GkMixin } from './gk/play.js?v=32';
+import { StreamMixin } from './gk/stream.js?v=32';
+import { EnergyMixin } from './beams.js?v=32';
+import { makeNav } from './nav.js?v=32';
+import { buildMap, playerColliders, zombieColliders, shotColliders } from './map.js?v=32';
+import { buildTextures, fxTextures } from './textures.js?v=32';
+import { buildWorld, disposeWorld } from './world.js?v=32';
+import { Backdrop, BACKDROPS } from './backdrop.js?v=32';
+import { makePlayer, applyOutfit, applyGear, makeGearDrop, makeOjisan, makeWeapons, makeZombie, makeRocketProjectile, makeRocketCrate, zombieChunkColors, FLASH_MAT } from './models.js?v=32';
+import { FX } from './fx.js?v=32';
 const A_RIGHT = new THREE.Vector3();
 
 const v3 = () => new THREE.Vector3();
@@ -1496,7 +1496,8 @@ export class Game {
     if (anyHit) { this.hud.hitmarker(anyHead); this.sfx.bulletHit(anyHead); }
     else if (hitSurface) this.sfx.bulletSurface();
     // みため
-    this.fx.muzzle(wObj.muzzle, id === 'shotgun' ? 1.5 : id === 'pistol' ? 0.8 : id === 'minigun' ? 0.95 : id === 'sniper' ? 1.3 : id === 'magnum' ? 1.6 : 1.15);
+    this.fx.muzzle(wObj.muzzle, id === 'shotgun' ? 1.5 : id === 'pistol' ? 0.8 : id === 'minigun' ? 1.65 : id === 'sniper' ? 1.3 : id === 'magnum' ? 1.6 : 1.15, id === 'minigun' ? 0.1 : 0);
+    if (id === 'minigun') this.fx.minigunSparks(wObj.muzzle);
     if (id !== 'sniper' && !w.revolver) this.fx.casing(wObj.eject, id, right); // リボルバーは リロードで まとめて でる
     if (id === 'shotgun') this.pumpT = 0.55;
     if (id === 'sniper') { this.boltT = w.bolt || 0.9; this.boltCase = true; } // ガチャッ（ボルトを ひく ときに からが でる）
@@ -2002,7 +2003,13 @@ export class Game {
     H.position.set(0.3, 0.02, -0.34 + k * 0.08);
     H.rotation.set(0, 0, 0);
     P.armL.rotation.set(0, -0.72, 0); P.armR.rotation.set(0, 0.05, 0);
-    P.armL.position.set(-0.33, 0, 0);
+    P.armL.position.set(-0.33, 0, 0); P.armR.position.set(0.33, 0, 0);
+    if (this.cur === 'minigun') {
+      // The heavy gun sits beside the right hip, with both hands bracing it.
+      H.position.set(0.55, -0.38, -0.30 + k * 0.04);
+      P.armR.position.set(0.46, 0, 0); P.armR.rotation.set(-0.85, 0.08, -0.12);
+      P.armL.position.set(-0.10, -0.03, -0.04); P.armL.rotation.set(-0.55, -1.0, 0.10);
+    }
     // もちかえ
     if (this.swapT > 0) { const s = Math.sin((this.swapT / 0.32) * Math.PI); H.position.y -= s * 0.35; H.rotation.x = -s * 0.8; }
     // リロード
@@ -2060,7 +2067,7 @@ export class Game {
       if (this.boltCase && bt > 0.55) { this.boltCase = false; this.fx.casing(wo.eject, 'sniper', A_RIGHT.set(Math.cos(this.yaw), 0, -Math.sin(this.yaw))); }
     }
     // ねらう ときは まんなかへ
-    H.position.x = lerp(0.3, 0.22, this.aimAmt);
+    H.position.x = this.cur === 'minigun' ? lerp(0.55, 0.49, this.aimAmt) : lerp(0.3, 0.22, this.aimAmt);
     if (this.mSt) this.meleeAnim(dt); // v0.13.0: ぶきを ふる
   }
 

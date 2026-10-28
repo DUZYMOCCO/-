@@ -1,6 +1,6 @@
 // ブロックの キャラクターと ぶき（かくうの デザイン・ロゴなし）
 import * as THREE from '../vendor/three.module.min.js';
-import { zombieFaceTexture, playerFaceTexture, solidTexture, shirtTexture, camoTexture, ojisanTextures, drunkTextures } from './textures.js?v=31';
+import { zombieFaceTexture, playerFaceTexture, solidTexture, shirtTexture, camoTexture, ojisanTextures, drunkTextures } from './textures.js?v=32';
 
 const boxGeoCache = new Map();
 export function boxGeo(w, h, d) {
@@ -221,6 +221,7 @@ function makeMinigun() {
   const muzzle = new THREE.Object3D(); muzzle.position.set(0, 0.02, -0.78); g.add(muzzle);
   const eject = new THREE.Object3D(); eject.position.set(0.09, 0.0, 0.02); g.add(eject);
   g.position.set(0, -0.02, 0.06);
+  g.scale.setScalar(1.55); // 腰の よこで かかえる おおきな じゅう
   return { group: g, mag, muzzle, eject, barrels, magRest: mag.position.clone() };
 }
 

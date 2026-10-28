@@ -1,6 +1,6 @@
 // ステージ18 セグメント B（へや2 にもつの へや → へや3 きかいの へや）。いりぐち（z=30）は A の でぐちと おなじ ばしょ（edge:'in'）
-import { segWall, segDoor, roomSpawns } from './kit.js?v=31';
-import { WALL, STEEL, H, DW, THEME, ring, sdoors, shelf, forklift } from './doors_a.js?v=31';
+import { segWall, segDoor, roomSpawns } from './kit.js?v=32';
+import { WALL, STEEL, H, DW, THEME, ring, sdoors, shelf, forklift } from './doors_a.js?v=32';
 
 export function build(builder) {
   const B = builder(36, 1802), { add, deco } = B;
