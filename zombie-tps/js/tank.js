@@ -1,5 +1,5 @@
 import * as THREE from '../vendor/three.module.min.js';
-import { TANK, SUIT, powerupAppears, pickSuitSpot, groundHeight, collideCircle, edgeArrow, castShot, tankRamHit, tickGrace } from './rules.js?v=27';
+import { TANK, SUIT, powerupAppears, pickSuitSpot, groundHeight, collideCircle, edgeArrow, castShot, tankRamHit, tickGrace, punchLaunch } from './rules.js?v=28';
 
 const A=new THREE.Vector3(), B=new THREE.Vector3(), C=new THREE.Vector3();
 function makeTank(glowTex) {
@@ -82,10 +82,31 @@ export const TankMixin={
     for(const z of this.zombies){
       if(!z.alive||z.demo||z.fly||Math.abs(z.y-this.pos.y)>1.6||(z.tankHitT||0)>0||!tankRamHit(x0,z0,this.pos.x,this.pos.z,z.x,z.z,TANK.ramRadius+0.3*z.scale))continue;
       z.tankHitT=TANK.ramCooldown;const hit=A.set(z.x,z.y+0.8,z.z),dir=B.set(ux,0.2,uz);const dmg=z.kind==='boss'?TANK.ramBossDamage:TANK.ramDamage;
-      this.hitZombie(z,dmg,false,hit,dir,{knock:2,dropAt:{x:z.x,y:z.y,z:z.z}});
-      if(z.alive){z.kvx+=ux*7;z.kvz+=uz*7;z.stagger=Math.max(z.stagger,0.5);}
+      const at={x:z.x,y:z.y,z:z.z}, velocity=z.kind==='boss'?null:punchLaunch(ux,uz,Math.random());
+      this.hitZombie(z,dmg,false,hit,dir,{knock:2,dropAt:at,...(velocity?{punch:velocity}: {})});
+      if(z.alive && velocity && this.punchFly(z,velocity)) {
+        z.fly.tankLive=true; z.ramDropAt=at; z.climb=null; z.slam=null; z.charge=null; z.leap=null;
+      } else if(z.alive && !z.fly) { z.kvx+=ux*7;z.kvz+=uz*7;z.stagger=Math.max(z.stagger,0.5); }
+
       this.fx.burst(hit,6,{color:0xc4d99a,color2:0xffffff,speed:2,up:1,size:0.08,life:0.3,gravity:4});this.sfx.hit?.();
     }
+  },
+  updateTankLiveFly(z,dt) {
+    const f=z.fly, m=z.model; f.t+=dt; f.vy-=SUIT.flyG*dt;
+    z.x+=f.vx*dt; z.y+=f.vy*dt; z.z+=f.vz*dt;
+    m.inner.rotation.x+=f.sx*1.6*dt; m.inner.rotation.z+=f.sz*dt; z.yaw+=f.sy*dt;
+    const fl=Math.sin(f.t*22)*0.9; m.legs[0].rotation.x=fl; m.legs[1].rotation.x=-fl;
+    m.arms[0].rotation.x=-1.6+fl*0.6; m.arms[1].rotation.x=-1.6-fl*0.6;
+    m.root.position.set(z.x,z.y,z.z); m.root.rotation.y=z.yaw;
+    if(f.t<SUIT.flyTime)return;
+    const margin=this.half-1; let x=Math.max(-margin,Math.min(margin,z.x)), zz=Math.max(-margin,Math.min(margin,z.z));
+    // Keep a surviving enemy reachable, including in multi-floor and streamed maps.
+    let cells=this.nav.openCells(this.half-2);
+    if(this.gk&&this.map.gk)cells=this.gkSpotFilter(cells);
+    if(cells.length){let best=cells[0],bd=Infinity;for(const c of cells){const d=(c[0]-x)**2+(c[1]-zz)**2+((c[2]||0)-(z.ramDropAt?.y||0))**2;if(d<bd){bd=d;best=c;}}x=best[0];zz=best[1];z.y=(best[2]||0)+Math.min(5,Math.max(0,z.y-(best[2]||0)));}
+    else { const c=collideCircle(x,zz,0.3,0,this.zCol); x=c.x;zz=c.z;z.y=Math.min(5,Math.max(0,z.y)); }
+    z.x=x;z.z=zz;z.vy=-1;z.kvx=z.kvz=0;z.fly=null;z.flown=false;z.ramDropAt=null;z.stuck=0;z.thinkT=0;
+    m.inner.rotation.set(0,0,0);m.inner.position.set(0,0,0);m.root.position.set(z.x,z.y,z.z);
   },
   updateTank(dt){
     const frozen=this.interT>0;this.tankGraceT=tickGrace(this.tankGraceT,dt,frozen);

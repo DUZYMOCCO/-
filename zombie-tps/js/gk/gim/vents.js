@@ -2,8 +2,8 @@
 // ゆかの あなが まつ → みどりに ひかる（よこく 1.2びょう）→ ガスが ふきだす（なかに いると すこし いたい・ゾンビにも きく）
 // あなごとに じかんを ずらす。いまの へやと となりの へや だけ うごく
 import * as THREE from '../../../vendor/three.module.min.js';
-import { VENT, ventPhase } from '../core.js?v=27';
-import { groundHeight } from '../../rules.js?v=27';
+import { VENT, ventPhase } from '../core.js?v=28';
+import { groundHeight } from '../../rules.js?v=28';
 
 export function create(game) {
   const grp = new THREE.Group(); game.scene.add(grp);

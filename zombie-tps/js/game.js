@@ -18,31 +18,31 @@ import {
   SpatialGrid, thinkInterval, QualityGovernor, govPixelRatio,
   normalizeLoadout, loadoutSlot, cycleLoadout, applyCrate, SMOKE, smokeAffects,
   rescueSample, rescuePick, rescueSpot, RESCUE,
-} from './rules.js?v=27';
-import { RIDE, ridePoint, createRideScene } from './ride.js?v=27';
-import { Crowd } from './crowd.js?v=27';
-import { RobotMixin } from './robot.js?v=27';
-import { AllyMixin } from './ally.js?v=27';
-import { GuestMixin } from './guests.js?v=27';
-import { CopMixin } from './cop.js?v=27';
-import { ArmyMixin } from './army.js?v=27';
-import { DrunkMixin } from './drunk.js?v=27';
+} from './rules.js?v=28';
+import { RIDE, ridePoint, createRideScene } from './ride.js?v=28';
+import { Crowd } from './crowd.js?v=28';
+import { RobotMixin } from './robot.js?v=28';
+import { AllyMixin } from './ally.js?v=28';
+import { GuestMixin } from './guests.js?v=28';
+import { CopMixin } from './cop.js?v=28';
+import { ArmyMixin } from './army.js?v=28';
+import { DrunkMixin } from './drunk.js?v=28';
 const BOT_NAME = { ao: 'アオ', momo: 'モモ', cop: 'けいさつおじさん', army: 'アーミーロボ', drunk: 'よっぱらいおじさん' }; // v0.14.0
-import { VehicleMixin } from './vehicles.js?v=27';
-import { SuitMixin } from './suit.js?v=27';
-import { TankMixin } from './tank.js?v=27';
-import { MissileMixin } from './missiles.js?v=27';
-import { MeleeMixin } from './melee.js?v=27';
-import { GkMixin } from './gk/play.js?v=27';
-import { StreamMixin } from './gk/stream.js?v=27';
-import { EnergyMixin } from './beams.js?v=27';
-import { makeNav } from './nav.js?v=27';
-import { buildMap, playerColliders, zombieColliders, shotColliders } from './map.js?v=27';
-import { buildTextures, fxTextures } from './textures.js?v=27';
-import { buildWorld, disposeWorld } from './world.js?v=27';
-import { Backdrop, BACKDROPS } from './backdrop.js?v=27';
-import { makePlayer, applyOutfit, applyGear, makeGearDrop, makeOjisan, makeWeapons, makeZombie, makeRocketProjectile, makeRocketCrate, zombieChunkColors, FLASH_MAT } from './models.js?v=27';
-import { FX } from './fx.js?v=27';
+import { VehicleMixin } from './vehicles.js?v=28';
+import { SuitMixin } from './suit.js?v=28';
+import { TankMixin } from './tank.js?v=28';
+import { MissileMixin } from './missiles.js?v=28';
+import { MeleeMixin } from './melee.js?v=28';
+import { GkMixin } from './gk/play.js?v=28';
+import { StreamMixin } from './gk/stream.js?v=28';
+import { EnergyMixin } from './beams.js?v=28';
+import { makeNav } from './nav.js?v=28';
+import { buildMap, playerColliders, zombieColliders, shotColliders } from './map.js?v=28';
+import { buildTextures, fxTextures } from './textures.js?v=28';
+import { buildWorld, disposeWorld } from './world.js?v=28';
+import { Backdrop, BACKDROPS } from './backdrop.js?v=28';
+import { makePlayer, applyOutfit, applyGear, makeGearDrop, makeOjisan, makeWeapons, makeZombie, makeRocketProjectile, makeRocketCrate, zombieChunkColors, FLASH_MAT } from './models.js?v=28';
+import { FX } from './fx.js?v=28';
 const A_RIGHT = new THREE.Vector3();
 
 const v3 = () => new THREE.Vector3();
@@ -769,6 +769,7 @@ export class Game {
         if (t > 0.75) { this.releaseZombie(z); zs.splice(i, 1); }
         continue;
       }
+      if (z.fly && z.fly.tankLive) { this.updateTankLiveFly(z, dt); continue; }
       const dx = this.pos.x - z.x, dz = this.pos.z - z.z, dist = Math.hypot(dx, dz);
       if (dist < nearest) nearest = dist;
       let mvx = 0, mvz = 0, moving = false;
@@ -1659,7 +1660,7 @@ export class Game {
       if (z.selfPop) this.hud.kill('ガスが でた！ はなれて！', true); else this.hud.kill(isBoss ? `ボスを たおした！ +${sc}` : opt.bot ? `${BOT_NAME[opt.bot] || 'ロボ'}が たおした！ +${sc}` : head ? `ヘッドショット！ +${sc}` : `+${sc}`, head || isBoss);
       // ロケットだんを おとす（ボスは かならず 2こ）
       // v0.10.0: アイテムは あたった ばしょに おちる（ふっとんだ さき では ない）
-      const dp = dropSpot(z, opt.dropAt);
+      const dp = dropSpot(z, opt.dropAt || z.ramDropAt);
       const n = rollRocketDrop(z.kind);
       if (n) this.spawnPickup(dp.x, dp.y, dp.z, n);
       if (rollGearDrop(z.kind)) this.spawnGear(dp.x + 0.5, dp.y, dp.z + 0.3, rollGear(Math.random, { floor: isBoss ? GEAR_FLOOR.boss : 'n' }));

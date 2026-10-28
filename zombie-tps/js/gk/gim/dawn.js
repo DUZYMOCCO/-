@@ -1,8 +1,8 @@
 // v0.17.0: ギミック「よあけ」（ステージ17 よあけの こうや・あとから よむ）
 // すすんだ ぶん（へやの いりぐち → でぐち の せんの うえ）で よる → あさやけ → あさ。もどっても くらく ならない
 // 0.25びょう ごと・1% いじょう かわった ときだけ そらを ぬりなおす（まいフレームは しない）
-import { TOD, blendTod } from '../../rules.js?v=27';
-import { DAWN, dawnTod, dawnNeed, gkProgress } from '../core.js?v=27';
+import { TOD, blendTod } from '../../rules.js?v=28';
+import { DAWN, dawnTod, dawnNeed, gkProgress } from '../core.js?v=28';
 
 export function create(game) {
   let t = 0, last = null, acc = 0;

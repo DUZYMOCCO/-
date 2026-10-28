@@ -237,7 +237,7 @@ test('なめらか いどう: approach は フレームレートに よらない
 });
 
 test('バージョン と セーブの ステージ', () => {
-  assert.equal(VERSION, '0.22.0');
+  assert.equal(VERSION, '0.22.1');
   assert.equal(normalizeSave(null).stage, 'day');
   assert.equal(normalizeSave({ stage: 'night' }).stage, 'night');
   assert.equal(normalizeSave({ stage: 'mars' }).stage, 'day');
@@ -2981,8 +2981,34 @@ test('せんしゃ: 移動中だけ当たり、同じ敵への連続接触を制
   const { TankMixin } = await import('../js/tank.js');
   const z={x:0,z:-2,y:0,scale:1,alive:true,kind:'walker'}, ally={x:0,z:-2,y:0};
   let hits=0;const g={tank:{},pos:{x:0,y:0,z:-4},zombies:[z],allyList:()=>[ally],
-    hitZombie() { hits++; return false; }, fx:{burst(){}},sfx:{hit(){}}};
+    hitZombie() { hits++; return false; }, punchFly() { return false; }, fx:{burst(){}},sfx:{hit(){}}};
   TankMixin.tankRam.call(g,0,0,1); assert.equal(hits,1); assert.ok(z.tankHitT>0);
   TankMixin.tankRam.call(g,0,0,1); assert.equal(hits,1);
   z.tankHitT=0; TankMixin.tankRam.call(g,0,-4,1); assert.equal(hits,1, '停止中は当たらない');
+});
+
+
+test('せんしゃ: ざこは 飛び、ドロップ位置は 衝突地点、ボスは 飛ばない', async () => {
+  const { TankMixin } = await import('../js/tank.js');
+  const dead={x:0,z:-1,y:0,scale:1,alive:true,kind:'walker',hp:10},
+    live={x:0,z:-2,y:0,scale:1,alive:true,kind:'brute',hp:1000},
+    boss={x:0,z:-3,y:0,scale:1,alive:true,kind:'boss',hp:1000,kvx:0,kvz:0,stagger:0};
+  const hits=[];const g={tank:{},pos:{x:0,y:0,z:-4},zombies:[dead,live,boss],
+    hitZombie(z,dmg,head,p,dir,opt){hits.push({kind:z.kind,opt}); if(z===dead)z.alive=false;},
+    punchFly(z,v){z.fly={...v};return true;},fx:{burst(){}},sfx:{hit(){}}};
+  TankMixin.tankRam.call(g,0,0,1);
+  assert.ok(hits.find(h=>h.kind==='walker').opt.punch);
+  assert.deepEqual(hits.find(h=>h.kind==='walker').opt.dropAt,{x:0,y:0,z:-1});
+  assert.ok(live.fly.tankLive); assert.deepEqual(live.ramDropAt,{x:0,y:0,z:-2});
+  assert.equal(hits.find(h=>h.kind==='boss').opt.punch,undefined); assert.equal(boss.fly,undefined);
+});
+
+test('せんしゃ: 生き残った敵は飛んだあと到達可能な場所に戻る', async () => {
+  const THREE = await import('../vendor/three.module.min.js'); const { TankMixin } = await import('../js/tank.js');
+  const m={inner:new THREE.Group(),root:new THREE.Group(),legs:[new THREE.Group(),new THREE.Group()],arms:[new THREE.Group(),new THREE.Group()]};
+  const z={x:0,y:0,z:0,yaw:0,model:m,ramDropAt:{x:0,y:0,z:0},fly:{vx:28,vy:34,vz:0,t:0,sx:1,sy:1,sz:1,tankLive:true},alive:true};
+  const g={half:42,map:{},nav:{openCells:()=>[[1,2,0],[30,1,0]]},zCol:[]};
+  TankMixin.updateTankLiveFly.call(g,z,0.5); assert.ok(z.fly && z.x>10 && z.alive);
+  TankMixin.updateTankLiveFly.call(g,z,1); assert.equal(z.fly,null); assert.equal(z.alive,true); assert.deepEqual([z.x,z.z],[30,1]);
+  assert.equal(z.ramDropAt,null); assert.ok(z.y<=5);
 });

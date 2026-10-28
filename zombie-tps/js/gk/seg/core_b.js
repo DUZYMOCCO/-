@@ -1,7 +1,7 @@
 // v0.18.0: ステージ15 セグメント B（へや2 こうじょうの ライン → へや3 こおりの じっけんしつ）
 // いりぐち（x=-36 の かべの ドア）は A の でぐちと おなじ ばしょ（edge:'in'）
-import { segWall, segOuter, segDoor, roomSpawns } from './kit.js?v=27';
-import { WALL, STEEL, H, DW, THEME, tank, vent } from './core_a.js?v=27';
+import { segWall, segOuter, segDoor, roomSpawns } from './kit.js?v=28';
+import { WALL, STEEL, H, DW, THEME, tank, vent } from './core_a.js?v=28';
 
 const YEL = 0xe0b020;
 export function build(builder) {

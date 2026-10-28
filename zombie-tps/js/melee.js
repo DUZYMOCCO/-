@@ -4,8 +4,8 @@ import * as THREE from '../vendor/three.module.min.js';
 import {
   meleeStats, meleeLevel, newMeleeState, meleePress, meleeTick, meleeDur, meleeStyle, swingPose,
   meleeTargets, meleeAim, meleeBlocked, meleeDamage, meleeRawKnock, meleeDown, bumpTransfer, BUMP, isMelee, DEFAULT_MELEE,
-} from './rules.js?v=27';
-import { makeMeleeWeapons } from './models.js?v=27';
+} from './rules.js?v=28';
+import { makeMeleeWeapons } from './models.js?v=28';
 
 const _p = new THREE.Vector3(), _d = new THREE.Vector3();
 const TRAIL_C = { bat: 0xfff0c0, hammer: 0xffd890, katana: 0xd6f0ff };
