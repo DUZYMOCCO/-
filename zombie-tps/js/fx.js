@@ -1,7 +1,7 @@
 // こうか: マズルフラッシュ・トレーサー・やっきょう・つぶ（みどりの しぶき／けむり）・しみ（みどり）・だんこん
 import * as THREE from '../vendor/three.module.min.js';
-import { makeMagMesh } from './models.js?v=32';
-import { Pool } from './rules.js?v=32';
+import { makeMagMesh } from './models.js?v=33';
+import { Pool } from './rules.js?v=33';
 
 const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _s = new THREE.Vector3(), _p = new THREE.Vector3(), _c = new THREE.Color();
 const UP = new THREE.Vector3(0, 1, 0), FWD = new THREE.Vector3(0, 0, 1);
@@ -203,6 +203,14 @@ export class FX {
     const pos = muzzleObj.getWorldPosition(_p);
     const direction = _s.set(0, 0, -1).applyQuaternion(muzzleObj.getWorldQuaternion(_q));
     this.burst(pos, 3, { color: 0xffa522, color2: 0xfff0a0, speed: 5, up: 0.2, size: 0.07, life: 0.16, gravity: 3, dir: direction, spread: 0.22 });
+  }
+
+  // A short, wide muzzle blast for the shotgun, using the shared particle pool.
+  shotgunBlast(muzzleObj) {
+    const pos = muzzleObj.getWorldPosition(_p);
+    const direction = _s.set(0, 0, -1).applyQuaternion(muzzleObj.getWorldQuaternion(_q));
+    this.burst(pos, 5, { color: 0xff9c28, color2: 0xffe996, speed: 5, up: 0.2, size: 0.09, life: 0.18, gravity: 3, dir: direction, spread: 0.4 });
+    this.burst(pos, 5, { color: 0x77716b, color2: 0xb4a99b, speed: 2, up: 0.3, size: 0.13, life: 0.26, gravity: 0, dir: direction, spread: 0.35 });
   }
 
   casing(ejectObj, kind, rightDir) {

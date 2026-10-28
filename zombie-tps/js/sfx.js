@@ -66,6 +66,7 @@ export class Sfx {
       this._noise(t, 0.08, { type: 'lowpass', freq: 1900 * p, gain: 0.5 });
       this._tone(t, 0.07, { f0: 140 * p, f1: 50, gain: 0.45 });
     } else {
+      if (kind === 'shotgun') this._tone(t, 0.15, { type: 'triangle', f0: 190 * p, f1: 45, gain: 0.35 });
       this._noise(t, 0.1, { type: 'highpass', freq: 1200 * p, gain: 0.6 });
       this._noise(t, 0.3, { type: 'lowpass', freq: 1500 * p, gain: 1.0 });
       this._tone(t, 0.22, { f0: 110 * p, f1: 32, gain: 1.0 });
@@ -149,6 +150,14 @@ export class Sfx {
     this._tone(t, 0.085, { f0: head ? 360 : 220, f1: 70, gain: 0.38 });
     this._noise(t, 0.065, { type: 'bandpass', freq: head ? 1900 : 1100, q: 0.9, gain: 0.36 });
     if (head) this._tone(t, 0.10, { type: 'triangle', f0: 1650, f1: 1350, gain: 0.12 });
+  }
+  // One heavier contact cue per shotgun blast, even when several pellets hit.
+  shotgunHit(head = false) {
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime;
+    this._tone(t, 0.1, { f0: 160, f1: 48, gain: 0.43 });
+    this._noise(t, 0.08, { type: 'bandpass', freq: 850, q: 1, gain: 0.35 });
+    if (head) this._tone(t, 0.1, { type: 'triangle', f0: 1650, f1: 1350, gain: 0.12 });
   }
   bulletSurface() {
     if (!this.ctx || this.muted) return;

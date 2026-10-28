@@ -237,7 +237,7 @@ test('なめらか いどう: approach は フレームレートに よらない
 });
 
 test('バージョン と セーブの ステージ', () => {
-  assert.equal(VERSION, '0.24.1');
+  assert.equal(VERSION, '0.25.0');
   assert.equal(normalizeSave(null).stage, 'day');
   assert.equal(normalizeSave({ stage: 'night' }).stage, 'night');
   assert.equal(normalizeSave({ stage: 'mars' }).stage, 'day');
@@ -3050,4 +3050,12 @@ test('ハンドガン近距離補助: 近くの見える敵を方向に関係な
   assert.equal(handgunAutoAim(0,0,0,[z(0,1,8)],[]),null, '離れた階は対象外');
   a=handgunAutoAim(0,0,0,[z(0,4,0,{kind:'crawler'})],[]);
   assert.ok(a); assert.equal(castShot(0,1.05,0,a.dx,a.dy,a.dz,[z(0,4,0,{kind:'crawler'})],[],7).kind,'zombie');
+});
+
+test('ショットガンは近距離で高い一撃を持ち、距離で威力が減る', () => {
+  const w = WEAPONS.shotgun;
+  assert.equal(damageAt(w, 5, false) * w.pellets, 144);
+  assert.ok(damageAt(w, 5, false) * w.pellets * 2 >= ZOMBIES.brute.hp);
+  assert.ok(damageAt(w, 20, false) < damageAt(w, 5, false));
+  assert.equal(w.knock, 1.1);
 });

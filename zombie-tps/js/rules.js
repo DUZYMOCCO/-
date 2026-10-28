@@ -1,7 +1,7 @@
 // ゾンビストライク — ゲームの きまり（DOM / three.js に いぞんしない。node のテストから よめる）
 // ぶき・ダメージ・ウェーブ・あたりはんてい（レイ×はこ）・いどうの ぶつかり・ゾンビの みちさがし（フローフィールド）
 
-export const VERSION = '0.24.1';
+export const VERSION = '0.25.0';
 
 // ---- ぶき ----
 // rpm: 1ぷんかんの はっしゃかず / mag: マガジン / reserve: よびだん / reload: びょう
@@ -23,7 +23,7 @@ export const WEAPONS = {
   },
   shotgun: {
     id: 'shotgun', name: 'ショットガン', short: 'ショットガン', slot: 3,
-    dmg: 16, head: 1.8, pellets: 8, rpm: 75, auto: false,
+    dmg: 18, head: 1.8, pellets: 8, rpm: 75, auto: false,
     mag: 6, reserve: 36, reload: 2.3,
     spread: 0.075, spreadMove: 0.09, spreadAim: 0.055, bloom: 0, bloomMax: 0,
     recoilPitch: 0.07, recoilYaw: 0.01, shake: 0.18, range: 35, falloff: [6, 22, 0.35], knock: 1.1,
