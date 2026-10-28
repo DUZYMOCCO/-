@@ -3,8 +3,8 @@
 // ・ダメージで けむり → ひ（あぶない の あいず）→ ドカーン！ ちかくの のりものも ゆうばく
 // ・ばくはつは ゾンビ だけ（プレイヤー・なかま・おじさんは だいじょうぶ）。こわれた くるまは くろこげで のこる（かべ の まま）
 import * as THREE from '../vendor/three.module.min.js';
-import { VEHICLE, makeVehicleState, damageVehicle, vehicleStage, chainTargets } from './rules.js?v=36';
-import { wreckVehicleBoxes } from './world.js?v=36';
+import { VEHICLE, makeVehicleState, damageVehicle, vehicleStage, chainTargets } from './rules.js?v=37';
+import { wreckVehicleBoxes } from './world.js?v=37';
 
 const _p = new THREE.Vector3();
 export const VEH_BLAST = { dmg: VEHICLE.dmg, blast: VEHICLE.blast, power: VEHICLE.power, vehicle: true };

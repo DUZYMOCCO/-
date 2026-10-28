@@ -237,7 +237,7 @@ test('なめらか いどう: approach は フレームレートに よらない
 });
 
 test('バージョン と セーブの ステージ', () => {
-  assert.equal(VERSION, '0.28.0');
+  assert.equal(VERSION, '0.29.0');
   assert.equal(normalizeSave(null).stage, 'day');
   assert.equal(normalizeSave({ stage: 'night' }).stage, 'night');
   assert.equal(normalizeSave({ stage: 'mars' }).stage, 'day');
@@ -1742,8 +1742,8 @@ test('v0.12.0 ゾンビが ふえた: いちどに でる かず 2ばい いじ�
     assert.ok(t.total - t.boss >= s.total - s.boss && t.maxAlive >= s.maxAlive && t.spawnGap <= s.spawnGap);
     assert.ok(s.spawnGap >= CROWD.gapMin);
     assert.ok(s.dmgMul > 0.7 && s.dmgMul <= 1);
-    // いちどに でる かず × こうげき は まえ（16たい）の 2ばい ていどまで
-    assert.ok(s.maxAlive * s.dmgMul <= 16 * 2, 'n=' + n);
+    // いちどに でる かず × こうげき は まえ（16たい）の 2.25ばい まで
+    assert.ok(s.maxAlive * s.dmgMul <= 16 * 2.25, 'n=' + n);
   }
   assert.equal(crowdDmgMul(16), 1); assert.equal(crowdDmgMul(8), 1);
   assert.ok(crowdDmgMul(40) >= 0.72);
@@ -3088,4 +3088,20 @@ test('よろいゾンビは頭が弱点で、後半に少数出現する', () =>
     assert.equal(waveQueue(w, () => 0.3).length, w.total);
   }
   assert.ok(damageAt(WEAPONS.sniper, 20, true, true) >= ZOMBIES.armored.hp);
+});
+
+
+test('増援は序盤を維持し、同時48体・総数180体に収まり、重い端末は従来の上限へ戻す', () => {
+  for (let n = 1; n <= 4; n++) assert.equal(waveSpec(n).total - waveSpec(n).boss, 10 + (n - 1) * 7);
+  assert.equal(waveSpec(5).total, 41);
+  assert.equal(waveSpec(12).maxAlive, 48);
+  for (let n = 1; n <= 100; n++) {
+    const s = waveSpec(n);
+    assert.ok(s.total - s.boss <= 180 && s.maxAlive <= 48);
+    assert.equal(waveQueue(s, () => 0.3).length, s.total);
+  }
+  const g = new QualityGovernor();
+  assert.equal(g.capFor(48), 48);
+  g.level = 4; assert.equal(g.capFor(48), 32);
+  g.level = 5; assert.equal(g.capFor(48), 26);
 });

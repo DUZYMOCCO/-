@@ -1,7 +1,7 @@
 // ゾンビストライク — ゲームの きまり（DOM / three.js に いぞんしない。node のテストから よめる）
 // ぶき・ダメージ・ウェーブ・あたりはんてい（レイ×はこ）・いどうの ぶつかり・ゾンビの みちさがし（フローフィールド）
 
-export const VERSION = '0.28.0';
+export const VERSION = '0.29.0';
 
 // ---- ぶき ----
 // rpm: 1ぷんかんの はっしゃかず / mag: マガジン / reserve: よびだん / reload: びょう
@@ -598,13 +598,13 @@ export const ATTACK_RANGE = 1.25;
 export const PLAYER_MAX_HP = 100;
 
 // v0.12.0: ゾンビの かず（まえ: ぜんぶ 6＋4ずつ〜60・いちどに 8〜16）
-export const CROWD = { total0: 10, totalStep: 7, maxTotal: 130, alive0: 8, aliveStep: 4, maxAlive: 40, gapMin: 0.35, oldMaxAlive: 16 };
+export const CROWD = { total0: 10, totalStep: 7, maxTotal: 180, reinforceFrom: 5, reinforceStep: 3, alive0: 8, aliveStep: 4, maxAlive: 48, fallbackAlive: 40, gapMin: 0.35, oldMaxAlive: 16 };
 // おおぜい くる ときは 1たいの こうげきを すこし よわく（7さいでも だいじょうぶ）
 export function crowdDmgMul(maxAlive) { return Math.max(0.72, Math.min(1, 1 - (maxAlive - CROWD.oldMaxAlive) * 0.012)); }
 
 // ウェーブの なかみ（ぜんぶで なんたい・どのしゅるい・いちどに なんたいまで）
 export function waveSpec(n) {
-  const total = Math.min(CROWD.total0 + (n - 1) * CROWD.totalStep, CROWD.maxTotal); // v0.12.0: ふえた（まえは 6＋4ずつ・60まで）
+  const total = Math.min(CROWD.total0 + (n - 1) * CROWD.totalStep + Math.max(0, n - CROWD.reinforceFrom + 1) * CROWD.reinforceStep, CROWD.maxTotal);
   const runnerShare = n < 2 ? 0 : Math.min(0.15 + (n - 2) * 0.07, 0.45);
   const bruteCount = n < 4 ? 0 : Math.min(1 + Math.floor((n - 4) / 2), 6);
   // はやい ゾンビ（のぼれる のは この こだけ）は ウェーブ1から かならず 1たい いじょう
@@ -1953,7 +1953,11 @@ export class QualityGovernor {
   reset() { this.level = 0; this.t = 0; this.sum = 0; this.n = 0; this.good = 0; this.avg = 0; }
   get cfg() { return GOV_LEVELS[this.level]; }
   get capMul() { return this.cfg.cap; }
-  capFor(maxAlive) { return Math.max(6, Math.round(maxAlive * this.cfg.cap)); }
+  capFor(maxAlive) {
+    // On slow devices, keep the previous reduced caps (32 / 26) despite the larger horde.
+    const base = this.cfg.cap < 1 ? Math.min(maxAlive, CROWD.fallbackAlive) : maxAlive;
+    return Math.max(6, Math.round(base * this.cfg.cap));
+  }
   // 1フレームの じかん（ms）。だんかいが かわったら true
   sample(ms) {
     ms = Math.min(ms, 100); // タブの きりかえ などの ながい フレームは 100ms あつかい
