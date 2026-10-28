@@ -1,3 +1,4 @@
+import { robotHue, robotHueCss } from '../names/robot-hue.js?v=1';
 import { robotNameHtml } from '../names/robot-names.js?v=1';
 // v1.0.6 ロボごとの成績とランキング（Iron Squad の「武勲ランキング」の考え方: 項目ごとに 1 位＝MVP、上位 3 つに 🥇🥈🥉、総合の順位）。
 //   数えるのは見るだけ: sim.fx の記録と、1 step ごとの HP・荷物の差を読むだけで、sim には何も書かない（ハッシュは変わらない・フラグなしで動く）。
@@ -88,6 +89,11 @@ export function createUnitStats({ nameOf = u => u.label || u.kind || '味方', c
 }
 
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+const faces = { ponco: 'ponco', scav: 'scavenger', flyer: 'alt-flyer-bright', amph: 'alt-amphi' };
+const face = r => {
+  const hue = !r.human && robotHue(r.name), art = faces[r.kind];
+  return hue && art ? `<img class="bc-st-face" src="${new URL(`../../assets/art-v2/${art}.webp`, import.meta.url).href}" style="filter:${robotHueCss(hue)}" alt="">` : '';
+};
 const who = r => `${r.human ? '🧑' : '🤖'}${robotNameHtml(r.name)}${r.clsName ? `<small>（${esc(r.clsName)}）</small>` : ''}${r.suit ? '<small>（スーツ）</small>' : ''}`;
 
 /** 結果の画面と ☰ の「今の成績」で使う HTML（縦長のスマホで読めるよう、MVP の札と順位の行だけ） */
@@ -100,7 +106,7 @@ export function statsHtml(sum, { title = 'ロボごとの成績' } = {}) {
   const rows = sum.rows.map(r => {
     const medal = MEDALS[r.rank - 1] || `${r.rank}位`;
     const parts = STAT_CATEGORIES.map(c => `${c.icon}${r[c.id]}`).join(' ');
-    return `<li class="bc-st-row${r.down ? ' down' : ''}"><span class="bc-st-rank">${medal}</span><span class="bc-st-who">${who(r)}${r.down ? '<small>（倒れた）</small>' : ''}</span><span class="bc-st-score">${r.score}点</span><span class="bc-st-parts">${parts}</span></li>`;
+    return `<li class="bc-st-row${r.down ? ' down' : ''}" data-uid="${r.id}"><span class="bc-st-rank">${medal}</span><span class="bc-st-who">${face(r)}${who(r)}${r.down ? '<small>（倒れた）</small>' : ''}</span><span class="bc-st-score">${r.score}点</span><span class="bc-st-parts">${parts}</span></li>`;
   }).join('');
   return `<section class="bc-st" aria-label="${esc(title)}"><h3 class="bc-st-title">${esc(title)}</h3><ul class="bc-st-mvp">${chips}</ul><h4 class="bc-st-sub">総合ランキング</h4><ol class="bc-st-list">${rows}</ol></section>`;
 }

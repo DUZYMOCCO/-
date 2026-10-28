@@ -55,6 +55,10 @@
   "v": 2,
   "sha1": "f6623c75b8e358efd963df8c874e9111a877b7e6"
  },
+ "js/names/robot-hue.js": {
+  "v": 1,
+  "sha1": "d4fe1aa128512c0e46eca8f7a5ec72fdc693fc6c"
+ },
  "js/names/robot-names.js": {
   "v": 1,
   "sha1": "a7e5860a5c62b373aea8244add4f7a212a4407a8"
@@ -140,12 +144,16 @@
   "sha1": "df0c24017b1666162ea47079ca5746172a51d8da"
  },
  "js/render/renderer.js": {
-  "v": 47,
-  "sha1": "0098c4d17abf138a3ff383b85b450ac5d4d7b996"
+  "v": 48,
+  "sha1": "6e97e40e6b72467e7236a5af413119edfb03de55"
  },
  "js/render/ride-view.js": {
   "v": 7,
   "sha1": "3161f6cced6638817aab4a2051341f4e4493574c"
+ },
+ "js/render/robot-recolor.js": {
+  "v": 1,
+  "sha1": "e4b2d0e8e0fae9456b58e771459dd8de013bb6b3"
  },
  "js/render/story2-view.js": {
   "v": 2,
@@ -168,8 +176,8 @@
   "sha1": "9d7c6ecea74ea7421bc4004f3933f2f1224f458e"
  },
  "js/replay/replay-view.js": {
-  "v": 17,
-  "sha1": "540c90661930f424c79c08e782016f868962447b"
+  "v": 19,
+  "sha1": "78530f591fca22eb6ac62e231b0ae97ed79d5b61"
  },
  "js/save/records-view.js": {
   "v": 5,
@@ -236,8 +244,8 @@
   "sha1": "62141bdbec7779b882e25af995eb5fea48d780e4"
  },
  "js/sim/replay.js": {
-  "v": 17,
-  "sha1": "c5232b0b6cbd5f11c5732173fe6aec95530ac2ab"
+  "v": 19,
+  "sha1": "c92b77b6dc27d7087c59e6d3e6bb15e9ae2018f1"
  },
  "js/sim/ride-demo.js": {
   "v": 10,
@@ -292,8 +300,8 @@
   "sha1": "d1280e8e091c07d43bef83c65f652e596a12294f"
  },
  "js/stats/unit-stats.js": {
-  "v": 4,
-  "sha1": "cf72284d2538ae566a1e4ae8b6a662899c7d6dfd"
+  "v": 6,
+  "sha1": "a69cca3ea531f16f2cb76d0f90fc941fca34d73a"
  },
  "js/story/chapters.js": {
   "v": 2,
@@ -378,5 +386,9 @@
  "js/ui/toast-merge.js": {
   "v": 1,
   "sha1": "3b892da0cf64f06ea22f2c0b405d99aba548263f"
+ },
+ "js/ui/unit-detail.js": {
+  "v": 3,
+  "sha1": "fabaa865b9faa9b203ab3a4c18cafca5179338e5"
  }
 }

@@ -1,3 +1,5 @@
+import { robotHue } from '../names/robot-hue.js?v=1';
+import { createRecolorCache } from './robot-recolor.js?v=1';
 import { robotEventName, splitRobotName } from '../names/robot-names.js?v=1';
 import { createGfx6 } from './gfx6-view.js?v=4';
 import { drawStory2 } from './story2-view.js?v=2';
@@ -376,6 +378,7 @@ async function buildRenderer(host, sim, { fxQuality = 'normal', ground, human, e
 
   // 機体
   const views = new Map();
+  const recolor = createRecolorCache(Texture);
   const gfx6 = (sim.strike || sim.story2 || sim.powersuit || sim.ne) ? createGfx6(world, sim, views) : null;
   function unitView(u) {
     let v = views.get(u.id);
@@ -394,6 +397,7 @@ async function buildRenderer(host, sim, { fxQuality = 'normal', ground, human, e
     c.addChild(body, bar, icon, badge, kit, state);
     units.addChild(c);
     v = { c, body, bar, icon, badge, kit, state, iconKey: undefined, hp: -1, key: null, flash: 0, px, sheet, shadow, anim: sheet ? newAnim() : null, u, corpse: -1 };
+    v.hue = u.side === 'ally' && !u.human && !u.object && !sheet ? robotHue(robotEventName(sim, u.id, null)) : null;
     views.set(u.id, v);
     return v;
   }
@@ -789,7 +793,7 @@ async function buildRenderer(host, sim, { fxQuality = 'normal', ground, human, e
       if (!wreckAsked.has(u.kind) && WRECK_KINDS.has(u.kind)) loadWreckArt(u.kind);
       const look = ALT_UNIT_LOOK[u.kind], dk = damagedKey(u), key = dk && tex[dk] ? dk : isNewEnemy(u.kind) ? `enemy_${u.kind}` : `${look?.art ?? u.kind}_${u.side}`; // 仮の絵の機体は借りた絵を使う。v1.0.3 HP が半分以下なら傷んだ姿
       if (look && !tex[key] && !altBodyAsked.has(key)) loadAltBody(key); // v1.0.4 最初に読まなかった体の絵は、出てきた時に読む（読めるまでは仮の絵）
-      if (v.key !== key) { v.body.texture = tex[key] || tex[`gunner_${u.side}`]; v.key = tex[key] || !look ? key : null; }
+      if (v.key !== key) { v.body.texture = tex[key] ? recolor.get(tex[key], key, v.hue) : tex[`gunner_${u.side}`]; v.key = tex[key] || !look ? key : null; }
       const bob = u.moving ? Math.abs(Math.sin(now * 12 + u.id)) * 2.2 : 0;
       // 運ばれている人間は運んでいる異星生物の手前に描く
       v.c.position.set(u.x, u.y); v.c.zIndex = typeof u.captured === 'number' ? u.y + 4 : u.y;
@@ -1023,7 +1027,7 @@ async function buildRenderer(host, sim, { fxQuality = 'normal', ground, human, e
     const m = altMotion(v.motion || (v.motion = {}), u, now);
     if (!altMotionReady) return;
     const bodyKey = m?.body && tex[m.body] ? m.body : null;
-    if (bodyKey) { v.body.texture = tex[bodyKey]; v.key = 'motion:' + bodyKey; } // 次のフレームで、いつもの絵に戻す（v.key がちがうので）
+    if (bodyKey) { v.body.texture = recolor.get(tex[bodyKey], bodyKey, v.hue); v.key = 'motion:' + bodyKey; } // 次のフレームで、いつもの絵に戻す（v.key がちがうので）
     v.body.alpha = m?.faint ?? 1;
     const sk = m?.shadow && tex[m.shadow] ? m.shadow : null;
     if (sk && !v.motionShadow) { v.motionShadow = new Sprite(); v.motionShadow.anchor.set(0.5); v.c.addChildAt(v.motionShadow, 0); }
@@ -1117,6 +1121,8 @@ async function buildRenderer(host, sim, { fxQuality = 'normal', ground, human, e
   function destroy() {
     dead = true;
     gfx6?.destroy();
+    for (const v of views.values()) if (v.hue) v.body.texture = Texture.EMPTY;
+    recolor.destroy();
     views.clear(); fx.clear(); fxCanvas.remove();
     const canv = gatherCanvases({ tex, chars, landmarks, badges });
     clearSharedPool();

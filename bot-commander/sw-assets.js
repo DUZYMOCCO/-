@@ -4,8 +4,8 @@
 // SVG + reference-based WebP art, baked once at boot.
 self.GAME_ASSETS = self.GAME_ASSETS || {};
 self.GAME_ASSETS['bot-commander'] = {
-  version: 'v53',
-  gameVersion: '1.0.14', // ハブのカードに表示する版（キャッシュ用 version とは別。リリース時に上げる）
+  version: 'v55',
+  gameVersion: '1.0.16', // ハブのカードに表示する版（キャッシュ用 version とは別。リリース時に上げる）
   files: [
     'js/render/gfx6-view.js',
     'assets/launcher/launcher.webp',
@@ -42,6 +42,7 @@ self.GAME_ASSETS['bot-commander'] = {
     'assets/result/result-success-ch2.webp',
     'assets/result/result-success-ch3.webp',
 
+    'js/names/robot-hue.js',
     'js/names/robot-names.js', // v1.0.9 ロボの固有の表示名
     'js/audio/bgm-songs.js', // v1.0.9 荒野の BGM（曲のデータ・鳴らす仕組み・曲の選び方）
     'js/audio/bgm-player.js',
@@ -85,6 +86,7 @@ self.GAME_ASSETS['bot-commander'] = {
     'css/ride.css', // ?ridedemo=1（お試し）
     'css/launcher.css', // v1.0.4 ?launcher=1（発射台の試作）
     'js/index.js',
+    'js/ui/unit-detail.js',
     'js/ui/back-confirm.js',
     'js/ui/fire-button.js',
     'js/ui/speed.js',
@@ -353,6 +355,7 @@ self.GAME_ASSETS['bot-commander'] = {
     'js/render/pop-bounds.js', // 文字を上の帯の下へ寄せる計算
     'js/render/art-lazy.js', // v1.0.4 磨き 最初に読む絵の選び方
     'js/render/wreck-view.js', // v1.0.3 gfx5 傷んだ姿・残骸
+    'js/render/robot-recolor.js',
     'js/render/renderer.js',
     'js/render/hp-numbers.js',
     'js/stats/unit-stats.js',

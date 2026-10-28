@@ -91,7 +91,7 @@ test('演出: 撃った・落ちた・壊された の合図で爆発を出す�
 });
 
 test('描画: 発射台の絵はコードで描く（renderer が strike-view を読む）・コックピットの中の絵は使わない', () => {
-  const src = readFileSync(fileURLToPath(new URL('../js/render/renderer.js?v=47', import.meta.url)), 'utf8');
+  const src = readFileSync(fileURLToPath(new URL('../js/render/renderer.js?v=48', import.meta.url)), 'utf8');
   assert.match(src, /strike-view\.js\?v=\d+/);
   assert.match(src, /launcher: LAUNCHER_PX/);
   assert.match(src, /drawStrike\(/);
@@ -101,7 +101,7 @@ test('描画: 発射台の絵はコードで描く（renderer が strike-view �
 
 
 test('第1章の着弾の与ダメージと撃破をネジの成績に数える', async () => {
-  const { createUnitStats } = await import('../js/stats/unit-stats.js?v=4');
+  const { createUnitStats } = await import('../js/stats/unit-stats.js?v=6');
   const sim = dug(), neji = nejiOf(sim);
   const e = sim.units.find(u => u.side === 'enemy');
   e.atk = 0; e.hp = 1; e.x = neji.x + 150; e.y = neji.y;

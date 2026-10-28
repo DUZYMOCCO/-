@@ -4,8 +4,8 @@ import assert from 'node:assert/strict';
 import { CLASS_TABLE, CLASS_MULS, classAssignFor, classInfo, classSummary, applyClassToUnit } from '../js/sim/unit-classes.js?v=1';
 import { createSim, hashSim, UNIT_CLASSES, KINDS } from '../js/sim/sim.js?v=30';
 import { MISSION_1 } from '../js/sim/mission.js?v=10';
-import { makeStart, createSimFromStart } from '../js/sim/replay.js?v=17';
-import { createUnitStats, statsHtml } from '../js/stats/unit-stats.js?v=4';
+import { makeStart, createSimFromStart } from '../js/sim/replay.js?v=19';
+import { createUnitStats, statsHtml } from '../js/stats/unit-stats.js?v=6';
 
 test('兵種の名前・記号・決定済みの視界', () => {
   const classes = UNIT_CLASSES.filter(c => c.key !== 'giant');

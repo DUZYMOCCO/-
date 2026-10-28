@@ -21,6 +21,8 @@
 // v1.0.7 gem107（10/27）: 下の行動の帯に「発射」（発射台・物語のミサイル。js/ui/fire-button.js）、3倍速、敵の群れを見つけたら「○○：敵を発見！」とカメラを寄せて止める（js/ui/spot-report.js。☰「発見で止める」で入/切）、読んだ会話のスキップボタン（js/dialog/dialog-read.js）。ネジのセリフを普段の話し方にし、操作の案内は会話の後の吹き出しへ。sim は変えない（ハッシュ同じ）。
 // v1.0.8 batch5（10/27）: Codex の 4 つの結果の取り込み。発射台を選んで「発射」・発射台の HP と選択の輪・ミサイルの命中を成績に（launcher_unit）／点検 review3（R-09 ヒントのタップで移動しない・初回の会話はスキップ不可・成績の数え方）／物語 1〜3 章を 1 つの表に（js/story/chapters.js。☰の章の一覧・解放・全章のリプレイ記録）／2・3 章の仕上げ（3 章は本物の新しい敵 G01/G02/G08/G09。遊ぶ時もリプレイも newEnemies。「（仮）」を外す）。旗なしの sim は変えない（ハッシュ同じ）。
 // v1.0.10: gfx6 artwork integration.
+// v1.0.16: 同じ機体でも、ロボ名から決まる小さな色のずれ（見た目だけ。初回に色を変えた絵を作って使い回す。sim は変えない（ハッシュ同じ））。
+// v1.0.15: ユニットの詳細画面（スパロボ風・見るだけ）。☰の成績の行と、下の帯の「詳細」から開く。開いている間は一時停止。sim は変えない（ハッシュ同じ）。
 // v1.0.14: 兵種（?classes=1 の試作）。兵種の視界・能力の倍率・割り当てを js/sim/unit-classes.js に集めた。旗がない時は今までと同じ。
 // v1.0.13: 囲むボタン（下の帯）。押さえている間、地図の1本指ドラッグが枠選択。
 // v1.0.12: スーツの歩きを調整。
@@ -32,10 +34,11 @@ import { loadCss } from '../../common/js/load-css.js';
 import { storage } from '../../common/js/storage.js';
 import { createSim, stepSim, TICK, applyCommandsNow, missionStatus, unitById, issueStop, issueRetreat, issueStance, KINDS } from './sim/sim.js?v=30';
 import { classInfo, classSummary } from './sim/unit-classes.js?v=1';
-import { createUnitStats, statsHtml } from './stats/unit-stats.js?v=4'; // v1.0.6 ロボごとの成績とランキング（見るだけ。sim は変えない）
+import { unitDetailView, unitDetailHtml } from './ui/unit-detail.js?v=3';
+import { createUnitStats, statsHtml } from './stats/unit-stats.js?v=6'; // v1.0.6 ロボごとの成績とランキング（見るだけ。sim は変えない）
 import { MISSION_1 } from './sim/mission.js?v=10';
 import { withAltUnits, ALT_MISSION_ROWS } from './sim/alt-units.js?v=3'; // 本編に出すかのスイッチ（ALT_IN_MISSIONS。今は全部 false）
-import { createRecorder, makeStart, openReplay, parseReplay, registerMission } from './sim/replay.js?v=17';
+import { createRecorder, makeStart, openReplay, parseReplay, registerMission } from './sim/replay.js?v=19';
 import { STORY_1 } from './story/story-mission.js?v=3';
 import { newStoryState, endingKind, storyScriptUrl, midScene, STORY1_HINTS } from './story/story-1.js?v=3';
 import { mountPowersuitMenu } from './ui/powersuit-menu.js?v=5'; // ?powersuit=1 の試作: ☰ の中の「スーツを着る／脱ぐ」「ロボに乗る」（sim.powersuit がある時だけ）
@@ -46,7 +49,7 @@ import { STORY_2, story2Requested, newStory2State, nextStory2, saveStory2Reward,
 import { mountStory2Ops } from './story/story2-ops.js?v=1';
 for (const chapter of Object.values(CHAPTERS)) for (const stage of Object.values(chapter.stages)) registerMission(stage.mission); // 章の記録をフラグなしでも読める
 import { selectKind, pruneSelection, createGroups } from './sim/select.js?v=12';
-import { createRenderer } from './render/renderer.js?v=47';
+import { createRenderer } from './render/renderer.js?v=48';
 import { attachInput } from './render/input.js?v=23';
 import { addOwned } from './sim/cover.js?v=8';
 import { DEFAULT_SPEED, normalizeSpeed, hudSpeedText } from './ui/speed.js?v=2';
@@ -89,7 +92,7 @@ const BotCommanderGame = {
   title: 'ロボットコマンダー（仮）',
 
   prepare() {
-    return loadCss([new URL('../css/bot-commander.css?v=21', import.meta.url).href, new URL('../css/replay.css?v=2', import.meta.url).href]);
+    return loadCss([new URL('../css/bot-commander.css?v=23', import.meta.url).href, new URL('../css/replay.css?v=2', import.meta.url).href]);
   },
 
   init(container, onBackToHub) {
@@ -132,6 +135,7 @@ const BotCommanderGame = {
           <button data-act="stance"></button>
           <button data-act="retreat">撤退</button>
           <button data-act="fire" hidden>発射</button>
+          <button data-act="detail" aria-label="この機体の詳細">詳細</button>
           <button data-act="clear" aria-label="選択を外す">✕</button>
         </div>
         <footer class="bc-bottom">
@@ -179,6 +183,7 @@ const BotCommanderGame = {
             <button class="bc-stats-close">メニューにもどる</button>
           </div>
         </div>
+        <div class="bc-detail" hidden role="dialog" aria-modal="true" aria-label="機体の詳細"><div class="bc-detail-box"><div class="bc-detail-body"></div><nav class="bc-detail-nav"><button data-detail="prev" aria-label="前の機体">◀</button><span class="bc-detail-position"></span><button data-detail="next" aria-label="次の機体">▶</button></nav><button class="bc-detail-close">もどる</button></div></div>
         <div class="bc-paused-tag">一時停止中 ― 命令はできます</div>
         <div class="bc-toast" hidden></div>
         <div class="bc-loading">読み込み中…</div>
@@ -190,6 +195,10 @@ const BotCommanderGame = {
       act: $('.bc-act'), actN: $('.bc-act-n'), mode: $('[data-act="mode"]'), stance: $('[data-act="stance"]'), fire: $('[data-act="fire"]'), groups: $('.bc-groups'), lasso: $('.bc-lasso'),
       result: $('.bc-result'), resultBanner: $('.bc-result-banner'), resultTitle: $('.bc-result-title'), resultText: $('.bc-result-text'), resultStats: $('.bc-result-stats'), stats: $('.bc-stats'), statsBody: $('.bc-stats-body'),
     };
+    this.el.detail = $('.bc-detail'); this.el.detailBody = $('.bc-detail-body');
+    this.el.statsBody.addEventListener('click', e => { const row = e.target.closest('[data-uid]'); if (row && !row.classList.contains('down')) this.openUnitDetail(row.dataset.uid); });
+    this.el.detail.addEventListener('click', e => { const action = e.target.closest('[data-detail]')?.dataset.detail; if (action) this.moveUnitDetail(action === 'next' ? 1 : -1); });
+    $('.bc-detail-close').addEventListener('click', () => this.closeUnitDetail());
     this.groups = createGroups(3);
     // 「◀ 工房」はミッション中なら確認してから戻る（誤タップ対策）
     this.backConfirm = createBackConfirm();
@@ -388,7 +397,7 @@ const BotCommanderGame = {
     this.player = rp?.ok ? rp.player : null;
     this.rec = this.player || demoSetup || tutMod ? null : createRecorder(sim, makeStart({ seed, mapSeed, mission: chapterMission, chapter: this.story?.ch || this.story?.chapter || (this.story ? 1 : null), loadout: this.loadout, launcher: !!sim.launcher, powersuit: !!sim.powersuit, classes: !!sim.classes }));
     if (newEnemies) this.rec = null; // ?newenemies=1（試作）は記録しない（再生は新しい敵のフラグを持たないので、ハッシュが合わなくなる）
-    if (this.player) this.rview = await import('./replay/replay-view.js?v=17');
+    if (this.player) this.rview = await import('./replay/replay-view.js?v=19');
     if (stale()) return; // ここまでの読み込み中に離れた（入り直した）なら、新しい画面へ描画を作らない
     const r = await createRenderer(this.el.stage, sim, { fxQuality: params.get('fx') === 'low' ? 'low' : 'normal', ground: params.get('ground') === 'oblique' ? 'oblique' : undefined, human: params.get('human') === 'oblique' ? 'oblique' : undefined, enemyDemo: params.get('enemydemo') === '1', newEnemies: newEnemies || !!sim.story2 || !!sim.story3 });
     if (stale()) { r.destroy(); return; }
@@ -501,7 +510,7 @@ const BotCommanderGame = {
   /** ?replay= の記録を取りに行く。調べて、読めたら this.replayRec へ。読めなければ理由を this.replayError へ（止まらない） */
   async loadReplayUrl(value) {
     try {
-      const view = await import('./replay/replay-view.js?v=17');
+      const view = await import('./replay/replay-view.js?v=19');
       const text = await view.fetchReplayText(value, import.meta.url);
       const p = parseReplay(text);
       if (!p.ok) throw new Error(p.reason);
@@ -527,7 +536,7 @@ const BotCommanderGame = {
   },
   /** 読めなかった記録の知らせ（閉じるとふつうの画面。出ている間は一時停止） */
   async showReplayError(reason) {
-    const view = await import('./replay/replay-view.js?v=17');
+    const view = await import('./replay/replay-view.js?v=19');
     if (!this.alive) return;
     const prev = !!this.state?.paused; this.setPaused(true);
     view.showReplayError(this.el.root, reason, { onClose: () => { if (this.alive) this.setPaused(prev); } });
@@ -536,7 +545,7 @@ const BotCommanderGame = {
   async exportRecord() {
     const rec = this.player ? this.player.rec : this.rec?.snapshot();
     if (!rec) { this.toast('この画面ではリプレイを取っていません'); return; }
-    const view = await import('./replay/replay-view.js?v=17');
+    const view = await import('./replay/replay-view.js?v=19');
     if (!this.alive) return;
     const withDevice = { ...rec, meta: { ...(rec.meta || {}), recordedOn: view.deviceName() } };
     view.openRecordExport(this.el.root, withDevice);
@@ -549,7 +558,7 @@ const BotCommanderGame = {
   },
   /** 「記録を読み込む」の枠。読めたら、その記録を再生する（作り直す。ふつうの進み具合は消える） */
   async openLoadReplay() {
-    const view = await import('./replay/replay-view.js?v=17');
+    const view = await import('./replay/replay-view.js?v=19');
     if (!this.alive) return;
     view.openLoadSheet(this.el.root, { onLoad: (rec, notes) => this.startReplay(rec, notes) });
   },
@@ -762,6 +771,7 @@ const BotCommanderGame = {
     if (act === 'mode') { r.ui.mode = r.ui.mode === 'fight' ? 'rush' : 'fight'; this.el.hint.innerHTML = robotTextHtml(r.ui.mode === 'rush' ? '急行: 撃たずに走る（逃げる・回り込む用）' : '戦闘移動: 敵がいたら止まって撃つ'); }
     else if (act === 'clear') { r.ui.selected = []; this.refreshSel(); return; }
     else if (!ids.length) return;
+    else if (act === 'detail') { this.openUnitDetail(ids[0]); return; }
     else if (act === 'stop') { issueStop(sim, ids); this.el.hint.innerHTML = robotTextHtml(`${ids.length}機: その場で止まる`); }
     else if (act === 'retreat') { issueRetreat(sim, ids); this.el.hint.innerHTML = robotTextHtml(`${ids.length}機: 本陣へ撤退（撃たずに走る）`); }
     else if (act === 'fire') {
@@ -930,6 +940,29 @@ const BotCommanderGame = {
     this.el.statsBody.innerHTML = sum && sum.rows.length ? statsHtml(sum, { title: `今の成績（${fmtTime(this.sim?.time || 0)}）` }) : '<p class="bc-st-empty">まだ数えるものがありません</p>';
     this.el.stats.hidden = false;
   },
+
+  openUnitDetail(id) {
+    const u = this.sim?.units.find(x => String(x.id) === String(id) && x.side === 'ally');
+    if (!u || !this.state) return;
+    this.detailPrevPaused = !!this.state.paused; this.detailId = u.id;
+    this.setPaused(true); this.el.detail.hidden = false; this.renderUnitDetail();
+  },
+  renderUnitDetail() {
+    const units = this.sim.units.filter(u => u.side === 'ally' && !u.object);
+    const u = this.sim.units.find(x => x.id === this.detailId); if (!u) return;
+    const statsRow = this.unitStats?.summary().rows.find(r => r.id === u.id);
+    this.el.detailBody.innerHTML = unitDetailHtml(unitDetailView(this.sim, u, { statsRow }));
+    const i = units.findIndex(x => x.id === u.id);
+    this.el.detail.querySelector('.bc-detail-position').textContent = `${robotNameOf(this.sim, u)} ${i < 0 ? '—' : i + 1}/${units.length}`;
+    this.el.detail.querySelectorAll('[data-detail]').forEach(b => { b.disabled = !units.length; });
+  },
+  moveUnitDetail(delta) {
+    const units = this.sim.units.filter(u => u.side === 'ally' && !u.object); if (!units.length) return;
+    const i = units.findIndex(u => u.id === this.detailId);
+    this.detailId = units[(i < 0 ? (delta > 0 ? 0 : units.length - 1) : (i + delta + units.length) % units.length)].id;
+    this.renderUnitDetail();
+  },
+  closeUnitDetail() { this.el.detail.hidden = true; this.setPaused(this.detailPrevPaused); },
 
   showResultMain() {
     const sim = this.sim, st = missionStatus(sim);

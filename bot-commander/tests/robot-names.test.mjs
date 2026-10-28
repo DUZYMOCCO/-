@@ -2,9 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createSim, deployUnit, runSim, hashSim, hashSimDeep } from '../js/sim/sim.js?v=30';
 import { MISSION_1 } from '../js/sim/mission.js?v=10';
-import { createRecorder, makeStart, openReplay } from '../js/sim/replay.js?v=17';
+import { createRecorder, makeStart, openReplay } from '../js/sim/replay.js?v=19';
 import { ROBOT_NAMES, NAME_LETTERS, registerRobotName, robotNameOf, robotEventName, splitRobotName, robotNameHtml, robotTextHtml } from '../js/names/robot-names.js?v=1';
-import { createUnitStats, statsHtml } from '../js/stats/unit-stats.js?v=4';
+import { createUnitStats, statsHtml } from '../js/stats/unit-stats.js?v=6';
 const empty = seed => createSim({ seed, setup: { ally: [], enemy: [] } });
 const add = (sim, opts = {}) => deployUnit(sim, 'gunner', { tx: 20, ty: 50 }, { aiAlly: true, ...opts });
 const names = sim => sim.units.filter(u => u.side === 'ally').map(u => robotNameOf(sim, u));
@@ -110,7 +110,7 @@ test('物語1〜3章の実ミッションで指定labelと物語処理を保持�
   const { STORY_1 } = await import('../js/story/story-mission.js?v=3');
   const { STORY_2_1, STORY_2_2 } = await import('../js/story/story2-missions.js?v=2');
   const { CHAPTERS } = await import('../js/story/chapters.js?v=1');
-  const { registerMission } = await import('../js/sim/replay.js?v=17');
+  const { registerMission } = await import('../js/sim/replay.js?v=19');
   const missions = [STORY_1, STORY_2_1, STORY_2_2, ...Object.values(CHAPTERS[3].stages).map(s => s.mission)];
   for (const mission of missions) {
     registerMission(mission);

@@ -29,6 +29,6 @@ test('CSS の ?v= の見張りが効く: 中身だけ変わって ?v= が同じ�
 });
 test('CSS を読む側が実際にある（読まれていない css は null と記録）', () => {
   const now = scanCss(ROOT);
-  assert.equal(now['css/bot-commander.css'].v, 21); // v1.0.13 囲むボタン
+  assert.equal(now['css/bot-commander.css'].v, 23); // v1.0.16 色の揺らぎ
   assert.ok(Object.keys(now).length >= 6);
 });

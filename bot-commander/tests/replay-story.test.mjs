@@ -4,7 +4,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createSim, stepSim, issueOrder, hashSim, hashSimDeep, applyCommandsNow, TICK } from '../js/sim/sim.js?v=30';
 import { tileCenter } from '../js/sim/map.js?v=6';
-import { createRecorder, makeStart, openReplay, registerMission, stringifyReplay } from '../js/sim/replay.js?v=17';
+import { createRecorder, makeStart, openReplay, registerMission, stringifyReplay } from '../js/sim/replay.js?v=19';
 import { issueBoard, issueAlight, RIDE_MODE } from '../js/sim/ride.js?v=3';
 import { STORY_1 } from '../js/story/story-mission.js?v=3';
 import { issueStrike, nejiOf } from '../js/sim/strike.js?v=2';
