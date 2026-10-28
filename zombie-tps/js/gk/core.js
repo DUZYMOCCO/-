@@ -1,15 +1,15 @@
 // v0.16.0: ガンキック ワールド の ルール（データ だけ・three.js なし → テスト できる）
 // ステージの なかみ（てきの ならび）は stages/sNN.js、3D マップは maps/<mod>.js に わけて あとから よむ
 // → ステージが ふえても さいしょに よむ ぶんは ふえない（めくじ catalog.js だけ）
-import { GK_CATALOG } from './catalog.js?v=39';
+import { GK_CATALOG } from './catalog.js?v=40';
 
 export { GK_CATALOG };
 export const GK_COUNT = GK_CATALOG.length;
 export const gkMeta = (no) => GK_CATALOG.find((s) => s.no === no) || null;
 export const gkStageFile = (no) => `./stages/s${String(no).padStart(2, '0')}.js`;
-export const gkLoadStage = (no) => import(`${gkStageFile(no)}?v=39`).then((m) => m.STAGE);
+export const gkLoadStage = (no) => import(`${gkStageFile(no)}?v=40`).then((m) => m.STAGE);
 // v0.17.0: セグメント（js/gk/seg/<mod>.js）。すすむと 1つずつ よむ
-export const gkLoadSeg = (mod) => import(`./seg/${mod}.js?v=39`);
+export const gkLoadSeg = (mod) => import(`./seg/${mod}.js?v=40`);
 // idxs の セグメントを よむ → { idx: モジュール }
 export function gkLoadSegs(info, idxs) {
   const list = idxs.filter((i) => info.segs && info.segs[i]);
@@ -19,8 +19,8 @@ export function gkLoadSegs(info, idxs) {
 export function gkLoadMap(no) {
   const info = GK_READY[no];
   if (!info) return Promise.reject(new Error('not ready'));
-  if (info.mod) return import(`./maps/${info.mod}.js?v=39`);
-  return Promise.all([gkLoadSegs(info, info.segs.map((_, i) => i)), import('./seg.js?v=39')])
+  if (info.mod) return import(`./maps/${info.mod}.js?v=40`);
+  return Promise.all([gkLoadSegs(info, info.segs.map((_, i) => i)), import('./seg.js?v=40')])
     .then(([ms, S]) => ({ build: (builder) => S.joinSegs(S.chainSegs(info.segs.map((_, i) => ms[i].build(builder)))) }));
 }
 // ワールド（ステージ せんたく の カードの まとまり）
@@ -71,7 +71,7 @@ export const baseKind = (k) => k.split('@')[0];
 export const GK_BOSS_AI = ['agent', 'hydra', 'giant', 'mutant', 'king', 'surgeon', 'tank', 'beast', 'welder', 'wreck', 'kraken', 'yeti', 'queen', 'heli', 'final', 'ghoulking', 'sunscorp', 'doorboss'];
 export const GK_BOSS_LOOK = Object.fromEntries(GK_BOSS_AI.map((id) => [id, id]));
 export const gkLoadBoss = (id) => (GK_BOSS_AI.includes(id)
-  ? Promise.all([import(`./bosses/${id}.js?v=39`), import('./bosses/rt.js?v=39')]).then(([m, rt]) => ({ def: m.BOSS, rt })).catch((e) => { console.warn(e); return null; })
+  ? Promise.all([import(`./bosses/${id}.js?v=40`), import('./bosses/rt.js?v=40')]).then(([m, rt]) => ({ def: m.BOSS, rt })).catch((e) => { console.warn(e); return null; })
   : Promise.resolve(null));
 const HEAVY = new Set(['brute', 'bloater', 'riot', 'charger', 'mutant']);
 
@@ -145,7 +145,7 @@ export function gkSpotCells(gm, room, cells, margin = 1.5, doorClear = 3.5) {
 export const gkDoorOpenBox = () => [-60, -50];
 
 // ---- v0.17.0: ギミック（ステージごと・js/gk/gim/<id>.js を あとから よむ）----
-export const gkLoadGims = (info) => Promise.all((info.gim || []).map((id) => import(`./gim/${id}.js?v=39`)));
+export const gkLoadGims = (info) => Promise.all((info.gim || []).map((id) => import(`./gim/${id}.js?v=40`)));
 // でんしゃ（ステージ4）: まつ → よこく（せんろの ライトが ちかちか・おと）→ とおる。とおる あいだ せんろに いると おされる（すこし いたい）
 // lane = { room, axis:'x'|'z'（はしる むき）, at（せんろの まんなか）, from, to, w }
 export const TRAIN = { wait: [7, 12], warn: 1.8, speed: 24, len: 18, dmg: 8, push: 10, zDmg: 60 };

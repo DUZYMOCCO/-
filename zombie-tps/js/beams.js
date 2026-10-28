@@ -8,8 +8,8 @@ import * as THREE from '../vendor/three.module.min.js';
 import {
   WEAPONS, WEAPON_ORDER, SMOKE, useGauge, gunStats, laserHits, flameHits, castShot, damageAt, knockAt, groundHeight,
   addSmokeCloud, smokeAffects,
-} from './rules.js?v=39';
-import { makeSmokeCan } from './models.js?v=39';
+} from './rules.js?v=40';
+import { makeSmokeCan } from './models.js?v=40';
 
 const _o = new THREE.Vector3(), _d = new THREE.Vector3(), _e = new THREE.Vector3(), _p = new THREE.Vector3(), _m = new THREE.Vector3(), _c = new THREE.Vector3();
 const NO_Z = [];

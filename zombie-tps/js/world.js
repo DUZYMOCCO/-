@@ -8,7 +8,9 @@ function mergeBoxes(list) {
   for (const b of list) {
     const sx = b.maxX - b.minX, sy = b.maxY - b.minY, sz = b.maxZ - b.minZ;
     const cx = (b.minX + b.maxX) / 2, cy = (b.minY + b.maxY) / 2, cz = (b.minZ + b.maxZ) / 2;
-    const g = new THREE.BoxGeometry(sx, sy, sz);
+    const g = b.foliage === 'round' ? new THREE.IcosahedronGeometry(0.5, 1)
+      : b.foliage === 'pine' ? new THREE.ConeGeometry(0.5, 1, 7) : new THREE.BoxGeometry(sx, sy, sz);
+    if (b.foliage) g.scale(sx, sy, sz);
     const p = g.attributes.position, n = g.attributes.normal, u = g.attributes.uv;
     const base = pos.length / 3;
     if (b.veh != null) b._vr = [base, p.count]; // v0.9.0: のりもの の ちょうてん（こげる・こわれる）
@@ -38,8 +40,9 @@ function mergeBoxes(list) {
       const ao = ny < -0.5 ? 0.55 : (yy < 0.05 && Math.abs(ny) < 0.5 ? 0.78 : 1);
       col.push(tmpC.r * ao, tmpC.g * ao, tmpC.b * ao);
     }
-    const ix = g.index.array;
-    for (let i = 0; i < ix.length; i++) idx.push(ix[i] + base);
+    const ix = g.index?.array;
+    if (ix) { for (let i = 0; i < ix.length; i++) idx.push(ix[i] + base); }
+    else { for (let i = 0; i < p.count; i++) idx.push(i + base); }
     g.dispose();
   }
   const geo = new THREE.BufferGeometry();

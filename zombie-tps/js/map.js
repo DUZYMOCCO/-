@@ -127,15 +127,15 @@ function builder(half, seed) {
   B.barrel = (x, z, tint) => add('barrel', x, 0, z, 0.75, 1.0, 0.75, { tint });
   B.tree = (x, z, h = 3 + r() * 1.5, leafTint, wide = 1) => {
     add('log', x, 0, z, 0.7, h, 0.7);
-    deco('leaves', x, h - 0.6, z, 3.2 * wide, 1.6, 3.2 * wide, leafTint != null ? { tint: leafTint } : {});
-    deco('leaves', x, h + 1.0, z, 2.0 * wide, 1.0, 2.0 * wide, leafTint != null ? { tint: leafTint } : {});
+    deco('leaves', x, h - 0.6, z, 3.2 * wide, 1.6, 3.2 * wide, leafTint != null ? { tint: leafTint, foliage: 'round' } : { foliage: 'round' });
+    deco('leaves', x, h + 1.0, z, 2.0 * wide, 1.0, 2.0 * wide, leafTint != null ? { tint: leafTint, foliage: 'round' } : { foliage: 'round' });
   };
   // とがった き（もり）
   B.pine = (x, z, h = 3.4 + r() * 1.0, leafTint = 0x9cc890) => {
     add('log', x, 0, z, 0.6, h, 0.6);
-    deco('leaves', x, 1.4, z, 3.0, 1.4, 3.0, { tint: leafTint });
-    deco('leaves', x, 2.8, z, 2.2, 1.3, 2.2, { tint: leafTint });
-    deco('leaves', x, 4.1, z, 1.3, 1.2, 1.3, { tint: leafTint });
+    deco('leaves', x, 1.4, z, 3.0, 1.4, 3.0, { tint: leafTint, foliage: 'pine' });
+    deco('leaves', x, 2.8, z, 2.2, 1.3, 2.2, { tint: leafTint, foliage: 'pine' });
+    deco('leaves', x, 4.1, z, 1.3, 1.2, 1.3, { tint: leafTint, foliage: 'pine' });
   };
   B.hedge = (x, z, along, len, h = 1.0) => add('leaves', x, 0, z, along === 'x' ? len : 0.9, h, along === 'x' ? 0.9 : len, { tint: 0x9fc890 });
   B.lamp = (x, z, pole = 'dark', y0 = 0, opt = {}) => {

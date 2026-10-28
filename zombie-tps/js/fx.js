@@ -1,7 +1,7 @@
 // こうか: マズルフラッシュ・トレーサー・やっきょう・つぶ（みどりの しぶき／けむり）・しみ（みどり）・だんこん
 import * as THREE from '../vendor/three.module.min.js';
-import { makeMagMesh } from './models.js?v=39';
-import { Pool } from './rules.js?v=39';
+import { makeMagMesh } from './models.js?v=40';
+import { Pool } from './rules.js?v=40';
 
 const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _s = new THREE.Vector3(), _p = new THREE.Vector3(), _c = new THREE.Color();
 const UP = new THREE.Vector3(0, 1, 0), FWD = new THREE.Vector3(0, 0, 1);
