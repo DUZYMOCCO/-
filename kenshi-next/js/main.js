@@ -12,6 +12,8 @@ import { createClutter, propsByRole } from './render/clutter.js';
 import { PROP_NAMES, PROP_DIR, CLUB_MODEL } from './render/clutter_plan.js';
 import { loadHairData, buildHairTemplates } from './render/hair.js';
 import { createInput } from './ui/input.js';
+import { createPortraits } from './render/portraits.js';
+import { pickFollowId, squadCentre, leash, dragResistance, LOOK_RADIUS } from './render/camfollow.js';
 import { createHud } from './ui/hud.js';
 import { createSelection } from './ui/selection.js';
 import { createSaveUi, AUTO_KEY } from './ui/save_ui.js';
@@ -239,6 +241,52 @@ const rig = createCameraRig(sceneCtx.camera, {
 });
 rig.apply();
 
+// 追従している人（選んだ部隊員／いなければ操作キャラ）と見回しの状態。
+let followId = null;
+// 検証用 cam() で置いた時だけ綱を外す（見回しに入ると戻る）。
+let freeCam = !followParam;
+const edgeParam = params.get('edge') === '1';
+const portraits = createPortraits(sceneCtx.renderer);
+
+function dollPosition(id) {
+  if (id === null || id === undefined) return null;
+  const doll = dolls.getDoll(id);
+  return doll && doll.group ? doll.group.position : null;
+}
+
+function squadMembers() {
+  const ids = Array.isArray(state.squadIds) ? state.squadIds : [];
+  const out = [];
+  for (const actor of state.actors) if (ids.includes(actor.id)) out.push(actor);
+  return out;
+}
+
+function squadCentreNow() {
+  const pts = [];
+  for (const actor of squadMembers()) {
+    if (actor.state === 'dead') continue;
+    const p = dollPosition(actor.id);
+    if (p) pts.push(p);
+  }
+  return squadCentre(pts);
+}
+
+// 見回しに入る（地面からのドラッグ・WASD）
+function enterLook() {
+  freeCam = false;
+  if (!rig.getFollow()) return;
+  rig.setFollow(false);
+  if (hud) hud.setFollow(false);
+}
+
+// 追従に戻る（ボタン・Space/Home・顔カードの二度押し）
+function returnFollow() {
+  freeCam = false;
+  if (!rig.getFollow()) rig.startGlide();
+  rig.setFollow(true);
+  if (hud) hud.setFollow(true);
+}
+
 const markerGeo = new THREE.RingGeometry(0.4, 0.66, 24);
 markerGeo.rotateX(-Math.PI / 2);
 const marker = new THREE.Mesh(
@@ -302,6 +350,9 @@ function applyState(next) {
   const player = findPlayer();
   if (player) rig.setTarget(player.x, player.z);
   rig.setFollow(followParam);
+  freeCam = !followParam;
+  followId = null;
+  portraits.reset();
   rig.apply();
   marker.visible = false;
   accumulator = 0;
@@ -321,8 +372,21 @@ hud = createHud({
     setSpeed(n);
   },
   onFollow() {
-    rig.setFollow(!rig.getFollow());
-    hud.setFollow(rig.getFollow());
+    if (rig.getFollow()) enterLook();
+    else returnFollow();
+  },
+  onReturnFollow() {
+    returnFollow();
+  },
+  onFocusActor(id) {
+    selection.select(id);
+    returnFollow();
+  },
+  getPortrait(id) {
+    return portraits.get(id);
+  },
+  portraitVersion() {
+    return portraits.version();
   },
   onRestart() {
     restart();
@@ -383,6 +447,18 @@ const input = createInput({
   onGroundTap() {
     selection.onTapGround();
   },
+  onLook() {
+    enterLook();
+  },
+  onReturnFollow() {
+    returnFollow();
+  },
+  panFactor() {
+    if (freeCam) return 1;
+    const t = rig.target;
+    return dragResistance(t.x, t.z, squadCentreNow(), LOOK_RADIUS);
+  },
+  edgeScroll: edgeParam,
   onMove(x, z) {
     applyCommand(state, { type: 'move', x, z });
     marker.position.set(x, heightAt(x, z) + 0.07, z);
@@ -438,6 +514,8 @@ gameApi.dolls = dolls;
 // 検証・撮影用: カメラを置く（注視点 x,z・距離・yaw(度)・pitch(度)）
 gameApi.cam = (x, z, dist, yawDeg, pitchDeg, lift) => {
   rig.setFollow(false);
+  freeCam = true;
+  if (hud) hud.setFollow(false);
   rig.setTarget(x, z, lift ? heightAt(x, z) + lift : undefined);
   if (dist) rig.setDistance(dist);
   if (yawDeg !== undefined) rig.setYaw((yawDeg * Math.PI) / 180);
@@ -445,6 +523,23 @@ gameApi.cam = (x, z, dist, yawDeg, pitchDeg, lift) => {
   rig.apply();
 };
 // 検証用: いまの見下ろし角（度）
+// 検証用: 追従・見回し
+gameApi.follow = () => rig.getFollow();
+gameApi.followId = () => followId;
+gameApi.returnFollow = () => returnFollow();
+gameApi.camTarget = () => ({ x: rig.target.x, z: rig.target.z, fx: rig.focus.x, fz: rig.focus.z });
+gameApi.squadCentre = () => squadCentreNow();
+gameApi.portraits = () => portraits.count();
+// 検証用: 人物の胴の画面座標（CSS px）
+gameApi.screenOf = (id) => {
+  const p = dollPosition(id);
+  if (!p) return null;
+  const v = p.clone();
+  v.y += 1.0;
+  v.project(sceneCtx.camera);
+  const r = canvas.getBoundingClientRect();
+  return [r.left + ((v.x + 1) / 2) * r.width, r.top + ((1 - v.y) / 2) * r.height];
+};
 gameApi.pitch = () => (rig.getPitch() * 180) / Math.PI;
 gameApi.sheath = SHEATH;
 // 検証・撮影用: 画角を狭めて寄る（カメラの最短距離 8m より近くで見たい時）。引数なしで元へ。
@@ -650,8 +745,23 @@ function frame(now) {
   spawnSites.update(state, now / 1000);
   updateDemandUi();
 
-  if (rig.getFollow() && dolls.playerPos.has) {
-    rig.setTarget(dolls.playerPos.x, dolls.playerPos.z, dolls.playerPos.y);
+  input.update(dt);
+  const nextFollow = pickFollowId(state, selection.get());
+  if (nextFollow !== followId) {
+    // 追従中に相手が替わったら、注視点をなめらかに移す
+    if (followId !== null && rig.getFollow()) rig.startGlide();
+    followId = nextFollow;
+  }
+  if (rig.getFollow()) {
+    const fp = dollPosition(followId);
+    if (fp) rig.setTarget(fp.x, fp.z, fp.y);
+    else if (dolls.playerPos.has) rig.setTarget(dolls.playerPos.x, dolls.playerPos.z, dolls.playerPos.y);
+  } else if (!freeCam) {
+    // 見回しの綱: 部隊の中心から LOOK_RADIUS を超えたら柔らかく押し戻す
+    const c = squadCentreNow();
+    const t = rig.target;
+    const n = leash(t.x, t.z, c, dt, input.isPanning(), LOOK_RADIUS);
+    if (n.x !== t.x || n.z !== t.z) rig.setTarget(n.x, n.z);
   }
   rig.apply(dt);
   // カメラを動かした後に置く（1フレーム遅れの揺れを出さない）。
@@ -702,9 +812,11 @@ function frame(now) {
     }
   }
 
+  portraits.ensure(squadMembers(), (id) => dolls.getDoll(id));
   hud.update(state, {
     speed,
     follow: rig.getFollow(),
+    followId,
     fps: fpsValue,
     selectionId: selection.get(),
   });

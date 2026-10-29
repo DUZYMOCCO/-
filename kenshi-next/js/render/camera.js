@@ -31,6 +31,9 @@ export function createCameraRig(camera, options) {
   const focusOut = { x: target.x, z: target.z };
   let dragFrame = false;
   let smooth = true;
+  // 追従先を替えた時だけゆっくり寄せる（近づいたら通常の速さへ）。
+  let glide = false;
+  let glideT = 0;
 
   const rig = {
     distance: clamp(Number(opt.distance) || 30, MIN_DIST, MAX_DIST),
@@ -131,13 +134,16 @@ export function createCameraRig(camera, options) {
   function apply(dt) {
     const step = Number(dt) || 0;
     if (step > 0 && smooth && !dragFrame) {
-      const k = 1 - Math.exp(-step * 12);
+      const rate = glide ? 3.2 + 8.8 * Math.min(1, glideT / 1.4) : 12;
+      const k = 1 - Math.exp(-step * rate);
       focus.x += (target.x - focus.x) * k;
       focus.y += (target.y - focus.y) * k;
       focus.z += (target.z - focus.z) * k;
     } else {
       focus.copy(target);
     }
+    if (glide) glideT += step;
+    if (glide && (glideT > 1.4 || Math.hypot(target.x - focus.x, target.z - focus.z) < 0.3)) glide = false;
     dragFrame = false;
 
     const cosP = Math.cos(rig.pitch);
@@ -151,6 +157,16 @@ export function createCameraRig(camera, options) {
     const floor = heightAt(cx, cz) + 1.5;
     camera.position.set(cx, Math.max(focus.y + oy, floor), cz);
     camera.lookAt(focus.x, focus.y, focus.z);
+  }
+
+  // 追従先の切り替え: 注視点をなめらかに移す。
+  function startGlide() {
+    glide = true;
+    glideT = 0;
+  }
+
+  function isGliding() {
+    return glide;
   }
 
   function followActor(actor) {
@@ -177,6 +193,8 @@ export function createCameraRig(camera, options) {
     getTarget,
     setSmooth,
     followActor,
+    startGlide,
+    isGliding,
     apply,
     target,
     focus,

@@ -1,6 +1,7 @@
 // タップ・ドラッグ・ピンチ・二本指回転・マウス操作。タップは Raycaster で命令に変える。
 
 import * as THREE from 'three';
+import { keyPanVector, edgePanVector } from '../render/camfollow.js';
 
 const TAP_MS = 350;
 const TAP_PX = 8;
@@ -8,6 +9,8 @@ const TILT_PER_PX = 0.006; // マウス・二本指の縦移動 1px あたりの
 const TILT_DEADZONE = 10; // 二本指: ピンチ中の小さな上下ぶれは無視
 const KEY_TILT = 0.05;
 const KEY_ROTATE = 0.07;
+const KEY_PAN_SCREENS = 0.75; // WASD・矢印: 1秒で画面の高さの何倍ぶん動くか
+const PAN_KEYS = new Set(['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright']);
 
 export function createInput(options) {
   const canvas = options.canvas;
@@ -18,6 +21,15 @@ export function createInput(options) {
   const onActorTap = options.onActorTap || (() => {});
   const onGroundTap = options.onGroundTap || (() => {});
   const onMove = options.onMove || (() => {});
+  // 地面から始めたドラッグ・キー移動で「見回し」に入る時に呼ぶ。
+  const onLook = options.onLook || (() => {});
+  // 追従に戻す（Space / Home）。
+  const onReturnFollow = options.onReturnFollow || (() => {});
+  // 見回しの綱: ドラッグ量に掛ける係数（半径の外で弱める）。
+  const panFactor = options.panFactor || (() => 1);
+  let edgeScroll = !!options.edgeScroll;
+  const keysDown = new Set();
+  const mouse = { x: NaN, y: NaN, w: 0, h: 0, inside: false };
 
   const raycaster = new THREE.Raycaster();
   const ndc = new THREE.Vector2();
@@ -62,26 +74,35 @@ export function createInput(options) {
     };
   }
 
-  function handleTap(x, y) {
+  function aim(x, y) {
     const rect = canvas.getBoundingClientRect();
     ndc.x = (x / Math.max(1, rect.width)) * 2 - 1;
     ndc.y = -(y / Math.max(1, rect.height)) * 2 + 1;
     raycaster.setFromCamera(ndc, camera);
+  }
 
+  // 画面上の点にいる人物の id（いなければ null）。aim() の後に呼ぶ。
+  function actorUnderRay() {
     const pickables = getPickables();
-    if (pickables.length > 0) {
-      const hits = raycaster.intersectObjects(pickables, true);
-      for (const hit of hits) {
-        let obj = hit.object;
-        while (obj) {
-          if (obj.userData && obj.userData.actorId !== undefined) {
-            // 全員（プレイヤー・死体を含む）が選べる。攻撃や担ぐは選択パネルから。
-            onActorTap(obj.userData.actorId);
-            return;
-          }
-          obj = obj.parent;
-        }
+    if (pickables.length === 0) return null;
+    const hits = raycaster.intersectObjects(pickables, true);
+    for (const hit of hits) {
+      let obj = hit.object;
+      while (obj) {
+        if (obj.userData && obj.userData.actorId !== undefined) return obj.userData.actorId;
+        obj = obj.parent;
       }
+    }
+    return null;
+  }
+
+  function handleTap(x, y) {
+    aim(x, y);
+    const actorId = actorUnderRay();
+    if (actorId !== null) {
+      // 全員（プレイヤー・死体を含む）が選べる。攻撃や担ぐは選択パネルから。
+      onActorTap(actorId);
+      return;
     }
 
     if (groundMesh) {
@@ -107,6 +128,11 @@ export function createInput(options) {
 
     if (pointers.size === 1) {
       beginPrimary(event.pointerId, point, event.button);
+      // 人物の上から始めた一本指／左ドラッグは見回しにしない（選択の操作のまま）。
+      if (event.button !== 2 && event.button !== 1) {
+        aim(point.x, point.y);
+        primary.onActor = actorUnderRay() !== null;
+      }
       pinch = null;
     } else {
       primary = null;
@@ -136,7 +162,7 @@ export function createInput(options) {
         const eff = Math.abs(dmy) > TILT_DEADZONE ? dmy - Math.sign(dmy) * TILT_DEADZONE : 0;
         rig.setPitchClamped(pinch.pitch0 + eff * TILT_PER_PX);
       }
-      rig.setFollow(false);
+      // ズーム・回転・角度は追従を切らない。
       return;
     }
 
@@ -149,13 +175,16 @@ export function createInput(options) {
       // 右／中ドラッグ: 左右で回転、上下で角度
       rig.rotate(-dx * 0.006);
       if (rig.tilt) rig.tilt(dy * TILT_PER_PX);
-      rig.setFollow(false);
       return;
     }
 
-    if (primary.moved > TAP_PX) {
-      rig.panBy(dx, dy, point.h);
-      rig.setFollow(false);
+    if (primary.moved > TAP_PX && !primary.onActor) {
+      if (!primary.looking) {
+        primary.looking = true;
+        onLook();
+      }
+      const f = panFactor();
+      rig.panBy(dx * f, dy * f, point.h);
     }
   }
 
@@ -197,6 +226,8 @@ export function createInput(options) {
         button: 0,
         moved: TAP_PX + 1,
         prev: entry[1],
+        // 二本指の後に残った指では見回さない（ピンチの終わりで追従が切れないように）。
+        onActor: true,
       };
       pinch = null;
     }
@@ -213,7 +244,6 @@ export function createInput(options) {
   function onWheel(event) {
     event.preventDefault();
     rig.zoom(Math.exp(event.deltaY * 0.0012));
-    rig.setFollow(false);
   }
 
   // キー: Q/E で回転、R/F（PageUp/PageDown）で角度
@@ -222,12 +252,79 @@ export function createInput(options) {
     if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
     if (event.ctrlKey || event.metaKey || event.altKey) return;
     const k = event.key;
+    const lower = typeof k === 'string' ? k.toLowerCase() : '';
+    if (PAN_KEYS.has(lower)) {
+      keysDown.add(lower);
+      event.preventDefault();
+      return;
+    }
+    if (k === ' ' || k === 'Home') {
+      if (event.repeat) return;
+      if (t && t.tagName === 'BUTTON' && typeof t.blur === 'function') t.blur();
+      onReturnFollow();
+      event.preventDefault();
+      return;
+    }
     if (k === 'q' || k === 'Q') rig.rotate(KEY_ROTATE);
     else if (k === 'e' || k === 'E') rig.rotate(-KEY_ROTATE);
     else if ((k === 'r' || k === 'R' || k === 'PageUp') && rig.tilt) rig.tilt(KEY_TILT);
     else if ((k === 'f' || k === 'F' || k === 'PageDown') && rig.tilt) rig.tilt(-KEY_TILT);
     else return;
     event.preventDefault();
+  }
+
+  function onKeyUp(event) {
+    const k = typeof event.key === 'string' ? event.key.toLowerCase() : '';
+    keysDown.delete(k);
+    // Shift などで大文字・小文字が変わっても止まるように両方消す。
+    if (k.length === 1) keysDown.delete(k.toUpperCase());
+  }
+
+  function onBlur() {
+    keysDown.clear();
+    mouse.inside = false;
+  }
+
+  function onMouseTrack(event) {
+    if (event.pointerType !== 'mouse') return;
+    const point = readPoint(event);
+    mouse.x = point.x;
+    mouse.y = point.y;
+    mouse.w = point.w;
+    mouse.h = point.h;
+    mouse.inside = true;
+  }
+
+  function onPointerLeave(event) {
+    if (event.pointerType === 'mouse') mouse.inside = false;
+  }
+
+  // 毎フレーム: キー（WASD・矢印）と画面端で見回す。
+  function update(dt) {
+    const step = Math.min(0.1, Math.max(0, Number(dt) || 0));
+    if (step <= 0) return;
+    let v = keyPanVector(keysDown);
+    if (v.x === 0 && v.y === 0 && edgeScroll && mouse.inside && pointers.size === 0) {
+      v = edgePanVector(mouse.x, mouse.y, mouse.w, mouse.h, 14);
+    }
+    if (v.x === 0 && v.y === 0) return;
+    const rect = canvas.getBoundingClientRect();
+    const h = Math.max(1, rect.height);
+    const px = h * KEY_PAN_SCREENS * step;
+    if (rig.getFollow()) onLook();
+    const f = panFactor();
+    rig.panBy(-v.x * px * f, -v.y * px * f, h);
+  }
+
+  // 指・マウス・キーで見回しを動かしている最中か
+  function isPanning() {
+    if (primary && primary.looking && pointers.has(primary.id)) return true;
+    const v = keyPanVector(keysDown);
+    return v.x !== 0 || v.y !== 0;
+  }
+
+  function setEdgeScroll(on) {
+    edgeScroll = !!on;
   }
 
   function onContextMenu(event) {
@@ -240,7 +337,11 @@ export function createInput(options) {
   canvas.addEventListener('pointercancel', onPointerCancel);
   canvas.addEventListener('wheel', onWheel, { passive: false });
   canvas.addEventListener('contextmenu', onContextMenu);
+  canvas.addEventListener('pointermove', onMouseTrack);
+  canvas.addEventListener('pointerleave', onPointerLeave);
   window.addEventListener('keydown', onKeyDown);
+  window.addEventListener('keyup', onKeyUp);
+  window.addEventListener('blur', onBlur);
 
   function dispose() {
     canvas.removeEventListener('pointerdown', onPointerDown);
@@ -250,7 +351,11 @@ export function createInput(options) {
     canvas.removeEventListener('wheel', onWheel);
     canvas.removeEventListener('contextmenu', onContextMenu);
     window.removeEventListener('keydown', onKeyDown);
+    window.removeEventListener('keyup', onKeyUp);
+    window.removeEventListener('blur', onBlur);
+    canvas.removeEventListener('pointermove', onMouseTrack);
+    canvas.removeEventListener('pointerleave', onPointerLeave);
   }
 
-  return { dispose };
+  return { dispose, update, setEdgeScroll, isPanning };
 }

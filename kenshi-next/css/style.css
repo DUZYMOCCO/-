@@ -623,3 +623,171 @@ body.landscape .hud-lantern {
   color: #e9d9a8;
   white-space: nowrap;
 }
+
+/* 部隊の顔カード（画面下・Kenshi 風）。縦: 左下（ログの上・設定の左）、横: 左下 */
+.hud-portraits {
+  position: absolute;
+  display: flex;
+  gap: 6px;
+  pointer-events: none;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 2px;
+}
+
+.hud-portraits::-webkit-scrollbar {
+  display: none;
+}
+
+.pcard {
+  pointer-events: auto;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+  width: 58px;
+  padding: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 8px;
+  background: rgba(18, 24, 32, 0.66);
+  color: #f4efe6;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.pcard.selected {
+  border-color: #e0b84a;
+  box-shadow: 0 0 0 1px #e0b84a inset;
+}
+
+.pcard.followed .pcard-name::before {
+  content: '◎';
+  color: #e0b84a;
+  margin-right: 1px;
+}
+
+.pcard-face {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 5px;
+  overflow: hidden;
+  background: #33302b;
+}
+
+.pcard-face img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.pcard.down .pcard-face img {
+  filter: grayscale(0.85) brightness(0.7);
+}
+
+.pcard.dead .pcard-face img {
+  filter: grayscale(1) brightness(0.4);
+}
+
+.pcard-tag {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 1px 0;
+  font-size: 10px;
+  font-weight: 700;
+  text-align: center;
+  background: rgba(150, 30, 24, 0.82);
+  color: #fff;
+}
+
+.pcard.warn .pcard-tag {
+  background: rgba(160, 110, 20, 0.85);
+}
+
+.pcard.dead .pcard-tag {
+  background: rgba(0, 0, 0, 0.75);
+}
+
+.pcard-name {
+  font-size: 10px;
+  line-height: 1.2;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pcard-hp {
+  display: block;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.16);
+  overflow: hidden;
+}
+
+.pcard-hp-fill {
+  display: block;
+  height: 100%;
+  width: 100%;
+  background: #6fbf5a;
+}
+
+.pcard-hp-fill.low {
+  background: #d0503c;
+}
+
+body.portrait .hud-portraits {
+  left: calc(env(safe-area-inset-left, 0px) + 10px);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 120px);
+  max-width: calc(100% - 150px);
+}
+
+body.landscape .hud-portraits {
+  left: calc(env(safe-area-inset-left, 0px) + 12px);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 26px);
+  max-width: calc(100% - min(46vw, 420px) - 150px);
+}
+
+body.landscape .pcard {
+  width: 50px;
+}
+
+/* 見回し中だけ: 追従に戻る */
+.hud-return {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: auto;
+  touch-action: manipulation;
+  height: 38px;
+  padding: 0 14px;
+  border: 1px solid #e0b84a;
+  border-radius: 19px;
+  background: rgba(40, 32, 14, 0.78);
+  color: #f6dc8c;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.hud-return.hidden {
+  display: none;
+}
+
+body.portrait .hud-return {
+  top: calc(env(safe-area-inset-top, 0px) + 36px);
+}
+
+body.landscape .hud-return {
+  top: calc(env(safe-area-inset-top, 0px) + 8px);
+}

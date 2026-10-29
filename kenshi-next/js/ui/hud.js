@@ -4,6 +4,7 @@ import { PART_KEYS, PART_LABEL, FACTIONS, isHostile, formatClock } from '../sim/
 import { canAssassinate } from './selection.js';
 import { factionLine, conditionList, weaponLine } from './labels.js';
 import { formatMoney } from './money.js';
+import { memberCard, createTapDetector } from '../render/camfollow.js';
 
 const STATUS_TEXT = {
   idle: '立っている',
@@ -130,6 +131,20 @@ export function createHud(callbacks) {
     speedButtons.set(n, button);
   }
 
+  // 見回し中だけ出す「追従に戻る」
+  const returnButton = make('button', 'hud-return hidden', '◎追従に戻る');
+  returnButton.type = 'button';
+  returnButton.addEventListener('click', () => {
+    if (hooks.onReturnFollow) hooks.onReturnFollow();
+  });
+
+  // 部隊の顔カード（画面下）。一回押しで選ぶ、二度押しで選んで追従。
+  const portraitBar = make('div', 'hud-portraits');
+  const cardTaps = createTapDetector();
+  const cards = new Map(); // id -> { node, img, bar, tag, ratio, tagText, kind, src }
+  let cardIdsSig = '';
+  let cardVersion = -1;
+
   const follow = make('button', 'hud-follow', '追従');
   follow.type = 'button';
   follow.addEventListener('click', () => {
@@ -224,6 +239,8 @@ export function createHud(callbacks) {
   root.appendChild(hp);
   root.appendChild(speedBox);
   root.appendChild(follow);
+  root.appendChild(returnButton);
+  root.appendChild(portraitBar);
   root.appendChild(sneakButton);
   root.appendChild(lanternButton);
   root.appendChild(ability);
@@ -457,18 +474,103 @@ export function createHud(callbacks) {
       if (typeof actor.hunger === 'number' && actor.hunger < 25) text += ' 空腹';
       rows.push({ actor, text });
     }
+    // 文字の部隊一覧は顔カードに置き換えた（データ属性だけ残して検証に使う）。
     const signature = rows.map((row) => row.actor.id + ':' + row.text).join('|');
-    if (signature === partySignature) return;
-    partySignature = signature;
-    squad.innerHTML = '';
-    for (const row of rows) {
-      const line = make('div', 'squad-row', row.text);
-      if (row.actor.state === 'dead') line.style.opacity = '0.55';
-      // 小さい部隊表示の行を押すと、その人を選ぶ。
-      line.addEventListener('click', () => {
-        if (hooks.onSelectActor) hooks.onSelectActor(row.actor.id);
-      });
-      squad.appendChild(line);
+    if (signature !== partySignature) {
+      partySignature = signature;
+      squad.dataset.rows = signature;
+    }
+    renderCards(rows.map((row) => row.actor), state);
+  }
+
+  function buildCard(actor) {
+    const node = make('button', 'pcard');
+    node.type = 'button';
+    node.dataset.id = String(actor.id);
+    const face = make('div', 'pcard-face');
+    const img = document.createElement('img');
+    img.alt = '';
+    img.draggable = false;
+    img.style.visibility = 'hidden';
+    face.appendChild(img);
+    const tag = make('span', 'pcard-tag', '');
+    face.appendChild(tag);
+    node.appendChild(face);
+    node.appendChild(make('span', 'pcard-name', actor.name));
+    const track = make('span', 'pcard-hp');
+    const bar = make('span', 'pcard-hp-fill');
+    track.appendChild(bar);
+    node.appendChild(track);
+    node.addEventListener('click', (event) => {
+      event.stopPropagation();
+      const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+      const kind = cardTaps.tap(actor.id, now);
+      if (kind === 'double') {
+        if (hooks.onFocusActor) hooks.onFocusActor(actor.id);
+      } else if (hooks.onSelectActor) {
+        hooks.onSelectActor(actor.id);
+      }
+    });
+    // 二度押しでページが拡大されないように
+    node.addEventListener('dblclick', (event) => event.preventDefault());
+    return { node, img, bar, tag, ratio: -1, tagText: null, kind: '', src: null };
+  }
+
+  function renderCards(actors, state) {
+    const sig = actors.map((a) => a.id).join(',');
+    if (sig !== cardIdsSig) {
+      cardIdsSig = sig;
+      portraitBar.innerHTML = '';
+      const keep = new Set(actors.map((a) => a.id));
+      for (const id of Array.from(cards.keys())) if (!keep.has(id)) cards.delete(id);
+      for (const actor of actors) {
+        let card = cards.get(actor.id);
+        if (!card) {
+          card = buildCard(actor);
+          cards.set(actor.id, card);
+        }
+        portraitBar.appendChild(card.node);
+      }
+      cardVersion = -1;
+    }
+    const version = hooks.portraitVersion ? hooks.portraitVersion() : 0;
+    const refreshImg = version !== cardVersion;
+    cardVersion = version;
+    for (const actor of actors) {
+      const card = cards.get(actor.id);
+      if (!card) continue;
+      const info = memberCard(actor, PART_KEYS);
+      const ratio = Math.round(info.ratio * 100);
+      if (ratio !== card.ratio) {
+        card.ratio = ratio;
+        card.bar.style.width = ratio + '%';
+        card.bar.classList.toggle('low', ratio < 35);
+      }
+      if (info.tag !== card.tagText) {
+        card.tagText = info.tag;
+        card.tag.textContent = info.tag;
+        card.tag.style.display = info.tag ? '' : 'none';
+      }
+      if (info.kind !== card.kind) {
+        card.node.classList.remove('ok', 'down', 'dead', 'warn');
+        card.node.classList.add(info.kind);
+        card.kind = info.kind;
+      }
+      if (refreshImg && hooks.getPortrait) {
+        const src = hooks.getPortrait(actor.id);
+        if (src && src !== card.src) {
+          card.src = src;
+          card.img.src = src;
+          card.img.style.visibility = '';
+        }
+      }
+    }
+  }
+
+  function markCards(selectedId, followId, following) {
+    for (const [id, card] of cards) {
+      card.node.classList.toggle('selected', id === selectedId);
+      card.node.classList.toggle('followed', !!following && id === followId);
     }
   }
 
@@ -521,6 +623,8 @@ export function createHud(callbacks) {
     }
 
     follow.classList.toggle('active', !!data.follow);
+    returnButton.classList.toggle('hidden', !!data.follow);
+    markCards(selectedId, data.followId, !!data.follow);
 
     if (data.fps !== undefined && Number.isFinite(data.fps)) {
       fps.textContent = Math.round(data.fps) + ' fps';
@@ -538,6 +642,7 @@ export function createHud(callbacks) {
 
   function setFollow(on) {
     follow.classList.toggle('active', !!on);
+    returnButton.classList.toggle('hidden', !!on);
   }
 
   function setSneak(on) {
