@@ -1,0 +1,30 @@
+{
+ "layout": "pos f32x3, normal f32x3, uv f32x2, joints u16x4, weights f32x4, index u16",
+ "styles": {
+  "ponytail": {
+   "vertices": 350,
+   "indices": 1728,
+   "skin": "skin_b1_sword"
+  },
+  "sidefringe": {
+   "vertices": 375,
+   "indices": 1788,
+   "skin": "skin_b2_scav"
+  },
+  "bun": {
+   "vertices": 313,
+   "indices": 1572,
+   "skin": "skin_b3_noble"
+  },
+  "bob": {
+   "vertices": 465,
+   "indices": 2292,
+   "skin": "skin_b4_merc"
+  },
+  "braid": {
+   "vertices": 342,
+   "indices": 1728,
+   "skin": "skin_b5_nomad"
+  }
+ }
+}

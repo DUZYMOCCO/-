@@ -1,0 +1,102 @@
+// セーブデータの文字列化と復元。DOM に依存しない。
+
+import { sexOf } from './data.js';
+
+export const SAVE_VERSION = 1;
+export const MAX_SAVE_BYTES = 2 * 1024 * 1024;
+
+const STEALTH_DEFAULTS = {
+  player: { stealth: 1, assassination: 1 },
+  guard: { stealth: 10, assassination: 3 },
+  bandit: { stealth: 8, assassination: 5 },
+  beast: { stealth: 0, assassination: 0 },
+};
+
+const EYE_VALUES = ['none', 'blue', 'yellow', 'red'];
+
+function isNumber(value) {
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
+export function serialize(state, savedAt) {
+  if (!state || typeof state !== 'object') return null;
+  if (state.version !== SAVE_VERSION) return null;
+  const at = Number(savedAt);
+  try {
+    return JSON.stringify({
+      v: SAVE_VERSION,
+      savedAt: Number.isFinite(at) ? at : 0,
+      state,
+    });
+  } catch (err) {
+    return null;
+  }
+}
+
+export function deserialize(text) {
+  if (typeof text !== 'string' || text.length === 0) return null;
+  let parsed = null;
+  try {
+    parsed = JSON.parse(text);
+  } catch (err) {
+    return null;
+  }
+  if (!parsed || typeof parsed !== 'object') return null;
+  if (parsed.v !== SAVE_VERSION) return null;
+  const state = parsed.state;
+  if (!state || typeof state !== 'object') return null;
+  if (state.version !== SAVE_VERSION) return null;
+  if (!Array.isArray(state.actors)) return null;
+  for (const actor of state.actors) {
+    if (!actor || typeof actor !== 'object') continue;
+    if (typeof actor.hunger !== 'number' || !Number.isFinite(actor.hunger)) actor.hunger = 80;
+    if (typeof actor.food !== 'number' || !Number.isFinite(actor.food)) {
+      actor.food = actor.faction === 'player' ? 3 : 0;
+    }
+    if (typeof actor.movedRun !== 'boolean') actor.movedRun = false;
+    if (typeof actor.movedCarry !== 'boolean') actor.movedCarry = false;
+    if (actor.sex !== 'f' && actor.sex !== 'm' && actor.sex !== null) actor.sex = sexOf(actor, state); // 20:42 より前のセーブ
+
+    if (!actor.skills || typeof actor.skills !== 'object') actor.skills = {};
+    const skillDefaults = STEALTH_DEFAULTS[actor.faction] || STEALTH_DEFAULTS.beast;
+    if (!isNumber(actor.skills.stealth)) actor.skills.stealth = skillDefaults.stealth;
+    if (!isNumber(actor.skills.assassination)) {
+      actor.skills.assassination = skillDefaults.assassination;
+    }
+    if (typeof actor.sneaking !== 'boolean') actor.sneaking = false;
+    if (!actor.detect || typeof actor.detect !== 'object' || Array.isArray(actor.detect)) {
+      actor.detect = {};
+    }
+    if (!EYE_VALUES.includes(actor.eye)) actor.eye = 'none';
+    if (actor.eyeFrom === undefined) actor.eyeFrom = null;
+    if (!isNumber(actor.eyeLevel)) actor.eyeLevel = 0;
+    if (
+      !actor.knownTargets ||
+      typeof actor.knownTargets !== 'object' ||
+      Array.isArray(actor.knownTargets)
+    ) {
+      actor.knownTargets = {};
+    }
+    if (!Array.isArray(actor.watchers)) actor.watchers = [];
+    if (!isNumber(actor.light)) actor.light = 1;
+    if (typeof actor.lantern !== 'boolean') actor.lantern = false;
+    if (actor.crossbow === undefined) actor.crossbow = null;
+    if (actor.crossbow) {
+      const c = actor.crossbow;
+      if (!isNumber(c.bolts)) c.bolts = 0;
+      if (typeof c.loaded !== 'boolean') c.loaded = false;
+      if (!isNumber(c.reload)) c.reload = 0;
+      if (!isNumber(c.aim)) c.aim = 0;
+    }
+    if (!isNumber(actor.skills.crossbow)) actor.skills.crossbow = 0;
+    if (typeof actor.aiming !== 'boolean') actor.aiming = false;
+    if (!isNumber(actor.lastShotTick)) actor.lastShotTick = -1000;
+    if (actor.assassinTargetId === undefined) actor.assassinTargetId = null;
+    if (!isNumber(actor.assassinTicks)) actor.assassinTicks = 0;
+    if (typeof actor.movedThisTick !== 'boolean') actor.movedThisTick = false;
+    if (typeof actor.movedRunThisTick !== 'boolean') actor.movedRunThisTick = false;
+  }
+  if (!Array.isArray(state.projectiles)) state.projectiles = [];
+  if (!isNumber(state.nextBoltId)) state.nextBoltId = 1;
+  return state;
+}
