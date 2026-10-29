@@ -4,6 +4,7 @@
 export const sections = [
   { id: 'main', label: 'IRON SQUAD · 雑兵立身出世録' },
   { id: 'strategy', label: 'リアルタイム部隊シミュレーション（試作）' },
+  { id: 'sandbox', label: 'オープンワールド（3D試作）' },
   { id: 'casual', label: 'カジュアル・パズル' },
   { id: 'kids', label: 'こどもの ゲーム' },
 ];
@@ -20,6 +21,12 @@ export const games = [
     icon: '🤖', color: '#5b93e6',
     description: '部隊を タップして、ゆびで なぞって 進む道を 決めよう。霧の向こうの 敵ロボット部隊を 見つけて 倒せ！（試作版）',
     load: () => import('../../bot-commander/js/index.js'),
+  },
+  {
+    id: 'kenshi-proto', section: 'sandbox', title: '砂の果て（仮）', subtitle: '3D試作 v0 · デク人形の砂漠',
+    icon: '🏜️', color: '#c8a25a',
+    description: '無力な流れ者として砂漠の町から始めよう。タップで移動、人形をタップで攻撃。盗賊・獣・衛兵がそれぞれの思惑で動く。死んだら終わり。縦持ち・横持ちどちらでも遊べます。（3D試作）',
+    load: () => import('../../kenshi-proto/js/index.js'),
   },
   {
     id: 'color-ants', section: 'casual', title: 'カラー・アント', subtitle: '色をたべつくす、わらわらあり軍団！',

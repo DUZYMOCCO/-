@@ -1,0 +1,343 @@
+/* 画面全体とHUDの見た目。縦横で配置を切り替える。 */
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #0f141a;
+}
+
+body {
+  color: #f4efe6;
+  font-family: system-ui, -apple-system, "Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif;
+  touch-action: none;
+  overscroll-behavior: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#game {
+  position: fixed;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  outline: none;
+}
+
+#hud {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.hud-clock,
+.hud-status,
+.hud-fps {
+  position: absolute;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
+}
+
+.hud-clock {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.hud-status {
+  font-size: 13px;
+  opacity: 0.95;
+  white-space: nowrap;
+}
+
+.hud-fps {
+  font-size: 10px;
+  opacity: 0.72;
+  white-space: nowrap;
+}
+
+/* 部位HP */
+.hud-hp {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 168px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: rgba(12, 16, 22, 0.45);
+}
+
+.hp-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.hp-label {
+  width: 26px;
+  font-size: 10px;
+  opacity: 0.9;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.hp-track {
+  position: relative;
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.hp-fill {
+  height: 100%;
+  width: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #7cc36b, #b7d96a);
+  transition: width 0.1s linear;
+}
+
+.hp-fill.bad {
+  background: #d84a3f;
+}
+
+/* 速度ボタン */
+.hud-speed {
+  position: absolute;
+  display: flex;
+  gap: 6px;
+}
+
+.hud-speed button {
+  pointer-events: auto;
+  min-width: 44px;
+  height: 44px;
+  padding: 0 6px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 10px;
+  background: rgba(18, 24, 32, 0.62);
+  color: #f4efe6;
+  font-size: 14px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.hud-speed button.active {
+  border-color: #e0b84a;
+  background: rgba(224, 184, 74, 0.3);
+  color: #fff6d8;
+}
+
+.hud-follow {
+  position: absolute;
+  pointer-events: auto;
+  min-width: 58px;
+  height: 38px;
+  padding: 0 10px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 9px;
+  background: rgba(18, 24, 32, 0.62);
+  color: #f4efe6;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.hud-follow.active {
+  border-color: #e0b84a;
+  background: rgba(224, 184, 74, 0.3);
+}
+
+/* 出来事ログ */
+.hud-log {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 5px 8px;
+  border-radius: 8px;
+  background: rgba(10, 14, 20, 0.42);
+  font-size: 11px;
+  line-height: 1.4;
+  overflow: hidden;
+}
+
+.log-line {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0.92;
+}
+
+.log-line.old {
+  opacity: 0.55;
+}
+
+/* ゲームオーバー */
+.hud-gameover {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  background: rgba(6, 8, 12, 0.62);
+  pointer-events: auto;
+}
+
+.hud-gameover.hidden {
+  display: none;
+}
+
+.hud-gameover p {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.9);
+}
+
+.hud-gameover button {
+  min-width: 132px;
+  height: 48px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 12px;
+  background: rgba(224, 184, 74, 0.85);
+  color: #1a1408;
+  font-size: 16px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+/* 縦向き: 上に時刻と状態、下に速度とログ */
+body.portrait .hud-clock {
+  top: calc(env(safe-area-inset-top, 0px) + 8px);
+  left: calc(env(safe-area-inset-left, 0px) + 12px);
+}
+
+body.portrait .hud-status {
+  top: calc(env(safe-area-inset-top, 0px) + 10px);
+  right: calc(env(safe-area-inset-right, 0px) + 12px);
+}
+
+body.portrait .hud-hp {
+  top: calc(env(safe-area-inset-top, 0px) + 34px);
+  left: calc(env(safe-area-inset-left, 0px) + 12px);
+}
+
+body.portrait .hud-follow {
+  top: calc(env(safe-area-inset-top, 0px) + 38px);
+  right: calc(env(safe-area-inset-right, 0px) + 12px);
+}
+
+body.portrait .hud-speed {
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
+  transform: translateX(-50%);
+}
+
+body.portrait .hud-log {
+  left: calc(env(safe-area-inset-left, 0px) + 12px);
+  right: calc(env(safe-area-inset-right, 0px) + 12px);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 62px);
+}
+
+body.portrait .hud-log .log-line:not(:nth-last-child(-n + 3)) {
+  display: none;
+}
+
+body.portrait .hud-fps {
+  right: calc(env(safe-area-inset-right, 0px) + 12px);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 58px);
+}
+
+/* 横向き: 左上に状態とHP、右上に時刻と速度、右下にログ */
+body.landscape .hud-status {
+  top: calc(env(safe-area-inset-top, 0px) + 10px);
+  left: calc(env(safe-area-inset-left, 0px) + 14px);
+}
+
+body.landscape .hud-hp {
+  top: calc(env(safe-area-inset-top, 0px) + 32px);
+  left: calc(env(safe-area-inset-left, 0px) + 14px);
+}
+
+body.landscape .hud-clock {
+  top: calc(env(safe-area-inset-top, 0px) + 10px);
+  right: calc(env(safe-area-inset-right, 0px) + 14px);
+}
+
+body.landscape .hud-speed {
+  top: calc(env(safe-area-inset-top, 0px) + 32px);
+  right: calc(env(safe-area-inset-right, 0px) + 14px);
+}
+
+body.landscape .hud-speed button {
+  height: 40px;
+  min-width: 40px;
+}
+
+body.landscape .hud-follow {
+  top: calc(env(safe-area-inset-top, 0px) + 78px);
+  right: calc(env(safe-area-inset-right, 0px) + 14px);
+}
+
+body.landscape .hud-log {
+  right: calc(env(safe-area-inset-right, 0px) + 14px);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+  width: min(46vw, 420px);
+}
+
+body.landscape .hud-fps {
+  left: calc(env(safe-area-inset-left, 0px) + 14px);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 10px);
+}
+
+/* 小さい画面ではHPバーを少し細く */
+@media (max-width: 380px) {
+  .hud-hp {
+    width: 142px;
+  }
+
+  .hud-clock {
+    font-size: 14px;
+  }
+}
+
+/* 工房へ戻るボタン（工房公開用） */
+.hud-back {
+  position: fixed;
+  z-index: 11;
+  top: calc(env(safe-area-inset-top, 0px) + 82px);
+  right: calc(env(safe-area-inset-right, 0px) + 12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 58px;
+  height: 34px;
+  padding: 0 10px;
+  box-sizing: border-box;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 9px;
+  background: rgba(18, 24, 32, 0.62);
+  color: #f4efe6;
+  font-size: 12px;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body.landscape .hud-back {
+  top: calc(env(safe-area-inset-top, 0px) + 122px);
+  right: calc(env(safe-area-inset-right, 0px) + 14px);
+}
