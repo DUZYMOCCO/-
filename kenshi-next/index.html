@@ -21,6 +21,48 @@
 <body>
   <canvas id="game"></canvas>
   <div id="hud"></div>
+  <div id="boot" style="position:fixed;inset:0;z-index:50;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:#0f141a;color:#f4efe6;font:15px/1.5 sans-serif;text-align:center;padding:24px">
+    <div id="boot-msg">読み込み中…</div>
+    <div style="width:220px;height:6px;background:#2a323c;border-radius:3px;overflow:hidden"><div id="boot-bar" style="width:0;height:100%;background:#e8c65a;transition:width .2s"></div></div>
+    <div id="boot-sub" style="font-size:12px;opacity:.7"></div>
+  </div>
+  <script>
+    // 起動表示: 読み込みの進み具合と、失敗したときのエラー文。window.__ready で消える。
+    (function () {
+      var box = document.getElementById('boot'), msg = document.getElementById('boot-msg');
+      var bar = document.getElementById('boot-bar'), sub = document.getElementById('boot-sub');
+      var n = 0, bytes = 0, failed = false, t0 = Date.now(), EXPECT = 24e6;
+      function fail(text) {
+        if (failed || !box.parentNode) return;
+        failed = true;
+        msg.textContent = '起動できませんでした';
+        sub.style.opacity = '1';
+        sub.textContent = String(text || '不明なエラー').slice(0, 300);
+        bar.style.background = '#ff5a4e';
+      }
+      window.__bootFail = fail;
+      window.addEventListener('error', function (e) {
+        if (e.target && e.target !== window && e.target.src) fail('読めないファイル: ' + e.target.src);
+        else if (e.message) fail(e.message);
+      }, true);
+      window.addEventListener('unhandledrejection', function (e) {
+        fail(e.reason && (e.reason.message || e.reason));
+      });
+      try {
+        new PerformanceObserver(function (list) {
+          list.getEntries().forEach(function (r) { n++; bytes += r.transferSize || r.encodedBodySize || 0; });
+        }).observe({ type: 'resource', buffered: true });
+      } catch (err) {}
+      var timer = setInterval(function () {
+        if (window.__ready === true) { clearInterval(timer); box.remove(); return; }
+        if (failed) return;
+        var sec = Math.round((Date.now() - t0) / 1000);
+        bar.style.width = Math.min(95, (bytes / EXPECT) * 100) + '%';
+        sub.textContent = n + ' 件 ・ ' + (bytes / 1e6).toFixed(1) + ' MB ・ ' + sec + ' 秒';
+        if (sec >= 90) msg.textContent = 'まだ読み込み中…（回線が遅いか、止まっています）';
+      }, 250);
+    })();
+  </script>
   <script type="module" src="./js/main.js"></script>
 </body>
 </html>
