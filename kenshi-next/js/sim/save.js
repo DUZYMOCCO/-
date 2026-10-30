@@ -67,6 +67,8 @@ export function deserialize(text) {
     if (actor.sex !== 'f' && actor.sex !== 'm' && actor.sex !== null) actor.sex = sexOf(actor, state); // 20:42 より前のセーブ
 
     if (!actor.skills || typeof actor.skills !== 'object') actor.skills = {};
+    if (!isNumber(actor.skills.martial)) actor.skills.martial = actor.isPlayer ? 1 : (isNumber(actor.skills.attack) ? actor.skills.attack : 0);
+    if (!isNumber(actor.skills.dodge)) actor.skills.dodge = actor.isPlayer ? 1 : Math.round((actor.skills.dexterity || 0) * 0.5 + (actor.skills.martial ?? actor.skills.attack ?? 0) * 0.3);
     const skillDefaults = STEALTH_DEFAULTS[actor.faction] || STEALTH_DEFAULTS.beast;
     if (!isNumber(actor.skills.stealth)) actor.skills.stealth = skillDefaults.stealth;
     if (!isNumber(actor.skills.assassination)) {

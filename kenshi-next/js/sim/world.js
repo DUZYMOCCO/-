@@ -195,6 +195,8 @@ export function makeActor(state, faction, x, z, squadId, isPlayer) {
     weapon: WEAPON_BY_FACTION[faction],
     renderScale: faction === 'beast' ? 0.8 : 1,
   };
+  actor.skills.martial = isPlayer ? 1 : actor.skills.attack;
+  actor.skills.dodge = isPlayer ? 1 : Math.round((actor.skills.dexterity || 0) * 0.5 + (actor.skills.martial ?? actor.skills.attack ?? 0) * 0.3);
   state.actors.push(actor);
   return actor;
 }

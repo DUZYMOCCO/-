@@ -1,6 +1,7 @@
 // 人形の生成・複製・アニメ・勢力色。glb が読めない時は手続き人形で代用する。
 
 import * as THREE from 'three';
+import { decodeMartialPack } from './martial_pack.js';
 import { hitPose } from '../sim/hitreact.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
@@ -224,6 +225,12 @@ export function loadDollTemplate(url) {
         } catch (err) {
           console.warn('隠密アニメーションを読み込めませんでした。', err);
         }
+        try {
+          const kind = /doll_f\.glb(?:\?|$)/.test(source) ? 'female' : 'male';
+          const response = await fetch(`assets/anims/martial_${kind}.json`);
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          gltf.animations.push(...decodeMartialPack(await response.json(), THREE));
+        } catch (err) { console.warn('格闘アニメーションを読み込めませんでした。', err); }
         resolve(gltf);
       },
       undefined,
@@ -423,7 +430,7 @@ function playAction(doll, name, interrupted = false) {
   const next = doll.actions[key];
   if (!next) return;
 
-  if (ONE_SHOT.has(key)) {
+  if (ONE_SHOT.has(key) || (next.getClip().userData?.martial && !['Fight Idle','Bouncing Fight Idle','Fighting Idle'].includes(key))) {
     next.setLoop(THREE.LoopOnce, 1);
     next.clampWhenFinished = CLAMP_ONE_SHOT.has(key);
   } else {
@@ -938,9 +945,9 @@ export function createDollManager(scene, template, lookImages, female) {
         continue;
       }
 
-      const hp = hitPose(actor, state ? state.tick : 0);
+      const hp = actor.maReactTick === actor.animTick && (actor.anim === 'Hit' || actor.anim === 'Stagger') ? { lean: 0, squash: 1 } : hitPose(actor, state ? state.tick : 0);
       const reacting = hp.lean !== 0 || hp.squash !== 1;
-      const busy = ONE_SHOT.has(doll.animName) && doll.currentAction && doll.currentAction.isRunning();
+      const busy = doll.currentAction && (ONE_SHOT.has(doll.animName) || (doll.currentAction.getClip().userData?.martial && !['Fight Idle','Bouncing Fight Idle','Fighting Idle'].includes(doll.animName))) && doll.currentAction.isRunning();
       const sneaking = sneakAllowed(actor, reacting || busy);
       const interrupted = !!actor.sneaking && !sneaking;
       if (doll.mixer) {
@@ -979,7 +986,10 @@ export function createDollManager(scene, template, lookImages, female) {
 
       // 20:13 チャンバラ: よろけ（Stagger）は Hit の動きをゆっくり流す（速さは combat_fx.js）。
       // 受け（Block）は専用の動きが無いので Idle の上に combat_fx.js が腕の構えを重ねる。
-      const simAnim = actor.anim === 'Stagger' ? 'Hit' : actor.anim;
+      const maReact = actor.maReactTick === actor.animTick && (actor.anim === 'Hit' || actor.anim === 'Stagger') ? actor.maReactClip : null;
+      const dodge = (actor.maDodgeUntil || 0) > (state?.tick || 0) && !['Fall','GetUp','Hit','Stagger','MA'].includes(actor.anim) ? (actor.weapon === 'fists' && (actor.id + actor.maDodgeTick) % 3 === 0 ? 'Body Block' : 'Dodging') : null;
+      const stance = actor.weapon === 'fists' && actor.targetId != null && actor.anim === 'Idle' ? ['Fight Idle','Bouncing Fight Idle','Fighting Idle'][actor.id % 3] : null;
+      const simAnim = dodge || maReact || (actor.anim === 'MA' ? actor.maClip : null) || stance || (actor.anim === 'Stagger' ? 'Hit' : actor.anim);
       const sneakAnim = actor.anim === 'Idle' ? 'SneakIdle' : 'SneakWalk';
       const desired = sneaking && doll.actions[sneakAnim] ? sneakAnim : (doll.actions[simAnim] ? simAnim : 'Idle');
       let go = null;
@@ -988,7 +998,7 @@ export function createDollManager(scene, template, lookImages, female) {
           doll.animName === 'Punch' ||
           doll.animName === 'Attack' ||
           doll.animName === 'Hit' ||
-          doll.animName === 'GetUp';
+          doll.animName === 'GetUp' || (doll.currentAction?.getClip().userData?.martial && !['Fight Idle','Bouncing Fight Idle','Fighting Idle'].includes(doll.animName));
         const running = doll.currentAction && doll.currentAction.isRunning();
         // 受けは攻撃の振りを止めて構えに移る（移動扱いにしない）
         const toLocomotion = actor.anim === 'Idle' || actor.anim === 'Walk' || actor.anim === 'Run';
@@ -998,12 +1008,12 @@ export function createDollManager(scene, template, lookImages, female) {
           go = desired;
         }
       } else if (
-        (desired === 'Punch' || desired === 'Attack' || desired === 'Hit') &&
+        (desired === 'Punch' || desired === 'Attack' || desired === 'Hit' || actor.anim === 'MA') &&
         actor.animTick !== doll.animTick
       ) {
         go = desired;
       }
-      if (go) playAction(doll, go, interrupted);
+      if (go) { playAction(doll, go, interrupted); if (actor.anim === 'MA' && doll.currentAction) doll.currentAction.setEffectiveTimeScale(actor.maRate || 1); }
       doll.animTick = actor.animTick;
     }
 

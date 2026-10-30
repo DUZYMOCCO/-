@@ -230,6 +230,7 @@ function buildSquad(state, typeKey, x, z, extra) {
       actor.skills.attack += 4;
       actor.skills.defense += 4;
     }
+    actor.skills.dodge = Math.round((actor.skills.dexterity || 0) * 0.5 + (actor.skills.martial ?? actor.skills.attack ?? 0) * 0.3);
     if (typeKey === 'raiders' && i === 2) giveCrossbow(actor, START_BOLTS.bandit);
     if (typeKey === 'caravan' && i === 1) giveCrossbow(actor, START_BOLTS.guard);
     if (squad.leash) actor.leash = { x: squad.leash.x, z: squad.leash.z, r: squad.leash.r };

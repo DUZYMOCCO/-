@@ -156,17 +156,17 @@ export function koPoint(toughness) {
   return -10 - 0.75 * toughness;
 }
 
-// 格上・格下の経験の倍率（Stronger Opponent Logic）: 格上1ごとに +10%（最大6倍）、格下1ごとに -4%（最低0.1倍）
+// 格上・格下の経験の倍率（Stronger Opponent Logic）: 格上1ごとに +10%（最大6倍）、格下1ごとに -3%（最低0.25倍）
 export function solMult(own, opponent) {
   const diff = opponent - own;
   if (diff >= 0) return Math.min(6, 1 + 0.1 * diff);
-  return Math.max(0.1, 1 + 0.04 * diff);
+  return Math.max(0.25, 1 + 0.03 * diff);
 }
 
-// 打たれ強さの経験: 受けたダメージが「打たれ強さ−25」以下で0.1倍、+10で2倍、+50で6倍（wiki: Toughness）
+// 打たれ強さの経験: 受けたダメージが「打たれ強さ−25」以下で0.25倍、+10で2倍、+50で6倍（wiki: Toughness）
 export function toughnessXpMult(damage, toughness) {
   const over = damage - toughness;
-  if (over <= -25) return 0.1;
-  if (over <= 10) return 0.1 + ((over + 25) / 35) * 1.9;
+  if (over <= -25) return 0.25;
+  if (over <= 10) return 0.25 + ((over + 25) / 35) * 1.75;
   return Math.min(6, 2 + ((over - 10) / 40) * 4);
 }

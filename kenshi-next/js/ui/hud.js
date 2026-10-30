@@ -25,6 +25,8 @@ const SPEEDS = [0, 1, 2, 3, 5];
 const SKILL_LABELS = [
   ['attack', '攻撃'],
   ['defense', '防御'],
+  ['martial', '格闘'],
+  ['dodge', '回避'],
   ['toughness', '頑強'],
   ['strength', '筋力'],
   ['dexterity', '器用'],
