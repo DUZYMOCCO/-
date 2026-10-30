@@ -1,6 +1,9 @@
 // 時刻・速度・状態・部位HP・ログ・追従・fps・ゲームオーバーのHTML窓口。
 
 import { PART_KEYS, PART_LABEL, FACTIONS, isHostile, formatClock } from '../sim/index.js';
+import { VITALS } from '../sim/data.js';
+import { bloodOf } from '../sim/body.js';
+import { limbBar, bloodBar, hungerBar, healthWord } from './health_ui.js';
 import { partyKits, partyKitDur, canBuyKit, KIT_TIERS } from '../sim/medkit.js';
 import { effMax, bedrollAt, REST_REACH, PACK_REACH } from '../sim/rest.js';
 import { canAssassinate } from './selection.js';
@@ -80,25 +83,101 @@ export function createHud(callbacks) {
   hp.appendChild(hpState);
   hp.appendChild(hpWeapon);
 
-  const fills = {};
-  const wounds = {};
-  const panelWound = {};
-  for (const key of PART_KEYS) {
-    const row = make('div', 'hp-row');
-    const label = make('span', 'hp-label', PART_LABEL[key]);
-    const track = make('div', 'hp-track');
-    const fill = make('div', 'hp-fill');
-    track.appendChild(fill);
-    // 傷（休まないと戻らない分）を右端に暗く出す
-    track.style.position = 'relative';
-    const wound = make('div', 'hp-wound');
-    wound.style.cssText = 'position:absolute;right:0;top:0;bottom:0;width:0;background:repeating-linear-gradient(135deg,#3a1414 0 3px,#5a2020 3px 6px);opacity:0.9';
-    track.appendChild(wound);
-    wounds[key] = wound;
-    row.appendChild(label);
-    row.appendChild(track);
-    hp.appendChild(row);
-    fills[key] = fill;
+  // 体の窓（Kenshi の health pane のまま: 一番上に血、部位、一番下に空腹。名前はバーの中、数字は右の列）
+  // 計算は ui/health_ui.js。色: 黄緑=今 / 赤=手当てで戻る / 黒い斜線=最大が下がった分（休むと戻る）
+  // 0 未満: バーが「負の物差し」（左0→右−最大）に変わり、気絶点（KO）と右端の死・切断の印まで伸びる。
+  const kbBox = make('div', 'kb-box');
+  function makeBarRow(labelText, extra) {
+    const row = make('div', 'kb-row' + (extra ? ' ' + extra : ''));
+    const bar = make('div', 'kb-bar');
+    const green = make('div', 'kb-seg kb-green');
+    const red = make('div', 'kb-seg kb-red');
+    const wound = make('div', 'kb-seg kb-wound');
+    const neg = make('div', 'kb-seg kb-neg');
+    const mark = make('div', 'kb-mark');
+    mark.style.display = 'none';
+    const label = make('span', 'kb-label', labelText);
+    const arrows = make('span', 'kb-arrows', '');
+    bar.appendChild(green);
+    bar.appendChild(red);
+    bar.appendChild(wound);
+    bar.appendChild(neg);
+    bar.appendChild(mark);
+    bar.appendChild(label);
+    bar.appendChild(arrows);
+    const num = make('span', 'kb-num', '');
+    row.appendChild(bar);
+    row.appendChild(num);
+    kbBox.appendChild(row);
+    return { row, bar, green, red, wound, neg, mark, label, arrows, num, cache: {} };
+  }
+  // 変わった時だけ書き換える
+  function setStyle(r, key, el, prop, value) {
+    const k = key + prop;
+    if (r.cache[k] === value) return;
+    r.cache[k] = value;
+    el.style[prop] = value;
+  }
+  function setText(r, key, el, value) {
+    if (r.cache[key] === value) return;
+    r.cache[key] = value;
+    el.textContent = value;
+  }
+  const pct = (f) => Math.round(f * 1000) / 10 + '%';
+  const bloodRow = makeBarRow('血', 'kb-blood');
+  const partRows = {};
+  for (const key of PART_KEYS) partRows[key] = makeBarRow(PART_LABEL[key], 'kb-part');
+  const kbHungerRow = makeBarRow('空腹', 'kb-hunger');
+  hp.appendChild(kbBox);
+
+  function renderBars(actor) {
+    // 血
+    const bb = bloodBar(bloodOf(actor), actor.bleed, actor.gush);
+    const r0 = bloodRow;
+    setStyle(r0, 'g', r0.green, 'width', pct(bb.fill));
+    setStyle(r0, 'r', r0.red, 'left', pct(bb.fill));
+    setStyle(r0, 'r', r0.red, 'width', pct(Math.max(0, 1 - bb.fill)));
+    setStyle(r0, 'm', r0.mark, 'left', pct(bb.koMark));
+    setStyle(r0, 'm', r0.mark, 'display', '');
+    setText(r0, 'a', r0.arrows, '<'.repeat(bb.arrows));
+    setText(r0, 'n', r0.num, bb.text);
+    r0.row.classList.toggle('low', bb.low);
+    // 部位
+    const t = (actor.skills && actor.skills.toughness) || 0;
+    for (const key of PART_KEYS) {
+      const r = partRows[key];
+      const lb = limbBar(actor.parts[key], {
+        vital: VITALS.includes(key),
+        toughness: t,
+        missing: Array.isArray(actor.missing) && actor.missing.includes(key),
+      });
+      const neg = lb.mode === 'neg';
+      if (r.cache.modeName !== lb.mode + lb.state) {
+        r.cache.modeName = lb.mode + lb.state;
+        r.row.className = 'kb-row kb-part mode-' + lb.mode + ' st-' + lb.state;
+      }
+      setStyle(r, 'g', r.green, 'width', neg ? '0%' : pct(lb.green));
+      setStyle(r, 'r', r.red, 'left', neg ? '0%' : pct(lb.green));
+      setStyle(r, 'r', r.red, 'width', neg ? '0%' : pct(lb.red));
+      setStyle(r, 'w', r.wound, 'width', neg ? '0%' : pct(lb.wound));
+      setStyle(r, 'n', r.neg, 'width', neg ? pct(lb.neg) : '0%');
+      const showKo = neg && lb.koMark !== null;
+      setStyle(r, 'm', r.mark, 'display', showKo ? '' : 'none');
+      if (showKo) setStyle(r, 'm', r.mark, 'left', pct(lb.koMark));
+      setText(r, 'n', r.num, lb.text);
+    }
+    // 空腹
+    const hb = hungerBar(actor.hunger);
+    const r2 = kbHungerRow;
+    setStyle(r2, 'd', r2.row, 'display', hb ? '' : 'none');
+    if (hb) {
+      setStyle(r2, 'g', r2.green, 'width', pct(hb.fill));
+      setStyle(r2, 'm', r2.mark, 'left', pct(hb.weakMark));
+      setStyle(r2, 'm', r2.mark, 'display', '');
+      setText(r2, 'a', r2.arrows, '<'.repeat(hb.arrows));
+      setText(r2, 'n', r2.num, hb.text);
+      r2.row.classList.toggle('low', hb.low);
+    }
   }
 
   const hpActions = make('div', 'hp-actions');
@@ -313,7 +392,6 @@ export function createHud(callbacks) {
   const skillText = {};
   let hungerWidth = -1;
   let foodText = '';
-  const panelWidth = {};
   let panelActorId = null;
   let panelNameText = '';
   let panelStateText = '';
@@ -349,7 +427,6 @@ export function createHud(callbacks) {
 
     if (panelActorId !== actor.id) {
       panelActorId = actor.id;
-      for (const key of PART_KEYS) delete panelWidth[key];
       hp.classList.remove('hidden');
     }
     party.classList.add('hidden');
@@ -376,10 +453,16 @@ export function createHud(callbacks) {
       panelStateText = stateText;
       hpStateText.textContent = stateText;
     }
-    const cond = conditionList(actor).join('・');
+    // Kenshi の窓の上の一言（正常・出血・軽傷・気絶・昏睡…）。血の量はバーに出すので文字からは外す。
+    const word = healthWord(actor);
+    const extra = conditionList(actor).filter(
+      (c) => !c.startsWith('血 ') && c !== '気絶' && c !== '出血' && c !== '大出血' && c !== '死亡' && c !== word
+    );
+    const cond = [word].concat(extra).join('・');
     if (cond !== panelCondText) {
       panelCondText = cond;
       hpCond.textContent = cond;
+      hpCond.style.color = word === '正常' ? '#cfe3a0' : word === '軽傷' ? '#ecd27a' : '';
     }
 
     const wText = weaponLine(actor);
@@ -389,23 +472,7 @@ export function createHud(callbacks) {
       hpWeapon.style.display = wText ? '' : 'none';
     }
 
-    for (const key of PART_KEYS) {
-      const part = actor.parts[key];
-      const ratio = part.max > 0 ? part.hp / part.max : 0;
-      const width = Math.round(Math.max(0, Math.min(1, ratio)) * 1000) / 10 + '%';
-      const fill = fills[key];
-      if (panelWidth[key] !== width) {
-        panelWidth[key] = width;
-        fill.style.width = width;
-      }
-      fill.classList.toggle('bad', part.hp <= 0);
-      const wr = part.max > 0 ? Math.max(0, Math.min(1, (part.wound || 0) / part.max)) : 0;
-      const ww = Math.round(wr * 1000) / 10 + '%';
-      if (panelWound[key] !== ww) {
-        panelWound[key] = ww;
-        wounds[key].style.width = ww;
-      }
-    }
+    renderBars(actor);
 
     const showAttack =
       actor.state !== 'dead' &&

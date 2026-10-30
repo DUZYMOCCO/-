@@ -25,6 +25,7 @@ import { createTradeUI } from './ui/trade_ui.js';
 import { createSelection } from './ui/selection.js';
 import { createSaveUi, AUTO_KEY } from './ui/save_ui.js';
 import { createNameLabels } from './render/name_labels.js';
+import { createDmgNumbers } from './render/dmg_numbers.js';
 import { createOptions } from './ui/options.js';
 import { createCrossbows, GRIP, SHEATH } from './render/crossbows.js';
 import { createCombatFx } from './render/combat_fx.js';
@@ -268,6 +269,7 @@ const dolls = createDollManager(sceneCtx.scene, template, lookImages, female);
 dolls.setMachines(mechTemplates, models.katana);
 dolls.sync(state);
 const nameLabels = createNameLabels(dolls);
+const dmgNumbers = createDmgNumbers(dolls); // 浮かぶダメージ数字（ui/dmgpop.js）
 const lights = createLights(sceneCtx.scene, state, models);
 const crossbows = createCrossbows(sceneCtx.scene, models);
 const combatFx = createCombatFx(sceneCtx.scene); // 20:13 チャンバラの火花・受けの構え
@@ -425,6 +427,7 @@ function applyState(next) {
   bedrolls.reset();
   dolls.reset(state);
   nameLabels.clear();
+  dmgNumbers.reset();
   lights.reset(state);
   crossbows.reset();
   combatFx.reset();
@@ -612,6 +615,7 @@ gameApi.assets = (() => {
 })();
 gameApi.crossbows = crossbows.stats;
 gameApi.combatFx = combatFx.stats;
+gameApi.dmgPops = dmgNumbers;
 // 検証用: 近接武器の持ち方（調整用）
 gameApi.grip = GRIP;
 gameApi.melees = crossbows.melees;
@@ -905,6 +909,7 @@ function frame(now) {
   // カメラを動かした後に置く（1フレーム遅れの揺れを出さない）。
   sceneCtx.camera.updateMatrixWorld();
   nameLabels.update(state, sceneCtx.camera, selection.get(), options.getShowNames());
+  dmgNumbers.update(state, sceneCtx.camera, dt);
   sceneCtx.updateDayNight(state.timeSec, rig.getTarget(), dt);
   lights.update(state, dolls, rig.getTarget(), sceneCtx.camera, dt);
   const nightK = Math.min(1, Math.max(0, (darknessOf(ambientLight(state)) - 0.15) / 0.6));

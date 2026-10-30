@@ -69,10 +69,16 @@ body {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  width: 168px;
-  padding: 6px 8px;
-  border-radius: 8px;
-  background: rgba(12, 16, 22, 0.45);
+  box-sizing: border-box;
+  width: 200px;
+  max-height: calc(100dvh - 150px);
+  overflow-y: auto;
+  pointer-events: auto;
+  touch-action: pan-y;
+  padding: 5px 6px;
+  border: 1px solid #5a3a26;
+  border-radius: 4px;
+  background: rgba(40, 28, 20, 0.82);
 }
 
 .hp-row {
@@ -154,15 +160,17 @@ body {
 
 .hp-actions {
   display: flex;
-  gap: 6px;
+  flex-wrap: wrap;
+  gap: 4px 6px;
   margin-top: 4px;
 }
 
 .hp-action {
   pointer-events: auto;
-  flex: 1;
+  flex: 1 1 auto;
   height: 26px;
-  padding: 0;
+  padding: 0 6px;
+  white-space: nowrap;
   border: 1px solid rgba(255, 255, 255, 0.25);
   border-radius: 7px;
   background: rgba(18, 24, 32, 0.72);
@@ -487,7 +495,7 @@ body.landscape .hud-fps {
 /* 小さい画面ではHPバーを少し細く */
 @media (max-width: 380px) {
   .hud-hp {
-    width: 142px;
+    width: min(190px, calc(100vw - 178px));
   }
 
   .hud-clock {
@@ -807,4 +815,41 @@ body.portrait .hud-return {
 
 body.landscape .hud-return {
   top: calc(env(safe-area-inset-top, 0px) + 8px);
+}
+
+/* 体の窓と浮かぶ数字 */
+.kb-box { display: flex; flex-direction: column; gap: 2px; }
+.kb-row { display: flex; align-items: center; gap: 3px; height: 13px; }
+.kb-bar { position: relative; flex: 1; min-width: 0; height: 13px; box-sizing: border-box; overflow: hidden; background: #e3d6ad; border: 1px solid #5a3a26; }
+.kb-seg { position: absolute; top: 0; bottom: 0; }
+.kb-green { left: 0; background: linear-gradient(#cfc77a, #b9b25a); }
+.kb-red { background: #b8432e; }
+.kb-blood .kb-red { background: #773a2c; }
+.kb-wound { right: 0; background: repeating-linear-gradient(135deg, #2a2018 0 3px, #4a3a2a 3px 6px); }
+.kb-neg { left: 0; background: repeating-linear-gradient(135deg, #782b26 0 3px, #a34034 3px 6px); }
+.mode-neg .kb-bar { background: #5a2a22; border-right: 2px solid #111; }
+.mode-missing .kb-bar { background: #111; }
+.mode-missing .kb-seg { display: none; }
+.kb-mark { position: absolute; top: 0; bottom: 0; width: 2px; background: #241b14; z-index: 1; }
+.kb-label { position: absolute; inset: 0; text-align: center; line-height: 11px; font-size: 10px; font-weight: 700; color: #2b2416; text-shadow: none; z-index: 2; }
+.mode-neg .kb-label, .mode-missing .kb-label { color: #f2e7c7; }
+.kb-arrows { position: absolute; right: 2px; top: 0; line-height: 11px; font-size: 10px; font-weight: 700; color: #722719; z-index: 3; }
+.kb-num { box-sizing: border-box; flex: 0 0 46px; height: 13px; padding: 0 2px; border: 1px solid #5a3a26; background: #e3d6ad; color: #2b2416; text-align: right; font-size: 10px; line-height: 11px; white-space: nowrap; }
+.mode-neg .kb-num, .low .kb-num { color: #a02920; }
+.st-coma .kb-num, .st-dead .kb-num, .st-sever .kb-num { color: #a02920; font-weight: 700; }
+.pop-layer { position: fixed; inset: 0; pointer-events: none; z-index: 10; overflow: hidden; }
+.dmg-pop { position: absolute; left: 0; top: 0; font-size: 16px; font-weight: 700; white-space: nowrap; will-change: transform; text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000; }
+.pop-cut { color: #ff5a4e; }
+.pop-blunt { color: #f0b04a; }
+.pop-pierce { color: #ff8fb0; }
+.pop-partial { color: #e8d8a8; font-size: 13px; }
+.pop-partial::after { content: ' 崩し'; font-size: 10px; }
+.pop-block { color: #a9bccc; font-size: 13px; }
+.pop-heal { color: #7fd46a; }
+.pop-big { font-size: 22px; }
+
+/* 体の窓が開いている間は、左上の交易ボタンを窓の下（顔の札の上）へ逃がす */
+body.portrait:has(.hud-hp:not(.hidden)) #trade-btn {
+  top: auto;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 215px);
 }
