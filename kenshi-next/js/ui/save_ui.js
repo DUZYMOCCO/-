@@ -248,6 +248,7 @@ export function createSaveUi(options) {
   });
 
   return {
+    toggle,
     saveAuto,
     writeSlot,
     refresh,

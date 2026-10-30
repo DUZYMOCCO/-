@@ -247,6 +247,7 @@ export function createTradeUI(opts) {
   }
 
   return {
+    button: btn,
     update() { draw(false); },
     open(which) { open = true; tab = which || tab; unseen = false; draw(true); },
     close() { open = false; draw(true); },

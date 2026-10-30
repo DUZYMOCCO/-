@@ -62,6 +62,7 @@ export function createHud(callbacks) {
   const hpName = make('span', 'hp-name', '');
   const hpClose = make('button', 'hp-close', '×');
   hpClose.type = 'button';
+  hpClose.setAttribute('aria-label', '体の窓を閉じる');
   hpClose.addEventListener('click', () => {
     if (hooks.onClearSelection) hooks.onClearSelection();
   });
@@ -269,8 +270,10 @@ export function createHud(callbacks) {
   }
 
   // 見回し中だけ出す「追従に戻る」
-  const returnButton = make('button', 'hud-return hidden', '◎追従に戻る');
+  const returnButton = make('button', 'hud-return hidden', '◎');
   returnButton.type = 'button';
+  returnButton.title = '追従に戻る';
+  returnButton.setAttribute('aria-label', '追従に戻る');
   returnButton.addEventListener('click', () => {
     if (hooks.onReturnFollow) hooks.onReturnFollow();
   });
@@ -592,8 +595,8 @@ export function createHud(callbacks) {
       party.style.top = 'calc(env(safe-area-inset-top, 0px) + 34px)';
       party.style.right = 'auto';
       party.style.bottom = 'auto';
-      dropButton.style.right = 'calc(env(safe-area-inset-right, 0px) + 100px)';
-      dropButton.style.top = 'calc(env(safe-area-inset-top, 0px) + 38px)';
+      dropButton.style.right = 'calc(env(safe-area-inset-right, 0px) + 12px)';
+      dropButton.style.top = 'calc(env(safe-area-inset-top, 0px) + 176px)';
       dropButton.style.left = 'auto';
       dropButton.style.bottom = 'auto';
     } else {
@@ -601,8 +604,8 @@ export function createHud(callbacks) {
       party.style.top = 'calc(env(safe-area-inset-top, 0px) + 32px)';
       party.style.right = 'auto';
       party.style.bottom = 'auto';
-      dropButton.style.right = 'calc(env(safe-area-inset-right, 0px) + 102px)';
-      dropButton.style.top = 'calc(env(safe-area-inset-top, 0px) + 78px)';
+      dropButton.style.right = 'calc(env(safe-area-inset-right, 0px) + 14px)';
+      dropButton.style.top = 'calc(env(safe-area-inset-top, 0px) + 216px)';
       dropButton.style.left = 'auto';
       dropButton.style.bottom = 'auto';
     }
@@ -863,5 +866,6 @@ export function createHud(callbacks) {
     setFollow,
     setSneak,
     refreshMoney,
+    lanternButton,
   };
 }

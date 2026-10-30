@@ -21,6 +21,7 @@ import { createPortraits } from './render/portraits.js';
 import { loadMachineTemplates, ruinTextureFrom } from './render/machines.js';
 import { pickFollowId, squadCentre, leash, dragResistance, LOOK_RADIUS } from './render/camfollow.js';
 import { createHud } from './ui/hud.js';
+import { createHudMenu } from './ui/hud_menu.js';
 import { createTradeUI } from './ui/trade_ui.js';
 import { createSelection } from './ui/selection.js';
 import { createSaveUi, AUTO_KEY } from './ui/save_ui.js';
@@ -525,7 +526,7 @@ hud = createHud({
   },
 });
 
-createSaveUi({
+const saveUi = createSaveUi({
   getState() {
     return state;
   },
@@ -693,6 +694,7 @@ window.__game = gameApi;
 // 交易の窓（trade1）。ルールは js/sim/trade.js。
 const tradeUi = createTradeUI({ getState: () => state, onAfterAct: () => { if (hud) hud.refreshMoney(state); } });
 gameApi.trade = tradeUi;
+createHudMenu({ trade: tradeUi.button, save: saveUi.toggle, options: options.toggle, lantern: hud.lanternButton });
 
 // 町（bldg1）: 手元の行動ボタン・賞金・捕まえに来た時の答え
 function focusActor() {

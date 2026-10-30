@@ -24,7 +24,8 @@ export function readStartCrossbow(storage) {
 
 export function createOptions(callbacks) {
   const hooks = callbacks || {};
-  const storage = typeof window !== 'undefined' ? window.localStorage : null;
+  let storage = null;
+  try { storage = typeof window !== 'undefined' ? window.localStorage : null; } catch (err) { /* 使用不可 */ }
   let showNames = readShowNames(storage);
 
   const root = document.createElement('div');
@@ -102,5 +103,6 @@ export function createOptions(callbacks) {
     getShowNames: () => showNames,
     getStartCrossbow: () => startXbow,
     setShowNames,
+    toggle,
   };
 }

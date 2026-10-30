@@ -66,6 +66,7 @@ body {
 /* 部位HP */
 .hud-hp {
   position: absolute;
+  z-index: 2;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -139,14 +140,14 @@ body {
 .hp-close {
   pointer-events: auto;
   flex: 0 0 auto;
-  width: 20px;
-  height: 20px;
+  width: 36px;
+  height: 36px;
   padding: 0;
   border: none;
   border-radius: 5px;
   background: rgba(255, 255, 255, 0.14);
   color: #f4efe6;
-  font-size: 13px;
+  font-size: 24px;
   line-height: 1;
   font-family: inherit;
   cursor: pointer;
@@ -612,15 +613,6 @@ body.landscape .hud-fps {
   height: 20px;
 }
 
-/* 灯りボタン（隠密の左） */
-body.portrait .hud-lantern {
-  top: calc(env(safe-area-inset-top, 0px) + 84px);
-  right: calc(env(safe-area-inset-right, 0px) + 78px);
-}
-body.landscape .hud-lantern {
-  top: calc(env(safe-area-inset-top, 0px) + 124px);
-  right: calc(env(safe-area-inset-right, 0px) + 82px);
-}
 .hud-lantern.active {
   border-color: #ffc977;
   background: rgba(255, 190, 100, 0.32);
@@ -788,12 +780,12 @@ body.landscape .pcard {
 /* 見回し中だけ: 追従に戻る */
 .hud-return {
   position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
+  right: calc(env(safe-area-inset-right, 0px) + 124px);
   pointer-events: auto;
   touch-action: manipulation;
+  width: 38px;
   height: 38px;
-  padding: 0 14px;
+  padding: 0;
   border: 1px solid #e0b84a;
   border-radius: 19px;
   background: rgba(40, 32, 14, 0.78);
@@ -810,11 +802,12 @@ body.landscape .pcard {
 }
 
 body.portrait .hud-return {
-  top: calc(env(safe-area-inset-top, 0px) + 36px);
+  top: calc(env(safe-area-inset-top, 0px) + 38px);
 }
 
 body.landscape .hud-return {
-  top: calc(env(safe-area-inset-top, 0px) + 8px);
+  right: calc(env(safe-area-inset-right, 0px) + 126px);
+  top: calc(env(safe-area-inset-top, 0px) + 78px);
 }
 
 /* 体の窓と浮かぶ数字 */
@@ -848,8 +841,78 @@ body.landscape .hud-return {
 .pop-heal { color: #7fd46a; }
 .pop-big { font-size: 22px; }
 
-/* 体の窓が開いている間は、左上の交易ボタンを窓の下（顔の札の上）へ逃がす */
-body.portrait:has(.hud-hp:not(.hidden)) #trade-btn {
-  top: auto;
-  bottom: calc(env(safe-area-inset-bottom, 0px) + 215px);
+
+/* 右側の補助操作。各ボタンは元の要素を移動して動作を維持する。 */
+#hud-menu {
+  position: fixed;
+  z-index: 11;
+  right: calc(env(safe-area-inset-right, 0px) + 78px);
+  top: calc(env(safe-area-inset-top, 0px) + 38px);
+  width: 64px;
+  pointer-events: none;
+}
+body.landscape #hud-menu {
+  right: calc(env(safe-area-inset-right, 0px) + 80px);
+  top: calc(env(safe-area-inset-top, 0px) + 78px);
+}
+.hud-menu-toggle {
+  position: relative;
+  display: block;
+  margin-left: auto;
+  width: 40px;
+  height: 38px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 9px;
+  background: rgba(18, 24, 32, 0.88);
+  color: #f4efe6;
+  font-size: 24px;
+  line-height: 1;
+  pointer-events: auto;
+  cursor: pointer;
+}
+.hud-menu-toggle.has-trade::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ff8a3d;
+}
+.hud-menu-items { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+.hud-menu-items[hidden] { display: none; }
+#hud-menu .hud-menu-items > button {
+  position: static;
+  box-sizing: border-box;
+  width: 64px !important;
+  min-width: 0 !important;
+  height: 40px !important;
+  margin: 0;
+  padding: 0 10px !important;
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
+  border-radius: 9px !important;
+  background: rgba(18, 24, 32, 0.62) !important;
+  color: #f4efe6 !important;
+  font-family: inherit !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  line-height: normal !important;
+  pointer-events: auto;
+}
+#hud-menu .hud-menu-items > #trade-btn.here {
+  background: rgba(120, 80, 20, 0.92) !important;
+  box-shadow: 0 0 0 2px rgba(255, 200, 90, 0.6);
+}
+#hud-menu .hud-menu-items > .hud-lantern.active {
+  border-color: #ffc977 !important;
+  background: rgba(255, 190, 100, 0.32) !important;
+}
+/* 能力の窓を開いたままでも補助メニューを覆わない。 */
+body.portrait:has(.hud-menu-items:not([hidden])) .hud-skills {
+  top: calc(env(safe-area-inset-top, 0px) + 270px);
+}
+body.landscape:has(.hud-menu-items:not([hidden])) .hud-skills {
+  right: calc(env(safe-area-inset-right, 0px) + 156px);
 }
