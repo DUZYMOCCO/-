@@ -3,6 +3,8 @@
 
 import {
   beastRules,
+  canHarmDowned,
+  downedHarmKind,
   WEAPONS,
   PART_KEYS,
   PART_WEIGHTS,
@@ -335,6 +337,8 @@ function pushBack(state, target, attacker, kind) {
 function resolveStrike(state, attacker, target, events) {
   const raw = rawDamage(state, attacker);
   const standing = target.state !== 'down' && target.state !== 'getup';
+  // 振っている間に倒れた相手には当てない（獣の噛みつきは従来どおり）
+  if (!standing && !canHarmDowned(downedHarmKind(attacker, target))) return;
   // 避け: 重いよろけの最中だけ（受けられない代わりに、身のこなしで身をかわすことがある）
   if (standing && target.state !== 'dead' && busy(state, target, 'staggerUntil') && !immuneToStagger(target) &&
       (mixHash(target.id, attacker.id, state.tick * 7 + 3) % 1000) / 1000 < dodgeChanceOf(target)) {
@@ -420,8 +424,7 @@ export function resolveCombat(state, events) {
     }
     if (
       (target.state === 'down' || target.state === 'getup') &&
-      !actor.isPlayer &&
-      (!beastRules(actor) || target.faction === 'beast')
+      !canHarmDowned(downedHarmKind(actor, target))
     ) {
       dropTarget(actor);
       continue;

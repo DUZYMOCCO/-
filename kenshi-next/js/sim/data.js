@@ -128,6 +128,19 @@ export function beastRules(actor) {
   return !!actor && actor.faction === 'beast' && !actor.swordsman;
 }
 
+// 気絶して倒れている者を傷つけてよいか（Kenshi: 普通の攻撃は不可。食べる・処刑・皮剥ぎ機だけ）。
+// 調べた出典は research/buildings_locks_theft.md の「倒れた者への手出し」。
+// eat: 獣が倒れた獲物を噛む・人食いが食べる（今ある仕組み）。execute / skinner は後で足す時に true にする。
+export const DOWNED_HARM = { attack: false, eat: true, execute: false, skinner: false };
+export function canHarmDowned(kind) {
+  return DOWNED_HARM[kind] === true;
+}
+// その者が倒れた相手に何をする種類か（獣は「食べる」。獣どうしは食べない）
+export function downedHarmKind(actor, target) {
+  if (beastRules(actor) && !(target && target.faction === 'beast')) return 'eat';
+  return 'attack';
+}
+
 export const FACTION_ORDER = ['guard', 'bandit', 'beast', 'player'];
 
 export const VISION = { guard: 20, bandit: 16, beast: 14, player: 14 };

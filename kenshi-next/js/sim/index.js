@@ -28,6 +28,9 @@ export {
   FEMALE_SHARE,
   sexFor,
   sexOf,
+  DOWNED_HARM,
+  canHarmDowned,
+  downedHarmKind,
 } from './data.js';
 export * from './melee.js';
 
@@ -114,3 +117,6 @@ export * from './medkit.js';
 export * from './rest.js';
 
 export * from './trade.js';
+export * from './town.js';
+export * from './locks.js';
+export * from './law.js';

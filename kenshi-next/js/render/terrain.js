@@ -645,7 +645,9 @@ export function createTerrain(scene, state, opts) {
   const allBuildings = (state && state.buildings) || [];
   // 町の建物は、壁板と屋根板の glb がそろっていれば小屋に組む（当たり判定の箱は sim のまま）。
   const shackOk = !!(models.wall_orange && models.door_orange && models.roof);
-  const shackList = shackOk ? allBuildings.filter((b) => b.kind === 'town') : [];
+  // 入れる小屋（bldg1、interiors.js が描く）は除く
+  const skipIdx = o.skipBuildings instanceof Set ? o.skipBuildings : null;
+  const shackList = shackOk ? allBuildings.filter((b, i) => b.kind === 'town' && !(skipIdx && skipIdx.has(i))) : [];
   // 柵の glb（tex_props_cx1）が読めたら、柵の箱は描かず clutter.js が板を並べる
   const fenceGlb = !!o.fenceGlb;
   const buildings = allBuildings.filter((b) => !(shackOk && b.kind === 'town') && !(fenceGlb && b.kind === 'fence'));

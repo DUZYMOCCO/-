@@ -1,7 +1,9 @@
 // 起動、ループ、URL引数、window.__game。ルール層と描画層をつなぐ。
 
 import * as THREE from 'three';
-import { createWorld, step, applyCommand, heightAt, deserialize, darknessOf, ambientLight, initSpawn, forceSquad, forceSite, spawnSummary } from './sim/index.js';
+import { createWorld, step, applyCommand, heightAt, deserialize, darknessOf, ambientLight, initSpawn, forceSquad, forceSite, spawnSummary, ensureTown, doorNear, houseAt } from './sim/index.js';
+import { createInteriors, townBuildingSet } from './render/interiors.js';
+import { createTownUI } from './ui/town_ui.js';
 import { createSpawnSites } from './render/spawn_sites.js';
 import { createScene } from './render/scene.js';
 import { createTerrain } from './render/terrain.js';
@@ -65,18 +67,25 @@ function ensureSpawn(st) {
   }
   return st;
 }
+// 入れる小屋・鍵・盗み（bldg1）。?town=0 で無し（従来の外から見るだけの小屋）。
+const townOn = params.get('town') !== '0';
+function ensureTownOpt(st) {
+  if (townOn && !st.town) ensureTown(st);
+  return st;
+}
 function startOpts() {
   const female = femaleOn;
   const spawn = spawnOn;
-  if (xbowParam === '0') return { companionCrossbow: false, female, spawn, spawnRate };
-  if (xbowParam === '1') return { companionCrossbow: true, female, spawn, spawnRate };
+  const town = townOn;
+  if (xbowParam === '0') return { companionCrossbow: false, female, spawn, spawnRate, town };
+  if (xbowParam === '1') return { companionCrossbow: true, female, spawn, spawnRate, town };
   let on = true;
   try {
     on = window.localStorage.getItem('sunahate_opt_xbow') !== '0';
   } catch (err) {
     on = true;
   }
-  return { companionCrossbow: on, female, spawn, spawnRate };
+  return { companionCrossbow: on, female, spawn, spawnRate, town };
 }
 let state = createWorld(seed, startOpts());
 const selection = createSelection();
@@ -94,6 +103,7 @@ if (params.get('load') === 'auto') {
   }
 }
 ensureSpawn(state);
+ensureTownOpt(state);
 // ?tp=green: 部隊を翠緑の盆地の入口へ移す（確認用）
 if (params.get('tp') === 'green') {
   const e = greenEntry();
@@ -195,7 +205,9 @@ const [groundTex, modelInfo, propLoaded, nestModels, greenModels, mechTemplates]
 const models = modelInfo.models;
 const propModels = propsByRole(propLoaded);
 if (propLoaded[CLUB_MODEL]) models.club = propLoaded[CLUB_MODEL];
-const terrain = createTerrain(sceneCtx.scene, state, { ground: groundTex, models, renderer: sceneCtx.renderer, fenceGlb: !!propModels.fence });
+const terrain = createTerrain(sceneCtx.scene, state, { ground: groundTex, models, renderer: sceneCtx.renderer, fenceGlb: !!propModels.fence, skipBuildings: townOn ? townBuildingSet(state) : null });
+// 入れる小屋（壁・屋根・扉の板・家具）。中にいる小屋は屋根と手前の壁を隠す
+const interiors = createInteriors(sceneCtx.scene, state, { models, props: propModels });
 const clutter = createClutter(sceneCtx.scene, state, propModels);
 // 翠緑の盆地（草・花・木・小川・橋・柵）。iPhone 向けに草は既定で半分。?green=hi で全部、?green=0 で無し。
 const green = greenModels ? createGreen(sceneCtx.scene, greenModels, { density: params.get('green') === 'hi' ? 1 : 0.5 }) : null;
@@ -408,7 +420,7 @@ function command(cmd) {
 }
 
 function applyState(next) {
-  state = ensureSpawn(next);
+  state = ensureTownOpt(ensureSpawn(next));
   spawnSites.reset();
   bedrolls.reset();
   dolls.reset(state);
@@ -547,6 +559,12 @@ const input = createInput({
   },
   edgeScroll: edgeParam,
   onMove(x, z) {
+    // 扉のそば（0.9m）を押したら、そこへ歩いて開け閉め
+    const dh = doorNear(state, x, z, 0.9);
+    if (dh) {
+      applyCommand(state, { type: 'door', houseId: dh.id, actorId: orderee(null) });
+      return;
+    }
     applyCommand(state, { type: 'move', x, z, actorId: orderee(null) });
     marker.position.set(x, heightAt(x, z) + 0.07, z);
     marker.visible = true;
@@ -671,6 +689,31 @@ window.__game = gameApi;
 // 交易の窓（trade1）。ルールは js/sim/trade.js。
 const tradeUi = createTradeUI({ getState: () => state, onAfterAct: () => { if (hud) hud.refreshMoney(state); } });
 gameApi.trade = tradeUi;
+
+// 町（bldg1）: 手元の行動ボタン・賞金・捕まえに来た時の答え
+function focusActor() {
+  const id = orderee(null);
+  const a = id !== null ? state.actors.find((e) => e.id === id) : null;
+  return a || findPlayer();
+}
+const townUi = createTownUI({ getState: () => state, getActor: focusActor, command: (cmd) => applyCommand(state, cmd) });
+gameApi.town = {
+  ui: townUi.stats,
+  interiors: interiors.stats,
+  // 撮影用: 描画を待たずに n tick 進める（止まった時点で返す）
+  step: (n, until) => {
+    for (let i = 0; i < n; i++) {
+      capturePrev();
+      step(state);
+      if (until && until(state)) return i + 1;
+    }
+    return n;
+  },
+  focus: () => {
+    const a = focusActor();
+    return a ? { id: a.id, x: a.x, z: a.z, inside: houseAt(state, a.x, a.z, 0.15) ? houseAt(state, a.x, a.z, 0.15).id : null } : null;
+  },
+};
 
 // 野盗の通行料（払う／断る）。画面の上の方に出す。
 const demandBox = document.createElement('div');
@@ -864,7 +907,14 @@ function frame(now) {
   nameLabels.update(state, sceneCtx.camera, selection.get(), options.getShowNames());
   sceneCtx.updateDayNight(state.timeSec, rig.getTarget(), dt);
   lights.update(state, dolls, rig.getTarget(), sceneCtx.camera, dt);
-  terrain.setNight(Math.min(1, Math.max(0, (darknessOf(ambientLight(state)) - 0.15) / 0.6)));
+  const nightK = Math.min(1, Math.max(0, (darknessOf(ambientLight(state)) - 0.15) / 0.6));
+  terrain.setNight(nightK);
+  interiors.setNight(nightK);
+  {
+    const fa = focusActor();
+    const fp = fa ? dollPosition(fa.id) : null;
+    interiors.update(state, fp ? { x: fp.x, z: fp.z } : fa, sceneCtx.camera.position, dt);
+  }
 
   if (marker.visible && performance.now() > markerUntil) marker.visible = false;
 
@@ -916,6 +966,7 @@ function frame(now) {
     selectionId: selection.get(),
   });
   tradeUi.update();
+  townUi.update();
   const hudPlayer = findPlayer();
   hud.setSneak(hudPlayer ? !!hudPlayer.sneaking : false);
 

@@ -55,7 +55,7 @@ export function createSelection() {
       return { action: 'select', id: actor.id };
     }
 
-    if (actor.state === 'down' && actor.faction !== 'player') {
+    if ((actor.state === 'down' || actor.state === 'getup') && actor.faction !== 'player') {
       return { action: 'none', id: actor.id };
     }
     if (actor.state !== 'dead' && isHostile(state, playerFaction(state), actor.faction)) {

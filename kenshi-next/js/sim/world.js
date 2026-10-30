@@ -20,6 +20,7 @@ import { heightAt } from './terrain.js';
 import { resolveCircle } from './collide.js';
 import { makeKit } from './medkit.js';
 import { initSpawn } from './spawning.js';
+import { initTown } from './town.js';
 import { greenK, GREEN } from '../render/green_plan.js';
 
 function moveOutOfGreen(o) {
@@ -55,6 +56,8 @@ function makeSkills(state, faction) {
       stealth: 1,
       assassination: 1,
       medic: 1, // 手当て（Kenshi の Field Medic。medkit.js）
+      lockpicking: 1, // 錠前破り（bldg1。locks.js）
+      thievery: 1, // 盗み（bldg1。law.js）
     };
   }
   if (faction === 'guard') {
@@ -565,6 +568,8 @@ export function createWorld(seed, opts) {
   state.squadIds = [player.id, companion.id];
   // 開始の設定: 仲間がクロスボウを持って始める（初期は持つ）。
   if (options.companionCrossbow !== false) giveCrossbow(companion, START_BOLTS.player);
+  // 入れる小屋・扉・錠・住人（bldg1）。opts.town が true の時だけ（既定は無し＝前と同じ世界）。乱数の列は変えない。
+  if (options.town) initTown(state);
   // ランダム出現（隊商・盗賊・野盗・野営地・獣の巣）。opts.spawn が true の時だけ（既定は無し＝前と同じ世界）。
   if (options.spawn) initSpawn(state, { spawnRate: options.spawnRate });
 

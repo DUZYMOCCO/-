@@ -3,6 +3,8 @@
 import { abductGoal } from './abduct.js';
 import {
   beastRules,
+  canHarmDowned,
+  downedHarmKind,
   FACTIONS,
   WEAPONS,
   ATTACK_SLOT_LIMIT,
@@ -27,6 +29,8 @@ import { updateLootGoals } from './loot.js';
 import { canSee, effectiveStealth } from './stealth.js';
 import { rangedMode, CROSSBOW } from './crossbow.js';
 import { restPlace, stopRest } from './rest.js';
+import { navPoint, townHold, townMove } from './town.js';
+import { lawHostile } from './law.js';
 
 const TAU = Math.PI * 2;
 
@@ -123,6 +127,8 @@ function holdsPeace(actor, other) {
 }
 
 function bestTarget(state, actor) {
+  // 町人（店主・住人）は自分から戦わない
+  if (actor.civil) return null;
   // 食べている者は周りを見ない（殴られたら abduct.js が食事を止めて相手を向かせる）
   if (actor.eatingId !== null && actor.eatingId !== undefined) {
     actor.waitTargetId = null;
@@ -138,13 +144,12 @@ function bestTarget(state, actor) {
   let fullD = Infinity;
   for (const other of state.actors) {
     if (other.id === actor.id) continue;
-    if (!isHostile(state, actor.faction, other.faction)) continue;
+    if (!isHostile(state, actor.faction, other.faction) && !(state.law && lawHostile(state, actor, other))) continue;
     if (other.state === 'dead') continue;
     if ((actor.holdFire || other.holdFire) && holdsPeace(actor, other)) continue;
     if (actor.leash && Math.hypot(other.x - actor.leash.x, other.z - actor.leash.z) > actor.leash.r) continue;
     if (other.state === 'down' || other.state === 'getup') {
-      if (!beastRules(actor)) continue;
-      if (other.faction === 'beast') continue;
+      if (!canHarmDowned(downedHarmKind(actor, other))) continue;
     }
     if ((other.recoverUntil || 0) > state.tick && other.id !== actor.lastAttackerId) {
       continue;
@@ -372,7 +377,7 @@ function strafe(state, actor, center, radius, angStep) {
 function waitTargetValid(state, actor, wt) {
   if (!wt || wt.state === 'dead') return false;
   if (wt.state === 'down' || wt.state === 'getup') return false;
-  if (!isHostile(state, actor.faction, wt.faction)) return false;
+  if (!isHostile(state, actor.faction, wt.faction) && !(state.law && lawHostile(state, actor, wt))) return false;
   if (actor.carryingId !== null) return false;
   return distBetween(actor, wt) <= 30;
 }
@@ -400,6 +405,8 @@ function claimWaitSlots(state) {
 }
 
 function moveActor(state, actor, byId, squadsById) {
+  // 町（bldg1）: 牢・錠前破り・作業中は動かない
+  if (state.town && townHold(state, actor)) return;
   // 寝袋で休んでいる者は動かない（命令・戦い・寝袋から離れると rest.js がやめさせる）
   if (actor.resting) {
     if (actor.targetId === null && actor.state === 'idle' && restPlace(state, actor) !== 'ground') {
@@ -426,7 +433,7 @@ function moveActor(state, actor, byId, squadsById) {
     const d = distBetween(actor, target);
     const downTarget = target.state === 'down' || target.state === 'getup';
     const dropDown =
-      downTarget && !actor.isPlayer && (!beastRules(actor) || target.faction === 'beast');
+      downTarget && !canHarmDowned(downedHarmKind(actor, target));
     if (dropDown) {
       actor.targetId = null;
       actor.state = 'idle';
@@ -492,6 +499,9 @@ function moveActor(state, actor, byId, squadsById) {
     }
     actor.waitTargetId = null;
   }
+
+  // 町（bldg1）: 仲間の作業・衛兵の逮捕・住人の居場所
+  if (state.town && townMove(state, actor, byId, stepToward)) return;
 
   // さらい・食事・手当て・縄ほどきの行き先（abduct.js）
   if (!actor.moveTo || !actor.task) {
@@ -604,6 +614,20 @@ function addStuck(actor) {
 }
 
 function stepToward(state, actor, tx, tz, running) {
+  // 町（bldg1）: 小屋の出入りは戸口を通る。鍵のかかった扉の前では止まる
+  if (state.town) {
+    const wp = navPoint(state, actor, tx, tz);
+    if (wp) {
+      if (wp.blocked) {
+        if (actor.faction === 'player') actor.moveTo = null;
+        if (actor.state === 'move') actor.state = 'idle';
+        setAnim(actor, 'Idle', state.tick);
+        return;
+      }
+      tx = wp.x;
+      tz = wp.z;
+    }
+  }
   const dx = tx - actor.x;
   const dz = tz - actor.z;
   const d = Math.hypot(dx, dz);

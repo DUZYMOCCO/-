@@ -98,12 +98,46 @@ export function deserialize(text) {
       if (!isNumber(c.aim)) c.aim = 0;
     }
     if (!isNumber(actor.skills.crossbow)) actor.skills.crossbow = 0;
+    if (actor.faction === 'player') {
+      if (!isNumber(actor.skills.lockpicking)) actor.skills.lockpicking = 1;
+      if (!isNumber(actor.skills.thievery)) actor.skills.thievery = 1;
+    }
     if (typeof actor.aiming !== 'boolean') actor.aiming = false;
     if (!isNumber(actor.lastShotTick)) actor.lastShotTick = -1000;
     if (actor.assassinTargetId === undefined) actor.assassinTargetId = null;
     if (!isNumber(actor.assassinTicks)) actor.assassinTicks = 0;
     if (typeof actor.movedThisTick !== 'boolean') actor.movedThisTick = false;
     if (typeof actor.movedRunThisTick !== 'boolean') actor.movedRunThisTick = false;
+  }
+  // 町（bldg1）: 壊れた町は捨てる（opts.town の無い世界と同じになる）。賞金・牢・罪は形だけ直す
+  if (state.town !== undefined) {
+    const t = state.town;
+    if (!t || typeof t !== 'object' || !Array.isArray(t.houses) || !Array.isArray(t.boxes)) delete state.town;
+    else {
+      if (!t.banned || typeof t.banned !== 'object') t.banned = {};
+      for (const h of t.houses) {
+        if (!h.door || typeof h.door !== 'object') h.door = { open: false, locked: false, lock: 0, closeAt: 0, auto: false, policy: null };
+        if (!Array.isArray(h.boxes)) h.boxes = [];
+      }
+      for (const b of t.boxes) {
+        if (!b.goods || typeof b.goods !== 'object') b.goods = {};
+        if (!isNumber(b.cash)) b.cash = 0;
+      }
+    }
+  }
+  if (state.law !== undefined && (!state.law || typeof state.law !== 'object')) delete state.law;
+  if (state.law) {
+    if (!state.law.fight || typeof state.law.fight !== 'object') state.law.fight = {};
+    if (!state.law.recog || typeof state.law.recog !== 'object') state.law.recog = {};
+    if (state.law.arrest === undefined) state.law.arrest = null;
+  }
+  for (const actor of state.actors) {
+    if (!actor || typeof actor !== 'object') continue;
+    if (actor.bounty !== undefined && (!actor.bounty || typeof actor.bounty !== 'object')) delete actor.bounty;
+    if (actor.jail && (typeof actor.jail !== 'object' || !isNumber(actor.jail.untilSec))) actor.jail = null;
+    if (actor.pick && typeof actor.pick !== 'object') actor.pick = null;
+    if (actor.townTask && typeof actor.townTask !== 'object') actor.townTask = null;
+    if (actor.crime && typeof actor.crime !== 'object') actor.crime = null;
   }
   if (!Array.isArray(state.projectiles)) state.projectiles = [];
   if (!isNumber(state.nextBoltId)) state.nextBoltId = 1;

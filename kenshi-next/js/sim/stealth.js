@@ -14,6 +14,7 @@ import { growUse } from './needs.js';
 import { ambientLight, lightAtActor } from './light.js';
 import { actorRadius, blockedAt } from './collide.js';
 import { rand } from './rng.js';
+import { losClear } from './town.js';
 
 const TAU = Math.PI * 2;
 const CLOSE_RANGE = 2.5;
@@ -52,12 +53,12 @@ export function lightAt(state) {
   return ambientLight(state);
 }
 
-function visionRange(observer, light) {
+export function visionRange(observer, light) {
   const base = VISION[observer.faction] || 14;
   return base * (0.55 + 0.45 * light);
 }
 
-function observerActive(observer) {
+export function observerActive(observer) {
   return (
     !!observer &&
     observer.state !== 'dead' &&
@@ -109,7 +110,7 @@ function calmMemory(target, observer, nowSec) {
   return known;
 }
 
-function viewFactor(observer, target, distance) {
+export function viewFactor(observer, target, distance) {
   if (distance <= CLOSE_RANGE) {
     if (target.sneaking && !target.movedThisTick) return 0.2;
     return 0.6;
@@ -153,6 +154,8 @@ export function canSee(state, observer, target) {
   if (distance > range) return false;
   const factor = viewFactor(observer, target, distance);
   if (factor <= 0) return false;
+  // 町（bldg1）: 壁と閉じた扉の向こうは見えない
+  if (state.town && !losClear(state, observer.x, observer.z, target.x, target.z)) return false;
   if (target.sneaking) return detectOf(target, observer.id) >= 1;
   return true;
 }
@@ -229,7 +232,9 @@ export function updateStealth(state, events) {
     const watchers = [];
     for (const observer of state.actors) {
       if (observer.id === target.id) continue;
-      if (!isHostile(state, observer.faction, target.faction)) continue;
+      // 町（bldg1）: 衛兵・町人も隠密中の仲間に気づく（盗み・錠前破りを見るため）
+      const lawWatch = !!state.town && observer.faction === 'guard' && target.faction === 'player';
+      if (!isHostile(state, observer.faction, target.faction) && !lawWatch) continue;
       seen.add(String(observer.id));
 
       // 記憶: 直近 ALERT_CALM_SEC 以内に見つけられていれば気づき度1から始める。
@@ -243,14 +248,15 @@ export function updateStealth(state, events) {
       }
 
       const old = detectOf(target, observer.id);
-      if (!observerActive(observer)) {
+      if (!observerActive(observer) || (lawWatch && observer.resting)) {
         if (old > 0) writeDetect(target, observer.id, old - DETECT_DECAY);
         if (isFighting(observer, target)) known[target.id] = nowSec;
         continue;
       }
       const range = visionRange(observer, light);
       const distance = distBetween(observer, target);
-      const factor = distance <= range ? viewFactor(observer, target, distance) : 0;
+      let factor = distance <= range ? viewFactor(observer, target, distance) : 0;
+      if (factor > 0 && state.town && !losClear(state, observer.x, observer.z, target.x, target.z)) factor = 0;
       if (factor > 0) {
         const inc =
           DETECT_GAIN *

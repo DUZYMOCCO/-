@@ -5,6 +5,8 @@ export const CELL_SIZE = 8;
 const HUMAN_RADIUS = 0.4;
 const BEAST_RADIUS = 0.6;
 
+import { townObstacles } from './town.js';
+
 const INDEX_CACHE = new WeakMap();
 
 export function actorRadius(actor) {
@@ -36,7 +38,14 @@ function collectObstacles(state) {
     }
   }
   if (Array.isArray(state.buildings)) {
-    for (const item of state.buildings) {
+    // 入れる小屋（town.js）は箱の代わりに壁4枚と扉
+    const hollow = townObstacles(state);
+    for (let bi = 0; bi < state.buildings.length; bi += 1) {
+      const item = state.buildings[bi];
+      if (hollow && hollow.has(bi)) {
+        for (const o of hollow.get(bi)) out.push(o);
+        continue;
+      }
       out.push({
         shape: 'box',
         x: item.x,
@@ -90,8 +99,9 @@ function buildIndex(state) {
 
 function indexOf(state) {
   let index = INDEX_CACHE.get(state);
-  if (!index) {
+  if (!index || index.town !== (state.town || null)) {
     index = buildIndex(state);
+    index.town = state.town || null;
     INDEX_CACHE.set(state, index);
   }
   return index;
@@ -156,6 +166,7 @@ export function resolveCircle(state, x, z, radius) {
     const candidates = gather(index, px, pz, rad);
     let moved = false;
     for (const o of candidates) {
+      if (o.door && o.door.open) continue;
       const next = o.shape === 'circle' ? pushCircle(o, px, pz, rad) : pushBox(o, px, pz, rad);
       if (!next) continue;
       px = next.x;
@@ -176,6 +187,7 @@ export function blockedAt(state, x, z, radius) {
   if (!state || typeof state !== 'object') return false;
   const index = indexOf(state);
   for (const o of gather(index, px, pz, rad)) {
+    if (o.door && o.door.open) continue;
     if (o.shape === 'circle') {
       const dx = px - o.x;
       const dz = pz - o.z;

@@ -6,13 +6,22 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { MODEL_DIR, MODEL_NAMES, loadEach, worldUV } from './asset_plan.js';
 
-// 戻り値: { parts: [{ geometry, material }], nodes: { name: Vector3 }, box: Box3 }
-export function bakeModel(root) {
+function underNode(o, name, root) {
+  for (let p = o; p && p !== root; p = p.parent) if (p.name === name) return true;
+  return false;
+}
+
+// 戻り値: { parts: [{ geometry, material }], nodes: { name: Vector3 }, box: Box3, noDoor? }
+// 'door' という節があるモデル（戸口つきの壁）は、扉の板を除いた形も noDoor に入れる（開く扉を別に描く家のため）。
+export function bakeModel(root, skipNode) {
   root.updateMatrixWorld(true);
   const byMat = new Map();
   const nodes = {};
+  let hasDoor = false;
   root.traverse((o) => {
+    if (o !== root && o.name === 'door') hasDoor = true;
     if (o.isMesh) {
+      if (skipNode && underNode(o, skipNode, root)) return;
       const mat = Array.isArray(o.material) ? o.material[0] : o.material;
       const key = mat ? mat.name || mat.uuid : 'none';
       const g = o.geometry.clone();
@@ -46,7 +55,9 @@ export function bakeModel(root) {
     parts.push({ geometry: merged, material: m });
   }
   const box = new THREE.Box3().setFromObject(root);
-  return { parts, nodes, box };
+  const out = { parts, nodes, box };
+  if (!skipNode && hasDoor) out.noDoor = bakeModel(root, 'door');
+  return out;
 }
 
 export async function loadModels(names, dir) {

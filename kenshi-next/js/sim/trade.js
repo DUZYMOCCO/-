@@ -292,6 +292,8 @@ export function marketCash(state, market) {
 export function canTradeAt(state, market) {
   if (!MARKETS[market]) return false;
   if (state.relations && state.relations.guard_player === 'hostile') return false;
+  // 町（bldg1）: 店で盗みを見られたら、しばらく取引してくれない
+  if (state.town && state.town.banned && (state.town.banned[market] || 0) > (state.timeSec || 0)) return false;
   return marketHere(state) === market;
 }
 

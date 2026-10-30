@@ -31,6 +31,8 @@ const SKILL_LABELS = [
   ['crossbow', 'クロスボウ'],
   ['medic', '手当て'],
   ['trade', '交易'],
+  ['lockpicking', '錠前破り'],
+  ['thievery', '盗み'],
 ];
 
 function make(tag, className, text) {
@@ -407,6 +409,8 @@ export function createHud(callbacks) {
 
     const showAttack =
       actor.state !== 'dead' &&
+      actor.state !== 'down' &&
+      actor.state !== 'getup' &&
       isHostile(state, player ? player.faction : 'player', actor.faction);
     if (showAttack !== attackShown) {
       attackShown = showAttack;

@@ -14,6 +14,8 @@ import { updateStealth, updateAssassination } from './stealth.js';
 import { updateSpawnDirector } from './spawning.js';
 import { updateRest } from './rest.js';
 import { updateTrade } from './trade.js';
+import { updateTown } from './town.js';
+import { updateLaw } from './law.js';
 
 function appendLog(state, events) {
   if (events.length === 0) return;
@@ -33,6 +35,10 @@ export function step(state) {
   updateStealth(state, events);
   updateAI(state, events);
   moveActors(state);
+  if (state.town) {
+    updateTown(state, events); // 扉が閉まる・昼夜の鍵（bldg1）
+    updateLaw(state, events); // 錠前破り・盗み・目撃・賞金・逮捕
+  }
   updateAssassination(state, events);
   {
     const byId = indexActors(state);

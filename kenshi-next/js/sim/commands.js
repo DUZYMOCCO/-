@@ -1,12 +1,14 @@
 // プレイヤーの命令。積むだけ。実際の適用は次の step の最初。
 
-import { WORLD_HALF, makeEvent } from './data.js';
+import { WORLD_HALF, makeEvent, canHarmDowned } from './data.js';
 import { drop } from './carry.js';
 import { assassinationTargetExists } from './stealth.js';
 import { answerDemand } from './spawning.js';
 import { startTask } from './abduct.js';
 import { buyKit, repOf, GUARD_ATTACKED_REP } from './medkit.js';
 import { placeBedroll, packBedroll, startRest, stopRest } from './rest.js';
+import { boxById, houseById } from './town.js';
+import { answerArrest } from './law.js';
 
 function clampWorld(v) {
   if (v < -WORLD_HALF + 1) return -WORLD_HALF + 1;
@@ -62,6 +64,32 @@ export function applyCommand(state, cmd) {
     if (!Number.isFinite(id)) return false;
     next.targetId = id;
     next.tier = cmd.tier === 'standard' ? 'standard' : 'basic';
+  } else if (cmd.type === 'door') {
+    // 町（bldg1）: 扉を開け閉めする（want: true 開ける / false 閉める / 無し 切り替え）
+    if (!state.town || !houseById(state, String(cmd.houseId))) return false;
+    next.houseId = String(cmd.houseId);
+    if (cmd.want !== undefined && cmd.want !== null) next.want = !!cmd.want;
+  } else if (cmd.type === 'pick') {
+    if (!state.town) return false;
+    if (cmd.kind !== 'door' && cmd.kind !== 'box') return false;
+    const id = String(cmd.id);
+    if (cmd.kind === 'door' ? !houseById(state, id) : !boxById(state, id)) return false;
+    next.kind = cmd.kind;
+    next.id = id;
+  } else if (cmd.type === 'steal') {
+    if (!state.town || !boxById(state, String(cmd.boxId))) return false;
+    next.boxId = String(cmd.boxId);
+    if (typeof cmd.good === 'string' && cmd.good) next.good = cmd.good;
+    next.all = !!cmd.all;
+  } else if (cmd.type === 'pickpocket') {
+    if (!state.town) return false;
+    const id = Number(cmd.targetId);
+    if (!Number.isFinite(id)) return false;
+    next.targetId = id;
+  } else if (cmd.type === 'arrest') {
+    if (!state.law || !state.law.arrest || state.law.arrest.stage !== 'ask') return false;
+    if (cmd.choice !== 'pay' && cmd.choice !== 'jail' && cmd.choice !== 'resist') return false;
+    next.choice = cmd.choice;
   } else if (cmd.type !== 'stop' && cmd.type !== 'drop' && cmd.type !== 'placeBedroll' && cmd.type !== 'packBedroll' && cmd.type !== 'rest') {
     return false;
   }
@@ -75,7 +103,8 @@ export function applyCommand(state, cmd) {
   return true;
 }
 
-const ROUTED = new Set(['move', 'attack', 'pickup', 'stop', 'drop', 'treat', 'free', 'buyMedkit', 'buyKit', 'placeBedroll', 'packBedroll', 'rest']);
+const ROUTED = new Set(['move', 'attack', 'pickup', 'stop', 'drop', 'treat', 'free', 'buyMedkit', 'buyKit', 'placeBedroll', 'packBedroll', 'rest', 'door', 'pick', 'steal', 'pickpocket']);
+const TOWN_CMDS = new Set(['door', 'pick', 'steal', 'pickpocket']);
 
 // 命令を受ける者: actorId が生きている自分の部隊の者ならその者、でなければ操作中の者
 export function commandActor(state, cmd, player) {
@@ -128,7 +157,39 @@ function applyOne(state, player, cmd, events) {
     }
     return;
   }
+  if (cmd.type === 'arrest') {
+    answerArrest(state, cmd.choice, events);
+    return;
+  }
   if (!player || player.state === 'dead') return;
+  // 牢の中では何もできない（隠密の切り替えだけ）
+  if (player.jail && cmd.type !== 'sneak') return;
+  // 町の作業（扉・錠前・盗み・スリ）は、ほかの命令で取りやめ
+  if (cmd.type !== 'sneak' && (player.townTask || player.pick)) {
+    player.townTask = null;
+    player.pick = null;
+  }
+  if (TOWN_CMDS.has(cmd.type)) {
+    if (player.state === 'down' || player.state === 'getup') return;
+    if (player.resting) stopRest(player);
+    clearAssassination(player);
+    player.task = null;
+    player.moveTo = null;
+    player.targetId = null;
+    player.carryTargetId = null;
+    player.holdAt = null;
+    if (cmd.type === 'door') player.townTask = { kind: 'door', house: cmd.houseId, want: cmd.want, stage: 'walk' };
+    else if (cmd.type === 'pick') {
+      const box = cmd.kind === 'box' ? boxById(state, cmd.id) : null;
+      player.townTask = cmd.kind === 'door' ? { kind: 'pick', door: true, house: cmd.id, stage: 'walk' } : { kind: 'pick', box: cmd.id, house: box ? box.house : null, stage: 'walk' };
+    } else if (cmd.type === 'steal') player.townTask = { kind: 'steal', box: cmd.boxId, good: cmd.good || null, all: !!cmd.all, stage: 'walk' };
+    else if (cmd.type === 'pickpocket') {
+      if (cmd.targetId === player.id) return;
+      player.townTask = { kind: 'pickpocket', targetId: cmd.targetId, stage: 'walk' };
+    }
+    player.state = 'move';
+    return;
+  }
   // 休んでいる者は、休め以外の命令で起きる（隠密・灯りはそのまま）
   if (player.resting && cmd.type !== 'rest' && cmd.type !== 'sneak') stopRest(player);
   if (cmd.type === 'placeBedroll') {
@@ -214,12 +275,18 @@ function applyOne(state, player, cmd, events) {
       if (actor.id === cmd.targetId) target = actor;
     }
     if (!target || target.state === 'dead') return;
+    // 気絶して倒れている者は斬らない（担ぐ・食べるは別の仕組み）
+    if ((target.state === 'down' || target.state === 'getup') && !canHarmDowned('attack')) {
+      events.push(makeEvent(state, 'combat', target.name + 'は倒れている。斬らない'));
+      return;
+    }
     player.carryTargetId = null;
     if (player.carryingId !== null) drop(state, player, events);
     player.targetId = target.id;
     player.moveTo = null;
     if (player.state !== 'down' && player.state !== 'getup') player.state = 'fight';
-    if (target.faction === 'guard' && state.relations.guard_player !== 'hostile') {
+    const lawFight = !!(state.law && state.law.fight && state.law.fight[player.id]);
+    if (target.faction === 'guard' && !lawFight && state.relations.guard_player !== 'hostile') {
       state.relations.guard_player = 'hostile';
       if (!state.rep) state.rep = {};
       state.rep.guard = Math.min(repOf(state, 'guard'), GUARD_ATTACKED_REP);
