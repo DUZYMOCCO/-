@@ -123,13 +123,15 @@ export function lightAtActor(state, actor) {
 }
 
 // 射撃の命中率。暗さは射手と的の明るい方で決める（どちらかが照らされていれば減る）。
-export function rangedHitChance(state, shooter, target) {
+export function rangedHitChance(state, shooter, target, weaponSkill = 'crossbow') {
   if (!shooter || !target) return 0;
-  const skill = shooter.skills && num(shooter.skills.crossbow) ? shooter.skills.crossbow : 10;
+  const skills = shooter.skills || {};
+  const skill = num(skills[weaponSkill]) ? skills[weaponSkill] : 10;
+  const perception = clamp(num(skills.perception) ? skills.perception : skill, 0, 100);
   const light = Math.max(lightAtActor(state, shooter), lightAtActor(state, target));
   const dark = darknessOf(light);
-  const eff = skill * (1 - DARK_RANGED_PENALTY * dark);
+  const eff = (skill + perception) / 2 * (1 - DARK_RANGED_PENALTY * dark);
   const dist = Math.hypot(target.x - shooter.x, target.z - shooter.z);
-  const falloff = Math.max(0, dist - 8) * 0.008;
+  const falloff = Math.max(0, dist - 8) * 0.008 * (1 - 0.5 * perception / 100);
   return clamp(0.3 + 0.0055 * eff - falloff, 0.05, 0.95);
 }

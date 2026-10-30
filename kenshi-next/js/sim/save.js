@@ -1,3 +1,4 @@
+import { ensureTurret } from './turret.js';
 import { initInventory } from './inventory.js';
 // セーブデータの文字列化と復元。DOM に依存しない。
 
@@ -101,6 +102,9 @@ export function deserialize(text) {
       if (!isNumber(c.aim)) c.aim = 0;
     }
     if (!isNumber(actor.skills.crossbow)) actor.skills.crossbow = 0;
+    for (const key of ['perception', 'precision']) if (!isNumber(actor.skills[key])) actor.skills[key] = actor.skills.crossbow;
+    if (!isNumber(actor.skills.turret)) actor.skills.turret = actor.faction === 'player' ? 1 : 0;
+    for (const key of ['perception', 'precision', 'turret']) actor.skills[key] = Math.max(0, Math.min(100, actor.skills[key]));
     initInventory(actor);
     if (actor.faction === 'player') {
       if (!isNumber(actor.skills.lockpicking)) actor.skills.lockpicking = 1;
@@ -145,5 +149,6 @@ export function deserialize(text) {
   }
   if (!Array.isArray(state.projectiles)) state.projectiles = [];
   if (!isNumber(state.nextBoltId)) state.nextBoltId = 1;
+  ensureTurret(state);
   return state;
 }

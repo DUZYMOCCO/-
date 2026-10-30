@@ -1,3 +1,4 @@
+import { createTurrets } from './render/turrets.js';
 // 起動、ループ、URL引数、window.__game。ルール層と描画層をつなぐ。
 
 import * as THREE from 'three';
@@ -274,6 +275,7 @@ const nameLabels = createNameLabels(dolls);
 const dmgNumbers = createDmgNumbers(dolls); // 浮かぶダメージ数字（ui/dmgpop.js）
 const lights = createLights(sceneCtx.scene, state, models);
 const crossbows = createCrossbows(sceneCtx.scene, models);
+const turrets = createTurrets(sceneCtx.scene);
 const combatFx = createCombatFx(sceneCtx.scene); // 20:13 チャンバラの火花・受けの構え
 const spawnSites = createSpawnSites(sceneCtx.scene, { debug: spawnDebug, props: propModels, nest: nestModels });
 // 敷いた寝袋
@@ -891,6 +893,7 @@ function frame(now) {
   dolls.update(dt, speed, state, alpha, prevMap, sceneCtx.camera);
   combatFx.update(state, dolls, dt, speed);
   crossbows.update(state, dolls, alpha, dt);
+  turrets.update(state);
   spawnSites.update(state, now / 1000);
   bedrolls.update(state);
   updateDemandUi();

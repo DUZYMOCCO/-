@@ -173,7 +173,7 @@ export function createCombatFx(scene) {
 
   function spawn(x, y, z, kind) {
     // 受け = 白っぽい橙の火花が多め / 崩し = 赤みのある火花 / 当たり = 暗い赤の少しだけ
-    const n = kind === 'block' ? 40 : kind === 'break' ? 50 : 10;
+    const n = kind === 'block' ? 40 : kind === 'parry' ? 25 : kind === 'break' ? 50 : 10;
     const c = kind === 'hit' ? [0.55, 0.06, 0.04] : kind === 'break' ? [1.0, 0.4, 0.12] : [1.0, 0.68, 0.28];
     const speed = kind === 'hit' ? 1.4 : 3.6;
     for (let i = 0; i < n; i += 1) {
@@ -229,7 +229,7 @@ export function createCombatFx(scene) {
         o.start(t);
         o.stop(t + 0.15);
       } else {
-        const base = fx.type === 'break' ? 900 : 1700;
+        const base = fx.type === 'break' ? 900 : fx.type === 'parry' ? 2200 : 1700;
         for (const m of [1, 1.53, 2.41]) {
           const o = audio.createOscillator();
           o.type = 'sine';
@@ -255,12 +255,14 @@ export function createCombatFx(scene) {
       seen.set(key, f.tick);
       // 古すぎるもの（読み込み直後など）は出さない
       if (state.tick - f.tick > 3) continue;
+      if (f.type === 'evade') continue;
       const da = dolls.getDoll(f.attackerId);
       const dd = dolls.getDoll(f.defenderId);
       let x = f.x;
       let z = f.z;
       let y = 0;
-      if (da && dd && da.group && dd.group) {
+      if (f.type === 'parry' && dd?.group) y = dd.group.position.y + CONTACT_Y * (dd.group.scale.y || 1);
+      if (f.type !== 'parry' && da && dd && da.group && dd.group) {
         // 守る側の少し手前（刃が合う所）
         const pa = da.group.position;
         const pd = dd.group.position;

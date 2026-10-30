@@ -1,3 +1,6 @@
+import { mixHash } from './hitreact.js';
+import { growSkill } from './combat.js';
+import { WEAPONS, beastRules } from './data.js';
 import { giveInitialQuiver } from './inventory.js';
 import { armorDamage } from './armor.js';
 import { ITEMS } from './items.js';
@@ -8,7 +11,7 @@ import { TICK_SEC, PART_KEYS, PART_WEIGHTS, isHostile, distBetween, makeEvent, s
 import { rand, randRange, chance } from './rng.js';
 import { applyDamage, isStanding } from './body.js';
 import { blockedAt } from './collide.js';
-import { rangedHitChance } from './light.js';
+import { rangedHitChance, lightAtActor, darknessOf, DARK_RANGED_PENALTY } from './light.js';
 
 export const CROSSBOW = {
   name: 'クロスボウ',
@@ -49,6 +52,8 @@ export function giveCrossbow(actor, bolts) {
 }
 
 // 装填にかかる tick。技能と器用（どちらも100まで）の合計 / 200 で遅い→速いへ（Kenshi どおり）。
+export function crossbowRange(actor) { return CROSSBOW.range * (1 + 0.25 * clamp(actor.skills?.perception ?? actor.skills?.crossbow ?? 0, 0, 100) / 100); }
+
 export function reloadTicks(actor) {
   const s = actor.skills || {};
   const sum = Math.min(100, s.crossbow || 0) + Math.min(100, s.dexterity || 0);
@@ -110,14 +115,18 @@ export function allyInLine(state, shooter, target) {
 }
 
 // 誤射を避ける確率（Kenshi: 精密射撃1あたり 1.5%、約67で100%）。ここでは技能で代用。
-export function friendlyAvoid(actor) {
-  const s = (actor.skills && actor.skills.crossbow) || 0;
-  return clamp(s * 0.015, 0, 1);
+export function friendlyAvoid(actor, state, target, turret = false) {
+  const skills = actor.skills || {};
+  const base = turret ? Math.max((skills.turret || 0) * 0.02, (skills.precision || 0) * 0.015) : (skills.precision || 0) * 0.015;
+  const dark = state ? darknessOf(Math.max(lightAtActor(state, actor), lightAtActor(state, target || actor))) : 0;
+  const head = actor.parts?.head;
+  const ratio = head && head.max > 0 ? clamp(head.hp / head.max, 0, 1) : 1;
+  return clamp(base, 0, 1) * (1 - DARK_RANGED_PENALTY * dark) * (0.5 + 0.5 * ratio);
 }
 
 // 数えるだけ（テストと調整用）。
 export function boltStats(state) {
-  if (!state.boltStats) state.boltStats = { shots: 0, hits: 0, friendly: 0 };
+  if (!state.boltStats) state.boltStats = { shots: 0, hits: 0, friendly: 0, parried: 0, dodged: 0 };
   return state.boltStats;
 }
 
@@ -149,7 +158,7 @@ function fire(state, shooter, target, events) {
     pz: shooter.z,
     dirX: Math.sin(ang),
     dirZ: Math.cos(ang),
-    left: CROSSBOW.range * 1.25,
+    left: crossbowRange(shooter) * 1.25,
     born: state.tick,
   });
   boltStats(state).shots += 1;
@@ -168,7 +177,7 @@ function fire(state, shooter, target, events) {
 export function updateCrossbows(state, events, byId) {
   for (const a of state.actors) {
     const c = a.crossbow;
-    if (!c) continue;
+    if (!c || a.turretId) continue;
     if (a.state === 'dead') continue;
     const busy = a.state === 'down' || a.state === 'getup' || a.carryingId !== null || a.carriedBy !== null;
     if (!c.loaded && c.reload > 0 && !busy) {
@@ -194,7 +203,7 @@ export function updateCrossbows(state, events, byId) {
       continue;
     }
     const d = distBetween(a, t);
-    a.aiming = rangedMode(a, d) && d <= CROSSBOW.range;
+    a.aiming = rangedMode(a, d) && d <= crossbowRange(a);
     if (!a.aiming || !c.loaded) {
       c.aim = 0;
       continue;
@@ -204,15 +213,85 @@ export function updateCrossbows(state, events, byId) {
       continue;
     }
     c.aim += 1;
+    a.skills.perception = Math.min(100, (a.skills.perception || 0) + 0.0015);
     if (c.aim < CROSSBOW.aimTicks) continue;
     const ally = allyInLine(state, a, t);
-    if (ally && chance(state, friendlyAvoid(a))) {
+    if (ally && chance(state, friendlyAvoid(a, state, t))) {
       c.aim = CROSSBOW.aimTicks - 1;
       continue;
     }
     fire(state, a, t, events);
     setAnim(a, 'Idle', state.tick);
   }
+}
+
+function numericId(id) {
+  if (typeof id === 'number') return id;
+  let h = 0;
+  for (const ch of String(id)) h = (Math.imul(h, 31) + ch.charCodeAt(0)) | 0;
+  return h;
+}
+
+// 防御確率。方向による補正は判定側で掛ける。
+export function boltGuardChance(bolt, victim, shooter) {
+  const weapon = WEAPONS[victim.weapon];
+  const armed = !!weapon?.armed;
+  if (!armed && victim.weapon !== 'fists') return 0;
+  const perception = victim.skills?.perception || 0;
+  const shot = ((shooter.skills?.[bolt.turret ? 'turret' : 'crossbow'] || 0) + (shooter.skills?.perception || 0)) / 2;
+  const guard = ((victim.skills?.[armed ? 'defense' : 'dodge'] || 0) + perception) / 2;
+  const diff = guard - shot;
+  return armed
+    ? clamp(0.15 + diff * 0.007 + 0.08 - weapon.weight * 0.008 + weapon.def * 0.01, 0.03, 0.70)
+    : clamp(0.05 + diff * 0.0035, 0.02, 0.35);
+}
+
+// 昼・20m・正面・刀の比較表（調整用）。
+export function boltTable() {
+  const state = { timeSec: 43200 };
+  return [10, 40, 80].flatMap(shot => [10, 40, 80].map(guard => {
+    const shooter = { x: 0, z: 0, skills: { crossbow: shot, perception: shot } };
+    const victim = { x: 0, z: 20, weapon: 'sword', skills: { defense: guard, perception: guard } };
+    const hit = rangedHitChance(state, shooter, victim);
+    const parry = boltGuardChance({}, victim, shooter);
+    return { shot, guard, hit, parry, through: hit * (1 - parry) };
+  }));
+}
+
+// This check does not consume the simulation RNG, including when it fails.
+export function tryParry(state, bolt, victim, shooter) {
+  if (state.noParry || !shooter || beastRules(victim) || ['dead', 'down', 'getup'].includes(victim.state) ||
+      victim.carryingId != null || victim.carriedBy != null || (victim.hitReact?.until || 0) > state.tick ||
+      (victim.staggerUntil || 0) > state.tick || (victim.flinchUntil || 0) > state.tick ||
+      (victim.parryReadyTick || 0) > state.tick) return false;
+  if (victim.targetId !== shooter.id && victim.lastAttackerId !== shooter.id && victim.state !== 'fight') return false;
+  const facing = Math.sin(victim.rot || 0) * -bolt.dirX + Math.cos(victim.rot || 0) * -bolt.dirZ;
+  const perception = clamp(victim.skills?.perception || 0, 0, 100);
+  const half = (60 + 120 * perception / 100) * Math.PI / 180;
+  if (facing < Math.cos(half) - 1e-12) return false;
+  const weapon = WEAPONS[victim.weapon];
+  const armed = !!weapon?.armed;
+  if (!armed && victim.weapon !== 'fists') return false;
+  const shot = ((shooter.skills?.[bolt.turret ? 'turret' : 'crossbow'] || 0) + (shooter.skills?.perception || 0)) / 2;
+  const p = boltGuardChance(bolt, victim, shooter) * (facing < 0.5 - 1e-12 ? 0.5 : 1);
+  if (mixHash(numericId(bolt.id ?? bolt.born) ^ numericId(shooter.id), numericId(victim.id), state.tick) / 4294967296 >= p) return false;
+  victim.parryReadyTick = state.tick + 5;
+  growSkill(victim, armed ? 'defense' : 'dodge', armed ? 0.005 : 0.004, shot);
+  const stats = boltStats(state);
+  const key = armed ? 'parried' : 'dodged';
+  stats[key] = (stats[key] || 0) + 1;
+  if (isHostile(state, shooter.faction, victim.faction)) {
+    victim.lastAttackerId = shooter.id;
+    if (shooter.faction === 'player') victim.foughtPlayer = true;
+    if (victim.faction === 'player') shooter.foughtPlayer = true;
+    if (isStanding(victim) && victim.targetId === null && (victim.isPlayer ? victim.moveTo === null : true)) {
+      victim.targetId = shooter.id; victim.state = 'fight';
+    }
+  }
+  state.combatFx ||= [];
+  state.combatFx.push({ type: armed ? 'parry' : 'evade', tick: state.tick, x: victim.x, z: victim.z, attackerId: shooter.id, defenderId: victim.id });
+  if (state.combatFx.length > 24) state.combatFx.splice(0, state.combatFx.length - 24);
+  return true;
 }
 
 export function hitActor(state, bolt, victim, shooter, events) {
@@ -224,6 +303,7 @@ export function hitActor(state, bolt, victim, shooter, events) {
   state.lastArmor = {victimId:victim.id,part:partKey,raw,final:dmg,layers:armor.layers,blocked:raw-armor.total};
   applyDamage(state, victim, partKey, dmg, events, CROSSBOW_BLEED * (armor.layers.length ? armor.bleedFactor : 1));
   const hostile = shooter && isHostile(state, shooter.faction, victim.faction);
+  if (shooter && !hostile && shooter.skills) shooter.skills.precision = Math.min(100, (shooter.skills.precision || 0) + 0.3);
   if (shooter && hostile) {
     grow(shooter, 0.02);
     victim.lastAttackerId = shooter.id;
@@ -286,7 +366,8 @@ export function updateProjectiles(state, events, byId) {
     if (best) {
       b.x = b.x + (nx - b.x) * bestT;
       b.z = b.z + (nz - b.z) * bestT;
-      hitActor(state, b, best, shooter, events);
+      if (!tryParry(state, b, best, shooter)) hitActor(state, b, best, shooter, events);
+      if (!beastRules(best) && best.skills) best.skills.perception = Math.min(100, (best.skills.perception || 0) + 0.003);
       continue;
     }
     if (blockedAt(state, nx, nz, 0.02)) continue;

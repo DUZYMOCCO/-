@@ -56,12 +56,15 @@ export function createDmgNumbers(dollsApi) {
     // この区切りで新しく起きた受け・崩し
     const blocked = new Set();
     const broken = new Set();
+    const defenses = [];
     for (const fx of state.combatFx || []) {
       if (seenFx.has(fx)) continue;
       seenFx.add(fx);
+      if (fx.type === 'parry' || fx.type === 'evade') defenses.push(fx);
       if (fx.type === 'block') blocked.add(fx.defenderId);
       else if (fx.type === 'break') broken.add(fx.defenderId);
     }
+    for (const fx of defenses) push({ actorId: fx.defenderId, part: 'head', kind: fx.type, amount: 0 });
     // 手当てを受けている者
     const treated = new Set();
     for (const a of actors) {

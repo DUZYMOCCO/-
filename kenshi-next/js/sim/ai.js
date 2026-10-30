@@ -1,4 +1,5 @@
 import { encumbranceFromLoad, loadRatio } from './inventory.js';
+import { turretSeat } from './turret.js';
 
 // 荷重と担ぎのうち強い方の速度低下を適用する。
 export function movementLoadMultiplier(ratio, carrying) {
@@ -33,7 +34,7 @@ import { resolveCircle, blockedAt, actorRadius } from './collide.js';
 import { updateCompanionCarry, syncCarried } from './carry.js';
 import { updateLootGoals } from './loot.js';
 import { canSee, effectiveStealth } from './stealth.js';
-import { rangedMode, CROSSBOW } from './crossbow.js';
+import { rangedMode, CROSSBOW, crossbowRange } from './crossbow.js';
 import { restPlace, stopRest } from './rest.js';
 import { navPoint, townHold, townMove } from './town.js';
 import { lawHostile } from './law.js';
@@ -433,6 +434,20 @@ function moveActor(state, actor, byId, squadsById) {
     stepToward(state, actor, actor.leash.x, actor.leash.z, true);
     return;
   }
+  const turret = actor.turretId && (state.turrets || []).find(t => t.id === actor.turretId && t.operatorId === actor.id);
+  if (turret) {
+    const enemies = state.actors.filter(o => o.id !== actor.id && o.state !== 'dead' && o.state !== 'down' && o.state !== 'getup' && o.carriedBy == null && isHostile(state, actor.faction, o.faction));
+    const close = enemies.filter(o => distBetween(actor, o) <= CROSSBOW.meleeSwitch).sort((a,b) => distBetween(actor,a)-distBetween(actor,b))[0];
+    if (close) { actor.targetId = close.id; }
+    else {
+      const target = enemies.filter(o => Math.hypot(o.x-turret.x,o.z-turret.z) <= 35).sort((a,b) => Math.hypot(a.x-turret.x,a.z-turret.z)-Math.hypot(b.x-turret.x,b.z-turret.z))[0];
+      actor.targetId = target?.id ?? null;
+      const seat = turretSeat(turret);
+      if (Math.hypot(actor.x-seat.x, actor.z-seat.z) > 0.35) stepToward(state, actor, seat.x, seat.z, false);
+      else { actor.rot = turret.rot; actor.state = target ? 'fight' : 'idle'; setAnim(actor, 'Idle', state.tick); }
+      return;
+    }
+  }
   const target = actor.targetId !== null ? byId.get(actor.targetId) : null;
   const weaponRange = WEAPONS[actor.weapon].range;
   if (target && target.state !== 'dead') {
@@ -443,12 +458,12 @@ function moveActor(state, actor, byId, squadsById) {
     if (dropDown) {
       actor.targetId = null;
       actor.state = 'idle';
-    } else if (d > 30 && !actor.isPlayer) {
+    } else if (d > (actor.crossbow ? crossbowRange(actor) : 30) && !actor.isPlayer) {
       actor.targetId = null;
       actor.state = 'idle';
     } else if (rangedMode(actor, d)) {
       // 射手: 射程まで寄り、近すぎれば歩いて下がる。間合いでは止まって構える。
-      if (d > CROSSBOW.range * 0.85) {
+      if (d > crossbowRange(actor) * 0.85) {
         stepToward(state, actor, target.x, target.z, true);
       } else if (d < CROSSBOW.keepDist && !(actor.isPlayer && actor.holdGround)) {
         const ax = actor.x + (actor.x - target.x);

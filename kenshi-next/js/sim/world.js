@@ -1,3 +1,4 @@
+import { ensureTurret } from './turret.js';
 import { initInventory } from './inventory.js';
 // 世界の生成。createWorld(seed) はプレーンJSONの state を返す。
 
@@ -192,7 +193,7 @@ export function makeActor(state, faction, x, z, squadId, isPlayer) {
     fleeUntil: 0,
     fleeLogged: false,
     recoverUntil: 0,
-    skills: { ...makeSkills(state, faction), crossbow: CROSSBOW_SKILL[faction] || 0 },
+    skills: { ...makeSkills(state, faction), crossbow: CROSSBOW_SKILL[faction] || 0, perception: CROSSBOW_SKILL[faction] || 0, precision: CROSSBOW_SKILL[faction] || 0, turret: ({ guard: 20, bandit: 5, player: 1, beast: 0 })[faction] || 0 },
     weapon: WEAPON_BY_FACTION[faction],
     renderScale: faction === 'beast' ? 0.8 : 1,
   };
@@ -577,6 +578,7 @@ export function createWorld(seed, opts) {
   // ランダム出現（隊商・盗賊・野盗・野営地・獣の巣）。opts.spawn が true の時だけ（既定は無し＝前と同じ世界）。
   if (options.spawn) initSpawn(state, { spawnRate: options.spawnRate });
 
+  ensureTurret(state, true);
   return state;
 }
 

@@ -1,6 +1,7 @@
 // 1tick の進行。命令 → AI → 移動 → 戦闘 → 部位更新 → 補充 → 時刻。
 
 import { GAME_SEC_PER_TICK, indexActors } from './data.js';
+import { updateTurrets } from './turret.js';
 import { updateCrossbows, updateProjectiles } from './crossbow.js';
 import { applyQueuedCommands } from './commands.js';
 import { updateAI, moveActors, updateSpawns } from './ai.js';
@@ -44,6 +45,7 @@ export function step(state) {
     const byId = indexActors(state);
     updateProjectiles(state, events, byId);
     updateCrossbows(state, events, byId);
+    updateTurrets(state, events, byId);
   }
   resolveCombat(state, events);
   trimAttackSlots(state);

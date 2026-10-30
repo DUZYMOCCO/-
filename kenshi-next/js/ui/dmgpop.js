@@ -29,11 +29,15 @@ export const POP_STYLE = {
   pierce: { cls: 'pop-pierce', color: '#ff8fb0' },
   partial: { cls: 'pop-partial', color: '#e8d8a8' },
   block: { cls: 'pop-block', color: '#a9bccc' },
+  parry: { cls: 'pop-block', color: '#a9bccc' },
+  evade: { cls: 'pop-block', color: '#a9bccc' },
   heal: { cls: 'pop-heal', color: '#7fd46a' },
 };
 
 export function popText(kind, amount) {
   if (kind === 'block') return '受け';
+  if (kind === 'parry') return 'パリィ';
+  if (kind === 'evade') return 'かわした';
   const n = Math.max(1, Math.round(Math.abs(amount)));
   if (kind === 'heal') return '+' + n;
   return String(n);
