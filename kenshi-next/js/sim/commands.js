@@ -11,6 +11,7 @@ import { placeBedroll, packBedroll, startRest, stopRest } from './rest.js';
 import { boxById, houseById } from './town.js';
 import { answerArrest } from './law.js';
 import { equipItem, unequipItem, syncWeapon } from './inventory.js';
+import { executeForge, benchNear } from './smithing.js';
 
 function clampWorld(v) {
   if (v < -WORLD_HALF + 1) return -WORLD_HALF + 1;
@@ -105,6 +106,12 @@ export function applyCommand(state, cmd) {
     if (!state.law || !state.law.arrest || state.law.arrest.stage !== 'ask') return false;
     if (cmd.choice !== 'pay' && cmd.choice !== 'jail' && cmd.choice !== 'resist') return false;
     next.choice = cmd.choice;
+  } else if (cmd.type === 'forge') {
+    if (!Number.isInteger(cmd.weaponInvIndex) || !Number.isInteger(cmd.materialInvIndex)) return false;
+    next.weaponInvIndex = cmd.weaponInvIndex;
+    next.materialInvIndex = cmd.materialInvIndex;
+    next.timingResult = typeof cmd.timingResult === 'string' ? cmd.timingResult : 'normal';
+    if (typeof cmd.benchId === 'string') next.benchId = cmd.benchId;
   } else if (cmd.type !== 'leaveTurret' && cmd.type !== 'stop' && cmd.type !== 'drop' && cmd.type !== 'placeBedroll' && cmd.type !== 'packBedroll' && cmd.type !== 'rest') {
     return false;
   }
@@ -352,6 +359,14 @@ function applyOne(state, player, cmd, events) {
   }
   if (cmd.type === 'demand') {
     answerDemand(state, cmd.pay, events);
+    return;
+  }
+  if (cmd.type === 'forge') {
+    const actor = player;
+    if (actor && actor.state !== 'dead') {
+      const bench = (cmd.benchId && (state.forgeBenches || []).find(b => b.id === cmd.benchId)) || benchNear(state, actor.x, actor.z, 3.5) || { tier: 1 };
+      executeForge(state, actor, cmd.weaponInvIndex, cmd.materialInvIndex, bench, cmd.timingResult, events);
+    }
     return;
   }
   if (cmd.type === 'drop') {

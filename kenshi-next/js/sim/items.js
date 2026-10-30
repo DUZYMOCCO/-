@@ -1,4 +1,5 @@
 import { WEAPONS } from './data.js';
+import { SMITH_MATERIALS, RESEARCH_ARTIFACTS } from '../data/smith_materials.js';
 
 export const QUALITY_RANKS = Array.from({ length: 10 }, (_, i) => ({
   rank: i + 1, res: 0.65 + i * 0.075, weight: 1.1 - i * (0.2 / 9), value: 1 + i * i * (39 / 81),
@@ -41,4 +42,6 @@ export const ITEMS = {
   ...Object.fromEntries(['sword', 'sabre', 'machete', 'hammer', 'club'].map((id, i) => [id, {
     name: ['剣', '曲刀', '鉈', '槌', '棍棒'][i], slot: 'weapon', weight: WEAPONS[id].weight, value: 100,
   }])),
+  ...SMITH_MATERIALS,
+  ...RESEARCH_ARTIFACTS,
 };

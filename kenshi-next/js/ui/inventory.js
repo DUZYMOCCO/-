@@ -89,6 +89,12 @@ export function createInventoryUI(getState, command) {
     if (d.cover) info.push(Object.entries(d.cover).map(([k, v]) => `${PART_NAMES[k] || k} ${Math.round(v * 100)}%`).join(' / '));
     if (d.martial) info.push(`格闘 +${d.martial}`);
     if (obj.ammo) info.push(`矢 ${obj.ammo.n}本`);
+    if (obj.stats) {
+      if (obj.stats.atkBonus) info.push(`攻撃 +${obj.stats.atkBonus}`);
+      if (obj.stats.defBonus) info.push(`防御 +${obj.stats.defBonus}`);
+      if (obj.stats.dmgBonus) info.push(`切断 +${Math.round(obj.stats.dmgBonus * 100)}%`);
+    }
+    if (d.upgrade_effect) info.push(`効果: ${d.upgrade_effect}`);
     detail.append(el('div', '', info.join('・')));
     if (selected.kind === 'inv') {
       let index;

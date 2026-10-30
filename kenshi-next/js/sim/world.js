@@ -1,4 +1,5 @@
 import { ensureTurret } from './turret.js';
+import { ensureForgeBenches } from './smithing.js';
 import { initInventory } from './inventory.js';
 // 世界の生成。createWorld(seed) はプレーンJSONの state を返す。
 
@@ -60,6 +61,7 @@ function makeSkills(state, faction) {
       medic: 1, // 手当て（Kenshi の Field Medic。medkit.js）
       lockpicking: 1, // 錠前破り（bldg1。locks.js）
       thievery: 1, // 盗み（bldg1。law.js）
+      smithing: 1, // 鍛冶（smith1。smithing.js）
     };
   }
   if (faction === 'guard') {
@@ -579,6 +581,7 @@ export function createWorld(seed, opts) {
   if (options.spawn) initSpawn(state, { spawnRate: options.spawnRate });
 
   ensureTurret(state, true);
+  ensureForgeBenches(state);
   return state;
 }
 

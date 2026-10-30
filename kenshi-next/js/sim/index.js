@@ -124,3 +124,4 @@ export * from './law.js';
 export * from './items.js';
 export * from './inventory.js';
 export * from './armor.js';
+export * from './smithing.js';

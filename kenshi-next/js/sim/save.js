@@ -1,4 +1,5 @@
 import { ensureTurret } from './turret.js';
+import { ensureForgeBenches } from './smithing.js';
 import { initInventory } from './inventory.js';
 // セーブデータの文字列化と復元。DOM に依存しない。
 
@@ -54,6 +55,7 @@ export function deserialize(text) {
   if (!state.rep || typeof state.rep !== 'object') state.rep = {};
   if (!Array.isArray(state.bedrolls)) state.bedrolls = [];
   if (typeof state.bedrollSeq !== 'number') state.bedrollSeq = state.bedrolls.length;
+  if (!Array.isArray(state.forgeBenches)) ensureForgeBenches(state);
   for (const actor of state.actors) {
     if (!actor || typeof actor !== 'object') continue;
     if (typeof actor.hunger !== 'number' || !Number.isFinite(actor.hunger)) actor.hunger = 80;
@@ -109,6 +111,7 @@ export function deserialize(text) {
     if (actor.faction === 'player') {
       if (!isNumber(actor.skills.lockpicking)) actor.skills.lockpicking = 1;
       if (!isNumber(actor.skills.thievery)) actor.skills.thievery = 1;
+      if (!isNumber(actor.skills.smithing)) actor.skills.smithing = 1;
     }
     if (typeof actor.aiming !== 'boolean') actor.aiming = false;
     if (!isNumber(actor.lastShotTick)) actor.lastShotTick = -1000;

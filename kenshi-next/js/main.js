@@ -25,6 +25,8 @@ import { createHud } from './ui/hud.js';
 import { createInventoryUI } from './ui/inventory.js';
 import { createHudMenu } from './ui/hud_menu.js';
 import { createTradeUI } from './ui/trade_ui.js';
+import { createSmithUI } from './ui/smith_ui.js';
+import { createForgeBenches } from './render/forge_benches.js';
 import { createSelection } from './ui/selection.js';
 import { createSaveUi, AUTO_KEY } from './ui/save_ui.js';
 import { createNameLabels } from './render/name_labels.js';
@@ -280,6 +282,8 @@ const combatFx = createCombatFx(sceneCtx.scene); // 20:13 チャンバラの火�
 const spawnSites = createSpawnSites(sceneCtx.scene, { debug: spawnDebug, props: propModels, nest: nestModels });
 // 敷いた寝袋
 const bedrolls = createBedrolls(sceneCtx.scene, { noModels: params.get('models') === '0' || params.get('props') === '0' });
+// 鍛冶台（smith1）
+const forgeBenches = createForgeBenches(sceneCtx.scene, state);
 // 遺跡の錆の模様は機械の獣の glb の物を使い回す（余分な読み込みなし）
 if (mechTemplates) spawnSites.setRuinTexture(ruinTextureFrom(mechTemplates));
 const options = createOptions({
@@ -714,13 +718,24 @@ const tradeUi = createTradeUI({ getState: () => state, onAfterAct: () => { if (h
 gameApi.trade = tradeUi;
 createHudMenu({ trade: tradeUi.button, save: saveUi.toggle, options: options.toggle, lantern: hud.lanternButton });
 
+// 鍛冶（smith1）: リズムミニゲーム・品質計算・武器強化
+const smithUi = createSmithUI({ getState: () => state, command: (cmd) => applyCommand(state, cmd) });
+gameApi.openForge = (bench) => smithUi.open(bench);
+gameApi.closeForge = () => smithUi.close();
+gameApi.smith = smithUi;
+
 // 町（bldg1）: 手元の行動ボタン・賞金・捕まえに来た時の答え
 function focusActor() {
   const id = orderee(null);
   const a = id !== null ? state.actors.find((e) => e.id === id) : null;
   return a || findPlayer();
 }
-const townUi = createTownUI({ getState: () => state, getActor: focusActor, command: (cmd) => applyCommand(state, cmd) });
+const townUi = createTownUI({
+  getState: () => state,
+  getActor: focusActor,
+  command: (cmd) => applyCommand(state, cmd),
+  onForge: (bench) => smithUi.open(bench),
+});
 gameApi.town = {
   ui: townUi.stats,
   interiors: interiors.stats,
@@ -738,6 +753,39 @@ gameApi.town = {
     return a ? { id: a.id, x: a.x, z: a.z, inside: houseAt(state, a.x, a.z, 0.15) ? houseAt(state, a.x, a.z, 0.15).id : null } : null;
   },
 };
+
+// ?smithdemo=1 で開始地点近くに鍛冶台を置き、直接鍛冶パネルを開く（撮影・動作確認用）
+if (params.get('smithdemo') === '1') {
+  const pl = state.actors.find((a) => a.id === state.playerId) || state.actors.find((a) => a.faction === 'player');
+  if (pl) {
+    if (!Array.isArray(state.forgeBenches)) state.forgeBenches = [];
+    let demoBench = state.forgeBenches.find((b) => b.id === 'demo_forge_bench');
+    if (!demoBench) {
+      demoBench = {
+        id: 'demo_forge_bench',
+        name: '鍛冶台',
+        x: Math.round((pl.x + 2.0) * 100) / 100,
+        z: Math.round(pl.z * 100) / 100,
+        rot: 0,
+        tier: 2,
+      };
+      state.forgeBenches.push(demoBench);
+    }
+    if (!Array.isArray(pl.inv)) pl.inv = [];
+    if (!pl.inv.some((it) => ITEMS[it.id]?.slot === 'weapon')) {
+      pl.inv.push({ id: 'sword', rank: 1, n: 1 });
+      pl.inv.push({ id: 'club', rank: 2, n: 1 });
+    }
+    const sampleMatIds = ['scrap_iron', 'magma_glazed_pottery', 'ancient_alloy_plate', 'desert_wyrm_scale'];
+    for (const mId of sampleMatIds) {
+      if (!pl.inv.some((it) => it.id === mId)) {
+        pl.inv.push({ id: mId, rank: 1, n: 3 });
+      }
+    }
+    forgeBenches.sync();
+    smithUi.open(demoBench);
+  }
+}
 
 // 野盗の通行料（払う／断る）。画面の上の方に出す。
 const demandBox = document.createElement('div');

@@ -2,6 +2,7 @@
 // ルールは js/sim/town.js・locks.js・law.js。ここは表示と命令だけ。
 import {
   doorNear, houseAt, houseById, hasKey, isPublic, canPick, lockSkill, pickpocketChance, partyBounty, bail, bountyOf, jailHours, CRIME_NAME,
+  benchNear,
 } from '../sim/index.js';
 
 const CSS = `
@@ -79,6 +80,10 @@ export function townActions(state, actor) {
     const p = pickpocketChance(actor, mark);
     out.push({ kind: 'pickpocket', label: 'スリ', sub: (mark.title || mark.name) + (mark.resting ? '（寝ている）' : '') + '・' + Math.round(p * 100) + '%', crime: true, cmd: { type: 'pickpocket', targetId: mark.id } });
   }
+  const bench = benchNear(state, actor.x, actor.z, 2.8);
+  if (bench) {
+    out.push({ kind: 'forge', label: '鍛冶台を使う', sub: `武器の鍛造・強化（Tier ${bench.tier || 1}）`, bench, cmd: { type: 'openForge', benchId: bench.id } });
+  }
   return out;
 }
 
@@ -113,6 +118,10 @@ export function createTownUI(opts) {
       b.appendChild(s);
       b.addEventListener('click', (e) => {
         e.stopPropagation();
+        if (a.kind === 'forge' && opts.onForge) {
+          opts.onForge(a.bench);
+          return;
+        }
         command(Object.assign({ actorId: actor.id }, a.cmd));
       });
       ctx.appendChild(b);
