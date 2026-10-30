@@ -13,6 +13,7 @@ import { CAMP } from './world.js';
 import { chance } from './rng.js';
 import { noteTheft } from './spawning.js';
 import { drop, pickup } from './carry.js';
+import { normalizeKits } from './medkit.js';
 
 function isStanding(actor) {
   return actor.state === 'idle' || actor.state === 'move' || actor.state === 'fight';
@@ -151,10 +152,10 @@ export function updateLoot(state, events) {
     const amount = target.money || 0;
     target.money = 0;
     // 手当ての道具も持っていく（売り物の箱は商人の荷として残す）
-    const kits = target.medkit || 0;
-    if (kits > 0) {
-      target.medkit = 0;
-      actor.medkit = (actor.medkit || 0) + kits;
+    const kits = normalizeKits(target);
+    if (kits.length > 0) {
+      normalizeKits(actor).push(...kits);
+      target.kits = [];
     }
     if (!Array.isArray(target.lootedBy)) target.lootedBy = [];
     target.lootedBy.push(actor.id);

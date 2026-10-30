@@ -18,6 +18,7 @@ import {
 } from './data.js';
 import { heightAt } from './terrain.js';
 import { resolveCircle } from './collide.js';
+import { makeKit } from './medkit.js';
 import { initSpawn } from './spawning.js';
 import { greenK, GREEN } from '../render/green_plan.js';
 
@@ -53,6 +54,7 @@ function makeSkills(state, faction) {
       athletics: 1,
       stealth: 1,
       assassination: 1,
+      medic: 1, // 手当て（Kenshi の Field Medic。medkit.js）
     };
   }
   if (faction === 'guard') {
@@ -158,7 +160,8 @@ export function makeActor(state, faction, x, z, squadId, isPlayer) {
     bleed: 0,
     hunger: 80,
     food: faction === 'player' ? 3 : 0,
-    medkit: faction === 'player' ? 5 : 0, // 手当ての道具の残り回数（medkit.js）
+    kits: faction === 'player' ? [makeKit('basic'), makeKit('basic')] : [], // 救急箱（耐久で減る。medkit.js）
+    bedrollItem: faction === 'player' ? 1 : 0, // 持っている寝袋（rest.js）
     movedRun: false,
     movedCarry: false,
     movedThisTick: false,
@@ -500,6 +503,9 @@ export function createWorld(seed, opts) {
     actors: [],
     squads: [],
     relations: { guard_player: 'neutral' },
+    rep: {}, // 勢力ごとの仲（-100〜100。medkit.js の healRep）
+    bedrolls: [], // 敷いた寝袋（rest.js）
+    bedrollSeq: 0,
     commandQueue: [],
     log: [],
     raidCooldowns: {},

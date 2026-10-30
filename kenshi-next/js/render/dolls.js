@@ -446,7 +446,7 @@ function animateFallback(doll, actor, dt, speed) {
     actor.state !== 'down' &&
     actor.state !== 'getup';
   const targetLean =
-    actor.state === 'dead' || actor.state === 'down'
+    actor.state === 'dead' || actor.state === 'down' || actor.resting
       ? 1.35
       : actor.state === 'getup'
         ? 0.6

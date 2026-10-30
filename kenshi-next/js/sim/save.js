@@ -1,6 +1,7 @@
 // セーブデータの文字列化と復元。DOM に依存しない。
 
 import { sexOf } from './data.js';
+import { normalizeKits } from './medkit.js';
 
 export const SAVE_VERSION = 1;
 export const MAX_SAVE_BYTES = 2 * 1024 * 1024;
@@ -47,6 +48,10 @@ export function deserialize(text) {
   if (!state || typeof state !== 'object') return null;
   if (state.version !== SAVE_VERSION) return null;
   if (!Array.isArray(state.actors)) return null;
+  // 勢力の仲・敷いた寝袋（stagger より前のセーブには無い）
+  if (!state.rep || typeof state.rep !== 'object') state.rep = {};
+  if (!Array.isArray(state.bedrolls)) state.bedrolls = [];
+  if (typeof state.bedrollSeq !== 'number') state.bedrollSeq = state.bedrolls.length;
   for (const actor of state.actors) {
     if (!actor || typeof actor !== 'object') continue;
     if (typeof actor.hunger !== 'number' || !Number.isFinite(actor.hunger)) actor.hunger = 80;
@@ -54,7 +59,9 @@ export function deserialize(text) {
       actor.food = actor.faction === 'player' ? 3 : 0;
     }
     // 手当ての道具（hitreact1 より前のセーブには無い）
-    if (typeof actor.medkit !== 'number' || !Number.isFinite(actor.medkit)) actor.medkit = actor.faction === 'player' ? 5 : 0;
+    if (!Array.isArray(actor.kits) && (typeof actor.medkit !== 'number' || !Number.isFinite(actor.medkit))) actor.medkit = actor.faction === 'player' ? 5 : 0;
+    normalizeKits(actor); // 回数の救急箱（stagger より前）→ 耐久の箱
+    if (typeof actor.bedrollItem !== 'number' || !Number.isFinite(actor.bedrollItem)) actor.bedrollItem = actor.faction === 'player' ? 1 : 0;
     if (typeof actor.movedRun !== 'boolean') actor.movedRun = false;
     if (typeof actor.movedCarry !== 'boolean') actor.movedCarry = false;
     if (actor.sex !== 'f' && actor.sex !== 'm' && actor.sex !== null) actor.sex = sexOf(actor, state); // 20:42 より前のセーブ

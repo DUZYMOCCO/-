@@ -1,7 +1,8 @@
 // 時刻・速度・状態・部位HP・ログ・追従・fps・ゲームオーバーのHTML窓口。
 
 import { PART_KEYS, PART_LABEL, FACTIONS, isHostile, formatClock } from '../sim/index.js';
-import { partyKits, canBuyKit, MEDKIT_PRICE } from '../sim/medkit.js';
+import { partyKits, partyKitDur, canBuyKit, KIT_TIERS } from '../sim/medkit.js';
+import { effMax, bedrollAt, REST_REACH, PACK_REACH } from '../sim/rest.js';
 import { canAssassinate } from './selection.js';
 import { factionLine, conditionList, weaponLine } from './labels.js';
 import { formatMoney } from './money.js';
@@ -28,6 +29,7 @@ const SKILL_LABELS = [
   ['stealth', '隠密'],
   ['assassination', '暗殺'],
   ['crossbow', 'クロスボウ'],
+  ['medic', '手当て'],
 ];
 
 function make(tag, className, text) {
@@ -76,12 +78,20 @@ export function createHud(callbacks) {
   hp.appendChild(hpWeapon);
 
   const fills = {};
+  const wounds = {};
+  const panelWound = {};
   for (const key of PART_KEYS) {
     const row = make('div', 'hp-row');
     const label = make('span', 'hp-label', PART_LABEL[key]);
     const track = make('div', 'hp-track');
     const fill = make('div', 'hp-fill');
     track.appendChild(fill);
+    // 傷（休まないと戻らない分）を右端に暗く出す
+    track.style.position = 'relative';
+    const wound = make('div', 'hp-wound');
+    wound.style.cssText = 'position:absolute;right:0;top:0;bottom:0;width:0;background:repeating-linear-gradient(135deg,#3a1414 0 3px,#5a2020 3px 6px);opacity:0.9';
+    track.appendChild(wound);
+    wounds[key] = wound;
     row.appendChild(label);
     row.appendChild(track);
     hp.appendChild(row);
@@ -121,6 +131,23 @@ export function createHud(callbacks) {
   buyKitButton.addEventListener('click', () => {
     if (hooks.onBuyMedkitSelected) hooks.onBuyMedkitSelected();
   });
+  const buyStdButton = make('button', 'hp-action', '救急箱を買う');
+  buyStdButton.type = 'button';
+  buyStdButton.style.display = 'none';
+  buyStdButton.addEventListener('click', () => {
+    if (hooks.onBuyMedkitSelected) hooks.onBuyMedkitSelected('standard');
+  });
+  // 寝袋（敷く・休む・畳む）。選んだ仲間が受ける
+  const bedButtons = {};
+  for (const [type, text] of [['placeBedroll', '寝袋を敷く'], ['rest', '寝袋で休む'], ['packBedroll', '寝袋を畳む']]) {
+    const b = make('button', 'hp-action', text);
+    b.type = 'button';
+    b.style.display = 'none';
+    b.addEventListener('click', () => {
+      if (hooks.onBedrollSelected) hooks.onBedrollSelected(type);
+    });
+    bedButtons[type] = b;
+  }
   const freeButton = make('button', 'hp-action', '縄を解く');
   freeButton.type = 'button';
   freeButton.style.display = 'none';
@@ -140,6 +167,8 @@ export function createHud(callbacks) {
   hpActions.appendChild(pickupButton);
   hpActions.appendChild(treatButton);
   hpActions.appendChild(buyKitButton);
+  hpActions.appendChild(buyStdButton);
+  for (const b of Object.values(bedButtons)) hpActions.appendChild(b);
   hpActions.appendChild(freeButton);
   hp.appendChild(hpActions);
 
@@ -339,7 +368,7 @@ export function createHud(callbacks) {
       hpRelation.style.color = line.relation.color;
     }
 
-    const stateText = STATUS_TEXT[actor.state] || actor.state;
+    const stateText = actor.resting && actor.state === 'idle' ? '寝袋で休んでいる' : STATUS_TEXT[actor.state] || actor.state;
     if (stateText !== panelStateText) {
       panelStateText = stateText;
       hpStateText.textContent = stateText;
@@ -367,6 +396,12 @@ export function createHud(callbacks) {
         fill.style.width = width;
       }
       fill.classList.toggle('bad', part.hp <= 0);
+      const wr = part.max > 0 ? Math.max(0, Math.min(1, (part.wound || 0) / part.max)) : 0;
+      const ww = Math.round(wr * 1000) / 10 + '%';
+      if (panelWound[key] !== ww) {
+        panelWound[key] = ww;
+        wounds[key].style.width = ww;
+      }
     }
 
     const showAttack =
@@ -404,26 +439,46 @@ export function createHud(callbacks) {
       pickupButton.style.display = showPickup ? '' : 'none';
     }
 
-    // 手当て: 血を流している味方か捕まっている者。縄: 縛られている者
+    // 手当て: 血を流しているか傷んでいる、味方・捕まっている者・敵でない者・倒れている者（Kenshi は倒れた敵も手当てできる）
     const alive = actor.state !== 'dead';
+    const hurt =
+      actor.bleed > 0.05 || actor.gush > 0 ||
+      Object.entries(actor.parts).some(([k, p]) => p && !(actor.missing && actor.missing.includes(k)) && p.hp < effMax(p) - 1);
     const showTreat =
-      alive && (actor.bleed > 0.05 || actor.gush > 0) && (actor.faction === 'player' || !!actor.bound || !isHostile(state, 'player', actor.faction));
+      alive && hurt &&
+      (actor.faction === 'player' || !!actor.bound || actor.state === 'down' || !isHostile(state, 'player', actor.faction));
     const treatDisp = showTreat ? '' : 'none';
     if (treatButton.style.display !== treatDisp) treatButton.style.display = treatDisp;
-    // 手当ての道具の残り（部隊の合計）。無ければ押せない
+    // 救急箱の数と残り（部隊の合計）。無くても素手で（遅く）手当てできる
     const kits = partyKits(state);
-    const treatText = kits > 0 ? '手当て（残り' + kits + '）' : '手当て（道具なし）';
+    const kd = partyKitDur(state);
+    const treatText = kits > 0 ? '手当て 箱' + kits + '・' + Math.round((kd.dur / Math.max(1, kd.full)) * 100) + '%' : '手当て（素手）';
     if (treatButton.textContent !== treatText) treatButton.textContent = treatText;
-    if (treatButton.disabled !== (kits <= 0)) treatButton.disabled = kits <= 0;
-    const showBuy = alive && actor.role === 'merchant' && (actor.medkitStock || 0) > 0 && !isHostile(state, 'player', actor.faction);
-    const buyDisp = showBuy ? '' : 'none';
-    if (buyKitButton.style.display !== buyDisp) buyKitButton.style.display = buyDisp;
-    if (showBuy) {
-      const pl = state.actors.find((a) => a.id === state.playerId);
-      const ok = !!pl && canBuyKit(state, pl, actor);
-      const bt = '手当ての道具を買う cash ' + MEDKIT_PRICE + (ok ? '' : '（近くで・所持金）');
-      if (buyKitButton.textContent !== bt) buyKitButton.textContent = bt;
-      if (buyKitButton.disabled !== !ok) buyKitButton.disabled = !ok;
+    const pl = state.actors.find((a) => a.id === state.playerId);
+    const merchantOk = alive && actor.role === 'merchant' && !isHostile(state, 'player', actor.faction);
+    for (const [btn, tier, stockKey] of [[buyKitButton, 'basic', 'medkitStock'], [buyStdButton, 'standard', 'medkitStockStd']]) {
+      const show = merchantOk && (actor[stockKey] || 0) > 0;
+      const disp = show ? '' : 'none';
+      if (btn.style.display !== disp) btn.style.display = disp;
+      if (!show) continue;
+      const ok = !!pl && canBuyKit(state, pl, actor, tier);
+      const t = KIT_TIERS[tier];
+      const bt = t.label + 'を買う cash ' + t.price + (ok ? '' : '（近くで・所持金）');
+      if (btn.textContent !== bt) btn.textContent = bt;
+      if (btn.disabled !== !ok) btn.disabled = !ok;
+    }
+    // 寝袋: 自分の部隊の立っている者だけ
+    const mine =
+      alive && actor.faction === 'player' && actor.state !== 'down' && actor.state !== 'getup';
+    const near = mine ? bedrollAt(state, actor, REST_REACH) : null;
+    const showBed = {
+      placeBedroll: mine && (actor.bedrollItem || 0) > 0 && !bedrollAt(state, actor, 1.5),
+      rest: mine && !actor.resting && !!near && !state.actors.some((a) => a !== actor && a.resting === near.id && a.state !== 'dead'),
+      packBedroll: mine && !!bedrollAt(state, actor, PACK_REACH),
+    };
+    for (const [type, b] of Object.entries(bedButtons)) {
+      const disp = showBed[type] ? '' : 'none';
+      if (b.style.display !== disp) b.style.display = disp;
     }
     const freeDisp = alive && actor.bound ? '' : 'none';
     if (freeButton.style.display !== freeDisp) freeButton.style.display = freeDisp;

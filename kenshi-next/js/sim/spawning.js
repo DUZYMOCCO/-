@@ -6,7 +6,7 @@
 // state.spawn が無ければ何もしない（createWorld の既定は無し。ゲームは main.js で有効にする）。
 
 import { makePoles } from './abduct.js';
-import { MEDKIT_USES, MERCHANT_STOCK } from './medkit.js';
+import { MERCHANT_STOCK, MERCHANT_STOCK_STANDARD, makeKit } from './medkit.js';
 import { rand, randInt, randRange } from './rng.js';
 import { makeActor, TOWN1, TOWN2 } from './world.js';
 import { giveCrossbow, START_BOLTS } from './crossbow.js';
@@ -221,10 +221,11 @@ function buildSquad(state, typeKey, x, z, extra) {
     // 手当ての道具: 商人は売り物と自分の分、護衛・頭目は自分の分を持つ（乱数は使わない）
     if (role === 'merchant') {
       actor.medkitStock = MERCHANT_STOCK;
-      actor.medkit = MEDKIT_USES;
+      actor.medkitStockStd = MERCHANT_STOCK_STANDARD;
+      actor.kits = [makeKit('standard')];
     }
-    if (role === 'caravan_guard' && i % 2 === 1) actor.medkit = 3;
-    if (role === 'raider_boss' || role === 'cannibal_chief') actor.medkit = 2;
+    if (role === 'caravan_guard' && i % 2 === 1) actor.kits = [makeKit('basic')];
+    if (role === 'raider_boss' || role === 'cannibal_chief') actor.kits = [makeKit('basic')];
     if (role === 'raider_boss' || role === 'cannibal_chief') {
       actor.skills.attack += 4;
       actor.skills.defense += 4;
@@ -659,6 +660,11 @@ function updateSites(state, byId, events) {
         );
       }
     } else if (site.state === 'cleared' && state.tick >= site.goneAt) {
+      // 家なし部隊が上限なら、残った者が家なしになれるまで場所を少し残す（上限を超えないように）
+      if (squad && members.some((a) => a.state !== 'dead') && homelessSquads(state).length >= SPAWN.maxHomeless) {
+        site.goneAt = state.tick + 100;
+        continue;
+      }
       // 場所は消える。残った者は家なしになり、遠くへ行けば消える。
       if (squad) {
         squad.siteId = null;

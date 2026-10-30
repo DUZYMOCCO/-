@@ -1,16 +1,70 @@
 // 人喰い・グールのさらいと食事、手当て、縄ほどき、助けた相手の仲間入り。
 // research/abduction_recruit.md（§7 の決定）に沿った最初の形。乱数（state.rng）は使わず、
 // id・日・刻みのハッシュで決めるので、同じ種なら同じ結果になる。★時間や割合は仮の値。
-import { makeEvent, distBetween } from './data.js';
+import { makeEvent, distBetween, FACTIONS } from './data.js';
 import { kill, severLimb, isMissing, bloodOf } from './body.js';
 import { pickup, drop } from './carry.js';
 import { koLine } from './lines.js';
-import { kitHolder, useKit } from './medkit.js';
+import {
+  kitHolder, pickKit, medicSkill, healPerSec, bleedStopPerSec, kitDrainPerSec, drainKit,
+  effectiveSkill, BLEED_UNIT, GUSH_UNIT, MEDIC_XP_PER_SEC, healRep, KIT_TIERS,
+} from './medkit.js';
+import { effMax } from './rest.js';
 
 export const TICKS_PER_SEC = 10; // TICK_SEC = 0.1（実時間）
 export const EAT_ORDER = ['lLeg', 'rLeg', 'lArm', 'rArm', 'chest', 'head'];
 export const EAT_TICKS = { lLeg: 200, rLeg: 200, lArm: 200, rArm: 200, chest: 300, head: 300 }; // 手足20秒・胴と頭30秒
-export const TREAT_TICKS = 50; // 手当て 5秒。手当ての道具を1つ使う（medkit.js）
+export const TREAT_TICKS = 50; // （古い名前。手当ては今は治りきるまで続く。medkit.js の速さで）
+const TICK_SEC = 0.1;
+// 手当ての順（Kenshi の包帯の順: 血、頭、胸・腹、左腕、右腕、左脚、右脚）
+const TREAT_ORDER = ['head', 'chest', 'stomach', 'lArm', 'rArm', 'lLeg', 'rLeg'];
+
+export function needsTreat(t) {
+  if (!t) return false;
+  if (t.bleed > 0 || t.gush > 0) return true;
+  for (const key of TREAT_ORDER) {
+    const p = t.parts[key];
+    if (p && !(Array.isArray(t.missing) && t.missing.includes(key)) && p.hp < effMax(p) - 1e-6) return true;
+  }
+  return false;
+}
+
+// 手当て1刻。終わったら true
+function treatTick(state, a, t, events) {
+  if (!a.skills) a.skills = {};
+  if (typeof a.skills.medic !== 'number') a.skills.medic = 1;
+  const holder = kitHolder(state, a);
+  const kit = pickKit(holder);
+  const skill = medicSkill(a);
+  if (t.gush > 0 || t.bleed > 0) {
+    const stop = bleedStopPerSec(skill, kit) * TICK_SEC;
+    if (t.gush > 0) t.gush = Math.max(0, t.gush - stop * GUSH_UNIT);
+    if (t.bleed > 0) t.bleed = Math.max(0, t.bleed - stop * BLEED_UNIT);
+    if (!(t.gush > 0) && !(t.bleed > 0) && !a.task.bleedSaid) {
+      a.task.bleedSaid = true;
+      events.push(makeEvent(state, 'treat', a.name + 'が' + t.name + 'の血を止めた'));
+    }
+  } else {
+    let left = healPerSec(skill, kit) * TICK_SEC;
+    for (const key of TREAT_ORDER) {
+      if (left <= 0) break;
+      const p = t.parts[key];
+      if (!p || (Array.isArray(t.missing) && t.missing.includes(key))) continue;
+      const room = effMax(p) - p.hp;
+      if (room <= 0) continue;
+      const d = Math.min(room, left);
+      p.hp += d;
+      left -= d;
+    }
+  }
+  if (kit && drainKit(holder, kit, kitDrainPerSec(a.skills.medic) * TICK_SEC)) {
+    events.push(makeEvent(state, 'treat', holder.name + 'の' + KIT_TIERS[kit.tier].label + 'を使い切った'));
+  }
+  const s = effectiveSkill(skill, kit);
+  a.skills.medic = Math.min(100, a.skills.medic + MEDIC_XP_PER_SEC * (1 - Math.min(99, s) / 100) * TICK_SEC);
+  a.task.rep = (a.task.rep || 0) + healRep(state, a, t, TICK_SEC, events);
+  return !needsTreat(t);
+}
 export const UNTIE_TICKS = 40; // 縄をほどく 4秒
 export const TASK_REACH = 1.6;
 export const CLAIM_RANGE = 30; // 人喰いが倒れた者を拾いに行く距離
@@ -321,8 +375,7 @@ function updateMeals(state, byId, events) {
 export function startTask(state, actor, type, target) {
   if (!actor || !target || actor === target) return false;
   if (!standing(actor)) return false;
-  if (type === 'treat' && !(target.bleed > 0) && !(target.gush > 0)) return false;
-  if (type === 'treat' && !kitHolder(state, actor)) return false; // 道具が無ければ手当てできない
+  if (type === 'treat' && !needsTreat(target)) return false; // 道具が無くても素手で手当てはできる（遅い）
   if (type === 'free' && !target.bound) return false;
   if (target.state === 'dead') return false;
   actor.task = { type, targetId: target.id, ticks: 0 };
@@ -347,22 +400,22 @@ function updateTasks(state, byId, events) {
     if (distBetween(a, t) > TASK_REACH) continue;
     a.task.ticks += 1;
     a.anim = 'Idle';
-    const need = a.task.type === 'treat' ? TREAT_TICKS : UNTIE_TICKS;
-    if (a.task.ticks < need) continue;
     if (a.task.type === 'treat') {
-      if (!useKit(state, a)) {
-        events.push(makeEvent(state, 'treat', a.name + 'は手当ての道具を切らしている'));
-        a.task = null;
-        continue;
-      }
-      t.bleed = 0;
-      t.gush = 0;
-      events.push(makeEvent(state, 'treat', a.name + 'が' + t.name + 'の血を止めた'));
-    } else {
-      freeCaptive(state, a, t, events);
+      if (!treatTick(state, a, t, events)) continue;
+      const gain = a.task.rep || 0;
+      const rel = gain > 0.05 ? '（' + factionName(t.faction) + 'との仲 +' + gain.toFixed(1) + '）' : '';
+      events.push(makeEvent(state, 'treat', a.name + 'が' + t.name + 'の手当てを終えた' + rel));
+      a.task = null;
+      continue;
     }
+    if (a.task.ticks < UNTIE_TICKS) continue;
+    freeCaptive(state, a, t, events);
     a.task = null;
   }
+}
+
+function factionName(f) {
+  return (FACTIONS[f] && FACTIONS[f].name) || f;
 }
 
 export function joinChance(victim) {

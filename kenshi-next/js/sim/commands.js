@@ -5,7 +5,8 @@ import { drop } from './carry.js';
 import { assassinationTargetExists } from './stealth.js';
 import { answerDemand } from './spawning.js';
 import { startTask } from './abduct.js';
-import { buyKit } from './medkit.js';
+import { buyKit, repOf, GUARD_ATTACKED_REP } from './medkit.js';
+import { placeBedroll, packBedroll, startRest, stopRest } from './rest.js';
 
 function clampWorld(v) {
   if (v < -WORLD_HALF + 1) return -WORLD_HALF + 1;
@@ -56,7 +57,12 @@ export function applyCommand(state, cmd) {
     const id = Number(cmd.targetId);
     if (!Number.isFinite(id)) return false;
     next.targetId = id;
-  } else if (cmd.type !== 'stop' && cmd.type !== 'drop') {
+  } else if (cmd.type === 'buyKit') {
+    const id = Number(cmd.targetId);
+    if (!Number.isFinite(id)) return false;
+    next.targetId = id;
+    next.tier = cmd.tier === 'standard' ? 'standard' : 'basic';
+  } else if (cmd.type !== 'stop' && cmd.type !== 'drop' && cmd.type !== 'placeBedroll' && cmd.type !== 'packBedroll' && cmd.type !== 'rest') {
     return false;
   }
   // actorId: 選んでいる・追っている仲間に命令する（無ければ操作中の者）
@@ -69,7 +75,7 @@ export function applyCommand(state, cmd) {
   return true;
 }
 
-const ROUTED = new Set(['move', 'attack', 'pickup', 'stop', 'drop', 'treat', 'free', 'buyMedkit']);
+const ROUTED = new Set(['move', 'attack', 'pickup', 'stop', 'drop', 'treat', 'free', 'buyMedkit', 'buyKit', 'placeBedroll', 'packBedroll', 'rest']);
 
 // 命令を受ける者: actorId が生きている自分の部隊の者ならその者、でなければ操作中の者
 export function commandActor(state, cmd, player) {
@@ -123,6 +129,26 @@ function applyOne(state, player, cmd, events) {
     return;
   }
   if (!player || player.state === 'dead') return;
+  // 休んでいる者は、休め以外の命令で起きる（隠密・灯りはそのまま）
+  if (player.resting && cmd.type !== 'rest' && cmd.type !== 'sneak') stopRest(player);
+  if (cmd.type === 'placeBedroll') {
+    placeBedroll(state, player, events);
+    return;
+  }
+  if (cmd.type === 'packBedroll') {
+    packBedroll(state, player, events);
+    return;
+  }
+  if (cmd.type === 'rest') {
+    if (player.carryingId !== null) return;
+    clearAssassination(player);
+    startRest(state, player, events);
+    return;
+  }
+  if (cmd.type === 'buyKit') {
+    buyKit(state, player, findActor(state, cmd.targetId), events, cmd.tier);
+    return;
+  }
   if (cmd.type === 'sneak') {
     const on = !!cmd.on;
     const ids =
@@ -195,6 +221,8 @@ function applyOne(state, player, cmd, events) {
     if (player.state !== 'down' && player.state !== 'getup') player.state = 'fight';
     if (target.faction === 'guard' && state.relations.guard_player !== 'hostile') {
       state.relations.guard_player = 'hostile';
+      if (!state.rep) state.rep = {};
+      state.rep.guard = Math.min(repOf(state, 'guard'), GUARD_ATTACKED_REP);
       events.push(makeEvent(state, 'hostile', '衛兵が流れ者を敵とみなした'));
     }
     return;

@@ -43,7 +43,7 @@ export {
   CAMP,
   NEST,
 } from './world.js';
-export { applyDamage, updateBody, isStanding, checkCondition } from './body.js';
+export { applyDamage, updateBody, isStanding, checkCondition, koSeconds, koTicks, KO_TIME_SCALE } from './body.js';
 export { resolveCombat, trimAttackSlots, resetAssists, requestAssist } from './combat.js';
 export { updateAI, updateSpawns, moveActors, updateSquadGoals } from './ai.js';
 export { applyCommand, applyQueuedCommands } from './commands.js';
@@ -111,3 +111,4 @@ export { KO_LINES, WAKE_LINES, EATEN_LINES, lineFor, speakerOf } from './lines.j
 export { BLOOD_MAX, BLOOD_KO, BLOOD_PER_BLEED, LIMB_LOSS_BLEED, severLimb, bloodOf, isMissing } from './body.js';
 export * from './hitreact.js';
 export * from './medkit.js';
+export * from './rest.js';

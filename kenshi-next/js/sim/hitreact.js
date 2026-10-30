@@ -1,6 +1,6 @@
 // よろけ（被弾リアクション）6種（research/hit_reactions.md）。描画ライブラリを読まない純粋な関数だけ。
 // 軽: 前・後ろ（0.3秒）。重: 前・前の腹・後ろの上・後ろの下（1.0–1.2秒）。
-// 重いかどうか: 減った後のダメージ > 打たれ強さ × 0.52（Kenshi wiki）。獣・機械獣はよろけない。
+// 重いかどうか: 減った後のダメージ > max(23, 打たれ強さ × 0.52)（Kenshi wiki の式＋この世界の下限）。獣・機械獣はよろけない。
 
 export const HEAVY_PER_TOUGH = 0.52;
 export const REAR_DEG = 110; // 正面から 110° を超えたら後ろからの当たり（type E の受けと同じ見方）
@@ -19,8 +19,19 @@ export function immuneToStagger(actor) {
   return !!actor && actor.faction === 'beast' && !actor.swordsman;
 }
 
+// ★この世界の独自の下駄: Kenshi 本体は「重い = 1撃のダメージ（防具と打たれ強さで減った後）> 打たれ強さ×0.52」で、
+// 打たれ強さ1 ではどんな当たりでも重いよろけになる（Kenshi でも序盤は重いよろけばかり。目立たないのは
+// よろけ中の当たりは軽いよろけにしかならない・防具で減る・打たれ強さがすぐ上がる・すぐ倒れるため）。
+// この世界は防具が無く打たれ強さの伸びも遅いので、閾値に下限 HEAVY_FLOOR を設ける。
+// 打たれ強さ 45 以上（0.52×T ≥ 23）は Kenshi と同じ。打たれ強さ1・野盗の鉈で約2割が重い。
+export const HEAVY_FLOOR = 23;
+
+export function heavyThreshold(toughness) {
+  return Math.max(HEAVY_FLOOR, (toughness || 0) * HEAVY_PER_TOUGH);
+}
+
 export function isHeavyHit(dmg, toughness) {
-  return dmg > (toughness || 0) * HEAVY_PER_TOUGH;
+  return dmg > heavyThreshold(toughness);
 }
 
 // 打った者が、打たれた者の向きから何度ずれているか（0＝真正面、180＝真後ろ）

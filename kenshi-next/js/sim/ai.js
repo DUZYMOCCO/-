@@ -26,6 +26,7 @@ import { updateCompanionCarry, syncCarried } from './carry.js';
 import { updateLootGoals } from './loot.js';
 import { canSee, effectiveStealth } from './stealth.js';
 import { rangedMode, CROSSBOW } from './crossbow.js';
+import { restPlace, stopRest } from './rest.js';
 
 const TAU = Math.PI * 2;
 
@@ -395,6 +396,15 @@ function claimWaitSlots(state) {
 }
 
 function moveActor(state, actor, byId, squadsById) {
+  // 寝袋で休んでいる者は動かない（命令・戦い・寝袋から離れると rest.js がやめさせる）
+  if (actor.resting) {
+    if (actor.targetId === null && actor.state === 'idle' && restPlace(state, actor) !== 'ground') {
+      actor.moveTo = null;
+      setAnim(actor, 'Fall', state.tick);
+      return;
+    }
+    stopRest(actor);
+  }
   if ((actor.fleeUntil || 0) > state.tick) {
     fleeMove(state, actor, byId);
     return;

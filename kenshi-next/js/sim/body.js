@@ -4,6 +4,35 @@ import { PART_KEYS, PART_MAX, PART_LABEL, VITALS, setAnim, beastRules, makeEvent
 import { drop } from './carry.js';
 import { koLine } from './lines.js';
 import { koPoint, TUNING } from './melee.js';
+import { addWound, effMax, restPlace, PLACE_MULT, stopRest } from './rest.js';
+
+// 気絶の長さ（Kenshi の式。kenshi.zone/en/knockout-death「Knockout time」）。秒 → 刻は ×10 × KO_TIME_SCALE。
+// M = 3.0 + (0.75 − 3.0) × 打たれ強さ/100
+// 秒 = 20 + Σ急所 (最大 − 体力)/最大×100 × M × 0.25 + Σ負の部位 |体力|/最大×100 × M × 係数（頭2・胸腹1・手足0.5）
+//      + (最大の血 − 血)/最大の血×100 × M × 0.25 × 2
+export const KO_TIME_SCALE = 0.3; // ★この世界の戦いは Kenshi より短いので 3割に縮める
+const KO_PART_FACTOR = { head: 2, chest: 1, stomach: 1, lArm: 0.5, rArm: 0.5, lLeg: 0.5, rLeg: 0.5 };
+export function koSeconds(actor) {
+  const t = Math.max(0, Math.min(100, (actor.skills && actor.skills.toughness) || 0));
+  const m = 3.0 + (0.75 - 3.0) * t / 100;
+  let sec = 20;
+  for (const key of VITALS) {
+    const p = actor.parts[key];
+    const max = p.max > 0 ? p.max : PART_MAX[key];
+    sec += Math.max(0, (max - p.hp) / max * 100) * m * 0.25;
+  }
+  for (const key of PART_KEYS) {
+    const p = actor.parts[key];
+    if (!p || p.hp >= 0 || isMissing(actor, key)) continue;
+    const max = p.max > 0 ? p.max : PART_MAX[key];
+    sec += Math.min(-p.hp, max) / max * 100 * m * KO_PART_FACTOR[key];
+  }
+  sec += Math.max(0, (BLOOD_MAX - bloodOf(actor)) / BLOOD_MAX * 100) * m * 0.25 * 2;
+  return sec;
+}
+export function koTicks(actor) {
+  return Math.round(koSeconds(actor) * 10 * KO_TIME_SCALE);
+}
 
 // 血の量（0〜100）。出血1あたり毎刻 BLOOD_PER_BLEED 減る。★仮の値（research/abduction_recruit.md §6・§7）
 export const BLOOD_MAX = 100;
@@ -134,7 +163,8 @@ export function checkCondition(state, actor, events) {
 function knockOut(state, actor, events, why) {
   {
     actor.state = 'down';
-    actor.downTicks = Math.max(150, Math.round(400 - actor.skills.toughness * 3));
+    actor.downTicks = koTicks(actor);
+    stopRest(actor);
     actor.anim = 'Fall';
     actor.animTick = state.tick;
     actor.targetId = null;
@@ -201,6 +231,8 @@ export function applyDamage(state, victim, partKey, dmg, events, bleedMult = 1) 
   const part = victim.parts[partKey];
   const before = part.hp;
   part.hp = before - dmg;
+  addWound(victim, part, dmg); // 傷の半分は休まないと治らない（rest.js）
+  if (victim.resting) stopRest(victim);
   victim.bleed += dmg * BLEED_PER_DAMAGE * bleedMult;
   if (
     before > 0 &&
@@ -223,13 +255,14 @@ export function updateBody(state, events) {
 
     if (actor.bleed > 0) {
       const b = actor.bleed;
-      actor.parts.chest.hp -= b * 0.02;
-      actor.parts.stomach.hp -= b * 0.02;
+      // Kenshi の出血は血だけを減らす（部位の体力は削らない。前は胸・腹も削っていた）
       actor.bleed = b * 0.997;
       if (actor.bleed < 0.0005) actor.bleed = 0;
       actor.blood = bloodOf(actor) - b * BLOOD_PER_BLEED;
     } else if (bloodOf(actor) < BLOOD_MAX && actor.state !== 'down' && !(actor.gush > 0)) {
-      actor.blood = Math.min(BLOOD_MAX, bloodOf(actor) + BLOOD_REGEN);
+      // 寝床では血の戻りが2倍（Kenshi）
+      const bedBlood = restPlace(state, actor) === 'ground' ? 1 : 2;
+      actor.blood = Math.min(BLOOD_MAX, bloodOf(actor) + BLOOD_REGEN * bedBlood);
     }
     if (actor.gush > 0) {
       actor.blood = bloodOf(actor) - actor.gush * GUSH_BLOOD;
@@ -270,7 +303,7 @@ export function updateBody(state, events) {
       for (const key of VITALS) {
         const part = actor.parts[key];
         if (part.hp < part.max * 0.2) {
-          part.hp = Math.min(part.max, part.hp + regen);
+          part.hp = Math.min(effMax(part), part.hp + regen);
         }
       }
       if (
@@ -300,10 +333,13 @@ export function updateBody(state, events) {
     } else {
       checkFlee(state, actor, events);
       if (actor.targetId === null && (actor.hunger === undefined || actor.hunger >= 25)) {
+        // ★自然な戻り（Kenshi は手当てしないと切り傷は戻らない）。寝袋の上では寝床の倍率（4倍）
+        const mult = PLACE_MULT[restPlace(state, actor)] || 1;
         for (const key of PART_KEYS) {
           const part = actor.parts[key];
-          if (part.hp < part.max && !isMissing(actor, key)) {
-            part.hp = Math.min(part.max, part.hp + 0.01);
+          const cap = effMax(part);
+          if (part.hp < cap && !isMissing(actor, key)) {
+            part.hp = Math.min(cap, part.hp + 0.01 * mult);
           }
         }
       }

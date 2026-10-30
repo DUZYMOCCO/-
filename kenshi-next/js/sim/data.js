@@ -20,14 +20,16 @@ export const LOOT_SAFE_DIST = 20;
 export const PART_KEYS = ['head', 'chest', 'stomach', 'lArm', 'rArm', 'lLeg', 'rLeg'];
 export const VITALS = ['head', 'chest', 'stomach'];
 
+// 部位の最大体力 = Kenshi の人間（Greenlander）はどこも 100（kenshi.wiki/w/Greenlander。research/health_spec.md §1）。
+// 前は頭80・腕60・脚70（仮の値）だった。
 export const PART_MAX = {
-  head: 80,
+  head: 100,
   chest: 100,
   stomach: 100,
-  lArm: 60,
-  rArm: 60,
-  lLeg: 70,
-  rLeg: 70,
+  lArm: 100,
+  rArm: 100,
+  lLeg: 100,
+  rLeg: 100,
 };
 
 // 部位の当たりやすさ = Kenshi の人間（Greenlander）の Hit Chance（kenshi.fandom.com/wiki/Damage/Limb_Data）。

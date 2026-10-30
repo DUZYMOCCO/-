@@ -12,6 +12,7 @@ import { createClutter, propsByRole } from './render/clutter.js';
 import { createGreen } from './render/green.js';
 import { GREEN_NAMES, GREEN_DIR, greenEntry } from './render/green_plan.js';
 import { PROP_NAMES, PROP_DIR, CLUB_MODEL, NEST_NAMES, NEST_DIR, NEST_COLORS } from './render/clutter_plan.js';
+import { createBedrolls } from './render/bedrolls.js';
 import { loadHairData, buildHairTemplates } from './render/hair.js';
 import { createInput } from './ui/input.js';
 import { createPortraits } from './render/portraits.js';
@@ -258,6 +259,8 @@ const lights = createLights(sceneCtx.scene, state, models);
 const crossbows = createCrossbows(sceneCtx.scene, models);
 const combatFx = createCombatFx(sceneCtx.scene); // 20:13 チャンバラの火花・受けの構え
 const spawnSites = createSpawnSites(sceneCtx.scene, { debug: spawnDebug, props: propModels, nest: nestModels });
+// 敷いた寝袋
+const bedrolls = createBedrolls(sceneCtx.scene, { noModels: params.get('models') === '0' || params.get('props') === '0' });
 // 遺跡の錆の模様は機械の獣の glb の物を使い回す（余分な読み込みなし）
 if (mechTemplates) spawnSites.setRuinTexture(ruinTextureFrom(mechTemplates));
 const options = createOptions({
@@ -406,6 +409,7 @@ function command(cmd) {
 function applyState(next) {
   state = ensureSpawn(next);
   spawnSites.reset();
+  bedrolls.reset();
   dolls.reset(state);
   nameLabels.clear();
   lights.reset(state);
@@ -490,9 +494,14 @@ hud = createHud({
     const id = selection.get();
     if (id !== null) applyCommand(state, { type: 'treat', targetId: id, actorId: orderee(id) });
   },
-  onBuyMedkitSelected() {
+  onBuyMedkitSelected(tier) {
     const id = selection.get();
-    if (id !== null) applyCommand(state, { type: 'buyMedkit', targetId: id, actorId: orderee(id) });
+    if (id !== null) applyCommand(state, { type: 'buyKit', tier: tier || 'basic', targetId: id, actorId: orderee(id) });
+  },
+  onBedrollSelected(type) {
+    // 寝袋の命令は選んでいる仲間が受ける
+    const id = selection.get();
+    if (id !== null) applyCommand(state, { type, actorId: id });
   },
   onFreeSelected() {
     const id = selection.get();
@@ -822,6 +831,7 @@ function frame(now) {
   combatFx.update(state, dolls, dt, speed);
   crossbows.update(state, dolls, alpha, dt);
   spawnSites.update(state, now / 1000);
+  bedrolls.update(state);
   updateDemandUi();
 
   input.update(dt);

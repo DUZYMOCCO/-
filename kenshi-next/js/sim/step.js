@@ -12,6 +12,7 @@ import { updateAbduct } from './abduct.js';
 import { updateLoot } from './loot.js';
 import { updateStealth, updateAssassination } from './stealth.js';
 import { updateSpawnDirector } from './spawning.js';
+import { updateRest } from './rest.js';
 
 function appendLog(state, events) {
   if (events.length === 0) return;
@@ -41,6 +42,7 @@ export function step(state) {
   trimAttackSlots(state);
   resetAssists(state);
   updateBody(state, events);
+  updateRest(state, events);
   updateNeeds(state, events);
   updateCarry(state, events);
   updateAbduct(state, events);
