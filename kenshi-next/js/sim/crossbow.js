@@ -114,7 +114,7 @@ export function allyInLine(state, shooter, target) {
   return null;
 }
 
-// 誤射を避ける確率（Kenshi: 精密射撃1あたり 1.5%、約67で100%）。ここでは技能で代用。
+// 誤射を避ける確率（誤射回避1あたり 1.5%、約67で100%）
 export function friendlyAvoid(actor, state, target, turret = false) {
   const skills = actor.skills || {};
   const base = turret ? Math.max((skills.turret || 0) * 0.02, (skills.precision || 0) * 0.015) : (skills.precision || 0) * 0.015;
