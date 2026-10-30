@@ -1,4 +1,5 @@
 import { ITEMS, qualityOf } from './items.js';
+import { paletteIdFor } from '../data/faction_map.js';
 
 // 装備枠の空のひな形を作る。
 export const emptyEquip = () => ({
@@ -38,6 +39,32 @@ export function initInventory(actor) {
   return actor;
 }
 
+// 装備・持ち物のうち元の勢力が未記録のものに、いまの持ち主の勢力（パレット勢力 id）を記録する。
+// 見た目（色）のためだけの印で、ダメージ・防御には使わない。古いセーブのものは最初に見た時の持ち主で補う。
+export function ensureOrigins(actor) {
+  if (!actor) return actor;
+  const id = paletteIdFor(actor);
+  const mark = (x) => {
+    if (x && typeof x === 'object' && x.id && !x.originFaction) x.originFaction = id;
+  };
+  for (const v of Object.values(actor.equip || {})) (Array.isArray(v) ? v : [v]).forEach(mark);
+  (actor.inv || []).forEach(mark);
+  return actor;
+}
+
+// 倒れた者などの装備を剥ぎ取って拾う。元の持ち主の勢力を先に記録するので、拾った後も色は元のまま。
+export function lootEquipped(from, to, slot, index) {
+  ensureOrigins(from);
+  const list = from.equip && Object.hasOwn(from.equip, slot) ? from.equip[slot] : undefined;
+  const multi = Array.isArray(list);
+  const obj = multi ? list[index] : list;
+  if (!obj) return { ok: false, reason: '装備がない' };
+  if (multi) list[index] = null;
+  else from.equip[slot] = null;
+  (to.inv ||= []).push(obj);
+  return { ok: true, reason: '', item: obj };
+}
+
 // 主武器とクロスボウの状態を装備枠に合わせる。
 export function syncWeapon(actor) {
   const primary = actor.equip?.weapon?.[0];
@@ -72,6 +99,7 @@ export function canEquip(actor, obj, slotKey, index) {
 export function equipItem(state, actor, invIndex, slotKey, index) {
   initInventory(actor);
   const obj = actor.inv[invIndex];
+  if (obj && !obj.originFaction) obj.originFaction = paletteIdFor(actor); // 出どころ不明の装備は着た人の色
   const slot = slotKey || ITEMS[obj?.id]?.slot;
   const check = canEquip(actor, obj, slot, index);
   if (!check.ok) return check;

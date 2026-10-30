@@ -9,6 +9,8 @@ import { heightAt, FACTIONS, TICK_SEC } from '../sim/index.js';
 import { createBeast, updateBeast, darkenBeast } from './beasts.js';
 import { createMachine, updateMachine, darkenMachine, machineModelFor } from './machines.js';
 import { lookFor, femaleLookFor, createLookCache, dollKindFor } from './doll_textures.js';
+import { createArmorLooks } from './armor_look.js';
+import { ensureOrigins } from '../sim/inventory.js';
 import { shouldShowSquadLabel } from '../ui/labels.js';
 import { SNEAK, sneakPose, sneakProgress, sneakAllowed, sneakTimeScale } from './sneak_pose.js';
 
@@ -281,6 +283,7 @@ function darkenDoll(doll, looks) {
   }
   doll.group.traverse((obj) => {
     if (!obj.isMesh && !obj.isSkinnedMesh) return;
+    if (obj.userData.armor) return; // 防具は共有材質。暗い版への差し替えは armorLooks.darken
     const base = obj.userData.baseColor;
     const paint = (material) => {
       if (material.color) {
@@ -514,6 +517,8 @@ function animateFallback(doll, actor, dt, speed) {
 export function createDollManager(scene, template, lookImages, female) {
   const dolls = new Map();
   const looks = lookImages ? createLookCache(THREE, lookImages) : null;
+  // 防具・服の見た目（勢力色の頂点色メッシュ。材質は全員で共有）
+  const armorLooks = createArmorLooks(THREE);
   const femaleTemplate = female && female.template && female.template.scene ? female.template : null;
   const femaleLooks = femaleTemplate && female.lookImages ? createLookCache(THREE, female.lookImages) : null;
   // 21:xx 髪型ごとの女性の型（tex_f3_beauty の5人をモブの見た目に）。読めなければ無し。
@@ -789,11 +794,16 @@ export function createDollManager(scene, template, lookImages, female) {
     doll.skipDt = 0;
     doll.farFrames = 0;
     if (!doll.fallback && !doll.beast) playAction(doll, actor.anim || 'Idle');
+    if (doll.root && !doll.machine && !doll.beast) {
+      ensureOrigins(actor);
+      armorLooks.apply(doll, actor);
+    }
     return doll;
   }
 
   function disposeDoll(doll) {
     removeIndicator(doll);
+    armorLooks.detach(doll);
     doll.group.traverse((obj) => {
       if (!obj.isMesh && !obj.isSkinnedMesh) return;
       if (obj.userData.shared || obj.userData.look) return;
@@ -821,7 +831,13 @@ export function createDollManager(scene, template, lookImages, female) {
       if (actor.state === 'dead') {
         if (doll.machine) darkenMachine(doll);
         else if (doll.beast) darkenBeast(doll);
-        else darkenDoll(doll, looks);
+        else {
+          darkenDoll(doll, looks);
+          armorLooks.darken(doll);
+        }
+      } else if (doll.root && !doll.machine && !doll.beast) {
+        ensureOrigins(actor);
+        armorLooks.apply(doll, actor); // 装備が変わった時だけ付け直す（指紋が同じなら何もしない）
       }
     }
     for (const [id, doll] of dolls) {
@@ -1088,6 +1104,7 @@ export function createDollManager(scene, template, lookImages, female) {
 
   function dispose() {
     reset({ actors: [] });
+    armorLooks.dispose();
     scene.remove(playerRing);
     scene.remove(targetRing);
     scene.remove(selectionRing);
