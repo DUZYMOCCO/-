@@ -106,6 +106,19 @@ export function createHud(callbacks) {
   pickupButton.addEventListener('click', () => {
     if (hooks.onPickupSelected) hooks.onPickupSelected();
   });
+  // 手当て（血を止めるだけ）と縄ほどき。命令は選んでいる／追っている仲間が受ける
+  const treatButton = make('button', 'hp-action', '手当て');
+  treatButton.type = 'button';
+  treatButton.style.display = 'none';
+  treatButton.addEventListener('click', () => {
+    if (hooks.onTreatSelected) hooks.onTreatSelected();
+  });
+  const freeButton = make('button', 'hp-action', '縄を解く');
+  freeButton.type = 'button';
+  freeButton.style.display = 'none';
+  freeButton.addEventListener('click', () => {
+    if (hooks.onFreeSelected) hooks.onFreeSelected();
+  });
   // 選んだ仲間ひとりの灯り
   const lanternOneButton = make('button', 'hp-action', '灯りを点ける');
   lanternOneButton.type = 'button';
@@ -117,6 +130,8 @@ export function createHud(callbacks) {
   hpActions.appendChild(lanternOneButton);
   hpActions.appendChild(assassinateButton);
   hpActions.appendChild(pickupButton);
+  hpActions.appendChild(treatButton);
+  hpActions.appendChild(freeButton);
   hp.appendChild(hpActions);
 
   const speedBox = make('div', 'hud-speed');
@@ -373,11 +388,21 @@ export function createHud(callbacks) {
       actor.faction === 'player' &&
       actor.id !== player.id &&
       actor.state === 'down' &&
+      !actor.bound && // 縛られている者は先に縄を解く
       (actor.carriedBy === null || actor.carriedBy === undefined);
     if (showPickup !== pickupShown) {
       pickupShown = showPickup;
       pickupButton.style.display = showPickup ? '' : 'none';
     }
+
+    // 手当て: 血を流している味方か捕まっている者。縄: 縛られている者
+    const alive = actor.state !== 'dead';
+    const showTreat =
+      alive && (actor.bleed > 0.05 || actor.gush > 0) && (actor.faction === 'player' || !!actor.bound || !isHostile(state, 'player', actor.faction));
+    const treatDisp = showTreat ? '' : 'none';
+    if (treatButton.style.display !== treatDisp) treatButton.style.display = treatDisp;
+    const freeDisp = alive && actor.bound ? '' : 'none';
+    if (freeButton.style.display !== freeDisp) freeButton.style.display = freeDisp;
   }
 
   function renderAbility(player) {
@@ -501,6 +526,11 @@ export function createHud(callbacks) {
     const bar = make('span', 'pcard-hp-fill');
     track.appendChild(bar);
     node.appendChild(track);
+    // 血の量（減っている時だけ見える細い赤帯）
+    const bloodTrack = make('span', 'pcard-blood');
+    const bloodBar = make('span', 'pcard-blood-fill');
+    bloodTrack.appendChild(bloodBar);
+    node.appendChild(bloodTrack);
     node.addEventListener('click', (event) => {
       event.stopPropagation();
       const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
@@ -513,7 +543,7 @@ export function createHud(callbacks) {
     });
     // 二度押しでページが拡大されないように
     node.addEventListener('dblclick', (event) => event.preventDefault());
-    return { node, img, bar, tag, ratio: -1, tagText: null, kind: '', src: null };
+    return { node, img, bar, tag, bloodTrack, bloodBar, blood: -1, ratio: -1, tagText: null, kind: '', src: null };
   }
 
   function renderCards(actors, state) {
@@ -541,6 +571,11 @@ export function createHud(callbacks) {
       if (!card) continue;
       const info = memberCard(actor, PART_KEYS);
       const ratio = Math.round(info.ratio * 100);
+      if (info.blood !== card.blood) {
+        card.blood = info.blood;
+        card.bloodBar.style.width = info.blood + '%';
+        card.bloodTrack.style.visibility = info.blood < 100 ? 'visible' : 'hidden';
+      }
       if (ratio !== card.ratio) {
         card.ratio = ratio;
         card.bar.style.width = ratio + '%';

@@ -8,6 +8,7 @@ import { resolveCombat, trimAttackSlots, resetAssists } from './combat.js';
 import { updateBody } from './body.js';
 import { updateNeeds } from './needs.js';
 import { updateCarry, syncCarried } from './carry.js';
+import { updateAbduct } from './abduct.js';
 import { updateLoot } from './loot.js';
 import { updateStealth, updateAssassination } from './stealth.js';
 import { updateSpawnDirector } from './spawning.js';
@@ -42,6 +43,7 @@ export function step(state) {
   updateBody(state, events);
   updateNeeds(state, events);
   updateCarry(state, events);
+  updateAbduct(state, events);
   updateLoot(state, events);
   updateSpawns(state, events);
   updateSpawnDirector(state, events); // ランダム出現（state.spawn がある時だけ。別の乱数の流れ）

@@ -42,6 +42,7 @@ function lootableVictim(other, actor) {
   if (other.faction !== 'player') return false;
   if (other.state !== 'down') return false;
   if (other.carriedBy !== null) return false;
+  if (other.bound || other.abducted) return false;
   if (!Array.isArray(other.lootedBy)) other.lootedBy = [];
   if (other.lootedBy.length > 0) return false;
   if ((other.money || 0) <= 0 && !(isThief(actor) && (other.food || 0) > 0)) return false;
@@ -51,6 +52,7 @@ function lootableVictim(other, actor) {
 export function updateLootGoals(state) {
   for (const actor of state.actors) {
     if (actor.faction !== 'bandit') continue;
+    if (actor.spawnKind === 'cannibals') continue; // 人喰いは奪わず、杭へ運ぶ（abduct.js）
     if (actor.isPlayer) continue;
     if (actor.state === 'dead' || actor.state === 'down' || actor.state === 'getup') {
       clearLoot(actor);
@@ -97,6 +99,7 @@ export function updateLoot(state, events) {
   const byId = indexActors(state);
   for (const actor of state.actors) {
     if (actor.faction !== 'bandit') continue;
+    if (actor.spawnKind === 'cannibals') continue; // 人喰いは奪わず、杭へ運ぶ（abduct.js）
     if (actor.state === 'dead' || actor.state === 'down' || actor.state === 'getup') {
       clearLoot(actor);
       continue;

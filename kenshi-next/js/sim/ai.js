@@ -1,5 +1,6 @@
 // 部隊の巡回・うろつき、索敵、加勢、目標選び、出現の補充。
 
+import { abductGoal } from './abduct.js';
 import {
   FACTIONS,
   WEAPONS,
@@ -120,6 +121,11 @@ function holdsPeace(actor, other) {
 }
 
 function bestTarget(state, actor) {
+  // 食べている者は周りを見ない（殴られたら abduct.js が食事を止めて相手を向かせる）
+  if (actor.eatingId !== null && actor.eatingId !== undefined) {
+    actor.waitTargetId = null;
+    return null;
+  }
   if (actor.returning) {
     actor.waitTargetId = null;
     return null;
@@ -210,6 +216,13 @@ export function updateAI(state, events) {
 }
 
 function legFactor(actor) {
+  // 失った脚は戻らない: 片脚で 0.35、両脚で這うだけ（0.12）
+  const m = actor.missing;
+  if (m && m.length) {
+    const lost = (m.includes('lLeg') ? 1 : 0) + (m.includes('rLeg') ? 1 : 0);
+    if (lost >= 2) return 0.12;
+    if (lost === 1) return 0.35;
+  }
   let bad = 0;
   if (actor.parts.lLeg.hp <= 0) bad += 1;
   if (actor.parts.rLeg.hp <= 0) bad += 1;
@@ -280,6 +293,10 @@ function isCompanion(state, actor) {
 
 function companionDest(state, actor, byId) {
   if (!isCompanion(state, actor)) return null;
+  if (actor.holdAt) {
+    if (actor.id === state.playerId) actor.holdAt = null;
+    else return actor.holdAt; // 個別に動かした仲間はそこで待つ
+  }
   const player = byId.get(state.playerId);
   if (!player || player.id === actor.id) return null;
   if (actor.carryingId === player.id) return null;
@@ -443,6 +460,8 @@ function moveActor(state, actor, byId, squadsById) {
     actor.targetId = null;
   }
 
+  // さらい・食事・手当て中は輪になって待たない（運ぶ・食べるほうを先に）
+  if (actor.abduct || actor.eatingId != null || actor.task) actor.waitTargetId = null;
   // 攻撃枠（1人に2人まで）が埋まっている相手の周りで、輪になって待つ
   if (actor.waitTargetId !== null && actor.waitTargetId !== undefined) {
     const wt = byId.get(actor.waitTargetId);
@@ -457,6 +476,21 @@ function moveActor(state, actor, byId, squadsById) {
       return;
     }
     actor.waitTargetId = null;
+  }
+
+  // さらい・食事・手当て・縄ほどきの行き先（abduct.js）
+  if (!actor.moveTo || !actor.task) {
+    const goal = abductGoal(state, actor, byId);
+    if (goal) {
+      const d = Math.hypot(goal.x - actor.x, goal.z - actor.z);
+      if (d <= goal.reach) {
+        if (actor.state !== 'down' && actor.state !== 'getup') actor.state = 'idle';
+        if (actor.eatingId == null) setAnim(actor, 'Idle', state.tick);
+        return;
+      }
+      stepToward(state, actor, goal.x, goal.z, d > 6);
+      return;
+    }
   }
 
   if (actor.lootTargetId !== null && actor.carryingId === null) {

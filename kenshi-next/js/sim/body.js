@@ -2,7 +2,56 @@
 
 import { PART_KEYS, PART_MAX, PART_LABEL, VITALS, setAnim, makeEvent, BLEED_PER_DAMAGE } from './data.js';
 import { drop } from './carry.js';
+import { koLine } from './lines.js';
 import { koPoint, TUNING } from './melee.js';
+
+// 血の量（0〜100）。出血1あたり毎刻 BLOOD_PER_BLEED 減る。★仮の値（research/abduction_recruit.md §6・§7）
+export const BLOOD_MAX = 100;
+export const BLOOD_PER_BLEED = 0.015;
+export const BLOOD_KO = 30; // これを下回ると気絶し、BLOOD_WAKE まで戻るまで起きられない
+export const BLOOD_WAKE = 35;
+export const BLOOD_REGEN = 0.01; // 出血がほぼ止まっている時の戻り（毎刻）
+export const LIMB_LOSS_BLEED = 0.5; // 手足を失った時に普通の出血にも足す分
+// 大出血（gush）: 手足を失うと +1。毎刻 gush*GUSH_BLOOD の血を失い、×GUSH_DECAY で弱まる。
+// 手当てしなければ1本でおよそ 67 の血を失う（2本なら死ぬ）。
+export const LIMB_LOSS_GUSH = 1;
+export const GUSH_BLOOD = 0.1;
+export const GUSH_DECAY = 0.9985;
+export const LIMB_KEYS = ['lArm', 'rArm', 'lLeg', 'rLeg'];
+
+export function bloodOf(actor) {
+  return typeof actor.blood === 'number' ? actor.blood : BLOOD_MAX;
+}
+
+export function isMissing(actor, key) {
+  return Array.isArray(actor.missing) && actor.missing.includes(key);
+}
+
+// 手足を失う（戻らない）。大出血が始まる。右腕なら武器が持てない。
+export function severLimb(state, actor, key, events, how) {
+  if (!LIMB_KEYS.includes(key) || isMissing(actor, key)) return false;
+  if (!Array.isArray(actor.missing)) actor.missing = [];
+  actor.missing.push(key);
+  const part = actor.parts[key];
+  part.hp = -part.max;
+  actor.bleed = (actor.bleed || 0) + LIMB_LOSS_BLEED;
+  actor.gush = (actor.gush || 0) + LIMB_LOSS_GUSH;
+  if (key === 'rArm' && actor.weapon !== 'fists' && actor.weapon !== 'bite') {
+    actor.weaponLost = actor.weapon;
+    actor.weapon = 'fists';
+  }
+  if (events) {
+    events.push(makeEvent(state, 'limb', actor.name + 'の' + PART_LABEL[key] + (how || 'がちぎれた')));
+  }
+  return true;
+}
+
+export function armsLeft(actor) {
+  let n = 0;
+  if (!isMissing(actor, 'lArm')) n += 1;
+  if (!isMissing(actor, 'rArm')) n += 1;
+  return n;
+}
 
 export function isStanding(actor) {
   return actor.state === 'idle' || actor.state === 'move' || actor.state === 'fight';
@@ -53,7 +102,7 @@ function handleSquadDeath(state, actor, events) {
   events.push(makeEvent(state, 'transfer', '操作を' + next.name + 'に移した'));
 }
 
-function kill(state, actor, events) {
+export function kill(state, actor, events, why) {
   if (actor.state === 'dead') return;
   const wasPlayer = actor.isPlayer;
   actor.state = 'dead';
@@ -63,7 +112,7 @@ function kill(state, actor, events) {
   actor.moveTo = null;
   actor.assistDepth = null;
   actor.bleed = 0;
-  events.push(makeEvent(state, 'dead', actor.name + 'は死んだ'));
+  events.push(makeEvent(state, 'dead', actor.name + (why || 'は死んだ')));
   if (actor.faction === 'player') handleSquadDeath(state, actor, events);
   else if (wasPlayer) actor.isPlayer = false;
 }
@@ -79,14 +128,19 @@ export function checkCondition(state, actor, events) {
     kill(state, actor, events);
     return;
   }
-  if (isVitalZero(actor) && actor.state !== 'down') {
+  if (isVitalZero(actor) && actor.state !== 'down') knockOut(state, actor, events);
+}
+
+function knockOut(state, actor, events, why) {
+  {
     actor.state = 'down';
     actor.downTicks = Math.max(150, Math.round(400 - actor.skills.toughness * 3));
     actor.anim = 'Fall';
     actor.animTick = state.tick;
     actor.targetId = null;
     actor.moveTo = null;
-    events.push(makeEvent(state, 'down', actor.name + 'は気絶した'));
+    events.push(makeEvent(state, 'down', actor.name + (why || 'は気絶した')));
+    koLine(state, actor, events, 'ko');
   }
 }
 
@@ -157,6 +211,9 @@ export function applyDamage(state, victim, partKey, dmg, events, bleedMult = 1) 
       makeEvent(state, 'limb', victim.name + 'の' + PART_LABEL[partKey] + 'が使えなくなった')
     );
   }
+  if (part.hp <= -part.max && LIMB_KEYS.includes(partKey) && victim.faction !== 'beast') {
+    severLimb(state, victim, partKey, events);
+  }
   checkCondition(state, victim, events);
 }
 
@@ -170,6 +227,29 @@ export function updateBody(state, events) {
       actor.parts.stomach.hp -= b * 0.02;
       actor.bleed = b * 0.997;
       if (actor.bleed < 0.0005) actor.bleed = 0;
+      actor.blood = bloodOf(actor) - b * BLOOD_PER_BLEED;
+    } else if (bloodOf(actor) < BLOOD_MAX && actor.state !== 'down' && !(actor.gush > 0)) {
+      actor.blood = Math.min(BLOOD_MAX, bloodOf(actor) + BLOOD_REGEN);
+    }
+    if (actor.gush > 0) {
+      actor.blood = bloodOf(actor) - actor.gush * GUSH_BLOOD;
+      actor.gush *= GUSH_DECAY;
+      if (actor.gush < 0.01) actor.gush = 0;
+    }
+    if (actor.bleed > 0 && actor.bleed < 0.02 && !(actor.gush > 0) && bloodOf(actor) < BLOOD_MAX) {
+      actor.blood = Math.min(BLOOD_MAX, bloodOf(actor) + BLOOD_REGEN * 0.5);
+    }
+    if (bloodOf(actor) <= 0) {
+      actor.blood = 0;
+      kill(state, actor, events, 'は血を失って死んだ');
+      continue;
+    }
+    if (bloodOf(actor) < 15 && !actor.dyingSaid) {
+      actor.dyingSaid = true;
+      koLine(state, actor, events, 'dying');
+    } else if (bloodOf(actor) > 40 && actor.dyingSaid) actor.dyingSaid = false;
+    if (bloodOf(actor) < BLOOD_KO && isStanding(actor)) {
+      knockOut(state, actor, events, 'は血を失って倒れた');
     }
 
     let dead = false;
@@ -193,7 +273,14 @@ export function updateBody(state, events) {
           part.hp = Math.min(part.max, part.hp + regen);
         }
       }
-      if (!actor.coma && actor.downTicks <= 0 && crucialAtLeast(actor, 0.2)) {
+      if (
+        !actor.coma &&
+        !actor.bound &&
+        !actor.abducted &&
+        bloodOf(actor) >= BLOOD_WAKE &&
+        actor.downTicks <= 0 &&
+        crucialAtLeast(actor, 0.2)
+      ) {
         actor.state = 'getup';
         actor.getupTicks = TUNING.getupTicks;
         setAnim(actor, 'GetUp', state.tick);
@@ -207,6 +294,7 @@ export function updateBody(state, events) {
         // ログが埋まらないよう、自分の部隊か近く（40m以内）の起き上がりだけ記録する。
         if (getupNearPlayer(state, actor)) {
           events.push(makeEvent(state, 'getup', actor.name + 'は起き上がった'));
+          if (actor.faction === 'player') koLine(state, actor, events, 'wake');
         }
       }
     } else {
@@ -214,7 +302,7 @@ export function updateBody(state, events) {
       if (actor.targetId === null && (actor.hunger === undefined || actor.hunger >= 25)) {
         for (const key of PART_KEYS) {
           const part = actor.parts[key];
-          if (part.hp < part.max) {
+          if (part.hp < part.max && !isMissing(actor, key)) {
             part.hp = Math.min(part.max, part.hp + 0.01);
           }
         }

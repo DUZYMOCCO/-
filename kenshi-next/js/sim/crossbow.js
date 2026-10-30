@@ -213,6 +213,8 @@ function hitActor(state, bolt, victim, shooter, events) {
   if (shooter && hostile) {
     grow(shooter, 0.02);
     victim.lastAttackerId = shooter.id;
+    if (shooter.faction === 'player') victim.foughtPlayer = true;
+    if (victim.faction === 'player') shooter.foughtPlayer = true;
     if (isStanding(victim) && victim.targetId === null && (victim.isPlayer ? victim.moveTo === null : true)) {
       victim.targetId = shooter.id;
       victim.state = 'fight';

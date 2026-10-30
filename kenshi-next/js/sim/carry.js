@@ -45,6 +45,7 @@ export function pickup(state, carrier, target, events) {
     return false;
   }
   if (!isCarriable(target)) return false;
+  if (target.bound) return false; // 杭に縛られている者は、先に縄を解く
   if (distBetween(carrier, target) > CARRY_RANGE + 0.1) return false;
 
   carrier.carryingId = target.id;

@@ -156,3 +156,66 @@ export function planSiteClutter(site) {
     return { role, x: round(Math.cos(ang) * d), z: round(Math.sin(ang) * d), rot: round(rnd(seed, 60 + k) * 6.28), scale: 1, tilt: role === 'cart_wheel' ? 1 : 0 };
   });
 }
+
+// 人食いの集落の小物（assets/nest/、Gemini の平らな色の低ポリ glb。Y が上、底が原点、m 単位）。
+export const NEST_DIR = 'assets/nest/';
+export const NEST_NAMES = [
+  'prisoner_pole',
+  'iron_cage',
+  'wooden_cage',
+  'bone_pile',
+  'cooking_pit',
+  'skull_totem',
+  'drying_rack',
+  'butcher_table',
+  'hide_tent',
+];
+
+// 人食いの集落の置き場所（野営地の中心からの相対）。杭は sim の site.poles（abduct.js）に合わせる。
+// 焚き火の場所に調理の穴、杭の外側に骨の山・檻・干し台、入口の頭骨の柱。
+export function planNestProps(site) {
+  if (!site || site.type !== 'cannibal_camp') return [];
+  let seed = Math.round(site.x * 7) * 131 + Math.round(site.z * 7);
+  for (const ch of String(site.id)) seed = (seed * 31 + ch.charCodeAt(0)) | 0;
+  const out = [];
+  for (const p of site.poles || []) {
+    const x = round(p.x - site.x);
+    const z = round(p.z - site.z);
+    out.push({ role: 'prisoner_pole', x, z, rot: round(Math.atan2(-x, -z)) }); // 中心を向く
+  }
+  out.push({ role: 'cooking_pit', x: 0, z: 0, rot: 0 });
+  const ring = ['bone_pile', 'iron_cage', 'wooden_cage', 'drying_rack', 'butcher_table', 'bone_pile'];
+  const base = rnd(seed, 90) * Math.PI * 2;
+  ring.forEach((role, k) => {
+    const ang = base + (k / ring.length) * Math.PI * 2 + rnd(seed, 91 + k) * 0.3;
+    const d = role === 'butcher_table' ? 2.6 : 9.6 + rnd(seed, 100 + k) * 0.8;
+    out.push({ role, x: round(Math.cos(ang) * d), z: round(Math.sin(ang) * d), rot: round(rnd(seed, 110 + k) * 6.28) });
+  });
+  for (const side of [-1, 1]) {
+    out.push({ role: 'skull_totem', x: round(12.2), z: round(side * 1.6), rot: Math.PI / 2 });
+  }
+  return out;
+}
+
+// nest の glb は書き出しで色が抜けている（全部 0.8 の灰色）ので、材質の名前で色を付け直す。
+// 値は作った時の Blender の Base Color（線形）。金属感は環境マップが無いと黒くなるので弱める。
+export const NEST_COLORS = {
+  M_WoodDark: [0.16, 0.11, 0.07],
+  M_WoodLight: [0.32, 0.24, 0.16],
+  M_WoodWorn: [0.24, 0.2, 0.16],
+  M_Iron: [0.12, 0.12, 0.13],
+  M_IronRust: [0.22, 0.13, 0.09],
+  M_Rope: [0.46, 0.38, 0.24],
+  M_Bone: [0.74, 0.7, 0.6],
+  M_BoneDark: [0.5, 0.45, 0.36],
+  M_Blood: [0.22, 0.02, 0.02],
+  M_BloodFresh: [0.45, 0.03, 0.03],
+  M_Meat: [0.32, 0.09, 0.07],
+  M_Stone: [0.32, 0.28, 0.24],
+  M_StoneDark: [0.18, 0.16, 0.15],
+  M_Ash: [0.07, 0.07, 0.07],
+  M_HideTan: [0.45, 0.34, 0.22],
+  M_HidePale: [0.58, 0.5, 0.4],
+  M_HideDark: [0.24, 0.16, 0.11],
+  M_Cloth: [0.38, 0.32, 0.25],
+};

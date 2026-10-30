@@ -4,6 +4,7 @@ import { WORLD_HALF, makeEvent } from './data.js';
 import { drop } from './carry.js';
 import { assassinationTargetExists } from './stealth.js';
 import { answerDemand } from './spawning.js';
+import { startTask } from './abduct.js';
 
 function clampWorld(v) {
   if (v < -WORLD_HALF + 1) return -WORLD_HALF + 1;
@@ -49,11 +50,34 @@ export function applyCommand(state, cmd) {
     // 野盗の通行料に答える（pay: true で払う、false で断る）
     if (!state.spawn || !state.spawn.demand) return false;
     next.pay = !!cmd.pay;
+  } else if (cmd.type === 'treat' || cmd.type === 'free') {
+    // 手当て（血を止めるだけ）／縄をほどく（abduct.js）
+    const id = Number(cmd.targetId);
+    if (!Number.isFinite(id)) return false;
+    next.targetId = id;
   } else if (cmd.type !== 'stop' && cmd.type !== 'drop') {
     return false;
   }
+  // actorId: 選んでいる・追っている仲間に命令する（無ければ操作中の者）
+  if (ROUTED.has(cmd.type) && cmd.actorId !== undefined && cmd.actorId !== null) {
+    const aid = Number(cmd.actorId);
+    if (!Number.isFinite(aid)) return false;
+    next.actorId = aid;
+  }
   state.commandQueue.push(next);
   return true;
+}
+
+const ROUTED = new Set(['move', 'attack', 'pickup', 'stop', 'drop', 'treat', 'free']);
+
+// 命令を受ける者: actorId が生きている自分の部隊の者ならその者、でなければ操作中の者
+export function commandActor(state, cmd, player) {
+  if (cmd.actorId === undefined || cmd.actorId === null || !ROUTED.has(cmd.type)) return player;
+  const ids = Array.isArray(state.squadIds) && state.squadIds.length ? state.squadIds : [state.playerId];
+  if (!ids.includes(cmd.actorId)) return player;
+  const a = findActor(state, cmd.actorId);
+  if (!a || a.state === 'dead' || a.faction !== 'player') return player;
+  return a;
 }
 
 function findPlayer(state) {
@@ -129,8 +153,21 @@ function applyOne(state, player, cmd, events) {
     player.carryTargetId = null;
     return;
   }
+  if (cmd.type === 'treat' || cmd.type === 'free') {
+    if (player.state === 'down' || player.state === 'getup') return;
+    if (player.carryingId !== null) return;
+    const target = findActor(state, cmd.targetId);
+    if (!target) return;
+    clearAssassination(player);
+    player.carryTargetId = null;
+    startTask(state, player, cmd.type, target);
+    return;
+  }
   if (cmd.type === 'move') {
     clearAssassination(player);
+    player.task = null;
+    // 操作中でない仲間は、行った先で待つ（止まれ＝stop でまた付いてくる）
+    player.holdAt = player.id !== state.playerId ? { x: clampWorld(cmd.x), z: clampWorld(cmd.z) } : null;
     player.moveTo = { x: clampWorld(cmd.x), z: clampWorld(cmd.z) };
     player.targetId = null;
     player.carryTargetId = null;
@@ -167,6 +204,7 @@ function applyOne(state, player, cmd, events) {
     if (!target) return;
     if (target.state !== 'down' && target.state !== 'dead') return;
     if (target.carriedBy !== null) return;
+    if (target.bound) return; // 先に縄を解く
     player.carryTargetId = target.id;
     player.targetId = null;
     player.moveTo = null;
@@ -183,6 +221,8 @@ function applyOne(state, player, cmd, events) {
   }
   if (cmd.type === 'stop') {
     clearAssassination(player);
+    player.task = null;
+    player.holdAt = null;
     player.moveTo = null;
     player.targetId = null;
     player.carryTargetId = null;
@@ -197,6 +237,6 @@ export function applyQueuedCommands(state, events) {
   const player = findPlayer(state);
   for (const cmd of queue) {
     if (!player) break;
-    applyOne(state, player, cmd, events);
+    applyOne(state, commandActor(state, cmd, player), cmd, events);
   }
 }

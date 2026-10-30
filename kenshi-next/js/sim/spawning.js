@@ -5,6 +5,7 @@
 // 乱数は state.spawn.rng という別の流れだけを使う（state.rngState は進めない）。
 // state.spawn が無ければ何もしない（createWorld の既定は無し。ゲームは main.js で有効にする）。
 
+import { makePoles } from './abduct.js';
 import { rand, randInt, randRange } from './rng.js';
 import { makeActor, TOWN1, TOWN2 } from './world.js';
 import { giveCrossbow, START_BOLTS } from './crossbow.js';
@@ -348,6 +349,7 @@ function spawnSite(state, events, kind, forcedType, at) {
     region: regionAt(x, z).id,
     seedId: randInt(state, 0, 1 << 20),
   };
+  if (typeKey === 'cannibal_camp') site.poles = makePoles(x, z, site.seedId); // 捕まえた者を縛る杭
   const squad = buildSquad(state, st.squad, x, z, {
     siteId: id,
     phase: st.kind === 'camp' ? 'camp' : 'nest',

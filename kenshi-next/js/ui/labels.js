@@ -84,8 +84,15 @@ export function conditionList(actor) {
     out.push('死亡');
     return out;
   }
-  if (actor.state === 'down' || actor.state === 'getup') out.push('気絶');
-  if (typeof actor.bleed === 'number' && actor.bleed > BLEED_SHOW) out.push('出血');
+  if (actor.bound) out.push(actor.meal ? '食われている' : '杭に縛られている');
+  else if (actor.state === 'down' || actor.state === 'getup') out.push('気絶');
+  if (actor.gush > 0) out.push('大出血');
+  else if (typeof actor.bleed === 'number' && actor.bleed > BLEED_SHOW) out.push('出血');
+  if (typeof actor.blood === 'number' && actor.blood < 100) out.push('血 ' + Math.max(0, Math.round(actor.blood)));
+  const MISS = { lArm: '左腕', rArm: '右腕', lLeg: '左脚', rLeg: '右脚' };
+  if (Array.isArray(actor.missing) && actor.missing.length) {
+    out.push(actor.missing.map((k) => MISS[k] || k).join('・') + 'なし');
+  }
   return out;
 }
 

@@ -9,7 +9,7 @@ import { createCameraRig } from './render/camera.js';
 import { loadDollTemplate, createDollManager } from './render/dolls.js';
 import { loadDollTextures, femaleEnabled, BEAUTY_LOOKS, MOB_TEX_DIR, MOB_TEX_NAMES, setMobLooksReady } from './render/doll_textures.js';
 import { createClutter, propsByRole } from './render/clutter.js';
-import { PROP_NAMES, PROP_DIR, CLUB_MODEL } from './render/clutter_plan.js';
+import { PROP_NAMES, PROP_DIR, CLUB_MODEL, NEST_NAMES, NEST_DIR, NEST_COLORS } from './render/clutter_plan.js';
 import { loadHairData, buildHairTemplates } from './render/hair.js';
 import { createInput } from './ui/input.js';
 import { createPortraits } from './render/portraits.js';
@@ -149,7 +149,24 @@ async function loadPropModels() {
     return {};
   }
 }
-const [groundTex, modelInfo, propLoaded] = await Promise.all([loadGroundTextures(), loadRoleModels(), loadPropModels()]);
+async function loadNestModels() {
+  if (params.get('models') === '0' || params.get('props') === '0') return {};
+  try {
+    const loaded = await loadModels(NEST_NAMES, NEST_DIR);
+    for (const baked of Object.values(loaded)) {
+      for (const part of baked.parts) {
+        const c = NEST_COLORS[part.material.name];
+        if (c && part.material.color) part.material.color.setRGB(c[0], c[1], c[2]);
+        if ('metalness' in part.material) part.material.metalness = Math.min(part.material.metalness, 0.25);
+      }
+    }
+    return loaded;
+  } catch (err) {
+    console.warn('人食いの集落の glb を読めませんでした。', err);
+    return {};
+  }
+}
+const [groundTex, modelInfo, propLoaded, nestModels] = await Promise.all([loadGroundTextures(), loadRoleModels(), loadPropModels(), loadNestModels()]);
 const models = modelInfo.models;
 const propModels = propsByRole(propLoaded);
 if (propLoaded[CLUB_MODEL]) models.club = propLoaded[CLUB_MODEL];
@@ -214,7 +231,7 @@ const nameLabels = createNameLabels(dolls);
 const lights = createLights(sceneCtx.scene, state, models);
 const crossbows = createCrossbows(sceneCtx.scene, models);
 const combatFx = createCombatFx(sceneCtx.scene); // 20:13 チャンバラの火花・受けの構え
-const spawnSites = createSpawnSites(sceneCtx.scene, { debug: spawnDebug, props: propModels });
+const spawnSites = createSpawnSites(sceneCtx.scene, { debug: spawnDebug, props: propModels, nest: nestModels });
 const options = createOptions({
   onShowNames(on) {
     dolls.setShowNames(on);
@@ -335,6 +352,25 @@ function setSpeed(n) {
   if (hud) hud.setSpeed(n);
 }
 
+// 命令を受ける仲間: 最後に選んだ／追っている部隊の者（cam2 の弱点の修正）。
+// 敵や他人を選んでいる間も、その前に選んでいた仲間が受ける。
+let orderId = null;
+function isSquadAlive(id) {
+  if (id === null || id === undefined) return false;
+  const ids = Array.isArray(state.squadIds) && state.squadIds.length ? state.squadIds : [state.playerId];
+  if (!ids.includes(id)) return false;
+  const a = state.actors.find((e) => e.id === id);
+  return !!a && a.state !== 'dead' && a.faction === 'player';
+}
+function orderee(targetId) {
+  const sel = selection.get();
+  if (isSquadAlive(sel) && sel !== targetId) return sel;
+  // 敵や他人を選んでいる時は、その前に選んでいた仲間
+  if (sel !== null && isSquadAlive(orderId) && orderId !== targetId) return orderId;
+  if (isSquadAlive(followId) && followId !== targetId) return followId;
+  return null;
+}
+
 function command(cmd) {
   return applyCommand(state, cmd);
 }
@@ -352,6 +388,7 @@ function applyState(next) {
   rig.setFollow(followParam);
   freeCam = !followParam;
   followId = null;
+  orderId = null;
   portraits.reset();
   rig.apply();
   marker.visible = false;
@@ -411,7 +448,7 @@ hud = createHud({
   },
   onAttackSelected() {
     const id = selection.get();
-    if (id !== null) applyCommand(state, { type: 'attack', targetId: id });
+    if (id !== null) applyCommand(state, { type: 'attack', targetId: id, actorId: orderee(id) });
   },
   onAssassinateSelected() {
     const id = selection.get();
@@ -419,7 +456,15 @@ hud = createHud({
   },
   onPickupSelected() {
     const id = selection.get();
-    if (id !== null) applyCommand(state, { type: 'pickup', targetId: id });
+    if (id !== null) applyCommand(state, { type: 'pickup', targetId: id, actorId: orderee(id) });
+  },
+  onTreatSelected() {
+    const id = selection.get();
+    if (id !== null) applyCommand(state, { type: 'treat', targetId: id, actorId: orderee(id) });
+  },
+  onFreeSelected() {
+    const id = selection.get();
+    if (id !== null) applyCommand(state, { type: 'free', targetId: id, actorId: orderee(id) });
   },
 });
 
@@ -441,7 +486,7 @@ const input = createInput({
   onActorTap(id) {
     const result = selection.onTapActor(state, id);
     if (result.action === 'attack') {
-      applyCommand(state, { type: 'attack', targetId: id });
+      applyCommand(state, { type: 'attack', targetId: id, actorId: orderee(id) });
     }
   },
   onGroundTap() {
@@ -460,7 +505,7 @@ const input = createInput({
   },
   edgeScroll: edgeParam,
   onMove(x, z) {
-    applyCommand(state, { type: 'move', x, z });
+    applyCommand(state, { type: 'move', x, z, actorId: orderee(null) });
     marker.position.set(x, heightAt(x, z) + 0.07, z);
     marker.visible = true;
     markerUntil = performance.now() + 1000;
@@ -738,6 +783,7 @@ function frame(now) {
   const alpha = speed > 0 ? Math.min(1, Math.max(0, accumulator)) : 1;
   dolls.sync(state);
   selection.validate(state);
+  if (isSquadAlive(selection.get())) orderId = selection.get();
   dolls.setSelected(selection.get());
   dolls.update(dt, speed, state, alpha, prevMap, sceneCtx.camera);
   combatFx.update(state, dolls, dt, speed);

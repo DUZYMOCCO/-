@@ -320,6 +320,24 @@ function makeFallbackDoll(actor, color) {
   };
 }
 
+// 失った手足（sim の actor.missing）は骨を縮めて見えなくする。アニメの更新の後に毎回かける。
+const LIMB_BONES = { lArm: 'upperarm_l', rArm: 'upperarm_r', lLeg: 'thigh_l', rLeg: 'thigh_r', head: 'Head' };
+function hideMissing(doll, actor) {
+  const missing = actor.missing;
+  if (!missing || !missing.length || !doll.group) return;
+  if (!doll.limbBones) {
+    doll.limbBones = {};
+    doll.group.traverse((o) => {
+      if (!o.isBone) return;
+      for (const [k, name] of Object.entries(LIMB_BONES)) if (o.name === name) doll.limbBones[k] = o;
+    });
+  }
+  for (const k of missing) {
+    const b = doll.limbBones[k];
+    if (b) b.scale.setScalar(0.001);
+  }
+}
+
 function makeGlbDoll(actor, template, color, lookMaterial) {
   const root = SkeletonUtils.clone(template.scene);
   if (lookMaterial) {
@@ -858,6 +876,7 @@ export function createDollManager(scene, template, lookImages, female) {
         _sphere.center.y += 0.9;
         onScreen = _frustum.intersectsSphere(_sphere);
       }
+      if (actor.eaten) onScreen = false; // 食い尽くされた亡骸は描かない
       doll.group.visible = onScreen;
       if (!onScreen && doll.beast) continue;
       if (!doll.beast) updateIndicator(doll, actor, state, camera);
@@ -867,6 +886,14 @@ export function createDollManager(scene, template, lookImages, female) {
       }
       if (doll.fallback) {
         animateFallback(doll, actor, dt, speed);
+        if (doll.parts && Array.isArray(actor.missing)) {
+          const m = actor.missing;
+          doll.parts.armL.visible = !m.includes('lArm');
+          doll.parts.armR.visible = !m.includes('rArm');
+          doll.parts.legL.visible = !m.includes('lLeg');
+          doll.parts.legR.visible = !m.includes('rLeg');
+          if (doll.parts.head) doll.parts.head.visible = !m.includes('head');
+        }
         continue;
       }
 
@@ -889,6 +916,8 @@ export function createDollManager(scene, template, lookImages, female) {
           doll.skipDt = 0;
         }
       }
+
+      hideMissing(doll, actor);
 
       // 隠密の姿勢: 体を少し低くして前に傾ける。普通に戻ったら元に戻す。
       if (doll.root) {

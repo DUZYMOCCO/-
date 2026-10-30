@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { heightAt } from '../sim/index.js';
-import { planSiteClutter } from './clutter_plan.js';
+import { planSiteClutter, planNestProps } from './clutter_plan.js';
 import { modelGroup } from './models.js';
 
 const KIND_COLORS = { caravan: 0xffc84a, thieves: 0xb070ff, raiders: 0xff4a3a, beasts: 0x9a6a3a };
@@ -51,8 +51,11 @@ function groundY(cx, cz, dx, dz, cy) {
   return heightAt(cx + dx, cz + dz) - cy;
 }
 
-function buildCamp(site, props) {
+function buildCamp(site, props, nestModels) {
   const glbProps = props && Object.keys(props).length ? props : null;
+  // 人食いの集落は assets/nest の glb（杭・檻・骨の山・調理の穴・皮の天幕）で飾る
+  const nest = site.type === 'cannibal_camp' && nestModels && nestModels.prisoner_pole ? nestModels : null;
+  const tentSpots = [];
   const r = looksRng(siteSeed(site));
   const cy = heightAt(site.x, site.z);
   const geos = [];
@@ -66,6 +69,10 @@ function buildCamp(site, props) {
     const x = Math.cos(a) * d;
     const z = Math.sin(a) * d;
     const h = 2.2 + r() * 0.6;
+    if (nest && nest.hide_tent) {
+      tentSpots.push({ x, z, a });
+      continue;
+    }
     geos.push(painted(new THREE.ConeGeometry(2.1, h, 4, 1), cloth[i % 3], x, groundY(site.x, site.z, x, z, cy) + h / 2, z, a + Math.PI / 4));
     // 入口の黒い布
     geos.push(
@@ -81,11 +88,11 @@ function buildCamp(site, props) {
     geos.push(painted(new THREE.BoxGeometry(0.8, 0.12, 1.9), 0x5a4a3a, x, groundY(site.x, site.z, x, z, cy) + 0.06, z, a));
   }
   // 焚き火の石と薪
-  for (let i = 0; i < 8; i += 1) {
+  for (let i = 0; i < (nest ? 0 : 8); i += 1) {
     const a = (i / 8) * Math.PI * 2;
     geos.push(painted(new THREE.DodecahedronGeometry(0.22, 0), 0x6a6660, Math.cos(a) * 0.85, 0.12, Math.sin(a) * 0.85, a));
   }
-  for (let i = 0; i < 3; i += 1) {
+  for (let i = 0; i < (nest ? 0 : 3); i += 1) {
     geos.push(painted(new THREE.CylinderGeometry(0.08, 0.08, 1.2, 5), 0x3a2a1a, 0, 0.15, 0, (i * Math.PI) / 3, 0, Math.PI / 2));
   }
   // 木箱（野盗の分け前）。小物の glb が読めた時は glb を置く（下）
@@ -116,9 +123,20 @@ function buildCamp(site, props) {
     new THREE.ConeGeometry(0.45, 1.1, 6),
     new THREE.MeshBasicMaterial({ color: 0xff9a3a, transparent: true, opacity: 0.9 })
   );
-  fire.position.set(0, 0.6, 0);
+  fire.position.set(0, nest ? 0.45 : 0.6, 0);
+  if (nest) fire.scale.setScalar(0.7);
   const group = new THREE.Group();
   group.add(mesh, fire);
+  if (nest) {
+    const place = (baked, x, z, rot) => {
+      const g = modelGroup(baked); // 共有（disposeEntry で消さない）
+      g.position.set(x, groundY(site.x, site.z, x, z, cy) - 0.03, z);
+      g.rotation.y = rot;
+      group.add(g);
+    };
+    for (const it of planNestProps(site)) if (nest[it.role]) place(nest[it.role], it.x, it.z, it.rot);
+    for (const t of tentSpots) place(nest.hide_tent, t.x, t.z, -t.a + Math.PI / 2);
+  }
   if (glbProps) {
     for (const it of planSiteClutter(site)) {
       const baked = glbProps[it.role];
@@ -241,7 +259,7 @@ export function createSpawnSites(scene, opts) {
       seen.add(site.id);
       let e = built.get(site.id);
       if (!e) {
-        e = site.kind === 'nest' ? buildNest(site) : buildCamp(site, opts && opts.props);
+        e = site.kind === 'nest' ? buildNest(site) : buildCamp(site, opts && opts.props, opts && opts.nest);
         e.state = null;
         e.ring = debug ? leashRing(site) : null;
         root.add(e.group);

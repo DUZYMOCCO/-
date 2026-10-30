@@ -15,7 +15,7 @@ import {
   weaponBleed,
 } from './data.js';
 import { rand, randRange, randInt, chance } from './rng.js';
-import { applyDamage, isStanding } from './body.js';
+import { applyDamage, isStanding, armsLeft } from './body.js';
 import { drop } from './carry.js';
 import { rangedMode } from './crossbow.js';
 import {
@@ -49,7 +49,8 @@ function pickPart(state, actor) {
   for (const key of PART_KEYS) {
     let m = hm && hm[key] ? hm[key] : 1;
     if (actor.parts[key].hp < 0) m = Math.min(m, 2);
-    w[key] = PART_WEIGHTS[key] * m;
+    // 失った手足には当たらない
+    w[key] = actor.missing && actor.missing.includes(key) ? 0 : PART_WEIGHTS[key] * m;
     total += w[key];
   }
   let r = rand(state) * total;
@@ -261,6 +262,8 @@ function landHit(state, attacker, target, raw, events, broken) {
   const dmg = raw * toughnessMult(target.skills.toughness);
   applyDamage(state, target, partKey, dmg, events, weaponBleed(attacker.weapon));
   target.lastAttackerId = attacker.id;
+  if (attacker.faction === 'player') target.foughtPlayer = true;
+  if (target.faction === 'player') attacker.foughtPlayer = true;
   stats(state).hits += 1;
   pushFx(state, broken ? 'break' : 'hit', attacker, target);
 
@@ -406,6 +409,8 @@ export function resolveCombat(state, events) {
     const countering = busy(state, actor, 'counterUntil');
     if (incoming.has(actor.id) && !countering) continue;
     if (countTargeters(state, target.id, actor.id) >= ATTACK_SLOT_LIMIT) continue;
+    // 両腕を失うと殴れない（噛むものは別）
+    if (actor.missing && actor.weapon !== 'bite' && armsLeft(actor) === 0) continue;
     startSwing(state, actor, target, events);
     incoming.add(target.id);
   }

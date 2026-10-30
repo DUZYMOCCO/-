@@ -141,6 +141,9 @@ export function memberCard(actor, partKeys) {
   if (actor.state === 'dead') {
     tag = '死亡';
     kind = 'dead';
+  } else if (actor.bound) {
+    tag = actor.meal ? '食われ中' : '縛られ';
+    kind = 'dead';
   } else if (actor.carriedBy !== null && actor.carriedBy !== undefined) {
     tag = '担がれ';
     kind = 'down';
@@ -151,5 +154,10 @@ export function memberCard(actor, partKeys) {
     tag = '空腹';
     kind = 'warn';
   }
-  return { ratio, tag, kind };
+  if (!tag && typeof actor.bleed === 'number' && actor.bleed > 0.3) {
+    tag = '出血';
+    kind = 'warn';
+  }
+  const blood = typeof actor.blood === 'number' ? Math.max(0, Math.round(actor.blood)) : 100;
+  return { ratio, tag, kind, blood };
 }
