@@ -19,6 +19,23 @@ import {
 import { heightAt } from './terrain.js';
 import { resolveCircle } from './collide.js';
 import { initSpawn } from './spawning.js';
+import { greenK, GREEN } from '../render/green_plan.js';
+
+function moveOutOfGreen(o) {
+  if (greenK(o.x, o.z) < 0.2) return;
+  const a0 = Math.atan2(o.z - GREEN.z, o.x - GREEN.x);
+  for (let k = 0; k < 8; k += 1) {
+  const a = a0 + k * 0.8; // 外が世界の端なら向きを変える
+  for (let r = Math.hypot(o.x - GREEN.x, o.z - GREEN.z); r < 140; r += 2) {
+    const x = GREEN.x + Math.cos(a) * r, z = GREEN.z + Math.sin(a) * r;
+    if (greenK(x, z) < 0.2 && Math.abs(x) < 195 && Math.abs(z) < 195) {
+      o.x = Math.round(x * 100) / 100;
+      o.z = Math.round(z * 100) / 100;
+      return;
+    }
+  }
+  }
+}
 
 export const TOWN1 = { id: 'town1', name: '灯守の町', x: -110, z: 60, r: 30 };
 export const TOWN2 = { id: 'town2', name: '錆の宿場', x: 120, z: 110, r: 22 };
@@ -502,6 +519,9 @@ export function createWorld(seed, opts) {
   state.buildings = buildBuildings(state);
   state.rocks = buildRocks(state, road);
   state.props = buildProps(state, road, state.rocks, state.buildings);
+  // 翠緑の盆地の中の荒野の岩・枯れ木は、数を変えずに盆地の外側へ押し出す（乱数の順も変えない）
+  for (const r of state.rocks) moveOutOfGreen(r);
+  for (const p of state.props) if (p.kind === 'tree') moveOutOfGreen(p);
 
   const mid = { x: 5, z: 85 };
   const farRoad = { x: 105, z: 106 };

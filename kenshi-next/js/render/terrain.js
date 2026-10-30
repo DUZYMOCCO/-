@@ -9,6 +9,13 @@ import { groundMix, shackPieces, doorSideToward, WALL_H, wallColorFor } from './
 const ROOF_MOON = '#7f8fb0';
 const ROOF_NIGHT_GLOW = 0.32;
 import { instancedModel, bakeStatic } from './models.js';
+import { greenK, pathDist, streamDist, PALETTE } from './green_plan.js';
+
+// 翠緑の盆地の地面の色
+const GREEN_LUSH = new THREE.Color(PALETTE.lush);
+const GREEN_DRY = new THREE.Color(PALETTE.dry);
+const GREEN_PATH_C = new THREE.Color(PALETTE.path);
+const GREEN_MUD = new THREE.Color('#4a5a34');
 
 const SAND_BRIGHT = new THREE.Color('#e2c891');
 const SAND_LIGHT = new THREE.Color('#cdb07a');
@@ -234,6 +241,7 @@ function scatter(state, rng, count, minScale, maxScale) {
     }
     if (blocked) continue;
     if (distanceToRoad(x, z, roads) < 5) continue;
+    if (greenK(x, z) > 0.2) continue; // 盆地の中に荒野の枯れ草・小石は置かない
     out.push({
       x,
       z,
@@ -290,15 +298,18 @@ function makeGroundMaterial(tex, renderer) {
     uTintR: { value: TINT_ROCKY },
     uTintD: { value: TINT_DIRT },
     uNormalK: { value: 0.85 },
+    uGLush: { value: new THREE.Color(PALETTE.lush) },
+    uGDry: { value: new THREE.Color(PALETTE.dry) },
+    uGPath: { value: new THREE.Color(PALETTE.path) },
   };
   mat.userData.groundUniforms = uniforms;
   mat.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, uniforms);
     shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', '#include <common>\nattribute vec3 gmix;\nvarying vec3 vGMix;\nvarying vec3 vGWorld;\nvarying vec3 vGNormalW;')
+      .replace('#include <common>', '#include <common>\nattribute vec3 gmix;\nattribute float ggreen;\nvarying float vGreen;\nvarying vec3 vGMix;\nvarying vec3 vGWorld;\nvarying vec3 vGNormalW;')
       .replace(
         '#include <begin_vertex>',
-        '#include <begin_vertex>\nvGMix = gmix;\nvGWorld = (modelMatrix * vec4(transformed, 1.0)).xyz;\nvGNormalW = normalize(mat3(modelMatrix) * objectNormal);'
+        '#include <begin_vertex>\nvGMix = gmix;\nvGreen = ggreen;\nvGWorld = (modelMatrix * vec4(transformed, 1.0)).xyz;\nvGNormalW = normalize(mat3(modelMatrix) * objectNormal);'
       );
     shader.fragmentShader = shader.fragmentShader
       .replace(
@@ -309,6 +320,8 @@ uniform sampler2D tRockyA; uniform sampler2D tRockyN;
 uniform sampler2D tDirtA; uniform sampler2D tDirtN;
 uniform vec3 uTintS; uniform vec3 uTintR; uniform vec3 uTintD;
 uniform float uNormalK;
+uniform vec3 uGLush; uniform vec3 uGDry; uniform vec3 uGPath;
+varying float vGreen;
 varying vec3 vGMix; varying vec3 vGWorld; varying vec3 vGNormalW;
 vec2 gUvA; vec2 gUvB; float gK;`
       )
@@ -328,6 +341,15 @@ vec2 gUvA; vec2 gUvB; float gK;`
   vec3 d = mix(texture2D(tDirtA, gUvA * 1.2).rgb, texture2D(tDirtA, gUvB * 1.4).rgb, 0.4) * uTintD;
   vec3 albedo = s * w.x + r * w.y + d * w.z;
   albedo *= 0.9 + 0.2 * gK;
+  if (vGreen > 0.001) {
+    // 盆地: 砂の絵の明暗だけを借りて緑に塗る。道は土の色。
+    float lum = dot(mix(texture2D(tSandA, gUvA).rgb, texture2D(tSandA, gUvB * 1.7).rgb, 0.5), vec3(0.333));
+    vec3 grn = mix(uGLush, uGDry, smoothstep(0.3, 0.75, gK + w.y * 0.6)) * (0.62 + 0.75 * lum);
+    vec3 pth = uGPath * (0.55 + 0.9 * dot(d, vec3(0.333)));
+    vec3 gal = mix(grn, pth, w.z);
+    albedo = mix(albedo, gal, vGreen);
+    diffuseColor.rgb = mix(diffuseColor.rgb, vec3(1.0), vGreen * 0.5);
+  }
   diffuseColor.rgb *= albedo;
 }`
       )
@@ -348,7 +370,7 @@ vec2 gUvA; vec2 gUvB; float gK;`
 }`
       );
   };
-  mat.customProgramCacheKey = () => 'ground-tex-v1';
+  mat.customProgramCacheKey = () => 'ground-tex-v2-green';
   return mat;
 }
 
@@ -438,6 +460,7 @@ export function createTerrain(scene, state, opts) {
 
   const colors = new Float32Array(position.count * 3);
   const gmix = new Float32Array(position.count * 3);
+  const ggreen = new Float32Array(position.count);
   const dirtPlaces = places.filter((p) => p && p.kind !== 'nest' && p !== (state.places && state.places.nest));
   const tmp = new THREE.Color();
   const rockTmp = new THREE.Color();
@@ -486,8 +509,13 @@ export function createTerrain(scene, state, opts) {
       tmp.lerp(rockTmp, rockAmount * 0.8);
     }
 
+    // 翠緑の盆地: 緑の重み（砂漠から柔らかく移る）と、盆地への土の小道
+    const gk = greenK(x, z);
+    const gpd = pathDist(x, z);
+    const gsd = streamDist(x, z);
+    ggreen[i] = gk;
     // 道の色は残す
-    const rd = distanceToRoad(x, z, roads);
+    const rd = Math.min(distanceToRoad(x, z, roads), gpd + 0.8);
     if (rd < 4) {
       const k = Math.max(0, 1 - rd / 4) * 0.6;
       tmp.lerp(ROAD_COLOR, k);
@@ -501,6 +529,15 @@ export function createTerrain(scene, state, opts) {
         const k = Math.max(0, 1 - d / p.r) * 0.3;
         tmp.lerp(TOWN_FLOOR, k);
       }
+    }
+
+    if (gk > 0) {
+      rockTmp.copy(GREEN_LUSH).lerp(GREEN_DRY, clamp01(t * 0.9 + steep * 0.8));
+      rockTmp.multiplyScalar(0.85 + m * 0.25);
+      if (gsd < 5) rockTmp.lerp(GREEN_MUD, (1 - gsd / 5) * 0.7);
+      const pk = gpd < 3.2 ? (1 - smoothstep(1.4, 3.2, gpd)) : 0;
+      rockTmp.lerp(GREEN_PATH_C, pk);
+      tmp.lerp(rockTmp, gk);
     }
 
     if (gtex) {
@@ -526,6 +563,7 @@ export function createTerrain(scene, state, opts) {
 
   geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
   if (gtex) geometry.setAttribute('gmix', new THREE.BufferAttribute(gmix, 3));
+  if (gtex) geometry.setAttribute('ggreen', new THREE.BufferAttribute(ggreen, 1));
 
   const groundMaterial = gtex
     ? makeGroundMaterial(gtex, o.renderer)

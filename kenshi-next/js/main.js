@@ -9,6 +9,8 @@ import { createCameraRig } from './render/camera.js';
 import { loadDollTemplate, createDollManager } from './render/dolls.js';
 import { loadDollTextures, femaleEnabled, BEAUTY_LOOKS, MOB_TEX_DIR, MOB_TEX_NAMES, setMobLooksReady } from './render/doll_textures.js';
 import { createClutter, propsByRole } from './render/clutter.js';
+import { createGreen } from './render/green.js';
+import { GREEN_NAMES, GREEN_DIR, greenEntry } from './render/green_plan.js';
 import { PROP_NAMES, PROP_DIR, CLUB_MODEL, NEST_NAMES, NEST_DIR, NEST_COLORS } from './render/clutter_plan.js';
 import { loadHairData, buildHairTemplates } from './render/hair.js';
 import { createInput } from './ui/input.js';
@@ -89,6 +91,15 @@ if (params.get('load') === 'auto') {
   }
 }
 ensureSpawn(state);
+// ?tp=green: 部隊を翠緑の盆地の入口へ移す（確認用）
+if (params.get('tp') === 'green') {
+  const e = greenEntry();
+  const pl = state.actors.filter((a) => a.faction === 'player');
+  pl.forEach((a, i) => {
+    a.x = e.x + (i % 3) * 1.4;
+    a.z = e.z + Math.floor(i / 3) * 1.4;
+  });
+}
 if (!loadedAuto) {
   for (let i = 0; i < skipTicks; i += 1) step(state);
 }
@@ -166,12 +177,23 @@ async function loadNestModels() {
     return {};
   }
 }
-const [groundTex, modelInfo, propLoaded, nestModels] = await Promise.all([loadGroundTextures(), loadRoleModels(), loadPropModels(), loadNestModels()]);
+async function loadGreenModels() {
+  if (params.get('green') === '0' || params.get('models') === '0') return null;
+  try {
+    return await loadModels(GREEN_NAMES, GREEN_DIR);
+  } catch (err) {
+    console.warn('盆地の glb を読めませんでした。', err);
+    return null;
+  }
+}
+const [groundTex, modelInfo, propLoaded, nestModels, greenModels] = await Promise.all([loadGroundTextures(), loadRoleModels(), loadPropModels(), loadNestModels(), loadGreenModels()]);
 const models = modelInfo.models;
 const propModels = propsByRole(propLoaded);
 if (propLoaded[CLUB_MODEL]) models.club = propLoaded[CLUB_MODEL];
 const terrain = createTerrain(sceneCtx.scene, state, { ground: groundTex, models, renderer: sceneCtx.renderer, fenceGlb: !!propModels.fence });
 const clutter = createClutter(sceneCtx.scene, state, propModels);
+// 翠緑の盆地（草・花・木・小川・橋・柵）。iPhone 向けに草は既定で半分。?green=hi で全部、?green=0 で無し。
+const green = greenModels ? createGreen(sceneCtx.scene, greenModels, { density: params.get('green') === 'hi' ? 1 : 0.5 }) : null;
 
 // 影を落とすのは人物・建物・岩だけ。地面は受けるだけ、枯れ木・廃墟・小物は落とさない。
 terrain.trees.castShadow = false;
@@ -572,6 +594,7 @@ gameApi.cam = (x, z, dist, yawDeg, pitchDeg, lift) => {
 gameApi.follow = () => rig.getFollow();
 gameApi.followId = () => followId;
 gameApi.returnFollow = () => returnFollow();
+gameApi.green = () => (green ? { ...green.stats, visible: green.visibleChunks(), visTris: green.visibleTris() } : null);
 gameApi.camTarget = () => ({ x: rig.target.x, z: rig.target.z, fx: rig.focus.x, fz: rig.focus.z });
 gameApi.squadCentre = () => squadCentreNow();
 gameApi.portraits = () => portraits.count();
@@ -810,6 +833,7 @@ function frame(now) {
     if (n.x !== t.x || n.z !== t.z) rig.setTarget(n.x, n.z);
   }
   rig.apply(dt);
+  if (green) green.update(rig.target.x, rig.target.z, sceneCtx.camera.position.y - rig.target.y);
   // カメラを動かした後に置く（1フレーム遅れの揺れを出さない）。
   sceneCtx.camera.updateMatrixWorld();
   nameLabels.update(state, sceneCtx.camera, selection.get(), options.getShowNames());
