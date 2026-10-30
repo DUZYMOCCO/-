@@ -9,7 +9,7 @@ import { createBeast, updateBeast, darkenBeast } from './beasts.js';
 import { createMachine, updateMachine, darkenMachine, machineModelFor } from './machines.js';
 import { lookFor, femaleLookFor, createLookCache, dollKindFor } from './doll_textures.js';
 import { shouldShowSquadLabel } from '../ui/labels.js';
-import { SNEAK, sneakPose, sneakProgress, sneakAllowed } from './sneak_pose.js';
+import { SNEAK, sneakPose, sneakProgress, sneakAllowed, sneakHands } from './sneak_pose.js';
 
 const CLIP_FALLBACK = ['Idle', 'Walk', 'Run', 'Punch', 'Attack', 'Hit', 'Fall', 'GetUp'];
 // 画面外の人形を描画・影の両方から外すための使い回しオブジェクト（毎フレーム new しない）
@@ -458,10 +458,10 @@ function restoreSneakBones(doll) {
   }
 }
 
-function applySneakBones(doll, pose, armed) {
+function applySneakBones(doll, pose, armed, hands) {
   if (!doll.sneakBones) {
     doll.sneakBones = {};
-    for (const name of ['pelvis', 'spine_01', 'spine_02', 'spine_03', 'neck_01', 'thigh_l', 'thigh_r', 'calf_l', 'calf_r', 'foot_l', 'foot_r', 'upperarm_l', 'upperarm_r', 'lowerarm_l', 'lowerarm_r']) {
+    for (const name of ['pelvis', 'spine_01', 'spine_02', 'spine_03', 'neck_01', 'head', 'thigh_l', 'thigh_r', 'calf_l', 'calf_r', 'foot_l', 'foot_r', 'upperarm_l', 'upperarm_r', 'lowerarm_l', 'lowerarm_r', 'hand_l', 'hand_r']) {
       const bone = doll.root.getObjectByName(name);
       if (bone) doll.sneakBones[name] = { bone, quaternion: new THREE.Quaternion(), position: new THREE.Vector3(), saved: false };
     }
@@ -493,9 +493,15 @@ function applySneakBones(doll, pose, armed) {
       rotate(`upperarm_${side}`, pose.arm);
       rotate(`lowerarm_${side}`, pose.elbow);
     }
+    if (hands) {
+      rotate(`upperarm_${side}`, hands[side].upper);
+      rotate(`lowerarm_${side}`, hands[side].lower);
+      rotate(`hand_${side}`, hands[side].hand);
+    }
   }
   for (const name of ['spine_01', 'spine_02', 'spine_03']) rotate(name, pose.spine);
-  rotate('neck_01', pose.neck);
+  rotate('neck_01', pose.neck + (bones.head ? 0 : pose.head));
+  rotate('head', pose.head + (bones.neck_01 ? 0 : pose.neck));
 }
 
 function animateFallback(doll, actor, dt, speed) {
@@ -1002,7 +1008,11 @@ export function createDollManager(scene, template, lookImages, female) {
       }
 
       hideMissing(doll, actor);
-      applySneakBones(doll, pose, !!actor.crossbow || (actor.weapon && actor.weapon !== 'fists' && actor.weapon !== 'bite'));
+      const action = doll.currentAction;
+      const duration = action && action.getClip().duration;
+      const phase = duration > 0 ? action.time / duration : 0;
+      const hands = sneaking && actor.carryingId == null ? sneakHands(actor.anim, phase, pose.weight) : null;
+      applySneakBones(doll, pose, !!actor.crossbow || (actor.weapon && actor.weapon !== 'fists' && actor.weapon !== 'bite'), hands);
 
       // root の変形はよろけ専用。隠密は上の骨の姿勢で表現する。
       if (doll.root) {
