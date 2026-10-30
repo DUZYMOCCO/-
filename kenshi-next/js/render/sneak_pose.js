@@ -23,3 +23,8 @@ export function sneakProgress(progress, active, interrupted, dt) {
 export function sneakAllowed(actor, reacting = false) {
   return !!actor.sneaking && !reacting && !actor.resting && !['dead', 'down', 'getup'].includes(actor.state) && ['Idle', 'Walk', 'Run'].includes(actor.anim);
 }
+
+// velocity is world units per simulation second; mixer supplies the game speed multiplier.
+export function sneakTimeScale(velocity, duration, distance, renderScale = 1) {
+  return distance > 0 && renderScale > 0 ? Math.max(0.5, Math.min(2.2, Math.max(0, velocity) * duration / (distance * renderScale))) : 0;
+}

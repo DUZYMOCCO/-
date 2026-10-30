@@ -4,12 +4,12 @@ import * as THREE from 'three';
 import { hitPose } from '../sim/hitreact.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import { heightAt, FACTIONS } from '../sim/index.js';
+import { heightAt, FACTIONS, TICK_SEC } from '../sim/index.js';
 import { createBeast, updateBeast, darkenBeast } from './beasts.js';
 import { createMachine, updateMachine, darkenMachine, machineModelFor } from './machines.js';
 import { lookFor, femaleLookFor, createLookCache, dollKindFor } from './doll_textures.js';
 import { shouldShowSquadLabel } from '../ui/labels.js';
-import { SNEAK, sneakPose, sneakProgress, sneakAllowed, sneakHands } from './sneak_pose.js';
+import { SNEAK, sneakPose, sneakProgress, sneakAllowed, sneakTimeScale } from './sneak_pose.js';
 
 const CLIP_FALLBACK = ['Idle', 'Walk', 'Run', 'Punch', 'Attack', 'Hit', 'Fall', 'GetUp'];
 // 画面外の人形を描画・影の両方から外すための使い回しオブジェクト（毎フレーム new しない）
@@ -209,7 +209,23 @@ export function loadDollTemplate(url) {
     const loader = new GLTFLoader();
     loader.load(
       source,
-      (gltf) => resolve(gltf),
+      async (gltf) => {
+        try {
+          const kind = /doll_f\.glb(?:\?|$)/.test(source) ? 'female' : 'male';
+          for (const motion of ['walk', 'idle']) {
+            const response = await fetch(`assets/anims/sneak_${motion}_${kind}.json`);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const data = await response.json();
+            const clip = THREE.AnimationClip.parse(data);
+            if (!clip.uuid) clip.uuid = THREE.MathUtils.generateUUID();
+            clip.userData = { distance: data.metadata.distance };
+            gltf.animations.push(clip);
+          }
+        } catch (err) {
+          console.warn('隠密アニメーションを読み込めませんでした。', err);
+        }
+        resolve(gltf);
+      },
       undefined,
       (err) => reject(err)
     );
@@ -389,7 +405,7 @@ function makeGlbDoll(actor, template, color, lookMaterial) {
   };
 }
 
-function playAction(doll, name) {
+function playAction(doll, name, interrupted = false) {
   if (!doll.actions) return;
   let key = name;
   if (!doll.actions[key]) {
@@ -426,6 +442,7 @@ function playAction(doll, name) {
   }
 
   next.reset();
+  next.paused = false;
   next.enabled = true;
   next.setEffectiveWeight(1);
   next.setEffectiveTimeScale(1);
@@ -439,69 +456,12 @@ function playAction(doll, name) {
     }
     previous.stopFading();
     previous.setEffectiveWeight(1);
-    previous.crossFadeTo(next, 0.2, false);
+    previous.crossFadeTo(next, (key.startsWith('Sneak') || doll.animName?.startsWith('Sneak')) ? ((interrupted || ['Fall', 'GetUp', 'Hit', 'Attack', 'Punch'].includes(key)) ? SNEAK.exitFast : SNEAK.duration) : 0.2, false);
   } else {
     if (previous) previous.stop();
   }
   doll.currentAction = next;
   doll.animName = key;
-}
-
-// mixer の間引きフレームでも前回の加算を取り除いてから再適用する。
-function restoreSneakBones(doll) {
-  if (!doll.sneakBones) return;
-  for (const entry of Object.values(doll.sneakBones)) {
-    if (!entry.saved) continue;
-    entry.bone.quaternion.copy(entry.quaternion);
-    entry.bone.position.copy(entry.position);
-    entry.saved = false;
-  }
-}
-
-function applySneakBones(doll, pose, armed, hands) {
-  if (!doll.sneakBones) {
-    doll.sneakBones = {};
-    for (const name of ['pelvis', 'spine_01', 'spine_02', 'spine_03', 'neck_01', 'head', 'thigh_l', 'thigh_r', 'calf_l', 'calf_r', 'foot_l', 'foot_r', 'upperarm_l', 'upperarm_r', 'lowerarm_l', 'lowerarm_r', 'hand_l', 'hand_r']) {
-      const bone = doll.root.getObjectByName(name);
-      if (bone) doll.sneakBones[name] = { bone, quaternion: new THREE.Quaternion(), position: new THREE.Vector3(), saved: false };
-    }
-  }
-  const bones = doll.sneakBones;
-  function rotate(name, angle) {
-    const entry = bones[name];
-    if (!entry || !angle) return;
-    if (!entry.saved) {
-      entry.quaternion.copy(entry.bone.quaternion);
-      entry.position.copy(entry.bone.position);
-      entry.saved = true;
-    }
-    entry.bone.rotateX(angle);
-  }
-  if (pose.drop && bones.pelvis) {
-    const entry = bones.pelvis;
-    entry.quaternion.copy(entry.bone.quaternion);
-    entry.position.copy(entry.bone.position);
-    entry.saved = true;
-    // 両 GLB の pelvis の親 root は X=-90°。親の Z が人形の高さ。
-    entry.bone.position.z -= pose.drop;
-  }
-  for (const side of ['l', 'r']) {
-    rotate(`thigh_${side}`, pose.thigh);
-    rotate(`calf_${side}`, pose.calf);
-    rotate(`foot_${side}`, pose.foot);
-    if (!armed) {
-      rotate(`upperarm_${side}`, pose.arm);
-      rotate(`lowerarm_${side}`, pose.elbow);
-    }
-    if (hands) {
-      rotate(`upperarm_${side}`, hands[side].upper);
-      rotate(`lowerarm_${side}`, hands[side].lower);
-      rotate(`hand_${side}`, hands[side].hand);
-    }
-  }
-  for (const name of ['spine_01', 'spine_02', 'spine_03']) rotate(name, pose.spine);
-  rotate('neck_01', pose.neck + (bones.head ? 0 : pose.head));
-  rotate('head', pose.head + (bones.neck_01 ? 0 : pose.neck));
 }
 
 function animateFallback(doll, actor, dt, speed) {
@@ -983,13 +943,15 @@ export function createDollManager(scene, template, lookImages, female) {
       const busy = ONE_SHOT.has(doll.animName) && doll.currentAction && doll.currentAction.isRunning();
       const sneaking = sneakAllowed(actor, reacting || busy);
       const interrupted = !!actor.sneaking && !sneaking;
-      doll.sneakProgress = sneakProgress(doll.sneakProgress || 0, sneaking, interrupted, dt);
-      const pose = sneakPose(doll.sneakProgress);
-      restoreSneakBones(doll);
       if (doll.mixer) {
-        const rate = actor.anim === 'Run' ? SNEAK.runRate : SNEAK.walkRate;
-        const sneakSlow = (actor.anim === 'Walk' || actor.anim === 'Run') ? 1 - pose.weight * (1 - rate) : 1;
-        doll.mixer.timeScale = Math.max(0, speed) * sneakSlow;
+        doll.mixer.timeScale = Math.max(0, speed);
+        const walk = doll.actions.SneakWalk;
+        if (walk) {
+          const prev = prevMap && prevMap.get(actor.id);
+          const velocity = prev ? Math.hypot(actor.x - prev.x, actor.z - prev.z) / TICK_SEC : 0;
+          const clip = walk.getClip();
+          walk.setEffectiveTimeScale(sneakTimeScale(velocity, clip.duration, clip.userData.distance, actor.renderScale || 1));
+        }
         const dx = doll.group.position.x - camX;
         const dz = doll.group.position.z - camZ;
         if (camera && (!onScreen || dx * dx + dz * dz > FAR_DIST2)) {
@@ -1008,12 +970,6 @@ export function createDollManager(scene, template, lookImages, female) {
       }
 
       hideMissing(doll, actor);
-      const action = doll.currentAction;
-      const duration = action && action.getClip().duration;
-      const phase = duration > 0 ? action.time / duration : 0;
-      const hands = sneaking && actor.carryingId == null ? sneakHands(actor.anim, phase, pose.weight) : null;
-      applySneakBones(doll, pose, !!actor.crossbow || (actor.weapon && actor.weapon !== 'fists' && actor.weapon !== 'bite'), hands);
-
       // root の変形はよろけ専用。隠密は上の骨の姿勢で表現する。
       if (doll.root) {
         const k = Math.min(1, dt * (reacting ? 16 : 8));
@@ -1024,7 +980,8 @@ export function createDollManager(scene, template, lookImages, female) {
       // 20:13 チャンバラ: よろけ（Stagger）は Hit の動きをゆっくり流す（速さは combat_fx.js）。
       // 受け（Block）は専用の動きが無いので Idle の上に combat_fx.js が腕の構えを重ねる。
       const simAnim = actor.anim === 'Stagger' ? 'Hit' : actor.anim;
-      const desired = doll.actions[simAnim] ? simAnim : 'Idle';
+      const sneakAnim = actor.anim === 'Idle' ? 'SneakIdle' : 'SneakWalk';
+      const desired = sneaking && doll.actions[sneakAnim] ? sneakAnim : (doll.actions[simAnim] ? simAnim : 'Idle');
       let go = null;
       if (desired !== doll.animName) {
         const busy =
@@ -1046,7 +1003,7 @@ export function createDollManager(scene, template, lookImages, female) {
       ) {
         go = desired;
       }
-      if (go) playAction(doll, go);
+      if (go) playAction(doll, go, interrupted);
       doll.animTick = actor.animTick;
     }
 
@@ -1185,3 +1142,4 @@ export function createDollManager(scene, template, lookImages, female) {
     },
   };
 }
+
