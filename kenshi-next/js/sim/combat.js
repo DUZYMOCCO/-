@@ -18,6 +18,8 @@ import {
 import { rand, randRange, randInt, chance } from './rng.js';
 import { applyDamage, isStanding, armsLeft } from './body.js';
 import { drop } from './carry.js';
+import { HIT_REACTS, immuneToStagger, isHeavyHit, isRearHit, pickHitReact, mixHash, dodgeChanceOf } from './hitreact.js';
+import { actorRadius, blockedAt } from './collide.js';
 import { rangedMode } from './crossbow.js';
 import {
   KENSHI,
@@ -278,34 +280,68 @@ function landHit(state, attacker, target, raw, events, broken) {
     cancelSwing(target);
     return;
   }
-  const impact = impactOf(dmg, weaponOf(attacker));
+  if (immuneToStagger(target)) return; // 獣・機械獣はよろけない（そのまま噛みつき続ける）
+  const heavy = broken || isHeavyHit(dmg, target.skills.toughness);
+  const rear = isRearHit(target, attacker);
+  const kind = pickHitReact(heavy, rear, partKey, mixHash(attacker.id, target.id, state.tick));
+  const inHeavy = busy(state, target, 'staggerUntil');
   const canStagger = !busy(state, target, 'staggerGuardUntil');
-  if ((broken || impact >= staggerThreshold(target)) && canStagger) {
-    // よろけ: 1秒受けられず振れない。その後しばらくは再びよろけない（連続よろけ防止）
-    target.staggerUntil = state.tick + TUNING.staggerTicks;
+  if (heavy && canStagger) {
+    // 重いよろけ: 受けられず振れない。その後しばらくは再びよろけない（連続よろけ防止）
+    const ticks = HIT_REACTS[kind].ticks;
+    target.staggerUntil = state.tick + ticks;
     target.staggerGuardUntil = target.staggerUntil + TUNING.staggerGuardTicks;
     target.flinchUntil = target.staggerUntil;
     target.flinchGuardUntil = target.staggerGuardUntil;
     target.blockUntil = 0;
+    target.hitReact = { kind, tick: state.tick, until: target.staggerUntil };
     cancelSwing(target);
     target.anim = 'Stagger';
     target.animTick = state.tick;
+    pushBack(state, target, attacker, kind);
     stats(state).staggers += 1;
+  } else if (inHeavy) {
+    // 重いよろけの最中の軽い当たり: 姿勢に小さく重ねるだけ（重いよろけは延びない）
+    target.hitReactLight = { kind: rear ? 'light_rear' : 'light_front', tick: state.tick, until: state.tick + 3 };
   } else if (!busy(state, target, 'flinchGuardUntil')) {
-    // ひるみ 0.3秒。振りかぶり中なら振りは潰れる。0.5秒は再ひるみしない
+    // 軽いよろけ（ひるみ）0.3秒。振りかぶり中なら振りは潰れる。0.5秒は再ひるみしない
+    const lk = rear ? 'light_rear' : 'light_front';
     target.flinchUntil = state.tick + TUNING.flinchTicks;
     target.flinchGuardUntil = target.flinchUntil + TUNING.flinchGuardTicks;
     if (target.swing && target.swing.impactTick > state.tick) cancelSwing(target);
+    target.hitReact = { kind: lk, tick: state.tick, until: target.flinchUntil };
     target.anim = 'Hit';
     target.animTick = state.tick;
+    pushBack(state, target, attacker, lk);
     stats(state).flinches += 1;
   }
+}
+
+// よろけで押される（前のよろけは打った者から離れる向き、後ろのよろけは前へつんのめる＝同じ向き）。壁は抜けない
+function pushBack(state, target, attacker, kind) {
+  const dist = HIT_REACTS[kind].push;
+  const dx = target.x - attacker.x;
+  const dz = target.z - attacker.z;
+  const d = Math.hypot(dx, dz);
+  if (d < 1e-4 || !(dist > 0)) return;
+  const nx = target.x + (dx / d) * dist;
+  const nz = target.z + (dz / d) * dist;
+  if (blockedAt(state, nx, nz, actorRadius(target))) return;
+  target.x = nx;
+  target.z = nz;
 }
 
 // 当たりの瞬間。受けは1撃ごとに判定する（2人がかりでも、構え直しが間に合えば両方受ける）。
 function resolveStrike(state, attacker, target, events) {
   const raw = rawDamage(state, attacker);
   const standing = target.state !== 'down' && target.state !== 'getup';
+  // 避け: 重いよろけの最中だけ（受けられない代わりに、身のこなしで身をかわすことがある）
+  if (standing && target.state !== 'dead' && busy(state, target, 'staggerUntil') && !immuneToStagger(target) &&
+      (mixHash(target.id, attacker.id, state.tick * 7 + 3) % 1000) / 1000 < dodgeChanceOf(target)) {
+    stats(state).dodges = (stats(state).dodges || 0) + 1;
+    target.dodgeTick = state.tick;
+    return;
+  }
   if (standing && canBlock(state, target) &&
       chance(state, blockChance(defenseLevel(target), attackLevel(attacker)))) {
     const s = stats(state);

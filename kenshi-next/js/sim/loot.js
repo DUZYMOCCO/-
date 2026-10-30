@@ -150,6 +150,12 @@ export function updateLoot(state, events) {
     }
     const amount = target.money || 0;
     target.money = 0;
+    // 手当ての道具も持っていく（売り物の箱は商人の荷として残す）
+    const kits = target.medkit || 0;
+    if (kits > 0) {
+      target.medkit = 0;
+      actor.medkit = (actor.medkit || 0) + kits;
+    }
     if (!Array.isArray(target.lootedBy)) target.lootedBy = [];
     target.lootedBy.push(actor.id);
     if (!Array.isArray(actor.lootedBy)) actor.lootedBy = [];

@@ -109,3 +109,5 @@ export {
 export * from './abduct.js';
 export { KO_LINES, WAKE_LINES, EATEN_LINES, lineFor, speakerOf } from './lines.js';
 export { BLOOD_MAX, BLOOD_KO, BLOOD_PER_BLEED, LIMB_LOSS_BLEED, severLimb, bloodOf, isMissing } from './body.js';
+export * from './hitreact.js';
+export * from './medkit.js';

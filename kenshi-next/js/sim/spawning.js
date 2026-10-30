@@ -6,6 +6,7 @@
 // state.spawn が無ければ何もしない（createWorld の既定は無し。ゲームは main.js で有効にする）。
 
 import { makePoles } from './abduct.js';
+import { MEDKIT_USES, MERCHANT_STOCK } from './medkit.js';
 import { rand, randInt, randRange } from './rng.js';
 import { makeActor, TOWN1, TOWN2 } from './world.js';
 import { giveCrossbow, START_BOLTS } from './crossbow.js';
@@ -217,6 +218,13 @@ function buildSquad(state, typeKey, x, z, extra) {
     actor.spawnHome = { x, z };
     if (role === 'merchant') actor.money = randInt(state, 300, 800); // ★仮（Kenshi の隊商の頭は 2000〜8000）
     if (role === 'thief') actor.money = randInt(state, 5, 30);
+    // 手当ての道具: 商人は売り物と自分の分、護衛・頭目は自分の分を持つ（乱数は使わない）
+    if (role === 'merchant') {
+      actor.medkitStock = MERCHANT_STOCK;
+      actor.medkit = MEDKIT_USES;
+    }
+    if (role === 'caravan_guard' && i % 2 === 1) actor.medkit = 3;
+    if (role === 'raider_boss' || role === 'cannibal_chief') actor.medkit = 2;
     if (role === 'raider_boss' || role === 'cannibal_chief') {
       actor.skills.attack += 4;
       actor.skills.defense += 4;

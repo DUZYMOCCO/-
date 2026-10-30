@@ -158,6 +158,7 @@ export function makeActor(state, faction, x, z, squadId, isPlayer) {
     bleed: 0,
     hunger: 80,
     food: faction === 'player' ? 3 : 0,
+    medkit: faction === 'player' ? 5 : 0, // 手当ての道具の残り回数（medkit.js）
     movedRun: false,
     movedCarry: false,
     movedThisTick: false,

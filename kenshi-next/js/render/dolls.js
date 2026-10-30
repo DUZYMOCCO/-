@@ -1,6 +1,7 @@
 // 人形の生成・複製・アニメ・勢力色。glb が読めない時は手続き人形で代用する。
 
 import * as THREE from 'three';
+import { hitPose } from '../sim/hitreact.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { heightAt, FACTIONS } from '../sim/index.js';
@@ -936,9 +937,12 @@ export function createDollManager(scene, template, lookImages, female) {
           actor.state !== 'dead' &&
           actor.state !== 'down' &&
           actor.state !== 'getup';
-        const k = Math.min(1, dt * 8);
-        doll.root.rotation.x += ((sneaking ? 0.25 : 0) - doll.root.rotation.x) * k;
-        doll.root.scale.y += ((sneaking ? 0.88 : 1) - doll.root.scale.y) * k;
+        // よろけ6種（sim/hitreact.js）の姿勢を重ねる。よろけ中は速く追う
+        const hp = hitPose(actor, state ? state.tick : 0);
+        const reacting = hp.lean !== 0 || hp.squash !== 1;
+        const k = Math.min(1, dt * (reacting ? 16 : 8));
+        doll.root.rotation.x += ((sneaking ? 0.25 : 0) + hp.lean - doll.root.rotation.x) * k;
+        doll.root.scale.y += ((sneaking ? 0.88 : 1) * hp.squash - doll.root.scale.y) * k;
       }
 
       // 20:13 チャンバラ: よろけ（Stagger）は Hit の動きをゆっくり流す（速さは combat_fx.js）。

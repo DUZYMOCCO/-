@@ -5,11 +5,12 @@ import { makeEvent, distBetween } from './data.js';
 import { kill, severLimb, isMissing, bloodOf } from './body.js';
 import { pickup, drop } from './carry.js';
 import { koLine } from './lines.js';
+import { kitHolder, useKit } from './medkit.js';
 
 export const TICKS_PER_SEC = 10; // TICK_SEC = 0.1（実時間）
 export const EAT_ORDER = ['lLeg', 'rLeg', 'lArm', 'rArm', 'chest', 'head'];
 export const EAT_TICKS = { lLeg: 200, rLeg: 200, lArm: 200, rArm: 200, chest: 300, head: 300 }; // 手足20秒・胴と頭30秒
-export const TREAT_TICKS = 50; // 手当て 5秒（包帯は数えない ★）
+export const TREAT_TICKS = 50; // 手当て 5秒。手当ての道具を1つ使う（medkit.js）
 export const UNTIE_TICKS = 40; // 縄をほどく 4秒
 export const TASK_REACH = 1.6;
 export const CLAIM_RANGE = 30; // 人喰いが倒れた者を拾いに行く距離
@@ -321,6 +322,7 @@ export function startTask(state, actor, type, target) {
   if (!actor || !target || actor === target) return false;
   if (!standing(actor)) return false;
   if (type === 'treat' && !(target.bleed > 0) && !(target.gush > 0)) return false;
+  if (type === 'treat' && !kitHolder(state, actor)) return false; // 道具が無ければ手当てできない
   if (type === 'free' && !target.bound) return false;
   if (target.state === 'dead') return false;
   actor.task = { type, targetId: target.id, ticks: 0 };
@@ -348,6 +350,11 @@ function updateTasks(state, byId, events) {
     const need = a.task.type === 'treat' ? TREAT_TICKS : UNTIE_TICKS;
     if (a.task.ticks < need) continue;
     if (a.task.type === 'treat') {
+      if (!useKit(state, a)) {
+        events.push(makeEvent(state, 'treat', a.name + 'は手当ての道具を切らしている'));
+        a.task = null;
+        continue;
+      }
       t.bleed = 0;
       t.gush = 0;
       events.push(makeEvent(state, 'treat', a.name + 'が' + t.name + 'の血を止めた'));

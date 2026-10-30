@@ -490,6 +490,10 @@ hud = createHud({
     const id = selection.get();
     if (id !== null) applyCommand(state, { type: 'treat', targetId: id, actorId: orderee(id) });
   },
+  onBuyMedkitSelected() {
+    const id = selection.get();
+    if (id !== null) applyCommand(state, { type: 'buyMedkit', targetId: id, actorId: orderee(id) });
+  },
   onFreeSelected() {
     const id = selection.get();
     if (id !== null) applyCommand(state, { type: 'free', targetId: id, actorId: orderee(id) });

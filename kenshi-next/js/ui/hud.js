@@ -1,6 +1,7 @@
 // 時刻・速度・状態・部位HP・ログ・追従・fps・ゲームオーバーのHTML窓口。
 
 import { PART_KEYS, PART_LABEL, FACTIONS, isHostile, formatClock } from '../sim/index.js';
+import { partyKits, canBuyKit, MEDKIT_PRICE } from '../sim/medkit.js';
 import { canAssassinate } from './selection.js';
 import { factionLine, conditionList, weaponLine } from './labels.js';
 import { formatMoney } from './money.js';
@@ -113,6 +114,13 @@ export function createHud(callbacks) {
   treatButton.addEventListener('click', () => {
     if (hooks.onTreatSelected) hooks.onTreatSelected();
   });
+  // 商人から手当ての道具を買う
+  const buyKitButton = make('button', 'hp-action', '手当ての道具を買う');
+  buyKitButton.type = 'button';
+  buyKitButton.style.display = 'none';
+  buyKitButton.addEventListener('click', () => {
+    if (hooks.onBuyMedkitSelected) hooks.onBuyMedkitSelected();
+  });
   const freeButton = make('button', 'hp-action', '縄を解く');
   freeButton.type = 'button';
   freeButton.style.display = 'none';
@@ -131,6 +139,7 @@ export function createHud(callbacks) {
   hpActions.appendChild(assassinateButton);
   hpActions.appendChild(pickupButton);
   hpActions.appendChild(treatButton);
+  hpActions.appendChild(buyKitButton);
   hpActions.appendChild(freeButton);
   hp.appendChild(hpActions);
 
@@ -401,6 +410,21 @@ export function createHud(callbacks) {
       alive && (actor.bleed > 0.05 || actor.gush > 0) && (actor.faction === 'player' || !!actor.bound || !isHostile(state, 'player', actor.faction));
     const treatDisp = showTreat ? '' : 'none';
     if (treatButton.style.display !== treatDisp) treatButton.style.display = treatDisp;
+    // 手当ての道具の残り（部隊の合計）。無ければ押せない
+    const kits = partyKits(state);
+    const treatText = kits > 0 ? '手当て（残り' + kits + '）' : '手当て（道具なし）';
+    if (treatButton.textContent !== treatText) treatButton.textContent = treatText;
+    if (treatButton.disabled !== (kits <= 0)) treatButton.disabled = kits <= 0;
+    const showBuy = alive && actor.role === 'merchant' && (actor.medkitStock || 0) > 0 && !isHostile(state, 'player', actor.faction);
+    const buyDisp = showBuy ? '' : 'none';
+    if (buyKitButton.style.display !== buyDisp) buyKitButton.style.display = buyDisp;
+    if (showBuy) {
+      const pl = state.actors.find((a) => a.id === state.playerId);
+      const ok = !!pl && canBuyKit(state, pl, actor);
+      const bt = '手当ての道具を買う cash ' + MEDKIT_PRICE + (ok ? '' : '（近くで・所持金）');
+      if (buyKitButton.textContent !== bt) buyKitButton.textContent = bt;
+      if (buyKitButton.disabled !== !ok) buyKitButton.disabled = !ok;
+    }
     const freeDisp = alive && actor.bound ? '' : 'none';
     if (freeButton.style.display !== freeDisp) freeButton.style.display = freeDisp;
   }

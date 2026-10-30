@@ -53,6 +53,8 @@ export function deserialize(text) {
     if (typeof actor.food !== 'number' || !Number.isFinite(actor.food)) {
       actor.food = actor.faction === 'player' ? 3 : 0;
     }
+    // 手当ての道具（hitreact1 より前のセーブには無い）
+    if (typeof actor.medkit !== 'number' || !Number.isFinite(actor.medkit)) actor.medkit = actor.faction === 'player' ? 5 : 0;
     if (typeof actor.movedRun !== 'boolean') actor.movedRun = false;
     if (typeof actor.movedCarry !== 'boolean') actor.movedCarry = false;
     if (actor.sex !== 'f' && actor.sex !== 'm' && actor.sex !== null) actor.sex = sexOf(actor, state); // 20:42 より前のセーブ

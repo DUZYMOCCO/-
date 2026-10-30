@@ -5,6 +5,7 @@ import { drop } from './carry.js';
 import { assassinationTargetExists } from './stealth.js';
 import { answerDemand } from './spawning.js';
 import { startTask } from './abduct.js';
+import { buyKit } from './medkit.js';
 
 function clampWorld(v) {
   if (v < -WORLD_HALF + 1) return -WORLD_HALF + 1;
@@ -50,7 +51,7 @@ export function applyCommand(state, cmd) {
     // 野盗の通行料に答える（pay: true で払う、false で断る）
     if (!state.spawn || !state.spawn.demand) return false;
     next.pay = !!cmd.pay;
-  } else if (cmd.type === 'treat' || cmd.type === 'free') {
+  } else if (cmd.type === 'treat' || cmd.type === 'free' || cmd.type === 'buyMedkit') {
     // 手当て（血を止めるだけ）／縄をほどく（abduct.js）
     const id = Number(cmd.targetId);
     if (!Number.isFinite(id)) return false;
@@ -68,7 +69,7 @@ export function applyCommand(state, cmd) {
   return true;
 }
 
-const ROUTED = new Set(['move', 'attack', 'pickup', 'stop', 'drop', 'treat', 'free']);
+const ROUTED = new Set(['move', 'attack', 'pickup', 'stop', 'drop', 'treat', 'free', 'buyMedkit']);
 
 // 命令を受ける者: actorId が生きている自分の部隊の者ならその者、でなければ操作中の者
 export function commandActor(state, cmd, player) {
@@ -151,6 +152,11 @@ function applyOne(state, player, cmd, events) {
     player.targetId = null;
     player.moveTo = null;
     player.carryTargetId = null;
+    return;
+  }
+  if (cmd.type === 'buyMedkit') {
+    // 商人から手当ての道具を1箱買う（近くにいる時だけ。代金は部隊の所持金から）
+    buyKit(state, player, findActor(state, cmd.targetId), events);
     return;
   }
   if (cmd.type === 'treat' || cmd.type === 'free') {
