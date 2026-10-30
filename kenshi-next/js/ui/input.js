@@ -253,6 +253,10 @@ export function createInput(options) {
     if (event.ctrlKey || event.metaKey || event.altKey) return;
     const k = event.key;
     const lower = typeof k === 'string' ? k.toLowerCase() : '';
+    if (lower === 'i' || k === 'Escape') {
+      if (!event.repeat) (lower === 'i' ? options.onInventoryToggle : options.onInventoryClose)?.();
+      return;
+    }
     if (PAN_KEYS.has(lower)) {
       keysDown.add(lower);
       event.preventDefault();

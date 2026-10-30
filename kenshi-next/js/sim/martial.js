@@ -1,4 +1,6 @@
 // 素手格闘の暫定値。既存の世界生成では乱数を消費しない。
+import { encumbranceFromLoad, loadRatio } from './inventory.js';
+import { ITEMS } from './items.js';
 import { rand } from './rng.js';
 import { houseAt } from './town.js';
 
@@ -20,12 +22,9 @@ export const MA_MOVES = [
   move('elbow_combo','拳肘連打',50,[70,80,120],['lArm'],['Punch To Elbow Combo']),
   move('jump_knee','飛び膝連打',55,[100,150],['lLeg','rArm'],['Flying Knee Punch Combo'],{maxEnc:0,range:2.2}),
 ];
-export const MARTIAL_GEAR = {
-  fist_guard: { name:'拳ガード', martial:4, fistProtection:true, attack:1.05 },
-  leg_guard: { name:'脚ガード', martial:2, legProtection:true, attack:1 },
-};
+export const MARTIAL_GEAR = { fist_guard: ITEMS.fist_guard, leg_guard: ITEMS.leg_guard };
 export function martialGear(actor) {
-  const equipped = actor.gear ? Object.values(actor.gear).flat() : [];
+  const equipped = actor.equip?.acc || [];
   const result = { martial:0, fistProtection:false, legProtection:false, attack:1 };
   for (const item of equipped) {
     const g = MARTIAL_GEAR[typeof item === 'string' ? item : item?.id];
@@ -35,7 +34,7 @@ export function martialGear(actor) {
   }
   return result;
 }
-export function encumbranceOf(actor) { return actor.carryingId != null ? 0.5 : 0; }
+export function encumbranceOf(actor) { return Math.max(actor.carryingId != null ? 0.5 : 0, encumbranceFromLoad(loadRatio(actor))); }
 export function effectiveMartial(state, actor) {
   const raw = (actor.skills?.martial ?? (actor.isPlayer ? 1 : actor.skills?.attack ?? 0)) + martialGear(actor).martial;
   return Math.max(0, raw * (1 - Math.min(0.8, encumbranceOf(actor) * 0.8)) + (houseAt(state, actor.x, actor.z) ? 8 : 0));
@@ -58,9 +57,9 @@ export function martialDamage(actor, level, power) {
   return { total, cut, blunt: total * (1 - cut) };
 }
 export function isMetalTarget(target, part) { return !!(target.swordsman || target.machine); }
-export function recoilDamage(actor, target, part, limb, level) {
+export function recoilDamage(actor, target, part, limb, level, armorMetal = false) {
   const gear = martialGear(actor);
-  if (!isMetalTarget(target, part) || (limb.endsWith('Arm') ? gear.fistProtection : gear.legProtection)) return 0;
+  if (!(armorMetal || isMetalTarget(target, part)) || (limb.endsWith('Arm') ? gear.fistProtection : gear.legProtection)) return 0;
   return Math.max(0, 2 - (level + (actor.skills?.toughness || 0)) * 0.01);
 }
 export function martialDodgeChance(level, dexterity, attack) {

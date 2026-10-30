@@ -120,3 +120,7 @@ export * from './trade.js';
 export * from './town.js';
 export * from './locks.js';
 export * from './law.js';
+
+export * from './items.js';
+export * from './inventory.js';
+export * from './armor.js';

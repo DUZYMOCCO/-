@@ -1,3 +1,9 @@
+import { encumbranceFromLoad, loadRatio } from './inventory.js';
+
+// 荷重と担ぎのうち強い方の速度低下を適用する。
+export function movementLoadMultiplier(ratio, carrying) {
+  return Math.min(carrying ? 0.6 : 1, 1 - 0.85 * encumbranceFromLoad(ratio));
+}
 // 部隊の巡回・うろつき、索敵、加勢、目標選び、出現の補充。
 
 import { abductGoal } from './abduct.js';
@@ -641,7 +647,7 @@ function stepToward(state, actor, tx, tz, running) {
   } else {
     base = carrying || !running ? 1.6 : runSpeed(actor);
   }
-  const speed = base * legFactor(actor) * (carrying ? 0.6 : 1);
+  const speed = base * legFactor(actor) * movementLoadMultiplier(loadRatio(actor), carrying);
   const runAnim = sneaking ? sneakRun : running && !carrying;
   const stepLen = Math.min(d, speed * TICK_SEC);
   const baseAngle = Math.atan2(dx, dz);

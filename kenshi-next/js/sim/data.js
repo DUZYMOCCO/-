@@ -66,22 +66,22 @@ export const PART_LABEL = {
 //   min / max = この世界のダメージ（Kenshi の値ではない）。★20:13 に Kenshi の打たれ強さ倍率（T0で1.65倍）へ
 //     替えたので約0.7倍に下げた（決闘シミュで合わせた仮の値）
 export const WEAPONS = {
-  fists: { min: 5, max: 7, range: 1.6, bleed: 0.05, kenshi: 'Martial Arts',
+  fists: { cutShare: 0, min: 5, max: 7, range: 1.6, bleed: 0.05, kenshi: 'Martial Arts',
     reach: 21, weight: 0, blunt: 0, atk: 0, def: 0, topBalance: 0.1, armed: false },
-  sword: { min: 11, max: 17, range: 1.6, bleed: 1.2, kenshi: 'Katana',
+  sword: { cutShare: 0.9, min: 11, max: 17, range: 1.6, bleed: 1.2, kenshi: 'Katana',
     reach: 21, weight: 2, blunt: 0, atk: 4, def: -4, topBalance: 0.25, armed: true },
-  sabre: { min: 10, max: 16, range: 1.68, bleed: 1.0, kenshi: 'Desert Sabre',
+  sabre: { cutShare: 0.8, min: 10, max: 16, range: 1.68, bleed: 1.0, kenshi: 'Desert Sabre',
     reach: 22, weight: 8, blunt: 0.25, atk: 0, def: 2, topBalance: 0.4, armed: true },
-  machete: { min: 9, max: 14, range: 1.9, bleed: 0.75, kenshi: 'Long Cleaver',
+  machete: { cutShare: 0.65, min: 9, max: 14, range: 1.9, bleed: 0.75, kenshi: 'Long Cleaver',
     reach: 25, weight: 16, blunt: 0.8, atk: 0, def: -2, topBalance: 0.65, armed: true },
   // 槌（重い武器）。★まだ持つ者も模型も無い。値は Kenshi の重い武器（Fragment Axe 系: reach 32、
   // 打撃 1.8x 級）に寄せた仮の値。
-  hammer: { min: 14, max: 22, range: 2.44, bleed: 0.3, kenshi: 'Heavy Weapon (仮)',
+  hammer: { cutShare: 0.15, min: 14, max: 22, range: 2.44, bleed: 0.3, kenshi: 'Heavy Weapon (仮)',
     reach: 32, weight: 22, blunt: 1.2, atk: 0, def: 0, topBalance: 0.85, armed: true },
   // 棍棒（人食い・グールの骨付きの棍棒）。★仮の値: 鉈より遅く重い打撃、槌より軽い。
-  club: { min: 10, max: 15, range: 1.8, bleed: 0.35, kenshi: 'Club (仮)',
+  club: { cutShare: 0.2, min: 10, max: 15, range: 1.8, bleed: 0.35, kenshi: 'Club (仮)',
     reach: 23, weight: 10, blunt: 1.0, atk: 0, def: -2, topBalance: 0.6, armed: true },
-  bite: { min: 7, max: 11, range: 1.4, bleed: 1.0, kenshi: '(animal)',
+  bite: { cutShare: 0.6, min: 7, max: 11, range: 1.4, bleed: 1.0, kenshi: '(animal)',
     reach: 18, weight: 0, blunt: 0, atk: 0, def: 0, topBalance: 0.3, armed: false },
 };
 

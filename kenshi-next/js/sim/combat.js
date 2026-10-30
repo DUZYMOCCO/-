@@ -1,3 +1,4 @@
+import { armorDamage } from './armor.js';
 // 近接戦（チャンバラ）: 振りかぶり → 当たりの瞬間に受け判定 → 受け/崩し/当たり → ひるみ・よろけ → 番の取り合い。
 // 攻撃枠は1人に同時2人まで。加勢、成長もここ。式は melee.js。
 
@@ -272,17 +273,21 @@ function rawDamage(state, attacker) {
 }
 
 // 当たり: 部位・打たれ強さ・ひるみ/よろけ・成長
-function landHit(state, attacker, target, raw, events, broken, ma = null) {
+export function landHit(state, attacker, target, raw, events, broken, ma = null) {
   let partKey = pickPart(state, target);
   if (ma?.low && !['chest','stomach','lLeg','rLeg'].includes(partKey)) partKey = 'chest';
   bumpHitmult(state, target, partKey);
-  const dmg = ma ? raw : raw * toughnessMult(target.skills.toughness);
-  const bleed = ma ? Math.max(0, Math.min(0.6, effectiveMartial(state, attacker) / 100 * 0.6)) : weaponBleed(attacker.weapon);
+  const armor = armorDamage(target, attacker, state.tick, partKey, raw, ma ? {cutShare:0,topBalance:0} : (WEAPONS[attacker.weapon] || WEAPONS.fists));
+  const amount = armor.layers.length ? armor.total : raw;
+  const dmg = ma ? amount : amount * toughnessMult(target.skills.toughness);
+  const baseBleed = ma ? Math.max(0, Math.min(0.6, effectiveMartial(state, attacker) / 100 * 0.6)) : weaponBleed(attacker.weapon);
+  const bleed = baseBleed * (armor.layers.length ? armor.bleedFactor : 1);
+  state.lastArmor = {victimId:target.id,part:partKey,raw,final:dmg,layers:armor.layers,blocked:raw-amount};
   applyDamage(state, target, partKey, dmg, events, bleed);
   if (ma) {
     growSkill(attacker, 'martial', 0.01, Math.max(target.skills.defense || 0, target.skills.martial || 0));
     const limb = ma.limbs[Math.min(ma.index, ma.limbs.length - 1)];
-    const recoil = recoilDamage(attacker, target, partKey, limb, effectiveMartial(state, attacker));
+    const recoil = recoilDamage(attacker, target, partKey, limb, effectiveMartial(state, attacker), armor.layers.some(l => l.metal));
     if (recoil > 0) applyDamage(state, attacker, limb, recoil, events, 0);
   }
   target.lastAttackerId = attacker.id;

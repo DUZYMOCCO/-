@@ -1,3 +1,6 @@
+import { giveInitialQuiver } from './inventory.js';
+import { armorDamage } from './armor.js';
+import { ITEMS } from './items.js';
 // クロスボウ（射撃）。装填・矢の数・飛ぶ矢・味方への誤射。
 // 数値の出典と仮の値は research/crossbow.md。★=仮。
 
@@ -31,7 +34,15 @@ function clamp(v, lo, hi) {
 }
 
 export function giveCrossbow(actor, bolts) {
+  if (actor.equip) { const w = actor.equip.weapon; if (w[0]?.id !== 'crossbow') { w[1] = w[0]; w[0] = {id:'crossbow',rank:3,n:1}; } }
   actor.crossbow = { bolts: Math.max(0, Math.floor(bolts)), loaded: true, reload: 0, aim: 0 };
+  if (actor.equip && !actor.equip.quiver) giveInitialQuiver(actor);
+  else if (actor.equip?.quiver) {
+    const held = Math.min(ITEMS[actor.equip.quiver.id].ammoCap, actor.crossbow.bolts);
+    if (actor.crossbow.bolts > held) actor.inv.push({ id: 'bolts', rank: 3, n: actor.crossbow.bolts - held });
+    actor.equip.quiver.ammo = held ? { id: 'bolts', rank: 3, n: held } : null;
+    actor.crossbow.bolts = held;
+  }
   if (!actor.skills) actor.skills = {};
   if (typeof actor.skills.crossbow !== 'number') actor.skills.crossbow = CROSSBOW_SKILL[actor.faction] || 10;
   return actor;
@@ -164,6 +175,7 @@ export function updateCrossbows(state, events, byId) {
       c.reload -= 1;
       if (c.reload <= 0 && c.bolts > 0) {
         c.bolts -= 1;
+        if (a.equip?.quiver?.ammo) a.equip.quiver.ammo.n = c.bolts;
         c.loaded = true;
       }
     }
@@ -203,12 +215,14 @@ export function updateCrossbows(state, events, byId) {
   }
 }
 
-function hitActor(state, bolt, victim, shooter, events) {
+export function hitActor(state, bolt, victim, shooter, events) {
   const raw = randRange(state, CROSSBOW.min, CROSSBOW.max);
   const tough = (victim.skills && victim.skills.toughness) || 0;
-  const dmg = raw * (1 - tough * 0.004);
   const partKey = pickPart(state);
-  applyDamage(state, victim, partKey, dmg, events, CROSSBOW_BLEED);
+  const armor = armorDamage(victim, shooter, state.tick, partKey, raw, {cutShare:0.85,topBalance:0});
+  const dmg = (armor.layers.length ? armor.total : raw) * (1 - tough * 0.004); // 矢の打たれ強さは従来どおり（一度だけ）
+  state.lastArmor = {victimId:victim.id,part:partKey,raw,final:dmg,layers:armor.layers,blocked:raw-armor.total};
+  applyDamage(state, victim, partKey, dmg, events, CROSSBOW_BLEED * (armor.layers.length ? armor.bleedFactor : 1));
   const hostile = shooter && isHostile(state, shooter.faction, victim.faction);
   if (shooter && hostile) {
     grow(shooter, 0.02);

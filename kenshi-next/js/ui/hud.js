@@ -85,6 +85,10 @@ export function createHud(callbacks) {
   let panelWeaponText = null;
   hp.appendChild(hpState);
   hp.appendChild(hpWeapon);
+  const inventoryButton = make('button', 'hp-action hp-inventory', '持ち物');
+  inventoryButton.type = 'button';
+  inventoryButton.addEventListener('click', () => callbacks.onInventory?.());
+  hp.appendChild(inventoryButton);
 
   // 体の窓（Kenshi の health pane のまま: 一番上に血、部位、一番下に空腹。名前はバーの中、数字は右の列）
   // 計算は ui/health_ui.js。色: 黄緑=今 / 赤=手当てで戻る / 黒い斜線=最大が下がった分（休むと戻る）
@@ -436,6 +440,7 @@ export function createHud(callbacks) {
     }
     party.classList.add('hidden');
 
+    inventoryButton.style.display = actor.faction === 'player' && !actor.machine && !actor.swordsman ? '' : 'none';
     const nameText = actor.name || '';
     if (nameText !== panelNameText) {
       panelNameText = nameText;

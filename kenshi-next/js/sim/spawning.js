@@ -214,7 +214,7 @@ function buildSquad(state, typeKey, x, z, extra) {
     if (MOB_LOOK_ROLES[role]) actor.sex = 'm'; // 肌・服は男の人形の UV で作ったので男の型（乱数は使わない）
     renameFor(state, actor, role);
     const w = ROLES[role] && ROLES[role].weapon;
-    if (w && WEAPONS[w]) actor.weapon = w;
+    if (w && WEAPONS[w]) { actor.weapon = w; if (!actor.machine && !actor.swordsman && actor.equip) actor.equip.weapon[0] = ['fists','bite'].includes(w) ? null : {id:w,rank:3,n:1}; }
     actor.spawnHome = { x, z };
     if (role === 'merchant') actor.money = randInt(state, 300, 800); // ★仮（Kenshi の隊商の頭は 2000〜8000）
     if (role === 'thief') actor.money = randInt(state, 5, 30);

@@ -67,6 +67,8 @@ export function severLimb(state, actor, key, events, how) {
   actor.gush = (actor.gush || 0) + LIMB_LOSS_GUSH;
   if (key === 'rArm' && actor.weapon !== 'fists' && actor.weapon !== 'bite') {
     actor.weaponLost = actor.weapon;
+    if (actor.equip?.weapon) actor.equip.weapon[0] = null;
+    actor.crossbow = null;
     actor.weapon = 'fists';
   }
   if (events) {

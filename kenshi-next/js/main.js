@@ -21,6 +21,7 @@ import { createPortraits } from './render/portraits.js';
 import { loadMachineTemplates, ruinTextureFrom } from './render/machines.js';
 import { pickFollowId, squadCentre, leash, dragResistance, LOOK_RADIUS } from './render/camfollow.js';
 import { createHud } from './ui/hud.js';
+import { createInventoryUI } from './ui/inventory.js';
 import { createHudMenu } from './ui/hud_menu.js';
 import { createTradeUI } from './ui/trade_ui.js';
 import { createSelection } from './ui/selection.js';
@@ -453,7 +454,9 @@ function restart() {
   applyState(createWorld(seed, startOpts()));
 }
 
+const inventoryUi = createInventoryUI(() => state, (cmd) => applyCommand(state, cmd));
 hud = createHud({
+  onInventory() { inventoryUi.open(selection.get()); },
   onSpeed(n) {
     setSpeed(n);
   },
@@ -536,6 +539,8 @@ const saveUi = createSaveUi({
 });
 
 const input = createInput({
+  onInventoryToggle: () => inventoryUi.toggle(selection.get()),
+  onInventoryClose: () => inventoryUi.close(),
   canvas,
   camera: sceneCtx.camera,
   rig,
@@ -591,6 +596,8 @@ const gameApi = {
   },
 };
 // 検証用: 描画上のプレイヤー位置（補間後）
+gameApi.openInventory = (id) => inventoryUi.open(id);
+gameApi.closeInventory = () => inventoryUi.close();
 gameApi.view = () => dolls.playerPos;
 gameApi.lantern = (on, id) => applyCommand(state, { type: 'lantern', on: !!on, id });
 gameApi.lights = lights.stats;
@@ -889,6 +896,7 @@ function frame(now) {
   updateDemandUi();
 
   input.update(dt);
+  inventoryUi.update();
   const nextFollow = pickFollowId(state, selection.get());
   if (nextFollow !== followId) {
     // 追従中に相手が替わったら、注視点をなめらかに移す

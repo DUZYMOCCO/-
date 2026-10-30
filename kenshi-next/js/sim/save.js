@@ -1,3 +1,4 @@
+import { initInventory } from './inventory.js';
 // セーブデータの文字列化と復元。DOM に依存しない。
 
 import { sexOf } from './data.js';
@@ -100,6 +101,7 @@ export function deserialize(text) {
       if (!isNumber(c.aim)) c.aim = 0;
     }
     if (!isNumber(actor.skills.crossbow)) actor.skills.crossbow = 0;
+    initInventory(actor);
     if (actor.faction === 'player') {
       if (!isNumber(actor.skills.lockpicking)) actor.skills.lockpicking = 1;
       if (!isNumber(actor.skills.thievery)) actor.skills.thievery = 1;

@@ -9,6 +9,7 @@ import { buyKit, repOf, GUARD_ATTACKED_REP } from './medkit.js';
 import { placeBedroll, packBedroll, startRest, stopRest } from './rest.js';
 import { boxById, houseById } from './town.js';
 import { answerArrest } from './law.js';
+import { equipItem, unequipItem, syncWeapon } from './inventory.js';
 
 function clampWorld(v) {
   if (v < -WORLD_HALF + 1) return -WORLD_HALF + 1;
@@ -19,7 +20,17 @@ function clampWorld(v) {
 export function applyCommand(state, cmd) {
   if (!state || !cmd || typeof cmd.type !== 'string') return false;
   const next = { type: cmd.type };
-  if (cmd.type === 'move') {
+  if (cmd.type === 'equip' || cmd.type === 'unequip' || cmd.type === 'swapWeapon') {
+    if (!Number.isFinite(Number(cmd.actorId))) return false;
+    next.actorId = Number(cmd.actorId);
+    if (cmd.type !== 'swapWeapon') {
+      if (cmd.type === 'unequip' && typeof cmd.slot !== 'string') return false;
+      if (cmd.slot != null && typeof cmd.slot !== 'string') return false;
+      if (cmd.slot != null) next.slot = cmd.slot;
+      if (cmd.index != null) { if (!Number.isInteger(cmd.index)) return false; next.index = cmd.index; }
+      if (cmd.type === 'equip') { if (!Number.isInteger(cmd.invIndex)) return false; next.invIndex = cmd.invIndex; }
+    }
+  } else if (cmd.type === 'move') {
     const x = Number(cmd.x);
     const z = Number(cmd.z);
     if (!Number.isFinite(x) || !Number.isFinite(z)) return false;
@@ -103,7 +114,7 @@ export function applyCommand(state, cmd) {
   return true;
 }
 
-const ROUTED = new Set(['move', 'attack', 'pickup', 'stop', 'drop', 'treat', 'free', 'buyMedkit', 'buyKit', 'placeBedroll', 'packBedroll', 'rest', 'door', 'pick', 'steal', 'pickpocket']);
+const ROUTED = new Set(['equip', 'unequip', 'swapWeapon', 'move', 'attack', 'pickup', 'stop', 'drop', 'treat', 'free', 'buyMedkit', 'buyKit', 'placeBedroll', 'packBedroll', 'rest', 'door', 'pick', 'steal', 'pickpocket']);
 const TOWN_CMDS = new Set(['door', 'pick', 'steal', 'pickpocket']);
 
 // 命令を受ける者: actorId が生きている自分の部隊の者ならその者、でなければ操作中の者
@@ -136,6 +147,19 @@ function clearAssassination(actor) {
 }
 
 function applyOne(state, player, cmd, events) {
+  if (cmd.type === 'equip' || cmd.type === 'unequip' || cmd.type === 'swapWeapon') {
+    const actor = findActor(state, cmd.actorId);
+    const ids = state.squadIds?.length ? state.squadIds : [state.playerId];
+    if (!actor || !ids.includes(actor.id) || actor.faction !== 'player' || actor.state === 'dead') return;
+    if (cmd.type === 'equip') equipItem(state, actor, cmd.invIndex, cmd.slot, cmd.index);
+    else if (cmd.type === 'unequip') unequipItem(state, actor, cmd.slot, cmd.index);
+    else if (actor.equip?.weapon) {
+      if (actor.crossbow && actor.equip.weapon[0]?.id === 'crossbow') actor.equip.weapon[0].crossbow = actor.crossbow;
+      [actor.equip.weapon[0], actor.equip.weapon[1]] = [actor.equip.weapon[1], actor.equip.weapon[0]];
+      syncWeapon(actor);
+    }
+    return;
+  }
   if (cmd.type === 'lantern') {
     const squad =
       Array.isArray(state.squadIds) && state.squadIds.length > 0

@@ -1,3 +1,4 @@
+import { initInventory } from './inventory.js';
 // 世界の生成。createWorld(seed) はプレーンJSONの state を返す。
 
 import { giveCrossbow, CROSSBOW_SKILL, START_BOLTS } from './crossbow.js';
@@ -197,6 +198,7 @@ export function makeActor(state, faction, x, z, squadId, isPlayer) {
   };
   actor.skills.martial = isPlayer ? 1 : actor.skills.attack;
   actor.skills.dodge = isPlayer ? 1 : Math.round((actor.skills.dexterity || 0) * 0.5 + (actor.skills.martial ?? actor.skills.attack ?? 0) * 0.3);
+  initInventory(actor);
   state.actors.push(actor);
   return actor;
 }
