@@ -69,7 +69,9 @@ export function createHud(callbacks) {
   hpClose.addEventListener('click', () => {
     if (hooks.onClearSelection) hooks.onClearSelection();
   });
-  hpHead.appendChild(hpName);
+  const hpIdentity = make('div', 'hp-identity');
+  hpIdentity.appendChild(hpName);
+  hpHead.appendChild(hpIdentity);
   hpHead.appendChild(hpClose);
   hp.appendChild(hpHead);
   // 2行目: 勢力と関係（敵対=赤・中立=白・友好=緑）。3行目: 状態と 気絶・出血・死亡。
@@ -78,7 +80,7 @@ export function createHud(callbacks) {
   const hpRelation = make('span', 'hp-relation', '');
   hpFaction.appendChild(hpFactionName);
   hpFaction.appendChild(hpRelation);
-  hp.appendChild(hpFaction);
+  hpIdentity.appendChild(hpFaction);
   const hpState = make('div', 'hp-status');
   const hpStateText = make('span', '', '');
   const hpCond = make('span', 'hp-cond', '');
@@ -86,14 +88,14 @@ export function createHud(callbacks) {
   hpState.appendChild(hpCond);
   const hpWeapon = make('div', 'hp-weapon', '');
   let panelWeaponText = null;
-  hp.appendChild(hpState);
+  hpHead.appendChild(hpState);
   hp.appendChild(hpWeapon);
   const inventoryButton = make('button', 'hp-action hp-inventory', '持ち物');
   inventoryButton.type = 'button';
   inventoryButton.addEventListener('click', () => callbacks.onInventory?.());
-  hp.appendChild(inventoryButton);
+  hpHead.appendChild(inventoryButton);
 
-  // 体の窓（Kenshi の health pane のまま: 一番上に血、部位、一番下に空腹。名前はバーの中、数字は右の列）
+  // 体の窓（Kenshi の health pane のまま: 一番上に血、部位、一番下に空腹。名前と数字はバーの中）
   // 計算は ui/health_ui.js。色: 黄緑=今 / 赤=手当てで戻る / 黒い斜線=最大が下がった分（休むと戻る）
   // 0 未満: バーが「負の物差し」（左0→右−最大）に変わり、気絶点（KO）と右端の死・切断の印まで伸びる。
   const kbBox = make('div', 'kb-box');
@@ -116,8 +118,8 @@ export function createHud(callbacks) {
     bar.appendChild(label);
     bar.appendChild(arrows);
     const num = make('span', 'kb-num', '');
+    bar.appendChild(num);
     row.appendChild(bar);
-    row.appendChild(num);
     kbBox.appendChild(row);
     return { row, bar, green, red, wound, neg, mark, label, arrows, num, cache: {} };
   }
