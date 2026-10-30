@@ -707,7 +707,7 @@ function updateDemandUi() {
     return;
   }
   const boss = state.actors.find((a) => a.id === d.bossId);
-  demandText.textContent = (boss ? boss.name : '野盗') + '「通行料だ。錆貨 ' + d.amount + ' 置いていけ」';
+  demandText.textContent = (boss ? boss.name : '野盗') + '「通行料だ。cash ' + d.amount + ' 置いていけ」';
   demandBox.style.display = 'block';
 }
 

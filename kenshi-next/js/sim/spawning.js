@@ -760,7 +760,7 @@ export function answerDemand(state, pay, events) {
     }
     const boss = byId.get(sp.demand.bossId) || leaderOf(members);
     if (boss) boss.money = (boss.money || 0) + amount;
-    events.push(makeEvent(state, 'pay', '通行料 錆貨 ' + amount + ' を払った。野盗は去っていく'));
+    events.push(makeEvent(state, 'pay', '通行料 cash ' + amount + ' を払った。野盗は去っていく'));
     endDemand(state, squad, members, events, 'paid');
     return true;
   }

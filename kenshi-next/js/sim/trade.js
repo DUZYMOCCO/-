@@ -1,12 +1,12 @@
 // 交易: 町ごとの値段・ゆっくりした揺れ・売り過ぎの値下がり・需要の高騰・交易スキル・相場メモ。
 // 設計: research/trade_economy.md。DOM を使わない純粋なルール（UI は js/ui/trade_ui.js）。
-// 通貨は「錆貨」。乱数の流れ（state.rngState）は使わず、種と時刻のハッシュで決める（他の仕組みの乱数を変えない）。
+// 通貨は「cash」。乱数の流れ（state.rngState）は使わず、種と時刻のハッシュで決める（他の仕組みの乱数を変えない）。
 
 import { DAY_SEC, makeEvent } from './data.js';
 
-export const CURRENCY_NAME = '錆貨';
+export const CURRENCY_NAME = 'cash';
 
-// ★基本価格（錆貨）。kind: 'trade' は定価で売れる交易品。
+// ★基本価格（cash）。kind: 'trade' は定価で売れる交易品。
 export const GOODS = {
   grain: { name: '穀物袋', base: 30 },
   water: { name: '水瓶', base: 18 },

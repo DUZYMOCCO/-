@@ -165,7 +165,7 @@ export function buyKit(state, buyer, merchant, events, tier = 'basic') {
   merchant.money = (merchant.money || 0) + price;
   merchant[stockKey(tier)] -= 1;
   giveKit(buyer, tier);
-  if (events) events.push(makeEvent(state, 'trade', buyer.name + 'が' + merchant.name + 'から' + KIT_TIERS[tier].label + 'を買った（錆貨 ' + price + '）'));
+  if (events) events.push(makeEvent(state, 'trade', buyer.name + 'が' + merchant.name + 'から' + KIT_TIERS[tier].label + 'を買った（cash ' + price + '）'));
   return true;
 }
 
