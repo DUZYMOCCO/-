@@ -5,7 +5,7 @@ import { partyKits, partyKitDur, canBuyKit, KIT_TIERS } from '../sim/medkit.js';
 import { effMax, bedrollAt, REST_REACH, PACK_REACH } from '../sim/rest.js';
 import { canAssassinate } from './selection.js';
 import { factionLine, conditionList, weaponLine } from './labels.js';
-import { formatMoney } from './money.js';
+import { formatMoney, CURRENCY } from './money.js';
 import { memberCard, createTapDetector } from '../render/camfollow.js';
 
 const STATUS_TEXT = {
@@ -30,6 +30,7 @@ const SKILL_LABELS = [
   ['assassination', '暗殺'],
   ['crossbow', 'クロスボウ'],
   ['medic', '手当て'],
+  ['trade', '交易'],
 ];
 
 function make(tag, className, text) {
@@ -463,7 +464,7 @@ export function createHud(callbacks) {
       if (!show) continue;
       const ok = !!pl && canBuyKit(state, pl, actor, tier);
       const t = KIT_TIERS[tier];
-      const bt = t.label + 'を買う cash ' + t.price + (ok ? '' : '（近くで・所持金）');
+      const bt = t.label + 'を買う ' + CURRENCY + ' ' + t.price + (ok ? '' : '（近くで・所持金）');
       if (btn.textContent !== bt) btn.textContent = bt;
       if (btn.disabled !== !ok) btn.disabled = !ok;
     }
@@ -556,8 +557,25 @@ export function createHud(callbacks) {
     return '立っている';
   }
 
+  // 所持金は部隊の合計（交易の窓と同じ数え方）
+  function squadMoney(state, player) {
+    const ids = Array.isArray(state.squadIds) ? state.squadIds : [];
+    if (!ids.length) return player ? player.money || 0 : 0;
+    let n = 0;
+    for (const a of state.actors) if (a.faction === 'player' && a.state !== 'dead' && ids.includes(a.id)) n += a.money || 0;
+    return n;
+  }
+  // 売り買いの直後にすぐ所持金を描き直す（1フレーム遅れ対策）
+  function refreshMoney(state) {
+    const nextMoney = formatMoney(squadMoney(state, null));
+    if (nextMoney !== moneyText) {
+      moneyText = nextMoney;
+      money.textContent = nextMoney;
+    }
+  }
+
   function renderParty(state, player) {
-    const nextMoney = formatMoney(player ? player.money || 0 : 0);
+    const nextMoney = formatMoney(squadMoney(state, player));
     if (nextMoney !== moneyText) {
       moneyText = nextMoney;
       money.textContent = nextMoney;
@@ -771,5 +789,6 @@ export function createHud(callbacks) {
     setSpeed,
     setFollow,
     setSneak,
+    refreshMoney,
   };
 }

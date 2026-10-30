@@ -289,6 +289,10 @@ function fleeMove(state, actor, byId) {
   stepToward(state, actor, actor.x + dirX * 30, actor.z + dirZ * 30, true);
 }
 
+function inSquad(state, actor) {
+  return actor.faction === 'player' && !!state.squadIds && state.squadIds.includes(actor.id);
+}
+
 function isCompanion(state, actor) {
   return !!state.squadIds && state.squadIds.length > 1 && state.squadIds[1] === actor.id;
 }
@@ -499,7 +503,8 @@ function moveActor(state, actor, byId, squadsById) {
         if (actor.eatingId == null) setAnim(actor, 'Idle', state.tick);
         return;
       }
-      stepToward(state, actor, goal.x, goal.z, d > 6);
+      // TODO: 歩き/走りの切り替えボタンは後で足す。今は自分の部隊はいつも走る
+      stepToward(state, actor, goal.x, goal.z, inSquad(state, actor) || d > 6);
       return;
     }
   }
@@ -573,7 +578,8 @@ function moveActor(state, actor, byId, squadsById) {
     }
     return;
   }
-  const runAt = isCompanion(state, actor) ? 3 : 15;
+  // TODO: 歩き/走りの切り替えボタンは後で足す。今は自分の部隊はいつも走る（担ぎ・忍び足は stepToward 側の決まりのまま）
+  const runAt = inSquad(state, actor) ? 0 : 15;
   stepToward(state, actor, dest.x, dest.z, d >= runAt);
   if (actor.moveTo && d <= 0.5) actor.moveTo = null;
 }

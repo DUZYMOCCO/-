@@ -112,3 +112,5 @@ export { BLOOD_MAX, BLOOD_KO, BLOOD_PER_BLEED, LIMB_LOSS_BLEED, severLimb, blood
 export * from './hitreact.js';
 export * from './medkit.js';
 export * from './rest.js';
+
+export * from './trade.js';
