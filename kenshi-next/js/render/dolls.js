@@ -9,6 +9,7 @@ import { createBeast, updateBeast, darkenBeast } from './beasts.js';
 import { createMachine, updateMachine, darkenMachine, machineModelFor } from './machines.js';
 import { lookFor, femaleLookFor, createLookCache, dollKindFor } from './doll_textures.js';
 import { shouldShowSquadLabel } from '../ui/labels.js';
+import { SNEAK, sneakPose, sneakProgress, sneakAllowed } from './sneak_pose.js';
 
 const CLIP_FALLBACK = ['Idle', 'Walk', 'Run', 'Punch', 'Attack', 'Hit', 'Fall', 'GetUp'];
 // 画面外の人形を描画・影の両方から外すための使い回しオブジェクト（毎フレーム new しない）
@@ -307,8 +308,20 @@ function makeFallbackDoll(actor, color) {
     return pivot;
   }
 
-  const legL = limb(-0.14, 0.92, 0.15, 0.86, 0.15, darkMaterial);
-  const legR = limb(0.14, 0.92, 0.15, 0.86, 0.15, darkMaterial);
+  function leg(x) {
+    const upper = limb(x, 0.92, 0.15, 0.43, 0.15, darkMaterial);
+    const knee = new THREE.Group();
+    knee.position.y = -0.43;
+    const lower = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.43, 0.15), darkMaterial);
+    lower.position.y = -0.215;
+    lower.castShadow = true;
+    knee.add(lower);
+    upper.add(knee);
+    upper.userData.knee = knee;
+    return upper;
+  }
+  const legL = leg(-0.14);
+  const legR = leg(0.14);
   const armL = limb(-0.37, 1.42, 0.13, 0.62, 0.13, material);
   const armR = limb(0.37, 1.42, 0.13, 0.62, 0.13, material);
 
@@ -434,31 +447,82 @@ function playAction(doll, name) {
   doll.animName = key;
 }
 
+// mixer の間引きフレームでも前回の加算を取り除いてから再適用する。
+function restoreSneakBones(doll) {
+  if (!doll.sneakBones) return;
+  for (const entry of Object.values(doll.sneakBones)) {
+    if (!entry.saved) continue;
+    entry.bone.quaternion.copy(entry.quaternion);
+    entry.bone.position.copy(entry.position);
+    entry.saved = false;
+  }
+}
+
+function applySneakBones(doll, pose, armed) {
+  if (!doll.sneakBones) {
+    doll.sneakBones = {};
+    for (const name of ['pelvis', 'spine_01', 'spine_02', 'spine_03', 'neck_01', 'thigh_l', 'thigh_r', 'calf_l', 'calf_r', 'foot_l', 'foot_r', 'upperarm_l', 'upperarm_r', 'lowerarm_l', 'lowerarm_r']) {
+      const bone = doll.root.getObjectByName(name);
+      if (bone) doll.sneakBones[name] = { bone, quaternion: new THREE.Quaternion(), position: new THREE.Vector3(), saved: false };
+    }
+  }
+  const bones = doll.sneakBones;
+  function rotate(name, angle) {
+    const entry = bones[name];
+    if (!entry || !angle) return;
+    if (!entry.saved) {
+      entry.quaternion.copy(entry.bone.quaternion);
+      entry.position.copy(entry.bone.position);
+      entry.saved = true;
+    }
+    entry.bone.rotateX(angle);
+  }
+  if (pose.drop && bones.pelvis) {
+    const entry = bones.pelvis;
+    entry.quaternion.copy(entry.bone.quaternion);
+    entry.position.copy(entry.bone.position);
+    entry.saved = true;
+    // 両 GLB の pelvis の親 root は X=-90°。親の Z が人形の高さ。
+    entry.bone.position.z -= pose.drop;
+  }
+  for (const side of ['l', 'r']) {
+    rotate(`thigh_${side}`, pose.thigh);
+    rotate(`calf_${side}`, pose.calf);
+    rotate(`foot_${side}`, pose.foot);
+    if (!armed) {
+      rotate(`upperarm_${side}`, pose.arm);
+      rotate(`lowerarm_${side}`, pose.elbow);
+    }
+  }
+  for (const name of ['spine_01', 'spine_02', 'spine_03']) rotate(name, pose.spine);
+  rotate('neck_01', pose.neck);
+}
+
 function animateFallback(doll, actor, dt, speed) {
   const parts = doll.parts;
   const moving = actor.anim === 'Walk' || actor.anim === 'Run';
-  const rate = actor.anim === 'Run' ? 11 : 7;
+  const active = sneakAllowed(actor);
+  const interrupted = !!actor.sneaking && !active;
+  doll.sneakProgress = sneakProgress(doll.sneakProgress || 0, active, interrupted, dt);
+  const pose = sneakPose(doll.sneakProgress);
+  const rate = (actor.anim === 'Run' ? 11 : 7) * (1 - pose.weight * 0.4);
   doll.phase += dt * Math.max(0, speed) * (moving ? rate : 2.2);
-  const swing = moving ? Math.sin(doll.phase) * (actor.anim === 'Run' ? 0.95 : 0.55) : 0;
-  const sneaking =
-    !!actor.sneaking &&
-    actor.state !== 'dead' &&
-    actor.state !== 'down' &&
-    actor.state !== 'getup';
+  const swing = moving ? Math.sin(doll.phase) * (actor.anim === 'Run' ? 0.95 : 0.55) * (1 - pose.weight * 0.55) : 0;
   const targetLean =
     actor.state === 'dead' || actor.state === 'down' || actor.resting
       ? 1.35
       : actor.state === 'getup'
         ? 0.6
-        : sneaking
-          ? 0.25
-          : 0;
-  const targetScaleY = sneaking ? 0.88 : 1;
+        : 0;
 
   doll.visual.rotation.x += (targetLean - doll.visual.rotation.x) * Math.min(1, dt * 8);
-  doll.visual.scale.y += (targetScaleY - doll.visual.scale.y) * Math.min(1, dt * 8);
-  parts.legL.rotation.x = swing;
-  parts.legR.rotation.x = -swing;
+  parts.body.position.y = 1.0 - pose.drop;
+  parts.head.position.y = 1.66 - pose.drop;
+  parts.armL.position.y = parts.armR.position.y = 1.42 - pose.drop;
+  parts.legL.position.y = parts.legR.position.y = 0.92 - pose.drop;
+  parts.legL.rotation.x = swing - pose.thigh;
+  parts.legR.rotation.x = -swing - pose.thigh;
+  parts.legL.userData.knee.rotation.x = parts.legR.userData.knee.rotation.x = -pose.calf;
   parts.armL.rotation.x = -swing * 0.8;
 
   if (actor.anim === 'Punch' || actor.anim === 'Attack') {
@@ -908,8 +972,17 @@ export function createDollManager(scene, template, lookImages, female) {
         continue;
       }
 
+      const hp = hitPose(actor, state ? state.tick : 0);
+      const reacting = hp.lean !== 0 || hp.squash !== 1;
+      const busy = ONE_SHOT.has(doll.animName) && doll.currentAction && doll.currentAction.isRunning();
+      const sneaking = sneakAllowed(actor, reacting || busy);
+      const interrupted = !!actor.sneaking && !sneaking;
+      doll.sneakProgress = sneakProgress(doll.sneakProgress || 0, sneaking, interrupted, dt);
+      const pose = sneakPose(doll.sneakProgress);
+      restoreSneakBones(doll);
       if (doll.mixer) {
-        const sneakSlow = actor.sneaking && actor.anim === 'Walk' ? 0.7 : 1;
+        const rate = actor.anim === 'Run' ? SNEAK.runRate : SNEAK.walkRate;
+        const sneakSlow = (actor.anim === 'Walk' || actor.anim === 'Run') ? 1 - pose.weight * (1 - rate) : 1;
         doll.mixer.timeScale = Math.max(0, speed) * sneakSlow;
         const dx = doll.group.position.x - camX;
         const dz = doll.group.position.z - camZ;
@@ -929,20 +1002,13 @@ export function createDollManager(scene, template, lookImages, female) {
       }
 
       hideMissing(doll, actor);
+      applySneakBones(doll, pose, !!actor.crossbow || (actor.weapon && actor.weapon !== 'fists' && actor.weapon !== 'bite'));
 
-      // 隠密の姿勢: 体を少し低くして前に傾ける。普通に戻ったら元に戻す。
+      // root の変形はよろけ専用。隠密は上の骨の姿勢で表現する。
       if (doll.root) {
-        const sneaking =
-          !!actor.sneaking &&
-          actor.state !== 'dead' &&
-          actor.state !== 'down' &&
-          actor.state !== 'getup';
-        // よろけ6種（sim/hitreact.js）の姿勢を重ねる。よろけ中は速く追う
-        const hp = hitPose(actor, state ? state.tick : 0);
-        const reacting = hp.lean !== 0 || hp.squash !== 1;
         const k = Math.min(1, dt * (reacting ? 16 : 8));
-        doll.root.rotation.x += ((sneaking ? 0.25 : 0) + hp.lean - doll.root.rotation.x) * k;
-        doll.root.scale.y += ((sneaking ? 0.88 : 1) * hp.squash - doll.root.scale.y) * k;
+        doll.root.rotation.x += (hp.lean - doll.root.rotation.x) * k;
+        doll.root.scale.y += (hp.squash - doll.root.scale.y) * k;
       }
 
       // 20:13 チャンバラ: よろけ（Stagger）は Hit の動きをゆっくり流す（速さは combat_fx.js）。
