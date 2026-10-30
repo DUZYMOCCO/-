@@ -492,6 +492,15 @@ hud = createHud({
   onLantern(on) {
     applyCommand(state, { type: 'lantern', on: !!on });
   },
+  onTurretSelected() {
+    const id = selection.get(), actor = state.actors.find(a => a.id === id);
+    if (!actor) return;
+    if (actor.turretId) applyCommand(state, {type:'leaveTurret', actorId:id});
+    else {
+      const t = (state.turrets || []).filter(t => t.operatorId == null && Math.hypot(t.x-actor.x,t.z-actor.z) <= 8).sort((a,b)=>Math.hypot(a.x-actor.x,a.z-actor.z)-Math.hypot(b.x-actor.x,b.z-actor.z))[0];
+      if (t) applyCommand(state, {type:'mountTurret', turretId:t.id, actorId:id});
+    }
+  },
   onLanternSelected() {
     const id = selection.get();
     const actor = id === null ? null : state.actors.find((a) => a.id === id);

@@ -242,7 +242,7 @@ export function boltGuardChance(bolt, victim, shooter) {
   const guard = ((victim.skills?.[armed ? 'defense' : 'dodge'] || 0) + perception) / 2;
   const diff = guard - shot;
   return armed
-    ? clamp(0.15 + diff * 0.007 + 0.08 - weapon.weight * 0.008 + weapon.def * 0.01, 0.03, 0.70)
+    ? clamp(0.42 + diff * 0.007 + 0.08 - weapon.weight * 0.008 + weapon.def * 0.01, 0.03, 0.70)
     : clamp(0.05 + diff * 0.0035, 0.02, 0.35);
 }
 
@@ -264,7 +264,6 @@ export function tryParry(state, bolt, victim, shooter) {
       victim.carryingId != null || victim.carriedBy != null || (victim.hitReact?.until || 0) > state.tick ||
       (victim.staggerUntil || 0) > state.tick || (victim.flinchUntil || 0) > state.tick ||
       (victim.parryReadyTick || 0) > state.tick) return false;
-  if (victim.targetId !== shooter.id && victim.lastAttackerId !== shooter.id && victim.state !== 'fight') return false;
   const facing = Math.sin(victim.rot || 0) * -bolt.dirX + Math.cos(victim.rot || 0) * -bolt.dirZ;
   const perception = clamp(victim.skills?.perception || 0, 0, 100);
   const half = (60 + 120 * perception / 100) * Math.PI / 180;
@@ -275,7 +274,7 @@ export function tryParry(state, bolt, victim, shooter) {
   const shot = ((shooter.skills?.[bolt.turret ? 'turret' : 'crossbow'] || 0) + (shooter.skills?.perception || 0)) / 2;
   const p = boltGuardChance(bolt, victim, shooter) * (facing < 0.5 - 1e-12 ? 0.5 : 1);
   if (mixHash(numericId(bolt.id ?? bolt.born) ^ numericId(shooter.id), numericId(victim.id), state.tick) / 4294967296 >= p) return false;
-  victim.parryReadyTick = state.tick + 5;
+  victim.parryReadyTick = state.tick + 2;
   growSkill(victim, armed ? 'defense' : 'dodge', armed ? 0.005 : 0.004, shot);
   const stats = boltStats(state);
   const key = armed ? 'parried' : 'dodged';

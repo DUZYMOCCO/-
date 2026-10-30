@@ -22,9 +22,11 @@ export function createTurrets(scene) {
           box(bow,.22,.18,1.5,0,0,0,wood);
           box(bow,1.7,.16,.16,0,.04,.45,wood);
           box(bow,.06,.06,1.4,0,.14,0,metal);
+          const ring = new THREE.Mesh(new THREE.RingGeometry(1.15,1.23,32), new THREE.MeshBasicMaterial({color:0xe6d79c,side:THREE.DoubleSide}));
+          ring.rotation.x = -Math.PI / 2; ring.position.y = .04; g.add(ring); g.userData.ring = ring;
           scene.add(g); groups.set(t.id,g);
         }
-        g.position.set(t.x,heightAt(t.x,t.z),t.z); g.userData.bow.rotation.y = t.rot || 0;
+        g.position.set(t.x,heightAt(t.x,t.z),t.z); g.userData.bow.rotation.y = t.rot || 0; g.userData.ring.visible = t.operatorId == null;
       }
       for (const [id,g] of groups) if (!alive.has(id)) { scene.remove(g); groups.delete(id); }
     }

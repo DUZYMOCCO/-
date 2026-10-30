@@ -255,6 +255,10 @@ export function createHud(callbacks) {
   lanternOneButton.addEventListener('click', () => {
     if (hooks.onLanternSelected) hooks.onLanternSelected();
   });
+  const turretButton = make('button', 'hp-action', '砲台に就く');
+  turretButton.type = 'button';
+  turretButton.addEventListener('click', () => { if (hooks.onTurretSelected) hooks.onTurretSelected(); });
+  hpActions.appendChild(turretButton);
   hpActions.appendChild(attackButton);
   hpActions.appendChild(lanternOneButton);
   hpActions.appendChild(assassinateButton);
@@ -508,6 +512,9 @@ export function createHud(callbacks) {
     const squadMember =
       actor.state !== 'dead' &&
       (Array.isArray(state.squadIds) ? state.squadIds.includes(actor.id) : actor.faction === 'player');
+    const nearbyTurret = (state.turrets || []).find(t => t.operatorId == null && Math.hypot(t.x-actor.x,t.z-actor.z) <= 8);
+    turretButton.style.display = squadMember && (actor.turretId || nearbyTurret) ? '' : 'none';
+    turretButton.textContent = actor.turretId ? '砲台を降りる' : '砲台に就く';
     const oneText = actor.lantern ? '灯りを消す' : '灯りを点ける';
     if (lanternOneButton.style.display !== (squadMember ? '' : 'none')) {
       lanternOneButton.style.display = squadMember ? '' : 'none';

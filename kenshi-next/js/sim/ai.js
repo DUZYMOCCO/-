@@ -678,7 +678,7 @@ function stepToward(state, actor, tx, tz, running) {
     const angle = baseAngle + offset;
     const nx = clampWorld(actor.x + Math.sin(angle) * stepLen);
     const nz = clampWorld(actor.z + Math.cos(angle) * stepLen);
-    if (blockedAt(state, nx, nz, radius)) continue;
+    if (blockedAt(state, nx, nz, radius, actor)) continue;
     const moved = Math.hypot(nx - actor.x, nz - actor.z);
     actor.x = nx;
     actor.z = nz;
@@ -753,7 +753,7 @@ export function moveActors(state) {
   for (const actor of state.actors) {
     if (actor.carriedBy !== null) continue;
     if (actor.state === 'dead') continue;
-    const fixed = resolveCircle(state, actor.x, actor.z, actorRadius(actor));
+    const fixed = resolveCircle(state, actor.x, actor.z, actorRadius(actor), actor);
     actor.x = clampWorld(fixed.x);
     actor.z = clampWorld(fixed.z);
     if (actor.state === 'down' || actor.state === 'getup') continue;
@@ -763,7 +763,7 @@ export function moveActors(state) {
   for (const actor of state.actors) {
     if (actor.carriedBy !== null) continue;
     if (actor.state === 'dead') continue;
-    const fixed = resolveCircle(state, actor.x, actor.z, actorRadius(actor));
+    const fixed = resolveCircle(state, actor.x, actor.z, actorRadius(actor), actor);
     actor.x = clampWorld(fixed.x);
     actor.z = clampWorld(fixed.z);
   }

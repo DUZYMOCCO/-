@@ -2,6 +2,7 @@
 
 import { WORLD_HALF, makeEvent, canHarmDowned } from './data.js';
 import { drop } from './carry.js';
+import { leaveTurret } from './turret.js';
 import { assassinationTargetExists } from './stealth.js';
 import { answerDemand } from './spawning.js';
 import { startTask } from './abduct.js';
@@ -30,6 +31,9 @@ export function applyCommand(state, cmd) {
       if (cmd.index != null) { if (!Number.isInteger(cmd.index)) return false; next.index = cmd.index; }
       if (cmd.type === 'equip') { if (!Number.isInteger(cmd.invIndex)) return false; next.invIndex = cmd.invIndex; }
     }
+  } else if (cmd.type === 'mountTurret') {
+    if (typeof cmd.turretId !== 'string') return false;
+    next.turretId = cmd.turretId;
   } else if (cmd.type === 'move') {
     const x = Number(cmd.x);
     const z = Number(cmd.z);
@@ -101,7 +105,7 @@ export function applyCommand(state, cmd) {
     if (!state.law || !state.law.arrest || state.law.arrest.stage !== 'ask') return false;
     if (cmd.choice !== 'pay' && cmd.choice !== 'jail' && cmd.choice !== 'resist') return false;
     next.choice = cmd.choice;
-  } else if (cmd.type !== 'stop' && cmd.type !== 'drop' && cmd.type !== 'placeBedroll' && cmd.type !== 'packBedroll' && cmd.type !== 'rest') {
+  } else if (cmd.type !== 'leaveTurret' && cmd.type !== 'stop' && cmd.type !== 'drop' && cmd.type !== 'placeBedroll' && cmd.type !== 'packBedroll' && cmd.type !== 'rest') {
     return false;
   }
   // actorId: 選んでいる・追っている仲間に命令する（無ければ操作中の者）
@@ -114,7 +118,7 @@ export function applyCommand(state, cmd) {
   return true;
 }
 
-const ROUTED = new Set(['equip', 'unequip', 'swapWeapon', 'move', 'attack', 'pickup', 'stop', 'drop', 'treat', 'free', 'buyMedkit', 'buyKit', 'placeBedroll', 'packBedroll', 'rest', 'door', 'pick', 'steal', 'pickpocket']);
+const ROUTED = new Set(['equip', 'unequip', 'swapWeapon', 'mountTurret', 'leaveTurret', 'move', 'attack', 'pickup', 'stop', 'drop', 'treat', 'free', 'buyMedkit', 'buyKit', 'placeBedroll', 'packBedroll', 'rest', 'door', 'pick', 'steal', 'pickpocket']);
 const TOWN_CMDS = new Set(['door', 'pick', 'steal', 'pickpocket']);
 
 // 命令を受ける者: actorId が生きている自分の部隊の者ならその者、でなければ操作中の者
@@ -280,7 +284,17 @@ function applyOne(state, player, cmd, events) {
     startTask(state, player, cmd.type, target);
     return;
   }
+  if (cmd.type === 'mountTurret') {
+    const turret = (state.turrets || []).find(t => t.id === cmd.turretId);
+    if (!turret || turret.operatorId != null || ['dead','down','getup'].includes(player.state) || player.carriedBy != null || player.carryingId != null) return;
+    leaveTurret(state, player);
+    turret.operatorId = player.id; player.turretId = turret.id;
+    player.moveTo = null; player.targetId = null; player.holdAt = null; player.task = null;
+    return;
+  }
+  if (cmd.type === 'leaveTurret') { leaveTurret(state, player); return; }
   if (cmd.type === 'move') {
+    leaveTurret(state, player);
     clearAssassination(player);
     player.task = null;
     // 操作中でない仲間は、行った先で待つ（止まれ＝stop でまた付いてくる）

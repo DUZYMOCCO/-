@@ -7,7 +7,7 @@ import { isStanding } from './body.js';
 import { isHostile, TICK_SEC } from './data.js';
 
 export function turretSeat(turret) {
-  return { x: turret.x - Math.sin(turret.rot), z: turret.z - Math.cos(turret.rot) };
+  return { x: turret.x - 1.52 * Math.sin(turret.rot), z: turret.z - 1.52 * Math.cos(turret.rot) };
 }
 
 export function turretReloadTicks(actor) {
@@ -21,7 +21,7 @@ export function ensureTurret(state, placeOperator = false) {
     for (let i = 0; i < 64; i++) {
       const angle = i * Math.PI * 2 / 64;
       const x = TOWN1.x + Math.cos(angle) * radius, z = TOWN1.z + Math.sin(angle) * radius;
-      if (!blockedAt(state, x, z, 1.3)) { pos = { x, z }; break; }
+      if (!blockedAt(state, x, z, 3.1)) { pos = { x, z }; break; }
     }
     if (pos) break;
   }
@@ -37,10 +37,16 @@ export function ensureTurret(state, placeOperator = false) {
   state.turrets = [turret];
 }
 
+export function leaveTurret(state, actor) {
+  const turret = (state.turrets || []).find(t => t.id === actor.turretId && t.operatorId === actor.id);
+  if (turret) { turret.operatorId = null; turret.aim = 0; }
+  actor.turretId = null;
+}
+
 export function updateTurrets(state, events, byId) {
   for (const t of state.turrets || []) {
     const a = byId.get(t.operatorId);
-    if (!a || !isStanding(a) || a.carriedBy != null || a.carryingId != null) { t.aim = 0; continue; }
+    if (!a || !isStanding(a) || a.carriedBy != null || a.carryingId != null) { if (a) leaveTurret(state, a); else { t.operatorId = null; t.aim = 0; } continue; }
     if (!t.loaded && t.reload > 0 && --t.reload <= 0) t.loaded = true;
     const target = byId.get(a.targetId);
     const seat = turretSeat(t);
@@ -62,3 +68,4 @@ export function updateTurrets(state, events, byId) {
     t.loaded = false; t.reload = turretReloadTicks(a); t.aim = 0; a.lastShotTick = state.tick;
   }
 }
+

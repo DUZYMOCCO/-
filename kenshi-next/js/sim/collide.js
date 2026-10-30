@@ -154,7 +154,7 @@ function pushBox(o, px, pz, radius) {
   return { x: px, z: o.z + (dz >= 0 ? hd : -hd) };
 }
 
-export function resolveCircle(state, x, z, radius) {
+export function resolveCircle(state, x, z, radius, actor = null) {
   let px = Number(x);
   let pz = Number(z);
   let rad = Number(radius);
@@ -163,7 +163,7 @@ export function resolveCircle(state, x, z, radius) {
   if (!state || typeof state !== 'object') return { x: px, z: pz };
   const index = indexOf(state);
   for (let pass = 0; pass < 6; pass += 1) {
-    const candidates = gather(index, px, pz, rad);
+    const candidates = gather(index, px, pz, rad).concat(rad >= 0.3 ? (state.turrets || []).map(t => ({shape: 'circle', x:t.x, z:t.z, r:1.1})) : []);
     let moved = false;
     for (const o of candidates) {
       if (o.door && o.door.open) continue;
@@ -178,7 +178,7 @@ export function resolveCircle(state, x, z, radius) {
   return { x: px, z: pz };
 }
 
-export function blockedAt(state, x, z, radius) {
+export function blockedAt(state, x, z, radius, actor = null) {
   const px = Number(x);
   const pz = Number(z);
   let rad = Number(radius);
@@ -186,7 +186,8 @@ export function blockedAt(state, x, z, radius) {
   if (!Number.isFinite(rad) || rad < 0) rad = 0;
   if (!state || typeof state !== 'object') return false;
   const index = indexOf(state);
-  for (const o of gather(index, px, pz, rad)) {
+  const turrets = rad >= 0.3 ? (state.turrets || []).map(t => ({shape: 'circle', x:t.x, z:t.z, r:1.1})) : [];
+  for (const o of gather(index, px, pz, rad).concat(turrets)) {
     if (o.door && o.door.open) continue;
     if (o.shape === 'circle') {
       const dx = px - o.x;
