@@ -9,9 +9,9 @@ import { makePoles } from './abduct.js';
 import { rand, randInt, randRange } from './rng.js';
 import { makeActor, TOWN1, TOWN2 } from './world.js';
 import { giveCrossbow, START_BOLTS } from './crossbow.js';
-import { WORLD_HALF, WEAPONS, makeEvent, indexActors } from './data.js';
+import { WORLD_HALF, WEAPONS, PART_MAX, makeEvent, indexActors } from './data.js';
 import { blockedAt } from './collide.js';
-import { REGIONS, regionAt, SQUAD_TYPES, ROLES, SITE_TYPES, SPAWN, MOB_LOOK_ROLES } from './spawn_data.js';
+import { REGIONS, regionAt, SQUAD_TYPES, ROLES, SITE_TYPES, SPAWN, MOB_LOOK_ROLES, MACHINE_ROLES } from './spawn_data.js';
 
 const TAU = Math.PI * 2;
 
@@ -134,7 +134,7 @@ function rollSize(state, type) {
 }
 
 function renameFor(state, actor, role) {
-  if (MOB_LOOK_ROLES[role]) {
+  if (MOB_LOOK_ROLES[role] || MACHINE_ROLES.includes(role)) {
     // 人食い・グールは役目の名前＋番号（例: 人食い2、グール）
     const base = ROLES[role].name;
     const used = new Set(state.actors.filter((a) => a !== actor).map((a) => a.name));
@@ -199,6 +199,17 @@ function buildSquad(state, typeKey, x, z, extra) {
     actor.spawned = true;
     actor.spawnKind = typeKey;
     actor.role = role;
+    if (MACHINE_ROLES.includes(role)) actor.machine = true; // 古代の機械（解体しても肉は出ない）
+    if (ROLES[role] && ROLES[role].swordsman) {
+      // 人の剣士と同じ体（部位の体力・当たりの大きさ）と技量。乱数は使わない。
+      actor.swordsman = true;
+      actor.renderScale = 1;
+      for (const key of Object.keys(actor.parts)) {
+        const max = PART_MAX[key];
+        actor.parts[key] = { hp: max, max };
+      }
+      Object.assign(actor.skills, ROLES[role].skills, { stealth: 0, assassination: 0 });
+    }
     if (MOB_LOOK_ROLES[role]) actor.sex = 'm'; // 肌・服は男の人形の UV で作ったので男の型（乱数は使わない）
     renameFor(state, actor, role);
     const w = ROLES[role] && ROLES[role].weapon;
@@ -770,7 +781,7 @@ export function forceSite(state, siteType, x, z) {
 export function spawnSummary(state) {
   const sp = state.spawn;
   if (!sp) return null;
-  const counts = { caravan: 0, thieves: 0, raiders: 0, beasts: 0 };
+  const counts = { caravan: 0, thieves: 0, raiders: 0, beasts: 0, machines: 0 };
   for (const s of state.squads) if (s.kind) counts[s.kind] = (counts[s.kind] || 0) + 1;
   const c = countAlive(state);
   return {
@@ -786,4 +797,4 @@ export function spawnSummary(state) {
   };
 }
 
-export { REGIONS, regionAt, SQUAD_TYPES, ROLES, SITE_TYPES, SPAWN, MOB_LOOK_ROLES };
+export { REGIONS, regionAt, SQUAD_TYPES, ROLES, SITE_TYPES, SPAWN, MOB_LOOK_ROLES, MACHINE_ROLES };

@@ -8,7 +8,7 @@ import { heightAt } from '../sim/index.js';
 import { planSiteClutter, planNestProps } from './clutter_plan.js';
 import { modelGroup } from './models.js';
 
-const KIND_COLORS = { caravan: 0xffc84a, thieves: 0xb070ff, raiders: 0xff4a3a, beasts: 0x9a6a3a };
+const KIND_COLORS = { caravan: 0xffc84a, thieves: 0xb070ff, raiders: 0xff4a3a, beasts: 0x9a6a3a, machines: 0xff8a2a };
 const MAX_BEAMS = 24;
 
 // 決定的な小さい乱数（見た目だけ。sim の乱数は使わない）
@@ -204,6 +204,83 @@ function buildNest(site) {
   return { group, mesh, fire: null };
 }
 
+// 古代の遺跡（機械の巣）: 折れた柱・倒れた鉄の板・半ば埋まった機械の残骸。錆と砂岩の色。
+// 遺跡の欠片: 色に加えて錆の模様（機械の獣の glb の machine_rust を使い回す）を貼るための UV を付ける。
+// UV は向きの一番強い軸で平らに投げる（1.5m で1回り）。
+let ruinTex = null;
+function ruinPiece(geo, color, x, y, z, ry, rx, rz) {
+  const g = painted(geo, color, x, y, z, ry, rx, rz);
+  const pos = g.attributes.position;
+  const n = pos.count;
+  const uv = new Float32Array(n * 2);
+  const a = new THREE.Vector3();
+  const b = new THREE.Vector3();
+  const c = new THREE.Vector3();
+  const nrm = new THREE.Vector3();
+  for (let i = 0; i < n; i += 3) {
+    a.fromBufferAttribute(pos, i);
+    b.fromBufferAttribute(pos, i + 1);
+    c.fromBufferAttribute(pos, i + 2);
+    nrm.subVectors(c, b).cross(b.clone().sub(a));
+    const ax = Math.abs(nrm.x);
+    const ay = Math.abs(nrm.y);
+    const az = Math.abs(nrm.z);
+    for (let k = 0; k < 3; k += 1) {
+      const px = pos.getX(i + k);
+      const py = pos.getY(i + k);
+      const pz = pos.getZ(i + k);
+      const u = ax >= ay && ax >= az ? pz : px;
+      const v = ay >= ax && ay >= az ? pz : py;
+      uv[(i + k) * 2] = u / 1.5;
+      uv[(i + k) * 2 + 1] = v / 1.5;
+    }
+  }
+  g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+  return g;
+}
+
+function buildRuin(site) {
+  const r = looksRng(siteSeed(site));
+  const cy = heightAt(site.x, site.z);
+  const geos = [];
+  const stone = [0x8a7a62, 0x7a6c58, 0x9a8a70];
+  const rust = [0x6a3a22, 0x7a4a2a, 0x5a3424];
+  // 円く並んだ折れた柱
+  for (let i = 0; i < 7; i += 1) {
+    const a = (i / 7) * Math.PI * 2 + r() * 0.3;
+    const d = 7 + r() * 1.5;
+    const x = Math.cos(a) * d;
+    const z = Math.sin(a) * d;
+    const h = 1.2 + r() * 3.2;
+    geos.push(ruinPiece(new THREE.BoxGeometry(1.1, h, 1.1), stone[i % 3], x, groundY(site.x, site.z, x, z, cy) + h / 2 - 0.2, z, a, (r() - 0.5) * 0.25, (r() - 0.5) * 0.25));
+  }
+  // 倒れた鉄の板と梁
+  for (let i = 0; i < 5; i += 1) {
+    const a = r() * Math.PI * 2;
+    const d = 2 + r() * 4;
+    const x = Math.cos(a) * d;
+    const z = Math.sin(a) * d;
+    geos.push(ruinPiece(new THREE.BoxGeometry(2.4 + r() * 1.5, 0.12, 1.2 + r()), rust[i % 3], x, groundY(site.x, site.z, x, z, cy) + 0.15, z, a, (r() - 0.5) * 0.5, (r() - 0.5) * 0.4));
+  }
+  // 半ば埋まった丸い機械の残骸（中央）
+  const dome = new THREE.SphereGeometry(1.8, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2);
+  geos.push(ruinPiece(dome, 0x5e4030, 0, -0.4, 0, r() * Math.PI));
+  geos.push(ruinPiece(new THREE.CylinderGeometry(0.25, 0.3, 2.6, 6), 0x4a3020, 1.2, 0.8, -0.6, 0, 0.5, 0.7));
+  const geo = mergeGeometries(geos, false);
+  geos.forEach((g) => g.dispose());
+  const mesh = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true, map: ruinTex }));
+  mesh.userData.ruin = true;
+  mesh.receiveShadow = true;
+  const group = new THREE.Group();
+  group.add(mesh);
+  // 残骸の光る目（1つ）
+  const eye = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 6), new THREE.MeshBasicMaterial({ color: 0xff8a2a }));
+  eye.position.set(0.7, 1.15, 0.9);
+  group.add(eye);
+  group.position.set(site.x, cy, site.z);
+  return { group, mesh, fire: null };
+}
+
 function leashRing(site) {
   const pts = [];
   const n = 48;
@@ -213,7 +290,7 @@ function leashRing(site) {
     const z = Math.sin(a) * site.leash;
     pts.push(new THREE.Vector3(x, heightAt(site.x + x, site.z + z) + 0.3, z));
   }
-  const color = site.kind === 'nest' ? KIND_COLORS.beasts : site.type === 'thief_camp' ? KIND_COLORS.thieves : KIND_COLORS.raiders;
+  const color = site.type === 'machine_ruin' ? KIND_COLORS.machines : site.kind === 'nest' ? KIND_COLORS.beasts : site.type === 'thief_camp' ? KIND_COLORS.thieves : KIND_COLORS.raiders;
   const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color }));
   line.position.set(site.x, 0, site.z);
   return line;
@@ -259,7 +336,7 @@ export function createSpawnSites(scene, opts) {
       seen.add(site.id);
       let e = built.get(site.id);
       if (!e) {
-        e = site.kind === 'nest' ? buildNest(site) : buildCamp(site, opts && opts.props, opts && opts.nest);
+        e = site.type === 'machine_ruin' ? buildRuin(site) : site.kind === 'nest' ? buildNest(site) : buildCamp(site, opts && opts.props, opts && opts.nest);
         e.state = null;
         e.ring = debug ? leashRing(site) : null;
         root.add(e.group);
@@ -308,5 +385,24 @@ export function createSpawnSites(scene, opts) {
     built.clear();
   }
 
-  return { update, reset, stats, root };
+  // 錆の模様が読めたら、もう建っている遺跡にも貼る。
+  function setRuinTexture(tex) {
+    if (!tex) return;
+    const t = tex.clone();
+    t.wrapS = THREE.RepeatWrapping;
+    t.wrapT = THREE.RepeatWrapping;
+    t.offset.set(0, 0);
+    t.repeat.set(1, 1);
+    t.matrixAutoUpdate = true;
+    t.needsUpdate = true;
+    ruinTex = t;
+    root.traverse((o) => {
+      if (o.isMesh && o.userData.ruin) {
+        o.material.map = t;
+        o.material.needsUpdate = true;
+      }
+    });
+  }
+
+  return { update, reset, stats, root, setRuinTexture };
 }

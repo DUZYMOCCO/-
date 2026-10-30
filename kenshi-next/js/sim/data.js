@@ -120,6 +120,12 @@ export const FACTIONS = {
   player: { id: 'player', name: '流れ者', color: '#e0b84a' },
 };
 
+// 獣の決まり（倒れた者を襲う・半分で逃げる・速い・体が大きい）で動くか。
+// 古代の暴走ロボット（swordsman）は獣の側（誰にでも敵）でも、人の剣士の決まりで戦う。
+export function beastRules(actor) {
+  return !!actor && actor.faction === 'beast' && !actor.swordsman;
+}
+
 export const FACTION_ORDER = ['guard', 'bandit', 'beast', 'player'];
 
 export const VISION = { guard: 20, bandit: 16, beast: 14, player: 14 };

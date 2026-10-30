@@ -15,6 +15,7 @@ import { PROP_NAMES, PROP_DIR, CLUB_MODEL, NEST_NAMES, NEST_DIR, NEST_COLORS } f
 import { loadHairData, buildHairTemplates } from './render/hair.js';
 import { createInput } from './ui/input.js';
 import { createPortraits } from './render/portraits.js';
+import { loadMachineTemplates, ruinTextureFrom } from './render/machines.js';
 import { pickFollowId, squadCentre, leash, dragResistance, LOOK_RADIUS } from './render/camfollow.js';
 import { createHud } from './ui/hud.js';
 import { createSelection } from './ui/selection.js';
@@ -186,7 +187,9 @@ async function loadGreenModels() {
     return null;
   }
 }
-const [groundTex, modelInfo, propLoaded, nestModels, greenModels] = await Promise.all([loadGroundTextures(), loadRoleModels(), loadPropModels(), loadNestModels(), loadGreenModels()]);
+// 古代の暴走機械（assets/mech/）。?mech=0 で無し（従来の獣の形で描く）。
+const mechLoad = params.get('mech') === '0' || params.get('models') === '0' ? Promise.resolve(null) : loadMachineTemplates().catch(() => null);
+const [groundTex, modelInfo, propLoaded, nestModels, greenModels, mechTemplates] = await Promise.all([loadGroundTextures(), loadRoleModels(), loadPropModels(), loadNestModels(), loadGreenModels(), mechLoad]);
 const models = modelInfo.models;
 const propModels = propsByRole(propLoaded);
 if (propLoaded[CLUB_MODEL]) models.club = propLoaded[CLUB_MODEL];
@@ -248,12 +251,15 @@ if (template && femaleOn) {
   }
 }
 const dolls = createDollManager(sceneCtx.scene, template, lookImages, female);
+dolls.setMachines(mechTemplates, models.katana);
 dolls.sync(state);
 const nameLabels = createNameLabels(dolls);
 const lights = createLights(sceneCtx.scene, state, models);
 const crossbows = createCrossbows(sceneCtx.scene, models);
 const combatFx = createCombatFx(sceneCtx.scene); // 20:13 チャンバラの火花・受けの構え
 const spawnSites = createSpawnSites(sceneCtx.scene, { debug: spawnDebug, props: propModels, nest: nestModels });
+// 遺跡の錆の模様は機械の獣の glb の物を使い回す（余分な読み込みなし）
+if (mechTemplates) spawnSites.setRuinTexture(ruinTextureFrom(mechTemplates));
 const options = createOptions({
   onShowNames(on) {
     dolls.setShowNames(on);
@@ -696,7 +702,7 @@ if (spawnDebug) {
     'color:#fff;text-shadow:0 1px 2px rgba(0,0,0,0.9);white-space:pre';
   document.body.appendChild(spawnLabel);
 }
-const KIND_NAMES = { caravan: '隊商', thieves: '盗賊', raiders: '野盗', beasts: '獣' };
+const KIND_NAMES = { caravan: '隊商', thieves: '盗賊', raiders: '野盗', beasts: '獣', machines: '古代の遺跡' };
 function spawnDebugText() {
   const sum = spawnSummary(state);
   if (!sum) return '出現: なし';

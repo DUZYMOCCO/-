@@ -32,6 +32,7 @@ function updateGrowth(actor) {
 function updateMeat(state, events) {
   for (const beast of state.actors) {
     if (beast.faction !== 'beast') continue;
+    if (beast.machine) continue; // 古代の機械は肉にならない
     if (beast.state !== 'dead') continue;
     if (beast.butchered) continue;
     let eater = null;

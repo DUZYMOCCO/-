@@ -2,6 +2,7 @@
 
 import { abductGoal } from './abduct.js';
 import {
+  beastRules,
   FACTIONS,
   WEAPONS,
   ATTACK_SLOT_LIMIT,
@@ -141,7 +142,7 @@ function bestTarget(state, actor) {
     if ((actor.holdFire || other.holdFire) && holdsPeace(actor, other)) continue;
     if (actor.leash && Math.hypot(other.x - actor.leash.x, other.z - actor.leash.z) > actor.leash.r) continue;
     if (other.state === 'down' || other.state === 'getup') {
-      if (actor.faction !== 'beast') continue;
+      if (!beastRules(actor)) continue;
       if (other.faction === 'beast') continue;
     }
     if ((other.recoverUntil || 0) > state.tick && other.id !== actor.lastAttackerId) {
@@ -233,7 +234,7 @@ function legFactor(actor) {
 
 function runSpeed(actor) {
   const weak = typeof actor.hunger === 'number' && actor.hunger < 25 ? 0.85 : 1;
-  if (actor.faction === 'beast') return 5 * weak;
+  if (beastRules(actor)) return 5 * weak;
   return (3.5 + actor.skills.athletics * 0.02) * weak;
 }
 
@@ -411,7 +412,7 @@ function moveActor(state, actor, byId, squadsById) {
     const d = distBetween(actor, target);
     const downTarget = target.state === 'down' || target.state === 'getup';
     const dropDown =
-      downTarget && !actor.isPlayer && (actor.faction !== 'beast' || target.faction === 'beast');
+      downTarget && !actor.isPlayer && (!beastRules(actor) || target.faction === 'beast');
     if (dropDown) {
       actor.targetId = null;
       actor.state = 'idle';

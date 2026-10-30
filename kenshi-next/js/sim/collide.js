@@ -8,7 +8,7 @@ const BEAST_RADIUS = 0.6;
 const INDEX_CACHE = new WeakMap();
 
 export function actorRadius(actor) {
-  if (actor && actor.faction === 'beast') return BEAST_RADIUS;
+  if (actor && actor.faction === 'beast' && !actor.swordsman) return BEAST_RADIUS;
   return HUMAN_RADIUS;
 }
 

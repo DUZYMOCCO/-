@@ -1,6 +1,6 @@
 // 部位HP、出血、気絶・起き上がり・死。
 
-import { PART_KEYS, PART_MAX, PART_LABEL, VITALS, setAnim, makeEvent, BLEED_PER_DAMAGE } from './data.js';
+import { PART_KEYS, PART_MAX, PART_LABEL, VITALS, setAnim, beastRules, makeEvent, BLEED_PER_DAMAGE } from './data.js';
 import { drop } from './carry.js';
 import { koLine } from './lines.js';
 import { koPoint, TUNING } from './melee.js';
@@ -184,7 +184,7 @@ function checkFlee(state, actor, events) {
   if ((actor.fleeUntil || 0) > state.tick) return;
   const ratio = lowestVitalRatio(actor);
   let ticks = 0;
-  if (actor.faction === 'beast' && ratio < 0.5) ticks = 300;
+  if (beastRules(actor) && !actor.machine && ratio < 0.5) ticks = 300; // 機械は逃げない
   else if (actor.faction === 'bandit' && ratio < 0.25) ticks = 200;
   if (ticks <= 0) return;
   actor.fleeUntil = state.tick + ticks;

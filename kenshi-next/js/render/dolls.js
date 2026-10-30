@@ -5,6 +5,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { heightAt, FACTIONS } from '../sim/index.js';
 import { createBeast, updateBeast, darkenBeast } from './beasts.js';
+import { createMachine, updateMachine, darkenMachine, machineModelFor } from './machines.js';
 import { lookFor, femaleLookFor, createLookCache, dollKindFor } from './doll_textures.js';
 import { shouldShowSquadLabel } from '../ui/labels.js';
 
@@ -719,7 +720,10 @@ export function createDollManager(scene, template, lookImages, female) {
     const color = factionColor(actor);
     const isBeast = actor.faction === 'beast';
     let doll;
-    if (isBeast) {
+    const mech = machines && machineModelFor(actor);
+    if (mech && machines.templates[mech]) {
+      doll = createMachine(actor, machines.templates[mech], machines.katana);
+    } else if (isBeast) {
       doll = createBeast(actor, color);
     } else if (hasTemplate) {
       const kind = dollKindFor(actor, !!femaleTemplate, simState);
@@ -777,7 +781,8 @@ export function createDollManager(scene, template, lookImages, female) {
       doll.group.userData.attackable = !actor.isPlayer && actor.state !== 'dead';
       doll.group.userData.pickable = true;
       if (actor.state === 'dead') {
-        if (doll.beast) darkenBeast(doll);
+        if (doll.machine) darkenMachine(doll);
+        else if (doll.beast) darkenBeast(doll);
         else darkenDoll(doll, looks);
       }
     }
@@ -878,8 +883,13 @@ export function createDollManager(scene, template, lookImages, female) {
       }
       if (actor.eaten) onScreen = false; // 食い尽くされた亡骸は描かない
       doll.group.visible = onScreen;
-      if (!onScreen && doll.beast) continue;
+      // 機械は画面の外でも倒れる動きだけは進める（戻った時に立ったまま死んでいないように）
+      if (!onScreen && doll.beast && !(doll.machine && (actor.state === 'dead' || actor.state === 'down'))) continue;
       if (!doll.beast) updateIndicator(doll, actor, state, camera);
+      if (doll.machine) {
+        updateMachine(doll, actor, dt, speed);
+        continue;
+      }
       if (doll.beast) {
         updateBeast(doll, actor, dt, speed);
         continue;
@@ -1061,9 +1071,16 @@ export function createDollManager(scene, template, lookImages, female) {
     return dolls.get(id) || null;
   }
 
+  // 古代の暴走機械の模型（machines.js）。読めなかった時は null のまま＝従来の獣の形。
+  let machines = null;
+  function setMachines(templates, katana) {
+    machines = templates && Object.keys(templates).length ? { templates, katana: katana || null } : null;
+  }
+
   return {
     sync,
     update,
+    setMachines,
     setShowNames,
     getDoll,
     reset,

@@ -2,6 +2,7 @@
 // 攻撃枠は1人に同時2人まで。加勢、成長もここ。式は melee.js。
 
 import {
+  beastRules,
   WEAPONS,
   PART_KEYS,
   PART_WEIGHTS,
@@ -384,7 +385,7 @@ export function resolveCombat(state, events) {
     if (
       (target.state === 'down' || target.state === 'getup') &&
       !actor.isPlayer &&
-      (actor.faction !== 'beast' || target.faction === 'beast')
+      (!beastRules(actor) || target.faction === 'beast')
     ) {
       dropTarget(actor);
       continue;
