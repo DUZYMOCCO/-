@@ -130,7 +130,7 @@ export function carriedWeight(actor) {
 
 // 筋力と背負い袋から容量を返す。
 export function carryCapacity(actor) {
-  return Math.max(1, (actor.skills?.strength || 0) * 1.2 + 10 + (ITEMS[actor.equip?.backpack?.id]?.capacity || 0));
+  return Math.max(1, 15 + (actor.skills?.strength || 0) + (ITEMS[actor.equip?.backpack?.id]?.capacity || 0));
 }
 
 // 重さを容量で割った荷重率を返す。
